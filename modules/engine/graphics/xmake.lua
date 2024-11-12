@@ -12,7 +12,7 @@ shared_module("SkrGraphics", "SKR_GRAPHICS", engine_version)
     -- install SDKs
     libs_to_install = {}
     if(os.host() == "windows") then
-        table.insert(libs_to_install, "dstorage-1.2.1")    
+        table.insert(libs_to_install, "dstorage-1.2.2")    
         table.insert(libs_to_install, "dxc")
         table.insert(libs_to_install, "amdags")
         table.insert(libs_to_install, "nvapi")

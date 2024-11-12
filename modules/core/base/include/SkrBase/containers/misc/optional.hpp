@@ -48,9 +48,9 @@ struct Optional {
     const T&  value() const&;
     T&&       value() &&;
     const T&& value() const&&;
-    template <typename U>
+    template <typename U = T>
     T value_or(U&& default_value) const&;
-    template <typename U>
+    template <typename U = T>
     T value_or(U&& default_value) &&;
 
     // modifier
@@ -120,21 +120,21 @@ inline Optional<T>::Optional(Optional&& other)
 template <typename T>
 template <typename U>
 inline Optional<T>::Optional(const Optional<U>& other)
-    : _has_value(other._has_value)
+    : _has_value(other.has_value())
 {
-    if (other._has_value)
+    if (other.has_value())
     {
-        memory::copy(_data_ptr(), other._data_ptr());
+        memory::copy(_data_ptr(), &other.value());
     }
 }
 template <typename T>
 template <typename U>
 inline Optional<T>::Optional(Optional<U>&& other)
-    : _has_value(other._has_value)
+    : _has_value(other.has_value())
 {
-    if (other._has_value)
+    if (other.has_value())
     {
-        memory::move(_data_ptr(), other._data_ptr());
+        memory::move(_data_ptr(), &other.value());
     }
     other.reset();
 }
@@ -186,9 +186,9 @@ template <typename U>
 inline Optional<T>& Optional<T>::operator=(const Optional<U>& other)
 {
     reset();
-    if (other._has_value)
+    if (other.has_value())
     {
-        memory::copy(_data_ptr(), other._data_ptr());
+        memory::copy(_data_ptr(), &other.value());
         _has_value = true;
     }
     return *this;
@@ -198,9 +198,9 @@ template <typename U>
 inline Optional<T>& Optional<T>::operator=(Optional<U>&& other)
 {
     reset();
-    if (other._has_value)
+    if (other.has_value())
     {
-        memory::move(_data_ptr(), other._data_ptr());
+        memory::move(_data_ptr(), &other.value());
         _has_value = true;
     }
     other.reset();

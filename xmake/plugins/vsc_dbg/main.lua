@@ -64,7 +64,7 @@ function main()
                 stopAtEntry = false,
                 cwd = build_dir,
                 environment = json.mark_as_array({}),
-                console = "externalTerminal",
+                console = "integratedTerminal",
                 preLaunchTask = "build "..target:name(),
             })
         end
@@ -79,7 +79,7 @@ function main()
                 -- stopAtEntry = false,
                 -- cwd = build_dir,
                 -- environment = json.mark_as_array({}),
-                -- console = "externalTerminal",
+                -- console = "integratedTerminal",
                 -- preLaunchTask = "build "..target:name(),
             })
         end

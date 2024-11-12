@@ -126,6 +126,18 @@ function _codegen_compile(target, proxy_target, opt)
     local compiler_inst = compiler.load(sourcekind, opt)
     local program, argv = compiler_inst:compargv(sourcefile, sourcefile..".o", opt)
     
+    -- remove source args
+    do
+        local new_arg = {}
+        local obj_flag =  "-Fo" .. sourcefile .. ".o"
+        for i, arg in pairs(argv) do
+            if arg ~= sourcefile and arg ~= obj_flag then
+                table.insert(new_arg, arg)
+            end
+        end
+        argv = new_arg
+    end
+    
     -- remove pch flags
     if using_msvc or using_clang_cl then
         for k, arg in pairs(argv) do 
@@ -160,6 +172,7 @@ function _codegen_compile(target, proxy_target, opt)
     }
     if is_host("windows") then
         local argv2_len = 0
+        argv2_len = 1024 * 8
         for _, v in pairs(argv2) do
             argv2_len = argv2_len + #v
         end
@@ -172,7 +185,7 @@ function _codegen_compile(target, proxy_target, opt)
     end
     
     -- print commands
-    local command = program .. " " .. table.concat(argv, " ")
+    local command = _meta.program .. " " .. table.concat(argv, " ")
     if option.get("verbose") then
         cprint(
             "${green}[%s]: compiling.meta ${clear}%ss\n%s"
