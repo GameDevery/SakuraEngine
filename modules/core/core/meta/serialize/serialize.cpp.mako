@@ -26,7 +26,7 @@ skr::StringView EnumSerdeTraits<${enum.name}>::to_string(const ${enum.name}& val
     switch (value)
     {
 %for enum_value in enum.values.values():
-    case ${enum.name}::${enum_value.short_name}: return u8"${enum_value.name}";
+    case ${enum.name}::${enum_value.short_name}: return u8"${enum_value.short_name}";
 %endfor
     default: SKR_UNREACHABLE_CODE(); return u8"${enum.name}::__INVALID_ENUMERATOR__";
     }

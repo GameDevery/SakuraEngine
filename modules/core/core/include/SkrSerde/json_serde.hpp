@@ -4,6 +4,7 @@
 #include "SkrBase/template/concepts.hpp"
 #include "SkrCore/log.h"
 #include "SkrSerde/enum_serde_traits.hpp"
+#include "SkrRTTR/rttr_traits.hpp"
 
 // traits
 namespace skr
@@ -213,7 +214,7 @@ struct JsonSerde<T> {
         {
             if (!EnumSerdeTraits<T>::from_string(enumStr.view(), v))
             {
-                SKR_LOG_ERROR(u8"Unknown enumerator while reading enum ${enum.name}: %s", enumStr.raw().data());
+                SKR_LOG_ERROR(u8"Unknown enumerator while reading enum %s: %s", skr::rttr::type_name_of<T>().begin(), enumStr.raw().data());
                 return false;
             }
             return true;
