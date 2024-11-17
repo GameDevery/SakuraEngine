@@ -55,15 +55,32 @@ function main()
     local tasks = {}
     do
         function _exec_launch(target)
+            local config_args = target:values("vsc_dbg.args")
+            local config_envs = target:values("vsc_dbg.env")
+
+            -- get launch args
+            local args = config_args and config_args or json.mark_as_array({})
+            
+            -- get launch envs
+            local envs = json.mark_as_array({})
+            for _, k in ipairs(config_envs) do
+                local v = target:values("vsc_dbg.env."..k)
+                table.insert(envs, {
+                    name = k,
+                    value = v
+                })
+            end
+
+            -- append
             table.insert(launches,{
                 name = "▶️"..target:name(),
                 type = "cppvsdbg",
                 request = "launch",
                 program = format("%s/%s.exe", build_dir, target:name()),
-                args = json.mark_as_array({}),
+                args = args,
                 stopAtEntry = false,
                 cwd = build_dir,
-                environment = json.mark_as_array({}),
+                environment = envs,
                 console = "integratedTerminal",
                 preLaunchTask = "build "..target:name(),
             })
