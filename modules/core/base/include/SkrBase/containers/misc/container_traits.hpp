@@ -71,4 +71,9 @@ concept HasAdd = requires(T t, Elem e) {
 template <typename T, typename Elem>
 concept CanAdd = HasAppend<T, Elem> || HasAdd<T, Elem>;
 
+template <typename RHS, typename LHS>
+concept CanAssignTo = requires(RHS rhs, LHS lhs) {
+    { lhs = std::forward<RHS>(rhs) } -> std::same_as<LHS>;
+};
+
 } // namespace skr::container

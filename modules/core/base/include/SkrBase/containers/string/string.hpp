@@ -67,8 +67,10 @@ struct U8String : protected Memory {
     static U8String Utf32(const skr_char32* str) noexcept;
 
     // join & build factory
-    // TODO. join:  针对容器的拼接
-    // TODO. build: 相当于 + 运算符，用于连接一系列可以被转化为 string 的对象以构建字符串
+    template <typename... Args>
+    static U8String Build(Args&&... string_or_view);
+    template <typename Container>
+    static U8String Join(const Container& container, ViewType separator, bool skip_empty = true, ViewType trim_chs = {}) noexcept;
 
     // copy & move
     U8String(const U8String& other);
@@ -112,7 +114,7 @@ struct U8String : protected Memory {
 
     // memory op
     void clear();
-    void release(SizeType reserve_capacity = 0); // TODO. release test when equal to capacity FOR ALL CONTAINERS
+    void release(SizeType reserve_capacity = 0);
     void reserve(SizeType expect_capacity);
     void shrink();
     void resize(SizeType expect_size, const DataType& new_value);
@@ -264,6 +266,9 @@ struct U8String : protected Memory {
     SizeType buffer_index_to_text(SizeType index) const;
     SizeType text_index_to_buffer(SizeType index) const;
 
+    // cast to view
+    operator ViewType() const;
+
     // syntax
     const U8String& readonly() const;
     ViewType        view() const;
@@ -353,7 +358,7 @@ template <typename Memory>
 inline U8String<Memory>::U8String(const DataType* str, AllocatorCtorParam param) noexcept
     : Memory(std::move(param))
 {
-    _assign_with_literal_check(str, CharTraits::length(str));
+    _assign_with_literal_check(str, str ? CharTraits::length(str) : 0);
 }
 template <typename Memory>
 inline U8String<Memory>::U8String(const DataType* str, SizeType len, AllocatorCtorParam param) noexcept
@@ -371,6 +376,204 @@ template <typename Memory>
 inline U8String<Memory>::~U8String()
 {
     // handled in memory
+}
+
+// factory
+template <typename Memory>
+inline U8String<Memory> U8String<Memory>::Raw(const char* str) noexcept
+{
+    return { reinterpret_cast<const DataType*>(str) };
+}
+template <typename Memory>
+inline U8String<Memory> U8String<Memory>::Wide(const wchar_t* str) noexcept
+{
+#if _WIN64
+    return Utf16(reinterpret_cast<const char16_t*>(str));
+#elif __linux__ || __MACH__
+    return Utf32(reinterpret_cast<const char32_t*>(str));
+#endif
+}
+template <typename Memory>
+inline U8String<Memory> U8String<Memory>::Utf8(const skr_char8* str) noexcept
+{
+    return { str };
+}
+template <typename Memory>
+inline U8String<Memory> U8String<Memory>::Utf16(const skr_char16* str) noexcept
+{
+    SizeType str_len = std::char_traits<skr_char16>::length(str);
+    if (str_len)
+    {
+        using Cursor = UTF16Cursor<SizeType, true>;
+
+        // parse utf8 str len
+        SizeType utf8_len = 0;
+        for (UTF16Seq utf16_seq : Cursor{ str, str_len, 0 }.as_range())
+        {
+            if (utf16_seq.is_valid())
+            {
+                utf8_len += utf16_seq.to_utf8_len();
+            }
+            else
+            {
+                utf8_len += 1;
+            }
+        }
+
+        // combine result
+        U8String result;
+        result.resize_unsafe(utf8_len);
+        SizeType write_index = 0;
+        for (UTF16Seq utf16_seq : Cursor{ str, str_len, 0 }.as_range())
+        {
+            if (utf16_seq.is_valid())
+            {
+                UTF8Seq utf8_seq = utf16_seq;
+                memory::copy(result._data() + write_index, utf8_seq.data, utf8_seq.len);
+                write_index += utf8_seq.len;
+            }
+            else
+            {
+                memory::copy(result._data() + write_index, &utf16_seq.bad_data, 1);
+                ++write_index;
+            }
+        }
+
+        SKR_ASSERT(write_index == utf8_len && "Utf16 to Utf8 failed");
+
+        return result;
+    }
+    else
+    {
+        return {};
+    }
+}
+template <typename Memory>
+inline U8String<Memory> U8String<Memory>::Utf32(const skr_char32* str) noexcept
+{
+    SizeType str_len = std::char_traits<skr_char32>::length(str);
+    if (str_len)
+    {
+        // parse utf8 str len
+        SizeType utf8_len = 0;
+        for (SizeType i = 0; i < str_len; ++i)
+        {
+            utf8_len += utf8_seq_len(str[i]);
+        }
+
+        // combine result
+        U8String result;
+        result.resize_unsafe(utf8_len);
+        SizeType write_index = 0;
+        for (SizeType i = 0; i < str_len; ++i)
+        {
+            UTF8Seq utf8_seq = str[i];
+            memory::copy(result._data() + write_index, utf8_seq.data, utf8_seq.len);
+            write_index += utf8_seq.len;
+        }
+
+        SKR_ASSERT(write_index == utf8_len && "Utf32 to Utf8 failed");
+
+        return result;
+    }
+    else
+    {
+        return {};
+    }
+}
+
+// join & build factory
+template <typename Memory>
+template <typename... Args>
+inline U8String<Memory> U8String<Memory>::Build(Args&&... string_or_view)
+{
+    std::array<ViewType, sizeof...(Args)> args{ ViewType{ string_or_view }... };
+
+    // calc size
+    uint64_t total_size = 0;
+    for (const auto& arg : args)
+    {
+        total_size += arg.size();
+    }
+
+    // combine
+    U8String result;
+    result.reserve(total_size);
+    for (const auto& arg : args)
+    {
+        result.append(arg);
+    }
+
+    return result;
+}
+template <typename Memory>
+template <typename Container>
+inline U8String<Memory> U8String<Memory>::Join(const Container& container, ViewType separator, bool skip_empty, ViewType trim_chs) noexcept
+{
+    // calc size
+    uint64_t total_size      = 0;
+    bool     is_first_append = false;
+    for (const auto& str : container)
+    {
+        ViewType view{ str };
+
+        // trim
+        if (!trim_chs.is_empty())
+        {
+            view = view.trim(trim_chs);
+        }
+
+        // skip empty
+        if (skip_empty && view.is_empty()) continue;
+
+        // append separator
+        if (!is_first_append)
+        {
+            is_first_append = true;
+        }
+        else
+        {
+            total_size += separator.size();
+        }
+
+        // append item
+        total_size += view.size();
+    }
+
+    // combine
+    U8String result;
+    result.reserve(total_size);
+    is_first_append = false;
+    for (const auto& str : container)
+    {
+        ViewType view{ str };
+
+        // trim
+        if (!trim_chs.is_empty())
+        {
+            view = view.trim(trim_chs);
+        }
+
+        // skip empty
+        if (skip_empty && view.is_empty()) continue;
+
+        // append separator
+        if (!is_first_append)
+        {
+            is_first_append = true;
+        }
+        else
+        {
+            result.append(separator);
+        }
+
+        // append item
+        result.append(view);
+    }
+
+    SKR_ASSERT(result.size() == total_size && "Join failed");
+
+    return result;
 }
 
 // copy & move
@@ -820,7 +1023,10 @@ inline typename U8String<Memory>::DataRef U8String<Memory>::append(const U& cont
 template <typename Memory>
 inline void U8String<Memory>::append_at(SizeType idx, const DataType* str)
 {
-    append_at(idx, str, CharTraits::length(str));
+    if (str)
+    {
+        append_at(idx, str, CharTraits::length(str));
+    }
 }
 template <typename Memory>
 inline void U8String<Memory>::append_at(SizeType idx, const DataType* str, SizeType len)
@@ -1737,6 +1943,13 @@ template <typename Memory>
 inline typename U8String<Memory>::SizeType U8String<Memory>::text_index_to_buffer(SizeType index) const
 {
     return view().text_index_to_buffer(index);
+}
+
+// cast to view
+template <typename Memory>
+inline U8String<Memory>::operator ViewType() const
+{
+    return view();
 }
 
 // syntax

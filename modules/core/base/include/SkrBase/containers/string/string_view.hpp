@@ -167,7 +167,7 @@ inline constexpr U8StringView<TS>::U8StringView() = default;
 template <typename TS>
 inline constexpr U8StringView<TS>::U8StringView(const DataType* str)
     : _data(const_cast<DataType*>(str))
-    , _size(CharTraits::length(str))
+    , _size(str ? CharTraits::length(str) : 0)
 {
 }
 template <typename TS>

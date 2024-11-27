@@ -1897,6 +1897,145 @@ TEST_CASE("Test U8String")
         }
     }
 
+    SUBCASE("factory")
+    {
+        auto raw_c_str  = "🐓🏀🐓🏀🐓🏀🐓🏀🐓🏀🐓🏀";
+        auto wide_c_str = L"🐓🏀🐓🏀🐓🏀🐓🏀🐓🏀🐓🏀";
+        auto u8_c_str   = u8"🐓🏀🐓🏀🐓🏀🐓🏀🐓🏀🐓🏀";
+        auto u16_c_str  = u"🐓🏀🐓🏀🐓🏀🐓🏀🐓🏀🐓🏀";
+        auto u32_c_str  = U"🐓🏀🐓🏀🐓🏀🐓🏀🐓🏀🐓🏀";
+
+        String reference_str = u8_c_str;
+
+        String raw_str  = String::Raw(raw_c_str);
+        String wide_str = String::Wide(wide_c_str);
+        String u8_str   = String::Utf8(u8_c_str);
+        String u16_str  = String::Utf16(u16_c_str);
+        String u32_str  = String::Utf32(u32_c_str);
+
+        REQUIRE_EQ(raw_str, reference_str);
+        REQUIRE_EQ(wide_str, reference_str);
+        REQUIRE_EQ(u8_str, reference_str);
+        REQUIRE_EQ(u16_str, reference_str);
+        REQUIRE_EQ(u32_str, reference_str);
+    }
+
+    SUBCASE("build")
+    {
+        StringView build_a     = u8"🐓🏀🐓🏀";
+        auto       build_b     = u8"🐓🏀";
+        String     build_c     = u8"鸡鸡鸡";
+        StringView result_view = u8"🐓🏀🐓🏀🐓🏀鸡鸡鸡";
+
+        String result = String::Build(build_a, build_b, build_c);
+        REQUIRE_EQ(result, result_view);
+    }
+
+    SUBCASE("join")
+    {
+        const skr_char8* join_comp_1 = u8"  ";
+        const skr_char8* join_comp_2 = u8"🐓🏀🐓🏀";
+        const skr_char8* join_comp_3 = nullptr;
+        const skr_char8* join_comp_4 = u8"   ";
+        const skr_char8* join_comp_5 = u8"鸡鸡鸡";
+        const skr_char8* join_comp_6 = u8"  鸡鸡鸡  ";
+        const skr_char8* join_comp_7 = u8"  ";
+        const skr_char8* join_sep    = u8",";
+
+        StringView normal_result_view              = u8"  ,🐓🏀🐓🏀,,   ,鸡鸡鸡,  鸡鸡鸡  ,  ";
+        StringView skip_empty_result_view          = u8"  ,🐓🏀🐓🏀,   ,鸡鸡鸡,  鸡鸡鸡  ,  ";
+        StringView trim_result_view                = u8",🐓🏀🐓🏀,,,鸡鸡鸡,鸡鸡鸡,";
+        StringView skip_empty_and_trim_result_view = u8"🐓🏀🐓🏀,鸡鸡鸡,鸡鸡鸡";
+
+        std::array<const skr_char8*, 7> raw_join_arr  = { join_comp_1, join_comp_2, join_comp_3, join_comp_4, join_comp_5, join_comp_6, join_comp_7 };
+        std::array<StringView, 7>       view_join_arr = { join_comp_1, join_comp_2, join_comp_3, join_comp_4, join_comp_5, join_comp_6, join_comp_7 };
+        std::array<String, 7>           str_join_arr  = { join_comp_1, join_comp_2, join_comp_3, join_comp_4, join_comp_5, join_comp_6, join_comp_7 };
+
+        // normal join
+        {
+            // join str ptr
+            {
+                String normal_raw_result = String::Join(raw_join_arr, join_sep, false);
+                REQUIRE_EQ(normal_result_view, normal_raw_result);
+            }
+
+            // join view
+            {
+                String normal_view_result = String::Join(view_join_arr, join_sep, false);
+                REQUIRE_EQ(normal_result_view, normal_view_result);
+            }
+
+            // join str
+            {
+                String normal_str_result = String::Join(str_join_arr, join_sep, false);
+                REQUIRE_EQ(normal_result_view, normal_str_result);
+            }
+        }
+
+        // join with skip empty
+        {
+            // join str ptr
+            {
+                String skip_empty_raw_result = String::Join(raw_join_arr, join_sep, true);
+                REQUIRE_EQ(skip_empty_result_view, skip_empty_raw_result);
+            }
+
+            // join view
+            {
+                String skip_empty_view_result = String::Join(view_join_arr, join_sep, true);
+                REQUIRE_EQ(skip_empty_result_view, skip_empty_view_result);
+            }
+
+            // join str
+            {
+                String skip_empty_str_result = String::Join(str_join_arr, join_sep, true);
+                REQUIRE_EQ(skip_empty_result_view, skip_empty_str_result);
+            }
+        }
+
+        // join with trim
+        {
+            // join str ptr
+            {
+                String trim_raw_result = String::Join(raw_join_arr, join_sep, false, u8" ");
+                REQUIRE_EQ(trim_result_view, trim_raw_result);
+            }
+
+            // join view
+            {
+                String trim_view_result = String::Join(view_join_arr, join_sep, false, u8" ");
+                REQUIRE_EQ(trim_result_view, trim_view_result);
+            }
+
+            // join str
+            {
+                String trim_str_result = String::Join(str_join_arr, join_sep, false, u8" ");
+                REQUIRE_EQ(trim_result_view, trim_str_result);
+            }
+        }
+
+        // join with trim and skip empty
+        {
+            // join str ptr
+            {
+                String skip_empty_and_trim_raw_result = String::Join(raw_join_arr, join_sep, true, u8" ");
+                REQUIRE_EQ(skip_empty_and_trim_result_view, skip_empty_and_trim_raw_result);
+            }
+
+            // join view
+            {
+                String skip_empty_and_trim_view_result = String::Join(view_join_arr, join_sep, true, u8" ");
+                REQUIRE_EQ(skip_empty_and_trim_result_view, skip_empty_and_trim_view_result);
+            }
+
+            // join str
+            {
+                String skip_empty_and_trim_str_result = String::Join(str_join_arr, join_sep, true, u8" ");
+                REQUIRE_EQ(skip_empty_and_trim_result_view, skip_empty_and_trim_str_result);
+            }
+        }
+    }
+
     // [test in view] text index
     // TODO. iterators
 }
