@@ -563,7 +563,10 @@ inline void U8String<Memory>::release(SizeType reserve_capacity)
     clear();
     if (reserve_capacity)
     {
-        _realloc(reserve_capacity);
+        if (reserve_capacity != capacity())
+        {
+            _realloc(reserve_capacity);
+        }
     }
     else
     {

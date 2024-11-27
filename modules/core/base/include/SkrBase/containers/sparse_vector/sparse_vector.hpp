@@ -634,7 +634,10 @@ SKR_INLINE void SparseVector<Memory>::release(SizeType reserve_capacity)
     clear();
     if (reserve_capacity)
     {
-        _realloc(reserve_capacity);
+        if (reserve_capacity != capacity())
+        {
+            _realloc(reserve_capacity);
+        }
     }
     else
     {

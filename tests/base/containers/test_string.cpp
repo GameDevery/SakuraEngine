@@ -401,12 +401,14 @@ TEST_CASE("Test U8String")
         REQUIRE_EQ(str.size(), 0);
         REQUIRE_FALSE(is_literal(str));
 
-        // release empty
-        str.release();
+        // release and eq to capacity
+        str.reserve(capacity_of(4096));
+        str.release(capacity_of(4096));
         REQUIRE(str.is_empty());
-        REQUIRE_EQ(str.capacity(), capacity_of(0));
+        REQUIRE_EQ(str.capacity(), capacity_of(4096));
         REQUIRE_EQ(str.size(), 0);
         REQUIRE_FALSE(is_literal(str));
+        str.release();
 
         // release with content
         str = long_literal;

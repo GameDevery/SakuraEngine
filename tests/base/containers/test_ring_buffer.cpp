@@ -149,6 +149,13 @@ void template_test_ring_buffer(ModifyCapacity&& capacity_of, ClampCapacity&& cla
         REQUIRE_EQ(a.size(), 0);
         REQUIRE_EQ(a.capacity(), capacity_of(0));
 
+        // release eq to capcity
+        a.reserve(capacity_of(4096));
+        a.release(capacity_of(4096));
+        REQUIRE_EQ(a.size(), 0);
+        REQUIRE_EQ(a.capacity(), capacity_of(4096));
+        a.release();
+
         a.reserve(60);
         REQUIRE_EQ(a.size(), 0);
         REQUIRE_GE(a.capacity(), capacity_of(60));
