@@ -17,6 +17,7 @@ namespace skr::container
 //  isdigit 是否只包含数字字符
 //  islower 是否只包含小写字符
 //  isupper 是否只包含大写字符
+// TODO. iterator
 template <typename Memory>
 struct U8String : protected Memory {
     // from memory

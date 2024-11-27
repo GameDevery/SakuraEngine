@@ -401,6 +401,13 @@ TEST_CASE("Test U8String")
         REQUIRE_EQ(str.size(), 0);
         REQUIRE_FALSE(is_literal(str));
 
+        // release empty
+        str.release();
+        REQUIRE(str.is_empty());
+        REQUIRE_EQ(str.capacity(), capacity_of(0));
+        REQUIRE_EQ(str.size(), 0);
+        REQUIRE_FALSE(is_literal(str));
+
         // release with content
         str = long_literal;
         str.release();
@@ -1639,10 +1646,255 @@ TEST_CASE("Test U8String")
         }
     }
 
-    // partition
-    // split
+    SUBCASE("partition")
+    {
+        // test split by view
+        {
+            StringView partition_view = u8"鸡鸡鸡";
 
-    // text index
+            // test normal
+            {
+                StringView normal_view       = u8"🐓🏀🐓🏀🐓🏀鸡鸡鸡🐓🏀🐓🏀🐓🏀";
+                StringView normal_left_view  = u8"🐓🏀🐓🏀🐓🏀";
+                StringView normal_mid_view   = u8"鸡鸡鸡";
+                StringView normal_right_view = u8"🐓🏀🐓🏀🐓🏀";
 
-    // iterators
+                String normal_str    = normal_view;
+                auto   normal_result = normal_str.partition(partition_view);
+                REQUIRE_EQ(normal_result.left, normal_left_view);
+                REQUIRE_EQ(normal_result.mid, normal_mid_view);
+                REQUIRE_EQ(normal_result.right, normal_right_view);
+
+                REQUIRE(normal_str.memory().is_literal());
+            }
+
+            // test no left
+            {
+                StringView no_left_view       = u8"鸡鸡鸡🐓🏀🐓🏀🐓🏀";
+                StringView no_left_left_view  = {};
+                StringView no_left_mid_view   = u8"鸡鸡鸡";
+                StringView no_left_right_view = u8"🐓🏀🐓🏀🐓🏀";
+
+                String no_left_str    = no_left_view;
+                auto   no_left_result = no_left_str.partition(partition_view);
+                REQUIRE_EQ(no_left_result.left, no_left_left_view);
+                REQUIRE_EQ(no_left_result.mid, no_left_mid_view);
+                REQUIRE_EQ(no_left_result.right, no_left_right_view);
+
+                REQUIRE(no_left_str.memory().is_literal());
+            }
+
+            // test no right
+            {
+                StringView no_right_view       = u8"🐓🏀🐓🏀🐓🏀鸡鸡鸡";
+                StringView no_right_left_view  = u8"🐓🏀🐓🏀🐓🏀";
+                StringView no_right_mid_view   = u8"鸡鸡鸡";
+                StringView no_right_right_view = {};
+
+                String no_right_str    = no_right_view;
+                auto   no_right_result = no_right_str.partition(partition_view);
+                REQUIRE_EQ(no_right_result.left, no_right_left_view);
+                REQUIRE_EQ(no_right_result.mid, no_right_mid_view);
+                REQUIRE_EQ(no_right_result.right, no_right_right_view);
+
+                REQUIRE(no_right_str.memory().is_literal());
+            }
+
+            // test failed
+            {
+                StringView failed_view       = u8"🐓🏀🐓🏀🐓🏀";
+                StringView failed_left_view  = failed_view;
+                StringView failed_mid_view   = {};
+                StringView failed_right_view = {};
+
+                String failed_str    = failed_view;
+                auto   failed_result = failed_str.partition(partition_view);
+                REQUIRE_EQ(failed_result.left, failed_left_view);
+                REQUIRE_EQ(failed_result.mid, failed_mid_view);
+                REQUIRE_EQ(failed_result.right, failed_right_view);
+
+                REQUIRE(failed_str.memory().is_literal());
+            }
+        }
+
+        // test split by seq
+        {
+            skr::UTF8Seq partition_seq{ U'鸡' };
+
+            // test normal
+            {
+                StringView normal_view       = u8"🐓🏀🐓🏀🐓🏀鸡🐓🏀🐓🏀🐓🏀";
+                StringView normal_left_view  = u8"🐓🏀🐓🏀🐓🏀";
+                StringView normal_mid_view   = u8"鸡";
+                StringView normal_right_view = u8"🐓🏀🐓🏀🐓🏀";
+
+                String normal_str    = normal_view;
+                auto   normal_result = normal_str.partition(partition_seq);
+                REQUIRE_EQ(normal_result.left, normal_left_view);
+                REQUIRE_EQ(normal_result.mid, normal_mid_view);
+                REQUIRE_EQ(normal_result.right, normal_right_view);
+
+                REQUIRE(normal_str.memory().is_literal());
+            }
+
+            // test no left
+            {
+                StringView no_left_view       = u8"鸡🐓🏀🐓🏀🐓🏀";
+                StringView no_left_left_view  = {};
+                StringView no_left_mid_view   = u8"鸡";
+                StringView no_left_right_view = u8"🐓🏀🐓🏀🐓🏀";
+
+                String no_left_str    = no_left_view;
+                auto   no_left_result = no_left_str.partition(partition_seq);
+                REQUIRE_EQ(no_left_result.left, no_left_left_view);
+                REQUIRE_EQ(no_left_result.mid, no_left_mid_view);
+                REQUIRE_EQ(no_left_result.right, no_left_right_view);
+
+                REQUIRE(no_left_str.memory().is_literal());
+            }
+
+            // test no right
+            {
+                StringView no_right_view       = u8"🐓🏀🐓🏀🐓🏀鸡";
+                StringView no_right_left_view  = u8"🐓🏀🐓🏀🐓🏀";
+                StringView no_right_mid_view   = u8"鸡";
+                StringView no_right_right_view = {};
+
+                String no_right_str    = no_right_view;
+                auto   no_right_result = no_right_str.partition(partition_seq);
+                REQUIRE_EQ(no_right_result.left, no_right_left_view);
+                REQUIRE_EQ(no_right_result.mid, no_right_mid_view);
+                REQUIRE_EQ(no_right_result.right, no_right_right_view);
+
+                REQUIRE(no_right_str.memory().is_literal());
+            }
+
+            // test failed
+            {
+                StringView failed_view       = u8"🐓🏀🐓🏀🐓🏀";
+                StringView failed_left_view  = failed_view;
+                StringView failed_mid_view   = {};
+                StringView failed_right_view = {};
+
+                String failed_str    = failed_view;
+                auto   failed_result = failed_str.partition(partition_seq);
+                REQUIRE_EQ(failed_result.left, failed_left_view);
+                REQUIRE_EQ(failed_result.mid, failed_mid_view);
+                REQUIRE_EQ(failed_result.right, failed_right_view);
+
+                REQUIRE(failed_str.memory().is_literal());
+            }
+        }
+    }
+
+    SUBCASE("split")
+    {
+        StringView view{ u8"This 🐓 is 🐓🐓 a good 🐓 text 🐓" };
+        StringView split_view{ u8"🐓" };
+        StringView split_result[] = {
+            u8"This ",
+            u8" is ",
+            u8"",
+            u8" a good ",
+            u8" text ",
+        };
+        StringView split_result_cull_empty[] = {
+            u8"This ",
+            u8" is ",
+            u8" a good ",
+            u8" text ",
+        };
+        StringView str = view;
+
+        // split to container
+        {
+            Vector<StringView> result;
+            uint64_t           count;
+
+            result.clear();
+            count = str.split(result, split_view);
+            REQUIRE_EQ(count, 5);
+            for (uint64_t i = 0; i < count; ++i)
+            {
+                REQUIRE_EQ(result[i], split_result[i]);
+            }
+
+            result.clear();
+            count = str.split(result, split_view, true);
+            REQUIRE_EQ(count, 4);
+            for (uint64_t i = 0; i < count; ++i)
+            {
+                REQUIRE_EQ(result[i], split_result_cull_empty[i]);
+            }
+
+            result.clear();
+            count = str.split(result, split_view, false, 3);
+            REQUIRE_EQ(count, 3);
+            for (uint64_t i = 0; i < count; ++i)
+            {
+                REQUIRE_EQ(result[i], split_result[i]);
+            }
+
+            result.clear();
+            count = str.split(result, split_view, true, 3);
+            REQUIRE_EQ(count, 3);
+            for (uint64_t i = 0; i < count; ++i)
+            {
+                REQUIRE_EQ(result[i], split_result_cull_empty[i]);
+            }
+
+            REQUIRE(is_literal(str));
+        }
+
+        // custom split
+        {
+            uint64_t count, idx;
+
+            idx   = 0;
+            count = str.split_each(
+            [&](const StringView& v) {
+                REQUIRE_EQ(v, split_result[idx]);
+                ++idx;
+            },
+            split_view);
+            REQUIRE_EQ(count, 5);
+
+            idx   = 0;
+            count = str.split_each(
+            [&](const StringView& v) {
+                REQUIRE_EQ(v, split_result_cull_empty[idx]);
+                ++idx;
+            },
+            split_view,
+            true);
+            REQUIRE_EQ(count, 4);
+
+            idx   = 0;
+            count = str.split_each(
+            [&](const StringView& v) {
+                REQUIRE_EQ(v, split_result[idx]);
+                ++idx;
+            },
+            split_view,
+            false,
+            3);
+            REQUIRE_EQ(count, 3);
+
+            idx   = 0;
+            count = str.split_each(
+            [&](const StringView& v) {
+                REQUIRE_EQ(v, split_result_cull_empty[idx]);
+                ++idx;
+            },
+            split_view,
+            true,
+            3);
+            REQUIRE_EQ(count, 3);
+
+            REQUIRE(is_literal(str));
+        }
+    }
+
+    // [test in view] text index
+    // TODO. iterators
 }
