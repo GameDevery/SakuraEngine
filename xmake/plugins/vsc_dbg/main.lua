@@ -24,14 +24,14 @@ function main()
 
     -- collect targets
     local exec_targets = {}
-    local dynmaic_targets = {}
+    local dynamic_targets = {}
     do
         function _add_target(target)
             local target_kind = target:kind()
             if target_kind == "binary" then
                 table.insert(exec_targets, target)
             elseif target_kind == "shared" then
-                table.insert(dynmaic_targets, target)
+                table.insert(dynamic_targets, target)
             end
         end
         if opt_targets and #opt_targets > 0 then -- collect targets from command line
@@ -43,14 +43,14 @@ function main()
                     cprint("${yellow}target [%s] not found!${clear}", target_name)
                 end
             end
-        else -- gloabl collect targets
+        else -- global collect targets
             for _, target in pairs(project.ordertargets()) do
                 _add_target(target)
             end
         end
     end
 
-    -- gen config contenets
+    -- gen config contents
     local launches = {}
     local tasks = {}
     do
@@ -132,7 +132,7 @@ function main()
         end
 
         -- generate debug configurations for dynamic targets
-        for _, target in ipairs(dynmaic_targets) do
+        for _, target in ipairs(dynamic_targets) do
             --_attach_launch(target)
         end
 
