@@ -49,7 +49,7 @@ SKR_EXTERN_C SKR_STATIC_API void skr_debug_output(const char* msg);
             if (!(cond))                                                            \
             {                                                                       \
                 SKR_TRACE_MSG("Skr Validate fired: " #cond " (" SKR_FILE_LINE ")"); \
-                SKR_BREAK()                                                         \
+                SKR_BREAK();                                                        \
             }                                                                       \
         } while (0)
 

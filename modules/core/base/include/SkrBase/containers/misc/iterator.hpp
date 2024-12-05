@@ -5,6 +5,7 @@
 namespace skr::container
 {
 // concepts
+// TODO. has_next() => is_validate() may be better
 template <typename It>
 concept Iterator = requires(It t) {
     t.ref();
