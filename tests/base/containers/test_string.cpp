@@ -1907,11 +1907,11 @@ TEST_CASE("Test U8String")
 
         String reference_str = u8_c_str;
 
-        String raw_str  = String::Raw(raw_c_str);
-        String wide_str = String::Wide(wide_c_str);
-        String u8_str   = String::Utf8(u8_c_str);
-        String u16_str  = String::Utf16(u16_c_str);
-        String u32_str  = String::Utf32(u32_c_str);
+        String raw_str  = String::FromRaw(raw_c_str);
+        String wide_str = String::FromWide(wide_c_str);
+        String u8_str   = String::FromUtf8(u8_c_str);
+        String u16_str  = String::FromUtf16(u16_c_str);
+        String u32_str  = String::FromUtf32(u32_c_str);
 
         REQUIRE_EQ(raw_str, reference_str);
         REQUIRE_EQ(wide_str, reference_str);
@@ -2037,5 +2037,7 @@ TEST_CASE("Test U8String")
     }
 
     // [test in view] text index
+    // [test in view] convert
+
     // TODO. iterators
 }

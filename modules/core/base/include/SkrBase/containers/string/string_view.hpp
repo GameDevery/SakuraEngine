@@ -6,6 +6,7 @@
 #include "SkrBase/unicode/unicode_iterator.hpp"
 #include "SkrBase/misc/debug.h"
 #include <string>
+#include "SkrBase/memory.hpp"
 
 namespace skr::container
 {
@@ -140,6 +141,25 @@ struct U8StringView {
     // template <std::invocable<const U8StringView<TS>&> F>
     template <typename F>
     constexpr SizeType split_each(F&& func, const UTF8Seq& delimiter, bool cull_empty = false, SizeType limit = npos) const;
+
+    // convert size
+    SizeType to_raw_length() const;
+    SizeType to_wide_length() const;
+    SizeType to_u8_length() const;
+    SizeType to_u16_length() const;
+    SizeType to_u32_length() const;
+    template <typename T>
+    SizeType to_length() const;
+
+    // convert
+    // !NOTE: please ensure the buffer is large enough
+    void to_raw(char* buffer) const;
+    void to_wide(wchar_t* buffer) const;
+    void to_u8(skr_char8* buffer) const;
+    void to_u16(skr_char16* buffer) const;
+    void to_u32(skr_char32* buffer) const;
+    template <typename T>
+    void to(T* buffer) const;
 
     // text index
     constexpr SizeType buffer_index_to_text(SizeType index) const;
@@ -824,6 +844,192 @@ inline constexpr typename U8StringView<TS>::SizeType U8StringView<TS>::split_eac
     delimiter.is_valid() ? U8StringView{ &delimiter.data[0], delimiter.len } : U8StringView{},
     cull_empty,
     limit);
+}
+
+// convert size
+template <typename TS>
+inline typename U8StringView<TS>::SizeType U8StringView<TS>::to_raw_length() const
+{
+    return length_buffer();
+}
+template <typename TS>
+inline typename U8StringView<TS>::SizeType U8StringView<TS>::to_wide_length() const
+{
+#if _WIN64
+    return to_u16_length();
+#elif __linux__ || __MACH__
+    return to_u32_length();
+#endif
+}
+template <typename TS>
+inline typename U8StringView<TS>::SizeType U8StringView<TS>::to_u8_length() const
+{
+    return length_buffer();
+}
+template <typename TS>
+inline typename U8StringView<TS>::SizeType U8StringView<TS>::to_u16_length() const
+{
+    if (is_empty())
+    {
+        return 0;
+    }
+    else
+    {
+        using Cursor = UTF8Cursor<SizeType, true>;
+
+        SizeType utf16_len = 0;
+        for (UTF8Seq utf8_seq : Cursor{ _data, _size, 0 }.as_range())
+        {
+            if (utf8_seq.is_valid())
+            {
+                utf16_len += utf8_seq.to_utf16_len();
+            }
+            else
+            {
+                utf16_len += 1;
+            }
+        }
+
+        return utf16_len;
+    }
+}
+template <typename TS>
+inline typename U8StringView<TS>::SizeType U8StringView<TS>::to_u32_length() const
+{
+    if (is_empty())
+    {
+        return 0;
+    }
+    else
+    {
+        using Cursor = UTF8Cursor<SizeType, true>;
+
+        SizeType utf32_len = 0;
+        for (UTF8Seq utf8_seq : Cursor{ _data, _size, 0 }.as_range())
+        {
+            utf32_len += 1;
+        }
+        return utf32_len;
+    }
+}
+template <typename TS>
+template <typename T>
+inline typename U8StringView<TS>::SizeType U8StringView<TS>::to_length() const
+{
+    if constexpr (std::is_same_v<T, char>)
+    {
+        return to_raw_length();
+    }
+    else if constexpr (std::is_same_v<T, wchar_t>)
+    {
+        return to_wide_length();
+    }
+    else if constexpr (std::is_same_v<T, skr_char8>)
+    {
+        return to_u8_length();
+    }
+    else if constexpr (std::is_same_v<T, skr_char16>)
+    {
+        return to_u16_length();
+    }
+    else if constexpr (std::is_same_v<T, skr_char32>)
+    {
+        return to_u32_length();
+    }
+    else
+    {
+        static_assert(std::is_same_v<T, char>, "unsupported type");
+    }
+}
+
+// convert
+// !NOTE: please ensure the buffer is large enough
+template <typename TS>
+inline void U8StringView<TS>::to_raw(char* buffer) const
+{
+    ::skr::memory::copy(buffer, reinterpret_cast<const char*>(data()), length_buffer());
+}
+template <typename TS>
+inline void U8StringView<TS>::to_wide(wchar_t* buffer) const
+{
+#if _WIN64
+    to_u16(reinterpret_cast<skr_char16*>(buffer));
+#elif __linux__ || __MACH__
+    to_u32(reinterpret_cast<skr_char32*>(buffer));
+#endif
+}
+template <typename TS>
+inline void U8StringView<TS>::to_u8(skr_char8* buffer) const
+{
+    ::skr::memory::copy(buffer, data(), length_buffer());
+}
+template <typename TS>
+inline void U8StringView<TS>::to_u16(skr_char16* buffer) const
+{
+    if (!is_empty())
+    {
+        using Cursor = UTF8Cursor<SizeType, true>;
+
+        for (UTF8Seq utf8_seq : Cursor{ _data, _size, 0 }.as_range())
+        {
+            if (utf8_seq.is_valid())
+            {
+                UTF16Seq utf16_seq = utf8_seq;
+                ::skr::memory::copy(buffer, &utf16_seq.data[0], utf16_seq.len);
+                buffer += utf16_seq.len;
+            }
+            else
+            {
+                auto bad_ch = static_cast<char16_t>(utf8_seq.data[0]);
+                ::skr::memory::copy(buffer, &bad_ch);
+                ++buffer;
+            }
+        }
+    }
+}
+template <typename TS>
+inline void U8StringView<TS>::to_u32(skr_char32* buffer) const
+{
+    if (!is_empty())
+    {
+        using Cursor = UTF8Cursor<SizeType, true>;
+
+        for (UTF8Seq utf8_seq : Cursor{ _data, _size, 0 }.as_range())
+        {
+            skr_char32 ch = utf8_seq.is_valid() ? (skr_char32)utf8_seq : (skr_char32)utf8_seq.bad_data;
+            ::skr::memory::copy(buffer, &ch);
+            ++buffer;
+        }
+    }
+}
+template <typename TS>
+template <typename T>
+inline void U8StringView<TS>::to(T* buffer) const
+{
+    if constexpr (std::is_same_v<T, char>)
+    {
+        to_raw(buffer);
+    }
+    else if constexpr (std::is_same_v<T, wchar_t>)
+    {
+        to_wide(buffer);
+    }
+    else if constexpr (std::is_same_v<T, skr_char8>)
+    {
+        to_u8(buffer);
+    }
+    else if constexpr (std::is_same_v<T, skr_char16>)
+    {
+        to_u16(buffer);
+    }
+    else if constexpr (std::is_same_v<T, skr_char32>)
+    {
+        to_u32(buffer);
+    }
+    else
+    {
+        static_assert(std::is_same_v<T, char>, "unsupported type");
+    }
 }
 
 // text index

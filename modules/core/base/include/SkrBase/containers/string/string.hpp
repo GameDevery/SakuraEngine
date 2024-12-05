@@ -60,11 +60,13 @@ struct U8String : protected Memory {
     ~U8String();
 
     // factory
-    static U8String Raw(const char* str) noexcept;
-    static U8String Wide(const wchar_t* str) noexcept;
-    static U8String Utf8(const skr_char8* str) noexcept;
-    static U8String Utf16(const skr_char16* str) noexcept;
-    static U8String Utf32(const skr_char32* str) noexcept;
+    static U8String FromRaw(const char* str) noexcept;
+    static U8String FromWide(const wchar_t* str) noexcept;
+    static U8String FromUtf8(const skr_char8* str) noexcept;
+    static U8String FromUtf16(const skr_char16* str) noexcept;
+    static U8String FromUtf32(const skr_char32* str) noexcept;
+    template <typename T>
+    static U8String From(const T* t) noexcept;
 
     // join & build factory
     template <typename... Args>
@@ -151,7 +153,6 @@ struct U8String : protected Memory {
     void append_at(SizeType idx, const U& container);
 
     // remove
-    // TODO. remove based on replace
     void     remove_at(SizeType index, SizeType n);
     bool     remove(ViewType view);
     bool     remove_last(ViewType view);
@@ -261,6 +262,25 @@ struct U8String : protected Memory {
     SizeType split(Buffer& out, const UTF8Seq& delimiter, bool cull_empty = false, SizeType limit = npos) const;
     template <std::invocable<const U8StringView<typename Memory::SizeType>&> F>
     SizeType split_each(F&& func, const UTF8Seq& delimiter, bool cull_empty = false, SizeType limit = npos) const;
+
+    // convert size
+    SizeType to_raw_length() const;
+    SizeType to_wide_length() const;
+    SizeType to_u8_length() const;
+    SizeType to_u16_length() const;
+    SizeType to_u32_length() const;
+    template <typename T>
+    SizeType to_length() const;
+
+    // convert
+    // !NOTE: please ensure the buffer is large enough
+    void to_raw(char* buffer) const;
+    void to_wide(wchar_t* buffer) const;
+    void to_u8(skr_char8* buffer) const;
+    void to_u16(skr_char16* buffer) const;
+    void to_u32(skr_char32* buffer) const;
+    template <typename T>
+    void to(T* buffer) const;
 
     // text index
     SizeType buffer_index_to_text(SizeType index) const;
@@ -380,26 +400,26 @@ inline U8String<Memory>::~U8String()
 
 // factory
 template <typename Memory>
-inline U8String<Memory> U8String<Memory>::Raw(const char* str) noexcept
+inline U8String<Memory> U8String<Memory>::FromRaw(const char* str) noexcept
 {
     return { reinterpret_cast<const DataType*>(str) };
 }
 template <typename Memory>
-inline U8String<Memory> U8String<Memory>::Wide(const wchar_t* str) noexcept
+inline U8String<Memory> U8String<Memory>::FromWide(const wchar_t* str) noexcept
 {
 #if _WIN64
-    return Utf16(reinterpret_cast<const char16_t*>(str));
+    return FromUtf16(reinterpret_cast<const skr_char16*>(str));
 #elif __linux__ || __MACH__
-    return Utf32(reinterpret_cast<const char32_t*>(str));
+    return FromUtf32(reinterpret_cast<const skr_char32*>(str));
 #endif
 }
 template <typename Memory>
-inline U8String<Memory> U8String<Memory>::Utf8(const skr_char8* str) noexcept
+inline U8String<Memory> U8String<Memory>::FromUtf8(const skr_char8* str) noexcept
 {
     return { str };
 }
 template <typename Memory>
-inline U8String<Memory> U8String<Memory>::Utf16(const skr_char16* str) noexcept
+inline U8String<Memory> U8String<Memory>::FromUtf16(const skr_char16* str) noexcept
 {
     SizeType str_len = std::char_traits<skr_char16>::length(str);
     if (str_len)
@@ -449,7 +469,7 @@ inline U8String<Memory> U8String<Memory>::Utf16(const skr_char16* str) noexcept
     }
 }
 template <typename Memory>
-inline U8String<Memory> U8String<Memory>::Utf32(const skr_char32* str) noexcept
+inline U8String<Memory> U8String<Memory>::FromUtf32(const skr_char32* str) noexcept
 {
     SizeType str_len = std::char_traits<skr_char32>::length(str);
     if (str_len)
@@ -479,6 +499,35 @@ inline U8String<Memory> U8String<Memory>::Utf32(const skr_char32* str) noexcept
     else
     {
         return {};
+    }
+}
+template <typename Memory>
+template <typename T>
+inline U8String<Memory> U8String<Memory>::From(const T* t) noexcept
+{
+    if constexpr (std::is_same_v<T, skr_char8>)
+    {
+        return FromUtf8(t);
+    }
+    else if constexpr (std::is_same_v<T, skr_char16>)
+    {
+        return FromUtf16(t);
+    }
+    else if constexpr (std::is_same_v<T, skr_char32>)
+    {
+        return FromUtf32(t);
+    }
+    else if constexpr (std::is_same_v<T, wchar_t>)
+    {
+        return FromWide(t);
+    }
+    else if constexpr (std::is_same_v<T, char>)
+    {
+        return FromRaw(t);
+    }
+    else
+    {
+        static_assert(std::is_same_v<T, skr_char8>, "Unsupported type");
     }
 }
 
@@ -1931,6 +1980,72 @@ template <std::invocable<const U8StringView<typename Memory::SizeType>&> F>
 inline typename U8String<Memory>::SizeType U8String<Memory>::split_each(F&& func, const UTF8Seq& delimiter, bool cull_empty, SizeType limit) const
 {
     return view().split_each(std::forward<F>(func), delimiter, cull_empty, limit);
+}
+
+// convert size
+template <typename Memory>
+inline typename U8String<Memory>::SizeType U8String<Memory>::to_raw_length() const
+{
+    return view().to_raw_length();
+}
+template <typename Memory>
+inline typename U8String<Memory>::SizeType U8String<Memory>::to_wide_length() const
+{
+    return view().to_wide_length();
+}
+template <typename Memory>
+inline typename U8String<Memory>::SizeType U8String<Memory>::to_u8_length() const
+{
+    return view().to_u8_length();
+}
+template <typename Memory>
+inline typename U8String<Memory>::SizeType U8String<Memory>::to_u16_length() const
+{
+    return view().to_u16_length();
+}
+template <typename Memory>
+inline typename U8String<Memory>::SizeType U8String<Memory>::to_u32_length() const
+{
+    return view().to_u32_length();
+}
+template <typename Memory>
+template <typename T>
+inline typename U8String<Memory>::SizeType U8String<Memory>::to_length() const
+{
+    return view().template to_length<T>();
+}
+
+// convert
+template <typename Memory>
+inline void U8String<Memory>::to_raw(char* buffer) const
+{
+    return view().to_raw(buffer);
+}
+template <typename Memory>
+inline void U8String<Memory>::to_wide(wchar_t* buffer) const
+{
+    return view().to_wide(buffer);
+}
+template <typename Memory>
+inline void U8String<Memory>::to_u8(skr_char8* buffer) const
+{
+    return view().to_u8(buffer);
+}
+template <typename Memory>
+inline void U8String<Memory>::to_u16(skr_char16* buffer) const
+{
+    return view().to_u16(buffer);
+}
+template <typename Memory>
+inline void U8String<Memory>::to_u32(skr_char32* buffer) const
+{
+    return view().to_u32(buffer);
+}
+template <typename Memory>
+template <typename T>
+inline void U8String<Memory>::to(T* buffer) const
+{
+    return view().to(buffer);
 }
 
 // text index
