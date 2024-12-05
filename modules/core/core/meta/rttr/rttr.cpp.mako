@@ -37,9 +37,9 @@ SKR_EXEC_STATIC_CTOR
         { // ${record.name}::${method.short_name}
 <% method_rttr_data = method.generator_data["rttr"] %>\
             %if method.is_static:
-            [[maybe_unused]] auto method_builder = builder.static_method<${tools.function_signature_of(method)}, <&${record.name}::${method.short_name}>(u8"${method.short_name}");
+            [[maybe_unused]] auto method_builder = builder.static_method<${tools.function_signature_of(method)}, &${record.name}::${method.short_name}>(u8"${method.short_name}");
             %else:
-            [[maybe_unused]] auto method_builder = builder.method<${tools.function_signature_of(method)}, <&${record.name}::${method.short_name}>(u8"${method.short_name}");
+            [[maybe_unused]] auto method_builder = builder.method<${tools.function_signature_of(method)}, &${record.name}::${method.short_name}>(u8"${method.short_name}");
             %endif
 
             // params
