@@ -9,6 +9,7 @@ SKR_EXTERN_C SKR_STATIC_API void skr_debug_output(const char* msg);
 // Platform specific, need to be defined in Platform/Defines_XXX.h
 
     #define SKR_ASSERT(cond)
+    #define SKR_VERIFY(cond)
     #define SKR_BREAK()
     #define SKR_HALT()
 
@@ -32,7 +33,7 @@ SKR_EXTERN_C SKR_STATIC_API void skr_debug_output(const char* msg);
     #define SKR_UNREACHABLE_CODE() SKR_TRACE_ASSERT(__FILE__": Unreachable code encountered!\n")
 #endif
 
-// Platform Specific Configure
+    // Platform Specific Configure
 #define SKR_HEADER_SCOPE_DEFINING_PLATFORM_DEBUG
 #ifdef __APPLE__
     #include "apple/debug.inc"
@@ -40,4 +41,16 @@ SKR_EXTERN_C SKR_STATIC_API void skr_debug_output(const char* msg);
 #ifdef _WIN32
     #include "win/debug.inc"
 #endif
+
+    // validate
+    #define SKR_VERIFY(cond)                                                        \
+        do                                                                          \
+        {                                                                           \
+            if (!(cond))                                                            \
+            {                                                                       \
+                SKR_TRACE_MSG("Skr Validate fired: " #cond " (" SKR_FILE_LINE ")"); \
+                SKR_BREAK()                                                         \
+            }                                                                       \
+        } while (0)
+
 #undef SKR_HEADER_SCOPE_DEFINING_PLATFORM_CONFIGURE
