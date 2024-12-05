@@ -59,6 +59,24 @@ struct U8String : protected Memory {
     U8String(ViewType view, AllocatorCtorParam param = {}) noexcept;
     ~U8String();
 
+    // cast len
+    static SizeType FromLengthRaw(const char* str) noexcept;
+    static SizeType FromLengthWide(const wchar_t* str) noexcept;
+    static SizeType FromLengthUtf8(const skr_char8* str) noexcept;
+    static SizeType FromLengthUtf16(const skr_char16* str) noexcept;
+    static SizeType FromLengthUtf32(const skr_char32* str) noexcept;
+    template <typename T>
+    static SizeType FromLength(const T* t) noexcept;
+
+    // cast len with len
+    static SizeType FromLengthRaw(const char* str, SizeType len) noexcept;
+    static SizeType FromLengthWide(const wchar_t* str, SizeType len) noexcept;
+    static SizeType FromLengthUtf8(const skr_char8* str, SizeType len) noexcept;
+    static SizeType FromLengthUtf16(const skr_char16* str, SizeType len) noexcept;
+    static SizeType FromLengthUtf32(const skr_char32* str, SizeType len) noexcept;
+    template <typename T>
+    static SizeType FromLength(const T* t, SizeType len) noexcept;
+
     // factory
     static U8String FromRaw(const char* str) noexcept;
     static U8String FromWide(const wchar_t* str) noexcept;
@@ -67,6 +85,15 @@ struct U8String : protected Memory {
     static U8String FromUtf32(const skr_char32* str) noexcept;
     template <typename T>
     static U8String From(const T* t) noexcept;
+
+    // factory with len
+    static U8String FromRaw(const char* str, SizeType len) noexcept;
+    static U8String FromWide(const wchar_t* str, SizeType len) noexcept;
+    static U8String FromUtf8(const skr_char8* str, SizeType len) noexcept;
+    static U8String FromUtf16(const skr_char16* str, SizeType len) noexcept;
+    static U8String FromUtf32(const skr_char32* str, SizeType len) noexcept;
+    template <typename T>
+    static U8String From(const T* t, SizeType len) noexcept;
 
     // join & build factory
     template <typename... Args>
@@ -282,6 +309,26 @@ struct U8String : protected Memory {
     template <typename T>
     void to(T* buffer) const;
 
+    // convert append
+    DataRef append(const char* str);
+    DataRef append(const wchar_t* str);
+    DataRef append(const skr_char16* str);
+    DataRef append(const skr_char32* str);
+    DataRef append(const char* str, SizeType len);
+    DataRef append(const wchar_t* str, SizeType len);
+    DataRef append(const skr_char16* str, SizeType len);
+    DataRef append(const skr_char32* str, SizeType len);
+
+    // convert append at
+    void append_at(SizeType idx, const char* str);
+    void append_at(SizeType idx, const wchar_t* str);
+    void append_at(SizeType idx, const skr_char16* str);
+    void append_at(SizeType idx, const skr_char32* str);
+    void append_at(SizeType idx, const char* str, SizeType len);
+    void append_at(SizeType idx, const wchar_t* str, SizeType len);
+    void append_at(SizeType idx, const skr_char16* str, SizeType len);
+    void append_at(SizeType idx, const skr_char32* str, SizeType len);
+
     // text index
     SizeType buffer_index_to_text(SizeType index) const;
     SizeType text_index_to_buffer(SizeType index) const;
@@ -295,6 +342,12 @@ struct U8String : protected Memory {
     bool            force_cancel_literal() const;
 
 private:
+    // algo helper
+    static void _parse_from_utf16(const skr_char16* str, SizeType len, DataType* dst, SizeType except_utf8_len);
+    static void _parse_from_utf32(const skr_char32* str, SizeType len, DataType* dst, SizeType except_utf8_len);
+    template <typename T>
+    static SizeType _length(const T* str);
+
     // helper
     void            _realloc(SizeType expect_capacity);
     void            _free();
@@ -310,6 +363,51 @@ private:
 
 namespace skr::container
 {
+// algo helper
+template <typename Memory>
+inline void U8String<Memory>::_parse_from_utf16(const skr_char16* str, SizeType len, DataType* dst, SizeType except_utf8_len)
+{
+    using Cursor = UTF16Cursor<SizeType, true>;
+
+    SizeType write_index = 0;
+    for (UTF16Seq utf16_seq : Cursor{ str, len, 0 }.as_range())
+    {
+        if (utf16_seq.is_valid())
+        {
+            UTF8Seq utf8_seq = utf16_seq;
+            memory::copy(dst + write_index, &utf8_seq.data[0], utf8_seq.len);
+            write_index += utf8_seq.len;
+        }
+        else
+        {
+            memory::copy(dst + write_index, &utf16_seq.bad_data, 1);
+            ++write_index;
+        }
+    }
+
+    SKR_ASSERT(write_index == except_utf8_len && "output length is not expected when utf16 to utf8");
+}
+template <typename Memory>
+inline void U8String<Memory>::_parse_from_utf32(const skr_char32* str, SizeType len, DataType* dst, SizeType except_utf8_len)
+{
+    SizeType write_index = 0;
+    for (SizeType i = 0; i < len; ++i)
+    {
+        UTF8Seq utf8_seq = str[i];
+        memory::copy(dst + write_index, &utf8_seq.data[0], utf8_seq.len);
+        write_index += utf8_seq.len;
+    }
+
+    SKR_ASSERT(write_index == except_utf8_len && "output length is not expected when utf32 to utf8");
+}
+template <typename Memory>
+template <typename T>
+inline typename U8String<Memory>::SizeType U8String<Memory>::_length(const T* str)
+{
+    return str ? std::char_traits<T>::length(str) :
+                 0;
+}
+
 // helper
 template <typename Memory>
 inline void U8String<Memory>::_realloc(SizeType expect_capacity)
@@ -378,7 +476,7 @@ template <typename Memory>
 inline U8String<Memory>::U8String(const DataType* str, AllocatorCtorParam param) noexcept
     : Memory(std::move(param))
 {
-    _assign_with_literal_check(str, str ? CharTraits::length(str) : 0);
+    _assign_with_literal_check(str, _length(str));
 }
 template <typename Memory>
 inline U8String<Memory>::U8String(const DataType* str, SizeType len, AllocatorCtorParam param) noexcept
@@ -398,108 +496,167 @@ inline U8String<Memory>::~U8String()
     // handled in memory
 }
 
+// cast len
+template <typename Memory>
+inline typename U8String<Memory>::SizeType U8String<Memory>::FromLengthRaw(const char* str) noexcept
+{
+    return FromLengthRaw(str, _length(str));
+}
+template <typename Memory>
+inline typename U8String<Memory>::SizeType U8String<Memory>::FromLengthWide(const wchar_t* str) noexcept
+{
+    return FromLengthWide(str, _length(str));
+}
+template <typename Memory>
+inline typename U8String<Memory>::SizeType U8String<Memory>::FromLengthUtf8(const skr_char8* str) noexcept
+{
+    return FromLengthUtf8(str, _length(str));
+}
+template <typename Memory>
+inline typename U8String<Memory>::SizeType U8String<Memory>::FromLengthUtf16(const skr_char16* str) noexcept
+{
+    return FromLengthUtf16(str, _length(str));
+}
+template <typename Memory>
+inline typename U8String<Memory>::SizeType U8String<Memory>::FromLengthUtf32(const skr_char32* str) noexcept
+{
+    return FromLengthUtf32(str, _length(str));
+}
+template <typename Memory>
+template <typename T>
+inline typename U8String<Memory>::SizeType U8String<Memory>::FromLength(const T* t) noexcept
+{
+    if constexpr (std::is_same_v<T, char>)
+    {
+        return FromLengthRaw(t);
+    }
+    else if constexpr (std::is_same_v<T, wchar_t>)
+    {
+        return FromLengthWide(t);
+    }
+    else if constexpr (std::is_same_v<T, skr_char8>)
+    {
+        return FromLengthUtf8(t);
+    }
+    else if constexpr (std::is_same_v<T, skr_char16>)
+    {
+        return FromLengthUtf16(t);
+    }
+    else if constexpr (std::is_same_v<T, skr_char32>)
+    {
+        return FromLengthUtf32(t);
+    }
+    else
+    {
+        static_assert(std::is_same_v<T, skr_char8>, "Unsupported type");
+    }
+}
+
+// cast len with len
+template <typename Memory>
+inline typename U8String<Memory>::SizeType U8String<Memory>::FromLengthRaw(const char* str, SizeType len) noexcept
+{
+    return len;
+}
+template <typename Memory>
+inline typename U8String<Memory>::SizeType U8String<Memory>::FromLengthWide(const wchar_t* str, SizeType len) noexcept
+{
+#if _WIN64
+    return FromLengthUtf16(reinterpret_cast<const skr_char16*>(str), len);
+#elif __linux__ || __MACH__
+    return FromLengthUtf32(reinterpret_cast<const skr_char32*>(str), len);
+#endif
+}
+template <typename Memory>
+inline typename U8String<Memory>::SizeType U8String<Memory>::FromLengthUtf8(const skr_char8* str, SizeType len) noexcept
+{
+    return len;
+}
+template <typename Memory>
+inline typename U8String<Memory>::SizeType U8String<Memory>::FromLengthUtf16(const skr_char16* str, SizeType len) noexcept
+{
+    using Cursor = UTF16Cursor<SizeType, true>;
+
+    // parse utf8 str len
+    SizeType utf8_len = 0;
+    for (UTF16Seq utf16_seq : Cursor{ str, len, 0 }.as_range())
+    {
+        if (utf16_seq.is_valid())
+        {
+            utf8_len += utf16_seq.to_utf8_len();
+        }
+        else
+        {
+            utf8_len += 1;
+        }
+    }
+    return utf8_len;
+}
+template <typename Memory>
+inline typename U8String<Memory>::SizeType U8String<Memory>::FromLengthUtf32(const skr_char32* str, SizeType len) noexcept
+{
+    SizeType utf8_len = 0;
+    for (SizeType i = 0; i < len; ++i)
+    {
+        utf8_len += utf8_seq_len(str[i]);
+    }
+    return utf8_len;
+}
+template <typename Memory>
+template <typename T>
+inline typename U8String<Memory>::SizeType U8String<Memory>::FromLength(const T* t, SizeType len) noexcept
+{
+    if constexpr (std::is_same_v<T, char>)
+    {
+        return FromLengthRaw(t, len);
+    }
+    else if constexpr (std::is_same_v<T, wchar_t>)
+    {
+        return FromLengthWide(t, len);
+    }
+    else if constexpr (std::is_same_v<T, skr_char8>)
+    {
+        return FromLengthUtf8(t, len);
+    }
+    else if constexpr (std::is_same_v<T, skr_char16>)
+    {
+        return FromLengthUtf16(t, len);
+    }
+    else if constexpr (std::is_same_v<T, skr_char32>)
+    {
+        return FromLengthUtf32(t, len);
+    }
+    else
+    {
+        static_assert(std::is_same_v<T, skr_char8>, "Unsupported type");
+    }
+}
+
 // factory
 template <typename Memory>
 inline U8String<Memory> U8String<Memory>::FromRaw(const char* str) noexcept
 {
-    return { reinterpret_cast<const DataType*>(str) };
+    return FromRaw(str, _length(str));
 }
 template <typename Memory>
 inline U8String<Memory> U8String<Memory>::FromWide(const wchar_t* str) noexcept
 {
-#if _WIN64
-    return FromUtf16(reinterpret_cast<const skr_char16*>(str));
-#elif __linux__ || __MACH__
-    return FromUtf32(reinterpret_cast<const skr_char32*>(str));
-#endif
+    return FromWide(str, _length(str));
 }
 template <typename Memory>
 inline U8String<Memory> U8String<Memory>::FromUtf8(const skr_char8* str) noexcept
 {
-    return { str };
+    return FromUtf8(str, _length(str));
 }
 template <typename Memory>
 inline U8String<Memory> U8String<Memory>::FromUtf16(const skr_char16* str) noexcept
 {
-    SizeType str_len = std::char_traits<skr_char16>::length(str);
-    if (str_len)
-    {
-        using Cursor = UTF16Cursor<SizeType, true>;
-
-        // parse utf8 str len
-        SizeType utf8_len = 0;
-        for (UTF16Seq utf16_seq : Cursor{ str, str_len, 0 }.as_range())
-        {
-            if (utf16_seq.is_valid())
-            {
-                utf8_len += utf16_seq.to_utf8_len();
-            }
-            else
-            {
-                utf8_len += 1;
-            }
-        }
-
-        // combine result
-        U8String result;
-        result.resize_unsafe(utf8_len);
-        SizeType write_index = 0;
-        for (UTF16Seq utf16_seq : Cursor{ str, str_len, 0 }.as_range())
-        {
-            if (utf16_seq.is_valid())
-            {
-                UTF8Seq utf8_seq = utf16_seq;
-                memory::copy(result._data() + write_index, utf8_seq.data, utf8_seq.len);
-                write_index += utf8_seq.len;
-            }
-            else
-            {
-                memory::copy(result._data() + write_index, &utf16_seq.bad_data, 1);
-                ++write_index;
-            }
-        }
-
-        SKR_ASSERT(write_index == utf8_len && "Utf16 to Utf8 failed");
-
-        return result;
-    }
-    else
-    {
-        return {};
-    }
+    return FromUtf16(str, _length(str));
 }
 template <typename Memory>
 inline U8String<Memory> U8String<Memory>::FromUtf32(const skr_char32* str) noexcept
 {
-    SizeType str_len = std::char_traits<skr_char32>::length(str);
-    if (str_len)
-    {
-        // parse utf8 str len
-        SizeType utf8_len = 0;
-        for (SizeType i = 0; i < str_len; ++i)
-        {
-            utf8_len += utf8_seq_len(str[i]);
-        }
-
-        // combine result
-        U8String result;
-        result.resize_unsafe(utf8_len);
-        SizeType write_index = 0;
-        for (SizeType i = 0; i < str_len; ++i)
-        {
-            UTF8Seq utf8_seq = str[i];
-            memory::copy(result._data() + write_index, utf8_seq.data, utf8_seq.len);
-            write_index += utf8_seq.len;
-        }
-
-        SKR_ASSERT(write_index == utf8_len && "Utf32 to Utf8 failed");
-
-        return result;
-    }
-    else
-    {
-        return {};
-    }
+    return FromUtf32(str, _length(str));
 }
 template <typename Memory>
 template <typename T>
@@ -524,6 +681,96 @@ inline U8String<Memory> U8String<Memory>::From(const T* t) noexcept
     else if constexpr (std::is_same_v<T, char>)
     {
         return FromRaw(t);
+    }
+    else
+    {
+        static_assert(std::is_same_v<T, skr_char8>, "Unsupported type");
+    }
+}
+
+// factory with len
+template <typename Memory>
+inline U8String<Memory> U8String<Memory>::FromRaw(const char* str, SizeType len) noexcept
+{
+    return { reinterpret_cast<const DataType*>(str), len };
+}
+template <typename Memory>
+inline U8String<Memory> U8String<Memory>::FromWide(const wchar_t* str, SizeType len) noexcept
+{
+#if _WIN64
+    return FromUtf16(reinterpret_cast<const skr_char16*>(str), len);
+#elif __linux__ || __MACH__
+    return FromUtf32(reinterpret_cast<const skr_char32*>(str), len);
+#endif
+}
+template <typename Memory>
+inline U8String<Memory> U8String<Memory>::FromUtf8(const skr_char8* str, SizeType len) noexcept
+{
+    return { str, len };
+}
+template <typename Memory>
+inline U8String<Memory> U8String<Memory>::FromUtf16(const skr_char16* str, SizeType len) noexcept
+{
+    if (len)
+    {
+        // parse utf8 str len
+        SizeType utf8_len = FromLength(str, len);
+
+        // combine result
+        U8String result;
+        result.resize_unsafe(utf8_len);
+        _parse_from_utf16(str, len, result.data_w(), utf8_len);
+
+        return result;
+    }
+    else
+    {
+        return {};
+    }
+}
+template <typename Memory>
+inline U8String<Memory> U8String<Memory>::FromUtf32(const skr_char32* str, SizeType len) noexcept
+{
+    if (len)
+    {
+        // parse utf8 str len
+        SizeType utf8_len = FromLength(str, len);
+
+        // combine result
+        U8String result;
+        result.resize_unsafe(utf8_len);
+        _parse_from_utf32(str, len, result.data_w(), utf8_len);
+
+        return result;
+    }
+    else
+    {
+        return {};
+    }
+}
+template <typename Memory>
+template <typename T>
+inline U8String<Memory> U8String<Memory>::From(const T* t, SizeType len) noexcept
+{
+    if constexpr (std::is_same_v<T, skr_char8>)
+    {
+        return FromUtf8(t, len);
+    }
+    else if constexpr (std::is_same_v<T, skr_char16>)
+    {
+        return FromUtf16(t, len);
+    }
+    else if constexpr (std::is_same_v<T, skr_char32>)
+    {
+        return FromUtf32(t, len);
+    }
+    else if constexpr (std::is_same_v<T, wchar_t>)
+    {
+        return FromWide(t, len);
+    }
+    else if constexpr (std::is_same_v<T, char>)
+    {
+        return FromRaw(t, len);
     }
     else
     {
@@ -658,7 +905,7 @@ template <typename Memory>
 inline void U8String<Memory>::assign(const DataType* str) noexcept
 {
     clear();
-    _assign_with_literal_check(str, CharTraits::length(str));
+    _assign_with_literal_check(str, _length(str));
 }
 template <typename Memory>
 inline void U8String<Memory>::assign(const DataType* str, SizeType len) noexcept
@@ -1002,14 +1249,18 @@ inline void U8String<Memory>::add_at_zeroed(SizeType idx, SizeType n)
 template <typename Memory>
 inline typename U8String<Memory>::DataRef U8String<Memory>::append(const DataType* str)
 {
-    return append(str, CharTraits::length(str));
+    return append(str, _length(str));
 }
 template <typename Memory>
 inline typename U8String<Memory>::DataRef U8String<Memory>::append(const DataType* str, SizeType len)
 {
-    DataRef ref = add_unsafe(len);
-    memory::copy(ref.ptr(), str, len);
-    return ref;
+    if (len)
+    {
+        DataRef ref = add_unsafe(len);
+        memory::copy(ref.ptr(), str, len);
+        return ref;
+    }
+    return {};
 }
 template <typename Memory>
 inline typename U8String<Memory>::DataRef U8String<Memory>::append(ViewType view)
@@ -1074,7 +1325,7 @@ inline void U8String<Memory>::append_at(SizeType idx, const DataType* str)
 {
     if (str)
     {
-        append_at(idx, str, CharTraits::length(str));
+        append_at(idx, str, _length(str));
     }
 }
 template <typename Memory>
@@ -2046,6 +2297,122 @@ template <typename T>
 inline void U8String<Memory>::to(T* buffer) const
 {
     return view().to(buffer);
+}
+
+// convert append
+template <typename Memory>
+inline typename U8String<Memory>::DataRef U8String<Memory>::append(const char* str)
+{
+    return append(str, _length(str));
+}
+template <typename Memory>
+inline typename U8String<Memory>::DataRef U8String<Memory>::append(const wchar_t* str)
+{
+    return append(str, _length(str));
+}
+template <typename Memory>
+inline typename U8String<Memory>::DataRef U8String<Memory>::append(const skr_char16* str)
+{
+    return append(str, _length(str));
+}
+template <typename Memory>
+inline typename U8String<Memory>::DataRef U8String<Memory>::append(const skr_char32* str)
+{
+    return append(str, _length(str));
+}
+template <typename Memory>
+inline typename U8String<Memory>::DataRef U8String<Memory>::append(const char* str, SizeType len)
+{
+    return append(reinterpret_cast<const DataType*>(str), len);
+}
+template <typename Memory>
+inline typename U8String<Memory>::DataRef U8String<Memory>::append(const wchar_t* str, SizeType len)
+{
+#if _WIN64
+    return append(reinterpret_cast<const skr_char16*>(str));
+#elif __linux__ || __MACH__
+    return append(reinterpret_cast<const skr_char32*>(str));
+#endif
+}
+template <typename Memory>
+inline typename U8String<Memory>::DataRef U8String<Memory>::append(const skr_char16* str, SizeType len)
+{
+    if (len)
+    {
+        SizeType utf8_len   = FromLength(str, len);
+        DataRef  add_result = add_unsafe(utf8_len);
+        _parse_from_utf16(str, len, add_result.ptr(), utf8_len);
+        return add_result;
+    }
+    return {};
+}
+template <typename Memory>
+inline typename U8String<Memory>::DataRef U8String<Memory>::append(const skr_char32* str, SizeType len)
+{
+    if (len)
+    {
+        SizeType utf8_len   = FromLength(str, len);
+        DataRef  add_result = add_unsafe(utf8_len);
+        _parse_from_utf32(str, len, add_result.ptr(), utf8_len);
+        return add_result;
+    }
+    return {};
+}
+
+// convert append at
+template <typename Memory>
+inline void U8String<Memory>::append_at(SizeType idx, const char* str)
+{
+    return append_at(idx, str, _length(str));
+}
+template <typename Memory>
+inline void U8String<Memory>::append_at(SizeType idx, const wchar_t* str)
+{
+    return append_at(idx, str, _length(str));
+}
+template <typename Memory>
+inline void U8String<Memory>::append_at(SizeType idx, const skr_char16* str)
+{
+    return append_at(idx, str, _length(str));
+}
+template <typename Memory>
+inline void U8String<Memory>::append_at(SizeType idx, const skr_char32* str)
+{
+    return append_at(idx, str, _length(str));
+}
+template <typename Memory>
+inline void U8String<Memory>::append_at(SizeType idx, const char* str, SizeType len)
+{
+    return append_at(idx, reinterpret_cast<const DataType*>(str), len);
+}
+template <typename Memory>
+inline void U8String<Memory>::append_at(SizeType idx, const wchar_t* str, SizeType len)
+{
+#if _WIN64
+    return append(reinterpret_cast<const skr_char16*>(str));
+#elif __linux__ || __MACH__
+    return append(reinterpret_cast<const skr_char32*>(str));
+#endif
+}
+template <typename Memory>
+inline void U8String<Memory>::append_at(SizeType idx, const skr_char16* str, SizeType len)
+{
+    if (len)
+    {
+        SizeType utf8_len = FromLength(str, len);
+        add_at_unsafe(idx, utf8_len);
+        _parse_from_utf16(str, len, _data() + idx, utf8_len);
+    }
+}
+template <typename Memory>
+inline void U8String<Memory>::append_at(SizeType idx, const skr_char32* str, SizeType len)
+{
+    if (len)
+    {
+        SizeType utf8_len = FromLength(str, len);
+        add_at_unsafe(idx, utf8_len);
+        _parse_from_utf32(str, len, _data() + idx, utf8_len);
+    }
 }
 
 // text index
