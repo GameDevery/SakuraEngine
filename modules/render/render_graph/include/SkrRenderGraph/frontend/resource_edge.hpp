@@ -23,7 +23,7 @@ public:
     friend class RenderGraph;
     friend class RenderGraphBackend;
 
-    inline const char8_t* get_name() const { return name.u8_str(); }
+    inline const char8_t* get_name() const { return name.c_str(); }
     const uint64_t name_hash = 0;
 
     TextureNode* get_texture_node() final;
@@ -49,7 +49,7 @@ public:
 
     const uint64_t name_hash = 0;
 
-    inline const char8_t* get_name() const { return name.u8_str(); }
+    inline const char8_t* get_name() const { return name.c_str(); }
     TextureNode* get_texture_node() final;
     PassNode* get_pass_node() final;
 
@@ -102,7 +102,7 @@ public:
     friend class RenderGraph;
     friend class RenderGraphBackend;
 
-    inline const char* get_name() const { return name.c_str(); }
+    inline const char* get_name() const { return name.c_str_raw(); }
     const uint64_t name_hash = 0;
 
     BufferNode* get_buffer_node() final;

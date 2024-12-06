@@ -53,12 +53,12 @@ public:
     Status get_status() const SKR_NOEXCEPT;
     Action get_action() const SKR_NOEXCEPT;
 
-    virtual uint64_t request(Action action) SKR_NOEXCEPT;
-    virtual void wait(uint64_t event, uint32_t fatal_timeout = 4) SKR_NOEXCEPT;
+    virtual uint64_t    request(Action action) SKR_NOEXCEPT;
+    virtual void        wait(uint64_t event, uint32_t fatal_timeout = 4) SKR_NOEXCEPT;
     virtual AsyncResult serve() SKR_NOEXCEPT = 0;
 
     uint64_t request_stop() SKR_NOEXCEPT { return request(kActionStop); }
-    void stop() SKR_NOEXCEPT;
+    void     stop() SKR_NOEXCEPT;
 
     uint64_t request_run() SKR_NOEXCEPT
     {
@@ -69,7 +69,7 @@ public:
     void run() SKR_NOEXCEPT;
 
     uint64_t request_exit() SKR_NOEXCEPT { return request(kActionExit); }
-    void exit() SKR_NOEXCEPT;
+    void     exit() SKR_NOEXCEPT;
 
 protected:
     Status takeAction() SKR_NOEXCEPT;
@@ -87,8 +87,8 @@ protected:
     NamedThread t;
 
 private:
-    SAtomic32 action_ = kActionNone;
-    SAtomic32 status_ = kStatusStopped;
+    SAtomic32  action_ = kActionNone;
+    SAtomic32  status_ = kStatusStopped;
     SAtomicU64 event_  = 0;
 };
 
@@ -96,7 +96,7 @@ struct SKR_STATIC_API AsyncService : public skr::ServiceThread {
     AsyncService(const ServiceThreadDesc& desc) SKR_NOEXCEPT
         : skr::ServiceThread(desc)
     {
-        condlock.initialize(skr::format(u8"{}-CondLock", desc.name).u8_str());
+        condlock.initialize(skr::format(u8"{}-CondLock", desc.name).c_str());
     }
     virtual ~AsyncService() SKR_NOEXCEPT = default;
 

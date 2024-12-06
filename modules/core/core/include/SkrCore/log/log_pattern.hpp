@@ -11,7 +11,7 @@ namespace log
 {
 
 struct FormatArg {
-    using FormatFunc         = ostr::codeunit_sequence (*)(const FormatArg&, const ostr::codeunit_sequence_view&);
+    using FormatFunc         = void (*)(String&, const FormatArg& value, StringView spec);
     FormatArg() SKR_NOEXCEPT = default;
     ~FormatArg() SKR_NOEXCEPT
     {
@@ -26,15 +26,13 @@ struct FormatArg {
         name = n;
 
         const std::string_view demangle_name_view = skr::demangle<T>();
-        demangle_name                             = ostr::codeunit_sequence((const char8_t*)demangle_name_view.data(),
-                                                                            (const char8_t*)(demangle_name_view.data() + demangle_name_view.size()));
-
-        formatter = +[](const FormatArg& a, const ostr::codeunit_sequence_view& spec) {
-            if (!a.data)
-                return ostr::codeunit_sequence();
-
-            const T& arg = *(const T*)a.data;
-            return ostr::argument_formatter<T>::produce(arg, spec);
+        demangle_name                             = String::From(demangle_name_view.data(), demangle_name_view.size());
+        formatter = +[](String& out, const FormatArg& a, StringView spec) {
+            if (a.data)
+            {
+                const T& arg = *(const T*)a.data;
+                ::skr::container::Formatter<T>::format(out, arg, spec);
+            }
         };
         setter  = +[](FormatArg* p, void* v) { *(T*)p->data = *(T*)v; };
         deleter = +[](void* p) { SkrDelete((T*)p); };
@@ -45,7 +43,7 @@ struct FormatArg {
     {
         static const std::string demangle_name_T = skr::demangle<std::decay_t<T>>();
         auto                     n0              = demangle_name_T.c_str();
-        auto                     n1              = demangle_name.c_str();
+        auto                     n1              = demangle_name.c_str_raw();
         SKR_ASSERT((::strcmp(n0, n1) == 0) && "Type mismatch!");
 
         if (!data)
@@ -155,14 +153,14 @@ static constexpr uint64_t kAttributeCount = LogPattern::kAttributeCount;
 } // namespace log
 } // namespace skr
 
-namespace ostr
+namespace skr::container
 {
 
 template <>
-struct argument_formatter<skr::log::FormatArg> {
-    static codeunit_sequence produce(const skr::log::FormatArg& value, const codeunit_sequence_view& specification)
+struct Formatter<skr::log::FormatArg> {
+    inline static void format(String& out, const skr::log::FormatArg& value, StringView spec)
     {
-        return value.get_formatter()(value, specification);
+        value.get_formatter()(out, value, spec);
     }
 };
 

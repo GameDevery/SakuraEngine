@@ -644,7 +644,7 @@ uint32_t* RenderEffectLive2D::read_shader_bytes(SRendererId renderer, const char
     const auto  backend       = cgpu_device->adapter->instance->backend;
     skr::String shader_name   = name;
     shader_name.append(backend == ::CGPU_BACKEND_D3D12 ? u8".dxil" : u8".spv");
-    auto           shader_file   = skr_vfs_fopen(resource_vfs, shader_name.u8_str(), SKR_FM_READ_BINARY, SKR_FILE_CREATION_OPEN_EXISTING);
+    auto           shader_file   = skr_vfs_fopen(resource_vfs, shader_name.c_str(), SKR_FM_READ_BINARY, SKR_FILE_CREATION_OPEN_EXISTING);
     const uint32_t shader_length = (uint32_t)skr_vfs_fsize(shader_file);
     auto           shader_bytes  = (uint32_t*)sakura_malloc(shader_length);
     skr_vfs_fread(shader_file, shader_bytes, 0, shader_length);

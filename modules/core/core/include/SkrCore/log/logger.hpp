@@ -67,7 +67,7 @@ struct SKR_CORE_API Logger
         // va_list can only be formatted inplace
         skr::String fmt(format);
         char8_t buffer[1024];
-        vsnprintf((char* const)buffer, sizeof(buffer), fmt.c_str(), va_args);
+        vsnprintf((char* const)buffer, sizeof(buffer), fmt.c_str_raw(), va_args);
 
         if (canPushToQueue())
         {

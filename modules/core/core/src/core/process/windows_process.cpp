@@ -20,8 +20,8 @@ SProcessHandle skr_run_process(const char8_t* command, const char8_t** arguments
     skr::String commandLine = skr::format(u8"\"{}\"", command);
     for (size_t i = 0; i < arg_count; ++i)
     {
-        commandLine += u8" ";
-        commandLine += skr::String(arguments[i]);
+        commandLine.append(u8" ");
+        commandLine.append(skr::String(arguments[i]));
     }
 
     HANDLE stdOut = NULL;

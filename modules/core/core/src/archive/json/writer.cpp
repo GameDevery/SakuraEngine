@@ -92,9 +92,9 @@ struct _WriterHelper
             IS_TYPE(double)
                 success = yyjson_mut_obj_add_real((yyjson_mut_doc*)w->_document, (yyjson_mut_val*)object, ckey, value);
             IS_TYPE(skr::String)
-                success = yyjson_mut_obj_add_strncpy((yyjson_mut_doc*)w->_document, (yyjson_mut_val*)object, ckey, value.c_str(), value.raw().size());
+                success = yyjson_mut_obj_add_strncpy((yyjson_mut_doc*)w->_document, (yyjson_mut_val*)object, ckey, value.c_str_raw(), value.length_buffer());
             IS_TYPE(skr::StringView)
-                success = yyjson_mut_obj_add_strncpy((yyjson_mut_doc*)w->_document, (yyjson_mut_val*)object, ckey, (const char*)value.raw().data(), value.raw().size());
+                success = yyjson_mut_obj_add_strncpy((yyjson_mut_doc*)w->_document, (yyjson_mut_val*)object, ckey, (const char*)value.data(), value.length_buffer());
             
             SKR_RET_WRITE_RESULT_WITH_BOOL(success);
         }
@@ -120,9 +120,9 @@ struct _WriterHelper
             IS_TYPE(double)
                 success = yyjson_mut_arr_add_real((yyjson_mut_doc*)w->_document, (yyjson_mut_val*)object, value);
             IS_TYPE(skr::String)
-                success = yyjson_mut_arr_add_strncpy((yyjson_mut_doc*)w->_document, (yyjson_mut_val*)object, value.c_str(), value.raw().size());
+                success = yyjson_mut_arr_add_strncpy((yyjson_mut_doc*)w->_document, (yyjson_mut_val*)object, value.c_str_raw(), value.length_buffer());
             IS_TYPE(skr::StringView)
-                success = yyjson_mut_arr_add_strncpy((yyjson_mut_doc*)w->_document, (yyjson_mut_val*)object, (const char*)value.raw().data(), value.raw().size());
+                success = yyjson_mut_arr_add_strncpy((yyjson_mut_doc*)w->_document, (yyjson_mut_val*)object, (const char*)value.data(), value.length_buffer());
             
             SKR_RET_WRITE_RESULT_WITH_BOOL(success);
         }
@@ -297,67 +297,67 @@ JsonWriteResult JsonWriter::Key(skr::StringView key)
 
 JsonWriteResult JsonWriter::Bool(bool value)
 {
-    SKR_DEFER({ _currentKey.empty(); });
+    SKR_DEFER({ _currentKey.clear(); });
     return WriteBool(_currentKey.view(), value);
 }
 
 JsonWriteResult JsonWriter::Int32(int32_t value)
 {
-    SKR_DEFER({ _currentKey.empty(); });
+    SKR_DEFER({ _currentKey.clear(); });
     return WriteInt32(_currentKey.view(), value);
 }
 
 JsonWriteResult JsonWriter::Int64(int64_t value)
 {
-    SKR_DEFER({ _currentKey.empty(); });
+    SKR_DEFER({ _currentKey.clear(); });
     return WriteInt64(_currentKey.view(), value);
 }
 
 JsonWriteResult JsonWriter::UInt32(uint32_t value)
 {
-    SKR_DEFER({ _currentKey.empty(); });
+    SKR_DEFER({ _currentKey.clear(); });
     return WriteUInt32(_currentKey.view(), value);
 }
 
 JsonWriteResult JsonWriter::UInt64(uint64_t value)
 {
-    SKR_DEFER({ _currentKey.empty(); });
+    SKR_DEFER({ _currentKey.clear(); });
     return WriteUInt64(_currentKey.view(), value);
 }
 
 JsonWriteResult JsonWriter::Float(float value)
 {
-    SKR_DEFER({ _currentKey.empty(); });
+    SKR_DEFER({ _currentKey.clear(); });
     return WriteFloat(_currentKey.view(), value);
 }
 
 JsonWriteResult JsonWriter::Double(double value)
 {
-    SKR_DEFER({ _currentKey.empty(); });
+    SKR_DEFER({ _currentKey.clear(); });
     return WriteDouble(_currentKey.view(), value);
 }
 
 JsonWriteResult JsonWriter::String(skr::StringView value)
 {
-    SKR_DEFER({ _currentKey.empty(); });
+    SKR_DEFER({ _currentKey.clear(); });
     return WriteString(_currentKey.view(), value);
 }
 
 JsonWriteResult JsonWriter::String(const skr::String& value)
 {
-    SKR_DEFER({ _currentKey.empty(); });
+    SKR_DEFER({ _currentKey.clear(); });
     return WriteString(_currentKey.view(), value);
 }
 
 JsonWriteResult JsonWriter::StartArray()
 {
-    SKR_DEFER({ _currentKey.empty(); });
+    SKR_DEFER({ _currentKey.clear(); });
     return _JsonWriter::StartArray(_currentKey.view());
 }
 
 JsonWriteResult JsonWriter::StartObject()
 {
-    SKR_DEFER({ _currentKey.empty(); });
+    SKR_DEFER({ _currentKey.clear(); });
     return _JsonWriter::StartObject(_currentKey.view());
 }
 

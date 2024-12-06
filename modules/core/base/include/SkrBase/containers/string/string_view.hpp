@@ -64,6 +64,7 @@ struct U8StringView {
 
     // getter
     constexpr const DataType* data() const;
+    constexpr const char*     data_raw() const;
     constexpr SizeType        size() const;
     constexpr bool            is_empty() const;
 
@@ -250,6 +251,11 @@ template <typename TS>
 inline constexpr const typename U8StringView<TS>::DataType* U8StringView<TS>::data() const
 {
     return _data;
+}
+template <typename TS>
+inline constexpr const char* U8StringView<TS>::data_raw() const
+{
+    return reinterpret_cast<const char*>(_data);
 }
 template <typename TS>
 inline constexpr typename U8StringView<TS>::SizeType U8StringView<TS>::size() const
@@ -905,7 +911,7 @@ inline typename U8StringView<TS>::SizeType U8StringView<TS>::to_u32_length() con
         using Cursor = UTF8Cursor<SizeType, true>;
 
         SizeType utf32_len = 0;
-        for (UTF8Seq utf8_seq : Cursor{ _data, _size, 0 }.as_range())
+        for ([[maybe_unused]] UTF8Seq utf8_seq : Cursor{ _data, _size, 0 }.as_range())
         {
             utf32_len += 1;
         }

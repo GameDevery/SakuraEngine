@@ -1178,7 +1178,7 @@ void sugoiQ_in_group(sugoi_query_t* q, sugoi_group_t* group, sugoi_view_callback
 
 const char8_t* sugoiQ_get_error()
 {
-    return sugoi::get_error().u8_str();
+    return sugoi::get_error().c_str();
 }
 
 void sugoiQ_add_child(sugoi_query_t* q, sugoi_query_t* child)

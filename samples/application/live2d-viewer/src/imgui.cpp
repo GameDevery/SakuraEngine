@@ -66,12 +66,12 @@ void create_imgui_resources(SRenderDeviceId render_device, skr::render_graph::Re
     skr::String fsname = u8"shaders/imgui_fragment";
     vsname.append(backend == ::CGPU_BACKEND_D3D12 ? u8".dxil" : u8".spv");
     fsname.append(backend == ::CGPU_BACKEND_D3D12 ? u8".dxil" : u8".spv");
-    auto vsfile = skr_vfs_fopen(vfs, vsname.u8_str(), SKR_FM_READ_BINARY, SKR_FILE_CREATION_OPEN_EXISTING);
+    auto vsfile = skr_vfs_fopen(vfs, vsname.c_str(), SKR_FM_READ_BINARY, SKR_FILE_CREATION_OPEN_EXISTING);
     uint32_t im_vs_length = (uint32_t)skr_vfs_fsize(vsfile);
     uint32_t* im_vs_bytes = (uint32_t*)sakura_malloc(im_vs_length);
     skr_vfs_fread(vsfile, im_vs_bytes, 0, im_vs_length);
     skr_vfs_fclose(vsfile);
-    auto fsfile = skr_vfs_fopen(vfs, fsname.u8_str(), SKR_FM_READ_BINARY, SKR_FILE_CREATION_OPEN_EXISTING);
+    auto fsfile = skr_vfs_fopen(vfs, fsname.c_str(), SKR_FM_READ_BINARY, SKR_FILE_CREATION_OPEN_EXISTING);
     uint32_t im_fs_length = (uint32_t)skr_vfs_fsize(fsfile);
     uint32_t* im_fs_bytes = (uint32_t*)sakura_malloc(im_fs_length);
     skr_vfs_fread(fsfile, im_fs_bytes, 0, im_fs_length);

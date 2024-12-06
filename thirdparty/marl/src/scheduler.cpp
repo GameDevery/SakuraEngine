@@ -318,7 +318,7 @@ void Scheduler::Fiber::switchTo(Fiber* to)
         impl->switchTo(to->impl.get());
 #ifdef SKR_PROFILE_ENABLE
         // We are back
-        if (to->id) SkrFiberEnter(name.c_str());
+        if (to->id) SkrFiberEnter(name.c_str_raw());
 #endif
     }
 }
@@ -686,7 +686,7 @@ void Scheduler::Worker::run()
 {
     // Enter worker fiber
 #ifdef SKR_PROFILE_ENABLE
-    if (Fiber::current()->id) SkrFiberEnter(Fiber::current()->name.c_str());
+    if (Fiber::current()->id) SkrFiberEnter(Fiber::current()->name.c_str_raw());
 #endif
     if (mode == Mode::MultiThreaded)
     {

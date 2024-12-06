@@ -214,7 +214,7 @@ struct JsonSerde<T> {
         {
             if (!EnumSerdeTraits<T>::from_string(enumStr.view(), v))
             {
-                SKR_LOG_ERROR(u8"Unknown enumerator while reading enum %s: %s", skr::rttr::type_name_of<T>().begin(), enumStr.raw().data());
+                SKR_LOG_ERROR(u8"Unknown enumerator while reading enum %s: %s", skr::rttr::type_name_of<T>().data(), enumStr.data());
                 return false;
             }
             return true;
@@ -456,7 +456,7 @@ struct JsonSerde<skr_guid_t> {
         skr::String str;
         if (r->String(str).has_value())
         {
-            if (!skr::guid_from_sv(str.u8_str(), v))
+            if (!skr::guid_from_sv(str.c_str(), v))
                 return false;
             return true;
         }
@@ -476,7 +476,7 @@ struct JsonSerde<skr_md5_t> {
         skr::String str;
         if (r->String(str).has_value())
         {
-            if (!skr_parse_md5(str.u8_str(), &v))
+            if (!skr_parse_md5(str.c_str(), &v))
                 return false;
             return true;
         }

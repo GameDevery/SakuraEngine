@@ -243,7 +243,7 @@ TextureEdge::TextureEdge(ERelationshipType type, ECGPUResourceState requested_st
 
 TextureReadEdge::TextureReadEdge(const skr::StringView name, TextureSRVHandle handle, ECGPUResourceState state)
     : TextureEdge(ERelationshipType::TextureRead, state)
-    , name_hash(cgpu_name_hash(name.raw().data(), name.size()))
+    , name_hash(cgpu_name_hash(name.data(), name.size()))
     , name(name)
     , handle(handle)
 {
@@ -283,7 +283,7 @@ PassNode* TextureRenderEdge::get_pass_node()
 
 TextureReadWriteEdge::TextureReadWriteEdge(const skr::StringView name, TextureUAVHandle handle, ECGPUResourceState state)
     : TextureEdge(ERelationshipType::TextureReadWrite, state)
-    , name_hash(cgpu_name_hash(name.raw().data(), name.size()))
+    , name_hash(cgpu_name_hash(name.data(), name.size()))
     , name(name)
     , handle(handle)
 
@@ -323,7 +323,7 @@ PassNode* PipelineBufferEdge::get_pass_node()
 
 BufferReadEdge::BufferReadEdge(const skr::StringView name, BufferRangeHandle handle, ECGPUResourceState state)
     : BufferEdge(ERelationshipType::BufferRead, state)
-    , name_hash(cgpu_name_hash(name.raw().data(), name.size()))
+    , name_hash(cgpu_name_hash(name.data(), name.size()))
     , name(name)
     , handle(handle)
 {

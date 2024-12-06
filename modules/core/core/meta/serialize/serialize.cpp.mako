@@ -33,7 +33,7 @@ skr::StringView EnumSerdeTraits<${enum.name}>::to_string(const ${enum.name}& val
 }
 bool EnumSerdeTraits<${enum.name}>::from_string(skr::StringView str, ${enum.name}& value)
 {
-    const auto hash = skr_hash64(str.raw().data(), str.size(), 0);
+    const auto hash = skr_hash64(str.data(), str.size(), 0);
     switch(hash)
     {
 %for enum_value in enum.values.values():

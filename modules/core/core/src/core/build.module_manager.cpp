@@ -188,9 +188,9 @@ bool ModuleManagerImpl::loadHotfixModule(SharedLibrary& lib, const skr::String& 
 {
     auto&       ctx = hotfixModules[moduleName];
     skr::String filename;
-    filename.append(skr::SharedLibrary::GetPlatformFilePrefixName())
-    .append(moduleName)
-    .append(skr::SharedLibrary::GetPlatformFileExtensionName());
+    filename.append(skr::SharedLibrary::GetPlatformFilePrefixName());
+    filename.append(moduleName);
+    filename.append(skr::SharedLibrary::GetPlatformFileExtensionName());
     skr::filesystem::path path = filename.c_str();
     ctx.path                   = path;
     std::error_code ec;
@@ -243,11 +243,11 @@ IModule* ModuleManagerImpl::spawnDynamicModule(const skr::String& name, bool hot
 
     skr::String metaymbolname = u8"__skr_module_meta__";
     metaymbolname.append(name);
-    const bool is_proc_mod = processSymbolTable.hasSymbol(metaymbolname.u8_str());
+    const bool is_proc_mod = processSymbolTable.hasSymbol(metaymbolname.c_str());
 
-    if (processSymbolTable.hasSymbol(initName.u8_str()))
+    if (processSymbolTable.hasSymbol(initName.c_str()))
     {
-        func = processSymbolTable.get<IModule*()>(initName.u8_str());
+        func = processSymbolTable.get<IModule*()>(initName.c_str());
     }
     if (hotfix && (is_proc_mod || func))
     {
@@ -258,9 +258,9 @@ IModule* ModuleManagerImpl::spawnDynamicModule(const skr::String& name, bool hot
     {
         // try load dll
         skr::String filename;
-        filename.append(skr::SharedLibrary::GetPlatformFilePrefixName())
-        .append(name)
-        .append(skr::SharedLibrary::GetPlatformFileExtensionName());
+        filename.append(skr::SharedLibrary::GetPlatformFilePrefixName());
+        filename.append(name);
+        filename.append(skr::SharedLibrary::GetPlatformFileExtensionName());
         auto finalPath = (skr::filesystem::path(moduleDir.c_str()) / filename.c_str()).u8string();
         if (!hotfix)
         {
@@ -271,9 +271,9 @@ IModule* ModuleManagerImpl::spawnDynamicModule(const skr::String& name, bool hot
             else
             {
                 SKR_LOG_TRACE(u8"Load dll success: %s", filename.c_str());
-                if (sharedLib->hasSymbol(initName.u8_str()))
+                if (sharedLib->hasSymbol(initName.c_str()))
                 {
-                    func = sharedLib->get<IModule*()>(initName.u8_str());
+                    func = sharedLib->get<IModule*()>(initName.c_str());
                 }
             }
         }
@@ -286,9 +286,9 @@ IModule* ModuleManagerImpl::spawnDynamicModule(const skr::String& name, bool hot
             else
             {
                 SKR_LOG_TRACE(u8"Hotfix module %s success!", name.c_str());
-                if (sharedLib->hasSymbol(initName.u8_str()))
+                if (sharedLib->hasSymbol(initName.c_str()))
                 {
-                    func = sharedLib->get<IModule*()>(initName.u8_str());
+                    func = sharedLib->get<IModule*()>(initName.c_str());
                 }
             }
         }
@@ -301,7 +301,7 @@ IModule* ModuleManagerImpl::spawnDynamicModule(const skr::String& name, bool hot
     else
     {
         SKR_LOG_TRACE(u8"no user defined symbol: %s", initName.c_str());
-        modulesMap[name] = new SDefaultDynamicModule(name.u8_str());
+        modulesMap[name] = new SDefaultDynamicModule(name.c_str());
     }
     IDynamicModule* module = (IDynamicModule*)modulesMap[name];
     module->sharedLib      = sharedLib;
@@ -453,7 +453,7 @@ void ModuleManagerImpl::__internal_MakeModuleGraph(const skr::String& entry, boo
     for (auto i = 0u; i < moduleInfo->dependencies.size(); i++)
     {
         const auto& depInfo  = moduleInfo->dependencies[i];
-        auto        iterName = depInfo.name.u8_str();
+        auto        iterName = depInfo.name.c_str();
         bool        isShared = depInfo.kind == u8"shared";
         __internal_MakeModuleGraph(iterName, isShared);
 
@@ -537,9 +537,9 @@ bool ModuleManagerImpl::__internal_UpdateModuleGraph(const skr::String& entry)
         skr::String initName(u8"__initializeModule");
         skr::String mName(entry);
         initName.append(mName);
-        if (sharedLib->hasSymbol(initName.u8_str()))
+        if (sharedLib->hasSymbol(initName.c_str()))
         {
-            func = sharedLib->get<IModule*()>(initName.u8_str());
+            func = sharedLib->get<IModule*()>(initName.c_str());
         }
         if (!func)
         {
@@ -580,7 +580,7 @@ void ModuleManagerImpl::mount(const char8_t* rootdir)
 
 skr::StringView ModuleManagerImpl::get_root(void)
 {
-    return skr::StringView(skr::StringView(moduleDir.u8_str(), (size_t)moduleDir.size()));
+    return skr::StringView(skr::StringView(moduleDir.c_str(), (size_t)moduleDir.size()));
 }
 
 } // namespace skr

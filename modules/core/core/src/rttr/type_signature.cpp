@@ -136,7 +136,7 @@ String TypeSignatureHelper::signal_to_string(const uint8_t* pos, const uint8_t* 
             }
             if (!result.is_empty())
             {
-                result.self_trim_end();
+                result.trim_end();
             }
 
             // append type name
@@ -162,7 +162,7 @@ String TypeSignatureHelper::signal_to_string(const uint8_t* pos, const uint8_t* 
             }
             if (!result.is_empty())
             {
-                result.self_trim_end();
+                result.trim_end();
             }
 
             // TODO. append generic type name
@@ -185,7 +185,7 @@ String TypeSignatureHelper::signal_to_string(const uint8_t* pos, const uint8_t* 
             }
             if (!result.is_empty())
             {
-                result.self_trim_end();
+                result.trim_end();
             }
 
             // append function signature
@@ -206,7 +206,7 @@ String TypeSignatureHelper::signal_to_string(const uint8_t* pos, const uint8_t* 
                     result = skr::format(u8"{}, {}", result, signal_to_string(pos, next_pos));
                 }
             }
-            result += u8")";
+            result.append(u8")");
             break;
         }
     }

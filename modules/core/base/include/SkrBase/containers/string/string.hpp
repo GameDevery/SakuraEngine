@@ -122,6 +122,8 @@ struct U8String : protected Memory {
     bool operator!=(const U8String& rhs) const noexcept;
     bool operator==(ViewType view) const noexcept;
     bool operator!=(ViewType view) const noexcept;
+    bool operator==(const DataType* str) const noexcept;
+    bool operator!=(const DataType* str) const noexcept;
 
     // getter
     SizeType        size() const;
@@ -256,15 +258,15 @@ struct U8String : protected Memory {
     U8String remove_suffix_copy(const UTF8Seq& suffix) const;
 
     // trim
-    void     trim(const ViewType& characters);
-    void     trim_start(const ViewType& characters);
-    void     trim_end(const ViewType& characters);
+    void     trim(const ViewType& characters = u8" \t");
+    void     trim_start(const ViewType& characters = u8" \t");
+    void     trim_end(const ViewType& characters = u8" \t");
     void     trim(const UTF8Seq& ch);
     void     trim_start(const UTF8Seq& ch);
     void     trim_end(const UTF8Seq& ch);
-    U8String trim_copy(const ViewType& characters) const;
-    U8String trim_start_copy(const ViewType& characters) const;
-    U8String trim_end_copy(const ViewType& characters) const;
+    U8String trim_copy(const ViewType& characters = u8" \t") const;
+    U8String trim_start_copy(const ViewType& characters = u8" \t") const;
+    U8String trim_end_copy(const ViewType& characters = u8" \t") const;
     U8String trim_copy(const UTF8Seq& ch) const;
     U8String trim_start_copy(const UTF8Seq& ch) const;
     U8String trim_end_copy(const UTF8Seq& ch) const;
@@ -980,6 +982,16 @@ template <typename Memory>
 inline bool U8String<Memory>::operator!=(ViewType view) const noexcept
 {
     return this->view() != view;
+}
+template <typename Memory>
+inline bool U8String<Memory>::operator==(const DataType* str) const noexcept
+{
+    return this->view() == ViewType{ str };
+}
+template <typename Memory>
+inline bool U8String<Memory>::operator!=(const DataType* str) const noexcept
+{
+    return this->view() != ViewType{ str };
 }
 
 // getter
@@ -2252,7 +2264,7 @@ inline void U8String<Memory>::reverse(SizeType start, SizeType count)
         DataType tmp;
         for (SizeType i = 0; i < count / 2; ++i)
         {
-            tmp = _data()[start + i];
+            tmp                = _data()[start + i];
             _data()[start + i] = _data()[end - i];
             _data()[end - i]   = tmp;
         }

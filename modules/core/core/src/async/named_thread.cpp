@@ -6,13 +6,13 @@ namespace skr
 {
 NamedThreadFunction::~NamedThreadFunction() SKR_NOEXCEPT
 {
-
 }
 
 NamedThread::NamedThread() SKR_NOEXCEPT
-    : started(false), alive(false), func(nullptr)
+    : started(false),
+      alive(false),
+      func(nullptr)
 {
-
 }
 
 NamedThread::~NamedThread() SKR_NOEXCEPT
@@ -23,31 +23,31 @@ NamedThread::~NamedThread() SKR_NOEXCEPT
 void NamedThread::threadFunc(void* args)
 {
     NamedThread* pSelf = (NamedThread*)args;
-    skr_current_thread_set_name(pSelf->tname.u8_str());
+    skr_current_thread_set_name(pSelf->tname.c_str());
     pSelf->tID = skr_current_thread_id();
-    
+
     skr_atomic_store_release(&pSelf->started, true);
     skr_atomic_store_release(&pSelf->alive, true);
 
     pSelf->func->run();
-    
+
     skr_atomic_store_release(&pSelf->alive, false);
 }
 
 AsyncResult NamedThread::start(NamedThreadFunction* pFunc) SKR_NOEXCEPT
 {
-    if (skr_atomic_load_acquire(&started)) 
+    if (skr_atomic_load_acquire(&started))
     {
         SKR_LOG_ERROR(u8"thread is already started!");
         return ASYNC_RESULT_ERROR_THREAD_ALREADY_STARTES;
     }
-    
+
     this->func = pFunc;
 
     tDesc.pFunc = &threadFunc;
     tDesc.pData = this;
     skr_init_thread(&tDesc, &tHandle);
-    
+
     const auto P = (SThreadPriority)skr_atomic_load_acquire(&priority);
     skr_thread_set_priority(tHandle, P);
 
@@ -90,15 +90,15 @@ NamedThreadFunction* NamedThread::get_function() const SKR_NOEXCEPT
 
 AsyncResult NamedThread::initialize(const NamedThreadDesc& pdesc) SKR_NOEXCEPT
 {
-    desc = pdesc;
-    tname = skr::String::from_utf8(desc.name ? desc.name : u8"unnamed");
+    desc  = pdesc;
+    tname = skr::String::From(desc.name ? desc.name : u8"unnamed");
     skr_atomic_store_relaxed(&priority, priority);
     return ASYNC_RESULT_OK;
 }
 
 AsyncResult NamedThread::finalize() SKR_NOEXCEPT
 {
-    if (skr_atomic_load_acquire(&started)) 
+    if (skr_atomic_load_acquire(&started))
     {
         skr_destroy_thread(tHandle);
         skr_atomic_store_release(&started, false);
@@ -106,4 +106,4 @@ AsyncResult NamedThread::finalize() SKR_NOEXCEPT
     return ASYNC_RESULT_OK;
 }
 
-}
+} // namespace skr

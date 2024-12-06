@@ -490,10 +490,11 @@ struct Formatter {
     // static void format(TString& out, const T& value, typename TString::ViewType spec);
 };
 
+// primitive types
 template <std::signed_integral T>
 struct Formatter<T> {
     template <typename TString>
-    static void format(TString& out, T value, typename TString::ViewType spec)
+    inline static void format(TString& out, T value, typename TString::ViewType spec)
     {
         format_integer(out, static_cast<int64_t>(value), spec);
     }
@@ -501,7 +502,7 @@ struct Formatter<T> {
 template <std::unsigned_integral T>
 struct Formatter<T> {
     template <typename TString>
-    static void format(TString& out, T value, typename TString::ViewType spec)
+    inline static void format(TString& out, T value, typename TString::ViewType spec)
     {
         format_integer(out, static_cast<uint64_t>(value), spec);
     }
@@ -509,7 +510,7 @@ struct Formatter<T> {
 template <>
 struct Formatter<float> {
     template <typename TString>
-    static void format(TString& out, float value, typename TString::ViewType spec)
+    inline static void format(TString& out, float value, typename TString::ViewType spec)
     {
         format_float(out, static_cast<double>(value), spec);
     }
@@ -517,15 +518,25 @@ struct Formatter<float> {
 template <>
 struct Formatter<double> {
     template <typename TString>
-    static void format(TString& out, double value, typename TString::ViewType spec)
+    inline static void format(TString& out, double value, typename TString::ViewType spec)
     {
         format_float(out, value, spec);
     }
 };
 template <>
+struct Formatter<bool> {
+    template <typename TString>
+    inline static void format(TString& out, bool value, typename TString::ViewType spec)
+    {
+        out.append(value ? u8"true" : u8"false");
+    }
+};
+
+// raw string
+template <>
 struct Formatter<char> {
     template <typename TString>
-    static void format(TString& out, char value, typename TString::ViewType spec)
+    inline static void format(TString& out, char value, typename TString::ViewType spec)
     {
         out.append(value);
     }
@@ -533,12 +544,12 @@ struct Formatter<char> {
 template <>
 struct Formatter<char*> {
     template <typename TString>
-    static void format(TString& out, const char* value, typename TString::ViewType spec)
+    inline static void format(TString& out, const char* value, typename TString::ViewType spec)
     {
         out.append(value);
     }
     template <typename TString, size_t N>
-    static void format(TString& out, const char (&value)[N], typename TString::ViewType spec)
+    inline static void format(TString& out, const char (&value)[N], typename TString::ViewType spec)
     {
         out.append(value, N - 1);
     }
@@ -546,7 +557,7 @@ struct Formatter<char*> {
 template <>
 struct Formatter<skr_char8> {
     template <typename TString>
-    static void format(TString& out, skr_char8 value, typename TString::ViewType spec)
+    inline static void format(TString& out, skr_char8 value, typename TString::ViewType spec)
     {
         out.append(value);
     }
@@ -554,7 +565,7 @@ struct Formatter<skr_char8> {
 template <>
 struct Formatter<skr_char8*> {
     template <typename TString>
-    static void format(TString& out, const skr_char8* value, typename TString::ViewType spec)
+    inline static void format(TString& out, const skr_char8* value, typename TString::ViewType spec)
     {
         out.append(value);
     }
@@ -564,10 +575,12 @@ struct Formatter<skr_char8*> {
         out.append(value, N - 1);
     }
 };
+
+// string types
 template <typename TS>
 struct Formatter<U8StringView<TS>> {
     template <typename TString>
-    static void format(TString& out, U8StringView<TS> value, typename TString::ViewType spec)
+    inline static void format(TString& out, U8StringView<TS> value, typename TString::ViewType spec)
     {
         out.append(value);
     }
@@ -575,15 +588,51 @@ struct Formatter<U8StringView<TS>> {
 template <typename Memory>
 struct Formatter<U8String<Memory>> {
     template <typename TString>
-    static void format(TString& out, const U8String<Memory>& value, typename TString::ViewType spec)
+    inline static void format(TString& out, const U8String<Memory>& value, typename TString::ViewType spec)
     {
         out.append(value);
     }
 };
+
+// stl string types
+template <>
+struct Formatter<std::string_view> {
+    template <typename TString>
+    inline static void format(TString& out, std::string_view value, typename TString::ViewType spec)
+    {
+        out.append(value.data(), value.size());
+    }
+};
+template <>
+struct Formatter<std::string> {
+    template <typename TString>
+    inline static void format(TString& out, const std::string& value, typename TString::ViewType spec)
+    {
+        out.append(value.data(), value.size());
+    }
+};
+template <>
+struct Formatter<std::u8string_view> {
+    template <typename TString>
+    inline static void format(TString& out, std::u8string_view value, typename TString::ViewType spec)
+    {
+        out.append(value.data(), value.size());
+    }
+};
+template <>
+struct Formatter<std::u8string> {
+    template <typename TString>
+    inline static void format(TString& out, const std::u8string& value, typename TString::ViewType spec)
+    {
+        out.append(value.data(), value.size());
+    }
+};
+
+// pointer
 template <>
 struct Formatter<std::nullptr_t> {
     template <typename TString>
-    static void format(TString& out, std::nullptr_t value, typename TString::ViewType spec)
+    inline static void format(TString& out, std::nullptr_t value, typename TString::ViewType spec)
     {
         out.append(u8"nullptr");
     }
@@ -591,7 +640,7 @@ struct Formatter<std::nullptr_t> {
 template <typename T>
 struct Formatter<T*> {
     template <typename TString>
-    static void format(TString& out, T* value, typename TString::ViewType spec)
+    inline static void format(TString& out, T* value, typename TString::ViewType spec)
     {
         format_integer(out, reinterpret_cast<uint64_t>(value), u8"#016x");
     }
@@ -601,6 +650,11 @@ struct Formatter<T*> {
 // format
 namespace skr::container
 {
+template <typename TString, typename T>
+concept Formattable = requires(TString& out, T v, typename TString::ViewType spec) {
+    Formatter<T>::format(out, v, spec);
+};
+
 template <typename TString>
 struct ArgFormatterPack {
     using FormatterFunc = void (*)(TString&, const void*, typename TString::ViewType);
@@ -610,6 +664,7 @@ struct ArgFormatterPack {
         : arg(reinterpret_cast<const void*>(&v))
         , formatter(_make_formatter<T>())
     {
+        static_assert(Formattable<TString, std::decay_t<T>>, "Type is not formattable!");
     }
 
     inline void format(TString& out, typename TString::ViewType& spec)
@@ -632,7 +687,7 @@ public:
 };
 
 template <typename TString, typename... Args>
-TString format(typename TString::ViewType view, Args&&... args)
+inline void format_to(TString& out, typename TString::ViewType view, Args&&... args)
 {
     using SizeType  = typename TString::SizeType;
     using TokenIter = FormatTokenIter<SizeType>;
@@ -640,8 +695,7 @@ TString format(typename TString::ViewType view, Args&&... args)
     constexpr uint64_t                               arg_count = sizeof...(Args);
     std::array<ArgFormatterPack<TString>, arg_count> formatters{ { ArgFormatterPack<TString>{ std::forward<Args>(args) }... } };
 
-    TString result;
-    result.reserve(view.size());
+    out.reserve(out.size() + view.size());
 
     enum class IndexingMode
     {
@@ -657,10 +711,10 @@ TString format(typename TString::ViewType view, Args&&... args)
         switch (token.kind)
         {
             case FormatToken<SizeType>::Kind::PlainText:
-                result.append(token.view);
+                out.append(token.view);
                 break;
             case FormatToken<SizeType>::Kind::EscapedBrace:
-                result.append(token.view.first(1));
+                out.append(token.view.first(1));
                 break;
             case FormatToken<SizeType>::Kind::Formatter: {
                 auto [arg_idx, mid, spec] = token.view.subview(1, token.view.size() - 2).partition(UTF8Seq{ u8':' });
@@ -680,15 +734,21 @@ TString format(typename TString::ViewType view, Args&&... args)
                     SKR_VERIFY(last == (const char*)(arg_idx.data() + arg_idx.size()) && "Invalid format index!");
                 }
                 SKR_VERIFY(cur_idx < arg_count && "Invalid format index!");
-                formatters.at(cur_idx).format(result, spec);
+                formatters.at(cur_idx).format(out, spec);
             }
             break;
             default:
                 break;
         }
     }
+}
 
-    return result;
+template <typename TString, typename... Args>
+inline TString format(typename TString::ViewType view, Args&&... args)
+{
+    TString out;
+    format_to(out, view, std::forward<Args>(args)...);
+    return out;
 }
 
 // TODO. format, 返回 string

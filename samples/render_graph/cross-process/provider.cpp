@@ -42,12 +42,12 @@ struct ProviderRenderer
 
 void ProviderRenderer::create_window()
 {
-    auto title = skr::String::from_utf8(SKR_UTF8("Cross-Process Provider ["));
-    title += gCGPUBackendNames[backend];
-    title += SKR_UTF8("]");
-    title += SKR_UTF8(" PID: ");
-    title += skr::format(SKR_UTF8("{}"), skr_get_current_process_id());
-    sdl_window = SDL_CreateWindow(title.c_str(),
+    auto title = skr::String::From(SKR_UTF8("Cross-Process Provider ["));
+    title.append(gCGPUBackendNames[backend]);
+    title.append(SKR_UTF8("]"));
+    title.append(SKR_UTF8(" PID: "));
+    title.append(skr::format(SKR_UTF8("{}"), skr_get_current_process_id()));
+    sdl_window = SDL_CreateWindow(title.c_str_raw(),
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         BACK_BUFFER_WIDTH, BACK_BUFFER_HEIGHT,
         SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);

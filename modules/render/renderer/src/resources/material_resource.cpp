@@ -132,7 +132,7 @@ struct SMaterialFactoryImpl : public SMaterialFactory {
                                 {
                                     auto& installed_shader      = installed_pass.shaders.add_default().ref();
                                     installed_shader.identifier = platform_id;
-                                    installed_shader.entry      = multiShader.entry.u8_str();
+                                    installed_shader.entry      = multiShader.entry.c_str();
                                     installed_shader.stage      = multiShader.shader_stage;
 
                                     installed = true;
@@ -164,7 +164,7 @@ struct SMaterialFactoryImpl : public SMaterialFactory {
         for (size_t i = 0; i < installed_pass.shaders.size(); i++)
         {
             ppl_shaders[i].library = shaders[i];
-            ppl_shaders[i].entry   = (const char8_t*)installed_pass.shaders[i].entry.raw().data();
+            ppl_shaders[i].entry   = (const char8_t*)installed_pass.shaders[i].entry.data();
             ppl_shaders[i].stage   = installed_pass.shaders[i].stage;
         }
         CGPURootSignatureDescriptor rs_desc = {};
@@ -234,7 +234,7 @@ struct SMaterialFactoryImpl : public SMaterialFactory {
             hdl.resolve(true, nullptr);
 
             auto& update        = updates.emplace().ref();
-            update.name         = override.slot_name.raw().data();
+            update.name         = override.slot_name.data();
             update.count        = 1;
             update.samplers     = &hdl.get_resolved()->sampler;
             update.binding_type = CGPU_RESOURCE_TYPE_SAMPLER;
@@ -245,7 +245,7 @@ struct SMaterialFactoryImpl : public SMaterialFactory {
             hdl.resolve(true, nullptr);
 
             auto& update        = updates.emplace().ref();
-            update.name         = override.slot_name.raw().data();
+            update.name         = override.slot_name.data();
             update.count        = 1; // TODO: Tex array parameter
             update.textures     = &hdl.get_resolved()->texture_view;
             update.binding_type = CGPU_RESOURCE_TYPE_TEXTURE;
@@ -320,7 +320,7 @@ struct SMaterialFactoryImpl : public SMaterialFactory {
                     break;
             }
             ref->library = shaders[i];
-            ref->entry   = installed_pass.shaders[i].entry.raw().data();
+            ref->entry   = installed_pass.shaders[i].entry.data();
             ref->stage   = installed_pass.shaders[i].stage;
             // TODO: const spec
             ref->constants     = nullptr;

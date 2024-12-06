@@ -19,7 +19,7 @@ struct PathSrcComponent : public IORequestComponent
     void set_vfs(skr_vfs_t* _vfs) SKR_NOEXCEPT { vfs = _vfs; }
     void set_path(const char8_t* p) SKR_NOEXCEPT { path = p; }
     skr_vfs_t* get_vfs() const SKR_NOEXCEPT { return vfs; }
-    const char8_t* get_path() const SKR_NOEXCEPT { return path.is_empty() ? nullptr : path.u8_str(); }
+    const char8_t* get_path() const SKR_NOEXCEPT { return path.is_empty() ? nullptr : path.c_str(); }
 private:
     skr::String path;
     skr_vfs_t* vfs = nullptr;

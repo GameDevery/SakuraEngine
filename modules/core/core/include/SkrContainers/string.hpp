@@ -41,7 +41,7 @@ struct BinSerde<skr::String> {
             return false;
 
         // write content
-        return w->write(v.u8_str(), v.size());
+        return w->write(v.c_str(), v.size());
     }
 };
 } // namespace skr

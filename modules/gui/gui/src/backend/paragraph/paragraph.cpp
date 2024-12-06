@@ -61,7 +61,7 @@ void _EmbeddedParagraph::build()
         {
             auto font = static_pointer_cast<godot::Font>(_font);
             auto ft   = godot::Ref<godot::Font>(font);
-            this->add_string(godot::String::utf8(text.c_str()), ft, 42, "", {});
+            this->add_string(godot::String::utf8(text.c_str_raw()), ft, 42, "", {});
         }
 
         _shape_lines();

@@ -294,22 +294,22 @@ void RunnerBase::drain(SkrAsyncServicePriority priority) SKR_NOEXCEPT
             skr::String processed_message = u8"batch processed: ";
             for (auto processor : batch_processors)
             {
-                processing_message += skr::format(u8"{} ", processor->processing_count(priority));
-                processed_message += skr::format(u8"{} ", processor->processed_count(priority));
+                skr::format_to(processing_message, u8"{} ", processor->processing_count(priority));
+                skr::format_to(processed_message, u8"{} ", processor->processed_count(priority));
             }
-            SKR_LOG_FATAL(processing_message.u8_str());
-            SKR_LOG_FATAL(processed_message.u8_str());
+            SKR_LOG_FATAL(processing_message.c_str());
+            SKR_LOG_FATAL(processed_message.c_str());
         }
         {
             skr::String processing_message = u8"request processing: ";
             skr::String processed_message = u8"request processed: ";
             for (auto processor : request_processors)
             {
-                processing_message += skr::format(u8"{} ", processor->processing_count(priority));
-                processed_message += skr::format(u8"{} ", processor->processed_count(priority));
+                skr::format_to(processing_message , u8"{} ", processor->processing_count(priority));
+                skr::format_to(processed_message , u8"{} ", processor->processed_count(priority));
             }
-            SKR_LOG_FATAL(processing_message.u8_str());
-            SKR_LOG_FATAL(processed_message.u8_str());
+            SKR_LOG_FATAL(processing_message.c_str());
+            SKR_LOG_FATAL(processed_message.c_str());
         }
     }
 }

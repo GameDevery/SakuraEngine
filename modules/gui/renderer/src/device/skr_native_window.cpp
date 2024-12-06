@@ -33,7 +33,7 @@ void SkrNativeWindow::init_normal(const WindowDesc& desc)
     create_desc.posx   = (int32_t)desc.pos.x;
     create_desc.posy   = (int32_t)desc.pos.y;
     create_desc.flags  = SKR_WINDOW_RESIZABLE;
-    _window            = skr_create_window(desc.name.u8_str(), &create_desc);
+    _window            = skr_create_window(desc.name.c_str(), &create_desc);
 
     _render_window = _device->render_device()->create_window(_window);
 }

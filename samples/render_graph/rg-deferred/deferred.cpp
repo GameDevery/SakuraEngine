@@ -412,8 +412,8 @@ int main(int argc, char* argv[])
                     for (uint32_t i = 1; i < profiler.times_ms.size(); i++)
                     {
                         auto text = profiler.query_names[i];
-                        text = text.append(u8": %.4f ms");
-                        ImGui::Text(text.c_str(), profiler.times_ms[i]);
+                        text.append(u8": %.4f ms");
+                        ImGui::Text(text.c_str_raw(), profiler.times_ms[i]);
                         total_ms += profiler.times_ms[i];
                     }
                     ImGui::Text("GPU Time: %f(ms)", total_ms);

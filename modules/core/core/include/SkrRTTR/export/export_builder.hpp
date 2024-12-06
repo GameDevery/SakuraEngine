@@ -261,12 +261,12 @@ struct RecordBuilder {
     inline RecordBuilder& basic_info()
     {
         // split namespace
-        String              name = RTTRTraits<T>::get_name();
-        sequence<text_view> splitted;
-        auto                count = name.split(u8"::", splitted);
+        String             name = RTTRTraits<T>::get_name();
+        Vector<StringView> splitted;
+        auto               count = name.split(splitted, u8"::");
 
         // last part is name
-        _data->name = splitted.access_at(splitted.size() - 1);
+        _data->name = splitted.at(splitted.size() - 1);
 
         // fill namespace
         if (count > 1)
@@ -274,7 +274,7 @@ struct RecordBuilder {
             _data->name_space.reserve(count - 1);
             for (auto i = 0; i < count - 1; ++i)
             {
-                _data->name_space.push_back(splitted.access_at(i));
+                _data->name_space.push_back(splitted.at(i));
             }
         }
 
@@ -320,9 +320,9 @@ struct RecordBuilder {
         if constexpr (skr::HasBinRead<T>)
         {
             extern_method<
-                +[](void* object, void* reader) -> bool { 
-                    return skr::bin_read<T>((SBinaryReader*)reader, *(T*)object); 
-                }>(SkrCoreExternMethods::ReadBin);
+            +[](void* object, void* reader) -> bool {
+                return skr::bin_read<T>((SBinaryReader*)reader, *(T*)object);
+            }>(SkrCoreExternMethods::ReadBin);
         }
 
         // fill dtor
@@ -487,12 +487,12 @@ struct EnumBuilder {
     inline EnumBuilder& basic_info()
     {
         // split namespace
-        String              name = RTTRTraits<T>::get_name();
-        sequence<text_view> splitted;
-        auto                count = name.split(u8"::", splitted);
+        String             name = RTTRTraits<T>::get_name();
+        Vector<StringView> splitted;
+        auto               count = name.split(splitted, u8"::");
 
         // last part is name
-        _data->name = splitted.access_at(splitted.size() - 1);
+        _data->name = splitted.at(splitted.size() - 1);
 
         // fill namespace
         if (count > 1)
@@ -500,7 +500,7 @@ struct EnumBuilder {
             _data->name_space.reserve(count - 1);
             for (auto i = 0; i < count - 1; ++i)
             {
-                _data->name_space.push_back(splitted.access_at(i));
+                _data->name_space.push_back(splitted.at(i));
             }
         }
 

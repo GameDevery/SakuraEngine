@@ -18,7 +18,7 @@ void CullPhase::on_compile(RenderGraph* graph) SKR_NOEXCEPT
     [this](ResourceNode* resource) {
         SKR_UNUSED const auto name = resource->get_name_view();
         SkrZoneScopedC(tracy::Color::SteelBlue);
-        ZoneName((const char*)name.raw().data(), name.size());
+        ZoneName((const char*)name.data(), name.size());
 
         const bool lone = !(resource->incoming_edges() + resource->outgoing_edges());
         {
@@ -32,7 +32,7 @@ void CullPhase::on_compile(RenderGraph* graph) SKR_NOEXCEPT
     [this](PassNode* pass) {
         SKR_UNUSED const auto name = pass->get_name_view();
         SkrZoneScopedC(tracy::Color::SteelBlue);
-        ZoneName((const char*)name.raw().data(), name.size());
+        ZoneName((const char*)name.data(), name.size());
 
         const bool lone = !(pass->incoming_edges() + pass->outgoing_edges());
         const bool can_be_lone = pass->get_can_be_lone();

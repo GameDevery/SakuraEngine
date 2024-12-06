@@ -163,7 +163,7 @@ struct JsonSerde<skr_resource_handle_t> {
         SKR_EXPECTED_CHECK(r->String(view), false);
         {
             skr_guid_t guid;
-            if (!skr::guid_from_sv(view.u8_str(), guid))
+            if (!skr::guid_from_sv(view.c_str(), guid))
                 return false;
             v.set_guid(guid);
         }

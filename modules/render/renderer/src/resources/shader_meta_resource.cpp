@@ -38,7 +38,7 @@ skr_stable_shader_hash_t skr_shader_option_instance_t::calculate_stable_hash(skr
 {
     skr::String signatureString;
     option_utils::stringfy(signatureString, ordered_options);
-    return skr_stable_shader_hash_t::hash_string(signatureString.c_str(), (uint32_t)signatureString.size());
+    return skr_stable_shader_hash_t::hash_string(signatureString.c_str_raw(), (uint32_t)signatureString.size());
 }
 
 namespace skr
