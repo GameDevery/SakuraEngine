@@ -83,7 +83,7 @@ private:
                 if (auto found = _format_str.subview(_index).find(UTF8Seq{ u8'}' }))
                 {
                     _cur_token.kind = TokenType::Kind::Formatter;
-                    _cur_token.view = _format_str.subview(_index, found.index() - _index + 1);
+                    _cur_token.view = _format_str.subview(_index, found.index() + 1);
                 }
                 else
                 {
@@ -109,15 +109,16 @@ private:
         }
         else
         {
-            auto found_left_brace  = _format_str.find(UTF8Seq{ u8'{' });
-            auto found_right_brace = _format_str.find(UTF8Seq{ u8'}' });
+            auto search_str        = _format_str.subview(_index);
+            auto found_left_brace  = search_str.find(UTF8Seq{ u8'{' });
+            auto found_right_brace = search_str.find(UTF8Seq{ u8'}' });
             if (found_left_brace || found_right_brace)
             {
                 auto next_index = found_left_brace && found_right_brace ? std::min(found_left_brace.index(), found_right_brace.index()) :
                                   found_left_brace                      ? found_left_brace.index() :
                                                                           found_right_brace.index();
                 _cur_token.kind = TokenType::Kind::PlainText;
-                _cur_token.view = _format_str.subview(_index, next_index - _index);
+                _cur_token.view = _format_str.subview(_index, next_index);
             }
             else
             {
@@ -187,7 +188,7 @@ inline void format_integer(TString& out, uint64_t value, typename TString::ViewT
         // parse type
         if (type_spec_view.contains(parsing.last_buffer(0)))
         {
-            type    = parsing.read_from_last(0);
+            type    = parsing.last_buffer(0);
             parsing = parsing.subview(0, parsing.size() - 1);
         }
 
@@ -199,9 +200,9 @@ inline void format_integer(TString& out, uint64_t value, typename TString::ViewT
                 holder = found.ref();
 
                 ViewType holding_view  = parsing.subview(found.index() + 1);
-                const auto [last, err] = std::from_chars(holding_view.data(),
-                                                         holding_view.data() + holding_view.size(), holding);
-                SKR_VERIFY((last == holding_view.data() + holding_view.size()) && "Invalid format specification!");
+                const auto [last, err] = std::from_chars((const char*)holding_view.data(),
+                                                         (const char*)holding_view.data() + holding_view.size(), holding);
+                SKR_VERIFY((last == (const char*)(holding_view.data() + holding_view.size())) && "Invalid format specification!");
                 parsing = parsing.subview(0, found.index());
             }
         }
@@ -215,7 +216,7 @@ inline void format_integer(TString& out, uint64_t value, typename TString::ViewT
                 parsing     = parsing.subview(0, parsing.size() - 1);
             }
         }
-        SKR_VERIFY(parsing.is_empty && "Invalid format specification!");
+        SKR_VERIFY(parsing.is_empty() && "Invalid format specification!");
     }
 
     // solve type
@@ -252,19 +253,21 @@ inline void format_integer(TString& out, uint64_t value, typename TString::ViewT
 
     // final solve
     const uint64_t digit_count  = get_integer_digit_count(value, base);
-    const uint64_t preserve     = holding == npos_of<uint64_t> ? digit_count : maximum(holding, digit_count);
+    const uint64_t preserve     = holding == npos_of<uint64_t> ? digit_count : std::max(holding, digit_count);
     const uint64_t holder_count = preserve - digit_count;
 
     // append
     out.append(prefix);
     out.add(holder, holder_count);
-    uint64_t remaining = value;
+    uint64_t remaining     = value;
+    uint64_t reverse_start = out.size();
     for (uint64_t i = 0; i < digit_count; ++i)
     {
         const skr_char8 digit = from_digit(remaining % base);
         remaining /= base;
         out.append(digit);
     }
+    out.reverse(reverse_start);
 }
 template <typename TString>
 inline void format_integer(TString& out, int64_t value, typename TString::ViewType spec)
@@ -284,7 +287,7 @@ inline void format_integer(TString& out, int64_t value, typename TString::ViewTy
         // parse type
         if (type_spec_view.contains(parsing.last_buffer(0)))
         {
-            type    = parsing.read_from_last(0);
+            type    = parsing.last_buffer(0);
             parsing = parsing.subview(0, parsing.size() - 1);
         }
 
@@ -294,9 +297,9 @@ inline void format_integer(TString& out, int64_t value, typename TString::ViewTy
             if (auto found = parsing.find(u8'0'))
             {
                 ViewType holding_view  = parsing.subview(found.index() + 1);
-                const auto [last, err] = std::from_chars(holding_view.data(),
-                                                         holding_view.data() + holding_view.size(), holding);
-                SKR_VERIFY((last == holding_view.data() + holding_view.size()) && "Invalid format specification!");
+                const auto [last, err] = std::from_chars((const char*)holding_view.data(),
+                                                         (const char*)holding_view.data() + holding_view.size(), holding);
+                SKR_VERIFY((last == (const char*)(holding_view.data() + holding_view.size())) && "Invalid format specification!");
                 parsing = parsing.subview(0, found.index());
             }
         }
@@ -310,7 +313,7 @@ inline void format_integer(TString& out, int64_t value, typename TString::ViewTy
                 parsing     = parsing.subview(0, parsing.size() - 1);
             }
         }
-        SKR_VERIFY(parsing.is_empty && "Invalid format specification!");
+        SKR_VERIFY(parsing.is_empty() && "Invalid format specification!");
     }
 
     // solve type
@@ -348,20 +351,22 @@ inline void format_integer(TString& out, int64_t value, typename TString::ViewTy
     // final solve
     const ViewType sign        = (value < 0) ? u8"-" : u8"";
     const uint64_t digit_count = get_integer_digit_count(value, base);
-    const uint64_t preserve    = holding == npos_of<uint64_t> ? digit_count : maximum(holding, digit_count);
+    const uint64_t preserve    = holding == npos_of<uint64_t> ? digit_count : std::max(holding, digit_count);
     const uint64_t zero_count  = preserve - digit_count;
 
     // append
     out.append(sign);
     out.append(prefix);
     out.add(u8'0', zero_count);
-    int64_t remaining = value >= 0 ? value : -value;
+    int64_t  remaining     = value >= 0 ? value : -value;
+    uint64_t reverse_start = out.size();
     for (uint64_t i = 0; i < digit_count; ++i)
     {
         skr_char8 digit = from_digit(remaining % base);
         remaining /= base;
         out.append(digit);
     }
+    out.reverse(reverse_start);
 }
 template <typename TString>
 inline void format_float(TString& out, double value, typename TString::ViewType spec)
@@ -437,7 +442,7 @@ inline void format_float(TString& out, double value, typename TString::ViewType 
                 if (count_nine == TOLERANCE_EXPONENT)
                 {
                     floating += 1;
-                    floating = floating / power(10, TOLERANCE_EXPONENT);
+                    floating = floating / std::pow(10, TOLERANCE_EXPONENT);
                     break;
                 }
             }
@@ -453,7 +458,7 @@ inline void format_float(TString& out, double value, typename TString::ViewType 
             format_integer(out, decimal, {});
             uint64_t dot_position = out.size();
             format_integer(out, floating, {});
-            out.at_w(dot_position) = u8'.';
+            out.at_buffer_w(dot_position) = u8'.';
         }
         if (floating == 2)
         {
@@ -474,7 +479,7 @@ inline void format_float(TString& out, double value, typename TString::ViewType 
         format_integer(out, decimal, {});
         uint64_t dot_position = out.size();
         format_integer(out, floating, {});
-        out.at_w(dot_position) = u8'.';
+        out.at_buffer_w(dot_position) = u8'.';
     }
 }
 
@@ -518,17 +523,43 @@ struct Formatter<double> {
     }
 };
 template <>
-struct Formatter<const char*> {
+struct Formatter<char> {
+    template <typename TString>
+    static void format(TString& out, char value, typename TString::ViewType spec)
+    {
+        out.append(value);
+    }
+};
+template <>
+struct Formatter<char*> {
     template <typename TString>
     static void format(TString& out, const char* value, typename TString::ViewType spec)
     {
         out.append(value);
     }
-};
-template <size_t N>
-struct Formatter<const char[N]> {
-    template <typename TString>
+    template <typename TString, size_t N>
     static void format(TString& out, const char (&value)[N], typename TString::ViewType spec)
+    {
+        out.append(value, N - 1);
+    }
+};
+template <>
+struct Formatter<skr_char8> {
+    template <typename TString>
+    static void format(TString& out, skr_char8 value, typename TString::ViewType spec)
+    {
+        out.append(value);
+    }
+};
+template <>
+struct Formatter<skr_char8*> {
+    template <typename TString>
+    static void format(TString& out, const skr_char8* value, typename TString::ViewType spec)
+    {
+        out.append(value);
+    }
+    template <typename TString, size_t N>
+    static void format(TString& out, skr_char8 (&value)[N], typename TString::ViewType spec)
     {
         out.append(value, N - 1);
     }
@@ -544,7 +575,7 @@ struct Formatter<U8StringView<TS>> {
 template <typename Memory>
 struct Formatter<U8String<Memory>> {
     template <typename TString>
-    static void format(TString& out, U8String<Memory> value, typename TString::ViewType spec)
+    static void format(TString& out, const U8String<Memory>& value, typename TString::ViewType spec)
     {
         out.append(value);
     }
@@ -572,7 +603,7 @@ namespace skr::container
 {
 template <typename TString>
 struct ArgFormatterPack {
-    using FormatterFunc = void (*)(TString&, void*, typename TString::ViewType);
+    using FormatterFunc = void (*)(TString&, const void*, typename TString::ViewType);
 
     template <typename T>
     inline ArgFormatterPack(const T& v)
@@ -590,8 +621,8 @@ private:
     template <typename T>
     inline FormatterFunc _make_formatter()
     {
-        return +[](TString& out, void* value, typename TString::ViewType spec) {
-            Formatter<T>::format(out, *reinterpret_cast<const T*>(value), spec);
+        return +[](TString& out, const void* value, typename TString::ViewType spec) {
+            Formatter<std::decay_t<T>>::format(out, *reinterpret_cast<const T*>(value), spec);
         };
     }
 
@@ -600,13 +631,14 @@ public:
     FormatterFunc formatter;
 };
 
-template <typename TString, typename TS, typename... Args>
-TString format(U8StringView<TS> view, Args&&... args)
+template <typename TString, typename... Args>
+TString format(typename TString::ViewType view, Args&&... args)
 {
-    using TokenIter = FormatTokenIter<TS>;
+    using SizeType  = typename TString::SizeType;
+    using TokenIter = FormatTokenIter<SizeType>;
 
     constexpr uint64_t                               arg_count = sizeof...(Args);
-    std::array<ArgFormatterPack<TString>, arg_count> formatters{ { args }... };
+    std::array<ArgFormatterPack<TString>, arg_count> formatters{ { ArgFormatterPack<TString>{ std::forward<Args>(args) }... } };
 
     TString result;
     result.reserve(view.size());
@@ -624,13 +656,13 @@ TString format(U8StringView<TS> view, Args&&... args)
         auto token = iter.ref();
         switch (token.kind)
         {
-            case FormatToken<TS>::Kind::PlainText:
+            case FormatToken<SizeType>::Kind::PlainText:
                 result.append(token.view);
                 break;
-            case FormatToken<TS>::Kind::EscapedBrace:
+            case FormatToken<SizeType>::Kind::EscapedBrace:
                 result.append(token.view.first(1));
                 break;
-            case FormatToken<TS>::Kind::Formatter: {
+            case FormatToken<SizeType>::Kind::Formatter: {
                 auto [arg_idx, mid, spec] = token.view.subview(1, token.view.size() - 2).partition(UTF8Seq{ u8':' });
                 uint64_t cur_idx          = auto_index;
                 if (arg_idx.is_empty())
@@ -643,8 +675,9 @@ TString format(U8StringView<TS> view, Args&&... args)
                 {
                     SKR_VERIFY(indexing_mode != IndexingMode::Auto && "Automatic index is not allowed mixing with manual index!");
                     indexing_mode      = IndexingMode::Manual;
-                    auto [last, error] = std::from_chars(arg_idx.data(), arg_idx.data() + arg_idx.size(), cur_idx);
-                    SKR_VERIFY(last == arg_idx.data() + arg_idx.size() && "Invalid format index!");
+                    auto [last, error] = std::from_chars((const char*)arg_idx.data(),
+                                                         (const char*)(arg_idx.data() + arg_idx.size()), cur_idx);
+                    SKR_VERIFY(last == (const char*)(arg_idx.data() + arg_idx.size()) && "Invalid format index!");
                 }
                 SKR_VERIFY(cur_idx < arg_count && "Invalid format index!");
                 formatters.at(cur_idx).format(result, spec);
@@ -654,6 +687,8 @@ TString format(U8StringView<TS> view, Args&&... args)
                 break;
         }
     }
+
+    return result;
 }
 
 // TODO. format, 返回 string

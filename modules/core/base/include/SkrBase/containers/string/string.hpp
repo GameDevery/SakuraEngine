@@ -18,6 +18,7 @@ namespace skr::container
 //  islower 是否只包含小写字符
 //  isupper 是否只包含大写字符
 // TODO. iterator
+// TODO. append repeat
 template <typename Memory>
 struct U8String : protected Memory {
     // from memory
@@ -289,6 +290,9 @@ struct U8String : protected Memory {
     SizeType split(Buffer& out, const UTF8Seq& delimiter, bool cull_empty = false, SizeType limit = npos) const;
     template <std::invocable<const U8StringView<typename Memory::SizeType>&> F>
     SizeType split_each(F&& func, const UTF8Seq& delimiter, bool cull_empty = false, SizeType limit = npos) const;
+
+    // reverse
+    void reverse(SizeType start = 0, SizeType count = npos);
 
     // convert size
     SizeType to_raw_length() const;
@@ -2231,6 +2235,28 @@ template <std::invocable<const U8StringView<typename Memory::SizeType>&> F>
 inline typename U8String<Memory>::SizeType U8String<Memory>::split_each(F&& func, const UTF8Seq& delimiter, bool cull_empty, SizeType limit) const
 {
     return view().split_each(std::forward<F>(func), delimiter, cull_empty, limit);
+}
+
+// reverse
+template <typename Memory>
+inline void U8String<Memory>::reverse(SizeType start, SizeType count)
+{
+    SKR_ASSERT(start <= size() && "undefined behaviour accessing out of bounds");
+    SKR_ASSERT(count == npos || count <= (size() - start) && "undefined behaviour exceeding size of string view");
+    count = count == npos ? size() - start : count;
+
+    if (count > 1)
+    {
+        _pre_modify();
+        SizeType end = start + count - 1;
+        DataType tmp;
+        for (SizeType i = 0; i < count / 2; ++i)
+        {
+            tmp = _data()[start + i];
+            _data()[start + i] = _data()[end - i];
+            _data()[end - i]   = tmp;
+        }
+    }
 }
 
 // convert size
