@@ -7,10 +7,6 @@
 #include "SkrBase/containers/string/string.hpp"
 #include "SkrBase/containers/string/format.hpp"
 
-// TODO. remove it
-#include "OpenString/text.h"
-#include "OpenString/format.h"
-
 namespace skr
 {
 constexpr uint64_t kStringSSOSize = 31;

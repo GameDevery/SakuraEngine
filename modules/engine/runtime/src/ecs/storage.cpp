@@ -1144,7 +1144,7 @@ sugoi_query_t* sugoiQ_create(sugoi_storage_t* storage, const sugoi_filter_t* fil
 
 void sugoiQ_make_alias(sugoi_storage_t* storage, const char8_t* component, const char8_t* alias)
 {
-    storage->make_alias((ochar8_t*)component, (ochar8_t*)alias);
+    storage->make_alias((skr_char8*)component, (skr_char8*)alias);
 }
 
 void sugoiQ_release(sugoi_query_t* q)

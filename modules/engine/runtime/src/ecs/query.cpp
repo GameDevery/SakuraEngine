@@ -189,7 +189,7 @@ sugoi_query_t* sugoi_storage_t::make_query(const char8_t* inDesc)
 {
     using namespace sugoi;
     bool hasAlias = false;
-    auto desc = skr::stl_u8string((ochar8_t*)inDesc);
+    auto desc = skr::stl_u8string((skr_char8*)inDesc);
     using namespace skr;
 #ifdef _WIN32
     desc.erase(std::remove_if(desc.begin(), desc.end(), [](char c) -> bool { return std::isspace(c); }), desc.end());
