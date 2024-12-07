@@ -3,6 +3,7 @@
 #include "SkrCore/async/wait_timeout.hpp"
 #include "SkrCore/log.h"
 #include "job_thread.hpp"
+#include <algorithm>
 
 namespace skr
 {
