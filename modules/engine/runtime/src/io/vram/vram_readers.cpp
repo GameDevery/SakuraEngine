@@ -337,12 +337,12 @@ void CommonVRAMReader::addUploadRequests(SkrAsyncServicePriority priority) SKR_N
                     SkrZoneScopedN("PrepareUploadBuffer");
 #ifdef SKR_PROFILE_ENABLE
                     skr::String Name = u8"BufferUpload-";
-                    Name += pPath->get_path();
-                    SkrMessage(Name.c_str(), Name.size());
+                    Name.append(pPath->get_path());
+                    SkrMessage(Name.c_str_raw(), Name.size());
 #endif
                     skr::String name = /*pBuffer->name ? buffer_io.vbuffer.buffer_name :*/ u8"";
-                    name += u8"-upload";
-                    upload_buffer = cgpux_create_mapped_upload_buffer(cmdqueue->device, pUpload->src_size, name.u8_str());
+                    name.append(u8"-upload");
+                    upload_buffer = cgpux_create_mapped_upload_buffer(cmdqueue->device, pUpload->src_size, name.c_str());
                     cmd.upload_buffers.emplace(upload_buffer);
 
                     memcpy(upload_buffer->info->cpu_mapped_address, pUpload->src_data, pUpload->src_size);
@@ -384,12 +384,12 @@ void CommonVRAMReader::addUploadRequests(SkrAsyncServicePriority priority) SKR_N
                     SkrZoneScopedN("PrepareUploadBuffer");
 #ifdef SKR_PROFILE_ENABLE
                     skr::String Name = u8"TextureUpload-";
-                    Name += pPath->get_path();
-                    SkrMessage(Name.c_str(), Name.size());
+                    Name.append(pPath->get_path());
+                    SkrMessage(Name.c_str_raw(), Name.size());
 #endif
                     skr::String name = /*pBuffer->name ? buffer_io.vbuffer.buffer_name :*/ u8"";
-                    name += u8"-upload";
-                    upload_buffer = cgpux_create_mapped_upload_buffer(cmdqueue->device, pUpload->src_size, name.u8_str());
+                    name.append(u8"-upload");
+                    upload_buffer = cgpux_create_mapped_upload_buffer(cmdqueue->device, pUpload->src_size, name.c_str());
                     cmd.upload_buffers.emplace(upload_buffer);
 
                     memcpy(upload_buffer->info->cpu_mapped_address, pUpload->src_data, pUpload->src_size);

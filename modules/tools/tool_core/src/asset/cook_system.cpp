@@ -141,7 +141,7 @@ skr::task::event_t SCookSystemImpl::AddCookTask(skr_guid_t guid)
             const auto cookerTypeName      = rtti_type ? rtti_type->name().raw().c_str() : (const ochar_t*)u8"UnknownResource";
             const auto guidString          = skr::format(u8"Guid: {}", metaAsset->guid);
             const auto assetTypeGuidString = skr::format(u8"TypeGuid: {}", metaAsset->type);
-            const auto scopeName           = skr::format(u8"Cook.[{}]", (const ochar8_t*)cookerTypeName);
+            const auto scopeName           = skr::format(u8"Cook.[{}]", (const skr_char8*)cookerTypeName);
             const auto assetString         = skr::format(u8"Asset: {}", metaAsset->path.u8string().c_str());
             ZoneName(scopeName.c_str(), scopeName.size());
             SkrMessage(guidString.c_str(), guidString.size());

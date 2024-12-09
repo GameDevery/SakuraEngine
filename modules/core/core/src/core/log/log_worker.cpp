@@ -80,7 +80,7 @@ void LogQueue::push(LogEvent ev, const skr::StringView format, ArgsList&& args, 
     SKR_ASSERT(ptok_);
     auto element = LogElement(ev, ptok_);
 
-    element.format = format.raw();
+    element.format = format;
     element.args = skr::move(args);
     element.need_format = true;
 

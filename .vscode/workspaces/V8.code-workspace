@@ -16,7 +16,7 @@
             "--toolchain=clang-cl",
             "--cxx_version=cxx20",
         ],
-        "editor.formatOnSave": true,
+        "editor.formatOnSave": false,
         "xmake.customDebugConfig": {
             // "visualizerFile": "${workspaceFolder}\\SDKs\\natvis\\SkrContainer.natvis",
             "stopAtEntry": false,

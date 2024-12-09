@@ -32,6 +32,7 @@ target("SkrCompileFlags")
         "-Wno-deprecated-copy-with-user-provided-copy", -- usally trigger it manually
         "-Wno-unused-private-field", -- not care about unused private field
         "-Wno-unused-but-set-variable", -- not care about unused variable
+        "-Wno-unused-local-typedef",
         {public = true, tools = {"gcc", "clang_cl", "clang"}}
     )
     -- disable c warnings for gcc/clang

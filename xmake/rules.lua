@@ -8,3 +8,5 @@ includes("rules/skr_module.lua")
 includes("rules/global_rules.lua")
 includes("rules/cpp_codegen.lua")
 includes("rules/pch.lua")
+
+includes("rules/vsc_dbg.lua")

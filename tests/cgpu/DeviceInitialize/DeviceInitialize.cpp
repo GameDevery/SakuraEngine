@@ -1,6 +1,7 @@
 #include "SkrGraphics/api.h"
 #include "SkrTestFramework/framework.hpp"
 #include <iostream>
+#include <vector>
 
 template <ECGPUBackend backend>
 class DeviceInitializeTest

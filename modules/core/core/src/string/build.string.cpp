@@ -1,8 +1,3 @@
-#include "OpenString/platforms.cpp"
-#include "OpenString/codeunit_sequence.cpp"
-#include "OpenString/text.cpp"
-#include "OpenString/wide_text.cpp"
-#include "OpenString/format.cpp"
 #include "SkrCore/log.h"
 #include "SkrContainersDef/string.hpp"
 
@@ -67,7 +62,6 @@ bool make_guid_helper(const char8_t* begin, skr_guid_t& value)
 
 bool guid_from_sv(const skr::StringView& str, skr_guid_t& value)
 {
-    using namespace skr::StringLiterals;
     constexpr size_t short_guid_form_length = 36;
     constexpr size_t long_guid_form_length  = 38;
 
@@ -80,7 +74,7 @@ bool guid_from_sv(const skr::StringView& str, skr_guid_t& value)
 
     if (str.size() == (long_guid_form_length + 1))
     {
-        if (str.raw().data()[0] != u8'{' || str.raw().data()[long_guid_form_length - 1] != u8'}')
+        if (str.at_buffer(0) != u8'{' || str.at_buffer(long_guid_form_length - 1) != u8'}')
         {
             skr::String str2(str);
             SKR_LOG_ERROR(u8"Opening or closing brace is expected, got %s", str2.c_str());
@@ -88,7 +82,7 @@ bool guid_from_sv(const skr::StringView& str, skr_guid_t& value)
         }
     }
 
-    return make_guid_helper(str.raw().data() + (str.size() == (long_guid_form_length + 1) ? 1 : 0), value);
+    return make_guid_helper(str.data() + (str.size() == (long_guid_form_length + 1) ? 1 : 0), value);
 }
 
 } // namespace skr

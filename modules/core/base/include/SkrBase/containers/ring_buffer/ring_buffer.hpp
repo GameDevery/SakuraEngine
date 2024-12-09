@@ -389,7 +389,10 @@ inline void RingBuffer<Memory>::release(SizeType reserve_capacity)
     clear();
     if (reserve_capacity)
     {
-        _realloc(reserve_capacity);
+        if (reserve_capacity != capacity())
+        {
+            _realloc(reserve_capacity);
+        }
     }
     else
     {
@@ -401,7 +404,14 @@ inline void RingBuffer<Memory>::reserve(SizeType expect_capacity)
 {
     if (expect_capacity > capacity())
     {
-        _realloc(expect_capacity);
+        if (expect_capacity != capacity())
+        {
+            _realloc(expect_capacity);
+        }
+    }
+    else
+    {
+        _free();
     }
 }
 template <typename Memory>

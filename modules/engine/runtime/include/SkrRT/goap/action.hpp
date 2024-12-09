@@ -77,7 +77,7 @@ struct Action {
 
     CostType cost() const { return cost_; }
 #ifdef SKR_GOAP_SET_NAME
-    const char8_t* name() const { return name_.u8_str(); }
+    const char8_t* name() const { return name_.c_str(); }
 #else
     const char8_t* name() const { return u8"SET_NAME_NOT_ENABLED"; }
 #endif

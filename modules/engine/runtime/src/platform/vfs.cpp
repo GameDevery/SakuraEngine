@@ -22,8 +22,8 @@ void skr_vfs_append_path_extension(const char8_t* path, const char8_t* extension
     {
         p.append(u8".");
     }
-    const auto appended = p.append(extension);
-    std::strcpy((char*)output, appended.c_str());
+    p.append(extension);
+    std::strcpy((char*)output, p.c_str_raw());
 }
 
 skr_vfile_t* skr_vfs_fopen(skr_vfs_t* fs, const char8_t* path, ESkrFileMode mode, ESkrFileCreation creation) SKR_NOEXCEPT

@@ -149,7 +149,7 @@ void RAMService::poll_finish_callbacks() SKR_NOEXCEPT
 }
 
 RAMService::Runner::Runner(RAMService* service, skr::JobQueue* job_queue) SKR_NOEXCEPT
-    : RunnerBase({ service->name.u8_str(), SKR_THREAD_ABOVE_NORMAL }, job_queue),
+    : RunnerBase({ service->name.c_str(), SKR_THREAD_ABOVE_NORMAL }, job_queue),
     service(service)
 {
 

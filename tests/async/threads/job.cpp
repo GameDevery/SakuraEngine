@@ -130,7 +130,7 @@ struct Launcher_ThreadJobQueue
             auto jqDesc = make_zeroed<skr::JobQueueDesc>();
             jqDesc.thread_count = 2;
             jqDesc.priority = SKR_THREAD_NORMAL;
-            jqDesc.name = qn.u8_str();
+            jqDesc.name = qn.c_str();
             jq = skr::SPtr<skr::JobQueue>::Create(jqDesc);
         }
         SKR_ASSERT(jq);

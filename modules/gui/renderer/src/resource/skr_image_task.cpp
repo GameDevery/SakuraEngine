@@ -109,7 +109,7 @@ void SkrImageDataTask::from_file(StringView file_path, bool need_decode)
 
     auto rq = ram_service->open_request();
     rq->set_vfs(vfs);
-    rq->set_path(file_path.raw().data());
+    rq->set_path(file_path.data());
     rq->add_block({}); // read all
     rq->add_callback(
     SKR_IO_STAGE_ENQUEUED, +[](skr_io_future_t* future, skr_io_request_t* request, void* usrdata) {

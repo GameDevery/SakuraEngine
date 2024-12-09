@@ -88,7 +88,7 @@ bool ShaderProgress::do_in_background()
     auto desc = make_zeroed<CGPUShaderLibraryDescriptor>();
     desc.code = (const uint32_t*)blob->get_data();
     desc.code_size = (uint32_t)blob->get_size();
-    desc.name = bytes_uri.u8_str();
+    desc.name = bytes_uri.c_str();
     desc.stage = identifier.shader_stage;
     const auto created_shader = cgpu_create_shader_library(device, &desc);
     blob.reset();
@@ -169,7 +169,7 @@ ESkrShaderMapShaderStatus ShaderMapImpl::install_shader_from_vfs(const skr_platf
     const auto hash = identifier.hash;
     const auto uri = skr::format(u8"{}#{}-{}-{}-{}.bytes", hash.flags, 
         hash.encoded_digits[0], hash.encoded_digits[1], hash.encoded_digits[2], hash.encoded_digits[3]);
-    auto sRequest = SPtr<ShaderProgress>::Create(this, uri.u8_str(), identifier);
+    auto sRequest = SPtr<ShaderProgress>::Create(this, uri.c_str(), identifier);
     auto found = mShaderTasks.find(identifier);
     SKR_ASSERT(found == mShaderTasks.end());
     mShaderTasks.emplace(identifier, sRequest);
@@ -177,7 +177,7 @@ ESkrShaderMapShaderStatus ShaderMapImpl::install_shader_from_vfs(const skr_platf
     auto service = root.ram_service;
     auto request = service->open_request();
     request->set_vfs(bytes_vfs);
-    request->set_path(sRequest->bytes_uri.u8_str());
+    request->set_path(sRequest->bytes_uri.c_str());
     request->add_block({}); // read all
     request->add_callback(SKR_IO_STAGE_COMPLETED, +[](skr_io_future_t* future, skr_io_request_t* request, void* data) noexcept {
         SkrZoneScopedN("CreateShaderFromBytes");

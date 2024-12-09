@@ -150,7 +150,7 @@ static void CALLBACK __decompressThreadPoolTask_DirectStorage(
 #ifdef SKR_PROFILE_ENABLE
     auto thread_id = skr_current_thread_id();
     const auto indexed_name = skr::format(u8"DirectStorageDecompressThread(Pooled)-{}", thread_id);
-    tracy::SetThreadName(indexed_name.c_str());
+    tracy::SetThreadName(indexed_name.c_str_raw());
 #endif
 
     auto service = (skr_win_dstorage_decompress_service_id)data;

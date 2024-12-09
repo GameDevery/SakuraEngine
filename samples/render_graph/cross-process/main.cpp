@@ -24,7 +24,7 @@ int main(int argc, char* argv[])
         const auto provider_id = skr_get_process_id(provider);
 
         skr::String providerIdString = skr::format(u8"{}", provider_id);
-        const char8_t* receiver_arguments[] = { u8"receiver", providerIdString.u8_str() };
+        const char8_t* receiver_arguments[] = { u8"receiver", providerIdString.c_str() };
         auto receiver = skr_run_process(exec_name, 
             receiver_arguments, 2, u8"receiver.log");
 

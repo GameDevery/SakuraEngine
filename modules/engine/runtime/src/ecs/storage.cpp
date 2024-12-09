@@ -1144,7 +1144,7 @@ sugoi_query_t* sugoiQ_create(sugoi_storage_t* storage, const sugoi_filter_t* fil
 
 void sugoiQ_make_alias(sugoi_storage_t* storage, const char8_t* component, const char8_t* alias)
 {
-    storage->make_alias((ochar8_t*)component, (ochar8_t*)alias);
+    storage->make_alias((skr_char8*)component, (skr_char8*)alias);
 }
 
 void sugoiQ_release(sugoi_query_t* q)
@@ -1178,7 +1178,7 @@ void sugoiQ_in_group(sugoi_query_t* q, sugoi_group_t* group, sugoi_view_callback
 
 const char8_t* sugoiQ_get_error()
 {
-    return sugoi::get_error().u8_str();
+    return sugoi::get_error().c_str();
 }
 
 void sugoiQ_add_child(sugoi_query_t* q, sugoi_query_t* child)

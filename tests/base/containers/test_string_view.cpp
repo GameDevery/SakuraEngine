@@ -579,4 +579,46 @@ TEST_CASE("Test U8StringView")
             REQUIRE_EQ(idx, 0);
         }
     }
+
+    SUBCASE("convert")
+    {
+        auto raw_c_str  = "🐓🏀🐓🏀🐓🏀🐓🏀🐓🏀🐓🏀鸡鸡GGGĜĜĜĜ";
+        auto wide_c_str = L"🐓🏀🐓🏀🐓🏀🐓🏀🐓🏀🐓🏀鸡鸡GGGĜĜĜĜ";
+        auto u8_c_str   = u8"🐓🏀🐓🏀🐓🏀🐓🏀🐓🏀🐓🏀鸡鸡GGGĜĜĜĜ";
+        auto u16_c_str  = u"🐓🏀🐓🏀🐓🏀🐓🏀🐓🏀🐓🏀鸡鸡GGGĜĜĜĜ";
+        auto u32_c_str  = U"🐓🏀🐓🏀🐓🏀🐓🏀🐓🏀🐓🏀鸡鸡GGGĜĜĜĜ";
+
+        Vector<char>     raw_buffer(raw_c_str, std::char_traits<char>::length(raw_c_str));
+        Vector<wchar_t>  wide_buffer(wide_c_str, std::char_traits<wchar_t>::length(wide_c_str));
+        Vector<char8_t>  u8_buffer(u8_c_str, std::char_traits<char8_t>::length(u8_c_str));
+        Vector<char16_t> u16_buffer(u16_c_str, std::char_traits<char16_t>::length(u16_c_str));
+        Vector<char32_t> u32_buffer(u32_c_str, std::char_traits<char32_t>::length(u32_c_str));
+
+        StringView view{ u8_c_str };
+
+        Vector<char> raw_cast_buffer;
+        raw_cast_buffer.resize_unsafe(view.to_raw_length());
+        view.to_raw(raw_cast_buffer.data());
+        REQUIRE_EQ(raw_cast_buffer, raw_buffer);
+
+        Vector<wchar_t> wide_cast_buffer;
+        wide_cast_buffer.resize_unsafe(view.to_wide_length());
+        view.to_wide(wide_cast_buffer.data());
+        REQUIRE_EQ(wide_cast_buffer, wide_buffer);
+
+        Vector<char8_t> u8_cast_buffer;
+        u8_cast_buffer.resize_unsafe(view.to_u8_length());
+        view.to_u8(u8_cast_buffer.data());
+        REQUIRE_EQ(u8_cast_buffer, u8_buffer);
+
+        Vector<char16_t> u16_cast_buffer;
+        u16_cast_buffer.resize_unsafe(view.to_u16_length());
+        view.to_u16(u16_cast_buffer.data());
+        REQUIRE_EQ(u16_cast_buffer, u16_buffer);
+
+        Vector<char32_t> u32_cast_buffer;
+        u32_cast_buffer.resize_unsafe(view.to_u32_length());
+        view.to_u32(u32_cast_buffer.data());
+        REQUIRE_EQ(u32_cast_buffer, u32_buffer);
+    }
 }

@@ -90,6 +90,9 @@ struct UTF8Seq {
     constexpr skr_char8& operator[](uint32_t index);
     constexpr skr_char8  operator[](uint32_t index) const;
 
+    // convert len
+    constexpr uint64_t to_utf16_len() const;
+
 public:
     alignas(4) skr_char8 data[4] = {};
     skr_char8 bad_data           = {};
@@ -124,6 +127,9 @@ struct UTF16Seq {
     constexpr skr_char16  at(uint32_t index) const;
     constexpr skr_char16& operator[](uint32_t index);
     constexpr skr_char16  operator[](uint32_t index) const;
+
+    // convert len
+    constexpr uint64_t to_utf8_len() const;
 
 public:
     alignas(4) skr_char16 data[2] = {};
@@ -560,6 +566,12 @@ inline constexpr skr_char8 UTF8Seq::operator[](uint32_t index) const
     return data[index];
 }
 
+// convert len
+inline constexpr uint64_t UTF8Seq::to_utf16_len() const
+{
+    return is_valid() ? utf16_seq_len(data[0]) : 1;
+}
+
 //==================> utf-16 sequence <==================
 inline constexpr UTF16Seq::UTF16Seq() = default;
 inline constexpr UTF16Seq::UTF16Seq(const skr_char16* c_str, uint8_t len)
@@ -674,4 +686,11 @@ inline constexpr skr_char16 UTF16Seq::operator[](uint32_t index) const
 {
     return data[index];
 }
+
+// convert len
+inline constexpr uint64_t UTF16Seq::to_utf8_len() const
+{
+    return is_valid() ? utf8_seq_len(data[0]) : 1;
+}
+
 } // namespace skr

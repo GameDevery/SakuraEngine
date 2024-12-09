@@ -90,7 +90,7 @@ public:
     IModule()                              = default;
     IModule(const IModule& rhs)            = delete;
     IModule& operator=(const IModule& rhs) = delete;
-    virtual ~IModule(){};
+    virtual ~IModule() {};
     virtual void              on_load(int argc, char8_t** argv) = 0;
     virtual void              on_unload()                       = 0;
     virtual int               main_module_exec(int argc, char8_t** argv) { return 0; }
@@ -118,7 +118,7 @@ struct SKR_CORE_API IDynamicModule : public IModule {
     {
         skr::String symbolname = u8"__skr_module_meta__";
         symbolname.append(information.name);
-        const char8_t* symbol_str = symbolname.u8_str();
+        const char8_t* symbol_str = symbolname.c_str();
         return sharedLib->get<const char8_t*>(symbol_str);
     }
     SharedLibrary* sharedLib = nullptr;

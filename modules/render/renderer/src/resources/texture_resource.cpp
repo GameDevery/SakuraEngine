@@ -35,8 +35,8 @@ struct SKR_RENDERER_API STextureFactoryImpl : public STextureFactory {
     STextureFactoryImpl(const STextureFactory::Root& root)
         : root(root)
     {
-        dstorage_root            = skr::String::from_utf8(root.dstorage_root);
-        this->root.dstorage_root = dstorage_root.u8_str();
+        dstorage_root            = skr::String::From(root.dstorage_root);
+        this->root.dstorage_root = dstorage_root.c_str();
     }
     ~STextureFactoryImpl() noexcept = default;
     skr_guid_t        GetResourceType() override;
@@ -180,7 +180,7 @@ ESkrInstallStatus STextureFactoryImpl::InstallImpl(skr_resource_record_t* record
 
             auto request = vram_service->open_texture_request();
             request->set_vfs(root.vfs);
-            request->set_path(compressedBin.u8_str());
+            request->set_path(compressedBin.c_str());
             request->set_texture(render_device->get_cgpu_device(), &tdesc);
             request->set_transfer_queue(render_device->get_cpy_queue());
             auto result          = batch->add_request(request, &dRequest->vtexture_future);

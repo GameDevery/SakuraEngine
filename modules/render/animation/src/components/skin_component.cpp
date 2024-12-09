@@ -33,7 +33,7 @@ void skr_init_skin_component(skr::anim::SkinComponent* component, const skr::ani
     {
         for (size_t j = 0; j < skeleton->skeleton.num_joints(); ++j)
         {
-            auto remap = (const char*)skin->joint_remaps[i].raw().data();
+            auto remap = (const char*)skin->joint_remaps[i].data();
             if (strcmp(skeleton->skeleton.joint_names()[j], remap) == 0)
             {
                 component->joint_remaps[i] = static_cast<uint32_t>(j);

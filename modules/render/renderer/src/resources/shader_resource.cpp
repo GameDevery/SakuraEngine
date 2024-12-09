@@ -92,7 +92,7 @@ skr_stable_shader_hash_t skr_shader_option_sequence_t::calculate_stable_hash(con
 {
     skr::String signatureString;
     option_utils::stringfy(signatureString, seq, indices);
-    return skr_stable_shader_hash_t::hash_string(signatureString.c_str(), (uint32_t)signatureString.size());
+    return skr_stable_shader_hash_t::hash_string(signatureString.c_str_raw(), (uint32_t)signatureString.size());
 }
 
 namespace skr

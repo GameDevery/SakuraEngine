@@ -123,6 +123,14 @@ TEST_CASE("test bit vector")
         REQUIRE_EQ(a.capacity(), 0);
         REQUIRE_EQ(a.data(), nullptr);
 
+        // release and eq to capacity
+        a.reserve(4096);
+        a.release(4096);
+        REQUIRE_EQ(a.size(), 0);
+        REQUIRE_EQ(a.capacity(), 4096);
+        REQUIRE_NE(a.data(), nullptr);
+        a.release();
+
         a.reserve(40);
         REQUIRE_EQ(a.size(), 0);
         REQUIRE_GE(a.capacity(), 40);

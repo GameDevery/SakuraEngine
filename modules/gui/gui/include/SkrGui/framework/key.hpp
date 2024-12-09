@@ -285,7 +285,7 @@ inline size_t Key::_skr_hash(const Key& k) SKR_NOEXCEPT
         case EKeyType::Name:
         case EKeyType::NameStorage: {
             const auto& x = k.get_name();
-            return ostr::hash_sequence_crc64(x.c_str(), x.size());
+            return skr_hash(x.c_str(), x.size(), 0);
         }
         default: {
             SKR_UNREACHABLE_CODE();

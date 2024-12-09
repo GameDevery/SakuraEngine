@@ -56,7 +56,7 @@ void skr_save_scene(sugoi_storage_t* world, skr::archive::JsonWriter* writer)
         for (EIndex i = 0; i < view->count; ++i)
         {
             auto guidStr = skr::format(u8"{}", cguids[i]);
-            writer->Key(guidStr.u8_str());
+            writer->Key(guidStr.c_str());
             writer->StartObject();
             for (EIndex j = 0; j < type.type.length; ++j)
             {

@@ -45,11 +45,11 @@ struct ReceiverRenderer
 void ReceiverRenderer::create_window()
 {
     skr::String title = u8"Cross-Process Receiver [";
-    title += gCGPUBackendNames[backend];
-    title += u8"]";
-    title += u8" PID: ";
-    title += skr::format(u8"{}", skr_get_current_process_id());
-    sdl_window = SDL_CreateWindow(title.c_str(),
+    title.append(gCGPUBackendNames[backend]);
+    title.append(u8"]");
+    title.append(u8" PID: ");
+    title.append(skr::format(u8"{}", skr_get_current_process_id()));
+    sdl_window = SDL_CreateWindow(title.c_str_raw(),
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         BACK_BUFFER_WIDTH, BACK_BUFFER_HEIGHT,
         SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
@@ -212,7 +212,7 @@ CGPUImportTextureDescriptor receiver_get_shared_handle(MDB_env* env, MDB_dbi dbi
 
     //Initialize the key with the key we're looking for
     const auto keyString = skr::format(u8"{}", provider_id);
-    MDB_val key = { (size_t)keyString.size(), (void*)keyString.u8_str() };
+    MDB_val key = { (size_t)keyString.size(), (void*)keyString.c_str() };
     MDB_val data;
 
     //Position the cursor, key and data are available in key

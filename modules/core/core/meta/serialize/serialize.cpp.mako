@@ -26,14 +26,14 @@ skr::StringView EnumSerdeTraits<${enum.name}>::to_string(const ${enum.name}& val
     switch (value)
     {
 %for enum_value in enum.values.values():
-    case ${enum.name}::${enum_value.short_name}: return u8"${enum_value.name}";
+    case ${enum.name}::${enum_value.short_name}: return u8"${enum_value.short_name}";
 %endfor
     default: SKR_UNREACHABLE_CODE(); return u8"${enum.name}::__INVALID_ENUMERATOR__";
     }
 }
 bool EnumSerdeTraits<${enum.name}>::from_string(skr::StringView str, ${enum.name}& value)
 {
-    const auto hash = skr_hash64(str.raw().data(), str.size(), 0);
+    const auto hash = skr_hash64(str.data(), str.size(), 0);
     switch(hash)
     {
 %for enum_value in enum.values.values():

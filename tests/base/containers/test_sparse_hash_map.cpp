@@ -135,6 +135,15 @@ void template_test_sparse_hash_map(ModifyCapacity&& capacity_of, ClampCapacity&&
         REQUIRE_EQ(a.hole_size(), 0);
         REQUIRE_EQ(a.capacity(), capacity_of(0));
 
+        // release eq to capcity
+        a.reserve(capacity_of(4096));
+        a.release(capacity_of(4096));
+        REQUIRE_EQ(a.size(), 0);
+        REQUIRE_EQ(a.sparse_size(), 0);
+        REQUIRE_EQ(a.hole_size(), 0);
+        REQUIRE_EQ(a.capacity(), capacity_of(4096));
+        a.release();
+
         a.release(5);
         REQUIRE_EQ(a.size(), 0);
         REQUIRE_EQ(a.sparse_size(), 0);

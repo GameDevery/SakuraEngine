@@ -26,7 +26,7 @@ inline static void AFTERMATH_CHECK_ERROR(GFSDK_Aftermath_Result _result)
     {
         cgpu_error(u8"%s\n", AftermathErrorMessage(_result).c_str());
 #ifdef _WIN32
-        MessageBoxA(0, AftermathErrorMessage(_result).c_str(), "Aftermath Error", MB_OK); 
+        MessageBoxA(0, AftermathErrorMessage(_result).c_str_raw(), "Aftermath Error", MB_OK); 
 #endif
         SKR_BREAK();
     }
@@ -103,8 +103,8 @@ struct CGPUNSightSingletonImpl : public CGPUNSightSingleton
         // Write the crash dump data to a file using the .nv-gpudmp extension
         // registered with Nsight Graphics.
         cgpu::String crashDumpFileName = baseFileName;
-        crashDumpFileName += u8".nv-gpudmp";
-        std::ofstream dumpFile(crashDumpFileName.c_str(), std::ios::out | std::ios::binary);
+        crashDumpFileName.append(u8".nv-gpudmp");
+        std::ofstream dumpFile(crashDumpFileName.c_str_raw(), std::ios::out | std::ios::binary);
         if (dumpFile)
         {
             dumpFile.write((const char*)pGpuCrashDump, gpuCrashDumpSize);

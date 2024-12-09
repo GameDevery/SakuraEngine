@@ -1187,9 +1187,9 @@ bool cgpu_try_bind_aliasing_texture_d3d12(CGPUDeviceId device, const struct CGPU
                 if (device->adapter->instance->enable_set_name)
                 {
                     wchar_t debugName[MAX_GPU_DEBUG_NAME_LENGTH] = {};
-                    auto    alisingName                          = Aliasing->name.append(u8"[aliasing]");
+                    Aliasing->name.append(u8"[aliasing]");
                     if (!Aliasing->name.is_empty())
-                        mbstowcs(debugName, (const char*)alisingName.c_str(), MAX_GPU_DEBUG_NAME_LENGTH);
+                        mbstowcs(debugName, Aliasing->name.c_str_raw(), MAX_GPU_DEBUG_NAME_LENGTH);
                     Aliasing->pDxResource->SetName(debugName);
                 }
             }

@@ -100,7 +100,7 @@ FTL_THREAD_FUNC_RETURN_TYPE TaskScheduler::ThreadStartFunc(void* const arg)
 #ifdef SKR_PROFILE_ENABLE
     {
         ::skr::String threadId = ::skr::format(u8"worker-{}", index);
-        SkrFiberEnter(threadId.c_str());
+        SkrFiberEnter(threadId.c_str_raw());
         taskScheduler->m_tls[index].ThreadFiber.SwitchToFiber(freeFiber);
         SkrFiberLeave;
     }

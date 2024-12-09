@@ -146,7 +146,7 @@ int WinCrashHandler::internalHandler(struct SCrashContext* context) SKR_NOEXCEPT
     u8"Crashed! Reason: {}",
     skr_crash_code_string(reason));
 
-    SKR_LOG_FATAL(why.u8_str());
+    SKR_LOG_FATAL(why.c_str());
 
     // save crash minidump
     {
@@ -161,7 +161,7 @@ int WinCrashHandler::internalHandler(struct SCrashContext* context) SKR_NOEXCEPT
 
         skr::String dumpPath  = skr::format(u8"{}\\{}-minidump-{}.dmp",
                                             currentPath, skr_get_current_process_name(), dateTime);
-        const char* pDumpPath = dumpPath.c_str();
+        const char* pDumpPath = dumpPath.c_str_raw();
 
         HANDLE lhDumpFile = ::CreateFileA(pDumpPath,
                                           GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -178,7 +178,7 @@ int WinCrashHandler::internalHandler(struct SCrashContext* context) SKR_NOEXCEPT
 
     // show message box
     ::MessageBoxExA(nullptr,
-                    why.c_str(),
+                    why.c_str_raw(),
                     "Crash 了！",
                     type, 0);
 

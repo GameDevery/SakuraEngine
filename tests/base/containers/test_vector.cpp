@@ -172,6 +172,14 @@ void template_test_vector(ModifyCapacity&& capacity_of, ClampCapacity&& clamp_ca
         REQUIRE_EQ(a.capacity(), capacity_of(0));
         check_no_data(a);
 
+        // release eq to capcity
+        a.reserve(capacity_of(4096));
+        a.release(capacity_of(4096));
+        REQUIRE_EQ(a.size(), 0);
+        REQUIRE_EQ(a.capacity(), capacity_of(4096));
+        check_data(a);
+        a.release();
+
         a.reserve(60);
         REQUIRE_EQ(a.size(), 0);
         REQUIRE_GE(a.capacity(), capacity_of(60));

@@ -200,11 +200,11 @@ void LogPattern::_initialize() SKR_NOEXCEPT
 void LogPattern::_set_pattern(skr::String pattern) SKR_NOEXCEPT
 {
     skr::String format_pattern = pattern;
-    format_pattern += u8"\n";
+    format_pattern.append(u8"\n");
     {
         // the order we pass the arguments here must match with the order of Attribute enum
         auto _ = _generate_fmt_format_string(
-        is_set_in_pattern_, _args_n, format_pattern.u8_str(),
+        is_set_in_pattern_, _args_n, format_pattern.c_str(),
         u8"timestamp", u8"level_id", u8"level_name", u8"logger_name",
         u8"thread_id", u8"thread_name", u8"process_id", u8"process_name",
         u8"file_name", u8"file_line", u8"function_name", u8"message");
@@ -251,7 +251,7 @@ const static SThreadID main_thread_id      = skr_current_thread_id();
 static skr::String     timestring          = u8"";
 skr::String const&     LogPattern::pattern(const LogEvent& event, skr::StringView formatted_message) SKR_NOEXCEPT
 {
-    formatted_string_.empty();
+    formatted_string_.clear();
     if (calculated_format_.is_empty())
         return formatted_string_;
 

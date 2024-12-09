@@ -3,6 +3,7 @@
 #include "SkrCore/async/wait_timeout.hpp"
 #include "SkrCore/log.h"
 #include "job_thread.hpp"
+#include <algorithm>
 
 namespace skr
 {
@@ -180,7 +181,7 @@ JobItem::JobItem(const char8_t* name, const JobItemDesc& desc) SKR_NOEXCEPT
 
 const char8_t* JobItem::get_name() SKR_NOEXCEPT
 {
-    return name.u8_str();
+    return name.c_str();
 }
 
 JobItem::~JobItem() SKR_NOEXCEPT
@@ -219,7 +220,7 @@ JobQueue::JobQueue(const JobQueueDesc& desc) SKR_NOEXCEPT
 {
     queue_name = desc.name ? desc.name : u8"UnknownJobQueue";
     skr_init_rw_mutex(&pending_queue_mutex);
-    itemList = SkrNew<JobItemQueue>(queue_name.u8_str());
+    itemList = SkrNew<JobItemQueue>(queue_name.c_str());
     SKR_ASSERT(itemList);
     initialize();
 }
@@ -244,10 +245,10 @@ JobResult JobQueue::initialize() SKR_NOEXCEPT
             return ASYNC_RESULT_ERROR_OUT_OF_MEMORY;
         }
         skr::String tname = n ? n : u8"UnknownJobQueue";
-        auto taftfix = skr::format(u8"_{}"_cuqv, (int32_t)i);
+        auto taftfix = skr::format(u8"_{}", (int32_t)i);
         tname.append(taftfix);
         NamedThreadDesc tdesc = {};
-        tdesc.name = tname.u8_str();
+        tdesc.name = tname.c_str();
         tdesc.priority = desc.priority;
         tdesc.stack_size = desc.stack_size;
         auto t = SkrNew<JobQueueThread>();

@@ -43,6 +43,7 @@
 #include "SkrBase/containers/string/string_view.hpp"
 #include "SkrBase/containers/string/string.hpp"
 #include "SkrBase/containers/string/string_memory.hpp"
+#include "SkrBase/containers/string/format.hpp"
 
 namespace skr::test_container
 {
@@ -240,5 +241,11 @@ using String     = container::U8String<container::StringMemory<
     TestSizeType,
     kStringSSOSize,
     TestAllocatorType>>;
+
+template <typename... Args>
+inline String format(StringView fmt, Args&&... args)
+{
+    return container::format<String>(fmt, std::forward<Args>(args)...);
+}
 
 } // namespace skr::test_container
