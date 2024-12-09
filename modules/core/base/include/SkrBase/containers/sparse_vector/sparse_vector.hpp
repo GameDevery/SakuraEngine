@@ -72,7 +72,7 @@ struct SparseVector : protected Memory {
     SizeType            bit_size() const;
     SizeType            freelist_head() const;
     bool                is_compact() const;
-    bool                empty() const;
+    bool                is_empty() const;
     StorageType*        storage();
     const StorageType*  storage() const;
     BitBlockType*       bit_data();
@@ -568,7 +568,7 @@ SKR_INLINE bool SparseVector<Memory>::is_compact() const
     return hole_size() == 0;
 }
 template <typename Memory>
-SKR_INLINE bool SparseVector<Memory>::empty() const
+SKR_INLINE bool SparseVector<Memory>::is_empty() const
 {
     return (sparse_size() - hole_size()) == 0;
 }
@@ -661,7 +661,7 @@ SKR_INLINE void SparseVector<Memory>::shrink()
 template <typename Memory>
 SKR_INLINE bool SparseVector<Memory>::compact()
 {
-    if (!empty() && !is_compact())
+    if (!is_empty() && !is_compact())
     {
         // fill hole
         SizeType compacted_index = sparse_size() - hole_size();
@@ -703,7 +703,7 @@ SKR_INLINE bool SparseVector<Memory>::compact()
 template <typename Memory>
 SKR_INLINE bool SparseVector<Memory>::compact_stable()
 {
-    if (!empty() && !is_compact())
+    if (!is_empty() && !is_compact())
     {
         SizeType compacted_index = sparse_size() - hole_size();
         SizeType read_index      = 0;
@@ -1130,25 +1130,25 @@ SKR_INLINE typename SparseVector<Memory>::SizeType SparseVector<Memory>::remove_
 template <typename Memory>
 SKR_INLINE typename SparseVector<Memory>::DataType& SparseVector<Memory>::operator[](SizeType index)
 {
-    SKR_ASSERT(!empty() && is_valid_index(index) && has_data(index));
+    SKR_ASSERT(!is_empty() && is_valid_index(index) && has_data(index));
     return storage()[index]._sparse_vector_data;
 }
 template <typename Memory>
 SKR_INLINE const typename SparseVector<Memory>::DataType& SparseVector<Memory>::operator[](SizeType index) const
 {
-    SKR_ASSERT(!empty() && is_valid_index(index) && has_data(index));
+    SKR_ASSERT(!is_empty() && is_valid_index(index) && has_data(index));
     return storage()[index]._sparse_vector_data;
 }
 template <typename Memory>
 SKR_INLINE typename SparseVector<Memory>::DataType& SparseVector<Memory>::at(SizeType index)
 {
-    SKR_ASSERT(!empty() && is_valid_index(index) && has_data(index));
+    SKR_ASSERT(!is_empty() && is_valid_index(index) && has_data(index));
     return storage()[index]._sparse_vector_data;
 }
 template <typename Memory>
 SKR_INLINE const typename SparseVector<Memory>::DataType& SparseVector<Memory>::at(SizeType index) const
 {
-    SKR_ASSERT(!empty() && is_valid_index(index) && has_data(index));
+    SKR_ASSERT(!is_empty() && is_valid_index(index) && has_data(index));
     return storage()[index]._sparse_vector_data;
 }
 template <typename Memory>

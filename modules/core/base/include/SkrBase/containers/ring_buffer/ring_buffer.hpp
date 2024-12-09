@@ -44,7 +44,7 @@ struct RingBuffer : protected Memory {
     SizeType      size() const;
     SizeType      capacity() const;
     SizeType      slack() const;
-    bool          empty() const;
+    bool          is_empty() const;
     bool          full() const;
     Memory&       memory();
     const Memory& memory() const;
@@ -350,7 +350,7 @@ inline typename RingBuffer<Memory>::SizeType RingBuffer<Memory>::slack() const
     return capacity() - size();
 }
 template <typename Memory>
-inline bool RingBuffer<Memory>::empty() const
+inline bool RingBuffer<Memory>::is_empty() const
 {
     return size() == 0;
 }

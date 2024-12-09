@@ -17,7 +17,7 @@ void ContainerLayer::add_child(NotNull<Layer*> child) SKR_NOEXCEPT
 }
 bool ContainerLayer::has_children() const SKR_NOEXCEPT
 {
-    return !_children.empty();
+    return !_children.is_empty();
 }
 void ContainerLayer::remove_all_children() SKR_NOEXCEPT
 {

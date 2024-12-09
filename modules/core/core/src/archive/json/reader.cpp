@@ -21,7 +21,7 @@ struct _ReaderHelper {
     {
         using Level = _JsonReader::Level;
         using Type  = std::decay_t<T>;
-        SKR_RET_JSON_READ_ERROR_IF(!r->_stack.empty(), JsonReadError::NoOpenScope);
+        SKR_RET_JSON_READ_ERROR_IF(!r->_stack.is_empty(), JsonReadError::NoOpenScope);
 
         auto           type   = r->_stack.back()._type;
         auto           parent = (yyjson_val*)r->_stack.back()._value;
@@ -87,7 +87,7 @@ _JsonReader::~_JsonReader()
 
 JsonReadResult _JsonReader::StartObject(skr::StringView key)
 {
-    if (_stack.empty())
+    if (_stack.is_empty())
     {
         SKR_RET_JSON_READ_ERROR_IF(key.is_empty(), JsonReadError::RootObjectWithKey);
         auto obj = yyjson_doc_get_root((yyjson_doc*)_document);
@@ -122,7 +122,7 @@ JsonReadResult _JsonReader::StartObject(skr::StringView key)
 
 JsonReadResult _JsonReader::EndObject()
 {
-    SKR_RET_JSON_READ_ERROR_IF(!_stack.empty(), JsonReadError::NoOpenScope);
+    SKR_RET_JSON_READ_ERROR_IF(!_stack.is_empty(), JsonReadError::NoOpenScope);
     SKR_RET_JSON_READ_ERROR_IF(_stack.back()._type == Level::kObject, JsonReadError::ScopeTypeMismatch);
     _stack.pop_back();
     return {};
@@ -130,7 +130,7 @@ JsonReadResult _JsonReader::EndObject()
 
 JsonReadResult _JsonReader::StartArray(skr::StringView key, SizeType& count)
 {
-    SKR_RET_JSON_READ_ERROR_IF(!_stack.empty(), JsonReadError::NoOpenScope);
+    SKR_RET_JSON_READ_ERROR_IF(!_stack.is_empty(), JsonReadError::NoOpenScope);
     auto parent      = (yyjson_val*)_stack.back()._value;
     auto parent_type = yyjson_get_type(parent);
     if (parent_type == YYJSON_TYPE_ARR)
@@ -158,7 +158,7 @@ JsonReadResult _JsonReader::StartArray(skr::StringView key, SizeType& count)
 
 JsonReadResult _JsonReader::EndArray()
 {
-    SKR_RET_JSON_READ_ERROR_IF(!_stack.empty(), JsonReadError::NoOpenScope);
+    SKR_RET_JSON_READ_ERROR_IF(!_stack.is_empty(), JsonReadError::NoOpenScope);
     SKR_RET_JSON_READ_ERROR_IF(_stack.back()._type == Level::kArray, JsonReadError::ScopeTypeMismatch);
     _stack.pop_back();
     return {};

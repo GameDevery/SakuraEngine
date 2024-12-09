@@ -49,7 +49,7 @@ struct SparseHashBase : protected SparseVector<Memory> {
     SizeType          bit_size() const;
     SizeType          free_list_head() const;
     bool              is_compact() const;
-    bool              empty() const;
+    bool              is_empty() const;
     DataVector&       data_vector();
     const DataVector& data_vector() const;
     SizeType*         bucket();
@@ -314,9 +314,9 @@ SKR_INLINE bool SparseHashBase<Memory>::is_compact() const
     return Super::is_compact();
 }
 template <typename Memory>
-SKR_INLINE bool SparseHashBase<Memory>::empty() const
+SKR_INLINE bool SparseHashBase<Memory>::is_empty() const
 {
-    return Super::empty();
+    return Super::is_empty();
 }
 template <typename Memory>
 SKR_INLINE typename SparseHashBase<Memory>::DataVector& SparseHashBase<Memory>::data_vector()
@@ -580,7 +580,7 @@ template <typename Memory>
 template <typename Pred>
 SKR_INLINE typename SparseHashBase<Memory>::SizeType SparseHashBase<Memory>::_remove_all(HashType hash, Pred&& pred)
 {
-    if (empty()) return 0;
+    if (is_empty()) return 0;
 
     SizeType count = 0;
 

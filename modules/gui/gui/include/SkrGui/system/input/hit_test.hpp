@@ -38,7 +38,7 @@ struct HitTestEntry {
 
 struct HitTestResult {
     // info
-    inline bool empty() const SKR_NOEXCEPT { return _path.empty(); }
+    inline bool empty() const SKR_NOEXCEPT { return _path.is_empty(); }
 
     // add
     inline void add(HitTestEntry entry)
@@ -116,7 +116,7 @@ struct HitTestResult {
     }
     inline void pop_transform()
     {
-        if (!_local_transforms.empty())
+        if (!_local_transforms.is_empty())
         {
             _local_transforms.stack_pop();
         }
@@ -133,9 +133,9 @@ private:
     inline Matrix4 _get_last_transform()
     {
         // globalize transforms
-        if (!_local_transforms.empty())
+        if (!_local_transforms.is_empty())
         {
-            Matrix4 last = _transforms.empty() ? Matrix4::Identity() : _transforms.last();
+            Matrix4 last = _transforms.is_empty() ? Matrix4::Identity() : _transforms.last();
             for (const auto matrix : _local_transforms)
             {
                 last = matrix * last;
@@ -144,7 +144,7 @@ private:
             _local_transforms.clear();
         }
 
-        return _transforms.empty() ? Matrix4::Identity() : _transforms.last();
+        return _transforms.is_empty() ? Matrix4::Identity() : _transforms.last();
     }
 
 private:

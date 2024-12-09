@@ -552,12 +552,12 @@ void RenderGraphBackend::execute_compute_pass(RenderGraphFrameExecutor& executor
     pass_context.executor          = &executor;
     // call cgpu apis
     CGPUResourceBarrierDescriptor barriers = {};
-    if (!tex_barriers.empty())
+    if (!tex_barriers.is_empty())
     {
         barriers.texture_barriers       = tex_barriers.data();
         barriers.texture_barriers_count = (uint32_t)tex_barriers.size();
     }
-    if (!buffer_barriers.empty())
+    if (!buffer_barriers.is_empty())
     {
         barriers.buffer_barriers       = buffer_barriers.data();
         barriers.buffer_barriers_count = (uint32_t)buffer_barriers.size();
@@ -608,12 +608,12 @@ void RenderGraphBackend::execute_render_pass(RenderGraphFrameExecutor& executor,
     pass_context.executor          = &executor;
     // call cgpu apis
     CGPUResourceBarrierDescriptor barriers = {};
-    if (!tex_barriers.empty())
+    if (!tex_barriers.is_empty())
     {
         barriers.texture_barriers       = tex_barriers.data();
         barriers.texture_barriers_count = (uint32_t)tex_barriers.size();
     }
-    if (!buffer_barriers.empty())
+    if (!buffer_barriers.is_empty())
     {
         barriers.buffer_barriers       = buffer_barriers.data();
         barriers.buffer_barriers_count = (uint32_t)buffer_barriers.size();
@@ -794,12 +794,12 @@ void RenderGraphBackend::execute_copy_pass(RenderGraphFrameExecutor& executor, C
     // call cgpu apis
     CGPUResourceBarrierDescriptor barriers      = {};
     CGPUResourceBarrierDescriptor late_barriers = {};
-    if (!tex_barriers.empty())
+    if (!tex_barriers.is_empty())
     {
         barriers.texture_barriers       = tex_barriers.data();
         barriers.texture_barriers_count = (uint32_t)tex_barriers.size();
     }
-    if (!buffer_barriers.empty())
+    if (!buffer_barriers.is_empty())
     {
         barriers.buffer_barriers       = buffer_barriers.data();
         barriers.buffer_barriers_count = (uint32_t)buffer_barriers.size();
@@ -828,12 +828,12 @@ void RenderGraphBackend::execute_copy_pass(RenderGraphFrameExecutor& executor, C
             barrier.src_state = CGPU_RESOURCE_STATE_COPY_DEST;
             barrier.dst_state = state;
         }
-        if (!late_tex_barriers.empty())
+        if (!late_tex_barriers.is_empty())
         {
             late_barriers.texture_barriers       = late_tex_barriers.data();
             late_barriers.texture_barriers_count = (uint32_t)late_tex_barriers.size();
         }
-        if (!late_buf_barriers.empty())
+        if (!late_buf_barriers.is_empty())
         {
             late_barriers.buffer_barriers       = late_buf_barriers.data();
             late_barriers.buffer_barriers_count = (uint32_t)late_buf_barriers.size();

@@ -66,7 +66,7 @@ struct Vector : protected Memory {
     SizeType        size() const;
     SizeType        capacity() const;
     SizeType        slack() const;
-    bool            empty() const;
+    bool            is_empty() const;
     DataType*       data();
     const DataType* data() const;
     Memory&         memory();
@@ -460,7 +460,7 @@ SKR_INLINE typename Vector<Memory>::SizeType Vector<Memory>::slack() const
     return capacity() - size();
 }
 template <typename Memory>
-SKR_INLINE bool Vector<Memory>::empty() const
+SKR_INLINE bool Vector<Memory>::is_empty() const
 {
     return size() == 0;
 }
@@ -685,7 +685,7 @@ SKR_INLINE void Vector<Memory>::add_at(SizeType idx, DataType&& v)
 template <typename Memory>
 SKR_INLINE void Vector<Memory>::add_at_unsafe(SizeType idx, SizeType n)
 {
-    SKR_ASSERT((empty() && idx == 0) || is_valid_index(idx));
+    SKR_ASSERT((is_empty() && idx == 0) || is_valid_index(idx));
     auto move_n = size() - idx;
     add_unsafe(n);
     memory::move(data() + idx + n, data() + idx, move_n);
@@ -1055,19 +1055,19 @@ SKR_INLINE typename Vector<Memory>::SizeType Vector<Memory>::remove_all_if_swap(
 template <typename Memory>
 SKR_INLINE typename Vector<Memory>::DataType& Vector<Memory>::operator[](SizeType index)
 {
-    SKR_ASSERT(!empty() && is_valid_index(index));
+    SKR_ASSERT(!is_empty() && is_valid_index(index));
     return *(data() + index);
 }
 template <typename Memory>
 SKR_INLINE const typename Vector<Memory>::DataType& Vector<Memory>::operator[](SizeType index) const
 {
-    SKR_ASSERT(!empty() && is_valid_index(index));
+    SKR_ASSERT(!is_empty() && is_valid_index(index));
     return *(data() + index);
 }
 template <typename Memory>
 SKR_INLINE typename Vector<Memory>::DataType& Vector<Memory>::at(SizeType index)
 {
-    SKR_ASSERT(!empty() && is_valid_index(index));
+    SKR_ASSERT(!is_empty() && is_valid_index(index));
     return *(data() + index);
 }
 template <typename Memory>
@@ -1080,7 +1080,7 @@ template <typename Memory>
 SKR_INLINE typename Vector<Memory>::DataType& Vector<Memory>::last(SizeType index)
 {
     index = size() - index - 1;
-    SKR_ASSERT(!empty() && is_valid_index(index));
+    SKR_ASSERT(!is_empty() && is_valid_index(index));
     return *(data() + index);
 }
 template <typename Memory>
@@ -1168,7 +1168,7 @@ template <typename Memory>
 template <typename Pred>
 SKR_INLINE typename Vector<Memory>::DataRef Vector<Memory>::find_if(Pred&& pred)
 {
-    if (!empty())
+    if (!is_empty())
     {
         auto p_begin = data();
         auto p_end   = data() + size();
@@ -1187,7 +1187,7 @@ template <typename Memory>
 template <typename Pred>
 SKR_INLINE typename Vector<Memory>::DataRef Vector<Memory>::find_last_if(Pred&& pred)
 {
-    if (!empty())
+    if (!is_empty())
     {
         auto p_begin = data();
         auto p_end   = data() + size() - 1;

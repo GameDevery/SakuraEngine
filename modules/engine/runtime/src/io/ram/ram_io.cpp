@@ -48,7 +48,7 @@ void RAMIOBatch::add_request(IORequestId request, RAMIOBufferId buffer, skr_io_f
     rq->destination = buffer;
     if (auto pComp = io_component<BlocksComponent>(rq.get()))
     {
-        SKR_ASSERT(!pComp->blocks.empty());
+        SKR_ASSERT(!pComp->blocks.is_empty());
     }
     addRequest(request);
 }

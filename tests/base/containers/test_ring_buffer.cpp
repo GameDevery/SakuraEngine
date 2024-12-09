@@ -202,7 +202,7 @@ void template_test_ring_buffer(ModifyCapacity&& capacity_of, ClampCapacity&& cla
     {
         TestRingBuffer a;
         shuffle_ring_buffer(a);
-        while (!a.empty())
+        while (!a.is_empty())
         {
             a.pop_front();
         }
@@ -391,7 +391,7 @@ void template_test_ring_buffer(ModifyCapacity&& capacity_of, ClampCapacity&& cla
     {
         TestRingBuffer a;
         shuffle_ring_buffer(a);
-        while (!a.empty())
+        while (!a.is_empty())
         {
             a.pop_front();
         }
@@ -421,7 +421,7 @@ void template_test_ring_buffer(ModifyCapacity&& capacity_of, ClampCapacity&& cla
     {
         TestRingBuffer a({ 1, 1, 4, 5, 1, 4 });
         shuffle_ring_buffer(a);
-        while (!a.empty())
+        while (!a.is_empty())
         {
             a.pop_front();
         }
@@ -480,7 +480,7 @@ TEST_CASE("test ring buffer")
                     }
                     else
                     {
-                        if (!buffer.empty())
+                        if (!buffer.is_empty())
                         {
                             buffer.pop_back();
                         }
@@ -497,7 +497,7 @@ TEST_CASE("test ring buffer")
                     }
                     else
                     {
-                        if (!buffer.empty())
+                        if (!buffer.is_empty())
                         {
                             buffer.pop_front();
                         }
@@ -548,7 +548,7 @@ TEST_CASE("test inline ring buffer")
                     }
                     else
                     {
-                        if (!buffer.empty())
+                        if (!buffer.is_empty())
                         {
                             buffer.pop_back();
                         }
@@ -565,7 +565,7 @@ TEST_CASE("test inline ring buffer")
                     }
                     else
                     {
-                        if (!buffer.empty())
+                        if (!buffer.is_empty())
                         {
                             buffer.pop_front();
                         }

@@ -43,7 +43,7 @@ struct SKR_STATIC_API _JsonReader {
     template <JsonPrimitiveReadableType Type>
     JsonReadResult ReadArray(Type* values, SizeType count)
     {
-        if (!_stack.empty() && _stack.back()._type == Level::kArray)
+        if (!_stack.is_empty() && _stack.back()._type == Level::kArray)
         {
             for (SizeType i = 0; i < count; i++)
             {
@@ -71,7 +71,7 @@ struct SKR_STATIC_API _JsonReader {
             }
             return {};
         }
-        if (_stack.empty())
+        if (_stack.is_empty())
             return JsonReadError::NoOpenScope;
         if (_stack.back()._type != Level::kArray)
             return JsonReadError::ScopeTypeMismatch;

@@ -55,7 +55,7 @@ struct BitVector final : protected Memory {
     const BitBlockType* data() const;
     SizeType            size() const;
     SizeType            capacity() const;
-    bool                empty();
+    bool                is_empty();
     Memory&             memory();
     const Memory&       memory() const;
 
@@ -260,7 +260,7 @@ SKR_INLINE typename BitVector<Memory>::SizeType BitVector<Memory>::capacity() co
     return Memory::capacity();
 }
 template <typename Memory>
-SKR_INLINE bool BitVector<Memory>::empty()
+SKR_INLINE bool BitVector<Memory>::is_empty()
 {
     return size() == 0;
 }
