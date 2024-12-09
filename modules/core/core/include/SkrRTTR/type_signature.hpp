@@ -916,12 +916,12 @@ struct TypeSignatureView {
     const TypeSignatureView&  rhs,
     ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict) const
     {
-        if (empty() && rhs.empty())
+        if (is_empty() && rhs.is_empty())
         {
             // both empty
             return true;
         }
-        else if (empty() || rhs.empty())
+        else if (is_empty() || rhs.is_empty())
         {
             // one of them is empty
             return false;
@@ -968,12 +968,12 @@ struct TypeSignatureView {
     // getter
     inline uint8_t* data() const { return _data; }
     inline uint64_t size() const { return _size; }
-    inline bool     empty() const { return _size == 0; }
+    inline bool     is_empty() const { return _size == 0; }
 
     // read
     inline ETypeSignatureSignal peek_signal() const
     {
-        SKR_ASSERT(!empty() && "undefined behavior accessing empty view");
+        SKR_ASSERT(!is_empty() && "undefined behavior accessing empty view");
         return TypeSignatureHelper::peek_signal(_data, _data + _size);
     }
     inline bool peek_next_is_modifier() const
@@ -1344,7 +1344,7 @@ struct TypeSignature : private SkrAllocator {
     // getter
     inline uint8_t* data() const { return _data; }
     inline size_t   size() const { return _size; }
-    inline bool     empty() const { return _size == 0; }
+    inline bool     is_empty() const { return _size == 0; }
 
     // decay
     inline void decay(ETypeSignatureDecayFlag flag = ETypeSignatureDecayFlag::Relax)
@@ -1406,7 +1406,7 @@ struct TypeSignatureTyped {
     // getter
     inline uint8_t* data() const { return const_cast<uint8_t*>(&_data[0]); }
     inline size_t   size() const { return TypeSignatureTraits<T>::buffer_size; }
-    inline bool     empty() const { return TypeSignatureTraits<T>::buffer_size == 0; }
+    inline bool     is_empty() const { return TypeSignatureTraits<T>::buffer_size == 0; }
 
     // decay
     inline void decay(ETypeSignatureDecayFlag flag = ETypeSignatureDecayFlag::Relax)

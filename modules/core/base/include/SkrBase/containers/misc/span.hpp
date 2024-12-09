@@ -50,7 +50,7 @@ struct Span {
     // getter
     constexpr T*    data() const;
     constexpr TSize size() const;
-    constexpr bool  empty() const;
+    constexpr bool  is_empty() const;
 
     // element access
     constexpr T& operator[](TSize idx) const;
@@ -178,7 +178,7 @@ SKR_INLINE constexpr TSize Span<T, TSize, Extent>::size() const
     return _size;
 }
 template <typename T, typename TSize, size_t Extent>
-SKR_INLINE constexpr bool Span<T, TSize, Extent>::empty() const
+SKR_INLINE constexpr bool Span<T, TSize, Extent>::is_empty() const
 {
     return size() == 0;
 }
@@ -187,7 +187,7 @@ SKR_INLINE constexpr bool Span<T, TSize, Extent>::empty() const
 template <typename T, typename TSize, size_t Extent>
 SKR_INLINE constexpr T& Span<T, TSize, Extent>::operator[](TSize idx) const
 {
-    SKR_ASSERT(!empty() && "undefined behavior accessing an empty span");
+    SKR_ASSERT(!is_empty() && "undefined behavior accessing an empty span");
     SKR_ASSERT(is_valid_index(idx) && "undefined behavior accessing out of bounds");
 
     return _data[idx];

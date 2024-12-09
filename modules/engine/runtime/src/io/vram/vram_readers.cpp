@@ -224,7 +224,7 @@ void CommonVRAMReader::ensureRAMRequests(SkrAsyncServicePriority priority) SKR_N
 
     // erase empty batches
     batches.remove_all_if([](auto&& batch) {
-        return batch->get_requests().empty();
+        return batch->get_requests().is_empty();
     });
 
     for (auto&& batch : batches)

@@ -98,7 +98,7 @@ bool InputManager::hit_test(HitTestResult* result, Offsetf system_location)
 // route event
 bool InputManager::route_event(HitTestResult* result, PointerEvent* event, EEventRoutePhase phase)
 {
-    if (result->empty())
+    if (result->is_empty())
     {
         return false;
     }
