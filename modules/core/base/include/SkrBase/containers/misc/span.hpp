@@ -45,7 +45,7 @@ struct Span {
     constexpr Span<T, TSize, kDynamicExtent> last(TSize count) const;
     template <size_t Offset, size_t Count = kDynamicExtent>
     constexpr Span<T, TSize, __helper::subspan_extent<Extent, Offset, Count>> subspan() const;
-    constexpr Span<T, TSize, kDynamicExtent>                                  subspan(size_t offset, size_t count = kDynamicExtent) const;
+    constexpr Span<T, TSize, kDynamicExtent>                                  subspan(TSize offset, TSize count = kDynamicExtent) const;
 
     // getter
     constexpr T*    data() const;
@@ -54,6 +54,10 @@ struct Span {
 
     // element access
     constexpr T& operator[](TSize idx) const;
+
+    // at accessor
+    constexpr T& at(TSize idx) const;
+    constexpr T& at_last(TSize idx) const;
 
     // iterator
     constexpr T* begin() const;
@@ -158,7 +162,7 @@ SKR_INLINE constexpr Span<T, TSize, __helper::subspan_extent<Extent, Offset, Cou
     return { data() + Offset, TSize(Count == kDynamicExtent ? size() - Offset : Count) };
 }
 template <typename T, typename TSize, size_t Extent>
-SKR_INLINE constexpr Span<T, TSize, kDynamicExtent> Span<T, TSize, Extent>::subspan(size_t offset, size_t count) const
+SKR_INLINE constexpr Span<T, TSize, kDynamicExtent> Span<T, TSize, Extent>::subspan(TSize offset, TSize count) const
 {
     SKR_ASSERT(offset <= size() && "undefined behaviour accessing out of bounds");
     SKR_ASSERT(count == kDynamicExtent || count <= (size() - offset) && "undefined behaviour exceeding size of span");
@@ -187,10 +191,25 @@ SKR_INLINE constexpr bool Span<T, TSize, Extent>::is_empty() const
 template <typename T, typename TSize, size_t Extent>
 SKR_INLINE constexpr T& Span<T, TSize, Extent>::operator[](TSize idx) const
 {
+    return at(idx);
+}
+
+// at accessor
+template <typename T, typename TSize, size_t Extent>
+SKR_INLINE constexpr T& Span<T, TSize, Extent>::at(TSize idx) const
+{
     SKR_ASSERT(!is_empty() && "undefined behavior accessing an empty span");
     SKR_ASSERT(is_valid_index(idx) && "undefined behavior accessing out of bounds");
 
     return _data[idx];
+}
+template <typename T, typename TSize, size_t Extent>
+SKR_INLINE constexpr T& Span<T, TSize, Extent>::at_last(TSize idx) const
+{
+    SKR_ASSERT(!is_empty() && "undefined behavior accessing an empty span");
+    SKR_ASSERT(is_valid_index(idx) && "undefined behavior accessing out of bounds");
+
+    return _data[size() - idx - 1];
 }
 
 // iterator

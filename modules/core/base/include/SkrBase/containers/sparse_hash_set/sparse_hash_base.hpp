@@ -77,7 +77,7 @@ struct SparseHashBase : protected SparseVector<Memory> {
 
     // visitor
     const SetDataType& at(SizeType index) const;
-    const SetDataType& last(SizeType index = 0) const;
+    const SetDataType& at_last(SizeType index = 0) const;
 
     // sort
     template <typename Functor = Less<SetDataType>>
@@ -451,9 +451,9 @@ SKR_INLINE const typename SparseHashBase<Memory>::SetDataType& SparseHashBase<Me
     return Super::at(index)._sparse_hash_set_data;
 }
 template <typename Memory>
-SKR_INLINE const typename SparseHashBase<Memory>::SetDataType& SparseHashBase<Memory>::last(SizeType index) const
+SKR_INLINE const typename SparseHashBase<Memory>::SetDataType& SparseHashBase<Memory>::at_last(SizeType index) const
 {
-    return Super::last(index)._sparse_hash_set_data;
+    return Super::at_last(index)._sparse_hash_set_data;
 }
 
 // sort

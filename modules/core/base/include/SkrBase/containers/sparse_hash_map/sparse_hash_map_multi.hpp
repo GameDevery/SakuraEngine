@@ -212,7 +212,7 @@ struct MultiSparseHashMap : protected SparseHashBase<Memory> {
 
     // visitor & modifier
     using Super::at;
-    using Super::last;
+    using Super::at_last;
 
     // sort
     using Super::sort;

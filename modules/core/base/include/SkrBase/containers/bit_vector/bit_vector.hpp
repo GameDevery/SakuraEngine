@@ -85,6 +85,12 @@ struct BitVector final : protected Memory {
     BitRef operator[](SizeType idx);
     bool   operator[](SizeType idx) const;
 
+    // at accessor
+    BitRef at(SizeType idx);
+    bool   at(SizeType idx) const;
+    BitRef at_last(SizeType idx);
+    bool   at_last(SizeType idx) const;
+
     // find
     DataRef find(bool v) const;
     DataRef find_last(bool v) const;
@@ -447,14 +453,39 @@ SKR_INLINE void BitVector<Memory>::remove_at_swap(SizeType start, SizeType n)
 template <typename Memory>
 SKR_INLINE typename BitVector<Memory>::BitRef BitVector<Memory>::operator[](SizeType idx)
 {
-    SKR_ASSERT(is_valid_index(idx));
-    return _bit_ref_at(idx);
+    return at(idx);
 }
 template <typename Memory>
 SKR_INLINE bool BitVector<Memory>::operator[](SizeType idx) const
 {
+    return at(idx);
+}
+
+// at accessor
+template <typename Memory>
+SKR_INLINE typename BitVector<Memory>::BitRef BitVector<Memory>::at(SizeType idx)
+{
+    SKR_ASSERT(is_valid_index(idx));
+    return _bit_ref_at(idx);
+}
+template <typename Memory>
+SKR_INLINE bool BitVector<Memory>::at(SizeType idx) const
+{
     SKR_ASSERT(is_valid_index(idx));
     return data()[idx >> Algo::PerBlockSizeLog2] & (1 << (idx & Algo::PerBlockSizeMask));
+}
+template <typename Memory>
+SKR_INLINE typename BitVector<Memory>::BitRef BitVector<Memory>::at_last(SizeType idx)
+{
+    SKR_ASSERT(is_valid_index(idx));
+    return _bit_ref_at(size() - idx - 1);
+}
+template <typename Memory>
+SKR_INLINE bool BitVector<Memory>::at_last(SizeType idx) const
+{
+    SKR_ASSERT(is_valid_index(idx));
+    const SizeType real_idx = size() - idx - 1;
+    return data()[real_idx >> Algo::PerBlockSizeLog2] & (1 << (real_idx & Algo::PerBlockSizeMask));
 }
 
 // find

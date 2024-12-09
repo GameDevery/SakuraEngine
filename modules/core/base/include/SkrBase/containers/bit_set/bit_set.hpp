@@ -59,6 +59,12 @@ struct Bitset {
     bool           operator[](SizeType i) const;
     bool           test(SizeType i) const;
 
+    // at accessor
+    BitRef<TBlock> at(SizeType i);
+    bool           at(SizeType i) const;
+    BitRef<TBlock> at_last(SizeType i);
+    bool           at_last(SizeType i) const;
+
     // compare
     bool operator==(const Bitset& x) const;
     bool operator!=(const Bitset& x) const;
@@ -499,6 +505,33 @@ template <size_t N, typename TBlock>
 inline bool Bitset<N, TBlock>::test(SizeType i) const
 {
     return (*this)[i];
+}
+
+// at accessor
+template <size_t N, typename TBlock>
+inline BitRef<TBlock> Bitset<N, TBlock>::at(SizeType i)
+{
+    SKR_ASSERT(i < N && "Bitset<N, TBlock>::operator[](SizeType i) i out of range");
+    return BitRef<TBlock>::At(_data, i);
+}
+template <size_t N, typename TBlock>
+inline bool Bitset<N, TBlock>::at(SizeType i) const
+{
+    SKR_ASSERT(i < N && "Bitset<N, TBlock>::operator[](SizeType i) i out of range");
+    return (_block_at(i) & (static_cast<TBlock>(1) << (i & Algo::PerBlockSizeMask))) != 0;
+}
+template <size_t N, typename TBlock>
+inline BitRef<TBlock> Bitset<N, TBlock>::at_last(SizeType i)
+{
+    SKR_ASSERT(i < N && "Bitset<N, TBlock>::operator[](SizeType i) i out of range");
+    return BitRef<TBlock>::At(_data, N - i - 1);
+}
+template <size_t N, typename TBlock>
+inline bool Bitset<N, TBlock>::at_last(SizeType i) const
+{
+    SKR_ASSERT(i < N && "Bitset<N, TBlock>::operator[](SizeType i) i out of range");
+    const SizeType real_idx = N - i - 1;
+    return (_block_at(real_idx) & (static_cast<TBlock>(1) << (real_idx & Algo::PerBlockSizeMask))) != 0;
 }
 
 // compare

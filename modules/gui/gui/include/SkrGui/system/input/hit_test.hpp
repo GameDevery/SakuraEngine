@@ -135,7 +135,7 @@ private:
         // globalize transforms
         if (!_local_transforms.is_empty())
         {
-            Matrix4 last = _transforms.is_empty() ? Matrix4::Identity() : _transforms.last();
+            Matrix4 last = _transforms.is_empty() ? Matrix4::Identity() : _transforms.at_last();
             for (const auto matrix : _local_transforms)
             {
                 last = matrix * last;
@@ -144,7 +144,7 @@ private:
             _local_transforms.clear();
         }
 
-        return _transforms.is_empty() ? Matrix4::Identity() : _transforms.last();
+        return _transforms.is_empty() ? Matrix4::Identity() : _transforms.at_last();
     }
 
 private:

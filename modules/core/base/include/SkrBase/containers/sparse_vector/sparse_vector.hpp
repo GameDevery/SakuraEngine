@@ -144,8 +144,8 @@ struct SparseVector : protected Memory {
     const DataType& operator[](SizeType index) const;
     DataType&       at(SizeType index);
     const DataType& at(SizeType index) const;
-    DataType&       last(SizeType index = 0);
-    const DataType& last(SizeType index = 0) const;
+    DataType&       at_last(SizeType index = 0);
+    const DataType& at_last(SizeType index = 0) const;
 
     // find
     template <typename U = DataType>
@@ -1152,14 +1152,14 @@ SKR_INLINE const typename SparseVector<Memory>::DataType& SparseVector<Memory>::
     return storage()[index]._sparse_vector_data;
 }
 template <typename Memory>
-SKR_INLINE typename SparseVector<Memory>::DataType& SparseVector<Memory>::last(SizeType index)
+SKR_INLINE typename SparseVector<Memory>::DataType& SparseVector<Memory>::at_last(SizeType index)
 {
     index = sparse_size() - index - 1;
     SKR_ASSERT(!empty() && is_valid_index(index) && has_data(index));
     return *(storage() + index);
 }
 template <typename Memory>
-SKR_INLINE const typename SparseVector<Memory>::DataType& SparseVector<Memory>::last(SizeType index) const
+SKR_INLINE const typename SparseVector<Memory>::DataType& SparseVector<Memory>::at_last(SizeType index) const
 {
     index = sparse_size() - index - 1;
     SKR_ASSERT(!empty() && is_valid_index(index) && has_data(index));

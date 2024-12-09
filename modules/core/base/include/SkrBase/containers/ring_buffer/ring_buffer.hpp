@@ -97,8 +97,10 @@ struct RingBuffer : protected Memory {
     // modify
     DataType&       operator[](SizeType index);
     const DataType& operator[](SizeType index) const;
-    DataType&       last(SizeType index);
-    const DataType& last(SizeType index) const;
+    DataType&       at(SizeType index);
+    const DataType& at(SizeType index) const;
+    DataType&       at_last(SizeType index);
+    const DataType& at_last(SizeType index) const;
 
     // front/back
     DataType&       front();
@@ -710,23 +712,33 @@ inline typename RingBuffer<Memory>::DataType RingBuffer<Memory>::pop_front_get()
 template <typename Memory>
 inline typename RingBuffer<Memory>::DataType& RingBuffer<Memory>::operator[](SizeType index)
 {
-    SKR_ASSERT(is_valid_index(index));
-    return *(_data() + ((_front() + index) % capacity()));
+    return at(index);
 }
 template <typename Memory>
 inline const typename RingBuffer<Memory>::DataType& RingBuffer<Memory>::operator[](SizeType index) const
+{
+    return at(index);
+}
+template <typename Memory>
+inline typename RingBuffer<Memory>::DataType& RingBuffer<Memory>::at(SizeType index)
 {
     SKR_ASSERT(is_valid_index(index));
     return *(_data() + ((_front() + index) % capacity()));
 }
 template <typename Memory>
-inline typename RingBuffer<Memory>::DataType& RingBuffer<Memory>::last(SizeType index)
+inline const typename RingBuffer<Memory>::DataType& RingBuffer<Memory>::at(SizeType index) const
+{
+    SKR_ASSERT(is_valid_index(index));
+    return *(_data() + ((_front() + index) % capacity()));
+}
+template <typename Memory>
+inline typename RingBuffer<Memory>::DataType& RingBuffer<Memory>::at_last(SizeType index)
 {
     SKR_ASSERT(is_valid_index(index));
     return *(_data() + ((_back() - index - 1) % capacity()));
 }
 template <typename Memory>
-inline const typename RingBuffer<Memory>::DataType& RingBuffer<Memory>::last(SizeType index) const
+inline const typename RingBuffer<Memory>::DataType& RingBuffer<Memory>::at_last(SizeType index) const
 {
     SKR_ASSERT(is_valid_index(index));
     return *(_data() + ((_back() - index - 1) % capacity()));
