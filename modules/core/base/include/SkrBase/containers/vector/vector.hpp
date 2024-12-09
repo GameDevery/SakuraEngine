@@ -1073,7 +1073,7 @@ SKR_INLINE typename Vector<Memory>::DataType& Vector<Memory>::at(SizeType index)
 template <typename Memory>
 SKR_INLINE const typename Vector<Memory>::DataType& Vector<Memory>::at(SizeType index) const
 {
-    SKR_ASSERT(!empty() && is_valid_index(index));
+    SKR_ASSERT(!is_empty() && is_valid_index(index));
     return *(data() + index);
 }
 template <typename Memory>
@@ -1087,7 +1087,7 @@ template <typename Memory>
 SKR_INLINE const typename Vector<Memory>::DataType& Vector<Memory>::at_last(SizeType index) const
 {
     index = size() - index - 1;
-    SKR_ASSERT(!empty() && is_valid_index(index));
+    SKR_ASSERT(!is_empty() && is_valid_index(index));
     return *(data() + index);
 }
 
