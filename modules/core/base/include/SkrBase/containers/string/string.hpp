@@ -45,6 +45,8 @@ struct U8String : protected Memory {
     // other types
     using ViewType        = U8StringView<SizeType>;
     using PartitionResult = StringPartitionResult<ViewType>;
+    template <typename T>
+    using ParseResult = StringParseResult<T, ViewType>;
 
     // helper
     using CharTraits               = std::char_traits<DataType>;
@@ -334,6 +336,11 @@ struct U8String : protected Memory {
     void append_at(SizeType idx, const wchar_t* str, SizeType len);
     void append_at(SizeType idx, const skr_char16* str, SizeType len);
     void append_at(SizeType idx, const skr_char32* str, SizeType len);
+
+    // parse
+    ParseResult<int64_t>  parse_int(uint32_t base = 10) const;
+    ParseResult<uint64_t> parse_uint(uint32_t base = 10) const;
+    ParseResult<double>   parse_float() const;
 
     // text index
     SizeType buffer_index_to_text(SizeType index) const;
@@ -2451,6 +2458,23 @@ inline void U8String<Memory>::append_at(SizeType idx, const skr_char32* str, Siz
         add_at_unsafe(idx, utf8_len);
         _parse_from_utf32(str, len, _data() + idx, utf8_len);
     }
+}
+
+// parse
+template <typename Memory>
+inline U8String<Memory>::ParseResult<int64_t> U8String<Memory>::parse_int(uint32_t base) const
+{
+    return view().parse_int(base);
+}
+template <typename Memory>
+inline U8String<Memory>::ParseResult<uint64_t> U8String<Memory>::parse_uint(uint32_t base) const
+{
+    return view().parse_uint(base);
+}
+template <typename Memory>
+inline U8String<Memory>::ParseResult<double> U8String<Memory>::parse_float() const
+{
+    return view().parse_float();
 }
 
 // text index

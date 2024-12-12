@@ -224,7 +224,7 @@ void CommonVRAMReader::ensureRAMRequests(SkrAsyncServicePriority priority) SKR_N
 
     // erase empty batches
     batches.remove_all_if([](auto&& batch) {
-        return batch->get_requests().empty();
+        return batch->get_requests().is_empty();
     });
 
     for (auto&& batch : batches)
@@ -712,7 +712,7 @@ void DStorageVRAMReader::pollSubmitted(SkrAsyncServicePriority priority) SKR_NOE
     auto instance = skr_get_dstorage_instnace();
     for (auto& e : submitted[priority])
     {
-        if (e->okay() || e->batches.empty())
+        if (e->okay() || e->batches.is_empty())
         {
             for (auto batch : e->batches)
             {

@@ -71,11 +71,11 @@ struct BinVectorWriterBitpacked {
             buffer->append(dataPtr, (bitSize + 7) / 8);
             bitOffset = bitSize % 8;
             if (bitOffset != 0)
-                buffer->last() &= (1 << bitOffset) - 1;
+                buffer->at_last() &= (1 << bitOffset) - 1;
         }
         else
         {
-            buffer->last() |= dataPtr[0] << bitOffset;
+            buffer->at_last() |= dataPtr[0] << bitOffset;
             int i = 1;
             while (bitSize > 8)
             {
@@ -96,7 +96,7 @@ struct BinVectorWriterBitpacked {
                     buffer->add(dataPtr[i - 1] >> (8 - bitOffset));
                     newBitOffset = newBitOffset - 8;
                 }
-                buffer->last() &= (1 << newBitOffset) - 1;
+                buffer->at_last() &= (1 << newBitOffset) - 1;
                 SKR_ASSERT(newBitOffset <= UINT8_MAX);
                 bitOffset = (uint8_t)newBitOffset;
             }

@@ -74,7 +74,7 @@ struct MultiSparseHashMap : protected SparseHashBase<Memory> {
     using Super::bit_size;
     using Super::free_list_head;
     using Super::is_compact;
-    using Super::empty;
+    using Super::is_empty;
     using Super::data_vector;
     using Super::bucket;
     using Super::memory;
@@ -212,7 +212,7 @@ struct MultiSparseHashMap : protected SparseHashBase<Memory> {
 
     // visitor & modifier
     using Super::at;
-    using Super::last;
+    using Super::at_last;
 
     // sort
     using Super::sort;

@@ -18,7 +18,7 @@ struct _WriterHelper
     {
         using Level = _JsonWriter::Level;
         using Type = std::decay_t<T>;
-        SKR_RET_JSON_WRITE_ERROR_IF(!w->_stack.empty(), JsonErrorCode::NoOpenScope)
+        SKR_RET_JSON_WRITE_ERROR_IF(!w->_stack.is_empty(), JsonErrorCode::NoOpenScope)
 
         yyjson_mut_val* arr = nullptr;
         if (count != 0)
@@ -64,7 +64,7 @@ struct _WriterHelper
     {
         using Level = _JsonWriter::Level;
         using Type = std::decay_t<T>;
-        SKR_RET_JSON_WRITE_ERROR_IF(!w->_stack.empty(), JsonErrorCode::NoOpenScope);
+        SKR_RET_JSON_WRITE_ERROR_IF(!w->_stack.is_empty(), JsonErrorCode::NoOpenScope);
 
         auto type = w->_stack.back()._type;
         auto object = (yyjson_mut_val*)w->_stack.back()._value;
@@ -147,7 +147,7 @@ _JsonWriter::~_JsonWriter()
 JsonWriteResult _JsonWriter::StartObject(skr::StringView key)
 {
     yyjson_mut_val *obj = yyjson_mut_obj((yyjson_mut_doc*)_document);
-    if (_stack.empty())
+    if (_stack.is_empty())
     {
         SKR_RET_JSON_WRITE_ERROR_IF(key.is_empty(), JsonErrorCode::RootObjectWithKey);
         yyjson_mut_doc_set_root((yyjson_mut_doc*)_document, obj);
@@ -170,7 +170,7 @@ JsonWriteResult _JsonWriter::StartObject(skr::StringView key)
 
 JsonWriteResult _JsonWriter::EndObject()
 {
-    SKR_RET_JSON_WRITE_ERROR_IF(!_stack.empty(), JsonErrorCode::NoOpenScope);
+    SKR_RET_JSON_WRITE_ERROR_IF(!_stack.is_empty(), JsonErrorCode::NoOpenScope);
     SKR_RET_JSON_WRITE_ERROR_IF(_stack.back()._type == Level::kObject, JsonErrorCode::ScopeTypeMismatch);
     _stack.pop_back();
     return {};
@@ -214,7 +214,7 @@ JsonWriteResult _JsonWriter::StartArray(skr::StringView key, const uint64_t* val
 
 JsonWriteResult _JsonWriter::EndArray()
 {
-    SKR_RET_JSON_WRITE_ERROR_IF(!_stack.empty(), JsonErrorCode::NoOpenScope);
+    SKR_RET_JSON_WRITE_ERROR_IF(!_stack.is_empty(), JsonErrorCode::NoOpenScope);
     SKR_RET_JSON_WRITE_ERROR_IF(_stack.back()._type == Level::kArray, JsonErrorCode::ScopeTypeMismatch);
     _stack.pop_back();
     return {};

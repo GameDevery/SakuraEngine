@@ -14,7 +14,7 @@ bool skr_shader_options_resource_t::flatten_options(skr::Vector<skr_shader_optio
         {
             if (auto found = keys.find(opt.key))
             {
-                dst.empty();
+                dst.is_empty();
                 return false;
             }
             keys.add(opt.key);

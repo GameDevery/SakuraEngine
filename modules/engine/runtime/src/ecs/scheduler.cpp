@@ -368,7 +368,7 @@ sugoi_system_lifetime_callback_t init, sugoi_system_lifetime_callback_t teardown
         job->randomAccess = arena.get(&SharedData::randomAccess, groupCount);
     }
     job->groupCount = groupCount;
-    job->hasRandomWrite = !q->pimpl->subqueries.empty();
+    job->hasRandomWrite = !q->pimpl->subqueries.is_empty();
     job->hasWriteChunkComponent = false;
     job->entityCount = 0;
     job->callback = callback;

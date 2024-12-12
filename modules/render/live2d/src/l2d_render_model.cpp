@@ -323,7 +323,7 @@ void skr_live2d_render_model_create_from_raw(skr_io_ram_service_t* ram_service, 
                 render_model->buffer_finish(&buffer_future);    
             }
         }
-        if (!batch->get_requests().empty())
+        if (!batch->get_requests().is_empty())
         {
             vram_service->request(batch);
         }

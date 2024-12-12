@@ -47,7 +47,7 @@ void GestureArena::sweep()
     else
     {
         // 没有期望赢家，直接接受第一个手势，拒绝其余手势
-        if (!_members.empty())
+        if (!_members.is_empty())
         {
             _members[0]->accept_gesture(_pointer);
             for (uint32_t i = 0; i < _members.size(); ++i)
@@ -110,11 +110,11 @@ void GestureArena::_try_to_resolve_arena()
         SKR_LOG_ERROR(u8"try to resolve a non-closed arena is not allowed");
     }
 
-    if (_members.empty()) // empty arena, just remove
+    if (_members.is_empty()) // empty arena, just remove
     {
         _state = GestureArenaState::Resolved;
     }
-    else if (_members.size() == 1) // 只有一个手势，直接接受
+    else if (_members.size() == 1) // 只有一个手势，直接接受d
     {
         _members[0]->accept_gesture(_pointer);
         _state = GestureArenaState::Resolved;

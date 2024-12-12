@@ -300,7 +300,7 @@ void DStorageRAMReader::pollSubmitted(SkrAsyncServicePriority priority) SKR_NOEX
     auto instance = skr_get_dstorage_instnace();
     for (auto& e : submitted[priority])
     {
-        if (e->okay() || e->batches.empty())
+        if (e->okay() || e->batches.is_empty())
         {
             for (auto batch : e->batches)
             {

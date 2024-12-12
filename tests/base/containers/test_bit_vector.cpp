@@ -13,7 +13,7 @@ TEST_CASE("test bit vector")
         REQUIRE_EQ(a.size(), 0);
         REQUIRE_EQ(a.capacity(), 0);
         REQUIRE_EQ(a.data(), nullptr);
-        REQUIRE(a.empty());
+        REQUIRE(a.is_empty());
 
         BitVector b(20, true);
         REQUIRE_EQ(b.size(), 20);

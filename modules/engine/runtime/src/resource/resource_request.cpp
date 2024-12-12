@@ -221,7 +221,7 @@ void SResourceRequestImpl::_LoadFinished()
         currentPhase = SKR_LOADING_PHASE_FINISHED;
         return;
     }
-    if (!dependencies.empty())
+    if (!dependencies.is_empty())
     {
         _LoadDependencies();
         currentPhase = SKR_LOADING_PHASE_WAITFOR_LOAD_DEPENDENCIES;
