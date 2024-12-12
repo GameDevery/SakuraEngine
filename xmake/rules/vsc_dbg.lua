@@ -24,8 +24,9 @@ end
 -- phony target
 -- @build_func: function(target, out_configs)
 --  use table.insert to add values to [out_configs], config format
---     name: str (required)
+--     cmd_name: str (required)
 --     program: str (required)
+--     label: str (default use cmd_name)
 --     args: str list
 --     envs: str: str table
 --     pre_cmd: str
