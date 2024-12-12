@@ -6,6 +6,7 @@
 #include "SkrBase/unicode/unicode_iterator.hpp"
 #include "SkrBase/misc/debug.h"
 #include <string>
+#include <charconv>
 #include "SkrBase/memory.hpp"
 
 namespace skr::container
@@ -34,6 +35,8 @@ struct U8StringView {
 
     // other types
     using PartitionResult = StringPartitionResult<U8StringView>;
+    template <typename T>
+    using ParseResult = StringParseResult<T, U8StringView>;
 
     // helper
     using CharTraits               = std::char_traits<DataType>;
@@ -161,6 +164,11 @@ struct U8StringView {
     void to_u32(skr_char32* buffer) const;
     template <typename T>
     void to(T* buffer) const;
+
+    // parse
+    ParseResult<int64_t>  parse_int(uint32_t base = 10) const;
+    ParseResult<uint64_t> parse_uint(uint32_t base = 10) const;
+    ParseResult<double>   parse_float() const;
 
     // text index
     constexpr SizeType buffer_index_to_text(SizeType index) const;
@@ -1035,6 +1043,152 @@ inline void U8StringView<TS>::to(T* buffer) const
     else
     {
         static_assert(std::is_same_v<T, char>, "unsupported type");
+    }
+}
+
+// parse
+template <typename TS>
+inline U8StringView<TS>::ParseResult<int64_t> U8StringView<TS>::parse_int(uint32_t base) const
+{
+    const char* start = data_raw();
+    const char* end   = start + size();
+
+    // parse
+    int64_t result;
+    auto    err = std::from_chars(start, end, result, base);
+
+    // process error
+    if (err.ec == std::errc{})
+    {
+        return {
+            result,
+            EStringParseStatus::Success,
+            { reinterpret_cast<const DataType*>(start), static_cast<SizeType>(err.ptr - start) },
+            { reinterpret_cast<const DataType*>(err.ptr), static_cast<SizeType>(end - err.ptr) }
+        };
+    }
+    else if (err.ec == std::errc::invalid_argument)
+    {
+        return {
+            0,
+            EStringParseStatus::Invalid,
+            {},
+            *this
+        };
+    }
+    else if (err.ec == std::errc::result_out_of_range)
+    {
+        return {
+            0,
+            EStringParseStatus::OutOfRange,
+            { reinterpret_cast<const DataType*>(start), static_cast<SizeType>(err.ptr - start) },
+            { reinterpret_cast<const DataType*>(err.ptr), static_cast<SizeType>(end - err.ptr) }
+        };
+    }
+    else
+    {
+        return {
+            0,
+            EStringParseStatus::Invalid,
+            {},
+            *this
+        };
+    }
+}
+template <typename TS>
+inline U8StringView<TS>::ParseResult<uint64_t> U8StringView<TS>::parse_uint(uint32_t base) const
+{
+    const char* start = data_raw();
+    const char* end   = start + size();
+
+    // parse
+    uint64_t result;
+    auto     err = std::from_chars(start, end, result, base);
+
+    // process error
+    if (err.ec == std::errc{})
+    {
+        return {
+            result,
+            EStringParseStatus::Success,
+            { reinterpret_cast<const DataType*>(start), static_cast<SizeType>(err.ptr - start) },
+            { reinterpret_cast<const DataType*>(err.ptr), static_cast<SizeType>(end - err.ptr) }
+        };
+    }
+    else if (err.ec == std::errc::invalid_argument)
+    {
+        return {
+            0,
+            EStringParseStatus::Invalid,
+            {},
+            *this
+        };
+    }
+    else if (err.ec == std::errc::result_out_of_range)
+    {
+        return {
+            0,
+            EStringParseStatus::OutOfRange,
+            { reinterpret_cast<const DataType*>(start), static_cast<SizeType>(err.ptr - start) },
+            { reinterpret_cast<const DataType*>(err.ptr), static_cast<SizeType>(end - err.ptr) }
+        };
+    }
+    else
+    {
+        return {
+            0,
+            EStringParseStatus::Invalid,
+            {},
+            *this
+        };
+    }
+}
+template <typename TS>
+inline U8StringView<TS>::ParseResult<double> U8StringView<TS>::parse_float() const
+{
+    const char* start = data_raw();
+    const char* end   = start + size();
+
+    // parse
+    double result;
+    auto   err = std::from_chars(start, end, result);
+
+    // process error
+    if (err.ec == std::errc{})
+    {
+        return {
+            result,
+            EStringParseStatus::Success,
+            { reinterpret_cast<const DataType*>(start), static_cast<SizeType>(err.ptr - start) },
+            { reinterpret_cast<const DataType*>(err.ptr), static_cast<SizeType>(end - err.ptr) }
+        };
+    }
+    else if (err.ec == std::errc::invalid_argument)
+    {
+        return {
+            0,
+            EStringParseStatus::Invalid,
+            {},
+            *this
+        };
+    }
+    else if (err.ec == std::errc::result_out_of_range)
+    {
+        return {
+            0,
+            EStringParseStatus::OutOfRange,
+            { reinterpret_cast<const DataType*>(start), static_cast<SizeType>(err.ptr - start) },
+            { reinterpret_cast<const DataType*>(err.ptr), static_cast<SizeType>(end - err.ptr) }
+        };
+    }
+    else
+    {
+        return {
+            0,
+            EStringParseStatus::Invalid,
+            {},
+            *this
+        };
     }
 }
 

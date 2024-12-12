@@ -621,4 +621,154 @@ TEST_CASE("Test U8StringView")
         view.to_u32(u32_cast_buffer.data());
         REQUIRE_EQ(u32_cast_buffer, u32_buffer);
     }
+
+    SUBCASE("parse")
+    {
+        // parse int
+        {
+            StringView full_parse_int{ u8"1234567890" };
+            StringView not_full_parse_int{ u8"1234567890abcdfdfa" };
+            StringView out_of_range_max_int{ u8"92233720368547758070" };
+            StringView out_of_range_min_int{ u8"-92233720368547758070" };
+            StringView invalid_int{ u8"abcdfdfa" };
+            StringView hex_int{ u8"499602D2" };
+            StringView bin_int{ u8"01001001100101100000001011010010" };
+            StringView oct_int{ u8"011145401322" };
+
+            auto result_full_parse_int       = full_parse_int.parse_int();
+            auto result_not_full_parse_int   = not_full_parse_int.parse_int();
+            auto result_out_of_range_max_int = out_of_range_max_int.parse_int();
+            auto result_out_of_range_min_int = out_of_range_min_int.parse_int();
+            auto result_invalid_int          = invalid_int.parse_int();
+            auto result_hex_int              = hex_int.parse_int(16);
+            auto result_oct_int              = oct_int.parse_int(8);
+            auto result_bin_int              = bin_int.parse_int(2);
+
+            REQUIRE_EQ(result_full_parse_int.value, 1234567890);
+            REQUIRE(result_full_parse_int.is_success());
+            REQUIRE(result_full_parse_int.is_full_parsed());
+
+            REQUIRE_EQ(result_not_full_parse_int.value, 1234567890);
+            REQUIRE(result_not_full_parse_int.is_success());
+            REQUIRE_FALSE(result_not_full_parse_int.is_full_parsed());
+
+            REQUIRE_EQ(result_out_of_range_max_int.value, 0);
+            REQUIRE_FALSE(result_out_of_range_max_int.is_success());
+            REQUIRE(result_out_of_range_max_int.is_out_of_range());
+
+            REQUIRE_EQ(result_out_of_range_min_int.value, 0);
+            REQUIRE_FALSE(result_out_of_range_min_int.is_success());
+            REQUIRE(result_out_of_range_min_int.is_out_of_range());
+
+            REQUIRE_EQ(result_invalid_int.value, 0);
+            REQUIRE_FALSE(result_invalid_int.is_success());
+            REQUIRE(result_invalid_int.is_invalid());
+
+            REQUIRE_EQ(result_hex_int.value, 1234567890);
+            REQUIRE(result_hex_int.is_success());
+            REQUIRE(result_hex_int.is_full_parsed());
+
+            REQUIRE_EQ(result_oct_int.value, 1234567890);
+            REQUIRE(result_oct_int.is_success());
+            REQUIRE(result_oct_int.is_full_parsed());
+
+            REQUIRE_EQ(result_bin_int.value, 1234567890);
+            REQUIRE(result_bin_int.is_success());
+            REQUIRE(result_bin_int.is_full_parsed());
+        }
+
+        // parse uint
+        {
+            StringView full_parse_int{ u8"1234567890" };
+            StringView not_full_parse_int{ u8"1234567890abcdfdfa" };
+            StringView out_of_range_max_int{ u8"184467440737095516150" };
+            StringView out_of_range_min_int{ u8"-1" }; // be invalid
+            StringView invalid_int{ u8"abcdfdfa" };
+            StringView hex_int{ u8"499602D2" };
+            StringView oct_int{ u8"011145401322" };
+            StringView bin_int{ u8"01001001100101100000001011010010" };
+
+            auto result_full_parse_int       = full_parse_int.parse_uint();
+            auto result_not_full_parse_int   = not_full_parse_int.parse_uint();
+            auto result_out_of_range_max_int = out_of_range_max_int.parse_uint();
+            auto result_out_of_range_min_int = out_of_range_min_int.parse_uint();
+            auto result_invalid_int          = invalid_int.parse_uint();
+            auto result_hex_int              = hex_int.parse_uint(16);
+            auto result_oct_int              = oct_int.parse_uint(8);
+            auto result_bin_int              = bin_int.parse_uint(2);
+
+            REQUIRE_EQ(result_full_parse_int.value, 1234567890);
+            REQUIRE(result_full_parse_int.is_success());
+            REQUIRE(result_full_parse_int.is_full_parsed());
+
+            REQUIRE_EQ(result_not_full_parse_int.value, 1234567890);
+            REQUIRE(result_not_full_parse_int.is_success());
+            REQUIRE_FALSE(result_not_full_parse_int.is_full_parsed());
+
+            REQUIRE_EQ(result_out_of_range_max_int.value, 0);
+            REQUIRE_FALSE(result_out_of_range_max_int.is_success());
+            REQUIRE(result_out_of_range_max_int.is_out_of_range());
+
+            REQUIRE_EQ(result_out_of_range_min_int.value, 0);
+            REQUIRE_FALSE(result_out_of_range_min_int.is_success());
+            REQUIRE(result_out_of_range_min_int.is_invalid());
+
+            REQUIRE_EQ(result_invalid_int.value, 0);
+            REQUIRE_FALSE(result_invalid_int.is_success());
+            REQUIRE(result_invalid_int.is_invalid());
+
+            REQUIRE_EQ(result_hex_int.value, 1234567890);
+            REQUIRE(result_hex_int.is_success());
+            REQUIRE(result_hex_int.is_full_parsed());
+
+            REQUIRE_EQ(result_oct_int.value, 1234567890);
+            REQUIRE(result_oct_int.is_success());
+            REQUIRE(result_oct_int.is_full_parsed());
+
+            REQUIRE_EQ(result_bin_int.value, 1234567890);
+            REQUIRE(result_bin_int.is_success());
+            REQUIRE(result_bin_int.is_full_parsed());
+        }
+
+        // parse float
+        {
+            StringView full_parse_float{ u8"1234.56789" };
+            StringView not_full_parse_float{ u8"1234.56789abcdfdfa" };
+            StringView out_of_range_max_float{ u8"1.79769e+309" };
+            StringView out_of_range_min_float{ u8"2.22507e-3100" };
+            StringView invalid_float{ u8"abcdfdfa" };
+            StringView scientific_float{ u8"1.23456789E+3" };
+
+            auto result_full_parse_float       = full_parse_float.parse_float();
+            auto result_not_full_parse_float   = not_full_parse_float.parse_float();
+            auto result_out_of_range_max_float = out_of_range_max_float.parse_float();
+            auto result_out_of_range_min_float = out_of_range_min_float.parse_float();
+            auto result_invalid_float          = invalid_float.parse_float();
+            auto result_scientific_float       = scientific_float.parse_float();
+
+            REQUIRE_EQ(result_full_parse_float.value, 1234.56789);
+            REQUIRE(result_full_parse_float.is_success());
+            REQUIRE(result_full_parse_float.is_full_parsed());
+
+            REQUIRE_EQ(result_not_full_parse_float.value, 1234.56789);
+            REQUIRE(result_not_full_parse_float.is_success());
+            REQUIRE_FALSE(result_not_full_parse_float.is_full_parsed());
+
+            REQUIRE_EQ(result_out_of_range_max_float.value, 0);
+            REQUIRE_FALSE(result_out_of_range_max_float.is_success());
+            REQUIRE(result_out_of_range_max_float.is_out_of_range());
+
+            REQUIRE_EQ(result_out_of_range_min_float.value, 0);
+            REQUIRE_FALSE(result_out_of_range_min_float.is_success());
+            REQUIRE(result_out_of_range_min_float.is_out_of_range());
+
+            REQUIRE_EQ(result_invalid_float.value, 0.0f);
+            REQUIRE_FALSE(result_invalid_float.is_success());
+            REQUIRE(result_invalid_float.is_invalid());
+
+            REQUIRE_EQ(result_scientific_float.value, 1234.56789);
+            REQUIRE(result_scientific_float.is_success());
+            REQUIRE(result_scientific_float.is_full_parsed());
+        }
+    }
 }

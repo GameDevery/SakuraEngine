@@ -15,4 +15,27 @@ struct StringPartitionResult {
     TStr mid   = {};
     TStr right = {};
 };
+
+enum class EStringParseStatus
+{
+    Success,
+    OutOfRange,
+    Invalid,
+};
+template <typename T, typename TStringView>
+struct StringParseResult {
+    using ViewType = TStringView;
+
+    T                  value;
+    EStringParseStatus parse_status;
+    ViewType           parsed;
+    ViewType           rest;
+
+    inline bool is_success() const noexcept { return parse_status == EStringParseStatus::Success; }
+    inline bool is_full_parsed() const noexcept { return is_success() && rest.is_empty(); }
+    inline bool is_out_of_range() const noexcept { return parse_status == EStringParseStatus::OutOfRange; }
+    inline bool is_invalid() const noexcept { return parse_status == EStringParseStatus::Invalid; }
+
+    inline operator bool() const noexcept { return is_success(); }
+};
 } // namespace skr::container
