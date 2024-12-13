@@ -35,8 +35,8 @@ function main()
                 proxy_func(target, proxy_results)
                 for _, proxy_result in ipairs(proxy_results) do
                     -- check required fields
-                    if not proxy_result.name then
-                        raise(target:name()..": proxy_result.name is required!")
+                    if not proxy_result.cmd_name then
+                        raise(target:name()..": proxy_result.cmd_name is required!")
                     end
                     if not proxy_result.program then
                         raise(target:name()..": proxy_result.program is required!")
@@ -44,7 +44,8 @@ function main()
 
                     -- check proxy_result fields
                     local fields = {
-                        name = true, 
+                        label = true,
+                        cmd_name = true, 
                         program = true, 
                         args = true, 
                         envs = true, 
@@ -68,7 +69,9 @@ function main()
             elseif target_kind == "binary"then
                 table.insert(targets_info, {
                     target = target,
+                    pre_task_name = nil,
                     pre_task_cmd = nil,
+                    post_task_name = nil,
                     post_task_cmd = nil,
                     proxy_result = nil,
                 })
@@ -95,11 +98,15 @@ function main()
     for _, target_info in ipairs(targets_info) do
         local pre_cmd = ""
         local post_cmd = ""
+        local cmd_name = ""
+        local label = ""
 
         -- build cmd
         if target_info.proxy_result then
             pre_cmd = target_info.proxy_result.pre_cmd
             post_cmd = target_info.proxy_result.post_cmd
+            cmd_name = target_info.proxy_result.cmd_name
+            label = target_info.proxy_result.label and target_info.proxy_result.label or cmd_name
         else
             local config_pre_cmd = target_info.target:values("vsc_dbg.cmd_prev")
             local config_post_cmd = target_info.target:values("vsc_dbg.cmd_post")
@@ -118,20 +125,26 @@ function main()
                     post_cmd = post_cmd .. "\n" .. cmd
                 end
             end
+
+            label = target_info.target:name()
+            cmd_name = label
         end
         
         -- write cmd
-        local pre_cmd_file_name = "build/vsc_dbg/pre_" .. target_info.target:name() .. ".bat"
-        local post_cmd_file_name = "build/vsc_dbg/post_" .. target_info.target:name() .. ".bat"
+        cmd_name = cmd_name:gsub(" ", "_")
+        local pre_cmd_file_name = "build/vsc_dbg/pre_" .. cmd_name  .. ".bat"
+        local post_cmd_file_name = "build/vsc_dbg/post_" .. cmd_name .. ".bat"
         if pre_cmd and #pre_cmd > 0 then
             os.rm(pre_cmd_file_name)
             io.writefile(pre_cmd_file_name, pre_cmd)
-            target_info.pre_task_cmd = pre_cmd_file_name
+            target_info.pre_task_cmd = "\""..pre_cmd_file_name.."\""
+            target_info.pre_task_name = "pre_" .. cmd_name
         end
         if post_cmd and #post_cmd > 0 then
             os.rm(post_cmd_file_name)
             io.writefile(post_cmd_file_name, post_cmd)
-            target_info.post_task_cmd = post_cmd_file_name
+            target_info.post_task_cmd = "\""..post_cmd_file_name.."\""
+            target_info.post_task_name = "post_" .. cmd_name
         end
     end
     
@@ -156,7 +169,7 @@ function main()
                 end
 
                 table.insert(launches, {
-                    name = "▶️" .. proxy_result.name,
+                    name = "▶️" .. proxy_result.label,
                     type = "cppvsdbg",
                     request = "launch",
                     program = proxy_result.program,
@@ -165,8 +178,8 @@ function main()
                     cwd = build_dir,
                     environment = envs,
                     console = "integratedTerminal",
-                    preLaunchTask = target_info.pre_task_cmd and "pre " .. target:name() or nil,
-                    postLaunchTask = target_info.post_task_cmd and "post " .. target:name() or nil,
+                    preLaunchTask = target_info.pre_task_name,
+                    postLaunchTask = target_info.post_task_name,
                 })
             else
                 local target = target_info.target
@@ -197,15 +210,15 @@ function main()
                     cwd = build_dir,
                     environment = envs,
                     console = "integratedTerminal",
-                    preLaunchTask = target_info.pre_task_cmd and "pre " .. target:name() or nil,
-                    postLaunchTask = target_info.post_task_cmd and "post " .. target:name() or nil,
+                    preLaunchTask = target_info.pre_task_name,
+                    postLaunchTask = target_info.post_task_name,
                 })
             end
         end
         function _tasks(target_info)
             if target_info.pre_task_cmd then
                 table.insert(tasks, {
-                    label = "pre " .. target_info.target:name(),
+                    label = target_info.pre_task_name,
                     type = "shell",
                     command = target_info.pre_task_cmd,
                     options = {
@@ -227,7 +240,7 @@ function main()
             end
             if target_info.post_task_cmd then
                 table.insert(tasks, {
-                    label = "post " .. target_info.target:name(),
+                    label = target_info.post_task_name,
                     type = "shell",
                     command = target_info.post_task_cmd,
                     options = {
