@@ -134,12 +134,15 @@ struct U8String : protected Memory {
     bool            is_empty() const;
     DataType*       data_w();
     const DataType* data() const;
+    char*           data_raw_w();
+    const char*     data_raw() const;
     Memory&         memory();
     const Memory&   memory() const;
 
     // str getter
     SizeType        length_text() const;
     SizeType        length_buffer() const;
+    const DataType* u8_str() const;
     const DataType* c_str() const;
     const char*     c_str_raw() const;
 
@@ -1034,6 +1037,17 @@ inline const typename U8String<Memory>::DataType* U8String<Memory>::data() const
     return _data();
 }
 template <typename Memory>
+inline char* U8String<Memory>::data_raw_w()
+{
+    _pre_modify();
+    return _data();
+}
+template <typename Memory>
+inline const char* U8String<Memory>::data_raw() const
+{
+    return _data();
+}
+template <typename Memory>
 inline Memory& U8String<Memory>::memory()
 {
     return *this;
@@ -1054,6 +1068,11 @@ template <typename Memory>
 inline typename U8String<Memory>::SizeType U8String<Memory>::length_buffer() const
 {
     return view().length_buffer();
+}
+template <typename Memory>
+inline const typename U8String<Memory>::DataType* U8String<Memory>::u8_str() const
+{
+    return _data();
 }
 template <typename Memory>
 inline const typename U8String<Memory>::DataType* U8String<Memory>::c_str() const
