@@ -664,7 +664,7 @@ struct ArgFormatterPack {
         : arg(reinterpret_cast<const void*>(&v))
         , formatter(_make_formatter<T>())
     {
-        static_assert(Formattable<TString, std::decay_t<T>>, "Type is not formattable!");
+        static_assert(Formattable<TString, std::remove_cv_t<std::decay_t<T>>>, "Type is not formattable!");
     }
 
     inline void format(TString& out, typename TString::ViewType& spec)
@@ -677,7 +677,7 @@ private:
     inline FormatterFunc _make_formatter()
     {
         return +[](TString& out, const void* value, typename TString::ViewType spec) {
-            Formatter<std::decay_t<T>>::format(out, *reinterpret_cast<const T*>(value), spec);
+            Formatter<std::remove_cv_t<std::decay_t<T>>>::format(out, *reinterpret_cast<const T*>(value), spec);
         };
     }
 
