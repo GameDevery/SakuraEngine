@@ -542,16 +542,19 @@ struct Formatter<char> {
     }
 };
 template <>
-struct Formatter<char*> {
+struct Formatter<const char*> {
     template <typename TString>
     inline static void format(TString& out, const char* value, typename TString::ViewType spec)
     {
         out.append(value);
     }
-    template <typename TString, size_t N>
+};
+template <size_t N>
+struct Formatter<char[N]> {
+    template <typename TString>
     inline static void format(TString& out, const char (&value)[N], typename TString::ViewType spec)
     {
-        out.append(value, N - 1);
+        out.append(value);
     }
 };
 template <>
@@ -563,16 +566,19 @@ struct Formatter<skr_char8> {
     }
 };
 template <>
-struct Formatter<skr_char8*> {
+struct Formatter<const skr_char8*> {
     template <typename TString>
     inline static void format(TString& out, const skr_char8* value, typename TString::ViewType spec)
     {
         out.append(value);
     }
-    template <typename TString, size_t N>
-    static void format(TString& out, skr_char8 (&value)[N], typename TString::ViewType spec)
+};
+template <size_t N>
+struct Formatter<skr_char8[N]> {
+    template <typename TString>
+    inline static void format(TString& out, const skr_char8 (&value)[N], typename TString::ViewType spec)
     {
-        out.append(value, N - 1);
+        out.append(value);
     }
 };
 
@@ -637,10 +643,18 @@ struct Formatter<std::nullptr_t> {
         out.append(u8"nullptr");
     }
 };
-template <typename T>
-struct Formatter<T*> {
+template <>
+struct Formatter<void*> {
     template <typename TString>
-    inline static void format(TString& out, T* value, typename TString::ViewType spec)
+    inline static void format(TString& out, const void* value, typename TString::ViewType spec)
+    {
+        format_integer(out, reinterpret_cast<uint64_t>(value), u8"#016x");
+    }
+};
+template <>
+struct Formatter<const void*> {
+    template <typename TString>
+    inline static void format(TString& out, const void* value, typename TString::ViewType spec)
     {
         format_integer(out, reinterpret_cast<uint64_t>(value), u8"#016x");
     }
@@ -651,7 +665,7 @@ struct Formatter<T*> {
 namespace skr::container
 {
 template <typename TString, typename T>
-concept Formattable = requires(TString& out, T v, typename TString::ViewType spec) {
+concept Formattable = requires(TString& out, const T& v, typename TString::ViewType spec) {
     Formatter<T>::format(out, v, spec);
 };
 
@@ -664,7 +678,7 @@ struct ArgFormatterPack {
         : arg(reinterpret_cast<const void*>(&v))
         , formatter(_make_formatter<T>())
     {
-        static_assert(Formattable<TString, std::remove_cv_t<std::decay_t<T>>>, "Type is not formattable!");
+        static_assert(Formattable<TString, T>, "Type is not formattable!");
     }
 
     inline void format(TString& out, typename TString::ViewType& spec)
@@ -677,7 +691,7 @@ private:
     inline FormatterFunc _make_formatter()
     {
         return +[](TString& out, const void* value, typename TString::ViewType spec) {
-            Formatter<std::remove_cv_t<std::decay_t<T>>>::format(out, *reinterpret_cast<const T*>(value), spec);
+            Formatter<T>::format(out, *reinterpret_cast<const T*>(value), spec);
         };
     }
 

@@ -30,5 +30,9 @@ TEST_CASE("test format")
     REQUIRE_EQ(StringView{ u8"0x00000000075bcd15" }, format(u8"{}", reinterpret_cast<void*>(123456789)));
 
     // string
-    REQUIRE_EQ(StringView{ u8"繁星明 😀" }, format(u8"{}{}明{}", u8"繁", StringView{ u8"星" }, String{ u8" 😀" }));
+    REQUIRE_EQ(StringView{ u8"繁星明 😀😀" },
+               format(u8"{}{}明{}{}", u8"繁",
+                      StringView{ u8"星" },
+                      String{ u8" 😀" },
+                      String{ u8"😀" }.c_str()));
 }
