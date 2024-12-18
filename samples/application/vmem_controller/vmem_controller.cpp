@@ -1,6 +1,6 @@
 #include "common/utils.h"
 #include "SkrOS/thread.h"
-#include "SkrRT/platform/system.h"
+#include "SkrCore/platform/system.h"
 #include "SkrCore/log.h"
 #include "SkrBase/misc/make_zeroed.hpp"
 #include "SkrCore/module/module.hpp"
@@ -174,7 +174,7 @@ int SVMemCCModule::main_module_exec(int argc, char8_t** argv)
 {
     DPIAware = skr_runtime_is_dpi_aware();
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0) return -1;
-    SWindowDescroptor window_desc = {};
+    SWindowDescriptor window_desc = {};
     window_desc.flags             = SKR_WINDOW_CENTERED | SKR_WINDOW_RESIZABLE;
     window_desc.height            = 1024;
     window_desc.width             = 1024;

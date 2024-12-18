@@ -6,7 +6,7 @@
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrImGui/skr_imgui.h"
 #include "SkrImGui/skr_imgui_rg.h"
-#include "SkrRT/platform/window.h"
+#include "SkrCore/platform/window.h"
 #include "SkrProfile/profile.h"
 #include "pass_profiler.h"
 #include "SkrOS/thread.h"
@@ -251,7 +251,7 @@ int main(int argc, char* argv[])
     DPIAware = skr_runtime_is_dpi_aware();
 
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0) return -1;
-    SWindowDescroptor window_desc = {};
+    SWindowDescriptor window_desc = {};
     window_desc.flags = SKR_WINDOW_CENTERED | SKR_WINDOW_RESIZABLE;
     window_desc.height = BACK_BUFFER_HEIGHT;
     window_desc.width = BACK_BUFFER_WIDTH;

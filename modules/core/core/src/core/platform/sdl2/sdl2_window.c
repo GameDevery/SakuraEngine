@@ -1,10 +1,10 @@
-#include "SkrRT/platform/window.h"
+#include "SkrCore/platform/window.h"
 #include "SDL2/SDL_syswm.h"
 #include "SDL2/SDL_mouse.h"
 
 #define SDL_HAS_ALWAYS_ON_TOP SDL_VERSION_ATLEAST(2,0,5)
 
-SWindowHandle skr_create_window(const char8_t* name, const SWindowDescroptor* desc)
+SWindowHandle skr_create_window(const char8_t* name, const SWindowDescriptor* desc)
 {
     uint32_t flags = SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_VULKAN;
     flags |= (desc->flags & SKR_WINDOW_RESIZABLE) ? SDL_WINDOW_RESIZABLE : 0;
@@ -122,7 +122,7 @@ void* skr_window_get_native_handle(SWindowHandle window)
 }
 
 #if SKR_PLAT_MACOSX
-    #include "SkrRT/platform/apple/macos/window.h"
+    #include "SkrCore/platform/apple/macos/window.h"
 #endif
 
 void* skr_window_get_native_view(SWindowHandle window)

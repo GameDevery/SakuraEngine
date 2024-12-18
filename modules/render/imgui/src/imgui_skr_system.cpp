@@ -2,8 +2,8 @@
 #include <SkrContainers/string.hpp>
 #include <SkrContainers/vector.hpp>
 #include "SkrCore/log.h"
-#include "SkrRT/platform/input.h"
-#include "SkrRT/platform/system.h"
+#include "SkrCore/platform/input.h"
+#include "SkrCore/platform/system.h"
 
 #include "SkrInput/input.h"
 
@@ -312,7 +312,7 @@ void skr_imgui_new_frame(SWindowHandle window, float delta_time)
 
 void skr::imgui::imgui_create_window(ImGuiViewport* viewport)
 {
-    SWindowDescroptor desc = {};
+    SWindowDescriptor desc = {};
     desc.flags             = SKR_WINDOW_HIDDEN;
     desc.flags |= (viewport->Flags & ImGuiViewportFlags_NoDecoration) ? SKR_WINDOW_BOARDLESS : 0;
     desc.flags |= !(viewport->Flags & ImGuiViewportFlags_NoDecoration) ? 0 : SKR_WINDOW_RESIZABLE;
