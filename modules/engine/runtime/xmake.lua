@@ -4,6 +4,7 @@ end
 -- add_requires("cpu_features v0.9.0")
 
 target("SkrRTMeta")
+    set_group("00.utilities")
     set_kind("headeronly")
     codegen_generator({
         scripts = {

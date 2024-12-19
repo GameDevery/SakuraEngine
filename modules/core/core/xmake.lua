@@ -33,6 +33,7 @@ codegen_component("SkrCore", {api = "SKR_CORE", rootdir = "include"})
     add_files("include/**.hpp")
 
 target("SkrCoreMeta")
+    set_group("00.utilities")
     set_kind("headeronly")
     codegen_generator({
         scripts = {
