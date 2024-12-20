@@ -49,8 +49,8 @@ function main()
                         program = true, 
                         args = true, 
                         envs = true, 
-                        pre_cmd = true, 
-                        post_cmd = true
+                        pre_cmds = true, 
+                        post_cmds = true
                     }
                     for k, v in pairs(proxy_result) do
                         if not fields[k] then
@@ -96,38 +96,53 @@ function main()
 
     -- build tasks
     for _, target_info in ipairs(targets_info) do
-        local pre_cmd = ""
-        local post_cmd = ""
+        local pre_cmds = {}
+        local post_cmds = {}
         local cmd_name = ""
         local label = ""
 
         -- build cmd
         if target_info.proxy_result then
-            pre_cmd = target_info.proxy_result.pre_cmd
-            post_cmd = target_info.proxy_result.post_cmd
+            pre_cmds = target_info.proxy_result.pre_cmds
+            post_cmds = target_info.proxy_result.post_cmds
             cmd_name = target_info.proxy_result.cmd_name
             label = target_info.proxy_result.label and target_info.proxy_result.label or cmd_name
         else
-            local config_pre_cmd = target_info.target:values("vsc_dbg.cmd_prev")
-            local config_post_cmd = target_info.target:values("vsc_dbg.cmd_post")
+            local config_pre_cmds = target_info.target:values("vsc_dbg.cmd_prev")
+            local config_post_cmds = target_info.target:values("vsc_dbg.cmd_post")
             
             -- combine pre cmd
-            pre_cmd = "xmake build " .. target_info.target:name()
-            if config_pre_cmd then
-                for _, cmd in ipairs(config_pre_cmd) do
-                    pre_cmd = pre_cmd .. "\n" .. cmd
+            table.insert(pre_cmds, "xmake build " .. target_info.target:name())
+            if config_pre_cmds then
+                for _, cmd in ipairs(config_pre_cmds) do
+                    table.insert(pre_cmds, cmd)
                 end
             end
 
             -- combine post cmd
-            if config_post_cmd then
-                for _, cmd in ipairs(config_post_cmd) do
-                    post_cmd = post_cmd .. "\n" .. cmd
+            if config_post_cmds then
+                for _, cmd in ipairs(config_post_cmds) do
+                    table.insert(post_cmds, cmd)
                 end
             end
 
             label = target_info.target:name()
             cmd_name = label
+        end
+
+        -- combine pre cmd
+        local pre_cmd, post_cmd
+        do
+            local _do_combine_cmd = function (cmds)
+                local result = ""
+                local check_result = "IF %ERRORLEVEL% NEQ 0 (exit %ERRORLEVEL%)"
+                for _, cmd in ipairs(cmds) do
+                    result = result .. cmd .. "\n" .. check_result .. "\n"
+                end
+                return result
+            end
+            pre_cmd = _do_combine_cmd(pre_cmds)
+            post_cmd = _do_combine_cmd(post_cmds)
         end
         
         -- write cmd
