@@ -6,6 +6,257 @@ import("core.project.project")
 import("core.project.depend")
 import("core.platform.platform")
 import("core.base.json")
+import("find_sdk")
+
+-- TODO. 根据依赖链拼接参数
+
+-- programs
+local _python = find_sdk.find_embed_python() or find_sdk.find_program("python3")
+local _merge_natvis_script_path = path.join(os.projectdir(), "tools/merge_natvis/merge_natvis.py")
+
+-- tools
+function _normalize_cmd_name(cmd_name)
+    return cmd_name:gsub(" ", "_")
+end
+
+-- load generate data from targets
+-- proxy targets: used to generate debug target that not consisted to targets
+local _proxy_launch_fields = {
+    label = true,
+    cmd_name = true,
+    program = true,
+    args = true,
+    envs = true,
+    pre_cmds = true,
+    post_cmds = true,
+    natvis_files = true,
+}
+function _load_launches_from_proxy_target(target, build_dir)
+    local enable_proxy_func = target:values("vsc_dbg.proxy_func")
+    local proxy_func = enable_proxy_func and target:script("build") or nil
+
+    if proxy_func then
+        -- invoke proxy function
+        local proxy_results = {}
+        proxy_func(target, proxy_results)
+    
+        -- check required fields
+        if not proxy_result.cmd_name then
+            raise(target:name()..": proxy_result.cmd_name is required!")
+        end
+        if not proxy_result.program then
+            raise(target:name()..": proxy_result.program is required!")
+        end
+
+        -- check proxy result fields
+        for k, v in pairs(proxy_result) do
+            if not _proxy_launch_fields[k] then
+                raise(target:name()..": proxy_result."..k.." is invalid!")
+            end
+        end
+        
+        return {
+            label = proxy_results.label and proxy_results.label or proxy_results.cmd_name,
+            cmd_name = proxy_results.cmd_name,
+            program = proxy_results.program,
+            args = proxy_results.args or {},
+            envs = proxy_results.envs or {},
+            cwd = build_dir,
+            pre_cmds = proxy_results.pre_cmds or {},
+            post_cmds = proxy_results.post_cmds or {},
+            natvis_files = proxy_results.natvis_files or {},
+        }
+    else
+        return nil
+    end
+end
+function _load_launch_from_binary_target(target, build_dir)
+    if target:kind() == "binary" then
+        local config_args = target:values("vsc_dbg.args")
+        local config_envs = target:values("vsc_dbg.env")
+        local config_pre_cmds = target:values("vsc_dbg.cmd_prev")
+        local config_post_cmds = target:values("vsc_dbg.cmd_post")
+        
+        -- get launch args
+        local args = config_args and config_args or {}
+
+        -- get launch envs
+        local envs = {}
+        for _, k in ipairs(config_envs) do
+            local v = target:values("vsc_dbg.env." .. k)
+            envs[k] = v
+        end
+        
+        -- get pre cmd
+        local pre_cmds = {"xmake build "..target:name()} -- build target anyways
+        if config_pre_cmds then
+            for _, cmd in ipairs(config_pre_cmds) do
+                table.insert(pre_cmds, cmd)
+            end
+        end
+
+        -- get post cmds
+        local post_cmds = config_post_cmds and config_post_cmds or {}
+
+        -- get natvis files
+        local natvis_files = {}
+        do
+            local function _try_add_natvis_file(target)
+                local config_natvis_files = target:values("vsc_dbg.natvis_files")
+                if config_natvis_files then
+                    for _, natvis_file in ipairs(config_natvis_files) do
+                        -- translate to absolute path
+                        if not path.is_absolute(natvis_file) then
+                            natvis_file = path.absolute(natvis_file, target:scriptdir())
+                        end
+
+                        -- add to table
+                        table.insert(natvis_files, natvis_file)
+                    end
+                end
+            end
+
+            _try_add_natvis_file(target)
+            for _, dep in ipairs(target:orderdeps()) do
+                _try_add_natvis_file(dep)
+            end
+        end
+        
+        return {
+            label = target:name(),
+            cmd_name = target:name(),
+            program = path.join(build_dir, target:name()..".exe"),
+            args = args,
+            envs = envs,
+            cwd = build_dir,
+            pre_cmds = pre_cmds,
+            post_cmds = post_cmds,
+            natvis_files = natvis_files,
+        }
+    else
+        return nil
+    end
+end
+
+-- generate tasks
+local _task_cmd_dir = "build/.skr/vsc_dbg/"
+-- @return: file name
+function _generate_cmd_file(cmds, cmd_name)
+    if cmds and #cmds > 0 then
+        -- combines cmd str
+        local cmd_str = ""
+        local check_result = "IF %ERRORLEVEL% NEQ 0 (exit %ERRORLEVEL%)"
+        for _, cmd in ipairs(cmds) do
+            cmd_str = cmd_str..cmd.."\n"..check_result.."\n"
+        end
+
+        -- write cmd file
+        local cmd_name = _normalize_cmd_name(cmd_name)
+        local cmd_file_name = path.join(_task_cmd_dir, cmd_name..".bat")
+        if #cmd_str > 0 then
+            os.rm(cmd_file_name)
+            io.writefile(cmd_file_name, cmd_str)
+            return cmd_file_name
+        end
+    end
+    
+    return nil
+end
+-- @return: task object
+function _combine_task_json(cmds, cmd_name)
+    local cmd_file_name = _generate_cmd_file(cmds, cmd_name)
+    if cmd_file_name then
+        return {
+            label = cmd_name,
+            type = "shell",
+            command = cmd_file_name,
+            options = {
+                cwd = "${workspaceFolder}",
+            },
+            group = {
+                kind = "build",
+                isDefault = false
+            },
+            presentation = {
+                echo = true,
+                reveal = "always",
+                focus = false,
+                panel = "new",
+                showReuseMessage = false,
+                close = true,
+            }
+        }
+    end
+    return nil
+end
+
+-- generate launches
+-- @return: combined natvis file path
+function _generate_natvis_files(natvis_files, cmd_name)
+    if natvis_files and #natvis_files > 0 then
+        local out_put_file_name = path.join(_task_cmd_dir, cmd_name..".natvis")
+        
+        -- combine commands
+        local command = {
+            _merge_natvis_script_path,
+            "-o", out_put_file_name,
+        }
+        for _, natvis_file in ipairs(natvis_files) do
+            table.insert(command, natvis_file)
+        end
+
+        -- run command
+        local out, err = os.iorunv(_python.program, command)
+
+        -- dump output
+        if option.get("verbose") then
+            if out and #out > 0 then
+                print("=====================["..cmd_name.." merge natvis output]=====================")
+                printf(out)
+                print("=====================["..cmd_name.." merge natvis output]=====================")
+            end
+        end
+        if err and #err > 0 then
+            print("=====================["..cmd_name.." merge natvis error]=====================")
+            printf(err)
+            print("=====================["..cmd_name.." merge natvis error]=====================")
+        end
+
+        return out_put_file_name
+    end
+    return nil
+end
+-- @return: launch object
+function _combine_launch_json(launch_data, pre_task_json, post_task_json)
+    local natvis_file_name = _generate_natvis_files(launch_data.natvis_files, launch_data.cmd_name)
+    return {
+        name = "▶️"..launch_data.label,
+        type = "cppvsdbg",
+        request = "launch",
+        program = launch_data.program,
+        args = json.mark_as_array(launch_data.args),
+        stopAtEntry = false,
+        cwd = launch_data.cwd,
+        environment = json.mark_as_array(launch_data.envs),
+        console = "integratedTerminal",
+        visualizerFile = path.join("${workspaceFolder}", natvis_file_name),
+        preLaunchTask = pre_task_json and pre_task_json.label or nil,
+        postLaunchTask = post_task_json and post_task_json.label or nil,
+    }
+end
+function _append_launches_and_tasks(launch_data, out_launches_json, out_tasks_json)
+    local pre_task_json = _combine_task_json(launch_data.pre_cmds, "pre_"..launch_data.cmd_name)
+    local post_task_json = _combine_task_json(launch_data.post_cmds, "post_"..launch_data.cmd_name)
+    local launch_json = _combine_launch_json(launch_data, pre_task_json, post_task_json)
+    
+    table.insert(out_launches_json, launch_json)
+    if pre_task_json then
+        table.insert(out_tasks_json, pre_task_json)
+    end
+    if post_task_json then
+        table.insert(out_tasks_json, post_task_json)
+    end
+end
 
 function main()
     -- load config
@@ -22,59 +273,16 @@ function main()
     -- get options
     local opt_targets = option.get("targets")
 
-    -- collect targets
-    local targets_info = {}
+    -- collect launches data
+    local launches_data = {}
     do
         function _add_target(target)
-            local target_kind = target:kind()
-            local enable_proxy_func = target:values("vsc_dbg.proxy_func")
-            local proxy_func = enable_proxy_func and target:script("build") or nil
-            
-            if proxy_func then
-                local proxy_results = {}
-                proxy_func(target, proxy_results)
-                for _, proxy_result in ipairs(proxy_results) do
-                    -- check required fields
-                    if not proxy_result.cmd_name then
-                        raise(target:name()..": proxy_result.cmd_name is required!")
-                    end
-                    if not proxy_result.program then
-                        raise(target:name()..": proxy_result.program is required!")
-                    end
-
-                    -- check proxy_result fields
-                    local fields = {
-                        label = true,
-                        cmd_name = true, 
-                        program = true, 
-                        args = true, 
-                        envs = true, 
-                        pre_cmds = true, 
-                        post_cmds = true
-                    }
-                    for k, v in pairs(proxy_result) do
-                        if not fields[k] then
-                            raise(target:name()..": proxy_result."..k.." is invalid!")
-                        end
-                    end
-                    
-                    -- insert proxy result
-                    table.insert(targets_info, {
-                        target = target,
-                        pre_task_cmd = nil,
-                        post_task_cmd = nil,
-                        proxy_result = proxy_result,
-                    })
-                end
-            elseif target_kind == "binary"then
-                table.insert(targets_info, {
-                    target = target,
-                    pre_task_name = nil,
-                    pre_task_cmd = nil,
-                    post_task_name = nil,
-                    post_task_cmd = nil,
-                    proxy_result = nil,
-                })
+            local proxy_launch_data = _load_launches_from_proxy_target(target, build_dir)
+            local binary_launch_data = _load_launch_from_binary_target(target, build_dir)
+            if proxy_launch_data then
+                table.insert(launches_data, proxy_launch_data)
+            elseif binary_launch_data then
+                table.insert(launches_data, binary_launch_data)
             end
         end
 
@@ -94,218 +302,21 @@ function main()
         end
     end
 
-    -- build tasks
-    for _, target_info in ipairs(targets_info) do
-        local pre_cmds = {}
-        local post_cmds = {}
-        local cmd_name = ""
-        local label = ""
-
-        -- build cmd
-        if target_info.proxy_result then
-            pre_cmds = target_info.proxy_result.pre_cmds
-            post_cmds = target_info.proxy_result.post_cmds
-            cmd_name = target_info.proxy_result.cmd_name
-            label = target_info.proxy_result.label and target_info.proxy_result.label or cmd_name
-        else
-            local config_pre_cmds = target_info.target:values("vsc_dbg.cmd_prev")
-            local config_post_cmds = target_info.target:values("vsc_dbg.cmd_post")
-            
-            -- combine pre cmd
-            table.insert(pre_cmds, "xmake build " .. target_info.target:name())
-            if config_pre_cmds then
-                for _, cmd in ipairs(config_pre_cmds) do
-                    table.insert(pre_cmds, cmd)
-                end
-            end
-
-            -- combine post cmd
-            if config_post_cmds then
-                for _, cmd in ipairs(config_post_cmds) do
-                    table.insert(post_cmds, cmd)
-                end
-            end
-
-            label = target_info.target:name()
-            cmd_name = label
-        end
-
-        -- combine pre cmd
-        local pre_cmd, post_cmd
-        do
-            local _do_combine_cmd = function (cmds)
-                local result = ""
-                local check_result = "IF %ERRORLEVEL% NEQ 0 (exit %ERRORLEVEL%)"
-                for _, cmd in ipairs(cmds) do
-                    result = result .. cmd .. "\n" .. check_result .. "\n"
-                end
-                return result
-            end
-            pre_cmd = _do_combine_cmd(pre_cmds)
-            post_cmd = _do_combine_cmd(post_cmds)
-        end
-        
-        -- write cmd
-        cmd_name = cmd_name:gsub(" ", "_")
-        local pre_cmd_file_name = "build/vsc_dbg/pre_" .. cmd_name  .. ".bat"
-        local post_cmd_file_name = "build/vsc_dbg/post_" .. cmd_name .. ".bat"
-        if pre_cmd and #pre_cmd > 0 then
-            os.rm(pre_cmd_file_name)
-            io.writefile(pre_cmd_file_name, pre_cmd)
-            target_info.pre_task_cmd = "\""..pre_cmd_file_name.."\""
-            target_info.pre_task_name = "pre_" .. cmd_name
-        end
-        if post_cmd and #post_cmd > 0 then
-            os.rm(post_cmd_file_name)
-            io.writefile(post_cmd_file_name, post_cmd)
-            target_info.post_task_cmd = "\""..post_cmd_file_name.."\""
-            target_info.post_task_name = "post_" .. cmd_name
-        end
-    end
-    
-    -- gen config contents
-    local launches = {}
-    local tasks = {}
-    do
-        function _launch(target_info)
-            if target_info.proxy_result then
-                local proxy_result = target_info.proxy_result
-
-                -- get launch args
-                local args = proxy_result.args and proxy_result.args or json.mark_as_array({})
-
-                -- get launch envs
-                local envs = json.mark_as_array({})
-                for k, v in pairs(proxy_result.envs) do
-                    table.insert(envs, {
-                        name = k,
-                        value = v
-                    })
-                end
-
-                table.insert(launches, {
-                    name = "▶️" .. proxy_result.label,
-                    type = "cppvsdbg",
-                    request = "launch",
-                    program = proxy_result.program,
-                    args = args,
-                    stopAtEntry = false,
-                    cwd = build_dir,
-                    environment = envs,
-                    console = "integratedTerminal",
-                    preLaunchTask = target_info.pre_task_name,
-                    postLaunchTask = target_info.post_task_name,
-                })
-            else
-                local target = target_info.target
-                local config_args = target:values("vsc_dbg.args")
-                local config_envs = target:values("vsc_dbg.env")
-                
-                -- get launch args
-                local args = config_args and config_args or json.mark_as_array({})
-
-                -- get launch envs
-                local envs = json.mark_as_array({})
-                for _, k in ipairs(config_envs) do
-                    local v = target:values("vsc_dbg.env." .. k)
-                    table.insert(envs, {
-                        name = k,
-                        value = v
-                    })
-                end
-
-                -- append
-                table.insert(launches, {
-                    name = "▶️" .. target:name(),
-                    type = "cppvsdbg",
-                    request = "launch",
-                    program = format("%s/%s.exe", build_dir, target:name()),
-                    args = args,
-                    stopAtEntry = false,
-                    cwd = build_dir,
-                    environment = envs,
-                    console = "integratedTerminal",
-                    preLaunchTask = target_info.pre_task_name,
-                    postLaunchTask = target_info.post_task_name,
-                })
-            end
-        end
-        function _tasks(target_info)
-            if target_info.pre_task_cmd then
-                table.insert(tasks, {
-                    label = target_info.pre_task_name,
-                    type = "shell",
-                    command = target_info.pre_task_cmd,
-                    options = {
-                        cwd = "${workspaceFolder}",
-                    },
-                    group = {
-                        kind = "build",
-                        isDefault = false
-                    },
-                    presentation = {
-                        echo = true,
-                        reveal = "always",
-                        focus = false,
-                        panel = "new",
-                        showReuseMessage = false,
-                        close = true,
-                    }
-                })
-            end
-            if target_info.post_task_cmd then
-                table.insert(tasks, {
-                    label = target_info.post_task_name,
-                    type = "shell",
-                    command = target_info.post_task_cmd,
-                    options = {
-                        cwd = "${workspaceFolder}",
-                    },
-                    group = {
-                        kind = "build",
-                        isDefault = false
-                    },
-                    presentation = {
-                        echo = true,
-                        reveal = "always",
-                        focus = false,
-                        panel = "new",
-                        showReuseMessage = false,
-                        close = true,
-                    }
-                })
-            end
-        end
-
-        -- generate debug configurations for exec targets
-        for _, target_info in ipairs(targets_info) do
-            _launch(target_info)
-            _tasks(target_info)
-        end
-
-        -- attach launch needn't bound with target
-        table.insert(launches, {
-            name = "🔍Attach",
-            type = "cppvsdbg",
-            request = "attach",
-            processId = "${command:pickProcess}",
-            -- program = format("%s/%s.dll", build_dir, target:name()),
-            -- args = json.mark_as_array({}),
-            -- stopAtEntry = false,
-            -- cwd = build_dir,
-            -- environment = json.mark_as_array({}),
-            -- console = "externalTerminal",
-            -- preLaunchTask = "build "..target:name(),
-        })
+    -- generate launches and tasks
+    local launches_json = {}
+    local tasks_json = {}
+    for _, launch_data in ipairs(launches_data) do
+        _append_launches_and_tasks(launch_data, launches_json, tasks_json)
     end
 
+    -- save launches and tasks
     -- save debug configurations
     json.savefile(".vscode/launch.json", {
         version = "0.2.0",
-        configurations = launches
+        configurations = launches_json
     })
     json.savefile(".vscode/tasks.json", {
         version = "2.0.0",
-        tasks = tasks
+        tasks = tasks_json
     })
 end
