@@ -40,32 +40,41 @@ function _load_launches_from_proxy_target(target, build_dir)
         local proxy_results = {}
         proxy_func(target, proxy_results)
     
-        -- check required fields
-        if not proxy_result.cmd_name then
-            raise(target:name()..": proxy_result.cmd_name is required!")
-        end
-        if not proxy_result.program then
-            raise(target:name()..": proxy_result.program is required!")
-        end
-
-        -- check proxy result fields
-        for k, v in pairs(proxy_result) do
-            if not _proxy_launch_fields[k] then
-                raise(target:name()..": proxy_result."..k.." is invalid!")
+        local result = {}
+        for _, proxy_result in ipairs(proxy_results) do            
+            -- check required fields
+            if not proxy_result.cmd_name then
+                raise(target:name()..": proxy_result.cmd_name is required!")
             end
+            if not proxy_result.program then
+                raise(target:name()..": proxy_result.program is required!")
+            end
+
+            -- check proxy result fields
+            for k, v in pairs(proxy_result) do
+                if not _proxy_launch_fields[k] then
+                    raise(target:name()..": proxy_result."..k.." is invalid!")
+                end
+            end
+
+            table.insert(result, {
+                label = proxy_result.label and proxy_result.label or proxy_result.cmd_name,
+                cmd_name = proxy_result.cmd_name,
+                program = proxy_result.program,
+                args = proxy_result.args or {},
+                envs = proxy_result.envs or {},
+                cwd = build_dir,
+                pre_cmds = proxy_result.pre_cmds or {},
+                post_cmds = proxy_result.post_cmds or {},
+                natvis_files = proxy_result.natvis_files or {},
+            })
         end
         
-        return {
-            label = proxy_results.label and proxy_results.label or proxy_results.cmd_name,
-            cmd_name = proxy_results.cmd_name,
-            program = proxy_results.program,
-            args = proxy_results.args or {},
-            envs = proxy_results.envs or {},
-            cwd = build_dir,
-            pre_cmds = proxy_results.pre_cmds or {},
-            post_cmds = proxy_results.post_cmds or {},
-            natvis_files = proxy_results.natvis_files or {},
-        }
+        if #result > 0 then
+            return result
+        else
+            return nil
+        end
     else
         return nil
     end
@@ -282,10 +291,12 @@ function main()
     local launches_data = {}
     do
         function _add_target(target)
-            local proxy_launch_data = _load_launches_from_proxy_target(target, build_dir)
+            local proxy_launches_data = _load_launches_from_proxy_target(target, build_dir)
             local binary_launch_data = _load_launch_from_binary_target(target, build_dir)
-            if proxy_launch_data then
-                table.insert(launches_data, proxy_launch_data)
+            if proxy_launches_data then
+                for _, data in ipairs(proxy_launches_data) do
+                    table.insert(launches_data, data)
+                end
             elseif binary_launch_data then
                 table.insert(launches_data, binary_launch_data)
             end
