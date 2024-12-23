@@ -11,37 +11,23 @@ typedef struct skr_guid_t {
     SKR_CONSTEXPR skr_guid_t() = default;
     SKR_CONSTEXPR skr_guid_t(uint32_t b0, uint16_t b1, uint16_t b2, const uint8_t b3s[8])
         : storage0(b0)
-        , storage1((uint32_t)b1 << 16 | (uint32_t)b2)
-        ,
-    #if SKR_IS_LITTLE_ENDIAN
-        storage2((uint32_t)b3s[0] | (uint32_t)b3s[1] << 8 | (uint32_t)b3s[2] << 16 | (uint32_t)b3s[3] << 24)
-        , storage3((uint32_t)b3s[4] | (uint32_t)b3s[5] << 8 | (uint32_t)b3s[6] << 16 | (uint32_t)b3s[7] << 24)
-    #else
-        storage2((uint32_t)b3s[3] | (uint32_t)b3s[2] << 8 | (uint32_t)b3s[1] << 16 | (uint32_t)b3s[0] << 24)
-        , storage3((uint32_t)b3s[7] | (uint32_t)b3s[6] << 8 | (uint32_t)b3s[5] << 16 | (uint32_t)b3s[4] << 24)
-    #endif
+        , storage1(_combine_16(b1, b2))
+        , storage2(_combine_8(b3s[0], b3s[1], b3s[2], b3s[3]))
+        , storage3(_combine_8(b3s[4], b3s[5], b3s[6], b3s[7]))
     {
     }
     SKR_CONSTEXPR skr_guid_t(uint32_t b0, uint16_t b1, uint16_t b2, std::initializer_list<uint8_t> b3s_l)
         : storage0(b0)
-        , storage1((uint32_t)b1 << 16 | (uint32_t)b2)
-        ,
-    #define b3s (b3s_l).begin()
-    #if SKR_IS_LITTLE_ENDIAN
-        storage2((uint32_t)b3s[0] | (uint32_t)b3s[1] << 8 | (uint32_t)b3s[2] << 16 | (uint32_t)b3s[3] << 24)
-        , storage3((uint32_t)b3s[4] | (uint32_t)b3s[5] << 8 | (uint32_t)b3s[6] << 16 | (uint32_t)b3s[7] << 24)
-    #else
-        storage2((uint32_t)b3s[3] | (uint32_t)b3s[2] << 8 | (uint32_t)b3s[1] << 16 | (uint32_t)b3s[0] << 24)
-        , storage3((uint32_t)b3s[7] | (uint32_t)b3s[6] << 8 | (uint32_t)b3s[5] << 16 | (uint32_t)b3s[4] << 24)
-    #endif
-    #undef b3s
+        , storage1(_combine_16(b1, b2))
+        , storage2(_combine_8(b3s_l.begin()[0], b3s_l.begin()[1], b3s_l.begin()[2], b3s_l.begin()[3]))
+        , storage3(_combine_8(b3s_l.begin()[4], b3s_l.begin()[5], b3s_l.begin()[6], b3s_l.begin()[7]))
     {
     }
     SKR_CONSTEXPR bool     is_zero() const { return !(storage0 && storage1 && storage2 && storage3); }
     SKR_CONSTEXPR uint32_t data1() const { return storage0; }
-    SKR_CONSTEXPR uint16_t data2() const { return (uint16_t)(storage1 >> 16); }
-    SKR_CONSTEXPR uint16_t data3() const { return (uint16_t)(storage1 & UINT16_MAX); }
-    SKR_CONSTEXPR uint16_t data4(uint8_t idx0_7) const { return ((uint8_t*)&storage2)[idx0_7]; }
+    SKR_CONSTEXPR uint16_t data2() const { return ((uint16_t*)&storage1)[0]; }
+    SKR_CONSTEXPR uint16_t data3() const { return ((uint16_t*)&storage1)[1]; }
+    SKR_CONSTEXPR uint8_t  data4(uint8_t idx0_7) const { return ((uint8_t*)&storage2)[idx0_7]; }
 
     static skr_guid_t Create();
 
@@ -60,6 +46,25 @@ typedef struct skr_guid_t {
         return guid.get_hash();
     }
 
+private:
+    constexpr inline uint32_t _combine_16(uint16_t a, uint16_t b) const
+    {
+    #if SKR_LITTLE_ENDIAN
+        return a | b << 16;
+    #else
+        return a << 16 | b;
+    #endif
+    }
+    constexpr inline uint32_t _combine_8(uint8_t a, uint8_t b, uint8_t c, uint8_t d) const
+    {
+    #if SKR_LITTLE_ENDIAN
+        return a | b << 8 | c << 16 | d << 24;
+    #else
+        return a << 24 | b << 16 | c << 8 | d;
+    #endif
+    }
+
+public:
 #endif
     uint32_t storage0 SKR_IF_CPP(= 0);
     uint32_t storage1 SKR_IF_CPP(= 0);
@@ -73,8 +78,10 @@ SKR_EXTERN_C void skr_make_guid(skr_guid_t* out_guid);
 namespace skr
 {
 using GUID = skr_guid_t;
-namespace literals {
-namespace details {
+namespace literals
+{
+namespace details
+{
 
 constexpr const size_t short_guid_form_length = 36; // XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
 constexpr const size_t long_guid_form_length  = 38; // {XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}
@@ -134,11 +141,11 @@ constexpr skr_guid_t operator""_guid(const char8_t* str, size_t N)
 } // namespace literals
 } // namespace skr
 
-#define SKR_CONSTEXPR_GUID(__GUID) []() constexpr {  \
-    using namespace skr::literals;             \
-    constexpr skr_guid_t result = u8##__GUID##_guid; \
-    return result;                                   \
-}()
+    #define SKR_CONSTEXPR_GUID(__GUID) []() constexpr {  \
+        using namespace skr::literals;                   \
+        constexpr skr_guid_t result = u8##__GUID##_guid; \
+        return result;                                   \
+    }()
 
 inline skr_guid_t skr_guid_t::Create()
 {

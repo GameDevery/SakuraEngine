@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
     <!--modules/core/base/include/SkrBase/types/guid.h-->
+    <!--32-16-16-16-48-->
     <Type Name="skr_guid_t">
         <DisplayString>
             {{{storage0,nvoXb}-{((uint16_t*)&amp;storage1)[0],nvoXb}-{((uint16_t*)&amp;storage1)[1],nvoXb}-{((uint8_t*)&amp;storage2)[0],nvoXb}{((uint8_t*)&amp;storage2)[1],nvoXb}-{((uint8_t*)&amp;storage2)[2],nvoXb}{((uint8_t*)&amp;storage2)[3],nvoXb}{((uint8_t*)&amp;storage3)[0],nvoXb}{((uint8_t*)&amp;storage3)[1],nvoXb}{((uint8_t*)&amp;storage3)[2],nvoXb}{((uint8_t*)&amp;storage3)[3],nvoXb}}}

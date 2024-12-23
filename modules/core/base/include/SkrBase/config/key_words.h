@@ -246,8 +246,23 @@ typedef char char8_t;
 
 #pragma endregion
 
-#define SKR_IS_BIG_ENDIAN 0
-#define SKR_IS_LITTLE_ENDIAN 1
+#if defined(_MSC_VER) // msvc always little endian
+    #define SKR_LITTLE_ENDIAN 1
+    #define SKR_BIG_ENDIAN 0
+#else
+    #if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+        #define SKR_LITTLE_ENDIAN 1
+        #define SKR_BIG_ENDIAN 0
+    #elif defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+        #define SKR_LITTLE_ENDIAN 0
+        #define SKR_BIG_ENDIAN 1
+    #endif
+#endif
+
+#if SKR_BIG_ENDIAN
+    #error "big endian is not supported"
+#endif
+
 
 #pragma region deprecated
 
