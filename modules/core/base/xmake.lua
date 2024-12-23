@@ -13,4 +13,4 @@ static_component("SkrBase", "SkrCore")
     end
 
     -- natvis
-    skr_dbg_natvis_files("dbg/basic_types.natvis")
+    skr_dbg_natvis_files("dbg/**.natvis")

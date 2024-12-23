@@ -110,8 +110,13 @@ function _load_launch_from_binary_target(target, build_dir)
                             natvis_file = path.absolute(natvis_file, target:scriptdir())
                         end
 
+                        -- extract files
+                        local extracted_files = os.files(natvis_file)
+
                         -- add to table
-                        table.insert(natvis_files, natvis_file)
+                        for _, file in ipairs(extracted_files) do
+                            table.insert(natvis_files, file)
+                        end
                     end
                 end
             end
