@@ -25,6 +25,8 @@ struct U8String : protected Memory {
     using typename Memory::DataType;
     using typename Memory::SizeType;
     using typename Memory::AllocatorCtorParam;
+    using Memory::SSOBufferSize;
+    using Memory::SSOCapacity;
 
     // data ref
     using DataRef  = StringDataRef<DataType, SizeType, false>;
@@ -355,7 +357,7 @@ struct U8String : protected Memory {
     // syntax
     const U8String& readonly() const;
     ViewType        view() const;
-    bool            force_cancel_literal() const;
+    bool            force_cancel_literal();
 
 private:
     // algo helper
@@ -2527,7 +2529,7 @@ inline typename U8String<Memory>::ViewType U8String<Memory>::view() const
     return { _data(), size() };
 }
 template <typename Memory>
-inline bool U8String<Memory>::force_cancel_literal() const
+inline bool U8String<Memory>::force_cancel_literal()
 {
     return _pre_modify();
 }

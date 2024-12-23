@@ -665,7 +665,7 @@ struct InlineSparseVectorMemory : public Base, public Allocator {
                     {
                         if constexpr (memory::MemoryTraits<BitBlockType>::use_realloc && Allocator::support_realloc)
                         {
-                            Base::_bit_data = Allocator::template realloc<BitBlockType>(Base::_bit_data, new_block_size);
+                            Base::_bit_data = Allocator::template realloc<BitBlockType>((BitBlockType*)Base::_bit_data, new_block_size);
                         }
                         else
                         {

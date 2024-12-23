@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <!--modules/core/base/include/SkrBase/containers/vector/vector.hpp-->
+  <Type Name="skr::container::Vector&lt;*&gt;">
+    <DisplayString Condition="_size == 0 &amp;&amp; _capacity == 0">{{ empty }}</DisplayString>
+    <DisplayString Condition="_size == 0 &amp;&amp; _capacity &gt; 0">{{ empty, capacity={_capacity} }}</DisplayString>
+    <DisplayString Condition="_size &gt; 0">{{ size={_size}, capacity={_capacity} }}</DisplayString>
+    <Expand>
+      <Item Name="[size]">_size</Item>
+      <Item Name="[capacity]">_capacity</Item>
+      <ArrayItems>
+        <Size>_size</Size>
+        <ValuePointer>(DataType*)_data</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+  <!--modules/core/base/include/SkrBase/containers/sparse_vector/sparse_vector.hpp-->
+  <Type Name="skr::container::SparseVector&lt;*&gt;">
+    <DisplayString Condition="_sparse_size - _hole_size &lt;= 0 &amp;&amp; _capacity == 0">{{ empty }}</DisplayString>
+    <DisplayString Condition="_sparse_size - _hole_size &lt;= 0 &amp;&amp; _capacity &gt; 0">{{ empty, capacity={_capacity} }}</DisplayString>
+    <DisplayString Condition="_sparse_size - _hole_size &gt; 0">{{ size={_sparse_size - _hole_size}, capacity={_capacity}, num_hole={_hole_size} }}</DisplayString>
+    <Expand>
+      <Item Name="[size]">_sparse_size - _hole_size</Item>
+      <Item Name="[capacity]">_capacity</Item>
+      <Item Name="[hole size]">_hole_size</Item>
+      <IndexListItems>
+        <Size>_sparse_size</Size>
+        <ValueNode Condition="(((BitBlockType*)_bit_data)[$i / BitAlgo::PerBlockSize]&gt;&gt;($i % BitAlgo::PerBlockSize) &amp; 1) != 0">((StorageType*)_data)[$i]._sparse_vector_data</ValueNode>
+        <ValueNode Condition="(((BitBlockType*)_bit_data)[$i / BitAlgo::PerBlockSize]&gt;&gt;($i % BitAlgo::PerBlockSize) &amp; 1) == 0">"invalid",sb</ValueNode>
+      </IndexListItems>
+    </Expand>
+  </Type>
+  <!--modules/core/base/include/SkrBase/containers/sparse_hash_set/sparse_hash_base.hpp-->
+  <!--support SparseHashSet/MultiSparseHashSet/SparseHashMap/MultiSparseHashMap-->
+  <Type Name="skr::container::SparseHashBase&lt;*&gt;">
+    <DisplayString Condition="_sparse_size - _hole_size &lt;= 0">{{ empty }}</DisplayString>
+    <DisplayString Condition="_sparse_size - _hole_size &gt; 0">{{ size={_sparse_size - _hole_size}, capacity={_capacity} }}</DisplayString>
+    <Expand>
+      <Item Name="[size]">_sparse_size - _hole_size</Item>
+      <Item Name="[capacity]">_capacity</Item>
+      <Item Name="[hole size]">_hole_size</Item>
+      <CustomListItems>
+        <Variable Name="index" InitialValue="0" />
+        <Size>_sparse_size - _hole_size</Size>
+        <Loop>
+          <If Condition="
+            (((BitBlockType*)_bit_data)[index / Super::BitAlgo::PerBlockSize]&gt;&gt;(index % Super::BitAlgo::PerBlockSize) &amp; 1) != 0
+          ">
+            <Item> ((StorageType*)_data)[index]._sparse_vector_data._sparse_hash_set_data</Item>
+          </If>
+          <Exec>++index</Exec>
+        </Loop>
+      </CustomListItems>
+      <Item Name="SparseVector">*((Super*)this)</Item>
+    </Expand>
+  </Type>
+  <!--modules/core/base/include/SkrBase/containers/sparse_hash_map/kvpair.hpp-->
+  <Type Name="skr::container::KVPair&lt;*, *&gt;">
+    <DisplayString>({key}:{value})</DisplayString>
+    <Expand>
+      <Item Name="key">key</Item>
+      <Item Name="value">value</Item>
+    </Expand>
+  </Type>
+  <!--modules/core/base/include/SkrBase/containers/string/string_view.hpp-->
+  <Type Name="skr::container::U8StringView&lt;*&gt;">
+    <DisplayString Condition="_size == 0">""</DisplayString>
+    <DisplayString>{_data,[_size]s8}</DisplayString>
+    <StringView>_data,[_size]s8</StringView>
+  </Type>
+  <!--modules/core/base/include/SkrBase/containers/string/string.hpp-->
+  <Type Name="skr::container::U8String&lt;*&gt;">
+    <DisplayString Condition="_sso_flag == 1 &amp;&amp; _sso_size == 0">""</DisplayString>
+    <DisplayString Condition="_sso_flag == 1 &amp;&amp; _sso_size > 0">{_sso_data,s8}</DisplayString>
+    <DisplayString Condition="_sso_flag == 0 &amp;&amp; _size == 0">""</DisplayString>
+    <DisplayString Condition="_sso_flag == 0 &amp;&amp; _size > 0">{((DataType**)_sso_buffer)[0],s8}</DisplayString>
+	  <StringView Condition="_sso_flag == 1">_sso_data,s8</StringView>
+	  <StringView Condition="_sso_flag == 0">((DataType**)_sso_buffer)[0],s8</StringView>
+    <Expand>
+      <Item Name="[length]" Condition="_sso_flag == 1">(SizeType)_sso_size</Item>
+      <Item Name="[length]" Condition="_sso_flag == 0">_size</Item>
+
+      <Item Name="[capacity]" Condition="_sso_flag == 1">(SizeType)SSOCapacity</Item>
+      <Item Name="[capacity]" Condition="_sso_flag == 0">_capacity</Item>
+
+      <Item Name="[use sso]">_sso_flag == 1</Item>
+      <Item Name="[is literal]">_sso_flag == 0 &amp;&amp; _capacity == 0 &amp;&amp; _size &gt; 0</Item>
+    </Expand>
+  </Type>
+  <!--modules/core/base/include/SkrBase/containers/misc/span.hpp-->
+  <Type Name="skr::container::Span&lt;*, *, *&gt;">
+	  <DisplayString Condition="_size == 0">{{ empty }}</DisplayString>
+	  <DisplayString Condition="_size != 0">{{ size={_size} }}</DisplayString>
+    <Expand>
+      <ArrayItems>
+        <Size>_size</Size>
+        <ValuePointer>(DataType*)_data</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+  <!--modules/core/base/include/SkrBase/containers/misc/optional.hpp-->
+  <Type Name="skr::container::Optional&lt;*&gt;">
+    <DisplayString Condition="_has_value == false">{{ empty }}</DisplayString>
+    <DisplayString Condition="_has_value == true">{ *(DataType*)_placeholder._storage }</DisplayString>
+    <Expand>
+      <Item Name="[value]" Condition="_has_value == false">"empty",sb</Item>
+      <Item Name="[value]" Condition="_has_value == true">*((DataType*)_placeholder._storage)</Item>
+    </Expand>
+  </Type>
+</AutoVisualizer>

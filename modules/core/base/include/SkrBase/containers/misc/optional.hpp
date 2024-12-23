@@ -10,6 +10,8 @@ struct Nullopt {
 
 template <typename T>
 struct Optional {
+    using DataType = T;
+
     // ctor & dtor
     Optional();
     Optional(Nullopt);
