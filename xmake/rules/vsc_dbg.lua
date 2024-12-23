@@ -29,12 +29,17 @@ end
 --     label: str (default use cmd_name)
 --     args: str list
 --     envs: str: str table
---     pre_cmd: str
---     post_cmd: str
+--     pre_cmds: str list
+--     post_cmds: str list
+--     natvis_files: str list
 function skr_dbg_proxy_target(name, build_func)
     target(name)
         set_kind("phony")
         set_values("vsc_dbg.proxy_func", true)
         on_build(build_func)
     target_end()
+end
+
+function skr_dbg_natvis_files(...)
+    add_values("vsc_dbg.natvis_files", ...)
 end

@@ -11,3 +11,6 @@ static_component("SkrBase", "SkrCore")
     if (is_os("macosx")) then 
         add_frameworks("CoreFoundation", {public = true})
     end
+
+    -- natvis
+    skr_dbg_natvis_files("dbg/**.natvis")

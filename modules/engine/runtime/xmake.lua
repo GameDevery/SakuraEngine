@@ -4,6 +4,7 @@ end
 -- add_requires("cpu_features v0.9.0")
 
 target("SkrRTMeta")
+    set_group("00.utilities")
     set_kind("headeronly")
     codegen_generator({
         scripts = {
@@ -43,3 +44,5 @@ shared_module("SkrRT", "SKR_RUNTIME", engine_version)
         table.insert(libs_to_install, "gns")
     end
     add_rules("utils.install_libraries", { libnames = libs_to_install })
+
+    skr_dbg_natvis_files("dbg/**.natvis")

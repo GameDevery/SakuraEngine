@@ -95,6 +95,7 @@ struct StringMemory : public StringMemoryBase<TS, SSOSize>, public Allocator {
     using DataType           = T;
     using SizeType           = typename Base::SizeType;
     using AllocatorCtorParam = typename Allocator::CtorParam;
+    using Base::SSOBufferSize;
     using Base::SSOCapacity;
 
     // ctor & dtor
