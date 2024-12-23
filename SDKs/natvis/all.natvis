@@ -57,16 +57,6 @@
     </Expand>
   </Type>
 
-<Type Name="skr::span&lt;*, *&gt;">
-	<DisplayString>{{ extent = {storage_.size_} }}</DisplayString>
-	<Expand>
-		<ArrayItems>
-			<Size>storage_.size_</Size>
-			<ValuePointer>storage_.data_</ValuePointer>
-		</ArrayItems>
-	</Expand>
-</Type>
-
   <!-- /Users/saeruhikari/Documents/GitHub/Sakura.Runtime/src/ecs/sugoi.natvis -->
     <Type Name="sugoi_chunk_view_t">
         <Intrinsic Name="has_value" Expression="count != 0 &amp;&amp; chunk != nullptr"/>

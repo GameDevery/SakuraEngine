@@ -14,6 +14,7 @@
 #include "SkrContainers/string.hpp"
 #include "SkrContainers/span.hpp"
 #include "SkrContainers/optional.hpp"
+#include "SkrContainers/hashmap.hpp"
 
 inline void test_basic_types()
 {
@@ -209,6 +210,23 @@ inline void test_optional()
     Optional<skr_guid_t> test_empty = {};
 }
 
+inline void test_phmap()
+{
+    using namespace skr;
+
+    FlatHashMap<uint32_t, uint32_t> test_flat_map = { { 1, 1 }, { 1, 1 }, { 4, 4 }, { 5, 5 }, { 1, 1 }, { 4, 4 } };
+    FlatHashMap<uint32_t, uint32_t> test_flat_map_empty;
+
+    ParallelFlatHashMap<uint32_t, uint32_t> test_parallel_flat_map = { { 1, 1 }, { 1, 1 }, { 4, 4 }, { 5, 5 }, { 1, 1 }, { 4, 4 } };
+    ParallelFlatHashMap<uint32_t, uint32_t> test_parallel_flat_map_empty;
+
+    FlatHashSet<uint32_t> test_flat_set = { 1, 1, 4, 5, 1, 4 };
+    FlatHashSet<uint32_t> test_flat_set_empty;
+
+    ParallelFlatHashSet<uint32_t> test_parallel_flat_set = { 1, 1, 4, 5, 1, 4 };
+    ParallelFlatHashSet<uint32_t> test_parallel_flat_set_empty;
+}
+
 TEST_CASE("test natvis")
 {
     test_basic_types();
@@ -220,4 +238,5 @@ TEST_CASE("test natvis")
     test_string();
     test_span();
     test_optional();
+    test_phmap();
 }
