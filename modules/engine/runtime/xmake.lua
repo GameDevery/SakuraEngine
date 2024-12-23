@@ -44,3 +44,5 @@ shared_module("SkrRT", "SKR_RUNTIME", engine_version)
         table.insert(libs_to_install, "gns")
     end
     add_rules("utils.install_libraries", { libnames = libs_to_install })
+
+    skr_dbg_natvis_files("dbg/**.natvis")

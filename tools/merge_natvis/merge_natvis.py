@@ -45,7 +45,7 @@ def concatenate_natvis_files(natvis_files, output_path):
     seen_types = set() # prevent duplicate types
     for natvis_file in natvis_files:
         # parse natvis files
-        print(LogHelper.green(f"-------------processing file{natvis_file}-------------"))
+        print(LogHelper.green(f"-------------processing file: {natvis_file}-------------"))
         tree = ET.parse(natvis_file)
         root = tree.getroot()
         print(f"found {len(root)} types")

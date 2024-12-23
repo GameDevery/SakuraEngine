@@ -12,6 +12,6 @@ test_target("SerdeTest")
 
 test_target("NatvisTest")
     set_group("05.tests/core")
-    public_dependency("SkrCore", engine_version)
+    public_dependency("SkrRT", engine_version)
     add_rules("c++.unity_build", {batchsize = default_unity_batch})
     add_files("natvis/main.cpp")
