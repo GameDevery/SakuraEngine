@@ -6,7 +6,7 @@ import("core.project.project")
 import("core.project.depend")
 import("core.platform.platform")
 import("core.base.json")
-import("find_sdk")
+import("skr.find_sdk")
 
 -- TODO. 根据依赖链拼接参数
 

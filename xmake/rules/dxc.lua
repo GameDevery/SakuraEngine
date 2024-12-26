@@ -1,7 +1,7 @@
 rule("utils.dxc")
     set_extensions(".hlsl")
     before_buildcmd_file(function (target, batchcmds, sourcefile_hlsl, opt)
-        import("find_sdk")
+        import("skr.find_sdk")
         dxc = find_sdk.find_program("dxc")
 
         -- permission

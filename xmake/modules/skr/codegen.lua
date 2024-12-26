@@ -3,7 +3,7 @@ import("core.base.json")
 import("core.project.depend")
 import("core.language.language")
 import("core.tool.compiler")
-import("find_sdk")
+import("skr.find_sdk")
 
 -- programs
 local _meta = find_sdk.find_program("meta")

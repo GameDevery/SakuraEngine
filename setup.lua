@@ -38,7 +38,7 @@
 
 
 module_root = path.absolute("xmake/modules")
-import("find_sdk", {rootdir = module_root})
+import("skr.find_sdk", {rootdir = module_root})
 
 -- python
 find_sdk.file_from_github("SourceSansPro-Regular.ttf")

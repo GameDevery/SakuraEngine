@@ -26,7 +26,7 @@ rule("utils.install_resources")
 
 rule("utils.install_libraries")
     before_build(function (target)
-        import("find_sdk")
+        import("skr.find_sdk")
         import("core.project.depend")
         import("utils.archive")
 
