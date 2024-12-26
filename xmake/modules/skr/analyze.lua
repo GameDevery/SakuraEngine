@@ -1,9 +1,3 @@
-import("core.base.option")
-import("core.base.json")
-import("core.project.depend")
-import("core.language.language")
-import("core.tool.compiler")
-
 -- load saved data
 function analyze_file_name(target)
     return path.join("build/.skr/analyze/", target:name() .. ".table")
