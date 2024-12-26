@@ -8,7 +8,9 @@ import("core.platform.platform")
 import("core.base.json")
 import("skr.find_sdk")
 
--- TODO. 根据依赖链拼接参数
+-- TODO. proxy target 创建的 debug 任务需要 custom cwd
+-- TODO. 为 proxy target 提供一个工具来复用现有 target 的参数 (natvis/pre_cmds/post_cmds)
+-- TODO. compounds launch
 
 -- programs
 local _python = find_sdk.find_embed_python() or find_sdk.find_program("python3")
@@ -256,6 +258,7 @@ function _combine_launch_json(launch_data, pre_task_json, post_task_json)
         visualizerFile = path.join("${workspaceFolder}", natvis_file_name),
         preLaunchTask = pre_task_json and pre_task_json.label or nil,
         postLaunchTask = post_task_json and post_task_json.label or nil,
+        autoAttachChildProcess = true,
     }
 end
 function _append_launches_and_tasks(launch_data, out_launches_json, out_tasks_json)
@@ -270,6 +273,17 @@ function _append_launches_and_tasks(launch_data, out_launches_json, out_tasks_js
     if post_task_json then
         table.insert(out_tasks_json, post_task_json)
     end
+end
+-- @return: attach launch object
+function _combine_attach_launch_json()
+    -- TODO. natvis files
+    return {
+        name = "🔍Attach",
+        type = "cppvsdbg",
+        request = "attach",
+        processId = "${command:pickProcess}",
+        -- visualizerFile = path.join("${workspaceFolder}", natvis_file_name),
+    }
 end
 
 function main()
@@ -324,6 +338,9 @@ function main()
     for _, launch_data in ipairs(launches_data) do
         _append_launches_and_tasks(launch_data, launches_json, tasks_json)
     end
+
+    -- append attach launch
+    table.insert(launches_json, _combine_attach_launch_json())
 
     -- save launches and tasks
     -- save debug configurations
