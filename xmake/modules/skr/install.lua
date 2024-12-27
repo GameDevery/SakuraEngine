@@ -2,6 +2,7 @@ import("net.http")
 import("core.base.json")
 import("lib.detect")
 import("utils.archive")
+import("skr.utils")
 
 -- TODO. 下载的 manifest 放在对应的 source 文件夹下，下载完毕立刻存储既存的 manifest 列表
 -- TODO. fetch manifest 完毕立刻构建 source 数据库，将 source_dir, source_url 等信息直接存储，并对文件构造 source 来源表
@@ -49,54 +50,6 @@ function package_name_sdk(sdk_name, opt)
 end
 
 ------------------------find------------------------
-function find_installed_tool(tool_name)
-    return detect.find_program(tool_name, {paths={install_dir_tool()}})
-end
-
-function find_tool(tool_name, opt)
-    -- load opt
-    local use_find_api = opt.use_find_api or false
-    local scope = opt.scope or { "installed", "system" }
-    local find_installed = table.contains(scope, "installed")
-    local find_system = table.contains(scope, "system")
-
-    -- find installed
-    if find_installed then
-        local program = detect.find_program(tool_name, {
-            paths = { install_dir_tool() },
-            cachekey = "skr_find_installed",
-            system = false
-        })
-        if program then
-            return program
-        end
-    end
-
-    -- find system
-    if find_system then
-        -- find use detect
-        local program = detect.find_program(tool_name, {
-            cachekey = "skr_find_system",
-            system = true
-        })
-        if program then
-            return program
-        end
-    end
-
-    -- find use find api
-    if use_find_api then
-        local command = os.host() == "windows " and "where" or "which -a "
-        local out, err = os.iorun(command..tool_name)
-        if out and out ~= "" then
-            local programs = out:split("\n")
-            if programs[1] then
-                return programs[1]
-            end
-        end
-    end
-end
-
 function find_download_file(file_name)
     local file = detect.find_file(path.join("/**/", file_name), { download_dir() })
     return file
