@@ -1,3 +1,4 @@
+import("lib.detect")
 
 ------------------------dirs------------------------
 function saved_config_dir()
@@ -6,6 +7,33 @@ end
 
 function binary_dir()
     return vformat("$(buildir)/$(os)/$(arch)/$(mode)")
+end
+
+function download_dir()
+    return "build/.skr/download"
+end
+
+function install_dir_tool()
+    return vformat("build/.skr/tools/$(host)")
+end
+
+function install_dir_sdk(target)
+    return target:targetdir()
+end
+
+------------------------package name rule------------------------
+function package_name_tool(tool_name)
+    return vformat("%s-$(host)-%s.zip", tool_name, os.arch())
+end
+
+function package_name_sdk(sdk_name, opt)
+    opt = opt or {}
+
+    if opt.debug then
+        return vformat("%s_d-$(os)-%s.zip", sdk_name, os.arch())
+    else
+        return vformat("%s-$(os)-%s.zip", sdk_name, os.arch())
+    end
 end
 
 ------------------------find------------------------
@@ -103,4 +131,16 @@ function find_program_in_system(program_name, opt)
             end
         end
     end
+end
+
+function find_download_file(file_name)
+    return detect.find_file(file_name, download_dir())
+end
+
+function find_download_package_tool(tool_name)
+    return find_download_file(package_name_tool(tool_name))
+end
+
+function find_download_package_sdk(sdk_name, opt)
+    return find_download_file(package_name_sdk(sdk_name, opt))
 end
