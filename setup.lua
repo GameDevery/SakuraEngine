@@ -38,68 +38,66 @@
 
 
 module_root = path.absolute("xmake/modules")
-import("skr.find_sdk", {rootdir = module_root})
+import("skr", {rootdir = module_root})
+
+import("core.project.config")
+config.load()
+
+-- init download
+local download = skr.download.new()
+download:add_source_default()
+download:fetch_manifests()
+
+-- font
+download:file("SourceSansPro-Regular.ttf")
 
 -- python
-find_sdk.file_from_github("SourceSansPro-Regular.ttf")
 if (os.host() == "windows") then
-    find_sdk.tool_from_github("python-embed", "python-embed-windows-x64.zip")
-    python = find_sdk.find_embed_python()
-    os.runv(python.program, {"-m", "pip", "install", "autopep8"})
+    download:tool("python-embed")
+    local python = skr.utils.find_python()
+    os.runv(python, {"-m", "pip", "install", "autopep8"})
 else
-    pip = find_sdk.find_program("pip3") or find_sdk.find_program("pip") or {program = "pip"}
-    os.runv(pip.program, {"install", "mako"})
-    os.runv(pip.program, {"install", "autopep8"})
+    local python = skr.utils.find_python()
+    os.runv(python, {"-m", "pip", "install", "mako"})
+    os.runv(python, {"-m", "pip", "install", "autopep8"})
 end
 
+-- sdk and tools
 if (os.host() == "windows") then
     -- gfx sdk
-    find_sdk.lib_from_github("WinPixEventRuntime", "WinPixEventRuntime-windows-x64.zip")
-    find_sdk.lib_from_github("amdags", "amdags-windows-x64.zip")
-    find_sdk.lib_from_github("nvapi", "nvapi-windows-x64.zip")
-    find_sdk.lib_from_github("nsight", "nsight-windows-x64.zip")
-    find_sdk.lib_from_github("dstorage-1.2.2", "dstorage-1.2.2-windows-x64.zip")
-    find_sdk.lib_from_github("SDL2", "SDL2-windows-x64.zip")
+    download:sdk("WinPixEventRuntime")
+    download:sdk("amdags")
+    download:sdk("nvapi")
+    download:sdk("nsight")
+    download:sdk("dstorage-1.2.2")
+    download:sdk("SDL2")
     -- dcc sdk
-    find_sdk.lib_from_github("sketchup-sdk-v2023.1.315", "sketchup-sdk-v2023.1.315-windows-x64.zip")
+    download:sdk("sketchup-sdk-v2023.1.315")
     -- tools & compilers
-    find_sdk.tool_from_github("dxc", "dxc-windows-x64.zip")
-    find_sdk.tool_from_github("wasm-clang", "wasm-clang-windows-x64.zip")
-    find_sdk.tool_from_github("meta-v1.0.1-llvm_17.0.6", "meta-v1.0.1-llvm_17.0.6-windows-x64.zip")
-    find_sdk.tool_from_github("tracy-gui-0.10.1a", "tracy-gui-0.10.1a-windows-x64.zip")
+    download:tool("dxc")
+    download:tool("wasm-clang")
+    download:tool("meta-v1.0.1-llvm_17.0.6")
+    download:tool("tracy-gui-0.10.1a")
     -- network
-    find_sdk.lib_from_github("gns", "gns-windows-x64.zip")
-    find_sdk.lib_from_github("gns_d", "gns_d-windows-x64.zip")
+    download:sdk("gns")
+    download:sdk("gns", {debug = true})
 end
 
 if (os.host() == "macosx") then
     if (os.arch() == "x86_64") then
         --
-        find_sdk.tool_from_github("dxc", "dxc-macosx-x86_64.zip")
-        find_sdk.tool_from_github("meta-v1.0.1-llvm_17.0.6", "meta-v1.0.1-llvm_17.0.6-macosx-x86_64.zip")
-        find_sdk.tool_from_github("tracy-gui-0.10.1a", "tracy-gui-0.10.1a-macosx-x86_64.zip")
+        download:tool("dxc")
+        download:tool("meta-v1.0.1-llvm_17.0.6")
+        download:tool("tracy-gui-0.10.1a")
         -- dcc sdk
-        find_sdk.lib_from_github("sketchup-sdk-v2023.1.315", "sketchup-sdk-v2023.1.315-macosx-x86_64.zip")
+        download:sdk("sketchup-sdk-v2023.1.315")
         -- network
-        find_sdk.lib_from_github("gns", "gns-macosx-x86_64.zip")
-        find_sdk.lib_from_github("gns_d", "gns_d-macosx-x86_64.zip")
+        download:sdk("gns")
+        download:sdk("gns_d")
     else
-        find_sdk.tool_from_github("dxc", "dxc-macosx-arm64.zip")
-        find_sdk.tool_from_github("meta-v1.0.1-llvm_17.0.6", "meta-v1.0.1-llvm_17.0.6-macosx-arm64.zip")
+        download:tool("dxc")
+        download:tool("meta-v1.0.1-llvm_17.0.6")
         -- dcc sdk
-        find_sdk.lib_from_github("sketchup-sdk-v2023.1.315", "sketchup-sdk-v2023.1.315-macosx-arm64.zip")
+        download:sdk("sketchup-sdk-v2023.1.315")
     end
 end
-
-local setups = os.files("**/setup.lua")
-for _, setup in ipairs(setups) do
-    local dir = path.directory(setup)
-    local basename = path.basename(setup)
-    import(path.join(dir, basename))
-end
-
---[[
-if (os.host() == "windows") then
-    os.exec("xmake project -k vsxmake -m \"debug,release\" -a x64 -y")
-end
-]]--

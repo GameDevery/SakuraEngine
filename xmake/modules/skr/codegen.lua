@@ -3,11 +3,11 @@ import("core.base.json")
 import("core.project.depend")
 import("core.language.language")
 import("core.tool.compiler")
-import("skr.find_sdk")
+import("skr.utils")
 
 -- programs
-local _meta = find_sdk.find_program("meta")
-local _python = find_sdk.find_embed_python() or find_sdk.find_program("python3")
+local _meta = utils.find_tool("meta")
+local _python = utils.find_python()
 
 -- data cache names
 local _codegen_data_batch_name = "c++.codegen.batch"
@@ -90,7 +90,7 @@ function solve_generators(target)
 
     -- permission
     if (os.host() == "macosx") then
-        os.exec("chmod 777 ".._meta.program)
+        os.exec("chmod 777 ".._meta)
     end
 end
 
@@ -185,7 +185,7 @@ function _codegen_compile(target, proxy_target, opt)
     end
     
     -- print commands
-    local command = _meta.program .. " " .. table.concat(argv, " ")
+    local command = _meta .. " " .. table.concat(argv, " ")
     if option.get("verbose") then
         cprint(
             "${green}[%s]: compiling.meta ${clear}%ss\n%s"
@@ -203,7 +203,7 @@ function _codegen_compile(target, proxy_target, opt)
     end
 
     -- compile meta source
-    local out, err = os.iorunv(_meta.program, argv)
+    local out, err = os.iorunv(_meta, argv)
     
     -- dump output
     if out and #out > 0 then
@@ -326,8 +326,7 @@ function _mako_render(target, scripts, dep_files, opt)
     end
 
     -- call codegen script
-    local out, err = os.iorunv(_python.program, command)
-    -- os.execv(_python.program, command)
+    local out, err = os.iorunv(_python, command)
     
     -- dump output
     if out and #out > 0 then

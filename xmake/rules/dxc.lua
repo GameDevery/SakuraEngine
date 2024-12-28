@@ -1,12 +1,12 @@
 rule("utils.dxc")
     set_extensions(".hlsl")
     before_buildcmd_file(function (target, batchcmds, sourcefile_hlsl, opt)
-        import("skr.find_sdk")
-        dxc = find_sdk.find_program("dxc")
+        import("skr.utils")
+        dxc = utils.find_tool("dxc")
 
         -- permission
         if (os.host() == "macosx") then
-            os.exec("chmod 777 "..dxc.program)
+            os.exec("chmod 777 "..dxc)
         end
 
         -- get target profile
@@ -24,7 +24,7 @@ rule("utils.dxc")
                 target:name(), sourcefile_hlsl, hlsl_basename .. ".spv")
         end
 
-        local dxc_exec = dxc.vexec
+        local dxc_exec = dxc
         batchcmds:mkdir(spv_outputdir)
         if dxc.wdir ~= nil then
             dxc_exec = "cd "..dxc.wdir.." && "..dxc_exec

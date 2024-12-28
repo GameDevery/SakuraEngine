@@ -6,14 +6,14 @@ import("core.project.project")
 import("core.project.depend")
 import("core.platform.platform")
 import("core.base.json")
-import("skr.find_sdk")
+import("skr.utils")
 
 -- TODO. proxy target 创建的 debug 任务需要 custom cwd
 -- TODO. 为 proxy target 提供一个工具来复用现有 target 的参数 (natvis/pre_cmds/post_cmds)
 -- TODO. compounds launch
 
 -- programs
-local _python = find_sdk.find_embed_python() or find_sdk.find_program("python3")
+local _python = utils.find_python()
 local _merge_natvis_script_path = path.join(os.projectdir(), "tools/merge_natvis/merge_natvis.py")
 
 -- tools
@@ -222,7 +222,7 @@ function _generate_natvis_files(natvis_files, cmd_name)
         end
 
         -- run command
-        local out, err = os.iorunv(_python.program, command)
+        local out, err = os.iorunv(_python, command)
 
         -- dump output
         if option.get("verbose") then

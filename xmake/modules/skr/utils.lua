@@ -146,9 +146,20 @@ function find_download_package_sdk(sdk_name, opt)
     return find_download_file(package_name_sdk(sdk_name, opt))
 end
 
-------------------------find------------------------
+function find_tool(tool_name, sub_paths, opt)
+    -- combine paths
+    local paths = { install_dir_tool() }
+    for _, sub_path in ipairs(sub_paths) do
+        table.insert(paths, path.join(install_dir_tool(), sub_path))
+    end
+
+    -- find
+    return find_program_in_paths(tool_name, paths, opt)
+end
+
+------------------------find spec program------------------------
 function find_python()
-    local embedded_python = find_program_in_paths("python", {path.join(install_dir_tool(), "python-embed")})
+    local embedded_python = find_tool("python", {"python-embed"})
     if embedded_python then
         return embedded_python
     end

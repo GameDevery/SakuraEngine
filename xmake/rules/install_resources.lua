@@ -26,13 +26,13 @@ rule("utils.install_resources")
 
 rule("utils.install_libraries")
     before_build(function (target)
-        import("skr.find_sdk")
+        import("skr.utils")
         import("core.project.depend")
         import("utils.archive")
 
         local libnames = target:extraconf("rules", "utils.install_libraries", "libnames")
         for _, libname in pairs(libnames) do
-            local zip = find_sdk.find_sdk_lib(libname)
+            local zip = utils.find_download_package_sdk(libname)
             target:data_add("lib_zips", zip)
         end
 
