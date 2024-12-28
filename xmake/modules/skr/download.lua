@@ -28,6 +28,10 @@ end
 
 ------------------------sources------------------------
 function download:add_source(name, url)
+    if not name or not url then
+        raise("invalid source: %s, %s", name, url)
+    end
+
     local download_dir = utils.download_dir()
     local normalized_name = name:gsub(" ", "_")
     table.insert(self.sources, {
@@ -68,6 +72,7 @@ function download:fetch_manifests()
             end,
         catch {
             function (error)
+                source.error = error
                 -- cprint("${red}failed${clear}, reason: %s", error)
                 cprint("${red}failed${clear}")
             end
@@ -128,6 +133,19 @@ function download:load_manifests()
             end
         end
         file_info.sha = reference_sha
+    end
+
+    -- print manifest info
+    for _, source in ipairs(self.sources) do
+        if source:is_success() then
+            local count = 0
+            for k,v in pairs(source.files) do
+                count = count + 1
+            end
+            cprint("[%s]: ${green}%d files${clear}", source.name, count)
+        else
+            cprint("[%s]: ${red}failed${clear}", source.name)
+        end
     end
 end
 
