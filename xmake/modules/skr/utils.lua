@@ -29,10 +29,11 @@ end
 function package_name_sdk(sdk_name, opt)
     opt = opt or {}
 
+    -- TODO. $(host) -> $(os)
     if opt.debug then
-        return vformat("%s_d-$(os)-%s.zip", sdk_name, os.arch())
+        return vformat("%s_d-$(host)-%s.zip", sdk_name, os.arch())
     else
-        return vformat("%s-$(os)-%s.zip", sdk_name, os.arch())
+        return vformat("%s-$(host)-%s.zip", sdk_name, os.arch())
     end
 end
 
@@ -143,4 +144,17 @@ end
 
 function find_download_package_sdk(sdk_name, opt)
     return find_download_file(package_name_sdk(sdk_name, opt))
+end
+
+------------------------find------------------------
+function find_python()
+    local embedded_python = find_program_in_paths("python", {path.join(install_dir_tool(), "python-embed")})
+    if embedded_python then
+        return embedded_python
+    end
+
+    local system_python = find_program_in_system("python")
+    if system_python then
+        return system_python
+    end
 end

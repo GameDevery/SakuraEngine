@@ -1,7 +1,9 @@
 import("net.http")
 import("core.base.json")
 import("core.base.object")
+import("utils.archive")
 import("skr.utils")
+import("core.project.depend")
 
 ------------------------concepts------------------------
 -- source: {
@@ -20,7 +22,7 @@ import("skr.utils")
 
 local download = download or object {}
 
-function download:new()
+function new()
     return download { sources = {}, files = {} }
 end
 
@@ -49,19 +51,25 @@ end
 
 ------------------------manifest------------------------
 function download:fetch_manifests()
+    -- make manifest path first
+    if not os.isdir(path.join(utils.download_dir(), "manifests")) then
+        os.mkdir(path.join(utils.download_dir(), "manifests"))
+    end
+    
     -- download
     for _, source in ipairs(self.sources) do
-        local url = path.join(source.base_url, "manifest.json")
+        local url = source.url.."manifest.json"
 
         try {
             function ()
-                print("[fetch manifest]: %s to %s", url, source.manifest_path)
+                cprint("[fetch manifest]: %s to %s", url, source.manifest_path)
                 http.download(url, source.manifest_path, { continue = false })
-                print("${green}success${clear}")
+                cprint("${green}success${clear}")
             end,
         catch {
             function (error)
-                print("${red}failed${clear}, reason: %s", error)
+                -- cprint("${red}failed${clear}, reason: %s", error)
+                cprint("${red}failed${clear}")
             end
         }}
     end
@@ -78,7 +86,7 @@ function download:load_manifests()
         else
             -- if call from fetch_manifests, error may be set
             if not source.error then
-                print("manifest file not found, when load [%s]", source.name)
+                cprint("manifest file not found, when load [%s]", source.name)
                 source.error = "manifest file not found"
             end
         end
@@ -90,7 +98,7 @@ function download:load_manifests()
             for name, sha in pairs(source.files) do
                 -- add file first
                 if not self.files[name] then
-                    self.files[name] = { sha = nil, sources = {}, _shas = {} }
+                    self.files[name] = { sha = nil, sources_info = {} }
                 end
 
                 -- add source
@@ -119,6 +127,7 @@ function download:load_manifests()
                 reference_sha = source_info.sha
             end
         end
+        file_info.sha = reference_sha
     end
 end
 
@@ -133,10 +142,10 @@ function download:_download_from_source(file_name, source)
     -- get download params
     local download_dir = utils.download_dir()
     local download_path = path.join(download_dir, file_name)
-    local download_url = path.join(source.url, file_name)
+    local download_url = source.url..file_name
 
     -- download file
-    print("download: %s to %s", download_url, download_path)
+    cprint("download: %s to %s", download_url, download_path)
     http.download(download_url, download_path, { continue = false })
 
     -- check sha
@@ -167,25 +176,27 @@ function download:download_file(file_name, opt)
         if found_file then
             local exists_sha = hash.sha256(found_file)
             if exists_sha == sha then
-                download_reason = "sha conflict"
+                cprint("${green}[found]${clear} %s", file_name)
                 return found_file
+            else
+                download_reason = "sha conflict"
             end
         end
     end
 
     -- try download from sources
     local success = false
-    print("[%s] download %s", download_reason, file_name)
+    cprint("${red}[%s]${clear} download %s", download_reason, file_name)
     for _, source_info in ipairs(file_info.sources_info) do
         try {
             function ()
-                print("trying: %s", source_info.source.name)
+                cprint("trying: %s", source_info.source.name)
                 self:_download_from_source(file_name, source_info.source)
                 success = true
             end,
         catch {
             function (error)
-                print("${red}failed${clear}, reason: %s", error)
+                cprint("${red}failed${clear}, reason: %s", error)
             end
         }}
     end
@@ -197,7 +208,7 @@ function download:download_file(file_name, opt)
 end
 
 ------------------------[temp] install------------------------
-function download:install_tool(tool_name)
+function download:_install_tool(tool_name)
     -- find package file
     local package_path = utils.find_download_package_tool(tool_name)
     if not package_path then
@@ -205,14 +216,17 @@ function download:install_tool(tool_name)
     end
     
     -- extract package
-    archive.extract(package_path, utils.install_dir_tool())
+    depend.on_changed(function ()
+        archive.extract(package_path, utils.install_dir_tool())
+    end, {dependfile = "build/.skr/deps/install/"..package_path, files = {package_path}})
 end
 function download:tool(tool_name)
     self:download_file(utils.package_name_tool(tool_name))
-    self:install_tool(tool_name)
+    self:_install_tool(tool_name)
 end
 function download:sdk(sdk_name, opt)
     self:download_file(utils.package_name_sdk(sdk_name, opt))
 end
-
-return download
+function download:file(file_name)
+    self:download_file(file_name)
+end
