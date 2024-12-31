@@ -160,6 +160,7 @@ analyzer_target("Module.MetaSourceFile")
 
         import("core.project.depend")
         import("core.project.project")
+        import("core.base.json")
 
         local gendir = path.join(target:autogendir({root = true}), target:plat(), "codegen")
         local filename = path.join(gendir, "module", "module.configure.cpp")
@@ -173,39 +174,74 @@ analyzer_target("Module.MetaSourceFile")
                 end
             end
 
-            -- start rebuild json
+            -- get basic data
             local self_version = target:values("sakura.module.version")
             local pub_deps = target:values("sakura.module.public_dependencies")
             assert(self_version, "module version not found: "..target:name())
-            local delim = "__de___l___im__("
-            local delim2 = ")__de___l___im__"
-            local cpp_content = "#include \"SkrCore/module/module.hpp\"\n\nSKR_MODULE_METADATA(u8R\""..delim.."\n{\n"
-            cpp_content = cpp_content.."\t\"api\": \"" .. self_version.."\",\n"
-            cpp_content = cpp_content.."\t\"name\": \"" .. target:name() .."\",\n"
-            cpp_content = cpp_content.."\t\"prettyname\": \"" .. target:name() .."\",\n"
-            cpp_content = cpp_content.."\t\"version\": \"".. self_version .."\",\n"
-            cpp_content = cpp_content.."\t\"linking\": \"".. target:kind() .."\",\n"
-            cpp_content = cpp_content.."\t\"author\": \"unknown\",\n"
-            cpp_content = cpp_content.."\t\"url\": \"https://github.com/SakuraEngine/SakuraEngine\",\n"
-            cpp_content = cpp_content.."\t\"license\": \"EngineDefault (MIT)\",\n"
-            cpp_content = cpp_content.."\t\"copyright\": \"EngineDefault\",\n"
-            -- dep body
-            cpp_content = cpp_content.."\t\"dependencies\": [\n "
+            
+            -- build module info
+            local module_info = {
+                api = tostring(self_version),
+                name = target:name(),
+                prettyname = target:name(),
+                version = self_version,
+                linking = target:kind(),
+                author = "unknown",
+                url = "https://github.com/SakuraEngine/SakuraEngine",
+                license = "EngineDefault (MIT)",
+                copyright = "EngineDefault",
+                dependencies = json.mark_as_array({})
+            }
             for _, dep in pairs(pub_deps) do
-                local deptarget = project.target(dep)
-                assert(deptarget:rule("sakura.module"), "public dependency must be a sakura.module: "..deptarget:name())
-                local depversion = target:values(dep..".version")
-                local kind = deptarget:rule("sakura.dyn_module") and "shared" or "static"
-                cpp_content = cpp_content.."\t\t{ \"name\":\""..dep.."\", \"version\": \""..depversion.."\", \"kind\": \""..kind.."\" },\n"
+                local dep_target = project.target(dep)
+                assert(dep_target:rule("sakura.module"), "public dependency must be a sakura.module: "..dep_target:name())
+                local dep_version = target:values(dep..".version")
+                local kind = dep_target:rule("sakura.dyn_module") and "shared" or "static"
+                table.insert(module_info.dependencies, {
+                    name = dep,
+                    version = dep_version,
+                    kind = kind
+                })
             end
-            cpp_content = cpp_content.sub(cpp_content, 1, -3)
-            cpp_content = cpp_content.."\n\t]\n}\n"..delim2.."\", "..target:name()..")"
+
+            -- build cpp content
+            local cpp_content = format(
+                "#include \"SkrCore/module/module.hpp\"\n\nSKR_MODULE_METADATA(u8R\"__de___l___im__(%s)__de___l___im__\", %s)",
+                json.encode(module_info),
+                target:name()
+            )
+
+
+            -- start rebuild json
+            -- local delim = "__de___l___im__("
+            -- local delim2 = ")__de___l___im__"
+            -- local cpp_content = ""..delim.."\n{\n"
+            -- cpp_content = cpp_content.."\t\"api\": \"" .. self_version.."\",\n"
+            -- cpp_content = cpp_content.."\t\"name\": \"" .. target:name() .."\",\n"
+            -- cpp_content = cpp_content.."\t\"prettyname\": \"" .. target:name() .."\",\n"
+            -- cpp_content = cpp_content.."\t\"version\": \"".. self_version .."\",\n"
+            -- cpp_content = cpp_content.."\t\"linking\": \"".. target:kind() .."\",\n"
+            -- cpp_content = cpp_content.."\t\"author\": \"unknown\",\n"
+            -- cpp_content = cpp_content.."\t\"url\": \"https://github.com/SakuraEngine/SakuraEngine\",\n"
+            -- cpp_content = cpp_content.."\t\"license\": \"EngineDefault (MIT)\",\n"
+            -- cpp_content = cpp_content.."\t\"copyright\": \"EngineDefault\",\n"
+            -- -- dep body
+            -- cpp_content = cpp_content.."\t\"dependencies\": [\n "
+            -- for _, dep in pairs(pub_deps) do
+            --     local deptarget = project.target(dep)
+            --     assert(deptarget:rule("sakura.module"), "public dependency must be a sakura.module: "..deptarget:name())
+            --     local depversion = target:values(dep..".version")
+            --     local kind = deptarget:rule("sakura.dyn_module") and "shared" or "static"
+            --     cpp_content = cpp_content.."\t\t{ \"name\":\""..dep.."\", \"version\": \""..depversion.."\", \"kind\": \""..kind.."\" },\n"
+            -- end
+            -- cpp_content = cpp_content.sub(cpp_content, 1, -3)
+            -- cpp_content = cpp_content.."\n\t]\n}\n"..delim2.."\", "..target:name()..")"
             -- end dep body
             -- write json & update files and values to the dependent file
             io.writefile(filename, cpp_content)
         end, {
             dependfile = target:dependfile("Module.MetaSourceFile"), 
-            files = { target:scriptdir() },
+            files = { target:scriptdir(), os.scriptdir() },
             values = dep_names
         })
 
