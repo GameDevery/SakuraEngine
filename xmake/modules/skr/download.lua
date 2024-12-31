@@ -136,6 +136,7 @@ function download:load_manifests()
     end
 
     -- print manifest info
+    print("----------------manifest info----------------")
     for _, source in ipairs(self.sources) do
         if source:is_success() then
             local count = 0
@@ -147,6 +148,7 @@ function download:load_manifests()
             cprint("[%s]: ${red}failed${clear}", source.name)
         end
     end
+    print("----------------manifest info----------------")
 end
 
 ------------------------download------------------------
@@ -234,9 +236,10 @@ function download:_install_tool(tool_name)
     end
     
     -- extract package
+    local package_file_name = path.filename(package_path)
     depend.on_changed(function ()
         archive.extract(package_path, utils.install_dir_tool())
-    end, {dependfile = "build/.skr/deps/install/"..package_path, files = {package_path}})
+    end, {dependfile = utils.depend_file("install/tools/"..package_file_name), files = {package_path}})
 end
 function download:tool(tool_name)
     self:download_file(utils.package_name_tool(tool_name))

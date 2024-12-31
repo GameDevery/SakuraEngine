@@ -1,4 +1,3 @@
--- TODO. 构建系统优化
 --------------------------------GOOD--------------------------------
 -- TODO. 与 install 绑定的 SDK 结合 analyzer 与 target 相绑定, 是否进行 install 能通过依赖进行解析
 --      utils.install_libraries 与上述逻辑进行联动，在 install 时会同时拷出
@@ -12,7 +11,6 @@
 --      保留 setup.lua，提供一组代码来导入引擎/拉取，是个范例/脚手架
 --      project.lua 需要强化，主要目的是需要一个本地的配置覆盖文件， 比如 disable/enable 一些 target， 控制 vsc_dbg 生成结果等， 这个结果并不进入版本控制
 -- TODO. 通过 skr_push_tag()/skr_pop_target() 来通过 analyzer 进行 target 的 enable/disable
--- TODO. 需要 build/.skr 文件夹来存放 skr engine 生成的文件
 -- TODO. API skr_ 前缀，用于区分 skr engine 提供的 API
 -- TODO. skr 构建提供的 build_ext
 --   1. skr_analyze 系列 API
@@ -22,7 +20,6 @@
 --   5. skr_module 系列 API
 --   6. skr_component 系列 API, 与 skr_module 配合使用
 --   7. 用于 engine/project config 覆盖的 API
--- TODO. vsc_dbg 引入 natvis 拼接功能
 --------------------------------BAD--------------------------------
 -- 1. 全局 table skr_env，用于提供与 engine/project 相关的环境, 信息使用 skr_load_project() 加载，不存在则会导致配置失败
 --      skr.engine.version
@@ -39,9 +36,6 @@
 
 module_root = path.absolute("xmake/modules")
 import("skr", {rootdir = module_root})
-
-import("core.project.config")
-config.load()
 
 -- init download
 local download = skr.download.new()

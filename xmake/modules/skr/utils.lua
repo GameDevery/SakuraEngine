@@ -1,4 +1,5 @@
 import("lib.detect")
+import("core.project.config")
 
 ------------------------dirs------------------------
 function saved_config_dir()
@@ -19,6 +20,23 @@ end
 
 function install_dir_sdk(target)
     return target:targetdir()
+end
+
+function install_temp_dir(package_path)
+    local base_name = path.basename(package_path)
+    return path.join("build/.skr/install/", base_name)
+end
+
+function depend_file(sub_path)
+    return path.join("build/.skr/deps", sub_path..".d")
+end
+
+------------------------config------------------------
+function load_config()
+    config.load(saved_config_dir(), {force=true})
+end
+function save_config()
+    config.save(saved_config_dir(), {public=true})
 end
 
 ------------------------package name rule------------------------
@@ -45,7 +63,6 @@ function find_program_in_paths(program_name, paths, opt)
     if path.is_absolute(program_name) then
         raise("program name cannot be an absolute path")
     end
-
 
     -- find program
     for _, _path in ipairs(paths) do
