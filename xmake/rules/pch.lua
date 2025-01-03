@@ -211,11 +211,12 @@ end
 
 rule("PickSharedPCH")
     on_load(function(target)
+        import("skr.analyze")
+
         if xmake.argv()[1] ~= "analyze_project" then
-            local tbl_path = "build/.gens/module_infos/"..target:name()..".table"
-            if os.exists(tbl_path) then
-                local tbl = io.load(tbl_path)
-                local share_from = tbl["SharedPCH.ShareFrom"]
+            local analyze_tbl = analyze.load(target)
+            if analyze_tbl then
+                local share_from = analyze_tbl["SharedPCH.ShareFrom"]
                 if (share_from ~= "") then
                     target:add("deps", share_from..".SharedPCH", { inherit = false })
                     target:data_set("SharedPCH.ShareFrom", share_from..".SharedPCH")

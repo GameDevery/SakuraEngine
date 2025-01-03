@@ -10,11 +10,12 @@ end
 
 rule("sakura.module")
     on_load(function(target)
+        import("skr.analyze")
+        
         if xmake.argv()[1] ~= "analyze_project" then
-            local tbl_path = "build/.gens/module_infos/"..target:name()..".table"
-            if os.exists(tbl_path) then
-                local tbl = io.load(tbl_path)
-                local meta_source = tbl["Module.MetaSourceFile"]
+            local analyze_tbl = analyze.load(target)
+            if analyze_tbl then
+                local meta_source = analyze_tbl["Module.MetaSourceFile"]
                 if (meta_source ~= "") then
                     target:add("files", meta_source)
                 end

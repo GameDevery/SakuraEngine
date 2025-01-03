@@ -1,10 +1,11 @@
 rule("DisableTargets")
     on_load(function(target)
+        import("skr.analyze")
+
         if xmake.argv()[1] ~= "analyze_project" then
-            local tbl_path = "build/.gens/module_infos/"..target:name()..".table"
-            if os.exists(tbl_path) then
-                local tbl = io.load(tbl_path)
-                local disable = tbl["Disable"]
+            local analyze_tbl = analyze.load(target)
+            if analyze_tbl then
+                local disable = analyze_tbl["Disable"]
                 if disable then
                     target:set("default", false)
                 else

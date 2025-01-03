@@ -66,6 +66,8 @@ rule_end()
 
 rule("c++.codegen.load")
     on_load(function (target, opt)
+        import("skr.analyze")
+
         if xmake.argv()[1] ~= "analyze_project" then
             -- config
             local codegen_dir = path.join(target:autogendir({root = true}), target:plat(), "codegen")
@@ -83,12 +85,11 @@ rule("c++.codegen.load")
             target:add("includedirs", codegen_dir, {public = true})
 
             -- add deps
-            local tbl_path = "build/.gens/module_infos/"..target:name()..".table"
-            if os.exists(tbl_path) then
-                local tbl = io.load(tbl_path)
-                local codegen_deps = tbl["Codegen.Deps"]
+            local analyze_tbl = analyze.load(target)
+            if analyze_tbl then
+                local codegen_deps = analyze_tbl["Codegen.Deps"]
                 for _, codegen_dep in ipairs(codegen_deps) do
-                    target:add("deps", dep, { public = false })
+                    target:add("deps", codegen_dep, { public = false })
                 end
             end
         end
