@@ -99,12 +99,10 @@ rule_end()
 analyzer_target("Codegen.Deps")
     analyze(function(target, attributes, analyze_ctx)
         local codegen_deps = {}
-        local idx = 1
         for __, dep in ipairs(target:orderdeps()) do
             local dep_attrs = analyze_ctx.query_attributes(dep:name())
             if table.contains(dep_attrs, "Codegen.Owner") then
-                codegen_deps[idx] = dep:name()..".Codegen"
-                idx = idx + 1
+                table.insert(codegen_deps, dep:name()..".Mako")
             end
         end
         return codegen_deps
