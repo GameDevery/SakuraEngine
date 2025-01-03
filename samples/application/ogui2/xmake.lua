@@ -14,8 +14,8 @@ target("OpenGUI_DemoResources")
     skr_install("files", {
         name = "ogui-demo-resources",
         files = {"common/**.png"},
-        outdir = "/../resources/OpenGUI",
-        rootdir = "common"
+        out_dir = "/../resources/OpenGUI",
+        root_dir = "common"
     })
 
 -- includes("gdi/xmake.lua")

@@ -13,6 +13,6 @@ executable_module("SketchUpDump", "SKETCHUP_DUMP_API", engine_version)
     skr_install("files", {
         name = "sketchup-dump-skp",
         files = {"src/**.skp"},
-        outdir = "/../resources/SketchUp",
-        rootdir = "src"
+        out_dir = "/../resources/SketchUp",
+        root_dir = "src"
     })

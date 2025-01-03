@@ -3,40 +3,7 @@ import("skr.utils")
 import("core.project.depend")
 import("core.base.object")
 
-------------------------concepts------------------------
--- source: {
---   name: [string] source name
---   url: [string] base url
--- }
-
-local install = install or object {}
-
-function new()
-    return install { sources = {} }
-end
-
-------------------------install sources------------------------
-function install:add_source(name, path)
-    if not name or not path then
-        raise("invalid source: %s, %s", name, path)
-    end
-
-    if self.sources[name] then
-        raise("source %s already exists", name)
-    end
-
-    self.sources[name] = path
-end
-function install:remove_source(name)
-    if not name then
-        return
-    end
-
-    self.sources[name] = nil
-end
-function install:add_source_default()
-    self:add_source("skr_download", utils.download_dir())
-end
+-- TODO. force install
 
 ------------------------log tools------------------------
 function _log(opt, type, format, ...)
@@ -49,7 +16,6 @@ function _log(opt, type, format, ...)
 end
 
 ------------------------install------------------------
--- TODO. force install
 function install_tool(opt)
     local package_path = utils.find_download_package_tool(opt.name)
     if not package_path then
@@ -155,6 +121,14 @@ function install_file(opt)
     })
 end
 function copy_files(opt)
+    -- check opt
+    if not opt.out_dir then
+        raise("out_dir not set")
+    end
+    if not opt.files then
+        raise("files not set")
+    end
+
     -- grab files
     local files = {}
     for _, file in ipairs(opt.files) do
