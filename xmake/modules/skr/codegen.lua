@@ -105,7 +105,7 @@ function _codegen_compile(target, proxy_target, opt)
     opt.target = target
     opt.rawargs = true
 
-    local meta_std_dir = os.projectdir()..vformat("/SDKs/tools/$(host)/meta-include")
+    local meta_std_dir = path.join(utils.install_dir_tool(), "meta-include")
     local start_time = os.time()
     local using_msvc = target:toolchain("msvc")
     local using_clang_cl = target:toolchain("clang-cl")
@@ -158,7 +158,7 @@ function _codegen_compile(target, proxy_target, opt)
     if using_msvc or using_clang_cl then
         table.insert(argv, "--driver-mode=cl")
     end
-    table.insert(argv, "-I"..os.projectdir()..vformat("/SDKs/tools/$(host)/meta-include"))
+    table.insert(argv, "-I"..path.join(utils.install_dir_tool(), "meta-include"))
 
     -- setup disable warning flag
     table.insert(argv, "-Wno-abstract-final-class")

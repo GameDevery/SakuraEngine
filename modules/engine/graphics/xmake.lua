@@ -16,7 +16,7 @@ shared_module("SkrGraphics", "SKR_GRAPHICS", engine_version)
         add_links("WinPixEventRuntime", {public = true})
     end
 
-    -- install SDKs
+    -- install
     skr_install_rule()
     skr_install("download", {
         name = "dstorage-1.2.2",

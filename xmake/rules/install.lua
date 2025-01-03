@@ -4,11 +4,6 @@ function skr_install_rule()
     add_rules("skr.install")
 end
 
--- 需求梳理
--- 1. 需要从 download 目录解压并拷贝到目标目录
--- 2. 需要通过路径匹配拷贝到目标目录
--- 3. 需要安装工具到工具目录
-
 --   kind: "download"/"files"，不同的 kind 有不同的参数
 --   [kind = any]: 共有参数
 --     plat: filter target platform

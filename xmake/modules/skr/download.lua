@@ -66,7 +66,7 @@ function download:fetch_manifests()
 
         try {
             function ()
-                cprint("[fetch manifest]: %s to %s", url, source.manifest_path)
+                cprint("${cyan}[fetch manifest]: %s${clear}. %s to %s", source.name, url, source.manifest_path)
                 http.download(url, source.manifest_path, { continue = false })
                 cprint("${green}success${clear}")
             end,
@@ -206,7 +206,7 @@ function download:download_file(file_name, opt)
 
     -- try download from sources
     local success = false
-    cprint("${red}[%s]${clear} download %s", download_reason, file_name)
+    cprint("${cyan}[%s]${clear} download %s", download_reason, file_name)
     for _, source_info in ipairs(file_info.sources_info) do
         try {
             function ()
