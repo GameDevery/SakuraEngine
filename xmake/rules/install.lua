@@ -1,6 +1,6 @@
 -----------------------ext api-----------------------
 -- add install rule
-function  skr_install_rule()
+function skr_install_rule()
     add_rules("skr.install")
 end
 
@@ -24,9 +24,12 @@ end
 --     out_dir: output directory
 --     root_dir: root directory, nli mean erase directory structure when copy
 function skr_install(kind, opt)
-    add_values("skr.install", {
+    add_values("skr.install", table.wrap_lock({
         kind = kind,
         opt = opt,
+    }), {
+        force = true,
+        expand = false,
     })
 end
 
@@ -52,6 +55,7 @@ rule("skr.install")
         if not install_items then
             return
         end
+        install_items = table.wrap(install_items)
 
         -- filter install items
         local download_items = {}
@@ -66,7 +70,7 @@ rule("skr.install")
             if not _filter(item.opt.plat, target:plat()) then
                 goto continue
             end
-            if not _filter(item.opt.arch, target:arch()) then
+            if not _filter(item.opt.arch, os.arch()) then
                 goto continue
             end
             
@@ -78,23 +82,37 @@ rule("skr.install")
             else
                 raise("invalid install kind: %s, table:\n%s", item.kind, item)
             end
-
-            if not item.opt then
-                goto continue
-            end
+            
             ::continue::
         end
 
         -- install packages
         for _, item in ipairs(download_items) do
             item.opt.out_dir = item.opt.out_dir or target:targetdir()
-            install.install(item.kind, item.opt)
+            item.opt.trigger_target = target:name()
+
+            install.install_from_kind(item.kind, item.opt)
         end
 
         -- install files
         for _, item in ipairs(files_items) do
             item.opt.out_dir = item.opt.out_dir or target:targetdir()
-            install.install(item.kind, item.opt)
+            item.opt.trigger_target = target:name()
+
+            -- handle relative path
+            for i, file in ipairs(item.opt.files) do
+                if not path.is_absolute(file) then
+                    item.opt.files[i] = path.absolute(file, target:scriptdir())
+                end
+            end
+            if item.opt.root_dir and not path.is_absolute(item.opt.root_dir) then
+                item.opt.root_dir = path.absolute(item.opt.root_dir, target:scriptdir())
+            end
+            if item.opt.out_dir and not path.is_absolute(item.opt.out_dir) then
+                item.opt.out_dir = path.absolute(item.opt.out_dir, target:targetdir())
+            end
+
+            install.install_from_kind(item.kind, item.opt)
         end
     end)
 rule_end()

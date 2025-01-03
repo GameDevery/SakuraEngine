@@ -13,10 +13,13 @@ shared_module("SkrShaderCompiler", "SKR_SHADER_COMPILER", engine_version)
     if (os.host() == "macosx") then
         add_cxflags("-fms-extensions", {public=false})
     end
-    -- install dxc on non-windows platform
-    if (not is_os("windows")) then 
-        add_rules("utils.install_libraries", { libnames = {"dxc"} })
-    end
-            
+
+    -- install
+    skr_install_rule()
+    skr_install("download", {
+        name = "dxc",
+        install_func = "sdk",
+    })
+
 private_pch("SkrShaderCompiler")
     add_files("src/pch.hpp")

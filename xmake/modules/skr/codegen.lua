@@ -206,7 +206,7 @@ function _codegen_compile(target, proxy_target, opt)
     local out, err = os.iorunv(_meta, argv)
     
     -- dump output
-    if out and #out > 0 then
+    if option.get("verbose") and out and #out > 0 then
         print("=====================["..target:name().." meta output]=====================")
         printf(out)
         print("=====================["..target:name().." meta output]=====================")
@@ -329,7 +329,7 @@ function _mako_render(target, scripts, dep_files, opt)
     local out, err = os.iorunv(_python, command)
     
     -- dump output
-    if out and #out > 0 then
+    if option.get("verbose") and out and #out > 0 then
         print("=====================["..target:name().." mako output]=====================")
         printf(out)
         print("=====================["..target:name().." mako output]=====================")

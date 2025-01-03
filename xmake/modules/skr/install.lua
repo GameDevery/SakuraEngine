@@ -38,6 +38,16 @@ function install:add_source_default()
     self:add_source("skr_download", utils.download_dir())
 end
 
+------------------------log tools------------------------
+function _log(opt, type, format, ...)
+    format = format or ""
+    cprint("${green}[%s](%s): %s${clear}. "..format, 
+        opt.trigger_target or "GLOBAL",
+        type,
+        opt.name,
+        ...);
+end
+
 ------------------------install------------------------
 -- TODO. force install
 function install_tool(opt)
@@ -49,6 +59,7 @@ function install_tool(opt)
     -- extract package
     local package_file_name = path.filename(package_path)
     depend.on_changed(function ()
+        _log(opt, "tool.install", "path \"%s\"", package_path)
         archive.extract(package_path, utils.install_dir_tool())
     end, {
         dependfile = utils.depend_file("install/tools/"..package_file_name),
@@ -63,21 +74,28 @@ function install_resources(opt)
     end
     local temp_dir = utils.install_temp_dir(package_path)
     local package_file_name = path.filename(package_path)
-    
+    local extract_exist = os.isdir(temp_dir)
+
     -- extract
     depend.on_changed(function ()
+        _log(opt, "resource.extract", "temp_dir \"%s\"", temp_dir)
+        if extract_exist then
+            os.rmdir(temp_dir)
+        end
         archive.extract(package_path, temp_dir)
     end, {
-        dependfile = utils.depend_file("install/resources/"..package_file_name),
+        dependfile = utils.depend_file("install/resources/extract/"..package_file_name),
         lastmtime = os.mtime(package_path),
         files = { package_path },
+        changed = not extract_exist,
     })
 
     -- copy
     depend.on_changed(function ()
+        _log(opt, "resource.copy", "path \"%s\"", package_path)
         os.cp(path.join(temp_dir, "**"), opt.out_dir, {rootdir = temp_dir})
     end, {
-        dependfile = utils.depend_file("install/resources/"..package_file_name..".copy"),
+        dependfile = utils.depend_file("install/resources/copy/"..package_file_name),
         lastmtime = os.mtime(package_path),
         files = { package_path },
     })
@@ -89,18 +107,25 @@ function install_sdk(opt)
     end
     local temp_dir = utils.install_temp_dir(package_path)
     local package_file_name = path.filename(package_path)
-    
+    local extract_exist = os.isdir(temp_dir)
+
     -- extract
     depend.on_changed(function ()
+        _log(opt, "sdk.extract", "temp_dir \"%s\"", temp_dir)
+        if extract_exist then
+            os.rmdir(temp_dir)
+        end
         archive.extract(package_path, temp_dir)
     end, {
-        dependfile = utils.depend_file("install/sdk/"..package_file_name),
+        dependfile = utils.depend_file("install/sdk/extract/"..package_file_name),
         lastmtime = os.mtime(package_path),
         files = { package_path },
+        changed = not extract_exist,
     })
 
     -- copy
     depend.on_changed(function ()
+        _log(opt, "sdk.copy", "path \"%s\"", package_path)
         if os.host() == "windows" then
             os.cp(path.join(temp_dir, "**.lib"), opt.out_dir)
             os.cp(path.join(temp_dir, "**.dll"), opt.out_dir)
@@ -109,7 +134,7 @@ function install_sdk(opt)
             os.cp(path.join(temp_dir, "**.a"), opt.out_dir)
         end
     end, {
-        dependfile = utils.depend_file("install/sdk/"..package_file_name..".copy"),
+        dependfile = utils.depend_file("install/sdk/copy/"..package_file_name),
         lastmtime = os.mtime(package_path),
         files = { package_path },
     })
@@ -121,6 +146,7 @@ function install_file(opt)
     end
 
     depend.on_changed(function ()
+        _log(opt, "download_file.copy", "path \"%s\"", file_path)
         os.cp(file_path, opt.out_dir)
     end, {
         dependfile = utils.depend_file("install/files/"..opt.name),
@@ -138,14 +164,20 @@ function copy_files(opt)
 
     -- copy
     depend.on_changed(function ()
-        os.cp(files, opt.out_dir, {rootdir = opt.root_dir})
+        _log(opt, "file.copy", "%d files", #files)
+        if not os.isdir(opt.out_dir) then
+            os.mkdir(opt.out_dir)
+        end
+        for _, file in ipairs(files) do
+            os.cp(file, opt.out_dir, {rootdir = opt.root_dir})
+        end
     end, {
         dependfile = utils.depend_file("install/copy_files/"..opt.name),
         files = files,
     })
 end
 -- opt see xmake/rules/install.lua
-function install(kind, opt)
+function install_from_kind(kind, opt)
     if kind == "download" then
         if opt.install_func == "tool" then
             install_tool(opt)
@@ -163,6 +195,7 @@ function install(kind, opt)
             raise("invalid install_func: %s", opt.install_func)
         end
     elseif kind == "files" then
+        copy_files(opt)
     end
 end
 

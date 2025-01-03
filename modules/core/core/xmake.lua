@@ -83,12 +83,14 @@ shared_module("SkrCore", "SKR_CORE", engine_version)
         add_packages("libsdl", {public = true})
     end
 
-    -- install sdks for windows platform
-    libs_to_install = {}
-    if(os.host() == "windows") then
-        table.insert(libs_to_install, "SDL2")
-    end
-    add_rules("utils.install_libraries", { libnames = libs_to_install })
+    -- install
+    skr_install_rule()
+    skr_install("download", {
+        name = "SDL2",
+        install_func = "sdk",
+        plat = { "windows" }
+    })
+
 --[[
 shared_pch("SkrCore")
     add_files("include/**.h")

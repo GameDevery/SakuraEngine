@@ -19,10 +19,20 @@ executable_module("Live2DViewer", "LIVE2D_VIEWER", engine_version)
     set_group("04.examples/application")
     public_dependency("SkrLive2D", engine_version)
     public_dependency("SkrImGui", engine_version)
-    add_rules("utils.install_resources", {
-        extensions = {".json", ".moc3", ".png"},
-        outdir = "/../resources/Live2DViewer", 
-        rootdir = os.curdir().."/live2d-viewer/resources"})
+
+    -- install
+    skr_install_rule()
+    skr_install("files", {
+        name = "live2d-resources",
+        files = {
+            "live2d-viewer/**.json",
+            "live2d-viewer/**.moc3",
+            "live2d-viewer/**.png",
+        },
+        out_dir = "/../resources/Live2DViewer",
+        root_dir = "live2d-viewer/resources/",
+    })
+
     add_rules("utils.dxc", {
         spv_outdir = "/../resources/shaders/Live2DViewer",
         dxil_outdir = "/../resources/shaders/Live2DViewer"})
@@ -32,7 +42,6 @@ executable_module("Live2DViewer", "LIVE2D_VIEWER", engine_version)
     add_includedirs("live2d-viewer/include", {public=true})
     add_files("live2d-viewer/src/main.cpp", "live2d-viewer/src/viewer_module.cpp", "live2d-viewer/src/imgui.cpp")
     -- add_files("live2d-viewer/shaders/**.hlsl")
-    add_files("live2d-viewer/**.json", "live2d-viewer/**.moc3", "live2d-viewer/**.png")
 
 --[[
     if(not has_config("shipping_one_archive")) then

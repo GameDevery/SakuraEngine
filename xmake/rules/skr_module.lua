@@ -210,8 +210,8 @@ analyzer_target("Module.MetaSourceFile")
                 json.encode(module_info),
                 target:name()
             )
-
-
+            -- cprint("${green}[%s] module.configure.cpp", target:name())
+            
             -- start rebuild json
             -- local delim = "__de___l___im__("
             -- local delim2 = ")__de___l___im__"

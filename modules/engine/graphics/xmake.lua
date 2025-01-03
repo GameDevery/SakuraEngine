@@ -9,20 +9,42 @@ shared_module("SkrGraphics", "SKR_GRAPHICS", engine_version)
         add_mxflags("-fno-objc-arc", {force = true})
         add_frameworks("CoreFoundation", "Cocoa", "Metal", "IOKit", {public = true})
     end
-    -- install SDKs
-    libs_to_install = {}
-    if(os.host() == "windows") then
-        table.insert(libs_to_install, "dstorage-1.2.2")    
-        table.insert(libs_to_install, "dxc")
-        table.insert(libs_to_install, "amdags")
-        table.insert(libs_to_install, "nvapi")
-        table.insert(libs_to_install, "nsight")
-        table.insert(libs_to_install, "WinPixEventRuntime")
-    end
-    add_rules("utils.install_libraries", { libnames = libs_to_install })
     
     if (is_os("windows")) then 
         add_linkdirs("$(buildir)/$(os)/$(arch)/$(mode)", {public=true})
         add_links("nvapi_x64", {public = true})
         add_links("WinPixEventRuntime", {public = true})
     end
+
+    -- install SDKs
+    skr_install_rule()
+    skr_install("download", {
+        name = "dstorage-1.2.2",
+        install_func = "sdk",
+        plat = { "windows" }
+    })
+    skr_install("download", {
+        name = "dxc",
+        install_func = "sdk",
+        plat = { "windows" }
+    })
+    skr_install("download", {
+        name = "amdags",
+        install_func = "sdk",
+        plat = { "windows" }
+    })
+    skr_install("download", {
+        name = "nvapi",
+        install_func = "sdk",
+        plat = { "windows" }
+    })
+    skr_install("download", {
+        name = "nsight",
+        install_func = "sdk",
+        plat = { "windows" }
+    })
+    skr_install("download", {
+        name = "WinPixEventRuntime",
+        install_func = "sdk",
+        plat = { "windows" }
+    })
