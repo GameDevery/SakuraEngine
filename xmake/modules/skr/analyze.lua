@@ -1,3 +1,5 @@
+import("core.project.project")
+
 -----------------------dir & file-----------------------
 -- load saved data
 function analyze_file_name(target)
@@ -11,7 +13,7 @@ function load_attributes(target)
     if type(attributes) ~= "table" then
         attributes = { attributes }
     end
-    return attributes
+    return attributes or {}
 end
 
 -- filter target to perform analyze
@@ -36,7 +38,7 @@ function load_analyzers()
         end
     end
 
-    -- invoke analyzers
+    -- load analyzer functions
     local analyzers = {}
     for _, analyzer in ipairs(analyzer_rules) do
         local analyzer_name = analyzer:name():split("__Analyzer.")[1]

@@ -153,7 +153,7 @@ function public_dependency(dep, version, setting)
 end
 
 analyzer_target("Module.MetaSourceFile")
-    analyze(function(target, attributes, analyzing)
+    analyze(function(target, attributes, analyze_ctx)
         if not target:rule("sakura.dyn_module") then
             return "NOT_A_MODULE"
         end

@@ -96,11 +96,11 @@ rule("c++.codegen.load")
 rule_end()
 
 analyzer_target("Codegen.Deps")
-    analyze(function(target, attributes, analyzing)
+    analyze(function(target, attributes, analyze_ctx)
         local codegen_deps = {}
         local idx = 1
         for __, dep in ipairs(target:orderdeps()) do
-            local dep_attrs = analyzing.query_attributes(dep:name())
+            local dep_attrs = analyze_ctx.query_attributes(dep:name())
             if table.contains(dep_attrs, "Codegen.Owner") then
                 codegen_deps[idx] = dep:name()..".Codegen"
                 idx = idx + 1

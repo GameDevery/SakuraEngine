@@ -143,14 +143,14 @@ end
 ------------------------------------SHARED PCH------------------------------------
 
 analyzer_target("SharedPCH.Score")
-    analyze(function(target, attributes, analyzing)
+    analyze(function(target, attributes, analyze_ctx)
         if not table.contains(attributes, "SharedPCH.Owner") then
             return 0
         end
 
         local score = 1
         for __, dep in pairs(target:deps()) do
-            local dep_attrs = analyzing.query_attributes(dep:name())
+            local dep_attrs = analyze_ctx.query_attributes(dep:name())
             if table.contains(dep_attrs, "SharedPCH.Owner") then
                 score = score + 1
             end
@@ -162,7 +162,7 @@ analyzer_target_end()
 
 analyzer_target("SharedPCH.ShareFrom")
     add_deps("__Analyzer.SharedPCH.Score", { order = true })
-    analyze(function(target, attributes, analyzing)
+    analyze(function(target, attributes, analyze_ctx)
         local share_from = ""
         local has_private_pch = table.contains(attributes, "PrivatePCH.Owner")
         if not has_private_pch then

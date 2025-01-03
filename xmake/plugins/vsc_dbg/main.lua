@@ -11,6 +11,7 @@ import("skr.utils")
 -- TODO. proxy target 创建的 debug 任务需要 custom cwd
 -- TODO. 为 proxy target 提供一个工具来复用现有 target 的参数 (natvis/pre_cmds/post_cmds)
 -- TODO. compounds launch
+-- TODO. 过滤 disabled target
 
 -- programs
 local _python = utils.find_python()

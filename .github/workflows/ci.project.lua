@@ -53,7 +53,7 @@ analyzer_target_end()
 
 analyzer_target("Disable")
     add_deps("__Analyzer.DisableSingle", { order = true })
-    analyze(function(target, attributes, analyzing)
+    analyze(function(target, attributes, analyze_ctx)
         local _disable = target:data("_Disable") or false
         if not _disable then
             for _, dep in pairs(target:deps()) do
