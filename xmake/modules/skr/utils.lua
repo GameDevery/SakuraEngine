@@ -2,8 +2,12 @@ import("lib.detect")
 import("core.project.config")
 
 ------------------------dirs------------------------
-function saved_config_dir()
-    return "build/.skr/project.conf"
+function skr_build_artifact_dir()
+    return "build/.skr/"
+end
+
+function saved_config_path()
+    return path.join(skr_build_artifact_dir(), "project.config")
 end
 
 function binary_dir()
@@ -33,10 +37,13 @@ end
 
 ------------------------config------------------------
 function load_config()
-    config.load(saved_config_dir(), {force=true})
+    if not os.isfile(saved_config_path()) then
+        raise("config file not found: %s", saved_config_path())
+    end
+    config.load(saved_config_path(), {force=true})
 end
 function save_config()
-    config.save(saved_config_dir(), {public=true})
+    config.save(saved_config_path(), {public=true})
 end
 
 ------------------------package name rule------------------------

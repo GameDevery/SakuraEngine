@@ -1,5 +1,4 @@
 -- TODO. xmake skr_download 与 xmake skr_install
--- TODO. analyzer 的 config 存储位置移动到 .skr
 -- TODO. codegen 的 config 存储位置移动到 .skr
 -- TODO. SakuraEngine target，用于全局信息的装载，以及 global tools 的 install
 -- TODO. config 探查机制，用于探查 engine.lua/project.lua 并装在

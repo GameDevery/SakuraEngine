@@ -7,12 +7,13 @@ import("core.project.project")
 import("core.project.depend")
 import("core.platform.platform")
 import("skr.analyze")
+import("skr.utils")
 
 function main()
     -- print("start analyze...")
 
     -- load config
-    config.load("build/.gens/analyze.conf")
+    utils.load_config()
     
     -- load targets
     project.load_targets()
@@ -51,7 +52,9 @@ function main()
     }
     for target_name, target_info in pairs(targets_info) do
         local table_for_save = {}
-        for analyzer_name, analyzer in pairs(analyzers) do
+        for _, analyzer_info in ipairs(analyzers) do
+            local analyzer_name = analyzer_info.name
+            local analyzer = analyzer_info.func
             local result = analyzer(target_info.target, target_info.attributes, analyze_ctx)
             table_for_save[analyzer_name] = result
         end
