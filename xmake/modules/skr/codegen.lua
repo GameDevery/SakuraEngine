@@ -25,9 +25,9 @@ local _codegen_rule_generators_name = "c++.codegen.generators"
 function collect_headers_batch(target, headerfiles)
     -- get config
     local batchsize = 999 -- batch size optimization is disabled now
-    local sourcedir = path.join(utils.skr_codegen_dir(target), "meta_src")
-    local metadir = path.join(utils.skr_codegen_dir(target), "meta_database")
-    local gendir = path.join(utils.skr_codegen_dir(target), "codegen", target:name())
+    local sourcedir = path.join(utils.skr_codegen_dir(target:name()), "meta_src")
+    local metadir = path.join(utils.skr_codegen_dir(target:name()), "meta_database")
+    local gendir = path.join(utils.skr_codegen_dir(target:name()), "codegen", target:name())
 
     -- build batches
     local sourcefile = path.join(sourcedir, "reflection_batch" .. ".cpp")
@@ -293,7 +293,7 @@ function _mako_render(target, scripts, dep_files, opt)
         local dep_api = dep_target:values("c++.codegen.api")
         table.insert(config.include_modules, {
             module_name = dep_target:name(),
-            meta_dir = path.absolute(path.join(utils.skr_codegen_dir(dep_target), "meta_database")),
+            meta_dir = path.absolute(path.join(utils.skr_codegen_dir(dep_target:name()), "meta_database")),
             api = dep_api and dep_api:upper() or dep_target:name():upper(),
         })
     end
@@ -308,7 +308,7 @@ function _mako_render(target, scripts, dep_files, opt)
     end
 
     -- output config
-    config_file = path.join(utils.skr_codegen_dir(target), "codegen/meta_codegen_config.json")
+    config_file = path.join(utils.skr_codegen_dir(target:name()), "codegen/meta_codegen_config.json")
     json.savefile(config_file, config)
 
     -- baisc commands

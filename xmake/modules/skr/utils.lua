@@ -6,8 +6,8 @@ function skr_build_artifact_dir()
     return "build/.skr/"
 end
 
-function skr_codegen_dir(target)
-    return path.join(skr_build_artifact_dir(), "codegen", target:name())
+function skr_codegen_dir(target_name)
+    return path.join(skr_build_artifact_dir(), "codegen", target_name)
 end
 
 function saved_config_path()
