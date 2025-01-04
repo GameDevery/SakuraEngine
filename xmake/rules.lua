@@ -1,3 +1,4 @@
+includes("rules/engine_global.lua")
 includes("rules/analyze_phase.lua")
 
 includes("rules/ispc.lua")

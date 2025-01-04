@@ -33,7 +33,7 @@ end
 -----------------------analyzers-----------------------
 -- load analyzer functions
 function load_analyzers()
-    local analyzer_target = project.target("Analyze.Phase")
+    local analyzer_target = project.target("Skr.Global")
     
     -- collect analyzer rules
     local analyzer_rules = {}
@@ -128,7 +128,7 @@ function trigger_analyze()
 
     -- dispatch analyze
     depend.on_changed(function ()
-        print("[Analyze.Phase]: trigger analyze with arg: "..table.concat(argv, " "))
+        cprint("${cyan}[ANALYZE]: trigger analyze with arg: %s${clear}", table.concat(argv, " "))
         
         -- record trigger log
         local log_file = path.join(utils.skr_build_artifact_dir(), "analyze_trigger.log")
