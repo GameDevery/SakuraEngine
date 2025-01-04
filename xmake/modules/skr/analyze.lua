@@ -7,8 +7,8 @@ import("skr.utils")
 
 -----------------------dir & file-----------------------
 -- load saved data
-function analyze_file_name(target)
-    return path.join(utils.skr_build_artifact_dir(), "analyze", target:name() .. ".table")
+function analyze_file_name(target_name)
+    return path.join(utils.skr_build_artifact_dir(), "analyze", target_name .. ".table")
 end
 
 -----------------------attributes-----------------------
@@ -59,36 +59,36 @@ end
 
 -----------------------analyzer archive-----------------------
 _analyze_cache = _analyze_cache or {}
-function load(target)
+function load(target_name)
     -- load from cache
-    local exist_analyze = _analyze_cache[target:name()]
+    local exist_analyze = _analyze_cache[target_name]
     if exist_analyze then
         return exist_analyze
     end
 
     -- load from file
-    local path = analyze_file_name(target)
+    local path = analyze_file_name(target_name)
     if os.exists(path) then
         local loaded_analyze = io.load(path)
         if loaded_analyze then
-            _analyze_cache[target:name()] = loaded_analyze
+            _analyze_cache[target_name] = loaded_analyze
             return loaded_analyze
         end
     end
     return nil
 end
-function save(target, table)
+function save(target_name, table)
     -- save to cache
-    _analyze_cache[target:name()] = table
+    _analyze_cache[target_name] = table
 
     -- save analyze
-    io.save(analyze_file_name(target), table)
+    io.save(analyze_file_name(target_name), table)
 end
 function clear_cache()
     _analyze_cache = {}
 end
-function clear_cache_for(target)
-    _analyze_cache[target:name()] = nil
+function clear_cache_for(target_name)
+    _analyze_cache[target_name] = nil
 end
 
 -----------------------trigger archive-----------------------

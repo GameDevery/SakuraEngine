@@ -58,7 +58,7 @@ function main()
             local result = analyzer(target_info.target, target_info.attributes, analyze_ctx)
             table_for_save[analyzer_name] = result
         end
-        analyze.save(target_info.target, table_for_save)
+        analyze.save(target_info.target:name(), table_for_save)
     end
 
     -- print("analyze ok!")

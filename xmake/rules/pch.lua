@@ -214,7 +214,7 @@ rule("PickSharedPCH")
         import("skr.analyze")
 
         if xmake.argv()[1] ~= "analyze_project" then
-            local analyze_tbl = analyze.load(target)
+            local analyze_tbl = analyze.load(target:name())
             if analyze_tbl then
                 local share_from = analyze_tbl["SharedPCH.ShareFrom"]
                 if (share_from ~= "") then

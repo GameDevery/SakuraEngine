@@ -86,7 +86,7 @@ rule("c++.codegen.load")
             target:add("includedirs", codegen_dir, {public = true})
 
             -- add deps
-            local analyze_tbl = analyze.load(target)
+            local analyze_tbl = analyze.load(target:name())
             if analyze_tbl then
                 local codegen_deps = analyze_tbl["Codegen.Deps"]
                 for _, codegen_dep in ipairs(codegen_deps) do
