@@ -7,11 +7,13 @@ rule("DisableTargets")
             if analyze_tbl then
                 local disable = analyze_tbl["Disable"]
                 if disable then
+                    -- cprint("${cyan}Disable target: %s${clear}", target:name())
                     target:set("default", false)
                 else
                     local _default = target:get("default")
                     local _ = (_default == nil) or (_default == true)
                     if (_default == nil) or (_default == true) then
+                        -- cprint("${green}Enable target: %s${clear}", target:name())
                         target:set("default", true)
                     end
                 end

@@ -242,7 +242,7 @@ public:
                 sizeof...(Args), iargs,
                 1, &ret
             };
-            auto error = ::swa_exec(module, function_name, &exec_desc);
+            auto error = ::swa_exec(module, (const char8_t*)function_name, &exec_desc);
             if (error) { swa_handle_error(error); }
             return RetT(ret);
         }
@@ -254,7 +254,7 @@ public:
                 0, nullptr,
                 1, &ret
             };
-            auto error = ::swa_exec(module, function_name, &exec_desc);
+            auto error = ::swa_exec(module, (const char8_t*)function_name, &exec_desc);
             if (error) { swa_handle_error(error); }
             return RetT(ret);
         }
