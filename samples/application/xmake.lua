@@ -6,19 +6,19 @@ if os.host() == "windows" and false then
     includes("chat/xmake.lua")
 end
 
-executable_module("VMemController", "VMEM_CONTROLLER", engine_version)
+executable_module("VMemController", "VMEM_CONTROLLER")
     set_group("04.examples/application")
-    public_dependency("SkrRenderGraph", engine_version)
-    public_dependency("SkrImGui", engine_version)
+    public_dependency("SkrRenderGraph")
+    public_dependency("SkrImGui")
     set_exceptions("no-cxx")
     add_includedirs("./../common", {public = false})
     add_rules("c++.unity_build", {batchsize = default_unity_batch})
     add_files("vmem_controller/**.cpp")
 
-executable_module("Live2DViewer", "LIVE2D_VIEWER", engine_version)
+executable_module("Live2DViewer", "LIVE2D_VIEWER")
     set_group("04.examples/application")
-    public_dependency("SkrLive2D", engine_version)
-    public_dependency("SkrImGui", engine_version)
+    public_dependency("SkrLive2D")
+    public_dependency("SkrImGui")
 
     -- install
     skr_install_rule()
@@ -46,7 +46,7 @@ executable_module("Live2DViewer", "LIVE2D_VIEWER", engine_version)
 --[[
     if(not has_config("shipping_one_archive")) then
 
-    shared_module("GameTool", "GAMETOOL", engine_version)
+    shared_module("GameTool", "GAMETOOL")
         set_group("04.examples/application")
         public_dependency("SkrToolCore", "0.1.0")
         public_dependency("GameRuntime", "0.1.0")

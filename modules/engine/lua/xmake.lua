@@ -1,8 +1,8 @@
 add_requires("luau", { configs = { extern_c = true }})
 
-shared_module("SkrLua", "SKR_LUA", engine_version)
-    public_dependency("SkrRT", engine_version)
-    public_dependency("SkrImGui", engine_version)
+shared_module("SkrLua", "SKR_LUA")
+    public_dependency("SkrRT")
+    public_dependency("SkrImGui")
     add_packages("luau", {public = true, inherit = false})
     add_includedirs("include", {public=true})
     add_files("src/**.cpp")

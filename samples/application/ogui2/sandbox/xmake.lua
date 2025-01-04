@@ -1,7 +1,7 @@
 codegen_component("OGUI_Sandbox", { api = "OGUI_SANDBOX", rootdir = "src" })
     add_files("src/**.hpp")
     
-executable_module("OGUI_Sandbox", "OGUI_SANDBOX", engine_version)
+executable_module("OGUI_Sandbox", "OGUI_SANDBOX")
     set_group("04.examples/application")
     set_kind("binary")
     add_deps("OpenGUI_DemoResources")

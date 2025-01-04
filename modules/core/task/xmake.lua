@@ -1,8 +1,8 @@
 add_requires("boost-context >=0.1.0-skr")
 
-shared_module("SkrTask", "SKR_TASK", engine_version)
+shared_module("SkrTask", "SKR_TASK")
     -- add source files
-    public_dependency("SkrCore", engine_version)
+    public_dependency("SkrCore")
     add_includedirs("include", {public = true})
     add_files("src/build.*.cpp")
     -- internal packages

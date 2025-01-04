@@ -13,7 +13,7 @@ rule("sakura.module")
         import("skr.analyze")
         
         if xmake.argv()[1] ~= "analyze_project" then
-            local analyze_tbl = analyze.load(target)
+            local analyze_tbl = analyze.load(target:name())
             if analyze_tbl then
                 local meta_source = analyze_tbl["Module.MetaSourceFile"]
                 if (meta_source ~= "") then
@@ -36,7 +36,6 @@ rule("sakura.component")
         -- add dep values to owner
         for _, pub_dep in pairs(component:values("sakura.module.public_dependencies")) do
             owner:add("values", "sakura.module.public_dependencies", pub_dep)
-            owner:add("values", pub_dep..".version", component:values(pub_dep..".version"))
         end
         -- insert owner's include dirs
         for _, owner_inc in pairs(owner:get("includedirs")) do
@@ -55,9 +54,7 @@ rule("sakura.dyn_module")
     add_deps("sakura.module")
     on_load(function (target, opt)
         local api = target:extraconf("rules", "sakura.dyn_module", "api")
-        local version = target:extraconf("rules", "sakura.dyn_module", "version")
         target:add("values", "Sakura.Attributes", "Module")
-        target:add("values", "sakura.module.version", version)
         target:add("defines", api.."_IMPL")
         target:add("defines", api.."_EXTERN_C=SKR_EXTERN_C", {public=true})
         if has_config("shipping_one_archive") then
@@ -98,11 +95,11 @@ rule("sakura.derived_target")
     end)
 rule_end()
 
-function shared_module(name, api, version, opt)
+function shared_module(name, api, opt)
     target(name)
         set_group("01.modules/"..name)
         add_rules("PickSharedPCH")
-        add_rules("sakura.dyn_module", { api = api, version = version }) 
+        add_rules("sakura.dyn_module", { api = api }) 
         if has_config("shipping_one_archive") then
             set_kind("static")
         else
@@ -134,11 +131,11 @@ function static_component(name, owner, opt)
         add_rules("sakura.component", { owner = owner })
 end
 
-function executable_module(name, api, version, opt)
+function executable_module(name, api, opt)
     target(name)
         set_kind("binary")
         add_rules("PickSharedPCH")
-        add_rules("sakura.dyn_module", { api = api, version = engine_version }) 
+        add_rules("sakura.dyn_module", { api = api }) 
         local opt = opt or {}
         if opt.exception and not opt.noexception then
             set_exceptions("cxx")
@@ -147,10 +144,9 @@ function executable_module(name, api, version, opt)
         end
 end
 
-function public_dependency(dep, version, setting)
+function public_dependency(dep, setting)
     add_deps(dep, {public = true})
     add_values("sakura.module.public_dependencies", dep)
-    add_values(dep..".version", version)
 end
 
 analyzer_target("Module.MetaSourceFile")
@@ -177,16 +173,14 @@ analyzer_target("Module.MetaSourceFile")
             end
 
             -- get basic data
-            local self_version = target:values("sakura.module.version")
             local pub_deps = target:values("sakura.module.public_dependencies")
-            assert(self_version, "module version not found: "..target:name())
             
             -- build module info
             local module_info = {
-                api = tostring(self_version),
+                api = "0.1.0",
                 name = target:name(),
                 prettyname = target:name(),
-                version = self_version,
+                version = "0.1.0",
                 linking = target:kind(),
                 author = "unknown",
                 url = "https://github.com/SakuraEngine/SakuraEngine",
@@ -197,11 +191,10 @@ analyzer_target("Module.MetaSourceFile")
             for _, dep in pairs(pub_deps) do
                 local dep_target = project.target(dep)
                 assert(dep_target:rule("sakura.module"), "public dependency must be a sakura.module: "..dep_target:name())
-                local dep_version = target:values(dep..".version")
                 local kind = dep_target:rule("sakura.dyn_module") and "shared" or "static"
                 table.insert(module_info.dependencies, {
                     name = dep,
-                    version = dep_version,
+                    version = "0.1.0",
                     kind = kind
                 })
             end
@@ -213,33 +206,6 @@ analyzer_target("Module.MetaSourceFile")
                 target:name()
             )
             -- cprint("${green}[%s] module.configure.cpp", target:name())
-            
-            -- start rebuild json
-            -- local delim = "__de___l___im__("
-            -- local delim2 = ")__de___l___im__"
-            -- local cpp_content = ""..delim.."\n{\n"
-            -- cpp_content = cpp_content.."\t\"api\": \"" .. self_version.."\",\n"
-            -- cpp_content = cpp_content.."\t\"name\": \"" .. target:name() .."\",\n"
-            -- cpp_content = cpp_content.."\t\"prettyname\": \"" .. target:name() .."\",\n"
-            -- cpp_content = cpp_content.."\t\"version\": \"".. self_version .."\",\n"
-            -- cpp_content = cpp_content.."\t\"linking\": \"".. target:kind() .."\",\n"
-            -- cpp_content = cpp_content.."\t\"author\": \"unknown\",\n"
-            -- cpp_content = cpp_content.."\t\"url\": \"https://github.com/SakuraEngine/SakuraEngine\",\n"
-            -- cpp_content = cpp_content.."\t\"license\": \"EngineDefault (MIT)\",\n"
-            -- cpp_content = cpp_content.."\t\"copyright\": \"EngineDefault\",\n"
-            -- -- dep body
-            -- cpp_content = cpp_content.."\t\"dependencies\": [\n "
-            -- for _, dep in pairs(pub_deps) do
-            --     local deptarget = project.target(dep)
-            --     assert(deptarget:rule("sakura.module"), "public dependency must be a sakura.module: "..deptarget:name())
-            --     local depversion = target:values(dep..".version")
-            --     local kind = deptarget:rule("sakura.dyn_module") and "shared" or "static"
-            --     cpp_content = cpp_content.."\t\t{ \"name\":\""..dep.."\", \"version\": \""..depversion.."\", \"kind\": \""..kind.."\" },\n"
-            -- end
-            -- cpp_content = cpp_content.sub(cpp_content, 1, -3)
-            -- cpp_content = cpp_content.."\n\t]\n}\n"..delim2.."\", "..target:name()..")"
-            -- end dep body
-            -- write json & update files and values to the dependent file
             io.writefile(filename, cpp_content)
         end, {
             dependfile = target:dependfile("Module.MetaSourceFile"), 

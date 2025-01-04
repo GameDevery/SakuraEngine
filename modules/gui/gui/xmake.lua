@@ -7,10 +7,10 @@ add_requires("nanovg >=0.1.0-skr", {system = false})
 codegen_component("SkrGui", { api = "SKR_GUI", rootdir = "include/SkrGui" })
     add_files("include/**.hpp")
 
-shared_module("SkrGui", "SKR_GUI", engine_version)
+shared_module("SkrGui", "SKR_GUI")
     add_packages("freetype", "icu", "harfbuzz")
     add_packages("nanovg")
-    public_dependency("SkrRT", engine_version)
+    public_dependency("SkrRT")
 
     -- unity build & pch
     add_rules("c++.unity_build", {batchsize = default_unity_batch})

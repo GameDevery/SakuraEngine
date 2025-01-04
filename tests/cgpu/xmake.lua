@@ -3,7 +3,7 @@ test_target("CGPUTests")
         spv_outdir = "/../resources/shaders/cgpu-rspool-test",
         dxil_outdir = "/../resources/shaders/cgpu-rspool-test"})
     set_group("05.vid_tests/cgpu")
-    public_dependency("SkrRT", engine_version)
+    public_dependency("SkrRT")
     add_rules("c++.unity_build", {batchsize = default_unity_batch})
     add_files(
         "Common.cpp",

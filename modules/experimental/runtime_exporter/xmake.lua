@@ -2,8 +2,8 @@ codegen_component("SkrRTExporter", { api = "SKR_RUNTIME_EXPORTER", rootdir = "in
     add_files("include/**.h")
     add_files("include/**.hpp")
 
-shared_module("SkrRTExporter", "SKR_RUNTIME_EXPORTER", engine_version)
-    public_dependency("SkrRT", engine_version)
+shared_module("SkrRTExporter", "SKR_RUNTIME_EXPORTER")
+    public_dependency("SkrRT")
     add_rules("c++.unity_build", {batchsize = default_unity_batch})
     on_load(function (target, opt)
         local depend = import("core.project.depend")

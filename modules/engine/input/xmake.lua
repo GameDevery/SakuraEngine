@@ -1,5 +1,5 @@
-shared_module("SkrInput", "SKR_INPUT", engine_version)
-    public_dependency("SkrRT", engine_version)
+shared_module("SkrInput", "SKR_INPUT")
+    public_dependency("SkrRT")
     add_includedirs("include", {public=true})
     add_rules("c++.unity_build", {batchsize = default_unity_batch})
     if (is_plat("windows")) then

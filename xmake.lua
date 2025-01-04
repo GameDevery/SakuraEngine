@@ -1,7 +1,6 @@
 set_xmakever("2.9.2")
 set_project("SakuraEngine")
 
-engine_version = "0.1.0"
 default_unity_batch = 16
 
 -- will generate bad compile_commands.json

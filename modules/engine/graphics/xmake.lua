@@ -1,7 +1,7 @@
-shared_module("SkrGraphics", "SKR_GRAPHICS", engine_version)
+shared_module("SkrGraphics", "SKR_GRAPHICS")
     set_exceptions("no-cxx")
     add_deps("vulkan", "SkrBase", {public = true})
-    public_dependency("SkrCore", engine_version)
+    public_dependency("SkrCore")
     add_includedirs("include", {public = true})
     add_files("src/build.*.c", "src/build.*.cpp")
     if (is_os("macosx")) then 

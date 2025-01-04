@@ -5,9 +5,9 @@ target("OpenGUI_DemoResources")
     add_includedirs("./../../common", {public = true})
     add_includedirs("common", {public = true})
     add_files("common/**.cpp")
-    public_dependency("SkrInput", engine_version)
-    public_dependency("SkrGui", engine_version)
-    public_dependency("SkrGuiRenderer", engine_version)
+    public_dependency("SkrInput")
+    public_dependency("SkrGui")
+    public_dependency("SkrGuiRenderer")
 
     -- install
     skr_install_rule()

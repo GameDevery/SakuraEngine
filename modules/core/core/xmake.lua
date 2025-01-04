@@ -48,7 +48,7 @@ target("SkrCoreMeta")
         }
     })
 
-shared_module("SkrCore", "SKR_CORE", engine_version)
+shared_module("SkrCore", "SKR_CORE")
     -- add codegen generator
     add_deps("SkrCoreMeta")
     

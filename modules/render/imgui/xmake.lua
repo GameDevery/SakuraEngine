@@ -4,9 +4,9 @@ else
     add_requires("imgui >=1.89.0-skr", { configs = { runtime_shared = true } })
 end
 
-shared_module("SkrImGui", "SKR_IMGUI", engine_version)
-    public_dependency("SkrInput", engine_version)
-    public_dependency("SkrRenderGraph", engine_version)
+shared_module("SkrImGui", "SKR_IMGUI")
+    public_dependency("SkrInput")
+    public_dependency("SkrRenderGraph")
     add_packages("imgui", {public=true})
     add_rules("c++.unity_build", {batchsize = default_unity_batch})
     add_includedirs("include", {public=true})

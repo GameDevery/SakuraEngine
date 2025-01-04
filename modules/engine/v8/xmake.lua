@@ -6,9 +6,9 @@ elseif is_mode("releasedbg") then
     add_requires("v8 11.2-skr", {configs={symbols=true}})
 end
 
-shared_module("SkrV8", "SKR_V8", engine_version)
+shared_module("SkrV8", "SKR_V8")
     -- dependencies
-    public_dependency("SkrRT", engine_version)
+    public_dependency("SkrRT")
     add_packages("v8", {public = true})
 
     -- add source files

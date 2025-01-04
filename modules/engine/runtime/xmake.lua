@@ -17,10 +17,10 @@ target("SkrRTMeta")
         }
     })
 
-shared_module("SkrRT", "SKR_RUNTIME", engine_version)
+shared_module("SkrRT", "SKR_RUNTIME")
     -- dependencies
-    public_dependency("SkrTask", engine_version)
-    public_dependency("SkrGraphics", engine_version)
+    public_dependency("SkrTask")
+    public_dependency("SkrGraphics")
 
     -- meta functional
     add_deps("SkrRTMeta")

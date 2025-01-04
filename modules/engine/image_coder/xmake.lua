@@ -1,7 +1,7 @@
 add_requires("zlib >=1.2.8-skr", {system = false})
 
-shared_module("SkrImageCoder", "SKR_IMAGE_CODER", engine_version)
-    public_dependency("SkrRT", engine_version)
+shared_module("SkrImageCoder", "SKR_IMAGE_CODER")
+    public_dependency("SkrRT")
     add_includedirs("include", {public=true})
     add_files("src/**.cpp")
     add_rules("c++.unity_build", {batchsize = default_unity_batch})
