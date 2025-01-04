@@ -8,7 +8,7 @@ import("skr.utils")
 -----------------------dir & file-----------------------
 -- load saved data
 function analyze_file_name(target)
-    return path.join("build/.skr/analyze/", target:name() .. ".table")
+    return path.join(utils.skr_build_artifact_dir(), "analyze", target:name() .. ".table")
 end
 
 -----------------------attributes-----------------------

@@ -67,10 +67,11 @@ rule_end()
 rule("c++.codegen.load")
     on_load(function (target, opt)
         import("skr.analyze")
+        import("skr.utils")
 
         if xmake.argv()[1] ~= "analyze_project" then
             -- config
-            local codegen_dir = path.join(target:autogendir({root = true}), target:plat(), "codegen")
+            local codegen_dir = path.join(utils.skr_codegen_dir(target), "codegen")
             local source_file = path.join(codegen_dir, target:name(), "/generated.cpp")
 
             -- check generated files

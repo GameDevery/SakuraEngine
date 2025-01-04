@@ -6,6 +6,10 @@ function skr_build_artifact_dir()
     return "build/.skr/"
 end
 
+function skr_codegen_dir(target)
+    return path.join(skr_build_artifact_dir(), "codegen", target:name())
+end
+
 function saved_config_path()
     return path.join(skr_build_artifact_dir(), "project.config")
 end
@@ -15,11 +19,13 @@ function binary_dir()
 end
 
 function download_dir()
-    return "build/.skr/download"
+    return path.join(skr_build_artifact_dir(), "download")
 end
 
 function install_dir_tool()
-    return vformat("build/.skr/tools/$(host)")
+    -- TODO. no setup.lua
+    -- return path.join(skr_build_artifact_dir(), vformat("tool/$(host)/$(arch)"))
+    return path.join(skr_build_artifact_dir(), vformat("tool/$(host)"))
 end
 
 function install_dir_sdk(target)
@@ -28,11 +34,11 @@ end
 
 function install_temp_dir(package_path)
     local base_name = path.basename(package_path)
-    return path.join("build/.skr/install/", base_name)
+    return path.join(skr_build_artifact_dir(), "install", base_name)
 end
 
 function depend_file(sub_path)
-    return path.join("build/.skr/deps", sub_path..".d")
+    return path.join(skr_build_artifact_dir(), "deps", sub_path..".d")
 end
 
 ------------------------config------------------------

@@ -156,7 +156,7 @@ function _load_launch_from_binary_target(target, build_dir)
 end
 
 -- generate tasks
-local _task_cmd_dir = "build/.skr/vsc_dbg/"
+local _task_cmd_dir = path.join(utils.skr_build_artifact_dir(), "vsc_dbg")
 -- @return: file name
 function _generate_cmd_file(cmds, cmd_name)
     if cmds and #cmds > 0 then
