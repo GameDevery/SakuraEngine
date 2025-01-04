@@ -199,3 +199,22 @@ function find_python()
         return system_python
     end
 end
+
+------------------------tools------------------------
+-- TODO. new changed API
+-- solve change info for files
+-- @param cache_file: cache_file used to save time_stamp
+-- @param files: files to check
+-- @param opt: options:
+--   check_sha256: use sha256 to check file contents, this is useful when file time_stamp is not reliable
+-- @return: 
+--   [0] is any file changed
+--   [1] change info list: {
+--     file = changed file,
+--     reason = "new"/"delete"/"modify",
+--   }
+function is_changed(cache_file, files, opt)
+end
+
+-- TODO. flag files tool, used to trigger is_changed()
+-- TODO. log dir used to save log, (analyze_trigger.log)
