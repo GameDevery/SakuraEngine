@@ -27,6 +27,9 @@ skr_global_target()
         import("skr.utils")
         import("skr.analyze")
 
+        -- cleanup analyze files
+        analyze.clean_analyze_files()
+
         -- trigger analyze next time
         analyze.write_analyze_trigger_flag()
 

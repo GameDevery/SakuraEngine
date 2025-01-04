@@ -155,3 +155,6 @@ end
 function write_analyze_trigger_flag()
     io.writefile(path.join(utils.skr_build_artifact_dir(), "analyze_phase.flag") , "flag to trigger analyze_phase")
 end
+function clean_analyze_files()
+    os.rm(path.join(utils.skr_build_artifact_dir(), "analyze"))
+end
