@@ -39,7 +39,7 @@ function main()
 
     -- solve packages
     local items_info = {}
-    local install_items = install.collect_install_items_from_rules()
+    local install_items = install.collect_install_items()
     for _, item in ipairs(install_items) do
         -- filter install mode
         if opt_mode and item.kind ~= opt_mode then

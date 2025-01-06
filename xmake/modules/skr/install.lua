@@ -223,16 +223,41 @@ function add_install_item(target, kind, opt)
 end
 
 ------------------------collect from rules------------------------
-function collect_install_items_from_rules()
+function collect_install_items()
     local result = {}
+
+    -- filter helper
+    local function _filter(t, v)
+        if t then -- do filter
+            return t == v or table.contains(t, v)
+        else -- no filter means pass
+            return true
+        end
+    end
+
     for _, target in pairs(project.ordertargets()) do
         local install_rule = target:rule("skr.install")
         local install_items = target:values("skr.install")
         install_items = table.wrap(install_items)
         if install_rule and install_items then
             for _, item in ipairs(install_items) do
+                -- check opts
+                if not item.opt then
+                    raise ("item without opt: %s", item)
+                end
+                
+                -- filters
+                if not _filter(item.opt.plat, target:plat()) then
+                    goto continue
+                end
+                if not _filter(item.opt.arch, os.arch()) then
+                    goto continue
+                end
+
+                -- insert
                 item.trigger_target = target
                 table.insert(result, item)
+                ::continue::
             end
         end
     end

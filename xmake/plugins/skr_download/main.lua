@@ -46,7 +46,7 @@ function main()
             })
         end
     else
-        local install_items = install.collect_install_items_from_rules()
+        local install_items = install.collect_install_items()
         for _, item in ipairs(install_items) do
             -- filter install kind
             if item.kind ~= "download" then

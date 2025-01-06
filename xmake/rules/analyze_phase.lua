@@ -2,7 +2,6 @@
 function analyzer_target(name)
     skr_global_target()
         add_rules("__Analyzer."..name)
-        set_default(false)
     skr_global_target_end()
     rule("__Analyzer."..name)
 end
