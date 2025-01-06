@@ -289,7 +289,7 @@ end
 
 function main()
     -- load config
-    config.load("build/.gens/analyze.conf")
+    utils.load_config()
     -- load targets
     project.load_targets()
 

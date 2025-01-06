@@ -1,5 +1,6 @@
 import("utils.archive")
 import("skr.utils")
+import("core.project.project")
 import("core.project.depend")
 import("core.base.object")
 
@@ -173,5 +174,20 @@ function install_from_kind(kind, opt)
     end
 end
 
+------------------------collect from rules------------------------
+function collect_install_items_from_rules()
+    local result = {}
+    for _, target in pairs(project.ordertargets()) do
+        local install_rule = target:rule("skr.install")
+        local install_items = target:values("skr.install")
+        install_items = table.wrap(install_items)
+        if install_rule and install_items then
+            for _, item in ipairs(install_items) do
+                table.insert(result, item)
+            end
+        end
+    end
+    return result
+end
 
 -- TODO. clean up

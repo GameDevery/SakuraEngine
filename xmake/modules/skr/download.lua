@@ -202,6 +202,8 @@ function download:download_file(file_name, opt)
                 download_reason = "sha conflict"
             end
         end
+    else
+        download_reason = "force"
     end
 
     -- try download from sources
@@ -225,6 +227,12 @@ function download:download_file(file_name, opt)
     if not success then
         raise("failed to download %s", file_name)
     end
+end
+function download:download_tool(tool_name, opt)
+    self:download_file(utils.package_name_tool(tool_name), opt)
+end
+function download:download_sdk(sdk_name, opt)
+    self:download_file(utils.package_name_sdk(sdk_name, opt), opt)
 end
 
 ------------------------[temp] install------------------------

@@ -207,14 +207,16 @@ end
 -- @param files: files to check
 -- @param opt: options:
 --   check_sha256: use sha256 to check file contents, this is useful when file time_stamp is not reliable
+--   flag_files: 
+--     file: flag file name
 -- @return: 
 --   [0] is any file changed
 --   [1] change info list: {
 --     file = changed file,
---     reason = "new"/"delete"/"modify",
+--     reason = "new"|"delete"|"modify"|"flag",
 --   }
 function is_changed(cache_file, files, opt)
 end
 
--- TODO. flag files tool, used to trigger is_changed()
--- TODO. log dir used to save log, (analyze_trigger.log)
+-- TODO. flag file，用于手动引发重构建
+-- TODO. log_dir，用于统一 log 的生成目录
