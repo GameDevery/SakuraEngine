@@ -19,6 +19,8 @@ skr_global_target()
     on_load(function (target)
         import("skr.utils")
         import("skr.analyze")
+        import("skr.install")
+        import("skr.download")
 
         -- save config
         utils.save_config()
@@ -26,6 +28,59 @@ skr_global_target()
         -- trigger analyze
         if analyze.filter_analyze_trigger() then
             analyze.trigger_analyze()
+        end
+
+        -- load install items
+        local install_items = install.collect_install_items()
+
+        -- check download
+        local lost_download = {}
+        for _, item in ipairs(install_items) do
+            if item.kind == "download" then
+                local found_package
+                if item.opt.install_func == "tool" then
+                    found_package = download.find_download_package_tool(item.name)
+                elseif item.opt.install_func == "sdk" then
+                    found_package = download.find_download_package_sdk(item.name, {debug = item.opt.debug})
+                else
+                    found_package = download.find_download_file(item.name)
+                end
+                
+                if not found_package then
+                    table.insert(lost_download, item)
+                end
+            end
+        end
+
+        -- download lost packages
+        if #lost_download > 0 then
+            cprint("${cyan}lost download packages, download now${clear}")
+
+            local download_tool = download.new()
+            download_tool:add_source_default()
+            download_tool:fetch_manifests()
+
+            for _, item in ipairs(lost_download) do
+                if item.opt.install_func == "tool" then
+                    download_tool:download_tool(item.name)
+                elseif item.opt.install_func == "sdk" then
+                    download_tool:download_sdk(item.name, {debug = item.opt.debug})
+                elseif item.opt.install_func == "resources" then
+                    download_tool:download_file(item.name)
+                elseif item.opt.install_func == "file" then
+                    download_tool:download_file(item.name)
+                else
+                    raise("invalid install_func: %s", item.opt.install_func)
+                end
+            end
+        end
+
+        -- install tools
+        for _, item in ipairs(install_items) do
+            if item.kind == "download" and item.opt.install_func == "tool" then
+                install.fill_opt(item.opt, item.trigger_target)
+                install.install_tool(item.opt)
+            end
         end
 
     end)
