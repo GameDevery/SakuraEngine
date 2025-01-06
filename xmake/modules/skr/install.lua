@@ -232,7 +232,7 @@ function fill_opt(opt, target)
     end
 
     -- handle out_dir
-    opt.out_dir = opt.out_dir or target:targetdir()
+    opt.out_dir = opt.out_dir or path.absolute(target:targetdir())
     
     -- handle trigger_target for log
     opt.trigger_target = target:name()

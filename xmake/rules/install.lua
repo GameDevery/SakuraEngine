@@ -94,9 +94,7 @@ rule("skr.install")
 
         -- install packages
         for _, item in ipairs(download_items) do
-            item.opt.out_dir = item.opt.out_dir or target:targetdir()
-            item.opt.trigger_target = target:name()
-
+            install.fill_opt(item.opt, target)
             install.install_from_kind(item.kind, item.opt)
         end
 
