@@ -1,5 +1,3 @@
--- TODO. xmake skr_download 与 xmake skr_install
--- TODO. SakuraEngine target，用于全局信息的装载，以及 global tools 的 install
 -- TODO. config 探查机制，用于探查 engine.lua/project.lua 并装在
 -- TODO. target disable 机制，并且能同时 disable 依赖它的 target，提供 tag 和 under path 两种方式
 -- TODO. API skr_ 前缀，用于区分 skr engine 提供的 API

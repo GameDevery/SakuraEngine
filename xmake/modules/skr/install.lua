@@ -204,6 +204,24 @@ function fill_opt(opt, target)
         opt.out_dir = path.absolute(opt.out_dir, target:targetdir())
     end
 end
+
+------------------------add item helper------------------------
+function add_rule_if_not_found(target)
+    -- add rules
+    if not target:rule("skr.install") then
+        target:add("rules", "skr.install")
+    end
+end
+function add_install_item(target, kind, opt)
+    target:add("values", "skr.install", table.wrap_lock({
+        kind = kind,
+        opt = opt,
+    }), {
+        force = true,
+        expand = false,
+    })
+end
+
 ------------------------collect from rules------------------------
 function collect_install_items_from_rules()
     local result = {}

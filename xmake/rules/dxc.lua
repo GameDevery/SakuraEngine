@@ -1,5 +1,14 @@
 rule("utils.dxc")
     set_extensions(".hlsl")
+    on_load(function (target)
+        import("skr.install")
+
+        install.add_rule_if_not_found(target)
+        install.add_install_item(target, "download", {
+            name = "dxc",
+            install_func = "tool",
+        })
+    end)
     before_buildcmd_file(function (target, batchcmds, sourcefile_hlsl, opt)
         import("skr.utils")
         dxc = utils.find_tool("dxc")

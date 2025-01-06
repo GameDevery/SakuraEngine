@@ -8,8 +8,14 @@ end
 
 
 skr_global_target()
+    -- basic
     set_kind("phony")
     set_policy("build.fence", true)
+
+    -- install rules
+    add_rules("skr.install")
+
+    -- scripts
     on_load(function (target)
         import("skr.utils")
         import("skr.analyze")
