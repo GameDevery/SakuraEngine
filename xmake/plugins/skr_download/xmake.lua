@@ -2,7 +2,7 @@ task("skr_download")
     on_run("main")
     
     set_menu {
-            usage = "xmake skr_download [options] [targets]"
+            usage = "xmake skr_download [options] [packages]"
         ,   description = "download skr files from remote server"
         ,   options = {
             -- 缩写，选项，类型[k|kv|vs]，默认值，描述，选项...

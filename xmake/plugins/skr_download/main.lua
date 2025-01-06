@@ -64,6 +64,12 @@ function main()
             if opt_debug ~= nil and opt.debug ~= opt_debug then
                 goto continue
             end
+
+            -- filter disabled
+            if not item.trigger_target:is_default() then
+                -- print("disabled %s", item.trigger_target:name())
+                goto continue
+            end
             
             -- add package
             if item.kind == "download" then

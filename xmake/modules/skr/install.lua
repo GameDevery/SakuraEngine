@@ -32,6 +32,7 @@ function install_tool(opt)
         dependfile = utils.depend_file("install/tools/"..package_file_name),
         lastmtime = os.mtime(package_path),
         files = {package_path},
+        changed = opt.force,
     })
 end
 function install_resources(opt)
@@ -54,7 +55,7 @@ function install_resources(opt)
         dependfile = utils.depend_file("install/resources/extract/"..package_file_name),
         lastmtime = os.mtime(package_path),
         files = { package_path },
-        changed = not extract_exist,
+        changed = not extract_exist or opt.force,
     })
 
     -- copy
@@ -65,6 +66,7 @@ function install_resources(opt)
         dependfile = utils.depend_file("install/resources/copy/"..package_file_name),
         lastmtime = os.mtime(package_path),
         files = { package_path },
+        changed = opt.force,
     })
 end
 function install_sdk(opt)
@@ -87,7 +89,7 @@ function install_sdk(opt)
         dependfile = utils.depend_file("install/sdk/extract/"..package_file_name),
         lastmtime = os.mtime(package_path),
         files = { package_path },
-        changed = not extract_exist,
+        changed = not extract_exist or opt.force,
     })
 
     -- copy
@@ -104,6 +106,7 @@ function install_sdk(opt)
         dependfile = utils.depend_file("install/sdk/copy/"..package_file_name),
         lastmtime = os.mtime(package_path),
         files = { package_path },
+        changed = opt.force,
     })
 end
 function install_file(opt)
@@ -119,6 +122,7 @@ function install_file(opt)
         dependfile = utils.depend_file("install/files/"..opt.name),
         lastmtime = os.mtime(file_path),
         files = { file_path },
+        changed = opt.force,
     })
 end
 function copy_files(opt)
@@ -149,6 +153,7 @@ function copy_files(opt)
     end, {
         dependfile = utils.depend_file("install/copy_files/"..opt.name),
         files = files,
+        changed = opt.force,
     })
 end
 -- opt see xmake/rules/install.lua
@@ -174,6 +179,31 @@ function install_from_kind(kind, opt)
     end
 end
 
+------------------------opt helper------------------------
+function fill_opt(opt, target)
+    if not opt or not target then
+        return
+    end
+
+    -- handle out_dir
+    opt.out_dir = opt.out_dir or target:targetdir()
+    
+    -- handle trigger_target for log
+    opt.trigger_target = target:name()
+
+    -- handle relative paths
+    for i, file in ipairs(opt.files) do
+        if not path.is_absolute(file) then
+            opt.files[i] = path.absolute(file, target:scriptdir())
+        end
+    end
+    if opt.root_dir and not path.is_absolute(opt.root_dir) then
+        opt.root_dir = path.absolute(opt.root_dir, target:scriptdir())
+    end
+    if opt.out_dir and not path.is_absolute(opt.out_dir) then
+        opt.out_dir = path.absolute(opt.out_dir, target:targetdir())
+    end
+end
 ------------------------collect from rules------------------------
 function collect_install_items_from_rules()
     local result = {}
@@ -183,6 +213,7 @@ function collect_install_items_from_rules()
         install_items = table.wrap(install_items)
         if install_rule and install_items then
             for _, item in ipairs(install_items) do
+                item.trigger_target = target
                 table.insert(result, item)
             end
         end

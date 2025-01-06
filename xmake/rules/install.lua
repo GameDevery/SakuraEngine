@@ -91,22 +91,7 @@ rule("skr.install")
 
         -- install files
         for _, item in ipairs(files_items) do
-            item.opt.out_dir = item.opt.out_dir or target:targetdir()
-            item.opt.trigger_target = target:name()
-
-            -- handle relative path
-            for i, file in ipairs(item.opt.files) do
-                if not path.is_absolute(file) then
-                    item.opt.files[i] = path.absolute(file, target:scriptdir())
-                end
-            end
-            if item.opt.root_dir and not path.is_absolute(item.opt.root_dir) then
-                item.opt.root_dir = path.absolute(item.opt.root_dir, target:scriptdir())
-            end
-            if item.opt.out_dir and not path.is_absolute(item.opt.out_dir) then
-                item.opt.out_dir = path.absolute(item.opt.out_dir, target:targetdir())
-            end
-
+            install.fill_opt(item.opt, target)
             install.install_from_kind(item.kind, item.opt)
         end
     end)
