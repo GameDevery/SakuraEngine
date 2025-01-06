@@ -91,7 +91,7 @@ function clear_cache_for(target_name)
     _analyze_cache[target_name] = nil
 end
 
------------------------trigger archive-----------------------
+-----------------------trigger analyze tools-----------------------
 function filter_analyze_trigger()
     -- get raw argv
     argv = xmake.argv()
@@ -157,4 +157,7 @@ function write_analyze_trigger_flag()
 end
 function clean_analyze_files()
     os.rm(path.join(utils.skr_build_artifact_dir(), "analyze"))
+end
+function in_analyze_phase()
+    return xmake.argv()[1] == "analyze_project"
 end
