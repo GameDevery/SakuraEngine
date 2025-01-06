@@ -4,8 +4,6 @@ import("core.project.project")
 import("core.project.depend")
 import("core.base.object")
 
--- TODO. force install
-
 ------------------------log tools------------------------
 function _log(opt, type, format, ...)
     format = format or ""
@@ -28,6 +26,12 @@ function install_tool(opt)
     depend.on_changed(function ()
         _log(opt, "tool.install", "path \"%s\"", package_path)
         archive.extract(package_path, utils.install_dir_tool())
+
+        -- call after_install
+        if opt.after_install then
+            utils.redirect_fenv(opt.after_install, install_tool)
+            opt.after_install()
+        end
     end, {
         dependfile = utils.depend_file("install/tools/"..package_file_name),
         lastmtime = os.mtime(package_path),
@@ -62,11 +66,17 @@ function install_resources(opt)
     depend.on_changed(function ()
         _log(opt, "resource.copy", "path \"%s\"", package_path)
         os.cp(path.join(temp_dir, "**"), opt.out_dir, {rootdir = temp_dir})
+        
+        -- call after_install
+        if opt.after_install then
+            utils.redirect_fenv(opt.after_install, install_resources)
+            opt.after_install()
+        end
     end, {
         dependfile = utils.depend_file("install/resources/copy/"..package_file_name),
         lastmtime = os.mtime(package_path),
         files = { package_path },
-        changed = opt.force,
+        changed = not extract_exist or opt.force,
     })
 end
 function install_sdk(opt)
@@ -102,11 +112,17 @@ function install_sdk(opt)
             os.cp(path.join(temp_dir, "**.dylib"), opt.out_dir)
             os.cp(path.join(temp_dir, "**.a"), opt.out_dir)
         end
+
+        -- call after_install
+        if opt.after_install then
+            utils.redirect_fenv(opt.after_install, install_sdk)
+            opt.after_install()
+        end
     end, {
         dependfile = utils.depend_file("install/sdk/copy/"..package_file_name),
         lastmtime = os.mtime(package_path),
         files = { package_path },
-        changed = opt.force,
+        changed = not extract_exist or opt.force,
     })
 end
 function install_file(opt)
@@ -118,6 +134,12 @@ function install_file(opt)
     depend.on_changed(function ()
         _log(opt, "download_file.copy", "path \"%s\"", file_path)
         os.cp(file_path, opt.out_dir)
+
+        -- call after_install
+        if opt.after_install then
+            utils.redirect_fenv(opt.after_install, install_file)
+            opt.after_install()
+        end
     end, {
         dependfile = utils.depend_file("install/files/"..opt.name),
         lastmtime = os.mtime(file_path),
@@ -156,6 +178,17 @@ function copy_files(opt)
         changed = opt.force,
     })
 end
+function install_custom(opt)
+    depend.on_changed(function ()
+        _log(opt, "custom")
+        utils.redirect_fenv(opt.func, install_custom)
+        opt.func()
+    end, {
+        dependfile = utils.depend_file("install/custom/"..opt.name),
+        files = { os.scriptdir() }, -- just for one time run
+        changed = opt.force,
+    })
+end
 -- opt see xmake/rules/install.lua
 function install_from_kind(kind, opt)
     if kind == "download" then
@@ -176,6 +209,8 @@ function install_from_kind(kind, opt)
         end
     elseif kind == "files" then
         copy_files(opt)
+    elseif kind == "custom" then
+        install_custom(opt)
     end
 end
 

@@ -36,6 +36,27 @@ end
 -- global install tools
 skr_global_target()
     skr_install("download", {
+        name = "python-embed",
+        install_func = "tool",
+        after_install = function()
+            import("skr.utils")
+            local python = utils.find_python()
+            print("installing autopep8")
+            os.runv(python, {"-m", "pip", "install", "autopep8"})
+        end
+    })
+    skr_install("custom", {
+        name = "system python",
+        plat = {"macosx", "linux"},
+        func = function ()
+            print("fuck")
+            import("skr.utils")
+            local python = utils.find_python()
+            os.runv(python, {"-m", "pip", "install", "mako"})
+            os.runv(python, {"-m", "pip", "install", "autopep8"})
+        end
+    })
+    skr_install("download", {
         name = "meta-v1.0.1-llvm_17.0.6",
         install_func = "tool",
     })

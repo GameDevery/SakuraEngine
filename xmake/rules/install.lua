@@ -13,11 +13,15 @@ end
 --     install_func: "tool"/"resources"/"sdk"/"file"/nil, nil means use install.lua in package
 --     debug: wants download debug sdk
 --     out_dir: override output directory
+--     after_install: function to run after install
 --   [kind = "files"]:
 --     name: install name, for solve depend
 --     files: list of files
 --     out_dir: output directory
 --     root_dir: root directory, nli mean erase directory structure when copy
+--   [kind = "custom"]:
+--     name: install name, for solve depend
+--     func: function to run
 function skr_install(kind, opt)
     add_values("skr.install", table.wrap_lock({
         kind = kind,
@@ -59,6 +63,7 @@ rule("skr.install")
         -- filter install items
         local download_items = {}
         local files_items = {}
+        local custom_items = {}
         for _, item in ipairs(install_items) do
             -- check opts
             if not item.opt then
@@ -78,6 +83,8 @@ rule("skr.install")
                 table.insert(download_items, item)
             elseif item.kind == "files" then
                 table.insert(files_items, item)
+            elseif item.kind == "custom" then
+                table.insert(custom_items, item)
             else
                 raise("invalid install kind: %s, table:\n%s", item.kind, item)
             end
@@ -96,6 +103,11 @@ rule("skr.install")
         -- install files
         for _, item in ipairs(files_items) do
             install.fill_opt(item.opt, target)
+            install.install_from_kind(item.kind, item.opt)
+        end
+
+        -- install custom items
+        for _, item in ipairs(custom_items) do
             install.install_from_kind(item.kind, item.opt)
         end
     end)
