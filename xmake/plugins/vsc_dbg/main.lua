@@ -306,6 +306,13 @@ function main()
     local launches_data = {}
     do
         function _add_target(target)
+            if not target:is_default() then
+                if option.get("verbose") then
+                    cprint("${yellow}skip disabled target [%s]${clear}", target:name())
+                end
+                return
+            end
+
             local proxy_launches_data = _load_launches_from_proxy_target(target, build_dir)
             local binary_launch_data = _load_launch_from_binary_target(target, build_dir)
             if proxy_launches_data then
