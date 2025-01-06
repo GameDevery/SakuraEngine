@@ -38,8 +38,6 @@ skr_global_target()
         
         -- auto trigger download
         if not analyze.in_analyze_phase() then
-            print("checking download packages...")
-            
             -- load install items
             local install_items = install.collect_install_items()
 

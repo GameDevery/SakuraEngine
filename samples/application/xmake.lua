@@ -32,6 +32,11 @@ executable_module("Live2DViewer", "LIVE2D_VIEWER")
         out_dir = "/../resources/Live2DViewer",
         root_dir = "live2d-viewer/resources/",
     })
+    skr_install("download", {
+        name = "SourceSansPro-Regular.ttf",
+        install_func = "file",
+        out_dir = "/../resources/font"
+    })
 
     add_rules("utils.dxc", {
         spv_outdir = "/../resources/shaders/Live2DViewer",

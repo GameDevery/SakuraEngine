@@ -46,6 +46,7 @@ function install_resources(opt)
     end
     local temp_dir = utils.install_temp_dir(package_path)
     local package_file_name = path.filename(package_path)
+    local depend_file_name = package_file_name..(opt.trigger_target or "")
     local extract_exist = os.isdir(temp_dir)
 
     -- extract
@@ -56,7 +57,7 @@ function install_resources(opt)
         end
         archive.extract(package_path, temp_dir)
     end, {
-        dependfile = utils.depend_file("install/resources/extract/"..package_file_name),
+        dependfile = utils.depend_file("install/resources/extract/"..depend_file_name),
         lastmtime = os.mtime(package_path),
         files = { package_path },
         changed = not extract_exist or opt.force,
@@ -65,6 +66,9 @@ function install_resources(opt)
     -- copy
     depend.on_changed(function ()
         _log(opt, "resource.copy", "path \"%s\"", package_path)
+        if not os.isdir(opt.out_dir) then
+            os.mkdir(opt.out_dir)
+        end
         os.cp(path.join(temp_dir, "**"), opt.out_dir, {rootdir = temp_dir})
         
         -- call after_install
@@ -73,7 +77,7 @@ function install_resources(opt)
             opt.after_install()
         end
     end, {
-        dependfile = utils.depend_file("install/resources/copy/"..package_file_name),
+        dependfile = utils.depend_file("install/resources/copy/"..depend_file_name),
         lastmtime = os.mtime(package_path),
         files = { package_path },
         changed = not extract_exist or opt.force,
@@ -105,6 +109,9 @@ function install_sdk(opt)
     -- copy
     depend.on_changed(function ()
         _log(opt, "sdk.copy", "path \"%s\"", package_path)
+        if not os.isdir(opt.out_dir) then
+            os.mkdir(opt.out_dir)
+        end
         if os.host() == "windows" then
             os.cp(path.join(temp_dir, "**.lib"), opt.out_dir)
             os.cp(path.join(temp_dir, "**.dll"), opt.out_dir)
@@ -130,9 +137,13 @@ function install_file(opt)
     if not file_path then
         raise("file %s not found", opt.name)
     end
+    local depend_file_name = opt.name..(opt.trigger_target and "_"..opt.trigger_target or "")
 
     depend.on_changed(function ()
         _log(opt, "download_file.copy", "path \"%s\"", file_path)
+        if not os.isdir(opt.out_dir) then
+            os.mkdir(opt.out_dir)
+        end
         os.cp(file_path, opt.out_dir)
 
         -- call after_install
@@ -141,7 +152,7 @@ function install_file(opt)
             opt.after_install()
         end
     end, {
-        dependfile = utils.depend_file("install/files/"..opt.name),
+        dependfile = utils.depend_file("install/files/"..depend_file_name),
         lastmtime = os.mtime(file_path),
         files = { file_path },
         changed = opt.force,
