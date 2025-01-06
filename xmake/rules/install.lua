@@ -36,6 +36,10 @@ rule("skr.install")
         import("core.project.depend")
         import("utils.archive")
 
+        if not target:is_default() then
+            return
+        end
+
         -- help functions
         local function _filter(t, v)
             if t then -- do filter
