@@ -21,9 +21,13 @@ skr_global_target()
         import("skr.analyze")
         import("skr.install")
         import("skr.download")
+        
+        argv = xmake.argv()
 
         -- save config
-        utils.save_config()
+        if argv[1] == "f" or argv[1] == "config" then
+            utils.save_config()
+        end
 
         -- trigger analyze
         if analyze.filter_analyze_trigger() then
