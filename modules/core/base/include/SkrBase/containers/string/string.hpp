@@ -1042,12 +1042,12 @@ template <typename Memory>
 inline char* U8String<Memory>::data_raw_w()
 {
     _pre_modify();
-    return _data();
+    return (char*)_data();
 }
 template <typename Memory>
 inline const char* U8String<Memory>::data_raw() const
 {
-    return _data();
+    return (const char*)_data();
 }
 template <typename Memory>
 inline Memory& U8String<Memory>::memory()
