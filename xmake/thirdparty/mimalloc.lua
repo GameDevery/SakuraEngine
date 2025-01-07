@@ -1,9 +1,9 @@
-mimalloc_includes_dir = "$(projectdir)/thirdparty/mimalloc"
+mimalloc_includes_dir = path.join(engine_dir, "thirdparty/mimalloc")
 
 target("mimalloc")
     set_group("01.libraries")
     set_optimize("fastest")
-    add_files("$(projectdir)/thirdparty/mimalloc/build.mimalloc.c")
+    add_files(path.join(engine_dir, "thirdparty/mimalloc/build.mimalloc.c"))
     add_includedirs(mimalloc_includes_dir, {public = true})
     if (is_os("windows")) then 
         add_syslinks("psapi", "shell32", "user32", "advapi32", "bcrypt")

@@ -1,6 +1,7 @@
 import("core.base.option")
 import("core.base.json")
 import("core.project.depend")
+import("core.project.project")
 import("core.language.language")
 import("core.tool.compiler")
 import("skr.utils")
@@ -16,6 +17,10 @@ local _codegen_data_generators_name = "c++.codegen.generators"
 
 -- rule names
 local _codegen_rule_generators_name = "c++.codegen.generators"
+
+-- global info
+local _global_target = project.target("Skr.Global")
+local _engine_dir = _global_target:values("engine_dir")
 
 -- steps
 --  1. collect header batch
@@ -270,7 +275,7 @@ function _mako_render(target, scripts, dep_files, opt)
     local gendir = batchinfo.gendir
 
     local api = target:values("c++.codegen.api")
-    local generate_script = os.projectdir()..vformat("/tools/meta_codegen/codegen.py")
+    local generate_script = path.join(_engine_dir, "/tools/meta_codegen/codegen.py")
     local start_time = os.time()
 
     if not opt.quiet then
@@ -358,8 +363,8 @@ function mako_render(target, opt)
     -- collect framework depend files
     local dep_files = os.files(path.join(metadir, "**.meta"))
     do
-        local py_pattern = path.join(os.projectdir(), "tools/meta_codegen/**.py")
-        local mako_pattern = path.join(os.projectdir(), "tools/meta_codegen/**.mako")
+        local py_pattern = path.join(_engine_dir, "tools/meta_codegen/**.py")
+        local mako_pattern = path.join(_engine_dir, "tools/meta_codegen/**.mako")
         for _, file in ipairs(os.files(py_pattern)) do
             table.insert(dep_files, file)
         end

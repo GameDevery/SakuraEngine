@@ -2,7 +2,12 @@
 -- TODO. 拆分为 engine.lua 和 project.lua 来分离引擎和项目的配置？
 analyzer_target("DisableSingle")
     analyze(function(target, attributes, analyzing)
-        local scriptdir = path.relative(target:scriptdir()):gsub("\\", "/")
+        import("core.project.project")
+        -- global info
+        local _global_target = project.target("Skr.Global")
+        local _engine_dir = _global_target:values("engine_dir")
+
+        local scriptdir = path.relative(target:scriptdir(), _engine_dir):gsub("\\", "/")
 
         local is_core = scriptdir:startswith("modules/core")
         local is_render = scriptdir:startswith("modules/render")

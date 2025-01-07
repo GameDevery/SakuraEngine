@@ -1,5 +1,5 @@
-gns_target_dir = "$(projectdir)/thirdparty/gamenetworkingsockets"
-gns_include_dir = "$(projectdir)/thirdparty/gamenetworkingsockets/include"
+gns_target_dir = path.join(engine_dir, "thirdparty/gamenetworkingsockets")
+gns_include_dir = path.join(engine_dir, "thirdparty/gamenetworkingsockets/include")
 
 target("gamenetworkingsockets")
     set_group("00.frameworks")

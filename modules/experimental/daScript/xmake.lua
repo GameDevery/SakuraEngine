@@ -6,8 +6,8 @@ target("daScriptVSCode")
     set_group("06.devs")
     set_kind("phony")
     add_packages("daScript", { public = false })
-    add_rules("@daScript/Standard", { 
-        outdir = path.absolute(os.projectdir().."/.vscode") 
+    add_rules("@daScript/Standard", {
+        outdir = path.absolute(path.join(engine_dir, "/.vscode")) 
     })
 
 shared_module("SkrDAScript", "SKR_DASCRIPT")

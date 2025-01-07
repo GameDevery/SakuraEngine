@@ -13,9 +13,14 @@ import("skr.utils")
 -- TODO. compounds launch
 -- TODO. 过滤 disabled target
 
+
+-- global info
+local _global_target = project.target("Skr.Global")
+local _engine_dir = _global_target:values("engine_dir")
+
 -- programs
 local _python = utils.find_python()
-local _merge_natvis_script_path = path.join(os.projectdir(), "tools/merge_natvis/merge_natvis.py")
+local _merge_natvis_script_path = path.join(_engine_dir, "tools/merge_natvis/merge_natvis.py")
 
 -- tools
 function _normalize_cmd_name(cmd_name)

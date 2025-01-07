@@ -1,27 +1,19 @@
 set_xmakever("2.9.2")
-set_project("SakuraEngine")
 
+-- global configs
+engine_dir = os.scriptdir()
 default_unity_batch = 16
-
--- global options
-set_warnings("all")
-set_policy("build.ccache", false)
-set_policy("build.warning", true)
-set_policy("check.auto_ignore_flags", false)
 
 -- setup xmake extensions
 add_moduledirs("xmake/modules")
 add_plugindirs("xmake/plugins")
 add_repositories("skr-xrepo xrepo", {rootdir = os.scriptdir()})
-
--- cxx options
-set_languages(get_config("cxx_version"), get_config("c_version"))
-add_rules("mode.debug", "mode.release", "mode.releasedbg", "mode.asan")
-
--- xmake extensions
 includes("xmake/options.lua")
 includes("xmake/compile_flags.lua")
 includes("xmake/rules.lua")
+
+-- global configs
+skr_global_config()
 
 -- add global rules to all targets
 add_rules("DisableTargets")
@@ -35,6 +27,10 @@ end
 
 -- global install tools
 skr_global_target()
+    -- record engine dir
+    set_values("engine_dir", engine_dir)
+
+    -- global install tool
     skr_install("download", {
         name = "python-embed",
         install_func = "tool",
@@ -65,21 +61,6 @@ skr_global_target()
         install_func = "tool",
     })
 skr_global_target_end()
-
--- cxx defines
-if (is_os("windows")) then 
-    add_defines("UNICODE", "NOMINMAX", "_WINDOWS")
-    add_defines("_GAMING_DESKTOP")
-    add_defines("_CRT_SECURE_NO_WARNINGS")
-    add_defines("_ENABLE_EXTENDED_ALIGNED_STORAGE")
-    if (is_mode("release")) then
-        set_runtimes("MD")
-    elseif (is_mode("asan")) then
-        add_defines("_DISABLE_VECTOR_ANNOTATION")
-    else
-        set_runtimes("MDd")
-    end
-end
 
 -- modules
 includes("xmake/thirdparty.lua")
