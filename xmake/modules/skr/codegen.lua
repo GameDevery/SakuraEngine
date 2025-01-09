@@ -242,8 +242,9 @@ function meta_compile(target, proxy_target, opt)
     -- generate headers dummy
     if(headerfiles ~= nil and #headerfiles > 0) then
         if utils.is_changed({
-            cache_file = sourcefile .. ".meta.d",
+            cache_file = utils.depend_file(path.join("codegen", target:name(), "codegen.meta")),
             files = headerfiles,
+            use_sha = true,
         }) then
             local verbose = option.get("verbose")
             sourcefile = path.absolute(sourcefile)
@@ -418,8 +419,9 @@ function mako_render(target, opt)
 
     -- call codegen scripts
     if utils.is_changed({
-        cache_file = target:dependfile(target:name()..".mako"),
+        cache_file = utils.depend_file(path.join("codegen", target:name(), "codegen.mako")),
         files = dep_files,
+        use_sha = true,
     }) then
         _mako_render(target, scripts, dep_files, opt)
     end

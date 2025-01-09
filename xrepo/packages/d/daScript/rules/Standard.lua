@@ -17,14 +17,14 @@ rule("Standard")
         local dasToolOut = path.join(outdir, "bin")
 
         if utils.is_changed({
-            cache_file = target:dependfile(daslibdir),
+            cache_file = utils.depend_file_target(target:name(), daslibdir),
             files = {daslibdir, dasliboutdir, target:targetfile()},
         }) then
             os.vcp(daslibdir, outdir)
         end
 
         if utils.is_changed({
-            cache_file = target:dependfile(dastestdir),
+            cache_file = utils.depend_file_target(target:name(), dastestdir),
             files = {dastestdir, dastestoutdir, target:targetfile()},
         }) then
             os.vcp(dastestdir, outdir)
@@ -32,7 +32,7 @@ rule("Standard")
 
         if not os.exists(dasToolOut) then
             if utils.is_changed({
-                cache_file = target:dependfile(dasTool),
+                cache_file = utils.depend_file_target(target:name(), dasTool),
                 files = {dasTool, dasToolOut, target:targetfile()}
             }) then
                 os.vcp(dasTool, outdir)

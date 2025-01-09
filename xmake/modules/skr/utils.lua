@@ -33,6 +33,9 @@ end
 function depend_file(sub_path)
     return path.join(skr_build_artifact_dir(), "deps", sub_path..".d")
 end
+function depend_file_target(target_name, sub_path)
+    return path.join(skr_build_artifact_dir(), "deps", "target", target_name, sub_path..".d")
+end
 function flag_file(sub_path)
     return path.join(skr_build_artifact_dir(), "flags", sub_path..".flag")
 end
@@ -268,6 +271,8 @@ function is_changed(opt)
     local files = opt.files
     local values = opt.values and table.wrap(opt.values) or nil
     local use_sha = opt.use_sha or false
+
+    print("checking changes "..(use_sha and "with sha256" or "with mtime").." ...")
 
     -- check opt
     if not cache_file then

@@ -77,7 +77,7 @@ rule("sakura.pcxxheader")
         -- generate proxy header
         local header_to_compile = target:data("header_to_compile")
         if utils.is_changed({
-            cache_file = target:dependfile(target:name()..".sakura.pch"),
+            cache_file = utils.depend_file_target(target:name(), "sakura.pch"),
             files = pchfiles,
         }) then
             local include_content = ""

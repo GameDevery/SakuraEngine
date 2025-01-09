@@ -14,8 +14,9 @@ shared_module("SkrRTExporter", "SKR_RUNTIME_EXPORTER")
         local cgpu_header = path.join(runtime, "cgpu", "api.h")
         local cgpu_header2 = path.join(includedir, "cgpu", "api.h")
         if utils.is_changed({
-            cache_file = target:dependfile(cgpu_header),
+            cache_file = utils.depend_file_target(target:name(), cgpu_header),
             files = {cgpu_header, cgpu_header2, target:targetfile()},
+            use_sha = true,
         }) then
             os.vcp(cgpu_header, cgpu_header2)
         end

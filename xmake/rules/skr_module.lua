@@ -163,7 +163,7 @@ analyzer_target("Module.MetaSourceFile")
         local filename = path.join(gendir, "module", "module.configure.cpp")
         local dep_names = target:values("sakura.module.public_dependencies")
         if utils.is_changed({
-            cache_file = target:dependfile("Module.MetaSourceFile"),
+            cache_file = utils.depend_file_target(target:name(), "meta_source_file"),
             files = { target:scriptdir(), os.scriptdir() },
             values = dep_names
         }) then
