@@ -3,9 +3,6 @@ import("core.base.json")
 import("core.base.object")
 import("utils.archive")
 import("skr.utils")
-import("core.project.depend")
-
--- TODO. remove download file when failed to download
 
 ------------------------concepts------------------------
 -- source: {
@@ -251,7 +248,10 @@ function download:_install_tool(tool_name)
     
     -- extract package
     local package_file_name = path.filename(package_path)
-    if utils.is_changed(utils.depend_file("install/tools/"..package_file_name), {package_path}) then
+    if utils.is_changed({
+        cache_file = utils.depend_file("install/tools/"..package_file_name),
+        files = {package_path},
+    }) then
         archive.extract(package_path, utils.install_dir_tool())
     end
 end

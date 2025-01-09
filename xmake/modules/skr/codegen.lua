@@ -1,10 +1,12 @@
 import("core.base.option")
 import("core.base.json")
-import("core.project.depend")
 import("core.project.project")
 import("core.language.language")
 import("core.tool.compiler")
 import("skr.utils")
+
+-- TODO. move depend files into .skr
+-- TODO. cleanup codegen artifacts
 
 -- programs
 local _meta = utils.find_meta()
@@ -239,7 +241,10 @@ function meta_compile(target, proxy_target, opt)
 
     -- generate headers dummy
     if(headerfiles ~= nil and #headerfiles > 0) then
-        if utils.is_changed(sourcefile .. ".meta.d", headerfiles) then
+        if utils.is_changed({
+            cache_file = sourcefile .. ".meta.d",
+            files = headerfiles,
+        }) then
             local verbose = option.get("verbose")
             sourcefile = path.absolute(sourcefile)
             
@@ -412,7 +417,10 @@ function mako_render(target, opt)
     end
 
     -- call codegen scripts
-    if utils.is_changed(target:dependfile(target:name()..".mako"), dep_files) then
+    if utils.is_changed({
+        cache_file = target:dependfile(target:name()..".mako"),
+        files = dep_files,
+    }) then
         _mako_render(target, scripts, dep_files, opt)
     end
 end

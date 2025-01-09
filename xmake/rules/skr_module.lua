@@ -155,7 +155,6 @@ analyzer_target("Module.MetaSourceFile")
             return "NOT_A_MODULE"
         end
 
-        import("core.project.depend")
         import("core.project.project")
         import("core.base.json")
         import("skr.utils")
@@ -163,7 +162,9 @@ analyzer_target("Module.MetaSourceFile")
         local gendir = path.join(utils.skr_codegen_dir(target:name()), "codegen")
         local filename = path.join(gendir, "module", "module.configure.cpp")
         local dep_names = target:values("sakura.module.public_dependencies")
-        if utils.is_changed(target:dependfile("Module.MetaSourceFile"), { target:scriptdir(), os.scriptdir() }, {
+        if utils.is_changed({
+            cache_file = target:dependfile("Module.MetaSourceFile"),
+            files = { target:scriptdir(), os.scriptdir() },
             values = dep_names
         }) then
             -- gather deps

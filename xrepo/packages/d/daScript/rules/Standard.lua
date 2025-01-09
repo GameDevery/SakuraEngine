@@ -16,17 +16,25 @@ rule("Standard")
         local dasTool = path.join(os.scriptdir(), "..", "bin")
         local dasToolOut = path.join(outdir, "bin")
 
-        local depend = import("core.project.depend")
-        if utils.is_changed(target:dependfile(daslibdir), {daslibdir, dasliboutdir, target:targetfile()}) then
+        if utils.is_changed({
+            cache_file = target:dependfile(daslibdir),
+            files = {daslibdir, dasliboutdir, target:targetfile()},
+        }) then
             os.vcp(daslibdir, outdir)
         end
 
-        if utils.is_changed(target:dependfile(dastestdir), {dastestdir, dastestoutdir, target:targetfile()}) then
+        if utils.is_changed({
+            cache_file = target:dependfile(dastestdir),
+            files = {dastestdir, dastestoutdir, target:targetfile()},
+        }) then
             os.vcp(dastestdir, outdir)
         end
 
         if not os.exists(dasToolOut) then
-            if utils.is_changed(target:dependfile(dasTool), {dasTool, dasToolOut, target:targetfile()}) then
+            if utils.is_changed({
+                cache_file = target:dependfile(dasTool),
+                files = {dasTool, dasToolOut, target:targetfile()}
+            }) then
                 os.vcp(dasTool, outdir)
             end
         end

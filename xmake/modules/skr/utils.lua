@@ -1,5 +1,6 @@
 import("lib.detect")
 import("core.project.config")
+import("core.base.object")
 
 ------------------------dirs------------------------
 function skr_build_artifact_dir()
@@ -196,192 +197,204 @@ function find_meta()
 end
 
 ------------------------tools------------------------
+-- change info: content: {
+--   files = {
+--     file = changed file,
+--     reason = "new"|"modify"|"deleted", 
+--       "new" means add to cache_file
+--       "modify" means mtime miss match or sha256 miss match
+--       "deleted" means file is deleted
+--   }
+--   values = {
+--     value = changed value,
+--     reason = see file reason
+--   }
+-- }
+local change_info = change_info or object {}
+function change_info:dump()
+    local reason_fmt = {
+        new = "${green}[%s]${clear}",
+        modify = "${cyan}[%s]${clear}",
+        deleted = "${red}[%s]${clear}",
+    }
+    
+    -- dump files
+    print("files:")
+    for _, file in ipairs(self.files) do
+        local fmt = reason_fmt[file.reason]
+
+        if fmt then
+            cprint(fmt.." %s", file.reason, file.file)
+        else
+            raise("unknown change reason: %s", file.reason)
+        end
+    end
+
+    -- dump values
+    print("values:")
+    for _, value in ipairs(self.values) do
+        local fmt = reason_fmt[value.reason]
+
+        if fmt then
+            cprint(fmt.." %s", value.reason, value.value)
+        else
+            raise("unknown change reason: %s", value.reason)
+        end
+    end
+end
+function change_info:is_file_changed()
+    return #self.files > 0
+end
+function change_info:is_value_changed()
+    return #self.values > 0
+end
+function change_info:any_changed()
+    return self:is_file_changed() or self:is_value_changed()
+end
+
 -- solve change info for files
--- @param cache_file: cache_file used to save time_stamp
--- @param files: files to check
 -- @param opt: options:
---   check_sha256: use sha256 to check file contents, this is useful when file time_stamp is not reliable
---   flag_files: 
---     file: flag file name
+--   cache_file: cache_file used to save time_stamp
+--   files: files to check change
+--   values: values to check change
+--   use_sha: use sha256 to check file contents, this is useful when file time_stamp is not reliable
 -- @return: 
 --   [0] is any file changed
---   [1] change info: {
---     files = {
---       file = changed file,
---       reason = "new"|"modify", -- new means add to cache_file, modify means mtime miss match or sha256 miss match, flag means flag file changed
---     }
---     deleted_files = list of deleted files,
---     flag_files = same as files,
---     deleted_flag_files = same as deleted_files,
---   }
-function is_changed(cache_file, files, opt)
+--   [1] change info: see above
+function is_changed(opt)
     -- load opt
     opt = opt or {}
-    local check_sha256 = opt.check_sha256 or false
-    local flag_files = opt.flag_files or nil
+    local cache_file = opt.cache_file
+    local files = opt.files
+    local values = opt.values
+    local use_sha = opt.use_sha or false
+
+    -- check opt
+    if not cache_file then
+        raise("cache_file is required")
+    end
     
     -- load cache file
     if not os.exists(cache_file) then
-        -- all files are new
-        local change_infos = {}
-        for _, file in ipairs(files) do
-            table.insert(change_infos, {
-                file = file,
-                reason = "new"
-            })
-        end
-
-        -- save cache
-        local cache = {
+        cache = {
             files = {},
-            flag_files = {},
+            values = {},
         }
-        for _, file in ipairs(files) do
-            if check_sha256 then
-                cache.files[file] = {
-                    sha256 = hash.sha256(file),
-                }
-            else
-                cache.files[file] = {
-                    mtime = os.mtime(file),
-                }
-            end
-        end
-        if flag_files then
-            for _, file in ipairs(flag_files) do
-                if check_sha256 then
-                    cache.flag_files[file] = {
-                        sha256 = hash.sha256(file),
-                    }
-                else
-                    cache.flag_files[file] = {
-                        mtime = os.mtime(file),
-                    }
-                end
-            end
-        end
-        io.save(cache_file, cache)
-
-        return true, change_infos, {}
+    else
+        cache = io.load(cache_file)
     end
-    cache = io.load(cache_file)
 
-    local _check_file = function (cache_info, file)
-        -- check cache info
-        if not cache_info then
-            return "new", nil, nil
-        end
+    -- change info for cache changed
+    local change_info = change_info {
+        files = {},
+        values = {},
+    }
 
-        -- check sha256
-        if check_sha256 then
-            local sha = hash.sha256(file)
-            if sha ~= cache_info.sha256 then
-                return "modify", nil, sha
-            end
-        else
-            local mtime = os.mtime(file)
-            if mtime ~= cache_info.mtime then
-                return "modify", mtime, nil
-            end
-        end
-    end
-    local _check_cache_and_update = function (cache_tbl, files)
-        -- check files
-        local checked_files_info = {}
+    -- check files
+    if files then
+        local checked_files = {}
+        
+        -- check input and cache diff
         for _, file in ipairs(files) do
-            local reason, mtime, sha = _check_file(cache_tbl[file], file)
+            local cache_info = cache.files[file]
             
-            -- record checked info
-            checked_files_info[file] = {
-                reason = reason,
-            }
+            -- solve mtime & sha
+            local mtime, sha
+            if os.exists(file) then
+                mtime = os.mtime(file)
+                sha = use_sha and hash.sha256(file) or ""
+            else
+                mtime = 0
+                sha = ""
+            end
 
-            -- update cache
-            if reason then
-                cache_tbl[file] = {
-                    mtime = mtime or os.mtime(file),
+            if not cache_info then -- new case
+                -- add cache
+                cache.files[file] = {
+                    mtime = mtime,
+                    sha256 = sha,
+                }
+
+                -- add change info
+                table.insert(change_info.files, {
+                    file = file,
+                    reason = "new",
+                })
+            else -- modify case
+                -- check modified
+                local changed
+                if use_sha then
+                    changed = cache_info.sha256 ~= sha
+                else
+                    changed = cache_info.mtime ~= mtime
+                end
+
+                -- add change info
+                if changed then
+                    table.insert(change_info.files, {
+                        file = file,
+                        reason = "modify",
+                    })
+                end
+
+                -- update cache
+                cache.files[file] = {
+                    mtime = mtime,
                     sha256 = sha,
                 }
             end
+
+            -- add to checked files
+            checked_files[file] = true
         end
 
         -- check deleted files
-        local deleted_files = {}
-        for file, info in pairs(cache_tbl) do
-            if not checked_files_info[file] then
-                -- record deleted info
-                table.insert(deleted_files, file)
-                
+        for file, _ in pairs(cache.files) do
+            if not checked_files[file] then
+                -- add change info
+                table.insert(change_info.files, {
+                    file = file,
+                    reason = "deleted",
+                })
+
                 -- remove from cache
-                cache_tbl[file] = nil
+                cache.files[file] = nil
+            end
+        end
+    end
+
+    -- check values
+    if values then
+        -- check new value
+        for value in ipairs(values) do
+            if not table.contains(cache.values, value) then
+                -- add change info
+                table.insert(change_info.values, {
+                    value = value,
+                    reason = "new",
+                })
             end
         end
 
-        return checked_files_info, deleted_files
-    end
+        -- check deleted value
+        for value in ipairs(cache.values) do
+            if not table.contains(values, value) then
+                -- add change info
+                table.insert(change_info.values, {
+                    value = value,
+                    reason = "deleted",
+                })
+            end
+        end
 
-    -- check
-    local checked_files_info, deleted_files = _check_cache_and_update(cache.files, files)
-    local checked_flag_files_info, deleted_flag_files = _check_cache_and_update(cache.flag_files, flag_files)
+        -- update cache
+        cache.values = values
+    end
 
     -- save cache
     io.save(cache_file, cache)
 
-    -- build final change info
-    local change_info = {
-        files = {},
-        deleted_files = deleted_files,
-        flag_files = {},
-        deleted_flag_files = deleted_flag_files,
-        dump = function(self)
-            for _, file in ipairs(self.files) do
-                if file.reason == "new" then
-                    cprint("${green}[%s]${clear} %s", file.reason, file.file)
-                else
-                    cprint("${cyan}[%s]${clear} %s", file.reason, file.file)
-                end
-            end
-            for _, file in ipairs(self.deleted_files) do
-                cprint("${red}[%s]${clear} %s", "delete", file)
-            end
-            for _, file in ipairs(self.flag_files) do
-                if file.reason == "new" then
-                    cprint("${green}[%s]${clear} %s", file.reason, file.file)
-                else
-                    cprint("${cyan}[%s]${clear} %s", file.reason, file.file)
-                end
-            end
-            for _, file in ipairs(self.deleted_flag_files) do
-                cprint("${red}[%s]${clear} %s", "delete", file)
-            end
-        end,
-        is_file_changed = function(self)
-            return #self.files > 0 or #self.deleted_files > 0
-        end,
-        is_flag_changed = function(self)
-            return #self.flag_files > 0 or #self.deleted_flag_files > 0
-        end
-    }
-    for file, info in pairs(checked_files_info) do
-        if (info.reason) then
-            table.insert(change_info.files, {
-                file = file,
-                reason = info.reason,
-            })
-        end
-    end
-    for file, info in pairs(checked_flag_files_info) do
-        if (info.reason) then
-            table.insert(change_info.flag_files, {
-                file = file,
-                reason = info.reason,
-            })
-        end
-    end
-
-    local changed = change_info:is_file_changed() or change_info:is_flag_changed()
-
-    return changed, change_info
+    return change_info:any_changed(), change_info
 end
 function write_flag_file(sub_path)
     local path = flag_file(sub_path)

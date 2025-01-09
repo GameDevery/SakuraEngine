@@ -37,7 +37,6 @@ rule("skr.install")
     before_build(function (target)
         import("skr.utils")
         import("skr.install")
-        import("core.project.depend")
         import("utils.archive")
 
         if not target:is_default() then

@@ -1,7 +1,6 @@
 
 import("core.base.option")
 import("core.project.config")
-import("core.project.depend")
 import("core.project.project")
 import("skr.utils")
 
@@ -127,7 +126,10 @@ function trigger_analyze()
     end
 
     -- dispatch analyze
-    if utils.is_changed(utils.depend_file("ANALYZE_PHASE"), deps) then
+    if utils.is_changed({
+        cache_file = utils.depend_file("ANALYZE_PHASE"),
+        files = deps,
+    }) then
         cprint("${cyan}[ANALYZE]: trigger analyze with arg: %s${clear}", table.concat(argv, " "))
         
         -- record trigger log

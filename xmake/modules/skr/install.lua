@@ -1,7 +1,6 @@
 import("utils.archive")
 import("skr.utils")
 import("core.project.project")
-import("core.project.depend")
 import("core.base.object")
 
 ------------------------log tools------------------------
@@ -23,7 +22,10 @@ function install_tool(opt)
 
     -- extract package
     local package_file_name = path.filename(package_path)
-    if opt.force or utils.is_changed(utils.depend_file("install/tools/"..package_file_name), {package_path}) then
+    if opt.force or utils.is_changed({
+        cache_file = utils.depend_file("install/tools/"..package_file_name), 
+        files = {package_path},
+    }) then
         _log(opt, "tool.install", "path \"%s\"", package_path)
         archive.extract(package_path, utils.install_dir_tool())
 
@@ -46,7 +48,10 @@ function install_resources(opt)
 
     -- extract
     if not extract_exist or opt.force or
-       utils.is_changed(utils.depend_file("install/resources/extract/"..depend_file_name), {package_path}) then
+       utils.is_changed({
+        cache_file = utils.depend_file("install/resources/extract/"..depend_file_name),
+        files = {package_path}
+    }) then
         
         _log(opt, "resource.extract", "temp_dir \"%s\"", temp_dir)
         if extract_exist then
@@ -56,8 +61,11 @@ function install_resources(opt)
     end
 
     -- copy
-    if not extract_exist or opt.force
-       or not utils.is_changed(utils.depend_file("install/resources/copy/"..depend_file_name), {package_path}) then
+    if not extract_exist or opt.force or 
+       utils.is_changed({
+        cache_file = utils.depend_file("install/resources/copy/"..depend_file_name), 
+        files = {package_path},
+    }) then
         _log(opt, "resource.copy", "path \"%s\"", package_path)
         if not os.isdir(opt.out_dir) then
             os.mkdir(opt.out_dir)
@@ -82,7 +90,10 @@ function install_sdk(opt)
 
     -- extract
     if not extract_exist or opt.force or
-       utils.is_changed(utils.depend_file("install/sdk/extract/"..package_file_name), { package_path }) then
+       utils.is_changed({
+        cache_file = utils.depend_file("install/sdk/extract/"..package_file_name),
+        files = { package_path },
+    }) then
         _log(opt, "sdk.extract", "temp_dir \"%s\"", temp_dir)
         if extract_exist then
             os.rmdir(temp_dir)
@@ -92,7 +103,10 @@ function install_sdk(opt)
 
     -- copy
     if not extract_exist or opt.force or
-       utils.is_changed(utils.depend_file("install/sdk/copy/"..package_file_name), { package_path }) then
+       utils.is_changed({
+        cache_file = utils.depend_file("install/sdk/copy/"..package_file_name), 
+        files = { package_path }
+    }) then
         _log(opt, "sdk.copy", "path \"%s\"", package_path)
         if not os.isdir(opt.out_dir) then
             os.mkdir(opt.out_dir)
@@ -120,7 +134,10 @@ function install_file(opt)
     local depend_file_name = opt.name..(opt.trigger_target and "_"..opt.trigger_target or "")
 
     if opt.force or
-       utils.is_changed(utils.depend_file("install/files/"..depend_file_name), { file_path }) then
+       utils.is_changed({
+        cache_file = utils.depend_file("install/files/"..depend_file_name), 
+        filse = { file_path }
+    }) then
         _log(opt, "download_file.copy", "path \"%s\"", file_path)
         if not os.isdir(opt.out_dir) then
             os.mkdir(opt.out_dir)
@@ -152,7 +169,10 @@ function copy_files(opt)
 
     -- copy
     if opt.force or
-       utils.is_changed(utils.depend_file("install/copy_files/"..opt.name), files) then
+       utils.is_changed({
+        cache_file = utils.depend_file("install/copy_files/"..opt.name),
+        files = files,
+    }) then
         _log(opt, "file.copy", "%d files", #files)
         if not os.isdir(opt.out_dir) then
             os.mkdir(opt.out_dir)
@@ -164,7 +184,10 @@ function copy_files(opt)
 end
 function install_custom(opt)
     if opt.force or
-       utils.is_changed(utils.depend_file("install/custom/"..opt.name), {path.join(os.scriptdir(), "install.lua")}) then -- TODO. use flag file
+       utils.is_changed({
+        cache_file = utils.depend_file("install/custom/"..opt.name),
+        files = {path.join(os.scriptdir(), "install.lua")},
+    }) then -- TODO. use flag file
         _log(opt, "custom")
         utils.redirect_fenv(opt.func, install_custom)
         opt.func()
