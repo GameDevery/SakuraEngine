@@ -266,7 +266,7 @@ function is_changed(opt)
     opt = opt or {}
     local cache_file = opt.cache_file
     local files = opt.files
-    local values = opt.values
+    local values = opt.values and table.wrap(opt.values) or nil
     local use_sha = opt.use_sha or false
 
     -- check opt
