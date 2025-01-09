@@ -272,8 +272,6 @@ function is_changed(opt)
     local values = opt.values and table.wrap(opt.values) or nil
     local use_sha = opt.use_sha or false
 
-    print("checking changes "..(use_sha and "with sha256" or "with mtime").." ...")
-
     -- check opt
     if not cache_file then
         raise("cache_file is required")
@@ -403,7 +401,7 @@ function is_changed(opt)
 end
 function write_flag_file(sub_path)
     local path = flag_file(sub_path)
-    os.writefile(path, "FLAG FILE FOR TRIGGER [utils.is_changed]")
+    io.writefile(path, "FLAG FILE FOR TRIGGER [utils.is_changed]")
 end
 
 ------------------------lua utils------------------------

@@ -114,7 +114,7 @@ function filter_analyze_trigger()
 end
 function trigger_analyze()
     -- build depend files
-    local build_flag_path = path.join(utils.skr_build_artifact_dir(), "analyze_phase.flag")
+    local build_flag_path = utils.flag_file("ANALYZE_PHASE")
     local deps = {build_flag_path}
     for _, file in ipairs(project.allfiles()) do
         table.insert(deps, file)
@@ -122,7 +122,7 @@ function trigger_analyze()
 
     -- write flag files
     if not os.exists(build_flag_path) then
-        io.writefile(build_flag_path, "flag to trigger analyze_phase")
+        utils.write_flag_file("ANALYZE_PHASE")
     end
 
     -- dispatch analyze
@@ -133,7 +133,7 @@ function trigger_analyze()
         cprint("${cyan}[ANALYZE]: trigger analyze with arg: %s${clear}", table.concat(argv, " "))
         
         -- record trigger log
-        local log_file = path.join(utils.skr_build_artifact_dir(), "analyze_trigger.log")
+        local log_file = utils.log_file("analyze_trigger")
         local log_file_content = os.exists(log_file) and io.readfile(log_file) or ""
         local append_log_content = "["..os.date("%Y-%m-%d %H:%M:%S").."]: ".."trigger analyze with arg: "..table.concat(argv, " ").."\n"
         io.writefile(log_file, log_file_content..append_log_content)
@@ -154,7 +154,7 @@ function trigger_analyze()
     end
 end
 function write_analyze_trigger_flag()
-    io.writefile(path.join(utils.skr_build_artifact_dir(), "analyze_phase.flag") , "flag to trigger analyze_phase")
+    utils.write_flag_file("ANALYZE_PHASE")
 end
 function clean_analyze_files()
     os.rm(path.join(utils.skr_build_artifact_dir(), "analyze"))
