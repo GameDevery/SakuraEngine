@@ -47,10 +47,10 @@ rule("sakura.pcxxheader")
         target:data_set("pch_owner_flags", pch_owner_flags)
     end)
     before_build(function(target, opt)
-        import("core.project.depend")
         import("core.project.project")
         import("core.language.language")
         import("private.action.build.object")
+        import("skr.utils")
 
         -- clone buildtarget
         local buildtarget_name = target:extraconf("rules", "sakura.pcxxheader", "buildtarget")
@@ -76,7 +76,7 @@ rule("sakura.pcxxheader")
 
         -- generate proxy header
         local header_to_compile = target:data("header_to_compile")
-        depend.on_changed(function ()
+        if utils.is_changed(target:dependfile(target:name()..".sakura.pch"), pchfiles) then
             local include_content = ""
             for _, pchfile in pairs(pchfiles) do
                 include_content = include_content .. "#include \"" .. path.absolute(pchfile):gsub("\\", "/") .. "\"\n"
@@ -91,7 +91,7 @@ rule("sakura.pcxxheader")
 %s
 #endif // __cplusplus
             ]]):format(include_content))
-        end, {dependfile = target:dependfile(target:name()..".sakura.pch"), files = pchfiles})
+        end
 
         -- build pch
         local pcoutputfile = target:data("pcoutputfile")

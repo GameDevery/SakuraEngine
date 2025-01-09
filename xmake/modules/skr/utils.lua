@@ -192,7 +192,7 @@ function find_python()
     end
 end
 function find_meta()
-    local meta = find_tool("meta")
+    return find_tool("meta")
 end
 
 ------------------------tools------------------------

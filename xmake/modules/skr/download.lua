@@ -5,6 +5,8 @@ import("utils.archive")
 import("skr.utils")
 import("core.project.depend")
 
+-- TODO. remove download file when failed to download
+
 ------------------------concepts------------------------
 -- source: {
 --   name: [string] source name
@@ -245,9 +247,9 @@ function download:_install_tool(tool_name)
     
     -- extract package
     local package_file_name = path.filename(package_path)
-    depend.on_changed(function ()
+    if utils.is_changed(utils.depend_file("install/tools/"..package_file_name), {package_path}) then
         archive.extract(package_path, utils.install_dir_tool())
-    end, {dependfile = utils.depend_file("install/tools/"..package_file_name), files = {package_path}})
+    end
 end
 function download:tool(tool_name)
     self:download_file(utils.package_name_tool(tool_name))

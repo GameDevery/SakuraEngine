@@ -163,7 +163,9 @@ analyzer_target("Module.MetaSourceFile")
         local gendir = path.join(utils.skr_codegen_dir(target:name()), "codegen")
         local filename = path.join(gendir, "module", "module.configure.cpp")
         local dep_names = target:values("sakura.module.public_dependencies")
-        depend.on_changed(function()
+        if utils.is_changed(target:dependfile("Module.MetaSourceFile"), { target:scriptdir(), os.scriptdir() }, {
+            values = dep_names
+        }) then
             -- gather deps
             local dep_modules = {}
             for _, dep in ipairs(target:orderdeps()) do
@@ -207,11 +209,7 @@ analyzer_target("Module.MetaSourceFile")
             )
             -- cprint("${green}[%s] module.configure.cpp", target:name())
             io.writefile(filename, cpp_content)
-        end, {
-            dependfile = target:dependfile("Module.MetaSourceFile"), 
-            files = { target:scriptdir(), os.scriptdir() },
-            values = dep_names
-        })
+        end
 
         return filename
     end)

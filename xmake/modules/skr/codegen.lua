@@ -239,7 +239,7 @@ function meta_compile(target, proxy_target, opt)
 
     -- generate headers dummy
     if(headerfiles ~= nil and #headerfiles > 0) then
-        depend.on_changed(function()
+        if utils.is_changed(sourcefile .. ".meta.d", headerfiles) then
             local verbose = option.get("verbose")
             sourcefile = path.absolute(sourcefile)
             
@@ -260,7 +260,7 @@ function meta_compile(target, proxy_target, opt)
 
             -- build generated cpp to json
             _codegen_compile(target, proxy_target, opt)
-        end, {dependfile = sourcefile .. ".meta.d", files = headerfiles})
+        end
     end
 end
 
@@ -412,7 +412,7 @@ function mako_render(target, opt)
     end
 
     -- call codegen scripts
-    depend.on_changed(function ()
+    if utils.is_changed(target:dependfile(target:name()..".mako"), dep_files) then
         _mako_render(target, scripts, dep_files, opt)
-    end, {dependfile = target:dependfile(target:name()..".mako"), files = dep_files})
+    end
 end

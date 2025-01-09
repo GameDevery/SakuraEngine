@@ -127,7 +127,7 @@ function trigger_analyze()
     end
 
     -- dispatch analyze
-    depend.on_changed(function ()
+    if utils.is_changed(utils.depend_file("ANALYZE_PHASE"), deps) then
         cprint("${cyan}[ANALYZE]: trigger analyze with arg: %s${clear}", table.concat(argv, " "))
         
         -- record trigger log
@@ -149,8 +149,7 @@ function trigger_analyze()
             printf(err)
             print("===================[Analyze Error]===================")
         end
-        
-    end, {dependfile = utils.depend_file("ANALYZE_PHASE"), files = deps})
+    end
 end
 function write_analyze_trigger_flag()
     io.writefile(path.join(utils.skr_build_artifact_dir(), "analyze_phase.flag") , "flag to trigger analyze_phase")
