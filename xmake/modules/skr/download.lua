@@ -220,6 +220,10 @@ function download:download_file(file_name, opt)
             end,
         catch {
             function (error)
+                local download_file = path.join(utils.download_dir(), file_name)
+                if os.exists(download_file) then
+                    os.rm(download_file)
+                end
                 cprint("${red}failed${clear}, reason: %s", error)
             end
         }}
