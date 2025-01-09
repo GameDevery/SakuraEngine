@@ -7,7 +7,7 @@ import("core.tool.compiler")
 import("skr.utils")
 
 -- programs
-local _meta = utils.find_tool("meta")
+local _meta = utils.find_meta()
 local _python = utils.find_python()
 
 -- data cache names
