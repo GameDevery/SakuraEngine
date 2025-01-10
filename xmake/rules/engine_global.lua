@@ -41,7 +41,8 @@ skr_global_target()
         import("skr.download")
         
         -- auto trigger download
-        if not analyze.in_analyze_phase() then
+        local no_download = get_config("no_download")
+        if (not no_download) and (not analyze.in_analyze_phase()) then
             -- load install items
             local install_items = install.collect_install_items()
 

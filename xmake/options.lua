@@ -18,3 +18,8 @@ option("c_version")
     set_values("c11")
     set_description("c version of project")
 option_end()
+
+option("no_download")
+    set_default(false)
+    set_description("Toggle to disable download")
+option_end()
