@@ -63,7 +63,7 @@ skr_global_target()
 skr_global_target_end()
 
 -- modules
-includes("xmake/thirdparty.lua")
+includes("thirdparty/xmake.lua")
 includes("modules/xmake.lua")
 includes("samples/xmake.lua")
 includes("editors/xmake.lua")
