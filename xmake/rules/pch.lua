@@ -77,7 +77,7 @@ rule("sakura.pcxxheader")
         -- generate proxy header
         local header_to_compile = target:data("header_to_compile")
         if utils.is_changed({
-            cache_file = utils.depend_file_target(target:name(), "sakura.pch"),
+            cache_file = utils.depend_file_target(buildtarget:name(), "sakura.pch"),
             files = pchfiles,
         }) then
             local include_content = ""
@@ -114,6 +114,14 @@ rule("sakura.pcxxheader")
                 table.insert(objectfiles, path.absolute(pcoutputfile) .. ".obj")
             end
         end
+    end)
+    on_clean(function (target)
+        import("skr.utils")
+        import("core.project.project")
+
+        local buildtarget_name = target:extraconf("rules", "sakura.pcxxheader", "buildtarget")
+        local buildtarget = project.target(buildtarget_name)
+        os.rm(utils.depend_file_target(buildtarget:name(), "sakura.pch"))
     end)
 rule_end()
 
