@@ -74,22 +74,9 @@ shared_module("SkrCore", "SKR_CORE")
     else
         add_syslinks("pthread")
     end
-    -- add SDL2
-    if (is_os("windows")) then 
-        add_links("SDL2", {public = true})
-        sdl2_includes_dir = path.join(engine_dir, "thirdparty/SDL2")
-        add_includedirs(sdl2_includes_dir, {public = true})
-    elseif (is_os("macosx") or is_os("linux")) then
-        add_packages("libsdl", {public = true})
-    end
 
-    -- install
-    skr_install_rule()
-    skr_install("download", {
-        name = "SDL2",
-        install_func = "sdk",
-        plat = { "windows" }
-    })
+    -- add deps
+    add_deps("SDL2", {public= true})
 
 --[[
 shared_pch("SkrCore")
