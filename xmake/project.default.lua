@@ -1,5 +1,6 @@
 -- TODO. 为 target 标记 tag，通过 Disable Tag 来禁用 Target
 -- TODO. 拆分为 engine.lua 和 project.lua 来分离引擎和项目的配置？
+-- TODO. skr_config plugin，用于配置管理以及 dump 配置
 analyzer_target("DisableSingle")
     analyze(function(target, attributes, analyzing)
         import("core.project.project")
