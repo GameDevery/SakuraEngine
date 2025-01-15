@@ -29,13 +29,13 @@ executable_module("Live2DViewer", "LIVE2D_VIEWER")
             "live2d-viewer/**.moc3",
             "live2d-viewer/**.png",
         },
-        out_dir = "/../resources/Live2DViewer",
+        out_dir = "../resources/Live2DViewer",
         root_dir = "live2d-viewer/resources/",
     })
     skr_install("download", {
         name = "SourceSansPro-Regular.ttf",
         install_func = "file",
-        out_dir = "/../resources/font"
+        out_dir = "../resources/font"
     })
 
     add_rules("utils.dxc", {

@@ -28,7 +28,7 @@ executable_module("Game", "GAME")
     skr_install("files", {
         name = "game-script",
         files = {"script/**.lua"},
-        out_dir = "/../resources",
+        out_dir = "../resources",
         root_dir = "script"
     })
 

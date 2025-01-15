@@ -14,7 +14,7 @@ target("OpenGUI_DemoResources")
     skr_install("files", {
         name = "ogui-demo-resources",
         files = {"common/**.png"},
-        out_dir = "/../resources/OpenGUI",
+        out_dir = "../resources/OpenGUI",
         root_dir = "common"
     })
 
