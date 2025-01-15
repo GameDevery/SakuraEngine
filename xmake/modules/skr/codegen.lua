@@ -426,3 +426,7 @@ function mako_render(target, opt)
         _mako_render(target, scripts, dep_files, opt)
     end
 end
+
+function is_env_complete()
+    return _meta and _python
+end

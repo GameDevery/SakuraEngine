@@ -7,6 +7,7 @@ import("core.project.project")
 import("core.platform.platform")
 import("skr.analyze")
 import("skr.utils")
+import("skr.codegen")
 
 function main()
     -- print("start analyze...")

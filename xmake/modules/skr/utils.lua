@@ -120,7 +120,12 @@ function find_program_in_system(program_name, opt)
             local find_name = _format_program_name_for_winos(program_name)
             
             -- find
-            local found_paths = os.iorunv("where.exe", {find_name})
+            local found_paths = nil
+            try {
+                function ()
+                    found_paths = os.iorunv("where.exe", {find_name})
+                end
+            }
             if found_paths then
                 for _, path in ipairs(found_paths:split("\n")) do
                     path = path:trim()
@@ -133,7 +138,12 @@ function find_program_in_system(program_name, opt)
             end
 
         else -- use which
-            local program_path = os.iorunv("which", {program_name})
+            local program_path = nil
+            try {
+                function ()
+                    program_path = os.iorunv("which", {program_name})
+                end
+            }
             program_path = _check_program_path(program_path)
             if program_path then
                 return program_path

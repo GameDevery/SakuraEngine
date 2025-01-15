@@ -13,8 +13,13 @@
 ]]
 rule("c++.codegen.generators")
     after_load(function (target, opt)
-        import("skr.codegen")
-        codegen.solve_generators(target)
+        import("skr.analyze")
+        if not analyze.in_analyze_phase() then
+            import("skr.codegen")
+            if codegen.is_env_complete() then
+                codegen.solve_generators(target)
+            end
+        end
     end)
 rule_end()
 
