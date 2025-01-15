@@ -173,22 +173,33 @@ function _codegen_compile(target, proxy_target, opt)
     if using_msvc or using_clang_cl then
         for k, arg in pairs(argv) do 
             if arg:startswith("-Yu") or arg:startswith("-FI") or arg:startswith("-Fp") then
-                argv[k] = "-I"..meta_std_dir
+                argv[k] = nil 
             end
         end
     else
-        for i, arg in pairs(argv) do 
+        for i, arg in pairs(argv) do
             if arg:find("_pch.hpp") or arg:find("_pch.pch") then
-                argv[i - 1] = "-I"..meta_std_dir
-                argv[i] = "-I"..meta_std_dir
+                argv[i - 1] = nil
+                argv[i] = nil
             end
         end
+    end
+    do
+        local new_argv = {}
+        for _, arg in pairs(argv) do
+            if arg then
+                table.insert(new_argv, arg)
+            end
+        end
+        argv = new_argv
     end
 
     -- setup tool flags
     if using_msvc or using_clang_cl then
         table.insert(argv, "--driver-mode=cl")
     end
+
+    -- setup std lib include
     if os.host() == "windows" then
         table.insert(argv, "-I"..path.join(utils.install_dir_tool(), "meta-include"))
     elseif os.host() == "macosx" then
