@@ -24,6 +24,30 @@ local _codegen_rule_generators_name = "c++.codegen.generators"
 local _global_target = project.target("Skr.Global")
 local _engine_dir = _global_target:values("engine_dir")
 
+-- macos get include dirs
+local macos_include_dirs = {}
+if is_plat("macosx") then
+    local out, err = os.iorunv("clang", {"-x", "c++", "-v", "-E", path.join(_engine_dir, "tools/null.cpp")})
+    do
+        local start_str = "#include <...> search starts here:"
+        local end_str = "End of search list."
+        local start_begin, start_end = err:find(start_str, 1, true)
+        local end_begin, end_end = err:find(end_str, 1, true)
+        local include_str = err:sub(start_end + 1, end_begin - 1)
+        local includes = include_str:split("\n")
+        for _, include in ipairs(includes) do
+            include = string.trim(include)
+            if string.endswith(include, "(framework directory)") then
+                include = string.trim(include:sub(1, #include - #"(framework directory)"))
+            end
+            if include ~= "" then
+                table.insert(macos_include_dirs, include)
+            end
+        end
+    end
+end
+print(macos_include_dirs)
+
 -- steps
 --  1. collect header batch
 --  2. solve generators
@@ -165,7 +189,14 @@ function _codegen_compile(target, proxy_target, opt)
     if using_msvc or using_clang_cl then
         table.insert(argv, "--driver-mode=cl")
     end
-    table.insert(argv, "-I"..path.join(utils.install_dir_tool(), "meta-include"))
+    if os.host() == "windows" then
+        table.insert(argv, "-I"..path.join(utils.install_dir_tool(), "meta-include"))
+    elseif os.host() == "macosx" then
+        for _, dir in ipairs(macos_include_dirs) do
+            table.insert(argv, "-isystem")
+            table.insert(argv, dir)
+        end
+    end
 
     -- setup disable warning flag
     table.insert(argv, "-Wno-abstract-final-class")
