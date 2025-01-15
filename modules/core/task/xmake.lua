@@ -1,4 +1,5 @@
-add_requires("boost-context >=0.1.0-skr")
+-- add_requires("boost-context >=0.1.0-skr")
+-- TODO. remove boost_context and FiberTaskingLib backend
 
 shared_module("SkrTask", "SKR_TASK")
     -- add source files
@@ -6,7 +7,7 @@ shared_module("SkrTask", "SKR_TASK")
     add_includedirs("include", {public = true})
     add_files("src/build.*.cpp")
     -- internal packages
-    add_packages("boost-context", {public = true, inherit = true})
+    -- add_packages("boost-context", {public = true, inherit = true})
     -- add FTL source 
     local ftl_includes_dir = path.join(engine_dir, "thirdparty/FiberTaskingLib/include")
     add_includedirs(ftl_includes_dir, {public = true})
