@@ -195,12 +195,15 @@ end
 
 ------------------------find spec program------------------------
 function find_python()
+    -- find embedded_python
     local embedded_python = find_tool("python", {"python-embed"})
     if embedded_python then
         return embedded_python
     end
 
-    local system_python = find_program_in_system("python")
+    -- find system python
+    local python_name = (os.host() == "windows") and "python" or "python3"
+    local system_python = find_program_in_system(python_name)
     if system_python then
         return system_python
     end

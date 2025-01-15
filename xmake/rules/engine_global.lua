@@ -114,6 +114,7 @@ skr_global_target()
         os.rm(path.join(utils.skr_build_artifact_dir(), "deps/install/sdk"))
         os.rm(path.join(utils.skr_build_artifact_dir(), "deps/install/files"))
         os.rm(path.join(utils.skr_build_artifact_dir(), "deps/install/copy_files"))
+        os.rm(path.join(utils.skr_build_artifact_dir(), "deps/install/custom"))
     end)
 skr_global_target_end()
 
