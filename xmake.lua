@@ -34,6 +34,7 @@ skr_global_target()
     skr_install("download", {
         name = "python-embed",
         install_func = "tool",
+        plat = {"windows"},
         after_install = function()
             import("skr.utils")
             local python = utils.find_python()
@@ -59,6 +60,7 @@ skr_global_target()
     skr_install("download", {
         name = "tracy-gui-0.10.1a",
         install_func = "tool",
+        arch = {"x64", "x86", "x86_64"} -- TODO. support arm64
     })
 skr_global_target_end()
 

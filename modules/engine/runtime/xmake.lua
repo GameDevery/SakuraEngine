@@ -37,13 +37,5 @@ shared_module("SkrRT", "SKR_RUNTIME")
         add_mxflags("-fno-objc-arc", {force = true})
         add_frameworks("CoreFoundation", "Cocoa", "IOKit", {public = true})
     end
-    
-    -- install
-    skr_install_rule()
-    skr_install("download", {
-        name = "gns",
-        install_func = "sdk",
-        plat = { "windows" }
-    })
 
     skr_dbg_natvis_files("dbg/**.natvis")

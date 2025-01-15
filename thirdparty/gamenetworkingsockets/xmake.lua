@@ -6,6 +6,7 @@ target("gamenetworkingsockets")
         skr_install("download", {
             name = "gns",
             install_func = "sdk",
+            plat = {"windows"},
         })
         set_kind("headeronly")
         add_links("gamenetworkingsockets", {public=true} )
