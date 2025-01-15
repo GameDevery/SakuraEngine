@@ -46,11 +46,14 @@ skr_global_target()
         name = "system python",
         plat = {"macosx", "linux"},
         func = function ()
-            print("fuck")
             import("skr.utils")
             local python = utils.find_python()
-            os.runv(python, {"-m", "pip", "install", "mako"})
-            os.runv(python, {"-m", "pip", "install", "autopep8"})
+            if python then
+                os.execv(python, {"-m", "pip", "install", "mako"})
+                os.execv(python, {"-m", "pip", "install", "autopep8"})
+            else
+                raise("python not found, please install python3 first")
+            end
         end
     })
     skr_install("download", {
