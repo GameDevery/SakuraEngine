@@ -12,4 +12,8 @@ target("SDL2")
     })
 
     -- add links
-    add_links("SDL2", {public = true})
+    if is_plat("windows") then
+        add_links("SDL2", {public = true})
+    else
+        add_links("SDL2-2.0.0", {public = true})
+    end
