@@ -46,7 +46,7 @@ if is_plat("macosx") then
         end
     end
 end
-print(macos_include_dirs)
+-- print(macos_include_dirs)
 
 -- steps
 --  1. collect header batch
