@@ -1,6 +1,14 @@
 #include "SkrTestFramework/framework.hpp"
 #include "proxy_test.hpp"
 
+template<skr::Proxyable<TestProxy> T>
+void test_concept(T o)
+{
+    REQUIRE_EQ(o.inc(0), 1233);
+    TestProxy t = o;
+    REQUIRE_EQ(t.inc(0), 1233);
+}
+
 TEST_CASE("simple trait test")
 {
     SUBCASE("member function")
@@ -35,5 +43,11 @@ TEST_CASE("simple trait test")
         REQUIRE_EQ(o.a, 1233);
         TestProxy t = o;
         REQUIRE_EQ(t.get_a(), 1234);
+    }
+
+    SUBCASE("concept")
+    {
+        TestObject o;
+        test_concept(o);
     }
 }

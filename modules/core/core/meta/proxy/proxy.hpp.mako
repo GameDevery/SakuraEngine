@@ -74,4 +74,44 @@ static ${record.short_name}_VTable* get_vtable() {
 }
 %endif
 %endfor
+namespace skr
+{
+%for record in records:
+<%record_proxy_data=record.generator_data["proxy"]%>\
+template <>
+struct ProxyObjectTraits<${record.name}> {
+    template <typename T>
+    static constexpr bool validate()
+    {
+        return
+        %for method in record_proxy_data.methods:
+        <%method_proxy_data=method.generator_data["proxy"]%>\
+(   // ${method.ret_type} ${record.name}::${method.short_name}(${method.dump_params()}) ${method.dump_const()} ${method.dump_noexcept()}
+            requires(${method.dump_const()} T t ${method.dump_params_with_comma()})
+            {
+                { t.${method.short_name}( ${method.dump_params_name_only()} ) } -> std::convertible_to<${method.ret_type}>;
+            }
+            || requires(${method.dump_const()} T t ${method.dump_params_with_comma()})
+            {
+                { ${method.short_name}( &t ${method.dump_params_name_only_with_comma()} ) } -> std::convertible_to<${method.ret_type}>;
+            }
+%if method_proxy_data.setter:
+            || requires(${method.dump_const()} T t ${method.dump_params_with_comma()})
+            {
+                { t.${method_proxy_data.setter} = ${method.dump_params_name_only()} };
+            }
+%elif method_proxy_data.getter:
+            || requires(${method.dump_const()} T t)
+            {
+                { t.${method_proxy_data.getter} } -> std::convertible_to<${method.ret_type}>;
+            }
+%endif
+        )
+        &&
+        %endfor
+        true;
+    }
+};
+%endfor
+}
 // END PROXY GENERATED
