@@ -146,7 +146,7 @@ function _load_launch_from_binary_target(target, build_dir)
         return {
             label = target:name(),
             cmd_name = target:name(),
-            program = path.join(build_dir, target:name()..".exe"),
+            program = path.join(build_dir, target:name()..(os.is_host("windows") and ".exe" or "")),
             args = args,
             envs = envs,
             cwd = build_dir,
@@ -166,14 +166,16 @@ function _generate_cmd_file(cmds, cmd_name)
     if cmds and #cmds > 0 then
         -- combines cmd str
         local cmd_str = ""
-        local check_result = "IF %ERRORLEVEL% NEQ 0 (exit %ERRORLEVEL%)"
+        local check_result = os.is_host("windows")
+                             and "IF %ERRORLEVEL% NEQ 0 (exit %ERRORLEVEL%)"
+                             or "if [ $? == 0 ]; then exit $?; fi"
         for _, cmd in ipairs(cmds) do
             cmd_str = cmd_str..cmd.."\n"..check_result.."\n"
         end
 
         -- write cmd file
         local cmd_name = _normalize_cmd_name(cmd_name)
-        local cmd_file_name = path.join(_task_cmd_dir, cmd_name..".bat")
+        local cmd_file_name = path.join(_task_cmd_dir, cmd_name..(os.host() == "windows" and ".bat" or ".sh"))
         if #cmd_str > 0 then
             os.rm(cmd_file_name)
             io.writefile(cmd_file_name, cmd_str)
@@ -190,7 +192,9 @@ function _combine_task_json(cmds, cmd_name)
         return {
             label = cmd_name,
             type = "shell",
-            command = cmd_file_name,
+            command = os.is_host("windows")
+                      and cmd_file_name
+                      or "chmod u+x "..cmd_file_name.." && "..cmd_file_name,
             options = {
                 cwd = "${workspaceFolder}",
             },
@@ -252,7 +256,7 @@ function _combine_launch_json(launch_data, pre_task_json, post_task_json)
     local natvis_file_name = _generate_natvis_files(launch_data.natvis_files, launch_data.cmd_name)
     return {
         name = "▶️"..launch_data.label,
-        type = "cppvsdbg",
+        type = os.is_host("windows") and "cppvsdbg" or "lldb",
         request = "launch",
         program = launch_data.program,
         args = json.mark_as_array(launch_data.args),
