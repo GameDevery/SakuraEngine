@@ -22,10 +22,7 @@ function install_tool(opt)
 
     -- extract package
     local package_file_name = path.filename(package_path)
-    if opt.force or utils.is_changed({
-        cache_file = utils.depend_file("install/tools/"..package_file_name), 
-        files = {package_path},
-    }) then
+    utils.on_changed(function (change_info)
         _log(opt, "tool.install", "path \"%s\"", package_path)
         archive.extract(package_path, utils.install_dir_tool())
 
@@ -34,7 +31,11 @@ function install_tool(opt)
             utils.redirect_fenv(opt.after_install, install_tool)
             opt.after_install()
         end
-    end
+    end, {
+        cache_file = utils.depend_file("install/tools/"..package_file_name), 
+        files = {package_path},
+        force = opt.force,
+    })
 end
 function install_resources(opt)
     local package_path = utils.find_download_package_sdk(opt.name)
@@ -47,25 +48,20 @@ function install_resources(opt)
     local extract_exist = os.isdir(temp_dir)
 
     -- extract
-    if not extract_exist or opt.force or
-       utils.is_changed({
-        cache_file = utils.depend_file("install/resources/extract/"..depend_file_name),
-        files = {package_path}
-    }) then
-        
+    utils.on_changed(function (change_info)
         _log(opt, "resource.extract", "temp_dir \"%s\"", temp_dir)
         if extract_exist then
             os.rmdir(temp_dir)
         end
         archive.extract(package_path, temp_dir)
-    end
+    end, {
+        cache_file = utils.depend_file("install/resources/extract/"..depend_file_name),
+        files = {package_path},
+        force = not extract_exist or opt.force,
+    })
 
     -- copy
-    if not extract_exist or opt.force or 
-       utils.is_changed({
-        cache_file = utils.depend_file("install/resources/copy/"..depend_file_name), 
-        files = {package_path},
-    }) then
+    utils.on_changed(function (change_info)
         _log(opt, "resource.copy", "path \"%s\"", package_path)
         if not os.isdir(opt.out_dir) then
             os.mkdir(opt.out_dir)
@@ -77,7 +73,11 @@ function install_resources(opt)
             utils.redirect_fenv(opt.after_install, install_resources)
             opt.after_install()
         end
-    end
+    end, {
+        cache_file = utils.depend_file("install/resources/copy/"..depend_file_name), 
+        files = {package_path},
+        force = not extract_exist or opt.force,
+    })
 end
 function install_sdk(opt)
     local package_path = utils.find_download_package_sdk(opt.name)
@@ -89,24 +89,20 @@ function install_sdk(opt)
     local extract_exist = os.isdir(temp_dir)
 
     -- extract
-    if not extract_exist or opt.force or
-       utils.is_changed({
-        cache_file = utils.depend_file("install/sdk/extract/"..package_file_name),
-        files = { package_path },
-    }) then
+    utils.on_changed(function (change_info)
         _log(opt, "sdk.extract", "temp_dir \"%s\"", temp_dir)
         if extract_exist then
             os.rmdir(temp_dir)
         end
         archive.extract(package_path, temp_dir)
-    end
+    end, {
+        cache_file = utils.depend_file("install/sdk/extract/"..package_file_name),
+        files = { package_path },
+        force = not extract_exist or opt.force
+    })
 
     -- copy
-    if not extract_exist or opt.force or
-       utils.is_changed({
-        cache_file = utils.depend_file("install/sdk/copy/"..package_file_name), 
-        files = { package_path }
-    }) then
+    utils.on_changed(function (change_info)
         _log(opt, "sdk.copy", "path \"%s\"", package_path)
         if not os.isdir(opt.out_dir) then
             os.mkdir(opt.out_dir)
@@ -124,7 +120,11 @@ function install_sdk(opt)
             utils.redirect_fenv(opt.after_install, install_sdk)
             opt.after_install()
         end
-    end
+    end, {
+        cache_file = utils.depend_file("install/sdk/copy/"..package_file_name),
+        files = { package_path },
+        force = not extract_exist or opt.force,
+    })
 end
 function install_file(opt)
     local file_path = utils.find_download_file(opt.name)
@@ -133,11 +133,7 @@ function install_file(opt)
     end
     local depend_file_name = opt.name..(opt.trigger_target and "_"..opt.trigger_target or "")
 
-    if opt.force or
-       utils.is_changed({
-        cache_file = utils.depend_file("install/files/"..depend_file_name), 
-        filse = { file_path }
-    }) then
+    utils.on_changed(function (change_info)
         _log(opt, "download_file.copy", "path \"%s\"", file_path)
         if not os.isdir(opt.out_dir) then
             os.mkdir(opt.out_dir)
@@ -149,7 +145,11 @@ function install_file(opt)
             utils.redirect_fenv(opt.after_install, install_file)
             opt.after_install()
         end
-    end
+    end, {
+        cache_file = utils.depend_file("install/files/"..depend_file_name), 
+        files = { file_path },
+        force = opt.force,
+    })
 end
 function copy_files(opt)
     -- check opt
@@ -168,11 +168,7 @@ function copy_files(opt)
     end
 
     -- copy
-    if opt.force or
-       utils.is_changed({
-        cache_file = utils.depend_file("install/copy_files/"..opt.name),
-        files = files,
-    }) then
+    utils.on_changed(function (change_info)
         _log(opt, "file.copy", "%d files", #files)
         if not os.isdir(opt.out_dir) then
             os.mkdir(opt.out_dir)
@@ -180,18 +176,22 @@ function copy_files(opt)
         for _, file in ipairs(files) do
             os.cp(file, opt.out_dir, {rootdir = opt.root_dir})
         end
-    end
+    end, {
+        cache_file = utils.depend_file("install/copy_files/"..opt.name),
+        files = files,
+        force = opt.force,
+    })
 end
 function install_custom(opt)
-    if opt.force or
-       utils.is_changed({
-        cache_file = utils.depend_file("install/custom/"..opt.name),
-        files = {path.join(os.scriptdir(), "install.lua")},
-    }) then -- TODO. use flag file
+    utils.on_changed(function (change_info)
         _log(opt, "custom")
         utils.redirect_fenv(opt.func, install_custom)
         opt.func()
-    end
+    end, {
+        cache_file = utils.depend_file("install/custom/"..opt.name),
+        files = {path.join(os.scriptdir(), "install.lua")}, -- TODO. use flag file
+        force = opt.force,
+    })
 end
 -- opt see xmake/rules/install.lua
 function install_from_kind(kind, opt)

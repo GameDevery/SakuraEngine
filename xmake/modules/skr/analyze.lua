@@ -126,10 +126,7 @@ function trigger_analyze()
     end
 
     -- dispatch analyze
-    if utils.is_changed({
-        cache_file = utils.depend_file("ANALYZE_PHASE"),
-        files = deps,
-    }) then
+    utils.on_changed(function (change_info)
         cprint("${cyan}[ANALYZE]: trigger analyze with arg: %s${clear}", table.concat(argv, " "))
         
         -- record trigger log
@@ -151,7 +148,10 @@ function trigger_analyze()
             printf(err)
             print("===================[Analyze Error]===================")
         end
-    end
+    end,{
+        cache_file = utils.depend_file("ANALYZE_PHASE"),
+        files = deps,
+    })
 end
 function write_analyze_trigger_flag()
     utils.write_flag_file("ANALYZE_PHASE")

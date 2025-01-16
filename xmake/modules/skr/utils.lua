@@ -269,21 +269,24 @@ function change_info:any_changed()
 end
 
 -- solve change info for files
+-- @param func: function to call when any change detected
 -- @param opt: options:
 --   cache_file: cache_file used to save time_stamp
 --   files: files to check change
 --   values: values to check change
 --   use_sha: use sha256 to check file contents, this is useful when file time_stamp is not reliable
+--   force: force to call func
 -- @return: 
 --   [0] is any file changed
 --   [1] change info: see above
-function is_changed(opt)
+function on_changed(func, opt)
     -- load opt
     opt = opt or {}
     local cache_file = opt.cache_file
     local files = opt.files
     local values = opt.values and table.wrap(opt.values) or nil
     local use_sha = opt.use_sha or false
+    local force = opt.force or false
 
     -- check opt
     if not cache_file then
@@ -304,6 +307,7 @@ function is_changed(opt)
     local change_info = change_info {
         files = {},
         values = {},
+        force = force,
     }
 
     -- check files
@@ -405,6 +409,11 @@ function is_changed(opt)
 
         -- update cache
         cache.values = values
+    end
+
+    -- call func
+    if change_info:any_changed() or force then
+        func(change_info)
     end
 
     -- save cache

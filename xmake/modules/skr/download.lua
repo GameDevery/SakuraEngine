@@ -248,12 +248,12 @@ function download:_install_tool(tool_name)
     
     -- extract package
     local package_file_name = path.filename(package_path)
-    if utils.is_changed({
+    utils.on_changed(function (change_info)
+        archive.extract(package_path, utils.install_dir_tool())
+    end, {
         cache_file = utils.depend_file("install/tools/"..package_file_name),
         files = {package_path},
-    }) then
-        archive.extract(package_path, utils.install_dir_tool())
-    end
+    })
 end
 function download:tool(tool_name)
     self:download_file(utils.package_name_tool(tool_name))

@@ -16,27 +16,27 @@ rule("Standard")
         local dasTool = path.join(os.scriptdir(), "..", "bin")
         local dasToolOut = path.join(outdir, "bin")
 
-        if utils.is_changed({
+        utils.on_changed(function (change_info)
+            os.vcp(daslibdir, outdir)
+        end, {
             cache_file = utils.depend_file_target(target:name(), daslibdir),
             files = {daslibdir, dasliboutdir, target:targetfile()},
-        }) then
-            os.vcp(daslibdir, outdir)
-        end
+        })
 
-        if utils.is_changed({
+        utils.on_changed(function (change_info)
+            os.vcp(dastestdir, outdir)
+        end, {
             cache_file = utils.depend_file_target(target:name(), dastestdir),
             files = {dastestdir, dastestoutdir, target:targetfile()},
-        }) then
-            os.vcp(dastestdir, outdir)
-        end
+        })
 
         if not os.exists(dasToolOut) then
-            if utils.is_changed({
+            utils.on_changed(function (change_info)
+                os.vcp(dasTool, outdir)
+            end, {
                 cache_file = utils.depend_file_target(target:name(), dasTool),
                 files = {dasTool, dasToolOut, target:targetfile()}
-            }) then
-                os.vcp(dasTool, outdir)
-            end
+            })
         end
         
         print("daslib and dastest updated to ./"..path.relative(outdir, os.projectdir()).."!")
