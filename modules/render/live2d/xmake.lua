@@ -17,7 +17,11 @@ static_component("CubismFramework", "SkrLive2D", { public = false })
         end
     end
     if (is_os("macosx")) then 
-        add_linkdirs("CubismNativeCore/lib/macos/x86_64", {public=true})
+        if is_arch("arm64") then
+            add_linkdirs("CubismNativeCore/lib/macos/arm64", {public=true})
+        else
+            add_linkdirs("CubismNativeCore/lib/macos/x86_64", {public=true})
+        end
         add_links("Live2DCubismCore", {public=true})
     end
 

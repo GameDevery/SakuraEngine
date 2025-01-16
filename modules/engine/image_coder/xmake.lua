@@ -24,7 +24,11 @@ shared_module("SkrImageCoder", "SKR_IMAGE_CODER")
     end
     -- png
     if (is_os("macosx")) then 
-        add_linkdirs("lib/macos/x86_64", {public=true})
+        if is_arch("arm64") then
+            add_linkdirs("lib/macos/arm64", {public=true})
+        else
+            add_linkdirs("lib/macos/x86_64", {public=true})
+        end
 
         add_includedirs("include", "libpng/1.5.27", {public=true})
         add_links("png", {public=true})
