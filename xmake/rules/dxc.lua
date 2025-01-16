@@ -37,8 +37,9 @@ rule("utils.dxc")
         local dxc_wdir = path.directory(dxc)
         batchcmds:mkdir(spv_outputdir)
         if dxc_wdir ~= nil then
-            dxc_exec = "cd "..dxc_wdir.." && "..dxc_exec
+            dxc_exec = "cd "..dxc_wdir.." && "..path.filename(dxc_exec)
         end
+        
         batchcmds:vrunv(dxc_exec, 
             {"-Wno-ignored-attributes",
             "-all_resources_bound",

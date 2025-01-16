@@ -8,6 +8,8 @@ shared_module("SkrGraphics", "SKR_GRAPHICS")
         add_files("src/build.*.m", "src/build.*.mm")
         add_mxflags("-fno-objc-arc", {force = true})
         add_frameworks("CoreFoundation", "Cocoa", "Metal", "IOKit", {public = true})
+        -- add_defines("VK_MVK_macos_surface")
+        add_defines("VK_USE_PLATFORM_MACOS_MVK")
     end
     
     if (is_os("windows")) then 
