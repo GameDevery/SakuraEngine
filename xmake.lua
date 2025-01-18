@@ -32,14 +32,14 @@ skr_global_target()
 
     -- global install tool
     skr_install("download", {
-        name = "python-embed",
+        name = "python-embed-3.13.1",
         install_func = "tool",
         plat = {"windows"},
         after_install = function()
             import("skr.utils")
             local python = utils.find_python()
-            print("installing autopep8")
-            os.runv(python, {"-m", "pip", "install", "autopep8"})
+            os.execv(python, {"-m", "pip", "install", "mako"})
+            os.execv(python, {"-m", "pip", "install", "autopep8"})
         end
     })
     skr_install("custom", {

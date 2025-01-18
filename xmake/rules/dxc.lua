@@ -34,7 +34,10 @@ rule("utils.dxc")
         end
 
         local dxc_exec = dxc
-        local dxc_wdir = path.directory(dxc)
+        local dxc_wdir = nil
+        if os.is_host("macosx") then
+            path.directory(dxc)
+        end
         batchcmds:mkdir(spv_outputdir)
         if dxc_wdir ~= nil then
             dxc_exec = "cd "..dxc_wdir.." && "..path.filename(dxc_exec)

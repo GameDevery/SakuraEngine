@@ -42,7 +42,8 @@ skr_global_target()
         
         -- auto trigger download
         local no_download = get_config("no_download")
-        if (not no_download) and (not analyze.in_analyze_phase()) then
+        local is_download_phase = xmake.argv()[1] == "skr_download"
+        if (not no_download) and (not is_download_phase) and (not analyze.in_analyze_phase()) then
             -- load install items
             local install_items = install.collect_install_items()
 

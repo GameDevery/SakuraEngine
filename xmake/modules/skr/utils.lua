@@ -1,6 +1,7 @@
 import("lib.detect")
 import("core.project.config")
 import("core.base.object")
+import("core.base.option")
 
 ------------------------dirs------------------------
 function skr_build_artifact_dir()
@@ -34,7 +35,9 @@ function depend_file(sub_path)
     return path.join(skr_build_artifact_dir(), "deps", sub_path..".d")
 end
 function depend_file_target(target_name, sub_path)
-    return path.join(skr_build_artifact_dir(), "deps", "target", target_name, sub_path..".d")
+    return path.join(
+        skr_build_artifact_dir(), "deps", "target", target_name,
+        vformat("$(os)/$(arch)/$(mode)"), sub_path..".d")
 end
 function flag_file(sub_path)
     return path.join(skr_build_artifact_dir(), "flags", sub_path..".flag")
