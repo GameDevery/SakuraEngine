@@ -32,7 +32,7 @@ function install_tool(opt)
             opt.after_install()
         end
     end, {
-        cache_file = utils.depend_file("install/tools/"..package_file_name), 
+        cache_file = utils.depend_file_install("tools/"..package_file_name), 
         files = {package_path},
         force = opt.force,
     })
@@ -55,7 +55,7 @@ function install_resources(opt)
         end
         archive.extract(package_path, temp_dir)
     end, {
-        cache_file = utils.depend_file("install/resources/extract/"..depend_file_name),
+        cache_file = utils.depend_file_install("resources/extract/"..depend_file_name),
         files = {package_path},
         force = not extract_exist or opt.force,
     })
@@ -74,7 +74,7 @@ function install_resources(opt)
             opt.after_install()
         end
     end, {
-        cache_file = utils.depend_file("install/resources/copy/"..depend_file_name), 
+        cache_file = utils.depend_file_install("resources/copy/"..depend_file_name), 
         files = {package_path},
         force = not extract_exist or opt.force,
     })
@@ -96,7 +96,7 @@ function install_sdk(opt)
         end
         archive.extract(package_path, temp_dir)
     end, {
-        cache_file = utils.depend_file("install/sdk/extract/"..package_file_name),
+        cache_file = utils.depend_file_install("sdk/extract/"..package_file_name),
         files = { package_path },
         force = not extract_exist or opt.force
     })
@@ -121,7 +121,7 @@ function install_sdk(opt)
             opt.after_install()
         end
     end, {
-        cache_file = utils.depend_file("install/sdk/copy/"..package_file_name),
+        cache_file = utils.depend_file_install("sdk/copy/"..package_file_name),
         files = { package_path },
         force = not extract_exist or opt.force,
     })
@@ -146,7 +146,7 @@ function install_file(opt)
             opt.after_install()
         end
     end, {
-        cache_file = utils.depend_file("install/files/"..depend_file_name), 
+        cache_file = utils.depend_file_install("files/"..depend_file_name), 
         files = { file_path },
         force = opt.force,
     })
@@ -177,7 +177,7 @@ function copy_files(opt)
             os.cp(file, opt.out_dir, {rootdir = opt.root_dir})
         end
     end, {
-        cache_file = utils.depend_file("install/copy_files/"..opt.name),
+        cache_file = utils.depend_file_install("copy_files/"..opt.name),
         files = files,
         force = opt.force,
     })
@@ -188,7 +188,7 @@ function install_custom(opt)
         utils.redirect_fenv(opt.func, install_custom)
         opt.func()
     end, {
-        cache_file = utils.depend_file("install/custom/"..opt.name),
+        cache_file = utils.depend_file_install("custom/"..opt.name),
         files = {path.join(os.scriptdir(), "install.lua")}, -- TODO. use flag file
         force = opt.force,
     })

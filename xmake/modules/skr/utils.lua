@@ -34,6 +34,9 @@ end
 function depend_file(sub_path)
     return path.join(skr_build_artifact_dir(), "deps", sub_path..".d")
 end
+function depend_file_install(sub_path)
+    return path.join(skr_build_artifact_dir(), vformat("deps/install/$(os)/$(arch)/$(mode)"), sub_path)
+end
 function depend_file_target(target_name, sub_path)
     return path.join(
         skr_build_artifact_dir(), "deps", "target", target_name,
