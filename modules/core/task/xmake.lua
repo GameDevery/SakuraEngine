@@ -9,17 +9,17 @@ shared_module("SkrTask", "SKR_TASK")
     -- internal packages
     -- add_packages("boost-context", {public = true, inherit = true})
     -- add FTL source 
-    -- local ftl_includes_dir = path.join(engine_dir, "thirdparty/FiberTaskingLib/include")
+    -- local ftl_includes_dir = path.join(skr_engine_dir, "thirdparty/FiberTaskingLib/include")
     -- add_includedirs(ftl_includes_dir, {public = true})
-    -- add_files(path.join(engine_dir, "thirdparty/FiberTaskingLib/source/build.*.cpp"))
+    -- add_files(path.join(skr_engine_dir, "thirdparty/FiberTaskingLib/source/build.*.cpp"))
     -- add marl source
-    local marl_source_dir = path.join(engine_dir, "thirdparty/marl")
+    local marl_source_dir = path.join(skr_engine_dir, "thirdparty/marl")
     add_files(marl_source_dir.."/src/build.*.cpp")
     if not is_os("windows") then 
         add_files(marl_source_dir.."/src/**.c")
         add_files(marl_source_dir.."/src/**.S")
     end
-    add_includedirs(path.join(engine_dir, "thirdparty/marl/include"), {public = true})
+    add_includedirs(path.join(skr_engine_dir, "thirdparty/marl/include"), {public = true})
     -- marl runtime compile definitions
     after_load(function (target,  opt)
         if (target:get("kind") == "shared") then
@@ -32,8 +32,8 @@ shared_module("SkrTask", "SKR_TASK")
 --[[
 shared_pch("SkrTask")
     add_files("include/SkrTask/**.hpp")
-    add_files(path.join(engine_dir, "modules/core/base/include/**.h"))
-    add_files(path.join(engine_dir, "modules/core/base/include/**.hpp"))
-    add_files(path.join(engine_dir, "modules/core/core/include/**.h"))
-    add_files(path.join(engine_dir, "modules/core/core/include/**.hpp"))
+    add_files(path.join(skr_engine_dir, "modules/core/base/include/**.h"))
+    add_files(path.join(skr_engine_dir, "modules/core/base/include/**.hpp"))
+    add_files(path.join(skr_engine_dir, "modules/core/core/include/**.h"))
+    add_files(path.join(skr_engine_dir, "modules/core/core/include/**.hpp"))
 ]]--

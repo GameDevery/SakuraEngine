@@ -1,7 +1,7 @@
 set_xmakever("2.9.2")
 
 -- global configs
-engine_dir = os.scriptdir()
+skr_engine_dir = os.scriptdir()
 default_unity_batch = 16
 
 -- setup xmake extensions
@@ -28,7 +28,7 @@ end
 -- global install tools
 skr_global_target()
     -- record engine dir
-    set_values("engine_dir", engine_dir)
+    set_values("skr_engine_dir", skr_engine_dir)
 
     -- global install tool
     skr_install("download", {

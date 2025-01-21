@@ -6,7 +6,7 @@ analyzer_target("DisableSingle")
         import("core.project.project")
         -- global info
         local _global_target = project.target("Skr.Global")
-        local _engine_dir = _global_target:values("engine_dir")
+        local _engine_dir = _global_target:values("skr_engine_dir")
 
         local scriptdir = path.relative(target:scriptdir(), _engine_dir):gsub("\\", "/")
 

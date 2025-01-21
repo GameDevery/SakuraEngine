@@ -22,7 +22,7 @@ local _codegen_rule_generators_name = "c++.codegen.generators"
 
 -- global info
 local _global_target = project.target("Skr.Global")
-local _engine_dir = _global_target:values("engine_dir")
+local _engine_dir = _global_target:values("skr_engine_dir")
 
 -- macos get include dirs
 local macos_include_dirs = {}

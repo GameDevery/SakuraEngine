@@ -15,7 +15,7 @@ import("skr.utils")
 
 -- global info
 local _global_target = project.target("Skr.Global")
-local _engine_dir = _global_target:values("engine_dir")
+local _engine_dir = _global_target:values("skr_engine_dir")
 
 -- programs
 local _python = utils.find_python()
