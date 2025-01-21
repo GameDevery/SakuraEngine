@@ -35,11 +35,12 @@ namespace skr
 {
 template <typename T>
 struct ProxyObjectTraits {
-    // TODO. validator (use concept?)
-    // method -> t->*m()
-    // static -> m(t)
-    // field(getter/setter only) -> t->f
-    //
-    // 分为两部分，存在性验证和签名验证，签名验证可以被抽象，存在性验证则必须用 Validator/Concept 来实现
+    template <typename U>
+    static constexpr bool validate()
+    {
+        return false;
+    }
 };
+template <typename T, typename Proxy>
+concept Proxyable = ProxyObjectTraits<Proxy>::template validate<T>();
 } // namespace skr
