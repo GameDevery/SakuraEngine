@@ -1,12 +1,3 @@
-function skr_global_target()
-    target("Skr.Global")
-end
-
-function skr_global_target_end()
-    target_end()
-end
-
-
 skr_global_target()
     -- basic
     set_kind("phony")
@@ -118,30 +109,3 @@ skr_global_target()
         os.rm(path.join(utils.skr_build_artifact_dir(), "deps/install/custom"))
     end)
 skr_global_target_end()
-
-function skr_global_config()
-    -- policy
-    set_policy("build.ccache", false)
-    set_policy("build.warning", true)
-    set_policy("check.auto_ignore_flags", false)
-    
-    -- cxx options
-    set_warnings("all")
-    set_languages(get_config("cxx_version"), get_config("c_version"))
-    add_rules("mode.debug", "mode.release", "mode.releasedbg", "mode.asan")
-
-    -- cxx defines
-    if (is_os("windows")) then 
-        add_defines("UNICODE", "NOMINMAX", "_WINDOWS")
-        add_defines("_GAMING_DESKTOP")
-        add_defines("_CRT_SECURE_NO_WARNINGS")
-        add_defines("_ENABLE_EXTENDED_ALIGNED_STORAGE")
-        if (is_mode("release")) then
-            set_runtimes("MD")
-        elseif (is_mode("asan")) then
-            add_defines("_DISABLE_VECTOR_ANNOTATION")
-        else
-            set_runtimes("MDd")
-        end
-    end
-end 

@@ -8,6 +8,7 @@ default_unity_batch = 16
 add_moduledirs("xmake/modules")
 add_plugindirs("xmake/plugins")
 add_repositories("skr-xrepo xrepo", {rootdir = os.scriptdir()})
+includes("xmake/skr_desc_ext.lua")
 includes("xmake/options.lua")
 includes("xmake/compile_flags.lua")
 includes("xmake/rules.lua")

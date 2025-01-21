@@ -95,60 +95,6 @@ rule("sakura.derived_target")
     end)
 rule_end()
 
-function shared_module(name, api, opt)
-    target(name)
-        set_group("01.modules/"..name)
-        add_rules("PickSharedPCH")
-        add_rules("sakura.dyn_module", { api = api }) 
-        if has_config("shipping_one_archive") then
-            set_kind("static")
-        else
-            set_kind("shared")
-        end
-        on_load(function (target, opt)
-            if has_config("shipping_one_archive") then
-                for _, dep in pairs(target:get("links")) do
-                    target:add("links", dep, {public = true})
-                end
-            end
-        end)
-        opt = opt or {}
-        if opt.exception and not opt.noexception then
-            set_exceptions("cxx")
-        else
-            set_exceptions("no-cxx")
-        end
-end
-
-function static_component(name, owner, opt)
-    target(owner)
-        add_deps(name, { public = opt and opt.public or true })
-    target_end()
-    
-    target(name)
-        set_kind("static")
-        set_group("01.modules/"..owner.."/components")
-        add_rules("sakura.component", { owner = owner })
-end
-
-function executable_module(name, api, opt)
-    target(name)
-        set_kind("binary")
-        add_rules("PickSharedPCH")
-        add_rules("sakura.dyn_module", { api = api }) 
-        local opt = opt or {}
-        if opt.exception and not opt.noexception then
-            set_exceptions("cxx")
-        else
-            set_exceptions("no-cxx")
-        end
-end
-
-function public_dependency(dep, setting)
-    add_deps(dep, {public = true})
-    add_values("sakura.module.public_dependencies", dep)
-end
-
 analyzer_target("Module.MetaSourceFile")
     analyze(function(target, attributes, analyze_ctx)
         if not target:rule("sakura.dyn_module") then

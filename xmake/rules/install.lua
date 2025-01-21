@@ -1,38 +1,3 @@
------------------------ext api-----------------------
--- add install rule
-function skr_install_rule()
-    add_rules("skr.install")
-end
-
---   kind: "download"/"files"，不同的 kind 有不同的参数
---   [kind = any]: 共有参数
---     plat: filter target platform
---     arch: filter target architecture
---   [kind = “download"]:
---     name: package or files name
---     install_func: "tool"/"resources"/"sdk"/"file"/nil, nil means use install.lua in package
---     debug: wants download debug sdk
---     out_dir: override output directory
---     after_install: function to run after install
---   [kind = "files"]:
---     name: install name, for solve depend
---     files: list of files
---     out_dir: output directory
---     root_dir: root directory, nli mean erase directory structure when copy
---   [kind = "custom"]:
---     name: install name, for solve depend
---     func: function to run
-function skr_install(kind, opt)
-    add_values("skr.install", table.wrap_lock({
-        kind = kind,
-        opt = opt,
-    }), {
-        force = true,
-        expand = false,
-    })
-end
-
------------------------rules-----------------------
 rule("skr.install")
     before_build(function (target)
         import("skr.utils")
