@@ -24,6 +24,7 @@ function skr_global_config()
         add_defines("_GAMING_DESKTOP")
         add_defines("_CRT_SECURE_NO_WARNINGS")
         add_defines("_ENABLE_EXTENDED_ALIGNED_STORAGE")
+        add_defines("_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR") -- for preventing std::mutex crash when lock
         if (is_mode("release")) then
             set_runtimes("MD")
         elseif (is_mode("asan")) then
