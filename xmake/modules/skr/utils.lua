@@ -35,7 +35,7 @@ function depend_file(sub_path)
     return path.join(skr_build_artifact_dir(), "deps", sub_path..".d")
 end
 function depend_file_install(sub_path)
-    return path.join(skr_build_artifact_dir(), vformat("deps/install/$(os)/$(arch)/$(mode)"), sub_path)
+    return path.join(skr_build_artifact_dir(), vformat("deps/install/$(os)/$(arch)/$(mode)"), sub_path..".d")
 end
 function depend_file_target(target_name, sub_path)
     return path.join(
@@ -287,7 +287,7 @@ end
 --   [1] change info: see above
 function on_changed(func, opt)
     -- load opt
-    opt = opt or {}
+    local opt = opt or {}
     local cache_file = opt.cache_file
     local files = opt.files
     local values = opt.values and table.wrap(opt.values) or nil
@@ -300,6 +300,7 @@ function on_changed(func, opt)
     end
     
     -- load cache file
+    local cache
     if not os.exists(cache_file) then
         cache = {
             files = {},
