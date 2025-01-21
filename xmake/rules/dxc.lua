@@ -34,14 +34,9 @@ rule("utils.dxc")
         end
 
         local dxc_exec = dxc
-        local dxc_wdir = nil
-        if os.is_host("macosx") then
-            path.directory(dxc)
-        end
+        local dxc_wdir = path.directory(dxc)
+        dxc_exec = path.filename(dxc_exec)
         batchcmds:mkdir(spv_outputdir)
-        if dxc_wdir ~= nil then
-            dxc_exec = "cd "..dxc_wdir.." && "..path.filename(dxc_exec)
-        end
         
         batchcmds:vrunv(dxc_exec, 
             {"-Wno-ignored-attributes",
@@ -53,7 +48,8 @@ rule("utils.dxc")
             -- vformat("-fspv-extension=SPV_GOOGLE_hlsl_functionality1"), 
             "-Fo", spvfilepath, 
             "-T", target_profile,
-            path.join(os.projectdir(), sourcefile_hlsl)})
+            path.join(os.projectdir(), sourcefile_hlsl)},
+            {curdir = dxc_wdir})
 
 
         -- hlsl to dxil
