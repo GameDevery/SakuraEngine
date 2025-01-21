@@ -189,6 +189,7 @@ analyzer_target("Module.MetaSourceFile")
             }
             for _, dep in pairs(pub_deps) do
                 local dep_target = project.target(dep)
+                assert(dep_target, "public dependency not found: "..dep)
                 assert(dep_target:rule("sakura.module"), "public dependency must be a sakura.module: "..dep_target:name())
                 local kind = dep_target:rule("sakura.dyn_module") and "shared" or "static"
                 table.insert(module_info.dependencies, {
