@@ -1,14 +1,16 @@
 set_xmakever("2.9.2")
 
+-- description scope extensions
+includes("xmake/skr_desc_ext.lua")
+
 -- global configs
-skr_engine_dir = os.scriptdir()
+skr_env_set("engine_dir", os.scriptdir())
 default_unity_batch = 16
 
 -- setup xmake extensions
 add_moduledirs("xmake/modules")
 add_plugindirs("xmake/plugins")
 add_repositories("skr-xrepo xrepo", {rootdir = os.scriptdir()})
-includes("xmake/skr_desc_ext.lua")
 includes("xmake/options.lua")
 includes("xmake/compile_flags.lua")
 includes("xmake/rules.lua")
@@ -28,9 +30,6 @@ end
 
 -- global install tools
 skr_global_target()
-    -- record engine dir
-    set_values("skr_engine_dir", skr_engine_dir)
-
     -- global install tool
     skr_install("download", {
         name = "python-embed-3.13.1",
@@ -69,7 +68,12 @@ skr_global_target()
 skr_global_target_end()
 
 -- modules
-includes("thirdparty/xmake.lua")
-includes("modules/xmake.lua")
-includes("samples/xmake.lua")
-includes("tests/xmake.lua")
+includes("thirdparty")
+includes("modules")
+includes("samples")
+includes("tests")
+
+-- commit env
+if not skr_env_is_committed() then
+    skr_env_commit()
+end

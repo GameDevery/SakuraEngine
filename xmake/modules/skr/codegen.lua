@@ -21,8 +21,7 @@ local _codegen_data_generators_name = "c++.codegen.generators"
 local _codegen_rule_generators_name = "c++.codegen.generators"
 
 -- global info
-local _global_target = project.target("Skr.Global")
-local _engine_dir = _global_target:values("skr_engine_dir")
+local _engine_dir = utils.get_env("engine_dir")
 
 -- macos get include dirs
 local macos_include_dirs = {}

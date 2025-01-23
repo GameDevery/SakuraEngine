@@ -79,6 +79,13 @@ function skr_env_commit()
         expand = false,
     })
     skr_global_target_end()
+
+    _skr_env_committed = true
+end
+
+-- is env committed
+function skr_env_is_committed()
+    return _skr_env_committed
 end
 
 ---------------------------------- analyze ----------------------------------

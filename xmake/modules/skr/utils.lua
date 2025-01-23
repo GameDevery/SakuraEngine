@@ -2,6 +2,7 @@ import("lib.detect")
 import("core.project.config")
 import("core.base.object")
 import("core.base.option")
+import("core.project.project")
 
 ------------------------dirs------------------------
 function skr_build_artifact_dir()
@@ -58,6 +59,16 @@ function load_config()
 end
 function save_config()
     config.save(saved_config_path(), {public=true})
+end
+
+------------------------env------------------------
+function get_env(name)
+    local global_target = project.target("Skr.Global")
+    local env_value = global_target:values("skr.env")
+    if not env_value then
+        raise("lost global env table, did you forget call skr_env_commit()？")
+    end
+    return env_value[name]
 end
 
 ------------------------package name rule------------------------

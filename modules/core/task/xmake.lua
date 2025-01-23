@@ -7,13 +7,13 @@ shared_module("SkrTask", "SKR_TASK")
     public_dependency("SkrCore")
 
     -- add marl source
-    local marl_source_dir = path.join(skr_engine_dir, "thirdparty/marl")
+    local marl_source_dir = path.join(skr_env_get("engine_dir"), "thirdparty/marl")
     add_files(marl_source_dir.."/src/build.*.cpp")
     if not is_os("windows") then 
         add_files(marl_source_dir.."/src/**.c")
         add_files(marl_source_dir.."/src/**.S")
     end
-    add_includedirs(path.join(skr_engine_dir, "thirdparty/marl/include"), {public = true})
+    add_includedirs(path.join(skr_env_get("engine_dir"), "thirdparty/marl/include"), {public = true})
     
     -- marl runtime compile definitions
     after_load(function (target,  opt)
@@ -27,8 +27,8 @@ shared_module("SkrTask", "SKR_TASK")
 --[[
 shared_pch("SkrTask")
     add_files("include/SkrTask/**.hpp")
-    add_files(path.join(skr_engine_dir, "modules/core/base/include/**.h"))
-    add_files(path.join(skr_engine_dir, "modules/core/base/include/**.hpp"))
-    add_files(path.join(skr_engine_dir, "modules/core/core/include/**.h"))
-    add_files(path.join(skr_engine_dir, "modules/core/core/include/**.hpp"))
+    add_files(path.join(skr_env_get("engine_dir"), "modules/core/base/include/**.h"))
+    add_files(path.join(skr_env_get("engine_dir"), "modules/core/base/include/**.hpp"))
+    add_files(path.join(skr_env_get("engine_dir"), "modules/core/core/include/**.h"))
+    add_files(path.join(skr_env_get("engine_dir"), "modules/core/core/include/**.hpp"))
 ]]--
