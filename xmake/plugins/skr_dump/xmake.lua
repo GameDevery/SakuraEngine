@@ -1,4 +1,5 @@
 task("skr_dump")
+    set_category("plugin")
     on_run("main")
 
     set_menu {
