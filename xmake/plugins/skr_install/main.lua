@@ -9,9 +9,12 @@ import("skr.utils")
 import("skr.download")
 import("skr.install")
 
+
+-- FIXME. FUCK XMAKE
+-- load config
+utils.load_config()
+
 function main()
-    -- load config
-    utils.load_config()
     -- load targets
     project.load_targets()
 

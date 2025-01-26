@@ -294,9 +294,11 @@ function _combine_attach_launch_json()
     }
 end
 
+-- FIXME. FUCK XMAKE
+-- load config
+utils.load_config()
+
 function main()
-    -- load config
-    utils.load_config()
     -- load targets
     project.load_targets()
 

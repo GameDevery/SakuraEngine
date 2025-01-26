@@ -22,13 +22,14 @@ function _dump_functions.modules_with_cull()
     print(modules_with_cull)
 end
 
+-- FIXME. FUCK XMAKE
+-- load config
+utils.load_config()
 
 function main()
     -- get options
     local opt_modules = option.get("modules")
     
-    -- load config
-    utils.load_config()
     -- load targets
     project.load_targets()
 
