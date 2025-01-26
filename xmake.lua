@@ -70,8 +70,12 @@ skr_global_target_end()
 -- modules
 includes("thirdparty")
 includes("modules")
-includes("samples")
-includes("tests")
+skr_includes_with_cull("samples", function ()
+    includes("samples")
+end)
+skr_includes_with_cull("tests", function ()
+    includes("tests")
+end)
 
 -- commit env
 if not skr_env_is_committed() then

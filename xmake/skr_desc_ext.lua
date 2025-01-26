@@ -36,7 +36,7 @@ function skr_global_config()
 end 
 
 ---------------------------------- env ----------------------------------
-_skr_env_table = {}
+_skr_env_table = _skr_env_table or {}
 _skr_env_committed = false
 
 -- set env
@@ -337,4 +337,16 @@ end
 
 function skr_dbg_natvis_files(...)
     add_values("vsc_dbg.natvis_files", ...)
+end
+
+---------------------------------- cull & tagged disable ----------------------------------
+function skr_cull(name)
+    skr_env_add("culled_modules", name)
+end
+function skr_includes_with_cull(name, func)
+    local culled = skr_env_get("culled_modules")
+    skr_env_add("modules_with_cull", name)
+    if (not culled) or (not table.contains(culled, name)) then
+        func()
+    end
 end
