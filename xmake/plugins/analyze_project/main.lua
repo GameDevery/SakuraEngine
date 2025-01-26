@@ -1,3 +1,9 @@
+import("skr.utils")
+
+-- FIXME. FUCK XMAKE
+-- load config
+utils.load_config()
+
 -- imports
 import("core.base.option")
 import("core.base.task")
@@ -6,12 +12,7 @@ import("core.project.config")
 import("core.project.project")
 import("core.platform.platform")
 import("skr.analyze")
-import("skr.utils")
 import("skr.codegen")
-
--- FIXME. FUCK XMAKE
--- load config
-utils.load_config()
 
 function main()
     -- print("start analyze...")

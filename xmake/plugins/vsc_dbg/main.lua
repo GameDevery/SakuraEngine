@@ -12,6 +12,9 @@ import("skr.utils")
 -- TODO. compounds launch
 -- TODO. 过滤 disabled target
 
+-- FIXME. FUCK XMAKE
+-- load config
+utils.load_config()
 
 -- global info
 local _engine_dir = utils.get_env("engine_dir")
@@ -293,10 +296,6 @@ function _combine_attach_launch_json()
         -- visualizerFile = path.join("${workspaceFolder}", natvis_file_name),
     }
 end
-
--- FIXME. FUCK XMAKE
--- load config
-utils.load_config()
 
 function main()
     -- load targets
