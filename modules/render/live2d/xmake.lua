@@ -4,9 +4,16 @@ static_component("CubismFramework", "SkrLive2D", { public = false })
     add_deps("SkrBase")
     add_includedirs("CubismNativeCore/include", "CubismFramework", "CubismFramework/Framework", {public=false})
     add_files("CubismFramework/Renderer/**.cpp", "CubismFramework/Framework/**.cpp")
+    
+    -- add install
+    skr_install_rule()
+    skr_install("download", {
+        name = "CubismNativeCore",
+        install_func = "sdk",
+    })
+    
     -- link to cubism core
     if (is_os("windows")) then 
-        add_linkdirs("CubismNativeCore/lib/windows/x86_64/142", {public=true})
         if (is_mode("asan")) then
             set_runtimes("MD") -- csmiPlatformDependentLogPrint uses freopen
         end
@@ -17,11 +24,6 @@ static_component("CubismFramework", "SkrLive2D", { public = false })
         end
     end
     if (is_os("macosx")) then 
-        if is_arch("arm64") then
-            add_linkdirs("CubismNativeCore/lib/macos/arm64", {public=true})
-        else
-            add_linkdirs("CubismNativeCore/lib/macos/x86_64", {public=true})
-        end
         add_links("Live2DCubismCore", {public=true})
     end
 
