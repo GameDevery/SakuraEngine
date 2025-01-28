@@ -18,22 +18,23 @@ SProject* SProject::OpenProject(const skr::filesystem::path& projectFilePath) no
     std::error_code ec          = {};
     auto            resolvePath = [&](skr::String& path) {
         auto view = path.view();
-        auto i    = view.index_of(u8"${");
-        if (i == ostr::global_constant::INDEX_INVALID)
+        auto found = view.find(u8"${");
+        if (!found) {
             return path;
+        }
         skr::String resolved;
-        resolved.raw().reserve(path.raw().size());
+        resolved.reserve(path.length_buffer());
         // resolved.append(view);
         while (true)
         {
-            resolved.append(view.subview(0, i - 1));
-            auto j = view.index_of(u8"}", i, view.size() - 1);
-            if (j == ostr::global_constant::INDEX_INVALID)
+            resolved.append(view.subview(0, found.index() - 1));
+            auto found_end = view.subview(found.index()).find(u8"}");
+            if (!found_end)
             {
-                resolved.append(view.subview(i, view.size() - 1));
+                resolved.append(view.subview(found.index(), view.size() - 1));
                 break;
             }
-            auto var = view.subview(i + 2, j - 1);
+            auto var = view.subview(found.index() + 2, found_end.index() - 1);
             if (var == u8"workspace")
             {
                 resolved.append(Workspace.u8string().c_str());
@@ -42,9 +43,9 @@ SProject* SProject::OpenProject(const skr::filesystem::path& projectFilePath) no
             {
                 resolved.append(SKR_RESOURCE_PLATFORM);
             }
-            view = view.subview(j + 1, view.size() - 1);
-            i    = view.index_of(u8"${");
-            if (i == ostr::global_constant::INDEX_INVALID)
+            view = view.subview(found_end.index() + 1, view.size() - 1);
+            found    = view.find(u8"${");
+            if (!found)
             {
                 resolved.append(view);
                 break;
@@ -77,8 +78,8 @@ SProject* SProject::OpenProject(const skr::filesystem::path& projectFilePath) no
         auto fileSize = ftell(projectFile);
         fseek(projectFile, 0, SEEK_SET);
         skr::String projectFileContent;
-        projectFileContent.append(u8'0', fileSize);
-        fread(projectFileContent.raw().data(), 1, fileSize, projectFile);
+        projectFileContent.add(u8'0', fileSize);
+        fread(projectFileContent.data_raw_w(), 1, fileSize, projectFile);
         fclose(projectFile);
 
         skr::archive::JsonReader reader(projectFileContent.view());
@@ -141,8 +142,8 @@ bool SProject::LoadAssetText(skr::StringView uri, skr::String& content) noexcept
     skr::String path       = uri;
     auto        asset_file = skr_vfs_fopen(asset_vfs, path.u8_str(), SKR_FM_READ_BINARY, SKR_FILE_CREATION_OPEN_EXISTING);
     const auto  asset_size = skr_vfs_fsize(asset_file);
-    content.append(u8'0', asset_size);
-    skr_vfs_fread(asset_file, content.raw().data(), 0, asset_size);
+    content.add(u8'0', asset_size);
+    skr_vfs_fread(asset_file, content.data_raw_w(), 0, asset_size);
     skr_vfs_fclose(asset_file);
     return true;
 }

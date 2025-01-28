@@ -117,10 +117,11 @@ class SerdeGenerator(gen.GeneratorBase):
                 )
 
                 # add to record serde data
-                if field_serde_data.enable_json:
-                    record_serde_data.json_fields.append(field)
-                if field_serde_data.enable_bin:
-                    record_serde_data.bin_fields.append(field)
+                if not field.is_static:
+                    if field_serde_data.enable_json and (not field.is_static):
+                        record_serde_data.json_fields.append(field)
+                    if field_serde_data.enable_bin:
+                        record_serde_data.bin_fields.append(field)
 
                 # save generator data
                 field.generator_data["serde"] = field_serde_data

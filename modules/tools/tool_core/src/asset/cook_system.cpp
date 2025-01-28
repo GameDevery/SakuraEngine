@@ -138,15 +138,15 @@ skr::task::event_t SCookSystemImpl::AddCookTask(skr_guid_t guid)
         SkrZoneScopedN("CookingTask");
         {
             const auto rtti_type           = skr::rttr::get_type_from_guid(metaAsset->type);
-            const auto cookerTypeName      = rtti_type ? rtti_type->name().raw().c_str() : (const ochar_t*)u8"UnknownResource";
+            const auto cookerTypeName      = rtti_type ? rtti_type->name().c_str_raw() : (const char*)u8"UnknownResource";
             const auto guidString          = skr::format(u8"Guid: {}", metaAsset->guid);
             const auto assetTypeGuidString = skr::format(u8"TypeGuid: {}", metaAsset->type);
             const auto scopeName           = skr::format(u8"Cook.[{}]", (const skr_char8*)cookerTypeName);
             const auto assetString         = skr::format(u8"Asset: {}", metaAsset->path.u8string().c_str());
-            ZoneName(scopeName.c_str(), scopeName.size());
-            SkrMessage(guidString.c_str(), guidString.size());
-            SkrMessage(assetTypeGuidString.c_str(), assetTypeGuidString.size());
-            SkrMessage(assetString.c_str(), assetString.size());
+            ZoneName(scopeName.c_str_raw(), scopeName.size());
+            SkrMessage(guidString.c_str_raw(), guidString.size());
+            SkrMessage(assetTypeGuidString.c_str_raw(), assetTypeGuidString.size());
+            SkrMessage(assetString.c_str_raw(), assetString.size());
         }
 
         SKR_DEFER({
@@ -216,11 +216,11 @@ skr::task::event_t SCookSystemImpl::AddCookTask(skr_guid_t guid)
                 }
                 SKR_DEFER({ fclose(file); });
                 auto jString = writer.Write();
-                fwrite(jString.raw().data(), 1, jString.raw().size(), file);
+                fwrite(jString.c_str_raw(), 1, jString.length_buffer(), file);
             }
         }
     },
-                        &counter, guidName.c_str());
+                        &counter, guidName.c_str_raw());
     return counter;
 }
 
@@ -304,8 +304,8 @@ skr::task::event_t SCookSystemImpl::EnsureCooked(skr_guid_t guid)
             fseek(dependencyFile, 0, SEEK_END);
             auto fileSize = ftell(dependencyFile);
             fseek(dependencyFile, 0, SEEK_SET);
-            depFileContent.append(u8'0', fileSize);
-            fread(depFileContent.raw().data(), 1, fileSize, dependencyFile);
+            depFileContent.add(u8'0', fileSize);
+            fread(depFileContent.data_raw_w(), 1, fileSize, dependencyFile);
             fclose(dependencyFile);
         }
         skr::archive::JsonReader depReader(depFileContent.view());

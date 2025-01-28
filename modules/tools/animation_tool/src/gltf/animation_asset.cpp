@@ -27,7 +27,7 @@ void* SAnimGltfImporter::Import(skr_io_ram_service_t*, SCookContext* context)
         return nullptr;
     }
     RawAnimation* rawAnimation = SkrNew<RawAnimation>();
-    impoter.Import(animationName.c_str(), skeleton,
+    impoter.Import(animationName.c_str_raw(), skeleton,
                         samplingRate, rawAnimation);
     return rawAnimation;
 }

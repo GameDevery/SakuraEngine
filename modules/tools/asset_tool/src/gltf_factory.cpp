@@ -35,7 +35,7 @@ bool SGLTFImporterFactoryImpl::CanImport(const skr::String& path) const
 int SGLTFImporterFactoryImpl::Import(const skr::String& path)
 {
     auto options = make_zeroed<cgltf_options>();
-    auto result = cgltf_parse_file(&options, path.c_str(), &data);
+    auto result = cgltf_parse_file(&options, path.c_str_raw(), &data);
     if (result != cgltf_result_success)
     {
         return -1;

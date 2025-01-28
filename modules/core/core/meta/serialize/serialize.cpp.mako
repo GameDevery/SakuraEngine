@@ -1,5 +1,7 @@
 // BEGIN SERIALIZE GENERATED
 #include "SkrProfile/profile.h"
+#include "SkrSerde/json_serde.hpp"
+#include "SkrSerde/bin_serde.hpp"
 
 // debug
 [[maybe_unused]] static const char8_t* JsonArrayJsonFieldArchiveFailedFormat = u8"[SERDE/JSON] Archive %s.%s[%d] failed: %s";

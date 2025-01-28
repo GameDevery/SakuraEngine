@@ -63,7 +63,7 @@ void cartesian_variants(skr::span<skr_shader_options_resource_t*> options, skr::
     // [ [z: "on", y: "a", z: "1"], [x: "on", y: "a", z: "2"] ...]
     (void)out_variants;
 
-    if (!selection_seqs.empty())
+    if (!selection_seqs.is_empty())
     {
         // [ ["on", "a", "1"], ["on", "a", "2"] ...]
         skr::cartesian_product<skr::String> cartesian(selection_seqs);
@@ -189,7 +189,7 @@ bool SShaderCooker::Cook(SCookContext* ctx)
                                                                               stage         = compiled->GetShaderStage();
                                                                               auto bytes    = compiled->GetBytecode();
                                                                               auto hashed   = compiled->GetHashCode(&identifier.hash.flags, identifier.hash.encoded_digits);
-                                                                              if (hashed && !bytes.empty())
+                                                                              if (hashed && !bytes.is_empty())
                                                                               {
                                                                                   // wirte bytecode to disk
                                                                                   const auto subdir   = CGPUShaderBytecodeTypeNames[format];
@@ -216,7 +216,7 @@ bool SShaderCooker::Cook(SCookContext* ctx)
                                                                                       }
                                                                                   }
                                                                                   // write pdb to file
-                                                                                  if (auto pdb = compiled->GetPDB(); !pdb.empty())
+                                                                                  if (auto pdb = compiled->GetPDB(); !pdb.is_empty())
                                                                                   {
                                                                                       auto pdbPath = basePath / skr::format(u8"{}.pdb", fname).c_str();
                                                                                       {
@@ -335,7 +335,7 @@ bool SShaderCooker::Cook(SCookContext* ctx)
         }
         SKR_DEFER({ fclose(file); });
         auto jString = writer.Write();
-        fwrite(jString.raw().data(), jString.raw().size(), 1, file);
+        fwrite(jString.c_str_raw(), jString.length_buffer(), 1, file);
     }
     return true;
 }

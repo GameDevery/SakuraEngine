@@ -158,7 +158,7 @@ int SAssetImportModule::main_module_exec(int argc, char8_t** argv)
         }
         {
             ImGui::Begin("Asset Importer");
-            if(availableFactories.empty())
+            if(availableFactories.is_empty())
             {
                 ImGui::InputText("File Path", &filePath);
                 ImGui::SameLine();
@@ -178,7 +178,7 @@ int SAssetImportModule::main_module_exec(int argc, char8_t** argv)
                     for(auto factory : factories)
                         if(factory->CanImport(filePath))
                             availableFactories.add(factory);
-                    if(availableFactories.empty())
+                    if(availableFactories.is_empty())
                         SKR_LOG_ERROR(u8"No importer found for file: %s", filePath.c_str());
                     if(availableFactories.size() == 1)
                         if(availableFactories[0]->Import(filePath) != 0)
@@ -192,7 +192,7 @@ int SAssetImportModule::main_module_exec(int argc, char8_t** argv)
             {
                 for(auto factory : availableFactories)
                 {
-                    if(ImGui::Button(factory->GetName().c_str()))
+                    if(ImGui::Button(factory->GetName().c_str_raw()))
                     {
                         if(factory->Import(filePath) == 0)
                         {

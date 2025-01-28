@@ -57,7 +57,7 @@ bool SAnimCooker::Cook(SCookContext *ctx)
             auto& override = settings.override[i];
             for (int j = 0; j < skeleton.num_joints(); ++j) {
                 const char* joint_name = skeleton.joint_names()[j];
-                if (ozz::strmatch(joint_name, override.name.c_str())) {
+                if (ozz::strmatch(joint_name, override.name.c_str_raw())) {
                     found = true;
 
                     SKR_LOG_TRACE(u8"Found joint \"%s\" matching pattern \"%s\" for joint optimization setting override.", joint_name, override.name.c_str());
