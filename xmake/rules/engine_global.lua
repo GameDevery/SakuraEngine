@@ -103,9 +103,9 @@ skr_global_target()
         os.rm(utils.saved_config_path())
 
         -- remove install deps for trigger install next time
-        os.rm(path.join(utils.skr_build_artifact_dir(), "deps/install/sdk"))
-        os.rm(path.join(utils.skr_build_artifact_dir(), "deps/install/files"))
-        os.rm(path.join(utils.skr_build_artifact_dir(), "deps/install/copy_files"))
-        os.rm(path.join(utils.skr_build_artifact_dir(), "deps/install/custom"))
+        os.rm(path.join(utils.skr_build_artifact_dir(), "deps/install"))
+
+        -- remove target deps for next build
+        os.rm(path.join(utils.skr_build_artifact_dir(), "deps/target"))
     end)
 skr_global_target_end()
