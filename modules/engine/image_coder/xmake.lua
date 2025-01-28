@@ -6,31 +6,30 @@ shared_module("SkrImageCoder", "SKR_IMAGE_CODER")
     add_files("src/**.cpp")
     add_rules("c++.unity_build", {batchsize = default_unity_batch})
     add_packages("zlib")
+
     -- jpeg
     add_includedirs("include", "turbojpeg", {public=true})
-    if (is_os("windows")) then 
-        add_linkdirs("lib/windows/x64", {public=true})
+    
+    -- add include
+    add_includedirs("include", {public=true})
+    add_includedirs("libpng/1.5.2", {public=true})
 
-        add_includedirs("include", {public=true})
-        add_includedirs("libpng/1.5.2", {public=true})
-        if (is_mode("asan")) then
-            add_links("libpng15_static", {public=true})
-        elseif (is_mode("release")) then
-            add_links("libpng15_static", {public=true})
-        else
-            add_links("libpng15_staticd", {public=true})
-        end
+    -- add link
+    if is_os("windows") then
+        add_links("libpng15_static", {public=true})
         add_links("turbojpeg_static", {public=true})
-    end
-    -- png
-    if (is_os("macosx")) then 
-        if is_arch("arm64") then
-            add_linkdirs("lib/macos/arm64", {public=true})
-        else
-            add_linkdirs("lib/macos/x86_64", {public=true})
-        end
-
-        add_includedirs("include", "libpng/1.5.27", {public=true})
+    elseif is_os("macosx") then
         add_links("png", {public=true})
         add_links("turbojpeg", {public=true})
     end
+
+    -- add install
+    skr_install_rule()
+    skr_install("download", {
+        name = "libpng",
+        install_func = "sdk",
+    })
+    skr_install("download", {
+        name = "turbojpeg",
+        install_func = "sdk"
+    })
