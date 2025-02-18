@@ -35,7 +35,7 @@ rule("utils.dxc")
 
         local dxc_exec = dxc
         local dxc_wdir = path.directory(dxc)
-        dxc_exec = path.filename(dxc_exec)
+        dxc_exec = path.absolute(dxc_exec)
         batchcmds:mkdir(spv_outputdir)
         
         batchcmds:vrunv(dxc_exec, 
