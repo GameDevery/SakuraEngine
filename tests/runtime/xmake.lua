@@ -79,4 +79,3 @@ if (false) then
 end
 
 -- includes("module/xmake.lua")
--- includes("wasm/xmake.lua")

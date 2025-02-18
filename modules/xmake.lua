@@ -27,9 +27,8 @@ end)
 skr_includes_with_cull("experimental", function ()
     -- includes("experimental/netcode/xmake.lua")
     -- includes("experimental/physics/xmake.lua")
-    -- includes("experimental/tweak/xmake.lua") -- TODO. resume
-    -- includes("experimental/inspector/xmake.lua") -- TODO. resume
+    -- includes("experimental/tweak/xmake.lua")
+    -- includes("experimental/inspector/xmake.lua")
     -- includes("experimental/runtime_exporter/xmake.lua")
     -- includes("experimental/daScript/xmake.lua")
-    includes("experimental/wasm/xmake.lua")
 end)
