@@ -111,6 +111,12 @@ jobs:
         with:
           path: build/windows
       
+      - name: CleanBuild
+        if: success() || failure()
+        shell: cmd
+        run: |
+          xmake c -av
+
       - name: Shipping
         if: success() || failure()
         shell: cmd
