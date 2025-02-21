@@ -21,12 +21,12 @@ shared_module("SkrGraphics", "SKR_GRAPHICS")
     -- install
     skr_install_rule()
     skr_install("download", {
-        name = "dstorage-1.2.2",
+        name = "dstorage-1.2.3",
         install_func = "sdk",
         plat = { "windows" }
     })
     skr_install("download", {
-        name = "dxc",
+        name = "dxc-2024_07_31",
         install_func = "sdk",
         plat = { "windows" }
     })
@@ -49,4 +49,4 @@ shared_module("SkrGraphics", "SKR_GRAPHICS")
         name = "WinPixEventRuntime",
         install_func = "sdk",
         plat = { "windows" }
-    })
+    }) 
