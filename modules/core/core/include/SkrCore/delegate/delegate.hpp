@@ -1,6 +1,7 @@
 #pragma once
 #include "SkrBase/config.h"
 #include <type_traits>
+#include <SkrContainers/optional.hpp>
 
 namespace skr
 {
@@ -12,6 +13,8 @@ template <typename Func>
 struct FunctorDelegateCore;
 template <typename Func, typename Functor>
 struct FunctorDelegateCoreNormal;
+template <typename MemberFunc>
+struct MemberFuncTraits;
 
 enum class EDelegateKind : uint8_t
 {
@@ -21,22 +24,51 @@ enum class EDelegateKind : uint8_t
     Functor,
 };
 
+template <typename Obj, typename Ret, typename... Args>
+struct MemberFuncTraits<Ret (Obj::*)(Args...)> {
+    using FuncType                 = Ret (Obj::*)(Args...);
+    using ObjType                  = Obj;
+    using ObjPtrType               = Obj*;
+    using RetType                  = Ret;
+    static constexpr bool is_const = false;
+};
+template <typename Obj, typename Ret, typename... Args>
+struct MemberFuncTraits<Ret (Obj::*)(Args...) const> {
+    using FuncType                 = Ret (Obj::*)(Args...) const;
+    using ObjType                  = Obj;
+    using ObjPtrType               = const Obj*;
+    using RetType                  = Ret;
+    static constexpr bool is_const = true;
+};
+
 template <typename Ret, typename... Args>
 struct MemberFuncDelegateCore<Ret(Args...)> {
     using InvokeFunc = Ret (*)(void*, Args...);
-    using ThisType  = MemberFuncDelegateCore<Ret(Args...)>;
+    using ThisType   = MemberFuncDelegateCore<Ret(Args...)>;
 
     void*      object = nullptr;
     InvokeFunc invoke = nullptr;
 
-    template<typename Obj, Ret (Obj::*Func)(Args...)>
-    static ThisType Make(Obj* obj)
+    template <auto MemberFunc>
+    static ThisType Make(typename MemberFuncTraits<decltype(MemberFunc)>::ObjPtrType obj)
     {
+        using Traits = MemberFuncTraits<decltype(MemberFunc)>;
+
         ThisType core;
-        core.object = obj;
-        core.invoke = [](void* obj, Args... args) -> Ret {
-            return (static_cast<Obj*>(obj)->*Func)(std::forward<Args>(args)...);
-        };
+        if constexpr (Traits::is_const)
+        {
+            core.object = const_cast<void*>(static_cast<const void*>(obj));
+            core.invoke = [](void* obj, Args... args) -> Ret {
+                return (static_cast<typename Traits::ObjPtrType>(obj)->*MemberFunc)(std::forward<Args>(args)...);
+            };
+        }
+        else
+        {
+            core.object = obj;
+            core.invoke = [](void* obj, Args... args) -> Ret {
+                return (static_cast<typename Traits::ObjPtrType>(obj)->*MemberFunc)(std::forward<Args>(args)...);
+            };
+        }
         return core;
     }
 };
@@ -55,15 +87,28 @@ template <typename Functor, typename Ret, typename... Args>
 struct FunctorDelegateCoreNormal<Ret(Args...), Functor> : public FunctorDelegateCore<Ret(Args...)> {
     using Super = FunctorDelegateCore<Ret(Args...)>;
 
-    Functor functor;
+    Placeholder<Functor> functor_holder;
+
+    inline FunctorDelegateCoreNormal(Functor&& functor)
+        : FunctorDelegateCoreNormal()
+    {
+        new (functor_holder.data_typed()) Functor(std::move(functor));
+    }
+    inline FunctorDelegateCoreNormal(const Functor& functor)
+        : FunctorDelegateCoreNormal()
+    {
+        new (functor_holder.data_typed()) Functor(std::move(functor));
+    }
 
     inline FunctorDelegateCoreNormal()
     {
         Super::invoke = [](Super* core, Args... args) -> Ret {
-            return static_cast<FunctorDelegateCoreNormal*>(core)->functor(std::forward<Args>(args)...);
+            Functor* functor = static_cast<FunctorDelegateCoreNormal*>(core)->functor_holder.data_typed();
+            return (*functor)(std::forward<Args>(args)...);
         };
         Super::dtor = [](Super* core) {
-            ~FunctorDelegateCoreNormal();
+            Functor* functor = static_cast<FunctorDelegateCoreNormal*>(core)->functor_holder.data_typed();
+            functor->~Functor();
         };
     }
 };
@@ -87,19 +132,19 @@ struct Delegate<Ret(Args...)> {
     Delegate& operator=(Delegate&& other);
 
     // factory
-    Delegate Static(FuncType* func);
-    template <typename Obj, Ret (Obj::*Func)(Args...)>
-    Delegate Member(Obj* obj);
+    static Delegate Static(FuncType* func);
+    template <auto MemberFunc>
+    static Delegate Member(typename MemberFuncTraits<decltype(MemberFunc)>::ObjPtrType obj);
     template <typename Functor>
-    Delegate Functor(Functor&& functor);
+    static Delegate Functor(Functor&& functor);
     template <typename Functor>
-    Delegate Lambda(Functor&& lambda);
-    Delegate CustomFunctorCore(FunctorCore* core);
+    static Delegate Lambda(Functor&& lambda);
+    static Delegate CustomFunctorCore(FunctorCore* core);
 
     // binder
     void bind_static(FuncType* func);
-    template <typename Obj, Ret (Obj::*Func)(Args...)>
-    void bind_member(Obj* obj);
+    template <auto MemberFunc>
+    void bind_member(typename MemberFuncTraits<decltype(MemberFunc)>::ObjPtrType obj);
     template <typename Functor>
     void bind_functor(Functor&& functor);
     template <typename Functor>
@@ -107,7 +152,7 @@ struct Delegate<Ret(Args...)> {
     void bind_custom_functor_core(FunctorCore* core);
 
     // invoke
-    Ret invoke(Args... args);
+    Optional<Ret> invoke(Args... args);
 
     // ops
     void reset();
@@ -147,18 +192,18 @@ inline Delegate<Ret(Args...)>::Delegate(const Delegate& other)
     _kind = other._kind;
     switch (_kind)
     {
-    case EDelegateKind::Empty:
-        break;
-    case EDelegateKind::Static:
-        _static_delegate = other._static_delegate;
-        break;
-    case EDelegateKind::Member:
-        _member_delegate = other._member_delegate;
-        break;
-    case EDelegateKind::Functor:
-        _functor_delegate = other._functor_delegate;
-        _functor_delegate->ref_count++;
-        break;
+        case EDelegateKind::Empty:
+            break;
+        case EDelegateKind::Static:
+            _static_delegate = other._static_delegate;
+            break;
+        case EDelegateKind::Member:
+            _member_delegate = other._member_delegate;
+            break;
+        case EDelegateKind::Functor:
+            _functor_delegate = other._functor_delegate;
+            _functor_delegate->ref_count++;
+            break;
     }
 }
 template <typename Ret, typename... Args>
@@ -167,18 +212,18 @@ inline Delegate<Ret(Args...)>::Delegate(Delegate&& other)
     _kind = other._kind;
     switch (_kind)
     {
-    case EDelegateKind::Empty:
-        break;
-    case EDelegateKind::Static:
-        _static_delegate = other._static_delegate;
-        break;
-    case EDelegateKind::Member:
-        _member_delegate = other._member_delegate;
-        break;
-    case EDelegateKind::Functor:
-        _functor_delegate = other._functor_delegate;
-        other._functor_delegate = nullptr;
-        break;
+        case EDelegateKind::Empty:
+            break;
+        case EDelegateKind::Static:
+            _static_delegate = other._static_delegate;
+            break;
+        case EDelegateKind::Member:
+            _member_delegate = other._member_delegate;
+            break;
+        case EDelegateKind::Functor:
+            _functor_delegate       = other._functor_delegate;
+            other._functor_delegate = nullptr;
+            break;
     }
     other._kind = EDelegateKind::Empty;
 }
@@ -191,19 +236,21 @@ inline Delegate<Ret(Args...)>& Delegate<Ret(Args...)>::operator=(const Delegate&
     _kind = other._kind;
     switch (_kind)
     {
-    case EDelegateKind::Empty:
-        break;
-    case EDelegateKind::Static:
-        _static_delegate = other._static_delegate;
-        break;
-    case EDelegateKind::Member:
-        _member_delegate = other._member_delegate;
-        break;
-    case EDelegateKind::Functor:    
-        _functor_delegate = other._functor_delegate;
-        _functor_delegate->ref_count++;
-        break;
+        case EDelegateKind::Empty:
+            break;
+        case EDelegateKind::Static:
+            _static_delegate = other._static_delegate;
+            break;
+        case EDelegateKind::Member:
+            _member_delegate = other._member_delegate;
+            break;
+        case EDelegateKind::Functor:
+            _functor_delegate = other._functor_delegate;
+            _functor_delegate->ref_count++;
+            break;
     }
+
+    return *this;
 }
 template <typename Ret, typename... Args>
 inline Delegate<Ret(Args...)>& Delegate<Ret(Args...)>::operator=(Delegate&& other)
@@ -212,20 +259,22 @@ inline Delegate<Ret(Args...)>& Delegate<Ret(Args...)>::operator=(Delegate&& othe
     _kind = other._kind;
     switch (_kind)
     {
-    case EDelegateKind::Empty:
-        break;
-    case EDelegateKind::Static:
-        _static_delegate = other._static_delegate;
-        break;
-    case EDelegateKind::Member:
-        _member_delegate = other._member_delegate;
-        break;
-    case EDelegateKind::Functor:
-        _functor_delegate = other._functor_delegate;
-        other._functor_delegate = nullptr;
-        break;
+        case EDelegateKind::Empty:
+            break;
+        case EDelegateKind::Static:
+            _static_delegate = other._static_delegate;
+            break;
+        case EDelegateKind::Member:
+            _member_delegate = other._member_delegate;
+            break;
+        case EDelegateKind::Functor:
+            _functor_delegate       = other._functor_delegate;
+            other._functor_delegate = nullptr;
+            break;
     }
     other._kind = EDelegateKind::Empty;
+
+    return *this;
 }
 
 // factory
@@ -237,11 +286,11 @@ inline Delegate<Ret(Args...)> Delegate<Ret(Args...)>::Static(FuncType* func)
     return delegate;
 }
 template <typename Ret, typename... Args>
-template <typename Obj, Ret (Obj::*Func)(Args...)>
-inline Delegate<Ret(Args...)> Delegate<Ret(Args...)>::Member(Obj* obj)
+template <auto MemberFunc>
+inline Delegate<Ret(Args...)> Delegate<Ret(Args...)>::Member(typename MemberFuncTraits<decltype(MemberFunc)>::ObjPtrType obj)
 {
     Delegate delegate;
-    delegate.bind_member<Obj, Func>(obj);
+    delegate.bind_member<MemberFunc>(obj);
     return delegate;
 }
 template <typename Ret, typename... Args>
@@ -274,35 +323,39 @@ inline void Delegate<Ret(Args...)>::bind_static(FuncType* func)
 {
     reset();
     _static_delegate = func;
-    _kind           = EDelegateKind::Static;
+    _kind            = EDelegateKind::Static;
 }
 template <typename Ret, typename... Args>
-template <typename Obj, Ret (Obj::*Func)(Args...)>
-inline void Delegate<Ret(Args...)>::bind_member(Obj* obj)
+template <auto MemberFunc>
+inline void Delegate<Ret(Args...)>::bind_member(typename MemberFuncTraits<decltype(MemberFunc)>::ObjPtrType obj)
 {
     reset();
-    _member_delegate = MemberCore::template Make<Obj, Func>(obj);
+    _member_delegate = MemberCore::template Make<MemberFunc>(obj);
     _kind            = EDelegateKind::Member;
 }
 template <typename Ret, typename... Args>
 template <typename Functor>
 inline void Delegate<Ret(Args...)>::bind_functor(Functor&& functor)
 {
+    using FunctorCore = FunctorDelegateCoreNormal<FuncType, std::remove_reference_t<Functor>>;
+
     reset();
-    _functor_delegate = SkrNew<FunctorDelegateCoreNormal<FuncType, Functor>>();
-    _functor_delegate->functor = std::forward<Functor>(functor);
-    _functor_delegate->ref_count++;
-    _kind = EDelegateKind::Functor;
+    auto* core = SkrNew<FunctorCore>(std::forward<Functor>(functor));
+    core->ref_count++;
+    _functor_delegate = core;
+    _kind             = EDelegateKind::Functor;
 }
 template <typename Ret, typename... Args>
 template <typename Functor>
 inline void Delegate<Ret(Args...)>::bind_lambda(Functor&& lambda)
 {
+    using FunctorCore = FunctorDelegateCoreNormal<FuncType, std::remove_reference_t<Functor>>;
+
     reset();
-    _functor_delegate = SkrNew<FunctorDelegateCoreNormal<FuncType, Functor>>();
-    _functor_delegate->functor = std::forward<Functor>(lambda);
-    _functor_delegate->ref_count++;
-    _kind = EDelegateKind::Functor;
+    auto* core = SkrNew<FunctorCore>(std::forward<Functor>(lambda));
+    core->ref_count++;
+    _functor_delegate = core;
+    _kind             = EDelegateKind::Functor;
 }
 template <typename Ret, typename... Args>
 inline void Delegate<Ret(Args...)>::bind_custom_functor_core(FunctorCore* core)
@@ -312,4 +365,58 @@ inline void Delegate<Ret(Args...)>::bind_custom_functor_core(FunctorCore* core)
     _functor_delegate->ref_count++;
     _kind = EDelegateKind::Functor;
 }
+
+// invoke
+template <typename Ret, typename... Args>
+inline Optional<Ret> Delegate<Ret(Args...)>::invoke(Args... args)
+{
+    switch (_kind)
+    {
+        case EDelegateKind::Empty:
+            return {};
+        case EDelegateKind::Static:
+            return _static_delegate(std::forward<Args>(args)...);
+        case EDelegateKind::Member:
+            return _member_delegate.invoke(_member_delegate.object, std::forward<Args>(args)...);
+        case EDelegateKind::Functor:
+            return _functor_delegate->invoke(_functor_delegate, std::forward<Args>(args)...);
+    };
 }
+
+// ops
+template <typename Ret, typename... Args>
+inline void Delegate<Ret(Args...)>::reset()
+{
+    switch (_kind)
+    {
+        case EDelegateKind::Empty:
+        case EDelegateKind::Static:
+        case EDelegateKind::Member:
+            break;
+        case EDelegateKind::Functor:
+            if (_functor_delegate->ref_count == 1)
+            {
+                _functor_delegate->dtor(_functor_delegate);
+                SkrDelete(_functor_delegate);
+            }
+            else
+            {
+                _functor_delegate->ref_count--;
+            }
+            break;
+    }
+    _kind = EDelegateKind::Empty;
+}
+
+// getter
+template <typename Ret, typename... Args>
+inline EDelegateKind Delegate<Ret(Args...)>::kind() const
+{
+    return _kind;
+}
+template <typename Ret, typename... Args>
+inline bool Delegate<Ret(Args...)>::is_empty() const
+{
+    return _kind == EDelegateKind::Empty;
+}
+} // namespace skr
