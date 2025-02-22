@@ -26,7 +26,7 @@ shared_module("SkrGraphics", "SKR_GRAPHICS")
         plat = { "windows" }
     })
     skr_install("download", {
-        name = "dxc-2024_07_31",
+        name = "dxc-2025_02_21",
         install_func = "sdk",
         plat = { "windows" }
     })
