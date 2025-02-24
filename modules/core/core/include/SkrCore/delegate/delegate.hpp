@@ -135,20 +135,20 @@ struct Delegate<Ret(Args...)> {
     static Delegate Static(FuncType* func);
     template <auto MemberFunc>
     static Delegate Member(typename MemberFuncTraits<decltype(MemberFunc)>::ObjPtrType obj);
-    template <typename Functor>
-    static Delegate Functor(Functor&& functor);
-    template <typename Functor>
-    static Delegate Lambda(Functor&& lambda);
+    template <typename Func>
+    static Delegate Functor(Func&& functor);
+    template <typename Func>
+    static Delegate Lambda(Func&& lambda);
     static Delegate CustomFunctorCore(FunctorCore* core);
 
     // binder
     void bind_static(FuncType* func);
     template <auto MemberFunc>
     void bind_member(typename MemberFuncTraits<decltype(MemberFunc)>::ObjPtrType obj);
-    template <typename Functor>
-    void bind_functor(Functor&& functor);
-    template <typename Functor>
-    void bind_lambda(Functor&& lambda);
+    template <typename Func>
+    void bind_functor(Func&& functor);
+    template <typename Func>
+    void bind_lambda(Func&& lambda);
     void bind_custom_functor_core(FunctorCore* core);
 
     // invoke
@@ -294,19 +294,19 @@ inline Delegate<Ret(Args...)> Delegate<Ret(Args...)>::Member(typename MemberFunc
     return delegate;
 }
 template <typename Ret, typename... Args>
-template <typename Functor>
-inline Delegate<Ret(Args...)> Delegate<Ret(Args...)>::Functor(Functor&& functor)
+template <typename Func>
+inline Delegate<Ret(Args...)> Delegate<Ret(Args...)>::Functor(Func&& functor)
 {
     Delegate delegate;
-    delegate.bind_functor(std::forward<Functor>(functor));
+    delegate.bind_functor(std::forward<Func>(functor));
     return delegate;
 }
 template <typename Ret, typename... Args>
-template <typename Functor>
-inline Delegate<Ret(Args...)> Delegate<Ret(Args...)>::Lambda(Functor&& lambda)
+template <typename Func>
+inline Delegate<Ret(Args...)> Delegate<Ret(Args...)>::Lambda(Func&& lambda)
 {
     Delegate delegate;
-    delegate.bind_lambda(std::forward<Functor>(lambda));
+    delegate.bind_lambda(std::forward<Func>(lambda));
     return delegate;
 }
 template <typename Ret, typename... Args>
@@ -334,25 +334,25 @@ inline void Delegate<Ret(Args...)>::bind_member(typename MemberFuncTraits<declty
     _kind            = EDelegateKind::Member;
 }
 template <typename Ret, typename... Args>
-template <typename Functor>
-inline void Delegate<Ret(Args...)>::bind_functor(Functor&& functor)
+template <typename Func>
+inline void Delegate<Ret(Args...)>::bind_functor(Func&& functor)
 {
-    using FunctorCore = FunctorDelegateCoreNormal<FuncType, std::remove_reference_t<Functor>>;
+    using FunctorCore = FunctorDelegateCoreNormal<FuncType, std::remove_reference_t<Func>>;
 
     reset();
-    auto* core = SkrNew<FunctorCore>(std::forward<Functor>(functor));
+    auto* core = SkrNew<FunctorCore>(std::forward<Func>(functor));
     core->ref_count++;
     _functor_delegate = core;
     _kind             = EDelegateKind::Functor;
 }
 template <typename Ret, typename... Args>
-template <typename Functor>
-inline void Delegate<Ret(Args...)>::bind_lambda(Functor&& lambda)
+template <typename Func>
+inline void Delegate<Ret(Args...)>::bind_lambda(Func&& lambda)
 {
-    using FunctorCore = FunctorDelegateCoreNormal<FuncType, std::remove_reference_t<Functor>>;
+    using FunctorCore = FunctorDelegateCoreNormal<FuncType, std::remove_reference_t<Func>>;
 
     reset();
-    auto* core = SkrNew<FunctorCore>(std::forward<Functor>(lambda));
+    auto* core = SkrNew<FunctorCore>(std::forward<Func>(lambda));
     core->ref_count++;
     _functor_delegate = core;
     _kind             = EDelegateKind::Functor;
