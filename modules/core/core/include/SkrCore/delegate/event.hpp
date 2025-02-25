@@ -10,9 +10,10 @@ using EventBindID = uint64_t;
 
 template <typename... Args>
 struct Event<void(Args...)> {
-    using FuncType    = void(Args...);
-    using MemberCore  = MemberFuncDelegateCore<FuncType>;
-    using FunctorCore = FunctorDelegateCore<FuncType>;
+    using FuncType     = void(Args...);
+    using MemberCore   = MemberFuncDelegateCore<FuncType>;
+    using FunctorCore  = FunctorDelegateCore<FuncType>;
+    using DelegateType = Delegate<FuncType>;
 
     // ctor & dtor
     Event();
@@ -27,13 +28,17 @@ struct Event<void(Args...)> {
     Event& operator=(Event&& other);
 
     // binder
+    EventBindID bind(const DelegateType& delegate);
+    EventBindID bind(DelegateType&& delegate);
+
+    // help binder
     EventBindID bind_static(FuncType* func);
     template <auto MemberFunc>
     EventBindID bind_member(typename MemberFuncTraits<decltype(MemberFunc)>::ObjPtrType obj);
-    template <typename Functor>
-    EventBindID bind_functor(Functor&& functor);
-    template <typename Functor>
-    EventBindID bind_lambda(Functor&& lambda);
+    template <typename Func>
+    EventBindID bind_functor(Func&& functor);
+    template <typename Func>
+    EventBindID bind_lambda(Func&& lambda);
     EventBindID bind_custom_functor_core(FunctorCore* core);
 
     // remove
@@ -75,10 +80,26 @@ inline Event<void(Args...)>& Event<void(Args...)>::operator=(Event&& other) = de
 
 // binder
 template <typename... Args>
+inline EventBindID Event<void(Args...)>::bind(const DelegateType& delegate)
+{
+    auto result = _delegates.add_unsafe();
+    new (result.ptr()) DelegateType(delegate);
+    return result.index();
+}
+template <typename... Args>
+inline EventBindID Event<void(Args...)>::bind(DelegateType&& delegate)
+{
+    auto result = _delegates.add_unsafe();
+    new (result.ptr()) DelegateType(std::move(delegate));
+    return result.index();
+}
+
+// binder
+template <typename... Args>
 inline EventBindID Event<void(Args...)>::bind_static(FuncType* func)
 {
     auto result = _delegates.add_default();
-    result.ref().template bind_static(func);
+    result.ref().bind_static(func);
     return result.index();
 }
 template <typename... Args>
@@ -90,19 +111,19 @@ inline EventBindID Event<void(Args...)>::bind_member(typename MemberFuncTraits<d
     return result.index();
 }
 template <typename... Args>
-template <typename Functor>
-inline EventBindID Event<void(Args...)>::bind_functor(Functor&& functor)
+template <typename Func>
+inline EventBindID Event<void(Args...)>::bind_functor(Func&& functor)
 {
     auto result = _delegates.add_default();
-    result.ref().template bind_functor(std::forward<Functor>(functor));
+    result.ref().template bind_functor<Func>(std::forward<Func>(functor));
     return result.index();
 }
 template <typename... Args>
-template <typename Functor>
-inline EventBindID Event<void(Args...)>::bind_lambda(Functor&& lambda)
+template <typename Func>
+inline EventBindID Event<void(Args...)>::bind_lambda(Func&& lambda)
 {
     auto result = _delegates.add_default();
-    result.ref().template bind_lambda(std::forward<Functor>(lambda));
+    result.ref().template bind_lambda<Func>(std::forward<Func>(lambda));
     return result.index();
 }
 template <typename... Args>

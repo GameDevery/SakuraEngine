@@ -11,6 +11,7 @@ struct Nullopt {
 template <typename T>
 struct Optional {
     using DataType = T;
+    static_assert(!std::is_same_v<T, void>, "Optional<void> is not allowed");
 
     // ctor & dtor
     Optional();

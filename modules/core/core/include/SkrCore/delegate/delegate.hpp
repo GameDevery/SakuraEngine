@@ -118,6 +118,7 @@ struct Delegate<Ret(Args...)> {
     using FuncType    = Ret(Args...);
     using MemberCore  = MemberFuncDelegateCore<FuncType>;
     using FunctorCore = FunctorDelegateCore<FuncType>;
+    using InvokeResult = std::conditional_t<std::is_same_v<Ret, void>, bool, Optional<Ret>>;
 
     // ctor & dtor
     Delegate();
@@ -152,7 +153,7 @@ struct Delegate<Ret(Args...)> {
     void bind_custom_functor_core(FunctorCore* core);
 
     // invoke
-    Optional<Ret> invoke(Args... args);
+    InvokeResult invoke(Args... args);
 
     // ops
     void reset();
@@ -368,19 +369,39 @@ inline void Delegate<Ret(Args...)>::bind_custom_functor_core(FunctorCore* core)
 
 // invoke
 template <typename Ret, typename... Args>
-inline Optional<Ret> Delegate<Ret(Args...)>::invoke(Args... args)
+inline typename Delegate<Ret(Args...)>::InvokeResult Delegate<Ret(Args...)>::invoke(Args... args)
 {
-    switch (_kind)
+    if constexpr (std::is_same_v<Ret, void>)
     {
-        case EDelegateKind::Empty:
-            return {};
-        case EDelegateKind::Static:
-            return _static_delegate(std::forward<Args>(args)...);
-        case EDelegateKind::Member:
-            return _member_delegate.invoke(_member_delegate.object, std::forward<Args>(args)...);
-        case EDelegateKind::Functor:
-            return _functor_delegate->invoke(_functor_delegate, std::forward<Args>(args)...);
-    };
+        switch (_kind)
+        {
+            case EDelegateKind::Empty:
+                return false;
+            case EDelegateKind::Static:
+                _static_delegate(std::forward<Args>(args)...);
+                return true;
+            case EDelegateKind::Member:
+                _member_delegate.invoke(_member_delegate.object, std::forward<Args>(args)...);
+                return true;
+            case EDelegateKind::Functor:
+                _functor_delegate->invoke(_functor_delegate, std::forward<Args>(args)...);
+                return true;
+        };
+    }
+    else
+    {
+        switch (_kind)
+        {
+            case EDelegateKind::Empty:
+                return {};
+            case EDelegateKind::Static:
+                return _static_delegate(std::forward<Args>(args)...);
+            case EDelegateKind::Member:
+                return _member_delegate.invoke(_member_delegate.object, std::forward<Args>(args)...);
+            case EDelegateKind::Functor:
+                return _functor_delegate->invoke(_functor_delegate, std::forward<Args>(args)...);
+        };
+    }
 }
 
 // ops
