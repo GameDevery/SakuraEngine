@@ -341,7 +341,6 @@ struct RecordBuilder {
         auto ctor_data = SkrNew<CtorData>();
         ctor_data->fill_signature<Args...>();
         ctor_data->native_invoke        = ExportHelper::export_ctor<T, Args...>();
-        ctor_data->stack_proxy_invoke   = ExportHelper::export_ctor_stack_proxy<T, Args...>();
         ctor_data->dynamic_stack_invoke = ExportHelper::export_ctor_dynamic_stack<T, Args...>();
         _data->ctor_data.add(ctor_data);
         return { ctor_data };
@@ -364,7 +363,6 @@ struct RecordBuilder {
         method_data->access_level = access_level;
         method_data->fill_signature(func);
         method_data->native_invoke        = ExportHelper::export_method<func>();
-        method_data->stack_proxy_invoke   = ExportHelper::export_method_stack_proxy<func>();
         method_data->dynamic_stack_invoke = ExportHelper::export_method_dynamic_stack<func>();
         _data->methods.add(method_data);
         return { method_data };
@@ -382,7 +380,6 @@ struct RecordBuilder {
         method_data->access_level = access_level;
         method_data->fill_signature(func);
         method_data->native_invoke        = ExportHelper::export_static_method<func>();
-        method_data->stack_proxy_invoke   = ExportHelper::export_static_method_stack_proxy<func>();
         method_data->dynamic_stack_invoke = ExportHelper::export_static_method_dynamic_stack<func>();
         _data->static_methods.add(method_data);
         return { method_data };
@@ -400,7 +397,6 @@ struct RecordBuilder {
         method_data->access_level = access_level;
         method_data->fill_signature(func);
         method_data->native_invoke        = ExportHelper::export_extern_method<func>();
-        method_data->stack_proxy_invoke   = ExportHelper::export_extern_method_stack_proxy<func>();
         method_data->dynamic_stack_invoke = ExportHelper::export_extern_method_dynamic_stack<func>();
         _data->extern_methods.add(method_data);
         return { method_data };

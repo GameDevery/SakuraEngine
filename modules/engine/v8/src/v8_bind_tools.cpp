@@ -52,6 +52,35 @@ bool V8BindTools::match_type(::v8::Local<::v8::Value> v8_value, rttr::TypeSignat
 }
 
 // convert tools
+bool V8BindTools::is_primitive(rttr::TypeSignatureView signature)
+{
+    if (signature.is_type() && !signature.is_decayed_pointer())
+    {
+        // get type id
+        signature.jump_modifier();
+        GUID type_id;
+        signature.read_type_id(type_id);
+
+        switch (type_id.get_hash())
+        {
+            case rttr::type_id_of<int8_t>().get_hash():
+            case rttr::type_id_of<int16_t>().get_hash():
+            case rttr::type_id_of<int32_t>().get_hash():
+            case rttr::type_id_of<uint8_t>().get_hash():
+            case rttr::type_id_of<uint16_t>().get_hash():
+            case rttr::type_id_of<uint32_t>().get_hash():
+            case rttr::type_id_of<int64_t>().get_hash():
+            case rttr::type_id_of<uint64_t>().get_hash():
+            case rttr::type_id_of<float>().get_hash():
+            case rttr::type_id_of<double>().get_hash():
+            case rttr::type_id_of<bool>().get_hash():
+                return true;
+            default:
+                break;
+        }
+    }
+    return false;
+}
 bool V8BindTools::native_to_v8_primitive(
     ::v8::Local<::v8::Context> context,
     ::v8::Isolate*             isolate,
@@ -59,7 +88,6 @@ bool V8BindTools::native_to_v8_primitive(
     void*                      native_data,
     ::v8::Local<::v8::Value>&  out_v8_value)
 {
-    // only handle native type
     if (signature.is_type() && !signature.is_decayed_pointer())
     {
         // get type id
@@ -148,7 +176,6 @@ bool V8BindTools::v8_to_native_primitive(
                 *reinterpret_cast<int64_t*>(out_native_data) = v8_value->ToBigInt(context).ToLocalChecked()->Int64Value();
                 return true;
             case rttr::type_id_of<uint64_t>().get_hash():
-
                 *reinterpret_cast<uint64_t*>(out_native_data) = v8_value->ToBigInt(context).ToLocalChecked()->Uint64Value();
                 return true;
             case rttr::type_id_of<float>().get_hash():

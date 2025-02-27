@@ -5,7 +5,6 @@
 #include "SkrRTTR/rttr_traits.hpp"
 #include "SkrRTTR/type_signature.hpp"
 #include "SkrRTTR/enum_tools.hpp"
-#include "SkrRTTR/export/stack_proxy.hpp"
 #include "SkrRTTR/export/attribute.hpp"
 #include "SkrRTTR/export/dynamic_stack.hpp"
 #ifndef __meta__
@@ -158,7 +157,6 @@ struct FunctionData {
 
     // [Provided by export Backend]
     void*                     native_invoke        = nullptr;
-    FuncInvokerStackProxy     stack_proxy_invoke   = nullptr;
     FuncInvokerDynamicStack dynamic_stack_invoke = nullptr;
 
     // flag & attributes
@@ -196,7 +194,6 @@ struct MethodData {
 
     // [Provided by export Backend]
     void*                     native_invoke        = nullptr;
-    MethodInvokerStackProxy   stack_proxy_invoke   = nullptr;
     MethodInvokerDynamicStack dynamic_stack_invoke = nullptr;
 
     // flag & attributes
@@ -241,7 +238,6 @@ struct StaticMethodData {
 
     // [Provided by export Backend]
     void*                     native_invoke        = nullptr;
-    FuncInvokerStackProxy     stack_proxy_invoke   = nullptr;
     FuncInvokerDynamicStack dynamic_stack_invoke = nullptr;
 
     // flag & attributes
@@ -278,7 +274,6 @@ struct ExternMethodData {
 
     // [Provided by export Backend]
     void*                     native_invoke        = nullptr;
-    FuncInvokerStackProxy     stack_proxy_invoke   = nullptr;
     FuncInvokerDynamicStack dynamic_stack_invoke = nullptr;
 
     // flag & attributes
@@ -313,7 +308,6 @@ struct CtorData {
 
     // [Provided by export Backend]
     void*                     native_invoke        = nullptr;
-    MethodInvokerStackProxy   stack_proxy_invoke   = nullptr;
     MethodInvokerDynamicStack dynamic_stack_invoke = nullptr;
 
     // flag & attributes

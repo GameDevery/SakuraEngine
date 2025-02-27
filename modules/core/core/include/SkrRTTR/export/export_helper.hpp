@@ -1,7 +1,6 @@
 #pragma once
 #include <type_traits>
 #include "SkrRTTR/export/export_data.hpp"
-#include "SkrRTTR/export/stack_proxy.hpp"
 #include "SkrRTTR/export/dynamic_stack.hpp"
 
 namespace skr::rttr
@@ -15,11 +14,6 @@ struct ExportHelper {
             new (p) T(std::forward<Args>(args)...);
         };
         return reinterpret_cast<void*>(result);
-    }
-    template <typename T, typename... Args>
-    inline static MethodInvokerStackProxy export_ctor_stack_proxy()
-    {
-        return _make_ctor_stack_proxy<T, Args...>(std::make_index_sequence<sizeof...(Args)>());
     }
     template <typename T, typename... Args>
     inline static MethodInvokerDynamicStack export_ctor_dynamic_stack()
@@ -42,11 +36,6 @@ struct ExportHelper {
         return _make_method_proxy<method>(method);
     }
     template <auto method>
-    inline static MethodInvokerStackProxy export_method_stack_proxy()
-    {
-        return _make_method_stack_proxy<method>(method);
-    }
-    template <auto method>
     inline static MethodInvokerDynamicStack export_method_dynamic_stack()
     {
         return _make_method_dynamic_stack<method>(method);
@@ -55,11 +44,6 @@ struct ExportHelper {
     inline static void* export_static_method()
     {
         return reinterpret_cast<void*>(method);
-    }
-    template <auto method>
-    inline static FuncInvokerStackProxy export_static_method_stack_proxy()
-    {
-        return _make_function_stack_proxy<method>(method);
     }
     template <auto method>
     inline static FuncInvokerDynamicStack export_static_method_dynamic_stack()
@@ -74,11 +58,6 @@ struct ExportHelper {
         return reinterpret_cast<void*>(method);
     }
     template <auto method>
-    inline static FuncInvokerStackProxy export_extern_method_stack_proxy()
-    {
-        return _make_function_stack_proxy<method>(method);
-    }
-    template <auto method>
     inline static FuncInvokerDynamicStack export_extern_method_dynamic_stack()
     {
         return _make_function_dynamic_stack<method>(method);
@@ -89,11 +68,6 @@ struct ExportHelper {
     inline static void* export_function()
     {
         return reinterpret_cast<void*>(func);
-    }
-    template <auto func>
-    inline static FuncInvokerStackProxy export_function_stack_proxy()
-    {
-        return _make_function_stack_proxy<func>(func);
     }
     template <auto method>
     inline static FuncInvokerDynamicStack export_function_dynamic_stack()
@@ -144,130 +118,6 @@ private:
             return (reinterpret_cast<const T*>(obj)->*method)(std::forward<Args>(args)...);
         };
         return reinterpret_cast<void*>(proxy);
-    }
-
-    // stack proxy helpers
-    template <typename T, typename... Args, size_t... Idx>
-    inline static MethodInvokerStackProxy _make_ctor_stack_proxy(std::index_sequence<Idx...>)
-    {
-        return +[](void* p, StackProxy proxy) {
-            std::tuple<ParamHolder<Args>...> tuples(proxy.param_builders[Idx].writer...);
-            new (p) T(std::forward<Args>(std::get<Idx>(tuples).get())...);
-        };
-    }
-    template <auto func, typename Ret, typename... Args>
-    inline static FuncInvokerStackProxy _make_function_stack_proxy(Ret (*)(Args...))
-    {
-        return _make_function_stack_proxy_helper<func, Ret, Args...>(std::make_index_sequence<sizeof...(Args)>());
-    }
-    template <auto func, typename Ret, typename... Args, size_t... Idx>
-    inline static FuncInvokerStackProxy _make_function_stack_proxy_helper(std::index_sequence<Idx...>)
-    {
-        return +[](StackProxy proxy) {
-            if constexpr (sizeof...(Args) == 0)
-            {
-                if constexpr (std::is_same_v<void, Ret>)
-                {
-                    func();
-                }
-                else
-                {
-                    RetHolder<Ret> ret_holder{ func() };
-                    ret_holder.read(proxy.ret_reader);
-                }
-            }
-            else
-            {
-                std::tuple<ParamHolder<Args>...> tuples(proxy.param_builders[Idx].writer...);
-                if constexpr (std::is_same_v<void, Ret>)
-                {
-                    func(std::forward<Args>(std::get<Idx>(tuples).get())...);
-                }
-                else
-                {
-                    RetHolder<Ret> ret_holder{ func(std::forward<Args>(std::get<Idx>(tuples).get())...) };
-                    ret_holder.read(proxy.ret_reader);
-                }
-                int dummy[] = { (std::get<Idx>(tuples).read(proxy.param_builders[Idx].reader), 0)... };
-                (void)dummy;
-            }
-        };
-    }
-    template <auto method, typename T, typename Ret, typename... Args>
-    inline static MethodInvokerStackProxy _make_method_stack_proxy(Ret (T::*)(Args...))
-    {
-        return _make_method_stack_proxy_helper<method, T, Ret, Args...>(std::make_index_sequence<sizeof...(Args)>());
-    }
-    template <auto method, typename T, typename Ret, typename... Args>
-    inline static MethodInvokerStackProxy _make_method_stack_proxy(Ret (T::*)(Args...) const)
-    {
-        return _make_method_stack_proxy_helper_const<method, T, Ret, Args...>(std::make_index_sequence<sizeof...(Args)>());
-    }
-    template <auto method, typename T, typename Ret, typename... Args, size_t... Idx>
-    inline static MethodInvokerStackProxy _make_method_stack_proxy_helper(std::index_sequence<Idx...>)
-    {
-        return +[](void* p, StackProxy proxy) {
-            if constexpr (sizeof...(Args) == 0)
-            {
-                if constexpr (std::is_same_v<void, Ret>)
-                {
-                    (reinterpret_cast<T*>(p)->*method)();
-                }
-                else
-                {
-                    RetHolder<Ret> ret_holder{ (reinterpret_cast<T*>(p)->*method)() };
-                    ret_holder.read(proxy.ret_reader);
-                }
-            }
-            else
-            {
-                std::tuple<ParamHolder<Args>...> tuples(proxy.param_builders[Idx].writer...);
-                if constexpr (std::is_same_v<void, Ret>)
-                {
-                    (reinterpret_cast<T*>(p)->*method)(std::forward<Args>(std::get<Idx>(tuples).get())...);
-                }
-                else
-                {
-                    RetHolder<Ret> ret_holder{ (reinterpret_cast<T*>(p)->*method)(std::forward<Args>(std::get<Idx>(tuples).get())...) };
-                    ret_holder.read(proxy.ret_reader);
-                }
-                int dummy[] = { (std::get<Idx>(tuples).read(proxy.param_builders[Idx].reader), 0)... };
-                (void)dummy;
-            }
-        };
-    }
-    template <auto method, typename T, typename Ret, typename... Args, size_t... Idx>
-    inline static MethodInvokerStackProxy _make_method_stack_proxy_helper_const(std::index_sequence<Idx...>)
-    {
-        return +[](const void* p, StackProxy proxy) {
-            if constexpr (sizeof...(Args) == 0)
-            {
-                if constexpr (std::is_same_v<void, Ret>)
-                {
-                    (reinterpret_cast<const T*>(p)->*method)();
-                }
-                else
-                {
-                    RetHolder<Ret> ret_holder{ (reinterpret_cast<const T*>(p)->*method)() };
-                    ret_holder.read(proxy.ret_reader);
-                }
-            }
-            else
-            {
-                std::tuple<ParamHolder<Args>...> tuples(proxy.param_builders[Idx].writer...);
-                if constexpr (std::is_same_v<void, Ret>)
-                {
-                    (reinterpret_cast<const T*>(p)->*method)(std::forward<Args>(std::get<Idx>(tuples).get())...);
-                }
-                else
-                {
-                    RetHolder<Ret> ret_holder{ (reinterpret_cast<const T*>(p)->*method)(std::forward<Args>(std::get<Idx>(tuples).get())...) };
-                    ret_holder.read(proxy.ret_reader);
-                }
-                int dummy[] = { (std::get<Idx>(tuples).read(proxy.param_builders[Idx].reader), 0)... };
-                (void)dummy;
-            }
-        };
     }
 
     // dynamic stack helpers
