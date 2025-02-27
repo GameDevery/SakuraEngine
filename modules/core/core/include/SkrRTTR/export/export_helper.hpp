@@ -2,6 +2,7 @@
 #include <type_traits>
 #include "SkrRTTR/export/export_data.hpp"
 #include "SkrRTTR/export/stack_proxy.hpp"
+#include "SkrRTTR/export/dynamic_stack.hpp"
 
 namespace skr::rttr
 {
@@ -19,6 +20,11 @@ struct ExportHelper {
     inline static MethodInvokerStackProxy export_ctor_stack_proxy()
     {
         return _make_ctor_stack_proxy<T, Args...>(std::make_index_sequence<sizeof...(Args)>());
+    }
+    template <typename T, typename... Args>
+    inline static MethodInvokerDynamicStack export_ctor_dynamic_stack()
+    {
+        return _make_ctor_dynamic_stack<T, Args...>(std::make_index_sequence<sizeof...(Args)>());
     }
     template <typename T>
     inline static DtorInvoker export_dtor()
@@ -41,6 +47,11 @@ struct ExportHelper {
         return _make_method_stack_proxy<method>(method);
     }
     template <auto method>
+    inline static MethodInvokerDynamicStack export_method_dynamic_stack()
+    {
+        return _make_method_dynamic_stack<method>(method);
+    }
+    template <auto method>
     inline static void* export_static_method()
     {
         return reinterpret_cast<void*>(method);
@@ -49,6 +60,11 @@ struct ExportHelper {
     inline static FuncInvokerStackProxy export_static_method_stack_proxy()
     {
         return _make_function_stack_proxy<method>(method);
+    }
+    template <auto method>
+    inline static FuncInvokerDynamicStack export_static_method_dynamic_stack()
+    {
+        return _make_function_dynamic_stack<method>(method);
     }
 
     // extern method export
@@ -62,6 +78,11 @@ struct ExportHelper {
     {
         return _make_function_stack_proxy<method>(method);
     }
+    template <auto method>
+    inline static FuncInvokerDynamicStack export_extern_method_dynamic_stack()
+    {
+        return _make_function_dynamic_stack<method>(method);
+    }
 
     // function export
     template <auto func>
@@ -73,6 +94,11 @@ struct ExportHelper {
     inline static FuncInvokerStackProxy export_function_stack_proxy()
     {
         return _make_function_stack_proxy<func>(func);
+    }
+    template <auto method>
+    inline static FuncInvokerDynamicStack export_function_dynamic_stack()
+    {
+        return _make_function_dynamic_stack<method>(method);
     }
 
     // invoker
@@ -102,7 +128,7 @@ struct ExportHelper {
     using FunctionInvoker = typename ExpandInvoker<Func>::FunctionInvoker;
 
 private:
-    // helpers
+    // member proxy helpers
     template <auto method, class T, typename Ret, typename... Args>
     inline static void* _make_method_proxy(Ret (T::*)(Args...))
     {
@@ -119,6 +145,8 @@ private:
         };
         return reinterpret_cast<void*>(proxy);
     }
+
+    // stack proxy helpers
     template <typename T, typename... Args, size_t... Idx>
     inline static MethodInvokerStackProxy _make_ctor_stack_proxy(std::index_sequence<Idx...>)
     {
@@ -238,6 +266,96 @@ private:
                 }
                 int dummy[] = { (std::get<Idx>(tuples).read(proxy.param_builders[Idx].reader), 0)... };
                 (void)dummy;
+            }
+        };
+    }
+
+    // dynamic stack helpers
+    template <typename T, typename... Args, size_t... Idx>
+    inline static MethodInvokerDynamicStack _make_ctor_dynamic_stack(std::index_sequence<Idx...>)
+    {
+        return +[](void* p, DynamicStack& stack) {
+            new (p) T(std::forward<Args>(stack.get_param<Args>(Idx))...);
+        };
+    }
+    template <auto method, typename T, typename Ret, typename... Args>
+    inline static MethodInvokerDynamicStack _make_method_dynamic_stack(Ret (T::*)(Args...))
+    {
+        return _make_method_dynamic_stack_helper<method, T, Ret, Args...>(std::make_index_sequence<sizeof...(Args)>());
+    }
+    template <auto method, typename T, typename Ret, typename... Args>
+    inline static MethodInvokerDynamicStack _make_method_dynamic_stack(Ret (T::*)(Args...) const)
+    {
+        return _make_method_dynamic_stack_helper_const<method, T, Ret, Args...>(std::make_index_sequence<sizeof...(Args)>());
+    }
+    template <auto method, typename T, typename Ret, typename... Args, size_t... Idx>
+    inline static MethodInvokerDynamicStack _make_method_dynamic_stack_helper(std::index_sequence<Idx...>)
+    {
+        return +[](void* p, DynamicStack& stack) {
+            if constexpr (std::is_same_v<void, Ret>)
+            {
+                (reinterpret_cast<T*>(p)->*method)(std::forward<Args>(stack.get_param<Args>(Idx))...);
+            }
+            else
+            {
+                if (stack.need_store_return())
+                {
+                    stack.store_return<Ret>(
+                    (reinterpret_cast<T*>(p)->*method)(std::forward<Args>(stack.get_param<Args>(Idx))...));
+                }
+                else
+                {
+                    (reinterpret_cast<T*>(p)->*method)(std::forward<Args>(stack.get_param<Args>(Idx))...);
+                }
+            }
+        };
+    }
+    template <auto method, typename T, typename Ret, typename... Args, size_t... Idx>
+    inline static MethodInvokerDynamicStack _make_method_dynamic_stack_helper_const(std::index_sequence<Idx...>)
+    {
+        return +[](const void* p, DynamicStack& stack) {
+            if constexpr (std::is_same_v<void, Ret>)
+            {
+                (reinterpret_cast<const T*>(p)->*method)(std::forward<Args>(stack.get_param<Args>(Idx))...);
+            }
+            else
+            {
+                if (stack.need_store_return())
+                {
+                    stack.store_return<Ret>(
+                    (reinterpret_cast<T*>(p)->*method)(std::forward<Args>(stack.get_param<Args>(Idx))...));
+                }
+                else
+                {
+                    (reinterpret_cast<const T*>(p)->*method)(std::forward<Args>(stack.get_param<Args>(Idx))...);
+                }
+            }
+        };
+    }
+    template <auto func, typename Ret, typename... Args>
+    inline static FuncInvokerDynamicStack _make_function_dynamic_stack(Ret (*)(Args...))
+    {
+        return _make_function_dynamic_stack_helper<func, Ret, Args...>(std::make_index_sequence<sizeof...(Args)>());
+    }
+    template <auto func, typename Ret, typename... Args, size_t... Idx>
+    inline static FuncInvokerDynamicStack _make_function_dynamic_stack_helper(std::index_sequence<Idx...>)
+    {
+        return +[](DynamicStack& stack) {
+            if constexpr (std::is_same_v<void, Ret>)
+            {
+                func(std::forward<Args>(stack.get_param<Args>(Idx))...);
+            }
+            else
+            {
+                if (stack.need_store_return())
+                {
+                    stack.store_return<Ret>(
+                    func(std::forward<Args>(stack.get_param<Args>(Idx))...));
+                }
+                else
+                {
+                    func(std::forward<Args>(stack.get_param<Args>(Idx))...);
+                }
             }
         };
     }

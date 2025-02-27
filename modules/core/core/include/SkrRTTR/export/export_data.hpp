@@ -7,6 +7,7 @@
 #include "SkrRTTR/enum_tools.hpp"
 #include "SkrRTTR/export/stack_proxy.hpp"
 #include "SkrRTTR/export/attribute.hpp"
+#include "SkrRTTR/export/dynamic_stack.hpp"
 #ifndef __meta__
     #include "SkrCore/SkrRTTR/export/export_data.generated.h"
 #endif
@@ -156,8 +157,9 @@ struct FunctionData {
     Vector<ParamData> param_data = {};
 
     // [Provided by export Backend]
-    void*                 native_invoke      = nullptr;
-    FuncInvokerStackProxy stack_proxy_invoke = nullptr;
+    void*                     native_invoke        = nullptr;
+    FuncInvokerStackProxy     stack_proxy_invoke   = nullptr;
+    FuncInvokerDynamicStack dynamic_stack_invoke = nullptr;
 
     // flag & attributes
     EFunctionFlag          flag       = EFunctionFlag::None;
@@ -193,8 +195,9 @@ struct MethodData {
     EAccessLevel      access_level = EAccessLevel::Public;
 
     // [Provided by export Backend]
-    void*                   native_invoke      = nullptr;
-    MethodInvokerStackProxy stack_proxy_invoke = nullptr;
+    void*                     native_invoke        = nullptr;
+    MethodInvokerStackProxy   stack_proxy_invoke   = nullptr;
+    MethodInvokerDynamicStack dynamic_stack_invoke = nullptr;
 
     // flag & attributes
     EMethodFlag            flag       = EMethodFlag::None;
@@ -237,8 +240,9 @@ struct StaticMethodData {
     EAccessLevel      access_level = EAccessLevel::Public;
 
     // [Provided by export Backend]
-    void*                 native_invoke      = nullptr;
-    FuncInvokerStackProxy stack_proxy_invoke = nullptr;
+    void*                     native_invoke        = nullptr;
+    FuncInvokerStackProxy     stack_proxy_invoke   = nullptr;
+    FuncInvokerDynamicStack dynamic_stack_invoke = nullptr;
 
     // flag & attributes
     EStaticMethodFlag      flag       = EStaticMethodFlag::None;
@@ -273,8 +277,9 @@ struct ExternMethodData {
     EAccessLevel      access_level = EAccessLevel::Public;
 
     // [Provided by export Backend]
-    void*                 native_invoke      = nullptr;
-    FuncInvokerStackProxy stack_proxy_invoke = nullptr;
+    void*                     native_invoke        = nullptr;
+    FuncInvokerStackProxy     stack_proxy_invoke   = nullptr;
+    FuncInvokerDynamicStack dynamic_stack_invoke = nullptr;
 
     // flag & attributes
     EExternMethodFlag      flag       = EExternMethodFlag::None;
@@ -307,8 +312,9 @@ struct CtorData {
     EAccessLevel      access_level = EAccessLevel::Public;
 
     // [Provided by export Backend]
-    void*                   native_invoke      = nullptr;
-    MethodInvokerStackProxy stack_proxy_invoke = nullptr;
+    void*                     native_invoke        = nullptr;
+    MethodInvokerStackProxy   stack_proxy_invoke   = nullptr;
+    MethodInvokerDynamicStack dynamic_stack_invoke = nullptr;
 
     // flag & attributes
     ECtorFlag              flag       = ECtorFlag::None;

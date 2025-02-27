@@ -1,7 +1,6 @@
 #pragma once
 #include <SkrContainersDef/vector.hpp>
 
-// TODO. DynamicStackParamHelper 用于规范化模板型 set & get 行为
 namespace skr::rttr
 {
 using DynamicStackDataDtor = void(void* p_stack_data);
@@ -43,7 +42,7 @@ enum class EDynamicStackParamKind : uint8_t
 
 // get helper
 template <typename T>
-struct DynamicStackParamGetter {
+struct DynamicStackParamHelper {
     void*                  data;
     EDynamicStackParamKind kind;
 
@@ -63,7 +62,7 @@ struct DynamicStackParamGetter {
     }
 };
 template <typename T>
-struct DynamicStackParamGetter<T*> {
+struct DynamicStackParamHelper<T*> {
     void*                  data;
     EDynamicStackParamKind kind;
 
@@ -83,7 +82,7 @@ struct DynamicStackParamGetter<T*> {
     }
 };
 template <typename T>
-struct DynamicStackParamGetter<T&> {
+struct DynamicStackParamHelper<T&> {
     void*                  data;
     EDynamicStackParamKind kind;
 
@@ -103,7 +102,7 @@ struct DynamicStackParamGetter<T&> {
     }
 };
 template <typename T>
-struct DynamicStackParamGetter<const T&> {
+struct DynamicStackParamHelper<const T&> {
     void*                  data;
     EDynamicStackParamKind kind;
 
@@ -123,7 +122,7 @@ struct DynamicStackParamGetter<const T&> {
     }
 };
 template <typename T>
-struct DynamicStackParamGetter<T&&> {
+struct DynamicStackParamHelper<T&&> {
     void*                  data;
     EDynamicStackParamKind kind;
 
@@ -205,7 +204,7 @@ struct DynamicStack {
     EDynamicStackParamKind get_param_kind(uint64_t index);
     void*                  get_param_raw(uint64_t index);
     template <typename T>
-    auto get_param(uint64_t index);
+    decltype(auto) get_param(uint64_t index);
 
     // set return behaviour
     void return_behaviour_discard();
@@ -243,6 +242,11 @@ private:
     uint64_t         _used_data_top = 0;
     Vector<uint8_t*> _data_blocks;
 };
+
+// dynamic stack invoker
+using MethodInvokerDynamicStack = void (*)(void* p, DynamicStack& stack);
+using FuncInvokerDynamicStack   = void (*)(DynamicStack& stack);
+
 } // namespace skr::rttr
 
 namespace skr::rttr
@@ -378,14 +382,14 @@ inline void* DynamicStack::get_param_raw(uint64_t index)
     return _get_memory(_param_info.at(index).offset);
 }
 template <typename T>
-inline auto DynamicStack::get_param(uint64_t index)
+inline decltype(auto) DynamicStack::get_param(uint64_t index)
 {
     // get data
     SKR_ASSERT(index < _param_info.size());
     auto& data = _param_info.at(index);
 
     // fill getter
-    DynamicStackParamGetter<T> getter;
+    DynamicStackParamHelper<T> getter;
     getter.data = _get_memory(data.offset);
     getter.kind = data.kind;
 
