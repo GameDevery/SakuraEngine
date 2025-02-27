@@ -164,3 +164,17 @@ ExcludeBases : public BadBaseA,
 };
 
 } // namespace test_rttr
+
+// test dynamic stack invoke
+namespace test_rttr
+{
+sreflect_struct(
+    "guid": "acc0de35-382f-46cf-a666-77b5144e36e4",
+    "rttr": "full"
+)
+DynamicStackInvoke {
+    static int32_t add(int32_t a, int32_t b) { return a + b; }
+    static int32_t add_ref(const int32_t& a, const int32_t& b) { return a + b; }
+    static void    add_use_out_param(int32_t a, int32_t b, int32_t& out) { out = a + b; }
+};
+} // namespace test_rttr

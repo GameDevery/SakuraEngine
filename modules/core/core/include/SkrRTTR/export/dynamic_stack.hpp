@@ -425,6 +425,8 @@ inline void DynamicStack::store_return(T&& value)
     {
         auto offset = _grow(sizeof(T), alignof(T));
         pointer     = _get_memory(offset);
+        _ret_info.offset = offset;
+        _ret_info.dtor = [](void* p) { static_cast<T*>(p)->~T(); };
     }
     else if (_ret_info.kind == EDynamicStackReturnKind::StoreToRef)
     {
@@ -445,6 +447,6 @@ template <typename T>
 inline T& DynamicStack::get_return()
 {
     SKR_ASSERT(_ret_info.kind == EDynamicStackReturnKind::Store);
-    return *static_cast<T*>(_get_memory(_ret_info.offset));
+    return *reinterpret_cast<T*>(_get_memory(_ret_info.offset));
 }
 } // namespace skr::rttr
