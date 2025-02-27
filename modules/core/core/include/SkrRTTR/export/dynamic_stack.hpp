@@ -199,6 +199,8 @@ struct DynamicStack {
     T* alloc_param(EDynamicStackParamKind kind = EDynamicStackParamKind::Direct, DynamicStackDataDtor* dtor = nullptr);
     template <typename T>
     void add_param(T&& value, EDynamicStackParamKind kind = EDynamicStackParamKind::Direct, DynamicStackDataDtor* dtor = nullptr);
+    template <typename T>
+    void add_param(const T& value, EDynamicStackParamKind kind = EDynamicStackParamKind::Direct, DynamicStackDataDtor* dtor = nullptr);
 
     // get param
     EDynamicStackParamKind get_param_kind(uint64_t index);
@@ -367,7 +369,13 @@ template <typename T>
 inline void DynamicStack::add_param(T&& value, EDynamicStackParamKind kind, DynamicStackDataDtor* dtor)
 {
     T* p = alloc_param<T>(kind, dtor);
-    new (p) T(std::forward<T>(value));
+    new (p) T(std::move(value));
+}
+template <typename T>
+inline void DynamicStack::add_param(const T& value, EDynamicStackParamKind kind, DynamicStackDataDtor* dtor)
+{
+    T* p = alloc_param<T>(kind, dtor);
+    new (p) T(value);
 }
 
 // get param
