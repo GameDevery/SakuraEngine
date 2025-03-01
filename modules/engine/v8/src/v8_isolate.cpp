@@ -88,6 +88,7 @@ void V8Isolate::shutdown()
     }
 }
 
+// TODO. 遍历父类结构的绑定，以及重载实现
 void V8Isolate::make_record_template(::skr::rttr::Type* type)
 {
     using namespace ::v8;
@@ -154,12 +155,10 @@ void V8Isolate::make_record_template(::skr::rttr::Type* type)
     // setup internal field count
     ctor_template->InstanceTemplate()->SetInternalFieldCount(1);
 
+    // bind visitor to prototype
     auto proto_type_template = ctor_template->PrototypeTemplate();
 
-    // TODO. 收集某个类型的所有方法，生成绑定信息，然后再生成绑定代码, 数据通过 External 传递, 内存管理交给绑定数据
-
     // bind field
-    // TODO. recursive bind field
     for (const auto& field : type->record_data().fields)
     {
         proto_type_template->SetAccessor(
@@ -175,12 +174,12 @@ void V8Isolate::make_record_template(::skr::rttr::Type* type)
                 // get field data
                 auto   name_len = property->Utf8Length(isolate);
                 String field_name;
-                field_name.add('\0', name_len);
+                field_name.resize_unsafe(name_len);
                 property->WriteUtf8(isolate, field_name.data_raw_w());
-                auto& field_data = data->type->record_data().fields.find_if([&](const auto& f) {
-                                                                       return f->name == field_name;
-                                                                   })
-                                       .ref();
+                auto& field_data = data->type->record_data().fields.find_if(
+                [&](const auto& f) {
+                        return f->name == field_name;
+                    }).ref();
 
                 // return field
                 Local<Value> result;
@@ -233,19 +232,7 @@ void V8Isolate::make_record_template(::skr::rttr::Type* type)
             });
     }
 
-    // bind method
-    // TODO. recursive bind method
-    for (const auto& method : type->record_data().methods)
-    {
-    }
-
-    // bind static field
-    // TODO. recursive bind static field
-
-    // bind static method
-    // TODO. recursive bind static method
-
-    // add to templates
+    // store template
     auto& template_ref = _record_templates.try_add_default(type).value();
     template_ref.Reset(_isolate, ctor_template);
 }

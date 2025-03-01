@@ -1,6 +1,7 @@
 #pragma once
 #include "SkrRTTR/type.hpp"
 #include "v8-persistent-handle.h"
+#include "SkrRTTR/scriptble_object.hpp"
 
 namespace skr::v8
 {
@@ -14,16 +15,10 @@ struct V8RecordBindData {
     // TODO. extern method data
 };
 
-enum class EV8RecordOwner
-{
-    CPP,
-    V8
-};
 struct V8BindRecordCore {
     // native info
-    void*            data;
-    skr::rttr::Type* type;
-    EV8RecordOwner   owner;
+    skr::rttr::ScriptbleObject* object;
+    skr::rttr::Type*            type;
 
     // v8 info
     ::v8::Persistent<::v8::Object> v8_object;
