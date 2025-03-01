@@ -38,6 +38,21 @@ struct SKR_V8_API V8Isolate {
     // register type
     void make_record_template(::skr::rttr::Type* type);
     void inject_templates_into_context(::v8::Local<::v8::Context> context);
+
+    // bind object
+    V8BindRecordCore* translate_record(::skr::rttr::ScriptbleObject* obj);
+    void mark_record_deleted(::skr::rttr::ScriptbleObject* obj);
+
+private:
+    // bind helpers
+    static void _gc_callback(const ::v8::WeakCallbackInfo<V8BindRecordCore>& data);
+    static void _call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
+    static void _call_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
+    static void _get_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
+    static void _set_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
+    static void _call_static_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
+    static void _get_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
+    static void _set_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
 private:
     // isolate data
     ::v8::Isolate*              _isolate;
@@ -45,6 +60,10 @@ private:
 
     // templates
     Map<::skr::rttr::Type*, ::v8::Global<::v8::FunctionTemplate>> _record_templates;
+
+    // bind data
+    Map<::skr::rttr::ScriptbleObject*, V8BindRecordCore*> _alive_records;
+    Vector<V8BindRecordCore*> _deleted_records;
 };
 } // namespace skr::v8
 

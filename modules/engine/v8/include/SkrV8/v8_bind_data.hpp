@@ -5,16 +5,6 @@
 
 namespace skr::v8
 {
-struct V8RecordBindData {
-    void*            data;
-    skr::rttr::Type* type;
-
-    // TODO. ctor data
-    // TODO. method data
-    // TODO. static method data
-    // TODO. extern method data
-};
-
 struct V8BindRecordCore {
     // native info
     skr::rttr::ScriptbleObject* object;
