@@ -130,7 +130,7 @@ void V8Isolate::make_record_template(::skr::rttr::Type* type)
                         bind_data->data = sakura_malloc_aligned(type->size(), type->alignment());
 
                         // call ctor
-                        V8BindTools::call_ctor(bind_data->data, ctor_data, info, Context, Isolate);
+                        V8BindTools::call_ctor(bind_data->data, *ctor_data, info, Context, Isolate);
 
                         // add extern data
                         self->SetInternalField(0, External::New(Isolate, bind_data));
@@ -163,7 +163,7 @@ void V8Isolate::make_record_template(::skr::rttr::Type* type)
     for (const auto& field : type->record_data().fields)
     {
         proto_type_template->SetAccessor(
-            ::v8::String::NewFromUtf8(_isolate, field.name.c_str()).ToLocalChecked(),
+            ::v8::String::NewFromUtf8(_isolate, field->name.c_str_raw()).ToLocalChecked(),
             +[](Local<::v8::String> property, const PropertyCallbackInfo<Value>& info) {
                 // get data
                 Isolate*          isolate = info.GetIsolate();
@@ -175,10 +175,10 @@ void V8Isolate::make_record_template(::skr::rttr::Type* type)
                 // get field data
                 auto   name_len = property->Utf8Length(isolate);
                 String field_name;
-                field_name.raw().append('\0', name_len);
-                property->WriteUtf8(isolate, reinterpret_cast<char*>(field_name.raw().data()));
+                field_name.add('\0', name_len);
+                property->WriteUtf8(isolate, field_name.data_raw_w());
                 auto& field_data = data->type->record_data().fields.find_if([&](const auto& f) {
-                                                                       return f.name == field_name;
+                                                                       return f->name == field_name;
                                                                    })
                                        .ref();
 
@@ -187,8 +187,8 @@ void V8Isolate::make_record_template(::skr::rttr::Type* type)
                 if (V8BindTools::native_to_v8_primitive(
                         context,
                         isolate,
-                        field_data.type,
-                        field_data.get_address(data->data),
+                        field_data->type,
+                        field_data->get_address(data->data),
                         result))
                 {
                     info.GetReturnValue().Set(result);
@@ -209,10 +209,10 @@ void V8Isolate::make_record_template(::skr::rttr::Type* type)
                 // get field data
                 auto   name_len = property->Utf8Length(isolate);
                 String field_name;
-                field_name.raw().append('\0', name_len);
-                property->WriteUtf8(isolate, reinterpret_cast<char*>(field_name.raw().data()));
+                field_name.add('\0', name_len);
+                property->WriteUtf8(isolate, field_name.data_raw_w());
                 auto& field_data = data->type->record_data().fields.find_if([&](const auto& f) {
-                                                                       return f.name == field_name;
+                                                                       return f->name == field_name;
                                                                    })
                                        .ref();
 
@@ -220,9 +220,9 @@ void V8Isolate::make_record_template(::skr::rttr::Type* type)
                 if (V8BindTools::v8_to_native_primitive(
                         context,
                         isolate,
-                        field_data.type,
+                        field_data->type,
                         value,
-                        field_data.get_address(data->data)))
+                        field_data->get_address(data->data)))
                 {
                     info.GetReturnValue().Set(value);
                 }
@@ -265,7 +265,7 @@ void V8Isolate::inject_templates_into_context(::v8::Local<::v8::Context> context
         // set to context
         context->Global()->Set(
                              context,
-                             ::v8::String::NewFromUtf8(_isolate, type->name().c_str()).ToLocalChecked(),
+                             ::v8::String::NewFromUtf8(_isolate, type->name().c_str_raw()).ToLocalChecked(),
                              function)
             .Check();
     }

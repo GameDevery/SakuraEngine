@@ -285,7 +285,7 @@ struct RecordBuilder {
         _data->size      = sizeof(T);
         _data->alignment = alignof(T);
 
-        // TODO. 基础函数的导出也应当手动完成
+        // TODO. 带参构造的反射导出
 
         // fill default ctor
         if constexpr (std::is_default_constructible_v<T>)
@@ -317,12 +317,36 @@ struct RecordBuilder {
             extern_method<+[](T& lhs, T&& rhs) { lhs.operator=(std::move(rhs)); }>(CPPExternMethods::Assign);
         }
 
+        // fill bin serde
         if constexpr (skr::HasBinRead<T>)
         {
             extern_method<
             +[](void* object, void* reader) -> bool {
                 return skr::bin_read<T>((SBinaryReader*)reader, *(T*)object);
             }>(SkrCoreExternMethods::ReadBin);
+        }
+        if constexpr (skr::HasBinWrite<T>)
+        {
+            extern_method<
+            +[](void* object, void* writer) -> bool {
+                return skr::bin_write<T>((SBinaryWriter*)writer, *(T*)object);
+            }>(SkrCoreExternMethods::WriteBin);
+        }
+
+        // fill json serde
+        if constexpr (skr::HasJsonRead<T>)
+        {
+            extern_method<
+            +[](void* object, void* reader) -> bool {
+                return skr::json_read<T>((skr::archive::JsonReader*)reader, *(T*)object);
+            }>(SkrCoreExternMethods::ReadJson);
+        }
+        if constexpr (skr::HasJsonWrite<T>)
+        {
+            extern_method<
+            +[](void* object, void* writer) -> bool {
+                return skr::json_write<T>((skr::archive::JsonWriter*)writer, *(T*)object);
+            }>(SkrCoreExternMethods::WriteJson);
         }
 
         // fill dtor

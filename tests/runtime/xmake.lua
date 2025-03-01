@@ -70,12 +70,11 @@ executable_module("ProxyTest", "PROXY_TEST", {exception = true})
 
 --------------------------------------------------------------------------------------
 
-if (false) then
+skr_includes_with_cull("v8", function ()
     executable_module("V8Test", "V8_TEST")
         set_group("05.tests/runtime")
         public_dependency("SkrV8")
         -- add_deps("SkrTestFramework", {public = false})
-        add_files("v8/hello_fucking_google.cpp")
-end
-
+        add_files("v8/**.cpp")
+end)
 -- includes("module/xmake.lua")

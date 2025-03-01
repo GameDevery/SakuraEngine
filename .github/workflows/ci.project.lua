@@ -66,3 +66,6 @@ analyzer_target("Disable")
         return _disable
     end)
 analyzer_target_end()
+
+skr_cull("v8")
+skr_cull("lua")

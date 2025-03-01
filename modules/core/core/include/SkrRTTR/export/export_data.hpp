@@ -156,7 +156,7 @@ struct FunctionData {
     Vector<ParamData> param_data = {};
 
     // [Provided by export Backend]
-    void*                     native_invoke        = nullptr;
+    void*                   native_invoke        = nullptr;
     FuncInvokerDynamicStack dynamic_stack_invoke = nullptr;
 
     // flag & attributes
@@ -237,7 +237,7 @@ struct StaticMethodData {
     EAccessLevel      access_level = EAccessLevel::Public;
 
     // [Provided by export Backend]
-    void*                     native_invoke        = nullptr;
+    void*                   native_invoke        = nullptr;
     FuncInvokerDynamicStack dynamic_stack_invoke = nullptr;
 
     // flag & attributes
@@ -273,7 +273,7 @@ struct ExternMethodData {
     EAccessLevel      access_level = EAccessLevel::Public;
 
     // [Provided by export Backend]
-    void*                     native_invoke        = nullptr;
+    void*                   native_invoke        = nullptr;
     FuncInvokerDynamicStack dynamic_stack_invoke = nullptr;
 
     // flag & attributes

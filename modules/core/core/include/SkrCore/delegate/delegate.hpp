@@ -3,6 +3,8 @@
 #include <type_traits>
 #include <SkrContainers/optional.hpp>
 
+// TODO. 添加基类以支持反射
+// TODO. 添加类型擦除的调用 core 来支持脚本绑定
 namespace skr
 {
 template <typename Func>
