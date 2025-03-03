@@ -60,6 +60,10 @@ struct SKR_CORE_API Type final {
     Type();
     ~Type();
 
+    // module
+    void set_module(String module);
+    String module() const;
+
     // basic getter
     ETypeCategory      type_category() const;
     const skr::String& name() const;
@@ -131,6 +135,7 @@ private:
 
 private:
     ETypeCategory _type_category = ETypeCategory::Invalid;
+    String        _module        = {};
     union
     {
         PrimitiveData _primitive_data;

@@ -28,6 +28,16 @@ Type::~Type()
     }
 }
 
+// module
+void Type::set_module(String module)
+{
+    _module = module;
+}
+String Type::module() const
+{
+    return _module;
+}
+
 // basic getter
 ETypeCategory Type::type_category() const
 {

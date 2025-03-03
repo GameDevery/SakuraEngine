@@ -89,6 +89,7 @@ void V8Isolate::shutdown()
 }
 
 // TODO. 遍历父类结构的绑定，以及重载实现
+// TODO. 处理 ScriptVisible
 void V8Isolate::make_record_template(::skr::rttr::Type* type)
 {
     using namespace ::v8;

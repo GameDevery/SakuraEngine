@@ -15,6 +15,9 @@ SKR_EXEC_STATIC_CTOR
 <%
     record_rttr_data=record.generator_data["rttr"]
 %>\
+        // setup module
+        type->set_module(u8"${module_name}");
+
         // build record
         type->build_record([&](RecordData* record_data){
             // reserve
@@ -116,6 +119,10 @@ SKR_EXEC_STATIC_CTOR
 <%
     enum_rttr_data=enum.generator_data["rttr"]
 %>\
+        // setup module
+        type->set_module(u8"${module_name}");
+
+        // build enum
         type->build_enum([&](EnumData* enum_data){
             // reserve
             enum_data->items.reserve(${len(enum.values)});

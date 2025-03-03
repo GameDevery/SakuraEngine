@@ -306,6 +306,7 @@ void* iobject_get_head_ptr() const override { return const_cast<void*>((const vo
         self.owner.append_content(
             "generated.cpp",
             source_template.render(
+                module_name = main_module.module_name,
                 enums=enums,
                 records=records,
                 tools=CodegenTools()
