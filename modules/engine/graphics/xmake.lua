@@ -1,28 +1,52 @@
-shared_module("SkrGraphics", "SKR_GRAPHICS", engine_version)
+shared_module("SkrGraphics", "SKR_GRAPHICS")
     set_exceptions("no-cxx")
     add_deps("vulkan", "SkrBase", {public = true})
-    public_dependency("SkrCore", engine_version)
+    public_dependency("SkrCore")
     add_includedirs("include", {public = true})
     add_files("src/build.*.c", "src/build.*.cpp")
     if (is_os("macosx")) then 
         add_files("src/build.*.m", "src/build.*.mm")
         add_mxflags("-fno-objc-arc", {force = true})
         add_frameworks("CoreFoundation", "Cocoa", "Metal", "IOKit", {public = true})
+        -- add_defines("VK_MVK_macos_surface")
+        add_defines("VK_USE_PLATFORM_MACOS_MVK")
     end
-    -- install SDKs
-    libs_to_install = {}
-    if(os.host() == "windows") then
-        table.insert(libs_to_install, "dstorage-1.2.2")    
-        table.insert(libs_to_install, "dxc")
-        table.insert(libs_to_install, "amdags")
-        table.insert(libs_to_install, "nvapi")
-        table.insert(libs_to_install, "nsight")
-        table.insert(libs_to_install, "WinPixEventRuntime")
-    end
-    add_rules("utils.install_libraries", { libnames = libs_to_install })
     
     if (is_os("windows")) then 
         add_linkdirs("$(buildir)/$(os)/$(arch)/$(mode)", {public=true})
         add_links("nvapi_x64", {public = true})
         add_links("WinPixEventRuntime", {public = true})
     end
+
+    -- install
+    skr_install_rule()
+    skr_install("download", {
+        name = "dstorage-1.2.3",
+        install_func = "sdk",
+        plat = { "windows" }
+    })
+    skr_install("download", {
+        name = "dxc-2025_02_21",
+        install_func = "sdk",
+        plat = { "windows" }
+    })
+    skr_install("download", {
+        name = "amdags",
+        install_func = "sdk",
+        plat = { "windows" }
+    })
+    skr_install("download", {
+        name = "nvapi",
+        install_func = "sdk",
+        plat = { "windows" }
+    })
+    skr_install("download", {
+        name = "nsight",
+        install_func = "sdk",
+        plat = { "windows" }
+    })
+    skr_install("download", {
+        name = "WinPixEventRuntime",
+        install_func = "sdk",
+        plat = { "windows" }
+    }) 

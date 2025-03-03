@@ -112,13 +112,13 @@
 #define SKR_STATIC_API
 
 // PTR_SIZE
-#if INTPTR_MAX == 0x7FFFFFFFFFFFFFFFLL
-    #define SKR_PTR_SIZE 8
-#elif INTPTR_MAX == 0x7FFFFFFF
-    #define SKR_PTR_SIZE 4
-#else
-    #error unsupported platform
-#endif
+// #if INTPTR_MAX == 0x7FFFFFFFFFFFFFFFLL
+//     #define SKR_PTR_SIZE 8
+// #elif INTPTR_MAX == 0x7FFFFFFF
+//     #define SKR_PTR_SIZE 4
+// #else
+//     #error unsupported platform
+// #endif
 
 // NO_VTABLE
 #ifdef _MSC_VER

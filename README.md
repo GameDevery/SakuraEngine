@@ -8,7 +8,6 @@
 
 ## 特性
 
-
 ### 原生
 
 - 充分考虑易用性并针对硬件优化的实现；
@@ -36,75 +35,60 @@ https://user-images.githubusercontent.com/39457738/192722537-6ab035a5-2789-43d0-
 
 ## 模块列表
 
-| 模块 | 核心库 | 描述 |
-| --- | :---: | --- |
-| `runtime` | - | 核心模块 |
-| `runtime/cgpu` | - | 核心子模块，面向现代 GPU 平台的跨平台 Graphics API |
-| `runtime/sugoi` | - | 核心子模块，真正面向数据驱动编程的 ECS 对象模型 |
-| `runtime/math` | [RealtimeMath] | 核心子模块, 数学库 |
-| `runtime/io` | - | 核心子模块，同步/异步 I/O 服务 |
-| `runtime/task` | [FiberTaskingLib], [marl] | 核心子模块，基于协程的计算密集任务系统 |
-| `runtime/binary` | - | 核心子模块, 二进制序列化 |
-| `runtime/platform` | - | 核心子模块, 系统接口 |
-| `runtime/resource` | - | 核心子模块, 异步资源管理 |
-| `runtime/type` | - | 核心子模块, 提供 rtti 相关功能 |
-| `runtime/lua` | [lua], [luau] | 核心子模块，使用 lua 作为胶水语言 |
-| `SkrScene` | - | 场景模块，场景资源管理 |
-| `SkrRenderer` | - | 渲染器模块，渲染资源管理，驱动渲染管线 |
-| `SkrImgui` | [imgui] | 用于调试的运行时UI |
-| `SkrRenderGraph` | - | 基于 CGPU 的 Render Graph |
-| `SkrLive2d` | [live2d] | Live2d 的渲染后端 |
-| `SkrInputSystem` | [gaininput] | 输入的上层封装 |
-| `SkrAnim` | [ozz-animation] | 动画资源管理，动画计算的基础功能 |
-| `devtime/tweak` | - | 提供轻量的常量热更方案 |
-| `devtime/inspect` | - | 提供运行时的变量状态可视化 |
-| `SkrToolCore` | - | 管理并驱动资源烘焙流程 |
-| `SkrAnimTool` | [ozz-animation] | 导入并烘焙动画相关资源 |
-| `SkrGLTFTool` | [cgltf] | 导入gltf模型并烘焙 |
-| `SkrTextureCompiler` | [ISPCTextureCompressor] | 导入并烘焙贴图 |
-| `SkrShaderCompiler` | - | 导入并烘焙材质相关资源 |
-| `codegen` | [libtooling], [mako-template] | 提供代码生成 |
-
-[RealtimeMath]: https://github.com/nfrechette/rtm
-[imgui]: https://github.com/ocornut/imgui
-[live2d]: https://www.live2d.com/en/
-[gaininput]: https://github.com/jkuhlmann/gainput
-[ozz-animation]: https://github.com/guillaumeblanc/ozz-animation
-[cgltf]: https://github.com/jkuhlmann/cgltf
-[ISPCTextureCompressor]: https://github.com/GameTechDev/ISPCTextureCompressor
-[libtooling]: https://clang.llvm.org/docs/LibTooling.html
-[mako-template]: https://www.makotemplates.org/
-[FiberTaskingLib]: https://github.com/RichieSams/FiberTaskingLib
-[marl]: https://github.com/google/marl
-[lua]: https://github.com/lua/lua
-[luau]: https://luau-lang.org/
+| 模块                   |                          核心库                          | 描述                                               |
+| ---------------------- | :------------------------------------------------------: | -------------------------------------------------- |
+| `runtime`            |                            -                            | 核心模块                                           |
+| `runtime/cgpu`       |                            -                            | 核心子模块，面向现代 GPU 平台的跨平台 Graphics API |
+| `runtime/sugoi`      |                            -                            | 核心子模块，真正面向数据驱动编程的 ECS 对象模型    |
+| `runtime/math`       |               [RealtimeMath][RealtimeMath]               | 核心子模块, 数学库                                 |
+| `runtime/io`         |                            -                            | 核心子模块，同步/异步 I/O 服务                     |
+| `runtime/task`       |     [FiberTaskingLib][FiberTaskingLib], [marl][marl]     | 核心子模块，基于协程的计算密集任务系统             |
+| `runtime/binary`     |                            -                            | 核心子模块, 二进制序列化                           |
+| `runtime/platform`   |                            -                            | 核心子模块, 系统接口                               |
+| `runtime/resource`   |                            -                            | 核心子模块, 异步资源管理                           |
+| `runtime/type`       |                            -                            | 核心子模块, 提供 rtti 相关功能                     |
+| `runtime/lua`        |                 [lua][lua], [luau][luau]                 | 核心子模块，使用 lua 作为胶水语言                  |
+| `SkrScene`           |                            -                            | 场景模块，场景资源管理                             |
+| `SkrRenderer`        |                            -                            | 渲染器模块，渲染资源管理，驱动渲染管线             |
+| `SkrImgui`           |                      [imgui][imgui]                      | 用于调试的运行时UI                                 |
+| `SkrRenderGraph`     |                            -                            | 基于 CGPU 的 Render Graph                          |
+| `SkrLive2d`          |                     [live2d][live2d]                     | Live2d 的渲染后端                                  |
+| `SkrInputSystem`     |                  [gaininput][gaininput]                  | 输入的上层封装                                     |
+| `SkrAnim`            |              [ozz-animation][ozz-animation]              | 动画资源管理，动画计算的基础功能                   |
+| `devtime/tweak`      |                            -                            | 提供轻量的常量热更方案                             |
+| `devtime/inspect`    |                            -                            | 提供运行时的变量状态可视化                         |
+| `SkrToolCore`        |                            -                            | 管理并驱动资源烘焙流程                             |
+| `SkrAnimTool`        |              [ozz-animation][ozz-animation]              | 导入并烘焙动画相关资源                             |
+| `SkrGLTFTool`        |                      [cgltf][cgltf]                      | 导入gltf模型并烘焙                                 |
+| `SkrTextureCompiler` |      [ISPCTextureCompressor][ISPCTextureCompressor]      | 导入并烘焙贴图                                     |
+| `SkrShaderCompiler`  |                            -                            | 导入并烘焙材质相关资源                             |
+| `codegen`            | [libtooling][libtooling], [mako-template][mako-template] | 提供代码生成                                       |
 
 ## 组件支持矩阵
 
 ### [构建](https://github.com/SakuraEngine/Sakura.Runtime/actions)
 
-| Platform                                                     | CI(Dev)                                                      | 
-| ------------------------------------------------------------ | ------------------------------------------------------------ | 
-| <img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/Windows.png" height="20" /> windows | [![windows-build](https://github.com/SakuraEngine/SakuraEngine/actions/workflows/ci-windows.yml/badge.svg)](https://github.com/SakuraEngine/SakuraEngine/actions/workflows/ci-windows.yml) |
-| <img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/MacOS.png" height="20" /> apple-clang | [![macos-build](https://github.com/SakuraEngine/SakuraEngine/actions/workflows/ci-macos.yml/badge.svg)](https://github.com/SakuraEngine/SakuraEngine/actions/workflows/ci-macos.yml) |
+| Platform                                                                                                                                        | CI(Dev)                                                                                                                                                                               |
+| ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/Windows.png" height="20" />` windows   | [![windows-build](https://github.com/SakuraEngine/SakuraEngine/actions/workflows/ci-windows.yml/badge.svg)](https://github.com/SakuraEngine/SakuraEngine/actions/workflows/ci-windows.yml) |
+| `<img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/MacOS.png" height="20" />` apple-clang | [![macos-build](https://github.com/SakuraEngine/SakuraEngine/actions/workflows/ci-macos.yml/badge.svg)](https://github.com/SakuraEngine/SakuraEngine/actions/workflows/ci-macos.yml)       |
 
 ### [CGPU](include/cgpu/README.md)
 
-| Platform | <img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/DirectX12U.png" height="18" /> D3D12 | <img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/DirectX11.png" height="18" />D3D11 | <img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/Vulkan.png" height="18" />Vulkan |<img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/Metal.png" height="18" />Metal |
-|----------|:-----:|:-----:|:------:|:-----:|
-| <img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/Windows.png" height="20" /> Windows |:heavy_check_mark: | :x: | :heavy_check_mark: | N/A |
-| <img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/MacOS.png" height="20" /> macOS | N/A | N/A | :heavy_check_mark: | :heavy_exclamation_mark: |
+| Platform                                                                                                                                      | `<img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/DirectX12U.png" height="18" />` D3D12 | `<img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/DirectX11.png" height="18" />`D3D11 | `<img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/Vulkan.png" height="18" />`Vulkan | `<img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/Metal.png" height="18" />`Metal |
+| --------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------------------------------------: |
+| `<img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/Windows.png" height="20" />` Windows |                                                                      ✔️                                                                      |                                                                      ❌                                                                      |                                                                    ✔️                                                                    |                                                                   N/A                                                                   |
+| `<img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/MacOS.png" height="20" />` macOS     |                                                                      N/A                                                                      |                                                                     N/A                                                                     |                                                                    ✔️                                                                    |                                                                   ❗️                                                                   |
 
 ### [ImageCoder](https://github.com/SakuraEngine/Sakura.Runtime/tree/main/modules/image_coder)
 
-| Platform                                                     | PNG             | JPEG                     | BMP                      | ICO                      | EXR                      | TGA                      |
-| ------------------------------------------------------------ | --------------- | ------------------------ | ------------------------ | ------------------------ | ------------------------ | ------------------------ |
-| <img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/Windows.png" height="20" /> Windows | libpng(v1.5.2)  | libjpeg-turbo | :heavy_exclamation_mark: | :heavy_exclamation_mark: | :heavy_exclamation_mark: | :heavy_exclamation_mark: |
-| <img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/MacOS.png" height="20" /> macOS | libpng(v1.5.27) | libjpeg-turbo | :heavy_exclamation_mark: | :heavy_exclamation_mark: | :heavy_exclamation_mark: | :heavy_exclamation_mark: |
-
-
+| Platform                                                                                                                                      | PNG             | JPEG          | BMP  | ICO  | EXR  | TGA  |
+| --------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | ------------- | ---- | ---- | ---- | ---- |
+| `<img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/Windows.png" height="20" />` Windows | libpng(v1.5.2)  | libjpeg-turbo | ❗️ | ❗️ | ❗️ | ❗️ |
+| `<img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/MacOS.png" height="20" />` macOS     | libpng(v1.5.27) | libjpeg-turbo | ❗️ | ❗️ | ❗️ | ❗️ |
 
 ## 示例 (从上到下逐渐贴近底层)
+
 ### [Multi-Player Server/Game](samples/application/multiplayer)
 
 基于 ECS 的多人游戏以及服务器。
@@ -115,8 +99,8 @@ https://user-images.githubusercontent.com/39457738/232537408-1266011b-d722-4b0b-
 
 </div>
 
-
 ### [Next Generation Graphics](samples/cgpu/cgpu-statebuffer)
+
 使用 StateBuffer 的次世代 CGPU 图形接口。摒弃 PSO 的概念，使用 StateBuffer 作为图形管线的状态描述。传统的图形管线 API 往往使用 PSO，其中打包了所有的管线状态以及着色器 ISA，并整体上传到 GPU 上：
 
 <div align=center>
@@ -145,7 +129,6 @@ GUI 的渲染树 (RenderTree) 层，有排版和渲染 Render Object 的功能�
 
 ![RObjects](https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/showcase/RObjects.gif)
 
-
 ### [Live2D Viewer](samples/application/live2d-viewer)
 
 集成 Cubism Native SDK 且使用 Render Graph 进行 Live2D 模型高效绘制的程序示例。
@@ -172,6 +155,7 @@ Live2D 模型复合了多种源数据类型，所有数据类型异步地加载�
 Shipping Build 的最终呈现帧数可以轻松地突破数千帧，这是 Cubism 官方示例基准的十数倍。
 
 ### [RenderGraph Deferred](samples/render_graph/rg-deferred)
+
 这个 demo 展示了如何使用 RenderGraph 进行 Deferred 渲染，其中光照计算的部分有 ComputeShdaer 和 PixelShader 两种实现。实际的光照着色效果尚未在 demo 中完成，重点在于验证延迟流程的可行性。这个 demo 同样展示了如何使用自定义 Profiler 对 RenderGraph 的执行细节进行 Profile。
 
 <div align=center>
@@ -180,12 +164,12 @@ Shipping Build 的最终呈现帧数可以轻松地突破数千帧，这是 Cubi
 
 </div>
 
-
 ### [RenderGraph Triangle](samples/render_graph/rg-triangle)
+
 这个 demo 展示了如何使用 RenderGraph 进行三角形渲染。
 
-
 ### [纹理](samples/cgpu-texture)
+
 这个 demo 演示了如何在 CGPU 中使用纹理采样，demo 也演示了怎么在 CGPU 中启用 Static/Immutable Samplers。
 
 <div align=center>
@@ -201,6 +185,7 @@ Shipping Build 的最终呈现帧数可以轻松地突破数千帧，这是 Cubi
 ### [热更三角形](samples/hot-triangle)
 
 这是一个多后端的三角形绘制 demo。
+
 - 每个后端会拉起一个窗口, 并在一个独立的线程上绘制它；
 - drawcall 录制的逻辑可以运行在 host 程序或者 wasm 虚拟机后端中, host 程序和 wasm ‘脚本’共享[同一份C代码](samples/hot-triangle/triangle_module.wa.c)；
 - 实现了一个简单的 [filewatcher](samples/hot-triangle/hot_wasm.cpp)，自动对 drawcall 脚本进行变更检查，调用 SDK 编译 wasm，并基于产出物应用热修复。
@@ -212,11 +197,13 @@ Shipping Build 的最终呈现帧数可以轻松地突破数千帧，这是 Cubi
 </div>
 
 ## 核心组件
+
 - platform
 - math
 - cgpu: [[api]](include/cgpu/api.h) [[design]](include/cgpu/README.md)
 
 ## 嵌入源码的开源库和版本
+
 - constexpr-xxh3 aebcee7 (BSD 2-Clause License)
 - [lru-cache](https://github.com/goldsborough/lru-cache) 13f30ad MIT
 - sole 1.0.1 (zlib License)
@@ -237,6 +224,7 @@ Shipping Build 的最终呈现帧数可以轻松地突破数千帧，这是 Cubi
 - [TSCNS](https://github.com/MengRao/tscns) v2.0 (MIT)
 
 ## 在自定义包管理引入的开源库和版本
+
 - LEMON v1.3.1 (Boost Software License)
 - LMDB v0.9.29 (BSD)
 - zlib v1.2.8
@@ -249,23 +237,29 @@ Shipping Build 的最终呈现帧数可以轻松地突破数千帧，这是 Cubi
 - doctest v2.4.11
 
 ## 参考和借鉴的开源库
+
 - [quill](https://github.com/odygrd/quill) v3.0.2 (MIT)
 
 ## 接入的扩展 API 以及版本
-- [vulkan headers](https://github.com/KhronosGroup/Vulkan-Headers) & volk 1.3.250.0
+
+- [vulkan headers](https://github.com/KhronosGroup/Vulkan-Headers) & volk 1.4.304.0
 - nvapi R510
 - amd_ags 6.0.1
 
 ## 内置 SDK /软件版本
+
 - ispc 1.18.0
 - python 3.10.8
 
 ## 构建
+
 ### 前置
+
 - xmake
 - 初始化 LFS
 
 ### 编译
+
 使用以下命令编译
 
 ```
@@ -275,10 +269,26 @@ Shipping Build 的最终呈现帧数可以轻松地突破数千帧，这是 Cubi
 ```
 
 Tips：
+
 - 默认构建只包含模块。要构建工具或例子，需要在 xmake f 时加上 --build_cgpu_samples=true 等参数 (详见 xmake/options.lua);
 - 目前版本构建中途失败可能产生 codegen 中断或是不全的问题，可以删除 `/build` 和 `.xmake` 文件夹后重试。如进一步出现问题，请务必上报 issues 😀
 - 上报 issue 时尽量提供 `xmake f -m debug -c -v` 在中断处的详细输出;
 - 当出现 xrepo 安装失败问题（例如 LFS 没有初始化造成错误的库文件安装）时，可用 `xrepo remove --all -y` 清理错误安装的仓库后再重新构建。
 
 ## 编辑环境
+
 推荐使用 vscode + clangd 作为编辑环境，使用命令 `xmake project -k compile_commands` 来生成 clangd 需要的数据集
+
+[RealtimeMath]: https://github.com/nfrechette/rtm
+[imgui]: https://github.com/ocornut/imgui
+[live2d]: https://www.live2d.com/en/
+[gaininput]: https://github.com/jkuhlmann/gainput
+[ozz-animation]: https://github.com/guillaumeblanc/ozz-animation
+[cgltf]: https://github.com/jkuhlmann/cgltf
+[ISPCTextureCompressor]: https://github.com/GameTechDev/ISPCTextureCompressor
+[libtooling]: https://clang.llvm.org/docs/LibTooling.html
+[mako-template]: https://www.makotemplates.org/
+[FiberTaskingLib]: https://github.com/RichieSams/FiberTaskingLib
+[marl]: https://github.com/google/marl
+[lua]: https://github.com/lua/lua
+[luau]: https://luau-lang.org/

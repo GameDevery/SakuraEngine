@@ -13,8 +13,13 @@
 ]]
 rule("c++.codegen.generators")
     after_load(function (target, opt)
-        import("codegen")
-        codegen.solve_generators(target)
+        import("skr.analyze")
+        if not analyze.in_analyze_phase() then
+            import("skr.codegen")
+            if codegen.is_env_complete() then
+                codegen.solve_generators(target)
+            end
+        end
     end)
 rule_end()
 
@@ -39,7 +44,7 @@ rule("c++.codegen.meta")
     set_extensions(".h", ".hpp")
     before_build(function (proxy_target, opt)
         import("core.project.project")
-        import("codegen")
+        import("skr.codegen")
         local sourcebatches = proxy_target:sourcebatches()
         if sourcebatches then
             local owner_name = proxy_target:data("c++.codegen.owner")
@@ -56,7 +61,7 @@ rule_end()
 rule("c++.codegen.mako")
     before_build(function (proxy_target, opt)
         import("core.project.project")
-        import("codegen")
+        import("skr.codegen")
         -- render mako templates
         local owner_name = proxy_target:data("mako.owner")
         local owner = project.target(owner_name)
@@ -66,9 +71,12 @@ rule_end()
 
 rule("c++.codegen.load")
     on_load(function (target, opt)
+        import("skr.analyze")
+        import("skr.utils")
+
         if xmake.argv()[1] ~= "analyze_project" then
             -- config
-            local codegen_dir = path.join(target:autogendir({root = true}), target:plat(), "codegen")
+            local codegen_dir = path.join(utils.skr_codegen_dir(target:name()), "codegen")
             local source_file = path.join(codegen_dir, target:name(), "/generated.cpp")
 
             -- check generated files
@@ -83,12 +91,11 @@ rule("c++.codegen.load")
             target:add("includedirs", codegen_dir, {public = true})
 
             -- add deps
-            local tbl_path = "build/.gens/module_infos/"..target:name()..".table"
-            if os.exists(tbl_path) then
-                local tbl = io.load(tbl_path)
-                local codegen_deps = tbl["Codegen.Deps"]
+            local analyze_tbl = analyze.load(target:name())
+            if analyze_tbl then
+                local codegen_deps = analyze_tbl["Codegen.Deps"]
                 for _, codegen_dep in ipairs(codegen_deps) do
-                    target:add("deps", dep, { public = false })
+                    target:add("deps", codegen_dep, { public = false })
                 end
             end
         end
@@ -96,59 +103,14 @@ rule("c++.codegen.load")
 rule_end()
 
 analyzer_target("Codegen.Deps")
-    analyze(function(target, attributes, analyzing)
+    analyze(function(target, attributes, analyze_ctx)
         local codegen_deps = {}
-        local idx = 1
         for __, dep in ipairs(target:orderdeps()) do
-            local dep_attrs = analyzing.query_attributes(dep:name())
+            local dep_attrs = analyze_ctx.query_attributes(dep:name())
             if table.contains(dep_attrs, "Codegen.Owner") then
-                codegen_deps[idx] = dep:name()..".Codegen"
-                idx = idx + 1
+                table.insert(codegen_deps, dep:name()..".Mako")
             end
         end
         return codegen_deps
     end)
 analyzer_target_end()
-
-function codegen_component(owner, opt)
-    target(owner)
-        add_rules("c++.codegen.load")
-        analyzer_attribute("Codegen.Owner")
-        add_deps(owner..".Mako", { public = opt and opt.public or true })
-        add_values("c++.codegen.api", opt.api or target:name():upper())
-    target_end()
-
-    target(owner..".Mako")
-        set_group("01.modules/"..owner.."/codegen")
-        set_kind("headeronly")
-        add_rules("c++.codegen.mako")
-        add_rules("sakura.derived_target", { owner_name = owner })
-        analyzer_ignore()
-        set_policy("build.fence", true)
-        add_deps(owner..".Meta", { public = true })
-        on_load(function (target)
-            target:data_set("mako.owner", owner)
-        end)
-
-    -- must be declared at the end of this helper function
-    target(owner..".Meta")
-        set_group("01.modules/"..owner.."/codegen")
-        set_kind("headeronly")
-        add_rules("c++.codegen.meta")
-        add_rules("sakura.derived_target", { owner_name = owner })
-        analyzer_ignore()
-        set_policy("build.fence", true)
-        on_load(function (target)
-            target:data_set("c++.codegen.owner", owner)
-            if opt and opt.rootdir then
-                opt.rootdir = path.absolute(path.join(target:scriptdir(), opt.rootdir))
-            end
-            target:data_set("meta.rootdir", opt.rootdir)
-            -- TODO: add deps to depended meta targets
-            -- ...
-        end)
-end
-
-function codegen_generator(opt)
-    add_rules("c++.codegen.generators", opt)
-end

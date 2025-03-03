@@ -3,16 +3,25 @@ import("core.base.task")
 import("core.base.global")
 import("core.project.config")
 import("core.project.project")
-import("core.project.depend")
 import("core.platform.platform")
 import("core.base.json")
-import("find_sdk")
+import("skr.utils")
 
--- TODO. 根据依赖链拼接参数
+-- TODO. proxy target 创建的 debug 任务需要 custom cwd
+-- TODO. 为 proxy target 提供一个工具来复用现有 target 的参数 (natvis/pre_cmds/post_cmds)
+-- TODO. compounds launch
+-- TODO. 过滤 disabled target
+
+-- FIXME. FUCK XMAKE
+-- load config
+utils.load_config()
+
+-- global info
+local _engine_dir = utils.get_env("engine_dir")
 
 -- programs
-local _python = find_sdk.find_embed_python() or find_sdk.find_program("python3")
-local _merge_natvis_script_path = path.join(os.projectdir(), "tools/merge_natvis/merge_natvis.py")
+local _python = utils.find_python()
+local _merge_natvis_script_path = path.join(_engine_dir, "tools/merge_natvis/merge_natvis.py")
 
 -- tools
 function _normalize_cmd_name(cmd_name)
@@ -40,32 +49,41 @@ function _load_launches_from_proxy_target(target, build_dir)
         local proxy_results = {}
         proxy_func(target, proxy_results)
     
-        -- check required fields
-        if not proxy_result.cmd_name then
-            raise(target:name()..": proxy_result.cmd_name is required!")
-        end
-        if not proxy_result.program then
-            raise(target:name()..": proxy_result.program is required!")
-        end
-
-        -- check proxy result fields
-        for k, v in pairs(proxy_result) do
-            if not _proxy_launch_fields[k] then
-                raise(target:name()..": proxy_result."..k.." is invalid!")
+        local result = {}
+        for _, proxy_result in ipairs(proxy_results) do            
+            -- check required fields
+            if not proxy_result.cmd_name then
+                raise(target:name()..": proxy_result.cmd_name is required!")
             end
+            if not proxy_result.program then
+                raise(target:name()..": proxy_result.program is required!")
+            end
+
+            -- check proxy result fields
+            for k, v in pairs(proxy_result) do
+                if not _proxy_launch_fields[k] then
+                    raise(target:name()..": proxy_result."..k.." is invalid!")
+                end
+            end
+
+            table.insert(result, {
+                label = proxy_result.label and proxy_result.label or proxy_result.cmd_name,
+                cmd_name = proxy_result.cmd_name,
+                program = proxy_result.program,
+                args = proxy_result.args or {},
+                envs = proxy_result.envs or {},
+                cwd = build_dir,
+                pre_cmds = proxy_result.pre_cmds or {},
+                post_cmds = proxy_result.post_cmds or {},
+                natvis_files = proxy_result.natvis_files or {},
+            })
         end
         
-        return {
-            label = proxy_results.label and proxy_results.label or proxy_results.cmd_name,
-            cmd_name = proxy_results.cmd_name,
-            program = proxy_results.program,
-            args = proxy_results.args or {},
-            envs = proxy_results.envs or {},
-            cwd = build_dir,
-            pre_cmds = proxy_results.pre_cmds or {},
-            post_cmds = proxy_results.post_cmds or {},
-            natvis_files = proxy_results.natvis_files or {},
-        }
+        if #result > 0 then
+            return result
+        else
+            return nil
+        end
     else
         return nil
     end
@@ -130,7 +148,7 @@ function _load_launch_from_binary_target(target, build_dir)
         return {
             label = target:name(),
             cmd_name = target:name(),
-            program = path.join(build_dir, target:name()..".exe"),
+            program = path.join(build_dir, target:name()..(os.is_host("windows") and ".exe" or "")),
             args = args,
             envs = envs,
             cwd = build_dir,
@@ -144,20 +162,22 @@ function _load_launch_from_binary_target(target, build_dir)
 end
 
 -- generate tasks
-local _task_cmd_dir = "build/.skr/vsc_dbg/"
+local _task_cmd_dir = path.join(utils.skr_build_artifact_dir(), "vsc_dbg")
 -- @return: file name
 function _generate_cmd_file(cmds, cmd_name)
     if cmds and #cmds > 0 then
         -- combines cmd str
         local cmd_str = ""
-        local check_result = "IF %ERRORLEVEL% NEQ 0 (exit %ERRORLEVEL%)"
+        local check_result = os.is_host("windows")
+                             and "IF %ERRORLEVEL% NEQ 0 (exit %ERRORLEVEL%)"
+                             or "if [ $? == 0 ]; then exit $?; fi"
         for _, cmd in ipairs(cmds) do
             cmd_str = cmd_str..cmd.."\n"..check_result.."\n"
         end
 
         -- write cmd file
         local cmd_name = _normalize_cmd_name(cmd_name)
-        local cmd_file_name = path.join(_task_cmd_dir, cmd_name..".bat")
+        local cmd_file_name = path.join(_task_cmd_dir, cmd_name..(os.host() == "windows" and ".bat" or ".sh"))
         if #cmd_str > 0 then
             os.rm(cmd_file_name)
             io.writefile(cmd_file_name, cmd_str)
@@ -174,7 +194,9 @@ function _combine_task_json(cmds, cmd_name)
         return {
             label = cmd_name,
             type = "shell",
-            command = cmd_file_name,
+            command = os.is_host("windows")
+                      and cmd_file_name
+                      or "chmod u+x "..cmd_file_name.." && "..cmd_file_name,
             options = {
                 cwd = "${workspaceFolder}",
             },
@@ -211,7 +233,7 @@ function _generate_natvis_files(natvis_files, cmd_name)
         end
 
         -- run command
-        local out, err = os.iorunv(_python.program, command)
+        local out, err = os.iorunv(_python, command)
 
         -- dump output
         if option.get("verbose") then
@@ -236,7 +258,7 @@ function _combine_launch_json(launch_data, pre_task_json, post_task_json)
     local natvis_file_name = _generate_natvis_files(launch_data.natvis_files, launch_data.cmd_name)
     return {
         name = "▶️"..launch_data.label,
-        type = "cppvsdbg",
+        type = os.is_host("windows") and "cppvsdbg" or "lldb",
         request = "launch",
         program = launch_data.program,
         args = json.mark_as_array(launch_data.args),
@@ -247,6 +269,7 @@ function _combine_launch_json(launch_data, pre_task_json, post_task_json)
         visualizerFile = path.join("${workspaceFolder}", natvis_file_name),
         preLaunchTask = pre_task_json and pre_task_json.label or nil,
         postLaunchTask = post_task_json and post_task_json.label or nil,
+        autoAttachChildProcess = true,
     }
 end
 function _append_launches_and_tasks(launch_data, out_launches_json, out_tasks_json)
@@ -262,10 +285,19 @@ function _append_launches_and_tasks(launch_data, out_launches_json, out_tasks_js
         table.insert(out_tasks_json, post_task_json)
     end
 end
+-- @return: attach launch object
+function _combine_attach_launch_json()
+    -- TODO. natvis files
+    return {
+        name = "🔍Attach",
+        type = "cppvsdbg",
+        request = "attach",
+        processId = "${command:pickProcess}",
+        -- visualizerFile = path.join("${workspaceFolder}", natvis_file_name),
+    }
+end
 
 function main()
-    -- load config
-    config.load("build/.gens/analyze.conf")
     -- load targets
     project.load_targets()
 
@@ -282,10 +314,19 @@ function main()
     local launches_data = {}
     do
         function _add_target(target)
-            local proxy_launch_data = _load_launches_from_proxy_target(target, build_dir)
+            if not target:is_default() then
+                if option.get("verbose") then
+                    cprint("${yellow}skip disabled target [%s]${clear}", target:name())
+                end
+                return
+            end
+
+            local proxy_launches_data = _load_launches_from_proxy_target(target, build_dir)
             local binary_launch_data = _load_launch_from_binary_target(target, build_dir)
-            if proxy_launch_data then
-                table.insert(launches_data, proxy_launch_data)
+            if proxy_launches_data then
+                for _, data in ipairs(proxy_launches_data) do
+                    table.insert(launches_data, data)
+                end
             elseif binary_launch_data then
                 table.insert(launches_data, binary_launch_data)
             end
@@ -313,6 +354,9 @@ function main()
     for _, launch_data in ipairs(launches_data) do
         _append_launches_and_tasks(launch_data, launches_json, tasks_json)
     end
+
+    -- append attach launch
+    table.insert(launches_json, _combine_attach_launch_json())
 
     -- save launches and tasks
     -- save debug configurations

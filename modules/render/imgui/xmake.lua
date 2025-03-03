@@ -4,9 +4,9 @@ else
     add_requires("imgui >=1.89.0-skr", { configs = { runtime_shared = true } })
 end
 
-shared_module("SkrImGui", "SKR_IMGUI", engine_version)
-    public_dependency("SkrInput", engine_version)
-    public_dependency("SkrRenderGraph", engine_version)
+shared_module("SkrImGui", "SKR_IMGUI")
+    public_dependency("SkrInput")
+    public_dependency("SkrRenderGraph")
     add_packages("imgui", {public=true})
     add_rules("c++.unity_build", {batchsize = default_unity_batch})
     add_includedirs("include", {public=true})
@@ -17,7 +17,10 @@ shared_module("SkrImGui", "SKR_IMGUI", engine_version)
         spv_outdir = "/../resources/shaders", 
         dxil_outdir = "/../resources/shaders"})
     add_files("shaders/*.hlsl")
-    after_build(function(target)
-        local imgui_fontdir = path.join(os.projectdir(), "SDKs/SourceSansPro-Regular.ttf")
-        os.cp(imgui_fontdir, path.join(target:targetdir(), "../resources/font").."/")
-    end)
+
+    skr_install_rule()
+    skr_install("download", {
+        name = "SourceSansPro-Regular.ttf",
+        install_func = "file",
+        out_dir = "resources/font"
+    })

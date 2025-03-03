@@ -8,6 +8,7 @@
 #include <string>
 #include <charconv>
 #include "SkrBase/memory.hpp"
+#include "SkrBase/misc/fast_float.h"
 
 namespace skr::container
 {
@@ -1151,7 +1152,7 @@ inline U8StringView<TS>::ParseResult<double> U8StringView<TS>::parse_float() con
 
     // parse
     double result;
-    auto   err = std::from_chars(start, end, result);
+    auto   err = fast_float::from_chars(start, end, result);
 
     // process error
     if (err.ec == std::errc{})

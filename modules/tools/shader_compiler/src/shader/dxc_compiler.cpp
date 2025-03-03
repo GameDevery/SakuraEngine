@@ -400,7 +400,7 @@ ICompiledShader* SDXCCompiler::Compile(ECGPUShaderBytecodeType format, const Sha
     const auto wTargetString = utf8_to_utf16(importer.target);
     const auto wEntryString = utf8_to_utf16(importer.entry);
     const auto wNameString = utf8_to_utf16(source.source_name);
-    const auto shader_stage = getShaderStageFromTargetString(importer.target.c_str());
+    const auto shader_stage = getShaderStageFromTargetString(importer.target.c_str_raw());
     skr::Vector<skr::stl_wstring> allArgs;
     allArgs.add(wNameString.c_str());
     if (format == CGPU_SHADER_BYTECODE_TYPE_DXIL)
@@ -491,9 +491,9 @@ void SDXCLibrary::LoadDXCLibrary() SKR_NOEXCEPT
     skr::String filename = u8"";
     auto dxcInstance = SDXCLibrary::Get();
     auto& dxc_library = dxcInstance->dxc_library;
-    filename.append(skr::SharedLibrary::GetPlatformFilePrefixName())
-            .append(u8"dxcompiler")
-            .append(skr::SharedLibrary::GetPlatformFileExtensionName());
+    filename.append(skr::SharedLibrary::GetPlatformFilePrefixName());
+    filename.append(u8"dxcompiler");
+    filename.append(skr::SharedLibrary::GetPlatformFileExtensionName());
     if (auto result = dxc_library.load(filename.u8_str()));
     else
     {
@@ -523,9 +523,9 @@ void SDXCLibrary::LoadDXILLibrary() SKR_NOEXCEPT
 {
     skr::String filename;
     auto dxcInstance = SDXCLibrary::Get();
-    filename.append(skr::SharedLibrary::GetPlatformFilePrefixName())
-            .append(u8"dxil")
-            .append(skr::SharedLibrary::GetPlatformFileExtensionName());
+    filename.append(skr::SharedLibrary::GetPlatformFilePrefixName());
+    filename.append(u8"dxil");
+    filename.append(skr::SharedLibrary::GetPlatformFileExtensionName());
     if (auto result = dxcInstance->dxil_library.load(filename.u8_str()));
     else
     {

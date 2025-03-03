@@ -47,10 +47,10 @@ rule("sakura.pcxxheader")
         target:data_set("pch_owner_flags", pch_owner_flags)
     end)
     before_build(function(target, opt)
-        import("core.project.depend")
         import("core.project.project")
         import("core.language.language")
         import("private.action.build.object")
+        import("skr.utils")
 
         -- clone buildtarget
         local buildtarget_name = target:extraconf("rules", "sakura.pcxxheader", "buildtarget")
@@ -76,7 +76,7 @@ rule("sakura.pcxxheader")
 
         -- generate proxy header
         local header_to_compile = target:data("header_to_compile")
-        depend.on_changed(function ()
+        utils.on_changed(function (change_info)
             local include_content = ""
             for _, pchfile in pairs(pchfiles) do
                 include_content = include_content .. "#include \"" .. path.absolute(pchfile):gsub("\\", "/") .. "\"\n"
@@ -91,7 +91,10 @@ rule("sakura.pcxxheader")
 %s
 #endif // __cplusplus
             ]]):format(include_content))
-        end, {dependfile = target:dependfile(target:name()..".sakura.pch"), files = pchfiles})
+        end, {
+            cache_file = utils.depend_file_target(buildtarget:name(), "sakura.pch"),
+            files = pchfiles,
+        })
 
         -- build pch
         local pcoutputfile = target:data("pcoutputfile")
@@ -112,45 +115,32 @@ rule("sakura.pcxxheader")
             end
         end
     end)
+    on_clean(function (target)
+        import("skr.utils")
+        import("core.project.project")
+
+        local buildtarget_name = target:extraconf("rules", "sakura.pcxxheader", "buildtarget")
+        local buildtarget = project.target(buildtarget_name)
+        os.rm(utils.depend_file_target(buildtarget:name(), "sakura.pch"))
+    end)
 rule_end()
 
-function pch_target(owner_name, pch_target_name)
-    target(pch_target_name)
-        set_group("01.modules/"..owner_name.."/components")
-        set_policy("build.fence", true)
-        -- temporaly close the exception for pch target
-        set_exceptions("no-cxx")
-        analyzer_attribute("PCH")
-        analyzer_ignore()
-end
 
 ------------------------------------PRIVATE PCH------------------------------------
 
-function private_pch(owner_name)
-    target(owner_name)
-        add_deps(owner_name..".PrivatePCH", {inherit = false})
-        analyzer_attribute("PrivatePCH.Owner")
-    target_end()
 
-    pch_target(owner_name, owner_name..".PrivatePCH")
-        -- private pch generate pch file and inject it to owner
-        set_kind("headeronly")
-        analyzer_attribute("PrivatePCH")
-        add_rules("sakura.pcxxheader", { buildtarget = owner_name, shared = false })
-        add_rules("sakura.derived_target", { owner_name = owner_name })
-end
 
 ------------------------------------SHARED PCH------------------------------------
 
 analyzer_target("SharedPCH.Score")
-    analyze(function(target, attributes, analyzing)
+    analyze(function(target, attributes, analyze_ctx)
         if not table.contains(attributes, "SharedPCH.Owner") then
             return 0
         end
 
         local score = 1
         for __, dep in pairs(target:deps()) do
-            local dep_attrs = analyzing.query_attributes(dep:name())
+            local dep_attrs = analyze_ctx.query_attributes(dep:name())
             if table.contains(dep_attrs, "SharedPCH.Owner") then
                 score = score + 1
             end
@@ -162,7 +152,7 @@ analyzer_target_end()
 
 analyzer_target("SharedPCH.ShareFrom")
     add_deps("__Analyzer.SharedPCH.Score", { order = true })
-    analyze(function(target, attributes, analyzing)
+    analyze(function(target, attributes, analyze_ctx)
         local share_from = ""
         local has_private_pch = table.contains(attributes, "PrivatePCH.Owner")
         if not has_private_pch then
@@ -195,27 +185,14 @@ analyzer_target("SharedPCH.ShareFrom")
     end)
 analyzer_target_end()
 
-function shared_pch(owner_name)
-    target(owner_name)
-        analyzer_attribute("SharedPCH.Owner")
-    target_end()
-
-    pch_target(owner_name, owner_name..".SharedPCH")
-        -- shared pch generate pch/obj file and link them to others
-        set_kind("object") 
-        add_rules("sakura.pcxxheader", { buildtarget = owner_name..".SharedPCH", shared = true })
-        add_deps(owner_name)
-        analyzer_attribute("SharedPCH")
-        add_rules("sakura.derived_target", { owner_name = owner_name })
-end
-
 rule("PickSharedPCH")
     on_load(function(target)
+        import("skr.analyze")
+
         if xmake.argv()[1] ~= "analyze_project" then
-            local tbl_path = "build/.gens/module_infos/"..target:name()..".table"
-            if os.exists(tbl_path) then
-                local tbl = io.load(tbl_path)
-                local share_from = tbl["SharedPCH.ShareFrom"]
+            local analyze_tbl = analyze.load(target:name())
+            if analyze_tbl then
+                local share_from = analyze_tbl["SharedPCH.ShareFrom"]
                 if (share_from ~= "") then
                     target:add("deps", share_from..".SharedPCH", { inherit = false })
                     target:data_set("SharedPCH.ShareFrom", share_from..".SharedPCH")

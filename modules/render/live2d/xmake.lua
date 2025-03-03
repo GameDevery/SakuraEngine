@@ -4,9 +4,16 @@ static_component("CubismFramework", "SkrLive2D", { public = false })
     add_deps("SkrBase")
     add_includedirs("CubismNativeCore/include", "CubismFramework", "CubismFramework/Framework", {public=false})
     add_files("CubismFramework/Renderer/**.cpp", "CubismFramework/Framework/**.cpp")
+    
+    -- add install
+    skr_install_rule()
+    skr_install("download", {
+        name = "CubismNativeCore",
+        install_func = "sdk",
+    })
+    
     -- link to cubism core
     if (is_os("windows")) then 
-        add_linkdirs("CubismNativeCore/lib/windows/x86_64/142", {public=true})
         if (is_mode("asan")) then
             set_runtimes("MD") -- csmiPlatformDependentLogPrint uses freopen
         end
@@ -17,17 +24,16 @@ static_component("CubismFramework", "SkrLive2D", { public = false })
         end
     end
     if (is_os("macosx")) then 
-        add_linkdirs("CubismNativeCore/lib/macos/x86_64", {public=true})
         add_links("Live2DCubismCore", {public=true})
     end
 
 private_pch("CubismFramework")
     add_files("CubismFramework/pch.hpp")
 
-shared_module("SkrLive2D", "SKR_LIVE2D", engine_version)
+shared_module("SkrLive2D", "SKR_LIVE2D")
     add_rules("c++.unity_build", {batchsize = default_unity_batch})
-    public_dependency("SkrImageCoder", engine_version)
-    public_dependency("SkrRenderer", engine_version)
+    public_dependency("SkrImageCoder")
+    public_dependency("SkrRenderer")
     add_includedirs("include", {public=true})
     add_includedirs("CubismNativeCore/include", "CubismFramework", "CubismFramework/Framework", {public=false})
     add_files("src/*.cpp")

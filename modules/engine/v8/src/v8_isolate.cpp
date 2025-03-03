@@ -88,6 +88,7 @@ void V8Isolate::shutdown()
     }
 }
 
+// TODO. 遍历父类结构的绑定，以及重载实现
 void V8Isolate::make_record_template(::skr::rttr::Type* type)
 {
     using namespace ::v8;
@@ -98,154 +99,82 @@ void V8Isolate::make_record_template(::skr::rttr::Type* type)
     // ctor template
     auto ctor_template = FunctionTemplate::New(
         _isolate,
-        +[](const FunctionCallbackInfo<Value>& info) {
-            // get v8 basic info
-            Isolate*       Isolate = info.GetIsolate();
-            Isolate::Scope IsolateScope(Isolate);
-            HandleScope    HandleScope(Isolate);
-            Local<Context> Context = Isolate->GetCurrentContext();
-            Context::Scope ContextScope(Context);
-
-            if (info.IsConstructCall())
-            {
-                // get ctor info
-                Local<Object> self = info.This();
-
-                // get type info
-                Local<External>  data = info.Data().As<External>();
-                skr::rttr::Type* type = reinterpret_cast<skr::rttr::Type*>(data->Value());
-
-                // match ctor
-                for (const auto& ctor_data : type->record_data().ctor_data)
-                {
-                    if (V8BindTools::match_params(ctor_data, info))
-                    {
-                        V8Isolate* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
-
-                        // make bind data
-                        V8RecordBindData* bind_data = SkrNew<V8RecordBindData>();
-                        bind_data->type             = type;
-
-                        // make data memory
-                        bind_data->data = sakura_malloc_aligned(type->size(), type->alignment());
-
-                        // call ctor
-                        V8BindTools::call_ctor(bind_data->data, ctor_data, info, Context, Isolate);
-
-                        // add extern data
-                        self->SetInternalField(0, External::New(Isolate, bind_data));
-
-                        // TODO. add weakref for listen GC event
-
-                        return;
-                    }
-                }
-
-                // no ctor matched
-                Isolate->ThrowError("no ctor matched");
-            }
-            else
-            {
-                Isolate->ThrowError("must be called with new");
-            }
-        },
-        External::New(_isolate, type));
+        _call_ctor,
+        External::New(_isolate, type)
+    );
 
     // setup internal field count
     ctor_template->InstanceTemplate()->SetInternalFieldCount(1);
-
-    auto proto_type_template = ctor_template->PrototypeTemplate();
-
-    // TODO. 收集某个类型的所有方法，生成绑定信息，然后再生成绑定代码, 数据通过 External 传递, 内存管理交给绑定数据
-
-    // bind field
-    // TODO. recursive bind field
-    for (const auto& field : type->record_data().fields)
+    
+    // bind member component
     {
-        proto_type_template->SetAccessor(
-            ::v8::String::NewFromUtf8(_isolate, field.name.c_str()).ToLocalChecked(),
-            +[](Local<::v8::String> property, const PropertyCallbackInfo<Value>& info) {
-                // get data
-                Isolate*          isolate = info.GetIsolate();
-                Local<Context>    context = isolate->GetCurrentContext();
-                Local<Object>     self    = info.This();
-                Local<External>   wrap    = Local<External>::Cast(self->GetInternalField(0));
-                V8RecordBindData* data    = reinterpret_cast<V8RecordBindData*>(wrap->Value());
+        // bind method
+        for (auto* method: type->record_data().methods)
+        {
+            ctor_template->PrototypeTemplate()->Set(
+                ::v8::String::NewFromUtf8(_isolate, method->name.c_str_raw()).ToLocalChecked(),
+                FunctionTemplate::New(
+                    _isolate,
+                    _call_method,
+                    External::New(_isolate, method)
+                )
+            );
+        }
 
-                // get field data
-                auto   name_len = property->Utf8Length(isolate);
-                String field_name;
-                field_name.raw().append('\0', name_len);
-                property->WriteUtf8(isolate, reinterpret_cast<char*>(field_name.raw().data()));
-                auto& field_data = data->type->record_data().fields.find_if([&](const auto& f) {
-                                                                       return f.name == field_name;
-                                                                   })
-                                       .ref();
-
-                // return field
-                Local<Value> result;
-                if (V8BindTools::native_to_v8_primitive(
-                        context,
-                        isolate,
-                        field_data.type,
-                        field_data.get_address(data->data),
-                        result))
-                {
-                    info.GetReturnValue().Set(result);
-                }
-                else
-                {
-                    isolate->ThrowError("field type not supported");
-                }
-            },
-            +[](Local<::v8::String> property, Local<Value> value, const PropertyCallbackInfo<void>& info) {
-                // get data
-                Isolate*          isolate = info.GetIsolate();
-                Local<Context>    context = isolate->GetCurrentContext();
-                Local<Object>     self    = info.This();
-                Local<External>   wrap    = Local<External>::Cast(self->GetInternalField(0));
-                V8RecordBindData* data    = reinterpret_cast<V8RecordBindData*>(wrap->Value());
-
-                // get field data
-                auto   name_len = property->Utf8Length(isolate);
-                String field_name;
-                field_name.raw().append('\0', name_len);
-                property->WriteUtf8(isolate, reinterpret_cast<char*>(field_name.raw().data()));
-                auto& field_data = data->type->record_data().fields.find_if([&](const auto& f) {
-                                                                       return f.name == field_name;
-                                                                   })
-                                       .ref();
-
-                // set field
-                if (V8BindTools::v8_to_native_primitive(
-                        context,
-                        isolate,
-                        field_data.type,
-                        value,
-                        field_data.get_address(data->data)))
-                {
-                    info.GetReturnValue().Set(value);
-                }
-                else
-                {
-                    isolate->ThrowError("field type not supported");
-                }
-            });
+        // bind field
+        for (auto* field : type->record_data().fields)
+        {
+            ctor_template->PrototypeTemplate()->SetAccessorProperty(
+                ::v8::String::NewFromUtf8(_isolate, field->name.c_str_raw()).ToLocalChecked(),
+                FunctionTemplate::New(
+                    _isolate,
+                    _get_field,
+                    External::New(_isolate, field)
+                ),
+                FunctionTemplate::New(
+                    _isolate,
+                    _set_field,
+                    External::New(_isolate, field)
+                )
+            );
+        }
     }
 
-    // bind method
-    // TODO. recursive bind method
-    for (const auto& method : type->record_data().methods)
+    // bind static component
     {
+        // bind static method
+        for (auto* static_method : type->record_data().static_methods)
+        {
+            ctor_template->Set(
+                ::v8::String::NewFromUtf8(_isolate, static_method->name.c_str_raw()).ToLocalChecked(),
+                FunctionTemplate::New(
+                    _isolate,
+                    _call_static_method,
+                    External::New(_isolate, static_method)
+                )
+            );
+        }
+
+        // bind static field
+        for (auto* static_field : type->record_data().static_fields)
+        {
+            ctor_template->SetAccessorProperty(
+                ::v8::String::NewFromUtf8(_isolate, static_field->name.c_str_raw()).ToLocalChecked(),
+                FunctionTemplate::New(
+                    _isolate,
+                    _get_static_field,
+                    External::New(_isolate, static_field)
+                ),
+                FunctionTemplate::New(
+                    _isolate,
+                    _set_static_field,
+                    External::New(_isolate, static_field)
+                )
+            );
+        }
     }
 
-    // bind static field
-    // TODO. recursive bind static field
-
-    // bind static method
-    // TODO. recursive bind static method
-
-    // add to templates
+    // store template
     auto& template_ref = _record_templates.try_add_default(type).value();
     template_ref.Reset(_isolate, ctor_template);
 }
@@ -265,10 +194,251 @@ void V8Isolate::inject_templates_into_context(::v8::Local<::v8::Context> context
         // set to context
         context->Global()->Set(
                              context,
-                             ::v8::String::NewFromUtf8(_isolate, type->name().c_str()).ToLocalChecked(),
+                             ::v8::String::NewFromUtf8(_isolate, type->name().c_str_raw()).ToLocalChecked(),
                              function)
             .Check();
     }
+}
+
+// bind object
+V8BindRecordCore* V8Isolate::translate_record(::skr::rttr::ScriptbleObject* obj)
+{
+    using namespace ::v8;
+    Isolate::Scope isolate_scope(_isolate);
+    HandleScope    handle_scope(_isolate);
+    Local<Context> context = _isolate->GetCurrentContext();
+
+    // find exist object
+    auto bind_ref = _alive_records.find(obj);
+    if (bind_ref)
+    {
+        return bind_ref.value();
+    }
+
+    // get type
+    auto type = rttr::get_type_from_guid(obj->iobject_get_typeid());
+
+    // get template
+    auto template_ref = _record_templates.find(type);
+    if (!template_ref)
+    {
+        return nullptr;
+    }
+
+    // make object
+    Local<Function> ctor_func = template_ref.value().Get(_isolate)->GetFunction(context).ToLocalChecked();
+    Local<Object> object = ctor_func->NewInstance(context).ToLocalChecked();
+
+    // make bind data
+    auto bind_data = SkrNew<V8BindRecordCore>();
+    bind_data->object = obj;
+    bind_data->type   = type;
+    bind_data->v8_object.Reset(_isolate, object);
+
+    // setup gc callback
+    bind_data->v8_object.SetWeak(
+        bind_data,
+        _gc_callback,
+        WeakCallbackType::kInternalFields
+    );
+
+    // add extern data
+    object->SetInternalField(0, External::New(_isolate, bind_data));
+
+    // add to map
+    _alive_records.add(obj, bind_data);
+
+    return bind_data;
+}
+void V8Isolate::mark_record_deleted(::skr::rttr::ScriptbleObject* obj)
+{
+    auto bind_ref = _alive_records.find(obj);
+    if (bind_ref)
+    {
+        // reset core object ptr
+        bind_ref.value()->object = nullptr;
+
+        // move to deleted records
+        _deleted_records.push_back(bind_ref.value());
+        _alive_records.remove(obj);
+    }
+}
+
+// bind helpers
+void V8Isolate::_gc_callback(const ::v8::WeakCallbackInfo<V8BindRecordCore>& data)
+{
+    using namespace ::v8;
+    
+    // get data
+    V8BindRecordCore* bind_core = data.GetParameter();
+    V8Isolate* isolate = reinterpret_cast<V8Isolate*>(data.GetIsolate()->GetData(0));
+    
+    // delete if has owner ship
+    if (bind_core->object->script_owner_ship() == rttr::EScriptbleObjectOwnerShip::Script)
+    {
+        SkrDelete(bind_core->object);
+    }
+
+    // remove from isolate
+    isolate->_alive_records.remove(bind_core->object);
+    
+    // destroy it
+    SkrDelete(bind_core);
+}
+void V8Isolate::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
+{
+    using namespace ::v8;
+
+    // get v8 basic info
+    Isolate*       Isolate = info.GetIsolate();
+    Isolate::Scope IsolateScope(Isolate);
+    HandleScope    HandleScope(Isolate);
+    Local<Context> Context = Isolate->GetCurrentContext();
+    Context::Scope ContextScope(Context);
+
+    if (info.IsConstructCall())
+    {
+        // get ctor info
+        Local<Object> self = info.This();
+
+        // get type info
+        Local<External>  data = info.Data().As<External>();
+        skr::rttr::Type* type = reinterpret_cast<skr::rttr::Type*>(data->Value());
+
+        // match ctor
+        for (const auto& ctor_data : type->record_data().ctor_data)
+        {
+            if (V8BindTools::match_params(ctor_data, info))
+            {
+                V8Isolate* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
+
+                // alloc memory
+                void* alloc_mem = sakura_new_aligned(type->size(), type->alignment());
+
+                // call ctor
+                V8BindTools::call_ctor(alloc_mem, *ctor_data, info, Context, Isolate);
+                
+                // cast to ScriptbleObject
+                void* casted_mem = type->cast_to(rttr::type_id_of<rttr::ScriptbleObject>(), alloc_mem);
+
+                // make bind core
+                V8BindRecordCore* bind_core = SkrNew<V8BindRecordCore>();
+                bind_core->type = type;
+                bind_core->object = reinterpret_cast<rttr::ScriptbleObject*>(casted_mem);
+
+                // setup owner ship
+                bind_core->object->script_owner_ship_take(rttr::EScriptbleObjectOwnerShip::Script);
+
+                // setup gc callback
+                bind_core->v8_object.Reset(Isolate, self);
+                bind_core->v8_object.SetWeak(
+                    bind_core,
+                    _gc_callback,
+                    WeakCallbackType::kInternalFields
+                );
+
+                // add extern data
+                self->SetInternalField(0, External::New(Isolate, bind_core));
+
+                // add to map
+                skr_isolate->_alive_records.add(bind_core->object, bind_core);
+
+                return;
+            }
+        }
+
+        // no ctor matched
+        Isolate->ThrowError("no ctor matched");
+    }
+    else
+    {
+        Isolate->ThrowError("must be called with new");
+    }
+}
+void V8Isolate::_call_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
+{
+}
+void V8Isolate::_get_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
+{
+    // using namespace ::v8;
+
+    // // get data
+    // Isolate*          isolate = info.GetIsolate();
+    // Local<Context>    context = isolate->GetCurrentContext();
+    // Local<Object>     self    = info.This();
+    // Local<External>   wrap    = Local<External>::Cast(self->GetInternalField(0));
+    // V8BindRecordCore* bind_core    = reinterpret_cast<V8BindRecordCore*>(wrap->Value());
+
+    // // get field data
+    // auto   name_len = property->Utf8Length(isolate);
+    // String field_name;
+    // field_name.resize_unsafe(name_len);
+    // property->WriteUtf8(isolate, field_name.data_raw_w());
+    // auto& field_data = bind_core->type->record_data().fields.find_if(
+    // [&](const auto& f) {
+    //         return f->name == field_name;
+    //     }).ref();
+
+    // // return field
+    // Local<Value> result;
+    // if (V8BindTools::native_to_v8_primitive(
+    //         context,
+    //         isolate,
+    //         field_data->type,
+    //         field_data->get_address(bind_core->object),
+    //         result))
+    // {
+    //     info.GetReturnValue().Set(result);
+    // }
+    // else
+    // {
+    //     isolate->ThrowError("field type not supported");
+    // }
+}
+void V8Isolate::_set_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
+{
+    // using namespace ::v8;
+
+    // // get data
+    // Isolate*          isolate = info.GetIsolate();
+    // Local<Context>    context = isolate->GetCurrentContext();
+    // Local<Object>     self    = info.This();
+    // Local<External>   wrap    = Local<External>::Cast(self->GetInternalField(0));
+    // V8BindRecordCore* bind_core    = reinterpret_cast<V8BindRecordCore*>(wrap->Value());
+
+    // // get field data
+    // auto   name_len = property->Utf8Length(isolate);
+    // String field_name;
+    // field_name.add('\0', name_len);
+    // property->WriteUtf8(isolate, field_name.data_raw_w());
+    // auto& field_data = bind_core->type->record_data().fields.find_if([&](const auto& f) {
+    //                                                        return f->name == field_name;
+    //                                                    })
+    //                        .ref();
+
+    // // set field
+    // if (V8BindTools::v8_to_native_primitive(
+    //         context,
+    //         isolate,
+    //         field_data->type,
+    //         value,
+    //         field_data->get_address(bind_core->object)))
+    // {
+    //     info.GetReturnValue().Set(value);
+    // }
+    // else
+    // {
+    //     isolate->ThrowError("field type not supported");
+    // }
+}
+void V8Isolate::_call_static_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
+{
+}
+void V8Isolate::_get_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
+{
+}
+void V8Isolate::_set_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
+{
 }
 } // namespace skr::v8
 

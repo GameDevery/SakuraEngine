@@ -40,11 +40,11 @@ namespace task2
         uint32_t numThreads = 0;
     };
 #ifdef SKR_PROFILE_ENABLE
-    struct task_name_t
+    struct skr_task_name_t
     {
         const char* name;
     };
-    #define SkrProfileTask(name) SkrFiberEnter(name); co_yield task_name_t{name}
+    #define SkrProfileTask(name) SkrFiberEnter(name); co_yield skr_task_name_t{name}
 #else
     #define SkrProfileTask(name)
 #endif
@@ -67,7 +67,7 @@ namespace task2
             void return_void() {}
             SKR_TASK_API void unhandled_exception();
 #ifdef SKR_PROFILE_ENABLE
-            std::suspend_never yield_value(task_name_t tn) { name = tn.name; return {}; }
+            std::suspend_never yield_value(skr_task_name_t tn) { name = tn.name; return {}; }
 #endif
 
             void* operator new(size_t size) { return sakura_malloc(size); }

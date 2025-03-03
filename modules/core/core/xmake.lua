@@ -48,7 +48,7 @@ target("SkrCoreMeta")
         }
     })
 
-shared_module("SkrCore", "SKR_CORE", engine_version)
+shared_module("SkrCore", "SKR_CORE")
     -- add codegen generator
     add_deps("SkrCoreMeta")
     
@@ -74,21 +74,10 @@ shared_module("SkrCore", "SKR_CORE", engine_version)
     else
         add_syslinks("pthread")
     end
-    -- add SDL2
-    if (is_os("windows")) then 
-        add_links("SDL2", {public = true})
-        sdl2_includes_dir = "$(projectdir)/thirdparty/SDL2"
-        add_includedirs(sdl2_includes_dir, {public = true})
-    elseif (is_os("macosx") or is_os("linux")) then
-        add_packages("libsdl", {public = true})
-    end
 
-    -- install sdks for windows platform
-    libs_to_install = {}
-    if(os.host() == "windows") then
-        table.insert(libs_to_install, "SDL2")
-    end
-    add_rules("utils.install_libraries", { libnames = libs_to_install })
+    -- add deps
+    add_deps("SDL2", {public= true})
+
 --[[
 shared_pch("SkrCore")
     add_files("include/**.h")

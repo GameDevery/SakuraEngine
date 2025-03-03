@@ -91,14 +91,14 @@ jobs:
 
       - name: UploadGeneratedFiles
         if: success() || failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: build-artifacts-macosx-clang-${{ matrix.cxx }}
           path: build/.gens
 
       - name: UploadDevelopmentBuild
         if: success() || failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: build-binaries-macosx-clang-${{ matrix.cxx }}
           path: build/macosx
@@ -117,14 +117,14 @@ jobs:
 
       - name: UploadGeneratedFiles2
         if: success() || failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: shipping-artifacts-macosx-clang-${{ matrix.cxx }}
           path: build/.gens
 
       - name: UploadShipping
         if: success() || failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: shipping-binaries-macosx-clang-${{ matrix.cxx }}
           path: build/macosx

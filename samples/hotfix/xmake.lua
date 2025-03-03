@@ -1,6 +1,6 @@
-shared_module("HotfixTest", "HOTFIX_TEST", engine_version)
+shared_module("HotfixTest", "HOTFIX_TEST")
     set_group("04.examples/hotfix")
-    public_dependency("SkrRT", engine_version)
+    public_dependency("SkrRT")
     add_files("hotfix_module.cpp")
 
 target("HotfixTestHost")

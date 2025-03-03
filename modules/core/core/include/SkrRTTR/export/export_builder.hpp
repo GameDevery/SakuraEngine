@@ -285,7 +285,7 @@ struct RecordBuilder {
         _data->size      = sizeof(T);
         _data->alignment = alignof(T);
 
-        // TODO. 基础函数的导出也应当手动完成
+        // TODO. 带参构造的反射导出
 
         // fill default ctor
         if constexpr (std::is_default_constructible_v<T>)
@@ -317,12 +317,36 @@ struct RecordBuilder {
             extern_method<+[](T& lhs, T&& rhs) { lhs.operator=(std::move(rhs)); }>(CPPExternMethods::Assign);
         }
 
+        // fill bin serde
         if constexpr (skr::HasBinRead<T>)
         {
             extern_method<
             +[](void* object, void* reader) -> bool {
                 return skr::bin_read<T>((SBinaryReader*)reader, *(T*)object);
             }>(SkrCoreExternMethods::ReadBin);
+        }
+        if constexpr (skr::HasBinWrite<T>)
+        {
+            extern_method<
+            +[](void* object, void* writer) -> bool {
+                return skr::bin_write<T>((SBinaryWriter*)writer, *(T*)object);
+            }>(SkrCoreExternMethods::WriteBin);
+        }
+
+        // fill json serde
+        if constexpr (skr::HasJsonRead<T>)
+        {
+            extern_method<
+            +[](void* object, void* reader) -> bool {
+                return skr::json_read<T>((skr::archive::JsonReader*)reader, *(T*)object);
+            }>(SkrCoreExternMethods::ReadJson);
+        }
+        if constexpr (skr::HasJsonWrite<T>)
+        {
+            extern_method<
+            +[](void* object, void* writer) -> bool {
+                return skr::json_write<T>((skr::archive::JsonWriter*)writer, *(T*)object);
+            }>(SkrCoreExternMethods::WriteJson);
         }
 
         // fill dtor
@@ -340,8 +364,8 @@ struct RecordBuilder {
     {
         auto ctor_data = SkrNew<CtorData>();
         ctor_data->fill_signature<Args...>();
-        ctor_data->native_invoke      = ExportHelper::export_ctor<T, Args...>();
-        ctor_data->stack_proxy_invoke = ExportHelper::export_ctor_stack_proxy<T, Args...>();
+        ctor_data->native_invoke        = ExportHelper::export_ctor<T, Args...>();
+        ctor_data->dynamic_stack_invoke = ExportHelper::export_ctor_dynamic_stack<T, Args...>();
         _data->ctor_data.add(ctor_data);
         return { ctor_data };
     }
@@ -362,8 +386,8 @@ struct RecordBuilder {
         method_data->name         = std::move(name);
         method_data->access_level = access_level;
         method_data->fill_signature(func);
-        method_data->native_invoke      = ExportHelper::export_method<func>();
-        method_data->stack_proxy_invoke = ExportHelper::export_method_stack_proxy<func>();
+        method_data->native_invoke        = ExportHelper::export_method<func>();
+        method_data->dynamic_stack_invoke = ExportHelper::export_method_dynamic_stack<func>();
         _data->methods.add(method_data);
         return { method_data };
     }
@@ -379,8 +403,8 @@ struct RecordBuilder {
         method_data->name         = std::move(name);
         method_data->access_level = access_level;
         method_data->fill_signature(func);
-        method_data->native_invoke      = ExportHelper::export_static_method<func>();
-        method_data->stack_proxy_invoke = ExportHelper::export_static_method_stack_proxy<func>();
+        method_data->native_invoke        = ExportHelper::export_static_method<func>();
+        method_data->dynamic_stack_invoke = ExportHelper::export_static_method_dynamic_stack<func>();
         _data->static_methods.add(method_data);
         return { method_data };
     }
@@ -396,8 +420,8 @@ struct RecordBuilder {
         method_data->name         = std::move(name);
         method_data->access_level = access_level;
         method_data->fill_signature(func);
-        method_data->native_invoke      = ExportHelper::export_extern_method<func>();
-        method_data->stack_proxy_invoke = ExportHelper::export_extern_method_stack_proxy<func>();
+        method_data->native_invoke        = ExportHelper::export_extern_method<func>();
+        method_data->dynamic_stack_invoke = ExportHelper::export_extern_method_dynamic_stack<func>();
         _data->extern_methods.add(method_data);
         return { method_data };
     }

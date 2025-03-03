@@ -22,8 +22,7 @@ struct BinSerde<skr::variant<Ts...>> {
     template <size_t... Is>
     inline static bool _read_by_index_helper(SBinaryReader* r, skr::variant<Ts...>& v, size_t index, std::index_sequence<Is...>)
     {
-        bool result;
-        (void)(((result = _read_by_index<Is, Ts>(r, v, index)) != 0) && ...);
+        bool result = (((_read_by_index<Is, Ts>(r, v, index)) != 0) || ...);
         return result;
     }
 
@@ -38,7 +37,7 @@ struct BinSerde<skr::variant<Ts...>> {
             return false;
 
         // read content
-        return _read_by_index(r, v, index, std::make_index_sequence<sizeof...(Ts)>());
+        return _read_by_index_helper(r, v, index, std::make_index_sequence<sizeof...(Ts)>());
     }
 
     inline static int write(SBinaryWriter* r, const skr::variant<Ts...>& v)
@@ -78,7 +77,7 @@ struct JsonSerde<skr::variant<Ts...>> {
         }
         return false;
     }
-    inline static bool Read(skr::archive::JsonReader* r, skr::variant<Ts...>& v)
+    inline static bool read(skr::archive::JsonReader* r, skr::variant<Ts...>& v)
     {
         SKR_EXPECTED_CHECK(r->StartObject(), false);
 
@@ -88,13 +87,13 @@ struct JsonSerde<skr::variant<Ts...>> {
             return false;
 
         SKR_EXPECTED_CHECK(r->Key(u8"value"), false);
-        (void)(((ReadByIndex<Ts>(r, v, index)) != true) && ...);
+        (void)(((_read_by_index<Ts>(r, v, index)) != true) && ...);
 
         SKR_EXPECTED_CHECK(r->EndObject(), false);
 
         return true;
     }
-    inline static bool Write(skr::archive::JsonWriter* json, const skr::variant<Ts...>& v)
+    inline static bool write(skr::archive::JsonWriter* json, const skr::variant<Ts...>& v)
     {
         bool success = true;
         skr::visit([&](auto&& value) {
@@ -119,7 +118,7 @@ struct JsonSerde<skr::variant<Ts...>> {
                 success = false;
                 return;
             }
-            if (!json_write<decltype(value)>(json, value))
+            if (!json_write<std::decay_t<decltype(value)>>(json, value))
             {
                 success = false;
                 return;

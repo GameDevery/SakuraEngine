@@ -4,7 +4,7 @@
 #include "SkrCore/log.h"
 #include "SkrContainers/string.hpp"
 #include "SkrContainers/hashmap.hpp"
-#include "SkrRT/misc/fast_float.h"
+#include "SkrBase/misc/fast_float.h"
 #include <charconv>
 #include <optional>
 
@@ -82,7 +82,7 @@ struct parser {
             for (size_t i = 0; i != m_names.size(); ++i)
             {
                 auto const& cmd = m_cmds.at(m_names[i]);
-                SKR_LOG_WARN(u8" [%s%s]", cmd.shorthand.c_str(), cmd.is_boolean ? m_names[i].c_str() : " <value>");
+                SKR_LOG_WARN(u8" [%s%s]", cmd.shorthand.c_str(), cmd.is_boolean ? m_names[i].c_str_raw() : " <value>");
                 if (with_description)
                 {
                     SKR_LOG_WARN(u8"%s%s", cmd.descr.c_str(), cmd.is_required ? " (required)" : "");

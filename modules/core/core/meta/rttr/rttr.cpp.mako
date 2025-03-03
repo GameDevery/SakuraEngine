@@ -71,9 +71,9 @@ SKR_EXEC_STATIC_CTOR
         { // ${record.name}::${field.name}
 <% field_rttr_data = field.generator_data["rttr"] %>\
             %if field.is_static:
-            [[maybe_unused]] auto field_builder = builder.static_field<<&${record.name}::${field.name}>(u8"${field.name}");
+            [[maybe_unused]] auto field_builder = builder.static_field<&${record.name}::${field.name}>(u8"${field.name}");
             %else:
-            [[maybe_unused]] auto field_builder = builder.field<<&${record.name}::${field.name}>(u8"${field.name}");
+            [[maybe_unused]] auto field_builder = builder.field<&${record.name}::${field.name}>(u8"${field.name}");
             %endif
 
             // flags

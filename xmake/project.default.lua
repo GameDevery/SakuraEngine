@@ -1,6 +1,13 @@
+-- TODO. 为 target 标记 tag，通过 Disable Tag 来禁用 Target
+-- TODO. 拆分为 engine.lua 和 project.lua 来分离引擎和项目的配置？
 analyzer_target("DisableSingle")
     analyze(function(target, attributes, analyzing)
-        local scriptdir = path.relative(target:scriptdir()):gsub("\\", "/")
+        import("skr.utils")
+
+        -- global info
+        local _engine_dir = utils.get_env("engine_dir")
+
+        local scriptdir = path.relative(target:scriptdir(), _engine_dir):gsub("\\", "/")
 
         local is_core = scriptdir:startswith("modules/core")
         local is_render = scriptdir:startswith("modules/render")
@@ -17,8 +24,6 @@ analyzer_target("DisableSingle")
         local is_sample = scriptdir:startswith("samples")
         local is_tests = scriptdir:startswith("tests")
 
-        local is_editors = scriptdir:startswith("editors")
-
         local is_thirdparty = 
             not scriptdir:startswith("modules") and
             not scriptdir:startswith("samples") and
@@ -34,7 +39,7 @@ analyzer_target_end()
 
 analyzer_target("Disable")
     add_deps("__Analyzer.DisableSingle", { order = true })
-    analyze(function(target, attributes, analyzing)
+    analyze(function(target, attributes, analyze_ctx)
         local _disable = target:data("_Disable") or false
         if not _disable then
             for _, dep in pairs(target:deps()) do
@@ -47,3 +52,6 @@ analyzer_target("Disable")
         return _disable
     end)
 analyzer_target_end()
+
+skr_cull("v8")
+skr_cull("lua")

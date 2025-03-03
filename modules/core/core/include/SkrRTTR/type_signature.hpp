@@ -876,6 +876,7 @@ struct TypeSignatureView {
                 return true;
             }
             pos = TypeSignatureHelper::jump_signal(pos, end);
+            peek_signal = TypeSignatureHelper::peek_signal(pos, end);
         }
         return false;
     }
@@ -893,8 +894,28 @@ struct TypeSignatureView {
                 return true;
             }
             pos = TypeSignatureHelper::jump_signal(pos, end);
+            peek_signal = TypeSignatureHelper::peek_signal(pos, end);
         }
         return false;
+    }
+    inline uint32_t decayed_pointer_level()
+    {
+        uint32_t       level       = 0;
+        const uint8_t* pos         = _data;
+        const uint8_t* end         = _data + _size;
+        auto           peek_signal = TypeSignatureHelper::peek_signal(pos, end);
+        while (TypeSignatureHelper::is_modifier(peek_signal))
+        {
+            if (peek_signal == ETypeSignatureSignal::Pointer ||
+                peek_signal == ETypeSignatureSignal::Ref ||
+                peek_signal == ETypeSignatureSignal::RValueRef)
+            {
+                ++level;
+                peek_signal = TypeSignatureHelper::peek_signal(pos, end);
+            }
+            pos = TypeSignatureHelper::jump_signal(pos, end);
+        }
+        return level;
     }
     inline bool is_pointer() const
     {

@@ -10,11 +10,12 @@ end
 
 rule("sakura.module")
     on_load(function(target)
+        import("skr.analyze")
+        
         if xmake.argv()[1] ~= "analyze_project" then
-            local tbl_path = "build/.gens/module_infos/"..target:name()..".table"
-            if os.exists(tbl_path) then
-                local tbl = io.load(tbl_path)
-                local meta_source = tbl["Module.MetaSourceFile"]
+            local analyze_tbl = analyze.load(target:name())
+            if analyze_tbl then
+                local meta_source = analyze_tbl["Module.MetaSourceFile"]
                 if (meta_source ~= "") then
                     target:add("files", meta_source)
                 end
@@ -35,7 +36,6 @@ rule("sakura.component")
         -- add dep values to owner
         for _, pub_dep in pairs(component:values("sakura.module.public_dependencies")) do
             owner:add("values", "sakura.module.public_dependencies", pub_dep)
-            owner:add("values", pub_dep..".version", component:values(pub_dep..".version"))
         end
         -- insert owner's include dirs
         for _, owner_inc in pairs(owner:get("includedirs")) do
@@ -54,9 +54,7 @@ rule("sakura.dyn_module")
     add_deps("sakura.module")
     on_load(function (target, opt)
         local api = target:extraconf("rules", "sakura.dyn_module", "api")
-        local version = target:extraconf("rules", "sakura.dyn_module", "version")
         target:add("values", "Sakura.Attributes", "Module")
-        target:add("values", "sakura.module.version", version)
         target:add("defines", api.."_IMPL")
         target:add("defines", api.."_EXTERN_C=SKR_EXTERN_C", {public=true})
         if has_config("shipping_one_archive") then
@@ -97,74 +95,20 @@ rule("sakura.derived_target")
     end)
 rule_end()
 
-function shared_module(name, api, version, opt)
-    target(name)
-        set_group("01.modules/"..name)
-        add_rules("PickSharedPCH")
-        add_rules("sakura.dyn_module", { api = api, version = version }) 
-        if has_config("shipping_one_archive") then
-            set_kind("static")
-        else
-            set_kind("shared")
-        end
-        on_load(function (target, opt)
-            if has_config("shipping_one_archive") then
-                for _, dep in pairs(target:get("links")) do
-                    target:add("links", dep, {public = true})
-                end
-            end
-        end)
-        opt = opt or {}
-        if opt.exception and not opt.noexception then
-            set_exceptions("cxx")
-        else
-            set_exceptions("no-cxx")
-        end
-end
-
-function static_component(name, owner, opt)
-    target(owner)
-        add_deps(name, { public = opt and opt.public or true })
-    target_end()
-    
-    target(name)
-        set_kind("static")
-        set_group("01.modules/"..owner.."/components")
-        add_rules("sakura.component", { owner = owner })
-end
-
-function executable_module(name, api, version, opt)
-    target(name)
-        set_kind("binary")
-        add_rules("PickSharedPCH")
-        add_rules("sakura.dyn_module", { api = api, version = engine_version }) 
-        local opt = opt or {}
-        if opt.exception and not opt.noexception then
-            set_exceptions("cxx")
-        else
-            set_exceptions("no-cxx")
-        end
-end
-
-function public_dependency(dep, version, setting)
-    add_deps(dep, {public = true})
-    add_values("sakura.module.public_dependencies", dep)
-    add_values(dep..".version", version)
-end
-
 analyzer_target("Module.MetaSourceFile")
-    analyze(function(target, attributes, analyzing)
+    analyze(function(target, attributes, analyze_ctx)
         if not target:rule("sakura.dyn_module") then
             return "NOT_A_MODULE"
         end
 
-        import("core.project.depend")
         import("core.project.project")
+        import("core.base.json")
+        import("skr.utils")
 
-        local gendir = path.join(target:autogendir({root = true}), target:plat(), "codegen")
+        local gendir = path.join(utils.skr_codegen_dir(target:name()), "codegen")
         local filename = path.join(gendir, "module", "module.configure.cpp")
         local dep_names = target:values("sakura.module.public_dependencies")
-        depend.on_changed(function()
+        utils.on_changed(function (change_info)
             -- gather deps
             local dep_modules = {}
             for _, dep in ipairs(target:orderdeps()) do
@@ -173,39 +117,45 @@ analyzer_target("Module.MetaSourceFile")
                 end
             end
 
-            -- start rebuild json
-            local self_version = target:values("sakura.module.version")
+            -- get basic data
             local pub_deps = target:values("sakura.module.public_dependencies")
-            assert(self_version, "module version not found: "..target:name())
-            local delim = "__de___l___im__("
-            local delim2 = ")__de___l___im__"
-            local cpp_content = "#include \"SkrCore/module/module.hpp\"\n\nSKR_MODULE_METADATA(u8R\""..delim.."\n{\n"
-            cpp_content = cpp_content.."\t\"api\": \"" .. self_version.."\",\n"
-            cpp_content = cpp_content.."\t\"name\": \"" .. target:name() .."\",\n"
-            cpp_content = cpp_content.."\t\"prettyname\": \"" .. target:name() .."\",\n"
-            cpp_content = cpp_content.."\t\"version\": \"".. self_version .."\",\n"
-            cpp_content = cpp_content.."\t\"linking\": \"".. target:kind() .."\",\n"
-            cpp_content = cpp_content.."\t\"author\": \"unknown\",\n"
-            cpp_content = cpp_content.."\t\"url\": \"https://github.com/SakuraEngine/SakuraEngine\",\n"
-            cpp_content = cpp_content.."\t\"license\": \"EngineDefault (MIT)\",\n"
-            cpp_content = cpp_content.."\t\"copyright\": \"EngineDefault\",\n"
-            -- dep body
-            cpp_content = cpp_content.."\t\"dependencies\": [\n "
+            
+            -- build module info
+            local module_info = {
+                api = "0.1.0",
+                name = target:name(),
+                prettyname = target:name(),
+                version = "0.1.0",
+                linking = target:kind(),
+                author = "unknown",
+                url = "https://github.com/SakuraEngine/SakuraEngine",
+                license = "EngineDefault (MIT)",
+                copyright = "EngineDefault",
+                dependencies = json.mark_as_array({})
+            }
             for _, dep in pairs(pub_deps) do
-                local deptarget = project.target(dep)
-                assert(deptarget:rule("sakura.module"), "public dependency must be a sakura.module: "..deptarget:name())
-                local depversion = target:values(dep..".version")
-                local kind = deptarget:rule("sakura.dyn_module") and "shared" or "static"
-                cpp_content = cpp_content.."\t\t{ \"name\":\""..dep.."\", \"version\": \""..depversion.."\", \"kind\": \""..kind.."\" },\n"
+                local dep_target = project.target(dep)
+                assert(dep_target, "public dependency not found: "..dep)
+                assert(dep_target:rule("sakura.module"), "public dependency must be a sakura.module: "..dep_target:name())
+                local kind = dep_target:rule("sakura.dyn_module") and "shared" or "static"
+                table.insert(module_info.dependencies, {
+                    name = dep,
+                    version = "0.1.0",
+                    kind = kind
+                })
             end
-            cpp_content = cpp_content.sub(cpp_content, 1, -3)
-            cpp_content = cpp_content.."\n\t]\n}\n"..delim2.."\", "..target:name()..")"
-            -- end dep body
-            -- write json & update files and values to the dependent file
+
+            -- build cpp content
+            local cpp_content = format(
+                "#include \"SkrCore/module/module.hpp\"\n\nSKR_MODULE_METADATA(u8R\"__de___l___im__(%s)__de___l___im__\", %s)",
+                json.encode(module_info),
+                target:name()
+            )
+            -- cprint("${green}[%s] module.configure.cpp", target:name())
             io.writefile(filename, cpp_content)
         end, {
-            dependfile = target:dependfile("Module.MetaSourceFile"), 
-            files = { target:scriptdir() },
+            cache_file = utils.depend_file_target(target:name(), "meta_source_file"),
+            files = { target:scriptdir(), os.scriptdir() },
             values = dep_names
         })
 

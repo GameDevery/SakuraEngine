@@ -6,7 +6,7 @@ target("CGPUMandelbrot")
     add_rules("utils.dxc", {
         spv_outdir = "/../resources/shaders/cgpu-mandelbrot",
         dxil_outdir = "/../resources/shaders/cgpu-mandelbrot"})
-    public_dependency("SkrRT", engine_version)
+    public_dependency("SkrRT")
     add_includedirs("./../../common", {public = false})
     add_files("mandelbrot/*.c")
     add_files("mandelbrot/**.hlsl")
@@ -19,7 +19,7 @@ target("CGPUIndexedInstance")
     add_rules("utils.dxc", {
         spv_outdir = "/../resources/shaders/cgpu-indexed-instance",
         dxil_outdir = "/../resources/shaders/cgpu-indexed-instance"})
-    public_dependency("SkrRT", engine_version)
+    public_dependency("SkrRT")
     add_includedirs("./../../common", {public = false})
     add_files("indexed-instance/*.c")
     add_files("indexed-instance/**.hlsl")
@@ -32,7 +32,7 @@ target("CGPUTexture")
     add_rules("utils.dxc", {
         spv_outdir = "/../resources/shaders/cgpu-texture",
         dxil_outdir = "/../resources/shaders/cgpu-texture"})
-    public_dependency("SkrRT", engine_version)
+    public_dependency("SkrRT")
     add_includedirs("./../../common", {public = false})
     add_files("texture/texture.c")
     add_files("texture/**.hlsl")
@@ -42,24 +42,6 @@ target("CGPUTiledTexture")
     set_exceptions("no-cxx")
     set_kind("binary")
     add_rules("c++.unity_build", {batchsize = default_unity_batch})
-    public_dependency("SkrRT", engine_version)
+    public_dependency("SkrRT")
     add_includedirs("./../../common", {public = false})
     add_files("texture/tiled_texture.c")
-    
--- close this demo until we fix exception rule issue
-if (os.host() == "windows") then
-    target("HotTriangle")
-        set_group("04.examples/cgpu")
-        add_rules("utils.dxc", {
-            spv_outdir = "/../resources/shaders/hot-triangle",
-            dxil_outdir = "/../resources/shaders/hot-triangle"})
-        set_kind("binary")
-        -- file_watch.hpp needs exceptions
-        set_exceptions("cxx")
-        add_rules("c++.unity_build", {batchsize = default_unity_batch})
-        public_dependency("SkrRT", engine_version)
-        public_dependency("SkrWASM", engine_version)
-        add_includedirs("./../../common", {public = false})
-        add_files("hot-triangle/triangle.c", "hot-triangle/hot_wasm.cpp")
-        add_files("hot-triangle/**.hlsl")
-end

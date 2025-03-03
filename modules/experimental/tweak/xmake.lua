@@ -5,12 +5,12 @@ if is_os("windows") or is_os("macosx") or is_os("linux") then
     end
 end
 
-shared_module("SkrTweak", "SKR_TWEAK", engine_version)
-    public_dependency("SkrRT", engine_version)
+shared_module("SkrTweak", "SKR_TWEAK")
+    public_dependency("SkrRT")
     add_includedirs("include", {public=true})
     add_rules("c++.unity_build", {batchsize = default_unity_batch})
     add_files("src/**.cpp")
-    add_defines("SKR_SOURCE_ROOT=R\"($(projectdir))\"", {public=false})
+    add_defines(format("SKR_SOURCE_ROOT=R\"(%s)\"", skr_env_get("engine_dir")), {public=false})
     if(efsw_pak) then
         add_packages("efsw")
     end

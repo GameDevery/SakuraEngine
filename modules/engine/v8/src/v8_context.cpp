@@ -53,7 +53,7 @@ void V8Context::exec_script(StringView script)
     // compile script
     ::v8::Local<::v8::String> source = ::v8::String::NewFromUtf8(
                                            _isolate->isolate(),
-                                           reinterpret_cast<const char*>(script.raw().data()),
+                                           reinterpret_cast<const char*>(script.data_raw()),
                                            ::v8::NewStringType::kNormal,
                                            script.size())
                                            .ToLocalChecked();

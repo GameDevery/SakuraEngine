@@ -1,5 +1,7 @@
 rule("Standard")
     after_build(function (target)
+        import("skr.utils")
+
         local outdir = target:extraconf("rules", "@daScript/Standard", "outdir") or "./"
         if not path.is_absolute(outdir) then
             outdir = path.join(target:targetdir(), outdir)
@@ -14,19 +16,27 @@ rule("Standard")
         local dasTool = path.join(os.scriptdir(), "..", "bin")
         local dasToolOut = path.join(outdir, "bin")
 
-        local depend = import("core.project.depend")
-        depend.on_changed(function ()
+        utils.on_changed(function (change_info)
             os.vcp(daslibdir, outdir)
-        end, {dependfile = target:dependfile(daslibdir), files = {daslibdir, dasliboutdir, target:targetfile()}})
-        
-        depend.on_changed(function ()
+        end, {
+            cache_file = utils.depend_file_target(target:name(), daslibdir),
+            files = {daslibdir, dasliboutdir, target:targetfile()},
+        })
+
+        utils.on_changed(function (change_info)
             os.vcp(dastestdir, outdir)
-        end, {dependfile = target:dependfile(dastestdir), files = {dastestdir, dastestoutdir, target:targetfile()}})
-        
+        end, {
+            cache_file = utils.depend_file_target(target:name(), dastestdir),
+            files = {dastestdir, dastestoutdir, target:targetfile()},
+        })
+
         if not os.exists(dasToolOut) then
-            depend.on_changed(function ()
+            utils.on_changed(function (change_info)
                 os.vcp(dasTool, outdir)
-            end, {dependfile = target:dependfile(dasTool), files = {dasTool, dasToolOut, target:targetfile()}})
+            end, {
+                cache_file = utils.depend_file_target(target:name(), dasTool),
+                files = {dasTool, dasToolOut, target:targetfile()}
+            })
         end
         
         print("daslib and dastest updated to ./"..path.relative(outdir, os.projectdir()).."!")

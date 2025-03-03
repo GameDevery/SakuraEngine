@@ -1,12 +1,21 @@
 rule("utils.dxc")
     set_extensions(".hlsl")
+    on_load(function (target)
+        import("skr.install")
+
+        install.add_rule_if_not_found(target)
+        install.add_install_item(target, "download", {
+            name = "dxc-2025_02_21",
+            install_func = "tool",
+        })
+    end)
     before_buildcmd_file(function (target, batchcmds, sourcefile_hlsl, opt)
-        import("find_sdk")
-        dxc = find_sdk.find_program("dxc")
+        import("skr.utils")
+        dxc = utils.find_tool("dxc")
 
         -- permission
         if (os.host() == "macosx") then
-            os.exec("chmod 777 "..dxc.program)
+            os.exec("chmod 777 "..dxc)
         end
 
         -- get target profile
@@ -24,11 +33,11 @@ rule("utils.dxc")
                 target:name(), sourcefile_hlsl, hlsl_basename .. ".spv")
         end
 
-        local dxc_exec = dxc.vexec
+        local dxc_exec = dxc
+        local dxc_wdir = path.directory(dxc)
+        dxc_exec = path.absolute(dxc_exec)
         batchcmds:mkdir(spv_outputdir)
-        if dxc.wdir ~= nil then
-            dxc_exec = "cd "..dxc.wdir.." && "..dxc_exec
-        end
+        
         batchcmds:vrunv(dxc_exec, 
             {"-Wno-ignored-attributes",
             "-all_resources_bound",
@@ -39,7 +48,8 @@ rule("utils.dxc")
             -- vformat("-fspv-extension=SPV_GOOGLE_hlsl_functionality1"), 
             "-Fo", spvfilepath, 
             "-T", target_profile,
-            path.join(os.projectdir(), sourcefile_hlsl)})
+            path.join(os.projectdir(), sourcefile_hlsl)},
+            {curdir = dxc_wdir})
 
 
         -- hlsl to dxil

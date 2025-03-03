@@ -202,189 +202,149 @@ SKR_FORCEINLINE void* SkrReallocAlignedWithCZone(void* p, size_t newsize, size_t
 #if defined(__cplusplus)
 
 #if defined(SKR_PROFILE_ENABLE) && defined(TRACY_TRACE_ALLOCATION)
-
-struct SkrTracedNew
+struct SkrNewCore
 {
     const std::string_view sourcelocation;
     const char* poolname;
-    SkrTracedNew(std::string_view sourcelocation) noexcept : sourcelocation(sourcelocation), poolname(NULL) {}
-    SkrTracedNew(std::string_view sourcelocation, const char* poolname) noexcept : sourcelocation(sourcelocation), poolname(poolname) {}
+    SkrNewCore(std::string_view sourcelocation) noexcept : sourcelocation(sourcelocation), poolname(NULL) {}
+    SkrNewCore(std::string_view sourcelocation, const char* poolname) noexcept : sourcelocation(sourcelocation), poolname(poolname) {}
 
     template<class T>
-    [[nodiscard]] SKR_FORCEINLINE T* New()
+    [[nodiscard]] SKR_FORCEINLINE T* Alloc()
     {
         const std::string_view name = skr::demangle<T>();
         SkrCMessage(name.data(), name.size());
-        void* pMemory = SkrNewAlignedWithCZone(sizeof(T), alignof(T), sourcelocation.data(), poolname);
-        SKR_ASSERT(pMemory != nullptr);
-        return new (pMemory) DEBUG_NEW_SOURCE_LINE T();
-    }
-
-    template<class T, class... TArgs>
-    [[nodiscard]] SKR_FORCEINLINE T* New(TArgs&&... params)
-    {
-        const std::string_view name = skr::demangle<T>();
-        SkrCMessage(name.data(), name.size());
-        void* pMemory = SkrNewAlignedWithCZone(sizeof(T), alignof(T), sourcelocation.data(), poolname);
-        SKR_ASSERT(pMemory != nullptr);
-        return new (pMemory) DEBUG_NEW_SOURCE_LINE T{ skr::forward<TArgs>(params)... };
-    }
-
-    template<class T, class... TArgs>
-    [[nodiscard]] SKR_FORCEINLINE T* NewZeroed(TArgs&&... params)
-    {
-        const std::string_view name = skr::demangle<T>();
-        SkrCMessage(name.data(), name.size());
-        void* pMemory = SkrNewAlignedWithCZone(sizeof(T), alignof(T), sourcelocation.data(), poolname);
-        memset(pMemory, 0, sizeof(T));
-        SKR_ASSERT(pMemory != nullptr);
-        return new (pMemory) DEBUG_NEW_SOURCE_LINE T{ skr::forward<TArgs>(params)... };
-    }
+        void* p = SkrNewAlignedWithCZone(sizeof(T), alignof(T), sourcelocation.data(), poolname);
+        SKR_ASSERT(p != nullptr);
+        return static_cast<T*>(p);
+    };
 
     template<class T>
-    [[nodiscard]] SKR_FORCEINLINE T* NewZeroed()
-    {
-        const std::string_view name = skr::demangle<T>();
-        SkrCMessage(name.data(), name.size());
-        void* pMemory = SkrNewAlignedWithCZone(sizeof(T), alignof(T), sourcelocation.data(), poolname);
-        memset(pMemory, 0, sizeof(T));
-        SKR_ASSERT(pMemory != nullptr);
-        return new (pMemory) DEBUG_NEW_SOURCE_LINE T();
-    }
-
-    template<class T, class... TArgs>
-    [[nodiscard]] SKR_FORCEINLINE T* NewSized(size_t size, TArgs&&... params)
+    [[nodiscard]] SKR_FORCEINLINE T* AllocSized(size_t size)
     {
         const std::string_view name = skr::demangle<T>();
         SkrCMessage(name.data(), name.size());
         SKR_ASSERT(size >= sizeof(T));
-        void* pMemory = SkrNewAlignedWithCZone(size, alignof(T), sourcelocation.data(), poolname);
-        SKR_ASSERT(pMemory != nullptr);
-        return new (pMemory) DEBUG_NEW_SOURCE_LINE T{ skr::forward<TArgs>(params)... };
-    }
+        void* p = SkrNewAlignedWithCZone(size, alignof(T), sourcelocation.data(), poolname);
+        SKR_ASSERT(p != nullptr);
+        return static_cast<T*>(p);
+    };
 
     template<class T>
-    [[nodiscard]] SKR_FORCEINLINE T* NewSized(size_t size)
+    [[nodiscard]] SKR_FORCEINLINE void Free(T* p)
     {
-        const std::string_view name = skr::demangle<T>();
-        SkrCMessage(name.data(), name.size());
-        SKR_ASSERT(size >= sizeof(T));
-        void* pMemory = SkrNewAlignedWithCZone(size, alignof(T), sourcelocation.data(), poolname);
-        SKR_ASSERT(pMemory != nullptr);
-        return new (pMemory) DEBUG_NEW_SOURCE_LINE T();
-    }
-
-    template<class F>
-    [[nodiscard]] SKR_FORCEINLINE F* NewLambda(F&& lambda)
-    {
-        void* pMemory = SkrNewAlignedWithCZone(sizeof(F), alignof(F), sourcelocation.data(), poolname);
-        SKR_ASSERT(pMemory != nullptr);
-        return new (pMemory) DEBUG_NEW_SOURCE_LINE auto(skr::forward<F>(lambda));
-    }
-
-    template<class T>
-    void Delete(T* pType)
-    {
-        if (pType != nullptr)
+        if (p != nullptr)
         {
             const std::string_view name = skr::demangle<T>();
             SkrCMessage(name.data(), name.size());
-            pType->~T();
-            SkrFreeAlignedWithCZone((void*)pType, alignof(T), sourcelocation.data(), poolname);
+            SkrFreeAlignedWithCZone((void*)p, alignof(T), sourcelocation.data(), poolname);
         }
     }
 };
-#define SkrNew SkrTracedNew( SKR_ALLOC_CAT(SKR_ALLOC_STRINGFY(__FILE__),SKR_ALLOC_STRINGFY(__LINE__)) ).New
-#define SkrNewZeroed SkrTracedNew( SKR_ALLOC_CAT(SKR_ALLOC_STRINGFY(__FILE__),SKR_ALLOC_STRINGFY(__LINE__)) ).NewZeroed
-#define SkrNewSized SkrTracedNew( SKR_ALLOC_CAT(SKR_ALLOC_STRINGFY(__FILE__),SKR_ALLOC_STRINGFY(__LINE__)) ).NewSized
-#define SkrNewLambda SkrTracedNew( SKR_ALLOC_CAT(SKR_ALLOC_STRINGFY(__FILE__),SKR_ALLOC_STRINGFY(__LINE__)) ).NewLambda
-#define SkrDelete SkrTracedNew( SKR_ALLOC_CAT(SKR_ALLOC_STRINGFY(__FILE__),SKR_ALLOC_STRINGFY(__LINE__)) ).Delete
-
-#define SkrNewN(__N) SkrTracedNew( SKR_ALLOC_CAT(SKR_ALLOC_STRINGFY(__FILE__),SKR_ALLOC_STRINGFY(__LINE__)), (__N) ).New
-#define SkrNewZeroedN(__N) SkrTracedNew( SKR_ALLOC_CAT(SKR_ALLOC_STRINGFY(__FILE__),SKR_ALLOC_STRINGFY(__LINE__)), (__N) ).NewZeroed
-#define SkrNewSizedN(__N) SkrTracedNew( SKR_ALLOC_CAT(SKR_ALLOC_STRINGFY(__FILE__),SKR_ALLOC_STRINGFY(__LINE__)), (__N) ).NewSized
-#define SkrNewLambdaN(__N) SkrTracedNew( SKR_ALLOC_CAT(SKR_ALLOC_STRINGFY(__FILE__),SKR_ALLOC_STRINGFY(__LINE__)), (__N) ).NewLambda
-#define SkrDeleteN(__N) SkrTracedNew( SKR_ALLOC_CAT(SKR_ALLOC_STRINGFY(__FILE__),SKR_ALLOC_STRINGFY(__LINE__)), (__N) ).Delete
-
+#define SKR_MAKE_NEW_CORE SkrNewCore{SKR_ALLOC_CAT(SKR_ALLOC_STRINGFY(__FILE__),SKR_ALLOC_STRINGFY(__LINE__))}
+#define SKR_MAKE_NEW_CORE_N(__N) SkrNewCore{SKR_ALLOC_CAT(SKR_ALLOC_STRINGFY(__FILE__),SKR_ALLOC_STRINGFY(__LINE__)), __N}
 #else
-template <typename T, typename... TArgs>
-[[nodiscard]] SKR_FORCEINLINE T* SkrNew(TArgs&&... params)
+struct SkrNewCore
 {
-    void* pMemory = sakura_new_aligned(sizeof(T), alignof(T));
-    SKR_ASSERT(pMemory != nullptr);
-    return new (pMemory) DEBUG_NEW_SOURCE_LINE T{ skr::forward<TArgs>(params)... };
-}
-
-template <typename T>
-[[nodiscard]] SKR_FORCEINLINE T* SkrNew()
-{
-    void* pMemory = sakura_new_aligned(sizeof(T), alignof(T));
-    SKR_ASSERT(pMemory != nullptr);
-    return new (pMemory) DEBUG_NEW_SOURCE_LINE T();
-}
-
-template <typename T, typename... TArgs>
-[[nodiscard]] SKR_FORCEINLINE T* SkrNewZeroed(TArgs&&... params)
-{
-    void* pMemory = sakura_new_aligned(sizeof(T), alignof(T));
-    memset(pMemory, 0, sizeof(T));
-    SKR_ASSERT(pMemory != nullptr);
-    return new (pMemory) DEBUG_NEW_SOURCE_LINE T{ skr::forward<TArgs>(params)... };
-}
-
-template <typename T>
-[[nodiscard]] SKR_FORCEINLINE T* SkrNewZeroed()
-{
-    void* pMemory = sakura_new_aligned(sizeof(T), alignof(T));
-    memset(pMemory, 0, sizeof(T));
-    SKR_ASSERT(pMemory != nullptr);
-    return new (pMemory) DEBUG_NEW_SOURCE_LINE T();
-}
-
-template <typename T, typename... TArgs>
-[[nodiscard]] SKR_FORCEINLINE T* SkrNewSized(size_t size, TArgs&&... params)
-{
-    SKR_ASSERT(size >= sizeof(T));
-    void* pMemory = sakura_new_aligned(size, alignof(T));
-    SKR_ASSERT(pMemory != nullptr);
-    return new (pMemory) DEBUG_NEW_SOURCE_LINE T{ skr::forward<TArgs>(params)... };
-}
-
-template <typename T>
-[[nodiscard]] SKR_FORCEINLINE T* SkrNewSized(size_t size)
-{
-    SKR_ASSERT(size >= sizeof(T));
-    void* pMemory = sakura_new_aligned(size, alignof(T));
-    SKR_ASSERT(pMemory != nullptr);
-    return new (pMemory) DEBUG_NEW_SOURCE_LINE T();
-}
-
-template <typename F>
-[[nodiscard]] SKR_FORCEINLINE F* SkrNewLambda(F&& lambda)
-{
-    using ValueType = std::remove_reference_t<F>;
-    void* pMemory = sakura_new_aligned(sizeof(ValueType), alignof(ValueType));
-    SKR_ASSERT(pMemory != nullptr);
-    return new (pMemory) DEBUG_NEW_SOURCE_LINE auto(skr::forward<F>(lambda));
-}
-
-template <typename T>
-void SkrDelete(T* pType)
-{
-    if (pType != nullptr)
+    template<class T>
+    [[nodiscard]] SKR_FORCEINLINE T* Alloc()
     {
-        pType->~T();
-        sakura_free_aligned((void*)pType, alignof(T));
+        void* p = sakura_new_aligned(sizeof(T), alignof(T));
+        SKR_ASSERT(p != nullptr);
+        return static_cast<T*>(p);
+    };
+
+    template<class T>
+    [[nodiscard]] SKR_FORCEINLINE T* AllocSized(size_t size)
+    {
+        SKR_ASSERT(size >= sizeof(T));
+        void* p = sakura_new_aligned(size, alignof(T));
+        SKR_ASSERT(p != nullptr);
+        return static_cast<T*>(p);
+    };
+
+    template<class T>
+    [[nodiscard]] SKR_FORCEINLINE void Free(T* p)
+    {
+        if (p != nullptr)
+        {
+            sakura_free_aligned((void*)p, alignof(T));
+        }
     }
-}
-
-#define SkrNewN(__N) SkrNew
-#define SkrNewZeroedN(__N) SkrNewZeroed
-#define SkrNewSizedN(__N) SkrNewSized
-#define SkrNewLambdaN(__N) SkrNewLambda
-#define SkrDeleteN(__N) SkrDelete
-
+};
+#define SKR_MAKE_NEW_CORE SkrNewCore{}
+#define SKR_MAKE_NEW_CORE_N(__N) SkrNewCore{}
 #endif
+
+template<typename T>
+struct SkrNewImpl
+{
+    SkrNewCore core;
+    SKR_FORCEINLINE SkrNewImpl(SkrNewCore core): core(core) {}
+
+    template<typename...Args>
+    [[nodiscard]] SKR_FORCEINLINE T* New(Args&&...args)
+    {
+        T* p = core.Alloc<T>();
+        return new (p) DEBUG_NEW_SOURCE_LINE T{ skr::forward<Args>(args)... };
+    }
+    template<typename...Args>
+    [[nodiscard]] SKR_FORCEINLINE T* NewZeroed(Args&&...args)
+    {
+        T* p = core.Alloc<T>();
+        memset(p, 0, sizeof(T));
+        return new (p) DEBUG_NEW_SOURCE_LINE T{ skr::forward<Args>(args)... };
+    }
+    template<class F>
+    [[nodiscard]] SKR_FORCEINLINE F* NewLambda(F&& lambda)
+    {
+        F* p = core.Alloc<F>();
+        return new (p) DEBUG_NEW_SOURCE_LINE auto(skr::forward<F>(lambda));
+    }
+    void Delete(T* p)
+    {
+        SKR_ASSERT(p != nullptr);
+        p->~T();
+        core.Free(p);
+    }
+};
+
+struct SkrNewWrapper
+{
+    SkrNewCore core;
+    SKR_FORCEINLINE SkrNewWrapper(SkrNewCore core): core(core) {}
+
+    template<typename T, typename...Args>
+    [[nodiscard]] SKR_FORCEINLINE T* New(Args&&...args)
+    {
+        return SkrNewImpl<T>(core).New(skr::forward<Args>(args)...);
+    }
+    template<typename T, typename...Args>
+    [[nodiscard]] SKR_FORCEINLINE T* NewZeroed(Args&&...args)
+    {
+        return SkrNewImpl<T>(core).NewZeroed(skr::forward<Args>(args)...);
+    }
+    template<class F>
+    [[nodiscard]] SKR_FORCEINLINE F* NewLambda(F&& lambda)
+    {
+        return SkrNewImpl<F>(core).NewLambda(skr::forward<F>(lambda));
+    }
+    template<typename T>
+    void Delete(T* p)
+    {
+        return SkrNewImpl<T>(core).Delete(p);
+    }
+};
+
+#define SkrNew SkrNewWrapper(SKR_MAKE_NEW_CORE).New
+#define SkrNewZeroed SkrNewWrapper(SKR_MAKE_NEW_CORE).NewZeroed
+#define SkrNewLambda SkrNewWrapper(SKR_MAKE_NEW_CORE).NewLambda
+#define SkrDelete SkrNewWrapper(SKR_MAKE_NEW_CORE).Delete
+
+#define SkrNewN(__N) SkrNewWrapper(SKR_MAKE_NEW_CORE_N(__N)).New
+#define SkrNewZeroedN(__N) SkrNewWrapper(SKR_MAKE_NEW_CORE_N(__N)).NewZeroed
+#define SkrNewLambdaN(__N) SkrNewWrapper(SKR_MAKE_NEW_CORE_N(__N)).NewLambda
+#define SkrDeleteN(__N) SkrNewWrapper(SKR_MAKE_NEW_CORE_N(__N)).Delete
 
 template<class T> 
 struct skr_stl_allocator 
