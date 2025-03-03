@@ -72,7 +72,7 @@ class CodegenTools:
         if method.is_static:
             return f"{method.ret_type}(*)({', '.join(f'{param.type}' for param in method.parameters.values())})"
         else:
-            return f"{method.ret_type}({method.parent.name}::*)({', '.join(f'{param.type}' for param in method.parameters.values())})"
+            return f"{method.ret_type}({method.parent.name}::*)({', '.join(f'{param.type}' for param in method.parameters.values())}) {"const" if method.is_const else ""}"
 
 
 class RTTRGenerator(gen.GeneratorBase):
@@ -205,7 +205,7 @@ class RTTRGenerator(gen.GeneratorBase):
                 for method in record.methods:
                     method_rttr = method.attrs["rttr"]
                     method_rttr_enable = method_rttr.is_function_enable(default_reflect_methods, True)
-                    if method_rttr_enable:
+                    if method_rttr_enable and method.name:
                         record_data.reflect_methods.append(method)
 
                         # append generator data
@@ -217,7 +217,7 @@ class RTTRGenerator(gen.GeneratorBase):
                         # parse params
                         for param in method.parameters.values():
                             param_rttr = param.attrs["rttr"]
-                            method.generator_data["rttr"] = ParamData(
+                            param.generator_data["rttr"] = ParamData(
                                 flags=param_rttr["flags"].visited_or([]),
                                 attrs=param_rttr["attrs"].visited_or([]),
                             )
@@ -267,7 +267,7 @@ class RTTRGenerator(gen.GeneratorBase):
         for record in db.main_module.get_records():
             if db.is_derived(record, "skr::rttr::IObject"):
                 record.generated_body_content += '''
-GUID iobject_get_typeid() const override
+::skr::GUID iobject_get_typeid() const override
 {
     using namespace skr::rttr;
     using ThisType = std::remove_cv_t<std::remove_pointer_t<decltype(this)>>;
@@ -303,6 +303,9 @@ void* iobject_get_head_ptr() const override { return const_cast<void*>((const vo
         # gen source
         enums = [enum for enum in main_module.get_enums() if "rttr" in enum.generator_data]
         records = [record for record in main_module.get_records() if "rttr" in record.generator_data]
+        # for record in records:
+        #     for method in record.generator_data["rttr"].reflect_methods:
+        #         print(f"{method.name} => {method.generator_data["rttr"].flags}")
         self.owner.append_content(
             "generated.cpp",
             source_template.render(

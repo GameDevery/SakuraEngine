@@ -168,6 +168,7 @@ struct DynamicStackReturnData {
     void* ref = nullptr;
 
     // store case
+    bool                  stored = false;
     uint64_t              offset = 0;
     DynamicStackDataDtor* dtor   = nullptr;
 };
@@ -219,6 +220,7 @@ struct DynamicStack {
     void store_return(T&& value);
 
     // get return
+    bool  is_return_stored();
     void* get_return_raw();
     template <typename T>
     T& get_return();
@@ -433,6 +435,7 @@ inline void DynamicStack::store_return(T&& value)
     {
         auto offset = _grow(sizeof(T), alignof(T));
         pointer     = _get_memory(offset);
+        _ret_info.stored = true;
         _ret_info.offset = offset;
         _ret_info.dtor = [](void* p) { static_cast<T*>(p)->~T(); };
     }
@@ -446,15 +449,24 @@ inline void DynamicStack::store_return(T&& value)
 }
 
 // get return
+inline bool DynamicStack::is_return_stored()
+{
+    return _ret_info.stored;
+}
 inline void* DynamicStack::get_return_raw()
 {
     SKR_ASSERT(_ret_info.kind == EDynamicStackReturnKind::Store);
-    return _get_memory(_ret_info.offset);
+    
+    return _ret_info.stored ?
+        _get_memory(_ret_info.offset) :
+        nullptr;
 }
 template <typename T>
 inline T& DynamicStack::get_return()
 {
     SKR_ASSERT(_ret_info.kind == EDynamicStackReturnKind::Store);
+    SKR_ASSERT(_ret_info.stored);
+    
     return *reinterpret_cast<T*>(_get_memory(_ret_info.offset));
 }
 } // namespace skr::rttr

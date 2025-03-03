@@ -1,6 +1,7 @@
 #pragma once
 #include "SkrBase/config.h"
 #include "SkrContainers/string.hpp"
+#include "SkrRTTR/scriptble_object.hpp"
 #include "v8-context.h"
 #include "v8-persistent-handle.h"
 
@@ -25,6 +26,16 @@ struct SKR_V8_API V8Context {
 
     // getter
     ::v8::Global<::v8::Context> v8_context() const;
+    
+    // set global value
+    void set_global(StringView name, uint32_t v);
+    void set_global(StringView name, int32_t v);
+    void set_global(StringView name, uint64_t v);
+    void set_global(StringView name, int64_t v);
+    void set_global(StringView name, double v);
+    void set_global(StringView name, bool v);
+    void set_global(StringView name, StringView v);
+    void set_global(StringView name, skr::rttr::ScriptbleObject* obj);
 
     // run script
     void exec_script(StringView script);

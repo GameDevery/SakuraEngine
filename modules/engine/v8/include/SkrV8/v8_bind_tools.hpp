@@ -19,13 +19,16 @@ struct SKR_V8_API V8BindTools {
         ::v8::Isolate*             isolate,
         rttr::TypeSignatureView    signature,
         void*                      native_data,
-        ::v8::Local<::v8::Value>&  out_v8_value);
+        ::v8::Local<::v8::Value>&  out_v8_value
+    );
     static bool v8_to_native_primitive(
         ::v8::Local<::v8::Context> context,
         ::v8::Isolate*             isolate,
         rttr::TypeSignatureView    signature,
         ::v8::Local<::v8::Value>   v8_value,
-        void*                      out_native_data);
+        void*                      out_native_data,
+        bool                       is_init
+    );
     
     // function invoke helpers
     static void push_param(

@@ -51,6 +51,7 @@ SKR_EXEC_STATIC_CTOR
                 %endfor
 
                 // flags
+                // ${method.generator_data["rttr"].flags}
                 %if method_rttr_data.flags:
                 method_builder.flag(${tools.flags_expr(method, method_rttr_data.flags)});
                 %endif

@@ -39,6 +39,213 @@ void V8Context::shutdown()
     return ::v8::Global<::v8::Context>(_isolate->v8_isolate(), _context);
 }
 
+// set global value
+void V8Context::set_global(StringView name, uint32_t v)
+{
+    using namespace ::v8;
+    
+    // scopes
+    Isolate::Scope isolate_scope(_isolate->v8_isolate());
+    HandleScope    handle_scope(_isolate->v8_isolate());
+
+    // solve context
+    Local<Context> solved_context = _context.Get(_isolate->v8_isolate());
+    Context::Scope context_scope(solved_context);
+    Local<Object>  global = solved_context->Global();
+
+    // translate value
+    Local<::v8::String> key = ::v8::String::NewFromUtf8(
+        _isolate->v8_isolate(), 
+        name.data_raw(),
+        NewStringType::kNormal,
+        name.size()
+    ).ToLocalChecked();
+    Local<Value> value = Integer::New(_isolate->v8_isolate(), v);
+    
+    // set
+    global->Set(solved_context, key, value).Check();
+}
+void V8Context::set_global(StringView name, int32_t v)
+{
+    using namespace ::v8;
+    
+    // scopes
+    Isolate::Scope isolate_scope(_isolate->v8_isolate());
+    HandleScope    handle_scope(_isolate->v8_isolate());
+
+    // solve context
+    Local<Context> solved_context = _context.Get(_isolate->v8_isolate());
+    Context::Scope context_scope(solved_context);
+    Local<Object>  global = solved_context->Global();
+
+    // translate value
+    Local<::v8::String> key = ::v8::String::NewFromUtf8(
+        _isolate->v8_isolate(), 
+        name.data_raw(),
+        NewStringType::kNormal,
+        name.size()
+    ).ToLocalChecked();
+    Local<Value> value = Integer::New(_isolate->v8_isolate(), v);
+    
+    // set
+    global->Set(solved_context, key, value).Check();
+}
+void V8Context::set_global(StringView name, uint64_t v)
+{
+    using namespace ::v8;
+    
+    // scopes
+    Isolate::Scope isolate_scope(_isolate->v8_isolate());
+    HandleScope    handle_scope(_isolate->v8_isolate());
+
+    // solve context
+    Local<Context> solved_context = _context.Get(_isolate->v8_isolate());
+    Context::Scope context_scope(solved_context);
+    Local<Object>  global = solved_context->Global();
+
+    // translate value
+    Local<::v8::String> key = ::v8::String::NewFromUtf8(
+        _isolate->v8_isolate(), 
+        name.data_raw(),
+        NewStringType::kNormal,
+        name.size()
+    ).ToLocalChecked();
+    Local<Value> value = BigInt::New(_isolate->v8_isolate(), v);
+    
+    // set
+    global->Set(solved_context, key, value).Check();
+}
+void V8Context::set_global(StringView name, int64_t v)
+{
+    using namespace ::v8;
+    
+    // scopes
+    Isolate::Scope isolate_scope(_isolate->v8_isolate());
+    HandleScope    handle_scope(_isolate->v8_isolate());
+
+    // solve context
+    Local<Context> solved_context = _context.Get(_isolate->v8_isolate());
+    Context::Scope context_scope(solved_context);
+    Local<Object>  global = solved_context->Global();
+
+    // translate value
+    Local<::v8::String> key = ::v8::String::NewFromUtf8(
+        _isolate->v8_isolate(), 
+        name.data_raw(),
+        NewStringType::kNormal,
+        name.size()
+    ).ToLocalChecked();
+    Local<Value> value = BigInt::New(_isolate->v8_isolate(), v);
+    
+    // set
+    global->Set(solved_context, key, value).Check();
+}
+void V8Context::set_global(StringView name, double v)
+{
+    using namespace ::v8;
+    
+    // scopes
+    Isolate::Scope isolate_scope(_isolate->v8_isolate());
+    HandleScope    handle_scope(_isolate->v8_isolate());
+
+    // solve context
+    Local<Context> solved_context = _context.Get(_isolate->v8_isolate());
+    Context::Scope context_scope(solved_context);
+    Local<Object>  global = solved_context->Global();
+
+    // translate value
+    Local<::v8::String> key = ::v8::String::NewFromUtf8(
+        _isolate->v8_isolate(), 
+        name.data_raw(),
+        NewStringType::kNormal,
+        name.size()
+    ).ToLocalChecked();
+    Local<Value> value = Number::New(_isolate->v8_isolate(), v);
+    
+    // set
+    global->Set(solved_context, key, value).Check();
+}
+void V8Context::set_global(StringView name, bool v)
+{
+    using namespace ::v8;
+    
+    // scopes
+    Isolate::Scope isolate_scope(_isolate->v8_isolate());
+    HandleScope    handle_scope(_isolate->v8_isolate());
+
+    // solve context
+    Local<Context> solved_context = _context.Get(_isolate->v8_isolate());
+    Context::Scope context_scope(solved_context);
+    Local<Object>  global = solved_context->Global();
+
+    // translate value
+    Local<::v8::String> key = ::v8::String::NewFromUtf8(
+        _isolate->v8_isolate(), 
+        name.data_raw(),
+        NewStringType::kNormal,
+        name.size()
+    ).ToLocalChecked();
+    Local<Value> value = Boolean::New(_isolate->v8_isolate(), v);
+    
+    // set
+    global->Set(solved_context, key, value).Check();
+}
+void V8Context::set_global(StringView name, StringView v)
+{
+    using namespace ::v8;
+    
+    // scopes
+    Isolate::Scope isolate_scope(_isolate->v8_isolate());
+    HandleScope    handle_scope(_isolate->v8_isolate());
+
+    // solve context
+    Local<Context> solved_context = _context.Get(_isolate->v8_isolate());
+    Context::Scope context_scope(solved_context);
+    Local<Object>  global = solved_context->Global();
+
+    // translate value
+    Local<::v8::String> key = ::v8::String::NewFromUtf8(
+        _isolate->v8_isolate(), 
+        name.data_raw(),
+        NewStringType::kNormal,
+        name.size()
+    ).ToLocalChecked();
+    Local<Value> value = ::v8::String::NewFromUtf8(
+        _isolate->v8_isolate(), 
+        v.data_raw(),
+        NewStringType::kNormal,
+        v.size()
+    ).ToLocalChecked();
+    
+    // set
+    global->Set(solved_context, key, value).Check();
+}
+void V8Context::set_global(StringView name, skr::rttr::ScriptbleObject* obj)
+{
+    using namespace ::v8;
+    
+    // scopes
+    Isolate::Scope isolate_scope(_isolate->v8_isolate());
+    HandleScope    handle_scope(_isolate->v8_isolate());
+
+    // solve context
+    Local<Context> solved_context = _context.Get(_isolate->v8_isolate());
+    Context::Scope context_scope(solved_context);
+    Local<Object>  global = solved_context->Global();
+
+    // translate value
+    Local<::v8::String> key = ::v8::String::NewFromUtf8(
+        _isolate->v8_isolate(), 
+        name.data_raw(),
+        NewStringType::kNormal,
+        name.size()
+    ).ToLocalChecked();
+    Local<Object> value = _isolate->translate_record(obj)->v8_object.Get(_isolate->v8_isolate());
+    
+    // set
+    global->Set(solved_context, key, value).Check();
+}
+
 // exec script
 void V8Context::exec_script(StringView script)
 {

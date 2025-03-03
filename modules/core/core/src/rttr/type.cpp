@@ -409,9 +409,9 @@ void Type::each_static_method(FunctionRef<void(const StaticMethodData* method, c
     if (_type_category == ETypeCategory::Record)
     {
         // each self
-        for (const auto& field : _record_data.static_methods)
+        for (const auto& method : _record_data.static_methods)
         {
-            each_func(field, this);
+            each_func(method, this);
         }
 
         // each base

@@ -52,6 +52,10 @@ inline static bool _push_param_primitive(
         case rttr::type_id_of<bool>().get_hash():
             stack.add_param<bool>(v8_value->BooleanValue(isolate), kind);
             return true;
+        // string
+        case rttr::type_id_of<skr::String>().get_hash():
+            stack.add_param<skr::String>(skr::String::From(*::v8::String::Utf8Value(isolate, v8_value)), kind);
+            return true;
         default:
             return false;
     }
@@ -95,6 +99,8 @@ bool V8BindTools::match_type(::v8::Local<::v8::Value> v8_value, rttr::TypeSignat
                 return v8_value->IsNumber();
             case rttr::type_id_of<bool>().get_hash():
                 return v8_value->IsBoolean();
+            case rttr::type_id_of<skr::String>().get_hash():
+                return v8_value->IsString();
             default:
                 break;
         }
@@ -159,6 +165,9 @@ bool V8BindTools::native_to_v8_primitive(
             case rttr::type_id_of<bool>().get_hash():
                 out_v8_value = ::v8::Boolean::New(isolate, *reinterpret_cast<bool*>(native_data));
                 return true;
+            case rttr::type_id_of<skr::String>().get_hash():
+                out_v8_value = ::v8::String::NewFromUtf8(isolate, reinterpret_cast<skr::String*>(native_data)->c_str_raw()).ToLocalChecked();
+                return true;
             default:
                 break;
         }
@@ -170,7 +179,9 @@ bool V8BindTools::v8_to_native_primitive(
     ::v8::Isolate*             isolate,
     rttr::TypeSignatureView    signature,
     ::v8::Local<::v8::Value>   v8_value,
-    void*                      out_native_data)
+    void*                      out_native_data,
+    bool                       is_init
+)
 {
     // only handle native type
     if (signature.is_type() && !signature.is_decayed_pointer())
@@ -215,6 +226,18 @@ bool V8BindTools::v8_to_native_primitive(
                 return true;
             case rttr::type_id_of<bool>().get_hash():
                 *reinterpret_cast<bool*>(out_native_data) = v8_value->BooleanValue(isolate);
+                return true;
+            case rttr::type_id_of<skr::String>().get_hash():
+                if (is_init)
+                {
+                    *reinterpret_cast<skr::String*>(out_native_data) = skr::String::From(*::v8::String::Utf8Value(isolate, v8_value));
+                }
+                else
+                {
+                    new (out_native_data) skr::String(
+                        skr::String::From(*::v8::String::Utf8Value(isolate, v8_value))
+                    );
+                }
                 return true;
             default:
                 break;
@@ -305,6 +328,11 @@ bool V8BindTools::read_return(
     ::v8::Local<::v8::Value>&  out_value
 )
 {
+    if (!stack.is_return_stored())
+    {
+        return false;
+    }
+
     if (signature.is_type())
     {
         if (signature.is_decayed_pointer())

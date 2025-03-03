@@ -669,7 +669,8 @@ void V8Isolate::_set_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
         Isolate,
         bind_data->field->type,
         info[0],
-        bind_data->field->get_address(bind_core->cast_to(bind_data->owner_type->type_id()))
+        bind_data->field->get_address(bind_core->cast_to(bind_data->owner_type->type_id())),
+        true
     ))
     {
     }
@@ -735,7 +736,8 @@ void V8Isolate::_set_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>&
         Isolate,
         bind_data->field->type,
         info[0],
-        bind_data->field->address
+        bind_data->field->address,
+        true
     ))
     {
     }
