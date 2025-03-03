@@ -190,6 +190,55 @@ void Type::build_enum(FunctionRef<void(EnumData* data)> func)
 }
 
 // caster
+bool Type::based_on(GUID type_id) const
+{
+    switch (_type_category)
+    {
+        case ETypeCategory::Primitive: {
+            return (type_id == _primitive_data.type_id);
+        }
+        case ETypeCategory::Record: {
+            if (type_id == _record_data.type_id)
+            {
+                return true;
+            }
+            else
+            {
+                // find base and cast
+                for (const auto& base : _record_data.bases_data)
+                {
+                    if (type_id == base->type_id)
+                    {
+                        return true;;
+                    }
+                }
+
+                // get base type and continue cast
+                for (const auto& base : _record_data.bases_data)
+                {
+                    auto type = get_type_from_guid(base->type_id);
+                    if (type)
+                    {
+                        if (type->based_on(type_id))
+                        {
+                            return true;
+                        }
+                    }
+                    else
+                    {
+                        SKR_LOG_FMT_ERROR(u8"Type \"{}\" not found when doing cast from \"{}\"", type_id, _record_data.type_id);
+                    }
+                }
+            }
+        }
+        case ETypeCategory::Enum: {
+            return (type_id == _enum_data.type_id || type_id == _enum_data.underlying_type_id);
+        }
+        default:
+            SKR_UNREACHABLE_CODE()
+            return false;
+    }
+}
 void* Type::cast_to(GUID type_id, void* p) const
 {
     switch (_type_category)

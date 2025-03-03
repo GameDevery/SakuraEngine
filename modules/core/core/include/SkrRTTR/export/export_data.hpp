@@ -425,7 +425,7 @@ struct BaseData {
     using CastFunc = void* (*)(void*);
 
     GUID     type_id;
-    CastFunc cast_to_base; // cast_to_derived 正向转换在虚继承的情况下会报错，尽量避免这类需求
+    CastFunc cast_to_base;
 
     template <typename T, typename Base>
     inline static BaseData Make()

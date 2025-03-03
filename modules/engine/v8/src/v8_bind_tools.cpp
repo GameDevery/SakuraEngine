@@ -408,7 +408,6 @@ void V8BindTools::call_method(
     }
 }
 void V8BindTools::call_function(
-    void*                                          obj,
     const Vector<rttr::ParamData>&                 params,
     const rttr::TypeSignatureView                  ret_type,
     rttr::FuncInvokerDynamicStack                  invoker,

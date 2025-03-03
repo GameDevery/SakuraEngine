@@ -23,8 +23,8 @@ struct SKR_V8_API V8Context {
     void init();
     void shutdown();
 
-    // take template
-    void install_templates();
+    // getter
+    ::v8::Global<::v8::Context> v8_context() const;
 
     // run script
     void exec_script(StringView script);

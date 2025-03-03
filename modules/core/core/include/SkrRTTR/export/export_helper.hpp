@@ -163,7 +163,7 @@ private:
     template <auto method, typename T, typename Ret, typename... Args, size_t... Idx>
     inline static MethodInvokerDynamicStack _make_method_dynamic_stack_helper_const(std::index_sequence<Idx...>)
     {
-        return +[](const void* p, DynamicStack& stack) {
+        return +[](void* p, DynamicStack& stack) {
             if constexpr (std::is_same_v<void, Ret>)
             {
                 (reinterpret_cast<const T*>(p)->*method)(std::forward<Args>(stack.get_param<Args>(Idx))...);

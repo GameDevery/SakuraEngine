@@ -1,60 +1,78 @@
 #pragma once
-#include "SkrRTTR/type.hpp"
 #include "v8-persistent-handle.h"
+#include "v8-template.h"
+
+#include "SkrRTTR/type.hpp"
 #include "SkrRTTR/scriptble_object.hpp"
 
 namespace skr::v8
 {
-struct V8BindRecordCore;
-
-struct V8BindMethodCore {
+//===============================bind data===============================
+struct V8BindMethodData {
     struct OverloadInfo {
-        skr::rttr::Type* type;
-        skr::rttr::MethodData* method;
+        const skr::rttr::Type*       owner_type;
+        const skr::rttr::MethodData* method;
     };
 
     // native info
-    String name;
+    String               name;
     Vector<OverloadInfo> overloads;
-
-    // owner record bind core
-    V8BindRecordCore* owner;
 };
-
-struct V8BindStaticMethodCore {
+struct V8BindStaticMethodData {
     struct OverloadInfo {
-        skr::rttr::Type* type;
-        skr::rttr::StaticMethodData* method;
+        const skr::rttr::Type*             owner_type;
+        const skr::rttr::StaticMethodData* method;
     };
 
     // native info
-    String name;
+    String               name;
     Vector<OverloadInfo> overloads;
-
-    // owner record bind core
-    V8BindRecordCore* owner;
 };
-
-struct V8BindFieldCore {
+struct V8BindFieldData {
     // native info
-    String name;
-    skr::rttr::Type* type;
-    skr::rttr::FieldData* field;
-
-    // owner record bind core
-    V8BindRecordCore* owner;
+    String                      name;
+    const skr::rttr::Type*      owner_type;
+    const skr::rttr::FieldData* field;
 };
-
-struct V8BindStaticFieldCore {
+struct V8BindStaticFieldData {
     // native info
-    String name;
-    skr::rttr::Type* type;
-    skr::rttr::StaticFieldData* field;
+    String                            name;
+    const skr::rttr::Type*            owner_type;
+    const skr::rttr::StaticFieldData* field;
+};
+struct V8BindRecordData {
+    // v8 info
+    ::v8::Global<::v8::FunctionTemplate> ctor_template;
 
-    // owner record bind core
-    V8BindRecordCore* owner;
+    // native info
+    skr::rttr::Type*                     type;
+    Map<String, V8BindMethodData*>       methods;
+    Map<String, V8BindFieldData*>        fields;
+    Map<String, V8BindStaticMethodData*> static_methods;
+    Map<String, V8BindStaticFieldData*>  static_fields;
+
+    ~V8BindRecordData()
+    {
+        for (auto& pair : methods)
+        {
+            SkrDelete(pair.value);
+        }
+        for (auto& pair : fields)
+        {
+            SkrDelete(pair.value);
+        }
+        for (auto& pair : static_methods)
+        {
+            SkrDelete(pair.value);
+        }
+        for (auto& pair : static_fields)
+        {
+            SkrDelete(pair.value);
+        }
+    }
 };
 
+//===============================bind core===============================
 struct V8BindRecordCore {
     // native info
     skr::rttr::ScriptbleObject* object;
@@ -62,13 +80,11 @@ struct V8BindRecordCore {
 
     // v8 info
     ::v8::Persistent<::v8::Object> v8_object;
-
-    // field & method
-    Map<String, V8BindMethodCore*> methods;
-    Map<String, V8BindFieldCore*>  fields;
-
-    // static field & static method
-    Map<String, V8BindStaticMethodCore*> static_methods;
-    Map<String, V8BindStaticFieldCore*>  static_fields;
+    
+    // helper functions
+    inline void* cast_to(::skr::GUID type_id)
+    {
+        return type->cast_to(type_id, object->iobject_get_head_ptr());
+    }
 };
 } // namespace skr::v8

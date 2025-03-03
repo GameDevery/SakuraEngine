@@ -61,7 +61,6 @@ struct SKR_V8_API V8BindTools {
         ::v8::Isolate*                                 isolate
     );
     static void call_function(
-        void*                                          obj,
         const Vector<rttr::ParamData>&                 params,
         const rttr::TypeSignatureView                  ret_type,
         rttr::FuncInvokerDynamicStack                  invoker,

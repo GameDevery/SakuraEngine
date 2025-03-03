@@ -87,6 +87,7 @@ struct SKR_CORE_API Type final {
     // void validate_export_data() const;
 
     // caster
+    bool       based_on(GUID type_id) const;
     void*      cast_to(GUID type_id, void* p) const;
     TypeCaster caster(GUID type_id) const;
 
