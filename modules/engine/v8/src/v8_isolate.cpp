@@ -109,7 +109,7 @@ void V8Isolate::make_record_template(::skr::rttr::Type* type)
     // bind member component
     {
         // bind method
-        type->each_method([&](const rttr::MethodData* method){
+        type->each_method([&](const rttr::MethodData* method, const rttr::Type* owner_type){
             ctor_template->PrototypeTemplate()->Set(
                 ::v8::String::NewFromUtf8(_isolate, method->name.c_str_raw()).ToLocalChecked(),
                 FunctionTemplate::New(
@@ -121,7 +121,7 @@ void V8Isolate::make_record_template(::skr::rttr::Type* type)
         });
 
         // bind field
-        type->each_field([&](const rttr::FieldData* field){
+        type->each_field([&](const rttr::FieldData* field, const rttr::Type* owner_type){
             ctor_template->PrototypeTemplate()->SetAccessorProperty(
                 ::v8::String::NewFromUtf8(_isolate, field->name.c_str_raw()).ToLocalChecked(),
                 FunctionTemplate::New(
@@ -141,7 +141,7 @@ void V8Isolate::make_record_template(::skr::rttr::Type* type)
     // bind static component
     {
         // bind static method
-        type->each_static_method([&](const rttr::StaticMethodData* static_method){
+        type->each_static_method([&](const rttr::StaticMethodData* static_method, const rttr::Type* owner_type){
             ctor_template->Set(
                 ::v8::String::NewFromUtf8(_isolate, static_method->name.c_str_raw()).ToLocalChecked(),
                 FunctionTemplate::New(
@@ -153,7 +153,7 @@ void V8Isolate::make_record_template(::skr::rttr::Type* type)
         });
 
         // bind static field
-        type->each_static_field([&](const rttr::StaticFieldData* static_field){
+        type->each_static_field([&](const rttr::StaticFieldData* static_field, const rttr::Type* owner_type){
             ctor_template->SetAccessorProperty(
                 ::v8::String::NewFromUtf8(_isolate, static_field->name.c_str_raw()).ToLocalChecked(),
                 FunctionTemplate::New(

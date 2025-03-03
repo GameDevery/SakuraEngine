@@ -38,6 +38,22 @@ struct TypeCaster {
     bool                      is_valid   = true;
     InlineVector<CastFunc, 8> cast_funcs = {};
 };
+struct TypeEachConfig {
+    // should each bases to find
+    bool include_bases = true;
+};
+struct TypeFindConfig {
+    // if setted, will filter by name
+    Optional<StringView> name = {};
+
+    // if setted, will filter by signature
+    Optional<TypeSignatureView> signature = {};
+    ETypeSignatureCompareFlag   signature_compare_flag = ETypeSignatureCompareFlag::Strict;
+
+    // should each bases to find
+    bool include_bases = true;
+};
+
 
 struct SKR_CORE_API Type final {
     // ctor & dtor
@@ -47,9 +63,11 @@ struct SKR_CORE_API Type final {
     // basic getter
     ETypeCategory      type_category() const;
     const skr::String& name() const;
+    Vector<String>     name_space() const;
     GUID               type_id() const;
     size_t             size() const;
     size_t             alignment() const;
+    void               each_name_space(FunctionRef<void(StringView)> each_func) const;
 
     // builders
     void build_primitive(FunctionRef<void(PrimitiveData* data)> func);
@@ -68,35 +86,44 @@ struct SKR_CORE_API Type final {
     void*      cast_to(GUID type_id, void* p) const;
     TypeCaster caster(GUID type_id) const;
 
-    // each
-    void each_ctor(FunctionRef<void(const CtorData* ctor)> each_func, bool include_base = true) const;
-    void each_method(FunctionRef<void(const MethodData* method)> each_func, bool include_base = true) const;
-    void each_field(FunctionRef<void(const FieldData* field)> each_func, bool include_base = true) const;
-    void each_static_method(FunctionRef<void(const StaticMethodData* method)> each_func, bool include_base = true) const;
-    void each_static_field(FunctionRef<void(const StaticFieldData* field)> each_func, bool include_base = true) const;
-    void each_extern_method(FunctionRef<void(const ExternMethodData* method)> each_func, bool include_base = true) const;
+    // get dtor
+    Optional<DtorData> dtor_data() const;
 
-    // find
-    const CtorData*         find_ctor(TypeSignatureView signature, ETypeSignatureCompareFlag flag) const;
-    const MethodData*       find_method(StringView name, TypeSignatureView signature, ETypeSignatureCompareFlag flag, bool include_base = true) const;
-    const FieldData*        find_field(StringView name, TypeSignatureView signature, ETypeSignatureCompareFlag flag, bool include_base = true) const;
-    const StaticMethodData* find_static_method(StringView name, TypeSignatureView signature, ETypeSignatureCompareFlag flag, bool include_base = true) const;
-    const StaticFieldData*  find_static_field(StringView name, TypeSignatureView signature, ETypeSignatureCompareFlag flag, bool include_base = true) const;
-    const ExternMethodData* find_extern_method(StringView name, TypeSignatureView signature, ETypeSignatureCompareFlag flag, bool include_base = true) const;
+    // each method & field
+    void each_bases(FunctionRef<void(const BaseData* base_data, const Type* owner)> each_func, TypeEachConfig config = {}) const;
+    void each_ctor(FunctionRef<void(const CtorData* ctor)> each_func, TypeEachConfig config = {}) const; // ignore [config.include_bases]x
+    void each_method(FunctionRef<void(const MethodData* method, const Type* owner)> each_func, TypeEachConfig config = {}) const;
+    void each_field(FunctionRef<void(const FieldData* field, const Type* owner)> each_func, TypeEachConfig config = {}) const;
+    void each_static_method(FunctionRef<void(const StaticMethodData* method, const Type* owner)> each_func, TypeEachConfig config = {}) const;
+    void each_static_field(FunctionRef<void(const StaticFieldData* field, const Type* owner)> each_func, TypeEachConfig config = {}) const;
+    void each_extern_method(FunctionRef<void(const ExternMethodData* method, const Type* owner)> each_func, TypeEachConfig config = {}) const;
 
-    // template find
+    // find method & field
+    const CtorData*         find_ctor(TypeFindConfig config) const; // ignore [config.name/config.include_bases]
+    const MethodData*       find_method(TypeFindConfig config) const;
+    const FieldData*        find_field(TypeFindConfig config) const;
+    const StaticMethodData* find_static_method(TypeFindConfig config) const;
+    const StaticFieldData*  find_static_field(TypeFindConfig config) const;
+    const ExternMethodData* find_extern_method(TypeFindConfig config) const;
+
+    // template find method & field
     template <typename Func>
-    const CtorData* find_ctor(ETypeSignatureCompareFlag flag) const;
+    const CtorData* find_ctor_t(ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict) const;
     template <typename Func>
-    const MethodData* find_method(StringView name, ETypeSignatureCompareFlag flag, bool include_base = true) const;
+    const MethodData* find_method_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
     template <typename Field>
-    const FieldData* find_field(StringView name, ETypeSignatureCompareFlag flag, bool include_base = true) const;
+    const FieldData* find_field_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
     template <typename Func>
-    const StaticMethodData* find_static_method(StringView name, ETypeSignatureCompareFlag flag, bool include_base = true) const;
+    const StaticMethodData* find_static_method_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
     template <typename Field>
-    const StaticFieldData* find_static_field(StringView name, ETypeSignatureCompareFlag flag, bool include_base = true) const;
+    const StaticFieldData* find_static_field_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
     template <typename Func>
-    const ExternMethodData* find_extern_method(StringView name, ETypeSignatureCompareFlag flag, bool include_base = true) const;
+    const ExternMethodData* find_extern_method_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
+
+    // flag & attribute
+    ERecordFlag record_flag() const;
+    EEnumFlag   enum_flag() const;
+    IAttribute* find_attribute(GUID attr_type_id) const;
 
 private:
     // helpers
@@ -116,41 +143,69 @@ private:
 // type inline impl
 namespace skr::rttr
 {
-// template find
+// template find method & field
 template <typename Func>
-inline const CtorData* Type::find_ctor(ETypeSignatureCompareFlag flag) const
+inline const CtorData* Type::find_ctor_t(ETypeSignatureCompareFlag flag) const
 {
     TypeSignatureTyped<Func> signature;
-    return find_ctor(signature.view(), flag);
+    return find_ctor(TypeFindConfig {
+        .signature = signature.view(),
+        .signature_compare_flag = flag,
+    });
 }
 template <typename Func>
-inline const MethodData* Type::find_method(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
+inline const MethodData* Type::find_method_t(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
 {
     TypeSignatureTyped<Func> signature;
-    return find_method(name, signature.view(), flag, include_base);
+    return find_method(TypeFindConfig {
+        .signature = signature.view(),
+        .signature_compare_flag = flag,
+        .name = name,
+        .include_bases = include_base,
+    });
 }
 template <typename Field>
-inline const FieldData* Type::find_field(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
+inline const FieldData* Type::find_field_t(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
 {
     TypeSignatureTyped<Field> signature;
-    return find_field(name, signature.view(), flag, include_base);
+    return find_field(TypeFindConfig {
+        .signature = signature.view(),
+        .signature_compare_flag = flag,
+        .name = name,
+        .include_bases = include_base,
+    });
 }
 template <typename Func>
-inline const StaticMethodData* Type::find_static_method(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
+inline const StaticMethodData* Type::find_static_method_t(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
 {
     TypeSignatureTyped<Func> signature;
-    return find_static_method(name, signature.view(), flag, include_base);
+    return find_static_method(TypeFindConfig {
+        .signature = signature.view(),
+        .signature_compare_flag = flag,
+        .name = name,
+        .include_bases = include_base,
+    });
 }
 template <typename Field>
-inline const StaticFieldData* Type::find_static_field(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
+inline const StaticFieldData* Type::find_static_field_t(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
 {
     TypeSignatureTyped<Field> signature;
-    return find_static_field(name, signature.view(), flag, include_base);
+    return find_static_field(TypeFindConfig {
+        .signature = signature.view(),
+        .signature_compare_flag = flag,
+        .name = name,
+        .include_bases = include_base,
+    });
 }
 template <typename Func>
-inline const ExternMethodData* Type::find_extern_method(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
+inline const ExternMethodData* Type::find_extern_method_t(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
 {
     TypeSignatureTyped<Func> signature;
-    return find_extern_method(name, signature.view(), flag, include_base);
+    return find_extern_method(TypeFindConfig {
+        .signature = signature.view(),
+        .signature_compare_flag = flag,
+        .name = name,
+        .include_bases = include_base,
+    });
 }
 } // namespace skr::rttr

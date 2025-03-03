@@ -530,88 +530,6 @@ struct RecordData {
             SkrDelete(it.value);
         }
     }
-
-    // signature find
-    inline const CtorData* find_ctor(TypeSignatureView signature, ETypeSignatureCompareFlag flag) const
-    {
-        return ctor_data.find_if([&](CtorData* ctor) {
-                            return ctor->signature_equal(signature, flag);
-                        })
-        .ref();
-    }
-    inline const MethodData* find_method(TypeSignatureView signature, StringView name, ETypeSignatureCompareFlag flag) const
-    {
-        return methods.find_if([&](MethodData* method) {
-                          return method->name == name && method->signature_equal(signature, flag);
-                      })
-        .ref();
-    }
-    inline const FieldData* find_field(TypeSignatureView signature, StringView name, ETypeSignatureCompareFlag flag) const
-    {
-        return fields.find_if([&](FieldData* field) {
-                         return field->name == name && field->type.view().equal(signature, flag);
-                     })
-        .ref();
-    }
-    inline const StaticMethodData* find_static_method(TypeSignatureView signature, StringView name, ETypeSignatureCompareFlag flag) const
-    {
-        return static_methods.find_if([&](StaticMethodData* method) {
-                                 return method->name == name && method->signature_equal(signature, flag);
-                             })
-        .ref();
-    }
-    inline const StaticFieldData* find_static_field(TypeSignatureView signature, StringView name, ETypeSignatureCompareFlag flag) const
-    {
-        return static_fields.find_if([&](StaticFieldData* field) {
-                                return field->name == name && field->type.view().equal(signature, flag);
-                            })
-        .ref();
-    }
-    inline const ExternMethodData* find_extern_method(TypeSignatureView signature, StringView name, ETypeSignatureCompareFlag flag) const
-    {
-        return extern_methods.find_if([&](ExternMethodData* method) {
-                                 return method->name == name && method->signature_equal(signature, flag);
-                             })
-        .ref();
-    }
-
-    // template find
-    template <typename Func>
-    inline const CtorData* find_ctor(ETypeSignatureCompareFlag flag) const
-    {
-        TypeSignatureTyped<Func> signature;
-        return find_ctor(signature.view(), flag);
-    }
-    template <typename Func>
-    inline const MethodData* find_method(StringView name, ETypeSignatureCompareFlag flag) const
-    {
-        TypeSignatureTyped<Func> signature;
-        return find_method(signature.view(), name, flag);
-    }
-    template <typename Func>
-    inline const StaticMethodData* find_static_method(StringView name, ETypeSignatureCompareFlag flag) const
-    {
-        TypeSignatureTyped<Func> signature;
-        return find_static_method(signature.view(), name, flag);
-    }
-    template <typename Func>
-    inline Optional<const ExternMethodData*> find_extern_method(StringView name, ETypeSignatureCompareFlag flag) const
-    {
-        TypeSignatureTyped<Func> signature;
-        return find_extern_method(signature.view(), name, flag);
-    }
-    template <typename Field>
-    inline const FieldData* find_field(StringView name, ETypeSignatureCompareFlag flag) const
-    {
-        TypeSignatureTyped<Field> signature;
-        return find_field(signature.view(), name, flag);
-    }
-    template <typename Field>
-    inline const StaticFieldData* find_static_field(StringView name, ETypeSignatureCompareFlag flag) const
-    {
-        TypeSignatureTyped<Field> signature;
-        return find_static_field(signature.view(), name, flag);
-    }
 };
 } // namespace skr::rttr
 
@@ -650,7 +568,7 @@ struct EnumData {
     Vector<EnumItemData> items = {};
 
     // extern method
-    Vector<ExternMethodData> extern_methods = {};
+    Vector<ExternMethodData*> extern_methods = {};
 
     // flag & attributes
     EEnumFlag              flag       = EEnumFlag::None;
@@ -663,23 +581,6 @@ struct EnumData {
         {
             SkrDelete(it.value);
         }
-    }
-
-    // signature find
-    inline const ExternMethodData* find_extern_method(TypeSignatureView signature, StringView name, ETypeSignatureCompareFlag flag) const
-    {
-        return extern_methods.find_if([&](const ExternMethodData& method) {
-                                 return method.name == name && method.signature_equal(signature, flag);
-                             })
-        .ptr();
-    }
-
-    // template find
-    template <typename Func>
-    inline Optional<const ExternMethodData*> find_extern_method(StringView name, ETypeSignatureCompareFlag flag) const
-    {
-        TypeSignatureTyped<Func> signature;
-        return find_extern_method(signature.view(), name, flag);
     }
 };
 } // namespace skr::rttr
@@ -696,22 +597,5 @@ struct PrimitiveData {
 
     // extern method
     Vector<ExternMethodData*> extern_methods;
-
-    // signature find
-    inline const ExternMethodData* find_extern_method(TypeSignatureView signature, StringView name, ETypeSignatureCompareFlag flag) const
-    {
-        return extern_methods.find_if([&](const ExternMethodData* method) {
-                                 return method->name == name && method->signature_equal(signature, flag);
-                             })
-        .ref();
-    }
-
-    // template find
-    template <typename Func>
-    inline const ExternMethodData* find_extern_method(StringView name, ETypeSignatureCompareFlag flag) const
-    {
-        TypeSignatureTyped<Func> signature;
-        return find_extern_method(signature.view(), name, flag);
-    }
 };
 } // namespace skr::rttr
