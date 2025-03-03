@@ -695,15 +695,15 @@ struct PrimitiveData {
     size_t alignment;
 
     // extern method
-    Vector<ExternMethodData> extern_methods;
+    Vector<ExternMethodData*> extern_methods;
 
     // signature find
     inline const ExternMethodData* find_extern_method(TypeSignatureView signature, StringView name, ETypeSignatureCompareFlag flag) const
     {
-        return extern_methods.find_if([&](const ExternMethodData& method) {
-                                 return method.name == name && method.signature_equal(signature, flag);
+        return extern_methods.find_if([&](const ExternMethodData* method) {
+                                 return method->name == name && method->signature_equal(signature, flag);
                              })
-        .ptr();
+        .ref();
     }
 
     // template find

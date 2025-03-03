@@ -109,69 +109,65 @@ void V8Isolate::make_record_template(::skr::rttr::Type* type)
     // bind member component
     {
         // bind method
-        for (auto* method: type->record_data().methods)
-        {
+        type->each_method([&](const rttr::MethodData* method){
             ctor_template->PrototypeTemplate()->Set(
                 ::v8::String::NewFromUtf8(_isolate, method->name.c_str_raw()).ToLocalChecked(),
                 FunctionTemplate::New(
                     _isolate,
                     _call_method,
-                    External::New(_isolate, method)
+                    External::New(_isolate, const_cast<rttr::MethodData*>(method))
                 )
             );
-        }
+        });
 
         // bind field
-        for (auto* field : type->record_data().fields)
-        {
+        type->each_field([&](const rttr::FieldData* field){
             ctor_template->PrototypeTemplate()->SetAccessorProperty(
                 ::v8::String::NewFromUtf8(_isolate, field->name.c_str_raw()).ToLocalChecked(),
                 FunctionTemplate::New(
                     _isolate,
                     _get_field,
-                    External::New(_isolate, field)
+                    External::New(_isolate, const_cast<rttr::FieldData*>(field))
                 ),
                 FunctionTemplate::New(
                     _isolate,
                     _set_field,
-                    External::New(_isolate, field)
+                    External::New(_isolate, const_cast<rttr::FieldData*>(field))
                 )
             );
-        }
+        });
     }
 
     // bind static component
     {
         // bind static method
-        for (auto* static_method : type->record_data().static_methods)
-        {
+        type->each_static_method([&](const rttr::StaticMethodData* static_method){
             ctor_template->Set(
                 ::v8::String::NewFromUtf8(_isolate, static_method->name.c_str_raw()).ToLocalChecked(),
                 FunctionTemplate::New(
                     _isolate,
                     _call_static_method,
-                    External::New(_isolate, static_method)
+                    External::New(_isolate, const_cast<rttr::StaticMethodData*>(static_method))
                 )
             );
-        }
+        });
 
         // bind static field
-        for (auto* static_field : type->record_data().static_fields)
-        {
+        type->each_static_field([&](const rttr::StaticFieldData* static_field){
             ctor_template->SetAccessorProperty(
                 ::v8::String::NewFromUtf8(_isolate, static_field->name.c_str_raw()).ToLocalChecked(),
                 FunctionTemplate::New(
                     _isolate,
                     _get_static_field,
-                    External::New(_isolate, static_field)
+                    External::New(_isolate, const_cast<rttr::StaticFieldData*>(static_field))
                 ),
                 FunctionTemplate::New(
                     _isolate,
                     _set_static_field,
-                    External::New(_isolate, static_field)
+                    External::New(_isolate, const_cast<rttr::StaticFieldData*>(static_field))
                 )
             );
-        }
+        });
     }
 
     // store template
@@ -306,8 +302,10 @@ void V8Isolate::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
         skr::rttr::Type* type = reinterpret_cast<skr::rttr::Type*>(data->Value());
 
         // match ctor
-        for (const auto& ctor_data : type->record_data().ctor_data)
-        {
+        bool done_ctor = false;
+        type->each_ctor([&](const rttr::CtorData* ctor_data){
+            if (done_ctor) return;
+            
             if (V8BindTools::match_params(ctor_data, info))
             {
                 V8Isolate* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
@@ -343,9 +341,9 @@ void V8Isolate::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
                 // add to map
                 skr_isolate->_alive_records.add(bind_core->object, bind_core);
 
-                return;
+                done_ctor = true;
             }
-        }
+        });
 
         // no ctor matched
         Isolate->ThrowError("no ctor matched");

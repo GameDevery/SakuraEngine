@@ -7,25 +7,30 @@ TEST_CASE("test type signature")
     using namespace skr::rttr;
 
     auto        type        = type_of<test_rttr::DynamicStackInvoke>();
-    const auto& record_data = type->record_data();
-    auto        find_method = +[](const RecordData& data, StringView name) {
-        return data.methods.find_if([&](MethodData* data) {
-                               return data->name == name;
-                           })
-        .ref();
+    auto        find_method = +[](Type* type, StringView name) {
+        const MethodData* found_data = nullptr;
+        type->each_method([&](const MethodData* data) {
+            if (!found_data && data->name == name) {
+                found_data = data;
+            }
+        });
+        return found_data;
     };
-    auto find_static_method = +[](const RecordData& data, StringView name) {
-        return data.static_methods.find_if([&](StaticMethodData* data) {
-                                      return data->name == name;
-                                  })
-        .ref();
+    auto find_static_method = +[](Type* type, StringView name) {
+        const StaticMethodData* found_data = nullptr;
+        type->each_static_method([&](const StaticMethodData* data) {
+            if (!found_data && data->name == name) {
+                found_data = data;
+            }
+        });
+        return found_data;
     };
 
     SUBCASE("static method")
     {
         SUBCASE("direct call")
         {
-            const auto&  method = find_static_method(record_data, u8"add");
+            const auto&  method = find_static_method(type, u8"add");
             DynamicStack stack;
 
             // combine params
@@ -43,7 +48,7 @@ TEST_CASE("test type signature")
 
         SUBCASE("grab return use ref")
         {
-            const auto&  method = find_static_method(record_data, u8"add");
+            const auto&  method = find_static_method(type, u8"add");
             DynamicStack stack;
 
             // combine params
@@ -60,7 +65,7 @@ TEST_CASE("test type signature")
         
         SUBCASE("ref call")
         {
-            const auto&  method = find_static_method(record_data, u8"add");
+            const auto&  method = find_static_method(type, u8"add");
             DynamicStack stack;
 
             int32_t a, b;
@@ -82,7 +87,7 @@ TEST_CASE("test type signature")
 
         SUBCASE("direct call(ref)")
         {
-            const auto&  method = find_static_method(record_data, u8"add_ref");
+            const auto&  method = find_static_method(type, u8"add_ref");
             DynamicStack stack;
 
             int32_t a, b;
@@ -106,7 +111,7 @@ TEST_CASE("test type signature")
 
         SUBCASE("xvalue call")
         {
-            const auto&  method = find_static_method(record_data, u8"add_ref");
+            const auto&  method = find_static_method(type, u8"add_ref");
             DynamicStack stack;
 
             // combine params
@@ -124,7 +129,7 @@ TEST_CASE("test type signature")
 
         SUBCASE("pass ref")
         {
-            const auto&  method = find_static_method(record_data, u8"add_use_out_param");
+            const auto&  method = find_static_method(type, u8"add_use_out_param");
             DynamicStack stack;
 
             int32_t out;

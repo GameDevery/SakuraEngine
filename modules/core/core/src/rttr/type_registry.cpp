@@ -74,8 +74,7 @@ Type* get_type_from_guid(const GUID& guid)
             // load type
             loader_result.value()(type);
 
-            // optimize data
-            type->build_optimize_data();
+            // TODO. build optimize data?
             return type;
         }
     }

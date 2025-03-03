@@ -21,14 +21,12 @@ SKR_EXEC_STATIC_CTOR
 {
     using namespace skr::rttr;
     register_type_loader(type_id_of<TestType>(), [](Type* type) {
-        // init type
-        type->init(ETypeCategory::Record);
-
-        // build type
-        RecordBuilder<TestType> builder{ &type->record_data() };
-        builder.basic_info();
-        builder.ctor<uint32_t>();
-        builder.field<&TestType::value>(u8"value");
+        type->build_record([&](RecordData* data){
+            RecordBuilder<TestType> builder{ data };
+            builder.basic_info();
+            builder.ctor<uint32_t>();
+            builder.field<&TestType::value>(u8"value");
+        });
     });
 };
 
