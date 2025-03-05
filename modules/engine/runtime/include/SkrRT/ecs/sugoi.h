@@ -1192,6 +1192,17 @@ auto schedual_custom(sugoi_query_t* query, F callback, skr::task::event_t* count
     return schedual_custom<sugoi::QWildcard, F>(sugoi::QWildcard{ query }, std::move(callback), counter);
 }
 
+skr::span<const sugoi_entity_t> get_entities(sugoi_chunk_view_t* view)
+{
+    return skr::span<const sugoi_entity_t>(sugoiV_get_entities(view), view->count);
+}
+
+template <typename T>
+skr::span<T> get_components(sugoi_chunk_view_t* view)
+{
+    return skr::span<T>(get_owned<T>(view), view->count);
+}
+
 template <typename T, typename R = T>
 R* get_owned(sugoi_chunk_view_t* view)
 {
