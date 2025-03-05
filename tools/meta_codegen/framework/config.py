@@ -16,7 +16,6 @@ class ModuleConfig:
     module_name: str = ""
     meta_dir: str = ""
     api: str = ""
-    generators: List['GeneratorConfig'] = field(default_factory=lambda: [])
 
     def load(self, json_data: Dict):
         self.module_name = json_data["module_name"]
