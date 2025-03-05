@@ -10,25 +10,14 @@
         },
     ],
     "settings": {
-        "dascript.server.connectTimeout": 10,
-        "xmake.additionalConfigArguments": [
-            "--use_profile=enable",
-            "--toolchain=clang-cl",
-            "--cxx_version=cxx20",
-        ],
-        "editor.formatOnSave": false,
-        "xmake.customDebugConfig": {
-            // "visualizerFile": "${workspaceFolder}\\SDKs\\natvis\\SkrContainer.natvis",
-            "stopAtEntry": false,
-            "type": "cppvsdbg",
-            "console": "externalTerminal",
-        },
+        // lua options for xmake
         "Lua.diagnostics.disable": [
             "undefined-global",
             "lowercase-global",
             "undefined-field",
             "need-check-nil",
         ],
+        // python options for meta codegen
         "python.analysis.extraPaths": [
             "${workspaceFolder:root}/tools/meta_codegen/",
         ],
@@ -36,7 +25,16 @@
             "${workspaceFolder:root}/tools/meta_codegen/",
         ],
         "python.defaultInterpreterPath": "${workspaceFolder:root}/build/.skr/tool/windows/python-embed/python.exe",
+        // fixed terminal cwd
         "terminal.integrated.cwd": "${workspaceFolder:root}",
+        // deno options for meta codegen
+        "deno.config": "${workspaceFolder:root}/tools/meta_codegen_new/deno.json",
+        "[typescript]": {
+            "editor.defaultFormatter": "denoland.vscode-deno",
+            "editor.formatOnType": true,
+            "editor.detectIndentation": false,
+            "editor.tabSize": 2,
+        }
     },
     "launch": {
         "version": "0.2.0",
@@ -49,6 +47,21 @@
                 "args": [
                     "--config=${workspaceFolder:gen-temp-files}/RTTRTest/windows/codegen/meta_codegen_config.json",
                 ],
+            },
+            {
+                "name": "DenoTest",
+                "type": "node",
+                "request": "launch",
+                "cwd": "${workspaceFolder:root}",
+                "runtimeExecutable": "deno",
+                "runtimeArgs": [
+                    "run",
+                    "--config=${workspaceFolder:root}/tools/meta_codegen_new/deno.json"
+                ],
+                "program": "${workspaceFolder:root}/tools/meta_codegen_new/test.ts",
+                "args": [
+                    "${file}"
+                ]
             }
         ]
     }
