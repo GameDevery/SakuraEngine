@@ -312,6 +312,7 @@ function main()
 
     -- collect launches data
     local launches_data = {}
+    local custom_data = {}
     do
         function _add_target(target)
             if not target:is_default() then
@@ -321,6 +322,7 @@ function main()
                 return
             end
 
+            -- insert launch data
             local proxy_launches_data = _load_launches_from_proxy_target(target, build_dir)
             local binary_launch_data = _load_launch_from_binary_target(target, build_dir)
             if proxy_launches_data then
@@ -329,6 +331,17 @@ function main()
                 end
             elseif binary_launch_data then
                 table.insert(launches_data, binary_launch_data)
+            end
+
+            -- insert custom data
+            local enable_custom_data_func = target:values("vsc_dbg.custom_func")
+            local custom_func = enable_custom_data_func and target:script("build") or nil
+            if custom_func then
+                custom_datas = {}
+                custom_func(target, custom_datas)
+                for _, data in ipairs(custom_datas) do
+                    table.insert(custom_data, data)
+                end
             end
         end
 
@@ -357,6 +370,11 @@ function main()
 
     -- append attach launch
     table.insert(launches_json, _combine_attach_launch_json())
+
+    -- append custom data
+    for _, data in ipairs(custom_data) do
+        table.insert(launches_json, data)
+    end
 
     -- save launches and tasks
     -- save debug configurations
