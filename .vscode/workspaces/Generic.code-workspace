@@ -58,7 +58,7 @@
                     "run",
                     "--config=${workspaceFolder:root}/tools/meta_codegen_new/deno.json"
                 ],
-                "program": "${workspaceFolder:root}/tools/meta_codegen_new/test.ts",
+                "program": "${workspaceFolder:root}/tools/meta_codegen_new/codegen.ts",
                 "args": [
                     "${file}"
                 ]
