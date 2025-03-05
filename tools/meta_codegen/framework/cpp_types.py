@@ -42,8 +42,8 @@ class EnumerationValue:
         self.attrs: sc.ParseResult
         self.generator_data: Dict[str, object] = {}
 
-    def load_from_raw_json(self, raw_json: sc.JsonObject):
-        unique_dict = raw_json.unique_dict()
+    def load_from_raw_json(self, raw_json: Dict):
+        unique_dict = raw_json
 
         self.value = unique_dict["value"]
         self.comment = unique_dict["comment"]
@@ -75,8 +75,8 @@ class Enumeration:
         self.attrs: sc.ParseResult
         self.generator_data: Dict[str, object] = {}
 
-    def load_from_raw_json(self, raw_json: sc.JsonObject):
-        unique_dict = raw_json.unique_dict()
+    def load_from_raw_json(self, raw_json: Dict):
+        unique_dict = raw_json
 
         self.is_scoped = unique_dict["is_scoped"]
         self.underlying_type = unique_dict["underlying_type"]
@@ -86,10 +86,10 @@ class Enumeration:
 
         # load values
         self.values = {}
-        for (enum_value_name, enum_value_data) in unique_dict["values"].unique_dict().items():
-            value = EnumerationValue(enum_value_name, self)
+        for enum_value_data in unique_dict["values"]:
+            value = EnumerationValue(enum_value_data["name"], self)
             value.load_from_raw_json(enum_value_data)
-            self.values[enum_value_name] = value
+            self.values[enum_value_data["name"]] = value
 
         # load attrs
         self.raw_attrs = parse_attrs(unique_dict["attrs"])
@@ -119,8 +119,8 @@ class Record:
         self.attrs: sc.ParseResult
         self.generator_data: Dict[str, object] = {}
 
-    def load_from_raw_json(self, raw_json: sc.JsonObject):
-        unique_dict = raw_json.unique_dict()
+    def load_from_raw_json(self, raw_json: Dict):
+        unique_dict = raw_json
 
         self.bases = unique_dict["bases"]
         self.comment = unique_dict["comment"]
@@ -129,8 +129,8 @@ class Record:
 
         # load fields
         self.fields = []
-        for (field_name, field_data) in unique_dict["fields"].unique_dict().items():
-            field = Field(field_name, self)
+        for field_data in unique_dict["fields"]:
+            field = Field(field_data["name"], self)
             field.load_from_raw_json(field_data)
             self.fields.append(field)
 
@@ -181,8 +181,8 @@ class Field:
         self.attrs: sc.ParseResult
         self.generator_data: Dict[str, object] = {}
 
-    def load_from_raw_json(self, raw_json: sc.JsonObject):
-        unique_dict = raw_json.unique_dict()
+    def load_from_raw_json(self, raw_json: Dict):
+        unique_dict = raw_json
 
         self.type = unique_dict["type"]
         self.raw_type = unique_dict["raw_type"]
@@ -225,8 +225,8 @@ class Method:
         self.attrs: sc.ParseResult
         self.generator_data: Dict[str, object] = {}
 
-    def load_from_raw_json(self, raw_json: sc.JsonObject):
-        unique_dict = raw_json.unique_dict()
+    def load_from_raw_json(self, raw_json: Dict):
+        unique_dict = raw_json
 
         self.name = unique_dict["name"]
         split_name = str.rsplit(self.name, "::", 1)
@@ -244,10 +244,10 @@ class Method:
 
         # load parameters
         self.parameters = {}
-        for (param_name, param_data) in unique_dict["parameters"].unique_dict().items():
-            param = Parameter(param_name, self)
+        for param_data in unique_dict["parameters"]:
+            param = Parameter(param_data["name"], self)
             param.load_from_raw_json(param_data)
-            self.parameters[param_name] = param
+            self.parameters[param_data["name"]] = param
 
         # load attrs
         self.raw_attrs = parse_attrs(unique_dict["attrs"])
@@ -297,8 +297,8 @@ class Parameter:
         self.attrs: sc.ParseResult
         self.generator_data: Dict[str, object] = {}
 
-    def load_from_raw_json(self, raw_json: sc.JsonObject):
-        unique_dict = raw_json.unique_dict()
+    def load_from_raw_json(self, raw_json: Dict):
+        unique_dict = raw_json
 
         self.type = unique_dict["type"]
         self.array_size = unique_dict["array_size"]
@@ -341,8 +341,8 @@ class Function:
         self.attrs: sc.ParseResult
         self.generator_data: Dict[str, object] = {}
 
-    def load_from_raw_json(self, raw_json: sc.JsonObject):
-        unique_dict = raw_json.unique_dict()
+    def load_from_raw_json(self, raw_json: Dict):
+        unique_dict = raw_json
 
         self.name = unique_dict["name"]
         split_name = str.rsplit(self.name, "::", 1)
@@ -359,7 +359,7 @@ class Function:
 
         # load parameters
         self.parameters = {}
-        for (param_name, param_data) in unique_dict["parameters"].unique_dict().items():
+        for (param_name, param_data) in unique_dict["parameters"].items():
             param = Parameter(param_name, self)
             param.load_from_raw_json(param_data)
             self.parameters[param_name] = param
