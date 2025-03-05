@@ -316,7 +316,7 @@ function skr_dbg_cmd_post(command)
     add_values("vsc_dbg.cmd_post", command)
 end
 
--- phony target
+-- proxy target for add launch task
 -- @build_func: function(target, out_configs)
 --  use table.insert to add values to [out_configs], config format
 --     cmd_name: str (required)
@@ -331,6 +331,15 @@ function skr_dbg_proxy_target(name, build_func)
     target(name)
         set_kind("phony")
         set_values("vsc_dbg.proxy_func", true)
+        on_build(build_func)
+    target_end()
+end
+
+-- custom target for directly add launch task
+function skr_dbg_custom_target(name, build_func)
+    target(name)
+        set_kind("phony")
+        set_values("vsc_dbg.custom_func", true)
         on_build(build_func)
     target_end()
 end
