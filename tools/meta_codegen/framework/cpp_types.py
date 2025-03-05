@@ -1,122 +1,3 @@
-
-'''
-Enum json structure
-<enum_name: str> : {
-    "attrs": <user attributes: Object>,
-    "values": {
-        <enum_value_name> : {
-            "attrs": <user attributes: Object>,
-            "value": <value: int>,
-            "comment": <comment: str>,
-            "line": <line: int>,
-        },
-        ...
-    },
-    "isScoped": <is_scoped: bool>,
-    "underlyingType": <underlying_type: str>,
-    "comment": <comment: str>,
-    "fileName": <file_name: str>
-    "line": <line: int>
-}
-
-Record json structure
-<record_name: str> : {
-    "bases": <bases: List[str]>,
-    "attrs": <user attributes: Object>,
-    "fields": <fields: Dict[Fields]>,
-    "methods": <methods: List[Methods]>,
-    "comment": <comment: str>,
-    "fileName": <file_name: str>
-    "line": <line: int>
-}
-
-Field json structure
-<field_name> : {
-    "type": <type: str>,
-    "rawType": <raw_type: str>,
-    "arraySize": <array_size: int>,
-    "attrs": <user attributes: Object>,
-    "access": <access: str>,
-    "isFunctor": <is_functor: bool>,
-    "isStatic": <is_static: bool>,
-    "isAnonymous": <is_anonymous: bool>,
-    "comment": <comment: str>,
-    "line": <line: int>,
-}
-
-Method json structure
-{
-    "name": <name: str>,
-    "isStatic": <is_static: bool>,
-    "isConst": <is_const: bool>,
-    "isNothrow": <is_nothrow: bool>,
-    "attrs": <user attributes: Object>,
-    "access": <access: str>,
-    "default_value": <default_value: str>,
-    "comment": <comment: str>,
-    "parameters": {
-        <name: str>: {
-            "type": <type: str>,
-            "arraySize": <array_size: int>,
-            "rawType": <raw_type: str>,
-            "attrs": <user attributes: Object>,
-            "isFunctor": <is_functor: bool>,
-            "isCallback": <is_callback: bool>,
-            "isAnonymous": <is_anonymous: bool>,
-            "comment": <comment: str>,
-            "line": <line: int>,
-            "functor": <functor: Function>
-        },
-        ...
-    },
-    "retType": <return_type: str>,
-    "rawRetType": <raw_return_type: str>,
-    "line": <line: int>,
-}
-
-Parameter json structure
-<name: str>: {
-    "type": <type: str>,
-    "arraySize": <array_size: int>,
-    "rawType": <raw_type: str>,
-    "attrs": <user attributes: Object>,
-    "default_value": <default_value: str>,
-    "isFunctor": <is_functor: bool>,
-    "isCallback": <is_callback: bool>,
-    "isAnonymous": <is_anonymous: bool>,
-    "comment": <comment: str>,
-    "line": <line: int>,
-}
-
-Function json structure
-{
-    "name": <name: str>,
-    "isStatic": <is_static: bool>,
-    "isConst": <is_const: bool>,
-    "attrs": <user attributes: Object>,
-    "comment": <comment: str>,
-    "parameters": {
-        <parameter_name> : {
-            "type": <type: str>,
-            "arraySize": <array_size: int>,
-            "rawType": <raw_type: str>,
-            "attrs": <user attributes: Object>,
-            "isFunctor": <is_functor: bool>,
-            "isCallback": <is_callback: bool>,
-            "isAnonymous": <is_anonymous: bool>,
-            "comment": <comment: str>,
-            "line": <line: int>,
-            "functor": <functor: Function>
-        },
-        ...
-    },
-    "retType": <return_type: str>,
-    "rawRetType": <raw_return_type: str>,
-    "fileName": <file_name: str>
-    "line": <line: int>
-    }
-}
-'''
 # TODO. 需要一个签名器来直接描述一个类型的签名
 #       如果是 func 则需要递归 (需要 params 的 attr 和 params name) 否则对齐 cpp 的签名
 #       为了支持这个签名器, 还需要一个专门的 scheme 目标类型来解析
@@ -197,10 +78,10 @@ class Enumeration:
     def load_from_raw_json(self, raw_json: sc.JsonObject):
         unique_dict = raw_json.unique_dict()
 
-        self.is_scoped = unique_dict["isScoped"]
+        self.is_scoped = unique_dict["is_scoped"]
         self.underlying_type = unique_dict["underlying_type"]
         self.comment = unique_dict["comment"]
-        self.file_name = unique_dict["fileName"]
+        self.file_name = unique_dict["file_name"]
         self.line = unique_dict["line"]
 
         # load values
@@ -243,7 +124,7 @@ class Record:
 
         self.bases = unique_dict["bases"]
         self.comment = unique_dict["comment"]
-        self.file_name = unique_dict["fileName"]
+        self.file_name = unique_dict["file_name"]
         self.line = unique_dict["line"]
 
         # load fields
@@ -304,13 +185,13 @@ class Field:
         unique_dict = raw_json.unique_dict()
 
         self.type = unique_dict["type"]
-        self.raw_type = unique_dict["rawType"]
+        self.raw_type = unique_dict["raw_type"]
         self.access = unique_dict["access"]
-        self.default_value = unique_dict["defaultValue"]
-        self.array_size = unique_dict["arraySize"]
-        self.is_functor = unique_dict["isFunctor"]
-        self.is_anonymous = unique_dict["isAnonymous"]
-        self.is_static = unique_dict["isStatic"]
+        self.default_value = unique_dict["default_value"]
+        self.array_size = unique_dict["array_size"]
+        self.is_functor = unique_dict["is_functor"]
+        self.is_anonymous = unique_dict["is_anonymous"]
+        self.is_static = unique_dict["is_static"]
         self.comment = unique_dict["comment"]
         self.line = unique_dict["line"]
 
@@ -353,12 +234,12 @@ class Method:
         self.namespace: str = split_name[0] if len(split_name) > 1 else ""
 
         self.access = unique_dict["access"]
-        self.is_static = unique_dict["isStatic"]
-        self.is_const = unique_dict["isConst"]
-        self.is_nothrow = unique_dict["isNothrow"]
+        self.is_static = unique_dict["is_static"]
+        self.is_const = unique_dict["is_const"]
+        self.is_nothrow = unique_dict["is_nothrow"]
         self.comment = unique_dict["comment"]
-        self.ret_type = unique_dict["retType"]
-        self.raw_ret_type = unique_dict["rawRetType"]
+        self.ret_type = unique_dict["ret_type"]
+        self.raw_ret_type = unique_dict["raw_ret_type"]
         self.line = unique_dict["line"]
 
         # load parameters
@@ -420,13 +301,13 @@ class Parameter:
         unique_dict = raw_json.unique_dict()
 
         self.type = unique_dict["type"]
-        self.array_size = unique_dict["arraySize"]
-        self.raw_type = unique_dict["rawType"]
-        self.is_functor = unique_dict["isFunctor"]
-        self.is_anonymous = unique_dict["isAnonymous"]
+        self.array_size = unique_dict["array_size"]
+        self.raw_type = unique_dict["raw_type"]
+        self.is_functor = unique_dict["is_functor"]
+        self.is_anonymous = unique_dict["is_anonymous"]
         self.comment = unique_dict["comment"]
         self.line = unique_dict["line"]
-        self.default_value = unique_dict["defaultValue"]
+        self.default_value = unique_dict["default_value"]
 
         # TODO. load functor
 
@@ -468,12 +349,12 @@ class Function:
         self.short_name: str = split_name[-1]
         self.namespace: str = split_name[0] if len(split_name) > 1 else ""
 
-        self.is_static = unique_dict["isStatic"]
-        self.is_const = unique_dict["isConst"]
+        self.is_static = unique_dict["is_static"]
+        self.is_const = unique_dict["is_const"]
         self.comment = unique_dict["comment"]
-        self.ret_type = unique_dict["retType"]
-        self.raw_ret_type = unique_dict["rawRetType"]
-        self.file_name = unique_dict["fileName"]
+        self.ret_type = unique_dict["ret_type"]
+        self.raw_ret_type = unique_dict["raw_ret_type"]
+        self.file_name = unique_dict["file_name"]
         self.line = unique_dict["line"]
 
         # load parameters
