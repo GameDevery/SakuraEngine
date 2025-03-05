@@ -126,6 +126,22 @@ Function json structure
 from typing import List, Dict
 import framework.scheme as sc
 import framework.log as log
+import json
+
+def parse_attrs(attrs: List[str]):
+    result = sc.JsonObject(
+        val=[],
+        is_dict=True,
+    )
+    for attr in attrs:
+        try:
+            json_obj = json.loads(attr, object_pairs_hook=sc.json_object_pairs_hook)
+        except json.JSONDecodeError as e:
+            raise Exception(f"failed to parse attr: {attr}\n{e}")
+        
+        for v in json_obj.val:
+            result.val.append(v)
+    return result
 
 
 class EnumerationValue:
@@ -153,8 +169,8 @@ class EnumerationValue:
         self.line = unique_dict["line"]
 
         # load fields
-        self.raw_attrs = unique_dict["attrs"]
-        self.raw_attrs.escape_from_parent()
+        self.raw_attrs = parse_attrs(unique_dict["attrs"])
+        # self.raw_attrs.escape_from_parent()
 
     def make_log_stack(self) -> log.CppSourceStack:
         return log.CppSourceStack(self.parent.file_name, self.line)
@@ -195,8 +211,8 @@ class Enumeration:
             self.values[enum_value_name] = value
 
         # load attrs
-        self.raw_attrs = unique_dict["attrs"]
-        self.raw_attrs.escape_from_parent()
+        self.raw_attrs = parse_attrs(unique_dict["attrs"])
+        # self.raw_attrs.escape_from_parent()
 
     def make_log_stack(self) -> log.CppSourceStack:
         return log.CppSourceStack(self.file_name, self.line)
@@ -249,8 +265,8 @@ class Record:
                 self.methods.append(method)
 
         # load attrs
-        self.raw_attrs = unique_dict["attrs"]
-        self.raw_attrs.escape_from_parent()
+        self.raw_attrs = parse_attrs(unique_dict["attrs"])
+        # self.raw_attrs.escape_from_parent()
 
     def dump_generate_body_content(self):
         result = ""
@@ -299,8 +315,8 @@ class Field:
         self.line = unique_dict["line"]
 
         # load attrs
-        self.raw_attrs = unique_dict["attrs"]
-        self.raw_attrs.escape_from_parent()
+        self.raw_attrs = parse_attrs(unique_dict["attrs"])
+        # self.raw_attrs.escape_from_parent()
 
     def make_log_stack(self) -> log.CppSourceStack:
         return log.CppSourceStack(self.parent.file_name, self.line)
@@ -353,8 +369,8 @@ class Method:
             self.parameters[param_name] = param
 
         # load attrs
-        self.raw_attrs = unique_dict["attrs"]
-        self.raw_attrs.escape_from_parent()
+        self.raw_attrs = parse_attrs(unique_dict["attrs"])
+        # self.raw_attrs.escape_from_parent()
 
     def make_log_stack(self) -> log.CppSourceStack:
         return log.CppSourceStack(self.parent.file_name, self.line)
@@ -415,8 +431,8 @@ class Parameter:
         # TODO. load functor
 
         # load attrs
-        self.raw_attrs = unique_dict["attrs"]
-        self.raw_attrs.escape_from_parent()
+        self.raw_attrs = parse_attrs(unique_dict["attrs"])
+        # self.raw_attrs.escape_from_parent()
 
     def make_log_stack(self) -> log.CppSourceStack:
         if isinstance(self.parent, Method):
@@ -468,8 +484,8 @@ class Function:
             self.parameters[param_name] = param
 
         # load attrs
-        self.raw_attrs = unique_dict["attrs"]
-        self.raw_attrs.escape_from_parent()
+        self.raw_attrs = parse_attrs(unique_dict["attrs"])
+        # self.raw_attrs.escape_from_parent()
 
     def make_log_stack(self) -> log.CppSourceStack:
         return log.CppSourceStack(self.file_name, self.line)
