@@ -288,7 +288,6 @@ class Parameter:
         self.is_functor: bool
         self.is_callback: bool
         self.is_anonymous: bool
-        self.functor: 'Function'
         self.default_value: str
         self.comment: str
         self.line: int
@@ -308,8 +307,6 @@ class Parameter:
         self.comment = unique_dict["comment"]
         self.line = unique_dict["line"]
         self.default_value = unique_dict["default_value"]
-
-        # TODO. load functor
 
         # load attrs
         self.raw_attrs = parse_attrs(unique_dict["attrs"])
