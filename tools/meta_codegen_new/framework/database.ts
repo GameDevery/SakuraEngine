@@ -1,6 +1,7 @@
 import * as cpp from "./cpp_types.ts";
 import * as config from "./config.ts";
-import * as path from "jsr:@std/path";
+import * as path from "node:path";
+import * as fs from "node:fs";
 
 export class Header {
   parent: Module;
@@ -24,7 +25,7 @@ export class Header {
 
     // solve meta path
     this.meta_path = path.normalize(meta_file_path).replaceAll(
-      path.SEPARATOR,
+      path.sep,
       "/",
     );
     this.meta_path_relative = path.relative(
@@ -57,7 +58,7 @@ export class Header {
 
     // solve include path
     const solve_include_path = (file_name: string) => {
-      file_name = file_name.replaceAll(path.SEPARATOR, "/");
+      file_name = file_name.replaceAll(path.sep, "/");
       if (this.header_path && this.header_path !== file_name) {
         throw new Error(
           `header path is not same, ${this.header_path} != ${file_name}`,
@@ -90,7 +91,7 @@ export class Module {
     this.config = config;
 
     // glob meta files
-    const meta_files = path.normalizeGlob(
+    const meta_files = fs.globSync(
       path.join(config.meta_dir, "**", "*.h.meta"),
     );
 
