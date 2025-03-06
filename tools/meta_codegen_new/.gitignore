@@ -1,1 +1,8 @@
+# deno
 deno.lock
+
+# bun
+bun.lock
+
+# node
+node_modules

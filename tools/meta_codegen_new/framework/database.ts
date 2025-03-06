@@ -45,7 +45,9 @@ export class Header {
     );
 
     // load json
-    const json_obj = JSON.parse(Deno.readTextFileSync(this.meta_path));
+    const json_obj = JSON.parse(
+      fs.readFileSync(this.meta_path, { encoding: "utf-8" }),
+    );
     for (const record_json of json_obj.records) {
       this.records.push(new cpp.Record(record_json));
     }

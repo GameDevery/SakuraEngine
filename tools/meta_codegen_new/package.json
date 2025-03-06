@@ -1,0 +1,10 @@
+{
+  "name": "meta_codegen_new",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

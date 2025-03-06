@@ -63,6 +63,16 @@
                     "${file}"
                 ],
                 "console": "integratedTerminal"
+            },
+            {
+                "name": "BunTest",
+                "type": "bun",
+                "request": "launch",
+                "cwd": "${workspaceFolder:root}",
+                "program": "${workspaceFolder:root}/tools/meta_codegen_new/codegen.ts",
+                "args": [
+                    "${file}"
+                ],
             }
         ]
     }
