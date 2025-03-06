@@ -34,6 +34,9 @@
             "editor.formatOnType": true,
             "editor.detectIndentation": false,
             "editor.tabSize": 2,
+        },
+        "[peggy]": {
+            "editor.tabSize": 2,
         }
     },
     "launch": {
