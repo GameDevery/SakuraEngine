@@ -92,9 +92,9 @@ export class Record {
   generate_body_content = "";
 
   // deno-lint-ignore no-explicit-any
-  constructor(name: string, json_object: any) {
+  constructor(json_object: any) {
     // parse name
-    fill_name(this, name);
+    fill_name(this, json_object.name);
 
     // info
     this.bases = json_object.bases;

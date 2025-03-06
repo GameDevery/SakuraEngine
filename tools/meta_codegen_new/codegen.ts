@@ -1,4 +1,5 @@
 import * as config from "./framework/config.ts";
+import * as db from "./framework/database.ts";
 
 // parse args
 if (Deno.args.length != 1) {
@@ -16,3 +17,5 @@ const codegen_config = new config.CodegenConfig(
 // console.log(codegen_config);
 
 // load data base
+const proj_db = new db.Project(codegen_config);
+console.log(proj_db);
