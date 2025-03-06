@@ -63,8 +63,8 @@ sreflect_struct("guid" : "b0b69898-166f-49de-a675-7b04405b98b1")
 sattr("serde" : ["json", "bin"])
 skr_platform_shader_identifier_t {
 #ifdef __cplusplus
-    skr::StronglyEnum<ECGPUShaderBytecodeType> bytecode_type;
-    skr::StronglyEnum<ECGPUShaderStage>        shader_stage;
+    skr::EnumAsValue<ECGPUShaderBytecodeType> bytecode_type;
+    skr::EnumAsValue<ECGPUShaderStage>        shader_stage;
 #else
     ECGPUShaderBytecodeType bytecode_type;
     ECGPUShaderStage        shader_stage;

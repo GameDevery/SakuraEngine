@@ -22,7 +22,7 @@ MultiShaderResource {
     using stable_hasher_t = skr_stable_shader_hash_t::hasher;
 
     stable_hash_t                       stable_hash;
-    skr::StronglyEnum<ECGPUShaderStage> shader_stage;
+    skr::EnumAsValue<ECGPUShaderStage> shader_stage;
     skr::String                         entry;
 
     inline skr::Vector<skr_platform_shader_identifier_t>& GetRootDynamicVariants() SKR_NOEXCEPT
