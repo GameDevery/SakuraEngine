@@ -41,24 +41,57 @@ struct _ReaderHelper {
             SKR_RET_JSON_READ_ERROR_IF(found, JsonReadError::KeyNotFound);
         }
 
+        auto FoundType = yyjson_get_type(found);
         IS_TYPE(_JsonReader::ValueType*)
             value = (_JsonReader::ValueType*)found;
         else IS_TYPE(bool)
+        {
+            if (FoundType != YYJSON_TYPE_BOOL)
+                return JsonReadError::TypeMismatch;
             value = yyjson_get_bool(found);
+        }
         else IS_TYPE(int32_t)
+        {
+            if (FoundType != YYJSON_TYPE_NUM)
+                return JsonReadError::TypeMismatch;
             value = yyjson_get_int(found);
+        }
         else IS_TYPE(int64_t)
+        {
+            if (FoundType != YYJSON_TYPE_NUM)
+                return JsonReadError::TypeMismatch;
             value = yyjson_get_sint(found);
+        }
         else IS_TYPE(uint32_t)
+        {
+            if (FoundType != YYJSON_TYPE_NUM)
+                return JsonReadError::TypeMismatch;
             value = yyjson_get_uint(found);
+        }
         else IS_TYPE(uint64_t)
+        {
+            if (FoundType != YYJSON_TYPE_NUM)
+                return JsonReadError::TypeMismatch;
             value = yyjson_get_uint(found);
+        }
         else IS_TYPE(float)
+        {
+            if (FoundType != YYJSON_TYPE_NUM)
+                return JsonReadError::TypeMismatch;
             value = yyjson_get_real(found);
+        }
         else IS_TYPE(double)
+        {
+            if (FoundType != YYJSON_TYPE_NUM)
+                return JsonReadError::TypeMismatch;
             value = yyjson_get_real(found);
+        }
         else IS_TYPE(skr::String)
+        {
+            if (FoundType != YYJSON_TYPE_STR)
+                return JsonReadError::TypeMismatch;
             value = skr::String((const char8_t*)yyjson_get_str(found));
+        }
         else 
             return JsonReadError::UnknownTypeToRead;
 
