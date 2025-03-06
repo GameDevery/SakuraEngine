@@ -2,7 +2,6 @@ export class ModuleConfig {
   module_name: string;
   meta_dir: string;
   api: string;
-  generators: GeneratorConfig[] = [];
 
   // deno-lint-ignore no-explicit-any
   constructor(json_obj: any) {

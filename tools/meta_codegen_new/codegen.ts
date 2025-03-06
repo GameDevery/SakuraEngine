@@ -13,4 +13,6 @@ if (Deno.lstatSync(config_file_path).isFile == false) {
 const codegen_config = new config.CodegenConfig(
   JSON.parse(Deno.readTextFileSync(config_file_path)),
 );
-console.log(codegen_config);
+// console.log(codegen_config);
+
+// load data base

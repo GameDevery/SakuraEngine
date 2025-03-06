@@ -61,7 +61,8 @@
                 "program": "${workspaceFolder:root}/tools/meta_codegen_new/codegen.ts",
                 "args": [
                     "${file}"
-                ]
+                ],
+                "console": "integratedTerminal"
             }
         ]
     }
