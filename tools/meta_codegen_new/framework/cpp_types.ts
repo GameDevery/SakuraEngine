@@ -25,7 +25,10 @@ export class Enum {
   comment: string;
   file_name: string;
   line: number;
-  values: { [key: string]: EnumValue };
+  values: EnumValue[] = [];
+
+  // attrs
+  raw_attrs: string[] = [];
 
   // deno-lint-ignore no-explicit-any
   constructor(json_obj: any) {
@@ -39,10 +42,12 @@ export class Enum {
     this.line = json_obj.line;
 
     // load values
-    this.values = {};
     for (const value of json_obj.values) {
-      this.values[name] = new EnumValue(this, value);
+      this.values.push(new EnumValue(this, value));
     }
+
+    // load attrs
+    this.raw_attrs = json_obj.attrs;
   }
 }
 export class EnumValue {
@@ -59,6 +64,9 @@ export class EnumValue {
   comment: string;
   line: number;
 
+  // attrs
+  raw_attrs: string[] = [];
+
   // deno-lint-ignore no-explicit-any
   constructor(parent: Enum, json_obj: any) {
     this.parent = parent;
@@ -70,6 +78,9 @@ export class EnumValue {
     this.value = json_obj.value;
     this.comment = json_obj.comment;
     this.line = json_obj.line;
+
+    // load attrs
+    this.raw_attrs = json_obj.attrs;
   }
 }
 
@@ -91,26 +102,29 @@ export class Record {
   generate_body_line: number = 0;
   generate_body_content = "";
 
+  // attrs
+  raw_attrs: string[] = [];
+
   // deno-lint-ignore no-explicit-any
-  constructor(json_object: any) {
+  constructor(json_obj: any) {
     // parse name
-    fill_name(this, json_object.name);
+    fill_name(this, json_obj.name);
 
     // info
-    this.bases = json_object.bases;
-    this.comment = json_object.comment;
-    this.file_name = json_object.file_name;
-    this.line = json_object.line;
+    this.bases = json_obj.bases;
+    this.comment = json_obj.comment;
+    this.file_name = json_obj.file_name;
+    this.line = json_obj.line;
 
     // load fields
     this.fields = [];
-    for (const field of json_object.fields) {
+    for (const field of json_obj.fields) {
       this.fields.push(new Field(this, field));
     }
 
     // load methods
     this.methods = [];
-    for (const method of json_object.methods) {
+    for (const method of json_obj.methods) {
       if (method.name === "_zz_skr_generate_body_flag") {
         this.has_generate_body_flag = true;
         this.generate_body_line = method.line;
@@ -118,6 +132,9 @@ export class Record {
         this.methods.push(new Method(this, method));
       }
     }
+
+    // load attrs
+    this.raw_attrs = json_obj.attrs;
   }
 }
 export class Field {
@@ -136,22 +153,28 @@ export class Field {
   comment: string;
   line: number;
 
+  // attrs
+  raw_attrs: string[] = [];
+
   // deno-lint-ignore no-explicit-any
-  constructor(parent: Record, json_object: any) {
+  constructor(parent: Record, json_obj: any) {
     this.parent = parent;
 
-    this.name = json_object.name;
+    this.name = json_obj.name;
 
-    this.type = json_object.type;
-    this.raw_type = json_object.raw_type;
-    this.access = json_object.access;
-    this.default_value = json_object.default_value;
-    this.array_size = json_object.array_size;
-    this.is_functor = json_object.is_functor;
-    this.is_static = json_object.is_static;
-    this.is_anonymous = json_object.is_anonymous;
-    this.comment = json_object.comment;
-    this.line = json_object.line;
+    this.type = json_obj.type;
+    this.raw_type = json_obj.raw_type;
+    this.access = json_obj.access;
+    this.default_value = json_obj.default_value;
+    this.array_size = json_obj.array_size;
+    this.is_functor = json_obj.is_functor;
+    this.is_static = json_obj.is_static;
+    this.is_anonymous = json_obj.is_anonymous;
+    this.comment = json_obj.comment;
+    this.line = json_obj.line;
+
+    // load attrs
+    this.raw_attrs = json_obj.attrs;
   }
 }
 export class Method {
@@ -166,33 +189,38 @@ export class Method {
   is_const: boolean;
   is_nothrow: boolean;
   comment: string;
-  parameters: { [key: string]: Parameter };
+  parameters: Parameter[] = [];
   ret_type: string;
   raw_ret_type: string;
   line: string;
 
+  // attrs
+  raw_attrs: string[] = [];
+
   // deno-lint-ignore no-explicit-any
-  constructor(parent: Record, json_object: any) {
+  constructor(parent: Record, json_obj: any) {
     this.parent = parent;
 
-    fill_name(this, json_object.name);
+    fill_name(this, json_obj.name);
 
-    this.access = json_object.access;
-    this.is_static = json_object.is_static;
-    this.is_const = json_object.is_const;
-    this.is_nothrow = json_object.is_nothrow;
-    this.comment = json_object.comment;
+    this.access = json_obj.access;
+    this.is_static = json_obj.is_static;
+    this.is_const = json_obj.is_const;
+    this.is_nothrow = json_obj.is_nothrow;
+    this.comment = json_obj.comment;
 
     // load parameters
-    this.parameters = {};
-    for (const parameter of json_object.parameters) {
-      this.parameters[parameter.name] = new Parameter(this, parameter);
+    for (const parameter of json_obj.parameters) {
+      this.parameters.push(new Parameter(this, parameter));
     }
 
     // load return type
-    this.ret_type = json_object.ret_type;
-    this.raw_ret_type = json_object.raw_ret_type;
-    this.line = json_object.line;
+    this.ret_type = json_obj.ret_type;
+    this.raw_ret_type = json_obj.raw_ret_type;
+    this.line = json_obj.line;
+
+    // load attrs
+    this.raw_attrs = json_obj.attrs;
   }
 }
 export class Parameter {
@@ -209,20 +237,26 @@ export class Parameter {
   comment: string;
   line: number;
 
+  // attrs
+  raw_attrs: string[] = [];
+
   // deno-lint-ignore no-explicit-any
-  constructor(parent: Method | Function, json_object: any) {
+  constructor(parent: Method | Function, json_obj: any) {
     this.parent = parent;
 
-    this.name = json_object.name;
-    this.type = json_object.type;
-    this.array_size = json_object.array_size;
-    this.raw_type = json_object.raw_type;
-    this.is_functor = json_object.is_functor;
-    this.is_callback = json_object.is_callback;
-    this.is_anonymous = json_object.is_anonymous;
-    this.default_value = json_object.default_value;
-    this.comment = json_object.comment;
-    this.line = json_object.line;
+    this.name = json_obj.name;
+    this.type = json_obj.type;
+    this.array_size = json_obj.array_size;
+    this.raw_type = json_obj.raw_type;
+    this.is_functor = json_obj.is_functor;
+    this.is_callback = json_obj.is_callback;
+    this.is_anonymous = json_obj.is_anonymous;
+    this.default_value = json_obj.default_value;
+    this.comment = json_obj.comment;
+    this.line = json_obj.line;
+
+    // load attrs
+    this.raw_attrs = json_obj.attrs;
   }
 }
 export class Function {
@@ -233,30 +267,35 @@ export class Function {
   is_static: boolean;
   is_const: boolean;
   comment: string;
-  parameters: { [key: string]: Parameter };
+  parameters: Parameter[] = [];
   ret_type: string;
   raw_ret_type: string;
   file_name: string;
   line: number;
 
-  // deno-lint-ignore no-explicit-any
-  constructor(json_object: any) {
-    fill_name(this, json_object.name);
+  // attrs
+  raw_attrs: string[] = [];
 
-    this.is_static = json_object.is_static;
-    this.is_const = json_object.is_const;
-    this.comment = json_object.comment;
+  // deno-lint-ignore no-explicit-any
+  constructor(json_obj: any) {
+    fill_name(this, json_obj.name);
+
+    this.is_static = json_obj.is_static;
+    this.is_const = json_obj.is_const;
+    this.comment = json_obj.comment;
 
     // load parameters
-    this.parameters = {};
-    for (const parameter of json_object.parameters) {
-      this.parameters[parameter.name] = new Parameter(this, parameter);
+    for (const parameter of json_obj.parameters) {
+      this.parameters.push(new Parameter(this, parameter));
     }
 
     // load return type
-    this.ret_type = json_object.ret_type;
-    this.raw_ret_type = json_object.raw_ret_type;
-    this.file_name = json_object.file_name;
-    this.line = json_object.line;
+    this.ret_type = json_obj.ret_type;
+    this.raw_ret_type = json_obj.raw_ret_type;
+    this.file_name = json_obj.file_name;
+    this.line = json_obj.line;
+
+    // load attrs
+    this.raw_attrs = json_obj.attrs;
   }
 }

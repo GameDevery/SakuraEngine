@@ -78,6 +78,29 @@ export class Header {
       solve_include_path(function_obj.file_name);
     }
   }
+
+  // each functions
+  each_record(
+    func: (record: cpp.Record, header: Header) => void,
+  ) {
+    for (const record of this.records) {
+      func(record, this);
+    }
+  }
+  each_enum(
+    func: (enum_obj: cpp.Enum, header: Header) => void,
+  ) {
+    for (const enum_obj of this.enums) {
+      func(enum_obj, this);
+    }
+  }
+  each_function(
+    func: (function_obj: cpp.Function, header: Header) => void,
+  ) {
+    for (const function_obj of this.functions) {
+      func(function_obj, this);
+    }
+  }
 }
 
 export class Module {
@@ -102,6 +125,29 @@ export class Module {
       this.headers.push(new Header(this, meta_file));
     }
   }
+
+  // each functions
+  each_record(
+    func: (record: cpp.Record, header: Header) => void,
+  ) {
+    for (const header of this.headers) {
+      header.each_record(func);
+    }
+  }
+  each_enum(
+    func: (enum_obj: cpp.Enum, header: Header) => void,
+  ) {
+    for (const header of this.headers) {
+      header.each_enum(func);
+    }
+  }
+  each_function(
+    func: (function_obj: cpp.Function, header: Header) => void,
+  ) {
+    for (const header of this.headers) {
+      header.each_function(func);
+    }
+  }
 }
 
 export class Project {
@@ -123,6 +169,32 @@ export class Project {
       for (const include_module of config.include_modules) {
         this.include_modules.push(new Module(this, include_module));
       }
+    }
+  }
+
+  // each functions
+  each_record(
+    func: (record: cpp.Record, header: Header) => void,
+  ) {
+    this.main_module.each_record(func);
+    for (const include_module of this.include_modules) {
+      include_module.each_record(func);
+    }
+  }
+  each_enum(
+    func: (enum_obj: cpp.Enum, header: Header) => void,
+  ) {
+    this.main_module.each_enum(func);
+    for (const include_module of this.include_modules) {
+      include_module.each_enum(func);
+    }
+  }
+  each_function(
+    func: (function_obj: cpp.Function, header: Header) => void,
+  ) {
+    this.main_module.each_function(func);
+    for (const include_module of this.include_modules) {
+      include_module.each_function(func);
     }
   }
 }

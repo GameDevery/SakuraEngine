@@ -2,16 +2,18 @@ import * as config from "./framework/config.ts";
 import * as db from "./framework/database.ts";
 import * as ml from "./framework/meta_lang.ts";
 import * as fs from "node:fs";
+import * as process from "node:process";
+import * as cpp from "./framework/cpp_types.ts";
 
 const argv = process.argv.slice(2);
 
 // parse args
 if (argv.length != 1) {
-  console.error("only support 1 argument that config file path");
+  throw Error("only support 1 argument that config file path");
 }
 const config_file_path = argv[0];
 if (!fs.existsSync(config_file_path)) {
-  console.error("config file is not exist");
+  throw Error("config file is not exist");
 }
 
 // parse config
