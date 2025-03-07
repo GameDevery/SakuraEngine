@@ -25,4 +25,26 @@ const codegen_config = new config.CodegenConfig(
 const proj_db = new db.Project(codegen_config);
 
 // load meta lang parser
-let parser = ml.load_parser();
+const parser = ml.load_parser();
+
+// compile attrs exprs
+// proj_db.each_cpp_types((cpp_type, _header) => {
+//   for (const attr of cpp_type.raw_attrs) {
+//     const program = parser.parse(attr);
+//     cpp_type.attrs.push(program);
+//   }
+// });
+
+// combine generate data
+proj_db.each_cpp_types((cpp_type, _header) => {
+  if (cpp_type instanceof cpp.Enum) {
+  } else if (cpp_type instanceof cpp.EnumValue) {
+  } else if (cpp_type instanceof cpp.Record) {
+  } else if (cpp_type instanceof cpp.Field) {
+  } else if (cpp_type instanceof cpp.Method) {
+  } else if (cpp_type instanceof cpp.Function) {
+  } else if (cpp_type instanceof cpp.Parameter) {
+  }
+});
+
+// run codegen

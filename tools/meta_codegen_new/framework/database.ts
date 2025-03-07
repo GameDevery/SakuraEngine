@@ -101,6 +101,34 @@ export class Header {
       func(function_obj, this);
     }
   }
+
+  each_cpp_types(
+    func: (cpp_type: cpp.AnyType, header: Header) => void,
+  ) {
+    for (const record of this.records) {
+      func(record, this);
+
+      for (const method of record.methods) {
+        func(method, this);
+        for (const param of method.parameters) {
+          func(param, this);
+        }
+      }
+
+      for (const field of record.fields) {
+        func(field, this);
+      }
+    }
+    for (const enum_obj of this.enums) {
+      func(enum_obj, this);
+    }
+    for (const function_obj of this.functions) {
+      func(function_obj, this);
+      for (const param of function_obj.parameters) {
+        func(param, this);
+      }
+    }
+  }
 }
 
 export class Module {
@@ -146,6 +174,13 @@ export class Module {
   ) {
     for (const header of this.headers) {
       header.each_function(func);
+    }
+  }
+  each_cpp_types(
+    func: (cpp_type: cpp.AnyType, header: Header) => void,
+  ) {
+    for (const header of this.headers) {
+      header.each_cpp_types(func);
     }
   }
 }
@@ -195,6 +230,14 @@ export class Project {
     this.main_module.each_function(func);
     for (const include_module of this.include_modules) {
       include_module.each_function(func);
+    }
+  }
+  each_cpp_types(
+    func: (cpp_type: cpp.AnyType, header: Header) => void,
+  ) {
+    this.main_module.each_cpp_types(func);
+    for (const include_module of this.include_modules) {
+      include_module.each_cpp_types(func);
     }
   }
 }

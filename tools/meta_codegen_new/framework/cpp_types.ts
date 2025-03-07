@@ -1,3 +1,6 @@
+// deno-lint-ignore-file
+import * as ml from "./meta_lang.ts";
+
 // help functions
 type NameWithNamespace = {
   name: string;
@@ -11,6 +14,16 @@ function fill_name(obj: NameWithNamespace, name: string) {
   obj.short_name = split_name[split_name.length - 1];
   obj.namespace = split_name.slice(0, split_name.length - 1);
 }
+type StringMap<T> = { [key: string]: T };
+
+export type AnyType =
+  | Enum
+  | EnumValue
+  | Record
+  | Field
+  | Method
+  | Function
+  | Parameter;
 
 // enum
 export class Enum {
@@ -29,6 +42,8 @@ export class Enum {
 
   // attrs
   raw_attrs: string[] = [];
+  attrs: ml.Program[] = [];
+  gen_data: StringMap<any> = {};
 
   // deno-lint-ignore no-explicit-any
   constructor(json_obj: any) {
@@ -66,6 +81,8 @@ export class EnumValue {
 
   // attrs
   raw_attrs: string[] = [];
+  attrs: ml.Program[] = [];
+  gen_data: StringMap<any> = {};
 
   // deno-lint-ignore no-explicit-any
   constructor(parent: Enum, json_obj: any) {
@@ -104,6 +121,8 @@ export class Record {
 
   // attrs
   raw_attrs: string[] = [];
+  attrs: ml.Program[] = [];
+  gen_data: StringMap<any> = {};
 
   // deno-lint-ignore no-explicit-any
   constructor(json_obj: any) {
@@ -155,6 +174,8 @@ export class Field {
 
   // attrs
   raw_attrs: string[] = [];
+  attrs: ml.Program[] = [];
+  gen_data: StringMap<any> = {};
 
   // deno-lint-ignore no-explicit-any
   constructor(parent: Record, json_obj: any) {
@@ -196,6 +217,8 @@ export class Method {
 
   // attrs
   raw_attrs: string[] = [];
+  attrs: ml.Program[] = [];
+  gen_data: StringMap<any> = {};
 
   // deno-lint-ignore no-explicit-any
   constructor(parent: Record, json_obj: any) {
@@ -239,6 +262,8 @@ export class Parameter {
 
   // attrs
   raw_attrs: string[] = [];
+  attrs: ml.Program[] = [];
+  gen_data: StringMap<any> = {};
 
   // deno-lint-ignore no-explicit-any
   constructor(parent: Method | Function, json_obj: any) {
@@ -275,6 +300,8 @@ export class Function {
 
   // attrs
   raw_attrs: string[] = [];
+  attrs: ml.Program[] = [];
+  gen_data: StringMap<any> = {};
 
   // deno-lint-ignore no-explicit-any
   constructor(json_obj: any) {

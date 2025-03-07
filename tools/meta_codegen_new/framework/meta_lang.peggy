@@ -22,7 +22,7 @@ ValueExpr "values"
   = value:(Number / String / Boolean) { return { type: "value", value: value, } }
 
 ArrayExpr "array([1,2,\"hello\"])"
-  = "[" _ content:ValueExpr|..,_","_| _ "]" { return { type:"array", value: content } }
+  = "[" _ content:ValueExpr|..,_","_| _ "]" { return { type:"array", value: content.map(t => t.value) } }
 
 Preset "preset(@xxx)"
   = "@" content:Name { return content }
