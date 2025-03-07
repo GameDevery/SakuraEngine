@@ -1,61 +1,46 @@
 start
-  = AssignExpr
+  = AssignExprs
 
 _ "whitespace"
   = [ \t\n\r]*
 
-Name
+Name "name(alpha/number/_)"
   = $([a-zA-Z0-9_]+)
 
-Number
+Number "number"
   = [-]?[0-9]+.[0-9]+ { return parseFloat(text(), 10) }
   / [-]?[0-9]+ { return parseInt(text(), 10) }
 
-String
-  = "\'"content:$[^\']*"\'" { return content; }
+String "string('xxx')"
+  = "\`"content:$[^\`]*"\`" { return content; }
 
-Boolean
+Boolean "boolean(true/false)"
   = "true" { return true }
   / "false" { return false }
 
-ValueExpr
-  = value:(Number / String / Boolean) {
+ValueExpr "values"
+  = value:(Number / String / Boolean) { return { type: "value", value: value, } }
+
+ArrayExpr "array([1,2,\"hello\"])"
+  = "[" _ content:ValueExpr|..,_","_| _ "]" { return { type:"array", value: content } }
+
+Preset "preset(@xxx)"
+  = "@" content:Name { return content }
+
+PresetExpr "presets(@xxx|@xxx|@xxx)"
+  = content:Preset|..,_ "|" _| { return { type: "preset", value: content } }
+
+AccessExpr "access(a.b.c)"
+  = Name|..,"."|
+
+AssignExpr
+  = visitor:AccessExpr _ op:("="/"+=") _ value:(ArrayExpr/ValueExpr/PresetExpr) { 
     return {
-      type: "value",
+      visitor: visitor,
+      op: op,
       value: value,
     }
   }
 
-Preset
-  = "@" content:Name { return content }
-
-PresetCombineExpr
-  = head:Preset tail:(_ "+" _ Preset)* {
-    const presets = tail.reduce(
-      (result, elem) => {
-        result.push(elem[3]); 
-        return result;
-      }, [head]
-    );
-    return {
-      type: "presets",
-      value: presets,
-    }
-  }
-
-AccessExpr
-  = head:Name tail:("." Name)* { return tail.reduce(
-    (result, elem)=>{
-      result.push(elem[1]); 
-      return result;
-    }, [head]); 
-  }
-
-AssignExpr
-  = left:AccessExpr _ op:("="/"+=") _ right:(ValueExpr/PresetCombineExpr) { 
-    return {
-      visitor: left,
-      op: op,
-      value: right,
-    }
-  }
+AssignExprs
+  = _ head:AssignExpr _ ";"? tails:(_ AssignExpr _ ";"?)* { return [head].concat(tails.map(t => t[1])) }

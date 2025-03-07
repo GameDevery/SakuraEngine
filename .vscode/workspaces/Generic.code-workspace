@@ -29,6 +29,7 @@
         "terminal.integrated.cwd": "${workspaceFolder:root}",
         // deno options for meta codegen
         "deno.config": "${workspaceFolder:root}/tools/meta_codegen_new/deno.json",
+        "deno.enable": false,
         "[typescript]": {
             "editor.defaultFormatter": "denoland.vscode-deno",
             "editor.formatOnType": true,

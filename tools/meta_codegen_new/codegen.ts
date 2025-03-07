@@ -1,8 +1,9 @@
 import * as config from "./framework/config.ts";
 import * as db from "./framework/database.ts";
+import * as ml from "./framework/meta_lang.ts";
 import * as fs from "node:fs";
 
-let argv = Bun.argv.slice(2);
+const argv = process.argv.slice(2);
 
 // parse args
 if (argv.length != 1) {
@@ -20,3 +21,6 @@ const codegen_config = new config.CodegenConfig(
 
 // load data base
 const proj_db = new db.Project(codegen_config);
+
+// load meta lang parser
+let parser = ml.load_parser();
