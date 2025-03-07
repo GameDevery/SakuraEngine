@@ -16,7 +16,7 @@ SpacesBeforeTrailingComments: 1
 SpacesInSquareBrackets: false
 IndentCaseLabels: true
 SpaceBeforeAssignmentOperators: true
-AlignAfterOpenBracket: true
+AlignAfterOpenBracket: BlockIndent
 BreakConstructorInitializersBeforeComma: true
 SpaceAfterCStyleCast: false
 SpaceBeforeParens: ControlStatements
