@@ -15,6 +15,9 @@ TestProxy {
     sattr("proxy": true)
     int  inc(int i) const noexcept;
 
+    sattr("proxy": true)
+    void fuck() noexcept;
+    
     sattr("proxy::getter" : "a")
     int  get_a() const noexcept;
 
@@ -25,6 +28,7 @@ TestProxy {
 // util object
 struct TestObject {
     int inc(int i) const noexcept { return i + a; }
+    void fuck() {}
     int a = 1233;
 };
 

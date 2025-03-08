@@ -256,6 +256,9 @@ class Method:
     def make_log_stack(self) -> log.CppSourceStack:
         return log.CppSourceStack(self.parent.file_name, self.line)
 
+    def has_return(self):
+        return self.ret_type != "void"
+
     def dump_params(self):
         return ", ".join([f"{param.type} {param.name}" for param in self.parameters.values()])
 

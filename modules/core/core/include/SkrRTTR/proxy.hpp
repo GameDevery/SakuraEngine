@@ -1,4 +1,5 @@
 #pragma once
+#include <type_traits>
 
 // TODO. Proxy
 //   通过反射导出，以及与脚本交互
@@ -13,6 +14,7 @@ struct ProxyObjectTraits {
         return false;
     }
 };
+
 template <typename T, typename Proxy>
 concept Proxyable = ProxyObjectTraits<Proxy>::template validate<T>();
 } // namespace skr
