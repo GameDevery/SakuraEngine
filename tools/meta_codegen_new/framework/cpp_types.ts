@@ -14,7 +14,6 @@ function fill_name(obj: NameWithNamespace, name: string) {
   obj.short_name = split_name[split_name.length - 1];
   obj.namespace = split_name.slice(0, split_name.length - 1);
 }
-type StringMap<T> = { [key: string]: T };
 
 export type AnyType =
   | Enum
@@ -43,7 +42,7 @@ export class Enum {
   // attrs
   raw_attrs: string[] = [];
   attrs: ml.Program[] = [];
-  gen_data: StringMap<any> = {};
+  gen_data: Dict<any> = {};
 
   // deno-lint-ignore no-explicit-any
   constructor(json_obj: any) {
@@ -82,7 +81,7 @@ export class EnumValue {
   // attrs
   raw_attrs: string[] = [];
   attrs: ml.Program[] = [];
-  gen_data: StringMap<any> = {};
+  gen_data: Dict<any> = {};
 
   // deno-lint-ignore no-explicit-any
   constructor(parent: Enum, json_obj: any) {
@@ -122,7 +121,7 @@ export class Record {
   // attrs
   raw_attrs: string[] = [];
   attrs: ml.Program[] = [];
-  gen_data: StringMap<any> = {};
+  gen_data: Dict<any> = {};
 
   // deno-lint-ignore no-explicit-any
   constructor(json_obj: any) {
@@ -155,6 +154,10 @@ export class Record {
     // load attrs
     this.raw_attrs = json_obj.attrs;
   }
+
+  dump_generate_body(): string {
+    return this.generate_body_content.split("\n").join("\\\n");
+  }
 }
 export class Field {
   parent: Record;
@@ -175,7 +178,7 @@ export class Field {
   // attrs
   raw_attrs: string[] = [];
   attrs: ml.Program[] = [];
-  gen_data: StringMap<any> = {};
+  gen_data: Dict<any> = {};
 
   // deno-lint-ignore no-explicit-any
   constructor(parent: Record, json_obj: any) {
@@ -218,7 +221,7 @@ export class Method {
   // attrs
   raw_attrs: string[] = [];
   attrs: ml.Program[] = [];
-  gen_data: StringMap<any> = {};
+  gen_data: Dict<any> = {};
 
   // deno-lint-ignore no-explicit-any
   constructor(parent: Record, json_obj: any) {
@@ -245,6 +248,27 @@ export class Method {
     // load attrs
     this.raw_attrs = json_obj.attrs;
   }
+
+  dump_params() {
+    return this.parameters.map(param=> `${param.type} ${param.name}`).join(", ")
+  }
+  dump_params_with_comma() {
+    const params = this.dump_params();
+    return params.length > 0 ? `, ${params}` : "";
+  }
+  dump_params_name_only() {
+    return this.parameters.map(param=> param.name).join(", ")
+  }
+  dump_params_name_only_with_comma() {
+    const params = this.dump_params_name_only();
+    return params.length > 0 ? `, ${params}` : "";
+  }
+  dump_const() {
+    return this.is_const ? "const " : "";
+  }
+  dump_noexcept() {
+    return this.is_nothrow ? " noexcept" : "";
+  }
 }
 export class Parameter {
   parent: Method | Function;
@@ -263,7 +287,7 @@ export class Parameter {
   // attrs
   raw_attrs: string[] = [];
   attrs: ml.Program[] = [];
-  gen_data: StringMap<any> = {};
+  gen_data: Dict<any> = {};
 
   // deno-lint-ignore no-explicit-any
   constructor(parent: Method | Function, json_obj: any) {
@@ -301,7 +325,7 @@ export class Function {
   // attrs
   raw_attrs: string[] = [];
   attrs: ml.Program[] = [];
-  gen_data: StringMap<any> = {};
+  gen_data: Dict<any> = {};
 
   // deno-lint-ignore no-explicit-any
   constructor(json_obj: any) {

@@ -35,7 +35,9 @@ const parser = ml.load_parser();
 //   }
 // });
 
-// combine generate data
+// combine attrs context
+
+// run attrs expr
 proj_db.each_cpp_types((cpp_type, _header) => {
   if (cpp_type instanceof cpp.Enum) {
   } else if (cpp_type instanceof cpp.EnumValue) {

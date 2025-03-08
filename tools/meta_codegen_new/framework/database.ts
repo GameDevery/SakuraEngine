@@ -35,9 +35,8 @@ export class Header {
 
     // solve output header path and file id
     const reg_non_alpha_ch = /\W+/g;
-    this.file_id = `FID_${parent.config.module_name}_${
-      this.meta_path_relative.replaceAll(reg_non_alpha_ch, "_")
-    }`;
+    this.file_id = `FID_${parent.config.module_name}_${this.meta_path_relative.replaceAll(reg_non_alpha_ch, "_")
+      }`;
     const reg_meta_path = /(.*?)\.(.*?)\.meta/g;
     this.output_header_path = this.meta_path_relative.replace(
       reg_meta_path,
@@ -79,6 +78,32 @@ export class Header {
     }
   }
 
+  // find
+  find_record(name: string) {
+    for (const record of this.records) {
+      if (record.name == name) {
+        return record;
+      }
+    }
+    return null;
+  }
+  find_enum(name: string) {
+    for (const enum_obj of this.enums) {
+      if (enum_obj.name == name) {
+        return enum_obj;
+      }
+    }
+    return null;
+  }
+  find_function(name: string) {
+    for (const function_obj of this.functions) {
+      if (function_obj.name == name) {
+        return function_obj;
+      }
+    }
+    return null;
+  }
+
   // each functions
   each_record(
     func: (record: cpp.Record, header: Header) => void,
@@ -101,7 +126,6 @@ export class Header {
       func(function_obj, this);
     }
   }
-
   each_cpp_types(
     func: (cpp_type: cpp.AnyType, header: Header) => void,
   ) {
@@ -152,6 +176,35 @@ export class Module {
     for (const meta_file of meta_files) {
       this.headers.push(new Header(this, meta_file));
     }
+  }
+
+  // find
+  find_record(name: string) {
+    for (const header of this.headers) {
+      const record = header.find_record(name);
+      if (record) {
+        return record;
+      }
+    }
+    return null;
+  }
+  find_enum(name: string) {
+    for (const header of this.headers) {
+      const enum_obj = header.find_enum(name);
+      if (enum_obj) {
+        return enum_obj;
+      }
+    }
+    return null;
+  }
+  find_function(name: string) {
+    for (const header of this.headers) {
+      const function_obj = header.find_function(name);
+      if (function_obj) {
+        return function_obj;
+      }
+    }
+    return null;
   }
 
   // each functions
@@ -207,6 +260,47 @@ export class Project {
     }
   }
 
+  // find
+  find_record(name: string) {
+    let record = this.main_module.find_record(name);
+    if (record) {
+      return record;
+    }
+    for (const include_module of this.include_modules) {
+      record = include_module.find_record(name);
+      if (record) {
+        return record;
+      }
+    }
+    return null;
+  }
+  find_enum(name: string) {
+    let enum_obj = this.main_module.find_enum(name);
+    if (enum_obj) {
+      return enum_obj;
+    }
+    for (const include_module of this.include_modules) {
+      enum_obj = include_module.find_enum(name);
+      if (enum_obj) {
+        return enum_obj;
+      }
+    }
+    return null;
+  }
+  find_function(name: string) {
+    let function_obj = this.main_module.find_function(name);
+    if (function_obj) {
+      return function_obj;
+    }
+    for (const include_module of this.include_modules) {
+      function_obj = include_module.find_function(name);
+      if (function_obj) {
+        return function_obj;
+      }
+    }
+    return null;
+  }
+
   // each functions
   each_record(
     func: (record: cpp.Record, header: Header) => void,
@@ -239,5 +333,21 @@ export class Project {
     for (const include_module of this.include_modules) {
       include_module.each_cpp_types(func);
     }
+  }
+
+  // tool functions
+  is_derived(record: cpp.Record, base: string) {
+    for (const base_name of record.bases) {
+      if (base_name == base) {
+        return true;
+      }
+      const base_record = this.find_record(base_name);
+      if (base_record != null && this.is_derived(base_record, base)) {
+        return true;
+      }
+    }
+  }
+  is_derived_or_same(record: cpp.Record, base: string) {
+    return record.name == base || this.is_derived(record, base);
   }
 }

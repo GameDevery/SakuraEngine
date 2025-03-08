@@ -24,6 +24,10 @@
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false,
     // path mapping
-    "paths": {}
+    "paths": {
+      "@framework/*": [
+        "./framework/*"
+      ],
+    }
   }
 }
