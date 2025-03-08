@@ -25,11 +25,4 @@ export class GenerateManager {
     this.#generators[name] = gen
     gen.owner = this
   }
-
-  // file cache
-  append_content(path: string, content: string) {
-  }
-  get_content(path: string): string {
-    return ""
-  }
 }

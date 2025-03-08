@@ -2,6 +2,8 @@ import * as cpp from "./cpp_types.ts";
 import * as config from "./config.ts";
 import * as path from "node:path";
 import * as fs from "node:fs";
+import "./utils.ts"
+import { CodeBuilder } from "./utils.ts";
 
 export class Header {
   parent: Module;
@@ -19,6 +21,8 @@ export class Header {
   records: cpp.Record[] = [];
   enums: cpp.Enum[] = [];
   functions: cpp.Function[] = [];
+
+  gen_code: CodeBuilder = new CodeBuilder();
 
   constructor(parent: Module, meta_file_path: string) {
     this.parent = parent;
@@ -157,11 +161,9 @@ export class Header {
 
 export class Module {
   parent: Project;
-
   config: config.ModuleConfig;
-
-  // headers
   headers: Header[] = [];
+  gen_code: CodeBuilder = new CodeBuilder();
 
   constructor(parent: Project, config: config.ModuleConfig) {
     this.parent = parent;

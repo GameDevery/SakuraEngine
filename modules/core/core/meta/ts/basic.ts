@@ -1,22 +1,9 @@
 import * as gen from "@framework/generator"
 import * as db from "@framework/database"
 
-class BasicGenerator extends gen.Generator {
-  override pre_gen(): void {
-    // test generate body
-    this.owner.project_db.main_module.each_record((record, _header) => {
-      if (record.generate_body_content.length > 0 && !record.has_generate_body_flag) {
-        throw new Error(
-          `Record ${record.name} has generate body but not set generate_body_flag`
-        )
-      }
-    });
-
-    // gen header
-    for (const header of this.owner.project_db.main_module.headers) {
-      this.owner.append_content(
-        header.output_header_path,
-`//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+class _Gen {
+  static header_pre(header: db.Header) {
+    header.gen_code.block(`//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 //!! THIS FILE IS GENERATED, ANY CHANGES WILL BE LOST !!
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -34,60 +21,24 @@ class BasicGenerator extends gen.Generator {
 #define SKR_FILE_ID ${header.file_id}
 
 // BEGIN Generated Body
-${this.#gen_record_generate_body(header)}
+${_Gen.#generate_body(header)}
 // END Generated Body
 
 // BEGIN forward declarations
-${this.#gen_fwd_decl(header)}
+${_Gen.#fwd_decl(header)}
 // END forward declarations
-`
-      )
-    }
-
-    // gen source
-    this.owner.append_content(
-      "generated.cpp",
-`//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-//!! THIS FILE IS GENERATED, ANY CHANGES WILL BE LOST !!
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-// BEGIN header includes
-${this.#gen_header_includes(this.owner.project_db.main_module)}
-// END header includes
-
-// BEGIN push diagnostic
-#if defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wimplicitly-unsigned-literal"
-#endif
-// END push diagnostic
-`
-    )
+`)
   }
 
-  override post_gen(): void {
-    // gen source
-    this.owner.append_content(
-      "generated.cpp",
-`// BEGIN pop diagnostic
-#if defined(__clang__)
-#pragma clang diagnostic pop
-#endif
-// END pop diagnostic
-`
-    )
-  };
-
-  #gen_record_generate_body(header: db.Header): string {
+  static #generate_body(header: db.Header): string {
     let result = ""
     for (const record of header.records) {
-      if (record.has_generate_body_flag) {
-        result += `#define SKR_GENERATE_BODY_${header.file_id}_${record.generate_body_line} ${record.dump_generate_body}\n`
-      }
+      if (!record.has_generate_body_flag) continue;
+      result += `#define SKR_GENERATE_BODY_${header.file_id}_${record.generate_body_line} ${record.dump_generate_body}\n`
     }
     return result;
   }
-  #gen_fwd_decl(header: db.Header): string {
+  static #fwd_decl(header: db.Header): string {
     let result = ""
     for (const record of header.records) {
       if (record.namespace.length > 0) {
@@ -107,7 +58,25 @@ ${this.#gen_header_includes(this.owner.project_db.main_module)}
     }
     return result;
   }
-  #gen_header_includes(module: db.Module): string {
+
+  static source_pre(main_module: db.Module) {
+    main_module.gen_code.block(`//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//!! THIS FILE IS GENERATED, ANY CHANGES WILL BE LOST !!
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+// BEGIN header includes
+${_Gen.#header_includes(main_module)}
+// END header includes
+
+// BEGIN push diagnostic
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wimplicitly-unsigned-literal"
+#endif
+// END push diagnostic
+`)
+  }
+  static #header_includes(module: db.Module): string {
     let result = ""
     for (const header of module.headers) {
       if (header.header_path.length > 0) {
@@ -116,6 +85,42 @@ ${this.#gen_header_includes(this.owner.project_db.main_module)}
     }
     return result;
   }
+
+  static source_post(main_module: db.Module) {
+    main_module.gen_code.block(`// BEGIN pop diagnostic
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
+// END pop diagnostic
+`);
+  }
+}
+
+
+class BasicGenerator extends gen.Generator {
+  override pre_gen(): void {
+    // test generate body
+    this.owner.project_db.main_module.each_record((record, _header) => {
+      if (record.generate_body_content.length > 0 && !record.has_generate_body_flag) {
+        throw new Error(
+          `Record ${record.name} has generate body but not set generate_body_flag`
+        )
+      }
+    });
+
+    // gen header
+    for (const header of this.owner.project_db.main_module.headers) {
+      _Gen.header_pre(header);
+    }
+
+    // gen source
+    _Gen.source_pre(this.owner.project_db.main_module);
+  }
+  override post_gen(): void {
+    _Gen.source_post(this.owner.project_db.main_module);
+  };
+
+
 }
 
 export function load_generator(gm: gen.GenerateManager) {

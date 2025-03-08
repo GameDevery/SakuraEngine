@@ -10,16 +10,11 @@ class MethodData {
   enable: boolean = false
   getter: string = ""
   setter: string = ""
-} 
+}
 
-class ProxyGenerator extends gen.Generator {
-
-  override gen_body(): void {
-    this.owner.project_db.main_module.each_record((record, _header) => {
-      const record_data = record.gen_data.proxy as RecordData
-      if (record_data.enable) {
-        record.generate_body_content += 
-`/*content*/
+class _Gen {
+  static gen_body(record: cpp.Record) {
+    record.generate_body_content += `/*content*/
 void* self = nullptr;
 const ${record.short_name}_VTable* vtable = nullptr;
 
@@ -31,38 +26,29 @@ ${record.short_name}(T& obj) noexcept
 {
 }
 `
-      }
-    })
   }
-  override gen(): void {
-    // gen header
-    for (const header_db of this.owner.project_db.main_module.headers) {
-      this.owner.append_content(
-        header_db.output_header_path,
-`// BEGIN PROXY GENERATED
-${this.#gen_vtable(header_db)}
+  static header(header: db.Header) {
+    header.gen_code.block(`// BEGIN PROXY GENERATED
+${_Gen.#vtable(header)}
 namespace skr
 {
-${this.#gen_traits(header_db)}
+${_Gen.#traits(header)}
 }
 // END PROXY GENERATED
-`
-      )
-    }
+`)
   }
-  #gen_vtable(header: db.Header) : string {
+  static #vtable(header: db.Header): string {
     let result = ""
     for (const record of header.records) {
       const record_data = record.gen_data.proxy as RecordData
       if (!record_data.enable) continue;
       if (record.namespace.length > 0) {
-        result +=
-`namespace ${record.namespace.join("::")} 
+        result += `namespace ${record.namespace.join("::")} 
 {`
       }
 
       result +=
-`struct ${record.short_name}_VTable {
+        `struct ${record.short_name}_VTable {
 ${this.#gen_vtable_methods(record)}
 }
 static ${record.short_name}_VTable* get_vtable() {
@@ -78,7 +64,7 @@ ${this.#gen_get_vtable_content(record)}
     }
     return result
   }
-  #gen_vtable_methods(record: cpp.Record) : string{
+  static #gen_vtable_methods(record: cpp.Record): string {
     let result = ""
     for (const method of record.methods) {
       const method_data = method.gen_data.proxy as MethodData;
@@ -86,8 +72,7 @@ ${this.#gen_get_vtable_content(record)}
         const _dump_content = () => {
           let result = ""
           if (method_data.getter.length > 0) {
-            result =
-`    if constexpr(validate_method(static_cast<${method.dump_const()} T*>(0) ${method.dump_params_name_only_with_comma()}))
+            result = `    if constexpr(validate_method(static_cast<${method.dump_const()} T*>(0) ${method.dump_params_name_only_with_comma()}))
     {
         return static_cast<${method.dump_const()} T*>(self)->${method.short_name}(${method.dump_params_name_only()});
     }
@@ -102,7 +87,7 @@ ${this.#gen_get_vtable_content(record)}
           }
           else if (method_data.setter.length > 0) {
             result =
-`    static_assert(std::is_same_v<${method.ret_type}, void>, "Setter must return void");
+              `    static_assert(std::is_same_v<${method.ret_type}, void>, "Setter must return void");
     if constexpr(validate_method(static_cast<${method.dump_const()} T*>(0) ${method.dump_params_name_only_with_comma()}))
     {
         static_cast<${method.dump_const()} T*>(self)->${method.short_name}(${method.dump_params_name_only()});
@@ -119,7 +104,7 @@ ${this.#gen_get_vtable_content(record)}
           }
           else {
             result =
-`    if constexpr(validate_method(static_cast<${method.dump_const()} T*>(0) ${method.dump_params_name_only_with_comma()}))
+              `    if constexpr(validate_method(static_cast<${method.dump_const()} T*>(0) ${method.dump_params_name_only_with_comma()}))
     {
         return static_cast<${method.dump_const()} T*>(self)->${method.short_name}(${method.dump_params_name_only()});
     }
@@ -132,8 +117,8 @@ ${this.#gen_get_vtable_content(record)}
           return result
         }
 
-        result += 
-`inline static ${method.ret_type} static_${method.short_name}(${method.dump_const()} void* self ${method.dump_params_with_comma()}) ${method.dump_noexcept()}
+        result +=
+          `inline static ${method.ret_type} static_${method.short_name}(${method.dump_const()} void* self ${method.dump_params_with_comma()}) ${method.dump_noexcept()}
 {
     [[maybe_unused]] auto validate_method = SKR_VALIDATOR((auto obj, auto... args), obj->${method.short_name}(args...));
     [[maybe_unused]] auto validate_static_method = SKR_VALIDATOR((auto... args), ${method.short_name}(static_cast<${method.dump_const()} T*>(0), args...));
@@ -144,7 +129,7 @@ ${_dump_content()}
     }
     return result
   }
-  #gen_get_vtable_content(record: cpp.Record): string {
+  static #gen_get_vtable_content(record: cpp.Record): string {
     let result = ""
     for (const method of record.methods) {
       const method_data = method.gen_data.proxy as MethodData;
@@ -154,11 +139,11 @@ ${_dump_content()}
     }
     return result;
   }
-  #gen_traits(header: db.Header): string {
+  static #traits(header: db.Header): string {
     let result = ""
     for (const record of header.records) {
       result +=
-`template <>
+        `template <>
 struct ProxyObjectTraits<${record.name}> {
     template <typename T>
     static constexpr bool validate()
@@ -172,7 +157,7 @@ ${this.#gen_traits_methods(record)}
     }
     return result
   }
-  #gen_traits_methods(record: cpp.Record): string {
+  static #gen_traits_methods(record: cpp.Record): string {
     let result = ""
     for (const method of record.methods) {
       const method_data = method.gen_data.proxy as MethodData;
@@ -181,14 +166,14 @@ ${this.#gen_traits_methods(record)}
           let result = ""
           if (method_data.getter.length > 0) {
             result +=
-`            || requires(${method.dump_const()} T t ${method.dump_params_with_comma()})
+              `            || requires(${method.dump_const()} T t ${method.dump_params_with_comma()})
             {
                 { t.${method_data.setter} = ${method.dump_params_name_only()} };
             }
 `
           } else if (method_data.setter.length > 0) {
-            result += 
-`            || requires(${method.dump_const()} T t)
+            result +=
+              `            || requires(${method.dump_const()} T t)
             {
                 { t.${method_data.getter} } -> std::convertible_to<${method.ret_type}>;
             }
@@ -198,7 +183,7 @@ ${this.#gen_traits_methods(record)}
         }
 
         result +=
-`(   // ${method.ret_type} ${record.name}::${method.short_name}(${method.dump_params()}) ${method.dump_const()} ${method.dump_noexcept()}
+          `(   // ${method.ret_type} ${record.name}::${method.short_name}(${method.dump_params()}) ${method.dump_const()} ${method.dump_noexcept()}
             requires(${method.dump_const()} T t ${method.dump_params_with_comma()})
             {
                 { t.${method.short_name}( ${method.dump_params_name_only()} ) } -> std::convertible_to<${method.ret_type}>;
@@ -214,6 +199,25 @@ ${this.#gen_traits_methods(record)}
     }
     return result
   }
+};
+
+class ProxyGenerator extends gen.Generator {
+
+  override gen_body(): void {
+    this.owner.project_db.main_module.each_record((record, _header) => {
+      const record_data = record.gen_data.proxy as RecordData
+      if (record_data.enable) {
+        _Gen.gen_body(record);
+      }
+    })
+  }
+  override gen(): void {
+    // gen header
+    for (const header_db of this.owner.project_db.main_module.headers) {
+      _Gen.header(header_db);
+    }
+  }
+
 }
 
 export function load_generator(gm: gen.GenerateManager) {
