@@ -1,5 +1,5 @@
 {
-  "name": "meta_codegen_new",
+  "name": "meta_codegen_ts",
   "private": true,
   "devDependencies": {
     "@types/bun": "latest"
@@ -8,6 +8,7 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "art-template": "^4.13.2",
     "peggy": "^4.2.0"
   }
 }

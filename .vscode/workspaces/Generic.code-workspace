@@ -28,7 +28,6 @@
         // fixed terminal cwd
         "terminal.integrated.cwd": "${workspaceFolder:root}",
         // deno options for meta codegen
-        "deno.config": "${workspaceFolder:root}/tools/meta_codegen_new/deno.json",
         "deno.enable": false,
         "[typescript]": {
             "editor.defaultFormatter": "vscode.typescript-language-features",
@@ -61,9 +60,9 @@
                 "runtimeExecutable": "deno",
                 "runtimeArgs": [
                     "run",
-                    "--config=${workspaceFolder:root}/tools/meta_codegen_new/deno.json"
+                    "--config=${workspaceFolder:root}/tools/meta_codegen_ts/deno.json"
                 ],
-                "program": "${workspaceFolder:root}/tools/meta_codegen_new/codegen.ts",
+                "program": "${workspaceFolder:root}/tools/meta_codegen_ts/codegen.ts",
                 "args": [
                     "${file}"
                 ],
@@ -74,7 +73,7 @@
                 "type": "bun",
                 "request": "launch",
                 "cwd": "${workspaceFolder:root}",
-                "program": "${workspaceFolder:root}/tools/meta_codegen_new/codegen.ts",
+                "program": "${workspaceFolder:root}/tools/meta_codegen_ts/codegen.ts",
                 "args": [
                     "${file}"
                 ],
