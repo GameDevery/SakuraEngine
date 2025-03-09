@@ -209,70 +209,143 @@ export class ExecContext {
 }
 
 //======================== scheme ========================
-type AssignFunc = (value: ValueType | ValueType[]) => void;
-type ValueAssignFunc = (value: ValueType) => void;
-type ArrayAssignFunc = (value: ValueType[]) => void;
-type PresetFunc = () => void;
 type ValueType = string | number | boolean;
 type ValueTypeStr = 'string' | 'number' | 'boolean';
+type PresetFunc = () => void;
+type ValueAssignFunc = (value: any) => void;
+type ArrayAssignFunc = (value: any[]) => void;
 type PresetData = {
   name: string;
   func: PresetFunc;
 }
 type ValueData = {
   name: string;
-  field_name: string;
   accept_type: ValueTypeStr;
+  field_or_method: string | ValueAssignFunc;
 }
 type ArrayData = {
   name: string;
-  field_name: string;
   accept_type: ValueTypeStr;
+  field_or_method: string | ArrayAssignFunc;
 }
-type AssignData = {
-  func: AssignFunc;
+type ValueProxyData = {
   accept_type: ValueTypeStr;
-  accept_type_array: ValueTypeStr;
+  func: ValueAssignFunc;
+}
+type ArrayProxyData = {
+  accept_type: ValueTypeStr;
+  func: ArrayAssignFunc;
 }
 const symbol_preset = Symbol("preset");
 const symbol_value = Symbol("value");
 const symbol_array = Symbol("array");
-const symbol_assign = Symbol("assign");
+const symbol_value_proxy = Symbol("value_proxy");
+const symbol_array_proxy = Symbol("array_proxy");
+function check_and_assign(target: any, meta_symbol: symbol, name: string, value: any) {
+  // add metadata
+  const metadata = target[Symbol.metadata] ??= {};
+  metadata[meta_symbol] ??= {};
+  const values = metadata[meta_symbol] as Dict<PresetData>;
+
+  // solve name
+  if (typeof name != "string") throw new Error("preset name must be string");
+
+  // check name conflict
+  if (values[name]) throw new Error(`${String(meta_symbol)}[${name}] already exists`);
+
+  // assign data
+  values[name] = value;
+}
 export function ml_preset(name?: string) {
-  return (target: any, ctx: ClassMethodDecoratorContext<any, PresetFunc>) => {
-    // add metadata
-    console.log(target)
-    console.log(ctx)
-    ctx.metadata[symbol_preset] ??= [];
-
-    // solve name
-    const real_name = name ?? ctx.name;
-    if (typeof real_name != "string") throw new Error("preset name must be string");
-
-    // check name conflict
-    const presets = ctx.metadata[symbol_preset] as Dict<PresetData>;
-    if (presets[real_name]) throw new Error(`preset ${real_name} already exists`);
-
-    // add data
-    presets[real_name] = {
-      name: real_name,
-      func: target,
-    } as PresetData;
+  return (target: any, method_name: string, desc: TypedPropertyDescriptor<PresetFunc>) => {
+    check_and_assign(
+      target,
+      symbol_preset,
+      name ?? method_name,
+      {
+        name: name ?? method_name,
+        func: desc.value,
+      } as PresetData
+    )
   }
 }
 export function ml_value(accept_type: ValueTypeStr, options: { name?: string } = {}) {
-  return (target: any, ctx: ClassFieldDecoratorContext<any, ValueType> | ClassMethodDecoratorContext<any, ValueAssignFunc>) => {
+  return (target: any, field_or_method: string, desc?: TypedPropertyDescriptor<ValueAssignFunc>) => {
+    if (desc !== undefined) {
+      check_and_assign(
+        target,
+        symbol_value,
+        options.name ?? field_or_method,
+        {
+          name: options.name ?? field_or_method,
+          accept_type: accept_type,
+          field_or_method: desc.value,
+        } as ValueData
+      );
+    } else {
+      check_and_assign(
+        target,
+        symbol_value,
+        options.name ?? field_or_method,
+        {
+          name: options.name ?? field_or_method,
+          accept_type: accept_type,
+          field_or_method: field_or_method,
+        } as ValueData
+      );
+    }
   }
 }
 export function ml_array(accept_type: ValueTypeStr, options: { name?: string } = {}) {
-  return (target: any, ctx: ClassFieldDecoratorContext<any, ValueType[]> | ClassMethodDecoratorContext<any, ArrayAssignFunc>) => {
+  return (target: any, field_or_method: string, desc?: TypedPropertyDescriptor<ArrayAssignFunc>) => {
+    if (desc !== undefined) {
+      check_and_assign(
+        target,
+        symbol_array,
+        options.name ?? field_or_method,
+        {
+          name: options.name ?? field_or_method,
+          accept_type: accept_type,
+          field_or_method: desc.value,
+        } as ArrayData
+      );
+    } else {
+      check_and_assign(
+        target,
+        symbol_array,
+        options.name ?? field_or_method,
+        {
+          name: options.name ?? field_or_method,
+          accept_type: accept_type,
+          field_or_method: field_or_method,
+        } as ArrayData
+      );
+    }
   }
 }
 export function ml_value_proxy(accept_type: ValueTypeStr) {
-  return (target: any, ctx: ClassMethodDecoratorContext<any, ValueAssignFunc>) => {
+  return (target: any, method_name: string, desc: TypedPropertyDescriptor<ValueAssignFunc>) => {
+    check_and_assign(
+      target,
+      symbol_value_proxy,
+      method_name,
+      {
+        accept_type: accept_type,
+        func: desc.value,
+      } as ValueProxyData
+    )
   }
 }
 export function ml_array_proxy(accept_type: ValueTypeStr) {
-  return (target: any, ctx: ClassMethodDecoratorContext<any, ArrayAssignFunc>) => {
+  return (target: any, method_name: string, desc: TypedPropertyDescriptor<ArrayAssignFunc>) => {
+    check_and_assign(
+      target,
+      symbol_array_proxy,
+      method_name,
+      {
+        accept_type: accept_type,
+        func: desc.value,
+      } as ArrayProxyData
+    )
   }
 }
