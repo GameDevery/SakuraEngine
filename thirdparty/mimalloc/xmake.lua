@@ -1,7 +1,7 @@
 target("mimalloc")
     set_group("01.libraries")
     set_optimize("fastest")
-    add_files("files/build.mimalloc.cpp")
+    add_files("files/build.mimalloc.c")
     add_includedirs("files", {public = true})
     if (is_os("windows")) then 
         add_syslinks("psapi", "shell32", "user32", "advapi32", "bcrypt")
