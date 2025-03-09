@@ -20,10 +20,10 @@ function AccessExpr(location, value) {
     location: location,
   };
 }
-function Operator(location, value, left, right) {
+function Operator(location, op, left, right) {
   return {
     type: 'operator',
-    value: value,
+    op: op,
     left: left,
     right: right,
     location: location,
@@ -50,6 +50,9 @@ function ArrayExpr(location, value) {
     location: location,
   };
 }
+function processStringLiteral(str) {
+  return str.slice(1, -1)
+}
 }}
 
 start
@@ -70,9 +73,9 @@ Boolean "boolean(true/false)"
   / "false" { return Literal(location(), false) }
 
 String "string"
-  = "\"" StringContentDoubleQuote* "\"" { return Literal(location(), text()) }
-  / "'" StringContentQuote* "'" { return Literal(location(), text()) }
-  / "`" StringContentBackQuote* "`" { return Literal(location(), text()) }
+  = "\"" StringContentDoubleQuote* "\"" { return Literal(location(), processStringLiteral(text())) }
+  / "'" StringContentQuote* "'" { return Literal(location(), processStringLiteral(text())) }
+  / "`" StringContentBackQuote* "`" { return Literal(location(), processStringLiteral(text())) }
 
 StringContentDoubleQuote
   = [^\r\n"\\]+
@@ -96,10 +99,10 @@ ArrayExpr "array([1,2,\"hello\"])"
   = "[" _ content:ValueExpr|..,_","_| _ "]" { return ArrayExpr(location(), content) }
 
 Preset "preset(@xxx)"
-  = &"@" content:"@"Identifier { return Preset(location(), content) }
+  = &"@" "@"content:Identifier { return Preset(location(), content.value) }
 
 PresetExpr "presets(@xxx|@xxx|@xxx)"
-  = content:Preset|..,_ "|" _| { return PresetExpr(location(), content) }
+  = content:Preset|1..,_ "|" _| { return PresetExpr(location(), content) }
 
 AccessExpr "access(a.b.c)"
   = content:Identifier|..,"."| { return AccessExpr(location(), content) }
@@ -110,4 +113,4 @@ AssignExpr
   }
 
 AssignExprs
-  = _ head:AssignExpr _ ";"? tails:(_ AssignExpr _ ";"?)* { return [head].concat(tails.map(t => t[1])) }
+  = _ head:AssignExpr _ ";"? tails:(_ AssignExpr _ ";"?)* _ { return [head].concat(tails.map(t => t[1])) }
