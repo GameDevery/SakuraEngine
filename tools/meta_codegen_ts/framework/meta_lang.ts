@@ -71,10 +71,9 @@ export class Program {
           Program.append_value(obj, expr.visitor, expr.value);
         } else if (expr.value.type === "preset") {
           throw new Error(
-            `preset not support "+=" operator, visitor: ${
-              expr.visitor.join(
-                ".",
-              )
+            `preset not support "+=" operator, visitor: ${expr.visitor.join(
+              ".",
+            )
             }`,
           );
         } else {
@@ -101,10 +100,8 @@ export class Program {
         // check type
         if (typeof cur_obj[k] != "object") {
           throw new Error(
-            `type conflict, old value is ${
-              cur_obj[k]
-            }, excepted object, when assign "${
-              keys.slice(0, i + 1).join(".")
+            `type conflict, old value is ${cur_obj[k]
+            }, excepted object, when assign "${keys.slice(0, i + 1).join(".")
             }"`,
           );
         }
@@ -126,8 +123,7 @@ export class Program {
         // check type
         if (!Array.isArray(cur_obj[k])) {
           throw new Error(
-            `type conflict, old value is ${
-              cur_obj[k]
+            `type conflict, old value is ${cur_obj[k]
             }, excepted array, when assign "${keys.join(".")}"`,
           );
         }
@@ -151,10 +147,8 @@ export class Program {
         // check type
         if (typeof cur_obj[k] != "object") {
           throw new Error(
-            `type conflict, old value is ${
-              cur_obj[k]
-            }, excepted object, when assign "${
-              keys.slice(0, i + 1).join(".")
+            `type conflict, old value is ${cur_obj[k]
+            }, excepted object, when assign "${keys.slice(0, i + 1).join(".")
             }"`,
           );
         }
@@ -212,4 +206,73 @@ class PresetTools {
 }
 export class ExecContext {
   presets: { [key: string]: PresetCallback } = {};
+}
+
+//======================== scheme ========================
+type AssignFunc = (value: ValueType | ValueType[]) => void;
+type ValueAssignFunc = (value: ValueType) => void;
+type ArrayAssignFunc = (value: ValueType[]) => void;
+type PresetFunc = () => void;
+type ValueType = string | number | boolean;
+type ValueTypeStr = 'string' | 'number' | 'boolean';
+type PresetData = {
+  name: string;
+  func: PresetFunc;
+}
+type ValueData = {
+  name: string;
+  field_name: string;
+  accept_type: ValueTypeStr;
+}
+type ArrayData = {
+  name: string;
+  field_name: string;
+  accept_type: ValueTypeStr;
+}
+type AssignData = {
+  func: AssignFunc;
+  accept_type: ValueTypeStr;
+  accept_type_array: ValueTypeStr;
+}
+const symbol_preset = Symbol("preset");
+const symbol_value = Symbol("value");
+const symbol_array = Symbol("array");
+const symbol_assign = Symbol("assign");
+export function ml_preset(name?: string) {
+  return (target: any, ctx: ClassMethodDecoratorContext<any, PresetFunc>) => {
+    // add metadata
+    console.log(target)
+    console.log(ctx)
+    ctx.metadata[symbol_preset] ??= [];
+
+    // solve name
+    const real_name = name ?? ctx.name;
+    if (typeof real_name != "string") throw new Error("preset name must be string");
+
+    // check name conflict
+    const presets = ctx.metadata[symbol_preset] as Dict<PresetData>;
+    if (presets[real_name]) throw new Error(`preset ${real_name} already exists`);
+
+    // add data
+    presets[real_name] = {
+      name: real_name,
+      func: target,
+    } as PresetData;
+  }
+}
+export function ml_value(accept_type: ValueTypeStr, options: { name?: string } = {}) {
+  return (target: any, ctx: ClassFieldDecoratorContext<any, ValueType> | ClassMethodDecoratorContext<any, ValueAssignFunc>) => {
+  }
+}
+export function ml_array(accept_type: ValueTypeStr, options: { name?: string } = {}) {
+  return (target: any, ctx: ClassFieldDecoratorContext<any, ValueType[]> | ClassMethodDecoratorContext<any, ArrayAssignFunc>) => {
+  }
+}
+export function ml_value_proxy(accept_type: ValueTypeStr) {
+  return (target: any, ctx: ClassMethodDecoratorContext<any, ValueAssignFunc>) => {
+  }
+}
+export function ml_array_proxy(accept_type: ValueTypeStr) {
+  return (target: any, ctx: ClassMethodDecoratorContext<any, ArrayAssignFunc>) => {
+  }
 }

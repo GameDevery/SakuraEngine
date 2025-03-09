@@ -1,6 +1,7 @@
 import * as gen from "@framework/generator"
 import * as db from "@framework/database"
 import * as cpp from "@framework/cpp_types"
+import { ml_value, ml_array, ml_preset } from "@framework/meta_lang"
 
 class RecordData {
   enable: boolean = false
