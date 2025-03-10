@@ -48,22 +48,26 @@ class _Gen {
       // enum serde traits
       header.enums.forEach(enum_ => {
         b.line(`template <>`)
-        b.scope(`struct ${header.parent.config.api} EnumSerdeTraits<${enum_.name}> {`, `};`, _b => {
+        b.line(`struct ${header.parent.config.api} EnumSerdeTraits<${enum_.name}> {`)
+        b.$indent(_b => {
           b.line(`static skr::StringView to_string(const ${enum_.name}& value);`)
           b.line(`static bool from_string(skr::StringView str, ${enum_.name}& value);`)
         })
+        b.line(`};`)
       })
 
       // record serde
       header.records.forEach(record => {
         b.line(`template <>`)
-        b.scope(`struct ${header.parent.config.api} JsonSerde<${record.name}> {`, `};`, _b => {
+        b.line(`struct ${header.parent.config.api} JsonSerde<${record.name}> {`)
+        b.$indent(_b => {
           b.line(`static bool read_fields(skr::archive::JsonReader* r, ${record.name}& v);`);
           b.line(`static bool write_fields(skr::archive::JsonWriter* w, const ${record.name}& v);`);
           b.line(``);
           b.line(`static bool read(skr::archive::JsonReader* r, ${record.name}& v);`);
           b.line(`static bool write(skr::archive::JsonWriter* w, const ${record.name}& v);`);
         })
+        b.line(`};`)
       })
     })
 
@@ -72,10 +76,12 @@ class _Gen {
     b.$namespace("skr", _b => {
       header.records.forEach(record => {
         b.line(`template<>`)
-        b.scope(`struct ${header.parent.config.api} BinSerde<${record.name}> {`, `};`, _b => {
+        b.line(`struct ${header.parent.config.api} BinSerde<${record.name}> {`)
+        b.$indent(_b => {
           b.line(`static bool read(SBinaryReader* r, ${record.name}& v);`)
           b.line(`static bool write(SBinaryWriter* w, const ${record.name}& v);`)
         })
+        b.line(`};`)
       })
     })
 
@@ -116,14 +122,18 @@ class _Gen {
         if (!enum_config.json) return;
 
         // to string
-        b.scope(`skr::StringView EnumSerdeTraits<${enum_.name}>:: to_string(const ${enum_.name}& value){`, `} `, _b => {
-          b.scope(`switch (value) {`, `}`, _b => {
+        b.line(`skr::StringView EnumSerdeTraits<${enum_.name}>:: to_string(const ${enum_.name}& value){`)
+        b.$indent(_b => {
+          b.line(`switch (value) {`)
+          b.$indent(_b => {
             enum_.values.forEach(enum_value => {
               b.line(`case ${enum_.name}::${enum_value.short_name}: return u8"${enum_value.short_name}";`)
             })
             b.line(`default: SKR_UNREACHABLE_CODE(); return u8"${enum_.name}::__INVALID_ENUMERATOR__";`)
           })
+          b.line(`}`)
         })
+        b.line(`}`)
 
         // from string
         b.$function(`bool EnumSerdeTraits<${enum_.name}>::from_string(skr::StringView str, ${enum_.name}& value)`, _b => {
@@ -162,10 +172,15 @@ class _Gen {
             if (!field_config.json) return;
             const json_key = field_config.alias.length > 0 ? field_config.alias : field.name;
             b.$scope(_b => {
+              // read key
               b.line(`auto jSlot = r->Key(u8"${json_key}");`)
-              b.scope(`jSlot.error_then([&](auto e) {`, `});`, _b => {
+              b.line(`jSlot.error_then([&](auto e) {`)
+              b.$indent(_b => {
                 b.line(`SKR_ASSERT(e == skr::archive::JsonReadError::KeyNotFound);`)
               })
+              b.line(`});`)
+
+              // read value
               b.$if([`jSlot.has_value()`, _b => {
                 b.$if([`!json_read<${field.signature()}>(r, v.${field.name})`, _b => {
                   b.line(`SKR_LOG_ERROR(JsonFieldArchiveFailedFormat, "${record.name}", "${field.name}", "UNKNOWN ERROR");  // TODO: ERROR MESSAGE`)

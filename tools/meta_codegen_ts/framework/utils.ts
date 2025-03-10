@@ -36,13 +36,6 @@ export class CodeBuilder {
   }
 
   // cpp tools
-  scope(before: string, after: string, content: (b: CodeBuilder) => void): void {
-    this.line(before);
-    this.#push_indent();
-    content(this);
-    this.#pop_indent();
-    this.line(after);
-  }
   $struct(name: string, content: (b: CodeBuilder) => void): void {
     this.line(`struct ${name} {`);
     this.#push_indent(1);
