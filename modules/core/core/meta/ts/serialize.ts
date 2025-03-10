@@ -35,53 +35,53 @@ class EnumConfig extends ConfigBase {
 
 class _Gen {
   static header(header: db.Header) {
-    const builder = header.gen_code;
+    const b = header.gen_code;
 
-    builder.block(`// BEGIN SERIALIZE GENERATED
-#include "SkrSerde/bin_serde.hpp"
-#include "SkrSerde/json_serde.hpp"
-`)
+    b.line(`// BEGIN SERIALIZE GENERATED`)
+    b.line(`#include "SkrSerde/bin_serde.hpp"`)
+    b.line(`#include "SkrSerde/json_serde.hpp"`)
+    b.line(``)
 
     // json
-    builder.line(`// json serde`)
-    builder.$namespace("skr", _b => {
+    b.line(`// json serde`)
+    b.$namespace("skr", _b => {
       // enum serde traits
       header.enums.forEach(enum_ => {
-        builder.line(`template <>`)
-        builder.scope(`struct ${header.parent.config.api} EnumSerdeTraits<${enum_.name}> { \n`, `\n};`, _b => {
-          builder.line(`static skr::StringView to_string(const ${enum_.name}& value);`)
-          builder.line(`static bool from_string(skr::StringView str, ${enum_.name}& value);`)
+        b.line(`template <>`)
+        b.scope(`struct ${header.parent.config.api} EnumSerdeTraits<${enum_.name}> {`, `};`, _b => {
+          b.line(`static skr::StringView to_string(const ${enum_.name}& value);`)
+          b.line(`static bool from_string(skr::StringView str, ${enum_.name}& value);`)
         })
       })
 
       // record serde
       header.records.forEach(record => {
-        builder.line(`template <>`)
-        builder.scope(`struct ${header.parent.config.api} JsonSerde<${record.name}> {\n`, `\n};`, _b => {
-          builder.line(`static bool read_fields(skr::archive::JsonReader* r, ${record.name}& v);`);
-          builder.line(`static bool write_fields(skr::archive::JsonWriter* w, const ${record.name}& v);`);
-          builder.line(``);
-          builder.line(`static bool read(skr::archive::JsonReader* r, ${record.name}& v);`);
-          builder.line(`static bool write(skr::archive::JsonWriter* w, const ${record.name}& v);`);
+        b.line(`template <>`)
+        b.scope(`struct ${header.parent.config.api} JsonSerde<${record.name}> {`, `};`, _b => {
+          b.line(`static bool read_fields(skr::archive::JsonReader* r, ${record.name}& v);`);
+          b.line(`static bool write_fields(skr::archive::JsonWriter* w, const ${record.name}& v);`);
+          b.line(``);
+          b.line(`static bool read(skr::archive::JsonReader* r, ${record.name}& v);`);
+          b.line(`static bool write(skr::archive::JsonWriter* w, const ${record.name}& v);`);
         })
       })
     })
 
     // bin
-    builder.line(`// bin serde`)
-    builder.$namespace("skr", _b => {
+    b.line(`// bin serde`)
+    b.$namespace("skr", _b => {
       header.records.forEach(record => {
-        builder.line(`template<>`)
-        builder.scope(`struct ${header.parent.config.api} BinSerde<${record.name}> {\n`, `\n};`, _b => {
-          builder.line(`static bool read(SBinaryReader* r, ${record.name}& v);`)
-          builder.line(`static bool write(SBinaryWriter* w, const ${record.name}& v);`)
+        b.line(`template<>`)
+        b.scope(`struct ${header.parent.config.api} BinSerde<${record.name}> {`, `};`, _b => {
+          b.line(`static bool read(SBinaryReader* r, ${record.name}& v);`)
+          b.line(`static bool write(SBinaryWriter* w, const ${record.name}& v);`)
         })
       })
     })
 
 
-    builder.block(`
-// END SERIALIZE GENERATED`)
+    b.line(``)
+    b.line(`// END SERIALIZE GENERATED`)
   }
   static source(main_db: db.Module) {
     const b = main_db.gen_code;
@@ -116,8 +116,8 @@ class _Gen {
         if (!enum_config.json) return;
 
         // to string
-        b.scope(`skr::StringView EnumSerdeTraits<${enum_.name}>:: to_string(const ${enum_.name}& value){ \n`, `\n } `, _b => {
-          b.scope(`switch (value) {\n`, `\n}`, _b => {
+        b.scope(`skr::StringView EnumSerdeTraits<${enum_.name}>:: to_string(const ${enum_.name}& value){`, `} `, _b => {
+          b.scope(`switch (value) {`, `}`, _b => {
             enum_.values.forEach(enum_value => {
               b.line(`case ${enum_.name}::${enum_value.short_name}: return u8"${enum_value.short_name}";`)
             })
@@ -163,7 +163,7 @@ class _Gen {
             const json_key = field_config.alias.length > 0 ? field_config.alias : field.name;
             b.$scope(_b => {
               b.line(`auto jSlot = r->Key(u8"${json_key}");`)
-              b.scope(`jSlot.error_then([&](auto e) {\n`, `\n});`, _b => {
+              b.scope(`jSlot.error_then([&](auto e) {`, `});`, _b => {
                 b.line(`SKR_ASSERT(e == skr::archive::JsonReadError::KeyNotFound);`)
               })
               b.$if([`jSlot.has_value()`, _b => {

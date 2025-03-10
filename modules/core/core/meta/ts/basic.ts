@@ -4,91 +4,100 @@ import { CodeBuilder } from "@framework/utils"
 
 class _Gen {
   static header_pre(header: db.Header) {
-    // combine generate body
-    const generate_body_content = new CodeBuilder()
+    const b = header.gen_code
+
+    // header
+    b.line(`//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`)
+    b.line(`//!! THIS FILE IS GENERATED, ANY CHANGES WILL BE LOST !!`)
+    b.line(`//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`)
+    b.line(``)
+
+    // basic includes
+    b.line(`#pragma once`)
+    b.line(`#include "SkrBase/config.h"`)
+    b.line(`#include <inttypes.h>`)
+    b.line(``)
+
+    // include protect
+    b.line(`#ifdef __meta__`)
+    b.line(`#error "this file should not be inspected by meta"`)
+    b.line(`#endif`)
+    b.line(``)
+
+    // file id
+    b.line(`#ifdef SKR_FILE_ID`)
+    b.line(`    #undef SKR_FILE_ID`)
+    b.line(`#endif`)
+    b.line(`#define SKR_FILE_ID ${header.file_id}`)
+    b.line(``)
+
+    // GENERATE_BODY()
+    b.line(`// BEGIN Generated Body`)
     header.records.forEach((record) => {
       if (record.has_generate_body_flag) {
-        generate_body_content.line(`#define SKR_GENERATE_BODY_${header.file_id}_${record.generate_body_line} ${record.dump_generate_body()}`)
+        b.line(`#define SKR_GENERATE_BODY_${header.file_id}_${record.generate_body_line} ${record.dump_generate_body()}`)
       }
     })
+    b.line(`// END Generated Body`)
+    b.line(``)
 
-    // combine forward declarations
-    const forward_declarations = new CodeBuilder()
+    // forward declarations
+    b.line(`// BEGIN forward declarations`)
     header.records.forEach((record) => {
-      forward_declarations.$namespace_line(record.namespace.join("::"), () => {
+      b.$namespace_line(record.namespace.join("::"), () => {
         return `struct ${record.short_name};`
       })
     })
     header.enums.forEach((enum_) => {
       let prefix = enum_.is_scoped ? "class" : "";
       let underlying_type = enum_.underlying_type != 'unfixed' ? `: ${enum_.underlying_type}` : "";
-      forward_declarations.$namespace_line(enum_.namespace.join('::'), () => {
+      b.$namespace_line(enum_.namespace.join('::'), () => {
         return `enum ${prefix} ${enum_.short_name}${underlying_type};`
       })
     })
+    b.line(`// END forward declarations`)
 
-    header.gen_code.block(`//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-//!! THIS FILE IS GENERATED, ANY CHANGES WILL BE LOST !!
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-#pragma once
-#include "SkrBase/config.h"
-#include <inttypes.h>
-
-#ifdef __meta__
-#error "this file should not be inspected by meta"
-#endif
-
-#ifdef SKR_FILE_ID
-    #undef SKR_FILE_ID
-#endif
-#define SKR_FILE_ID ${header.file_id}
-
-// BEGIN Generated Body
-${generate_body_content}
-// END Generated Body
-
-// BEGIN forward declarations
-${forward_declarations}
-// END forward declarations
-`)
   }
   static source_pre(main_db: db.Module) {
-    // combine include headers
-    const include_headers = new CodeBuilder()
+    const b = main_db.gen_code
+
+    // header
+    b.line(`//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`)
+    b.line(`//!! THIS FILE IS GENERATED, ANY CHANGES WILL BE LOST !!`)
+    b.line(`//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`)
+    b.line(``)
+
+    // includes
+    b.line(`// BEGIN header includes`)
+    b.line(`// #define private public`)
+    b.line(`// #define protected public`)
     main_db.headers.forEach((header) => {
       if (header.header_path.length > 0) {
-        include_headers.line(`#include "${header.header_path}"`)
+        b.line(`#include "${header.header_path}"`)
       }
     })
+    b.line(`// #undef private`)
+    b.line(`// #undef protected`)
+    b.line(`// END header includes`)
+    b.line(``)
 
-    main_db.gen_code.block(`//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-//!! THIS FILE IS GENERATED, ANY CHANGES WILL BE LOST !!
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // diagnostic
+    b.line(`// BEGIN push diagnostic`)
+    b.line(`#if defined(__clang__)`)
+    b.line(`#pragma clang diagnostic push`)
+    b.line(`#pragma clang diagnostic ignored "-Wimplicitly-unsigned-literal"`)
+    b.line(`#endif`)
+    b.line(`// END push diagnostic`)
 
-// BEGIN header includes
-// #define private public
-// #define protected public
-${include_headers}
-// #undef private
-// #undef protected
-// END header includes
-
-// BEGIN push diagnostic
-#if defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wimplicitly-unsigned-literal"
-#endif
-// END push diagnostic
-`)
   }
   static source_post(main_db: db.Module) {
-    main_db.gen_code.block(`
-// BEGIN pop diagnostic
-#if defined(__clang__)
-#pragma clang diagnostic pop
-#endif
-// END pop diagnostic`)
+    const b = main_db.gen_code
+
+    b.line(`// BEGIN pop diagnostic`)
+    b.line(`#if defined(__clang__)`)
+    b.line(`#pragma clang diagnostic pop`)
+    b.line(`#endif`)
+    b.line(`// END pop diagnostic`)
   }
 }
 
