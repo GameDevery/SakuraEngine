@@ -1,9 +1,7 @@
-import * as config from "./framework/config.ts";
 import * as db from "./framework/database.ts";
 import * as ml from "./framework/meta_lang.ts";
 import * as fs from "node:fs";
 import * as process from "node:process";
-import * as cpp from "./framework/cpp_types.ts";
 
 const argv = process.argv.slice(2);
 
@@ -17,7 +15,7 @@ if (!fs.existsSync(config_file_path)) {
 }
 
 // parse config
-const codegen_config = new config.CodegenConfig(
+const codegen_config = new db.CodegenConfig(
   JSON.parse(fs.readFileSync(config_file_path, { encoding: "utf-8" })),
 );
 
@@ -39,13 +37,13 @@ const parser = ml.Compiler.load();
 
 // run attrs expr
 // proj_db.each_cpp_types((cpp_type, _header) => {
-//   if (cpp_type instanceof cpp.Enum) {
-//   } else if (cpp_type instanceof cpp.EnumValue) {
-//   } else if (cpp_type instanceof cpp.Record) {
-//   } else if (cpp_type instanceof cpp.Field) {
-//   } else if (cpp_type instanceof cpp.Method) {
-//   } else if (cpp_type instanceof cpp.Function) {
-//   } else if (cpp_type instanceof cpp.Parameter) {
+//   if (cpp_type instanceof db.Enum) {
+//   } else if (cpp_type instanceof db.EnumValue) {
+//   } else if (cpp_type instanceof db.Record) {
+//   } else if (cpp_type instanceof db.Field) {
+//   } else if (cpp_type instanceof db.Method) {
+//   } else if (cpp_type instanceof db.Function) {
+//   } else if (cpp_type instanceof db.Parameter) {
 //   }
 // });
 

@@ -161,13 +161,15 @@ at line ${e.location.start.line} column ${e.location.start.column}`,
     }
   }
 
+  static #global_parser: Compiler | null = null;
   static load() {
-    return new Compiler(
+    this.#global_parser ??= new Compiler(
       fs.readFileSync(
         path.join(__dirname, "meta_lang.peggy"),
         "utf-8",
       ),
     );
+    return this.#global_parser;
   }
 }
 
@@ -419,5 +421,20 @@ export class Program {
     } else {
       throw new Error('should not reach here');
     }
+  }
+}
+
+//======================== util objects ========================
+export class WithEnable {
+  @value('boolean')
+  enable: boolean = false
+
+  @preset('enable')
+  preset_enable() {
+    this.enable = true;
+  }
+  @preset('disable')
+  preset_disable() {
+    this.enable = false;
   }
 }

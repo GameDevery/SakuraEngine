@@ -8,6 +8,10 @@ export class CodeBuilder {
   #content: string = "";
 
   get content(): string { return this.#content; }
+  get content_marco(): string { return this.#content.replace(/(\r\n|\n|\r)/g, "\\\n"); }
+
+  // utils
+  is_empty(): boolean { return this.#content.length == 0; }
 
   // indent
   push_indent(count: number = 1): void {
@@ -22,7 +26,7 @@ export class CodeBuilder {
   }
 
   // append content 
-  block(code_block: string) : void {
+  block(code_block: string): void {
     if (this.#indent == 0) {
       this.#content += code_block;
     } else {
@@ -33,12 +37,12 @@ export class CodeBuilder {
       }
     }
   }
-  line(code: string) : void {
+  line(code: string): void {
     if (this.#indent == 0) {
-      this.#content += code;
+      this.#content += `code\n`;
     } else {
       const indent_str = " ".repeat(this.#indent * this.indent_unit);
-      this.#content += `${indent_str}${code}`;
+      this.#content += `${indent_str}${code}\n`;
     }
   }
   wrap(pre: string, callback: (builder: CodeBuilder) => void, post: string): void {
@@ -48,5 +52,39 @@ export class CodeBuilder {
   }
   empty_line(count: number): void {
     this.#content += "\n".repeat(count);
+  }
+
+  // cpp tools
+  namespace_block(name: string, content: (b: CodeBuilder) => void): void {
+    if (name.length > 0) {
+      this.block(`namespace ${name} {\n`);
+    }
+    content(this);
+    if (name.length > 0) {
+      this.block(`}\n`);
+    }
+  }
+  namespace_line(name: string, content: () => string): void {
+    if (name.length > 0) {
+      this.line(`namespace ${name} { ${content()} }`);
+    } else {
+      this.line(`${content()}`);
+    }
+  }
+  struct_block(name: string, content: (b: CodeBuilder) => void): void {
+    this.block(`struct ${name} {\n`);
+    this.push_indent(1);
+    content(this);
+    this.pop_indent();
+    this.block(`};\n`);
+  }
+  struct_line(name: string, content: () => string): void {
+    this.line(`struct ${name} { ${content()} };`);
+  }
+
+
+  // to string
+  toString(): string {
+    return this.#content;
   }
 }
