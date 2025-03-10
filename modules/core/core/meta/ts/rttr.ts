@@ -127,102 +127,19 @@ class _Gen {
     b.line(`{`)
     b.line(`    using namespace ::skr::rttr;`)
     b.line(``)
-    b.push_indent();
+    b.$indent(() => {
+      // export records
+      main_db.each_record((record, _header) => {
+        const record_config = record.gen_data.rttr as RecordConfig;
+        if (!record_config.enable) return;
 
-    // export records
-    main_db.each_record((record, _header) => {
-      const record_config = record.gen_data.rttr as RecordConfig;
-      if (!record_config.enable) return;
-
-      // collect export data
-      const bases: string[] = record.bases.filter(base => !record_config.exclude_bases.includes(base))
-      const fields: db.Field[] = record.fields.filter(field => field.gen_data.rttr.enable)
-      const methods: db.Method[] = record.methods.filter(method => method.gen_data.rttr.enable)
-
-      // register function
-      b.scope(`register_type_loader(type_id_of<${record.name}>(), +[](Type* type) {`, `});`, _b => {
-        // module info
-        b.line(`// setup module`)
-        b.line(`type->set_module(u8"${main_db.config.module_name}");`)
-        b.line(``);
-
-        // build scope
-        b.line(`// build scope`)
-        b.scope(`type->build_record([&](RecordData* record_data) {`, `});`, _b => {
-          // basic info
-          b.line(`// reserve`)
-          b.line(`record_data->bases_data.reserve(${bases.length});`)
-          b.line(`record_data->fields.reserve(${fields.length});`)
-          b.line(`record_data->methods.reserve(${methods.length});`)
-          b.line(``)
-          b.line(`RecordBuilder<${record.name}> builder(record_data);`)
-          b.line(``)
-          b.line(`// basic`)
-          b.line(`builder.basic_info();`)
-          b.line(``)
-
-          // bases
-          b.line(`// bases`)
-          if (bases.length > 0) {
-            b.line(`builder.bases<${bases.join(", ")}>();`)
-          }
-
-          // fields
-          b.line(`// fields`)
-          fields.forEach(field => {
-            const field_config = field.gen_data.rttr as FieldConfig;
-            b.scope(`{ // ${record.name}::${field.name}`, `}`, _b => {
-              if (field.is_static) {
-                b.line(`[[maybe_unused]] auto field_builder = builder.static_field<&${record.name}::${field.name}>(u8"${field.name}");`)
-              } else {
-                b.line(`[[maybe_unused]] auto field_builder = builder.field<&${record.name}::${field.name}>(u8"${field.name}");`);
-              }
-
-              this.#flags_and_attrs(b, field, field_config, "field_builder")
-            })
-          })
-
-          // methods
-          b.line(`// methods`)
-          methods.forEach(method => {
-            const method_config = method.gen_data.rttr as MethodConfig;
-            b.scope(`{ // ${record.name}::${method.name}`, `}`, _b => {
-              if (method.is_static) {
-                b.line(`[[maybe_unused]] auto method_builder = builder.static_method<${method.signature()}, &${record.name}::${method.short_name}>(u8"${method.short_name}");`)
-              } else {
-                b.line(`[[maybe_unused]] auto method_builder = builder.method<${method.signature()}, &${record.name}::${method.short_name}>(u8"${method.short_name}");`)
-              }
-
-              b.line(`// params`)
-              method.parameters.forEach((param, idx) => {
-                const param_config = param.gen_data.rttr as ParamConfig;
-                b.line(`method_builder.param_at(${idx})`)
-                b.line(`    .name(u8"${param.name}");`)
-                b.line(``)
-                // TODO. params flags & attrs
-              })
-
-              this.#flags_and_attrs(b, method, method_config, "method_builder")
-            })
-          })
-
-          // flags & attrs
-          this.#flags_and_attrs(b, record, record_config, "builder")
-        })
-      })
-    })
-
-    // export enums
-    main_db.each_enum((enum_, _header) => {
-      const enum_config = enum_.gen_data.rttr as EnumConfig;
-      if (!enum_config.enable) return;
-
-      main_db.each_enum(enum_ => {
-        const enum_config = enum_.gen_data.rttr as EnumConfig;
-        if (!enum_config.enable) return;
+        // collect export data
+        const bases: string[] = record.bases.filter(base => !record_config.exclude_bases.includes(base))
+        const fields: db.Field[] = record.fields.filter(field => field.gen_data.rttr.enable)
+        const methods: db.Method[] = record.methods.filter(method => method.gen_data.rttr.enable)
 
         // register function
-        b.scope(`register_type_loader(type_id_of<${enum_.name}> (), +[](Type * type){`, `});`, _b => {
+        b.scope(`register_type_loader(type_id_of<${record.name}>(), +[](Type* type) {`, `});`, _b => {
           // module info
           b.line(`// setup module`)
           b.line(`type->set_module(u8"${main_db.config.module_name}");`)
@@ -230,35 +147,116 @@ class _Gen {
 
           // build scope
           b.line(`// build scope`)
-          b.scope(`type->build_enum([&](EnumData* enum_data) {`, `});`, _b => {
-            // basic
+          b.scope(`type->build_record([&](RecordData* record_data) {`, `});`, _b => {
+            // basic info
             b.line(`// reserve`)
-            b.line(`enum_data->items.reserve(${enum_.values.length});`)
-            b.line(``);
-            b.line(`EnumBuilder<${enum_.name}> builder(enum_data);`)
-            b.line(``);
+            b.line(`record_data->bases_data.reserve(${bases.length});`)
+            b.line(`record_data->fields.reserve(${fields.length});`)
+            b.line(`record_data->methods.reserve(${methods.length});`)
+            b.line(``)
+            b.line(`RecordBuilder<${record.name}> builder(record_data);`)
+            b.line(``)
             b.line(`// basic`)
             b.line(`builder.basic_info();`)
-            b.line(``);
+            b.line(``)
 
-            // items
-            b.line(`// items`)
-            enum_.values.forEach(enum_value => {
-              const enum_value_config = enum_value.gen_data.rttr as EnumValueConfig;
-              b.scope(`{ // ${enum_.name}::${enum_value.name}`, `}`, _b => {
-                b.line(`[[maybe_unused]] auto item_builder = builder.item(u8"${enum_value.short_name}", ${enum_value.name});`)
-                b.line(``);
-                this.#flags_and_attrs(b, enum_value, enum_value_config, "item_builder")
+            // bases
+            b.line(`// bases`)
+            if (bases.length > 0) {
+              b.line(`builder.bases<${bases.join(", ")}>();`)
+            }
+
+            // fields
+            b.line(`// fields`)
+            fields.forEach(field => {
+              const field_config = field.gen_data.rttr as FieldConfig;
+              b.scope(`{ // ${record.name}::${field.name}`, `}`, _b => {
+                if (field.is_static) {
+                  b.line(`[[maybe_unused]] auto field_builder = builder.static_field<&${record.name}::${field.name}>(u8"${field.name}");`)
+                } else {
+                  b.line(`[[maybe_unused]] auto field_builder = builder.field<&${record.name}::${field.name}>(u8"${field.name}");`);
+                }
+
+                this.#flags_and_attrs(b, field, field_config, "field_builder")
               })
             })
 
-            this.#flags_and_attrs(b, enum_, enum_config, "builder")
-          });
+            // methods
+            b.line(`// methods`)
+            methods.forEach(method => {
+              const method_config = method.gen_data.rttr as MethodConfig;
+              b.scope(`{ // ${record.name}::${method.name}`, `}`, _b => {
+                if (method.is_static) {
+                  b.line(`[[maybe_unused]] auto method_builder = builder.static_method<${method.signature()}, &${record.name}::${method.short_name}>(u8"${method.short_name}");`)
+                } else {
+                  b.line(`[[maybe_unused]] auto method_builder = builder.method<${method.signature()}, &${record.name}::${method.short_name}>(u8"${method.short_name}");`)
+                }
+
+                b.line(`// params`)
+                method.parameters.forEach((param, idx) => {
+                  const param_config = param.gen_data.rttr as ParamConfig;
+                  b.line(`method_builder.param_at(${idx})`)
+                  b.line(`    .name(u8"${param.name}");`)
+                  b.line(``)
+                  // TODO. params flags & attrs
+                })
+
+                this.#flags_and_attrs(b, method, method_config, "method_builder")
+              })
+            })
+
+            // flags & attrs
+            this.#flags_and_attrs(b, record, record_config, "builder")
+          })
+        })
+      })
+
+      // export enums
+      main_db.each_enum((enum_, _header) => {
+        const enum_config = enum_.gen_data.rttr as EnumConfig;
+        if (!enum_config.enable) return;
+
+        main_db.each_enum(enum_ => {
+          const enum_config = enum_.gen_data.rttr as EnumConfig;
+          if (!enum_config.enable) return;
+
+          // register function
+          b.scope(`register_type_loader(type_id_of<${enum_.name}> (), +[](Type * type){`, `});`, _b => {
+            // module info
+            b.line(`// setup module`)
+            b.line(`type->set_module(u8"${main_db.config.module_name}");`)
+            b.line(``);
+
+            // build scope
+            b.line(`// build scope`)
+            b.scope(`type->build_enum([&](EnumData* enum_data) {`, `});`, _b => {
+              // basic
+              b.line(`// reserve`)
+              b.line(`enum_data->items.reserve(${enum_.values.length});`)
+              b.line(``);
+              b.line(`EnumBuilder<${enum_.name}> builder(enum_data);`)
+              b.line(``);
+              b.line(`// basic`)
+              b.line(`builder.basic_info();`)
+              b.line(``);
+
+              // items
+              b.line(`// items`)
+              enum_.values.forEach(enum_value => {
+                const enum_value_config = enum_value.gen_data.rttr as EnumValueConfig;
+                b.scope(`{ // ${enum_.name}::${enum_value.name}`, `}`, _b => {
+                  b.line(`[[maybe_unused]] auto item_builder = builder.item(u8"${enum_value.short_name}", ${enum_value.name});`)
+                  b.line(``);
+                  this.#flags_and_attrs(b, enum_value, enum_value_config, "item_builder")
+                })
+              })
+
+              this.#flags_and_attrs(b, enum_, enum_config, "builder")
+            });
+          })
         })
       })
     })
-
-    b.pop_indent();
     b.line(``)
     b.line(`};`)
     b.line(`// END RTTR GENERATED`)

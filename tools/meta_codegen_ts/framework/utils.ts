@@ -14,11 +14,11 @@ export class CodeBuilder {
   is_empty(): boolean { return this.#content.length == 0; }
 
   // indent
-  push_indent(count: number = 1): void {
+  #push_indent(count: number = 1): void {
     this.#indent_stack.push(count);
     this.#indent += count;
   }
-  pop_indent(): void {
+  #pop_indent(): void {
     if (this.#indent_stack.length == 0) {
       throw new Error("indent stack is empty");
     }
@@ -38,30 +38,30 @@ export class CodeBuilder {
   // cpp tools
   scope(before: string, after: string, content: (b: CodeBuilder) => void): void {
     this.line(before);
-    this.push_indent();
+    this.#push_indent();
     content(this);
-    this.pop_indent();
+    this.#pop_indent();
     this.line(after);
   }
   $struct(name: string, content: (b: CodeBuilder) => void): void {
     this.line(`struct ${name} {`);
-    this.push_indent(1);
+    this.#push_indent(1);
     content(this);
-    this.pop_indent();
+    this.#pop_indent();
     this.line(`};`);
   }
   $function(label: string, content: (b: CodeBuilder) => void): void {
     this.line(`${label} {`)
-    this.push_indent();
+    this.#push_indent();
     content(this);
-    this.pop_indent();
+    this.#pop_indent();
     this.line(`}`)
   }
   $switch(value: string, content: (b: CodeBuilder) => void): void {
     this.line(`switch (${value}) {`)
-    this.push_indent();
+    this.#push_indent();
     content(this)
-    this.pop_indent();
+    this.#pop_indent();
     this.line(`}`)
   }
   $if(...pairs: [string, (b: CodeBuilder) => void][]): void {
@@ -79,9 +79,9 @@ export class CodeBuilder {
       }
 
       // block content
-      this.push_indent();
+      this.#push_indent();
       block(this);
-      this.pop_indent();
+      this.#pop_indent();
 
       // last
       if (idx === pairs.length - 1) {
@@ -91,9 +91,9 @@ export class CodeBuilder {
   }
   $scope(content: (b: CodeBuilder) => void) {
     this.line(`{`);
-    this.push_indent();
+    this.#push_indent();
     content(this);
-    this.pop_indent();
+    this.#pop_indent();
     this.line(`}`);
   }
   $namespace(name: string, content: (b: CodeBuilder) => void): void {
@@ -113,9 +113,9 @@ export class CodeBuilder {
     }
   }
   $indent(content: (b: CodeBuilder) => void): void {
-    this.push_indent();
+    this.#push_indent();
     content(this);
-    this.pop_indent();
+    this.#pop_indent();
   }
 
 
