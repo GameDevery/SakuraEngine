@@ -1,4 +1,5 @@
 import * as db from "./database.ts"
+import * as fs from "node:fs";
 
 // TODO. 重组生成步骤
 //   1. load database
@@ -11,7 +12,8 @@ export class Generator {
   get main_module_db(): db.Module { return this.owner.project_db.main_module; }
   get project_db(): db.Project { return this.owner.project_db; }
 
-  // load attr writer
+  // inject configs into object
+  inject_configs(): void { }
 
   // generate functions
   // TODO. 只一个 gen 函数，通过多个 CodeBuilder 来实现分区生成
@@ -24,6 +26,59 @@ export class Generator {
 export class GenerateManager {
   project_db!: db.Project
   #generators: Dict<Generator> = {}
+
+  // step 1. load database
+  load_database(config_path: string) {
+    // check config file
+    if (!fs.existsSync(config_path)) {
+      throw Error(`config file is not exist, path: ${config_path}`);
+    }
+
+    // parse config
+    const codegen_config = new db.CodegenConfig(
+      JSON.parse(fs.readFileSync(config_path, { encoding: "utf-8" })),
+    );
+
+    // load data base
+    this.project_db = new db.Project(codegen_config);
+  }
+
+  // step 2. load generators
+  async load_generators() {
+    const import_tasks: Promise<any>[] = [];
+
+    // dynamic import generators
+    for (const gen of this.project_db.config.generators) {
+      import_tasks.push(import(gen.entry_file))
+    }
+
+    // wait import done
+    const modules = await Promise.all(import_tasks)
+
+    // load generators
+    for (const module of modules) {
+      module.load_generator(this)
+    }
+  }
+
+  // step 3. inject configs
+  inject_configs() {
+    for (const gen in this.#generators) {
+      this.#generators[gen]?.inject_configs();
+    }
+  }
+
+  // step 4. run meta-lang
+  run_meta() {
+  }
+
+  // step 5. generate code
+  codegen() {
+  }
+
+  // step 6. output result
+  output() {
+  }
 
   // generator apis
   add_generator(name: string, gen: Generator) {
