@@ -60,7 +60,7 @@ class _Gen {
         builder.scope(`struct ${header.parent.config.api} JsonSerde<${record.name}> {\n`, `\n};`, _b => {
           builder.line(`static bool read_fields(skr::archive::JsonReader* r, ${record.name}& v);`);
           builder.line(`static bool write_fields(skr::archive::JsonWriter* w, const ${record.name}& v);`);
-          builder.empty_line();
+          builder.line(``);
           builder.line(`static bool read(skr::archive::JsonReader* r, ${record.name}& v);`);
           builder.line(`static bool write(skr::archive::JsonWriter* w, const ${record.name}& v);`);
         })

@@ -45,14 +45,6 @@ export class CodeBuilder {
       this.#content += `${indent_str}${code}\n`;
     }
   }
-  wrap(pre: string, callback: (builder: CodeBuilder) => void, post: string): void {
-    this.block(pre);
-    callback(this);
-    this.block(post);
-  }
-  empty_line(count: number = 1): void {
-    this.#content += "\n".repeat(count);
-  }
 
   // cpp tools
   scope(before: string, after: string, content: (b: CodeBuilder) => void): void {

@@ -141,7 +141,7 @@ SKR_EXEC_STATIC_CTOR
         // module info
         builder.line(`// setup module`)
         builder.line(`type->set_module(u8"${main_db.config.module_name}");`)
-        builder.empty_line();
+        builder.line(``);
 
         // build scope
         builder.line(`// build scope`)
@@ -223,7 +223,7 @@ builder.basic_info();
           // module info
           builder.line(`// setup module`)
           builder.line(`type->set_module(u8"${main_db.config.module_name}");`)
-          builder.empty_line();
+          builder.line(``);
 
           // build scope
           builder.line(`// build scope`)
@@ -231,12 +231,12 @@ builder.basic_info();
             // basic
             builder.line(`// reserve`)
             builder.line(`enum_data->items.reserve(${enum_.values.length});`)
-            builder.empty_line();
+            builder.line(``);
             builder.line(`EnumBuilder<${enum_.name}> builder(enum_data);`)
-            builder.empty_line();
+            builder.line(``);
             builder.line(`// basic`)
             builder.line(`builder.basic_info();`)
-            builder.empty_line();
+            builder.line(``);
 
             // items
             builder.line(`// items`)
@@ -244,7 +244,7 @@ builder.basic_info();
               const enum_value_config = enum_value.gen_data.rttr as EnumValueConfig;
               builder.scope(`{ // ${enum_.name}::${enum_value.name}\n`, `\n}`, _b => { 
                 builder.line(`[[maybe_unused]] auto item_builder = builder.item(u8"${enum_value.short_name}", ${enum_value.name});`)
-                builder.empty_line();
+                builder.line(``);
                 this.#flags_and_attrs(builder, enum_value, enum_value_config, "item_builder")
               })
             })
