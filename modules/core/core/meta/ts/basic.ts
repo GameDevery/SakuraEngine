@@ -7,44 +7,44 @@ class _Gen {
     const b = header.gen_code
 
     // header
-    b.line(`//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`)
-    b.line(`//!! THIS FILE IS GENERATED, ANY CHANGES WILL BE LOST !!`)
-    b.line(`//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`)
-    b.line(``)
+    b.$line(`//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`)
+    b.$line(`//!! THIS FILE IS GENERATED, ANY CHANGES WILL BE LOST !!`)
+    b.$line(`//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`)
+    b.$line(``)
 
     // basic includes
-    b.line(`#pragma once`)
-    b.line(`#include "SkrBase/config.h"`)
-    b.line(`#include <inttypes.h>`)
-    b.line(``)
+    b.$line(`#pragma once`)
+    b.$line(`#include "SkrBase/config.h"`)
+    b.$line(`#include <inttypes.h>`)
+    b.$line(``)
 
     // include protect
-    b.line(`#ifdef __meta__`)
-    b.line(`#error "this file should not be inspected by meta"`)
-    b.line(`#endif`)
-    b.line(``)
+    b.$line(`#ifdef __meta__`)
+    b.$line(`#error "this file should not be inspected by meta"`)
+    b.$line(`#endif`)
+    b.$line(``)
 
     // file id
-    b.line(`#ifdef SKR_FILE_ID`)
+    b.$line(`#ifdef SKR_FILE_ID`)
     b.$indent(_b => {
-      b.line(`#undef SKR_FILE_ID`)
+      b.$line(`#undef SKR_FILE_ID`)
     })
-    b.line(`#endif`)
-    b.line(`#define SKR_FILE_ID ${header.file_id}`)
-    b.line(``)
+    b.$line(`#endif`)
+    b.$line(`#define SKR_FILE_ID ${header.file_id}`)
+    b.$line(``)
 
     // GENERATE_BODY()
-    b.line(`// BEGIN Generated Body`)
+    b.$line(`// BEGIN Generated Body`)
     header.records.forEach((record) => {
       if (record.has_generate_body_flag) {
-        b.line(`#define SKR_GENERATE_BODY_${header.file_id}_${record.generate_body_line} ${record.dump_generate_body()}`)
+        b.$line(`#define SKR_GENERATE_BODY_${header.file_id}_${record.generate_body_line} ${record.dump_generate_body()}`)
       }
     })
-    b.line(`// END Generated Body`)
-    b.line(``)
+    b.$line(`// END Generated Body`)
+    b.$line(``)
 
     // forward declarations
-    b.line(`// BEGIN forward declarations`)
+    b.$line(`// BEGIN forward declarations`)
     header.records.forEach((record) => {
       b.$namespace_line(record.namespace.join("::"), () => {
         return `struct ${record.short_name};`
@@ -57,49 +57,49 @@ class _Gen {
         return `enum ${prefix} ${enum_.short_name}${underlying_type};`
       })
     })
-    b.line(`// END forward declarations`)
+    b.$line(`// END forward declarations`)
 
   }
   static source_pre(main_db: db.Module) {
     const b = main_db.gen_code
 
     // header
-    b.line(`//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`)
-    b.line(`//!! THIS FILE IS GENERATED, ANY CHANGES WILL BE LOST !!`)
-    b.line(`//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`)
-    b.line(``)
+    b.$line(`//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`)
+    b.$line(`//!! THIS FILE IS GENERATED, ANY CHANGES WILL BE LOST !!`)
+    b.$line(`//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`)
+    b.$line(``)
 
     // includes
-    b.line(`// BEGIN header includes`)
-    b.line(`// #define private public`)
-    b.line(`// #define protected public`)
+    b.$line(`// BEGIN header includes`)
+    b.$line(`// #define private public`)
+    b.$line(`// #define protected public`)
     main_db.headers.forEach((header) => {
       if (header.header_path.length > 0) {
-        b.line(`#include "${header.header_path}"`)
+        b.$line(`#include "${header.header_path}"`)
       }
     })
-    b.line(`// #undef private`)
-    b.line(`// #undef protected`)
-    b.line(`// END header includes`)
-    b.line(``)
+    b.$line(`// #undef private`)
+    b.$line(`// #undef protected`)
+    b.$line(`// END header includes`)
+    b.$line(``)
 
     // diagnostic
-    b.line(`// BEGIN push diagnostic`)
-    b.line(`#if defined(__clang__)`)
-    b.line(`#pragma clang diagnostic push`)
-    b.line(`#pragma clang diagnostic ignored "-Wimplicitly-unsigned-literal"`)
-    b.line(`#endif`)
-    b.line(`// END push diagnostic`)
+    b.$line(`// BEGIN push diagnostic`)
+    b.$line(`#if defined(__clang__)`)
+    b.$line(`#pragma clang diagnostic push`)
+    b.$line(`#pragma clang diagnostic ignored "-Wimplicitly-unsigned-literal"`)
+    b.$line(`#endif`)
+    b.$line(`// END push diagnostic`)
 
   }
   static source_post(main_db: db.Module) {
     const b = main_db.gen_code
 
-    b.line(`// BEGIN pop diagnostic`)
-    b.line(`#if defined(__clang__)`)
-    b.line(`#pragma clang diagnostic pop`)
-    b.line(`#endif`)
-    b.line(`// END pop diagnostic`)
+    b.$line(`// BEGIN pop diagnostic`)
+    b.$line(`#if defined(__clang__)`)
+    b.$line(`#pragma clang diagnostic pop`)
+    b.$line(`#endif`)
+    b.$line(`// END pop diagnostic`)
   }
 }
 
