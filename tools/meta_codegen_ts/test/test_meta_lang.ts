@@ -67,9 +67,11 @@ const program = compiler.compile(
   test.number_arr_val = [1, 2, 3];
   test.boolean_arr_val = [true, false, true];
   test.string_arr_val = ["1", "2", "3"];
+  test.string_arr_val += "114514"
 
   test.sub = 114514;
   test.sub = [1, 1, 4, 5, 1, 4];
+  test.sub += 114514
   `
 );
 const test_obj = {

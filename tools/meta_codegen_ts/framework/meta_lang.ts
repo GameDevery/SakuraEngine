@@ -411,13 +411,17 @@ export class Program {
   static #do_proxy(obj: any, data: ValueProxyData | ArrayProxyData, expr: OperatorNode) {
     const is_append = expr.op === '+='
 
-
     if (expr.right.type === 'literal') {
-      const typed_data = data as ValueProxyData;
-      typed_data.func.call(obj, expr.right.value);
+      if (is_append) { // literal append
+        const typed_data = data as ArrayProxyData;
+        typed_data.func.call(obj, [expr.right.value], true);
+      } else { // literal assign
+        const typed_data = data as ValueProxyData;
+        typed_data.func.call(obj, expr.right.value);
+      }
     } else if (expr.right.type === 'array_expr') {
       const typed_data = data as ArrayProxyData;
-      typed_data.func.call(obj, expr.right.value.map((item) => item.value), false);
+      typed_data.func.call(obj, expr.right.value.map((item) => item.value), is_append);
     } else {
       throw new Error('should not reach here');
     }
