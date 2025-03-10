@@ -37,7 +37,7 @@ ${record.short_name}(T& obj) noexcept
 
       concepts.line(`// concept of ${record.name}`)
       const concept_ns = record.namespace.length > 0 ? `proxy_concept::${record.namespace.join("::")}` : `proxy_concept`
-      concepts.namespace_block(concept_ns, (b) => {
+      concepts.$namespace(concept_ns, (b) => {
         record.methods.forEach((method) => {
           const method_config = method.gen_data.proxy as MethodConfig;
           if (!method_config.enable) return;
@@ -75,9 +75,9 @@ ${record.short_name}(T& obj) noexcept
       const concept_ns = record.namespace.length > 0 ? `proxy_concept::${record.namespace.join("::")}` : `proxy_concept`
 
       // gen vtable content
-      vtable.namespace_block(record.namespace.join("::"), (b) => {
+      vtable.$namespace(record.namespace.join("::"), (b) => {
         // gen vtable content
-        vtable.struct_block(`${record.short_name}_VTable`, (b) => {
+        vtable.$struct(`${record.short_name}_VTable`, (b) => {
           record.methods.forEach((method) => {
             const method_config = method.gen_data.proxy as MethodConfig;
             if (!method_config.enable) return;
@@ -87,7 +87,7 @@ ${record.short_name}(T& obj) noexcept
 
         // gen vtable traits
         vtable.line('template <typename T>')
-        vtable.struct_block(`${record.short_name}_VTableTraits`, (b) => {
+        vtable.$struct(`${record.short_name}_VTableTraits`, (b) => {
           // gen static getter helper
           record.methods.forEach((method) => {
             const method_config = method.gen_data.proxy as MethodConfig;

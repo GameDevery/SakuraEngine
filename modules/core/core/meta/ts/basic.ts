@@ -15,14 +15,14 @@ class _Gen {
     // combine forward declarations
     const forward_declarations = new CodeBuilder()
     header.records.forEach((record) => {
-      forward_declarations.namespace_line(record.namespace.join("::"), () => {
+      forward_declarations.$namespace_line(record.namespace.join("::"), () => {
         return `struct ${record.short_name};`
       })
     })
     header.enums.forEach((enum_) => {
       let prefix = enum_.is_scoped ? "class" : "";
       let underlying_type = enum_.underlying_type != 'unfixed' ? `: ${enum_.underlying_type}` : "";
-      forward_declarations.namespace_line(enum_.namespace.join('::'), () => {
+      forward_declarations.$namespace_line(enum_.namespace.join('::'), () => {
         return `enum ${prefix} ${enum_.short_name}${underlying_type};`
       })
     })

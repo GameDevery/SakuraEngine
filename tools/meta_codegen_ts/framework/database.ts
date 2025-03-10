@@ -203,6 +203,10 @@ export class Field {
     // load attrs
     this.raw_attrs = json_obj.attrs;
   }
+
+  signature() {
+    return this.array_size > 0 ? `${this.type}[${this.array_size}]` : this.type;
+  }
 }
 export class Method {
   parent: Record;
@@ -266,6 +270,13 @@ export class Method {
     const params = this.dump_params_name_only();
     return params.length > 0 ? `, ${params}` : "";
   }
+  dump_params_type_only() {
+    return this.parameters.map(param => param.type).join(", ")
+  }
+  dump_params_type_only_with_comma() {
+    const params = this.dump_params_type_only();
+    return params.length > 0 ? `, ${params}` : "";
+  }
   dump_const() {
     return this.is_const ? " const" : "";
   }
@@ -280,6 +291,12 @@ export class Method {
 
   has_return() {
     return this.ret_type != "void"
+  }
+
+  signature() {
+    return this.is_static ?
+      `${this.ret_type}(*)(${this.dump_params_type_only()})` :
+      `${this.ret_type}(*)(${this.parent.name}::*)(${this.dump_params_type_only()})`
   }
 }
 export class Parameter {

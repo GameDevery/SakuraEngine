@@ -50,12 +50,72 @@ export class CodeBuilder {
     callback(this);
     this.block(post);
   }
-  empty_line(count: number): void {
+  empty_line(count: number = 1): void {
     this.#content += "\n".repeat(count);
   }
 
   // cpp tools
-  namespace_block(name: string, content: (b: CodeBuilder) => void): void {
+  scope(before: string, after: string, content: (b: CodeBuilder) => void): void {
+    this.block(before);
+    this.push_indent();
+    content(this);
+    this.pop_indent();
+    this.block(after);
+  }
+  $struct(name: string, content: (b: CodeBuilder) => void): void {
+    this.block(`struct ${name} {\n`);
+    this.push_indent(1);
+    content(this);
+    this.pop_indent();
+    this.block(`};\n`);
+  }
+  $function(label: string, content: (b: CodeBuilder) => void): void {
+    this.block(`${label} {\n`)
+    this.push_indent();
+    content(this);
+    this.pop_indent();
+    this.block(`\n}`)
+  }
+  $switch(value: string, content: (b: CodeBuilder) => void): void {
+    this.block(`switch (${value}) {\n}`)
+    this.push_indent();
+    content(this)
+    this.pop_indent();
+    this.block(`\n}`)
+  }
+  $if(...pairs: [string, (b: CodeBuilder) => void][]): void {
+    pairs.forEach(([cond, block], idx) => {
+      // if label
+      if (idx === 0) {
+        this.line(`if (${cond}) {`);
+      } else {
+        if (cond.length > 0) {
+          this.line(`} else if (${cond}) {`);
+        } else {
+          if (idx !== pairs.length - 1) { throw new Error("else must at last block"); }
+          this.line(`} else {`);
+        }
+      }
+
+      // block content
+      this.push_indent();
+      block(this);
+      this.pop_indent();
+
+      // last
+      if (idx === pairs.length - 1) {
+        this.line(`}`);
+      }
+    })
+  }
+  $scope(content: (b: CodeBuilder) => void) {
+    this.line(`{`);
+    this.push_indent();
+    content(this);
+    this.pop_indent();
+    this.line(`}`);
+  }
+  $namespace(name: string, content: (b: CodeBuilder) => void): void {
     if (name.length > 0) {
       this.block(`namespace ${name} {\n`);
     }
@@ -64,22 +124,12 @@ export class CodeBuilder {
       this.block(`}\n`);
     }
   }
-  namespace_line(name: string, content: () => string): void {
+  $namespace_line(name: string, content: () => string): void {
     if (name.length > 0) {
       this.line(`namespace ${name} { ${content()} }`);
     } else {
       this.line(`${content()}`);
     }
-  }
-  struct_block(name: string, content: (b: CodeBuilder) => void): void {
-    this.block(`struct ${name} {\n`);
-    this.push_indent(1);
-    content(this);
-    this.pop_indent();
-    this.block(`};\n`);
-  }
-  struct_line(name: string, content: () => string): void {
-    this.line(`struct ${name} { ${content()} };`);
   }
 
 
