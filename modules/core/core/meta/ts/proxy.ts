@@ -24,8 +24,10 @@ class _Gen {
     b.line(`/*ctor*/`)
     b.line(`template<typename T>`)
     b.line(`${record.short_name}(T& obj) noexcept`)
-    b.line(`    : self(&obj)`)
-    b.line(`    , vtable(${record.short_name}_VTableTraits<T>::get_vtable())`)
+    b.$indent(_b => {
+      b.line(`: self(&obj)`)
+      b.line(`, vtable(${record.short_name}_VTableTraits<T>::get_vtable())`)
+    })
     b.line(`{`)
     b.line(`}`)
   }
@@ -50,23 +52,32 @@ class _Gen {
 
           b.line(`template <typename T>`)
           b.line(`concept has_${method.short_name} = requires(${method.dump_const()} T t ${method.dump_params_with_comma()}) {`)
-          b.line(`    { t.${method.short_name}( ${method.dump_params_name_only()} ) } -> std::convertible_to<${method.ret_type}>;`)
+          b.$indent(_b => {
+            b.line(`{ t.${method.short_name}( ${method.dump_params_name_only()} ) } -> std::convertible_to<${method.ret_type}>;`)
+          })
           b.line(`};`)
           b.line(`template <typename T>`)
           b.line(`concept has_static_${method.short_name} = requires(${method.dump_const()} T t ${method.dump_params_with_comma()}) {`)
-          b.line(`    { ${method.short_name}( &t ${method.dump_params_name_only_with_comma()} ) } -> std::convertible_to<${method.ret_type}>;`)
+          b.$indent(_b => {
+            b.line(`{ ${method.short_name}( &t ${method.dump_params_name_only_with_comma()} ) } -> std::convertible_to<${method.ret_type}>;`)
+          })
           b.line(`};`)
 
           if (method_config.setter.length > 0) {
             b.line(`template <typename T>`)
             b.line(`concept has_setter_${method.short_name} = requires(${method.dump_const()} T t ${method.dump_params_with_comma()}) {`)
-            b.line(`    { t.${method_config.setter} = ${method.dump_params_name_only()} };`)
+            b.$indent(_b => {
+              b.line(`{ t.${method_config.setter} = ${method.dump_params_name_only()} };`)
+            })
+
             b.line(`};`)
           }
           if (method_config.getter.length > 0) {
             b.line(`template <typename T>`)
             b.line(`concept has_getter_${method.short_name} = requires(${method.dump_const()} T t) {`)
-            b.line(`    { t.${method_config.getter} } -> std::convertible_to<${method.ret_type}>;`)
+            b.$indent(_b => {
+              b.line(`{ t.${method_config.getter} } -> std::convertible_to<${method.ret_type}>;`)
+            })
             b.line(`};`)
           }
         })
@@ -101,33 +112,59 @@ class _Gen {
             if (!method_config.enable) return;
             const return_expr = method.has_return() ? 'return ' : ''
             b.line(`inline static ${method.ret_type} static_${method.short_name}(${method.dump_const()} void* self ${method.dump_params_with_comma()}) ${method.dump_noexcept()} {`)
-            b.line(`    if constexpr (${concept_ns}::has_${method.short_name}<T>) {`)
-            b.line(`        ${return_expr}static_cast<${method.dump_const()} T*>(self)->${method.short_name}(${method.dump_params_name_only()});`)
-            b.line(`    } else if constexpr (${concept_ns}::has_static_${method.short_name}<T>) {`)
-            b.line(`        ${return_expr}${method.short_name}(static_cast<${method.dump_const()} T*>(self) ${method.dump_params_name_only_with_comma()});`)
-            b.line(`    %if method_proxy_data.setter:`)
-            b.line(`    } else if constexpr (${concept_ns}::has_setter_${method.short_name}<T>) {`)
-            b.line(`        static_assert(std::is_same_v<${method.ret_type}, void>, "Setter must return void");`)
-            b.line(`        ${return_expr}static_cast<${method.dump_const()} T*>(self)->${method_config.setter} = ${method.dump_params_name_only()};`)
-            b.line(`    %elif method_proxy_data.getter:`)
-            b.line(`    } else if constexpr (${concept_ns}::has_getter_${method.short_name}<T>) {`)
-            b.line(`        ${return_expr}static_cast<${method.dump_const()} T*>(self)->${method_config.getter};`)
-            b.line(`    %endif`)
-            b.line(`    }`)
+            b.$indent(_b => {
+              // method
+              b.line(`if constexpr (${concept_ns}::has_${method.short_name}<T>) {`)
+              b.$indent(_b => {
+                b.line(`${return_expr}static_cast<${method.dump_const()} T*>(self)->${method.short_name}(${method.dump_params_name_only()});`)
+              })
+
+              // function
+              b.line(`} else if constexpr (${concept_ns}::has_static_${method.short_name}<T>) {`)
+              b.$indent(_b => {
+                b.line(`${return_expr}${method.short_name}(static_cast<${method.dump_const()} T*>(self) ${method.dump_params_name_only_with_comma()});`)
+              })
+
+              // field setter
+              if (method_config.setter.length > 0) {
+                b.line(`} else if constexpr (${concept_ns}::has_setter_${method.short_name}<T>) {`)
+                b.$indent(_b => {
+                  b.line(`static_assert(std::is_same_v<${method.ret_type}, void>, "Setter must return void");`)
+                  b.line(`${return_expr}static_cast<${method.dump_const()} T*>(self)->${method_config.setter} = ${method.dump_params_name_only()};`)
+                })
+              }
+
+              // field getter
+              if (method_config.getter.length > 0) {
+                b.line(`} else if constexpr (${concept_ns}::has_getter_${method.short_name}<T>) {`)
+                b.$indent(_b => {
+                  b.line(`${return_expr}static_cast<${method.dump_const()} T*>(self)->${method_config.getter};`)
+                })
+              }
+
+              b.line(`}`)
+            })
             b.line(`}`)
 
           })
 
           // gen vtable getter
           b.line(`static ${record.short_name}_VTable* get_vtable() {`)
-          b.line(`static ${record.short_name}_VTable _vtable = {`)
-          record.methods.forEach((method) => {
-            const method_config = method.gen_data.proxy as MethodConfig;
-            if (!method_config.enable) return;
-            b.line(`        &static_${method.short_name},`)
+          b.$indent(_b => {
+            // static table
+            b.line(`static ${record.short_name}_VTable _vtable = {`)
+            b.$indent(_b => {
+              record.methods.forEach((method) => {
+                const method_config = method.gen_data.proxy as MethodConfig;
+                if (!method_config.enable) return;
+                b.line(`&static_${method.short_name},`)
+              })
+            })
+            b.line(`};`)
+
+            // return table
+            b.line(`return &_vtable;`)
           })
-          b.line(`};`)
-          b.line(`    return &_vtable;`)
           b.line(`}`)
         })
       })
@@ -136,39 +173,42 @@ class _Gen {
 
     // gen traits
     b.line(`// traits`)
-    b.line(`namespace skr`)
-    b.line(`{`)
-    header.each_record((record) => {
-      const record_config = record.gen_data.proxy as RecordConfig;
-      if (!record_config.enable) return;
-      const concept_ns = record.namespace.length > 0 ? `proxy_concept::${record.namespace.join("::")}` : `proxy_concept`
+    b.$namespace('skr', _b => {
+      header.each_record((record) => {
+        const record_config = record.gen_data.proxy as RecordConfig;
+        if (!record_config.enable) return;
+        const concept_ns = record.namespace.length > 0 ? `proxy_concept::${record.namespace.join("::")}` : `proxy_concept`
 
-      b.line(`template <>`)
-      b.line(`struct ProxyObjectTraits<${record.name}> {`)
-      b.line(`    template <typename T>`)
-      b.line(`    static constexpr bool validate()`)
-      b.line(`    {`)
-      b.line(`        return`)
-      record.methods.forEach((method) => {
-        const method_config = method.gen_data.proxy as MethodConfig;
-        if (!method_config.enable) return;
-        b.line(`        ( // ${method.name}`)
-        b.line(`            ${concept_ns}::has_${method.short_name}<T>`)
-        b.line(`            || ${concept_ns}::has_static_${method.short_name}<T>`)
-        if (method_config.setter.length > 0) {
-          b.line(`            || ${concept_ns}::has_setter_${method.short_name}<T>`)
-        } else if (method_config.getter.length > 0) {
-          b.line(`            || ${concept_ns}::has_getter_${method.short_name}<T>`)
-        }
-        b.line(`        )`)
-        b.line(`        &&`)
+        b.line(`template <>`)
+        b.line(`struct ProxyObjectTraits<${record.name}> {`)
+        b.$indent(_b => {
+          b.line(`template <typename T>`)
+          b.line(`static constexpr bool validate() {`)
+          b.$indent(_b => {
+            b.line(`return`)
+            record.methods.forEach((method) => {
+              const method_config = method.gen_data.proxy as MethodConfig;
+              if (!method_config.enable) return;
+              b.line(`( // ${method.name}`)
+              b.$indent(_b => {
+                b.line(`${concept_ns}::has_${method.short_name}<T>`)
+                b.line(`|| ${concept_ns}::has_static_${method.short_name}<T>`)
+                if (method_config.setter.length > 0) {
+                  b.line(`|| ${concept_ns}::has_setter_${method.short_name}<T>`)
+                } else if (method_config.getter.length > 0) {
+                  b.line(`|| ${concept_ns}::has_getter_${method.short_name}<T>`)
+                }
+              })
+              b.line(`)`)
+              b.line(`&&`)
+            })
+            b.line(`true;`)
+          })
+          b.line(`}`)
+        })
+        b.line(`};`)
       })
-      b.line(`        true;`)
-      b.line(`    }`)
-      b.line(`};`)
     })
-    b.line(`}`)
-
 
     b.line(`// END PROXY GENERATED`)
 
@@ -188,9 +228,9 @@ class _Gen {
         if (!record_config.enable) continue;
         if (method_config.enable) {
           b.line(`${method.ret_type} ${method.name}(${method.dump_params()}) ${method.dump_modifiers()}`)
-          b.line(`{`)
-          b.line(`    return vtable->${method.short_name}(self ${method.dump_params_name_only_with_comma()});`)
-          b.line(`}`)
+          b.$scope((b) => {
+            b.line(`return vtable->${method.short_name}(self ${method.dump_params_name_only_with_comma()});`)
+          })
         }
       }
     })

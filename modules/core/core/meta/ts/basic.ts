@@ -26,7 +26,9 @@ class _Gen {
 
     // file id
     b.line(`#ifdef SKR_FILE_ID`)
-    b.line(`    #undef SKR_FILE_ID`)
+    b.$indent(_b => {
+      b.line(`#undef SKR_FILE_ID`)
+    })
     b.line(`#endif`)
     b.line(`#define SKR_FILE_ID ${header.file_id}`)
     b.line(``)

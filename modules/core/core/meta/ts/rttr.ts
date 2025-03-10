@@ -85,11 +85,11 @@ class _Gen {
     const b = record.generate_body_content
     b.line(``)
     b.line(`::skr::GUID iobject_get_typeid() const override`)
-    b.line(`{`)
-    b.line(`    using namespace skr::rttr;`)
-    b.line(`    using ThisType = std::remove_cv_t<std::remove_pointer_t<decltype(this)>>;`)
-    b.line(`    return type_id_of<ThisType>();`)
-    b.line(`}`)
+    b.$scope(_b => {
+      b.line(`using namespace skr::rttr;`)
+      b.line(`using ThisType = std::remove_cv_t<std::remove_pointer_t<decltype(this)>>;`)
+      b.line(`return type_id_of<ThisType>();`)
+    })
     b.line(`void* iobject_get_head_ptr() const override { return const_cast<void*>((const void*)this); }`)
     b.line(``)
   }
@@ -116,6 +116,7 @@ class _Gen {
   static source(main_db: db.Module) {
     const b = main_db.gen_code;
 
+    // header
     b.line(`// BEGIN RTTR GENERATED`)
     b.line(`#include "SkrBase/misc/hash.h"`)
     b.line(`#include "SkrRTTR/type.hpp"`)
@@ -123,11 +124,14 @@ class _Gen {
     b.line(`#include "SkrContainers/tuple.hpp"`)
     b.line(`#include "SkrRTTR/export/export_builder.hpp"`)
     b.line(``)
+
+    // static register
     b.line(`SKR_EXEC_STATIC_CTOR`)
     b.line(`{`)
-    b.line(`    using namespace ::skr::rttr;`)
-    b.line(``)
     b.$indent(() => {
+      b.line(`using namespace ::skr::rttr;`)
+      b.line(``)
+
       // export records
       main_db.each_record((record, _header) => {
         const record_config = record.gen_data.rttr as RecordConfig;
@@ -192,13 +196,16 @@ class _Gen {
                   b.line(`[[maybe_unused]] auto method_builder = builder.method<${method.signature()}, &${record.name}::${method.short_name}>(u8"${method.short_name}");`)
                 }
 
+                // build params
                 b.line(`// params`)
                 method.parameters.forEach((param, idx) => {
-                  const param_config = param.gen_data.rttr as ParamConfig;
-                  b.line(`method_builder.param_at(${idx})`)
-                  b.line(`    .name(u8"${param.name}");`)
-                  b.line(``)
-                  // TODO. params flags & attrs
+                  b.$scope(_b => {
+                    const param_config = param.gen_data.rttr as ParamConfig;
+                    b.line(`[[maybe_unused]] auto param_builder = method_builder.param_at(${idx});`)
+                    b.line(`param_builder.name(u8"${param.name}");`)
+                    b.line(``)
+                    this.#flags_and_attrs(b, param, param_config, "param_builder")
+                  })
                 })
 
                 this.#flags_and_attrs(b, method, method_config, "method_builder")
@@ -257,23 +264,26 @@ class _Gen {
         })
       })
     })
-    b.line(``)
     b.line(`};`)
+
+    // bottom
     b.line(`// END RTTR GENERATED`)
     b.line(``)
   }
-  static #flags_and_attrs(builder: CodeBuilder, cpp_type: db.CppTypes, config: CppConfigTypes, builder_name: string) {
-    builder.line(`// flags`)
+  static #flags_and_attrs(b: CodeBuilder, cpp_type: db.CppTypes, config: CppConfigTypes, builder_name: string) {
+    b.line(`// flags`)
     if (config.flags.length > 0) {
-      builder.line(`${builder_name}.flag(${this.#flags_expr(cpp_type, config.flags)});`)
+      b.line(`${builder_name}.flag(${this.#flags_expr(cpp_type, config.flags)});`)
     }
 
-    builder.line(`// attrs`)
-    builder.line(`${builder_name}`)
-    config.attrs.forEach(attr => {
-      builder.line(`    .attribute(::skr::attr::${attr})`)
+    b.line(`// attrs`)
+    b.line(`${builder_name}`)
+    b.$indent(_b => {
+      config.attrs.forEach(attr => {
+        b.line(`.attribute(::skr::attr::${attr})`)
+      })
     })
-    builder.line(`;`)
+    b.line(`;`)
   }
   static #flag_enum_name_of(cpp_type: db.CppTypes) {
     if (cpp_type instanceof db.Record) {
