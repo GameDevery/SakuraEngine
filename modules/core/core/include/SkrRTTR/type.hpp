@@ -197,9 +197,9 @@ inline const StaticFieldData* Type::find_static_field_t(StringView name, ETypeSi
 {
     TypeSignatureTyped<Field> signature;
     return find_static_field(TypeFindConfig {
+        .name = name,
         .signature = signature.view(),
         .signature_compare_flag = flag,
-        .name = name,
         .include_bases = include_base,
     });
 }
@@ -208,9 +208,9 @@ inline const ExternMethodData* Type::find_extern_method_t(StringView name, EType
 {
     TypeSignatureTyped<Func> signature;
     return find_extern_method(TypeFindConfig {
+        .name = name,
         .signature = signature.view(),
         .signature_compare_flag = flag,
-        .name = name,
         .include_bases = include_base,
     });
 }

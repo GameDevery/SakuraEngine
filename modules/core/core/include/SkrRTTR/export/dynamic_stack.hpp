@@ -58,6 +58,10 @@ struct DynamicStackParamHelper {
             // store T*
             case EDynamicStackParamKind::Reference:
                 return **static_cast<T**>(data);
+
+            default:
+                SKR_UNREACHABLE_CODE()
+                return *static_cast<T*>(data); // unreachable
         }
     }
 };
@@ -78,6 +82,9 @@ struct DynamicStackParamHelper<T*> {
             case EDynamicStackParamKind::Direct:
             case EDynamicStackParamKind::Reference:
                 return *static_cast<T**>(data);
+            default:
+                SKR_UNREACHABLE_CODE()
+                return static_cast<T*>(data); // unreachable
         }
     }
 };
@@ -98,6 +105,9 @@ struct DynamicStackParamHelper<T&> {
             case EDynamicStackParamKind::Direct:
             case EDynamicStackParamKind::Reference:
                 return **static_cast<T**>(data);
+            default:
+                SKR_UNREACHABLE_CODE()
+                return *static_cast<T*>(data); // unreachable
         }
     }
 };
@@ -118,6 +128,9 @@ struct DynamicStackParamHelper<const T&> {
             case EDynamicStackParamKind::Direct:
             case EDynamicStackParamKind::Reference:
                 return **static_cast<T**>(data);
+            default:
+                SKR_UNREACHABLE_CODE()
+                return *static_cast<T*>(data); // unreachable
         }
     }
 };
@@ -138,6 +151,9 @@ struct DynamicStackParamHelper<T&&> {
             case EDynamicStackParamKind::Direct:
             case EDynamicStackParamKind::Reference:
                 return **static_cast<T**>(data);
+            default:
+                SKR_UNREACHABLE_CODE()
+                return *static_cast<T*>(data); // unreachable
         }
     }
 };
@@ -433,11 +449,11 @@ inline void DynamicStack::store_return(T&& value)
     void* pointer = nullptr;
     if (_ret_info.kind == EDynamicStackReturnKind::Store)
     {
-        auto offset = _grow(sizeof(T), alignof(T));
-        pointer     = _get_memory(offset);
+        auto offset      = _grow(sizeof(T), alignof(T));
+        pointer          = _get_memory(offset);
         _ret_info.stored = true;
         _ret_info.offset = offset;
-        _ret_info.dtor = [](void* p) { static_cast<T*>(p)->~T(); };
+        _ret_info.dtor   = [](void* p) { static_cast<T*>(p)->~T(); };
     }
     else if (_ret_info.kind == EDynamicStackReturnKind::StoreToRef)
     {
@@ -456,17 +472,17 @@ inline bool DynamicStack::is_return_stored()
 inline void* DynamicStack::get_return_raw()
 {
     SKR_ASSERT(_ret_info.kind == EDynamicStackReturnKind::Store);
-    
+
     return _ret_info.stored ?
-        _get_memory(_ret_info.offset) :
-        nullptr;
+           _get_memory(_ret_info.offset) :
+           nullptr;
 }
 template <typename T>
 inline T& DynamicStack::get_return()
 {
     SKR_ASSERT(_ret_info.kind == EDynamicStackReturnKind::Store);
     SKR_ASSERT(_ret_info.stored);
-    
+
     return *reinterpret_cast<T*>(_get_memory(_ret_info.offset));
 }
 } // namespace skr::rttr
