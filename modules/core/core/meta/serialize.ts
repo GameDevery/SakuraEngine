@@ -38,6 +38,9 @@ class FieldConfig extends ConfigBase {
 class EnumConfig extends ConfigBase {
 }
 class EnumValueConfig extends ConfigBase {
+  // default true, but blocked by enum
+  override json: boolean = true;
+  override bin: boolean = true;
 }
 
 class _Gen {
