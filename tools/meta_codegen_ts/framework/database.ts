@@ -475,9 +475,8 @@ export class Header {
 
     // solve output header path and file id
     const reg_non_alpha_ch = /\W+/g;
-    this.file_id = `FID_${parent.config.module_name}_${
-      this.meta_path_relative.replaceAll(reg_non_alpha_ch, "_")
-    }`;
+    this.file_id = `FID_${parent.config.module_name}_${this.meta_path_relative.replaceAll(reg_non_alpha_ch, "_")
+      }`;
     const reg_meta_path = /(.*?)\.(.*?)\.meta/g;
     this.output_header_path = this.meta_path_relative.replace(
       reg_meta_path,
@@ -674,6 +673,41 @@ export class Module {
     for (const header of this.headers) {
       header.each_cpp_types(func);
     }
+  }
+
+  // filter
+  filter_record(
+    func: (record: Record, header: Header) => boolean,
+  ) {
+    const result: Record[] = [];
+    this.each_record((record, header) => {
+      if (func(record, header)) {
+        result.push(record);
+      }
+    });
+    return result;
+  }
+  filter_enum(
+    func: (enum_obj: Enum, header: Header) => boolean,
+  ) {
+    const result: Enum[] = [];
+    this.each_enum((enum_obj, header) => {
+      if (func(enum_obj, header)) {
+        result.push(enum_obj);
+      }
+    });
+    return result;
+  }
+  filter_function(
+    func: (function_obj: Function, header: Header) => boolean,
+  ) {
+    const result: Function[] = [];
+    this.each_function((function_obj, header) => {
+      if (func(function_obj, header)) {
+        result.push(function_obj);
+      }
+    });
+    return result;
   }
 }
 

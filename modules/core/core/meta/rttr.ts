@@ -20,6 +20,32 @@ class GuidConfig {
     this.value = v;
   }
 
+  as_constant() {
+    let result = ""
+
+    // 32bit
+    result += `0x${this.value.slice(0, 8)}, `   // 1st comp
+
+    // 16bit * 2
+    result += `0x${this.value.slice(9, 13)}, `  // 2st comp
+    result += `0x${this.value.slice(14, 18)}, ` // 3st comp
+
+    // 8bit * 8
+    result += "{"
+    result += `0x${this.value.slice(19, 21)}, ` // 4st comp
+    result += `0x${this.value.slice(21, 23)}, ` // 4st comp
+    result += `0x${this.value.slice(24, 26)}, ` // 5st comp
+    result += `0x${this.value.slice(26, 28)}, ` // 5st comp
+    result += `0x${this.value.slice(28, 30)}, ` // 5st comp
+    result += `0x${this.value.slice(30, 32)}, ` // 5st comp
+    result += `0x${this.value.slice(32, 34)}, ` // 5st comp
+    result += `0x${this.value.slice(34, 36)}`   // 5st comp
+    result += "}"
+
+
+    return result
+  }
+
   toString() {
     return this.value;
   }
@@ -82,6 +108,7 @@ class EnumConfig extends ConfigBase {
 class EnumValueConfig extends ConfigBase {
 }
 
+// TODO. 通过 GUID 判断 RTTR 的开关
 class _Gen {
   static body(record: db.Record) {
     const b = record.generate_body_content;
@@ -367,6 +394,7 @@ class RttrGenerator extends gen.Generator {
     // record
     this.main_module_db.each_record((record) => {
       record.ml_configs.rttr = new RecordConfig();
+      record.ml_configs.guid = new GuidConfig();
 
       // methods
       record.methods.forEach((method) => {

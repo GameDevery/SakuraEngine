@@ -428,6 +428,9 @@ export class Program {
   }
 }
 
+// TODO. access listener, 用于监听访问行为，来实现赋值行为内置 enable = true 的行为
+
+
 //======================== util objects ========================
 export class WithEnable {
   @value('boolean')
