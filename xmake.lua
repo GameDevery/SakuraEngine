@@ -63,7 +63,8 @@ skr_global_target()
         after_install = function()
             import("skr.utils")
             local bun = utils.find_bun()
-            os.execv(bun, {"install", "--production"}, {curdir = path.join(utils.get_env("engine_dir"), "tools/meta_codegen_ts")})
+            -- os.execv(bun, {"install", "--production"}, {curdir = path.join(utils.get_env("engine_dir"), "tools/meta_codegen_ts")})
+            os.execv(bun, {"install"}, {curdir = path.join(utils.get_env("engine_dir"), "tools/meta_codegen_ts")})
         end
     })
     skr_install("download", {
