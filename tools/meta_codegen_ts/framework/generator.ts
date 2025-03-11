@@ -1,5 +1,6 @@
-import * as db from "./database.ts"
+import * as db from "./database.ts";
 import * as fs from "node:fs";
+import * as ml from "./meta_lang.ts";
 
 // TODO. 重组生成步骤
 //   1. load database
@@ -8,24 +9,28 @@ import * as fs from "node:fs";
 //   4. generate code
 
 export class Generator {
-  owner!: GenerateManager
-  get main_module_db(): db.Module { return this.owner.project_db.main_module; }
-  get project_db(): db.Project { return this.owner.project_db; }
+  owner!: GenerateManager;
+  get main_module_db(): db.Module {
+    return this.owner.project_db.main_module;
+  }
+  get project_db(): db.Project {
+    return this.owner.project_db;
+  }
 
   // inject configs into object
-  inject_configs(): void { }
+  inject_configs(): void {}
 
   // generate functions
   // TODO. 只一个 gen 函数，通过多个 CodeBuilder 来实现分区生成
-  gen_body() { }
-  pre_gen() { }
-  gen() { }
-  post_gen() { }
+  gen_body() {}
+  pre_gen() {}
+  gen() {}
+  post_gen() {}
 }
 
 export class GenerateManager {
-  project_db!: db.Project
-  #generators: Dict<Generator> = {}
+  project_db!: db.Project;
+  #generators: Dict<Generator> = {};
 
   // step 1. load database
   load_database(config_path: string) {
@@ -49,15 +54,15 @@ export class GenerateManager {
 
     // dynamic import generators
     for (const gen of this.project_db.config.generators) {
-      import_tasks.push(import(gen.entry_file))
+      import_tasks.push(import(gen.entry_file));
     }
 
     // wait import done
-    const modules = await Promise.all(import_tasks)
+    const modules = await Promise.all(import_tasks);
 
     // load generators
     for (const module of modules) {
-      module.load_generator(this)
+      module.load_generator(this);
     }
   }
 
@@ -70,6 +75,21 @@ export class GenerateManager {
 
   // step 4. run meta-lang
   run_meta() {
+    const compiler = ml.Compiler.load();
+
+    // compile meta
+    this.project_db.main_module.each_cpp_types((cpp_type) => {
+      for (const attr of cpp_type.raw_attrs) {
+        cpp_type.ml_programs.push(compiler.compile(attr));
+      }
+    });
+
+    // run meta
+    this.project_db.main_module.each_cpp_types((cpp_type) => {
+      for (const program of cpp_type.ml_programs) {
+        program.exec(cpp_type.ml_configs);
+      }
+    });
   }
 
   // step 5. generate code
@@ -83,9 +103,9 @@ export class GenerateManager {
   // generator apis
   add_generator(name: string, gen: Generator) {
     if (this.#generators[name]) {
-      throw new Error(`Generator ${name} already exists`)
+      throw new Error(`Generator ${name} already exists`);
     }
-    this.#generators[name] = gen
-    gen.owner = this
+    this.#generators[name] = gen;
+    gen.owner = this;
   }
 }
