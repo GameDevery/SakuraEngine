@@ -32,11 +32,13 @@ type ArrayProxyData = {
   accept_type: ValueTypeStr;
   func: ArrayAssignFunc;
 }
+type AccessListenerFunc = (name: string) => void;
 const symbol_preset = Symbol("preset");
 const symbol_value = Symbol("value");
 const symbol_array = Symbol("array");
 const symbol_value_proxy = Symbol("value_proxy");
 const symbol_array_proxy = Symbol("array_proxy");
+const symbol_access_listener = Symbol("access_listener");
 function check_and_assign(target: any, meta_symbol: symbol, name: string, value: any) {
   // add metadata
   const metadata = target[Symbol.metadata] ??= {};
@@ -135,6 +137,12 @@ export function array_proxy(accept_type: ValueTypeStr) {
       func: desc.value,
       accept_type: accept_type,
     } as ArrayProxyData;;
+  }
+}
+export function access_listener() {
+  return (target: any, method_name: string, desc: TypedPropertyDescriptor<AccessListenerFunc>) => {
+    const metadata = target[Symbol.metadata] ??= {};
+    metadata[symbol_access_listener] = desc.value;
   }
 }
 
@@ -270,16 +278,30 @@ export class Program {
     let cur_obj = obj;
     let cur_key!: string;
     expr.left.value.forEach((ident, idx) => {
+      // store access key
       cur_key = ident.value;
+
+      // ignore last access
       if (idx === expr.left.value.length - 1) return;
-      let next_obj = cur_obj[ident.value];
+
+      // try access
+      let next_obj = cur_obj[cur_key];
       if (next_obj === undefined) {
         throw new AccessFailedError(
-          ident.value,
+          cur_key,
           cur_obj,
           expr.left.location,
         )
       }
+
+      // invoke access listener
+      const metadata = Object.getPrototypeOf(cur_obj)[Symbol.metadata];
+      const access_listener = metadata?.[symbol_access_listener] as AccessListenerFunc;
+      if (access_listener !== undefined) {
+        access_listener.call(cur_obj, cur_key);
+      }
+
+      // update current object
       cur_obj = next_obj;
     })
 
@@ -307,6 +329,13 @@ export class Program {
           if (proxy_value_data !== undefined) {
             proxy_value_data as ValueProxyData;
             Program.#check_type(proxy_value_data, expr);
+
+            // invoke access listener
+            const access_listener = metadata?.[symbol_access_listener] as AccessListenerFunc;
+            if (access_listener !== undefined) {
+              access_listener.call(cur_obj, cur_key);
+            }
+
             Program.#do_proxy(proxy_obj, proxy_value_data, expr);
             return;
           }
@@ -374,6 +403,14 @@ export class Program {
     }
   }
   static #do_assign(obj: any, data: ValueData | ArrayData, expr: OperatorNode) {
+    // invoke access listener
+    const metadata = Object.getPrototypeOf(obj)[Symbol.metadata];
+    const access_listener = metadata?.[symbol_access_listener] as AccessListenerFunc;
+    if (access_listener !== undefined) {
+      access_listener.call(obj, data.name);
+    }
+
+    // do assign or append
     const is_append = expr.op === '+='
     if (expr.right.type === 'literal') {
       if (is_append) { // literal append
@@ -410,7 +447,6 @@ export class Program {
   }
   static #do_proxy(obj: any, data: ValueProxyData | ArrayProxyData, expr: OperatorNode) {
     const is_append = expr.op === '+='
-
     if (expr.right.type === 'literal') {
       if (is_append) { // literal append
         const typed_data = data as ArrayProxyData;
@@ -428,9 +464,6 @@ export class Program {
   }
 }
 
-// TODO. access listener, 用于监听访问行为，来实现赋值行为内置 enable = true 的行为
-
-
 //======================== util objects ========================
 export class WithEnable {
   @value('boolean')
@@ -443,5 +476,11 @@ export class WithEnable {
   @preset('disable')
   preset_disable() {
     this.enable = false;
+  }
+
+  // any access with `xxx.enable = true` effect
+  @access_listener()
+  ml_access(key: string) {
+    this.enable = true;
   }
 }
