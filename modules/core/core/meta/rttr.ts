@@ -128,30 +128,22 @@ class _Gen {
   }
   static header(header: db.Header) {
     const b = header.gen_code;
-
-    const rttr_traits = new CodeBuilder();
-    header.each_record((record) => {
-      const record_config = record.ml_configs.rttr as RecordConfig;
-      if (!record_config.enable) return;
-      rttr_traits.$line(
-        `SKR_RTTR_TYPE(${record.name}, "${record.ml_configs.guid}")`,
-      );
-    });
-    header.each_enum((enum_) => {
-      const enum_config = enum_.ml_configs.rttr as EnumConfig;
-      if (!enum_config.enable) return;
-      rttr_traits.$line(
-        `SKR_RTTR_TYPE(${enum_.name}, "${enum_.ml_configs.guid}")`,
-      );
-    });
+    const _gen_records = header.records.filter(record => record.ml_configs.rttr.enable);
 
     b.$line(`// BEGIN RTTR GENERATED`);
     b.$line(`#include "SkrRTTR/rttr_traits.hpp"`);
-    b.$line(`${rttr_traits}`);
+    _gen_records.forEach((record) => {
+      b.$line(`SKR_RTTR_TYPE(${record.name}, "${record.ml_configs.guid}")`,);
+    });
+    _gen_records.forEach((enum_) => {
+      b.$line(`SKR_RTTR_TYPE(${enum_.name}, "${enum_.ml_configs.guid}")`,);
+    });
     b.$line(`// END RTTR GENERATED`);
   }
   static source(main_db: db.Module) {
     const b = main_db.gen_code;
+    const _gen_records = main_db.filter_record(record => record.ml_configs.rttr.enable);
+    const _gen_enums = main_db.filter_enum(enum_ => enum_.ml_configs.rttr.enable);
 
     // header
     b.$line(`// BEGIN RTTR GENERATED`);
@@ -170,25 +162,16 @@ class _Gen {
       b.$line(``);
 
       // export records
-      main_db.each_record((record, _header) => {
+      _gen_records.forEach((record, _header) => {
         const record_config = record.ml_configs.rttr as RecordConfig;
-        if (!record_config.enable) return;
 
         // collect export data
-        const bases: string[] = record.bases.filter((base) =>
-          !record_config.exclude_bases.includes(base)
-        );
-        const fields: db.Field[] = record.fields.filter((field) =>
-          field.ml_configs.rttr.enable
-        );
-        const methods: db.Method[] = record.methods.filter((method) =>
-          method.ml_configs.rttr.enable
-        );
+        const _gen_bases: string[] = record.bases.filter((base) => !record_config.exclude_bases.includes(base));
+        const _gen_fields: db.Field[] = record.fields.filter((field) => field.ml_configs.rttr.enable);
+        const _gen_methods: db.Method[] = record.methods.filter((method) => method.ml_configs.rttr.enable);
 
         // register function
-        b.$line(
-          `register_type_loader(type_id_of<${record.name}>(), +[](Type* type) {`,
-        );
+        b.$line(`register_type_loader(type_id_of<${record.name}>(), +[](Type* type) {`);
         b.$indent((_b) => {
           // module info
           b.$line(`// setup module`);
@@ -201,9 +184,9 @@ class _Gen {
           b.$indent((_b) => {
             // basic info
             b.$line(`// reserve`);
-            b.$line(`record_data->bases_data.reserve(${bases.length});`);
-            b.$line(`record_data->fields.reserve(${fields.length});`);
-            b.$line(`record_data->methods.reserve(${methods.length});`);
+            b.$line(`record_data->bases_data.reserve(${_gen_bases.length});`);
+            b.$line(`record_data->fields.reserve(${_gen_fields.length});`);
+            b.$line(`record_data->methods.reserve(${_gen_methods.length});`);
             b.$line(``);
             b.$line(`RecordBuilder<${record.name}> builder(record_data);`);
             b.$line(``);
@@ -213,13 +196,13 @@ class _Gen {
 
             // bases
             b.$line(`// bases`);
-            if (bases.length > 0) {
-              b.$line(`builder.bases<${bases.join(", ")}>();`);
+            if (_gen_bases.length > 0) {
+              b.$line(`builder.bases<${_gen_bases.join(", ")}>();`);
             }
 
             // fields
             b.$line(`// fields`);
-            fields.forEach((field) => {
+            _gen_fields.forEach((field) => {
               const field_config = field.ml_configs.rttr as FieldConfig;
               b.$line(`{ // ${record.name}::${field.short_name}`);
               b.$indent((_b) => {
@@ -236,7 +219,7 @@ class _Gen {
 
             // methods
             b.$line(`// methods`);
-            methods.forEach((method) => {
+            _gen_methods.forEach((method) => {
               const method_config = method.ml_configs.rttr as MethodConfig;
               b.$line(`{ // ${record.name}::${method.name}`);
               b.$indent((_b) => {
@@ -282,61 +265,56 @@ class _Gen {
       });
 
       // export enums
-      main_db.each_enum((enum_, _header) => {
+      _gen_enums.forEach((enum_) => {
         const enum_config = enum_.ml_configs.rttr as EnumConfig;
-        if (!enum_config.enable) return;
+        const _gen_enum_values = enum_.values.filter((enum_value) => enum_value.ml_configs.rttr.enable);
 
-        main_db.each_enum((enum_) => {
-          const enum_config = enum_.ml_configs.rttr as EnumConfig;
-          if (!enum_config.enable) return;
+        // register function
+        b.$line(`register_type_loader(type_id_of<${enum_.name}> (), +[](Type * type){`,);
+        b.$indent((_b) => {
+          // module info
+          b.$line(`// setup module`);
+          b.$line(`type->set_module(u8"${main_db.config.module_name}");`);
+          b.$line(``);
 
-          // register function
-          b.$line(`register_type_loader(type_id_of<${enum_.name}> (), +[](Type * type){`,);
+          // build scope
+          b.$line(`// build scope`);
+          b.$line(`type->build_enum([&](EnumData* enum_data) {`);
           b.$indent((_b) => {
-            // module info
-            b.$line(`// setup module`);
-            b.$line(`type->set_module(u8"${main_db.config.module_name}");`);
+            // basic
+            b.$line(`// reserve`);
+            b.$line(`enum_data->items.reserve(${enum_.values.length});`);
+            b.$line(``);
+            b.$line(`EnumBuilder<${enum_.name}> builder(enum_data);`);
+            b.$line(``);
+            b.$line(`// basic`);
+            b.$line(`builder.basic_info();`);
             b.$line(``);
 
-            // build scope
-            b.$line(`// build scope`);
-            b.$line(`type->build_enum([&](EnumData* enum_data) {`);
-            b.$indent((_b) => {
-              // basic
-              b.$line(`// reserve`);
-              b.$line(`enum_data->items.reserve(${enum_.values.length});`);
-              b.$line(``);
-              b.$line(`EnumBuilder<${enum_.name}> builder(enum_data);`);
-              b.$line(``);
-              b.$line(`// basic`);
-              b.$line(`builder.basic_info();`);
-              b.$line(``);
+            // items
+            b.$line(`// items`);
+            _gen_enum_values.forEach((enum_value) => {
+              const enum_value_config = enum_value.ml_configs.rttr as EnumValueConfig;
 
-              // items
-              b.$line(`// items`);
-              enum_.values.forEach((enum_value) => {
-                const enum_value_config = enum_value.ml_configs
-                  .rttr as EnumValueConfig;
-                b.$line(`{ // ${enum_.name}::${enum_value.name}`);
-                b.$indent((_b) => {
-                  b.$line(`[[maybe_unused]] auto item_builder = builder.item(u8"${enum_value.short_name}", ${enum_value.name});`,);
-                  b.$line(``);
-                  this.#flags_and_attrs(
-                    b,
-                    enum_value,
-                    enum_value_config,
-                    "item_builder",
-                  );
-                });
-                b.$line(`}`);
+              b.$line(`{ // ${enum_.name}::${enum_value.name}`);
+              b.$indent((_b) => {
+                b.$line(`[[maybe_unused]] auto item_builder = builder.item(u8"${enum_value.short_name}", ${enum_value.name});`,);
+                b.$line(``);
+                this.#flags_and_attrs(
+                  b,
+                  enum_value,
+                  enum_value_config,
+                  "item_builder",
+                );
               });
-
-              this.#flags_and_attrs(b, enum_, enum_config, "builder");
+              b.$line(`}`);
             });
-            b.$line(`});`);
+
+            this.#flags_and_attrs(b, enum_, enum_config, "builder");
           });
           b.$line(`});`);
         });
+        b.$line(`});`);
       });
     });
     b.$line(`};`);

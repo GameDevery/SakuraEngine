@@ -37,20 +37,20 @@ class _Gen {
     b.$line(`// BEGIN PROXY GENERATED`);
     b.$line(``);
 
+    const _gen_records = header.records.filter(record => record.ml_configs.proxy.enable);
+
     // gen concept
     b.$line(`// concepts`);
-    header.each_record((record) => {
-      const record_config = record.ml_configs.proxy as RecordConfig;
-      if (!record_config.enable) return;
-
-      b.$line(`// concept of ${record.name}`);
+    _gen_records.forEach((record) => {
+      const _gen_methods = record.methods.filter(method => method.ml_configs.proxy.enable);
       const concept_ns = record.namespace.length > 0
         ? `proxy_concept::${record.namespace.join("::")}`
         : `proxy_concept`;
+
+      b.$line(`// concept of ${record.name}`);
       b.$namespace(concept_ns, (b) => {
-        record.methods.forEach((method) => {
+        _gen_methods.forEach((method) => {
           const method_config = method.ml_configs.proxy as MethodConfig;
-          if (!method_config.enable) return;
 
           b.$line(`template <typename T>`);
           b.$line(`concept has_${method.short_name} = requires(${method.dump_const()} T t ${method.dump_params_with_comma()}) {`);
@@ -89,9 +89,8 @@ class _Gen {
 
     // gen vtable
     b.$line(`// vtable`);
-    header.each_record((record) => {
-      const record_config = record.ml_configs.proxy as RecordConfig;
-      if (!record_config.enable) return;
+    _gen_records.forEach((record) => {
+      const _gen_methods = record.methods.filter(method => method.ml_configs.proxy.enable);
       const concept_ns = record.namespace.length > 0
         ? `proxy_concept::${record.namespace.join("::")}`
         : `proxy_concept`;
@@ -100,9 +99,7 @@ class _Gen {
       b.$namespace(record.namespace.join("::"), (b) => {
         // gen vtable content
         b.$struct(`${record.short_name}_VTable`, (b) => {
-          record.methods.forEach((method) => {
-            const method_config = method.ml_configs.proxy as MethodConfig;
-            if (!method_config.enable) return;
+          _gen_methods.forEach((method) => {
             b.$line(`${method.ret_type} (*${method.short_name})(${method.dump_const()} void* self ${method.dump_params_with_comma()}) = nullptr;`);
           });
         });
@@ -111,10 +108,10 @@ class _Gen {
         b.$line("template <typename T>");
         b.$struct(`${record.short_name}_VTableTraits`, (b) => {
           // gen static getter helper
-          record.methods.forEach((method) => {
+          _gen_methods.forEach((method) => {
             const method_config = method.ml_configs.proxy as MethodConfig;
-            if (!method_config.enable) return;
             const return_expr = method.has_return() ? "return " : "";
+
             b.$line(`inline static ${method.ret_type} static_${method.short_name}(${method.dump_const()} void* self ${method.dump_params_with_comma()}) ${method.dump_noexcept()} {`);
             b.$indent((_b) => {
               // method
@@ -157,9 +154,7 @@ class _Gen {
             // static table
             b.$line(`static ${record.short_name}_VTable _vtable = {`);
             b.$indent((_b) => {
-              record.methods.forEach((method) => {
-                const method_config = method.ml_configs.proxy as MethodConfig;
-                if (!method_config.enable) return;
+              _gen_methods.forEach((method) => {
                 b.$line(`&static_${method.short_name},`);
               });
             });
@@ -177,9 +172,8 @@ class _Gen {
     // gen traits
     b.$line(`// traits`);
     b.$namespace("skr", (_b) => {
-      header.each_record((record) => {
-        const record_config = record.ml_configs.proxy as RecordConfig;
-        if (!record_config.enable) return;
+      _gen_records.forEach((record) => {
+        const _gen_methods = record.methods.filter(method => method.ml_configs.proxy.enable);
         const concept_ns = record.namespace.length > 0
           ? `proxy_concept::${record.namespace.join("::")}`
           : `proxy_concept`;
@@ -191,9 +185,8 @@ class _Gen {
           b.$line(`static constexpr bool validate() {`);
           b.$indent((_b) => {
             b.$line(`return`);
-            record.methods.forEach((method) => {
+            _gen_methods.forEach((method) => {
               const method_config = method.ml_configs.proxy as MethodConfig;
-              if (!method_config.enable) return;
               b.$line(`( // ${method.name}`);
               b.$indent((_b) => {
                 b.$line(`${concept_ns}::has_${method.short_name}<T>`);
@@ -223,30 +216,28 @@ class _Gen {
   }
   static source(main_db: db.Module) {
     const b = main_db.gen_code;
+    const _gen_records = main_db.filter_record(record => record.ml_configs.proxy.enable);
+
     // gen member func impl
-    main_db.gen_code.$line(`// BEGIN PROXY GENERATED`);
-    main_db.each_record((record) => {
-      const record_config = record.ml_configs.proxy as RecordConfig;
-      if (!record_config.enable) return;
+    b.$line(`// BEGIN PROXY GENERATED`);
+    _gen_records.forEach((record) => {
+      const _gen_methods = record.methods.filter(method => method.ml_configs.proxy.enable);
+
       b.$line(`// ${record.name}`);
 
       // gen func impl
-      for (const method of record.methods) {
-        const method_config = method.ml_configs.proxy as MethodConfig;
-        if (!record_config.enable) continue;
-        if (method_config.enable) {
+      _gen_methods.forEach(method => {
+        b.$line(
+          `${method.ret_type} ${method.name}(${method.dump_params()}) ${method.dump_modifiers()}`,
+        );
+        b.$scope((b) => {
           b.$line(
-            `${method.ret_type} ${method.name}(${method.dump_params()}) ${method.dump_modifiers()}`,
+            `return vtable->${method.short_name}(self ${method.dump_params_name_only_with_comma()});`,
           );
-          b.$scope((b) => {
-            b.$line(
-              `return vtable->${method.short_name}(self ${method.dump_params_name_only_with_comma()});`,
-            );
-          });
-        }
-      }
+        });
+      });
     });
-    main_db.gen_code.$line(`// END PROXY GENERATED`);
+    b.$line(`// END PROXY GENERATED`);
   }
 }
 

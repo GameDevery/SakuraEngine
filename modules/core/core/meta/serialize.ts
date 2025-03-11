@@ -2,7 +2,7 @@ import * as gen from "@framework/generator";
 import * as db from "@framework/database";
 import * as ml from "@framework/meta_lang";
 
-class ConfigBase extends ml.WithEnable {
+class ConfigBase {
   @ml.value("boolean")
   json: boolean = false;
   @ml.value("boolean")
@@ -15,6 +15,11 @@ class ConfigBase extends ml.WithEnable {
   @ml.preset("bin")
   preset_bin() {
     this.bin = true;
+  }
+  @ml.preset("disable")
+  preset_disable() {
+    this.json = false;
+    this.bin = false;
   }
 }
 
@@ -36,6 +41,9 @@ class EnumConfig extends ConfigBase {
 class _Gen {
   static header(header: db.Header) {
     const b = header.gen_code;
+    const _gen_records_json = header.records.filter(record => record.ml_configs.serde.json);
+    const _gen_records_bin = header.records.filter(record => record.ml_configs.serde.bin);
+    const _gen_enum_json = header.enums.filter(enum_ => enum_.ml_configs.serde.json);
 
     b.$line(`// BEGIN SERIALIZE GENERATED`);
     b.$line(`#include "SkrSerde/bin_serde.hpp"`);
@@ -46,7 +54,7 @@ class _Gen {
     b.$line(`// json serde`);
     b.$namespace("skr", (_b) => {
       // enum serde traits
-      header.enums.forEach((enum_) => {
+      _gen_enum_json.forEach((enum_) => {
         b.$line(`template <>`);
         b.$line(`struct ${header.parent.config.api} EnumSerdeTraits<${enum_.name}> {`);
         b.$indent((_b) => {
@@ -57,7 +65,7 @@ class _Gen {
       });
 
       // record serde
-      header.records.forEach((record) => {
+      _gen_records_json.forEach((record) => {
         b.$line(`template <>`);
         b.$line(`struct ${header.parent.config.api} JsonSerde<${record.name}> {`);
         b.$indent((_b) => {
@@ -74,7 +82,7 @@ class _Gen {
     // bin
     b.$line(`// bin serde`);
     b.$namespace("skr", (_b) => {
-      header.records.forEach((record) => {
+      _gen_records_bin.forEach((record) => {
         b.$line(`template<>`);
         b.$line(`struct ${header.parent.config.api} BinSerde<${record.name}> {`);
         b.$indent((_b) => {
@@ -90,6 +98,9 @@ class _Gen {
   }
   static source(main_db: db.Module) {
     const b = main_db.gen_code;
+    const _gen_records_json = main_db.filter_record(record => record.ml_configs.serde.json);
+    const _gen_records_bin = main_db.filter_record(record => record.ml_configs.serde.bin);
+    const _gen_enum_json = main_db.filter_enum(enum_ => enum_.ml_configs.serde.json);
 
     // init datas
     b.$line(`// BEGIN SERIALIZE GENERATED`);
@@ -115,17 +126,17 @@ class _Gen {
     // json serde
     b.$line(`// json serde`);
     b.$namespace("skr", (_b) => {
+
       // enum serde traits
-      main_db.each_enum((enum_) => {
-        const enum_config = enum_.ml_configs.serde as EnumConfig;
-        if (!enum_config.json) return;
+      _gen_enum_json.forEach((enum_) => {
+        const _gen_enum_value_json = enum_.values.filter(enum_value => enum_value.ml_configs.serde.json);
 
         // to string
         b.$line(`skr::StringView EnumSerdeTraits<${enum_.name}>:: to_string(const ${enum_.name}& value){`);
         b.$indent((_b) => {
           b.$line(`switch (value) {`);
           b.$indent((_b) => {
-            enum_.values.forEach((enum_value) => {
+            _gen_enum_value_json.forEach((enum_value) => {
               b.$line(`case ${enum_.name}::${enum_value.short_name}: return u8"${enum_value.short_name}";`);
             });
             b.$line(`default: SKR_UNREACHABLE_CODE(); return u8"${enum_.name}::__INVALID_ENUMERATOR__";`);
@@ -139,7 +150,7 @@ class _Gen {
           `bool EnumSerdeTraits<${enum_.name}>::from_string(skr::StringView str, ${enum_.name}& value)`, (_b) => {
             b.$line(`const auto hash = skr_hash64(str.data(), str.size(), 0);`);
             b.$switch(`hash`, (_b) => {
-              enum_.values.forEach((enum_value) => {
+              _gen_enum_value_json.forEach((enum_value) => {
                 b.$line(`case skr::consteval_hash(u8"${enum_value.short_name}"): if(str == u8"${enum_value.short_name}") value = ${enum_value.name}; return true;`);
               });
               b.$line(`default: return false;`);
@@ -149,9 +160,8 @@ class _Gen {
       });
 
       // record serde
-      main_db.each_record((record) => {
-        const record_config = record.ml_configs.serde as RecordConfig;
-        if (!record_config.json) return;
+      _gen_records_json.forEach((record) => {
+        const _gen_fields_json = record.fields.filter(field => field.ml_configs.serde.json);
 
         // read fields
         b.$function(
@@ -169,12 +179,12 @@ class _Gen {
 
             // read fields
             b.$line(`// read self fields`);
-            record.fields.forEach((field) => {
+            _gen_fields_json.forEach((field) => {
               const field_config = field.ml_configs.serde as FieldConfig;
-              if (!field_config.json) return;
               const json_key = field_config.alias.length > 0
                 ? field_config.alias
                 : field.short_name;
+              
               b.$scope((_b) => {
                 // read key
                 b.$line(`auto jSlot = r->Key(u8"${json_key}");`);
@@ -210,9 +220,8 @@ class _Gen {
 
           // fields
           b.$line(`// write self fields`);
-          record.fields.forEach((field) => {
+          _gen_fields_json.forEach((field) => {
             const field_config = field.ml_configs.serde as FieldConfig;
-            if (!field_config.json) return;
             const json_key = field_config.alias.length > 0
               ? field_config.alias
               : field.short_name;
@@ -253,9 +262,8 @@ class _Gen {
     // bin serde
     b.$line(`// bin serde`);
     b.$namespace("skr", (_b) => {
-      main_db.each_record((record) => {
-        const record_config = record.ml_configs.serde as RecordConfig;
-        if (!record_config.bin) return;
+      _gen_records_bin.forEach((record) => {
+        const _gen_fields_bin = record.fields.filter(field => field.ml_configs.serde.bin);
 
         // read
         b.$function(`bool BinSerde<${record.name}>::read(SBinaryReader* r, ${record.name}& v)`, (_b) => {
@@ -273,10 +281,7 @@ class _Gen {
 
           // serde fields
           b.$line(`// serde fields`);
-          record.fields.forEach((field) => {
-            const field_config = field.ml_configs.serde as FieldConfig;
-            if (!field_config.bin) return;
-
+          _gen_fields_bin.forEach((field) => {
             b.$if([`!bin_read<${field.signature()}>(r, v.${field.short_name})`, (_b) => {
               b.$line(`SKR_LOG_ERROR(BinaryFieldArchiveFailedFormat, "Read", "${record.name}", "${field.short_name}", -1);`);
               b.$line(`return false;`);
@@ -304,10 +309,7 @@ class _Gen {
 
           // serde fields
           b.$line(`// serde fields`);
-          record.fields.forEach((field) => {
-            const field_config = field.ml_configs.serde as FieldConfig;
-            if (!field_config.bin) return;
-
+          _gen_fields_bin.forEach((field) => {
             b.$if([`!bin_write<${field.signature()}>(w, v.${field.short_name})`, (_b) => {
               b.$line(`SKR_LOG_ERROR(BinaryFieldArchiveFailedFormat, "Write", "${record.name}", "${field.short_name}", -1);`);
               b.$line(`return false;`);

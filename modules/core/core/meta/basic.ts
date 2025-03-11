@@ -36,9 +36,8 @@ class _Gen {
     // GENERATE_BODY()
     b.$line(`// BEGIN Generated Body`)
     header.records.forEach((record) => {
-      if (record.has_generate_body_flag) {
-        b.$line(`#define SKR_GENERATE_BODY_${header.file_id}_${record.generate_body_line} ${record.dump_generate_body()}`)
-      }
+      if (!record.has_generate_body_flag) return
+      b.$line(`#define SKR_GENERATE_BODY_${header.file_id}_${record.generate_body_line} ${record.dump_generate_body()}`)
     })
     b.$line(`// END Generated Body`)
     b.$line(``)
@@ -74,9 +73,8 @@ class _Gen {
     b.$line(`// #define private public`)
     b.$line(`// #define protected public`)
     main_db.headers.forEach((header) => {
-      if (header.header_path.length > 0) {
-        b.$line(`#include "${header.header_path}"`)
-      }
+      // if (header.header_path.length === 0) return // should not happen
+      b.$line(`#include "${header.header_path}"`)
     })
     b.$line(`// #undef private`)
     b.$line(`// #undef protected`)

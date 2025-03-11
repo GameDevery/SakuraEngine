@@ -20,11 +20,11 @@ class CompConfig extends ml.WithEnable {
 class _Gen {
   static header(header: db.Header) {
     const b = header.gen_code
-    const records = header.records.filter(record => record.ml_configs.ecs.enable);
+    const _gen_records = header.records.filter(record => record.ml_configs.ecs.enable);
 
     b.$line(`// BEGIN ECS GENERATED`)
     b.$line(`#include "SkrRT/ecs/sugoi.h"`)
-    records.forEach(record => {
+    _gen_records.forEach(record => {
       b.$line(`template<>`)
       b.$line(`struct sugoi_id_of<::${record.name}> {`)
       b.$indent(_b => {
@@ -38,7 +38,7 @@ class _Gen {
   static source(main_db: db.Module) {
     const b = main_db.gen_code
 
-    const records = main_db.filter_record(record => record.ml_configs.ecs.enable);
+    const _gen_records = main_db.filter_record(record => record.ml_configs.ecs.enable);
 
     // title
     b.$line(`// BEGIN ECS GENERATED`)
@@ -49,7 +49,7 @@ class _Gen {
 
     // sugoi id of
     b.$line(`// impl sugoi_id_of`)
-    records.forEach(record => {
+    _gen_records.forEach(record => {
       b.$line(`static sugoi_type_index_t& _sugoi_id_${record.name.replace("::", "_")}() { static sugoi_type_index_t val = SUGOI_NULL_TYPE; return val;  }`)
       b.$line(`sugoi_type_index_t sugoi_id_of<::${record.name}>::get() {`)
       b.$indent(_b => {
@@ -66,7 +66,7 @@ class _Gen {
       b.$line(`using namespace skr::literals;`)
 
       // register each record
-      records.forEach(record => {
+      _gen_records.forEach(record => {
         const record_config = record.ml_configs.ecs as RecordConfig;
 
         b.$line(`// register ecs component type ${record.name}`)
