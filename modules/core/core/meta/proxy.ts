@@ -53,48 +53,32 @@ class _Gen {
           if (!method_config.enable) return;
 
           b.$line(`template <typename T>`);
-          b.$line(
-            `concept has_${method.short_name} = requires(${method.dump_const()} T t ${method.dump_params_with_comma()}) {`,
-          );
+          b.$line(`concept has_${method.short_name} = requires(${method.dump_const()} T t ${method.dump_params_with_comma()}) {`);
           b.$indent((_b) => {
-            b.$line(
-              `{ t.${method.short_name}( ${method.dump_params_name_only()} ) } -> std::convertible_to<${method.ret_type}>;`,
-            );
+            b.$line(`{ t.${method.short_name}( ${method.dump_params_name_only()} ) } -> std::convertible_to<${method.ret_type}>;`);
           });
           b.$line(`};`);
           b.$line(`template <typename T>`);
-          b.$line(
-            `concept has_static_${method.short_name} = requires(${method.dump_const()} T t ${method.dump_params_with_comma()}) {`,
-          );
+          b.$line(`concept has_static_${method.short_name} = requires(${method.dump_const()} T t ${method.dump_params_with_comma()}) {`);
           b.$indent((_b) => {
-            b.$line(
-              `{ ${method.short_name}( &t ${method.dump_params_name_only_with_comma()} ) } -> std::convertible_to<${method.ret_type}>;`,
-            );
+            b.$line(`{ ${method.short_name}( &t ${method.dump_params_name_only_with_comma()} ) } -> std::convertible_to<${method.ret_type}>;`);
           });
           b.$line(`};`);
 
           if (method_config.setter.length > 0) {
             b.$line(`template <typename T>`);
-            b.$line(
-              `concept has_setter_${method.short_name} = requires(${method.dump_const()} T t ${method.dump_params_with_comma()}) {`,
-            );
+            b.$line(`concept has_setter_${method.short_name} = requires(${method.dump_const()} T t ${method.dump_params_with_comma()}) {`);
             b.$indent((_b) => {
-              b.$line(
-                `{ t.${method_config.setter} = ${method.dump_params_name_only()} };`,
-              );
+              b.$line(`{ t.${method_config.setter} = ${method.dump_params_name_only()} };`);
             });
 
             b.$line(`};`);
           }
           if (method_config.getter.length > 0) {
             b.$line(`template <typename T>`);
-            b.$line(
-              `concept has_getter_${method.short_name} = requires(${method.dump_const()} T t) {`,
-            );
+            b.$line(`concept has_getter_${method.short_name} = requires(${method.dump_const()} T t) {`);
             b.$indent((_b) => {
-              b.$line(
-                `{ t.${method_config.getter} } -> std::convertible_to<${method.ret_type}>;`,
-              );
+              b.$line(`{ t.${method_config.getter} } -> std::convertible_to<${method.ret_type}>;`);
             });
             b.$line(`};`);
           }
@@ -119,9 +103,7 @@ class _Gen {
           record.methods.forEach((method) => {
             const method_config = method.ml_configs.proxy as MethodConfig;
             if (!method_config.enable) return;
-            b.$line(
-              `${method.ret_type} (*${method.short_name})(${method.dump_const()} void* self ${method.dump_params_with_comma()}) = nullptr;`,
-            );
+            b.$line(`${method.ret_type} (*${method.short_name})(${method.dump_const()} void* self ${method.dump_params_with_comma()}) = nullptr;`);
           });
         });
 
@@ -133,54 +115,34 @@ class _Gen {
             const method_config = method.ml_configs.proxy as MethodConfig;
             if (!method_config.enable) return;
             const return_expr = method.has_return() ? "return " : "";
-            b.$line(
-              `inline static ${method.ret_type} static_${method.short_name}(${method.dump_const()} void* self ${method.dump_params_with_comma()}) ${method.dump_noexcept()} {`,
-            );
+            b.$line(`inline static ${method.ret_type} static_${method.short_name}(${method.dump_const()} void* self ${method.dump_params_with_comma()}) ${method.dump_noexcept()} {`);
             b.$indent((_b) => {
               // method
-              b.$line(
-                `if constexpr (${concept_ns}::has_${method.short_name}<T>) {`,
-              );
+              b.$line(`if constexpr (${concept_ns}::has_${method.short_name}<T>) {`);
               b.$indent((_b) => {
-                b.$line(
-                  `${return_expr}static_cast<${method.dump_const()} T*>(self)->${method.short_name}(${method.dump_params_name_only()});`,
-                );
+                b.$line(`${return_expr}static_cast<${method.dump_const()} T*>(self)->${method.short_name}(${method.dump_params_name_only()});`);
               });
 
               // function
-              b.$line(
-                `} else if constexpr (${concept_ns}::has_static_${method.short_name}<T>) {`,
-              );
+              b.$line(`} else if constexpr (${concept_ns}::has_static_${method.short_name}<T>) {`);
               b.$indent((_b) => {
-                b.$line(
-                  `${return_expr}${method.short_name}(static_cast<${method.dump_const()} T*>(self) ${method.dump_params_name_only_with_comma()});`,
-                );
+                b.$line(`${return_expr}${method.short_name}(static_cast<${method.dump_const()} T*>(self) ${method.dump_params_name_only_with_comma()});`);
               });
 
               // field setter
               if (method_config.setter.length > 0) {
-                b.$line(
-                  `} else if constexpr (${concept_ns}::has_setter_${method.short_name}<T>) {`,
-                );
+                b.$line(`} else if constexpr (${concept_ns}::has_setter_${method.short_name}<T>) {`);
                 b.$indent((_b) => {
-                  b.$line(
-                    `static_assert(std::is_same_v<${method.ret_type}, void>, "Setter must return void");`,
-                  );
-                  b.$line(
-                    `${return_expr}static_cast<${method.dump_const()} T*>(self)->${method_config.setter} = ${method.dump_params_name_only()};`,
-                  );
+                  b.$line(`static_assert(std::is_same_v<${method.ret_type}, void>, "Setter must return void");`);
+                  b.$line(`${return_expr}static_cast<${method.dump_const()} T*>(self)->${method_config.setter} = ${method.dump_params_name_only()};`);
                 });
               }
 
               // field getter
               if (method_config.getter.length > 0) {
-                b.$line(
-                  `} else if constexpr (${concept_ns}::has_getter_${method.short_name}<T>) {`,
-                );
+                b.$line(`} else if constexpr (${concept_ns}::has_getter_${method.short_name}<T>) {`);
                 b.$indent((_b) => {
-                  b.$line(
-                    `${return_expr}static_cast<${method.dump_const()} T*>(self)->${method_config.getter};`,
-                  );
+                  b.$line(`${return_expr}static_cast<${method.dump_const()} T*>(self)->${method_config.getter};`);
                 });
               }
 

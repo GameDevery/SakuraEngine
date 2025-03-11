@@ -194,16 +194,12 @@ class _Gen {
             b.$line(`// fields`);
             fields.forEach((field) => {
               const field_config = field.ml_configs.rttr as FieldConfig;
-              b.$line(`{ // ${record.name}::${field.name}`);
+              b.$line(`{ // ${record.name}::${field.short_name}`);
               b.$indent((_b) => {
                 if (field.is_static) {
-                  b.$line(
-                    `[[maybe_unused]] auto field_builder = builder.static_field<&${record.name}::${field.name}>(u8"${field.name}");`,
-                  );
+                  b.$line(`[[maybe_unused]] auto field_builder = builder.static_field<&${record.name}::${field.short_name}>(u8"${field.short_name}");`,);
                 } else {
-                  b.$line(
-                    `[[maybe_unused]] auto field_builder = builder.field<&${record.name}::${field.name}>(u8"${field.name}");`,
-                  );
+                  b.$line(`[[maybe_unused]] auto field_builder = builder.field<&${record.name}::${field.short_name}>(u8"${field.short_name}");`,);
                 }
 
                 this.#flags_and_attrs(b, field, field_config, "field_builder");
@@ -218,13 +214,9 @@ class _Gen {
               b.$line(`{ // ${record.name}::${method.name}`);
               b.$indent((_b) => {
                 if (method.is_static) {
-                  b.$line(
-                    `[[maybe_unused]] auto method_builder = builder.static_method<${method.signature()}, &${record.name}::${method.short_name}>(u8"${method.short_name}");`,
-                  );
+                  b.$line(`[[maybe_unused]] auto method_builder = builder.static_method<${method.signature()}, &${record.name}::${method.short_name}>(u8"${method.short_name}");`,);
                 } else {
-                  b.$line(
-                    `[[maybe_unused]] auto method_builder = builder.method<${method.signature()}, &${record.name}::${method.short_name}>(u8"${method.short_name}");`,
-                  );
+                  b.$line(`[[maybe_unused]] auto method_builder = builder.method<${method.signature()}, &${record.name}::${method.short_name}>(u8"${method.short_name}");`,);
                 }
 
                 // build params
@@ -232,9 +224,7 @@ class _Gen {
                 method.parameters.forEach((param, idx) => {
                   b.$scope((_b) => {
                     const param_config = param.ml_configs.rttr as ParamConfig;
-                    b.$line(
-                      `[[maybe_unused]] auto param_builder = method_builder.param_at(${idx});`,
-                    );
+                    b.$line(`[[maybe_unused]] auto param_builder = method_builder.param_at(${idx});`,);
                     b.$line(`param_builder.name(u8"${param.name}");`);
                     b.$line(``);
                     this.#flags_and_attrs(
@@ -274,9 +264,7 @@ class _Gen {
           if (!enum_config.enable) return;
 
           // register function
-          b.$line(
-            `register_type_loader(type_id_of<${enum_.name}> (), +[](Type * type){`,
-          );
+          b.$line(`register_type_loader(type_id_of<${enum_.name}> (), +[](Type * type){`,);
           b.$indent((_b) => {
             // module info
             b.$line(`// setup module`);
@@ -304,9 +292,7 @@ class _Gen {
                   .rttr as EnumValueConfig;
                 b.$line(`{ // ${enum_.name}::${enum_value.name}`);
                 b.$indent((_b) => {
-                  b.$line(
-                    `[[maybe_unused]] auto item_builder = builder.item(u8"${enum_value.short_name}", ${enum_value.name});`,
-                  );
+                  b.$line(`[[maybe_unused]] auto item_builder = builder.item(u8"${enum_value.short_name}", ${enum_value.name});`,);
                   b.$line(``);
                   this.#flags_and_attrs(
                     b,
@@ -340,9 +326,7 @@ class _Gen {
   ) {
     b.$line(`// flags`);
     if (config.flags.length > 0) {
-      b.$line(
-        `${builder_name}.flag(${this.#flags_expr(cpp_type, config.flags)});`,
-      );
+      b.$line(`${builder_name}.flag(${this.#flags_expr(cpp_type, config.flags)});`,);
     }
 
     b.$line(`// attrs`);
