@@ -523,7 +523,7 @@ export class Header {
   // find
   find_record(name: string) {
     for (const record of this.records) {
-      if (record.name == name) {
+      if (record.name === name) {
         return record;
       }
     }
@@ -531,7 +531,7 @@ export class Header {
   }
   find_enum(name: string) {
     for (const enum_obj of this.enums) {
-      if (enum_obj.name == name) {
+      if (enum_obj.name === name) {
         return enum_obj;
       }
     }
@@ -539,7 +539,7 @@ export class Header {
   }
   find_function(name: string) {
     for (const function_obj of this.functions) {
-      if (function_obj.name == name) {
+      if (function_obj.name === name) {
         return function_obj;
       }
     }
@@ -606,6 +606,9 @@ export class Module {
   constructor(parent: Project, config: ModuleConfig) {
     this.parent = parent;
     this.config = config;
+
+    // check meta dir
+    if (!fs.existsSync(config.meta_dir)) { return }
 
     // glob meta files
     const meta_files = fs.globSync(

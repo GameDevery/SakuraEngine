@@ -229,6 +229,8 @@ bool Type::based_on(GUID type_id) const
                         SKR_LOG_FMT_ERROR(u8"Type \"{}\" not found when doing cast from \"{}\"", type_id, _record_data.type_id);
                     }
                 }
+
+                return false;
             }
         }
         case ETypeCategory::Enum: {
@@ -279,6 +281,7 @@ void* Type::cast_to(GUID type_id, void* p) const
                         SKR_LOG_FMT_ERROR(u8"Type \"{}\" not found when doing cast from \"{}\"", type_id, _record_data.type_id);
                     }
                 }
+                return nullptr;
             }
         }
         case ETypeCategory::Enum: {

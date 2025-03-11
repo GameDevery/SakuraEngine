@@ -328,7 +328,8 @@ function _mako_render(target, scripts, dep_files, opt)
     local gendir = batchinfo.gendir
 
     local api = target:values("c++.codegen.api")
-    local generate_script = _bun and path.join(_engine_dir, "/tools/meta_codegen_ts/codegen.ts") or path.join(_engine_dir, "/tools/meta_codegen/codegen.py")
+    local generate_script = path.join(_engine_dir, "/tools/meta_codegen_ts/codegen.ts")
+    -- local generate_script = path.join(_engine_dir, "/tools/meta_codegen/codegen.py")
     local start_time = os.time()
 
     if not opt.quiet then
@@ -418,13 +419,18 @@ function mako_render(target, opt)
     -- collect framework depend files
     local dep_files = os.files(path.join(metadir, "**.meta"))
     do
-        local py_pattern = path.join(_engine_dir, "tools/meta_codegen/**.py")
-        local mako_pattern = path.join(_engine_dir, "tools/meta_codegen/**.mako")
-        for _, file in ipairs(os.files(py_pattern)) do
-            table.insert(dep_files, file)
-        end
-        for _, file in ipairs(os.files(mako_pattern)) do
-            table.insert(dep_files, file)
+        -- local framework_patterns = {
+        --     path.join(_engine_dir, "tools/meta_codegen/**.py"),
+        --     path.join(_engine_dir, "tools/meta_codegen/**.mako"),
+        -- }
+        local framework_patterns = {
+            path.join(_engine_dir, "tools/meta_codegen_ts/framework/**"),
+            path.join(_engine_dir, "tools/meta_codegen_ts/codegen.ts"),
+        }
+        for _, pattern in ipairs(framework_patterns) do
+            for _, file in ipairs(os.files(pattern)) do
+                table.insert(dep_files, file)
+            end
         end
     end
 

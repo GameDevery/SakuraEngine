@@ -47,7 +47,7 @@ export class GenerateManager {
     );
 
     // load data base
-    this.project_db = new db.Project(codegen_config);
+    this.project_db = new db.Project(codegen_config, true);
   }
 
   // step 2. load generators
