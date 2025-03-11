@@ -16,9 +16,10 @@ namespace skd
 namespace asset
 {
 using RawSkeleton = ozz::animation::offline::RawSkeleton;
-sreflect_struct("guid"
-                : "1719ab02-7a48-45db-b101-949155f92cad")
-sattr("serde" : "json")
+sreflect_struct(
+    guid =  "1719ab02-7a48-45db-b101-949155f92cad"
+    serde = @json
+)
 SKR_ANIMTOOL_API SSkelGltfImporter : public skd::asset::SImporter {
     // bool skeleton;
     // bool marker;
@@ -34,7 +35,7 @@ SKR_ANIMTOOL_API SSkelGltfImporter : public skd::asset::SImporter {
     static uint32_t Version() { return kDevelopmentVersion; }
 };
 
-sreflect_struct("guid" : "E3581419-8B44-4EF9-89FA-552DA6FE982A")
+sreflect_struct(guid = "E3581419-8B44-4EF9-89FA-552DA6FE982A")
 SKR_ANIMTOOL_API SSkelCooker final : public SCooker {
     bool     Cook(SCookContext* ctx) override;
     uint32_t Version() override { return kDevelopmentVersion; }

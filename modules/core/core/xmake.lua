@@ -37,12 +37,13 @@ target("SkrCoreMeta")
     set_kind("headeronly")
     codegen_generator({
         scripts = {
-            { file = "meta/ts/basic.ts" },
-            { file = "meta/ts/rttr.ts" },
-            { file = "meta/ts/serialize.ts" },
-            { file = "meta/ts/proxy.ts" },
+            { file = "meta/basic.ts" },
+            { file = "meta/rttr.ts" },
+            { file = "meta/serialize.ts" },
+            { file = "meta/proxy.ts" },
         }, 
         dep_files = {
+            "meta/**.ts",
             "meta/**.py",
             "meta/**.mako"
         }

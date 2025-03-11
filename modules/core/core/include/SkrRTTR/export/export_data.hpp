@@ -15,7 +15,7 @@
 namespace skr::rttr
 {
 // basic enums
-sreflect_enum_class("guid": "26ff0860-5d65-4ece-896e-225b3c083ecb")
+sreflect_enum_class(guid = "26ff0860-5d65-4ece-896e-225b3c083ecb")
 EAccessLevel : uint8_t
 {
     Public,
@@ -24,69 +24,69 @@ EAccessLevel : uint8_t
 };
 
 // flags
-sreflect_enum_class("guid": "3874222c-79a4-4868-b146-d90c925914e0")
+sreflect_enum_class(guid = "3874222c-79a4-4868-b146-d90c925914e0")
 EParamFlag : uint32_t
 {
     None = 0,      // default
     In   = 1 << 0, // is input native pointer/reference
     Out  = 1 << 1, // is output native pointer/reference
 };
-sreflect_enum_class("guid": "cf941db5-afa5-476e-9890-af836a373e73")
+sreflect_enum_class(guid = "cf941db5-afa5-476e-9890-af836a373e73")
 EFunctionFlag : uint32_t
 {
     None          = 0,      // default
     ScriptVisible = 1 << 0, // can script visit this function
 };
-sreflect_enum_class("guid": "11511355-6fac-43d6-92f0-5bf3f0963855")
+sreflect_enum_class(guid = "42d77f46-f3e0-492d-b67f-f8445eff2885")
 EMethodFlag : uint32_t
 {
     None          = 0,      // default
     ScriptVisible = 1 << 0, // can script visit this method
 };
-sreflect_enum_class("guid": "52c78c63-9973-49f4-9118-a8b59b9ceb9e")
+sreflect_enum_class(guid = "52c78c63-9973-49f4-9118-a8b59b9ceb9e")
 EStaticMethodFlag : uint32_t
 {
     None          = 0,      // default
     ScriptVisible = 1 << 0, // can script visit this static method
 };
-sreflect_enum_class("guid": "f7199493-29f5-4235-86c1-13ec7541917b")
+sreflect_enum_class(guid = "f7199493-29f5-4235-86c1-13ec7541917b")
 EExternMethodFlag : uint32_t
 {
     None          = 0,      // default
     ScriptVisible = 1 << 0, // can script visit this static method
 };
-sreflect_enum_class("guid": "2f8c20d1-34b2-4ebe-bfd6-258a9e4c0c9e")
+sreflect_enum_class(guid = "2f8c20d1-34b2-4ebe-bfd6-258a9e4c0c9e")
 EFieldFlag : uint32_t
 {
     None          = 0,      // default
     ScriptVisible = 1 << 0, // can script visit this field
 };
-sreflect_enum_class("guid": "396e9de1-ce51-4a65-8e47-09525e91207f")
+sreflect_enum_class(guid = "396e9de1-ce51-4a65-8e47-09525e91207f")
 EStaticFieldFlag : uint32_t
 {
     None          = 0,      // default
     ScriptVisible = 1 << 0, // can script visit this static field
 };
-sreflect_enum_class("guid": "1f2aa88d-4d2f-47c0-8c97-b03cf574d673")
+sreflect_enum_class(guid = "1f2aa88d-4d2f-47c0-8c97-b03cf574d673")
 ECtorFlag : uint32_t
 {
     None          = 0,
     ScriptVisible = 1 << 0, // can script visit this ctor
 };
-sreflect_enum_class("guid": "a1497c67-9865-44cb-b81d-08c4e9548ae9")
+sreflect_enum_class(guid = "a1497c67-9865-44cb-b81d-08c4e9548ae9")
 ERecordFlag : uint32_t
 {
     None          = 0,      // default
     ScriptVisible = 1 << 0, // can script visit this record
     ScriptNewable = 1 << 1, // can script new this record
 };
-sreflect_enum_class("guid": "a2d04427-aa0a-43b4-9975-bc0e6b92120e")
+sreflect_enum_class(guid = "a2d04427-aa0a-43b4-9975-bc0e6b92120e")
 EEnumItemFlag : uint32_t
 {
     None          = 0,      // default
     ScriptVisible = 1 << 0, // can script visit this enum item
 };
-sreflect_enum_class("guid": "e76f7ad6-303d-4704-9065-827a7f6f270d")
+sreflect_enum_class(guid = "e76f7ad6-303d-4704-9065-827a7f6f270d")
 EEnumFlag : uint32_t
 {
     None          = 0,      // default

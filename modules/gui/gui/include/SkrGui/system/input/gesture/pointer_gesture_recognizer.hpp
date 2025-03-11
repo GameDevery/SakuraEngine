@@ -8,7 +8,7 @@ namespace skr::gui
 {
 struct GestureArena;
 
-sreflect_struct("guid": "e4db9750-96ba-4558-8a14-402d1f9a2c7a")
+sreflect_struct(guid = "e4db9750-96ba-4558-8a14-402d1f9a2c7a")
 SKR_GUI_API PointerGestureRecognizer : public GestureRecognizer {
     SKR_GENERATE_BODY()
     using Super = GestureRecognizer;

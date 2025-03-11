@@ -23,8 +23,10 @@ namespace asset
 {
 using RawAnimation = ozz::animation::offline::RawAnimation;
 
-sreflect_struct("guid": "37d07586-0901-480a-8dcd-1f1f8220569c")
-sattr("serde" : "json")
+sreflect_struct(
+    guid = "37d07586-0901-480a-8dcd-1f1f8220569c"
+    serde = @json
+)
 SKR_ANIMTOOL_API SAnimGltfImporter : public skd::asset::SImporter {
     skr::String assetPath;
     skr::String animationName;
@@ -35,16 +37,20 @@ SKR_ANIMTOOL_API SAnimGltfImporter : public skd::asset::SImporter {
     static uint32_t Version() { return kDevelopmentVersion; }
 };
 
-sreflect_enum_class("guid" : "544116F5-EBE9-4837-AB88-4743435F39EF")
-sattr("serde" : "json")
+sreflect_enum_class(
+    guid = "544116F5-EBE9-4837-AB88-4743435F39EF"
+    serde = @json
+)
 SAnimAdditiveReference : uint32_t
 {
     animation,
     skeleton
 };
 
-sreflect_struct("guid" : "9B780FFE-FA11-4BA9-B410-B5D5B2849E64")
-sattr("serde" : "json")
+sreflect_struct(
+    guid = "9B780FFE-FA11-4BA9-B410-B5D5B2849E64"
+    serde = @json
+)
 SAnimOptimizationOverride {
     /*
     {
@@ -58,8 +64,10 @@ SAnimOptimizationOverride {
     float       distance  = 0.1f;
 };
 
-sreflect_struct("guid" : "13873706-F7EE-4386-B7F0-B4E313864624")
-sattr("serde" : "json")
+sreflect_struct(
+    guid = "13873706-F7EE-4386-B7F0-B4E313864624"
+    serde = @json
+)
 SAnimCookSettings {
     /*
         "additive" : false, //  Creates a delta animation that can be used for additive blending.
@@ -88,7 +96,7 @@ SAnimCookSettings {
     skr::Vector<SAnimOptimizationOverride>                 override;                                              //  Per joint optimization setting override
 };
 
-sreflect_struct("guid" : "81F1C813-1ABA-41BE-8D7A-F6C88E73E891")
+sreflect_struct(guid = "81F1C813-1ABA-41BE-8D7A-F6C88E73E891")
 SKR_ANIMTOOL_API SAnimCooker : public skd::asset::SCooker {
     bool     Cook(SCookContext* ctx) override;
     uint32_t Version() override { return kDevelopmentVersion; }

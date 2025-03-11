@@ -9,9 +9,7 @@
 namespace skr::gui
 {
 
-sreflect_struct(
-    "guid": "977b69fd-b3c7-4030-8c9d-076bc94fdfbf"
-)
+sreflect_struct(guid = "977b69fd-b3c7-4030-8c9d-076bc94fdfbf")
 SKR_GUI_API RenderStack : public RenderBox,
                           public IMultiChildRenderObject {
 public:

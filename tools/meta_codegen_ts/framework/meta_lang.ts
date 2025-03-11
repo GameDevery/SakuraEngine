@@ -41,15 +41,16 @@ const symbol_array_proxy = Symbol("array_proxy");
 const symbol_access_listener = Symbol("access_listener");
 function check_and_assign(target: any, meta_symbol: symbol, name: string, value: any) {
   // add metadata
-  const metadata = target[Symbol.metadata] ??= {};
-  metadata[meta_symbol] ??= {};
-  const values = metadata[meta_symbol] as Dict<PresetData>;
+  target[meta_symbol] ??= {};
+  const values = target[meta_symbol] as Dict<PresetData>;
 
   // solve name
   if (typeof name != "string") throw new Error("name must be string");
 
   // check name conflict
-  if (values[name]) throw new Error(`${String(meta_symbol)}[${name}] already exists`);
+  if (values[name]) {
+    throw new Error(`${String(meta_symbol)}[${name}] already exists`);
+  }
 
   // assign data
   values[name] = value;
@@ -123,8 +124,7 @@ export function array(accept_type: ValueTypeStr, options: { name?: string } = {}
 }
 export function value_proxy(accept_type: ValueTypeStr) {
   return (target: any, method_name: string, desc: TypedPropertyDescriptor<ValueAssignFunc>) => {
-    const metadata = target[Symbol.metadata] ??= {};
-    metadata[symbol_value_proxy] = {
+    target[symbol_value_proxy] = {
       func: desc.value,
       accept_type: accept_type,
     } as ValueProxyData;
@@ -132,8 +132,7 @@ export function value_proxy(accept_type: ValueTypeStr) {
 }
 export function array_proxy(accept_type: ValueTypeStr) {
   return (target: any, method_name: string, desc: TypedPropertyDescriptor<ArrayAssignFunc>) => {
-    const metadata = target[Symbol.metadata] ??= {};
-    metadata[symbol_array_proxy] = {
+    target[symbol_array_proxy] = {
       func: desc.value,
       accept_type: accept_type,
     } as ArrayProxyData;;
@@ -141,8 +140,7 @@ export function array_proxy(accept_type: ValueTypeStr) {
 }
 export function access_listener() {
   return (target: any, method_name: string, desc: TypedPropertyDescriptor<AccessListenerFunc>) => {
-    const metadata = target[Symbol.metadata] ??= {};
-    metadata[symbol_access_listener] = desc.value;
+    target[symbol_access_listener] = desc.value;
   }
 }
 
@@ -294,12 +292,7 @@ export class Program {
         )
       }
 
-      // invoke access listener
-      const metadata = Object.getPrototypeOf(cur_obj)[Symbol.metadata];
-      const access_listener = metadata?.[symbol_access_listener] as AccessListenerFunc;
-      if (access_listener !== undefined) {
-        access_listener.call(cur_obj, cur_key);
-      }
+      Program.#invoke_access_listener(cur_obj, cur_key);
 
       // update current object
       cur_obj = next_obj;
@@ -313,8 +306,8 @@ export class Program {
       const proxy_sb = is_array ? symbol_array_proxy : symbol_value_proxy;
 
       // find accessor
-      const metadata = Object.getPrototypeOf(cur_obj)[Symbol.metadata];
-      const value_data = metadata?.[access_sb]?.[cur_key];
+      const metadata = Object.getPrototypeOf(cur_obj)[access_sb];
+      const value_data = metadata?.[cur_key];
       if (value_data !== undefined) {
         // assign field
         Program.#check_type(value_data, expr);
@@ -324,18 +317,11 @@ export class Program {
         // assign by proxy
         const proxy_obj = cur_obj[cur_key];
         if (proxy_obj !== undefined) {
-          const proxy_metadata = Object.getPrototypeOf(proxy_obj)[Symbol.metadata];
-          const proxy_value_data = proxy_metadata?.[proxy_sb];
+          const proxy_value_data = Object.getPrototypeOf(proxy_obj)[proxy_sb];
           if (proxy_value_data !== undefined) {
             proxy_value_data as ValueProxyData;
             Program.#check_type(proxy_value_data, expr);
-
-            // invoke access listener
-            const access_listener = metadata?.[symbol_access_listener] as AccessListenerFunc;
-            if (access_listener !== undefined) {
-              access_listener.call(cur_obj, cur_key);
-            }
-
+            Program.#invoke_access_listener(cur_obj, cur_key);
             Program.#do_proxy(proxy_obj, proxy_value_data, expr);
             return;
           }
@@ -346,9 +332,9 @@ export class Program {
       // find preset expr
       const preset_obj = cur_obj[cur_key];
       if (preset_obj !== undefined) {
-        const metadata = Object.getPrototypeOf(preset_obj)[Symbol.metadata];
-        const preset_data_map = metadata?.[symbol_preset];
+        const preset_data_map = Object.getPrototypeOf(preset_obj)[symbol_preset];
         if (preset_data_map !== undefined) {
+          Program.#invoke_access_listener(cur_obj, cur_key);
           // each preset and assign
           for (const preset_node of expr.right.value) {
             const preset_data = preset_data_map[preset_node.value];
@@ -403,12 +389,7 @@ export class Program {
     }
   }
   static #do_assign(obj: any, data: ValueData | ArrayData, expr: OperatorNode) {
-    // invoke access listener
-    const metadata = Object.getPrototypeOf(obj)[Symbol.metadata];
-    const access_listener = metadata?.[symbol_access_listener] as AccessListenerFunc;
-    if (access_listener !== undefined) {
-      access_listener.call(obj, data.name);
-    }
+    Program.#invoke_access_listener(obj, data.name);
 
     // do assign or append
     const is_append = expr.op === '+='
@@ -460,6 +441,12 @@ export class Program {
       typed_data.func.call(obj, expr.right.value.map((item) => item.value), is_append);
     } else {
       throw new Error('should not reach here');
+    }
+  }
+  static #invoke_access_listener(obj: any, key: string) {
+    const access_listener = Object.getPrototypeOf(obj)[symbol_access_listener] as AccessListenerFunc;
+    if (access_listener !== undefined) {
+      access_listener.call(obj, key);
     }
   }
 }

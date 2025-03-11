@@ -9,7 +9,7 @@
 namespace skr::gui
 {
 sreflect_interface(
-    "guid": "0ff4a42c-7195-48c5-a979-263dab05ac2d"
+    guid = "0ff4a42c-7195-48c5-a979-263dab05ac2d"
 )
 SKR_GUI_API IBuildContext : virtual public skr::rttr::IObject {
     SKR_GENERATE_BODY()

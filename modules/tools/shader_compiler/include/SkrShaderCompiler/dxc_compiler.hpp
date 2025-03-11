@@ -54,7 +54,7 @@ protected:
     IDxcBlob* debugDxilContainer = nullptr;
 };
 
-sreflect_struct("guid" : "fef60053-e3d6-4296-8aae-5c508896930b")
+sreflect_struct(guid = "fef60053-e3d6-4296-8aae-5c508896930b")
 SKR_SHADER_COMPILER_API SDXCCompiler : public IShaderCompiler {
 public:
     SDXCCompiler(IDxcUtils* utils, IDxcCompiler3* compiler) SKR_NOEXCEPT;
@@ -89,7 +89,7 @@ protected:
     skr_stable_shader_hash_t                  options_hash = {};
 };
 
-sreflect_struct("guid" : "ae28a9e5-39cf-4eab-aa27-6103f42cbf2d", "rttr": { "reflect_bases": false })
+sreflect_struct(guid = "ae28a9e5-39cf-4eab-aa27-6103f42cbf2d"; rttr = @minimal;)
 SKR_SHADER_COMPILER_API SDXCLibrary : public skr::ModuleSubsystem {
     friend struct DxcCreateInstanceT;
 

@@ -220,6 +220,7 @@ class _Gen {
 
     // gen member func impl
     b.$line(`// BEGIN PROXY GENERATED`);
+    b.$line(`#include "SkrRTTR/proxy.hpp"`)
     _gen_records.forEach((record) => {
       const _gen_methods = record.methods.filter(method => method.ml_configs.proxy.enable);
 
@@ -253,7 +254,9 @@ class ProxyGenerator extends gen.Generator {
 
   override gen_body(): void {
     this.main_module_db.each_record((record) => {
-      _Gen.body(record);
+      if (record.ml_configs.proxy.enable) {
+        _Gen.body(record);
+      }
     });
   }
   override gen(): void {

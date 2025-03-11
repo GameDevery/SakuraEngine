@@ -110,13 +110,15 @@ class BasicGenerator extends gen.Generator {
           `The record ${record.name} has a body content but the generate_body_flag is not set. Please check the record.`
         )
       }
-
-      // gen header
-      this.main_module_db.each_record((record, header) => { _Gen.header_pre(header); })
-
-      // gen source
-      _Gen.source_pre(this.main_module_db)
     })
+
+    // gen header
+    this.main_module_db.headers.forEach(header => {
+      _Gen.header_pre(header);
+    })
+
+    // gen source
+    _Gen.source_pre(this.main_module_db)
   }
   post_gen(): void {
     // gen source

@@ -6,9 +6,7 @@
 
 namespace skr::gui
 {
-sreflect_struct(
-    "guid": "6e295661-ef44-44a3-9701-e44902de82eb"
-)
+sreflect_struct(guid = "6e295661-ef44-44a3-9701-e44902de82eb")
 SKR_GUI_API ColorPicker : public LeafRenderObjectWidget {
     SKR_GENERATE_BODY()
 

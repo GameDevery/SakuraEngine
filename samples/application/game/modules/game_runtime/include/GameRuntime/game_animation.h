@@ -18,7 +18,7 @@ struct AnimComponent;
 
 namespace game
 {
-sreflect_managed_component("guid" : "E06E11F7-6F3A-4BFF-93D8-37310EF0FB87")
+sreflect_managed_component(guid = "E06E11F7-6F3A-4BFF-93D8-37310EF0FB87")
 anim_state_t {
     SKR_RESOURCE_FIELD(skr::anim::AnimResource, animation_resource);
     skr::Vector<ozz::math::SoaTransform> local_transforms;

@@ -228,6 +228,19 @@ end
 function find_meta()
     return find_tool("meta")
 end
+function find_bun()
+    -- find embedded_python
+    -- local embedded_python = find_tool("python", {"python-embed"})
+    -- if embedded_python then
+    --     return embedded_python
+    -- end
+
+    -- find system python
+    local system_bun = find_program_in_system("bun")
+    if system_bun then
+        return system_bun
+    end
+end
 
 ------------------------tools------------------------
 -- change info: content: {

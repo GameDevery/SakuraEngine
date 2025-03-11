@@ -6,6 +6,6 @@
 #endif
 
 sreflect_struct(
-    "guid" : "956ECD04-0395-4643-88FB-7C51FC206F38",
-    "ecs::comp" : true
+    guid = "956ECD04-0395-4643-88FB-7C51FC206F38";
+    ecs.comp = @enable;
 ) skr_render_group_t {};

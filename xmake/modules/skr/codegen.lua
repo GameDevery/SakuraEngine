@@ -11,6 +11,7 @@ import("skr.utils")
 -- programs
 local _meta = utils.find_meta()
 local _python = utils.find_python()
+local _bun = utils.find_bun()
 
 -- data cache names
 local _codegen_data_batch_name = "c++.codegen.batch"
@@ -322,7 +323,7 @@ function _mako_render(target, scripts, dep_files, opt)
     local gendir = batchinfo.gendir
 
     local api = target:values("c++.codegen.api")
-    local generate_script = path.join(_engine_dir, "/tools/meta_codegen/codegen.py")
+    local generate_script = _bun and path.join(_engine_dir, "/tools/meta_codegen_ts/codegen.ts") or path.join(_engine_dir, "/tools/meta_codegen/codegen.py")
     local start_time = os.time()
 
     if not opt.quiet then
@@ -366,7 +367,7 @@ function _mako_render(target, scripts, dep_files, opt)
     -- baisc commands
     local command = {
         generate_script,
-        "--config", config_file
+        config_file
     }
 
     if verbos then
@@ -378,7 +379,12 @@ function _mako_render(target, scripts, dep_files, opt)
     end
 
     -- call codegen script
-    local out, err = os.iorunv(_python, command)
+    local out, err
+    if _bun then
+        out, err = os.iorunv(_bun, command)
+    else
+        out, err = os.iorunv(_python, command)
+    end
     
     -- dump output
     if option.get("verbose") and out and #out > 0 then
@@ -469,5 +475,5 @@ function mako_render(target, opt)
 end
 
 function is_env_complete()
-    return _meta and _python
+    return _meta and (_python or _bun)
 end

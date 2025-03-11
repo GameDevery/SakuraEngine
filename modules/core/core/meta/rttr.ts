@@ -20,6 +20,8 @@ class GuidConfig {
     this.value = v;
   }
 
+  is_empty() { return this.value.length === 0; }
+
   as_constant() {
     let result = ""
 
@@ -68,33 +70,47 @@ class RecordConfig extends ConfigBase {
   exclude_bases: string[] = [];
 
   @ml.value("boolean")
-  reflect_fields: boolean = false;
+  reflect_fields(v: boolean) {
+    this.#record.fields.forEach(field => {
+      field.ml_configs.rttr.enable = v;
+    })
+  }
 
   @ml.value("boolean")
-  reflect_methods: boolean = false;
+  reflect_methods(v: boolean) {
+    this.#record.methods.forEach(method => {
+      method.ml_configs.rttr.enable = v;
+    })
+  }
 
   @ml.preset("full")
   preset_full() {
     this.reflect_bases = true;
-    this.reflect_fields = true;
-    this.reflect_methods = true;
+    this.reflect_fields(true);
+    this.reflect_methods(true);
   }
 
   @ml.preset("fields")
   preset_fields() {
-    this.reflect_fields = true;
+    this.reflect_fields(true);
   }
 
   @ml.preset("methods")
   preset_methods() {
-    this.reflect_methods = true;
+    this.reflect_methods(true);
   }
 
   @ml.preset("minimal")
   preset_minimal() {
     this.reflect_bases = false;
-    this.reflect_fields = false;
-    this.reflect_methods = false;
+    this.reflect_fields(false);
+    this.reflect_methods(false);
+  }
+
+  #record: db.Record;
+  constructor(record: db.Record) {
+    super();
+    this.#record = record;
   }
 }
 class FieldConfig extends ConfigBase {
@@ -104,6 +120,7 @@ class MethodConfig extends ConfigBase {
 class ParamConfig extends ConfigBase {
 }
 class EnumConfig extends ConfigBase {
+  override enable: boolean = true;
 }
 class EnumValueConfig extends ConfigBase {
 }
@@ -128,22 +145,23 @@ class _Gen {
   }
   static header(header: db.Header) {
     const b = header.gen_code;
-    const _gen_records = header.records.filter(record => record.ml_configs.rttr.enable);
+    const _gen_records = header.records.filter(record => record.ml_configs.rttr.enable && !record.ml_configs.guid.is_empty());
+    const _gen_enums = header.enums.filter(enum_ => enum_.ml_configs.rttr.enable && !enum_.ml_configs.guid.is_empty());
 
     b.$line(`// BEGIN RTTR GENERATED`);
     b.$line(`#include "SkrRTTR/rttr_traits.hpp"`);
     _gen_records.forEach((record) => {
       b.$line(`SKR_RTTR_TYPE(${record.name}, "${record.ml_configs.guid}")`,);
     });
-    _gen_records.forEach((enum_) => {
+    _gen_enums.forEach((enum_) => {
       b.$line(`SKR_RTTR_TYPE(${enum_.name}, "${enum_.ml_configs.guid}")`,);
     });
     b.$line(`// END RTTR GENERATED`);
   }
   static source(main_db: db.Module) {
     const b = main_db.gen_code;
-    const _gen_records = main_db.filter_record(record => record.ml_configs.rttr.enable);
-    const _gen_enums = main_db.filter_enum(enum_ => enum_.ml_configs.rttr.enable);
+    const _gen_records = main_db.filter_record(record => record.ml_configs.rttr.enable && !record.ml_configs.guid.is_empty());
+    const _gen_enums = main_db.filter_enum(enum_ => enum_.ml_configs.rttr.enable && !enum_.ml_configs.guid.is_empty());
 
     // header
     b.$line(`// BEGIN RTTR GENERATED`);
@@ -166,7 +184,9 @@ class _Gen {
         const record_config = record.ml_configs.rttr as RecordConfig;
 
         // collect export data
-        const _gen_bases: string[] = record.bases.filter((base) => !record_config.exclude_bases.includes(base));
+        const _gen_bases: string[] = record_config.reflect_bases ?
+          record.bases.filter((base) => !record_config.exclude_bases.includes(base)) :
+          [];
         const _gen_fields: db.Field[] = record.fields.filter((field) => field.ml_configs.rttr.enable);
         const _gen_methods: db.Method[] = record.methods.filter((method) => method.ml_configs.rttr.enable);
 
@@ -335,13 +355,15 @@ class _Gen {
     }
 
     b.$line(`// attrs`);
-    b.$line(`${builder_name}`);
-    b.$indent((_b) => {
-      config.attrs.forEach((attr) => {
-        b.$line(`.attribute(::skr::attr::${attr})`);
+    if (config.attrs.length > 0) {
+      b.$line(`${builder_name}`);
+      b.$indent((_b) => {
+        config.attrs.forEach((attr) => {
+          b.$line(`.attribute(::skr::attr::${attr})`);
+        });
       });
-    });
-    b.$line(`;`);
+      b.$line(`;`);
+    }
   }
   static #flag_enum_name_of(cpp_type: db.CppTypes) {
     if (cpp_type instanceof db.Record) {
@@ -371,7 +393,7 @@ class RttrGenerator extends gen.Generator {
   override inject_configs(): void {
     // record
     this.main_module_db.each_record((record) => {
-      record.ml_configs.rttr = new RecordConfig();
+      record.ml_configs.rttr = new RecordConfig(record);
       record.ml_configs.guid = new GuidConfig();
 
       // methods
@@ -393,6 +415,7 @@ class RttrGenerator extends gen.Generator {
     // enums
     this.main_module_db.each_enum((enum_) => {
       enum_.ml_configs.rttr = new EnumConfig();
+      enum_.ml_configs.guid = new GuidConfig();
       enum_.values.forEach((enum_value) => {
         enum_value.ml_configs.rttr = new EnumValueConfig();
       });
@@ -401,7 +424,9 @@ class RttrGenerator extends gen.Generator {
 
   gen_body(): void {
     this.main_module_db.each_record((record, header) => {
-      _Gen.body(record);
+      if (this.project_db.is_derived(record, "skr::rttr::IObject")) {
+        _Gen.body(record);
+      }
     });
   }
   gen(): void {

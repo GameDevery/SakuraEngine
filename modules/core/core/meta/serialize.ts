@@ -37,6 +37,8 @@ class FieldConfig extends ConfigBase {
 
 class EnumConfig extends ConfigBase {
 }
+class EnumValueConfig extends ConfigBase {
+}
 
 class _Gen {
   static header(header: db.Header) {
@@ -44,6 +46,7 @@ class _Gen {
     const _gen_records_json = header.records.filter(record => record.ml_configs.serde.json);
     const _gen_records_bin = header.records.filter(record => record.ml_configs.serde.bin);
     const _gen_enum_json = header.enums.filter(enum_ => enum_.ml_configs.serde.json);
+    const _gen_api = `${header.parent.config.api}_API`;
 
     b.$line(`// BEGIN SERIALIZE GENERATED`);
     b.$line(`#include "SkrSerde/bin_serde.hpp"`);
@@ -56,7 +59,7 @@ class _Gen {
       // enum serde traits
       _gen_enum_json.forEach((enum_) => {
         b.$line(`template <>`);
-        b.$line(`struct ${header.parent.config.api} EnumSerdeTraits<${enum_.name}> {`);
+        b.$line(`struct ${_gen_api} EnumSerdeTraits<${enum_.name}> {`);
         b.$indent((_b) => {
           b.$line(`static skr::StringView to_string(const ${enum_.name}& value);`);
           b.$line(`static bool from_string(skr::StringView str, ${enum_.name}& value);`);
@@ -67,7 +70,7 @@ class _Gen {
       // record serde
       _gen_records_json.forEach((record) => {
         b.$line(`template <>`);
-        b.$line(`struct ${header.parent.config.api} JsonSerde<${record.name}> {`);
+        b.$line(`struct ${_gen_api} JsonSerde<${record.name}> {`);
         b.$indent((_b) => {
           b.$line(`static bool read_fields(skr::archive::JsonReader* r, ${record.name}& v);`);
           b.$line(`static bool write_fields(skr::archive::JsonWriter* w, const ${record.name}& v);`);
@@ -84,7 +87,7 @@ class _Gen {
     b.$namespace("skr", (_b) => {
       _gen_records_bin.forEach((record) => {
         b.$line(`template<>`);
-        b.$line(`struct ${header.parent.config.api} BinSerde<${record.name}> {`);
+        b.$line(`struct ${_gen_api} BinSerde<${record.name}> {`);
         b.$indent((_b) => {
           b.$line(`static bool read(SBinaryReader* r, ${record.name}& v);`);
           b.$line(`static bool write(SBinaryWriter* w, const ${record.name}& v);`);
@@ -342,6 +345,11 @@ class SerializeGenerator extends gen.Generator {
     // enums
     this.main_module_db.each_enum((enum_) => {
       enum_.ml_configs.serde = new EnumConfig();
+    
+      // enum values
+      enum_.values.forEach((enum_value) => {
+        enum_value.ml_configs.serde = new EnumValueConfig();
+      });
     });
   }
 

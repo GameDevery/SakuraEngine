@@ -8,7 +8,7 @@
 // state
 namespace skr::gui
 {
-sreflect_struct("guid": "1e50e00c-6c0a-435c-817a-3970cf8b90cb")
+sreflect_struct(guid = "1e50e00c-6c0a-435c-817a-3970cf8b90cb")
 SKR_GUI_API State : virtual public skr::rttr::IObject {
     SKR_GENERATE_BODY()
 
@@ -31,9 +31,7 @@ private:
 // stateful widget
 namespace skr::gui
 {
-sreflect_struct(
-    "guid": "bb7b41aa-b827-4bb2-b025-e9803938ec2e"
-)
+sreflect_struct(guid = "bb7b41aa-b827-4bb2-b025-e9803938ec2e")
 SKR_GUI_API StatefulWidget : public Widget {
     SKR_GENERATE_BODY()
 

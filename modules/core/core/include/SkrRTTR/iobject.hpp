@@ -14,7 +14,7 @@
 // iobject
 namespace skr::rttr
 {
-sreflect_struct("guid": "3740620f-714d-4d78-b47e-095f256ba4a7")
+sreflect_struct(guid = "3740620f-714d-4d78-b47e-095f256ba4a7")
 SKR_CORE_API IObject {
     virtual ~IObject() = default;
 

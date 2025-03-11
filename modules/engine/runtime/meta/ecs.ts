@@ -21,6 +21,7 @@ class _Gen {
   static header(header: db.Header) {
     const b = header.gen_code
     const _gen_records = header.records.filter(record => record.ml_configs.ecs.enable);
+    const _gen_api = `${header.parent.config.api}_API`;
 
     b.$line(`// BEGIN ECS GENERATED`)
     b.$line(`#include "SkrRT/ecs/sugoi.h"`)
@@ -28,7 +29,7 @@ class _Gen {
       b.$line(`template<>`)
       b.$line(`struct sugoi_id_of<::${record.name}> {`)
       b.$indent(_b => {
-        b.$line(`${header.parent.config.api} static sugoi_type_index_t get();`)
+        b.$line(`${_gen_api} static sugoi_type_index_t get();`)
       })
       b.$line(`};`)
     })
@@ -50,11 +51,11 @@ class _Gen {
     // sugoi id of
     b.$line(`// impl sugoi_id_of`)
     _gen_records.forEach(record => {
-      b.$line(`static sugoi_type_index_t& _sugoi_id_${record.name.replace("::", "_")}() { static sugoi_type_index_t val = SUGOI_NULL_TYPE; return val;  }`)
+      b.$line(`static sugoi_type_index_t& _sugoi_id_${record.name.replaceAll("::", "_")}() { static sugoi_type_index_t val = SUGOI_NULL_TYPE; return val;  }`)
       b.$line(`sugoi_type_index_t sugoi_id_of<::${record.name}>::get() {`)
       b.$indent(_b => {
-        b.$line(`SKR_ASSERT(_sugoi_id_${record.name.replace("::", "_")}() != SUGOI_NULL_TYPE);`)
-        b.$line(`return _sugoi_id_${record.name.replace("::", "_")}();`)
+        b.$line(`SKR_ASSERT(_sugoi_id_${record.name.replaceAll("::", "_")}() != SUGOI_NULL_TYPE);`)
+        b.$line(`return _sugoi_id_${record.name.replaceAll("::", "_")}();`)
       })
       b.$line(`}`)
     })
@@ -134,11 +135,11 @@ class _Gen {
           b.$line(`::sugoi::check_managed(desc, skr::type_t<${record.name}>{});`)
 
           // assign static id
-          b.$line(`_sugoi_id_${record.name.replace("::", "_")}() = sugoiT_register_type(&desc);`)
+          b.$line(`_sugoi_id_${record.name.replaceAll("::", "_")}() = sugoiT_register_type(&desc);`)
         })
       })
     })
-    b.$line(`}`)
+    b.$line(`};`)
 
     // bottom
     b.$line(`// END ECS GENERATED`)
@@ -181,10 +182,20 @@ class _Gen {
 
 
 class ECSGenerator extends gen.Generator {
-  inject_configs(): void {
+  override inject_configs(): void {
     this.main_module_db.each_record(record => {
       record.ml_configs.ecs = new RecordConfig();
     })
+  }
+
+  override gen(): void {
+    // generate header
+    this.main_module_db.headers.forEach(header => {
+      _Gen.header(header);
+    })
+
+    // generate source
+    _Gen.source(this.main_module_db);
   }
 }
 

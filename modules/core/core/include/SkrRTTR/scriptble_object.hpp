@@ -6,13 +6,13 @@
 
 namespace skr::rttr
 {
-sreflect_enum_class("guid": "a0393643-9f1b-423a-8754-f504bab41420")
+sreflect_enum_class(guid = "a0393643-9f1b-423a-8754-f504bab41420")
 EScriptbleObjectOwnerShip {
     Script,
     Native,
 };
 
-sreflect_struct("guid": "ecb7851e-f6c5-4814-8fba-a35668a2f277")
+sreflect_struct(guid = "ecb7851e-f6c5-4814-8fba-a35668a2f277")
 SKR_CORE_API ScriptbleObject : virtual public skr::rttr::IObject
 {
     SKR_GENERATE_BODY()

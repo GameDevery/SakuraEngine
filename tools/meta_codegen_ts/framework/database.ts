@@ -148,7 +148,8 @@ export class Record {
     // load methods
     this.methods = [];
     for (const method of json_obj.methods) {
-      if (method.name === "_zz_skr_generate_body_flag") {
+      const short_name = method.name.split("::").pop();
+      if (short_name === "_zz_skr_generate_body_flag") {
         this.has_generate_body_flag = true;
         this.generate_body_line = method.line;
       } else {
@@ -291,6 +292,7 @@ export class Method {
     let modifier = "";
     if (this.is_const) modifier += " const";
     if (this.is_nothrow) modifier += " noexcept";
+    return modifier;
   }
 
   has_return() {
@@ -300,7 +302,7 @@ export class Method {
   signature() {
     return this.is_static
       ? `${this.ret_type}(*)(${this.dump_params_type_only()})`
-      : `${this.ret_type}(*)(${this.parent.name}::*)(${this.dump_params_type_only()})`;
+      : `${this.ret_type}(${this.parent.name}::*)(${this.dump_params_type_only()}) ${this.dump_const()}`;
   }
 }
 export class Parameter {
@@ -480,7 +482,7 @@ export class Header {
     const reg_meta_path = /(.*?)\.(.*?)\.meta/g;
     this.output_header_path = this.meta_path_relative.replace(
       reg_meta_path,
-      "$1.generated.$2.h",
+      "$1.generated.$2",
     );
 
     // load json

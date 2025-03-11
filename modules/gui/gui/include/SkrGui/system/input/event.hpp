@@ -14,7 +14,7 @@ namespace skr::gui
 // 干不掉，根本干不掉，在移动端场景，手势处理需要跨越多个层级收集，而后竞争，这代表单纯的靠可阻断的 Bubble 无法达成功能
 // 但是，这也是分平台的，比如 Desktop 的手势收集直接在 Bubble 阶段接受 Block 就行了
 // 而 Touch 的手势收集则需要在 Broadcast 阶段执行，因为手势功能经常由多个层级提供
-sreflect_enum_class("guid": "51ed008c-6f63-495c-b229-204986d45cd5")
+sreflect_enum_class(guid = "51ed008c-6f63-495c-b229-204986d45cd5")
 EEventRoutePhase : uint32_t
 {
     None        = 0,
@@ -26,9 +26,7 @@ EEventRoutePhase : uint32_t
     NoBroadcast = TrickleDown | Reach | BubbleUp,
 };
 
-sreflect_enum_class(
-    "guid" : "03ff08f9-ba01-465a-991c-a6cfa294ddc4"
-)
+sreflect_enum_class(guid = "03ff08f9-ba01-465a-991c-a6cfa294ddc4")
 EEventSource : uint32_t
 {
     None = 0,
@@ -37,9 +35,7 @@ EEventSource : uint32_t
     Framework,
 };
 
-sreflect_struct(
-    "guid": "06ecf250-43e8-44a3-b1e9-b52b1ab53e05"
-)
+sreflect_struct(guid = "06ecf250-43e8-44a3-b1e9-b52b1ab53e05")
 Event : virtual public skr::rttr::IObject {
     SKR_GENERATE_BODY()
     EEventRoutePhase phase  = EEventRoutePhase::None;

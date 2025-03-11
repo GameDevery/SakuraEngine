@@ -7,9 +7,7 @@
 
 namespace skr::gui
 {
-sreflect_struct(
-    "guid": "c52bbfa8-a175-4176-8fa1-5519400734cf"
-)
+sreflect_struct(guid = "c52bbfa8-a175-4176-8fa1-5519400734cf")
 SKR_GUI_API SizedBox : public SingleChildRenderObjectWidget {
     SKR_GENERATE_BODY()
 

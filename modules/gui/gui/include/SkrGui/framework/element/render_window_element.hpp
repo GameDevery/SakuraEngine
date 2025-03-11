@@ -7,9 +7,7 @@
 namespace skr::gui
 {
 
-sreflect_struct(
-    "guid": "68cea8f8-f39c-41e3-90dc-615308fb8034"
-)
+sreflect_struct(guid = "68cea8f8-f39c-41e3-90dc-615308fb8034")
 SKR_GUI_API RenderWindowElement : public RenderObjectElement {
     SKR_GENERATE_BODY()
     using Super = RenderObjectElement;
