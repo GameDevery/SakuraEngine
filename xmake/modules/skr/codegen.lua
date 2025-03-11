@@ -308,6 +308,11 @@ function meta_compile(target, proxy_target, opt)
             cache_file = utils.depend_file(path.join("codegen", target:name(), "codegen.meta")),
             files = headerfiles,
             use_sha = true,
+            post_scan = function ()
+                local batchinfo = target:data(_codegen_data_batch_name)
+                local outdir = batchinfo.metadir
+                return os.files(path.join(outdir, "**.meta"))
+            end
         })
     end
 end
@@ -471,6 +476,11 @@ function mako_render(target, opt)
         cache_file = utils.depend_file(path.join("codegen", target:name(), "codegen.mako")),
         files = dep_files,
         use_sha = true,
+        post_scan = function ()
+            local batchinfo = target:data(_codegen_data_batch_name)
+            local gendir = batchinfo.gendir
+            return os.files(path.join(gendir, "**.h"))
+        end
     })
 end
 

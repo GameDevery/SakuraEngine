@@ -306,6 +306,7 @@ end
 --   values: values to check change
 --   use_sha: use sha256 to check file contents, this is useful when file time_stamp is not reliable
 --   force: force to call func
+--   post_scan: call after [func] called, used to append file to check next time, these files often are generated in [func]
 -- @return: 
 --   [0] is any file changed
 --   [1] change info: see above
@@ -317,6 +318,7 @@ function on_changed(func, opt)
     local values = opt.values and table.wrap(opt.values) or nil
     local use_sha = opt.use_sha or false
     local force = opt.force or false
+    local post_scan = opt.post_scan
 
     -- check opt
     if not cache_file then
@@ -329,6 +331,7 @@ function on_changed(func, opt)
         cache = {
             files = {},
             values = {},
+            post_files = {},
         }
     else
         cache = io.load(cache_file)
@@ -442,9 +445,53 @@ function on_changed(func, opt)
         cache.values = values
     end
 
+    -- check post file
+    for file, cache_info in pairs(cache.post_files) do
+        -- solve mtime & sha
+        local mtime, sha
+        if os.exists(file) then
+            mtime = os.mtime(file)
+            sha = use_sha and hash.sha256(file) or ""
+        else
+            mtime = 0
+            sha = ""
+        end
+
+        -- check modified
+        local changed
+        if use_sha then
+            changed = cache_info.sha256 ~= sha
+        else
+            changed = cache_info.mtime ~= mtime
+        end
+
+        -- add change info
+        if changed then
+            table.insert(change_info.files, {
+                file = file,
+                reason = "modify",
+            })
+        end
+    end
+
     -- call func
     if change_info:any_changed() or force then
         func(change_info)
+
+        -- do post scan
+        if post_scan then
+            local post_files = post_scan(change_info)
+            if post_files then
+                cache.post_files = {}
+                for _, file in ipairs(post_files) do
+                    -- insert check info
+                    cache.post_files[file] = {
+                        mtime = os.mtime(file),
+                        sha256 = use_sha and hash.sha256(file) or "",
+                    }
+                end
+            end
+        end
     end
 
     -- save cache
