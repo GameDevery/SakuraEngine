@@ -261,16 +261,16 @@ private:
 namespace skr
 {
 template <class T>
-struct StronglyEnum {
+struct EnumAsValue {
     static_assert(std::is_enum_v<T>, "T must be an enum type");
     using UnderlyingType = std::underlying_type_t<T>;
 
-    inline StronglyEnum() SKR_NOEXCEPT = default;
-    inline StronglyEnum(T value) SKR_NOEXCEPT
+    inline EnumAsValue() SKR_NOEXCEPT = default;
+    inline EnumAsValue(T value) SKR_NOEXCEPT
         : _value(value)
     {
     }
-    inline StronglyEnum<T>& operator=(T value) SKR_NOEXCEPT
+    inline EnumAsValue<T>& operator=(T value) SKR_NOEXCEPT
     {
         this->_value = value;
         return *this;
@@ -318,12 +318,12 @@ private:
 namespace skr
 {
 template <class T>
-struct BinSerde<StronglyEnum<T>> {
-    inline static bool read(SBinaryReader* r, StronglyEnum<T>& v)
+struct BinSerde<EnumAsValue<T>> {
+    inline static bool read(SBinaryReader* r, EnumAsValue<T>& v)
     {
         return bin_read(r, v.underlying_value());
     }
-    inline static bool write(SBinaryWriter* w, const StronglyEnum<T>& v)
+    inline static bool write(SBinaryWriter* w, const EnumAsValue<T>& v)
     {
         return bin_write(w, v.underlying_value());
     }
@@ -335,15 +335,15 @@ struct BinSerde<StronglyEnum<T>> {
 namespace skr
 {
 template <class T>
-struct JsonSerde<StronglyEnum<T>> {
-    inline static bool read(skr::archive::JsonReader* r, StronglyEnum<T>& v)
+struct JsonSerde<EnumAsValue<T>> {
+    inline static bool read(skr::archive::JsonReader* r, EnumAsValue<T>& v)
     {
-        using UT = typename StronglyEnum<T>::UnderlyingType;
+        using UT = typename EnumAsValue<T>::UnderlyingType;
         return json_read<UT>(r, v.underlying_value());
     }
-    inline static bool write(skr::archive::JsonWriter* w, const StronglyEnum<T>& v)
+    inline static bool write(skr::archive::JsonWriter* w, const EnumAsValue<T>& v)
     {
-        using UT = typename StronglyEnum<T>::UnderlyingType;
+        using UT = typename EnumAsValue<T>::UnderlyingType;
         return json_write<UT>(w, v.underlying_value());
     }
 };

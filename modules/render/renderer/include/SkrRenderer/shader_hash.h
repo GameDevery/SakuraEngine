@@ -69,8 +69,8 @@ sreflect_struct(
 )
 skr_platform_shader_identifier_t {
 #ifdef __cplusplus
-    skr::StronglyEnum<ECGPUShaderBytecodeType> bytecode_type;
-    skr::StronglyEnum<ECGPUShaderStage>        shader_stage;
+    skr::EnumAsValue<ECGPUShaderBytecodeType> bytecode_type;
+    skr::EnumAsValue<ECGPUShaderStage>        shader_stage;
 #else
     ECGPUShaderBytecodeType bytecode_type;
     ECGPUShaderStage        shader_stage;

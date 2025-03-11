@@ -41,25 +41,59 @@ struct _ReaderHelper {
             SKR_RET_JSON_READ_ERROR_IF(found, JsonReadError::KeyNotFound);
         }
 
+        auto FoundType = yyjson_get_type(found);
         IS_TYPE(_JsonReader::ValueType*)
-        value = (_JsonReader::ValueType*)found;
+            value = (_JsonReader::ValueType*)found;
         else IS_TYPE(bool)
-        value = yyjson_get_bool(found);
+        {
+            if (FoundType != YYJSON_TYPE_BOOL)
+                return JsonReadError::TypeMismatch;
+            value = yyjson_get_bool(found);
+        }
         else IS_TYPE(int32_t)
-        value = yyjson_get_int(found);
+        {
+            if (FoundType != YYJSON_TYPE_NUM)
+                return JsonReadError::TypeMismatch;
+            value = yyjson_get_int(found);
+        }
         else IS_TYPE(int64_t)
-        value = yyjson_get_sint(found);
+        {
+            if (FoundType != YYJSON_TYPE_NUM)
+                return JsonReadError::TypeMismatch;
+            value = yyjson_get_sint(found);
+        }
         else IS_TYPE(uint32_t)
-        value = yyjson_get_uint(found);
+        {
+            if (FoundType != YYJSON_TYPE_NUM)
+                return JsonReadError::TypeMismatch;
+            value = yyjson_get_uint(found);
+        }
         else IS_TYPE(uint64_t)
-        value = yyjson_get_uint(found);
+        {
+            if (FoundType != YYJSON_TYPE_NUM)
+                return JsonReadError::TypeMismatch;
+            value = yyjson_get_uint(found);
+        }
         else IS_TYPE(float)
-        value = yyjson_get_real(found);
+        {
+            if (FoundType != YYJSON_TYPE_NUM)
+                return JsonReadError::TypeMismatch;
+            value = yyjson_get_real(found);
+        }
         else IS_TYPE(double)
-        value = yyjson_get_real(found);
+        {
+            if (FoundType != YYJSON_TYPE_NUM)
+                return JsonReadError::TypeMismatch;
+            value = yyjson_get_real(found);
+        }
         else IS_TYPE(skr::String)
-        value = skr::String((const char8_t*)yyjson_get_str(found));
-        else return JsonReadError::UnknownTypeToRead;
+        {
+            if (FoundType != YYJSON_TYPE_STR)
+                return JsonReadError::TypeMismatch;
+            value = skr::String((const char8_t*)yyjson_get_str(found));
+        }
+        else 
+            return JsonReadError::UnknownTypeToRead;
 
         return {};
     }
@@ -130,6 +164,15 @@ JsonReadResult _JsonReader::EndObject()
 
 JsonReadResult _JsonReader::StartArray(skr::StringView key, SizeType& count)
 {
+    if (_stack.is_empty())
+    {
+        SKR_RET_JSON_READ_ERROR_IF(key.is_empty(), JsonReadError::UnknownError);
+        auto root = yyjson_doc_get_root((yyjson_doc*)_document);
+        SKR_RET_JSON_READ_ERROR_IF(yyjson_get_type(root) == YYJSON_TYPE_ARR, JsonReadError::ScopeTypeMismatch);
+        count = yyjson_arr_size(root);
+        _stack.emplace((ValueType*)root, Level::kArray);
+        return {};
+    }
     SKR_RET_JSON_READ_ERROR_IF(!_stack.is_empty(), JsonReadError::NoOpenScope);
     auto parent      = (yyjson_val*)_stack.back()._value;
     auto parent_type = yyjson_get_type(parent);
