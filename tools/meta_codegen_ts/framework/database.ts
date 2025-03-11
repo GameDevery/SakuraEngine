@@ -46,8 +46,8 @@ export class Enum {
 
   // attrs
   raw_attrs: string[] = [];
-  attrs: ml.Program[] = [];
-  gen_data: Dict<any> = {};
+  ml_programs: ml.Program[] = [];
+  ml_configs: Dict<any> = {};
 
   // deno-lint-ignore no-explicit-any
   constructor(json_obj: any) {
@@ -85,8 +85,8 @@ export class EnumValue {
 
   // attrs
   raw_attrs: string[] = [];
-  attrs: ml.Program[] = [];
-  gen_data: Dict<any> = {};
+  ml_programs: ml.Program[] = [];
+  ml_configs: Dict<any> = {};
 
   // deno-lint-ignore no-explicit-any
   constructor(parent: Enum, json_obj: any) {
@@ -125,8 +125,8 @@ export class Record {
 
   // attrs
   raw_attrs: string[] = [];
-  attrs: ml.Program[] = [];
-  gen_data: Dict<any> = {};
+  ml_programs: ml.Program[] = [];
+  ml_configs: Dict<any> = {};
 
   // deno-lint-ignore no-explicit-any
   constructor(json_obj: any) {
@@ -160,7 +160,9 @@ export class Record {
     this.raw_attrs = json_obj.attrs;
   }
 
-  dump_generate_body(): string { return this.generate_body_content.content_marco; }
+  dump_generate_body(): string {
+    return this.generate_body_content.content_marco;
+  }
 }
 export class Field {
   parent: Record;
@@ -180,8 +182,8 @@ export class Field {
 
   // attrs
   raw_attrs: string[] = [];
-  attrs: ml.Program[] = [];
-  gen_data: Dict<any> = {};
+  ml_programs: ml.Program[] = [];
+  ml_configs: Dict<any> = {};
 
   // deno-lint-ignore no-explicit-any
   constructor(parent: Record, json_obj: any) {
@@ -227,8 +229,8 @@ export class Method {
 
   // attrs
   raw_attrs: string[] = [];
-  attrs: ml.Program[] = [];
-  gen_data: Dict<any> = {};
+  ml_programs: ml.Program[] = [];
+  ml_configs: Dict<any> = {};
 
   // deno-lint-ignore no-explicit-any
   constructor(parent: Record, json_obj: any) {
@@ -257,21 +259,23 @@ export class Method {
   }
 
   dump_params() {
-    return this.parameters.map(param => `${param.type} ${param.name}`).join(", ")
+    return this.parameters.map((param) => `${param.type} ${param.name}`).join(
+      ", ",
+    );
   }
   dump_params_with_comma() {
     const params = this.dump_params();
     return params.length > 0 ? `, ${params}` : "";
   }
   dump_params_name_only() {
-    return this.parameters.map(param => param.name).join(", ")
+    return this.parameters.map((param) => param.name).join(", ");
   }
   dump_params_name_only_with_comma() {
     const params = this.dump_params_name_only();
     return params.length > 0 ? `, ${params}` : "";
   }
   dump_params_type_only() {
-    return this.parameters.map(param => param.type).join(", ")
+    return this.parameters.map((param) => param.type).join(", ");
   }
   dump_params_type_only_with_comma() {
     const params = this.dump_params_type_only();
@@ -290,13 +294,13 @@ export class Method {
   }
 
   has_return() {
-    return this.ret_type != "void"
+    return this.ret_type != "void";
   }
 
   signature() {
-    return this.is_static ?
-      `${this.ret_type}(*)(${this.dump_params_type_only()})` :
-      `${this.ret_type}(*)(${this.parent.name}::*)(${this.dump_params_type_only()})`
+    return this.is_static
+      ? `${this.ret_type}(*)(${this.dump_params_type_only()})`
+      : `${this.ret_type}(*)(${this.parent.name}::*)(${this.dump_params_type_only()})`;
   }
 }
 export class Parameter {
@@ -315,8 +319,8 @@ export class Parameter {
 
   // attrs
   raw_attrs: string[] = [];
-  attrs: ml.Program[] = [];
-  gen_data: Dict<any> = {};
+  ml_programs: ml.Program[] = [];
+  ml_configs: Dict<any> = {};
 
   // deno-lint-ignore no-explicit-any
   constructor(parent: Method | Function, json_obj: any) {
@@ -353,8 +357,8 @@ export class Function {
 
   // attrs
   raw_attrs: string[] = [];
-  attrs: ml.Program[] = [];
-  gen_data: Dict<any> = {};
+  ml_programs: ml.Program[] = [];
+  ml_configs: Dict<any> = {};
 
   // deno-lint-ignore no-explicit-any
   constructor(json_obj: any) {
@@ -471,8 +475,9 @@ export class Header {
 
     // solve output header path and file id
     const reg_non_alpha_ch = /\W+/g;
-    this.file_id = `FID_${parent.config.module_name}_${this.meta_path_relative.replaceAll(reg_non_alpha_ch, "_")
-      }`;
+    this.file_id = `FID_${parent.config.module_name}_${
+      this.meta_path_relative.replaceAll(reg_non_alpha_ch, "_")
+    }`;
     const reg_meta_path = /(.*?)\.(.*?)\.meta/g;
     this.output_header_path = this.meta_path_relative.replace(
       reg_meta_path,
