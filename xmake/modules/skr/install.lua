@@ -3,6 +3,8 @@ import("skr.utils")
 import("core.project.project")
 import("core.base.object")
 
+-- TODO. Installer 用于 download package 的 custom install 和 in_package_install
+
 ------------------------log tools------------------------
 function _log(opt, type, format, ...)
     format = format or ""
