@@ -167,7 +167,7 @@ export class Record {
 export class Field {
   parent: Record;
 
-  name: string;
+  short_name: string;
 
   type: string;
   raw_type: string;
@@ -189,7 +189,7 @@ export class Field {
   constructor(parent: Record, json_obj: any) {
     this.parent = parent;
 
-    this.name = json_obj.name;
+    this.short_name = json_obj.name;
 
     this.type = json_obj.type;
     this.raw_type = json_obj.raw_type;

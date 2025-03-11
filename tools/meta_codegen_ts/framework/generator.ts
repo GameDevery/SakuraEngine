@@ -1,6 +1,8 @@
 import * as db from "./database.ts";
 import * as fs from "node:fs";
 import * as ml from "./meta_lang.ts";
+import path from "node:path";
+import type { CodeBuilder } from "./utils.ts";
 
 // TODO. 重组生成步骤
 //   1. load database
@@ -18,14 +20,14 @@ export class Generator {
   }
 
   // inject configs into object
-  inject_configs(): void {}
+  inject_configs(): void { }
+
 
   // generate functions
-  // TODO. 只一个 gen 函数，通过多个 CodeBuilder 来实现分区生成
-  gen_body() {}
-  pre_gen() {}
-  gen() {}
-  post_gen() {}
+  gen_body() { }
+  pre_gen() { }
+  gen() { }
+  post_gen() { }
 }
 
 export class GenerateManager {
@@ -94,10 +96,50 @@ export class GenerateManager {
 
   // step 5. generate code
   codegen() {
+    // generate body
+    for (const key in this.#generators) {
+      this.#generators[key]!.gen_body();
+    }
+
+    // pre generate
+    for (const key in this.#generators) {
+      this.#generators[key]!.pre_gen();
+    }
+
+    // generate code
+    for (const key in this.#generators) {
+      this.#generators[key]!.gen();
+    }
+
+    // post generate
+    for (const key in this.#generators) {
+      this.#generators[key]!.post_gen();
+    }
   }
 
   // step 6. output result
   output() {
+    const out_dir = this.project_db.config.output_dir
+
+    // output headers
+    for (const header of this.project_db.main_module.headers) {
+      const out_path = path.join(out_dir, header.output_header_path);
+      this.#output_code(out_path, header.gen_code)
+    }
+
+    // output sources
+    this.#output_code(path.join(out_dir, "generated.cpp"), this.project_db.main_module.gen_code);
+  }
+  #output_code(out_path: string, code: CodeBuilder) {
+    const out_dir = path.dirname(out_path);
+
+    // make dir
+    if (!fs.existsSync(out_dir)) {
+      fs.mkdirSync(out_dir, { recursive: true });
+    }
+
+    // write file
+    fs.writeFileSync(out_path, code.content, { encoding: "utf-8" });
   }
 
   // generator apis
