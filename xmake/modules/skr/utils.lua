@@ -229,13 +229,13 @@ function find_meta()
     return find_tool("meta")
 end
 function find_bun()
-    -- find embedded_python
-    -- local embedded_python = find_tool("python", {"python-embed"})
-    -- if embedded_python then
-    --     return embedded_python
-    -- end
+    -- find embedded bun
+    local embedded_bun = find_tool("python")
+    if embedded_bun then
+        return embedded_bun
+    end
 
-    -- find system python
+    -- find system bun
     local system_bun = find_program_in_system("bun")
     if system_bun then
         return system_bun

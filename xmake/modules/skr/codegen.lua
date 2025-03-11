@@ -10,7 +10,7 @@ import("skr.utils")
 
 -- programs
 local _meta = utils.find_meta()
-local _python = utils.find_python()
+-- local _python = utils.find_python()
 local _bun = utils.find_bun()
 
 -- data cache names
@@ -377,19 +377,16 @@ function _mako_render(target, scripts, dep_files, opt)
 
     if verbos then
         cprint(
-            "[%s] python %s"
+            "[%s] bun %s"
             , target:name()
             , table.concat(command, " ")
         )
     end
 
     -- call codegen script
-    local out, err
-    if _bun then
-        out, err = os.iorunv(_bun, command)
-    else
-        out, err = os.iorunv(_python, command)
-    end
+    -- local out, err = os.iorunv(_python, command)
+    local out, err = os.iorunv(_bun, command)
+
     
     -- dump output
     if option.get("verbose") and out and #out > 0 then
@@ -485,5 +482,6 @@ function mako_render(target, opt)
 end
 
 function is_env_complete()
-    return _meta and (_python or _bun)
+    -- return _meta and _python
+    return _meta and _bun
 end

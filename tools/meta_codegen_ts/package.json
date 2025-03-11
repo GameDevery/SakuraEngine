@@ -8,7 +8,6 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "art-template": "^4.13.2",
     "peggy": "^4.2.0"
   }
 }

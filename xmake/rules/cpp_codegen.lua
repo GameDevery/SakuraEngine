@@ -4,7 +4,7 @@
         {
             file = "script.py", -- script file
             private = false, -- if true, generated files will not be exported
-            import_dirs = { "import/a", "import/b" }, -- python import dirs
+            import_dirs = { "import/a", "import/b" }, -- script import dirs
         }
     },
     dep_files = { "test/*.py", "test/*.mako" }, -- dep_files
