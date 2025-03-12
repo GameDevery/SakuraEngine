@@ -230,7 +230,7 @@ function find_meta()
 end
 function find_bun()
     -- find embedded bun
-    local embedded_bun = find_tool("python")
+    local embedded_bun = find_tool("bun")
     if embedded_bun then
         return embedded_bun
     end
