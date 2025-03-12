@@ -8,12 +8,14 @@ import("core.base.object")
 -- fields:
 --   pkg_dir: unpacked package dir
 --   bin_dir: build binary dir
+--   print_log: need print log
 local Installer = Installer or object {}
 -- custom copy
 -- @param src: in package dir
 -- @param dst: out dir
 -- @param opt: options
 --   opt.rootdir: in package dir, used for copy keep structure
+--   opt.dst_is_dir: if dst is a dir, we need create dir first
 function Installer:cp(src, dst, opt)
     opt = opt or {}
 
@@ -21,7 +23,30 @@ function Installer:cp(src, dst, opt)
     local abs_src = path.join(self.pkg_dir, src)
     local abs_rootdir = opt.rootdir and path.join(self.pkg_dir, opt.rootdir) or nil
 
+    -- rm dst
+    if opt.rm_dst then
+        if os.exists(dst) then
+            if self.print_log then
+                print("remove %s", dst)
+            end
+            os.rm(dst)
+        end
+    end
+
+    -- create dir
+    if opt.dst_is_dir then
+        if not os.isdir(dst) then
+            if self.print_log then
+                print("create %s", dst)
+            end
+            os.mkdir(dst)
+        end
+    end
+
     -- do cp
+    if self.print_log then
+        print("copy %s to %s", abs_src, dst)
+    end
     os.cp(abs_src, dst, {rootdir = abs_rootdir})
 end
 -- copy into target binary dir
@@ -36,6 +61,9 @@ function Installer:bin(src, opt)
     local abs_rootdir = opt.rootdir and path.join(self.pkg_dir, opt.rootdir) or nil
 
     -- do cp
+    if self.print_log then
+        print("copy %s to %s", abs_src, self.bin_dir)
+    end
     os.cp(abs_src, self.bin_dir, {rootdir = abs_rootdir})
 end
 
@@ -268,7 +296,7 @@ function copy_files(opt)
         force = opt.force,
     })
 end
-function install_pkg_custom(opt)
+function install_custom(opt)
     utils.on_changed(function (change_info)
         _log(opt, "custom")
         utils.redirect_fenv(opt.func, install_custom)
@@ -378,7 +406,7 @@ function collect_install_items()
                 if not _filter(item.opt.arch, os.arch()) then
                     goto continue
                 end
-                if not _filter(item.opt.toolchain, target:toolchains()[0]) then
+                if not _filter(item.opt.toolchain, target:toolchains()[1]:name()) then
                     goto continue
                 end
 

@@ -193,6 +193,9 @@ end
 function find_download_file(file_name)
     return detect.find_file(file_name, download_dir())
 end
+function find_download_package(package_name)
+    return find_download_file(package_name_sdk(package_name, opt))
+end
 function find_download_package_tool(tool_name)
     return find_download_file(package_name_tool(tool_name))
 end

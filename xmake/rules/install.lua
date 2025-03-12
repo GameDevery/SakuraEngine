@@ -41,6 +41,9 @@ rule("skr.install")
             if not _filter(item.opt.arch, os.arch()) then
                 goto continue
             end
+            if not _filter(item.opt.toolchain, target:toolchains()[1]:name()) then
+                goto continue
+            end
             
             -- add items
             if item.kind == "download" then

@@ -231,6 +231,9 @@ function Downloader:download_file(file_name, opt)
         raise("failed to download %s", file_name)
     end
 end
+function Downloader:download_package(pkg_name, opt)
+    self:download_file(utils.package_name_sdk(pkg_name, opt), opt)
+end
 function Downloader:download_tool(tool_name, opt)
     self:download_file(utils.package_name_tool(tool_name), opt)
 end
