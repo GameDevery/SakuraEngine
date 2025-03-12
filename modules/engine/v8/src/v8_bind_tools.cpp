@@ -1,6 +1,6 @@
 #include "SkrV8/v8_bind_tools.hpp"
 
-// param helpers
+// helpers
 namespace skr::v8
 {
 // write primitive
@@ -60,7 +60,53 @@ inline static bool _push_param_primitive(
             return false;
     }
 }
+template <typename Data>
+inline static bool _match_params(const Data* data, const ::v8::FunctionCallbackInfo<::v8::Value>& info)
+{
+    using namespace ::v8;
+    auto call_length   = info.Length();
+    auto native_length = data->param_data.size();
+
+    // length > data, must be unmatched
+    if (call_length > native_length)
+    {
+        return false;
+    }
+
+    // match default param
+    for (size_t i = call_length; i < native_length; ++i)
+    {
+        if (!data->param_data[i].make_default)
+        {
+            return false;
+        }
+    }
+
+    // match signature
+    for (size_t i = 0; i < call_length; ++i)
+    {
+        Local<Value>            call_value       = info[i];
+        rttr::TypeSignatureView native_signature = data->param_data[i].type.view();
+
+        // use default value
+        if (call_value->IsUndefined())
+        {
+            if (!data->param_data[i].make_default)
+            {
+                return false;
+            }
+        }
+
+        // match type
+        if (!V8BindTools::match_type(call_value, native_signature))
+        {
+            return false;
+        }
+    }
+
+    return true;
 }
+} // namespace skr::v8
 
 namespace skr::v8
 {
@@ -114,6 +160,26 @@ bool V8BindTools::match_type(::v8::Local<::v8::Value> v8_value, rttr::TypeSignat
         return false;
     }
 }
+bool V8BindTools::match_params(const rttr::CtorData* data, const ::v8::FunctionCallbackInfo<::v8::Value>& info)
+{
+    return _match_params(data, info);
+}
+bool V8BindTools::match_params(const rttr::MethodData* data, const ::v8::FunctionCallbackInfo<::v8::Value>& info)
+{
+    return _match_params(data, info);
+}
+bool V8BindTools::match_params(const rttr::StaticMethodData* data, const ::v8::FunctionCallbackInfo<::v8::Value>& info)
+{
+    return _match_params(data, info);
+}
+bool V8BindTools::match_params(const rttr::ExternMethodData* data, const ::v8::FunctionCallbackInfo<::v8::Value>& info)
+{
+    return _match_params(data, info);
+}
+bool V8BindTools::match_params(const rttr::FunctionData* data, const ::v8::FunctionCallbackInfo<::v8::Value>& info)
+{
+    return _match_params(data, info);
+}
 
 // convert tools
 bool V8BindTools::native_to_v8_primitive(
@@ -121,7 +187,8 @@ bool V8BindTools::native_to_v8_primitive(
     ::v8::Isolate*             isolate,
     rttr::TypeSignatureView    signature,
     void*                      native_data,
-    ::v8::Local<::v8::Value>&  out_v8_value)
+    ::v8::Local<::v8::Value>&  out_v8_value
+)
 {
     if (signature.is_type() && !signature.is_decayed_pointer())
     {
@@ -166,7 +233,7 @@ bool V8BindTools::native_to_v8_primitive(
                 out_v8_value = ::v8::Boolean::New(isolate, *reinterpret_cast<bool*>(native_data));
                 return true;
             case rttr::type_id_of<skr::String>().get_hash():
-                out_v8_value = ::v8::String::NewFromUtf8(isolate, reinterpret_cast<skr::String*>(native_data)->c_str_raw()).ToLocalChecked();
+                out_v8_value = V8BindTools::str_to_v8(*reinterpret_cast<skr::String*>(native_data), isolate, false);
                 return true;
             default:
                 break;
@@ -245,6 +312,170 @@ bool V8BindTools::v8_to_native_primitive(
     }
     return false;
 }
+bool V8BindTools::native_to_v8_box(
+    ::v8::Local<::v8::Context> context,
+    ::v8::Isolate*             isolate,
+    rttr::TypeSignatureView    signature,
+    void*                      native_data,
+    ::v8::Local<::v8::Value>&  out_v8_value
+)
+{
+    // check signature
+    if (!signature.is_type() || signature.is_decayed_pointer()) { return false; }
+
+    // get type
+    signature.jump_modifier();
+    GUID type_id;
+    signature.read_type_id(type_id);
+    rttr::Type* type = rttr::get_type_from_guid(type_id);
+    if (!type) { return false; }
+
+    // check box flag
+    if (!::skr::flag_all(type->record_flag(), rttr::ERecordFlag::ScriptBox)) { return false; }
+
+    auto result = ::v8::Object::New(isolate);
+
+    // each fields
+    type->each_field([&](const rttr::FieldData* field, const rttr::Type* field_owner) {
+        // check visible
+        if (!flag_all(field->flag, rttr::EFieldFlag::ScriptVisible)) { return; }
+
+        // get field info
+        void* field_owner_address = type->cast_to_base(field_owner->type_id(), native_data);
+        void* field_address = field->get_address(field_owner_address);
+
+        // convert type
+        ::v8::Local<::v8::Value> field_value;
+        if (native_to_v8_primitive(
+            context,
+            isolate,
+            field->type,
+            field_address,
+            field_value
+        ))
+        {
+            // set value
+            result->Set(
+                context,
+                str_to_v8(field->name, isolate, true),
+                field_value
+            ).Check();
+        }
+        else if (native_to_v8_box(
+            context,
+            isolate,
+            field->type,
+            field_address,
+            field_value
+        ))
+        {
+            // set value
+            result->Set(
+                context,
+                str_to_v8(field->name, isolate, true),
+                field_value
+            ).Check();
+        }
+        else
+        {
+            SKR_ASSERT(false && "ScriptBox record fields must be primitive or box type");
+        }
+    });
+
+    // set value
+    out_v8_value = result;
+
+    return true;
+}
+bool V8BindTools::v8_to_native_box(
+    ::v8::Local<::v8::Context> context,
+    ::v8::Isolate*             isolate,
+    rttr::TypeSignatureView    signature,
+    ::v8::Local<::v8::Value>   v8_value,
+    void*                      out_native_data,
+    bool                       is_init
+)
+{
+    // check signature
+    if (!signature.is_type() || signature.is_decayed_pointer()) { return false; }
+
+    // get type
+    signature.jump_modifier();
+    GUID type_id;
+    signature.read_type_id(type_id);
+    rttr::Type* type = rttr::get_type_from_guid(type_id);
+    if (!type) { return false; }
+
+    // check box flag
+    if (!::skr::flag_all(type->record_flag(), rttr::ERecordFlag::ScriptBox)) { return false; }
+
+    // check v8 value
+    if (!v8_value->IsObject() && !v8_value->IsArray()) {
+        return false;
+    }
+    auto v8_object = v8_value->ToObject(context).ToLocalChecked();
+
+    // do init
+    if (!is_init)
+    {
+        void* raw_invoker = type->find_ctor_t<void()>()->native_invoke;
+        auto* invoker =  reinterpret_cast<void(*)(void*)>(raw_invoker);
+        invoker(out_native_data);
+    }
+
+    // each fields
+    bool failed = false;
+    type->each_field([&](const rttr::FieldData* field, const rttr::Type* field_owner) {
+        // check visible
+        if (!flag_all(field->flag, rttr::EFieldFlag::ScriptVisible)) { return; }
+
+        // fast exit if failed
+        if (failed) { return; }
+
+        // get field info
+        void* field_owner_address = type->cast_to_base(field_owner->type_id(), out_native_data);
+        void* field_address = field->get_address(field_owner_address);
+
+        // find object field
+        auto field_value = v8_object->Get(
+            context, 
+            str_to_v8(field->name, isolate)
+        );
+        if (field_value.IsEmpty()) {
+            failed = true;
+            return;
+        }
+        auto checked_field_value = field_value.ToLocalChecked();
+
+        // do convert
+        if (v8_to_native_primitive(
+            context, 
+            isolate, 
+            field->type, 
+            checked_field_value, 
+            field_address, 
+            true
+        ))
+        {
+        }
+        else if (v8_to_native_box(
+            context,
+            isolate,
+            field->type,
+            checked_field_value,
+            field_address,
+            true
+        ))
+        {
+        }
+        else
+        {
+            SKR_ASSERT(false && "ScriptBox record fields must be primitive or box type");
+        }
+    });
+
+    return true;
+}
 
 // function invoke helpers
 void V8BindTools::push_param(
@@ -321,7 +552,7 @@ void V8BindTools::push_param(
     }
 }
 bool V8BindTools::read_return(
-    rttr::DynamicStack&        stack, 
+    rttr::DynamicStack&        stack,
     rttr::TypeSignatureView    signature,
     ::v8::Local<::v8::Context> context,
     ::v8::Isolate*             isolate,
@@ -343,12 +574,12 @@ bool V8BindTools::read_return(
         else
         {
             if (native_to_v8_primitive(
-                context,
-                isolate,
-                signature,
-                stack.get_return_raw(),
-                out_value
-            ))
+                    context,
+                    isolate,
+                    signature,
+                    stack.get_return_raw(),
+                    out_value
+                ))
             {
                 return true;
             }
@@ -359,7 +590,7 @@ bool V8BindTools::read_return(
             }
         }
     }
-    else 
+    else
     {
         // TODO. handle generic type
         SKR_UNIMPLEMENTED_FUNCTION()
@@ -425,12 +656,12 @@ void V8BindTools::call_method(
     // read return
     ::v8::Local<::v8::Value> out_value;
     if (read_return(
-        stack,
-        ret_type,
-        context,
-        isolate,
-        out_value
-    ))
+            stack,
+            ret_type,
+            context,
+            isolate,
+            out_value
+        ))
     {
         info.GetReturnValue().Set(out_value);
     }
@@ -465,12 +696,12 @@ void V8BindTools::call_function(
     // read return
     ::v8::Local<::v8::Value> out_value;
     if (read_return(
-        stack,
-        ret_type,
-        context,
-        isolate,
-        out_value
-    ))
+            stack,
+            ret_type,
+            context,
+            isolate,
+            out_value
+        ))
     {
         info.GetReturnValue().Set(out_value);
     }

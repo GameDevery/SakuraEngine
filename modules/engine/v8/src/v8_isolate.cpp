@@ -173,7 +173,7 @@ void V8Isolate::make_record_template(::skr::rttr::Type* type)
                     
                     // bind to template
                     ctor_template->PrototypeTemplate()->Set(
-                        ::v8::String::NewFromUtf8(_isolate, method->name.c_str_raw()).ToLocalChecked(),
+                        V8BindTools::str_to_v8(method->name, _isolate, true),
                         FunctionTemplate::New(
                             _isolate,
                             _call_method,
@@ -211,7 +211,7 @@ void V8Isolate::make_record_template(::skr::rttr::Type* type)
 
                     // bind to template
                     ctor_template->PrototypeTemplate()->SetAccessorProperty(
-                        ::v8::String::NewFromUtf8(_isolate, field->name.c_str_raw()).ToLocalChecked(),
+                        V8BindTools::str_to_v8(field->name, _isolate, true),
                         FunctionTemplate::New(
                             _isolate,
                             _get_field,
@@ -251,7 +251,7 @@ void V8Isolate::make_record_template(::skr::rttr::Type* type)
 
                     // bind to template
                     ctor_template->Set(
-                        ::v8::String::NewFromUtf8(_isolate, static_method->name.c_str_raw()).ToLocalChecked(),
+                        V8BindTools::str_to_v8(static_method->name, _isolate, true),
                         FunctionTemplate::New(
                             _isolate,
                             _call_static_method,
@@ -288,7 +288,7 @@ void V8Isolate::make_record_template(::skr::rttr::Type* type)
                     
                     // bind to template
                     ctor_template->SetAccessorProperty(
-                        ::v8::String::NewFromUtf8(_isolate, static_field->name.c_str_raw()).ToLocalChecked(),
+                        V8BindTools::str_to_v8(static_field->name, _isolate, true),
                         FunctionTemplate::New(
                             _isolate,
                             _get_static_field,
@@ -329,7 +329,7 @@ void V8Isolate::inject_templates_into_context(::v8::Global<::v8::Context> contex
         // set to context
         local_context->Global()->Set(
             local_context,
-            ::v8::String::NewFromUtf8(_isolate, type->name().c_str_raw()).ToLocalChecked(),
+            V8BindTools::str_to_v8(type->name(), _isolate, true),
             function
         ).Check();
     }
@@ -475,7 +475,7 @@ void V8Isolate::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
                 V8BindTools::call_ctor(alloc_mem, *ctor_data, info, Context, Isolate);
                 
                 // cast to ScriptbleObject
-                void* casted_mem = bind_data->type->cast_to(rttr::type_id_of<rttr::ScriptbleObject>(), alloc_mem);
+                void* casted_mem = bind_data->type->cast_to_base(rttr::type_id_of<rttr::ScriptbleObject>(), alloc_mem);
 
                 // make bind core
                 V8BindRecordCore* bind_core = SkrNew<V8BindRecordCore>();
@@ -546,7 +546,7 @@ void V8Isolate::_call_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info
     {
         if (V8BindTools::match_params(overload.method, info))
         {
-            void* obj =  bind_core->cast_to(overload.owner_type->type_id());
+            void* obj =  bind_core->cast_to_base(overload.owner_type->type_id());
 
             V8BindTools::call_method(
                 obj,
@@ -625,13 +625,26 @@ void V8Isolate::_get_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
     auto* bind_data   = reinterpret_cast<V8BindFieldData*>(info.Data().As<External>()->Value());
     auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
 
+    // get field address
+    void* field_address = bind_data->field->get_address(bind_core->cast_to_base(bind_data->owner_type->type_id()));
+
     // return field
     Local<Value> result;
     if (V8BindTools::native_to_v8_primitive(
         Context,
         Isolate,
         bind_data->field->type,
-        bind_data->field->get_address(bind_core->cast_to(bind_data->owner_type->type_id())),
+        field_address,
+        result
+    ))
+    {
+        info.GetReturnValue().Set(result);
+    }
+    else if (V8BindTools::native_to_v8_box(
+        Context,
+        Isolate,
+        bind_data->field->type,
+        field_address,
         result
     ))
     {
@@ -663,13 +676,26 @@ void V8Isolate::_set_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
     auto* bind_data   = reinterpret_cast<V8BindFieldData*>(info.Data().As<External>()->Value());
     auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
 
+    // get field address
+    void* field_address = bind_data->field->get_address(bind_core->cast_to_base(bind_data->owner_type->type_id()));
+
     // set field
     if (V8BindTools::v8_to_native_primitive(
         Context,
         Isolate,
         bind_data->field->type,
         info[0],
-        bind_data->field->get_address(bind_core->cast_to(bind_data->owner_type->type_id())),
+        field_address,
+        true
+    ))
+    {
+    }
+    else if (V8BindTools::v8_to_native_box(
+        Context,
+        Isolate,
+        bind_data->field->type,
+        info[0],
+        field_address,
         true
     ))
     {
@@ -708,6 +734,16 @@ void V8Isolate::_get_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>&
     {
         info.GetReturnValue().Set(result);
     }
+    else if (V8BindTools::native_to_v8_box(
+        Context,
+        Isolate,
+        bind_data->field->type,
+        bind_data->field->address,
+        result
+    ))
+    {
+        info.GetReturnValue().Set(result);
+    }
     else
     {
         Isolate->ThrowError("field type not supported");
@@ -732,6 +768,16 @@ void V8Isolate::_set_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>&
 
     // set field
     if (V8BindTools::v8_to_native_primitive(
+        Context,
+        Isolate,
+        bind_data->field->type,
+        info[0],
+        bind_data->field->address,
+        true
+    ))
+    {
+    }
+    else if (V8BindTools::v8_to_native_box(
         Context,
         Isolate,
         bind_data->field->type,

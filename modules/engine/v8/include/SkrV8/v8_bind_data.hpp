@@ -82,9 +82,9 @@ struct V8BindRecordCore {
     ::v8::Persistent<::v8::Object> v8_object;
     
     // helper functions
-    inline void* cast_to(::skr::GUID type_id)
+    inline void* cast_to_base(::skr::GUID type_id)
     {
-        return type->cast_to(type_id, object->iobject_get_head_ptr());
+        return type->cast_to_base(type_id, object->iobject_get_head_ptr());
     }
 };
 } // namespace skr::v8

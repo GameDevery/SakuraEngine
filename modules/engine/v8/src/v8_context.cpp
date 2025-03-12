@@ -1,6 +1,7 @@
 #include "SkrV8/v8_context.hpp"
 #include "SkrCore/log.hpp"
 #include "SkrV8/v8_isolate.hpp"
+#include "SkrV8/v8_bind_tools.hpp"
 
 namespace skr::v8
 {
@@ -54,12 +55,7 @@ void V8Context::set_global(StringView name, uint32_t v)
     Local<Object>  global = solved_context->Global();
 
     // translate value
-    Local<::v8::String> key = ::v8::String::NewFromUtf8(
-        _isolate->v8_isolate(), 
-        name.data_raw(),
-        NewStringType::kNormal,
-        name.size()
-    ).ToLocalChecked();
+    Local<::v8::String> key = V8BindTools::str_to_v8(name, _isolate->v8_isolate(), true);
     Local<Value> value = Integer::New(_isolate->v8_isolate(), v);
     
     // set
@@ -79,12 +75,7 @@ void V8Context::set_global(StringView name, int32_t v)
     Local<Object>  global = solved_context->Global();
 
     // translate value
-    Local<::v8::String> key = ::v8::String::NewFromUtf8(
-        _isolate->v8_isolate(), 
-        name.data_raw(),
-        NewStringType::kNormal,
-        name.size()
-    ).ToLocalChecked();
+    Local<::v8::String> key = V8BindTools::str_to_v8(name, _isolate->v8_isolate(), true);
     Local<Value> value = Integer::New(_isolate->v8_isolate(), v);
     
     // set
@@ -104,12 +95,7 @@ void V8Context::set_global(StringView name, uint64_t v)
     Local<Object>  global = solved_context->Global();
 
     // translate value
-    Local<::v8::String> key = ::v8::String::NewFromUtf8(
-        _isolate->v8_isolate(), 
-        name.data_raw(),
-        NewStringType::kNormal,
-        name.size()
-    ).ToLocalChecked();
+    Local<::v8::String> key = V8BindTools::str_to_v8(name, _isolate->v8_isolate(), true);
     Local<Value> value = BigInt::New(_isolate->v8_isolate(), v);
     
     // set
@@ -129,12 +115,7 @@ void V8Context::set_global(StringView name, int64_t v)
     Local<Object>  global = solved_context->Global();
 
     // translate value
-    Local<::v8::String> key = ::v8::String::NewFromUtf8(
-        _isolate->v8_isolate(), 
-        name.data_raw(),
-        NewStringType::kNormal,
-        name.size()
-    ).ToLocalChecked();
+    Local<::v8::String> key = V8BindTools::str_to_v8(name, _isolate->v8_isolate(), true);
     Local<Value> value = BigInt::New(_isolate->v8_isolate(), v);
     
     // set
@@ -154,12 +135,7 @@ void V8Context::set_global(StringView name, double v)
     Local<Object>  global = solved_context->Global();
 
     // translate value
-    Local<::v8::String> key = ::v8::String::NewFromUtf8(
-        _isolate->v8_isolate(), 
-        name.data_raw(),
-        NewStringType::kNormal,
-        name.size()
-    ).ToLocalChecked();
+    Local<::v8::String> key = V8BindTools::str_to_v8(name, _isolate->v8_isolate(), true);
     Local<Value> value = Number::New(_isolate->v8_isolate(), v);
     
     // set
@@ -179,12 +155,7 @@ void V8Context::set_global(StringView name, bool v)
     Local<Object>  global = solved_context->Global();
 
     // translate value
-    Local<::v8::String> key = ::v8::String::NewFromUtf8(
-        _isolate->v8_isolate(), 
-        name.data_raw(),
-        NewStringType::kNormal,
-        name.size()
-    ).ToLocalChecked();
+    Local<::v8::String> key = V8BindTools::str_to_v8(name, _isolate->v8_isolate(), true);
     Local<Value> value = Boolean::New(_isolate->v8_isolate(), v);
     
     // set
@@ -204,18 +175,8 @@ void V8Context::set_global(StringView name, StringView v)
     Local<Object>  global = solved_context->Global();
 
     // translate value
-    Local<::v8::String> key = ::v8::String::NewFromUtf8(
-        _isolate->v8_isolate(), 
-        name.data_raw(),
-        NewStringType::kNormal,
-        name.size()
-    ).ToLocalChecked();
-    Local<Value> value = ::v8::String::NewFromUtf8(
-        _isolate->v8_isolate(), 
-        v.data_raw(),
-        NewStringType::kNormal,
-        v.size()
-    ).ToLocalChecked();
+    Local<::v8::String> key = V8BindTools::str_to_v8(name, _isolate->v8_isolate(), true);
+    Local<Value> value = V8BindTools::str_to_v8(v, _isolate->v8_isolate(), false);
     
     // set
     global->Set(solved_context, key, value).Check();
@@ -234,12 +195,7 @@ void V8Context::set_global(StringView name, skr::rttr::ScriptbleObject* obj)
     Local<Object>  global = solved_context->Global();
 
     // translate value
-    Local<::v8::String> key = ::v8::String::NewFromUtf8(
-        _isolate->v8_isolate(), 
-        name.data_raw(),
-        NewStringType::kNormal,
-        name.size()
-    ).ToLocalChecked();
+    Local<::v8::String> key = V8BindTools::str_to_v8(name, _isolate->v8_isolate(), true);
     Local<Object> value = _isolate->translate_record(obj)->v8_object.Get(_isolate->v8_isolate());
     
     // set
@@ -255,12 +211,7 @@ void V8Context::exec_script(StringView script)
     ::v8::Context::Scope       context_scope(solved_context);
 
     // compile script
-    ::v8::Local<::v8::String> source = ::v8::String::NewFromUtf8(
-                                       _isolate->v8_isolate(),
-                                       reinterpret_cast<const char*>(script.data_raw()),
-                                       ::v8::NewStringType::kNormal,
-                                       script.size())
-                                       .ToLocalChecked();
+    ::v8::Local<::v8::String> source = V8BindTools::str_to_v8(script, _isolate->v8_isolate(), false);
     auto compiled_script = ::v8::Script::Compile(solved_context, source);
     if (compiled_script.IsEmpty())
     {

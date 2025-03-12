@@ -241,7 +241,7 @@ bool Type::based_on(GUID type_id) const
             return false;
     }
 }
-void* Type::cast_to(GUID type_id, void* p) const
+void* Type::cast_to_base(GUID type_id, void* p) const
 {
     switch (_type_category)
     {
@@ -270,7 +270,7 @@ void* Type::cast_to(GUID type_id, void* p) const
                     auto type = get_type_from_guid(base->type_id);
                     if (type)
                     {
-                        auto casted = type->cast_to(type_id, p);
+                        auto casted = type->cast_to_base(type_id, p);
                         if (casted)
                         {
                             return casted;
@@ -292,7 +292,7 @@ void* Type::cast_to(GUID type_id, void* p) const
             return nullptr;
     }
 }
-TypeCaster Type::caster(GUID type_id) const
+TypeCaster Type::caster_to_base(GUID type_id) const
 {
     TypeCaster result;
     _build_caster(result, type_id);

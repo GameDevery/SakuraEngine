@@ -88,8 +88,8 @@ struct SKR_CORE_API Type final {
 
     // caster
     bool       based_on(GUID type_id) const;
-    void*      cast_to(GUID type_id, void* p) const;
-    TypeCaster caster(GUID type_id) const;
+    void*      cast_to_base(GUID type_id, void* p) const;
+    TypeCaster caster_to_base(GUID type_id) const;
 
     // get dtor
     Optional<DtorData> dtor_data() const;
@@ -112,6 +112,7 @@ struct SKR_CORE_API Type final {
     const ExternMethodData* find_extern_method(TypeFindConfig config) const;
 
     // template find method & field
+    // TODO. 使用包装器进行包装，辅助进行调用等行为
     template <typename Func>
     const CtorData* find_ctor_t(ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict) const;
     template <typename Func>
