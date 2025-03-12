@@ -275,10 +275,30 @@ inline void format_integer(TString& out, int64_t value, typename TString::ViewTy
     using ViewType = typename TString::ViewType;
 
     ViewType type_spec_view = u8"bcdox";
-
-    skr_char8 type        = u8'd';
     uint64_t  holding     = npos_of<uint64_t>;
-    bool      with_prefix = false;
+    skr_char8 type        = u8'd';
+    bool with_prefix = false; // #
+
+    // // tail specs
+    // bool binary  = false; // b
+    // bool as_char = false; // c
+    // bool decimal = false; // d
+    // bool octal   = false; // 0
+    // bool hex     = false; // x
+    
+    // // prifix specs
+    // bool with_prefix            = false; // #
+    // bool with_non_negative_sign = false; // +
+    // bool with_prefix_zero       = false; // 0 just after [#+-]
+    
+    // // align
+    // char align_fill_ch = u8' '; // ch befor [<>^]
+    // bool left_align   = false; // <
+    // bool right_align  = false; // >
+    // bool center_align = false; // ^
+
+    // // width & precision
+    // uint64_t width = 0; // 0
 
     if (!spec.is_empty())
     {
@@ -373,11 +393,6 @@ inline void format_float(TString& out, double value, typename TString::ViewType 
 {
     using ViewType = typename TString::ViewType;
 
-    static constexpr uint64_t TOLERANCE_EXPONENT = 3;
-    static constexpr double   TOLERANCE          = 1e-3;
-
-    ViewType type_spec_view = u8"aefg";
-
     // inf & nan
     if (std::isinf(value))
     {
@@ -390,22 +405,52 @@ inline void format_float(TString& out, double value, typename TString::ViewType 
         return;
     }
 
+    // specs
+    bool hex = false;         // a
+    bool scientific = false;  // e
+    bool fixed = false;       // f
+    bool general = false;     // g
+    uint64_t precision = 0;   // .xxx
+
     // solve spec
-    uint64_t precision = npos_of<uint64_t>;
     if (!spec.is_empty())
     {
+        // parse formats
         ViewType parsing = spec;
-        if (type_spec_view.contains(parsing.last_buffer(0)))
+        switch (parsing.last_buffer(0))
         {
-            parsing = parsing.subview(0, parsing.size() - 1);
+            case u8'a':
+                hex = true;
+                parsing = parsing.subview(0, parsing.size() - 1);
+                break;
+            case u8'e':
+                scientific = true;
+                parsing = parsing.subview(0, parsing.size() - 1);
+                break;
+            case u8'f':
+                fixed = true;
+                parsing = parsing.subview(0, parsing.size() - 1);
+                break;
+            case u8'g':
+                general = true;
+                parsing = parsing.subview(0, parsing.size() - 1);
+                break;
+            default:
+                break;
+        
         }
+
+        // parse precision
         if (!parsing.is_empty())
         {
             if (auto found = parsing.find(u8'.'))
             {
                 ViewType precision_view  = parsing.subview(found.index() + 1);
-                const auto [last, error] = std::from_chars((const char*)precision_view.data(),
-                                                           (const char*)(precision_view.data() + precision_view.size()), precision);
+                const auto [last, error] = std::from_chars(
+                    (const char*)precision_view.data(),
+                    (const char*)(precision_view.data() + precision_view.size()),
+                    precision
+                );
                 SKR_VERIFY((last == (const char*)(precision_view.data() + precision_view.size())) && "Invalid format specification!");
                 parsing = parsing.subview(0, found.index());
             }
@@ -413,73 +458,76 @@ inline void format_float(TString& out, double value, typename TString::ViewType 
         SKR_VERIFY(parsing.is_empty() && "Invalid format specification!");
     }
 
-    // final solve
-    static constexpr uint64_t max_precision = 9;
-    SKR_VERIFY((precision == npos_of<uint64_t> || precision <= max_precision) && "Too high precision for float type!");
-    const bool negative = value < 0;
+    // convert to flags
+    std::chars_format format;
+    if (hex)
+    {
+        format = std::chars_format::hex;
+    }
+    else if (scientific)
+    {
+        format = std::chars_format::scientific;
+    }
+    else if (fixed)
+    {
+        format = std::chars_format::fixed;
+    }
+    else if (general)
+    {
+        format = std::chars_format::general;
+    }
+    bool has_format = hex || scientific || fixed || general;
+    
+    // solve
+    // see https://en.cppreference.com/w/cpp/utility/format/spec
+    constexpr uint32_t buffer_count = 128;
+    char buffer[buffer_count];
+    std::to_chars_result result;
+    if (has_format)
+    {
+        result = std::to_chars(
+            buffer,
+            buffer + buffer_count,
+            value,
+            format,
+            precision
+        );
+    }
+    else 
+    {
+        if (precision > 0)
+        {
+            result = std::to_chars(
+                buffer,
+                buffer + buffer_count,
+                value,
+                std::chars_format::general,
+                precision
+            );
+        }
+        else
+        {
+            result = std::to_chars(
+                buffer,
+                buffer + buffer_count,
+                value
+            );
+        }
+    }
+    
 
     // append
-    if (negative)
-        out.append(u8"-");
-    double         remaining = negative ? -value : value;
-    const uint64_t decimal   = static_cast<uint64_t>(remaining);
-    remaining -= static_cast<double>(decimal);
-    if (precision == npos_of<uint64_t>)
+    if (result.ec != std::errc())
     {
-        uint64_t max_floating = std::pow(10, max_precision + 1);
-        uint64_t floating     = 1;
-        uint64_t count_nine   = 0;
-        while (floating <= max_floating)
-        {
-            remaining *= 10;
-            floating *= 10;
-            const uint64_t ones = static_cast<uint64_t>(remaining);
-            floating += ones;
-            remaining -= static_cast<double>(ones);
-            if (ones == 9)
-            {
-                ++count_nine;
-                if (count_nine == TOLERANCE_EXPONENT)
-                {
-                    floating += 1;
-                    floating = floating / std::pow(10, TOLERANCE_EXPONENT);
-                    break;
-                }
-            }
-            else
-            {
-                count_nine = 0;
-            }
-            if (remaining < TOLERANCE)
-                break;
-        }
-        if (floating > 10)
-        {
-            format_integer(out, decimal, {});
-            uint64_t dot_position = out.size();
-            format_integer(out, floating, {});
-            out.at_buffer_w(dot_position) = u8'.';
-        }
-        if (floating == 2)
-        {
-            format_integer(out, decimal + 1, {});
-        }
+        SKR_VERIFY(false && "failed to convert float to string!");
     }
     else
     {
-        uint64_t floating = 1;
-        for (uint64_t i = 0; i < precision; ++i)
+        auto size = result.ptr - buffer;
+        if (size > 0)
         {
-            remaining *= 10;
-            floating *= 10;
-            const uint64_t ones = static_cast<uint64_t>(remaining);
-            floating += ones;
-            remaining -= static_cast<double>(ones);
+            out.append(buffer, size);
         }
-        format_integer(out, decimal, {});
-        uint64_t dot_position = out.size();
-        format_integer(out, floating, {});
-        out.at_buffer_w(dot_position) = u8'.';
     }
 }
 
