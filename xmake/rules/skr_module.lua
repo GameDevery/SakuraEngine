@@ -155,7 +155,7 @@ analyzer_target("Module.MetaSourceFile")
                 json.encode(module_info),
                 target:name()
             )
-            cprint("${green}[%s] module.configure.cpp", target:name())
+            -- cprint("${green}[%s] module.configure.cpp", target:name())
             io.writefile(filename, cpp_content)
         end, {
             cache_file = utils.depend_file_target(target:name(), "meta_source_file"),
