@@ -9,14 +9,14 @@ namespace test_v8
 sreflect_struct(
     guid = "612a176d-e2c8-4b22-89fa-2370d7ec5e44"
     rttr = @full
-    rttr.flags = ["ScriptBox"]
 )
+sscript_visible sscript_box
 float3 {
-    sattr(rttr.flags = ["ScriptVisible"])
+    sscript_visible
     float x = 0;
-    sattr(rttr.flags = ["ScriptVisible"])
+    sscript_visible
     float y = 0;
-    sattr(rttr.flags = ["ScriptVisible"])
+    sscript_visible
     float z = 0;
 };
 
@@ -26,9 +26,9 @@ sreflect_struct(
     rttr.flags = ["ScriptBox"]
 )
 Box3 {
-    sattr(rttr.flags = ["ScriptVisible"])
+    sscript_visible
     float3 min = {0, 0, 0};
-    sattr(rttr.flags = ["ScriptVisible"])
+    sscript_visible
     float3 max = {0, 0, 0};
 };
 
@@ -38,7 +38,7 @@ sreflect_struct(
     rttr.flags = ["ScriptBox"]
 )
 Box3Offset : Box3 {
-    sattr(rttr.flags = ["ScriptVisible"])
+    sscript_visible
     float3 offset = {0, 0, 0};
 };
 
@@ -46,7 +46,7 @@ sreflect_struct(
     guid = "caf11e29-c119-4685-9845-cb17fd2cb119";
     rttr = @full;
 )
-sattr(rttr.flags = ["ScriptVisible", "ScriptNewable"])
+sscript_visible sscript_newable
 TestType : public ::skr::rttr::ScriptbleObject {
     SKR_GENERATE_BODY()
 
@@ -57,50 +57,50 @@ TestType : public ::skr::rttr::ScriptbleObject {
     }
 
     // field
-    sattr(rttr.flags +=  ["ScriptVisible"])
+    sscript_visible
     int32_t value;
 
     // method
-    sattr(rttr.flags += ["ScriptVisible"])
+    sscript_visible
     void print_value() const
     {
         SKR_LOG_FMT_INFO(u8"print value: {}", value);
     }
-    sattr(rttr.flags += ["ScriptVisible"])
+    sscript_visible
     void add_to(int32_t v)
     {
         value += v;
     }
 
     // static field
-    sattr(rttr.flags += ["ScriptVisible"])
+    sscript_visible
     static int32_t static_value;
 
     // static method
-    sattr(rttr.flags += ["ScriptVisible"])
+    sscript_visible
     static void print_static_value()
     {
         SKR_LOG_FMT_INFO(u8"print static value: {}", static_value);
     }
-    sattr(rttr.flags += ["ScriptVisible"])
+    sscript_visible
     static int32_t add(int32_t a, int32_t b)
     {
         return a + b;
     }
 
     // box type
-    sattr(rttr.flags += ["ScriptVisible"])
+    sscript_visible
     float3 pos;
-    sattr(rttr.flags += ["ScriptVisible"])
+    sscript_visible
     Box3Offset box;
     
     // overload
-    sattr(rttr.flags += ["ScriptVisible"])
+    sscript_visible
     static void print(const float3& pos)
     {
         SKR_LOG_FMT_INFO(u8"print pos: {{{}, {}, {}}}", pos.x, pos.y, pos.z);
     }
-    sattr(rttr.flags += ["ScriptVisible"])
+    sscript_visible
     static void print(const Box3Offset& box)
     {
         SKR_LOG_FMT_INFO(u8"print box: min: {{{}, {}, {}}} max: {{{}, {}, {}}} offset: {{{}, {}, {}}}", 

@@ -17,12 +17,12 @@ template <typename T>
 struct RTTRTraits {
     inline static constexpr skr::StringView get_name()
     {
-        unimplemented_no_meta(T, "RTTRTraits<T>::get_name() is not implemented");
+        static_assert(std ::is_same_v<T, T*>, "RTTRTraits<T>::get_name() is not implemented");
         return {};
     }
     inline static constexpr GUID get_guid()
     {
-        unimplemented_no_meta(T, "RTTRTraits<T>::get_guid() is not implemented");
+        static_assert(std ::is_same_v<T, T*>, "RTTRTraits<T>::get_guid() is not implemented");
         return {};
     }
 };

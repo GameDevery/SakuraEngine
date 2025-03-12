@@ -55,6 +55,7 @@ struct SKR_V8_API V8BindTools {
         void*                      out_native_data,
         bool                       is_init
     );
+    //TODO. wrap bind use V8Isolate, wrap bind cannot be value signature
     
     // function invoke helpers
     static void push_param(

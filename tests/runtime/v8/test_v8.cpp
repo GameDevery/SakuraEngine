@@ -1,8 +1,6 @@
 #include "SkrV8/v8_isolate.hpp"
 #include "SkrV8/v8_context.hpp"
-#include "SkrRTTR/export/export_builder.hpp"
 #include "SkrRTTR/rttr_traits.hpp"
-#include "SkrRTTR/type.hpp"
 #include "SkrCore/log.hpp"
 #include "test_types.hpp"
 
@@ -59,7 +57,7 @@ int main(int argc, char* argv[])
     isolate.gc(true);
 
     // trigger shutdown
-    SKR_LOG_INFO(u8"==========================shutdown==========================");
+    SKR_LOG_FMT_INFO(u8"==========================shutdown==========================");
 
     // shutdown
     context.shutdown();

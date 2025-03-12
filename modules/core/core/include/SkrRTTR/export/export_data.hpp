@@ -60,12 +60,14 @@ EFieldFlag : uint32_t
 {
     None          = 0,      // default
     ScriptVisible = 1 << 0, // can script visit this field
+    ScriptWrap    = 1 << 1, // force export field use wrap mode
 };
 sreflect_enum_class(guid = "396e9de1-ce51-4a65-8e47-09525e91207f")
 EStaticFieldFlag : uint32_t
 {
     None          = 0,      // default
     ScriptVisible = 1 << 0, // can script visit this static field
+    ScriptWrap    = 1 << 1, // force export field use wrap mode
 };
 sreflect_enum_class(guid = "1f2aa88d-4d2f-47c0-8c97-b03cf574d673")
 ECtorFlag : uint32_t

@@ -10,12 +10,12 @@ template <class T>
 struct EnumSerdeTraits {
     static StringView to_string(const T& value)
     {
-        unimplemented_no_meta(T, "EnumTraits<T>::to_string is not implemented");
+        static_assert(std ::is_same_v<T, T*>, "EnumTraits<T>::to_string is not implemented");
         return {};
     }
     static bool from_string(StringView str, T& value)
     {
-        unimplemented_no_meta(T, "EnumTraits<T>::from_string is not implemented");
+        static_assert(std ::is_same_v<T, T*>, "EnumTraits<T>::from_string is not implemented");
         return false;
     }
 };
