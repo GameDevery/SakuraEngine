@@ -328,21 +328,21 @@ SKR_INLINE Vector<Memory>::Vector(const DataType* p, SizeType n, AllocatorCtorPa
     : Memory(std::move(param))
 {
     resize_unsafe(n);
-    memory::copy(data(), p, n);
+    ::skr::memory::copy(data(), p, n);
 }
 template <typename Memory>
 SKR_INLINE Vector<Memory>::Vector(std::initializer_list<DataType> init_list, AllocatorCtorParam param) noexcept
     : Memory(std::move(param))
 {
     resize_unsafe(init_list.size());
-    memory::copy(data(), init_list.begin(), init_list.size());
+    ::skr::memory::copy(data(), init_list.begin(), init_list.size());
 }
 template <typename Memory>
 SKR_INLINE Vector<Memory>::Vector(Span<DataType, SizeType> span, AllocatorCtorParam param) noexcept
     : Memory(std::move(param))
 {
     resize_unsafe(span.size());
-    memory::copy(data(), span.data(), span.size());
+    ::skr::memory::copy(data(), span.data(), span.size());
 }
 template <typename Memory>
 SKR_INLINE Vector<Memory>::~Vector()
@@ -387,7 +387,7 @@ SKR_INLINE void Vector<Memory>::assign(const DataType* p, SizeType n)
     resize_unsafe(n);
 
     // copy items
-    memory::copy(data(), p, n);
+    ::skr::memory::copy(data(), p, n);
 }
 template <typename Memory>
 SKR_INLINE void Vector<Memory>::assign(std::initializer_list<DataType> init_list)
@@ -407,7 +407,7 @@ SKR_INLINE void Vector<Memory>::assign(U&& container)
         auto n = Traits::size(std::forward<U>(container));
         auto p = Traits::data(std::forward<U>(container));
         resize_unsafe(n);
-        memory::copy(data(), p, n);
+        ::skr::memory::copy(data(), p, n);
     }
     else if constexpr (Traits::is_iterable && Traits::has_size)
     {
@@ -435,7 +435,7 @@ SKR_INLINE void Vector<Memory>::assign(U&& container)
 template <typename Memory>
 SKR_INLINE bool Vector<Memory>::operator==(const Vector& rhs) const
 {
-    return size() == rhs.size() && memory::compare(data(), rhs.data(), size());
+    return size() == rhs.size() && ::skr::memory::compare(data(), rhs.data(), size());
 }
 template <typename Memory>
 SKR_INLINE bool Vector<Memory>::operator!=(const Vector& rhs) const
@@ -546,7 +546,7 @@ SKR_INLINE void Vector<Memory>::resize(SizeType expect_size, const DataType& new
     }
     else if (expect_size < size())
     {
-        memory::destruct(data() + expect_size, size() - expect_size);
+        ::skr::memory::destruct(data() + expect_size, size() - expect_size);
     }
 
     // set size
@@ -564,7 +564,7 @@ SKR_INLINE void Vector<Memory>::resize_unsafe(SizeType expect_size)
     // destruct items if need
     if (expect_size < size())
     {
-        memory::destruct(data() + expect_size, size() - expect_size);
+        ::skr::memory::destruct(data() + expect_size, size() - expect_size);
     }
 
     // set size
@@ -582,11 +582,11 @@ SKR_INLINE void Vector<Memory>::resize_default(SizeType expect_size)
     // construct item or destruct item if need
     if (expect_size > size())
     {
-        memory::construct(data() + size(), expect_size - size());
+        ::skr::memory::construct(data() + size(), expect_size - size());
     }
     else if (expect_size < size())
     {
-        memory::destruct(data() + expect_size, size() - expect_size);
+        ::skr::memory::destruct(data() + expect_size, size() - expect_size);
     }
 
     // set size
@@ -608,7 +608,7 @@ SKR_INLINE void Vector<Memory>::resize_zeroed(SizeType expect_size)
     }
     else if (expect_size < size())
     {
-        memory::destruct(data() + expect_size, size() - expect_size);
+        ::skr::memory::destruct(data() + expect_size, size() - expect_size);
     }
 
     // set size
@@ -655,7 +655,7 @@ template <typename Memory>
 SKR_INLINE typename Vector<Memory>::DataRef Vector<Memory>::add_default(SizeType n)
 {
     DataRef ref = add_unsafe(n);
-    memory::construct(ref.ptr(), n);
+    ::skr::memory::construct(ref.ptr(), n);
     return ref;
 }
 template <typename Memory>
@@ -688,13 +688,13 @@ SKR_INLINE void Vector<Memory>::add_at_unsafe(SizeType idx, SizeType n)
     SKR_ASSERT((is_empty() && idx == 0) || is_valid_index(idx));
     auto move_n = size() - idx;
     add_unsafe(n);
-    memory::move(data() + idx + n, data() + idx, move_n);
+    ::skr::memory::move(data() + idx + n, data() + idx, move_n);
 }
 template <typename Memory>
 SKR_INLINE void Vector<Memory>::add_at_default(SizeType idx, SizeType n)
 {
     add_at_unsafe(idx, n);
-    memory::construct(data() + idx, n);
+    ::skr::memory::construct(data() + idx, n);
 }
 template <typename Memory>
 SKR_INLINE void Vector<Memory>::add_at_zeroed(SizeType idx, SizeType n)
@@ -743,7 +743,7 @@ SKR_INLINE typename Vector<Memory>::DataRef Vector<Memory>::append(U&& container
         if (n)
         {
             DataRef ref = add_unsafe(n);
-            memory::copy(ref.ptr(), p, n);
+            ::skr::memory::copy(ref.ptr(), p, n);
             return ref;
         }
     }
@@ -780,7 +780,7 @@ SKR_INLINE typename Vector<Memory>::DataRef Vector<Memory>::append(const U* p, S
     if (n)
     {
         DataRef ref = add_unsafe(n);
-        memory::copy(ref.ptr(), p, n);
+        ::skr::memory::copy(ref.ptr(), p, n);
         return ref;
     }
     return data() ? DataRef(data() + size(), size()) : DataRef();
@@ -793,7 +793,7 @@ SKR_INLINE void Vector<Memory>::append_at(SizeType idx, const Vector& arr)
     if (arr.size())
     {
         add_at_unsafe(idx, arr.size());
-        memory::copy(data() + idx, arr.data(), arr.size());
+        ::skr::memory::copy(data() + idx, arr.data(), arr.size());
     }
 }
 template <typename Memory>
@@ -802,7 +802,7 @@ SKR_INLINE void Vector<Memory>::append_at(SizeType idx, std::initializer_list<Da
     if (init_list.size())
     {
         add_at_unsafe(idx, init_list.size());
-        memory::copy(data() + idx, init_list.begin(), init_list.size());
+        ::skr::memory::copy(data() + idx, init_list.begin(), init_list.size());
     }
 }
 template <typename Memory>
@@ -817,7 +817,7 @@ SKR_INLINE void Vector<Memory>::append_at(SizeType idx, U&& container)
         if (n)
         {
             add_at_unsafe(idx, n);
-            memory::copy(data() + idx, p, n);
+            ::skr::memory::copy(data() + idx, p, n);
         }
     }
     else if constexpr (Traits::is_iterable && Traits::has_size)
@@ -852,7 +852,7 @@ SKR_INLINE void Vector<Memory>::append_at(SizeType idx, const U* p, SizeType n)
     if (n)
     {
         add_at_unsafe(idx, n);
-        memory::copy(data() + idx, p, n);
+        ::skr::memory::copy(data() + idx, p, n);
     }
 }
 
@@ -896,12 +896,12 @@ SKR_INLINE void Vector<Memory>::remove_at(SizeType index, SizeType n)
         auto move_n = size() - index - n;
 
         // destruct remove items
-        memory::destruct(data() + index, n);
+        ::skr::memory::destruct(data() + index, n);
 
         // move data
         if (move_n)
         {
-            memory::move(data() + index, data() + size() - move_n, move_n);
+            ::skr::memory::move(data() + index, data() + size() - move_n, move_n);
         }
 
         // update size
@@ -918,12 +918,12 @@ SKR_INLINE void Vector<Memory>::remove_at_swap(SizeType index, SizeType n)
         auto move_n = std::min(size() - index - n, n);
 
         // destruct remove items
-        memory::destruct(data() + index, n);
+        ::skr::memory::destruct(data() + index, n);
 
         // move data
         if (move_n)
         {
-            memory::move(data() + index, data() + size() - move_n, move_n);
+            ::skr::memory::move(data() + index, data() + size() - move_n, move_n);
         }
 
         // update size
@@ -1339,7 +1339,7 @@ template <typename Memory>
 SKR_INLINE void Vector<Memory>::stack_pop(SizeType n)
 {
     SKR_ASSERT(n > 0 && n <= size() && "pop size must be in [1, size()]");
-    memory::destruct(data() + size() - n, n);
+    ::skr::memory::destruct(data() + size() - n, n);
     _set_size(size() - n);
 }
 template <typename Memory>

@@ -35,7 +35,7 @@ struct BitVectorMemory : public Allocator {
             realloc(Algo::num_blocks(rhs._size));
 
             // copy
-            memory::copy(_data, rhs._data, Algo::num_blocks(rhs._size));
+            ::skr::memory::copy(_data, rhs._data, Algo::num_blocks(rhs._size));
             _size = rhs._size;
         }
     }
@@ -69,7 +69,7 @@ struct BitVectorMemory : public Allocator {
                 }
 
                 // copy
-                memory::copy(_data, rhs._data, Algo::num_blocks(rhs._size));
+                ::skr::memory::copy(_data, rhs._data, Algo::num_blocks(rhs._size));
                 _size = rhs._size;
             }
         }
@@ -109,7 +109,7 @@ struct BitVectorMemory : public Allocator {
         if (new_block_capacity != old_block_capacity)
         {
             // update memory
-            if constexpr (memory::MemoryTraits<BitBlockType>::use_realloc && Allocator::support_realloc)
+            if constexpr (::skr::memory::MemoryTraits<BitBlockType>::use_realloc && Allocator::support_realloc)
             {
                 _data = Allocator::template realloc<BitBlockType>(_data, new_block_capacity);
             }
@@ -121,7 +121,7 @@ struct BitVectorMemory : public Allocator {
                 // move items
                 if (_size)
                 {
-                    memory::move<BitBlockType>(new_memory, _data, Algo::num_blocks(_size));
+                    ::skr::memory::move<BitBlockType>(new_memory, _data, Algo::num_blocks(_size));
                 }
 
                 // release old memory

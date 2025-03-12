@@ -102,7 +102,7 @@ struct SparseHashSetMemory : public SparseVectorMemory<SparseHashSetStorage<T, t
         {
             if (new_bucket_size)
             {
-                if constexpr (memory::MemoryTraits<SizeType>::use_realloc && Allocator::support_realloc)
+                if constexpr (::skr::memory::MemoryTraits<SizeType>::use_realloc && Allocator::support_realloc)
                 {
                     Base::_bucket = Allocator::template realloc<SizeType>(bucket(), new_bucket_size);
                 }
@@ -208,13 +208,13 @@ struct FixedSparseHashSetMemory : public FixedSparseVectorMemory<SparseHashSetSt
         : Super(rhs)
     {
         _init_setup();
-        memory::copy(bucket(), rhs.bucket(), kBucketSize);
+        ::skr::memory::copy(bucket(), rhs.bucket(), kBucketSize);
     }
     inline FixedSparseHashSetMemory(FixedSparseHashSetMemory&& rhs) noexcept
         : Super(std::move(rhs))
     {
         _init_setup();
-        memory::copy(bucket(), rhs.bucket(), kBucketSize);
+        ::skr::memory::copy(bucket(), rhs.bucket(), kBucketSize);
         rhs._reset();
     }
 
@@ -224,7 +224,7 @@ struct FixedSparseHashSetMemory : public FixedSparseVectorMemory<SparseHashSetSt
         if (this != &rhs)
         {
             Super::operator=(rhs);
-            memory::copy(bucket(), rhs.bucket(), kBucketSize);
+            ::skr::memory::copy(bucket(), rhs.bucket(), kBucketSize);
         }
     }
     inline void operator=(FixedSparseHashSetMemory&& rhs) noexcept
@@ -232,7 +232,7 @@ struct FixedSparseHashSetMemory : public FixedSparseVectorMemory<SparseHashSetSt
         if (this != &rhs)
         {
             Super::operator=(std::move(rhs));
-            memory::copy(bucket(), rhs.bucket(), kBucketSize);
+            ::skr::memory::copy(bucket(), rhs.bucket(), kBucketSize);
             rhs._reset();
         }
     }
@@ -337,7 +337,7 @@ struct InlineSparseHashSetMemory : public InlineSparseVectorMemory<SparseHashSet
         _reset();
         if (rhs._is_using_inline_bucket())
         {
-            memory::copy(bucket(), rhs._bucket_placeholder.data_typed(), rhs._bucket_size);
+            ::skr::memory::copy(bucket(), rhs._bucket_placeholder.data_typed(), rhs._bucket_size);
         }
         else
         {
@@ -370,7 +370,7 @@ struct InlineSparseHashSetMemory : public InlineSparseVectorMemory<SparseHashSet
             // move data
             if (rhs._is_using_inline_bucket())
             {
-                memory::copy(bucket(), rhs.bucket(), rhs._bucket_size);
+                ::skr::memory::copy(bucket(), rhs.bucket(), rhs._bucket_size);
             }
             else
             {
@@ -399,7 +399,7 @@ struct InlineSparseHashSetMemory : public InlineSparseVectorMemory<SparseHashSet
                     SizeType* new_memory = Allocator::template alloc<SizeType>(new_bucket_size);
 
                     // needn't copy items here, because we always rehash after resize bucket
-                    // memory::copy(new_memory, _bucket_placeholder.data_typed(), _bucket_size);
+                    // ::skr::memory::copy(new_memory, _bucket_placeholder.data_typed(), _bucket_size);
 
                     // update
                     Base::_bucket      = new_memory;
@@ -408,7 +408,7 @@ struct InlineSparseHashSetMemory : public InlineSparseVectorMemory<SparseHashSet
                 }
                 else // heap -> heap
                 {
-                    if constexpr (memory::MemoryTraits<SizeType>::use_realloc && Allocator::support_realloc)
+                    if constexpr (::skr::memory::MemoryTraits<SizeType>::use_realloc && Allocator::support_realloc)
                     {
                         Base::_bucket = Allocator::template realloc<SizeType>(bucket(), new_bucket_size);
                     }
@@ -420,7 +420,7 @@ struct InlineSparseHashSetMemory : public InlineSparseVectorMemory<SparseHashSet
                         // needn't move items here, because we always rehash after resize bucket
                         // if (_bucket_size)
                         // {
-                        //     memory::move(new_memory, _bucket, std::min(new_bucket_size, _bucket_size));
+                        //     ::skr::memory::move(new_memory, _bucket, std::min(new_bucket_size, _bucket_size));
                         // }
 
                         // release old memory

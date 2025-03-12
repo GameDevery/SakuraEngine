@@ -55,7 +55,7 @@ struct VectorMemory : public Base, public Allocator {
         if (rhs._size)
         {
             realloc(rhs._size);
-            memory::copy(data(), rhs.data(), rhs._size);
+            ::skr::memory::copy(data(), rhs.data(), rhs._size);
             Base::_size = rhs._size;
         }
     }
@@ -87,7 +87,7 @@ struct VectorMemory : public Base, public Allocator {
                 }
 
                 // copy data
-                memory::copy(data(), rhs.data(), rhs._size);
+                ::skr::memory::copy(data(), rhs.data(), rhs._size);
                 Base::_size = rhs._size;
             }
         }
@@ -122,7 +122,7 @@ struct VectorMemory : public Base, public Allocator {
         SKR_ASSERT((Base::_capacity > 0 && Base::_data != nullptr) || (Base::_capacity == 0 && Base::_data == nullptr));
 
         // update memory
-        if constexpr (memory::MemoryTraits<DataType>::use_realloc && Allocator::support_realloc)
+        if constexpr (::skr::memory::MemoryTraits<DataType>::use_realloc && Allocator::support_realloc)
         {
             Base::_data = Allocator::template realloc<DataType>(data(), new_capacity);
         }
@@ -134,7 +134,7 @@ struct VectorMemory : public Base, public Allocator {
             // move items
             if (Base::_size)
             {
-                memory::move(new_memory, data(), Base::_size);
+                ::skr::memory::move(new_memory, data(), Base::_size);
             }
 
             // release old memory
@@ -194,7 +194,7 @@ struct VectorMemory : public Base, public Allocator {
     {
         if (Base::_size)
         {
-            memory::destruct(data(), Base::_size);
+            ::skr::memory::destruct(data(), Base::_size);
             Base::_size = 0;
         }
     }
@@ -244,7 +244,7 @@ struct FixedVectorMemory : public Base {
 
         if (other._size)
         {
-            memory::copy(data(), other.data(), other._size);
+            ::skr::memory::copy(data(), other.data(), other._size);
             Base::_size = other._size;
         }
     }
@@ -254,7 +254,7 @@ struct FixedVectorMemory : public Base {
 
         if (other._size)
         {
-            memory::move(data(), other.data(), other._size);
+            ::skr::memory::move(data(), other.data(), other._size);
             Base::_size = other._size;
 
             other._reset();
@@ -272,7 +272,7 @@ struct FixedVectorMemory : public Base {
             // copy data
             if (rhs._size > 0)
             {
-                memory::copy(data(), rhs.data(), rhs._size);
+                ::skr::memory::copy(data(), rhs.data(), rhs._size);
                 Base::_size = rhs._size;
             }
         }
@@ -287,7 +287,7 @@ struct FixedVectorMemory : public Base {
             // move data
             if (rhs._size > 0)
             {
-                memory::move(data(), rhs.data(), rhs._size);
+                ::skr::memory::move(data(), rhs.data(), rhs._size);
                 Base::_size = rhs._size;
 
                 rhs._reset();
@@ -319,7 +319,7 @@ struct FixedVectorMemory : public Base {
     {
         if (Base::_size)
         {
-            memory::destruct(data(), Base::_size);
+            ::skr::memory::destruct(data(), Base::_size);
             Base::_size = 0;
         }
     }
@@ -376,7 +376,7 @@ struct InlineVectorMemory : public Base, public Allocator {
         if (rhs._size)
         {
             realloc(rhs._size);
-            memory::copy(data(), rhs.data(), rhs._size);
+            ::skr::memory::copy(data(), rhs.data(), rhs._size);
             Base::_size = rhs._size;
         }
     }
@@ -389,7 +389,7 @@ struct InlineVectorMemory : public Base, public Allocator {
         // move data
         if (rhs._is_using_inline_memory())
         {
-            memory::move(_placeholder.data_typed(), rhs._placeholder.data_typed(), rhs._size);
+            ::skr::memory::move(_placeholder.data_typed(), rhs._placeholder.data_typed(), rhs._size);
             Base::_size = rhs._size;
         }
         else
@@ -424,7 +424,7 @@ struct InlineVectorMemory : public Base, public Allocator {
                 }
 
                 // copy data
-                memory::copy(data(), rhs.data(), rhs._size);
+                ::skr::memory::copy(data(), rhs.data(), rhs._size);
                 Base::_size = rhs._size;
             }
         }
@@ -443,7 +443,7 @@ struct InlineVectorMemory : public Base, public Allocator {
             // move data
             if (rhs._is_using_inline_memory())
             {
-                memory::move(data(), rhs.data(), rhs._size);
+                ::skr::memory::move(data(), rhs.data(), rhs._size);
                 Base::_size = rhs._size;
             }
             else
@@ -477,7 +477,7 @@ struct InlineVectorMemory : public Base, public Allocator {
                 // move items
                 if (Base::_size)
                 {
-                    memory::move(new_memory, _placeholder.data_typed(), Base::_size);
+                    ::skr::memory::move(new_memory, _placeholder.data_typed(), Base::_size);
                 }
 
                 // update data
@@ -485,7 +485,7 @@ struct InlineVectorMemory : public Base, public Allocator {
             }
             else // heap -> heap
             {
-                if constexpr (memory::MemoryTraits<DataType>::use_realloc && Allocator::support_realloc)
+                if constexpr (::skr::memory::MemoryTraits<DataType>::use_realloc && Allocator::support_realloc)
                 {
                     Base::_data     = Allocator::template realloc<DataType>(data(), new_capacity);
                     Base::_capacity = new_capacity;
@@ -498,7 +498,7 @@ struct InlineVectorMemory : public Base, public Allocator {
                     // move items
                     if (Base::_size)
                     {
-                        memory::move(new_memory, data(), Base::_size);
+                        ::skr::memory::move(new_memory, data(), Base::_size);
                     }
 
                     // release old memory
@@ -523,7 +523,7 @@ struct InlineVectorMemory : public Base, public Allocator {
                 // move items
                 if (Base::_size)
                 {
-                    memory::move(_placeholder.data_typed(), cached_heap_data, Base::_size);
+                    ::skr::memory::move(_placeholder.data_typed(), cached_heap_data, Base::_size);
                 }
 
                 // release old memory
@@ -583,7 +583,7 @@ struct InlineVectorMemory : public Base, public Allocator {
     {
         if (Base::_size)
         {
-            memory::destruct(data(), Base::_size);
+            ::skr::memory::destruct(data(), Base::_size);
             Base::_size = 0;
         }
     }

@@ -363,7 +363,7 @@ SKR_INLINE typename SparseHashSet<Memory>::DataRef SparseHashSet<Memory>::emplac
         }))
     {
         // move data
-        memory::move(ref.ptr(), &data_arr_ref.ref()._sparse_hash_set_data);
+        ::skr::memory::move(ref.ptr(), &data_arr_ref.ref()._sparse_hash_set_data);
 
         // remove placeholder
         data_vector().remove_at_unsafe(data_arr_ref.index());

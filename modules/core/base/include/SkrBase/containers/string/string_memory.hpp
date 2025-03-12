@@ -124,7 +124,7 @@ struct StringMemory : public StringMemoryBase<TS, SSOSize>, public Allocator {
         {
             Base::_reset_sso();
             realloc(rhs.size());
-            memory::copy(data(), rhs.data(), rhs.size());
+            ::skr::memory::copy(data(), rhs.data(), rhs.size());
             set_size(rhs.size());
         }
         else
@@ -143,7 +143,7 @@ struct StringMemory : public StringMemoryBase<TS, SSOSize>, public Allocator {
         else if (rhs._is_sso())
         {
             Base::_reset_sso();
-            memory::move(sso_data(), rhs.sso_data(), rhs._sso_size + 1); // include '\0
+            ::skr::memory::move(sso_data(), rhs.sso_data(), rhs._sso_size + 1); // include '\0
             Base::_sso_size = rhs._sso_size;
         }
         else
@@ -187,7 +187,7 @@ struct StringMemory : public StringMemoryBase<TS, SSOSize>, public Allocator {
                 }
 
                 // copy data
-                memory::copy(data(), rhs.data(), rhs.size());
+                ::skr::memory::copy(data(), rhs.data(), rhs.size());
                 set_size(rhs.size());
             }
         }
@@ -215,7 +215,7 @@ struct StringMemory : public StringMemoryBase<TS, SSOSize>, public Allocator {
             else if (rhs._is_sso())
             {
                 Base::_reset_sso();
-                memory::move(sso_data(), rhs.sso_data(), rhs._sso_size + 1); // include '\0'
+                ::skr::memory::move(sso_data(), rhs.sso_data(), rhs._sso_size + 1); // include '\0'
                 Base::_sso_size = rhs._sso_size;
             }
             else
@@ -275,7 +275,7 @@ struct StringMemory : public StringMemoryBase<TS, SSOSize>, public Allocator {
                 // move items
                 if (data_size)
                 {
-                    memory::move(new_memory, sso_data(), data_size + 1); // include '\0'
+                    ::skr::memory::move(new_memory, sso_data(), data_size + 1); // include '\0'
                 }
 
                 // rebuild heap data
@@ -292,7 +292,7 @@ struct StringMemory : public StringMemoryBase<TS, SSOSize>, public Allocator {
                 // move items
                 if (Base::_size)
                 {
-                    memory::move(new_memory, heap_data(), Base::_size + 1); // include '\0'
+                    ::skr::memory::move(new_memory, heap_data(), Base::_size + 1); // include '\0'
                 }
 
                 // release old memory
@@ -320,7 +320,7 @@ struct StringMemory : public StringMemoryBase<TS, SSOSize>, public Allocator {
                 Base::_reset_sso();
                 if (cached_heap_size)
                 {
-                    memory::move(sso_data(), cached_heap_data, cached_heap_size + 1); // include '\0'
+                    ::skr::memory::move(sso_data(), cached_heap_data, cached_heap_size + 1); // include '\0'
                     Base::_sso_size = cached_heap_size;
                 }
 
@@ -385,7 +385,7 @@ struct StringMemory : public StringMemoryBase<TS, SSOSize>, public Allocator {
         }
         else if (Base::size())
         {
-            memory::destruct(data(), Base::size());
+            ::skr::memory::destruct(data(), Base::size());
             set_size(0);
         }
     }
@@ -418,7 +418,7 @@ struct StringMemory : public StringMemoryBase<TS, SSOSize>, public Allocator {
 
             // copy data
             SizeType copy_size = std::min(except_size, literal_size);
-            memory::copy(data(), literal_data, copy_size);
+            ::skr::memory::copy(data(), literal_data, copy_size);
             set_size(copy_size);
 
             return true;
