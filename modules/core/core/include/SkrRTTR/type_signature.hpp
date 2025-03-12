@@ -914,6 +914,7 @@ struct TypeSignatureView {
                 peek_signal = TypeSignatureHelper::peek_signal(pos, end);
             }
             pos = TypeSignatureHelper::jump_signal(pos, end);
+            peek_signal = TypeSignatureHelper::peek_signal(pos, end);
         }
         return level;
     }

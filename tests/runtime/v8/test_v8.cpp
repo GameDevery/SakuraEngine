@@ -38,9 +38,17 @@ int main(int argc, char* argv[])
             test.add_to(TestType.add(7, 7));
             test.print_value();
 
-            test.print_pos();
             test.pos = {x: 11, y: 45, z: 14};
-            test.print_pos();
+            test.box = {
+                min: {x: 1, y: 2, z: 3},
+                max: {x: 4, y: 5, z: 6},
+                offset: {x: 7, y: 8, z: 9},
+            }
+
+            const pos = test.pos
+            const box = test.box
+            TestType.print(pos);
+            TestType.print(box);
 
             TestType.static_value = test.pos.x * 10000 + test.pos.y * 100 + test.pos.z;
             TestType.print_static_value();

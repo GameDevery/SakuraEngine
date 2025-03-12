@@ -21,6 +21,28 @@ float3 {
 };
 
 sreflect_struct(
+    guid = "a2f3b0d4-1c5e-4b8f-8c7d-6a9e0f1b2c3d"
+    rttr = @full
+    rttr.flags = ["ScriptBox"]
+)
+Box3 {
+    sattr(rttr.flags = ["ScriptVisible"])
+    float3 min = {0, 0, 0};
+    sattr(rttr.flags = ["ScriptVisible"])
+    float3 max = {0, 0, 0};
+};
+
+sreflect_struct(
+    guid = "6563e112-1be3-45d4-8c44-8d5e3ed9b3fd"
+    rttr = @full
+    rttr.flags = ["ScriptBox"]
+)
+Box3Offset : Box3 {
+    sattr(rttr.flags = ["ScriptVisible"])
+    float3 offset = {0, 0, 0};
+};
+
+sreflect_struct(
     guid = "caf11e29-c119-4685-9845-cb17fd2cb119";
     rttr = @full;
 )
@@ -66,13 +88,26 @@ TestType : public ::skr::rttr::ScriptbleObject {
         return a + b;
     }
 
-    // mapping type
+    // box type
     sattr(rttr.flags += ["ScriptVisible"])
     float3 pos;
     sattr(rttr.flags += ["ScriptVisible"])
-    void print_pos() const
+    Box3Offset box;
+    
+    // overload
+    sattr(rttr.flags += ["ScriptVisible"])
+    static void print(const float3& pos)
     {
         SKR_LOG_FMT_INFO(u8"print pos: {{{}, {}, {}}}", pos.x, pos.y, pos.z);
+    }
+    sattr(rttr.flags += ["ScriptVisible"])
+    static void print(const Box3Offset& box)
+    {
+        SKR_LOG_FMT_INFO(u8"print box: min: {{{}, {}, {}}} max: {{{}, {}, {}}} offset: {{{}, {}, {}}}", 
+            box.min.x, box.min.y, box.min.z, 
+            box.max.x, box.max.y, box.max.z,
+            box.offset.x, box.offset.y, box.offset.z
+        );
     }
 };
 };

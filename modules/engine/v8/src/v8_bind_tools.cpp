@@ -1,4 +1,5 @@
 #include "SkrV8/v8_bind_tools.hpp"
+#include "v8-isolate.h"
 
 // helpers
 namespace skr::v8
@@ -149,6 +150,50 @@ bool V8BindTools::match_type(::v8::Local<::v8::Value> v8_value, rttr::TypeSignat
                 return v8_value->IsString();
             default:
                 break;
+        }
+
+        // start match use type id
+        rttr::Type* type = rttr::get_type_from_guid(type_id);
+        if (!type) { return false; }
+
+        // isolate and context
+        auto isolate = ::v8::Isolate::GetCurrent();
+        auto context = isolate->GetCurrentContext();
+
+        // match box type
+        if (flag_all(type->record_flag(), rttr::ERecordFlag::ScriptBox))
+        {
+            if (v8_value->IsObject() || v8_value->IsArray())
+            {
+                auto v8_obj = v8_value->ToObject(context).ToLocalChecked();
+
+                // match fields
+                bool failed = false;
+                type->each_field([&](const rttr::FieldData* field, const rttr::Type* field_owner) {
+                    // filter flag
+                    if (!flag_all(field->flag, rttr::EFieldFlag::ScriptVisible)) { return; }
+
+                    // fast exit if failed
+                    if (failed) { return; }
+
+                    // match field
+                    auto v8_obj_field = v8_obj->Get(context, str_to_v8(field->name, isolate));
+                    if (v8_obj_field.IsEmpty()) {
+                        failed = true;
+                        return;
+                    }
+                    if (!match_type(v8_obj_field.ToLocalChecked(), field->type)) {
+                        failed = true;
+                        return;
+                    }
+                });
+
+                // check if success
+                if (!failed)
+                {
+                    return true;
+                }
+            }
         }
 
         // TODO. match record type
@@ -302,7 +347,7 @@ bool V8BindTools::v8_to_native_primitive(
                 else
                 {
                     new (out_native_data) skr::String(
-                        skr::String::From(*::v8::String::Utf8Value(isolate, v8_value))
+                    skr::String::From(*::v8::String::Utf8Value(isolate, v8_value))
                     );
                 }
                 return true;
@@ -342,7 +387,7 @@ bool V8BindTools::native_to_v8_box(
 
         // get field info
         void* field_owner_address = type->cast_to_base(field_owner->type_id(), native_data);
-        void* field_address = field->get_address(field_owner_address);
+        void* field_address       = field->get_address(field_owner_address);
 
         // convert type
         ::v8::Local<::v8::Value> field_value;
@@ -352,29 +397,31 @@ bool V8BindTools::native_to_v8_box(
             field->type,
             field_address,
             field_value
-        ))
+            ))
         {
             // set value
             result->Set(
-                context,
-                str_to_v8(field->name, isolate, true),
-                field_value
-            ).Check();
+                  context,
+                  str_to_v8(field->name, isolate, true),
+                  field_value
+            )
+            .Check();
         }
         else if (native_to_v8_box(
-            context,
-            isolate,
-            field->type,
-            field_address,
-            field_value
-        ))
+                 context,
+                 isolate,
+                 field->type,
+                 field_address,
+                 field_value
+                 ))
         {
             // set value
             result->Set(
-                context,
-                str_to_v8(field->name, isolate, true),
-                field_value
-            ).Check();
+                  context,
+                  str_to_v8(field->name, isolate, true),
+                  field_value
+            )
+            .Check();
         }
         else
         {
@@ -410,7 +457,8 @@ bool V8BindTools::v8_to_native_box(
     if (!::skr::flag_all(type->record_flag(), rttr::ERecordFlag::ScriptBox)) { return false; }
 
     // check v8 value
-    if (!v8_value->IsObject() && !v8_value->IsArray()) {
+    if (!v8_value->IsObject() && !v8_value->IsArray())
+    {
         return false;
     }
     auto v8_object = v8_value->ToObject(context).ToLocalChecked();
@@ -419,7 +467,7 @@ bool V8BindTools::v8_to_native_box(
     if (!is_init)
     {
         void* raw_invoker = type->find_ctor_t<void()>()->native_invoke;
-        auto* invoker =  reinterpret_cast<void(*)(void*)>(raw_invoker);
+        auto* invoker     = reinterpret_cast<void (*)(void*)>(raw_invoker);
         invoker(out_native_data);
     }
 
@@ -434,14 +482,15 @@ bool V8BindTools::v8_to_native_box(
 
         // get field info
         void* field_owner_address = type->cast_to_base(field_owner->type_id(), out_native_data);
-        void* field_address = field->get_address(field_owner_address);
+        void* field_address       = field->get_address(field_owner_address);
 
         // find object field
         auto field_value = v8_object->Get(
-            context, 
-            str_to_v8(field->name, isolate)
+        context,
+        str_to_v8(field->name, isolate)
         );
-        if (field_value.IsEmpty()) {
+        if (field_value.IsEmpty())
+        {
             failed = true;
             return;
         }
@@ -449,23 +498,23 @@ bool V8BindTools::v8_to_native_box(
 
         // do convert
         if (v8_to_native_primitive(
-            context, 
-            isolate, 
-            field->type, 
-            checked_field_value, 
-            field_address, 
-            true
-        ))
-        {
-        }
-        else if (v8_to_native_box(
             context,
             isolate,
             field->type,
             checked_field_value,
             field_address,
             true
-        ))
+            ))
+        {
+        }
+        else if (v8_to_native_box(
+                 context,
+                 isolate,
+                 field->type,
+                 checked_field_value,
+                 field_address,
+                 true
+                 ))
         {
         }
         else
@@ -507,20 +556,51 @@ void V8BindTools::push_param(
             native_signature.read_type_id(type_id);
 
             // export primitive
-            bool success_export_primitive = _push_param_primitive(
+            if (_push_param_primitive(
                 stack,
                 type_id,
                 rttr::EDynamicStackParamKind::XValue,
                 v8_value,
                 context,
                 isolate
-            );
+            )) 
+            { 
+                return; 
+            }
+
+            // prepare use reflect export
+            rttr::Type* type = rttr::get_type_from_guid(type_id);
+            if (!type) { return; }
+
+            // try box export
+            if (match_type(v8_value, native_signature))
+            {
+                // push stack
+                auto stack_data = type->dtor_data();
+                auto dtor = stack_data.has_value() ? stack_data.value().native_invoke : nullptr;
+                void* native_data = stack.alloc_param_raw(
+                    type->size(),
+                    type->alignment(),
+                    rttr::EDynamicStackParamKind::XValue,
+                    dtor
+                );
+
+                // v8 to native
+                if (v8_to_native_box(
+                    context,
+                    isolate,
+                    native_signature,
+                    v8_value,
+                    native_data,
+                    true
+                ))
+                {
+                    return;
+                }
+            }
 
             // TODO. export record
-            if (!success_export_primitive)
-            {
-                SKR_UNIMPLEMENTED_FUNCTION()
-            }
+            SKR_UNIMPLEMENTED_FUNCTION()
         }
         else
         { // export param
@@ -530,20 +610,51 @@ void V8BindTools::push_param(
             native_signature.read_type_id(type_id);
 
             // export primitive
-            bool success_export_primitive = _push_param_primitive(
+            if (_push_param_primitive(
                 stack,
                 type_id,
                 rttr::EDynamicStackParamKind::Direct,
                 v8_value,
                 context,
                 isolate
-            );
+            )) 
+            {
+                return;
+            }
+
+            // prepare use reflect export
+            rttr::Type* type = rttr::get_type_from_guid(type_id);
+            if (!type) { return; }
+
+            // try box export
+            if (match_type(v8_value, native_signature))
+            {
+                // push stack
+                auto stack_data = type->dtor_data();
+                auto dtor = stack_data.has_value() ? stack_data.value().native_invoke : nullptr;
+                void* native_data = stack.alloc_param_raw(
+                    type->size(),
+                    type->alignment(),
+                    rttr::EDynamicStackParamKind::Direct,
+                    dtor
+                );
+
+                // v8 to native
+                if (v8_to_native_box(
+                    context,
+                    isolate,
+                    native_signature,
+                    v8_value,
+                    native_data,
+                    true
+                ))
+                {
+                    return;
+                }
+            }
 
             // TODO. export record
-            if (!success_export_primitive)
-            {
-                SKR_UNIMPLEMENTED_FUNCTION()
-            }
+            SKR_UNIMPLEMENTED_FUNCTION()
         }
     }
     else
@@ -574,11 +685,21 @@ bool V8BindTools::read_return(
         else
         {
             if (native_to_v8_primitive(
-                    context,
-                    isolate,
-                    signature,
-                    stack.get_return_raw(),
-                    out_value
+                context,
+                isolate,
+                signature,
+                stack.get_return_raw(),
+                out_value
+                ))
+            {
+                return true;
+            }
+            else if (native_to_v8_box(
+                context,
+                isolate,
+                signature,
+                stack.get_return_raw(),
+                out_value
                 ))
             {
                 return true;
@@ -613,11 +734,11 @@ void V8BindTools::call_ctor(
     for (size_t i = 0; i < data.param_data.size(); ++i)
     {
         push_param(
-            stack,
-            data.param_data[i],
-            context,
-            isolate,
-            i < info.Length() ? info[i] : ::v8::Local<::v8::Value>{}
+        stack,
+        data.param_data[i],
+        context,
+        isolate,
+        i < info.Length() ? info[i] : ::v8::Local<::v8::Value>{}
         );
     }
 
@@ -641,11 +762,11 @@ void V8BindTools::call_method(
     for (size_t i = 0; i < params.size(); ++i)
     {
         push_param(
-            stack,
-            params[i],
-            context,
-            isolate,
-            i < info.Length() ? info[i] : ::v8::Local<::v8::Value>{}
+        stack,
+        params[i],
+        context,
+        isolate,
+        i < info.Length() ? info[i] : ::v8::Local<::v8::Value>{}
         );
     }
 
@@ -656,11 +777,11 @@ void V8BindTools::call_method(
     // read return
     ::v8::Local<::v8::Value> out_value;
     if (read_return(
-            stack,
-            ret_type,
-            context,
-            isolate,
-            out_value
+        stack,
+        ret_type,
+        context,
+        isolate,
+        out_value
         ))
     {
         info.GetReturnValue().Set(out_value);
@@ -681,11 +802,11 @@ void V8BindTools::call_function(
     for (size_t i = 0; i < params.size(); ++i)
     {
         push_param(
-            stack,
-            params[i],
-            context,
-            isolate,
-            i < info.Length() ? info[i] : ::v8::Local<::v8::Value>{}
+        stack,
+        params[i],
+        context,
+        isolate,
+        i < info.Length() ? info[i] : ::v8::Local<::v8::Value>{}
         );
     }
 
@@ -696,11 +817,11 @@ void V8BindTools::call_function(
     // read return
     ::v8::Local<::v8::Value> out_value;
     if (read_return(
-            stack,
-            ret_type,
-            context,
-            isolate,
-            out_value
+        stack,
+        ret_type,
+        context,
+        isolate,
+        out_value
         ))
     {
         info.GetReturnValue().Set(out_value);
