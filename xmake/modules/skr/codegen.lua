@@ -373,7 +373,7 @@ function _mako_render(target, scripts, dep_files, opt)
     end
 
     -- output config
-    config_file = path.join(utils.skr_codegen_dir(target:name()), "codegen/meta_codegen_config.json")
+    config_file = path.join(utils.skr_codegen_dir(target:name()), "codegen", target:name().."_codegen_config.json")
     json.savefile(config_file, config)
 
     -- baisc commands

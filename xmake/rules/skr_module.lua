@@ -106,7 +106,11 @@ analyzer_target("Module.MetaSourceFile")
         import("skr.utils")
 
         local gendir = path.join(utils.skr_codegen_dir(target:name()), "codegen")
-        local filename = path.join(gendir, "module", "module.configure.cpp")
+        local filename = path.join(gendir, target:name()..".configure.cpp")
+        if not os.isdir(gendir) then
+            os.mkdir(gendir)
+        end
+
         local dep_names = target:values("sakura.module.public_dependencies")
         utils.on_changed(function (change_info)
             -- gather deps
@@ -151,7 +155,7 @@ analyzer_target("Module.MetaSourceFile")
                 json.encode(module_info),
                 target:name()
             )
-            -- cprint("${green}[%s] module.configure.cpp", target:name())
+            cprint("${green}[%s] module.configure.cpp", target:name())
             io.writefile(filename, cpp_content)
         end, {
             cache_file = utils.depend_file_target(target:name(), "meta_source_file"),
