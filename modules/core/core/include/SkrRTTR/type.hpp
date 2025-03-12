@@ -143,6 +143,13 @@ private:
         RecordData    _record_data;
         EnumData      _enum_data;
     };
+public:
+    [[nodiscard]] PrimitiveData& primitive_data() { assert(_type_category == ETypeCategory::Primitive); return _primitive_data; }
+    [[nodiscard]] PrimitiveData const & primitive_data() const { assert(_type_category == ETypeCategory::Primitive); return _primitive_data; }
+    [[nodiscard]] RecordData& record_data() { assert(_type_category == ETypeCategory::Record); return _record_data; }
+    [[nodiscard]] RecordData const & record_data() const { assert(_type_category == ETypeCategory::Record); return _record_data; }
+    [[nodiscard]] EnumData& enum_data() { assert(_type_category == ETypeCategory::Enum); return _enum_data; }
+    [[nodiscard]] EnumData const & enum_data() const { assert(_type_category == ETypeCategory::Enum); return _enum_data; }
 };
 } // namespace skr::rttr
 
