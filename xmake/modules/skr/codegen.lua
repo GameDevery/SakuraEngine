@@ -280,6 +280,12 @@ function meta_compile(target, proxy_target, opt)
     local headerfiles = target:data(_codegen_data_headers_name)
     local batchinfo = target:data(_codegen_data_batch_name)
     local sourcefile = batchinfo.sourcefile
+    
+    -- collect depend files
+    local depend_files = { _meta }
+    for _, headerfile in ipairs(headerfiles) do
+        table.insert(depend_files, headerfile)
+    end
 
     -- generate headers dummy
     if(headerfiles ~= nil and #headerfiles > 0) then
@@ -306,7 +312,7 @@ function meta_compile(target, proxy_target, opt)
             _codegen_compile(target, proxy_target, opt)
         end, {
             cache_file = utils.depend_file(path.join("codegen", target:name(), "codegen.meta")),
-            files = headerfiles,
+            files = depend_files,
             use_sha = true,
             post_scan = function ()
                 local batchinfo = target:data(_codegen_data_batch_name)
