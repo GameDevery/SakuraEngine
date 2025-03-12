@@ -294,6 +294,9 @@ function collect_install_items()
                 if not _filter(item.opt.arch, os.arch()) then
                     goto continue
                 end
+                if not _filter(item.opt.toolchain, target:toolchains()[0]) then
+                    goto continue
+                end
 
                 -- insert
                 item.trigger_target = target

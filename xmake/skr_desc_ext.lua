@@ -213,6 +213,7 @@ end
 --   [kind = any]: 共有参数
 --     plat: filter target platform
 --     arch: filter target architecture
+--     toolchain； filter target toolchain
 --   [kind = “download"]:
 --     name: package or files name
 --     install_func: "tool"/"resources"/"sdk"/"file"/"custom"/nil, nil means use install.lua in package
