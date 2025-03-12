@@ -19,14 +19,14 @@ import("skr.utils")
 --   files: [table], key->file_name, value->{sha:[sha256], sources_info: list of{source, sha}}
 -- }
 
-local download = download or object {}
+local Downloader = Downloader or object {}
 
 function new()
-    return download { sources = {}, files = {} }
+    return Downloader { sources = {}, files = {} }
 end
 
 ------------------------sources------------------------
-function download:add_source(name, url)
+function Downloader:add_source(name, url)
     if not name or not url then
         raise("invalid source: %s, %s", name, url)
     end
@@ -48,12 +48,12 @@ function download:add_source(name, url)
         end
     })
 end
-function download:add_source_default()
+function Downloader:add_source_default()
     self:add_source("skr_github", "https://github.com/SakuraEngine/Sakura.Resources/releases/download/SDKs/")
 end
 
 ------------------------manifest------------------------
-function download:fetch_manifests()
+function Downloader:fetch_manifests()
     -- make manifest path first
     if not os.isdir(path.join(utils.download_dir(), "manifests")) then
         os.mkdir(path.join(utils.download_dir(), "manifests"))
@@ -82,7 +82,7 @@ function download:fetch_manifests()
     self:load_manifests()
 end
 
-function download:load_manifests()
+function Downloader:load_manifests()
     -- load files
     for _, source in ipairs(self.sources) do
         if os.exists(source.manifest_path) then
@@ -151,7 +151,7 @@ function download:load_manifests()
 end
 
 ------------------------download------------------------
-function download:_download_from_source(file_name, source)
+function Downloader:_download_from_source(file_name, source)
     -- get sha
     local sha = source.files[file_name]
     if not sha then
@@ -176,7 +176,7 @@ function download:_download_from_source(file_name, source)
             actual_sha)
     end
 end
-function download:download_file(file_name, opt)
+function Downloader:download_file(file_name, opt)
     -- load opt
     opt = opt or {}
     local force = opt.force or false
@@ -231,15 +231,15 @@ function download:download_file(file_name, opt)
         raise("failed to download %s", file_name)
     end
 end
-function download:download_tool(tool_name, opt)
+function Downloader:download_tool(tool_name, opt)
     self:download_file(utils.package_name_tool(tool_name), opt)
 end
-function download:download_sdk(sdk_name, opt)
+function Downloader:download_sdk(sdk_name, opt)
     self:download_file(utils.package_name_sdk(sdk_name, opt), opt)
 end
 
 ------------------------[temp] install------------------------
-function download:_install_tool(tool_name)
+function Downloader:_install_tool(tool_name)
     -- find package file
     local package_path = utils.find_download_package_tool(tool_name)
     if not package_path then
@@ -255,13 +255,13 @@ function download:_install_tool(tool_name)
         files = {package_path},
     })
 end
-function download:tool(tool_name)
+function Downloader:tool(tool_name)
     self:download_file(utils.package_name_tool(tool_name))
     self:_install_tool(tool_name)
 end
-function download:sdk(sdk_name, opt)
+function Downloader:sdk(sdk_name, opt)
     self:download_file(utils.package_name_sdk(sdk_name, opt))
 end
-function download:file(file_name)
+function Downloader:file(file_name)
     self:download_file(file_name)
 end

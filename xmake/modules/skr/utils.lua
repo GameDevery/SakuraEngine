@@ -256,8 +256,8 @@ end
 --     reason = see file reason
 --   }
 -- }
-local change_info = change_info or object {}
-function change_info:dump()
+local ChangeInfo = ChangeInfo or object {}
+function ChangeInfo:dump()
     local reason_fmt = {
         new = "${green}[%s]${clear}",
         modify = "${cyan}[%s]${clear}",
@@ -288,13 +288,13 @@ function change_info:dump()
         end
     end
 end
-function change_info:is_file_changed()
+function ChangeInfo:is_file_changed()
     return #self.files > 0
 end
-function change_info:is_value_changed()
+function ChangeInfo:is_value_changed()
     return #self.values > 0
 end
-function change_info:any_changed()
+function ChangeInfo:any_changed()
     return self:is_file_changed() or self:is_value_changed()
 end
 
@@ -338,7 +338,7 @@ function on_changed(func, opt)
     end
 
     -- change info for cache changed
-    local change_info = change_info {
+    local change_info = ChangeInfo {
         files = {},
         values = {},
         force = force,
