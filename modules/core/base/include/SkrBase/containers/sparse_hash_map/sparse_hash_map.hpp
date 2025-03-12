@@ -407,7 +407,7 @@ SKR_INLINE typename SparseHashMap<Memory>::DataRef SparseHashMap<Memory>::try_ad
     if (!ref.already_exist())
     {
         new (&ref.key()) MapKeyType(std::forward<UK>(key));
-        memory::construct(&ref.value());
+        ::skr::memory::construct(&ref.value());
     }
     return ref;
 }
@@ -472,7 +472,7 @@ SKR_INLINE typename SparseHashMap<Memory>::DataRef SparseHashMap<Memory>::try_ad
         SKR_ASSERT(!contains(key));
         DataRef ref = Super::template _add_unsafe<DataRef>(hint.hash());
         new (&ref.key()) MapKeyType(std::forward<UK>(key));
-        memory::construct(&ref.value());
+        ::skr::memory::construct(&ref.value());
         return ref;
     }
 }

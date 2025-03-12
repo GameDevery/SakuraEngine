@@ -349,7 +349,7 @@ SKR_INLINE typename MultiSparseHashMap<Memory>::DataRef MultiSparseHashMap<Memor
     HashType hash = HasherType()(key);
     DataRef  ref  = add_ex_unsafe(hash);
     new (&ref.key()) MapKeyType(std::forward<UK>(key));
-    memory::construct(&ref.value());
+    ::skr::memory::construct(&ref.value());
     return ref;
 }
 template <typename Memory>

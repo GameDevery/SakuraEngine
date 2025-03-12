@@ -393,12 +393,12 @@ inline void U8String<Memory>::_parse_from_utf16(const skr_char16* str, SizeType 
         if (utf16_seq.is_valid())
         {
             UTF8Seq utf8_seq = utf16_seq;
-            memory::copy(dst + write_index, &utf8_seq.data[0], utf8_seq.len);
+            ::skr::memory::copy(dst + write_index, &utf8_seq.data[0], utf8_seq.len);
             write_index += utf8_seq.len;
         }
         else
         {
-            memory::copy(dst + write_index, &utf16_seq.bad_data, 1);
+            ::skr::memory::copy(dst + write_index, &utf16_seq.bad_data, 1);
             ++write_index;
         }
     }
@@ -412,7 +412,7 @@ inline void U8String<Memory>::_parse_from_utf32(const skr_char32* str, SizeType 
     for (SizeType i = 0; i < len; ++i)
     {
         UTF8Seq utf8_seq = str[i];
-        memory::copy(dst + write_index, &utf8_seq.data[0], utf8_seq.len);
+        ::skr::memory::copy(dst + write_index, &utf8_seq.data[0], utf8_seq.len);
         write_index += utf8_seq.len;
     }
 
@@ -469,7 +469,7 @@ inline void U8String<Memory>::_assign_with_literal_check(const DataType* str, Si
         else
         {
             resize_unsafe(len);
-            memory::copy(_data(), str, len);
+            ::skr::memory::copy(_data(), str, len);
         }
     }
 }
@@ -950,7 +950,7 @@ inline void U8String<Memory>::assign(U&& container) noexcept
         auto n = Traits::size(std::forward<U>(container));
         auto p = Traits::data(std::forward<U>(container));
         resize_unsafe(n);
-        memory::copy(_data(), p, n);
+        ::skr::memory::copy(_data(), p, n);
     }
     else if constexpr (Traits::is_iterable && Traits::has_size)
     {
@@ -1149,7 +1149,7 @@ inline void U8String<Memory>::resize(SizeType expect_size, const DataType& new_v
     }
     else if (expect_size < size())
     {
-        memory::destruct(_data() + expect_size, size() - expect_size);
+        ::skr::memory::destruct(_data() + expect_size, size() - expect_size);
     }
 
     // set size
@@ -1167,7 +1167,7 @@ inline void U8String<Memory>::resize_unsafe(SizeType expect_size)
     // destruct item if need
     if (expect_size < size())
     {
-        memory::destruct(_data() + expect_size, size() - expect_size);
+        ::skr::memory::destruct(_data() + expect_size, size() - expect_size);
     }
 
     // set size
@@ -1185,11 +1185,11 @@ inline void U8String<Memory>::resize_default(SizeType expect_size)
     // construct item or destruct item if need
     if (expect_size > size())
     {
-        memory::construct(_data() + size(), expect_size - size());
+        ::skr::memory::construct(_data() + size(), expect_size - size());
     }
     else if (expect_size < size())
     {
-        memory::destruct(_data() + expect_size, size() - expect_size);
+        ::skr::memory::destruct(_data() + expect_size, size() - expect_size);
     }
 
     // set size
@@ -1211,7 +1211,7 @@ inline void U8String<Memory>::resize_zeroed(SizeType expect_size)
     }
     else if (expect_size < size())
     {
-        memory::destruct(_data() + expect_size, size() - expect_size);
+        ::skr::memory::destruct(_data() + expect_size, size() - expect_size);
     }
 
     // set size
@@ -1247,7 +1247,7 @@ template <typename Memory>
 inline typename U8String<Memory>::DataRef U8String<Memory>::add_default(SizeType n)
 {
     DataRef ref = add_unsafe(n);
-    memory::construct(ref.ptr(), n);
+    ::skr::memory::construct(ref.ptr(), n);
     return ref;
 }
 template <typename Memory>
@@ -1274,13 +1274,13 @@ inline void U8String<Memory>::add_at_unsafe(SizeType idx, SizeType n)
     SKR_ASSERT((is_empty() && idx == 0) || is_valid_index(idx));
     auto move_n = size() - idx;
     add_unsafe(n);
-    memory::move(_data() + idx + n, _data() + idx, move_n);
+    ::skr::memory::move(_data() + idx + n, _data() + idx, move_n);
 }
 template <typename Memory>
 inline void U8String<Memory>::add_at_default(SizeType idx, SizeType n)
 {
     add_at_unsafe(idx, n);
-    memory::construct(_data() + idx, n);
+    ::skr::memory::construct(_data() + idx, n);
 }
 template <typename Memory>
 inline void U8String<Memory>::add_at_zeroed(SizeType idx, SizeType n)
@@ -1301,7 +1301,7 @@ inline typename U8String<Memory>::DataRef U8String<Memory>::append(const DataTyp
     if (len)
     {
         DataRef ref = add_unsafe(len);
-        memory::copy(ref.ptr(), str, len);
+        ::skr::memory::copy(ref.ptr(), str, len);
         return ref;
     }
     return {};
@@ -1332,7 +1332,7 @@ inline typename U8String<Memory>::DataRef U8String<Memory>::append(const U& cont
         if (n)
         {
             DataRef ref = add_unsafe(n);
-            memory::copy(ref.ptr(), p, n);
+            ::skr::memory::copy(ref.ptr(), p, n);
             return ref;
         }
     }
@@ -1378,7 +1378,7 @@ inline void U8String<Memory>::append_at(SizeType idx, const DataType* str, SizeT
     if (len)
     {
         add_at_unsafe(idx, len);
-        memory::copy(_data() + idx, str, len);
+        ::skr::memory::copy(_data() + idx, str, len);
     }
 }
 template <typename Memory>
@@ -1406,7 +1406,7 @@ inline void U8String<Memory>::append_at(SizeType idx, const U& container)
         if (n)
         {
             add_at_unsafe(idx, n);
-            memory::copy(_data() + idx, p, n);
+            ::skr::memory::copy(_data() + idx, p, n);
         }
     }
     else if constexpr (Traits::is_iterable && Traits::has_size)
@@ -1449,12 +1449,12 @@ inline void U8String<Memory>::remove_at(SizeType index, SizeType n)
         auto move_n = size() - index - n;
 
         // destruct remove items
-        memory::destruct(_data() + index, n);
+        ::skr::memory::destruct(_data() + index, n);
 
         // move data
         if (move_n)
         {
-            memory::move(_data() + index, _data() + size() - move_n, move_n);
+            ::skr::memory::move(_data() + index, _data() + size() - move_n, move_n);
         }
 
         // update size
@@ -1509,7 +1509,7 @@ inline typename U8String<Memory>::SizeType U8String<Memory>::remove_all(ViewType
                 // copy data before found
                 if (write != read)
                 {
-                    memory::move(write, read, move_count);
+                    ::skr::memory::move(write, read, move_count);
                 }
 
                 // update read info
@@ -1526,7 +1526,7 @@ inline typename U8String<Memory>::SizeType U8String<Memory>::remove_all(ViewType
             }
 
             // copy final data
-            memory::move(write, read, read_size);
+            ::skr::memory::move(write, read, read_size);
 
             // set size
             _set_size(size() - view.size() * count);
@@ -1655,7 +1655,7 @@ inline typename U8String<Memory>::SizeType U8String<Memory>::replace(ViewType fr
         while (found_ref)
         {
             // copy data
-            memory::copy(found_ref.ptr(), to.data(), to.size());
+            ::skr::memory::copy(found_ref.ptr(), to.data(), to.size());
 
             // update view
             find_view = find_view.subview(found_ref.index() + to.size());
@@ -1680,12 +1680,12 @@ inline typename U8String<Memory>::SizeType U8String<Memory>::replace(ViewType fr
             if (write != read)
             {
                 auto move_size = found_ref.ptr() - read;
-                memory::move(write, read, move_size);
+                ::skr::memory::move(write, read, move_size);
                 write += move_size;
             }
 
             // copy replace part
-            memory::copy(write, to.data(), to.size());
+            ::skr::memory::copy(write, to.data(), to.size());
             write += to.size();
 
             // update read and find view
@@ -1702,7 +1702,7 @@ inline typename U8String<Memory>::SizeType U8String<Memory>::replace(ViewType fr
         DataType* end = _data() + size();
         if (read != end)
         {
-            memory::move(write, read, end - read);
+            ::skr::memory::move(write, read, end - read);
         }
 
         // update size
@@ -1796,10 +1796,10 @@ inline void U8String<Memory>::replace_range(ViewType to, SizeType start, SizeTyp
         _pre_modify();
 
         // copy to
-        memory::copy(_data() + start, to.data(), to.size());
+        ::skr::memory::copy(_data() + start, to.data(), to.size());
 
         // move rest
-        memory::move(_data() + start + to.size(), _data() + start + count, size() - start - count);
+        ::skr::memory::move(_data() + start + to.size(), _data() + start + count, size() - start - count);
     }
     else
     { // need to reserve
@@ -1808,10 +1808,10 @@ inline void U8String<Memory>::replace_range(ViewType to, SizeType start, SizeTyp
         reserve(reserve_size);
 
         // move rest
-        memory::move(_data() + start + to.size(), _data() + start + count, size() - start - count);
+        ::skr::memory::move(_data() + start + to.size(), _data() + start + count, size() - start - count);
 
         // copy to
-        memory::copy(_data() + start, to.data(), to.size());
+        ::skr::memory::copy(_data() + start, to.data(), to.size());
     }
 
     // update size
@@ -1903,7 +1903,7 @@ inline void U8String<Memory>::substr(SizeType start, SizeType count)
     else
     { // move center
         _pre_modify();
-        memory::move(_data(), _data() + start, count);
+        ::skr::memory::move(_data(), _data() + start, count);
         _set_size(count);
     }
 }
@@ -2123,7 +2123,7 @@ inline void U8String<Memory>::trim_start(const ViewType& characters)
     if (trim_view.size() != size())
     {
         _pre_modify();
-        memory::move(_data(), const_cast<DataType*>(trim_view.data()), trim_view.size());
+        ::skr::memory::move(_data(), const_cast<DataType*>(trim_view.data()), trim_view.size());
         _set_size(trim_view.size());
     }
 }
@@ -2150,7 +2150,7 @@ inline void U8String<Memory>::trim_start(const UTF8Seq& ch)
     if (trim_view.size() != size())
     {
         _pre_modify();
-        memory::move(_data(), const_cast<DataType*>(trim_view.data()), trim_view.size());
+        ::skr::memory::move(_data(), const_cast<DataType*>(trim_view.data()), trim_view.size());
         _set_size(trim_view.size());
     }
 }
@@ -2209,7 +2209,7 @@ inline void U8String<Memory>::trim_invalid_start()
     if (trim_view.size() != size())
     {
         _pre_modify();
-        memory::move(_data(), const_cast<DataType*>(trim_view.data()), trim_view.size());
+        ::skr::memory::move(_data(), const_cast<DataType*>(trim_view.data()), trim_view.size());
         _set_size(trim_view.size());
     }
 }

@@ -155,7 +155,7 @@ struct SparseVectorMemory : public Base, public Allocator {
         SizeType old_block_size = BitAlgo::num_blocks(Base::_capacity);
         if (new_block_size != old_block_size)
         {
-            if constexpr (memory::MemoryTraits<BitBlockType>::use_realloc && Allocator::support_realloc)
+            if constexpr (::skr::memory::MemoryTraits<BitBlockType>::use_realloc && Allocator::support_realloc)
             {
                 Base::_bit_data = Allocator::template realloc<BitBlockType>(bit_data(), new_block_size);
             }
@@ -167,7 +167,7 @@ struct SparseVectorMemory : public Base, public Allocator {
                 // move data
                 if (old_block_size)
                 {
-                    memory::move(new_memory, bit_data(), std::min(new_block_size, old_block_size));
+                    ::skr::memory::move(new_memory, bit_data(), std::min(new_block_size, old_block_size));
                 }
 
                 // release old memory
@@ -179,7 +179,7 @@ struct SparseVectorMemory : public Base, public Allocator {
         }
 
         // realloc data data
-        if constexpr (memory::MemoryTraits<DataType>::use_realloc && Allocator::support_realloc)
+        if constexpr (::skr::memory::MemoryTraits<DataType>::use_realloc && Allocator::support_realloc)
         {
             Base::_data = Allocator::template realloc<StorageType>(data(), new_capacity);
         }
@@ -653,7 +653,7 @@ struct InlineSparseVectorMemory : public Base, public Allocator {
                     // move data
                     if (old_block_size)
                     {
-                        memory::move(new_memory, _bit_data_placeholder.data_typed(), std::min(new_block_size, old_block_size));
+                        ::skr::memory::move(new_memory, _bit_data_placeholder.data_typed(), std::min(new_block_size, old_block_size));
                     }
 
                     // update data
@@ -663,7 +663,7 @@ struct InlineSparseVectorMemory : public Base, public Allocator {
                 {
                     if (new_block_size != old_block_size)
                     {
-                        if constexpr (memory::MemoryTraits<BitBlockType>::use_realloc && Allocator::support_realloc)
+                        if constexpr (::skr::memory::MemoryTraits<BitBlockType>::use_realloc && Allocator::support_realloc)
                         {
                             Base::_bit_data = Allocator::template realloc<BitBlockType>((BitBlockType*)Base::_bit_data, new_block_size);
                         }
@@ -675,7 +675,7 @@ struct InlineSparseVectorMemory : public Base, public Allocator {
                             // move data
                             if (old_block_size)
                             {
-                                memory::move(new_memory, bit_data(), std::min(new_block_size, old_block_size));
+                                ::skr::memory::move(new_memory, bit_data(), std::min(new_block_size, old_block_size));
                             }
 
                             // release old memory
@@ -739,7 +739,7 @@ struct InlineSparseVectorMemory : public Base, public Allocator {
             else // heap -> heap
             {
                 // realloc data
-                if constexpr (memory::MemoryTraits<DataType>::use_realloc && Allocator::support_realloc)
+                if constexpr (::skr::memory::MemoryTraits<DataType>::use_realloc && Allocator::support_realloc)
                 {
                     Base::_data = Allocator::template realloc<StorageType>(data(), new_capacity);
                 }
