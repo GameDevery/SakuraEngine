@@ -13,7 +13,7 @@ struct Type;
 
 // TODO. 使用 p-impl 实现多后端，并且对外层屏蔽对 v8 context 的操作，一切操作通过反射注入
 // TODO. custom getter/setter
-namespace skr::v8
+namespace skr
 {
 struct V8Context;
 
@@ -72,11 +72,11 @@ private:
     Map<::skr::rttr::ScriptbleObject*, V8BindRecordCore*> _alive_records;
     Vector<V8BindRecordCore*>                             _deleted_records;
 };
-} // namespace skr::v8
+} // namespace skr
 
 // global init
-namespace skr::v8
+namespace skr
 {
 SKR_V8_API void init_v8();
 SKR_V8_API void shutdown_v8();
-} // namespace skr::v8
+} // namespace skr

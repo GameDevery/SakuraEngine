@@ -5,7 +5,7 @@
 #include "SkrRTTR/type.hpp"
 #include "SkrRTTR/scriptble_object.hpp"
 
-namespace skr::v8
+namespace skr
 {
 //===============================bind data===============================
 struct V8BindMethodData {
@@ -87,4 +87,4 @@ struct V8BindRecordCore {
         return type->cast_to_base(type_id, object->iobject_get_head_ptr());
     }
 };
-} // namespace skr::v8
+} // namespace skr

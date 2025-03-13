@@ -130,9 +130,9 @@ public:
     };
 };
 
-struct Matcher {
-    //!NOTE. matcher will ignore decayed pointer modifiers, you should check it outside
-    //!NOTE. because the behaviour of decayed pointer is depend on where the type is used (param/field...etc)
+struct V8Matcher {
+    //! NOTE. matcher will ignore decayed pointer modifiers, you should check it outside
+    //! NOTE. because the behaviour of decayed pointer is depend on where the type is used (param/field...etc)
     MatchSuggestion match_to_native(::v8::Local<::v8::Value> v8_value, rttr::TypeSignatureView signature);
     MatchSuggestion match_to_v8(rttr::TypeSignatureView signature);
 

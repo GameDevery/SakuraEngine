@@ -5,7 +5,7 @@
 #include "v8-context.h"
 #include "v8-persistent-handle.h"
 
-namespace skr::v8
+namespace skr
 {
 struct V8Isolate;
 
@@ -47,4 +47,4 @@ private:
     // context data
     ::v8::Persistent<::v8::Context> _context;
 };
-} // namespace skr::v8
+} // namespace skr

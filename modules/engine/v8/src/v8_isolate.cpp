@@ -11,7 +11,7 @@
 #include "v8-function.h"
 
 // allocator
-namespace skr::v8
+namespace skr
 {
 struct V8Allocator final : ::v8::ArrayBuffer::Allocator {
     static constexpr const char* kV8DefaultPoolName = "v8-allocate";
@@ -54,9 +54,9 @@ struct V8Allocator final : ::v8::ArrayBuffer::Allocator {
         return p;
     }
 };
-} // namespace skr::v8
+} // namespace skr
 
-namespace skr::v8
+namespace skr
 {
 V8Isolate::V8Isolate()
 {
@@ -792,9 +792,9 @@ void V8Isolate::_set_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>&
         Isolate->ThrowError("field type not supported");
     }
 }
-} // namespace skr::v8
+} // namespace skr
 
-namespace skr::v8
+namespace skr
 {
 static auto& _v8_platform()
 {
@@ -824,4 +824,4 @@ void shutdown_v8()
     ::v8::V8::DisposePlatform();
     _v8_platform().reset();
 }
-} // namespace skr::v8
+} // namespace skr

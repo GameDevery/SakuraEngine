@@ -2,7 +2,7 @@
 #include "v8-isolate.h"
 
 // helpers
-namespace skr::v8
+namespace skr
 {
 // write primitive
 inline static bool _push_param_primitive(
@@ -107,9 +107,9 @@ inline static bool _match_params(const Data* data, const ::v8::FunctionCallbackI
 
     return true;
 }
-} // namespace skr::v8
+} // namespace skr
 
-namespace skr::v8
+namespace skr
 {
 // match tools
 bool V8BindTools::match_type(::v8::Local<::v8::Value> v8_value, rttr::TypeSignatureView native_signature)
@@ -829,4 +829,4 @@ void V8BindTools::call_function(
         info.GetReturnValue().Set(out_value);
     }
 }
-} // namespace skr::v8
+} // namespace skr

@@ -3,7 +3,7 @@
 #include "SkrV8/v8_isolate.hpp"
 #include "SkrV8/v8_bind_tools.hpp"
 
-namespace skr::v8
+namespace skr
 {
 // ctor & dtor
 V8Context::V8Context(V8Isolate* isolate)
@@ -228,4 +228,4 @@ void V8Context::exec_script(StringView script)
     }
 }
 
-} // namespace skr::v8
+} // namespace skr

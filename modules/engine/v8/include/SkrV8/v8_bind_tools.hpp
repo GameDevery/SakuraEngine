@@ -5,7 +5,7 @@
 #include "SkrRTTR/export/export_data.hpp"
 #include "v8_isolate.hpp"
 
-namespace skr::v8
+namespace skr
 {
 struct SKR_V8_API V8BindTools {
     // to v8
@@ -285,10 +285,4 @@ struct SKR_V8_API V8BindTools {
         ::v8::Isolate*                                 isolate
     );
 };
-} // namespace skr::v8
-
-// inline impl
-namespace skr::v8
-{
-
-} // namespace skr::v8
+} // namespace skr

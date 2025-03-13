@@ -8,7 +8,7 @@ int32_t test_v8::TestType::static_value = 0;
 
 int main(int argc, char* argv[])
 {
-    using namespace skr::v8;
+    using namespace skr;
 
     V8Isolate isolate;
     V8Context context(&isolate);
