@@ -15,9 +15,10 @@ struct V8MatchSuggestion {
         Wrap,
     };
     struct Primitive {
-        uint32_t    size      = 0;
-        uint32_t    alignment = 0;
-        ::skr::GUID type_id   = {};
+        uint32_t          size      = 0;
+        uint32_t          alignment = 0;
+        rttr::DtorInvoker dtor      = nullptr;
+        ::skr::GUID       type_id   = {};
     };
     template <typename T>
     struct WithField {
@@ -51,6 +52,16 @@ struct V8MatchSuggestion {
         result._primitive.size      = sizeof(T);
         result._primitive.alignment = alignof(T);
         result._primitive.type_id   = ::skr::rttr::type_id_of<T>();
+        if constexpr (std::is_trivially_destructible_v<T>)
+        {
+            result._primitive.dtor = nullptr;
+        }
+        else
+        {
+            result._primitive.dtor = +[](void* p) -> void {
+                reinterpret_cast<T*>(p)->~T();
+            };
+        }
 
         return result;
     }
@@ -240,14 +251,17 @@ private:
     };
 };
 
+// TODO. FunctionMatchSuggestion
+// TODO. FieldMatchSuggestion
+
 struct SKR_V8_API V8Matcher {
-    // match
+    // basic match
     //! NOTE. matcher will ignore decayed pointer modifiers, you should check it outside
     //! NOTE. because the behaviour of decayed pointer is depend on where the type is used (param/field...etc)
     V8MatchSuggestion match_to_native(::v8::Local<::v8::Value> v8_value, rttr::TypeSignatureView signature);
     V8MatchSuggestion match_to_v8(rttr::TypeSignatureView signature);
 
-    // convert
+    // basic convert
     static ::v8::Local<::v8::Value> conv_to_v8(
         const V8MatchSuggestion& suggestion,
         void*                    native_data
@@ -259,14 +273,38 @@ struct SKR_V8_API V8Matcher {
         bool                     is_init
     );
 
+    // function match
+    template <typename Data>
+    bool match_params_to_native(
+        const Data*                                data,
+        const v8::FunctionCallbackInfo<v8::Value>& v8_func_info,
+        Vector<V8MatchSuggestion>&                 out_suggestions
+    );
+
+    // function conv
+    bool call_native_push_params(
+        const Vector<V8MatchSuggestion>&           suggestions,
+        const Vector<rttr::ParamData*>&            params,
+        rttr::DynamicStack&                        stack,
+        const v8::FunctionCallbackInfo<v8::Value>& v8_func_info
+    );
+    v8::Local<v8::Value> call_native_read_return(
+        V8MatchSuggestion&  suggestion,
+        rttr::DynamicStack& stack
+    );
+
+    // field match
+
+    // field conv
+
 private:
     // match helper
     static V8MatchSuggestion _suggest_primitive(GUID type_id);
-    V8MatchSuggestion _suggest_box(rttr::Type* type);
-    V8MatchSuggestion _suggest_wrap(rttr::Type* type);
-    bool _match_primitive(const V8MatchSuggestion& suggestion, v8::Local<v8::Value> v8_value);
-    bool _match_box(const V8MatchSuggestion& suggestion, v8::Local<v8::Value> v8_value);
-    bool _match_wrap(const V8MatchSuggestion& suggestion, v8::Local<v8::Value> v8_value);
+    V8MatchSuggestion        _suggest_box(rttr::Type* type);
+    V8MatchSuggestion        _suggest_wrap(rttr::Type* type);
+    bool                     _match_primitive(const V8MatchSuggestion& suggestion, v8::Local<v8::Value> v8_value);
+    bool                     _match_box(const V8MatchSuggestion& suggestion, v8::Local<v8::Value> v8_value);
+    bool                     _match_wrap(const V8MatchSuggestion& suggestion, v8::Local<v8::Value> v8_value);
 
     // convert helpers
     static ::v8::Local<::v8::Value> _to_v8_primitive(
@@ -300,4 +338,47 @@ private:
         bool                     is_init
     );
 };
+} // namespace skr
+
+// inline impl
+namespace skr
+{
+template <typename Data>
+inline bool V8Matcher::match_params_to_native(
+    const Data*                                data,
+    const v8::FunctionCallbackInfo<v8::Value>& v8_func_info,
+    Vector<V8MatchSuggestion>&                 out_suggestions
+)
+{
+    using namespace ::v8;
+
+    auto call_length   = v8_func_info.Length();
+    auto native_length = data->param_data.size();
+
+    // match length
+    if (call_length != native_length)
+    {
+        return false;
+    }
+
+    // match params
+    for (uint32_t i = 0; i < call_length; ++i)
+    {
+        auto                    call_value       = v8_func_info[i];
+        rttr::TypeSignatureView native_signature = data->param_data[i].type.view();
+
+        // get param ref info
+        auto pointer_level = native_signature.decayed_pointer_level();
+        if (pointer_level > 1) { return false; } // cannot support multi-level pointer
+
+        // match suggestion
+        auto suggestion = match_to_native(call_value, native_signature);
+        if (suggestion.is_empty())
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
 } // namespace skr

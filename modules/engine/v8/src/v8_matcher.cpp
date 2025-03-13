@@ -14,6 +14,7 @@ V8MatchSuggestion V8Matcher::match_to_native(::v8::Local<::v8::Value> v8_value, 
     if (signature.is_type())
     {
         // read info
+        bool is_decayed_pointer = signature.is_decayed_pointer();
         signature.jump_modifier();
         GUID type_id;
         signature.read_type_id(type_id);
@@ -40,12 +41,15 @@ V8MatchSuggestion V8Matcher::match_to_native(::v8::Local<::v8::Value> v8_value, 
         }
 
         // match wrap
-        result = _suggest_wrap(type);
-        if (!result.is_empty())
-        {
-            if (_match_wrap(result, v8_value))
+        if (is_decayed_pointer)
+        { // wrap export requires decayed pointer type
+            result = _suggest_wrap(type);
+            if (!result.is_empty())
             {
-                return result;
+                if (_match_wrap(result, v8_value))
+                {
+                    return result;
+                }
             }
         }
     }
@@ -61,6 +65,7 @@ V8MatchSuggestion V8Matcher::match_to_v8(rttr::TypeSignatureView signature)
     if (signature.is_type())
     {
         // read info
+        bool is_decayed_pointer = signature.is_decayed_pointer();
         signature.jump_modifier();
         GUID type_id;
         signature.read_type_id(type_id);
@@ -75,8 +80,14 @@ V8MatchSuggestion V8Matcher::match_to_v8(rttr::TypeSignatureView signature)
         if (!result.is_empty()) { return result; }
 
         // match wrap
-        result = _suggest_wrap(type);
-        if (!result.is_empty()) { return result; }
+        if (is_decayed_pointer)
+        { // wrap export requires decayed pointer type
+            result = _suggest_wrap(type);
+            if (!result.is_empty())
+            {
+                return result;
+            }
+        }
     }
     else if (signature.is_generic_type())
     {
@@ -124,6 +135,143 @@ bool V8Matcher::conv_to_native(
         SKR_UNREACHABLE_CODE()
         return false;
     }
+}
+
+// invoke convert
+bool V8Matcher::call_native_push_params(
+    const Vector<V8MatchSuggestion>&           suggestions,
+    const Vector<rttr::ParamData*>&            params,
+    rttr::DynamicStack&                        stack,
+    const v8::FunctionCallbackInfo<v8::Value>& v8_func_info
+)
+{
+    // TODO. check above
+
+    auto isolate = v8::Isolate::GetCurrent();
+    auto context = isolate->GetCurrentContext();
+
+    for (size_t i = 0; i < suggestions.size(); ++i)
+    {
+        const auto& suggestion       = suggestions[i];
+        auto        native_signature = params[i]->type.view();
+        auto        v8_value         = v8_func_info[i];
+
+        auto is_pointer         = native_signature.is_pointer();
+        auto is_decayed_pointer = native_signature.is_decayed_pointer();
+
+        switch (suggestion.kind())
+        {
+        case skr::V8MatchSuggestion::EKind::Primitive: {
+            auto primitive_data = suggestion.primitive();
+
+            // check null
+            if (v8_value.IsEmpty() || v8_value->IsNullOrUndefined())
+            {
+                if (is_pointer)
+                { // nullable
+                    stack.add_param<void*>(nullptr, rttr::EDynamicStackParamKind::Direct);
+                    return true;
+                }
+                else
+                { // not null
+                    isolate->ThrowError("value cannot be null/undefined");
+                    return false;
+                }
+            }
+            else
+            {
+                // do convert
+                void* native_data = stack.alloc_param_raw(
+                    primitive_data.alignment,
+                    primitive_data.size,
+                    is_decayed_pointer ? rttr::EDynamicStackParamKind::XValue : rttr::EDynamicStackParamKind::Direct,
+                    primitive_data.dtor
+                );
+                if (!conv_to_native(suggestion, native_data, v8_value, false)) return false;
+            }
+        }
+        case skr::V8MatchSuggestion::EKind::Box: {
+            auto box_data = suggestion.box();
+
+            // check null
+            if (v8_value.IsEmpty() || v8_value->IsNullOrUndefined())
+            {
+                if (is_pointer)
+                { // nullable
+                    stack.add_param<void*>(nullptr, rttr::EDynamicStackParamKind::Direct);
+                    return true;
+                }
+                else
+                { // not null
+                    isolate->ThrowError("value cannot be null/undefined");
+                    return false;
+                }
+            }
+            else
+            {
+                // do convert
+                void* native_data = stack.alloc_param_raw(
+                    box_data.type->alignment(),
+                    box_data.type->size(),
+                    is_decayed_pointer ? rttr::EDynamicStackParamKind::XValue : rttr::EDynamicStackParamKind::Direct,
+                    nullptr
+                );
+                if (!conv_to_native(suggestion, native_data, v8_value, false)) return false;
+            }
+        }
+        case skr::V8MatchSuggestion::EKind::Wrap: {
+            auto wrap_data = suggestion.wrap();
+
+            // check type
+            if (!is_decayed_pointer)
+            { // value type is not allowed
+                isolate->ThrowError("wrap type must be pointer or reference");
+                return false;
+            }
+
+            // check null
+            if (v8_value.IsEmpty() || v8_value->IsNullOrUndefined())
+            {
+                if (is_pointer)
+                { // nullable
+                    stack.add_param<void*>(nullptr, rttr::EDynamicStackParamKind::Direct);
+                    return true;
+                }
+                else
+                { // not null
+                    isolate->ThrowError("value cannot be null/undefined");
+                    return false;
+                }
+            }
+            else
+            {
+                // do convert
+                void* native_data = stack.alloc_param_raw(
+                    sizeof(void*),
+                    alignof(void*),
+                    rttr::EDynamicStackParamKind::Direct,
+                    nullptr
+                );
+                if (!conv_to_native(suggestion, native_data, v8_value, false)) return false;
+            }
+        }
+        }
+    }
+
+    return false;
+}
+v8::Local<v8::Value> V8Matcher::call_native_read_return(
+    V8MatchSuggestion&  suggestion,
+    rttr::DynamicStack& stack
+)
+{
+    // TODO. check above
+    
+    if (!stack.is_return_stored()) { return {}; }
+
+    conv_to_v8(suggestion, stack.get_return_raw());
+
+    return {};
 }
 
 // match helper
@@ -575,20 +723,21 @@ bool V8Matcher::_to_native_wrap(
     auto context     = isolate->GetCurrentContext();
     auto skr_isolate = reinterpret_cast<V8Isolate*>(isolate->GetData(0));
 
-    auto& wrap_data        = suggestion.wrap();
-    auto* type             = wrap_data.type;
-    
+    auto& wrap_data = suggestion.wrap();
+    auto* type      = wrap_data.type;
+
     if (v8_value->IsObject())
     {
         auto v8_object = v8_value->ToObject(context).ToLocalChecked();
         if (v8_object->InternalFieldCount() >= 1)
         {
             void* raw_bind_core = v8_object->GetInternalField(0).As<v8::External>()->Value();
-            auto* bind_core = reinterpret_cast<V8BindRecordCore*>(raw_bind_core);
+            auto* bind_core     = reinterpret_cast<V8BindRecordCore*>(raw_bind_core);
 
-            // check inherit
-            void* cast_ptr = bind_core->cast_to_base(type->type_id());
+            // do cast
+            void* cast_ptr                         = bind_core->cast_to_base(type->type_id());
             *reinterpret_cast<void**>(native_data) = cast_ptr;
+            return true;
         }
     }
 
