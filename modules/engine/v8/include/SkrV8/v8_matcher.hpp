@@ -266,6 +266,7 @@ private:
     V8MatchSuggestion _suggest_wrap(rttr::Type* type);
     bool _match_primitive(const V8MatchSuggestion& suggestion, v8::Local<v8::Value> v8_value);
     bool _match_box(const V8MatchSuggestion& suggestion, v8::Local<v8::Value> v8_value);
+    bool _match_wrap(const V8MatchSuggestion& suggestion, v8::Local<v8::Value> v8_value);
 
     // convert helpers
     static ::v8::Local<::v8::Value> _to_v8_primitive(
@@ -283,6 +284,16 @@ private:
         void*                    native_data
     );
     static bool _to_native_box(
+        const V8MatchSuggestion& suggestion,
+        ::v8::Local<::v8::Value> v8_value,
+        void*                    native_data,
+        bool                     is_init
+    );
+    static ::v8::Local<::v8::Value> _to_v8_wrap(
+        const V8MatchSuggestion& suggestion,
+        void*                    native_data
+    );
+    static bool _to_native_wrap(
         const V8MatchSuggestion& suggestion,
         ::v8::Local<::v8::Value> v8_value,
         void*                    native_data,

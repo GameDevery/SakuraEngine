@@ -43,22 +43,9 @@ V8MatchSuggestion V8Matcher::match_to_native(::v8::Local<::v8::Value> v8_value, 
         result = _suggest_wrap(type);
         if (!result.is_empty())
         {
-            // check v8 value type
-            if (v8_value->IsObject())
+            if (_match_wrap(result, v8_value))
             {
-                // check wrap data
-                auto v8_obj = v8_value->ToObject(context).ToLocalChecked();
-                if (v8_obj->InternalFieldCount() >= 1)
-                {
-                    void*             raw_bind_core = v8_obj->GetInternalField(0).As<v8::External>()->Value();
-                    V8BindRecordCore* bind_core     = reinterpret_cast<V8BindRecordCore*>(raw_bind_core);
-                    
-                    // check inherit
-                    if (bind_core->type->based_on(type->type_id()))
-                    {
-                        return result;
-                    }
-                }
+                return result;
             }
         }
     }
@@ -105,7 +92,18 @@ V8MatchSuggestion V8Matcher::match_to_v8(rttr::TypeSignatureView signature)
     void*                    native_data
 )
 {
-    return {};
+    switch (suggestion.kind())
+    {
+    case skr::V8MatchSuggestion::EKind::Primitive:
+        return _to_v8_primitive(suggestion, native_data);
+    case skr::V8MatchSuggestion::EKind::Box:
+        return _to_v8_box(suggestion, native_data);
+    case skr::V8MatchSuggestion::EKind::Wrap:
+        return _to_v8_wrap(suggestion, native_data);
+    default:
+        SKR_UNREACHABLE_CODE()
+        return {};
+    }
 }
 bool V8Matcher::conv_to_native(
     const V8MatchSuggestion& suggestion,
@@ -114,7 +112,18 @@ bool V8Matcher::conv_to_native(
     bool                     is_init
 )
 {
-    return false;
+    switch (suggestion.kind())
+    {
+    case skr::V8MatchSuggestion::EKind::Primitive:
+        return _to_native_primitive(suggestion, v8_value, native_data, is_init);
+    case skr::V8MatchSuggestion::EKind::Box:
+        return _to_native_box(suggestion, v8_value, native_data, is_init);
+    case skr::V8MatchSuggestion::EKind::Wrap:
+        return _to_native_wrap(suggestion, v8_value, native_data, is_init);
+    default:
+        SKR_UNREACHABLE_CODE()
+        return false;
+    }
 }
 
 // match helper
@@ -259,6 +268,80 @@ bool V8Matcher::_match_primitive(const V8MatchSuggestion& suggestion, v8::Local<
 }
 bool V8Matcher::_match_box(const V8MatchSuggestion& suggestion, v8::Local<v8::Value> v8_value)
 {
+    auto isolate = v8::Isolate::GetCurrent();
+    auto context = isolate->GetCurrentContext();
+
+    if (!v8_value->IsObject()) { return false; }
+
+    auto& box_data = suggestion.box();
+    auto  v8_obj   = v8_value->ToObject(context).ToLocalChecked();
+
+    // match primitive
+    for (const auto& field_data : box_data.primitive_members)
+    {
+        // clang-format off
+        auto v8_field_value = v8_obj->Get(
+            context,
+            V8BindTools::to_v8(field_data.field->name, true)
+        );
+        // clang-format on
+
+        if (v8_field_value.IsEmpty()) { return false; }
+
+        auto v8_field_value_solved = v8_field_value.ToLocalChecked();
+        if (!_match_primitive(field_data.suggestion, v8_field_value_solved))
+        {
+            return false;
+        }
+    }
+
+    // match box
+    for (const auto& field_data : box_data.box_members)
+    {
+        // clang-format off
+        auto v8_field_value = v8_obj->Get(
+            context,
+            V8BindTools::to_v8(field_data.field->name, true)
+        );
+        // clang-format on
+
+        if (v8_field_value.IsEmpty()) { return false; }
+
+        auto v8_field_value_solved = v8_field_value.ToLocalChecked();
+        if (!_match_box(field_data.suggestion, v8_field_value_solved))
+        {
+            return false;
+        }
+    }
+
+    return false;
+}
+bool V8Matcher::_match_wrap(const V8MatchSuggestion& suggestion, v8::Local<v8::Value> v8_value)
+{
+    auto isolate = v8::Isolate::GetCurrent();
+    auto context = isolate->GetCurrentContext();
+
+    auto& wrap_data = suggestion.wrap();
+    auto* type      = wrap_data.type;
+
+    // check v8 value type
+    if (v8_value->IsObject())
+    {
+        // check wrap
+        auto v8_obj = v8_value->ToObject(context).ToLocalChecked();
+        if (v8_obj->InternalFieldCount() >= 1)
+        {
+            void*             raw_bind_core = v8_obj->GetInternalField(0).As<v8::External>()->Value();
+            V8BindRecordCore* bind_core     = reinterpret_cast<V8BindRecordCore*>(raw_bind_core);
+
+            // check inherit
+            if (bind_core->type->based_on(type->type_id()))
+            {
+                return true;
+            }
+        }
+    }
+
     return false;
 }
 
@@ -459,5 +542,56 @@ bool V8Matcher::_to_native_box(
     }
 
     return true;
+}
+::v8::Local<::v8::Value> V8Matcher::_to_v8_wrap(
+    const V8MatchSuggestion& suggestion,
+    void*                    native_data
+)
+{
+    auto isolate     = v8::Isolate::GetCurrent();
+    auto skr_isolate = reinterpret_cast<V8Isolate*>(isolate->GetData(0));
+
+    auto& wrap_data        = suggestion.wrap();
+    auto* type             = wrap_data.type;
+    void* cast_raw         = type->cast_to_base(rttr::type_id_of<rttr::ScriptbleObject>(), native_data);
+    auto* scriptble_object = reinterpret_cast<rttr::ScriptbleObject*>(cast_raw);
+
+    auto* bind_core = skr_isolate->translate_record(scriptble_object);
+    if (bind_core)
+    {
+        return bind_core->v8_object.Get(isolate);
+    }
+
+    return {};
+}
+bool V8Matcher::_to_native_wrap(
+    const V8MatchSuggestion& suggestion,
+    ::v8::Local<::v8::Value> v8_value,
+    void*                    native_data,
+    bool                     is_init
+)
+{
+    auto isolate     = v8::Isolate::GetCurrent();
+    auto context     = isolate->GetCurrentContext();
+    auto skr_isolate = reinterpret_cast<V8Isolate*>(isolate->GetData(0));
+
+    auto& wrap_data        = suggestion.wrap();
+    auto* type             = wrap_data.type;
+    
+    if (v8_value->IsObject())
+    {
+        auto v8_object = v8_value->ToObject(context).ToLocalChecked();
+        if (v8_object->InternalFieldCount() >= 1)
+        {
+            void* raw_bind_core = v8_object->GetInternalField(0).As<v8::External>()->Value();
+            auto* bind_core = reinterpret_cast<V8BindRecordCore*>(raw_bind_core);
+
+            // check inherit
+            void* cast_ptr = bind_core->cast_to_base(type->type_id());
+            *reinterpret_cast<void**>(native_data) = cast_ptr;
+        }
+    }
+
+    return false;
 }
 } // namespace skr
