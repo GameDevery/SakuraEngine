@@ -5,6 +5,7 @@ using System.Diagnostics;
 
 var Toolchain = Utilities.Bootstrap(SourceLocation.Directory());
 var ToolchainInitializeTask = Toolchain.Initialize();
+var DBInitializeTask = DependContext.Initialize();
 
 Stopwatch sw = new();
 sw.Start();
@@ -33,6 +34,7 @@ BuildSystem.Target("TestTarget")
 
 
 await ToolchainInitializeTask;
+await DBInitializeTask;
 BuildSystem.RunBuild();
 
 sw.Stop();

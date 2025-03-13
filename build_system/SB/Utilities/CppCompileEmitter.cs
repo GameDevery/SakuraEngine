@@ -26,10 +26,9 @@ namespace SB
                 .AddArguments(Target.Arguments)
                 .AddArgument("Source", SourceFile)
                 .AddArgument("Object", ObjectFile)
-                .AddArgument("SourceDependencies", SourceDependencies)
-                .AddArgument("DependFile", DependFile);
+                .AddArgument("SourceDependencies", SourceDependencies);
 
-            var R = Toolchain.Compiler.Compile(CLDriver);
+            var R = Toolchain.Compiler.Compile(Target.Name, Name, CLDriver);
             sw.Stop();
             Time += (int)sw.ElapsedMilliseconds;
             return R;

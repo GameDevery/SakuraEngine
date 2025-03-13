@@ -27,9 +27,8 @@ namespace SB
                 var LINKDriver = (new LINKArgumentDriver() as IArgumentDriver)
                     .AddArguments(Target.Arguments)
                     .AddArgument("Inputs", Inputs)
-                    .AddArgument("Output", LinkedFileName)
-                    .AddArgument("DependFile", DependFile);
-                var R = Toolchain.Linker.Link(LINKDriver);
+                    .AddArgument("Output", LinkedFileName);
+                var R = Toolchain.Linker.Link(Target.Name, Name, LINKDriver);
                 sw.Stop();
                 Time += (int)sw.ElapsedMilliseconds;
                 return R;

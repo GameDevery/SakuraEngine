@@ -55,7 +55,7 @@ namespace SB.Core
             });
         }
 
-        public CompileResult Compile(IArgumentDriver Driver)
+        public CompileResult Compile(string TargetName, string EmitterName, IArgumentDriver Driver)
         {
             var CompilerArgsDict = Driver.CalculateArguments();
             var CompilerArgsList = CompilerArgsDict.Values.SelectMany(x => x).ToList();
@@ -67,8 +67,7 @@ namespace SB.Core
 
             var SourceFile = Driver.Arguments["Source"] as string;
             var ObjectFile = Driver.Arguments["Object"] as string;
-            var cxDepFilePath = Driver.Arguments["DependFile"] as string;
-            var Changed = Depend.OnChanged(cxDepFilePath, (Depend depend) =>
+            var Changed = Depend.OnChanged(TargetName, SourceFile, EmitterName, (Depend depend) =>
             {
                 Process compiler = new Process
                 {

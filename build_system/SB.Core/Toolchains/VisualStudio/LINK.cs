@@ -18,7 +18,7 @@ namespace SB.Core
             Log.Information("LINK.exe version ... {MSVCVersion}", MSVCVersion);
         }
 
-        public LinkResult Link(IArgumentDriver Driver)
+        public LinkResult Link(string TargetName, string EmitterName, IArgumentDriver Driver)
         {
             var LinkerArgsDict = Driver.CalculateArguments();
 
@@ -38,8 +38,7 @@ namespace SB.Core
 
             var InputFiles = Driver.Arguments["Inputs"] as ArgumentList<string>;
             var OutputFile = Driver.Arguments["Output"] as string;
-            var cxDepFilePath = Driver.Arguments["DependFile"] as string;
-            bool Changed = Depend.OnChanged(cxDepFilePath, (Depend depend) =>
+            bool Changed = Depend.OnChanged(TargetName, OutputFile, EmitterName, (Depend depend) =>
             {
                 var Arguments = String.Join("\n", LinkerArgsList);
                 string ResponseFile = Path.Combine(BuildSystem.TempPath, $"{Guid.CreateVersion7()}.txt");

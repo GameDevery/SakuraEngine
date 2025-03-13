@@ -10,6 +10,6 @@
     public interface ICompiler
     {
         public Version Version { get; }
-        public CompileResult Compile(IArgumentDriver Driver);
+        public CompileResult Compile(string TargetName, string EmitterName, IArgumentDriver Driver);
     }
 }
