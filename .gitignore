@@ -39,3 +39,13 @@ scenes
 xmake.log
 
 project.lua
+
+.vs
+.vscode
+publish
+**/bin
+**/obj
+
+.sb
+.pkgs
+sbuild
