@@ -15,22 +15,22 @@ struct V8MatchSuggestion {
         Wrap,
     };
     struct Primitive {
-        uint32_t          size      = 0;
-        uint32_t          alignment = 0;
-        rttr::DtorInvoker dtor      = nullptr;
-        ::skr::GUID       type_id   = {};
+        uint32_t    size      = 0;
+        uint32_t    alignment = 0;
+        DtorInvoker dtor      = nullptr;
+        ::skr::GUID type_id   = {};
     };
     template <typename T>
     struct WithField {
-        const ::skr::rttr::FieldData* field;
+        const ::skr::RTTRFieldData* field;
         const ::skr::RTTRType*      field_owner;
-        T                             suggestion;
+        T                           suggestion;
     };
     struct Box {
         using PrimitiveMember = WithField<V8MatchSuggestion>;
         using BoxMember       = WithField<V8MatchSuggestion>;
 
-        ::skr::RTTRType*      type = nullptr;
+        ::skr::RTTRType*        type = nullptr;
         Vector<PrimitiveMember> primitive_members;
         Vector<BoxMember>       box_members;
     };
@@ -284,13 +284,13 @@ struct SKR_V8_API V8Matcher {
     // function conv
     bool call_native_push_params(
         const Vector<V8MatchSuggestion>&           suggestions,
-        const Vector<rttr::ParamData*>&            params,
-        rttr::DynamicStack&                        stack,
+        const Vector<RTTRParamData*>&              params,
+        DynamicStack&                              stack,
         const v8::FunctionCallbackInfo<v8::Value>& v8_func_info
     );
     v8::Local<v8::Value> call_native_read_return(
-        V8MatchSuggestion&  suggestion,
-        rttr::DynamicStack& stack
+        V8MatchSuggestion& suggestion,
+        DynamicStack&      stack
     );
 
     // field match
@@ -364,7 +364,7 @@ inline bool V8Matcher::match_params_to_native(
     // match params
     for (uint32_t i = 0; i < call_length; ++i)
     {
-        auto                    call_value       = v8_func_info[i];
+        auto              call_value       = v8_func_info[i];
         TypeSignatureView native_signature = data->param_data[i].type.view();
 
         // get param ref info

@@ -1,7 +1,7 @@
 #pragma once
 #include <SkrContainersDef/vector.hpp>
 
-namespace skr::rttr
+namespace skr
 {
 using DynamicStackDataDtor = void(void* p_stack_data);
 
@@ -50,18 +50,18 @@ struct DynamicStackParamHelper {
     {
         switch (kind)
         {
-            // store T
-            case EDynamicStackParamKind::Direct:
-            case EDynamicStackParamKind::XValue:
-                return *static_cast<T*>(data);
+        // store T
+        case EDynamicStackParamKind::Direct:
+        case EDynamicStackParamKind::XValue:
+            return *static_cast<T*>(data);
 
-            // store T*
-            case EDynamicStackParamKind::Reference:
-                return **static_cast<T**>(data);
+        // store T*
+        case EDynamicStackParamKind::Reference:
+            return **static_cast<T**>(data);
 
-            default:
-                SKR_UNREACHABLE_CODE()
-                return *static_cast<T*>(data); // unreachable
+        default:
+            SKR_UNREACHABLE_CODE()
+            return *static_cast<T*>(data); // unreachable
         }
     }
 };
@@ -74,17 +74,17 @@ struct DynamicStackParamHelper<T*> {
     {
         switch (kind)
         {
-            // store T
-            case EDynamicStackParamKind::XValue:
-                return static_cast<T*>(data);
+        // store T
+        case EDynamicStackParamKind::XValue:
+            return static_cast<T*>(data);
 
-                // store T*
-            case EDynamicStackParamKind::Direct:
-            case EDynamicStackParamKind::Reference:
-                return *static_cast<T**>(data);
-            default:
-                SKR_UNREACHABLE_CODE()
-                return static_cast<T*>(data); // unreachable
+            // store T*
+        case EDynamicStackParamKind::Direct:
+        case EDynamicStackParamKind::Reference:
+            return *static_cast<T**>(data);
+        default:
+            SKR_UNREACHABLE_CODE()
+            return static_cast<T*>(data); // unreachable
         }
     }
 };
@@ -97,17 +97,17 @@ struct DynamicStackParamHelper<T&> {
     {
         switch (kind)
         {
-            // store T
-            case EDynamicStackParamKind::XValue:
-                return *static_cast<T*>(data);
+        // store T
+        case EDynamicStackParamKind::XValue:
+            return *static_cast<T*>(data);
 
-            // store T*
-            case EDynamicStackParamKind::Direct:
-            case EDynamicStackParamKind::Reference:
-                return **static_cast<T**>(data);
-            default:
-                SKR_UNREACHABLE_CODE()
-                return *static_cast<T*>(data); // unreachable
+        // store T*
+        case EDynamicStackParamKind::Direct:
+        case EDynamicStackParamKind::Reference:
+            return **static_cast<T**>(data);
+        default:
+            SKR_UNREACHABLE_CODE()
+            return *static_cast<T*>(data); // unreachable
         }
     }
 };
@@ -120,17 +120,17 @@ struct DynamicStackParamHelper<const T&> {
     {
         switch (kind)
         {
-            // store T
-            case EDynamicStackParamKind::XValue:
-                return *static_cast<T*>(data);
+        // store T
+        case EDynamicStackParamKind::XValue:
+            return *static_cast<T*>(data);
 
-            // store T*
-            case EDynamicStackParamKind::Direct:
-            case EDynamicStackParamKind::Reference:
-                return **static_cast<T**>(data);
-            default:
-                SKR_UNREACHABLE_CODE()
-                return *static_cast<T*>(data); // unreachable
+        // store T*
+        case EDynamicStackParamKind::Direct:
+        case EDynamicStackParamKind::Reference:
+            return **static_cast<T**>(data);
+        default:
+            SKR_UNREACHABLE_CODE()
+            return *static_cast<T*>(data); // unreachable
         }
     }
 };
@@ -143,17 +143,17 @@ struct DynamicStackParamHelper<T&&> {
     {
         switch (kind)
         {
-            // store T
-            case EDynamicStackParamKind::XValue:
-                return *static_cast<T*>(data);
+        // store T
+        case EDynamicStackParamKind::XValue:
+            return *static_cast<T*>(data);
 
-            // store T*
-            case EDynamicStackParamKind::Direct:
-            case EDynamicStackParamKind::Reference:
-                return **static_cast<T**>(data);
-            default:
-                SKR_UNREACHABLE_CODE()
-                return *static_cast<T*>(data); // unreachable
+        // store T*
+        case EDynamicStackParamKind::Direct:
+        case EDynamicStackParamKind::Reference:
+            return **static_cast<T**>(data);
+        default:
+            SKR_UNREACHABLE_CODE()
+            return *static_cast<T*>(data); // unreachable
         }
     }
 };
@@ -268,9 +268,9 @@ private:
 using MethodInvokerDynamicStack = void (*)(void* p, DynamicStack& stack);
 using FuncInvokerDynamicStack   = void (*)(DynamicStack& stack);
 
-} // namespace skr::rttr
+} // namespace skr
 
-namespace skr::rttr
+namespace skr
 {
 // helper
 inline uint64_t DynamicStack::_grow(uint64_t size, uint64_t align)
@@ -475,8 +475,8 @@ inline void* DynamicStack::get_return_raw()
     SKR_ASSERT(_ret_info.kind == EDynamicStackReturnKind::Store);
 
     return _ret_info.stored ?
-           _get_memory(_ret_info.offset) :
-           nullptr;
+               _get_memory(_ret_info.offset) :
+               nullptr;
 }
 template <typename T>
 inline T& DynamicStack::get_return()
@@ -486,4 +486,4 @@ inline T& DynamicStack::get_return()
 
     return *reinterpret_cast<T*>(_get_memory(_ret_info.offset));
 }
-} // namespace skr::rttr
+} // namespace skr

@@ -11,7 +11,7 @@ namespace skr
 struct V8BindMethodData {
     struct OverloadInfo {
         const skr::RTTRType*       owner_type;
-        const skr::rttr::MethodData* method;
+        const skr::RTTRMethodData* method;
     };
 
     // native info
@@ -21,7 +21,7 @@ struct V8BindMethodData {
 struct V8BindStaticMethodData {
     struct OverloadInfo {
         const skr::RTTRType*             owner_type;
-        const skr::rttr::StaticMethodData* method;
+        const skr::RTTRStaticMethodData* method;
     };
 
     // native info
@@ -32,13 +32,13 @@ struct V8BindFieldData {
     // native info
     String                      name;
     const skr::RTTRType*      owner_type;
-    const skr::rttr::FieldData* field;
+    const skr::RTTRFieldData* field;
 };
 struct V8BindStaticFieldData {
     // native info
     String                            name;
     const skr::RTTRType*            owner_type;
-    const skr::rttr::StaticFieldData* field;
+    const skr::RTTRStaticFieldData* field;
 };
 struct V8BindRecordData {
     // v8 info

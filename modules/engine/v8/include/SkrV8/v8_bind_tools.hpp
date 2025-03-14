@@ -39,14 +39,16 @@ struct SKR_V8_API V8BindTools {
         auto isolate = ::v8::Isolate::GetCurrent();
         return ::v8::Boolean::New(isolate, v);
     }
-    inline static ::v8::Local<::v8::String> to_v8(StringView view, bool as_literal = false) {
+    inline static ::v8::Local<::v8::String> to_v8(StringView view, bool as_literal = false)
+    {
         auto isolate = ::v8::Isolate::GetCurrent();
         return ::v8::String::NewFromUtf8(
-            isolate, 
-            view.data_raw(), 
-            as_literal ? ::v8::NewStringType::kInternalized : ::v8::NewStringType::kNormal, 
-            view.length_buffer()
-        ).ToLocalChecked();
+                   isolate,
+                   view.data_raw(),
+                   as_literal ? ::v8::NewStringType::kInternalized : ::v8::NewStringType::kNormal,
+                   view.length_buffer()
+        )
+            .ToLocalChecked();
     }
 
     // to native
@@ -195,33 +197,35 @@ struct SKR_V8_API V8BindTools {
 
     // match helper
     static bool match_type(::v8::Local<::v8::Value> v8_value, TypeSignatureView native_signature);
-    static bool match_params(const rttr::CtorData* data, const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static bool match_params(const rttr::MethodData* data, const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static bool match_params(const rttr::StaticMethodData* data, const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static bool match_params(const rttr::ExternMethodData* data, const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static bool match_params(const rttr::FunctionData* data, const ::v8::FunctionCallbackInfo<::v8::Value>& info);
+    static bool match_params(const RTTRCtorData* data, const ::v8::FunctionCallbackInfo<::v8::Value>& info);
+    static bool match_params(const RTTRMethodData* data, const ::v8::FunctionCallbackInfo<::v8::Value>& info);
+    static bool match_params(const RTTRStaticMethodData* data, const ::v8::FunctionCallbackInfo<::v8::Value>& info);
+    static bool match_params(const RTTRExternMethodData* data, const ::v8::FunctionCallbackInfo<::v8::Value>& info);
+    static bool match_params(const RTTRFunctionData* data, const ::v8::FunctionCallbackInfo<::v8::Value>& info);
 
     // convert helper
-    inline static ::v8::Local<::v8::String> str_to_v8(StringView view, ::v8::Isolate* isolate, bool as_literal = false) {
+    inline static ::v8::Local<::v8::String> str_to_v8(StringView view, ::v8::Isolate* isolate, bool as_literal = false)
+    {
         return ::v8::String::NewFromUtf8(
-            isolate, 
-            view.data_raw(), 
-            as_literal ? ::v8::NewStringType::kInternalized : ::v8::NewStringType::kNormal, 
-            view.length_buffer()
-        ).ToLocalChecked();
+                   isolate,
+                   view.data_raw(),
+                   as_literal ? ::v8::NewStringType::kInternalized : ::v8::NewStringType::kNormal,
+                   view.length_buffer()
+        )
+            .ToLocalChecked();
     }
     static bool is_primitive(TypeSignatureView signature);
     static bool native_to_v8_primitive(
         ::v8::Local<::v8::Context> context,
         ::v8::Isolate*             isolate,
-        TypeSignatureView    signature,
+        TypeSignatureView          signature,
         void*                      native_data,
         ::v8::Local<::v8::Value>&  out_v8_value
     );
     static bool v8_to_native_primitive(
         ::v8::Local<::v8::Context> context,
         ::v8::Isolate*             isolate,
-        TypeSignatureView    signature,
+        TypeSignatureView          signature,
         ::v8::Local<::v8::Value>   v8_value,
         void*                      out_native_data,
         bool                       is_init
@@ -229,31 +233,31 @@ struct SKR_V8_API V8BindTools {
     static bool native_to_v8_box(
         ::v8::Local<::v8::Context> context,
         ::v8::Isolate*             isolate,
-        TypeSignatureView    signature,
+        TypeSignatureView          signature,
         void*                      native_data,
         ::v8::Local<::v8::Value>&  out_v8_value
     );
     static bool v8_to_native_box(
         ::v8::Local<::v8::Context> context,
         ::v8::Isolate*             isolate,
-        TypeSignatureView    signature,
+        TypeSignatureView          signature,
         ::v8::Local<::v8::Value>   v8_value,
         void*                      out_native_data,
         bool                       is_init
     );
-    //TODO. wrap bind use V8Isolate, wrap bind cannot be value signature
-    
+    // TODO. wrap bind use V8Isolate, wrap bind cannot be value signature
+
     // function invoke helpers
     static void push_param(
-        rttr::DynamicStack&        stack,
-        const rttr::ParamData&     param_data,
+        DynamicStack&              stack,
+        const RTTRParamData&       param_data,
         ::v8::Local<::v8::Context> context,
         ::v8::Isolate*             isolate,
         ::v8::Local<::v8::Value>   v8_value
     );
     static bool read_return(
-        rttr::DynamicStack&        stack, 
-        TypeSignatureView    signature,
+        DynamicStack&              stack,
+        TypeSignatureView          signature,
         ::v8::Local<::v8::Context> context,
         ::v8::Isolate*             isolate,
         ::v8::Local<::v8::Value>&  out_value
@@ -262,24 +266,24 @@ struct SKR_V8_API V8BindTools {
     // caller
     static void call_ctor(
         void*                                          obj,
-        const rttr::CtorData&                          data,
+        const RTTRCtorData&                            data,
         const ::v8::FunctionCallbackInfo<::v8::Value>& info,
         ::v8::Local<::v8::Context>                     context,
         ::v8::Isolate*                                 isolate
     );
     static void call_method(
         void*                                          obj,
-        const Vector<rttr::ParamData>&                 params,
-        const TypeSignatureView                  ret_type,
-        rttr::MethodInvokerDynamicStack                invoker,
+        const Vector<RTTRParamData>&                   params,
+        const TypeSignatureView                        ret_type,
+        MethodInvokerDynamicStack                      invoker,
         const ::v8::FunctionCallbackInfo<::v8::Value>& info,
         ::v8::Local<::v8::Context>                     context,
         ::v8::Isolate*                                 isolate
     );
     static void call_function(
-        const Vector<rttr::ParamData>&                 params,
-        const TypeSignatureView                  ret_type,
-        rttr::FuncInvokerDynamicStack                  invoker,
+        const Vector<RTTRParamData>&                   params,
+        const TypeSignatureView                        ret_type,
+        FuncInvokerDynamicStack                        invoker,
         const ::v8::FunctionCallbackInfo<::v8::Value>& info,
         ::v8::Local<::v8::Context>                     context,
         ::v8::Isolate*                                 isolate

@@ -140,8 +140,8 @@ bool V8Matcher::conv_to_native(
 // invoke convert
 bool V8Matcher::call_native_push_params(
     const Vector<V8MatchSuggestion>&           suggestions,
-    const Vector<rttr::ParamData*>&            params,
-    rttr::DynamicStack&                        stack,
+    const Vector<RTTRParamData*>&            params,
+    DynamicStack&                        stack,
     const v8::FunctionCallbackInfo<v8::Value>& v8_func_info
 )
 {
@@ -169,7 +169,7 @@ bool V8Matcher::call_native_push_params(
             {
                 if (is_pointer)
                 { // nullable
-                    stack.add_param<void*>(nullptr, rttr::EDynamicStackParamKind::Direct);
+                    stack.add_param<void*>(nullptr, EDynamicStackParamKind::Direct);
                     return true;
                 }
                 else
@@ -184,7 +184,7 @@ bool V8Matcher::call_native_push_params(
                 void* native_data = stack.alloc_param_raw(
                     primitive_data.alignment,
                     primitive_data.size,
-                    is_decayed_pointer ? rttr::EDynamicStackParamKind::XValue : rttr::EDynamicStackParamKind::Direct,
+                    is_decayed_pointer ? EDynamicStackParamKind::XValue : EDynamicStackParamKind::Direct,
                     primitive_data.dtor
                 );
                 if (!conv_to_native(suggestion, native_data, v8_value, false)) return false;
@@ -198,7 +198,7 @@ bool V8Matcher::call_native_push_params(
             {
                 if (is_pointer)
                 { // nullable
-                    stack.add_param<void*>(nullptr, rttr::EDynamicStackParamKind::Direct);
+                    stack.add_param<void*>(nullptr, EDynamicStackParamKind::Direct);
                     return true;
                 }
                 else
@@ -213,7 +213,7 @@ bool V8Matcher::call_native_push_params(
                 void* native_data = stack.alloc_param_raw(
                     box_data.type->alignment(),
                     box_data.type->size(),
-                    is_decayed_pointer ? rttr::EDynamicStackParamKind::XValue : rttr::EDynamicStackParamKind::Direct,
+                    is_decayed_pointer ? EDynamicStackParamKind::XValue : EDynamicStackParamKind::Direct,
                     nullptr
                 );
                 if (!conv_to_native(suggestion, native_data, v8_value, false)) return false;
@@ -234,7 +234,7 @@ bool V8Matcher::call_native_push_params(
             {
                 if (is_pointer)
                 { // nullable
-                    stack.add_param<void*>(nullptr, rttr::EDynamicStackParamKind::Direct);
+                    stack.add_param<void*>(nullptr, EDynamicStackParamKind::Direct);
                     return true;
                 }
                 else
@@ -249,7 +249,7 @@ bool V8Matcher::call_native_push_params(
                 void* native_data = stack.alloc_param_raw(
                     sizeof(void*),
                     alignof(void*),
-                    rttr::EDynamicStackParamKind::Direct,
+                    EDynamicStackParamKind::Direct,
                     nullptr
                 );
                 if (!conv_to_native(suggestion, native_data, v8_value, false)) return false;
@@ -262,7 +262,7 @@ bool V8Matcher::call_native_push_params(
 }
 v8::Local<v8::Value> V8Matcher::call_native_read_return(
     V8MatchSuggestion&  suggestion,
-    rttr::DynamicStack& stack
+    DynamicStack& stack
 )
 {
     // TODO. check above
@@ -309,15 +309,15 @@ V8MatchSuggestion V8Matcher::_suggest_primitive(GUID type_id)
 }
 V8MatchSuggestion V8Matcher::_suggest_box(RTTRType* type)
 {
-    if (!flag_all(type->record_flag(), rttr::ERecordFlag::ScriptBox)) { return {}; }
+    if (!flag_all(type->record_flag(), ERTTRRecordFlag::ScriptBox)) { return {}; }
 
     V8MatchSuggestion result     = V8MatchSuggestion::FromBox(type);
     auto&             box_result = result.box();
 
     // each field
-    type->each_field([&](const rttr::FieldData* field, const RTTRType* owner_type) {
+    type->each_field([&](const RTTRFieldData* field, const RTTRType* owner_type) {
         // check visible
-        if (!flag_all(field->flag, rttr::EFieldFlag::ScriptVisible)) { return; }
+        if (!flag_all(field->flag, ERTTRFieldFlag::ScriptVisible)) { return; }
 
         // get type signature
         auto signature = field->type.view();
@@ -371,7 +371,7 @@ V8MatchSuggestion V8Matcher::_suggest_box(RTTRType* type)
 }
 V8MatchSuggestion V8Matcher::_suggest_wrap(RTTRType* type)
 {
-    if (flag_all(type->record_flag(), rttr::ERecordFlag::ScriptVisible))
+    if (flag_all(type->record_flag(), ERTTRRecordFlag::ScriptVisible))
     {
         if (type->based_on(type_id_of<ScriptbleObject>()))
         {

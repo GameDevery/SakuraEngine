@@ -133,7 +133,6 @@ class _Gen {
     b.$line(`::skr::GUID iobject_get_typeid() const override`);
     b.$scope((_b) => {
       b.$line(`using namespace ::skr;`);
-      b.$line(`using namespace ::skr::rttr;`);
       b.$line(
         `using ThisType = std::remove_cv_t<std::remove_pointer_t<decltype(this)>>;`,
       );
@@ -178,7 +177,6 @@ class _Gen {
     b.$line(`{`);
     b.$indent(() => {
       b.$line(`using namespace ::skr;`);
-      b.$line(`using namespace ::skr::rttr;`);
       b.$line(``);
 
       // export records
@@ -193,7 +191,7 @@ class _Gen {
         const _gen_methods: db.Method[] = record.methods.filter((method) => method.ml_configs.rttr.enable);
 
         // register function
-        b.$line(`register_type_loader(type_id_of<${record.name}>(), +[](RTTRType* type) {`);
+        b.$line(`rttr::register_type_loader(type_id_of<${record.name}>(), +[](RTTRType* type) {`);
         b.$indent((_b) => {
           // module info
           b.$line(`// setup module`);
@@ -202,7 +200,7 @@ class _Gen {
 
           // build scope
           b.$line(`// build scope`);
-          b.$line(`type->build_record([&](RecordData* record_data) {`);
+          b.$line(`type->build_record([&](RTTRRecordData* record_data) {`);
           b.$indent((_b) => {
             // basic info
             b.$line(`// reserve`);
@@ -210,7 +208,7 @@ class _Gen {
             b.$line(`record_data->fields.reserve(${_gen_fields.length});`);
             b.$line(`record_data->methods.reserve(${_gen_methods.length});`);
             b.$line(``);
-            b.$line(`RecordBuilder<${record.name}> builder(record_data);`);
+            b.$line(`RTTRRecordBuilder<${record.name}> builder(record_data);`);
             b.$line(``);
             b.$line(`// basic`);
             b.$line(`builder.basic_info();`);
@@ -292,7 +290,7 @@ class _Gen {
         const _gen_enum_values = enum_.values.filter((enum_value) => enum_value.ml_configs.rttr.enable);
 
         // register function
-        b.$line(`register_type_loader(type_id_of<${enum_.name}> (), +[](RTTRType * type){`,);
+        b.$line(`rttr::register_type_loader(type_id_of<${enum_.name}> (), +[](RTTRType * type){`,);
         b.$indent((_b) => {
           // module info
           b.$line(`// setup module`);
@@ -301,13 +299,13 @@ class _Gen {
 
           // build scope
           b.$line(`// build scope`);
-          b.$line(`type->build_enum([&](EnumData* enum_data) {`);
+          b.$line(`type->build_enum([&](RTTREnumData* enum_data) {`);
           b.$indent((_b) => {
             // basic
             b.$line(`// reserve`);
             b.$line(`enum_data->items.reserve(${enum_.values.length});`);
             b.$line(``);
-            b.$line(`EnumBuilder<${enum_.name}> builder(enum_data);`);
+            b.$line(`RTTREnumBuilder<${enum_.name}> builder(enum_data);`);
             b.$line(``);
             b.$line(`// basic`);
             b.$line(`builder.basic_info();`);
@@ -369,17 +367,17 @@ class _Gen {
   }
   static #flag_enum_name_of(cpp_type: db.CppTypes) {
     if (cpp_type instanceof db.Record) {
-      return "ERecordFlag";
+      return "ERTTRRecordFlag";
     } else if (cpp_type instanceof db.Field) {
-      return cpp_type.is_static ? "EStaticFieldFlag" : "EFieldFlag";
+      return cpp_type.is_static ? "ERTTRStaticFieldFlag" : "ERTTRFieldFlag";
     } else if (cpp_type instanceof db.Method) {
-      return cpp_type.is_static ? "EStaticMethodFlag" : "EMethodFlag";
+      return cpp_type.is_static ? "ERTTRStaticMethodFlag" : "ERTTRMethodFlag";
     } else if (cpp_type instanceof db.Parameter) {
-      return "EParamFlag";
+      return "ERTTRParamFlag";
     } else if (cpp_type instanceof db.Enum) {
-      return "EEnumFlag";
+      return "ERTTREnumFlag";
     } else if (cpp_type instanceof db.EnumValue) {
-      return "EEnumItemFlag";
+      return "ERTTREnumItemFlag";
     } else {
       throw new Error(`Unknown cpp_type: ${cpp_type.constructor.name}`);
     }

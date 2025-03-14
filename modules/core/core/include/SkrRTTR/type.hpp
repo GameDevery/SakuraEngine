@@ -73,9 +73,9 @@ struct SKR_CORE_API RTTRType final {
     void               each_name_space(FunctionRef<void(StringView)> each_func) const;
 
     // builders
-    void build_primitive(FunctionRef<void(rttr::PrimitiveData* data)> func);
-    void build_record(FunctionRef<void(rttr::RecordData* data)> func);
-    void build_enum(FunctionRef<void(rttr::EnumData* data)> func);
+    void build_primitive(FunctionRef<void(RTTRPrimitiveData* data)> func);
+    void build_record(FunctionRef<void(RTTRRecordData* data)> func);
+    void build_enum(FunctionRef<void(RTTREnumData* data)> func);
 
     // TODO. build optimize data
     //  1. fast base find table
@@ -91,43 +91,43 @@ struct SKR_CORE_API RTTRType final {
     RTTRTypeCaster caster_to_base(GUID type_id) const;
 
     // get dtor
-    Optional<rttr::DtorData> dtor_data() const;
+    Optional<RTTRDtorData> dtor_data() const;
 
     // each method & field
-    void each_bases(FunctionRef<void(const rttr::BaseData* base_data, const RTTRType* owner)> each_func, RTTRTypeEachConfig config = {}) const;
-    void each_ctor(FunctionRef<void(const rttr::CtorData* ctor)> each_func, RTTRTypeEachConfig config = {}) const; // ignore [config.include_bases]x
-    void each_method(FunctionRef<void(const rttr::MethodData* method, const RTTRType* owner)> each_func, RTTRTypeEachConfig config = {}) const;
-    void each_field(FunctionRef<void(const rttr::FieldData* field, const RTTRType* owner)> each_func, RTTRTypeEachConfig config = {}) const;
-    void each_static_method(FunctionRef<void(const rttr::StaticMethodData* method, const RTTRType* owner)> each_func, RTTRTypeEachConfig config = {}) const;
-    void each_static_field(FunctionRef<void(const rttr::StaticFieldData* field, const RTTRType* owner)> each_func, RTTRTypeEachConfig config = {}) const;
-    void each_extern_method(FunctionRef<void(const rttr::ExternMethodData* method, const RTTRType* owner)> each_func, RTTRTypeEachConfig config = {}) const;
+    void each_bases(FunctionRef<void(const RTTRBaseData* base_data, const RTTRType* owner)> each_func, RTTRTypeEachConfig config = {}) const;
+    void each_ctor(FunctionRef<void(const RTTRCtorData* ctor)> each_func, RTTRTypeEachConfig config = {}) const; // ignore [config.include_bases]x
+    void each_method(FunctionRef<void(const RTTRMethodData* method, const RTTRType* owner)> each_func, RTTRTypeEachConfig config = {}) const;
+    void each_field(FunctionRef<void(const RTTRFieldData* field, const RTTRType* owner)> each_func, RTTRTypeEachConfig config = {}) const;
+    void each_static_method(FunctionRef<void(const RTTRStaticMethodData* method, const RTTRType* owner)> each_func, RTTRTypeEachConfig config = {}) const;
+    void each_static_field(FunctionRef<void(const RTTRStaticFieldData* field, const RTTRType* owner)> each_func, RTTRTypeEachConfig config = {}) const;
+    void each_extern_method(FunctionRef<void(const RTTRExternMethodData* method, const RTTRType* owner)> each_func, RTTRTypeEachConfig config = {}) const;
 
     // find method & field
-    const rttr::CtorData*         find_ctor(RTTRTypeFindConfig config) const; // ignore [config.name/config.include_bases]
-    const rttr::MethodData*       find_method(RTTRTypeFindConfig config) const;
-    const rttr::FieldData*        find_field(RTTRTypeFindConfig config) const;
-    const rttr::StaticMethodData* find_static_method(RTTRTypeFindConfig config) const;
-    const rttr::StaticFieldData*  find_static_field(RTTRTypeFindConfig config) const;
-    const rttr::ExternMethodData* find_extern_method(RTTRTypeFindConfig config) const;
+    const RTTRCtorData*         find_ctor(RTTRTypeFindConfig config) const; // ignore [config.name/config.include_bases]
+    const RTTRMethodData*       find_method(RTTRTypeFindConfig config) const;
+    const RTTRFieldData*        find_field(RTTRTypeFindConfig config) const;
+    const RTTRStaticMethodData* find_static_method(RTTRTypeFindConfig config) const;
+    const RTTRStaticFieldData*  find_static_field(RTTRTypeFindConfig config) const;
+    const RTTRExternMethodData* find_extern_method(RTTRTypeFindConfig config) const;
 
     // template find method & field
     // TODO. 使用包装器进行包装，辅助进行调用等行为
     template <typename Func>
-    const rttr::CtorData* find_ctor_t(ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict) const;
+    const RTTRCtorData* find_ctor_t(ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict) const;
     template <typename Func>
-    const rttr::MethodData* find_method_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
+    const RTTRMethodData* find_method_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
     template <typename Field>
-    const rttr::FieldData* find_field_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
+    const RTTRFieldData* find_field_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
     template <typename Func>
-    const rttr::StaticMethodData* find_static_method_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
+    const RTTRStaticMethodData* find_static_method_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
     template <typename Field>
-    const rttr::StaticFieldData* find_static_field_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
+    const RTTRStaticFieldData* find_static_field_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
     template <typename Func>
-    const rttr::ExternMethodData* find_extern_method_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
+    const RTTRExternMethodData* find_extern_method_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
 
     // flag & attribute
-    rttr::ERecordFlag record_flag() const;
-    rttr::EEnumFlag   enum_flag() const;
+    ERTTRRecordFlag   record_flag() const;
+    ERTTREnumFlag     enum_flag() const;
     rttr::IAttribute* find_attribute(GUID attr_type_id) const;
 
 private:
@@ -139,9 +139,9 @@ private:
     String            _module        = {};
     union
     {
-        rttr::PrimitiveData _primitive_data;
-        rttr::RecordData    _record_data;
-        rttr::EnumData      _enum_data;
+        RTTRPrimitiveData _primitive_data;
+        RTTRRecordData    _record_data;
+        RTTREnumData      _enum_data;
     };
 };
 } // namespace skr
@@ -151,7 +151,7 @@ namespace skr
 {
 // template find method & field
 template <typename Func>
-inline const rttr::CtorData* RTTRType::find_ctor_t(ETypeSignatureCompareFlag flag) const
+inline const RTTRCtorData* RTTRType::find_ctor_t(ETypeSignatureCompareFlag flag) const
 {
     TypeSignatureTyped<Func> signature;
     return find_ctor(RTTRTypeFindConfig{
@@ -160,7 +160,7 @@ inline const rttr::CtorData* RTTRType::find_ctor_t(ETypeSignatureCompareFlag fla
     });
 }
 template <typename Func>
-inline const rttr::MethodData* RTTRType::find_method_t(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
+inline const RTTRMethodData* RTTRType::find_method_t(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
 {
     TypeSignatureTyped<Func> signature;
     return find_method(RTTRTypeFindConfig{
@@ -171,7 +171,7 @@ inline const rttr::MethodData* RTTRType::find_method_t(StringView name, ETypeSig
     });
 }
 template <typename Field>
-inline const rttr::FieldData* RTTRType::find_field_t(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
+inline const RTTRFieldData* RTTRType::find_field_t(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
 {
     TypeSignatureTyped<Field> signature;
     return find_field(RTTRTypeFindConfig{
@@ -182,7 +182,7 @@ inline const rttr::FieldData* RTTRType::find_field_t(StringView name, ETypeSigna
     });
 }
 template <typename Func>
-inline const rttr::StaticMethodData* RTTRType::find_static_method_t(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
+inline const RTTRStaticMethodData* RTTRType::find_static_method_t(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
 {
     TypeSignatureTyped<Func> signature;
     return find_static_method(RTTRTypeFindConfig{
@@ -193,7 +193,7 @@ inline const rttr::StaticMethodData* RTTRType::find_static_method_t(StringView n
     });
 }
 template <typename Field>
-inline const rttr::StaticFieldData* RTTRType::find_static_field_t(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
+inline const RTTRStaticFieldData* RTTRType::find_static_field_t(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
 {
     TypeSignatureTyped<Field> signature;
     return find_static_field(RTTRTypeFindConfig{
@@ -204,7 +204,7 @@ inline const rttr::StaticFieldData* RTTRType::find_static_field_t(StringView nam
     });
 }
 template <typename Func>
-inline const rttr::ExternMethodData* RTTRType::find_extern_method_t(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
+inline const RTTRExternMethodData* RTTRType::find_extern_method_t(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
 {
     TypeSignatureTyped<Func> signature;
     return find_extern_method(RTTRTypeFindConfig{

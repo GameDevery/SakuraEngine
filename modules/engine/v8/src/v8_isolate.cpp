@@ -115,7 +115,7 @@ void V8Isolate::shutdown()
 void V8Isolate::gc(bool full)
 {
     _isolate->RequestGarbageCollectionForTesting(full ? ::v8::Isolate::kFullGarbageCollection : ::v8::Isolate::kMinorGarbageCollection);
-    
+
     _isolate->LowMemoryNotification();
     _isolate->IdleNotificationDeadline(0);
 }
@@ -140,7 +140,7 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
     HandleScope    handle_scope(_isolate);
 
     // new bind data
-    auto bind_data = SkrNew<V8BindRecordData>();
+    auto bind_data  = SkrNew<V8BindRecordData>();
     bind_data->type = type;
 
     // ctor template
@@ -155,8 +155,8 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
     ctor_template->InstanceTemplate()->SetInternalFieldCount(1);
 
     // bind method
-    type->each_method([&](const rttr::MethodData* method, const RTTRType* owner_type){
-        if (skr::flag_all(method->flag, rttr::EMethodFlag::ScriptVisible))
+    type->each_method([&](const RTTRMethodData* method, const RTTRType* owner_type) {
+        if (skr::flag_all(method->flag, ERTTRMethodFlag::ScriptVisible))
         {
             // find exist method bind data
             V8BindMethodData* data = nullptr;
@@ -167,10 +167,10 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
                 }
                 else
                 {
-                    data = SkrNew<V8BindMethodData>();
+                    data       = SkrNew<V8BindMethodData>();
                     data->name = method->name;
                     bind_data->methods.add(method->name, data);
-                    
+
                     // bind to template
                     ctor_template->PrototypeTemplate()->Set(
                         V8BindTools::str_to_v8(method->name, _isolate, true),
@@ -184,16 +184,16 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
             }
 
             // add overload
-            data->overloads.add({
-                .owner_type  = owner_type,
-                .method = method
+            data->overloads.add({ 
+                .owner_type = owner_type,
+                .method     = method 
             });
         }
     });
 
     // bind field
-    type->each_field([&](const rttr::FieldData* field, const RTTRType* owner_type){
-        if (skr::flag_all(field->flag, rttr::EFieldFlag::ScriptVisible))
+    type->each_field([&](const RTTRFieldData* field, const RTTRType* owner_type) {
+        if (skr::flag_all(field->flag, ERTTRFieldFlag::ScriptVisible))
         {
             // find exist field bind data
             V8BindFieldData* data = nullptr;
@@ -205,7 +205,7 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
                 }
                 else
                 {
-                    data = SkrNew<V8BindFieldData>();
+                    data       = SkrNew<V8BindFieldData>();
                     data->name = field->name;
                     bind_data->fields.add(field->name, data);
 
@@ -227,14 +227,14 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
             }
 
             // fill data
-            data->owner_type  = owner_type;
-            data->field = field;
+            data->owner_type = owner_type;
+            data->field      = field;
         }
     });
 
     // bind static method
-    type->each_static_method([&](const rttr::StaticMethodData* static_method, const RTTRType* owner_type){
-        if (skr::flag_all(static_method->flag, rttr::EStaticMethodFlag::ScriptVisible))
+    type->each_static_method([&](const RTTRStaticMethodData* static_method, const RTTRType* owner_type) {
+        if (skr::flag_all(static_method->flag, ERTTRStaticMethodFlag::ScriptVisible))
         {
             // find exist static method bind data
             V8BindStaticMethodData* data = nullptr;
@@ -245,7 +245,7 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
                 }
                 else
                 {
-                    data = SkrNew<V8BindStaticMethodData>();
+                    data       = SkrNew<V8BindStaticMethodData>();
                     data->name = static_method->name;
                     bind_data->static_methods.add(static_method->name, data);
 
@@ -262,16 +262,14 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
             }
 
             // add overload
-            data->overloads.add({
-                .owner_type = owner_type,
-                .method = static_method
-            });
+            data->overloads.add({ .owner_type = owner_type,
+                                  .method     = static_method });
         }
     });
 
     // bind static field
-    type->each_static_field([&](const rttr::StaticFieldData* static_field, const RTTRType* owner_type){
-        if (skr::flag_all(static_field->flag, rttr::EStaticFieldFlag::ScriptVisible))
+    type->each_static_field([&](const RTTRStaticFieldData* static_field, const RTTRType* owner_type) {
+        if (skr::flag_all(static_field->flag, ERTTRStaticFieldFlag::ScriptVisible))
         {
             // find exist static field bind data
             V8BindStaticFieldData* data = nullptr;
@@ -282,10 +280,10 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
                 }
                 else
                 {
-                    data = SkrNew<V8BindStaticFieldData>();
+                    data       = SkrNew<V8BindStaticFieldData>();
                     data->name = static_field->name;
                     bind_data->static_fields.add(static_field->name, data);
-                    
+
                     // bind to template
                     ctor_template->SetAccessorProperty(
                         V8BindTools::str_to_v8(static_field->name, _isolate, true),
@@ -304,8 +302,8 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
             }
 
             // fill data
-            data->owner_type  = owner_type;
-            data->field = static_field;
+            data->owner_type = owner_type;
+            data->field      = static_field;
         }
     });
 
@@ -328,10 +326,11 @@ void V8Isolate::inject_templates_into_context(::v8::Global<::v8::Context> contex
 
         // set to context
         local_context->Global()->Set(
-            local_context,
-            V8BindTools::str_to_v8(type->name(), _isolate, true),
-            function
-        ).Check();
+                                   local_context,
+                                   V8BindTools::str_to_v8(type->name(), _isolate, true),
+                                   function
+        )
+            .Check();
     }
 }
 
@@ -362,10 +361,10 @@ V8BindRecordCore* V8Isolate::translate_record(::skr::ScriptbleObject* obj)
 
     // make object
     Local<Function> ctor_func = template_ref.value()->ctor_template.Get(_isolate)->GetFunction(context).ToLocalChecked();
-    Local<Object> object = ctor_func->NewInstance(context).ToLocalChecked();
+    Local<Object>   object    = ctor_func->NewInstance(context).ToLocalChecked();
 
     // make bind data
-    auto bind_data = SkrNew<V8BindRecordCore>();
+    auto bind_data    = SkrNew<V8BindRecordCore>();
     bind_data->object = obj;
     bind_data->type   = type;
     bind_data->v8_object.Reset(_isolate, object);
@@ -403,11 +402,11 @@ void V8Isolate::mark_record_deleted(::skr::ScriptbleObject* obj)
 void V8Isolate::_gc_callback(const ::v8::WeakCallbackInfo<V8BindRecordCore>& data)
 {
     using namespace ::v8;
-    
+
     // get data
     V8BindRecordCore* bind_core = data.GetParameter();
-    V8Isolate* isolate = reinterpret_cast<V8Isolate*>(data.GetIsolate()->GetData(0));
-    
+    V8Isolate*        isolate   = reinterpret_cast<V8Isolate*>(data.GetIsolate()->GetData(0));
+
     // remove alive object
     if (bind_core->object)
     {
@@ -455,7 +454,7 @@ void V8Isolate::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
         Local<Object> self = info.This();
 
         // check constructable
-        if (!flag_any(bind_data->type->record_flag(), rttr::ERecordFlag::ScriptNewable))
+        if (!flag_any(bind_data->type->record_flag(), ERTTRRecordFlag::ScriptNewable))
         {
             Isolate->ThrowError("record is not constructable");
             return;
@@ -463,9 +462,9 @@ void V8Isolate::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 
         // match ctor
         bool done_ctor = false;
-        bind_data->type->each_ctor([&](const rttr::CtorData* ctor_data){
+        bind_data->type->each_ctor([&](const RTTRCtorData* ctor_data) {
             if (done_ctor) return;
-            
+
             if (V8BindTools::match_params(ctor_data, info))
             {
                 // alloc memory
@@ -473,14 +472,14 @@ void V8Isolate::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 
                 // call ctor
                 V8BindTools::call_ctor(alloc_mem, *ctor_data, info, Context, Isolate);
-                
+
                 // cast to ScriptbleObject
                 void* casted_mem = bind_data->type->cast_to_base(type_id_of<ScriptbleObject>(), alloc_mem);
 
                 // make bind core
                 V8BindRecordCore* bind_core = SkrNew<V8BindRecordCore>();
-                bind_core->type = bind_data->type;
-                bind_core->object = reinterpret_cast<ScriptbleObject*>(casted_mem);
+                bind_core->type             = bind_data->type;
+                bind_core->object           = reinterpret_cast<ScriptbleObject*>(casted_mem);
 
                 // setup owner ship
                 bind_core->object->script_owner_ship_take(EScriptbleObjectOwnerShip::Script);
@@ -542,11 +541,11 @@ void V8Isolate::_call_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info
     }
 
     // match method
-    for (const auto& overload: bind_data->overloads)
+    for (const auto& overload : bind_data->overloads)
     {
         if (V8BindTools::match_params(overload.method, info))
         {
-            void* obj =  bind_core->cast_to_base(overload.owner_type->type_id());
+            void* obj = bind_core->cast_to_base(overload.owner_type->type_id());
 
             V8BindTools::call_method(
                 obj,
@@ -587,7 +586,7 @@ void V8Isolate::_call_static_method(const ::v8::FunctionCallbackInfo<::v8::Value
     }
 
     // match method
-    for (const auto& overload: bind_data->overloads)
+    for (const auto& overload : bind_data->overloads)
     {
         if (V8BindTools::match_params(overload.method, info))
         {
@@ -631,22 +630,22 @@ void V8Isolate::_get_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
     // return field
     Local<Value> result;
     if (V8BindTools::native_to_v8_primitive(
-        Context,
-        Isolate,
-        bind_data->field->type,
-        field_address,
-        result
-    ))
+            Context,
+            Isolate,
+            bind_data->field->type,
+            field_address,
+            result
+        ))
     {
         info.GetReturnValue().Set(result);
     }
     else if (V8BindTools::native_to_v8_box(
-        Context,
-        Isolate,
-        bind_data->field->type,
-        field_address,
-        result
-    ))
+                 Context,
+                 Isolate,
+                 bind_data->field->type,
+                 field_address,
+                 result
+             ))
     {
         info.GetReturnValue().Set(result);
     }
@@ -681,23 +680,23 @@ void V8Isolate::_set_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 
     // set field
     if (V8BindTools::v8_to_native_primitive(
-        Context,
-        Isolate,
-        bind_data->field->type,
-        info[0],
-        field_address,
-        true
-    ))
+            Context,
+            Isolate,
+            bind_data->field->type,
+            info[0],
+            field_address,
+            true
+        ))
     {
     }
     else if (V8BindTools::v8_to_native_box(
-        Context,
-        Isolate,
-        bind_data->field->type,
-        info[0],
-        field_address,
-        true
-    ))
+                 Context,
+                 Isolate,
+                 bind_data->field->type,
+                 info[0],
+                 field_address,
+                 true
+             ))
     {
     }
     else
@@ -725,22 +724,22 @@ void V8Isolate::_get_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>&
     // return field
     Local<Value> result;
     if (V8BindTools::native_to_v8_primitive(
-        Context,
-        Isolate,
-        bind_data->field->type,
-        bind_data->field->address,
-        result
-    ))
+            Context,
+            Isolate,
+            bind_data->field->type,
+            bind_data->field->address,
+            result
+        ))
     {
         info.GetReturnValue().Set(result);
     }
     else if (V8BindTools::native_to_v8_box(
-        Context,
-        Isolate,
-        bind_data->field->type,
-        bind_data->field->address,
-        result
-    ))
+                 Context,
+                 Isolate,
+                 bind_data->field->type,
+                 bind_data->field->address,
+                 result
+             ))
     {
         info.GetReturnValue().Set(result);
     }
@@ -768,23 +767,23 @@ void V8Isolate::_set_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>&
 
     // set field
     if (V8BindTools::v8_to_native_primitive(
-        Context,
-        Isolate,
-        bind_data->field->type,
-        info[0],
-        bind_data->field->address,
-        true
-    ))
+            Context,
+            Isolate,
+            bind_data->field->type,
+            info[0],
+            bind_data->field->address,
+            true
+        ))
     {
     }
     else if (V8BindTools::v8_to_native_box(
-        Context,
-        Isolate,
-        bind_data->field->type,
-        info[0],
-        bind_data->field->address,
-        true
-    ))
+                 Context,
+                 Isolate,
+                 bind_data->field->type,
+                 info[0],
+                 bind_data->field->address,
+                 true
+             ))
     {
     }
     else

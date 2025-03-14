@@ -6,59 +6,59 @@ namespace skr
 {
 // write primitive
 inline static bool _push_param_primitive(
-    rttr::DynamicStack&          stack,
-    skr::GUID                    type_id,
-    rttr::EDynamicStackParamKind kind,
-    ::v8::Local<::v8::Value>     v8_value,
-    ::v8::Local<::v8::Context>   context,
-    ::v8::Isolate*               isolate
+    DynamicStack&              stack,
+    skr::GUID                  type_id,
+    EDynamicStackParamKind     kind,
+    ::v8::Local<::v8::Value>   v8_value,
+    ::v8::Local<::v8::Context> context,
+    ::v8::Isolate*             isolate
 )
 {
     switch (type_id.get_hash())
     {
-        // int32/uint32
-        case type_id_of<int8_t>().get_hash():
-            stack.add_param<int8_t>((int8_t)v8_value->Int32Value(context).ToChecked(), kind);
-            return true;
-        case type_id_of<int16_t>().get_hash():
-            stack.add_param<int16_t>((int16_t)v8_value->Int32Value(context).ToChecked(), kind);
-            return true;
-        case type_id_of<int32_t>().get_hash():
-            stack.add_param<int32_t>((int32_t)v8_value->Int32Value(context).ToChecked(), kind);
-            return true;
-        case type_id_of<uint8_t>().get_hash():
-            stack.add_param<uint8_t>((uint8_t)v8_value->Uint32Value(context).ToChecked(), kind);
-            return true;
-        case type_id_of<uint16_t>().get_hash():
-            stack.add_param<uint16_t>((uint16_t)v8_value->Uint32Value(context).ToChecked(), kind);
-            return true;
-        case type_id_of<uint32_t>().get_hash():
-            stack.add_param<uint32_t>((uint32_t)v8_value->Uint32Value(context).ToChecked(), kind);
-            return true;
-        // int64/uint64
-        case type_id_of<int64_t>().get_hash():
-            stack.add_param<int64_t>((int64_t)v8_value->ToBigInt(context).ToLocalChecked()->Int64Value(), kind);
-            return true;
-        case type_id_of<uint64_t>().get_hash():
-            stack.add_param<uint64_t>((uint64_t)v8_value->ToBigInt(context).ToLocalChecked()->Uint64Value(), kind);
-            return true;
-        // float/double
-        case type_id_of<float>().get_hash():
-            stack.add_param<float>((float)v8_value->NumberValue(context).ToChecked(), kind);
-            return true;
-        case type_id_of<double>().get_hash():
-            stack.add_param<double>((double)v8_value->NumberValue(context).ToChecked(), kind);
-            return true;
-        // bool
-        case type_id_of<bool>().get_hash():
-            stack.add_param<bool>(v8_value->BooleanValue(isolate), kind);
-            return true;
-        // string
-        case type_id_of<skr::String>().get_hash():
-            stack.add_param<skr::String>(skr::String::From(*::v8::String::Utf8Value(isolate, v8_value)), kind);
-            return true;
-        default:
-            return false;
+    // int32/uint32
+    case type_id_of<int8_t>().get_hash():
+        stack.add_param<int8_t>((int8_t)v8_value->Int32Value(context).ToChecked(), kind);
+        return true;
+    case type_id_of<int16_t>().get_hash():
+        stack.add_param<int16_t>((int16_t)v8_value->Int32Value(context).ToChecked(), kind);
+        return true;
+    case type_id_of<int32_t>().get_hash():
+        stack.add_param<int32_t>((int32_t)v8_value->Int32Value(context).ToChecked(), kind);
+        return true;
+    case type_id_of<uint8_t>().get_hash():
+        stack.add_param<uint8_t>((uint8_t)v8_value->Uint32Value(context).ToChecked(), kind);
+        return true;
+    case type_id_of<uint16_t>().get_hash():
+        stack.add_param<uint16_t>((uint16_t)v8_value->Uint32Value(context).ToChecked(), kind);
+        return true;
+    case type_id_of<uint32_t>().get_hash():
+        stack.add_param<uint32_t>((uint32_t)v8_value->Uint32Value(context).ToChecked(), kind);
+        return true;
+    // int64/uint64
+    case type_id_of<int64_t>().get_hash():
+        stack.add_param<int64_t>((int64_t)v8_value->ToBigInt(context).ToLocalChecked()->Int64Value(), kind);
+        return true;
+    case type_id_of<uint64_t>().get_hash():
+        stack.add_param<uint64_t>((uint64_t)v8_value->ToBigInt(context).ToLocalChecked()->Uint64Value(), kind);
+        return true;
+    // float/double
+    case type_id_of<float>().get_hash():
+        stack.add_param<float>((float)v8_value->NumberValue(context).ToChecked(), kind);
+        return true;
+    case type_id_of<double>().get_hash():
+        stack.add_param<double>((double)v8_value->NumberValue(context).ToChecked(), kind);
+        return true;
+    // bool
+    case type_id_of<bool>().get_hash():
+        stack.add_param<bool>(v8_value->BooleanValue(isolate), kind);
+        return true;
+    // string
+    case type_id_of<skr::String>().get_hash():
+        stack.add_param<skr::String>(skr::String::From(*::v8::String::Utf8Value(isolate, v8_value)), kind);
+        return true;
+    default:
+        return false;
     }
 }
 template <typename Data>
@@ -86,7 +86,7 @@ inline static bool _match_params(const Data* data, const ::v8::FunctionCallbackI
     // match signature
     for (size_t i = 0; i < call_length; ++i)
     {
-        Local<Value>            call_value       = info[i];
+        Local<Value>      call_value       = info[i];
         TypeSignatureView native_signature = data->param_data[i].type.view();
 
         // use default value
@@ -124,32 +124,32 @@ bool V8BindTools::match_type(::v8::Local<::v8::Value> v8_value, TypeSignatureVie
         // match primitive types
         switch (type_id.get_hash())
         {
-            case type_id_of<int8_t>().get_hash():
-                return v8_value->IsInt32();
-            case type_id_of<int16_t>().get_hash():
-                return v8_value->IsInt32();
-            case type_id_of<int32_t>().get_hash():
-                return v8_value->IsInt32();
-            case type_id_of<uint8_t>().get_hash():
-                return v8_value->IsUint32();
-            case type_id_of<uint16_t>().get_hash():
-                return v8_value->IsUint32();
-            case type_id_of<uint32_t>().get_hash():
-                return v8_value->IsUint32();
-            case type_id_of<int64_t>().get_hash():
-                return v8_value->IsBigInt();
-            case type_id_of<uint64_t>().get_hash():
-                return v8_value->IsBigInt();
-            case type_id_of<float>().get_hash():
-                return v8_value->IsNumber();
-            case type_id_of<double>().get_hash():
-                return v8_value->IsNumber();
-            case type_id_of<bool>().get_hash():
-                return v8_value->IsBoolean();
-            case type_id_of<skr::String>().get_hash():
-                return v8_value->IsString();
-            default:
-                break;
+        case type_id_of<int8_t>().get_hash():
+            return v8_value->IsInt32();
+        case type_id_of<int16_t>().get_hash():
+            return v8_value->IsInt32();
+        case type_id_of<int32_t>().get_hash():
+            return v8_value->IsInt32();
+        case type_id_of<uint8_t>().get_hash():
+            return v8_value->IsUint32();
+        case type_id_of<uint16_t>().get_hash():
+            return v8_value->IsUint32();
+        case type_id_of<uint32_t>().get_hash():
+            return v8_value->IsUint32();
+        case type_id_of<int64_t>().get_hash():
+            return v8_value->IsBigInt();
+        case type_id_of<uint64_t>().get_hash():
+            return v8_value->IsBigInt();
+        case type_id_of<float>().get_hash():
+            return v8_value->IsNumber();
+        case type_id_of<double>().get_hash():
+            return v8_value->IsNumber();
+        case type_id_of<bool>().get_hash():
+            return v8_value->IsBoolean();
+        case type_id_of<skr::String>().get_hash():
+            return v8_value->IsString();
+        default:
+            break;
         }
 
         // start match use type id
@@ -161,7 +161,7 @@ bool V8BindTools::match_type(::v8::Local<::v8::Value> v8_value, TypeSignatureVie
         auto context = isolate->GetCurrentContext();
 
         // match box type
-        if (flag_all(type->record_flag(), rttr::ERecordFlag::ScriptBox))
+        if (flag_all(type->record_flag(), ERTTRRecordFlag::ScriptBox))
         {
             if (v8_value->IsObject() || v8_value->IsArray())
             {
@@ -169,9 +169,9 @@ bool V8BindTools::match_type(::v8::Local<::v8::Value> v8_value, TypeSignatureVie
 
                 // match fields
                 bool failed = false;
-                type->each_field([&](const rttr::FieldData* field, const RTTRType* field_owner) {
+                type->each_field([&](const RTTRFieldData* field, const RTTRType* field_owner) {
                     // filter flag
-                    if (!flag_all(field->flag, rttr::EFieldFlag::ScriptVisible)) { return; }
+                    if (!flag_all(field->flag, ERTTRFieldFlag::ScriptVisible)) { return; }
 
                     // fast exit if failed
                     if (failed) { return; }
@@ -207,23 +207,23 @@ bool V8BindTools::match_type(::v8::Local<::v8::Value> v8_value, TypeSignatureVie
         return false;
     }
 }
-bool V8BindTools::match_params(const rttr::CtorData* data, const ::v8::FunctionCallbackInfo<::v8::Value>& info)
+bool V8BindTools::match_params(const RTTRCtorData* data, const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 {
     return _match_params(data, info);
 }
-bool V8BindTools::match_params(const rttr::MethodData* data, const ::v8::FunctionCallbackInfo<::v8::Value>& info)
+bool V8BindTools::match_params(const RTTRMethodData* data, const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 {
     return _match_params(data, info);
 }
-bool V8BindTools::match_params(const rttr::StaticMethodData* data, const ::v8::FunctionCallbackInfo<::v8::Value>& info)
+bool V8BindTools::match_params(const RTTRStaticMethodData* data, const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 {
     return _match_params(data, info);
 }
-bool V8BindTools::match_params(const rttr::ExternMethodData* data, const ::v8::FunctionCallbackInfo<::v8::Value>& info)
+bool V8BindTools::match_params(const RTTRExternMethodData* data, const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 {
     return _match_params(data, info);
 }
-bool V8BindTools::match_params(const rttr::FunctionData* data, const ::v8::FunctionCallbackInfo<::v8::Value>& info)
+bool V8BindTools::match_params(const RTTRFunctionData* data, const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 {
     return _match_params(data, info);
 }
@@ -232,7 +232,7 @@ bool V8BindTools::match_params(const rttr::FunctionData* data, const ::v8::Funct
 bool V8BindTools::native_to_v8_primitive(
     ::v8::Local<::v8::Context> context,
     ::v8::Isolate*             isolate,
-    TypeSignatureView    signature,
+    TypeSignatureView          signature,
     void*                      native_data,
     ::v8::Local<::v8::Value>&  out_v8_value
 )
@@ -246,44 +246,44 @@ bool V8BindTools::native_to_v8_primitive(
 
         switch (type_id.get_hash())
         {
-            case type_id_of<int8_t>().get_hash():
-                out_v8_value = ::v8::Integer::New(isolate, *reinterpret_cast<int8_t*>(native_data));
-                return true;
-            case type_id_of<int16_t>().get_hash():
-                out_v8_value = ::v8::Integer::New(isolate, *reinterpret_cast<int16_t*>(native_data));
-                return true;
-            case type_id_of<int32_t>().get_hash():
-                out_v8_value = ::v8::Integer::New(isolate, *reinterpret_cast<int32_t*>(native_data));
-                return true;
-            case type_id_of<uint8_t>().get_hash():
-                out_v8_value = ::v8::Integer::NewFromUnsigned(isolate, *reinterpret_cast<uint8_t*>(native_data));
-                return true;
-            case type_id_of<uint16_t>().get_hash():
-                out_v8_value = ::v8::Integer::NewFromUnsigned(isolate, *reinterpret_cast<uint16_t*>(native_data));
-                return true;
-            case type_id_of<uint32_t>().get_hash():
-                out_v8_value = ::v8::Integer::NewFromUnsigned(isolate, *reinterpret_cast<uint32_t*>(native_data));
-                return true;
-            case type_id_of<int64_t>().get_hash():
-                out_v8_value = ::v8::BigInt::New(isolate, *reinterpret_cast<int64_t*>(native_data));
-                return true;
-            case type_id_of<uint64_t>().get_hash():
-                out_v8_value = ::v8::BigInt::NewFromUnsigned(isolate, *reinterpret_cast<uint64_t*>(native_data));
-                return true;
-            case type_id_of<float>().get_hash():
-                out_v8_value = ::v8::Number::New(isolate, *reinterpret_cast<float*>(native_data));
-                return true;
-            case type_id_of<double>().get_hash():
-                out_v8_value = ::v8::Number::New(isolate, *reinterpret_cast<double*>(native_data));
-                return true;
-            case type_id_of<bool>().get_hash():
-                out_v8_value = ::v8::Boolean::New(isolate, *reinterpret_cast<bool*>(native_data));
-                return true;
-            case type_id_of<skr::String>().get_hash():
-                out_v8_value = V8BindTools::str_to_v8(*reinterpret_cast<skr::String*>(native_data), isolate, false);
-                return true;
-            default:
-                break;
+        case type_id_of<int8_t>().get_hash():
+            out_v8_value = ::v8::Integer::New(isolate, *reinterpret_cast<int8_t*>(native_data));
+            return true;
+        case type_id_of<int16_t>().get_hash():
+            out_v8_value = ::v8::Integer::New(isolate, *reinterpret_cast<int16_t*>(native_data));
+            return true;
+        case type_id_of<int32_t>().get_hash():
+            out_v8_value = ::v8::Integer::New(isolate, *reinterpret_cast<int32_t*>(native_data));
+            return true;
+        case type_id_of<uint8_t>().get_hash():
+            out_v8_value = ::v8::Integer::NewFromUnsigned(isolate, *reinterpret_cast<uint8_t*>(native_data));
+            return true;
+        case type_id_of<uint16_t>().get_hash():
+            out_v8_value = ::v8::Integer::NewFromUnsigned(isolate, *reinterpret_cast<uint16_t*>(native_data));
+            return true;
+        case type_id_of<uint32_t>().get_hash():
+            out_v8_value = ::v8::Integer::NewFromUnsigned(isolate, *reinterpret_cast<uint32_t*>(native_data));
+            return true;
+        case type_id_of<int64_t>().get_hash():
+            out_v8_value = ::v8::BigInt::New(isolate, *reinterpret_cast<int64_t*>(native_data));
+            return true;
+        case type_id_of<uint64_t>().get_hash():
+            out_v8_value = ::v8::BigInt::NewFromUnsigned(isolate, *reinterpret_cast<uint64_t*>(native_data));
+            return true;
+        case type_id_of<float>().get_hash():
+            out_v8_value = ::v8::Number::New(isolate, *reinterpret_cast<float*>(native_data));
+            return true;
+        case type_id_of<double>().get_hash():
+            out_v8_value = ::v8::Number::New(isolate, *reinterpret_cast<double*>(native_data));
+            return true;
+        case type_id_of<bool>().get_hash():
+            out_v8_value = ::v8::Boolean::New(isolate, *reinterpret_cast<bool*>(native_data));
+            return true;
+        case type_id_of<skr::String>().get_hash():
+            out_v8_value = V8BindTools::str_to_v8(*reinterpret_cast<skr::String*>(native_data), isolate, false);
+            return true;
+        default:
+            break;
         }
     }
     return false;
@@ -291,7 +291,7 @@ bool V8BindTools::native_to_v8_primitive(
 bool V8BindTools::v8_to_native_primitive(
     ::v8::Local<::v8::Context> context,
     ::v8::Isolate*             isolate,
-    TypeSignatureView    signature,
+    TypeSignatureView          signature,
     ::v8::Local<::v8::Value>   v8_value,
     void*                      out_native_data,
     bool                       is_init
@@ -308,53 +308,53 @@ bool V8BindTools::v8_to_native_primitive(
         // match primitive types
         switch (type_id.get_hash())
         {
-            case type_id_of<int8_t>().get_hash():
-                *reinterpret_cast<int8_t*>(out_native_data) = static_cast<int8_t>(v8_value->Int32Value(context).ToChecked());
-                return true;
-            case type_id_of<int16_t>().get_hash():
-                *reinterpret_cast<int16_t*>(out_native_data) = static_cast<int16_t>(v8_value->Int32Value(context).ToChecked());
-                return true;
-            case type_id_of<int32_t>().get_hash():
-                *reinterpret_cast<int32_t*>(out_native_data) = v8_value->Int32Value(context).ToChecked();
-                return true;
-            case type_id_of<uint8_t>().get_hash():
-                *reinterpret_cast<uint8_t*>(out_native_data) = static_cast<uint8_t>(v8_value->Uint32Value(context).ToChecked());
-                return true;
-            case type_id_of<uint16_t>().get_hash():
-                *reinterpret_cast<uint16_t*>(out_native_data) = static_cast<uint16_t>(v8_value->Uint32Value(context).ToChecked());
-                return true;
-            case type_id_of<uint32_t>().get_hash():
-                *reinterpret_cast<uint32_t*>(out_native_data) = v8_value->Uint32Value(context).ToChecked();
-                return true;
-            case type_id_of<int64_t>().get_hash():
-                *reinterpret_cast<int64_t*>(out_native_data) = v8_value->ToBigInt(context).ToLocalChecked()->Int64Value();
-                return true;
-            case type_id_of<uint64_t>().get_hash():
-                *reinterpret_cast<uint64_t*>(out_native_data) = v8_value->ToBigInt(context).ToLocalChecked()->Uint64Value();
-                return true;
-            case type_id_of<float>().get_hash():
-                *reinterpret_cast<float*>(out_native_data) = static_cast<float>(v8_value->NumberValue(context).ToChecked());
-                return true;
-            case type_id_of<double>().get_hash():
-                *reinterpret_cast<double*>(out_native_data) = v8_value->NumberValue(context).ToChecked();
-                return true;
-            case type_id_of<bool>().get_hash():
-                *reinterpret_cast<bool*>(out_native_data) = v8_value->BooleanValue(isolate);
-                return true;
-            case type_id_of<skr::String>().get_hash():
-                if (is_init)
-                {
-                    *reinterpret_cast<skr::String*>(out_native_data) = skr::String::From(*::v8::String::Utf8Value(isolate, v8_value));
-                }
-                else
-                {
-                    new (out_native_data) skr::String(
-                        skr::String::From(*::v8::String::Utf8Value(isolate, v8_value))
-                    );
-                }
-                return true;
-            default:
-                break;
+        case type_id_of<int8_t>().get_hash():
+            *reinterpret_cast<int8_t*>(out_native_data) = static_cast<int8_t>(v8_value->Int32Value(context).ToChecked());
+            return true;
+        case type_id_of<int16_t>().get_hash():
+            *reinterpret_cast<int16_t*>(out_native_data) = static_cast<int16_t>(v8_value->Int32Value(context).ToChecked());
+            return true;
+        case type_id_of<int32_t>().get_hash():
+            *reinterpret_cast<int32_t*>(out_native_data) = v8_value->Int32Value(context).ToChecked();
+            return true;
+        case type_id_of<uint8_t>().get_hash():
+            *reinterpret_cast<uint8_t*>(out_native_data) = static_cast<uint8_t>(v8_value->Uint32Value(context).ToChecked());
+            return true;
+        case type_id_of<uint16_t>().get_hash():
+            *reinterpret_cast<uint16_t*>(out_native_data) = static_cast<uint16_t>(v8_value->Uint32Value(context).ToChecked());
+            return true;
+        case type_id_of<uint32_t>().get_hash():
+            *reinterpret_cast<uint32_t*>(out_native_data) = v8_value->Uint32Value(context).ToChecked();
+            return true;
+        case type_id_of<int64_t>().get_hash():
+            *reinterpret_cast<int64_t*>(out_native_data) = v8_value->ToBigInt(context).ToLocalChecked()->Int64Value();
+            return true;
+        case type_id_of<uint64_t>().get_hash():
+            *reinterpret_cast<uint64_t*>(out_native_data) = v8_value->ToBigInt(context).ToLocalChecked()->Uint64Value();
+            return true;
+        case type_id_of<float>().get_hash():
+            *reinterpret_cast<float*>(out_native_data) = static_cast<float>(v8_value->NumberValue(context).ToChecked());
+            return true;
+        case type_id_of<double>().get_hash():
+            *reinterpret_cast<double*>(out_native_data) = v8_value->NumberValue(context).ToChecked();
+            return true;
+        case type_id_of<bool>().get_hash():
+            *reinterpret_cast<bool*>(out_native_data) = v8_value->BooleanValue(isolate);
+            return true;
+        case type_id_of<skr::String>().get_hash():
+            if (is_init)
+            {
+                *reinterpret_cast<skr::String*>(out_native_data) = skr::String::From(*::v8::String::Utf8Value(isolate, v8_value));
+            }
+            else
+            {
+                new (out_native_data) skr::String(
+                    skr::String::From(*::v8::String::Utf8Value(isolate, v8_value))
+                );
+            }
+            return true;
+        default:
+            break;
         }
     }
     return false;
@@ -362,7 +362,7 @@ bool V8BindTools::v8_to_native_primitive(
 bool V8BindTools::native_to_v8_box(
     ::v8::Local<::v8::Context> context,
     ::v8::Isolate*             isolate,
-    TypeSignatureView    signature,
+    TypeSignatureView          signature,
     void*                      native_data,
     ::v8::Local<::v8::Value>&  out_v8_value
 )
@@ -378,14 +378,14 @@ bool V8BindTools::native_to_v8_box(
     if (!type) { return false; }
 
     // check box flag
-    if (!::skr::flag_all(type->record_flag(), rttr::ERecordFlag::ScriptBox)) { return false; }
+    if (!::skr::flag_all(type->record_flag(), ERTTRRecordFlag::ScriptBox)) { return false; }
 
     auto result = ::v8::Object::New(isolate);
 
     // each fields
-    type->each_field([&](const rttr::FieldData* field, const RTTRType* field_owner) {
+    type->each_field([&](const RTTRFieldData* field, const RTTRType* field_owner) {
         // check visible
-        if (!flag_all(field->flag, rttr::EFieldFlag::ScriptVisible)) { return; }
+        if (!flag_all(field->flag, ERTTRFieldFlag::ScriptVisible)) { return; }
 
         // get field info
         void* field_owner_address = type->cast_to_base(field_owner->type_id(), native_data);
@@ -439,7 +439,7 @@ bool V8BindTools::native_to_v8_box(
 bool V8BindTools::v8_to_native_box(
     ::v8::Local<::v8::Context> context,
     ::v8::Isolate*             isolate,
-    TypeSignatureView    signature,
+    TypeSignatureView          signature,
     ::v8::Local<::v8::Value>   v8_value,
     void*                      out_native_data,
     bool                       is_init
@@ -456,7 +456,7 @@ bool V8BindTools::v8_to_native_box(
     if (!type) { return false; }
 
     // check box flag
-    if (!::skr::flag_all(type->record_flag(), rttr::ERecordFlag::ScriptBox)) { return false; }
+    if (!::skr::flag_all(type->record_flag(), ERTTRRecordFlag::ScriptBox)) { return false; }
 
     // check v8 value
     if (!v8_value->IsObject() && !v8_value->IsArray())
@@ -475,9 +475,9 @@ bool V8BindTools::v8_to_native_box(
 
     // each fields
     bool failed = false;
-    type->each_field([&](const rttr::FieldData* field, const RTTRType* field_owner) {
+    type->each_field([&](const RTTRFieldData* field, const RTTRType* field_owner) {
         // check visible
-        if (!flag_all(field->flag, rttr::EFieldFlag::ScriptVisible)) { return; }
+        if (!flag_all(field->flag, ERTTRFieldFlag::ScriptVisible)) { return; }
 
         // fast exit if failed
         if (failed) { return; }
@@ -530,8 +530,8 @@ bool V8BindTools::v8_to_native_box(
 
 // function invoke helpers
 void V8BindTools::push_param(
-    rttr::DynamicStack&        stack,
-    const rttr::ParamData&     param_data,
+    DynamicStack&              stack,
+    const RTTRParamData&       param_data,
     ::v8::Local<::v8::Context> context,
     ::v8::Isolate*             isolate,
     ::v8::Local<::v8::Value>   v8_value
@@ -561,7 +561,7 @@ void V8BindTools::push_param(
             if (_push_param_primitive(
                     stack,
                     type_id,
-                    rttr::EDynamicStackParamKind::XValue,
+                    EDynamicStackParamKind::XValue,
                     v8_value,
                     context,
                     isolate
@@ -583,7 +583,7 @@ void V8BindTools::push_param(
                 void* native_data = stack.alloc_param_raw(
                     type->size(),
                     type->alignment(),
-                    rttr::EDynamicStackParamKind::XValue,
+                    EDynamicStackParamKind::XValue,
                     dtor
                 );
 
@@ -615,7 +615,7 @@ void V8BindTools::push_param(
             if (_push_param_primitive(
                     stack,
                     type_id,
-                    rttr::EDynamicStackParamKind::Direct,
+                    EDynamicStackParamKind::Direct,
                     v8_value,
                     context,
                     isolate
@@ -637,7 +637,7 @@ void V8BindTools::push_param(
                 void* native_data = stack.alloc_param_raw(
                     type->size(),
                     type->alignment(),
-                    rttr::EDynamicStackParamKind::Direct,
+                    EDynamicStackParamKind::Direct,
                     dtor
                 );
 
@@ -665,8 +665,8 @@ void V8BindTools::push_param(
     }
 }
 bool V8BindTools::read_return(
-    rttr::DynamicStack&        stack,
-    TypeSignatureView    signature,
+    DynamicStack&              stack,
+    TypeSignatureView          signature,
     ::v8::Local<::v8::Context> context,
     ::v8::Isolate*             isolate,
     ::v8::Local<::v8::Value>&  out_value
@@ -724,13 +724,13 @@ bool V8BindTools::read_return(
 // caller
 void V8BindTools::call_ctor(
     void*                                          obj,
-    const rttr::CtorData&                          data,
+    const RTTRCtorData&                            data,
     const ::v8::FunctionCallbackInfo<::v8::Value>& info,
     ::v8::Local<::v8::Context>                     context,
     ::v8::Isolate*                                 isolate
 )
 {
-    rttr::DynamicStack stack;
+    DynamicStack stack;
 
     // combine stack
     for (size_t i = 0; i < data.param_data.size(); ++i)
@@ -750,15 +750,15 @@ void V8BindTools::call_ctor(
 }
 void V8BindTools::call_method(
     void*                                          obj,
-    const Vector<rttr::ParamData>&                 params,
-    const TypeSignatureView                  ret_type,
-    rttr::MethodInvokerDynamicStack                invoker,
+    const Vector<RTTRParamData>&                   params,
+    const TypeSignatureView                        ret_type,
+    MethodInvokerDynamicStack                      invoker,
     const ::v8::FunctionCallbackInfo<::v8::Value>& info,
     ::v8::Local<::v8::Context>                     context,
     ::v8::Isolate*                                 isolate
 )
 {
-    rttr::DynamicStack stack;
+    DynamicStack stack;
 
     // combine proxy
     for (size_t i = 0; i < params.size(); ++i)
@@ -790,15 +790,15 @@ void V8BindTools::call_method(
     }
 }
 void V8BindTools::call_function(
-    const Vector<rttr::ParamData>&                 params,
-    const TypeSignatureView                  ret_type,
-    rttr::FuncInvokerDynamicStack                  invoker,
+    const Vector<RTTRParamData>&                   params,
+    const TypeSignatureView                        ret_type,
+    FuncInvokerDynamicStack                        invoker,
     const ::v8::FunctionCallbackInfo<::v8::Value>& info,
     ::v8::Local<::v8::Context>                     context,
     ::v8::Isolate*                                 isolate
 )
 {
-    rttr::DynamicStack stack;
+    DynamicStack stack;
 
     // push param
     for (size_t i = 0; i < params.size(); ++i)

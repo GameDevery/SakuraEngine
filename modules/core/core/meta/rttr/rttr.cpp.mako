@@ -7,7 +7,7 @@
 
 SKR_EXEC_STATIC_CTOR
 {
-    using namespace ::skr::rttr;
+    using namespace ::skr;
 
     //============================> Begin Record Export <============================
 %for record in records:

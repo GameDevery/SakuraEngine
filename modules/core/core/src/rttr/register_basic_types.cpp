@@ -9,7 +9,7 @@ namespace skr
 template <typename T>
 void primitive_type_loader(RTTRType* type)
 {
-    type->build_primitive([&](rttr::PrimitiveData* data) {
+    type->build_primitive([&](RTTRPrimitiveData* data) {
         data->name      = RTTRTraits<T>::get_name();
         data->type_id   = RTTRTraits<T>::get_guid();
         data->size      = sizeof(T);
@@ -19,7 +19,7 @@ void primitive_type_loader(RTTRType* type)
 
 static void primitive_type_loader_void(RTTRType* type)
 {
-    type->build_primitive([&](rttr::PrimitiveData* data){
+    type->build_primitive([&](RTTRPrimitiveData* data){
         data->name      = RTTRTraits<void>::get_name();
         data->type_id   = RTTRTraits<void>::get_guid();
         data->size      = 0;
