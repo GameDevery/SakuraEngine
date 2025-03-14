@@ -426,7 +426,7 @@ class RttrGenerator extends gen.Generator {
 
   gen_body(): void {
     this.main_module_db.each_record((record, header) => {
-      if (this.project_db.is_derived(record, "skr::rttr::IObject")) {
+      if (this.project_db.is_derived(record, "skr::IObject")) {
         _Gen.body(record);
       }
     });

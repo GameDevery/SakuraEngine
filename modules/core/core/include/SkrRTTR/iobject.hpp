@@ -12,7 +12,7 @@
 //!=======================================================================================
 
 // iobject
-namespace skr::rttr
+namespace skr
 {
 sreflect_struct(guid = "3740620f-714d-4d78-b47e-095f256ba4a7")
 SKR_CORE_API IObject {
@@ -47,7 +47,7 @@ SKR_CORE_API IObject {
 template <typename TO>
 inline TO* IObject::type_cast()
 {
-    auto  from_type = get_type_from_guid(this->iobject_get_typeid());
+    auto  from_type = rttr::get_type_from_guid(this->iobject_get_typeid());
     void* cast_p    = from_type->cast_to_base(::skr::type_id_of<TO>(), this->iobject_get_head_ptr());
     return reinterpret_cast<TO*>(cast_p);
 }
@@ -73,7 +73,7 @@ inline bool IObject::type_is() const noexcept
 }
 inline bool IObject::type_is(const GUID& guid) const
 {
-    auto from_type = get_type_from_guid(this->iobject_get_typeid());
+    auto from_type = rttr::get_type_from_guid(this->iobject_get_typeid());
     return from_type->cast_to_base(guid, this->iobject_get_head_ptr());
 }
 } // namespace skr::rttr

@@ -13,7 +13,7 @@ EScriptbleObjectOwnerShip {
 };
 
 sreflect_struct(guid = "ecb7851e-f6c5-4814-8fba-a35668a2f277")
-SKR_CORE_API ScriptbleObject : virtual public skr::rttr::IObject
+SKR_CORE_API ScriptbleObject : virtual public skr::IObject
 {
     SKR_GENERATE_BODY()
     virtual ~ScriptbleObject() = default;

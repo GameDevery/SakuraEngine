@@ -18,7 +18,7 @@ enum class EElementLifecycle : uint8_t
 };
 
 sreflect_struct(guid = "ec3aff75-d8d1-4e0f-aff3-5c8df4995a78")
-SKR_GUI_API Element : virtual public skr::rttr::IObject,
+SKR_GUI_API Element : virtual public skr::IObject,
                       public IBuildContext {
     SKR_GENERATE_BODY()
 
