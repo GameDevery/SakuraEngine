@@ -805,23 +805,23 @@ ERTTREnumFlag RTTRType::enum_flag() const
     SKR_ASSERT(_type_category == ERTTRTypeCategory::Enum && "Type category mismatch when get enum flag");
     return _enum_data.flag;
 }
-attr::IAttribute* RTTRType::find_attribute(GUID attr_type_id) const
+const Any* RTTRType::find_attribute(TypeSignatureView signature) const
 {
     switch (_type_category)
     {
     case ERTTRTypeCategory::Record: {
-        auto result = _record_data.attributes.find(attr_type_id);
+        auto result = _record_data.attrs.find_if([&](const Any& v) { return v.type_is(signature); });
         if (result)
         {
-            return result.value();
+            return result.ptr();
         }
         break;
     }
     case ERTTRTypeCategory::Enum: {
-        auto result = _enum_data.attributes.find(attr_type_id);
+        auto result = _enum_data.attrs.find_if([&](const Any& v) { return v.type_is(signature); });
         if (result)
         {
-            return result.value();
+            return result.ptr();
         }
         break;
     }

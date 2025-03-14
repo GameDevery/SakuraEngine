@@ -4,7 +4,8 @@
 namespace skr
 {
 struct Any {
-    using Dtor = void (*)(void*);
+    using Dtor     = void (*)(void*);
+    using CopyFunc = void* (*)(void*);
 
     // ctor & dtor
     Any();
@@ -13,11 +14,11 @@ struct Any {
     ~Any();
 
     // copy & move
-    Any(const Any& rhs) = delete;
+    Any(const Any& rhs);
     Any(Any&& rhs) noexcept;
 
     // assign & move assign
-    Any& operator=(const Any& rhs) = delete;
+    Any& operator=(const Any& rhs);
     Any& operator=(Any&& rhs) noexcept;
 
     // op assign
@@ -37,6 +38,7 @@ struct Any {
     void reset();
 
     // cast
+    bool type_is(TypeSignatureView signature, ETypeSignatureCompareFlag compare_flag = ETypeSignatureCompareFlag::Strict) const;
     template <typename T>
     bool type_is(ETypeSignatureCompareFlag compare_flag = ETypeSignatureCompareFlag::Strict) const;
     template <typename T>
@@ -45,14 +47,28 @@ struct Any {
     T* cast(ETypeSignatureCompareFlag compare_flag = ETypeSignatureCompareFlag::Strict);
 
 private:
+    // helper
+    template <typename T>
+    void _fill_func();
+
+private:
     TypeSignature _signature = {};
     void*         _memory    = nullptr;
+    CopyFunc      _copy      = nullptr;
     Dtor          _dtor      = nullptr;
 };
 } // namespace skr
 
 namespace skr
 {
+// helper
+template <typename T>
+inline void Any::_fill_func()
+{
+    _copy = [](void* p) -> void* { return SkrNew<T>(*static_cast<T*>(p)); };
+    _dtor = [](void* p) { SkrDelete<T>(static_cast<T*>(p)); };
+}
+
 // ctor & dtor
 inline Any::Any()
 {
@@ -64,7 +80,7 @@ inline Any::Any(T&& value)
 
     _signature = type_signature_of<RealType>();
     _memory    = SkrNew<RealType>(std::forward<T>(value));
-    _dtor      = [](void* p) { SkrDelete<RealType>(static_cast<RealType*>(p)); };
+    _fill_func<RealType>();
 }
 inline Any::~Any()
 {
@@ -72,16 +88,38 @@ inline Any::~Any()
 }
 
 // copy & move
+inline Any::Any(const Any& rhs)
+    : _signature(rhs._signature)
+    , _memory(rhs._copy(rhs._memory))
+    , _copy(rhs._copy)
+    , _dtor(rhs._dtor)
+{
+}
 inline Any::Any(Any&& rhs) noexcept
     : _signature(std::move(rhs._signature))
     , _memory(rhs._memory)
+    , _copy(rhs._copy)
     , _dtor(rhs._dtor)
 {
     rhs._memory = nullptr;
+    rhs._copy   = nullptr;
     rhs._dtor   = nullptr;
 }
 
 // assign & move assign
+inline Any& Any::operator=(const Any& rhs)
+{
+    if (this != &rhs)
+    {
+        reset();
+
+        _signature = rhs._signature;
+        _memory    = rhs._copy(rhs._memory);
+        _copy      = rhs._copy;
+        _dtor      = rhs._dtor;
+    }
+    return *this;
+}
 inline Any& Any::operator=(Any&& rhs) noexcept
 {
     if (this != &rhs)
@@ -90,9 +128,11 @@ inline Any& Any::operator=(Any&& rhs) noexcept
 
         _signature = std::move(rhs._signature);
         _memory    = rhs._memory;
+        _copy      = rhs._copy;
         _dtor      = rhs._dtor;
 
         rhs._memory = nullptr;
+        rhs._copy   = nullptr;
         rhs._dtor   = nullptr;
     }
 
@@ -130,7 +170,7 @@ inline void Any::assign(T&& value)
 
     _signature = type_signature_of<RealType>();
     _memory    = SkrNew<RealType>(std::forward<T>(value));
-    _dtor      = [](void* p) { SkrDelete<RealType>(static_cast<RealType*>(p)); };
+    _fill_func<RealType>();
 }
 template <typename T, typename... Args>
 inline void Any::emplace(Args&&... args)
@@ -141,7 +181,7 @@ inline void Any::emplace(Args&&... args)
 
     _signature = type_signature_of<RealType>();
     _memory    = SkrNew<RealType>(std::forward<Args>(args)...);
-    _dtor      = [](void* p) { SkrDelete<RealType>(static_cast<RealType*>(p)); };
+    _fill_func<RealType>();
 }
 inline void Any::reset()
 {
@@ -150,20 +190,25 @@ inline void Any::reset()
         _dtor(_memory);
         _signature.reset();
         _memory = nullptr;
+        _copy   = nullptr;
         _dtor   = nullptr;
     }
 }
 
 // cast
-template <typename T>
-inline bool Any::type_is(ETypeSignatureCompareFlag compare_flag) const
+inline bool Any::type_is(TypeSignatureView signature, ETypeSignatureCompareFlag compare_flag) const
 {
     if (_memory)
     {
-        TypeSignatureTyped<T> signature;
-        return _signature.view().equal(signature.view(), compare_flag);
+        return _signature.view().equal(signature, compare_flag);
     }
     return false;
+}
+template <typename T>
+inline bool Any::type_is(ETypeSignatureCompareFlag compare_flag) const
+{
+    TypeSignatureTyped<T> signature;
+    return type_is(signature.view(), compare_flag);
 }
 template <typename T>
 inline const T* Any::cast(ETypeSignatureCompareFlag compare_flag) const

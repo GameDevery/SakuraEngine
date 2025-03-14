@@ -5,8 +5,8 @@
 #include "SkrRTTR/rttr_traits.hpp"
 #include "SkrRTTR/type_signature.hpp"
 #include "SkrRTTR/enum_tools.hpp"
-#include "SkrRTTR/export/attribute.hpp"
 #include "SkrRTTR/export/dynamic_stack.hpp"
+#include <SkrRTTR/any.hpp>
 #ifndef __meta__
     #include "SkrCore/SkrRTTR/export/export_data.generated.h"
 #endif
@@ -132,8 +132,8 @@ struct RTTRParamData {
     MakeDefaultFunc make_default = nullptr;
 
     // TODO. flag & Attribute
-    ERTTRParamFlag               flag = ERTTRParamFlag::None;
-    Map<GUID, attr::IAttribute*> attributes;
+    ERTTRParamFlag flag = ERTTRParamFlag::None;
+    Vector<Any>    attrs;
 
     template <typename Arg>
     inline static RTTRParamData Make()
@@ -186,16 +186,11 @@ struct RTTRFunctionData {
     FuncInvokerDynamicStack dynamic_stack_invoke = nullptr;
 
     // flag & attributes
-    ERTTRFunctionFlag            flag       = ERTTRFunctionFlag::None;
-    Map<GUID, attr::IAttribute*> attributes = {};
+    ERTTRFunctionFlag flag = ERTTRFunctionFlag::None;
+    Vector<Any>       attrs;
 
     inline ~RTTRFunctionData()
     {
-        // delete attributes
-        for (const auto& it : attributes)
-        {
-            SkrDelete(it.value);
-        }
     }
 
     template <typename Ret, typename... Args>
@@ -223,16 +218,11 @@ struct RTTRMethodData {
     MethodInvokerDynamicStack dynamic_stack_invoke = nullptr;
 
     // flag & attributes
-    ERTTRMethodFlag              flag       = ERTTRMethodFlag::None;
-    Map<GUID, attr::IAttribute*> attributes = {};
+    ERTTRMethodFlag flag = ERTTRMethodFlag::None;
+    Vector<Any>     attrs;
 
     inline ~RTTRMethodData()
     {
-        // delete attributes
-        for (const auto& it : attributes)
-        {
-            SkrDelete(it.value);
-        }
     }
 
     template <class T, typename Ret, typename... Args>
@@ -267,16 +257,11 @@ struct RTTRStaticMethodData {
     FuncInvokerDynamicStack dynamic_stack_invoke = nullptr;
 
     // flag & attributes
-    ERTTRStaticMethodFlag        flag       = ERTTRStaticMethodFlag::None;
-    Map<GUID, attr::IAttribute*> attributes = {};
+    ERTTRStaticMethodFlag flag = ERTTRStaticMethodFlag::None;
+    Vector<Any>           attrs;
 
     inline ~RTTRStaticMethodData()
     {
-        // delete attributes
-        for (const auto& it : attributes)
-        {
-            SkrDelete(it.value);
-        }
     }
 
     template <typename Ret, typename... Args>
@@ -303,16 +288,11 @@ struct RTTRExternMethodData {
     FuncInvokerDynamicStack dynamic_stack_invoke = nullptr;
 
     // flag & attributes
-    ERTTRExternMethodFlag        flag       = ERTTRExternMethodFlag::None;
-    Map<GUID, attr::IAttribute*> attributes = {};
+    ERTTRExternMethodFlag flag = ERTTRExternMethodFlag::None;
+    Vector<Any>           attrs;
 
     inline ~RTTRExternMethodData()
     {
-        // delete attributes
-        for (const auto& it : attributes)
-        {
-            SkrDelete(it.value);
-        }
     }
 
     template <typename Ret, typename... Args>
@@ -337,16 +317,11 @@ struct RTTRCtorData {
     MethodInvokerDynamicStack dynamic_stack_invoke = nullptr;
 
     // flag & attributes
-    ERTTRCtorFlag                flag       = ERTTRCtorFlag::None;
-    Map<GUID, attr::IAttribute*> attributes = {};
+    ERTTRCtorFlag flag = ERTTRCtorFlag::None;
+    Vector<Any>   attrs;
 
     inline ~RTTRCtorData()
     {
-        // delete attributes
-        for (const auto& it : attributes)
-        {
-            SkrDelete(it.value);
-        }
     }
 
     template <typename... Args>
@@ -395,16 +370,11 @@ struct RTTRFieldData {
     ERTTRAccessLevel access_level = ERTTRAccessLevel::Public;
 
     // flag & attributes
-    ERTTRFieldFlag               flag       = ERTTRFieldFlag::None;
-    Map<GUID, attr::IAttribute*> attributes = {};
+    ERTTRFieldFlag flag = ERTTRFieldFlag::None;
+    Vector<Any>    attrs;
 
     inline ~RTTRFieldData()
     {
-        // delete attributes
-        for (const auto& it : attributes)
-        {
-            SkrDelete(it.value);
-        }
     }
 
     template <auto field, class T, typename Field>
@@ -424,16 +394,11 @@ struct RTTRStaticFieldData {
     ERTTRAccessLevel access_level = ERTTRAccessLevel::Public;
 
     // flag & attributes
-    ERTTRStaticFieldFlag         flag       = ERTTRStaticFieldFlag::None;
-    Map<GUID, attr::IAttribute*> attributes = {};
+    ERTTRStaticFieldFlag flag = ERTTRStaticFieldFlag::None;
+    Vector<Any>          attrs;
 
     inline ~RTTRStaticFieldData()
     {
-        // delete attributes
-        for (const auto& it : attributes)
-        {
-            SkrDelete(it.value);
-        }
     }
 
     template <typename T>
@@ -508,8 +473,8 @@ struct RTTRRecordData {
     Vector<RTTRExternMethodData*> extern_methods = {};
 
     // flag & attributes
-    ERTTRRecordFlag              flag       = ERTTRRecordFlag::None;
-    Map<GUID, attr::IAttribute*> attributes = {};
+    ERTTRRecordFlag flag = ERTTRRecordFlag::None;
+    Vector<Any>     attrs;
 
     inline ~RTTRRecordData()
     {
@@ -550,12 +515,6 @@ struct RTTRRecordData {
         {
             SkrDelete(method);
         }
-
-        // delete attributes
-        for (const auto& it : attributes)
-        {
-            SkrDelete(it.value);
-        }
     }
 };
 } // namespace skr
@@ -568,16 +527,11 @@ struct RTTREnumItemData {
     EnumValue value = {};
 
     // flag & attributes
-    ERTTREnumItemFlag            flag       = ERTTREnumItemFlag::None;
-    Map<GUID, attr::IAttribute*> attributes = {};
+    ERTTREnumItemFlag flag = ERTTREnumItemFlag::None;
+    Vector<Any>       attrs;
 
     inline ~RTTREnumItemData()
     {
-        // delete attributes
-        for (const auto& it : attributes)
-        {
-            SkrDelete(it.value);
-        }
     }
 };
 struct RTTREnumData {
@@ -598,15 +552,15 @@ struct RTTREnumData {
     Vector<RTTRExternMethodData*> extern_methods = {};
 
     // flag & attributes
-    ERTTREnumFlag                flag       = ERTTREnumFlag::None;
-    Map<GUID, attr::IAttribute*> attributes = {};
+    ERTTREnumFlag flag = ERTTREnumFlag::None;
+    Vector<Any>   attrs;
 
     inline ~RTTREnumData()
     {
-        // delete attributes
-        for (const auto& it : attributes)
+        // delete extern methods
+        for (auto method : extern_methods)
         {
-            SkrDelete(it.value);
+            SkrDelete(method);
         }
     }
 };
@@ -624,5 +578,14 @@ struct RTTRPrimitiveData {
 
     // extern method
     Vector<RTTRExternMethodData*> extern_methods;
+
+    inline ~RTTRPrimitiveData()
+    {
+        // delete extern methods
+        for (auto method : extern_methods)
+        {
+            SkrDelete(method);
+        }
+    }
 };
 } // namespace skr

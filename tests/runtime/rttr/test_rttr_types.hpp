@@ -13,7 +13,7 @@
 namespace skr::attr::test_rttr
 {
 sreflect_struct(guid = "37aad92c-09f5-4e18-96ab-eea67094ea42")
-AttrA : public skr::attr::IAttribute {
+AttrA {
     SKR_GENERATE_BODY()
     inline AttrA() = default;
     inline AttrA(String content)

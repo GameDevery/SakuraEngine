@@ -126,9 +126,9 @@ struct SKR_CORE_API RTTRType final {
     const RTTRExternMethodData* find_extern_method_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
 
     // flag & attribute
-    ERTTRRecordFlag   record_flag() const;
-    ERTTREnumFlag     enum_flag() const;
-    attr::IAttribute* find_attribute(GUID attr_type_id) const;
+    ERTTRRecordFlag record_flag() const;
+    ERTTREnumFlag   enum_flag() const;
+    const Any*      find_attribute(TypeSignatureView signature) const;
 
 private:
     // helpers
