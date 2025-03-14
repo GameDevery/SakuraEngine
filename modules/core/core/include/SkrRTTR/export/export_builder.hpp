@@ -346,6 +346,21 @@ struct RTTRRecordBuilder {
     template <typename... Args>
     inline RTTRCtorBuilder ctor()
     {
+        // find first
+        {
+            TypeSignatureTyped<void(Args...)> signature;
+
+            auto result = _data->ctor_data.find_if([&](const RTTRCtorData* ctor_data) {
+                return ctor_data->signature_equal(signature.view(), ETypeSignatureCompareFlag::Strict);
+            });
+
+            if (result)
+            {
+                return { result.ref() };
+            }
+        }
+
+        // new ctor data
         auto ctor_data = SkrNew<RTTRCtorData>();
         ctor_data->fill_signature<Args...>();
         ctor_data->native_invoke        = RTTRExportHelper::export_ctor<T, Args...>();
@@ -523,7 +538,7 @@ struct RTTREnumBuilder {
     // items
     inline RTTREnumItemBuilder item(String name, T value)
     {
-        auto* item_data = SkrNew<RTTREnumItemData>();
+        auto* item_data  = SkrNew<RTTREnumItemData>();
         item_data->name  = std::move(name);
         item_data->value = static_cast<std::underlying_type_t<T>>(value);
         _data->items.add(item_data);
