@@ -488,7 +488,12 @@ function mako_render(target, opt)
         post_scan = function ()
             local batchinfo = target:data(_codegen_data_batch_name)
             local gendir = batchinfo.gendir
-            return os.files(path.join(gendir, "**.h"))
+            local headers = os.files(path.join(gendir, "**.h"))
+            local sources = os.files(path.join(gendir, "**.cpp"))
+            for _, source in ipairs(sources) do
+                table.insert(headers, source)
+            end
+            return headers
         end
     })
 end
