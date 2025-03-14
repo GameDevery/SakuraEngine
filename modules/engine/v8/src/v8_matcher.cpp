@@ -6,7 +6,7 @@
 namespace skr
 {
 // match
-V8MatchSuggestion V8Matcher::match_to_native(::v8::Local<::v8::Value> v8_value, TypeSignatureView signature)
+V8MatchSuggestion V8Matcher::basic_match_to_native(::v8::Local<::v8::Value> v8_value, TypeSignatureView signature)
 {
     auto isolate = ::v8::Isolate::GetCurrent();
     auto context = isolate->GetCurrentContext();
@@ -31,7 +31,7 @@ V8MatchSuggestion V8Matcher::match_to_native(::v8::Local<::v8::Value> v8_value, 
 
         // match box
         RTTRType* type = get_type_from_guid(type_id);
-        result           = _suggest_box(type);
+        result         = _suggest_box(type);
         if (!result.is_empty())
         {
             if (_match_box(result, v8_value))
@@ -60,7 +60,7 @@ V8MatchSuggestion V8Matcher::match_to_native(::v8::Local<::v8::Value> v8_value, 
 
     return {};
 }
-V8MatchSuggestion V8Matcher::match_to_v8(TypeSignatureView signature)
+V8MatchSuggestion V8Matcher::basic_match_to_v8(TypeSignatureView signature)
 {
     if (signature.is_type())
     {
@@ -76,7 +76,7 @@ V8MatchSuggestion V8Matcher::match_to_v8(TypeSignatureView signature)
 
         // match box
         RTTRType* type = get_type_from_guid(type_id);
-        result           = _suggest_box(type);
+        result         = _suggest_box(type);
         if (!result.is_empty()) { return result; }
 
         // match wrap
@@ -140,8 +140,8 @@ bool V8Matcher::conv_to_native(
 // invoke convert
 bool V8Matcher::call_native_push_params(
     const Vector<V8MatchSuggestion>&           suggestions,
-    const Vector<RTTRParamData*>&            params,
-    DynamicStack&                        stack,
+    const Vector<RTTRParamData*>&              params,
+    DynamicStack&                              stack,
     const v8::FunctionCallbackInfo<v8::Value>& v8_func_info
 )
 {
@@ -261,12 +261,12 @@ bool V8Matcher::call_native_push_params(
     return false;
 }
 v8::Local<v8::Value> V8Matcher::call_native_read_return(
-    V8MatchSuggestion&  suggestion,
-    DynamicStack& stack
+    V8MatchSuggestion& suggestion,
+    DynamicStack&      stack
 )
 {
     // TODO. check above
-    
+
     if (!stack.is_return_stored()) { return {}; }
 
     conv_to_v8(suggestion, stack.get_return_raw());

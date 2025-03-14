@@ -19,6 +19,10 @@ struct V8MatchSuggestion {
         uint32_t    alignment = 0;
         DtorInvoker dtor      = nullptr;
         ::skr::GUID type_id   = {};
+
+        // specific data
+        bool param_inout = false; // [Param] means decayed pointer and without const modifier
+        bool nullable    = false; // [Param/Return] means is nullable and type is pointer
     };
     template <typename T>
     struct WithField {
@@ -33,9 +37,16 @@ struct V8MatchSuggestion {
         ::skr::RTTRType*        type = nullptr;
         Vector<PrimitiveMember> primitive_members;
         Vector<BoxMember>       box_members;
+
+        // specific data
+        bool param_inout = false; // [Param] means decayed pointer and without const modifier
+        bool nullable    = false; // [Param/Return] means is nullable and type is pointer
     };
     struct Wrap {
         ::skr::RTTRType* type = nullptr;
+
+        // specific data
+        bool nullable = false; // [Param/Return] means is nullable and type is pointer
     };
 
     // factory
@@ -258,8 +269,8 @@ struct SKR_V8_API V8Matcher {
     // basic match
     //! NOTE. matcher will ignore decayed pointer modifiers, you should check it outside
     //! NOTE. because the behaviour of decayed pointer is depend on where the type is used (param/field...etc)
-    V8MatchSuggestion match_to_native(::v8::Local<::v8::Value> v8_value, TypeSignatureView signature);
-    V8MatchSuggestion match_to_v8(TypeSignatureView signature);
+    V8MatchSuggestion basic_match_to_native(::v8::Local<::v8::Value> v8_value, TypeSignatureView signature);
+    V8MatchSuggestion basic_match_to_v8(TypeSignatureView signature);
 
     // basic convert
     static ::v8::Local<::v8::Value> conv_to_v8(
@@ -372,7 +383,7 @@ inline bool V8Matcher::match_params_to_native(
         if (pointer_level > 1) { return false; } // cannot support multi-level pointer
 
         // match suggestion
-        auto suggestion = match_to_native(call_value, native_signature);
+        auto suggestion = basic_match_to_native(call_value, native_signature);
         if (suggestion.is_empty())
         {
             return false;

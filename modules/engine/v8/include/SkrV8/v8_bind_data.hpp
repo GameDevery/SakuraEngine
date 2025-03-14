@@ -5,6 +5,7 @@
 #include "SkrRTTR/type.hpp"
 #include "SkrRTTR/scriptble_object.hpp"
 
+// TODO. Matcher 和 data 合体，类先进行整体的导出检查，生成检查结果后再进行绑定
 namespace skr
 {
 //===============================bind data===============================
@@ -30,28 +31,28 @@ struct V8BindStaticMethodData {
 };
 struct V8BindFieldData {
     // native info
-    String                      name;
+    String                    name;
     const skr::RTTRType*      owner_type;
     const skr::RTTRFieldData* field;
 };
 struct V8BindStaticFieldData {
     // native info
-    String                            name;
+    String                          name;
     const skr::RTTRType*            owner_type;
     const skr::RTTRStaticFieldData* field;
 };
-struct V8BindRecordData {
+struct V8BindWrapData {
     // v8 info
     ::v8::Global<::v8::FunctionTemplate> ctor_template;
 
     // native info
-    skr::RTTRType*                     type;
+    skr::RTTRType*                       type;
     Map<String, V8BindMethodData*>       methods;
     Map<String, V8BindFieldData*>        fields;
     Map<String, V8BindStaticMethodData*> static_methods;
     Map<String, V8BindStaticFieldData*>  static_fields;
 
-    ~V8BindRecordData()
+    ~V8BindWrapData()
     {
         for (auto& pair : methods)
         {
@@ -76,11 +77,11 @@ struct V8BindRecordData {
 struct V8BindRecordCore {
     // native info
     skr::ScriptbleObject* object;
-    skr::RTTRType*            type;
+    skr::RTTRType*        type;
 
     // v8 info
     ::v8::Persistent<::v8::Object> v8_object;
-    
+
     // helper functions
     inline void* cast_to_base(::skr::GUID type_id)
     {

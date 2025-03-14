@@ -140,7 +140,7 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
     HandleScope    handle_scope(_isolate);
 
     // new bind data
-    auto bind_data  = SkrNew<V8BindRecordData>();
+    auto bind_data  = SkrNew<V8BindWrapData>();
     bind_data->type = type;
 
     // ctor template
@@ -444,7 +444,7 @@ void V8Isolate::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
     Context::Scope ContextScope(Context);
 
     // get user data
-    auto* bind_data   = reinterpret_cast<V8BindRecordData*>(info.Data().As<External>()->Value());
+    auto* bind_data   = reinterpret_cast<V8BindWrapData*>(info.Data().As<External>()->Value());
     auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
 
     // handle call

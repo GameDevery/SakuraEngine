@@ -61,7 +61,7 @@ private:
     ::v8::Isolate::CreateParams _isolate_create_params;
 
     // templates
-    Map<::skr::RTTRType*, V8BindRecordData*> _record_templates;
+    Map<::skr::RTTRType*, V8BindWrapData*> _record_templates;
 
     // bind data
     Map<::skr::ScriptbleObject*, V8BindRecordCore*> _alive_records;
