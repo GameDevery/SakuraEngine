@@ -196,3 +196,60 @@ inline static bool to_native(v8::Local<v8::Value> v8_value, skr::String& out_v)
     return false;
 }
 } // namespace skr::v8_bind
+
+// translate use ScriptBinderRoot
+namespace skr::v8_bind
+{
+// convert
+v8::Local<v8::Value> to_v8(
+    ScriptBinderRoot binder,
+    void*            native_data
+);
+bool to_native(
+    ScriptBinderRoot     suggestion,
+    void*                native_data,
+    v8::Local<v8::Value> v8_value,
+    bool                 is_init
+);
+
+// field read write
+bool assign_field(
+    void*                    obj,
+    RTTRType*                type,
+    const ScriptBinderField& binder,
+    v8::Local<v8::Value>     v8_value
+);
+bool assign_field(
+    const ScriptBinderStaticField& binder,
+    v8::Local<v8::Value>           v8_value
+);
+
+// call native
+bool call_native(
+    void*                                          obj,
+    MethodInvokerDynamicStack                      invoker,
+    DynamicStack&                                  stack,
+    const ScriptBinderMethod&                      binder,
+    const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack
+);
+bool call_native(
+    FuncInvokerDynamicStack                        invoker,
+    DynamicStack&                                  stack,
+    const ScriptBinderStaticMethod&                binder,
+    const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack
+);
+// TODO. ctor
+
+// match type
+bool match(
+    v8::Local<v8::Value> v8_value,
+    ScriptBinderRoot     binder
+);
+
+// param match
+bool match_param(
+    v8::Local<v8::Value>     v8_value,
+    const ScriptBinderParam& binder
+);
+
+} // namespace skr::v8_bind

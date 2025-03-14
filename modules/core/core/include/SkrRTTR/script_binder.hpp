@@ -126,6 +126,7 @@ struct ScriptBinderStaticField {
     const RTTRStaticFieldData* data   = nullptr;
 };
 
+// TODO. ctor
 // nested binder, method & static method
 struct ScriptBinderParam {
     ScriptBinderRoot binder      = {};
