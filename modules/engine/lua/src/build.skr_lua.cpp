@@ -15,6 +15,14 @@ extern "C" {
 #include "luacode.h"
 }
 
+#ifdef __cplusplus
+// used for switch Name
+#define switchname(n) switch (std::string_view __str = n; skr_hash64(__str.data(), __str.size(), 0))
+#define casestr(s)                                 \
+    case skr::consteval_hash(std::string_view(s)): \
+        if (__str != std::string_view(s)) break;
+#endif
+
 #include "SkrContainers/stl_string.hpp"
 #include "SkrContainers/string.hpp"
 #include "SkrContainers/vector.hpp"
