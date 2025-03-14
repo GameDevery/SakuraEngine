@@ -116,6 +116,7 @@ export class Record {
   bases: string[];
   fields: Field[];
   methods: Method[];
+  ctors: Ctor[];
   file_name: string;
   line: number;
   comment: string;
@@ -157,6 +158,12 @@ export class Record {
       }
     }
 
+    // load ctors
+    this.ctors = [];
+    for (const ctor of json_obj.ctors) {
+      this.ctors.push(new Ctor(this, ctor));
+    }
+
     // load attrs
     this.raw_attrs = json_obj.attrs;
   }
@@ -164,6 +171,47 @@ export class Record {
   dump_generate_body(): string {
     return this.generate_body_content.content_marco;
   }
+}
+export class Ctor {
+  parent: Record;
+
+  name: string = "";
+  short_name: string = "";
+  namespace: string[] = [];
+
+  access: string;
+
+  parameters: Parameter[] = [];
+
+  comment: string;
+  line: string;
+
+  // attrs
+  raw_attrs: string[] = [];
+  ml_programs: ml.Program[] = [];
+  ml_configs: Dict<any> = {};
+
+  // deno-lint-ignore no-explicit-any
+  constructor(parent: Record, json_obj: any) {
+    this.parent = parent;
+
+    fill_name(this, json_obj.name);
+
+    this.access = json_obj.access;
+    this.comment = json_obj.comment;
+
+    // load parameters
+    for (const parameter of json_obj.parameters) {
+      this.parameters.push(new Parameter(this, parameter));
+    }
+
+    // load return type
+    this.line = json_obj.line;
+
+    // load attrs
+    this.raw_attrs = json_obj.attrs;
+  }
+
 }
 export class Field {
   parent: Record;
@@ -306,7 +354,7 @@ export class Method {
   }
 }
 export class Parameter {
-  parent: Method | Function;
+  parent: Method | Function | Ctor;
 
   name: string;
   type: string;
@@ -325,7 +373,7 @@ export class Parameter {
   ml_configs: Dict<any> = {};
 
   // deno-lint-ignore no-explicit-any
-  constructor(parent: Method | Function, json_obj: any) {
+  constructor(parent: Method | Function | Ctor, json_obj: any) {
     this.parent = parent;
 
     this.name = json_obj.name;
