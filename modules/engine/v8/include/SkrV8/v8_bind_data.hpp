@@ -75,7 +75,7 @@ struct V8BindRecordData {
 //===============================bind core===============================
 struct V8BindRecordCore {
     // native info
-    skr::rttr::ScriptbleObject* object;
+    skr::ScriptbleObject* object;
     skr::rttr::Type*            type;
 
     // v8 info

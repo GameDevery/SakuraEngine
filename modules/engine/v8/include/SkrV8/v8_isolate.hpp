@@ -46,8 +46,8 @@ struct SKR_V8_API V8Isolate {
     void inject_templates_into_context(::v8::Global<::v8::Context> context);
 
     // bind object
-    V8BindRecordCore* translate_record(::skr::rttr::ScriptbleObject* obj);
-    void              mark_record_deleted(::skr::rttr::ScriptbleObject* obj);
+    V8BindRecordCore* translate_record(::skr::ScriptbleObject* obj);
+    void              mark_record_deleted(::skr::ScriptbleObject* obj);
 
 private:
     // bind helpers
@@ -69,7 +69,7 @@ private:
     Map<::skr::rttr::Type*, V8BindRecordData*> _record_templates;
 
     // bind data
-    Map<::skr::rttr::ScriptbleObject*, V8BindRecordCore*> _alive_records;
+    Map<::skr::ScriptbleObject*, V8BindRecordCore*> _alive_records;
     Vector<V8BindRecordCore*>                             _deleted_records;
 };
 } // namespace skr

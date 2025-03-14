@@ -4,7 +4,7 @@
     #include "SkrCore/SkrRTTR/scriptble_object.generated.h"
 #endif
 
-namespace skr::rttr
+namespace skr
 {
 sreflect_enum_class(guid = "a0393643-9f1b-423a-8754-f504bab41420")
 EScriptbleObjectOwnerShip {

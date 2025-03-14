@@ -90,7 +90,7 @@ void V8Isolate::shutdown()
         // clean up core
         for (auto& [obj, bind_core] : _alive_records)
         {
-            if (bind_core->object->script_owner_ship() == rttr::EScriptbleObjectOwnerShip::Script)
+            if (bind_core->object->script_owner_ship() == EScriptbleObjectOwnerShip::Script)
             {
                 SkrDelete(bind_core->object);
             }
@@ -127,7 +127,7 @@ void V8Isolate::make_record_template(::skr::rttr::Type* type)
 
     // check
     SKR_ASSERT(type->type_category() == ::skr::rttr::ETypeCategory::Record);
-    SKR_ASSERT(type->based_on(type_id_of<rttr::ScriptbleObject>()));
+    SKR_ASSERT(type->based_on(type_id_of<ScriptbleObject>()));
 
     // find exist template
     if (_record_templates.contains(type))
@@ -336,7 +336,7 @@ void V8Isolate::inject_templates_into_context(::v8::Global<::v8::Context> contex
 }
 
 // bind object
-V8BindRecordCore* V8Isolate::translate_record(::skr::rttr::ScriptbleObject* obj)
+V8BindRecordCore* V8Isolate::translate_record(::skr::ScriptbleObject* obj)
 {
     using namespace ::v8;
     Isolate::Scope isolate_scope(_isolate);
@@ -385,7 +385,7 @@ V8BindRecordCore* V8Isolate::translate_record(::skr::rttr::ScriptbleObject* obj)
 
     return bind_data;
 }
-void V8Isolate::mark_record_deleted(::skr::rttr::ScriptbleObject* obj)
+void V8Isolate::mark_record_deleted(::skr::ScriptbleObject* obj)
 {
     auto bind_ref = _alive_records.find(obj);
     if (bind_ref)
@@ -412,7 +412,7 @@ void V8Isolate::_gc_callback(const ::v8::WeakCallbackInfo<V8BindRecordCore>& dat
     if (bind_core->object)
     {
         // delete if has owner ship
-        if (bind_core->object->script_owner_ship() == rttr::EScriptbleObjectOwnerShip::Script)
+        if (bind_core->object->script_owner_ship() == EScriptbleObjectOwnerShip::Script)
         {
             SkrDelete(bind_core->object);
         }
@@ -475,15 +475,15 @@ void V8Isolate::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
                 V8BindTools::call_ctor(alloc_mem, *ctor_data, info, Context, Isolate);
                 
                 // cast to ScriptbleObject
-                void* casted_mem = bind_data->type->cast_to_base(type_id_of<rttr::ScriptbleObject>(), alloc_mem);
+                void* casted_mem = bind_data->type->cast_to_base(type_id_of<ScriptbleObject>(), alloc_mem);
 
                 // make bind core
                 V8BindRecordCore* bind_core = SkrNew<V8BindRecordCore>();
                 bind_core->type = bind_data->type;
-                bind_core->object = reinterpret_cast<rttr::ScriptbleObject*>(casted_mem);
+                bind_core->object = reinterpret_cast<ScriptbleObject*>(casted_mem);
 
                 // setup owner ship
-                bind_core->object->script_owner_ship_take(rttr::EScriptbleObjectOwnerShip::Script);
+                bind_core->object->script_owner_ship_take(EScriptbleObjectOwnerShip::Script);
 
                 // setup gc callback
                 bind_core->v8_object.Reset(Isolate, self);

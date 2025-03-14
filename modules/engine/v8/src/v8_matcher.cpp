@@ -373,7 +373,7 @@ V8MatchSuggestion V8Matcher::_suggest_wrap(rttr::Type* type)
 {
     if (flag_all(type->record_flag(), rttr::ERecordFlag::ScriptVisible))
     {
-        if (type->based_on(type_id_of<rttr::ScriptbleObject>()))
+        if (type->based_on(type_id_of<ScriptbleObject>()))
         {
             return V8MatchSuggestion::FromWrap(type);
         }
@@ -701,8 +701,8 @@ bool V8Matcher::_to_native_box(
 
     auto& wrap_data        = suggestion.wrap();
     auto* type             = wrap_data.type;
-    void* cast_raw         = type->cast_to_base(type_id_of<rttr::ScriptbleObject>(), native_data);
-    auto* scriptble_object = reinterpret_cast<rttr::ScriptbleObject*>(cast_raw);
+    void* cast_raw         = type->cast_to_base(type_id_of<ScriptbleObject>(), native_data);
+    auto* scriptble_object = reinterpret_cast<ScriptbleObject*>(cast_raw);
 
     auto* bind_core = skr_isolate->translate_record(scriptble_object);
     if (bind_core)

@@ -35,7 +35,7 @@ struct SKR_V8_API V8Context {
     void set_global(StringView name, double v);
     void set_global(StringView name, bool v);
     void set_global(StringView name, StringView v);
-    void set_global(StringView name, skr::rttr::ScriptbleObject* obj);
+    void set_global(StringView name, skr::ScriptbleObject* obj);
 
     // run script
     void exec_script(StringView script);

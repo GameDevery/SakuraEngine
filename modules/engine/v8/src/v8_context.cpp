@@ -181,7 +181,7 @@ void V8Context::set_global(StringView name, StringView v)
     // set
     global->Set(solved_context, key, value).Check();
 }
-void V8Context::set_global(StringView name, skr::rttr::ScriptbleObject* obj)
+void V8Context::set_global(StringView name, skr::ScriptbleObject* obj)
 {
     using namespace ::v8;
     

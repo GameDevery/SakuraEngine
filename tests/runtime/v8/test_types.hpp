@@ -47,7 +47,7 @@ sreflect_struct(
     rttr = @full;
 )
 sscript_visible sscript_newable
-TestType : public ::skr::rttr::ScriptbleObject {
+TestType : public ::skr::ScriptbleObject {
     SKR_GENERATE_BODY()
 
     TestType() { SKR_LOG_FMT_INFO(u8"call ctor"); }
