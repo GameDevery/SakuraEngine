@@ -39,11 +39,11 @@ enum class EScriptBindFailed
     ExportPointerLevelGreaterThanOne,
 };
 
-// basic binder, used for nested binder
-struct PrimitiveBinder;
-struct BoxBinder;
-struct WrapBinder;
-struct BasicBinder {
+// root binder, used for nested binder
+struct ScriptBinderPrimitive;
+struct ScriptBinderBox;
+struct ScriptBinderWrap;
+struct ScriptBinderRoot {
     enum class EKind
     {
         None,
@@ -53,30 +53,30 @@ struct BasicBinder {
     };
 
     // ctor
-    inline BasicBinder() = default;
-    inline BasicBinder(PrimitiveBinder* primitive)
+    inline ScriptBinderRoot() = default;
+    inline ScriptBinderRoot(ScriptBinderPrimitive* primitive)
         : _kind(EKind::Primitive)
         , _binder(primitive)
     {
     }
-    inline BasicBinder(BoxBinder* box)
+    inline ScriptBinderRoot(ScriptBinderBox* box)
         : _kind(EKind::Box)
         , _binder(box)
     {
     }
-    inline BasicBinder(WrapBinder* wrap)
+    inline ScriptBinderRoot(ScriptBinderWrap* wrap)
         : _kind(EKind::Wrap)
         , _binder(wrap)
     {
     }
 
     // copy & move
-    inline BasicBinder(const BasicBinder& other) = default;
-    inline BasicBinder(BasicBinder&& other)      = default;
+    inline ScriptBinderRoot(const ScriptBinderRoot& other) = default;
+    inline ScriptBinderRoot(ScriptBinderRoot&& other)      = default;
 
     // assign & move assign
-    inline BasicBinder& operator=(const BasicBinder& other) = default;
-    inline BasicBinder& operator=(BasicBinder&& other)      = default;
+    inline ScriptBinderRoot& operator=(const ScriptBinderRoot& other) = default;
+    inline ScriptBinderRoot& operator=(ScriptBinderRoot&& other)      = default;
 
     // kind getter
     inline EKind kind() const { return _kind; }
@@ -86,20 +86,20 @@ struct BasicBinder {
     inline bool  is_wrap() const { return _kind == EKind::Wrap; }
 
     // binder getter
-    inline PrimitiveBinder* primitive() const
+    inline ScriptBinderPrimitive* primitive() const
     {
         SKR_ASSERT(_kind == EKind::Primitive);
-        return static_cast<PrimitiveBinder*>(_binder);
+        return static_cast<ScriptBinderPrimitive*>(_binder);
     }
-    inline BoxBinder* box() const
+    inline ScriptBinderBox* box() const
     {
         SKR_ASSERT(_kind == EKind::Box);
-        return static_cast<BoxBinder*>(_binder);
+        return static_cast<ScriptBinderBox*>(_binder);
     }
-    inline WrapBinder* wrap() const
+    inline ScriptBinderWrap* wrap() const
     {
         SKR_ASSERT(_kind == EKind::Wrap);
-        return static_cast<WrapBinder*>(_binder);
+        return static_cast<ScriptBinderWrap*>(_binder);
     }
 
     // ops
@@ -115,97 +115,101 @@ private:
 };
 
 // nested binder, field & static field
-struct FieldBinder {
+struct ScriptBinderField {
     const RTTRType*      owner  = nullptr;
-    BasicBinder          binder = {};
+    ScriptBinderRoot     binder = {};
     const RTTRFieldData* data   = nullptr;
 };
-struct StaticFieldBinder {
+struct ScriptBinderStaticField {
     const RTTRType*            owner  = nullptr;
-    BasicBinder                binder = {};
+    ScriptBinderRoot           binder = {};
     const RTTRStaticFieldData* data   = nullptr;
 };
 
 // nested binder, method & static method
-struct ParamBinder {
-    BasicBinder binder      = {};
-    bool        is_inout    = false;
-    bool        is_nullable = false;
+struct ScriptBinderParam {
+    ScriptBinderRoot binder      = {};
+    bool             is_inout    = false;
+    bool             is_nullable = false;
 };
-struct ReturnBinder {
-    BasicBinder binder      = {};
-    bool        is_nullable = false;
+struct ScriptBinderReturn {
+    ScriptBinderRoot binder      = {};
+    bool             is_nullable = false;
 };
-struct MethodBinder {
+struct ScriptBinderMethod {
     struct Overload {
-        const RTTRType*       owner         = nullptr;
-        const RTTRMethodData* data          = nullptr;
-        ReturnBinder          return_binder = {};
-        Vector<ParamBinder>   params_binder = {};
+        const RTTRType*           owner         = nullptr;
+        const RTTRMethodData*     data          = nullptr;
+        ScriptBinderReturn        return_binder = {};
+        Vector<ScriptBinderParam> params_binder = {};
     };
 
     Vector<Overload> overloads = {};
 };
-struct StaticMethodBinder {
+struct ScriptBinderStaticMethod {
     struct Overload {
         const RTTRType*             owner         = nullptr;
         const RTTRStaticMethodData* data          = nullptr;
-        ReturnBinder                return_binder = {};
-        Vector<ParamBinder>         params_binder = {};
+        ScriptBinderReturn          return_binder = {};
+        Vector<ScriptBinderParam>   params_binder = {};
     };
 
     Vector<Overload> overloads = {};
 };
 
 // root binders
-struct PrimitiveBinder {
+struct ScriptBinderPrimitive {
     uint32_t    size      = 0;
     uint32_t    alignment = 0;
     GUID        type_id   = {};
     DtorInvoker dtor      = nullptr;
 };
-struct BoxBinder {
-    const RTTRType*          type;
-    Map<String, FieldBinder> fields;
+struct ScriptBinderBox {
+    const RTTRType*                type;
+    Map<String, ScriptBinderField> fields;
 };
-struct WrapBinder {
+struct ScriptBinderWrap {
     const RTTRType* type;
 
-    Map<String, FieldBinder>        fields;
-    Map<String, StaticFieldBinder>  static_fields;
-    Map<String, MethodBinder>       methods;
-    Map<String, StaticMethodBinder> static_methods;
+    Map<String, ScriptBinderField>        fields;
+    Map<String, ScriptBinderStaticField>  static_fields;
+    Map<String, ScriptBinderMethod>       methods;
+    Map<String, ScriptBinderStaticMethod> static_methods;
 };
 
-struct SKR_CORE_API BinderManager {
+struct SKR_CORE_API ScriptBinderManager {
+    // ctor & dtor
+    ScriptBinderManager();
+    ~ScriptBinderManager();
+
     // get binder
-    BasicBinder get_or_build(GUID type_id);
+    ScriptBinderRoot get_or_build(GUID type_id);
 
 private:
-    // make basic binder
-    PrimitiveBinder* _make_primitive(GUID type_id);
-    BoxBinder*       _make_box(const RTTRType* type);
-    WrapBinder*      _make_wrap(const RTTRType* type);
+    // make root binder
+    ScriptBinderPrimitive* _make_primitive(GUID type_id);
+    ScriptBinderBox*       _make_box(const RTTRType* type);
+    ScriptBinderWrap*      _make_wrap(const RTTRType* type);
 
     // make nested binder
-    bool _make_method(MethodBinder::Overload& out, const RTTRMethodData* method, const RTTRType* owner);
-    bool _make_static_method(StaticMethodBinder::Overload& out, const RTTRStaticMethodData* method, const RTTRType* owner);
-    bool _make_field(FieldBinder& out, const RTTRFieldData* field, const RTTRType* owner);
-    bool _make_static_field(StaticFieldBinder& out, const RTTRStaticFieldData* field, const RTTRType* owner);
-    bool _make_param(ParamBinder& out, StringView method_name, const RTTRParamData* param, const RTTRType* owner);
-    bool _make_return(ReturnBinder& out, StringView method_name, TypeSignatureView signature, const RTTRType* owner);
+    bool _make_method(ScriptBinderMethod::Overload& out, const RTTRMethodData* method, const RTTRType* owner);
+    bool _make_static_method(ScriptBinderStaticMethod::Overload& out, const RTTRStaticMethodData* method, const RTTRType* owner);
+    bool _make_field(ScriptBinderField& out, const RTTRFieldData* field, const RTTRType* owner);
+    bool _make_static_field(ScriptBinderStaticField& out, const RTTRStaticFieldData* field, const RTTRType* owner);
+    bool _make_param(ScriptBinderParam& out, StringView method_name, const RTTRParamData* param, const RTTRType* owner);
+    bool _make_return(ScriptBinderReturn& out, StringView method_name, TypeSignatureView signature, const RTTRType* owner);
 
     // checker
-    EScriptBindFailed _try_export_field(TypeSignatureView signature, BasicBinder& out_binder);
+    EScriptBindFailed _try_export_field(TypeSignatureView signature, ScriptBinderRoot& out_binder);
 
     // error helper
     StringView _err_string(EScriptBindFailed err);
-    void _err_field(StringView field_name, StringView owner_name, EScriptBindFailed err);
-    void _err_param(StringView param_name, StringView method_name, EScriptBindFailed err);
-    void _err_return(StringView method_name, EScriptBindFailed err);
+    void       _err_field(StringView field_name, StringView owner_name, EScriptBindFailed err);
+    void       _err_param(StringView param_name, StringView method_name, EScriptBindFailed err);
+    void       _err_return(StringView method_name, EScriptBindFailed err);
 
 private:
     // cache
-    Map<GUID, BasicBinder> _cached_basic_binders;
+    Map<GUID, ScriptBinderRoot> _cached_root_binders;
 };
 } // namespace skr

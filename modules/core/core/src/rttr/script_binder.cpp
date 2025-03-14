@@ -4,11 +4,35 @@
 
 namespace skr
 {
+// ctor & dtor
+ScriptBinderManager::ScriptBinderManager()
+{
+}
+ScriptBinderManager::~ScriptBinderManager()
+{
+    // delete root binder cache
+    for (auto& [type_id, binder] : _cached_root_binders)
+    {
+        switch (binder.kind())
+        {
+        case ScriptBinderRoot::EKind::Primitive:
+            SkrDelete(binder.primitive());
+            break;
+        case ScriptBinderRoot::EKind::Box:
+            SkrDelete(binder.box());
+            break;
+        case ScriptBinderRoot::EKind::Wrap:
+            SkrDelete(binder.wrap());
+            break;
+        }
+    }
+}
+
 // get binder
-BasicBinder BinderManager::get_or_build(GUID type_id)
+ScriptBinderRoot ScriptBinderManager::get_or_build(GUID type_id)
 {
     // find cache
-    if (auto result = _cached_basic_binders.find(type_id))
+    if (auto result = _cached_root_binders.find(type_id))
     {
         return result.value();
     }
@@ -16,7 +40,7 @@ BasicBinder BinderManager::get_or_build(GUID type_id)
     // make new binder
     if (auto* primitive_binder = _make_primitive(type_id))
     {
-        _cached_basic_binders.add(type_id, primitive_binder);
+        _cached_root_binders.add(type_id, primitive_binder);
         return primitive_binder;
     }
 
@@ -27,28 +51,28 @@ BasicBinder BinderManager::get_or_build(GUID type_id)
         // make box binder
         if (auto* box_binder = _make_box(type))
         {
-            _cached_basic_binders.add(type_id, box_binder);
+            _cached_root_binders.add(type_id, box_binder);
             return box_binder;
         }
 
         // make wrap binder
         if (auto* wrap_binder = _make_wrap(type))
         {
-            _cached_basic_binders.add(type_id, wrap_binder);
+            _cached_root_binders.add(type_id, wrap_binder);
             return wrap_binder;
         }
     }
 
     // failed to export
-    _cached_basic_binders.add(type_id, {});
+    _cached_root_binders.add(type_id, {});
     return {};
 }
 
-// make basic binder
+// make root binder
 template <typename T>
-PrimitiveBinder* _new_primitive()
+ScriptBinderPrimitive* _new_primitive()
 {
-    PrimitiveBinder* result = SkrNew<PrimitiveBinder>();
+    ScriptBinderPrimitive* result = SkrNew<ScriptBinderPrimitive>();
 
     // setup primitive data
     result->size      = sizeof(T);
@@ -67,7 +91,7 @@ PrimitiveBinder* _new_primitive()
 
     return result;
 }
-PrimitiveBinder* BinderManager::_make_primitive(GUID type_id)
+ScriptBinderPrimitive* ScriptBinderManager::_make_primitive(GUID type_id)
 {
     switch (type_id.get_hash())
     {
@@ -99,7 +123,7 @@ PrimitiveBinder* BinderManager::_make_primitive(GUID type_id)
         return nullptr;
     }
 }
-BoxBinder* BinderManager::_make_box(const RTTRType* type)
+ScriptBinderBox* ScriptBinderManager::_make_box(const RTTRType* type)
 {
     // clang-format off
     if (!flag_all(
@@ -111,7 +135,7 @@ BoxBinder* BinderManager::_make_box(const RTTRType* type)
     }
     // clang-format on
 
-    BoxBinder result{};
+    ScriptBinderBox result{};
     result.type = type;
 
     // each field
@@ -133,10 +157,10 @@ BoxBinder* BinderManager::_make_box(const RTTRType* type)
     }
     else
     {
-        return SkrNew<BoxBinder>(std::move(result));
+        return SkrNew<ScriptBinderBox>(std::move(result));
     }
 }
-WrapBinder* BinderManager::_make_wrap(const RTTRType* type)
+ScriptBinderWrap* ScriptBinderManager::_make_wrap(const RTTRType* type)
 {
     // clang-format off
     if (!flag_all(
@@ -158,8 +182,8 @@ WrapBinder* BinderManager::_make_wrap(const RTTRType* type)
         return nullptr;
     }
 
-    WrapBinder result = {};
-    result.type       = type;
+    ScriptBinderWrap result = {};
+    result.type             = type;
 
     bool failed = false;
 
@@ -216,12 +240,12 @@ WrapBinder* BinderManager::_make_wrap(const RTTRType* type)
     }
     else
     {
-        return SkrNew<WrapBinder>(std::move(result));
+        return SkrNew<ScriptBinderWrap>(std::move(result));
     }
 }
 
 // make nested binder
-bool BinderManager::_make_method(MethodBinder::Overload& out, const RTTRMethodData* method, const RTTRType* owner)
+bool ScriptBinderManager::_make_method(ScriptBinderMethod::Overload& out, const RTTRMethodData* method, const RTTRType* owner)
 {
     // basic data
     out.data  = method;
@@ -232,7 +256,7 @@ bool BinderManager::_make_method(MethodBinder::Overload& out, const RTTRMethodDa
     // export params
     for (const auto* param : method->param_data)
     {
-        ParamBinder param_binder = {};
+        ScriptBinderParam param_binder = {};
         failed |= !_make_param(param_binder, method->name, param, owner);
         out.params_binder.push_back(param_binder);
     }
@@ -242,7 +266,7 @@ bool BinderManager::_make_method(MethodBinder::Overload& out, const RTTRMethodDa
 
     return !failed;
 }
-bool BinderManager::_make_static_method(StaticMethodBinder::Overload& out, const RTTRStaticMethodData* static_method, const RTTRType* owner)
+bool ScriptBinderManager::_make_static_method(ScriptBinderStaticMethod::Overload& out, const RTTRStaticMethodData* static_method, const RTTRType* owner)
 {
     // basic data
     out.data  = static_method;
@@ -253,7 +277,7 @@ bool BinderManager::_make_static_method(StaticMethodBinder::Overload& out, const
     // export params
     for (const auto* param : static_method->param_data)
     {
-        ParamBinder param_binder = {};
+        ScriptBinderParam param_binder = {};
         failed |= !_make_param(param_binder, static_method->name, param, owner);
         out.params_binder.push_back(param_binder);
     }
@@ -263,14 +287,14 @@ bool BinderManager::_make_static_method(StaticMethodBinder::Overload& out, const
 
     return !failed;
 }
-bool BinderManager::_make_field(FieldBinder& out, const RTTRFieldData* field, const RTTRType* owner)
+bool ScriptBinderManager::_make_field(ScriptBinderField& out, const RTTRFieldData* field, const RTTRType* owner)
 {
     // get type signature
     auto signature = field->type.view();
 
     // export
-    BasicBinder field_binder = {};
-    auto        err_code     = _try_export_field(signature, field_binder);
+    ScriptBinderRoot field_binder = {};
+    auto             err_code     = _try_export_field(signature, field_binder);
     if (err_code == EScriptBindFailed::None)
     {
         // clang-format off
@@ -288,14 +312,14 @@ bool BinderManager::_make_field(FieldBinder& out, const RTTRFieldData* field, co
         return false;
     }
 }
-bool BinderManager::_make_static_field(StaticFieldBinder& out, const RTTRStaticFieldData* static_field, const RTTRType* owner)
+bool ScriptBinderManager::_make_static_field(ScriptBinderStaticField& out, const RTTRStaticFieldData* static_field, const RTTRType* owner)
 {
     // get type signature
     auto signature = static_field->type.view();
 
     // export
-    BasicBinder field_binder = {};
-    auto        err_code     = _try_export_field(signature, field_binder);
+    ScriptBinderRoot field_binder = {};
+    auto             err_code     = _try_export_field(signature, field_binder);
     if (err_code == EScriptBindFailed::None)
     {
         // clang-format off
@@ -313,7 +337,7 @@ bool BinderManager::_make_static_field(StaticFieldBinder& out, const RTTRStaticF
         return false;
     }
 }
-bool BinderManager::_make_param(ParamBinder& out, StringView method_name, const RTTRParamData* param, const RTTRType* owner)
+bool ScriptBinderManager::_make_param(ScriptBinderParam& out, StringView method_name, const RTTRParamData* param, const RTTRType* owner)
 {
     // get type signature
     auto signature = param->type.view();
@@ -380,7 +404,7 @@ bool BinderManager::_make_param(ParamBinder& out, StringView method_name, const 
 
     return true;
 }
-bool BinderManager::_make_return(ReturnBinder& out, StringView method_name, TypeSignatureView signature, const RTTRType* owner)
+bool ScriptBinderManager::_make_return(ScriptBinderReturn& out, StringView method_name, TypeSignatureView signature, const RTTRType* owner)
 {
     // check signature type
     if (!signature.is_type())
@@ -439,7 +463,7 @@ bool BinderManager::_make_return(ReturnBinder& out, StringView method_name, Type
 }
 
 // checker
-EScriptBindFailed BinderManager::_try_export_field(TypeSignatureView signature, BasicBinder& out_binder)
+EScriptBindFailed ScriptBinderManager::_try_export_field(TypeSignatureView signature, ScriptBinderRoot& out_binder)
 {
     // check type
     if (!signature.is_type())
@@ -466,7 +490,7 @@ EScriptBindFailed BinderManager::_try_export_field(TypeSignatureView signature, 
         signature.read_type_id(field_type_id);
 
         // export wrap type
-        BasicBinder out_binder = get_or_build(field_type_id);
+        ScriptBinderRoot out_binder = get_or_build(field_type_id);
         if (!out_binder.is_wrap())
         {
             return EScriptBindFailed::ExportPointerFieldOfPrimitiveOrBox;
@@ -480,7 +504,7 @@ EScriptBindFailed BinderManager::_try_export_field(TypeSignatureView signature, 
         signature.read_type_id(field_type_id);
 
         // export primitive type
-        BasicBinder field_binder = get_or_build(field_type_id);
+        ScriptBinderRoot field_binder = get_or_build(field_type_id);
         if (field_binder.is_empty())
         {
             return EScriptBindFailed::Unknown;
@@ -494,7 +518,7 @@ EScriptBindFailed BinderManager::_try_export_field(TypeSignatureView signature, 
 }
 
 // error helper
-StringView BinderManager::_err_string(EScriptBindFailed err)
+StringView ScriptBinderManager::_err_string(EScriptBindFailed err)
 {
     switch (err)
     {
@@ -512,7 +536,7 @@ StringView BinderManager::_err_string(EScriptBindFailed err)
         return u8"failed to export type";
     }
 }
-void BinderManager::_err_field(StringView field_name, StringView owner_name, EScriptBindFailed err)
+void ScriptBinderManager::_err_field(StringView field_name, StringView owner_name, EScriptBindFailed err)
 {
     if (err == EScriptBindFailed::None) { return; }
     SKR_LOG_FMT_ERROR(
@@ -522,7 +546,7 @@ void BinderManager::_err_field(StringView field_name, StringView owner_name, ESc
         _err_string(err)
     );
 }
-void BinderManager::_err_param(StringView param_name, StringView method_name, EScriptBindFailed err)
+void ScriptBinderManager::_err_param(StringView param_name, StringView method_name, EScriptBindFailed err)
 {
     if (err == EScriptBindFailed::None) { return; }
     SKR_LOG_FMT_ERROR(
@@ -532,7 +556,7 @@ void BinderManager::_err_param(StringView param_name, StringView method_name, ES
         _err_string(err)
     );
 }
-void BinderManager::_err_return(StringView method_name, EScriptBindFailed err)
+void ScriptBinderManager::_err_return(StringView method_name, EScriptBindFailed err)
 {
     if (err == EScriptBindFailed::None) { return; }
     SKR_LOG_FMT_ERROR(
