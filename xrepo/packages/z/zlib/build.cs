@@ -15,7 +15,7 @@ public static class Zlib
                     throw new TaskFatalError("zlib version mismatch!", "zlib version mismatch, only v1.2.8 is supported in source.");
 
                 Target
-                    .TargetType(TargetType.Static)
+                    .TargetType(TargetType.HeaderOnly)
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/zlib/include"));
                 
                 if (BuildSystem.TargetOS == OSPlatform.Windows)

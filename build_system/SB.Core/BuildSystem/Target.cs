@@ -9,9 +9,6 @@ namespace SB
 {
     public class TargetDependArgumentDriver : IArgumentDriver
     {
-        [TargetProperty(TargetProperty.InheritBehavior)]
-        public ArgumentList<string> Depend(ArgumentList<string> Deps) => Deps;
-
         public Dictionary<string, object?> Arguments { get; }
         public HashSet<string> RawArguments { get; }
     }
@@ -39,12 +36,35 @@ namespace SB
             return this;
         }
 
-        public Target Depend(string DependName)
+        public Target Depend(Visibility Visibility, string DependName)
         {
-            if (DependName.Contains("@"))
-                PackageTargetDependencies.Add(DependName);
-            else
-                TargetDependencies.Add(DependName);
+            switch (Visibility)
+            {
+                case Visibility.Public:
+                {
+                    if (DependName.Contains("@"))
+                        PublicPackageTargetDependencies.Add(DependName);
+                    else
+                        PublicTargetDependencies.Add(DependName);
+                }
+                break;
+                case Visibility.Private:
+                {
+                    if (DependName.Contains("@"))
+                        PrivatePackageTargetDependencies.Add(DependName);
+                    else
+                        PrivateTargetDependencies.Add(DependName);
+                }
+                break;
+                case Visibility.Interface:
+                {
+                    if (DependName.Contains("@"))
+                        InterfacePackageTargetDependencies.Add(DependName);
+                    else
+                        InterfaceTargetDependencies.Add(DependName);
+                }
+                break;
+            }
             return this;
         }
 
@@ -61,7 +81,7 @@ namespace SB
             BeforeBuildActions.Add(Action);
             return this;
         }
-
+    
         private bool PackagesResolved = false;
         internal void ResolvePackages(ref Dictionary<string, Target> OutPackageTargets)
         {
@@ -74,33 +94,47 @@ namespace SB
                     var Package = BuildSystem.GetPackage(PackageName);
                     if (Package == null)
                         throw new ArgumentException($"Target {Name}: Required package {PackageName} does not exist!");
-                
-                    foreach (var PackageTargetDependency in PackageTargetDependencies)
-                    {
-                        var Splitted = PackageTargetDependency.Split("@");
-                        if (Splitted[0] == PackageName)
+
+                    var ResolvePackageTargetDependencies = 
+                        (SortedSet<string> PackageTargetDependencies, ref SortedSet<string> ResolvedTargetDependencies, ref Dictionary<string, Target> OutPackageTargets) => 
                         {
-                            var PackageTarget = Package.AcquireTarget(Splitted[1], PackageConfig);
+                            foreach (var NickName in PackageTargetDependencies)
                             {
-                                PackageTarget.ResolvePackages(ref OutPackageTargets);
-                                OutPackageTargets.TryAdd(PackageTargetDependency, PackageTarget);
+                                var Splitted = NickName.Split("@");
+                                if (Splitted[0] == PackageName)
+                                {
+                                    var PackageTarget = Package.AcquireTarget(Splitted[1], PackageConfig);
+                                    {
+                                        PackageTarget.ResolvePackages(ref OutPackageTargets);
+                                        OutPackageTargets.TryAdd(PackageTarget.Name, PackageTarget);
+                                    }
+                                    ResolvedTargetDependencies.Add(PackageTarget.Name);
+                                }
                             }
-                            TargetDependencies.Add(PackageTargetDependency);
-                        }
-                    }
+                        };
+
+                    ResolvePackageTargetDependencies(PrivatePackageTargetDependencies, ref PrivateTargetDependencies, ref OutPackageTargets);
+                    ResolvePackageTargetDependencies(PublicPackageTargetDependencies, ref PublicTargetDependencies, ref OutPackageTargets);
+                    ResolvePackageTargetDependencies(InterfacePackageTargetDependencies, ref InterfaceTargetDependencies, ref OutPackageTargets);
                 }
                 PackagesResolved = true;
             }
         }
 
-        internal void ResolveDependencies() => RecursiveMergeDependencies(TargetDependencies, TargetDependencies.ToHashSet());
+        internal void ResolveDependencies()
+        {
+            RecursiveMergeDependencies(FinalTargetDependencies, PublicTargetDependencies);
+            RecursiveMergeDependencies(FinalTargetDependencies, PrivateTargetDependencies);
+        }
+
         internal void RecursiveMergeDependencies(ISet<string> To, IReadOnlySet<string> DepNames)
         {
+            To.AddRange(DepNames);
             foreach (var DepName in DepNames)
             {
                 Target DepTarget = BuildSystem.GetTarget(DepName);
-                To.AddRange(DepTarget.Dependencies);
-                RecursiveMergeDependencies(To, DepTarget.Dependencies);
+                RecursiveMergeDependencies(To, DepTarget.PublicTargetDependencies);
+                RecursiveMergeDependencies(To, DepTarget.InterfaceTargetDependencies);
             }
         }
 
@@ -148,7 +182,7 @@ namespace SB
             }
         }
 
-        public IReadOnlySet<string> Dependencies => TargetDependencies;
+        public IReadOnlySet<string> Dependencies => FinalTargetDependencies;
         public IReadOnlySet<string> AllFiles => Absolutes;
 
         public string Name { get; }
@@ -160,8 +194,15 @@ namespace SB
         #endregion
         #region Dependencies
         private SortedDictionary<string, PackageConfig> PackageDependencies = new();
-        private SortedSet<string> TargetDependencies = new();
-        private SortedSet<string> PackageTargetDependencies = new();
+        
+        private SortedSet<string> FinalTargetDependencies = new();
+        private SortedSet<string> PublicTargetDependencies = new();
+        private SortedSet<string> PrivateTargetDependencies = new();
+        private SortedSet<string> InterfaceTargetDependencies = new();
+
+        private SortedSet<string> PublicPackageTargetDependencies = new();
+        private SortedSet<string> PrivatePackageTargetDependencies = new();
+        private SortedSet<string> InterfacePackageTargetDependencies = new();
         #endregion
         #region Package
         public bool IsFromPackage { get; internal set; } = false;

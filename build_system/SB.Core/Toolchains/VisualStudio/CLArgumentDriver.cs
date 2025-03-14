@@ -15,6 +15,10 @@ namespace SB.Core
         [TargetProperty] 
         public string CppVersion(string what) => cppVersionMap.TryGetValue(what.Replace("c++", "").Replace("C++", ""), out var r) ? r : throw new TaskFatalError($"Invalid argument \"{what}\" for CppVersion!");
         public static readonly Dictionary<string, string> cppVersionMap = new Dictionary<string, string> { { "11", "/std:c++11" }, { "14", "/std:c++14" }, { "17", "/std:c++17" }, { "20", "/std:c++20" }, { "23", "/std:c++23" }, { "latest", "/std:c++latest" } };
+        
+        [TargetProperty] 
+        public string CVersion(string what) => cVersionMao.TryGetValue(what.Replace("c", "").Replace("C", ""), out var r) ? r : throw new TaskFatalError($"Invalid argument \"{what}\" for CVersion!");
+        public static readonly Dictionary<string, string> cVersionMao = new Dictionary<string, string> { { "11", "/std:c11" }, { "17", "/std:c17" }, { "latest", "/std:clatest" } };
 
         [TargetProperty] 
         public string SIMD(SIMDArchitecture simd) => $"/arch:{simd}".Replace("_", ".");
@@ -32,6 +36,9 @@ namespace SB.Core
         [TargetProperty] 
         public string FpModel(FpModel v) => $"/fp:{v}".ToLowerInvariant();
 
+        [TargetProperty(TargetProperty.InheritBehavior)] 
+        public string[] CppFlags(ArgumentList<string> flags) => flags.Select(flag => flag).ToArray();
+        
         [TargetProperty(TargetProperty.InheritBehavior)] 
         public string[] Defines(ArgumentList<string> defines) => defines.Select(define => $"/D{define}").ToArray();
 

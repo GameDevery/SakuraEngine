@@ -18,7 +18,6 @@ namespace SB
             Stopwatch sw = new();
             sw.Start();
 
-            var DependFile = Path.Combine(Target.GetStorePath(BuildSystem.DepsStore), BuildSystem.GetUniqueTempFileName(SourceFile, Target.Name + this.Name, "task.deps.json"));
             var SourceDependencies = Path.Combine(Target.GetStorePath(BuildSystem.DepsStore), BuildSystem.GetUniqueTempFileName(SourceFile, Target.Name + this.Name, "source.deps.json"));
             var ObjectFile = GetObjectFilePath(Target, SourceFile);
 

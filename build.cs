@@ -20,17 +20,52 @@ BuildSystem.Target("TestTarget")
     .TargetType(TargetType.Static)
     .CppVersion("20")
 
+    .Require("imgui", new ImGuiPackageConfig { Version = new Version(1, 89, 0), ImportDynamicAPIFromEngine = true })
+    .Depend(Visibility.Private, "imgui@imgui")
+
+    .Require("Luau", new PackageConfig { Version = new Version(0, 613, 1) })
+    .Depend(Visibility.Private, "Luau@VM")
+    .Depend(Visibility.Private, "Luau@Ast")
+    .Depend(Visibility.Private, "Luau@Compiler")
+
+    .Require("lua", new PackageConfig { Version = new Version(5, 4, 4) })
+    .Depend(Visibility.Private, "lua@lua")
+
+    .Require("lmdb", new PackageConfig { Version = new Version(0, 9, 29) })
+    .Depend(Visibility.Private, "lmdb@lmdb")
+
+    .Require("tinygltf", new PackageConfig { Version = new Version(2, 8, 14) })
+    .Depend(Visibility.Private, "tinygltf@tinygltf")
+
+    .Require("nanovg", new PackageConfig { Version = new Version(0, 1, 0) })
+    .Depend(Visibility.Private, "nanovg@nanovg")
+
+    .Require("wasm3", new PackageConfig { Version = new Version(0, 5, 0) })
+    .Depend(Visibility.Private, "wasm3@wasm3")
+
+    .Require("lemon", new PackageConfig { Version = new Version(1, 3, 1) })
+    .Depend(Visibility.Private, "lemon@lemon")
+
     .Require("MeshOptimizer", new PackageConfig { Version = new Version(0, 0, 1) })
-    .Depend("MeshOptimizer@MeshOptimizer")
+    .Depend(Visibility.Private, "MeshOptimizer@MeshOptimizer")
 
     .Require("zlib", new PackageConfig { Version = new Version(1, 2, 8) })
-    .Depend("zlib@zlib")
+    .Depend(Visibility.Private, "zlib@zlib")
+
+    .Require("cgltf", new PackageConfig { Version = new Version(1, 13, 0) })
+    .Depend(Visibility.Private, "cgltf@cgltf")
+
+    .Require("cpu_features", new PackageConfig { Version = new Version(0, 9, 0) })
+    .Depend(Visibility.Private, "cpu_features@cpu_features")
 
     .Require("yyjson", new PackageConfig { Version = new Version(0, 9, 0) })
-    .Depend("yyjson@yyjson")
+    .Depend(Visibility.Private, "yyjson@yyjson")
+
+    .Require("DaScriptCore", new PackageConfig { Version = new Version(0, 9, 0) })
+    .Depend(Visibility.Private, "DaScriptCore@DaScriptCore")
 
     .Require("harfbuzz", new PackageConfig { Version = new Version(7, 1, 0) })
-    .Depend("harfbuzz@harfbuzz");
+    .Depend(Visibility.Private, "harfbuzz@harfbuzz");
 
 
 await ToolchainInitializeTask;

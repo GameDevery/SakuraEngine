@@ -16,8 +16,8 @@ public static class Harfbuzz
                     .CppVersion("20")
                     .Require("freetype", new PackageConfig { Version = new Version(2, 13, 0) })
                     .Require("icu", new PackageConfig { Version = new Version(72, 1, 0) })
-                    .Depend(/*Visibility.Public, */"freetype@freetype")
-                    .Depend(/*Visibility.Public, */"icu@icu")
+                    .Depend(Visibility.Public, "freetype@freetype")
+                    .Depend(Visibility.Public, "icu@icu")
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/harfbuzz/src"))
                     .AddFiles(
                         "port/harfbuzz/src/hb-aat-layout.cc",

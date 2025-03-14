@@ -44,6 +44,7 @@ namespace SB.Core
 
     public enum TargetType
     {
+        HeaderOnly,
         Static,
         Dynamic,
         Executable

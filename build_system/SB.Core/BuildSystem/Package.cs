@@ -51,7 +51,7 @@ namespace SB.Core
                 if (!Installers.TryGetValue(TargetName, out Installer))
                     throw new PackageInstallException(Name, TargetName, $"Package {Name}: Installer for target {TargetName} not found!");
 
-                Target ToInstall = new Target($"{Name}@{TargetName}", Installer.Loc);
+                Target ToInstall = new Target($"{Name}@{TargetName}@{Config.Version}", Installer.Loc);
                 ToInstall.IsFromPackage = true;
                 Installer.Action(ToInstall, Config);
                 TargetPermutations.Add(Config, ToInstall);

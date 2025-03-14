@@ -10,6 +10,9 @@ public static class ICU
             .Package("icu")
             .AddTarget("icu", (Target Target, PackageConfig Config) =>
             {
+                if (Config.Version != new Version(72, 1, 0))
+                    throw new TaskFatalError("icu version mismatch!", "icu version mismatch, only v72.1.0 is supported in source.");
+
                 Target
                     .TargetType(TargetType.Static)
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/icu4c/source/common"))
