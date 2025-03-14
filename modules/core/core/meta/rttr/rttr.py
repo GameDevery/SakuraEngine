@@ -269,7 +269,7 @@ class RTTRGenerator(gen.GeneratorBase):
                 record.generated_body_content += '''
 ::skr::GUID iobject_get_typeid() const override
 {
-    using namespace skr::rttr;
+    using namespace skr;
     using ThisType = std::remove_cv_t<std::remove_pointer_t<decltype(this)>>;
     return type_id_of<ThisType>();
 }

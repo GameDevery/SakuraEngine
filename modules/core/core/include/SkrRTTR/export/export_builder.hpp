@@ -31,10 +31,10 @@ struct RTTRParamBuilder {
         _data->flag = flag_set(_data->flag, flag);
         return *this;
     }
-    template <std::derived_from<rttr::IAttribute> Attr>
+    template <std::derived_from<attr::IAttribute> Attr>
     inline RTTRParamBuilder& attribute(Attr attr)
     {
-        rttr::IAttribute* copied_attr = new Attr(std::move(attr));
+        attr::IAttribute* copied_attr = new Attr(std::move(attr));
         _data->attributes.add(type_id_of<Attr>(), copied_attr);
         return *this;
     }
@@ -61,10 +61,10 @@ struct RTTRFunctionBuilder {
         _data->flag = flag_set(_data->flag, flag);
         return *this;
     }
-    template <std::derived_from<rttr::IAttribute> Attr>
+    template <std::derived_from<attr::IAttribute> Attr>
     inline RTTRFunctionBuilder& attribute(Attr attr)
     {
-        rttr::IAttribute* copied_attr = new Attr(std::move(attr));
+        attr::IAttribute* copied_attr = new Attr(std::move(attr));
         _data->attributes.add(type_id_of<Attr>(), copied_attr);
         return *this;
     }
@@ -91,10 +91,10 @@ struct RTTRMethodBuilder {
         _data->flag = flag_set(_data->flag, flag);
         return *this;
     }
-    template <std::derived_from<rttr::IAttribute> Attr>
+    template <std::derived_from<attr::IAttribute> Attr>
     inline RTTRMethodBuilder& attribute(Attr attr)
     {
-        rttr::IAttribute* copied_attr = new Attr(std::move(attr));
+        attr::IAttribute* copied_attr = new Attr(std::move(attr));
         _data->attributes.add(type_id_of<Attr>(), copied_attr);
         return *this;
     }
@@ -121,10 +121,10 @@ struct RTTRStaticMethodBuilder {
         _data->flag = flag_set(_data->flag, flag);
         return *this;
     }
-    template <std::derived_from<rttr::IAttribute> Attr>
+    template <std::derived_from<attr::IAttribute> Attr>
     inline RTTRStaticMethodBuilder& attribute(Attr attr)
     {
-        rttr::IAttribute* copied_attr = new Attr(std::move(attr));
+        attr::IAttribute* copied_attr = new Attr(std::move(attr));
         _data->attributes.add(type_id_of<Attr>(), copied_attr);
         return *this;
     }
@@ -151,10 +151,10 @@ struct RTTRExternMethodBuilder {
         _data->flag = flag_set(_data->flag, flag);
         return *this;
     }
-    template <std::derived_from<rttr::IAttribute> Attr>
+    template <std::derived_from<attr::IAttribute> Attr>
     inline RTTRExternMethodBuilder& attribute(Attr attr)
     {
-        rttr::IAttribute* copied_attr = new Attr(std::move(attr));
+        attr::IAttribute* copied_attr = new Attr(std::move(attr));
         _data->attributes.add(type_id_of<Attr>(), copied_attr);
         return *this;
     }
@@ -181,10 +181,10 @@ struct RTTRCtorBuilder {
         _data->flag = flag_set(_data->flag, flag);
         return *this;
     }
-    template <std::derived_from<rttr::IAttribute> Attr>
+    template <std::derived_from<attr::IAttribute> Attr>
     inline RTTRCtorBuilder& attribute(Attr attr)
     {
-        rttr::IAttribute* copied_attr = new Attr(std::move(attr));
+        attr::IAttribute* copied_attr = new Attr(std::move(attr));
         _data->attributes.add(type_id_of<Attr>(), copied_attr);
         return *this;
     }
@@ -209,10 +209,10 @@ struct RTTRFieldBuilder {
         _data->flag = flag_set(_data->flag, flag);
         return *this;
     }
-    template <std::derived_from<rttr::IAttribute> Attr>
+    template <std::derived_from<attr::IAttribute> Attr>
     inline RTTRFieldBuilder& attribute(Attr attr)
     {
-        rttr::IAttribute* copied_attr = new Attr(std::move(attr));
+        attr::IAttribute* copied_attr = new Attr(std::move(attr));
         _data->attributes.add(type_id_of<Attr>(), copied_attr);
         return *this;
     }
@@ -233,10 +233,10 @@ struct RTTRStaticFieldBuilder {
         _data->flag = flag_set(_data->flag, flag);
         return *this;
     }
-    template <std::derived_from<rttr::IAttribute> Attr>
+    template <std::derived_from<attr::IAttribute> Attr>
     inline RTTRStaticFieldBuilder& attribute(Attr attr)
     {
-        rttr::IAttribute* copied_attr = new Attr(std::move(attr));
+        attr::IAttribute* copied_attr = new Attr(std::move(attr));
         _data->attributes.add(type_id_of<Attr>(), copied_attr);
         return *this;
     }
@@ -460,10 +460,10 @@ struct RTTRRecordBuilder {
         _data->flag = flag_set(_data->flag, flag);
         return *this;
     }
-    template <std::derived_from<rttr::IAttribute> Attr>
+    template <std::derived_from<attr::IAttribute> Attr>
     inline RTTRRecordBuilder& attribute(Attr attr)
     {
-        rttr::IAttribute* copied_attr = new Attr(std::move(attr));
+        attr::IAttribute* copied_attr = new Attr(std::move(attr));
         _data->attributes.add(type_id_of<Attr>(), copied_attr);
         return *this;
     }
@@ -488,10 +488,10 @@ struct RTTREnumItemBuilder {
         _data->flag = flag_set(_data->flag, flag);
         return *this;
     }
-    template <std::derived_from<rttr::IAttribute> Attr>
+    template <std::derived_from<attr::IAttribute> Attr>
     inline RTTREnumItemBuilder& attribute(Attr attr)
     {
-        rttr::IAttribute* copied_attr = new Attr(std::move(attr));
+        attr::IAttribute* copied_attr = new Attr(std::move(attr));
         _data->attributes.add(type_id_of<Attr>(), copied_attr);
         return *this;
     }
@@ -555,10 +555,10 @@ struct RTTREnumBuilder {
         _data->flag = flag_set(_data->flag, flag);
         return *this;
     }
-    template <std::derived_from<rttr::IAttribute> Attr>
+    template <std::derived_from<attr::IAttribute> Attr>
     inline RTTREnumBuilder& attribute(Attr attr)
     {
-        rttr::IAttribute* copied_attr = new Attr(std::move(attr));
+        attr::IAttribute* copied_attr = new Attr(std::move(attr));
         _data->attributes.add(type_id_of<Attr>(), copied_attr);
         return *this;
     }

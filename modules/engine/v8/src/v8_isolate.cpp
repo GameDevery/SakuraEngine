@@ -350,7 +350,7 @@ V8BindRecordCore* V8Isolate::translate_record(::skr::ScriptbleObject* obj)
     }
 
     // get type
-    auto type = rttr::get_type_from_guid(obj->iobject_get_typeid());
+    auto type = get_type_from_guid(obj->iobject_get_typeid());
 
     // get template
     auto template_ref = _record_templates.find(type);

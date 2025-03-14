@@ -2,7 +2,7 @@
 #include <cstdint>
 #include "SkrRTTR/rttr_traits.hpp"
 
-namespace skr::rttr
+namespace skr::attr
 {
 enum class EAttributeTargetFlag : uint16_t
 {
@@ -27,6 +27,6 @@ enum class EAttributeTargetFlag : uint16_t
 struct IAttribute {
     virtual ~IAttribute() = default;
 };
-} // namespace skr::rttr
+} // namespace skr::attr
 
-SKR_RTTR_TYPE(skr::rttr::IAttribute, "4031a792-6f2c-48ed-90e9-9342fc87809e")
+SKR_RTTR_TYPE(skr::attr::IAttribute, "4031a792-6f2c-48ed-90e9-9342fc87809e")

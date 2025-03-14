@@ -255,7 +255,7 @@ private:
     };
 };
 
-} // namespace skr::rttr
+} // namespace skr
 
 // strongly enum, used to hold pure c style enum (without underlying type)
 namespace skr

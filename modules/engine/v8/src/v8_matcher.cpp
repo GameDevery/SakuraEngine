@@ -30,7 +30,7 @@ V8MatchSuggestion V8Matcher::match_to_native(::v8::Local<::v8::Value> v8_value, 
         }
 
         // match box
-        RTTRType* type = rttr::get_type_from_guid(type_id);
+        RTTRType* type = get_type_from_guid(type_id);
         result           = _suggest_box(type);
         if (!result.is_empty())
         {
@@ -75,7 +75,7 @@ V8MatchSuggestion V8Matcher::match_to_v8(TypeSignatureView signature)
         if (!result.is_empty()) return result;
 
         // match box
-        RTTRType* type = rttr::get_type_from_guid(type_id);
+        RTTRType* type = get_type_from_guid(type_id);
         result           = _suggest_box(type);
         if (!result.is_empty()) { return result; }
 
@@ -346,7 +346,7 @@ V8MatchSuggestion V8Matcher::_suggest_box(RTTRType* type)
             }
 
             // try box
-            auto* field_type  = rttr::get_type_from_guid(type_id);
+            auto* field_type  = get_type_from_guid(type_id);
             auto  suggestions = _suggest_box(field_type);
             if (!suggestions.is_empty())
             {

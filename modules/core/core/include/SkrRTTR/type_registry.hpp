@@ -4,15 +4,11 @@
 namespace skr
 {
 struct RTTRType;
-}
-
-namespace skr::rttr
-{
-using TypeLoaderFunc = void (*)(RTTRType* type);
+using RTTRTypeLoaderFunc = void (*)(RTTRType* type);
 
 // type register (loader)
-SKR_CORE_API void register_type_loader(const GUID& guid, TypeLoaderFunc load_func);
-SKR_CORE_API void unregister_type_loader(const GUID& guid, TypeLoaderFunc load_func);
+SKR_CORE_API void register_type_loader(const GUID& guid, RTTRTypeLoaderFunc load_func);
+SKR_CORE_API void unregister_type_loader(const GUID& guid, RTTRTypeLoaderFunc load_func);
 
 // TODO. type extender
 
@@ -22,4 +18,4 @@ SKR_CORE_API void unregister_type_loader(const GUID& guid, TypeLoaderFunc load_f
 SKR_CORE_API RTTRType* get_type_from_guid(const GUID& guid);
 SKR_CORE_API void      unload_all_types();
 
-} // namespace skr::rttr
+} // namespace skr

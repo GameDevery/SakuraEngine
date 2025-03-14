@@ -4,7 +4,6 @@
 TEST_CASE("test type signature")
 {
     using namespace skr;
-    using namespace skr::rttr;
 
     auto type = type_of<test_rttr::DynamicStackInvoke>();
 

@@ -133,7 +133,7 @@ struct RTTRParamData {
 
     // TODO. flag & Attribute
     ERTTRParamFlag               flag = ERTTRParamFlag::None;
-    Map<GUID, rttr::IAttribute*> attributes;
+    Map<GUID, attr::IAttribute*> attributes;
 
     template <typename Arg>
     inline static RTTRParamData Make()
@@ -187,7 +187,7 @@ struct RTTRFunctionData {
 
     // flag & attributes
     ERTTRFunctionFlag            flag       = ERTTRFunctionFlag::None;
-    Map<GUID, rttr::IAttribute*> attributes = {};
+    Map<GUID, attr::IAttribute*> attributes = {};
 
     inline ~RTTRFunctionData()
     {
@@ -224,7 +224,7 @@ struct RTTRMethodData {
 
     // flag & attributes
     ERTTRMethodFlag              flag       = ERTTRMethodFlag::None;
-    Map<GUID, rttr::IAttribute*> attributes = {};
+    Map<GUID, attr::IAttribute*> attributes = {};
 
     inline ~RTTRMethodData()
     {
@@ -268,7 +268,7 @@ struct RTTRStaticMethodData {
 
     // flag & attributes
     ERTTRStaticMethodFlag        flag       = ERTTRStaticMethodFlag::None;
-    Map<GUID, rttr::IAttribute*> attributes = {};
+    Map<GUID, attr::IAttribute*> attributes = {};
 
     inline ~RTTRStaticMethodData()
     {
@@ -304,7 +304,7 @@ struct RTTRExternMethodData {
 
     // flag & attributes
     ERTTRExternMethodFlag        flag       = ERTTRExternMethodFlag::None;
-    Map<GUID, rttr::IAttribute*> attributes = {};
+    Map<GUID, attr::IAttribute*> attributes = {};
 
     inline ~RTTRExternMethodData()
     {
@@ -338,7 +338,7 @@ struct RTTRCtorData {
 
     // flag & attributes
     ERTTRCtorFlag                flag       = ERTTRCtorFlag::None;
-    Map<GUID, rttr::IAttribute*> attributes = {};
+    Map<GUID, attr::IAttribute*> attributes = {};
 
     inline ~RTTRCtorData()
     {
@@ -396,7 +396,7 @@ struct RTTRFieldData {
 
     // flag & attributes
     ERTTRFieldFlag               flag       = ERTTRFieldFlag::None;
-    Map<GUID, rttr::IAttribute*> attributes = {};
+    Map<GUID, attr::IAttribute*> attributes = {};
 
     inline ~RTTRFieldData()
     {
@@ -425,7 +425,7 @@ struct RTTRStaticFieldData {
 
     // flag & attributes
     ERTTRStaticFieldFlag         flag       = ERTTRStaticFieldFlag::None;
-    Map<GUID, rttr::IAttribute*> attributes = {};
+    Map<GUID, attr::IAttribute*> attributes = {};
 
     inline ~RTTRStaticFieldData()
     {
@@ -509,7 +509,7 @@ struct RTTRRecordData {
 
     // flag & attributes
     ERTTRRecordFlag              flag       = ERTTRRecordFlag::None;
-    Map<GUID, rttr::IAttribute*> attributes = {};
+    Map<GUID, attr::IAttribute*> attributes = {};
 
     inline ~RTTRRecordData()
     {
@@ -569,7 +569,7 @@ struct RTTREnumItemData {
 
     // flag & attributes
     ERTTREnumItemFlag            flag       = ERTTREnumItemFlag::None;
-    Map<GUID, rttr::IAttribute*> attributes = {};
+    Map<GUID, attr::IAttribute*> attributes = {};
 
     inline ~RTTREnumItemData()
     {
@@ -599,7 +599,7 @@ struct RTTREnumData {
 
     // flag & attributes
     ERTTREnumFlag                flag       = ERTTREnumFlag::None;
-    Map<GUID, rttr::IAttribute*> attributes = {};
+    Map<GUID, attr::IAttribute*> attributes = {};
 
     inline ~RTTREnumData()
     {

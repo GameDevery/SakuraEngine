@@ -217,7 +217,7 @@ bool RTTRType::based_on(GUID type_id) const
             // get base type and continue cast
             for (const auto& base : _record_data.bases_data)
             {
-                auto type = rttr::get_type_from_guid(base->type_id);
+                auto type = get_type_from_guid(base->type_id);
                 if (type)
                 {
                     if (type->based_on(type_id))
@@ -268,7 +268,7 @@ void* RTTRType::cast_to_base(GUID type_id, void* p) const
             // get base type and continue cast
             for (const auto& base : _record_data.bases_data)
             {
-                auto type = rttr::get_type_from_guid(base->type_id);
+                auto type = get_type_from_guid(base->type_id);
                 if (type)
                 {
                     auto casted = type->cast_to_base(type_id, p);
@@ -328,7 +328,7 @@ void RTTRType::each_bases(FunctionRef<void(const RTTRBaseData* base_data, const 
         {
             for (const auto& base : _record_data.bases_data)
             {
-                auto type = rttr::get_type_from_guid(base->type_id);
+                auto type = get_type_from_guid(base->type_id);
                 if (type)
                 {
                     type->each_bases(each_func, config);
@@ -367,7 +367,7 @@ void RTTRType::each_method(FunctionRef<void(const RTTRMethodData* method, const 
         {
             for (const auto& base : _record_data.bases_data)
             {
-                auto type = rttr::get_type_from_guid(base->type_id);
+                auto type = get_type_from_guid(base->type_id);
                 if (type)
                 {
                     type->each_method(each_func, config);
@@ -395,7 +395,7 @@ void RTTRType::each_field(FunctionRef<void(const RTTRFieldData* field, const RTT
         {
             for (const auto& base : _record_data.bases_data)
             {
-                auto type = rttr::get_type_from_guid(base->type_id);
+                auto type = get_type_from_guid(base->type_id);
                 if (type)
                 {
                     type->each_field(each_func, config);
@@ -423,7 +423,7 @@ void RTTRType::each_static_method(FunctionRef<void(const RTTRStaticMethodData* m
         {
             for (const auto& base : _record_data.bases_data)
             {
-                auto type = rttr::get_type_from_guid(base->type_id);
+                auto type = get_type_from_guid(base->type_id);
                 if (type)
                 {
                     type->each_static_method(each_func, config);
@@ -451,7 +451,7 @@ void RTTRType::each_static_field(FunctionRef<void(const RTTRStaticFieldData* fie
         {
             for (const auto& base : _record_data.bases_data)
             {
-                auto type = rttr::get_type_from_guid(base->type_id);
+                auto type = get_type_from_guid(base->type_id);
                 if (type)
                 {
                     type->each_static_field(each_func, config);
@@ -479,7 +479,7 @@ void RTTRType::each_extern_method(FunctionRef<void(const RTTRExternMethodData* m
         {
             for (const auto& base : _record_data.bases_data)
             {
-                auto type = rttr::get_type_from_guid(base->type_id);
+                auto type = get_type_from_guid(base->type_id);
                 if (type)
                 {
                     type->each_extern_method(each_func, config);
@@ -557,7 +557,7 @@ const RTTRMethodData* RTTRType::find_method(RTTRTypeFindConfig config) const
         {
             for (const auto& base : _record_data.bases_data)
             {
-                auto type = rttr::get_type_from_guid(base->type_id);
+                auto type = get_type_from_guid(base->type_id);
                 if (type)
                 {
                     auto method = type->find_method(config);
@@ -607,7 +607,7 @@ const RTTRFieldData* RTTRType::find_field(RTTRTypeFindConfig config) const
         {
             for (const auto& base : _record_data.bases_data)
             {
-                auto type = rttr::get_type_from_guid(base->type_id);
+                auto type = get_type_from_guid(base->type_id);
                 if (type)
                 {
                     auto field = type->find_field(config);
@@ -657,7 +657,7 @@ const RTTRStaticMethodData* RTTRType::find_static_method(RTTRTypeFindConfig conf
         {
             for (const auto& base : _record_data.bases_data)
             {
-                auto type = rttr::get_type_from_guid(base->type_id);
+                auto type = get_type_from_guid(base->type_id);
                 if (type)
                 {
                     auto method = type->find_static_method(config);
@@ -707,7 +707,7 @@ const RTTRStaticFieldData* RTTRType::find_static_field(RTTRTypeFindConfig config
         {
             for (const auto& base : _record_data.bases_data)
             {
-                auto type = rttr::get_type_from_guid(base->type_id);
+                auto type = get_type_from_guid(base->type_id);
                 if (type)
                 {
                     auto field = type->find_static_field(config);
@@ -757,7 +757,7 @@ const RTTRExternMethodData* RTTRType::find_extern_method(RTTRTypeFindConfig conf
         {
             for (const auto& base : _record_data.bases_data)
             {
-                auto type = rttr::get_type_from_guid(base->type_id);
+                auto type = get_type_from_guid(base->type_id);
                 if (type)
                 {
                     auto method = type->find_extern_method(config);
@@ -805,7 +805,7 @@ ERTTREnumFlag RTTRType::enum_flag() const
     SKR_ASSERT(_type_category == ERTTRTypeCategory::Enum && "Type category mismatch when get enum flag");
     return _enum_data.flag;
 }
-rttr::IAttribute* RTTRType::find_attribute(GUID attr_type_id) const
+attr::IAttribute* RTTRType::find_attribute(GUID attr_type_id) const
 {
     switch (_type_category)
     {
@@ -859,7 +859,7 @@ bool RTTRType::_build_caster(RTTRTypeCaster& caster, const GUID& type_id) const
             // get base type and continue cast
             for (const auto& base : _record_data.bases_data)
             {
-                auto type = rttr::get_type_from_guid(base->type_id);
+                auto type = get_type_from_guid(base->type_id);
                 if (type)
                 {
                     if (_build_caster(caster, type_id))

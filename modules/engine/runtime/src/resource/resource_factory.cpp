@@ -13,7 +13,7 @@ namespace resource
 bool SResourceFactory::Deserialize(skr_resource_record_t* record, SBinaryReader* reader)
 {
     // TODO. resume rttr
-    if (auto type = skr::rttr::get_type_from_guid(record->header.type))
+    if (auto type = skr::get_type_from_guid(record->header.type))
     {
         auto p_obj = sakura_malloc_aligned(type->size(), type->alignment());
         // find & call ctor

@@ -15,7 +15,7 @@ namespace asset
 void* SJsonConfigImporter::Import(skr_io_ram_service_t* ioService, SCookContext* context)
 {
     const auto assetRecord = context->GetAssetRecord();
-    auto       type        = skr::rttr::get_type_from_guid(configType);
+    auto       type        = skr::get_type_from_guid(configType);
     if (type == nullptr)
     {
         SKR_LOG_ERROR(u8"import resource %s failed, rtti is not load", assetRecord->path.u8string().c_str());

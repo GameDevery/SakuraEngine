@@ -8,12 +8,12 @@
 
 #include <mutex>
 
-namespace skr::rttr
+namespace skr
 {
 // static data
-static Map<GUID, TypeLoaderFunc>& type_load_funcs()
+static Map<GUID, RTTRTypeLoaderFunc>& type_load_funcs()
 {
-    static Map<GUID, TypeLoaderFunc> s_type_load_funcs;
+    static Map<GUID, RTTRTypeLoaderFunc> s_type_load_funcs;
     return s_type_load_funcs;
 }
 static Map<GUID, RTTRType*>& loaded_types()
@@ -34,7 +34,7 @@ SKR_EXEC_STATIC_DTOR
 };
 
 // type register (loader)
-void register_type_loader(const GUID& guid, TypeLoaderFunc load_func)
+void register_type_loader(const GUID& guid, RTTRTypeLoaderFunc load_func)
 {
     auto ref = type_load_funcs().find(guid);
     if (ref)
@@ -47,7 +47,7 @@ void register_type_loader(const GUID& guid, TypeLoaderFunc load_func)
         type_load_funcs().add(guid, load_func, ref);
     }
 }
-void unregister_type_loader(const GUID& guid, TypeLoaderFunc load_func)
+void unregister_type_loader(const GUID& guid, RTTRTypeLoaderFunc load_func)
 {
     type_load_funcs().remove(guid);
 }
@@ -97,4 +97,4 @@ void unload_all_types()
     loaded_types().clear();
 }
 
-} // namespace skr::rttr
+} // namespace skr

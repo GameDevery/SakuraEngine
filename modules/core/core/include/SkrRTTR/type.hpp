@@ -128,7 +128,7 @@ struct SKR_CORE_API RTTRType final {
     // flag & attribute
     ERTTRRecordFlag   record_flag() const;
     ERTTREnumFlag     enum_flag() const;
-    rttr::IAttribute* find_attribute(GUID attr_type_id) const;
+    attr::IAttribute* find_attribute(GUID attr_type_id) const;
 
 private:
     // helpers

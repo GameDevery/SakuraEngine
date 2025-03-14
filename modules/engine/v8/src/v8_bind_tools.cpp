@@ -153,7 +153,7 @@ bool V8BindTools::match_type(::v8::Local<::v8::Value> v8_value, TypeSignatureVie
         }
 
         // start match use type id
-        RTTRType* type = rttr::get_type_from_guid(type_id);
+        RTTRType* type = get_type_from_guid(type_id);
         if (!type) { return false; }
 
         // isolate and context
@@ -374,7 +374,7 @@ bool V8BindTools::native_to_v8_box(
     signature.jump_modifier();
     GUID type_id;
     signature.read_type_id(type_id);
-    RTTRType* type = rttr::get_type_from_guid(type_id);
+    RTTRType* type = get_type_from_guid(type_id);
     if (!type) { return false; }
 
     // check box flag
@@ -452,7 +452,7 @@ bool V8BindTools::v8_to_native_box(
     signature.jump_modifier();
     GUID type_id;
     signature.read_type_id(type_id);
-    RTTRType* type = rttr::get_type_from_guid(type_id);
+    RTTRType* type = get_type_from_guid(type_id);
     if (!type) { return false; }
 
     // check box flag
@@ -571,7 +571,7 @@ void V8BindTools::push_param(
             }
 
             // prepare use reflect export
-            RTTRType* type = rttr::get_type_from_guid(type_id);
+            RTTRType* type = get_type_from_guid(type_id);
             if (!type) { return; }
 
             // try box export
@@ -625,7 +625,7 @@ void V8BindTools::push_param(
             }
 
             // prepare use reflect export
-            RTTRType* type = rttr::get_type_from_guid(type_id);
+            RTTRType* type = get_type_from_guid(type_id);
             if (!type) { return; }
 
             // try box export
