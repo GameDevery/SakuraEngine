@@ -177,7 +177,7 @@ bool V8BindTools::match_type(::v8::Local<::v8::Value> v8_value, TypeSignatureVie
                     if (failed) { return; }
 
                     // match field
-                    auto v8_obj_field = v8_obj->Get(context, str_to_v8(field->name, isolate));
+                    auto v8_obj_field = v8_obj->Get(context, v8_bind::to_v8(field->name));
                     if (v8_obj_field.IsEmpty())
                     {
                         failed = true;
@@ -280,7 +280,7 @@ bool V8BindTools::native_to_v8_primitive(
             out_v8_value = ::v8::Boolean::New(isolate, *reinterpret_cast<bool*>(native_data));
             return true;
         case type_id_of<skr::String>().get_hash():
-            out_v8_value = V8BindTools::str_to_v8(*reinterpret_cast<skr::String*>(native_data), isolate, false);
+            out_v8_value = v8_bind::to_v8(*reinterpret_cast<skr::String*>(native_data), false);
             return true;
         default:
             break;
@@ -404,7 +404,7 @@ bool V8BindTools::native_to_v8_box(
             // set value
             result->Set(
                       context,
-                      str_to_v8(field->name, isolate, true),
+                      v8_bind::to_v8(field->name, true),
                       field_value
             )
                 .Check();
@@ -420,7 +420,7 @@ bool V8BindTools::native_to_v8_box(
             // set value
             result->Set(
                       context,
-                      str_to_v8(field->name, isolate, true),
+                      v8_bind::to_v8(field->name, true),
                       field_value
             )
                 .Check();
@@ -489,7 +489,7 @@ bool V8BindTools::v8_to_native_box(
         // find object field
         auto field_value = v8_object->Get(
             context,
-            str_to_v8(field->name, isolate)
+            v8_bind::to_v8(field->name)
         );
         if (field_value.IsEmpty())
         {

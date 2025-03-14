@@ -173,7 +173,7 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
 
                     // bind to template
                     ctor_template->PrototypeTemplate()->Set(
-                        V8BindTools::str_to_v8(method->name, _isolate, true),
+                        v8_bind::to_v8(method->name, true),
                         FunctionTemplate::New(
                             _isolate,
                             _call_method,
@@ -211,7 +211,7 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
 
                     // bind to template
                     ctor_template->PrototypeTemplate()->SetAccessorProperty(
-                        V8BindTools::str_to_v8(field->name, _isolate, true),
+                        v8_bind::to_v8(field->name, true),
                         FunctionTemplate::New(
                             _isolate,
                             _get_field,
@@ -251,7 +251,7 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
 
                     // bind to template
                     ctor_template->Set(
-                        V8BindTools::str_to_v8(static_method->name, _isolate, true),
+                        v8_bind::to_v8(static_method->name, true),
                         FunctionTemplate::New(
                             _isolate,
                             _call_static_method,
@@ -286,7 +286,7 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
 
                     // bind to template
                     ctor_template->SetAccessorProperty(
-                        V8BindTools::str_to_v8(static_field->name, _isolate, true),
+                        v8_bind::to_v8(static_field->name, true),
                         FunctionTemplate::New(
                             _isolate,
                             _get_static_field,
@@ -327,7 +327,7 @@ void V8Isolate::inject_templates_into_context(::v8::Global<::v8::Context> contex
         // set to context
         local_context->Global()->Set(
                                    local_context,
-                                   V8BindTools::str_to_v8(type->name(), _isolate, true),
+                                   v8_bind::to_v8(type->name(), true),
                                    function
         )
             .Check();

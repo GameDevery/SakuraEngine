@@ -430,7 +430,7 @@ bool V8Matcher::_match_box(const V8MatchSuggestion& suggestion, v8::Local<v8::Va
         // clang-format off
         auto v8_field_value = v8_obj->Get(
             context,
-            V8BindTools::to_v8(field_data.field->name, true)
+            v8_bind::to_v8(field_data.field->name, true)
         );
         // clang-format on
 
@@ -449,7 +449,7 @@ bool V8Matcher::_match_box(const V8MatchSuggestion& suggestion, v8::Local<v8::Va
         // clang-format off
         auto v8_field_value = v8_obj->Get(
             context,
-            V8BindTools::to_v8(field_data.field->name, true)
+            v8_bind::to_v8(field_data.field->name, true)
         );
         // clang-format on
 
@@ -502,29 +502,29 @@ v8::Local<v8::Value> V8Matcher::_to_v8_primitive(
     switch (suggestion.primitive().type_id.get_hash())
     {
     case type_id_of<int8_t>().get_hash():
-        return V8BindTools::to_v8(*reinterpret_cast<int8_t*>(native_data));
+        return v8_bind::to_v8(*reinterpret_cast<int8_t*>(native_data));
     case type_id_of<int16_t>().get_hash():
-        return V8BindTools::to_v8(*reinterpret_cast<int16_t*>(native_data));
+        return v8_bind::to_v8(*reinterpret_cast<int16_t*>(native_data));
     case type_id_of<int32_t>().get_hash():
-        return V8BindTools::to_v8(*reinterpret_cast<int32_t*>(native_data));
+        return v8_bind::to_v8(*reinterpret_cast<int32_t*>(native_data));
     case type_id_of<int64_t>().get_hash():
-        return V8BindTools::to_v8(*reinterpret_cast<int64_t*>(native_data));
+        return v8_bind::to_v8(*reinterpret_cast<int64_t*>(native_data));
     case type_id_of<uint8_t>().get_hash():
-        return V8BindTools::to_v8(*reinterpret_cast<uint8_t*>(native_data));
+        return v8_bind::to_v8(*reinterpret_cast<uint8_t*>(native_data));
     case type_id_of<uint16_t>().get_hash():
-        return V8BindTools::to_v8(*reinterpret_cast<uint16_t*>(native_data));
+        return v8_bind::to_v8(*reinterpret_cast<uint16_t*>(native_data));
     case type_id_of<uint32_t>().get_hash():
-        return V8BindTools::to_v8(*reinterpret_cast<uint32_t*>(native_data));
+        return v8_bind::to_v8(*reinterpret_cast<uint32_t*>(native_data));
     case type_id_of<uint64_t>().get_hash():
-        return V8BindTools::to_v8(*reinterpret_cast<uint64_t*>(native_data));
+        return v8_bind::to_v8(*reinterpret_cast<uint64_t*>(native_data));
     case type_id_of<float>().get_hash():
-        return V8BindTools::to_v8(*reinterpret_cast<float*>(native_data));
+        return v8_bind::to_v8(*reinterpret_cast<float*>(native_data));
     case type_id_of<double>().get_hash():
-        return V8BindTools::to_v8(*reinterpret_cast<double*>(native_data));
+        return v8_bind::to_v8(*reinterpret_cast<double*>(native_data));
     case type_id_of<bool>().get_hash():
-        return V8BindTools::to_v8(*reinterpret_cast<bool*>(native_data));
+        return v8_bind::to_v8(*reinterpret_cast<bool*>(native_data));
     case type_id_of<skr::String>().get_hash():
-        return V8BindTools::to_v8(*reinterpret_cast<skr::String*>(native_data));
+        return v8_bind::to_v8(*reinterpret_cast<skr::String*>(native_data));
     default:
         SKR_UNREACHABLE_CODE()
         return {};
@@ -540,33 +540,33 @@ bool V8Matcher::_to_native_primitive(
     switch (suggestion.primitive().type_id.get_hash())
     {
     case type_id_of<int8_t>().get_hash():
-        return V8BindTools::to_native(v8_value, *reinterpret_cast<int8_t*>(native_data));
+        return v8_bind::to_native(v8_value, *reinterpret_cast<int8_t*>(native_data));
     case type_id_of<int16_t>().get_hash():
-        return V8BindTools::to_native(v8_value, *reinterpret_cast<int16_t*>(native_data));
+        return v8_bind::to_native(v8_value, *reinterpret_cast<int16_t*>(native_data));
     case type_id_of<int32_t>().get_hash():
-        return V8BindTools::to_native(v8_value, *reinterpret_cast<int32_t*>(native_data));
+        return v8_bind::to_native(v8_value, *reinterpret_cast<int32_t*>(native_data));
     case type_id_of<int64_t>().get_hash():
-        return V8BindTools::to_native(v8_value, *reinterpret_cast<int64_t*>(native_data));
+        return v8_bind::to_native(v8_value, *reinterpret_cast<int64_t*>(native_data));
     case type_id_of<uint8_t>().get_hash():
-        return V8BindTools::to_native(v8_value, *reinterpret_cast<uint8_t*>(native_data));
+        return v8_bind::to_native(v8_value, *reinterpret_cast<uint8_t*>(native_data));
     case type_id_of<uint16_t>().get_hash():
-        return V8BindTools::to_native(v8_value, *reinterpret_cast<uint16_t*>(native_data));
+        return v8_bind::to_native(v8_value, *reinterpret_cast<uint16_t*>(native_data));
     case type_id_of<uint32_t>().get_hash():
-        return V8BindTools::to_native(v8_value, *reinterpret_cast<uint32_t*>(native_data));
+        return v8_bind::to_native(v8_value, *reinterpret_cast<uint32_t*>(native_data));
     case type_id_of<uint64_t>().get_hash():
-        return V8BindTools::to_native(v8_value, *reinterpret_cast<uint64_t*>(native_data));
+        return v8_bind::to_native(v8_value, *reinterpret_cast<uint64_t*>(native_data));
     case type_id_of<float>().get_hash():
-        return V8BindTools::to_native(v8_value, *reinterpret_cast<float*>(native_data));
+        return v8_bind::to_native(v8_value, *reinterpret_cast<float*>(native_data));
     case type_id_of<double>().get_hash():
-        return V8BindTools::to_native(v8_value, *reinterpret_cast<double*>(native_data));
+        return v8_bind::to_native(v8_value, *reinterpret_cast<double*>(native_data));
     case type_id_of<bool>().get_hash():
-        return V8BindTools::to_native(v8_value, *reinterpret_cast<bool*>(native_data));
+        return v8_bind::to_native(v8_value, *reinterpret_cast<bool*>(native_data));
     case type_id_of<skr::String>().get_hash():
         if (!is_init)
         {
             new (native_data) skr::String();
         }
-        return V8BindTools::to_native(v8_value, *reinterpret_cast<skr::String*>(native_data));
+        return v8_bind::to_native(v8_value, *reinterpret_cast<skr::String*>(native_data));
     default:
         SKR_UNREACHABLE_CODE()
         return false;
@@ -598,7 +598,7 @@ v8::Local<v8::Value> V8Matcher::_to_v8_box(
         // clang-format off
         result->Set(
             context,
-            V8BindTools::to_v8(field->name, true),
+            v8_bind::to_v8(field->name, true),
             conv_to_v8(data.suggestion, field_address)
         ).Check();
         // clang-format on
@@ -617,7 +617,7 @@ v8::Local<v8::Value> V8Matcher::_to_v8_box(
         // clang-format off
         result->Set(
             context,
-            V8BindTools::to_v8(field->name, true),
+            v8_bind::to_v8(field->name, true),
             conv_to_v8(data.suggestion, field_address)
         ).Check();
         // clang-format on
@@ -660,7 +660,7 @@ bool V8Matcher::_to_native_box(
         // clang-format off
         auto v8_field = v8_object->Get(
             context,
-            V8BindTools::str_to_v8(field->name, isolate)
+            v8_bind::to_v8(field->name)
         ).ToLocalChecked();
         // clang-format on
 
@@ -681,7 +681,7 @@ bool V8Matcher::_to_native_box(
         // clang-format off
         auto v8_field = v8_object->Get(
             context,
-            V8BindTools::str_to_v8(field->name, isolate)
+            v8_bind::to_v8(field->name)
         ).ToLocalChecked();
         // clang-format on
 
