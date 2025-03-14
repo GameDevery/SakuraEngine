@@ -19,7 +19,7 @@ bool SResourceFactory::Deserialize(skr_resource_record_t* record, SBinaryReader*
         // find & call ctor
         {
             auto ctor_data = type->find_ctor_t<void()>(
-                skr::rttr::ETypeSignatureCompareFlag::Strict
+                skr::ETypeSignatureCompareFlag::Strict
             );
             auto ctor = reinterpret_cast<void(*)(void*)>(ctor_data->native_invoke);
             ctor(p_obj);
@@ -28,7 +28,7 @@ bool SResourceFactory::Deserialize(skr_resource_record_t* record, SBinaryReader*
             using ReadBinProc = bool(void* o, void* r);
             auto read_bin_data = type->find_extern_method_t<ReadBinProc>(
                 skr::rttr::SkrCoreExternMethods::ReadBin,
-                rttr::ETypeSignatureCompareFlag::Strict
+                ETypeSignatureCompareFlag::Strict
             );
             auto read_bin = reinterpret_cast<ReadBinProc*>(read_bin_data->native_invoke);
             if (!read_bin(p_obj, reader))

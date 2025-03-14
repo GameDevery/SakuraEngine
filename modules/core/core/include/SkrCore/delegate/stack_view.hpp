@@ -6,7 +6,7 @@ namespace skr
 {
 struct StackView {
     struct Param {
-        rttr::TypeSignatureView type;
+        TypeSignatureView type;
         void*                   data;
     };
 };

@@ -194,7 +194,7 @@ struct SKR_V8_API V8BindTools {
     }
 
     // match helper
-    static bool match_type(::v8::Local<::v8::Value> v8_value, rttr::TypeSignatureView native_signature);
+    static bool match_type(::v8::Local<::v8::Value> v8_value, TypeSignatureView native_signature);
     static bool match_params(const rttr::CtorData* data, const ::v8::FunctionCallbackInfo<::v8::Value>& info);
     static bool match_params(const rttr::MethodData* data, const ::v8::FunctionCallbackInfo<::v8::Value>& info);
     static bool match_params(const rttr::StaticMethodData* data, const ::v8::FunctionCallbackInfo<::v8::Value>& info);
@@ -210,18 +210,18 @@ struct SKR_V8_API V8BindTools {
             view.length_buffer()
         ).ToLocalChecked();
     }
-    static bool is_primitive(rttr::TypeSignatureView signature);
+    static bool is_primitive(TypeSignatureView signature);
     static bool native_to_v8_primitive(
         ::v8::Local<::v8::Context> context,
         ::v8::Isolate*             isolate,
-        rttr::TypeSignatureView    signature,
+        TypeSignatureView    signature,
         void*                      native_data,
         ::v8::Local<::v8::Value>&  out_v8_value
     );
     static bool v8_to_native_primitive(
         ::v8::Local<::v8::Context> context,
         ::v8::Isolate*             isolate,
-        rttr::TypeSignatureView    signature,
+        TypeSignatureView    signature,
         ::v8::Local<::v8::Value>   v8_value,
         void*                      out_native_data,
         bool                       is_init
@@ -229,14 +229,14 @@ struct SKR_V8_API V8BindTools {
     static bool native_to_v8_box(
         ::v8::Local<::v8::Context> context,
         ::v8::Isolate*             isolate,
-        rttr::TypeSignatureView    signature,
+        TypeSignatureView    signature,
         void*                      native_data,
         ::v8::Local<::v8::Value>&  out_v8_value
     );
     static bool v8_to_native_box(
         ::v8::Local<::v8::Context> context,
         ::v8::Isolate*             isolate,
-        rttr::TypeSignatureView    signature,
+        TypeSignatureView    signature,
         ::v8::Local<::v8::Value>   v8_value,
         void*                      out_native_data,
         bool                       is_init
@@ -253,7 +253,7 @@ struct SKR_V8_API V8BindTools {
     );
     static bool read_return(
         rttr::DynamicStack&        stack, 
-        rttr::TypeSignatureView    signature,
+        TypeSignatureView    signature,
         ::v8::Local<::v8::Context> context,
         ::v8::Isolate*             isolate,
         ::v8::Local<::v8::Value>&  out_value
@@ -270,7 +270,7 @@ struct SKR_V8_API V8BindTools {
     static void call_method(
         void*                                          obj,
         const Vector<rttr::ParamData>&                 params,
-        const rttr::TypeSignatureView                  ret_type,
+        const TypeSignatureView                  ret_type,
         rttr::MethodInvokerDynamicStack                invoker,
         const ::v8::FunctionCallbackInfo<::v8::Value>& info,
         ::v8::Local<::v8::Context>                     context,
@@ -278,7 +278,7 @@ struct SKR_V8_API V8BindTools {
     );
     static void call_function(
         const Vector<rttr::ParamData>&                 params,
-        const rttr::TypeSignatureView                  ret_type,
+        const TypeSignatureView                  ret_type,
         rttr::FuncInvokerDynamicStack                  invoker,
         const ::v8::FunctionCallbackInfo<::v8::Value>& info,
         ::v8::Local<::v8::Context>                     context,

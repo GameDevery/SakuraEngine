@@ -87,7 +87,7 @@ inline static bool _match_params(const Data* data, const ::v8::FunctionCallbackI
     for (size_t i = 0; i < call_length; ++i)
     {
         Local<Value>            call_value       = info[i];
-        rttr::TypeSignatureView native_signature = data->param_data[i].type.view();
+        TypeSignatureView native_signature = data->param_data[i].type.view();
 
         // use default value
         if (call_value->IsUndefined())
@@ -112,7 +112,7 @@ inline static bool _match_params(const Data* data, const ::v8::FunctionCallbackI
 namespace skr
 {
 // match tools
-bool V8BindTools::match_type(::v8::Local<::v8::Value> v8_value, rttr::TypeSignatureView native_signature)
+bool V8BindTools::match_type(::v8::Local<::v8::Value> v8_value, TypeSignatureView native_signature)
 {
     if (native_signature.is_type())
     {
@@ -232,7 +232,7 @@ bool V8BindTools::match_params(const rttr::FunctionData* data, const ::v8::Funct
 bool V8BindTools::native_to_v8_primitive(
     ::v8::Local<::v8::Context> context,
     ::v8::Isolate*             isolate,
-    rttr::TypeSignatureView    signature,
+    TypeSignatureView    signature,
     void*                      native_data,
     ::v8::Local<::v8::Value>&  out_v8_value
 )
@@ -291,7 +291,7 @@ bool V8BindTools::native_to_v8_primitive(
 bool V8BindTools::v8_to_native_primitive(
     ::v8::Local<::v8::Context> context,
     ::v8::Isolate*             isolate,
-    rttr::TypeSignatureView    signature,
+    TypeSignatureView    signature,
     ::v8::Local<::v8::Value>   v8_value,
     void*                      out_native_data,
     bool                       is_init
@@ -362,7 +362,7 @@ bool V8BindTools::v8_to_native_primitive(
 bool V8BindTools::native_to_v8_box(
     ::v8::Local<::v8::Context> context,
     ::v8::Isolate*             isolate,
-    rttr::TypeSignatureView    signature,
+    TypeSignatureView    signature,
     void*                      native_data,
     ::v8::Local<::v8::Value>&  out_v8_value
 )
@@ -439,7 +439,7 @@ bool V8BindTools::native_to_v8_box(
 bool V8BindTools::v8_to_native_box(
     ::v8::Local<::v8::Context> context,
     ::v8::Isolate*             isolate,
-    rttr::TypeSignatureView    signature,
+    TypeSignatureView    signature,
     ::v8::Local<::v8::Value>   v8_value,
     void*                      out_native_data,
     bool                       is_init
@@ -666,7 +666,7 @@ void V8BindTools::push_param(
 }
 bool V8BindTools::read_return(
     rttr::DynamicStack&        stack,
-    rttr::TypeSignatureView    signature,
+    TypeSignatureView    signature,
     ::v8::Local<::v8::Context> context,
     ::v8::Isolate*             isolate,
     ::v8::Local<::v8::Value>&  out_value
@@ -751,7 +751,7 @@ void V8BindTools::call_ctor(
 void V8BindTools::call_method(
     void*                                          obj,
     const Vector<rttr::ParamData>&                 params,
-    const rttr::TypeSignatureView                  ret_type,
+    const TypeSignatureView                  ret_type,
     rttr::MethodInvokerDynamicStack                invoker,
     const ::v8::FunctionCallbackInfo<::v8::Value>& info,
     ::v8::Local<::v8::Context>                     context,
@@ -791,7 +791,7 @@ void V8BindTools::call_method(
 }
 void V8BindTools::call_function(
     const Vector<rttr::ParamData>&                 params,
-    const rttr::TypeSignatureView                  ret_type,
+    const TypeSignatureView                  ret_type,
     rttr::FuncInvokerDynamicStack                  invoker,
     const ::v8::FunctionCallbackInfo<::v8::Value>& info,
     ::v8::Local<::v8::Context>                     context,

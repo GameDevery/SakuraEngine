@@ -2,7 +2,7 @@
 #include "SkrRTTR/type.hpp"
 #include "SkrRTTR/type_registry.hpp"
 
-namespace skr::rttr
+namespace skr
 {
 inline static const uint8_t* _append_modifier(const uint8_t* pos, const uint8_t* end, String& result, ETypeSignatureSignal signal)
 {
@@ -142,7 +142,7 @@ String TypeSignatureHelper::signal_to_string(const uint8_t* pos, const uint8_t* 
             // append type name
             GUID type_id;
             pos    = read_type_id(pos, end, type_id);
-            result = skr::format(u8"{} {}", get_type_from_guid(type_id)->name(), result);
+            result = skr::format(u8"{} {}", rttr::get_type_from_guid(type_id)->name(), result);
 
             break;
         }

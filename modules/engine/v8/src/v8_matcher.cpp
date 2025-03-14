@@ -6,7 +6,7 @@
 namespace skr
 {
 // match
-V8MatchSuggestion V8Matcher::match_to_native(::v8::Local<::v8::Value> v8_value, rttr::TypeSignatureView signature)
+V8MatchSuggestion V8Matcher::match_to_native(::v8::Local<::v8::Value> v8_value, TypeSignatureView signature)
 {
     auto isolate = ::v8::Isolate::GetCurrent();
     auto context = isolate->GetCurrentContext();
@@ -60,7 +60,7 @@ V8MatchSuggestion V8Matcher::match_to_native(::v8::Local<::v8::Value> v8_value, 
 
     return {};
 }
-V8MatchSuggestion V8Matcher::match_to_v8(rttr::TypeSignatureView signature)
+V8MatchSuggestion V8Matcher::match_to_v8(TypeSignatureView signature)
 {
     if (signature.is_type())
     {

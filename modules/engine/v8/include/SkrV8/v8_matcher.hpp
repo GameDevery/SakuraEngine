@@ -258,8 +258,8 @@ struct SKR_V8_API V8Matcher {
     // basic match
     //! NOTE. matcher will ignore decayed pointer modifiers, you should check it outside
     //! NOTE. because the behaviour of decayed pointer is depend on where the type is used (param/field...etc)
-    V8MatchSuggestion match_to_native(::v8::Local<::v8::Value> v8_value, rttr::TypeSignatureView signature);
-    V8MatchSuggestion match_to_v8(rttr::TypeSignatureView signature);
+    V8MatchSuggestion match_to_native(::v8::Local<::v8::Value> v8_value, TypeSignatureView signature);
+    V8MatchSuggestion match_to_v8(TypeSignatureView signature);
 
     // basic convert
     static ::v8::Local<::v8::Value> conv_to_v8(
@@ -365,7 +365,7 @@ inline bool V8Matcher::match_params_to_native(
     for (uint32_t i = 0; i < call_length; ++i)
     {
         auto                    call_value       = v8_func_info[i];
-        rttr::TypeSignatureView native_signature = data->param_data[i].type.view();
+        TypeSignatureView native_signature = data->param_data[i].type.view();
 
         // get param ref info
         auto pointer_level = native_signature.decayed_pointer_level();
