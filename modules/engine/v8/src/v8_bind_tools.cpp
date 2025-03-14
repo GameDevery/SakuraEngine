@@ -77,7 +77,7 @@ inline static bool _match_params(const Data* data, const ::v8::FunctionCallbackI
     // match default param
     for (size_t i = call_length; i < native_length; ++i)
     {
-        if (!data->param_data[i].make_default)
+        if (!data->param_data[i]->make_default)
         {
             return false;
         }
@@ -87,12 +87,12 @@ inline static bool _match_params(const Data* data, const ::v8::FunctionCallbackI
     for (size_t i = 0; i < call_length; ++i)
     {
         Local<Value>      call_value       = info[i];
-        TypeSignatureView native_signature = data->param_data[i].type.view();
+        TypeSignatureView native_signature = data->param_data[i]->type.view();
 
         // use default value
         if (call_value->IsUndefined())
         {
-            if (!data->param_data[i].make_default)
+            if (!data->param_data[i]->make_default)
             {
                 return false;
             }
@@ -737,7 +737,7 @@ void V8BindTools::call_ctor(
     {
         push_param(
             stack,
-            data.param_data[i],
+            *data.param_data[i],
             context,
             isolate,
             i < info.Length() ? info[i] : ::v8::Local<::v8::Value>{}
@@ -750,7 +750,7 @@ void V8BindTools::call_ctor(
 }
 void V8BindTools::call_method(
     void*                                          obj,
-    const Vector<RTTRParamData>&                   params,
+    const Vector<RTTRParamData*>&                   params,
     const TypeSignatureView                        ret_type,
     MethodInvokerDynamicStack                      invoker,
     const ::v8::FunctionCallbackInfo<::v8::Value>& info,
@@ -765,7 +765,7 @@ void V8BindTools::call_method(
     {
         push_param(
             stack,
-            params[i],
+            *params[i],
             context,
             isolate,
             i < info.Length() ? info[i] : ::v8::Local<::v8::Value>{}
@@ -790,7 +790,7 @@ void V8BindTools::call_method(
     }
 }
 void V8BindTools::call_function(
-    const Vector<RTTRParamData>&                   params,
+    const Vector<RTTRParamData*>&                   params,
     const TypeSignatureView                        ret_type,
     FuncInvokerDynamicStack                        invoker,
     const ::v8::FunctionCallbackInfo<::v8::Value>& info,
@@ -805,7 +805,7 @@ void V8BindTools::call_function(
     {
         push_param(
             stack,
-            params[i],
+            *params[i],
             context,
             isolate,
             i < info.Length() ? info[i] : ::v8::Local<::v8::Value>{}

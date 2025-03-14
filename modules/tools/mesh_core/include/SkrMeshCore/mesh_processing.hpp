@@ -60,6 +60,7 @@ sreflect_struct(
     serde = @json
 )
 MESH_CORE_API SRawDataStream {
+    sattr(serde = @disable)
     skr::span<const uint8_t> buffer_view;
     uint64_t                 count;
     uint64_t                 stride;

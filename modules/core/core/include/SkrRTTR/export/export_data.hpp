@@ -138,10 +138,10 @@ struct RTTRParamData {
     Vector<Any>    attrs;
 
     template <typename Arg>
-    inline static RTTRParamData Make()
+    inline static RTTRParamData* New()
     {
-        RTTRParamData result;
-        result.type = type_signature_of<Arg>();
+        RTTRParamData* result = SkrNew<RTTRParamData>();
+        result->type          = type_signature_of<Arg>();
         return result;
     }
 };
@@ -166,7 +166,7 @@ inline bool export_function_signature_equal(const Data& data, TypeSignature sign
     for (uint32_t i = 0; i < param_count; ++i)
     {
         auto param_view = view.jump_next_type_or_data();
-        if (!data.param_data[i].type.view().equal(param_view, flag)) { return false; }
+        if (!data.param_data[i]->type.view().equal(param_view, flag)) { return false; }
     }
 
     return true;
@@ -206,10 +206,10 @@ namespace skr
 {
 struct RTTRFunctionData {
     // signature
-    String                name       = {};
-    Vector<String>        name_space = {};
-    TypeSignature         ret_type   = {};
-    Vector<RTTRParamData> param_data = {};
+    String                 name       = {};
+    Vector<String>         name_space = {};
+    TypeSignature          ret_type   = {};
+    Vector<RTTRParamData*> param_data = {};
 
     // [Provided by export Backend]
     void*                   native_invoke        = nullptr;
@@ -221,13 +221,18 @@ struct RTTRFunctionData {
 
     inline ~RTTRFunctionData()
     {
+        // delete param data
+        for (auto param : param_data)
+        {
+            SkrDelete(param);
+        }
     }
 
     template <typename Ret, typename... Args>
     inline void fill_signature(Ret (*)(Args...))
     {
         ret_type   = type_signature_of<Ret>();
-        param_data = { RTTRParamData::Make<Args>()... };
+        param_data = { RTTRParamData::New<Args>()... };
     }
 
     inline bool signature_equal(TypeSignature signature, ETypeSignatureCompareFlag flag) const
@@ -237,11 +242,11 @@ struct RTTRFunctionData {
 };
 struct RTTRMethodData {
     // signature
-    String                name         = {};
-    TypeSignature         ret_type     = {};
-    Vector<RTTRParamData> param_data   = {};
-    bool                  is_const     = false;
-    ERTTRAccessLevel      access_level = ERTTRAccessLevel::Public;
+    String                 name         = {};
+    TypeSignature          ret_type     = {};
+    Vector<RTTRParamData*> param_data   = {};
+    bool                   is_const     = false;
+    ERTTRAccessLevel       access_level = ERTTRAccessLevel::Public;
 
     // [Provided by export Backend]
     void*                     native_invoke        = nullptr;
@@ -253,20 +258,25 @@ struct RTTRMethodData {
 
     inline ~RTTRMethodData()
     {
+        // delete param data
+        for (auto param : param_data)
+        {
+            SkrDelete(param);
+        }
     }
 
     template <class T, typename Ret, typename... Args>
     inline void fill_signature(Ret (T::*)(Args...))
     {
         ret_type   = type_signature_of<Ret>();
-        param_data = { RTTRParamData::Make<Args>()... };
+        param_data = { RTTRParamData::New<Args>()... };
         is_const   = false;
     }
     template <class T, typename Ret, typename... Args>
     inline void fill_signature(Ret (T::*)(Args...) const)
     {
         ret_type   = type_signature_of<Ret>();
-        param_data = { RTTRParamData::Make<Args>()... };
+        param_data = { RTTRParamData::New<Args>()... };
         is_const   = true;
     }
 
@@ -277,10 +287,10 @@ struct RTTRMethodData {
 };
 struct RTTRStaticMethodData {
     // signature
-    String                name         = {};
-    TypeSignature         ret_type     = {};
-    Vector<RTTRParamData> param_data   = {};
-    ERTTRAccessLevel      access_level = ERTTRAccessLevel::Public;
+    String                 name         = {};
+    TypeSignature          ret_type     = {};
+    Vector<RTTRParamData*> param_data   = {};
+    ERTTRAccessLevel       access_level = ERTTRAccessLevel::Public;
 
     // [Provided by export Backend]
     void*                   native_invoke        = nullptr;
@@ -292,13 +302,18 @@ struct RTTRStaticMethodData {
 
     inline ~RTTRStaticMethodData()
     {
+        // delete param data
+        for (auto param : param_data)
+        {
+            SkrDelete(param);
+        }
     }
 
     template <typename Ret, typename... Args>
     inline void fill_signature(Ret (*)(Args...))
     {
         ret_type   = type_signature_of<Ret>();
-        param_data = { RTTRParamData::Make<Args>()... };
+        param_data = { RTTRParamData::New<Args>()... };
     }
 
     inline bool signature_equal(TypeSignature signature, ETypeSignatureCompareFlag flag) const
@@ -308,10 +323,10 @@ struct RTTRStaticMethodData {
 };
 struct RTTRExternMethodData {
     // signature
-    String                name         = {};
-    TypeSignature         ret_type     = {};
-    Vector<RTTRParamData> param_data   = {};
-    ERTTRAccessLevel      access_level = ERTTRAccessLevel::Public;
+    String                 name         = {};
+    TypeSignature          ret_type     = {};
+    Vector<RTTRParamData*> param_data   = {};
+    ERTTRAccessLevel       access_level = ERTTRAccessLevel::Public;
 
     // [Provided by export Backend]
     void*                   native_invoke        = nullptr;
@@ -323,13 +338,18 @@ struct RTTRExternMethodData {
 
     inline ~RTTRExternMethodData()
     {
+        // delete param data
+        for (auto param : param_data)
+        {
+            SkrDelete(param);
+        }
     }
 
     template <typename Ret, typename... Args>
     inline void fill_signature(Ret (*)(Args...))
     {
         ret_type   = type_signature_of<Ret>();
-        param_data = { RTTRParamData::Make<Args>()... };
+        param_data = { RTTRParamData::New<Args>()... };
     }
 
     inline bool signature_equal(TypeSignature signature, ETypeSignatureCompareFlag flag) const
@@ -339,8 +359,8 @@ struct RTTRExternMethodData {
 };
 struct RTTRCtorData {
     // signature
-    Vector<RTTRParamData> param_data   = {};
-    ERTTRAccessLevel      access_level = ERTTRAccessLevel::Public;
+    Vector<RTTRParamData*> param_data   = {};
+    ERTTRAccessLevel       access_level = ERTTRAccessLevel::Public;
 
     // [Provided by export Backend]
     void*                     native_invoke        = nullptr;
@@ -352,12 +372,17 @@ struct RTTRCtorData {
 
     inline ~RTTRCtorData()
     {
+        // delete param data
+        for (auto param : param_data)
+        {
+            SkrDelete(param);
+        }
     }
 
     template <typename... Args>
     inline void fill_signature()
     {
-        param_data = { RTTRParamData::Make<Args>()... };
+        param_data = { RTTRParamData::New<Args>()... };
     }
 
     inline bool signature_equal(TypeSignature signature, ETypeSignatureCompareFlag flag) const
@@ -379,7 +404,7 @@ struct RTTRCtorData {
         for (uint32_t i = 0; i < param_count; ++i)
         {
             auto param_view = view.jump_next_type_or_data();
-            if (!param_data[i].type.view().equal(param_view, flag)) { return false; }
+            if (!param_data[i]->type.view().equal(param_view, flag)) { return false; }
         }
 
         return true;
@@ -448,16 +473,6 @@ struct RTTRBaseData {
     GUID     type_id;
     CastFunc cast_to_base;
 
-    template <typename T, typename Base>
-    inline static RTTRBaseData Make()
-    {
-        return {
-            RTTRTraits<Base>::get_guid(),
-            +[](void* p) -> void* {
-                return static_cast<Base*>(reinterpret_cast<T*>(p));
-            }
-        };
-    }
     template <typename T, typename Base>
     inline static RTTRBaseData* New()
     {
@@ -576,7 +591,7 @@ struct RTTREnumData {
     GUID underlying_type_id = {};
 
     // items
-    Vector<RTTREnumItemData> items = {};
+    Vector<RTTREnumItemData*> items = {};
 
     // extern method
     Vector<RTTRExternMethodData*> extern_methods = {};
@@ -587,6 +602,12 @@ struct RTTREnumData {
 
     inline ~RTTREnumData()
     {
+        // delete items
+        for (auto item : items)
+        {
+            SkrDelete(item);
+        }
+
         // delete extern methods
         for (auto method : extern_methods)
         {

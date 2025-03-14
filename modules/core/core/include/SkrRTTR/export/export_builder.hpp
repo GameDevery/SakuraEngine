@@ -50,7 +50,7 @@ struct RTTRFunctionBuilder {
     // params
     inline RTTRParamBuilder param_at(uint64_t index)
     {
-        return RTTRParamBuilder(&_data->param_data[index]);
+        return RTTRParamBuilder(_data->param_data[index]);
     }
 
     // flag & attributes
@@ -78,7 +78,7 @@ struct RTTRMethodBuilder {
     // params
     inline RTTRParamBuilder param_at(uint64_t index)
     {
-        return RTTRParamBuilder(&_data->param_data[index]);
+        return RTTRParamBuilder(_data->param_data[index]);
     }
 
     // flag & attributes
@@ -106,7 +106,7 @@ struct RTTRStaticMethodBuilder {
     // params
     inline RTTRParamBuilder param_at(uint64_t index)
     {
-        return RTTRParamBuilder(&_data->param_data[index]);
+        return RTTRParamBuilder(_data->param_data[index]);
     }
 
     // flag & attributes
@@ -134,7 +134,7 @@ struct RTTRExternMethodBuilder {
     // params
     inline RTTRParamBuilder param_at(uint64_t index)
     {
-        return RTTRParamBuilder(&_data->param_data[index]);
+        return RTTRParamBuilder(_data->param_data[index]);
     }
 
     // flag & attributes
@@ -162,7 +162,7 @@ struct RTTRCtorBuilder {
     // params
     inline RTTRParamBuilder param_at(uint64_t index)
     {
-        return RTTRParamBuilder(&_data->param_data[index]);
+        return RTTRParamBuilder(_data->param_data[index]);
     }
 
     // flag & attributes
@@ -523,10 +523,11 @@ struct RTTREnumBuilder {
     // items
     inline RTTREnumItemBuilder item(String name, T value)
     {
-        auto& item_data = _data->items.emplace().ref();
-        item_data.name  = std::move(name);
-        item_data.value = static_cast<std::underlying_type_t<T>>(value);
-        return { &item_data };
+        auto* item_data = SkrNew<RTTREnumItemData>();
+        item_data->name  = std::move(name);
+        item_data->value = static_cast<std::underlying_type_t<T>>(value);
+        _data->items.add(item_data);
+        return { item_data };
     }
 
     // flag & attributes

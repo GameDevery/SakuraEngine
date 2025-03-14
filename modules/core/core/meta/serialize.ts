@@ -167,7 +167,7 @@ class _Gen {
 
       // record serde
       _gen_records_json.forEach((record) => {
-        const _gen_fields_json = record.fields.filter(field => field.ml_configs.serde.json);
+        const _gen_fields_json = record.fields.filter(field => !field.is_static && field.ml_configs.serde.json);
 
         // read fields
         b.$function(
@@ -190,7 +190,7 @@ class _Gen {
               const json_key = field_config.alias.length > 0
                 ? field_config.alias
                 : field.short_name;
-              
+
               b.$scope((_b) => {
                 // read key
                 b.$line(`auto jSlot = r->Key(u8"${json_key}");`);
@@ -269,7 +269,7 @@ class _Gen {
     b.$line(`// bin serde`);
     b.$namespace("skr", (_b) => {
       _gen_records_bin.forEach((record) => {
-        const _gen_fields_bin = record.fields.filter(field => field.ml_configs.serde.bin);
+        const _gen_fields_bin = record.fields.filter(field => !field.is_static && field.ml_configs.serde.bin);
 
         // read
         b.$function(`bool BinSerde<${record.name}>::read(SBinaryReader* r, ${record.name}& v)`, (_b) => {
@@ -348,7 +348,7 @@ class SerializeGenerator extends gen.Generator {
     // enums
     this.main_module_db.each_enum((enum_) => {
       enum_.ml_configs.serde = new EnumConfig();
-    
+
       // enum values
       enum_.values.forEach((enum_value) => {
         enum_value.ml_configs.serde = new EnumValueConfig();
