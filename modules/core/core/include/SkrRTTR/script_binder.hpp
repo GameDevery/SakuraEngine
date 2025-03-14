@@ -126,7 +126,6 @@ struct ScriptBinderStaticField {
     const RTTRStaticFieldData* data   = nullptr;
 };
 
-// TODO. ctor
 // nested binder, method & static method
 struct ScriptBinderParam {
     ScriptBinderRoot binder      = {};
@@ -158,6 +157,12 @@ struct ScriptBinderStaticMethod {
     Vector<Overload> overloads = {};
 };
 
+// nested binder, constructor
+struct ScriptBinderCtor {
+    const RTTRCtorData*       data          = nullptr;
+    Vector<ScriptBinderParam> params_binder = {};
+};
+
 // root binders
 struct ScriptBinderPrimitive {
     uint32_t    size      = 0;
@@ -171,6 +176,8 @@ struct ScriptBinderBox {
 };
 struct ScriptBinderWrap {
     const RTTRType* type;
+
+    Vector<ScriptBinderCtor> ctors;
 
     Map<String, ScriptBinderField>        fields;
     Map<String, ScriptBinderStaticField>  static_fields;
@@ -193,6 +200,7 @@ private:
     ScriptBinderWrap*      _make_wrap(const RTTRType* type);
 
     // make nested binder
+    bool _make_ctor(ScriptBinderCtor& out, const RTTRCtorData* ctor, const RTTRType* owner);
     bool _make_method(ScriptBinderMethod::Overload& out, const RTTRMethodData* method, const RTTRType* owner);
     bool _make_static_method(ScriptBinderStaticMethod::Overload& out, const RTTRStaticMethodData* method, const RTTRType* owner);
     bool _make_field(ScriptBinderField& out, const RTTRFieldData* field, const RTTRType* owner);

@@ -187,6 +187,16 @@ ScriptBinderWrap* ScriptBinderManager::_make_wrap(const RTTRType* type)
 
     bool failed = false;
 
+    // export ctors
+    type->each_ctor([&](const RTTRCtorData* ctor) {
+        if (!flag_all(ctor->flag, ERTTRCtorFlag::ScriptVisible)) { return; }
+        auto& ctor_data = result.ctors.add_default().ref();
+        if (!_make_ctor(ctor_data, ctor, type))
+        {
+            failed = true;
+        }
+    });
+
     // export fields
     type->each_field([&](const RTTRFieldData* field, const RTTRType* owner_type) {
         if (!flag_all(field->flag, ERTTRFieldFlag::ScriptVisible)) { return; }
@@ -195,7 +205,6 @@ ScriptBinderWrap* ScriptBinderManager::_make_wrap(const RTTRType* type)
         {
             failed = true;
         }
-        result.fields.add(field->name, field_data);
     });
 
     // export static field
@@ -206,7 +215,6 @@ ScriptBinderWrap* ScriptBinderManager::_make_wrap(const RTTRType* type)
         {
             failed = true;
         }
-        result.static_fields.add(static_field->name, static_field_data);
     });
 
     // export methods
@@ -218,7 +226,6 @@ ScriptBinderWrap* ScriptBinderManager::_make_wrap(const RTTRType* type)
         {
             failed = true;
         }
-        result.methods.add(method->name, method_data);
     });
 
     // export static methods
@@ -230,7 +237,6 @@ ScriptBinderWrap* ScriptBinderManager::_make_wrap(const RTTRType* type)
         {
             failed = true;
         }
-        result.static_methods.add(method->name, static_method_data);
     });
 
     // return result
@@ -245,6 +251,22 @@ ScriptBinderWrap* ScriptBinderManager::_make_wrap(const RTTRType* type)
 }
 
 // make nested binder
+bool ScriptBinderManager::_make_ctor(ScriptBinderCtor& out, const RTTRCtorData* ctor, const RTTRType* owner)
+{
+    // basic data
+    out.data = ctor;
+
+    bool failed = false;
+
+    // export params
+    for (const auto* param : ctor->param_data)
+    {
+        auto& param_binder = out.params_binder.add_default().ref();
+        failed |= !_make_param(param_binder, u8"[Ctor]", param, owner);
+    }
+
+    return !failed;
+}
 bool ScriptBinderManager::_make_method(ScriptBinderMethod::Overload& out, const RTTRMethodData* method, const RTTRType* owner)
 {
     // basic data
@@ -256,9 +278,8 @@ bool ScriptBinderManager::_make_method(ScriptBinderMethod::Overload& out, const 
     // export params
     for (const auto* param : method->param_data)
     {
-        ScriptBinderParam param_binder = {};
+        auto& param_binder = out.params_binder.add_default().ref();
         failed |= !_make_param(param_binder, method->name, param, owner);
-        out.params_binder.push_back(param_binder);
     }
 
     // export return
@@ -277,9 +298,8 @@ bool ScriptBinderManager::_make_static_method(ScriptBinderStaticMethod::Overload
     // export params
     for (const auto* param : static_method->param_data)
     {
-        ScriptBinderParam param_binder = {};
+        auto& param_binder = out.params_binder.add_default().ref();
         failed |= !_make_param(param_binder, static_method->name, param, owner);
-        out.params_binder.push_back(param_binder);
     }
 
     // export return
