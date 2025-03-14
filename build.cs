@@ -5,10 +5,10 @@ using System.Diagnostics;
 
 var Toolchain = Utilities.Bootstrap(SourceLocation.Directory());
 var ToolchainInitializeTask = Toolchain.Initialize();
-var DBInitializeTask = DependContext.Initialize();
 
 Stopwatch sw = new();
 sw.Start();
+var DBInitializeTask = DependContext.Initialize();
 
 BuildSystem.AddTaskEmitter("Cpp.Compile", new CppCompileEmitter(Toolchain));
 BuildSystem.AddTaskEmitter("Cpp.Link", new CppLinkEmitter(Toolchain))

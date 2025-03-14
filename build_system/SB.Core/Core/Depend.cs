@@ -3,47 +3,55 @@ using System.Runtime.CompilerServices;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using System.Text.Json.Serialization;
 
 namespace SB.Core
 {
     public class DependContext : DbContext
     {
-        public DbSet<Depend> Depends { get; set; }
+        internal DbSet<DependEntity> Depends { get; set; }
         public string DbPath { get; }
 
-        public DependContext()
+        public DependContext(DbContextOptions<DependContext> options)
+            : base(options)
         {
-            var folder = Environment.SpecialFolder.LocalApplicationData;
-            var path = Environment.GetFolderPath(folder);
-            DbPath = System.IO.Path.Join(path, "depend.db");
+
         }
 
         // The following configures EF to create a Sqlite database file in the special "local" folder for your platform.
-        protected override void OnConfiguring(DbContextOptionsBuilder options) => options.UseSqlite($"Data Source={DbPath}");
-
         public static async Task Initialize()
         {
-            await DependContext.Instance.FindAsync<Depend>("");
-            ROQuery = Instance.Depends.AsNoTracking();
+            using (var WrapUpCtx = await Factory.CreateDbContextAsync())
+            {
+                await WrapUpCtx.Database.EnsureCreatedAsync();
+                await WrapUpCtx.FindAsync<DependEntity>("");
+            }
         }
 
-        public static DependContext Instance = new();
-        public static IQueryable<Depend> ROQuery = Instance.Depends.AsNoTracking();
-        public static ReaderWriterLockSlim ReadLock = new ReaderWriterLockSlim();
-        public static ReaderWriterLockSlim WriteLock = new ReaderWriterLockSlim();
+        public static PooledDbContextFactory<DependContext> Factory = new (
+            new DbContextOptionsBuilder<DependContext>()
+                .UseSqlite($"Data Source={Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "depend.db")}")
+                .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
+                .Options
+        );
     }
-    
-    [PrimaryKey(nameof(TargetName))]
-    public class Depend
+
+    internal class FileWithDateTime
     {
-        [Column]
-        internal string TargetName { get; set; } = "Invalid";
-        public List<string> InputFiles { get; init; }
-        public List<DateTime> InputFileTimes { get; init; }
-        public List<string>? InputArgs { get; init; }
-        public List<DateTime> ExternalFileTimes { get; internal set; }
-        [NotMapped]
-        public List<string> ExternalFiles { get; } = new();
+        public string Path { get; set; }
+        public DateTime LastWriteTime { get; set; }
+    }
+
+    public struct Depend
+    {
+        private string PrimaryKey { get; set; } = "Invalid";
+        private List<string> InputArgs { get; init; }
+        private List<string> InputFiles { get; init; }
+        private List<DateTime> InputFileTimes { get; init; }
+        private List<DateTime> ExternalFileTimes { get; set; }
+
+        public List<string> ExternalFiles { get; set; } = new();
 
         public struct Options
         {
@@ -51,64 +59,68 @@ namespace SB.Core
             public bool Force { get; init; }
         }
 
+        public Depend() {}
+
         public static bool OnChanged(string TargetName, string FileName, string EmitterName, Action<Depend> func, IEnumerable<string> Files, IEnumerable<string> Args, Options? opt = null)
         {
             Options option = opt ?? new Options { Force = false, UseSHA = false };
             var SortedFiles = Files?.ToList() ?? new(); SortedFiles.Sort();
             var SortedArgs = Args?.ToList() ?? new(); SortedArgs.Sort();
 
-            var NeedRerun = option.Force || !CheckDependency(TargetName, FileName, EmitterName, SortedFiles, SortedArgs);
+            Depend? OldDepend = null;
+            var NeedRerun = option.Force || !CheckDependency(TargetName, FileName, EmitterName, SortedFiles, SortedArgs, out OldDepend);
             if (NeedRerun)
             {
                 Depend NewDepend = new Depend
                 {
-                    TargetName = TargetName + FileName + EmitterName,
+                    PrimaryKey = TargetName + FileName + EmitterName,
+                    InputArgs = SortedArgs,
                     InputFiles = SortedFiles,
-                    InputFileTimes = SortedFiles.Select(x => Directory.GetLastWriteTimeUtc(x)).ToList(),
-                    InputArgs = SortedArgs
+                    InputFileTimes = SortedFiles.Select(x => Directory.GetLastWriteTimeUtc(x)).ToList()
                 };
                 func(NewDepend);
-                UpdateDependency(NewDepend);
+                UpdateDependency(NewDepend, OldDepend);
                 return true;
             }
             return false;
         }
 
-        private static bool CheckDependency(string TargetName, string FileName, string EmitterName, List<string> SortedFiles, List<string> SortedArgs)
+        private static bool CheckDependency(string TargetName, string FileName, string EmitterName, List<string> SortedFiles, List<string> SortedArgs, out Depend? OldDepend)
         {
-            DependContext.ReadLock.EnterWriteLock();
-            var Dep = DependContext.ROQuery.Where(D => D.TargetName == TargetName + FileName + EmitterName).First();
-            DependContext.ReadLock.ExitWriteLock();
-
-            if (Dep is not null)
+            OldDepend = null;
+            using (var DB = DependContext.Factory.CreateDbContext())
+            {
+                OldDepend = FromEntity(DB.Depends.Find(TargetName + FileName + EmitterName));
+            }
+            if (OldDepend is not null)
             {
                 // check file list change
-                if (!SortedFiles.SequenceEqual(Dep.InputFiles))
+                if (!SortedFiles.SequenceEqual(OldDepend?.InputFiles))
                     return false;
                 // check arg list change
-                if (!SortedArgs.SequenceEqual(Dep.InputArgs))
+                if (!SortedArgs.SequenceEqual(OldDepend?.InputArgs))
                     return false;
                 // check input file mtime change
-                for (int i = 0; i < Dep.InputFiles.Count; i++)
+                for (int i = 0; i < OldDepend?.InputFiles.Count; i++)
                 {
-                    var InputFile = Dep.InputFiles[i];
-                    var LastWriteTime = Dep.InputFileTimes[i];
+                    var InputFile = OldDepend?.InputFiles[i];
+                    var DepTime = OldDepend?.InputFileTimes[i];
 
                     if (!File.Exists(InputFile)) // deleted
                         return false;
-                    if (LastWriteTime != Directory.GetLastWriteTimeUtc(InputFile)) // modified
+                    if (DepTime != Directory.GetLastWriteTimeUtc(InputFile)) // modified
                         return false;
                 }
                 // check output file mtime change
-                for (int i = 0; i < Dep.ExternalFiles.Count; i++)
+                for (int i = 0; i < OldDepend?.ExternalFiles.Count; i++)
                 {
-                    var ExternFile = Dep.ExternalFiles[i];
-                    var ExternFileTime = Dep.ExternalFileTimes[i];
+                    var ExternalFile = OldDepend?.ExternalFiles[i];
+                    var DepTime = OldDepend?.ExternalFileTimes[i];
 
                     DateTime LastWriteTime;
-                    if (!BuildSystem.CachedFileExists(ExternFile, out LastWriteTime)) // deleted
+                    if (!BuildSystem.CachedFileExists(ExternalFile, out LastWriteTime)) // deleted
                         return false;
-                    if (ExternFileTime != LastWriteTime) // modified
+                    if (DepTime != LastWriteTime) // modified
                         return false;
                 }
                 return true;
@@ -116,14 +128,59 @@ namespace SB.Core
             return false;
         }
 
-        private static void UpdateDependency(Depend NewDepend)
+        private static void UpdateDependency(Depend NewDepend, Depend? OldDepend)
         {
-            NewDepend.ExternalFiles.Sort();
             NewDepend.ExternalFileTimes = NewDepend.ExternalFiles.Select(x => Directory.GetLastWriteTimeUtc(x)).ToList();
-            DependContext.WriteLock.EnterWriteLock();
-            DependContext.Instance.Depends.Add(NewDepend);
-            DependContext.WriteLock.ExitWriteLock();
-            DependContext.Instance.SaveChanges();
+
+            using (var DB = DependContext.Factory.CreateDbContext())
+            {
+                if (OldDepend is not null)
+                    DB.Depends.Update(ToEntity(NewDepend));
+                else
+                    DB.Depends.Add(ToEntity(NewDepend));
+                    
+                DB.SaveChanges();
+            }
         }
+
+        private static DependEntity ToEntity(Depend depend)
+        {
+            return new DependEntity
+            {
+                PrimaryKey = depend.PrimaryKey,
+                InputArgs = depend.InputArgs,
+                InputFiles = depend.InputFiles,
+                InputFileTimes = depend.InputFileTimes,
+                ExternalFiles = depend.ExternalFiles,
+                ExternalFileTimes = depend.ExternalFileTimes
+            };
+        }
+
+        private static Depend? FromEntity(DependEntity? entity)
+        {
+            if (entity is null)
+                return null;
+
+            return new Depend
+            {
+                PrimaryKey = entity.PrimaryKey,
+                InputArgs = entity.InputArgs,
+                InputFiles = entity.InputFiles,
+                InputFileTimes = entity.InputFileTimes,
+                ExternalFiles = entity.ExternalFiles,
+                ExternalFileTimes = entity.ExternalFileTimes
+            };
+        }
+    }
+
+    [PrimaryKey(nameof(PrimaryKey))]
+    internal class DependEntity
+    {
+        public string PrimaryKey { get; set; } = "Invalid";
+        public List<string> InputArgs { get; init; }
+        public List<string> InputFiles { get; init; }
+        public List<DateTime> InputFileTimes { get; init; }
+        public List<string> ExternalFiles { get; init; }
+        public List<DateTime> ExternalFileTimes { get; init; }
     }
 }

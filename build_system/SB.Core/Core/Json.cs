@@ -6,10 +6,12 @@ using System.Text.Json.Serialization.Metadata;
 
 namespace SB.Core
 {
-    [JsonSerializable(typeof(ImmutableSortedDictionary<string, DateTime>))]
+    [JsonSerializable(typeof(DateTime))]
     [JsonSerializable(typeof(Depend))]
     [JsonSerializable(typeof(CLDependenciesData))]
     [JsonSerializable(typeof(CLDependencies))]
+    [JsonSerializable(typeof(List<string>))]
+    [JsonSerializable(typeof(List<KeyValuePair<string, DateTime>>))]
     internal partial class JsonContext : JsonSerializerContext
     {
 

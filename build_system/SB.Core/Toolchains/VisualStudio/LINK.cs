@@ -21,7 +21,7 @@ namespace SB.Core
         public LinkResult Link(string TargetName, string EmitterName, IArgumentDriver Driver)
         {
             var LinkerArgsDict = Driver.CalculateArguments();
-
+            
             // FUCK YOU MICROSOFT AGAIN AND AGAIN
             // WE CAN NOT PUT /LIB, /DLL INTO ARGS.txt
             var TargetTypeArg = LinkerArgsDict["TargetType"][0];
@@ -40,9 +40,20 @@ namespace SB.Core
             var OutputFile = Driver.Arguments["Output"] as string;
             bool Changed = Depend.OnChanged(TargetName, OutputFile, EmitterName, (Depend depend) =>
             {
-                var Arguments = String.Join("\n", LinkerArgsList);
-                string ResponseFile = Path.Combine(BuildSystem.TempPath, $"{Guid.CreateVersion7()}.txt");
-                File.WriteAllText(ResponseFile, Arguments);
+                var StringLength = LinkerArgsList.Sum(x => x.Length);
+                string Arguments = "";
+                if (StringLength > 30000)
+                {
+                    var Content = String.Join("\n", LinkerArgsList);
+                    string ResponseFile = Path.Combine(BuildSystem.TempPath, $"{Guid.CreateVersion7()}.txt");
+                    File.WriteAllText(ResponseFile, Content);
+
+                    Arguments = $"{TargetTypeArg} @{ResponseFile}";
+                }
+                else
+                {
+                    Arguments = $"{TargetTypeArg} {String.Join(" ", LinkerArgsList)}";
+                }
                 Process linker = new Process
                 {
                     StartInfo = new ProcessStartInfo
@@ -53,7 +64,7 @@ namespace SB.Core
                         RedirectStandardError = true,
                         CreateNoWindow = false,
                         UseShellExecute = false,
-                        Arguments = $"{TargetTypeArg} @{ResponseFile}"
+                        Arguments = Arguments
                     }
                 };
                 foreach (var kvp in VCEnvVariables)
