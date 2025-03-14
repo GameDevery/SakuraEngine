@@ -750,7 +750,7 @@ void V8BindTools::call_ctor(
 }
 void V8BindTools::call_method(
     void*                                          obj,
-    const Vector<RTTRParamData*>&                   params,
+    const Vector<RTTRParamData*>&                  params,
     const TypeSignatureView                        ret_type,
     MethodInvokerDynamicStack                      invoker,
     const ::v8::FunctionCallbackInfo<::v8::Value>& info,
@@ -790,7 +790,7 @@ void V8BindTools::call_method(
     }
 }
 void V8BindTools::call_function(
-    const Vector<RTTRParamData*>&                   params,
+    const Vector<RTTRParamData*>&                  params,
     const TypeSignatureView                        ret_type,
     FuncInvokerDynamicStack                        invoker,
     const ::v8::FunctionCallbackInfo<::v8::Value>& info,
