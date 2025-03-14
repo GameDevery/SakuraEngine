@@ -46,9 +46,11 @@ ERTTRFunctionFlag : uint32_t
 // clang-format off
 sreflect_enum_class(guid = "42d77f46-f3e0-492d-b67f-f8445eff2885")
 ERTTRMethodFlag : uint32_t
+// clang-format on
 {
     None          = 0,      // default
     ScriptVisible = 1 << 0, // can script visit this method
+    ScriptMixin   = 1 << 1, // script can mixin logic into this method
 };
 // clang-format off
 sreflect_enum_class(guid = "52c78c63-9973-49f4-9118-a8b59b9ceb9e")
@@ -170,6 +172,34 @@ inline bool export_function_signature_equal(const Data& data, TypeSignature sign
     return true;
 }
 } // namespace skr
+
+// attributes
+namespace skr::attr
+{
+// specify property getter if script has property functional
+// use on:
+//   method
+//   static_method
+struct ScriptGetter {
+    inline ScriptGetter(String name)
+        : prop_name(std::move(name))
+    {
+    }
+    String prop_name = {};
+};
+
+// specify property setter if script has property functionalScriptGetter
+// use on:
+//   method
+//   static_method
+struct ScriptSetter {
+    inline ScriptSetter(String name)
+        : prop_name(std::move(name))
+    {
+    }
+    String prop_name = {};
+};
+} // namespace skr::attr
 
 // functions and methods
 namespace skr
