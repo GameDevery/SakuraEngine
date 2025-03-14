@@ -30,7 +30,7 @@ V8MatchSuggestion V8Matcher::match_to_native(::v8::Local<::v8::Value> v8_value, 
         }
 
         // match box
-        rttr::Type* type = rttr::get_type_from_guid(type_id);
+        RTTRType* type = rttr::get_type_from_guid(type_id);
         result           = _suggest_box(type);
         if (!result.is_empty())
         {
@@ -75,7 +75,7 @@ V8MatchSuggestion V8Matcher::match_to_v8(TypeSignatureView signature)
         if (!result.is_empty()) return result;
 
         // match box
-        rttr::Type* type = rttr::get_type_from_guid(type_id);
+        RTTRType* type = rttr::get_type_from_guid(type_id);
         result           = _suggest_box(type);
         if (!result.is_empty()) { return result; }
 
@@ -307,7 +307,7 @@ V8MatchSuggestion V8Matcher::_suggest_primitive(GUID type_id)
         return {};
     }
 }
-V8MatchSuggestion V8Matcher::_suggest_box(rttr::Type* type)
+V8MatchSuggestion V8Matcher::_suggest_box(RTTRType* type)
 {
     if (!flag_all(type->record_flag(), rttr::ERecordFlag::ScriptBox)) { return {}; }
 
@@ -315,7 +315,7 @@ V8MatchSuggestion V8Matcher::_suggest_box(rttr::Type* type)
     auto&             box_result = result.box();
 
     // each field
-    type->each_field([&](const rttr::FieldData* field, const rttr::Type* owner_type) {
+    type->each_field([&](const rttr::FieldData* field, const RTTRType* owner_type) {
         // check visible
         if (!flag_all(field->flag, rttr::EFieldFlag::ScriptVisible)) { return; }
 
@@ -369,7 +369,7 @@ V8MatchSuggestion V8Matcher::_suggest_box(rttr::Type* type)
 
     return result;
 }
-V8MatchSuggestion V8Matcher::_suggest_wrap(rttr::Type* type)
+V8MatchSuggestion V8Matcher::_suggest_wrap(RTTRType* type)
 {
     if (flag_all(type->record_flag(), rttr::ERecordFlag::ScriptVisible))
     {

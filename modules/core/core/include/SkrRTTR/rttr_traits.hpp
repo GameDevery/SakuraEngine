@@ -40,7 +40,7 @@ inline constexpr skr::StringView type_name_of()
 }
 
 template <typename T>
-inline rttr::Type* type_of()
+inline RTTRType* type_of()
 {
     return rttr::get_type_from_guid(type_id_of<T>());
 }

@@ -193,7 +193,7 @@ class _Gen {
         const _gen_methods: db.Method[] = record.methods.filter((method) => method.ml_configs.rttr.enable);
 
         // register function
-        b.$line(`register_type_loader(type_id_of<${record.name}>(), +[](Type* type) {`);
+        b.$line(`register_type_loader(type_id_of<${record.name}>(), +[](RTTRType* type) {`);
         b.$indent((_b) => {
           // module info
           b.$line(`// setup module`);
@@ -292,7 +292,7 @@ class _Gen {
         const _gen_enum_values = enum_.values.filter((enum_value) => enum_value.ml_configs.rttr.enable);
 
         // register function
-        b.$line(`register_type_loader(type_id_of<${enum_.name}> (), +[](Type * type){`,);
+        b.$line(`register_type_loader(type_id_of<${enum_.name}> (), +[](RTTRType * type){`,);
         b.$indent((_b) => {
           // module info
           b.$line(`// setup module`);

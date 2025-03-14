@@ -153,7 +153,7 @@ bool V8BindTools::match_type(::v8::Local<::v8::Value> v8_value, TypeSignatureVie
         }
 
         // start match use type id
-        rttr::Type* type = rttr::get_type_from_guid(type_id);
+        RTTRType* type = rttr::get_type_from_guid(type_id);
         if (!type) { return false; }
 
         // isolate and context
@@ -169,7 +169,7 @@ bool V8BindTools::match_type(::v8::Local<::v8::Value> v8_value, TypeSignatureVie
 
                 // match fields
                 bool failed = false;
-                type->each_field([&](const rttr::FieldData* field, const rttr::Type* field_owner) {
+                type->each_field([&](const rttr::FieldData* field, const RTTRType* field_owner) {
                     // filter flag
                     if (!flag_all(field->flag, rttr::EFieldFlag::ScriptVisible)) { return; }
 
@@ -374,7 +374,7 @@ bool V8BindTools::native_to_v8_box(
     signature.jump_modifier();
     GUID type_id;
     signature.read_type_id(type_id);
-    rttr::Type* type = rttr::get_type_from_guid(type_id);
+    RTTRType* type = rttr::get_type_from_guid(type_id);
     if (!type) { return false; }
 
     // check box flag
@@ -383,7 +383,7 @@ bool V8BindTools::native_to_v8_box(
     auto result = ::v8::Object::New(isolate);
 
     // each fields
-    type->each_field([&](const rttr::FieldData* field, const rttr::Type* field_owner) {
+    type->each_field([&](const rttr::FieldData* field, const RTTRType* field_owner) {
         // check visible
         if (!flag_all(field->flag, rttr::EFieldFlag::ScriptVisible)) { return; }
 
@@ -452,7 +452,7 @@ bool V8BindTools::v8_to_native_box(
     signature.jump_modifier();
     GUID type_id;
     signature.read_type_id(type_id);
-    rttr::Type* type = rttr::get_type_from_guid(type_id);
+    RTTRType* type = rttr::get_type_from_guid(type_id);
     if (!type) { return false; }
 
     // check box flag
@@ -475,7 +475,7 @@ bool V8BindTools::v8_to_native_box(
 
     // each fields
     bool failed = false;
-    type->each_field([&](const rttr::FieldData* field, const rttr::Type* field_owner) {
+    type->each_field([&](const rttr::FieldData* field, const RTTRType* field_owner) {
         // check visible
         if (!flag_all(field->flag, rttr::EFieldFlag::ScriptVisible)) { return; }
 
@@ -571,7 +571,7 @@ void V8BindTools::push_param(
             }
 
             // prepare use reflect export
-            rttr::Type* type = rttr::get_type_from_guid(type_id);
+            RTTRType* type = rttr::get_type_from_guid(type_id);
             if (!type) { return; }
 
             // try box export
@@ -625,7 +625,7 @@ void V8BindTools::push_param(
             }
 
             // prepare use reflect export
-            rttr::Type* type = rttr::get_type_from_guid(type_id);
+            RTTRType* type = rttr::get_type_from_guid(type_id);
             if (!type) { return; }
 
             // try box export

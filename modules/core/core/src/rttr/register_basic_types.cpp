@@ -7,7 +7,7 @@
 namespace skr
 {
 template <typename T>
-void primitive_type_loader(rttr::Type* type)
+void primitive_type_loader(RTTRType* type)
 {
     type->build_primitive([&](rttr::PrimitiveData* data) {
         data->name      = RTTRTraits<T>::get_name();
@@ -17,7 +17,7 @@ void primitive_type_loader(rttr::Type* type)
     });
 }
 
-static void primitive_type_loader_void(rttr::Type* type)
+static void primitive_type_loader_void(RTTRType* type)
 {
     type->build_primitive([&](rttr::PrimitiveData* data){
         data->name      = RTTRTraits<void>::get_name();
@@ -33,20 +33,20 @@ SKR_EXEC_STATIC_CTOR
     using namespace skr;
 
     // int types
-    register_type_loader(type_id_of<int8_t>(), &primitive_type_loader<int8_t>);
-    register_type_loader(type_id_of<int16_t>(), &primitive_type_loader<int16_t>);
-    register_type_loader(type_id_of<int32_t>(), &primitive_type_loader<int32_t>);
-    register_type_loader(type_id_of<int64_t>(), &primitive_type_loader<int64_t>);
-    register_type_loader(type_id_of<uint8_t>(), &primitive_type_loader<uint8_t>);
-    register_type_loader(type_id_of<uint16_t>(), &primitive_type_loader<uint16_t>);
-    register_type_loader(type_id_of<uint32_t>(), &primitive_type_loader<uint32_t>);
-    register_type_loader(type_id_of<uint64_t>(), &primitive_type_loader<uint64_t>);
+    rttr::register_type_loader(type_id_of<int8_t>(), &primitive_type_loader<int8_t>);
+    rttr::register_type_loader(type_id_of<int16_t>(), &primitive_type_loader<int16_t>);
+    rttr::register_type_loader(type_id_of<int32_t>(), &primitive_type_loader<int32_t>);
+    rttr::register_type_loader(type_id_of<int64_t>(), &primitive_type_loader<int64_t>);
+    rttr::register_type_loader(type_id_of<uint8_t>(), &primitive_type_loader<uint8_t>);
+    rttr::register_type_loader(type_id_of<uint16_t>(), &primitive_type_loader<uint16_t>);
+    rttr::register_type_loader(type_id_of<uint32_t>(), &primitive_type_loader<uint32_t>);
+    rttr::register_type_loader(type_id_of<uint64_t>(), &primitive_type_loader<uint64_t>);
 
     // bool & void
-    register_type_loader(type_id_of<bool>(), &primitive_type_loader<bool>);
-    register_type_loader(type_id_of<void>(), &primitive_type_loader_void);
+    rttr::register_type_loader(type_id_of<bool>(), &primitive_type_loader<bool>);
+    rttr::register_type_loader(type_id_of<void>(), &primitive_type_loader_void);
 
     // float
-    register_type_loader(type_id_of<float>(), &primitive_type_loader<float>);
-    register_type_loader(type_id_of<double>(), &primitive_type_loader<double>);
+    rttr::register_type_loader(type_id_of<float>(), &primitive_type_loader<float>);
+    rttr::register_type_loader(type_id_of<double>(), &primitive_type_loader<double>);
 };

@@ -16,9 +16,9 @@ static Map<GUID, TypeLoaderFunc>& type_load_funcs()
     static Map<GUID, TypeLoaderFunc> s_type_load_funcs;
     return s_type_load_funcs;
 }
-static Map<GUID, Type*>& loaded_types()
+static Map<GUID, RTTRType*>& loaded_types()
 {
-    static Map<GUID, Type*> s_types;
+    static Map<GUID, RTTRType*> s_types;
     return s_types;
 }
 static auto& load_type_mutex()
@@ -53,7 +53,7 @@ void unregister_type_loader(const GUID& guid, TypeLoaderFunc load_func)
 }
 
 // get type (after register)
-Type* get_type_from_guid(const GUID& guid)
+RTTRType* get_type_from_guid(const GUID& guid)
 {
     std::lock_guard _lock(load_type_mutex());
 
@@ -68,7 +68,7 @@ Type* get_type_from_guid(const GUID& guid)
         if (loader_result)
         {
             // create type
-            auto type = SkrNew<Type>();
+            auto type = SkrNew<RTTRType>();
             loaded_types().add(guid, type);
 
             // load type

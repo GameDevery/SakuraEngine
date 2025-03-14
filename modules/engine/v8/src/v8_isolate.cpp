@@ -121,12 +121,12 @@ void V8Isolate::gc(bool full)
 }
 
 // register type
-void V8Isolate::make_record_template(::skr::rttr::Type* type)
+void V8Isolate::make_record_template(::skr::RTTRType* type)
 {
     using namespace ::v8;
 
     // check
-    SKR_ASSERT(type->type_category() == ::skr::rttr::ETypeCategory::Record);
+    SKR_ASSERT(type->type_category() == ::skr::ERTTRTypeCategory::Record);
     SKR_ASSERT(type->based_on(type_id_of<ScriptbleObject>()));
 
     // find exist template
@@ -155,7 +155,7 @@ void V8Isolate::make_record_template(::skr::rttr::Type* type)
     ctor_template->InstanceTemplate()->SetInternalFieldCount(1);
 
     // bind method
-    type->each_method([&](const rttr::MethodData* method, const rttr::Type* owner_type){
+    type->each_method([&](const rttr::MethodData* method, const RTTRType* owner_type){
         if (skr::flag_all(method->flag, rttr::EMethodFlag::ScriptVisible))
         {
             // find exist method bind data
@@ -192,7 +192,7 @@ void V8Isolate::make_record_template(::skr::rttr::Type* type)
     });
 
     // bind field
-    type->each_field([&](const rttr::FieldData* field, const rttr::Type* owner_type){
+    type->each_field([&](const rttr::FieldData* field, const RTTRType* owner_type){
         if (skr::flag_all(field->flag, rttr::EFieldFlag::ScriptVisible))
         {
             // find exist field bind data
@@ -233,7 +233,7 @@ void V8Isolate::make_record_template(::skr::rttr::Type* type)
     });
 
     // bind static method
-    type->each_static_method([&](const rttr::StaticMethodData* static_method, const rttr::Type* owner_type){
+    type->each_static_method([&](const rttr::StaticMethodData* static_method, const RTTRType* owner_type){
         if (skr::flag_all(static_method->flag, rttr::EStaticMethodFlag::ScriptVisible))
         {
             // find exist static method bind data
@@ -270,7 +270,7 @@ void V8Isolate::make_record_template(::skr::rttr::Type* type)
     });
 
     // bind static field
-    type->each_static_field([&](const rttr::StaticFieldData* static_field, const rttr::Type* owner_type){
+    type->each_static_field([&](const rttr::StaticFieldData* static_field, const RTTRType* owner_type){
         if (skr::flag_all(static_field->flag, rttr::EStaticFieldFlag::ScriptVisible))
         {
             // find exist static field bind data

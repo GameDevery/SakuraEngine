@@ -23,19 +23,19 @@ struct V8MatchSuggestion {
     template <typename T>
     struct WithField {
         const ::skr::rttr::FieldData* field;
-        const ::skr::rttr::Type*      field_owner;
+        const ::skr::RTTRType*      field_owner;
         T                             suggestion;
     };
     struct Box {
         using PrimitiveMember = WithField<V8MatchSuggestion>;
         using BoxMember       = WithField<V8MatchSuggestion>;
 
-        ::skr::rttr::Type*      type = nullptr;
+        ::skr::RTTRType*      type = nullptr;
         Vector<PrimitiveMember> primitive_members;
         Vector<BoxMember>       box_members;
     };
     struct Wrap {
-        ::skr::rttr::Type* type = nullptr;
+        ::skr::RTTRType* type = nullptr;
     };
 
     // factory
@@ -65,7 +65,7 @@ struct V8MatchSuggestion {
 
         return result;
     }
-    inline static V8MatchSuggestion FromBox(::skr::rttr::Type* type)
+    inline static V8MatchSuggestion FromBox(::skr::RTTRType* type)
     {
         V8MatchSuggestion result;
 
@@ -78,7 +78,7 @@ struct V8MatchSuggestion {
 
         return result;
     }
-    inline static V8MatchSuggestion FromWrap(::skr::rttr::Type* type)
+    inline static V8MatchSuggestion FromWrap(::skr::RTTRType* type)
     {
         V8MatchSuggestion result;
 
@@ -300,8 +300,8 @@ struct SKR_V8_API V8Matcher {
 private:
     // match helper
     static V8MatchSuggestion _suggest_primitive(GUID type_id);
-    V8MatchSuggestion        _suggest_box(rttr::Type* type);
-    V8MatchSuggestion        _suggest_wrap(rttr::Type* type);
+    V8MatchSuggestion        _suggest_box(RTTRType* type);
+    V8MatchSuggestion        _suggest_wrap(RTTRType* type);
     bool                     _match_primitive(const V8MatchSuggestion& suggestion, v8::Local<v8::Value> v8_value);
     bool                     _match_box(const V8MatchSuggestion& suggestion, v8::Local<v8::Value> v8_value);
     bool                     _match_wrap(const V8MatchSuggestion& suggestion, v8::Local<v8::Value> v8_value);

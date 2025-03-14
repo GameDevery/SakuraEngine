@@ -42,7 +42,7 @@ struct SKR_V8_API V8Isolate {
     void gc(bool full = true);
 
     // register type
-    void make_record_template(::skr::rttr::Type* type);
+    void make_record_template(::skr::RTTRType* type);
     void inject_templates_into_context(::v8::Global<::v8::Context> context);
 
     // bind object
@@ -66,7 +66,7 @@ private:
     ::v8::Isolate::CreateParams _isolate_create_params;
 
     // templates
-    Map<::skr::rttr::Type*, V8BindRecordData*> _record_templates;
+    Map<::skr::RTTRType*, V8BindRecordData*> _record_templates;
 
     // bind data
     Map<::skr::ScriptbleObject*, V8BindRecordCore*> _alive_records;
