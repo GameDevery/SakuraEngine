@@ -127,7 +127,7 @@ void V8Isolate::make_record_template(::skr::rttr::Type* type)
 
     // check
     SKR_ASSERT(type->type_category() == ::skr::rttr::ETypeCategory::Record);
-    SKR_ASSERT(type->based_on(rttr::type_id_of<rttr::ScriptbleObject>()));
+    SKR_ASSERT(type->based_on(type_id_of<rttr::ScriptbleObject>()));
 
     // find exist template
     if (_record_templates.contains(type))
@@ -475,7 +475,7 @@ void V8Isolate::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
                 V8BindTools::call_ctor(alloc_mem, *ctor_data, info, Context, Isolate);
                 
                 // cast to ScriptbleObject
-                void* casted_mem = bind_data->type->cast_to_base(rttr::type_id_of<rttr::ScriptbleObject>(), alloc_mem);
+                void* casted_mem = bind_data->type->cast_to_base(type_id_of<rttr::ScriptbleObject>(), alloc_mem);
 
                 // make bind core
                 V8BindRecordCore* bind_core = SkrNew<V8BindRecordCore>();

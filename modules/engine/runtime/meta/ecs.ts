@@ -64,7 +64,7 @@ class _Gen {
     b.$line(`// register component types`)
     b.$line(`SKR_EXEC_STATIC_CTOR {`)
     b.$indent(_b => {
-      b.$line(`using namespace skr::literals;`)
+      b.$line(`using namespace ::skr::literals;`)
 
       // register each record
       _gen_records.forEach(record => {

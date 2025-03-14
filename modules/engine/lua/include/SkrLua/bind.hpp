@@ -87,7 +87,7 @@ struct DefaultBindTrait<skr::SPtr<T>, std::enable_if_t<!std::is_enum_v<T> && skr
     }
     static skr::SPtr<T> check(lua_State* L, int index)
     {
-        return reinterpret_pointer_cast<T>(check_sptr(L, index, ::skr::rttr::type_id_of<T>()));
+        return reinterpret_pointer_cast<T>(check_sptr(L, index, ::skr::type_id_of<T>()));
     }
 };
 
@@ -101,7 +101,7 @@ struct DefaultBindTrait<skr::SObjectPtr<T>, std::enable_if_t<!std::is_enum_v<T> 
     }
     static skr::SObjectPtr<T> check(lua_State* L, int index)
     {
-        return reinterpret_pointer_cast<T>(check_sobjectptr(L, index, ::skr::rttr::type_id_of<T>()));
+        return reinterpret_pointer_cast<T>(check_sobjectptr(L, index, ::skr::type_id_of<T>()));
     }
 };
 

@@ -279,29 +279,29 @@ V8MatchSuggestion V8Matcher::_suggest_primitive(GUID type_id)
 {
     switch (type_id.get_hash())
     {
-    case rttr::type_id_of<int8_t>().get_hash():
+    case type_id_of<int8_t>().get_hash():
         return V8MatchSuggestion::FromPrimitive<int8_t>();
-    case rttr::type_id_of<int16_t>().get_hash():
+    case type_id_of<int16_t>().get_hash():
         return V8MatchSuggestion::FromPrimitive<int16_t>();
-    case rttr::type_id_of<int32_t>().get_hash():
+    case type_id_of<int32_t>().get_hash():
         return V8MatchSuggestion::FromPrimitive<int32_t>();
-    case rttr::type_id_of<int64_t>().get_hash():
+    case type_id_of<int64_t>().get_hash():
         return V8MatchSuggestion::FromPrimitive<int64_t>();
-    case rttr::type_id_of<uint8_t>().get_hash():
+    case type_id_of<uint8_t>().get_hash():
         return V8MatchSuggestion::FromPrimitive<uint8_t>();
-    case rttr::type_id_of<uint16_t>().get_hash():
+    case type_id_of<uint16_t>().get_hash():
         return V8MatchSuggestion::FromPrimitive<uint16_t>();
-    case rttr::type_id_of<uint32_t>().get_hash():
+    case type_id_of<uint32_t>().get_hash():
         return V8MatchSuggestion::FromPrimitive<uint32_t>();
-    case rttr::type_id_of<uint64_t>().get_hash():
+    case type_id_of<uint64_t>().get_hash():
         return V8MatchSuggestion::FromPrimitive<uint64_t>();
-    case rttr::type_id_of<float>().get_hash():
+    case type_id_of<float>().get_hash():
         return V8MatchSuggestion::FromPrimitive<float>();
-    case rttr::type_id_of<double>().get_hash():
+    case type_id_of<double>().get_hash():
         return V8MatchSuggestion::FromPrimitive<double>();
-    case rttr::type_id_of<bool>().get_hash():
+    case type_id_of<bool>().get_hash():
         return V8MatchSuggestion::FromPrimitive<bool>();
-    case rttr::type_id_of<skr::String>().get_hash():
+    case type_id_of<skr::String>().get_hash():
         return V8MatchSuggestion::FromPrimitive<skr::String>();
     default:
         return {};
@@ -373,7 +373,7 @@ V8MatchSuggestion V8Matcher::_suggest_wrap(rttr::Type* type)
 {
     if (flag_all(type->record_flag(), rttr::ERecordFlag::ScriptVisible))
     {
-        if (type->based_on(rttr::type_id_of<rttr::ScriptbleObject>()))
+        if (type->based_on(type_id_of<rttr::ScriptbleObject>()))
         {
             return V8MatchSuggestion::FromWrap(type);
         }
@@ -385,29 +385,29 @@ bool V8Matcher::_match_primitive(const V8MatchSuggestion& suggestion, v8::Local<
 {
     switch (suggestion.primitive().type_id.get_hash())
     {
-    case rttr::type_id_of<int8_t>().get_hash():
+    case type_id_of<int8_t>().get_hash():
         return v8_value->IsInt32();
-    case rttr::type_id_of<int16_t>().get_hash():
+    case type_id_of<int16_t>().get_hash():
         return v8_value->IsInt32();
-    case rttr::type_id_of<int32_t>().get_hash():
+    case type_id_of<int32_t>().get_hash():
         return v8_value->IsInt32();
-    case rttr::type_id_of<int64_t>().get_hash():
+    case type_id_of<int64_t>().get_hash():
         return v8_value->IsBigInt();
-    case rttr::type_id_of<uint8_t>().get_hash():
+    case type_id_of<uint8_t>().get_hash():
         return v8_value->IsUint32();
-    case rttr::type_id_of<uint16_t>().get_hash():
+    case type_id_of<uint16_t>().get_hash():
         return v8_value->IsUint32();
-    case rttr::type_id_of<uint32_t>().get_hash():
+    case type_id_of<uint32_t>().get_hash():
         return v8_value->IsUint32();
-    case rttr::type_id_of<uint64_t>().get_hash():
+    case type_id_of<uint64_t>().get_hash():
         return v8_value->IsBigInt();
-    case rttr::type_id_of<float>().get_hash():
+    case type_id_of<float>().get_hash():
         return v8_value->IsNumber();
-    case rttr::type_id_of<double>().get_hash():
+    case type_id_of<double>().get_hash():
         return v8_value->IsNumber();
-    case rttr::type_id_of<bool>().get_hash():
+    case type_id_of<bool>().get_hash():
         return v8_value->IsBoolean();
-    case rttr::type_id_of<skr::String>().get_hash():
+    case type_id_of<skr::String>().get_hash():
         return v8_value->IsString();
     default:
         SKR_UNREACHABLE_CODE()
@@ -501,29 +501,29 @@ v8::Local<v8::Value> V8Matcher::_to_v8_primitive(
 {
     switch (suggestion.primitive().type_id.get_hash())
     {
-    case rttr::type_id_of<int8_t>().get_hash():
+    case type_id_of<int8_t>().get_hash():
         return V8BindTools::to_v8(*reinterpret_cast<int8_t*>(native_data));
-    case rttr::type_id_of<int16_t>().get_hash():
+    case type_id_of<int16_t>().get_hash():
         return V8BindTools::to_v8(*reinterpret_cast<int16_t*>(native_data));
-    case rttr::type_id_of<int32_t>().get_hash():
+    case type_id_of<int32_t>().get_hash():
         return V8BindTools::to_v8(*reinterpret_cast<int32_t*>(native_data));
-    case rttr::type_id_of<int64_t>().get_hash():
+    case type_id_of<int64_t>().get_hash():
         return V8BindTools::to_v8(*reinterpret_cast<int64_t*>(native_data));
-    case rttr::type_id_of<uint8_t>().get_hash():
+    case type_id_of<uint8_t>().get_hash():
         return V8BindTools::to_v8(*reinterpret_cast<uint8_t*>(native_data));
-    case rttr::type_id_of<uint16_t>().get_hash():
+    case type_id_of<uint16_t>().get_hash():
         return V8BindTools::to_v8(*reinterpret_cast<uint16_t*>(native_data));
-    case rttr::type_id_of<uint32_t>().get_hash():
+    case type_id_of<uint32_t>().get_hash():
         return V8BindTools::to_v8(*reinterpret_cast<uint32_t*>(native_data));
-    case rttr::type_id_of<uint64_t>().get_hash():
+    case type_id_of<uint64_t>().get_hash():
         return V8BindTools::to_v8(*reinterpret_cast<uint64_t*>(native_data));
-    case rttr::type_id_of<float>().get_hash():
+    case type_id_of<float>().get_hash():
         return V8BindTools::to_v8(*reinterpret_cast<float*>(native_data));
-    case rttr::type_id_of<double>().get_hash():
+    case type_id_of<double>().get_hash():
         return V8BindTools::to_v8(*reinterpret_cast<double*>(native_data));
-    case rttr::type_id_of<bool>().get_hash():
+    case type_id_of<bool>().get_hash():
         return V8BindTools::to_v8(*reinterpret_cast<bool*>(native_data));
-    case rttr::type_id_of<skr::String>().get_hash():
+    case type_id_of<skr::String>().get_hash():
         return V8BindTools::to_v8(*reinterpret_cast<skr::String*>(native_data));
     default:
         SKR_UNREACHABLE_CODE()
@@ -539,29 +539,29 @@ bool V8Matcher::_to_native_primitive(
 {
     switch (suggestion.primitive().type_id.get_hash())
     {
-    case rttr::type_id_of<int8_t>().get_hash():
+    case type_id_of<int8_t>().get_hash():
         return V8BindTools::to_native(v8_value, *reinterpret_cast<int8_t*>(native_data));
-    case rttr::type_id_of<int16_t>().get_hash():
+    case type_id_of<int16_t>().get_hash():
         return V8BindTools::to_native(v8_value, *reinterpret_cast<int16_t*>(native_data));
-    case rttr::type_id_of<int32_t>().get_hash():
+    case type_id_of<int32_t>().get_hash():
         return V8BindTools::to_native(v8_value, *reinterpret_cast<int32_t*>(native_data));
-    case rttr::type_id_of<int64_t>().get_hash():
+    case type_id_of<int64_t>().get_hash():
         return V8BindTools::to_native(v8_value, *reinterpret_cast<int64_t*>(native_data));
-    case rttr::type_id_of<uint8_t>().get_hash():
+    case type_id_of<uint8_t>().get_hash():
         return V8BindTools::to_native(v8_value, *reinterpret_cast<uint8_t*>(native_data));
-    case rttr::type_id_of<uint16_t>().get_hash():
+    case type_id_of<uint16_t>().get_hash():
         return V8BindTools::to_native(v8_value, *reinterpret_cast<uint16_t*>(native_data));
-    case rttr::type_id_of<uint32_t>().get_hash():
+    case type_id_of<uint32_t>().get_hash():
         return V8BindTools::to_native(v8_value, *reinterpret_cast<uint32_t*>(native_data));
-    case rttr::type_id_of<uint64_t>().get_hash():
+    case type_id_of<uint64_t>().get_hash():
         return V8BindTools::to_native(v8_value, *reinterpret_cast<uint64_t*>(native_data));
-    case rttr::type_id_of<float>().get_hash():
+    case type_id_of<float>().get_hash():
         return V8BindTools::to_native(v8_value, *reinterpret_cast<float*>(native_data));
-    case rttr::type_id_of<double>().get_hash():
+    case type_id_of<double>().get_hash():
         return V8BindTools::to_native(v8_value, *reinterpret_cast<double*>(native_data));
-    case rttr::type_id_of<bool>().get_hash():
+    case type_id_of<bool>().get_hash():
         return V8BindTools::to_native(v8_value, *reinterpret_cast<bool*>(native_data));
-    case rttr::type_id_of<skr::String>().get_hash():
+    case type_id_of<skr::String>().get_hash():
         if (!is_init)
         {
             new (native_data) skr::String();
@@ -701,7 +701,7 @@ bool V8Matcher::_to_native_box(
 
     auto& wrap_data        = suggestion.wrap();
     auto* type             = wrap_data.type;
-    void* cast_raw         = type->cast_to_base(rttr::type_id_of<rttr::ScriptbleObject>(), native_data);
+    void* cast_raw         = type->cast_to_base(type_id_of<rttr::ScriptbleObject>(), native_data);
     auto* scriptble_object = reinterpret_cast<rttr::ScriptbleObject*>(cast_raw);
 
     auto* bind_core = skr_isolate->translate_record(scriptble_object);

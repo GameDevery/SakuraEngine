@@ -48,7 +48,7 @@ template <typename TO>
 inline TO* IObject::type_cast()
 {
     auto  from_type = get_type_from_guid(this->iobject_get_typeid());
-    void* cast_p    = from_type->cast_to_base(::skr::rttr::type_id_of<TO>(), this->iobject_get_head_ptr());
+    void* cast_p    = from_type->cast_to_base(::skr::type_id_of<TO>(), this->iobject_get_head_ptr());
     return reinterpret_cast<TO*>(cast_p);
 }
 template <typename TO>

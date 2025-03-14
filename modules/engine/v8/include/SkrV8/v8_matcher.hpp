@@ -51,7 +51,7 @@ struct V8MatchSuggestion {
         // setup primitive data
         result._primitive.size      = sizeof(T);
         result._primitive.alignment = alignof(T);
-        result._primitive.type_id   = ::skr::rttr::type_id_of<T>();
+        result._primitive.type_id   = ::skr::type_id_of<T>();
         if constexpr (std::is_trivially_destructible_v<T>)
         {
             result._primitive.dtor = nullptr;

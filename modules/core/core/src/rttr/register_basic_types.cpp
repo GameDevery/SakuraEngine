@@ -4,12 +4,12 @@
 #include "SkrRTTR/type.hpp"
 
 // primitive type helper
-namespace skr::rttr
+namespace skr
 {
 template <typename T>
-void primitive_type_loader(Type* type)
+void primitive_type_loader(rttr::Type* type)
 {
-    type->build_primitive([&](PrimitiveData* data) {
+    type->build_primitive([&](rttr::PrimitiveData* data) {
         data->name      = RTTRTraits<T>::get_name();
         data->type_id   = RTTRTraits<T>::get_guid();
         data->size      = sizeof(T);
@@ -17,9 +17,9 @@ void primitive_type_loader(Type* type)
     });
 }
 
-static void primitive_type_loader_void(Type* type)
+static void primitive_type_loader_void(rttr::Type* type)
 {
-    type->build_primitive([&](PrimitiveData* data){
+    type->build_primitive([&](rttr::PrimitiveData* data){
         data->name      = RTTRTraits<void>::get_name();
         data->type_id   = RTTRTraits<void>::get_guid();
         data->size      = 0;
@@ -30,7 +30,7 @@ static void primitive_type_loader_void(Type* type)
 
 SKR_EXEC_STATIC_CTOR
 {
-    using namespace skr::rttr;
+    using namespace skr;
 
     // int types
     register_type_loader(type_id_of<int8_t>(), &primitive_type_loader<int8_t>);

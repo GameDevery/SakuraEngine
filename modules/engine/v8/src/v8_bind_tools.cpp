@@ -17,44 +17,44 @@ inline static bool _push_param_primitive(
     switch (type_id.get_hash())
     {
         // int32/uint32
-        case rttr::type_id_of<int8_t>().get_hash():
+        case type_id_of<int8_t>().get_hash():
             stack.add_param<int8_t>((int8_t)v8_value->Int32Value(context).ToChecked(), kind);
             return true;
-        case rttr::type_id_of<int16_t>().get_hash():
+        case type_id_of<int16_t>().get_hash():
             stack.add_param<int16_t>((int16_t)v8_value->Int32Value(context).ToChecked(), kind);
             return true;
-        case rttr::type_id_of<int32_t>().get_hash():
+        case type_id_of<int32_t>().get_hash():
             stack.add_param<int32_t>((int32_t)v8_value->Int32Value(context).ToChecked(), kind);
             return true;
-        case rttr::type_id_of<uint8_t>().get_hash():
+        case type_id_of<uint8_t>().get_hash():
             stack.add_param<uint8_t>((uint8_t)v8_value->Uint32Value(context).ToChecked(), kind);
             return true;
-        case rttr::type_id_of<uint16_t>().get_hash():
+        case type_id_of<uint16_t>().get_hash():
             stack.add_param<uint16_t>((uint16_t)v8_value->Uint32Value(context).ToChecked(), kind);
             return true;
-        case rttr::type_id_of<uint32_t>().get_hash():
+        case type_id_of<uint32_t>().get_hash():
             stack.add_param<uint32_t>((uint32_t)v8_value->Uint32Value(context).ToChecked(), kind);
             return true;
         // int64/uint64
-        case rttr::type_id_of<int64_t>().get_hash():
+        case type_id_of<int64_t>().get_hash():
             stack.add_param<int64_t>((int64_t)v8_value->ToBigInt(context).ToLocalChecked()->Int64Value(), kind);
             return true;
-        case rttr::type_id_of<uint64_t>().get_hash():
+        case type_id_of<uint64_t>().get_hash():
             stack.add_param<uint64_t>((uint64_t)v8_value->ToBigInt(context).ToLocalChecked()->Uint64Value(), kind);
             return true;
         // float/double
-        case rttr::type_id_of<float>().get_hash():
+        case type_id_of<float>().get_hash():
             stack.add_param<float>((float)v8_value->NumberValue(context).ToChecked(), kind);
             return true;
-        case rttr::type_id_of<double>().get_hash():
+        case type_id_of<double>().get_hash():
             stack.add_param<double>((double)v8_value->NumberValue(context).ToChecked(), kind);
             return true;
         // bool
-        case rttr::type_id_of<bool>().get_hash():
+        case type_id_of<bool>().get_hash():
             stack.add_param<bool>(v8_value->BooleanValue(isolate), kind);
             return true;
         // string
-        case rttr::type_id_of<skr::String>().get_hash():
+        case type_id_of<skr::String>().get_hash():
             stack.add_param<skr::String>(skr::String::From(*::v8::String::Utf8Value(isolate, v8_value)), kind);
             return true;
         default:
@@ -124,29 +124,29 @@ bool V8BindTools::match_type(::v8::Local<::v8::Value> v8_value, rttr::TypeSignat
         // match primitive types
         switch (type_id.get_hash())
         {
-            case rttr::type_id_of<int8_t>().get_hash():
+            case type_id_of<int8_t>().get_hash():
                 return v8_value->IsInt32();
-            case rttr::type_id_of<int16_t>().get_hash():
+            case type_id_of<int16_t>().get_hash():
                 return v8_value->IsInt32();
-            case rttr::type_id_of<int32_t>().get_hash():
+            case type_id_of<int32_t>().get_hash():
                 return v8_value->IsInt32();
-            case rttr::type_id_of<uint8_t>().get_hash():
+            case type_id_of<uint8_t>().get_hash():
                 return v8_value->IsUint32();
-            case rttr::type_id_of<uint16_t>().get_hash():
+            case type_id_of<uint16_t>().get_hash():
                 return v8_value->IsUint32();
-            case rttr::type_id_of<uint32_t>().get_hash():
+            case type_id_of<uint32_t>().get_hash():
                 return v8_value->IsUint32();
-            case rttr::type_id_of<int64_t>().get_hash():
+            case type_id_of<int64_t>().get_hash():
                 return v8_value->IsBigInt();
-            case rttr::type_id_of<uint64_t>().get_hash():
+            case type_id_of<uint64_t>().get_hash():
                 return v8_value->IsBigInt();
-            case rttr::type_id_of<float>().get_hash():
+            case type_id_of<float>().get_hash():
                 return v8_value->IsNumber();
-            case rttr::type_id_of<double>().get_hash():
+            case type_id_of<double>().get_hash():
                 return v8_value->IsNumber();
-            case rttr::type_id_of<bool>().get_hash():
+            case type_id_of<bool>().get_hash():
                 return v8_value->IsBoolean();
-            case rttr::type_id_of<skr::String>().get_hash():
+            case type_id_of<skr::String>().get_hash():
                 return v8_value->IsString();
             default:
                 break;
@@ -246,40 +246,40 @@ bool V8BindTools::native_to_v8_primitive(
 
         switch (type_id.get_hash())
         {
-            case rttr::type_id_of<int8_t>().get_hash():
+            case type_id_of<int8_t>().get_hash():
                 out_v8_value = ::v8::Integer::New(isolate, *reinterpret_cast<int8_t*>(native_data));
                 return true;
-            case rttr::type_id_of<int16_t>().get_hash():
+            case type_id_of<int16_t>().get_hash():
                 out_v8_value = ::v8::Integer::New(isolate, *reinterpret_cast<int16_t*>(native_data));
                 return true;
-            case rttr::type_id_of<int32_t>().get_hash():
+            case type_id_of<int32_t>().get_hash():
                 out_v8_value = ::v8::Integer::New(isolate, *reinterpret_cast<int32_t*>(native_data));
                 return true;
-            case rttr::type_id_of<uint8_t>().get_hash():
+            case type_id_of<uint8_t>().get_hash():
                 out_v8_value = ::v8::Integer::NewFromUnsigned(isolate, *reinterpret_cast<uint8_t*>(native_data));
                 return true;
-            case rttr::type_id_of<uint16_t>().get_hash():
+            case type_id_of<uint16_t>().get_hash():
                 out_v8_value = ::v8::Integer::NewFromUnsigned(isolate, *reinterpret_cast<uint16_t*>(native_data));
                 return true;
-            case rttr::type_id_of<uint32_t>().get_hash():
+            case type_id_of<uint32_t>().get_hash():
                 out_v8_value = ::v8::Integer::NewFromUnsigned(isolate, *reinterpret_cast<uint32_t*>(native_data));
                 return true;
-            case rttr::type_id_of<int64_t>().get_hash():
+            case type_id_of<int64_t>().get_hash():
                 out_v8_value = ::v8::BigInt::New(isolate, *reinterpret_cast<int64_t*>(native_data));
                 return true;
-            case rttr::type_id_of<uint64_t>().get_hash():
+            case type_id_of<uint64_t>().get_hash():
                 out_v8_value = ::v8::BigInt::NewFromUnsigned(isolate, *reinterpret_cast<uint64_t*>(native_data));
                 return true;
-            case rttr::type_id_of<float>().get_hash():
+            case type_id_of<float>().get_hash():
                 out_v8_value = ::v8::Number::New(isolate, *reinterpret_cast<float*>(native_data));
                 return true;
-            case rttr::type_id_of<double>().get_hash():
+            case type_id_of<double>().get_hash():
                 out_v8_value = ::v8::Number::New(isolate, *reinterpret_cast<double*>(native_data));
                 return true;
-            case rttr::type_id_of<bool>().get_hash():
+            case type_id_of<bool>().get_hash():
                 out_v8_value = ::v8::Boolean::New(isolate, *reinterpret_cast<bool*>(native_data));
                 return true;
-            case rttr::type_id_of<skr::String>().get_hash():
+            case type_id_of<skr::String>().get_hash():
                 out_v8_value = V8BindTools::str_to_v8(*reinterpret_cast<skr::String*>(native_data), isolate, false);
                 return true;
             default:
@@ -308,40 +308,40 @@ bool V8BindTools::v8_to_native_primitive(
         // match primitive types
         switch (type_id.get_hash())
         {
-            case rttr::type_id_of<int8_t>().get_hash():
+            case type_id_of<int8_t>().get_hash():
                 *reinterpret_cast<int8_t*>(out_native_data) = static_cast<int8_t>(v8_value->Int32Value(context).ToChecked());
                 return true;
-            case rttr::type_id_of<int16_t>().get_hash():
+            case type_id_of<int16_t>().get_hash():
                 *reinterpret_cast<int16_t*>(out_native_data) = static_cast<int16_t>(v8_value->Int32Value(context).ToChecked());
                 return true;
-            case rttr::type_id_of<int32_t>().get_hash():
+            case type_id_of<int32_t>().get_hash():
                 *reinterpret_cast<int32_t*>(out_native_data) = v8_value->Int32Value(context).ToChecked();
                 return true;
-            case rttr::type_id_of<uint8_t>().get_hash():
+            case type_id_of<uint8_t>().get_hash():
                 *reinterpret_cast<uint8_t*>(out_native_data) = static_cast<uint8_t>(v8_value->Uint32Value(context).ToChecked());
                 return true;
-            case rttr::type_id_of<uint16_t>().get_hash():
+            case type_id_of<uint16_t>().get_hash():
                 *reinterpret_cast<uint16_t*>(out_native_data) = static_cast<uint16_t>(v8_value->Uint32Value(context).ToChecked());
                 return true;
-            case rttr::type_id_of<uint32_t>().get_hash():
+            case type_id_of<uint32_t>().get_hash():
                 *reinterpret_cast<uint32_t*>(out_native_data) = v8_value->Uint32Value(context).ToChecked();
                 return true;
-            case rttr::type_id_of<int64_t>().get_hash():
+            case type_id_of<int64_t>().get_hash():
                 *reinterpret_cast<int64_t*>(out_native_data) = v8_value->ToBigInt(context).ToLocalChecked()->Int64Value();
                 return true;
-            case rttr::type_id_of<uint64_t>().get_hash():
+            case type_id_of<uint64_t>().get_hash():
                 *reinterpret_cast<uint64_t*>(out_native_data) = v8_value->ToBigInt(context).ToLocalChecked()->Uint64Value();
                 return true;
-            case rttr::type_id_of<float>().get_hash():
+            case type_id_of<float>().get_hash():
                 *reinterpret_cast<float*>(out_native_data) = static_cast<float>(v8_value->NumberValue(context).ToChecked());
                 return true;
-            case rttr::type_id_of<double>().get_hash():
+            case type_id_of<double>().get_hash():
                 *reinterpret_cast<double*>(out_native_data) = v8_value->NumberValue(context).ToChecked();
                 return true;
-            case rttr::type_id_of<bool>().get_hash():
+            case type_id_of<bool>().get_hash():
                 *reinterpret_cast<bool*>(out_native_data) = v8_value->BooleanValue(isolate);
                 return true;
-            case rttr::type_id_of<skr::String>().get_hash():
+            case type_id_of<skr::String>().get_hash():
                 if (is_init)
                 {
                     *reinterpret_cast<skr::String*>(out_native_data) = skr::String::From(*::v8::String::Utf8Value(isolate, v8_value));

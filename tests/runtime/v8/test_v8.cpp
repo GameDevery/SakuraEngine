@@ -19,7 +19,7 @@ int main(int argc, char* argv[])
     context.init();
 
     // import types
-    isolate.make_record_template(skr::rttr::type_of<test_v8::TestType>());
+    isolate.make_record_template(skr::type_of<test_v8::TestType>());
 
     // inject into context
     isolate.inject_templates_into_context(context.v8_context());

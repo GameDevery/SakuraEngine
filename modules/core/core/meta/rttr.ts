@@ -132,7 +132,8 @@ class _Gen {
     b.$line(``);
     b.$line(`::skr::GUID iobject_get_typeid() const override`);
     b.$scope((_b) => {
-      b.$line(`using namespace skr::rttr;`);
+      b.$line(`using namespace ::skr;`);
+      b.$line(`using namespace ::skr::rttr;`);
       b.$line(
         `using ThisType = std::remove_cv_t<std::remove_pointer_t<decltype(this)>>;`,
       );
@@ -176,6 +177,7 @@ class _Gen {
     b.$line(`SKR_EXEC_STATIC_CTOR`);
     b.$line(`{`);
     b.$indent(() => {
+      b.$line(`using namespace ::skr;`);
       b.$line(`using namespace ::skr::rttr;`);
       b.$line(``);
 
