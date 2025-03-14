@@ -1,0 +1,186 @@
+#pragma once
+#include <SkrRTTR/type_signature.hpp>
+
+namespace skr
+{
+struct Any {
+    using Dtor = void (*)(void*);
+
+    // ctor & dtor
+    Any();
+    template <typename T>
+    Any(T&& value);
+    ~Any();
+
+    // copy & move
+    Any(const Any& rhs) = delete;
+    Any(Any&& rhs) noexcept;
+
+    // assign & move assign
+    Any& operator=(const Any& rhs) = delete;
+    Any& operator=(Any&& rhs) noexcept;
+
+    // op assign
+    template <typename T>
+    Any& operator=(T&& value);
+
+    // getter
+    bool              has_value() const;
+    bool              is_empty() const;
+    TypeSignatureView signature() const;
+
+    // ops
+    template <typename T>
+    void assign(T&& value);
+    template <typename T, typename... Args>
+    void emplace(Args&&... args);
+    void reset();
+
+    // cast
+    template <typename T>
+    bool type_is(ETypeSignatureCompareFlag compare_flag = ETypeSignatureCompareFlag::Strict) const;
+    template <typename T>
+    const T* cast(ETypeSignatureCompareFlag compare_flag = ETypeSignatureCompareFlag::Strict) const;
+    template <typename T>
+    T* cast(ETypeSignatureCompareFlag compare_flag = ETypeSignatureCompareFlag::Strict);
+
+private:
+    TypeSignature _signature = {};
+    void*         _memory    = nullptr;
+    Dtor          _dtor      = nullptr;
+};
+} // namespace skr
+
+namespace skr
+{
+// ctor & dtor
+inline Any::Any()
+{
+}
+template <typename T>
+inline Any::Any(T&& value)
+{
+    using RealType = std::decay_t<T>;
+
+    _signature = type_signature_of<RealType>();
+    _memory    = SkrNew<RealType>(std::forward<T>(value));
+    _dtor      = [](void* p) { SkrDelete<RealType>(static_cast<RealType*>(p)); };
+}
+inline Any::~Any()
+{
+    reset();
+}
+
+// copy & move
+inline Any::Any(Any&& rhs) noexcept
+    : _signature(std::move(rhs._signature))
+    , _memory(rhs._memory)
+    , _dtor(rhs._dtor)
+{
+    rhs._memory = nullptr;
+    rhs._dtor   = nullptr;
+}
+
+// assign & move assign
+inline Any& Any::operator=(Any&& rhs) noexcept
+{
+    if (this != &rhs)
+    {
+        reset();
+
+        _signature = std::move(rhs._signature);
+        _memory    = rhs._memory;
+        _dtor      = rhs._dtor;
+
+        rhs._memory = nullptr;
+        rhs._dtor   = nullptr;
+    }
+
+    return *this;
+}
+
+// op assign
+template <typename T>
+inline Any& Any::operator=(T&& value)
+{
+    assign<T>(std::forward<T>(value));
+}
+
+// getter
+inline bool Any::has_value() const
+{
+    return _memory != nullptr;
+}
+inline bool Any::is_empty() const
+{
+    return _memory == nullptr;
+}
+inline TypeSignatureView Any::signature() const
+{
+    return _signature;
+}
+
+// ops
+template <typename T>
+inline void Any::assign(T&& value)
+{
+    reset();
+
+    using RealType = std::decay_t<T>;
+
+    _signature = type_signature_of<RealType>();
+    _memory    = SkrNew<RealType>(std::forward<T>(value));
+    _dtor      = [](void* p) { SkrDelete<RealType>(static_cast<RealType*>(p)); };
+}
+template <typename T, typename... Args>
+inline void Any::emplace(Args&&... args)
+{
+    reset();
+
+    using RealType = std::decay_t<T>;
+
+    _signature = type_signature_of<RealType>();
+    _memory    = SkrNew<RealType>(std::forward<Args>(args)...);
+    _dtor      = [](void* p) { SkrDelete<RealType>(static_cast<RealType*>(p)); };
+}
+inline void Any::reset()
+{
+    if (_memory)
+    {
+        _dtor(_memory);
+        _signature.reset();
+        _memory = nullptr;
+        _dtor   = nullptr;
+    }
+}
+
+// cast
+template <typename T>
+inline bool Any::type_is(ETypeSignatureCompareFlag compare_flag) const
+{
+    if (_memory)
+    {
+        TypeSignatureTyped<T> signature;
+        return _signature.view().equal(signature.view(), compare_flag);
+    }
+    return false;
+}
+template <typename T>
+inline const T* Any::cast(ETypeSignatureCompareFlag compare_flag) const
+{
+    if (type_is<T>(compare_flag))
+    {
+        return reinterpret_cast<const T*>(_memory);
+    }
+    return nullptr;
+}
+template <typename T>
+inline T* Any::cast(ETypeSignatureCompareFlag compare_flag)
+{
+    if (type_is<T>(compare_flag))
+    {
+        return reinterpret_cast<T*>(_memory);
+    }
+    return nullptr;
+}
+} // namespace skr

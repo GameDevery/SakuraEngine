@@ -1309,10 +1309,7 @@ struct TypeSignature : private SkrAllocator {
     }
     inline ~TypeSignature()
     {
-        if (_data)
-        {
-            free(_data);
-        }
+        reset();
     }
 
     // copy & move
@@ -1335,10 +1332,7 @@ struct TypeSignature : private SkrAllocator {
     {
         if (this != &other)
         {
-            if (_data)
-            {
-                free(_data);
-            }
+            reset();
             _data = alloc<uint8_t>(other._size);
             _size = other._size;
             memcpy(_data, other._data, _size);
@@ -1349,10 +1343,7 @@ struct TypeSignature : private SkrAllocator {
     {
         if (this != &other)
         {
-            if (_data)
-            {
-                free(_data);
-            }
+            reset();
             _data       = other._data;
             _size       = other._size;
             other._data = nullptr;
@@ -1378,6 +1369,16 @@ struct TypeSignature : private SkrAllocator {
             data() + size(),
             flag
         );
+    }
+
+    // ops
+    inline void reset()
+    {
+        if (_data)
+        {
+            free(_data);
+        }
+        _size = 0;
     }
 
 private:
