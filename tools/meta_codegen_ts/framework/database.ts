@@ -24,6 +24,7 @@ export type CppTypes =
   | Enum
   | EnumValue
   | Record
+  | Ctor
   | Field
   | Method
   | Function
@@ -212,6 +213,9 @@ export class Ctor {
     this.raw_attrs = json_obj.attrs;
   }
 
+  dump_params_type_only() {
+    return this.parameters.map((param) => param.type).join(", ");
+  }
 }
 export class Field {
   parent: Record;
@@ -621,6 +625,13 @@ export class Header {
   ) {
     for (const record of this.records) {
       func(record, this);
+
+      for (const ctor of record.ctors) {
+        func(ctor, this);
+        for (const param of ctor.parameters) {
+          func(param, this);
+        }
+      }
 
       for (const method of record.methods) {
         func(method, this);

@@ -44,10 +44,16 @@ BasicBaseAB : public BasicBaseA,
 sreflect_struct(
     guid = "65300b18-d043-41ad-a8e4-74c49d97f0d9";
     rttr = @full;
+    rttr.reflect_ctors = true;
     rttr.flags = ["ScriptVisible", "ScriptNewable"];
     rttr.attrs = [`test_rttr::AttrA{u8"fuck_u"}`];
 )
 BasicRecord : public BasicBaseAB {
+    // ctors
+    inline BasicRecord() {}
+    sattr(rttr.flags = ["ScriptVisible"])
+    inline BasicRecord(int32_t v) {}
+
     // fields
     sattr(rttr.flags = ["ScriptVisible"])
     sattr(rttr.attrs += `test_rttr::AttrA{u8"shit_field"}`)

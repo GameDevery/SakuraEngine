@@ -83,6 +83,13 @@ class RecordConfig extends ConfigBase {
     })
   }
 
+  @ml.value("boolean")
+  reflect_ctors(v: boolean) {
+    this.#record.ctors.forEach(ctor => {
+      ctor.ml_configs.rttr.enable = v;
+    })
+  }
+
   @ml.preset("full")
   preset_full() {
     this.reflect_bases = true;
@@ -100,6 +107,11 @@ class RecordConfig extends ConfigBase {
     this.reflect_methods(true);
   }
 
+  @ml.preset("ctors")
+  preset_ctors() {
+    this.reflect_ctors(true);
+  }
+
   @ml.preset("minimal")
   preset_minimal() {
     this.reflect_bases = false;
@@ -112,6 +124,8 @@ class RecordConfig extends ConfigBase {
     super();
     this.#record = record;
   }
+}
+class CtorConfig extends ConfigBase {
 }
 class FieldConfig extends ConfigBase {
 }
@@ -189,6 +203,7 @@ class _Gen {
           [];
         const _gen_fields: db.Field[] = record.fields.filter((field) => field.ml_configs.rttr.enable);
         const _gen_methods: db.Method[] = record.methods.filter((method) => method.ml_configs.rttr.enable);
+        const _gen_ctors: db.Ctor[] = record.ctors.filter(ctor => ctor.ml_configs.rttr.enable);
 
         // register function
         b.$line(`register_type_loader(type_id_of<${record.name}>(), +[](RTTRType* type) {`);
@@ -219,6 +234,35 @@ class _Gen {
             if (_gen_bases.length > 0) {
               b.$line(`builder.bases<${_gen_bases.join(", ")}>();`);
             }
+
+            // ctors
+            b.$line(`// ctors`);
+            _gen_ctors.forEach(ctor => {
+              b.$line(`{ // ${record.name}(${ctor.dump_params_type_only()})`);
+              b.$indent(_b => {
+                b.$line(`[[maybe_unused]] auto ctor_builder = builder.ctor<${ctor.dump_params_type_only()}>();`,);
+
+                // build params
+                b.$line(`// params`);
+                ctor.parameters.forEach((param, idx) => {
+                  b.$scope((_b) => {
+                    const param_config = param.ml_configs.rttr as ParamConfig;
+                    b.$line(`[[maybe_unused]] auto param_builder = ctor_builder.param_at(${idx});`,);
+                    b.$line(`param_builder.name(u8"${param.name}");`);
+                    b.$line(``);
+                    this.#flags_and_attrs(
+                      b,
+                      param,
+                      param_config,
+                      "param_builder",
+                    );
+                  });
+                });
+
+                this.#flags_and_attrs(b, ctor, ctor.ml_configs.rttr as CtorConfig, "ctor_builder");
+              })
+              b.$line(`}`);
+            })
 
             // fields
             b.$line(`// fields`);
@@ -378,6 +422,8 @@ class _Gen {
       return "ERTTREnumFlag";
     } else if (cpp_type instanceof db.EnumValue) {
       return "ERTTREnumItemFlag";
+    } else if (cpp_type instanceof db.Ctor) {
+      return "ERTTRCtorFlag";
     } else {
       throw new Error(`Unknown cpp_type: ${cpp_type.constructor.name}`);
     }
@@ -395,6 +441,16 @@ class RttrGenerator extends gen.Generator {
     this.main_module_db.each_record((record) => {
       record.ml_configs.rttr = new RecordConfig(record);
       record.ml_configs.guid = new GuidConfig();
+
+      // ctors
+      record.ctors.forEach((ctor) => {
+        ctor.ml_configs.rttr = new CtorConfig();
+
+        // params
+        ctor.parameters.forEach((param) => {
+          param.ml_configs.rttr = new ParamConfig();
+        });
+      });
 
       // methods
       record.methods.forEach((method) => {
