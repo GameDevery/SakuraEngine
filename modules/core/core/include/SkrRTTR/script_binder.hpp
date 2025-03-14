@@ -28,6 +28,17 @@
 
 namespace skr
 {
+// failed id
+enum class EScriptBindFailed
+{
+    None,
+    Unknown,
+    ExportWrapByValue,
+    ExportPointerFieldOfPrimitiveOrBox,
+    ExportReferenceField,
+    ExportPointerLevelGreaterThanOne,
+};
+
 // basic binder, used for nested binder
 struct PrimitiveBinder;
 struct BoxBinder;
@@ -105,14 +116,14 @@ private:
 
 // nested binder, field & static field
 struct FieldBinder {
-    RTTRType*      owner  = nullptr;
-    BasicBinder    binder = {};
-    RTTRFieldData* data   = nullptr;
+    const RTTRType*      owner  = nullptr;
+    BasicBinder          binder = {};
+    const RTTRFieldData* data   = nullptr;
 };
 struct StaticFieldBinder {
-    RTTRType*            owner  = nullptr;
-    BasicBinder          binder = {};
-    RTTRStaticFieldData* data   = nullptr;
+    const RTTRType*            owner  = nullptr;
+    BasicBinder                binder = {};
+    const RTTRStaticFieldData* data   = nullptr;
 };
 
 // nested binder, method & static method
@@ -127,20 +138,20 @@ struct ReturnBinder {
 };
 struct MethodBinder {
     struct Overload {
-        RTTRType*           owner         = nullptr;
-        RTTRMethodData*     data          = nullptr;
-        ReturnBinder        return_binder = {};
-        Vector<ParamBinder> params_binder = {};
+        const RTTRType*       owner         = nullptr;
+        const RTTRMethodData* data          = nullptr;
+        ReturnBinder          return_binder = {};
+        Vector<ParamBinder>   params_binder = {};
     };
 
     Vector<Overload> overloads = {};
 };
 struct StaticMethodBinder {
     struct Overload {
-        RTTRType*             owner         = nullptr;
-        RTTRStaticMethodData* data          = nullptr;
-        ReturnBinder          return_binder = {};
-        Vector<ParamBinder>   params_binder = {};
+        const RTTRType*             owner         = nullptr;
+        const RTTRStaticMethodData* data          = nullptr;
+        ReturnBinder                return_binder = {};
+        Vector<ParamBinder>         params_binder = {};
     };
 
     Vector<Overload> overloads = {};
@@ -150,15 +161,15 @@ struct StaticMethodBinder {
 struct PrimitiveBinder {
     uint32_t    size      = 0;
     uint32_t    alignment = 0;
-    DtorInvoker dtor      = nullptr;
     GUID        type_id   = {};
+    DtorInvoker dtor      = nullptr;
 };
 struct BoxBinder {
-    RTTRType*                type;
+    const RTTRType*          type;
     Map<String, FieldBinder> fields;
 };
 struct WrapBinder {
-    RTTRType* type;
+    const RTTRType* type;
 
     Map<String, FieldBinder>        fields;
     Map<String, StaticFieldBinder>  static_fields;
@@ -166,7 +177,32 @@ struct WrapBinder {
     Map<String, StaticMethodBinder> static_methods;
 };
 
-struct BinderManager {
+struct SKR_CORE_API BinderManager {
+    // get binder
+    BasicBinder get_or_build(GUID type_id);
+
+private:
+    // make basic binder
+    PrimitiveBinder* _make_primitive(GUID type_id);
+    BoxBinder*       _make_box(const RTTRType* type);
+    WrapBinder*      _make_wrap(const RTTRType* type);
+
+    // make nested binder
+    bool _make_method(MethodBinder::Overload& out, const RTTRMethodData* method, const RTTRType* owner);
+    bool _make_static_method(StaticMethodBinder::Overload& out, const RTTRStaticMethodData* method, const RTTRType* owner);
+    bool _make_field(FieldBinder& out, const RTTRFieldData* field, const RTTRType* owner);
+    bool _make_static_field(StaticFieldBinder& out, const RTTRStaticFieldData* field, const RTTRType* owner);
+    bool _make_param(ParamBinder& out, StringView method_name, const RTTRParamData* param, const RTTRType* owner);
+    bool _make_return(ReturnBinder& out, StringView method_name, TypeSignatureView signature, const RTTRType* owner);
+
+    // checker
+    EScriptBindFailed _try_export_field(TypeSignatureView signature, BasicBinder& out_binder);
+
+    // error helper
+    StringView _err_string(EScriptBindFailed err);
+    void _err_field(StringView field_name, StringView owner_name, EScriptBindFailed err);
+    void _err_param(StringView param_name, StringView method_name, EScriptBindFailed err);
+    void _err_return(StringView method_name, EScriptBindFailed err);
 
 private:
     // cache

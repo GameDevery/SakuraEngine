@@ -918,6 +918,10 @@ struct TypeSignatureView {
         }
         return level;
     }
+    inline bool is_any_ref() const
+    {
+        return is_ref() || is_rvalue_ref();
+    }
     inline bool is_pointer() const
     {
         return has_modifier(ETypeSignatureSignal::Pointer);
@@ -929,6 +933,10 @@ struct TypeSignatureView {
     inline bool is_rvalue_ref() const
     {
         return has_modifier(ETypeSignatureSignal::RValueRef);
+    }
+    inline bool is_const() const
+    {
+        return has_modifier(ETypeSignatureSignal::Const);
     }
     inline ETypeSignatureSignal validate_complete_signature() const
     {
