@@ -179,6 +179,7 @@ struct ScriptBinderBox {
 struct ScriptBinderWrap {
     const RTTRType* type;
 
+    bool                     is_script_newable = false;
     Vector<ScriptBinderCtor> ctors;
 
     Map<String, ScriptBinderField>        fields;

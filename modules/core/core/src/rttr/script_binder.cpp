@@ -188,14 +188,18 @@ ScriptBinderWrap* ScriptBinderManager::_make_wrap(const RTTRType* type)
     bool failed = false;
 
     // export ctors
-    type->each_ctor([&](const RTTRCtorData* ctor) {
-        if (!flag_all(ctor->flag, ERTTRCtorFlag::ScriptVisible)) { return; }
-        auto& ctor_data = result.ctors.add_default().ref();
-        if (!_make_ctor(ctor_data, ctor, type))
-        {
-            failed = true;
-        }
-    });
+    result.is_script_newable = flag_all(type->record_flag(), ERTTRRecordFlag::ScriptNewable);
+    if (result.is_script_newable)
+    {
+        type->each_ctor([&](const RTTRCtorData* ctor) {
+            if (!flag_all(ctor->flag, ERTTRCtorFlag::ScriptVisible)) { return; }
+            auto& ctor_data = result.ctors.add_default().ref();
+            if (!_make_ctor(ctor_data, ctor, type))
+            {
+                failed = true;
+            }
+        });
+    }
 
     // export fields
     type->each_field([&](const RTTRFieldData* field, const RTTRType* owner_type) {
