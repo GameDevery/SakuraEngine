@@ -25,6 +25,7 @@ sreflect_struct(
     rttr = @full
     rttr.flags = ["ScriptBox"]
 )
+sscript_visible sscript_box
 Box3 {
     sscript_visible
     float3 min = {0, 0, 0};
@@ -37,6 +38,7 @@ sreflect_struct(
     rttr = @full
     rttr.flags = ["ScriptBox"]
 )
+sscript_visible sscript_box
 Box3Offset : Box3 {
     sscript_visible
     float3 offset = {0, 0, 0};
@@ -50,6 +52,7 @@ sscript_visible sscript_newable
 TestType : public ::skr::ScriptbleObject {
     SKR_GENERATE_BODY()
 
+    sscript_visible
     TestType() { SKR_LOG_FMT_INFO(u8"call ctor"); }
     ~TestType()
     {
@@ -111,16 +114,29 @@ TestType : public ::skr::ScriptbleObject {
     }
 
     // getter & setter
-    sscript_getter(prop_fuck)
+    sscript_visible sscript_getter(prop_fuck)
     skr::String get_fuck() const 
     {
         SKR_LOG_FMT_INFO(u8"get fuck"); 
         return u8"fuck"; 
     }
-    sscript_setter(prop_fuck)
+    sscript_visible sscript_setter(prop_fuck)
     void set_fuck(skr::String v)
     {
         SKR_LOG_FMT_INFO(u8"set fuck: {}", v); 
+    }
+
+    // static getter & static setter
+    sscript_visible sscript_getter(prop_shit)
+    static int32_t get_shit()
+    {
+        SKR_LOG_FMT_INFO(u8"get shit");
+        return 114514;
+    }
+    sscript_visible sscript_setter(prop_shit)
+    static void set_shit(int32_t v)
+    {
+        SKR_LOG_FMT_INFO(u8"set shit {}", v);
     }
 
     // inout param

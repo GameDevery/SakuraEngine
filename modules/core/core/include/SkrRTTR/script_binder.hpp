@@ -25,6 +25,22 @@
 // |  const T*  |      -     |     -     |    T?    |
 // |     T&     |      -     |     -     |    -     |
 // |  const T&  |      -     |     -     |    -     |
+//
+// script support primitive types:
+//   void: in return
+//   integer: int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t
+//   floating: float, double
+//   boolean: bool
+//   string: skr::String, skr::StringView
+//
+// script support generic types:
+//   skr::Array: accept script array
+//   skr::Span: accept script array
+//   skr::Vector: accept script array
+//   skr::Map: accept script map
+//   skr::Optional: make primitive/box type nullable without use pointer
+//   skr::NotNull: make wrap type non-nullable without use reference
+//   skr::FunctionRef: support callback from script for each() methods
 
 namespace skr
 {
@@ -37,6 +53,11 @@ enum class EScriptBindFailed
     ExportPointerFieldOfPrimitiveOrBox,
     ExportReferenceField,
     ExportPointerLevelGreaterThanOne,
+    GetterSignatureError,
+    SetterSignatureError,
+    PropertySignatureMismatch,
+    DuplicateGetter,
+    DuplicateSetter,
 };
 
 // root binder, used for nested binder
@@ -159,6 +180,16 @@ struct ScriptBinderStaticMethod {
     Vector<Overload> overloads = {};
 };
 
+// nested binder, property
+struct ScriptBinderProperty {
+    ScriptBinderMethod setter = {};
+    ScriptBinderMethod getter = {};
+};
+struct ScriptBinderStaticProperty {
+    ScriptBinderStaticMethod setter = {};
+    ScriptBinderStaticMethod getter = {};
+};
+
 // nested binder, constructor
 struct ScriptBinderCtor {
     const RTTRCtorData*       data          = nullptr;
@@ -182,10 +213,12 @@ struct ScriptBinderWrap {
     bool                     is_script_newable = false;
     Vector<ScriptBinderCtor> ctors;
 
-    Map<String, ScriptBinderField>        fields;
-    Map<String, ScriptBinderStaticField>  static_fields;
-    Map<String, ScriptBinderMethod>       methods;
-    Map<String, ScriptBinderStaticMethod> static_methods;
+    Map<String, ScriptBinderField>          fields;
+    Map<String, ScriptBinderStaticField>    static_fields;
+    Map<String, ScriptBinderMethod>         methods;
+    Map<String, ScriptBinderStaticMethod>   static_methods;
+    Map<String, ScriptBinderProperty>       properties;
+    Map<String, ScriptBinderStaticProperty> static_properties;
 };
 
 struct SKR_CORE_API ScriptBinderManager {
@@ -206,6 +239,10 @@ private:
     bool _make_ctor(ScriptBinderCtor& out, const RTTRCtorData* ctor, const RTTRType* owner);
     bool _make_method(ScriptBinderMethod::Overload& out, const RTTRMethodData* method, const RTTRType* owner);
     bool _make_static_method(ScriptBinderStaticMethod::Overload& out, const RTTRStaticMethodData* method, const RTTRType* owner);
+    bool _make_prop_getter(ScriptBinderMethod& out, const RTTRMethodData* method, const RTTRType* owner);
+    bool _make_prop_setter(ScriptBinderMethod& out, const RTTRMethodData* method, const RTTRType* owner);
+    bool _make_static_prop_getter(ScriptBinderStaticMethod& out, const RTTRStaticMethodData* method, const RTTRType* owner);
+    bool _make_static_prop_setter(ScriptBinderStaticMethod& out, const RTTRStaticMethodData* method, const RTTRType* owner);
     bool _make_field(ScriptBinderField& out, const RTTRFieldData* field, const RTTRType* owner);
     bool _make_static_field(ScriptBinderStaticField& out, const RTTRStaticFieldData* field, const RTTRType* owner);
     bool _make_param(ScriptBinderParam& out, StringView method_name, const RTTRParamData* param, const RTTRType* owner);
@@ -219,6 +256,7 @@ private:
     void       _err_field(StringView field_name, StringView owner_name, EScriptBindFailed err);
     void       _err_param(StringView param_name, StringView method_name, EScriptBindFailed err);
     void       _err_return(StringView method_name, EScriptBindFailed err);
+    void       _err_getter(StringView prop_name, StringView method_name, EScriptBindFailed err);
 
 private:
     // cache

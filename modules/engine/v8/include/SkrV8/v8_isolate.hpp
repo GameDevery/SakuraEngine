@@ -55,6 +55,10 @@ private:
     static void _set_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
     static void _get_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
     static void _set_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
+    static void _get_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
+    static void _set_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
+    static void _get_static_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
+    static void _set_static_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
 
 private:
     // isolate data

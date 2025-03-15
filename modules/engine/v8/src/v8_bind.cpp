@@ -343,8 +343,11 @@ v8::Local<v8::Value> V8Bind::read_return(
     {
     case ScriptBinderRoot::EKind::Primitive:
     case ScriptBinderRoot::EKind::Box: {
-        void* raw_data = stack.get_return_raw();
-        native_data    = *reinterpret_cast<void**>(raw_data);
+        native_data    = stack.get_return_raw();
+        if (return_binder.is_nullable)
+        {
+            native_data = *reinterpret_cast<void**>(native_data);
+        }
         break;
     }
     case ScriptBinderRoot::EKind::Wrap: {
@@ -518,6 +521,8 @@ bool V8Bind::call_native(
             );
             v8_stack.GetReturnValue().Set(out_value);
         }
+
+        return true;
     }
 
     return false;
@@ -575,7 +580,7 @@ bool V8Bind::match(
     case ScriptBinderRoot::EKind::Primitive:
         return _match_primitive(*binder.primitive(), v8_value);
     case ScriptBinderRoot::EKind::Box:
-        return _match_primitive(*binder.primitive(), v8_value);
+        return _match_box(*binder.box(), v8_value);
     case ScriptBinderRoot::EKind::Wrap:
         return _match_wrap(*binder.wrap(), v8_value);
     }

@@ -171,6 +171,7 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
                 External::New(_isolate, method_bind_data)
             )
         );
+        bind_data->methods.add(method_name, method_bind_data);
     }
 
     // bind static method
@@ -186,6 +187,7 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
                 External::New(_isolate, static_method_bind_data)
             )
         );
+        bind_data->static_methods.add(static_method_name, static_method_bind_data);
     }
 
     // bind field
@@ -206,6 +208,7 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
                 External::New(_isolate, field_bind_data)
             )
         );
+        bind_data->fields.add(field_name, field_bind_data);
     }
 
     // bind static field
@@ -226,6 +229,49 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
                 External::New(_isolate, static_field_bind_data)
             )
         );
+        bind_data->static_fields.add(static_field_name, static_field_bind_data);
+    }
+
+    // bind properties
+    for (const auto& [property_name, property_binder] : wrap_binder->properties)
+    {
+        auto property_bind_data    = SkrNew<V8BindPropertyData>();
+        property_bind_data->binder = property_binder;
+        ctor_template->PrototypeTemplate()->SetAccessorProperty(
+            V8Bind::to_v8(property_name, true),
+            FunctionTemplate::New(
+                _isolate,
+                _get_prop,
+                External::New(_isolate, property_bind_data)
+            ),
+            FunctionTemplate::New(
+                _isolate,
+                _set_prop,
+                External::New(_isolate, property_bind_data)
+            )
+        );
+        bind_data->properties.add(property_name, property_bind_data);
+    }
+
+    // bind static properties
+    for (const auto& [static_property_name, static_property_binder] : wrap_binder->static_properties)
+    {
+        auto static_property_bind_data    = SkrNew<V8BindStaticPropertyData>();
+        static_property_bind_data->binder = static_property_binder;
+        ctor_template->SetAccessorProperty(
+            V8Bind::to_v8(static_property_name, true),
+            FunctionTemplate::New(
+                _isolate,
+                _get_static_prop,
+                External::New(_isolate, static_property_bind_data)
+            ),
+            FunctionTemplate::New(
+                _isolate,
+                _set_static_prop,
+                External::New(_isolate, static_property_bind_data)
+            )
+        );
+        bind_data->static_properties.add(static_property_name, static_property_bind_data);
     }
 
     // store template
@@ -614,6 +660,110 @@ void V8Isolate::_set_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>&
     V8Bind::set_field(
         bind_data->binder,
         info[0]
+    );
+}
+void V8Isolate::_get_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
+{
+    using namespace ::v8;
+
+    // get data
+    Isolate*       Isolate = info.GetIsolate();
+    Local<Context> Context = Isolate->GetCurrentContext();
+
+    // scopes
+    Isolate::Scope IsolateScope(Isolate);
+    HandleScope    HandleScope(Isolate);
+    Context::Scope ContextScope(Context);
+
+    // get self data
+    Local<Object> self      = info.This();
+    auto*         bind_core = reinterpret_cast<V8BindRecordCore*>(self->GetInternalField(0).As<External>()->Value());
+
+    // get user data
+    auto* bind_data   = reinterpret_cast<V8BindPropertyData*>(info.Data().As<External>()->Value());
+    auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
+
+    // invoke
+    V8Bind::call_native(
+        bind_data->binder.getter,
+        info,
+        bind_core->object->iobject_get_head_ptr(),
+        bind_core->type
+    );
+}
+void V8Isolate::_set_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
+{
+    using namespace ::v8;
+
+    // get data
+    Isolate*       Isolate = info.GetIsolate();
+    Local<Context> Context = Isolate->GetCurrentContext();
+
+    // scopes
+    Isolate::Scope IsolateScope(Isolate);
+    HandleScope    HandleScope(Isolate);
+    Context::Scope ContextScope(Context);
+
+    // get self data
+    Local<Object> self      = info.This();
+    auto*         bind_core = reinterpret_cast<V8BindRecordCore*>(self->GetInternalField(0).As<External>()->Value());
+
+    // get user data
+    auto* bind_data   = reinterpret_cast<V8BindPropertyData*>(info.Data().As<External>()->Value());
+    auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
+
+    // invoke
+    V8Bind::call_native(
+        bind_data->binder.setter,
+        info,
+        bind_core->object->iobject_get_head_ptr(),
+        bind_core->type
+    );
+}
+void V8Isolate::_get_static_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
+{
+    using namespace ::v8;
+
+    // get data
+    Isolate*       Isolate = info.GetIsolate();
+    Local<Context> Context = Isolate->GetCurrentContext();
+
+    // scopes
+    Isolate::Scope IsolateScope(Isolate);
+    HandleScope    HandleScope(Isolate);
+    Context::Scope ContextScope(Context);
+
+    // get user data
+    auto* bind_data   = reinterpret_cast<V8BindStaticPropertyData*>(info.Data().As<External>()->Value());
+    auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
+
+    // invoke
+    V8Bind::call_native(
+        bind_data->binder.getter,
+        info
+    );
+}
+void V8Isolate::_set_static_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
+{
+    using namespace ::v8;
+
+    // get data
+    Isolate*       Isolate = info.GetIsolate();
+    Local<Context> Context = Isolate->GetCurrentContext();
+
+    // scopes
+    Isolate::Scope IsolateScope(Isolate);
+    HandleScope    HandleScope(Isolate);
+    Context::Scope ContextScope(Context);
+
+    // get user data
+    auto* bind_data   = reinterpret_cast<V8BindStaticPropertyData*>(info.Data().As<External>()->Value());
+    auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
+
+    // invoke
+    V8Bind::call_native(
+        bind_data->binder.setter,
+        info
     );
 }
 } // namespace skr

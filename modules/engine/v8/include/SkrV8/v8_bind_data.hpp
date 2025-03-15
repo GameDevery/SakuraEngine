@@ -20,16 +20,24 @@ struct V8BindFieldData {
 struct V8BindStaticFieldData {
     ScriptBinderStaticField binder;
 };
+struct V8BindPropertyData {
+    ScriptBinderProperty binder;
+};
+struct V8BindStaticPropertyData {
+    ScriptBinderStaticProperty binder;
+};
 struct V8BindWrapData {
     // v8 info
     ::v8::Global<::v8::FunctionTemplate> ctor_template;
 
     // native info
-    ScriptBinderWrap*                    binder;
-    Map<String, V8BindMethodData*>       methods;
-    Map<String, V8BindFieldData*>        fields;
-    Map<String, V8BindStaticMethodData*> static_methods;
-    Map<String, V8BindStaticFieldData*>  static_fields;
+    ScriptBinderWrap*                      binder;
+    Map<String, V8BindMethodData*>         methods;
+    Map<String, V8BindFieldData*>          fields;
+    Map<String, V8BindStaticMethodData*>   static_methods;
+    Map<String, V8BindStaticFieldData*>    static_fields;
+    Map<String, V8BindPropertyData*>       properties;
+    Map<String, V8BindStaticPropertyData*> static_properties;
 
     ~V8BindWrapData()
     {
@@ -46,6 +54,14 @@ struct V8BindWrapData {
             SkrDelete(pair.value);
         }
         for (auto& pair : static_fields)
+        {
+            SkrDelete(pair.value);
+        }
+        for (auto& pair : properties)
+        {
+            SkrDelete(pair.value);
+        }
+        for (auto& pair : static_properties)
         {
             SkrDelete(pair.value);
         }

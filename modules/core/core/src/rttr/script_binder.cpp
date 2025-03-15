@@ -91,10 +91,23 @@ ScriptBinderPrimitive* _new_primitive()
 
     return result;
 }
+ScriptBinderPrimitive* _new_void()
+{
+    ScriptBinderPrimitive* result = SkrNew<ScriptBinderPrimitive>();
+
+    result->size      = 0;
+    result->alignment = 0;
+    result->type_id   = type_id_of<void>();
+    result->dtor      = nullptr;
+
+    return result;
+}
 ScriptBinderPrimitive* ScriptBinderManager::_make_primitive(GUID type_id)
 {
     switch (type_id.get_hash())
     {
+    case type_id_of<void>().get_hash():
+        return _new_void();
     case type_id_of<int8_t>().get_hash():
         return _new_primitive<int8_t>();
     case type_id_of<int16_t>().get_hash():
@@ -224,22 +237,94 @@ ScriptBinderWrap* ScriptBinderManager::_make_wrap(const RTTRType* type)
     // export methods
     type->each_method([&](const RTTRMethodData* method, const RTTRType* owner_type) {
         if (!flag_all(method->flag, ERTTRMethodFlag::ScriptVisible)) { return; }
-        auto& method_data   = result.methods.try_add_default(method->name).value();
-        auto& overload_data = method_data.overloads.add_default().ref();
-        if (!_make_method(overload_data, method, owner_type))
+
+        auto find_getter_result = method->attrs.find_if([&](const Any& attr) {
+            return attr.type_is<skr::attr::ScriptGetter>();
+        });
+        auto find_setter_result = method->attrs.find_if([&](const Any& attr) {
+            return attr.type_is<skr::attr::ScriptSetter>();
+        });
+
+        if (find_getter_result && find_setter_result)
         {
+            // TODO. error
             failed = true;
+            return;
+        }
+
+        if (find_getter_result)
+        {
+            String prop_name = find_getter_result.ref().cast<skr::attr::ScriptGetter>()->prop_name;
+            auto&  prop_data = result.properties.try_add_default(prop_name).value();
+            if (!_make_prop_getter(prop_data.getter, method, owner_type))
+            {
+                failed = true;
+            }
+        }
+        else if (find_setter_result)
+        {
+            String prop_name = find_setter_result.ref().cast<skr::attr::ScriptSetter>()->prop_name;
+            auto&  prop_data = result.properties.try_add_default(prop_name).value();
+            if (!_make_prop_setter(prop_data.setter, method, owner_type))
+            {
+                failed = true;
+            }
+        }
+        else
+        {
+            auto& method_data   = result.methods.try_add_default(method->name).value();
+            auto& overload_data = method_data.overloads.add_default().ref();
+
+            if (!_make_method(overload_data, method, owner_type))
+            {
+                failed = true;
+            }
         }
     });
 
     // export static methods
     type->each_static_method([&](const RTTRStaticMethodData* method, const RTTRType* owner_type) {
         if (!flag_all(method->flag, ERTTRStaticMethodFlag::ScriptVisible)) { return; }
-        auto& static_method_data = result.static_methods.try_add_default(method->name).value();
-        auto& overload_data      = static_method_data.overloads.add_default().ref();
-        if (!_make_static_method(overload_data, method, owner_type))
+        auto find_getter_result = method->attrs.find_if([&](const Any& attr) {
+            return attr.type_is<skr::attr::ScriptGetter>();
+        });
+        auto find_setter_result = method->attrs.find_if([&](const Any& attr) {
+            return attr.type_is<skr::attr::ScriptSetter>();
+        });
+
+        if (find_getter_result && find_setter_result)
         {
+            // TODO. error
             failed = true;
+            return;
+        }
+
+        if (find_getter_result)
+        {
+            String prop_name = find_getter_result.ref().cast<skr::attr::ScriptGetter>()->prop_name;
+            auto&  prop_data = result.static_properties.try_add_default(prop_name).value();
+            if (!_make_static_prop_getter(prop_data.getter, method, owner_type))
+            {
+                failed = true;
+            }
+        }
+        else if (find_setter_result)
+        {
+            String prop_name = find_setter_result.ref().cast<skr::attr::ScriptSetter>()->prop_name;
+            auto&  prop_data = result.static_properties.try_add_default(prop_name).value();
+            if (!_make_static_prop_setter(prop_data.setter, method, owner_type))
+            {
+                failed = true;
+            }
+        }
+        else
+        {
+            auto& static_method_data = result.static_methods.try_add_default(method->name).value();
+            auto& overload_data      = static_method_data.overloads.add_default().ref();
+            if (!_make_static_method(overload_data, method, owner_type))
+            {
+                failed = true;
+            }
         }
     });
 
@@ -310,6 +395,137 @@ bool ScriptBinderManager::_make_static_method(ScriptBinderStaticMethod::Overload
     failed |= !_make_return(out.return_binder, static_method->name, static_method->ret_type.view(), owner);
 
     return !failed;
+}
+bool ScriptBinderManager::_make_prop_getter(ScriptBinderMethod& out, const RTTRMethodData* method, const RTTRType* owner)
+{
+    // check param count
+    if (method->param_data.size() != 0)
+    {
+        // TODO. error
+        return false;
+    }
+
+    // check return type
+    TypeSignatureTyped<void> void_signature;
+    if (method->ret_type.view().equal(void_signature))
+    {
+        // TODO. error
+        return false;
+    }
+
+    // check conflict
+    if (!out.overloads.is_empty())
+    {
+        // TODO. error
+        return false;
+    }
+
+    // fill data
+    if (!_make_method(out.overloads.add_default().ref(), method, owner))
+    {
+        // TODO. error
+        return false;
+    }
+
+    return true;
+}
+bool ScriptBinderManager::_make_prop_setter(ScriptBinderMethod& out, const RTTRMethodData* method, const RTTRType* owner)
+{
+    // check param count
+    if (method->param_data.size() != 1)
+    {
+        // TODO. error
+        return false;
+    }
+
+    // check return type
+    TypeSignatureTyped<void> void_signature;
+    if (!method->ret_type.view().equal(void_signature))
+    {
+        // TODO. error
+        return false;
+    }
+
+    // check conflict
+    if (!out.overloads.is_empty())
+    {
+        // TODO. error
+        return false;
+    }
+
+    // fill data
+    if (!_make_method(out.overloads.add_default().ref(), method, owner))
+    {
+        // TODO. error
+        return false;
+    }
+
+    return true;
+}
+bool ScriptBinderManager::_make_static_prop_getter(ScriptBinderStaticMethod& out, const RTTRStaticMethodData* method, const RTTRType* owner)
+{
+    // check param count
+    if (method->param_data.size() != 0)
+    {
+        // TODO. error
+        return false;
+    }
+
+    // check return type
+    TypeSignatureTyped<void> void_signature;
+    if (method->ret_type.view().equal(void_signature))
+    {
+        // TODO. error
+        return false;
+    }
+
+    // check conflict
+    if (!out.overloads.is_empty())
+    {
+        // TODO. error
+        return false;
+    }
+
+    // fill data
+    if (!_make_static_method(out.overloads.add_default().ref(), method, owner))
+    {
+        // TODO. error
+        return false;
+    }
+    return true;
+}
+bool ScriptBinderManager::_make_static_prop_setter(ScriptBinderStaticMethod& out, const RTTRStaticMethodData* method, const RTTRType* owner)
+{
+    // check param count
+    if (method->param_data.size() != 1)
+    {
+        // TODO. error
+        return false;
+    }
+
+    // check return type
+    TypeSignatureTyped<void> void_signature;
+    if (!method->ret_type.view().equal(void_signature))
+    {
+        // TODO. error
+        return false;
+    }
+
+    // check conflict
+    if (!out.overloads.is_empty())
+    {
+        // TODO. error
+        return false;
+    }
+
+    // fill data
+    if (!_make_static_method(out.overloads.add_default().ref(), method, owner))
+    {
+        // TODO. error
+        return false;
+    }
+
+    return true;
 }
 bool ScriptBinderManager::_make_field(ScriptBinderField& out, const RTTRFieldData* field, const RTTRType* owner)
 {
@@ -518,7 +734,7 @@ EScriptBindFailed ScriptBinderManager::_try_export_field(TypeSignatureView signa
         signature.read_type_id(field_type_id);
 
         // export wrap type
-        ScriptBinderRoot out_binder = get_or_build(field_type_id);
+        out_binder = get_or_build(field_type_id);
         if (!out_binder.is_wrap())
         {
             return EScriptBindFailed::ExportPointerFieldOfPrimitiveOrBox;
@@ -532,12 +748,12 @@ EScriptBindFailed ScriptBinderManager::_try_export_field(TypeSignatureView signa
         signature.read_type_id(field_type_id);
 
         // export primitive type
-        ScriptBinderRoot field_binder = get_or_build(field_type_id);
-        if (field_binder.is_empty())
+        out_binder = get_or_build(field_type_id);
+        if (out_binder.is_empty())
         {
             return EScriptBindFailed::Unknown;
         }
-        else if (field_binder.is_wrap())
+        else if (out_binder.is_wrap())
         {
             return EScriptBindFailed::ExportWrapByValue;
         }
@@ -569,8 +785,8 @@ void ScriptBinderManager::_err_field(StringView field_name, StringView owner_nam
     if (err == EScriptBindFailed::None) { return; }
     SKR_LOG_FMT_ERROR(
         u8"failed export field {}::{} use box mode\n\treason: {}",
-        field_name,
         owner_name,
+        field_name,
         _err_string(err)
     );
 }

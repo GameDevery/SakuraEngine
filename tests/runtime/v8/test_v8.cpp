@@ -50,6 +50,12 @@ int main(int argc, char* argv[])
 
             TestType.static_value = test.pos.x * 10000 + test.pos.y * 100 + test.pos.z;
             TestType.print_static_value();
+
+            let fuck_str = test.prop_fuck
+            test.prop_fuck = `"${fuck_str}, ${test.value}"`
+
+            let shit_val = TestType.prop_shit
+            TestType.prop_shit = shit_val * 100
         }
     )__");
 
