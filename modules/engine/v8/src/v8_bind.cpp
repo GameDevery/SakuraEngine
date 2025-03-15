@@ -427,7 +427,6 @@ v8::Local<v8::Value> get_field(
 bool call_native(
     const ScriptBinderCtor&                        binder,
     const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
-    MethodInvokerDynamicStack                      invoker,
     void*                                          obj
 )
 {
@@ -445,15 +444,15 @@ bool call_native(
 
     // invoke
     native_stack.return_behaviour_discard();
-    invoker(obj, native_stack);
+    binder.data->dynamic_stack_invoke(obj, native_stack);
 
     return true;
 }
 bool call_native(
     const ScriptBinderMethod&                      binder,
     const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
-    MethodInvokerDynamicStack                      invoker,
-    void*                                          obj
+    void*                                          obj,
+    const RTTRType*                                obj_type
 )
 {
     for (const auto& overload : binder.overloads)
@@ -472,9 +471,12 @@ bool call_native(
             );
         }
 
+        // cast
+        void* owner_address = obj_type->cast_to_base(overload.owner->type_id(), obj);
+
         // invoke
         native_stack.return_behaviour_store();
-        overload.data->dynamic_stack_invoke(obj, native_stack);
+        overload.data->dynamic_stack_invoke(owner_address, native_stack);
 
         // read return
         if (native_stack.is_return_stored())
@@ -493,8 +495,7 @@ bool call_native(
 }
 bool call_native(
     const ScriptBinderStaticMethod&                binder,
-    const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
-    FuncInvokerDynamicStack                        invoker
+    const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack
 )
 {
     for (const auto& overload : binder.overloads)

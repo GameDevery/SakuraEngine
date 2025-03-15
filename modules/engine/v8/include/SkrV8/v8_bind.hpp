@@ -224,19 +224,17 @@ v8::Local<v8::Value> get_field(
 bool call_native(
     const ScriptBinderCtor&                        binder,
     const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
-    MethodInvokerDynamicStack                      invoker,
     void*                                          obj
 );
 bool call_native(
     const ScriptBinderMethod&                      binder,
     const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
-    MethodInvokerDynamicStack                      invoker,
-    void*                                          obj
+    void*                                          obj,
+    const RTTRType*                                obj_type
 );
 bool call_native(
     const ScriptBinderStaticMethod&                binder,
-    const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
-    FuncInvokerDynamicStack                        invoker
+    const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack
 );
 } // namespace skr::v8_bind
 

@@ -1,4 +1,5 @@
 #pragma once
+#include "SkrRTTR/script_binder.hpp"
 #include "v8-persistent-handle.h"
 #include "v8-template.h"
 #include "SkrRTTR/type.hpp"
@@ -8,43 +9,23 @@ namespace skr
 {
 //===============================bind data===============================
 struct V8BindMethodData {
-    struct OverloadInfo {
-        const skr::RTTRType*       owner_type;
-        const skr::RTTRMethodData* method;
-    };
-
-    // native info
-    String               name;
-    Vector<OverloadInfo> overloads;
+    ScriptBinderMethod binder;
 };
 struct V8BindStaticMethodData {
-    struct OverloadInfo {
-        const skr::RTTRType*             owner_type;
-        const skr::RTTRStaticMethodData* method;
-    };
-
-    // native info
-    String               name;
-    Vector<OverloadInfo> overloads;
+    ScriptBinderStaticMethod binder;
 };
 struct V8BindFieldData {
-    // native info
-    String                    name;
-    const skr::RTTRType*      owner_type;
-    const skr::RTTRFieldData* field;
+    ScriptBinderField binder;
 };
 struct V8BindStaticFieldData {
-    // native info
-    String                          name;
-    const skr::RTTRType*            owner_type;
-    const skr::RTTRStaticFieldData* field;
+    ScriptBinderStaticField binder;
 };
 struct V8BindWrapData {
     // v8 info
     ::v8::Global<::v8::FunctionTemplate> ctor_template;
 
     // native info
-    skr::RTTRType*                       type;
+    ScriptBinderWrap*                    binder;
     Map<String, V8BindMethodData*>       methods;
     Map<String, V8BindFieldData*>        fields;
     Map<String, V8BindStaticMethodData*> static_methods;
@@ -74,8 +55,9 @@ struct V8BindWrapData {
 //===============================bind core===============================
 struct V8BindRecordCore {
     // native info
-    skr::ScriptbleObject* object;
-    skr::RTTRType*        type;
+    skr::ScriptbleObject* object      = nullptr;
+    void*                 object_head = nullptr;
+    const skr::RTTRType*  type        = nullptr;
 
     // v8 info
     ::v8::Persistent<::v8::Object> v8_object;

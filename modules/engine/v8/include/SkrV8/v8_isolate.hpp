@@ -1,6 +1,7 @@
 #pragma once
 #include "SkrBase/config.h"
 #include "SkrContainers/map.hpp"
+#include "SkrRTTR/script_binder.hpp"
 #include "v8-isolate.h"
 #include "v8-platform.h"
 #include "v8_bind_data.hpp"
@@ -60,12 +61,15 @@ private:
     ::v8::Isolate*              _isolate;
     ::v8::Isolate::CreateParams _isolate_create_params;
 
+    // binder manager
+    ScriptBinderManager _binder_mgr;
+
     // templates
     Map<::skr::RTTRType*, V8BindWrapData*> _record_templates;
 
     // bind data
     Map<::skr::ScriptbleObject*, V8BindRecordCore*> _alive_records;
-    Vector<V8BindRecordCore*>                             _deleted_records;
+    Vector<V8BindRecordCore*>                       _deleted_records;
 };
 } // namespace skr
 
