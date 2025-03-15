@@ -1,7 +1,6 @@
 #include "SkrV8/v8_isolate.hpp"
 #include "SkrContainers/set.hpp"
 #include "SkrCore/log.hpp"
-#include "SkrV8/v8_bind_tools.hpp"
 #include "SkrV8/v8_bind_data.hpp"
 #include "libplatform/libplatform.h"
 #include "v8-initialization.h"
@@ -9,6 +8,7 @@
 #include "v8-template.h"
 #include "v8-external.h"
 #include "v8-function.h"
+#include "SkrV8/v8_bind.hpp"
 
 // allocator
 namespace skr

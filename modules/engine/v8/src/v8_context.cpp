@@ -1,7 +1,7 @@
 #include "SkrV8/v8_context.hpp"
 #include "SkrCore/log.hpp"
 #include "SkrV8/v8_isolate.hpp"
-#include "SkrV8/v8_bind_tools.hpp"
+#include "SkrV8/v8_bind.hpp"
 
 namespace skr
 {
