@@ -400,6 +400,9 @@ bool ScriptBinderManager::_make_param(ScriptBinderParam& out, StringView method_
     // get binder
     out.binder = get_or_build(param_type_id);
 
+    // solve dynamic stack kind
+    out.pass_by_ref = is_decayed_pointer;
+
     // check bad binder
     if (out.binder.is_empty())
     {
@@ -450,6 +453,7 @@ bool ScriptBinderManager::_make_return(ScriptBinderReturn& out, StringView metho
     bool is_pointer         = signature.is_pointer();
     bool is_decayed_pointer = signature.is_decayed_pointer();
     out.is_nullable         = is_pointer;
+    out.pass_by_ref         = is_decayed_pointer;
 
     // read type id
     skr::GUID param_type_id;

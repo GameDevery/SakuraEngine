@@ -129,11 +129,13 @@ struct ScriptBinderStaticField {
 // nested binder, method & static method
 struct ScriptBinderParam {
     ScriptBinderRoot binder      = {};
-    bool             is_inout    = false;
+    bool             pass_by_ref = false;
+    bool             is_inout    = false; // TODO. use flag resolve
     bool             is_nullable = false;
 };
 struct ScriptBinderReturn {
     ScriptBinderRoot binder      = {};
+    bool             pass_by_ref = false;
     bool             is_nullable = false;
 };
 struct ScriptBinderMethod {

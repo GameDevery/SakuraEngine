@@ -197,7 +197,50 @@ inline static bool to_native(v8::Local<v8::Value> v8_value, skr::String& out_v)
 }
 } // namespace skr::v8_bind
 
-// translate use ScriptBinderRoot
+// top-level functional
+namespace skr::v8_bind
+{
+// field tools
+bool set_field(
+    const ScriptBinderField& binder,
+    v8::Local<v8::Value>     v8_value,
+    void*                    obj,
+    const RTTRType*          obj_type
+);
+bool set_field(
+    const ScriptBinderStaticField& binder,
+    v8::Local<v8::Value>           v8_value
+);
+v8::Local<v8::Value> get_field(
+    const ScriptBinderField& binder,
+    const void*              obj,
+    const RTTRType*          obj_type
+);
+v8::Local<v8::Value> get_field(
+    const ScriptBinderStaticField& binder
+);
+
+// call native
+bool call_native(
+    const ScriptBinderCtor&                        binder,
+    const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
+    MethodInvokerDynamicStack                      invoker,
+    void*                                          obj
+);
+bool call_native(
+    const ScriptBinderMethod&                      binder,
+    const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
+    MethodInvokerDynamicStack                      invoker,
+    void*                                          obj
+);
+bool call_native(
+    const ScriptBinderStaticMethod&                binder,
+    const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
+    FuncInvokerDynamicStack                        invoker
+);
+} // namespace skr::v8_bind
+
+// raw convert and match
 namespace skr::v8_bind
 {
 // convert
@@ -206,50 +249,35 @@ v8::Local<v8::Value> to_v8(
     void*            native_data
 );
 bool to_native(
-    ScriptBinderRoot     suggestion,
+    ScriptBinderRoot     binder,
     void*                native_data,
     v8::Local<v8::Value> v8_value,
     bool                 is_init
 );
 
-// field read write
-bool assign_field(
-    void*                    obj,
-    RTTRType*                type,
+// match type
+bool match(
+    ScriptBinderRoot     binder,
+    v8::Local<v8::Value> v8_value
+);
+bool match(
+    const ScriptBinderParam& binder,
+    v8::Local<v8::Value>     v8_value
+);
+bool match(
+    const ScriptBinderReturn& binder,
+    v8::Local<v8::Value>      v8_value
+);
+bool match(
     const ScriptBinderField& binder,
     v8::Local<v8::Value>     v8_value
 );
-bool assign_field(
+bool match(
     const ScriptBinderStaticField& binder,
     v8::Local<v8::Value>           v8_value
 );
-
-// call native
-bool call_native(
-    void*                                          obj,
-    MethodInvokerDynamicStack                      invoker,
-    DynamicStack&                                  stack,
-    const ScriptBinderMethod&                      binder,
-    const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack
-);
-bool call_native(
-    FuncInvokerDynamicStack                        invoker,
-    DynamicStack&                                  stack,
-    const ScriptBinderStaticMethod&                binder,
-    const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack
-);
-// TODO. ctor
-
-// match type
 bool match(
-    v8::Local<v8::Value> v8_value,
-    ScriptBinderRoot     binder
+    const Vector<ScriptBinderParam>&               param_binders,
+    const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack
 );
-
-// param match
-bool match_param(
-    v8::Local<v8::Value>     v8_value,
-    const ScriptBinderParam& binder
-);
-
 } // namespace skr::v8_bind
