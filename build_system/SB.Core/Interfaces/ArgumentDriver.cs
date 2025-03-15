@@ -95,7 +95,7 @@ namespace SB.Core
             return Args;
         }
 
-        public string CompileCommands(string directory)
+        public string CompileCommands(ICompiler Compiler, string directory)
         {
             CompileCommand compile_commands = new CompileCommand
             {
@@ -103,6 +103,7 @@ namespace SB.Core
                 arguments = CalculateArguments().Values.SelectMany(x => x).ToList(),
                 file = Arguments["Source"] as string
             };
+            compile_commands.arguments.Insert(0, Compiler.ExecutablePath);
             return Json.Serialize(compile_commands);
         }
 

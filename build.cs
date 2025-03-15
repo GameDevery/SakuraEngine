@@ -15,6 +15,8 @@ BuildSystem.AddTaskEmitter("Cpp.Link", new CppLinkEmitter(Toolchain))
     .AddDependency("Cpp.Link", DependencyModel.ExternalTarget)
     .AddDependency("Cpp.Compile", DependencyModel.PerTarget);
 
+var CompileCommandsEmitter = new CompileCommandsEmitter(Toolchain);
+BuildSystem.AddTaskEmitter("Cpp.CompileCommands", CompileCommandsEmitter);
 
 BuildSystem.Target("TestTarget")
     .TargetType(TargetType.Static)
@@ -72,9 +74,12 @@ await ToolchainInitializeTask;
 await DBInitializeTask;
 BuildSystem.RunBuild();
 
+CompileCommandsEmitter.WriteToFile(Path.Combine(SourceLocation.Directory(), ".vscode/compile_commands.json"));
+
 sw.Stop();
 
 Log.Information($"Total: {sw.ElapsedMilliseconds / 1000.0f}s");
+Log.Information($"Compile Commands Total: {CompileCommandsEmitter.Time / 1000.0f}s");
 Log.Information($"Compile Total: {CppCompileEmitter.Time / 1000.0f}s");
 Log.Information($"Link Total: {CppLinkEmitter.Time / 1000.0f}s");
 Log.CloseAndFlush();

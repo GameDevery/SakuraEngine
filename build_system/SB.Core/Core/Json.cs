@@ -6,6 +6,7 @@ using System.Text.Json.Serialization.Metadata;
 
 namespace SB.Core
 {
+    [JsonSerializable(typeof(CompileCommand))]
     [JsonSerializable(typeof(DateTime))]
     [JsonSerializable(typeof(Depend))]
     [JsonSerializable(typeof(CLDependenciesData))]

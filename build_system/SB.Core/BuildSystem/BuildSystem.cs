@@ -181,7 +181,7 @@ namespace SB
                                 sw.Stop();
 
                                 Log.Verbose("[{Percentage:00.0}%][{FileTaskIndex}/{FileTaskCount}]: {EmitterName} {TargetName}: {FileName}", Percentage, FileTaskIndex, FileTaskCount, EmitterName, Target.Name, File);
-                                if (!FileTaskArtifact.IsRestored)
+                                if (FileTaskArtifact is not null && !FileTaskArtifact.IsRestored)
                                 {
                                     var CostTime = sw.ElapsedMilliseconds;
                                     Log.Information("[{Percentage:00.0}%][{FileTaskIndex}/{FileTaskCount}]: {EmitterName} {TargetName}: {FileName}, cost {CostTime:00.00}s", 

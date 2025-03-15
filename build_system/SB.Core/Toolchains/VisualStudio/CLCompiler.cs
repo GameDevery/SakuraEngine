@@ -27,7 +27,7 @@ namespace SB.Core
         public CLCompiler(string ExePath, Dictionary<string, string?> Env)
         {
             VCEnvVariables = Env;
-            this.ExePath = ExePath;
+            this.ExecutablePath = ExePath;
 
             if (!File.Exists(ExePath))
                 throw new ArgumentException($"CLCompiler: ExePath: {ExePath} is not an existed absolute path!");
@@ -73,7 +73,7 @@ namespace SB.Core
                 {
                     StartInfo = new ProcessStartInfo
                     {
-                        FileName = ExePath,
+                        FileName = ExecutablePath,
                         RedirectStandardInput = false,
                         RedirectStandardOutput = true,
                         RedirectStandardError = true,
@@ -130,6 +130,6 @@ namespace SB.Core
         public readonly Dictionary<string, string?> VCEnvVariables;
         private readonly Task<Version> CLVersionTask;
         private Version CLVersion;
-        private readonly string ExePath;
+        public string ExecutablePath { get; }
     }
 }
