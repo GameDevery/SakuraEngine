@@ -17,7 +17,7 @@ namespace SB
             var SourceDependencies = Path.Combine(Target.GetStorePath(BuildSystem.DepsStore), BuildSystem.GetUniqueTempFileName(SourceFile, Target.Name + this.Name, "source.deps.json"));
             var ObjectFile = GetObjectFilePath(Target, SourceFile);
 
-            var CLDriver = (new CLArgumentDriver() as IArgumentDriver)
+            var CLDriver = Toolchain.Compiler.CreateArgumentDriver()
                 .AddArguments(Target.Arguments)
                 .AddArgument("Source", SourceFile)
                 .AddArgument("Object", ObjectFile)

@@ -30,7 +30,7 @@ public static class Luau
                     .TargetType(TargetType.Static)
                     .Require("Luau", Config)
                     .Depend(Visibility.Public, "Luau@Common")
-                    .Defines(Visibility.Public, "LUA_USE_LONGJMP=1", "LUA_API=extern \"C\"")
+                    .Defines(Visibility.Public, "LUA_USE_LONGJMP=1", "LUA_API=extern\\\"C\\\"")
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/luau/VM/include"))
                     .AddFiles("port/luau/VM/src/**.cpp")
                     .CppFlags(Visibility.Public, "-fno-math-errno");
@@ -69,7 +69,7 @@ public static class Luau
                     .TargetType(TargetType.Static)
                     .Require("Luau", Config)
                     .Depend(Visibility.Public, "Luau@Ast")
-                    .Defines(Visibility.Public, "LUACODE_API=extern \"C\"")
+                    .Defines(Visibility.Public, "LUACODE_API=extern\\\"C\\\"")
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/luau/Compiler/include"))
                     .AddFiles("port/luau/Compiler/src/**.cpp");
             });

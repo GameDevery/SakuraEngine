@@ -1,36 +1,20 @@
-﻿using Serilog;
+using Serilog;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 
 namespace SB.Core
 {
-    using VS = VisualStudio;
-    public struct CLDependenciesData
+    public class ClangCLCompiler : ICompiler
     {
-        public string Source { get; set; }
-        public string ProvidedModule { get; set; }
-        public string[] Includes { get; set; }
-        public string[] ImportedModules { get; set; }
-        public string[] ImportedHeaderUnits { get; set; }
-    }
-
-    public struct CLDependencies
-    {
-        public Version Version { get; set; }
-        public CLDependenciesData Data { get; set; }
-    }
-
-    public class CLCompiler : ICompiler
-    {
-        public CLCompiler(string ExePath, Dictionary<string, string?> Env)
+        public ClangCLCompiler(string ExePath, Dictionary<string, string?> Env)
         {
             VCEnvVariables = Env;
             this.ExecutablePath = ExePath;
 
             if (!File.Exists(ExePath))
-                throw new ArgumentException($"CLCompiler: ExePath: {ExePath} is not an existed absolute path!");
+                throw new ArgumentException($"ClangCLCompiler: ExePath: {ExePath} is not an existed absolute path!");
 
-            this.CLVersionTask = Task.Run(() =>
+            this.ClangCLVersionTask = Task.Run(() =>
             {
                 Process compiler = new Process
                 {
@@ -38,24 +22,26 @@ namespace SB.Core
                     {
                         FileName = ExePath,
                         RedirectStandardError = true,
+                        RedirectStandardOutput = true,
                         CreateNoWindow = true,
-                        UseShellExecute = false
+                        UseShellExecute = false,
+                        Arguments = "--version"
                     }
                 };
                 compiler.Start();
-                var Output = compiler.StandardError.ReadToEnd();
+                var Output = compiler.StandardOutput.ReadToEnd();
                 compiler.WaitForExit();
-                // FUCK YOU MICROSOFT THIS IS WEIRD
+
                 Regex pattern = new Regex(@"\d+(\.\d+)+");
-                var CLVersion = Version.Parse(pattern.Match(Output).Value);
-                Log.Information("CL.exe version ... {CLVersion}", CLVersion);
-                return CLVersion;
+                var ClangCLVersion = Version.Parse(pattern.Match(Output).Value);
+                Log.Information("clang-cl.exe version ... {ClangCLVersion}", ClangCLVersion);
+                return ClangCLVersion;
             });
         }
 
         public IArgumentDriver CreateArgumentDriver()
         {
-            return new CLArgumentDriver();
+            return new ClangCLArgumentDriver();
         }
 
         public CompileResult Compile(string TargetName, string EmitterName, IArgumentDriver Driver)
@@ -63,7 +49,7 @@ namespace SB.Core
             var CompilerArgsDict = Driver.CalculateArguments();
             var CompilerArgsList = CompilerArgsDict.Values.SelectMany(x => x).ToList();
             var DependArgsList = CompilerArgsList.ToList();
-            DependArgsList.Add($"COMPILER:ID={ExecutablePath}");
+            DependArgsList.Add($"COMPILER:ID=ClangCL.exe");
             DependArgsList.Add($"COMPILER:VERSION={Version}");
             DependArgsList.Add($"ENV:VCToolsVersion={VCEnvVariables["VCToolsVersion"]}");
             DependArgsList.Add($"ENV:WindowsSDKVersion={VCEnvVariables["WindowsSDKVersion"]}");
@@ -95,21 +81,26 @@ namespace SB.Core
                 var ErrorInfo = compiler.StandardError.ReadToEnd();
                 var OutputInfo = compiler.StandardOutput.ReadToEnd();
                 compiler.WaitForExit();
-
+            
                 // FUCK YOU MICROSOFT THIS IS WEIRD
                 if (compiler.ExitCode != 0)
                 {
-                    throw new TaskFatalError($"Compile {SourceFile} failed with fatal error!", $"CL.exe: {OutputInfo}");
+                    throw new TaskFatalError($"Compile {SourceFile} failed with fatal error!", $"clang-cl.exe: {ErrorInfo}");
                 }
                 else
                 {
-                    var clDepFilePath = Driver.Arguments["SourceDependencies"] as string;
-                    var clDeps = Json.Deserialize<CLDependencies>(File.ReadAllText(clDepFilePath));
-                    depend.ExternalFiles.AddRange(clDeps.Data.Includes);
+                    var DepFilePath = Driver.Arguments["SourceDependencies"] as string;
+                    // line0: {target}.o: {target}.cpp \
+                    // line1~n: {include_file} \
+                    var AllLines = File.ReadAllLines(DepFilePath).Select(
+                        x => x.Replace("\\ ", " ").Replace(" \\", "").Trim()
+                    ).ToArray();
+                    var DepIncludes = new Span<string>(AllLines, 1, AllLines.Length - 1);
+                    depend.ExternalFiles.AddRange(DepIncludes);
                 }
 
                 if (OutputInfo.Contains("warning"))
-                    Log.Warning("CL.exe: {OutputInfo}", OutputInfo);
+                    Log.Warning("clang-cl.exe: {OutputInfo}", OutputInfo);
 
                 depend.ExternalFiles.Add(ObjectFile);
             }, new List<string> { SourceFile }, DependArgsList);
@@ -126,14 +117,14 @@ namespace SB.Core
         {
             get
             {
-                if (!CLVersionTask.IsCompleted)
-                    CLVersionTask.Wait();
-                return CLVersionTask.Result;
+                if (!ClangCLVersionTask.IsCompleted)
+                    ClangCLVersionTask.Wait();
+                return ClangCLVersionTask.Result;
             }
         }
 
         public readonly Dictionary<string, string?> VCEnvVariables;
-        private readonly Task<Version> CLVersionTask;
+        private readonly Task<Version> ClangCLVersionTask;
         public string ExecutablePath { get; }
     }
 }
