@@ -3,40 +3,200 @@
 #include "SkrRTTR/script_binder.hpp"
 #include "v8_isolate.hpp"
 
-// to v8
-namespace skr::v8_bind
+namespace skr
 {
-inline static v8::Local<v8::Value> to_v8(int32_t v)
+struct V8Bind {
+    // primitive to v8
+    static v8::Local<v8::Value>  to_v8(int32_t v);
+    static v8::Local<v8::Value>  to_v8(int64_t v);
+    static v8::Local<v8::Value>  to_v8(uint32_t v);
+    static v8::Local<v8::Value>  to_v8(uint64_t v);
+    static v8::Local<v8::Value>  to_v8(double v);
+    static v8::Local<v8::Value>  to_v8(bool v);
+    static v8::Local<v8::String> to_v8(StringView view, bool as_literal = false);
+
+    // primitive to native
+    static bool to_native(v8::Local<v8::Value> v8_value, int8_t& out_v);
+    static bool to_native(v8::Local<v8::Value> v8_value, int16_t& out_v);
+    static bool to_native(v8::Local<v8::Value> v8_value, int32_t& out_v);
+    static bool to_native(v8::Local<v8::Value> v8_value, int64_t& out_v);
+    static bool to_native(v8::Local<v8::Value> v8_value, uint8_t& out_v);
+    static bool to_native(v8::Local<v8::Value> v8_value, uint16_t& out_v);
+    static bool to_native(v8::Local<v8::Value> v8_value, uint32_t& out_v);
+    static bool to_native(v8::Local<v8::Value> v8_value, uint64_t& out_v);
+    static bool to_native(v8::Local<v8::Value> v8_value, float& out_v);
+    static bool to_native(v8::Local<v8::Value> v8_value, double& out_v);
+    static bool to_native(v8::Local<v8::Value> v8_value, bool& out_v);
+    static bool to_native(v8::Local<v8::Value> v8_value, skr::String& out_v);
+
+    // field tools
+    static bool set_field(
+        const ScriptBinderField& binder,
+        v8::Local<v8::Value>     v8_value,
+        void*                    obj,
+        const RTTRType*          obj_type
+    );
+    static bool set_field(
+        const ScriptBinderStaticField& binder,
+        v8::Local<v8::Value>           v8_value
+    );
+    static v8::Local<v8::Value> get_field(
+        const ScriptBinderField& binder,
+        const void*              obj,
+        const RTTRType*          obj_type
+    );
+    static v8::Local<v8::Value> get_field(
+        const ScriptBinderStaticField& binder
+    );
+
+    // call native
+    static bool call_native(
+        const ScriptBinderCtor&                        binder,
+        const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
+        void*                                          obj
+    );
+    static bool call_native(
+        const ScriptBinderMethod&                      binder,
+        const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
+        void*                                          obj,
+        const RTTRType*                                obj_type
+    );
+    static bool call_native(
+        const ScriptBinderStaticMethod&                binder,
+        const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack
+    );
+
+    // convert
+    static v8::Local<v8::Value> to_v8(
+        ScriptBinderRoot binder,
+        void*            native_data
+    );
+    static bool to_native(
+        ScriptBinderRoot     binder,
+        void*                native_data,
+        v8::Local<v8::Value> v8_value,
+        bool                 is_init
+    );
+
+    // match type
+    static bool match(
+        ScriptBinderRoot     binder,
+        v8::Local<v8::Value> v8_value
+    );
+    static bool match(
+        const ScriptBinderParam& binder,
+        v8::Local<v8::Value>     v8_value
+    );
+    static bool match(
+        const ScriptBinderReturn& binder,
+        v8::Local<v8::Value>      v8_value
+    );
+    static bool match(
+        const ScriptBinderField& binder,
+        v8::Local<v8::Value>     v8_value
+    );
+    static bool match(
+        const ScriptBinderStaticField& binder,
+        v8::Local<v8::Value>           v8_value
+    );
+    static bool match(
+        const Vector<ScriptBinderParam>&               param_binders,
+        const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack
+    );
+
+private:
+    // util helpers
+    static void* _get_field_address(
+        const RTTRFieldData* field,
+        const RTTRType*      field_owner,
+        const RTTRType*      obj_type,
+        void*                obj
+    );
+
+    // match helper
+    static bool _match_primitive(const ScriptBinderPrimitive& binder, v8::Local<v8::Value> v8_value);
+    static bool _match_box(const ScriptBinderBox& binder, v8::Local<v8::Value> v8_value);
+    static bool _match_wrap(const ScriptBinderWrap& binder, v8::Local<v8::Value> v8_value);
+
+    // convert helper
+    static v8::Local<v8::Value> _to_v8_primitive(
+        const ScriptBinderPrimitive& binder,
+        void*                        native_data
+    );
+    static bool _to_native_primitive(
+        const ScriptBinderPrimitive& binder,
+        v8::Local<v8::Value>         v8_value,
+        void*                        native_data,
+        bool                         is_init
+    );
+    static v8::Local<v8::Value> _to_v8_box(
+        const ScriptBinderBox& binder,
+        void*                  obj
+    );
+    static bool _to_native_box(
+        const ScriptBinderBox& binder,
+        v8::Local<v8::Value>   v8_value,
+        void*                  native_data,
+        bool                   is_init
+    );
+    static v8::Local<v8::Value> _to_v8_wrap(
+        const ScriptBinderWrap& binder,
+        void*                   native_data
+    );
+    static bool _to_native_wrap(
+        const ScriptBinderWrap& binder,
+        v8::Local<v8::Value>    v8_value,
+        void*                   native_data,
+        bool                    is_init
+    );
+
+    // invoker helper
+    static void _push_param(
+        DynamicStack&            stack,
+        const ScriptBinderParam& param_binder,
+        v8::Local<v8::Value>     v8_value
+    );
+    static v8::Local<v8::Value> read_return(
+        DynamicStack&             stack,
+        const ScriptBinderReturn& return_binder
+    );
+};
+} // namespace skr
+
+// to v8
+namespace skr
+{
+inline v8::Local<v8::Value> V8Bind::to_v8(int32_t v)
 {
     auto isolate = v8::Isolate::GetCurrent();
     return v8::Integer::New(isolate, v);
 }
-inline static v8::Local<v8::Value> to_v8(int64_t v)
+inline v8::Local<v8::Value> V8Bind::to_v8(int64_t v)
 {
     auto isolate = v8::Isolate::GetCurrent();
     return v8::BigInt::New(isolate, v);
 }
-inline static v8::Local<v8::Value> to_v8(uint32_t v)
+inline v8::Local<v8::Value> V8Bind::to_v8(uint32_t v)
 {
     auto isolate = v8::Isolate::GetCurrent();
     return v8::Integer::NewFromUnsigned(isolate, v);
 }
-inline static v8::Local<v8::Value> to_v8(uint64_t v)
+inline v8::Local<v8::Value> V8Bind::to_v8(uint64_t v)
 {
     auto isolate = v8::Isolate::GetCurrent();
     return v8::BigInt::NewFromUnsigned(isolate, v);
 }
-inline static v8::Local<v8::Value> to_v8(double v)
+inline v8::Local<v8::Value> V8Bind::to_v8(double v)
 {
     auto isolate = v8::Isolate::GetCurrent();
     return v8::Number::New(isolate, v);
 }
-inline static v8::Local<v8::Value> to_v8(bool v)
+inline v8::Local<v8::Value> V8Bind::to_v8(bool v)
 {
     auto isolate = v8::Isolate::GetCurrent();
     return v8::Boolean::New(isolate, v);
 }
-inline static v8::Local<v8::String> to_v8(StringView view, bool as_literal = false)
+inline v8::Local<v8::String> V8Bind::to_v8(StringView view, bool as_literal)
 {
     auto isolate = v8::Isolate::GetCurrent();
     // clang-format off
@@ -48,12 +208,12 @@ inline static v8::Local<v8::String> to_v8(StringView view, bool as_literal = fal
     ).ToLocalChecked();
     // clang-format on
 }
-} // namespace skr::v8_bind
+} // namespace skr
 
 // to native
-namespace skr::v8_bind
+namespace skr
 {
-inline static bool to_native(v8::Local<v8::Value> v8_value, int8_t& out_v)
+inline bool V8Bind::to_native(v8::Local<v8::Value> v8_value, int8_t& out_v)
 {
     auto isolate = v8::Isolate::GetCurrent();
     auto context = isolate->GetCurrentContext();
@@ -65,7 +225,7 @@ inline static bool to_native(v8::Local<v8::Value> v8_value, int8_t& out_v)
     }
     return false;
 }
-inline static bool to_native(v8::Local<v8::Value> v8_value, int16_t& out_v)
+inline bool V8Bind::to_native(v8::Local<v8::Value> v8_value, int16_t& out_v)
 {
     auto isolate = v8::Isolate::GetCurrent();
     auto context = isolate->GetCurrentContext();
@@ -77,7 +237,7 @@ inline static bool to_native(v8::Local<v8::Value> v8_value, int16_t& out_v)
     }
     return false;
 }
-inline static bool to_native(v8::Local<v8::Value> v8_value, int32_t& out_v)
+inline bool V8Bind::to_native(v8::Local<v8::Value> v8_value, int32_t& out_v)
 {
     auto isolate = v8::Isolate::GetCurrent();
     auto context = isolate->GetCurrentContext();
@@ -89,7 +249,7 @@ inline static bool to_native(v8::Local<v8::Value> v8_value, int32_t& out_v)
     }
     return false;
 }
-inline static bool to_native(v8::Local<v8::Value> v8_value, int64_t& out_v)
+inline bool V8Bind::to_native(v8::Local<v8::Value> v8_value, int64_t& out_v)
 {
     auto isolate = v8::Isolate::GetCurrent();
     auto context = isolate->GetCurrentContext();
@@ -101,7 +261,7 @@ inline static bool to_native(v8::Local<v8::Value> v8_value, int64_t& out_v)
     }
     return false;
 }
-inline static bool to_native(v8::Local<v8::Value> v8_value, uint8_t& out_v)
+inline bool V8Bind::to_native(v8::Local<v8::Value> v8_value, uint8_t& out_v)
 {
     auto isolate = v8::Isolate::GetCurrent();
     auto context = isolate->GetCurrentContext();
@@ -113,7 +273,7 @@ inline static bool to_native(v8::Local<v8::Value> v8_value, uint8_t& out_v)
     }
     return false;
 }
-inline static bool to_native(v8::Local<v8::Value> v8_value, uint16_t& out_v)
+inline bool V8Bind::to_native(v8::Local<v8::Value> v8_value, uint16_t& out_v)
 {
     auto isolate = v8::Isolate::GetCurrent();
     auto context = isolate->GetCurrentContext();
@@ -125,7 +285,7 @@ inline static bool to_native(v8::Local<v8::Value> v8_value, uint16_t& out_v)
     }
     return false;
 }
-inline static bool to_native(v8::Local<v8::Value> v8_value, uint32_t& out_v)
+inline bool V8Bind::to_native(v8::Local<v8::Value> v8_value, uint32_t& out_v)
 {
     auto isolate = v8::Isolate::GetCurrent();
     auto context = isolate->GetCurrentContext();
@@ -137,7 +297,7 @@ inline static bool to_native(v8::Local<v8::Value> v8_value, uint32_t& out_v)
     }
     return false;
 }
-inline static bool to_native(v8::Local<v8::Value> v8_value, uint64_t& out_v)
+inline bool V8Bind::to_native(v8::Local<v8::Value> v8_value, uint64_t& out_v)
 {
     auto isolate = v8::Isolate::GetCurrent();
     auto context = isolate->GetCurrentContext();
@@ -149,7 +309,7 @@ inline static bool to_native(v8::Local<v8::Value> v8_value, uint64_t& out_v)
     }
     return false;
 }
-inline static bool to_native(v8::Local<v8::Value> v8_value, float& out_v)
+inline bool V8Bind::to_native(v8::Local<v8::Value> v8_value, float& out_v)
 {
     auto isolate = v8::Isolate::GetCurrent();
     auto context = isolate->GetCurrentContext();
@@ -161,7 +321,7 @@ inline static bool to_native(v8::Local<v8::Value> v8_value, float& out_v)
     }
     return false;
 }
-inline static bool to_native(v8::Local<v8::Value> v8_value, double& out_v)
+inline bool V8Bind::to_native(v8::Local<v8::Value> v8_value, double& out_v)
 {
     auto isolate = v8::Isolate::GetCurrent();
     auto context = isolate->GetCurrentContext();
@@ -173,7 +333,7 @@ inline static bool to_native(v8::Local<v8::Value> v8_value, double& out_v)
     }
     return false;
 }
-inline static bool to_native(v8::Local<v8::Value> v8_value, bool& out_v)
+inline bool V8Bind::to_native(v8::Local<v8::Value> v8_value, bool& out_v)
 {
     auto isolate = v8::Isolate::GetCurrent();
 
@@ -184,7 +344,7 @@ inline static bool to_native(v8::Local<v8::Value> v8_value, bool& out_v)
     }
     return false;
 }
-inline static bool to_native(v8::Local<v8::Value> v8_value, skr::String& out_v)
+inline bool V8Bind::to_native(v8::Local<v8::Value> v8_value, skr::String& out_v)
 {
     auto isolate = v8::Isolate::GetCurrent();
 
@@ -195,87 +355,4 @@ inline static bool to_native(v8::Local<v8::Value> v8_value, skr::String& out_v)
     }
     return false;
 }
-} // namespace skr::v8_bind
-
-// top-level functional
-namespace skr::v8_bind
-{
-// field tools
-bool set_field(
-    const ScriptBinderField& binder,
-    v8::Local<v8::Value>     v8_value,
-    void*                    obj,
-    const RTTRType*          obj_type
-);
-bool set_field(
-    const ScriptBinderStaticField& binder,
-    v8::Local<v8::Value>           v8_value
-);
-v8::Local<v8::Value> get_field(
-    const ScriptBinderField& binder,
-    const void*              obj,
-    const RTTRType*          obj_type
-);
-v8::Local<v8::Value> get_field(
-    const ScriptBinderStaticField& binder
-);
-
-// call native
-bool call_native(
-    const ScriptBinderCtor&                        binder,
-    const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
-    void*                                          obj
-);
-bool call_native(
-    const ScriptBinderMethod&                      binder,
-    const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
-    void*                                          obj,
-    const RTTRType*                                obj_type
-);
-bool call_native(
-    const ScriptBinderStaticMethod&                binder,
-    const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack
-);
-} // namespace skr::v8_bind
-
-// raw convert and match
-namespace skr::v8_bind
-{
-// convert
-v8::Local<v8::Value> to_v8(
-    ScriptBinderRoot binder,
-    void*            native_data
-);
-bool to_native(
-    ScriptBinderRoot     binder,
-    void*                native_data,
-    v8::Local<v8::Value> v8_value,
-    bool                 is_init
-);
-
-// match type
-bool match(
-    ScriptBinderRoot     binder,
-    v8::Local<v8::Value> v8_value
-);
-bool match(
-    const ScriptBinderParam& binder,
-    v8::Local<v8::Value>     v8_value
-);
-bool match(
-    const ScriptBinderReturn& binder,
-    v8::Local<v8::Value>      v8_value
-);
-bool match(
-    const ScriptBinderField& binder,
-    v8::Local<v8::Value>     v8_value
-);
-bool match(
-    const ScriptBinderStaticField& binder,
-    v8::Local<v8::Value>           v8_value
-);
-bool match(
-    const Vector<ScriptBinderParam>&               param_binders,
-    const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack
-);
-} // namespace skr::v8_bind
+} // namespace skr

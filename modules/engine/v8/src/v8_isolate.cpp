@@ -164,7 +164,7 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
         auto method_bind_data    = SkrNew<V8BindMethodData>();
         method_bind_data->binder = method_binder;
         ctor_template->PrototypeTemplate()->Set(
-            v8_bind::to_v8(method_name, true),
+            V8Bind::to_v8(method_name, true),
             FunctionTemplate::New(
                 _isolate,
                 _call_method,
@@ -179,7 +179,7 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
         auto static_method_bind_data    = SkrNew<V8BindStaticMethodData>();
         static_method_bind_data->binder = static_method_binder;
         ctor_template->Set(
-            v8_bind::to_v8(static_method_name, true),
+            V8Bind::to_v8(static_method_name, true),
             FunctionTemplate::New(
                 _isolate,
                 _call_static_method,
@@ -194,7 +194,7 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
         auto field_bind_data    = SkrNew<V8BindFieldData>();
         field_bind_data->binder = field_binder;
         ctor_template->PrototypeTemplate()->SetAccessorProperty(
-            v8_bind::to_v8(field_name, true),
+            V8Bind::to_v8(field_name, true),
             FunctionTemplate::New(
                 _isolate,
                 _get_field,
@@ -214,7 +214,7 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
         auto static_field_bind_data    = SkrNew<V8BindStaticFieldData>();
         static_field_bind_data->binder = static_field_binder;
         ctor_template->SetAccessorProperty(
-            v8_bind::to_v8(static_field_name, true),
+            V8Bind::to_v8(static_field_name, true),
             FunctionTemplate::New(
                 _isolate,
                 _get_static_field,
@@ -248,7 +248,7 @@ void V8Isolate::inject_templates_into_context(::v8::Global<::v8::Context> contex
         // set to context
         local_context->Global()->Set(
                                    local_context,
-                                   v8_bind::to_v8(type->name(), true),
+                                   V8Bind::to_v8(type->name(), true),
                                    function
         )
             .Check();
@@ -384,13 +384,13 @@ void V8Isolate::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
         // match ctor
         for (const auto& ctor_binder : bind_data->binder->ctors)
         {
-            if (!v8_bind::match(ctor_binder.params_binder, info)) continue;
+            if (!V8Bind::match(ctor_binder.params_binder, info)) continue;
 
             // alloc memory
             void* alloc_mem = sakura_new_aligned(bind_data->binder->type->size(), bind_data->binder->type->alignment());
 
             // call ctor
-            v8_bind::call_native(
+            V8Bind::call_native(
                 ctor_binder,
                 info,
                 alloc_mem
@@ -461,7 +461,7 @@ void V8Isolate::_call_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info
     }
 
     // call method
-    bool success = v8_bind::call_native(
+    bool success = V8Bind::call_native(
         bind_data->binder,
         info,
         bind_core->object->iobject_get_head_ptr(),
@@ -500,7 +500,7 @@ void V8Isolate::_call_static_method(const ::v8::FunctionCallbackInfo<::v8::Value
     }
 
     // call method
-    bool success = v8_bind::call_native(
+    bool success = V8Bind::call_native(
         bind_data->binder,
         info
     );
@@ -534,7 +534,7 @@ void V8Isolate::_get_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
     auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
 
     // get field
-    auto v8_field = v8_bind::get_field(
+    auto v8_field = V8Bind::get_field(
         bind_data->binder,
         bind_core->object->iobject_get_head_ptr(),
         bind_core->type
@@ -563,7 +563,7 @@ void V8Isolate::_set_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
     auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
 
     // set field
-    v8_bind::set_field(
+    V8Bind::set_field(
         bind_data->binder,
         info[0],
         bind_core->object->iobject_get_head_ptr(),
@@ -588,7 +588,7 @@ void V8Isolate::_get_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>&
     auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
 
     // get field
-    auto v8_field = v8_bind::get_field(
+    auto v8_field = V8Bind::get_field(
         bind_data->binder
     );
     info.GetReturnValue().Set(v8_field);
@@ -611,7 +611,7 @@ void V8Isolate::_set_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>&
     auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
 
     // set field
-    v8_bind::set_field(
+    V8Bind::set_field(
         bind_data->binder,
         info[0]
     );

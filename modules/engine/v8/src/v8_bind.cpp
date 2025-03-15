@@ -1,10 +1,11 @@
 #include "SkrV8/v8_bind.hpp"
 #include "v8-external.h"
 
-// util helpers
-namespace skr::v8_bind
+// helpres
+namespace skr
 {
-inline void* get_field_address(
+// util helpers
+void* V8Bind::_get_field_address(
     const RTTRFieldData* field,
     const RTTRType*      field_owner,
     const RTTRType*      obj_type,
@@ -15,12 +16,9 @@ inline void* get_field_address(
     void* field_owner_address = obj_type->cast_to_base(field_owner->type_id(), obj);
     return field->get_address(field_owner_address);
 }
-} // namespace skr::v8_bind
 
 // match helper
-namespace skr::v8_bind
-{
-bool _match_primitive(const ScriptBinderPrimitive& binder, v8::Local<v8::Value> v8_value)
+bool V8Bind::_match_primitive(const ScriptBinderPrimitive& binder, v8::Local<v8::Value> v8_value)
 {
     switch (binder.type_id.get_hash())
     {
@@ -53,7 +51,7 @@ bool _match_primitive(const ScriptBinderPrimitive& binder, v8::Local<v8::Value> 
         return false;
     }
 }
-bool _match_box(const ScriptBinderBox& binder, v8::Local<v8::Value> v8_value)
+bool V8Bind::_match_box(const ScriptBinderBox& binder, v8::Local<v8::Value> v8_value)
 {
     auto isolate = v8::Isolate::GetCurrent();
     auto context = isolate->GetCurrentContext();
@@ -68,7 +66,7 @@ bool _match_box(const ScriptBinderBox& binder, v8::Local<v8::Value> v8_value)
         // find object field
         auto v8_field_value_maybe = v8_obj->Get(
             context,
-            v8_bind::to_v8(field_name, true)
+            to_v8(field_name, true)
         );
         // clang-format on
 
@@ -82,7 +80,7 @@ bool _match_box(const ScriptBinderBox& binder, v8::Local<v8::Value> v8_value)
 
     return true;
 }
-bool _match_wrap(const ScriptBinderWrap& binder, v8::Local<v8::Value> v8_value)
+bool V8Bind::_match_wrap(const ScriptBinderWrap& binder, v8::Local<v8::Value> v8_value)
 {
     auto isolate = v8::Isolate::GetCurrent();
     auto context = isolate->GetCurrentContext();
@@ -101,12 +99,9 @@ bool _match_wrap(const ScriptBinderWrap& binder, v8::Local<v8::Value> v8_value)
     // check inherit
     return bind_core->type->based_on(type->type_id());
 }
-} // namespace skr::v8_bind
 
-// convert helpers
-namespace skr::v8_bind
-{
-v8::Local<v8::Value> _to_v8_primitive(
+// convert helper
+v8::Local<v8::Value> V8Bind::_to_v8_primitive(
     const ScriptBinderPrimitive& binder,
     void*                        native_data
 )
@@ -114,35 +109,35 @@ v8::Local<v8::Value> _to_v8_primitive(
     switch (binder.type_id.get_hash())
     {
     case type_id_of<int8_t>().get_hash():
-        return v8_bind::to_v8(*reinterpret_cast<int8_t*>(native_data));
+        return to_v8(*reinterpret_cast<int8_t*>(native_data));
     case type_id_of<int16_t>().get_hash():
-        return v8_bind::to_v8(*reinterpret_cast<int16_t*>(native_data));
+        return to_v8(*reinterpret_cast<int16_t*>(native_data));
     case type_id_of<int32_t>().get_hash():
-        return v8_bind::to_v8(*reinterpret_cast<int32_t*>(native_data));
+        return to_v8(*reinterpret_cast<int32_t*>(native_data));
     case type_id_of<int64_t>().get_hash():
-        return v8_bind::to_v8(*reinterpret_cast<int64_t*>(native_data));
+        return to_v8(*reinterpret_cast<int64_t*>(native_data));
     case type_id_of<uint8_t>().get_hash():
-        return v8_bind::to_v8(*reinterpret_cast<uint8_t*>(native_data));
+        return to_v8(*reinterpret_cast<uint8_t*>(native_data));
     case type_id_of<uint16_t>().get_hash():
-        return v8_bind::to_v8(*reinterpret_cast<uint16_t*>(native_data));
+        return to_v8(*reinterpret_cast<uint16_t*>(native_data));
     case type_id_of<uint32_t>().get_hash():
-        return v8_bind::to_v8(*reinterpret_cast<uint32_t*>(native_data));
+        return to_v8(*reinterpret_cast<uint32_t*>(native_data));
     case type_id_of<uint64_t>().get_hash():
-        return v8_bind::to_v8(*reinterpret_cast<uint64_t*>(native_data));
+        return to_v8(*reinterpret_cast<uint64_t*>(native_data));
     case type_id_of<float>().get_hash():
-        return v8_bind::to_v8(*reinterpret_cast<float*>(native_data));
+        return to_v8(*reinterpret_cast<float*>(native_data));
     case type_id_of<double>().get_hash():
-        return v8_bind::to_v8(*reinterpret_cast<double*>(native_data));
+        return to_v8(*reinterpret_cast<double*>(native_data));
     case type_id_of<bool>().get_hash():
-        return v8_bind::to_v8(*reinterpret_cast<bool*>(native_data));
+        return to_v8(*reinterpret_cast<bool*>(native_data));
     case type_id_of<skr::String>().get_hash():
-        return v8_bind::to_v8(*reinterpret_cast<skr::String*>(native_data));
+        return to_v8(*reinterpret_cast<skr::String*>(native_data));
     default:
         SKR_UNREACHABLE_CODE()
         return {};
     }
 }
-bool _to_native_primitive(
+bool V8Bind::_to_native_primitive(
     const ScriptBinderPrimitive& binder,
     v8::Local<v8::Value>         v8_value,
     void*                        native_data,
@@ -152,39 +147,39 @@ bool _to_native_primitive(
     switch (binder.type_id.get_hash())
     {
     case type_id_of<int8_t>().get_hash():
-        return v8_bind::to_native(v8_value, *reinterpret_cast<int8_t*>(native_data));
+        return to_native(v8_value, *reinterpret_cast<int8_t*>(native_data));
     case type_id_of<int16_t>().get_hash():
-        return v8_bind::to_native(v8_value, *reinterpret_cast<int16_t*>(native_data));
+        return to_native(v8_value, *reinterpret_cast<int16_t*>(native_data));
     case type_id_of<int32_t>().get_hash():
-        return v8_bind::to_native(v8_value, *reinterpret_cast<int32_t*>(native_data));
+        return to_native(v8_value, *reinterpret_cast<int32_t*>(native_data));
     case type_id_of<int64_t>().get_hash():
-        return v8_bind::to_native(v8_value, *reinterpret_cast<int64_t*>(native_data));
+        return to_native(v8_value, *reinterpret_cast<int64_t*>(native_data));
     case type_id_of<uint8_t>().get_hash():
-        return v8_bind::to_native(v8_value, *reinterpret_cast<uint8_t*>(native_data));
+        return to_native(v8_value, *reinterpret_cast<uint8_t*>(native_data));
     case type_id_of<uint16_t>().get_hash():
-        return v8_bind::to_native(v8_value, *reinterpret_cast<uint16_t*>(native_data));
+        return to_native(v8_value, *reinterpret_cast<uint16_t*>(native_data));
     case type_id_of<uint32_t>().get_hash():
-        return v8_bind::to_native(v8_value, *reinterpret_cast<uint32_t*>(native_data));
+        return to_native(v8_value, *reinterpret_cast<uint32_t*>(native_data));
     case type_id_of<uint64_t>().get_hash():
-        return v8_bind::to_native(v8_value, *reinterpret_cast<uint64_t*>(native_data));
+        return to_native(v8_value, *reinterpret_cast<uint64_t*>(native_data));
     case type_id_of<float>().get_hash():
-        return v8_bind::to_native(v8_value, *reinterpret_cast<float*>(native_data));
+        return to_native(v8_value, *reinterpret_cast<float*>(native_data));
     case type_id_of<double>().get_hash():
-        return v8_bind::to_native(v8_value, *reinterpret_cast<double*>(native_data));
+        return to_native(v8_value, *reinterpret_cast<double*>(native_data));
     case type_id_of<bool>().get_hash():
-        return v8_bind::to_native(v8_value, *reinterpret_cast<bool*>(native_data));
+        return to_native(v8_value, *reinterpret_cast<bool*>(native_data));
     case type_id_of<skr::String>().get_hash():
         if (!is_init)
         {
             new (native_data) skr::String();
         }
-        return v8_bind::to_native(v8_value, *reinterpret_cast<skr::String*>(native_data));
+        return to_native(v8_value, *reinterpret_cast<skr::String*>(native_data));
     default:
         SKR_UNREACHABLE_CODE()
         return false;
     }
 }
-v8::Local<v8::Value> _to_v8_box(
+v8::Local<v8::Value> V8Bind::_to_v8_box(
     const ScriptBinderBox& binder,
     void*                  obj
 )
@@ -204,14 +199,14 @@ v8::Local<v8::Value> _to_v8_box(
         // clang-format off
         result->Set(
             context,
-            v8_bind::to_v8(field_name, true),
+            to_v8(field_name, true),
             v8_field_value
         ).Check();
         // clang-format on
     }
     return result;
 }
-bool _to_native_box(
+bool V8Bind::_to_native_box(
     const ScriptBinderBox& binder,
     v8::Local<v8::Value>   v8_value,
     void*                  native_data,
@@ -238,7 +233,7 @@ bool _to_native_box(
         // clang-format off
         auto v8_field = v8_object->Get(
             context,
-            v8_bind::to_v8(field_name)
+            to_v8(field_name)
         ).ToLocalChecked();
         // clang-format on
 
@@ -252,7 +247,7 @@ bool _to_native_box(
 
     return false;
 }
-v8::Local<v8::Value> _to_v8_wrap(
+v8::Local<v8::Value> V8Bind::_to_v8_wrap(
     const ScriptBinderWrap& binder,
     void*                   native_data
 )
@@ -267,7 +262,7 @@ v8::Local<v8::Value> _to_v8_wrap(
     auto* bind_core = skr_isolate->translate_record(scriptble_object);
     return bind_core->v8_object.Get(isolate);
 }
-bool _to_native_wrap(
+bool V8Bind::_to_native_wrap(
     const ScriptBinderWrap& binder,
     v8::Local<v8::Value>    v8_value,
     void*                   native_data,
@@ -288,12 +283,9 @@ bool _to_native_wrap(
     *reinterpret_cast<void**>(native_data) = cast_ptr;
     return true;
 }
-} // namespace skr::v8_bind
 
-// invoke helper
-namespace skr::v8_bind
-{
-void _push_param(
+// invoker helper
+void V8Bind::_push_param(
     DynamicStack&            stack,
     const ScriptBinderParam& param_binder,
     v8::Local<v8::Value>     v8_value
@@ -340,7 +332,7 @@ void _push_param(
         break;
     }
 }
-v8::Local<v8::Value> read_return(
+v8::Local<v8::Value> V8Bind::read_return(
     DynamicStack&             stack,
     const ScriptBinderReturn& return_binder
 )
@@ -365,13 +357,12 @@ v8::Local<v8::Value> read_return(
     }
     return to_v8(return_binder.binder, native_data);
 }
-} // namespace skr::v8_bind
+} // namespace skr
 
-// top-level functional
-namespace skr::v8_bind
+namespace skr
 {
 // field tools
-bool set_field(
+bool V8Bind::set_field(
     const ScriptBinderField& binder,
     v8::Local<v8::Value>     v8_value,
     void*                    obj,
@@ -379,12 +370,12 @@ bool set_field(
 )
 {
     // get field info
-    void* field_address = get_field_address(binder.data, binder.owner, obj_type, obj);
+    void* field_address = _get_field_address(binder.data, binder.owner, obj_type, obj);
 
     // to native
     return to_native(binder.binder, field_address, v8_value, true);
 }
-bool set_field(
+bool V8Bind::set_field(
     const ScriptBinderStaticField& binder,
     v8::Local<v8::Value>           v8_value
 )
@@ -395,14 +386,14 @@ bool set_field(
     // to native
     return to_native(binder.binder, field_address, v8_value, true);
 }
-v8::Local<v8::Value> get_field(
+v8::Local<v8::Value> V8Bind::get_field(
     const ScriptBinderField& binder,
     const void*              obj,
     const RTTRType*          obj_type
 )
 {
     // get field info
-    void* field_address = get_field_address(
+    void* field_address = _get_field_address(
         binder.data,
         binder.owner,
         obj_type,
@@ -412,7 +403,7 @@ v8::Local<v8::Value> get_field(
     // to v8
     return to_v8(binder.binder, field_address);
 }
-v8::Local<v8::Value> get_field(
+v8::Local<v8::Value> V8Bind::get_field(
     const ScriptBinderStaticField& binder
 )
 {
@@ -424,7 +415,7 @@ v8::Local<v8::Value> get_field(
 }
 
 // call native
-bool call_native(
+bool V8Bind::call_native(
     const ScriptBinderCtor&                        binder,
     const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
     void*                                          obj
@@ -448,7 +439,7 @@ bool call_native(
 
     return true;
 }
-bool call_native(
+bool V8Bind::call_native(
     const ScriptBinderMethod&                      binder,
     const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
     void*                                          obj,
@@ -493,7 +484,7 @@ bool call_native(
 
     return false;
 }
-bool call_native(
+bool V8Bind::call_native(
     const ScriptBinderStaticMethod&                binder,
     const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack
 )
@@ -531,13 +522,9 @@ bool call_native(
 
     return false;
 }
-} // namespace skr::v8_bind
 
-// raw convert and match
-namespace skr::v8_bind
-{
 // convert
-v8::Local<v8::Value> to_v8(
+v8::Local<v8::Value> V8Bind::to_v8(
     ScriptBinderRoot binder,
     void*            native_data
 )
@@ -553,7 +540,7 @@ v8::Local<v8::Value> to_v8(
     }
     return {};
 }
-bool to_native(
+bool V8Bind::to_native(
     ScriptBinderRoot     binder,
     void*                native_data,
     v8::Local<v8::Value> v8_value,
@@ -573,7 +560,7 @@ bool to_native(
 }
 
 // match type
-bool match(
+bool V8Bind::match(
     ScriptBinderRoot     binder,
     v8::Local<v8::Value> v8_value
 )
@@ -595,7 +582,7 @@ bool match(
 
     return false;
 }
-bool match(
+bool V8Bind::match(
     const ScriptBinderParam& binder,
     v8::Local<v8::Value>     v8_value
 )
@@ -608,7 +595,7 @@ bool match(
 
     return match(binder.binder, v8_value);
 }
-bool match(
+bool V8Bind::match(
     const ScriptBinderReturn& binder,
     v8::Local<v8::Value>      v8_value
 )
@@ -621,7 +608,7 @@ bool match(
 
     return match(binder.binder, v8_value);
 }
-bool match(
+bool V8Bind::match(
     const ScriptBinderField& binder,
     v8::Local<v8::Value>     v8_value
 )
@@ -635,7 +622,7 @@ bool match(
     // check type
     return match(binder.binder, v8_value);
 }
-bool match(
+bool V8Bind::match(
     const ScriptBinderStaticField& binder,
     v8::Local<v8::Value>           v8_value
 )
@@ -649,7 +636,7 @@ bool match(
     // check type
     return match(binder.binder, v8_value);
 }
-bool match(
+bool V8Bind::match(
     const Vector<ScriptBinderParam>&               param_binders,
     const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack
 )
@@ -671,4 +658,4 @@ bool match(
 
     return true;
 }
-} // namespace skr::v8_bind
+} // namespace skr
