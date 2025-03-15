@@ -180,7 +180,8 @@ namespace skr::attr
 // use on:
 //   method
 //   static_method
-struct ScriptGetter {
+sreflect_struct(guid = "982d9f4d-1c0f-4ee2-914a-b211f7539cff") 
+ScriptGetter {
     inline ScriptGetter(String name)
         : prop_name(std::move(name))
     {
@@ -192,7 +193,8 @@ struct ScriptGetter {
 // use on:
 //   method
 //   static_method
-struct ScriptSetter {
+sreflect_struct(guid = "ee933720-6b10-4b03-a6e7-20227e4829b2")
+ScriptSetter {
     inline ScriptSetter(String name)
         : prop_name(std::move(name))
     {

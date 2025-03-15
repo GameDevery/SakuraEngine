@@ -27,8 +27,16 @@
     #define SKR_GENERATE_BODY() SKR_GENERATE_BODY_NAME(SKR_FILE_ID, __LINE__)
 #endif
 
+// param flag
+#define sparam_in sattr(rttr.flags += "In")
+#define sparam_out sattr(rttr.flags += "Out")
+#define sparam_inout sattr(rttr.flags += ["In", "Out"])
+
 // script api
 #define sscript_visible sattr(rttr.flags += "ScriptVisible")
 #define sscript_newable sattr(rttr.flags += "ScriptNewable")
 #define sscript_box sattr(rttr.flags += "ScriptBox")
 #define sscript_wrap sattr(rttr.flags += "ScriptWrap")
+#define sscript_mixin sattr(rttr.flags += "ScriptMixin")
+#define sscript_getter(__NAME) sattr(rttr.attrs += `ScriptGetter(u8#__NAME)`)
+#define sscript_setter(__NAME) sattr(rttr.attrs += `ScriptSetter(u8#__NAME)`)

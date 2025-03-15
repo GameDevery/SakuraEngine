@@ -109,5 +109,25 @@ TestType : public ::skr::ScriptbleObject {
             box.offset.x, box.offset.y, box.offset.z
         );
     }
+
+    // getter & setter
+    sscript_getter(prop_fuck)
+    skr::String get_fuck() const 
+    {
+        SKR_LOG_FMT_INFO(u8"get fuck"); 
+        return u8"fuck"; 
+    }
+    sscript_setter(prop_fuck)
+    void set_fuck(skr::String v)
+    {
+        SKR_LOG_FMT_INFO(u8"set fuck: {}", v); 
+    }
+
+    // inout param
+    sscript_visible
+    void get_shit(sparam_out skr::String& out)
+    {
+        out = u8"shit";
+    }
 };
 };
