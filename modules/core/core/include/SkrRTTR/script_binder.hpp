@@ -84,6 +84,16 @@ struct ScriptBinderRoot {
     inline ScriptBinderRoot& operator=(const ScriptBinderRoot& other) = default;
     inline ScriptBinderRoot& operator=(ScriptBinderRoot&& other)      = default;
 
+    // compare
+    inline bool operator==(const ScriptBinderRoot& other) const
+    {
+        return _kind == other._kind && _binder == other._binder;
+    }
+    inline bool operator!=(const ScriptBinderRoot& other) const
+    {
+        return !operator==(other);
+    }
+
     // kind getter
     inline EKind kind() const { return _kind; }
     inline bool  is_empty() const { return _kind == EKind::None; }
@@ -221,7 +231,6 @@ struct ScriptBinderWrap {
     bool failed = false;
 };
 
-// TODO. 为每个 binder 附加 Error 成员来存储错误，同时 nested make 都转为 void 返回，错误在导出完毕后统一进行处理
 // TODO. In/Out flag
 // TODO. Enum support
 // TODO. Generic type support
@@ -269,7 +278,12 @@ private:
             }
             ~StackScope()
             {
+                bool err = _logger->any_error();
                 _logger->_stack.pop_back();
+                if (!_logger->_stack.is_empty())
+                {
+                    _logger->_stack.back().any_error |= err;
+                }
             }
 
         private:
@@ -298,10 +312,11 @@ private:
             String error;
             format_to(error, fmt, std::forward<Args>(args)...);
             error.append(u8"\n");
-            for (const auto& stack : _stack)
+            for (const auto& stack : _stack.range_inv())
             {
                 format_to(error, u8"    at: {}\n", stack.name);
             }
+            error.first(error.length_buffer() - 1);
 
             // log error
             SKR_LOG_FMT_ERROR(error.c_str());

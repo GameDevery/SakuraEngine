@@ -121,9 +121,9 @@ TestType : public ::skr::ScriptbleObject {
         return u8"fuck"; 
     }
     sscript_visible sscript_setter(prop_fuck)
-    void set_fuck(skr::String v)
+    void set_fuck(skr::StringView v)
     {
-        SKR_LOG_FMT_INFO(u8"set fuck: {}", v); 
+        SKR_LOG_FMT_INFO(u8"set fuck: {}"); 
     }
 
     // static getter & static setter

@@ -64,6 +64,14 @@ ScriptBinderRoot ScriptBinderManager::get_or_build(GUID type_id)
     }
 
     // failed to export
+    if (type)
+    {
+        _logger.error(u8"failed to export type '{}'", type->name());
+    }
+    else
+    {
+        _logger.error(u8"failed to export type '{}'", type_id);
+    }
     _cached_root_binders.add(type_id, {});
     return {};
 }
@@ -138,6 +146,9 @@ ScriptBinderPrimitive* ScriptBinderManager::_make_primitive(GUID type_id)
 }
 ScriptBinderBox* ScriptBinderManager::_make_box(const RTTRType* type)
 {
+    auto _log_stack = _logger.stack(u8"export box type {}", type->name());
+
+    // check flag
     // clang-format off
     if (!flag_all(
         type->record_flag(),
@@ -158,11 +169,16 @@ ScriptBinderBox* ScriptBinderManager::_make_box(const RTTRType* type)
         _make_field(field_data, field, owner_type);
     });
 
+    result.failed |= _logger.any_error();
+
     // return result
     return SkrNew<ScriptBinderBox>(std::move(result));
 }
 ScriptBinderWrap* ScriptBinderManager::_make_wrap(const RTTRType* type)
 {
+    auto _log_stack = _logger.stack(u8"export wrap type {}", type->name());
+
+    // check flag
     // clang-format off
     if (!flag_all(
         type->record_flag(),
@@ -176,10 +192,6 @@ ScriptBinderWrap* ScriptBinderManager::_make_wrap(const RTTRType* type)
     // check base
     if (!type->based_on(type_id_of<ScriptbleObject>()))
     {
-        SKR_LOG_FMT_ERROR(
-            u8"failed to export {} as wrap type, must be based on ::skr::ScriptbleObject",
-            type->name()
-        );
         return nullptr;
     }
 
@@ -211,7 +223,7 @@ ScriptBinderWrap* ScriptBinderManager::_make_wrap(const RTTRType* type)
         _make_static_field(static_field_data, static_field, owner_type);
     });
 
-    // export methods
+    // export methods or properties
     type->each_method([&](const RTTRMethodData* method, const RTTRType* owner_type) {
         if (!flag_all(method->flag, ERTTRMethodFlag::ScriptVisible)) { return; }
 
@@ -222,16 +234,25 @@ ScriptBinderWrap* ScriptBinderManager::_make_wrap(const RTTRType* type)
             return attr.type_is<skr::attr::ScriptSetter>();
         });
 
+        // check flag error
+        if (find_getter_result && find_setter_result)
+        {
+            _logger.error(u8"getter and setter applied on same method {}", method->name);
+            return;
+        }
+
         if (find_getter_result)
         {
-            String prop_name = find_getter_result.ref().cast<skr::attr::ScriptGetter>()->prop_name;
-            auto&  prop_data = result.properties.try_add_default(prop_name).value();
+            String prop_name  = find_getter_result.ref().cast<skr::attr::ScriptGetter>()->prop_name;
+            auto&  prop_data  = result.properties.try_add_default(prop_name).value();
+            auto   _log_stack = _logger.stack(u8"export property '{}' getter", prop_name);
             _make_prop_getter(prop_data.getter, method, owner_type);
         }
         else if (find_setter_result)
         {
-            String prop_name = find_setter_result.ref().cast<skr::attr::ScriptSetter>()->prop_name;
-            auto&  prop_data = result.properties.try_add_default(prop_name).value();
+            String prop_name  = find_setter_result.ref().cast<skr::attr::ScriptSetter>()->prop_name;
+            auto&  prop_data  = result.properties.try_add_default(prop_name).value();
+            auto   _log_stack = _logger.stack(u8"export property '{}' setter", prop_name);
             _make_prop_setter(prop_data.setter, method, owner_type);
         }
         else
@@ -242,7 +263,7 @@ ScriptBinderWrap* ScriptBinderManager::_make_wrap(const RTTRType* type)
         }
     });
 
-    // export static methods
+    // export static methods or properties
     type->each_static_method([&](const RTTRStaticMethodData* method, const RTTRType* owner_type) {
         if (!flag_all(method->flag, ERTTRStaticMethodFlag::ScriptVisible)) { return; }
         auto find_getter_result = method->attrs.find_if([&](const Any& attr) {
@@ -252,16 +273,25 @@ ScriptBinderWrap* ScriptBinderManager::_make_wrap(const RTTRType* type)
             return attr.type_is<skr::attr::ScriptSetter>();
         });
 
+        // check flag error
+        if (find_getter_result && find_setter_result)
+        {
+            _logger.error(u8"getter and setter applied on same static method{}", method->name);
+            return;
+        }
+
         if (find_getter_result)
         {
-            String prop_name = find_getter_result.ref().cast<skr::attr::ScriptGetter>()->prop_name;
-            auto&  prop_data = result.static_properties.try_add_default(prop_name).value();
+            String prop_name  = find_getter_result.ref().cast<skr::attr::ScriptGetter>()->prop_name;
+            auto&  prop_data  = result.static_properties.try_add_default(prop_name).value();
+            auto   _log_stack = _logger.stack(u8"export static getter '{}'", prop_name);
             _make_static_prop_getter(prop_data.getter, method, owner_type);
         }
         else if (find_setter_result)
         {
-            String prop_name = find_setter_result.ref().cast<skr::attr::ScriptSetter>()->prop_name;
-            auto&  prop_data = result.static_properties.try_add_default(prop_name).value();
+            String prop_name  = find_setter_result.ref().cast<skr::attr::ScriptSetter>()->prop_name;
+            auto&  prop_data  = result.static_properties.try_add_default(prop_name).value();
+            auto   _log_stack = _logger.stack(u8"export static setter '{}'", prop_name);
             _make_static_prop_setter(prop_data.setter, method, owner_type);
         }
         else
@@ -271,6 +301,120 @@ ScriptBinderWrap* ScriptBinderManager::_make_wrap(const RTTRType* type)
             _make_static_method(overload_data, method, owner_type);
         }
     });
+
+    // check properties conflict
+    for (auto& [name, prop] : result.properties)
+    {
+        if (prop.failed) { continue; }
+
+        // check multiple overloads
+        if (prop.getter.overloads.size() > 1)
+        {
+            String conflict_methods = u8"";
+            for (auto& overload : prop.getter.overloads)
+            {
+                conflict_methods.append(overload.data->name);
+                conflict_methods.append(u8", ");
+            }
+            conflict_methods.first(conflict_methods.length_buffer() - 2);
+            _logger.error(u8"prop '{}' getter has multiple overloads: {}", name, conflict_methods);
+            prop.failed = true;
+        }
+        if (prop.setter.overloads.size() > 1)
+        {
+            String conflict_methods = u8"";
+            for (auto& overload : prop.setter.overloads)
+            {
+                conflict_methods.append(overload.data->name);
+                conflict_methods.append(u8", ");
+            }
+            conflict_methods.first(conflict_methods.length_buffer() - 2);
+            _logger.error(u8"prop '{}' setter has multiple overloads: {}", name, conflict_methods);
+            prop.failed = true;
+        }
+
+        // check property type
+        if (prop.getter.overloads.size() == 1 && prop.setter.overloads.size() == 1)
+        {
+            auto& getter = prop.getter.overloads[0];
+            auto& setter = prop.setter.overloads[0];
+
+            if (!getter.failed && !setter.failed)
+            {
+                auto getter_binder = getter.return_binder.binder;
+                auto setter_binder = setter.params_binder[0].binder;
+
+                if (getter_binder != setter_binder)
+                {
+                    _logger.error(
+                        u8"prop '{}' getter and setter type mismatch, getter '{}', setter '{}'",
+                        name,
+                        getter.data->name,
+                        setter.data->name
+                    );
+                }
+            }
+            prop.failed = true;
+        }
+    }
+
+    // check static properties conflict
+    for (auto& [name, static_prop] : result.static_properties)
+    {
+        if (static_prop.failed) { continue; }
+
+        // check multiple overloads
+        if (static_prop.getter.overloads.size() > 1)
+        {
+            String conflict_methods = u8"";
+            for (auto& overload : static_prop.getter.overloads)
+            {
+                conflict_methods.append(overload.data->name);
+                conflict_methods.append(u8", ");
+            }
+            conflict_methods.first(conflict_methods.length_buffer() - 2);
+            _logger.error(u8"static_prop '{}' getter has multiple overloads: {}", name, conflict_methods);
+            static_prop.failed = true;
+        }
+        if (static_prop.setter.overloads.size() > 1)
+        {
+            String conflict_methods = u8"";
+            for (auto& overload : static_prop.setter.overloads)
+            {
+                conflict_methods.append(overload.data->name);
+                conflict_methods.append(u8", ");
+            }
+            conflict_methods.first(conflict_methods.length_buffer() - 2);
+            _logger.error(u8"static_prop '{}' setter has multiple overloads: {}", name, conflict_methods);
+            static_prop.failed = true;
+        }
+
+        // check property type
+        if (static_prop.getter.overloads.size() == 1 && static_prop.setter.overloads.size() == 1)
+        {
+            auto& getter = static_prop.getter.overloads[0];
+            auto& setter = static_prop.setter.overloads[0];
+
+            if (!getter.failed && !setter.failed)
+            {
+                auto getter_binder = getter.return_binder.binder;
+                auto setter_binder = setter.params_binder[0].binder;
+
+                if (getter_binder != setter_binder)
+                {
+                    _logger.error(
+                        u8"prop '{}' getter and setter type mismatch, getter '{}', setter '{}'",
+                        name,
+                        getter.data->name,
+                        setter.data->name
+                    );
+                }
+            }
+            static_prop.failed = true;
+        }
+    }
+
+    result.failed |= _logger.any_error();
 
     // return result
     return SkrNew<ScriptBinderWrap>(std::move(result));
@@ -290,6 +434,8 @@ void ScriptBinderManager::_make_ctor(ScriptBinderCtor& out, const RTTRCtorData* 
         auto& param_binder = out.params_binder.add_default().ref();
         _make_param(param_binder, param);
     }
+
+    out.failed |= _logger.any_error();
 }
 void ScriptBinderManager::_make_method(ScriptBinderMethod::Overload& out, const RTTRMethodData* method, const RTTRType* owner)
 {
@@ -308,6 +454,8 @@ void ScriptBinderManager::_make_method(ScriptBinderMethod::Overload& out, const 
 
     // export return
     _make_return(out.return_binder, method->ret_type.view());
+
+    out.failed |= _logger.any_error();
 }
 void ScriptBinderManager::_make_static_method(ScriptBinderStaticMethod::Overload& out, const RTTRStaticMethodData* static_method, const RTTRType* owner)
 {
@@ -326,6 +474,8 @@ void ScriptBinderManager::_make_static_method(ScriptBinderStaticMethod::Overload
 
     // export return
     _make_return(out.return_binder, static_method->ret_type.view());
+
+    out.failed |= _logger.any_error();
 }
 void ScriptBinderManager::_make_prop_getter(ScriptBinderMethod& out, const RTTRMethodData* method, const RTTRType* owner)
 {
@@ -347,6 +497,8 @@ void ScriptBinderManager::_make_prop_getter(ScriptBinderMethod& out, const RTTRM
     // fill data
     auto& method_data = out.overloads.add_default().ref();
     _make_method(method_data, method, owner);
+
+    out.failed |= _logger.any_error();
 }
 void ScriptBinderManager::_make_prop_setter(ScriptBinderMethod& out, const RTTRMethodData* method, const RTTRType* owner)
 {
@@ -368,6 +520,8 @@ void ScriptBinderManager::_make_prop_setter(ScriptBinderMethod& out, const RTTRM
     // fill data
     auto& method_data = out.overloads.add_default().ref();
     _make_method(method_data, method, owner);
+
+    out.failed |= _logger.any_error();
 }
 void ScriptBinderManager::_make_static_prop_getter(ScriptBinderStaticMethod& out, const RTTRStaticMethodData* method, const RTTRType* owner)
 {
@@ -389,6 +543,8 @@ void ScriptBinderManager::_make_static_prop_getter(ScriptBinderStaticMethod& out
     // fill data
     auto& method_data = out.overloads.add_default().ref();
     _make_static_method(method_data, method, owner);
+
+    out.failed |= _logger.any_error();
 }
 void ScriptBinderManager::_make_static_prop_setter(ScriptBinderStaticMethod& out, const RTTRStaticMethodData* method, const RTTRType* owner)
 {
@@ -410,6 +566,8 @@ void ScriptBinderManager::_make_static_prop_setter(ScriptBinderStaticMethod& out
     // fill data
     auto& method_data = out.overloads.add_default().ref();
     _make_static_method(method_data, method, owner);
+
+    out.failed |= _logger.any_error();
 }
 void ScriptBinderManager::_make_field(ScriptBinderField& out, const RTTRFieldData* field, const RTTRType* owner)
 {
@@ -428,6 +586,8 @@ void ScriptBinderManager::_make_field(ScriptBinderField& out, const RTTRFieldDat
         .data = field,
     };
     // clang-format on
+
+    out.failed |= _logger.any_error();
 }
 void ScriptBinderManager::_make_static_field(ScriptBinderStaticField& out, const RTTRStaticFieldData* static_field, const RTTRType* owner)
 {
@@ -446,6 +606,8 @@ void ScriptBinderManager::_make_static_field(ScriptBinderStaticField& out, const
         .data = static_field,
     };
     // clang-format on
+
+    out.failed |= _logger.any_error();
 }
 void ScriptBinderManager::_make_param(ScriptBinderParam& out, const RTTRParamData* param)
 {

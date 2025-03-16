@@ -101,6 +101,7 @@ struct U8String : protected Memory {
     static U8String From(const T* t, SizeType len) noexcept;
 
     // join & build factory
+    // TODO. join use iterator
     template <typename... Args>
     static U8String Build(Args&&... string_or_view);
     template <typename Container>
