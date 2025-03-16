@@ -1,7 +1,7 @@
 ﻿using System.Text;
 using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace SB
 {
@@ -25,6 +25,35 @@ namespace SB
                 return true;
             }
             return false;
+        }
+
+        public static int RunProcess(string ExecutablePath, string Arguments, out string Output, out string Error, Dictionary<string, string?>? Env = null)
+        {
+            Process P = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = ExecutablePath,
+                    RedirectStandardInput = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = false,
+                    UseShellExecute = false,
+                    Arguments = Arguments
+                }
+            };
+            if (Env is not null)
+            {
+                foreach (var kvp in Env)
+                {
+                    P.StartInfo.Environment.Add(kvp.Key, kvp.Value);
+                }
+            }
+            P.Start();
+            Error = P.StandardError.ReadToEnd();
+            Output = P.StandardOutput.ReadToEnd();
+            P.WaitForExit();
+            return P.ExitCode;
         }
 
         private static ConcurrentDictionary<string, DateTime> cachedFileExists = new();

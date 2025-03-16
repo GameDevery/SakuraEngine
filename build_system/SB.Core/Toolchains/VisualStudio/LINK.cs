@@ -54,30 +54,10 @@ namespace SB.Core
                 {
                     Arguments = $"{TargetTypeArg} {String.Join(" ", LinkerArgsList)}";
                 }
-                Process linker = new Process
-                {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = ExePath,
-                        RedirectStandardInput = false,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        CreateNoWindow = false,
-                        UseShellExecute = false,
-                        Arguments = Arguments
-                    }
-                };
-                foreach (var kvp in VCEnvVariables)
-                {
-                    linker.StartInfo.Environment.Add(kvp.Key, kvp.Value);
-                }
-                linker.Start();
-                var OutputInfo = linker.StandardOutput.ReadToEnd();
-                var ErrorInfo = linker.StandardError.ReadToEnd();
-                linker.WaitForExit();
+                int ExitCode = BuildSystem.RunProcess(ExePath, Arguments, out var OutputInfo, out var ErrorInfo, VCEnvVariables);
 
-                // FUCK YOU MICROSOFT THIS IS WEIRD
-                if (linker.ExitCode != 0)
+                // FUCK YOU MICROSOFT THIS IS WEIRD, WHY YOU DUMP ERRORS THROUGH STDOUT ?
+                if (ExitCode != 0)
                     throw new TaskFatalError($"Link {OutputFile} failed with fatal error!", $"LINK.exe: {OutputInfo}");
                 else if (OutputInfo.Contains("warning LNK"))
                     Log.Warning("LINK.exe: {OutputInfo}", OutputInfo);

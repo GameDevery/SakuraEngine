@@ -16,26 +16,18 @@ namespace SB.Core
 
             this.ClangCLVersionTask = Task.Run(() =>
             {
-                Process compiler = new Process
+                int ExitCode = BuildSystem.RunProcess(ExePath, "--version", out var Output, out var Error, VCEnvVariables);
+                if (ExitCode == 0)
                 {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = ExePath,
-                        RedirectStandardError = true,
-                        RedirectStandardOutput = true,
-                        CreateNoWindow = true,
-                        UseShellExecute = false,
-                        Arguments = "--version"
-                    }
-                };
-                compiler.Start();
-                var Output = compiler.StandardOutput.ReadToEnd();
-                compiler.WaitForExit();
-
-                Regex pattern = new Regex(@"\d+(\.\d+)+");
-                var ClangCLVersion = Version.Parse(pattern.Match(Output).Value);
-                Log.Information("clang-cl.exe version ... {ClangCLVersion}", ClangCLVersion);
-                return ClangCLVersion;
+                    Regex pattern = new Regex(@"\d+(\.\d+)+");
+                    var ClangCLVersion = Version.Parse(pattern.Match(Output).Value);
+                    Log.Information("clang-cl.exe version ... {ClangCLVersion}", ClangCLVersion);
+                    return ClangCLVersion;
+                }
+                else
+                {
+                    throw new Exception($"Failed to get clang-cl.exe version! Exit code: {ExitCode}, Error: {Error}");
+                }
             });
         }
 
@@ -60,30 +52,8 @@ namespace SB.Core
             var ObjectFile = Driver.Arguments["Object"] as string;
             var Changed = Depend.OnChanged(Target.Name, SourceFile!, Emitter.Name, (Depend depend) =>
             {
-                Process compiler = new Process
-                {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = ExecutablePath,
-                        RedirectStandardInput = false,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        CreateNoWindow = false,
-                        UseShellExecute = false,
-                        Arguments = String.Join(" ", CompilerArgsList)
-                    }
-                };
-                foreach (var kvp in VCEnvVariables)
-                {
-                    compiler.StartInfo.Environment.Add(kvp.Key, kvp.Value);
-                }
-                compiler.Start();
-                var ErrorInfo = compiler.StandardError.ReadToEnd();
-                var OutputInfo = compiler.StandardOutput.ReadToEnd();
-                compiler.WaitForExit();
-            
-                // FUCK YOU MICROSOFT THIS IS WEIRD
-                if (compiler.ExitCode != 0)
+                int ExitCode = BuildSystem.RunProcess(ExecutablePath, String.Join(" ", CompilerArgsList), out var OutputInfo, out var ErrorInfo, VCEnvVariables);
+                if (ExitCode != 0)
                 {
                     throw new TaskFatalError($"Compile {SourceFile} failed with fatal error!", $"clang-cl.exe: {ErrorInfo}");
                 }

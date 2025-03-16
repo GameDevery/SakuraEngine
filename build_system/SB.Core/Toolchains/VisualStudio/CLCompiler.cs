@@ -32,22 +32,10 @@ namespace SB.Core
 
             this.CLVersionTask = Task.Run(() =>
             {
-                Process compiler = new Process
-                {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = ExePath,
-                        RedirectStandardError = true,
-                        CreateNoWindow = true,
-                        UseShellExecute = false
-                    }
-                };
-                compiler.Start();
-                var Output = compiler.StandardError.ReadToEnd();
-                compiler.WaitForExit();
-                // FUCK YOU MICROSOFT THIS IS WEIRD
+                BuildSystem.RunProcess(ExePath, "", out var Output, out var Error, VCEnvVariables);
                 Regex pattern = new Regex(@"\d+(\.\d+)+");
-                var CLVersion = Version.Parse(pattern.Match(Output).Value);
+                // FUCK YOU MICROSOFT THIS IS WEIRD, WHY YOU DUMP VERSION THROUGH STDERR
+                var CLVersion = Version.Parse(pattern.Match(Error).Value);
                 Log.Information("CL.exe version ... {CLVersion}", CLVersion);
                 return CLVersion;
             });
@@ -74,30 +62,9 @@ namespace SB.Core
             var ObjectFile = Driver.Arguments["Object"] as string;
             var Changed = Depend.OnChanged(Target.Name, SourceFile!, Emitter.Name, (Depend depend) =>
             {
-                Process compiler = new Process
-                {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = ExecutablePath,
-                        RedirectStandardInput = false,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        CreateNoWindow = false,
-                        UseShellExecute = false,
-                        Arguments = String.Join(" ", CompilerArgsList)
-                    }
-                };
-                foreach (var kvp in VCEnvVariables)
-                {
-                    compiler.StartInfo.Environment.Add(kvp.Key, kvp.Value);
-                }
-                compiler.Start();
-                var ErrorInfo = compiler.StandardError.ReadToEnd();
-                var OutputInfo = compiler.StandardOutput.ReadToEnd();
-                compiler.WaitForExit();
-
+                int ExitCode = BuildSystem.RunProcess(ExecutablePath, String.Join(" ", CompilerArgsList), out var OutputInfo, out var ErrorInfo, VCEnvVariables);
                 // FUCK YOU MICROSOFT THIS IS WEIRD
-                if (compiler.ExitCode != 0)
+                if (ExitCode != 0)
                 {
                     throw new TaskFatalError($"Compile {SourceFile} failed with fatal error!", $"CL.exe: {OutputInfo}");
                 }

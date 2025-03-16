@@ -70,26 +70,8 @@ namespace SB
             // Run meta.exe
             bool Changed = Depend.OnChanged(Target.Name, GeneratedDirectory, Name, (Depend depend) =>
             {
-                ProcessStartInfo StartInfo = new()
-                {
-                    FileName = EXE,
-                    RedirectStandardInput = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = false,
-                    UseShellExecute = false,
-                    Arguments = string.Join(" ", MetaArgs)
-                };
-                Process Process = new()
-                {
-                    StartInfo = StartInfo
-                };
-                Process.Start();
-                var OutputInfo = Process.StandardOutput.ReadToEnd();
-                var ErrorInfo = Process.StandardError.ReadToEnd();
-                Process.WaitForExit();
-
-                if (Process.ExitCode != 0)
+                int ExitCode = BuildSystem.RunProcess(EXE, string.Join(" ", MetaArgs), out var OutputInfo, out var ErrorInfo);
+                if (ExitCode != 0)
                     throw new TaskFatalError($"meta.exe {BatchFile} failed with fatal error!", $"meta.exe: {OutputInfo}");
                 else if (OutputInfo.Contains("warning LNK"))
                     Log.Warning("meta.exe: {OutputInfo}", OutputInfo);
