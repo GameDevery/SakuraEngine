@@ -46,18 +46,31 @@ concept ScopedEnum = requires {
     requires std::is_enum_v<E>;
     requires !std::is_convertible_v<E, std::underlying_type_t<E>>;
 };
-
 template <ScopedEnum E>
 SKR_INLINE constexpr E operator|(E a, E b) noexcept
 {
     using UT = std::underlying_type_t<E>;
     return static_cast<E>(static_cast<UT>(a) | static_cast<UT>(b));
 }
-
 template <ScopedEnum E>
 SKR_INLINE constexpr E operator&(E a, E b) noexcept
 {
-    static_assert(std::is_same_v<E, E*>, "please use flag_any or flag_all instead of operator&");
+    using UT = std::underlying_type_t<E>;
+    return static_cast<E>(static_cast<UT>(a) & static_cast<UT>(b));
+}
+template <ScopedEnum E>
+SKR_INLINE constexpr E& operator|=(E& a, E b) noexcept
+{
+    using UT = std::underlying_type_t<E>;
+    a        = static_cast<E>(static_cast<UT>(a) | static_cast<UT>(b));
+    return a;
+}
+template <ScopedEnum E>
+SKR_INLINE constexpr E& operator&=(E& a, E b) noexcept
+{
+    using UT = std::underlying_type_t<E>;
+    a        = static_cast<E>(static_cast<UT>(a) & static_cast<UT>(b));
+    return a;
 }
 } // namespace scoped_enum_tools
 

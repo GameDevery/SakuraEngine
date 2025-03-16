@@ -44,20 +44,29 @@
 
 namespace skr
 {
-// failed id
-enum class EScriptBindFailed
+enum class EScriptBinderError : uint64_t
 {
-    None,
-    Unknown,
-    ExportWrapByValue,
-    ExportPointerFieldOfPrimitiveOrBox,
-    ExportReferenceField,
-    ExportPointerLevelGreaterThanOne,
-    GetterSignatureError,
-    SetterSignatureError,
-    PropertySignatureMismatch,
-    DuplicateGetter,
-    DuplicateSetter,
+    None = 0,
+
+    // util error
+    FailedInComponent          = 1 >> 0,
+    UnsupportedType            = 1 >> 1,
+    ValueTypeOfWrap            = 1 >> 2,
+    PointerLevelGreaterThanOne = 1 >> 3,
+
+    // field error
+    ReferenceField                = 1 >> 4,
+    PointerFieldForBoxOrPrimitive = 1 >> 5,
+
+    // parameter error
+    OutParamWithConst  = 1 >> 6,
+    OutParamWithoutRef = 1 >> 7,
+
+    // property error
+    GetterSignatureError = 1 >> 8,
+    SetterSignatureError = 1 >> 9,
+    DuplicatedGetter     = 1 >> 10,
+    DuplicatedSetter     = 1 >> 11,
 };
 
 // root binder, used for nested binder
@@ -140,24 +149,28 @@ struct ScriptBinderField {
     const RTTRType*      owner  = nullptr;
     ScriptBinderRoot     binder = {};
     const RTTRFieldData* data   = nullptr;
+    EScriptBinderError   error  = EScriptBinderError::None;
 };
 struct ScriptBinderStaticField {
     const RTTRType*            owner  = nullptr;
     ScriptBinderRoot           binder = {};
     const RTTRStaticFieldData* data   = nullptr;
+    EScriptBinderError         error  = EScriptBinderError::None;
 };
 
 // nested binder, method & static method
 struct ScriptBinderParam {
-    ScriptBinderRoot binder      = {};
-    bool             pass_by_ref = false;
-    bool             is_inout    = false; // TODO. use flag resolve
-    bool             is_nullable = false;
+    ScriptBinderRoot   binder      = {};
+    bool               pass_by_ref = false;
+    bool               is_inout    = false; // TODO. use flag resolve
+    bool               is_nullable = false;
+    EScriptBinderError error       = EScriptBinderError::None;
 };
 struct ScriptBinderReturn {
-    ScriptBinderRoot binder      = {};
-    bool             pass_by_ref = false;
-    bool             is_nullable = false;
+    ScriptBinderRoot   binder      = {};
+    bool               pass_by_ref = false;
+    bool               is_nullable = false;
+    EScriptBinderError error       = EScriptBinderError::None;
 };
 struct ScriptBinderMethod {
     struct Overload {
@@ -165,9 +178,11 @@ struct ScriptBinderMethod {
         const RTTRMethodData*     data          = nullptr;
         ScriptBinderReturn        return_binder = {};
         Vector<ScriptBinderParam> params_binder = {};
+        EScriptBinderError        error         = EScriptBinderError::None;
     };
 
-    Vector<Overload> overloads = {};
+    Vector<Overload>   overloads = {};
+    EScriptBinderError error     = EScriptBinderError::None;
 };
 struct ScriptBinderStaticMethod {
     struct Overload {
@@ -175,25 +190,30 @@ struct ScriptBinderStaticMethod {
         const RTTRStaticMethodData* data          = nullptr;
         ScriptBinderReturn          return_binder = {};
         Vector<ScriptBinderParam>   params_binder = {};
+        EScriptBinderError          error         = EScriptBinderError::None;
     };
 
-    Vector<Overload> overloads = {};
+    Vector<Overload>   overloads = {};
+    EScriptBinderError error     = EScriptBinderError::None;
 };
 
 // nested binder, property
 struct ScriptBinderProperty {
     ScriptBinderMethod setter = {};
     ScriptBinderMethod getter = {};
+    EScriptBinderError error  = EScriptBinderError::None;
 };
 struct ScriptBinderStaticProperty {
     ScriptBinderStaticMethod setter = {};
     ScriptBinderStaticMethod getter = {};
+    EScriptBinderError       error  = EScriptBinderError::None;
 };
 
 // nested binder, constructor
 struct ScriptBinderCtor {
     const RTTRCtorData*       data          = nullptr;
     Vector<ScriptBinderParam> params_binder = {};
+    EScriptBinderError        error         = EScriptBinderError::None;
 };
 
 // root binders
@@ -202,10 +222,14 @@ struct ScriptBinderPrimitive {
     uint32_t    alignment = 0;
     GUID        type_id   = {};
     DtorInvoker dtor      = nullptr;
+
+    EScriptBinderError error = EScriptBinderError::None;
 };
 struct ScriptBinderBox {
     const RTTRType*                type;
     Map<String, ScriptBinderField> fields;
+
+    EScriptBinderError error = EScriptBinderError::None;
 };
 struct ScriptBinderWrap {
     const RTTRType* type;
@@ -219,8 +243,14 @@ struct ScriptBinderWrap {
     Map<String, ScriptBinderStaticMethod>   static_methods;
     Map<String, ScriptBinderProperty>       properties;
     Map<String, ScriptBinderStaticProperty> static_properties;
+
+    EScriptBinderError error = EScriptBinderError::None;
 };
 
+// TODO. 为每个 binder 附加 Error 成员来存储错误，同时 nested make 都转为 void 返回，错误在导出完毕后统一进行处理
+// TODO. In/Out flag
+// TODO. Enum support
+// TODO. Generic type support
 struct SKR_CORE_API ScriptBinderManager {
     // ctor & dtor
     ScriptBinderManager();
@@ -236,27 +266,20 @@ private:
     ScriptBinderWrap*      _make_wrap(const RTTRType* type);
 
     // make nested binder
-    bool _make_ctor(ScriptBinderCtor& out, const RTTRCtorData* ctor, const RTTRType* owner);
-    bool _make_method(ScriptBinderMethod::Overload& out, const RTTRMethodData* method, const RTTRType* owner);
-    bool _make_static_method(ScriptBinderStaticMethod::Overload& out, const RTTRStaticMethodData* method, const RTTRType* owner);
-    bool _make_prop_getter(ScriptBinderMethod& out, const RTTRMethodData* method, const RTTRType* owner);
-    bool _make_prop_setter(ScriptBinderMethod& out, const RTTRMethodData* method, const RTTRType* owner);
-    bool _make_static_prop_getter(ScriptBinderStaticMethod& out, const RTTRStaticMethodData* method, const RTTRType* owner);
-    bool _make_static_prop_setter(ScriptBinderStaticMethod& out, const RTTRStaticMethodData* method, const RTTRType* owner);
-    bool _make_field(ScriptBinderField& out, const RTTRFieldData* field, const RTTRType* owner);
-    bool _make_static_field(ScriptBinderStaticField& out, const RTTRStaticFieldData* field, const RTTRType* owner);
-    bool _make_param(ScriptBinderParam& out, StringView method_name, const RTTRParamData* param, const RTTRType* owner);
-    bool _make_return(ScriptBinderReturn& out, StringView method_name, TypeSignatureView signature, const RTTRType* owner);
+    void _make_ctor(ScriptBinderCtor& out, const RTTRCtorData* ctor, const RTTRType* owner);
+    void _make_method(ScriptBinderMethod::Overload& out, const RTTRMethodData* method, const RTTRType* owner);
+    void _make_static_method(ScriptBinderStaticMethod::Overload& out, const RTTRStaticMethodData* method, const RTTRType* owner);
+    void _make_prop_getter(ScriptBinderMethod& out, const RTTRMethodData* method, const RTTRType* owner);
+    void _make_prop_setter(ScriptBinderMethod& out, const RTTRMethodData* method, const RTTRType* owner);
+    void _make_static_prop_getter(ScriptBinderStaticMethod& out, const RTTRStaticMethodData* method, const RTTRType* owner);
+    void _make_static_prop_setter(ScriptBinderStaticMethod& out, const RTTRStaticMethodData* method, const RTTRType* owner);
+    void _make_field(ScriptBinderField& out, const RTTRFieldData* field, const RTTRType* owner);
+    void _make_static_field(ScriptBinderStaticField& out, const RTTRStaticFieldData* field, const RTTRType* owner);
+    void _make_param(ScriptBinderParam& out, StringView method_name, const RTTRParamData* param, const RTTRType* owner);
+    void _make_return(ScriptBinderReturn& out, StringView method_name, TypeSignatureView signature, const RTTRType* owner);
 
     // checker
-    EScriptBindFailed _try_export_field(TypeSignatureView signature, ScriptBinderRoot& out_binder);
-
-    // error helper
-    StringView _err_string(EScriptBindFailed err);
-    void       _err_field(StringView field_name, StringView owner_name, EScriptBindFailed err);
-    void       _err_param(StringView param_name, StringView method_name, EScriptBindFailed err);
-    void       _err_return(StringView method_name, EScriptBindFailed err);
-    void       _err_getter(StringView prop_name, StringView method_name, EScriptBindFailed err);
+    EScriptBinderError _try_export_field(TypeSignatureView signature, ScriptBinderRoot& out_binder);
 
 private:
     // cache
