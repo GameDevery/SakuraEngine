@@ -171,13 +171,12 @@ function find_program_in_system(program_name, opt)
     -- find env find
     if use_env_find then
         if os.host() == "windows" then -- use registry
-            local find_name = _format_program_name_for_winos(program_name)
-            local program_path = winos.registry_query("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\" .. find_name)
-            program_path = _check_program_path(program_path)
-            if program_path then
-                return program_path
-            end
-            
+            -- local find_name = _format_program_name_for_winos(program_name)
+            -- local program_path = winos.registry_query("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\" .. find_name)
+            -- program_path = _check_program_path(program_path)
+            -- if program_path then
+            --     return program_path
+            -- end
         else -- use sys default path
             local paths = {
                 "/usr/local/bin",
