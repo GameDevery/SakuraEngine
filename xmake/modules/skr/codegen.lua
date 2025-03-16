@@ -8,11 +8,6 @@ import("skr.utils")
 -- TODO. move depend files into .skr
 -- TODO. cleanup codegen artifacts
 
--- programs
-local _meta = utils.find_meta()
--- local _python = utils.find_python()
-local _bun = utils.find_bun()
-
 -- data cache names
 local _codegen_data_batch_name = "c++.codegen.batch"
 local _codegen_data_headers_name = "c++.codegen.headers"
@@ -121,6 +116,7 @@ function solve_generators(target)
 
     -- permission
     if (os.host() == "macosx") then
+        local _meta = utils.find_meta()
         os.exec("chmod 777 ".._meta)
     end
 end
@@ -233,6 +229,9 @@ function _codegen_compile(target, proxy_target, opt)
         table.insert(argv, k, v)
     end
     
+    -- find meta
+    local _meta = utils.find_meta()
+
     -- print commands
     local command = _meta .. " " .. table.concat(argv, " ")
     if option.get("verbose") then
@@ -282,6 +281,7 @@ function meta_compile(target, proxy_target, opt)
     local sourcefile = batchinfo.sourcefile
     
     -- collect depend files
+    local _meta = utils.find_meta()
     local depend_files = { _meta }
     for _, headerfile in ipairs(headerfiles) do
         table.insert(depend_files, headerfile)
@@ -389,6 +389,9 @@ function _mako_render(target, scripts, dep_files, opt)
             , table.concat(command, " ")
         )
     end
+
+    -- find bun
+    local _bun = utils.find_bun()
 
     -- call codegen script
     -- local out, err = os.iorunv(_python, command)

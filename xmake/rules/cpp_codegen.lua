@@ -16,9 +16,7 @@ rule("c++.codegen.generators")
         import("skr.analyze")
         if not analyze.in_analyze_phase() then
             import("skr.codegen")
-            if codegen.is_env_complete() then
-                codegen.solve_generators(target)
-            end
+            codegen.solve_generators(target)
         end
     end)
 rule_end()
