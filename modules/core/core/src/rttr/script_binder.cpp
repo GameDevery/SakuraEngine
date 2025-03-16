@@ -156,10 +156,6 @@ ScriptBinderBox* ScriptBinderManager::_make_box(const RTTRType* type)
         if (!flag_all(field->flag, ERTTRFieldFlag::ScriptVisible)) { return; }
         auto& field_data = result.fields.try_add_default(field->name).value();
         _make_field(field_data, field, owner_type);
-        if (field_data.error != EScriptBinderError::None)
-        {
-            result.error |= EScriptBinderError::FailedInComponent;
-        }
     });
 
     // return result
@@ -198,10 +194,6 @@ ScriptBinderWrap* ScriptBinderManager::_make_wrap(const RTTRType* type)
             if (!flag_all(ctor->flag, ERTTRCtorFlag::ScriptVisible)) { return; }
             auto& ctor_data = result.ctors.add_default().ref();
             _make_ctor(ctor_data, ctor, type);
-            if (ctor_data.error != EScriptBinderError::None)
-            {
-                result.error |= EScriptBinderError::FailedInComponent;
-            }
         });
     }
 
@@ -210,10 +202,6 @@ ScriptBinderWrap* ScriptBinderManager::_make_wrap(const RTTRType* type)
         if (!flag_all(field->flag, ERTTRFieldFlag::ScriptVisible)) { return; }
         auto& field_data = result.fields.try_add_default(field->name).value();
         _make_field(field_data, field, owner_type);
-        if (field_data.error != EScriptBinderError::None)
-        {
-            result.error |= EScriptBinderError::FailedInComponent;
-        }
     });
 
     // export static field
@@ -221,10 +209,6 @@ ScriptBinderWrap* ScriptBinderManager::_make_wrap(const RTTRType* type)
         if (!flag_all(static_field->flag, ERTTRStaticFieldFlag::ScriptVisible)) { return; }
         auto& static_field_data = result.static_fields.try_add_default(static_field->name).value();
         _make_static_field(static_field_data, static_field, owner_type);
-        if (static_field_data.error != EScriptBinderError::None)
-        {
-            result.error |= EScriptBinderError::FailedInComponent;
-        }
     });
 
     // export methods
@@ -238,40 +222,23 @@ ScriptBinderWrap* ScriptBinderManager::_make_wrap(const RTTRType* type)
             return attr.type_is<skr::attr::ScriptSetter>();
         });
 
-        if (find_getter_result && find_setter_result)
-        {
-            result.error |= EScriptBinderError::FailedInComponent;
-        }
-
         if (find_getter_result)
         {
             String prop_name = find_getter_result.ref().cast<skr::attr::ScriptGetter>()->prop_name;
             auto&  prop_data = result.properties.try_add_default(prop_name).value();
             _make_prop_getter(prop_data.getter, method, owner_type);
-            if (prop_data.getter.error != EScriptBinderError::None)
-            {
-                result.error |= EScriptBinderError::FailedInComponent;
-            }
         }
         else if (find_setter_result)
         {
             String prop_name = find_setter_result.ref().cast<skr::attr::ScriptSetter>()->prop_name;
             auto&  prop_data = result.properties.try_add_default(prop_name).value();
             _make_prop_setter(prop_data.setter, method, owner_type);
-            if (prop_data.setter.error != EScriptBinderError::None)
-            {
-                result.error |= EScriptBinderError::FailedInComponent;
-            }
         }
         else
         {
             auto& method_data   = result.methods.try_add_default(method->name).value();
             auto& overload_data = method_data.overloads.add_default().ref();
             _make_method(overload_data, method, owner_type);
-            if (overload_data.error != EScriptBinderError::None)
-            {
-                result.error |= EScriptBinderError::FailedInComponent;
-            }
         }
     });
 
@@ -285,40 +252,23 @@ ScriptBinderWrap* ScriptBinderManager::_make_wrap(const RTTRType* type)
             return attr.type_is<skr::attr::ScriptSetter>();
         });
 
-        if (find_getter_result && find_setter_result)
-        {
-            result.error |= EScriptBinderError::FailedInComponent;
-        }
-
         if (find_getter_result)
         {
             String prop_name = find_getter_result.ref().cast<skr::attr::ScriptGetter>()->prop_name;
             auto&  prop_data = result.static_properties.try_add_default(prop_name).value();
             _make_static_prop_getter(prop_data.getter, method, owner_type);
-            if (prop_data.getter.error != EScriptBinderError::None)
-            {
-                result.error |= EScriptBinderError::FailedInComponent;
-            }
         }
         else if (find_setter_result)
         {
             String prop_name = find_setter_result.ref().cast<skr::attr::ScriptSetter>()->prop_name;
             auto&  prop_data = result.static_properties.try_add_default(prop_name).value();
             _make_static_prop_setter(prop_data.setter, method, owner_type);
-            if (prop_data.setter.error != EScriptBinderError::None)
-            {
-                result.error |= EScriptBinderError::FailedInComponent;
-            }
         }
         else
         {
             auto& static_method_data = result.static_methods.try_add_default(method->name).value();
             auto& overload_data      = static_method_data.overloads.add_default().ref();
             _make_static_method(overload_data, method, owner_type);
-            if (overload_data.error != EScriptBinderError::None)
-            {
-                result.error |= EScriptBinderError::FailedInComponent;
-            }
         }
     });
 
@@ -329,6 +279,8 @@ ScriptBinderWrap* ScriptBinderManager::_make_wrap(const RTTRType* type)
 // make nested binder
 void ScriptBinderManager::_make_ctor(ScriptBinderCtor& out, const RTTRCtorData* ctor, const RTTRType* owner)
 {
+    auto _log_stack = _logger.stack(u8"export ctor");
+
     // basic data
     out.data = ctor;
 
@@ -336,15 +288,13 @@ void ScriptBinderManager::_make_ctor(ScriptBinderCtor& out, const RTTRCtorData* 
     for (const auto* param : ctor->param_data)
     {
         auto& param_binder = out.params_binder.add_default().ref();
-        _make_param(param_binder, u8"[Ctor]", param, owner);
-        if (param_binder.error != EScriptBinderError::None)
-        {
-            out.error |= EScriptBinderError::FailedInComponent;
-        }
+        _make_param(param_binder, param);
     }
 }
 void ScriptBinderManager::_make_method(ScriptBinderMethod::Overload& out, const RTTRMethodData* method, const RTTRType* owner)
 {
+    auto _log_stack = _logger.stack(u8"export method '{}'", method->name);
+
     // basic data
     out.data  = method;
     out.owner = owner;
@@ -353,22 +303,16 @@ void ScriptBinderManager::_make_method(ScriptBinderMethod::Overload& out, const 
     for (const auto* param : method->param_data)
     {
         auto& param_binder = out.params_binder.add_default().ref();
-        _make_param(param_binder, method->name, param, owner);
-        if (param_binder.error != EScriptBinderError::None)
-        {
-            out.error |= EScriptBinderError::FailedInComponent;
-        }
+        _make_param(param_binder, param);
     }
 
     // export return
-    _make_return(out.return_binder, method->name, method->ret_type.view(), owner);
-    if (out.return_binder.error != EScriptBinderError::None)
-    {
-        out.error |= EScriptBinderError::FailedInComponent;
-    }
+    _make_return(out.return_binder, method->ret_type.view());
 }
 void ScriptBinderManager::_make_static_method(ScriptBinderStaticMethod::Overload& out, const RTTRStaticMethodData* static_method, const RTTRType* owner)
 {
+    auto _log_stack = _logger.stack(u8"export static method {}", static_method->name);
+
     // basic data
     out.data  = static_method;
     out.owner = owner;
@@ -377,26 +321,18 @@ void ScriptBinderManager::_make_static_method(ScriptBinderStaticMethod::Overload
     for (const auto* param : static_method->param_data)
     {
         auto& param_binder = out.params_binder.add_default().ref();
-        _make_param(param_binder, static_method->name, param, owner);
-        if (param_binder.error != EScriptBinderError::None)
-        {
-            out.error |= EScriptBinderError::FailedInComponent;
-        }
+        _make_param(param_binder, param);
     }
 
     // export return
-    _make_return(out.return_binder, static_method->name, static_method->ret_type.view(), owner);
-    if (out.return_binder.error != EScriptBinderError::None)
-    {
-        out.error |= EScriptBinderError::FailedInComponent;
-    }
+    _make_return(out.return_binder, static_method->ret_type.view());
 }
 void ScriptBinderManager::_make_prop_getter(ScriptBinderMethod& out, const RTTRMethodData* method, const RTTRType* owner)
 {
     // check param count
     if (method->param_data.size() != 0)
     {
-        out.error |= EScriptBinderError::GetterSignatureError;
+        _logger.error(u8"getter param count must be 0, but got {}", method->param_data.size());
         return;
     }
 
@@ -404,32 +340,20 @@ void ScriptBinderManager::_make_prop_getter(ScriptBinderMethod& out, const RTTRM
     TypeSignatureTyped<void> void_signature;
     if (method->ret_type.view().equal(void_signature))
     {
-        out.error |= EScriptBinderError::GetterSignatureError;
-        return;
-    }
-
-    // check conflict
-    if (!out.overloads.is_empty())
-    {
-        out.error |= EScriptBinderError::DuplicatedGetter;
+        _logger.error(u8"getter return type must not be void");
         return;
     }
 
     // fill data
     auto& method_data = out.overloads.add_default().ref();
     _make_method(method_data, method, owner);
-    if (method_data.error != EScriptBinderError::None)
-    {
-        out.error |= EScriptBinderError::FailedInComponent;
-        return;
-    }
 }
 void ScriptBinderManager::_make_prop_setter(ScriptBinderMethod& out, const RTTRMethodData* method, const RTTRType* owner)
 {
     // check param count
     if (method->param_data.size() != 1)
     {
-        out.error |= EScriptBinderError::SetterSignatureError;
+        _logger.error(u8"setter param count must be 1, but got {}", method->param_data.size());
         return;
     }
 
@@ -437,32 +361,20 @@ void ScriptBinderManager::_make_prop_setter(ScriptBinderMethod& out, const RTTRM
     TypeSignatureTyped<void> void_signature;
     if (!method->ret_type.view().equal(void_signature))
     {
-        out.error |= EScriptBinderError::SetterSignatureError;
-        return;
-    }
-
-    // check conflict
-    if (!out.overloads.is_empty())
-    {
-        out.error |= EScriptBinderError::DuplicatedSetter;
+        _logger.error(u8"setter return type must be void");
         return;
     }
 
     // fill data
     auto& method_data = out.overloads.add_default().ref();
     _make_method(method_data, method, owner);
-    if (method_data.error != EScriptBinderError::None)
-    {
-        out.error |= EScriptBinderError::FailedInComponent;
-        return;
-    }
 }
 void ScriptBinderManager::_make_static_prop_getter(ScriptBinderStaticMethod& out, const RTTRStaticMethodData* method, const RTTRType* owner)
 {
     // check param count
     if (method->param_data.size() != 0)
     {
-        out.error |= EScriptBinderError::GetterSignatureError;
+        _logger.error(u8"getter param count must be 0, but got {}", method->param_data.size());
         return;
     }
 
@@ -470,32 +382,20 @@ void ScriptBinderManager::_make_static_prop_getter(ScriptBinderStaticMethod& out
     TypeSignatureTyped<void> void_signature;
     if (method->ret_type.view().equal(void_signature))
     {
-        out.error |= EScriptBinderError::GetterSignatureError;
-        return;
-    }
-
-    // check conflict
-    if (!out.overloads.is_empty())
-    {
-        out.error |= EScriptBinderError::DuplicatedGetter;
+        _logger.error(u8"getter return type must not be void");
         return;
     }
 
     // fill data
     auto& method_data = out.overloads.add_default().ref();
     _make_static_method(method_data, method, owner);
-    if (method_data.error != EScriptBinderError::None)
-    {
-        out.error |= EScriptBinderError::FailedInComponent;
-        return;
-    }
 }
 void ScriptBinderManager::_make_static_prop_setter(ScriptBinderStaticMethod& out, const RTTRStaticMethodData* method, const RTTRType* owner)
 {
     // check param count
     if (method->param_data.size() != 1)
     {
-        out.error |= EScriptBinderError::SetterSignatureError;
+        _logger.error(u8"setter param count must be 1, but got {}", method->param_data.size());
         return;
     }
 
@@ -503,76 +403,68 @@ void ScriptBinderManager::_make_static_prop_setter(ScriptBinderStaticMethod& out
     TypeSignatureTyped<void> void_signature;
     if (!method->ret_type.view().equal(void_signature))
     {
-        out.error |= EScriptBinderError::SetterSignatureError;
-        return;
-    }
-
-    // check conflict
-    if (!out.overloads.is_empty())
-    {
-        out.error |= EScriptBinderError::DuplicatedSetter;
+        _logger.error(u8"setter return type must be void");
         return;
     }
 
     // fill data
     auto& method_data = out.overloads.add_default().ref();
-    _make_static_method(out.overloads.add_default().ref(), method, owner);
-    if (method_data.error != EScriptBinderError::None)
-    {
-        out.error |= EScriptBinderError::FailedInComponent;
-        return;
-    }
+    _make_static_method(method_data, method, owner);
 }
 void ScriptBinderManager::_make_field(ScriptBinderField& out, const RTTRFieldData* field, const RTTRType* owner)
 {
+    auto _log_stack = _logger.stack(u8"export field '{}'", field->name);
+
     // get type signature
     auto signature = field->type.view();
 
     // export
     ScriptBinderRoot field_binder = {};
-    auto             err_code     = _try_export_field(signature, field_binder);
+    _try_export_field(signature, field_binder);
     // clang-format off
     out = {
         .owner = owner,
         .binder = field_binder,
         .data = field,
-        .error = err_code,
     };
     // clang-format on
 }
 void ScriptBinderManager::_make_static_field(ScriptBinderStaticField& out, const RTTRStaticFieldData* static_field, const RTTRType* owner)
 {
+    auto _log_stack = _logger.stack(u8"export static field '{}'", static_field->name);
+
     // get type signature
     auto signature = static_field->type.view();
 
     // export
     ScriptBinderRoot field_binder = {};
-    auto             err_code     = _try_export_field(signature, field_binder);
+    _try_export_field(signature, field_binder);
     // clang-format off
     out = {
         .owner = owner,
         .binder = field_binder,
         .data = static_field,
-        .error = err_code,
     };
     // clang-format on
 }
-void ScriptBinderManager::_make_param(ScriptBinderParam& out, StringView method_name, const RTTRParamData* param, const RTTRType* owner)
+void ScriptBinderManager::_make_param(ScriptBinderParam& out, const RTTRParamData* param)
 {
+    auto _log_stack = _logger.stack(u8"export param '{}', index {}", param->name, param->index);
+
     // get type signature
     auto signature = param->type.view();
 
     // check signature type
     if (!signature.is_type())
     {
-        out.error |= EScriptBinderError::UnsupportedType;
+        _logger.error(u8"unsupported type");
         return;
     }
 
     // check pointer level
     if (signature.decayed_pointer_level() > 1)
     {
-        out.error |= EScriptBinderError::PointerLevelGreaterThanOne;
+        _logger.error(u8"pointer level greater than 1");
         return;
     }
 
@@ -598,30 +490,35 @@ void ScriptBinderManager::_make_param(ScriptBinderParam& out, StringView method_
     // check bad binder
     if (out.binder.is_empty())
     {
-        out.error |= EScriptBinderError::UnsupportedType;
+        _logger.error(u8"unsupported type");
         return;
     }
 
     // check wrap export
     if (out.binder.is_wrap() && !is_decayed_pointer)
     {
-        out.error |= EScriptBinderError::ValueTypeOfWrap;
+        _logger.error(
+            u8"export wrap {} as value type",
+            out.binder.wrap()->type->name()
+        );
         return;
     }
 }
-void ScriptBinderManager::_make_return(ScriptBinderReturn& out, StringView method_name, TypeSignatureView signature, const RTTRType* owner)
+void ScriptBinderManager::_make_return(ScriptBinderReturn& out, TypeSignatureView signature)
 {
+    auto _log_stack = _logger.stack(u8"export return");
+
     // check signature type
     if (!signature.is_type())
     {
-        out.error |= EScriptBinderError::UnsupportedType;
+        _logger.error(u8"unsupported type");
         return;
     }
 
     // check pointer level
     if (signature.decayed_pointer_level() > 1)
     {
-        out.error |= EScriptBinderError::PointerLevelGreaterThanOne;
+        _logger.error(u8"pointer level greater than 1");
         return;
     }
 
@@ -642,38 +539,44 @@ void ScriptBinderManager::_make_return(ScriptBinderReturn& out, StringView metho
     // check bad binder
     if (out.binder.is_empty())
     {
-        out.error |= EScriptBinderError::UnsupportedType;
+        _logger.error(u8"unsupported type");
         return;
     }
 
     // check wrap export
     if (out.binder.is_wrap() && !is_decayed_pointer)
     {
-        out.error |= EScriptBinderError::ValueTypeOfWrap;
+        _logger.error(
+            u8"export wrap type {} as value",
+            out.binder.wrap()->type->name()
+        );
         return;
     }
 }
 
 // checker
-EScriptBinderError ScriptBinderManager::_try_export_field(TypeSignatureView signature, ScriptBinderRoot& out_binder)
+void ScriptBinderManager::_try_export_field(TypeSignatureView signature, ScriptBinderRoot& out_binder)
 {
     // check type
     if (!signature.is_type())
     {
-        return EScriptBinderError::UnsupportedType;
+        _logger.error(u8"unsupported type");
+        return;
     }
 
     // check pointer level
     if (signature.decayed_pointer_level() > 1)
     {
-        return EScriptBinderError::PointerLevelGreaterThanOne;
+        _logger.error(u8"pointer level greater than 1");
+        return;
     }
 
     if (signature.is_decayed_pointer())
     { // only support pointer type for wrap binder
         if (signature.is_any_ref())
         {
-            return EScriptBinderError::ReferenceField;
+            _logger.error(u8"cannot export reference field");
+            return;
         }
 
         // read type id
@@ -685,7 +588,8 @@ EScriptBinderError ScriptBinderManager::_try_export_field(TypeSignatureView sign
         out_binder = get_or_build(field_type_id);
         if (!out_binder.is_wrap())
         {
-            return EScriptBinderError::PointerFieldForBoxOrPrimitive;
+            _logger.error(u8"cannot export pointer field for non-wrap object");
+            return;
         }
     }
     else
@@ -699,13 +603,13 @@ EScriptBinderError ScriptBinderManager::_try_export_field(TypeSignatureView sign
         out_binder = get_or_build(field_type_id);
         if (out_binder.is_empty())
         {
-            return EScriptBinderError::UnsupportedType;
+            _logger.error(u8"unsupported type");
+            return;
         }
         else if (out_binder.is_wrap())
         {
-            return EScriptBinderError::ValueTypeOfWrap;
+            _logger.error(u8"cannot export wrap object as value type");
         }
     }
-    return EScriptBinderError::None;
 }
 } // namespace skr
