@@ -38,8 +38,8 @@ struct CombinePointerId {
 //  2. Touch 手势，相比于 Pointer 手势更复杂，用于移动端，不一一展开
 //
 // 但是，出于某些手势的复用性考虑，这里不进行继承结构上的区分
-sreflect_struct("guid": "8fb085fd-9412-4a1b-bc95-a518e32746f2")
-SKR_GUI_API GestureRecognizer : virtual public skr::rttr::IObject {
+sreflect_struct(guid = "8fb085fd-9412-4a1b-bc95-a518e32746f2")
+SKR_GUI_API GestureRecognizer : virtual public skr::IObject {
     SKR_GENERATE_BODY()
 
     GestureRecognizer(NotNull<InputManager*> manager);

@@ -7,9 +7,7 @@
 
 namespace skr::gui
 {
-sreflect_struct(
-    "guid": "bd2562c4-832f-4df2-a56a-8f0424c6bae4"
-)
+sreflect_struct(guid = "bd2562c4-832f-4df2-a56a-8f0424c6bae4")
 SKR_GUI_API LeafRenderObjectWidget : public RenderObjectWidget {
     SKR_GENERATE_BODY()
 

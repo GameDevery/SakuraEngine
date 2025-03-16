@@ -12,9 +12,7 @@ struct SkrRenderDevice;
 struct SkrResourceDevice;
 struct SkrNativeWindow;
 
-sreflect_struct(
-    "guid": "e3c81438-70e6-4727-8133-7a32a23b62c4"
-)
+sreflect_struct(guid = "e3c81438-70e6-4727-8133-7a32a23b62c4")
 SKR_GUI_RENDERER_API SkrNativeDevice final : public INativeDevice {
     SKR_GENERATE_BODY()
 

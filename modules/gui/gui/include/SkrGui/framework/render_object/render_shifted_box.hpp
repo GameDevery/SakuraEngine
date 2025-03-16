@@ -8,9 +8,7 @@
 namespace skr::gui
 {
 // 会对 child 施加布局偏移的 RenderBox
-sreflect_struct(
-    "guid": "357e11e8-dbcd-4830-9256-869198ca7bed"
-)
+sreflect_struct(guid = "357e11e8-dbcd-4830-9256-869198ca7bed")
 RenderShiftedBox : public RenderBox,
                    public ISingleChildRenderObject {
     SKR_GENERATE_BODY()

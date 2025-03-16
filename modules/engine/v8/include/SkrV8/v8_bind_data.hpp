@@ -1,74 +1,87 @@
 #pragma once
-#include "SkrRTTR/type.hpp"
+#include "SkrRTTR/script_binder.hpp"
 #include "v8-persistent-handle.h"
+#include "v8-template.h"
+#include "SkrRTTR/type.hpp"
 #include "SkrRTTR/scriptble_object.hpp"
 
-namespace skr::v8
+namespace skr
 {
-struct V8BindRecordCore;
-
-struct V8BindMethodCore {
-    struct OverloadInfo {
-        skr::rttr::Type* type;
-        skr::rttr::MethodData* method;
-    };
+//===============================bind data===============================
+struct V8BindMethodData {
+    ScriptBinderMethod binder;
+};
+struct V8BindStaticMethodData {
+    ScriptBinderStaticMethod binder;
+};
+struct V8BindFieldData {
+    ScriptBinderField binder;
+};
+struct V8BindStaticFieldData {
+    ScriptBinderStaticField binder;
+};
+struct V8BindPropertyData {
+    ScriptBinderProperty binder;
+};
+struct V8BindStaticPropertyData {
+    ScriptBinderStaticProperty binder;
+};
+struct V8BindWrapData {
+    // v8 info
+    ::v8::Global<::v8::FunctionTemplate> ctor_template;
 
     // native info
-    String name;
-    Vector<OverloadInfo> overloads;
+    ScriptBinderWrap*                      binder;
+    Map<String, V8BindMethodData*>         methods;
+    Map<String, V8BindFieldData*>          fields;
+    Map<String, V8BindStaticMethodData*>   static_methods;
+    Map<String, V8BindStaticFieldData*>    static_fields;
+    Map<String, V8BindPropertyData*>       properties;
+    Map<String, V8BindStaticPropertyData*> static_properties;
 
-    // owner record bind core
-    V8BindRecordCore* owner;
+    ~V8BindWrapData()
+    {
+        for (auto& pair : methods)
+        {
+            SkrDelete(pair.value);
+        }
+        for (auto& pair : fields)
+        {
+            SkrDelete(pair.value);
+        }
+        for (auto& pair : static_methods)
+        {
+            SkrDelete(pair.value);
+        }
+        for (auto& pair : static_fields)
+        {
+            SkrDelete(pair.value);
+        }
+        for (auto& pair : properties)
+        {
+            SkrDelete(pair.value);
+        }
+        for (auto& pair : static_properties)
+        {
+            SkrDelete(pair.value);
+        }
+    }
 };
 
-struct V8BindStaticMethodCore {
-    struct OverloadInfo {
-        skr::rttr::Type* type;
-        skr::rttr::StaticMethodData* method;
-    };
-
-    // native info
-    String name;
-    Vector<OverloadInfo> overloads;
-
-    // owner record bind core
-    V8BindRecordCore* owner;
-};
-
-struct V8BindFieldCore {
-    // native info
-    String name;
-    skr::rttr::Type* type;
-    skr::rttr::FieldData* field;
-
-    // owner record bind core
-    V8BindRecordCore* owner;
-};
-
-struct V8BindStaticFieldCore {
-    // native info
-    String name;
-    skr::rttr::Type* type;
-    skr::rttr::StaticFieldData* field;
-
-    // owner record bind core
-    V8BindRecordCore* owner;
-};
-
+//===============================bind core===============================
 struct V8BindRecordCore {
     // native info
-    skr::rttr::ScriptbleObject* object;
-    skr::rttr::Type*            type;
+    skr::ScriptbleObject* object      = nullptr;
+    void*                 object_head = nullptr;
+    const skr::RTTRType*  type        = nullptr;
 
     // v8 info
     ::v8::Persistent<::v8::Object> v8_object;
 
-    // field & method
-    Map<String, V8BindMethodCore*> methods;
-    Map<String, V8BindFieldCore*>  fields;
-
-    // static field & static method
-    Map<String, V8BindStaticMethodCore*> static_methods;
-    Map<String, V8BindStaticFieldCore*>  static_fields;
+    // helper functions
+    inline void* cast_to_base(::skr::GUID type_id)
+    {
+        return type->cast_to_base(type_id, object->iobject_get_head_ptr());
+    }
 };
-} // namespace skr::v8
+} // namespace skr

@@ -1,0 +1,83 @@
+{
+    "folders": [
+        {
+            "path": "../../",
+            "name": "root",
+        },
+        {
+            "path": "../../build/.skr/codegen",
+            "name": "codegen",
+        },
+    ],
+    "settings": {
+        // lua options for xmake
+        "Lua.diagnostics.disable": [
+            "undefined-global",
+            "lowercase-global",
+            "undefined-field",
+            "need-check-nil",
+        ],
+        // python options for meta codegen
+        "python.analysis.extraPaths": [
+            "${workspaceFolder:root}/tools/meta_codegen/",
+        ],
+        "python.autoComplete.extraPaths": [
+            "${workspaceFolder:root}/tools/meta_codegen/",
+        ],
+        "python.defaultInterpreterPath": "${workspaceFolder:root}/build/.skr/tool/windows/python-embed/python.exe",
+        // fixed terminal cwd
+        "terminal.integrated.cwd": "${workspaceFolder:root}",
+        // deno options for meta codegen
+        "deno.enable": false,
+        "[typescript]": {
+            "editor.defaultFormatter": "vscode.typescript-language-features",
+            "editor.formatOnType": true,
+            "editor.formatOnSave": false,
+            "editor.detectIndentation": false,
+            "editor.tabSize": 2,
+        },
+        "[peggy]": {
+            "editor.tabSize": 2,
+        }
+    },
+    "launch": {
+        "version": "0.2.0",
+        "configurations": [
+            {
+                "name": "codegen",
+                "type": "debugpy",
+                "request": "launch",
+                "program": "${workspaceFolder:root}/tools/meta_codegen/codegen.py",
+                "args": [
+                    "--config=${file}",
+                ],
+            },
+            {
+                "name": "DenoTest",
+                "type": "node",
+                "request": "launch",
+                "cwd": "${workspaceFolder:root}",
+                "runtimeExecutable": "deno",
+                "runtimeArgs": [
+                    "run",
+                    "--config=${workspaceFolder:root}/tools/meta_codegen_ts/deno.json"
+                ],
+                "program": "${workspaceFolder:root}/tools/meta_codegen_ts/codegen.ts",
+                "args": [
+                    "${file}"
+                ],
+                "console": "integratedTerminal"
+            },
+            {
+                "name": "BunTest",
+                "type": "bun",
+                "request": "launch",
+                "cwd": "${workspaceFolder:root}",
+                "program": "${workspaceFolder:root}/tools/meta_codegen_ts/codegen.ts",
+                "args": [
+                    "${file}"
+                ],
+            }
+        ]
+    }
+}

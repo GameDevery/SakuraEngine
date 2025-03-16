@@ -1,40 +1,14 @@
 #include "SkrV8/v8_isolate.hpp"
 #include "SkrV8/v8_context.hpp"
-#include "SkrCore/exec_static.hpp"
-#include "SkrRTTR/export/export_builder.hpp"
 #include "SkrRTTR/rttr_traits.hpp"
-#include "SkrRTTR/type.hpp"
 #include "SkrCore/log.hpp"
+#include "test_types.hpp"
 
-// test type
-struct TestType {
-    TestType() { SKR_LOG_FMT_INFO(u8"call ctor"); }
-    TestType(int32_t v)
-        : value(v)
-    {
-        SKR_LOG_FMT_INFO(u8"call ctor with param {}", v);
-    }
-    int32_t value;
-};
-SKR_RTTR_TYPE(TestType, "9f7696d7-4c20-4b11-84eb-7124b666c56e");
-SKR_EXEC_STATIC_CTOR
-{
-    using namespace skr::rttr;
-    register_type_loader(type_id_of<TestType>(), [](Type* type) {
-        // init type
-        type->init(ETypeCategory::Record);
-
-        // build type
-        RecordBuilder<TestType> builder{ &type->record_data() };
-        builder.basic_info();
-        builder.ctor<uint32_t>();
-        builder.field<&TestType::value>(u8"value");
-    });
-};
+int32_t test_v8::TestType::static_value = 0;
 
 int main(int argc, char* argv[])
 {
-    using namespace skr::v8;
+    using namespace skr;
 
     V8Isolate isolate;
     V8Context context(&isolate);
@@ -45,21 +19,56 @@ int main(int argc, char* argv[])
     context.init();
 
     // import types
-    isolate.make_record_template(skr::rttr::type_of<TestType>());
+    isolate.make_record_template(skr::type_of<test_v8::TestType>());
 
     // inject into context
-    context.install_templates();
+    isolate.inject_templates_into_context(context.v8_context());
+
+    // setup global
+    context.set_global(u8"g_add_value", 100);
 
     // exec code
     context.exec_script(u8R"__(
-        let test = new TestType()
-        let test_with_value_ctor = new TestType(114514);
-        test_with_value_ctor.value = 114;
-        let new_test = new TestType(test_with_value_ctor.value + 6); 
+        {
+            let test = new TestType()
+            test.value = g_add_value;
+            test.print_value();
+            test.add_to(TestType.add(7, 7));
+            test.print_value();
+
+            test.pos = {x: 11, y: 45, z: 14};
+            test.box = {
+                min: {x: 1, y: 2, z: 3},
+                max: {x: 4, y: 5, z: 6},
+                offset: {x: 7, y: 8, z: 9},
+            }
+
+            const pos = test.pos
+            const box = test.box
+            TestType.print(pos);
+            TestType.print(box);
+
+            TestType.static_value = test.pos.x * 10000 + test.pos.y * 100 + test.pos.z;
+            TestType.print_static_value();
+
+            let fuck_str = test.prop_fuck
+            test.prop_fuck = `"${fuck_str}, ${test.value}"`
+
+            let shit_val = TestType.prop_shit
+            TestType.prop_shit = shit_val * 100
+        }
     )__");
+
+    // gc
+    isolate.gc(true);
+
+    // trigger shutdown
+    SKR_LOG_FMT_INFO(u8"==========================shutdown==========================");
 
     // shutdown
     context.shutdown();
     isolate.shutdown();
     shutdown_v8();
+
+    return 0;
 }

@@ -8,7 +8,7 @@
 namespace skr::anim
 {
 
-sreflect_managed_component("guid" : "05622CB2-9D73-402B-B6C5-8075E13D5063")
+sreflect_managed_component(guid = "05622CB2-9D73-402B-B6C5-8075E13D5063")
 SkeletonComponent {
     SKR_RESOURCE_FIELD(skr::anim::SkeletonResource, skeleton);
 };

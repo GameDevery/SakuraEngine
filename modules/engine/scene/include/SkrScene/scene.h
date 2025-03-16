@@ -16,16 +16,16 @@ namespace skr
 // scene hierarchy
 
 sreflect_struct(
-    "guid" : "1CD632F6-3149-42E6-9114-647B0C803F32",
-    "ecs::comp" : true
+    guid = "1CD632F6-3149-42E6-9114-647B0C803F32";
+    ecs.comp = @enable;
 )
 NameComponent {
     char str[SKR_SCENE_MAX_NAME_LENGTH + 1];
 };
 
 sreflect_struct(
-    "guid" : "b08ec011-9b94-47f7-9926-c66d41d735e9",
-    "ecs::comp" : true
+    guid = "b08ec011-9b94-47f7-9926-c66d41d735e9";
+    ecs.comp = @enable;
 )
 IndexComponent {
     uint32_t value;
@@ -34,8 +34,8 @@ IndexComponent {
 // transforms
 
 sreflect_struct(
-    "guid" : "AE2C7477-8A44-4339-BE5D-64D05D7E05B1",
-    "ecs::comp" : true
+    guid = "AE2C7477-8A44-4339-BE5D-64D05D7E05B1";
+    ecs.comp = @enable;
 )
 SKR_ALIGNAS(16) 
 TransformComponent {
@@ -43,43 +43,43 @@ TransformComponent {
 };
 
 sreflect_struct(
-    "guid" : "78DD218B-87DE-4250-A7E8-A6B4553B47BF", 
-    "serde" : ["bin", "json"],
-    "ecs::comp" : true
+    guid = "78DD218B-87DE-4250-A7E8-A6B4553B47BF";
+    serde = @bin|@json;
+    ecs.comp = @enable;
 )
 RotationComponent {
     skr_rotator_t euler;
 };
 
 sreflect_struct(
-    "guid" : "A059A2A1-CC3B-43B0-88B6-ADA7822BA25D",
-    "serde" : ["bin", "json"],
-    "ecs::comp" : true
+    guid = "A059A2A1-CC3B-43B0-88B6-ADA7822BA25D";
+    serde = @bin|@json;
+    ecs.comp = @enable;
 )
 TranslationComponent {
     float3 value;
 };
 
 sreflect_struct(
-    "guid" : "D045D755-FBD1-44C2-8BF0-C86F2D8485FF", 
-    "serde" : ["bin", "json"],
-    "ecs::comp" : true
+    guid = "D045D755-FBD1-44C2-8BF0-C86F2D8485FF";
+    serde = @bin|@json;
+    ecs.comp = @enable;
 )
 ScaleComponent {
     float3 value;
 };
 
 sreflect_struct(
-    "guid" : "4fa24729-2c66-45a2-9417-3497ebc18771", 
-    "ecs::comp" : true
+    guid = "4fa24729-2c66-45a2-9417-3497ebc18771";
+    ecs.comp = @enable;
 )
 MovementComponent {
     float3 value;
 };
 
 sreflect_struct(
-    "guid" : "d33c74c5-2763-4ba4-b58e-dc44a627ebf4", 
-    "ecs::comp" : true
+    guid = "d33c74c5-2763-4ba4-b58e-dc44a627ebf4";
+    ecs.comp = @enable;
 )
 CameraComponent {
     struct SRenderer* renderer;
@@ -89,16 +89,16 @@ CameraComponent {
 };
 
 sreflect_struct(
-    "guid" : "70c7b2b7-c97c-442e-a3ae-01f99daef3c8",
-    "ecs::comp" : true
+    guid = "70c7b2b7-c97c-442e-a3ae-01f99daef3c8";
+    ecs.comp = @enable;
 )
 RootComponent {
     uint32_t _;
 };
 
 sreflect_struct(
-    "guid": "82CDDC11-3D94-4552-8FD4-237A053F35C0",
-    "ecs::comp::array": 4
+    guid = "82CDDC11-3D94-4552-8FD4-237A053F35C0";
+    ecs.comp.array = 4;
 ) ChildrenComponent {
     sugoi_entity_t entity;
 };
@@ -108,8 +108,8 @@ using ChildrenArray = sugoi::ArrayComponent<ChildrenComponent, 4>;
 #endif
 
 sreflect_struct(
-    "guid" : "2CAA41D2-54A4-46FB-BE43-68B545F313BF",
-    "ecs::comp" : true
+    guid = "2CAA41D2-54A4-46FB-BE43-68B545F313BF";
+    ecs.comp = @enable;
 )
 ParentComponent {
     sugoi_entity_t entity;

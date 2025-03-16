@@ -11,8 +11,10 @@
     #include "SkrRenderer/resources/mesh_resource.generated.h" // IWYU pragma: export
 #endif
 
-sreflect_enum("guid" : "01f05eb7-6d5d-46d8-945e-ce1259d22c8f")
-sattr("serde" : ["bin", "json"])
+sreflect_enum(
+    guid = "01f05eb7-6d5d-46d8-945e-ce1259d22c8f"
+    serde = @bin|@json
+)
 ESkrVertexAttribute SKR_IF_CPP( : uint32_t){
     SKR_VERT_ATTRIB_NONE,
     SKR_VERT_ATTRIB_POSITION,
@@ -28,8 +30,10 @@ ESkrVertexAttribute SKR_IF_CPP( : uint32_t){
 };
 typedef enum ESkrVertexAttribute ESkrVertexAttribute;
 
-sreflect_struct("guid" : "3f01f94e-bd88-44a0-95e8-94ff74d18fca")
-sattr("serde" : "bin")
+sreflect_struct(
+    guid = "3f01f94e-bd88-44a0-95e8-94ff74d18fca"
+    serde = @bin
+)
 skr_vertex_buffer_entry_t {
     ESkrVertexAttribute attribute;
     uint32_t            attribute_index;
@@ -39,8 +43,10 @@ skr_vertex_buffer_entry_t {
 };
 typedef struct skr_vertex_buffer_entry_t skr_vertex_buffer_entry_t;
 
-sreflect_struct("guid" : "6ac5f946-dd65-4710-8725-ab4273fe13e6")
-sattr("serde" : "bin")
+sreflect_struct(
+    guid = "6ac5f946-dd65-4710-8725-ab4273fe13e6"
+    serde = @bin
+)
 skr_index_buffer_entry_t {
     uint32_t buffer_index;
     uint32_t index_offset;
@@ -50,14 +56,16 @@ skr_index_buffer_entry_t {
 };
 typedef struct skr_index_buffer_entry_t skr_index_buffer_entry_t;
 
-sreflect_struct("guid" : "03104e51-c998-410b-9d3c-d76535933440")
-sattr("serde" : "bin")
+sreflect_struct(
+    guid = "03104e51-c998-410b-9d3c-d76535933440"
+    serde = @bin
+)
 skr_mesh_buffer_t {
     uint32_t                index;
     uint64_t                byte_length;
     bool                    used_with_index;
     bool                    used_with_vertex;
-    sattr("serde": "disable")
+    sattr(serde = @disable)
     struct skr::IBlob* blob SKR_IF_CPP(= nullptr);
 };
 
@@ -73,8 +81,10 @@ using VertexBufferEntry = skr_vertex_buffer_entry_t;
 using IndexBufferEntry  = skr_index_buffer_entry_t;
 using MeshBuffer        = skr_mesh_buffer_t;
 
-sreflect_struct("guid" : "cd2d43a7-1e0e-4951-bf87-7d693fd26227")
-sattr("serde" : "bin")
+sreflect_struct(
+    guid = "cd2d43a7-1e0e-4951-bf87-7d693fd26227"
+    serde = @bin
+)
 MeshPrimitive {
     skr_vertex_layout_id           vertex_layout_id;
     uint32_t                       material_index;
@@ -83,8 +93,10 @@ MeshPrimitive {
     uint32_t                       vertex_count;
 };
 
-sreflect_struct("guid" : "d3b04ea5-415d-44d5-995a-5c77c64fe1de")
-sattr("serde" : "bin")
+sreflect_struct(
+    guid = "d3b04ea5-415d-44d5-995a-5c77c64fe1de"
+    serde = @bin
+)
 MeshSection {
     int32_t               parent_index;
     skr_float3_t          translation;
@@ -93,8 +105,10 @@ MeshSection {
     skr::Vector<uint32_t> primive_indices;
 };
 
-sreflect_struct("guid" : "3b8ca511-33d1-4db4-b805-00eea6a8d5e1") 
-sattr("serde" : "bin")
+sreflect_struct(
+    guid = "3b8ca511-33d1-4db4-b805-00eea6a8d5e1"
+    serde = @bin
+)
 MeshResource {
     SKR_RENDERER_API ~MeshResource() SKR_NOEXCEPT;
 
@@ -109,7 +123,7 @@ MeshResource {
     bool install_to_vram           SKR_IF_CPP(= true);
     bool install_to_ram            SKR_IF_CPP(= true); // TODO: configure this in asset
 
-    sattr("serde": "disable")
+    sattr(serde = @disable)
     skr_render_mesh_id render_mesh SKR_IF_CPP(= nullptr);
 };
 

@@ -3,9 +3,9 @@
 #include "SkrRTTR/export/export_data.hpp"
 #include "SkrRTTR/export/dynamic_stack.hpp"
 
-namespace skr::rttr
+namespace skr
 {
-struct ExportHelper {
+struct RTTRExportHelper {
     // ctor & dtor export
     template <typename T, typename... Args>
     inline static void* export_ctor()
@@ -151,7 +151,8 @@ private:
                 if (stack.need_store_return())
                 {
                     stack.store_return<Ret>(
-                    (reinterpret_cast<T*>(p)->*method)(std::forward<Args>(stack.get_param<Args>(Idx))...));
+                        (reinterpret_cast<T*>(p)->*method)(std::forward<Args>(stack.get_param<Args>(Idx))...)
+                    );
                 }
                 else
                 {
@@ -163,7 +164,7 @@ private:
     template <auto method, typename T, typename Ret, typename... Args, size_t... Idx>
     inline static MethodInvokerDynamicStack _make_method_dynamic_stack_helper_const(std::index_sequence<Idx...>)
     {
-        return +[](const void* p, DynamicStack& stack) {
+        return +[](void* p, DynamicStack& stack) {
             if constexpr (std::is_same_v<void, Ret>)
             {
                 (reinterpret_cast<const T*>(p)->*method)(std::forward<Args>(stack.get_param<Args>(Idx))...);
@@ -173,7 +174,8 @@ private:
                 if (stack.need_store_return())
                 {
                     stack.store_return<Ret>(
-                    (reinterpret_cast<T*>(p)->*method)(std::forward<Args>(stack.get_param<Args>(Idx))...));
+                        (reinterpret_cast<T*>(p)->*method)(std::forward<Args>(stack.get_param<Args>(Idx))...)
+                    );
                 }
                 else
                 {
@@ -200,7 +202,8 @@ private:
                 if (stack.need_store_return())
                 {
                     stack.store_return<Ret>(
-                    func(std::forward<Args>(stack.get_param<Args>(Idx))...));
+                        func(std::forward<Args>(stack.get_param<Args>(Idx))...)
+                    );
                 }
                 else
                 {
@@ -210,4 +213,4 @@ private:
         };
     }
 };
-} // namespace skr::rttr
+} // namespace skr

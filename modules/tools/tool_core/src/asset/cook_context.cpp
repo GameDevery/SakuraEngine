@@ -118,7 +118,7 @@ void* SCookContextImpl::_Import()
         //-----import raw data
         SkrZoneScopedN("Importer.Import");
         skr::String name_holder  = u8"unknown";
-        if (auto type = skr::rttr::get_type_from_guid(importerType))
+        if (auto type = skr::get_type_from_guid(importerType))
         {
             name_holder = type->name().u8_str();
         }

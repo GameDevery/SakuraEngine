@@ -38,7 +38,7 @@ skr_global_target()
         after_install = function()
             import("skr.utils")
             local python = utils.find_python()
-            os.execv(python, {"-m", "pip", "install", "mako"})
+            -- os.execv(python, {"-m", "pip", "install", "mako"})
             os.execv(python, {"-m", "pip", "install", "autopep8"})
         end
     })
@@ -49,7 +49,7 @@ skr_global_target()
             import("skr.utils")
             local python = utils.find_python()
             if python then
-                os.execv(python, {"-m", "pip", "install", "mako"})
+                -- os.execv(python, {"-m", "pip", "install", "mako"})
                 os.execv(python, {"-m", "pip", "install", "autopep8"})
             else
                 raise("python not found, please install python3 first")
@@ -57,7 +57,18 @@ skr_global_target()
         end
     })
     skr_install("download", {
-        name = "meta-v1.0.1-llvm_18.1.6",
+        name = "bun_1.2.5",
+        install_func = "tool",
+        plat = {"windows"},
+        after_install = function()
+            import("skr.utils")
+            local bun = utils.find_bun()
+            -- os.execv(bun, {"install", "--production"}, {curdir = path.join(utils.get_env("engine_dir"), "tools/meta_codegen_ts")})
+            os.execv(bun, {"install"}, {curdir = path.join(utils.get_env("engine_dir"), "tools/meta_codegen_ts")})
+        end
+    })
+    skr_install("download", {
+        name = "meta_v1.0.3-llvm_19.1.7",
         install_func = "tool",
     })
     skr_install("download", {

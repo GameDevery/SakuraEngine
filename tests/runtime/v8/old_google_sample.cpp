@@ -22,8 +22,8 @@ struct MyData {
         printf("i am die {content: %s, times: %d}\n", content.c_str(), times);
     }
 };
-static std::unordered_map<void*, v8::UniquePersistent<v8::Value>> my_data_instances;
-static v8::UniquePersistent<v8::Promise::Resolver>                global_resolver;
+static std::unordered_map<void*, v8::Global<v8::Value>> my_data_instances;
+static v8::Global<v8::Promise::Resolver>                global_resolver;
 
 // old test function
 int old_main(int argc, char* argv[])

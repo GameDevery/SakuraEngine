@@ -7,14 +7,14 @@
 
 namespace skr::gui
 {
-sreflect_struct("guid": "f172b80f-a4b5-461c-9ac8-501e4dc732a4")
+sreflect_struct(guid = "f172b80f-a4b5-461c-9ac8-501e4dc732a4")
 TimerSignalData {
     float    time_stamp;
     uint64_t repeat_count;
 };
 using TimerSignalCallback = Function<bool(TimerSignalData data)>;
 
-sreflect_struct("guid": "063a265c-67a0-4ec1-bb26-c6a0c890c105")
+sreflect_struct(guid = "063a265c-67a0-4ec1-bb26-c6a0c890c105")
 Timer {
 
     inline static Timer OneShot(float time, TimerSignalCallback callback)
@@ -69,7 +69,7 @@ Timer {
 
 using TimerHandle = uint64_t;
 
-sreflect_struct("guid": "59ef6a71-e392-40b0-98d2-c7adf1b1a2e5")
+sreflect_struct(guid = "59ef6a71-e392-40b0-98d2-c7adf1b1a2e5")
 SKR_GUI_API TimerManager {
     // update
     void update(float time_stamp);

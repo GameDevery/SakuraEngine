@@ -1008,3 +1008,8 @@ void sugoi_storage_t::destroy_entities(const sugoi_meta_filter_t& meta)
         return pimpl->groups_timestamp;
     });
 }
+
+void sugoi_storage_t::destroy_entities(const sugoi_entity_t* ents, EIndex n)
+{
+    sugoiS_destroy_entities(this, ents, n);
+}

@@ -11,8 +11,10 @@ namespace skd
 {
 namespace asset
 {
-sreflect_struct("guid" : "d2fc798b-af43-4865-b953-abba2b6d524a")
-sattr("serde" : "json")
+sreflect_struct(
+    guid = "d2fc798b-af43-4865-b953-abba2b6d524a"
+    serde = @json
+)
 SKR_TEXTURE_COMPILER_API STextureSamplerImporter final : public SImporter {
     skr::String jsonPath;
 
@@ -20,7 +22,7 @@ SKR_TEXTURE_COMPILER_API STextureSamplerImporter final : public SImporter {
     void  Destroy(void* resource) override;
 };
 
-sreflect_struct("guid" : "f06d5542-4c20-48e4-819a-16a6ae13b295")
+sreflect_struct(guid = "f06d5542-4c20-48e4-819a-16a6ae13b295")
 SKR_TEXTURE_COMPILER_API STextureSamplerCooker final : public SCooker {
     bool     Cook(SCookContext* ctx) override;
     uint32_t Version() override { return 1u; }

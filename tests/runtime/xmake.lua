@@ -71,6 +71,8 @@ executable_module("ProxyTest", "PROXY_TEST", {exception = true})
 --------------------------------------------------------------------------------------
 
 skr_includes_with_cull("v8", function ()
+    codegen_component("V8Test", { api = "V8_TEST", rootdir = "v8" })
+        add_files("v8/**.hpp")
     executable_module("V8Test", "V8_TEST")
         set_group("05.tests/runtime")
         public_dependency("SkrV8")

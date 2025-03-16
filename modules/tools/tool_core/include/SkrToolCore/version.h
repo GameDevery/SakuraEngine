@@ -5,7 +5,7 @@
     #include "SkrToolCore/version.generated.h"
 #endif
 
-sreflect_struct("guid" : "9DC58264-310C-C98B-DC08-6571E8D07146")
+sreflect_struct(guid = "9DC58264-310C-C98B-DC08-6571E8D07146")
 TOOL_CORE_API skr_version_t {
     uint32_t v;
 };

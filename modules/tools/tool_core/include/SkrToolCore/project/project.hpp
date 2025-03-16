@@ -9,8 +9,10 @@
 namespace skd
 {
 
-sreflect_struct("guid" : "D153957A-2272-45F8-92DA-EEEB67821D20")
-sattr("serde" : "json")
+sreflect_struct(
+    guid = "D153957A-2272-45F8-92DA-EEEB67821D20"
+    serde = @json
+)
 SProjectConfig {
     skr::String assetDirectory;
     skr::String resourceDirectory;

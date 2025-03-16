@@ -7,9 +7,7 @@
 
 namespace skr::gui
 {
-sreflect_struct(
-    "guid": "32dc9243-8d16-4854-9ce8-3039a47991bf"
-)
+sreflect_struct(guid = "32dc9243-8d16-4854-9ce8-3039a47991bf")
 SKR_GUI_API FlexSlot : public SlotWidget {
     SKR_GENERATE_BODY()
 

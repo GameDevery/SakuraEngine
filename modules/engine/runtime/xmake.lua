@@ -9,9 +9,10 @@ target("SkrRTMeta")
     codegen_generator({
         scripts = {
             -- ecs
-            { file = "meta/ecs/ecs.py" },
+            { file = "meta/ecs.ts" },
         }, 
         dep_files = {
+            "meta/**.ts",
             "meta/**.py",
             "meta/**.mako"
         }

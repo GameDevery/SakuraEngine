@@ -4,16 +4,41 @@
     #include "SkrCore/SkrRTTR/scriptble_object.generated.h"
 #endif
 
-namespace skr::rttr
+// script export behaviour map
+// parameter:
+// |            |  primitive |    box    |   wrap   |
+// |     T      |      T     |     T     |    -     |
+// |     T*     |   inout T? |  inout T? |    T?    |
+// |  const T*  |      T?    |     T?    |    T?    |
+// |     T&     |   inout T  |  inout T  |    T     |
+// |  const T&  |      T     |     T     |    T     |
+//
+// return:
+// |            |  primitive |    box    |   wrap   |
+// |     T      |      T     |     T     |    -     |
+// |     T*     |      T?    |     T?    |    T?    |
+// |  const T*  |      T?    |     T?    |    T?    |
+// |     T&     |      T     |     T     |    T     |
+// |  const T&  |      T     |     T     |    T     |
+//
+// field:
+// |            |  primitive |    box    |   wrap   |
+// |     T      |      T     |     T     |    -     |
+// |     T*     |      -     |     -     |    T?    |
+// |  const T*  |      -     |     -     |    T?    |
+// |     T&     |      -     |     -     |    -     |
+// |  const T&  |      -     |     -     |    -     |
+
+namespace skr
 {
-sreflect_enum_class("guid": "a0393643-9f1b-423a-8754-f504bab41420")
+sreflect_enum_class(guid = "a0393643-9f1b-423a-8754-f504bab41420")
 EScriptbleObjectOwnerShip {
     Script,
     Native,
 };
 
-sreflect_struct("guid": "ecb7851e-f6c5-4814-8fba-a35668a2f277")
-SKR_CORE_API ScriptbleObject : virtual public skr::rttr::IObject
+sreflect_struct(guid = "ecb7851e-f6c5-4814-8fba-a35668a2f277")
+SKR_CORE_API ScriptbleObject : virtual public skr::IObject
 {
     SKR_GENERATE_BODY()
     virtual ~ScriptbleObject() = default;

@@ -3,7 +3,7 @@
 #include <SkrContainersDef/span.hpp>
 
 // enum value, used to hold RTTR enum value data
-namespace skr::rttr
+namespace skr
 {
 enum class EEnumUnderlyingType
 {
@@ -255,7 +255,7 @@ private:
     };
 };
 
-} // namespace skr::rttr
+} // namespace skr
 
 // strongly enum, used to hold pure c style enum (without underlying type)
 namespace skr

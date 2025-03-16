@@ -94,9 +94,17 @@ template <typename T>
 inline constexpr T max_size_of = std::is_signed_v<T> ? std::numeric_limits<T>::max() : std::numeric_limits<T>::max() - 1;
 } // namespace skr
 
-// power of 2
+// power tools
 namespace skr
 {
+template <typename T>
+inline constexpr T int_pow(T base, T exponent) noexcept
+{
+    T result = 1;
+    for (T i = 0; i < exponent; ++i)
+        result *= base;
+    return result;
+}
 template <typename T>
 inline constexpr bool is_power_of_2(T value) noexcept
 {

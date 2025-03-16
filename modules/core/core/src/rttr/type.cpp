@@ -1,215 +1,887 @@
 #include "SkrRTTR/type.hpp"
 #include "SkrCore/log.hpp"
 
-namespace skr::rttr
+namespace skr
 {
 // ctor & dtor
-Type::Type()
+RTTRType::RTTRType()
 {
 }
-Type::~Type()
+RTTRType::~RTTRType()
 {
     switch (_type_category)
     {
-        case ETypeCategory::Invalid:
-            break;
-        case ETypeCategory::Primitive:
-            _primitive_data.~PrimitiveData();
-            break;
-        case ETypeCategory::Record:
-            _record_data.~RecordData();
-            break;
-        case ETypeCategory::Enum:
-            _enum_data.~EnumData();
-            break;
-        default:
-            SKR_UNREACHABLE_CODE()
-            break;
+    case ERTTRTypeCategory::Invalid:
+        break;
+    case ERTTRTypeCategory::Primitive:
+        _primitive_data.~RTTRPrimitiveData();
+        break;
+    case ERTTRTypeCategory::Record:
+        _record_data.~RTTRRecordData();
+        break;
+    case ERTTRTypeCategory::Enum:
+        _enum_data.~RTTREnumData();
+        break;
+    default:
+        SKR_UNREACHABLE_CODE()
+        break;
     }
 }
 
-// init
-void Type::init(ETypeCategory type_category)
+// module
+void RTTRType::set_module(String module)
 {
-    if (_type_category == ETypeCategory::Invalid)
-    {
-        switch (type_category)
-        {
-            case ETypeCategory::Primitive:
-                new (&_primitive_data) PrimitiveData();
-                break;
-            case ETypeCategory::Record:
-                new (&_record_data) RecordData();
-                break;
-            case ETypeCategory::Enum:
-                new (&_enum_data) EnumData();
-                break;
-            default:
-                SKR_UNREACHABLE_CODE()
-                break;
-        }
-        _type_category = type_category;
-    }
-    else
-    {
-        SKR_ASSERT(type_category == this->_type_category && "Type category mismatch when init type data");
-    }
+    _module = module;
 }
-
-// data getter
-const PrimitiveData& Type::primitive_data() const
+String RTTRType::module() const
 {
-    SKR_ASSERT(_type_category == ETypeCategory::Primitive && "Type category mismatch when get primitive data");
-    return _primitive_data;
-}
-PrimitiveData& Type::primitive_data()
-{
-    SKR_ASSERT(_type_category == ETypeCategory::Primitive && "Type category mismatch when get primitive data");
-    return _primitive_data;
-}
-const RecordData& Type::record_data() const
-{
-    SKR_ASSERT(_type_category == ETypeCategory::Record && "Type category mismatch when get record data");
-    return _record_data;
-}
-RecordData& Type::record_data()
-{
-    SKR_ASSERT(_type_category == ETypeCategory::Record && "Type category mismatch when get record data");
-    return _record_data;
-}
-const EnumData& Type::enum_data() const
-{
-    SKR_ASSERT(_type_category == ETypeCategory::Enum && "Type category mismatch when get enum data");
-    return _enum_data;
-}
-EnumData& Type::enum_data()
-{
-    SKR_ASSERT(_type_category == ETypeCategory::Enum && "Type category mismatch when get enum data");
-    return _enum_data;
+    return _module;
 }
 
 // basic getter
-ETypeCategory Type::type_category() const
+ERTTRTypeCategory RTTRType::type_category() const
 {
     return _type_category;
 }
-const skr::String& Type::name() const
+const skr::String& RTTRType::name() const
 {
     switch (_type_category)
     {
-        case ETypeCategory::Primitive:
-            return _primitive_data.name;
-        case ETypeCategory::Record:
-            return _record_data.name;
-        case ETypeCategory::Enum:
-            return _enum_data.name;
-        default:
-            SKR_UNREACHABLE_CODE()
-            return _primitive_data.name;
+    case ERTTRTypeCategory::Primitive:
+        return _primitive_data.name;
+    case ERTTRTypeCategory::Record:
+        return _record_data.name;
+    case ERTTRTypeCategory::Enum:
+        return _enum_data.name;
+    default:
+        SKR_UNREACHABLE_CODE()
+        return _primitive_data.name;
     }
 }
-GUID Type::type_id() const
+Vector<String> RTTRType::name_space() const
 {
     switch (_type_category)
     {
-        case ETypeCategory::Primitive:
-            return _primitive_data.type_id;
-        case ETypeCategory::Record:
-            return _record_data.type_id;
-        case ETypeCategory::Enum:
-            return _enum_data.type_id;
-        default:
-            SKR_UNREACHABLE_CODE()
-            return _primitive_data.type_id;
+    case ERTTRTypeCategory::Primitive:
+        return {};
+    case ERTTRTypeCategory::Record:
+        return _record_data.name_space;
+    case ERTTRTypeCategory::Enum:
+        return _enum_data.name_space;
+    default:
+        SKR_UNREACHABLE_CODE()
+        return {};
     }
 }
-size_t Type::size() const
+GUID RTTRType::type_id() const
 {
     switch (_type_category)
     {
-        case ETypeCategory::Primitive:
-            return _primitive_data.size;
-        case ETypeCategory::Record:
-            return _record_data.size;
-        case ETypeCategory::Enum:
-            return _enum_data.size;
-        default:
-            SKR_UNREACHABLE_CODE()
-            return _primitive_data.size;
+    case ERTTRTypeCategory::Primitive:
+        return _primitive_data.type_id;
+    case ERTTRTypeCategory::Record:
+        return _record_data.type_id;
+    case ERTTRTypeCategory::Enum:
+        return _enum_data.type_id;
+    default:
+        SKR_UNREACHABLE_CODE()
+        return _primitive_data.type_id;
     }
 }
-size_t Type::alignment() const
+size_t RTTRType::size() const
 {
     switch (_type_category)
     {
-        case ETypeCategory::Primitive:
-            return _primitive_data.alignment;
-        case ETypeCategory::Record:
-            return _record_data.alignment;
-        case ETypeCategory::Enum:
-            return _enum_data.alignment;
-        default:
-            SKR_UNREACHABLE_CODE()
-            return _primitive_data.alignment;
+    case ERTTRTypeCategory::Primitive:
+        return _primitive_data.size;
+    case ERTTRTypeCategory::Record:
+        return _record_data.size;
+    case ERTTRTypeCategory::Enum:
+        return _enum_data.size;
+    default:
+        SKR_UNREACHABLE_CODE()
+        return _primitive_data.size;
+    }
+}
+size_t RTTRType::alignment() const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Primitive:
+        return _primitive_data.alignment;
+    case ERTTRTypeCategory::Record:
+        return _record_data.alignment;
+    case ERTTRTypeCategory::Enum:
+        return _enum_data.alignment;
+    default:
+        SKR_UNREACHABLE_CODE()
+        return _primitive_data.alignment;
+    }
+}
+void RTTRType::each_name_space(FunctionRef<void(StringView)> each_func) const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Primitive:
+        break;
+    case ERTTRTypeCategory::Record:
+        for (const String& ns : _record_data.name_space)
+        {
+            each_func(ns);
+        }
+        break;
+    case ERTTRTypeCategory::Enum:
+        for (const String& ns : _enum_data.name_space)
+        {
+            each_func(ns);
+        }
+        break;
+    default:
+        SKR_UNREACHABLE_CODE()
+        break;
     }
 }
 
-// build optimize data
-void Type::build_optimize_data()
+// builders
+void RTTRType::build_primitive(FunctionRef<void(RTTRPrimitiveData* data)> func)
 {
-    // TODO. build optimize data
+    // init
+    if (_type_category == ERTTRTypeCategory::Invalid)
+    {
+        new (&_primitive_data) RTTRPrimitiveData();
+        _type_category = ERTTRTypeCategory::Primitive;
+    }
+
+    // validate
+    SKR_ASSERT(_type_category == ERTTRTypeCategory::Primitive && "Type category mismatch when build primitive data");
+
+    // build
+    func(&_primitive_data);
+}
+void RTTRType::build_record(FunctionRef<void(RTTRRecordData* data)> func)
+{
+    // init
+    if (_type_category == ERTTRTypeCategory::Invalid)
+    {
+        new (&_record_data) RTTRRecordData();
+        _type_category = ERTTRTypeCategory::Record;
+    }
+
+    // validate
+    SKR_ASSERT(_type_category == ERTTRTypeCategory::Record && "Type category mismatch when build record data");
+
+    // build
+    func(&_record_data);
+}
+void RTTRType::build_enum(FunctionRef<void(RTTREnumData* data)> func)
+{
+    // init
+    if (_type_category == ERTTRTypeCategory::Invalid)
+    {
+        new (&_enum_data) RTTREnumData();
+        _type_category = ERTTRTypeCategory::Enum;
+    }
+
+    // validate
+    SKR_ASSERT(_type_category == ERTTRTypeCategory::Enum && "Type category mismatch when build enum data");
+
+    // build
+    func(&_enum_data);
 }
 
 // caster
-void* Type::cast_to(GUID type_id, void* p) const
+bool RTTRType::based_on(GUID type_id) const
 {
     switch (_type_category)
     {
-        case ETypeCategory::Primitive: {
-            return (type_id == _primitive_data.type_id) ? p : nullptr;
+    case ERTTRTypeCategory::Primitive: {
+        return (type_id == _primitive_data.type_id);
+    }
+    case ERTTRTypeCategory::Record: {
+        if (type_id == _record_data.type_id)
+        {
+            return true;
         }
-        case ETypeCategory::Record: {
-            if (type_id == _record_data.type_id)
+        else
+        {
+            // find base and cast
+            for (const auto& base : _record_data.bases_data)
             {
-                return p;
-            }
-            else
-            {
-                // find base and cast
-                for (const auto& base : _record_data.bases_data)
+                if (type_id == base->type_id)
                 {
-                    if (type_id == base->type_id)
-                    {
-                        return base->cast_to_base(p);
-                    }
+                    return true;
+                    ;
                 }
+            }
 
-                // get base type and continue cast
-                for (const auto& base : _record_data.bases_data)
+            // get base type and continue cast
+            for (const auto& base : _record_data.bases_data)
+            {
+                auto type = get_type_from_guid(base->type_id);
+                if (type)
                 {
-                    auto type = get_type_from_guid(base->type_id);
-                    if (type)
+                    if (type->based_on(type_id))
                     {
-                        auto casted = type->cast_to(type_id, p);
-                        if (casted)
-                        {
-                            return casted;
-                        }
-                    }
-                    else
-                    {
-                        SKR_LOG_FMT_ERROR(u8"Type \"{}\" not found when doing cast from \"{}\"", type_id, _record_data.type_id);
+                        return true;
                     }
                 }
+                else
+                {
+                    SKR_LOG_FMT_ERROR(u8"Type \"{}\" not found when doing cast from \"{}\"", type_id, _record_data.type_id);
+                }
             }
+
+            return false;
         }
-        case ETypeCategory::Enum: {
-            return (type_id == _enum_data.type_id || type_id == _enum_data.underlying_type_id) ? p : nullptr;
+    }
+    case ERTTRTypeCategory::Enum: {
+        return (type_id == _enum_data.type_id || type_id == _enum_data.underlying_type_id);
+    }
+    default:
+        SKR_UNREACHABLE_CODE()
+        return false;
+    }
+}
+void* RTTRType::cast_to_base(GUID type_id, void* p) const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Primitive: {
+        return (type_id == _primitive_data.type_id) ? p : nullptr;
+    }
+    case ERTTRTypeCategory::Record: {
+        if (type_id == _record_data.type_id)
+        {
+            return p;
         }
-        default:
-            SKR_UNREACHABLE_CODE()
+        else
+        {
+            // find base and cast
+            for (const auto& base : _record_data.bases_data)
+            {
+                if (type_id == base->type_id)
+                {
+                    return base->cast_to_base(p);
+                }
+            }
+
+            // get base type and continue cast
+            for (const auto& base : _record_data.bases_data)
+            {
+                auto type = get_type_from_guid(base->type_id);
+                if (type)
+                {
+                    auto casted = type->cast_to_base(type_id, p);
+                    if (casted)
+                    {
+                        return casted;
+                    }
+                }
+                else
+                {
+                    SKR_LOG_FMT_ERROR(u8"Type \"{}\" not found when doing cast from \"{}\"", type_id, _record_data.type_id);
+                }
+            }
             return nullptr;
+        }
+    }
+    case ERTTRTypeCategory::Enum: {
+        return (type_id == _enum_data.type_id || type_id == _enum_data.underlying_type_id) ? p : nullptr;
+    }
+    default:
+        SKR_UNREACHABLE_CODE()
+        return nullptr;
+    }
+}
+RTTRTypeCaster RTTRType::caster_to_base(GUID type_id) const
+{
+    RTTRTypeCaster result;
+    _build_caster(result, type_id);
+    return result;
+}
+
+// get dtor
+Optional<RTTRDtorData> RTTRType::dtor_data() const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Record:
+        return _record_data.dtor_data;
+    default:
+        return {};
     }
 }
 
-} // namespace skr::rttr
+// each method & field
+void RTTRType::each_bases(FunctionRef<void(const RTTRBaseData* base_data, const RTTRType* owner)> each_func, RTTRTypeEachConfig config) const
+{
+    if (_type_category == ERTTRTypeCategory::Record)
+    {
+        // each self
+        for (const auto& base : _record_data.bases_data)
+        {
+            each_func(base, this);
+        }
+
+        // each base
+        if (config.include_bases)
+        {
+            for (const auto& base : _record_data.bases_data)
+            {
+                auto type = get_type_from_guid(base->type_id);
+                if (type)
+                {
+                    type->each_bases(each_func, config);
+                }
+                else
+                {
+                    SKR_LOG_FMT_ERROR(u8"Type \"{}\" not found when doing each base from \"{}\"", base->type_id, _record_data.type_id);
+                }
+            }
+        }
+    }
+}
+void RTTRType::each_ctor(FunctionRef<void(const RTTRCtorData* ctor)> each_func, RTTRTypeEachConfig config) const
+{
+    if (_type_category == ERTTRTypeCategory::Record)
+    {
+        // each self
+        for (const auto& ctor : _record_data.ctor_data)
+        {
+            each_func(ctor);
+        }
+    }
+}
+void RTTRType::each_method(FunctionRef<void(const RTTRMethodData* method, const RTTRType* owner)> each_func, RTTRTypeEachConfig config) const
+{
+    if (_type_category == ERTTRTypeCategory::Record)
+    {
+        // each self
+        for (const auto& method : _record_data.methods)
+        {
+            each_func(method, this);
+        }
+
+        // each base
+        if (config.include_bases)
+        {
+            for (const auto& base : _record_data.bases_data)
+            {
+                auto type = get_type_from_guid(base->type_id);
+                if (type)
+                {
+                    type->each_method(each_func, config);
+                }
+                else
+                {
+                    SKR_LOG_FMT_ERROR(u8"Type \"{}\" not found when doing each method from \"{}\"", base->type_id, _record_data.type_id);
+                }
+            }
+        }
+    }
+}
+void RTTRType::each_field(FunctionRef<void(const RTTRFieldData* field, const RTTRType* owner)> each_func, RTTRTypeEachConfig config) const
+{
+    if (_type_category == ERTTRTypeCategory::Record)
+    {
+        // each self
+        for (const auto& field : _record_data.fields)
+        {
+            each_func(field, this);
+        }
+
+        // each base
+        if (config.include_bases)
+        {
+            for (const auto& base : _record_data.bases_data)
+            {
+                auto type = get_type_from_guid(base->type_id);
+                if (type)
+                {
+                    type->each_field(each_func, config);
+                }
+                else
+                {
+                    SKR_LOG_FMT_ERROR(u8"Type \"{}\" not found when doing each method from \"{}\"", base->type_id, _record_data.type_id);
+                }
+            }
+        }
+    }
+}
+void RTTRType::each_static_method(FunctionRef<void(const RTTRStaticMethodData* method, const RTTRType* owner)> each_func, RTTRTypeEachConfig config) const
+{
+    if (_type_category == ERTTRTypeCategory::Record)
+    {
+        // each self
+        for (const auto& method : _record_data.static_methods)
+        {
+            each_func(method, this);
+        }
+
+        // each base
+        if (config.include_bases)
+        {
+            for (const auto& base : _record_data.bases_data)
+            {
+                auto type = get_type_from_guid(base->type_id);
+                if (type)
+                {
+                    type->each_static_method(each_func, config);
+                }
+                else
+                {
+                    SKR_LOG_FMT_ERROR(u8"Type \"{}\" not found when doing each method from \"{}\"", base->type_id, _record_data.type_id);
+                }
+            }
+        }
+    }
+}
+void RTTRType::each_static_field(FunctionRef<void(const RTTRStaticFieldData* field, const RTTRType* owner)> each_func, RTTRTypeEachConfig config) const
+{
+    if (_type_category == ERTTRTypeCategory::Record)
+    {
+        // each self
+        for (const auto& field : _record_data.static_fields)
+        {
+            each_func(field, this);
+        }
+
+        // each base
+        if (config.include_bases)
+        {
+            for (const auto& base : _record_data.bases_data)
+            {
+                auto type = get_type_from_guid(base->type_id);
+                if (type)
+                {
+                    type->each_static_field(each_func, config);
+                }
+                else
+                {
+                    SKR_LOG_FMT_ERROR(u8"Type \"{}\" not found when doing each method from \"{}\"", base->type_id, _record_data.type_id);
+                }
+            }
+        }
+    }
+}
+void RTTRType::each_extern_method(FunctionRef<void(const RTTRExternMethodData* method, const RTTRType* owner)> each_func, RTTRTypeEachConfig config) const
+{
+    if (_type_category == ERTTRTypeCategory::Record)
+    {
+        // each self
+        for (const auto& method : _record_data.extern_methods)
+        {
+            each_func(method, this);
+        }
+
+        // each base
+        if (config.include_bases)
+        {
+            for (const auto& base : _record_data.bases_data)
+            {
+                auto type = get_type_from_guid(base->type_id);
+                if (type)
+                {
+                    type->each_extern_method(each_func, config);
+                }
+                else
+                {
+                    SKR_LOG_FMT_ERROR(u8"Type \"{}\" not found when doing each method from \"{}\"", base->type_id, _record_data.type_id);
+                }
+            }
+        }
+    }
+    else if (_type_category == ERTTRTypeCategory::Primitive)
+    {
+        // each self
+        for (const auto& method : _primitive_data.extern_methods)
+        {
+            each_func(method, this);
+        }
+    }
+}
+
+// find method & field
+const RTTRCtorData* RTTRType::find_ctor(RTTRTypeFindConfig config) const
+{
+    if (_type_category == ERTTRTypeCategory::Record)
+    {
+        auto find_func = [&](const RTTRCtorData* ctor) {
+            // filter by signature
+            if (config.signature && !ctor->signature_equal(config.signature.value(), config.signature_compare_flag))
+            {
+                return false;
+            }
+
+            return true;
+        };
+
+        // find self
+        auto result = _record_data.ctor_data.find_if(find_func);
+        if (result)
+        {
+            return result.ref();
+        }
+    }
+    return nullptr;
+}
+const RTTRMethodData* RTTRType::find_method(RTTRTypeFindConfig config) const
+{
+    if (_type_category == ERTTRTypeCategory::Record)
+    {
+        auto find_func = [&](const RTTRMethodData* method) {
+            // filter by name
+            if (config.name && method->name != config.name.value())
+            {
+                return false;
+            }
+
+            // filter by signature
+            if (config.signature && !method->signature_equal(config.signature.value(), config.signature_compare_flag))
+            {
+                return false;
+            }
+
+            return true;
+        };
+
+        // find self
+        auto result = _record_data.methods.find_if(find_func);
+        if (result)
+        {
+            return result.ref();
+        }
+
+        // find base
+        if (config.include_bases)
+        {
+            for (const auto& base : _record_data.bases_data)
+            {
+                auto type = get_type_from_guid(base->type_id);
+                if (type)
+                {
+                    auto method = type->find_method(config);
+                    if (method)
+                    {
+                        return method;
+                    }
+                }
+                else
+                {
+                    SKR_LOG_FMT_ERROR(u8"Type \"{}\" not found when doing find method from \"{}\"", base->type_id, _record_data.type_id);
+                }
+            }
+        }
+    }
+    return nullptr;
+}
+const RTTRFieldData* RTTRType::find_field(RTTRTypeFindConfig config) const
+{
+    if (_type_category == ERTTRTypeCategory::Record)
+    {
+        auto find_func = [&](const RTTRFieldData* field) {
+            // filter by name
+            if (config.name && field->name != config.name.value())
+            {
+                return false;
+            }
+
+            // filter by signature
+            if (config.signature && !field->type.view().equal(config.signature.value(), config.signature_compare_flag))
+            {
+                return false;
+            }
+
+            return true;
+        };
+
+        // find self
+        auto result = _record_data.fields.find_if(find_func);
+        if (result)
+        {
+            return result.ref();
+        }
+
+        // find base
+        if (config.include_bases)
+        {
+            for (const auto& base : _record_data.bases_data)
+            {
+                auto type = get_type_from_guid(base->type_id);
+                if (type)
+                {
+                    auto field = type->find_field(config);
+                    if (field)
+                    {
+                        return field;
+                    }
+                }
+                else
+                {
+                    SKR_LOG_FMT_ERROR(u8"Type \"{}\" not found when doing find field from \"{}\"", base->type_id, _record_data.type_id);
+                }
+            }
+        }
+    }
+    return nullptr;
+}
+const RTTRStaticMethodData* RTTRType::find_static_method(RTTRTypeFindConfig config) const
+{
+    if (_type_category == ERTTRTypeCategory::Record)
+    {
+        auto find_func = [&](const RTTRStaticMethodData* method) {
+            // filter by name
+            if (config.name && method->name != config.name.value())
+            {
+                return false;
+            }
+
+            // filter by signature
+            if (config.signature && !method->signature_equal(config.signature.value(), config.signature_compare_flag))
+            {
+                return false;
+            }
+
+            return true;
+        };
+
+        // find self
+        auto result = _record_data.static_methods.find_if(find_func);
+        if (result)
+        {
+            return result.ref();
+        }
+
+        // find base
+        if (config.include_bases)
+        {
+            for (const auto& base : _record_data.bases_data)
+            {
+                auto type = get_type_from_guid(base->type_id);
+                if (type)
+                {
+                    auto method = type->find_static_method(config);
+                    if (method)
+                    {
+                        return method;
+                    }
+                }
+                else
+                {
+                    SKR_LOG_FMT_ERROR(u8"Type \"{}\" not found when doing find static method from \"{}\"", base->type_id, _record_data.type_id);
+                }
+            }
+        }
+    }
+    return nullptr;
+}
+const RTTRStaticFieldData* RTTRType::find_static_field(RTTRTypeFindConfig config) const
+{
+    if (_type_category == ERTTRTypeCategory::Record)
+    {
+        auto find_func = [&](const RTTRStaticFieldData* field) {
+            // filter by name
+            if (config.name && field->name != config.name.value())
+            {
+                return false;
+            }
+
+            // filter by signature
+            if (config.signature && !field->type.view().equal(config.signature.value(), config.signature_compare_flag))
+            {
+                return false;
+            }
+
+            return true;
+        };
+
+        // find self
+        auto result = _record_data.static_fields.find_if(find_func);
+        if (result)
+        {
+            return result.ref();
+        }
+
+        // find base
+        if (config.include_bases)
+        {
+            for (const auto& base : _record_data.bases_data)
+            {
+                auto type = get_type_from_guid(base->type_id);
+                if (type)
+                {
+                    auto field = type->find_static_field(config);
+                    if (field)
+                    {
+                        return field;
+                    }
+                }
+                else
+                {
+                    SKR_LOG_FMT_ERROR(u8"Type \"{}\" not found when doing find static field from \"{}\"", base->type_id, _record_data.type_id);
+                }
+            }
+        }
+    }
+    return nullptr;
+}
+const RTTRExternMethodData* RTTRType::find_extern_method(RTTRTypeFindConfig config) const
+{
+    auto find_func = [&](const RTTRExternMethodData* method) {
+        // filter by name
+        if (config.name && method->name != config.name.value())
+        {
+            return false;
+        }
+
+        // filter by signature
+        if (config.signature && !method->signature_equal(config.signature.value(), config.signature_compare_flag))
+        {
+            return false;
+        }
+
+        return true;
+    };
+
+    if (_type_category == ERTTRTypeCategory::Record)
+    {
+        // find self
+        auto result = _record_data.extern_methods.find_if(find_func);
+        if (result)
+        {
+            return result.ref();
+        }
+
+        // find base
+        if (config.include_bases)
+        {
+            for (const auto& base : _record_data.bases_data)
+            {
+                auto type = get_type_from_guid(base->type_id);
+                if (type)
+                {
+                    auto method = type->find_extern_method(config);
+                    if (method)
+                    {
+                        return method;
+                    }
+                }
+                else
+                {
+                    SKR_LOG_FMT_ERROR(u8"Type \"{}\" not found when doing find extern method from \"{}\"", base->type_id, _record_data.type_id);
+                }
+            }
+        }
+    }
+    else if (_type_category == ERTTRTypeCategory::Primitive)
+    {
+        // find self
+        auto result = _primitive_data.extern_methods.find_if(find_func);
+        if (result)
+        {
+            return result.ref();
+        }
+    }
+    else if (_type_category == ERTTRTypeCategory::Record)
+    {
+        // find self
+        auto result = _enum_data.extern_methods.find_if(find_func);
+        if (result)
+        {
+            return result.ref();
+        }
+    }
+    return nullptr;
+}
+
+// flag & attribute
+ERTTRRecordFlag RTTRType::record_flag() const
+{
+    SKR_ASSERT(_type_category == ERTTRTypeCategory::Record && "Type category mismatch when get record flag");
+    return _record_data.flag;
+}
+ERTTREnumFlag RTTRType::enum_flag() const
+{
+    SKR_ASSERT(_type_category == ERTTRTypeCategory::Enum && "Type category mismatch when get enum flag");
+    return _enum_data.flag;
+}
+const Any* RTTRType::find_attribute(TypeSignatureView signature) const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Record: {
+        auto result = _record_data.attrs.find_if([&](const Any& v) { return v.type_is(signature); });
+        if (result)
+        {
+            return result.ptr();
+        }
+        break;
+    }
+    case ERTTRTypeCategory::Enum: {
+        auto result = _enum_data.attrs.find_if([&](const Any& v) { return v.type_is(signature); });
+        if (result)
+        {
+            return result.ptr();
+        }
+        break;
+    }
+    default:
+        break;
+    }
+    return nullptr;
+}
+
+// helpers
+bool RTTRType::_build_caster(RTTRTypeCaster& caster, const GUID& type_id) const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Primitive: {
+        return type_id == _primitive_data.type_id;
+    }
+    case ERTTRTypeCategory::Record: {
+        if (type_id == _record_data.type_id)
+        {
+            return true;
+        }
+        else
+        {
+            // find base and cast
+            for (const auto& base : _record_data.bases_data)
+            {
+                if (type_id == base->type_id)
+                {
+                    caster.cast_funcs.add(base->cast_to_base);
+                    return true;
+                }
+            }
+
+            // get base type and continue cast
+            for (const auto& base : _record_data.bases_data)
+            {
+                auto type = get_type_from_guid(base->type_id);
+                if (type)
+                {
+                    if (_build_caster(caster, type_id))
+                    {
+                        caster.cast_funcs.add(base->cast_to_base);
+                        return true;
+                    }
+                }
+                else
+                {
+                    SKR_LOG_FMT_ERROR(u8"Type \"{}\" not found when doing cast from \"{}\"", type_id, _record_data.type_id);
+                }
+            }
+        }
+    }
+    case ERTTRTypeCategory::Enum: {
+        return (type_id == _enum_data.type_id || type_id == _enum_data.underlying_type_id);
+    }
+    default:
+        SKR_UNREACHABLE_CODE()
+        break;
+    }
+    return false;
+}
+} // namespace skr

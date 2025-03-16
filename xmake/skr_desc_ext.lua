@@ -209,15 +209,17 @@ function skr_install_rule()
     add_rules("skr.install")
 end
 
---   kind: "download"/"files"，不同的 kind 有不同的参数
+--   kind: "download"/"files"/"custom"，不同的 kind 有不同的参数
 --   [kind = any]: 共有参数
 --     plat: filter target platform
 --     arch: filter target architecture
+--     toolchain； filter target toolchain
 --   [kind = “download"]:
 --     name: package or files name
---     install_func: "tool"/"resources"/"sdk"/"file"/nil, nil means use install.lua in package
+--     install_func: "tool"/"resources"/"sdk"/"file"/"custom"/nil, nil means use install.lua in package
 --     debug: wants download debug sdk
 --     out_dir: override output directory
+--     custom_install: if [install_func] is "custom", this function will be called
 --     after_install: function to run after install
 --   [kind = "files"]:
 --     name: install name, for solve depend

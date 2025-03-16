@@ -16,64 +16,82 @@ namespace renderer
 {
 using MaterialPropertyNameView = skr::SerializeConstString;
 
-sreflect_struct("guid": "e2c14489-3223-489a-8e30-95d2014e99f2")
-sattr("serde" : "bin")
+sreflect_struct(
+    guid = "e2c14489-3223-489a-8e30-95d2014e99f2"
+    serde = @bin
+)
 MaterialValueBool {
     MaterialPropertyNameView slot_name;
     bool                     value;
 };
 
-sreflect_struct("guid": "bb5b5c8e-367c-4ec8-b4ee-60c14c212160")
-sattr("serde" : "bin")
+sreflect_struct(
+    guid = "bb5b5c8e-367c-4ec8-b4ee-60c14c212160"
+    serde = @bin
+)
 MaterialValueFloat {
     MaterialPropertyNameView slot_name;
     float                    value;
 };
 
-sreflect_struct("guid": "ce285a7f-0713-4e55-b960-be4b8022a620")
-sattr("serde" : "bin")
+sreflect_struct(
+    guid = "ce285a7f-0713-4e55-b960-be4b8022a620"
+    serde = @bin
+)
 MaterialValueDouble {
     MaterialPropertyNameView slot_name;
     double                   value;
 };
 
-sreflect_struct("guid": "7b9c85a6-292f-4bd0-85bf-6fd3dec8410a")
-sattr("serde" : "bin")
+sreflect_struct(
+    guid = "7b9c85a6-292f-4bd0-85bf-6fd3dec8410a"
+    serde = @bin
+)
 MaterialValueFloat2 {
     MaterialPropertyNameView slot_name;
     skr_float2_t             value;
 };
 
-sreflect_struct("guid": "d788b57b-65f6-490d-9fc6-4f7bc32c18ed")
-sattr("serde" : "bin")
+sreflect_struct(
+    guid = "d788b57b-65f6-490d-9fc6-4f7bc32c18ed"
+    serde = @bin
+)
 MaterialValueFloat3 {
     MaterialPropertyNameView slot_name;
     skr_float3_t             value;
 };
 
-sreflect_struct("guid": "7b26477e-caa7-4aa6-8fb0-76f2976e23e2")
-sattr("serde" : "bin")
+sreflect_struct(
+    guid = "7b26477e-caa7-4aa6-8fb0-76f2976e23e2"
+    serde = @bin
+)
 MaterialValueFloat4 {
     MaterialPropertyNameView slot_name;
     skr_float4_t             value;
 };
 
-sreflect_struct("guid": "31c522ce-7124-45c6-8d2d-5430aaf17e8a")
-sattr("serde" : "bin")
+sreflect_struct(
+    guid = "31c522ce-7124-45c6-8d2d-5430aaf17e8a"
+    serde = @bin
+)
 MaterialValueTexture {
     MaterialPropertyNameView slot_name;
     skr_guid_t               value;
 };
 
-sreflect_struct("guid": "760d78ba-c42c-49fa-9164-6968e7693461")
-sattr("serde" : "bin")
+sreflect_struct(
+    guid = "760d78ba-c42c-49fa-9164-6968e7693461"
+    serde = @bin
+)
 MaterialValueSampler {
     MaterialPropertyNameView slot_name;
     skr_guid_t               value;
 };
 
-sreflect_struct("guid": "7cbbb808-20d9-4bff-b72d-3c23d5b00f2b")
-sattr("serde" : "bin")
+sreflect_struct(
+    guid = "7cbbb808-20d9-4bff-b72d-3c23d5b00f2b"
+    serde = @bin
+)
 MaterialShaderVariant {
     // refers to a skr_shader_collection_resource_t
     skr_guid_t shader_collection;
@@ -91,8 +109,10 @@ MaterialShaderVariant {
     skr::SerializeConstVector<uint32_t> option_indices;
 };
 
-sreflect_struct("guid": "e81946ee-fb88-4cde-abd5-b4ae56dbaa89") 
-sattr("serde" : "bin")
+sreflect_struct(
+    guid = "e81946ee-fb88-4cde-abd5-b4ae56dbaa89"
+    serde = @bin
+) 
 MaterialOverrides {
     skr::SerializeConstVector<MaterialShaderVariant> switch_variants;
     skr::SerializeConstVector<MaterialValueBool>     bools;
@@ -105,8 +125,10 @@ MaterialOverrides {
     skr::SerializeConstVector<MaterialValueSampler>  samplers;
 };
 
-sreflect_struct("guid" : "2efad635-b331-4fc6-8c52-2f8ca954823e")
-sattr("serde" : "bin")
+sreflect_struct(
+    guid = "2efad635-b331-4fc6-8c52-2f8ca954823e"
+    serde = @bin
+)
 MaterialResource {
     uint32_t                   material_type_version;
     skr_material_type_handle_t material_type;
@@ -129,7 +151,7 @@ MaterialResource {
         CGPUXBindTableId              bind_table;
     } installed_pass;
 
-    sattr("serde": "disable")
+    sattr(serde = @disable)
     skr::Vector<installed_pass> installed_passes;
 };
 

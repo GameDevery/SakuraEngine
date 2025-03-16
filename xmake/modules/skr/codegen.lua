@@ -8,10 +8,6 @@ import("skr.utils")
 -- TODO. move depend files into .skr
 -- TODO. cleanup codegen artifacts
 
--- programs
-local _meta = utils.find_meta()
-local _python = utils.find_python()
-
 -- data cache names
 local _codegen_data_batch_name = "c++.codegen.batch"
 local _codegen_data_headers_name = "c++.codegen.headers"
@@ -120,6 +116,7 @@ function solve_generators(target)
 
     -- permission
     if (os.host() == "macosx") then
+        local _meta = utils.find_meta()
         os.exec("chmod 777 ".._meta)
     end
 end
@@ -232,6 +229,9 @@ function _codegen_compile(target, proxy_target, opt)
         table.insert(argv, k, v)
     end
     
+    -- find meta
+    local _meta = utils.find_meta()
+
     -- print commands
     local command = _meta .. " " .. table.concat(argv, " ")
     if option.get("verbose") then
@@ -279,6 +279,13 @@ function meta_compile(target, proxy_target, opt)
     local headerfiles = target:data(_codegen_data_headers_name)
     local batchinfo = target:data(_codegen_data_batch_name)
     local sourcefile = batchinfo.sourcefile
+    
+    -- collect depend files
+    local _meta = utils.find_meta()
+    local depend_files = { _meta }
+    for _, headerfile in ipairs(headerfiles) do
+        table.insert(depend_files, headerfile)
+    end
 
     -- generate headers dummy
     if(headerfiles ~= nil and #headerfiles > 0) then
@@ -305,8 +312,13 @@ function meta_compile(target, proxy_target, opt)
             _codegen_compile(target, proxy_target, opt)
         end, {
             cache_file = utils.depend_file(path.join("codegen", target:name(), "codegen.meta")),
-            files = headerfiles,
+            files = depend_files,
             use_sha = true,
+            post_scan = function ()
+                local batchinfo = target:data(_codegen_data_batch_name)
+                local outdir = batchinfo.metadir
+                return os.files(path.join(outdir, "**.meta"))
+            end
         })
     end
 end
@@ -322,7 +334,8 @@ function _mako_render(target, scripts, dep_files, opt)
     local gendir = batchinfo.gendir
 
     local api = target:values("c++.codegen.api")
-    local generate_script = path.join(_engine_dir, "/tools/meta_codegen/codegen.py")
+    local generate_script = path.join(_engine_dir, "/tools/meta_codegen_ts/codegen.ts")
+    -- local generate_script = path.join(_engine_dir, "/tools/meta_codegen/codegen.py")
     local start_time = os.time()
 
     if not opt.quiet then
@@ -360,25 +373,30 @@ function _mako_render(target, scripts, dep_files, opt)
     end
 
     -- output config
-    config_file = path.join(utils.skr_codegen_dir(target:name()), "codegen/meta_codegen_config.json")
+    config_file = path.join(utils.skr_codegen_dir(target:name()), "codegen", target:name().."_codegen_config.json")
     json.savefile(config_file, config)
 
     -- baisc commands
     local command = {
         generate_script,
-        "--config", config_file
+        config_file
     }
 
     if verbos then
         cprint(
-            "[%s] python %s"
+            "[%s] bun %s"
             , target:name()
             , table.concat(command, " ")
         )
     end
 
+    -- find bun
+    local _bun = utils.find_bun()
+
     -- call codegen script
-    local out, err = os.iorunv(_python, command)
+    -- local out, err = os.iorunv(_python, command)
+    local out, err = os.iorunv(_bun, command)
+
     
     -- dump output
     if option.get("verbose") and out and #out > 0 then
@@ -410,13 +428,18 @@ function mako_render(target, opt)
     -- collect framework depend files
     local dep_files = os.files(path.join(metadir, "**.meta"))
     do
-        local py_pattern = path.join(_engine_dir, "tools/meta_codegen/**.py")
-        local mako_pattern = path.join(_engine_dir, "tools/meta_codegen/**.mako")
-        for _, file in ipairs(os.files(py_pattern)) do
-            table.insert(dep_files, file)
-        end
-        for _, file in ipairs(os.files(mako_pattern)) do
-            table.insert(dep_files, file)
+        -- local framework_patterns = {
+        --     path.join(_engine_dir, "tools/meta_codegen/**.py"),
+        --     path.join(_engine_dir, "tools/meta_codegen/**.mako"),
+        -- }
+        local framework_patterns = {
+            path.join(_engine_dir, "tools/meta_codegen_ts/framework/**"),
+            path.join(_engine_dir, "tools/meta_codegen_ts/codegen.ts"),
+        }
+        for _, pattern in ipairs(framework_patterns) do
+            for _, file in ipairs(os.files(pattern)) do
+                table.insert(dep_files, file)
+            end
         end
     end
 
@@ -465,9 +488,20 @@ function mako_render(target, opt)
         cache_file = utils.depend_file(path.join("codegen", target:name(), "codegen.mako")),
         files = dep_files,
         use_sha = true,
+        post_scan = function ()
+            local batchinfo = target:data(_codegen_data_batch_name)
+            local gendir = batchinfo.gendir
+            local headers = os.files(path.join(gendir, "**.h"))
+            local sources = os.files(path.join(gendir, "**.cpp"))
+            for _, source in ipairs(sources) do
+                table.insert(headers, source)
+            end
+            return headers
+        end
     })
 end
 
 function is_env_complete()
-    return _meta and _python
+    -- return _meta and _python
+    return _meta and _bun
 end

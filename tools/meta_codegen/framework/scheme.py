@@ -818,7 +818,8 @@ class JsonOverrideSolver:
 
                 # merge list
                 if type(object.val) is list:
-                    merge_source.extend(object.val)
+                    for v in object.val:
+                        merge_source.append(v.val)
                 else:
                     merge_source.append(object.val)
 

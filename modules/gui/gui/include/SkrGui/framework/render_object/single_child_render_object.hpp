@@ -9,9 +9,9 @@
 namespace skr::gui
 {
 sreflect_interface(
-    "guid": "5349672b-bfc5-46a9-9a02-40ef563c196d"
+    guid = "5349672b-bfc5-46a9-9a02-40ef563c196d"
 )
-SKR_GUI_API ISingleChildRenderObject : virtual public skr::rttr::IObject {
+SKR_GUI_API ISingleChildRenderObject : virtual public skr::IObject {
     SKR_GENERATE_BODY()
     virtual ~ISingleChildRenderObject() = default;
 
@@ -26,7 +26,7 @@ struct SingleChildRenderObjectMixin {
 
     inline GUID accept_child_type(const TSelf& self) const SKR_NOEXCEPT
     {
-        return ::skr::rttr::type_id_of<TChild>();
+        return ::skr::type_id_of<TChild>();
     }
     inline void set_child(TSelf& self, NotNull<RenderObject*> child) SKR_NOEXCEPT
     {

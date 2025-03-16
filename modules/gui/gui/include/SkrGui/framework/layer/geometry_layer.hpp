@@ -6,9 +6,7 @@
 
 namespace skr::gui
 {
-sreflect_struct(
-    "guid": "1d1fbcab-eb50-4a22-99f6-59c5f4aca3e9"
-)
+sreflect_struct(guid = "1d1fbcab-eb50-4a22-99f6-59c5f4aca3e9")
 GeometryLayer : public Layer {
     SKR_GENERATE_BODY()
     using Super = Layer;
