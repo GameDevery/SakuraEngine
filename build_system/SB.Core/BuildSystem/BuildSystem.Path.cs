@@ -5,7 +5,7 @@ using System.Collections.Concurrent;
 
 namespace SB
 {
-    public static partial class BuildSystem
+    public partial class BuildSystem
     {
         public static string GetUniqueTempFileName(string File, string Hint, string Extension, IEnumerable<string>? Args = null)
         {
@@ -13,11 +13,6 @@ namespace SB
             var SHA = SHA256.HashData(Encoding.UTF8.GetBytes(FullIdentifier));
             return $"{Hint}.{Path.GetFileName(File)}.{Convert.ToHexString(SHA)}.{Extension}";
         }
-
-        public static string GetStorePath(this Target Target, string StoreName) => Directory.CreateDirectory(Path.Combine(Target.GetTempBasePath(), StoreName, Target.Name)).FullName;
-        public static string GetBuildPath(this Target Target) => Directory.CreateDirectory(Path.Combine(Target.GetBuildBasePath(), $"{BuildSystem.TargetOS}/{BuildSystem.TargetArch}/")).FullName;
-        public static string GetTempBasePath(this Target Target) => Target.IsFromPackage ? PackageTempPath : TempPath;
-        public static string GetBuildBasePath(this Target Target) => Target.IsFromPackage ? PackageBuildPath : BuildPath;
 
         public static bool CachedFileExists(string Path, out DateTime dateTime)
         {
@@ -35,9 +30,43 @@ namespace SB
         private static ConcurrentDictionary<string, DateTime> cachedFileExists = new();
         public static string DepsStore = ".deps";
         public static string ObjsStore = ".objs";
-        public static string TempPath { get; set; }
-        public static string BuildPath { get; set; }
-        public static string PackageTempPath { get; set; }
-        public static string PackageBuildPath { get; set; }
+        public static string GeneratedSourceStore = ".gens";
+        public static string TempPath { get; set; } = Directory.CreateDirectory(Path.Join(Directory.GetCurrentDirectory(), ".sb")).FullName;
+        public static string BuildPath { get; set; } = TempPath!;
+        public static string PackageTempPath { get; set; } = TempPath!;
+        public static string PackageBuildPath { get; set; } = TempPath!;
+    }
+
+    public static class BuildPathExtensions
+    {
+        public static string GetStorePath(this Target Target, string StoreName) => Directory.CreateDirectory(Path.Combine(Target.GetTempBasePath(), StoreName, Target.Name)).FullName;
+        public static string GetBuildPath(this Target Target) => Directory.CreateDirectory(Path.Combine(Target.GetBuildBasePath(), $"{BuildSystem.TargetOS}/{BuildSystem.TargetArch}/")).FullName;
+        public static string GetTempBasePath(this Target Target) => Target.IsFromPackage ? BuildSystem.PackageTempPath : BuildSystem.TempPath;
+        public static string GetBuildBasePath(this Target Target) => Target.IsFromPackage ? BuildSystem.PackageBuildPath : BuildSystem.BuildPath;
+    }
+
+    public static class StringExtensions
+    {
+        public static string ToUpperSnakeCase(this string text)
+        {
+            if(text == null) {
+                throw new ArgumentNullException(nameof(text));
+            }
+            if(text.Length < 2) {
+                return text.ToUpperInvariant();
+            }
+            var sb = new StringBuilder();
+            sb.Append(char.ToUpperInvariant(text[0]));
+            for(int i = 1; i < text.Length; ++i) {
+                char c = text[i];
+                if(char.IsUpper(c)) {
+                    sb.Append('_');
+                    sb.Append(char.ToUpperInvariant(c));
+                } else {
+                    sb.Append(char.ToUpperInvariant(c));
+                }
+            }
+            return sb.ToString();
+        }
     }
 }

@@ -59,7 +59,7 @@ namespace SB.Core
 
         public static async Task<bool> AwaitFingerprint(TaskFingerprint Fingerprint)
         {
-            Task<bool> ToAwait = null;
+            Task<bool>? ToAwait = null;
             const int YieldThreshold = 1000;
             int YieldTimes = 0;
             while (!AllTasks.TryGetValue(Fingerprint, out ToAwait))
@@ -69,7 +69,7 @@ namespace SB.Core
                 if (YieldTimes > YieldThreshold)
                     await Task.Delay(5);
             }
-            return await ToAwait;
+            return await ToAwait!;
         }
 
         public static void WaitAll(IEnumerable<Task> tasks)

@@ -49,3 +49,4 @@ publish
 .sb
 .pkgs
 sbuild
+.build

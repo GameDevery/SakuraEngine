@@ -19,11 +19,11 @@ namespace SB
         }
 
         public virtual bool EmitTargetTask => false;
-        public virtual IArtifact PerTargetTask(Target target) => null;
+        public virtual IArtifact? PerTargetTask(Target target) => null;
 
         public virtual bool EmitFileTask => false;
-        public virtual bool FileFilter(string File) => false;
-        public virtual IArtifact PerFileTask(Target target, string File) => null;
+        public virtual bool FileFilter(Target Target, string File) => false;
+        public virtual IArtifact? PerFileTask(Target target, string File) => null;
 
         public string Name => SelfName;
 

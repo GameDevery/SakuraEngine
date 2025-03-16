@@ -22,7 +22,7 @@ public static class Zlib
                 {
                     Target
                         .LinkDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/zlib/lib/windows/x64"))
-                        .Link(Visibility.Public, "zlibstatic.lib");
+                        .Link(Visibility.Public, "zlibstatic");
                 }
                 else if (BuildSystem.TargetOS == OSPlatform.OSX)
                 {

@@ -8,8 +8,8 @@ namespace SB
     {
         public CompileCommandsEmitter(IToolchain Toolchain) => this.Toolchain = Toolchain;
         public override bool EmitFileTask => true;
-        public override bool FileFilter(string File) => true;
-        public override IArtifact PerFileTask(Target Target, string SourceFile)
+        public override bool FileFilter(Target Target, string File) => File.EndsWith(".cpp") || File.EndsWith(".c") || File.EndsWith(".cxx") || File.EndsWith(".cc");
+        public override IArtifact? PerFileTask(Target Target, string SourceFile)
         {
             Stopwatch sw = new();
             sw.Start();

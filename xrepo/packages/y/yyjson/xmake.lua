@@ -6,7 +6,7 @@ package("yyjson")
 
     on_install(function (package)
         os.mkdir(package:installdir())
-        os.cp(path.join(package:scriptdir(), "port", "src"), ".")
+        os.cp(path.join(package:scriptdir(), "port", "yyjson"), ".")
 
         local content = [[
             set_languages("c11")
@@ -15,8 +15,8 @@ package("yyjson")
             target("yyjson")
                 set_kind("static")
                 set_optimize("fastest")
-                add_files("src/**.c")
-                add_headerfiles("src/*.h", {prefixdir = "yyjson"})
+                add_files("yyjson/**.c")
+                add_headerfiles("yyjson/*.h", {prefixdir = "yyjson"})
         ]]
         -- add fp fast flags
         if package:is_toolchain("msvc") then

@@ -10,6 +10,6 @@
     public interface ILinker
     {
         public Version Version { get; }
-        public LinkResult Link(string TargetName, string EmitterName, IArgumentDriver Driver);
+        public LinkResult Link(TaskEmitter Emitter, Target Target, IArgumentDriver Driver);
     }
 }

@@ -15,9 +15,10 @@ public static class YYJson
 
                 Target
                     .TargetType(TargetType.Static)
-                    .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/src"))
+                    .IncludeDirs(Visibility.Private, Path.Combine(SourceLocation.Directory(), "port/yyjson"))
+                    .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port"))
                     .FpModel(FpModel.Fast)
-                    .AddFiles("port/src/**.c");
+                    .AddFiles("port/yyjson/**.c");
             });
     }
 }

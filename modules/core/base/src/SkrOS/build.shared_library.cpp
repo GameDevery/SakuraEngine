@@ -136,7 +136,7 @@ skr::NativeLibHandle skr::SharedLibrary::handle() const
             WideCharToMultiByte(CP_UTF8, 0, str, (int)wcslen(str), (char*)str8, size, NULL, NULL);
             str8[size] = '\0';
         #else
-            return strcpy(str8, str);
+            return strcpy((char*)str8, str);
         #endif
         };
         DWORD lastError = GetLastError();
@@ -162,15 +162,15 @@ skr::NativeLibHandle skr::SharedLibrary::handle() const
         _lastError.clear();
         if (path == nullptr)
         {
-            _handle = GetModuleHandle(nullptr);
+            _handle = GetModuleHandleW(nullptr);
         }
         else
         {
             auto wpath = skr::filesystem::path(path);
-            _handle = GetModuleHandle(wpath.c_str());
+            _handle = GetModuleHandleW(wpath.c_str());
             if (_handle == NULL)
             {
-                _handle = LoadLibrary(wpath.c_str());
+                _handle = LoadLibraryW(wpath.c_str());
             }
         }
         if (!_handle)

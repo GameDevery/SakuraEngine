@@ -1,0 +1,57 @@
+using SB.Core;
+using System.Collections.Concurrent;
+using System.Diagnostics;
+
+namespace SB
+{
+    public class ModuleMetaEmitter : TaskEmitter
+    {
+        public override bool EmitTargetTask => true;
+        public override IArtifact? PerTargetTask(Target Target)
+        {
+            if (Target.GetAttribute<ModuleAttribute>() is null)
+                return null;
+
+            Stopwatch sw = new();
+            sw.Start();
+
+            var GenSourcePath = Target.GetStorePath(BuildSystem.GeneratedSourceStore);
+            var GenFileName = Path.Combine(GenSourcePath, "module.configure.cpp");
+            // Target.AddFiles(GenFileName);
+            Depend.OnChanged(Target.Name, GenFileName, Name, (Depend depend) => {
+                var ModuleDependencies = Target.Dependencies.Where((Dependency) => BuildSystem.GetTarget(Dependency).GetAttribute<ModuleAttribute>() is not null);
+                string DependenciesArray = "[" + String.Join(",", ModuleDependencies.Select(D => FormatDependency(D))) + "]";
+                string JSON = $$"""
+                {
+                    "name": "{{Target.Name}}",
+                    "prettyname": "{{Target.Name}}",
+                    "api": "0.1.0",
+                    "version": "0.1.0",
+                    "linking": "{{Target.GetTargetType()}}",
+                    "author": "official",
+                    "license": "EngineDefault(MIT)",
+                    "copyright": "EngineDefault",
+                    "dependencies": {{DependenciesArray}},
+                }
+                """;
+                string CppContent = $"#include \"SkrCore/module/module.hpp\"\n\nSKR_MODULE_METADATA(u8R\"__de___l___im__({JSON})__de___l___im__\", {Target.Name})";
+                File.WriteAllText(GenFileName, CppContent);
+                depend.ExternalFiles.Add(GenFileName);
+            }, new string[] { Target.Location }, null);
+            sw.Stop();
+            Time += (int)sw.ElapsedMilliseconds;
+            return null;
+        }
+
+        private static string FormatDependency(string Dependency)
+        {
+            var Target = BuildSystem.GetTarget(Dependency);
+            return $$"""
+            { "name": {{Dependency}}, "version": "0.1.0", "kind": "shared" }
+            """;
+        }
+
+
+        public static volatile int Time = 0;
+    }
+}

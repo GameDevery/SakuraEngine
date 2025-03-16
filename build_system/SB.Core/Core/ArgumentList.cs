@@ -13,7 +13,7 @@
             if (Another is not List<T>)
                 throw new ArgumentException("ArgumentList type mismatch!");
             var ToMerge = Another as List<T>;
-            this.AddRange(ToMerge);
+            this.AddRange(ToMerge!);
         }
 
         public IArgumentList Copy()

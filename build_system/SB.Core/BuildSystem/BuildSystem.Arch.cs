@@ -2,7 +2,7 @@
 
 namespace SB
 {
-    public static partial class BuildSystem
+    public partial class BuildSystem
     {
         public static Architecture HostArch => HostInformation.HostArch;
         public static OSPlatform HostOS => HostInformation.HostOS;

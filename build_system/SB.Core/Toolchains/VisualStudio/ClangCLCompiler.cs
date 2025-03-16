@@ -44,7 +44,7 @@ namespace SB.Core
             return new ClangCLArgumentDriver();
         }
 
-        public CompileResult Compile(string TargetName, string EmitterName, IArgumentDriver Driver)
+        public CompileResult Compile(TaskEmitter Emitter, Target Target, IArgumentDriver Driver)
         {
             var CompilerArgsDict = Driver.CalculateArguments();
             var CompilerArgsList = CompilerArgsDict.Values.SelectMany(x => x).ToList();
@@ -58,7 +58,7 @@ namespace SB.Core
 
             var SourceFile = Driver.Arguments["Source"] as string;
             var ObjectFile = Driver.Arguments["Object"] as string;
-            var Changed = Depend.OnChanged(TargetName, SourceFile, EmitterName, (Depend depend) =>
+            var Changed = Depend.OnChanged(Target.Name, SourceFile!, Emitter.Name, (Depend depend) =>
             {
                 Process compiler = new Process
                 {
@@ -92,7 +92,7 @@ namespace SB.Core
                     var DepFilePath = Driver.Arguments["SourceDependencies"] as string;
                     // line0: {target}.o: {target}.cpp \
                     // line1~n: {include_file} \
-                    var AllLines = File.ReadAllLines(DepFilePath).Select(
+                    var AllLines = File.ReadAllLines(DepFilePath!).Select(
                         x => x.Replace("\\ ", " ").Replace(" \\", "").Trim()
                     ).ToArray();
                     var DepIncludes = new Span<string>(AllLines, 1, AllLines.Length - 1);
@@ -102,13 +102,13 @@ namespace SB.Core
                 if (OutputInfo.Contains("warning"))
                     Log.Warning("clang-cl.exe: {OutputInfo}", OutputInfo);
 
-                depend.ExternalFiles.Add(ObjectFile);
-            }, new List<string> { SourceFile }, DependArgsList);
+                depend.ExternalFiles.Add(ObjectFile!);
+            }, new List<string> { SourceFile! }, DependArgsList);
 
             return new CompileResult
             {
-                ObjectFile = ObjectFile,
-                PDBFile = Driver.Arguments.TryGetValue("PDB", out var args) ? args as string : "",
+                ObjectFile = ObjectFile!,
+                PDBFile = Driver.Arguments.TryGetValue("PDB", out var args) ? (string)args! : "",
                 IsRestored = !Changed
             };
         }

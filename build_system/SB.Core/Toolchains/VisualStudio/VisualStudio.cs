@@ -28,8 +28,8 @@ namespace SB.Core
         }
 
         public Version Version => new Version(VSVersion, 0);
-        public ICompiler Compiler => CLCC;
-        public ILinker Linker => LINK;
+        public ICompiler Compiler => ClangCLCC!;
+        public ILinker Linker => LINK!;
         public string BuildTempPath => Directory.CreateDirectory(Path.Combine(SourceLocation.BuildTempPath, this.Version.ToString())).FullName;
 
         private void FindVCVars()
@@ -75,7 +75,7 @@ namespace SB.Core
                 {
                     // "*/Visual Studio/2022/*/**"
                     var SomeBatPath = VCVarsAllBat ?? VCVarsBat;
-                    var PayInfo = SomeBatPath
+                    var PayInfo = SomeBatPath!
                         .Replace("\\", "/")
                         .Replace(searchDirectory, "")
                         .Split('/')[1];
@@ -109,7 +109,7 @@ namespace SB.Core
                 cmd.StartInfo.Environment.Add("VSCMD_ARG_HOST_ARCH", archStringMap[HostArch]);
                 cmd.StartInfo.Environment.Add("VSCMD_ARG_TGT_ARCH", archStringMap[TargetArch]);
                 cmd.StartInfo.Environment.Add("VSCMD_ARG_APP_PLAT", "Desktop");
-                cmd.StartInfo.Environment.Add("VSINSTALLDIR", VSInstallDir.Replace("/", "\\"));
+                cmd.StartInfo.Environment.Add("VSINSTALLDIR", VSInstallDir!.Replace("/", "\\"));
                 cmd.StartInfo.Arguments = $"/c set > \"{oldEnvPath}\" && \"{VCVarsBat}\" && \"{WindowsSDKBat}\" && set > \"{newEnvPath}\"";
             }
             else
@@ -120,8 +120,8 @@ namespace SB.Core
             cmd.Start();
             cmd.WaitForExit();
 
-            var oldEnv = EnvReader.Load(oldEnvPath);
-            VCEnvVariables = EnvReader.Load(newEnvPath);
+            var oldEnv = EnvReader.Load(oldEnvPath)!;
+            VCEnvVariables = EnvReader.Load(newEnvPath)!;
             // Preprocess: cull old env variables
             foreach (var oldVar in oldEnv)
             {
@@ -129,7 +129,7 @@ namespace SB.Core
                     VCEnvVariables.Remove(oldVar.Key);
             }
             // Preprocess: cull user env variables
-            var vcPaths = VCEnvVariables["Path"].Split(';').ToHashSet();
+            var vcPaths = VCEnvVariables["Path"]!.Split(';').ToHashSet();
             var oldPaths = oldEnv["Path"].Split(';').ToHashSet();
             vcPaths.ExceptWith(oldPaths);
             VCEnvVariables["Path"] = string.Join(";", vcPaths);
@@ -170,9 +170,9 @@ namespace SB.Core
                     }
                 }
             }
-            CLCC = new CLCompiler(CLCCPath, VCEnvVariables);
-            LINK = new LINK(LINKPath, VCEnvVariables);
-            ClangCLCC = new ClangCLCompiler(ClangCLPath, VCEnvVariables);
+            CLCC = new CLCompiler(CLCCPath!, VCEnvVariables);
+            LINK = new LINK(LINKPath!, VCEnvVariables);
+            ClangCLCC = new ClangCLCompiler(ClangCLPath!, VCEnvVariables);
         }
         
         public readonly int VSVersion;
@@ -184,13 +184,13 @@ namespace SB.Core
         public string? VCVarsBat { get; private set; }
         public string? WindowsSDKBat { get; private set; }
 
-        public Dictionary<string, string?> VCEnvVariables { get; private set; }
-        public CLCompiler CLCC { get; private set; }
-        public ClangCLCompiler ClangCLCC { get; private set; }
-        public LINK LINK { get; private set; }
-        public string CLCCPath { get; private set; }
-        public string ClangCLPath { get; private set; }
-        public string LINKPath { get; private set; }
+        public Dictionary<string, string?>? VCEnvVariables { get; private set; }
+        public CLCompiler? CLCC { get; private set; }
+        public ClangCLCompiler? ClangCLCC { get; private set; }
+        public LINK? LINK { get; private set; }
+        public string? CLCCPath { get; private set; }
+        public string? ClangCLPath { get; private set; }
+        public string? LINKPath { get; private set; }
 
         #region HelpersForTools
         public static bool CheckPath(string P, bool MustExist) => Path.IsPathFullyQualified(P) && (!MustExist || Directory.Exists(P));

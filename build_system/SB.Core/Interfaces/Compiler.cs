@@ -12,6 +12,6 @@
         public Version Version { get; }
         public string ExecutablePath { get; }
         public IArgumentDriver CreateArgumentDriver();
-        public CompileResult Compile(string TargetName, string EmitterName, IArgumentDriver Driver);
+        public CompileResult Compile(TaskEmitter Emitter, Target Target, IArgumentDriver Driver);
     }
 }

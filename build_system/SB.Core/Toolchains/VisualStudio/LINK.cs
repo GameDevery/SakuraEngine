@@ -9,7 +9,7 @@ namespace SB.Core
         public LINK(string ExePath, Dictionary<string, string?> Env)
         {
             VCEnvVariables = Env;
-            MSVCVersion = Version.Parse(VCEnvVariables["VCToolsVersion"]);
+            MSVCVersion = Version.Parse(VCEnvVariables["VCToolsVersion"]!);
             this.ExePath = ExePath;
 
             if (!File.Exists(ExePath))
@@ -18,7 +18,7 @@ namespace SB.Core
             Log.Information("LINK.exe version ... {MSVCVersion}", MSVCVersion);
         }
 
-        public LinkResult Link(string TargetName, string EmitterName, IArgumentDriver Driver)
+        public LinkResult Link(TaskEmitter Emitter, Target Target, IArgumentDriver Driver)
         {
             var LinkerArgsDict = Driver.CalculateArguments();
             
@@ -38,7 +38,7 @@ namespace SB.Core
 
             var InputFiles = Driver.Arguments["Inputs"] as ArgumentList<string>;
             var OutputFile = Driver.Arguments["Output"] as string;
-            bool Changed = Depend.OnChanged(TargetName, OutputFile, EmitterName, (Depend depend) =>
+            bool Changed = Depend.OnChanged(Target.Name, OutputFile!, Emitter.Name, (Depend depend) =>
             {
                 var StringLength = LinkerArgsList.Sum(x => x.Length);
                 string Arguments = "";
@@ -82,13 +82,13 @@ namespace SB.Core
                 else if (OutputInfo.Contains("warning LNK"))
                     Log.Warning("LINK.exe: {OutputInfo}", OutputInfo);
 
-                depend.ExternalFiles.AddRange(OutputFile);
-            }, new List<string>(InputFiles), DependArgsList);
+                depend.ExternalFiles.AddRange(OutputFile!);
+            }, new List<string>(InputFiles!), DependArgsList);
 
             return new LinkResult
             {
                 TargetFile = LinkerArgsDict["Output"][0],
-                PDBFile = Driver.Arguments.TryGetValue("PDB", out var args) ? args as string : "",
+                PDBFile = Driver.Arguments.TryGetValue("PDB", out var args) ? (string)args! : "",
                 IsRestored = !Changed
             };
         }

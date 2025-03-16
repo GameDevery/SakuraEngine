@@ -58,7 +58,7 @@ namespace SB.Core
             return new CLArgumentDriver();
         }
 
-        public CompileResult Compile(string TargetName, string EmitterName, IArgumentDriver Driver)
+        public CompileResult Compile(TaskEmitter Emitter, Target Target, IArgumentDriver Driver)
         {
             var CompilerArgsDict = Driver.CalculateArguments();
             var CompilerArgsList = CompilerArgsDict.Values.SelectMany(x => x).ToList();
@@ -72,7 +72,7 @@ namespace SB.Core
 
             var SourceFile = Driver.Arguments["Source"] as string;
             var ObjectFile = Driver.Arguments["Object"] as string;
-            var Changed = Depend.OnChanged(TargetName, SourceFile, EmitterName, (Depend depend) =>
+            var Changed = Depend.OnChanged(Target.Name, SourceFile!, Emitter.Name, (Depend depend) =>
             {
                 Process compiler = new Process
                 {
@@ -104,20 +104,20 @@ namespace SB.Core
                 else
                 {
                     var clDepFilePath = Driver.Arguments["SourceDependencies"] as string;
-                    var clDeps = Json.Deserialize<CLDependencies>(File.ReadAllText(clDepFilePath));
+                    var clDeps = Json.Deserialize<CLDependencies>(File.ReadAllText(clDepFilePath!));
                     depend.ExternalFiles.AddRange(clDeps.Data.Includes);
                 }
 
                 if (OutputInfo.Contains("warning"))
                     Log.Warning("CL.exe: {OutputInfo}", OutputInfo);
 
-                depend.ExternalFiles.Add(ObjectFile);
-            }, new List<string> { SourceFile }, DependArgsList);
+                depend.ExternalFiles.Add(ObjectFile!);
+            }, new List<string> { SourceFile! }, DependArgsList);
 
             return new CompileResult
             {
-                ObjectFile = ObjectFile,
-                PDBFile = Driver.Arguments.TryGetValue("PDB", out var args) ? args as string : "",
+                ObjectFile = ObjectFile!,
+                PDBFile = Driver.Arguments.TryGetValue("PDB", out var args) ? (string)args! : "",
                 IsRestored = !Changed
             };
         }

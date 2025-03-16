@@ -1,25 +1,16 @@
 ﻿using Microsoft.Extensions.FileSystemGlobbing;
 using SB.Core;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Text;
 
 namespace SB
 {
-    public class TargetDependArgumentDriver : IArgumentDriver
+    public partial class Target : TargetSetters
     {
-        public Dictionary<string, object?> Arguments { get; }
-        public HashSet<string> RawArguments { get; }
-    }
-
-    public class Target : TargetSetters
-    {
-        internal Target(string Name, [CallerFilePath] string Location = null)
+        internal Target(string Name, [CallerFilePath] string? Location = null)
         {
             this.Name = Name;
-            this.Location = Location;
-            this.Directory = Path.GetDirectoryName(Location);
+            this.Location = Location!;
+            this.Directory = Path.GetDirectoryName(Location)!;
         }
 
         public Target AddFiles(params string[] files)
@@ -36,34 +27,37 @@ namespace SB
             return this;
         }
 
-        public Target Depend(Visibility Visibility, string DependName)
+        public Target Depend(Visibility Visibility, params string[] DependNames)
         {
-            switch (Visibility)
+            foreach (var DependName in DependNames)
             {
-                case Visibility.Public:
+                switch (Visibility)
                 {
-                    if (DependName.Contains("@"))
-                        PublicPackageTargetDependencies.Add(DependName);
-                    else
-                        PublicTargetDependencies.Add(DependName);
+                    case Visibility.Public:
+                    {
+                        if (DependName.Contains("@"))
+                            PublicPackageTargetDependencies.Add(DependName);
+                        else
+                            PublicTargetDependencies.Add(DependName);
+                    }
+                    break;
+                    case Visibility.Private:
+                    {
+                        if (DependName.Contains("@"))
+                            PrivatePackageTargetDependencies.Add(DependName);
+                        else
+                            PrivateTargetDependencies.Add(DependName);
+                    }
+                    break;
+                    case Visibility.Interface:
+                    {
+                        if (DependName.Contains("@"))
+                            InterfacePackageTargetDependencies.Add(DependName);
+                        else
+                            InterfaceTargetDependencies.Add(DependName);
+                    }
+                    break;
                 }
-                break;
-                case Visibility.Private:
-                {
-                    if (DependName.Contains("@"))
-                        PrivatePackageTargetDependencies.Add(DependName);
-                    else
-                        PrivateTargetDependencies.Add(DependName);
-                }
-                break;
-                case Visibility.Interface:
-                {
-                    if (DependName.Contains("@"))
-                        InterfacePackageTargetDependencies.Add(DependName);
-                    else
-                        InterfaceTargetDependencies.Add(DependName);
-                }
-                break;
             }
             return this;
         }
@@ -81,7 +75,37 @@ namespace SB
             BeforeBuildActions.Add(Action);
             return this;
         }
-    
+
+        // TODO: REMOVE THIS
+        // 做法: 把继承来的 Flag 装在一个容器里，实际使用的时候从自己的 Pub + Private + 继承结果混合
+        // 这样即使 BeforeBuild 的时候，加入 Pub/Private 的 Flag 也能正确加入编译，虽然他们不能再继承了
+        public T GetArgumentUnsafe<T>(string Name)
+            where T : new()
+        {
+            if (FinalArguments.TryGetValue(Name, out var V))
+            {
+                if (V == null)
+                    throw new InvalidOperationException($"FinalArguments '{Name}' contains a null value, this is unexpected bug, please report to developer!");
+                return (T)V;
+            }
+            var New = new T();
+            FinalArguments.Add(Name, New);
+            return New;
+        }
+
+        public Target SetAttribute<T>(T Attribute)
+        {
+            Attributes.Add(typeof(T), Attribute);
+            return this;
+        }
+
+        public T? GetAttribute<T>()
+        {
+            if (Attributes.TryGetValue(typeof(T), out var Attribute))
+                return (T?)Attribute;
+            return default;
+        }
+
         private bool PackagesResolved = false;
         internal void ResolvePackages(ref Dictionary<string, Target> OutPackageTargets)
         {
@@ -168,9 +192,9 @@ namespace SB
                 {
                     var ArgList = V as IArgumentList;
                     if (To.TryGetValue(K, out var Existed))
-                        (Existed as IArgumentList).Merge(ArgList);
+                        (Existed as IArgumentList)!.Merge(ArgList!);
                     else
-                        To.Add(K, ArgList.Copy());
+                        To.Add(K, ArgList!.Copy());
                 }
                 else
                 {
@@ -182,7 +206,11 @@ namespace SB
             }
         }
 
+        private Dictionary<Type, object?> Attributes = new();
         public IReadOnlySet<string> Dependencies => FinalTargetDependencies;
+        public IReadOnlySet<string> PublicDependencies => PublicTargetDependencies;
+        public IReadOnlySet<string> PrivateDependencies => PrivateTargetDependencies;
+        public IReadOnlySet<string> InterfaceDependencies => InterfaceTargetDependencies;
         public IReadOnlySet<string> AllFiles => Absolutes;
 
         public string Name { get; }
@@ -208,5 +236,15 @@ namespace SB
         public bool IsFromPackage { get; internal set; } = false;
         #endregion
         internal List<Action<Target>> BeforeBuildActions = new();
+    }
+
+    public static class TargetExtensions
+    {
+        public static TargetType? GetTargetType(this Target Target)
+        {
+            if (Target.Arguments.TryGetValue("TargetType", out var V))
+                return (TargetType?)V;
+            return null;
+        }
     }
 }

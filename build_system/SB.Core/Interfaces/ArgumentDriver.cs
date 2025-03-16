@@ -45,6 +45,7 @@ namespace SB.Core
     public enum TargetType
     {
         HeaderOnly,
+        Objects,
         Static,
         Dynamic,
         Executable
@@ -76,13 +77,13 @@ namespace SB.Core
                 {
                     try
                     {
-                        var Result = Method.Invoke(this, new object[] { ArgumentValue });
+                        var Result = Method.Invoke(this, new object[] { ArgumentValue! });
                         if (Result is string)
-                            Args.Add(Method.Name, new string[] { Result as string });
+                            Args.Add(Method.Name, new string[] { (string)Result! });
                         if (Result is string[])
-                            Args.Add(Method.Name, Result as string[]);
+                            Args.Add(Method.Name, (string[])Result);
                         else if (Result is IEnumerable<string>)
-                            Args.Add(Method.Name, (Result as IEnumerable<string>).ToArray());
+                            Args.Add(Method.Name, ((IEnumerable<string>)Result).ToArray());
                     }
                     catch (TargetInvocationException TIE)
                     {
@@ -101,7 +102,7 @@ namespace SB.Core
             {
                 directory = directory,
                 arguments = CalculateArguments().Values.SelectMany(x => x).ToList(),
-                file = Arguments["Source"] as string
+                file = (string)Arguments["Source"]!
             };
             compile_commands.arguments.Insert(0, Compiler.ExecutablePath);
             return Json.Serialize(compile_commands);
@@ -113,7 +114,7 @@ namespace SB.Core
             return this;
         }
         
-        public IArgumentDriver AddArguments(IReadOnlyDictionary<ArgumentName, object>? Args)
+        public IArgumentDriver AddArguments(IReadOnlyDictionary<ArgumentName, object?>? Args)
         {
             Arguments.AddRange(Args);
             return this;

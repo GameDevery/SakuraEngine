@@ -1,21 +1,19 @@
 ﻿using SB;
 using SB.Core;
 using Serilog;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace SB
 {
-    public static partial class BuildSystem
+    public partial class BuildSystem
     {
-        public static Target Target(string Name, [CallerFilePath] string Location = null)
+        public static Target Target(string Name, [CallerFilePath] string? Location = null)
         {
-            if (AllTargets.TryGetValue(Name, out var _))
+            if (AllTargets.TryGetValue(Name, out var Existed))
                 throw new ArgumentException($"Target with name {Name} already exists! Name should be unique to every target!");
 
-            var NewTarget = new Target(Name, Location);
+            var NewTarget = new Target(Name, Location!);
             if (!AllTargets.TryAdd(Name, NewTarget))
             {
                 throw new ArgumentException($"Failed to add target with name {Name}! Are you adding same targets in parallel?");
@@ -36,8 +34,8 @@ namespace SB
             return NewPackage;
         }
 
-        public static Target? GetTarget(string Name) => AllTargets.TryGetValue(Name, out var Found) ? Found : null;
-        public static Package? GetPackage(string Name) => AllPackages.TryGetValue(Name, out var Found) ? Found : null;
+        public static Target GetTarget(string Name) => AllTargets.TryGetValue(Name, out var Found) ? Found : throw new ArgumentException($"Target with name {Name} not found!");
+        public static Package GetPackage(string Name) => AllPackages.TryGetValue(Name, out var Found) ? Found : throw new ArgumentException($"Package with name {Name} not found!");
 
         public static TaskEmitter AddTaskEmitter(string Name, TaskEmitter Emitter)
         {
@@ -54,12 +52,12 @@ namespace SB
             {
                 Task.Run(() => RunBuildImpl(), TaskManager.RootCTS.Token).Wait(TaskManager.RootCTS.Token);
             }
-            catch (OperationCanceledException OCE)
+            catch (OperationCanceledException)
             {
                 TaskManager.ForceQuit();
 
                 bool First = true;
-                TaskFatalError Fatal = null;
+                TaskFatalError? Fatal = null;
                 while (TaskManager.FatalErrors.TryDequeue(out Fatal))
                 {
                     if (First)
@@ -102,7 +100,7 @@ namespace SB
 
                     foreach (var File in Target.AllFiles)
                     {
-                        if (EmitterKVP.Value.EmitFileTask && EmitterKVP.Value.FileFilter(File))
+                        if (EmitterKVP.Value.EmitFileTask && EmitterKVP.Value.FileFilter(Target, File))
                         {
                             FileTaskCount += 1;
                             AllTaskCount += 1;
@@ -155,9 +153,12 @@ namespace SB
                             }
                         }
 
+                        if (!Emitter.EmitFileTask)
+                            return true;
+
                         foreach (var File in Target.AllFiles)
                         {
-                            if (!Emitter.FileFilter(File))
+                            if (!Emitter.FileFilter(Target, File))
                                 continue;
 
                             if (!Emitter.AwaitPerFileDependencies(Target, File).WaitAndGet())
@@ -200,13 +201,21 @@ namespace SB
             TaskManager.WaitAll(EmitterTasks.Values);
         }
 
-        private static async Task<bool> AwaitExternalTargetDependencies(this TaskEmitter Emitter, Target Target)
+        private static Dictionary<string, TaskEmitter> TaskEmitters = new();
+        protected static Dictionary<string, Target> AllTargets { get; } = new();
+        protected static Dictionary<string, Package> AllPackages { get; } = new();
+        internal static Dictionary<string, Target> _AllTargets => AllTargets;
+    }
+
+    internal static class TargetTaskExtensions
+    {
+        public static async Task<bool> AwaitExternalTargetDependencies(this TaskEmitter Emitter, Target Target)
         {
             bool Success = true;
             foreach (var DepTarget in Target.Dependencies)
             {
                 // check target is existed
-                if (!AllTargets.TryGetValue(DepTarget, out var _))
+                if (!BuildSystem._AllTargets.TryGetValue(DepTarget, out var _))
                     throw new ArgumentException($"TargetEmitter {Emitter.Name}: Target {Target.Name} dependes on {DepTarget}, but it seems not to exist!");
 
                 foreach (var DepEmitter in Emitter.Dependencies.Where(KVP => KVP.Value.Equals(DependencyModel.ExternalTarget)))
@@ -223,7 +232,7 @@ namespace SB
             return Success;
         }
         
-        private static async Task<bool> AwaitPerTargetDependencies(this TaskEmitter Emitter, Target Target)
+        public static async Task<bool> AwaitPerTargetDependencies(this TaskEmitter Emitter, Target Target)
         {
             bool Success = true;
             foreach (var Dependency in Emitter.Dependencies.Where(KVP => KVP.Value.Equals(DependencyModel.PerTarget)))
@@ -234,12 +243,12 @@ namespace SB
                     File = "",
                     TaskName = Dependency.Key
                 };
-                Success &= TaskManager.AwaitFingerprint(Fingerprint).WaitAndGet();
+                Success &= await TaskManager.AwaitFingerprint(Fingerprint);
             }
             return Success;
         }
 
-        private static async Task<bool> AwaitPerFileDependencies(this TaskEmitter Emitter, Target Target, string File)
+        public static async Task<bool> AwaitPerFileDependencies(this TaskEmitter Emitter, Target Target, string File)
         {
             bool Success = true;
             foreach (var Dependency in Emitter.Dependencies.Where(KVP => KVP.Value.Equals(DependencyModel.PerFile)))
@@ -255,20 +264,16 @@ namespace SB
             return Success;
         }
 
-        private static bool WaitAndGet(this Task<bool> T)
+        public static bool WaitAndGet(this Task<bool> T)
         {
             T.Wait();
             return T.Result;
         }
 
-        private static void CallAllActions(this Target Target, IList<Action<Target>> Actions)
+        public static void CallAllActions(this Target Target, IList<Action<Target>> Actions)
         {
             foreach (var Action in Actions)
                 Action(Target);
         }
-
-        private static Dictionary<string, TaskEmitter> TaskEmitters = new();
-        internal static Dictionary<string, Target> AllTargets { get; } = new();
-        internal static Dictionary<string, Package> AllPackages { get; } = new();
     }
 }

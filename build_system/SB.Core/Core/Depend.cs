@@ -11,7 +11,6 @@ namespace SB.Core
     public class DependContext : DbContext
     {
         internal DbSet<DependEntity> Depends { get; set; }
-        public string DbPath { get; }
 
         public DependContext(DbContextOptions<DependContext> options)
             : base(options)
@@ -37,19 +36,13 @@ namespace SB.Core
         );
     }
 
-    internal class FileWithDateTime
-    {
-        public string Path { get; set; }
-        public DateTime LastWriteTime { get; set; }
-    }
-
     public struct Depend
     {
         private string PrimaryKey { get; set; } = "Invalid";
-        private List<string> InputArgs { get; init; }
-        private List<string> InputFiles { get; init; }
-        private List<DateTime> InputFileTimes { get; init; }
-        private List<DateTime> ExternalFileTimes { get; set; }
+        private List<string> InputArgs { get; init; } = new();
+        private List<string> InputFiles { get; init; } = new();
+        private List<DateTime> InputFileTimes { get; init; } = new();
+        private List<DateTime> ExternalFileTimes { get; set; } = new();
 
         public List<string> ExternalFiles { get; set; } = new();
 
@@ -61,7 +54,7 @@ namespace SB.Core
 
         public Depend() {}
 
-        public static bool OnChanged(string TargetName, string FileName, string EmitterName, Action<Depend> func, IEnumerable<string> Files, IEnumerable<string> Args, Options? opt = null)
+        public static bool OnChanged(string TargetName, string FileName, string EmitterName, Action<Depend> func, IEnumerable<string>? Files, IEnumerable<string>? Args, Options? opt = null)
         {
             Options option = opt ?? new Options { Force = false, UseSHA = false };
             var SortedFiles = Files?.ToList() ?? new(); SortedFiles.Sort();
@@ -95,10 +88,10 @@ namespace SB.Core
             if (OldDepend is not null)
             {
                 // check file list change
-                if (!SortedFiles.SequenceEqual(OldDepend?.InputFiles))
+                if (!SortedFiles.SequenceEqual(OldDepend?.InputFiles!))
                     return false;
                 // check arg list change
-                if (!SortedArgs.SequenceEqual(OldDepend?.InputArgs))
+                if (!SortedArgs.SequenceEqual(OldDepend?.InputArgs!))
                     return false;
                 // check input file mtime change
                 for (int i = 0; i < OldDepend?.InputFiles.Count; i++)
@@ -118,7 +111,7 @@ namespace SB.Core
                     var DepTime = OldDepend?.ExternalFileTimes[i];
 
                     DateTime LastWriteTime;
-                    if (!BuildSystem.CachedFileExists(ExternalFile, out LastWriteTime)) // deleted
+                    if (!BuildSystem.CachedFileExists(ExternalFile!, out LastWriteTime)) // deleted
                         return false;
                     if (DepTime != LastWriteTime) // modified
                         return false;
@@ -177,10 +170,10 @@ namespace SB.Core
     internal class DependEntity
     {
         public string PrimaryKey { get; set; } = "Invalid";
-        public List<string> InputArgs { get; init; }
-        public List<string> InputFiles { get; init; }
-        public List<DateTime> InputFileTimes { get; init; }
-        public List<string> ExternalFiles { get; init; }
-        public List<DateTime> ExternalFileTimes { get; init; }
+        public List<string> InputArgs { get; init; } = new();
+        public List<string> InputFiles { get; init; } = new();
+        public List<DateTime> InputFileTimes { get; init; } = new();
+        public List<string> ExternalFiles { get; init; } = new();
+        public List<DateTime> ExternalFileTimes { get; init; } = new();
     }
 }

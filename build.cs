@@ -10,16 +10,18 @@ Stopwatch sw = new();
 sw.Start();
 var DBInitializeTask = DependContext.Initialize();
 
-BuildSystem.AddTaskEmitter("Cpp.Compile", new CppCompileEmitter(Toolchain));
+var CompileCommandsEmitter = new CompileCommandsEmitter(Toolchain);
+BuildSystem.AddTaskEmitter("Cpp.CompileCommands", CompileCommandsEmitter);
+BuildSystem.AddTaskEmitter("ModuleMeta", new ModuleMetaEmitter());
+BuildSystem.AddTaskEmitter("Cpp.Compile", new CppCompileEmitter(Toolchain))
+    .AddDependency("ModuleMeta", DependencyModel.PerTarget);
 BuildSystem.AddTaskEmitter("Cpp.Link", new CppLinkEmitter(Toolchain))
     .AddDependency("Cpp.Link", DependencyModel.ExternalTarget)
     .AddDependency("Cpp.Compile", DependencyModel.PerTarget);
 
-var CompileCommandsEmitter = new CompileCommandsEmitter(Toolchain);
-BuildSystem.AddTaskEmitter("Cpp.CompileCommands", CompileCommandsEmitter);
-
-BuildSystem.Target("TestTarget")
+Project.Module("TestTarget")
     .TargetType(TargetType.Static)
+
     .CppVersion("20")
 
     .Require("imgui", new ImGuiPackageConfig { Version = new Version(1, 89, 0), ImportDynamicAPIFromEngine = true })

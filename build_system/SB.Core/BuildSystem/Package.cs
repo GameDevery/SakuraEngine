@@ -4,7 +4,7 @@ namespace SB.Core
 {
     public record PackageConfig
     {
-        public Version Version;
+        public required Version Version { get; init; }
     }
 
     public class Package
@@ -25,7 +25,7 @@ namespace SB.Core
             if (Installers.TryGetValue(TargetName, out var _))
                 throw new PackageInstallException(Name, TargetName, $"Package {Name}: Installer for target {TargetName} already exists!");
 
-            Installers.Add(TargetName, new TargetInstaller { Action = Installer, Loc = Loc });
+            Installers.Add(TargetName, new TargetInstaller { Action = Installer, Loc = Loc! });
             return this;
         }
 
@@ -34,7 +34,7 @@ namespace SB.Core
             if (availableVersions.Count > 0 && !availableVersions.Contains(Config.Version))
                 throw new PackageInstallException(Name, TargetName, $"Package {Name}: Version {Config.Version} not available!");
 
-            Dictionary<PackageConfig, Target> TargetPermutations;
+            Dictionary<PackageConfig, Target>? TargetPermutations;
             if (!AcquiredTargets.TryGetValue(TargetName, out TargetPermutations))
             {
                 TargetPermutations = new();
