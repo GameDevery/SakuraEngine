@@ -73,10 +73,7 @@ namespace SB
                 }
 
                 var Defines = Target.GetArgumentUnsafe<ArgumentList<string>>("Defines");
-                if (ShippingOneArchive)
-                    Defines.Add($"{OwnerAttribute?.API}_API=");
-                else
-                    Defines.Add($"{OwnerAttribute?.API}_API=SKR_IMPORT");
+                Defines.Add($"{OwnerAttribute?.API}_API=");
             });
             return Target;
         }

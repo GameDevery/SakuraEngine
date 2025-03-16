@@ -3,12 +3,20 @@ using System.Diagnostics;
 
 namespace SB
 {
+    public class CppLinkAttribute
+    {
+        public List<string> LinkOnlys { get; init; } = new();
+    }
+
     public class CppLinkEmitter : TaskEmitter
     {
         public CppLinkEmitter(IToolchain Toolchain) => this.Toolchain = Toolchain;
         public override bool EmitTargetTask => true;
         public override IArtifact? PerTargetTask(Target Target)
         {
+            var CppLinkAttr = new CppLinkAttribute();
+            Target.SetAttribute(CppLinkAttr);
+
             var TT = Target.GetTargetType();
             if (TT != TargetType.HeaderOnly && TT != TargetType.Objects)
             {
@@ -23,12 +31,21 @@ namespace SB
                 ).SelectMany(
                     Dep => BuildSystem.GetTarget(Dep).GetAttribute<CppCompileAttribute>()!.ObjectFiles
                 ));
-                // Add dep links.Static libraries don’t really have a link phase. 
-                // Very cruedly they are just an archive of object files that will be propagated to a real link line ( creation of a shared library or executable ).
                 if (TT != TargetType.Static)
                 {
-                    // add libs to link
                     Inputs.AddRange(
+                        Target.Dependencies.Select(Dependency => GetStubFileName(BuildSystem.GetTarget(Dependency))).Where(Stub => Stub != null).Select(Stub => Stub!)
+                    );
+                    // Collect links from static targets
+                    Inputs.AddRange(
+                        Target.Dependencies.Select(Dependency => BuildSystem.GetTarget(Dependency).GetAttribute<CppLinkAttribute>()!).SelectMany(A => A.LinkOnlys)
+                    );
+                }
+                else
+                {
+                    // Add dep links.Static libraries don’t really have a link phase. 
+                    // Very cruedly they are just an archive of object files that will be propagated to a real link line ( creation of a shared library or executable ).
+                    CppLinkAttr.LinkOnlys.AddRange(
                         Target.Dependencies.Select(Dependency => GetStubFileName(BuildSystem.GetTarget(Dependency))).Where(Stub => Stub != null).Select(Stub => Stub!)
                     );
                 }

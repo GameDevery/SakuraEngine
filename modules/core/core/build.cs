@@ -35,7 +35,6 @@ public static class SkrCore
             .Require("phmap", new PackageConfig { Version = new Version(1, 3, 11) })
             .Depend(Visibility.Public, "phmap@phmap")
             .Depend(Visibility.Private, "mimalloc")
-            .Depend(Visibility.Private, "mimalloc")
             .Depend(Visibility.Public, "SkrProfile")
             // TODO: STATIC COMPONENTS, JUST WORKAROUND NOW, WE NEED TO DEPEND THEM AUTOMATICALLY LATTER
             .Depend(Visibility.Public, "SkrDependencyGraph", "SkrString", "SkrSimpleAsync", "SkrArchive")
