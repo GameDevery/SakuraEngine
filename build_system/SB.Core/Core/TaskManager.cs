@@ -26,6 +26,17 @@ namespace SB.Core
 
     public static class TaskManager
     {
+        public static void AddCompleted(TaskFingerprint Fingerprint)
+        {
+            if (AllTasks.TryGetValue(Fingerprint, out var _))
+                throw new ArgumentException($"Task with fingerprint {Fingerprint} already exists! Fingerprint should be unique to every task!");
+
+            if (!AllTasks.TryAdd(Fingerprint, Task.FromResult(true)))
+            {
+                throw new ArgumentException($"Failed to add task with fingerprint {Fingerprint}! Are you adding same tasks in parallel?");
+            }
+        }
+
         public static Task<bool> Run(TaskFingerprint Fingerprint, Func<bool> Function)
         {
             if (AllTasks.TryGetValue(Fingerprint, out var _))

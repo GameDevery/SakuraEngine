@@ -95,12 +95,12 @@ namespace SB
             {
                 foreach (var EmitterKVP in TaskEmitters)
                 {
-                    if (EmitterKVP.Value.EmitTargetTask)
+                    if (EmitterKVP.Value.EmitTargetTask(Target))
                         AllTaskCount += 1;
 
                     foreach (var File in Target.AllFiles)
                     {
-                        if (EmitterKVP.Value.EmitFileTask && EmitterKVP.Value.FileFilter(Target, File))
+                        if (EmitterKVP.Value.EmitFileTask(Target) && EmitterKVP.Value.FileFilter(Target, File))
                         {
                             FileTaskCount += 1;
                             AllTaskCount += 1;
@@ -127,6 +127,11 @@ namespace SB
                         File = "",
                         TaskName = EmitterName
                     };
+                    if (!Emitter.EnableEmitter(Target))
+                    {
+                        TaskManager.AddCompleted(Fingerprint);
+                        continue;
+                    }
                     var EmitterTask = TaskManager.Run(Fingerprint, () =>
                     {
                         List<Task<bool>> FileTasks = new (Target.AllFiles.Count);
@@ -135,7 +140,7 @@ namespace SB
                         if (!Emitter.AwaitPerTargetDependencies(Target).WaitAndGet())
                             return false;
 
-                        if (Emitter.EmitTargetTask)
+                        if (Emitter.EmitTargetTask(Target))
                         {
                             var TaskIndex = Interlocked.Increment(ref AllTaskCounter);
                             var Percentage = 100.0f * TaskIndex / AllTaskCount;
@@ -153,7 +158,7 @@ namespace SB
                             }
                         }
 
-                        if (!Emitter.EmitFileTask)
+                        if (!Emitter.EmitFileTask(Target))
                             return true;
 
                         foreach (var File in Target.AllFiles)

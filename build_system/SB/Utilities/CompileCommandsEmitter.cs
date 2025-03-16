@@ -7,8 +7,9 @@ namespace SB
     public class CompileCommandsEmitter : TaskEmitter
     {
         public CompileCommandsEmitter(IToolchain Toolchain) => this.Toolchain = Toolchain;
-        public override bool EmitFileTask => true;
-        public override bool FileFilter(Target Target, string File) => File.EndsWith(".cpp") || File.EndsWith(".c") || File.EndsWith(".cxx") || File.EndsWith(".cc");
+        public override bool EnableEmitter(Target Target) => Target.AllFiles.Any(F => F.EndsWith(".cpp") || F.EndsWith(".c") || F.EndsWith(".mpp") || F.EndsWith(".cc"));
+        public override bool EmitFileTask(Target Target) => true;
+        public override bool FileFilter(Target Target, string File) => File.EndsWith(".cpp") || File.EndsWith(".c") || File.EndsWith(".mpp") || File.EndsWith(".cc");
         public override IArtifact? PerFileTask(Target Target, string SourceFile)
         {
             Stopwatch sw = new();

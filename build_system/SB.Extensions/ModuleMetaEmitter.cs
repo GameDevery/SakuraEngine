@@ -6,12 +6,9 @@ namespace SB
 {
     public class ModuleMetaEmitter : TaskEmitter
     {
-        public override bool EmitTargetTask => true;
+        public override bool EmitTargetTask(Target Target) => Target.GetAttribute<ModuleAttribute>() is not null;
         public override IArtifact? PerTargetTask(Target Target)
         {
-            if (Target.GetAttribute<ModuleAttribute>() is null)
-                return null;
-
             Stopwatch sw = new();
             sw.Start();
 

@@ -18,10 +18,12 @@ namespace SB
             return this;
         }
 
-        public virtual bool EmitTargetTask => false;
+        public virtual bool EnableEmitter(Target target) => false;
+
+        public virtual bool EmitTargetTask(Target target) => false;
         public virtual IArtifact? PerTargetTask(Target target) => null;
 
-        public virtual bool EmitFileTask => false;
+        public virtual bool EmitFileTask(Target target) => false;
         public virtual bool FileFilter(Target Target, string File) => false;
         public virtual IArtifact? PerFileTask(Target target, string File) => null;
 

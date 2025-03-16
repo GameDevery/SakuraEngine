@@ -23,6 +23,7 @@ namespace SB
             API = API ?? Name.ToUpperSnakeCase();
             var Target = BuildSystem.Target(Name, Location!);
             Target.ApplyEngineModulePresets();
+            Target.EnableCodegen();
             Target.SetAttribute(new ModuleAttribute(Target, API));
             if (ShippingOneArchive)
             {
@@ -45,6 +46,7 @@ namespace SB
             API = API ?? Name.ToUpperSnakeCase();
             var Target = BuildSystem.Target(Name, Location!);
             Target.ApplyEngineModulePresets();
+            Target.EnableCodegen();
             Target.SetAttribute(new ModuleAttribute(Target, API));
             Target.TargetType(TargetType.Executable);
             Target.Defines(Visibility.Private, $"{API}_API=");
@@ -94,5 +96,21 @@ namespace SB
             }
             return @this;
         }
+
+        public static Target EnableCodegen(this Target @this)
+        {
+            @this.SetAttribute(new CodegenAttribute());
+            return @this;
+        }
+
+        public static Target AddGenerators(this Target @this)
+        {
+            return @this;
+        }
+    }
+
+    public class CodegenAttribute
+    {
+        
     }
 }

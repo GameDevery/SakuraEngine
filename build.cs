@@ -12,9 +12,20 @@ var DBInitializeTask = DependContext.Initialize();
 
 var CompileCommandsEmitter = new CompileCommandsEmitter(Toolchain);
 BuildSystem.AddTaskEmitter("Cpp.CompileCommands", CompileCommandsEmitter);
+
 BuildSystem.AddTaskEmitter("ModuleMeta", new ModuleMetaEmitter());
+
+BuildSystem.AddTaskEmitter("Codgen.Meta", new CodegenMetaEmitter(Toolchain));
+
+BuildSystem.AddTaskEmitter("Codgen.Codegen", new CodegenRenderEmitter(Toolchain))
+    .AddDependency("Codgen.Meta", DependencyModel.ExternalTarget)
+    .AddDependency("Codgen.Meta", DependencyModel.PerTarget);
+
 BuildSystem.AddTaskEmitter("Cpp.Compile", new CppCompileEmitter(Toolchain))
-    .AddDependency("ModuleMeta", DependencyModel.PerTarget);
+    .AddDependency("ModuleMeta", DependencyModel.PerTarget)
+    .AddDependency("Codgen.Codegen", DependencyModel.ExternalTarget)
+    .AddDependency("Codgen.Codegen", DependencyModel.PerTarget);
+
 BuildSystem.AddTaskEmitter("Cpp.Link", new CppLinkEmitter(Toolchain))
     .AddDependency("Cpp.Link", DependencyModel.ExternalTarget)
     .AddDependency("Cpp.Compile", DependencyModel.PerTarget);

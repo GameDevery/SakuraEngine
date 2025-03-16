@@ -15,16 +15,16 @@ namespace SB
         {
             this.Toolchain = Toolchain;
         }
-        public override bool EmitTargetTask => true;
+        public override bool EnableEmitter(Target Target) => true;
+        public override bool EmitTargetTask(Target Target) => true;
         public override IArtifact? PerTargetTask(Target Target)
         {
             Target.SetAttribute(new CppCompileAttribute());
             return null;
         }
-
-        public override bool EmitFileTask => true;
+        public override bool EmitFileTask(Target Target) => true;
         public override bool FileFilter(Target Target, string File) => Target.GetTargetType() != TargetType.HeaderOnly && File.EndsWith(".cpp") || File.EndsWith(".c") || File.EndsWith(".cxx") || File.EndsWith(".cc");
-        public override IArtifact PerFileTask(Target Target, string SourceFile)
+        public override IArtifact? PerFileTask(Target Target, string SourceFile)
         {
             Stopwatch sw = new();
             sw.Start();

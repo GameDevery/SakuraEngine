@@ -11,7 +11,8 @@ namespace SB
     public class CppLinkEmitter : TaskEmitter
     {
         public CppLinkEmitter(IToolchain Toolchain) => this.Toolchain = Toolchain;
-        public override bool EmitTargetTask => true;
+        public override bool EnableEmitter(Target Target) => true;
+        public override bool EmitTargetTask(Target Target) => true;
         public override IArtifact? PerTargetTask(Target Target)
         {
             var CppLinkAttr = new CppLinkAttribute();
