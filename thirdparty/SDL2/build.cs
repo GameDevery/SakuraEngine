@@ -6,7 +6,7 @@ public static class SDL2
 {
     static SDL2()
     {
-        var SDL2 = Project.Target("SDL2");
+        var SDL2 = Engine.Target("SDL2");
         SDL2.TargetType(TargetType.HeaderOnly)
             .LinkDirs(Visibility.Public, SDL2.GetBuildPath())
             .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "include"));

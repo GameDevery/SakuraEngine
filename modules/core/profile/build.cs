@@ -11,7 +11,7 @@ public static class SkrProfile
             .TargetType(TargetType.Dynamic)
             .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "include"))
             .AddFiles("internal/tracy/TracyClient.cpp")
-            .Defines(Visibility.Public, Project.UseProfile ? "SKR_PROFILE_OVERRIDE_ENABLE" : "SKR_PROFILE_OVERRIDE_DISABLE");
+            .Defines(Visibility.Public, Engine.UseProfile ? "SKR_PROFILE_OVERRIDE_ENABLE" : "SKR_PROFILE_OVERRIDE_DISABLE");
             /*
             .CppFlags(
                 "-Wno-missing-field-initializers", 

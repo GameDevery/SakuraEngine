@@ -16,14 +16,14 @@ namespace SB
         public string API { get; }
     }
 
-    public partial class Project : BuildSystem
+    public partial class Engine : BuildSystem
     {
         public static Target Module(string Name, string? API = null, [CallerFilePath] string? Location = null)
         {
             API = API ?? Name.ToUpperSnakeCase();
             var Target = BuildSystem.Target(Name, Location!);
             Target.ApplyEngineModulePresets();
-            Target.EnableCodegen();
+            Target.EnableCodegen(API, Path.Combine(Target.Directory, "include"));
             Target.SetAttribute(new ModuleAttribute(Target, API));
             if (ShippingOneArchive)
             {
@@ -46,7 +46,7 @@ namespace SB
             API = API ?? Name.ToUpperSnakeCase();
             var Target = BuildSystem.Target(Name, Location!);
             Target.ApplyEngineModulePresets();
-            Target.EnableCodegen();
+            Target.EnableCodegen(API, Path.Combine(Target.Directory, "include"));
             Target.SetAttribute(new ModuleAttribute(Target, API));
             Target.TargetType(TargetType.Executable);
             Target.Defines(Visibility.Private, $"{API}_API=");
@@ -97,20 +97,23 @@ namespace SB
             return @this;
         }
 
-        public static Target EnableCodegen(this Target @this)
+        public static bool IsEngineModule(this Target @this)
         {
-            @this.SetAttribute(new CodegenAttribute());
+            return @this.GetAttribute<ModuleAttribute>() is not null;
+        }
+
+        public static Target EnableCodegen(this Target @this, string API, string Root)
+        {
+            @this.SetAttribute(new CodegenMetaAttribute{ RootDirectory = Root });
+            @this.SetAttribute(new CodegenRenderAttribute());
             return @this;
         }
 
-        public static Target AddGenerators(this Target @this)
+        public static Target AddSourceGenerators(this Target @this, params string[] Generators)
         {
+            var Scripts = @this.GetAttribute<CodegenRenderAttribute>()!.Scripts;
+            Scripts.AddRange(Generators);
             return @this;
         }
-    }
-
-    public class CodegenAttribute
-    {
-        
     }
 }

@@ -15,7 +15,7 @@ BuildSystem.AddTaskEmitter("Cpp.CompileCommands", CompileCommandsEmitter);
 
 BuildSystem.AddTaskEmitter("ModuleMeta", new ModuleMetaEmitter());
 
-BuildSystem.AddTaskEmitter("Codgen.Meta", new CodegenMetaEmitter(Toolchain));
+BuildSystem.AddTaskEmitter("Codgen.Meta", new CodegenMetaEmitter(Toolchain, Path.Combine(SourceLocation.Directory(), "build/.skr/tool/windows")));
 
 BuildSystem.AddTaskEmitter("Codgen.Codegen", new CodegenRenderEmitter(Toolchain))
     .AddDependency("Codgen.Meta", DependencyModel.ExternalTarget)
@@ -30,7 +30,7 @@ BuildSystem.AddTaskEmitter("Cpp.Link", new CppLinkEmitter(Toolchain))
     .AddDependency("Cpp.Link", DependencyModel.ExternalTarget)
     .AddDependency("Cpp.Compile", DependencyModel.PerTarget);
 
-Project.Module("TestTarget")
+Engine.Module("TestTarget")
     .TargetType(TargetType.Static)
 
     .CppVersion("20")

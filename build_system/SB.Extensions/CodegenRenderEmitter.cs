@@ -4,6 +4,11 @@ using System.Diagnostics;
 
 namespace SB
 {
+    public class CodegenRenderAttribute
+    {
+        public List<string> Scripts { get; } = new();
+    }
+
     public class CodegenRenderEmitter : TaskEmitter
     {
         public CodegenRenderEmitter(IToolchain Toolchain)
@@ -12,7 +17,7 @@ namespace SB
         }
         public override bool EnableEmitter(Target target) => true;
         public override bool EmitFileTask(Target Target) => false;
-        public override bool FileFilter(Target Target, string File) => Target.GetTargetType() != TargetType.HeaderOnly && File.EndsWith(".cpp") || File.EndsWith(".c") || File.EndsWith(".cxx") || File.EndsWith(".cc");
+        public override bool FileFilter(Target Target, string File) => Target.GetTargetType() != TargetType.HeaderOnly && File.Is_C_Cpp() || File.Is_OC_OCpp();
         public override IArtifact? PerFileTask(Target Target, string SourceFile)
         {
             return null;

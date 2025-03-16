@@ -6,7 +6,7 @@ public static class MiMalloc
 {
     static MiMalloc()
     {
-        var MiMalloc = Project.Target("mimalloc")
+        var MiMalloc = Engine.Target("mimalloc")
             .TargetType(TargetType.Dynamic)
             .OptimizationLevel(OptimizationLevel.O3)
             .Defines(Visibility.Public, "MI_SHARED_LIB")

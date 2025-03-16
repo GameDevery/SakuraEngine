@@ -6,32 +6,32 @@ public static class SkrCore
 {
     static SkrCore()
     {
-        var DependencyGraph = Project.StaticComponent("SkrDependencyGraph", "SkrCore")
+        var DependencyGraph = Engine.StaticComponent("SkrDependencyGraph", "SkrCore")
             .OptimizationLevel(OptimizationLevel.O3)
             .Depend(Visibility.Public, "SkrBase")
             .Require("lemon", new PackageConfig { Version = new Version(1, 3, 1) })
             .Depend(Visibility.Private, "lemon@lemon")
             .AddFiles("src/graph/build.*.cpp");
         
-        var SkrString = Project.StaticComponent("SkrString", "SkrCore")
+        var SkrString = Engine.StaticComponent("SkrString", "SkrCore")
             .OptimizationLevel(OptimizationLevel.O3)
             .Depend(Visibility.Public, "SkrBase")
             .Defines(Visibility.Public, "OPEN_STRING_API=")
             .AddFiles("src/string/build.*.cpp");
 
-        var SkrSimpleAsync = Project.StaticComponent("SkrSimpleAsync", "SkrCore")
+        var SkrSimpleAsync = Engine.StaticComponent("SkrSimpleAsync", "SkrCore")
             .OptimizationLevel(OptimizationLevel.O3)
             .Depend(Visibility.Public, "SkrBase")
             .AddFiles("src/async/build.*.cpp");
 
-        var SkrArchive = Project.StaticComponent("SkrArchive", "SkrCore")
+        var SkrArchive = Engine.StaticComponent("SkrArchive", "SkrCore")
             .OptimizationLevel(OptimizationLevel.O3)
             .Depend(Visibility.Public, "SkrBase")
             .Require("yyjson", new PackageConfig { Version = new Version(0, 9, 0) })
             .Depend(Visibility.Private, "yyjson@yyjson")
             .AddFiles("src/archive/build.*.cpp");
 
-        var SkrCore = Project.Module("SkrCore")
+        var SkrCore = Engine.Module("SkrCore")
             .Require("phmap", new PackageConfig { Version = new Version(1, 3, 11) })
             .Depend(Visibility.Public, "phmap@phmap")
             .Depend(Visibility.Private, "mimalloc")
@@ -46,6 +46,12 @@ public static class SkrCore
             .AddFiles("src/core/build.*.c", "src/core/build.*.cpp")
             // RTTR Files
             .AddFiles("src/rttr/build.*.cpp")
+            // Codegen Files
+            .AddFiles(
+                "include/SkrRTTR/iobject.hpp",
+                "include/SkrRTTR/scriptble_object.hpp",
+                "include/SkrRTTR/export/export_data.hpp"
+            )
             // TODO: REMOVE THIS
             .Depend(Visibility.Public, "SDL2");
 

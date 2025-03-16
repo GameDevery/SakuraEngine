@@ -6,7 +6,7 @@ public static class SkrBase
 {
     static SkrBase()
     {
-        var Target = Project.StaticComponent("SkrBase", "SkrCore")
+        var Target = Engine.StaticComponent("SkrBase", "SkrCore")
             .Depend(Visibility.Public, "SkrProfile")
             // TODO: MIGRATE COMPILE FLAGS FROM XMAKE
             // .Depend(Visibility.Public, "SkrCompileFlags")

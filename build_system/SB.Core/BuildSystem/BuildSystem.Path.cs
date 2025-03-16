@@ -68,5 +68,8 @@ namespace SB
             }
             return sb.ToString();
         }
+
+        public static bool Is_C_Cpp(this string p) => p.EndsWith(".c") || p.EndsWith(".cpp") || p.EndsWith(".cc") || p.EndsWith(".cxx");
+        public static bool Is_OC_OCpp(this string p) => p.EndsWith(".m") || p.EndsWith(".mm") || p.EndsWith(".mpp");
     }
 }

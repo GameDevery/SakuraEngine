@@ -15,7 +15,7 @@ namespace SB
         {
             this.Toolchain = Toolchain;
         }
-        public override bool EnableEmitter(Target Target) => true;
+        public override bool EnableEmitter(Target Target) => Target.AllFiles.Any(F => F.Is_C_Cpp() || F.Is_OC_OCpp());
         public override bool EmitTargetTask(Target Target) => true;
         public override IArtifact? PerTargetTask(Target Target)
         {
@@ -23,7 +23,7 @@ namespace SB
             return null;
         }
         public override bool EmitFileTask(Target Target) => true;
-        public override bool FileFilter(Target Target, string File) => Target.GetTargetType() != TargetType.HeaderOnly && File.EndsWith(".cpp") || File.EndsWith(".c") || File.EndsWith(".cxx") || File.EndsWith(".cc");
+        public override bool FileFilter(Target Target, string File) => Target.GetTargetType() != TargetType.HeaderOnly && File.Is_C_Cpp() || File.Is_OC_OCpp();
         public override IArtifact? PerFileTask(Target Target, string SourceFile)
         {
             Stopwatch sw = new();

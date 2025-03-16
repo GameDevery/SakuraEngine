@@ -25,7 +25,7 @@ namespace SB
                 var DependFile = Path.Combine(Target.GetStorePath(BuildSystem.DepsStore), BuildSystem.GetUniqueTempFileName(LinkedFileName, Target.Name + this.Name, "task.deps.json"));
                 var Inputs = new ArgumentList<string>();
                 // Add obj files
-                Inputs.AddRange(Target.AllFiles.Select(SourceFile => CppCompileEmitter.GetObjectFilePath(Target, SourceFile)));
+                Inputs.AddRange(Target.AllFiles.Where(F => F.Is_C_Cpp() || F.Is_OC_OCpp()).Select(F => CppCompileEmitter.GetObjectFilePath(Target, F)));
                 // Add dep obj files
                 Inputs.AddRange(Target.Dependencies.Where(
                     Dep => BuildSystem.GetTarget(Dep)?.GetTargetType() == TargetType.Objects
