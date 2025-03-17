@@ -272,6 +272,12 @@ void sugoi_make_guid(skr_guid_t* guid)
     *guid = sugoi::TypeRegistry::get().make_guid();
 }
 
+uint16_t sugoiT_get_buffer_size(uint16_t elementSize, uint16_t elementAlign, uint16_t count)
+{
+    auto start = elementAlign * ((sizeof(sugoi_array_comp_t) + elementAlign - 1) / elementAlign);
+    return start + elementSize * count;
+}
+
 sugoi_type_index_t sugoiT_register_type(sugoi_type_description_t* description)
 {
     return sugoi::TypeRegistry::get().register_type(*description);

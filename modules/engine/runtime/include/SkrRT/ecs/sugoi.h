@@ -222,6 +222,15 @@ typedef void (*sugoi_destroy_callback_t)(void* u, sugoi_chunk_view_t* view, sugo
 typedef bool (*sugoi_custom_filter_callback_t)(void* u, sugoi_chunk_view_t* view);
 
 /**
+ * @brief calculate buffer component size
+ *
+ * @param elementSize
+ * @param count
+ * @return calculated size
+ * @see sugoi_type_description_t
+ */
+SKR_RUNTIME_API uint16_t sugoiT_get_buffer_size(uint16_t elementSize, uint16_t elementAlign, uint16_t count);
+/**
  * @brief register a new component
  *
  * @param description
