@@ -17,6 +17,7 @@ extern "C" {
 #define SUGOI_COMPONENT_DIRTY 0x5
 
 #define SUGOI_IS_TAG(c) ((c & 1 << 31) != 0)
+#define SUGOI_IS_CHUNK(c) ((c & 1 << 30) != 0)
 #define SUGOI_IS_BUFFER(C) ((C & 1 << 29) != 0)
 
 /**
