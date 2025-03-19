@@ -1,5 +1,6 @@
 #include "SkrV8/v8_bind.hpp"
 #include "v8-external.h"
+#include "v8-container.h"
 
 // helpres
 namespace skr
@@ -137,6 +138,33 @@ v8::Local<v8::Value> V8Bind::_to_v8_primitive(
         return {};
     }
 }
+void V8Bind::_init_primitive(
+    const ScriptBinderPrimitive& binder,
+    void*                        native_data
+)
+{
+    switch (binder.type_id.get_hash())
+    {
+    case type_id_of<int8_t>().get_hash():
+    case type_id_of<int16_t>().get_hash():
+    case type_id_of<int32_t>().get_hash():
+    case type_id_of<int64_t>().get_hash():
+    case type_id_of<uint8_t>().get_hash():
+    case type_id_of<uint16_t>().get_hash():
+    case type_id_of<uint32_t>().get_hash():
+    case type_id_of<uint64_t>().get_hash():
+    case type_id_of<float>().get_hash():
+    case type_id_of<double>().get_hash():
+    case type_id_of<bool>().get_hash():
+        return;
+    case type_id_of<skr::String>().get_hash():
+        new (native_data) skr::String();
+        return;
+    default:
+        SKR_UNREACHABLE_CODE()
+        return;
+    }
+}
 bool V8Bind::_to_native_primitive(
     const ScriptBinderPrimitive& binder,
     v8::Local<v8::Value>         v8_value,
@@ -144,6 +172,11 @@ bool V8Bind::_to_native_primitive(
     bool                         is_init
 )
 {
+    if (!is_init)
+    {
+        _init_primitive(binder, native_data);
+    }
+
     switch (binder.type_id.get_hash())
     {
     case type_id_of<int8_t>().get_hash():
@@ -169,10 +202,6 @@ bool V8Bind::_to_native_primitive(
     case type_id_of<bool>().get_hash():
         return to_native(v8_value, *reinterpret_cast<bool*>(native_data));
     case type_id_of<skr::String>().get_hash():
-        if (!is_init)
-        {
-            new (native_data) skr::String();
-        }
         return to_native(v8_value, *reinterpret_cast<skr::String*>(native_data));
     default:
         SKR_UNREACHABLE_CODE()
@@ -332,7 +361,128 @@ void V8Bind::_push_param(
         break;
     }
 }
-v8::Local<v8::Value> V8Bind::read_return(
+void V8Bind::_push_param_pure_out(
+    DynamicStack&            stack,
+    const ScriptBinderParam& param_binder
+)
+{
+    switch (param_binder.binder.kind())
+    {
+    case ScriptBinderRoot::EKind::Primitive: {
+        auto* primitive   = param_binder.binder.primitive();
+        void* native_data = stack.alloc_param_raw(
+            primitive->size,
+            primitive->alignment,
+            param_binder.pass_by_ref ? EDynamicStackParamKind::XValue : EDynamicStackParamKind::Direct,
+            primitive->dtor
+        );
+
+        // call ctor
+        _init_primitive(*param_binder.binder.primitive(), native_data);
+        break;
+    }
+    case ScriptBinderRoot::EKind::Mapping: {
+        auto*       mapping     = param_binder.binder.mapping();
+        auto        dtor_data   = mapping->type->dtor_data();
+        DtorInvoker dtor        = dtor_data.has_value() ? dtor_data.value().native_invoke : nullptr;
+        void*       native_data = stack.alloc_param_raw(
+            mapping->type->size(),
+            mapping->type->alignment(),
+            param_binder.pass_by_ref ? EDynamicStackParamKind::XValue : EDynamicStackParamKind::Direct,
+            dtor
+        );
+
+        // call ctor
+        auto* ctor_data = mapping->type->find_ctor_t<void()>();
+        auto* invoker   = reinterpret_cast<void (*)(void*)>(ctor_data->native_invoke);
+        invoker(native_data);
+        break;
+    }
+    case ScriptBinderRoot::EKind::Object: {
+        SKR_UNREACHABLE_CODE()
+        break;
+    }
+    default:
+        SKR_UNREACHABLE_CODE()
+        break;
+    }
+}
+v8::Local<v8::Value> V8Bind::_read_return(
+    DynamicStack&                    stack,
+    const Vector<ScriptBinderParam>& params_binder,
+    const ScriptBinderReturn&        return_binder,
+    uint32_t                         solved_return_count
+)
+{
+    auto* isolate = v8::Isolate::GetCurrent();
+    auto  context = isolate->GetCurrentContext();
+
+    if (solved_return_count == 1)
+    { // return single value
+        if (return_binder.is_void)
+        { // read from out param
+            for (const auto& param_binder : params_binder)
+            {
+                if (flag_all(param_binder.inout_flag, ERTTRParamFlag::Out))
+                {
+                    return _read_return_from_out_param(
+                        stack,
+                        param_binder
+                    );
+                }
+            }
+        }
+        else
+        { // read return value
+            if (stack.is_return_stored())
+            {
+                return _read_return(
+                    stack,
+                    return_binder
+                );
+            }
+        }
+    }
+    else
+    { // return param array
+        v8::Local<v8::Array> out_array = v8::Array::New(isolate);
+        uint32_t              cur_index = 0;
+
+        // try read return value
+        if (!return_binder.is_void)
+        {
+            if (stack.is_return_stored())
+            {
+                v8::Local<v8::Value> out_value = _read_return(
+                    stack,
+                    return_binder
+                );
+                out_array->Set(context, cur_index, out_value).Check();
+                ++cur_index;
+            }
+        }
+
+        // read return value from out param
+        for (const auto& param_binder : params_binder)
+        {
+            if (flag_all(param_binder.inout_flag, ERTTRParamFlag::Out))
+            {
+                // clang-format off
+                    out_array->Set(context, cur_index,_read_return_from_out_param(
+                        stack,
+                        param_binder
+                    )).Check();
+                // clang-format on
+                ++cur_index;
+            }
+        }
+
+        return out_array;
+    }
+
+    return {};
+}
+v8::Local<v8::Value> V8Bind::_read_return(
     DynamicStack&             stack,
     const ScriptBinderReturn& return_binder
 )
@@ -359,6 +509,17 @@ v8::Local<v8::Value> V8Bind::read_return(
         return {};
     }
     return to_v8(return_binder.binder, native_data);
+}
+v8::Local<v8::Value> V8Bind::_read_return_from_out_param(
+    DynamicStack&            stack,
+    const ScriptBinderParam& param_binder
+)
+{
+    void* native_data = stack.get_param_raw(param_binder.data->index);
+    return to_v8(
+        param_binder.binder,
+        native_data
+    );
 }
 } // namespace skr
 
@@ -449,6 +610,9 @@ bool V8Bind::call_native(
     const RTTRType*                                obj_type
 )
 {
+    auto* isolate = v8::Isolate::GetCurrent();
+    auto  context = isolate->GetCurrentContext();
+
     for (const auto& overload : binder.overloads)
     {
         if (!match(overload.params_binder, overload.params_count, v8_stack)) { continue; }
@@ -456,13 +620,25 @@ bool V8Bind::call_native(
         DynamicStack native_stack;
 
         // push param
-        for (uint32_t i = 0; i < v8_stack.Length(); ++i)
+        uint32_t v8_stack_index = 0;
+        for (const auto& param_binder: overload.params_binder)
         {
-            _push_param(
-                native_stack,
-                overload.params_binder[i],
-                v8_stack[i]
-            );
+            if (param_binder.inout_flag == ERTTRParamFlag::Out)
+            { // pure out param, we will push a dummy xvalue
+                _push_param_pure_out(
+                    native_stack,
+                    param_binder
+                );
+            }
+            else
+            {
+                _push_param(
+                    native_stack,
+                    param_binder,
+                    v8_stack[v8_stack_index]
+                );
+                ++v8_stack_index;
+            }
         }
 
         // cast
@@ -473,13 +649,15 @@ bool V8Bind::call_native(
         overload.data->dynamic_stack_invoke(owner_address, native_stack);
 
         // read return
-        if (native_stack.is_return_stored())
+        auto return_value = _read_return(
+            native_stack,
+            overload.params_binder,
+            overload.return_binder,
+            overload.return_count
+        );
+        if (!return_value.IsEmpty())
         {
-            v8::Local<v8::Value> out_value = read_return(
-                native_stack,
-                overload.return_binder
-            );
-            v8_stack.GetReturnValue().Set(out_value);
+            v8_stack.GetReturnValue().Set(return_value);
         }
 
         return true;
@@ -499,13 +677,25 @@ bool V8Bind::call_native(
         DynamicStack native_stack;
 
         // push param
-        for (uint32_t i = 0; i < v8_stack.Length(); ++i)
+        uint32_t v8_stack_index = 0;
+        for (const auto& param_binder: overload.params_binder)
         {
-            _push_param(
-                native_stack,
-                overload.params_binder[i],
-                v8_stack[i]
-            );
+            if (param_binder.inout_flag == ERTTRParamFlag::Out)
+            { // pure out param, we will push a dummy xvalue
+                _push_param_pure_out(
+                    native_stack,
+                    param_binder
+                );
+            }
+            else
+            {
+                _push_param(
+                    native_stack,
+                    param_binder,
+                    v8_stack[v8_stack_index]
+                );
+                ++v8_stack_index;
+            }
         }
 
         // invoke
@@ -513,13 +703,15 @@ bool V8Bind::call_native(
         overload.data->dynamic_stack_invoke(native_stack);
 
         // read return
-        if (native_stack.is_return_stored())
+        auto return_value = _read_return(
+            native_stack,
+            overload.params_binder,
+            overload.return_binder,
+            overload.return_count
+        );
+        if (!return_value.IsEmpty())
         {
-            v8::Local<v8::Value> out_value = read_return(
-                native_stack,
-                overload.return_binder
-            );
-            v8_stack.GetReturnValue().Set(out_value);
+            v8_stack.GetReturnValue().Set(return_value);
         }
 
         return true;

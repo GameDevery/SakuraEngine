@@ -174,6 +174,7 @@ struct ScriptBinderReturn {
     ScriptBinderRoot binder      = {};
     bool             pass_by_ref = false;
     bool             is_nullable = false;
+    bool             is_void     = false;
 };
 struct ScriptBinderMethod {
     struct Overload {
@@ -196,7 +197,7 @@ struct ScriptBinderStaticMethod {
         ScriptBinderReturn          return_binder = {};
         Vector<ScriptBinderParam>   params_binder = {};
         uint32_t                    params_count  = 0;
-        uint32_t                    return_count  = 1;
+        uint32_t                    return_count  = 0;
         bool                        failed        = false;
     };
 

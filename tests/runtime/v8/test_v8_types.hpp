@@ -88,6 +88,11 @@ TestType : public ::skr::ScriptbleObject {
     {
         return a + b;
     }
+    sscript_visible
+    static void log(const skr::String& str)
+    {
+        SKR_LOG_FMT_INFO(u8"{}", str);
+    }
 
     // box type
     sscript_visible
@@ -139,9 +144,20 @@ TestType : public ::skr::ScriptbleObject {
 
     // inout param
     sscript_visible
-    void get_shit(sparam_out skr::String& out)
+    void get_oh_baka(sparam_out skr::String& out)
     {
-        out = u8"shit";
+        out = u8"oh baka";
+    }
+    sscript_visible
+    skr::String get_mamba_out(sparam_out skr::String& out)
+    {
+        out = u8"out";
+        return u8"mamba";
+    }
+    sscript_visible
+    void add_mambo(skr::String& v)
+    {
+        v.append(u8" mambo~");
     }
 };
 };

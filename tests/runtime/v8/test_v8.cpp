@@ -53,6 +53,12 @@ int main(int argc, char* argv[])
 
             let shit_val = TestType.prop_shit
             TestType.prop_shit = shit_val * 100
+
+            let oh_baka = test.get_oh_baka()
+            let [mamba, out] = test.get_mamba_out()
+            oh_baka = test.add_mambo(oh_baka)
+            TestType.log(`"${oh_baka}" | "${mamba}" "${out}"`)
+
         }
     )__");
 

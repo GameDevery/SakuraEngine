@@ -124,6 +124,10 @@ private:
         const ScriptBinderPrimitive& binder,
         void*                        native_data
     );
+    static void _init_primitive(
+        const ScriptBinderPrimitive& binder,
+        void*                        native_data
+    );
     static bool _to_native_primitive(
         const ScriptBinderPrimitive& binder,
         v8::Local<v8::Value>         v8_value,
@@ -157,9 +161,23 @@ private:
         const ScriptBinderParam& param_binder,
         v8::Local<v8::Value>     v8_value
     );
-    static v8::Local<v8::Value> read_return(
+    static void _push_param_pure_out(
+        DynamicStack&            stack,
+        const ScriptBinderParam& param_binder
+    );
+    static v8::Local<v8::Value> _read_return(
+        DynamicStack&                    stack,
+        const Vector<ScriptBinderParam>& params_binder,
+        const ScriptBinderReturn&        return_binder,
+        uint32_t                         solved_return_count
+    );
+    static v8::Local<v8::Value> _read_return(
         DynamicStack&             stack,
         const ScriptBinderReturn& return_binder
+    );
+    static v8::Local<v8::Value> _read_return_from_out_param(
+        DynamicStack&            stack,
+        const ScriptBinderParam& param_binder
     );
 };
 } // namespace skr

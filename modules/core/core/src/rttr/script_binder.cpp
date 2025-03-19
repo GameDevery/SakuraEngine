@@ -424,6 +424,11 @@ ScriptBinderObject* ScriptBinderManager::_make_object(const RTTRType* type)
 template <typename OverloadType>
 inline void _solve_param_return_count(OverloadType& overload)
 {
+    // solve return count
+    overload.return_count = overload.return_binder.is_void ? 0 : 1;
+    overload.params_count = 0;
+
+    // each param and add count
     for (const auto& param : overload.params_binder)
     {
         if (param.inout_flag != ERTTRParamFlag::Out)
@@ -795,6 +800,10 @@ void ScriptBinderManager::_make_return(ScriptBinderReturn& out, TypeSignatureVie
                 u8"export primitive {} as pointer type",
                 out.binder.primitive()->type_id
             );
+        }
+        if (out.binder.primitive()->type_id == type_id_of<void>())
+        {
+            out.is_void = true;
         }
         break;
     }
