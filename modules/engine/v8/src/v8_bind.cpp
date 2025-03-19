@@ -451,7 +451,7 @@ bool V8Bind::call_native(
 {
     for (const auto& overload : binder.overloads)
     {
-        if (!match(overload.params_binder, v8_stack)) { continue; }
+        if (!match(overload.params_binder, overload.params_count, v8_stack)) { continue; }
 
         DynamicStack native_stack;
 
@@ -494,7 +494,7 @@ bool V8Bind::call_native(
 {
     for (const auto& overload : binder.overloads)
     {
-        if (!match(overload.params_binder, v8_stack)) { continue; }
+        if (!match(overload.params_binder, overload.params_count, v8_stack)) { continue; }
 
         DynamicStack native_stack;
 
@@ -643,6 +643,7 @@ bool V8Bind::match(
 }
 bool V8Bind::match(
     const Vector<ScriptBinderParam>&               param_binders,
+    uint32_t                                       solved_param_count,
     const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack
 )
 {
@@ -650,13 +651,16 @@ bool V8Bind::match(
     auto context = isolate->GetCurrentContext();
 
     // check param count
-    if (param_binders.size() != v8_stack.Length()) { return false; }
+    if (solved_param_count != v8_stack.Length()) { return false; }
 
     // check param type
     for (size_t i = 0; i < param_binders.size(); i++)
     {
         auto& binder = param_binders[i];
         auto  v8_arg = v8_stack[i];
+
+        // skip pure out param
+        if (binder.inout_flag == ERTTRParamFlag::Out) { continue; }
 
         if (!match(binder, v8_arg)) { return false; }
     }

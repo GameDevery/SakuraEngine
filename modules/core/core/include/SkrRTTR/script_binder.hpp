@@ -164,10 +164,11 @@ struct ScriptBinderStaticField {
 
 // nested binder, method & static method
 struct ScriptBinderParam {
-    ScriptBinderRoot binder      = {};
-    bool             pass_by_ref = false;
-    ERTTRParamFlag   inout_flag  = ERTTRParamFlag::None;
-    bool             is_nullable = false;
+    ScriptBinderRoot     binder      = {};
+    const RTTRParamData* data        = nullptr;
+    bool                 pass_by_ref = false;
+    ERTTRParamFlag       inout_flag  = ERTTRParamFlag::None;
+    bool                 is_nullable = false;
 };
 struct ScriptBinderReturn {
     ScriptBinderRoot binder      = {};
@@ -180,6 +181,8 @@ struct ScriptBinderMethod {
         const RTTRMethodData*     data          = nullptr;
         ScriptBinderReturn        return_binder = {};
         Vector<ScriptBinderParam> params_binder = {};
+        uint32_t                  params_count  = 0;
+        uint32_t                  return_count  = 1;
         bool                      failed        = false;
     };
 
@@ -192,6 +195,8 @@ struct ScriptBinderStaticMethod {
         const RTTRStaticMethodData* data          = nullptr;
         ScriptBinderReturn          return_binder = {};
         Vector<ScriptBinderParam>   params_binder = {};
+        uint32_t                    params_count  = 0;
+        uint32_t                    return_count  = 1;
         bool                        failed        = false;
     };
 

@@ -101,6 +101,7 @@ struct V8Bind {
     );
     static bool match(
         const Vector<ScriptBinderParam>&               param_binders,
+        uint32_t                                       solved_param_count,
         const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack
     );
 

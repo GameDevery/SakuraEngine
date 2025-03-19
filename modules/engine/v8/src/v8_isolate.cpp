@@ -420,7 +420,7 @@ void V8Isolate::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
         // match ctor
         for (const auto& ctor_binder : bind_data->binder->ctors)
         {
-            if (!V8Bind::match(ctor_binder.params_binder, info)) continue;
+            if (!V8Bind::match(ctor_binder.params_binder, ctor_binder.params_binder.size(), info)) continue;
 
             // alloc memory
             void* alloc_mem = sakura_new_aligned(bind_data->binder->type->size(), bind_data->binder->type->alignment());

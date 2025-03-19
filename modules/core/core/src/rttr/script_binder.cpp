@@ -421,6 +421,21 @@ ScriptBinderObject* ScriptBinderManager::_make_object(const RTTRType* type)
 }
 
 // make nested binder
+template <typename OverloadType>
+inline void _solve_param_return_count(OverloadType& overload)
+{
+    for (const auto& param : overload.params_binder)
+    {
+        if (param.inout_flag != ERTTRParamFlag::Out)
+        {
+            ++overload.params_count;
+        }
+        if (flag_all(param.inout_flag, ERTTRParamFlag::Out))
+        {
+            ++overload.return_count;
+        }
+    }
+}
 void ScriptBinderManager::_make_ctor(ScriptBinderCtor& out, const RTTRCtorData* ctor, const RTTRType* owner)
 {
     auto _log_stack = _logger.stack(u8"export ctor");
@@ -433,6 +448,20 @@ void ScriptBinderManager::_make_ctor(ScriptBinderCtor& out, const RTTRCtorData* 
     {
         auto& param_binder = out.params_binder.add_default().ref();
         _make_param(param_binder, param);
+    }
+
+    // check out flag
+    for (const auto& param_binder : out.params_binder)
+    {
+        if (flag_all(param_binder.inout_flag, ERTTRParamFlag::Out))
+        {
+            auto _param_log_stack = _logger.stack(
+                u8"export param '{}', index {}",
+                param_binder.data->name,
+                param_binder.data->index
+            );
+            _logger.error(u8"ctor param cannot has out flag");
+        }
     }
 
     out.failed |= _logger.any_error();
@@ -455,6 +484,9 @@ void ScriptBinderManager::_make_method(ScriptBinderMethod::Overload& out, const 
     // export return
     _make_return(out.return_binder, method->ret_type.view());
 
+    // solve param count and return count
+    _solve_param_return_count(out);
+
     out.failed |= _logger.any_error();
 }
 void ScriptBinderManager::_make_static_method(ScriptBinderStaticMethod::Overload& out, const RTTRStaticMethodData* static_method, const RTTRType* owner)
@@ -474,6 +506,9 @@ void ScriptBinderManager::_make_static_method(ScriptBinderStaticMethod::Overload
 
     // export return
     _make_return(out.return_binder, static_method->ret_type.view());
+
+    // solve param count and return count
+    _solve_param_return_count(out);
 
     out.failed |= _logger.any_error();
 }
@@ -613,6 +648,8 @@ void ScriptBinderManager::_make_param(ScriptBinderParam& out, const RTTRParamDat
 {
     auto _log_stack = _logger.stack(u8"export param '{}', index {}", param->name, param->index);
 
+    out.data = param;
+
     // get type signature
     auto signature = param->type.view();
 
@@ -659,7 +696,7 @@ void ScriptBinderManager::_make_param(ScriptBinderParam& out, const RTTRParamDat
             }
         }
     }
-    out.is_nullable         = is_pointer;
+    out.is_nullable = is_pointer;
 
     // read type id
     skr::GUID param_type_id;
