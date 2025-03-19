@@ -5,30 +5,40 @@
 // TODO. 增加 Value 类型，以指针形式存储，来适应频繁边界交互场景，如果是 ScriptbleObject 子类，默认 Object，否则默认 Value
 // TODO. 除了 Primitive Type，均主动确定其类型，不要在 make 内判断
 // TODO. Mapping/Value 均不可空，取消指针 case 下的导出
+//
+// script export concept
+//   - primitive: primitive type, always include [number, boolean, string, real]
+//   - mapping: map type structure into a script object, methods is not supported
+//   - value: support full record feature, script object will hold an pointer of native object, 
+//            but not have lifetime control, lifetime always follow it's creator
+//   - object: support full record feature, script object will hold an pointer of native object, 
+//             and have lifetime control, witch implemented by ScriptbleObject, 
+//             ONLY classes that inherit ScriptbleObject can be export as object
+//
 // script export behaviour map
 // parameter:
-// |            |  primitive |  mapping  |  object  |
-// |     T      |      T     |     T     |    -     |
-// |     T*     |      -     |     -     |    T?    |
-// |  const T*  |      -     |     -     |    T?    |
-// |     T&     |      T     |     T     |    T     | Note. by default, will have inout flag
-// |  const T&  |      T     |     T     |    T     |
+// |            |  primitive |  mapping  |  value  |  object  |
+// |     T      |      T     |     T     |    T    |    -     |
+// |     T*     |      -     |     -     |    -    |    T?    |
+// |  const T*  |      -     |     -     |    -    |    T?    |
+// |     T&     |      T     |     T     |    T    |    T     | Note. by default, will have inout flag
+// |  const T&  |      T     |     T     |    T    |    T     |
 //
 // return:
-// |            |  primitive |  mapping  |  object  |
-// |     T      |      T     |     T     |    -     |
-// |     T*     |      -     |     -     |    T?    |
-// |  const T*  |      -     |     -     |    T?    |
-// |     T&     |      T     |     T     |    T     |
-// |  const T&  |      T     |     T     |    T     |
+// |            |  primitive |  mapping  |  value  |  object  |
+// |     T      |      T     |     T     |    T    |    -     |
+// |     T*     |      -     |     -     |    -    |    T?    |
+// |  const T*  |      -     |     -     |    -    |    T?    |
+// |     T&     |      T     |     T     |    T    |    T     |
+// |  const T&  |      T     |     T     |    T    |    T     |
 //
 // field:
-// |            |  primitive |  mapping  |  object  |
-// |     T      |      T     |     T     |    -     |
-// |     T*     |      -     |     -     |    T?    |
-// |  const T*  |      -     |     -     |    T?    |
-// |     T&     |      -     |     -     |    -     |
-// |  const T&  |      -     |     -     |    -     |
+// |            |  primitive |  mapping  |  value  |  object  |
+// |     T      |      T     |     T     |    T    |    -     |
+// |     T*     |      -     |     -     |    -    |    T?    |
+// |  const T*  |      -     |     -     |    -    |    T?    |
+// |     T&     |      -     |     -     |    -    |    -     |
+// |  const T&  |      -     |     -     |    -    |    -     |
 //
 // script support primitive types:
 //   void: in return
