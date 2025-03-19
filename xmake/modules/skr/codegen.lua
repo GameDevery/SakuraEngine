@@ -250,6 +250,11 @@ function _codegen_compile(target, proxy_target, opt)
         )
     end
 
+    -- cleanup outdir
+    if os.isdir(outdir) then
+        os.rmdir(outdir)
+    end
+
     -- compile meta source
     local out, err = os.iorunv(_meta, argv)
     
