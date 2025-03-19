@@ -11,13 +11,19 @@ namespace SB
         public static IToolchain Bootstrap(string ProjectRoot)
         {
             SetupLogger();
-            VisualStudio VS = new VisualStudio(2022);
+            IToolchain? Toolchain = null;
+            if (BuildSystem.HostOS == OSPlatform.Windows)
+                Toolchain = new VisualStudio(2022);
+            else if (BuildSystem.HostOS == OSPlatform.OSX)
+                Toolchain = new XCode();
+            else
+                throw new Exception("Unsupported Platform!");
             BuildSystem.TempPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".sb")).FullName;
             BuildSystem.BuildPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".build")).FullName;
             BuildSystem.PackageTempPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".pkgs/.sb")).FullName;
             BuildSystem.PackageBuildPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".pkgs/.build")).FullName;
             LoadTargets();
-            return VS;
+            return Toolchain!;
         }
 
         private static void SetupLogger()

@@ -39,12 +39,16 @@ namespace SB.Core
             var matcher = new Matcher();
             if (FastFind)
             {
-                matcher.AddIncludePatterns(new[] { "./**/Tools/vsdevcmd/ext/vcvars.bat" });
-                matcher.AddIncludePatterns(new[] { "./**/Tools/vsdevcmd/core/winsdk.bat" });
+                matcher.AddIncludePatterns(new[] { 
+                    "./**/Tools/vsdevcmd/ext/vcvars.bat",
+                    "./**/Tools/vsdevcmd/core/winsdk.bat" 
+                });
             }
             else
             {
-                matcher.AddIncludePatterns(new[] { "./**/VC/Auxiliary/Build/vcvarsall.bat" });
+                matcher.AddIncludePatterns(new[] { 
+                    "./**/VC/Auxiliary/Build/vcvarsall.bat" 
+                });
             }
             foreach (var Disk in Windows.EnumLogicalDrives())
             {
