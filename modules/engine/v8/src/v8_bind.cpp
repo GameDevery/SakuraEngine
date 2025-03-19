@@ -51,7 +51,7 @@ bool V8Bind::_match_primitive(const ScriptBinderPrimitive& binder, v8::Local<v8:
         return false;
     }
 }
-bool V8Bind::_match_box(const ScriptBinderBox& binder, v8::Local<v8::Value> v8_value)
+bool V8Bind::_match_mapping(const ScriptBinderMapping& binder, v8::Local<v8::Value> v8_value)
 {
     auto isolate = v8::Isolate::GetCurrent();
     auto context = isolate->GetCurrentContext();
@@ -179,9 +179,9 @@ bool V8Bind::_to_native_primitive(
         return false;
     }
 }
-v8::Local<v8::Value> V8Bind::_to_v8_box(
-    const ScriptBinderBox& binder,
-    void*                  obj
+v8::Local<v8::Value> V8Bind::_to_v8_mapping(
+    const ScriptBinderMapping& binder,
+    void*                      obj
 )
 {
     auto isolate = v8::Isolate::GetCurrent();
@@ -206,11 +206,11 @@ v8::Local<v8::Value> V8Bind::_to_v8_box(
     }
     return result;
 }
-bool V8Bind::_to_native_box(
-    const ScriptBinderBox& binder,
-    v8::Local<v8::Value>   v8_value,
-    void*                  native_data,
-    bool                   is_init
+bool V8Bind::_to_native_mapping(
+    const ScriptBinderMapping& binder,
+    v8::Local<v8::Value>       v8_value,
+    void*                      native_data,
+    bool                       is_init
 )
 {
     auto isolate = v8::Isolate::GetCurrent();
@@ -304,13 +304,13 @@ void V8Bind::_push_param(
         to_native(param_binder.binder, native_data, v8_value, false);
         break;
     }
-    case ScriptBinderRoot::EKind::Box: {
-        auto*       box         = param_binder.binder.box();
-        auto        dtor_data   = box->type->dtor_data();
+    case ScriptBinderRoot::EKind::Mapping: {
+        auto*       mapping     = param_binder.binder.mapping();
+        auto        dtor_data   = mapping->type->dtor_data();
         DtorInvoker dtor        = dtor_data.has_value() ? dtor_data.value().native_invoke : nullptr;
         void*       native_data = stack.alloc_param_raw(
-            box->type->size(),
-            box->type->alignment(),
+            mapping->type->size(),
+            mapping->type->alignment(),
             param_binder.pass_by_ref ? EDynamicStackParamKind::XValue : EDynamicStackParamKind::Direct,
             dtor
         );
@@ -342,8 +342,8 @@ v8::Local<v8::Value> V8Bind::read_return(
     switch (return_binder.binder.kind())
     {
     case ScriptBinderRoot::EKind::Primitive:
-    case ScriptBinderRoot::EKind::Box: {
-        native_data    = stack.get_return_raw();
+    case ScriptBinderRoot::EKind::Mapping: {
+        native_data = stack.get_return_raw();
         if (return_binder.is_nullable)
         {
             native_data = *reinterpret_cast<void**>(native_data);
@@ -538,8 +538,8 @@ v8::Local<v8::Value> V8Bind::to_v8(
     {
     case ScriptBinderRoot::EKind::Primitive:
         return _to_v8_primitive(*binder.primitive(), native_data);
-    case ScriptBinderRoot::EKind::Box:
-        return _to_v8_box(*binder.box(), native_data);
+    case ScriptBinderRoot::EKind::Mapping:
+        return _to_v8_mapping(*binder.mapping(), native_data);
     case ScriptBinderRoot::EKind::Wrap:
         return _to_v8_wrap(*binder.wrap(), native_data);
     }
@@ -556,8 +556,8 @@ bool V8Bind::to_native(
     {
     case ScriptBinderRoot::EKind::Primitive:
         return _to_native_primitive(*binder.primitive(), v8_value, native_data, is_init);
-    case ScriptBinderRoot::EKind::Box:
-        return _to_native_box(*binder.box(), v8_value, native_data, is_init);
+    case ScriptBinderRoot::EKind::Mapping:
+        return _to_native_mapping(*binder.mapping(), v8_value, native_data, is_init);
     case ScriptBinderRoot::EKind::Wrap:
         return _to_native_wrap(*binder.wrap(), v8_value, native_data, is_init);
     }
@@ -579,8 +579,8 @@ bool V8Bind::match(
     {
     case ScriptBinderRoot::EKind::Primitive:
         return _match_primitive(*binder.primitive(), v8_value);
-    case ScriptBinderRoot::EKind::Box:
-        return _match_box(*binder.box(), v8_value);
+    case ScriptBinderRoot::EKind::Mapping:
+        return _match_mapping(*binder.mapping(), v8_value);
     case ScriptBinderRoot::EKind::Wrap:
         return _match_wrap(*binder.wrap(), v8_value);
     }

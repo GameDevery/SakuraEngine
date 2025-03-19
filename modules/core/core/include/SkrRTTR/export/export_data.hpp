@@ -100,7 +100,7 @@ ERTTRRecordFlag : uint32_t
     None          = 0,      // default
     ScriptVisible = 1 << 0, // can script visit this record
     ScriptNewable = 1 << 1, // can script new this record
-    ScriptBox     = 1 << 2, // export to script use box mode
+    ScriptMapping = 1 << 2, // export to script use mapping mode
 };
 // clang-format off
 sreflect_enum_class(guid = "a2d04427-aa0a-43b4-9975-bc0e6b92120e")

@@ -35,7 +35,7 @@
 // script api
 #define sscript_visible sattr(rttr.flags += "ScriptVisible")
 #define sscript_newable sattr(rttr.flags += "ScriptNewable")
-#define sscript_box sattr(rttr.flags += "ScriptBox")
+#define sscript_mapping sattr(rttr.flags += "ScriptMapping")
 #define sscript_wrap sattr(rttr.flags += "ScriptWrap")
 #define sscript_mixin sattr(rttr.flags += "ScriptMixin")
 #define sscript_getter(__NAME) sattr(rttr.attrs += `ScriptGetter(u8#__NAME)`)

@@ -115,7 +115,7 @@ private:
 
     // match helper
     static bool _match_primitive(const ScriptBinderPrimitive& binder, v8::Local<v8::Value> v8_value);
-    static bool _match_box(const ScriptBinderBox& binder, v8::Local<v8::Value> v8_value);
+    static bool _match_mapping(const ScriptBinderMapping& binder, v8::Local<v8::Value> v8_value);
     static bool _match_wrap(const ScriptBinderWrap& binder, v8::Local<v8::Value> v8_value);
 
     // convert helper
@@ -129,15 +129,15 @@ private:
         void*                        native_data,
         bool                         is_init
     );
-    static v8::Local<v8::Value> _to_v8_box(
-        const ScriptBinderBox& binder,
-        void*                  obj
+    static v8::Local<v8::Value> _to_v8_mapping(
+        const ScriptBinderMapping& binder,
+        void*                      obj
     );
-    static bool _to_native_box(
-        const ScriptBinderBox& binder,
-        v8::Local<v8::Value>   v8_value,
-        void*                  native_data,
-        bool                   is_init
+    static bool _to_native_mapping(
+        const ScriptBinderMapping& binder,
+        v8::Local<v8::Value>       v8_value,
+        void*                      native_data,
+        bool                       is_init
     );
     static v8::Local<v8::Value> _to_v8_wrap(
         const ScriptBinderWrap& binder,

@@ -2,9 +2,12 @@
 #include <SkrRTTR/type.hpp>
 #include <SkrCore/log.hpp>
 
+// TODO. Wrap -> Object
+// TODO. 增加 Value 类型，以指针形式存储，来适应频繁边界交互场景
+// TODO. Mapping/Value 均不可空，取消指针 case 下的导出
 // script export behaviour map
 // parameter:
-// |            |  primitive |    box    |   wrap   |
+// |            |  primitive |  mapping  |   wrap   |
 // |     T      |      T     |     T     |    -     |
 // |     T*     |   inout T? |  inout T? |    T?    |
 // |  const T*  |      T?    |     T?    |    T?    |
@@ -12,7 +15,7 @@
 // |  const T&  |      T     |     T     |    T     |
 //
 // return:
-// |            |  primitive |    box    |   wrap   |
+// |            |  primitive |  mapping  |   wrap   |
 // |     T      |      T     |     T     |    -     |
 // |     T*     |      T?    |     T?    |    T?    |
 // |  const T*  |      T?    |     T?    |    T?    |
@@ -20,7 +23,7 @@
 // |  const T&  |      T     |     T     |    T     |
 //
 // field:
-// |            |  primitive |    box    |   wrap   |
+// |            |  primitive |  mapping  |   wrap   |
 // |     T      |      T     |     T     |    -     |
 // |     T*     |      -     |     -     |    T?    |
 // |  const T*  |      -     |     -     |    T?    |
@@ -39,7 +42,7 @@
 //   skr::Span: accept script array
 //   skr::Vector: accept script array
 //   skr::Map: accept script map
-//   skr::Optional: make primitive/box type nullable without use pointer
+//   skr::Optional: make primitive/mapping type nullable without use pointer
 //   skr::NotNull: make wrap type non-nullable without use reference
 //   skr::FunctionRef: support callback from script for each() methods
 
@@ -47,14 +50,14 @@ namespace skr
 {
 // root binder, used for nested binder
 struct ScriptBinderPrimitive;
-struct ScriptBinderBox;
+struct ScriptBinderMapping;
 struct ScriptBinderWrap;
 struct ScriptBinderRoot {
     enum class EKind
     {
         None,
         Primitive,
-        Box,
+        Mapping,
         Wrap,
     };
 
@@ -65,9 +68,9 @@ struct ScriptBinderRoot {
         , _binder(primitive)
     {
     }
-    inline ScriptBinderRoot(ScriptBinderBox* box)
-        : _kind(EKind::Box)
-        , _binder(box)
+    inline ScriptBinderRoot(ScriptBinderMapping* mapping)
+        : _kind(EKind::Mapping)
+        , _binder(mapping)
     {
     }
     inline ScriptBinderRoot(ScriptBinderWrap* wrap)
@@ -98,7 +101,7 @@ struct ScriptBinderRoot {
     inline EKind kind() const { return _kind; }
     inline bool  is_empty() const { return _kind == EKind::None; }
     inline bool  is_primitive() const { return _kind == EKind::Primitive; }
-    inline bool  is_box() const { return _kind == EKind::Box; }
+    inline bool  is_mapping() const { return _kind == EKind::Mapping; }
     inline bool  is_wrap() const { return _kind == EKind::Wrap; }
 
     // binder getter
@@ -107,10 +110,10 @@ struct ScriptBinderRoot {
         SKR_ASSERT(_kind == EKind::Primitive);
         return static_cast<ScriptBinderPrimitive*>(_binder);
     }
-    inline ScriptBinderBox* box() const
+    inline ScriptBinderMapping* mapping() const
     {
-        SKR_ASSERT(_kind == EKind::Box);
-        return static_cast<ScriptBinderBox*>(_binder);
+        SKR_ASSERT(_kind == EKind::Mapping);
+        return static_cast<ScriptBinderMapping*>(_binder);
     }
     inline ScriptBinderWrap* wrap() const
     {
@@ -209,7 +212,7 @@ struct ScriptBinderPrimitive {
 
     bool failed = false;
 };
-struct ScriptBinderBox {
+struct ScriptBinderMapping {
     const RTTRType*                type;
     Map<String, ScriptBinderField> fields;
 
@@ -245,7 +248,7 @@ struct SKR_CORE_API ScriptBinderManager {
 private:
     // make root binder
     ScriptBinderPrimitive* _make_primitive(GUID type_id);
-    ScriptBinderBox*       _make_box(const RTTRType* type);
+    ScriptBinderMapping*   _make_mapping(const RTTRType* type);
     ScriptBinderWrap*      _make_wrap(const RTTRType* type);
 
     // make nested binder

@@ -18,8 +18,8 @@ ScriptBinderManager::~ScriptBinderManager()
         case ScriptBinderRoot::EKind::Primitive:
             SkrDelete(binder.primitive());
             break;
-        case ScriptBinderRoot::EKind::Box:
-            SkrDelete(binder.box());
+        case ScriptBinderRoot::EKind::Mapping:
+            SkrDelete(binder.mapping());
             break;
         case ScriptBinderRoot::EKind::Wrap:
             SkrDelete(binder.wrap());
@@ -44,15 +44,15 @@ ScriptBinderRoot ScriptBinderManager::get_or_build(GUID type_id)
         return primitive_binder;
     }
 
-    // box or wrap
+    // mapping or wrap
     auto* type = get_type_from_guid(type_id);
     if (type)
     {
-        // make box binder
-        if (auto* box_binder = _make_box(type))
+        // make mapping binder
+        if (auto* mapping_binder = _make_mapping(type))
         {
-            _cached_root_binders.add(type_id, box_binder);
-            return box_binder;
+            _cached_root_binders.add(type_id, mapping_binder);
+            return mapping_binder;
         }
 
         // make wrap binder
@@ -144,22 +144,22 @@ ScriptBinderPrimitive* ScriptBinderManager::_make_primitive(GUID type_id)
         return nullptr;
     }
 }
-ScriptBinderBox* ScriptBinderManager::_make_box(const RTTRType* type)
+ScriptBinderMapping* ScriptBinderManager::_make_mapping(const RTTRType* type)
 {
-    auto _log_stack = _logger.stack(u8"export box type {}", type->name());
+    auto _log_stack = _logger.stack(u8"export mapping type {}", type->name());
 
     // check flag
     // clang-format off
     if (!flag_all(
         type->record_flag(),
-        ERTTRRecordFlag::ScriptVisible | ERTTRRecordFlag::ScriptBox
+        ERTTRRecordFlag::ScriptVisible | ERTTRRecordFlag::ScriptMapping
     ))
     {
         return nullptr;
     }
     // clang-format on
 
-    ScriptBinderBox result{};
+    ScriptBinderMapping result{};
     result.type = type;
 
     // each field
@@ -172,7 +172,7 @@ ScriptBinderBox* ScriptBinderManager::_make_box(const RTTRType* type)
     result.failed |= _logger.any_error();
 
     // return result
-    return SkrNew<ScriptBinderBox>(std::move(result));
+    return SkrNew<ScriptBinderMapping>(std::move(result));
 }
 ScriptBinderWrap* ScriptBinderManager::_make_wrap(const RTTRType* type)
 {

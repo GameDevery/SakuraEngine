@@ -10,7 +10,7 @@ sreflect_struct(
     guid = "612a176d-e2c8-4b22-89fa-2370d7ec5e44"
     rttr = @full
 )
-sscript_visible sscript_box
+sscript_visible sscript_mapping
 float3 {
     sscript_visible
     float x = 0;
@@ -23,9 +23,8 @@ float3 {
 sreflect_struct(
     guid = "a2f3b0d4-1c5e-4b8f-8c7d-6a9e0f1b2c3d"
     rttr = @full
-    rttr.flags = ["ScriptBox"]
 )
-sscript_visible sscript_box
+sscript_visible sscript_mapping
 Box3 {
     sscript_visible
     float3 min = {0, 0, 0};
@@ -36,9 +35,8 @@ Box3 {
 sreflect_struct(
     guid = "6563e112-1be3-45d4-8c44-8d5e3ed9b3fd"
     rttr = @full
-    rttr.flags = ["ScriptBox"]
 )
-sscript_visible sscript_box
+sscript_visible sscript_mapping
 Box3Offset : Box3 {
     sscript_visible
     float3 offset = {0, 0, 0};
