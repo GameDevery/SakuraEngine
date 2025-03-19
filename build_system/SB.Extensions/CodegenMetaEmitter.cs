@@ -14,7 +14,7 @@ namespace SB
         public CodegenMetaEmitter(IToolchain Toolchain, string ToolDirectory)
         {
             this.Toolchain = Toolchain;
-            var ResultList = Directory.GetFiles(ToolDirectory, "meta.exe", SearchOption.TopDirectoryOnly);
+            var ResultList = Directory.GetFiles(ToolDirectory, "meta*", SearchOption.TopDirectoryOnly);
             if (ResultList.Length > 0)
             {
                 SearchTask = Task.FromResult(ResultList[0]);

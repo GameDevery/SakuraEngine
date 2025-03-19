@@ -16,7 +16,7 @@ namespace SB
 
         public SB.Target SIMD(global::SB.Core.SIMDArchitecture simd) { FinalArguments.Override("SIMD", simd); return this as SB.Target; }
 
-        public SB.Target WarningLevel(global::SB.Core.MSVCWarningLevel level) { FinalArguments.Override("WarningLevel", level); return this as SB.Target; }
+        public SB.Target WarningLevel(global::SB.Core.WarningLevel level) { FinalArguments.Override("WarningLevel", level); return this as SB.Target; }
 
         public SB.Target WarningAsError(bool v) { FinalArguments.Override("WarningAsError", v); return this as SB.Target; }
 

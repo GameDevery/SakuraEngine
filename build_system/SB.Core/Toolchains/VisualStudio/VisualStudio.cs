@@ -197,8 +197,6 @@ namespace SB.Core
         public string? LINKPath { get; private set; }
 
         #region HelpersForTools
-        public static bool CheckPath(string P, bool MustExist) => Path.IsPathFullyQualified(P) && (!MustExist || Directory.Exists(P));
-        public static bool CheckFile(string P, bool MustExist) => Path.IsPathFullyQualified(P) && (!MustExist || File.Exists(P));
         public static bool IsValidRT(string what) => ValidRuntimeArguments.Contains(what);
         private static readonly string[] ValidRuntimeArguments = ["MT", "MTd", "MD", "MDd"];
         #endregion

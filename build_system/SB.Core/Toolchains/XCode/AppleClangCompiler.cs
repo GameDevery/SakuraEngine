@@ -3,36 +3,31 @@ using System.Text.RegularExpressions;
 
 namespace SB.Core
 {
-    public class ClangCLCompiler : ICompiler
+    public class AppleClangCompiler : ICompiler
     {
-        public ClangCLCompiler(string ExePath, Dictionary<string, string?> Env)
+        public AppleClangCompiler(string ExePath, XCode Toolchain)
         {
-            VCEnvVariables = Env;
             this.ExecutablePath = ExePath;
+            this.XCodeToolchain = Toolchain!;
 
             if (!File.Exists(ExePath))
                 throw new ArgumentException($"ClangCLCompiler: ExePath: {ExePath} is not an existed absolute path!");
 
-            this.ClangCLVersionTask = Task.Run(() =>
+            this.ClangVersionTask = Task.Run(() =>
             {
-                int ExitCode = BuildSystem.RunProcess(ExePath, "--version", out var Output, out var Error, VCEnvVariables);
+                int ExitCode = BuildSystem.RunProcess(ExePath, "--version", out var Output, out var Error);
                 if (ExitCode == 0)
                 {
                     Regex pattern = new Regex(@"\d+(\.\d+)+");
-                    var ClangCLVersion = Version.Parse(pattern.Match(Output).Value);
-                    Log.Information("clang-cl.exe version ... {ClangCLVersion}", ClangCLVersion);
-                    return ClangCLVersion;
+                    var ClangVersion = Version.Parse(pattern.Match(Output).Value);
+                    Log.Information("clang.exe version ... {ClangVersion}", ClangVersion);
+                    return ClangVersion;
                 }
                 else
                 {
-                    throw new Exception($"Failed to get clang-cl.exe version! Exit code: {ExitCode}, Error: {Error}");
+                    throw new Exception($"Failed to get clang.exe version! Exit code: {ExitCode}, Error: {Error}");
                 }
             });
-        }
-
-        public IArgumentDriver CreateArgumentDriver()
-        {
-            return new ClangCLArgumentDriver();
         }
 
         public CompileResult Compile(TaskEmitter Emitter, Target Target, IArgumentDriver Driver)
@@ -40,21 +35,18 @@ namespace SB.Core
             var CompilerArgsDict = Driver.CalculateArguments();
             var CompilerArgsList = CompilerArgsDict.Values.SelectMany(x => x).ToList();
             var DependArgsList = CompilerArgsList.ToList();
-            DependArgsList.Add($"COMPILER:ID=ClangCL.exe");
+            DependArgsList.Add($"COMPILER:ID=AppleClang");
             DependArgsList.Add($"COMPILER:VERSION={Version}");
-            DependArgsList.Add($"ENV:VCToolsVersion={VCEnvVariables["VCToolsVersion"]}");
-            DependArgsList.Add($"ENV:WindowsSDKVersion={VCEnvVariables["WindowsSDKVersion"]}");
-            DependArgsList.Add($"ENV:WindowsSDKLibVersion={VCEnvVariables["WindowsSDKLibVersion"]}");
-            DependArgsList.Add($"ENV:UCRTVersion={VCEnvVariables["UCRTVersion"]}");
+            DependArgsList.Add($"ENV:SDKVersion={XCodeToolchain.SDKVersion}");
 
             var SourceFile = Driver.Arguments["Source"] as string;
             var ObjectFile = Driver.Arguments["Object"] as string;
             var Changed = Depend.OnChanged(Target.Name, SourceFile!, Emitter.Name, (Depend depend) =>
             {
-                int ExitCode = BuildSystem.RunProcess(ExecutablePath, String.Join(" ", CompilerArgsList), out var OutputInfo, out var ErrorInfo, VCEnvVariables);
+                int ExitCode = BuildSystem.RunProcess(ExecutablePath, String.Join(" ", CompilerArgsList), out var OutputInfo, out var ErrorInfo);
                 if (ExitCode != 0)
                 {
-                    throw new TaskFatalError($"Compile {SourceFile} failed with fatal error!", $"clang-cl.exe: {ErrorInfo}");
+                    throw new TaskFatalError($"Compile {SourceFile} failed with fatal error!", $"apple-clang: {ErrorInfo}");
                 }
                 else
                 {
@@ -69,7 +61,7 @@ namespace SB.Core
                 }
 
                 if (OutputInfo.Contains("warning"))
-                    Log.Warning("clang-cl.exe: {OutputInfo}", OutputInfo);
+                    Log.Warning("apple-clang: {OutputInfo}", OutputInfo);
 
                 depend.ExternalFiles.Add(ObjectFile!);
             }, new List<string> { SourceFile! }, DependArgsList);
@@ -82,18 +74,23 @@ namespace SB.Core
             };
         }
 
+        public IArgumentDriver CreateArgumentDriver()
+        {
+            return new AppleClangArgumentDriver(XCodeToolchain.PlatSDKDirectory!);
+        }
+
         public Version Version
         {
             get
             {
-                if (!ClangCLVersionTask.IsCompleted)
-                    ClangCLVersionTask.Wait();
-                return ClangCLVersionTask.Result;
+                if (!ClangVersionTask.IsCompleted)
+                    ClangVersionTask.Wait();
+                return ClangVersionTask.Result;
             }
         }
 
-        public readonly Dictionary<string, string?> VCEnvVariables;
-        private readonly Task<Version> ClangCLVersionTask;
+        private readonly Task<Version> ClangVersionTask;
         public string ExecutablePath { get; }
+        private XCode XCodeToolchain { get; init; }
     }
 }

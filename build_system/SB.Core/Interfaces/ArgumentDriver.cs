@@ -19,10 +19,11 @@ namespace SB.Core
 
     public enum OptimizationLevel
     {
-        O0,
-        O1,
-        O2,
-        O3
+        None,
+        Fast,
+        Faster,
+        Fastest,
+        Smallest
     }
 
     public enum FpModel
@@ -32,14 +33,12 @@ namespace SB.Core
         Strict
     }
 
-    public enum MSVCWarningLevel
+    public enum WarningLevel
     {
-        W0,
-        W1,
-        W2,
-        W3,
-        W4,
-        Wall
+        None,
+        All,
+        AllExtra,
+        Everything
     }
 
     public enum TargetType

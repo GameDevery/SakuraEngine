@@ -4,6 +4,7 @@ namespace SB.Core
 {
     using ArgumentName = string;
     using VS = VisualStudio;
+    using BS = BuildSystem;
     public class LINKArgumentDriver : IArgumentDriver
     {
         [TargetProperty] 
@@ -14,7 +15,7 @@ namespace SB.Core
         static readonly Dictionary<TargetType, string> typeMap = new Dictionary<TargetType, string> { { Core.TargetType.Static, "/LIB" }, { Core.TargetType.Dynamic, "/DLL" }, { Core.TargetType.Executable, "" }, { Core.TargetType.HeaderOnly, "" } };
 
         [TargetProperty(TargetProperty.InheritBehavior)] 
-        public string[]? LinkDirs(ArgumentList<string> dirs) => dirs.All(x => VS.CheckPath(x, false) ? true : throw new ArgumentException($"Invalid link dir {x}!")) ? dirs.Select(dir => $"/LIBPATH:{dir}").ToArray() : null;
+        public string[]? LinkDirs(ArgumentList<string> dirs) => dirs.All(x => BS.CheckPath(x, false) ? true : throw new ArgumentException($"Invalid link dir {x}!")) ? dirs.Select(dir => $"/LIBPATH:{dir}").ToArray() : null;
         
         [TargetProperty(TargetProperty.InheritBehavior)] 
         public string[]? Link(ArgumentList<string> dirs) => dirs.Select(dir => $"{dir}.lib").ToArray();
@@ -27,11 +28,11 @@ namespace SB.Core
 
         public string PDBMode(PDBMode mode) => (mode == Core.PDBMode.Disable) ? "/DEBUG:NONE" : "/DEBUG:FULL";
 
-        public string PDB(string path) => VS.CheckPath(path, false) ? $"/PDB:\"{path}\"" : throw new ArgumentException($"PDB value {path} is not a valid absolute path!");
+        public string PDB(string path) => BS.CheckPath(path, false) ? $"/PDB:\"{path}\"" : throw new ArgumentException($"PDB value {path} is not a valid absolute path!");
 
         public string[] Inputs(ArgumentList<string> inputs) => inputs.Select(dir => $"\"{dir}\"").ToArray();
 
-        public string Output(string output) => VS.CheckFile(output, false) ? $"/OUT:\"{output}\"" : throw new ArgumentException($"Invalid output file path {output}!");
+        public string Output(string output) => BS.CheckFile(output, false) ? $"/OUT:\"{output}\"" : throw new ArgumentException($"Invalid output file path {output}!");
 
         public Dictionary<ArgumentName, object?> Arguments { get; } = new Dictionary<ArgumentName, object?>();
         public HashSet<string> RawArguments { get; } = new HashSet<string> { "/NOLOGO" };

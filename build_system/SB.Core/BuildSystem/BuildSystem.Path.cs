@@ -27,6 +27,10 @@ namespace SB
             return false;
         }
 
+        public static bool CheckPath(string P, bool MustExist) => Path.IsPathFullyQualified(P) && (!MustExist || Directory.Exists(P));
+        
+        public static bool CheckFile(string P, bool MustExist) => Path.IsPathFullyQualified(P) && (!MustExist || File.Exists(P));
+
         public static int RunProcess(string ExecutablePath, string Arguments, out string Output, out string Error, Dictionary<string, string?>? Env = null)
         {
             Process P = new Process

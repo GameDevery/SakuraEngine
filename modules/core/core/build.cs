@@ -7,25 +7,25 @@ public static class SkrCore
     static SkrCore()
     {
         var DependencyGraph = Engine.StaticComponent("SkrDependencyGraph", "SkrCore")
-            .OptimizationLevel(OptimizationLevel.O3)
+            .OptimizationLevel(OptimizationLevel.Fastest)
             .Depend(Visibility.Public, "SkrBase")
             .Require("lemon", new PackageConfig { Version = new Version(1, 3, 1) })
             .Depend(Visibility.Private, "lemon@lemon")
             .AddFiles("src/graph/build.*.cpp");
         
         var SkrString = Engine.StaticComponent("SkrString", "SkrCore")
-            .OptimizationLevel(OptimizationLevel.O3)
+            .OptimizationLevel(OptimizationLevel.Fastest)
             .Depend(Visibility.Public, "SkrBase")
             .Defines(Visibility.Public, "OPEN_STRING_API=")
             .AddFiles("src/string/build.*.cpp");
 
         var SkrSimpleAsync = Engine.StaticComponent("SkrSimpleAsync", "SkrCore")
-            .OptimizationLevel(OptimizationLevel.O3)
+            .OptimizationLevel(OptimizationLevel.Fastest)
             .Depend(Visibility.Public, "SkrBase")
             .AddFiles("src/async/build.*.cpp");
 
         var SkrArchive = Engine.StaticComponent("SkrArchive", "SkrCore")
-            .OptimizationLevel(OptimizationLevel.O3)
+            .OptimizationLevel(OptimizationLevel.Fastest)
             .Depend(Visibility.Public, "SkrBase")
             .Require("yyjson", new PackageConfig { Version = new Version(0, 9, 0) })
             .Depend(Visibility.Private, "yyjson@yyjson")

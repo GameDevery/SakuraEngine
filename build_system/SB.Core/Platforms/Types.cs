@@ -13,7 +13,8 @@
         SSE4_2,
         AVX,
         AVX512,
-        AVX10_1
+        AVX10_1,
+        Neon
     }
 
     public enum OSPlatform

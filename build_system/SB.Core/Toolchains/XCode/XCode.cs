@@ -14,6 +14,7 @@ namespace SB.Core
             {
                 FastPathFind();
                 XCRunFind();
+                InitializeTools();
                 return true;
             });
             return InitializeTask;
@@ -34,7 +35,7 @@ namespace SB.Core
             var SDKs = Directory.GetDirectories(Path.Combine(RootDirectoryToFind, "SDKs"));
             var LatestVersion = SDKs.Select(P => Path.GetFileName(P).Replace("MacOSX", "").Replace(".sdk", "")).OrderByDescending(P => P).First();
             SDKVersion = Version.Parse(LatestVersion);
-            PlatSDKDirectory = Path.Combine(RootDirectoryToFind, $"MacOSX{SDKVersion}.sdk");
+            PlatSDKDirectory = Path.Combine(RootDirectoryToFind, "SDKs", $"MacOSX{SDKVersion}.sdk");
         }
 
         void XCRunFind()
@@ -84,6 +85,11 @@ namespace SB.Core
             }
         }
 
+        void InitializeTools()
+        {
+            AppleClang = new AppleClangCompiler(ClangDirectory!, this);
+        }
+
         public Version Version
         {
             get
@@ -92,7 +98,14 @@ namespace SB.Core
                 return SDKVersion!;
             }
         }
-        public ICompiler Compiler { get; }
+        public ICompiler Compiler
+        {
+            get
+            {
+                InitializeTask!.Wait();
+                return AppleClang!;
+            }
+        }
         public ILinker Linker { get; }
 
         public bool HasCommandLineTools { get; private set; } = false;
@@ -106,14 +119,15 @@ namespace SB.Core
         // /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX*.*.sdk
         // From CommandLineTools:
         // /Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk/System/Library/Frameworks/CoreFoundation.framework/Versions/A/Headers
-        private string? PlatSDKDirectory { get; set; }
+        internal string? PlatSDKDirectory { get; set; }
         public bool HasClang { get; private set; } = false;
         public string? ClangDirectory { get; private set; }
+        public AppleClangCompiler? AppleClang { get; private set; }
         public bool HasAR { get; private set; } = false;
         public string? ARDirectory { get; private set; }
         public bool HasLD { get; private set; } = false;
         public string? LDDirectory { get; private set; }
         private Task<bool>? InitializeTask { get; set; }
-        private Version? SDKVersion = null;
+        internal Version? SDKVersion = null;
     }
 }

@@ -1,9 +1,8 @@
-﻿using System.IO;
-
-namespace SB.Core
+﻿namespace SB.Core
 {
     using ArgumentName = string;
     using VS = VisualStudio;
+    using BS = BuildSystem;
     public class CLArgumentDriver : IArgumentDriver
     {
         [TargetProperty] 
@@ -24,15 +23,29 @@ namespace SB.Core
         public virtual string SIMD(SIMDArchitecture simd) => $"/arch:{simd}".Replace("_", ".");
 
         [TargetProperty] 
-        public virtual string WarningLevel(MSVCWarningLevel level) => $"/{level}";
+        public virtual string WarningLevel(WarningLevel level) => level switch
+        {
+            SB.Core.WarningLevel.None => "/w",
+            SB.Core.WarningLevel.All => "/W3",
+            SB.Core.WarningLevel.AllExtra => "/W4",
+            SB.Core.WarningLevel.Everything => "/Wall",
+            _ => throw new TaskFatalError($"Invalid argument \"{level}\" for MSVC WarningLevel!")
+        };
 
         [TargetProperty] 
         public virtual string WarningAsError(bool v) => v ? "/WX" : "";
 
         [TargetProperty] 
-        public virtual string OptimizationLevel(SB.Core.OptimizationLevel opt) => $"/{opt}".Replace("/O3", "/O2").Replace("/O0", "/Od");
+        public virtual string OptimizationLevel(SB.Core.OptimizationLevel opt) => opt switch
+        {
+            SB.Core.OptimizationLevel.None => "-Od",
+            SB.Core.OptimizationLevel.Fast => "-Ox",
+            SB.Core.OptimizationLevel.Faster => "-Ox",
+            SB.Core.OptimizationLevel.Fastest => "-O2",
+            SB.Core.OptimizationLevel.Smallest => "-O1 -GL",
+            _ => throw new TaskFatalError($"Invalid argument \"{opt}\" for MSVC OptimizationLevel!")
+        };
 
-        // for clang it's -ffp-model=[precise|fast|strict]
         [TargetProperty] 
         public virtual string FpModel(FpModel v) => $"/fp:{v}".ToLowerInvariant();
 
@@ -43,24 +56,24 @@ namespace SB.Core
         public virtual string[] Defines(ArgumentList<string> defines) => defines.Select(define => $"-D{define}").ToArray();
 
         [TargetProperty(TargetProperty.InheritBehavior)] 
-        public virtual string[]? IncludeDirs(ArgumentList<string> dirs) => dirs.All(x => VS.CheckPath(x, true) ? true : throw new TaskFatalError($"Invalid include dir {x}!")) ? dirs.Select(dir => $"/I{dir}").ToArray() : null;
+        public virtual string[]? IncludeDirs(ArgumentList<string> dirs) => dirs.All(x => BS.CheckPath(x, true) ? true : throw new TaskFatalError($"Invalid include dir {x}!")) ? dirs.Select(dir => $"/I{dir}").ToArray() : null;
         
         [TargetProperty] 
         public virtual string RTTI(bool v) => v ? "/GR" : "/GR-";
         
         [TargetProperty] 
-        public virtual string Source(string path) => VS.CheckFile(path, true) ? $"\"{path}\"" : throw new TaskFatalError($"Source value {path} is not an existed absolute path!");
+        public virtual string Source(string path) => BS.CheckFile(path, true) ? $"\"{path}\"" : throw new TaskFatalError($"Source value {path} is not an existed absolute path!");
 
         public virtual string Arch(Architecture arch) => archMap.TryGetValue(arch, out var r) ? r : throw new TaskFatalError($"Invalid architecture \"{arch}\" for MSVC CL.exe!");
         static readonly Dictionary<Architecture, string> archMap = new Dictionary<Architecture, string> { { Architecture.X86, "" }, { Architecture.X64, "" }, { Architecture.ARM64, "" } };
 
-        public virtual string Object(string path) => VS.CheckFile(path, false) ? $"-Fo\"{path}\"" : throw new TaskFatalError($"Object value {path} is not a valid absolute path!");
+        public virtual string Object(string path) => BS.CheckFile(path, false) ? $"-Fo\"{path}\"" : throw new TaskFatalError($"Object value {path} is not a valid absolute path!");
 
         public virtual string PDBMode(PDBMode mode) => (mode == SB.Core.PDBMode.Standalone) ? "/Zi" : (mode == SB.Core.PDBMode.Embed) ? "/Z7" : "";
 
-        public virtual string PDB(string path) => VS.CheckFile(path, false) ? $"/Fd\"{path}\"" : throw new TaskFatalError($"PDB value {path} is not a valid absolute path!");
+        public virtual string PDB(string path) => BS.CheckFile(path, false) ? $"/Fd\"{path}\"" : throw new TaskFatalError($"PDB value {path} is not a valid absolute path!");
 
-        public virtual string SourceDependencies(string path) => VS.CheckFile(path, false) ? $"/sourceDependencies \"{path}\"" : throw new TaskFatalError($"SourceDependencies value {path} is not a valid absolute path!");
+        public virtual string SourceDependencies(string path) => BS.CheckFile(path, false) ? $"/sourceDependencies \"{path}\"" : throw new TaskFatalError($"SourceDependencies value {path} is not a valid absolute path!");
 
         public Dictionary<ArgumentName, object?> Arguments { get; } = new Dictionary<ArgumentName, object?>();
         public HashSet<string> RawArguments { get; } = new HashSet<string> { "/c", "/nologo", "/FC", "/source-charset:utf-8" };

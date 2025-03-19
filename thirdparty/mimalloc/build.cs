@@ -8,7 +8,8 @@ public static class MiMalloc
     {
         var MiMalloc = Engine.Target("mimalloc")
             .TargetType(TargetType.Dynamic)
-            .OptimizationLevel(OptimizationLevel.O3)
+            .OptimizationLevel(OptimizationLevel.Fastest)
+            .CppVersion("20")
             .Defines(Visibility.Public, "MI_SHARED_LIB")
             .Defines(Visibility.Private, "MI_SHARED_LIB_EXPORT", "MI_XMALLOC=1", "MI_WIN_NOREDIRECT")
             .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "files"))
