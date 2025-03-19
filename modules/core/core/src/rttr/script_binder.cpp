@@ -196,7 +196,7 @@ ScriptBinderObject* ScriptBinderManager::_make_object(const RTTRType* type)
     }
 
     ScriptBinderObject result = {};
-    result.type             = type;
+    result.type               = type;
 
     // export ctors
     result.is_script_newable = flag_all(type->record_flag(), ERTTRRecordFlag::ScriptNewable);
@@ -652,18 +652,45 @@ void ScriptBinderManager::_make_param(ScriptBinderParam& out, const RTTRParamDat
     // check bad binder
     if (out.binder.is_empty())
     {
-        _logger.error(u8"unsupported type");
-        return;
     }
 
-    // check object export
-    if (out.binder.is_object() && !is_decayed_pointer)
+    // check binder
+    switch (out.binder.kind())
     {
-        _logger.error(
-            u8"export object {} as value type",
-            out.binder.object()->type->name()
-        );
-        return;
+    case ScriptBinderRoot::EKind::Primitive:{
+        if (is_pointer)
+        {
+            _logger.error(
+                u8"export primitive {} as pointer type",
+                out.binder.primitive()->type_id
+            );
+        }
+        break;
+    }
+    case ScriptBinderRoot::EKind::Mapping: {
+        if (is_pointer)
+        {
+            _logger.error(
+                u8"export mapping {} as pointer type",
+                out.binder.mapping()->type->name()
+            );
+        }
+        break;
+    }
+    case ScriptBinderRoot::EKind::Object: {
+        if (!is_decayed_pointer)
+        {
+            _logger.error(
+                u8"export object {} as value type",
+                out.binder.object()->type->name()
+            );
+        }
+        break;
+    }
+    default: {
+        _logger.error(u8"unsupported type");
+        break;
+    }
     }
 }
 void ScriptBinderManager::_make_return(ScriptBinderReturn& out, TypeSignatureView signature)
@@ -698,21 +725,43 @@ void ScriptBinderManager::_make_return(ScriptBinderReturn& out, TypeSignatureVie
     // get binder
     out.binder = get_or_build(param_type_id);
 
-    // check bad binder
-    if (out.binder.is_empty())
+    // check binder
+    switch (out.binder.kind())
     {
-        _logger.error(u8"unsupported type");
-        return;
+    case ScriptBinderRoot::EKind::Primitive:{
+        if (is_pointer)
+        {
+            _logger.error(
+                u8"export primitive {} as pointer type",
+                out.binder.primitive()->type_id
+            );
+        }
+        break;
     }
-
-    // check object export
-    if (out.binder.is_object() && !is_decayed_pointer)
-    {
-        _logger.error(
-            u8"export object type {} as value",
-            out.binder.object()->type->name()
-        );
-        return;
+    case ScriptBinderRoot::EKind::Mapping: {
+        if (is_pointer)
+        {
+            _logger.error(
+                u8"export primitive/mapping {} as pointer type",
+                out.binder.mapping()->type->name()
+            );
+        }
+        break;
+    }
+    case ScriptBinderRoot::EKind::Object: {
+        if (!is_decayed_pointer)
+        {
+            _logger.error(
+                u8"export object {} as value type",
+                out.binder.object()->type->name()
+            );
+        }
+        break;
+    }
+    default: {
+        _logger.error(u8"unsupported type");
+        break;
+    }
     }
 }
 

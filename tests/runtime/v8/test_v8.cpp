@@ -2,7 +2,7 @@
 #include "SkrV8/v8_context.hpp"
 #include "SkrRTTR/rttr_traits.hpp"
 #include "SkrCore/log.hpp"
-#include "test_types.hpp"
+#include "test_v8_types.hpp"
 
 int32_t test_v8::TestType::static_value = 0;
 

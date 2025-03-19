@@ -9,16 +9,16 @@
 // parameter:
 // |            |  primitive |  mapping  |  object  |
 // |     T      |      T     |     T     |    -     |
-// |     T*     |   inout T? |  inout T? |    T?    |
-// |  const T*  |      T?    |     T?    |    T?    |
-// |     T&     |   inout T  |  inout T  |    T     |
+// |     T*     |      -     |     -     |    T?    |
+// |  const T*  |      -     |     -     |    T?    |
+// |     T&     |      T     |     T     |    T     | Note. by default, will have inout flag
 // |  const T&  |      T     |     T     |    T     |
 //
 // return:
 // |            |  primitive |  mapping  |  object  |
 // |     T      |      T     |     T     |    -     |
-// |     T*     |      T?    |     T?    |    T?    |
-// |  const T*  |      T?    |     T?    |    T?    |
+// |     T*     |      -     |     -     |    T?    |
+// |  const T*  |      -     |     -     |    T?    |
 // |     T&     |      T     |     T     |    T     |
 // |  const T&  |      T     |     T     |    T     |
 //

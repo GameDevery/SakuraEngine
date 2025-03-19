@@ -115,7 +115,7 @@ TestType : public ::skr::ScriptbleObject {
     sscript_visible sscript_getter(prop_fuck)
     skr::String get_fuck() const 
     {
-        SKR_LOG_FMT_INFO(u8"get fuck"); 
+        SKR_LOG_FMT_INFO(u8"get fuck");
         return u8"fuck"; 
     }
     sscript_visible sscript_setter(prop_fuck)
