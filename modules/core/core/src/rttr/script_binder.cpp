@@ -21,8 +21,8 @@ ScriptBinderManager::~ScriptBinderManager()
         case ScriptBinderRoot::EKind::Mapping:
             SkrDelete(binder.mapping());
             break;
-        case ScriptBinderRoot::EKind::Wrap:
-            SkrDelete(binder.wrap());
+        case ScriptBinderRoot::EKind::Object:
+            SkrDelete(binder.object());
             break;
         }
     }
@@ -44,7 +44,7 @@ ScriptBinderRoot ScriptBinderManager::get_or_build(GUID type_id)
         return primitive_binder;
     }
 
-    // mapping or wrap
+    // mapping or object
     auto* type = get_type_from_guid(type_id);
     if (type)
     {
@@ -55,11 +55,11 @@ ScriptBinderRoot ScriptBinderManager::get_or_build(GUID type_id)
             return mapping_binder;
         }
 
-        // make wrap binder
-        if (auto* wrap_binder = _make_wrap(type))
+        // make object binder
+        if (auto* object_binder = _make_object(type))
         {
-            _cached_root_binders.add(type_id, wrap_binder);
-            return wrap_binder;
+            _cached_root_binders.add(type_id, object_binder);
+            return object_binder;
         }
     }
 
@@ -174,9 +174,9 @@ ScriptBinderMapping* ScriptBinderManager::_make_mapping(const RTTRType* type)
     // return result
     return SkrNew<ScriptBinderMapping>(std::move(result));
 }
-ScriptBinderWrap* ScriptBinderManager::_make_wrap(const RTTRType* type)
+ScriptBinderObject* ScriptBinderManager::_make_object(const RTTRType* type)
 {
-    auto _log_stack = _logger.stack(u8"export wrap type {}", type->name());
+    auto _log_stack = _logger.stack(u8"export object type {}", type->name());
 
     // check flag
     // clang-format off
@@ -195,7 +195,7 @@ ScriptBinderWrap* ScriptBinderManager::_make_wrap(const RTTRType* type)
         return nullptr;
     }
 
-    ScriptBinderWrap result = {};
+    ScriptBinderObject result = {};
     result.type             = type;
 
     // export ctors
@@ -417,7 +417,7 @@ ScriptBinderWrap* ScriptBinderManager::_make_wrap(const RTTRType* type)
     result.failed |= _logger.any_error();
 
     // return result
-    return SkrNew<ScriptBinderWrap>(std::move(result));
+    return SkrNew<ScriptBinderObject>(std::move(result));
 }
 
 // make nested binder
@@ -656,12 +656,12 @@ void ScriptBinderManager::_make_param(ScriptBinderParam& out, const RTTRParamDat
         return;
     }
 
-    // check wrap export
-    if (out.binder.is_wrap() && !is_decayed_pointer)
+    // check object export
+    if (out.binder.is_object() && !is_decayed_pointer)
     {
         _logger.error(
-            u8"export wrap {} as value type",
-            out.binder.wrap()->type->name()
+            u8"export object {} as value type",
+            out.binder.object()->type->name()
         );
         return;
     }
@@ -705,12 +705,12 @@ void ScriptBinderManager::_make_return(ScriptBinderReturn& out, TypeSignatureVie
         return;
     }
 
-    // check wrap export
-    if (out.binder.is_wrap() && !is_decayed_pointer)
+    // check object export
+    if (out.binder.is_object() && !is_decayed_pointer)
     {
         _logger.error(
-            u8"export wrap type {} as value",
-            out.binder.wrap()->type->name()
+            u8"export object type {} as value",
+            out.binder.object()->type->name()
         );
         return;
     }
@@ -734,7 +734,7 @@ void ScriptBinderManager::_try_export_field(TypeSignatureView signature, ScriptB
     }
 
     if (signature.is_decayed_pointer())
-    { // only support pointer type for wrap binder
+    { // only support pointer type for object binder
         if (signature.is_any_ref())
         {
             _logger.error(u8"cannot export reference field");
@@ -746,11 +746,11 @@ void ScriptBinderManager::_try_export_field(TypeSignatureView signature, ScriptB
         signature.jump_modifier();
         signature.read_type_id(field_type_id);
 
-        // export wrap type
+        // export object type
         out_binder = get_or_build(field_type_id);
-        if (!out_binder.is_wrap())
+        if (!out_binder.is_object())
         {
-            _logger.error(u8"cannot export pointer field for non-wrap object");
+            _logger.error(u8"cannot export pointer field for non-object");
             return;
         }
     }
@@ -768,9 +768,9 @@ void ScriptBinderManager::_try_export_field(TypeSignatureView signature, ScriptB
             _logger.error(u8"unsupported type");
             return;
         }
-        else if (out_binder.is_wrap())
+        else if (out_binder.is_object())
         {
-            _logger.error(u8"cannot export wrap object as value type");
+            _logger.error(u8"cannot export object as value type");
         }
     }
 }

@@ -26,12 +26,12 @@ struct V8BindPropertyData {
 struct V8BindStaticPropertyData {
     ScriptBinderStaticProperty binder;
 };
-struct V8BindWrapData {
+struct V8BindObjectData {
     // v8 info
     ::v8::Global<::v8::FunctionTemplate> ctor_template;
 
     // native info
-    ScriptBinderWrap*                      binder;
+    ScriptBinderObject*                      binder;
     Map<String, V8BindMethodData*>         methods;
     Map<String, V8BindFieldData*>          fields;
     Map<String, V8BindStaticMethodData*>   static_methods;
@@ -39,7 +39,7 @@ struct V8BindWrapData {
     Map<String, V8BindPropertyData*>       properties;
     Map<String, V8BindStaticPropertyData*> static_properties;
 
-    ~V8BindWrapData()
+    ~V8BindObjectData()
     {
         for (auto& pair : methods)
         {

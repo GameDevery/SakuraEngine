@@ -80,7 +80,7 @@ bool V8Bind::_match_mapping(const ScriptBinderMapping& binder, v8::Local<v8::Val
 
     return true;
 }
-bool V8Bind::_match_wrap(const ScriptBinderWrap& binder, v8::Local<v8::Value> v8_value)
+bool V8Bind::_match_object(const ScriptBinderObject& binder, v8::Local<v8::Value> v8_value)
 {
     auto isolate = v8::Isolate::GetCurrent();
     auto context = isolate->GetCurrentContext();
@@ -91,7 +91,7 @@ bool V8Bind::_match_wrap(const ScriptBinderWrap& binder, v8::Local<v8::Value> v8
     if (!v8_value->IsObject()) { return false; }
     auto v8_object = v8_value->ToObject(context).ToLocalChecked();
 
-    // check wrap
+    // check object
     if (v8_object->InternalFieldCount() < 1) { return false; }
     void*             raw_bind_core = v8_object->GetInternalField(0).As<v8::External>()->Value();
     V8BindRecordCore* bind_core     = reinterpret_cast<V8BindRecordCore*>(raw_bind_core);
@@ -247,9 +247,9 @@ bool V8Bind::_to_native_mapping(
 
     return false;
 }
-v8::Local<v8::Value> V8Bind::_to_v8_wrap(
-    const ScriptBinderWrap& binder,
-    void*                   native_data
+v8::Local<v8::Value> V8Bind::_to_v8_object(
+    const ScriptBinderObject& binder,
+    void*                     native_data
 )
 {
     auto isolate     = v8::Isolate::GetCurrent();
@@ -262,11 +262,11 @@ v8::Local<v8::Value> V8Bind::_to_v8_wrap(
     auto* bind_core = skr_isolate->translate_record(scriptble_object);
     return bind_core->v8_object.Get(isolate);
 }
-bool V8Bind::_to_native_wrap(
-    const ScriptBinderWrap& binder,
-    v8::Local<v8::Value>    v8_value,
-    void*                   native_data,
-    bool                    is_init
+bool V8Bind::_to_native_object(
+    const ScriptBinderObject& binder,
+    v8::Local<v8::Value>      v8_value,
+    void*                     native_data,
+    bool                      is_init
 )
 {
     auto isolate = v8::Isolate::GetCurrent();
@@ -317,7 +317,7 @@ void V8Bind::_push_param(
         to_native(param_binder.binder, native_data, v8_value, false);
         break;
     }
-    case ScriptBinderRoot::EKind::Wrap: {
+    case ScriptBinderRoot::EKind::Object: {
         void* native_data = stack.alloc_param_raw(
             sizeof(void*),
             alignof(void*),
@@ -350,7 +350,7 @@ v8::Local<v8::Value> V8Bind::read_return(
         }
         break;
     }
-    case ScriptBinderRoot::EKind::Wrap: {
+    case ScriptBinderRoot::EKind::Object: {
         native_data = stack.get_return_raw();
         break;
     }
@@ -540,8 +540,8 @@ v8::Local<v8::Value> V8Bind::to_v8(
         return _to_v8_primitive(*binder.primitive(), native_data);
     case ScriptBinderRoot::EKind::Mapping:
         return _to_v8_mapping(*binder.mapping(), native_data);
-    case ScriptBinderRoot::EKind::Wrap:
-        return _to_v8_wrap(*binder.wrap(), native_data);
+    case ScriptBinderRoot::EKind::Object:
+        return _to_v8_object(*binder.object(), native_data);
     }
     return {};
 }
@@ -558,8 +558,8 @@ bool V8Bind::to_native(
         return _to_native_primitive(*binder.primitive(), v8_value, native_data, is_init);
     case ScriptBinderRoot::EKind::Mapping:
         return _to_native_mapping(*binder.mapping(), v8_value, native_data, is_init);
-    case ScriptBinderRoot::EKind::Wrap:
-        return _to_native_wrap(*binder.wrap(), v8_value, native_data, is_init);
+    case ScriptBinderRoot::EKind::Object:
+        return _to_native_object(*binder.object(), v8_value, native_data, is_init);
     }
     return {};
 }
@@ -581,8 +581,8 @@ bool V8Bind::match(
         return _match_primitive(*binder.primitive(), v8_value);
     case ScriptBinderRoot::EKind::Mapping:
         return _match_mapping(*binder.mapping(), v8_value);
-    case ScriptBinderRoot::EKind::Wrap:
-        return _match_wrap(*binder.wrap(), v8_value);
+    case ScriptBinderRoot::EKind::Object:
+        return _match_object(*binder.object(), v8_value);
     }
 
     return false;
@@ -621,7 +621,7 @@ bool V8Bind::match(
     // check null
     if (v8_value.IsEmpty() || v8_value->IsNull() || v8_value->IsUndefined())
     {
-        return binder.binder.is_wrap();
+        return binder.binder.is_object();
     }
 
     // check type
@@ -635,7 +635,7 @@ bool V8Bind::match(
     // check null
     if (v8_value.IsEmpty() || v8_value->IsNull() || v8_value->IsUndefined())
     {
-        return binder.binder.is_wrap();
+        return binder.binder.is_object();
     }
 
     // check type

@@ -140,7 +140,7 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
     HandleScope    handle_scope(_isolate);
 
     // new bind data
-    auto bind_data = SkrNew<V8BindWrapData>();
+    auto bind_data = SkrNew<V8BindObjectData>();
 
     // ctor template
     auto ctor_template = FunctionTemplate::New(
@@ -154,12 +154,12 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
     ctor_template->InstanceTemplate()->SetInternalFieldCount(1);
 
     // solve binder info
-    ScriptBinderRoot  binder      = _binder_mgr.get_or_build(type->type_id());
-    ScriptBinderWrap* wrap_binder = binder.wrap();
-    bind_data->binder             = wrap_binder;
+    ScriptBinderRoot    binder        = _binder_mgr.get_or_build(type->type_id());
+    ScriptBinderObject* object_binder = binder.object();
+    bind_data->binder                 = object_binder;
 
     // bind method
-    for (const auto& [method_name, method_binder] : wrap_binder->methods)
+    for (const auto& [method_name, method_binder] : object_binder->methods)
     {
         auto method_bind_data    = SkrNew<V8BindMethodData>();
         method_bind_data->binder = method_binder;
@@ -175,7 +175,7 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
     }
 
     // bind static method
-    for (const auto& [static_method_name, static_method_binder] : wrap_binder->static_methods)
+    for (const auto& [static_method_name, static_method_binder] : object_binder->static_methods)
     {
         auto static_method_bind_data    = SkrNew<V8BindStaticMethodData>();
         static_method_bind_data->binder = static_method_binder;
@@ -191,7 +191,7 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
     }
 
     // bind field
-    for (const auto& [field_name, field_binder] : wrap_binder->fields)
+    for (const auto& [field_name, field_binder] : object_binder->fields)
     {
         auto field_bind_data    = SkrNew<V8BindFieldData>();
         field_bind_data->binder = field_binder;
@@ -212,7 +212,7 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
     }
 
     // bind static field
-    for (const auto& [static_field_name, static_field_binder] : wrap_binder->static_fields)
+    for (const auto& [static_field_name, static_field_binder] : object_binder->static_fields)
     {
         auto static_field_bind_data    = SkrNew<V8BindStaticFieldData>();
         static_field_bind_data->binder = static_field_binder;
@@ -233,7 +233,7 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
     }
 
     // bind properties
-    for (const auto& [property_name, property_binder] : wrap_binder->properties)
+    for (const auto& [property_name, property_binder] : object_binder->properties)
     {
         auto property_bind_data    = SkrNew<V8BindPropertyData>();
         property_bind_data->binder = property_binder;
@@ -254,7 +254,7 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
     }
 
     // bind static properties
-    for (const auto& [static_property_name, static_property_binder] : wrap_binder->static_properties)
+    for (const auto& [static_property_name, static_property_binder] : object_binder->static_properties)
     {
         auto static_property_bind_data    = SkrNew<V8BindStaticPropertyData>();
         static_property_bind_data->binder = static_property_binder;
@@ -411,7 +411,7 @@ void V8Isolate::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
     Context::Scope ContextScope(Context);
 
     // get user data
-    auto* bind_data   = reinterpret_cast<V8BindWrapData*>(info.Data().As<External>()->Value());
+    auto* bind_data   = reinterpret_cast<V8BindObjectData*>(info.Data().As<External>()->Value());
     auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
 
     // handle call
