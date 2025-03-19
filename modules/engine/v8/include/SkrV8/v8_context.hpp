@@ -4,6 +4,7 @@
 #include "SkrRTTR/scriptble_object.hpp"
 #include "v8-context.h"
 #include "v8-persistent-handle.h"
+#include <SkrCore/log.hpp>
 
 namespace skr
 {
@@ -24,9 +25,14 @@ struct SKR_V8_API V8Context {
     void init();
     void shutdown();
 
+    // register type
+    void register_type(skr::RTTRType* type);
+    template <typename T>
+    void register_type();
+
     // getter
     ::v8::Global<::v8::Context> v8_context() const;
-    
+
     // set global value
     void set_global(StringView name, uint32_t v);
     void set_global(StringView name, int32_t v);
@@ -47,4 +53,21 @@ private:
     // context data
     ::v8::Persistent<::v8::Context> _context;
 };
+} // namespace skr
+
+namespace skr
+{
+template <typename T>
+inline void V8Context::register_type()
+{
+    if (auto type = skr::type_of<T>())
+    {
+        register_type(type);
+    }
+    else
+    {
+        SKR_LOG_FMT_ERROR(u8"failed to register type {}", skr::type_name_of<T>());
+        return;
+    }
+}
 } // namespace skr

@@ -14,6 +14,8 @@ namespace skr
 struct V8Context;
 
 struct SKR_V8_API V8Isolate {
+    friend struct V8Context;
+
     // ctor & dtor
     V8Isolate();
     ~V8Isolate();
@@ -37,15 +39,14 @@ struct SKR_V8_API V8Isolate {
     // operator isolate
     void gc(bool full = true);
 
-    // register type
-    void make_record_template(::skr::RTTRType* type);
-    void inject_templates_into_context(::v8::Global<::v8::Context> context);
-
-    // bind object
+    // bind object 
     V8BindRecordCore* translate_record(::skr::ScriptbleObject* obj);
     void              mark_record_deleted(::skr::ScriptbleObject* obj);
 
 private:
+    // make template
+    v8::Local<v8::FunctionTemplate> _get_template(skr::RTTRType* type);
+
     // bind helpers
     static void _gc_callback(const ::v8::WeakCallbackInfo<V8BindRecordCore>& data);
     static void _call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info);

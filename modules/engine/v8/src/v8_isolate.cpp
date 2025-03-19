@@ -120,8 +120,72 @@ void V8Isolate::gc(bool full)
     _isolate->IdleNotificationDeadline(0);
 }
 
-// register type
-void V8Isolate::make_record_template(::skr::RTTRType* type)
+// bind object
+V8BindRecordCore* V8Isolate::translate_record(::skr::ScriptbleObject* obj)
+{
+    using namespace ::v8;
+    Isolate::Scope isolate_scope(_isolate);
+    HandleScope    handle_scope(_isolate);
+    Local<Context> context = _isolate->GetCurrentContext();
+
+    // find exist object
+    auto bind_ref = _alive_records.find(obj);
+    if (bind_ref)
+    {
+        return bind_ref.value();
+    }
+
+    // get type
+    auto type = get_type_from_guid(obj->iobject_get_typeid());
+
+    // get template
+    auto template_ref = _record_templates.find(type);
+    if (!template_ref)
+    {
+        return nullptr;
+    }
+
+    // make object
+    Local<Function> ctor_func = template_ref.value()->ctor_template.Get(_isolate)->GetFunction(context).ToLocalChecked();
+    Local<Object>   object    = ctor_func->NewInstance(context).ToLocalChecked();
+
+    // make bind data
+    auto bind_data    = SkrNew<V8BindRecordCore>();
+    bind_data->object = obj;
+    bind_data->type   = type;
+    bind_data->v8_object.Reset(_isolate, object);
+
+    // setup gc callback
+    bind_data->v8_object.SetWeak(
+        bind_data,
+        _gc_callback,
+        WeakCallbackType::kInternalFields
+    );
+
+    // add extern data
+    object->SetInternalField(0, External::New(_isolate, bind_data));
+
+    // add to map
+    _alive_records.add(obj, bind_data);
+
+    return bind_data;
+}
+void V8Isolate::mark_record_deleted(::skr::ScriptbleObject* obj)
+{
+    auto bind_ref = _alive_records.find(obj);
+    if (bind_ref)
+    {
+        // reset core object ptr
+        bind_ref.value()->object = nullptr;
+
+        // move to deleted records
+        _deleted_records.push_back(bind_ref.value());
+        _alive_records.remove(obj);
+    }
+}
+
+// make template
+v8::Local<v8::FunctionTemplate> V8Isolate::_get_template(skr::RTTRType* type)
 {
     using namespace ::v8;
 
@@ -129,15 +193,15 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
     SKR_ASSERT(type->type_category() == ::skr::ERTTRTypeCategory::Record);
     SKR_ASSERT(type->based_on(type_id_of<ScriptbleObject>()));
 
-    // find exist template
-    if (_record_templates.contains(type))
-    {
-        return;
-    }
-
     // v8 scope
-    Isolate::Scope isolate_scope(_isolate);
-    HandleScope    handle_scope(_isolate);
+    Isolate::Scope       isolate_scope(_isolate);
+    EscapableHandleScope handle_scope(_isolate);
+
+    // find exit template
+    if (auto result = _record_templates.find(type))
+    {
+        return handle_scope.Escape(result.value()->ctor_template.Get(_isolate));
+    }
 
     // new bind data
     auto bind_data = SkrNew<V8BindObjectData>();
@@ -276,93 +340,8 @@ void V8Isolate::make_record_template(::skr::RTTRType* type)
 
     // store template
     _record_templates.add(type, bind_data);
-}
-void V8Isolate::inject_templates_into_context(::v8::Global<::v8::Context> context)
-{
-    ::v8::Isolate::Scope       isolate_scope(_isolate);
-    ::v8::HandleScope          handle_scope(_isolate);
-    ::v8::Local<::v8::Context> local_context = context.Get(_isolate);
 
-    for (const auto& pair : _record_templates)
-    {
-        const auto& type         = pair.key;
-        const auto& template_ref = pair.value->ctor_template;
-
-        // make function template
-        auto function = template_ref.Get(_isolate)->GetFunction(local_context).ToLocalChecked();
-
-        // set to context
-        local_context->Global()->Set(
-                                   local_context,
-                                   V8Bind::to_v8(type->name(), true),
-                                   function
-        )
-            .Check();
-    }
-}
-
-// bind object
-V8BindRecordCore* V8Isolate::translate_record(::skr::ScriptbleObject* obj)
-{
-    using namespace ::v8;
-    Isolate::Scope isolate_scope(_isolate);
-    HandleScope    handle_scope(_isolate);
-    Local<Context> context = _isolate->GetCurrentContext();
-
-    // find exist object
-    auto bind_ref = _alive_records.find(obj);
-    if (bind_ref)
-    {
-        return bind_ref.value();
-    }
-
-    // get type
-    auto type = get_type_from_guid(obj->iobject_get_typeid());
-
-    // get template
-    auto template_ref = _record_templates.find(type);
-    if (!template_ref)
-    {
-        return nullptr;
-    }
-
-    // make object
-    Local<Function> ctor_func = template_ref.value()->ctor_template.Get(_isolate)->GetFunction(context).ToLocalChecked();
-    Local<Object>   object    = ctor_func->NewInstance(context).ToLocalChecked();
-
-    // make bind data
-    auto bind_data    = SkrNew<V8BindRecordCore>();
-    bind_data->object = obj;
-    bind_data->type   = type;
-    bind_data->v8_object.Reset(_isolate, object);
-
-    // setup gc callback
-    bind_data->v8_object.SetWeak(
-        bind_data,
-        _gc_callback,
-        WeakCallbackType::kInternalFields
-    );
-
-    // add extern data
-    object->SetInternalField(0, External::New(_isolate, bind_data));
-
-    // add to map
-    _alive_records.add(obj, bind_data);
-
-    return bind_data;
-}
-void V8Isolate::mark_record_deleted(::skr::ScriptbleObject* obj)
-{
-    auto bind_ref = _alive_records.find(obj);
-    if (bind_ref)
-    {
-        // reset core object ptr
-        bind_ref.value()->object = nullptr;
-
-        // move to deleted records
-        _deleted_records.push_back(bind_ref.value());
-        _alive_records.remove(obj);
-    }
+    return handle_scope.Escape(ctor_template);
 }
 
 // bind helpers
@@ -487,7 +466,7 @@ void V8Isolate::_call_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info
     Local<Context> Context = Isolate->GetCurrentContext();
 
     // scopes
-    HandleScope    HandleScope(Isolate);
+    HandleScope HandleScope(Isolate);
 
     // get self data
     Local<Object> self      = info.This();
@@ -565,7 +544,7 @@ void V8Isolate::_get_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
     Local<Context> Context = Isolate->GetCurrentContext();
 
     // scopes
-    HandleScope    HandleScope(Isolate);
+    HandleScope HandleScope(Isolate);
 
     // get self data
     Local<Object> self      = info.This();
@@ -592,7 +571,7 @@ void V8Isolate::_set_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
     Local<Context> Context = Isolate->GetCurrentContext();
 
     // scopes
-    HandleScope    HandleScope(Isolate);
+    HandleScope HandleScope(Isolate);
 
     // get self data
     Local<Object> self      = info.This();
@@ -619,7 +598,7 @@ void V8Isolate::_get_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>&
     Local<Context> Context = Isolate->GetCurrentContext();
 
     // scopes
-    HandleScope    HandleScope(Isolate);
+    HandleScope HandleScope(Isolate);
 
     // get user data
     auto* bind_data   = reinterpret_cast<V8BindStaticFieldData*>(info.Data().As<External>()->Value());
@@ -640,7 +619,7 @@ void V8Isolate::_set_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>&
     Local<Context> Context = Isolate->GetCurrentContext();
 
     // scopes
-    HandleScope    HandleScope(Isolate);
+    HandleScope HandleScope(Isolate);
 
     // get user data
     auto* bind_data   = reinterpret_cast<V8BindStaticFieldData*>(info.Data().As<External>()->Value());
@@ -661,7 +640,7 @@ void V8Isolate::_get_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
     Local<Context> Context = Isolate->GetCurrentContext();
 
     // scopes
-    HandleScope    HandleScope(Isolate);
+    HandleScope HandleScope(Isolate);
 
     // get self data
     Local<Object> self      = info.This();
@@ -688,7 +667,7 @@ void V8Isolate::_set_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
     Local<Context> Context = Isolate->GetCurrentContext();
 
     // scopes
-    HandleScope    HandleScope(Isolate);
+    HandleScope HandleScope(Isolate);
 
     // get self data
     Local<Object> self      = info.This();
@@ -715,7 +694,7 @@ void V8Isolate::_get_static_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& 
     Local<Context> Context = Isolate->GetCurrentContext();
 
     // scopes
-    HandleScope    HandleScope(Isolate);
+    HandleScope HandleScope(Isolate);
 
     // get user data
     auto* bind_data   = reinterpret_cast<V8BindStaticPropertyData*>(info.Data().As<External>()->Value());
@@ -736,7 +715,7 @@ void V8Isolate::_set_static_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& 
     Local<Context> Context = Isolate->GetCurrentContext();
 
     // scopes
-    HandleScope    HandleScope(Isolate);
+    HandleScope HandleScope(Isolate);
 
     // get user data
     auto* bind_data   = reinterpret_cast<V8BindStaticPropertyData*>(info.Data().As<External>()->Value());

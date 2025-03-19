@@ -2,6 +2,7 @@
 #include "SkrCore/log.hpp"
 #include "SkrV8/v8_isolate.hpp"
 #include "SkrV8/v8_bind.hpp"
+#include "v8-function.h"
 
 namespace skr
 {
@@ -34,6 +35,40 @@ void V8Context::shutdown()
     _context.Reset();
 }
 
+// register type
+void V8Context::register_type(skr::RTTRType* type)
+{
+    v8::Isolate::Scope isolate_scope(_isolate->v8_isolate());
+    v8::HandleScope    handle_scope(_isolate->v8_isolate());
+    v8::Context::Scope context_scope(_context.Get(_isolate->v8_isolate()));
+
+    // get template
+    auto template_ref = _isolate->_get_template(type);
+    if (template_ref.IsEmpty())
+    {
+        SKR_LOG_FMT_ERROR(u8"failed to get template for type {}", type->name());
+        return;
+    }
+
+    // inject to self
+    auto ctx  = _context.Get(_isolate->v8_isolate());
+    auto func = template_ref->GetFunction(ctx).ToLocalChecked();
+    // clang-format off
+    auto set_result = ctx->Global()->Set(
+        ctx,
+        V8Bind::to_v8(type->name(), true),
+        func
+    );
+    // clang-format on
+
+    // check set result
+    if (set_result.IsNothing())
+    {
+        SKR_LOG_FMT_ERROR(u8"failed to set template for type {}", type->name());
+        return;
+    }
+}
+
 // getter
 ::v8::Global<::v8::Context> V8Context::v8_context() const
 {
@@ -44,7 +79,7 @@ void V8Context::shutdown()
 void V8Context::set_global(StringView name, uint32_t v)
 {
     using namespace ::v8;
-    
+
     // scopes
     Isolate::Scope isolate_scope(_isolate->v8_isolate());
     HandleScope    handle_scope(_isolate->v8_isolate());
@@ -55,16 +90,16 @@ void V8Context::set_global(StringView name, uint32_t v)
     Local<Object>  global = solved_context->Global();
 
     // translate value
-    Local<::v8::String> key = V8Bind::to_v8(name, true);
-    Local<Value> value = Integer::New(_isolate->v8_isolate(), v);
-    
+    Local<::v8::String> key   = V8Bind::to_v8(name, true);
+    Local<Value>        value = Integer::New(_isolate->v8_isolate(), v);
+
     // set
     global->Set(solved_context, key, value).Check();
 }
 void V8Context::set_global(StringView name, int32_t v)
 {
     using namespace ::v8;
-    
+
     // scopes
     Isolate::Scope isolate_scope(_isolate->v8_isolate());
     HandleScope    handle_scope(_isolate->v8_isolate());
@@ -75,16 +110,16 @@ void V8Context::set_global(StringView name, int32_t v)
     Local<Object>  global = solved_context->Global();
 
     // translate value
-    Local<::v8::String> key = V8Bind::to_v8(name, true);
-    Local<Value> value = Integer::New(_isolate->v8_isolate(), v);
-    
+    Local<::v8::String> key   = V8Bind::to_v8(name, true);
+    Local<Value>        value = Integer::New(_isolate->v8_isolate(), v);
+
     // set
     global->Set(solved_context, key, value).Check();
 }
 void V8Context::set_global(StringView name, uint64_t v)
 {
     using namespace ::v8;
-    
+
     // scopes
     Isolate::Scope isolate_scope(_isolate->v8_isolate());
     HandleScope    handle_scope(_isolate->v8_isolate());
@@ -95,16 +130,16 @@ void V8Context::set_global(StringView name, uint64_t v)
     Local<Object>  global = solved_context->Global();
 
     // translate value
-    Local<::v8::String> key = V8Bind::to_v8(name, true);
-    Local<Value> value = BigInt::New(_isolate->v8_isolate(), v);
-    
+    Local<::v8::String> key   = V8Bind::to_v8(name, true);
+    Local<Value>        value = BigInt::New(_isolate->v8_isolate(), v);
+
     // set
     global->Set(solved_context, key, value).Check();
 }
 void V8Context::set_global(StringView name, int64_t v)
 {
     using namespace ::v8;
-    
+
     // scopes
     Isolate::Scope isolate_scope(_isolate->v8_isolate());
     HandleScope    handle_scope(_isolate->v8_isolate());
@@ -115,16 +150,16 @@ void V8Context::set_global(StringView name, int64_t v)
     Local<Object>  global = solved_context->Global();
 
     // translate value
-    Local<::v8::String> key = V8Bind::to_v8(name, true);
-    Local<Value> value = BigInt::New(_isolate->v8_isolate(), v);
-    
+    Local<::v8::String> key   = V8Bind::to_v8(name, true);
+    Local<Value>        value = BigInt::New(_isolate->v8_isolate(), v);
+
     // set
     global->Set(solved_context, key, value).Check();
 }
 void V8Context::set_global(StringView name, double v)
 {
     using namespace ::v8;
-    
+
     // scopes
     Isolate::Scope isolate_scope(_isolate->v8_isolate());
     HandleScope    handle_scope(_isolate->v8_isolate());
@@ -135,16 +170,16 @@ void V8Context::set_global(StringView name, double v)
     Local<Object>  global = solved_context->Global();
 
     // translate value
-    Local<::v8::String> key = V8Bind::to_v8(name, true);
-    Local<Value> value = Number::New(_isolate->v8_isolate(), v);
-    
+    Local<::v8::String> key   = V8Bind::to_v8(name, true);
+    Local<Value>        value = Number::New(_isolate->v8_isolate(), v);
+
     // set
     global->Set(solved_context, key, value).Check();
 }
 void V8Context::set_global(StringView name, bool v)
 {
     using namespace ::v8;
-    
+
     // scopes
     Isolate::Scope isolate_scope(_isolate->v8_isolate());
     HandleScope    handle_scope(_isolate->v8_isolate());
@@ -155,16 +190,16 @@ void V8Context::set_global(StringView name, bool v)
     Local<Object>  global = solved_context->Global();
 
     // translate value
-    Local<::v8::String> key = V8Bind::to_v8(name, true);
-    Local<Value> value = Boolean::New(_isolate->v8_isolate(), v);
-    
+    Local<::v8::String> key   = V8Bind::to_v8(name, true);
+    Local<Value>        value = Boolean::New(_isolate->v8_isolate(), v);
+
     // set
     global->Set(solved_context, key, value).Check();
 }
 void V8Context::set_global(StringView name, StringView v)
 {
     using namespace ::v8;
-    
+
     // scopes
     Isolate::Scope isolate_scope(_isolate->v8_isolate());
     HandleScope    handle_scope(_isolate->v8_isolate());
@@ -175,16 +210,16 @@ void V8Context::set_global(StringView name, StringView v)
     Local<Object>  global = solved_context->Global();
 
     // translate value
-    Local<::v8::String> key = V8Bind::to_v8(name, true);
-    Local<Value> value = V8Bind::to_v8(v, false);
-    
+    Local<::v8::String> key   = V8Bind::to_v8(name, true);
+    Local<Value>        value = V8Bind::to_v8(v, false);
+
     // set
     global->Set(solved_context, key, value).Check();
 }
 void V8Context::set_global(StringView name, skr::ScriptbleObject* obj)
 {
     using namespace ::v8;
-    
+
     // scopes
     Isolate::Scope isolate_scope(_isolate->v8_isolate());
     HandleScope    handle_scope(_isolate->v8_isolate());
@@ -195,9 +230,9 @@ void V8Context::set_global(StringView name, skr::ScriptbleObject* obj)
     Local<Object>  global = solved_context->Global();
 
     // translate value
-    Local<::v8::String> key = V8Bind::to_v8(name, true);
-    Local<Object> value = _isolate->translate_record(obj)->v8_object.Get(_isolate->v8_isolate());
-    
+    Local<::v8::String> key   = V8Bind::to_v8(name, true);
+    Local<Object>       value = _isolate->translate_record(obj)->v8_object.Get(_isolate->v8_isolate());
+
     // set
     global->Set(solved_context, key, value).Check();
 }
@@ -211,8 +246,8 @@ void V8Context::exec_script(StringView script)
     ::v8::Context::Scope       context_scope(solved_context);
 
     // compile script
-    ::v8::Local<::v8::String> source = V8Bind::to_v8(script, false);
-    auto compiled_script = ::v8::Script::Compile(solved_context, source);
+    ::v8::Local<::v8::String> source          = V8Bind::to_v8(script, false);
+    auto                      compiled_script = ::v8::Script::Compile(solved_context, source);
     if (compiled_script.IsEmpty())
     {
         SKR_LOG_ERROR(u8"compile script failed");

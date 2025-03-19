@@ -19,11 +19,8 @@ int main(int argc, char* argv[])
     context.init();
 
     // import types
-    isolate.make_record_template(skr::type_of<test_v8::TestType>());
-
-    // inject into context
-    isolate.inject_templates_into_context(context.v8_context());
-
+    context.register_type<test_v8::TestType>();
+    
     // setup global
     context.set_global(u8"g_add_value", 100);
 
