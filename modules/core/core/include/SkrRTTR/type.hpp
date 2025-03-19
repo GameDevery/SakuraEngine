@@ -90,6 +90,10 @@ struct SKR_CORE_API RTTRType final {
     void*          cast_to_base(GUID type_id, void* p) const;
     RTTRTypeCaster caster_to_base(GUID type_id) const;
 
+    // enum getter
+    GUID enum_underlying_type_id() const;
+    void each_enum_items(FunctionRef<void(const RTTREnumItemData*)> each_func) const;
+
     // get dtor
     Optional<RTTRDtorData> dtor_data() const;
 

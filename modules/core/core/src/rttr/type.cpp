@@ -300,6 +300,29 @@ RTTRTypeCaster RTTRType::caster_to_base(GUID type_id) const
     return result;
 }
 
+// enum getter
+GUID RTTRType::enum_underlying_type_id() const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Enum:
+        return _enum_data.underlying_type_id;
+    default:
+        SKR_UNREACHABLE_CODE()
+        return {};
+    }
+}
+void RTTRType::each_enum_items(FunctionRef<void(const RTTREnumItemData*)> each_func) const
+{
+    if (_type_category == ERTTRTypeCategory::Enum)
+    {
+        for (const auto& item : _enum_data.items)
+        {
+            each_func(item);
+        }
+    }
+}
+
 // get dtor
 Optional<RTTRDtorData> RTTRType::dtor_data() const
 {

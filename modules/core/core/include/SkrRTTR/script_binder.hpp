@@ -17,42 +17,46 @@
 //
 // script export behaviour map
 //   parameter:
-//   |            |  primitive |  mapping  |  value  |  object  |
-//   |     T      |      T     |     T     |    T    |    -     |
-//   |     T*     |      -     |     -     |    -    |    T?    |
-//   |  const T*  |      -     |     -     |    -    |    T?    |
-//   |     T&     |      T     |     T     |    T    |    T     | Note. by default, will have inout flag
-//   |  const T&  |      T     |     T     |    T    |    T     |
+//   |            |  primitive |  enum   |  mapping  |  value  |  object  |
+//   |     T      |      T     |    T    |     T     |    T    |    -     |
+//   |     T*     |      -     |    -    |     -     |    -    |    T?    |
+//   |  const T*  |      -     |    -    |     -     |    -    |    T?    |
+//   |     T&     |      T     |    T    |     T     |    T    |    T     | Note. by default, will have inout flag
+//   |  const T&  |      T     |    T    |     T     |    T    |    T     |
 //
 //   return:
-//   |            |  primitive |  mapping  |  value  |  object  |
-//   |     T      |      T     |     T     |    T    |    -     |
-//   |     T*     |      -     |     -     |    -    |    T?    |
-//   |  const T*  |      -     |     -     |    -    |    T?    |
-//   |     T&     |      T     |     T     |    T    |    T     |
-//   |  const T&  |      T     |     T     |    T    |    T     |
+//   |            |  primitive |  enum   |  mapping  |  value  |  object  |
+//   |     T      |      T     |    T    |     T     |    T    |    -     |
+//   |     T*     |      -     |    -    |     -     |    -    |    T?    |
+//   |  const T*  |      -     |    -    |     -     |    -    |    T?    |
+//   |     T&     |      T     |    T    |     T     |    T    |    T     |
+//   |  const T&  |      T     |    T    |     T     |    T    |    T     |
 //
 //   field:
-//   |            |  primitive |  mapping  |  value  |  object  |
-//   |     T      |      T     |     T     |    T    |    -     |
-//   |     T*     |      -     |     -     |    -    |    T?    |
-//   |  const T*  |      -     |     -     |    -    |    T?    |
-//   |     T&     |      -     |     -     |    -    |    -     |
-//   |  const T&  |      -     |     -     |    -    |    -     |
+//   |            |  primitive |  enum   |  mapping  |  value  |  object  |
+//   |     T      |      T     |    T    |     T     |    T    |    -     |
+//   |     T*     |      -     |    -    |     -     |    -    |    T?    |
+//   |  const T*  |      -     |    -    |     -     |    -    |    T?    |
+//   |  const T&  |      -     |    -    |     -     |    -    |    -     |
+//   |     T&     |      -     |    -    |     -     |    -    |    -     |
+//
+// about enum export
+//   many script has no enum concept, so we need to export enum as an object
+//   we recommend export enum as number type, witch is more friendly to native
 //
 // about parameter In/Out flag:
 //   - In: ignore, and always be default
 //   - Out: will removed in parameter list, and added in return list
 //   - InOut: will appear in both parameter and return list
 //
-// script support primitive types:
+// script support primitive types(must support):
 //   void: in return
 //   integer: int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t
 //   floating: float, double
 //   boolean: bool
 //   string: skr::String, skr::StringView
 //
-// script support generic types:
+// script support generic types(can be toggled off):
 //   skr::Array: accept script array
 //   skr::Span: accept script array
 //   skr::Vector: accept script array
@@ -67,6 +71,7 @@ namespace skr
 struct ScriptBinderPrimitive;
 struct ScriptBinderMapping;
 struct ScriptBinderObject;
+struct ScriptBinderEnum;
 struct ScriptBinderRoot {
     enum class EKind
     {
@@ -74,6 +79,7 @@ struct ScriptBinderRoot {
         Primitive,
         Mapping,
         Object,
+        Enum,
     };
 
     // ctor
@@ -91,6 +97,11 @@ struct ScriptBinderRoot {
     inline ScriptBinderRoot(ScriptBinderObject* object)
         : _kind(EKind::Object)
         , _binder(object)
+    {
+    }
+    inline ScriptBinderRoot(ScriptBinderEnum* enum_)
+        : _kind(EKind::Enum)
+        , _binder(enum_)
     {
     }
 
@@ -118,6 +129,7 @@ struct ScriptBinderRoot {
     inline bool  is_primitive() const { return _kind == EKind::Primitive; }
     inline bool  is_mapping() const { return _kind == EKind::Mapping; }
     inline bool  is_object() const { return _kind == EKind::Object; }
+    inline bool  is_enum() const { return _kind == EKind::Enum; }
 
     // binder getter
     inline ScriptBinderPrimitive* primitive() const
@@ -134,6 +146,11 @@ struct ScriptBinderRoot {
     {
         SKR_ASSERT(_kind == EKind::Object);
         return static_cast<ScriptBinderObject*>(_binder);
+    }
+    inline ScriptBinderEnum* enum_() const
+    {
+        SKR_ASSERT(_kind == EKind::Enum);
+        return static_cast<ScriptBinderEnum*>(_binder);
     }
 
     // ops
@@ -234,29 +251,34 @@ struct ScriptBinderPrimitive {
     bool failed = false;
 };
 struct ScriptBinderMapping {
-    const RTTRType*                type;
-    Map<String, ScriptBinderField> fields;
+    const RTTRType*                type   = nullptr;
+    Map<String, ScriptBinderField> fields = {};
 
     bool failed = false;
 };
 struct ScriptBinderObject {
-    const RTTRType* type;
+    const RTTRType* type = nullptr;
 
     bool                     is_script_newable = false;
-    Vector<ScriptBinderCtor> ctors;
+    Vector<ScriptBinderCtor> ctors             = {};
 
-    Map<String, ScriptBinderField>          fields;
-    Map<String, ScriptBinderStaticField>    static_fields;
-    Map<String, ScriptBinderMethod>         methods;
-    Map<String, ScriptBinderStaticMethod>   static_methods;
-    Map<String, ScriptBinderProperty>       properties;
-    Map<String, ScriptBinderStaticProperty> static_properties;
+    Map<String, ScriptBinderField>          fields            = {};
+    Map<String, ScriptBinderStaticField>    static_fields     = {};
+    Map<String, ScriptBinderMethod>         methods           = {};
+    Map<String, ScriptBinderStaticMethod>   static_methods    = {};
+    Map<String, ScriptBinderProperty>       properties        = {};
+    Map<String, ScriptBinderStaticProperty> static_properties = {};
 
     bool failed = false;
 };
+struct ScriptBinderEnum {
+    const RTTRType* type = nullptr;
 
-// TODO. In/Out flag
-// TODO. Enum support
+    ScriptBinderPrimitive* underlying_binder = nullptr;
+
+    Vector<const RTTREnumItemData*> items = {};
+};
+
 // TODO. Generic type support
 struct SKR_CORE_API ScriptBinderManager {
     // ctor & dtor
@@ -271,6 +293,7 @@ private:
     ScriptBinderPrimitive* _make_primitive(GUID type_id);
     ScriptBinderMapping*   _make_mapping(const RTTRType* type);
     ScriptBinderObject*    _make_object(const RTTRType* type);
+    ScriptBinderEnum*      _make_enum(const RTTRType* type);
 
     // make nested binder
     void _make_ctor(ScriptBinderCtor& out, const RTTRCtorData* ctor, const RTTRType* owner);

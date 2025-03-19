@@ -419,6 +419,32 @@ ScriptBinderObject* ScriptBinderManager::_make_object(const RTTRType* type)
     // return result
     return SkrNew<ScriptBinderObject>(std::move(result));
 }
+ScriptBinderEnum* ScriptBinderManager::_make_enum(const RTTRType* type)
+{
+    auto _log_stack = _logger.stack(u8"export enum type {}", type->name());
+
+    ScriptBinderEnum result = {};
+
+    result.type = type;
+
+    // export underlying type
+    result.underlying_binder = _make_primitive(type->enum_underlying_type_id());
+    if (!result.underlying_binder)
+    {
+        _logger.error(u8"enum '{}' underlying type not supported", type->name());
+        return nullptr;
+    }
+
+    // export items
+    type->each_enum_items([&](const RTTREnumItemData* item) {
+        // filter by flag
+        if (!flag_all(item->flag, ERTTREnumItemFlag::ScriptVisible)) { return; }
+        
+        result.items.add(item);
+    });
+
+    return SkrNew<ScriptBinderEnum>(std::move(result));
+}
 
 // make nested binder
 template <typename OverloadType>
