@@ -635,7 +635,30 @@ void ScriptBinderManager::_make_param(ScriptBinderParam& out, const RTTRParamDat
     bool is_pointer         = signature.is_pointer();
     bool is_decayed_pointer = is_any_ref || is_pointer;
     bool is_const           = signature.is_const();
-    out.is_inout            = (is_any_ref || is_pointer) && !is_const;
+    bool has_param_out      = flag_all(param->flag, ERTTRParamFlag::Out);
+    bool has_param_in       = flag_all(param->flag, ERTTRParamFlag::In);
+    if (!has_param_in && !has_param_out)
+    { // use param default inout flag
+        if (is_any_ref && !is_const)
+        {
+            out.inout_flag |= ERTTRParamFlag::In | ERTTRParamFlag::Out;
+        }
+    }
+    else
+    {
+        if (has_param_in)
+        {
+            out.inout_flag |= ERTTRParamFlag::In;
+        }
+        if (has_param_out)
+        {
+            out.inout_flag |= ERTTRParamFlag::Out;
+            if (!is_any_ref || is_const)
+            {
+                _logger.error(u8"only T& can be out param");
+            }
+        }
+    }
     out.is_nullable         = is_pointer;
 
     // read type id
@@ -657,7 +680,7 @@ void ScriptBinderManager::_make_param(ScriptBinderParam& out, const RTTRParamDat
     // check binder
     switch (out.binder.kind())
     {
-    case ScriptBinderRoot::EKind::Primitive:{
+    case ScriptBinderRoot::EKind::Primitive: {
         if (is_pointer)
         {
             _logger.error(
@@ -728,7 +751,7 @@ void ScriptBinderManager::_make_return(ScriptBinderReturn& out, TypeSignatureVie
     // check binder
     switch (out.binder.kind())
     {
-    case ScriptBinderRoot::EKind::Primitive:{
+    case ScriptBinderRoot::EKind::Primitive: {
         if (is_pointer)
         {
             _logger.error(

@@ -9,36 +9,41 @@
 // script export concept
 //   - primitive: primitive type, always include [number, boolean, string, real]
 //   - mapping: map type structure into a script object, methods is not supported
-//   - value: support full record feature, script object will hold an pointer of native object, 
+//   - value: support full record feature, script object will hold an pointer of native object,
 //            but not have lifetime control, lifetime always follow it's creator
-//   - object: support full record feature, script object will hold an pointer of native object, 
-//             and have lifetime control, witch implemented by ScriptbleObject, 
+//   - object: support full record feature, script object will hold an pointer of native object,
+//             and have lifetime control, witch implemented by ScriptbleObject,
 //             ONLY classes that inherit ScriptbleObject can be export as object
 //
 // script export behaviour map
-// parameter:
-// |            |  primitive |  mapping  |  value  |  object  |
-// |     T      |      T     |     T     |    T    |    -     |
-// |     T*     |      -     |     -     |    -    |    T?    |
-// |  const T*  |      -     |     -     |    -    |    T?    |
-// |     T&     |      T     |     T     |    T    |    T     | Note. by default, will have inout flag
-// |  const T&  |      T     |     T     |    T    |    T     |
+//   parameter:
+//   |            |  primitive |  mapping  |  value  |  object  |
+//   |     T      |      T     |     T     |    T    |    -     |
+//   |     T*     |      -     |     -     |    -    |    T?    |
+//   |  const T*  |      -     |     -     |    -    |    T?    |
+//   |     T&     |      T     |     T     |    T    |    T     | Note. by default, will have inout flag
+//   |  const T&  |      T     |     T     |    T    |    T     |
 //
-// return:
-// |            |  primitive |  mapping  |  value  |  object  |
-// |     T      |      T     |     T     |    T    |    -     |
-// |     T*     |      -     |     -     |    -    |    T?    |
-// |  const T*  |      -     |     -     |    -    |    T?    |
-// |     T&     |      T     |     T     |    T    |    T     |
-// |  const T&  |      T     |     T     |    T    |    T     |
+//   return:
+//   |            |  primitive |  mapping  |  value  |  object  |
+//   |     T      |      T     |     T     |    T    |    -     |
+//   |     T*     |      -     |     -     |    -    |    T?    |
+//   |  const T*  |      -     |     -     |    -    |    T?    |
+//   |     T&     |      T     |     T     |    T    |    T     |
+//   |  const T&  |      T     |     T     |    T    |    T     |
 //
-// field:
-// |            |  primitive |  mapping  |  value  |  object  |
-// |     T      |      T     |     T     |    T    |    -     |
-// |     T*     |      -     |     -     |    -    |    T?    |
-// |  const T*  |      -     |     -     |    -    |    T?    |
-// |     T&     |      -     |     -     |    -    |    -     |
-// |  const T&  |      -     |     -     |    -    |    -     |
+//   field:
+//   |            |  primitive |  mapping  |  value  |  object  |
+//   |     T      |      T     |     T     |    T    |    -     |
+//   |     T*     |      -     |     -     |    -    |    T?    |
+//   |  const T*  |      -     |     -     |    -    |    T?    |
+//   |     T&     |      -     |     -     |    -    |    -     |
+//   |  const T&  |      -     |     -     |    -    |    -     |
+//
+// about parameter In/Out flag:
+//   - In: ignore, and always be default
+//   - Out: will removed in parameter list, and added in return list
+//   - InOut: will appear in both parameter and return list
 //
 // script support primitive types:
 //   void: in return
@@ -161,7 +166,7 @@ struct ScriptBinderStaticField {
 struct ScriptBinderParam {
     ScriptBinderRoot binder      = {};
     bool             pass_by_ref = false;
-    bool             is_inout    = false; // TODO. use flag resolve
+    ERTTRParamFlag   inout_flag  = ERTTRParamFlag::None;
     bool             is_nullable = false;
 };
 struct ScriptBinderReturn {
