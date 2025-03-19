@@ -487,9 +487,7 @@ void V8Isolate::_call_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info
     Local<Context> Context = Isolate->GetCurrentContext();
 
     // scopes
-    Isolate::Scope IsolateScope(Isolate);
     HandleScope    HandleScope(Isolate);
-    Context::Scope ContextScope(Context);
 
     // get self data
     Local<Object> self      = info.This();
@@ -567,9 +565,7 @@ void V8Isolate::_get_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
     Local<Context> Context = Isolate->GetCurrentContext();
 
     // scopes
-    Isolate::Scope IsolateScope(Isolate);
     HandleScope    HandleScope(Isolate);
-    Context::Scope ContextScope(Context);
 
     // get self data
     Local<Object> self      = info.This();
@@ -596,9 +592,7 @@ void V8Isolate::_set_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
     Local<Context> Context = Isolate->GetCurrentContext();
 
     // scopes
-    Isolate::Scope IsolateScope(Isolate);
     HandleScope    HandleScope(Isolate);
-    Context::Scope ContextScope(Context);
 
     // get self data
     Local<Object> self      = info.This();
@@ -625,9 +619,7 @@ void V8Isolate::_get_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>&
     Local<Context> Context = Isolate->GetCurrentContext();
 
     // scopes
-    Isolate::Scope IsolateScope(Isolate);
     HandleScope    HandleScope(Isolate);
-    Context::Scope ContextScope(Context);
 
     // get user data
     auto* bind_data   = reinterpret_cast<V8BindStaticFieldData*>(info.Data().As<External>()->Value());
@@ -648,9 +640,7 @@ void V8Isolate::_set_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>&
     Local<Context> Context = Isolate->GetCurrentContext();
 
     // scopes
-    Isolate::Scope IsolateScope(Isolate);
     HandleScope    HandleScope(Isolate);
-    Context::Scope ContextScope(Context);
 
     // get user data
     auto* bind_data   = reinterpret_cast<V8BindStaticFieldData*>(info.Data().As<External>()->Value());
@@ -671,9 +661,7 @@ void V8Isolate::_get_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
     Local<Context> Context = Isolate->GetCurrentContext();
 
     // scopes
-    Isolate::Scope IsolateScope(Isolate);
     HandleScope    HandleScope(Isolate);
-    Context::Scope ContextScope(Context);
 
     // get self data
     Local<Object> self      = info.This();
@@ -700,9 +688,7 @@ void V8Isolate::_set_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
     Local<Context> Context = Isolate->GetCurrentContext();
 
     // scopes
-    Isolate::Scope IsolateScope(Isolate);
     HandleScope    HandleScope(Isolate);
-    Context::Scope ContextScope(Context);
 
     // get self data
     Local<Object> self      = info.This();
@@ -729,9 +715,7 @@ void V8Isolate::_get_static_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& 
     Local<Context> Context = Isolate->GetCurrentContext();
 
     // scopes
-    Isolate::Scope IsolateScope(Isolate);
     HandleScope    HandleScope(Isolate);
-    Context::Scope ContextScope(Context);
 
     // get user data
     auto* bind_data   = reinterpret_cast<V8BindStaticPropertyData*>(info.Data().As<External>()->Value());
@@ -752,9 +736,7 @@ void V8Isolate::_set_static_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& 
     Local<Context> Context = Isolate->GetCurrentContext();
 
     // scopes
-    Isolate::Scope IsolateScope(Isolate);
     HandleScope    HandleScope(Isolate);
-    Context::Scope ContextScope(Context);
 
     // get user data
     auto* bind_data   = reinterpret_cast<V8BindStaticPropertyData*>(info.Data().As<External>()->Value());
