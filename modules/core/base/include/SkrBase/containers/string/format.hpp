@@ -791,12 +791,25 @@ inline void format_to(TString& out, typename TString::ViewType view, Args&&... a
                 {
                     SKR_VERIFY(indexing_mode != IndexingMode::Auto && "Automatic index is not allowed mixing with manual index!");
                     indexing_mode      = IndexingMode::Manual;
-                    auto [last, error] = std::from_chars((const char*)arg_idx.data(),
-                                                         (const char*)(arg_idx.data() + arg_idx.size()), cur_idx);
+                    // clang-format off
+                    auto [last, error] = std::from_chars(
+                        (const char*)arg_idx.data(),
+                        (const char*)(arg_idx.data() + arg_idx.size()), 
+                        cur_idx
+                    );
+                    // clang-format on
                     SKR_VERIFY(last == (const char*)(arg_idx.data() + arg_idx.size()) && "Invalid format index!");
                 }
-                SKR_VERIFY(cur_idx < arg_count && "Invalid format index!");
-                formatters.at(cur_idx).format(out, spec);
+                
+                // protate
+                if (cur_idx < arg_count)
+                {
+                    formatters.at(cur_idx).format(out, spec);
+                }
+                else
+                {
+                    out.append(token.view);
+                }
             }
             break;
             default:
@@ -813,8 +826,6 @@ inline TString format(typename TString::ViewType view, Args&&... args)
     return out;
 }
 
-// TODO. format, 返回 string
-// TODO. format_to, 对特定容器进行 format
 // TODO. formatted_size, format 后的尺寸
 // TODO. vformat, 使用 FormatArgs 结构
 } // namespace skr::container
