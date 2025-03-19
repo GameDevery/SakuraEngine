@@ -13,7 +13,7 @@ namespace skr
 {
 struct V8Context;
 
-struct SKR_V8_API V8Isolate {
+struct SKR_V8_API V8Isolate : IScriptMixinCore {
     friend struct V8Context;
 
     // ctor & dtor
@@ -39,9 +39,13 @@ struct SKR_V8_API V8Isolate {
     // operator isolate
     void gc(bool full = true);
 
-    // bind object 
+    // bind object
     V8BindRecordCore* translate_record(::skr::ScriptbleObject* obj);
     void              mark_record_deleted(::skr::ScriptbleObject* obj);
+
+    // => IScriptMixinCore API
+    void on_object_destroyed(ScriptbleObject* obj) override;
+    // => IScriptMixinCore API
 
 private:
     // make template

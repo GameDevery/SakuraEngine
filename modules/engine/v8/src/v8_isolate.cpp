@@ -90,7 +90,8 @@ void V8Isolate::shutdown()
         // clean up core
         for (auto& [obj, bind_core] : _alive_records)
         {
-            if (bind_core->object->script_owner_ship() == EScriptbleObjectOwnerShip::Script)
+            // delete object if only script owns it
+            if (bind_core->object->ownership() == EScriptbleObjectOwnership::Script)
             {
                 SkrDelete(bind_core->object);
             }
@@ -168,6 +169,9 @@ V8BindRecordCore* V8Isolate::translate_record(::skr::ScriptbleObject* obj)
     // add to map
     _alive_records.add(obj, bind_data);
 
+    // bind mixin core
+    obj->set_mixin_core(this);
+
     return bind_data;
 }
 void V8Isolate::mark_record_deleted(::skr::ScriptbleObject* obj)
@@ -183,6 +187,13 @@ void V8Isolate::mark_record_deleted(::skr::ScriptbleObject* obj)
         _alive_records.remove(obj);
     }
 }
+
+    // => IScriptMixinCore API
+void V8Isolate::on_object_destroyed(ScriptbleObject* obj)
+{
+    mark_record_deleted(obj);
+}
+
 
 // make template
 v8::Local<v8::FunctionTemplate> V8Isolate::_get_template(skr::RTTRType* type)
@@ -357,7 +368,7 @@ void V8Isolate::_gc_callback(const ::v8::WeakCallbackInfo<V8BindRecordCore>& dat
     if (bind_core->object)
     {
         // delete if has owner ship
-        if (bind_core->object->script_owner_ship() == EScriptbleObjectOwnerShip::Script)
+        if (bind_core->object->ownership() == EScriptbleObjectOwnership::Script)
         {
             SkrDelete(bind_core->object);
         }
@@ -430,7 +441,7 @@ void V8Isolate::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
             bind_core->object           = reinterpret_cast<ScriptbleObject*>(casted_mem);
 
             // setup owner ship
-            bind_core->object->script_owner_ship_take(EScriptbleObjectOwnerShip::Script);
+            bind_core->object->ownership_take_script();
 
             // setup gc callback
             bind_core->v8_object.Reset(Isolate, self);

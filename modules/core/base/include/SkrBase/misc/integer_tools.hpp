@@ -72,6 +72,13 @@ SKR_INLINE constexpr E& operator&=(E& a, E b) noexcept
     a        = static_cast<E>(static_cast<UT>(a) & static_cast<UT>(b));
     return a;
 }
+
+template <ScopedEnum E>
+SKR_INLINE constexpr E operator~(E a) noexcept
+{
+    using UT = std::underlying_type_t<E>;
+    return static_cast<E>(~static_cast<UT>(a));
+}
 } // namespace scoped_enum_tools
 
 // integer div
