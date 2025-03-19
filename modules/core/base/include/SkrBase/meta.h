@@ -22,9 +22,9 @@
 #ifdef __meta__
     #define SKR_GENERATE_BODY() void _zz_skr_generate_body_flag();
 #else
-    #define SKR_GENERATE_BODY_NAME(__FILE, __LINE) SKR_GENERATE_BODY_NAME_IMPL(__FILE, _, __LINE)
-    #define SKR_GENERATE_BODY_NAME_IMPL(__FILE, __SEP1, __LINE) SKR_GENERATE_BODY_##__FILE##__SEP1##__LINE
-    #define SKR_GENERATE_BODY() SKR_GENERATE_BODY_NAME(SKR_FILE_ID, __LINE__)
+    #define _SKR_GENERATE_BODY_NAME(__FILE, __LINE) _SKR_GENERATE_BODY_NAME_IMPL(__FILE, _, __LINE)
+    #define _SKR_GENERATE_BODY_NAME_IMPL(__FILE, __SEP1, __LINE) _zz_SKR_GENERATE_BODY_##__FILE##__SEP1##__LINE
+    #define SKR_GENERATE_BODY() _SKR_GENERATE_BODY_NAME(SKR_FILE_ID, __LINE__)
 #endif
 
 // param flag
