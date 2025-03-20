@@ -3,7 +3,6 @@
 #include <SkrCore/log.hpp>
 
 // TODO. 增加 Value 类型，以指针形式存储，来适应频繁边界交互场景，如果是 ScriptbleObject 子类，默认 Object，否则默认 Value
-// TODO. 除了 Primitive Type，均主动确定其类型，不要在 make 内判断
 // TODO. Mapping/Value 均不可空，取消指针 case 下的导出
 //
 // script export concept

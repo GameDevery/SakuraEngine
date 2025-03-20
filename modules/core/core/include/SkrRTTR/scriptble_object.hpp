@@ -4,31 +4,6 @@
     #include "SkrCore/SkrRTTR/scriptble_object.generated.h"
 #endif
 
-// script export behaviour map
-// parameter:
-// |            |  primitive |    box    |   wrap   |
-// |     T      |      T     |     T     |    -     |
-// |     T*     |   inout T? |  inout T? |    T?    |
-// |  const T*  |      T?    |     T?    |    T?    |
-// |     T&     |   inout T  |  inout T  |    T     |
-// |  const T&  |      T     |     T     |    T     |
-//
-// return:
-// |            |  primitive |    box    |   wrap   |
-// |     T      |      T     |     T     |    -     |
-// |     T*     |      T?    |     T?    |    T?    |
-// |  const T*  |      T?    |     T?    |    T?    |
-// |     T&     |      T     |     T     |    T     |
-// |  const T&  |      T     |     T     |    T     |
-//
-// field:
-// |            |  primitive |    box    |   wrap   |
-// |     T      |      T     |     T     |    -     |
-// |     T*     |      -     |     -     |    T?    |
-// |  const T*  |      -     |     -     |    T?    |
-// |     T&     |      -     |     -     |    -     |
-// |  const T&  |      -     |     -     |    -     |
-
 namespace skr
 {
 struct ScriptbleObject;
