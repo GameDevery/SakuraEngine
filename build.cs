@@ -3,6 +3,7 @@ using SB.Core;
 using Serilog;
 using System.Diagnostics;
 
+Engine.SetEngineDirectory();
 var Toolchain = Utilities.Bootstrap(SourceLocation.Directory());
 var ToolchainInitializeTask = Toolchain.Initialize();
 

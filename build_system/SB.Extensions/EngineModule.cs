@@ -18,9 +18,9 @@ namespace SB
 
     public partial class Engine : BuildSystem
     {
-        static Engine()
+        public static void SetEngineDirectory([CallerFilePath] string? Location = null)
         {
-
+            EngineDirectory = Path.GetDirectoryName(Location!)!;
         }
 
         public static Target Module(string Name, string? API = null, [CallerFilePath] string? Location = null)
@@ -64,10 +64,6 @@ namespace SB
 
         public static Target StaticComponent(string Name, string OwnerName, [CallerFilePath] string? Location = null)
         {
-            if (!StaticComponents.ContainsKey(OwnerName))
-                StaticComponents.Add(OwnerName, new List<string>());
-            StaticComponents[OwnerName].Add(Name);
-
             var Target = BuildSystem.Target(Name, Location!);
             Target.ApplyEngineModulePresets();
             Target.TargetType(TargetType.Static);
@@ -91,7 +87,7 @@ namespace SB
 
         public static bool ShippingOneArchive = false;
         public static bool UseProfile = true;
-        private static Dictionary<string, List<string>> StaticComponents = new();
+        public static string EngineDirectory { get; private set; }
     }
 
     public static class EngineModuleExtensions
@@ -116,7 +112,25 @@ namespace SB
         {
             @this.SetAttribute(new CodegenMetaAttribute{ RootDirectory = Root });
             @this.SetAttribute(new CodegenRenderAttribute());
+            var CodegenDirectory = @this.GetCodegenDirectory();
+            Directory.CreateDirectory(CodegenDirectory);
+            @this.IncludeDirs(Visibility.Public, Directory.GetParent(CodegenDirectory)!.FullName);
             return @this;
+        }
+
+        public static Target AddCodegenScript(this Target @this, string Script, [CallerFilePath] string? Location = null)
+        {
+            var Scripts = @this.GetAttribute<CodegenRenderAttribute>()!.Scripts;
+            if (Path.IsPathFullyQualified(Script))
+            {
+                Scripts.Add(Script);
+                return @this;
+            }
+            else
+            {
+                Scripts.Add(Path.Combine(Path.GetDirectoryName(Location!)!, Script));
+                return @this;
+            }
         }
 
         public static Target AddSourceGenerators(this Target @this, params string[] Generators)

@@ -7,6 +7,8 @@ namespace SB
     public class CodegenMetaAttribute
     {
         public required string RootDirectory { get; init; }
+        public string? MetaDirectory { get; internal set; }
+        public string[]? AllGeneratedMetaFiles { get; internal set; }
     }
 
     public class CodegenMetaEmitter : TaskEmitter
@@ -37,23 +39,24 @@ namespace SB
         {
             // Ensure output file
             var MetaAttribute = Target.GetAttribute<CodegenMetaAttribute>()!;
-            var GeneratedDirectory = Path.Combine(Target.GetStorePath(BuildSystem.GeneratedSourceStore), "meta_database");
-            Directory.CreateDirectory(GeneratedDirectory);
+            MetaAttribute.MetaDirectory = Path.Combine(Target.GetStorePath(BuildSystem.GeneratedSourceStore), "meta_database");
+            Directory.CreateDirectory(MetaAttribute.MetaDirectory);
             var BatchDirectory = Path.Combine(Target.GetStorePath(BuildSystem.GeneratedSourceStore), "ReflectionBatch");
             Directory.CreateDirectory(BatchDirectory);
 
             // Batch headers to a source file
             var Headers = Target.AllFiles.Where(F => F.EndsWith(".h") || F.EndsWith(".hpp"));
             var BatchFile = Path.Combine(BatchDirectory, "ReflectionBatch.cpp");
-            Depend.OnChanged(Target.Name, "", Name, (Depend depend) => {
+            Depend.OnChanged(Target.Name, "BatchFiles", Name, (Depend depend) => {
                 Directory.CreateDirectory(BatchDirectory);
                 File.WriteAllLines(BatchFile, Headers.Select(H => $"#include \"{H}\""));
+                depend.ExternalFiles.Add(BatchFile);
             }, Headers.Append(Target.Location), null);
 
             // Set meta args
             var MetaArgs = new List<string>{
                 BatchFile,
-                $"--output={GeneratedDirectory}",
+                $"--output={MetaAttribute.MetaDirectory}",
                 $"--root={MetaAttribute.RootDirectory}",
                 "--"
             };
@@ -69,7 +72,7 @@ namespace SB
                 CompilerArgs.Add("--driver-mode=cl");
             MetaArgs.AddRange(CompilerArgs);
             // Run meta.exe
-            bool Changed = Depend.OnChanged(Target.Name, GeneratedDirectory, Name, (Depend depend) =>
+            bool Changed = Depend.OnChanged(Target.Name, MetaAttribute.MetaDirectory, Name, (Depend depend) =>
             {
                 int ExitCode = BuildSystem.RunProcess(EXE, string.Join(" ", MetaArgs), out var OutputInfo, out var ErrorInfo);
                 if (ExitCode != 0)
@@ -77,9 +80,12 @@ namespace SB
                 else if (OutputInfo.Contains("warning LNK"))
                     Log.Warning("meta.exe: {OutputInfo}", OutputInfo);
 
-                var AllGeneratedFiles = Directory.GetFiles(GeneratedDirectory, "*.meta", SearchOption.AllDirectories);
-                depend.ExternalFiles.AddRange(AllGeneratedFiles);
+                MetaAttribute.AllGeneratedMetaFiles = Directory.GetFiles(MetaAttribute.MetaDirectory, "*.meta", SearchOption.AllDirectories);
+                depend.ExternalFiles.AddRange(MetaAttribute.AllGeneratedMetaFiles);
             }, new string[] { BatchFile }, MetaArgs);
+
+            if (!Changed)
+                MetaAttribute.AllGeneratedMetaFiles = Directory.GetFiles(MetaAttribute.MetaDirectory, "*.meta", SearchOption.AllDirectories);
             return new MetaArtifact { IsRestored = !Changed };
         }
 

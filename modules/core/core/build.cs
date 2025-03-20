@@ -38,7 +38,6 @@ public static class SkrCore
             .Depend(Visibility.Public, "SkrProfile")
             // TODO: STATIC COMPONENTS, JUST WORKAROUND NOW, WE NEED TO DEPEND THEM AUTOMATICALLY LATTER
             .Depend(Visibility.Public, "SkrDependencyGraph", "SkrString", "SkrSimpleAsync", "SkrArchive")
-            .IncludeDirs(Visibility.Public, "D:/SakuraEngine/D5-NEXT/build/.skr/codegen/SkrCore/codegen")
             // END WORKAROUNDS
             .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "include"))
             .Defines(Visibility.Private, "SKR_MEMORY_IMPL")
@@ -52,6 +51,10 @@ public static class SkrCore
                 "include/SkrRTTR/scriptble_object.hpp",
                 "include/SkrRTTR/export/export_data.hpp"
             )
+            .AddCodegenScript("meta/basic.ts")
+            .AddCodegenScript("meta/rttr.ts")
+            .AddCodegenScript("meta/serialize.ts")
+            .AddCodegenScript("meta/proxy.ts")
             // TODO: REMOVE THIS
             .Depend(Visibility.Public, "SDL2");
 
