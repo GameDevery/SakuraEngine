@@ -446,7 +446,7 @@ v8::Local<v8::Value> V8Bind::_read_return(
     else
     { // return param array
         v8::Local<v8::Array> out_array = v8::Array::New(isolate);
-        uint32_t              cur_index = 0;
+        uint32_t             cur_index = 0;
 
         // try read return value
         if (!return_binder.is_void)
@@ -621,7 +621,7 @@ bool V8Bind::call_native(
 
         // push param
         uint32_t v8_stack_index = 0;
-        for (const auto& param_binder: overload.params_binder)
+        for (const auto& param_binder : overload.params_binder)
         {
             if (param_binder.inout_flag == ERTTRParamFlag::Out)
             { // pure out param, we will push a dummy xvalue
@@ -678,7 +678,7 @@ bool V8Bind::call_native(
 
         // push param
         uint32_t v8_stack_index = 0;
-        for (const auto& param_binder: overload.params_binder)
+        for (const auto& param_binder : overload.params_binder)
         {
             if (param_binder.inout_flag == ERTTRParamFlag::Out)
             { // pure out param, we will push a dummy xvalue
@@ -771,6 +771,8 @@ bool V8Bind::match(
     {
     case ScriptBinderRoot::EKind::Primitive:
         return _match_primitive(*binder.primitive(), v8_value);
+    case ScriptBinderRoot::EKind::Enum:
+        return _match_primitive(*binder.enum_()->underlying_binder, v8_value);
     case ScriptBinderRoot::EKind::Mapping:
         return _match_mapping(*binder.mapping(), v8_value);
     case ScriptBinderRoot::EKind::Object:
