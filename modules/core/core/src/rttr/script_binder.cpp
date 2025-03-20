@@ -848,10 +848,10 @@ void ScriptBinderManager::_make_param(ScriptBinderParam& out, const RTTRParamDat
         break;
     }
     case ScriptBinderRoot::EKind::Object: {
-        if (!is_decayed_pointer)
+        if (!is_pointer)
         {
             _logger.error(
-                u8"export object {} as value type",
+                u8"export object {} as value or reference type",
                 out.binder.object()->type->name()
             );
         }
@@ -943,10 +943,10 @@ void ScriptBinderManager::_make_return(ScriptBinderReturn& out, TypeSignatureVie
         break;
     }
     case ScriptBinderRoot::EKind::Object: {
-        if (!is_decayed_pointer)
+        if (!is_pointer)
         {
             _logger.error(
-                u8"export object {} as value type",
+                u8"export object {} as value or reference type",
                 out.binder.object()->type->name()
             );
         }

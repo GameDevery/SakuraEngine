@@ -2,8 +2,6 @@
 #include <SkrRTTR/type.hpp>
 #include <SkrCore/log.hpp>
 
-// TODO. 增加 Value 类型，以指针形式存储，来适应频繁边界交互场景，如果是 ScriptbleObject 子类，默认 Object，否则默认 Value
-//
 // script export concept
 //   - primitive: primitive type, always include [number, boolean, string, real]
 //   - mapping: map type structure into a script object, methods is not supported
@@ -13,28 +11,52 @@
 //             and have lifetime control, witch implemented by ScriptbleObject,
 //             ONLY classes that inherit ScriptbleObject can be export as object
 //
-// script export behaviour map
-//   parameter:
+// export behaviour:
+//   parameter(call native):
 //   |            |  primitive |  enum   |  mapping  |  value  |  object  |
-//   |     T      |      T     |    T    |     T     |    T    |    -     |
-//   |     T*     |      -     |    -    |     -     |    -    |    T?    |
-//   |  const T*  |      -     |    -    |     -     |    -    |    T?    |
-//   |     T&     |      T     |    T    |     T     |    T    |    T     | Note. by default, will have inout flag
-//   |  const T&  |      T     |    T    |     T     |    T    |    T     |
+//   |     T      |   (copy)T  | (copy)T |  (copy)T  | (copy)T |    -     |
+//   |     T*     |      -     |    -    |     -     |    -    |(by ref)T?|
+//   |  const T*  |      -     |    -    |     -     |    -    |(by ref)T?|
+//   |     T&     |   (copy)T  | (copy)T |  (copy)T  |(by ref)T|    -     | Note. by default, will have inout flag
+//   |  const T&  |   (copy)T  | (copy)T |  (copy)T  |(by ref)T|    -     |
 //
-//   return:
+//   parameter(call script):
 //   |            |  primitive |  enum   |  mapping  |  value  |  object  |
-//   |     T      |      T     |    T    |     T     |    T    |    -     |
-//   |     T*     |      -     |    -    |     -     |    -    |    T?    |
-//   |  const T*  |      -     |    -    |     -     |    -    |    T?    |
-//   |     T&     |      T     |    T    |     T     |    T    |    T     |
-//   |  const T&  |      T     |    T    |     T     |    T    |    T     |
+//   |     T      |   (copy)T  | (copy)T |  (copy)T  |(by ref)T|    -     |
+//   |     T*     |      -     |    -    |     -     |    -    |(by ref)T?|
+//   |  const T*  |      -     |    -    |     -     |    -    |(by ref)T?|
+//   |     T&     |   (copy)T  | (copy)T |  (copy)T  |(by ref)T|    -     |
+//   |  const T&  |   (copy)T  | (copy)T |  (copy)T  |(by ref)T|    -     |
 //
-//   field:
+//   return(call native):
 //   |            |  primitive |  enum   |  mapping  |  value  |  object  |
-//   |     T      |      T     |    T    |     T     |    T    |    -     |
-//   |     T*     |      -     |    -    |     -     |    -    |    T?    |
-//   |  const T*  |      -     |    -    |     -     |    -    |    T?    |
+//   |     T      |   (copy)T  | (copy)T |  (copy)T  | (copy)T |    -     |
+//   |     T*     |      -     |    -    |     -     |    -    |(by ref)T?|
+//   |  const T*  |      -     |    -    |     -     |    -    |(by ref)T?|
+//   |     T&     |   (copy)T  | (copy)T |  (copy)T  | (copy)T |    -     |
+//   |  const T&  |   (copy)T  | (copy)T |  (copy)T  | (copy)T |    -     |
+//
+//   return(call script):
+//   |            |  primitive |  enum   |  mapping  |  value  |  object  |
+//   |     T      |   (copy)T  | (copy)T |  (copy)T  | (copy)T |    -     |
+//   |     T*     |      -     |    -    |     -     |    -    |(by ref)T?|
+//   |  const T*  |      -     |    -    |     -     |    -    |(by ref)T?|
+//   |     T&     |      -     |    -    |     -     |    -    |    -     |
+//   |  const T&  |      -     |    -    |     -     |    -    |    -     |
+//
+//   field(native -> script):
+//   |            |  primitive |  enum   |  mapping  |  value  |  object  |
+//   |     T      |    (copy)T | (copy)T |  (copy)T  |(by ref)T|    -     |
+//   |     T*     |      -     |    -    |     -     |    -    |(by ref)T?|
+//   |  const T*  |      -     |    -    |     -     |    -    |(by ref)T?|
+//   |  const T&  |      -     |    -    |     -     |    -    |    -     |
+//   |     T&     |      -     |    -    |     -     |    -    |    -     |
+//
+//   field(script -> native):
+//   |            |  primitive |  enum   |  mapping  |  value  |  object  |
+//   |     T      |    (copy)T | (copy)T |  (copy)T  | (copy)T |    -     |
+//   |     T*     |      -     |    -    |     -     |    -    |(by ref)T?|
+//   |  const T*  |      -     |    -    |     -     |    -    |(by ref)T?|
 //   |  const T&  |      -     |    -    |     -     |    -    |    -     |
 //   |     T&     |      -     |    -    |     -     |    -    |    -     |
 //
@@ -55,7 +77,10 @@
 //   string: skr::String, skr::StringView
 //
 // about StringView:
-//   - can only be used as parameter or return, used to reduce copy cost
+//   - cannot pass by ref
+//   - cannot used as field
+//   - cannot return by script(ScriptMixin)
+//   - will copy when return by native
 //
 // script support generic types(can be toggled off):
 //   skr::Array: accept script array

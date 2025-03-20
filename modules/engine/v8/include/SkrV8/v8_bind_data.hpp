@@ -152,7 +152,17 @@ struct V8BindCoreValue : V8BindCoreRecordBase {
     // owner info
     V8BindCoreRecordBase* owner_core          = nullptr;
     bool                  owner_core_released = false;
-    // TODO. owner static field
+    bool                  from_static_field   = false; // TODO. 暂时未集成
+    bool                  from_param          = false; // TODO. 暂时未集成
+    bool                  is_param_invalid    = false; // TODO. 暂时未集成
+    // TODO. 改为如下结构
+    // ESource
+    //   Field
+    //   StaticField
+    //   Param
+    //   V8New
+    // bool is_source_valid
+    // V8BindCoreRecordBase* field_owner; // used to delete cache
 
     inline bool has_owner()
     {

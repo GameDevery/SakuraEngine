@@ -92,7 +92,7 @@ private:
     Map<const RTTRType*, V8BindDataRecordBase*> _record_templates;
     Map<const RTTRType*, V8BindDataEnum*>       _enum_templates;
 
-    // bind data
+    // bind cores
     Map<::skr::ScriptbleObject*, V8BindCoreObject*> _alive_objects;
     Vector<V8BindCoreObject*>                       _deleted_objects;
     Map<void*, V8BindCoreValue*>                    _script_created_values;

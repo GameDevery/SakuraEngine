@@ -5,8 +5,6 @@
 
 namespace skr
 {
-// TODO. _to_v8/_to_native value
-// TODO. field 需要特殊处理
 struct V8Bind {
     // primitive to v8
     static v8::Local<v8::Value>  to_v8(int32_t v);
@@ -35,6 +33,7 @@ struct V8Bind {
     static v8::Local<v8::Value> to_v8(EnumValue value);
 
     // field tools
+    // TODO. move to bind data
     static bool set_field(
         const ScriptBinderField& binder,
         v8::Local<v8::Value>     v8_value,
@@ -98,6 +97,7 @@ struct V8Bind {
         ScriptBinderRoot     binder,
         v8::Local<v8::Value> v8_value
     );
+    // TODO. move spec match to bind data
     static bool match(
         const ScriptBinderParam& binder,
         v8::Local<v8::Value>     v8_value
