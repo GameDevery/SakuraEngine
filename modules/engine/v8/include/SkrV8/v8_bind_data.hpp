@@ -26,7 +26,7 @@ struct V8BindPropertyData {
 struct V8BindStaticPropertyData {
     ScriptBinderStaticProperty binder;
 };
-struct V8BindObjectData {
+struct V8BindRecordDataBase {
     // v8 info
     ::v8::Global<::v8::FunctionTemplate> ctor_template;
 
@@ -39,7 +39,7 @@ struct V8BindObjectData {
     Map<String, V8BindPropertyData*>       properties;
     Map<String, V8BindStaticPropertyData*> static_properties;
 
-    ~V8BindObjectData()
+    ~V8BindRecordDataBase()
     {
         for (auto& pair : methods)
         {
@@ -67,6 +67,10 @@ struct V8BindObjectData {
         }
     }
 };
+struct V8BindObjectData : V8BindRecordDataBase {
+};
+struct V8BindValueData : V8BindRecordDataBase {
+};
 struct V8BindEnumData {
     // v8 info
     v8::Global<v8::ObjectTemplate> enum_template;
@@ -75,7 +79,8 @@ struct V8BindEnumData {
 };
 
 //===============================bind core===============================
-struct V8BindRecordCore {
+// TODO. V8BindRecordCoreBase, 用于复用逻辑
+struct V8BindObjectCore {
     // native info
     skr::ScriptbleObject* object      = nullptr;
     void*                 object_head = nullptr;
@@ -89,5 +94,7 @@ struct V8BindRecordCore {
     {
         return type->cast_to_base(type_id, object->iobject_get_head_ptr());
     }
+};
+struct V8BindValueCore {
 };
 } // namespace skr

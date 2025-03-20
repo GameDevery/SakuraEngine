@@ -40,7 +40,7 @@ struct SKR_V8_API V8Isolate : IScriptMixinCore {
     void gc(bool full = true);
 
     // bind object
-    V8BindRecordCore* translate_record(::skr::ScriptbleObject* obj);
+    V8BindObjectCore* translate_record(::skr::ScriptbleObject* obj);
     void              mark_record_deleted(::skr::ScriptbleObject* obj);
 
     // => IScriptMixinCore API
@@ -54,7 +54,7 @@ private:
     v8::Local<v8::FunctionTemplate> _make_template_object(ScriptBinderRoot binder);
 
     // bind helpers
-    static void _gc_callback(const ::v8::WeakCallbackInfo<V8BindRecordCore>& data);
+    static void _gc_callback(const ::v8::WeakCallbackInfo<V8BindObjectCore>& data);
     static void _call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
     static void _call_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
     static void _call_static_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
@@ -82,8 +82,8 @@ private:
     Map<const RTTRType*, V8BindEnumData*>   _enum_templates;
 
     // bind data
-    Map<::skr::ScriptbleObject*, V8BindRecordCore*> _alive_records;
-    Vector<V8BindRecordCore*>                       _deleted_records;
+    Map<::skr::ScriptbleObject*, V8BindObjectCore*> _alive_records;
+    Vector<V8BindObjectCore*>                       _deleted_records;
 };
 } // namespace skr
 

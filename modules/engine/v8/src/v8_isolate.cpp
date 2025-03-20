@@ -129,7 +129,7 @@ void V8Isolate::gc(bool full)
 }
 
 // bind object
-V8BindRecordCore* V8Isolate::translate_record(::skr::ScriptbleObject* obj)
+V8BindObjectCore* V8Isolate::translate_record(::skr::ScriptbleObject* obj)
 {
     using namespace ::v8;
     Isolate::Scope isolate_scope(_isolate);
@@ -158,7 +158,7 @@ V8BindRecordCore* V8Isolate::translate_record(::skr::ScriptbleObject* obj)
     Local<Object>   object    = ctor_func->NewInstance(context).ToLocalChecked();
 
     // make bind data
-    auto bind_data    = SkrNew<V8BindRecordCore>();
+    auto bind_data    = SkrNew<V8BindObjectCore>();
     bind_data->object = obj;
     bind_data->type   = type;
     bind_data->v8_object.Reset(_isolate, object);
@@ -223,7 +223,7 @@ v8::Local<v8::ObjectTemplate> V8Isolate::_get_enum_template(const RTTRType* type
     ScriptBinderEnum* enum_binder = binder.enum_();
 
     // new bind data
-    auto bind_data = SkrNew<V8BindEnumData>();
+    auto bind_data    = SkrNew<V8BindEnumData>();
     bind_data->binder = binder.enum_();
 
     // object template
@@ -434,12 +434,12 @@ v8::Local<v8::FunctionTemplate> V8Isolate::_make_template_object(ScriptBinderRoo
 }
 
 // bind helpers
-void V8Isolate::_gc_callback(const ::v8::WeakCallbackInfo<V8BindRecordCore>& data)
+void V8Isolate::_gc_callback(const ::v8::WeakCallbackInfo<V8BindObjectCore>& data)
 {
     using namespace ::v8;
 
     // get data
-    V8BindRecordCore* bind_core = data.GetParameter();
+    V8BindObjectCore* bind_core = data.GetParameter();
     V8Isolate*        isolate   = reinterpret_cast<V8Isolate*>(data.GetIsolate()->GetData(0));
 
     // remove alive object
@@ -514,7 +514,7 @@ void V8Isolate::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
             void* casted_mem = bind_data->binder->type->cast_to_base(type_id_of<ScriptbleObject>(), alloc_mem);
 
             // make bind core
-            V8BindRecordCore* bind_core = SkrNew<V8BindRecordCore>();
+            V8BindObjectCore* bind_core = SkrNew<V8BindObjectCore>();
             bind_core->type             = bind_data->binder->type;
             bind_core->object           = reinterpret_cast<ScriptbleObject*>(casted_mem);
 
@@ -559,7 +559,7 @@ void V8Isolate::_call_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info
 
     // get self data
     Local<Object> self      = info.This();
-    auto*         bind_core = reinterpret_cast<V8BindRecordCore*>(self->GetInternalField(0).As<External>()->Value());
+    auto*         bind_core = reinterpret_cast<V8BindObjectCore*>(self->GetInternalField(0).As<External>()->Value());
 
     // get user data
     auto* bind_data   = reinterpret_cast<V8BindMethodData*>(info.Data().As<External>()->Value());
@@ -637,7 +637,7 @@ void V8Isolate::_get_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 
     // get self data
     Local<Object> self      = info.This();
-    auto*         bind_core = reinterpret_cast<V8BindRecordCore*>(self->GetInternalField(0).As<External>()->Value());
+    auto*         bind_core = reinterpret_cast<V8BindObjectCore*>(self->GetInternalField(0).As<External>()->Value());
 
     // get user data
     auto* bind_data   = reinterpret_cast<V8BindFieldData*>(info.Data().As<External>()->Value());
@@ -664,7 +664,7 @@ void V8Isolate::_set_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 
     // get self data
     Local<Object> self      = info.This();
-    auto*         bind_core = reinterpret_cast<V8BindRecordCore*>(self->GetInternalField(0).As<External>()->Value());
+    auto*         bind_core = reinterpret_cast<V8BindObjectCore*>(self->GetInternalField(0).As<External>()->Value());
 
     // get user data
     auto* bind_data   = reinterpret_cast<V8BindFieldData*>(info.Data().As<External>()->Value());
@@ -733,7 +733,7 @@ void V8Isolate::_get_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 
     // get self data
     Local<Object> self      = info.This();
-    auto*         bind_core = reinterpret_cast<V8BindRecordCore*>(self->GetInternalField(0).As<External>()->Value());
+    auto*         bind_core = reinterpret_cast<V8BindObjectCore*>(self->GetInternalField(0).As<External>()->Value());
 
     // get user data
     auto* bind_data   = reinterpret_cast<V8BindPropertyData*>(info.Data().As<External>()->Value());
@@ -760,7 +760,7 @@ void V8Isolate::_set_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 
     // get self data
     Local<Object> self      = info.This();
-    auto*         bind_core = reinterpret_cast<V8BindRecordCore*>(self->GetInternalField(0).As<External>()->Value());
+    auto*         bind_core = reinterpret_cast<V8BindObjectCore*>(self->GetInternalField(0).As<External>()->Value());
 
     // get user data
     auto* bind_data   = reinterpret_cast<V8BindPropertyData*>(info.Data().As<External>()->Value());
