@@ -11,21 +11,33 @@ struct V8BindManager;
 //===============================bind data===============================
 struct V8BindDataMethod {
     ScriptBinderMethod binder;
+    // manager
+    V8BindManager* manager = nullptr;
 };
 struct V8BindDataStaticMethod {
     ScriptBinderStaticMethod binder;
+    // manager
+    V8BindManager* manager = nullptr;
 };
 struct V8BindDataField {
     ScriptBinderField binder;
+    // manager
+    V8BindManager* manager = nullptr;
 };
 struct V8BindDataStaticField {
     ScriptBinderStaticField binder;
+    // manager
+    V8BindManager* manager = nullptr;
 };
 struct V8BindDataProperty {
     ScriptBinderProperty binder;
+    // manager
+    V8BindManager* manager = nullptr;
 };
 struct V8BindDataStaticProperty {
     ScriptBinderStaticProperty binder;
+    // manager
+    V8BindManager* manager = nullptr;
 };
 struct V8BindDataObject;
 struct V8BindDataValue;

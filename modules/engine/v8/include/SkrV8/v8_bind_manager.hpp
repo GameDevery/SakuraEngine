@@ -67,6 +67,15 @@ private:
     static void _enum_to_string(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
     static void _enum_from_string(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
 
+    // uniform new
+    template <typename T>
+    inline T* _new_bind_data()
+    {
+        auto* result    = SkrNew<T>();
+        result->manager = this;
+        return result;
+    }
+
 private:
     // binder manager
     ScriptBinderManager _binder_mgr;

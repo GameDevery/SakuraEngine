@@ -89,8 +89,7 @@ V8BindCoreObject* V8BindManager::translate_object(::skr::ScriptbleObject* obj)
     Local<Object>         object            = instance_template->NewInstance(context).ToLocalChecked();
 
     // make bind core
-    auto object_bind_core     = SkrNew<V8BindCoreObject>();
-    object_bind_core->manager = this;
+    auto object_bind_core     = _new_bind_data<V8BindCoreObject>();
     object_bind_core->type    = type;
     object_bind_core->data    = obj->iobject_get_head_ptr();
     object_bind_core->v8_object.Reset(isolate, object);
@@ -264,8 +263,7 @@ v8::Local<v8::ObjectTemplate> V8BindManager::get_enum_template(const RTTRType* t
     ScriptBinderEnum* enum_binder = binder.enum_();
 
     // new bind data
-    auto bind_data     = SkrNew<V8BindDataEnum>();
-    bind_data->manager = this;
+    auto bind_data     = _new_bind_data<V8BindDataEnum>();
     bind_data->binder  = binder.enum_();
 
     // object template
@@ -356,8 +354,7 @@ v8::Local<v8::FunctionTemplate> V8BindManager::_make_template_object(ScriptBinde
     EscapableHandleScope handle_scope(isolate);
 
     // new bind data
-    auto bind_data     = SkrNew<V8BindDataObject>();
-    bind_data->manager = this;
+    auto bind_data     = _new_bind_data<V8BindDataObject>();
     bind_data->binder  = object_binder;
 
     // ctor template
@@ -386,8 +383,7 @@ v8::Local<v8::FunctionTemplate> V8BindManager::_make_template_value(ScriptBinder
     EscapableHandleScope handle_scope(isolate);
 
     // new bind data
-    auto bind_data     = SkrNew<V8BindDataValue>();
-    bind_data->manager = this;
+    auto bind_data     = _new_bind_data<V8BindDataValue>();
     bind_data->binder  = value_binder;
 
     // ctor template
@@ -423,7 +419,7 @@ void V8BindManager::_fill_record_template(
     // bind method
     for (const auto& [method_name, method_binder] : binder->methods)
     {
-        auto method_bind_data    = SkrNew<V8BindDataMethod>();
+        auto method_bind_data    = _new_bind_data<V8BindDataMethod>();
         method_bind_data->binder = method_binder;
         ctor_template->PrototypeTemplate()->Set(
             V8Bind::to_v8(method_name, true),
@@ -439,7 +435,7 @@ void V8BindManager::_fill_record_template(
     // bind static method
     for (const auto& [static_method_name, static_method_binder] : binder->static_methods)
     {
-        auto static_method_bind_data    = SkrNew<V8BindDataStaticMethod>();
+        auto static_method_bind_data    = _new_bind_data<V8BindDataStaticMethod>();
         static_method_bind_data->binder = static_method_binder;
         ctor_template->Set(
             V8Bind::to_v8(static_method_name, true),
@@ -455,7 +451,7 @@ void V8BindManager::_fill_record_template(
     // bind field
     for (const auto& [field_name, field_binder] : binder->fields)
     {
-        auto field_bind_data    = SkrNew<V8BindDataField>();
+        auto field_bind_data    = _new_bind_data<V8BindDataField>();
         field_bind_data->binder = field_binder;
         ctor_template->PrototypeTemplate()->SetAccessorProperty(
             V8Bind::to_v8(field_name, true),
@@ -476,7 +472,7 @@ void V8BindManager::_fill_record_template(
     // bind static field
     for (const auto& [static_field_name, static_field_binder] : binder->static_fields)
     {
-        auto static_field_bind_data    = SkrNew<V8BindDataStaticField>();
+        auto static_field_bind_data    = _new_bind_data<V8BindDataStaticField>();
         static_field_bind_data->binder = static_field_binder;
         ctor_template->SetAccessorProperty(
             V8Bind::to_v8(static_field_name, true),
@@ -497,7 +493,7 @@ void V8BindManager::_fill_record_template(
     // bind properties
     for (const auto& [property_name, property_binder] : binder->properties)
     {
-        auto property_bind_data    = SkrNew<V8BindDataProperty>();
+        auto property_bind_data    = _new_bind_data<V8BindDataProperty>();
         property_bind_data->binder = property_binder;
         ctor_template->PrototypeTemplate()->SetAccessorProperty(
             V8Bind::to_v8(property_name, true),
@@ -518,7 +514,7 @@ void V8BindManager::_fill_record_template(
     // bind static properties
     for (const auto& [static_property_name, static_property_binder] : binder->static_properties)
     {
-        auto static_property_bind_data    = SkrNew<V8BindDataStaticProperty>();
+        auto static_property_bind_data    = _new_bind_data<V8BindDataStaticProperty>();
         static_property_bind_data->binder = static_property_binder;
         ctor_template->SetAccessorProperty(
             V8Bind::to_v8(static_property_name, true),
@@ -842,7 +838,7 @@ void V8BindManager::_get_field(const ::v8::FunctionCallbackInfo<::v8::Value>& in
     auto* bind_data = reinterpret_cast<V8BindDataField*>(info.Data().As<External>()->Value());
 
     // get field
-    auto v8_field = V8Bind::get_field(
+    auto v8_field = V8Bind::get_field_value_or_object(
         bind_data->binder,
         bind_core
     );
@@ -866,7 +862,7 @@ void V8BindManager::_set_field(const ::v8::FunctionCallbackInfo<::v8::Value>& in
     auto* bind_data = reinterpret_cast<V8BindDataField*>(info.Data().As<External>()->Value());
 
     // set field
-    V8Bind::set_field(
+    V8Bind::set_field_value_or_object(
         bind_data->binder,
         info[0],
         bind_core
@@ -886,7 +882,7 @@ void V8BindManager::_get_static_field(const ::v8::FunctionCallbackInfo<::v8::Val
     auto* bind_data = reinterpret_cast<V8BindDataStaticField*>(info.Data().As<External>()->Value());
 
     // get field
-    auto v8_field = V8Bind::get_field(
+    auto v8_field = V8Bind::get_static_field(
         bind_data->binder
     );
     info.GetReturnValue().Set(v8_field);
@@ -905,7 +901,7 @@ void V8BindManager::_set_static_field(const ::v8::FunctionCallbackInfo<::v8::Val
     auto* bind_data = reinterpret_cast<V8BindDataStaticField*>(info.Data().As<External>()->Value());
 
     // set field
-    V8Bind::set_field(
+    V8Bind::set_static_field(
         bind_data->binder,
         info[0]
     );

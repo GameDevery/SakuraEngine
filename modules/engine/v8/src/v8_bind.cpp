@@ -244,7 +244,7 @@ v8::Local<v8::Value> V8Bind::_to_v8_mapping(
     for (const auto& [field_name, field_data] : binder.fields)
     {
         // to v8
-        auto v8_field_value = get_field(field_data, obj, type);
+        auto v8_field_value = get_field_mapping(field_data, obj, type);
 
         // set object field
         // clang-format off
@@ -288,7 +288,7 @@ bool V8Bind::_to_native_mapping(
         ).ToLocalChecked();
         
         // set field
-        if (!set_field(
+        if (!set_field_mapping(
             field_data,
             v8_field,
             native_data,
@@ -648,7 +648,7 @@ v8::Local<v8::Value> V8Bind::_read_return_from_out_param(
 namespace skr
 {
 // field tools
-bool V8Bind::set_field(
+bool V8Bind::set_field_value_or_object(
     const ScriptBinderField& binder,
     v8::Local<v8::Value>     v8_value,
     V8BindCoreRecordBase*    bind_core
@@ -660,7 +660,7 @@ bool V8Bind::set_field(
     // to native
     return to_native(binder.binder, field_address, v8_value, true, false);
 }
-bool V8Bind::set_field(
+bool V8Bind::set_field_mapping(
     const ScriptBinderField& binder,
     v8::Local<v8::Value>     v8_value,
     void*                    obj,
@@ -673,7 +673,7 @@ bool V8Bind::set_field(
     // to native
     return to_native(binder.binder, field_address, v8_value, true, false);
 }
-bool V8Bind::set_field(
+bool V8Bind::set_static_field(
     const ScriptBinderStaticField& binder,
     v8::Local<v8::Value>           v8_value
 )
@@ -684,7 +684,7 @@ bool V8Bind::set_field(
     // to native
     return to_native(binder.binder, field_address, v8_value, true, false);
 }
-v8::Local<v8::Value> V8Bind::get_field(
+v8::Local<v8::Value> V8Bind::get_field_value_or_object(
     const ScriptBinderField& binder,
     V8BindCoreRecordBase*    bind_core
 )
@@ -711,7 +711,7 @@ v8::Local<v8::Value> V8Bind::get_field(
         return to_v8(binder.binder, field_address);
     }
 }
-v8::Local<v8::Value> V8Bind::get_field(
+v8::Local<v8::Value> V8Bind::get_field_mapping(
     const ScriptBinderField& binder,
     const void*              obj,
     const RTTRType*          obj_type
@@ -728,7 +728,7 @@ v8::Local<v8::Value> V8Bind::get_field(
     // to v8
     return to_v8(binder.binder, field_address);
 }
-v8::Local<v8::Value> V8Bind::get_field(
+v8::Local<v8::Value> V8Bind::get_static_field(
     const ScriptBinderStaticField& binder
 )
 {
@@ -771,9 +771,6 @@ bool V8Bind::call_native(
     const RTTRType*                                obj_type
 )
 {
-    auto* isolate = v8::Isolate::GetCurrent();
-    auto  context = isolate->GetCurrentContext();
-
     for (const auto& overload : binder.overloads)
     {
         if (!match(overload.params_binder, overload.params_count, v8_stack)) { continue; }
@@ -938,9 +935,6 @@ bool V8Bind::match(
 {
     if (binder.is_empty()) { return false; }
 
-    auto isolate = v8::Isolate::GetCurrent();
-    auto context = isolate->GetCurrentContext();
-
     switch (binder.kind())
     {
     case ScriptBinderRoot::EKind::Primitive:
@@ -1017,9 +1011,6 @@ bool V8Bind::match(
     const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack
 )
 {
-    auto isolate = v8::Isolate::GetCurrent();
-    auto context = isolate->GetCurrentContext();
-
     // check param count
     if (solved_param_count != v8_stack.Length()) { return false; }
 

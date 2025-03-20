@@ -34,31 +34,31 @@ struct V8Bind {
 
     // field tools
     // TODO. move to bind data
-    static bool set_field(
+    static bool set_field_value_or_object(
         const ScriptBinderField& binder,
         v8::Local<v8::Value>     v8_value,
         V8BindCoreRecordBase*    bind_core
     );
-    static bool set_field(
+    static bool set_field_mapping(
         const ScriptBinderField& binder,
         v8::Local<v8::Value>     v8_value,
         void*                    obj,
         const RTTRType*          obj_type
     );
-    static bool set_field(
+    static bool set_static_field(
         const ScriptBinderStaticField& binder,
         v8::Local<v8::Value>           v8_value
     );
-    static v8::Local<v8::Value> get_field(
+    static v8::Local<v8::Value> get_field_value_or_object(
         const ScriptBinderField& binder,
         V8BindCoreRecordBase*    bind_core
     );
-    static v8::Local<v8::Value> get_field(
+    static v8::Local<v8::Value> get_field_mapping(
         const ScriptBinderField& binder,
         const void*              obj,
         const RTTRType*          obj_type
     );
-    static v8::Local<v8::Value> get_field(
+    static v8::Local<v8::Value> get_static_field(
         const ScriptBinderStaticField& binder
     );
 
