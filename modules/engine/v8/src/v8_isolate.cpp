@@ -716,27 +716,12 @@ void V8Isolate::_call_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info
     }
 
     // call method
-    bool success;
-    if (bind_core->is_value)
-    {
-        auto* value_core = bind_core->as_value();
-        success          = V8Bind::call_native(
-            bind_data->binder,
-            info,
-            value_core->data,
-            value_core->type
-        );
-    }
-    else
-    {
-        auto* object_core = bind_core->as_object();
-        success           = V8Bind::call_native(
-            bind_data->binder,
-            info,
-            object_core->object->iobject_get_head_ptr(),
-            object_core->type
-        );
-    }
+    bool success = V8Bind::call_native(
+        bind_data->binder,
+        info,
+        bind_core->data,
+        bind_core->type
+    );
 
     // throw
     if (!success)
@@ -802,26 +787,12 @@ void V8Isolate::_get_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
     auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
 
     // get field
-    if (bind_core->is_value)
-    {
-        auto* value_core = bind_core->as_value();
-        auto  v8_field   = V8Bind::get_field(
-            bind_data->binder,
-            value_core->data,
-            value_core->type
-        );
-        info.GetReturnValue().Set(v8_field);
-    }
-    else
-    {
-        auto* object_core = bind_core->as_object();
-        auto  v8_field    = V8Bind::get_field(
-            bind_data->binder,
-            object_core->object->iobject_get_head_ptr(),
-            object_core->type
-        );
-        info.GetReturnValue().Set(v8_field);
-    }
+    auto v8_field = V8Bind::get_field(
+        bind_data->binder,
+        bind_core->data,
+        bind_core->type
+    );
+    info.GetReturnValue().Set(v8_field);
 }
 void V8Isolate::_set_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 {
@@ -843,26 +814,12 @@ void V8Isolate::_set_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
     auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
 
     // set field
-    if (bind_core->is_value)
-    {
-        auto* value_core = bind_core->as_value();
-        V8Bind::set_field(
-            bind_data->binder,
-            info[0],
-            value_core->data,
-            value_core->type
-        );
-    }
-    else
-    {
-        auto* object_core = bind_core->as_object();
-        V8Bind::set_field(
-            bind_data->binder,
-            info[0],
-            object_core->object->iobject_get_head_ptr(),
-            object_core->type
-        );
-    }
+    V8Bind::set_field(
+        bind_data->binder,
+        info[0],
+        bind_core->data,
+        bind_core->type
+    );
 }
 void V8Isolate::_get_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 {
@@ -926,26 +883,12 @@ void V8Isolate::_get_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
     auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
 
     // invoke
-    if (bind_core->is_value)
-    {
-        auto* value_core = bind_core->as_value();
-        V8Bind::call_native(
-            bind_data->binder.getter,
-            info,
-            value_core->data,
-            value_core->type
-        );
-    }
-    else
-    {
-        auto* object_core = bind_core->as_object();
-        V8Bind::call_native(
-            bind_data->binder.getter,
-            info,
-            object_core->object->iobject_get_head_ptr(),
-            object_core->type
-        );
-    }
+    V8Bind::call_native(
+        bind_data->binder.getter,
+        info,
+        bind_core->data,
+        bind_core->type
+    );
 }
 void V8Isolate::_set_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 {
@@ -967,26 +910,12 @@ void V8Isolate::_set_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
     auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
 
     // invoke
-    if (bind_core->is_value)
-    {
-        auto* value_core = bind_core->as_value();
-        V8Bind::call_native(
-            bind_data->binder.setter,
-            info,
-            value_core->data,
-            value_core->type
-        );
-    }
-    else
-    {
-        auto* object_core = bind_core->as_object();
-        V8Bind::call_native(
-            bind_data->binder.setter,
-            info,
-            object_core->object->iobject_get_head_ptr(),
-            object_core->type
-        );
-    }
+    V8Bind::call_native(
+        bind_data->binder.setter,
+        info,
+        bind_core->data,
+        bind_core->type
+    );
 }
 void V8Isolate::_get_static_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 {
