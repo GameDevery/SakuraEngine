@@ -1,4 +1,5 @@
 ﻿using SB.Core;
+using Serilog;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 
@@ -29,6 +30,9 @@ namespace SB
             Stopwatch sw = new();
             sw.Start();
 
+            var M = Interlocked.Add(ref N, 1);
+            Log.Verbose("Compiling {SourceFile} ({N})", SourceFile, M + 1);
+
             var SourceDependencies = Path.Combine(Target.GetStorePath(BuildSystem.DepsStore), BuildSystem.GetUniqueTempFileName(SourceFile, Target.Name + this.Name, "source.deps.json"));
             var ObjectFile = GetObjectFilePath(Target, SourceFile);
             var CLDriver = Toolchain.Compiler.CreateArgumentDriver()
@@ -40,11 +44,14 @@ namespace SB
             var CompileAttribute = Target.GetAttribute<CppCompileAttribute>()!;
             CompileAttribute.ObjectFiles.Add(ObjectFile);
 
+            Interlocked.Add(ref N, -1);
+
             sw.Stop();
             Time += (int)sw.ElapsedMilliseconds;
             return R;
         }
 
+        internal int N = 0;
         public static string GetObjectFilePath(Target Target, string SourceFile) => Path.Combine(Target.GetStorePath(BuildSystem.ObjsStore), BuildSystem.GetUniqueTempFileName(SourceFile, Target.Name, "obj"));
 
         private IToolchain Toolchain { get; }

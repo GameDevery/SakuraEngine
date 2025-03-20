@@ -112,7 +112,9 @@ namespace SB
             // Run Build
             uint AllTaskCounter = 0;
             uint FileTaskCounter = 0;
-            foreach (var Target in SortedTargets)
+            Parallel.ForEachAsync(SortedTargets, 
+            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+            async (Target Target, CancellationToken Cancel) =>
             {
                 Target.CallAllActions(Target.BeforeBuildActions);
 
@@ -201,8 +203,9 @@ namespace SB
                         return FileTasks.All(FileTask => (FileTask.Result == true));
                     });
                     EmitterTasks.Add(Fingerprint, EmitterTask);
+                    await EmitterTask;
                 }
-            }
+            }).Wait();
             TaskManager.WaitAll(EmitterTasks.Values);
         }
 
