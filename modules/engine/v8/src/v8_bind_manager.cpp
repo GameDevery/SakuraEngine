@@ -127,7 +127,7 @@ void V8BindManager::mark_object_deleted(::skr::ScriptbleObject* obj)
 }
 
 // bind value
-V8BindCoreValue* V8BindManager::create_value(const RTTRType* type, const void* data)
+V8BindCoreValue* V8BindManager::create_value(const RTTRType* type, const void* source_data)
 {
     using namespace ::v8;
 
@@ -143,25 +143,46 @@ V8BindCoreValue* V8BindManager::create_value(const RTTRType* type, const void* d
         return nullptr;
     }
 
-    // find copy ctor
-    TypeSignatureBuilder tb;
-    tb.write_function_signature(1);
-    tb.write_type_id(type_id_of<void>()); // return
-    tb.write_const();
-    tb.write_ref();
-    tb.write_type_id(type->type_id()); // param 1
-    auto* found_copy_ctor = type->find_ctor({ .signature = tb.type_signature_view() });
-    if (!found_copy_ctor)
+    void* alloc_mem;
+
+    if (source_data)
     {
-        return nullptr;
+        // find copy ctor
+        TypeSignatureBuilder tb;
+        tb.write_function_signature(1);
+        tb.write_type_id(type_id_of<void>()); // return
+        tb.write_const();
+        tb.write_ref();
+        tb.write_type_id(type->type_id()); // param 1
+        auto* found_copy_ctor = type->find_ctor({ .signature = tb.type_signature_view() });
+        if (!found_copy_ctor)
+        {
+            return nullptr;
+        }
+
+        // alloc value
+        alloc_mem = sakura_new_aligned(type->size(), type->alignment());
+
+        // call copy ctor
+        auto* invoker = reinterpret_cast<void (*)(void*, const void*)>(found_copy_ctor->native_invoke);
+        invoker(alloc_mem, source_data);
     }
+    else
+    {
+        // find default ctor
+        auto* found_default_ctor = type->find_ctor_t<void()>();
+        if (!found_default_ctor)
+        {
+            return nullptr;
+        }
 
-    // alloc value
-    void* alloc_mem = sakura_new_aligned(type->size(), type->alignment());
+        // alloc value
+        alloc_mem = sakura_new_aligned(type->size(), type->alignment());
 
-    // call copy ctor
-    auto* invoker = reinterpret_cast<void (*)(void*, const void*)>(found_copy_ctor->native_invoke);
-    invoker(alloc_mem, data);
+        // call default ctor
+        auto* invoker = reinterpret_cast<void (*)(void*)>(found_default_ctor->native_invoke);
+        invoker(alloc_mem);
+    }
 
     // make object
     Local<ObjectTemplate> instance_template = template_ref.value()->ctor_template.Get(isolate)->InstanceTemplate();
