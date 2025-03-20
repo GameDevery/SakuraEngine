@@ -96,8 +96,8 @@ bool V8Bind::_match_object(const ScriptBinderObject& binder, v8::Local<v8::Value
 
     // check object
     if (v8_object->InternalFieldCount() < 1) { return false; }
-    void*             raw_bind_core = v8_object->GetInternalField(0).As<v8::External>()->Value();
-    V8BindObjectCore* bind_core     = reinterpret_cast<V8BindObjectCore*>(raw_bind_core);
+    void* raw_bind_core = v8_object->GetInternalField(0).As<v8::External>()->Value();
+    auto* bind_core     = reinterpret_cast<V8BindCoreRecordBase*>(raw_bind_core);
 
     // check inherit
     return bind_core->type->based_on(type->type_id());
@@ -316,7 +316,7 @@ bool V8Bind::_to_native_object(
 
     auto  v8_object     = v8_value->ToObject(context).ToLocalChecked();
     void* raw_bind_core = v8_object->GetInternalField(0).As<v8::External>()->Value();
-    auto* bind_core     = reinterpret_cast<V8BindObjectCore*>(raw_bind_core);
+    auto* bind_core     = reinterpret_cast<V8BindCoreObject*>(raw_bind_core);
 
     // do cast
     void* cast_ptr                         = bind_core->cast_to_base(type->type_id());

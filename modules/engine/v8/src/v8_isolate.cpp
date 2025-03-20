@@ -89,7 +89,7 @@ void V8Isolate::shutdown()
         SkrDelete(_isolate_create_params.array_buffer_allocator);
 
         // clean up core
-        for (auto& [obj, bind_core] : _alive_records)
+        for (auto& [obj, bind_core] : _alive_objects)
         {
             // delete object if only script owns it
             if (bind_core->object->ownership() == EScriptbleObjectOwnership::Script)
@@ -99,8 +99,8 @@ void V8Isolate::shutdown()
 
             SkrDelete(bind_core);
         }
-        _alive_records.clear();
-        for (auto& bind_core : _deleted_records)
+        _alive_objects.clear();
+        for (auto& bind_core : _deleted_objects)
         {
             SkrDelete(bind_core);
         }
@@ -129,7 +129,7 @@ void V8Isolate::gc(bool full)
 }
 
 // bind object
-V8BindObjectCore* V8Isolate::translate_record(::skr::ScriptbleObject* obj)
+V8BindCoreObject* V8Isolate::translate_record(::skr::ScriptbleObject* obj)
 {
     using namespace ::v8;
     Isolate::Scope isolate_scope(_isolate);
@@ -137,7 +137,7 @@ V8BindObjectCore* V8Isolate::translate_record(::skr::ScriptbleObject* obj)
     Local<Context> context = _isolate->GetCurrentContext();
 
     // find exist object
-    auto bind_ref = _alive_records.find(obj);
+    auto bind_ref = _alive_objects.find(obj);
     if (bind_ref)
     {
         return bind_ref.value();
@@ -158,14 +158,15 @@ V8BindObjectCore* V8Isolate::translate_record(::skr::ScriptbleObject* obj)
     Local<Object>   object    = ctor_func->NewInstance(context).ToLocalChecked();
 
     // make bind data
-    auto bind_data    = SkrNew<V8BindObjectCore>();
-    bind_data->object = obj;
-    bind_data->type   = type;
+    auto bind_data  = SkrNew<V8BindCoreObject>();
+    bind_data->type = type;
+    bind_data->data = obj->iobject_get_head_ptr();
     bind_data->v8_object.Reset(_isolate, object);
+    bind_data->object = obj;
 
     // setup gc callback
     bind_data->v8_object.SetWeak(
-        bind_data,
+        (V8BindCoreRecordBase*)bind_data,
         _gc_callback,
         WeakCallbackType::kInternalFields
     );
@@ -174,7 +175,7 @@ V8BindObjectCore* V8Isolate::translate_record(::skr::ScriptbleObject* obj)
     object->SetInternalField(0, External::New(_isolate, bind_data));
 
     // add to map
-    _alive_records.add(obj, bind_data);
+    _alive_objects.add(obj, bind_data);
 
     // bind mixin core
     obj->set_mixin_core(this);
@@ -183,15 +184,15 @@ V8BindObjectCore* V8Isolate::translate_record(::skr::ScriptbleObject* obj)
 }
 void V8Isolate::mark_record_deleted(::skr::ScriptbleObject* obj)
 {
-    auto bind_ref = _alive_records.find(obj);
+    auto bind_ref = _alive_objects.find(obj);
     if (bind_ref)
     {
         // reset core object ptr
         bind_ref.value()->object = nullptr;
 
         // move to deleted records
-        _deleted_records.push_back(bind_ref.value());
-        _alive_records.remove(obj);
+        _deleted_objects.push_back(bind_ref.value());
+        _alive_objects.remove(obj);
     }
 }
 
@@ -223,7 +224,7 @@ v8::Local<v8::ObjectTemplate> V8Isolate::_get_enum_template(const RTTRType* type
     ScriptBinderEnum* enum_binder = binder.enum_();
 
     // new bind data
-    auto bind_data    = SkrNew<V8BindEnumData>();
+    auto bind_data    = SkrNew<V8BindDataEnum>();
     bind_data->binder = binder.enum_();
 
     // object template
@@ -294,7 +295,7 @@ v8::Local<v8::FunctionTemplate> V8Isolate::_make_template_object(ScriptBinderRoo
     EscapableHandleScope handle_scope(_isolate);
 
     // new bind data
-    auto bind_data = SkrNew<V8BindObjectData>();
+    auto bind_data = SkrNew<V8BindDataObject>();
 
     // ctor template
     auto ctor_template = FunctionTemplate::New(
@@ -314,7 +315,7 @@ v8::Local<v8::FunctionTemplate> V8Isolate::_make_template_object(ScriptBinderRoo
     // bind method
     for (const auto& [method_name, method_binder] : object_binder->methods)
     {
-        auto method_bind_data    = SkrNew<V8BindMethodData>();
+        auto method_bind_data    = SkrNew<V8BindDataMethod>();
         method_bind_data->binder = method_binder;
         ctor_template->PrototypeTemplate()->Set(
             V8Bind::to_v8(method_name, true),
@@ -330,7 +331,7 @@ v8::Local<v8::FunctionTemplate> V8Isolate::_make_template_object(ScriptBinderRoo
     // bind static method
     for (const auto& [static_method_name, static_method_binder] : object_binder->static_methods)
     {
-        auto static_method_bind_data    = SkrNew<V8BindStaticMethodData>();
+        auto static_method_bind_data    = SkrNew<V8BindDataStaticMethod>();
         static_method_bind_data->binder = static_method_binder;
         ctor_template->Set(
             V8Bind::to_v8(static_method_name, true),
@@ -346,7 +347,7 @@ v8::Local<v8::FunctionTemplate> V8Isolate::_make_template_object(ScriptBinderRoo
     // bind field
     for (const auto& [field_name, field_binder] : object_binder->fields)
     {
-        auto field_bind_data    = SkrNew<V8BindFieldData>();
+        auto field_bind_data    = SkrNew<V8BindDataField>();
         field_bind_data->binder = field_binder;
         ctor_template->PrototypeTemplate()->SetAccessorProperty(
             V8Bind::to_v8(field_name, true),
@@ -367,7 +368,7 @@ v8::Local<v8::FunctionTemplate> V8Isolate::_make_template_object(ScriptBinderRoo
     // bind static field
     for (const auto& [static_field_name, static_field_binder] : object_binder->static_fields)
     {
-        auto static_field_bind_data    = SkrNew<V8BindStaticFieldData>();
+        auto static_field_bind_data    = SkrNew<V8BindDataStaticField>();
         static_field_bind_data->binder = static_field_binder;
         ctor_template->SetAccessorProperty(
             V8Bind::to_v8(static_field_name, true),
@@ -388,7 +389,7 @@ v8::Local<v8::FunctionTemplate> V8Isolate::_make_template_object(ScriptBinderRoo
     // bind properties
     for (const auto& [property_name, property_binder] : object_binder->properties)
     {
-        auto property_bind_data    = SkrNew<V8BindPropertyData>();
+        auto property_bind_data    = SkrNew<V8BindDataProperty>();
         property_bind_data->binder = property_binder;
         ctor_template->PrototypeTemplate()->SetAccessorProperty(
             V8Bind::to_v8(property_name, true),
@@ -409,7 +410,7 @@ v8::Local<v8::FunctionTemplate> V8Isolate::_make_template_object(ScriptBinderRoo
     // bind static properties
     for (const auto& [static_property_name, static_property_binder] : object_binder->static_properties)
     {
-        auto static_property_bind_data    = SkrNew<V8BindStaticPropertyData>();
+        auto static_property_bind_data    = SkrNew<V8BindDataStaticProperty>();
         static_property_bind_data->binder = static_property_binder;
         ctor_template->SetAccessorProperty(
             V8Bind::to_v8(static_property_name, true),
@@ -434,36 +435,73 @@ v8::Local<v8::FunctionTemplate> V8Isolate::_make_template_object(ScriptBinderRoo
 }
 
 // bind helpers
-void V8Isolate::_gc_callback(const ::v8::WeakCallbackInfo<V8BindObjectCore>& data)
+void V8Isolate::_gc_callback(const ::v8::WeakCallbackInfo<V8BindCoreRecordBase>& data)
 {
     using namespace ::v8;
 
-    // get data
-    V8BindObjectCore* bind_core = data.GetParameter();
-    V8Isolate*        isolate   = reinterpret_cast<V8Isolate*>(data.GetIsolate()->GetData(0));
+    V8BindCoreRecordBase* bind_core = data.GetParameter();
 
-    // remove alive object
-    if (bind_core->object)
+    if (bind_core->is_value)
     {
-        // delete if has owner ship
-        if (bind_core->object->ownership() == EScriptbleObjectOwnership::Script)
+        auto* value_core = bind_core->as_value();
+
+        // release record memory
+        switch (value_core->source)
         {
-            SkrDelete(bind_core->object);
+        case V8BindCoreValue::ESource::Field:
+        case V8BindCoreValue::ESource::Param: {
+            break;
+        }
+        case V8BindCoreValue::ESource::ScriptNew: {
+            // call destructor
+            auto dtor_data = value_core->type->dtor_data();
+            if (dtor_data)
+            {
+                dtor_data.value().native_invoke(value_core->data);
+            }
+
+            // release data
+            sakura_free_aligned(value_core->data, value_core->type->alignment());
+            break;
+        }
         }
 
-        isolate->_alive_records.remove(bind_core->object);
+        // reset object handle
+        value_core->v8_object.Reset();
+
+        // release core
+        SkrDelete(value_core);
     }
     else
     {
-        // remove from deleted records
-        isolate->_deleted_records.remove(bind_core);
+        auto* object_core = bind_core->as_object();
+
+        // get data
+        V8Isolate* isolate = reinterpret_cast<V8Isolate*>(data.GetIsolate()->GetData(0));
+
+        // remove alive object
+        if (object_core->object)
+        {
+            // delete if has owner ship
+            if (object_core->object->ownership() == EScriptbleObjectOwnership::Script)
+            {
+                SkrDelete(object_core->object);
+            }
+
+            isolate->_alive_objects.remove(object_core->object);
+        }
+        else
+        {
+            // remove from deleted records
+            isolate->_deleted_objects.remove(bind_core);
+        }
+
+        // reset object handle
+        object_core->v8_object.Reset();
+
+        // release core
+        SkrDelete(object_core);
     }
-
-    // reset object handle
-    bind_core->v8_object.Reset();
-
-    // destroy it
-    SkrDelete(bind_core);
 }
 void V8Isolate::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 {
@@ -479,7 +517,7 @@ void V8Isolate::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
     Context::Scope ContextScope(Context);
 
     // get user data
-    auto* bind_data   = reinterpret_cast<V8BindObjectData*>(info.Data().As<External>()->Value());
+    auto* bind_data   = reinterpret_cast<V8BindDataRecordBase*>(info.Data().As<External>()->Value());
     auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
 
     // handle call
@@ -488,58 +526,117 @@ void V8Isolate::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
         // get ctor info
         Local<Object> self = info.This();
 
-        // check constructable
-        if (!bind_data->binder->is_script_newable)
+        if (bind_data->is_value)
         {
-            Isolate->ThrowError("record is not constructable");
-            return;
-        }
+            auto* value_data = bind_data->as_value();
+            auto* binder     = value_data->binder;
 
-        // match ctor
-        for (const auto& ctor_binder : bind_data->binder->ctors)
+            // check constructable
+            if (!binder->is_script_newable)
+            {
+                Isolate->ThrowError("record is not constructable");
+                return;
+            }
+
+            // match ctor
+            for (const auto& ctor_binder : binder->ctors)
+            {
+                if (!V8Bind::match(ctor_binder.params_binder, ctor_binder.params_binder.size(), info)) continue;
+
+                // alloc memory
+                void* alloc_mem = sakura_new_aligned(binder->type->size(), binder->type->alignment());
+
+                // call ctor
+                V8Bind::call_native(
+                    ctor_binder,
+                    info,
+                    alloc_mem
+                );
+
+                // make bind core
+                V8BindCoreValue* bind_core = SkrNew<V8BindCoreValue>();
+                bind_core->type            = binder->type;
+                bind_core->data            = alloc_mem;
+
+                // setup gc callback
+                bind_core->v8_object.Reset(Isolate, self);
+                bind_core->v8_object.SetWeak(
+                    (V8BindCoreRecordBase*)bind_core,
+                    _gc_callback,
+                    WeakCallbackType::kInternalFields
+                );
+
+                // add extern data
+                self->SetInternalField(0, External::New(Isolate, bind_core));
+
+                // add to map
+                skr_isolate->_script_created_values.add(bind_core->data, bind_core);
+
+                return;
+            }
+
+            // no ctor called
+            Isolate->ThrowError("no ctor matched");
+        }
+        else
         {
-            if (!V8Bind::match(ctor_binder.params_binder, ctor_binder.params_binder.size(), info)) continue;
+            auto* object_data = bind_data->as_object();
+            auto* binder      = object_data->binder;
 
-            // alloc memory
-            void* alloc_mem = sakura_new_aligned(bind_data->binder->type->size(), bind_data->binder->type->alignment());
+            // check constructable
+            if (!binder->is_script_newable)
+            {
+                Isolate->ThrowError("record is not constructable");
+                return;
+            }
 
-            // call ctor
-            V8Bind::call_native(
-                ctor_binder,
-                info,
-                alloc_mem
-            );
+            // match ctor
+            for (const auto& ctor_binder : binder->ctors)
+            {
+                if (!V8Bind::match(ctor_binder.params_binder, ctor_binder.params_binder.size(), info)) continue;
 
-            // cast to ScriptbleObject
-            void* casted_mem = bind_data->binder->type->cast_to_base(type_id_of<ScriptbleObject>(), alloc_mem);
+                // alloc memory
+                void* alloc_mem = sakura_new_aligned(binder->type->size(), binder->type->alignment());
 
-            // make bind core
-            V8BindObjectCore* bind_core = SkrNew<V8BindObjectCore>();
-            bind_core->type             = bind_data->binder->type;
-            bind_core->object           = reinterpret_cast<ScriptbleObject*>(casted_mem);
+                // call ctor
+                V8Bind::call_native(
+                    ctor_binder,
+                    info,
+                    alloc_mem
+                );
 
-            // setup owner ship
-            bind_core->object->ownership_take_script();
+                // cast to ScriptbleObject
+                void* casted_mem = binder->type->cast_to_base(type_id_of<ScriptbleObject>(), alloc_mem);
 
-            // setup gc callback
-            bind_core->v8_object.Reset(Isolate, self);
-            bind_core->v8_object.SetWeak(
-                bind_core,
-                _gc_callback,
-                WeakCallbackType::kInternalFields
-            );
+                // make bind core
+                V8BindCoreObject* bind_core = SkrNew<V8BindCoreObject>();
+                bind_core->type             = binder->type;
+                bind_core->data             = alloc_mem;
+                bind_core->object           = reinterpret_cast<ScriptbleObject*>(casted_mem);
 
-            // add extern data
-            self->SetInternalField(0, External::New(Isolate, bind_core));
+                // setup owner ship
+                bind_core->object->ownership_take_script();
 
-            // add to map
-            skr_isolate->_alive_records.add(bind_core->object, bind_core);
+                // setup gc callback
+                bind_core->v8_object.Reset(Isolate, self);
+                bind_core->v8_object.SetWeak(
+                    (V8BindCoreRecordBase*)bind_core,
+                    _gc_callback,
+                    WeakCallbackType::kInternalFields
+                );
 
-            return;
+                // add extern data
+                self->SetInternalField(0, External::New(Isolate, bind_core));
+
+                // add to map
+                skr_isolate->_alive_objects.add(bind_core->object, bind_core);
+
+                return;
+            }
+
+            // no ctor called
+            Isolate->ThrowError("no ctor matched");
         }
-
-        // no ctor called
-        Isolate->ThrowError("no ctor matched");
     }
     else
     {
@@ -559,10 +656,10 @@ void V8Isolate::_call_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info
 
     // get self data
     Local<Object> self      = info.This();
-    auto*         bind_core = reinterpret_cast<V8BindObjectCore*>(self->GetInternalField(0).As<External>()->Value());
+    auto*         bind_core = reinterpret_cast<V8BindCoreRecordBase*>(self->GetInternalField(0).As<External>()->Value());
 
     // get user data
-    auto* bind_data   = reinterpret_cast<V8BindMethodData*>(info.Data().As<External>()->Value());
+    auto* bind_data   = reinterpret_cast<V8BindDataMethod*>(info.Data().As<External>()->Value());
     auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
 
     // block ctor call
@@ -573,12 +670,27 @@ void V8Isolate::_call_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info
     }
 
     // call method
-    bool success = V8Bind::call_native(
-        bind_data->binder,
-        info,
-        bind_core->object->iobject_get_head_ptr(),
-        bind_core->type
-    );
+    bool success;
+    if (bind_core->is_value)
+    {
+        auto* value_core = bind_core->as_value();
+        success          = V8Bind::call_native(
+            bind_data->binder,
+            info,
+            value_core->data,
+            value_core->type
+        );
+    }
+    else
+    {
+        auto* object_core = bind_core->as_object();
+        success           = V8Bind::call_native(
+            bind_data->binder,
+            info,
+            object_core->object->iobject_get_head_ptr(),
+            object_core->type
+        );
+    }
 
     // throw
     if (!success)
@@ -601,7 +713,7 @@ void V8Isolate::_call_static_method(const ::v8::FunctionCallbackInfo<::v8::Value
     Context::Scope ContextScope(Context);
 
     // get user data
-    auto* bind_data   = reinterpret_cast<V8BindStaticMethodData*>(info.Data().As<External>()->Value());
+    auto* bind_data   = reinterpret_cast<V8BindDataStaticMethod*>(info.Data().As<External>()->Value());
     auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
 
     // block ctor call
@@ -637,19 +749,33 @@ void V8Isolate::_get_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 
     // get self data
     Local<Object> self      = info.This();
-    auto*         bind_core = reinterpret_cast<V8BindObjectCore*>(self->GetInternalField(0).As<External>()->Value());
+    auto*         bind_core = reinterpret_cast<V8BindCoreRecordBase*>(self->GetInternalField(0).As<External>()->Value());
 
     // get user data
-    auto* bind_data   = reinterpret_cast<V8BindFieldData*>(info.Data().As<External>()->Value());
+    auto* bind_data   = reinterpret_cast<V8BindDataField*>(info.Data().As<External>()->Value());
     auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
 
     // get field
-    auto v8_field = V8Bind::get_field(
-        bind_data->binder,
-        bind_core->object->iobject_get_head_ptr(),
-        bind_core->type
-    );
-    info.GetReturnValue().Set(v8_field);
+    if (bind_core->is_value)
+    {
+        auto* value_core = bind_core->as_value();
+        auto  v8_field   = V8Bind::get_field(
+            bind_data->binder,
+            value_core->data,
+            value_core->type
+        );
+        info.GetReturnValue().Set(v8_field);
+    }
+    else
+    {
+        auto* object_core = bind_core->as_object();
+        auto  v8_field    = V8Bind::get_field(
+            bind_data->binder,
+            object_core->object->iobject_get_head_ptr(),
+            object_core->type
+        );
+        info.GetReturnValue().Set(v8_field);
+    }
 }
 void V8Isolate::_set_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 {
@@ -664,19 +790,33 @@ void V8Isolate::_set_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 
     // get self data
     Local<Object> self      = info.This();
-    auto*         bind_core = reinterpret_cast<V8BindObjectCore*>(self->GetInternalField(0).As<External>()->Value());
+    auto*         bind_core = reinterpret_cast<V8BindCoreRecordBase*>(self->GetInternalField(0).As<External>()->Value());
 
     // get user data
-    auto* bind_data   = reinterpret_cast<V8BindFieldData*>(info.Data().As<External>()->Value());
+    auto* bind_data   = reinterpret_cast<V8BindDataField*>(info.Data().As<External>()->Value());
     auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
 
     // set field
-    V8Bind::set_field(
-        bind_data->binder,
-        info[0],
-        bind_core->object->iobject_get_head_ptr(),
-        bind_core->type
-    );
+    if (bind_core->is_value)
+    {
+        auto* value_core = bind_core->as_value();
+        V8Bind::set_field(
+            bind_data->binder,
+            info[0],
+            value_core->data,
+            value_core->type
+        );
+    }
+    else
+    {
+        auto* object_core = bind_core->as_object();
+        V8Bind::set_field(
+            bind_data->binder,
+            info[0],
+            object_core->object->iobject_get_head_ptr(),
+            object_core->type
+        );
+    }
 }
 void V8Isolate::_get_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 {
@@ -690,7 +830,7 @@ void V8Isolate::_get_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>&
     HandleScope HandleScope(Isolate);
 
     // get user data
-    auto* bind_data   = reinterpret_cast<V8BindStaticFieldData*>(info.Data().As<External>()->Value());
+    auto* bind_data   = reinterpret_cast<V8BindDataStaticField*>(info.Data().As<External>()->Value());
     auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
 
     // get field
@@ -711,7 +851,7 @@ void V8Isolate::_set_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>&
     HandleScope HandleScope(Isolate);
 
     // get user data
-    auto* bind_data   = reinterpret_cast<V8BindStaticFieldData*>(info.Data().As<External>()->Value());
+    auto* bind_data   = reinterpret_cast<V8BindDataStaticField*>(info.Data().As<External>()->Value());
     auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
 
     // set field
@@ -733,19 +873,33 @@ void V8Isolate::_get_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 
     // get self data
     Local<Object> self      = info.This();
-    auto*         bind_core = reinterpret_cast<V8BindObjectCore*>(self->GetInternalField(0).As<External>()->Value());
+    auto*         bind_core = reinterpret_cast<V8BindCoreRecordBase*>(self->GetInternalField(0).As<External>()->Value());
 
     // get user data
-    auto* bind_data   = reinterpret_cast<V8BindPropertyData*>(info.Data().As<External>()->Value());
+    auto* bind_data   = reinterpret_cast<V8BindDataProperty*>(info.Data().As<External>()->Value());
     auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
 
     // invoke
-    V8Bind::call_native(
-        bind_data->binder.getter,
-        info,
-        bind_core->object->iobject_get_head_ptr(),
-        bind_core->type
-    );
+    if (bind_core->is_value)
+    {
+        auto* value_core = bind_core->as_value();
+        V8Bind::call_native(
+            bind_data->binder.getter,
+            info,
+            value_core->data,
+            value_core->type
+        );
+    }
+    else
+    {
+        auto* object_core = bind_core->as_object();
+        V8Bind::call_native(
+            bind_data->binder.getter,
+            info,
+            object_core->object->iobject_get_head_ptr(),
+            object_core->type
+        );
+    }
 }
 void V8Isolate::_set_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 {
@@ -760,19 +914,33 @@ void V8Isolate::_set_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 
     // get self data
     Local<Object> self      = info.This();
-    auto*         bind_core = reinterpret_cast<V8BindObjectCore*>(self->GetInternalField(0).As<External>()->Value());
+    auto*         bind_core = reinterpret_cast<V8BindCoreRecordBase*>(self->GetInternalField(0).As<External>()->Value());
 
     // get user data
-    auto* bind_data   = reinterpret_cast<V8BindPropertyData*>(info.Data().As<External>()->Value());
+    auto* bind_data   = reinterpret_cast<V8BindDataProperty*>(info.Data().As<External>()->Value());
     auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
 
     // invoke
-    V8Bind::call_native(
-        bind_data->binder.setter,
-        info,
-        bind_core->object->iobject_get_head_ptr(),
-        bind_core->type
-    );
+    if (bind_core->is_value)
+    {
+        auto* value_core = bind_core->as_value();
+        V8Bind::call_native(
+            bind_data->binder.setter,
+            info,
+            value_core->data,
+            value_core->type
+        );
+    }
+    else
+    {
+        auto* object_core = bind_core->as_object();
+        V8Bind::call_native(
+            bind_data->binder.setter,
+            info,
+            object_core->object->iobject_get_head_ptr(),
+            object_core->type
+        );
+    }
 }
 void V8Isolate::_get_static_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 {
@@ -786,7 +954,7 @@ void V8Isolate::_get_static_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& 
     HandleScope HandleScope(Isolate);
 
     // get user data
-    auto* bind_data   = reinterpret_cast<V8BindStaticPropertyData*>(info.Data().As<External>()->Value());
+    auto* bind_data   = reinterpret_cast<V8BindDataStaticProperty*>(info.Data().As<External>()->Value());
     auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
 
     // invoke
@@ -807,7 +975,7 @@ void V8Isolate::_set_static_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& 
     HandleScope HandleScope(Isolate);
 
     // get user data
-    auto* bind_data   = reinterpret_cast<V8BindStaticPropertyData*>(info.Data().As<External>()->Value());
+    auto* bind_data   = reinterpret_cast<V8BindDataStaticProperty*>(info.Data().As<External>()->Value());
     auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
 
     // invoke
@@ -828,7 +996,7 @@ void V8Isolate::_enum_to_string(const ::v8::FunctionCallbackInfo<::v8::Value>& i
     HandleScope HandleScope(Isolate);
 
     // get user data
-    auto* bind_data   = reinterpret_cast<V8BindEnumData*>(info.Data().As<External>()->Value());
+    auto* bind_data   = reinterpret_cast<V8BindDataEnum*>(info.Data().As<External>()->Value());
     auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
 
     // check value
@@ -895,7 +1063,7 @@ void V8Isolate::_enum_from_string(const ::v8::FunctionCallbackInfo<::v8::Value>&
     HandleScope HandleScope(Isolate);
 
     // get user data
-    auto* bind_data   = reinterpret_cast<V8BindEnumData*>(info.Data().As<External>()->Value());
+    auto* bind_data   = reinterpret_cast<V8BindDataEnum*>(info.Data().As<External>()->Value());
     auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
 
     // check value
