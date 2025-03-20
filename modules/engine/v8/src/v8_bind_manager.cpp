@@ -89,9 +89,9 @@ V8BindCoreObject* V8BindManager::translate_object(::skr::ScriptbleObject* obj)
     Local<Object>         object            = instance_template->NewInstance(context).ToLocalChecked();
 
     // make bind core
-    auto object_bind_core     = _new_bind_data<V8BindCoreObject>();
-    object_bind_core->type    = type;
-    object_bind_core->data    = obj->iobject_get_head_ptr();
+    auto object_bind_core  = _new_bind_data<V8BindCoreObject>();
+    object_bind_core->type = type;
+    object_bind_core->data = obj->iobject_get_head_ptr();
     object_bind_core->v8_object.Reset(isolate, object);
     object_bind_core->object = obj;
 
@@ -118,7 +118,7 @@ void V8BindManager::mark_object_deleted(::skr::ScriptbleObject* obj)
     if (auto found = _alive_objects.find(obj))
     {
         // reset core object ptr
-        found.value()->object = nullptr;
+        found.value()->invalidate();
 
         // move to deleted objects
         _deleted_objects.push_back(found.value());
@@ -174,6 +174,9 @@ V8BindCoreValue* V8BindManager::create_value(const RTTRType* type, const void* d
     value_bind_core->data    = alloc_mem;
     value_bind_core->v8_object.Reset(isolate, object);
 
+    // setup source
+    value_bind_core->from = V8BindCoreValue::ESource::Create;
+
     // setup gc callback
     value_bind_core->v8_object.SetWeak(
         (V8BindCoreRecordBase*)value_bind_core,
@@ -222,7 +225,10 @@ V8BindCoreValue* V8BindManager::translate_value_field(const RTTRType* type, cons
     value_bind_core->type    = type;
     value_bind_core->data    = const_cast<void*>(data);
     value_bind_core->v8_object.Reset(isolate, object);
-    value_bind_core->owner_core = owner;
+
+    // setup source
+    value_bind_core->from             = V8BindCoreValue::ESource::Field;
+    value_bind_core->from_field_owner = owner;
 
     // setup gc callback
     value_bind_core->v8_object.SetWeak(
@@ -263,8 +269,8 @@ v8::Local<v8::ObjectTemplate> V8BindManager::get_enum_template(const RTTRType* t
     ScriptBinderEnum* enum_binder = binder.enum_();
 
     // new bind data
-    auto bind_data     = _new_bind_data<V8BindDataEnum>();
-    bind_data->binder  = binder.enum_();
+    auto bind_data    = _new_bind_data<V8BindDataEnum>();
+    bind_data->binder = binder.enum_();
 
     // object template
     auto object_template = ObjectTemplate::New(isolate);
@@ -354,8 +360,8 @@ v8::Local<v8::FunctionTemplate> V8BindManager::_make_template_object(ScriptBinde
     EscapableHandleScope handle_scope(isolate);
 
     // new bind data
-    auto bind_data     = _new_bind_data<V8BindDataObject>();
-    bind_data->binder  = object_binder;
+    auto bind_data    = _new_bind_data<V8BindDataObject>();
+    bind_data->binder = object_binder;
 
     // ctor template
     auto ctor_template = FunctionTemplate::New(
@@ -383,8 +389,8 @@ v8::Local<v8::FunctionTemplate> V8BindManager::_make_template_value(ScriptBinder
     EscapableHandleScope handle_scope(isolate);
 
     // new bind data
-    auto bind_data     = _new_bind_data<V8BindDataValue>();
-    bind_data->binder  = value_binder;
+    auto bind_data    = _new_bind_data<V8BindDataValue>();
+    bind_data->binder = value_binder;
 
     // ctor template
     auto ctor_template = FunctionTemplate::New(
@@ -545,21 +551,7 @@ void V8BindManager::_gc_callback(const ::v8::WeakCallbackInfo<V8BindCoreRecordBa
         auto* value_core = bind_core->as_value();
 
         // do release if not field export case
-        if (value_core->has_owner())
-        {
-            if (!value_core->owner_core_released)
-            {
-                // remove from cache
-                value_core->owner_core->cache_value_fields.remove(value_core->data);
-            }
-
-            // reset object handle
-            value_core->v8_object.Reset();
-
-            // release core
-            SkrDelete(value_core);
-        }
-        else
+        if (value_core->from == V8BindCoreValue::ESource::Create)
         {
             // call destructor
             auto dtor_data = value_core->type->dtor_data();
@@ -570,6 +562,27 @@ void V8BindManager::_gc_callback(const ::v8::WeakCallbackInfo<V8BindCoreRecordBa
 
             // release data
             sakura_free_aligned(value_core->data, value_core->type->alignment());
+
+            // reset object handle
+            value_core->v8_object.Reset();
+
+            // remove from map
+            value_core->manager->_script_created_values.remove(value_core->data);
+
+            // release core
+            SkrDelete(value_core);
+        }
+        else
+        {
+            if (value_core->from == V8BindCoreValue::ESource::Field)
+            {
+                // remove from cache
+                value_core->from_field_owner->cache_value_fields.remove(value_core->data);
+            }
+            else if (value_core->from == V8BindCoreValue::ESource::StaticField)
+            {
+                // TODO. static field
+            }
 
             // reset object handle
             value_core->v8_object.Reset();
@@ -614,10 +627,10 @@ void V8BindManager::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& in
     using namespace ::v8;
 
     // get v8 basic info
-    Isolate*       Isolate = info.GetIsolate();
+    Isolate* Isolate = info.GetIsolate();
 
     // scopes
-    HandleScope    HandleScope(Isolate);
+    HandleScope HandleScope(Isolate);
 
     // get user data
     auto* bind_data    = reinterpret_cast<V8BindDataRecordBase*>(info.Data().As<External>()->Value());
@@ -661,6 +674,9 @@ void V8BindManager::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& in
                 bind_core->manager         = bind_data->manager;
                 bind_core->type            = binder->type;
                 bind_core->data            = alloc_mem;
+
+                // setup source
+                bind_core->from = V8BindCoreValue::ESource::Create;
 
                 // setup gc callback
                 bind_core->v8_object.Reset(Isolate, self);
@@ -762,6 +778,13 @@ void V8BindManager::_call_method(const ::v8::FunctionCallbackInfo<::v8::Value>& 
     Local<Object> self      = info.This();
     auto*         bind_core = reinterpret_cast<V8BindCoreRecordBase*>(self->GetInternalField(0).As<External>()->Value());
 
+    // check core
+    if (!bind_core->is_valid())
+    {
+        Isolate->ThrowError("calling on a released object");
+        return;
+    }
+
     // get user data
     auto* bind_data = reinterpret_cast<V8BindDataMethod*>(info.Data().As<External>()->Value());
 
@@ -834,6 +857,13 @@ void V8BindManager::_get_field(const ::v8::FunctionCallbackInfo<::v8::Value>& in
     Local<Object> self      = info.This();
     auto*         bind_core = reinterpret_cast<V8BindCoreRecordBase*>(self->GetInternalField(0).As<External>()->Value());
 
+    // check core
+    if (!bind_core->is_valid())
+    {
+        Isolate->ThrowError("calling on a released object");
+        return;
+    }
+
     // get user data
     auto* bind_data = reinterpret_cast<V8BindDataField*>(info.Data().As<External>()->Value());
 
@@ -857,6 +887,13 @@ void V8BindManager::_set_field(const ::v8::FunctionCallbackInfo<::v8::Value>& in
     // get self data
     Local<Object> self      = info.This();
     auto*         bind_core = reinterpret_cast<V8BindCoreRecordBase*>(self->GetInternalField(0).As<External>()->Value());
+
+    // check core
+    if (!bind_core->is_valid())
+    {
+        Isolate->ThrowError("calling on a released object");
+        return;
+    }
 
     // get user data
     auto* bind_data = reinterpret_cast<V8BindDataField*>(info.Data().As<External>()->Value());
@@ -920,6 +957,13 @@ void V8BindManager::_get_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& inf
     Local<Object> self      = info.This();
     auto*         bind_core = reinterpret_cast<V8BindCoreRecordBase*>(self->GetInternalField(0).As<External>()->Value());
 
+    // check core
+    if (!bind_core->is_valid())
+    {
+        Isolate->ThrowError("calling on a released object");
+        return;
+    }
+
     // get user data
     auto* bind_data = reinterpret_cast<V8BindDataProperty*>(info.Data().As<External>()->Value());
 
@@ -944,6 +988,13 @@ void V8BindManager::_set_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& inf
     // get self data
     Local<Object> self      = info.This();
     auto*         bind_core = reinterpret_cast<V8BindCoreRecordBase*>(self->GetInternalField(0).As<External>()->Value());
+
+    // check core
+    if (!bind_core->is_valid())
+    {
+        Isolate->ThrowError("calling on a released object");
+        return;
+    }
 
     // get user data
     auto* bind_data = reinterpret_cast<V8BindDataProperty*>(info.Data().As<External>()->Value());

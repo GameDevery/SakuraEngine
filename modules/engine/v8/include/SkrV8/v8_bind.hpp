@@ -33,7 +33,6 @@ struct V8Bind {
     static v8::Local<v8::Value> to_v8(EnumValue value);
 
     // field tools
-    // TODO. move to bind data
     static bool set_field_value_or_object(
         const ScriptBinderField& binder,
         v8::Local<v8::Value>     v8_value,
@@ -97,7 +96,6 @@ struct V8Bind {
         ScriptBinderRoot     binder,
         v8::Local<v8::Value> v8_value
     );
-    // TODO. move spec match to bind data
     static bool match(
         const ScriptBinderParam& binder,
         v8::Local<v8::Value>     v8_value

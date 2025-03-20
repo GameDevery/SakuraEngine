@@ -149,6 +149,11 @@ struct V8BindCoreRecordBase {
     // manager
     V8BindManager* manager = nullptr;
 
+    inline bool is_valid() const
+    {
+        return data != nullptr;
+    }
+
     ~V8BindCoreRecordBase();
 };
 struct V8BindCoreObject : V8BindCoreRecordBase {
@@ -159,6 +164,12 @@ struct V8BindCoreObject : V8BindCoreRecordBase {
 
     // native info
     skr::ScriptbleObject* object = nullptr;
+
+    inline void invalidate()
+    {
+        data   = nullptr;
+        object = nullptr;
+    }
 
     // helper functions
     inline void* cast_to_base(::skr::GUID type_id)
@@ -173,23 +184,22 @@ struct V8BindCoreValue : V8BindCoreRecordBase {
     }
 
     // owner info
-    V8BindCoreRecordBase* owner_core          = nullptr;
-    bool                  owner_core_released = false;
-    bool                  from_static_field   = false; // TODO. 暂时未集成
-    bool                  from_param          = false; // TODO. 暂时未集成
-    bool                  is_param_invalid    = false; // TODO. 暂时未集成
-    // TODO. 改为如下结构
-    // ESource
-    //   Field
-    //   StaticField
-    //   Param
-    //   V8New
-    // bool is_source_valid
-    // V8BindCoreRecordBase* field_owner; // used to delete cache
-
-    inline bool has_owner()
+    enum class ESource
     {
-        return owner_core != nullptr;
+        Invalid,
+        Field,
+        StaticField,
+        Param,
+        Create,
+    };
+    ESource               from             = ESource::Invalid;
+    V8BindCoreRecordBase* from_field_owner = nullptr;
+
+    inline void invalidate()
+    {
+        data             = nullptr;
+        from             = ESource::Invalid;
+        from_field_owner = nullptr;
     }
 };
 
@@ -207,7 +217,7 @@ inline V8BindCoreRecordBase::~V8BindCoreRecordBase()
 {
     for (auto& [field_ptr, field_core] : cache_value_fields)
     {
-        field_core->owner_core_released = true;
+        field_core->invalidate();
     }
 }
 } // namespace skr
