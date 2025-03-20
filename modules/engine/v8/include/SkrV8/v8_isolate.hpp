@@ -49,7 +49,9 @@ struct SKR_V8_API V8Isolate : IScriptMixinCore {
 
 private:
     // make template
-    v8::Local<v8::FunctionTemplate> _get_template(skr::RTTRType* type);
+    v8::Local<v8::ObjectTemplate>   _get_enum_template(const RTTRType* type);
+    v8::Local<v8::FunctionTemplate> _get_record_template(const RTTRType* type);
+    v8::Local<v8::FunctionTemplate> _make_template_object(ScriptBinderRoot binder);
 
     // bind helpers
     static void _gc_callback(const ::v8::WeakCallbackInfo<V8BindRecordCore>& data);
@@ -64,6 +66,8 @@ private:
     static void _set_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
     static void _get_static_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
     static void _set_static_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
+    static void _enum_to_string(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
+    static void _enum_from_string(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
 
 private:
     // isolate data
@@ -74,7 +78,8 @@ private:
     ScriptBinderManager _binder_mgr;
 
     // templates
-    Map<::skr::RTTRType*, V8BindObjectData*> _record_templates;
+    Map<const RTTRType*, V8BindObjectData*> _record_templates;
+    Map<const RTTRType*, V8BindEnumData*>   _enum_templates;
 
     // bind data
     Map<::skr::ScriptbleObject*, V8BindRecordCore*> _alive_records;

@@ -276,7 +276,9 @@ struct ScriptBinderEnum {
 
     ScriptBinderPrimitive* underlying_binder = nullptr;
 
-    Vector<const RTTREnumItemData*> items = {};
+    Map<String, const RTTREnumItemData*> items = {};
+
+    bool is_signed = false;
 };
 
 // TODO. Generic type support

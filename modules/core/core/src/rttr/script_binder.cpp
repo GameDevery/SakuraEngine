@@ -46,7 +46,16 @@ ScriptBinderRoot ScriptBinderManager::get_or_build(GUID type_id)
 
     // mapping or object
     auto* type = get_type_from_guid(type_id);
-    if (type)
+    if (type->is_enum())
+    {
+        // make enum binder
+        if (auto* enum_binder = _make_enum(type))
+        {
+            _cached_root_binders.add(type_id, enum_binder);
+            return enum_binder;
+        }
+    }
+    else
     {
         // make mapping binder
         if (auto* mapping_binder = _make_mapping(type))
@@ -439,8 +448,9 @@ ScriptBinderEnum* ScriptBinderManager::_make_enum(const RTTRType* type)
     type->each_enum_items([&](const RTTREnumItemData* item) {
         // filter by flag
         if (!flag_all(item->flag, ERTTREnumItemFlag::ScriptVisible)) { return; }
-        
-        result.items.add(item);
+
+        result.items.add(item->name, item);
+        result.is_signed = item->value.is_signed();
     });
 
     return SkrNew<ScriptBinderEnum>(std::move(result));

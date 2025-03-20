@@ -45,12 +45,12 @@ Box3Offset : Box3 {
 sreflect_enum_class(
     guid = "d43000d7-4ad1-4b2f-a650-f835c8074f4f"
 )
-ETestEnum : uint8_t
+ETestEnum : uint32_t
 {
     None sscript_visible,
     A sscript_visible,
     B sscript_visible,
-    C sscript_visible
+    C sscript_visible = 114514
 };
 
 sreflect_struct(

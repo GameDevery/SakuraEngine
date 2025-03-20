@@ -31,7 +31,7 @@ struct V8BindObjectData {
     ::v8::Global<::v8::FunctionTemplate> ctor_template;
 
     // native info
-    ScriptBinderObject*                      binder;
+    ScriptBinderObject*                    binder;
     Map<String, V8BindMethodData*>         methods;
     Map<String, V8BindFieldData*>          fields;
     Map<String, V8BindStaticMethodData*>   static_methods;
@@ -66,6 +66,12 @@ struct V8BindObjectData {
             SkrDelete(pair.value);
         }
     }
+};
+struct V8BindEnumData {
+    // v8 info
+    v8::Global<v8::ObjectTemplate> enum_template;
+
+    ScriptBinderEnum* binder;
 };
 
 //===============================bind core===============================

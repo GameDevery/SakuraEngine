@@ -63,6 +63,7 @@ V8Isolate::V8Isolate()
 }
 V8Isolate::~V8Isolate()
 {
+    shutdown();
 }
 
 void V8Isolate::init()
@@ -109,6 +110,12 @@ void V8Isolate::shutdown()
         {
             SkrDelete(bind_data);
         }
+        for (auto& [type, bind_data] : _enum_templates)
+        {
+            SkrDelete(bind_data);
+        }
+
+        _isolate = nullptr;
     }
 }
 
@@ -188,31 +195,103 @@ void V8Isolate::mark_record_deleted(::skr::ScriptbleObject* obj)
     }
 }
 
-    // => IScriptMixinCore API
+// => IScriptMixinCore API
 void V8Isolate::on_object_destroyed(ScriptbleObject* obj)
 {
     mark_record_deleted(obj);
 }
 
-
 // make template
-v8::Local<v8::FunctionTemplate> V8Isolate::_get_template(skr::RTTRType* type)
+v8::Local<v8::ObjectTemplate> V8Isolate::_get_enum_template(const RTTRType* type)
+{
+    using namespace ::v8;
+    // check
+    SKR_ASSERT(type->is_enum());
+
+    // v8 scope
+    Isolate::Scope       isolate_scope(_isolate);
+    EscapableHandleScope handle_scope(_isolate);
+
+    // find exists template
+    if (auto result = _enum_templates.find(type))
+    {
+        return handle_scope.Escape(result.value()->enum_template.Get(_isolate));
+    }
+
+    // get binder
+    ScriptBinderRoot  binder      = _binder_mgr.get_or_build(type->type_id());
+    ScriptBinderEnum* enum_binder = binder.enum_();
+
+    // new bind data
+    auto bind_data = SkrNew<V8BindEnumData>();
+    bind_data->binder = binder.enum_();
+
+    // object template
+    auto object_template = ObjectTemplate::New(_isolate);
+
+    // add enum items
+    for (const auto& [enum_item_name, enum_item] : enum_binder->items)
+    {
+        // get value
+        Local<Value> enum_value = V8Bind::to_v8(enum_item->value);
+
+        // set value
+        object_template->Set(
+            V8Bind::to_v8(enum_item->name, true),
+            enum_value
+        );
+    }
+
+    // add convert functions
+    object_template->Set(
+        V8Bind::to_v8(u8"to_string", true),
+        FunctionTemplate::New(
+            _isolate,
+            _enum_to_string,
+            External::New(_isolate, bind_data)
+        )
+    );
+    object_template->Set(
+        V8Bind::to_v8(u8"from_string", true),
+        FunctionTemplate::New(
+            _isolate,
+            _enum_from_string,
+            External::New(_isolate, bind_data)
+        )
+    );
+
+    _enum_templates.add(type, bind_data);
+    return handle_scope.Escape(object_template);
+}
+v8::Local<v8::FunctionTemplate> V8Isolate::_get_record_template(const RTTRType* type)
 {
     using namespace ::v8;
 
     // check
-    SKR_ASSERT(type->type_category() == ::skr::ERTTRTypeCategory::Record);
+    SKR_ASSERT(type->is_record());
     SKR_ASSERT(type->based_on(type_id_of<ScriptbleObject>()));
 
     // v8 scope
     Isolate::Scope       isolate_scope(_isolate);
     EscapableHandleScope handle_scope(_isolate);
 
-    // find exit template
+    // find exists template
     if (auto result = _record_templates.find(type))
     {
         return handle_scope.Escape(result.value()->ctor_template.Get(_isolate));
     }
+
+    // get binder
+    ScriptBinderRoot binder = _binder_mgr.get_or_build(type->type_id());
+    return handle_scope.Escape(_make_template_object(binder));
+}
+v8::Local<v8::FunctionTemplate> V8Isolate::_make_template_object(ScriptBinderRoot binder)
+{
+    using namespace ::v8;
+
+    // v8 scope
+    Isolate::Scope       isolate_scope(_isolate);
+    EscapableHandleScope handle_scope(_isolate);
 
     // new bind data
     auto bind_data = SkrNew<V8BindObjectData>();
@@ -229,7 +308,6 @@ v8::Local<v8::FunctionTemplate> V8Isolate::_get_template(skr::RTTRType* type)
     ctor_template->InstanceTemplate()->SetInternalFieldCount(1);
 
     // solve binder info
-    ScriptBinderRoot    binder        = _binder_mgr.get_or_build(type->type_id());
     ScriptBinderObject* object_binder = binder.object();
     bind_data->binder                 = object_binder;
 
@@ -350,7 +428,7 @@ v8::Local<v8::FunctionTemplate> V8Isolate::_get_template(skr::RTTRType* type)
     }
 
     // store template
-    _record_templates.add(type, bind_data);
+    _record_templates.add(object_binder->type, bind_data);
 
     return handle_scope.Escape(ctor_template);
 }
@@ -737,6 +815,113 @@ void V8Isolate::_set_static_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& 
         bind_data->binder.setter,
         info
     );
+}
+void V8Isolate::_enum_to_string(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
+{
+    using namespace ::v8;
+
+    // get data
+    Isolate*       Isolate = info.GetIsolate();
+    Local<Context> Context = Isolate->GetCurrentContext();
+
+    // scopes
+    HandleScope HandleScope(Isolate);
+
+    // get user data
+    auto* bind_data   = reinterpret_cast<V8BindEnumData*>(info.Data().As<External>()->Value());
+    auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
+
+    // check value
+    if (info.Length() != 1)
+    {
+        Isolate->ThrowError("enum to_string need 1 argument");
+        return;
+    }
+
+    // get value
+    int64_t  enum_singed;
+    uint64_t enum_unsigned;
+    if (bind_data->binder->is_signed)
+    {
+        if (!V8Bind::to_native(info[0], enum_singed))
+        {
+            Isolate->ThrowError("invalid enum value");
+            return;
+        }
+    }
+    else
+    {
+        if (!V8Bind::to_native(info[0], enum_unsigned))
+        {
+            Isolate->ThrowError("invalid enum value");
+            return;
+        }
+    }
+
+    // find value
+    for (const auto& [enum_item_name, enum_item] : bind_data->binder->items)
+    {
+        if (enum_item->value.is_signed())
+        {
+            int64_t v = enum_item->value.value_signed();
+            if (v == enum_singed)
+            {
+                info.GetReturnValue().Set(V8Bind::to_v8(enum_item_name, true));
+                return;
+            }
+        }
+        else
+        {
+            uint64_t v = enum_item->value.value_unsigned();
+            if (v == enum_unsigned)
+            {
+                info.GetReturnValue().Set(V8Bind::to_v8(enum_item_name, true));
+                return;
+            }
+        }
+    }
+
+    Isolate->ThrowError("no matched enum item");
+}
+void V8Isolate::_enum_from_string(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
+{
+    using namespace ::v8;
+
+    // get data
+    Isolate*       Isolate = info.GetIsolate();
+    Local<Context> Context = Isolate->GetCurrentContext();
+
+    // scopes
+    HandleScope HandleScope(Isolate);
+
+    // get user data
+    auto* bind_data   = reinterpret_cast<V8BindEnumData*>(info.Data().As<External>()->Value());
+    auto* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
+
+    // check value
+    if (info.Length() != 1)
+    {
+        Isolate->ThrowError("enum to_string need 1 argument");
+        return;
+    }
+
+    // get item name
+    String enum_item_name;
+    if (!V8Bind::to_native(info[0], enum_item_name))
+    {
+        Isolate->ThrowError("invalid enum item name");
+        return;
+    }
+
+    // find value
+    if (auto result = bind_data->binder->items.find(enum_item_name))
+    {
+        info.GetReturnValue().Set(V8Bind::to_v8(result.value()->value));
+    }
+    else
+    {
+        Isolate->ThrowError("no matched enum item");
+    }
 }
 } // namespace skr
 

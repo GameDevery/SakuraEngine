@@ -29,6 +29,9 @@ struct V8Bind {
     static bool to_native(v8::Local<v8::Value> v8_value, bool& out_v);
     static bool to_native(v8::Local<v8::Value> v8_value, skr::String& out_v);
 
+    // enum convert
+    static v8::Local<v8::Value> to_v8(EnumValue value);
+
     // field tools
     static bool set_field(
         const ScriptBinderField& binder,
@@ -278,6 +281,16 @@ inline bool V8Bind::to_native(v8::Local<v8::Value> v8_value, int64_t& out_v)
         out_v = (int64_t)v8_value->ToBigInt(context).ToLocalChecked()->Int64Value();
         return true;
     }
+    else if (v8_value->IsInt32())
+    {
+        out_v = (int64_t)v8_value->Int32Value(context).ToChecked();
+        return true;
+    }
+    else if (v8_value->IsUint32())
+    {
+        out_v = (int64_t)v8_value->Uint32Value(context).ToChecked();
+        return true;
+    }
     return false;
 }
 inline bool V8Bind::to_native(v8::Local<v8::Value> v8_value, uint8_t& out_v)
@@ -324,6 +337,11 @@ inline bool V8Bind::to_native(v8::Local<v8::Value> v8_value, uint64_t& out_v)
     if (v8_value->IsBigInt())
     {
         out_v = (uint64_t)v8_value->ToBigInt(context).ToLocalChecked()->Uint64Value();
+        return true;
+    }
+    else if (v8_value->IsUint32())
+    {
+        out_v = (uint64_t)v8_value->Uint32Value(context).ToChecked();
         return true;
     }
     return false;
@@ -373,5 +391,46 @@ inline bool V8Bind::to_native(v8::Local<v8::Value> v8_value, skr::String& out_v)
         return true;
     }
     return false;
+}
+
+// enum convert
+inline v8::Local<v8::Value> V8Bind::to_v8(EnumValue enum_value)
+{
+    auto isolate = v8::Isolate::GetCurrent();
+
+    switch (enum_value.underlying_type())
+    {
+    case EEnumUnderlyingType::INT8:
+    case EEnumUnderlyingType::INT16:
+    case EEnumUnderlyingType::INT32: {
+        int32_t value;
+        SKR_ASSERT(enum_value.cast_to(value));
+        return v8::Integer::New(isolate, value);
+        break;
+    }
+    case EEnumUnderlyingType::UINT8:
+    case EEnumUnderlyingType::UINT16:
+    case EEnumUnderlyingType::UINT32: {
+        uint32_t value;
+        SKR_ASSERT(enum_value.cast_to(value));
+        return v8::Integer::New(isolate, value);
+        break;
+    }
+    case EEnumUnderlyingType::INT64: {
+        int64_t value;
+        SKR_ASSERT(enum_value.cast_to(value));
+        return v8::BigInt::New(isolate, value);
+        break;
+    }
+    case EEnumUnderlyingType::UINT64: {
+        uint64_t value;
+        SKR_ASSERT(enum_value.cast_to(value));
+        return v8::BigInt::New(isolate, value);
+        break;
+    }
+    default:
+        SKR_UNREACHABLE_CODE()
+        return {};
+    }
 }
 } // namespace skr

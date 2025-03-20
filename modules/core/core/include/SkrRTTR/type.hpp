@@ -72,6 +72,11 @@ struct SKR_CORE_API RTTRType final {
     size_t             alignment() const;
     void               each_name_space(FunctionRef<void(StringView)> each_func) const;
 
+    // kind getter
+    bool is_primitive() const;
+    bool is_record() const;
+    bool is_enum() const;
+
     // builders
     void build_primitive(FunctionRef<void(RTTRPrimitiveData* data)> func);
     void build_record(FunctionRef<void(RTTRRecordData* data)> func);
@@ -153,6 +158,134 @@ private:
 // type inline impl
 namespace skr
 {
+// module
+inline void RTTRType::set_module(String module)
+{
+    _module = module;
+}
+inline String RTTRType::module() const
+{
+    return _module;
+}
+
+// basic getter
+inline ERTTRTypeCategory RTTRType::type_category() const
+{
+    return _type_category;
+}
+inline const skr::String& RTTRType::name() const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Primitive:
+        return _primitive_data.name;
+    case ERTTRTypeCategory::Record:
+        return _record_data.name;
+    case ERTTRTypeCategory::Enum:
+        return _enum_data.name;
+    default:
+        SKR_UNREACHABLE_CODE()
+        return _primitive_data.name;
+    }
+}
+inline Vector<String> RTTRType::name_space() const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Primitive:
+        return {};
+    case ERTTRTypeCategory::Record:
+        return _record_data.name_space;
+    case ERTTRTypeCategory::Enum:
+        return _enum_data.name_space;
+    default:
+        SKR_UNREACHABLE_CODE()
+        return {};
+    }
+}
+inline GUID RTTRType::type_id() const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Primitive:
+        return _primitive_data.type_id;
+    case ERTTRTypeCategory::Record:
+        return _record_data.type_id;
+    case ERTTRTypeCategory::Enum:
+        return _enum_data.type_id;
+    default:
+        SKR_UNREACHABLE_CODE()
+        return _primitive_data.type_id;
+    }
+}
+inline size_t RTTRType::size() const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Primitive:
+        return _primitive_data.size;
+    case ERTTRTypeCategory::Record:
+        return _record_data.size;
+    case ERTTRTypeCategory::Enum:
+        return _enum_data.size;
+    default:
+        SKR_UNREACHABLE_CODE()
+        return _primitive_data.size;
+    }
+}
+inline size_t RTTRType::alignment() const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Primitive:
+        return _primitive_data.alignment;
+    case ERTTRTypeCategory::Record:
+        return _record_data.alignment;
+    case ERTTRTypeCategory::Enum:
+        return _enum_data.alignment;
+    default:
+        SKR_UNREACHABLE_CODE()
+        return _primitive_data.alignment;
+    }
+}
+inline void RTTRType::each_name_space(FunctionRef<void(StringView)> each_func) const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Primitive:
+        break;
+    case ERTTRTypeCategory::Record:
+        for (const String& ns : _record_data.name_space)
+        {
+            each_func(ns);
+        }
+        break;
+    case ERTTRTypeCategory::Enum:
+        for (const String& ns : _enum_data.name_space)
+        {
+            each_func(ns);
+        }
+        break;
+    default:
+        SKR_UNREACHABLE_CODE()
+        break;
+    }
+}
+
+// kind getter
+inline bool RTTRType::is_primitive() const
+{
+    return _type_category == ERTTRTypeCategory::Primitive;
+}
+inline bool RTTRType::is_record() const
+{
+    return _type_category == ERTTRTypeCategory::Record;
+}
+inline bool RTTRType::is_enum() const
+{
+    return _type_category == ERTTRTypeCategory::Enum;
+}
+
 // template find method & field
 template <typename Func>
 inline const RTTRCtorData* RTTRType::find_ctor_t(ETypeSignatureCompareFlag flag) const

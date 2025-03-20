@@ -30,7 +30,7 @@ bool V8Bind::_match_primitive(const ScriptBinderPrimitive& binder, v8::Local<v8:
     case type_id_of<int32_t>().get_hash():
         return v8_value->IsInt32();
     case type_id_of<int64_t>().get_hash():
-        return v8_value->IsBigInt();
+        return v8_value->IsBigInt() || v8_value->IsInt32() || v8_value->IsUint32();
     case type_id_of<uint8_t>().get_hash():
         return v8_value->IsUint32();
     case type_id_of<uint16_t>().get_hash():
@@ -38,7 +38,7 @@ bool V8Bind::_match_primitive(const ScriptBinderPrimitive& binder, v8::Local<v8:
     case type_id_of<uint32_t>().get_hash():
         return v8_value->IsUint32();
     case type_id_of<uint64_t>().get_hash():
-        return v8_value->IsBigInt();
+        return v8_value->IsBigInt() || v8_value->IsUint32();
     case type_id_of<float>().get_hash():
         return v8_value->IsNumber();
     case type_id_of<double>().get_hash():

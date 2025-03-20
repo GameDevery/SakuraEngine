@@ -20,7 +20,8 @@ int main(int argc, char* argv[])
 
     // import types
     context.register_type<test_v8::TestType>();
-    
+    context.register_type<test_v8::ETestEnum>();
+
     // setup global
     context.set_global(u8"g_add_value", 100);
 
@@ -59,7 +60,14 @@ int main(int argc, char* argv[])
             oh_baka = test.add_mambo(oh_baka)
             TestType.log(`"${oh_baka}" | "${mamba}" "${out}"`)
 
-        }
+            let e_none = ETestEnum.None;
+            let e_a = ETestEnum.A;
+            let e_b = ETestEnum.B;
+            let e_c = ETestEnum.C;
+            TestType.log(`None: ${e_none}, A: ${e_a}, B: ${e_b}, C: ${e_c}`)
+            TestType.log(`None: '${ETestEnum.to_string(e_none)}', A: '${ETestEnum.to_string(e_a)}', B: '${ETestEnum.to_string(e_b)}', C: '${ETestEnum.to_string(e_c)}'`)
+            TestType.log(`C from string ${ETestEnum.from_string('C')}`)
+            }
     )__");
 
     // gc
