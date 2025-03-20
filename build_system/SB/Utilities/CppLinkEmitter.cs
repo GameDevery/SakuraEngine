@@ -21,6 +21,9 @@ namespace SB
             var TT = Target.GetTargetType();
             if (TT != TargetType.HeaderOnly && TT != TargetType.Objects)
             {
+                Stopwatch sw = new();
+                sw.Start();
+
                 var LinkedFileName = GetLinkedFileName(Target);
                 var DependFile = Path.Combine(Target.GetStorePath(BuildSystem.DepsStore), BuildSystem.GetUniqueTempFileName(LinkedFileName, Target.Name + this.Name, "task.deps.json"));
                 var Inputs = new ArgumentList<string>();
@@ -41,6 +44,14 @@ namespace SB
                     Inputs.AddRange(
                         Target.Dependencies.Select(Dependency => BuildSystem.GetTarget(Dependency).GetAttribute<CppLinkAttribute>()!).SelectMany(A => A.LinkOnlys)
                     );
+                    if (Inputs.Count != 0)
+                    {
+                        var LINKDriver = Toolchain.Linker.CreateArgumentDriver()
+                            .AddArguments(Target.Arguments)
+                            .AddArgument("Inputs", Inputs)
+                            .AddArgument("Output", LinkedFileName);
+                        return Toolchain.Linker.Link(this, Target, LINKDriver);
+                    }
                 }
                 else
                 {
@@ -49,22 +60,17 @@ namespace SB
                     CppLinkAttr.LinkOnlys.AddRange(
                         Target.Dependencies.Select(Dependency => GetStubFileName(BuildSystem.GetTarget(Dependency))).Where(Stub => Stub != null).Select(Stub => Stub!)
                     );
+                    if (Inputs.Count != 0)
+                    {
+                        var ARDriver = Toolchain.Archiver.CreateArgumentDriver()
+                            .AddArguments(Target.Arguments)
+                            .AddArgument("Inputs", Inputs)
+                            .AddArgument("Output", LinkedFileName);
+                        return Toolchain.Archiver.Archive(this, Target, ARDriver);
+                    }
                 }
-                if (Inputs.Count != 0)
-                {
-                    Stopwatch sw = new();
-                    sw.Start();
-
-                    var LINKDriver = Toolchain.Linker.CreateArgumentDriver()
-                        .AddArguments(Target.Arguments)
-                        .AddArgument("Inputs", Inputs)
-                        .AddArgument("Output", LinkedFileName);
-                    var R = Toolchain.Linker.Link(this, Target, LINKDriver);
-                    
-                    sw.Stop();
-                    Time += (int)sw.ElapsedMilliseconds;
-                    return R;
-                }
+                sw.Stop();
+                Time += (int)sw.ElapsedMilliseconds;
             }
             return null;
         }
@@ -72,9 +78,7 @@ namespace SB
         private static string GetLinkedFileName(Target Target)
         {
             var OutputType = Target.GetTargetType();
-            var Extension = (OutputType == TargetType.Static) ? "lib" :
-                            (OutputType == TargetType.Dynamic) ? "dll" :
-                            (OutputType == TargetType.Executable) ? "exe" : "unknown";
+            var Extension = GetPlatformLinkedFileExtension(OutputType);
             var OutputFile = Path.Combine(Target.GetBuildPath(), $"{Target.Name}.{Extension}");
             return OutputFile;
         }
@@ -82,12 +86,66 @@ namespace SB
         private static string? GetStubFileName(Target Target)
         {
             var OutputType = Target.GetTargetType();
-            var Extension = (OutputType == TargetType.Static) ? "lib" :
-                            (OutputType == TargetType.Dynamic) ? "lib" : "";
+            var Extension = GetPlatformStubFileExtension(OutputType);
             if (Extension.Length == 0)
                 return null;
             var OutputFile = Path.Combine(Target.GetBuildPath(), $"{Target.Name}.{Extension}");
             return OutputFile;
+        }
+
+        private static string GetPlatformLinkedFileExtension(TargetType? Type)
+        {
+            if (BuildSystem.TargetOS == OSPlatform.Windows)
+                return Type switch
+                {
+                    TargetType.Static => "lib",
+                    TargetType.Dynamic => "dll",
+                    TargetType.Executable => "exe",
+                    _ => throw new Exception("Unsupported format!")
+                };
+            else if (BuildSystem.TargetOS == OSPlatform.OSX)
+                return Type switch
+                {
+                    TargetType.Static => "a",
+                    TargetType.Dynamic => "dylib",
+                    TargetType.Executable => "",
+                    _ => throw new Exception("Unsupported format!")
+                };
+            else if (BuildSystem.TargetOS == OSPlatform.Linux)
+                return Type switch
+                {
+                    TargetType.Static => "a",
+                    TargetType.Dynamic => "so",
+                    TargetType.Executable => "",
+                    _ => throw new Exception("Unsupported format!")
+                };
+            return "";
+        }
+
+        private static string GetPlatformStubFileExtension(TargetType? Type)
+        {
+            if (BuildSystem.TargetOS == OSPlatform.Windows)
+                return Type switch
+                {
+                    TargetType.Static => "lib",
+                    TargetType.Dynamic => "lib",
+                    _ => throw new Exception("Unsupported format!")
+                };
+            else if (BuildSystem.TargetOS == OSPlatform.OSX)
+                return Type switch
+                {
+                    TargetType.Static => "a",
+                    TargetType.Dynamic => "dylib",
+                    _ => throw new Exception("Unsupported format!")
+                };
+            else if (BuildSystem.TargetOS == OSPlatform.Linux)
+                return Type switch
+                {
+                    TargetType.Static => "a",
+                    TargetType.Dynamic => "a",
+                    _ => throw new Exception("Unsupported format!")
+                };
+            return "";
         }
 
         private IToolchain Toolchain { get; }

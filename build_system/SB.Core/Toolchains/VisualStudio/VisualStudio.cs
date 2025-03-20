@@ -30,6 +30,7 @@ namespace SB.Core
         public Version Version => new Version(VSVersion, 0);
         public ICompiler Compiler => ClangCLCC!;
         public ILinker Linker => LINK!;
+        public IArchiver Archiver => null;
         public string BuildTempPath => Directory.CreateDirectory(Path.Combine(SourceLocation.BuildTempPath, this.Version.ToString())).FullName;
 
         private void FindVCVars()

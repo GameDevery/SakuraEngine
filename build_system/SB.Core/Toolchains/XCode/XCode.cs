@@ -29,7 +29,7 @@ namespace SB.Core
             var RootDirectoryToFind = HasCommandLineTools ? CommandLineToolsDirectory : XCodeDirectory;
             // find tools
             HasClang = File.Exists(ClangDirectory = Path.Combine(RootDirectoryToFind, "usr/bin/clang"));
-            HasLD = File.Exists(LDDirectory = Path.Combine(RootDirectoryToFind, "usr/bin/ld"));
+            HasClangPP = File.Exists(ClangPPDirectory = Path.Combine(RootDirectoryToFind, "usr/bin/clang++"));
             HasAR = File.Exists(ARDirectory = Path.Combine(RootDirectoryToFind, "usr/bin/ar"));
             // find sdks
             var SDKs = Directory.GetDirectories(Path.Combine(RootDirectoryToFind, "SDKs"));
@@ -71,11 +71,11 @@ namespace SB.Core
                 ClangDirectory = output.Trim();
                 HasClang = true;
             }
-            if (!HasLD)
+            if (!HasClangPP)
             {
-                BuildSystem.RunProcess("xcrun", "-sdk macosx --find ld", out string? output, out string? error);
-                LDDirectory = output.Trim();
-                HasLD = true;
+                BuildSystem.RunProcess("xcrun", "-sdk macosx --find clang++", out string? output, out string? error);
+                ClangPPDirectory = output.Trim();
+                HasClangPP = true;
             }
             if (!HasAR)
             {
@@ -88,7 +88,8 @@ namespace SB.Core
         void InitializeTools()
         {
             AppleClang = new AppleClangCompiler(ClangDirectory!, this);
-            AppleLD = new LD(LDDirectory!, this);
+            AppleClangPP = new AppleClangCompiler(ClangPPDirectory!, this);
+            AR = new AR(ARDirectory!);
         }
 
         public Version Version
@@ -107,12 +108,20 @@ namespace SB.Core
                 return AppleClang!;
             }
         }
+        public IArchiver Archiver
+        {
+            get
+            {
+                InitializeTask!.Wait();
+                return AR!;
+            }
+        }
         public ILinker Linker
         {
             get
             {
                 InitializeTask!.Wait();
-                return AppleLD!;
+                return AppleClangPP!;
             }
         }
         public bool HasCommandLineTools { get; private set; } = false;
@@ -129,12 +138,13 @@ namespace SB.Core
         internal string? PlatSDKDirectory { get; set; }
         public bool HasClang { get; private set; } = false;
         public string? ClangDirectory { get; private set; }
+        public bool HasClangPP { get; private set; } = false;
         public AppleClangCompiler? AppleClang { get; private set; }
-        public LD? AppleLD { get; private set; }
+        public string? ClangPPDirectory { get; private set; }
+        public AppleClangCompiler? AppleClangPP { get; private set; }
         public bool HasAR { get; private set; } = false;
         public string? ARDirectory { get; private set; }
-        public bool HasLD { get; private set; } = false;
-        public string? LDDirectory { get; private set; }
+        public AR? AR { get; private set; }
         private Task<bool>? InitializeTask { get; set; }
         internal Version? SDKVersion = null;
     }

@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace SB.Core
 {
-    public class AppleClangCompiler : ICompiler
+    public class AppleClangCompiler : ICompiler, ILinker
     {
         public AppleClangCompiler(string ExePath, XCode Toolchain)
         {
@@ -20,12 +20,12 @@ namespace SB.Core
                 {
                     Regex pattern = new Regex(@"\d+(\.\d+)+");
                     var ClangVersion = Version.Parse(pattern.Match(Output).Value);
-                    Log.Information("clang.exe version ... {ClangVersion}", ClangVersion);
+                    Log.Information("clang version ... {ClangVersion}", ClangVersion);
                     return ClangVersion;
                 }
                 else
                 {
-                    throw new Exception($"Failed to get clang.exe version! Exit code: {ExitCode}, Error: {Error}");
+                    throw new Exception($"Failed to get clang version! Exit code: {ExitCode}, Error: {Error}");
                 }
             });
         }
@@ -74,10 +74,39 @@ namespace SB.Core
             };
         }
 
-        public IArgumentDriver CreateArgumentDriver()
+        IArgumentDriver ICompiler.CreateArgumentDriver() => new AppleClangArgumentDriver(XCodeToolchain.PlatSDKDirectory!);
+
+        public LinkResult Link(TaskEmitter Emitter, Target Target, IArgumentDriver Driver)
         {
-            return new AppleClangArgumentDriver(XCodeToolchain.PlatSDKDirectory!);
+            var LinkerArgsDict = Driver.CalculateArguments();
+            var LinkerArgsList = LinkerArgsDict.Values.SelectMany(x => x).ToList();
+            var DependArgsList = LinkerArgsList.ToList();
+            DependArgsList.Add($"LINKER:ID=Clang++");
+            DependArgsList.Add($"LINKER:VERSION={Version}");
+            DependArgsList.Add($"ENV:SDKVersion={XCodeToolchain.SDKVersion}");
+
+            var InputFiles = Driver.Arguments["Inputs"] as ArgumentList<string>;
+            var OutputFile = Driver.Arguments["Output"] as string;
+            bool Changed = Depend.OnChanged(Target.Name, OutputFile!, Emitter.Name, (Depend depend) =>
+            {
+                int ExitCode = BuildSystem.RunProcess(ExecutablePath, String.Join(" ", LinkerArgsList), out var OutputInfo, out var ErrorInfo);
+                if (ExitCode != 0)
+                    throw new TaskFatalError($"Link {OutputFile} failed with fatal error!", $"clang++: {ErrorInfo}");
+                else if (OutputInfo.Contains("warning"))
+                    Log.Warning("clang++ (as linker): {OutputInfo}", OutputInfo);
+
+                depend.ExternalFiles.AddRange(OutputFile!);
+            }, new List<string>(InputFiles!), DependArgsList);
+
+            return new LinkResult
+            {
+                TargetFile = LinkerArgsDict["Output"][0],
+                PDBFile = Driver.Arguments.TryGetValue("PDB", out var args) ? (string)args! : "",
+                IsRestored = !Changed
+            };
         }
+
+        IArgumentDriver ILinker.CreateArgumentDriver() => new ClangLinkerArgumentDriver(XCodeToolchain.PlatSDKDirectory!);
 
         public Version Version
         {
