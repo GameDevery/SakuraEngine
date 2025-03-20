@@ -39,10 +39,11 @@ namespace SB
             var MetaAttribute = Target.GetAttribute<CodegenMetaAttribute>()!;
             var GeneratedDirectory = Path.Combine(Target.GetStorePath(BuildSystem.GeneratedSourceStore), "meta_database");
             Directory.CreateDirectory(GeneratedDirectory);
+            var BatchDirectory = Path.Combine(Target.GetStorePath(BuildSystem.GeneratedSourceStore), "ReflectionBatch");
+            Directory.CreateDirectory(BatchDirectory);
 
             // Batch headers to a source file
             var Headers = Target.AllFiles.Where(F => F.EndsWith(".h") || F.EndsWith(".hpp"));
-            var BatchDirectory = Path.Combine(Target.GetStorePath(BuildSystem.GeneratedSourceStore), "ReflectionBatch");
             var BatchFile = Path.Combine(BatchDirectory, "ReflectionBatch.cpp");
             Depend.OnChanged(Target.Name, "", Name, (Depend depend) => {
                 Directory.CreateDirectory(BatchDirectory);

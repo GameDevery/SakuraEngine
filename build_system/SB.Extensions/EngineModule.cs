@@ -18,6 +18,11 @@ namespace SB
 
     public partial class Engine : BuildSystem
     {
+        static Engine()
+        {
+
+        }
+
         public static Target Module(string Name, string? API = null, [CallerFilePath] string? Location = null)
         {
             API = API ?? Name.ToUpperSnakeCase();
@@ -59,6 +64,10 @@ namespace SB
 
         public static Target StaticComponent(string Name, string OwnerName, [CallerFilePath] string? Location = null)
         {
+            if (!StaticComponents.ContainsKey(OwnerName))
+                StaticComponents.Add(OwnerName, new List<string>());
+            StaticComponents[OwnerName].Add(Name);
+
             var Target = BuildSystem.Target(Name, Location!);
             Target.ApplyEngineModulePresets();
             Target.TargetType(TargetType.Static);
@@ -82,6 +91,7 @@ namespace SB
 
         public static bool ShippingOneArchive = false;
         public static bool UseProfile = true;
+        private static Dictionary<string, List<string>> StaticComponents = new();
     }
 
     public static class EngineModuleExtensions

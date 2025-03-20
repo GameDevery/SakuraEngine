@@ -101,7 +101,7 @@ namespace SB
                     TargetType.Static => "lib",
                     TargetType.Dynamic => "dll",
                     TargetType.Executable => "exe",
-                    _ => throw new Exception("Unsupported format!")
+                    _ => ""
                 };
             else if (BuildSystem.TargetOS == OSPlatform.OSX)
                 return Type switch
@@ -109,7 +109,7 @@ namespace SB
                     TargetType.Static => "a",
                     TargetType.Dynamic => "dylib",
                     TargetType.Executable => "",
-                    _ => throw new Exception("Unsupported format!")
+                    _ => ""
                 };
             else if (BuildSystem.TargetOS == OSPlatform.Linux)
                 return Type switch
@@ -117,7 +117,7 @@ namespace SB
                     TargetType.Static => "a",
                     TargetType.Dynamic => "so",
                     TargetType.Executable => "",
-                    _ => throw new Exception("Unsupported format!")
+                    _ => ""
                 };
             return "";
         }
@@ -129,21 +129,21 @@ namespace SB
                 {
                     TargetType.Static => "lib",
                     TargetType.Dynamic => "lib",
-                    _ => throw new Exception("Unsupported format!")
+                    _ => ""
                 };
             else if (BuildSystem.TargetOS == OSPlatform.OSX)
                 return Type switch
                 {
                     TargetType.Static => "a",
                     TargetType.Dynamic => "dylib",
-                    _ => throw new Exception("Unsupported format!")
+                    _ => ""
                 };
             else if (BuildSystem.TargetOS == OSPlatform.Linux)
                 return Type switch
                 {
                     TargetType.Static => "a",
                     TargetType.Dynamic => "a",
-                    _ => throw new Exception("Unsupported format!")
+                    _ => ""
                 };
             return "";
         }

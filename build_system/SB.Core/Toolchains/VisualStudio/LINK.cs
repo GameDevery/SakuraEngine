@@ -4,7 +4,7 @@ using System.Diagnostics;
 namespace SB.Core
 {
     using VS = VisualStudio;
-    public class LINK : ILinker
+    public class LINK : ILinker, IArchiver
     {
         public LINK(string ExePath, Dictionary<string, string?> Env)
         {
@@ -73,7 +73,19 @@ namespace SB.Core
             };
         }
 
-        public IArgumentDriver CreateArgumentDriver() => new LINKArgumentDriver();
+        IArgumentDriver ILinker.CreateArgumentDriver() => new LINKArgumentDriver();
+
+        public ArchiveResult Archive(TaskEmitter Emitter, Target Target, IArgumentDriver Driver)
+        {
+            var LR = Link(Emitter, Target, Driver);
+            return new ArchiveResult
+            {
+                TargetFile = LR.TargetFile,
+                IsRestored = LR.IsRestored
+            };
+        }
+
+        IArgumentDriver IArchiver.CreateArgumentDriver() => new LINKArgumentDriver();
 
         public Version Version => MSVCVersion;
 
