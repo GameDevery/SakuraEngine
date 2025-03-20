@@ -55,7 +55,7 @@ namespace SB
                     Stopwatch sw = new();
                     sw.Start();
 
-                    var LINKDriver = (new LINKArgumentDriver() as IArgumentDriver)
+                    var LINKDriver = Toolchain.Linker.CreateArgumentDriver()
                         .AddArguments(Target.Arguments)
                         .AddArgument("Inputs", Inputs)
                         .AddArgument("Output", LinkedFileName);

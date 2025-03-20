@@ -73,6 +73,8 @@ namespace SB.Core
             };
         }
 
+        public IArgumentDriver CreateArgumentDriver() => new LINKArgumentDriver();
+
         public Version Version => MSVCVersion;
 
         public readonly Dictionary<string, string?> VCEnvVariables;

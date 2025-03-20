@@ -11,5 +11,6 @@
     {
         public Version Version { get; }
         public LinkResult Link(TaskEmitter Emitter, Target Target, IArgumentDriver Driver);
+        public IArgumentDriver CreateArgumentDriver();
     }
 }

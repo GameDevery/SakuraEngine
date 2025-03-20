@@ -88,6 +88,7 @@ namespace SB.Core
         void InitializeTools()
         {
             AppleClang = new AppleClangCompiler(ClangDirectory!, this);
+            AppleLD = new LD(LDDirectory!, this);
         }
 
         public Version Version
@@ -106,8 +107,14 @@ namespace SB.Core
                 return AppleClang!;
             }
         }
-        public ILinker Linker { get; }
-
+        public ILinker Linker
+        {
+            get
+            {
+                InitializeTask!.Wait();
+                return AppleLD!;
+            }
+        }
         public bool HasCommandLineTools { get; private set; } = false;
         public string CommandLineToolsDirectory { get; private set; } = "/Library/Developer/CommandLineTools/";
         public bool HasXCodeIDE { get; private set; } = false;
@@ -123,6 +130,7 @@ namespace SB.Core
         public bool HasClang { get; private set; } = false;
         public string? ClangDirectory { get; private set; }
         public AppleClangCompiler? AppleClang { get; private set; }
+        public LD? AppleLD { get; private set; }
         public bool HasAR { get; private set; } = false;
         public string? ARDirectory { get; private set; }
         public bool HasLD { get; private set; } = false;

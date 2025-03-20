@@ -8,6 +8,7 @@ public static class SkrProfile
     {
         BuildSystem
             .Target("SkrProfile")
+            .CppVersion("20")
             .TargetType(TargetType.Dynamic)
             .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "include"))
             .AddFiles("internal/tracy/TracyClient.cpp")
