@@ -15,6 +15,7 @@ public static class ICU
 
                 Target
                     .TargetType(TargetType.Static)
+                    .CppVersion("20")
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/icu4c/source/common"))
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/icu4c/source/i18n"))
                     .Defines(Visibility.Private, "U_I18N_IMPLEMENTATION")
