@@ -21,6 +21,7 @@ int main(int argc, char* argv[])
     // import types
     context.register_type<test_v8::TestType>();
     context.register_type<test_v8::ETestEnum>();
+    context.register_type<test_v8::GoodMan>();
 
     // setup global
     context.set_global(u8"g_add_value", 100);
@@ -67,6 +68,9 @@ int main(int argc, char* argv[])
             TestType.log(`None: ${e_none}, A: ${e_a}, B: ${e_b}, C: ${e_c}`)
             TestType.log(`None: '${ETestEnum.to_string(e_none)}', A: '${ETestEnum.to_string(e_a)}', B: '${ETestEnum.to_string(e_b)}', C: '${ETestEnum.to_string(e_c)}'`)
             TestType.log(`C from string ${ETestEnum.from_string('C')}`)
+
+            test.man.name = "牢大"
+            test.print_man()
             }
     )__");
 

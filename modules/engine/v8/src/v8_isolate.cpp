@@ -132,6 +132,7 @@ void V8Isolate::gc(bool full)
 V8BindCoreObject* V8Isolate::translate_object(::skr::ScriptbleObject* obj)
 {
     using namespace ::v8;
+
     Isolate::Scope isolate_scope(_isolate);
     HandleScope    handle_scope(_isolate);
     Local<Context> context = _isolate->GetCurrentContext();
@@ -154,33 +155,33 @@ V8BindCoreObject* V8Isolate::translate_object(::skr::ScriptbleObject* obj)
     }
 
     // make object
-    Local<Function> ctor_func = template_ref.value()->ctor_template.Get(_isolate)->GetFunction(context).ToLocalChecked();
-    Local<Object>   object    = ctor_func->NewInstance(context).ToLocalChecked();
+    Local<ObjectTemplate> instance_template = template_ref.value()->ctor_template.Get(_isolate)->InstanceTemplate();
+    Local<Object>         object            = instance_template->NewInstance(context).ToLocalChecked();
 
-    // make bind data
-    auto bind_data  = SkrNew<V8BindCoreObject>();
-    bind_data->type = type;
-    bind_data->data = obj->iobject_get_head_ptr();
-    bind_data->v8_object.Reset(_isolate, object);
-    bind_data->object = obj;
+    // make bind core
+    auto object_bind_core  = SkrNew<V8BindCoreObject>();
+    object_bind_core->type = type;
+    object_bind_core->data = obj->iobject_get_head_ptr();
+    object_bind_core->v8_object.Reset(_isolate, object);
+    object_bind_core->object = obj;
 
     // setup gc callback
-    bind_data->v8_object.SetWeak(
-        (V8BindCoreRecordBase*)bind_data,
+    object_bind_core->v8_object.SetWeak(
+        (V8BindCoreRecordBase*)object_bind_core,
         _gc_callback,
         WeakCallbackType::kInternalFields
     );
 
     // add extern data
-    object->SetInternalField(0, External::New(_isolate, bind_data));
+    object->SetInternalField(0, External::New(_isolate, object_bind_core));
 
     // add to map
-    _alive_objects.add(obj, bind_data);
+    _alive_objects.add(obj, object_bind_core);
 
     // bind mixin core
     obj->set_mixin_core(this);
 
-    return bind_data;
+    return object_bind_core;
 }
 void V8Isolate::mark_object_deleted(::skr::ScriptbleObject* obj)
 {
@@ -194,6 +195,116 @@ void V8Isolate::mark_object_deleted(::skr::ScriptbleObject* obj)
         _deleted_objects.push_back(bind_ref.value());
         _alive_objects.remove(obj);
     }
+}
+
+// bind value
+V8BindCoreValue* V8Isolate::create_value(const RTTRType* type, const void* data)
+{
+    using namespace ::v8;
+
+    Isolate::Scope isolate_scope(_isolate);
+    HandleScope    handle_scope(_isolate);
+    Local<Context> context = _isolate->GetCurrentContext();
+
+    // get template
+    auto template_ref = _record_templates.find(type);
+    if (!template_ref)
+    {
+        return nullptr;
+    }
+
+    // find copy ctor
+    TypeSignatureBuilder tb;
+    tb.write_function_signature(1);
+    tb.write_type_id(type_id_of<void>()); // return
+    tb.write_const();
+    tb.write_ref();
+    tb.write_type_id(type->type_id()); // param 1
+    auto* found_copy_ctor = type->find_ctor({ .signature = tb.type_signature_view() });
+    if (!found_copy_ctor)
+    {
+        return nullptr;
+    }
+
+    // alloc value
+    void* alloc_mem = sakura_new_aligned(type->size(), type->alignment());
+
+    // call copy ctor
+    auto* invoker = reinterpret_cast<void (*)(void*, const void*)>(found_copy_ctor->native_invoke);
+    invoker(alloc_mem, data);
+
+    // make object
+    Local<ObjectTemplate> instance_template = template_ref.value()->ctor_template.Get(_isolate)->InstanceTemplate();
+    Local<Object>         object            = instance_template->NewInstance(context).ToLocalChecked();
+
+    // make bind core
+    auto value_bind_core  = SkrNew<V8BindCoreValue>();
+    value_bind_core->type = type;
+    value_bind_core->data = alloc_mem;
+    value_bind_core->v8_object.Reset(_isolate, object);
+
+    // setup gc callback
+    value_bind_core->v8_object.SetWeak(
+        (V8BindCoreRecordBase*)value_bind_core,
+        _gc_callback,
+        WeakCallbackType::kInternalFields
+    );
+
+    // add extern data
+    object->SetInternalField(0, External::New(_isolate, value_bind_core));
+
+    // add to map
+    _script_created_values.add(alloc_mem, value_bind_core);
+
+    return value_bind_core;
+}
+V8BindCoreValue* V8Isolate::translate_value_field(const RTTRType* type, const void* data, V8BindCoreRecordBase* owner)
+{
+    using namespace ::v8;
+
+    Isolate::Scope isolate_scope(_isolate);
+    HandleScope    handle_scope(_isolate);
+    Local<Context> context = _isolate->GetCurrentContext();
+
+    // get template
+    auto template_ref = _record_templates.find(type);
+    if (!template_ref)
+    {
+        return nullptr;
+    }
+
+    // find exported data
+    auto found_data = owner->cache_value_fields.find(data);
+    if (found_data)
+    {
+        return found_data.value();
+    }
+
+    // make object
+    Local<ObjectTemplate> instance_template = template_ref.value()->ctor_template.Get(_isolate)->InstanceTemplate();
+    Local<Object>         object            = instance_template->NewInstance(context).ToLocalChecked();
+
+    // make bind core
+    auto value_bind_core  = SkrNew<V8BindCoreValue>();
+    value_bind_core->type = type;
+    value_bind_core->data = const_cast<void*>(data);
+    value_bind_core->v8_object.Reset(_isolate, object);
+    value_bind_core->owner_core = owner;
+
+    // setup gc callback
+    value_bind_core->v8_object.SetWeak(
+        (V8BindCoreRecordBase*)value_bind_core,
+        _gc_callback,
+        WeakCallbackType::kInternalFields
+    );
+
+    // add extern data
+    object->SetInternalField(0, External::New(_isolate, value_bind_core));
+
+    // add to map
+    owner->cache_value_fields.add(const_cast<void*>(data), value_bind_core);
+
+    return value_bind_core;
 }
 
 // => IScriptMixinCore API
@@ -270,7 +381,6 @@ v8::Local<v8::FunctionTemplate> V8Isolate::_get_record_template(const RTTRType* 
 
     // check
     SKR_ASSERT(type->is_record());
-    SKR_ASSERT(type->based_on(type_id_of<ScriptbleObject>()));
 
     // v8 scope
     Isolate::Scope       isolate_scope(_isolate);
@@ -350,6 +460,7 @@ v8::Local<v8::FunctionTemplate> V8Isolate::_make_template_value(ScriptBinderValu
 
     // store template
     _record_templates.add(value_binder->type, bind_data);
+
     return handle_scope.Escape(ctor_template);
 }
 void V8Isolate::_fill_record_data(
@@ -491,14 +602,23 @@ void V8Isolate::_gc_callback(const ::v8::WeakCallbackInfo<V8BindCoreRecordBase>&
     {
         auto* value_core = bind_core->as_value();
 
-        // release record memory
-        switch (value_core->source)
+        // do release if not field export case
+        if (value_core->has_owner())
         {
-        case V8BindCoreValue::ESource::Field:
-        case V8BindCoreValue::ESource::Param: {
-            break;
+            if (!value_core->owner_core_released)
+            {
+                // remove from cache
+                value_core->owner_core->cache_value_fields.remove(value_core->data);
+            }
+            
+            // reset object handle
+            value_core->v8_object.Reset();
+
+            // release core
+            SkrDelete(value_core);
         }
-        case V8BindCoreValue::ESource::ScriptNew: {
+        else
+        {
             // call destructor
             auto dtor_data = value_core->type->dtor_data();
             if (dtor_data)
@@ -508,15 +628,13 @@ void V8Isolate::_gc_callback(const ::v8::WeakCallbackInfo<V8BindCoreRecordBase>&
 
             // release data
             sakura_free_aligned(value_core->data, value_core->type->alignment());
-            break;
-        }
-        }
 
-        // reset object handle
-        value_core->v8_object.Reset();
+            // reset object handle
+            value_core->v8_object.Reset();
 
-        // release core
-        SkrDelete(value_core);
+            // release core
+            SkrDelete(value_core);
+        }
     }
     else
     {
@@ -789,8 +907,7 @@ void V8Isolate::_get_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
     // get field
     auto v8_field = V8Bind::get_field(
         bind_data->binder,
-        bind_core->data,
-        bind_core->type
+        bind_core
     );
     info.GetReturnValue().Set(v8_field);
 }
@@ -817,8 +934,7 @@ void V8Isolate::_set_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
     V8Bind::set_field(
         bind_data->binder,
         info[0],
-        bind_core->data,
-        bind_core->type
+        bind_core
     );
 }
 void V8Isolate::_get_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)

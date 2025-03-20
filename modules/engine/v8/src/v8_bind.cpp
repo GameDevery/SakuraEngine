@@ -321,12 +321,9 @@ bool V8Bind::_to_native_object(
     const ScriptBinderObject& binder,
     v8::Local<v8::Value>      v8_value,
     void*                     native_data,
-    bool                      is_init,
-    bool                      pass_by_ref
+    bool                      is_init
 )
 {
-    SKR_ASSERT(pass_by_ref);
-
     auto isolate = v8::Isolate::GetCurrent();
     auto context = isolate->GetCurrentContext();
 
@@ -339,6 +336,62 @@ bool V8Bind::_to_native_object(
     // do cast
     void* cast_ptr                         = bind_core->cast_to_base(type->type_id());
     *reinterpret_cast<void**>(native_data) = cast_ptr;
+    return true;
+}
+v8::Local<v8::Value> V8Bind::_to_v8_value(
+    const ScriptBinderValue& binder,
+    void*                    native_data
+)
+{
+    auto isolate     = v8::Isolate::GetCurrent();
+    auto skr_isolate = reinterpret_cast<V8Isolate*>(isolate->GetData(0));
+
+    auto* bind_core = skr_isolate->create_value(binder.type, native_data);
+    return bind_core->v8_object.Get(isolate);
+}
+bool V8Bind::_to_native_value(
+    const ScriptBinderValue& binder,
+    v8::Local<v8::Value>     v8_value,
+    void*                    native_data,
+    bool                     is_init,
+    bool                     pass_by_ref
+)
+{
+    auto isolate = v8::Isolate::GetCurrent();
+    auto context = isolate->GetCurrentContext();
+
+    auto* type = binder.type;
+
+    auto  v8_object     = v8_value->ToObject(context).ToLocalChecked();
+    void* raw_bind_core = v8_object->GetInternalField(0).As<v8::External>()->Value();
+    auto* bind_core     = reinterpret_cast<V8BindCoreValue*>(raw_bind_core);
+
+    // do cast
+    void* cast_ptr = bind_core->type->cast_to_base(type->type_id(), native_data);
+
+    if (pass_by_ref)
+    {
+        *reinterpret_cast<void**>(native_data) = cast_ptr;
+    }
+    else
+    {
+        // find copy ctor
+        TypeSignatureBuilder tb;
+        tb.write_function_signature(1);
+        tb.write_type_id(type_id_of<void>()); // return
+        tb.write_const();
+        tb.write_ref();
+        tb.write_type_id(type->type_id()); // param 1
+        auto* found_copy_ctor = type->find_ctor({ .signature = tb.type_signature_view() });
+        if (!found_copy_ctor)
+        {
+            return false;
+        }
+
+        // copy to native
+        auto* invoker = reinterpret_cast<void (*)(void*, const void*)>(found_copy_ctor->native_invoke);
+        invoker(cast_ptr, native_data);
+    }
     return true;
 }
 
@@ -598,6 +651,18 @@ namespace skr
 bool V8Bind::set_field(
     const ScriptBinderField& binder,
     v8::Local<v8::Value>     v8_value,
+    V8BindCoreRecordBase*    bind_core
+)
+{
+    // get field info
+    void* field_address = _get_field_address(binder.data, binder.owner, bind_core->type, bind_core->data);
+
+    // to native
+    return to_native(binder.binder, field_address, v8_value, true, false);
+}
+bool V8Bind::set_field(
+    const ScriptBinderField& binder,
+    v8::Local<v8::Value>     v8_value,
     void*                    obj,
     const RTTRType*          obj_type
 )
@@ -618,6 +683,33 @@ bool V8Bind::set_field(
 
     // to native
     return to_native(binder.binder, field_address, v8_value, true, false);
+}
+v8::Local<v8::Value> V8Bind::get_field(
+    const ScriptBinderField& binder,
+    V8BindCoreRecordBase*    bind_core
+)
+{
+    // get field info
+    void* field_address = _get_field_address(
+        binder.data,
+        binder.owner,
+        bind_core->type,
+        const_cast<void*>(bind_core->data)
+    );
+
+    if (binder.binder.is_value())
+    {
+        auto* value_binder    = binder.binder.value();
+        auto* isolate         = v8::Isolate::GetCurrent();
+        auto* skr_isolate     = reinterpret_cast<V8Isolate*>(isolate->GetData(0));
+        auto* value_bind_core = skr_isolate->translate_value_field(value_binder->type, field_address, bind_core);
+        return value_bind_core->v8_object.Get(isolate);
+    }
+    else
+    {
+        // to v8
+        return to_v8(binder.binder, field_address);
+    }
 }
 v8::Local<v8::Value> V8Bind::get_field(
     const ScriptBinderField& binder,
@@ -805,6 +897,8 @@ v8::Local<v8::Value> V8Bind::to_v8(
         return _to_v8_mapping(*binder.mapping(), native_data);
     case ScriptBinderRoot::EKind::Object:
         return _to_v8_object(*binder.object(), native_data);
+    case ScriptBinderRoot::EKind::Value:
+        return _to_v8_value(*binder.value(), native_data);
     }
     return {};
 }
@@ -828,7 +922,10 @@ bool V8Bind::to_native(
         SKR_ASSERT(!pass_by_ref);
         return _to_native_mapping(*binder.mapping(), v8_value, native_data, is_init);
     case ScriptBinderRoot::EKind::Object:
-        return _to_native_object(*binder.object(), v8_value, native_data, is_init, pass_by_ref);
+        SKR_ASSERT(pass_by_ref);
+        return _to_native_object(*binder.object(), v8_value, native_data, is_init);
+    case ScriptBinderRoot::EKind::Value:
+        return _to_native_value(*binder.value(), v8_value, native_data, is_init, pass_by_ref);
     }
     return false;
 }

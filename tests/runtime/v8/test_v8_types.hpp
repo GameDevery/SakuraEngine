@@ -54,6 +54,16 @@ ETestEnum : uint32_t
 };
 
 sreflect_struct(
+    guid = "e6a1a30d-1014-4b5f-a971-1eb082aab5a0"
+    rttr = @full
+)
+sscript_visible
+GoodMan {
+    sscript_visible
+    skr::String name = u8"";
+};
+
+sreflect_struct(
     guid = "caf11e29-c119-4685-9845-cb17fd2cb119";
     rttr = @full;
 )
@@ -169,6 +179,15 @@ TestType : public ::skr::ScriptbleObject {
     void add_mambo(skr::String& v)
     {
         v.append(u8" mambo~");
+    }
+
+    // value export
+    sscript_visible
+    GoodMan man;
+    sscript_visible
+    void print_man()
+    {
+        SKR_LOG_FMT_INFO(u8"man: {}", man.name);
     }
 };
 };

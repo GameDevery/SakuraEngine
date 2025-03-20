@@ -44,6 +44,8 @@ struct SKR_V8_API V8Isolate : IScriptMixinCore {
     void              mark_object_deleted(::skr::ScriptbleObject* obj);
 
     // bind value
+    V8BindCoreValue* create_value(const RTTRType* type, const void* data);
+    V8BindCoreValue* translate_value_field(const RTTRType* type, const void* data, V8BindCoreRecordBase* owner);
 
     // => IScriptMixinCore API
     void on_object_destroyed(ScriptbleObject* obj) override;

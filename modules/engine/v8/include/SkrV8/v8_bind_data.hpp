@@ -120,8 +120,13 @@ struct V8BindCoreRecordBase {
     const skr::RTTRType* type = nullptr;
     void*                data = nullptr;
 
+    // fields
+    Map<void*, V8BindCoreValue*> cache_value_fields = {};
+
     // v8 info
-    ::v8::Persistent<::v8::Object> v8_object;
+    ::v8::Persistent<::v8::Object> v8_object = {};
+
+    ~V8BindCoreRecordBase();
 };
 struct V8BindCoreObject : V8BindCoreRecordBase {
     inline V8BindCoreObject()
@@ -144,16 +149,15 @@ struct V8BindCoreValue : V8BindCoreRecordBase {
         is_value = true;
     }
 
-    enum class ESource : uint8_t
-    {
-        Field,
-        Param,
-        ScriptNew,
-    };
+    // owner info
+    V8BindCoreRecordBase* owner_core          = nullptr;
+    bool                  owner_core_released = false;
+    // TODO. owner static field
 
-    // source info
-    ESource               source     = ESource::Field;
-    V8BindCoreRecordBase* owner_core = nullptr;
+    inline bool has_owner()
+    {
+        return owner_core != nullptr;
+    }
 };
 
 inline V8BindCoreObject* V8BindCoreRecordBase::as_object()
@@ -165,5 +169,12 @@ inline V8BindCoreValue* V8BindCoreRecordBase::as_value()
 {
     SKR_ASSERT(is_value);
     return static_cast<V8BindCoreValue*>(this);
+}
+inline V8BindCoreRecordBase::~V8BindCoreRecordBase()
+{
+    for (auto& [field_ptr, field_core] : cache_value_fields)
+    {
+        field_core->owner_core_released = true;
+    }
 }
 } // namespace skr

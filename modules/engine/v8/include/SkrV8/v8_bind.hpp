@@ -38,12 +38,21 @@ struct V8Bind {
     static bool set_field(
         const ScriptBinderField& binder,
         v8::Local<v8::Value>     v8_value,
+        V8BindCoreRecordBase*    bind_core
+    );
+    static bool set_field(
+        const ScriptBinderField& binder,
+        v8::Local<v8::Value>     v8_value,
         void*                    obj,
         const RTTRType*          obj_type
     );
     static bool set_field(
         const ScriptBinderStaticField& binder,
         v8::Local<v8::Value>           v8_value
+    );
+    static v8::Local<v8::Value> get_field(
+        const ScriptBinderField& binder,
+        V8BindCoreRecordBase*    bind_core
     );
     static v8::Local<v8::Value> get_field(
         const ScriptBinderField& binder,
@@ -159,8 +168,7 @@ private:
         const ScriptBinderObject& binder,
         v8::Local<v8::Value>      v8_value,
         void*                     native_data,
-        bool                      is_init,
-        bool                      pass_by_ref
+        bool                      is_init
     );
     static v8::Local<v8::Value> _to_v8_value(
         const ScriptBinderValue& binder,
