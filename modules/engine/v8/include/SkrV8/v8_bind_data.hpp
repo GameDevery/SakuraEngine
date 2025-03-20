@@ -7,6 +7,7 @@
 
 namespace skr
 {
+struct V8BindManager;
 //===============================bind data===============================
 struct V8BindDataMethod {
     ScriptBinderMethod binder;
@@ -40,6 +41,9 @@ struct V8BindDataRecordBase {
     Map<String, V8BindDataStaticField*>    static_fields;
     Map<String, V8BindDataProperty*>       properties;
     Map<String, V8BindDataStaticProperty*> static_properties;
+
+    // manager
+    V8BindManager* manager = nullptr;
 
     V8BindDataObject* as_object();
     V8BindDataValue*  as_value();
@@ -92,6 +96,9 @@ struct V8BindDataEnum {
     // v8 info
     v8::Global<v8::ObjectTemplate> enum_template;
 
+    // manager
+    V8BindManager* manager = nullptr;
+
     ScriptBinderEnum* binder;
 };
 inline V8BindDataObject* V8BindDataRecordBase::as_object()
@@ -108,6 +115,7 @@ inline V8BindDataValue* V8BindDataRecordBase::as_value()
 //===============================bind core===============================
 struct V8BindCoreObject;
 struct V8BindCoreValue;
+struct V8BindManager;
 struct V8BindCoreRecordBase {
     // type
     V8BindCoreObject* as_object();
@@ -125,6 +133,9 @@ struct V8BindCoreRecordBase {
 
     // v8 info
     ::v8::Persistent<::v8::Object> v8_object = {};
+
+    // manager
+    V8BindManager* manager = nullptr;
 
     ~V8BindCoreRecordBase();
 };
