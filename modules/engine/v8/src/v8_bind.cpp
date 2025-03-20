@@ -88,7 +88,22 @@ bool V8Bind::_match_object(const ScriptBinderObject& binder, v8::Local<v8::Value
     auto isolate = v8::Isolate::GetCurrent();
     auto context = isolate->GetCurrentContext();
 
-    auto* type = binder.type;
+    // check v8 value type
+    if (!v8_value->IsObject()) { return false; }
+    auto v8_object = v8_value->ToObject(context).ToLocalChecked();
+
+    // check object
+    if (v8_object->InternalFieldCount() < 1) { return false; }
+    void* raw_bind_core = v8_object->GetInternalField(0).As<v8::External>()->Value();
+    auto* bind_core     = reinterpret_cast<V8BindCoreRecordBase*>(raw_bind_core);
+
+    // check inherit
+    return bind_core->type->based_on(binder.type->type_id());
+}
+bool V8Bind::_match_value(const ScriptBinderValue& binder, v8::Local<v8::Value> v8_value)
+{
+    auto isolate = v8::Isolate::GetCurrent();
+    auto context = isolate->GetCurrentContext();
 
     // check v8 value type
     if (!v8_value->IsObject()) { return false; }
@@ -100,7 +115,7 @@ bool V8Bind::_match_object(const ScriptBinderObject& binder, v8::Local<v8::Value
     auto* bind_core     = reinterpret_cast<V8BindCoreRecordBase*>(raw_bind_core);
 
     // check inherit
-    return bind_core->type->based_on(type->type_id());
+    return bind_core->type->based_on(binder.type->type_id());
 }
 
 // convert helper
@@ -306,9 +321,12 @@ bool V8Bind::_to_native_object(
     const ScriptBinderObject& binder,
     v8::Local<v8::Value>      v8_value,
     void*                     native_data,
-    bool                      is_init
+    bool                      is_init,
+    bool                      pass_by_ref
 )
 {
+    SKR_ASSERT(pass_by_ref);
+
     auto isolate = v8::Isolate::GetCurrent();
     auto context = isolate->GetCurrentContext();
 
@@ -354,7 +372,7 @@ void V8Bind::_push_param(
                 param_binder.pass_by_ref ? EDynamicStackParamKind::XValue : EDynamicStackParamKind::Direct,
                 primitive->dtor
             );
-            SKR_ASSERT(to_native(param_binder.binder, native_data, v8_value, false));
+            SKR_ASSERT(to_native(param_binder.binder, native_data, v8_value, false, false));
         }
         break;
     }
@@ -368,7 +386,7 @@ void V8Bind::_push_param(
             param_binder.pass_by_ref ? EDynamicStackParamKind::XValue : EDynamicStackParamKind::Direct,
             dtor
         );
-        SKR_ASSERT(to_native(param_binder.binder, native_data, v8_value, false));
+        SKR_ASSERT(to_native(param_binder.binder, native_data, v8_value, false, false));
         break;
     }
     case ScriptBinderRoot::EKind::Object: {
@@ -378,8 +396,33 @@ void V8Bind::_push_param(
             EDynamicStackParamKind::Direct,
             nullptr
         );
-        SKR_ASSERT(to_native(param_binder.binder, native_data, v8_value, false));
+        SKR_ASSERT(to_native(param_binder.binder, native_data, v8_value, false, true));
         break;
+    }
+    case ScriptBinderRoot::EKind::Value: {
+        void* native_data;
+        if (param_binder.pass_by_ref)
+        {
+            native_data = stack.alloc_param_raw(
+                sizeof(void*),
+                alignof(void*),
+                EDynamicStackParamKind::Direct,
+                nullptr
+            );
+        }
+        else
+        {
+            auto*       value_binder = param_binder.binder.value();
+            auto        dtor_data    = value_binder->type->dtor_data();
+            DtorInvoker dtor         = dtor_data.has_value() ? dtor_data.value().native_invoke : nullptr;
+            native_data              = stack.alloc_param_raw(
+                value_binder->type->size(),
+                value_binder->type->alignment(),
+                EDynamicStackParamKind::Direct,
+                dtor
+            );
+        }
+        SKR_ASSERT(to_native(param_binder.binder, native_data, v8_value, false, param_binder.pass_by_ref));
     }
     default:
         SKR_UNREACHABLE_CODE()
@@ -563,7 +606,7 @@ bool V8Bind::set_field(
     void* field_address = _get_field_address(binder.data, binder.owner, obj_type, obj);
 
     // to native
-    return to_native(binder.binder, field_address, v8_value, true);
+    return to_native(binder.binder, field_address, v8_value, true, false);
 }
 bool V8Bind::set_field(
     const ScriptBinderStaticField& binder,
@@ -574,7 +617,7 @@ bool V8Bind::set_field(
     void* field_address = binder.data->address;
 
     // to native
-    return to_native(binder.binder, field_address, v8_value, true);
+    return to_native(binder.binder, field_address, v8_value, true, false);
 }
 v8::Local<v8::Value> V8Bind::get_field(
     const ScriptBinderField& binder,
@@ -769,19 +812,23 @@ bool V8Bind::to_native(
     ScriptBinderRoot     binder,
     void*                native_data,
     v8::Local<v8::Value> v8_value,
-    bool                 is_init
+    bool                 is_init,
+    bool                 pass_by_ref
 )
 {
     switch (binder.kind())
     {
     case ScriptBinderRoot::EKind::Primitive:
+        SKR_ASSERT(!pass_by_ref);
         return _to_native_primitive(*binder.primitive(), v8_value, native_data, is_init);
     case ScriptBinderRoot::EKind::Enum:
+        SKR_ASSERT(!pass_by_ref);
         return _to_native_primitive(*binder.enum_()->underlying_binder, v8_value, native_data, is_init);
     case ScriptBinderRoot::EKind::Mapping:
+        SKR_ASSERT(!pass_by_ref);
         return _to_native_mapping(*binder.mapping(), v8_value, native_data, is_init);
     case ScriptBinderRoot::EKind::Object:
-        return _to_native_object(*binder.object(), v8_value, native_data, is_init);
+        return _to_native_object(*binder.object(), v8_value, native_data, is_init, pass_by_ref);
     }
     return false;
 }
@@ -807,6 +854,8 @@ bool V8Bind::match(
         return _match_mapping(*binder.mapping(), v8_value);
     case ScriptBinderRoot::EKind::Object:
         return _match_object(*binder.object(), v8_value);
+    case ScriptBinderRoot::EKind::Value:
+        return _match_value(*binder.value(), v8_value);
     }
 
     return false;

@@ -5,7 +5,6 @@
 
 namespace skr
 {
-// TODO. _match_value
 // TODO. _to_v8/_to_native value
 // TODO. field 需要特殊处理
 struct V8Bind {
@@ -81,7 +80,8 @@ struct V8Bind {
         ScriptBinderRoot     binder,
         void*                native_data,
         v8::Local<v8::Value> v8_value,
-        bool                 is_init
+        bool                 is_init,
+        bool                 pass_by_ref
     );
 
     // match type
@@ -124,6 +124,7 @@ private:
     static bool _match_primitive(const ScriptBinderPrimitive& binder, v8::Local<v8::Value> v8_value);
     static bool _match_mapping(const ScriptBinderMapping& binder, v8::Local<v8::Value> v8_value);
     static bool _match_object(const ScriptBinderObject& binder, v8::Local<v8::Value> v8_value);
+    static bool _match_value(const ScriptBinderValue& binder, v8::Local<v8::Value> v8_value);
 
     // convert helper
     static v8::Local<v8::Value> _to_v8_primitive(
@@ -158,7 +159,19 @@ private:
         const ScriptBinderObject& binder,
         v8::Local<v8::Value>      v8_value,
         void*                     native_data,
-        bool                      is_init
+        bool                      is_init,
+        bool                      pass_by_ref
+    );
+    static v8::Local<v8::Value> _to_v8_value(
+        const ScriptBinderValue& binder,
+        void*                    native_data
+    );
+    static bool _to_native_value(
+        const ScriptBinderValue& binder,
+        v8::Local<v8::Value>     v8_value,
+        void*                    native_data,
+        bool                     is_init,
+        bool                     pass_by_ref
     );
 
     // invoker helper
