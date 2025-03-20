@@ -53,10 +53,16 @@ namespace SB
                     P.StartInfo.Environment.Add(kvp.Key, kvp.Value);
                 }
             }
+            string localOutput = string.Empty;
+            string localError = string.Empty;
+            P.OutputDataReceived += (sender, e) => { if (e.Data is not null) localOutput += e.Data; };
+            P.ErrorDataReceived += (sender, e) => { if (e.Data is not null) localError += e.Data; };
             P.Start();
-            Error = P.StandardError.ReadToEnd();
-            Output = P.StandardOutput.ReadToEnd();
+            P.BeginOutputReadLine();
+            P.BeginErrorReadLine();
             P.WaitForExit();
+            Output = localOutput;
+            Error = localError;
             return P.ExitCode;
         }
 

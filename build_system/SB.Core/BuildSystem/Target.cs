@@ -18,7 +18,12 @@ namespace SB
             foreach (var file in files)
             {
                 if (file.Contains("*"))
-                    Globs.Add(file);
+                {
+                    if (Path.IsPathFullyQualified(file))
+                        Globs.Add(Path.GetRelativePath(Directory, file));
+                    else
+                        Globs.Add(file);
+                }
                 else if (Path.IsPathFullyQualified(file))
                     Absolutes.Add(file);
                 else

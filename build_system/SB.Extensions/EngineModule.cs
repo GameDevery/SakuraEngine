@@ -32,7 +32,7 @@ namespace SB
             Target.SetAttribute(new ModuleAttribute(Target, API));
             if (ShippingOneArchive)
             {
-                Target.TargetType(TargetType.Static);
+                Target.TargetType(TargetType.Objects);
                 Target.Defines(Visibility.Private, "SHIPPING_ONE_ARCHIVE");
                 Target.Defines(Visibility.Public, $"{API}_API=");
             }
