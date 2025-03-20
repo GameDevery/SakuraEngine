@@ -3,7 +3,6 @@
 #include <SkrCore/log.hpp>
 
 // TODO. 增加 Value 类型，以指针形式存储，来适应频繁边界交互场景，如果是 ScriptbleObject 子类，默认 Object，否则默认 Value
-// TODO. Mapping/Value 均不可空，取消指针 case 下的导出
 //
 // script export concept
 //   - primitive: primitive type, always include [number, boolean, string, real]
@@ -72,7 +71,7 @@ namespace skr
 // StringView export helper
 struct StringViewStackProxy {
     StringView view;
-    String holder;
+    String     holder;
 
     static void* custom_mapping(void* obj)
     {
@@ -85,11 +84,13 @@ struct ScriptBinderPrimitive;
 struct ScriptBinderMapping;
 struct ScriptBinderObject;
 struct ScriptBinderEnum;
+struct ScriptBinderValue;
 struct ScriptBinderRoot {
     enum class EKind
     {
         None,
         Primitive,
+        Value,
         Mapping,
         Object,
         Enum,
@@ -115,6 +116,11 @@ struct ScriptBinderRoot {
     inline ScriptBinderRoot(ScriptBinderEnum* enum_)
         : _kind(EKind::Enum)
         , _binder(enum_)
+    {
+    }
+    inline ScriptBinderRoot(ScriptBinderValue* value)
+        : _kind(EKind::Value)
+        , _binder(value)
     {
     }
 
@@ -143,6 +149,7 @@ struct ScriptBinderRoot {
     inline bool  is_mapping() const { return _kind == EKind::Mapping; }
     inline bool  is_object() const { return _kind == EKind::Object; }
     inline bool  is_enum() const { return _kind == EKind::Enum; }
+    inline bool  is_value() const { return _kind == EKind::Value; }
 
     // binder getter
     inline ScriptBinderPrimitive* primitive() const
@@ -164,6 +171,11 @@ struct ScriptBinderRoot {
     {
         SKR_ASSERT(_kind == EKind::Enum);
         return static_cast<ScriptBinderEnum*>(_binder);
+    }
+    inline ScriptBinderValue* value() const
+    {
+        SKR_ASSERT(_kind == EKind::Value);
+        return static_cast<ScriptBinderValue*>(_binder);
     }
 
     // ops
@@ -269,7 +281,7 @@ struct ScriptBinderMapping {
 
     bool failed = false;
 };
-struct ScriptBinderObject {
+struct ScriptBinderRecordBase {
     const RTTRType* type = nullptr;
 
     bool                     is_script_newable = false;
@@ -283,6 +295,10 @@ struct ScriptBinderObject {
     Map<String, ScriptBinderStaticProperty> static_properties = {};
 
     bool failed = false;
+};
+struct ScriptBinderObject : ScriptBinderRecordBase {
+};
+struct ScriptBinderValue : ScriptBinderRecordBase {
 };
 struct ScriptBinderEnum {
     const RTTRType* type = nullptr;
@@ -308,7 +324,9 @@ private:
     ScriptBinderPrimitive* _make_primitive(GUID type_id);
     ScriptBinderMapping*   _make_mapping(const RTTRType* type);
     ScriptBinderObject*    _make_object(const RTTRType* type);
+    ScriptBinderValue*     _make_value(const RTTRType* type);
     ScriptBinderEnum*      _make_enum(const RTTRType* type);
+    void                   _fill_record_info(ScriptBinderRecordBase& out, const RTTRType* type);
 
     // make nested binder
     void _make_ctor(ScriptBinderCtor& out, const RTTRCtorData* ctor, const RTTRType* owner);

@@ -55,7 +55,16 @@ ScriptBinderRoot ScriptBinderManager::get_or_build(GUID type_id)
             return enum_binder;
         }
     }
-    else
+    else if (type->based_on(type_id_of<ScriptbleObject>()))
+    {
+        // make object binder
+        if (auto* object_binder = _make_object(type))
+        {
+            _cached_root_binders.add(type_id, object_binder);
+            return object_binder;
+        }
+    }
+    else if (flag_all(type->record_flag(), ERTTRRecordFlag::ScriptMapping))
     {
         // make mapping binder
         if (auto* mapping_binder = _make_mapping(type))
@@ -63,12 +72,14 @@ ScriptBinderRoot ScriptBinderManager::get_or_build(GUID type_id)
             _cached_root_binders.add(type_id, mapping_binder);
             return mapping_binder;
         }
-
-        // make object binder
-        if (auto* object_binder = _make_object(type))
+    }
+    else
+    {
+        // make value binder
+        if (auto* value_binder = _make_value(type))
         {
-            _cached_root_binders.add(type_id, object_binder);
-            return object_binder;
+            _cached_root_binders.add(type_id, value_binder);
+            return value_binder;
         }
     }
 
@@ -206,16 +217,73 @@ ScriptBinderObject* ScriptBinderManager::_make_object(const RTTRType* type)
         return nullptr;
     }
 
+    // build result
     ScriptBinderObject result = {};
-    result.type               = type;
+    _fill_record_info(result, type);
+
+    // return result
+    return SkrNew<ScriptBinderObject>(std::move(result));
+}
+ScriptBinderValue* ScriptBinderManager::_make_value(const RTTRType* type)
+{
+    auto _log_stack = _logger.stack(u8"export value type {}", type->name());
+
+    // check flag
+    // clang-format off
+    if (!flag_all(
+        type->record_flag(),
+        ERTTRRecordFlag::ScriptVisible
+    ))
+    {
+        return nullptr;
+    }
+    // clang-format on
+
+    // build result
+    ScriptBinderValue result = {};
+    _fill_record_info(result, type);
+
+    // return result
+    return SkrNew<ScriptBinderValue>(std::move(result));
+}
+ScriptBinderEnum* ScriptBinderManager::_make_enum(const RTTRType* type)
+{
+    auto _log_stack = _logger.stack(u8"export enum type {}", type->name());
+
+    ScriptBinderEnum result = {};
+
+    result.type = type;
+
+    // export underlying type
+    result.underlying_binder = _make_primitive(type->enum_underlying_type_id());
+    if (!result.underlying_binder)
+    {
+        _logger.error(u8"enum '{}' underlying type not supported", type->name());
+        return nullptr;
+    }
+
+    // export items
+    type->each_enum_items([&](const RTTREnumItemData* item) {
+        // filter by flag
+        if (!flag_all(item->flag, ERTTREnumItemFlag::ScriptVisible)) { return; }
+
+        result.items.add(item->name, item);
+        result.is_signed = item->value.is_signed();
+    });
+
+    return SkrNew<ScriptBinderEnum>(std::move(result));
+}
+void ScriptBinderManager::_fill_record_info(ScriptBinderRecordBase& out, const RTTRType* type)
+{
+    out.type = type;
 
     // export ctors
-    result.is_script_newable = flag_all(type->record_flag(), ERTTRRecordFlag::ScriptNewable);
-    if (result.is_script_newable)
+    out.is_script_newable = flag_all(type->record_flag(), ERTTRRecordFlag::ScriptNewable);
+    if (out.is_script_newable)
     {
         type->each_ctor([&](const RTTRCtorData* ctor) {
             if (!flag_all(ctor->flag, ERTTRCtorFlag::ScriptVisible)) { return; }
-            auto& ctor_data = result.ctors.add_default().ref();
+            auto& ctor_data = out.ctors.add_default().ref();
             _make_ctor(ctor_data, ctor, type);
         });
     }
@@ -223,14 +291,14 @@ ScriptBinderObject* ScriptBinderManager::_make_object(const RTTRType* type)
     // export fields
     type->each_field([&](const RTTRFieldData* field, const RTTRType* owner_type) {
         if (!flag_all(field->flag, ERTTRFieldFlag::ScriptVisible)) { return; }
-        auto& field_data = result.fields.try_add_default(field->name).value();
+        auto& field_data = out.fields.try_add_default(field->name).value();
         _make_field(field_data, field, owner_type);
     });
 
     // export static field
     type->each_static_field([&](const RTTRStaticFieldData* static_field, const RTTRType* owner_type) {
         if (!flag_all(static_field->flag, ERTTRStaticFieldFlag::ScriptVisible)) { return; }
-        auto& static_field_data = result.static_fields.try_add_default(static_field->name).value();
+        auto& static_field_data = out.static_fields.try_add_default(static_field->name).value();
         _make_static_field(static_field_data, static_field, owner_type);
     });
 
@@ -255,20 +323,20 @@ ScriptBinderObject* ScriptBinderManager::_make_object(const RTTRType* type)
         if (find_getter_result)
         {
             String prop_name  = find_getter_result.ref().cast<skr::attr::ScriptGetter>()->prop_name;
-            auto&  prop_data  = result.properties.try_add_default(prop_name).value();
+            auto&  prop_data  = out.properties.try_add_default(prop_name).value();
             auto   _log_stack = _logger.stack(u8"export property '{}' getter", prop_name);
             _make_prop_getter(prop_data.getter, method, owner_type);
         }
         else if (find_setter_result)
         {
             String prop_name  = find_setter_result.ref().cast<skr::attr::ScriptSetter>()->prop_name;
-            auto&  prop_data  = result.properties.try_add_default(prop_name).value();
+            auto&  prop_data  = out.properties.try_add_default(prop_name).value();
             auto   _log_stack = _logger.stack(u8"export property '{}' setter", prop_name);
             _make_prop_setter(prop_data.setter, method, owner_type);
         }
         else
         {
-            auto& method_data   = result.methods.try_add_default(method->name).value();
+            auto& method_data   = out.methods.try_add_default(method->name).value();
             auto& overload_data = method_data.overloads.add_default().ref();
             _make_method(overload_data, method, owner_type);
         }
@@ -294,27 +362,27 @@ ScriptBinderObject* ScriptBinderManager::_make_object(const RTTRType* type)
         if (find_getter_result)
         {
             String prop_name  = find_getter_result.ref().cast<skr::attr::ScriptGetter>()->prop_name;
-            auto&  prop_data  = result.static_properties.try_add_default(prop_name).value();
+            auto&  prop_data  = out.static_properties.try_add_default(prop_name).value();
             auto   _log_stack = _logger.stack(u8"export static getter '{}'", prop_name);
             _make_static_prop_getter(prop_data.getter, method, owner_type);
         }
         else if (find_setter_result)
         {
             String prop_name  = find_setter_result.ref().cast<skr::attr::ScriptSetter>()->prop_name;
-            auto&  prop_data  = result.static_properties.try_add_default(prop_name).value();
+            auto&  prop_data  = out.static_properties.try_add_default(prop_name).value();
             auto   _log_stack = _logger.stack(u8"export static setter '{}'", prop_name);
             _make_static_prop_setter(prop_data.setter, method, owner_type);
         }
         else
         {
-            auto& static_method_data = result.static_methods.try_add_default(method->name).value();
+            auto& static_method_data = out.static_methods.try_add_default(method->name).value();
             auto& overload_data      = static_method_data.overloads.add_default().ref();
             _make_static_method(overload_data, method, owner_type);
         }
     });
 
     // check properties conflict
-    for (auto& [name, prop] : result.properties)
+    for (auto& [name, prop] : out.properties)
     {
         if (prop.failed) { continue; }
 
@@ -370,7 +438,7 @@ ScriptBinderObject* ScriptBinderManager::_make_object(const RTTRType* type)
     }
 
     // check static properties conflict
-    for (auto& [name, static_prop] : result.static_properties)
+    for (auto& [name, static_prop] : out.static_properties)
     {
         if (static_prop.failed) { continue; }
 
@@ -425,37 +493,7 @@ ScriptBinderObject* ScriptBinderManager::_make_object(const RTTRType* type)
         }
     }
 
-    result.failed |= _logger.any_error();
-
-    // return result
-    return SkrNew<ScriptBinderObject>(std::move(result));
-}
-ScriptBinderEnum* ScriptBinderManager::_make_enum(const RTTRType* type)
-{
-    auto _log_stack = _logger.stack(u8"export enum type {}", type->name());
-
-    ScriptBinderEnum result = {};
-
-    result.type = type;
-
-    // export underlying type
-    result.underlying_binder = _make_primitive(type->enum_underlying_type_id());
-    if (!result.underlying_binder)
-    {
-        _logger.error(u8"enum '{}' underlying type not supported", type->name());
-        return nullptr;
-    }
-
-    // export items
-    type->each_enum_items([&](const RTTREnumItemData* item) {
-        // filter by flag
-        if (!flag_all(item->flag, ERTTREnumItemFlag::ScriptVisible)) { return; }
-
-        result.items.add(item->name, item);
-        result.is_signed = item->value.is_signed();
-    });
-
-    return SkrNew<ScriptBinderEnum>(std::move(result));
+    out.failed |= _logger.any_error();
 }
 
 // make nested binder
@@ -799,6 +837,16 @@ void ScriptBinderManager::_make_param(ScriptBinderParam& out, const RTTRParamDat
         }
         break;
     }
+    case ScriptBinderRoot::EKind::Value: {
+        if (is_pointer)
+        {
+            _logger.error(
+                u8"export value {} as pointer type",
+                out.binder.value()->type->name()
+            );
+        }
+        break;
+    }
     case ScriptBinderRoot::EKind::Object: {
         if (!is_decayed_pointer)
         {
@@ -880,6 +928,16 @@ void ScriptBinderManager::_make_return(ScriptBinderReturn& out, TypeSignatureVie
             _logger.error(
                 u8"export primitive/mapping {} as pointer type",
                 out.binder.mapping()->type->name()
+            );
+        }
+        break;
+    }
+    case ScriptBinderRoot::EKind::Value: {
+        if (is_pointer)
+        {
+            _logger.error(
+                u8"export value {} as pointer type",
+                out.binder.value()->type->name()
             );
         }
         break;
