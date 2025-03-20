@@ -55,6 +55,9 @@
 //   boolean: bool
 //   string: skr::String, skr::StringView
 //
+// about StringView:
+//   - can only be used as parameter or return, used to reduce copy cost
+//
 // script support generic types(can be toggled off):
 //   skr::Array: accept script array
 //   skr::Span: accept script array
@@ -66,6 +69,17 @@
 
 namespace skr
 {
+// StringView export helper
+struct StringViewStackProxy {
+    StringView view;
+    String holder;
+
+    static void* custom_mapping(void* obj)
+    {
+        return &reinterpret_cast<StringViewStackProxy*>(obj)->view;
+    }
+};
+
 // root binder, used for nested binder
 struct ScriptBinderPrimitive;
 struct ScriptBinderMapping;

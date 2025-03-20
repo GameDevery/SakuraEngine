@@ -47,6 +47,8 @@ bool V8Bind::_match_primitive(const ScriptBinderPrimitive& binder, v8::Local<v8:
         return v8_value->IsBoolean();
     case type_id_of<skr::String>().get_hash():
         return v8_value->IsString();
+    case type_id_of<skr::StringView>().get_hash():
+        return v8_value->IsString();
     default:
         SKR_UNREACHABLE_CODE()
         return false;
@@ -133,6 +135,8 @@ v8::Local<v8::Value> V8Bind::_to_v8_primitive(
         return to_v8(*reinterpret_cast<bool*>(native_data));
     case type_id_of<skr::String>().get_hash():
         return to_v8(*reinterpret_cast<skr::String*>(native_data));
+    case type_id_of<skr::StringView>().get_hash():
+        return to_v8(*reinterpret_cast<skr::StringView*>(native_data));
     default:
         SKR_UNREACHABLE_CODE()
         return {};
@@ -159,6 +163,9 @@ void V8Bind::_init_primitive(
         return;
     case type_id_of<skr::String>().get_hash():
         new (native_data) skr::String();
+        return;
+    case type_id_of<skr::StringView>().get_hash():
+        new (native_data) skr::StringView();
         return;
     default:
         SKR_UNREACHABLE_CODE()
@@ -258,23 +265,27 @@ bool V8Bind::_to_native_mapping(
 
     for (const auto& [field_name, field_data] : binder.fields)
     {
-        // find object field
         // clang-format off
+        // find object field
         auto v8_field = v8_object->Get(
             context,
             to_v8(field_name)
         ).ToLocalChecked();
-        // clang-format on
-
-        set_field(
+        
+        // set field
+        if (!set_field(
             field_data,
             v8_field,
             native_data,
             type
-        );
+        ))
+        {
+            return false;
+        }
+        // clang-format on
     }
 
-    return false;
+    return true;
 }
 v8::Local<v8::Value> V8Bind::_to_v8_object(
     const ScriptBinderObject& binder,
@@ -323,14 +334,28 @@ void V8Bind::_push_param(
     switch (param_binder.binder.kind())
     {
     case ScriptBinderRoot::EKind::Primitive: {
-        auto* primitive   = param_binder.binder.primitive();
-        void* native_data = stack.alloc_param_raw(
-            primitive->size,
-            primitive->alignment,
-            param_binder.pass_by_ref ? EDynamicStackParamKind::XValue : EDynamicStackParamKind::Direct,
-            primitive->dtor
-        );
-        to_native(param_binder.binder, native_data, v8_value, false);
+        auto* primitive = param_binder.binder.primitive();
+        if (primitive->type_id == type_id_of<StringView>())
+        {
+            StringViewStackProxy* proxy = stack.alloc_param<StringViewStackProxy>(
+                EDynamicStackParamKind::Direct,
+                nullptr,
+                StringViewStackProxy::custom_mapping
+            );
+            new (proxy) StringViewStackProxy();
+            SKR_ASSERT(V8Bind::to_native(v8_value, proxy->holder));
+            proxy->view = proxy->holder;
+        }
+        else
+        {
+            void* native_data = stack.alloc_param_raw(
+                primitive->size,
+                primitive->alignment,
+                param_binder.pass_by_ref ? EDynamicStackParamKind::XValue : EDynamicStackParamKind::Direct,
+                primitive->dtor
+            );
+            SKR_ASSERT(to_native(param_binder.binder, native_data, v8_value, false));
+        }
         break;
     }
     case ScriptBinderRoot::EKind::Mapping: {
@@ -343,7 +368,7 @@ void V8Bind::_push_param(
             param_binder.pass_by_ref ? EDynamicStackParamKind::XValue : EDynamicStackParamKind::Direct,
             dtor
         );
-        to_native(param_binder.binder, native_data, v8_value, false);
+        SKR_ASSERT(to_native(param_binder.binder, native_data, v8_value, false));
         break;
     }
     case ScriptBinderRoot::EKind::Object: {
@@ -353,7 +378,7 @@ void V8Bind::_push_param(
             EDynamicStackParamKind::Direct,
             nullptr
         );
-        to_native(param_binder.binder, native_data, v8_value, false);
+        SKR_ASSERT(to_native(param_binder.binder, native_data, v8_value, false));
         break;
     }
     default:
@@ -488,6 +513,7 @@ v8::Local<v8::Value> V8Bind::_read_return(
 )
 {
     if (!stack.is_return_stored()) { return {}; }
+
     void* native_data;
     switch (return_binder.binder.kind())
     {
@@ -730,6 +756,8 @@ v8::Local<v8::Value> V8Bind::to_v8(
     {
     case ScriptBinderRoot::EKind::Primitive:
         return _to_v8_primitive(*binder.primitive(), native_data);
+    case ScriptBinderRoot::EKind::Enum:
+        return _to_v8_primitive(*binder.enum_()->underlying_binder, native_data);
     case ScriptBinderRoot::EKind::Mapping:
         return _to_v8_mapping(*binder.mapping(), native_data);
     case ScriptBinderRoot::EKind::Object:
@@ -748,12 +776,14 @@ bool V8Bind::to_native(
     {
     case ScriptBinderRoot::EKind::Primitive:
         return _to_native_primitive(*binder.primitive(), v8_value, native_data, is_init);
+    case ScriptBinderRoot::EKind::Enum:
+        return _to_native_primitive(*binder.enum_()->underlying_binder, v8_value, native_data, is_init);
     case ScriptBinderRoot::EKind::Mapping:
         return _to_native_mapping(*binder.mapping(), v8_value, native_data, is_init);
     case ScriptBinderRoot::EKind::Object:
         return _to_native_object(*binder.object(), v8_value, native_data, is_init);
     }
-    return {};
+    return false;
 }
 
 // match type

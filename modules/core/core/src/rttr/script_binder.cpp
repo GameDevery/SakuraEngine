@@ -147,8 +147,10 @@ ScriptBinderPrimitive* ScriptBinderManager::_make_primitive(GUID type_id)
         return _new_primitive<double>();
     case type_id_of<bool>().get_hash():
         return _new_primitive<bool>();
-    case type_id_of<skr::String>().get_hash():
-        return _new_primitive<skr::String>();
+    case type_id_of<String>().get_hash():
+        return _new_primitive<String>();
+    case type_id_of<StringView>().get_hash():
+        return _new_primitive<StringView>();
     default:
         return nullptr;
     }
@@ -753,6 +755,8 @@ void ScriptBinderManager::_make_param(ScriptBinderParam& out, const RTTRParamDat
     // check bad binder
     if (out.binder.is_empty())
     {
+        _logger.error(u8"unsupported type");
+        return;
     }
 
     // check binder
@@ -765,6 +769,13 @@ void ScriptBinderManager::_make_param(ScriptBinderParam& out, const RTTRParamDat
                 u8"export primitive {} as pointer type",
                 out.binder.primitive()->type_id
             );
+        }
+        else if (out.binder.primitive()->type_id == type_id_of<StringView>())
+        {
+            if (is_decayed_pointer)
+            {
+                _logger.error(u8"cannot export StringView as any reference");
+            }
         }
         break;
     }
@@ -945,6 +956,10 @@ void ScriptBinderManager::_try_export_field(TypeSignatureView signature, ScriptB
         else if (out_binder.is_object())
         {
             _logger.error(u8"cannot export object as value type");
+        }
+        else if (out_binder.is_primitive() && out_binder.primitive()->type_id == type_id_of<StringView>())
+        {
+            _logger.error(u8"cannot export StringView as field");
         }
     }
 }

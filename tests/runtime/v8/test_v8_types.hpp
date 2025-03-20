@@ -100,7 +100,7 @@ TestType : public ::skr::ScriptbleObject {
         return a + b;
     }
     sscript_visible
-    static void log(const skr::String& str)
+    static void log(skr::StringView str)
     {
         SKR_LOG_FMT_INFO(u8"{}", str);
     }
