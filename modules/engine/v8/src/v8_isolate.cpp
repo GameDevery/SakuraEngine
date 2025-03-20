@@ -129,7 +129,7 @@ void V8Isolate::gc(bool full)
 }
 
 // bind object
-V8BindCoreObject* V8Isolate::translate_record(::skr::ScriptbleObject* obj)
+V8BindCoreObject* V8Isolate::translate_object(::skr::ScriptbleObject* obj)
 {
     using namespace ::v8;
     Isolate::Scope isolate_scope(_isolate);
@@ -182,7 +182,7 @@ V8BindCoreObject* V8Isolate::translate_record(::skr::ScriptbleObject* obj)
 
     return bind_data;
 }
-void V8Isolate::mark_record_deleted(::skr::ScriptbleObject* obj)
+void V8Isolate::mark_object_deleted(::skr::ScriptbleObject* obj)
 {
     auto bind_ref = _alive_objects.find(obj);
     if (bind_ref)
@@ -190,7 +190,7 @@ void V8Isolate::mark_record_deleted(::skr::ScriptbleObject* obj)
         // reset core object ptr
         bind_ref.value()->object = nullptr;
 
-        // move to deleted records
+        // move to deleted objects
         _deleted_objects.push_back(bind_ref.value());
         _alive_objects.remove(obj);
     }
@@ -199,7 +199,7 @@ void V8Isolate::mark_record_deleted(::skr::ScriptbleObject* obj)
 // => IScriptMixinCore API
 void V8Isolate::on_object_destroyed(ScriptbleObject* obj)
 {
-    mark_record_deleted(obj);
+    mark_object_deleted(obj);
 }
 
 // make template
@@ -284,9 +284,20 @@ v8::Local<v8::FunctionTemplate> V8Isolate::_get_record_template(const RTTRType* 
 
     // get binder
     ScriptBinderRoot binder = _binder_mgr.get_or_build(type->type_id());
-    return handle_scope.Escape(_make_template_object(binder));
+    if (binder.is_object())
+    {
+        return handle_scope.Escape(_make_template_object(binder.object()));
+    }
+    else if (binder.is_value())
+    {
+        return handle_scope.Escape(_make_template_value(binder.value()));
+    }
+    else
+    {
+        return {};
+    }
 }
-v8::Local<v8::FunctionTemplate> V8Isolate::_make_template_object(ScriptBinderRoot binder)
+v8::Local<v8::FunctionTemplate> V8Isolate::_make_template_object(ScriptBinderObject* object_binder)
 {
     using namespace ::v8;
 
@@ -295,7 +306,8 @@ v8::Local<v8::FunctionTemplate> V8Isolate::_make_template_object(ScriptBinderRoo
     EscapableHandleScope handle_scope(_isolate);
 
     // new bind data
-    auto bind_data = SkrNew<V8BindDataObject>();
+    auto bind_data    = SkrNew<V8BindDataObject>();
+    bind_data->binder = object_binder;
 
     // ctor template
     auto ctor_template = FunctionTemplate::New(
@@ -305,15 +317,54 @@ v8::Local<v8::FunctionTemplate> V8Isolate::_make_template_object(ScriptBinderRoo
     );
     bind_data->ctor_template.Reset(_isolate, ctor_template);
 
+    // fill template
+    _fill_record_data(object_binder, bind_data, ctor_template);
+
+    // store template
+    _record_templates.add(object_binder->type, bind_data);
+
+    return handle_scope.Escape(ctor_template);
+}
+v8::Local<v8::FunctionTemplate> V8Isolate::_make_template_value(ScriptBinderValue* value_binder)
+{
+    using namespace ::v8;
+
+    // v8 scope
+    Isolate::Scope       isolate_scope(_isolate);
+    EscapableHandleScope handle_scope(_isolate);
+
+    // new bind data
+    auto bind_data    = SkrNew<V8BindDataValue>();
+    bind_data->binder = value_binder;
+
+    // ctor template
+    auto ctor_template = FunctionTemplate::New(
+        _isolate,
+        _call_ctor,
+        External::New(_isolate, bind_data)
+    );
+    bind_data->ctor_template.Reset(_isolate, ctor_template);
+
+    // fill template
+    _fill_record_data(value_binder, bind_data, ctor_template);
+
+    // store template
+    _record_templates.add(value_binder->type, bind_data);
+    return handle_scope.Escape(ctor_template);
+}
+void V8Isolate::_fill_record_data(
+    ScriptBinderRecordBase*         binder,
+    V8BindDataRecordBase*           bind_data,
+    v8::Local<v8::FunctionTemplate> ctor_template
+)
+{
+    using namespace ::v8;
+
     // setup internal field count
     ctor_template->InstanceTemplate()->SetInternalFieldCount(1);
 
-    // solve binder info
-    ScriptBinderObject* object_binder = binder.object();
-    bind_data->binder                 = object_binder;
-
     // bind method
-    for (const auto& [method_name, method_binder] : object_binder->methods)
+    for (const auto& [method_name, method_binder] : binder->methods)
     {
         auto method_bind_data    = SkrNew<V8BindDataMethod>();
         method_bind_data->binder = method_binder;
@@ -329,7 +380,7 @@ v8::Local<v8::FunctionTemplate> V8Isolate::_make_template_object(ScriptBinderRoo
     }
 
     // bind static method
-    for (const auto& [static_method_name, static_method_binder] : object_binder->static_methods)
+    for (const auto& [static_method_name, static_method_binder] : binder->static_methods)
     {
         auto static_method_bind_data    = SkrNew<V8BindDataStaticMethod>();
         static_method_bind_data->binder = static_method_binder;
@@ -345,7 +396,7 @@ v8::Local<v8::FunctionTemplate> V8Isolate::_make_template_object(ScriptBinderRoo
     }
 
     // bind field
-    for (const auto& [field_name, field_binder] : object_binder->fields)
+    for (const auto& [field_name, field_binder] : binder->fields)
     {
         auto field_bind_data    = SkrNew<V8BindDataField>();
         field_bind_data->binder = field_binder;
@@ -366,7 +417,7 @@ v8::Local<v8::FunctionTemplate> V8Isolate::_make_template_object(ScriptBinderRoo
     }
 
     // bind static field
-    for (const auto& [static_field_name, static_field_binder] : object_binder->static_fields)
+    for (const auto& [static_field_name, static_field_binder] : binder->static_fields)
     {
         auto static_field_bind_data    = SkrNew<V8BindDataStaticField>();
         static_field_bind_data->binder = static_field_binder;
@@ -387,7 +438,7 @@ v8::Local<v8::FunctionTemplate> V8Isolate::_make_template_object(ScriptBinderRoo
     }
 
     // bind properties
-    for (const auto& [property_name, property_binder] : object_binder->properties)
+    for (const auto& [property_name, property_binder] : binder->properties)
     {
         auto property_bind_data    = SkrNew<V8BindDataProperty>();
         property_bind_data->binder = property_binder;
@@ -408,7 +459,7 @@ v8::Local<v8::FunctionTemplate> V8Isolate::_make_template_object(ScriptBinderRoo
     }
 
     // bind static properties
-    for (const auto& [static_property_name, static_property_binder] : object_binder->static_properties)
+    for (const auto& [static_property_name, static_property_binder] : binder->static_properties)
     {
         auto static_property_bind_data    = SkrNew<V8BindDataStaticProperty>();
         static_property_bind_data->binder = static_property_binder;
@@ -427,11 +478,6 @@ v8::Local<v8::FunctionTemplate> V8Isolate::_make_template_object(ScriptBinderRoo
         );
         bind_data->static_properties.add(static_property_name, static_property_bind_data);
     }
-
-    // store template
-    _record_templates.add(object_binder->type, bind_data);
-
-    return handle_scope.Escape(ctor_template);
 }
 
 // bind helpers

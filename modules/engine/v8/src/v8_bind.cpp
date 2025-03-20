@@ -299,7 +299,7 @@ v8::Local<v8::Value> V8Bind::_to_v8_object(
     void* cast_raw         = type->cast_to_base(type_id_of<ScriptbleObject>(), native_data);
     auto* scriptble_object = reinterpret_cast<ScriptbleObject*>(cast_raw);
 
-    auto* bind_core = skr_isolate->translate_record(scriptble_object);
+    auto* bind_core = skr_isolate->translate_object(scriptble_object);
     return bind_core->v8_object.Get(isolate);
 }
 bool V8Bind::_to_native_object(

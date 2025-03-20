@@ -264,7 +264,7 @@ void V8Context::set_global(StringView name, skr::ScriptbleObject* obj)
 
     // translate value
     Local<::v8::String> key   = V8Bind::to_v8(name, true);
-    Local<Object>       value = _isolate->translate_record(obj)->v8_object.Get(_isolate->v8_isolate());
+    Local<Object>       value = _isolate->translate_object(obj)->v8_object.Get(_isolate->v8_isolate());
 
     // set
     global->Set(solved_context, key, value).Check();

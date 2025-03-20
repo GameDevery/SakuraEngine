@@ -40,8 +40,10 @@ struct SKR_V8_API V8Isolate : IScriptMixinCore {
     void gc(bool full = true);
 
     // bind object
-    V8BindCoreObject* translate_record(::skr::ScriptbleObject* obj);
-    void              mark_record_deleted(::skr::ScriptbleObject* obj);
+    V8BindCoreObject* translate_object(::skr::ScriptbleObject* obj);
+    void              mark_object_deleted(::skr::ScriptbleObject* obj);
+
+    // bind value
 
     // => IScriptMixinCore API
     void on_object_destroyed(ScriptbleObject* obj) override;
@@ -51,7 +53,14 @@ private:
     // make template
     v8::Local<v8::ObjectTemplate>   _get_enum_template(const RTTRType* type);
     v8::Local<v8::FunctionTemplate> _get_record_template(const RTTRType* type);
-    v8::Local<v8::FunctionTemplate> _make_template_object(ScriptBinderRoot binder);
+    v8::Local<v8::FunctionTemplate> _make_template_object(ScriptBinderObject* binder);
+    v8::Local<v8::FunctionTemplate> _make_template_value(ScriptBinderValue* binder);
+
+    void _fill_record_data(
+        ScriptBinderRecordBase*         binder,
+        V8BindDataRecordBase*           bind_data,
+        v8::Local<v8::FunctionTemplate> ctor_template
+    );
 
     // bind helpers
     static void _gc_callback(const ::v8::WeakCallbackInfo<V8BindCoreRecordBase>& data);
@@ -78,8 +87,8 @@ private:
     ScriptBinderManager _binder_mgr;
 
     // templates
-    Map<const RTTRType*, V8BindDataObject*> _record_templates;
-    Map<const RTTRType*, V8BindDataEnum*>   _enum_templates;
+    Map<const RTTRType*, V8BindDataRecordBase*> _record_templates;
+    Map<const RTTRType*, V8BindDataEnum*>       _enum_templates;
 
     // bind data
     Map<::skr::ScriptbleObject*, V8BindCoreObject*> _alive_objects;
