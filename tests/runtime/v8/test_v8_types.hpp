@@ -1,7 +1,7 @@
 #include "SkrCore/log.hpp"
 #include <SkrRTTR/scriptble_object.hpp>
 #ifndef __meta__
-    #include "V8Test/test_types.generated.h"
+    #include "V8Test/test_v8_types.generated.h"
 #endif
 
 namespace test_v8
@@ -40,6 +40,17 @@ sscript_visible sscript_mapping
 Box3Offset : Box3 {
     sscript_visible
     float3 offset = {0, 0, 0};
+};
+
+sreflect_enum_class(
+    guid = "d43000d7-4ad1-4b2f-a650-f835c8074f4f"
+)
+ETestEnum : uint8_t
+{
+    None sscript_visible,
+    A sscript_visible,
+    B sscript_visible,
+    C sscript_visible
 };
 
 sreflect_struct(

@@ -758,6 +758,16 @@ void ScriptBinderManager::_make_param(ScriptBinderParam& out, const RTTRParamDat
         }
         break;
     }
+    case ScriptBinderRoot::EKind::Enum: {
+        if (is_pointer)
+        {
+            _logger.error(
+                u8"export enum {} as pointer type",
+                out.binder.enum_()->type->name()
+            );
+        }
+        break;
+    }
     case ScriptBinderRoot::EKind::Mapping: {
         if (is_pointer)
         {
@@ -830,6 +840,16 @@ void ScriptBinderManager::_make_return(ScriptBinderReturn& out, TypeSignatureVie
         if (out.binder.primitive()->type_id == type_id_of<void>())
         {
             out.is_void = true;
+        }
+        break;
+    }
+    case ScriptBinderRoot::EKind::Enum: {
+        if (is_pointer)
+        {
+            _logger.error(
+                u8"export enum {} as pointer type",
+                out.binder.enum_()->type->name()
+            );
         }
         break;
     }

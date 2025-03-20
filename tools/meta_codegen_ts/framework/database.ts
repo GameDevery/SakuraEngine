@@ -646,6 +646,10 @@ export class Header {
     }
     for (const enum_obj of this.enums) {
       func(enum_obj, this);
+
+      for (const value of enum_obj.values) {
+        func(value, this);
+      }
     }
     for (const function_obj of this.functions) {
       func(function_obj, this);
