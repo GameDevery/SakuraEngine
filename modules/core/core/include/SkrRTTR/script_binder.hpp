@@ -10,6 +10,9 @@
 //                     in some optimize case, like field/static_field/param(call script), we will hold native pointer
 //                     to avoid copy, and we will invalidate bind data when handle was destroyed, if script used it,
 //                     we will throw exception
+//     - optimize:
+//       - field/static_field: pass by ref
+//       - param(call script): if inout, pass by ref and never return, if pure out, return new value
 //   - object: impl full record feature [ctor, method, static_method, field, static_field, property, static_property]
 //     - life contorl: we hold ScriptbleObject pointer in script, when ScriptbleObject destroyed, we will listen this
 //                     event and invalidate bind data, if script used it, we will throw exception

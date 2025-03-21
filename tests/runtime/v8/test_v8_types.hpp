@@ -69,6 +69,11 @@ GoodMan {
         name = other.name;
         SKR_LOG_FMT_INFO(u8"ohhhhhhh copy!!!!!!!!!!! '{}'", name);
     }
+
+    ~GoodMan()
+    {
+        SKR_LOG_FMT_INFO(u8"{} 似了", name);
+    }
 };
 
 sreflect_struct(
@@ -205,6 +210,16 @@ TestType : public ::skr::ScriptbleObject {
     static void print(const GoodMan& man)
     {
         SKR_LOG_FMT_INFO(u8"=> print man: {}", man.name);
+    }
+    sscript_visible
+    static void append_man_name(GoodMan& man)
+    {
+        man.name.append(u8" 我们的架构非常优秀");
+    }
+    sscript_visible
+    static void create_bad_man(sparam_out GoodMan& man)
+    {
+        man.name = u8"阿诺头顶尖尖的";
     }
 };
 

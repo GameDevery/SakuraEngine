@@ -1673,8 +1673,8 @@ v8::Local<v8::Value> V8BindManager::_get_static_field(
     // to v8
     if (binder.binder.is_value())
     { // optimize for value case
-        auto* value_binder    = binder.binder.value();
-        auto* value_core = translate_value_field(value_binder->type, binder.data->address, nullptr);
+        auto* value_binder = binder.binder.value();
+        auto* value_core   = translate_value_field(value_binder->type, binder.data->address, nullptr);
         return value_core->v8_object.Get(v8::Isolate::GetCurrent());
     }
     else
@@ -1844,6 +1844,7 @@ void V8BindManager::_push_param_pure_out(
 
         // push pointer
         stack.add_param<void*>(create_value_core->data);
+        break;
     }
     case ScriptBinderRoot::EKind::Object: {
         SKR_UNREACHABLE_CODE()
@@ -1870,7 +1871,18 @@ v8::Local<v8::Value> V8BindManager::_read_return(
         { // read from out param
             for (const auto& param_binder : params_binder)
             {
-                if (flag_all(param_binder.inout_flag, ERTTRParamFlag::Out))
+                bool do_read = false;
+                if (param_binder.binder.is_value())
+                { // optimize for value case
+                    // only pure out need read
+                    do_read = param_binder.inout_flag == ERTTRParamFlag::Out;
+                }
+                else
+                {
+                    do_read = flag_all(param_binder.inout_flag, ERTTRParamFlag::Out);
+                }
+
+                if (do_read)
                 {
                     return _read_return_from_out_param(
                         stack,
@@ -1912,13 +1924,24 @@ v8::Local<v8::Value> V8BindManager::_read_return(
         // read return value from out param
         for (const auto& param_binder : params_binder)
         {
-            if (flag_all(param_binder.inout_flag, ERTTRParamFlag::Out))
+            bool do_read = false;
+            if (param_binder.binder.is_value())
+            { // optimize for value case
+                // only pure out need read
+                do_read = param_binder.inout_flag == ERTTRParamFlag::Out;
+            }
+            else
+            {
+                do_read = flag_all(param_binder.inout_flag, ERTTRParamFlag::Out);
+            }
+
+            if (do_read)
             {
                 // clang-format off
-                    out_array->Set(context, cur_index,_read_return_from_out_param(
-                        stack,
-                        param_binder
-                    )).Check();
+                out_array->Set(context, cur_index,_read_return_from_out_param(
+                    stack,
+                    param_binder
+                )).Check();
                 // clang-format on
                 ++cur_index;
             }

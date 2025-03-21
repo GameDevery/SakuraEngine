@@ -507,15 +507,29 @@ inline void _solve_param_return_count(OverloadType& overload)
     overload.params_count = 0;
 
     // each param and add count
-    for (const auto& param : overload.params_binder)
+    for (const ScriptBinderParam& param : overload.params_binder)
     {
-        if (param.inout_flag != ERTTRParamFlag::Out)
-        {
-            ++overload.params_count;
+        if (param.binder.is_value())
+        { // optimize case for value
+            if (param.inout_flag == ERTTRParamFlag::Out)
+            { // pure out, return
+                ++overload.return_count;
+            }
+            else
+            {
+                ++overload.params_count;
+            }
         }
-        if (flag_all(param.inout_flag, ERTTRParamFlag::Out))
+        else
         {
-            ++overload.return_count;
+            if (param.inout_flag != ERTTRParamFlag::Out)
+            { // not pure out
+                ++overload.params_count;
+            }
+            if (flag_all(param.inout_flag, ERTTRParamFlag::Out))
+            { // has out flag
+                ++overload.return_count;
+            }
         }
     }
 }
