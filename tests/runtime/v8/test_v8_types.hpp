@@ -57,12 +57,14 @@ sreflect_struct(
     guid = "e6a1a30d-1014-4b5f-a971-1eb082aab5a0"
     rttr = @full
 )
-sscript_visible
+sscript_visible sscript_newable
 GoodMan {
     sscript_visible
     skr::String name = u8"";
 
+    sscript_visible
     GoodMan() = default;
+    sscript_visible
     GoodMan(const GoodMan& other) {
         name = other.name;
         SKR_LOG_FMT_INFO(u8"ohhhhhhh copy!!!!!!!!!!! '{}'", name);

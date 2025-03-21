@@ -218,11 +218,12 @@ ScriptBinderObject* ScriptBinderManager::_make_object(const RTTRType* type)
     }
 
     // build result
-    ScriptBinderObject result = {};
-    _fill_record_info(result, type);
+    auto* result = SkrNew<ScriptBinderObject>();
+    _cached_root_binders.add(type->type_id(), result);
+    _fill_record_info(*result, type);
 
     // return result
-    return SkrNew<ScriptBinderObject>(std::move(result));
+    return result;
 }
 ScriptBinderValue* ScriptBinderManager::_make_value(const RTTRType* type)
 {
@@ -240,11 +241,12 @@ ScriptBinderValue* ScriptBinderManager::_make_value(const RTTRType* type)
     // clang-format on
 
     // build result
-    ScriptBinderValue result = {};
-    _fill_record_info(result, type);
+    auto* result = SkrNew<ScriptBinderValue>();
+    _cached_root_binders.add(type->type_id(), result);
+    _fill_record_info(*result, type);
 
     // return result
-    return SkrNew<ScriptBinderValue>(std::move(result));
+    return result;
 }
 ScriptBinderEnum* ScriptBinderManager::_make_enum(const RTTRType* type)
 {

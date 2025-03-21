@@ -74,6 +74,8 @@ int main(int argc, char* argv[])
 
             TestType.bad_man.name = "圆头"
             TestType.print(TestType.bad_man)
+            let copy_man = new GoodMan(TestType.bad_man)
+            TestType.print(copy_man)
             }
     )__");
 
