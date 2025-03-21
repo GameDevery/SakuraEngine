@@ -284,3 +284,6 @@ TestString {
     static skr::String value;
 };
 }
+
+// TODO. test value field
+// TODO. test complex type

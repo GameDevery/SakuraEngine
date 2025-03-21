@@ -1760,6 +1760,19 @@ v8::Local<v8::Value> V8BindManager::_get_static_field(
 }
 
 // param & return convert helper
+struct V8StringViewStackProxy {
+    Placeholder<v8::String::Utf8Value> v;
+    skr::StringView                    view;
+
+    static void* custom_mapping(void* obj)
+    {
+        return &reinterpret_cast<V8StringViewStackProxy*>(obj)->view;
+    }
+    ~V8StringViewStackProxy()
+    {
+        v.data_typed()->~Utf8Value();
+    }
+};
 void V8BindManager::_push_param(
     DynamicStack&            stack,
     const ScriptBinderParam& param_binder,
@@ -1772,14 +1785,14 @@ void V8BindManager::_push_param(
         auto* primitive_binder = param_binder.binder.primitive();
         if (primitive_binder->type_id == type_id_of<StringView>())
         { // string view case, push proxy
-            StringViewStackProxy* proxy = stack.alloc_param<StringViewStackProxy>(
+            V8StringViewStackProxy* proxy = stack.alloc_param<V8StringViewStackProxy>(
                 EDynamicStackParamKind::Direct,
                 nullptr,
                 StringViewStackProxy::custom_mapping
             );
-            new (proxy) StringViewStackProxy();
-            SKR_ASSERT(V8Bind::to_native(v8_value, proxy->holder));
-            proxy->view = proxy->holder;
+            new (proxy) V8StringViewStackProxy();
+            new (proxy->v.data_typed()) v8::String::Utf8Value(v8::Isolate::GetCurrent(), v8_value);
+            proxy->view = { reinterpret_cast<const skr_char8*>(**proxy->v.data_typed()), (uint64_t)proxy->v.data_typed()->length() };
         }
         else
         {
@@ -2125,14 +2138,14 @@ bool V8BindManager::_call_native(
 {
     // match overload
     const ScriptBinderMethod::Overload* final_overload = nullptr;
-    int32_t highest_score = std::numeric_limits<int32_t>::min();
+    int32_t                             highest_score  = std::numeric_limits<int32_t>::min();
     for (const auto& overload : binder.overloads)
     {
         auto result = V8Bind::match(overload.params_binder, overload.params_count, v8_stack);
         if (!result.matched) { continue; }
         if (result.match_score > highest_score)
         {
-            highest_score = result.match_score;
+            highest_score  = result.match_score;
             final_overload = &overload;
         }
     }
@@ -2197,14 +2210,14 @@ bool V8BindManager::_call_native(
 {
     // match overload
     const ScriptBinderStaticMethod::Overload* final_overload = nullptr;
-    int32_t highest_score = std::numeric_limits<int32_t>::min();
+    int32_t                                   highest_score  = std::numeric_limits<int32_t>::min();
     for (const auto& overload : binder.overloads)
     {
         auto result = V8Bind::match(overload.params_binder, overload.params_count, v8_stack);
         if (!result.matched) { continue; }
         if (result.match_score > highest_score)
         {
-            highest_score = result.match_score;
+            highest_score  = result.match_score;
             final_overload = &overload;
         }
     }
