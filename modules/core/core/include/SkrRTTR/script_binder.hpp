@@ -5,11 +5,14 @@
 // script export concept
 //   - primitive: primitive type, always include [number, boolean, string, real]
 //   - mapping: map type structure into a script object, methods is not supported
-//   - value: support full record feature, script object will hold an pointer of native object,
-//            but not have lifetime control, lifetime always follow it's creator
-//   - object: support full record feature, script object will hold an pointer of native object,
-//             and have lifetime control, witch implemented by ScriptbleObject,
-//             ONLY classes that inherit ScriptbleObject can be export as object
+//   - value: impl full record feature [ctor, method, static_method, field, static_field, property, static_property]
+//     - life contorl: by default, we copy data into script to avoid script holding native pointer,
+//                     in some optimize case, like field/static_field/param(call script), we will hold native pointer
+//                     to avoid copy, and we will invalidate bind data when handle was destroyed, if script used it,
+//                     we will throw exception
+//   - object: impl full record feature [ctor, method, static_method, field, static_field, property, static_property]
+//     - life contorl: we hold ScriptbleObject pointer in script, when ScriptbleObject destroyed, we will listen this
+//                     event and invalidate bind data, if script used it, we will throw exception
 //
 // export behaviour:
 //   parameter(call native):
@@ -235,12 +238,10 @@ struct ScriptBinderParam {
     const RTTRParamData* data        = nullptr;
     bool                 pass_by_ref = false;
     ERTTRParamFlag       inout_flag  = ERTTRParamFlag::None;
-    bool                 is_nullable = false;
 };
 struct ScriptBinderReturn {
     ScriptBinderRoot binder      = {};
     bool             pass_by_ref = false;
-    bool             is_nullable = false;
     bool             is_void     = false;
 };
 struct ScriptBinderMethod {

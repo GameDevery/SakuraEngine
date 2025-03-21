@@ -32,65 +32,6 @@ struct V8Bind {
     // enum convert
     static v8::Local<v8::Value> to_v8(EnumValue value);
 
-    // field tools
-    static bool set_field_value_or_object(
-        const ScriptBinderField& binder,
-        v8::Local<v8::Value>     v8_value,
-        V8BindCoreRecordBase*    bind_core
-    );
-    static bool set_field_mapping(
-        const ScriptBinderField& binder,
-        v8::Local<v8::Value>     v8_value,
-        void*                    obj,
-        const RTTRType*          obj_type
-    );
-    static bool set_static_field(
-        const ScriptBinderStaticField& binder,
-        v8::Local<v8::Value>           v8_value
-    );
-    static v8::Local<v8::Value> get_field_value_or_object(
-        const ScriptBinderField& binder,
-        V8BindCoreRecordBase*    bind_core
-    );
-    static v8::Local<v8::Value> get_field_mapping(
-        const ScriptBinderField& binder,
-        const void*              obj,
-        const RTTRType*          obj_type
-    );
-    static v8::Local<v8::Value> get_static_field(
-        const ScriptBinderStaticField& binder
-    );
-
-    // call native
-    static bool call_native(
-        const ScriptBinderCtor&                        binder,
-        const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
-        void*                                          obj
-    );
-    static bool call_native(
-        const ScriptBinderMethod&                      binder,
-        const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
-        void*                                          obj,
-        const RTTRType*                                obj_type
-    );
-    static bool call_native(
-        const ScriptBinderStaticMethod&                binder,
-        const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack
-    );
-
-    // convert
-    static v8::Local<v8::Value> to_v8(
-        ScriptBinderRoot binder,
-        void*            native_data
-    );
-    static bool to_native(
-        ScriptBinderRoot     binder,
-        void*                native_data,
-        v8::Local<v8::Value> v8_value,
-        bool                 is_init,
-        bool                 pass_by_ref
-    );
-
     // match type
     static bool match(
         ScriptBinderRoot     binder,
@@ -119,91 +60,11 @@ struct V8Bind {
     );
 
 private:
-    // util helpers
-    static void* _get_field_address(
-        const RTTRFieldData* field,
-        const RTTRType*      field_owner,
-        const RTTRType*      obj_type,
-        void*                obj
-    );
-
     // match helper
     static bool _match_primitive(const ScriptBinderPrimitive& binder, v8::Local<v8::Value> v8_value);
     static bool _match_mapping(const ScriptBinderMapping& binder, v8::Local<v8::Value> v8_value);
     static bool _match_object(const ScriptBinderObject& binder, v8::Local<v8::Value> v8_value);
     static bool _match_value(const ScriptBinderValue& binder, v8::Local<v8::Value> v8_value);
-
-    // convert helper
-    static v8::Local<v8::Value> _to_v8_primitive(
-        const ScriptBinderPrimitive& binder,
-        void*                        native_data
-    );
-    static void _init_primitive(
-        const ScriptBinderPrimitive& binder,
-        void*                        native_data
-    );
-    static bool _to_native_primitive(
-        const ScriptBinderPrimitive& binder,
-        v8::Local<v8::Value>         v8_value,
-        void*                        native_data,
-        bool                         is_init
-    );
-    static v8::Local<v8::Value> _to_v8_mapping(
-        const ScriptBinderMapping& binder,
-        void*                      obj
-    );
-    static bool _to_native_mapping(
-        const ScriptBinderMapping& binder,
-        v8::Local<v8::Value>       v8_value,
-        void*                      native_data,
-        bool                       is_init
-    );
-    static v8::Local<v8::Value> _to_v8_object(
-        const ScriptBinderObject& binder,
-        void*                     native_data
-    );
-    static bool _to_native_object(
-        const ScriptBinderObject& binder,
-        v8::Local<v8::Value>      v8_value,
-        void*                     native_data,
-        bool                      is_init
-    );
-    static v8::Local<v8::Value> _to_v8_value(
-        const ScriptBinderValue& binder,
-        void*                    native_data
-    );
-    static bool _to_native_value(
-        const ScriptBinderValue& binder,
-        v8::Local<v8::Value>     v8_value,
-        void*                    native_data,
-        bool                     is_init,
-        bool                     pass_by_ref
-    );
-
-    // invoker helper
-    static void _push_param(
-        DynamicStack&            stack,
-        const ScriptBinderParam& param_binder,
-        v8::Local<v8::Value>     v8_value
-    );
-    static void _push_param_pure_out(
-        DynamicStack&            stack,
-        const ScriptBinderParam& param_binder
-    );
-    static v8::Local<v8::Value> _read_return(
-        DynamicStack&                    stack,
-        const Vector<ScriptBinderParam>& params_binder,
-        const ScriptBinderReturn&        return_binder,
-        uint32_t                         solved_return_count
-    );
-    static v8::Local<v8::Value> _read_return(
-        DynamicStack&             stack,
-        const ScriptBinderReturn& return_binder
-    );
-    static v8::Local<v8::Value> _read_return_from_out_param(
-        DynamicStack&            stack,
-        const ScriptBinderParam& param_binder
-    );
 };
 } // namespace skr
 
@@ -414,8 +275,11 @@ inline bool V8Bind::to_native(v8::Local<v8::Value> v8_value, skr::String& out_v)
     }
     return false;
 }
+} // namespace skr
 
 // enum convert
+namespace skr
+{
 inline v8::Local<v8::Value> V8Bind::to_v8(EnumValue enum_value)
 {
     auto isolate = v8::Isolate::GetCurrent();

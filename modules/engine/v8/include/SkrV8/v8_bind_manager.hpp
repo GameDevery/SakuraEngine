@@ -76,6 +76,139 @@ private:
         return result;
     }
 
+    // convert helper
+    v8::Local<v8::Value> _to_v8(
+        ScriptBinderRoot binder,
+        void*            native_data
+    );
+    bool _to_native(
+        ScriptBinderRoot     binder,
+        void*                native_data,
+        v8::Local<v8::Value> v8_value,
+        bool                 is_init
+    );
+    v8::Local<v8::Value> _to_v8_primitive(
+        const ScriptBinderPrimitive& binder,
+        void*                        native_data
+    );
+    void _init_primitive(
+        const ScriptBinderPrimitive& binder,
+        void*                        native_data
+    );
+    bool _to_native_primitive(
+        const ScriptBinderPrimitive& binder,
+        v8::Local<v8::Value>         v8_value,
+        void*                        native_data,
+        bool                         is_init
+    );
+    v8::Local<v8::Value> _to_v8_mapping(
+        const ScriptBinderMapping& binder,
+        void*                      obj
+    );
+    bool _to_native_mapping(
+        const ScriptBinderMapping& binder,
+        v8::Local<v8::Value>       v8_value,
+        void*                      native_data,
+        bool                       is_init
+    );
+    v8::Local<v8::Value> _to_v8_object(
+        const ScriptBinderObject& binder,
+        void*                     native_data
+    );
+    bool _to_native_object(
+        const ScriptBinderObject& binder,
+        v8::Local<v8::Value>      v8_value,
+        void*                     native_data,
+        bool                      is_init
+    );
+    v8::Local<v8::Value> _to_v8_value(
+        const ScriptBinderValue& binder,
+        void*                    native_data
+    );
+    bool _to_native_value(
+        const ScriptBinderValue& binder,
+        v8::Local<v8::Value>     v8_value,
+        void*                    native_data,
+        bool                     is_init
+    );
+
+    // field convert helper
+    static void* _get_field_address(
+        const RTTRFieldData* field,
+        const RTTRType*      field_owner,
+        const RTTRType*      obj_type,
+        void*                obj
+    );
+    bool _set_field_value_or_object(
+        const ScriptBinderField& binder,
+        v8::Local<v8::Value>     v8_value,
+        V8BindCoreRecordBase*    bind_core
+    );
+    bool _set_field_mapping(
+        const ScriptBinderField& binder,
+        v8::Local<v8::Value>     v8_value,
+        void*                    obj,
+        const RTTRType*          obj_type
+    );
+    v8::Local<v8::Value> _get_field_value_or_object(
+        const ScriptBinderField& binder,
+        V8BindCoreRecordBase*    bind_core
+    );
+    v8::Local<v8::Value> _get_field_mapping(
+        const ScriptBinderField& binder,
+        const void*              obj,
+        const RTTRType*          obj_type
+    );
+    bool _set_static_field(
+        const ScriptBinderStaticField& binder,
+        v8::Local<v8::Value>           v8_value
+    );
+    v8::Local<v8::Value> _get_static_field(
+        const ScriptBinderStaticField& binder
+    );
+
+    // param & return convert helper
+    void _push_param(
+        DynamicStack&            stack,
+        const ScriptBinderParam& param_binder,
+        v8::Local<v8::Value>     v8_value
+    );
+    void _push_param_pure_out(
+        DynamicStack&            stack,
+        const ScriptBinderParam& param_binder
+    );
+    v8::Local<v8::Value> _read_return(
+        DynamicStack&                    stack,
+        const Vector<ScriptBinderParam>& params_binder,
+        const ScriptBinderReturn&        return_binder,
+        uint32_t                         solved_return_count
+    );
+    v8::Local<v8::Value> _read_return(
+        DynamicStack&             stack,
+        const ScriptBinderReturn& return_binder
+    );
+    v8::Local<v8::Value> _read_return_from_out_param(
+        DynamicStack&            stack,
+        const ScriptBinderParam& param_binder
+    );
+
+    // invoke helper
+    bool _call_native(
+        const ScriptBinderCtor&                        binder,
+        const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
+        void*                                          obj
+    );
+    bool _call_native(
+        const ScriptBinderMethod&                      binder,
+        const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
+        void*                                          obj,
+        const RTTRType*                                obj_type
+    );
+    bool _call_native(
+        const ScriptBinderStaticMethod&                binder,
+        const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack
+    );
+
 private:
     // binder manager
     ScriptBinderManager _binder_mgr;

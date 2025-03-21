@@ -2,6 +2,7 @@
 #include "v8-template.h"
 #include "v8-external.h"
 #include <SkrV8/v8_bind.hpp>
+#include "v8-container.h"
 
 namespace skr
 {
@@ -684,11 +685,18 @@ void V8BindManager::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& in
                 void* alloc_mem = sakura_new_aligned(binder->type->size(), binder->type->alignment());
 
                 // call ctor
-                V8Bind::call_native(
+                bool success = bind_data->manager->_call_native(
                     ctor_binder,
                     info,
                     alloc_mem
                 );
+
+                // bad call
+                if (!success)
+                {
+                    sakura_free_aligned(alloc_mem, binder->type->alignment());
+                    Isolate->ThrowError("invoke ctor failed");
+                }
 
                 // make bind core
                 V8BindCoreValue* bind_core = SkrNew<V8BindCoreValue>();
@@ -740,11 +748,18 @@ void V8BindManager::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& in
                 void* alloc_mem = sakura_new_aligned(binder->type->size(), binder->type->alignment());
 
                 // call ctor
-                V8Bind::call_native(
+                bool success = bind_data->manager->_call_native(
                     ctor_binder,
                     info,
                     alloc_mem
                 );
+
+                // bad call
+                if (!success)
+                {
+                    sakura_free_aligned(alloc_mem, binder->type->alignment());
+                    Isolate->ThrowError("invoke ctor failed");
+                }
 
                 // cast to ScriptbleObject
                 void* casted_mem = binder->type->cast_to_base(type_id_of<ScriptbleObject>(), alloc_mem);
@@ -817,7 +832,7 @@ void V8BindManager::_call_method(const ::v8::FunctionCallbackInfo<::v8::Value>& 
     }
 
     // call method
-    bool success = V8Bind::call_native(
+    bool success = bind_data->manager->_call_native(
         bind_data->binder,
         info,
         bind_core->data,
@@ -852,7 +867,7 @@ void V8BindManager::_call_static_method(const ::v8::FunctionCallbackInfo<::v8::V
     }
 
     // call method
-    bool success = V8Bind::call_native(
+    bool success = bind_data->manager->_call_native(
         bind_data->binder,
         info
     );
@@ -889,7 +904,7 @@ void V8BindManager::_get_field(const ::v8::FunctionCallbackInfo<::v8::Value>& in
     auto* bind_data = reinterpret_cast<V8BindDataField*>(info.Data().As<External>()->Value());
 
     // get field
-    auto v8_field = V8Bind::get_field_value_or_object(
+    auto v8_field = bind_data->manager->_get_field_value_or_object(
         bind_data->binder,
         bind_core
     );
@@ -920,11 +935,18 @@ void V8BindManager::_set_field(const ::v8::FunctionCallbackInfo<::v8::Value>& in
     auto* bind_data = reinterpret_cast<V8BindDataField*>(info.Data().As<External>()->Value());
 
     // set field
-    V8Bind::set_field_value_or_object(
+    bool success = bind_data->manager->_set_field_value_or_object(
         bind_data->binder,
         info[0],
         bind_core
     );
+
+    // throw
+    if (!success)
+    {
+        Isolate->ThrowError("no matched field");
+        return;
+    }
 }
 void V8BindManager::_get_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 {
@@ -940,7 +962,7 @@ void V8BindManager::_get_static_field(const ::v8::FunctionCallbackInfo<::v8::Val
     auto* bind_data = reinterpret_cast<V8BindDataStaticField*>(info.Data().As<External>()->Value());
 
     // get field
-    auto v8_field = V8Bind::get_static_field(
+    auto v8_field = bind_data->manager->_get_static_field(
         bind_data->binder
     );
     info.GetReturnValue().Set(v8_field);
@@ -959,10 +981,17 @@ void V8BindManager::_set_static_field(const ::v8::FunctionCallbackInfo<::v8::Val
     auto* bind_data = reinterpret_cast<V8BindDataStaticField*>(info.Data().As<External>()->Value());
 
     // set field
-    V8Bind::set_static_field(
+    bool success = bind_data->manager->_set_static_field(
         bind_data->binder,
         info[0]
     );
+
+    // throw
+    if (!success)
+    {
+        Isolate->ThrowError("no matched field");
+        return;
+    }
 }
 void V8BindManager::_get_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 {
@@ -989,12 +1018,19 @@ void V8BindManager::_get_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& inf
     auto* bind_data = reinterpret_cast<V8BindDataProperty*>(info.Data().As<External>()->Value());
 
     // invoke
-    V8Bind::call_native(
+    bool success = bind_data->manager->_call_native(
         bind_data->binder.getter,
         info,
         bind_core->data,
         bind_core->type
     );
+
+    // throw
+    if (!success)
+    {
+        Isolate->ThrowError("no matched property");
+        return;
+    }
 }
 void V8BindManager::_set_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 {
@@ -1021,12 +1057,19 @@ void V8BindManager::_set_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& inf
     auto* bind_data = reinterpret_cast<V8BindDataProperty*>(info.Data().As<External>()->Value());
 
     // invoke
-    V8Bind::call_native(
+    bool success = bind_data->manager->_call_native(
         bind_data->binder.setter,
         info,
         bind_core->data,
         bind_core->type
     );
+
+    // throw
+    if (!success)
+    {
+        Isolate->ThrowError("no matched property");
+        return;
+    }
 }
 void V8BindManager::_get_static_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 {
@@ -1042,10 +1085,17 @@ void V8BindManager::_get_static_prop(const ::v8::FunctionCallbackInfo<::v8::Valu
     auto* bind_data = reinterpret_cast<V8BindDataStaticProperty*>(info.Data().As<External>()->Value());
 
     // invoke
-    V8Bind::call_native(
+    bool success = bind_data->manager->_call_native(
         bind_data->binder.getter,
         info
     );
+
+    // throw
+    if (!success)
+    {
+        Isolate->ThrowError("no matched property");
+        return;
+    }
 }
 void V8BindManager::_set_static_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 {
@@ -1061,10 +1111,17 @@ void V8BindManager::_set_static_prop(const ::v8::FunctionCallbackInfo<::v8::Valu
     auto* bind_data = reinterpret_cast<V8BindDataStaticProperty*>(info.Data().As<External>()->Value());
 
     // invoke
-    V8Bind::call_native(
+    bool success = bind_data->manager->_call_native(
         bind_data->binder.setter,
         info
     );
+
+    // throw
+    if (!success)
+    {
+        Isolate->ThrowError("no matched property");
+        return;
+    }
 }
 void V8BindManager::_enum_to_string(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 {
@@ -1168,5 +1225,870 @@ void V8BindManager::_enum_from_string(const ::v8::FunctionCallbackInfo<::v8::Val
     {
         Isolate->ThrowError("no matched enum item");
     }
+}
+
+// convert helper
+v8::Local<v8::Value> V8BindManager::_to_v8(
+    ScriptBinderRoot binder,
+    void*            native_data
+)
+{
+    switch (binder.kind())
+    {
+    case ScriptBinderRoot::EKind::Primitive:
+        return _to_v8_primitive(*binder.primitive(), native_data);
+    case ScriptBinderRoot::EKind::Enum:
+        return _to_v8_primitive(*binder.enum_()->underlying_binder, native_data);
+    case ScriptBinderRoot::EKind::Mapping:
+        return _to_v8_mapping(*binder.mapping(), native_data);
+    case ScriptBinderRoot::EKind::Object:
+        return _to_v8_object(*binder.object(), native_data);
+    case ScriptBinderRoot::EKind::Value:
+        return _to_v8_value(*binder.value(), native_data);
+    }
+    return {};
+}
+bool V8BindManager::_to_native(
+    ScriptBinderRoot     binder,
+    void*                native_data,
+    v8::Local<v8::Value> v8_value,
+    bool                 is_init
+)
+{
+    switch (binder.kind())
+    {
+    case ScriptBinderRoot::EKind::Primitive:
+        return _to_native_primitive(*binder.primitive(), v8_value, native_data, is_init);
+    case ScriptBinderRoot::EKind::Enum:
+        return _to_native_primitive(*binder.enum_()->underlying_binder, v8_value, native_data, is_init);
+    case ScriptBinderRoot::EKind::Mapping:
+        return _to_native_mapping(*binder.mapping(), v8_value, native_data, is_init);
+    case ScriptBinderRoot::EKind::Object:
+        return _to_native_object(*binder.object(), v8_value, native_data, is_init);
+    case ScriptBinderRoot::EKind::Value:
+        return _to_native_value(*binder.value(), v8_value, native_data, is_init);
+    }
+    return false;
+}
+v8::Local<v8::Value> V8BindManager::_to_v8_primitive(
+    const ScriptBinderPrimitive& binder,
+    void*                        native_data
+)
+{
+    switch (binder.type_id.get_hash())
+    {
+    case type_id_of<int8_t>().get_hash():
+        return V8Bind::to_v8(*reinterpret_cast<int8_t*>(native_data));
+    case type_id_of<int16_t>().get_hash():
+        return V8Bind::to_v8(*reinterpret_cast<int16_t*>(native_data));
+    case type_id_of<int32_t>().get_hash():
+        return V8Bind::to_v8(*reinterpret_cast<int32_t*>(native_data));
+    case type_id_of<int64_t>().get_hash():
+        return V8Bind::to_v8(*reinterpret_cast<int64_t*>(native_data));
+    case type_id_of<uint8_t>().get_hash():
+        return V8Bind::to_v8(*reinterpret_cast<uint8_t*>(native_data));
+    case type_id_of<uint16_t>().get_hash():
+        return V8Bind::to_v8(*reinterpret_cast<uint16_t*>(native_data));
+    case type_id_of<uint32_t>().get_hash():
+        return V8Bind::to_v8(*reinterpret_cast<uint32_t*>(native_data));
+    case type_id_of<uint64_t>().get_hash():
+        return V8Bind::to_v8(*reinterpret_cast<uint64_t*>(native_data));
+    case type_id_of<float>().get_hash():
+        return V8Bind::to_v8(*reinterpret_cast<float*>(native_data));
+    case type_id_of<double>().get_hash():
+        return V8Bind::to_v8(*reinterpret_cast<double*>(native_data));
+    case type_id_of<bool>().get_hash():
+        return V8Bind::to_v8(*reinterpret_cast<bool*>(native_data));
+    case type_id_of<skr::String>().get_hash():
+        return V8Bind::to_v8(*reinterpret_cast<skr::String*>(native_data));
+    case type_id_of<skr::StringView>().get_hash():
+        return V8Bind::to_v8(*reinterpret_cast<skr::StringView*>(native_data));
+    default:
+        SKR_UNREACHABLE_CODE()
+        return {};
+    }
+}
+void V8BindManager::_init_primitive(
+    const ScriptBinderPrimitive& binder,
+    void*                        native_data
+)
+{
+    switch (binder.type_id.get_hash())
+    {
+    case type_id_of<int8_t>().get_hash():
+    case type_id_of<int16_t>().get_hash():
+    case type_id_of<int32_t>().get_hash():
+    case type_id_of<int64_t>().get_hash():
+    case type_id_of<uint8_t>().get_hash():
+    case type_id_of<uint16_t>().get_hash():
+    case type_id_of<uint32_t>().get_hash():
+    case type_id_of<uint64_t>().get_hash():
+    case type_id_of<float>().get_hash():
+    case type_id_of<double>().get_hash():
+    case type_id_of<bool>().get_hash():
+        return;
+    case type_id_of<skr::String>().get_hash():
+        new (native_data) skr::String();
+        return;
+    case type_id_of<skr::StringView>().get_hash():
+        new (native_data) skr::StringView();
+        return;
+    default:
+        SKR_UNREACHABLE_CODE()
+        return;
+    }
+}
+bool V8BindManager::_to_native_primitive(
+    const ScriptBinderPrimitive& binder,
+    v8::Local<v8::Value>         v8_value,
+    void*                        native_data,
+    bool                         is_init
+)
+{
+    if (!is_init)
+    {
+        _init_primitive(binder, native_data);
+    }
+
+    switch (binder.type_id.get_hash())
+    {
+    case type_id_of<int8_t>().get_hash():
+        return V8Bind::to_native(v8_value, *reinterpret_cast<int8_t*>(native_data));
+    case type_id_of<int16_t>().get_hash():
+        return V8Bind::to_native(v8_value, *reinterpret_cast<int16_t*>(native_data));
+    case type_id_of<int32_t>().get_hash():
+        return V8Bind::to_native(v8_value, *reinterpret_cast<int32_t*>(native_data));
+    case type_id_of<int64_t>().get_hash():
+        return V8Bind::to_native(v8_value, *reinterpret_cast<int64_t*>(native_data));
+    case type_id_of<uint8_t>().get_hash():
+        return V8Bind::to_native(v8_value, *reinterpret_cast<uint8_t*>(native_data));
+    case type_id_of<uint16_t>().get_hash():
+        return V8Bind::to_native(v8_value, *reinterpret_cast<uint16_t*>(native_data));
+    case type_id_of<uint32_t>().get_hash():
+        return V8Bind::to_native(v8_value, *reinterpret_cast<uint32_t*>(native_data));
+    case type_id_of<uint64_t>().get_hash():
+        return V8Bind::to_native(v8_value, *reinterpret_cast<uint64_t*>(native_data));
+    case type_id_of<float>().get_hash():
+        return V8Bind::to_native(v8_value, *reinterpret_cast<float*>(native_data));
+    case type_id_of<double>().get_hash():
+        return V8Bind::to_native(v8_value, *reinterpret_cast<double*>(native_data));
+    case type_id_of<bool>().get_hash():
+        return V8Bind::to_native(v8_value, *reinterpret_cast<bool*>(native_data));
+    case type_id_of<skr::String>().get_hash():
+        return V8Bind::to_native(v8_value, *reinterpret_cast<skr::String*>(native_data));
+    default:
+        SKR_UNREACHABLE_CODE()
+        return false;
+    }
+}
+v8::Local<v8::Value> V8BindManager::_to_v8_mapping(
+    const ScriptBinderMapping& binder,
+    void*                      obj
+)
+{
+    auto isolate = v8::Isolate::GetCurrent();
+    auto context = isolate->GetCurrentContext();
+
+    auto* type = binder.type;
+
+    auto result = v8::Object::New(isolate);
+    for (const auto& [field_name, field_data] : binder.fields)
+    {
+        // to v8
+        auto v8_field_value = _get_field_mapping(field_data, obj, type);
+
+        // set object field
+        // clang-format off
+        result->Set(
+            context,
+            V8Bind::to_v8(field_name, true),
+            v8_field_value
+        ).Check();
+        // clang-format on
+    }
+    return result;
+}
+bool V8BindManager::_to_native_mapping(
+    const ScriptBinderMapping& binder,
+    v8::Local<v8::Value>       v8_value,
+    void*                      native_data,
+    bool                       is_init
+)
+{
+    auto isolate = v8::Isolate::GetCurrent();
+    auto context = isolate->GetCurrentContext();
+
+    auto* type      = binder.type;
+    auto  v8_object = v8_value->ToObject(context).ToLocalChecked();
+
+    // do init
+    if (!is_init)
+    {
+        void* raw_invoker = type->find_ctor_t<void()>()->native_invoke;
+        auto* invoker     = reinterpret_cast<void (*)(void*)>(raw_invoker);
+        invoker(native_data);
+    }
+
+    for (const auto& [field_name, field_data] : binder.fields)
+    {
+        // clang-format off
+        // find object field
+        auto v8_field = v8_object->Get(
+            context,
+            V8Bind::to_v8(field_name, true)
+        ).ToLocalChecked();
+        
+        // set field
+        if (!_set_field_mapping(
+            field_data,
+            v8_field,
+            native_data,
+            type
+        ))
+        {
+            return false;
+        }
+        // clang-format on
+    }
+
+    return true;
+}
+v8::Local<v8::Value> V8BindManager::_to_v8_object(
+    const ScriptBinderObject& binder,
+    void*                     native_data
+)
+{
+    auto isolate = v8::Isolate::GetCurrent();
+
+    auto* type             = binder.type;
+    void* cast_raw         = type->cast_to_base(type_id_of<ScriptbleObject>(), native_data);
+    auto* scriptble_object = reinterpret_cast<ScriptbleObject*>(cast_raw);
+
+    auto* bind_core = translate_object(scriptble_object);
+    return bind_core->v8_object.Get(isolate);
+}
+bool V8BindManager::_to_native_object(
+    const ScriptBinderObject& binder,
+    v8::Local<v8::Value>      v8_value,
+    void*                     native_data,
+    bool                      is_init
+)
+{
+    auto isolate = v8::Isolate::GetCurrent();
+    auto context = isolate->GetCurrentContext();
+
+    auto* type = binder.type;
+
+    auto  v8_object     = v8_value->ToObject(context).ToLocalChecked();
+    void* raw_bind_core = v8_object->GetInternalField(0).As<v8::External>()->Value();
+    auto* bind_core     = reinterpret_cast<V8BindCoreObject*>(raw_bind_core);
+
+    // do cast
+    void* cast_ptr                         = bind_core->type->cast_to_base(type->type_id(), bind_core->data);
+    *reinterpret_cast<void**>(native_data) = cast_ptr;
+    return true;
+}
+v8::Local<v8::Value> V8BindManager::_to_v8_value(
+    const ScriptBinderValue& binder,
+    void*                    native_data
+)
+{
+    auto isolate = v8::Isolate::GetCurrent();
+
+    auto* bind_core = create_value(binder.type, native_data);
+    return bind_core->v8_object.Get(isolate);
+}
+bool V8BindManager::_to_native_value(
+    const ScriptBinderValue& binder,
+    v8::Local<v8::Value>     v8_value,
+    void*                    native_data,
+    bool                     is_init
+)
+{
+    auto isolate = v8::Isolate::GetCurrent();
+    auto context = isolate->GetCurrentContext();
+
+    auto* type = binder.type;
+
+    auto  v8_object     = v8_value->ToObject(context).ToLocalChecked();
+    void* raw_bind_core = v8_object->GetInternalField(0).As<v8::External>()->Value();
+    auto* bind_core     = reinterpret_cast<V8BindCoreValue*>(raw_bind_core);
+
+    // do cast
+    void* cast_ptr = bind_core->type->cast_to_base(type->type_id(), native_data);
+
+    // find copy ctor
+    TypeSignatureBuilder tb;
+    tb.write_function_signature(1);
+    tb.write_type_id(type_id_of<void>()); // return
+    tb.write_const();
+    tb.write_ref();
+    tb.write_type_id(type->type_id()); // param 1
+    auto* found_copy_ctor = type->find_ctor({ .signature = tb.type_signature_view() });
+    if (!found_copy_ctor)
+    {
+        return false;
+    }
+
+    // copy to native
+    auto* invoker = reinterpret_cast<void (*)(void*, const void*)>(found_copy_ctor->native_invoke);
+    invoker(cast_ptr, native_data);
+    return true;
+}
+
+// field convert helper
+void* V8BindManager::_get_field_address(
+    const RTTRFieldData* field,
+    const RTTRType*      field_owner,
+    const RTTRType*      obj_type,
+    void*                obj
+)
+{
+    SKR_ASSERT(obj != nullptr);
+    void* field_owner_address = obj_type->cast_to_base(field_owner->type_id(), obj);
+    return field->get_address(field_owner_address);
+}
+bool V8BindManager::_set_field_value_or_object(
+    const ScriptBinderField& binder,
+    v8::Local<v8::Value>     v8_value,
+    V8BindCoreRecordBase*    bind_core
+)
+{
+    // get field info
+    void* field_address = _get_field_address(binder.data, binder.owner, bind_core->type, bind_core->data);
+
+    // to native
+    return _to_native(binder.binder, field_address, v8_value, true);
+}
+bool V8BindManager::_set_field_mapping(
+    const ScriptBinderField& binder,
+    v8::Local<v8::Value>     v8_value,
+    void*                    obj,
+    const RTTRType*          obj_type
+)
+{
+    // get field info
+    void* field_address = _get_field_address(binder.data, binder.owner, obj_type, obj);
+
+    // to native
+    return _to_native(binder.binder, field_address, v8_value, true);
+}
+v8::Local<v8::Value> V8BindManager::_get_field_value_or_object(
+    const ScriptBinderField& binder,
+    V8BindCoreRecordBase*    bind_core
+)
+{
+    // get field info
+    void* field_address = _get_field_address(
+        binder.data,
+        binder.owner,
+        bind_core->type,
+        const_cast<void*>(bind_core->data)
+    );
+
+    // to v8
+    if (binder.binder.is_value())
+    { // optimize for value case
+        auto* value_binder    = binder.binder.value();
+        auto* isolate         = v8::Isolate::GetCurrent();
+        auto* value_bind_core = translate_value_field(value_binder->type, field_address, bind_core);
+        return value_bind_core->v8_object.Get(isolate);
+    }
+    else
+    {
+        return _to_v8(binder.binder, field_address);
+    }
+}
+v8::Local<v8::Value> V8BindManager::_get_field_mapping(
+    const ScriptBinderField& binder,
+    const void*              obj,
+    const RTTRType*          obj_type
+)
+{
+    // get field info
+    void* field_address = _get_field_address(
+        binder.data,
+        binder.owner,
+        obj_type,
+        const_cast<void*>(obj)
+    );
+
+    return _to_v8(binder.binder, field_address);
+}
+bool V8BindManager::_set_static_field(
+    const ScriptBinderStaticField& binder,
+    v8::Local<v8::Value>           v8_value
+)
+{
+    // get field info
+    void* field_address = binder.data->address;
+
+    // to native
+    return _to_native(binder.binder, field_address, v8_value, true);
+}
+v8::Local<v8::Value> V8BindManager::_get_static_field(
+    const ScriptBinderStaticField& binder
+)
+{
+    // get field info
+    void* field_address = binder.data->address;
+
+    // to v8
+    if (binder.binder.is_value())
+    { // TODO. optimize for value case
+        SKR_UNIMPLEMENTED_FUNCTION()
+        return {};
+    }
+    else
+    {
+        return _to_v8(binder.binder, field_address);
+    }
+}
+
+// param & return convert helper
+void V8BindManager::_push_param(
+    DynamicStack&            stack,
+    const ScriptBinderParam& param_binder,
+    v8::Local<v8::Value>     v8_value
+)
+{
+    switch (param_binder.binder.kind())
+    {
+    case ScriptBinderRoot::EKind::Primitive: {
+        auto* primitive_binder = param_binder.binder.primitive();
+        if (primitive_binder->type_id == type_id_of<StringView>())
+        { // string view case, push proxy
+            StringViewStackProxy* proxy = stack.alloc_param<StringViewStackProxy>(
+                EDynamicStackParamKind::Direct,
+                nullptr,
+                StringViewStackProxy::custom_mapping
+            );
+            new (proxy) StringViewStackProxy();
+            SKR_ASSERT(V8Bind::to_native(v8_value, proxy->holder));
+            proxy->view = proxy->holder;
+        }
+        else
+        {
+            void* native_data = stack.alloc_param_raw(
+                primitive_binder->size,
+                primitive_binder->alignment,
+                param_binder.pass_by_ref ? EDynamicStackParamKind::XValue : EDynamicStackParamKind::Direct,
+                primitive_binder->dtor
+            );
+            SKR_ASSERT(_to_native_primitive(*primitive_binder, v8_value, native_data, false));
+        }
+        break;
+    }
+    case ScriptBinderRoot::EKind::Mapping: {
+        auto*       mapping_binder = param_binder.binder.mapping();
+        auto        dtor_data      = mapping_binder->type->dtor_data();
+        DtorInvoker dtor           = dtor_data.has_value() ? dtor_data.value().native_invoke : nullptr;
+        void*       native_data    = stack.alloc_param_raw(
+            mapping_binder->type->size(),
+            mapping_binder->type->alignment(),
+            param_binder.pass_by_ref ? EDynamicStackParamKind::XValue : EDynamicStackParamKind::Direct,
+            dtor
+        );
+        SKR_ASSERT(_to_native_mapping(*mapping_binder, v8_value, native_data, false));
+        break;
+    }
+    case ScriptBinderRoot::EKind::Enum: {
+        auto* enum_binder       = param_binder.binder.enum_();
+        auto* underlying_binder = enum_binder->underlying_binder;
+        void* native_data       = stack.alloc_param_raw(
+            underlying_binder->size,
+            underlying_binder->alignment,
+            param_binder.pass_by_ref ? EDynamicStackParamKind::XValue : EDynamicStackParamKind::Direct,
+            underlying_binder->dtor
+        );
+        SKR_ASSERT(_to_native_primitive(*underlying_binder, v8_value, native_data, false));
+    }
+    case ScriptBinderRoot::EKind::Object: {
+        void* native_data = stack.alloc_param_raw(
+            sizeof(void*),
+            alignof(void*),
+            EDynamicStackParamKind::Direct,
+            nullptr
+        );
+        SKR_ASSERT(_to_native_object(*param_binder.binder.object(), v8_value, native_data, false));
+        break;
+    }
+    case ScriptBinderRoot::EKind::Value: {
+        void* native_data;
+        if (param_binder.pass_by_ref)
+        { // optimize for param
+            auto* value_binder = param_binder.binder.value();
+
+            // get bind core
+            auto* isolate   = v8::Isolate::GetCurrent();
+            auto  context   = isolate->GetCurrentContext();
+            auto  v8_object = v8_value->ToObject(context).ToLocalChecked();
+            auto  bind_core = reinterpret_cast<V8BindCoreValue*>(v8_object->GetInternalField(0).As<v8::External>()->Value());
+
+            // push pointer
+            auto* cast_ptr = bind_core->type->cast_to_base(value_binder->type->type_id(), bind_core->data);
+            stack.add_param<void*>(cast_ptr);
+        }
+        else
+        {
+            auto*       value_binder = param_binder.binder.value();
+            auto        dtor_data    = value_binder->type->dtor_data();
+            DtorInvoker dtor         = dtor_data.has_value() ? dtor_data.value().native_invoke : nullptr;
+            native_data              = stack.alloc_param_raw(
+                value_binder->type->size(),
+                value_binder->type->alignment(),
+                EDynamicStackParamKind::Direct,
+                dtor
+            );
+            SKR_ASSERT(_to_native_value(*value_binder, v8_value, native_data, false));
+        }
+    }
+    default:
+        SKR_UNREACHABLE_CODE()
+        break;
+    }
+}
+void V8BindManager::_push_param_pure_out(
+    DynamicStack&            stack,
+    const ScriptBinderParam& param_binder
+)
+{
+    switch (param_binder.binder.kind())
+    {
+    case ScriptBinderRoot::EKind::Primitive: {
+        auto* primitive_binder = param_binder.binder.primitive();
+        void* native_data      = stack.alloc_param_raw(
+            primitive_binder->size,
+            primitive_binder->alignment,
+            param_binder.pass_by_ref ? EDynamicStackParamKind::XValue : EDynamicStackParamKind::Direct,
+            primitive_binder->dtor
+        );
+
+        // call ctor
+        _init_primitive(*param_binder.binder.primitive(), native_data);
+        break;
+    }
+    case ScriptBinderRoot::EKind::Enum: {
+        auto* enum_binder       = param_binder.binder.enum_();
+        auto* underlying_binder = enum_binder->underlying_binder;
+        void* native_data       = stack.alloc_param_raw(
+            underlying_binder->size,
+            underlying_binder->alignment,
+            EDynamicStackParamKind::XValue,
+            underlying_binder->dtor
+        );
+
+        // call ctor
+        _init_primitive(*underlying_binder, native_data);
+        break;
+    }
+    case ScriptBinderRoot::EKind::Mapping: {
+        auto*       mapping_binder = param_binder.binder.mapping();
+        auto        dtor_data      = mapping_binder->type->dtor_data();
+        DtorInvoker dtor           = dtor_data.has_value() ? dtor_data.value().native_invoke : nullptr;
+        void*       native_data    = stack.alloc_param_raw(
+            mapping_binder->type->size(),
+            mapping_binder->type->alignment(),
+            EDynamicStackParamKind::XValue,
+            dtor
+        );
+
+        // call ctor
+        auto* ctor_data = mapping_binder->type->find_ctor_t<void()>();
+        auto* invoker   = reinterpret_cast<void (*)(void*)>(ctor_data->native_invoke);
+        invoker(native_data);
+        break;
+    }
+    case ScriptBinderRoot::EKind::Value: {
+        auto* value_binder      = param_binder.binder.value();
+        auto* create_value_core = create_value(value_binder->type);
+
+        // push pointer
+        stack.add_param<void*>(create_value_core->data);
+    }
+    case ScriptBinderRoot::EKind::Object: {
+        SKR_UNREACHABLE_CODE()
+        break;
+    }
+    default:
+        SKR_UNREACHABLE_CODE()
+        break;
+    }
+}
+v8::Local<v8::Value> V8BindManager::_read_return(
+    DynamicStack&                    stack,
+    const Vector<ScriptBinderParam>& params_binder,
+    const ScriptBinderReturn&        return_binder,
+    uint32_t                         solved_return_count
+)
+{
+    auto* isolate = v8::Isolate::GetCurrent();
+    auto  context = isolate->GetCurrentContext();
+
+    if (solved_return_count == 1)
+    { // return single value
+        if (return_binder.is_void)
+        { // read from out param
+            for (const auto& param_binder : params_binder)
+            {
+                if (flag_all(param_binder.inout_flag, ERTTRParamFlag::Out))
+                {
+                    return _read_return_from_out_param(
+                        stack,
+                        param_binder
+                    );
+                }
+            }
+        }
+        else
+        { // read return value
+            if (stack.is_return_stored())
+            {
+                return _read_return(
+                    stack,
+                    return_binder
+                );
+            }
+        }
+    }
+    else
+    { // return param array
+        v8::Local<v8::Array> out_array = v8::Array::New(isolate);
+        uint32_t             cur_index = 0;
+
+        // try read return value
+        if (!return_binder.is_void)
+        {
+            if (stack.is_return_stored())
+            {
+                v8::Local<v8::Value> out_value = _read_return(
+                    stack,
+                    return_binder
+                );
+                out_array->Set(context, cur_index, out_value).Check();
+                ++cur_index;
+            }
+        }
+
+        // read return value from out param
+        for (const auto& param_binder : params_binder)
+        {
+            if (flag_all(param_binder.inout_flag, ERTTRParamFlag::Out))
+            {
+                // clang-format off
+                    out_array->Set(context, cur_index,_read_return_from_out_param(
+                        stack,
+                        param_binder
+                    )).Check();
+                // clang-format on
+                ++cur_index;
+            }
+        }
+
+        return out_array;
+    }
+
+    return {};
+}
+v8::Local<v8::Value> V8BindManager::_read_return(
+    DynamicStack&             stack,
+    const ScriptBinderReturn& return_binder
+)
+{
+    if (!stack.is_return_stored()) { return {}; }
+
+    void* native_data;
+    switch (return_binder.binder.kind())
+    {
+    case ScriptBinderRoot::EKind::Primitive:
+    case ScriptBinderRoot::EKind::Enum:
+    case ScriptBinderRoot::EKind::Mapping:
+    case ScriptBinderRoot::EKind::Value: {
+        native_data = stack.get_return_raw();
+        if (return_binder.pass_by_ref)
+        {
+            native_data = *reinterpret_cast<void**>(native_data);
+        }
+        break;
+    }
+    case ScriptBinderRoot::EKind::Object: {
+        native_data = stack.get_return_raw();
+        break;
+    }
+    default:
+        SKR_UNREACHABLE_CODE()
+        return {};
+    }
+    return _to_v8(return_binder.binder, native_data);
+}
+v8::Local<v8::Value> V8BindManager::_read_return_from_out_param(
+    DynamicStack&            stack,
+    const ScriptBinderParam& param_binder
+)
+{
+    // get out param data
+    void* native_data = stack.get_param_raw(param_binder.data->index);
+
+    if (param_binder.binder.is_value())
+    { // optimize for value case
+        // get created value data
+        native_data = *reinterpret_cast<void**>(native_data);
+        if (auto result = _script_created_values.find(native_data))
+        {
+            return result.value()->v8_object.Get(v8::Isolate::GetCurrent());
+        }
+        else
+        {
+            SKR_UNREACHABLE_CODE();
+            return {};
+        }
+    }
+    else
+    {
+        // convert to v8
+        return _to_v8(
+            param_binder.binder,
+            native_data
+        );
+    }
+}
+
+// invoke helper
+bool V8BindManager::_call_native(
+    const ScriptBinderCtor&                        binder,
+    const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
+    void*                                          obj
+)
+{
+    DynamicStack native_stack;
+
+    // push param
+    for (uint32_t i = 0; i < v8_stack.Length(); ++i)
+    {
+        _push_param(
+            native_stack,
+            binder.params_binder[i],
+            v8_stack[i]
+        );
+    }
+
+    // invoke
+    native_stack.return_behaviour_discard();
+    binder.data->dynamic_stack_invoke(obj, native_stack);
+
+    return true;
+}
+bool V8BindManager::_call_native(
+    const ScriptBinderMethod&                      binder,
+    const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
+    void*                                          obj,
+    const RTTRType*                                obj_type
+)
+{
+    for (const auto& overload : binder.overloads)
+    {
+        if (!V8Bind::match(overload.params_binder, overload.params_count, v8_stack)) { continue; }
+
+        DynamicStack native_stack;
+
+        // push param
+        uint32_t v8_stack_index = 0;
+        for (const auto& param_binder : overload.params_binder)
+        {
+            if (param_binder.inout_flag == ERTTRParamFlag::Out)
+            { // pure out param, we will push a dummy xvalue
+                _push_param_pure_out(
+                    native_stack,
+                    param_binder
+                );
+            }
+            else
+            {
+                _push_param(
+                    native_stack,
+                    param_binder,
+                    v8_stack[v8_stack_index]
+                );
+                ++v8_stack_index;
+            }
+        }
+
+        // cast
+        void* owner_address = obj_type->cast_to_base(overload.owner->type_id(), obj);
+
+        // invoke
+        native_stack.return_behaviour_store();
+        overload.data->dynamic_stack_invoke(owner_address, native_stack);
+
+        // read return
+        auto return_value = _read_return(
+            native_stack,
+            overload.params_binder,
+            overload.return_binder,
+            overload.return_count
+        );
+        if (!return_value.IsEmpty())
+        {
+            v8_stack.GetReturnValue().Set(return_value);
+        }
+
+        return true;
+    }
+
+    return false;
+}
+bool V8BindManager::_call_native(
+    const ScriptBinderStaticMethod&                binder,
+    const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack
+)
+{
+    for (const auto& overload : binder.overloads)
+    {
+        if (!V8Bind::match(overload.params_binder, overload.params_count, v8_stack)) { continue; }
+
+        DynamicStack native_stack;
+
+        // push param
+        uint32_t v8_stack_index = 0;
+        for (const auto& param_binder : overload.params_binder)
+        {
+            if (param_binder.inout_flag == ERTTRParamFlag::Out)
+            { // pure out param, we will push a dummy xvalue
+                _push_param_pure_out(
+                    native_stack,
+                    param_binder
+                );
+            }
+            else
+            {
+                _push_param(
+                    native_stack,
+                    param_binder,
+                    v8_stack[v8_stack_index]
+                );
+                ++v8_stack_index;
+            }
+        }
+
+        // invoke
+        native_stack.return_behaviour_store();
+        overload.data->dynamic_stack_invoke(native_stack);
+
+        // read return
+        auto return_value = _read_return(
+            native_stack,
+            overload.params_binder,
+            overload.return_binder,
+            overload.return_count
+        );
+        if (!return_value.IsEmpty())
+        {
+            v8_stack.GetReturnValue().Set(return_value);
+        }
+
+        return true;
+    }
+
+    return false;
 }
 } // namespace skr

@@ -170,12 +170,6 @@ struct V8BindCoreObject : V8BindCoreRecordBase {
         data   = nullptr;
         object = nullptr;
     }
-
-    // helper functions
-    inline void* cast_to_base(::skr::GUID type_id)
-    {
-        return type->cast_to_base(type_id, data);
-    }
 };
 struct V8BindCoreValue : V8BindCoreRecordBase {
     inline V8BindCoreValue()
