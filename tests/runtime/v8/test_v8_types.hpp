@@ -61,6 +61,12 @@ sscript_visible
 GoodMan {
     sscript_visible
     skr::String name = u8"";
+
+    GoodMan() = default;
+    GoodMan(const GoodMan& other) {
+        name = other.name;
+        SKR_LOG_FMT_INFO(u8"ohhhhhhh copy!!!!!!!!!!! '{}'", name);
+    }
 };
 
 sreflect_struct(
@@ -189,5 +195,15 @@ TestType : public ::skr::ScriptbleObject {
     {
         SKR_LOG_FMT_INFO(u8"man: {}", man.name);
     }
+
+    // static value export
+    sscript_visible
+    static GoodMan bad_man;
+    sscript_visible
+    static void print(const GoodMan& man)
+    {
+        SKR_LOG_FMT_INFO(u8"=> print man: {}", man.name);
+    }
 };
+
 };

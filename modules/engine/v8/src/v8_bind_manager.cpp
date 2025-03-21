@@ -230,42 +230,79 @@ V8BindCoreValue* V8BindManager::translate_value_field(const RTTRType* type, cons
         return nullptr;
     }
 
-    // find exported data
-    auto found_data = owner->cache_value_fields.find(data);
-    if (found_data)
-    {
-        return found_data.value();
+    if (owner)
+    { // means field
+        // find exported data
+        if (auto found_data = owner->cache_value_fields.find(data))
+        {
+            return found_data.value();
+        }
+
+        // make object
+        Local<ObjectTemplate> instance_template = template_ref.value()->ctor_template.Get(isolate)->InstanceTemplate();
+        Local<Object>         object            = instance_template->NewInstance(context).ToLocalChecked();
+
+        // make bind core
+        auto value_bind_core     = SkrNew<V8BindCoreValue>();
+        value_bind_core->manager = this;
+        value_bind_core->type    = type;
+        value_bind_core->data    = const_cast<void*>(data);
+        value_bind_core->v8_object.Reset(isolate, object);
+
+        // setup source
+        value_bind_core->from             = V8BindCoreValue::ESource::Field;
+        value_bind_core->from_field_owner = owner;
+
+        // setup gc callback
+        value_bind_core->v8_object.SetWeak(
+            (V8BindCoreRecordBase*)value_bind_core,
+            _gc_callback,
+            WeakCallbackType::kInternalFields
+        );
+
+        // add extern data
+        object->SetInternalField(0, External::New(isolate, value_bind_core));
+
+        // add to map
+        owner->cache_value_fields.add(const_cast<void*>(data), value_bind_core);
+        return value_bind_core;
     }
+    else
+    { // means static field
+        // find exported data
+        if (auto result = _static_field_values.find(data))
+        {
+            return result.value();
+        }
 
-    // make object
-    Local<ObjectTemplate> instance_template = template_ref.value()->ctor_template.Get(isolate)->InstanceTemplate();
-    Local<Object>         object            = instance_template->NewInstance(context).ToLocalChecked();
+        // make object
+        Local<ObjectTemplate> instance_template = template_ref.value()->ctor_template.Get(isolate)->InstanceTemplate();
+        Local<Object>         object            = instance_template->NewInstance(context).ToLocalChecked();
 
-    // make bind core
-    auto value_bind_core     = SkrNew<V8BindCoreValue>();
-    value_bind_core->manager = this;
-    value_bind_core->type    = type;
-    value_bind_core->data    = const_cast<void*>(data);
-    value_bind_core->v8_object.Reset(isolate, object);
+        // create new core
+        auto* value_bind_core    = SkrNew<V8BindCoreValue>();
+        value_bind_core->manager = this;
+        value_bind_core->type    = type;
+        value_bind_core->data    = const_cast<void*>(data);
+        value_bind_core->v8_object.Reset(isolate, object);
 
-    // setup source
-    value_bind_core->from             = V8BindCoreValue::ESource::Field;
-    value_bind_core->from_field_owner = owner;
+        // setup source
+        value_bind_core->from = V8BindCoreValue::ESource::StaticField;
 
-    // setup gc callback
-    value_bind_core->v8_object.SetWeak(
-        (V8BindCoreRecordBase*)value_bind_core,
-        _gc_callback,
-        WeakCallbackType::kInternalFields
-    );
+        // setup gc collback
+        value_bind_core->v8_object.SetWeak(
+            (V8BindCoreRecordBase*)value_bind_core,
+            _gc_callback,
+            WeakCallbackType::kInternalFields
+        );
 
-    // add extern data
-    object->SetInternalField(0, External::New(isolate, value_bind_core));
+        // add extern data
+        object->SetInternalField(0, External::New(isolate, value_bind_core));
 
-    // add to map
-    owner->cache_value_fields.add(const_cast<void*>(data), value_bind_core);
-
-    return value_bind_core;
+        // add to map
+        _static_field_values.add(const_cast<void*>(data), value_bind_core);
+        return value_bind_core;
+    }
 }
 
 // query template
@@ -603,7 +640,7 @@ void V8BindManager::_gc_callback(const ::v8::WeakCallbackInfo<V8BindCoreRecordBa
             }
             else if (value_core->from == V8BindCoreValue::ESource::StaticField)
             {
-                // TODO. static field
+                value_core->manager->_static_field_values.remove(value_core->data);
             }
 
             // reset object handle
@@ -1635,9 +1672,10 @@ v8::Local<v8::Value> V8BindManager::_get_static_field(
 
     // to v8
     if (binder.binder.is_value())
-    { // TODO. optimize for value case
-        SKR_UNIMPLEMENTED_FUNCTION()
-        return {};
+    { // optimize for value case
+        auto* value_binder    = binder.binder.value();
+        auto* value_core = translate_value_field(value_binder->type, binder.data->address, nullptr);
+        return value_core->v8_object.Get(v8::Isolate::GetCurrent());
     }
     else
     {
@@ -1742,6 +1780,7 @@ void V8BindManager::_push_param(
             );
             SKR_ASSERT(_to_native_value(*value_binder, v8_value, native_data, false));
         }
+        break;
     }
     default:
         SKR_UNREACHABLE_CODE()

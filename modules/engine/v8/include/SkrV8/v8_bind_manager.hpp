@@ -221,5 +221,6 @@ private:
     Map<::skr::ScriptbleObject*, V8BindCoreObject*> _alive_objects;
     Vector<V8BindCoreObject*>                       _deleted_objects;
     Map<void*, V8BindCoreValue*>                    _script_created_values;
+    Map<void*, V8BindCoreValue*>                    _static_field_values;
 };
 } // namespace skr

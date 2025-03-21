@@ -71,6 +71,9 @@ int main(int argc, char* argv[])
 
             test.man.name = "牢大"
             test.print_man()
+
+            TestType.bad_man.name = "圆头"
+            TestType.print(TestType.bad_man)
             }
     )__");
 
