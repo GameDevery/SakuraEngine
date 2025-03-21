@@ -10,22 +10,7 @@ ScriptBinderManager::ScriptBinderManager()
 }
 ScriptBinderManager::~ScriptBinderManager()
 {
-    // delete root binder cache
-    for (auto& [type_id, binder] : _cached_root_binders)
-    {
-        switch (binder.kind())
-        {
-        case ScriptBinderRoot::EKind::Primitive:
-            SkrDelete(binder.primitive());
-            break;
-        case ScriptBinderRoot::EKind::Mapping:
-            SkrDelete(binder.mapping());
-            break;
-        case ScriptBinderRoot::EKind::Object:
-            SkrDelete(binder.object());
-            break;
-        }
-    }
+    clear();
 }
 
 // get binder
@@ -94,6 +79,43 @@ ScriptBinderRoot ScriptBinderManager::get_or_build(GUID type_id)
     }
     _cached_root_binders.add(type_id, {});
     return {};
+}
+
+// each
+void ScriptBinderManager::each_cached_root_binder(FunctionRef<void(const GUID&, const ScriptBinderRoot&)> func)
+{
+    for (auto& [type_id, binder] : _cached_root_binders)
+    {
+        func(type_id, binder);
+    }
+}
+
+// clear
+void ScriptBinderManager::clear()
+{
+    // delete root binder cache
+    for (auto& [type_id, binder] : _cached_root_binders)
+    {
+        switch (binder.kind())
+        {
+        case ScriptBinderRoot::EKind::Primitive:
+            SkrDelete(binder.primitive());
+            break;
+        case ScriptBinderRoot::EKind::Mapping:
+            SkrDelete(binder.mapping());
+            break;
+        case ScriptBinderRoot::EKind::Object:
+            SkrDelete(binder.object());
+            break;
+        case ScriptBinderRoot::EKind::Enum:
+            SkrDelete(binder.enum_());
+            break;
+        case ScriptBinderRoot::EKind::Value:
+            SkrDelete(binder.value());
+            break;
+        }
+    }
+    _cached_root_binders.clear();
 }
 
 // make root binder
@@ -433,9 +455,10 @@ void ScriptBinderManager::_fill_record_info(ScriptBinderRecordBase& out, const R
                         getter.data->name,
                         setter.data->name
                     );
+                    prop.failed = true;
                 }
+                prop.binder = getter.return_binder.binder;
             }
-            prop.failed = true;
         }
     }
 
@@ -489,9 +512,10 @@ void ScriptBinderManager::_fill_record_info(ScriptBinderRecordBase& out, const R
                         getter.data->name,
                         setter.data->name
                     );
+                    static_prop.failed = true;
                 }
+                static_prop.binder = getter_binder;
             }
-            static_prop.failed = true;
         }
     }
 

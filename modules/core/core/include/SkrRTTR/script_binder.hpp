@@ -278,11 +278,13 @@ struct ScriptBinderStaticMethod {
 
 // nested binder, property
 struct ScriptBinderProperty {
+    ScriptBinderRoot   binder = {};
     ScriptBinderMethod setter = {};
     ScriptBinderMethod getter = {};
     bool               failed = false;
 };
 struct ScriptBinderStaticProperty {
+    ScriptBinderRoot         binder = {};
     ScriptBinderStaticMethod setter = {};
     ScriptBinderStaticMethod getter = {};
     bool                     failed = false;
@@ -347,6 +349,12 @@ struct SKR_CORE_API ScriptBinderManager {
 
     // get binder
     ScriptBinderRoot get_or_build(GUID type_id);
+
+    // each
+    void each_cached_root_binder(FunctionRef<void(const GUID&, const ScriptBinderRoot&)> func);
+
+    // clear
+    void clear();
 
 private:
     // make root binder

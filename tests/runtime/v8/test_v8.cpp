@@ -1,3 +1,4 @@
+#include "SkrV8/ts_define_exporter.hpp"
 #include "SkrV8/v8_isolate.hpp"
 #include "SkrV8/v8_context.hpp"
 #include "SkrRTTR/rttr_traits.hpp"
@@ -103,6 +104,25 @@ int main(int argc, char* argv[])
     context.shutdown();
     isolate.shutdown();
     shutdown_v8();
+
+    // gen .d.ts
+    TSDefineExporter ts_exporter;
+    ts_exporter.register_type<test_v8::ETestEnum>();
+    ts_exporter.register_type<test_v8::TestType>();
+    ts_exporter.register_type<test_v8::GoodMan>();
+    String ts_content = ts_exporter.generate();
+
+    // output to file
+    auto handle = fopen("./test_v8_export.d.ts", "wb");
+    if (handle)
+    {
+        fwrite(ts_content.c_str(), sizeof(char), ts_content.length_buffer(), handle);
+        fclose(handle);
+    }
+    else
+    {
+        SKR_LOG_FMT_ERROR(u8"failed to open file");
+    }
 
     return 0;
 }
