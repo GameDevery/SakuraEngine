@@ -330,7 +330,7 @@ TEST_CASE("test v8")
             // test out
             auto result = context.exec_script(u8"ParamFlagTest.test_value_pure_out()");
             REQUIRE_EQ(result.get<test_v8::ParamFlagTestValue>().value().value, u8"mambo");
-            
+
             // test inout
             result = context.exec_script(u8R"__(
                 let test_value = new ParamFlagTestValue()
@@ -340,6 +340,38 @@ TEST_CASE("test v8")
             )__");
             REQUIRE_EQ(result.get<test_v8::ParamFlagTestValue>().value().value, u8"ohhhh baka");
         }
+
+        context.shutdown();
+    }
+
+    SUBCASE("string")
+    {
+        V8Context context(&isolate);
+        context.init();
+
+        context.register_type<test_v8::TestString>();
+
+        // test get str
+        context.exec_script(u8"TestString.value = TestString.get_str()");
+        REQUIRE_EQ(test_v8::TestString::value, u8"mamba out");
+
+        // test set str
+        context.exec_script(u8"TestString.set_str('牢大')");
+        REQUIRE_EQ(test_v8::TestString::value, u8"牢大");
+
+        // test get view
+        {
+            auto result = context.exec_script(u8"TestString.get_view()");
+            REQUIRE_EQ(result.get<skr::String>().value(), u8"牢大");
+        }
+
+        // test set view
+        context.exec_script(u8"TestString.set_view('牢大出击')");
+        REQUIRE_EQ(test_v8::TestString::value, u8"牢大出击");
+
+        // test prop
+        context.exec_script(u8"TestString.prop_value = `oh yeah ${TestString.prop_value}`");
+        REQUIRE_EQ(test_v8::TestString::value, u8"oh yeah 牢大出击");
 
         context.shutdown();
     }
@@ -359,6 +391,7 @@ TEST_CASE("test v8")
         exporter.register_type<test_v8::BasicEnumHelper>();
         exporter.register_type<test_v8::ParamFlagTest>();
         exporter.register_type<test_v8::ParamFlagTestValue>();
+        exporter.register_type<test_v8::TestString>();
         auto result = exporter.generate();
 
         auto file = fopen("test_v8.d.ts", "wb");

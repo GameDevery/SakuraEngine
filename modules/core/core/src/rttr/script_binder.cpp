@@ -316,7 +316,7 @@ void ScriptBinderManager::_fill_record_info(ScriptBinderRecordBase& out, const R
     type->each_field([&](const RTTRFieldData* field, const RTTRType* owner_type) {
         if (!flag_all(owner_type->record_flag(), ERTTRRecordFlag::ScriptVisible)) { return; }
         if (!flag_all(field->flag, ERTTRFieldFlag::ScriptVisible)) { return; }
-        
+
         auto& field_data = out.fields.try_add_default(field->name).value();
         _make_field(field_data, field, owner_type);
         // clang-format off
@@ -327,7 +327,7 @@ void ScriptBinderManager::_fill_record_info(ScriptBinderRecordBase& out, const R
     type->each_static_field([&](const RTTRStaticFieldData* static_field, const RTTRType* owner_type) {
         if (!flag_all(owner_type->record_flag(), ERTTRRecordFlag::ScriptVisible)) { return; }
         if (!flag_all(static_field->flag, ERTTRStaticFieldFlag::ScriptVisible)) { return; }
-        
+
         auto& static_field_data = out.static_fields.try_add_default(static_field->name).value();
         _make_static_field(static_field_data, static_field, owner_type);
         // clang-format off
@@ -381,7 +381,7 @@ void ScriptBinderManager::_fill_record_info(ScriptBinderRecordBase& out, const R
     type->each_static_method([&](const RTTRStaticMethodData* method, const RTTRType* owner_type) {
         if (!flag_all(owner_type->record_flag(), ERTTRRecordFlag::ScriptVisible)) { return; }
         if (!flag_all(method->flag, ERTTRStaticMethodFlag::ScriptVisible)) { return; }
-        
+
         auto find_getter_result = method->attrs.find_if([&](const Any& attr) {
             return attr.type_is<skr::attr::ScriptGetter>();
         });
@@ -462,10 +462,32 @@ void ScriptBinderManager::_fill_record_info(ScriptBinderRecordBase& out, const R
                 auto getter_binder = getter.return_binder.binder;
                 auto setter_binder = setter.params_binder[0].binder;
 
+                bool prop_mismatch = false;
                 if (getter_binder != setter_binder)
                 {
+                    if (getter_binder.is_primitive() && setter_binder.is_primitive())
+                    {
+                        bool getter_is_str = getter_binder.primitive()->type_id == type_id_of<String>() ||
+                                             getter_binder.primitive()->type_id == type_id_of<StringView>();
+                        bool setter_is_str = setter_binder.primitive()->type_id == type_id_of<String>() ||
+                                             setter_binder.primitive()->type_id == type_id_of<StringView>();
+                        if (getter_is_str && setter_is_str)
+                        { // optimize for string
+                        }
+                        else
+                        {
+                            prop_mismatch = true;
+                        }
+                    }
+                    else
+                    {
+                        prop_mismatch = true;
+                    }
+                }
+                if (prop_mismatch)
+                {
                     _logger.error(
-                        u8"prop '{}' getter and setter type mismatch, getter '{}', setter '{}'",
+                        u8"prop '{}' getter and setter type mismatch, getter '{}', setter '{}' ",
                         name,
                         getter.data->name,
                         setter.data->name
@@ -519,7 +541,29 @@ void ScriptBinderManager::_fill_record_info(ScriptBinderRecordBase& out, const R
                 auto getter_binder = getter.return_binder.binder;
                 auto setter_binder = setter.params_binder[0].binder;
 
+                bool prop_mismatch = false;
                 if (getter_binder != setter_binder)
+                {
+                    if (getter_binder.is_primitive() && setter_binder.is_primitive())
+                    {
+                        bool getter_is_str = getter_binder.primitive()->type_id == type_id_of<String>() ||
+                                             getter_binder.primitive()->type_id == type_id_of<StringView>();
+                        bool setter_is_str = setter_binder.primitive()->type_id == type_id_of<String>() ||
+                                             setter_binder.primitive()->type_id == type_id_of<StringView>();
+                        if (getter_is_str && setter_is_str)
+                        { // optimize for string
+                        }
+                        else
+                        {
+                            prop_mismatch = true;
+                        }
+                    }
+                    else
+                    {
+                        prop_mismatch = true;
+                    }
+                }
+                if (prop_mismatch)
                 {
                     _logger.error(
                         u8"prop '{}' getter and setter type mismatch, getter '{}', setter '{}'",

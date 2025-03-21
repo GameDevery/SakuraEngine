@@ -4,8 +4,6 @@
     #include "V8Test/test_v8_types.generated.h"
 #endif
 
-// TODO. test string
-
 // basic object
 namespace test_v8
 {
@@ -258,5 +256,31 @@ ParamFlagTest {
     {
         v.value.append(u8" baka");
     }
+};
+}
+
+// test string
+namespace test_v8
+{
+sreflect_struct(guid = "e24c4d8f-5294-4c91-b7ad-f1f56c140c8b")
+sscript_visible
+TestString {
+    sscript_visible
+    static skr::String get_str() { return u8"mamba out"; }
+    sscript_visible
+    static void set_str(const skr::String& v) { value = v; }
+
+    sscript_visible
+    static skr::StringView get_view() { return skr::StringView(value); }
+    sscript_visible
+    static void set_view(skr::StringView v) { value = skr::String(v); }
+
+    sscript_visible sscript_getter(prop_value)
+    static skr::String prop_value() { return value; }
+    sscript_visible sscript_setter(prop_value)
+    static void set_prop_value(skr::StringView v) { value = skr::String(v); }
+
+    sscript_visible
+    static skr::String value;
 };
 }
