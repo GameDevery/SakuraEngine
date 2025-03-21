@@ -156,6 +156,7 @@ inline void TSDefineExporter::_gen_enum(ScriptBinderEnum& enum_binder)
 }
 inline void TSDefineExporter::_gen_mapping(ScriptBinderMapping& mapping)
 {
+    $line(u8"// export as mapping");
     // print cpp symbol
     $line(
         u8"// cpp symbol: {}::{}",
@@ -196,15 +197,30 @@ inline void TSDefineExporter::_gen_record(ScriptBinderRecordBase& record_binder)
     // as class
     $line(u8"export class {} {{", record_binder.type->name());
     $indent([&] {
+        String record_full_name = String::Join(record_binder.type->name_space(), u8"::");
+        String record_name      = record_binder.type->name();
+        record_full_name.append(u8"::");
+        record_full_name.append(record_name);
+
         // ctors
         for (auto& ctor : record_binder.ctors)
         {
+            $line(
+                u8"// cpp symbol: {}::{}",
+                record_full_name,
+                record_binder.type->name()
+            );
             $line(u8"constructor({});", _params_signature(ctor.params_binder));
         }
 
         // fields
         for (auto& [field_name, field_value] : record_binder.fields)
         {
+            $line(
+                u8"// cpp symbol: {}::{}",
+                record_full_name,
+                field_value.data->name
+            );
             $line(u8"{}: {};", field_name, _type_name(field_value.binder));
         }
 
@@ -213,6 +229,11 @@ inline void TSDefineExporter::_gen_record(ScriptBinderRecordBase& record_binder)
         {
             for (auto& overload : method_value.overloads)
             {
+                $line(
+                    u8"// cpp symbol: {}::{}",
+                    record_full_name,
+                    overload.data->name
+                );
                 $line(
                     u8"{}({}): {};",
                     method_name,
@@ -225,6 +246,11 @@ inline void TSDefineExporter::_gen_record(ScriptBinderRecordBase& record_binder)
         // static fields
         for (auto& [static_field_name, static_field_value] : record_binder.static_fields)
         {
+            $line(
+                u8"// cpp symbol: {}::{}",
+                record_full_name,
+                static_field_value.data->name
+            );
             $line(u8"static {}: {};", static_field_name, _type_name(static_field_value.binder));
         }
 
@@ -233,6 +259,11 @@ inline void TSDefineExporter::_gen_record(ScriptBinderRecordBase& record_binder)
         {
             for (auto& overload : static_method_value.overloads)
             {
+                $line(
+                    u8"// cpp symbol: {}::{}",
+                    record_full_name,
+                    overload.data->name
+                );
                 $line(
                     u8"static {}({}): {};",
                     static_method_name,
@@ -247,10 +278,20 @@ inline void TSDefineExporter::_gen_record(ScriptBinderRecordBase& record_binder)
         {
             if (!property_value.setter.overloads.is_empty())
             {
+                $line(
+                    u8"// cpp symbol: {}::{}",
+                    record_full_name,
+                    property_value.setter.overloads[0].data->name
+                );
                 $line(u8"set {}(value: {});", property_name, _type_name(property_value.binder));
             }
             if (!property_value.getter.overloads.is_empty())
             {
+                $line(
+                    u8"// cpp symbol: {}::{}",
+                    record_full_name,
+                    property_value.getter.overloads[0].data->name
+                );
                 $line(u8"get {}(): {};", property_name, _type_name(property_value.binder));
             }
         }
@@ -260,10 +301,20 @@ inline void TSDefineExporter::_gen_record(ScriptBinderRecordBase& record_binder)
         {
             if (!static_property_value.setter.overloads.is_empty())
             {
+                $line(
+                    u8"// cpp symbol: {}::{}",
+                    record_full_name,
+                    static_property_value.setter.overloads[0].data->name
+                );
                 $line(u8"static set {}(value: {});", static_property_name, _type_name(static_property_value.binder));
             }
             if (!static_property_value.getter.overloads.is_empty())
             {
+                $line(
+                    u8"// cpp symbol: {}::{}",
+                    record_full_name,
+                    static_property_value.getter.overloads[0].data->name
+                );
                 $line(u8"static get {}(): {};", static_property_name, _type_name(static_property_value.binder));
             }
         }
