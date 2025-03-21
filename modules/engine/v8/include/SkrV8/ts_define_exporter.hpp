@@ -102,6 +102,7 @@ inline String TSDefineExporter::generate()
         case ScriptBinderRoot::EKind::Value: {
             auto* value_binder = binder.value();
             _gen_value(*value_binder);
+            $line();
             break;
         }
         case ScriptBinderRoot::EKind::Primitive:
@@ -430,7 +431,7 @@ inline String TSDefineExporter::_return_signature(
 
                 if (is_out)
                 {
-                    return _type_name(param.binder);
+                    return format(u8"{} /*{}*/", _type_name(param.binder), param.data->name);
                 }
             }
             SKR_UNREACHABLE_CODE();
@@ -447,7 +448,7 @@ inline String TSDefineExporter::_return_signature(
         result.append(u8"[");
         if (!ret.is_void)
         {
-            result.append(_type_name(ret.binder));
+            result.append(format(u8"{} /*[return]*/", _type_name(ret.binder)));
             result.append(u8", ");
         }
         for (auto& param : params)
@@ -464,7 +465,7 @@ inline String TSDefineExporter::_return_signature(
 
             if (is_out)
             {
-                result.append(_type_name(param.binder));
+                result.append(format(u8"{} /*{}*/", _type_name(param.binder), param.data->name));
                 result.append(u8", ");
             }
         }
