@@ -55,8 +55,8 @@ namespace SB
             }
             string localOutput = string.Empty;
             string localError = string.Empty;
-            P.OutputDataReceived += (sender, e) => { if (e.Data is not null) localOutput += e.Data; };
-            P.ErrorDataReceived += (sender, e) => { if (e.Data is not null) localError += e.Data; };
+            P.OutputDataReceived += (sender, e) => { if (e.Data is not null) localOutput += e.Data + "\n"; };
+            P.ErrorDataReceived += (sender, e) => { if (e.Data is not null) localError += e.Data + "\n"; };
             P.Start();
             P.BeginOutputReadLine();
             P.BeginErrorReadLine();

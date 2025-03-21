@@ -113,7 +113,7 @@ namespace SB
                         if (Param.Type.GetUnderlyingTypeIfIsArgumentList(out var ElementType))
                         {
                             sourceBuilder.Append($@"
-        public SB.Target {MethodName}({FlagsP}params {ElementType!.GetFullTypeName()}[] {Param.Name}) {{ {ArgumentsContainer}.GetOrAddNew<string, {Param.Type}>(""{MethodName}"").AddRange({Param.Name}); return (SB.Target)this; }}
+        public virtual SB.Target {MethodName}({FlagsP}params {ElementType!.GetFullTypeName()}[] {Param.Name}) {{ {ArgumentsContainer}.GetOrAddNew<string, {Param.Type}>(""{MethodName}"").AddRange({Param.Name}); return (SB.Target)this; }}
 ");
                         }
                         else
@@ -121,7 +121,7 @@ namespace SB
                             if (HasFlags)
                                 throw new Exception($"{MethodName} fails: Single param setters should not have inherit behavior!");
                             sourceBuilder.Append($@"
-        public SB.Target {MethodName}({FlagsP}{Param.Type.GetFullTypeName()} {Param.Name}) {{ {ArgumentsContainer}.Override(""{MethodName}"", {Param.Name}); return (SB.Target)this; }}
+        public virtual SB.Target {MethodName}({FlagsP}{Param.Type.GetFullTypeName()} {Param.Name}) {{ {ArgumentsContainer}.Override(""{MethodName}"", {Param.Name}); return (SB.Target)this; }}
 ");
                         }
                     }
