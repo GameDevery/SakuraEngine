@@ -4,7 +4,6 @@
     #include "V8Test/test_v8_types.generated.h"
 #endif
 
-// TODO. test param flag
 // TODO. test string
 
 // basic object
@@ -206,5 +205,58 @@ BasicEnumHelper {
     static BasicEnum test_value;
     sscript_visible
     static skr::String test_name;
+};
+}
+
+// param flag
+namespace test_v8
+{
+sreflect_struct(guid = "7d514abe-a7f9-4512-a94f-4f3e9eb19d94")
+sscript_visible sscript_newable
+ParamFlagTestValue {
+    sscript_visible
+    ParamFlagTestValue() = default;
+
+    sscript_visible
+    skr::String value;
+};
+
+sreflect_struct(guid = "d74058a0-24c4-4f86-b062-299674e3df53")
+sscript_visible
+ParamFlagTest {
+    sscript_visible
+    static skr::String test_value;
+
+    sscript_visible
+    static void test_pure_out(sparam_out skr::String& v) { v = u8"mambo"; }
+
+    sscript_visible
+    static void test_inout(sparam_inout skr::String& v) { v.append(u8" mambo"); }
+
+    sscript_visible
+    static skr::String test_multi_out(sparam_out skr::String& v1, sparam_out skr::String& v2) 
+    { 
+        v1 = u8"out"; 
+        v2 = u8"mambo"; 
+        return u8"mamba";
+    }
+    sscript_visible
+    static skr::String test_multi_inout(sparam_inout skr::String& v1, sparam_inout skr::String& v2)
+    {
+        v1.append(u8"out");
+        v2.append(u8"mambo");
+        return u8"mamba";
+    }
+
+    sscript_visible
+    static void test_value_pure_out(sparam_out ParamFlagTestValue& v)
+    {
+        v.value = u8"mambo";
+    }
+    sscript_visible
+    static void test_value_inout(sparam_inout ParamFlagTestValue& v)
+    {
+        v.value.append(u8" baka");
+    }
 };
 }

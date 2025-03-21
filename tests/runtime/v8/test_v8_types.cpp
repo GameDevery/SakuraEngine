@@ -16,4 +16,5 @@ InheritMapping BasicMappingHelper::inherit_value = {};
 BasicEnum   BasicEnumHelper::test_value = BasicEnum::Value1;
 skr::String BasicEnumHelper::test_name = {};
 
+skr::String ParamFlagTest::test_value = u8"";
 } // namespace test_v8

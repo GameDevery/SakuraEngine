@@ -303,6 +303,47 @@ TEST_CASE("test v8")
         context.shutdown();
     }
 
+    SUBCASE("param flag")
+    {
+        V8Context context(&isolate);
+        context.init();
+
+        context.register_type<test_v8::ParamFlagTest>();
+        context.register_type<test_v8::ParamFlagTestValue>();
+
+        // test out & inout
+        context.exec_script(u8"ParamFlagTest.test_value = ParamFlagTest.test_pure_out()");
+        REQUIRE_EQ(test_v8::ParamFlagTest::test_value, u8"mambo");
+        context.exec_script(u8"ParamFlagTest.test_value = ParamFlagTest.test_inout('mambo')");
+        REQUIRE_EQ(test_v8::ParamFlagTest::test_value, u8"mambo mambo");
+
+        // test multi out & inout
+        context.exec_script(u8"let [out1, out2, out3] = ParamFlagTest.test_multi_out()");
+        context.exec_script(u8"ParamFlagTest.test_value = `${out1} + ${out2} + ${out3}`");
+        REQUIRE_EQ(test_v8::ParamFlagTest::test_value, u8"mamba + out + mambo");
+        context.exec_script(u8"let [inout1, inout2, inout3] = ParamFlagTest.test_multi_inout('AAA', 'BBB')");
+        context.exec_script(u8"ParamFlagTest.test_value = `${inout1} + ${inout2} + ${inout3}`");
+        REQUIRE_EQ(test_v8::ParamFlagTest::test_value, u8"mamba + AAAout + BBBmambo");
+
+        // test value out & inout
+        {
+            // test out
+            auto result = context.exec_script(u8"ParamFlagTest.test_value_pure_out()");
+            REQUIRE_EQ(result.get<test_v8::ParamFlagTestValue>().value().value, u8"mambo");
+            
+            // test inout
+            result = context.exec_script(u8R"__(
+                let test_value = new ParamFlagTestValue()
+                test_value.value = 'ohhhh'
+                ParamFlagTest.test_value_inout(test_value)
+                test_value
+            )__");
+            REQUIRE_EQ(result.get<test_v8::ParamFlagTestValue>().value().value, u8"ohhhh baka");
+        }
+
+        context.shutdown();
+    }
+
     // output .d.ts
     SUBCASE("output d.ts")
     {
@@ -316,6 +357,8 @@ TEST_CASE("test v8")
         exporter.register_type<test_v8::BasicMappingHelper>();
         exporter.register_type<test_v8::BasicEnum>();
         exporter.register_type<test_v8::BasicEnumHelper>();
+        exporter.register_type<test_v8::ParamFlagTest>();
+        exporter.register_type<test_v8::ParamFlagTestValue>();
         auto result = exporter.generate();
 
         auto file = fopen("test_v8.d.ts", "wb");
