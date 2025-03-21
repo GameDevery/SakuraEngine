@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using SB;
 using SB.Core;
 using Serilog;
@@ -39,14 +40,16 @@ public class SkrGraphicsDoctor : DoctorAttribute
     {
         if (BuildSystem.TargetOS == OSPlatform.Windows)
         {
-            Parallel.Invoke(
-                () => Install.SDK("dstorage-1.2.3"),
-                () => Install.SDK("dxc-2025_02_21"),
-                () => Install.SDK("amdags"),
-                () => Install.SDK("nvapi"),
-                () => Install.SDK("nsight"),
-                () => Install.SDK("WinPixEventRuntime")
-            );
+            Stopwatch sw = new();
+            sw.Start();
+            Install.SDK("dstorage-1.2.3");
+            Install.SDK("dxc-2025_02_21");
+            Install.SDK("amdags");
+            Install.SDK("nvapi");
+            Install.SDK("nsight");
+            Install.SDK("WinPixEventRuntime");
+            sw.Stop();
+            Log.Information("graphics sdks install took {0} ms", sw.ElapsedMilliseconds);
         }
         return true;
     }

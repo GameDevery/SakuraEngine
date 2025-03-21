@@ -47,7 +47,6 @@ namespace SB
                 "--"
             };
             // Compiler arguments
-            var EXE = Path.Combine(Engine.ToolDirectory, BS.HostOS == OSPlatform.Windows ? "meta.exe" : "meta");
             var CompilerArgs = Toolchain.Compiler.CreateArgumentDriver()
                 .AddArguments(Target.Arguments)
                 .CalculateArguments()
@@ -60,7 +59,7 @@ namespace SB
             // Run meta.exe
             bool Changed = Depend.OnChanged(Target.Name, MetaAttribute.MetaDirectory, Name, (Depend depend) =>
             {
-                int ExitCode = BuildSystem.RunProcess(EXE, string.Join(" ", MetaArgs), out var OutputInfo, out var ErrorInfo);
+                int ExitCode = BuildSystem.RunProcess(MetaDoctor.Executable!, string.Join(" ", MetaArgs), out var OutputInfo, out var ErrorInfo);
                 if (ExitCode != 0)
                     throw new TaskFatalError($"meta.exe {BatchFile} failed with fatal error!", $"meta.exe: {OutputInfo}");
                 else if (OutputInfo.Contains("warning LNK"))
@@ -88,13 +87,14 @@ namespace SB
     {
         public override bool Check()
         {
-            Install.Tool("meta_v1.0.3-llvm_19.1.7");
-            return File.Exists(Path.Combine(Engine.ToolDirectory, BS.HostOS == OSPlatform.Windows ? "meta.exe" : "meta"));
+            Executable = Path.Combine(Install.Tool("meta_v1.0.3-llvm_19.1.7"), BS.HostOS == OSPlatform.Windows ? "meta.exe" : "meta");
+            return File.Exists(Executable);
         }
         public override bool Fix() 
         { 
             Log.Fatal("meta install failed!");
             return true; 
         }
+        public static string? Executable;
     }
 }

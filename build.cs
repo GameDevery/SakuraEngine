@@ -3,13 +3,13 @@ using SB.Core;
 using Serilog;
 using System.Diagnostics;
 
+Stopwatch before_sw = new();
+before_sw.Start();
+
 var Toolchain = Utilities.Bootstrap(SourceLocation.Directory());
 var DoctorTask = Engine.RunDoctors();
 // TODO: use doctor
 var ToolchainInitializeTask = Toolchain.Initialize();
-
-Stopwatch sw = new();
-sw.Start();
 // TODO: use doctor
 var DBInitializeTask = DependContext.Initialize();
 
@@ -89,13 +89,20 @@ Engine.Module("TestTarget")
 await DoctorTask;
 await ToolchainInitializeTask;
 await DBInitializeTask;
-BuildSystem.RunBuild();
 
+before_sw.Stop();
+
+Stopwatch sw = new();
+sw.Start();
+
+BuildSystem.RunBuild();
 CompileCommandsEmitter.WriteToFile(Path.Combine(SourceLocation.Directory(), ".vscode/compile_commands.json"));
 
 sw.Stop();
 
-Log.Information($"Total: {sw.ElapsedMilliseconds / 1000.0f}s");
+Log.Information($"Total: {(sw.ElapsedMilliseconds + before_sw.ElapsedMilliseconds) / 1000.0f}s");
+Log.Information($"Prepare Total: {before_sw.ElapsedMilliseconds / 1000.0f}s");
+Log.Information($"Execution Total: {sw.ElapsedMilliseconds / 1000.0f}s");
 Log.Information($"Compile Commands Total: {CompileCommandsEmitter.Time / 1000.0f}s");
 Log.Information($"Compile Total: {CppCompileEmitter.Time / 1000.0f}s");
 Log.Information($"Link Total: {CppLinkEmitter.Time / 1000.0f}s");

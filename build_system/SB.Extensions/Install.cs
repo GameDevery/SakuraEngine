@@ -4,17 +4,19 @@ namespace SB
 {
     public static class Install
     {
-        public static void Tool(string Name)
+        public static string Tool(string Name)
         {
-            Depend.OnChanged("", Name, "Install.Tools", (Depend depend) =>
+            var ToolDirectory = Path.Combine(Engine.ToolDirectory, Name);
+            Depend.OnChanged("Download", Name, "Install.Tools", (Depend depend) =>
             {
                 var ZipFile = Download.DownloadFile(Name + GetToolPostfix());
-                Directory.CreateDirectory(Engine.ToolDirectory);
-                System.IO.Compression.ZipFile.ExtractToDirectory(ZipFile, Engine.ToolDirectory, true);
+                Directory.CreateDirectory(ToolDirectory);
+                System.IO.Compression.ZipFile.ExtractToDirectory(ZipFile, ToolDirectory, true);
 
                 depend.ExternalFiles.Add(ZipFile);
-                // depend.ExternalFiles.AddRange(Directory.GetFiles(ToolDirectory, "*", SearchOption.AllDirectories));
+                depend.ExternalFiles.AddRange(Directory.GetFiles(ToolDirectory, "*", SearchOption.AllDirectories));
             }, null, null);
+            return ToolDirectory;
         }
 
         public static void SDK(string Name)
@@ -22,7 +24,7 @@ namespace SB
             var IntermediateDirectory = Path.Combine(Engine.DownloadDirectory, "SDKs", Name);
             Directory.CreateDirectory(IntermediateDirectory);
 
-            Depend.OnChanged("Unzip", Name, "Install.SDKs", (Depend depend) =>
+            Depend.OnChanged("Download", Name, "Install.SDKs", (Depend depend) =>
             {
                 var ZipFile = Download.DownloadFile(Name + GetToolPostfix());
                 System.IO.Compression.ZipFile.ExtractToDirectory(ZipFile, IntermediateDirectory, true);
