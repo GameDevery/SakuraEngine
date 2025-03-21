@@ -71,7 +71,11 @@ namespace SB
             Depend.OnChanged(Target.Name, "", this.Name, (Depend depend) => {
                 var ParamFile = Path.Combine(CodegenDirectory, $"{Target.Name}_codegen_config.json");
                 File.WriteAllText(ParamFile, Json.Serialize(Config));
-                var ExitCode = BS.RunProcess(CodegenDoctor.Executable!, $"{GenerateScript} {ParamFile}", out var OutputInfo, out var ErrorInfo, null);
+
+                CodegenDoctor.Installation!.Wait();
+                var EXE = Path.Combine(CodegenDoctor.Installation.Result, BS.HostOS == OSPlatform.Windows ? "bun.exe" : "bun");
+                
+                var ExitCode = BS.RunProcess(EXE, $"{GenerateScript} {ParamFile}", out var OutputInfo, out var ErrorInfo, null);
                 if (ExitCode != 0)
                 {
                     throw new TaskFatalError($"Codegen render {Target.Name} failed with fatal error!", $"bun.exe: {ErrorInfo}");
@@ -135,14 +139,14 @@ namespace SB
     {
         public override bool Check()
         {
-            Executable = Path.Combine(Install.Tool("bun_1.2.5"), BS.HostOS == OSPlatform.Windows ? "bun.exe" : "bun");
-            return File.Exists(Executable);
+            Installation = Install.Tool("bun_1.2.5");
+            return true;
         }
         public override bool Fix() 
         { 
             Log.Fatal("bun install failed!");
             return true; 
         }
-        public static string? Executable;
+        public static Task<string>? Installation;
     }
 }

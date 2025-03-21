@@ -78,6 +78,30 @@ namespace SB.Core
             return false;
         }
 
+        public static async Task<bool> OnChanged(string TargetName, string FileName, string EmitterName, Func<Depend, Task> func, IEnumerable<string>? Files, IEnumerable<string>? Args, Options? opt = null)
+        {
+            Options option = opt ?? new Options { Force = false, UseSHA = false };
+            var SortedFiles = Files?.ToList() ?? new(); SortedFiles.Sort();
+            var SortedArgs = Args?.ToList() ?? new(); SortedArgs.Sort();
+
+            Depend? OldDepend = null;
+            var NeedRerun = option.Force || !CheckDependency(TargetName, FileName, EmitterName, SortedFiles, SortedArgs, out OldDepend);
+            if (NeedRerun)
+            {
+                Depend NewDepend = new Depend
+                {
+                    PrimaryKey = TargetName + FileName + EmitterName,
+                    InputArgs = SortedArgs,
+                    InputFiles = SortedFiles,
+                    InputFileTimes = SortedFiles.Select(x => Directory.GetLastWriteTimeUtc(x)).ToList()
+                };
+                await func(NewDepend);
+                UpdateDependency(NewDepend, OldDepend);
+                return true;
+            }
+            return false;
+        }
+
         private static bool CheckDependency(string TargetName, string FileName, string EmitterName, List<string> SortedFiles, List<string> SortedArgs, out Depend? OldDepend)
         {
             OldDepend = null;

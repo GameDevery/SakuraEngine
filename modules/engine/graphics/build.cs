@@ -31,6 +31,8 @@ public static class SkrGraphics
                 .Link(Visibility.Private, "nvapi_x64")
                 .Link(Visibility.Private, "WinPixEventRuntime");
         }
+
+        SkrGraphics.BeforeBuild((Target) => SkrGraphicsDoctor.Installation!.Wait() );
     }
 }
 
@@ -42,12 +44,13 @@ public class SkrGraphicsDoctor : DoctorAttribute
         {
             Stopwatch sw = new();
             sw.Start();
-            Install.SDK("dstorage-1.2.3");
-            Install.SDK("dxc-2025_02_21");
-            Install.SDK("amdags");
-            Install.SDK("nvapi");
-            Install.SDK("nsight");
-            Install.SDK("WinPixEventRuntime");
+            Installation = Task.WhenAll(
+                Install.SDK("dxc-2025_02_21"),
+                Install.SDK("amdags"),
+                Install.SDK("nvapi"),
+                Install.SDK("nsight"),
+                Install.SDK("WinPixEventRuntime")
+            );
             sw.Stop();
             Log.Information("graphics sdks install took {0} ms", sw.ElapsedMilliseconds);
         }
@@ -58,4 +61,5 @@ public class SkrGraphicsDoctor : DoctorAttribute
         Log.Fatal("graphics sdks install failed!");
         return true; 
     }
+    public static Task? Installation;
 }

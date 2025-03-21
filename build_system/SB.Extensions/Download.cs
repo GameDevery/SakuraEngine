@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net;
 using System.Security.Cryptography;
+using System.Threading.Tasks;
 
 namespace SB
 {  
@@ -106,7 +107,7 @@ namespace SB
             Log.Information("----------------manifest info----------------");
         }
 
-        private static void DownloadFromSource(DownloadSource Source, string FileName)
+        private static async Task DownloadFromSource(DownloadSource Source, string FileName)
         {
             var Destination = Path.Combine(Engine.DownloadDirectory, FileName);
             var URL = Source.URL + FileName;
@@ -114,12 +115,12 @@ namespace SB
             using (var Http = new HttpClient())
             {
                 var Bytes = Http.GetByteArrayAsync(URL);
-                Bytes.Wait();
-                File.WriteAllBytes(Destination, Bytes.Result);
+                await Bytes;
+                await File.WriteAllBytesAsync(Destination, Bytes.Result);
             }
         }
 
-        public static string DownloadFile(string FileName, bool Force = false)
+        public static async Task<string> DownloadFile(string FileName, bool Force = false)
         {
             Download.FetchManifests();
 
@@ -134,7 +135,7 @@ namespace SB
                     return FilePath;
                 }
             }
-            DownloadFromSource(Sources.Values.First(), FileName);
+            await DownloadFromSource(Sources.Values.First(), FileName);
             return FilePath;
         }
 

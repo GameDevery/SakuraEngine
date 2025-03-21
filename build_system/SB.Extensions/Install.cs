@@ -1,15 +1,16 @@
+using System.Threading.Tasks;
 using SB.Core;
 
 namespace SB
 {
     public static class Install
     {
-        public static string Tool(string Name)
+        public static async Task<string> Tool(string Name)
         {
             var ToolDirectory = Path.Combine(Engine.ToolDirectory, Name);
-            Depend.OnChanged("Download", Name, "Install.Tools", (Depend depend) =>
+            await Depend.OnChanged("Download", Name, "Install.Tools", async (Depend depend) =>
             {
-                var ZipFile = Download.DownloadFile(Name + GetToolPostfix());
+                var ZipFile = await Download.DownloadFile(Name + GetToolPostfix());
                 Directory.CreateDirectory(ToolDirectory);
                 System.IO.Compression.ZipFile.ExtractToDirectory(ZipFile, ToolDirectory, true);
 
@@ -19,14 +20,14 @@ namespace SB
             return ToolDirectory;
         }
 
-        public static void SDK(string Name)
+        public static async Task SDK(string Name)
         {
             var IntermediateDirectory = Path.Combine(Engine.DownloadDirectory, "SDKs", Name);
             Directory.CreateDirectory(IntermediateDirectory);
 
-            Depend.OnChanged("Download", Name, "Install.SDKs", (Depend depend) =>
+            await Depend.OnChanged("Download", Name, "Install.SDKs", async (Depend depend) =>
             {
-                var ZipFile = Download.DownloadFile(Name + GetToolPostfix());
+                var ZipFile = await Download.DownloadFile(Name + GetToolPostfix());
                 System.IO.Compression.ZipFile.ExtractToDirectory(ZipFile, IntermediateDirectory, true);
 
                 depend.ExternalFiles.Add(ZipFile);
