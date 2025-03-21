@@ -87,14 +87,14 @@ namespace SB
         public T GetArgumentUnsafe<T>(string Name)
             where T : new()
         {
-            if (FinalArguments.TryGetValue(Name, out var V))
+            if (PrivateArguments.TryGetValue(Name, out var V))
             {
                 if (V == null)
-                    throw new InvalidOperationException($"FinalArguments '{Name}' contains a null value, this is unexpected bug, please report to developer!");
+                    throw new InvalidOperationException($"PrivateArguments '{Name}' contains a null value, this is unexpected bug, please report to developer!");
                 return (T)V;
             }
             var New = new T();
-            FinalArguments.Add(Name, New);
+            PrivateArguments.Add(Name, New);
             return New;
         }
 
@@ -177,13 +177,12 @@ namespace SB
                 Absolutes.AddRange(GlobMatcher.GetResultsInFullPath(Directory));
             }
             // Arguments
-            MergeArguments(FinalArguments, PublicArguments);
-            MergeArguments(FinalArguments, PrivateArguments);
+            MergeArguments(PrivateArguments, PublicArguments);
             foreach (var DepName in Dependencies)
             {
                 Target DepTarget = BuildSystem.GetTarget(DepName);
-                MergeArguments(FinalArguments, DepTarget.PublicArguments);
-                MergeArguments(FinalArguments, DepTarget.InterfaceArguments);
+                MergeArguments(PrivateArguments, DepTarget.PublicArguments);
+                MergeArguments(PrivateArguments, DepTarget.InterfaceArguments);
             }
         }
 

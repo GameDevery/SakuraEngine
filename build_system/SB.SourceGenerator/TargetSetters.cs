@@ -94,10 +94,9 @@ using SB.Core;
 
 namespace SB
 {    
-    public abstract class TargetSetters
+    public class ArgumentDictionary : Dictionary<string, object?>
     {
 ");
-
                 foreach (var MethodAndProperty in Methods)
                 {
                     var Method = MethodAndProperty.Key;
@@ -113,7 +112,7 @@ namespace SB
                         if (Param.Type.GetUnderlyingTypeIfIsArgumentList(out var ElementType))
                         {
                             sourceBuilder.Append($@"
-        public virtual SB.Target {MethodName}({FlagsP}params {ElementType!.GetFullTypeName()}[] {Param.Name}) {{ {ArgumentsContainer}.GetOrAddNew<string, {Param.Type}>(""{MethodName}"").AddRange({Param.Name}); return (SB.Target)this; }}
+        public virtual void {MethodName}({FlagsP}params {ElementType!.GetFullTypeName()}[] {Param.Name}) {{ AppendToArgumentList<{ElementType!.GetFullTypeName()}>(""{MethodName}"", {Param.Name}); }}
 ");
                         }
                         else
@@ -121,14 +120,53 @@ namespace SB
                             if (HasFlags)
                                 throw new Exception($"{MethodName} fails: Single param setters should not have inherit behavior!");
                             sourceBuilder.Append($@"
-        public virtual SB.Target {MethodName}({FlagsP}{Param.Type.GetFullTypeName()} {Param.Name}) {{ {ArgumentsContainer}.Override(""{MethodName}"", {Param.Name}); return (SB.Target)this; }}
+        public virtual void {MethodName}({FlagsP}{Param.Type.GetFullTypeName()} {Param.Name}) {{ this.Override(""{MethodName}"", {Param.Name}); }}
 ");
                         }
                     }
                 }
 
                 sourceBuilder.Append(@"
-        private Dictionary<string, object?> GetArgumentsContainer(Visibility Visibility)
+        public void AppendToArgumentList<T>(string Name, params T[] Args) {{ this.GetOrAddNew<string, ArgumentList<T>>(Name).AddRange(Args); }}
+        public void OverrideArgument<T>(string Name, T value) {{ this.Override(Name, value); }}
+    }
+
+    public abstract class TargetSetters
+    {
+");
+
+                foreach (var MethodAndProperty in Methods)
+                {
+                    var Method = MethodAndProperty.Key;
+                    var TargetProperty = MethodAndProperty.Value;
+                    var Param = Method.Parameters[0];
+                    var MethodName = Method.Name;
+                    {
+                        bool HasFlags = TargetProperty.ConstructorArguments.Any(A => !A.Value!.Equals(0));
+                        var FlagsP = HasFlags ? $"Visibility Visibility, " : "";
+                        var FlagsA = HasFlags ? $"Visibility, " : "";
+                        var ArgumentsContainer = HasFlags ? "GetArgumentsContainer(Visibility)" : "PrivateArguments";
+                        var PropertyP = $"params {Param.Type.GetFullTypeName()} {Param.Name}";
+
+                        if (Param.Type.GetUnderlyingTypeIfIsArgumentList(out var ElementType))
+                        {
+                            sourceBuilder.Append($@"
+        public virtual SB.Target {MethodName}({FlagsP}params {ElementType!.GetFullTypeName()}[] {Param.Name}) {{ {ArgumentsContainer}.{MethodName}({FlagsA}{Param.Name}); return (SB.Target)this; }}
+");
+                        }
+                        else
+                        {
+                            if (HasFlags)
+                                throw new Exception($"{MethodName} fails: Single param setters should not have inherit behavior!");
+                            sourceBuilder.Append($@"
+        public virtual SB.Target {MethodName}({FlagsP}{Param.Type.GetFullTypeName()} {Param.Name}) {{ {ArgumentsContainer}.{MethodName}({FlagsA}{Param.Name}); return (SB.Target)this; }}
+");
+                        }
+                    }
+                }
+
+                sourceBuilder.Append(@"
+        private ArgumentDictionary GetArgumentsContainer(Visibility Visibility)
         {
             switch (Visibility)
             {
@@ -139,11 +177,10 @@ namespace SB
             return PrivateArguments;
         }
 
-        public IReadOnlyDictionary<string, object?> Arguments => FinalArguments;
-        internal Dictionary<string, object?> FinalArguments { get; } = new();
-        internal Dictionary<string, object?> PublicArguments { get; } = new();
-        internal Dictionary<string, object?> PrivateArguments { get; } = new();
-        internal Dictionary<string, object?> InterfaceArguments { get; } = new();
+        public IReadOnlyDictionary<string, object?> Arguments => PrivateArguments;
+        internal ArgumentDictionary PublicArguments { get; } = new();
+        internal ArgumentDictionary PrivateArguments { get; } = new();
+        internal ArgumentDictionary InterfaceArguments { get; } = new();
     }
 }");
                 spc.AddSource("TargetSetters.cs", SourceText.From(sourceBuilder.ToString(), Encoding.UTF8));
