@@ -145,7 +145,7 @@ inline Optional<T> V8Value::get() const
     else
     {
         T result;
-        if (bind_manager->to_native(type_of<T>(), &result, solved_v8_value, false))
+        if (bind_manager->to_native(type_of<T>(), &result, solved_v8_value, true))
         {
             return { result };
         }
@@ -205,7 +205,7 @@ inline void V8Context::set_global(StringView name, T&& v)
     }
     else
     {
-        value = bind_manager->create_value(type_of<DecayType>(), &v);
+        value = bind_manager->create_value(type_of<DecayType>(), &v)->v8_object.Get(_isolate->v8_isolate());
     }
 
     // set value

@@ -83,4 +83,70 @@ InheritObject : public BasicObject {
     sscript_visible
     void inherit_method(int32_t v) { test_field = v * 100; }
 };
+
+sreflect_struct(guid = "ecaf33a3-0c3f-46b5-87aa-ba895fa6c38f" rttr = @full)
+sscript_visible sscript_newable
+BasicValue {
+    sscript_visible
+    BasicValue() { test_ctor_value = 114514; }
+    sscript_visible
+    BasicValue(int32_t v) { test_ctor_value = v; }
+
+    static int32_t test_ctor_value;
+
+    // method
+    sscript_visible
+    void test_method(int32_t v) { test_method_v = v; }
+    int32_t test_method_v = 0;
+
+    // field
+    sscript_visible
+    void assign_method_v_to_field() { test_field = test_method_v; }
+    sscript_visible
+    uint32_t test_field = 0;
+
+    // static method
+    sscript_visible
+    static void test_static_method(int64_t v) { test_static_method_v = v; }
+    static int64_t test_static_method_v;
+
+    // static field
+    sscript_visible
+    static uint64_t test_static_field;
+
+    // test overload
+    sscript_visible
+    void test_overload(int32_t v) { overload_int = v; }
+    sscript_visible
+    void test_overload(skr::String v) { overload_str = v; }
+    int32_t overload_int = 0;
+    skr::String overload_str = u8"";
+
+    // test property
+    sscript_visible sscript_getter(test_prop)
+    int32_t get_test_prop() 
+    { 
+        ++test_prop_get_count;  
+        return test_prop; 
+    }
+    sscript_visible sscript_setter(test_prop)
+    void set_test_prop(int32_t v) 
+    {
+        ++test_prop_set_count; 
+        test_prop = v; 
+    }
+    int32_t test_prop = 0;
+    int32_t test_prop_get_count = 0;
+    int32_t test_prop_set_count = 0;
+};
+
+sreflect_struct(guid = "2aeb519b-9b8e-4561-b185-81429dd1dd2e" rttr = @full)
+sscript_visible sscript_newable
+InheritValue : public BasicValue {
+    sscript_visible
+    InheritValue() { test_ctor_value = 1919810; }
+
+    sscript_visible
+    void inherit_method(int32_t v) { test_field = v * 100; }
+};
 }

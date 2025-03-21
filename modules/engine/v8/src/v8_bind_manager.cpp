@@ -1589,7 +1589,7 @@ bool V8BindManager::_to_native_value(
     auto* bind_core     = reinterpret_cast<V8BindCoreValue*>(raw_bind_core);
 
     // do cast
-    void* cast_ptr = bind_core->type->cast_to_base(type->type_id(), native_data);
+    void* cast_ptr = bind_core->type->cast_to_base(type->type_id(), bind_core->data);
 
     // find copy ctor
     TypeSignatureBuilder tb;
@@ -1606,7 +1606,7 @@ bool V8BindManager::_to_native_value(
 
     // copy to native
     auto* invoker = reinterpret_cast<void (*)(void*, const void*)>(found_copy_ctor->native_invoke);
-    invoker(cast_ptr, native_data);
+    invoker(native_data, cast_ptr);
     return true;
 }
 

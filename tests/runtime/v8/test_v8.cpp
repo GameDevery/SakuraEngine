@@ -6,15 +6,24 @@
 #include "SkrCore/log.hpp"
 #include "test_v8_types.hpp"
 
+skr::V8Isolate isolate;
+
+struct V8EnvGuard {
+    V8EnvGuard()
+    {
+        skr::init_v8();
+        isolate.init();
+    }
+    ~V8EnvGuard()
+    {
+        isolate.shutdown();
+        skr::shutdown_v8();
+    }
+} _guard{};
+
 TEST_CASE("test v8")
 {
     using namespace skr;
-
-    V8Isolate isolate;
-
-    // init
-    init_v8();
-    isolate.init();
 
     SUBCASE("basic object")
     {
@@ -99,20 +108,6 @@ TEST_CASE("test v8")
             REQUIRE(v.has_value());
             REQUIRE_EQ(v.value(), 114514);
         }
-        // {
-        //     auto result = context.exec_script(u8"inherit_obj instanceof InheritObject");
-        //     REQUIRE(!result.is_empty());
-        //     auto v = result.get<bool>();
-        //     REQUIRE(v.has_value());
-        //     REQUIRE(v.value() == true);
-        // }
-        // {
-        //     auto result = context.exec_script(u8"inherit_obj instanceof BasicObject");
-        //     REQUIRE(!result.is_empty());
-        //     auto v = result.get<bool>();
-        //     REQUIRE(v.has_value());
-        //     REQUIRE(v.value() == true);
-        // }
 
         // test lifetime
         SkrDelete(obj);
@@ -132,11 +127,108 @@ TEST_CASE("test v8")
             REQUIRE(v.value() == true);
         }
 
-
         context.shutdown();
     }
 
-    // shutdown
-    isolate.shutdown();
-    shutdown_v8();
+    SUBCASE("basic value")
+    {
+        V8Context context(&isolate);
+        context.init();
+
+        // register context
+        context.register_type<test_v8::BasicValue>();
+        context.register_type<test_v8::InheritValue>();
+
+        // set global
+        test_v8::BasicValue value{};
+        context.set_global(u8"test_value", value);
+
+        // test method
+        {
+            context.exec_script(u8"test_value.test_method(114514)");
+            auto result = context.exec_script(u8"test_value");
+            REQUIRE_EQ(result.get<test_v8::BasicValue>().value().test_method_v, 114514);
+        }
+
+        // test field
+        {
+            context.exec_script(u8"test_value.test_field = 1919810");
+            auto result = context.exec_script(u8"test_value");
+            REQUIRE_EQ(result.get<test_v8::BasicValue>().value().test_field, 1919810);
+        }
+
+        // test static method
+        context.exec_script(u8"BasicValue.test_static_method(1919810)");
+        REQUIRE_EQ(test_v8::BasicValue::test_static_method_v, 1919810);
+
+        // test static field
+        context.exec_script(u8"BasicValue.test_static_field = 114514");
+        REQUIRE_EQ(test_v8::BasicValue::test_static_field, 114514);
+        test_v8::BasicValue::test_static_field = 44544;
+        {
+            context.exec_script(u8"test_value.test_method(Number(BasicValue.test_static_field))");
+            auto result = context.exec_script(u8"test_value");
+            REQUIRE_EQ(result.get<test_v8::BasicValue>().value().test_method_v, 44544);
+        }
+
+        // test overload
+        {
+            context.exec_script(u8"test_value.test_overload(114514)");
+            context.exec_script(u8"test_value.test_overload('1919810')");
+            auto result = context.exec_script(u8"test_value");
+            REQUIRE_EQ(result.get<test_v8::BasicValue>().value().overload_int, 114514);
+            REQUIRE_EQ(result.get<test_v8::BasicValue>().value().overload_str, u8"1919810");
+        }
+
+        // test property
+        {
+            context.exec_script(u8"test_value.test_prop = 1");
+            context.exec_script(u8"test_value.test_prop = 2");
+            context.exec_script(u8"test_value.test_prop = 3");
+            context.exec_script(u8"test_value.test_prop = 114514");
+            auto result = context.exec_script(u8"test_value");
+            REQUIRE_EQ(result.get<test_v8::BasicValue>().value().test_prop, 114514);
+            REQUIRE_EQ(result.get<test_v8::BasicValue>().value().test_prop_set_count, 4);
+        }
+        {
+            context.exec_script(u8"let prop_v = test_value.test_prop");
+            context.exec_script(u8"BasicValue.test_static_field = prop_v");
+            auto result = context.exec_script(u8"test_value");
+            REQUIRE_EQ(result.get<test_v8::BasicValue>().value().test_prop_get_count, 1);
+            REQUIRE_EQ(test_v8::BasicValue::test_static_field, 114514);
+        }
+
+        // test new
+        {
+            context.exec_script(u8"let new_value_1 = new BasicValue()");
+            REQUIRE_EQ(test_v8::BasicValue::test_ctor_value, 114514);
+            context.exec_script(u8"let new_value_2 = new BasicValue(568798)");
+            REQUIRE_EQ(test_v8::BasicValue::test_ctor_value, 568798);
+        }
+
+        // test inherit
+        {
+            context.exec_script(u8"let inherit_value = new InheritValue()");
+            context.exec_script(u8"inherit_value.inherit_method(114514)");
+            REQUIRE_EQ(test_v8::BasicValue::test_ctor_value, 1919810);
+        }
+        {
+            auto result = context.exec_script(u8"inherit_value.test_field");
+            REQUIRE(!result.is_empty());
+            auto v = result.get<uint32_t>();
+            REQUIRE(v.has_value());
+            REQUIRE_EQ(v.value(), 114514 * 100);
+        }
+        context.exec_script(u8"inherit_value.test_method(114514)");
+        context.exec_script(u8"inherit_value.assign_method_v_to_field()");
+        {
+            auto result = context.exec_script(u8"inherit_value.test_field");
+            REQUIRE(!result.is_empty());
+            auto v = result.get<uint32_t>();
+            REQUIRE(v.has_value());
+            REQUIRE_EQ(v.value(), 114514);
+        }
+
+        context.shutdown();
+    }
 }
