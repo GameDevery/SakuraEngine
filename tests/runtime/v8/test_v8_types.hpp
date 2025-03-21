@@ -4,8 +4,6 @@
     #include "V8Test/test_v8_types.generated.h"
 #endif
 
-// TODO. test basic mapping
-// TODO. test basic enum
 // TODO. test param flag
 // TODO. test string
 
@@ -185,5 +183,28 @@ BasicMappingHelper
     static void set(BasicMapping v) { basic_value = v; }
     sscript_visible
     static void set(InheritMapping v) { inherit_value = v; }
+};
+}
+
+// basic enum
+namespace test_v8
+{
+sreflect_enum_class(guid = "56611484-25f9-491b-b85e-08f634839938")
+sscript_visible
+BasicEnum : int32_t {
+    Value1 sscript_visible = 0,
+    Value2 sscript_visible = 1,
+    Value3 sscript_visible = 114514,
+    Value4 sscript_visible = 3,
+    Value5 sscript_visible = 8848,
+};
+
+sreflect_struct(guid = "26f991d3-7030-4b04-af12-0e1f0d93bba6" rttr = @full)
+sscript_visible
+BasicEnumHelper {
+    sscript_visible
+    static BasicEnum test_value;
+    sscript_visible
+    static skr::String test_name;
 };
 }

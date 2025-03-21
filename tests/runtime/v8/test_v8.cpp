@@ -276,6 +276,32 @@ TEST_CASE("test v8")
         context.shutdown();
     }
 
+    SUBCASE("basic enum")
+    {
+        V8Context context(&isolate);
+        context.init();
+
+        context.register_type<test_v8::BasicEnum>();
+        context.register_type<test_v8::BasicEnumHelper>();
+
+        // test assign
+        context.exec_script(u8"BasicEnumHelper.test_value = BasicEnum.Value4");
+        REQUIRE_EQ(test_v8::BasicEnumHelper::test_value, test_v8::BasicEnum::Value4);
+
+        // test to string
+        context.exec_script(u8"BasicEnumHelper.test_name = BasicEnum.to_string(BasicEnum.Value4)");
+        REQUIRE_EQ(test_v8::BasicEnumHelper::test_name, u8"Value4");
+        context.exec_script(u8"BasicEnumHelper.test_name = BasicEnum.to_string(8848)");
+        REQUIRE_EQ(test_v8::BasicEnumHelper::test_name, u8"Value5");
+
+        // test from string
+        context.exec_script(u8"BasicEnumHelper.test_value = BasicEnum.from_string('Value3')");
+        REQUIRE_EQ(test_v8::BasicEnumHelper::test_value, test_v8::BasicEnum::Value3);
+        context.exec_script(u8"BasicEnumHelper.test_value = BasicEnum.from_string('Value5')");
+        REQUIRE_EQ(test_v8::BasicEnumHelper::test_value, test_v8::BasicEnum::Value5);
+
+        context.shutdown();
+    }
 
     // output .d.ts
     SUBCASE("output d.ts")
@@ -288,6 +314,8 @@ TEST_CASE("test v8")
         exporter.register_type<test_v8::BasicMapping>();
         exporter.register_type<test_v8::InheritMapping>();
         exporter.register_type<test_v8::BasicMappingHelper>();
+        exporter.register_type<test_v8::BasicEnum>();
+        exporter.register_type<test_v8::BasicEnumHelper>();
         auto result = exporter.generate();
 
         auto file = fopen("test_v8.d.ts", "wb");
