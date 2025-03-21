@@ -6,51 +6,74 @@
 namespace skr
 {
 // match helper
-bool V8Bind::_match_primitive(const ScriptBinderPrimitive& binder, v8::Local<v8::Value> v8_value)
+V8MethodMatchResult V8Bind::_match_primitive(const ScriptBinderPrimitive& binder, v8::Local<v8::Value> v8_value)
 {
     switch (binder.type_id.get_hash())
     {
     case type_id_of<int8_t>().get_hash():
-        return v8_value->IsInt32();
+        return { v8_value->IsInt32(), 0 };
     case type_id_of<int16_t>().get_hash():
-        return v8_value->IsInt32();
+        return { v8_value->IsInt32(), 0 };
     case type_id_of<int32_t>().get_hash():
-        return v8_value->IsInt32();
+        return { v8_value->IsInt32(), 0 };
     case type_id_of<int64_t>().get_hash():
-        return v8_value->IsBigInt() || v8_value->IsInt32() || v8_value->IsUint32();
+        if (v8_value->IsBigInt())
+        {
+            return { true, 0 };
+        }
+        else if (v8_value->IsInt32() || v8_value->IsUint32())
+        {
+            return { true, -1 };
+        }
+        else
+        {
+            return {};
+        }
     case type_id_of<uint8_t>().get_hash():
-        return v8_value->IsUint32();
+        return { v8_value->IsUint32(), 0 };
     case type_id_of<uint16_t>().get_hash():
-        return v8_value->IsUint32();
+        return { v8_value->IsUint32(), 0 };
     case type_id_of<uint32_t>().get_hash():
-        return v8_value->IsUint32();
+        return { v8_value->IsUint32(), 0 };
     case type_id_of<uint64_t>().get_hash():
-        return v8_value->IsBigInt() || v8_value->IsUint32();
+        if (v8_value->IsBigInt())
+        {
+            return { true, 0 };
+        }
+        else if (v8_value->IsInt32() || v8_value->IsUint32())
+        {
+            return { true, -1 };
+        }
+        else
+        {
+            return {};
+        }
     case type_id_of<float>().get_hash():
-        return v8_value->IsNumber();
+        return { v8_value->IsNumber(), 0 };
     case type_id_of<double>().get_hash():
-        return v8_value->IsNumber();
+        return { v8_value->IsNumber(), 0 };
     case type_id_of<bool>().get_hash():
-        return v8_value->IsBoolean();
+        return { v8_value->IsBoolean(), 0 };
     case type_id_of<skr::String>().get_hash():
-        return v8_value->IsString();
+        return { v8_value->IsString(), 0 };
     case type_id_of<skr::StringView>().get_hash():
-        return v8_value->IsString();
+        return { v8_value->IsString(), 0 };
     default:
         SKR_UNREACHABLE_CODE()
-        return false;
+        return {};
     }
 }
-bool V8Bind::_match_mapping(const ScriptBinderMapping& binder, v8::Local<v8::Value> v8_value)
+V8MethodMatchResult V8Bind::_match_mapping(const ScriptBinderMapping& binder, v8::Local<v8::Value> v8_value)
 {
     auto isolate = v8::Isolate::GetCurrent();
     auto context = isolate->GetCurrentContext();
 
     // conv to object
-    if (!v8_value->IsObject()) { return false; }
+    if (!v8_value->IsObject()) { return {}; }
     auto v8_obj = v8_value->ToObject(context).ToLocalChecked();
 
     // match fields
+    int32_t score = 0;
     for (const auto& [field_name, field_data] : binder.fields)
     {
         // find object field
@@ -61,62 +84,69 @@ bool V8Bind::_match_mapping(const ScriptBinderMapping& binder, v8::Local<v8::Val
         // clang-format on
 
         // get field value
-        if (v8_field_value_maybe.IsEmpty()) { return false; }
+        if (v8_field_value_maybe.IsEmpty()) { return {}; }
         auto v8_field_value = v8_field_value_maybe.ToLocalChecked();
 
         // match field
-        if (!match(field_data.binder, v8_field_value)) { return false; }
+        auto result = match(field_data.binder, v8_field_value);
+        if (!result.matched) { return {}; }
+
+        score += result.match_score + 1;
     }
 
-    return true;
+    return { true, score };
 }
-bool V8Bind::_match_object(const ScriptBinderObject& binder, v8::Local<v8::Value> v8_value)
+V8MethodMatchResult V8Bind::_match_object(const ScriptBinderObject& binder, v8::Local<v8::Value> v8_value)
 {
     auto isolate = v8::Isolate::GetCurrent();
     auto context = isolate->GetCurrentContext();
 
     // check v8 value type
-    if (!v8_value->IsObject()) { return false; }
+    if (!v8_value->IsObject()) { return {}; }
     auto v8_object = v8_value->ToObject(context).ToLocalChecked();
 
     // check object
-    if (v8_object->InternalFieldCount() < 1) { return false; }
+    if (v8_object->InternalFieldCount() < 1) { return {}; }
     void* raw_bind_core = v8_object->GetInternalField(0).As<v8::External>()->Value();
     auto* bind_core     = reinterpret_cast<V8BindCoreRecordBase*>(raw_bind_core);
-    if (!bind_core->is_valid()) { return false; }
+    if (!bind_core->is_valid()) { return {}; }
 
     // check inherit
-    return bind_core->type->based_on(binder.type->type_id());
+    uint32_t cast_count = 0;
+    bool     base_on    = bind_core->type->based_on(binder.type->type_id(), &cast_count);
+    return { base_on, (int32_t)cast_count };
 }
-bool V8Bind::_match_value(const ScriptBinderValue& binder, v8::Local<v8::Value> v8_value)
+V8MethodMatchResult V8Bind::_match_value(const ScriptBinderValue& binder, v8::Local<v8::Value> v8_value)
 {
     auto isolate = v8::Isolate::GetCurrent();
     auto context = isolate->GetCurrentContext();
 
     // check v8 value type
-    if (!v8_value->IsObject()) { return false; }
+    if (!v8_value->IsObject()) { return {}; }
     auto v8_object = v8_value->ToObject(context).ToLocalChecked();
 
     // check object
-    if (v8_object->InternalFieldCount() < 1) { return false; }
+    if (v8_object->InternalFieldCount() < 1) { return {}; }
     void* raw_bind_core = v8_object->GetInternalField(0).As<v8::External>()->Value();
     auto* bind_core     = reinterpret_cast<V8BindCoreRecordBase*>(raw_bind_core);
-    if (!bind_core->is_valid()) { return false; }
+    if (!bind_core->is_valid()) { return {}; }
 
     // check inherit
-    return bind_core->type->based_on(binder.type->type_id());
+    uint32_t cast_count = 0;
+    bool     base_on    = bind_core->type->based_on(binder.type->type_id());
+    return { base_on, (int32_t)cast_count };
 }
 } // namespace skr
 
 namespace skr
 {
 // match type
-bool V8Bind::match(
+V8MethodMatchResult V8Bind::match(
     ScriptBinderRoot     binder,
     v8::Local<v8::Value> v8_value
 )
 {
-    if (binder.is_empty()) { return false; }
+    if (binder.is_empty()) { return {}; }
 
     switch (binder.kind())
     {
@@ -130,11 +160,11 @@ bool V8Bind::match(
         return _match_object(*binder.object(), v8_value);
     case ScriptBinderRoot::EKind::Value:
         return _match_value(*binder.value(), v8_value);
+    default:
+        return {};
     }
-
-    return false;
 }
-bool V8Bind::match(
+V8MethodMatchResult V8Bind::match(
     const ScriptBinderParam& binder,
     v8::Local<v8::Value>     v8_value
 )
@@ -143,12 +173,12 @@ bool V8Bind::match(
     if (v8_value.IsEmpty() || v8_value->IsNull() || v8_value->IsUndefined())
     {
         // only object is nullable
-        return binder.binder.is_object();
+        return { binder.binder.is_object(), 0 };
     }
 
     return match(binder.binder, v8_value);
 }
-bool V8Bind::match(
+V8MethodMatchResult V8Bind::match(
     const ScriptBinderReturn& binder,
     v8::Local<v8::Value>      v8_value
 )
@@ -157,12 +187,12 @@ bool V8Bind::match(
     if (v8_value.IsEmpty() || v8_value->IsNull() || v8_value->IsUndefined())
     {
         // only object is nullable
-        return binder.binder.is_object();
+        return { binder.binder.is_object(), 0 };
     }
 
     return match(binder.binder, v8_value);
 }
-bool V8Bind::match(
+V8MethodMatchResult V8Bind::match(
     const ScriptBinderField& binder,
     v8::Local<v8::Value>     v8_value
 )
@@ -170,13 +200,13 @@ bool V8Bind::match(
     // check null
     if (v8_value.IsEmpty() || v8_value->IsNull() || v8_value->IsUndefined())
     {
-        return binder.binder.is_object();
+        return { binder.binder.is_object(), 0 };
     }
 
     // check type
     return match(binder.binder, v8_value);
 }
-bool V8Bind::match(
+V8MethodMatchResult V8Bind::match(
     const ScriptBinderStaticField& binder,
     v8::Local<v8::Value>           v8_value
 )
@@ -184,22 +214,23 @@ bool V8Bind::match(
     // check null
     if (v8_value.IsEmpty() || v8_value->IsNull() || v8_value->IsUndefined())
     {
-        return binder.binder.is_object();
+        return { binder.binder.is_object(), 0 };
     }
 
     // check type
     return match(binder.binder, v8_value);
 }
-bool V8Bind::match(
+V8MethodMatchResult V8Bind::match(
     const Vector<ScriptBinderParam>&               param_binders,
     uint32_t                                       solved_param_count,
     const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack
 )
 {
     // check param count
-    if (solved_param_count != v8_stack.Length()) { return false; }
+    if (solved_param_count != v8_stack.Length()) { return {}; }
 
     // check param type
+    int32_t score = 0;
     for (size_t i = 0; i < param_binders.size(); i++)
     {
         auto& binder = param_binders[i];
@@ -208,9 +239,11 @@ bool V8Bind::match(
         // skip pure out param
         if (binder.inout_flag == ERTTRParamFlag::Out) { continue; }
 
-        if (!match(binder, v8_arg)) { return false; }
+        auto result = match(binder, v8_arg);
+        if (!result.matched) { return {}; }
+        score += result.match_score;
     }
 
-    return true;
+    return { true, score };
 }
 } // namespace skr

@@ -231,4 +231,74 @@ TEST_CASE("test v8")
 
         context.shutdown();
     }
+
+    SUBCASE("basic mapping")
+    {
+        V8Context context(&isolate);
+        context.init();
+
+        context.register_type<test_v8::BasicMapping>();
+        context.register_type<test_v8::InheritMapping>();
+        context.register_type<test_v8::BasicMappingHelper>();
+
+        // test basic
+        context.exec_script(u8"BasicMappingHelper.basic_value = {x:11, y:45, z: 14}");
+        REQUIRE_EQ(test_v8::BasicMappingHelper::basic_value.x, 11);
+        REQUIRE_EQ(test_v8::BasicMappingHelper::basic_value.y, 45);
+        REQUIRE_EQ(test_v8::BasicMappingHelper::basic_value.z, 14);
+
+        // test inherit
+        context.exec_script(u8"BasicMappingHelper.inherit_value = {x:11, y:45, z: 14, w: 1564656}");
+        REQUIRE_EQ(test_v8::BasicMappingHelper::inherit_value.x, 11);
+        REQUIRE_EQ(test_v8::BasicMappingHelper::inherit_value.y, 45);
+        REQUIRE_EQ(test_v8::BasicMappingHelper::inherit_value.z, 14);
+        REQUIRE_EQ(test_v8::BasicMappingHelper::inherit_value.w, 1564656);
+
+        // test pattern match
+        context.exec_script(u8"BasicMappingHelper.basic_value = {x:1, y:2, z:3, w: 4}");
+        REQUIRE_EQ(test_v8::BasicMappingHelper::basic_value.x, 1);
+        REQUIRE_EQ(test_v8::BasicMappingHelper::basic_value.y, 2);
+        REQUIRE_EQ(test_v8::BasicMappingHelper::basic_value.z, 3);
+
+        // test overload
+        context.exec_script(u8"BasicMappingHelper.set({x:555, y:444, z: 333, w: 222})");
+        REQUIRE_EQ(test_v8::BasicMappingHelper::inherit_value.x, 555);
+        REQUIRE_EQ(test_v8::BasicMappingHelper::inherit_value.y, 444);
+        REQUIRE_EQ(test_v8::BasicMappingHelper::inherit_value.z, 333);
+        REQUIRE_EQ(test_v8::BasicMappingHelper::inherit_value.w, 222);
+
+        // test overload
+        context.exec_script(u8"BasicMappingHelper.set({x:555, y:444, z: 333})");
+        REQUIRE_EQ(test_v8::BasicMappingHelper::basic_value.x, 555);
+        REQUIRE_EQ(test_v8::BasicMappingHelper::basic_value.y, 444);
+        REQUIRE_EQ(test_v8::BasicMappingHelper::basic_value.z, 333);
+
+        context.shutdown();
+    }
+
+
+    // output .d.ts
+    SUBCASE("output d.ts")
+    {
+        TSDefineExporter exporter;
+        exporter.register_type<test_v8::BasicObject>();
+        exporter.register_type<test_v8::InheritObject>();
+        exporter.register_type<test_v8::BasicValue>();
+        exporter.register_type<test_v8::InheritValue>();
+        exporter.register_type<test_v8::BasicMapping>();
+        exporter.register_type<test_v8::InheritMapping>();
+        exporter.register_type<test_v8::BasicMappingHelper>();
+        auto result = exporter.generate();
+
+        auto file = fopen("test_v8.d.ts", "wb");
+        if (file)
+        {
+            fwrite(result.c_str(), 1, result.size(), file);
+            fclose(file);
+        }
+        else
+        {
+            SKR_LOG_ERROR(u8"failed to open test_v8.d.ts");
+        }
+    }
 }

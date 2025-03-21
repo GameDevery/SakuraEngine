@@ -4,14 +4,12 @@
     #include "V8Test/test_v8_types.generated.h"
 #endif
 
-// TODO. test basic value
-//   - inherit
-//   - instance of
 // TODO. test basic mapping
 // TODO. test basic enum
 // TODO. test param flag
 // TODO. test string
 
+// basic object
 namespace test_v8
 {
 sreflect_struct(guid = "9099f452-beab-482b-a9c8-0f582bd7f5b4" rttr = @full)
@@ -83,7 +81,11 @@ InheritObject : public BasicObject {
     sscript_visible
     void inherit_method(int32_t v) { test_field = v * 100; }
 };
+}
 
+// basic value
+namespace test_v8
+{
 sreflect_struct(guid = "ecaf33a3-0c3f-46b5-87aa-ba895fa6c38f" rttr = @full)
 sscript_visible sscript_newable
 BasicValue {
@@ -148,5 +150,40 @@ InheritValue : public BasicValue {
 
     sscript_visible
     void inherit_method(int32_t v) { test_field = v * 100; }
+};
+}
+
+// basic mappint
+namespace test_v8
+{
+sreflect_struct(guid = "3fcd040d-e180-4802-996d-d67417e45f7e" rttr = @full)
+sscript_visible sscript_mapping
+BasicMapping {
+    sscript_visible
+    double x = 0;
+    sscript_visible
+    double y = 0;
+    sscript_visible
+    double z = 0;
+};
+sreflect_struct(guid = "b9b953e3-b63b-49bf-8d34-2dba7ff49dd2" rttr = @full)
+sscript_visible sscript_mapping
+InheritMapping : BasicMapping {
+    sscript_visible
+    double w = 0;
+};
+sreflect_struct(guid = "06e9fa99-9432-43fa-ba55-d22737a7de60" rttr = @full)
+sscript_visible
+BasicMappingHelper 
+{
+    sscript_visible
+    static BasicMapping basic_value;
+    sscript_visible
+    static InheritMapping inherit_value;
+
+    sscript_visible
+    static void set(BasicMapping v) { basic_value = v; }
+    sscript_visible
+    static void set(InheritMapping v) { inherit_value = v; }
 };
 }

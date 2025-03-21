@@ -91,7 +91,7 @@ struct SKR_CORE_API RTTRType final {
     // void validate_export_data() const;
 
     // caster
-    bool           based_on(GUID type_id) const;
+    bool           based_on(GUID type_id, uint32_t* out_cast_count = 0) const;
     void*          cast_to_base(GUID type_id, void* p) const;
     RTTRTypeCaster caster_to_base(GUID type_id) const;
 

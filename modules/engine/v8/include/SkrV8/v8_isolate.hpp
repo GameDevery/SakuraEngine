@@ -49,6 +49,7 @@ struct SKR_V8_API V8Isolate {
 
 private:
     // make template
+    void                            register_mapping_type(const RTTRType* type);
     v8::Local<v8::ObjectTemplate>   _get_enum_template(const RTTRType* type);
     v8::Local<v8::FunctionTemplate> _get_record_template(const RTTRType* type);
 

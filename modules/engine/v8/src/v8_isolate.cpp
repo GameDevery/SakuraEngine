@@ -129,6 +129,14 @@ V8BindCoreValue* V8Isolate::translate_value_field(const RTTRType* type, const vo
 }
 
 // make template
+void V8Isolate::register_mapping_type(const RTTRType* type)
+{
+    using namespace ::v8;
+    // v8 scope
+    Isolate::Scope isolate_scope(_isolate);
+
+    _bind_manager.register_mapping_type(type);
+}
 v8::Local<v8::ObjectTemplate> V8Isolate::_get_enum_template(const RTTRType* type)
 {
     using namespace ::v8;

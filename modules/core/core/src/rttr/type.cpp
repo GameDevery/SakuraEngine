@@ -76,7 +76,7 @@ void RTTRType::build_enum(FunctionRef<void(RTTREnumData* data)> func)
 }
 
 // caster
-bool RTTRType::based_on(GUID type_id) const
+bool RTTRType::based_on(GUID type_id, uint32_t* out_cast_count) const
 {
     switch (_type_category)
     {
@@ -90,13 +90,17 @@ bool RTTRType::based_on(GUID type_id) const
         }
         else
         {
+            // add count if walk to base
+            if (out_cast_count)
+            {
+                ++(*out_cast_count);
+            }
             // find base and cast
             for (const auto& base : _record_data.bases_data)
             {
                 if (type_id == base->type_id)
                 {
                     return true;
-                    ;
                 }
             }
 
@@ -106,7 +110,7 @@ bool RTTRType::based_on(GUID type_id) const
                 auto type = get_type_from_guid(base->type_id);
                 if (type)
                 {
-                    if (type->based_on(type_id))
+                    if (type->based_on(type_id, out_cast_count))
                     {
                         return true;
                     }

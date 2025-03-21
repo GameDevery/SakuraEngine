@@ -309,6 +309,16 @@ V8BindCoreValue* V8BindManager::translate_value_field(const RTTRType* type, cons
 }
 
 // query template
+void V8BindManager::register_mapping_type(const RTTRType* type)
+{
+    using namespace ::v8;
+
+    // check
+    SKR_ASSERT(type);
+
+    // get binder
+    _binder_mgr.get_or_build(type->type_id());
+}
 v8::Local<v8::ObjectTemplate> V8BindManager::get_enum_template(const RTTRType* type)
 {
     using namespace ::v8;
@@ -745,16 +755,28 @@ void V8BindManager::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& in
             }
 
             // match ctor
+            const ScriptBinderCtor* final_ctor_binder = nullptr;
+            int32_t                 highest_score     = std::numeric_limits<int32_t>::min();
             for (const auto& ctor_binder : binder->ctors)
             {
-                if (!V8Bind::match(ctor_binder.params_binder, ctor_binder.params_binder.size(), info)) continue;
+                auto match_result = V8Bind::match(ctor_binder.params_binder, ctor_binder.params_binder.size(), info);
+                if (!match_result.matched) continue;
+                if (match_result.match_score > highest_score)
+                {
+                    final_ctor_binder = &ctor_binder;
+                    highest_score     = match_result.match_score;
+                }
+            }
 
+            // invoke ctor
+            if (final_ctor_binder)
+            {
                 // alloc memory
                 void* alloc_mem = sakura_new_aligned(binder->type->size(), binder->type->alignment());
 
                 // call ctor
                 bool success = bind_data->manager->_call_native(
-                    ctor_binder,
+                    *final_ctor_binder,
                     info,
                     alloc_mem
                 );
@@ -788,12 +810,12 @@ void V8BindManager::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& in
 
                 // add to map
                 bind_manager->_script_created_values.add(bind_core->data, bind_core);
-
-                return;
             }
-
-            // no ctor called
-            Isolate->ThrowError("no ctor matched");
+            else
+            {
+                // no ctor called
+                Isolate->ThrowError("no ctor matched");
+            }
         }
         else
         {
@@ -808,16 +830,28 @@ void V8BindManager::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& in
             }
 
             // match ctor
+            const ScriptBinderCtor* final_ctor_binder = nullptr;
+            int32_t                 highest_score     = std::numeric_limits<int32_t>::min();
             for (const auto& ctor_binder : binder->ctors)
             {
-                if (!V8Bind::match(ctor_binder.params_binder, ctor_binder.params_binder.size(), info)) continue;
+                auto match_result = V8Bind::match(ctor_binder.params_binder, ctor_binder.params_binder.size(), info);
+                if (!match_result.matched) continue;
+                if (match_result.match_score > highest_score)
+                {
+                    final_ctor_binder = &ctor_binder;
+                    highest_score     = match_result.match_score;
+                }
+            }
 
+            // invoke ctor
+            if (final_ctor_binder)
+            {
                 // alloc memory
                 void* alloc_mem = sakura_new_aligned(binder->type->size(), binder->type->alignment());
 
                 // call ctor
                 bool success = bind_data->manager->_call_native(
-                    ctor_binder,
+                    *final_ctor_binder,
                     info,
                     alloc_mem
                 );
@@ -855,12 +889,12 @@ void V8BindManager::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& in
 
                 // add to map
                 bind_manager->_alive_objects.add(bind_core->object, bind_core);
-
-                return;
             }
-
-            // no ctor called
-            Isolate->ThrowError("no ctor matched");
+            else
+            {
+                // no ctor called
+                Isolate->ThrowError("no ctor matched");
+            }
         }
     }
     else
@@ -2089,15 +2123,28 @@ bool V8BindManager::_call_native(
     const RTTRType*                                obj_type
 )
 {
+    // match overload
+    const ScriptBinderMethod::Overload* final_overload = nullptr;
+    int32_t highest_score = std::numeric_limits<int32_t>::min();
     for (const auto& overload : binder.overloads)
     {
-        if (!V8Bind::match(overload.params_binder, overload.params_count, v8_stack)) { continue; }
+        auto result = V8Bind::match(overload.params_binder, overload.params_count, v8_stack);
+        if (!result.matched) { continue; }
+        if (result.match_score > highest_score)
+        {
+            highest_score = result.match_score;
+            final_overload = &overload;
+        }
+    }
 
+    // invoke overload
+    if (final_overload)
+    {
         DynamicStack native_stack;
 
         // push param
         uint32_t v8_stack_index = 0;
-        for (const auto& param_binder : overload.params_binder)
+        for (const auto& param_binder : final_overload->params_binder)
         {
             if (param_binder.inout_flag == ERTTRParamFlag::Out)
             { // pure out param, we will push a dummy xvalue
@@ -2118,18 +2165,18 @@ bool V8BindManager::_call_native(
         }
 
         // cast
-        void* owner_address = obj_type->cast_to_base(overload.owner->type_id(), obj);
+        void* owner_address = obj_type->cast_to_base(final_overload->owner->type_id(), obj);
 
         // invoke
         native_stack.return_behaviour_store();
-        overload.data->dynamic_stack_invoke(owner_address, native_stack);
+        final_overload->data->dynamic_stack_invoke(owner_address, native_stack);
 
         // read return
         auto return_value = _read_return(
             native_stack,
-            overload.params_binder,
-            overload.return_binder,
-            overload.return_count
+            final_overload->params_binder,
+            final_overload->return_binder,
+            final_overload->return_count
         );
         if (!return_value.IsEmpty())
         {
@@ -2138,23 +2185,38 @@ bool V8BindManager::_call_native(
 
         return true;
     }
-
-    return false;
+    else
+    {
+        return false;
+    }
 }
 bool V8BindManager::_call_native(
     const ScriptBinderStaticMethod&                binder,
     const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack
 )
 {
+    // match overload
+    const ScriptBinderStaticMethod::Overload* final_overload = nullptr;
+    int32_t highest_score = std::numeric_limits<int32_t>::min();
     for (const auto& overload : binder.overloads)
     {
-        if (!V8Bind::match(overload.params_binder, overload.params_count, v8_stack)) { continue; }
+        auto result = V8Bind::match(overload.params_binder, overload.params_count, v8_stack);
+        if (!result.matched) { continue; }
+        if (result.match_score > highest_score)
+        {
+            highest_score = result.match_score;
+            final_overload = &overload;
+        }
+    }
 
+    // invoke overload
+    if (final_overload)
+    {
         DynamicStack native_stack;
 
         // push param
         uint32_t v8_stack_index = 0;
-        for (const auto& param_binder : overload.params_binder)
+        for (const auto& param_binder : final_overload->params_binder)
         {
             if (param_binder.inout_flag == ERTTRParamFlag::Out)
             { // pure out param, we will push a dummy xvalue
@@ -2176,14 +2238,14 @@ bool V8BindManager::_call_native(
 
         // invoke
         native_stack.return_behaviour_store();
-        overload.data->dynamic_stack_invoke(native_stack);
+        final_overload->data->dynamic_stack_invoke(native_stack);
 
         // read return
         auto return_value = _read_return(
             native_stack,
-            overload.params_binder,
-            overload.return_binder,
-            overload.return_count
+            final_overload->params_binder,
+            final_overload->return_binder,
+            final_overload->return_count
         );
         if (!return_value.IsEmpty())
         {
@@ -2192,7 +2254,9 @@ bool V8BindManager::_call_native(
 
         return true;
     }
-
-    return false;
+    else
+    {
+        return false;
+    }
 }
 } // namespace skr

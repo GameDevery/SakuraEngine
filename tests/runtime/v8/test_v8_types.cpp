@@ -9,4 +9,7 @@ uint64_t BasicObject::test_static_field    = 0;
 int32_t  BasicValue::test_ctor_value      = 0;
 int64_t  BasicValue::test_static_method_v = 0;
 uint64_t BasicValue::test_static_field    = 0;
+
+BasicMapping BasicMappingHelper::basic_value = {};
+InheritMapping BasicMappingHelper::inherit_value = {};
 } // namespace test_v8

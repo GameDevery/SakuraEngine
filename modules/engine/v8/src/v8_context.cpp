@@ -72,30 +72,37 @@ void V8Context::register_type(skr::RTTRType* type)
     }
     else
     {
-        // get template
-        auto template_ref = _isolate->_get_record_template(type);
-        if (template_ref.IsEmpty())
-        {
-            SKR_LOG_FMT_ERROR(u8"failed to get template for type {}", type->name());
-            return;
+        if (flag_all(type->record_flag(), ERTTRRecordFlag::ScriptMapping))
+        { // mapping mode
+            _isolate->register_mapping_type(type);
         }
+        else
+        { // value or object
+            // get template
+            auto template_ref = _isolate->_get_record_template(type);
+            if (template_ref.IsEmpty())
+            {
+                SKR_LOG_FMT_ERROR(u8"failed to get template for type {}", type->name());
+                return;
+            }
 
-        // inject to self
-        auto ctx  = _context.Get(_isolate->v8_isolate());
-        auto func = template_ref->GetFunction(ctx).ToLocalChecked();
-        // clang-format off
-        auto set_result = ctx->Global()->Set(
-            ctx,
-            V8Bind::to_v8(type->name(), true),
-            func
-        );
-        // clang-format on
+            // inject to self
+            auto ctx  = _context.Get(_isolate->v8_isolate());
+            auto func = template_ref->GetFunction(ctx).ToLocalChecked();
+            // clang-format off
+                        auto set_result = ctx->Global()->Set(
+                            ctx,
+                            V8Bind::to_v8(type->name(), true),
+                            func
+                        );
+            // clang-format on
 
-        // check set result
-        if (set_result.IsNothing())
-        {
-            SKR_LOG_FMT_ERROR(u8"failed to set template for type {}", type->name());
-            return;
+            // check set result
+            if (set_result.IsNothing())
+            {
+                SKR_LOG_FMT_ERROR(u8"failed to set template for type {}", type->name());
+                return;
+            }
         }
     }
 }

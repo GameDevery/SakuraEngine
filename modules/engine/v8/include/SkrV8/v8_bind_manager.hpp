@@ -33,12 +33,13 @@ struct SKR_V8_API V8BindManager : IScriptMixinCore {
     V8BindCoreValue* translate_value_field(const RTTRType* type, const void* data, V8BindCoreRecordBase* owner);
 
     // query template
+    void                            register_mapping_type(const RTTRType* type);
     v8::Local<v8::ObjectTemplate>   get_enum_template(const RTTRType* type);
     v8::Local<v8::FunctionTemplate> get_record_template(const RTTRType* type);
 
     // convert
     v8::Local<v8::Value> to_v8(const RTTRType* type, const void* data);
-    bool to_native(const RTTRType* type, void* data, v8::Local<v8::Value> v8_value, bool is_init);
+    bool                 to_native(const RTTRType* type, void* data, v8::Local<v8::Value> v8_value, bool is_init);
 
     // => IScriptMixinCore API
     void on_object_destroyed(ScriptbleObject* obj) override;
