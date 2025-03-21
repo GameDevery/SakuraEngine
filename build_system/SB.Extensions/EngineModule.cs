@@ -18,11 +18,6 @@ namespace SB
 
     public partial class Engine : BuildSystem
     {
-        public static void SetEngineDirectory([CallerFilePath] string? Location = null)
-        {
-            EngineDirectory = Path.GetDirectoryName(Location!)!;
-        }
-
         public static Target Module(string Name, string? API = null, [CallerFilePath] string? Location = null)
         {
             API = API ?? Name.ToUpperSnakeCase();
@@ -87,7 +82,6 @@ namespace SB
 
         public static bool ShippingOneArchive = false;
         public static bool UseProfile = true;
-        public static string EngineDirectory { get; private set; }
     }
 
     public static class EngineModuleExtensions

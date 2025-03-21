@@ -4,6 +4,7 @@ using System.Diagnostics;
 
 namespace SB
 {
+    using BS = BuildSystem;
     public class CodegenMetaAttribute
     {
         public required string RootDirectory { get; init; }
@@ -11,27 +12,12 @@ namespace SB
         public string[]? AllGeneratedMetaFiles { get; internal set; }
     }
 
+    [MetaDoctor]
     public class CodegenMetaEmitter : TaskEmitter
     {
-        public CodegenMetaEmitter(IToolchain Toolchain, string ToolDirectory)
+        public CodegenMetaEmitter(IToolchain Toolchain)
         {
             this.Toolchain = Toolchain;
-            var ResultList = Directory.GetFiles(ToolDirectory, "meta*", SearchOption.TopDirectoryOnly);
-            if (ResultList.Length > 0)
-            {
-                SearchTask = Task.FromResult(ResultList[0]);
-            }
-            else
-            {
-                throw new Exception("meta.exe not found in " + ToolDirectory);
-                // TODO: Download if not found
-                /*
-                SearchTask = Task.Run(() =>
-                {
-                    Download...
-                });
-                */
-            }
         }
         public override bool EnableEmitter(Target Target) => Target.GetAttribute<CodegenMetaAttribute>() is not null && Target.AllFiles.Any(F => F.EndsWith(".h") || F.EndsWith(".hpp"));
         public override bool EmitTargetTask(Target Target) => true;
@@ -61,7 +47,7 @@ namespace SB
                 "--"
             };
             // Compiler arguments
-            var EXE = ExecutablePath;
+            var EXE = Path.Combine(Engine.ToolDirectory, BS.HostOS == OSPlatform.Windows ? "meta.exe" : "meta");
             var CompilerArgs = Toolchain.Compiler.CreateArgumentDriver()
                 .AddArguments(Target.Arguments)
                 .CalculateArguments()
@@ -89,21 +75,26 @@ namespace SB
             return new MetaArtifact { IsRestored = !Changed };
         }
 
-        private string ExecutablePath
-        {
-            get
-            {
-                SearchTask.Wait();
-                return SearchTask.Result;
-            }
-        }
         private IToolchain Toolchain { get; }
-        private Task<string> SearchTask;
         public static volatile int Time = 0;
     }
 
     public class MetaArtifact : IArtifact
     {
         public bool IsRestored { get; init; }
+    }
+    
+    public class MetaDoctor : DoctorAttribute
+    {
+        public override bool Check()
+        {
+            Install.Tool("meta_v1.0.3-llvm_19.1.7");
+            return File.Exists(Path.Combine(Engine.ToolDirectory, BS.HostOS == OSPlatform.Windows ? "meta.exe" : "meta"));
+        }
+        public override bool Fix() 
+        { 
+            Log.Fatal("meta install failed!");
+            return true; 
+        }
     }
 }

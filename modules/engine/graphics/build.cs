@@ -1,7 +1,9 @@
 using SB;
 using SB.Core;
+using Serilog;
 
 [TargetScript]
+[SkrGraphicsDoctor]
 public static class SkrGraphics
 {
     static SkrGraphics()
@@ -28,5 +30,29 @@ public static class SkrGraphics
                 .Link(Visibility.Private, "nvapi_x64")
                 .Link(Visibility.Private, "WinPixEventRuntime");
         }
+    }
+}
+
+public class SkrGraphicsDoctor : DoctorAttribute
+{
+    public override bool Check()
+    {
+        if (BuildSystem.TargetOS == OSPlatform.Windows)
+        {
+            Parallel.Invoke(
+                () => Install.SDK("dstorage-1.2.3"),
+                () => Install.SDK("dxc-2025_02_21"),
+                () => Install.SDK("amdags"),
+                () => Install.SDK("nvapi"),
+                () => Install.SDK("nsight"),
+                () => Install.SDK("WinPixEventRuntime")
+            );
+        }
+        return true;
+    }
+    public override bool Fix() 
+    { 
+        Log.Fatal("graphics sdks install failed!");
+        return true; 
     }
 }

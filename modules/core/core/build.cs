@@ -1,7 +1,9 @@
 using SB;
 using SB.Core;
+using Serilog;
 
 [TargetScript]
+[SkrCoreDoctor]
 public static class SkrCore
 {
     static SkrCore()
@@ -62,5 +64,19 @@ public static class SkrCore
             SkrCore.Link(Visibility.Private, "advapi32", "user32", "shell32", "Ole32", "Shlwapi");
         else
             SkrCore.Link(Visibility.Private, "pthread");
+    }
+}
+
+public class SkrCoreDoctor : DoctorAttribute
+{
+    public override bool Check()
+    {
+        Install.SDK("SDL2");
+        return true;
+    }
+    public override bool Fix() 
+    { 
+        Log.Fatal("core sdks install failed!");
+        return true; 
     }
 }

@@ -3,12 +3,14 @@ using SB.Core;
 using Serilog;
 using System.Diagnostics;
 
-Engine.SetEngineDirectory();
 var Toolchain = Utilities.Bootstrap(SourceLocation.Directory());
+var DoctorTask = Engine.RunDoctors();
+// TODO: use doctor
 var ToolchainInitializeTask = Toolchain.Initialize();
 
 Stopwatch sw = new();
 sw.Start();
+// TODO: use doctor
 var DBInitializeTask = DependContext.Initialize();
 
 var CompileCommandsEmitter = new CompileCommandsEmitter(Toolchain);
@@ -16,7 +18,7 @@ BuildSystem.AddTaskEmitter("Cpp.CompileCommands", CompileCommandsEmitter);
 
 BuildSystem.AddTaskEmitter("ModuleMeta", new ModuleMetaEmitter());
 
-BuildSystem.AddTaskEmitter("Codgen.Meta", new CodegenMetaEmitter(Toolchain, Path.Combine(SourceLocation.Directory(), "build/.skr/tool/windows")));
+BuildSystem.AddTaskEmitter("Codgen.Meta", new CodegenMetaEmitter(Toolchain));
 
 BuildSystem.AddTaskEmitter("Codgen.Codegen", new CodegenRenderEmitter(Toolchain))
     .AddDependency("Codgen.Meta", DependencyModel.ExternalTarget)
@@ -84,6 +86,7 @@ Engine.Module("TestTarget")
     .Depend(Visibility.Private, "harfbuzz@harfbuzz");
 
 
+await DoctorTask;
 await ToolchainInitializeTask;
 await DBInitializeTask;
 BuildSystem.RunBuild();

@@ -1,6 +1,7 @@
 using SB.Core;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using Serilog;
 
 namespace SB
 {
@@ -11,6 +12,7 @@ namespace SB
         public List<string> Scripts { get; } = new();
     }
 
+    [CodegenDoctor]
     public class CodegenRenderEmitter : TaskEmitter
     {
         public CodegenRenderEmitter(IToolchain Toolchain)
@@ -69,7 +71,8 @@ namespace SB
             Depend.OnChanged(Target.Name, "", this.Name, (Depend depend) => {
                 var ParamFile = Path.Combine(CodegenDirectory, $"{Target.Name}_codegen_config.json");
                 File.WriteAllText(ParamFile, Json.Serialize(Config));
-                var ExitCode = BS.RunProcess(BunExecutable, $"{GenerateScript} {ParamFile}", out var OutputInfo, out var ErrorInfo, null);
+                var EXE = Path.Combine(Engine.ToolDirectory, BS.HostOS == OSPlatform.Windows ? "bun.exe" : "bun");
+                var ExitCode = BS.RunProcess(EXE, $"{GenerateScript} {ParamFile}", out var OutputInfo, out var ErrorInfo, null);
                 if (ExitCode != 0)
                 {
                     throw new TaskFatalError($"Codegen render {Target.Name} failed with fatal error!", $"bun.exe: {ErrorInfo}");
@@ -98,7 +101,6 @@ namespace SB
         }
 
         // TODO: INSTALL DIRECTORY
-        private static string BunExecutable = Path.Combine(Engine.EngineDirectory, "build/.skr/tool/windows/bun.exe");
         private static string GenerateScript = Path.Combine(Engine.EngineDirectory, "tools/meta_codegen_ts/codegen.ts");
         private IToolchain Toolchain { get; }
         public static volatile int Time = 0;
@@ -128,5 +130,19 @@ namespace SB
     public static class TargetExtensions
     {
         public static string GetCodegenDirectory(this Target @this) => Path.Combine(@this.GetStorePath(BuildSystem.GeneratedSourceStore), $"codegen/{@this.Name}");
+    }
+
+    public class CodegenDoctor : DoctorAttribute
+    {
+        public override bool Check()
+        {
+            Install.Tool("bun_1.2.5");
+            return File.Exists(Path.Combine(Engine.ToolDirectory, BS.HostOS == OSPlatform.Windows ? "bun.exe" : "bun"));
+        }
+        public override bool Fix() 
+        { 
+            Log.Fatal("bun install failed!");
+            return true; 
+        }
     }
 }

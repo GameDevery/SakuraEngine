@@ -18,6 +18,7 @@ namespace SB
                 Toolchain = new XCode();
             else
                 throw new Exception("Unsupported Platform!");
+            Engine.SetEngineDirectory(ProjectRoot);
             BuildSystem.TempPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".sb")).FullName;
             BuildSystem.BuildPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".build")).FullName;
             BuildSystem.PackageTempPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".pkgs/.sb")).FullName;
