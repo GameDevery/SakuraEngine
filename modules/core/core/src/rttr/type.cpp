@@ -703,6 +703,34 @@ const RTTRExternMethodData* RTTRType::find_extern_method(RTTRTypeFindConfig conf
     return nullptr;
 }
 
+// find basic functions
+const RTTRCtorData* RTTRType::find_default_ctor() const
+{
+    return find_ctor_t<void()>();
+}
+const RTTRCtorData* RTTRType::find_copy_ctor() const
+{
+    TypeSignatureBuilder tb;
+    tb.write_function_signature(1);
+    tb.write_type_id(type_id_of<void>()); // return
+    tb.write_ref();
+    tb.write_const();
+    tb.write_type_id(type_id()); // param 1: const T&
+    return find_ctor({ .signature = tb.type_signature_view() });
+}
+const RTTRExternMethodData* RTTRType::find_assign() const
+{
+    TypeSignatureBuilder tb;
+    tb.write_function_signature(2);
+    tb.write_type_id(type_id_of<void>()); // return
+    tb.write_ref();
+    tb.write_type_id(type_id()); // param 1: T&
+    tb.write_ref();
+    tb.write_const();
+    tb.write_type_id(type_id()); // param 2: const T&
+    return find_extern_method({ .name = { CPPExternMethods::Assign }, .signature = tb.type_signature_view() });
+}
+
 // flag & attribute
 ERTTRRecordFlag RTTRType::record_flag() const
 {

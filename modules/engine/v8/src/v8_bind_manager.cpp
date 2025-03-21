@@ -154,13 +154,7 @@ V8BindCoreValue* V8BindManager::create_value(const RTTRType* type, const void* s
     if (source_data)
     {
         // find copy ctor
-        TypeSignatureBuilder tb;
-        tb.write_function_signature(1);
-        tb.write_type_id(type_id_of<void>()); // return
-        tb.write_ref();
-        tb.write_const();
-        tb.write_type_id(type->type_id()); // param 1
-        auto* found_copy_ctor = type->find_ctor({ .signature = tb.type_signature_view() });
+        auto* found_copy_ctor = type->find_copy_ctor();
         if (!found_copy_ctor)
         {
             return nullptr;
@@ -176,7 +170,7 @@ V8BindCoreValue* V8BindManager::create_value(const RTTRType* type, const void* s
     else
     {
         // find default ctor
-        auto* found_default_ctor = type->find_ctor_t<void()>();
+        auto* found_default_ctor = type->find_default_ctor();
         if (!found_default_ctor)
         {
             return nullptr;
@@ -1498,7 +1492,7 @@ bool V8BindManager::_to_native_mapping(
     // do init
     if (!is_init)
     {
-        void* raw_invoker = type->find_ctor_t<void()>()->native_invoke;
+        void* raw_invoker = type->find_default_ctor()->native_invoke;
         auto* invoker     = reinterpret_cast<void (*)(void*)>(raw_invoker);
         invoker(native_data);
     }
@@ -1591,23 +1585,34 @@ bool V8BindManager::_to_native_value(
     // do cast
     void* cast_ptr = bind_core->type->cast_to_base(type->type_id(), bind_core->data);
 
-    // find copy ctor
-    TypeSignatureBuilder tb;
-    tb.write_function_signature(1);
-    tb.write_type_id(type_id_of<void>()); // return
-    tb.write_ref();
-    tb.write_const();
-    tb.write_type_id(type->type_id()); // param 1
-    auto* found_copy_ctor = type->find_ctor({ .signature = tb.type_signature_view() });
-    if (!found_copy_ctor)
+    if (!is_init)
     {
-        return false;
-    }
+        // find copy ctor
+        auto* found_copy_ctor = type->find_copy_ctor();
+        if (!found_copy_ctor)
+        {
+            return false;
+        }
 
-    // copy to native
-    auto* invoker = reinterpret_cast<void (*)(void*, const void*)>(found_copy_ctor->native_invoke);
-    invoker(native_data, cast_ptr);
-    return true;
+        // copy to native
+        auto* invoker = reinterpret_cast<void (*)(void*, const void*)>(found_copy_ctor->native_invoke);
+        invoker(native_data, cast_ptr);
+        return true;
+    }
+    else
+    {
+        // find assign
+        auto* found_assign = type->find_assign();
+        if (!found_assign)
+        {
+            return false;
+        }
+
+        // assign to native
+        auto* invoker = reinterpret_cast<void (*)(void*, const void*)>(found_assign->native_invoke);
+        invoker(native_data, cast_ptr);
+        return true;
+    }
 }
 
 // field convert helper
@@ -1870,7 +1875,7 @@ void V8BindManager::_push_param_pure_out(
         );
 
         // call ctor
-        auto* ctor_data = mapping_binder->type->find_ctor_t<void()>();
+        auto* ctor_data = mapping_binder->type->find_default_ctor();
         auto* invoker   = reinterpret_cast<void (*)(void*)>(ctor_data->native_invoke);
         invoker(native_data);
         break;

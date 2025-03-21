@@ -18,9 +18,7 @@ bool SResourceFactory::Deserialize(skr_resource_record_t* record, SBinaryReader*
         auto p_obj = sakura_malloc_aligned(type->size(), type->alignment());
         // find & call ctor
         {
-            auto ctor_data = type->find_ctor_t<void()>(
-                skr::ETypeSignatureCompareFlag::Strict
-            );
+            auto ctor_data = type->find_default_ctor();
             auto ctor = reinterpret_cast<void(*)(void*)>(ctor_data->native_invoke);
             ctor(p_obj);
         }
