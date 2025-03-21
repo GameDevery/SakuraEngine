@@ -138,9 +138,13 @@ V8BindCoreValue* V8BindManager::create_value(const RTTRType* type, const void* s
     HandleScope handle_scope(isolate);
 
     // get template
-    auto template_ref = _record_templates.find(type);
-    if (!template_ref)
+    auto found_template = _record_templates.find(type);
+    if (!found_template)
     {
+        SKR_LOG_FMT_ERROR(
+            u8"type {} template not found, please register it first",
+            type->name()
+        );
         return nullptr;
     }
 
@@ -152,8 +156,8 @@ V8BindCoreValue* V8BindManager::create_value(const RTTRType* type, const void* s
         TypeSignatureBuilder tb;
         tb.write_function_signature(1);
         tb.write_type_id(type_id_of<void>()); // return
-        tb.write_const();
         tb.write_ref();
+        tb.write_const();
         tb.write_type_id(type->type_id()); // param 1
         auto* found_copy_ctor = type->find_ctor({ .signature = tb.type_signature_view() });
         if (!found_copy_ctor)
@@ -186,7 +190,7 @@ V8BindCoreValue* V8BindManager::create_value(const RTTRType* type, const void* s
     }
 
     // make object
-    Local<ObjectTemplate> instance_template = template_ref.value()->ctor_template.Get(isolate)->InstanceTemplate();
+    Local<ObjectTemplate> instance_template = found_template.value()->ctor_template.Get(isolate)->InstanceTemplate();
     Local<Object>         object            = instance_template->NewInstance(context).ToLocalChecked();
 
     // make bind core
@@ -224,9 +228,13 @@ V8BindCoreValue* V8BindManager::translate_value_field(const RTTRType* type, cons
     HandleScope handle_scope(isolate);
 
     // get template
-    auto template_ref = _record_templates.find(type);
-    if (!template_ref)
+    auto found_template = _record_templates.find(type);
+    if (!found_template)
     {
+        SKR_LOG_FMT_ERROR(
+            u8"type {} template not found, please register it first",
+            type->name()
+        );
         return nullptr;
     }
 
@@ -239,7 +247,7 @@ V8BindCoreValue* V8BindManager::translate_value_field(const RTTRType* type, cons
         }
 
         // make object
-        Local<ObjectTemplate> instance_template = template_ref.value()->ctor_template.Get(isolate)->InstanceTemplate();
+        Local<ObjectTemplate> instance_template = found_template.value()->ctor_template.Get(isolate)->InstanceTemplate();
         Local<Object>         object            = instance_template->NewInstance(context).ToLocalChecked();
 
         // make bind core
@@ -276,7 +284,7 @@ V8BindCoreValue* V8BindManager::translate_value_field(const RTTRType* type, cons
         }
 
         // make object
-        Local<ObjectTemplate> instance_template = template_ref.value()->ctor_template.Get(isolate)->InstanceTemplate();
+        Local<ObjectTemplate> instance_template = found_template.value()->ctor_template.Get(isolate)->InstanceTemplate();
         Local<Object>         object            = instance_template->NewInstance(context).ToLocalChecked();
 
         // create new core
@@ -400,6 +408,34 @@ v8::Local<v8::FunctionTemplate> V8BindManager::get_record_template(const RTTRTyp
     {
         return {};
     }
+}
+
+// convert
+v8::Local<v8::Value> V8BindManager::to_v8(const RTTRType* type, const void* data)
+{
+    using namespace ::v8;
+
+    // check
+    SKR_ASSERT(type);
+
+    // get binder
+    ScriptBinderRoot binder = _binder_mgr.get_or_build(type->type_id());
+
+    // convert
+    return _to_v8(binder, const_cast<void*>(data));
+}
+bool V8BindManager::to_native(const RTTRType* type, void* data, v8::Local<v8::Value> v8_value, bool is_init)
+{
+    using namespace ::v8;
+
+    // check
+    SKR_ASSERT(type);
+
+    // get binder
+    ScriptBinderRoot binder = _binder_mgr.get_or_build(type->type_id());
+
+    // convert
+    return _to_native(binder, const_cast<void*>(data), v8_value, is_init);
 }
 
 // => IScriptMixinCore API
@@ -1558,8 +1594,8 @@ bool V8BindManager::_to_native_value(
     TypeSignatureBuilder tb;
     tb.write_function_signature(1);
     tb.write_type_id(type_id_of<void>()); // return
-    tb.write_const();
     tb.write_ref();
+    tb.write_const();
     tb.write_type_id(type->type_id()); // param 1
     auto* found_copy_ctor = type->find_ctor({ .signature = tb.type_signature_view() });
     if (!found_copy_ctor)

@@ -36,6 +36,10 @@ struct SKR_V8_API V8BindManager : IScriptMixinCore {
     v8::Local<v8::ObjectTemplate>   get_enum_template(const RTTRType* type);
     v8::Local<v8::FunctionTemplate> get_record_template(const RTTRType* type);
 
+    // convert
+    v8::Local<v8::Value> to_v8(const RTTRType* type, const void* data);
+    bool to_native(const RTTRType* type, void* data, v8::Local<v8::Value> v8_value, bool is_init);
+
     // => IScriptMixinCore API
     void on_object_destroyed(ScriptbleObject* obj) override;
     // => IScriptMixinCore API

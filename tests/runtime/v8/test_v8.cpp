@@ -27,7 +27,7 @@ int main(int argc, char* argv[])
     context.set_global(u8"g_add_value", 100);
 
     // exec code
-    context.exec_script(u8R"__(
+    auto result = context.exec_script(u8R"__(
         {
             let test = new TestType()
             test.value = g_add_value;
@@ -79,8 +79,19 @@ int main(int argc, char* argv[])
             TestType.print(copy_man)
             let new_bad_man = TestType.create_bad_man()
             TestType.print(new_bad_man)
+            new_bad_man.name
             }
     )__");
+
+    // get result value
+    if (!result.is_empty())
+    {
+        if (auto result_man = result.get<String>())
+        {
+            SKR_LOG_FMT_INFO(u8"=====> result: {}", result_man.value());
+        }
+        result.reset();
+    }
 
     // gc
     isolate.gc(true);

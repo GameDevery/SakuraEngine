@@ -156,14 +156,14 @@ struct RTTRParamData {
 
 // help functions
 template <typename Data>
-inline bool export_function_signature_equal(const Data& data, TypeSignature signature, ETypeSignatureCompareFlag flag)
+inline bool export_function_signature_equal(const Data& data, TypeSignatureView signature, ETypeSignatureCompareFlag flag)
 {
-    SKR_ASSERT(signature.view().is_complete());
-    SKR_ASSERT(signature.view().is_function());
+    SKR_ASSERT(signature.is_complete());
+    SKR_ASSERT(signature.is_function());
 
     // read signature data
     uint32_t param_count;
-    auto     view = signature.view().read_function_signature(param_count);
+    auto     view = signature.read_function_signature(param_count);
     if (param_count != data.param_data.size()) { return false; }
 
     // compare return type
@@ -249,7 +249,7 @@ struct RTTRFunctionData {
         RTTRParamData::Fill<Args...>(param_data);
     }
 
-    inline bool signature_equal(TypeSignature signature, ETypeSignatureCompareFlag flag) const
+    inline bool signature_equal(TypeSignatureView signature, ETypeSignatureCompareFlag flag) const
     {
         return export_function_signature_equal(*this, signature, flag);
     }
@@ -294,7 +294,7 @@ struct RTTRMethodData {
         is_const = true;
     }
 
-    inline bool signature_equal(TypeSignature signature, ETypeSignatureCompareFlag flag) const
+    inline bool signature_equal(TypeSignatureView signature, ETypeSignatureCompareFlag flag) const
     {
         return export_function_signature_equal(*this, signature, flag);
     }
@@ -330,7 +330,7 @@ struct RTTRStaticMethodData {
         RTTRParamData::Fill<Args...>(param_data);
     }
 
-    inline bool signature_equal(TypeSignature signature, ETypeSignatureCompareFlag flag) const
+    inline bool signature_equal(TypeSignatureView signature, ETypeSignatureCompareFlag flag) const
     {
         return export_function_signature_equal(*this, signature, flag);
     }
@@ -366,7 +366,7 @@ struct RTTRExternMethodData {
         RTTRParamData::Fill<Args...>(param_data);
     }
 
-    inline bool signature_equal(TypeSignature signature, ETypeSignatureCompareFlag flag) const
+    inline bool signature_equal(TypeSignatureView signature, ETypeSignatureCompareFlag flag) const
     {
         return export_function_signature_equal(*this, signature, flag);
     }
@@ -399,14 +399,14 @@ struct RTTRCtorData {
         RTTRParamData::Fill<Args...>(param_data);
     }
 
-    inline bool signature_equal(TypeSignature signature, ETypeSignatureCompareFlag flag) const
+    inline bool signature_equal(TypeSignatureView signature, ETypeSignatureCompareFlag flag) const
     {
-        SKR_ASSERT(signature.view().is_complete());
-        SKR_ASSERT(signature.view().is_function());
+        SKR_ASSERT(signature.is_complete());
+        SKR_ASSERT(signature.is_function());
 
         // read signature data
         uint32_t param_count;
-        auto     view = signature.view().read_function_signature(param_count);
+        auto     view = signature.read_function_signature(param_count);
         if (param_count != param_data.size()) { return false; }
 
         // compare return type

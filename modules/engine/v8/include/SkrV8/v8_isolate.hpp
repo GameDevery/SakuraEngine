@@ -14,6 +14,7 @@ struct V8Context;
 
 struct SKR_V8_API V8Isolate {
     friend struct V8Context;
+    friend struct V8Value;
 
     // ctor & dtor
     V8Isolate();
