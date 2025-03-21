@@ -70,6 +70,16 @@
 //   many script has no enum concept, so we need to export enum as an object
 //   we recommend export enum as number type, witch is more friendly to native
 //
+// about inherit:
+//   - cpp inherit won't mapping to script
+//   - base methods/fields will flatten into final export type
+//   - script inherit operator (like instanceof in js) won't work
+// why not export inherit?
+//   - overload cross multi bases will be easy to handle
+//   - script neednot to care about inherit in most case
+//   - support script inherit will broken cpp inherit model
+//   - support script inherit will induct more complex concept (interface mixin), witch will make code unstable
+//
 // about parameter In/Out flag:
 //   - In: ignore, and always be default
 //   - Out: will removed in parameter list, and added in return list

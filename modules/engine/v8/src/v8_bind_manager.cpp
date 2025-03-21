@@ -51,6 +51,7 @@ void V8BindManager::cleanup_bind_cores()
         // just delete core
         SkrDelete(bind_core);
     }
+    _deleted_objects.clear();
 }
 
 // bind object

@@ -4,223 +4,83 @@
     #include "V8Test/test_v8_types.generated.h"
 #endif
 
+// TODO. test basic value
+//   - inherit
+//   - instance of
+// TODO. test basic mapping
+// TODO. test basic enum
+// TODO. test param flag
+// TODO. test string
+
 namespace test_v8
 {
-sreflect_struct(
-    guid = "612a176d-e2c8-4b22-89fa-2370d7ec5e44"
-    rttr = @full
-)
-sscript_visible sscript_mapping
-float3 {
-    sscript_visible
-    float x = 0;
-    sscript_visible
-    float y = 0;
-    sscript_visible
-    float z = 0;
-};
-
-sreflect_struct(
-    guid = "a2f3b0d4-1c5e-4b8f-8c7d-6a9e0f1b2c3d"
-    rttr = @full
-)
-sscript_visible sscript_mapping
-Box3 {
-    sscript_visible
-    float3 min = {0, 0, 0};
-    sscript_visible
-    float3 max = {0, 0, 0};
-};
-
-sreflect_struct(
-    guid = "6563e112-1be3-45d4-8c44-8d5e3ed9b3fd"
-    rttr = @full
-)
-sscript_visible sscript_mapping
-Box3Offset : Box3 {
-    sscript_visible
-    float3 offset = {0, 0, 0};
-};
-
-sreflect_enum_class(
-    guid = "d43000d7-4ad1-4b2f-a650-f835c8074f4f"
-)
-ETestEnum : uint32_t
-{
-    None sscript_visible,
-    A sscript_visible,
-    B sscript_visible,
-    C sscript_visible = 114514
-};
-
-sreflect_struct(
-    guid = "e6a1a30d-1014-4b5f-a971-1eb082aab5a0"
-    rttr = @full
-)
+sreflect_struct(guid = "9099f452-beab-482b-a9c8-0f582bd7f5b4" rttr = @full)
 sscript_visible sscript_newable
-GoodMan {
-    sscript_visible
-    skr::String name = u8"";
-
-    sscript_visible
-    GoodMan() = default;
-    sscript_visible
-    GoodMan(const GoodMan& other) {
-        name = other.name;
-        SKR_LOG_FMT_INFO(u8"ohhhhhhh copy!!!!!!!!!!! '{}'", name);
-    }
-
-    ~GoodMan()
-    {
-        SKR_LOG_FMT_INFO(u8"{} 似了", name);
-    }
-};
-
-sreflect_struct(
-    guid = "caf11e29-c119-4685-9845-cb17fd2cb119";
-    rttr = @full;
-)
-sscript_visible sscript_newable
-TestType : public ::skr::ScriptbleObject {
+BasicObject : public ::skr::ScriptbleObject {
     SKR_GENERATE_BODY()
 
     sscript_visible
-    TestType() { SKR_LOG_FMT_INFO(u8"call ctor"); }
-    ~TestType()
-    {
-        SKR_LOG_FMT_INFO(u8"call dtor");
-    }
-
-    // field
+    BasicObject() { test_ctor_value = 114514; }
     sscript_visible
-    int32_t value;
+    BasicObject(int32_t v) { test_ctor_value = v; }
+
+    static int32_t test_ctor_value;
 
     // method
     sscript_visible
-    void print_value() const
-    {
-        SKR_LOG_FMT_INFO(u8"print value: {}", value);
-    }
-    sscript_visible
-    void add_to(int32_t v)
-    {
-        value += v;
-    }
+    void test_method(int32_t v) { test_method_v = v; }
+    int32_t test_method_v = 0;
 
-    // static field
+    // field
     sscript_visible
-    static int32_t static_value;
+    void assign_method_v_to_field() { test_field = test_method_v; }
+    sscript_visible
+    uint32_t test_field = 0;
 
     // static method
     sscript_visible
-    static void print_static_value()
-    {
-        SKR_LOG_FMT_INFO(u8"print static value: {}", static_value);
-    }
-    sscript_visible
-    static int32_t add(int32_t a, int32_t b)
-    {
-        return a + b;
-    }
-    sscript_visible
-    static void log(skr::StringView str)
-    {
-        SKR_LOG_FMT_INFO(u8"{}", str);
-    }
+    static void test_static_method(int64_t v) { test_static_method_v = v; }
+    static int64_t test_static_method_v;
 
-    // box type
+    // static field
     sscript_visible
-    float3 pos;
-    sscript_visible
-    Box3Offset box;
-    
-    // overload
-    sscript_visible
-    static void print(const float3& pos)
-    {
-        SKR_LOG_FMT_INFO(u8"print pos: {{{}, {}, {}}}", pos.x, pos.y, pos.z);
-    }
-    sscript_visible
-    static void print(const Box3Offset& box)
-    {
-        SKR_LOG_FMT_INFO(u8"print box: min: {{{}, {}, {}}} max: {{{}, {}, {}}} offset: {{{}, {}, {}}}", 
-            box.min.x, box.min.y, box.min.z, 
-            box.max.x, box.max.y, box.max.z,
-            box.offset.x, box.offset.y, box.offset.z
-        );
-    }
+    static uint64_t test_static_field;
 
-    // getter & setter
-    sscript_visible sscript_getter(prop_fuck)
-    skr::String get_fuck() const 
-    {
-        SKR_LOG_FMT_INFO(u8"get fuck");
-        return u8"fuck"; 
-    }
-    sscript_visible sscript_setter(prop_fuck)
-    void set_fuck(skr::String v)
-    {
-        SKR_LOG_FMT_INFO(u8"set fuck: {}"); 
-    }
+    // test overload
+    sscript_visible
+    void test_overload(int32_t v) { overload_int = v; }
+    sscript_visible
+    void test_overload(skr::String v) { overload_str = v; }
+    int32_t overload_int = 0;
+    skr::String overload_str = u8"";
 
-    // static getter & static setter
-    sscript_visible sscript_getter(prop_shit)
-    static int32_t get_shit()
-    {
-        SKR_LOG_FMT_INFO(u8"get shit");
-        return 114514;
+    // test property
+    sscript_visible sscript_getter(test_prop)
+    int32_t get_test_prop() 
+    { 
+        ++test_prop_get_count;  
+        return test_prop; 
     }
-    sscript_visible sscript_setter(prop_shit)
-    static void set_shit(int32_t v)
+    sscript_visible sscript_setter(test_prop)
+    void set_test_prop(int32_t v) 
     {
-        SKR_LOG_FMT_INFO(u8"set shit {}", v);
+        ++test_prop_set_count; 
+        test_prop = v; 
     }
-
-    // inout param
-    sscript_visible
-    void get_oh_baka(sparam_out skr::String& out)
-    {
-        out = u8"oh baka";
-    }
-    sscript_visible
-    skr::String get_mamba_out(sparam_out skr::String& out)
-    {
-        out = u8"out";
-        return u8"mamba";
-    }
-    sscript_visible
-    void add_mambo(skr::String& v)
-    {
-        v.append(u8" mambo~");
-    }
-
-    // value export
-    sscript_visible
-    GoodMan man;
-    sscript_visible
-    void print_man()
-    {
-        SKR_LOG_FMT_INFO(u8"man: {}", man.name);
-    }
-
-    // static value export
-    sscript_visible
-    static GoodMan bad_man;
-    sscript_visible
-    static void print(const GoodMan& man)
-    {
-        SKR_LOG_FMT_INFO(u8"=> print man: {}", man.name);
-    }
-    sscript_visible
-    static void append_man_name(GoodMan& man)
-    {
-        man.name.append(u8" 我们的架构非常优秀");
-    }
-    sscript_visible
-    static void create_bad_man(sparam_out GoodMan& man)
-    {
-        man.name = u8"阿诺头顶尖尖的";
-    }
+    int32_t test_prop = 0;
+    int32_t test_prop_get_count = 0;
+    int32_t test_prop_set_count = 0;
 };
 
+sreflect_struct(guid = "549b208d-ca2b-44e1-a705-ef95e0c607b5" rttr = @full)
+sscript_visible sscript_newable
+InheritObject : public BasicObject {
+    SKR_GENERATE_BODY()
+
+    sscript_visible
+    InheritObject() { test_ctor_value = 1919810; }
+
+    sscript_visible
+    void inherit_method(int32_t v) { test_field = v * 100; }
 };
+}

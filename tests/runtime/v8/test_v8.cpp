@@ -1,3 +1,4 @@
+#include "SkrTestFramework/framework.hpp"
 #include "SkrV8/ts_define_exporter.hpp"
 #include "SkrV8/v8_isolate.hpp"
 #include "SkrV8/v8_context.hpp"
@@ -5,124 +6,137 @@
 #include "SkrCore/log.hpp"
 #include "test_v8_types.hpp"
 
-int32_t test_v8::TestType::static_value = 0;
-
-int main(int argc, char* argv[])
+TEST_CASE("test v8")
 {
     using namespace skr;
 
     V8Isolate isolate;
-    V8Context context(&isolate);
 
     // init
     init_v8();
     isolate.init();
-    context.init();
 
-    // import types
-    context.register_type<test_v8::TestType>();
-    context.register_type<test_v8::ETestEnum>();
-    context.register_type<test_v8::GoodMan>();
-
-    // setup global
-    context.set_global(u8"g_add_value", 100);
-
-    // exec code
-    auto result = context.exec_script(u8R"__(
-        {
-            let test = new TestType()
-            test.value = g_add_value;
-            test.print_value();
-            test.add_to(TestType.add(7, 7));
-            test.print_value();
-
-            test.pos = {x: 11, y: 45, z: 14};
-            test.box = {
-                min: {x: 1, y: 2, z: 3},
-                max: {x: 4, y: 5, z: 6},
-                offset: {x: 7, y: 8, z: 9},
-            }
-
-            const pos = test.pos
-            const box = test.box
-            TestType.print(pos);
-            TestType.print(box);
-
-            TestType.static_value = test.pos.x * 10000 + test.pos.y * 100 + test.pos.z;
-            TestType.print_static_value();
-
-            let fuck_str = test.prop_fuck
-            test.prop_fuck = `"${fuck_str}, ${test.value}"`
-
-            let shit_val = TestType.prop_shit
-            TestType.prop_shit = shit_val * 100
-
-            let oh_baka = test.get_oh_baka()
-            let [mamba, out] = test.get_mamba_out()
-            oh_baka = test.add_mambo(oh_baka)
-            TestType.log(`"${oh_baka}" | "${mamba}" "${out}"`)
-
-            let e_none = ETestEnum.None;
-            let e_a = ETestEnum.A;
-            let e_b = ETestEnum.B;
-            let e_c = ETestEnum.C;
-            TestType.log(`None: ${e_none}, A: ${e_a}, B: ${e_b}, C: ${e_c}`)
-            TestType.log(`None: '${ETestEnum.to_string(e_none)}', A: '${ETestEnum.to_string(e_a)}', B: '${ETestEnum.to_string(e_b)}', C: '${ETestEnum.to_string(e_c)}'`)
-            TestType.log(`C from string ${ETestEnum.from_string('C')}`)
-
-            test.man.name = "牢大"
-            test.print_man()
-
-            TestType.bad_man.name = "圆头"
-            TestType.print(TestType.bad_man)
-            let copy_man = new GoodMan(TestType.bad_man)
-            TestType.append_man_name(copy_man)
-            TestType.print(copy_man)
-            let new_bad_man = TestType.create_bad_man()
-            TestType.print(new_bad_man)
-            new_bad_man.name
-            }
-    )__");
-
-    // get result value
-    if (!result.is_empty())
+    SUBCASE("basic object")
     {
-        if (auto result_man = result.get<String>())
+        V8Context context(&isolate);
+        context.init();
+
+        // register context
+        context.register_type<test_v8::BasicObject>();
+        context.register_type<test_v8::InheritObject>();
+
+        // set global
+        test_v8::BasicObject* obj = SkrNew<test_v8::BasicObject>();
+        context.set_global(u8"test_obj", obj);
+
+        // test method
+        context.exec_script(u8"test_obj.test_method(114514)");
+        REQUIRE_EQ(obj->test_method_v, 114514);
+
+        // test field
+        context.exec_script(u8"test_obj.test_field = 1919810");
+        REQUIRE_EQ(obj->test_field, 1919810);
+        obj->test_field = 44554;
+        context.exec_script(u8"test_obj.test_method(test_obj.test_field)");
+        REQUIRE_EQ(obj->test_method_v, 44554);
+
+        // test static method
+        context.exec_script(u8"BasicObject.test_static_method(1919810)");
+        REQUIRE_EQ(test_v8::BasicObject::test_static_method_v, 1919810);
+
+        // test static field
+        context.exec_script(u8"BasicObject.test_static_field = 114514");
+        REQUIRE_EQ(test_v8::BasicObject::test_static_field, 114514);
+        test_v8::BasicObject::test_static_field = 44544;
+        context.exec_script(u8"test_obj.test_method(Number(BasicObject.test_static_field))");
+        REQUIRE_EQ(obj->test_method_v, 44544);
+
+        // test overload
+        context.exec_script(u8"test_obj.test_overload(114514)");
+        REQUIRE_EQ(obj->overload_int, 114514);
+        context.exec_script(u8"test_obj.test_overload('1919810')");
+        REQUIRE_EQ(obj->overload_str, u8"1919810");
+
+        // test property
+        context.exec_script(u8"test_obj.test_prop = 1");
+        context.exec_script(u8"test_obj.test_prop = 2");
+        context.exec_script(u8"test_obj.test_prop = 3");
+        context.exec_script(u8"test_obj.test_prop = 114514");
+        REQUIRE_EQ(obj->test_prop, 114514);
+        REQUIRE_EQ(obj->test_prop_set_count, 4);
+        context.exec_script(u8"let prop_v = test_obj.test_prop");
+        context.exec_script(u8"BasicObject.test_static_field = prop_v");
+        REQUIRE_EQ(obj->test_prop_get_count, 1);
+        REQUIRE_EQ(test_v8::BasicObject::test_static_field, 114514);
+        obj->test_prop = 10086;
+        context.exec_script(u8"test_obj.test_method(test_obj.test_prop)");
+        REQUIRE_EQ(obj->test_method_v, 10086);
+        REQUIRE_EQ(obj->test_prop_get_count, 2);
+
+        // test new
+        context.exec_script(u8"let new_obj_1 = new BasicObject()");
+        REQUIRE_EQ(test_v8::BasicObject::test_ctor_value, 114514);
+        context.exec_script(u8"let new_obj_2 = new BasicObject(568798)");
+        REQUIRE_EQ(test_v8::BasicObject::test_ctor_value, 568798);
+
+        // test inherit
+        context.exec_script(u8"let inherit_obj = new InheritObject()");
+        context.exec_script(u8"inherit_obj.inherit_method(114514)");
+        REQUIRE_EQ(test_v8::BasicObject::test_ctor_value, 1919810);
         {
-            SKR_LOG_FMT_INFO(u8"=====> result: {}", result_man.value());
+            auto result = context.exec_script(u8"inherit_obj.test_field");
+            REQUIRE(!result.is_empty());
+            auto v = result.get<uint32_t>();
+            REQUIRE(v.has_value());
+            REQUIRE_EQ(v.value(), 114514 * 100);
         }
-        result.reset();
+        context.exec_script(u8"inherit_obj.test_method(114514)");
+        context.exec_script(u8"inherit_obj.assign_method_v_to_field()");
+        {
+            auto result = context.exec_script(u8"inherit_obj.test_field");
+            REQUIRE(!result.is_empty());
+            auto v = result.get<uint32_t>();
+            REQUIRE(v.has_value());
+            REQUIRE_EQ(v.value(), 114514);
+        }
+        // {
+        //     auto result = context.exec_script(u8"inherit_obj instanceof InheritObject");
+        //     REQUIRE(!result.is_empty());
+        //     auto v = result.get<bool>();
+        //     REQUIRE(v.has_value());
+        //     REQUIRE(v.value() == true);
+        // }
+        // {
+        //     auto result = context.exec_script(u8"inherit_obj instanceof BasicObject");
+        //     REQUIRE(!result.is_empty());
+        //     auto v = result.get<bool>();
+        //     REQUIRE(v.has_value());
+        //     REQUIRE(v.value() == true);
+        // }
+
+        // test lifetime
+        SkrDelete(obj);
+        context.exec_script(u8R"__(
+            let error = false
+            try {
+                test_obj.test_method(114514);
+            } catch (e) {
+                error = true;
+            }
+        )__");
+        {
+            auto result = context.exec_script(u8"error");
+            REQUIRE(!result.is_empty());
+            auto v = result.get<bool>();
+            REQUIRE(v.has_value());
+            REQUIRE(v.value() == true);
+        }
+
+
+        context.shutdown();
     }
-
-    // gc
-    isolate.gc(true);
-
-    // trigger shutdown
-    SKR_LOG_FMT_INFO(u8"==========================shutdown==========================");
 
     // shutdown
-    context.shutdown();
     isolate.shutdown();
     shutdown_v8();
-
-    // gen .d.ts
-    TSDefineExporter ts_exporter;
-    ts_exporter.register_type<test_v8::ETestEnum>();
-    ts_exporter.register_type<test_v8::TestType>();
-    ts_exporter.register_type<test_v8::GoodMan>();
-    String ts_content = ts_exporter.generate();
-
-    // output to file
-    auto handle = fopen("./test_v8_export.d.ts", "wb");
-    if (handle)
-    {
-        fwrite(ts_content.c_str(), sizeof(char), ts_content.length_buffer(), handle);
-        fclose(handle);
-    }
-    else
-    {
-        SKR_LOG_FMT_ERROR(u8"failed to open file");
-    }
-
-    return 0;
 }

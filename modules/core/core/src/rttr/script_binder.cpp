@@ -314,20 +314,29 @@ void ScriptBinderManager::_fill_record_info(ScriptBinderRecordBase& out, const R
 
     // export fields
     type->each_field([&](const RTTRFieldData* field, const RTTRType* owner_type) {
+        if (!flag_all(owner_type->record_flag(), ERTTRRecordFlag::ScriptVisible)) { return; }
         if (!flag_all(field->flag, ERTTRFieldFlag::ScriptVisible)) { return; }
+        
         auto& field_data = out.fields.try_add_default(field->name).value();
         _make_field(field_data, field, owner_type);
-    });
+        // clang-format off
+    }, { .include_bases = true });
+    // clang-format on
 
     // export static field
     type->each_static_field([&](const RTTRStaticFieldData* static_field, const RTTRType* owner_type) {
+        if (!flag_all(owner_type->record_flag(), ERTTRRecordFlag::ScriptVisible)) { return; }
         if (!flag_all(static_field->flag, ERTTRStaticFieldFlag::ScriptVisible)) { return; }
+        
         auto& static_field_data = out.static_fields.try_add_default(static_field->name).value();
         _make_static_field(static_field_data, static_field, owner_type);
-    });
+        // clang-format off
+    }, { .include_bases = true });
+    // clang-format on
 
     // export methods or properties
     type->each_method([&](const RTTRMethodData* method, const RTTRType* owner_type) {
+        if (!flag_all(owner_type->record_flag(), ERTTRRecordFlag::ScriptVisible)) { return; }
         if (!flag_all(method->flag, ERTTRMethodFlag::ScriptVisible)) { return; }
 
         auto find_getter_result = method->attrs.find_if([&](const Any& attr) {
@@ -364,11 +373,15 @@ void ScriptBinderManager::_fill_record_info(ScriptBinderRecordBase& out, const R
             auto& overload_data = method_data.overloads.add_default().ref();
             _make_method(overload_data, method, owner_type);
         }
-    });
+        // clang-format off
+    }, { .include_bases = true });
+    // clang-format on
 
     // export static methods or properties
     type->each_static_method([&](const RTTRStaticMethodData* method, const RTTRType* owner_type) {
+        if (!flag_all(owner_type->record_flag(), ERTTRRecordFlag::ScriptVisible)) { return; }
         if (!flag_all(method->flag, ERTTRStaticMethodFlag::ScriptVisible)) { return; }
+        
         auto find_getter_result = method->attrs.find_if([&](const Any& attr) {
             return attr.type_is<skr::attr::ScriptGetter>();
         });
@@ -403,7 +416,9 @@ void ScriptBinderManager::_fill_record_info(ScriptBinderRecordBase& out, const R
             auto& overload_data      = static_method_data.overloads.add_default().ref();
             _make_static_method(overload_data, method, owner_type);
         }
-    });
+        // clang-format off
+    }, { .include_bases = true });
+    // clang-format on
 
     // check properties conflict
     for (auto& [name, prop] : out.properties)

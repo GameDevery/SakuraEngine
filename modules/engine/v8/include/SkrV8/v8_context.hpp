@@ -196,11 +196,11 @@ inline void V8Context::set_global(StringView name, T&& v)
 
         if constexpr (std::derived_from<RawType, ScriptbleObject>)
         {
-            value = bind_manager->translate_object(v);
+            value = bind_manager->translate_object(v)->v8_object.Get(_isolate->v8_isolate());
         }
         else
         {
-            value = bind_manager->create_value(type_of<RawType>(), v);
+            value = bind_manager->create_value(type_of<RawType>(), v)->v8_object.Get(_isolate->v8_isolate());
         }
     }
     else
