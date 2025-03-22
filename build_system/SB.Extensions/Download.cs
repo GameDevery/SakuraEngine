@@ -122,7 +122,10 @@ namespace SB
 
         public static async Task<string> DownloadFile(string FileName, bool Force = false)
         {
-            Download.FetchManifests();
+            using (Profiler.BeginZone($"FetchManifests", color: (uint)Profiler.ColorType.Pink1))
+            {
+                Download.FetchManifests();
+            }
 
             var FilePath = Path.Combine(Engine.DownloadDirectory, FileName);
             if (!Force && File.Exists(FilePath))

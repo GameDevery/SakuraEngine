@@ -174,11 +174,11 @@ namespace SB
 
                         foreach (var File in Target.AllFiles)
                         {
+                            if (!Emitter.FileFilter(Target, File))
+                                continue;
+
                             using (Profiler.BeginZone($"Wait | {File} | {EmitterName}", color: (uint)Profiler.ColorType.Gray))
                             {
-                                if (!Emitter.FileFilter(Target, File))
-                                    continue;
-
                                 if (!Emitter.AwaitPerFileDependencies(Target, File).WaitAndGet())
                                     return false;
                             }

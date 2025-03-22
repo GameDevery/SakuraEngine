@@ -11,11 +11,14 @@ namespace SB
             await Depend.OnChanged("Download", Name, "Install.Tools", async (Depend depend) =>
             {
                 var ZipFile = await Download.DownloadFile(Name + GetToolPostfix());
-                Directory.CreateDirectory(ToolDirectory);
-                System.IO.Compression.ZipFile.ExtractToDirectory(ZipFile, ToolDirectory, true);
+                using (Profiler.BeginZone($"Install.Tools | {Name} | Download", color: (uint)Profiler.ColorType.Pink1))
+                {
+                    Directory.CreateDirectory(ToolDirectory);
+                    System.IO.Compression.ZipFile.ExtractToDirectory(ZipFile, ToolDirectory, true);
 
-                depend.ExternalFiles.Add(ZipFile);
-                depend.ExternalFiles.AddRange(Directory.GetFiles(ToolDirectory, "*", SearchOption.AllDirectories));
+                    depend.ExternalFiles.Add(ZipFile);
+                    depend.ExternalFiles.AddRange(Directory.GetFiles(ToolDirectory, "*", SearchOption.AllDirectories));
+                }
             }, null, null);
             return ToolDirectory;
         }
@@ -23,25 +26,30 @@ namespace SB
         public static async Task SDK(string Name)
         {
             var IntermediateDirectory = Path.Combine(Engine.DownloadDirectory, "SDKs", Name);
-            Directory.CreateDirectory(IntermediateDirectory);
 
             await Depend.OnChanged("Download", Name, "Install.SDKs", async (Depend depend) =>
             {
+                Directory.CreateDirectory(IntermediateDirectory);
                 var ZipFile = await Download.DownloadFile(Name + GetToolPostfix());
-                System.IO.Compression.ZipFile.ExtractToDirectory(ZipFile, IntermediateDirectory, true);
-
-                depend.ExternalFiles.Add(ZipFile);
-                depend.ExternalFiles.AddRange(Directory.GetFiles(IntermediateDirectory, "*", SearchOption.AllDirectories));
+                using (Profiler.BeginZone($"Install.SDKs | {Name} | Download", color: (uint)Profiler.ColorType.Pink1))
+                {
+                    System.IO.Compression.ZipFile.ExtractToDirectory(ZipFile, IntermediateDirectory, true);
+                    depend.ExternalFiles.Add(ZipFile);
+                    depend.ExternalFiles.AddRange(Directory.GetFiles(IntermediateDirectory, "*", SearchOption.AllDirectories));
+                }
             }, null, null);
-
-            Depend.OnChanged("Copy", Name, "Install.SDKs", (Depend depend) =>
+            
+            using (Profiler.BeginZone($"Install.SDKs | {Name} | Copy", color: (uint)Profiler.ColorType.Pink1))
             {
-                var BuildDirectory = Path.Combine(Engine.BuildPath, BuildSystem.TargetOS.ToString(), BuildSystem.TargetArch.ToString());
-                Directory.CreateDirectory(BuildDirectory);
+                Depend.OnChanged("Copy", Name, "Install.SDKs", (Depend depend) =>
+                {
+                    var BuildDirectory = Path.Combine(Engine.BuildPath, BuildSystem.TargetOS.ToString(), BuildSystem.TargetArch.ToString());
+                    Directory.CreateDirectory(BuildDirectory);
 
-                depend.ExternalFiles.AddRange(Directory.GetFiles(IntermediateDirectory, "*", SearchOption.AllDirectories));
-                depend.ExternalFiles.AddRange(DirectoryCopy(IntermediateDirectory, BuildDirectory, true));
-            }, null, null);
+                    depend.ExternalFiles.AddRange(Directory.GetFiles(IntermediateDirectory, "*", SearchOption.AllDirectories));
+                    depend.ExternalFiles.AddRange(DirectoryCopy(IntermediateDirectory, BuildDirectory, true));
+                }, null, null);
+            }
         }
 
         private static string GetToolPostfix()

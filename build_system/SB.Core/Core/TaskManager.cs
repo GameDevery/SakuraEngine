@@ -44,9 +44,12 @@ namespace SB.Core
 
             var NewTask = Task.Run<bool>(
                 () => {
-                    if (StopAll)
-                        return false;
-                    return Function();
+                    using (Profiler.BeginZone($"Run | {Fingerprint.TaskName} | {Fingerprint.TargetName} | {Fingerprint.File}", color: (uint)Profiler.ColorType.PowderBlue))
+                    {
+                        if (StopAll)
+                            return false;
+                        return Function();
+                    }
                 })
                 .ContinueWith(_ =>
                 {
