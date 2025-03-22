@@ -683,7 +683,10 @@ export class Module {
     this.config = config;
 
     // check meta dir
-    if (!fs.existsSync(config.meta_dir)) { return }
+    if (!fs.existsSync(config.meta_dir)) {
+      throw new Error(`meta dir not exist "${config.meta_dir}"`);
+      // return
+    }
 
     // glob meta files
     const meta_files = fs.globSync(
@@ -891,7 +894,7 @@ export class Project {
   // tool functions
   is_derived(record: Record, base: string) {
     for (const base_name of record.bases) {
-      if (base_name == base) {
+      if (base_name === base) {
         return true;
       }
       const base_record = this.find_record(base_name);
@@ -902,5 +905,16 @@ export class Project {
   }
   is_derived_or_same(record: Record, base: string) {
     return record.name == base || this.is_derived(record, base);
+  }
+  get_all_bases(record: Record) {
+    const bases: string[] = [];
+    for (const base_name of record.bases) {
+      bases.push(base_name);
+      const base_record = this.find_record(base_name);
+      if (base_record != null) {
+        bases.push(...this.get_all_bases(base_record));
+      }
+    }
+    return bases;
   }
 }

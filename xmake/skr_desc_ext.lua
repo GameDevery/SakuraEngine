@@ -126,6 +126,7 @@ function codegen_component(owner, opt)
         analyzer_attribute("Codegen.Owner")
         add_deps(owner..".Mako", { public = opt and opt.public or true })
         add_values("c++.codegen.api", opt.api or target:name():upper())
+        set_values("c++.codegen.enable", true)
     target_end()
 
     target(owner..".Mako")
@@ -138,6 +139,19 @@ function codegen_component(owner, opt)
         add_deps(owner..".Meta", { public = true })
         on_load(function (target)
             target:data_set("mako.owner", owner)
+
+            -- add deps
+            import("skr.analyze")
+            local analyze_tbl = analyze.load(owner)
+            if analyze_tbl then
+                local depends = analyze_tbl["Codegen.MakoDeps"]
+                for _, dep in ipairs(depends) do
+                    -- print("add codegen dependency: %s -> %s", target:name(), dep)
+                    target:add("deps", dep, { public = true })
+                end
+            else
+                print("failed to load analyze table for %s", target:name())
+            end
         end)
 
     -- must be declared at the end of this helper function
@@ -154,8 +168,6 @@ function codegen_component(owner, opt)
                 opt.rootdir = path.absolute(path.join(target:scriptdir(), opt.rootdir))
             end
             target:data_set("meta.rootdir", opt.rootdir)
-            -- TODO: add deps to depended meta targets
-            -- ...
         end)
 end
 
