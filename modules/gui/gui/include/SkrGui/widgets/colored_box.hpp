@@ -8,9 +8,7 @@
 
 namespace skr::gui
 {
-sreflect_struct(
-    "guid": "66b7a12f-520d-4591-a31d-100f12211b17"
-)
+sreflect_struct(guid = "66b7a12f-520d-4591-a31d-100f12211b17")
 SKR_GUI_API ColoredBox : public SingleChildRenderObjectWidget {
     SKR_GENERATE_BODY()
 

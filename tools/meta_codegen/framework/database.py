@@ -54,22 +54,21 @@ class HeaderDatabase:
         self.file_id = f"FID_{self.module_db.module_name}_" + re.sub(r'\W+', '_', self.relative_meta_path)
 
         # load raw data
-        raw_json: sc.JsonObject
+        raw_json: Dict
         with open(meta_file_path, encoding="utf-8") as f:
             try:
-                raw_json = json.load(f, object_pairs_hook=sc.json_object_pairs_hook)
+                raw_json = json.load(f)
             except json.JSONDecodeError as e:
                 raise Exception(f"Failed to load meta file: {meta_file_path}")
 
         # extract cpp types
-        unique_dict = raw_json.unique_dict()
-        records = unique_dict["records"].unique_dict()
-        functions = unique_dict["functions"]
-        enums = unique_dict["enums"].unique_dict()
+        records = raw_json["records"]
+        functions = raw_json["functions"]
+        enums = raw_json["enums"]
 
         # load records
-        for (record_name, record_data) in records.items():
-            record = cpp.Record(record_name)
+        for record_data in records:
+            record = cpp.Record(record_data["name"])
             record.load_from_raw_json(record_data)
             self.records.append(record)
             self.__name_to_record[record.name] = record
@@ -81,8 +80,8 @@ class HeaderDatabase:
             self.functions.append(function)
 
         # load enums
-        for (enum_name, enum_data) in enums.items():
-            enum = cpp.Enumeration(enum_name)
+        for enum_data in enums:
+            enum = cpp.Enumeration(enum_data["name"])
             enum.load_from_raw_json(enum_data)
             self.enums.append(enum)
             self.__name_to_enum[enum.name] = enum

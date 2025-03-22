@@ -7,7 +7,7 @@
 namespace skr::gui
 {
 
-sreflect_struct("guid": "58887860-92da-4f41-a09b-3e91604e4ae0")
+sreflect_struct(guid = "58887860-92da-4f41-a09b-3e91604e4ae0")
 SKR_GUI_API ClickGestureRecognizer : public PointerGestureRecognizer {
     SKR_GENERATE_BODY()
     using Super = PointerGestureRecognizer;

@@ -23,6 +23,6 @@ namespace skr::resource
 {
 skr_guid_t SSkelFactory::GetResourceType()
 {
-    return ::skr::rttr::type_id_of<skr::anim::SkeletonResource>();
+    return ::skr::type_id_of<skr::anim::SkeletonResource>();
 }
 } // namespace skr::resource

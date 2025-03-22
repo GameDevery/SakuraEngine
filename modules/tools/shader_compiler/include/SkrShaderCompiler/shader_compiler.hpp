@@ -19,7 +19,7 @@ namespace asset
 {
 struct SShaderImporter;
 
-sreflect_enum_class("guid" : "71c26ffc-9f4d-4ca5-9db6-b6479b7ff001")
+sreflect_enum_class(guid = "71c26ffc-9f4d-4ca5-9db6-b6479b7ff001")
 EShaderSourceType : uint32_t
 {
     INVALID,
@@ -28,7 +28,7 @@ EShaderSourceType : uint32_t
     COUNT
 };
 
-sreflect_struct("guid": "12df1e9b-3aa9-4d63-88f6-c3fcb41b4e45")
+sreflect_struct(guid = "12df1e9b-3aa9-4d63-88f6-c3fcb41b4e45")
 ShaderSourceCode {
     inline ShaderSourceCode(skr::BlobId blob, const char8_t* name, EShaderSourceType type) SKR_NOEXCEPT
         : blob(blob),
@@ -41,7 +41,7 @@ ShaderSourceCode {
     const EShaderSourceType source_type = EShaderSourceType::INVALID;
 };
 
-sreflect_struct("guid": "95f58c54-c21b-442a-b138-d14672e104d5")
+sreflect_struct(guid = "95f58c54-c21b-442a-b138-d14672e104d5")
 SKR_SHADER_COMPILER_API ICompiledShader {
     virtual ~ICompiledShader() = default;
 
@@ -51,7 +51,7 @@ SKR_SHADER_COMPILER_API ICompiledShader {
     virtual bool                     GetHashCode(uint32_t* flags, skr::span<uint32_t, 4> encoded_digits) const SKR_NOEXCEPT = 0;
 };
 
-sreflect_struct("guid": "72cfb3fb-507c-4d29-97f6-4499301daab6")
+sreflect_struct(guid = "72cfb3fb-507c-4d29-97f6-4499301daab6")
 SKR_SHADER_COMPILER_API IShaderCompiler {
     virtual ~IShaderCompiler() = default;
 

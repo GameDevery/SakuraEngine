@@ -13,7 +13,7 @@ namespace skr
 namespace anim
 {
 
-sreflect_struct("guid": "5D6DC46B-8696-4DD8-ADE4-C27D07CEDCCD")
+sreflect_struct(guid = "5D6DC46B-8696-4DD8-ADE4-C27D07CEDCCD")
 AnimResource {
     ozz::animation::Animation animation;
 };

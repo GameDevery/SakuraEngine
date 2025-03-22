@@ -7,9 +7,7 @@
 
 namespace skr::gui
 {
-sreflect_struct(
-    "guid": "e20ccde7-3f42-4224-aee3-9f54c9077194"
-)
+sreflect_struct(guid = "e20ccde7-3f42-4224-aee3-9f54c9077194")
 SKR_GUI_API RenderObjectWidget : public Widget {
     SKR_GENERATE_BODY()
 

@@ -28,7 +28,7 @@ struct GestureArenaManager;
 //  8. focus & navigation (keyboard)         // ! 可 TODO
 
 // InputManager 管理 Context 提供全局 hit test 支持与事件分发
-sreflect_struct("guid": "5c9d7e26-c2a1-4785-8832-bda746906801")
+sreflect_struct(guid = "5c9d7e26-c2a1-4785-8832-bda746906801")
 SKR_GUI_API InputManager {
 
     // dispatch event

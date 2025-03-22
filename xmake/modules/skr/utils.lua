@@ -171,13 +171,12 @@ function find_program_in_system(program_name, opt)
     -- find env find
     if use_env_find then
         if os.host() == "windows" then -- use registry
-            local find_name = _format_program_name_for_winos(program_name)
-            local program_path = winos.registry_query("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\" .. find_name)
-            program_path = _check_program_path(program_path)
-            if program_path then
-                return program_path
-            end
-            
+            -- local find_name = _format_program_name_for_winos(program_name)
+            -- local program_path = winos.registry_query("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\" .. find_name)
+            -- program_path = _check_program_path(program_path)
+            -- if program_path then
+            --     return program_path
+            -- end
         else -- use sys default path
             local paths = {
                 "/usr/local/bin",
@@ -192,6 +191,9 @@ function find_program_in_system(program_name, opt)
 end
 function find_download_file(file_name)
     return detect.find_file(file_name, download_dir())
+end
+function find_download_package(package_name)
+    return find_download_file(package_name_sdk(package_name, opt))
 end
 function find_download_package_tool(tool_name)
     return find_download_file(package_name_tool(tool_name))
@@ -228,6 +230,19 @@ end
 function find_meta()
     return find_tool("meta")
 end
+function find_bun()
+    -- find embedded bun
+    local embedded_bun = find_tool("bun")
+    if embedded_bun then
+        return embedded_bun
+    end
+
+    -- find system bun
+    local system_bun = find_program_in_system("bun")
+    if system_bun then
+        return system_bun
+    end
+end
 
 ------------------------tools------------------------
 -- change info: content: {
@@ -243,8 +258,8 @@ end
 --     reason = see file reason
 --   }
 -- }
-local change_info = change_info or object {}
-function change_info:dump()
+local ChangeInfo = ChangeInfo or object {}
+function ChangeInfo:dump()
     local reason_fmt = {
         new = "${green}[%s]${clear}",
         modify = "${cyan}[%s]${clear}",
@@ -275,13 +290,13 @@ function change_info:dump()
         end
     end
 end
-function change_info:is_file_changed()
+function ChangeInfo:is_file_changed()
     return #self.files > 0
 end
-function change_info:is_value_changed()
+function ChangeInfo:is_value_changed()
     return #self.values > 0
 end
-function change_info:any_changed()
+function ChangeInfo:any_changed()
     return self:is_file_changed() or self:is_value_changed()
 end
 
@@ -293,6 +308,7 @@ end
 --   values: values to check change
 --   use_sha: use sha256 to check file contents, this is useful when file time_stamp is not reliable
 --   force: force to call func
+--   post_scan: call after [func] called, used to append file to check next time, these files often are generated in [func]
 -- @return: 
 --   [0] is any file changed
 --   [1] change info: see above
@@ -304,6 +320,7 @@ function on_changed(func, opt)
     local values = opt.values and table.wrap(opt.values) or nil
     local use_sha = opt.use_sha or false
     local force = opt.force or false
+    local post_scan = opt.post_scan
 
     -- check opt
     if not cache_file then
@@ -316,13 +333,14 @@ function on_changed(func, opt)
         cache = {
             files = {},
             values = {},
+            post_files = {},
         }
     else
         cache = io.load(cache_file)
     end
 
     -- change info for cache changed
-    local change_info = change_info {
+    local change_info = ChangeInfo {
         files = {},
         values = {},
         force = force,
@@ -429,9 +447,53 @@ function on_changed(func, opt)
         cache.values = values
     end
 
+    -- check post file
+    for file, cache_info in pairs(cache.post_files) do
+        -- solve mtime & sha
+        local mtime, sha
+        if os.exists(file) then
+            mtime = os.mtime(file)
+            sha = use_sha and hash.sha256(file) or ""
+        else
+            mtime = 0
+            sha = ""
+        end
+
+        -- check modified
+        local changed
+        if use_sha then
+            changed = cache_info.sha256 ~= sha
+        else
+            changed = cache_info.mtime ~= mtime
+        end
+
+        -- add change info
+        if changed then
+            table.insert(change_info.files, {
+                file = file,
+                reason = "modify",
+            })
+        end
+    end
+
     -- call func
     if change_info:any_changed() or force then
         func(change_info)
+
+        -- do post scan
+        if post_scan then
+            local post_files = post_scan(change_info)
+            if post_files then
+                cache.post_files = {}
+                for _, file in ipairs(post_files) do
+                    -- insert check info
+                    cache.post_files[file] = {
+                        mtime = os.mtime(file),
+                        sha256 = use_sha and hash.sha256(file) or "",
+                    }
+                end
+            end
+        end
     end
 
     -- save cache

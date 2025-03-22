@@ -3,6 +3,70 @@ import("skr.utils")
 import("core.project.project")
 import("core.base.object")
 
+-- TODO. Installer 用于 download package 的 custom install 和 in_package_install
+------------------------installer------------------------
+-- fields:
+--   pkg_dir: unpacked package dir
+--   bin_dir: build binary dir
+--   print_log: need print log
+local Installer = Installer or object {}
+-- custom copy
+-- @param src: in package dir
+-- @param dst: out dir
+-- @param opt: options
+--   opt.rootdir: in package dir, used for copy keep structure
+--   opt.dst_is_dir: if dst is a dir, we need create dir first
+function Installer:cp(src, dst, opt)
+    opt = opt or {}
+
+    -- absolute path
+    local abs_src = path.join(self.pkg_dir, src)
+    local abs_rootdir = opt.rootdir and path.join(self.pkg_dir, opt.rootdir) or nil
+
+    -- rm dst
+    if opt.rm_dst then
+        if os.exists(dst) then
+            if self.print_log then
+                print("remove %s", dst)
+            end
+            os.rm(dst)
+        end
+    end
+
+    -- create dir
+    if opt.dst_is_dir then
+        if not os.isdir(dst) then
+            if self.print_log then
+                print("create %s", dst)
+            end
+            os.mkdir(dst)
+        end
+    end
+
+    -- do cp
+    if self.print_log then
+        print("copy %s to %s", abs_src, dst)
+    end
+    os.cp(abs_src, dst, {rootdir = abs_rootdir})
+end
+-- copy into target binary dir
+-- @param src: in package dir
+-- @param opt: options
+--   opt.rootdir: in package dir, used for copy keep structure
+function Installer:bin(src, opt)
+    opt = opt or {}
+
+    -- absolute path
+    local abs_src = path.join(self.pkg_dir, src)
+    local abs_rootdir = opt.rootdir and path.join(self.pkg_dir, opt.rootdir) or nil
+
+    -- do cp
+    if self.print_log then
+        print("copy %s to %s", abs_src, self.bin_dir)
+    end
+    os.cp(abs_src, self.bin_dir, {rootdir = abs_rootdir})
+end
+
 ------------------------log tools------------------------
 function _log(opt, type, format, ...)
     format = format or ""
@@ -14,7 +78,7 @@ function _log(opt, type, format, ...)
 end
 
 ------------------------install------------------------
-function install_tool(opt)
+function install_pkg_tool(opt)
     local package_path = utils.find_download_package_tool(opt.name)
     if not package_path then
         raise("tool %s not found", opt.name)
@@ -28,7 +92,7 @@ function install_tool(opt)
 
         -- call after_install
         if opt.after_install then
-            utils.redirect_fenv(opt.after_install, install_tool)
+            utils.redirect_fenv(opt.after_install, install_pkg_tool)
             opt.after_install()
         end
     end, {
@@ -37,7 +101,7 @@ function install_tool(opt)
         force = opt.force,
     })
 end
-function install_resources(opt)
+function install_pkg_resources(opt)
     local package_path = utils.find_download_package_sdk(opt.name)
     if not package_path then
         raise("resources %s not found", opt.name)
@@ -70,7 +134,7 @@ function install_resources(opt)
         
         -- call after_install
         if opt.after_install then
-            utils.redirect_fenv(opt.after_install, install_resources)
+            utils.redirect_fenv(opt.after_install, install_pkg_resources)
             opt.after_install()
         end
     end, {
@@ -79,7 +143,7 @@ function install_resources(opt)
         force = not extract_exist or opt.force,
     })
 end
-function install_sdk(opt)
+function install_pkg_sdk(opt)
     local package_path = utils.find_download_package_sdk(opt.name)
     if not package_path then
         raise("sdk %s not found", opt.name)
@@ -117,7 +181,7 @@ function install_sdk(opt)
 
         -- call after_install
         if opt.after_install then
-            utils.redirect_fenv(opt.after_install, install_sdk)
+            utils.redirect_fenv(opt.after_install, install_pkg_sdk)
             opt.after_install()
         end
     end, {
@@ -126,7 +190,7 @@ function install_sdk(opt)
         force = not extract_exist or opt.force,
     })
 end
-function install_file(opt)
+function install_pkg_file(opt)
     local file_path = utils.find_download_file(opt.name)
     if not file_path then
         raise("file %s not found", opt.name)
@@ -142,7 +206,7 @@ function install_file(opt)
 
         -- call after_install
         if opt.after_install then
-            utils.redirect_fenv(opt.after_install, install_file)
+            utils.redirect_fenv(opt.after_install, install_pkg_file)
             opt.after_install()
         end
     end, {
@@ -150,6 +214,56 @@ function install_file(opt)
         files = { file_path },
         force = opt.force,
     })
+end
+function install_pkg_custom(opt)
+    local package_path = utils.find_download_package_sdk(opt.name)
+    if not package_path then
+        raise("package %s not found", opt.name)
+    end
+    local temp_dir = utils.install_temp_dir(package_path)
+    local package_file_name = path.filename(package_path)
+    local extract_exist = os.isdir(temp_dir)
+
+    -- extract
+    utils.on_changed(function (change_info)
+        _log(opt, "pkg_custom.extract", "temp_dir \"%s\"", temp_dir)
+        if extract_exist then
+            os.rmdir(temp_dir)
+        end
+        archive.extract(package_path, temp_dir)
+    end, {
+        cache_file = utils.depend_file_install("pkg_custom/extract/"..package_file_name),
+        files = { package_path },
+        force = not extract_exist or opt.force
+    })
+
+    -- do install
+    utils.on_changed(function (change_info)
+        _log(opt, "pkg_custom.install", "path \"%s\"", package_path)
+        if not os.isdir(opt.out_dir) then
+            os.mkdir(opt.out_dir)
+        end
+
+        -- call custom install
+        utils.redirect_fenv(opt.custom_install, install_pkg_custom)
+        local installer = Installer {
+            pkg_dir = temp_dir,
+            bin_dir = opt.out_dir,
+        }
+        opt.custom_install(installer)
+
+        -- call after_install
+        if opt.after_install then
+            utils.redirect_fenv(opt.after_install, install_pkg_custom)
+            opt.after_install()
+        end
+    end, {
+        cache_file = utils.depend_file_install("sdk/copy/"..package_file_name),
+        files = { package_path },
+        force = not extract_exist or opt.force,
+    })
+end
+function install_pkg_bound(opt)
 end
 function copy_files(opt)
     -- check opt
@@ -197,15 +311,15 @@ end
 function install_from_kind(kind, opt)
     if kind == "download" then
         if opt.install_func == "tool" then
-            install_tool(opt)
+            install_pkg_tool(opt)
         elseif opt.install_func == "resources" then
-            install_resources(opt)
+            install_pkg_resources(opt)
         elseif opt.install_func == "sdk" then
-            install_sdk(opt)
+            install_pkg_sdk(opt)
         elseif opt.install_func == "file" then
-            install_file(opt)
+            install_pkg_file(opt)
         elseif opt.install_func == "custom" then
-            raise("custom install not supported yet")
+            install_pkg_custom(opt)
         elseif opt.install_func == nil then
             raise("install in package not supported yet")
         else
@@ -290,6 +404,9 @@ function collect_install_items()
                     goto continue
                 end
                 if not _filter(item.opt.arch, os.arch()) then
+                    goto continue
+                end
+                if not _filter(item.opt.toolchain, target:toolchains()[1]:name()) then
                     goto continue
                 end
 

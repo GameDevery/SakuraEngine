@@ -1,122 +1,3 @@
-
-'''
-Enum json structure
-<enum_name: str> : {
-    "attrs": <user attributes: Object>,
-    "values": {
-        <enum_value_name> : {
-            "attrs": <user attributes: Object>,
-            "value": <value: int>,
-            "comment": <comment: str>,
-            "line": <line: int>,
-        },
-        ...
-    },
-    "isScoped": <is_scoped: bool>,
-    "underlyingType": <underlying_type: str>,
-    "comment": <comment: str>,
-    "fileName": <file_name: str>
-    "line": <line: int>
-}
-
-Record json structure
-<record_name: str> : {
-    "bases": <bases: List[str]>,
-    "attrs": <user attributes: Object>,
-    "fields": <fields: Dict[Fields]>,
-    "methods": <methods: List[Methods]>,
-    "comment": <comment: str>,
-    "fileName": <file_name: str>
-    "line": <line: int>
-}
-
-Field json structure
-<field_name> : {
-    "type": <type: str>,
-    "rawType": <raw_type: str>,
-    "arraySize": <array_size: int>,
-    "attrs": <user attributes: Object>,
-    "access": <access: str>,
-    "isFunctor": <is_functor: bool>,
-    "isStatic": <is_static: bool>,
-    "isAnonymous": <is_anonymous: bool>,
-    "comment": <comment: str>,
-    "line": <line: int>,
-}
-
-Method json structure
-{
-    "name": <name: str>,
-    "isStatic": <is_static: bool>,
-    "isConst": <is_const: bool>,
-    "isNothrow": <is_nothrow: bool>,
-    "attrs": <user attributes: Object>,
-    "access": <access: str>,
-    "default_value": <default_value: str>,
-    "comment": <comment: str>,
-    "parameters": {
-        <name: str>: {
-            "type": <type: str>,
-            "arraySize": <array_size: int>,
-            "rawType": <raw_type: str>,
-            "attrs": <user attributes: Object>,
-            "isFunctor": <is_functor: bool>,
-            "isCallback": <is_callback: bool>,
-            "isAnonymous": <is_anonymous: bool>,
-            "comment": <comment: str>,
-            "line": <line: int>,
-            "functor": <functor: Function>
-        },
-        ...
-    },
-    "retType": <return_type: str>,
-    "rawRetType": <raw_return_type: str>,
-    "line": <line: int>,
-}
-
-Parameter json structure
-<name: str>: {
-    "type": <type: str>,
-    "arraySize": <array_size: int>,
-    "rawType": <raw_type: str>,
-    "attrs": <user attributes: Object>,
-    "default_value": <default_value: str>,
-    "isFunctor": <is_functor: bool>,
-    "isCallback": <is_callback: bool>,
-    "isAnonymous": <is_anonymous: bool>,
-    "comment": <comment: str>,
-    "line": <line: int>,
-}
-
-Function json structure
-{
-    "name": <name: str>,
-    "isStatic": <is_static: bool>,
-    "isConst": <is_const: bool>,
-    "attrs": <user attributes: Object>,
-    "comment": <comment: str>,
-    "parameters": {
-        <parameter_name> : {
-            "type": <type: str>,
-            "arraySize": <array_size: int>,
-            "rawType": <raw_type: str>,
-            "attrs": <user attributes: Object>,
-            "isFunctor": <is_functor: bool>,
-            "isCallback": <is_callback: bool>,
-            "isAnonymous": <is_anonymous: bool>,
-            "comment": <comment: str>,
-            "line": <line: int>,
-            "functor": <functor: Function>
-        },
-        ...
-    },
-    "retType": <return_type: str>,
-    "rawRetType": <raw_return_type: str>,
-    "fileName": <file_name: str>
-    "line": <line: int>
-    }
-}
-'''
 # TODO. 需要一个签名器来直接描述一个类型的签名
 #       如果是 func 则需要递归 (需要 params 的 attr 和 params name) 否则对齐 cpp 的签名
 #       为了支持这个签名器, 还需要一个专门的 scheme 目标类型来解析
@@ -126,6 +7,22 @@ Function json structure
 from typing import List, Dict
 import framework.scheme as sc
 import framework.log as log
+import json
+
+def parse_attrs(attrs: List[str]):
+    result = sc.JsonObject(
+        val=[],
+        is_dict=True,
+    )
+    for attr in attrs:
+        try:
+            json_obj = json.loads(attr, object_pairs_hook=sc.json_object_pairs_hook)
+        except json.JSONDecodeError as e:
+            raise Exception(f"failed to parse attr: {attr}\n{e}")
+        
+        for v in json_obj.val:
+            result.val.append(v)
+    return result
 
 
 class EnumerationValue:
@@ -145,16 +42,16 @@ class EnumerationValue:
         self.attrs: sc.ParseResult
         self.generator_data: Dict[str, object] = {}
 
-    def load_from_raw_json(self, raw_json: sc.JsonObject):
-        unique_dict = raw_json.unique_dict()
+    def load_from_raw_json(self, raw_json: Dict):
+        unique_dict = raw_json
 
         self.value = unique_dict["value"]
         self.comment = unique_dict["comment"]
         self.line = unique_dict["line"]
 
         # load fields
-        self.raw_attrs = unique_dict["attrs"]
-        self.raw_attrs.escape_from_parent()
+        self.raw_attrs = parse_attrs(unique_dict["attrs"])
+        # self.raw_attrs.escape_from_parent()
 
     def make_log_stack(self) -> log.CppSourceStack:
         return log.CppSourceStack(self.parent.file_name, self.line)
@@ -178,25 +75,25 @@ class Enumeration:
         self.attrs: sc.ParseResult
         self.generator_data: Dict[str, object] = {}
 
-    def load_from_raw_json(self, raw_json: sc.JsonObject):
-        unique_dict = raw_json.unique_dict()
+    def load_from_raw_json(self, raw_json: Dict):
+        unique_dict = raw_json
 
-        self.is_scoped = unique_dict["isScoped"]
+        self.is_scoped = unique_dict["is_scoped"]
         self.underlying_type = unique_dict["underlying_type"]
         self.comment = unique_dict["comment"]
-        self.file_name = unique_dict["fileName"]
+        self.file_name = unique_dict["file_name"]
         self.line = unique_dict["line"]
 
         # load values
         self.values = {}
-        for (enum_value_name, enum_value_data) in unique_dict["values"].unique_dict().items():
-            value = EnumerationValue(enum_value_name, self)
+        for enum_value_data in unique_dict["values"]:
+            value = EnumerationValue(enum_value_data["name"], self)
             value.load_from_raw_json(enum_value_data)
-            self.values[enum_value_name] = value
+            self.values[enum_value_data["name"]] = value
 
         # load attrs
-        self.raw_attrs = unique_dict["attrs"]
-        self.raw_attrs.escape_from_parent()
+        self.raw_attrs = parse_attrs(unique_dict["attrs"])
+        # self.raw_attrs.escape_from_parent()
 
     def make_log_stack(self) -> log.CppSourceStack:
         return log.CppSourceStack(self.file_name, self.line)
@@ -222,18 +119,18 @@ class Record:
         self.attrs: sc.ParseResult
         self.generator_data: Dict[str, object] = {}
 
-    def load_from_raw_json(self, raw_json: sc.JsonObject):
-        unique_dict = raw_json.unique_dict()
+    def load_from_raw_json(self, raw_json: Dict):
+        unique_dict = raw_json
 
         self.bases = unique_dict["bases"]
         self.comment = unique_dict["comment"]
-        self.file_name = unique_dict["fileName"]
+        self.file_name = unique_dict["file_name"]
         self.line = unique_dict["line"]
 
         # load fields
         self.fields = []
-        for (field_name, field_data) in unique_dict["fields"].unique_dict().items():
-            field = Field(field_name, self)
+        for field_data in unique_dict["fields"]:
+            field = Field(field_data["name"], self)
             field.load_from_raw_json(field_data)
             self.fields.append(field)
 
@@ -249,8 +146,8 @@ class Record:
                 self.methods.append(method)
 
         # load attrs
-        self.raw_attrs = unique_dict["attrs"]
-        self.raw_attrs.escape_from_parent()
+        self.raw_attrs = parse_attrs(unique_dict["attrs"])
+        # self.raw_attrs.escape_from_parent()
 
     def dump_generate_body_content(self):
         result = ""
@@ -284,23 +181,23 @@ class Field:
         self.attrs: sc.ParseResult
         self.generator_data: Dict[str, object] = {}
 
-    def load_from_raw_json(self, raw_json: sc.JsonObject):
-        unique_dict = raw_json.unique_dict()
+    def load_from_raw_json(self, raw_json: Dict):
+        unique_dict = raw_json
 
         self.type = unique_dict["type"]
-        self.raw_type = unique_dict["rawType"]
+        self.raw_type = unique_dict["raw_type"]
         self.access = unique_dict["access"]
-        self.default_value = unique_dict["defaultValue"]
-        self.array_size = unique_dict["arraySize"]
-        self.is_functor = unique_dict["isFunctor"]
-        self.is_anonymous = unique_dict["isAnonymous"]
-        self.is_static = unique_dict["isStatic"]
+        self.default_value = unique_dict["default_value"]
+        self.array_size = unique_dict["array_size"]
+        self.is_functor = unique_dict["is_functor"]
+        self.is_anonymous = unique_dict["is_anonymous"]
+        self.is_static = unique_dict["is_static"]
         self.comment = unique_dict["comment"]
         self.line = unique_dict["line"]
 
         # load attrs
-        self.raw_attrs = unique_dict["attrs"]
-        self.raw_attrs.escape_from_parent()
+        self.raw_attrs = parse_attrs(unique_dict["attrs"])
+        # self.raw_attrs.escape_from_parent()
 
     def make_log_stack(self) -> log.CppSourceStack:
         return log.CppSourceStack(self.parent.file_name, self.line)
@@ -328,8 +225,8 @@ class Method:
         self.attrs: sc.ParseResult
         self.generator_data: Dict[str, object] = {}
 
-    def load_from_raw_json(self, raw_json: sc.JsonObject):
-        unique_dict = raw_json.unique_dict()
+    def load_from_raw_json(self, raw_json: Dict):
+        unique_dict = raw_json
 
         self.name = unique_dict["name"]
         split_name = str.rsplit(self.name, "::", 1)
@@ -337,27 +234,30 @@ class Method:
         self.namespace: str = split_name[0] if len(split_name) > 1 else ""
 
         self.access = unique_dict["access"]
-        self.is_static = unique_dict["isStatic"]
-        self.is_const = unique_dict["isConst"]
-        self.is_nothrow = unique_dict["isNothrow"]
+        self.is_static = unique_dict["is_static"]
+        self.is_const = unique_dict["is_const"]
+        self.is_nothrow = unique_dict["is_nothrow"]
         self.comment = unique_dict["comment"]
-        self.ret_type = unique_dict["retType"]
-        self.raw_ret_type = unique_dict["rawRetType"]
+        self.ret_type = unique_dict["ret_type"]
+        self.raw_ret_type = unique_dict["raw_ret_type"]
         self.line = unique_dict["line"]
 
         # load parameters
         self.parameters = {}
-        for (param_name, param_data) in unique_dict["parameters"].unique_dict().items():
-            param = Parameter(param_name, self)
+        for param_data in unique_dict["parameters"]:
+            param = Parameter(param_data["name"], self)
             param.load_from_raw_json(param_data)
-            self.parameters[param_name] = param
+            self.parameters[param_data["name"]] = param
 
         # load attrs
-        self.raw_attrs = unique_dict["attrs"]
-        self.raw_attrs.escape_from_parent()
+        self.raw_attrs = parse_attrs(unique_dict["attrs"])
+        # self.raw_attrs.escape_from_parent()
 
     def make_log_stack(self) -> log.CppSourceStack:
         return log.CppSourceStack(self.parent.file_name, self.line)
+
+    def has_return(self):
+        return self.ret_type != "void"
 
     def dump_params(self):
         return ", ".join([f"{param.type} {param.name}" for param in self.parameters.values()])
@@ -391,7 +291,6 @@ class Parameter:
         self.is_functor: bool
         self.is_callback: bool
         self.is_anonymous: bool
-        self.functor: 'Function'
         self.default_value: str
         self.comment: str
         self.line: int
@@ -400,23 +299,21 @@ class Parameter:
         self.attrs: sc.ParseResult
         self.generator_data: Dict[str, object] = {}
 
-    def load_from_raw_json(self, raw_json: sc.JsonObject):
-        unique_dict = raw_json.unique_dict()
+    def load_from_raw_json(self, raw_json: Dict):
+        unique_dict = raw_json
 
         self.type = unique_dict["type"]
-        self.array_size = unique_dict["arraySize"]
-        self.raw_type = unique_dict["rawType"]
-        self.is_functor = unique_dict["isFunctor"]
-        self.is_anonymous = unique_dict["isAnonymous"]
+        self.array_size = unique_dict["array_size"]
+        self.raw_type = unique_dict["raw_type"]
+        self.is_functor = unique_dict["is_functor"]
+        self.is_anonymous = unique_dict["is_anonymous"]
         self.comment = unique_dict["comment"]
         self.line = unique_dict["line"]
-        self.default_value = unique_dict["defaultValue"]
-
-        # TODO. load functor
+        self.default_value = unique_dict["default_value"]
 
         # load attrs
-        self.raw_attrs = unique_dict["attrs"]
-        self.raw_attrs.escape_from_parent()
+        self.raw_attrs = parse_attrs(unique_dict["attrs"])
+        # self.raw_attrs.escape_from_parent()
 
     def make_log_stack(self) -> log.CppSourceStack:
         if isinstance(self.parent, Method):
@@ -444,32 +341,32 @@ class Function:
         self.attrs: sc.ParseResult
         self.generator_data: Dict[str, object] = {}
 
-    def load_from_raw_json(self, raw_json: sc.JsonObject):
-        unique_dict = raw_json.unique_dict()
+    def load_from_raw_json(self, raw_json: Dict):
+        unique_dict = raw_json
 
         self.name = unique_dict["name"]
         split_name = str.rsplit(self.name, "::", 1)
         self.short_name: str = split_name[-1]
         self.namespace: str = split_name[0] if len(split_name) > 1 else ""
 
-        self.is_static = unique_dict["isStatic"]
-        self.is_const = unique_dict["isConst"]
+        self.is_static = unique_dict["is_static"]
+        self.is_const = unique_dict["is_const"]
         self.comment = unique_dict["comment"]
-        self.ret_type = unique_dict["retType"]
-        self.raw_ret_type = unique_dict["rawRetType"]
-        self.file_name = unique_dict["fileName"]
+        self.ret_type = unique_dict["ret_type"]
+        self.raw_ret_type = unique_dict["raw_ret_type"]
+        self.file_name = unique_dict["file_name"]
         self.line = unique_dict["line"]
 
         # load parameters
         self.parameters = {}
-        for (param_name, param_data) in unique_dict["parameters"].unique_dict().items():
+        for (param_name, param_data) in unique_dict["parameters"].items():
             param = Parameter(param_name, self)
             param.load_from_raw_json(param_data)
             self.parameters[param_name] = param
 
         # load attrs
-        self.raw_attrs = unique_dict["attrs"]
-        self.raw_attrs.escape_from_parent()
+        self.raw_attrs = parse_attrs(unique_dict["attrs"])
+        # self.raw_attrs.escape_from_parent()
 
     def make_log_stack(self) -> log.CppSourceStack:
         return log.CppSourceStack(self.file_name, self.line)

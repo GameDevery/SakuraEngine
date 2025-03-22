@@ -11,8 +11,10 @@ namespace skd
 namespace asset
 {
 
-sreflect_struct("guid" : "b38147b2-a5af-40c6-b2bd-185d16ca83ac")
-sattr("serde" : ["json", "bin"])
+sreflect_struct(
+    guid = "b38147b2-a5af-40c6-b2bd-185d16ca83ac"
+    serde = @bin|@json
+)
 skr_material_asset_t {
     uint32_t material_type_version;
 
@@ -31,8 +33,10 @@ skr_material_asset_t {
     skr::Vector<skr_shader_option_instance_t> option_defaults;
 };
 
-sreflect_struct("guid" : "b5fc88c3-0770-4332-9eda-9e283e29c7dd")
-sattr("serde" : "json")
+sreflect_struct(
+    guid = "b5fc88c3-0770-4332-9eda-9e283e29c7dd"
+    serde = @json
+)
 SKR_SHADER_COMPILER_API SMaterialImporter final : public SImporter {
     skr::String jsonPath;
 
@@ -45,7 +49,7 @@ SKR_SHADER_COMPILER_API SMaterialImporter final : public SImporter {
 
 // Cookers
 
-sreflect_struct("guid" : "0e3b550f-cdd7-4796-a6d5-0c457e0640bd")
+sreflect_struct(guid = "0e3b550f-cdd7-4796-a6d5-0c457e0640bd")
 SKR_SHADER_COMPILER_API SMaterialCooker final : public SCooker {
     bool     Cook(SCookContext* ctx) override;
     uint32_t Version() override { return kDevelopmentVersion; }

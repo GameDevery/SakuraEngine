@@ -1,6 +1,6 @@
 #pragma once
 
-namespace skr::rttr
+namespace skr
 {
 struct CPPExternMethods {
     // unary op
@@ -56,4 +56,4 @@ struct SkrCoreExternMethods {
 // TODO. count extern methods
 // TODO. load extern methods
 
-} // namespace skr::rttr
+} // namespace skr

@@ -7,9 +7,7 @@
 namespace skr::gui
 {
 struct INativeWindow;
-sreflect_struct(
-    "guid": "1681d4be-cb32-4b65-9f07-9f143ebe1c6e"
-)
+sreflect_struct(guid = "1681d4be-cb32-4b65-9f07-9f143ebe1c6e")
 SKR_GUI_API RenderNativeWindow : public RenderWindow {
     SKR_GENERATE_BODY()
     RenderNativeWindow(INativeWindow* native_window);

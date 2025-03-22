@@ -4,7 +4,7 @@
         {
             file = "script.py", -- script file
             private = false, -- if true, generated files will not be exported
-            import_dirs = { "import/a", "import/b" }, -- python import dirs
+            import_dirs = { "import/a", "import/b" }, -- script import dirs
         }
     },
     dep_files = { "test/*.py", "test/*.mako" }, -- dep_files
@@ -16,9 +16,7 @@ rule("c++.codegen.generators")
         import("skr.analyze")
         if not analyze.in_analyze_phase() then
             import("skr.codegen")
-            if codegen.is_env_complete() then
-                codegen.solve_generators(target)
-            end
+            codegen.solve_generators(target)
         end
     end)
 rule_end()

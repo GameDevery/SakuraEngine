@@ -11,18 +11,18 @@
 //
 // RTTRTraits 只提供完全静态的信息，如果需要拿到具体的 Type 对象，需要通过 type_registry 查询，
 // 查询结果取决于是否静态注册该类型
-namespace skr::rttr
+namespace skr
 {
 template <typename T>
 struct RTTRTraits {
     inline static constexpr skr::StringView get_name()
     {
-        unimplemented_no_meta(T, "RTTRTraits<T>::get_name() is not implemented");
+        static_assert(std ::is_same_v<T, T*>, "RTTRTraits<T>::get_name() is not implemented");
         return {};
     }
     inline static constexpr GUID get_guid()
     {
-        unimplemented_no_meta(T, "RTTRTraits<T>::get_guid() is not implemented");
+        static_assert(std ::is_same_v<T, T*>, "RTTRTraits<T>::get_guid() is not implemented");
         return {};
     }
 };
@@ -40,17 +40,17 @@ inline constexpr skr::StringView type_name_of()
 }
 
 template <typename T>
-inline Type* type_of()
+inline RTTRType* type_of()
 {
     return get_type_from_guid(type_id_of<T>());
 }
 
-} // namespace skr::rttr
+} // namespace skr
 
 //======================================== register marco
 #define SKR_RTTR_MAKE_U8(__VALUE) u8##__VALUE
 #define SKR_RTTR_TYPE(__TYPE, __GUID)                      \
-    namespace skr::rttr                                    \
+    namespace skr                                          \
     {                                                      \
     template <>                                            \
     struct RTTRTraits<__TYPE> {                            \

@@ -26,7 +26,7 @@ void RenderNativeWindowElement::update(NotNull<Widget*> new_widget) SKR_NOEXCEPT
 void RenderNativeWindowElement::add_render_object_child(NotNull<RenderObject*> child, Slot slot) SKR_NOEXCEPT
 {
     // auto              raw_obj = render_object();
-    // constexpr int64_t offset  = skr::rttr::get_cast_offset<RenderNativeWindow, ISingleChildRenderObject>();
+    // constexpr int64_t offset  = skr::get_cast_offset<RenderNativeWindow, ISingleChildRenderObject>();
     // auto              obj     = static_cast<ISingleChildRenderObject*>(static_cast<RenderNativeWindow*>(raw_obj));
     auto obj = render_object()->type_cast<ISingleChildRenderObject>();
     obj->set_child(child);

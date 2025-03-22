@@ -11,7 +11,7 @@ namespace skr::gui
 // constraints 传递流程如下
 // parent-constraints ==> padding/child-constraints ==> child.layout()
 sreflect_enum_class(
-    "guid": "01092beb-ecd0-4292-8217-7998997a8746"
+    guid = "01092beb-ecd0-4292-8217-7998997a8746"
 )
 EPositionalFit : uint8_t
 {
@@ -22,7 +22,7 @@ EPositionalFit : uint8_t
 
 // Canvas 如何决定自己的大小
 sreflect_enum_class(
-    "guid": "1a43aede-a6f7-4750-8f29-da2965b9abcb"
+    guid = "1a43aede-a6f7-4750-8f29-da2965b9abcb"
 )
 EStackSize : uint8_t
 {

@@ -47,6 +47,8 @@ skr_global_target()
                         found_package = utils.find_download_package_tool(item.opt.name)
                     elseif item.opt.install_func == "sdk" then
                         found_package = utils.find_download_package_sdk(item.opt.name, {debug = item.opt.debug})
+                    elseif item.opt.install_func == "custom" then
+                        found_package = utils.find_download_package(item.opt.name)
                     else
                         found_package = utils.find_download_file(item.opt.name)
                     end
@@ -74,6 +76,8 @@ skr_global_target()
                         download_tool:download_file(item.opt.name)
                     elseif item.opt.install_func == "file" then
                         download_tool:download_file(item.opt.name)
+                    elseif item.opt.install_func == "custom" then
+                        download_tool:download_package(item.opt.name)
                     else
                         raise("invalid install_func: %s", item.opt.install_func)
                     end
@@ -84,7 +88,7 @@ skr_global_target()
             for _, item in ipairs(install_items) do
                 if item.kind == "download" and item.opt.install_func == "tool" then
                     install.fill_opt(item.opt, item.trigger_target)
-                    install.install_tool(item.opt)
+                    install.install_pkg_tool(item.opt)
                 end
             end
         end

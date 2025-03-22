@@ -67,7 +67,7 @@ struct JsonSerde<skr::variant<Ts...>> {
     template <class T>
     inline static bool _read_by_index(skr::archive::JsonReader* r, skr::variant<Ts...>& v, skr_guid_t index)
     {
-        if (index == ::skr::rttr::type_id_of<T>())
+        if (index == ::skr::type_id_of<T>())
         {
             T t;
             if (!json_read(r, t))
@@ -108,7 +108,7 @@ struct JsonSerde<skr::variant<Ts...>> {
                 success = false;
                 return;
             }
-            if (!json_write<skr_guid_t>(json, ::skr::rttr::type_id_of<raw>()))
+            if (!json_write<skr_guid_t>(json, ::skr::type_id_of<raw>()))
             {
                 success = false;
                 return;

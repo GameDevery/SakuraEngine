@@ -5,260 +5,244 @@
 #include <concepts>
 
 // functions and methods
-namespace skr::rttr
+namespace skr
 {
-struct ParamBuilder {
-    inline ParamBuilder(ParamData* data)
+struct RTTRParamBuilder {
+    inline RTTRParamBuilder(RTTRParamData* data)
         : _data(data)
     {
     }
 
     // basic
-    inline ParamBuilder& name(String name)
+    inline RTTRParamBuilder& name(String name)
     {
         _data->name = std::move(name);
         return *this;
     }
-    inline ParamBuilder& default_func(ParamData::MakeDefaultFunc func)
+    inline RTTRParamBuilder& default_func(RTTRParamData::MakeDefaultFunc func)
     {
         _data->make_default = func;
         return *this;
     }
 
     // flag & attributes
-    inline ParamBuilder& flag(EParamFlag flag)
+    inline RTTRParamBuilder& flag(ERTTRParamFlag flag)
     {
         _data->flag = flag_set(_data->flag, flag);
         return *this;
     }
-    template <std::derived_from<IAttribute> Attr>
-    inline ParamBuilder& attribute(Attr attr)
+    inline RTTRParamBuilder& attribute(Any attr)
     {
-        IAttribute* copied_attr = new Attr(std::move(attr));
-        _data->attributes.add(type_id_of<Attr>(), copied_attr);
+        _data->attrs.add(std::move(attr));
         return *this;
     }
 
 private:
-    ParamData* _data;
+    RTTRParamData* _data;
 };
 
-struct FunctionBuilder {
-    inline FunctionBuilder(FunctionData* data)
+struct RTTRFunctionBuilder {
+    inline RTTRFunctionBuilder(RTTRFunctionData* data)
         : _data(data)
     {
     }
 
     // params
-    inline ParamBuilder param_at(uint64_t index)
+    inline RTTRParamBuilder param_at(uint64_t index)
     {
-        return ParamBuilder(&_data->param_data[index]);
+        return RTTRParamBuilder(_data->param_data[index]);
     }
 
     // flag & attributes
-    inline FunctionBuilder& flag(EFunctionFlag flag)
+    inline RTTRFunctionBuilder& flag(ERTTRFunctionFlag flag)
     {
         _data->flag = flag_set(_data->flag, flag);
         return *this;
     }
-    template <std::derived_from<IAttribute> Attr>
-    inline FunctionBuilder& attribute(Attr attr)
+    inline RTTRFunctionBuilder& attribute(Any attr)
     {
-        IAttribute* copied_attr = new Attr(std::move(attr));
-        _data->attributes.add(type_id_of<Attr>(), copied_attr);
+        _data->attrs.add(std::move(attr));
         return *this;
     }
 
 private:
-    FunctionData* _data;
+    RTTRFunctionData* _data;
 };
 
-struct MethodBuilder {
-    inline MethodBuilder(MethodData* data)
+struct RTTRMethodBuilder {
+    inline RTTRMethodBuilder(RTTRMethodData* data)
         : _data(data)
     {
     }
 
     // params
-    inline ParamBuilder param_at(uint64_t index)
+    inline RTTRParamBuilder param_at(uint64_t index)
     {
-        return ParamBuilder(&_data->param_data[index]);
+        return RTTRParamBuilder(_data->param_data[index]);
     }
 
     // flag & attributes
-    inline MethodBuilder& flag(EMethodFlag flag)
+    inline RTTRMethodBuilder& flag(ERTTRMethodFlag flag)
     {
         _data->flag = flag_set(_data->flag, flag);
         return *this;
     }
-    template <std::derived_from<IAttribute> Attr>
-    inline MethodBuilder& attribute(Attr attr)
+    inline RTTRMethodBuilder& attribute(Any attr)
     {
-        IAttribute* copied_attr = new Attr(std::move(attr));
-        _data->attributes.add(type_id_of<Attr>(), copied_attr);
+        _data->attrs.add(std::move(attr));
         return *this;
     }
 
 private:
-    MethodData* _data;
+    RTTRMethodData* _data;
 };
 
-struct StaticMethodBuilder {
-    inline StaticMethodBuilder(StaticMethodData* data)
+struct RTTRStaticMethodBuilder {
+    inline RTTRStaticMethodBuilder(RTTRStaticMethodData* data)
         : _data(data)
     {
     }
 
     // params
-    inline ParamBuilder param_at(uint64_t index)
+    inline RTTRParamBuilder param_at(uint64_t index)
     {
-        return ParamBuilder(&_data->param_data[index]);
+        return RTTRParamBuilder(_data->param_data[index]);
     }
 
     // flag & attributes
-    inline StaticMethodBuilder& flag(EStaticMethodFlag flag)
+    inline RTTRStaticMethodBuilder& flag(ERTTRStaticMethodFlag flag)
     {
         _data->flag = flag_set(_data->flag, flag);
         return *this;
     }
-    template <std::derived_from<IAttribute> Attr>
-    inline StaticMethodBuilder& attribute(Attr attr)
+    inline RTTRStaticMethodBuilder& attribute(Any attr)
     {
-        IAttribute* copied_attr = new Attr(std::move(attr));
-        _data->attributes.add(type_id_of<Attr>(), copied_attr);
+        _data->attrs.add(std::move(attr));
         return *this;
     }
 
 private:
-    StaticMethodData* _data;
+    RTTRStaticMethodData* _data;
 };
 
-struct ExternMethodBuilder {
-    inline ExternMethodBuilder(ExternMethodData* data)
+struct RTTRExternMethodBuilder {
+    inline RTTRExternMethodBuilder(RTTRExternMethodData* data)
         : _data(data)
     {
     }
 
     // params
-    inline ParamBuilder param_at(uint64_t index)
+    inline RTTRParamBuilder param_at(uint64_t index)
     {
-        return ParamBuilder(&_data->param_data[index]);
+        return RTTRParamBuilder(_data->param_data[index]);
     }
 
     // flag & attributes
-    inline ExternMethodBuilder& flag(EExternMethodFlag flag)
+    inline RTTRExternMethodBuilder& flag(ERTTRExternMethodFlag flag)
     {
         _data->flag = flag_set(_data->flag, flag);
         return *this;
     }
-    template <std::derived_from<IAttribute> Attr>
-    inline ExternMethodBuilder& attribute(Attr attr)
+    inline RTTRExternMethodBuilder& attribute(Any attr)
     {
-        IAttribute* copied_attr = new Attr(std::move(attr));
-        _data->attributes.add(type_id_of<Attr>(), copied_attr);
+        _data->attrs.add(std::move(attr));
         return *this;
     }
 
 private:
-    ExternMethodData* _data;
+    RTTRExternMethodData* _data;
 };
 
-struct CtorBuilder {
-    inline CtorBuilder(CtorData* data)
+struct RTTRCtorBuilder {
+    inline RTTRCtorBuilder(RTTRCtorData* data)
         : _data(data)
     {
     }
 
     // params
-    inline ParamBuilder param_at(uint64_t index)
+    inline RTTRParamBuilder param_at(uint64_t index)
     {
-        return ParamBuilder(&_data->param_data[index]);
+        return RTTRParamBuilder(_data->param_data[index]);
     }
 
     // flag & attributes
-    inline CtorBuilder& flag(ECtorFlag flag)
+    inline RTTRCtorBuilder& flag(ERTTRCtorFlag flag)
     {
         _data->flag = flag_set(_data->flag, flag);
         return *this;
     }
-    template <std::derived_from<IAttribute> Attr>
-    inline CtorBuilder& attribute(Attr attr)
+    inline RTTRCtorBuilder& attribute(Any attr)
     {
-        IAttribute* copied_attr = new Attr(std::move(attr));
-        _data->attributes.add(type_id_of<Attr>(), copied_attr);
+        _data->attrs.add(std::move(attr));
         return *this;
     }
 
 private:
-    CtorData* _data;
+    RTTRCtorData* _data;
 };
-} // namespace skr::rttr
+} // namespace skr
 
 // fields
-namespace skr::rttr
+namespace skr
 {
-struct FieldBuilder {
-    inline FieldBuilder(FieldData* data)
+struct RTTRFieldBuilder {
+    inline RTTRFieldBuilder(RTTRFieldData* data)
         : _data(data)
     {
     }
 
     // flag & attributes
-    inline FieldBuilder& flag(EFieldFlag flag)
+    inline RTTRFieldBuilder& flag(ERTTRFieldFlag flag)
     {
         _data->flag = flag_set(_data->flag, flag);
         return *this;
     }
-    template <std::derived_from<IAttribute> Attr>
-    inline FieldBuilder& attribute(Attr attr)
+    inline RTTRFieldBuilder& attribute(Any attr)
     {
-        IAttribute* copied_attr = new Attr(std::move(attr));
-        _data->attributes.add(type_id_of<Attr>(), copied_attr);
+        _data->attrs.add(std::move(attr));
         return *this;
     }
 
 private:
-    FieldData* _data;
+    RTTRFieldData* _data;
 };
 
-struct StaticFieldBuilder {
-    inline StaticFieldBuilder(StaticFieldData* data)
+struct RTTRStaticFieldBuilder {
+    inline RTTRStaticFieldBuilder(RTTRStaticFieldData* data)
         : _data(data)
     {
     }
 
     // flag & attributes
-    inline StaticFieldBuilder& flag(EStaticFieldFlag flag)
+    inline RTTRStaticFieldBuilder& flag(ERTTRStaticFieldFlag flag)
     {
         _data->flag = flag_set(_data->flag, flag);
         return *this;
     }
-    template <std::derived_from<IAttribute> Attr>
-    inline StaticFieldBuilder& attribute(Attr attr)
+    inline RTTRStaticFieldBuilder& attribute(Any attr)
     {
-        IAttribute* copied_attr = new Attr(std::move(attr));
-        _data->attributes.add(type_id_of<Attr>(), copied_attr);
+        _data->attrs.add(std::move(attr));
         return *this;
     }
 
 private:
-    StaticFieldData* _data;
+    RTTRStaticFieldData* _data;
 };
-} // namespace skr::rttr
+} // namespace skr
 
 // record
-namespace skr::rttr
+namespace skr
 {
 template <typename T>
-struct RecordBuilder {
-    inline RecordBuilder(RecordData* data)
+struct RTTRRecordBuilder {
+    inline RTTRRecordBuilder(RTTRRecordData* data)
         : _data(data)
     {
     }
 
     // basic info
     // TODO. 在外部提供并抹除 T 信息
-    inline RecordBuilder& basic_info()
+    inline RTTRRecordBuilder& basic_info()
     {
         // split namespace
         String             name = RTTRTraits<T>::get_name();
@@ -308,51 +292,51 @@ struct RecordBuilder {
         // fill assign operator
         if constexpr (std::is_copy_assignable_v<T>)
         {
-            extern_method<+[](T& lhs, const T& rhs) { lhs.operator=(rhs); }>(CPPExternMethods::Assign);
+            extern_method<+[](T& lhs, const T& rhs) -> void { lhs.operator=(rhs); }>(CPPExternMethods::Assign);
         }
 
         // fill move assign operator
         if constexpr (std::is_move_assignable_v<T>)
         {
-            extern_method<+[](T& lhs, T&& rhs) { lhs.operator=(std::move(rhs)); }>(CPPExternMethods::Assign);
+            extern_method<+[](T& lhs, T&& rhs) -> void { lhs.operator=(std::move(rhs)); }>(CPPExternMethods::Assign);
         }
 
         // fill bin serde
         if constexpr (skr::HasBinRead<T>)
         {
             extern_method<
-            +[](void* object, void* reader) -> bool {
-                return skr::bin_read<T>((SBinaryReader*)reader, *(T*)object);
-            }>(SkrCoreExternMethods::ReadBin);
+                +[](void* object, void* reader) -> bool {
+                    return skr::bin_read<T>((SBinaryReader*)reader, *(T*)object);
+                }>(SkrCoreExternMethods::ReadBin);
         }
         if constexpr (skr::HasBinWrite<T>)
         {
             extern_method<
-            +[](void* object, void* writer) -> bool {
-                return skr::bin_write<T>((SBinaryWriter*)writer, *(T*)object);
-            }>(SkrCoreExternMethods::WriteBin);
+                +[](void* object, void* writer) -> bool {
+                    return skr::bin_write<T>((SBinaryWriter*)writer, *(T*)object);
+                }>(SkrCoreExternMethods::WriteBin);
         }
 
         // fill json serde
         if constexpr (skr::HasJsonRead<T>)
         {
             extern_method<
-            +[](void* object, void* reader) -> bool {
-                return skr::json_read<T>((skr::archive::JsonReader*)reader, *(T*)object);
-            }>(SkrCoreExternMethods::ReadJson);
+                +[](void* object, void* reader) -> bool {
+                    return skr::json_read<T>((skr::archive::JsonReader*)reader, *(T*)object);
+                }>(SkrCoreExternMethods::ReadJson);
         }
         if constexpr (skr::HasJsonWrite<T>)
         {
             extern_method<
-            +[](void* object, void* writer) -> bool {
-                return skr::json_write<T>((skr::archive::JsonWriter*)writer, *(T*)object);
-            }>(SkrCoreExternMethods::WriteJson);
+                +[](void* object, void* writer) -> bool {
+                    return skr::json_write<T>((skr::archive::JsonWriter*)writer, *(T*)object);
+                }>(SkrCoreExternMethods::WriteJson);
         }
 
         // fill dtor
         if constexpr (std::is_destructible_v<T>)
         {
-            _data->dtor_data.native_invoke = ExportHelper::export_dtor<T>();
+            _data->dtor_data.native_invoke = RTTRExportHelper::export_dtor<T>();
         }
 
         return *this;
@@ -360,82 +344,97 @@ struct RecordBuilder {
 
     // ctor
     template <typename... Args>
-    inline CtorBuilder ctor()
+    inline RTTRCtorBuilder ctor()
     {
-        auto ctor_data = SkrNew<CtorData>();
+        // find first
+        {
+            TypeSignatureTyped<void(Args...)> signature;
+
+            auto result = _data->ctor_data.find_if([&](const RTTRCtorData* ctor_data) {
+                return ctor_data->signature_equal(signature.view(), ETypeSignatureCompareFlag::Strict);
+            });
+
+            if (result)
+            {
+                return { result.ref() };
+            }
+        }
+
+        // new ctor data
+        auto ctor_data = SkrNew<RTTRCtorData>();
         ctor_data->fill_signature<Args...>();
-        ctor_data->native_invoke        = ExportHelper::export_ctor<T, Args...>();
-        ctor_data->dynamic_stack_invoke = ExportHelper::export_ctor_dynamic_stack<T, Args...>();
+        ctor_data->native_invoke        = RTTRExportHelper::export_ctor<T, Args...>();
+        ctor_data->dynamic_stack_invoke = RTTRExportHelper::export_ctor_dynamic_stack<T, Args...>();
         _data->ctor_data.add(ctor_data);
         return { ctor_data };
     }
 
     // bases
     template <typename... Bases>
-    inline RecordBuilder& bases()
+    inline RTTRRecordBuilder& bases()
     {
-        _data->bases_data.append({ BaseData::New<T, Bases>()... });
+        _data->bases_data.append({ RTTRBaseData::New<T, Bases>()... });
         return *this;
     }
 
     // method & static method & extern method
     template <auto func>
-    inline MethodBuilder method(String name, EAccessLevel access_level = EAccessLevel::Public)
+    inline RTTRMethodBuilder method(String name, ERTTRAccessLevel access_level = ERTTRAccessLevel::Public)
     {
-        auto method_data          = SkrNew<MethodData>();
+        auto method_data          = SkrNew<RTTRMethodData>();
         method_data->name         = std::move(name);
         method_data->access_level = access_level;
         method_data->fill_signature(func);
-        method_data->native_invoke        = ExportHelper::export_method<func>();
-        method_data->dynamic_stack_invoke = ExportHelper::export_method_dynamic_stack<func>();
+        method_data->native_invoke        = RTTRExportHelper::export_method<func>();
+        method_data->dynamic_stack_invoke = RTTRExportHelper::export_method_dynamic_stack<func>();
         _data->methods.add(method_data);
         return { method_data };
     }
     template <typename Func, Func func>
-    inline MethodBuilder method(String name, EAccessLevel access_level = EAccessLevel::Public)
+    inline RTTRMethodBuilder method(String name, ERTTRAccessLevel access_level = ERTTRAccessLevel::Public)
     {
         return method<func>(std::move(name), access_level);
     }
     template <auto func>
-    inline StaticMethodBuilder static_method(String name, EAccessLevel access_level = EAccessLevel::Public)
+    inline RTTRStaticMethodBuilder static_method(String name, ERTTRAccessLevel access_level = ERTTRAccessLevel::Public)
     {
-        auto method_data          = SkrNew<StaticMethodData>();
+        auto method_data          = SkrNew<RTTRStaticMethodData>();
         method_data->name         = std::move(name);
         method_data->access_level = access_level;
         method_data->fill_signature(func);
-        method_data->native_invoke        = ExportHelper::export_static_method<func>();
-        method_data->dynamic_stack_invoke = ExportHelper::export_static_method_dynamic_stack<func>();
+        method_data->native_invoke        = RTTRExportHelper::export_static_method<func>();
+        method_data->dynamic_stack_invoke = RTTRExportHelper::export_static_method_dynamic_stack<func>();
         _data->static_methods.add(method_data);
         return { method_data };
     }
     template <typename Func, Func func>
-    inline StaticMethodBuilder static_method(String name, EAccessLevel access_level = EAccessLevel::Public)
+    inline RTTRStaticMethodBuilder static_method(String name, ERTTRAccessLevel access_level = ERTTRAccessLevel::Public)
     {
         return static_method<func>(std::move(name), access_level);
     }
     template <auto func>
-    inline ExternMethodBuilder extern_method(String name, EAccessLevel access_level = EAccessLevel::Public)
+    inline RTTRExternMethodBuilder extern_method(String name, ERTTRAccessLevel access_level = ERTTRAccessLevel::Public)
     {
-        auto method_data          = SkrNew<ExternMethodData>();
+        auto method_data          = SkrNew<RTTRExternMethodData>();
         method_data->name         = std::move(name);
         method_data->access_level = access_level;
         method_data->fill_signature(func);
-        method_data->native_invoke        = ExportHelper::export_extern_method<func>();
-        method_data->dynamic_stack_invoke = ExportHelper::export_extern_method_dynamic_stack<func>();
+        method_data->native_invoke        = RTTRExportHelper::export_extern_method<func>();
+        method_data->dynamic_stack_invoke = RTTRExportHelper::export_extern_method_dynamic_stack<func>();
         _data->extern_methods.add(method_data);
         return { method_data };
     }
     template <typename Func, Func func>
-    inline StaticMethodBuilder extern_method(String name, EAccessLevel access_level = EAccessLevel::Public)
+    inline RTTRStaticMethodBuilder extern_method(String name, ERTTRAccessLevel access_level = ERTTRAccessLevel::Public)
     {
         return extern_method<func>(std::move(name), access_level);
     }
 
     // field & static field
     template <auto _field>
-    inline FieldBuilder field(String name, EAccessLevel access_level = EAccessLevel::Public)
+    inline RTTRFieldBuilder field(String name, ERTTRAccessLevel access_level = ERTTRAccessLevel::Public)
     {
-        auto field_data          = SkrNew<FieldData>();
+        auto field_data          = SkrNew<RTTRFieldData>();
         field_data->name         = std::move(name);
         field_data->access_level = access_level;
         field_data->fill_signature<_field>(_field);
@@ -443,9 +442,9 @@ struct RecordBuilder {
         return { field_data };
     }
     template <auto _field>
-    inline StaticFieldBuilder static_field(String name, EAccessLevel access_level = EAccessLevel::Public)
+    inline RTTRStaticFieldBuilder static_field(String name, ERTTRAccessLevel access_level = ERTTRAccessLevel::Public)
     {
-        auto field_data          = SkrNew<StaticFieldData>();
+        auto field_data          = SkrNew<RTTRStaticFieldData>();
         field_data->name         = std::move(name);
         field_data->access_level = access_level;
         field_data->address      = reinterpret_cast<void*>(_field);
@@ -455,60 +454,56 @@ struct RecordBuilder {
     }
 
     // flags & attributes
-    inline RecordBuilder& flag(ERecordFlag flag)
+    inline RTTRRecordBuilder& flag(ERTTRRecordFlag flag)
     {
         _data->flag = flag_set(_data->flag, flag);
         return *this;
     }
-    template <std::derived_from<IAttribute> Attr>
-    inline RecordBuilder& attribute(Attr attr)
+    inline RTTRRecordBuilder& attribute(Any attr)
     {
-        IAttribute* copied_attr = new Attr(std::move(attr));
-        _data->attributes.add(type_id_of<Attr>(), copied_attr);
+        _data->attrs.add(std::move(attr));
         return *this;
     }
 
 private:
-    RecordData* _data;
+    RTTRRecordData* _data;
 };
-} // namespace skr::rttr
+} // namespace skr
 
 // enum
-namespace skr::rttr
+namespace skr
 {
-struct EnumItemBuilder {
-    inline EnumItemBuilder(EnumItemData* data)
+struct RTTREnumItemBuilder {
+    inline RTTREnumItemBuilder(RTTREnumItemData* data)
         : _data(data)
     {
     }
 
     // flag & attributes
-    inline EnumItemBuilder& flag(EEnumItemFlag flag)
+    inline RTTREnumItemBuilder& flag(ERTTREnumItemFlag flag)
     {
         _data->flag = flag_set(_data->flag, flag);
         return *this;
     }
-    template <std::derived_from<IAttribute> Attr>
-    inline EnumItemBuilder& attribute(Attr attr)
+    inline RTTREnumItemBuilder& attribute(Any attr)
     {
-        IAttribute* copied_attr = new Attr(std::move(attr));
-        _data->attributes.add(type_id_of<Attr>(), copied_attr);
+        _data->attrs.add(std::move(attr));
         return *this;
     }
 
 private:
-    EnumItemData* _data;
+    RTTREnumItemData* _data;
 };
 
 template <typename T>
-struct EnumBuilder {
-    inline EnumBuilder(EnumData* data)
+struct RTTREnumBuilder {
+    inline RTTREnumBuilder(RTTREnumData* data)
         : _data(data)
     {
     }
 
     // basic info
-    inline EnumBuilder& basic_info()
+    inline RTTREnumBuilder& basic_info()
     {
         // split namespace
         String             name = RTTRTraits<T>::get_name();
@@ -541,29 +536,28 @@ struct EnumBuilder {
     }
 
     // items
-    inline EnumItemBuilder item(String name, T value)
+    inline RTTREnumItemBuilder item(String name, T value)
     {
-        auto& item_data = _data->items.emplace().ref();
-        item_data.name  = std::move(name);
-        item_data.value = static_cast<std::underlying_type_t<T>>(value);
-        return { &item_data };
+        auto* item_data  = SkrNew<RTTREnumItemData>();
+        item_data->name  = std::move(name);
+        item_data->value = static_cast<std::underlying_type_t<T>>(value);
+        _data->items.add(item_data);
+        return { item_data };
     }
 
     // flag & attributes
-    inline EnumBuilder& flag(EEnumFlag flag)
+    inline RTTREnumBuilder& flag(ERTTREnumFlag flag)
     {
         _data->flag = flag_set(_data->flag, flag);
         return *this;
     }
-    template <std::derived_from<IAttribute> Attr>
-    inline EnumBuilder& attribute(Attr attr)
+    inline RTTREnumBuilder& attribute(Any attr)
     {
-        IAttribute* copied_attr = new Attr(std::move(attr));
-        _data->attributes.add(type_id_of<Attr>(), copied_attr);
+        _data->attrs.add(std::move(attr));
         return *this;
     }
 
 private:
-    EnumData* _data;
+    RTTREnumData* _data;
 };
-} // namespace skr::rttr
+} // namespace skr

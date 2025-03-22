@@ -149,7 +149,7 @@ ECGPUShaderBytecodeType SShaderResourceFactory::GetRuntimeBytecodeType(ECGPUBack
 
 skr_guid_t SShaderResourceFactoryImpl::GetResourceType()
 {
-    const auto resource_type = ::skr::rttr::type_id_of<skr_shader_collection_resource_t>();
+    const auto resource_type = ::skr::type_id_of<skr_shader_collection_resource_t>();
     return resource_type;
 }
 

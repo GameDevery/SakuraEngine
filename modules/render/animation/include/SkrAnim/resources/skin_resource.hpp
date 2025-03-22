@@ -9,8 +9,8 @@
 namespace skr::anim
 {
 
-sreflect_struct("guid" : "332C6133-7222-4B88-9B2F-E4336A46DF2C")
-sattr("serde" : "bin")
+sreflect_struct(guid = "332C6133-7222-4B88-9B2F-E4336A46DF2C")
+sattr(serde = @bin)
 SkinResource {
     skr::SerializeConstString                            name;
     skr::SerializeConstVector<skr::SerializeConstString> joint_remaps;

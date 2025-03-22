@@ -9,32 +9,32 @@
 namespace test_serde
 {
 sreflect_struct(
-    "guid": "a3847f6a-05b0-4049-a619-e687ef4bc856",
-    "serde": ["json"]
+    guid = "a3847f6a-05b0-4049-a619-e687ef4bc856"
+    serde = @json
 )
 TestJson {
     // in json: {"serde_normal": <number>}
     int32_t serde_normal;
     
     // in json: {"class": <number>}
-    sattr("serde::alias": "class")
+    sattr(serde.alias = "class")
     int32_t klass;
 
     // will not appare in json
-    sattr("serde": "disable")
+    sattr(serde = @disable)
     int32_t disabled;
 };
 
 sreflect_struct(
-    "guid": "eb2a94ea-e0f4-4b93-9d3f-17d13ea3af14",
-    "serde": ["bin"]
+    guid = "eb2a94ea-e0f4-4b93-9d3f-17d13ea3af14"
+    serde = @bin
 )
 TestBin {
     // in json: {"serde_normal": <number>}
     int32_t serde_normal;
 
     // will not appare in bin
-    sattr("serde": "disable")
+    sattr(serde = @disable)
     int32_t disabled;
 };
 } // namespace test_serde
