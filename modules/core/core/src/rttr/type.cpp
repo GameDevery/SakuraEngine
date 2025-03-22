@@ -717,8 +717,7 @@ const RTTRCtorData* RTTRType::find_copy_ctor() const
     TypeSignatureBuilder tb;
     tb.write_function_signature(1);
     tb.write_type_id(type_id_of<void>()); // return
-    tb.write_ref();
-    tb.write_const();
+    tb.write_const_ref();
     tb.write_type_id(type_id()); // param 1: const T&
     return find_ctor({ .signature = tb.type_signature_view() });
 }
@@ -729,8 +728,7 @@ const RTTRExternMethodData* RTTRType::find_assign() const
     tb.write_type_id(type_id_of<void>()); // return
     tb.write_ref();
     tb.write_type_id(type_id()); // param 1: T&
-    tb.write_ref();
-    tb.write_const();
+    tb.write_const_ref();
     tb.write_type_id(type_id()); // param 2: const T&
     return find_extern_method({ .name = { CPPExternMethods::Assign }, .signature = tb.type_signature_view() });
 }

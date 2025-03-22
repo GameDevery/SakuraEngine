@@ -1498,6 +1498,18 @@ struct TypeSignatureBuilder {
         TypeSignatureHelper::write_double(add_result.ptr(), data.end(), value);
     }
 
+    // write helpers for const ref and const pointer, to prevent mistake, because const modifier need after pointer or ref
+    inline void write_const_ref()
+    {
+        write_ref();
+        write_const();
+    }
+    inline void write_const_pointer()
+    {
+        write_pointer();
+        write_const();
+    }
+
     // make
     inline TypeSignature type_signature()
     {
