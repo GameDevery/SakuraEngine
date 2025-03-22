@@ -7,7 +7,7 @@
 typedef struct skr_config_resource_t skr_config_resource_t;
 
 #if defined(__cplusplus)
-sreflect_struct("guid" : "8F2DE9A2-FE05-4EB7-A07F-A973E3E92B74")
+sreflect_struct(guid = "8F2DE9A2-FE05-4EB7-A07F-A973E3E92B74")
 SKR_RUNTIME_API skr_config_resource_t {
     skr_guid_t configType;
     void*      configData = nullptr;

@@ -37,9 +37,9 @@ struct WindowDesc {
 
 // 设备视口，某颗 UI 树（或子树）的渲染目标，可能是物理上的窗口、RenderTarget、物理窗口的某一部分、Overlay 等等
 sreflect_interface(
-    "guid": "e46f6067-1fbe-41bf-8361-14399bc7054b"
+    guid = "e46f6067-1fbe-41bf-8361-14399bc7054b"
 )
-SKR_GUI_API INativeWindow : virtual public skr::rttr::IObject {
+SKR_GUI_API INativeWindow : virtual public skr::IObject {
     SKR_GENERATE_BODY()
 
     // init view

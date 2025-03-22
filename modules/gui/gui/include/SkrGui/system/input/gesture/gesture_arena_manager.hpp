@@ -6,7 +6,7 @@
 
 namespace skr::gui
 {
-sreflect_struct("guid": "6b1d8469-6958-4800-affa-bf1e12cd5197")
+sreflect_struct(guid = "6b1d8469-6958-4800-affa-bf1e12cd5197")
 SKR_GUI_API GestureArenaManager {
     ~GestureArenaManager();
 

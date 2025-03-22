@@ -6,7 +6,7 @@
 
 namespace skr::gui
 {
-sreflect_enum_class("guid": "64d988e6-5d8c-4418-b070-2ae6ec3ddf08")
+sreflect_enum_class(guid = "64d988e6-5d8c-4418-b070-2ae6ec3ddf08")
 GestureArenaState
 {
     Opened,   // 开启，可以向内注册手势
@@ -15,7 +15,7 @@ GestureArenaState
 };
 
 // Arena 生命周期：
-sreflect_struct("guid": "952528b4-510f-450f-81fa-cbdb3d8b2d4a")
+sreflect_struct(guid = "952528b4-510f-450f-81fa-cbdb3d8b2d4a")
 SKR_GUI_API GestureArena {
     GestureArena(CombinePointerId pointer);
 

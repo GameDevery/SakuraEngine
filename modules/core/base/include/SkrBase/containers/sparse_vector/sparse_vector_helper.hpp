@@ -13,7 +13,7 @@ inline void copy_sparse_vector_data(SparseVectorStorage<T, TS>* dst, const Spars
     using StorageType = SparseVectorStorage<T, TS>;
 
     // copy data
-    if constexpr (memory::MemoryTraits<T>::use_ctor)
+    if constexpr (::skr::memory::MemoryTraits<T>::use_ctor)
     {
         for (TS i = 0; i < size; ++i)
         {
@@ -22,7 +22,7 @@ inline void copy_sparse_vector_data(SparseVectorStorage<T, TS>* dst, const Spars
 
             if (BitAlgo::get(src_bit_data, i))
             {
-                memory::copy(&p_dst_data->_sparse_vector_data, &p_src_data->_sparse_vector_data);
+                ::skr::memory::copy(&p_dst_data->_sparse_vector_data, &p_src_data->_sparse_vector_data);
             }
             else
             {
@@ -43,7 +43,7 @@ inline void move_sparse_vector_data(SparseVectorStorage<T, TS>* dst, SparseVecto
     using StorageType = SparseVectorStorage<T, TS>;
 
     // move data
-    if constexpr (memory::MemoryTraits<T>::use_move)
+    if constexpr (::skr::memory::MemoryTraits<T>::use_move)
     {
         for (TS i = 0; i < size; ++i)
         {
@@ -51,7 +51,7 @@ inline void move_sparse_vector_data(SparseVectorStorage<T, TS>* dst, SparseVecto
             StorageType* p_src_data = src + i;
             if (BitAlgo::get(src_bit_data, i))
             {
-                memory::move(&p_dst_data->_sparse_vector_data, &p_src_data->_sparse_vector_data);
+                ::skr::memory::move(&p_dst_data->_sparse_vector_data, &p_src_data->_sparse_vector_data);
             }
             else
             {
@@ -81,13 +81,13 @@ inline void move_sparse_vector_bit_data(TBitBlock* dst, TBitBlock* src, TS size)
 template <typename T, typename TBitBlock, typename TS>
 inline void destruct_sparse_vector_data(SparseVectorStorage<T, TS>* data, const TBitBlock* bit_data, TS size) noexcept
 {
-    if constexpr (memory::MemoryTraits<T>::use_dtor)
+    if constexpr (::skr::memory::MemoryTraits<T>::use_dtor)
     {
         auto cursor = TrueBitCursor<TBitBlock, TS, true>::Begin(bit_data, size);
 
         while (!cursor.reach_end())
         {
-            memory::destruct<T>(&data[cursor.index()]._sparse_vector_data);
+            ::skr::memory::destruct<T>(&data[cursor.index()]._sparse_vector_data);
             cursor.move_next();
         }
     }

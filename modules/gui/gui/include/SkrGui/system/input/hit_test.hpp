@@ -12,7 +12,7 @@ namespace skr::gui
 struct PointerEvent;
 struct HitTestEntry;
 
-sreflect_enum_class("guid": "e59baca9-43d6-4368-869b-e122ee58d53d")
+sreflect_enum_class(guid = "e59baca9-43d6-4368-869b-e122ee58d53d")
 EHitTestBehavior : uint32_t
 {
     defer_to_child, // 如果 child hit 成功则将自身加入 hit result

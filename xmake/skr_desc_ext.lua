@@ -209,15 +209,17 @@ function skr_install_rule()
     add_rules("skr.install")
 end
 
---   kind: "download"/"files"，不同的 kind 有不同的参数
+--   kind: "download"/"files"/"custom"，不同的 kind 有不同的参数
 --   [kind = any]: 共有参数
 --     plat: filter target platform
 --     arch: filter target architecture
+--     toolchain； filter target toolchain
 --   [kind = “download"]:
 --     name: package or files name
---     install_func: "tool"/"resources"/"sdk"/"file"/nil, nil means use install.lua in package
+--     install_func: "tool"/"resources"/"sdk"/"file"/"custom"/nil, nil means use install.lua in package
 --     debug: wants download debug sdk
 --     out_dir: override output directory
+--     custom_install: if [install_func] is "custom", this function will be called
 --     after_install: function to run after install
 --   [kind = "files"]:
 --     name: install name, for solve depend
@@ -316,7 +318,7 @@ function skr_dbg_cmd_post(command)
     add_values("vsc_dbg.cmd_post", command)
 end
 
--- phony target
+-- proxy target for add launch task
 -- @build_func: function(target, out_configs)
 --  use table.insert to add values to [out_configs], config format
 --     cmd_name: str (required)
@@ -331,6 +333,15 @@ function skr_dbg_proxy_target(name, build_func)
     target(name)
         set_kind("phony")
         set_values("vsc_dbg.proxy_func", true)
+        on_build(build_func)
+    target_end()
+end
+
+-- custom target for directly add launch task
+function skr_dbg_custom_target(name, build_func)
+    target(name)
+        set_kind("phony")
+        set_values("vsc_dbg.custom_func", true)
         on_build(build_func)
     target_end()
 end

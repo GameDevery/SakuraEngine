@@ -10,8 +10,10 @@
     #include "SkrRenderer/shader_hash.generated.h" // IWYU pragma: export
 #endif
 
-sreflect_struct("guid" : "5a54720c-34b2-444c-8e3a-5977c94136c3")
-sattr("serde" : ["json", "bin"])
+sreflect_struct(
+    guid = "5a54720c-34b2-444c-8e3a-5977c94136c3";
+    serde = @bin|@json;
+)
 skr_stable_shader_hash_t {
 
     uint32_t valuea = 0;
@@ -41,8 +43,10 @@ skr_stable_shader_hash_t {
 };
 static SKR_CONSTEXPR skr_stable_shader_hash_t kZeroStableShaderHash = skr_stable_shader_hash_t();
 
-sreflect_struct("guid" : "0291f512-747e-4b64-ba5c-5fdc412220a3")
-sattr("serde" : ["json", "bin"])
+sreflect_struct(
+    guid = "0291f512-747e-4b64-ba5c-5fdc412220a3";
+    serde = @bin|@json;
+)
 skr_platform_shader_hash_t {
     uint32_t flags;
     uint32_t encoded_digits[4];
@@ -59,12 +63,14 @@ skr_platform_shader_hash_t {
 #endif
 };
 
-sreflect_struct("guid" : "b0b69898-166f-49de-a675-7b04405b98b1")
-sattr("serde" : ["json", "bin"])
+sreflect_struct(
+    guid = "b0b69898-166f-49de-a675-7b04405b98b1";
+    serde = @bin|@json;
+)
 skr_platform_shader_identifier_t {
 #ifdef __cplusplus
-    skr::StronglyEnum<ECGPUShaderBytecodeType> bytecode_type;
-    skr::StronglyEnum<ECGPUShaderStage>        shader_stage;
+    skr::EnumAsValue<ECGPUShaderBytecodeType> bytecode_type;
+    skr::EnumAsValue<ECGPUShaderStage>        shader_stage;
 #else
     ECGPUShaderBytecodeType bytecode_type;
     ECGPUShaderStage        shader_stage;

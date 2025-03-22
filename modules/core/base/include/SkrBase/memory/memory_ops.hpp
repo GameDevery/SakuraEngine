@@ -219,7 +219,7 @@ SKR_INLINE void move(Dst* dst, Src* src, size_t count)
                     new (dst) Dst(std::move(*src));
                     if constexpr (MemoryTraits<Dst, Src>::need_dtor_after_move)
                     {
-                        destruct(src);
+                        ::skr::memory::destruct(src);
                     }
 
                     ++dst;
@@ -237,7 +237,7 @@ SKR_INLINE void move(Dst* dst, Src* src, size_t count)
                     new (dst_end) Dst(std::move(*src_end));
                     if constexpr (MemoryTraits<Dst, Src>::need_dtor_after_move)
                     {
-                        destruct(src_end);
+                        ::skr::memory::destruct(src_end);
                     }
 
                     --dst_end;
@@ -266,7 +266,7 @@ SKR_INLINE void move_assign(Dst* dst, Src* src, size_t count)
                     *dst = std::move(*src);
                     if constexpr (MemoryTraits<Dst, Src>::need_dtor_after_move)
                     {
-                        destruct(src);
+                        ::skr::memory::destruct(src);
                     }
 
                     ++dst;
@@ -284,7 +284,7 @@ SKR_INLINE void move_assign(Dst* dst, Src* src, size_t count)
                     *dst_end = std::move(*src_end);
                     if constexpr (MemoryTraits<Dst, Src>::need_dtor_after_move)
                     {
-                        destruct(src_end);
+                        ::skr::memory::destruct(src_end);
                     }
 
                     --dst_end;

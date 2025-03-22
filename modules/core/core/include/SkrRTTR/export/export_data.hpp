@@ -5,18 +5,20 @@
 #include "SkrRTTR/rttr_traits.hpp"
 #include "SkrRTTR/type_signature.hpp"
 #include "SkrRTTR/enum_tools.hpp"
-#include "SkrRTTR/export/attribute.hpp"
 #include "SkrRTTR/export/dynamic_stack.hpp"
+#include <SkrRTTR/any.hpp>
 #ifndef __meta__
     #include "SkrCore/SkrRTTR/export/export_data.generated.h"
 #endif
 
 // utils
-namespace skr::rttr
+namespace skr
 {
 // basic enums
-sreflect_enum_class("guid": "26ff0860-5d65-4ece-896e-225b3c083ecb")
-EAccessLevel : uint8_t
+// clang-format off
+sreflect_enum_class(guid = "26ff0860-5d65-4ece-896e-225b3c083ecb")
+ERTTRAccessLevel : uint8_t
+// clang-format on
 {
     Public,
     Protected,
@@ -24,70 +26,94 @@ EAccessLevel : uint8_t
 };
 
 // flags
-sreflect_enum_class("guid": "3874222c-79a4-4868-b146-d90c925914e0")
-EParamFlag : uint32_t
+// clang-format off
+sreflect_enum_class(guid = "3874222c-79a4-4868-b146-d90c925914e0")
+ERTTRParamFlag : uint32_t
+// clang-format on
 {
     None = 0,      // default
     In   = 1 << 0, // is input native pointer/reference
     Out  = 1 << 1, // is output native pointer/reference
 };
-sreflect_enum_class("guid": "cf941db5-afa5-476e-9890-af836a373e73")
-EFunctionFlag : uint32_t
+// clang-format off
+sreflect_enum_class(guid = "cf941db5-afa5-476e-9890-af836a373e73")
+ERTTRFunctionFlag : uint32_t
+// clang-format on
 {
     None          = 0,      // default
     ScriptVisible = 1 << 0, // can script visit this function
 };
-sreflect_enum_class("guid": "11511355-6fac-43d6-92f0-5bf3f0963855")
-EMethodFlag : uint32_t
+// clang-format off
+sreflect_enum_class(guid = "42d77f46-f3e0-492d-b67f-f8445eff2885")
+ERTTRMethodFlag : uint32_t
+// clang-format on
 {
     None          = 0,      // default
     ScriptVisible = 1 << 0, // can script visit this method
+    ScriptMixin   = 1 << 1, // script can mixin logic into this method
 };
-sreflect_enum_class("guid": "52c78c63-9973-49f4-9118-a8b59b9ceb9e")
-EStaticMethodFlag : uint32_t
+// clang-format off
+sreflect_enum_class(guid = "52c78c63-9973-49f4-9118-a8b59b9ceb9e")
+ERTTRStaticMethodFlag : uint32_t
+// clang-format on
 {
     None          = 0,      // default
     ScriptVisible = 1 << 0, // can script visit this static method
 };
-sreflect_enum_class("guid": "f7199493-29f5-4235-86c1-13ec7541917b")
-EExternMethodFlag : uint32_t
+// clang-format off
+sreflect_enum_class(guid = "f7199493-29f5-4235-86c1-13ec7541917b")
+ERTTRExternMethodFlag : uint32_t
+// clang-format on
 {
     None          = 0,      // default
     ScriptVisible = 1 << 0, // can script visit this static method
 };
-sreflect_enum_class("guid": "2f8c20d1-34b2-4ebe-bfd6-258a9e4c0c9e")
-EFieldFlag : uint32_t
+// clang-format off
+sreflect_enum_class(guid = "2f8c20d1-34b2-4ebe-bfd6-258a9e4c0c9e")
+ERTTRFieldFlag : uint32_t
+// clang-format on
 {
     None          = 0,      // default
     ScriptVisible = 1 << 0, // can script visit this field
 };
-sreflect_enum_class("guid": "396e9de1-ce51-4a65-8e47-09525e91207f")
-EStaticFieldFlag : uint32_t
+// clang-format off
+sreflect_enum_class(guid = "396e9de1-ce51-4a65-8e47-09525e91207f")
+ERTTRStaticFieldFlag : uint32_t
+// clang-format on
 {
     None          = 0,      // default
     ScriptVisible = 1 << 0, // can script visit this static field
 };
-sreflect_enum_class("guid": "1f2aa88d-4d2f-47c0-8c97-b03cf574d673")
-ECtorFlag : uint32_t
+// clang-format off
+sreflect_enum_class(guid = "1f2aa88d-4d2f-47c0-8c97-b03cf574d673")
+ERTTRCtorFlag : uint32_t
+// clang-format on
 {
     None          = 0,
     ScriptVisible = 1 << 0, // can script visit this ctor
 };
-sreflect_enum_class("guid": "a1497c67-9865-44cb-b81d-08c4e9548ae9")
-ERecordFlag : uint32_t
+// clang-format off
+sreflect_enum_class(guid = "a1497c67-9865-44cb-b81d-08c4e9548ae9")
+ERTTRRecordFlag : uint32_t
+// clang-format on
 {
     None          = 0,      // default
     ScriptVisible = 1 << 0, // can script visit this record
     ScriptNewable = 1 << 1, // can script new this record
+    ScriptMapping = 1 << 2, // export to script use mapping mode
 };
-sreflect_enum_class("guid": "a2d04427-aa0a-43b4-9975-bc0e6b92120e")
-EEnumItemFlag : uint32_t
+// clang-format off
+sreflect_enum_class(guid = "a2d04427-aa0a-43b4-9975-bc0e6b92120e")
+ERTTREnumItemFlag : uint32_t
+// clang-format on
 {
     None          = 0,      // default
     ScriptVisible = 1 << 0, // can script visit this enum item
 };
-sreflect_enum_class("guid": "e76f7ad6-303d-4704-9065-827a7f6f270d")
-EEnumFlag : uint32_t
+// clang-format off
+sreflect_enum_class(guid = "e76f7ad6-303d-4704-9065-827a7f6f270d")
+ERTTREnumFlag : uint32_t
+// clang-format on
 {
     None          = 0,      // default
     ScriptVisible = 1 << 0, // can script visit this enum
@@ -95,39 +121,49 @@ EEnumFlag : uint32_t
 };
 
 // util data
-struct ParamData {
+struct RTTRParamData {
     using MakeDefaultFunc = void (*)(void*);
 
     // signature
-    String        name = {};
-    TypeSignature type = {};
+    uint64_t      index = 0;
+    String        name  = {};
+    TypeSignature type  = {};
     // TODO. make default 需要处理 xvalue 的 case，以及判断是否是 InitListExpr
     //       同时，需要通过是否是 ExprWithCleanups 来判断是否是 xvalue 类型的构造
     MakeDefaultFunc make_default = nullptr;
 
     // TODO. flag & Attribute
-    EParamFlag             flag = EParamFlag::None;
-    Map<GUID, IAttribute*> attributes;
+    ERTTRParamFlag flag = ERTTRParamFlag::None;
+    Vector<Any>    attrs;
 
     template <typename Arg>
-    inline static ParamData Make()
+    inline static RTTRParamData* New()
     {
-        ParamData result;
-        result.type = type_signature_of<Arg>();
+        RTTRParamData* result = SkrNew<RTTRParamData>();
+        result->type          = type_signature_of<Arg>();
         return result;
+    }
+    template <typename... Args>
+    inline static void Fill(Vector<RTTRParamData*>& out)
+    {
+        out = { RTTRParamData::New<Args>()... };
+        for (uint32_t i = 0; i < out.size(); ++i)
+        {
+            out[i]->index = i;
+        }
     }
 };
 
 // help functions
 template <typename Data>
-inline bool export_function_signature_equal(const Data& data, TypeSignature signature, ETypeSignatureCompareFlag flag)
+inline bool export_function_signature_equal(const Data& data, TypeSignatureView signature, ETypeSignatureCompareFlag flag)
 {
-    SKR_ASSERT(signature.view().is_complete());
-    SKR_ASSERT(signature.view().is_function());
+    SKR_ASSERT(signature.is_complete());
+    SKR_ASSERT(signature.is_function());
 
     // read signature data
     uint32_t param_count;
-    auto     view = signature.view().read_function_signature(param_count);
+    auto     view = signature.read_function_signature(param_count);
     if (param_count != data.param_data.size()) { return false; }
 
     // compare return type
@@ -138,205 +174,239 @@ inline bool export_function_signature_equal(const Data& data, TypeSignature sign
     for (uint32_t i = 0; i < param_count; ++i)
     {
         auto param_view = view.jump_next_type_or_data();
-        if (!data.param_data[i].type.view().equal(param_view, flag)) { return false; }
+        if (!data.param_data[i]->type.view().equal(param_view, flag)) { return false; }
     }
 
     return true;
 }
-} // namespace skr::rttr
+} // namespace skr
+
+// attributes
+namespace skr::attr
+{
+// specify property getter if script has property functional
+// use on:
+//   method
+//   static_method
+// clang-format off
+sreflect_struct(guid = "982d9f4d-1c0f-4ee2-914a-b211f7539cff")
+ScriptGetter {
+    // clang-format on
+    inline ScriptGetter(String name)
+        : prop_name(std::move(name))
+    {
+    }
+    String prop_name = {};
+};
+
+// specify property setter if script has property functionalScriptGetter
+// use on:
+//   method
+//   static_method
+// clang-format off
+sreflect_struct(guid = "ee933720-6b10-4b03-a6e7-20227e4829b2")
+ScriptSetter {
+    // clang-format on
+    inline ScriptSetter(String name)
+        : prop_name(std::move(name))
+    {
+    }
+    String prop_name = {};
+};
+} // namespace skr::attr
 
 // functions and methods
-namespace skr::rttr
+namespace skr
 {
-struct FunctionData {
+struct RTTRFunctionData {
     // signature
-    String            name       = {};
-    Vector<String>    name_space = {};
-    TypeSignature     ret_type   = {};
-    Vector<ParamData> param_data = {};
+    String                 name       = {};
+    Vector<String>         name_space = {};
+    TypeSignature          ret_type   = {};
+    Vector<RTTRParamData*> param_data = {};
 
     // [Provided by export Backend]
     void*                   native_invoke        = nullptr;
     FuncInvokerDynamicStack dynamic_stack_invoke = nullptr;
 
     // flag & attributes
-    EFunctionFlag          flag       = EFunctionFlag::None;
-    Map<GUID, IAttribute*> attributes = {};
+    ERTTRFunctionFlag flag = ERTTRFunctionFlag::None;
+    Vector<Any>       attrs;
 
-    inline ~FunctionData()
+    inline ~RTTRFunctionData()
     {
-        // delete attributes
-        for (const auto& it : attributes)
+        // delete param data
+        for (auto param : param_data)
         {
-            SkrDelete(it.value);
+            SkrDelete(param);
         }
     }
 
     template <typename Ret, typename... Args>
     inline void fill_signature(Ret (*)(Args...))
     {
-        ret_type   = type_signature_of<Ret>();
-        param_data = { ParamData::Make<Args>()... };
+        ret_type = type_signature_of<Ret>();
+        RTTRParamData::Fill<Args...>(param_data);
     }
 
-    inline bool signature_equal(TypeSignature signature, ETypeSignatureCompareFlag flag) const
+    inline bool signature_equal(TypeSignatureView signature, ETypeSignatureCompareFlag flag) const
     {
         return export_function_signature_equal(*this, signature, flag);
     }
 };
-struct MethodData {
+struct RTTRMethodData {
     // signature
-    String            name         = {};
-    TypeSignature     ret_type     = {};
-    Vector<ParamData> param_data   = {};
-    bool              is_const     = false;
-    EAccessLevel      access_level = EAccessLevel::Public;
+    String                 name         = {};
+    TypeSignature          ret_type     = {};
+    Vector<RTTRParamData*> param_data   = {};
+    bool                   is_const     = false;
+    ERTTRAccessLevel       access_level = ERTTRAccessLevel::Public;
 
     // [Provided by export Backend]
     void*                     native_invoke        = nullptr;
     MethodInvokerDynamicStack dynamic_stack_invoke = nullptr;
 
     // flag & attributes
-    EMethodFlag            flag       = EMethodFlag::None;
-    Map<GUID, IAttribute*> attributes = {};
+    ERTTRMethodFlag flag = ERTTRMethodFlag::None;
+    Vector<Any>     attrs;
 
-    inline ~MethodData()
+    inline ~RTTRMethodData()
     {
-        // delete attributes
-        for (const auto& it : attributes)
+        // delete param data
+        for (auto param : param_data)
         {
-            SkrDelete(it.value);
+            SkrDelete(param);
         }
     }
 
     template <class T, typename Ret, typename... Args>
     inline void fill_signature(Ret (T::*)(Args...))
     {
-        ret_type   = type_signature_of<Ret>();
-        param_data = { ParamData::Make<Args>()... };
-        is_const   = false;
+        ret_type = type_signature_of<Ret>();
+        RTTRParamData::Fill<Args...>(param_data);
+        is_const = false;
     }
     template <class T, typename Ret, typename... Args>
     inline void fill_signature(Ret (T::*)(Args...) const)
     {
-        ret_type   = type_signature_of<Ret>();
-        param_data = { ParamData::Make<Args>()... };
-        is_const   = true;
+        ret_type = type_signature_of<Ret>();
+        RTTRParamData::Fill<Args...>(param_data);
+        is_const = true;
     }
 
-    inline bool signature_equal(TypeSignature signature, ETypeSignatureCompareFlag flag) const
+    inline bool signature_equal(TypeSignatureView signature, ETypeSignatureCompareFlag flag) const
     {
         return export_function_signature_equal(*this, signature, flag);
     }
 };
-struct StaticMethodData {
+struct RTTRStaticMethodData {
     // signature
-    String            name         = {};
-    TypeSignature     ret_type     = {};
-    Vector<ParamData> param_data   = {};
-    EAccessLevel      access_level = EAccessLevel::Public;
+    String                 name         = {};
+    TypeSignature          ret_type     = {};
+    Vector<RTTRParamData*> param_data   = {};
+    ERTTRAccessLevel       access_level = ERTTRAccessLevel::Public;
 
     // [Provided by export Backend]
     void*                   native_invoke        = nullptr;
     FuncInvokerDynamicStack dynamic_stack_invoke = nullptr;
 
     // flag & attributes
-    EStaticMethodFlag      flag       = EStaticMethodFlag::None;
-    Map<GUID, IAttribute*> attributes = {};
+    ERTTRStaticMethodFlag flag = ERTTRStaticMethodFlag::None;
+    Vector<Any>           attrs;
 
-    inline ~StaticMethodData()
+    inline ~RTTRStaticMethodData()
     {
-        // delete attributes
-        for (const auto& it : attributes)
+        // delete param data
+        for (auto param : param_data)
         {
-            SkrDelete(it.value);
+            SkrDelete(param);
         }
     }
 
     template <typename Ret, typename... Args>
     inline void fill_signature(Ret (*)(Args...))
     {
-        ret_type   = type_signature_of<Ret>();
-        param_data = { ParamData::Make<Args>()... };
+        ret_type = type_signature_of<Ret>();
+        RTTRParamData::Fill<Args...>(param_data);
     }
 
-    inline bool signature_equal(TypeSignature signature, ETypeSignatureCompareFlag flag) const
+    inline bool signature_equal(TypeSignatureView signature, ETypeSignatureCompareFlag flag) const
     {
         return export_function_signature_equal(*this, signature, flag);
     }
 };
-struct ExternMethodData {
+struct RTTRExternMethodData {
     // signature
-    String            name         = {};
-    TypeSignature     ret_type     = {};
-    Vector<ParamData> param_data   = {};
-    EAccessLevel      access_level = EAccessLevel::Public;
+    String                 name         = {};
+    TypeSignature          ret_type     = {};
+    Vector<RTTRParamData*> param_data   = {};
+    ERTTRAccessLevel       access_level = ERTTRAccessLevel::Public;
 
     // [Provided by export Backend]
     void*                   native_invoke        = nullptr;
     FuncInvokerDynamicStack dynamic_stack_invoke = nullptr;
 
     // flag & attributes
-    EExternMethodFlag      flag       = EExternMethodFlag::None;
-    Map<GUID, IAttribute*> attributes = {};
+    ERTTRExternMethodFlag flag = ERTTRExternMethodFlag::None;
+    Vector<Any>           attrs;
 
-    inline ~ExternMethodData()
+    inline ~RTTRExternMethodData()
     {
-        // delete attributes
-        for (const auto& it : attributes)
+        // delete param data
+        for (auto param : param_data)
         {
-            SkrDelete(it.value);
+            SkrDelete(param);
         }
     }
 
     template <typename Ret, typename... Args>
     inline void fill_signature(Ret (*)(Args...))
     {
-        ret_type   = type_signature_of<Ret>();
-        param_data = { ParamData::Make<Args>()... };
+        ret_type = type_signature_of<Ret>();
+        RTTRParamData::Fill<Args...>(param_data);
     }
 
-    inline bool signature_equal(TypeSignature signature, ETypeSignatureCompareFlag flag) const
+    inline bool signature_equal(TypeSignatureView signature, ETypeSignatureCompareFlag flag) const
     {
         return export_function_signature_equal(*this, signature, flag);
     }
 };
-struct CtorData {
+struct RTTRCtorData {
     // signature
-    Vector<ParamData> param_data   = {};
-    EAccessLevel      access_level = EAccessLevel::Public;
+    Vector<RTTRParamData*> param_data   = {};
+    ERTTRAccessLevel       access_level = ERTTRAccessLevel::Public;
 
     // [Provided by export Backend]
     void*                     native_invoke        = nullptr;
     MethodInvokerDynamicStack dynamic_stack_invoke = nullptr;
 
     // flag & attributes
-    ECtorFlag              flag       = ECtorFlag::None;
-    Map<GUID, IAttribute*> attributes = {};
+    ERTTRCtorFlag flag = ERTTRCtorFlag::None;
+    Vector<Any>   attrs;
 
-    inline ~CtorData()
+    inline ~RTTRCtorData()
     {
-        // delete attributes
-        for (const auto& it : attributes)
+        // delete param data
+        for (auto param : param_data)
         {
-            SkrDelete(it.value);
+            SkrDelete(param);
         }
     }
 
     template <typename... Args>
     inline void fill_signature()
     {
-        param_data = { ParamData::Make<Args>()... };
+        RTTRParamData::Fill<Args...>(param_data);
     }
 
-    inline bool signature_equal(TypeSignature signature, ETypeSignatureCompareFlag flag) const
+    inline bool signature_equal(TypeSignatureView signature, ETypeSignatureCompareFlag flag) const
     {
-        SKR_ASSERT(signature.view().is_complete());
-        SKR_ASSERT(signature.view().is_function());
+        SKR_ASSERT(signature.is_complete());
+        SKR_ASSERT(signature.is_function());
 
         // read signature data
         uint32_t param_count;
-        auto     view = signature.view().read_function_signature(param_count);
+        auto     view = signature.read_function_signature(param_count);
         if (param_count != param_data.size()) { return false; }
 
         // compare return type
@@ -348,37 +418,32 @@ struct CtorData {
         for (uint32_t i = 0; i < param_count; ++i)
         {
             auto param_view = view.jump_next_type_or_data();
-            if (!param_data[i].type.view().equal(param_view, flag)) { return false; }
+            if (!param_data[i]->type.view().equal(param_view, flag)) { return false; }
         }
 
         return true;
     }
 };
-} // namespace skr::rttr
+} // namespace skr
 
 // fields
-namespace skr::rttr
+namespace skr
 {
-struct FieldData {
+struct RTTRFieldData {
     using GetAddressFunc = void* (*)(void*);
 
     // signature
-    String         name         = {};
-    TypeSignature  type         = {};
-    GetAddressFunc get_address  = nullptr;
-    EAccessLevel   access_level = EAccessLevel::Public;
+    String           name         = {};
+    TypeSignature    type         = {};
+    GetAddressFunc   get_address  = nullptr;
+    ERTTRAccessLevel access_level = ERTTRAccessLevel::Public;
 
     // flag & attributes
-    EFieldFlag             flag       = EFieldFlag::None;
-    Map<GUID, IAttribute*> attributes = {};
+    ERTTRFieldFlag flag = ERTTRFieldFlag::None;
+    Vector<Any>    attrs;
 
-    inline ~FieldData()
+    inline ~RTTRFieldData()
     {
-        // delete attributes
-        for (const auto& it : attributes)
-        {
-            SkrDelete(it.value);
-        }
     }
 
     template <auto field, class T, typename Field>
@@ -390,24 +455,19 @@ struct FieldData {
         };
     }
 };
-struct StaticFieldData {
+struct RTTRStaticFieldData {
     // signature
-    String        name         = {};
-    TypeSignature type         = {};
-    void*         address      = nullptr;
-    EAccessLevel  access_level = EAccessLevel::Public;
+    String           name         = {};
+    TypeSignature    type         = {};
+    void*            address      = nullptr;
+    ERTTRAccessLevel access_level = ERTTRAccessLevel::Public;
 
     // flag & attributes
-    EStaticFieldFlag       flag       = EStaticFieldFlag::None;
-    Map<GUID, IAttribute*> attributes = {};
+    ERTTRStaticFieldFlag flag = ERTTRStaticFieldFlag::None;
+    Vector<Any>          attrs;
 
-    inline ~StaticFieldData()
+    inline ~RTTRStaticFieldData()
     {
-        // delete attributes
-        for (const auto& it : attributes)
-        {
-            SkrDelete(it.value);
-        }
     }
 
     template <typename T>
@@ -416,45 +476,36 @@ struct StaticFieldData {
         type = type_signature_of<T>();
     }
 };
-} // namespace skr::rttr
+} // namespace skr
 
 // record
-namespace skr::rttr
+namespace skr
 {
-struct BaseData {
+struct RTTRBaseData {
     using CastFunc = void* (*)(void*);
 
     GUID     type_id;
-    CastFunc cast_to_base; // cast_to_derived 正向转换在虚继承的情况下会报错，尽量避免这类需求
+    CastFunc cast_to_base;
 
     template <typename T, typename Base>
-    inline static BaseData Make()
+    inline static RTTRBaseData* New()
     {
-        return {
+        return SkrNew<RTTRBaseData>(
             RTTRTraits<Base>::get_guid(),
             +[](void* p) -> void* {
                 return static_cast<Base*>(reinterpret_cast<T*>(p));
             }
-        };
-    }
-    template <typename T, typename Base>
-    inline static BaseData* New()
-    {
-        return SkrNew<BaseData>(
-        RTTRTraits<Base>::get_guid(),
-        +[](void* p) -> void* {
-            return static_cast<Base*>(reinterpret_cast<T*>(p));
-        });
+        );
     }
 };
 using DtorInvoker = void (*)(void*);
-struct DtorData {
-    EAccessLevel access_level;
+struct RTTRDtorData {
+    ERTTRAccessLevel access_level;
 
     // [Provided by export Backend]
     DtorInvoker native_invoke;
 };
-struct RecordData {
+struct RTTRRecordData {
     // basic
     String         name       = {};
     Vector<String> name_space = {};
@@ -463,28 +514,28 @@ struct RecordData {
     size_t         alignment  = 0;
 
     // bases
-    Vector<BaseData*> bases_data = {};
+    Vector<RTTRBaseData*> bases_data = {};
 
     // ctor & dtor
-    Vector<CtorData*> ctor_data = {};
-    DtorData          dtor_data = {};
+    Vector<RTTRCtorData*> ctor_data = {};
+    RTTRDtorData          dtor_data = {};
 
     // method & fields
-    Vector<MethodData*> methods = {};
-    Vector<FieldData*>  fields  = {};
+    Vector<RTTRMethodData*> methods = {};
+    Vector<RTTRFieldData*>  fields  = {};
 
     // static method & static fields
-    Vector<StaticMethodData*> static_methods = {};
-    Vector<StaticFieldData*>  static_fields  = {};
+    Vector<RTTRStaticMethodData*> static_methods = {};
+    Vector<RTTRStaticFieldData*>  static_fields  = {};
 
     // extern method
-    Vector<ExternMethodData*> extern_methods = {};
+    Vector<RTTRExternMethodData*> extern_methods = {};
 
     // flag & attributes
-    ERecordFlag            flag       = ERecordFlag::None;
-    Map<GUID, IAttribute*> attributes = {};
+    ERTTRRecordFlag flag = ERTTRRecordFlag::None;
+    Vector<Any>     attrs;
 
-    inline ~RecordData()
+    inline ~RTTRRecordData()
     {
         // delete bases
         for (auto base : bases_data)
@@ -523,119 +574,26 @@ struct RecordData {
         {
             SkrDelete(method);
         }
-
-        // delete attributes
-        for (const auto& it : attributes)
-        {
-            SkrDelete(it.value);
-        }
-    }
-
-    // signature find
-    inline const CtorData* find_ctor(TypeSignatureView signature, ETypeSignatureCompareFlag flag) const
-    {
-        return ctor_data.find_if([&](CtorData* ctor) {
-                            return ctor->signature_equal(signature, flag);
-                        })
-        .ref();
-    }
-    inline const MethodData* find_method(TypeSignatureView signature, StringView name, ETypeSignatureCompareFlag flag) const
-    {
-        return methods.find_if([&](MethodData* method) {
-                          return method->name == name && method->signature_equal(signature, flag);
-                      })
-        .ref();
-    }
-    inline const FieldData* find_field(TypeSignatureView signature, StringView name, ETypeSignatureCompareFlag flag) const
-    {
-        return fields.find_if([&](FieldData* field) {
-                         return field->name == name && field->type.view().equal(signature, flag);
-                     })
-        .ref();
-    }
-    inline const StaticMethodData* find_static_method(TypeSignatureView signature, StringView name, ETypeSignatureCompareFlag flag) const
-    {
-        return static_methods.find_if([&](StaticMethodData* method) {
-                                 return method->name == name && method->signature_equal(signature, flag);
-                             })
-        .ref();
-    }
-    inline const StaticFieldData* find_static_field(TypeSignatureView signature, StringView name, ETypeSignatureCompareFlag flag) const
-    {
-        return static_fields.find_if([&](StaticFieldData* field) {
-                                return field->name == name && field->type.view().equal(signature, flag);
-                            })
-        .ref();
-    }
-    inline const ExternMethodData* find_extern_method(TypeSignatureView signature, StringView name, ETypeSignatureCompareFlag flag) const
-    {
-        return extern_methods.find_if([&](ExternMethodData* method) {
-                                 return method->name == name && method->signature_equal(signature, flag);
-                             })
-        .ref();
-    }
-
-    // template find
-    template <typename Func>
-    inline const CtorData* find_ctor(ETypeSignatureCompareFlag flag) const
-    {
-        TypeSignatureTyped<Func> signature;
-        return find_ctor(signature.view(), flag);
-    }
-    template <typename Func>
-    inline const MethodData* find_method(StringView name, ETypeSignatureCompareFlag flag) const
-    {
-        TypeSignatureTyped<Func> signature;
-        return find_method(signature.view(), name, flag);
-    }
-    template <typename Func>
-    inline const StaticMethodData* find_static_method(StringView name, ETypeSignatureCompareFlag flag) const
-    {
-        TypeSignatureTyped<Func> signature;
-        return find_static_method(signature.view(), name, flag);
-    }
-    template <typename Func>
-    inline Optional<const ExternMethodData*> find_extern_method(StringView name, ETypeSignatureCompareFlag flag) const
-    {
-        TypeSignatureTyped<Func> signature;
-        return find_extern_method(signature.view(), name, flag);
-    }
-    template <typename Field>
-    inline const FieldData* find_field(StringView name, ETypeSignatureCompareFlag flag) const
-    {
-        TypeSignatureTyped<Field> signature;
-        return find_field(signature.view(), name, flag);
-    }
-    template <typename Field>
-    inline const StaticFieldData* find_static_field(StringView name, ETypeSignatureCompareFlag flag) const
-    {
-        TypeSignatureTyped<Field> signature;
-        return find_static_field(signature.view(), name, flag);
     }
 };
-} // namespace skr::rttr
+} // namespace skr
 
 // enum
-namespace skr::rttr
+namespace skr
 {
-struct EnumItemData {
+struct RTTREnumItemData {
     String    name  = {};
     EnumValue value = {};
 
     // flag & attributes
-    EEnumItemFlag          flag       = EEnumItemFlag::None;
-    Map<GUID, IAttribute*> attributes = {};
+    ERTTREnumItemFlag flag = ERTTREnumItemFlag::None;
+    Vector<Any>       attrs;
 
-    inline ~EnumItemData()
+    inline ~RTTREnumItemData()
     {
-        // delete attributes
-        for (const auto& it : attributes)
-        {
-            SkrDelete(it.value);
-        }
     }
 };
-struct EnumData {
+struct RTTREnumData {
     // basic
     String         name       = {};
     Vector<String> name_space = {};
@@ -647,47 +605,36 @@ struct EnumData {
     GUID underlying_type_id = {};
 
     // items
-    Vector<EnumItemData> items = {};
+    Vector<RTTREnumItemData*> items = {};
 
     // extern method
-    Vector<ExternMethodData> extern_methods = {};
+    Vector<RTTRExternMethodData*> extern_methods = {};
 
     // flag & attributes
-    EEnumFlag              flag       = EEnumFlag::None;
-    Map<GUID, IAttribute*> attributes = {};
+    ERTTREnumFlag flag = ERTTREnumFlag::None;
+    Vector<Any>   attrs;
 
-    inline ~EnumData()
+    inline ~RTTREnumData()
     {
-        // delete attributes
-        for (const auto& it : attributes)
+        // delete items
+        for (auto item : items)
         {
-            SkrDelete(it.value);
+            SkrDelete(item);
+        }
+
+        // delete extern methods
+        for (auto method : extern_methods)
+        {
+            SkrDelete(method);
         }
     }
-
-    // signature find
-    inline const ExternMethodData* find_extern_method(TypeSignatureView signature, StringView name, ETypeSignatureCompareFlag flag) const
-    {
-        return extern_methods.find_if([&](const ExternMethodData& method) {
-                                 return method.name == name && method.signature_equal(signature, flag);
-                             })
-        .ptr();
-    }
-
-    // template find
-    template <typename Func>
-    inline Optional<const ExternMethodData*> find_extern_method(StringView name, ETypeSignatureCompareFlag flag) const
-    {
-        TypeSignatureTyped<Func> signature;
-        return find_extern_method(signature.view(), name, flag);
-    }
 };
-} // namespace skr::rttr
+} // namespace skr
 
 // primitive data
-namespace skr::rttr
+namespace skr
 {
-struct PrimitiveData {
+struct RTTRPrimitiveData {
     // basic
     String name;
     GUID   type_id;
@@ -695,23 +642,15 @@ struct PrimitiveData {
     size_t alignment;
 
     // extern method
-    Vector<ExternMethodData> extern_methods;
+    Vector<RTTRExternMethodData*> extern_methods;
 
-    // signature find
-    inline const ExternMethodData* find_extern_method(TypeSignatureView signature, StringView name, ETypeSignatureCompareFlag flag) const
+    inline ~RTTRPrimitiveData()
     {
-        return extern_methods.find_if([&](const ExternMethodData& method) {
-                                 return method.name == name && method.signature_equal(signature, flag);
-                             })
-        .ptr();
-    }
-
-    // template find
-    template <typename Func>
-    inline const ExternMethodData* find_extern_method(StringView name, ETypeSignatureCompareFlag flag) const
-    {
-        TypeSignatureTyped<Func> signature;
-        return find_extern_method(signature.view(), name, flag);
+        // delete extern methods
+        for (auto method : extern_methods)
+        {
+            SkrDelete(method);
+        }
     }
 };
-} // namespace skr::rttr
+} // namespace skr

@@ -13,23 +13,21 @@ namespace resource
 bool SResourceFactory::Deserialize(skr_resource_record_t* record, SBinaryReader* reader)
 {
     // TODO. resume rttr
-    if (auto type = skr::rttr::get_type_from_guid(record->header.type))
+    if (auto type = skr::get_type_from_guid(record->header.type))
     {
         auto p_obj = sakura_malloc_aligned(type->size(), type->alignment());
         // find & call ctor
         {
-            auto ctor_data = type->record_data().find_ctor<void()>(
-                skr::rttr::ETypeSignatureCompareFlag::Strict
-            );
+            auto ctor_data = type->find_default_ctor();
             auto ctor = reinterpret_cast<void(*)(void*)>(ctor_data->native_invoke);
             ctor(p_obj);
         }
         {
             using ReadBinProc = bool(void* o, void* r);
-            auto read_bin_data = type->record_data().find_extern_method<ReadBinProc>(
-                skr::rttr::SkrCoreExternMethods::ReadBin,
-                rttr::ETypeSignatureCompareFlag::Strict
-            ).value();
+            auto read_bin_data = type->find_extern_method_t<ReadBinProc>(
+                skr::SkrCoreExternMethods::ReadBin,
+                ETypeSignatureCompareFlag::Strict
+            );
             auto read_bin = reinterpret_cast<ReadBinProc*>(read_bin_data->native_invoke);
             if (!read_bin(p_obj, reader))
             {

@@ -1,9 +1,10 @@
 #pragma once
 #include "SkrBase/misc/integer_tools.hpp"
 #include "SkrContainersDef/skr_allocator.hpp"
+#include "SkrContainersDef/vector.hpp"
 #include "SkrRTTR/rttr_traits.hpp"
 
-namespace skr::rttr
+namespace skr
 {
 // 每个标记后都会跟上相应的数据，一般结构为：
 //  1. 非泛型情况 [modifiers...] [type_id], 必然以 type_id 结束，数据段到 type_id 为止
@@ -47,48 +48,48 @@ inline constexpr size_t get_type_signature_size_of_signal(ETypeSignatureSignal s
 {
     switch (signal)
     {
-        // mark
-        case ETypeSignatureSignal::None:
-            return sizeof(ETypeSignatureSignal);
-        // type info
-        case ETypeSignatureSignal::TypeId:
-            return sizeof(ETypeSignatureSignal) + sizeof(GUID);
-        case ETypeSignatureSignal::GenericTypeId:
-            return sizeof(ETypeSignatureSignal) + sizeof(GUID) + sizeof(uint32_t);
-        case ETypeSignatureSignal::FunctionSignature:
-            return sizeof(ETypeSignatureSignal) + sizeof(uint32_t);
-        // modifier
-        case ETypeSignatureSignal::Const:
-        case ETypeSignatureSignal::Pointer:
-        case ETypeSignatureSignal::Ref:
-        case ETypeSignatureSignal::RValueRef:
-            return sizeof(ETypeSignatureSignal);
-        // array dim
-        case ETypeSignatureSignal::ArrayDim:
-            return sizeof(ETypeSignatureSignal) + sizeof(uint32_t);
-        // data
-        case ETypeSignatureSignal::Bool:
-            return sizeof(ETypeSignatureSignal) + sizeof(bool);
-        case ETypeSignatureSignal::Int8:
-            return sizeof(ETypeSignatureSignal) + sizeof(int8_t);
-        case ETypeSignatureSignal::Int16:
-            return sizeof(ETypeSignatureSignal) + sizeof(int16_t);
-        case ETypeSignatureSignal::Int32:
-            return sizeof(ETypeSignatureSignal) + sizeof(int32_t);
-        case ETypeSignatureSignal::Int64:
-            return sizeof(ETypeSignatureSignal) + sizeof(int64_t);
-        case ETypeSignatureSignal::UInt8:
-            return sizeof(ETypeSignatureSignal) + sizeof(uint8_t);
-        case ETypeSignatureSignal::UInt16:
-            return sizeof(ETypeSignatureSignal) + sizeof(uint16_t);
-        case ETypeSignatureSignal::UInt32:
-            return sizeof(ETypeSignatureSignal) + sizeof(uint32_t);
-        case ETypeSignatureSignal::UInt64:
-            return sizeof(ETypeSignatureSignal) + sizeof(uint64_t);
-        case ETypeSignatureSignal::Float:
-            return sizeof(ETypeSignatureSignal) + sizeof(float);
-        case ETypeSignatureSignal::Double:
-            return sizeof(ETypeSignatureSignal) + sizeof(double);
+    // mark
+    case ETypeSignatureSignal::None:
+        return sizeof(ETypeSignatureSignal);
+    // type info
+    case ETypeSignatureSignal::TypeId:
+        return sizeof(ETypeSignatureSignal) + sizeof(GUID);
+    case ETypeSignatureSignal::GenericTypeId:
+        return sizeof(ETypeSignatureSignal) + sizeof(GUID) + sizeof(uint32_t);
+    case ETypeSignatureSignal::FunctionSignature:
+        return sizeof(ETypeSignatureSignal) + sizeof(uint32_t);
+    // modifier
+    case ETypeSignatureSignal::Const:
+    case ETypeSignatureSignal::Pointer:
+    case ETypeSignatureSignal::Ref:
+    case ETypeSignatureSignal::RValueRef:
+        return sizeof(ETypeSignatureSignal);
+    // array dim
+    case ETypeSignatureSignal::ArrayDim:
+        return sizeof(ETypeSignatureSignal) + sizeof(uint32_t);
+    // data
+    case ETypeSignatureSignal::Bool:
+        return sizeof(ETypeSignatureSignal) + sizeof(bool);
+    case ETypeSignatureSignal::Int8:
+        return sizeof(ETypeSignatureSignal) + sizeof(int8_t);
+    case ETypeSignatureSignal::Int16:
+        return sizeof(ETypeSignatureSignal) + sizeof(int16_t);
+    case ETypeSignatureSignal::Int32:
+        return sizeof(ETypeSignatureSignal) + sizeof(int32_t);
+    case ETypeSignatureSignal::Int64:
+        return sizeof(ETypeSignatureSignal) + sizeof(int64_t);
+    case ETypeSignatureSignal::UInt8:
+        return sizeof(ETypeSignatureSignal) + sizeof(uint8_t);
+    case ETypeSignatureSignal::UInt16:
+        return sizeof(ETypeSignatureSignal) + sizeof(uint16_t);
+    case ETypeSignatureSignal::UInt32:
+        return sizeof(ETypeSignatureSignal) + sizeof(uint32_t);
+    case ETypeSignatureSignal::UInt64:
+        return sizeof(ETypeSignatureSignal) + sizeof(uint64_t);
+    case ETypeSignatureSignal::Float:
+        return sizeof(ETypeSignatureSignal) + sizeof(float);
+    case ETypeSignatureSignal::Double:
+        return sizeof(ETypeSignatureSignal) + sizeof(double);
     }
     SKR_UNREACHABLE_CODE()
     return SIZE_MAX;
@@ -147,34 +148,34 @@ struct TypeSignatureHelper {
     {
         switch (signal)
         {
-            case ETypeSignatureSignal::Const:
-            case ETypeSignatureSignal::Pointer:
-            case ETypeSignatureSignal::Ref:
-            case ETypeSignatureSignal::RValueRef:
-            case ETypeSignatureSignal::ArrayDim:
-                return true;
-            default:
-                return false;
+        case ETypeSignatureSignal::Const:
+        case ETypeSignatureSignal::Pointer:
+        case ETypeSignatureSignal::Ref:
+        case ETypeSignatureSignal::RValueRef:
+        case ETypeSignatureSignal::ArrayDim:
+            return true;
+        default:
+            return false;
         }
     }
     inline static bool is_data(ETypeSignatureSignal signal)
     {
         switch (signal)
         {
-            case ETypeSignatureSignal::Bool:
-            case ETypeSignatureSignal::Int8:
-            case ETypeSignatureSignal::Int16:
-            case ETypeSignatureSignal::Int32:
-            case ETypeSignatureSignal::Int64:
-            case ETypeSignatureSignal::UInt8:
-            case ETypeSignatureSignal::UInt16:
-            case ETypeSignatureSignal::UInt32:
-            case ETypeSignatureSignal::UInt64:
-            case ETypeSignatureSignal::Float:
-            case ETypeSignatureSignal::Double:
-                return true;
-            default:
-                return false;
+        case ETypeSignatureSignal::Bool:
+        case ETypeSignatureSignal::Int8:
+        case ETypeSignatureSignal::Int16:
+        case ETypeSignatureSignal::Int32:
+        case ETypeSignatureSignal::Int64:
+        case ETypeSignatureSignal::UInt8:
+        case ETypeSignatureSignal::UInt16:
+        case ETypeSignatureSignal::UInt32:
+        case ETypeSignatureSignal::UInt64:
+        case ETypeSignatureSignal::Float:
+        case ETypeSignatureSignal::Double:
+            return true;
+        default:
+            return false;
         }
     }
     inline static bool is_reach_end(const uint8_t* pos, const uint8_t* end)
@@ -215,35 +216,35 @@ struct TypeSignatureHelper {
         auto signal = peek_signal(pos, end);
         switch (signal)
         {
-            case ETypeSignatureSignal::TypeId: {
-                pos = jump_next_data(pos, end);
-                break;
+        case ETypeSignatureSignal::TypeId: {
+            pos = jump_next_data(pos, end);
+            break;
+        }
+        case ETypeSignatureSignal::GenericTypeId: {
+            pos += sizeof(ETypeSignatureSignal) + sizeof(GUID);
+            uint32_t data_count;
+            pos = read_buffer(pos, data_count);
+            for (uint32_t i = 0; i < data_count; ++i)
+            {
+                pos = jump_next_type_or_data(pos, end);
             }
-            case ETypeSignatureSignal::GenericTypeId: {
-                pos += sizeof(ETypeSignatureSignal) + sizeof(GUID);
-                uint32_t data_count;
-                pos = read_buffer(pos, data_count);
-                for (uint32_t i = 0; i < data_count; ++i)
-                {
-                    pos = jump_next_type_or_data(pos, end);
-                }
-                break;
+            break;
+        }
+        case ETypeSignatureSignal::FunctionSignature: {
+            pos += sizeof(ETypeSignatureSignal);
+            uint32_t param_count;
+            pos = read_buffer(pos, param_count);
+            for (uint32_t i = 0; i < param_count + 1; ++i)
+            {
+                pos = jump_next_type_or_data(pos, end);
             }
-            case ETypeSignatureSignal::FunctionSignature: {
-                pos += sizeof(ETypeSignatureSignal);
-                uint32_t param_count;
-                pos = read_buffer(pos, param_count);
-                for (uint32_t i = 0; i < param_count + 1; ++i)
-                {
-                    pos = jump_next_type_or_data(pos, end);
-                }
-                break;
-            }
-            default:
-                // after modifiers, only type signal is valid
-                // data signal only appears after generic type signal
-                // None signal only appears at the end, after type signal
-                SKR_UNREACHABLE_CODE()
+            break;
+        }
+        default:
+            // after modifiers, only type signal is valid
+            // data signal only appears after generic type signal
+            // None signal only appears at the end, after type signal
+            SKR_UNREACHABLE_CODE()
         }
         return pos;
     }
@@ -265,20 +266,20 @@ struct TypeSignatureHelper {
         auto signal = peek_signal(pos, end);
         switch (signal)
         {
-            case ETypeSignatureSignal::TypeId: {
-                pos = jump_next_type_or_data(pos, end);
-                return is_reach_end(pos, end) ? ETypeSignatureSignal::TypeId : ETypeSignatureSignal::None;
-            }
-            case ETypeSignatureSignal::GenericTypeId: {
-                pos = jump_next_type_or_data(pos, end);
-                return is_reach_end(pos, end) ? ETypeSignatureSignal::GenericTypeId : ETypeSignatureSignal::None;
-            }
-            case ETypeSignatureSignal::FunctionSignature: {
-                pos = jump_next_type_or_data(pos, end);
-                return is_reach_end(pos, end) ? ETypeSignatureSignal::FunctionSignature : ETypeSignatureSignal::None;
-            }
-            default:
-                return ETypeSignatureSignal::None;
+        case ETypeSignatureSignal::TypeId: {
+            pos = jump_next_type_or_data(pos, end);
+            return is_reach_end(pos, end) ? ETypeSignatureSignal::TypeId : ETypeSignatureSignal::None;
+        }
+        case ETypeSignatureSignal::GenericTypeId: {
+            pos = jump_next_type_or_data(pos, end);
+            return is_reach_end(pos, end) ? ETypeSignatureSignal::GenericTypeId : ETypeSignatureSignal::None;
+        }
+        case ETypeSignatureSignal::FunctionSignature: {
+            pos = jump_next_type_or_data(pos, end);
+            return is_reach_end(pos, end) ? ETypeSignatureSignal::FunctionSignature : ETypeSignatureSignal::None;
+        }
+        default:
+            return ETypeSignatureSignal::None;
         }
     }
 #pragma endregion
@@ -551,11 +552,12 @@ struct TypeSignatureHelper {
 
 #pragma region OPERATOR
     inline static bool signal_equal(
-    const uint8_t*&           lhs,
-    const uint8_t*            lhs_end,
-    const uint8_t*&           rhs,
-    const uint8_t*            rhs_end,
-    ETypeSignatureCompareFlag flag)
+        const uint8_t*&           lhs,
+        const uint8_t*            lhs_end,
+        const uint8_t*&           rhs,
+        const uint8_t*            rhs_end,
+        ETypeSignatureCompareFlag flag
+    )
     {
         SKR_ASSERT(has_enough_buffer(lhs, lhs_end, peek_signal(lhs, lhs_end)));
         SKR_ASSERT(has_enough_buffer(rhs, rhs_end, peek_signal(rhs, rhs_end)));
@@ -592,125 +594,126 @@ struct TypeSignatureHelper {
         {
             switch (lhs_signal)
             {
-                case ETypeSignatureSignal::TypeId: {
-                    GUID lhs_guid;
-                    GUID rhs_guid;
-                    lhs = read_type_id(lhs, lhs_end, lhs_guid);
-                    rhs = read_type_id(rhs, rhs_end, rhs_guid);
-                    return lhs_guid == rhs_guid;
-                }
-                case ETypeSignatureSignal::GenericTypeId: {
-                    GUID     lhs_guid, rhs_guid;
-                    uint32_t lhs_count, rhs_count;
-                    lhs = read_generic_type_id(lhs, lhs_end, lhs_guid, lhs_count);
-                    rhs = read_generic_type_id(rhs, rhs_end, rhs_guid, rhs_count);
-                    return lhs_guid == rhs_guid && lhs_count == rhs_count;
-                }
-                case ETypeSignatureSignal::FunctionSignature: {
-                    uint32_t lhs_count;
-                    uint32_t rhs_count;
-                    lhs = read_function_signature(lhs, lhs_end, lhs_count);
-                    rhs = read_function_signature(rhs, rhs_end, rhs_count);
-                    return lhs_count == rhs_count;
-                }
-                case ETypeSignatureSignal::ArrayDim: {
-                    uint32_t lhs_dim;
-                    uint32_t rhs_dim;
-                    lhs = read_array_dim(lhs, lhs_end, lhs_dim);
-                    rhs = read_array_dim(rhs, rhs_end, rhs_dim);
-                    return lhs_dim == rhs_dim;
-                }
-                case ETypeSignatureSignal::Bool: {
-                    bool lhs_value;
-                    bool rhs_value;
-                    lhs = read_bool(lhs, lhs_end, lhs_value);
-                    rhs = read_bool(rhs, rhs_end, rhs_value);
-                    return lhs_value == rhs_value;
-                }
-                case ETypeSignatureSignal::Int8: {
-                    int8_t lhs_value;
-                    int8_t rhs_value;
-                    lhs = read_int8(lhs, lhs_end, lhs_value);
-                    rhs = read_int8(rhs, rhs_end, rhs_value);
-                    return lhs_value == rhs_value;
-                }
-                case ETypeSignatureSignal::Int16: {
-                    int16_t lhs_value;
-                    int16_t rhs_value;
-                    lhs = read_int16(lhs, lhs_end, lhs_value);
-                    rhs = read_int16(rhs, rhs_end, rhs_value);
-                    return lhs_value == rhs_value;
-                }
-                case ETypeSignatureSignal::Int32: {
-                    int32_t lhs_value;
-                    int32_t rhs_value;
-                    lhs = read_int32(lhs, lhs_end, lhs_value);
-                    rhs = read_int32(rhs, rhs_end, rhs_value);
-                    return lhs_value == rhs_value;
-                }
-                case ETypeSignatureSignal::Int64: {
-                    int64_t lhs_value;
-                    int64_t rhs_value;
-                    lhs = read_int64(lhs, lhs_end, lhs_value);
-                    rhs = read_int64(rhs, rhs_end, rhs_value);
-                    return lhs_value == rhs_value;
-                }
-                case ETypeSignatureSignal::UInt8: {
-                    uint8_t lhs_value;
-                    uint8_t rhs_value;
-                    lhs = read_uint8(lhs, lhs_end, lhs_value);
-                    rhs = read_uint8(rhs, rhs_end, rhs_value);
-                    return lhs_value == rhs_value;
-                }
-                case ETypeSignatureSignal::UInt16: {
-                    uint16_t lhs_value;
-                    uint16_t rhs_value;
-                    lhs = read_uint16(lhs, lhs_end, lhs_value);
-                    rhs = read_uint16(rhs, rhs_end, rhs_value);
-                    return lhs_value == rhs_value;
-                }
-                case ETypeSignatureSignal::UInt32: {
-                    uint32_t lhs_value;
-                    uint32_t rhs_value;
-                    lhs = read_uint32(lhs, lhs_end, lhs_value);
-                    rhs = read_uint32(rhs, rhs_end, rhs_value);
-                    return lhs_value == rhs_value;
-                }
-                case ETypeSignatureSignal::UInt64: {
-                    uint64_t lhs_value;
-                    uint64_t rhs_value;
-                    lhs = read_uint64(lhs, lhs_end, lhs_value);
-                    rhs = read_uint64(rhs, rhs_end, rhs_value);
-                    return lhs_value == rhs_value;
-                }
-                case ETypeSignatureSignal::Float: {
-                    float lhs_value;
-                    float rhs_value;
-                    lhs = read_float(lhs, lhs_end, lhs_value);
-                    rhs = read_float(rhs, rhs_end, rhs_value);
-                    return lhs_value == rhs_value;
-                }
-                case ETypeSignatureSignal::Double: {
-                    double lhs_value;
-                    double rhs_value;
-                    lhs = read_double(lhs, lhs_end, lhs_value);
-                    rhs = read_double(rhs, rhs_end, rhs_value);
-                    return lhs_value == rhs_value;
-                }
-                default: {
-                    lhs = jump_signal(lhs, lhs_end);
-                    rhs = jump_signal(rhs, rhs_end);
-                    return true;
-                }
+            case ETypeSignatureSignal::TypeId: {
+                GUID lhs_guid;
+                GUID rhs_guid;
+                lhs = read_type_id(lhs, lhs_end, lhs_guid);
+                rhs = read_type_id(rhs, rhs_end, rhs_guid);
+                return lhs_guid == rhs_guid;
+            }
+            case ETypeSignatureSignal::GenericTypeId: {
+                GUID     lhs_guid, rhs_guid;
+                uint32_t lhs_count, rhs_count;
+                lhs = read_generic_type_id(lhs, lhs_end, lhs_guid, lhs_count);
+                rhs = read_generic_type_id(rhs, rhs_end, rhs_guid, rhs_count);
+                return lhs_guid == rhs_guid && lhs_count == rhs_count;
+            }
+            case ETypeSignatureSignal::FunctionSignature: {
+                uint32_t lhs_count;
+                uint32_t rhs_count;
+                lhs = read_function_signature(lhs, lhs_end, lhs_count);
+                rhs = read_function_signature(rhs, rhs_end, rhs_count);
+                return lhs_count == rhs_count;
+            }
+            case ETypeSignatureSignal::ArrayDim: {
+                uint32_t lhs_dim;
+                uint32_t rhs_dim;
+                lhs = read_array_dim(lhs, lhs_end, lhs_dim);
+                rhs = read_array_dim(rhs, rhs_end, rhs_dim);
+                return lhs_dim == rhs_dim;
+            }
+            case ETypeSignatureSignal::Bool: {
+                bool lhs_value;
+                bool rhs_value;
+                lhs = read_bool(lhs, lhs_end, lhs_value);
+                rhs = read_bool(rhs, rhs_end, rhs_value);
+                return lhs_value == rhs_value;
+            }
+            case ETypeSignatureSignal::Int8: {
+                int8_t lhs_value;
+                int8_t rhs_value;
+                lhs = read_int8(lhs, lhs_end, lhs_value);
+                rhs = read_int8(rhs, rhs_end, rhs_value);
+                return lhs_value == rhs_value;
+            }
+            case ETypeSignatureSignal::Int16: {
+                int16_t lhs_value;
+                int16_t rhs_value;
+                lhs = read_int16(lhs, lhs_end, lhs_value);
+                rhs = read_int16(rhs, rhs_end, rhs_value);
+                return lhs_value == rhs_value;
+            }
+            case ETypeSignatureSignal::Int32: {
+                int32_t lhs_value;
+                int32_t rhs_value;
+                lhs = read_int32(lhs, lhs_end, lhs_value);
+                rhs = read_int32(rhs, rhs_end, rhs_value);
+                return lhs_value == rhs_value;
+            }
+            case ETypeSignatureSignal::Int64: {
+                int64_t lhs_value;
+                int64_t rhs_value;
+                lhs = read_int64(lhs, lhs_end, lhs_value);
+                rhs = read_int64(rhs, rhs_end, rhs_value);
+                return lhs_value == rhs_value;
+            }
+            case ETypeSignatureSignal::UInt8: {
+                uint8_t lhs_value;
+                uint8_t rhs_value;
+                lhs = read_uint8(lhs, lhs_end, lhs_value);
+                rhs = read_uint8(rhs, rhs_end, rhs_value);
+                return lhs_value == rhs_value;
+            }
+            case ETypeSignatureSignal::UInt16: {
+                uint16_t lhs_value;
+                uint16_t rhs_value;
+                lhs = read_uint16(lhs, lhs_end, lhs_value);
+                rhs = read_uint16(rhs, rhs_end, rhs_value);
+                return lhs_value == rhs_value;
+            }
+            case ETypeSignatureSignal::UInt32: {
+                uint32_t lhs_value;
+                uint32_t rhs_value;
+                lhs = read_uint32(lhs, lhs_end, lhs_value);
+                rhs = read_uint32(rhs, rhs_end, rhs_value);
+                return lhs_value == rhs_value;
+            }
+            case ETypeSignatureSignal::UInt64: {
+                uint64_t lhs_value;
+                uint64_t rhs_value;
+                lhs = read_uint64(lhs, lhs_end, lhs_value);
+                rhs = read_uint64(rhs, rhs_end, rhs_value);
+                return lhs_value == rhs_value;
+            }
+            case ETypeSignatureSignal::Float: {
+                float lhs_value;
+                float rhs_value;
+                lhs = read_float(lhs, lhs_end, lhs_value);
+                rhs = read_float(rhs, rhs_end, rhs_value);
+                return lhs_value == rhs_value;
+            }
+            case ETypeSignatureSignal::Double: {
+                double lhs_value;
+                double rhs_value;
+                lhs = read_double(lhs, lhs_end, lhs_value);
+                rhs = read_double(rhs, rhs_end, rhs_value);
+                return lhs_value == rhs_value;
+            }
+            default: {
+                lhs = jump_signal(lhs, lhs_end);
+                rhs = jump_signal(rhs, rhs_end);
+                return true;
+            }
             }
         }
     }
     inline static bool signature_equal(
-    const uint8_t*            lhs,
-    const uint8_t*            lhs_end,
-    const uint8_t*            rhs,
-    const uint8_t*            rhs_end,
-    ETypeSignatureCompareFlag flag)
+        const uint8_t*            lhs,
+        const uint8_t*            lhs_end,
+        const uint8_t*            rhs,
+        const uint8_t*            rhs_end,
+        ETypeSignatureCompareFlag flag
+    )
     {
         SKR_ASSERT(lhs < lhs_end && rhs < rhs_end && "invalid signature buffer");
 
@@ -743,9 +746,10 @@ struct TypeSignatureHelper {
         return lhs_reach_end && rhs_reach_end;
     }
     inline static void decay_signature(
-    uint8_t*                pos,
-    uint8_t*                end,
-    ETypeSignatureDecayFlag flag)
+        uint8_t*                pos,
+        uint8_t*                end,
+        ETypeSignatureDecayFlag flag
+    )
     {
         uint8_t *read_pos = pos, *write_pos = pos;
         while (read_pos < end)
@@ -766,24 +770,21 @@ struct TypeSignatureHelper {
             // write
             switch (signal)
             {
-                case ETypeSignatureSignal::Ref: {
-                    write_buffer(write_pos, flag_any(flag, ETypeSignatureDecayFlag::RefAsPointer) ? ETypeSignatureSignal::Pointer : signal);
-                    break;
+            case ETypeSignatureSignal::Ref: {
+                write_buffer(write_pos, flag_any(flag, ETypeSignatureDecayFlag::RefAsPointer) ? ETypeSignatureSignal::Pointer : signal);
+                break;
+            }
+            case ETypeSignatureSignal::RValueRef: {
+                write_buffer(write_pos, flag_any(flag, ETypeSignatureDecayFlag::RValueRefAsPointer) ? ETypeSignatureSignal::Pointer : flag_any(flag, ETypeSignatureDecayFlag::IgnoreRvalue) ? ETypeSignatureSignal::Ref :
+                                                                                                                                                                                              signal);
+                break;
+            }
+            default: {
+                if (read_pos != write_pos)
+                {
+                    memmove(write_pos, read_pos, move_size);
                 }
-                case ETypeSignatureSignal::RValueRef: {
-                    write_buffer(write_pos, flag_any(flag, ETypeSignatureDecayFlag::RValueRefAsPointer) ?
-                                            ETypeSignatureSignal::Pointer :
-                                            flag_any(flag, ETypeSignatureDecayFlag::IgnoreRvalue) ?
-                                            ETypeSignatureSignal::Ref :
-                                            signal);
-                    break;
-                }
-                default: {
-                    if (read_pos != write_pos)
-                    {
-                        memmove(write_pos, read_pos, move_size);
-                    }
-                }
+            }
             }
 
             // move next
@@ -875,7 +876,7 @@ struct TypeSignatureView {
             {
                 return true;
             }
-            pos = TypeSignatureHelper::jump_signal(pos, end);
+            pos         = TypeSignatureHelper::jump_signal(pos, end);
             peek_signal = TypeSignatureHelper::peek_signal(pos, end);
         }
         return false;
@@ -893,7 +894,7 @@ struct TypeSignatureView {
             {
                 return true;
             }
-            pos = TypeSignatureHelper::jump_signal(pos, end);
+            pos         = TypeSignatureHelper::jump_signal(pos, end);
             peek_signal = TypeSignatureHelper::peek_signal(pos, end);
         }
         return false;
@@ -913,9 +914,14 @@ struct TypeSignatureView {
                 ++level;
                 peek_signal = TypeSignatureHelper::peek_signal(pos, end);
             }
-            pos = TypeSignatureHelper::jump_signal(pos, end);
+            pos         = TypeSignatureHelper::jump_signal(pos, end);
+            peek_signal = TypeSignatureHelper::peek_signal(pos, end);
         }
         return level;
+    }
+    inline bool is_any_ref() const
+    {
+        return is_ref() || is_rvalue_ref();
     }
     inline bool is_pointer() const
     {
@@ -929,13 +935,18 @@ struct TypeSignatureView {
     {
         return has_modifier(ETypeSignatureSignal::RValueRef);
     }
+    inline bool is_const() const
+    {
+        return has_modifier(ETypeSignatureSignal::Const);
+    }
     inline ETypeSignatureSignal validate_complete_signature() const
     {
         return TypeSignatureHelper::validate_complete_signature(_data, _data + _size);
     }
     inline bool equal(
-    const TypeSignatureView&  rhs,
-    ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict) const
+        const TypeSignatureView&  rhs,
+        ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict
+    ) const
     {
         if (is_empty() && rhs.is_empty())
         {
@@ -949,11 +960,12 @@ struct TypeSignatureView {
         }
 
         return TypeSignatureHelper::signature_equal(
-        _data,
-        _data + _size,
-        rhs._data,
-        rhs._data + rhs._size,
-        flag);
+            _data,
+            _data + _size,
+            rhs._data,
+            rhs._data + rhs._size,
+            flag
+        );
     }
     inline String to_string() const
     {
@@ -1246,8 +1258,8 @@ struct TypeSignatureTraits<const T[N]> {
 template <typename Ret>
 struct TypeSignatureTraits<Ret(void)> {
     inline static constexpr size_t buffer_size =
-    type_signature_size_v<ETypeSignatureSignal::FunctionSignature> +
-    TypeSignatureTraits<Ret>::buffer_size;
+        type_signature_size_v<ETypeSignatureSignal::FunctionSignature> +
+        TypeSignatureTraits<Ret>::buffer_size;
     inline static uint8_t* write(uint8_t* pos, uint8_t* end)
     {
         // write function signature
@@ -1263,9 +1275,9 @@ struct TypeSignatureTraits<Ret(void)> {
 template <typename Ret, typename... Args>
 struct TypeSignatureTraits<Ret(Args...)> {
     inline static constexpr size_t buffer_size =
-    type_signature_size_v<ETypeSignatureSignal::FunctionSignature> +
-    TypeSignatureTraits<Ret>::buffer_size +
-    (TypeSignatureTraits<Args>::buffer_size + ...);
+        type_signature_size_v<ETypeSignatureSignal::FunctionSignature> +
+        TypeSignatureTraits<Ret>::buffer_size +
+        (TypeSignatureTraits<Args>::buffer_size + ...);
     inline static uint8_t* write(uint8_t* pos, uint8_t* end)
     {
         // write function signature
@@ -1288,6 +1300,7 @@ struct TypeSignatureTraits<Ret(Args...)> {
 
 #pragma region TYPE SIGNATURE
 struct TypeSignature : private SkrAllocator {
+    friend struct TypeSignatureBuilder;
 
     // ctor & dtor
     inline TypeSignature() = default;
@@ -1306,10 +1319,7 @@ struct TypeSignature : private SkrAllocator {
     }
     inline ~TypeSignature()
     {
-        if (_data)
-        {
-            free(_data);
-        }
+        reset();
     }
 
     // copy & move
@@ -1332,10 +1342,7 @@ struct TypeSignature : private SkrAllocator {
     {
         if (this != &other)
         {
-            if (_data)
-            {
-                free(_data);
-            }
+            reset();
             _data = alloc<uint8_t>(other._size);
             _size = other._size;
             memcpy(_data, other._data, _size);
@@ -1346,10 +1353,7 @@ struct TypeSignature : private SkrAllocator {
     {
         if (this != &other)
         {
-            if (_data)
-            {
-                free(_data);
-            }
+            reset();
             _data       = other._data;
             _size       = other._size;
             other._data = nullptr;
@@ -1371,14 +1375,140 @@ struct TypeSignature : private SkrAllocator {
     inline void decay(ETypeSignatureDecayFlag flag = ETypeSignatureDecayFlag::Relax)
     {
         TypeSignatureHelper::decay_signature(
-        data(),
-        data() + size(),
-        flag);
+            data(),
+            data() + size(),
+            flag
+        );
+    }
+
+    // ops
+    inline void reset()
+    {
+        if (_data)
+        {
+            free(_data);
+        }
+        _size = 0;
     }
 
 private:
     uint8_t* _data = nullptr;
     size_t   _size = 0;
+};
+struct TypeSignatureBuilder {
+    // write helper
+    inline void write_none()
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::None));
+        TypeSignatureHelper::write_none(add_result.ptr(), data.end());
+    }
+    inline void write_type_id(const GUID& guid)
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::TypeId));
+        TypeSignatureHelper::write_type_id(add_result.ptr(), data.end(), guid);
+    }
+    inline void write_generic_type_id(const GUID& guid, uint32_t data_count)
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::GenericTypeId));
+        TypeSignatureHelper::write_generic_type_id(add_result.ptr(), data.end(), guid, data_count);
+    }
+    inline void write_function_signature(uint32_t param_count)
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::FunctionSignature));
+        TypeSignatureHelper::write_function_signature(add_result.ptr(), data.end(), param_count);
+    }
+    inline void write_const()
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::Const));
+        TypeSignatureHelper::write_const(add_result.ptr(), data.end());
+    }
+    inline void write_pointer()
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::Pointer));
+        TypeSignatureHelper::write_pointer(add_result.ptr(), data.end());
+    }
+    inline void write_ref()
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::Ref));
+        TypeSignatureHelper::write_ref(add_result.ptr(), data.end());
+    }
+    inline void write_rvalue_ref()
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::RValueRef));
+        TypeSignatureHelper::write_rvalue_ref(add_result.ptr(), data.end());
+    }
+    inline void write_array_dim(uint32_t dim)
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::ArrayDim));
+        TypeSignatureHelper::write_array_dim(add_result.ptr(), data.end(), dim);
+    }
+    inline void write_bool(bool value)
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::Bool));
+        TypeSignatureHelper::write_bool(add_result.ptr(), data.end(), value);
+    }
+    inline void write_int8(int8_t value)
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::Int8));
+        TypeSignatureHelper::write_int8(add_result.ptr(), data.end(), value);
+    }
+    inline void write_int16(int16_t value)
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::Int16));
+        TypeSignatureHelper::write_int16(add_result.ptr(), data.end(), value);
+    }
+    inline void write_int32(int32_t value)
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::Int32));
+        TypeSignatureHelper::write_int32(add_result.ptr(), data.end(), value);
+    }
+    inline void write_int64(int64_t value)
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::Int64));
+        TypeSignatureHelper::write_int64(add_result.ptr(), data.end(), value);
+    }
+    inline void write_uint8(uint8_t value)
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::UInt8));
+        TypeSignatureHelper::write_uint8(add_result.ptr(), data.end(), value);
+    }
+    inline void write_uint16(uint16_t value)
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::UInt16));
+        TypeSignatureHelper::write_uint16(add_result.ptr(), data.end(), value);
+    }
+    inline void write_uint32(uint32_t value)
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::UInt32));
+        TypeSignatureHelper::write_uint32(add_result.ptr(), data.end(), value);
+    }
+    inline void write_uint64(uint64_t value)
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::UInt64));
+        TypeSignatureHelper::write_uint64(add_result.ptr(), data.end(), value);
+    }
+    inline void write_float(float value)
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::Float));
+        TypeSignatureHelper::write_float(add_result.ptr(), data.end(), value);
+    }
+    inline void write_double(double value)
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::Double));
+        TypeSignatureHelper::write_double(add_result.ptr(), data.end(), value);
+    }
+
+    // make
+    inline TypeSignature type_signature()
+    {
+        return { TypeSignatureView{ data.data(), data.size() } };
+    }
+    inline TypeSignatureView type_signature_view()
+    {
+        return { data.data(), data.size() };
+    }
+
+    Vector<uint8_t> data;
 };
 #pragma endregion
 
@@ -1433,9 +1563,10 @@ struct TypeSignatureTyped {
     inline void decay(ETypeSignatureDecayFlag flag = ETypeSignatureDecayFlag::Relax)
     {
         TypeSignatureHelper::decay_signature(
-        data(),
-        data() + size(),
-        flag);
+            data(),
+            data() + size(),
+            flag
+        );
     }
 
 private:
@@ -1504,4 +1635,4 @@ inline TypeSignatureTyped<decltype(__helper::decay_field(field))> type_signature
     return {};
 }
 
-} // namespace skr::rttr
+} // namespace skr

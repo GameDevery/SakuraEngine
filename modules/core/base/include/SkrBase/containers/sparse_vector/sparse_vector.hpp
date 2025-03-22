@@ -256,7 +256,7 @@ SKR_INLINE void SparseVector<Memory>::_set_hole_size(SizeType value)
 template <typename Memory>
 SKR_INLINE void SparseVector<Memory>::_copy_compacted_data(StorageType* dst, const DataType* src, SizeType size)
 {
-    if constexpr (!memory::MemoryTraits<DataType>::use_copy && sizeof(DataType) == sizeof(StorageType))
+    if constexpr (!::skr::memory::MemoryTraits<DataType>::use_copy && sizeof(DataType) == sizeof(StorageType))
     {
         std::memcpy(dst, src, sizeof(StorageType) * size);
     }
@@ -307,7 +307,7 @@ SKR_INLINE SparseVector<Memory>::SparseVector(SizeType size, AllocatorCtorParam 
         BitAlgo::set_range(bit_data(), SizeType(0), size, true);
 
         // call ctor (stl ub)
-        if constexpr (memory::MemoryTraits<DataType>::use_ctor)
+        if constexpr (::skr::memory::MemoryTraits<DataType>::use_ctor)
         {
             for (SizeType i = 0; i < size; ++i)
             {
@@ -679,7 +679,7 @@ SKR_INLINE bool SparseVector<Memory>::compact()
                 } while (!has_data(search_index));
 
                 // move element to the hole
-                memory::move<DataType, DataType>(&storage()[free_node]._sparse_vector_data, &storage()[search_index]._sparse_vector_data);
+                ::skr::memory::move<DataType, DataType>(&storage()[free_node]._sparse_vector_data, &storage()[search_index]._sparse_vector_data);
             }
             free_node = next_index;
         }
@@ -724,7 +724,7 @@ SKR_INLINE bool SparseVector<Memory>::compact_stable()
             // move items
             while (read_index < sparse_size() && has_data(read_index))
             {
-                memory::move(&storage()[write_index]._sparse_vector_data, &storage()[read_index]._sparse_vector_data);
+                ::skr::memory::move(&storage()[write_index]._sparse_vector_data, &storage()[read_index]._sparse_vector_data);
                 ++write_index;
                 ++read_index;
             }
@@ -825,7 +825,7 @@ template <typename Memory>
 SKR_INLINE typename SparseVector<Memory>::DataRef SparseVector<Memory>::add_default()
 {
     DataRef info = add_unsafe();
-    memory::construct(info.ptr());
+    ::skr::memory::construct(info.ptr());
     return info;
 }
 template <typename Memory>
@@ -866,7 +866,7 @@ template <typename Memory>
 SKR_INLINE void SparseVector<Memory>::add_at_default(SizeType idx)
 {
     add_at_unsafe(idx);
-    memory::construct(&storage()[idx]._sparse_vector_data);
+    ::skr::memory::construct(&storage()[idx]._sparse_vector_data);
 }
 template <typename Memory>
 SKR_INLINE void SparseVector<Memory>::add_at_zeroed(SizeType idx)
@@ -1024,12 +1024,12 @@ SKR_INLINE void SparseVector<Memory>::remove_at(SizeType index, SizeType n)
     SKR_ASSERT(is_valid_index(index + n - 1));
     SKR_ASSERT(n > 0);
 
-    if constexpr (memory::MemoryTraits<DataType>::use_dtor)
+    if constexpr (::skr::memory::MemoryTraits<DataType>::use_dtor)
     {
         for (SizeType i = 0; i < n; ++i)
         {
             SKR_ASSERT(has_data(index + i));
-            memory::destruct(&storage()[index + i]._sparse_vector_data);
+            ::skr::memory::destruct(&storage()[index + i]._sparse_vector_data);
         }
     }
 

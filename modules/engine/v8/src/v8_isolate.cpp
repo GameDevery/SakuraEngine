@@ -1,6 +1,6 @@
 #include "SkrV8/v8_isolate.hpp"
 #include "SkrContainers/set.hpp"
-#include "SkrV8/v8_bind_tools.hpp"
+#include "SkrCore/log.hpp"
 #include "SkrV8/v8_bind_data.hpp"
 #include "libplatform/libplatform.h"
 #include "v8-initialization.h"
@@ -8,9 +8,10 @@
 #include "v8-template.h"
 #include "v8-external.h"
 #include "v8-function.h"
+#include "SkrV8/v8_bind.hpp"
 
 // allocator
-namespace skr::v8
+namespace skr
 {
 struct V8Allocator final : ::v8::ArrayBuffer::Allocator {
     static constexpr const char* kV8DefaultPoolName = "v8-allocate";
@@ -53,15 +54,16 @@ struct V8Allocator final : ::v8::ArrayBuffer::Allocator {
         return p;
     }
 };
-} // namespace skr::v8
+} // namespace skr
 
-namespace skr::v8
+namespace skr
 {
 V8Isolate::V8Isolate()
 {
 }
 V8Isolate::~V8Isolate()
 {
+    shutdown();
 }
 
 void V8Isolate::init()
@@ -77,372 +79,90 @@ void V8Isolate::shutdown()
 {
     if (_isolate)
     {
-        // clear templates
-        _record_templates.clear();
+        // cleanup templates
+        _bind_manager.cleanup_templates();
 
         // dispose isolate
         _isolate->Dispose();
+        _isolate = nullptr;
 
-        // delete array buffer allocator
-        SkrDelete(_isolate_create_params.array_buffer_allocator);
+        // cleanup cores
+        _bind_manager.cleanup_bind_cores();
     }
 }
 
-// TODO. 遍历父类结构的绑定，以及重载实现
-void V8Isolate::make_record_template(::skr::rttr::Type* type)
+// operator isolate
+void V8Isolate::gc(bool full)
 {
-    using namespace ::v8;
-    SKR_ASSERT(type->type_category() == ::skr::rttr::ETypeCategory::Record);
-    Isolate::Scope isolate_scope(_isolate);
-    HandleScope    handle_scope(_isolate);
+    _isolate->RequestGarbageCollectionForTesting(full ? ::v8::Isolate::kFullGarbageCollection : ::v8::Isolate::kMinorGarbageCollection);
 
-    // ctor template
-    auto ctor_template = FunctionTemplate::New(
-        _isolate,
-        _call_ctor,
-        External::New(_isolate, type)
-    );
-
-    // setup internal field count
-    ctor_template->InstanceTemplate()->SetInternalFieldCount(1);
-    
-    // bind member component
-    {
-        // bind method
-        for (auto* method: type->record_data().methods)
-        {
-            ctor_template->PrototypeTemplate()->Set(
-                ::v8::String::NewFromUtf8(_isolate, method->name.c_str_raw()).ToLocalChecked(),
-                FunctionTemplate::New(
-                    _isolate,
-                    _call_method,
-                    External::New(_isolate, method)
-                )
-            );
-        }
-
-        // bind field
-        for (auto* field : type->record_data().fields)
-        {
-            ctor_template->PrototypeTemplate()->SetAccessorProperty(
-                ::v8::String::NewFromUtf8(_isolate, field->name.c_str_raw()).ToLocalChecked(),
-                FunctionTemplate::New(
-                    _isolate,
-                    _get_field,
-                    External::New(_isolate, field)
-                ),
-                FunctionTemplate::New(
-                    _isolate,
-                    _set_field,
-                    External::New(_isolate, field)
-                )
-            );
-        }
-    }
-
-    // bind static component
-    {
-        // bind static method
-        for (auto* static_method : type->record_data().static_methods)
-        {
-            ctor_template->Set(
-                ::v8::String::NewFromUtf8(_isolate, static_method->name.c_str_raw()).ToLocalChecked(),
-                FunctionTemplate::New(
-                    _isolate,
-                    _call_static_method,
-                    External::New(_isolate, static_method)
-                )
-            );
-        }
-
-        // bind static field
-        for (auto* static_field : type->record_data().static_fields)
-        {
-            ctor_template->SetAccessorProperty(
-                ::v8::String::NewFromUtf8(_isolate, static_field->name.c_str_raw()).ToLocalChecked(),
-                FunctionTemplate::New(
-                    _isolate,
-                    _get_static_field,
-                    External::New(_isolate, static_field)
-                ),
-                FunctionTemplate::New(
-                    _isolate,
-                    _set_static_field,
-                    External::New(_isolate, static_field)
-                )
-            );
-        }
-    }
-
-    // store template
-    auto& template_ref = _record_templates.try_add_default(type).value();
-    template_ref.Reset(_isolate, ctor_template);
-}
-void V8Isolate::inject_templates_into_context(::v8::Local<::v8::Context> context)
-{
-    ::v8::Isolate::Scope isolate_scope(_isolate);
-    ::v8::HandleScope    handle_scope(_isolate);
-
-    for (const auto& pair : _record_templates)
-    {
-        const auto& type         = pair.key;
-        const auto& template_ref = pair.value;
-
-        // make function template
-        auto function = template_ref.Get(_isolate)->GetFunction(context).ToLocalChecked();
-
-        // set to context
-        context->Global()->Set(
-                             context,
-                             ::v8::String::NewFromUtf8(_isolate, type->name().c_str_raw()).ToLocalChecked(),
-                             function)
-            .Check();
-    }
+    _isolate->LowMemoryNotification();
+    _isolate->IdleNotificationDeadline(0);
 }
 
 // bind object
-V8BindRecordCore* V8Isolate::translate_record(::skr::rttr::ScriptbleObject* obj)
+V8BindCoreObject* V8Isolate::translate_object(::skr::ScriptbleObject* obj)
 {
     using namespace ::v8;
     Isolate::Scope isolate_scope(_isolate);
-    HandleScope    handle_scope(_isolate);
-    Local<Context> context = _isolate->GetCurrentContext();
-
-    // find exist object
-    auto bind_ref = _alive_records.find(obj);
-    if (bind_ref)
-    {
-        return bind_ref.value();
-    }
-
-    // get type
-    auto type = rttr::get_type_from_guid(obj->iobject_get_typeid());
-
-    // get template
-    auto template_ref = _record_templates.find(type);
-    if (!template_ref)
-    {
-        return nullptr;
-    }
-
-    // make object
-    Local<Function> ctor_func = template_ref.value().Get(_isolate)->GetFunction(context).ToLocalChecked();
-    Local<Object> object = ctor_func->NewInstance(context).ToLocalChecked();
-
-    // make bind data
-    auto bind_data = SkrNew<V8BindRecordCore>();
-    bind_data->object = obj;
-    bind_data->type   = type;
-    bind_data->v8_object.Reset(_isolate, object);
-
-    // setup gc callback
-    bind_data->v8_object.SetWeak(
-        bind_data,
-        _gc_callback,
-        WeakCallbackType::kInternalFields
-    );
-
-    // add extern data
-    object->SetInternalField(0, External::New(_isolate, bind_data));
-
-    // add to map
-    _alive_records.add(obj, bind_data);
-
-    return bind_data;
+    return _bind_manager.translate_object(obj);
 }
-void V8Isolate::mark_record_deleted(::skr::rttr::ScriptbleObject* obj)
-{
-    auto bind_ref = _alive_records.find(obj);
-    if (bind_ref)
-    {
-        // reset core object ptr
-        bind_ref.value()->object = nullptr;
-
-        // move to deleted records
-        _deleted_records.push_back(bind_ref.value());
-        _alive_records.remove(obj);
-    }
-}
-
-// bind helpers
-void V8Isolate::_gc_callback(const ::v8::WeakCallbackInfo<V8BindRecordCore>& data)
+void V8Isolate::mark_object_deleted(::skr::ScriptbleObject* obj)
 {
     using namespace ::v8;
-    
-    // get data
-    V8BindRecordCore* bind_core = data.GetParameter();
-    V8Isolate* isolate = reinterpret_cast<V8Isolate*>(data.GetIsolate()->GetData(0));
-    
-    // delete if has owner ship
-    if (bind_core->object->script_owner_ship() == rttr::EScriptbleObjectOwnerShip::Script)
-    {
-        SkrDelete(bind_core->object);
-    }
-
-    // remove from isolate
-    isolate->_alive_records.remove(bind_core->object);
-    
-    // destroy it
-    SkrDelete(bind_core);
+    Isolate::Scope isolate_scope(_isolate);
+    _bind_manager.mark_object_deleted(obj);
 }
-void V8Isolate::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
+
+// bind value
+V8BindCoreValue* V8Isolate::create_value(const RTTRType* type, const void* data)
+{
+    using namespace ::v8;
+    Isolate::Scope isolate_scope(_isolate);
+    return _bind_manager.create_value(type, data);
+}
+V8BindCoreValue* V8Isolate::translate_value_field(const RTTRType* type, const void* data, V8BindCoreRecordBase* owner)
+{
+    using namespace ::v8;
+    Isolate::Scope isolate_scope(_isolate);
+    return _bind_manager.translate_value_field(type, data, owner);
+}
+
+// make template
+void V8Isolate::register_mapping_type(const RTTRType* type)
+{
+    using namespace ::v8;
+    // v8 scope
+    Isolate::Scope isolate_scope(_isolate);
+
+    _bind_manager.register_mapping_type(type);
+}
+v8::Local<v8::ObjectTemplate> V8Isolate::_get_enum_template(const RTTRType* type)
+{
+    using namespace ::v8;
+    // check
+    SKR_ASSERT(type->is_enum());
+
+    // v8 scope
+    Isolate::Scope isolate_scope(_isolate);
+
+    return _bind_manager.get_enum_template(type);
+}
+v8::Local<v8::FunctionTemplate> V8Isolate::_get_record_template(const RTTRType* type)
 {
     using namespace ::v8;
 
-    // get v8 basic info
-    Isolate*       Isolate = info.GetIsolate();
-    Isolate::Scope IsolateScope(Isolate);
-    HandleScope    HandleScope(Isolate);
-    Local<Context> Context = Isolate->GetCurrentContext();
-    Context::Scope ContextScope(Context);
+    // check
+    SKR_ASSERT(type->is_record());
 
-    if (info.IsConstructCall())
-    {
-        // get ctor info
-        Local<Object> self = info.This();
+    // v8 scope
+    Isolate::Scope isolate_scope(_isolate);
 
-        // get type info
-        Local<External>  data = info.Data().As<External>();
-        skr::rttr::Type* type = reinterpret_cast<skr::rttr::Type*>(data->Value());
-
-        // match ctor
-        for (const auto& ctor_data : type->record_data().ctor_data)
-        {
-            if (V8BindTools::match_params(ctor_data, info))
-            {
-                V8Isolate* skr_isolate = reinterpret_cast<V8Isolate*>(Isolate->GetData(0));
-
-                // alloc memory
-                void* alloc_mem = sakura_new_aligned(type->size(), type->alignment());
-
-                // call ctor
-                V8BindTools::call_ctor(alloc_mem, *ctor_data, info, Context, Isolate);
-                
-                // cast to ScriptbleObject
-                void* casted_mem = type->cast_to(rttr::type_id_of<rttr::ScriptbleObject>(), alloc_mem);
-
-                // make bind core
-                V8BindRecordCore* bind_core = SkrNew<V8BindRecordCore>();
-                bind_core->type = type;
-                bind_core->object = reinterpret_cast<rttr::ScriptbleObject*>(casted_mem);
-
-                // setup owner ship
-                bind_core->object->script_owner_ship_take(rttr::EScriptbleObjectOwnerShip::Script);
-
-                // setup gc callback
-                bind_core->v8_object.Reset(Isolate, self);
-                bind_core->v8_object.SetWeak(
-                    bind_core,
-                    _gc_callback,
-                    WeakCallbackType::kInternalFields
-                );
-
-                // add extern data
-                self->SetInternalField(0, External::New(Isolate, bind_core));
-
-                // add to map
-                skr_isolate->_alive_records.add(bind_core->object, bind_core);
-
-                return;
-            }
-        }
-
-        // no ctor matched
-        Isolate->ThrowError("no ctor matched");
-    }
-    else
-    {
-        Isolate->ThrowError("must be called with new");
-    }
+    return _bind_manager.get_record_template(type);
 }
-void V8Isolate::_call_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
-{
-}
-void V8Isolate::_get_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
-{
-    // using namespace ::v8;
+} // namespace skr
 
-    // // get data
-    // Isolate*          isolate = info.GetIsolate();
-    // Local<Context>    context = isolate->GetCurrentContext();
-    // Local<Object>     self    = info.This();
-    // Local<External>   wrap    = Local<External>::Cast(self->GetInternalField(0));
-    // V8BindRecordCore* bind_core    = reinterpret_cast<V8BindRecordCore*>(wrap->Value());
-
-    // // get field data
-    // auto   name_len = property->Utf8Length(isolate);
-    // String field_name;
-    // field_name.resize_unsafe(name_len);
-    // property->WriteUtf8(isolate, field_name.data_raw_w());
-    // auto& field_data = bind_core->type->record_data().fields.find_if(
-    // [&](const auto& f) {
-    //         return f->name == field_name;
-    //     }).ref();
-
-    // // return field
-    // Local<Value> result;
-    // if (V8BindTools::native_to_v8_primitive(
-    //         context,
-    //         isolate,
-    //         field_data->type,
-    //         field_data->get_address(bind_core->object),
-    //         result))
-    // {
-    //     info.GetReturnValue().Set(result);
-    // }
-    // else
-    // {
-    //     isolate->ThrowError("field type not supported");
-    // }
-}
-void V8Isolate::_set_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
-{
-    // using namespace ::v8;
-
-    // // get data
-    // Isolate*          isolate = info.GetIsolate();
-    // Local<Context>    context = isolate->GetCurrentContext();
-    // Local<Object>     self    = info.This();
-    // Local<External>   wrap    = Local<External>::Cast(self->GetInternalField(0));
-    // V8BindRecordCore* bind_core    = reinterpret_cast<V8BindRecordCore*>(wrap->Value());
-
-    // // get field data
-    // auto   name_len = property->Utf8Length(isolate);
-    // String field_name;
-    // field_name.add('\0', name_len);
-    // property->WriteUtf8(isolate, field_name.data_raw_w());
-    // auto& field_data = bind_core->type->record_data().fields.find_if([&](const auto& f) {
-    //                                                        return f->name == field_name;
-    //                                                    })
-    //                        .ref();
-
-    // // set field
-    // if (V8BindTools::v8_to_native_primitive(
-    //         context,
-    //         isolate,
-    //         field_data->type,
-    //         value,
-    //         field_data->get_address(bind_core->object)))
-    // {
-    //     info.GetReturnValue().Set(value);
-    // }
-    // else
-    // {
-    //     isolate->ThrowError("field type not supported");
-    // }
-}
-void V8Isolate::_call_static_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
-{
-}
-void V8Isolate::_get_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
-{
-}
-void V8Isolate::_set_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
-{
-}
-} // namespace skr::v8
-
-namespace skr::v8
+namespace skr
 {
 static auto& _v8_platform()
 {
@@ -453,8 +173,8 @@ static auto& _v8_platform()
 void init_v8()
 {
     // init flags
-    // char Flags[] = "--expose-gc";
-    // ::v8::V8::SetFlagsFromString(Flags, sizeof(Flags));
+    char Flags[] = "--expose-gc";
+    ::v8::V8::SetFlagsFromString(Flags, sizeof(Flags));
 
     // init platform
     _v8_platform() = ::v8::platform::NewDefaultPlatform();
@@ -472,4 +192,4 @@ void shutdown_v8()
     ::v8::V8::DisposePlatform();
     _v8_platform().reset();
 }
-} // namespace skr::v8
+} // namespace skr

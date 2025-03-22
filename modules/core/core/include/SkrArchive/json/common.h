@@ -17,6 +17,7 @@ enum class JsonErrorCode : uint32_t
     UnknownError,      // RW
     NoOpenScope,       // RW
     ScopeTypeMismatch, // RW
+    TypeMismatch, // RW
 
     EmptyObjectFieldKey, // RW
     ArrayElementWithKey, // RW

@@ -48,7 +48,7 @@ struct SMaterialFactoryImpl : public SMaterialFactory {
 
     skr_guid_t GetResourceType() override
     {
-        return ::skr::rttr::type_id_of<skr_material_resource_t>();
+        return ::skr::type_id_of<skr_material_resource_t>();
     }
 
     bool AsyncIO() override { return true; }

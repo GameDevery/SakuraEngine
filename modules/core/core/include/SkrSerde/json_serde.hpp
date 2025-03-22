@@ -214,7 +214,7 @@ struct JsonSerde<T> {
         {
             if (!EnumSerdeTraits<T>::from_string(enumStr.view(), v))
             {
-                SKR_LOG_ERROR(u8"Unknown enumerator while reading enum %s: %s", skr::rttr::type_name_of<T>().data(), enumStr.data());
+                SKR_LOG_ERROR(u8"Unknown enumerator while reading enum %s: %s", skr::type_name_of<T>().data(), enumStr.data());
                 return false;
             }
             return true;

@@ -102,7 +102,7 @@ void STextureSamplerFactory::Destroy(STextureSamplerFactory* factory)
 
 skr_guid_t STextureSamplerFactoryImpl::GetResourceType()
 {
-    const auto resource_type = ::skr::rttr::type_id_of<skr_texture_sampler_resource_t>();
+    const auto resource_type = ::skr::type_id_of<skr_texture_sampler_resource_t>();
     return resource_type;
 }
 

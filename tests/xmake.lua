@@ -23,7 +23,6 @@ end
 includes("base/xmake.lua")
 includes("core/xmake.lua")
 includes("memory/xmake.lua")
-includes("meta_system/xmake.lua")
 
 includes("cgpu/xmake.lua")
 includes("runtime/xmake.lua")

@@ -18,12 +18,12 @@ SKR_RTTR_TYPE(test_manual_export::ETestEnum, "ec8a3592-a1d7-445f-94a4-6087bd27e0
 
 TEST_CASE("test manual export enum")
 {
-    using namespace skr::rttr;
+    using namespace skr;
     using namespace test_manual_export;
 
     // clang-format off
-    EnumData enum_data;
-    EnumBuilder<ETestEnum> enum_builder(&enum_data);
+    RTTREnumData enum_data;
+    RTTREnumBuilder<ETestEnum> enum_builder(&enum_data);
     enum_builder.basic_info();
     enum_builder.item(u8"A", ETestEnum::A);
     enum_builder.item(u8"B", ETestEnum::B);
@@ -80,12 +80,12 @@ SKR_RTTR_TYPE(test_manual_export::TestDerived, "ee9389fe-6152-4540-904b-8424078c
 
 TEST_CASE("test rttr export record")
 {
-    using namespace skr::rttr;
+    using namespace skr;
     using namespace test_manual_export;
 
     // clang-format off
-    RecordData                    record_data;
-    RecordBuilder<TestDerived> record_builder(&record_data);
+    RTTRRecordData                    record_data;
+    RTTRRecordBuilder<TestDerived> record_builder(&record_data);
     record_builder.basic_info();
     // bases
     record_builder.bases<TestBase, ITestInterface>();

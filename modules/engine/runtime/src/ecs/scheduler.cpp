@@ -808,7 +808,7 @@ sugoi_system_lifetime_callback_t init, sugoi_system_lifetime_callback_t teardown
     }
 }
 
-void sugoiJ_wait_all_jobs_jobs()
+void sugoiJ_wait_all_jobs()
 {
     sugoi::JobScheduler::Get().sync_all_jobs();
 }

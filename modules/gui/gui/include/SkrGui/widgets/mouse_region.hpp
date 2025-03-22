@@ -13,9 +13,7 @@ struct PointerMoveEvent;
 struct PointerDownEvent;
 struct PointerUpEvent;
 
-sreflect_struct(
-    "guid": "f7ee023d-dcd0-4dfc-a095-793128ac0ad9"
-)
+sreflect_struct(guid = "f7ee023d-dcd0-4dfc-a095-793128ac0ad9")
 SKR_GUI_API MouseRegin : public SingleChildRenderObjectWidget {
     SKR_GENERATE_BODY()
 

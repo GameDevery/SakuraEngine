@@ -60,9 +60,14 @@ bool JsonSerde<${record.name}>::read_fields(skr::archive::JsonReader* r, ${recor
 
     // read self fields
 %for field in record_serde_data.json_fields:
-<% field_type = f"{field.type}[{field.array_size}]" if field.array_size else field.type %>\
+<% 
+field_type = f"{field.type}[{field.array_size}]" if field.array_size else field.type 
+field_serde_data = field.generator_data["serde"]
+field_json_key = field_serde_data.alias if field_serde_data.alias else field.name
+%>\
+%if field_serde_data.enable_json:
     {
-        auto jSlot = r->Key(u8"${field.name}");
+        auto jSlot = r->Key(u8"${field_json_key}");
         jSlot.error_then([&](auto e){
             SKR_ASSERT(e == skr::archive::JsonReadError::KeyNotFound);
         });
@@ -75,6 +80,7 @@ bool JsonSerde<${record.name}>::read_fields(skr::archive::JsonReader* r, ${recor
             }
         }
     }
+%endif
 %endfor
     return true;
 } 
@@ -87,10 +93,15 @@ bool JsonSerde<${record.name}>::write_fields(skr::archive::JsonWriter* w, const 
 
     // write self fields
 %for field in record_serde_data.json_fields:
-<% field_type = f"{field.type}[{field.array_size}]" if field.array_size else field.type %>\
-    
-    SKR_EXPECTED_CHECK(w->Key(u8"${field.name}"), false);
+<% 
+field_type = f"{field.type}[{field.array_size}]" if field.array_size else field.type 
+field_serde_data = field.generator_data["serde"]
+field_json_key = field_serde_data.alias if field_serde_data.alias else field.name
+%>\
+%if field_serde_data.enable_json:
+    SKR_EXPECTED_CHECK(w->Key(u8"${field_json_key}"), false);
     if (!json_write<${field_type}>(w, v.${field.name})) return false;
+%endif
 %endfor
     return true;
 } 
@@ -133,12 +144,17 @@ bool BinSerde<${record.name}>::read(SBinaryReader* r, ${record.name}& v)
 
     // serde self
 %for field in record_serde_data.bin_fields:
-<% field_type = f"{field.type}[{field.array_size}]" if field.array_size else field.type %>\
+<% 
+field_type = f"{field.type}[{field.array_size}]" if field.array_size else field.type 
+field_serde_data = field.generator_data["serde"]
+%>\
+%if field_serde_data.enable_bin:
     if(!bin_read<${field_type}>(r, v.${field.name}))
     {
         SKR_LOG_ERROR(BinaryFieldArchiveFailedFormat, "Read", "${record.name}", "${field.name}", -1);
         return false;
     }
+%endif
 %endfor
 
     return true;
@@ -158,12 +174,17 @@ bool BinSerde<${record.name}>::write(SBinaryWriter* w, const ${record.name}& v)
 
     // serde self
 %for field in record_serde_data.bin_fields:
-<% field_type = f"{field.type}[{field.array_size}]" if field.array_size else field.type %>\
+<% 
+field_type = f"{field.type}[{field.array_size}]" if field.array_size else field.type 
+field_serde_data = field.generator_data["serde"]
+%>\
+%if field_serde_data.enable_bin:
     if(!bin_write<${field_type}>(w, v.${field.name}))
     {
         SKR_LOG_ERROR(BinaryFieldArchiveFailedFormat, "Write", "${record.name}", "${field.name}", -1);
         return false;
     }
+%endif
 %endfor
 
     return true;

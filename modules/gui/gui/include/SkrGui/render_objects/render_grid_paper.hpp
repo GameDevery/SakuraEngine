@@ -6,9 +6,7 @@
 
 namespace skr::gui
 {
-sreflect_struct(
-    "guid" : "4207334c-617c-4f7c-bf3c-fd2f9e018a9c"
-)
+sreflect_struct(guid = "4207334c-617c-4f7c-bf3c-fd2f9e018a9c")
 SKR_GUI_API RenderGridPaper : public RenderBox {
 public:
     SKR_GENERATE_BODY()

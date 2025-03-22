@@ -4,7 +4,7 @@
 
 TEST_CASE("test type signature")
 {
-    using namespace skr::rttr;
+    using namespace skr;
 
     SUBCASE("basic test")
     {

@@ -36,7 +36,7 @@ inline void copy_ring_buffer(T* dst, const T* src, TS src_capacity, TS src_front
     src_front,
     src_back,
     [&dst, &src](TS dst_offset, TS src_offset, TS size) {
-        memory::copy(dst + dst_offset, src + src_offset, size);
+        ::skr::memory::copy(dst + dst_offset, src + src_offset, size);
     });
 }
 template <typename T, typename TS>
@@ -49,7 +49,7 @@ inline void move_ring_buffer(T* dst, T* src, TS src_capacity, TS src_front, TS s
     src_front,
     src_back,
     [&dst, &src](TS dst_offset, TS src_offset, TS size) {
-        memory::move(dst + dst_offset, src + src_offset, size);
+        ::skr::memory::move(dst + dst_offset, src + src_offset, size);
     });
 }
 template <typename T, typename TS>
@@ -62,7 +62,7 @@ inline void destruct_ring_buffer(T* buffer, TS capacity, TS front, TS back) noex
     front,
     back,
     [&buffer](TS dst_offset, TS src_offset, TS size) {
-        memory::destruct(buffer + src_offset, size);
+        ::skr::memory::destruct(buffer + src_offset, size);
     });
 }
 } // namespace skr::container

@@ -11,8 +11,10 @@ namespace skd
 {
 namespace asset
 {
-sreflect_struct("guid" : "D72E2056-3C12-402A-A8B8-148CB8EAB922")
-sattr("serde" : "json")
+sreflect_struct(
+    guid = "D72E2056-3C12-402A-A8B8-148CB8EAB922"
+    serde = @json
+)
 GLTFTOOL_API SGltfMeshImporter final : public SImporter {
     skr::String assetPath;
 
@@ -26,7 +28,7 @@ GLTFTOOL_API SGltfMeshImporter final : public SImporter {
     void  Destroy(void* resource) override;
 };
 
-sreflect_struct("guid" : "5a378356-7bfa-461a-9f96-4bbbd2e95368")
+sreflect_struct(guid = "5a378356-7bfa-461a-9f96-4bbbd2e95368")
 GLTFTOOL_API SMeshCooker final : public SCooker {
     bool     Cook(SCookContext* ctx) override;
     uint32_t Version() override;

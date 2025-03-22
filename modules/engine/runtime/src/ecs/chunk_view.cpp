@@ -2,7 +2,9 @@
 #include "SkrRT/ecs/sugoi.h"
 #include "SkrRT/ecs/array.hpp"
 #include "SkrRT/ecs/type_registry.hpp"
+#ifdef SUGOI_RESOURCE_SUPPORT
 #include "SkrRT/resource/resource_handle.h"
+#endif
 
 #include "./mask.hpp"
 #include "./chunk.hpp"
@@ -56,6 +58,7 @@ static void construct_impl(sugoi_chunk_view_t view, sugoi_chunk_t::RSlice& slice
 static void destruct_impl(sugoi_chunk_view_t view, type_index_t type, EIndex offset, uint32_t size, uint32_t elemSize, resource_fields_t resourceFields, void (*destructor)(sugoi_chunk_t* chunk, EIndex index, char* data))
 {
     char* src = view.chunk->data() + (size_t)offset + (size_t)size * view.start;
+#ifdef SUGOI_RESOURCE_SUPPORT
     auto patchResources = [&](char* data)
     {
         forloop(k, 0, resourceFields.count)
@@ -66,6 +69,7 @@ static void destruct_impl(sugoi_chunk_view_t view, type_index_t type, EIndex off
                 resource->reset();
         }
     };
+#endif
     if (type.is_buffer())
         forloop (j, 0, view.count)
         {
@@ -73,20 +77,24 @@ static void destruct_impl(sugoi_chunk_view_t view, type_index_t type, EIndex off
             if (destructor)
                 for_buffer(curr, array, elemSize)
                     destructor(view.chunk, view.start + j, curr);
+#ifdef SUGOI_RESOURCE_SUPPORT
             else if(resourceFields.count > 0)
                 for_buffer(curr, array, elemSize)
                     patchResources(curr);
+#endif
             if (!is_array_small(array))
                 sugoi_array_comp_t::free(array->BeginX);
         }
     else if (destructor)
         forloop (j, 0, view.count)
             destructor(view.chunk, view.start + j, (size_t)j * size + src);
+#ifdef SUGOI_RESOURCE_SUPPORT
     else if (resourceFields.count > 0)
     {
         forloop (j, 0, view.count)
             patchResources((size_t)j * size + src);
     }
+#endif
 }
 
 static void move_impl(sugoi_chunk_view_t dstV, const sugoi_chunk_t* srcC, uint32_t srcStart, type_index_t type, EIndex srcOffset, EIndex dstOffset, uint32_t size, uint32_t align, uint32_t elemSize, void (*move)(sugoi_chunk_t* chunk, EIndex index, char* dst, sugoi_chunk_t* schunk, EIndex sindex, char* src))
@@ -147,6 +155,7 @@ static void clone_impl(sugoi_chunk_view_t dstV, const sugoi_chunk_t* srcC, uint3
     char* dst = dstV.chunk->data() + (size_t)dstOffset + (size_t)size * dstV.start;
     char* src = srcC->data() + (size_t)srcOffset + (size_t)size * srcStart;
     auto storage = dstV.chunk->structure->storage;
+#ifdef SUGOI_RESOURCE_SUPPORT
     auto patchResources = [&](char* data)
     {
         forloop(k, 0, resourceFields.count)
@@ -159,6 +168,7 @@ static void clone_impl(sugoi_chunk_view_t dstV, const sugoi_chunk_t* srcC, uint3
             }
         }
     };
+#endif
     if (copy)
     {
         if (type.is_buffer())
@@ -207,21 +217,25 @@ static void clone_impl(sugoi_chunk_view_t dstV, const sugoi_chunk_t* srcC, uint3
                     arrayDst->EndX = (char*)arrayDst->BeginX + arraySrc->size_in_bytes();
                 }
                 memcpy(arrayDst->BeginX, arraySrc->BeginX, arraySrc->size_in_bytes());
+#ifdef SUGOI_RESOURCE_SUPPORT
                 if(resourceFields.count > 0)
                 {
                     for (char* curr = (char*)arrayDst->BeginX; curr != arrayDst->EndX; curr += elemSize)
                         patchResources(curr);
                 }
+#endif
             }
         }
         else
         {
             memcpy(dst, src, dstV.count * (size_t)size);
+#ifdef SUGOI_RESOURCE_SUPPORT
             if(resourceFields.count > 0)
             {
                 forloop (j, 0, dstV.count)
                     patchResources((size_t)j * size + dst);
             }
+#endif
         }
     }
 }
@@ -253,6 +267,7 @@ static void duplicate_impl(sugoi_chunk_view_t dstV, const sugoi_chunk_t* srcC, u
         return;
     }
     auto storage = dstV.chunk->structure->storage;
+#ifdef SUGOI_RESOURCE_SUPPORT
     auto patchResources = [&](char* data)
     {
         forloop(k, 0, resourceFields.count)
@@ -265,6 +280,7 @@ static void duplicate_impl(sugoi_chunk_view_t dstV, const sugoi_chunk_t* srcC, u
             }
         }
     };
+#endif
     if (copy)
     {
         if (type.is_buffer())
@@ -315,20 +331,24 @@ static void duplicate_impl(sugoi_chunk_view_t dstV, const sugoi_chunk_t* srcC, u
                     new_array(arrayDst, size, elemSize, align);
                     arrayDst->EndX = (char*)arrayDst->BeginX + arraySrc->size_in_bytes();
                 }
+#ifdef SUGOI_RESOURCE_SUPPORT
                 if(resourceFields.count > 0)
                 {
                     for (char* curr = (char*)arrayDst->BeginX; curr != arrayDst->EndX; curr += elemSize)
                         patchResources(curr);
                 }
+#endif
             }
         }
         else {
             memdup(dst, src, (size_t)size, (size_t)dstV.count);
+#ifdef SUGOI_RESOURCE_SUPPORT
             if(resourceFields.count > 0)
             {
                 forloop (j, 0, dstV.count)
                     patchResources((size_t)j * size + dst);
             } 
+#endif
         }
     }
 }

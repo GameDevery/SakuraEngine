@@ -12,8 +12,10 @@ namespace skr
 namespace renderer
 {
 
-sreflect_enum_class("guid": "c289eaaf-ace9-4a86-8072-b173377f7d19")
-sattr("serde" : ["json", "bin"])
+sreflect_enum_class(
+    guid = "c289eaaf-ace9-4a86-8072-b173377f7d19"
+    serde = @bin|@json
+)
 EShaderOptionType : uint32_t
 {
     LEVEL  = 0, // [ "SM_5_0", "SM_6_3", "SM_6_6" ]
@@ -22,8 +24,10 @@ EShaderOptionType : uint32_t
     COUNT
 };
 
-sreflect_struct("guid" : "00d4c2b3-50e7-499b-9cf3-fb6b2ba70e79")
-sattr("serde" : ["json", "bin"])
+sreflect_struct(
+    guid = "00d4c2b3-50e7-499b-9cf3-fb6b2ba70e79"
+    serde = @bin|@json
+)
 ShaderOptionInstance {
     skr::String key;
     // if value.empty() then it's automatically set to option.value_selections[0] as the default value
@@ -35,8 +39,10 @@ ShaderOptionInstance {
     static skr_stable_shader_hash_t calculate_stable_hash(skr::span<skr_shader_option_instance_t> ordered_options);
 };
 
-sreflect_struct("guid" : "f497b62d-e63e-4ec3-b923-2a01a90f9966")
-sattr("serde" : ["json", "bin"])
+sreflect_struct(
+    guid = "f497b62d-e63e-4ec3-b923-2a01a90f9966"
+    serde = @bin|@json
+)
 ShaderOptionTemplate {
     EShaderOptionType        type;
     skr::String              key;
@@ -44,8 +50,10 @@ ShaderOptionTemplate {
     // TODO: target platforms filter
 };
 
-sreflect_struct("guid" : "fc9b4a8e-06c7-41e2-a159-f4cf6930ccfc")
-sattr("serde" : ["json", "bin"])
+sreflect_struct(
+    guid = "fc9b4a8e-06c7-41e2-a159-f4cf6930ccfc"
+    serde = @bin|@json
+)
 ShaderOptionsResource {
     using shader_options_handle_t = skr::resource::TResourceHandle<ShaderOptionsResource>;
 

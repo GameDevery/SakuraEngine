@@ -58,7 +58,7 @@ struct SKR_RENDERER_API SShaderOptionsFactoryImpl : public SShaderOptionsFactory
     bool       AsyncIO() override { return false; }
     skr_guid_t GetResourceType() override
     {
-        const auto collection_type = ::skr::rttr::type_id_of<skr_shader_options_resource_t>();
+        const auto collection_type = ::skr::type_id_of<skr_shader_options_resource_t>();
         return collection_type;
     }
 

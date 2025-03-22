@@ -5,8 +5,8 @@ terms of the MIT license. A copy of the license can be found in the file
 "LICENSE" at the root of this distribution.
 -----------------------------------------------------------------------------*/
 #pragma once
-#ifndef MIMALLOC_ATOMIC_H
-#define MIMALLOC_ATOMIC_H
+#ifndef MI_ATOMIC_H
+#define MI_ATOMIC_H
 
 // include windows.h or pthreads.h
 #if defined(_WIN32)
@@ -75,16 +75,21 @@ terms of the MIT license. A copy of the license can be found in the file
 #define mi_atomic_exchange_relaxed(p,x)          mi_atomic(exchange_explicit)(p,x,mi_memory_order(relaxed))
 #define mi_atomic_exchange_release(p,x)          mi_atomic(exchange_explicit)(p,x,mi_memory_order(release))
 #define mi_atomic_exchange_acq_rel(p,x)          mi_atomic(exchange_explicit)(p,x,mi_memory_order(acq_rel))
+
+#define mi_atomic_cas_weak_relaxed(p,exp,des)    mi_atomic_cas_weak(p,exp,des,mi_memory_order(relaxed),mi_memory_order(relaxed))
 #define mi_atomic_cas_weak_release(p,exp,des)    mi_atomic_cas_weak(p,exp,des,mi_memory_order(release),mi_memory_order(relaxed))
 #define mi_atomic_cas_weak_acq_rel(p,exp,des)    mi_atomic_cas_weak(p,exp,des,mi_memory_order(acq_rel),mi_memory_order(acquire))
+#define mi_atomic_cas_strong_relaxed(p,exp,des)  mi_atomic_cas_strong(p,exp,des,mi_memory_order(relaxed),mi_memory_order(relaxed))
 #define mi_atomic_cas_strong_release(p,exp,des)  mi_atomic_cas_strong(p,exp,des,mi_memory_order(release),mi_memory_order(relaxed))
 #define mi_atomic_cas_strong_acq_rel(p,exp,des)  mi_atomic_cas_strong(p,exp,des,mi_memory_order(acq_rel),mi_memory_order(acquire))
 
 #define mi_atomic_add_relaxed(p,x)               mi_atomic(fetch_add_explicit)(p,x,mi_memory_order(relaxed))
-#define mi_atomic_sub_relaxed(p,x)               mi_atomic(fetch_sub_explicit)(p,x,mi_memory_order(relaxed))
 #define mi_atomic_add_acq_rel(p,x)               mi_atomic(fetch_add_explicit)(p,x,mi_memory_order(acq_rel))
+#define mi_atomic_sub_relaxed(p,x)               mi_atomic(fetch_sub_explicit)(p,x,mi_memory_order(relaxed))
 #define mi_atomic_sub_acq_rel(p,x)               mi_atomic(fetch_sub_explicit)(p,x,mi_memory_order(acq_rel))
+#define mi_atomic_and_relaxed(p,x)               mi_atomic(fetch_and_explicit)(p,x,mi_memory_order(relaxed))
 #define mi_atomic_and_acq_rel(p,x)               mi_atomic(fetch_and_explicit)(p,x,mi_memory_order(acq_rel))
+#define mi_atomic_or_relaxed(p,x)                mi_atomic(fetch_or_explicit)(p,x,mi_memory_order(relaxed))
 #define mi_atomic_or_acq_rel(p,x)                mi_atomic(fetch_or_explicit)(p,x,mi_memory_order(acq_rel))
 
 #define mi_atomic_increment_relaxed(p)           mi_atomic_add_relaxed(p,(uintptr_t)1)
@@ -128,6 +133,12 @@ static inline intptr_t mi_atomic_subi(_Atomic(intptr_t)*p, intptr_t sub);
 // These are used by the statistics
 static inline int64_t mi_atomic_addi64_relaxed(volatile int64_t* p, int64_t add) {
   return mi_atomic(fetch_add_explicit)((_Atomic(int64_t)*)p, add, mi_memory_order(relaxed));
+}
+static inline void mi_atomic_void_addi64_relaxed(volatile int64_t* p, const volatile int64_t* padd) {
+  const int64_t add = mi_atomic_load_relaxed((_Atomic(int64_t)*)padd);
+  if (add != 0) {
+    mi_atomic(fetch_add_explicit)((_Atomic(int64_t)*)p, add, mi_memory_order(relaxed));
+  }
 }
 static inline void mi_atomic_maxi64_relaxed(volatile int64_t* p, int64_t x) {
   int64_t current = mi_atomic_load_relaxed((_Atomic(int64_t)*)p);
@@ -406,10 +417,9 @@ static inline void mi_atomic_yield(void) {
 
 
 // ----------------------------------------------------------------------
-// Locks 
-// These do not have to be recursive and should be light-weight 
-// in-process only locks. Only used for reserving arena's and to 
-// maintain the abandoned list.
+// Locks
+// These should be light-weight in-process only locks.
+// Only used for reserving arena's and to maintain the abandoned list.
 // ----------------------------------------------------------------------
 #if _MSC_VER
 #pragma warning(disable:26110)  // unlock with holding lock
@@ -535,4 +545,4 @@ static inline void mi_lock_done(mi_lock_t* lock) {
 #endif
 
 
-#endif // __MIMALLOC_ATOMIC_H
+#endif // MI_ATOMIC_H

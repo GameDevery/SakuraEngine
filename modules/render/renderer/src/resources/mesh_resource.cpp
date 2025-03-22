@@ -243,7 +243,7 @@ void SMeshFactory::Destroy(SMeshFactory* factory)
 
 skr_guid_t SMeshFactoryImpl::GetResourceType()
 {
-    const auto resource_type = ::skr::rttr::type_id_of<skr_mesh_resource_t>();
+    const auto resource_type = ::skr::type_id_of<skr_mesh_resource_t>();
     return resource_type;
 }
 

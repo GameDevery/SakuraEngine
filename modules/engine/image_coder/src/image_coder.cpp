@@ -6,6 +6,7 @@
 #include "SkrImageCoder/skr_image_coder.h"
 #include "image_coder_png.hpp"
 #include "image_coder_jpeg.hpp"
+#include "image_coder_bmp.hpp"
 
 namespace skr
 {
@@ -40,8 +41,9 @@ skr::SObjectPtr<IImageDecoder> IImageDecoder::Create(EImageCoderFormat format) S
         return SObjectPtr<skr::PNGImageDecoder>::Create();
     case IMAGE_CODER_FORMAT_JPEG:
         return SObjectPtr<skr::JPEGImageDecoder>::Create();
-    case IMAGE_CODER_FORMAT_GrayScaleJPEG:
     case IMAGE_CODER_FORMAT_BMP:
+        return SObjectPtr<skr::BMPImageDecoder>::Create();
+    case IMAGE_CODER_FORMAT_GrayScaleJPEG:
     case IMAGE_CODER_FORMAT_ICO:
     case IMAGE_CODER_FORMAT_EXR:
     case IMAGE_CODER_FORMAT_ICNS:

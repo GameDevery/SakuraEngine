@@ -83,13 +83,13 @@ template <typename T>
 inline Optional<T>::Optional(const T& value)
     : _has_value(true)
 {
-    memory::copy(_data_ptr(), &value);
+    ::skr::memory::copy(_data_ptr(), &value);
 }
 template <typename T>
 inline Optional<T>::Optional(T&& value)
     : _has_value(true)
 {
-    memory::move(_data_ptr(), &value);
+    ::skr::memory::move(_data_ptr(), &value);
 }
 template <typename T>
 inline Optional<T>::~Optional()
@@ -107,7 +107,7 @@ inline Optional<T>::Optional(const Optional& other)
 {
     if (other._has_value)
     {
-        memory::copy(_data_ptr(), other._data_ptr());
+        ::skr::memory::copy(_data_ptr(), other._data_ptr());
     }
 }
 template <typename T>
@@ -116,7 +116,7 @@ inline Optional<T>::Optional(Optional&& other)
 {
     if (other._has_value)
     {
-        memory::move(_data_ptr(), other._data_ptr());
+        ::skr::memory::move(_data_ptr(), other._data_ptr());
     }
     other.reset();
 }
@@ -127,7 +127,7 @@ inline Optional<T>::Optional(const Optional<U>& other)
 {
     if (other.has_value())
     {
-        memory::copy(_data_ptr(), &other.value());
+        ::skr::memory::copy(_data_ptr(), &other.value());
     }
 }
 template <typename T>
@@ -137,7 +137,7 @@ inline Optional<T>::Optional(Optional<U>&& other)
 {
     if (other.has_value())
     {
-        memory::move(_data_ptr(), &other.value());
+        ::skr::memory::move(_data_ptr(), &other.value());
     }
     other.reset();
 }
@@ -149,7 +149,7 @@ inline Optional<T>& Optional<T>::operator=(const Optional& other)
     reset();
     if (other._has_value)
     {
-        memory::copy(_data_ptr(), other._data_ptr());
+        ::skr::memory::copy(_data_ptr(), other._data_ptr());
         _has_value = true;
     }
     return *this;
@@ -160,7 +160,7 @@ inline Optional<T>& Optional<T>::operator=(Optional&& other)
     reset();
     if (other._has_value)
     {
-        memory::move(_data_ptr(), other._data_ptr());
+        ::skr::memory::move(_data_ptr(), other._data_ptr());
         _has_value = true;
     }
     other.reset();
@@ -171,7 +171,7 @@ template <typename U>
 inline Optional<T>& Optional<T>::operator=(const U& value)
 {
     reset();
-    memory::copy(_data_ptr(), &value);
+    ::skr::memory::copy(_data_ptr(), &value);
     _has_value = true;
     return *this;
 }
@@ -180,7 +180,7 @@ template <typename U>
 inline Optional<T>& Optional<T>::operator=(U&& value)
 {
     reset();
-    memory::move(_data_ptr(), &value);
+    ::skr::memory::move(_data_ptr(), &value);
     _has_value = true;
     return *this;
 }
@@ -191,7 +191,7 @@ inline Optional<T>& Optional<T>::operator=(const Optional<U>& other)
     reset();
     if (other.has_value())
     {
-        memory::copy(_data_ptr(), &other.value());
+        ::skr::memory::copy(_data_ptr(), &other.value());
         _has_value = true;
     }
     return *this;
@@ -203,7 +203,7 @@ inline Optional<T>& Optional<T>::operator=(Optional<U>&& other)
     reset();
     if (other.has_value())
     {
-        memory::move(_data_ptr(), &other.value());
+        ::skr::memory::move(_data_ptr(), &other.value());
         _has_value = true;
     }
     other.reset();
@@ -281,7 +281,7 @@ inline void Optional<T>::reset()
 {
     if (_has_value)
     {
-        memory::destruct(_data_ptr());
+        ::skr::memory::destruct(_data_ptr());
         _has_value = false;
     }
 }

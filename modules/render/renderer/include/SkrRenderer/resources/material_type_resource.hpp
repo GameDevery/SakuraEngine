@@ -13,8 +13,10 @@ namespace renderer
 {
 using MaterialPropertyName = skr::String;
 
-sreflect_enum_class("guid" : "4003703a-dde4-4f11-93a6-6c460bac6357")
-sattr("serde": ["json", "bin"])
+sreflect_enum_class(
+    guid = "4003703a-dde4-4f11-93a6-6c460bac6357";
+    serde = @bin|@json;
+)
 EMaterialPropertyType : uint32_t
 {
     BOOL,
@@ -30,8 +32,10 @@ EMaterialPropertyType : uint32_t
     COUNT
 };
 
-sreflect_enum("guid" : "575331c4-785f-4a4d-b320-4490bb7a6180")
-sattr("serde" : ["json", "bin"])
+sreflect_enum(
+    guid = "575331c4-785f-4a4d-b320-4490bb7a6180";
+    serde = @bin|@json;
+)
 EMaterialBlendMode : uint32_t
 {
     Opaque,
@@ -40,8 +44,10 @@ EMaterialBlendMode : uint32_t
     Count
 };
 
-sreflect_struct("guid": "6cdbf15e-67c1-45c1-a4e9-417c81299dae")
-sattr("serde": ["json", "bin"])
+sreflect_struct(
+    guid = "6cdbf15e-67c1-45c1-a4e9-417c81299dae";
+    serde = @bin|@json;
+)
 MaterialProperty {
     using resource_handle = skr_resource_handle_t;
 
@@ -63,8 +69,10 @@ MaterialProperty {
 
 // material value setter mainly used for devlopment-time material editing
 // at runtime we use skr_material_value_$(type)_t
-sreflect_struct("guid": "46de11b4-6beb-4ab9-b9f8-f5c07ceeb8a5")
-sattr("serde": ["json", "bin"])
+sreflect_struct(
+    guid = "46de11b4-6beb-4ab9-b9f8-f5c07ceeb8a5";
+    serde = @bin|@json;
+)
 MaterialValue {
     using resource_handle = skr_resource_handle_t;
 
@@ -76,8 +84,10 @@ MaterialValue {
     resource_handle resource;
 };
 
-sreflect_struct("guid" : "ed2e3476-90a3-4f2f-ac97-808f63d1eb11")
-sattr("serde" : ["json", "bin"])
+sreflect_struct(
+    guid = "ed2e3476-90a3-4f2f-ac97-808f63d1eb11";
+    serde = @bin|@json;
+)
 MaterialPass {
     skr::String                                 pass;
     skr::Vector<skr_shader_collection_handle_t> shader_resources;
@@ -85,8 +95,10 @@ MaterialPass {
     bool                                        two_sided = false;
 };
 
-sreflect_struct("guid" : "83264b35-3fde-4fff-8ee1-89abce2e445b")
-sattr("serde" : ["json", "bin"])
+sreflect_struct(
+    guid = "83264b35-3fde-4fff-8ee1-89abce2e445b";
+    serde = @bin|@json;
+)
 MaterialTypeResource {
     uint32_t version;
 

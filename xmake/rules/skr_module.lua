@@ -106,7 +106,11 @@ analyzer_target("Module.MetaSourceFile")
         import("skr.utils")
 
         local gendir = path.join(utils.skr_codegen_dir(target:name()), "codegen")
-        local filename = path.join(gendir, "module", "module.configure.cpp")
+        local filename = path.join(gendir, target:name()..".configure.cpp")
+        if not os.isdir(gendir) then
+            os.mkdir(gendir)
+        end
+
         local dep_names = target:values("sakura.module.public_dependencies")
         utils.on_changed(function (change_info)
             -- gather deps

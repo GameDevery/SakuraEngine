@@ -17,6 +17,7 @@ extern "C" {
 #define SUGOI_COMPONENT_DIRTY 0x5
 
 #define SUGOI_IS_TAG(c) ((c & 1 << 31) != 0)
+#define SUGOI_IS_CHUNK(c) ((c & 1 << 30) != 0)
 #define SUGOI_IS_BUFFER(C) ((C & 1 << 29) != 0)
 
 /**
@@ -221,6 +222,15 @@ typedef void (*sugoi_type_callback_t)(void* u, sugoi_type_index_t t);
 typedef void (*sugoi_destroy_callback_t)(void* u, sugoi_chunk_view_t* view, sugoi_view_callback_t callback, void* u2);
 typedef bool (*sugoi_custom_filter_callback_t)(void* u, sugoi_chunk_view_t* view);
 
+/**
+ * @brief calculate buffer component size
+ *
+ * @param elementSize
+ * @param count
+ * @return calculated size
+ * @see sugoi_type_description_t
+ */
+SKR_RUNTIME_API uint16_t sugoiT_get_buffer_size(uint16_t elementSize, uint16_t elementAlign, uint16_t count);
 /**
  * @brief register a new component
  *
@@ -1192,6 +1202,11 @@ auto schedual_custom(sugoi_query_t* query, F callback, skr::task::event_t* count
     return schedual_custom<sugoi::QWildcard, F>(sugoi::QWildcard{ query }, std::move(callback), counter);
 }
 
+inline static skr::span<const sugoi_entity_t> get_entities(sugoi_chunk_view_t* view)
+{
+    return skr::span<const sugoi_entity_t>(sugoiV_get_entities(view), view->count);
+}
+
 template <typename T, typename R = T>
 R* get_owned(sugoi_chunk_view_t* view)
 {
@@ -1204,6 +1219,12 @@ R* get_owned(sugoi_chunk_view_t* view)
     {
         return (R*)get_owned_rw<T>(view);
     }
+}
+
+template <typename T>
+skr::span<T> get_components(sugoi_chunk_view_t* view)
+{
+    return skr::span<T>(get_owned<T>(view), view->count);
 }
 
 template <typename T>

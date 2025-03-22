@@ -1,20 +1,21 @@
 #pragma once
 #include "SkrBase/config.h"
 #include "SkrContainers/map.hpp"
+#include "SkrRTTR/script_binder.hpp"
 #include "v8-isolate.h"
 #include "v8-platform.h"
 #include "v8_bind_data.hpp"
+#include "v8-primitive.h"
+#include "v8_bind_manager.hpp"
 
-namespace skr::rttr
-{
-struct Type;
-}
-
-namespace skr::v8
+namespace skr
 {
 struct V8Context;
 
 struct SKR_V8_API V8Isolate {
+    friend struct V8Context;
+    friend struct V8Value;
+
     // ctor & dtor
     V8Isolate();
     ~V8Isolate();
@@ -30,46 +31,41 @@ struct SKR_V8_API V8Isolate {
     void shutdown();
 
     // getter
-    ::v8::Isolate* isolate() const { return _isolate; }
+    inline ::v8::Isolate* v8_isolate() const { return _isolate; }
 
     // make context
     V8Context* make_context();
 
-    // register type
-    void make_record_template(::skr::rttr::Type* type);
-    void inject_templates_into_context(::v8::Local<::v8::Context> context);
+    // operator isolate
+    void gc(bool full = true);
 
     // bind object
-    V8BindRecordCore* translate_record(::skr::rttr::ScriptbleObject* obj);
-    void mark_record_deleted(::skr::rttr::ScriptbleObject* obj);
+    V8BindCoreObject* translate_object(::skr::ScriptbleObject* obj);
+    void              mark_object_deleted(::skr::ScriptbleObject* obj);
+
+    // bind value
+    V8BindCoreValue* create_value(const RTTRType* type, const void* data);
+    V8BindCoreValue* translate_value_field(const RTTRType* type, const void* data, V8BindCoreRecordBase* owner);
 
 private:
-    // bind helpers
-    static void _gc_callback(const ::v8::WeakCallbackInfo<V8BindRecordCore>& data);
-    static void _call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static void _call_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static void _get_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static void _set_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static void _call_static_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static void _get_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static void _set_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
+    // make template
+    void                            register_mapping_type(const RTTRType* type);
+    v8::Local<v8::ObjectTemplate>   _get_enum_template(const RTTRType* type);
+    v8::Local<v8::FunctionTemplate> _get_record_template(const RTTRType* type);
+
 private:
     // isolate data
     ::v8::Isolate*              _isolate;
     ::v8::Isolate::CreateParams _isolate_create_params;
 
-    // templates
-    Map<::skr::rttr::Type*, ::v8::Global<::v8::FunctionTemplate>> _record_templates;
-
-    // bind data
-    Map<::skr::rttr::ScriptbleObject*, V8BindRecordCore*> _alive_records;
-    Vector<V8BindRecordCore*> _deleted_records;
+    // bind manager
+    V8BindManager _bind_manager;
 };
-} // namespace skr::v8
+} // namespace skr
 
 // global init
-namespace skr::v8
+namespace skr
 {
 SKR_V8_API void init_v8();
 SKR_V8_API void shutdown_v8();
-} // namespace skr::v8
+} // namespace skr

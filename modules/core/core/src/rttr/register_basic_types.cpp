@@ -4,39 +4,33 @@
 #include "SkrRTTR/type.hpp"
 
 // primitive type helper
-namespace skr::rttr
+namespace skr
 {
 template <typename T>
-void primitive_type_loader(Type* type)
+void primitive_type_loader(RTTRType* type)
 {
-    // init type
-    type->init(ETypeCategory::Primitive);
-    auto& primitive_data = type->primitive_data();
-
-    // build
-    primitive_data.name      = RTTRTraits<T>::get_name();
-    primitive_data.type_id   = RTTRTraits<T>::get_guid();
-    primitive_data.size      = sizeof(T);
-    primitive_data.alignment = alignof(T);
+    type->build_primitive([&](RTTRPrimitiveData* data) {
+        data->name      = RTTRTraits<T>::get_name();
+        data->type_id   = RTTRTraits<T>::get_guid();
+        data->size      = sizeof(T);
+        data->alignment = alignof(T);
+    });
 }
 
-static void primitive_type_loader_void(Type* type)
+static void primitive_type_loader_void(RTTRType* type)
 {
-    // init type
-    type->init(ETypeCategory::Primitive);
-    auto& primitive_data = type->primitive_data();
-
-    // build
-    primitive_data.name      = RTTRTraits<void>::get_name();
-    primitive_data.type_id   = RTTRTraits<void>::get_guid();
-    primitive_data.size      = 0;
-    primitive_data.alignment = 0;
+    type->build_primitive([&](RTTRPrimitiveData* data) {
+        data->name      = RTTRTraits<void>::get_name();
+        data->type_id   = RTTRTraits<void>::get_guid();
+        data->size      = 0;
+        data->alignment = 0;
+    });
 }
-} // namespace skr::rttr
+} // namespace skr
 
 SKR_EXEC_STATIC_CTOR
 {
-    using namespace skr::rttr;
+    using namespace skr;
 
     // int types
     register_type_loader(type_id_of<int8_t>(), &primitive_type_loader<int8_t>);
@@ -55,17 +49,4 @@ SKR_EXEC_STATIC_CTOR
     // float
     register_type_loader(type_id_of<float>(), &primitive_type_loader<float>);
     register_type_loader(type_id_of<double>(), &primitive_type_loader<double>);
-
-    // IObject
-    // register_type_loader(type_id_of<IObject>(), +[](Type* type) {
-    //     // init type
-    //     type->init(ETypeCategory::Record);
-    //     auto& record_data = type->record_data();
-
-    //     // build
-    //     RecordBuilder<IObject> builder(&record_data);
-    //     builder.basic_info();
-
-    //     //
-    // });
 };

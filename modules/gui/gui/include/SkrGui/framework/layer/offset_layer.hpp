@@ -7,9 +7,7 @@
 
 namespace skr::gui
 {
-sreflect_struct(
-    "guid": "67c40c35-4cb7-48f1-b790-e29fe843c29a"
-)
+sreflect_struct(guid = "67c40c35-4cb7-48f1-b790-e29fe843c29a")
 SKR_GUI_API OffsetLayer : public ContainerLayer {
     SKR_GENERATE_BODY()
 

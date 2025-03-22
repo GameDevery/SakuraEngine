@@ -12,9 +12,7 @@ namespace skr::gui
 struct SkrRenderWindow;
 struct SkrNativeDevice;
 
-sreflect_struct(
-    "guid": "53ce54d5-329c-4455-91bc-fcc80444f19f"
-)
+sreflect_struct(guid = "53ce54d5-329c-4455-91bc-fcc80444f19f")
 SKR_GUI_RENDERER_API SkrNativeWindow final : public INativeWindow {
     SKR_GENERATE_BODY()
 

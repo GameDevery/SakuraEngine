@@ -1,9 +1,10 @@
 #pragma once
 #include <SkrContainersDef/vector.hpp>
 
-namespace skr::rttr
+namespace skr
 {
-using DynamicStackDataDtor = void(void* p_stack_data);
+using DynamicStackDataDtor      = void(void* p_stack_data);
+using DynamicStackCustomMapping = void*(void* obj);
 
 // param pass behavior, used to tell invoker how to get param value
 enum class EDynamicStackParamKind : uint8_t
@@ -50,14 +51,18 @@ struct DynamicStackParamHelper {
     {
         switch (kind)
         {
-            // store T
-            case EDynamicStackParamKind::Direct:
-            case EDynamicStackParamKind::XValue:
-                return *static_cast<T*>(data);
+        // store T
+        case EDynamicStackParamKind::Direct:
+        case EDynamicStackParamKind::XValue:
+            return *static_cast<T*>(data);
 
-            // store T*
-            case EDynamicStackParamKind::Reference:
-                return **static_cast<T**>(data);
+        // store T*
+        case EDynamicStackParamKind::Reference:
+            return **static_cast<T**>(data);
+
+        default:
+            SKR_UNREACHABLE_CODE()
+            return *static_cast<T*>(data); // unreachable
         }
     }
 };
@@ -70,14 +75,17 @@ struct DynamicStackParamHelper<T*> {
     {
         switch (kind)
         {
-            // store T
-            case EDynamicStackParamKind::XValue:
-                return static_cast<T*>(data);
+        // store T
+        case EDynamicStackParamKind::XValue:
+            return static_cast<T*>(data);
 
-                // store T*
-            case EDynamicStackParamKind::Direct:
-            case EDynamicStackParamKind::Reference:
-                return *static_cast<T**>(data);
+            // store T*
+        case EDynamicStackParamKind::Direct:
+        case EDynamicStackParamKind::Reference:
+            return *static_cast<T**>(data);
+        default:
+            SKR_UNREACHABLE_CODE()
+            return static_cast<T*>(data); // unreachable
         }
     }
 };
@@ -90,14 +98,17 @@ struct DynamicStackParamHelper<T&> {
     {
         switch (kind)
         {
-            // store T
-            case EDynamicStackParamKind::XValue:
-                return *static_cast<T*>(data);
+        // store T
+        case EDynamicStackParamKind::XValue:
+            return *static_cast<T*>(data);
 
-            // store T*
-            case EDynamicStackParamKind::Direct:
-            case EDynamicStackParamKind::Reference:
-                return **static_cast<T**>(data);
+        // store T*
+        case EDynamicStackParamKind::Direct:
+        case EDynamicStackParamKind::Reference:
+            return **static_cast<T**>(data);
+        default:
+            SKR_UNREACHABLE_CODE()
+            return *static_cast<T*>(data); // unreachable
         }
     }
 };
@@ -110,14 +121,17 @@ struct DynamicStackParamHelper<const T&> {
     {
         switch (kind)
         {
-            // store T
-            case EDynamicStackParamKind::XValue:
-                return *static_cast<T*>(data);
+        // store T
+        case EDynamicStackParamKind::XValue:
+            return *static_cast<T*>(data);
 
-            // store T*
-            case EDynamicStackParamKind::Direct:
-            case EDynamicStackParamKind::Reference:
-                return **static_cast<T**>(data);
+        // store T*
+        case EDynamicStackParamKind::Direct:
+        case EDynamicStackParamKind::Reference:
+            return **static_cast<T**>(data);
+        default:
+            SKR_UNREACHABLE_CODE()
+            return *static_cast<T*>(data); // unreachable
         }
     }
 };
@@ -130,14 +144,17 @@ struct DynamicStackParamHelper<T&&> {
     {
         switch (kind)
         {
-            // store T
-            case EDynamicStackParamKind::XValue:
-                return *static_cast<T*>(data);
+        // store T
+        case EDynamicStackParamKind::XValue:
+            return *static_cast<T*>(data);
 
-            // store T*
-            case EDynamicStackParamKind::Direct:
-            case EDynamicStackParamKind::Reference:
-                return **static_cast<T**>(data);
+        // store T*
+        case EDynamicStackParamKind::Direct:
+        case EDynamicStackParamKind::Reference:
+            return **static_cast<T**>(data);
+        default:
+            SKR_UNREACHABLE_CODE()
+            return *static_cast<T*>(data); // unreachable
         }
     }
 };
@@ -157,9 +174,10 @@ enum class EDynamicStackReturnKind : uint8_t
 
 // data
 struct DynamicStackParamData {
-    EDynamicStackParamKind kind   = EDynamicStackParamKind::Direct;
-    uint64_t               offset = 0;
-    DynamicStackDataDtor*  dtor   = nullptr;
+    EDynamicStackParamKind     kind           = EDynamicStackParamKind::Direct;
+    uint64_t                   offset         = 0;
+    DynamicStackDataDtor*      dtor           = nullptr;
+    DynamicStackCustomMapping* custom_mapping = nullptr;
 };
 struct DynamicStackReturnData {
     EDynamicStackReturnKind kind = EDynamicStackReturnKind::Discard;
@@ -168,6 +186,7 @@ struct DynamicStackReturnData {
     void* ref = nullptr;
 
     // store case
+    bool                  stored = false;
     uint64_t              offset = 0;
     DynamicStackDataDtor* dtor   = nullptr;
 };
@@ -194,19 +213,19 @@ struct DynamicStack {
     void release();
 
     // set param
-    void* alloc_param_raw(uint64_t size, uint64_t align, EDynamicStackParamKind kind, DynamicStackDataDtor* dtor);
+    void* alloc_param_raw(uint64_t size, uint64_t align, EDynamicStackParamKind kind, DynamicStackDataDtor* dtor, DynamicStackCustomMapping* custom_mapping = nullptr);
     template <typename T>
-    T* alloc_param(EDynamicStackParamKind kind = EDynamicStackParamKind::Direct, DynamicStackDataDtor* dtor = nullptr);
+    T* alloc_param(EDynamicStackParamKind kind = EDynamicStackParamKind::Direct, DynamicStackDataDtor* dtor = nullptr, DynamicStackCustomMapping custom_mapping = nullptr);
     template <typename T>
-    void add_param(T&& value, EDynamicStackParamKind kind = EDynamicStackParamKind::Direct, DynamicStackDataDtor* dtor = nullptr);
+    void add_param(T&& value, EDynamicStackParamKind kind = EDynamicStackParamKind::Direct, DynamicStackDataDtor* dtor = nullptr, DynamicStackCustomMapping custom_mapping = nullptr);
     template <typename T>
-    void add_param(const T& value, EDynamicStackParamKind kind = EDynamicStackParamKind::Direct, DynamicStackDataDtor* dtor = nullptr);
+    void add_param(const T& value, EDynamicStackParamKind kind = EDynamicStackParamKind::Direct, DynamicStackDataDtor* dtor = nullptr, DynamicStackCustomMapping custom_mapping = nullptr);
 
     // get param
     EDynamicStackParamKind get_param_kind(uint64_t index);
-    void*                  get_param_raw(uint64_t index);
+    void*                  get_param_raw(uint64_t index, bool apply_custom_mapping = true);
     template <typename T>
-    decltype(auto) get_param(uint64_t index);
+    decltype(auto) get_param(uint64_t index, bool apply_custom_mapping = true);
 
     // set return behaviour
     void return_behaviour_discard();
@@ -219,6 +238,7 @@ struct DynamicStack {
     void store_return(T&& value);
 
     // get return
+    bool  is_return_stored();
     void* get_return_raw();
     template <typename T>
     T& get_return();
@@ -249,9 +269,9 @@ private:
 using MethodInvokerDynamicStack = void (*)(void* p, DynamicStack& stack);
 using FuncInvokerDynamicStack   = void (*)(DynamicStack& stack);
 
-} // namespace skr::rttr
+} // namespace skr
 
-namespace skr::rttr
+namespace skr
 {
 // helper
 inline uint64_t DynamicStack::_grow(uint64_t size, uint64_t align)
@@ -346,35 +366,36 @@ inline void DynamicStack::release()
 }
 
 // set param
-inline void* DynamicStack::alloc_param_raw(uint64_t size, uint64_t align, EDynamicStackParamKind kind, DynamicStackDataDtor* dtor)
+inline void* DynamicStack::alloc_param_raw(uint64_t size, uint64_t align, EDynamicStackParamKind kind, DynamicStackDataDtor* dtor, DynamicStackCustomMapping custom_mapping)
 {
     // alloc memory
     auto offset = _grow(size, align);
 
     // add param info
-    auto& info  = _param_info.add_default().ref();
-    info.offset = offset;
-    info.kind   = kind;
-    info.dtor   = dtor;
+    auto& info          = _param_info.add_default().ref();
+    info.offset         = offset;
+    info.kind           = kind;
+    info.dtor           = dtor;
+    info.custom_mapping = custom_mapping;
 
     return _get_memory(offset);
 }
 template <typename T>
-inline T* DynamicStack::alloc_param(EDynamicStackParamKind kind, DynamicStackDataDtor* dtor)
+inline T* DynamicStack::alloc_param(EDynamicStackParamKind kind, DynamicStackDataDtor* dtor, DynamicStackCustomMapping custom_mapping)
 {
     dtor = dtor ? dtor : [](void* p) { static_cast<T*>(p)->~T(); };
-    return static_cast<T*>(alloc_param_raw(sizeof(T), alignof(T), kind, dtor));
+    return static_cast<T*>(alloc_param_raw(sizeof(T), alignof(T), kind, dtor, custom_mapping));
 }
 template <typename T>
-inline void DynamicStack::add_param(T&& value, EDynamicStackParamKind kind, DynamicStackDataDtor* dtor)
+inline void DynamicStack::add_param(T&& value, EDynamicStackParamKind kind, DynamicStackDataDtor* dtor, DynamicStackCustomMapping custom_mapping)
 {
-    T* p = alloc_param<T>(kind, dtor);
+    T* p = alloc_param<T>(kind, dtor, custom_mapping);
     new (p) T(std::move(value));
 }
 template <typename T>
-inline void DynamicStack::add_param(const T& value, EDynamicStackParamKind kind, DynamicStackDataDtor* dtor)
+inline void DynamicStack::add_param(const T& value, EDynamicStackParamKind kind, DynamicStackDataDtor* dtor, DynamicStackCustomMapping custom_mapping)
 {
-    T* p = alloc_param<T>(kind, dtor);
+    T* p = alloc_param<T>(kind, dtor, custom_mapping);
     new (p) T(value);
 }
 
@@ -384,13 +405,18 @@ inline EDynamicStackParamKind DynamicStack::get_param_kind(uint64_t index)
     SKR_ASSERT(index < _param_info.size());
     return _param_info.at(index).kind;
 }
-inline void* DynamicStack::get_param_raw(uint64_t index)
+inline void* DynamicStack::get_param_raw(uint64_t index, bool apply_custom_mapping)
 {
     SKR_ASSERT(index < _param_info.size());
-    return _get_memory(_param_info.at(index).offset);
+    void* data = _get_memory(_param_info.at(index).offset);
+    if (apply_custom_mapping && _param_info.at(index).custom_mapping)
+    {
+        data = _param_info.at(index).custom_mapping(data);
+    }
+    return data;
 }
 template <typename T>
-inline decltype(auto) DynamicStack::get_param(uint64_t index)
+inline decltype(auto) DynamicStack::get_param(uint64_t index, bool apply_custom_mapping)
 {
     // get data
     SKR_ASSERT(index < _param_info.size());
@@ -399,6 +425,10 @@ inline decltype(auto) DynamicStack::get_param(uint64_t index)
     // fill getter
     DynamicStackParamHelper<T> getter;
     getter.data = _get_memory(data.offset);
+    if (apply_custom_mapping && data.custom_mapping)
+    {
+        getter.data = data.custom_mapping(getter.data);
+    }
     getter.kind = data.kind;
 
     return getter.get();
@@ -431,10 +461,11 @@ inline void DynamicStack::store_return(T&& value)
     void* pointer = nullptr;
     if (_ret_info.kind == EDynamicStackReturnKind::Store)
     {
-        auto offset = _grow(sizeof(T), alignof(T));
-        pointer     = _get_memory(offset);
+        auto offset      = _grow(sizeof(T), alignof(T));
+        pointer          = _get_memory(offset);
+        _ret_info.stored = true;
         _ret_info.offset = offset;
-        _ret_info.dtor = [](void* p) { static_cast<T*>(p)->~T(); };
+        _ret_info.dtor   = [](void* p) { static_cast<T*>(p)->~T(); };
     }
     else if (_ret_info.kind == EDynamicStackReturnKind::StoreToRef)
     {
@@ -446,15 +477,24 @@ inline void DynamicStack::store_return(T&& value)
 }
 
 // get return
+inline bool DynamicStack::is_return_stored()
+{
+    return _ret_info.stored;
+}
 inline void* DynamicStack::get_return_raw()
 {
     SKR_ASSERT(_ret_info.kind == EDynamicStackReturnKind::Store);
-    return _get_memory(_ret_info.offset);
+
+    return _ret_info.stored ?
+               _get_memory(_ret_info.offset) :
+               nullptr;
 }
 template <typename T>
 inline T& DynamicStack::get_return()
 {
     SKR_ASSERT(_ret_info.kind == EDynamicStackReturnKind::Store);
+    SKR_ASSERT(_ret_info.stored);
+
     return *reinterpret_cast<T*>(_get_memory(_ret_info.offset));
 }
-} // namespace skr::rttr
+} // namespace skr

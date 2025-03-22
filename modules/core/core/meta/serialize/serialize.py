@@ -22,6 +22,7 @@ class RecordSerdeData:
 class FieldSerdeData:
     enable_json: bool
     enable_bin: bool
+    alias: str = ""
 
 
 @dataclass
@@ -53,6 +54,7 @@ class SerdeGenerator(gen.GeneratorBase):
                 "serde": sc.Functional({
                     "json": sc.Bool(),  # default: follow record "field_default" config
                     "bin": sc.Bool(),  # default: follow record "field_default" config
+                    "alias": sc.Str(), # default: None
                 }, shorthands=[sc.OptionShorthand({
                     "json": {"json": True},
                     "bin": {"bin": True},
@@ -110,10 +112,12 @@ class SerdeGenerator(gen.GeneratorBase):
                 field_serde = field.attrs["serde"]
                 field_serde_json = field_serde["json"]
                 field_serde_bin = field_serde["bin"]
+                field_serde_alias = field_serde["alias"]
 
                 field_serde_data = FieldSerdeData(
                     enable_json=field_serde_json.visited_or(record_field_default_json),
                     enable_bin=field_serde_bin.visited_or(record_field_default_bin),
+                    alias=field_serde_alias.visited_or(None),
                 )
 
                 # add to record serde data

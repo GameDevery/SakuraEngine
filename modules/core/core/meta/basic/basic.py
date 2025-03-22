@@ -4,33 +4,6 @@ import framework.scheme as sc
 
 
 class BasicCPPGenerator(gen.GeneratorBase):
-    def load_scheme(self):
-        # dummy scheme to prevent warning
-        # trait
-        self.owner.add_record_scheme(
-            sc.Namespace({
-                "trait": sc.Bool(),  # 是否作为 trait 使用
-            })
-        )
-        self.owner.add_method_scheme(
-            sc.Namespace({
-                "getter": sc.Str(),  # 作为某个 field 的 getter，将会自动绑定到该 field 上
-                "setter": sc.Str(),  # 作为某个 field 的 setter，将会自动绑定到该 field 上
-            })
-        )
-
-        # 静态调用标记
-        self.owner.add_method_scheme(
-            sc.Namespace({
-                "static_invoke": sc.Bool(),
-            })
-        )
-        self.owner.add_function_scheme(
-            sc.Namespace({
-                "static_invoke": sc.Bool(),
-            })
-        )
-
     def pre_generate(self):
         script_dir = os.path.dirname(os.path.realpath(__file__).replace("\\", "/"))
         header_top_template = self.owner.load_template(os.path.join(script_dir, "header_top.mako"))

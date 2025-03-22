@@ -14,8 +14,6 @@ public:
 
     EImageCoderFormat get_image_format() const SKR_NOEXCEPT final;
 
-    bool load_jpeg_header() SKR_NOEXCEPT;
-
     bool encode() SKR_NOEXCEPT final;
 
     uint32_t channels = 0;

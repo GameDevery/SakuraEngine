@@ -8,7 +8,7 @@ namespace skd
 {
 namespace asset
 {
-sreflect_struct("guid": "ff344604-b522-411c-b9a5-1ec4b5970c02")
+sreflect_struct(guid = "ff344604-b522-411c-b9a5-1ec4b5970c02")
 TOOL_CORE_API SCooker {
     static constexpr uint32_t kDevelopmentVersion = UINT32_MAX;
     virtual ~SCooker() {}

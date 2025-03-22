@@ -8,17 +8,17 @@
 
 #include <mutex>
 
-namespace skr::rttr
+namespace skr
 {
 // static data
-static Map<GUID, TypeLoaderFunc>& type_load_funcs()
+static Map<GUID, RTTRTypeLoaderFunc>& type_load_funcs()
 {
-    static Map<GUID, TypeLoaderFunc> s_type_load_funcs;
+    static Map<GUID, RTTRTypeLoaderFunc> s_type_load_funcs;
     return s_type_load_funcs;
 }
-static Map<GUID, Type*>& loaded_types()
+static Map<GUID, RTTRType*>& loaded_types()
 {
-    static Map<GUID, Type*> s_types;
+    static Map<GUID, RTTRType*> s_types;
     return s_types;
 }
 static auto& load_type_mutex()
@@ -34,7 +34,7 @@ SKR_EXEC_STATIC_DTOR
 };
 
 // type register (loader)
-void register_type_loader(const GUID& guid, TypeLoaderFunc load_func)
+void register_type_loader(const GUID& guid, RTTRTypeLoaderFunc load_func)
 {
     auto ref = type_load_funcs().find(guid);
     if (ref)
@@ -47,13 +47,13 @@ void register_type_loader(const GUID& guid, TypeLoaderFunc load_func)
         type_load_funcs().add(guid, load_func, ref);
     }
 }
-void unregister_type_loader(const GUID& guid, TypeLoaderFunc load_func)
+void unregister_type_loader(const GUID& guid, RTTRTypeLoaderFunc load_func)
 {
     type_load_funcs().remove(guid);
 }
 
 // get type (after register)
-Type* get_type_from_guid(const GUID& guid)
+RTTRType* get_type_from_guid(const GUID& guid)
 {
     std::lock_guard _lock(load_type_mutex());
 
@@ -68,14 +68,13 @@ Type* get_type_from_guid(const GUID& guid)
         if (loader_result)
         {
             // create type
-            auto type = SkrNew<Type>();
+            auto type = SkrNew<RTTRType>();
             loaded_types().add(guid, type);
 
             // load type
             loader_result.value()(type);
 
-            // optimize data
-            type->build_optimize_data();
+            // TODO. build optimize data?
             return type;
         }
     }
@@ -98,4 +97,4 @@ void unload_all_types()
     loaded_types().clear();
 }
 
-} // namespace skr::rttr
+} // namespace skr

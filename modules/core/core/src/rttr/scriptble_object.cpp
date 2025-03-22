@@ -1,5 +1,10 @@
-#include "SkrRTTR/scriptble_object.hpp"
+#include <SkrRTTR/scriptble_object.hpp>
 
-namespace skr::rttr
+namespace skr
 {
-} // namespace skr::rttr
+ScriptbleObject::~ScriptbleObject()
+{
+    notify_mixin_core_destroyed();
+    _mixin_core = nullptr;
+}
+} // namespace skr
