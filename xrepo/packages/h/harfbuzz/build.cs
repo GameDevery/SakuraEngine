@@ -13,7 +13,6 @@ public static class Harfbuzz
             {
                 Target
                     .TargetType(TargetType.Static)
-                    .RuntimeLibrary("MD")
                     .CppVersion("20")
                     .Require("freetype", new PackageConfig { Version = new Version(2, 13, 0) })
                     .Require("icu", new PackageConfig { Version = new Version(72, 1, 0) })

@@ -1,6 +1,4 @@
 using SB.Core;
-using System.Collections.Concurrent;
-using System.Diagnostics;
 using Serilog;
 
 namespace SB
@@ -68,7 +66,7 @@ namespace SB
             if (MetaAttribute.AllGeneratedMetaFiles is not null)
                 DependFiles.AddRange(MetaAttribute.AllGeneratedMetaFiles);
             // Execute
-            Depend.OnChanged(Target.Name, "", this.Name, (Depend depend) => {
+            bool Changed = Depend.OnChanged(Target.Name, "", this.Name, (Depend depend) => {
                 var ParamFile = Path.Combine(CodegenDirectory, $"{Target.Name}_codegen_config.json");
                 File.WriteAllText(ParamFile, Json.Serialize(Config));
 
@@ -87,22 +85,11 @@ namespace SB
             }, DependFiles, null);
             // Add generated files to target
             Target.AddFiles(Directory.GetFiles(CodegenDirectory, "*.cpp", SearchOption.AllDirectories));
-            return null;
+            return new PlainArtifact { IsRestored = !Changed };
         }
 
-        private static CodegenRenderAttribute? GetGenAttr(string TargetName)
-        {
-            var Target = BuildSystem.GetTarget(TargetName);
-            var Attr = Target?.GetAttribute<CodegenRenderAttribute>();
-            return Attr;
-        }
-
-        private static ModuleAttribute? GetModAttr(string TargetName)
-        {
-            var Target = BuildSystem.GetTarget(TargetName);
-            var Attr = Target?.GetAttribute<ModuleAttribute>();
-            return Attr;
-        }
+        private static CodegenRenderAttribute? GetGenAttr(string TargetName) => BS.GetTarget(TargetName)?.GetAttribute<CodegenRenderAttribute>();
+        private static ModuleAttribute? GetModAttr(string TargetName) => BS.GetTarget(TargetName)?.GetAttribute<ModuleAttribute>();
 
         // TODO: INSTALL DIRECTORY
         private static string GenerateScript = Path.Combine(Engine.EngineDirectory, "tools/meta_codegen_ts/codegen.ts");

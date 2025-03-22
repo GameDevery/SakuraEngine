@@ -12,17 +12,9 @@ namespace SB
 
     public class CppCompileEmitter : TaskEmitter
     {
-        public CppCompileEmitter(IToolchain Toolchain)
-        {
-            this.Toolchain = Toolchain;
-        }
+        public CppCompileEmitter(IToolchain Toolchain) => this.Toolchain = Toolchain;
+
         public override bool EnableEmitter(Target Target) => Target.AllFiles.Any(F => F.Is_C_Cpp() || F.Is_OC_OCpp());
-        public override bool EmitTargetTask(Target Target) => true;
-        public override IArtifact? PerTargetTask(Target Target)
-        {
-            Target.SetAttribute(new CppCompileAttribute());
-            return null;
-        }
         public override bool EmitFileTask(Target Target) => true;
         public override bool FileFilter(Target Target, string File) => Target.GetTargetType() != TargetType.HeaderOnly && File.Is_C_Cpp() || File.Is_OC_OCpp();
         public override IArtifact? PerFileTask(Target Target, string SourceFile)

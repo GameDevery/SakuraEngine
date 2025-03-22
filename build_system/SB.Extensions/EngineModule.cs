@@ -92,7 +92,6 @@ namespace SB
             @this.Exception(false);
             if (BuildSystem.TargetOS == OSPlatform.Windows)
             {
-                @this.RuntimeLibrary("MD");
                 @this.Defines(Visibility.Private, "NOMINMAX");
             }
             return @this;

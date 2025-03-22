@@ -15,7 +15,6 @@ public static class Lmdb
 
                 Target
                     .CVersion("17")
-                    .RuntimeLibrary("MD")
                     .Exception(false)
                     .TargetType(TargetType.Static)
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/lmdb/include"))

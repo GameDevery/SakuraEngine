@@ -11,6 +11,7 @@ namespace SB
             this.Name = Name;
             this.Location = Location!;
             this.Directory = Path.GetDirectoryName(Location)!;
+            BuildSystem.TargetDefaultSettings(this);
         }
 
         public Target AddFiles(params string[] files)

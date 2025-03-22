@@ -15,7 +15,6 @@ public static class CGltf
 
                 Target
                     .TargetType(TargetType.Static)
-                    .RuntimeLibrary("MD")
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/cgltf/include"))
                     .FpModel(FpModel.Fast)
                     .AddFiles("port/cgltf/src/cgltf.c");

@@ -12,7 +12,6 @@ public static class DaScriptCore
             {
                 Target
                     .TargetType(TargetType.Static)
-                    .RuntimeLibrary("MD")
                     .AddFiles(
                         "daScript/3rdparty/uriparser/src/UriCommon.c",
                         "daScript/3rdparty/uriparser/src/UriCompare.c",
@@ -44,7 +43,6 @@ public static class DaScriptCore
 
                 Target
                     .TargetType(TargetType.Static)
-                    .RuntimeLibrary("MD")
                     .Exception(true)
                     .CppVersion("17")
                     .Require("DaScriptCore", Config)

@@ -9,5 +9,6 @@ namespace SB
     [AttributeUsage(AttributeTargets.Class)]
     public class TargetScript : Attribute
     {
+        
     }
 }

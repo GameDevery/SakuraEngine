@@ -10,7 +10,11 @@ namespace SB.Core
 {
     public class DependContext : DbContext
     {
-        internal DbSet<DependEntity> Depends { get; set; }
+        static DependContext()
+        {
+            WarmUpContext = Factory.CreateDbContext();
+            WarmUpContext!.Database.EnsureCreated();
+        }
 
         public DependContext(DbContextOptions<DependContext> options)
             : base(options)
@@ -21,11 +25,7 @@ namespace SB.Core
         // The following configures EF to create a Sqlite database file in the special "local" folder for your platform.
         public static async Task Initialize()
         {
-            using (var WrapUpCtx = await Factory.CreateDbContextAsync())
-            {
-                await WrapUpCtx.Database.EnsureCreatedAsync();
-                await WrapUpCtx.FindAsync<DependEntity>("");
-            }
+            await WarmUpContext!.FindAsync<DependEntity>("");
         }
 
         public static PooledDbContextFactory<DependContext> Factory = new (
@@ -34,6 +34,8 @@ namespace SB.Core
                 .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
                 .Options
         );
+        private static DbContext? WarmUpContext;
+        internal DbSet<DependEntity> Depends { get; set; }
     }
 
     public struct Depend

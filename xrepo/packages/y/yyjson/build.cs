@@ -15,7 +15,6 @@ public static class YYJson
 
                 Target
                     .TargetType(TargetType.Static)
-                    .RuntimeLibrary("MD")
                     .IncludeDirs(Visibility.Private, Path.Combine(SourceLocation.Directory(), "port/yyjson"))
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port"))
                     .FpModel(FpModel.Fast)

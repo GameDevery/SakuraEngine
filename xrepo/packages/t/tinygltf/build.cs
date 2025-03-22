@@ -15,7 +15,6 @@ public static class TinyGltf
 
                 Target
                     .CppVersion("20")
-                    .RuntimeLibrary("MD")
                     .Exception(false)
                     .TargetType(TargetType.Static)
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/src"))

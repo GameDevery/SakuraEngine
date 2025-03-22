@@ -15,9 +15,7 @@ namespace SB
         public override bool EmitTargetTask(Target Target) => true;
         public override IArtifact? PerTargetTask(Target Target)
         {
-            var CppLinkAttr = new CppLinkAttribute();
-            Target.SetAttribute(CppLinkAttr);
-
+            var CppLinkAttr = Target.GetAttribute<CppLinkAttribute>()!;
             var TT = Target.GetTargetType();
             if (TT != TargetType.HeaderOnly && TT != TargetType.Objects)
             {

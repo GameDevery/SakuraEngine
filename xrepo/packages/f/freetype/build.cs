@@ -14,7 +14,6 @@ public static class Freetype
             {
                 Target
                     .TargetType(TargetType.Static)
-                    .RuntimeLibrary("MD")
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/freetype/include"))
                     .Defines(Visibility.Private, "FT2_BUILD_LIBRARY")
                     .AddFiles(

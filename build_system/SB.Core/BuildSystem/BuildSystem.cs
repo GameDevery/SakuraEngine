@@ -225,6 +225,11 @@ namespace SB
         protected static Dictionary<string, Target> AllTargets { get; } = new();
         protected static Dictionary<string, Package> AllPackages { get; } = new();
         internal static Dictionary<string, Target> _AllTargets => AllTargets;
+        public delegate void TargetDelegate(Target Target);
+        public static TargetDelegate TargetDefaultSettings = new(Target => {
+            Target.SetAttribute(new CppCompileAttribute());
+            Target.SetAttribute(new CppLinkAttribute());
+        });
     }
 
     internal static class TargetTaskExtensions

@@ -74,18 +74,13 @@ namespace SB
 
             if (!Changed)
                 MetaAttribute.AllGeneratedMetaFiles = Directory.GetFiles(MetaAttribute.MetaDirectory, "*.meta", SearchOption.AllDirectories);
-            return new MetaArtifact { IsRestored = !Changed };
+            return new PlainArtifact { IsRestored = !Changed };
         }
 
         private IToolchain Toolchain { get; }
         public static volatile int Time = 0;
     }
 
-    public class MetaArtifact : IArtifact
-    {
-        public bool IsRestored { get; init; }
-    }
-    
     public class MetaDoctor : DoctorAttribute
     {
         public override bool Check()

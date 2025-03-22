@@ -71,6 +71,14 @@ namespace SB
 
         private static void LoadTargets()
         {
+            BuildSystem.TargetDefaultSettings += (Target) =>
+            {
+                if (BuildSystem.TargetOS == OSPlatform.Windows)
+                {
+                    Target.RuntimeLibrary("MD");
+                }
+            };
+
             var Types = typeof(Utilities).Assembly.GetTypes();
             var Scripts = Types.Where(Type => Type.GetCustomAttribute<TargetScript>() is not null);
             foreach (var Script in Scripts)

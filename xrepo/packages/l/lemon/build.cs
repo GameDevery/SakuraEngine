@@ -15,7 +15,6 @@ public static class Lemon
 
                 Target
                     .CppVersion("20")
-                    .RuntimeLibrary("MD")
                     .Exception(true)
                     .TargetType(TargetType.Static)
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/lemon"))

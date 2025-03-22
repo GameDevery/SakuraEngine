@@ -10,4 +10,9 @@ namespace SB.Core
     {
         public bool IsRestored { get; }
     }
+
+    public class PlainArtifact : IArtifact
+    {
+        public bool IsRestored { get; init; }
+    }
 }
