@@ -50,7 +50,11 @@ namespace SB
         {
             try
             {
-                Task.Run(() => RunBuildImpl(), TaskManager.RootCTS.Token).Wait(TaskManager.RootCTS.Token);
+                Profiler.EmitFrameMark();
+                using (Profiler.BeginZone("RunBuild", color: (uint)Profiler.ColorType.WebPurple))
+                {
+                    Task.Run(() => RunBuildImpl(), TaskManager.RootCTS.Token).Wait(TaskManager.RootCTS.Token);
+                }
             }
             catch (OperationCanceledException)
             {
@@ -137,26 +141,31 @@ namespace SB
                     var EmitterTask = TaskManager.Run(Fingerprint, () =>
                     {
                         List<Task<bool>> FileTasks = new (Target.AllFiles.Count);
-                        if (!Emitter.AwaitExternalTargetDependencies(Target).WaitAndGet())
-                            return false;
-                        if (!Emitter.AwaitPerTargetDependencies(Target).WaitAndGet())
-                            return false;
+                        using (Profiler.BeginZone($"Wait | {Target.Name} | {EmitterName}", color: (uint)Profiler.ColorType.Gray))
+                        {
+                            if (!Emitter.AwaitExternalTargetDependencies(Target).WaitAndGet())
+                                return false;
+                            if (!Emitter.AwaitPerTargetDependencies(Target).WaitAndGet())
+                                return false;
+                        }
 
                         if (Emitter.EmitTargetTask(Target))
                         {
                             var TaskIndex = Interlocked.Increment(ref AllTaskCounter);
                             var Percentage = 100.0f * TaskIndex / AllTaskCount;
-
-                            Stopwatch sw = new();
-                            sw.Start();
-                            var TargetTaskArtifact = Emitter.PerTargetTask(Target);
-                            sw.Stop();
-
-                            Log.Verbose("[{Percentage:00.0}%] {EmitterName} {TargetName}", Percentage, EmitterName, Target.Name);
-                            if (TargetTaskArtifact is not null && !TargetTaskArtifact.IsRestored)
+                            using (Profiler.BeginZone($"{EmitterName} | {Target.Name}", color: (uint)Profiler.ColorType.Green1))
                             {
-                                var CostTime = sw.ElapsedMilliseconds;
-                                Log.Information("[{Percentage:00.0}%]: {EmitterName} {TargetName}, cost {CostTime:00.00}s", Percentage, EmitterName, Target.Name, CostTime / 1000.0f);
+                                Stopwatch sw = new();
+                                sw.Start();
+                                var TargetTaskArtifact = Emitter.PerTargetTask(Target);
+                                sw.Stop();
+
+                                Log.Verbose("[{Percentage:00.0}%] {EmitterName} {TargetName}", Percentage, EmitterName, Target.Name);
+                                if (TargetTaskArtifact is not null && !TargetTaskArtifact.IsRestored)
+                                {
+                                    var CostTime = sw.ElapsedMilliseconds;
+                                    Log.Information("[{Percentage:00.0}%]: {EmitterName} {TargetName}, cost {CostTime:00.00}s", Percentage, EmitterName, Target.Name, CostTime / 1000.0f);
+                                }
                             }
                         }
 
@@ -165,11 +174,14 @@ namespace SB
 
                         foreach (var File in Target.AllFiles)
                         {
-                            if (!Emitter.FileFilter(Target, File))
-                                continue;
+                            using (Profiler.BeginZone($"Wait | {File} | {EmitterName}", color: (uint)Profiler.ColorType.Gray))
+                            {
+                                if (!Emitter.FileFilter(Target, File))
+                                    continue;
 
-                            if (!Emitter.AwaitPerFileDependencies(Target, File).WaitAndGet())
-                                return false;
+                                if (!Emitter.AwaitPerFileDependencies(Target, File).WaitAndGet())
+                                    return false;
+                            }
 
                             TaskFingerprint FileFingerprint = new TaskFingerprint
                             {
@@ -183,17 +195,19 @@ namespace SB
                                 var TaskIndex = Interlocked.Increment(ref AllTaskCounter);
                                 var Percentage = 100.0f * TaskIndex / AllTaskCount;
 
-                                Stopwatch sw = new();
-                                sw.Start();
-                                var FileTaskArtifact = Emitter.PerFileTask(Target, File);
-                                sw.Stop();
-
-                                Log.Verbose("[{Percentage:00.0}%][{FileTaskIndex}/{FileTaskCount}]: {EmitterName} {TargetName}: {FileName}", Percentage, FileTaskIndex, FileTaskCount, EmitterName, Target.Name, File);
-                                if (FileTaskArtifact is not null && !FileTaskArtifact.IsRestored)
+                                using (Profiler.BeginZone($"{EmitterName} | {Target.Name} | {File}", color: (uint)Profiler.ColorType.Yellow1))
                                 {
-                                    var CostTime = sw.ElapsedMilliseconds;
-                                    Log.Information("[{Percentage:00.0}%][{FileTaskIndex}/{FileTaskCount}]: {EmitterName} {TargetName}: {FileName}, cost {CostTime:00.00}s", 
-                                        Percentage, FileTaskIndex, FileTaskCount, EmitterName, Target.Name, File, CostTime / 1000.0f);
+                                    Stopwatch sw = new();
+                                    sw.Start();
+                                    var FileTaskArtifact = Emitter.PerFileTask(Target, File);
+                                    sw.Stop();
+                                    Log.Verbose("[{Percentage:00.0}%][{FileTaskIndex}/{FileTaskCount}]: {EmitterName} {TargetName}: {FileName}", Percentage, FileTaskIndex, FileTaskCount, EmitterName, Target.Name, File);
+                                    if (FileTaskArtifact is not null && !FileTaskArtifact.IsRestored)
+                                    {
+                                        var CostTime = sw.ElapsedMilliseconds;
+                                        Log.Information("[{Percentage:00.0}%][{FileTaskIndex}/{FileTaskCount}]: {EmitterName} {TargetName}: {FileName}, cost {CostTime:00.00}s", 
+                                            Percentage, FileTaskIndex, FileTaskCount, EmitterName, Target.Name, File, CostTime / 1000.0f);
+                                    }
                                 }
                                 return true;
                             });

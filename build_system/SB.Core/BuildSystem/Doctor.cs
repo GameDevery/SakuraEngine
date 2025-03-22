@@ -18,31 +18,37 @@ namespace SB
         public static Task RunDoctors()
         {
             return Task.Run(() => {
-                var Doctors = new ConcurrentBag<DoctorAttribute>();
-                foreach (var Assembly in AppDomain.CurrentDomain.GetAssemblies())
+                using (Profiler.BeginZone("RunDoctors", color: (uint)Profiler.ColorType.WebMaroon))
                 {
-                    if (!Assembly.GetReferencedAssemblies().Any(A => A.Name == "SB.Core"))
-                        continue;
+                    var Doctors = new ConcurrentBag<DoctorAttribute>();
+                    foreach (var Assembly in AppDomain.CurrentDomain.GetAssemblies())
+                    {
+                        if (!Assembly.GetReferencedAssemblies().Any(A => A.Name == "SB.Core"))
+                            continue;
 
-                    foreach (var Type in Assembly.GetTypes())
-                    {
-                        var DoctorAttrs = Type.GetCustomAttributes<DoctorAttribute>();
-                        foreach (var DoctorAttr in DoctorAttrs)
+                        foreach (var Type in Assembly.GetTypes())
                         {
-                            Doctors.Add(DoctorAttr);
+                            var DoctorAttrs = Type.GetCustomAttributes<DoctorAttribute>();
+                            foreach (var DoctorAttr in DoctorAttrs)
+                            {
+                                Doctors.Add(DoctorAttr);
+                            }
                         }
                     }
+                    Parallel.ForEach(Doctors, (Doctor) =>
+                    {
+                        using (Profiler.BeginZone($"{Doctor.GetType().Name}", color: (uint)Profiler.ColorType.WebMaroon))
+                        {
+                            if (!Doctor.Check())
+                            {
+                                if (!Doctor.Fix())
+                                {
+                                    throw new Exception("Doctor failed to fix the issue");
+                                }
+                            }
+                        }
+                    });
                 }
-                Parallel.ForEach(Doctors, (Doctor) =>
-                {
-                    if (!Doctor.Check())
-                    {
-                        if (!Doctor.Fix())
-                        {
-                            throw new Exception("Doctor failed to fix the issue");
-                        }
-                    }
-                });
             });
         }
     }
