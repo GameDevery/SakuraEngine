@@ -2,6 +2,7 @@
 #include "SkrBase/config.h"
 
 // basic meta
+// #define __meta__ 
 #ifdef __meta__
     #define sattr(...) [[clang::annotate(SKR_MAKE_STRING(__VA_ARGS__))]]
     #define sreflect_struct(...) struct [[clang::annotate("__reflect__")]] sattr(__VA_ARGS__)

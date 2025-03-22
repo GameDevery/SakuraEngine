@@ -81,6 +81,7 @@ export class EnumValue {
 
   // info
   value: number;
+  file_name: string;
   comment: string;
   line: number;
 
@@ -92,6 +93,8 @@ export class EnumValue {
   // deno-lint-ignore no-explicit-any
   constructor(parent: Enum, json_obj: any) {
     this.parent = parent;
+
+    this.file_name = parent.file_name;
 
     // parse name
     fill_name(this, json_obj.name);
@@ -184,6 +187,7 @@ export class Ctor {
 
   parameters: Parameter[] = [];
 
+  file_name: string;
   comment: string;
   line: string;
 
@@ -195,6 +199,7 @@ export class Ctor {
   // deno-lint-ignore no-explicit-any
   constructor(parent: Record, json_obj: any) {
     this.parent = parent;
+    this.file_name = parent.file_name;
 
     fill_name(this, json_obj.name);
 
@@ -230,6 +235,7 @@ export class Field {
   is_functor: boolean;
   is_static: boolean;
   is_anonymous: boolean;
+  file_name: string;
   comment: string;
   line: number;
 
@@ -241,6 +247,7 @@ export class Field {
   // deno-lint-ignore no-explicit-any
   constructor(parent: Record, json_obj: any) {
     this.parent = parent;
+    this.file_name = parent.file_name;
 
     this.short_name = json_obj.name;
 
@@ -274,6 +281,7 @@ export class Method {
   is_static: boolean;
   is_const: boolean;
   is_nothrow: boolean;
+  file_name: string;
   comment: string;
   parameters: Parameter[] = [];
   ret_type: string;
@@ -288,6 +296,8 @@ export class Method {
   // deno-lint-ignore no-explicit-any
   constructor(parent: Record, json_obj: any) {
     this.parent = parent;
+
+    this.file_name = parent.file_name;
 
     fill_name(this, json_obj.name);
 
@@ -368,6 +378,7 @@ export class Parameter {
   is_callback: boolean;
   is_anonymous: boolean;
   default_value: string;
+  file_name: string;
   comment: string;
   line: number;
 
@@ -379,6 +390,7 @@ export class Parameter {
   // deno-lint-ignore no-explicit-any
   constructor(parent: Method | Function | Ctor, json_obj: any) {
     this.parent = parent;
+    this.file_name = parent.file_name;
 
     this.name = json_obj.name;
     this.type = json_obj.type;

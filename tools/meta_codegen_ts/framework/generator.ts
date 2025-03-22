@@ -2,7 +2,7 @@ import * as db from "./database.ts";
 import * as fs from "node:fs";
 import * as ml from "./meta_lang.ts";
 import path from "node:path";
-import type { CodeBuilder } from "./utils.ts";
+import { LogColor, MetaLangError, type CodeBuilder } from "./utils.ts";
 
 // TODO. 重组生成步骤
 //   1. load database
@@ -76,22 +76,86 @@ export class GenerateManager {
   }
 
   // step 4. run meta-lang
-  run_meta() {
+  async run_meta() {
     const compiler = ml.Compiler.load();
+
+    const meta_errors: MetaLangError[] = []
 
     // compile meta
     this.project_db.main_module.each_cpp_types((cpp_type) => {
       for (const attr of cpp_type.raw_attrs) {
-        cpp_type.ml_programs.push(compiler.compile(attr));
+        try {
+          cpp_type.ml_programs.push(compiler.compile(attr));
+        } catch (e) {
+          if (e instanceof ml.CompileError) {
+            meta_errors.push(new MetaLangError(
+              `${cpp_type.file_name}:${cpp_type.line}`,
+              e.message,
+              attr,
+              e.start,
+              e.end,
+            ));
+          }
+          else {
+            throw e;
+          }
+        }
       }
     });
+
+    // log meta lang and exit
+    if (meta_errors.length > 0) {
+      for (const error of meta_errors) {
+        await error.write_log();
+      }
+      process.exit(1);
+    }
 
     // run meta
     this.project_db.main_module.each_cpp_types((cpp_type) => {
       for (const program of cpp_type.ml_programs) {
-        program.exec(cpp_type.ml_configs);
+        try {
+          program.exec(cpp_type.ml_configs);
+        } catch (e) {
+          const cpp_source_loc = `${cpp_type.file_name}:${cpp_type.line}`;
+          if (e instanceof ml.AccessFailedError) {
+            meta_errors.push(new MetaLangError(
+              cpp_source_loc,
+              `failed to access '${e.key}'`,
+              program.source,
+              e.location.start,
+              e.location.end
+            ))
+          } else if (e instanceof ml.TypeMismatchError) {
+            meta_errors.push(new MetaLangError(
+              cpp_source_loc,
+              `type mismatch, expect ${e.expected}, but got ${e.actual}`,
+              program.source,
+              e.location.start,
+              e.location.end
+            ))
+          } else if (e instanceof ml.PresetNotFoundError) {
+            meta_errors.push(new MetaLangError(
+              cpp_source_loc,
+              `preset not found, name: '${e.preset}'`,
+              program.source,
+              e.location.start,
+              e.location.end
+            ))
+          } else {
+            throw e;
+          }
+        }
       }
     });
+
+    // log meta lang and exit
+    if (meta_errors.length > 0) {
+      for (const error of meta_errors) {
+        await error.write_log();
+      }
+      process.exit(1);
+    }
   }
 
   // step 5. generate code

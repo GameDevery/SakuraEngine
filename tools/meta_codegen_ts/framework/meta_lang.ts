@@ -2,6 +2,7 @@
 import * as peggy from "peggy";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import type { MetaLangLocation } from "./utils";
 
 //======================== scheme ========================
 type ValueType = string | number | boolean;
@@ -153,6 +154,16 @@ export function access_listener() {
 }
 
 //======================== compiler ========================
+export class CompileError extends Error {
+  constructor(
+    public start: MetaLangLocation,
+    public end: MetaLangLocation,
+    public error: string,
+  )
+  {
+    super(error);
+  }
+}
 export class Compiler {
   #parser: peggy.Parser;
 
@@ -163,14 +174,26 @@ export class Compiler {
   compile(input: string): Program {
     try {
       const exprs = this.#parser.parse(input);
-      return new Program(exprs);
+      return new Program(exprs, input);
     } catch (e: any) {
-      e.location as peggy.Location;
-      throw new Error(
-        `failed to parse meta lang expression
-${e}
-source: ${input}
-at line ${e.location.start.line} column ${e.location.start.column}`,
+      const expect_str = e.expected
+        .map((item: any) => {
+          if (item.type === 'literal') {
+            return item.text;
+          } else if (item.type === 'other') {
+            return item.description;
+          } else if (item.type === 'end') {
+            return '[END]'
+          } else {
+            return undefined
+          }
+        })
+        .filter((item: any) => item !== undefined)
+        .join(", ");
+      throw new CompileError(
+        e.location.start,
+        e.location.end,
+        `expected ${expect_str}, but got ${e.found}`
       );
     }
   }
@@ -227,41 +250,38 @@ type OperatorNode = {
 }
 
 //======================== program ========================
-class AccessFailedError extends Error {
+export class AccessFailedError extends Error {
   key: string;
   obj: any;
   location: peggy.LocationRange;
 
   constructor(key: string, obj: any, location: peggy.LocationRange) {
-    super(`failed to access ${key} in ${obj.constructor.name}
-  at script: ${location.start.line}：${location.start.column}`)
+    super(`failed to access ${key} in ${obj.constructor.name}`)
 
     this.key = key;
     this.obj = obj;
     this.location = location;
   }
 }
-class TypeMismatchError extends Error {
+export class TypeMismatchError extends Error {
   expected: string;
   actual: any;
   location: peggy.LocationRange;
 
   constructor(expected: string, actual: any, location: peggy.LocationRange) {
-    super(`type mismatch, expected ${expected}, but got ${actual} (${typeof actual})
-  at script: ${location.start.line}：${location.start.column}`);
+    super(`type mismatch`);
     this.expected = expected;
     this.actual = actual;
     this.location = location;
   }
 }
-class PresetNotFoundError extends Error {
+export class PresetNotFoundError extends Error {
   preset: string;
   obj: any;
   location: peggy.LocationRange;
 
   constructor(preset: string, obj: any, location: peggy.LocationRange) {
-    super(`preset ${preset} not found in ${obj.constructor.name}
-  at script: ${location.start.line}：${location.start.column}`);
+    super(`preset not found`);
     this.preset = preset;
     this.obj = obj;
     this.location = location;
@@ -269,9 +289,11 @@ class PresetNotFoundError extends Error {
 }
 export class Program {
   #exprs: OperatorNode[];
+  source: string;
 
-  constructor(exprs: OperatorNode[]) {
+  constructor(exprs: OperatorNode[], source: string) {
     this.#exprs = exprs;
+    this.source = source;
   }
 
   exec(obj: any) {
