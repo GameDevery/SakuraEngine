@@ -23,7 +23,7 @@ namespace SB
                     var Doctors = new ConcurrentBag<DoctorAttribute>();
                     foreach (var Assembly in AppDomain.CurrentDomain.GetAssemblies())
                     {
-                        if (!Assembly.GetReferencedAssemblies().Any(A => A.Name == "SB.Core"))
+                        if (!Assembly.GetReferencedAssemblies().Any(A => A.Name == "SB.Core") && Assembly.GetName().Name != "SB.Core")
                             continue;
 
                         foreach (var Type in Assembly.GetTypes())

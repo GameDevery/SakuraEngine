@@ -5,6 +5,7 @@ using Serilog;
 
 namespace SB.Core
 {
+    [VisualStudioDoctor]
     public partial class VisualStudio : IToolchain
     {
         // https://blog.pcitron.fr/2022/01/04/dont-use-vcvarsall-vsdevcmd/
@@ -17,23 +18,13 @@ namespace SB.Core
             this.TargetArch = TargetArch ?? HostInformation.HostArch;
         }
 
-        public async Task<bool> Initialize()
-        {
-            return await Task.Run<bool>(() =>
-            {
-                FindVCVars();
-                RunVCVars();
-                return true;
-            });
-        }
-
         public Version Version => new Version(VSVersion, 0);
         public ICompiler Compiler => ClangCLCC!;
         public ILinker Linker => LINK!;
         public IArchiver Archiver => LINK!;
         public string BuildTempPath => Directory.CreateDirectory(Path.Combine(SourceLocation.BuildTempPath, this.Version.ToString())).FullName;
 
-        private void FindVCVars()
+        internal void FindVCVars()
         {
             Log.Information("VisualStudio version ... {VSVersion}", VSVersion);
 
@@ -92,7 +83,7 @@ namespace SB.Core
         }
 
         static readonly Dictionary<Architecture, string> archStringMap = new Dictionary<Architecture, string> { { Architecture.X86, "x86" }, { Architecture.X64, "x64" }, { Architecture.ARM64, "arm64" } };
-        private void RunVCVars()
+        internal void RunVCVars()
         {
             var oldEnvPath = Path.Combine(Path.GetTempPath(), $"vcvars_{VSVersion}_prev_{HostArch}_{TargetArch}.txt");
             var newEnvPath = Path.Combine(Path.GetTempPath(), $"vcvars_{VSVersion}_post_{HostArch}_{TargetArch}.txt");
@@ -201,5 +192,30 @@ namespace SB.Core
         public static bool IsValidRT(string what) => ValidRuntimeArguments.Contains(what);
         private static readonly string[] ValidRuntimeArguments = ["MT", "MTd", "MD", "MDd"];
         #endregion
+    }
+
+    public class VisualStudioDoctor : DoctorAttribute
+    {
+        public override bool Check()
+        {
+            if (BuildSystem.TargetOS == OSPlatform.Windows && BuildSystem.HostOS == OSPlatform.Windows)
+            {
+                using (Profiler.BeginZone("InitializeVisualStudio", color: (uint)Profiler.ColorType.WebMaroon))
+                {
+                    VisualStudio.FindVCVars();
+                    VisualStudio.RunVCVars();
+                    return true;
+                }
+            }
+            return true;
+        }
+
+        public override bool Fix()
+        {
+            Log.Fatal("VisualStudio discover failed!");
+            return true;
+        }
+
+        public static VisualStudio VisualStudio { get; private set; } = new VisualStudio(2022);
     }
 }

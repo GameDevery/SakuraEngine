@@ -33,6 +33,16 @@ namespace SB
             return this;
         }
 
+        private object AddFilesLock = new();
+        public Target AddFilesLocked(params string[] files)
+        {
+            lock (AddFilesLock)
+            {
+                AddFiles(files);
+            }
+            return this;
+        }
+
         public Target Depend(Visibility Visibility, params string[] DependNames)
         {
             foreach (var DependName in DependNames)

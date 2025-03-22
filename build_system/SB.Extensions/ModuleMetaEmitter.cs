@@ -6,7 +6,8 @@ namespace SB
 {
     public class ModuleMetaEmitter : TaskEmitter
     {
-        public override bool EmitTargetTask(Target Target) => Target.GetAttribute<ModuleAttribute>() is not null;
+        public override bool EnableEmitter(Target Target) => Target.GetAttribute<ModuleAttribute>() is not null;
+        public override bool EmitTargetTask(Target Target) => true;
         public override IArtifact? PerTargetTask(Target Target)
         {
             Stopwatch sw = new();
@@ -14,7 +15,7 @@ namespace SB
 
             var GenSourcePath = Target.GetStorePath(BuildSystem.GeneratedSourceStore);
             var GenFileName = Path.Combine(GenSourcePath, "module.configure.cpp");
-            // Target.AddFiles(GenFileName);
+            Target.AddFilesLocked(GenFileName);
             Depend.OnChanged(Target.Name, GenFileName, Name, (Depend depend) => {
                 var ModuleDependencies = Target.Dependencies.Where((Dependency) => BuildSystem.GetTarget(Dependency).GetAttribute<ModuleAttribute>() is not null);
                 string DependenciesArray = "[" + String.Join(",", ModuleDependencies.Select(D => FormatDependency(D))) + "]";
@@ -28,7 +29,7 @@ namespace SB
                     "author": "official",
                     "license": "EngineDefault(MIT)",
                     "copyright": "EngineDefault",
-                    "dependencies": {{DependenciesArray}},
+                    "dependencies": {{DependenciesArray}}
                 }
                 """;
                 string CppContent = $"#include \"SkrCore/module/module.hpp\"\n\nSKR_MODULE_METADATA(u8R\"__de___l___im__({JSON})__de___l___im__\", {Target.Name})";
@@ -44,7 +45,7 @@ namespace SB
         {
             var Target = BuildSystem.GetTarget(Dependency);
             return $$"""
-            { "name": {{Dependency}}, "version": "0.1.0", "kind": "shared" }
+            { "name": "{{Dependency}}", "version": "0.1.0", "kind": "shared" }
             """;
         }
 

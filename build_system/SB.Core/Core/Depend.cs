@@ -8,6 +8,7 @@ using System.Text.Json.Serialization;
 
 namespace SB.Core
 {
+    [DependDoctor]
     public class DependContext : DbContext
     {
         static DependContext()
@@ -22,20 +23,14 @@ namespace SB.Core
 
         }
 
-        // The following configures EF to create a Sqlite database file in the special "local" folder for your platform.
-        public static async Task Initialize()
-        {
-            await WarmUpContext!.FindAsync<DependEntity>("");
-        }
-
         public static PooledDbContextFactory<DependContext> Factory = new (
             new DbContextOptionsBuilder<DependContext>()
                 .UseSqlite($"Data Source={Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "depend.db")}")
                 .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
                 .Options
         );
-        private static DbContext? WarmUpContext;
         internal DbSet<DependEntity> Depends { get; set; }
+        internal static DbContext? WarmUpContext;
     }
 
     public struct Depend
@@ -201,5 +196,22 @@ namespace SB.Core
         public List<DateTime> InputFileTimes { get; init; } = new();
         public List<string> ExternalFiles { get; init; } = new();
         public List<DateTime> ExternalFileTimes { get; init; } = new();
+    }
+
+    public class DependDoctor : DoctorAttribute
+    {
+        public override bool Check()
+        {
+            using (Profiler.BeginZone("WarmUp | EntityFramework", color: (uint)Profiler.ColorType.WebMaroon))
+            {
+                DependContext.WarmUpContext!.FindAsync<DependEntity>("");
+                return true;
+            }
+        }
+
+        public override bool Fix()
+        {
+            return true;
+        }
     }
 }

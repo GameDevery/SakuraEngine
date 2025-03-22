@@ -29,18 +29,18 @@ struct skr_live2d_render_model_comp_t {
 typedef struct skr_live2d_render_model_comp_t skr_live2d_render_model_comp_t;
 
 #ifndef SKR_SERIALIZE_GURAD
-SKR_LIVE2D_EXTERN_C SKR_LIVE2D_API void
+SKR_EXTERN_C SKR_LIVE2D_API void
 skr_live2d_render_model_create_from_raw(skr_io_ram_service_t*, skr_io_vram_service_t*, CGPUDeviceId device,
                                         skr_live2d_model_resource_id resource, skr_live2d_render_model_future_t* request);
 #endif
 
-SKR_LIVE2D_EXTERN_C SKR_LIVE2D_API CGPUTextureId
+SKR_EXTERN_C SKR_LIVE2D_API CGPUTextureId
 skr_live2d_render_model_get_texture(skr_live2d_render_model_id render_model, uint32_t drawable_index);
 
-SKR_LIVE2D_EXTERN_C SKR_LIVE2D_API CGPUTextureViewId
+SKR_EXTERN_C SKR_LIVE2D_API CGPUTextureViewId
 skr_live2d_render_model_get_texture_view(skr_live2d_render_model_id render_model, uint32_t drawable_index);
 
-SKR_LIVE2D_EXTERN_C SKR_LIVE2D_API void
+SKR_EXTERN_C SKR_LIVE2D_API void
 skr_live2d_render_model_free(skr_live2d_render_model_id render_model);
 
 #ifdef __cplusplus

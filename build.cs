@@ -6,30 +6,47 @@ using System.Diagnostics;
 Stopwatch before_sw = new();
 before_sw.Start();
 
-var Toolchain = Utilities.Bootstrap(SourceLocation.Directory());
-var DoctorTask = Engine.RunDoctors();
-// TODO: use doctor
-var ToolchainInitializeTask = Toolchain.Initialize();
-// TODO: use doctor
-var DBInitializeTask = DependContext.Initialize();
+var Toolchain = Engine.Bootstrap(SourceLocation.Directory());
+
+static void ScanDirectories(string currentPath, List<string> result)
+{
+    // 检查当前目录的文件状态 
+    bool hasXmake = File.Exists(Path.Combine(currentPath, "xmake.lua"));
+    bool hasBuildCs = File.Exists(Path.Combine(currentPath, "build.cs"));
+
+    // 符合条件则记录 
+    if (hasXmake && !hasBuildCs)
+    {
+        result.Add(currentPath);
+    }
+
+    // 递归处理子目录 
+    foreach (string subDir in Directory.EnumerateDirectories(currentPath))
+    {
+        ScanDirectories(subDir, result);
+    }
+}
+List<string> DIRS = new();
+ScanDirectories(SourceLocation.Directory(), DIRS);
+DIRS.ForEach(D => Log.Information($"Found xmake.lua in {D}"));
 
 var CompileCommandsEmitter = new CompileCommandsEmitter(Toolchain);
-BuildSystem.AddTaskEmitter("Cpp.CompileCommands", CompileCommandsEmitter);
+Engine.AddTaskEmitter("Cpp.CompileCommands", CompileCommandsEmitter);
 
-BuildSystem.AddTaskEmitter("ModuleMeta", new ModuleMetaEmitter());
+Engine.AddTaskEmitter("ModuleMeta", new ModuleMetaEmitter());
 
-BuildSystem.AddTaskEmitter("Codgen.Meta", new CodegenMetaEmitter(Toolchain));
+Engine.AddTaskEmitter("Codgen.Meta", new CodegenMetaEmitter(Toolchain));
 
-BuildSystem.AddTaskEmitter("Codgen.Codegen", new CodegenRenderEmitter(Toolchain))
+Engine.AddTaskEmitter("Codgen.Codegen", new CodegenRenderEmitter(Toolchain))
     .AddDependency("Codgen.Meta", DependencyModel.ExternalTarget)
     .AddDependency("Codgen.Meta", DependencyModel.PerTarget);
 
-BuildSystem.AddTaskEmitter("Cpp.Compile", new CppCompileEmitter(Toolchain))
+Engine.AddTaskEmitter("Cpp.Compile", new CppCompileEmitter(Toolchain))
     .AddDependency("ModuleMeta", DependencyModel.PerTarget)
     .AddDependency("Codgen.Codegen", DependencyModel.ExternalTarget)
     .AddDependency("Codgen.Codegen", DependencyModel.PerTarget);
 
-BuildSystem.AddTaskEmitter("Cpp.Link", new CppLinkEmitter(Toolchain))
+Engine.AddTaskEmitter("Cpp.Link", new CppLinkEmitter(Toolchain))
     .AddDependency("Cpp.Link", DependencyModel.ExternalTarget)
     .AddDependency("Cpp.Compile", DependencyModel.PerTarget);
 
@@ -37,6 +54,8 @@ Engine.Module("TestTarget")
     .TargetType(TargetType.Static)
 
     .CppVersion("20")
+
+    .Depend(Visibility.Public, "SkrCore")
 
     .Require("imgui", new ImGuiPackageConfig { Version = new Version(1, 89, 0), ImportDynamicAPIFromEngine = true })
     .Depend(Visibility.Private, "imgui@imgui")
@@ -85,17 +104,12 @@ Engine.Module("TestTarget")
     .Require("harfbuzz", new PackageConfig { Version = new Version(7, 1, 0) })
     .Depend(Visibility.Private, "harfbuzz@harfbuzz");
 
-
-await DoctorTask;
-await ToolchainInitializeTask;
-await DBInitializeTask;
-
 before_sw.Stop();
 
 Stopwatch sw = new();
 sw.Start();
 
-BuildSystem.RunBuild();
+Engine.RunBuild();
 CompileCommandsEmitter.WriteToFile(Path.Combine(SourceLocation.Directory(), ".vscode/compile_commands.json"));
 
 sw.Stop();

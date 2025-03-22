@@ -6,7 +6,7 @@ using System.Reflection;
 
 namespace SB
 {
-    public static partial class Utilities
+    public partial class Engine : BuildSystem
     {
         public static IToolchain Bootstrap(string ProjectRoot)
         {
@@ -15,7 +15,7 @@ namespace SB
                 SetupLogger();
                 IToolchain? Toolchain = null;
                 if (BuildSystem.HostOS == OSPlatform.Windows)
-                    Toolchain = new VisualStudio(2022);
+                    Toolchain = VisualStudioDoctor.VisualStudio;
                 else if (BuildSystem.HostOS == OSPlatform.OSX)
                     Toolchain = new XCode();
                 else
@@ -26,8 +26,15 @@ namespace SB
                 BuildSystem.PackageTempPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".pkgs/.sb")).FullName;
                 BuildSystem.PackageBuildPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".pkgs/.build")).FullName;
                 LoadTargets();
+                DoctorsTask = Engine.RunDoctors();
                 return Toolchain!;
             }
+        }
+
+        public static new void RunBuild()
+        {
+            DoctorsTask!.Wait();
+            BuildSystem.RunBuild();
         }
 
         private static void SetupLogger()
@@ -71,20 +78,23 @@ namespace SB
 
         private static void LoadTargets()
         {
-            BuildSystem.TargetDefaultSettings += (Target) =>
+            BuildSystem.TargetDefaultSettings += (Target Target) =>
             {
+                Target.LinkDirs(Visibility.Public, Target.GetBuildPath());
                 if (BuildSystem.TargetOS == OSPlatform.Windows)
                 {
                     Target.RuntimeLibrary("MD");
                 }
             };
 
-            var Types = typeof(Utilities).Assembly.GetTypes();
+            var Types = typeof(Engine).Assembly.GetTypes();
             var Scripts = Types.Where(Type => Type.GetCustomAttribute<TargetScript>() is not null);
             foreach (var Script in Scripts)
             {
                 System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(Script.TypeHandle);
             }
         }
+
+        private static Task? DoctorsTask = null;
     }
 }

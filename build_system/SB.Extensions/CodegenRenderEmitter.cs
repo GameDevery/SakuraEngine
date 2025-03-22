@@ -84,7 +84,7 @@ namespace SB
                 depend.ExternalFiles.AddRange(AllGeneratedHeaders);
             }, DependFiles, null);
             // Add generated files to target
-            Target.AddFiles(Directory.GetFiles(CodegenDirectory, "*.cpp", SearchOption.AllDirectories));
+            Target.AddFilesLocked(Directory.GetFiles(CodegenDirectory, "*.cpp", SearchOption.AllDirectories));
             return new PlainArtifact { IsRestored = !Changed };
         }
 
