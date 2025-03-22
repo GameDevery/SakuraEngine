@@ -212,7 +212,6 @@ namespace SB
                             });
                             FileTasks.Add(FileTask);
                         }
-                        TaskManager.WaitAll(FileTasks);
                         return FileTasks.All(FileTask => (FileTask.Result == true));
                     });
                     EmitterTasks.Add(Fingerprint, EmitterTask);

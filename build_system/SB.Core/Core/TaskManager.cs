@@ -42,7 +42,7 @@ namespace SB.Core
             if (AllTasks.TryGetValue(Fingerprint, out var _))
                 throw new ArgumentException($"Task with fingerprint {Fingerprint} already exists! Fingerprint should be unique to every task!");
 
-            var NewTask = Task.Run<bool>(
+            var NewTask = new Task<bool>(
                 () => {
                     using (Profiler.BeginZone($"Run | {Fingerprint.TaskName} | {Fingerprint.TargetName} | {Fingerprint.File}", color: (uint)Profiler.ColorType.PowderBlue))
                     {
@@ -50,18 +50,19 @@ namespace SB.Core
                             return false;
                         return Function();
                     }
-                })
-                .ContinueWith(_ =>
+                }, TaskCreationOptions.AttachedToParent);
+            NewTask.ContinueWith(_ =>
+            {
+                if (_.Exception?.InnerException is TaskFatalError fatal)
                 {
-                    if (_.Exception?.InnerException is TaskFatalError fatal)
-                    {
-                        FatalErrors.Enqueue(fatal);
-                        RootCTS.Cancel();
-                        return false;
-                    }
-                    return _.Result;
-                },
-                TaskContinuationOptions.ExecuteSynchronously);
+                    FatalErrors.Enqueue(fatal);
+                    RootCTS.Cancel();
+                    return false;
+                }
+                return _.Result;
+            },
+            TaskContinuationOptions.ExecuteSynchronously);
+            NewTask.Start();
 
             if (!AllTasks.TryAdd(Fingerprint, NewTask))
             {
