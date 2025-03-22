@@ -92,6 +92,7 @@ namespace SB
             @this.Exception(false);
             if (BuildSystem.TargetOS == OSPlatform.Windows)
             {
+                @this.RuntimeLibrary("MD");
                 @this.Defines(Visibility.Private, "NOMINMAX");
             }
             return @this;
@@ -108,7 +109,7 @@ namespace SB
             @this.SetAttribute(new CodegenRenderAttribute());
             var CodegenDirectory = @this.GetCodegenDirectory();
             Directory.CreateDirectory(CodegenDirectory);
-            @this.IncludeDirs(Visibility.Public, Directory.GetParent(CodegenDirectory)!.FullName);
+            @this.IncludeDirs(Visibility.Public, CodegenDirectory);
             return @this;
         }
 

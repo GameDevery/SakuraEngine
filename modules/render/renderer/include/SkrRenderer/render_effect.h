@@ -29,22 +29,22 @@ typedef sugoi_entity_t SGameEntity;
 typedef sugoi_entity_t SRenderEffectEntity;
 
 // Data operations for render effect
-SKR_RENDERER_EXTERN_C SKR_RENDERER_API void skr_renderer_register_render_effect(SRendererId renderer, skr_render_effect_name_t name, IRenderEffectProcessor* processor);
-SKR_RENDERER_EXTERN_C SKR_RENDERER_API void skr_renderer_register_render_effect_vtbl(SRendererId renderer, skr_render_effect_name_t name, VtblRenderEffectProcessor* processor);
-SKR_RENDERER_EXTERN_C SKR_RENDERER_API void skr_renderer_remove_render_effect(SRendererId renderer, skr_render_effect_name_t name);
+SKR_EXTERN_C SKR_RENDERER_API void skr_renderer_register_render_effect(SRendererId renderer, skr_render_effect_name_t name, IRenderEffectProcessor* processor);
+SKR_EXTERN_C SKR_RENDERER_API void skr_renderer_register_render_effect_vtbl(SRendererId renderer, skr_render_effect_name_t name, VtblRenderEffectProcessor* processor);
+SKR_EXTERN_C SKR_RENDERER_API void skr_renderer_remove_render_effect(SRendererId renderer, skr_render_effect_name_t name);
 
-SKR_RENDERER_EXTERN_C SKR_RENDERER_API void skr_render_effect_attach(SRendererId, sugoi_chunk_view_t* cv, skr_render_effect_name_t effect_name);
+SKR_EXTERN_C SKR_RENDERER_API void skr_render_effect_attach(SRendererId, sugoi_chunk_view_t* cv, skr_render_effect_name_t effect_name);
 typedef void (*SProcRenderEffectAttach)(SRendererId, sugoi_chunk_view_t* cv, skr_render_effect_name_t effect_name);
 
-SKR_RENDERER_EXTERN_C SKR_RENDERER_API void skr_render_effect_detach(SRendererId, sugoi_chunk_view_t* cv, skr_render_effect_name_t effect_name);
+SKR_EXTERN_C SKR_RENDERER_API void skr_render_effect_detach(SRendererId, sugoi_chunk_view_t* cv, skr_render_effect_name_t effect_name);
 typedef void (*SProcRenderEffectDetach)(SRendererId, sugoi_chunk_view_t* cv, skr_render_effect_name_t effect_name);
 
-SKR_RENDERER_EXTERN_C SKR_RENDERER_API void skr_render_effect_add_delta(SRendererId, sugoi_chunk_view_t* cv,
+SKR_EXTERN_C SKR_RENDERER_API void skr_render_effect_add_delta(SRendererId, sugoi_chunk_view_t* cv,
     skr_render_effect_name_t effect_name, sugoi_delta_type_t delta, sugoi_cast_callback_t callback, void* user_data);
 typedef void (*SProcRenderEffectAddDelta)(SRendererId, sugoi_chunk_view_t* cv,
     skr_render_effect_name_t effect_name, sugoi_delta_type_t delta, sugoi_cast_callback_t callback, void* user_data);
 
-SKR_RENDERER_EXTERN_C SKR_RENDERER_API void skr_render_effect_access(SRendererId, sugoi_chunk_view_t* cv,
+SKR_EXTERN_C SKR_RENDERER_API void skr_render_effect_access(SRendererId, sugoi_chunk_view_t* cv,
     skr_render_effect_name_t effect_name, sugoi_view_callback_t view, void* u);
 typedef void (*SProcRenderEffectAccess)(SRendererId, sugoi_chunk_view_t* cv,
     skr_render_effect_name_t effect_name, sugoi_view_callback_t view, void* u);

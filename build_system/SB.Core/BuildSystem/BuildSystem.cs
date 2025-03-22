@@ -50,7 +50,6 @@ namespace SB
         {
             try
             {
-                Profiler.EmitFrameMark();
                 using (Profiler.BeginZone("RunBuild", color: (uint)Profiler.ColorType.WebPurple))
                 {
                     Task.Run(() => RunBuildImpl(), TaskManager.RootCTS.Token).Wait(TaskManager.RootCTS.Token);

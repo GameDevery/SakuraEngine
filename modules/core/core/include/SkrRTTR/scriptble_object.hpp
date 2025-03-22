@@ -1,7 +1,7 @@
 #pragma once
 #include "SkrRTTR/iobject.hpp"
 #ifndef __meta__
-    #include "SkrCore/SkrRTTR/scriptble_object.generated.h"
+    #include "SkrRTTR/scriptble_object.generated.h"
 #endif
 
 // script export behaviour map

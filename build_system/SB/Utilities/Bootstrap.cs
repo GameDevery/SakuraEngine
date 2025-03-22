@@ -10,21 +10,24 @@ namespace SB
     {
         public static IToolchain Bootstrap(string ProjectRoot)
         {
-            SetupLogger();
-            IToolchain? Toolchain = null;
-            if (BuildSystem.HostOS == OSPlatform.Windows)
-                Toolchain = new VisualStudio(2022);
-            else if (BuildSystem.HostOS == OSPlatform.OSX)
-                Toolchain = new XCode();
-            else
-                throw new Exception("Unsupported Platform!");
-            Engine.SetEngineDirectory(ProjectRoot);
-            BuildSystem.TempPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".sb")).FullName;
-            BuildSystem.BuildPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".build")).FullName;
-            BuildSystem.PackageTempPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".pkgs/.sb")).FullName;
-            BuildSystem.PackageBuildPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".pkgs/.build")).FullName;
-            LoadTargets();
-            return Toolchain!;
+            using (Profiler.BeginZone("Bootstrap", color: (uint)Profiler.ColorType.WebMaroon))
+            {
+                SetupLogger();
+                IToolchain? Toolchain = null;
+                if (BuildSystem.HostOS == OSPlatform.Windows)
+                    Toolchain = new VisualStudio(2022);
+                else if (BuildSystem.HostOS == OSPlatform.OSX)
+                    Toolchain = new XCode();
+                else
+                    throw new Exception("Unsupported Platform!");
+                Engine.SetEngineDirectory(ProjectRoot);
+                BuildSystem.TempPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".sb")).FullName;
+                BuildSystem.BuildPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".build")).FullName;
+                BuildSystem.PackageTempPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".pkgs/.sb")).FullName;
+                BuildSystem.PackageBuildPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".pkgs/.build")).FullName;
+                LoadTargets();
+                return Toolchain!;
+            }
         }
 
         private static void SetupLogger()

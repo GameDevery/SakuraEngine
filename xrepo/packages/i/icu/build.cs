@@ -15,6 +15,7 @@ public static class ICU
 
                 Target
                     .TargetType(TargetType.Static)
+                    .RuntimeLibrary("MD")
                     .CppVersion("17") // Compiles much more faster with C++17 than C++20
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/icu4c/source/common"))
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/icu4c/source/i18n"))

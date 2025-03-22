@@ -8,7 +8,7 @@
 #include "SkrRTTR/export/dynamic_stack.hpp"
 #include <SkrRTTR/any.hpp>
 #ifndef __meta__
-    #include "SkrCore/SkrRTTR/export/export_data.generated.h"
+    #include "SkrRTTR/export/export_data.generated.h"
 #endif
 
 // utils

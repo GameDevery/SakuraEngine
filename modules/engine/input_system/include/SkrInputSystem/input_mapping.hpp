@@ -22,7 +22,7 @@ static const skr_guid_t kInputTypeId_Keyboard    = { 0x2229d021, 0x97a0, 0x4a11,
 static const skr_guid_t kInputTypeId_MouseButton = { 0x8578d530, 0x909d, 0x44f3, { 0xab, 0x6a, 0x83, 0xd6, 0x57, 0xb5, 0xbc, 0x8e } };
 static const skr_guid_t kInputTypeId_MouseAxis   = { 0xe9135be4, 0x3543, 0x4995, { 0xa4, 0xb2, 0x73, 0x63, 0xea, 0x2f, 0x22, 0x03 } };
 
-struct SKR_INPUTSYSTEM_API InputMapping : public RC {
+struct SKR_INPUT_SYSTEM_API InputMapping : public RC {
     InputMapping() SKR_NOEXCEPT = default;
     virtual ~InputMapping() SKR_NOEXCEPT;
 
@@ -49,7 +49,7 @@ protected:
     InputValueStorage            raw_value;
 };
 
-struct SKR_INPUTSYSTEM_API InputMappingContext : public RC {
+struct SKR_INPUT_SYSTEM_API InputMappingContext : public RC {
 public:
     virtual ~InputMappingContext() SKR_NOEXCEPT;
 
@@ -69,7 +69,7 @@ protected:
     skr::Vector<SObjectPtr<InputMapping>> mappings_;
 };
 
-struct SKR_INPUTSYSTEM_API InputMapping_Keyboard : public InputMapping {
+struct SKR_INPUT_SYSTEM_API InputMapping_Keyboard : public InputMapping {
     inline InputMapping_Keyboard(EKeyCode key)
         : InputMapping()
         , key(key)
@@ -83,7 +83,7 @@ struct SKR_INPUTSYSTEM_API InputMapping_Keyboard : public InputMapping {
     const EKeyCode key;
 };
 
-struct SKR_INPUTSYSTEM_API InputMapping_MouseButton : public InputMapping {
+struct SKR_INPUT_SYSTEM_API InputMapping_MouseButton : public InputMapping {
     inline InputMapping_MouseButton(EMouseKey key)
         : InputMapping()
         , mouse_key(key)
@@ -97,7 +97,7 @@ struct SKR_INPUTSYSTEM_API InputMapping_MouseButton : public InputMapping {
     const EMouseKey mouse_key;
 };
 
-struct SKR_INPUTSYSTEM_API InputMapping_MouseAxis : public InputMapping {
+struct SKR_INPUT_SYSTEM_API InputMapping_MouseAxis : public InputMapping {
     inline InputMapping_MouseAxis(EMouseAxis axis)
         : InputMapping()
         , axis(axis)

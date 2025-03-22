@@ -34,13 +34,13 @@ public static class Profiler
     /// </param>
     /// <returns></returns>
     public static ProfilerZone BeginZone(
-        string zoneName = null,
+        string? zoneName = null,
         bool active = true,
         uint color = 0,
-        string text = null,
+        string? text = null,
         [CallerLineNumber] uint lineNumber = 0,
-        [CallerFilePath] string filePath = null,
-        [CallerMemberName] string memberName = null)
+        [CallerFilePath] string? filePath = null,
+        [CallerMemberName] string? memberName = null)
     {
         using var filestr = GetCString(filePath, out var fileln);
         using var memberstr = GetCString(memberName, out var memberln);

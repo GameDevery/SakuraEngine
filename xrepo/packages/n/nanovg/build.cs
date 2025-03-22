@@ -15,6 +15,7 @@ public static class NanoVg
 
                 Target
                     .CppVersion("20")
+                    .RuntimeLibrary("MD")
                     .Exception(false)
                     .TargetType(TargetType.Static)
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/nanovg"))

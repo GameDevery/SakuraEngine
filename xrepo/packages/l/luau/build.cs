@@ -26,6 +26,7 @@ public static class Luau
 
                 Target
                     .CppVersion("17")
+                    .RuntimeLibrary("MD")
                     .Exception(false)
                     .TargetType(TargetType.Static)
                     .Require("Luau", Config)

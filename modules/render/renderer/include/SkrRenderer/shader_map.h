@@ -20,35 +20,35 @@ typedef enum ESkrShaderMapShaderStatus
 } ESkrShaderMapShaderStatus;
 
 // create a shader map
-SKR_RENDERER_EXTERN_C SKR_RENDERER_API 
+SKR_EXTERN_C SKR_RENDERER_API 
 skr_shader_map_id skr_shader_map_create(const struct skr_shader_map_root_t* desc);
 
 // thread-safe.
 // (RC) request install for specific platform shader identifier
-SKR_RENDERER_EXTERN_C SKR_RENDERER_API 
+SKR_EXTERN_C SKR_RENDERER_API 
 ESkrShaderMapShaderStatus skr_shader_map_install_shader(skr_shader_map_id shaderMap, const skr_platform_shader_identifier_t* key);
 
 // thread-safe.
 // fetch shader in shader map
-SKR_RENDERER_EXTERN_C SKR_RENDERER_API 
+SKR_EXTERN_C SKR_RENDERER_API 
 CGPUShaderLibraryId skr_shader_map_find_shader(skr_shader_map_id shaderMap, const skr_platform_shader_identifier_t* id);
 
 // thread-safe.
 // (RC) free shader in shader map
-SKR_RENDERER_EXTERN_C SKR_RENDERER_API 
+SKR_EXTERN_C SKR_RENDERER_API 
 void skr_shader_map_free_shader(skr_shader_map_id shaderMap, const skr_platform_shader_identifier_t* id);
 
 // shader map new frame
-SKR_RENDERER_EXTERN_C SKR_RENDERER_API
+SKR_EXTERN_C SKR_RENDERER_API
 void skr_shader_map_new_frame(skr_shader_map_id shaderMap, uint64_t frame_index);
 
 // thread-safe.
 // do (RC) garbage collect once for shader map
-SKR_RENDERER_EXTERN_C SKR_RENDERER_API
+SKR_EXTERN_C SKR_RENDERER_API
 void skr_shader_map_garbage_collect(skr_shader_map_id shaderMap, uint64_t critical_frame);
 
 // free a shader map
-SKR_RENDERER_EXTERN_C SKR_RENDERER_API 
+SKR_EXTERN_C SKR_RENDERER_API 
 void skr_shader_map_free(skr_shader_map_id shader_map);
 
 typedef struct skr_shader_map_root_t {

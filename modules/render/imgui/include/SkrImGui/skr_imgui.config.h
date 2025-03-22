@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef __cplusplus
-    #define SKR_IMGUI_EXTERN_C
+    #define SKR_EXTERN_C
 #endif
 
 #ifndef SKR_IMGUI_EXPORT

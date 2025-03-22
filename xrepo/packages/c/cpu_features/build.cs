@@ -15,6 +15,7 @@ public static class CPUFeatures
 
                 Target
                     .TargetType(TargetType.Static)
+                    .RuntimeLibrary("MD")
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/cpu_features/include"))
                     .IncludeDirs(Visibility.Private, Path.Combine(SourceLocation.Directory(), "port/cpu_features/include/cpu_features"))
                     .FpModel(FpModel.Fast)

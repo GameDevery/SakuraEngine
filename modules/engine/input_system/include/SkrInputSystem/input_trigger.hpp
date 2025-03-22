@@ -25,19 +25,19 @@ enum class ETriggerEvent
 };
 */
 
-struct SKR_INPUTSYSTEM_API InputTrigger : public RC
+struct SKR_INPUT_SYSTEM_API InputTrigger : public RC
 {
     virtual ~InputTrigger() SKR_NOEXCEPT;
     
     virtual ETriggerState update_state(const InputValueStorage& value, float delta) SKR_NOEXCEPT = 0;
 };
 
-struct SKR_INPUTSYSTEM_API InputTriggerDown : public InputTrigger
+struct SKR_INPUT_SYSTEM_API InputTriggerDown : public InputTrigger
 {
     ETriggerState update_state(const InputValueStorage& value, float delta) SKR_NOEXCEPT final;
 };
 
-struct SKR_INPUTSYSTEM_API InputTriggerPressed : public InputTrigger
+struct SKR_INPUT_SYSTEM_API InputTriggerPressed : public InputTrigger
 {
     ETriggerState update_state(const InputValueStorage& value, float delta) SKR_NOEXCEPT final;
 
@@ -45,14 +45,14 @@ struct SKR_INPUTSYSTEM_API InputTriggerPressed : public InputTrigger
     bool last_triggered = false;
 };
 
-struct SKR_INPUTSYSTEM_API InputTriggerChanged : public InputTrigger
+struct SKR_INPUT_SYSTEM_API InputTriggerChanged : public InputTrigger
 {
     ETriggerState update_state(const InputValueStorage& value, float delta) SKR_NOEXCEPT final;
 
     InputValueStorage last_value;
 };
 
-struct SKR_INPUTSYSTEM_API InputTriggerAlways : public InputTrigger
+struct SKR_INPUT_SYSTEM_API InputTriggerAlways : public InputTrigger
 {
     ETriggerState update_state(const InputValueStorage& value, float delta) SKR_NOEXCEPT final;
 };

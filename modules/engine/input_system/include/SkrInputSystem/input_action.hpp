@@ -18,7 +18,7 @@ using ActionEventId = skr_guid_t;
 
 static const ActionEventId kEventId_Invalid = { 0xbbd09231, 0xa76b, 0x4c0f, { 0x83, 0x2e, 0x11, 0x7f, 0xd6, 0xac, 0x5c, 0x1b } };
 
-struct SKR_INPUTSYSTEM_API InputAction : public RC {
+struct SKR_INPUT_SYSTEM_API InputAction : public RC {
     inline InputAction(EValueType type) SKR_NOEXCEPT
         : value_type(type)
     {
@@ -57,19 +57,19 @@ protected:
 };
 
 template <>
-SKR_INPUTSYSTEM_API ActionEventId
+SKR_INPUT_SYSTEM_API ActionEventId
 InputAction::bind_event<float>(const ActionEvent<float>& event, ActionEventId id) SKR_NOEXCEPT;
 
 template <>
-SKR_INPUTSYSTEM_API ActionEventId
+SKR_INPUT_SYSTEM_API ActionEventId
 InputAction::bind_event<skr_float2_t>(const ActionEvent<skr_float2_t>& event, ActionEventId id) SKR_NOEXCEPT;
 
 template <>
-SKR_INPUTSYSTEM_API ActionEventId
+SKR_INPUT_SYSTEM_API ActionEventId
 InputAction::bind_event<skr_float3_t>(const ActionEvent<skr_float3_t>& event, ActionEventId id) SKR_NOEXCEPT;
 
 template <>
-SKR_INPUTSYSTEM_API ActionEventId
+SKR_INPUT_SYSTEM_API ActionEventId
 InputAction::bind_event<bool>(const ActionEvent<bool>& event, ActionEventId id) SKR_NOEXCEPT;
 
 } // namespace input

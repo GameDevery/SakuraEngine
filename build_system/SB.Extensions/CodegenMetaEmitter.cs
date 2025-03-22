@@ -64,7 +64,7 @@ namespace SB
 
                 int ExitCode = BuildSystem.RunProcess(EXE, string.Join(" ", MetaArgs), out var OutputInfo, out var ErrorInfo);
                 if (ExitCode != 0)
-                    throw new TaskFatalError($"meta.exe {BatchFile} failed with fatal error!", $"meta.exe: {OutputInfo}");
+                    throw new TaskFatalError($"meta.exe {BatchFile} failed with fatal error!", $"meta.exe: {ErrorInfo}");
                 else if (OutputInfo.Contains("warning LNK"))
                     Log.Warning("meta.exe: {OutputInfo}", OutputInfo);
 

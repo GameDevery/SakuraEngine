@@ -23,6 +23,7 @@ public static class ImGui
 
                 Target
                     .CppVersion("17")
+                    .RuntimeLibrary("MD")
                     .TargetType(TargetType.Static)
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/imgui/include"))
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/cimgui/include"))

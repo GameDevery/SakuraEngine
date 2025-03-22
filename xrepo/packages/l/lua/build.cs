@@ -15,6 +15,7 @@ public static class Lua
 
                 Target
                     .CVersion("17")
+                    .RuntimeLibrary("MD")
                     .Exception(true)
                     .TargetType(TargetType.Static)
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/lua/include"))
