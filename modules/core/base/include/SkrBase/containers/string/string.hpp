@@ -367,6 +367,12 @@ struct U8String : protected Memory {
     // cast to view
     operator ViewType() const;
 
+    // case convert
+    void     to_lower();
+    void     to_upper();
+    U8String to_lower_copy() const;
+    U8String to_upper_copy() const;
+
     // syntax
     const U8String& readonly() const;
     ViewType        view() const;
@@ -2588,6 +2594,42 @@ template <typename Memory>
 inline U8String<Memory>::operator ViewType() const
 {
     return view();
+}
+
+// case convert
+template <typename Memory>
+inline void U8String<Memory>::to_lower()
+{
+    _pre_modify();
+    for (int32_t i = 0; i < length_buffer(); ++i)
+    {
+        DataType& ch = _data()[i];
+        ch           = static_cast<DataType>(std::tolower(static_cast<int>(ch)));
+    }
+}
+template <typename Memory>
+inline void U8String<Memory>::to_upper()
+{
+    _pre_modify();
+    for (int32_t i = 0; i < length_buffer(); ++i)
+    {
+        DataType& ch = _data()[i];
+        ch           = static_cast<DataType>(std::toupper(static_cast<int>(ch)));
+    }
+}
+template <typename Memory>
+inline U8String<Memory> U8String<Memory>::to_lower_copy() const
+{
+    U8String result{ *this };
+    result.to_lower();
+    return std::move(result);
+}
+template <typename Memory>
+inline U8String<Memory> U8String<Memory>::to_upper_copy() const
+{
+    U8String result{ *this };
+    result.to_upper();
+    return std::move(result);
 }
 
 // syntax

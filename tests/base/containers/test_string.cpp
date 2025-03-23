@@ -2039,5 +2039,59 @@ TEST_CASE("Test U8String")
     // [test in view] text index
     // [test in view] convert
 
+    SUBCASE("case convert")
+    {
+        StringView low_view = u8"abcd";
+        StringView up_view  = u8"ABCD";
+        StringView low_with_u8_view = u8"abcd🐓🏀🐓🏀🐓🏀鸡鸡鸡";
+        StringView up_with_u8_view  = u8"ABCD🐓🏀🐓🏀🐓🏀鸡鸡鸡";
+
+        String low_str = low_view;
+        String up_str  = up_view;
+        String low_with_u8_str = low_with_u8_view;
+        String up_with_u8_str  = up_with_u8_view;
+
+        // test copy
+        {
+            String copy_low_str = low_str.to_upper_copy();
+            String copy_up_str  = up_str.to_lower_copy();
+            String copy_low_with_u8_str = low_with_u8_str.to_upper_copy();
+            String copy_up_with_u8_str  = up_with_u8_str.to_lower_copy();
+
+            REQUIRE(low_str.memory().is_literal());
+            REQUIRE(up_str.memory().is_literal());
+            REQUIRE(low_with_u8_str.memory().is_literal());
+            REQUIRE(up_with_u8_str.memory().is_literal());
+
+            REQUIRE_FALSE(copy_low_str.memory().is_literal());
+            REQUIRE_FALSE(copy_up_str.memory().is_literal());
+            REQUIRE_FALSE(copy_low_with_u8_str.memory().is_literal());
+            REQUIRE_FALSE(copy_up_with_u8_str.memory().is_literal());
+
+            REQUIRE_EQ(copy_low_str, up_view);
+            REQUIRE_EQ(copy_up_str, low_view);
+            REQUIRE_EQ(copy_low_with_u8_str, up_with_u8_view);
+            REQUIRE_EQ(copy_up_with_u8_str, low_with_u8_view);
+        }
+        
+        // test in place
+        {
+            low_str.to_upper();
+            up_str.to_lower();
+            low_with_u8_str.to_upper();
+            up_with_u8_str.to_lower();
+
+            REQUIRE_FALSE(low_str.memory().is_literal());
+            REQUIRE_FALSE(up_str.memory().is_literal());
+            REQUIRE_FALSE(low_with_u8_str.memory().is_literal());
+            REQUIRE_FALSE(up_with_u8_str.memory().is_literal());
+
+            REQUIRE_EQ(low_str, up_view);
+            REQUIRE_EQ(up_str, low_view);
+            REQUIRE_EQ(low_with_u8_str, up_with_u8_view);
+            REQUIRE_EQ(up_with_u8_str, low_with_u8_view);
+        }
+    }
+
     // TODO. iterators
 }
