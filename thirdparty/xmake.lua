@@ -6,3 +6,7 @@ includes(("vulkan/xmake.lua"))
 skr_includes_with_cull("v8", function ()
     includes('v8')
 end)
+
+skr_includes_with_cull("cef", function ()
+    includes('cef')
+end)

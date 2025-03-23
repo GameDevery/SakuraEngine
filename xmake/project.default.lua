@@ -53,5 +53,6 @@ analyzer_target("Disable")
     end)
 analyzer_target_end()
 
+skr_cull("cef")
 skr_cull("v8")
 skr_cull("lua")
