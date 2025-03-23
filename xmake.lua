@@ -31,31 +31,31 @@ end
 -- global install tools
 skr_global_target()
     -- global install tool
-    skr_install("download", {
-        name = "python-embed-3.13.1",
-        install_func = "tool",
-        plat = {"windows"},
-        after_install = function()
-            import("skr.utils")
-            local python = utils.find_python()
-            -- os.execv(python, {"-m", "pip", "install", "mako"})
-            os.execv(python, {"-m", "pip", "install", "autopep8"})
-        end
-    })
-    skr_install("custom", {
-        name = "system python",
-        plat = {"macosx", "linux"},
-        func = function ()
-            import("skr.utils")
-            local python = utils.find_python()
-            if python then
-                -- os.execv(python, {"-m", "pip", "install", "mako"})
-                os.execv(python, {"-m", "pip", "install", "autopep8"})
-            else
-                raise("python not found, please install python3 first")
-            end
-        end
-    })
+    -- skr_install("download", {
+    --     name = "python-embed-3.13.1",
+    --     install_func = "tool",
+    --     plat = {"windows"},
+    --     after_install = function()
+    --         import("skr.utils")
+    --         local python = utils.find_python()
+    --         -- os.execv(python, {"-m", "pip", "install", "mako"})
+    --         os.execv(python, {"-m", "pip", "install", "autopep8"})
+    --     end
+    -- })
+    -- skr_install("custom", {
+    --     name = "system python",
+    --     plat = {"macosx", "linux"},
+    --     func = function ()
+    --         import("skr.utils")
+    --         local python = utils.find_python()
+    --         if python then
+    --             -- os.execv(python, {"-m", "pip", "install", "mako"})
+    --             os.execv(python, {"-m", "pip", "install", "autopep8"})
+    --         else
+    --             raise("python not found, please install python3 first")
+    --         end
+    --     end
+    -- })
     skr_install("download", {
         name = "bun_1.2.5",
         install_func = "tool",
@@ -65,6 +65,7 @@ skr_global_target()
             local bun = utils.find_bun()
             -- os.execv(bun, {"install", "--production"}, {curdir = path.join(utils.get_env("engine_dir"), "tools/meta_codegen_ts")})
             os.execv(bun, {"install"}, {curdir = path.join(utils.get_env("engine_dir"), "tools/meta_codegen_ts")})
+            os.execv(bun, {"install"}, {curdir = path.join(utils.get_env("engine_dir"), "tools/merge_natvis_ts")})
         end
     })
     skr_install("download", {

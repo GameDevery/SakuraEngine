@@ -150,7 +150,7 @@ function codegen_component(owner, opt)
                     target:add("deps", dep, { public = true })
                 end
             else
-                print("failed to load analyze table for %s", target:name())
+                -- print("failed to load analyze table for %s", target:name())
             end
         end)
 
