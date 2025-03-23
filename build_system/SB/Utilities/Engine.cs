@@ -8,24 +8,33 @@ namespace SB
 {
     public partial class Engine : BuildSystem
     {
+        public static void SetEngineDirectory(string Directory) => EngineDirectory = Directory;
+
         public static IToolchain Bootstrap(string ProjectRoot)
         {
             using (Profiler.BeginZone("Bootstrap", color: (uint)Profiler.ColorType.WebMaroon))
             {
                 SetupLogger();
                 IToolchain? Toolchain = null;
+                
                 if (BuildSystem.HostOS == OSPlatform.Windows)
                     Toolchain = VisualStudioDoctor.VisualStudio;
                 else if (BuildSystem.HostOS == OSPlatform.OSX)
                     Toolchain = new XCode();
                 else
                     throw new Exception("Unsupported Platform!");
+                
+                // 
                 Engine.SetEngineDirectory(ProjectRoot);
                 BuildSystem.TempPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".sb")).FullName;
                 BuildSystem.BuildPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".build")).FullName;
                 BuildSystem.PackageTempPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".pkgs/.sb")).FullName;
                 BuildSystem.PackageBuildPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".pkgs/.build")).FullName;
+                // 
+                CppCompileEmitter.WithDebugInfo = CppLinkEmitter.WithDebugInfo = EnableDebugInfo;
+
                 LoadTargets();
+                
                 DoctorsTask = Engine.RunDoctors();
                 return Toolchain!;
             }
@@ -94,7 +103,11 @@ namespace SB
                 System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(Script.TypeHandle);
             }
         }
-
+        
+        public static string EngineDirectory { get; private set; } = Directory.GetCurrentDirectory();
+        public static string ToolDirectory => Path.Combine(EngineDirectory, ".sb/tools");
+        public static string DownloadDirectory => Path.Combine(EngineDirectory, ".sb/downloads");
+        public static bool EnableDebugInfo = false;
         private static Task? DoctorsTask = null;
     }
 }

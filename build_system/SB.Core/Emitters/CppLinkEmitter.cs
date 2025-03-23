@@ -1,4 +1,5 @@
 ﻿using SB.Core;
+using Serilog;
 using System.Diagnostics;
 
 namespace SB
@@ -48,6 +49,18 @@ namespace SB
                             .AddArguments(Target.Arguments)
                             .AddArgument("Inputs", Inputs)
                             .AddArgument("Output", LinkedFileName);
+                        if (WithDebugInfo)
+                        {
+                            if (BuildSystem.TargetOS == OSPlatform.Windows)
+                            {
+                                LINKDriver.AddArgument("PDB", LinkedFileName.Replace("dll", "pdb").Replace("exe", "pdb"))
+                                          .AddArgument("PDBMode", PDBMode.Standalone);
+                            }
+                            else
+                            {
+                                Log.Warning("Debug info is not supported on this platform!");
+                            }
+                        }
                         return Toolchain.Linker.Link(this, Target, LINKDriver);
                     }
                 }
@@ -148,5 +161,6 @@ namespace SB
 
         private IToolchain Toolchain { get; }
         public static volatile int Time = 0;
+        public static bool WithDebugInfo = false;
     }
 }

@@ -8,6 +8,7 @@ before_sw.Start();
 
 var Toolchain = Engine.Bootstrap(SourceLocation.Directory());
 
+// TEMP HELPER CODE, REMOVE LATER
 static void ScanDirectories(string currentPath, List<string> result)
 {
     // 检查当前目录的文件状态 
@@ -29,6 +30,7 @@ static void ScanDirectories(string currentPath, List<string> result)
 List<string> DIRS = new();
 ScanDirectories(SourceLocation.Directory(), DIRS);
 DIRS.ForEach(D => Log.Information($"Found xmake.lua in {D}"));
+// TEMP HELPER CODE, REMOVE LATER
 
 var CompileCommandsEmitter = new CompileCommandsEmitter(Toolchain);
 Engine.AddTaskEmitter("Cpp.CompileCommands", CompileCommandsEmitter);

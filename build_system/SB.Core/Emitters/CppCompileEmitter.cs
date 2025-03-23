@@ -32,6 +32,13 @@ namespace SB
                 .AddArgument("Source", SourceFile)
                 .AddArgument("Object", ObjectFile)
                 .AddArgument("SourceDependencies", SourceDependencies);
+            if (WithDebugInfo)
+            {
+                if (BuildSystem.TargetOS == OSPlatform.Windows)
+                    CLDriver.AddArgument("PDBMode", PDBMode.Embed);// /Z7
+                else
+                    Log.Warning("Debug info is not supported on this platform!");
+            }
             var R = Toolchain.Compiler.Compile(this, Target, CLDriver);
             var CompileAttribute = Target.GetAttribute<CppCompileAttribute>()!;
             CompileAttribute.ObjectFiles.Add(ObjectFile);
@@ -48,5 +55,6 @@ namespace SB
 
         private IToolchain Toolchain { get; }
         public static volatile int Time = 0;
+        public static bool WithDebugInfo = false;
     }
 }
