@@ -65,6 +65,10 @@ struct U8StringView {
     // compare
     constexpr bool operator==(const U8StringView& rhs) const;
     constexpr bool operator!=(const U8StringView& rhs) const;
+    constexpr bool operator>(const U8StringView& rhs) const;
+    constexpr bool operator<(const U8StringView& rhs) const;
+    constexpr bool operator>=(const U8StringView& rhs) const;
+    constexpr bool operator<=(const U8StringView& rhs) const;
 
     // getter
     constexpr const DataType* data() const;
@@ -253,6 +257,26 @@ template <typename TS>
 inline constexpr bool U8StringView<TS>::operator!=(const U8StringView& rhs) const
 {
     return !(*this == rhs);
+}
+template <typename TS>
+inline constexpr bool U8StringView<TS>::operator>(const U8StringView& rhs) const
+{
+    return CharTraits::compare(_data, rhs._data, _size) > 0;
+}
+template <typename TS>
+inline constexpr bool U8StringView<TS>::operator<(const U8StringView& rhs) const
+{
+    return CharTraits::compare(_data, rhs._data, _size) < 0;
+}
+template <typename TS>
+inline constexpr bool U8StringView<TS>::operator>=(const U8StringView& rhs) const
+{
+    return CharTraits::compare(_data, rhs._data, _size) >= 0;
+}
+template <typename TS>
+inline constexpr bool U8StringView<TS>::operator<=(const U8StringView& rhs) const
+{
+    return CharTraits::compare(_data, rhs._data, _size) <= 0;
 }
 
 // getter

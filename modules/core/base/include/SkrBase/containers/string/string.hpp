@@ -125,10 +125,22 @@ struct U8String : protected Memory {
     // compare
     bool operator==(const U8String& rhs) const noexcept;
     bool operator!=(const U8String& rhs) const noexcept;
+    bool operator>(const U8String& rhs) const noexcept;
+    bool operator<(const U8String& rhs) const noexcept;
+    bool operator>=(const U8String& rhs) const noexcept;
+    bool operator<=(const U8String& rhs) const noexcept;
     bool operator==(ViewType view) const noexcept;
     bool operator!=(ViewType view) const noexcept;
-    bool operator==(const DataType* str) const noexcept;
-    bool operator!=(const DataType* str) const noexcept;
+    bool operator>(ViewType rhs) const noexcept;
+    bool operator<(ViewType rhs) const noexcept;
+    bool operator>=(ViewType rhs) const noexcept;
+    bool operator<=(ViewType rhs) const noexcept;
+    bool operator==(const DataType* rhs) const noexcept;
+    bool operator!=(const DataType* rhs) const noexcept;
+    bool operator>(const DataType* rhs) const noexcept;
+    bool operator<(const DataType* rhs) const noexcept;
+    bool operator>=(const DataType* rhs) const noexcept;
+    bool operator<=(const DataType* rhs) const noexcept;
 
     // getter
     SizeType        size() const;
@@ -987,24 +999,84 @@ inline bool U8String<Memory>::operator!=(const U8String& rhs) const noexcept
     return view() != rhs.view();
 };
 template <typename Memory>
-inline bool U8String<Memory>::operator==(ViewType view) const noexcept
+inline bool U8String<Memory>::operator>(const U8String& rhs) const noexcept
 {
-    return this->view() == view;
+    return view() > rhs.view();
 }
 template <typename Memory>
-inline bool U8String<Memory>::operator!=(ViewType view) const noexcept
+inline bool U8String<Memory>::operator<(const U8String& rhs) const noexcept
 {
-    return this->view() != view;
+    return view() < rhs.view();
 }
 template <typename Memory>
-inline bool U8String<Memory>::operator==(const DataType* str) const noexcept
+inline bool U8String<Memory>::operator>=(const U8String& rhs) const noexcept
 {
-    return this->view() == ViewType{ str };
+    return view() >= rhs.view();
 }
 template <typename Memory>
-inline bool U8String<Memory>::operator!=(const DataType* str) const noexcept
+inline bool U8String<Memory>::operator<=(const U8String& rhs) const noexcept
 {
-    return this->view() != ViewType{ str };
+    return view() <= rhs.view();
+}
+template <typename Memory>
+inline bool U8String<Memory>::operator==(ViewType rhs) const noexcept
+{
+    return view() == rhs;
+}
+template <typename Memory>
+inline bool U8String<Memory>::operator!=(ViewType rhs) const noexcept
+{
+    return view() != rhs;
+}
+template <typename Memory>
+inline bool U8String<Memory>::operator>(ViewType rhs) const noexcept
+{
+    return view() > rhs;
+}
+template <typename Memory>
+inline bool U8String<Memory>::operator<(ViewType rhs) const noexcept
+{
+    return view() < rhs;
+}
+template <typename Memory>
+inline bool U8String<Memory>::operator>=(ViewType rhs) const noexcept
+{
+    return view() >= rhs;
+}
+template <typename Memory>
+inline bool U8String<Memory>::operator<=(ViewType rhs) const noexcept
+{
+    return view() <= rhs;
+}
+template <typename Memory>
+inline bool U8String<Memory>::operator==(const DataType* rhs) const noexcept
+{
+    return view() == ViewType{ rhs };
+}
+template <typename Memory>
+inline bool U8String<Memory>::operator!=(const DataType* rhs) const noexcept
+{
+    return view() != ViewType{ rhs };
+}
+template <typename Memory>
+inline bool U8String<Memory>::operator>(const DataType* rhs) const noexcept
+{
+    return view() > ViewType{ rhs };
+}
+template <typename Memory>
+inline bool U8String<Memory>::operator<(const DataType* rhs) const noexcept
+{
+    return view() < ViewType{ rhs };
+}
+template <typename Memory>
+inline bool U8String<Memory>::operator>=(const DataType* rhs) const noexcept
+{
+    return view() >= ViewType{ rhs };
+}
+template <typename Memory>
+inline bool U8String<Memory>::operator<=(const DataType* rhs) const noexcept
+{
+    return view() <= ViewType{ rhs };
 }
 
 // getter
