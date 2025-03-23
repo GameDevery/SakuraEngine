@@ -32,9 +32,6 @@ ScanDirectories(SourceLocation.Directory(), DIRS);
 DIRS.ForEach(D => Log.Information($"Found xmake.lua in {D}"));
 // TEMP HELPER CODE, REMOVE LATER
 
-var CompileCommandsEmitter = new CompileCommandsEmitter(Toolchain);
-Engine.AddTaskEmitter("Cpp.CompileCommands", CompileCommandsEmitter);
-
 Engine.AddTaskEmitter("ModuleMeta", new ModuleMetaEmitter());
 
 Engine.AddTaskEmitter("Codgen.Meta", new CodegenMetaEmitter(Toolchain));
@@ -43,7 +40,18 @@ Engine.AddTaskEmitter("Codgen.Codegen", new CodegenRenderEmitter(Toolchain))
     .AddDependency("Codgen.Meta", DependencyModel.ExternalTarget)
     .AddDependency("Codgen.Meta", DependencyModel.PerTarget);
 
+Engine.AddTaskEmitter("Cpp.UnityBuild", new UnityBuildEmitter())
+    .AddDependency("ModuleMeta", DependencyModel.PerTarget)
+    .AddDependency("Codgen.Codegen", DependencyModel.PerTarget);
+
 Engine.AddTaskEmitter("Cpp.Compile", new CppCompileEmitter(Toolchain))
+    .AddDependency("ModuleMeta", DependencyModel.PerTarget)
+    .AddDependency("Cpp.UnityBuild", DependencyModel.PerTarget)
+    .AddDependency("Codgen.Codegen", DependencyModel.ExternalTarget)
+    .AddDependency("Codgen.Codegen", DependencyModel.PerTarget);
+
+var CompileCommandsEmitter = new CompileCommandsEmitter(Toolchain);
+Engine.AddTaskEmitter("Cpp.CompileCommands", CompileCommandsEmitter)
     .AddDependency("ModuleMeta", DependencyModel.PerTarget)
     .AddDependency("Codgen.Codegen", DependencyModel.ExternalTarget)
     .AddDependency("Codgen.Codegen", DependencyModel.PerTarget);

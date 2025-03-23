@@ -10,6 +10,7 @@ public static class SkrLive2D
     {
         var CubismFramework = Engine
             .StaticComponent("CubismFramework", "SkrLive2D")
+            .EnableUnityBuild()
             .OptimizationLevel(OptimizationLevel.Fastest)
             .Depend(Visibility.Public, "SkrBase")
             .IncludeDirs(Visibility.Private, Path.Combine(SourceLocation.Directory(), "CubismNativeCore/include"))
@@ -29,6 +30,7 @@ public static class SkrLive2D
 
         Engine
             .Module("SkrLive2D", "SKR_LIVE2D")
+            .EnableUnityBuild()
             .Depend(Visibility.Public, "SkrImageCoder", "SkrRenderer")
             .Depend(Visibility.Private, "CubismFramework")
             .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "include"))

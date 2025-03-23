@@ -14,31 +14,47 @@ namespace SB
             BuildSystem.TargetDefaultSettings(this);
         }
 
+        private System.Threading.Lock FileOperationsLock = new();
         public Target AddFiles(params string[] files)
         {
-            foreach (var file in files)
+            lock (FileOperationsLock)
             {
-                if (file.Contains("*"))
+                foreach (var file in files)
                 {
-                    if (Path.IsPathFullyQualified(file))
-                        Globs.Add(Path.GetRelativePath(Directory, file));
+                    if (file.Contains("*"))
+                    {
+                        if (Path.IsPathFullyQualified(file))
+                            Globs.Add(Path.GetRelativePath(Directory, file));
+                        else
+                            Globs.Add(file);
+                    }
+                    else if (Path.IsPathFullyQualified(file))
+                        Absolutes.Add(file);
                     else
-                        Globs.Add(file);
+                        Absolutes.Add(Path.Combine(Directory, file));
                 }
-                else if (Path.IsPathFullyQualified(file))
-                    Absolutes.Add(file);
-                else
-                    Absolutes.Add(Path.Combine(Directory, file));
             }
             return this;
         }
 
-        private object AddFilesLock = new();
-        public Target AddFilesLocked(params string[] files)
+        public Target RemoveFiles(params string[] files)
         {
-            lock (AddFilesLock)
+            lock (FileOperationsLock)
             {
-                AddFiles(files);
+                foreach (var file in files)
+                {
+                    if (file.Contains("*"))
+                    {
+                        if (Path.IsPathFullyQualified(file))
+                            Globs.Remove(Path.GetRelativePath(Directory, file));
+                        else
+                            Globs.Remove(file);
+                    }
+                    else if (Path.IsPathFullyQualified(file))
+                        Absolutes.Remove(file);
+                    else
+                        Absolutes.Remove(Path.Combine(Directory, file));
+                }
             }
             return this;
         }
@@ -50,29 +66,29 @@ namespace SB
                 switch (Visibility)
                 {
                     case Visibility.Public:
-                    {
-                        if (DependName.Contains("@"))
-                            PublicPackageTargetDependencies.Add(DependName);
-                        else
-                            PublicTargetDependencies.Add(DependName);
-                    }
-                    break;
+                        {
+                            if (DependName.Contains("@"))
+                                PublicPackageTargetDependencies.Add(DependName);
+                            else
+                                PublicTargetDependencies.Add(DependName);
+                        }
+                        break;
                     case Visibility.Private:
-                    {
-                        if (DependName.Contains("@"))
-                            PrivatePackageTargetDependencies.Add(DependName);
-                        else
-                            PrivateTargetDependencies.Add(DependName);
-                    }
-                    break;
+                        {
+                            if (DependName.Contains("@"))
+                                PrivatePackageTargetDependencies.Add(DependName);
+                            else
+                                PrivateTargetDependencies.Add(DependName);
+                        }
+                        break;
                     case Visibility.Interface:
-                    {
-                        if (DependName.Contains("@"))
-                            InterfacePackageTargetDependencies.Add(DependName);
-                        else
-                            InterfaceTargetDependencies.Add(DependName);
-                    }
-                    break;
+                        {
+                            if (DependName.Contains("@"))
+                                InterfacePackageTargetDependencies.Add(DependName);
+                            else
+                                InterfaceTargetDependencies.Add(DependName);
+                        }
+                        break;
                 }
             }
             return this;
@@ -135,8 +151,8 @@ namespace SB
                     if (Package == null)
                         throw new ArgumentException($"Target {Name}: Required package {PackageName} does not exist!");
 
-                    var ResolvePackageTargetDependencies = 
-                        (SortedSet<string> PackageTargetDependencies, ref SortedSet<string> ResolvedTargetDependencies, ref Dictionary<string, Target> OutPackageTargets) => 
+                    var ResolvePackageTargetDependencies =
+                        (SortedSet<string> PackageTargetDependencies, ref SortedSet<string> ResolvedTargetDependencies, ref Dictionary<string, Target> OutPackageTargets) =>
                         {
                             foreach (var NickName in PackageTargetDependencies)
                             {
@@ -231,13 +247,16 @@ namespace SB
         public string Name { get; }
         public string Location { get; }
         public string Directory { get; }
+
         #region Files
         private SortedSet<string> Globs = new();
         private SortedSet<string> Absolutes = new();
+        private System.Threading.Lock FilesOperationLock = new();
         #endregion
+        
         #region Dependencies
         private SortedDictionary<string, PackageConfig> PackageDependencies = new();
-        
+
         private SortedSet<string> FinalTargetDependencies = new();
         private SortedSet<string> PublicTargetDependencies = new();
         private SortedSet<string> PrivateTargetDependencies = new();
@@ -247,13 +266,15 @@ namespace SB
         private SortedSet<string> PrivatePackageTargetDependencies = new();
         private SortedSet<string> InterfacePackageTargetDependencies = new();
         #endregion
+
         #region Package
         public bool IsFromPackage { get; internal set; } = false;
         #endregion
+
         internal List<Action<Target>> BeforeBuildActions = new();
     }
 
-    public static class TargetExtensions
+    public static partial class TargetExtensions
     {
         public static TargetType? GetTargetType(this Target Target)
         {

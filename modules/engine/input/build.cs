@@ -9,6 +9,7 @@ public static class SkrInput
     {
         var SkrInput = Engine
             .Module("SkrInput")
+            .EnableUnityBuild()
             .Depend(Visibility.Public, "SkrRT")
             .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "include"))
             .AddFiles("src/*.cpp", "src/common/*.cpp", "src/sdl2/*.cpp");

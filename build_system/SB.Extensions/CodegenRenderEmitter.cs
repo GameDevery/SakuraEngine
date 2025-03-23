@@ -84,7 +84,7 @@ namespace SB
                 depend.ExternalFiles.AddRange(AllGeneratedHeaders);
             }, DependFiles, null);
             // Add generated files to target
-            Target.AddFilesLocked(Directory.GetFiles(CodegenDirectory, "*.cpp", SearchOption.AllDirectories));
+            Target.AddFiles(Directory.GetFiles(CodegenDirectory, "*.cpp", SearchOption.AllDirectories));
             return new PlainArtifact { IsRestored = !Changed };
         }
 
@@ -118,7 +118,7 @@ namespace SB
         public List<CodegenGenerator> generators { get; set; } = new();
     }
 
-    public static class TargetExtensions
+    public static partial class TargetExtensions
     {
         public static string GetCodegenDirectory(this Target @this) => Path.Combine(@this.GetStorePath(BuildSystem.GeneratedSourceStore), $"codegen/{@this.Name}");
     }

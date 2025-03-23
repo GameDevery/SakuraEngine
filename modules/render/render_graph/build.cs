@@ -9,6 +9,7 @@ public static class SkrRenderGraph
     {
         Engine
             .Module("SkrRenderGraph")
+            .EnableUnityBuild()
             .Depend(Visibility.Public, "SkrRT")
             .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "include"))
             .AddFiles("src/frontend/*.cpp", "src/graphviz/*.cpp")

@@ -9,6 +9,7 @@ public static class SkrImageCoder
     static SkrImageCoder()
     {
         var ImageCoder = Engine.Module("SkrImageCoder")
+            .EnableUnityBuild()
             .Require("zlib", new PackageConfig { Version = new Version(1, 2, 8) })
             .Depend(Visibility.Private, "zlib@zlib")
             .Depend(Visibility.Public, "SkrRT")

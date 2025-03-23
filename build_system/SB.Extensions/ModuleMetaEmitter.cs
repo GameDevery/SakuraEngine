@@ -15,7 +15,7 @@ namespace SB
 
             var GenSourcePath = Target.GetStorePath(BuildSystem.GeneratedSourceStore);
             var GenFileName = Path.Combine(GenSourcePath, "module.configure.cpp");
-            Target.AddFilesLocked(GenFileName);
+            Target.AddFiles(GenFileName);
             Depend.OnChanged(Target.Name, GenFileName, Name, (Depend depend) => {
                 var ModuleDependencies = Target.Dependencies.Where((Dependency) => BuildSystem.GetTarget(Dependency).GetAttribute<ModuleAttribute>() is not null);
                 string DependenciesArray = "[" + String.Join(",", ModuleDependencies.Select(D => FormatDependency(D))) + "]";
