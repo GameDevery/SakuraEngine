@@ -769,6 +769,56 @@ const Any* RTTRType::find_attribute(TypeSignatureView signature) const
     }
     return nullptr;
 }
+void RTTRType::each_attribute(FunctionRef<void(const Any&)> each_func) const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Record: {
+        for (const auto& attr : _record_data.attrs)
+        {
+            each_func(attr);
+        }
+        break;
+    }
+    case ERTTRTypeCategory::Enum: {
+        for (const auto& attr : _enum_data.attrs)
+        {
+            each_func(attr);
+        }
+        break;
+    }
+    default:
+        break;
+    }
+}
+void RTTRType::each_attribute(FunctionRef<void(const Any&)> each_func, TypeSignatureView signature) const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Record: {
+        for (const auto& attr : _record_data.attrs)
+        {
+            if (attr.type_is(signature))
+            {
+                each_func(attr);
+            }
+        }
+        break;
+    }
+    case ERTTRTypeCategory::Enum: {
+        for (const auto& attr : _enum_data.attrs)
+        {
+            if (attr.type_is(signature))
+            {
+                each_func(attr);
+            }
+        }
+        break;
+    }
+    default:
+        break;
+    }
+}
 
 // helpers
 bool RTTRType::_build_caster(RTTRTypeCaster& caster, const GUID& type_id) const

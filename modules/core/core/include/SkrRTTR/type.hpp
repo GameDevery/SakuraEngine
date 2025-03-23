@@ -135,14 +135,16 @@ struct SKR_CORE_API RTTRType final {
     const RTTRExternMethodData* find_extern_method_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
 
     // find basic functions
-    const RTTRCtorData* find_default_ctor() const;
-    const RTTRCtorData* find_copy_ctor() const;
+    const RTTRCtorData*         find_default_ctor() const;
+    const RTTRCtorData*         find_copy_ctor() const;
     const RTTRExternMethodData* find_assign() const;
 
     // flag & attribute
     ERTTRRecordFlag record_flag() const;
     ERTTREnumFlag   enum_flag() const;
     const Any*      find_attribute(TypeSignatureView signature) const;
+    void            each_attribute(FunctionRef<void(const Any&)> each_func) const;
+    void            each_attribute(FunctionRef<void(const Any&)> each_func, TypeSignatureView signature) const;
 
 private:
     // helpers
