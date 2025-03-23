@@ -37,14 +37,12 @@ uint64_t RunnerBase::predicate() const SKR_NOEXCEPT
     uint64_t cnt = 0;
     for (auto processor : batch_processors)
     {
-        if (!processor->is_async())
-            cnt += processor->processing_count();
+        cnt += processor->processing_count();
         cnt += processor->processed_count();
     }
     for (auto processor : request_processors)
     {
-        if (!processor->is_async())
-            cnt += processor->processing_count();
+        cnt += processor->processing_count();
         cnt += processor->processed_count();
     }
     return cnt;

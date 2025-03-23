@@ -90,7 +90,6 @@ void VFSRAMReader::dispatchFunction(SkrAsyncServicePriority priority, const IORe
             }
         }
     }
-    dec_processing(priority);
 
     awakeService();
 }
@@ -108,6 +107,7 @@ void VFSRAMReader::dispatch(SkrAsyncServicePriority priority) SKR_NOEXCEPT
                 return true;
             })
         );
+        dec_processing(priority);
     }
 }
 
