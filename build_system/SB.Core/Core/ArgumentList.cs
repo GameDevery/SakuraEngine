@@ -6,13 +6,13 @@
         public IArgumentList Copy();
     }
 
-    public class ArgumentList<T> : List<T>, IArgumentList
+    public class ArgumentList<T> : SortedSet<T>, IArgumentList
     {
         public void Merge(IArgumentList Another)
         {
-            if (Another is not List<T>)
+            if (Another is not SortedSet<T>)
                 throw new ArgumentException("ArgumentList type mismatch!");
-            var ToMerge = Another as List<T>;
+            var ToMerge = Another as SortedSet<T>;
             this.AddRange(ToMerge!);
         }
 

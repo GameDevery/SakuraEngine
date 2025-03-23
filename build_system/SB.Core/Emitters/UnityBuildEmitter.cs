@@ -1,5 +1,4 @@
 using SB.Core;
-using Serilog;
 
 namespace SB
 {
@@ -7,7 +6,9 @@ namespace SB
 
     public class UnityBuildAttribute
     {
-        public int BatchCount { get; set; } = 10;
+        public int BatchCount { get; set; } = 32;
+        public required bool Cpp;
+        public required bool C;
     }
 
     public class UnityBuildEmitter : TaskEmitter
@@ -20,9 +21,6 @@ namespace SB
             Directory.CreateDirectory(UnityFileDirectory);
 
             var UnityBuildAttribute = Target.GetAttribute<UnityBuildAttribute>()!;
-            var CBatches = Target.AllFiles.Where(F => F.EndsWith('c')).Chunk(UnityBuildAttribute.BatchCount);
-            var CppBatches = Target.AllFiles.Where(F => F.EndsWith("cpp")).Chunk(UnityBuildAttribute.BatchCount);
-            
             bool Changed = false;
             List<string> UnityFiles = new();
             var RunBatch = (IEnumerable<string[]> Batches, string Postfix) => {
@@ -40,19 +38,28 @@ namespace SB
                 }
             };
 
-            RunBatch(CBatches, "c");
-            RunBatch(CppBatches, "cpp");
+            if (UnityBuildAttribute.C)
+            {
+                var CBatches = Target.AllFiles.Where(F => F.EndsWith('c')).Chunk(UnityBuildAttribute.BatchCount);
+                RunBatch(CBatches, "c");
+            }
+            
+            if (UnityBuildAttribute.Cpp)
+            {
+                var CppBatches = Target.AllFiles.Where(F => F.EndsWith("cpp")).Chunk(UnityBuildAttribute.BatchCount);
+                RunBatch(CppBatches, "cpp");
+            }
+        
             Target.AddFiles(UnityFiles.ToArray());
-
             return new PlainArtifact { IsRestored = !Changed };
         }
     }
 
     public static partial class TargetExtensions
     {
-        public static Target EnableUnityBuild(this Target @this)
+        public static Target EnableUnityBuild(this Target @this, bool Cpp = true, bool C = true)
         {
-            @this.SetAttribute(new UnityBuildAttribute());
+            @this.SetAttribute(new UnityBuildAttribute { Cpp = Cpp, C = C });
             return @this;
         }
     }

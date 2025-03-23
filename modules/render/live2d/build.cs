@@ -28,7 +28,7 @@ public static class SkrLive2D
             CubismFramework.Link(Visibility.Public, "Live2DCubismCore");
         }
 
-        Engine
+        var SkrLive2D = Engine
             .Module("SkrLive2D", "SKR_LIVE2D")
             .EnableUnityBuild()
             .Depend(Visibility.Public, "SkrImageCoder", "SkrRenderer")
@@ -38,6 +38,7 @@ public static class SkrLive2D
             .IncludeDirs(Visibility.Private, Path.Combine(SourceLocation.Directory(), "CubismFramework"))
             .IncludeDirs(Visibility.Private, Path.Combine(SourceLocation.Directory(), "CubismFramework/Framework"))
             .AddFiles("src/*.cpp");
+        SkrLive2D.UsePrivatePCH("src/pch.hpp");
     }
 }
 

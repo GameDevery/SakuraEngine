@@ -47,14 +47,14 @@ namespace SB.Core
             DependArgsList.Add($"ENV:WindowsSDKLibVersion={VCEnvVariables["WindowsSDKLibVersion"]}");
             DependArgsList.Add($"ENV:UCRTVersion={VCEnvVariables["UCRTVersion"]}");
 
-            var SourceFile = Driver.Arguments["Source"] as string;
-            var ObjectFile = Driver.Arguments["Object"] as string;
-            var Changed = Depend.OnChanged(Target.Name, SourceFile!, Emitter.Name, (Depend depend) =>
+            var FileToCompile = TryGet(Driver.Arguments, "Source") ?? TryGet(Driver.Arguments, "PCHHeader");
+            var ObjectFile = TryGet(Driver.Arguments, "Object") ?? TryGet(Driver.Arguments, "PCHObject");
+            var Changed = Depend.OnChanged(Target.Name, FileToCompile!, Emitter.Name, (Depend depend) =>
             {
                 int ExitCode = BuildSystem.RunProcess(ExecutablePath, String.Join(" ", CompilerArgsList), out var OutputInfo, out var ErrorInfo, VCEnvVariables);
                 if (ExitCode != 0)
                 {
-                    throw new TaskFatalError($"Compile {SourceFile} failed with fatal error!", $"clang-cl.exe: {ErrorInfo}");
+                    throw new TaskFatalError($"Compile {FileToCompile} failed with fatal error!", $"clang-cl.exe: {ErrorInfo}");
                 }
                 else
                 {
@@ -72,7 +72,7 @@ namespace SB.Core
                     Log.Warning("clang-cl.exe: {OutputInfo}", OutputInfo);
 
                 depend.ExternalFiles.Add(ObjectFile!);
-            }, new List<string> { SourceFile! }, DependArgsList);
+            }, new List<string> { FileToCompile! }, DependArgsList);
 
             return new CompileResult
             {
@@ -90,6 +90,11 @@ namespace SB.Core
                     ClangCLVersionTask.Wait();
                 return ClangCLVersionTask.Result;
             }
+        }
+
+        private string? TryGet(Dictionary<string, object?> Dict, string Name)
+        {
+            return Dict.TryGetValue(Name, out var Value) ? Value as string : null;
         }
 
         public readonly Dictionary<string, string?> VCEnvVariables;

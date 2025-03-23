@@ -75,6 +75,10 @@
 
         public virtual string SourceDependencies(string path) => BS.CheckFile(path, false) ? $"/sourceDependencies \"{path}\"" : throw new TaskFatalError($"SourceDependencies value {path} is not a valid absolute path!");
 
+        public virtual string PCHHeader(string path) => BS.CheckFile(path, true) ? $"-Yu\"{path}\" -FI\"{path}\"" : throw new TaskFatalError($"PCH value {path} is not a valid absolute path!");
+
+        public virtual string PCHObject(string path) => BS.CheckFile(path, false) ? $"-Fp\"{path}\"" : throw new TaskFatalError($"PCHObject value {path} is not a valid absolute path!");
+
         public Dictionary<ArgumentName, object?> Arguments { get; } = new Dictionary<ArgumentName, object?>();
         public HashSet<string> RawArguments { get; } = new HashSet<string> { "/c", "/nologo", "/FC", "/source-charset:utf-8" };
         // /c: dont link while compiling, https://learn.microsoft.com/zh-cn/cpp/build/reference/c-compile-without-linking?view=msvc-170

@@ -30,6 +30,7 @@ namespace SB
                 BuildSystem.BuildPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".build")).FullName;
                 BuildSystem.PackageTempPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".pkgs/.sb")).FullName;
                 BuildSystem.PackageBuildPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".pkgs/.build")).FullName;
+                
                 // 
                 CppCompileEmitter.WithDebugInfo = CppLinkEmitter.WithDebugInfo = EnableDebugInfo;
 

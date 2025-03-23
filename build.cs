@@ -9,6 +9,7 @@ before_sw.Start();
 var Toolchain = Engine.Bootstrap(SourceLocation.Directory());
 
 // TEMP HELPER CODE, REMOVE LATER
+/*
 static void ScanDirectories(string currentPath, List<string> result)
 {
     // 检查当前目录的文件状态 
@@ -30,6 +31,7 @@ static void ScanDirectories(string currentPath, List<string> result)
 List<string> DIRS = new();
 ScanDirectories(SourceLocation.Directory(), DIRS);
 DIRS.ForEach(D => Log.Information($"Found xmake.lua in {D}"));
+*/
 // TEMP HELPER CODE, REMOVE LATER
 
 Engine.AddTaskEmitter("ModuleMeta", new ModuleMetaEmitter());
@@ -40,6 +42,10 @@ Engine.AddTaskEmitter("Codgen.Codegen", new CodegenRenderEmitter(Toolchain))
     .AddDependency("Codgen.Meta", DependencyModel.ExternalTarget)
     .AddDependency("Codgen.Meta", DependencyModel.PerTarget);
 
+Engine.AddTaskEmitter("Cpp.PCH", new PCHEmitter(Toolchain))
+    .AddDependency("Codgen.Codegen", DependencyModel.ExternalTarget)
+    .AddDependency("Codgen.Codegen", DependencyModel.PerTarget);
+
 Engine.AddTaskEmitter("Cpp.UnityBuild", new UnityBuildEmitter())
     .AddDependency("ModuleMeta", DependencyModel.PerTarget)
     .AddDependency("Codgen.Codegen", DependencyModel.PerTarget);
@@ -47,12 +53,17 @@ Engine.AddTaskEmitter("Cpp.UnityBuild", new UnityBuildEmitter())
 Engine.AddTaskEmitter("Cpp.Compile", new CppCompileEmitter(Toolchain))
     .AddDependency("ModuleMeta", DependencyModel.PerTarget)
     .AddDependency("Cpp.UnityBuild", DependencyModel.PerTarget)
+    .AddDependency("Cpp.PCH", DependencyModel.PerTarget)
+    .AddDependency("Cpp.PCH", DependencyModel.ExternalTarget)
     .AddDependency("Codgen.Codegen", DependencyModel.ExternalTarget)
     .AddDependency("Codgen.Codegen", DependencyModel.PerTarget);
 
 var CompileCommandsEmitter = new CompileCommandsEmitter(Toolchain);
 Engine.AddTaskEmitter("Cpp.CompileCommands", CompileCommandsEmitter)
     .AddDependency("ModuleMeta", DependencyModel.PerTarget)
+    .AddDependency("Cpp.UnityBuild", DependencyModel.PerTarget)
+    .AddDependency("Cpp.PCH", DependencyModel.PerTarget)
+    .AddDependency("Cpp.PCH", DependencyModel.ExternalTarget)
     .AddDependency("Codgen.Codegen", DependencyModel.ExternalTarget)
     .AddDependency("Codgen.Codegen", DependencyModel.PerTarget);
 

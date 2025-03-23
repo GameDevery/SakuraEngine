@@ -27,7 +27,7 @@ namespace SB
 
             var SourceDependencies = Path.Combine(Target.GetStorePath(BuildSystem.DepsStore), BuildSystem.GetUniqueTempFileName(SourceFile, Target.Name + this.Name, "source.deps.json"));
             var ObjectFile = GetObjectFilePath(Target, SourceFile);
-            var CLDriver = Toolchain.Compiler.CreateArgumentDriver()
+            var CompilerDriver = Toolchain.Compiler.CreateArgumentDriver()
                 .AddArguments(Target.Arguments)
                 .AddArgument("Source", SourceFile)
                 .AddArgument("Object", ObjectFile)
@@ -35,11 +35,11 @@ namespace SB
             if (WithDebugInfo)
             {
                 if (BuildSystem.TargetOS == OSPlatform.Windows)
-                    CLDriver.AddArgument("PDBMode", PDBMode.Embed);// /Z7
+                    CompilerDriver.AddArgument("PDBMode", PDBMode.Embed);// /Z7
                 else
                     Log.Warning("Debug info is not supported on this platform!");
             }
-            var R = Toolchain.Compiler.Compile(this, Target, CLDriver);
+            var R = Toolchain.Compiler.Compile(this, Target, CompilerDriver);
             var CompileAttribute = Target.GetAttribute<CppCompileAttribute>()!;
             CompileAttribute.ObjectFiles.Add(ObjectFile);
 
