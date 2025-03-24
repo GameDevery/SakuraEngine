@@ -8,3 +8,7 @@ includes("dcc/xmake.lua")
 skr_includes_with_cull("cef", function ()
     includes('cef')
 end)
+
+skr_includes_with_cull("v8", function ()
+    includes('v8_playground')
+end)
