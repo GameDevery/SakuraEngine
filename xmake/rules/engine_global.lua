@@ -77,7 +77,7 @@ skr_global_target()
                     elseif item.opt.install_func == "file" then
                         download_tool:download_file(item.opt.name)
                     elseif item.opt.install_func == "custom" then
-                        download_tool:download_package(item.opt.name)
+                        download_tool:download_sdk(item.opt.name, {debug = item.opt.debug})
                     else
                         raise("invalid install_func: %s", item.opt.install_func)
                     end

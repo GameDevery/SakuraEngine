@@ -211,12 +211,38 @@ v8::MaybeLocal<v8::Module> V8Context::_resolve_module(
     v8::Local<v8::Module>     referrer
 )
 {
+    auto isolate = v8::Isolate::GetCurrent();
+
     skr::String spec;
     V8Bind::to_native(specifier, spec);
 
     SKR_LOG_FMT_INFO(u8"resolve module: {}", spec.c_str());
 
-    return {};
+    std::vector<v8::Local<v8::String>> imports = {
+        V8Bind::to_v8(u8"name", false)
+    };
+    auto callback = +[](v8::Local<v8::Context> context, v8::Local<v8::Module> module) -> v8::MaybeLocal<v8::Value> {
+        auto isolate = v8::Isolate::GetCurrent();
+
+        // clang-format off
+        module->SetSyntheticModuleExport(
+            isolate,
+            V8Bind::to_v8(u8"name", false),
+            V8Bind::to_v8(u8"圆头", false)
+        ).Check();
+        // clang-format on
+
+        return v8::MaybeLocal<v8::Value>(v8::True(isolate));
+    };
+
+    v8::Local<v8::Module> module = v8::Module::CreateSyntheticModule(
+        isolate,
+        specifier,
+        imports,
+        callback
+    );
+
+    return module;
 }
 
 } // namespace skr
