@@ -32,7 +32,7 @@ namespace SB
         
         public static bool CheckFile(string P, bool MustExist) => Path.IsPathFullyQualified(P) && (!MustExist || File.Exists(P));
 
-        public static int RunProcess(string ExecutablePath, string Arguments, out string Output, out string Error, Dictionary<string, string?>? Env = null)
+        public static int RunProcess(string ExecutablePath, string Arguments, out string Output, out string Error, Dictionary<string, string?>? Env = null, string? WorkingDirectory = null)
         {
             try
             {
@@ -49,6 +49,8 @@ namespace SB
                         Arguments = Arguments
                     }
                 };
+                if (WorkingDirectory is not null)
+                    P.StartInfo.WorkingDirectory = WorkingDirectory;
                 if (Env is not null)
                 {
                     foreach (var kvp in Env)

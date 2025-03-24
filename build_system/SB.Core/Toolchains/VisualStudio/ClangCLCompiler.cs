@@ -35,7 +35,7 @@ namespace SB.Core
             return new ClangCLArgumentDriver();
         }
 
-        public CompileResult Compile(TaskEmitter Emitter, Target Target, IArgumentDriver Driver)
+        public CompileResult Compile(TaskEmitter Emitter, Target Target, IArgumentDriver Driver, string? WorkDirectory = null)
         {
             var CompilerArgsDict = Driver.CalculateArguments();
             var CompilerArgsList = CompilerArgsDict.Values.SelectMany(x => x).ToList();
@@ -51,7 +51,7 @@ namespace SB.Core
             var ObjectFile = TryGet(Driver.Arguments, "Object") ?? TryGet(Driver.Arguments, "PCHObject");
             var Changed = Depend.OnChanged(Target.Name, FileToCompile!, Emitter.Name, (Depend depend) =>
             {
-                int ExitCode = BuildSystem.RunProcess(ExecutablePath, String.Join(" ", CompilerArgsList), out var OutputInfo, out var ErrorInfo, VCEnvVariables);
+                int ExitCode = BuildSystem.RunProcess(ExecutablePath, String.Join(" ", CompilerArgsList), out var OutputInfo, out var ErrorInfo, VCEnvVariables, WorkDirectory);
                 if (ExitCode != 0)
                 {
                     throw new TaskFatalError($"Compile {FileToCompile} failed with fatal error!", $"clang-cl.exe: {ErrorInfo}");

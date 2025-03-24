@@ -46,7 +46,7 @@ namespace SB.Core
             return new CLArgumentDriver();
         }
 
-        public CompileResult Compile(TaskEmitter Emitter, Target Target, IArgumentDriver Driver)
+        public CompileResult Compile(TaskEmitter Emitter, Target Target, IArgumentDriver Driver, string? WorkDirectory = null)
         {
             var CompilerArgsDict = Driver.CalculateArguments();
             var CompilerArgsList = CompilerArgsDict.Values.SelectMany(x => x).ToList();
@@ -62,7 +62,7 @@ namespace SB.Core
             var ObjectFile = Driver.Arguments["Object"] as string;
             var Changed = Depend.OnChanged(Target.Name, SourceFile!, Emitter.Name, (Depend depend) =>
             {
-                int ExitCode = BuildSystem.RunProcess(ExecutablePath, String.Join(" ", CompilerArgsList), out var OutputInfo, out var ErrorInfo, VCEnvVariables);
+                int ExitCode = BuildSystem.RunProcess(ExecutablePath, String.Join(" ", CompilerArgsList), out var OutputInfo, out var ErrorInfo, VCEnvVariables, WorkDirectory);
                 // FUCK YOU MICROSOFT THIS IS WEIRD
                 if (ExitCode != 0)
                 {
