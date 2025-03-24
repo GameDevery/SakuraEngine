@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
         context.register_type<v8_play::Debug>();
 
         // execute script
-        context.exec_script(script);
+        context.exec_module(script);
 
         context.shutdown();
     }

@@ -55,8 +55,20 @@ struct SKR_V8_API V8Context {
     template <typename T>
     void set_global(StringView name, T&& v);
 
-    // run script
+    // run as script
     V8Value exec_script(StringView script);
+
+    // run as ES module
+    V8Value exec_module(StringView script);
+
+private:
+    // callback
+    static v8::MaybeLocal<v8::Module> _resolve_module(
+        v8::Local<v8::Context>    context,
+        v8::Local<v8::String>     specifier,
+        v8::Local<v8::FixedArray> import_assertions,
+        v8::Local<v8::Module>     referrer
+    );
 
 private:
     // owner
