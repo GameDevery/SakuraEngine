@@ -64,7 +64,6 @@ public static class Freetype
                         "port/freetype/src/winfonts/winfnt.c"
                     );
 
-
                 if (BuildSystem.TargetOS == OSPlatform.Windows)
                 {
                     Target
