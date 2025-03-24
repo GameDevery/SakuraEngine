@@ -47,5 +47,6 @@ target("v8")
         name = "v8_11.2_msvc",
         install_func = "custom",
         custom_install = install_func,
+        debug = not is_mode("release"),
         -- toolchain = {"msvc"},
     })
