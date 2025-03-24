@@ -1,4 +1,5 @@
 using SB.Core;
+using Microsoft.Extensions.FileSystemGlobbing;
 
 namespace SB
 {
@@ -11,7 +12,6 @@ namespace SB
         public override bool EmitTargetTask(Target Target) => true;
         public override IArtifact? PerTargetTask(Target Target)
         {
-            var UsePCH = Target.GetAttribute<UsePCHAttribute>();
             var CreateSharedPCH = Target.GetAttribute<CreateSharedPCHAttribute>();
             var CreatePrivatePCH = Target.GetAttribute<CreatePrivatePCHAttribute>();
             bool Changed = false;
@@ -19,6 +19,13 @@ namespace SB
             var CreatePCH = (CreatePCHAttribute CreatePCH, PCHMode Mode) => {
                 var PCHFile = GetPCHFile(Target, Mode);
                 var PCHASTFile = GetPCHASTFile(Target, Mode);
+
+                if (CreatePCH.Globs.Count != 0)
+                {
+                    var GlobMatcher = new Matcher();
+                    GlobMatcher.AddIncludePatterns(CreatePCH.Globs);
+                    CreatePCH.Headers.AddRange(GlobMatcher.GetResultsInFullPath(Target.Directory));
+                }
 
                 Changed |= Depend.OnChanged(Target.Name, PCHFile, "PCHEmitter.CreatePCH", (Depend depend) =>
                 {
@@ -38,8 +45,28 @@ namespace SB
                 Changed |= Depend.OnChanged(Target.Name, PCHFile, "PCHEmitter.CompilePCH", (Depend depend) =>
                 {
                     var SourceDependencies = Path.Combine(Target.GetStorePath(BuildSystem.DepsStore), BuildSystem.GetUniqueTempFileName(PCHFile, Target.Name + this.Name, "source.deps.json"));
+                    var PCHArguments = Target.Arguments;
+                    if (Mode == PCHMode.Shared)
+                    {
+                        var SharedPCHArgs = PCHArguments.ToDictionary();
+                        // Remove all private defines & add all interface args
+                        if (Target.Arguments.TryGetValue("Defines", out var defs))
+                        {
+                            ArgumentList<string> Defines = (defs as ArgumentList<string>)?.Copy() as ArgumentList<string> ?? new();
+                            ArgumentList<string>? PrivateDefines = Target.PrivateArguments["Defines"] as ArgumentList<string>;
+                            if (PrivateDefines is not null)
+                            {
+                                foreach (var Define in PrivateDefines)
+                                    Defines.Remove(Define);
+                            }
+                            SharedPCHArgs["Defines"] = Defines;
+                        }
+                        Target.MergeArguments(SharedPCHArgs, Target.InterfaceArguments);
+                        PCHArguments = SharedPCHArgs;
+                    }
+                    // Execute
                     var CompilerDriver = Toolchain.Compiler.CreateArgumentDriver()
-                        .AddArguments(Target.Arguments)
+                        .AddArguments(PCHArguments)
                         .AddArgument("Source", PCHFile)
                         .AddArgument("AsPCHHeader", true)
                         .AddArgument("Object", PCHASTFile)
@@ -55,35 +82,14 @@ namespace SB
             if (CreatePrivatePCH is not null)
                 CreatePCH(CreatePrivatePCH, PCHMode.Private);
 
-            if (UsePCH is not null)
-            {
-                string PCHProvider = Target.Name;
-                if (UsePCH.Mode == PCHMode.Shared)
-                {
-                    if (UsePCH.WantedSharedPCH is null)
-                    {
-                        var Providers = Target.Dependencies.Select(D => BS.GetTarget(D)).Where(D => ProvideSharedPCH(D));
-                        var Scores = Providers.Select(P => 1 + P.Dependencies.Count(PD => ProvideSharedPCH(BS.GetTarget(PD))));
-                        var BestProvider = Providers.ElementAt(Scores.ToList().IndexOf(Scores.Max()));
-                        PCHProvider = BestProvider.Name;
-                    }
-                    else
-                        PCHProvider = UsePCH.WantedSharedPCH!;
-                }
-                var PCHAST = GetPCHASTFile(BS.GetTarget(PCHProvider), UsePCH.Mode);
-                Target.UsePCHAST(PCHAST);
-            }
             return new PlainArtifact { IsRestored = !Changed };
         }
         // 2025/3/24
         // under clang-cl, these two files must locate in the same directory
         // because the compiler has bugs for windows path
-        private string GetPCHFile(Target Target, PCHMode Mode) => Path.Combine(Target.GetStorePath(BS.GeneratedSourceStore), $"{Mode}PCH.h");
-        private string GetPCHASTFile(Target Target, PCHMode Mode) => Path.Combine(Target.GetStorePath(BS.GeneratedSourceStore), $"{Mode}PCH.pch");
-        private bool ProvideSharedPCH(Target Target)
-        {
-            return Target.GetAttribute<CreateSharedPCHAttribute>() is not null;
-        }
+        internal static string GetPCHFile(Target Target, PCHMode Mode) => Path.Combine(Target.GetStorePath(BS.GeneratedSourceStore), $"{Mode}PCH.h");
+        internal static string GetPCHASTFile(Target Target, PCHMode Mode) => Path.Combine(Target.GetStorePath(BS.GeneratedSourceStore), $"{Mode}PCH.pch");
+        internal static bool ProvideSharedPCH(Target Target) => Target.GetAttribute<CreateSharedPCHAttribute>() is not null;
         private IToolchain Toolchain;
     }
 
@@ -95,8 +101,9 @@ namespace SB
 
     public class UsePCHAttribute
     {
-        public required PCHMode Mode { get; init; }
-        public string? WantedSharedPCH { get; init; }
+        public PCHMode Mode { get; internal set; }
+        public string? WantedSharedPCH { get; internal set; }
+        public string? CppPCHAST { get; internal set; }
     }
 
     public abstract class CreatePCHAttribute
@@ -113,14 +120,32 @@ namespace SB
     {
         public static Target UseSharedPCH(this Target @this, string? Wanted = null)
         {
-            @this.SetAttribute(new UsePCHAttribute { Mode = PCHMode.Shared, WantedSharedPCH = Wanted });
+            var UseAttribute = @this.GetAttribute<UsePCHAttribute>();
+            if (UseAttribute is null)
+            {
+                @this.SetAttribute(@this.SetupUsePCHAttribute(PCHMode.Shared));
+            }
+            else
+            {
+                UseAttribute.Mode = PCHMode.Shared;
+                UseAttribute.WantedSharedPCH = Wanted;
+            }
             return @this;
         }
 
         public static Target UsePrivatePCH(this Target @this, params string[] Headers)
         {
+            var UseAttribute = @this.GetAttribute<UsePCHAttribute>();
+            if (UseAttribute is null)
+            {
+                @this.SetAttribute(@this.SetupUsePCHAttribute(PCHMode.Private));
+            }
+            else
+            {
+                UseAttribute.Mode = PCHMode.Private;
+            }
+                
             var CreateAttribute = new CreatePrivatePCHAttribute();
-            @this.SetAttribute(new UsePCHAttribute { Mode = PCHMode.Private });
             @this.SetAttribute(CreateAttribute);
             foreach (var file in Headers)
             {
@@ -158,6 +183,40 @@ namespace SB
                     CreateAttribute.Headers.Add(Path.Combine(@this.Directory, file));
             }
             return @this;
+        }
+
+        private static UsePCHAttribute SetupUsePCHAttribute(this Target @this, PCHMode Mode)
+        {
+            var UseAttribute = new UsePCHAttribute { Mode = Mode };
+            @this.AfterLoad((@this) => {
+                string? PCHProvider = null;
+                if (UseAttribute.Mode == PCHMode.Shared && @this.Dependencies.Count > 0)
+                {
+                    if (UseAttribute.WantedSharedPCH is null)
+                    {
+                        var Providers = @this.Dependencies.Select(D => BS.GetTarget(D)).Where(D => PCHEmitter.ProvideSharedPCH(D));
+                        if (Providers.Any())
+                        {
+                            var Scores = Providers.Select(P => 1 + P.Dependencies.Count(PD => PCHEmitter.ProvideSharedPCH(BS.GetTarget(PD))));
+                            var BestProvider = Providers.ElementAt(Scores.ToList().IndexOf(Scores.Max()));
+                            PCHProvider = BestProvider.Name;
+                        }
+                    }
+                    else
+                        PCHProvider = UseAttribute.WantedSharedPCH!;
+                }
+                else if (UseAttribute.Mode == PCHMode.Private)
+                {
+                    PCHProvider = @this.Name;
+                }
+                
+                if (PCHProvider is not null)
+                {
+                    // later we get it in cpp compile emitter
+                    UseAttribute.CppPCHAST = PCHEmitter.GetPCHASTFile(BS.GetTarget(PCHProvider), UseAttribute.Mode);
+                }
+            });
+            return UseAttribute;
         }
     }
 }

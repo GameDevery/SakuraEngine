@@ -63,11 +63,11 @@ namespace SB
             var Target = BuildSystem.Target(Name, Location!);
             Target.ApplyEngineModulePresets();
             Target.TargetType(TargetType.Static);
-            Target.BeforeBuild((Target) =>
+            Target.AfterLoad((Target) =>
             {
                 var Owner = BuildSystem.GetTarget(OwnerName);
                 var OwnerAttribute = Owner?.GetAttribute<ModuleAttribute>();
-                var OwnerIncludes = (Owner?.Arguments["IncludeDirs"]) as ArgumentList<string>;
+                var OwnerIncludes = (Owner?.PublicArguments["IncludeDirs"]) as ArgumentList<string>;
                 
                 if (OwnerIncludes is not null && OwnerIncludes.Count > 0)
                 {

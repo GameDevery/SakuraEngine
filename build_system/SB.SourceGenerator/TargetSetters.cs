@@ -177,10 +177,11 @@ namespace SB
             return PrivateArguments;
         }
 
-        public IReadOnlyDictionary<string, object?> Arguments => PrivateArguments;
-        internal ArgumentDictionary PublicArguments { get; } = new();
-        internal ArgumentDictionary PrivateArguments { get; } = new();
-        internal ArgumentDictionary InterfaceArguments { get; } = new();
+        public IReadOnlyDictionary<string, object?> Arguments => FinalArguments;
+        public ArgumentDictionary FinalArguments { get; } = new();
+        public ArgumentDictionary PublicArguments { get; } = new();
+        public ArgumentDictionary PrivateArguments { get; } = new();
+        public ArgumentDictionary InterfaceArguments { get; } = new();
     }
 }");
                 spc.AddSource("TargetSetters.cs", SourceText.From(sourceBuilder.ToString(), Encoding.UTF8));

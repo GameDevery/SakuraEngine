@@ -75,7 +75,6 @@
 
         public virtual string SourceDependencies(string path) => BS.CheckFile(path, false) ? $"/sourceDependencies \"{path}\"" : throw new TaskFatalError($"SourceDependencies value {path} is not a valid absolute path!");
 
-        [TargetProperty]
         public virtual string UsePCHAST(string path) => "";
 
         public Dictionary<ArgumentName, object?> Arguments { get; } = new Dictionary<ArgumentName, object?>();

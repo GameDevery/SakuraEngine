@@ -32,6 +32,14 @@ namespace SB
                 .AddArgument("Source", SourceFile)
                 .AddArgument("Object", ObjectFile)
                 .AddArgument("SourceDependencies", SourceDependencies);
+            if (SourceFile.EndsWith(".cpp") || SourceFile.EndsWith(".cc"))
+            {
+                var UsePCH = Target.GetAttribute<UsePCHAttribute>();
+                if (UsePCH?.CppPCHAST is not null)
+                {
+                    CompilerDriver.AddArgument("UsePCHAST", UsePCH.CppPCHAST);
+                }
+            }
             if (WithDebugInfo)
             {
                 if (BuildSystem.TargetOS == OSPlatform.Windows)

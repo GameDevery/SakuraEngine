@@ -86,6 +86,10 @@ namespace SB
 
             foreach (var TargetKVP in AllTargets)
                 TargetKVP.Value.ResolveDependencies();
+
+            foreach (var TargetKVP in AllTargets)
+                TargetKVP.Value.CallAllActions(TargetKVP.Value.AfterLoadActions);
+
             foreach (var TargetKVP in AllTargets)
                 TargetKVP.Value.ResolveArguments();
 

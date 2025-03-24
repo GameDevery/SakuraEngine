@@ -108,6 +108,12 @@ namespace SB
             return this;
         }
 
+        public Target AfterLoad(Action<Target> Action)
+        {
+            AfterLoadActions.Add(Action);
+            return this;
+        }
+
         public Target SetAttribute<T>(T Attribute)
         {
             Attributes.Add(typeof(T), Attribute);
@@ -187,12 +193,13 @@ namespace SB
                 Absolutes.AddRange(GlobMatcher.GetResultsInFullPath(Directory));
             }
             // Arguments
-            MergeArguments(PrivateArguments, PublicArguments);
+            MergeArguments(FinalArguments, PublicArguments);
+            MergeArguments(FinalArguments, PrivateArguments);
             foreach (var DepName in Dependencies)
             {
                 Target DepTarget = BuildSystem.GetTarget(DepName);
-                MergeArguments(PrivateArguments, DepTarget.PublicArguments);
-                MergeArguments(PrivateArguments, DepTarget.InterfaceArguments);
+                MergeArguments(FinalArguments, DepTarget.PublicArguments);
+                MergeArguments(FinalArguments, DepTarget.InterfaceArguments);
             }
         }
 
@@ -257,6 +264,7 @@ namespace SB
         #endregion
 
         internal List<Action<Target>> BeforeBuildActions = new();
+        internal List<Action<Target>> AfterLoadActions = new();
     }
 
     public static partial class TargetExtensions

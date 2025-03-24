@@ -90,7 +90,8 @@ namespace SB
         {
             BuildSystem.TargetDefaultSettings += (Target Target) =>
             {
-                Target.LinkDirs(Visibility.Public, Target.GetBuildPath());
+                Target.CppVersion("20")
+                    .LinkDirs(Visibility.Public, Target.GetBuildPath());
                 if (BuildSystem.TargetOS == OSPlatform.Windows)
                 {
                     Target.RuntimeLibrary("MD");
