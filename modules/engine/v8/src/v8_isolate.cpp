@@ -74,6 +74,14 @@ void V8Isolate::init()
     _isolate_create_params.array_buffer_allocator = SkrNew<V8Allocator>();
     _isolate                                      = Isolate::New(_isolate_create_params);
     _isolate->SetData(0, this);
+
+    // TODO. module support
+    // _isolate->SetHostImportModuleDynamicallyCallback;    // used for support module
+    // _isolate->SetHostInitializeImportMetaObjectCallback; // used for set import.meta
+    // v8::Module::CreateSyntheticModule
+
+    // TODO. promise support
+    // _isolate->SetPromiseRejectCallback; // used for capture unhandledRejection
 }
 void V8Isolate::shutdown()
 {

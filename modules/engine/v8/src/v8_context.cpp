@@ -90,11 +90,11 @@ void V8Context::register_type(skr::RTTRType* type)
             auto ctx  = _context.Get(_isolate->v8_isolate());
             auto func = template_ref->GetFunction(ctx).ToLocalChecked();
             // clang-format off
-                        auto set_result = ctx->Global()->Set(
-                            ctx,
-                            V8Bind::to_v8(type->name(), true),
-                            func
-                        );
+            auto set_result = ctx->Global()->Set(
+                ctx,
+                V8Bind::to_v8(type->name(), true),
+                func
+            );
             // clang-format on
 
             // check set result
