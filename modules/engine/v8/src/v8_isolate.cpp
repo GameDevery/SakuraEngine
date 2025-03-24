@@ -76,8 +76,8 @@ void V8Isolate::init()
     _isolate->SetData(0, this);
 
     // TODO. module support
-    // _isolate->SetHostImportModuleDynamicallyCallback;    // used for support module
-    // _isolate->SetHostInitializeImportMetaObjectCallback; // used for set import.meta
+    _isolate->SetHostImportModuleDynamicallyCallback(_dynamic_import_module); // used for support module
+    // _isolate->SetHostInitializeImportMetaObjectCallback(); // used for set import.meta
     // v8::Module::CreateSyntheticModule
 
     // TODO. promise support
@@ -168,6 +168,31 @@ v8::Local<v8::FunctionTemplate> V8Isolate::_get_record_template(const RTTRType* 
 
     return _bind_manager.get_record_template(type);
 }
+
+// module callback
+v8::MaybeLocal<v8::Promise> V8Isolate::_dynamic_import_module(
+    v8::Local<v8::Context>    context,
+    v8::Local<v8::Data>       host_defined_options,
+    v8::Local<v8::Value>      resource_name,
+    v8::Local<v8::String>     specifier,
+    v8::Local<v8::FixedArray> import_assertions
+)
+{
+    v8::Local<v8::Promise::Resolver> resolver;
+
+    // v8::Local<v8::Module> module;
+    // module->GetModuleNamespace();
+
+    // log info
+    skr::String spec;
+    V8Bind::to_native(specifier, spec);
+    SKR_LOG_FMT_INFO(u8"import module {}", spec);
+
+    resolver->Resolve(context, {}).Check();
+
+    return resolver->GetPromise();
+}
+
 } // namespace skr
 
 namespace skr

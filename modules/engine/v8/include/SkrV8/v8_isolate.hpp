@@ -53,6 +53,15 @@ private:
     v8::Local<v8::ObjectTemplate>   _get_enum_template(const RTTRType* type);
     v8::Local<v8::FunctionTemplate> _get_record_template(const RTTRType* type);
 
+    // module callback
+    static v8::MaybeLocal<v8::Promise> _dynamic_import_module(
+        v8::Local<v8::Context> context,
+        v8::Local<v8::Data> host_defined_options,
+        v8::Local<v8::Value> resource_name,
+        v8::Local<v8::String> specifier,
+        v8::Local<v8::FixedArray> import_assertions
+    );
+
 private:
     // isolate data
     ::v8::Isolate*              _isolate;

@@ -113,25 +113,27 @@ void V8Context::register_type(skr::RTTRType* type)
     return ::v8::Global<::v8::Context>(_isolate->v8_isolate(), _context);
 }
 
-// exec script
+// run as script
 V8Value V8Context::exec_script(StringView script)
 {
-    ::v8::Isolate::Scope       isolate_scope(_isolate->v8_isolate());
-    ::v8::HandleScope          handle_scope(_isolate->v8_isolate());
-    ::v8::Local<::v8::Context> solved_context = _context.Get(_isolate->v8_isolate());
-    ::v8::Context::Scope       context_scope(solved_context);
+    auto                   isolate = _isolate->v8_isolate();
+    v8::Isolate::Scope     isolate_scope(isolate);
+    v8::HandleScope        handle_scope(isolate);
+    v8::Local<v8::Context> context = _context.Get(isolate);
+    v8::Context::Scope     context_scope(context);
 
     // compile script
-    ::v8::Local<::v8::String> source          = V8Bind::to_v8(script, false);
-    auto                      compiled_script = ::v8::Script::Compile(solved_context, source);
-    if (compiled_script.IsEmpty())
+    v8::Local<v8::String> source        = V8Bind::to_v8(script, false);
+    auto                  may_be_script = ::v8::Script::Compile(context, source);
+    if (may_be_script.IsEmpty())
     {
         SKR_LOG_ERROR(u8"compile script failed");
         return {};
     }
 
     // run script
-    auto exec_result = compiled_script.ToLocalChecked()->Run(solved_context);
+    auto compiled_script = may_be_script.ToLocalChecked();
+    auto exec_result     = compiled_script->Run(context);
     if (!exec_result.IsEmpty())
     {
         V8Value result;
@@ -139,6 +141,80 @@ V8Value V8Context::exec_script(StringView script)
         result.v8_value.Reset(_isolate->v8_isolate(), exec_result.ToLocalChecked());
         return result;
     }
+
+    return {};
+}
+
+// run as ES module
+V8Value V8Context::exec_module(StringView script)
+{
+    auto                   isolate = _isolate->v8_isolate();
+    v8::Isolate::Scope     isolate_scope(isolate);
+    v8::HandleScope        handle_scope(isolate);
+    v8::Local<v8::Context> context = _context.Get(isolate);
+    v8::Context::Scope     context_scope(context);
+
+    // compile module
+    v8::ScriptOrigin origin(
+        isolate,
+        V8Bind::to_v8(skr::StringView{ u8"" }),
+        0,
+        0,
+        true,
+        -1,
+        {},
+        false,
+        false,
+        true,
+        {}
+    );
+    auto                         source_str = V8Bind::to_v8(script, false);
+    ::v8::ScriptCompiler::Source source(source_str, origin);
+    auto                         maybe_module = ::v8::ScriptCompiler::CompileModule(
+        isolate,
+        &source,
+        v8::ScriptCompiler::kNoCompileOptions
+    );
+    if (maybe_module.IsEmpty())
+    {
+        SKR_LOG_ERROR(u8"compile module failed");
+        return {};
+    }
+
+    // instantiate module
+    auto module             = maybe_module.ToLocalChecked();
+    auto instantiate_result = module->InstantiateModule(context, _resolve_module);
+    if (instantiate_result.IsNothing())
+    {
+        SKR_LOG_ERROR(u8"instantiate module failed");
+        return {};
+    }
+
+    // evaluate module
+    auto eval_result = module->Evaluate(context);
+    if (!eval_result.IsEmpty())
+    {
+        V8Value result;
+        result.context = this;
+        result.v8_value.Reset(_isolate->v8_isolate(), eval_result.ToLocalChecked());
+        return result;
+    }
+
+    return {};
+}
+
+// callback
+v8::MaybeLocal<v8::Module> V8Context::_resolve_module(
+    v8::Local<v8::Context>    context,
+    v8::Local<v8::String>     specifier,
+    v8::Local<v8::FixedArray> import_assertions,
+    v8::Local<v8::Module>     referrer
+)
+{
+    skr::String spec;
+    V8Bind::to_native(specifier, spec);
+
+    SKR_LOG_FMT_INFO(u8"resolve module: {}", spec.c_str());
 
     return {};
 }
