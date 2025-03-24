@@ -30,7 +30,8 @@ function skr_global_config()
         elseif (is_mode("asan")) then
             add_defines("_DISABLE_VECTOR_ANNOTATION")
         else
-            set_runtimes("MDd")
+            -- set_runtimes("MDd")
+            set_runtimes("MD")
         end
     end
 end 
