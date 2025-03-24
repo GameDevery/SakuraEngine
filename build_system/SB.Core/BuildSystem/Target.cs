@@ -108,23 +108,6 @@ namespace SB
             return this;
         }
 
-        // TODO: REMOVE THIS
-        // 做法: 把继承来的 Flag 装在一个容器里，实际使用的时候从自己的 Pub + Private + 继承结果混合
-        // 这样即使 BeforeBuild 的时候，加入 Pub/Private 的 Flag 也能正确加入编译，虽然他们不能再继承了
-        public T GetArgumentUnsafe<T>(string Name)
-            where T : new()
-        {
-            if (PrivateArguments.TryGetValue(Name, out var V))
-            {
-                if (V == null)
-                    throw new InvalidOperationException($"PrivateArguments '{Name}' contains a null value, this is unexpected bug, please report to developer!");
-                return (T)V;
-            }
-            var New = new T();
-            PrivateArguments.Add(Name, New);
-            return New;
-        }
-
         public Target SetAttribute<T>(T Attribute)
         {
             Attributes.Add(typeof(T), Attribute);
@@ -229,10 +212,12 @@ namespace SB
                 }
                 else
                 {
-                    if (To.TryGetValue(K, out var Existed))
+                    if (!To.TryGetValue(K, out var Existed))
                     {
                         To.Add(K, V);
                     }
+                    else
+                        throw new TaskFatalError("Argument Confict!");
                 }
             }
         }

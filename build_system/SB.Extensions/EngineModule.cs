@@ -22,21 +22,22 @@ namespace SB
         {
             API = API ?? Name.ToUpperSnakeCase();
             var Target = BuildSystem.Target(Name, Location!);
-            Target.ApplyEngineModulePresets();
-            Target.EnableCodegen(API, Path.Combine(Target.Directory, "include"));
-            Target.SetAttribute(new ModuleAttribute(Target, API));
+            Target.ApplyEngineModulePresets()
+                .EnableCodegen(API, Path.Combine(Target.Directory, "include"))
+                .SetAttribute(new ModuleAttribute(Target, API))
+                .UseSharedPCH();
             if (ShippingOneArchive)
             {
-                Target.TargetType(TargetType.Objects);
-                Target.Defines(Visibility.Private, "SHIPPING_ONE_ARCHIVE");
-                Target.Defines(Visibility.Public, $"{API}_API=");
+                Target.TargetType(TargetType.Objects)
+                    .Defines(Visibility.Private, "SHIPPING_ONE_ARCHIVE")
+                    .Defines(Visibility.Public, $"{API}_API=");
             }
             else
             {
-                Target.TargetType(TargetType.Dynamic);
-                Target.Defines(Visibility.Interface, $"{API}_API=SKR_IMPORT");
-                Target.Defines(Visibility.Private, $"{API}_API=SKR_EXPORT");
-                Target.Defines(Visibility.Private, $"{API}_SHARED");
+                Target.TargetType(TargetType.Dynamic)
+                    .Defines(Visibility.Interface, $"{API}_API=SKR_IMPORT")
+                    .Defines(Visibility.Private, $"{API}_API=SKR_EXPORT")
+                    .Defines(Visibility.Private, $"{API}_SHARED");
             }
             return Target;
         }
@@ -70,12 +71,9 @@ namespace SB
                 
                 if (OwnerIncludes is not null && OwnerIncludes.Count > 0)
                 {
-                    var Includes = Target.GetArgumentUnsafe<ArgumentList<string>>("IncludeDirs");
-                    Includes.AddRange(OwnerIncludes);
+                    Target.IncludeDirs(Visibility.Private, OwnerIncludes.ToArray());
                 }
-
-                var Defines = Target.GetArgumentUnsafe<ArgumentList<string>>("Defines");
-                Defines.Add($"{OwnerAttribute?.API}_API=");
+                Target.Defines(Visibility.Private, $"{OwnerAttribute?.API}_API=");
             });
             return Target;
         }
