@@ -19,13 +19,15 @@ includes("xmake/rules.lua")
 skr_global_config()
 
 -- add global rules to all targets
-add_rules("DisableTargets")
+-- add_rules("DisableTargets")
 
 -- load project configs
-if os.exists("project.lua") then
-    includes("project.lua")
-else
-    includes("./xmake/project.default.lua")
+if not disable_project_config then
+    if os.exists("project.lua") then
+        includes("project.lua")
+    else
+        includes("./xmake/project.default.lua")
+    end
 end
 
 -- global install tools
