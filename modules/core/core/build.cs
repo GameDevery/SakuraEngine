@@ -57,7 +57,7 @@ public static class SkrCore
             .AddCodegenScript("meta/rttr.ts")
             .AddCodegenScript("meta/serialize.ts")
             .AddCodegenScript("meta/proxy.ts")
-            .CreateSharedPCH("include/**.h", "include/**.hpp")
+            .CreateSharedPCH("include/**.h", "include/**.hpp", "../profile/include/SkrProfile/profile.h")
             // TODO: REMOVE THIS
             .Depend(Visibility.Public, "SDL2");
 
