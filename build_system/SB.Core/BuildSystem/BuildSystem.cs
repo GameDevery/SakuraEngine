@@ -1,6 +1,7 @@
 ﻿using SB;
 using SB.Core;
 using Serilog;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
@@ -88,7 +89,7 @@ namespace SB
             foreach (var TargetKVP in AllTargets)
                 TargetKVP.Value.ResolveArguments();
 
-            Dictionary<TaskFingerprint, Task> EmitterTasks = new(TaskEmitters.Count * AllTargets.Count);
+            ConcurrentDictionary<TaskFingerprint, Task> EmitterTasks = new();
             var SortedTargets = AllTargets.Values.OrderBy(T => T.Dependencies.Count).ToList();
 
             // Run Checks
@@ -214,7 +215,7 @@ namespace SB
                         }
                         return FileTasks.All(FileTask => (FileTask.Result == true));
                     });
-                    EmitterTasks.Add(Fingerprint, EmitterTask);
+                    EmitterTasks.TryAdd(Fingerprint, EmitterTask);
                     await EmitterTask;
                 }
             }).Wait();
