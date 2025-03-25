@@ -67,6 +67,7 @@ struct SKR_CORE_API RTTRType final {
     ERTTRTypeCategory  type_category() const;
     const skr::String& name() const;
     Vector<String>     name_space() const;
+    String             name_space_str() const;
     GUID               type_id() const;
     size_t             size() const;
     size_t             alignment() const;
@@ -205,6 +206,21 @@ inline Vector<String> RTTRType::name_space() const
         return _record_data.name_space;
     case ERTTRTypeCategory::Enum:
         return _enum_data.name_space;
+    default:
+        SKR_UNREACHABLE_CODE()
+        return {};
+    }
+}
+inline String RTTRType::name_space_str() const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Primitive:
+        return {};
+    case ERTTRTypeCategory::Record:
+        return String::Join(_record_data.name_space, u8"::");
+    case ERTTRTypeCategory::Enum:
+        return String::Join(_enum_data.name_space, u8"::");
     default:
         SKR_UNREACHABLE_CODE()
         return {};

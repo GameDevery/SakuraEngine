@@ -48,6 +48,30 @@ struct SparseHashMapDataRef : private SparseHashSetDataRef<KVPair<K, V>, TS, THa
     SKR_INLINE bool       already_exist() const { return Super::already_exist(); }
     SKR_INLINE bool       is_valid() const { return Super::is_valid(); }
 
+    // value or
+    SKR_INLINE KeyType key_or(KeyType default_value) const
+    {
+        if (is_valid())
+        {
+            return key();
+        }
+        else
+        {
+            return default_value;
+        }
+    }
+    SKR_INLINE ValueType value_or(ValueType default_value) const
+    {
+        if (is_valid())
+        {
+            return value();
+        }
+        else
+        {
+            return default_value;
+        }
+    }
+
     // operators
     SKR_INLINE explicit operator bool() { return is_valid(); }
     // SKR_INLINE T&       operator*() const { return ref(); }

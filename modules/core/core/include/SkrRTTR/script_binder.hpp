@@ -183,6 +183,15 @@ struct ScriptBinderRoot {
         return !operator==(other);
     }
 
+    // hash
+    inline size_t _skr_hash() const
+    {
+        return hash_combine(
+            Hash<EKind>()(_kind),
+            Hash<void*>()(_binder)
+        );
+    }
+
     // kind getter
     inline EKind kind() const { return _kind; }
     inline bool  is_empty() const { return _kind == EKind::None; }
