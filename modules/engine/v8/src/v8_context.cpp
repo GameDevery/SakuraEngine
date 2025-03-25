@@ -36,7 +36,7 @@ void V8Context::shutdown()
 }
 
 // register type
-void V8Context::register_type(skr::RTTRType* type)
+void V8Context::register_type(skr::RTTRType* type, StringView name_space)
 {
     v8::Isolate::Scope isolate_scope(_isolate->v8_isolate());
     v8::HandleScope    handle_scope(_isolate->v8_isolate());

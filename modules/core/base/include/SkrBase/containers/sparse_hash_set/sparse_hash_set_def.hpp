@@ -49,6 +49,19 @@ struct SparseHashSetDataRef {
     SKR_INLINE bool      already_exist() const { return _already_exist; }
     SKR_INLINE bool      is_valid() const { return _ptr != nullptr && _index != npos_of<SizeType>; }
 
+    // value or
+    SKR_INLINE DataType value_or(DataType default_value) const
+    {
+        if (is_valid())
+        {
+            return ref();
+        }
+        else
+        {
+            return default_value;
+        }
+    }
+
     // operators
     SKR_INLINE explicit operator bool() { return is_valid(); }
     // SKR_INLINE DataRef&       operator*() const { return ref(); }

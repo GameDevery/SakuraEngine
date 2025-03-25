@@ -15,6 +15,7 @@ namespace skr
 struct V8Isolate;
 struct V8Context;
 
+// value tool
 struct V8Value {
     bool is_empty() const;
 
@@ -43,9 +44,9 @@ struct SKR_V8_API V8Context {
     void shutdown();
 
     // register type
-    void register_type(skr::RTTRType* type);
+    void register_type(skr::RTTRType* type, StringView name_space = {});
     template <typename T>
-    void register_type();
+    void register_type(StringView name_space = {});
 
     // getter
     ::v8::Global<::v8::Context> v8_context() const;
@@ -75,18 +76,18 @@ private:
     V8Isolate* _isolate;
 
     // context data
-    ::v8::Persistent<::v8::Context> _context;
+    v8::Persistent<v8::Context> _context;
 };
 } // namespace skr
 
 namespace skr
 {
 template <typename T>
-inline void V8Context::register_type()
+inline void V8Context::register_type(StringView name_space)
 {
     if (auto type = skr::type_of<T>())
     {
-        register_type(type);
+        register_type(type, name_space);
     }
     else
     {

@@ -31,6 +31,30 @@ struct VectorDataRef {
     SKR_INLINE SizeType  index() const { return _index; }
     SKR_INLINE bool      is_valid() const { return _ptr != nullptr && _index != npos_of<SizeType>; }
 
+    // value or
+    SKR_INLINE DataType value_or(DataType default_value) const
+    {
+        if (is_valid())
+        {
+            return ref();
+        }
+        else
+        {
+            return default_value;
+        }
+    }
+    SKR_INLINE DataType* pointer_or(DataType* default_value) const
+    {
+        if (is_valid())
+        {
+            return ptr();
+        }
+        else
+        {
+            return default_value;
+        }
+    }
+
     // operators
     SKR_INLINE explicit operator bool() const { return is_valid(); }
     // SKR_INLINE DataType& operator*() const { return ref(); }
