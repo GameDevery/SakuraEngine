@@ -53,11 +53,9 @@ namespace SB
                         if (Target.Arguments.TryGetValue("Defines", out var defs))
                         {
                             ArgumentList<string> Defines = (defs as ArgumentList<string>)?.Copy() as ArgumentList<string> ?? new();
-                            ArgumentList<string>? PrivateDefines = Target.PrivateArguments["Defines"] as ArgumentList<string>;
-                            if (PrivateDefines is not null)
+                            if (Target.PrivateArguments.TryGetValue("Defines", out var PrivateDefines))
                             {
-                                foreach (var Define in PrivateDefines)
-                                    Defines.Remove(Define);
+                                Defines.Substract(PrivateDefines as ArgumentList<string>);
                             }
                             SharedPCHArgs["Defines"] = Defines;
                         }
