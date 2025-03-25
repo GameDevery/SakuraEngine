@@ -71,7 +71,7 @@ struct U8String : protected Memory {
     static SizeType FromLengthUtf16(const skr_char16* str) noexcept;
     static SizeType FromLengthUtf32(const skr_char32* str) noexcept;
     template <typename T>
-    static SizeType FromLength(const T* t) noexcept;
+    static SizeType FromLength(T* t) noexcept;
 
     // cast len with len
     static SizeType FromLengthRaw(const char* str, SizeType len) noexcept;
@@ -80,7 +80,7 @@ struct U8String : protected Memory {
     static SizeType FromLengthUtf16(const skr_char16* str, SizeType len) noexcept;
     static SizeType FromLengthUtf32(const skr_char32* str, SizeType len) noexcept;
     template <typename T>
-    static SizeType FromLength(const T* t, SizeType len) noexcept;
+    static SizeType FromLength(T* t, SizeType len) noexcept;
 
     // factory
     static U8String FromRaw(const char* str) noexcept;
@@ -89,7 +89,7 @@ struct U8String : protected Memory {
     static U8String FromUtf16(const skr_char16* str) noexcept;
     static U8String FromUtf32(const skr_char32* str) noexcept;
     template <typename T>
-    static U8String From(const T* t) noexcept;
+    static U8String From(T* t) noexcept;
 
     // factory with len
     static U8String FromRaw(const char* str, SizeType len) noexcept;
@@ -98,7 +98,16 @@ struct U8String : protected Memory {
     static U8String FromUtf16(const skr_char16* str, SizeType len) noexcept;
     static U8String FromUtf32(const skr_char32* str, SizeType len) noexcept;
     template <typename T>
-    static U8String From(const T* t, SizeType len) noexcept;
+    static U8String From(T* t, SizeType len) noexcept;
+
+    // factory ch
+    static U8String FromRaw(char ch) noexcept;
+    static U8String FromWide(wchar_t ch) noexcept;
+    static U8String FromUtf8(skr_char8 ch) noexcept;
+    static U8String FromUtf16(skr_char16 ch) noexcept;
+    static U8String FromUtf32(skr_char32 ch) noexcept;
+    template <typename T>
+    static U8String From(T ch) noexcept;
 
     // join & build factory
     // TODO. join use iterator
@@ -561,25 +570,25 @@ inline typename U8String<Memory>::SizeType U8String<Memory>::FromLengthUtf32(con
 }
 template <typename Memory>
 template <typename T>
-inline typename U8String<Memory>::SizeType U8String<Memory>::FromLength(const T* t) noexcept
+inline typename U8String<Memory>::SizeType U8String<Memory>::FromLength(T* t) noexcept
 {
-    if constexpr (std::is_same_v<T, char>)
+    if constexpr (std::is_same_v<std::remove_const_t<T>, char>)
     {
         return FromLengthRaw(t);
     }
-    else if constexpr (std::is_same_v<T, wchar_t>)
+    else if constexpr (std::is_same_v<std::remove_const_t<T>, wchar_t>)
     {
         return FromLengthWide(t);
     }
-    else if constexpr (std::is_same_v<T, skr_char8>)
+    else if constexpr (std::is_same_v<std::remove_const_t<T>, skr_char8>)
     {
         return FromLengthUtf8(t);
     }
-    else if constexpr (std::is_same_v<T, skr_char16>)
+    else if constexpr (std::is_same_v<std::remove_const_t<T>, skr_char16>)
     {
         return FromLengthUtf16(t);
     }
-    else if constexpr (std::is_same_v<T, skr_char32>)
+    else if constexpr (std::is_same_v<std::remove_const_t<T>, skr_char32>)
     {
         return FromLengthUtf32(t);
     }
@@ -641,25 +650,25 @@ inline typename U8String<Memory>::SizeType U8String<Memory>::FromLengthUtf32(con
 }
 template <typename Memory>
 template <typename T>
-inline typename U8String<Memory>::SizeType U8String<Memory>::FromLength(const T* t, SizeType len) noexcept
+inline typename U8String<Memory>::SizeType U8String<Memory>::FromLength(T* t, SizeType len) noexcept
 {
-    if constexpr (std::is_same_v<T, char>)
+    if constexpr (std::is_same_v<std::remove_const_t<T>, char>)
     {
         return FromLengthRaw(t, len);
     }
-    else if constexpr (std::is_same_v<T, wchar_t>)
+    else if constexpr (std::is_same_v<std::remove_const_t<T>, wchar_t>)
     {
         return FromLengthWide(t, len);
     }
-    else if constexpr (std::is_same_v<T, skr_char8>)
+    else if constexpr (std::is_same_v<std::remove_const_t<T>, skr_char8>)
     {
         return FromLengthUtf8(t, len);
     }
-    else if constexpr (std::is_same_v<T, skr_char16>)
+    else if constexpr (std::is_same_v<std::remove_const_t<T>, skr_char16>)
     {
         return FromLengthUtf16(t, len);
     }
-    else if constexpr (std::is_same_v<T, skr_char32>)
+    else if constexpr (std::is_same_v<std::remove_const_t<T>, skr_char32>)
     {
         return FromLengthUtf32(t, len);
     }
@@ -697,25 +706,25 @@ inline U8String<Memory> U8String<Memory>::FromUtf32(const skr_char32* str) noexc
 }
 template <typename Memory>
 template <typename T>
-inline U8String<Memory> U8String<Memory>::From(const T* t) noexcept
+inline U8String<Memory> U8String<Memory>::From(T* t) noexcept
 {
-    if constexpr (std::is_same_v<T, skr_char8>)
+    if constexpr (std::is_same_v<std::remove_const_t<T>, skr_char8>)
     {
         return FromUtf8(t);
     }
-    else if constexpr (std::is_same_v<T, skr_char16>)
+    else if constexpr (std::is_same_v<std::remove_const_t<T>, skr_char16>)
     {
         return FromUtf16(t);
     }
-    else if constexpr (std::is_same_v<T, skr_char32>)
+    else if constexpr (std::is_same_v<std::remove_const_t<T>, skr_char32>)
     {
         return FromUtf32(t);
     }
-    else if constexpr (std::is_same_v<T, wchar_t>)
+    else if constexpr (std::is_same_v<std::remove_const_t<T>, wchar_t>)
     {
         return FromWide(t);
     }
-    else if constexpr (std::is_same_v<T, char>)
+    else if constexpr (std::is_same_v<std::remove_const_t<T>, char>)
     {
         return FromRaw(t);
     }
@@ -787,27 +796,103 @@ inline U8String<Memory> U8String<Memory>::FromUtf32(const skr_char32* str, SizeT
 }
 template <typename Memory>
 template <typename T>
-inline U8String<Memory> U8String<Memory>::From(const T* t, SizeType len) noexcept
+inline U8String<Memory> U8String<Memory>::From(T* t, SizeType len) noexcept
 {
-    if constexpr (std::is_same_v<T, skr_char8>)
+    if constexpr (std::is_same_v<std::remove_const_t<T>, skr_char8>)
     {
         return FromUtf8(t, len);
     }
-    else if constexpr (std::is_same_v<T, skr_char16>)
+    else if constexpr (std::is_same_v<std::remove_const_t<T>, skr_char16>)
     {
         return FromUtf16(t, len);
     }
-    else if constexpr (std::is_same_v<T, skr_char32>)
+    else if constexpr (std::is_same_v<std::remove_const_t<T>, skr_char32>)
     {
         return FromUtf32(t, len);
     }
-    else if constexpr (std::is_same_v<T, wchar_t>)
+    else if constexpr (std::is_same_v<std::remove_const_t<T>, wchar_t>)
     {
         return FromWide(t, len);
     }
-    else if constexpr (std::is_same_v<T, char>)
+    else if constexpr (std::is_same_v<std::remove_const_t<T>, char>)
     {
         return FromRaw(t, len);
+    }
+    else
+    {
+        static_assert(std::is_same_v<T, skr_char8>, "Unsupported type");
+    }
+}
+
+// factory ch
+template <typename Memory>
+inline U8String<Memory> U8String<Memory>::FromRaw(char ch) noexcept
+{
+    return { reinterpret_cast<const DataType*>(&ch), 1 };
+}
+template <typename Memory>
+inline U8String<Memory> U8String<Memory>::FromWide(wchar_t ch) noexcept
+{
+#if _WIN64
+    return FromUtf16(reinterpret_cast<const skr_char16*>(&ch), 1);
+#elif __linux__ || __MACH__
+    return FromUtf32(reinterpret_cast<const skr_char32*>(&ch), 1);
+#endif
+}
+template <typename Memory>
+inline U8String<Memory> U8String<Memory>::FromUtf8(skr_char8 ch) noexcept
+{
+    return { &ch, 1 };
+}
+template <typename Memory>
+inline U8String<Memory> U8String<Memory>::FromUtf16(skr_char16 ch) noexcept
+{
+    // parse utf8 str len
+    SizeType utf8_len = FromLength(&ch, 1);
+
+    // combine result
+    U8String result;
+    result.resize_unsafe(utf8_len);
+    _parse_from_utf16(&ch, 1, result.data_w(), utf8_len);
+
+    return result;
+}
+template <typename Memory>
+inline U8String<Memory> U8String<Memory>::FromUtf32(skr_char32 ch) noexcept
+{
+    // parse utf8 str len
+    SizeType utf8_len = FromLength(&ch, 1);
+
+    // combine result
+    U8String result;
+    result.resize_unsafe(utf8_len);
+    _parse_from_utf32(&ch, 1, result.data_w(), utf8_len);
+
+    return result;
+}
+template <typename Memory>
+template <typename T>
+inline U8String<Memory> U8String<Memory>::From(T ch) noexcept
+{
+    if constexpr (std::is_same_v<std::remove_const_t<T>, skr_char8>)
+    {
+        return FromUtf8(ch);
+    }
+    else if constexpr (std::is_same_v<std::remove_const_t<T>, skr_char16>)
+    {
+        return FromUtf16(ch);
+    }
+    else if constexpr (std::is_same_v<std::remove_const_t<T>, skr_char32>)
+    {
+        return FromUtf32(ch);
+    }
+    else if constexpr (std::is_same_v<std::remove_const_t<T>, wchar_t>)
+    {
+        return FromWide(ch);
+    }
+    else if constexpr (std::is_same_v<std::remove_const_t<T>, char>)
+    {
+        return FromRaw(ch);
     }
     else
     {

@@ -41,3 +41,7 @@
 #define sscript_mixin sattr(rttr.flags += "ScriptMixin")
 #define sscript_getter(__NAME) sattr(rttr.attrs += `ScriptGetter(u8#__NAME)`)
 #define sscript_setter(__NAME) sattr(rttr.attrs += `ScriptSetter(u8#__NAME)`)
+
+// rttr helper
+#define srttr_flag(__FLAG) sattr(rttr.flags += #__FLAG)
+#define srttr_attr(...) sattr(rttr.attrs += `__VA_ARGS__`)
