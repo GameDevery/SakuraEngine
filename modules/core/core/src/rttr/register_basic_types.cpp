@@ -49,4 +49,24 @@ SKR_EXEC_STATIC_CTOR
     // float
     register_type_loader(type_id_of<float>(), &primitive_type_loader<float>);
     register_type_loader(type_id_of<double>(), &primitive_type_loader<double>);
+
+    // string
+    register_type_loader(
+        type_id_of<::skr::String>(),
+        +[](RTTRType* type) {
+            type->build_record([](RTTRRecordData* data) {
+                RTTRRecordBuilder<::skr::String> builder(data);
+                builder.basic_info();
+            });
+        }
+    );
+    register_type_loader(
+        type_id_of<::skr::StringView>(),
+        +[](RTTRType* type) {
+            type->build_record([](RTTRRecordData* data) {
+                RTTRRecordBuilder<::skr::StringView> builder(data);
+                builder.basic_info();
+            });
+        }
+    );
 };

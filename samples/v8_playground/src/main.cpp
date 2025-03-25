@@ -2,10 +2,20 @@
 #include <SkrV8/v8_isolate.hpp>
 #include <SkrV8/v8_module.hpp>
 #include <SkrCore/log.hpp>
+#include "SkrCore/cli.hpp"
 #include <V8Playground/debug.hpp>
+#include <V8Playground/cmd_args.hpp>
 
 int main(int argc, char* argv[])
 {
+    // parse args
+    skr::CmdParser parser;
+    v8_play::MainCommand cmd;
+    parser.main_cmd(&cmd, {
+        .help = u8"V8Playground [options]",
+    });
+    parser.parse(argc, argv);
+    
     // init v8
     skr::init_v8();
     skr::V8Isolate isolate;

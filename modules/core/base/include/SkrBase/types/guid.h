@@ -78,7 +78,7 @@ SKR_EXTERN_C void skr_make_guid(skr_guid_t* out_guid);
 namespace skr
 {
 using GUID = skr_guid_t;
-namespace literals
+inline namespace literals
 {
 namespace details
 {
