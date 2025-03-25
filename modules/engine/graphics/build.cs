@@ -19,9 +19,12 @@ public static class SkrGraphics
 
         if (BuildSystem.TargetOS == OSPlatform.OSX)
         {
+            var OCOptions = new SB.FileOptions();
+            OCOptions.Arguments.CppFlags(Visibility.Private, "-fno-objc-arc");
+
             SkrGraphics
-                .AddCFiles("src/build.*.m") // mxflags: "-fno-objc-arc"
-                .AddCppFiles("src/build.*.mm") // mxflags: "-fno-objc-arc"
+                .AddCFiles(OCOptions, "src/build.*.m") 
+                .AddCppFiles(OCOptions, "src/build.*.mm") 
                 // .AddFrameworks(Visibility.Public, "CoreFoundation", "Cocoa", "Metal", "IOKit");
                 .Defines(Visibility.Private, "VK_USE_PLATFORM_MACOS_MVK");
         }

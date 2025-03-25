@@ -159,39 +159,13 @@ namespace SB
             foreach (var FileList in FileLists)
                 FileList.GlobFiles();
             // Arguments
-            MergeArguments(FinalArguments, PublicArguments);
-            MergeArguments(FinalArguments, PrivateArguments);
+            FinalArguments.Merge(PublicArguments);
+            FinalArguments.Merge(PrivateArguments);
             foreach (var DepName in Dependencies)
             {
                 Target DepTarget = BuildSystem.GetTarget(DepName);
-                MergeArguments(FinalArguments, DepTarget.PublicArguments);
-                MergeArguments(FinalArguments, DepTarget.InterfaceArguments);
-            }
-        }
-
-        internal void MergeArguments(Dictionary<string, object?> To, Dictionary<string, object?> From)
-        {
-            foreach (var KVP in From)
-            {
-                var K = KVP.Key;
-                var V = KVP.Value;
-                if (V is IArgumentList)
-                {
-                    var ArgList = V as IArgumentList;
-                    if (To.TryGetValue(K, out var Existed))
-                        (Existed as IArgumentList)!.Merge(ArgList!);
-                    else
-                        To.Add(K, ArgList!.Copy());
-                }
-                else
-                {
-                    if (!To.TryGetValue(K, out var Existed))
-                    {
-                        To.Add(K, V);
-                    }
-                    else
-                        throw new TaskFatalError("Argument Confict!");
-                }
+                FinalArguments.Merge(DepTarget.PublicArguments);
+                FinalArguments.Merge(DepTarget.InterfaceArguments);
             }
         }
 
@@ -232,6 +206,46 @@ namespace SB
 
     public static partial class TargetExtensions
     {
+        public static ArgumentDictionary Copy(this ArgumentDictionary @this)
+        {
+            var Copy = new ArgumentDictionary();
+            Copy.Merge(@this);
+            return Copy;
+        }
+
+        public static void Merge(this ArgumentDictionary To, ArgumentDictionary? From)
+        {
+            if (From is null)
+                return;
+                
+            foreach (var KVP in From)
+            {
+                var K = KVP.Key;
+                var V = KVP.Value;
+                if (V is IArgumentList)
+                {
+                    var ArgList = V as IArgumentList;
+                    if (To.TryGetValue(K, out var Existed))
+                    {
+                        var COW = (Existed as IArgumentList)!.Copy();
+                        COW.Merge(ArgList!);
+                        To[K] = COW;
+                    }
+                    else
+                        To.Add(K, ArgList!.Copy());
+                }
+                else
+                {
+                    if (!To.TryGetValue(K, out var Existed))
+                    {
+                        To.Add(K, V);
+                    }
+                    else
+                        throw new TaskFatalError("Argument Confict!");
+                }
+            }
+        }
+
         public static TargetType? GetTargetType(this Target Target)
         {
             if (Target.Arguments.TryGetValue("TargetType", out var V))

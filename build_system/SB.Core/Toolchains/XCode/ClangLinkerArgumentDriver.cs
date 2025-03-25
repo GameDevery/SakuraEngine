@@ -26,7 +26,7 @@ namespace SB.Core
 
         public string Output(string output) => BS.CheckFile(output, false) ? $"-o \"{output}\"" : throw new ArgumentException($"Invalid output file path {output}!");
 
-        public Dictionary<ArgumentName, object?> Arguments { get; } = new Dictionary<ArgumentName, object?>();
+        public ArgumentDictionary Arguments { get; } = new ArgumentDictionary();
         public HashSet<string> RawArguments { get; } = new HashSet<string> {  };
     }
 }

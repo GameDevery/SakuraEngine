@@ -118,6 +118,12 @@ namespace SB.Core
             Arguments.AddRange(Args);
             return this;
         }
+        
+        public IArgumentDriver MergeArguments(ArgumentDictionary? Args)
+        {
+            Arguments.Merge(Args);
+            return this;
+        }
 
         public IArgumentDriver AddRawArgument(string Arg)
         {
@@ -125,7 +131,7 @@ namespace SB.Core
             return this;
         }
 
-        public Dictionary<ArgumentName, object?> Arguments { get; }
+        public ArgumentDictionary Arguments { get; }
         public HashSet<string> RawArguments { get; }
     }
 

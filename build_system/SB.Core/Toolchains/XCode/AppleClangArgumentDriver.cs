@@ -75,7 +75,7 @@ namespace SB.Core
 
         public string SourceDependencies(string path) => BS.CheckFile(path, false) ? $"-MD -MF\"{path}\"" : throw new TaskFatalError($"SourceDependencies value {path} is not a valid absolute path!");
 
-        public Dictionary<ArgumentName, object?> Arguments { get; } = new Dictionary<ArgumentName, object?>();
+        public ArgumentDictionary Arguments { get; } = new ArgumentDictionary();
         public HashSet<string> RawArguments { get; } = new HashSet<string> { "-c" };
     }
 }

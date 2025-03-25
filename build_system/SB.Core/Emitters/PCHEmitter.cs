@@ -48,7 +48,7 @@ namespace SB
                     var PCHArguments = Target.Arguments;
                     if (Mode == PCHMode.Shared)
                     {
-                        var SharedPCHArgs = PCHArguments.ToDictionary();
+                        var SharedPCHArgs = (PCHArguments as ArgumentDictionary)!.Copy();
                         // Remove all private defines & add all interface args
                         if (Target.Arguments.TryGetValue("Defines", out var defs))
                         {
@@ -59,7 +59,7 @@ namespace SB
                             }
                             SharedPCHArgs["Defines"] = Defines;
                         }
-                        Target.MergeArguments(SharedPCHArgs, Target.InterfaceArguments);
+                        SharedPCHArgs.Merge(Target.InterfaceArguments);
                         PCHArguments = SharedPCHArgs;
                     }
                     // Execute

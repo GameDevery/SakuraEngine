@@ -9,7 +9,7 @@ namespace SB
         public CompileCommandsEmitter(IToolchain Toolchain) => this.Toolchain = Toolchain;
         public override bool EnableEmitter(Target Target) => Target.HasFilesOf<CppFileList>() || Target.HasFilesOf<CFileList>();
         public override bool EmitFileTask(Target Target, FileList FileList) => FileList.Is<CppFileList>() || FileList.Is<CFileList>();
-        public override IArtifact? PerFileTask(Target Target, string SourceFile)
+        public override IArtifact? PerFileTask(Target Target, FileOptions? Options, string SourceFile)
         {
             Stopwatch sw = new();
             sw.Start();
@@ -19,6 +19,7 @@ namespace SB
 
             var CLDriver = Toolchain.Compiler.CreateArgumentDriver()
                 .AddArguments(Target.Arguments)
+                .MergeArguments(Options?.Arguments)
                 .AddArgument("Source", SourceFile)
                 .AddArgument("Object", ObjectFile)
                 .AddArgument("SourceDependencies", SourceDependencies);

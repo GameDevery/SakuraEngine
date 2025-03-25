@@ -77,7 +77,7 @@
 
         public virtual string UsePCHAST(string path) => "";
 
-        public Dictionary<ArgumentName, object?> Arguments { get; } = new Dictionary<ArgumentName, object?>();
+        public ArgumentDictionary Arguments { get; } = new();
         public HashSet<string> RawArguments { get; } = new HashSet<string> { "/c", "/nologo", "/FC", "/source-charset:utf-8" };
         // /c: dont link while compiling, https://learn.microsoft.com/zh-cn/cpp/build/reference/c-compile-without-linking?view=msvc-170
         // /logo: dont show info to output stream, https://learn.microsoft.com/zh-cn/cpp/build/reference/nologo-suppress-startup-banner-c-cpp?view=msvc-170

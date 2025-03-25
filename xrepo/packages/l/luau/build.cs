@@ -37,7 +37,10 @@ public static class Luau
 
                     if (BuildSystem.TargetOS == OSPlatform.Windows)
                     {
-                        Target.AddCppFiles("port/luau/VM/src/lvmexecute.cc"); //, {force = {cxflags = "/d2ssa-pre-"}});
+                        var Options = new SB.FileOptions();
+                        Options.Arguments.CppFlags(Visibility.Private, "/d2ssa-pre-");
+                        
+                        Target.AddCppFiles(Options, "port/luau/VM/src/lvmexecute.cc"); 
                     }
                     else
                     {

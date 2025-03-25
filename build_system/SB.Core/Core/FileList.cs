@@ -3,26 +3,39 @@ using Microsoft.Extensions.FileSystemGlobbing;
 
 namespace SB
 {
+    public class FileOptions
+    {
+        public ArgumentDictionary Arguments { get; } = new();
+    }
+
     public abstract class FileList
     {
         public FileList AddFiles(params string[] files)
         {
-            var Directory = Target!.Directory!;
+            AddFiles(null, files);
+            return this;
+        }
+
+        public FileList AddFiles(FileOptions? Options, params string[] files)
+        {
             lock (FileOperationsLock)
             {
-                foreach (var file in files)
+                var Directory = Target!.Directory!;
+                foreach (var File in files)
                 {
-                    if (file.Contains("*"))
+                    string FileToAdd;
+                    if (File.Contains("*"))
                     {
-                        if (Path.IsPathFullyQualified(file))
-                            Globs.Add(Path.GetRelativePath(Directory, file));
-                        else
-                            Globs.Add(file);
+                        FileToAdd = Path.IsPathFullyQualified(File) ? Path.GetRelativePath(Directory, File) : File;
+                        Globs.Add(FileToAdd);
                     }
-                    else if (Path.IsPathFullyQualified(file))
-                        Absolutes.Add(file);
                     else
-                        Absolutes.Add(Path.Combine(Directory, file));
+                    {
+                        FileToAdd = Path.IsPathFullyQualified(File) ? File : Path.Combine(Target!.Directory!, File);
+                        Absolutes.Add(FileToAdd);
+                    }
+                    if (Options is not null)
+                        FileOptions.TryAdd(FileToAdd, Options);
                 }
             }
             return this;
@@ -51,13 +64,29 @@ namespace SB
             return this;
         }
 
+        public FileOptions? GetFileOptions(string file)
+        {
+            if (FileOptions.TryGetValue(file, out var Options))
+                return Options;
+            return null;
+        }
+
         internal void GlobFiles()
         {
             if (Globs.Count != 0)
             {
-                var GlobMatcher = new Matcher();
-                GlobMatcher.AddIncludePatterns(Globs);
-                Absolutes.AddRange(GlobMatcher.GetResultsInFullPath(Target!.Directory!));
+                foreach (var Glob in Globs)
+                {
+                    var GlobMatcher = new Matcher();
+                    GlobMatcher.AddInclude(Glob);
+                    
+                    var GlobResults = GlobMatcher.GetResultsInFullPath(Target!.Directory!);
+                    Absolutes.AddRange(GlobResults);
+
+                    FileOptions.TryGetValue(Glob, out var GlobOptions);
+                    if (GlobOptions is not null)
+                        GlobResults.All(F => FileOptions.TryAdd(F, GlobOptions));
+                }
             }
         }
 
@@ -65,6 +94,7 @@ namespace SB
 
         public Target? Target { get; init; }
         public IReadOnlySet<string> Files => Absolutes;
+        public Dictionary<string, FileOptions> FileOptions { get; } = new();
         private SortedSet<string> Globs = new();
         private SortedSet<string> Absolutes = new();
         private System.Threading.Lock FileOperationsLock = new();
