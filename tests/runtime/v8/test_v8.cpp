@@ -31,8 +31,9 @@ TEST_CASE("test v8")
         context.init();
 
         // register context
-        context.register_type<test_v8::BasicObject>();
-        context.register_type<test_v8::InheritObject>();
+        context.register_type<test_v8::BasicObject>(u8"");
+        context.register_type<test_v8::InheritObject>(u8"");
+        context.finalize_register();
 
         // set global
         test_v8::BasicObject* obj = SkrNew<test_v8::BasicObject>();
@@ -136,8 +137,9 @@ TEST_CASE("test v8")
         context.init();
 
         // register context
-        context.register_type<test_v8::BasicValue>();
-        context.register_type<test_v8::InheritValue>();
+        context.register_type<test_v8::BasicValue>(u8"");
+        context.register_type<test_v8::InheritValue>(u8"");
+        context.finalize_register();
 
         // set global
         test_v8::BasicValue value{};
@@ -237,9 +239,10 @@ TEST_CASE("test v8")
         V8Context context(&isolate);
         context.init();
 
-        context.register_type<test_v8::BasicMapping>();
-        context.register_type<test_v8::InheritMapping>();
-        context.register_type<test_v8::BasicMappingHelper>();
+        // context.register_type<test_v8::BasicMapping>(u8"");    //!NOTE. mapping type need not to be registered
+        // context.register_type<test_v8::InheritMapping>(u8"");  //!NOTE. mapping type need not to be registered
+        context.register_type<test_v8::BasicMappingHelper>(u8"");
+        context.finalize_register();
 
         // test basic
         context.exec_script(u8"BasicMappingHelper.basic_value = {x:11, y:45, z: 14}");
@@ -281,8 +284,9 @@ TEST_CASE("test v8")
         V8Context context(&isolate);
         context.init();
 
-        context.register_type<test_v8::BasicEnum>();
-        context.register_type<test_v8::BasicEnumHelper>();
+        context.register_type<test_v8::BasicEnum>(u8"");
+        context.register_type<test_v8::BasicEnumHelper>(u8"");
+        context.finalize_register();
 
         // test assign
         context.exec_script(u8"BasicEnumHelper.test_value = BasicEnum.Value4");
@@ -308,8 +312,9 @@ TEST_CASE("test v8")
         V8Context context(&isolate);
         context.init();
 
-        context.register_type<test_v8::ParamFlagTest>();
-        context.register_type<test_v8::ParamFlagTestValue>();
+        context.register_type<test_v8::ParamFlagTest>(u8"");
+        context.register_type<test_v8::ParamFlagTestValue>(u8"");
+        context.finalize_register();
 
         // test out & inout
         context.exec_script(u8"ParamFlagTest.test_value = ParamFlagTest.test_pure_out()");
@@ -349,7 +354,8 @@ TEST_CASE("test v8")
         V8Context context(&isolate);
         context.init();
 
-        context.register_type<test_v8::TestString>();
+        context.register_type<test_v8::TestString>(u8"");
+        context.finalize_register();
 
         // test get str
         context.exec_script(u8"TestString.value = TestString.get_str()");
@@ -392,7 +398,7 @@ TEST_CASE("test v8")
         exporter.register_type<test_v8::ParamFlagTest>();
         exporter.register_type<test_v8::ParamFlagTestValue>();
         exporter.register_type<test_v8::TestString>();
-        auto result = exporter.generate();
+        auto result = exporter.generate_global();
 
         auto file = fopen("test_v8.d.ts", "wb");
         if (file)

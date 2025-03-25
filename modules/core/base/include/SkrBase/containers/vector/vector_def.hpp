@@ -32,7 +32,7 @@ struct VectorDataRef {
     SKR_INLINE bool      is_valid() const { return _ptr != nullptr && _index != npos_of<SizeType>; }
 
     // value or
-    SKR_INLINE DataType value_or(DataType default_value) const
+    SKR_INLINE DataType value_or(DataType v) const
     {
         if (is_valid())
         {
@@ -40,10 +40,10 @@ struct VectorDataRef {
         }
         else
         {
-            return default_value;
+            return v;
         }
     }
-    SKR_INLINE DataType* pointer_or(DataType* default_value) const
+    SKR_INLINE DataType* pointer_or(DataType* p) const
     {
         if (is_valid())
         {
@@ -51,7 +51,7 @@ struct VectorDataRef {
         }
         else
         {
-            return default_value;
+            return p;
         }
     }
 

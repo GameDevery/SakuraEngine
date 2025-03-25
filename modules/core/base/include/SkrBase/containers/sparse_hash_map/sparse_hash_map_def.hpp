@@ -49,7 +49,7 @@ struct SparseHashMapDataRef : private SparseHashSetDataRef<KVPair<K, V>, TS, THa
     SKR_INLINE bool       is_valid() const { return Super::is_valid(); }
 
     // value or
-    SKR_INLINE KeyType key_or(KeyType default_value) const
+    SKR_INLINE KeyType key_or(KeyType k) const
     {
         if (is_valid())
         {
@@ -57,10 +57,10 @@ struct SparseHashMapDataRef : private SparseHashSetDataRef<KVPair<K, V>, TS, THa
         }
         else
         {
-            return default_value;
+            return k;
         }
     }
-    SKR_INLINE ValueType value_or(ValueType default_value) const
+    SKR_INLINE ValueType value_or(ValueType v) const
     {
         if (is_valid())
         {
@@ -68,7 +68,7 @@ struct SparseHashMapDataRef : private SparseHashSetDataRef<KVPair<K, V>, TS, THa
         }
         else
         {
-            return default_value;
+            return v;
         }
     }
 

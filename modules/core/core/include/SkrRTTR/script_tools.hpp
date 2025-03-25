@@ -181,7 +181,7 @@ struct ScriptNamespaceMapper {
                 node = node->add_child(name_space);
             }
             // clang-format off
-        }, u8"::");
+        }, u8"::", true);
         // clang-format on
         if (!node) { return false; } // failed
 
@@ -254,12 +254,12 @@ struct ScriptModule {
     inline bool register_type(ScriptBinderRoot type)
     {
         _exported_types.add(type);
-        return _mapper.register_type(type);
+        return _ns_mapper.register_type(type);
     }
     inline bool register_type(ScriptBinderRoot type, StringView name_space)
     {
         _exported_types.add(type);
-        return _mapper.register_type(type, name_space);
+        return _ns_mapper.register_type(type, name_space);
     }
 
     // finalize
@@ -289,6 +289,10 @@ struct ScriptModule {
 
         return _lost_types.is_empty();
     }
+
+    // getter
+    inline const ScriptNamespaceMapper& ns_mapper() const { return _ns_mapper; }
+    inline const Set<ScriptBinderRoot>& exported_types() const { return _exported_types; }
     inline const Set<ScriptBinderRoot>& lost_types() const { return _lost_types; }
 
 private:
@@ -383,7 +387,7 @@ private:
     }
 
 private:
-    ScriptNamespaceMapper _mapper         = {};
+    ScriptNamespaceMapper _ns_mapper      = {};
     Set<ScriptBinderRoot> _exported_types = {};
     Set<ScriptBinderRoot> _lost_types     = {};
 };

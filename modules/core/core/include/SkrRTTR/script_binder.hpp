@@ -184,11 +184,11 @@ struct ScriptBinderRoot {
     }
 
     // hash
-    inline size_t _skr_hash() const
+    inline static size_t _skr_hash(const ScriptBinderRoot& self)
     {
         return hash_combine(
-            Hash<EKind>()(_kind),
-            Hash<void*>()(_binder)
+            Hash<EKind>()(self._kind),
+            Hash<void*>()(self._binder)
         );
     }
 
