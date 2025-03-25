@@ -3,7 +3,7 @@
 #include "SkrBase/meta.h"
 #include "v8-persistent-handle.h"
 #include "v8-script.h"
-#include <SkrContainers/string.hpp>
+#include <SkrRTTR/script_tools.hpp>
 
 namespace skr
 {
@@ -22,17 +22,40 @@ struct SKR_V8_API V8Module {
 
     // build api
     void name(StringView name);
+    void register_type(const RTTRType* type);
+    void register_type(const RTTRType* type, StringView name_space);
+    template<typename T>
+    inline void register_type() {
+        register_type(type_of<T>()); 
+    }
+    template<typename T>
+    inline void register_type(StringView name_space) {
+        register_type(type_of<T>(), name_space);
+    }
 
     // finalize & shutdown
-    void finalize();
+    bool finalize();
     void shutdown();
+
+    // getter
+    inline const String&       name() const { return _name; }
+    inline const ScriptModule& module_info() const { return _module_info; }
+    v8::Local<v8::Module>      v8_module() const;
+
+private:
+    // eval callback
+    static v8::MaybeLocal<v8::Value> _eval_callback(
+        v8::Local<v8::Context> context,
+        v8::Local<v8::Module>  module
+    );
 
 private:
     // owner
     V8Isolate* _isolate = nullptr;
 
     // module info
-    String _name;
+    String       _name;
+    ScriptModule _module_info;
 
     // module data
     v8::Persistent<v8::Module> _module;

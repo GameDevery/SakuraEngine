@@ -1,6 +1,7 @@
 #pragma once
 #include "SkrRTTR/scriptble_object.hpp"
 #include "SkrRTTR/script_binder.hpp"
+#include "SkrRTTR/script_tools.hpp"
 #include "v8_isolate.hpp"
 
 namespace skr
@@ -61,6 +62,12 @@ struct V8Bind {
         const Vector<ScriptBinderParam>&               param_binders,
         uint32_t                                       solved_param_count,
         const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack
+    );
+
+    // namespace helper
+    static v8::Local<v8::Value> export_namespace_node(
+        const ScriptNamespaceNode* node,
+        V8BindManager*             bind_manager
     );
 
 private:

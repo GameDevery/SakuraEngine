@@ -11,10 +11,12 @@
 namespace skr
 {
 struct V8Context;
+struct V8Module;
 
 struct SKR_V8_API V8Isolate {
     friend struct V8Context;
     friend struct V8Value;
+    friend struct V8Module;
 
     // ctor & dtor
     V8Isolate();
@@ -32,9 +34,6 @@ struct SKR_V8_API V8Isolate {
 
     // getter
     inline ::v8::Isolate* v8_isolate() const { return _isolate; }
-
-    // make context
-    V8Context* make_context();
 
     // operator isolate
     void gc(bool full = true);
@@ -55,10 +54,10 @@ private:
 
     // module callback
     static v8::MaybeLocal<v8::Promise> _dynamic_import_module(
-        v8::Local<v8::Context> context,
-        v8::Local<v8::Data> host_defined_options,
-        v8::Local<v8::Value> resource_name,
-        v8::Local<v8::String> specifier,
+        v8::Local<v8::Context>    context,
+        v8::Local<v8::Data>       host_defined_options,
+        v8::Local<v8::Value>      resource_name,
+        v8::Local<v8::String>     specifier,
         v8::Local<v8::FixedArray> import_assertions
     );
 
@@ -69,6 +68,10 @@ private:
 
     // bind manager
     V8BindManager _bind_manager;
+
+    // modules
+    Map<String, V8Module*> _modules       = {};
+    Map<int, V8Module*>    _to_skr_module = {};
 };
 } // namespace skr
 

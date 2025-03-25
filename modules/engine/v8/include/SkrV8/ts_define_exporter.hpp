@@ -10,13 +10,17 @@ struct TSDefineExporter {
     void register_type();
 
     // generate
-    String generate();
+    String generate_global();
+
+    // generate module
+    String generate_module(StringView module_name);
 
     // cleanup
     void clear();
 
 private:
     // codegen unit
+    void _gen();
     void _gen_enum(ScriptBinderEnum& enum_binder);
     void _gen_mapping(ScriptBinderMapping& mapping);
     void _gen_object(ScriptBinderObject& object_binder);
@@ -75,9 +79,33 @@ inline void TSDefineExporter::register_type()
 }
 
 // generate
-inline String TSDefineExporter::generate()
+inline String TSDefineExporter::generate_global()
 {
     _result.clear();
+    $line(u8"export {{}};");
+    $line(u8"declare global {{");
+    $indent([this] {
+        _gen();
+    });
+    $line(u8"}}");
+    return _result;
+}
+
+// generate module
+inline String TSDefineExporter::generate_module(StringView module_name)
+{
+    _result.clear();
+    $line(u8"declare module \"{}\" {{", module_name);
+    $indent([this] {
+        _gen();
+    });
+    $line(u8"}}");
+    return _result;
+}
+
+// codegen unit
+inline void TSDefineExporter::_gen()
+{
     _binder_mgr.each_cached_root_binder([this](const GUID& type_id, const ScriptBinderRoot& binder) {
         switch (binder.kind())
         {
@@ -113,10 +141,7 @@ inline String TSDefineExporter::generate()
             break;
         }
     });
-    return _result;
 }
-
-// codegen unit
 inline void TSDefineExporter::_gen_enum(ScriptBinderEnum& enum_binder)
 {
     // print cpp symbol

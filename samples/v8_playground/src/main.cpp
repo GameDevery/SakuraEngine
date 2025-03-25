@@ -1,5 +1,6 @@
 #include "SkrV8/v8_context.hpp"
 #include <SkrV8/v8_isolate.hpp>
+#include <SkrV8/v8_module.hpp>
 #include <SkrCore/log.hpp>
 #include <V8Playground/debug.hpp>
 
@@ -36,10 +37,17 @@ int main(int argc, char* argv[])
     // run script
     {
         skr::V8Context context(&isolate);
+        skr::V8Module  module(&isolate);
         context.init();
 
+        // register module
+        module.name(u8"fuck");
+        module.register_type<v8_play::Debug>(u8"");
+        module.finalize();
+
         // register env
-        context.register_type<v8_play::Debug>();
+        context.register_type<v8_play::Debug>(u8"");
+        context.finalize_register();
 
         // execute script
         context.exec_module(script);

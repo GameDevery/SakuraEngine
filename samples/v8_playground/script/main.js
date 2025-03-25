@@ -1,4 +1,4 @@
-import * as fuck from "fuck"
+import * as f from "fuck"
 
 Debug.info("Hello V8")
-Debug.info(`Hello ${fuck.name}`)
+f.Debug.info(`fuck 圆头`)

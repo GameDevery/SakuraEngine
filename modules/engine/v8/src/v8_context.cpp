@@ -2,6 +2,8 @@
 #include "SkrCore/log.hpp"
 #include "SkrV8/v8_isolate.hpp"
 #include "SkrV8/v8_bind.hpp"
+#include "SkrV8/v8_module.hpp"
+#include "v8-exception.h"
 #include "v8-function.h"
 
 namespace skr
@@ -36,74 +38,72 @@ void V8Context::shutdown()
 }
 
 // register type
+void V8Context::register_type(skr::RTTRType* type)
+{
+    auto& script_binder_mgr = _isolate->_bind_manager.script_binder_manger();
+    auto  binder            = script_binder_mgr.get_or_build(type->type_id());
+    _global_module.register_type(binder);
+}
 void V8Context::register_type(skr::RTTRType* type, StringView name_space)
 {
-    v8::Isolate::Scope isolate_scope(_isolate->v8_isolate());
-    v8::HandleScope    handle_scope(_isolate->v8_isolate());
-    v8::Context::Scope context_scope(_context.Get(_isolate->v8_isolate()));
+    auto& script_binder_mgr = _isolate->_bind_manager.script_binder_manger();
+    auto  binder            = script_binder_mgr.get_or_build(type->type_id());
+    _global_module.register_type(binder, name_space);
+}
+bool V8Context::finalize_register()
+{
+    auto               isolate = _isolate->v8_isolate();
+    v8::Isolate::Scope isolate_scope(isolate);
+    v8::HandleScope    handle_scope(isolate);
+    auto               context = _context.Get(isolate);
+    v8::Context::Scope context_scope(context);
 
-    if (type->is_enum())
+    if (!_global_module.check_full_export())
     {
-        // get template
-        auto template_ref = _isolate->_get_enum_template(type);
-        if (template_ref.IsEmpty())
+        // dump lost types
+        for (const auto& lost_item : _global_module.lost_types())
         {
-            SKR_LOG_FMT_ERROR(u8"failed to get template for type {}", type->name());
-            return;
-        }
+            String type_name;
+            switch (lost_item.kind())
+            {
+            case ScriptBinderRoot::EKind::Object: {
+                auto* type = lost_item.object()->type;
+                type_name  = format(u8"{}::{}", type->name_space_str(), type->name());
+                break;
+            }
+            case ScriptBinderRoot::EKind::Value: {
+                auto* type = lost_item.value()->type;
+                type_name  = format(u8"{}::{}", type->name_space_str(), type->name());
+                break;
+            }
+            case ScriptBinderRoot::EKind::Enum: {
+                auto* type = lost_item.enum_()->type;
+                type_name  = format(u8"{}::{}", type->name_space_str(), type->name());
+                break;
+            }
+            default:
+                SKR_UNREACHABLE_CODE()
+                break;
+            }
 
-        // inject to self
-        auto ctx = _context.Get(_isolate->v8_isolate());
-        auto obj = template_ref->NewInstance(ctx).ToLocalChecked();
-        // clang-format off
-        auto set_result = ctx->Global()->Set(
-            ctx,
-            V8Bind::to_v8(type->name(), true),
-            obj
-        );
-        // clang-format on
-
-        // check set result
-        if (set_result.IsNothing())
-        {
-            SKR_LOG_FMT_ERROR(u8"failed to set template for type {}", type->name());
-            return;
+            SKR_LOG_FMT_ERROR(u8"lost type {} when export context global data", type_name);
         }
+        return false;
     }
     else
     {
-        if (flag_all(type->record_flag(), ERTTRRecordFlag::ScriptMapping))
-        { // mapping mode
-            _isolate->register_mapping_type(type);
-        }
-        else
-        { // value or object
-            // get template
-            auto template_ref = _isolate->_get_record_template(type);
-            if (template_ref.IsEmpty())
-            {
-                SKR_LOG_FMT_ERROR(u8"failed to get template for type {}", type->name());
-                return;
-            }
-
-            // inject to self
-            auto ctx  = _context.Get(_isolate->v8_isolate());
-            auto func = template_ref->GetFunction(ctx).ToLocalChecked();
+        for (const auto& [k, v] : _global_module.ns_mapper().root().children())
+        {
             // clang-format off
-            auto set_result = ctx->Global()->Set(
-                ctx,
-                V8Bind::to_v8(type->name(), true),
-                func
-            );
+            context->Global()->Set(
+                context,
+                V8Bind::to_v8(k, true),
+                V8Bind::export_namespace_node(v, &_isolate->_bind_manager)
+            ).Check();
             // clang-format on
-
-            // check set result
-            if (set_result.IsNothing())
-            {
-                SKR_LOG_FMT_ERROR(u8"failed to set template for type {}", type->name());
-                return;
-            }
         }
+
+        return true;
     }
 }
 
@@ -181,6 +181,8 @@ V8Value V8Context::exec_module(StringView script)
         return {};
     }
 
+    v8::TryCatch try_catch(isolate);
+
     // instantiate module
     auto module             = maybe_module.ToLocalChecked();
     auto instantiate_result = module->InstantiateModule(context, _resolve_module);
@@ -211,38 +213,29 @@ v8::MaybeLocal<v8::Module> V8Context::_resolve_module(
     v8::Local<v8::Module>     referrer
 )
 {
-    auto isolate = v8::Isolate::GetCurrent();
+    auto isolate     = v8::Isolate::GetCurrent();
+    auto skr_isolate = reinterpret_cast<V8Isolate*>(isolate->GetData(0));
 
-    skr::String spec;
-    V8Bind::to_native(specifier, spec);
+    // get module name
+    skr::String module_name;
+    if (!V8Bind::to_native(specifier, module_name))
+    {
+        isolate->ThrowException(V8Bind::to_v8(u8"failed to convert module name"));
+        SKR_LOG_FMT_ERROR(u8"failed to convert module name");
+        return {};
+    }
 
-    SKR_LOG_FMT_INFO(u8"resolve module: {}", spec.c_str());
+    // find module
+    auto found_module = skr_isolate->_modules.find(module_name);
+    if (!found_module)
+    {
+        isolate->ThrowException(V8Bind::to_v8(u8"cannot find module"));
+        SKR_LOG_FMT_ERROR(u8"module {} not found", module_name);
+        return {};
+    }
 
-    std::vector<v8::Local<v8::String>> imports = {
-        V8Bind::to_v8(u8"name", false)
-    };
-    auto callback = +[](v8::Local<v8::Context> context, v8::Local<v8::Module> module) -> v8::MaybeLocal<v8::Value> {
-        auto isolate = v8::Isolate::GetCurrent();
-
-        // clang-format off
-        module->SetSyntheticModuleExport(
-            isolate,
-            V8Bind::to_v8(u8"name", false),
-            V8Bind::to_v8(u8"圆头", false)
-        ).Check();
-        // clang-format on
-
-        return v8::MaybeLocal<v8::Value>(v8::True(isolate));
-    };
-
-    v8::Local<v8::Module> module = v8::Module::CreateSyntheticModule(
-        isolate,
-        specifier,
-        imports,
-        callback
-    );
-
-    return module;
+    // return module
+    return found_module.value()->v8_module();
 }
 
 } // namespace skr

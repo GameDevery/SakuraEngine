@@ -36,6 +36,18 @@ struct StringParseResult {
     inline bool is_out_of_range() const noexcept { return parse_status == EStringParseStatus::OutOfRange; }
     inline bool is_invalid() const noexcept { return parse_status == EStringParseStatus::Invalid; }
 
+    inline T value_or(T v) const noexcept
+    {
+        if (is_success())
+        {
+            return value;
+        }
+        else
+        {
+            return v;
+        }
+    }
+
     inline operator bool() const noexcept { return is_success(); }
 };
 } // namespace skr::container

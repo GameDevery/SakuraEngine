@@ -1,6 +1,7 @@
 #pragma once
 #include "SkrBase/config.h"
 #include "SkrContainers/string.hpp"
+#include "SkrRTTR/script_tools.hpp"
 #include "SkrRTTR/scriptble_object.hpp"
 #include "v8-context.h"
 #include "v8-isolate.h"
@@ -44,9 +45,13 @@ struct SKR_V8_API V8Context {
     void shutdown();
 
     // register type
-    void register_type(skr::RTTRType* type, StringView name_space = {});
+    void register_type(skr::RTTRType* type);
+    void register_type(skr::RTTRType* type, StringView name_space);
+    bool finalize_register();
     template <typename T>
-    void register_type(StringView name_space = {});
+    void register_type();
+    template <typename T>
+    void register_type(StringView name_space);
 
     // getter
     ::v8::Global<::v8::Context> v8_context() const;
@@ -75,6 +80,9 @@ private:
     // owner
     V8Isolate* _isolate;
 
+    // namespace tools
+    ScriptModule _global_module;
+
     // context data
     v8::Persistent<v8::Context> _context;
 };
@@ -82,6 +90,19 @@ private:
 
 namespace skr
 {
+template <typename T>
+inline void V8Context::register_type()
+{
+    if (auto type = skr::type_of<T>())
+    {
+        register_type(type);
+    }
+    else
+    {
+        SKR_LOG_FMT_ERROR(u8"failed to register type {}", skr::type_name_of<T>());
+        return;
+    }
+}
 template <typename T>
 inline void V8Context::register_type(StringView name_space)
 {
