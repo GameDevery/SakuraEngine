@@ -12,7 +12,7 @@ namespace SB
     public class CppLinkEmitter : TaskEmitter
     {
         public CppLinkEmitter(IToolchain Toolchain) => this.Toolchain = Toolchain;
-        public override bool EnableEmitter(Target Target) => true;
+        public override bool EnableEmitter(Target Target) => Target.HasFilesOf<CppFileList>() || Target.HasFilesOf<CFileList>();
         public override bool EmitTargetTask(Target Target) => true;
         public override IArtifact? PerTargetTask(Target Target)
         {
@@ -27,7 +27,9 @@ namespace SB
                 var DependFile = Path.Combine(Target.GetStorePath(BuildSystem.DepsStore), BuildSystem.GetUniqueTempFileName(LinkedFileName, Target.Name + this.Name, "task.deps.json"));
                 var Inputs = new ArgumentList<string>();
                 // Add obj files
-                Inputs.AddRange(Target.AllFiles.Where(F => F.Is_C_Cpp() || F.Is_OC_OCpp()).Select(F => CppCompileEmitter.GetObjectFilePath(Target, F)));
+                var SourceFiles = Target.FileList<CppFileList>().Files.ToList();
+                SourceFiles.AddRange(Target.FileList<CFileList>().Files.ToList());
+                Inputs.AddRange(SourceFiles.Select(F => CppCompileEmitter.GetObjectFilePath(Target, F)));
                 // Add dep obj files
                 Inputs.AddRange(Target.Dependencies.Where(
                     Dep => BuildSystem.GetTarget(Dep)?.GetTargetType() == TargetType.Objects

@@ -106,9 +106,9 @@ namespace SB
                     if (EmitterKVP.Value.EmitTargetTask(Target))
                         AllTaskCount += 1;
 
-                    foreach (var File in Target.AllFiles)
+                    foreach (var FileList in Target.FileLists.Where(FL => EmitterKVP.Value.EmitFileTask(Target, FL)))
                     {
-                        if (EmitterKVP.Value.EmitFileTask(Target) && EmitterKVP.Value.FileFilter(Target, File))
+                        foreach (var File in FileList.Files)
                         {
                             FileTaskCount += 1;
                             AllTaskCount += 1;
@@ -144,7 +144,7 @@ namespace SB
                     }
                     var EmitterTask = TaskManager.Run(Fingerprint, () =>
                     {
-                        List<Task<bool>> FileTasks = new (Target.AllFiles.Count);
+                        List<Task<bool>> FileTasks = new();
                         using (Profiler.BeginZone($"Wait | {Target.Name} | {EmitterName}", color: (uint)Profiler.ColorType.Gray))
                         {
                             if (!Emitter.AwaitExternalTargetDependencies(Target).WaitAndGet())
@@ -173,14 +173,8 @@ namespace SB
                             }
                         }
 
-                        if (!Emitter.EmitFileTask(Target))
-                            return true;
-
-                        foreach (var File in Target.AllFiles)
+                        foreach (var File in Target.FileLists.Where(FL => Emitter.EmitFileTask(Target, FL)).SelectMany(FL => FL.Files))
                         {
-                            if (!Emitter.FileFilter(Target, File))
-                                continue;
-
                             using (Profiler.BeginZone($"Wait | {File} | {EmitterName}", color: (uint)Profiler.ColorType.Gray))
                             {
                                 if (!Emitter.AwaitPerFileDependencies(Target, File).WaitAndGet())

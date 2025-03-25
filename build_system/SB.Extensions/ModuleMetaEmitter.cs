@@ -6,7 +6,7 @@ namespace SB
 {
     public class ModuleMetaEmitter : TaskEmitter
     {
-        public override bool EnableEmitter(Target Target) => Target.GetAttribute<ModuleAttribute>() is not null;
+        public override bool EnableEmitter(Target Target) => Target.HasAttribute<ModuleAttribute>();
         public override bool EmitTargetTask(Target Target) => true;
         public override IArtifact? PerTargetTask(Target Target)
         {
@@ -15,7 +15,7 @@ namespace SB
 
             var GenSourcePath = Target.GetStorePath(BuildSystem.GeneratedSourceStore);
             var GenFileName = Path.Combine(GenSourcePath, "module.configure.cpp");
-            Target.AddFiles(GenFileName);
+            Target.AddCppFiles(GenFileName);
             Depend.OnChanged(Target.Name, GenFileName, Name, (Depend depend) => {
                 var ModuleDependencies = Target.Dependencies.Where((Dependency) => BuildSystem.GetTarget(Dependency).GetAttribute<ModuleAttribute>() is not null);
                 string DependenciesArray = "[" + String.Join(",", ModuleDependencies.Select(D => FormatDependency(D))) + "]";
@@ -36,6 +36,7 @@ namespace SB
                 File.WriteAllText(GenFileName, CppContent);
                 depend.ExternalFiles.Add(GenFileName);
             }, new string[] { Target.Location }, null);
+
             sw.Stop();
             Time += (int)sw.ElapsedMilliseconds;
             return null;
@@ -48,7 +49,6 @@ namespace SB
             { "name": "{{Dependency}}", "version": "0.1.0", "kind": "shared" }
             """;
         }
-
 
         public static volatile int Time = 0;
     }

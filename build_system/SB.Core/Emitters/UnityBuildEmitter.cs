@@ -13,8 +13,8 @@ namespace SB
 
     public class UnityBuildEmitter : TaskEmitter
     {
-        public override bool EnableEmitter(Target Target) => Target.GetAttribute<UnityBuildAttribute>() != null;
-        public override bool EmitTargetTask(Target Target) => Target.AllFiles.Any(F => F.Is_C_Cpp());
+        public override bool EnableEmitter(Target Target) =>  (Target.HasFilesOf<CFileList>() || Target.HasFilesOf<CppFileList>()) && Target.HasAttribute<UnityBuildAttribute>();
+        public override bool EmitTargetTask(Target Target) => true;
         public override IArtifact? PerTargetTask(Target Target)
         {
             var UnityFileDirectory = Path.Combine(Target.GetStorePath(BS.GeneratedSourceStore), "unity_build");
@@ -22,8 +22,8 @@ namespace SB
 
             var UnityBuildAttribute = Target.GetAttribute<UnityBuildAttribute>()!;
             bool Changed = false;
-            List<string> UnityFiles = new();
-            var RunBatch = (IEnumerable<string[]> Batches, string Postfix) => {
+            var RunBatch = (FileList FileList, IEnumerable<string[]> Batches, string Postfix) => {
+                List<string> UnityFiles = new(Batches.Count());
                 int BatchIndex = 0;
                 foreach (var Batch in Batches.ToArray())
                 {
@@ -33,24 +33,28 @@ namespace SB
                         File.WriteAllText(UnityFile, UnityContent);
                         depend.ExternalFiles.Add(UnityFile);
                     }, Batch, null);
-                    Target.RemoveFiles(Batch);
+                    FileList.RemoveFiles(Batch);
                     UnityFiles.Add(UnityFile);
                 }
+                return UnityFiles;
             };
 
             if (UnityBuildAttribute.C)
             {
-                var CBatches = Target.AllFiles.Where(F => F.EndsWith('c')).Chunk(UnityBuildAttribute.BatchCount);
-                RunBatch(CBatches, "c");
+                var CFilesList = Target.FileList<CFileList>();
+                var CBatches = CFilesList.Files.Chunk(UnityBuildAttribute.BatchCount);
+                var UnityFiles = RunBatch(CFilesList, CBatches, "c");
+                CFilesList.AddFiles(UnityFiles.ToArray());
             }
             
             if (UnityBuildAttribute.Cpp)
             {
-                var CppBatches = Target.AllFiles.Where(F => F.EndsWith("cpp")).Chunk(UnityBuildAttribute.BatchCount);
-                RunBatch(CppBatches, "cpp");
+                var CppFileList = Target.FileList<CppFileList>();
+                var CppBatches = CppFileList.Files.Chunk(UnityBuildAttribute.BatchCount);
+                var UnityFiles = RunBatch(CppFileList, CppBatches, "cpp");
+                CppFileList.AddFiles(UnityFiles.ToArray());
             }
-        
-            Target.AddFiles(UnityFiles.ToArray());
+            
             return new PlainArtifact { IsRestored = !Changed };
         }
     }

@@ -18,7 +18,7 @@ public static class CPUFeatures
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/cpu_features/include"))
                     .IncludeDirs(Visibility.Private, Path.Combine(SourceLocation.Directory(), "port/cpu_features/include/cpu_features"))
                     .FpModel(FpModel.Fast)
-                    .AddFiles("port/cpu_features/build.cpu_features.c");
+                    .AddCFiles("port/cpu_features/build.cpu_features.c");
             });
     }
 }

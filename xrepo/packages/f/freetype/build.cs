@@ -21,7 +21,7 @@ public static class Freetype
                     .Defines(Visibility.Private, "FT2_BUILD_LIBRARY", "FT_CONFIG_OPTION_SYSTEM_ZLIB")
                     .Require("zlib", new PackageConfig { Version = new(1, 2, 8) })
                     .Depend(Visibility.Private, "zlib@zlib")
-                    .AddFiles(
+                    .AddCFiles(
                         "port/freetype/src/autofit/autofit.c",
                         "port/freetype/src/base/ftbase.c",
                         "port/freetype/src/base/ftbbox.c",
@@ -67,13 +67,13 @@ public static class Freetype
                 if (BuildSystem.TargetOS == OSPlatform.Windows)
                 {
                     Target
-                        .AddFiles("port/freetype/builds/windows/ftsystem.c", "port/freetype/builds/windows/ftdebug.c")
+                        .AddCFiles("port/freetype/builds/windows/ftsystem.c", "port/freetype/builds/windows/ftdebug.c")
                         .CppFlags(Visibility.Private, "/wd4267", "/wd4244", "/source-charset:utf-8");
                 }
                 else
                 {
                     Target
-                        .AddFiles("port/freetype/src/base/ftsystem.c", "port/freetype/src/base/ftdebug.c");
+                        .AddCFiles("port/freetype/src/base/ftsystem.c", "port/freetype/src/base/ftdebug.c");
                 }
             });
     }

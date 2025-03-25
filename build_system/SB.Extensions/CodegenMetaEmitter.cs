@@ -19,7 +19,7 @@ namespace SB
         {
             this.Toolchain = Toolchain;
         }
-        public override bool EnableEmitter(Target Target) => Target.GetAttribute<CodegenMetaAttribute>() is not null && Target.AllFiles.Any(F => F.EndsWith(".h") || F.EndsWith(".hpp"));
+        public override bool EnableEmitter(Target Target) => Target.HasAttribute<CodegenMetaAttribute>() && Target.HasFilesOf<MetaHeaderList>();
         public override bool EmitTargetTask(Target Target) => true;
         public override IArtifact? PerTargetTask(Target Target)
         {
@@ -31,7 +31,7 @@ namespace SB
             Directory.CreateDirectory(BatchDirectory);
 
             // Batch headers to a source file
-            var Headers = Target.AllFiles.Where(F => F.EndsWith(".h") || F.EndsWith(".hpp"));
+            var Headers = Target.FileList<MetaHeaderList>().Files;
             var BatchFile = Path.Combine(BatchDirectory, "ReflectionBatch.cpp");
             Depend.OnChanged(Target.Name, "BatchFiles", Name, (Depend depend) => {
                 Directory.CreateDirectory(BatchDirectory);
@@ -96,5 +96,16 @@ namespace SB
             return true; 
         }
         public static Task<string>? Installation;
+    }
+
+    public class MetaHeaderList : FileList {}
+
+    public static partial class TargetExtensions
+    {
+        public static Target AddMetaHeaders(this Target @this, params string[] Files)
+        {
+            @this.FileList<MetaHeaderList>().AddFiles(Files);
+            return @this;
+        }
     }
 }

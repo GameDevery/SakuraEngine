@@ -17,7 +17,7 @@ public static class CGltf
                     .TargetType(TargetType.Static)
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/cgltf/include"))
                     .FpModel(FpModel.Fast)
-                    .AddFiles("port/cgltf/src/cgltf.c");
+                    .AddCFiles("port/cgltf/src/cgltf.c");
             });
     }
 }

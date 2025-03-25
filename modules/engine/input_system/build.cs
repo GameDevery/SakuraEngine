@@ -13,6 +13,6 @@ public static class SkrInputSystem
             .Depend(Visibility.Public, "SkrRT")
             .Depend(Visibility.Public, "SkrInput")
             .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "include"))
-            .AddFiles("src/*.cpp");
+            .AddCppFiles("src/*.cpp");
     }
 }

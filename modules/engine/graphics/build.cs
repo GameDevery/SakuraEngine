@@ -14,12 +14,14 @@ public static class SkrGraphics
             .Depend(Visibility.Public, "SkrCore")
             .Depend(Visibility.Private, "VulkanHeaders")
             .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "include"))
-            .AddFiles("src/build.*.c", "src/build.*.cpp");
+            .AddCFiles("src/build.*.c")
+            .AddCppFiles("src/build.*.cpp");
 
         if (BuildSystem.TargetOS == OSPlatform.OSX)
         {
             SkrGraphics
-                .AddFiles("src/build.*.m", "src/build.*.mm") // mxflags: "-fno-objc-arc"
+                .AddCFiles("src/build.*.m") // mxflags: "-fno-objc-arc"
+                .AddCppFiles("src/build.*.mm") // mxflags: "-fno-objc-arc"
                 // .AddFrameworks(Visibility.Public, "CoreFoundation", "Cocoa", "Metal", "IOKit");
                 .Defines(Visibility.Private, "VK_USE_PLATFORM_MACOS_MVK");
         }

@@ -13,7 +13,7 @@ public static class MiMalloc
             .Defines(Visibility.Public, "MI_SHARED_LIB")
             .Defines(Visibility.Private, "MI_SHARED_LIB_EXPORT", "MI_XMALLOC=1", "MI_WIN_NOREDIRECT")
             .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "files"))
-            .AddFiles("files/build.mimalloc.cpp");
+            .AddCppFiles("files/build.mimalloc.cpp");
         
         if (BuildSystem.TargetOS == OSPlatform.Windows)
         {

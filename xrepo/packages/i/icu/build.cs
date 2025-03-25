@@ -22,7 +22,7 @@ public static class ICU
                     .Defines(Visibility.Private, "U_I18N_IMPLEMENTATION")
                     .Defines(Visibility.Private, "U_COMMON_IMPLEMENTATION")
                     .Defines(Visibility.Private, "U_STATIC_IMPLEMENTATION")
-                    .AddFiles(
+                    .AddCppFiles(
                         "port/icu4c/source/i18n/**.cpp",
                         "port/icu4c/source/common/**.cpp",
                         "port/icu4c/source/stubdata/**.cpp"

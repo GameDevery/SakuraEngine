@@ -11,6 +11,6 @@ public static class SkrLive2DViewer
             .Depend(Visibility.Public, "SkrLive2D", "SkrImGui")
             .IncludeDirs(Visibility.Private, Path.Combine(SourceLocation.Directory(), "./../../common"))
             .IncludeDirs(Visibility.Private, Path.Combine(SourceLocation.Directory(), "include"))
-            .AddFiles("src/main.cpp", "src/viewer_module.cpp", "src/imgui.cpp");
+            .AddCppFiles("src/main.cpp", "src/viewer_module.cpp", "src/imgui.cpp");
     }
 }

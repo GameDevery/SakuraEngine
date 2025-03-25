@@ -12,7 +12,8 @@ public static class SkrBase
             // TODO: MIGRATE COMPILE FLAGS FROM XMAKE
             // .Depend(Visibility.Public, "SkrCompileFlags")
             .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "include"))
-            .AddFiles("src/**/build.*.c", "src/**/build.*.cpp");
+            .AddCFiles("src/**/build.*.c")
+            .AddCppFiles("src/**/build.*.cpp");
         
         if (BuildSystem.TargetOS == OSPlatform.Windows)
             Target.Link(Visibility.Private, "advapi32", "Ole32");

@@ -18,7 +18,7 @@ public static class Wasm3
                     .TargetType(TargetType.Static)
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/wasm3/source"))
                     .FpModel(FpModel.Fast)
-                    .AddFiles("port/wasm3/source/**.c");
+                    .AddCFiles("port/wasm3/source/**.c");
             });
     }
 }

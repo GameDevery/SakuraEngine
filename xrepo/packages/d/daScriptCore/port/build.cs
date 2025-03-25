@@ -12,7 +12,7 @@ public static class DaScriptCore
             {
                 Target
                     .TargetType(TargetType.Static)
-                    .AddFiles(
+                    .AddCFiles(
                         "daScript/3rdparty/uriparser/src/UriCommon.c",
                         "daScript/3rdparty/uriparser/src/UriCompare.c",
                         "daScript/3rdparty/uriparser/src/UriEscape.c",
@@ -49,14 +49,14 @@ public static class DaScriptCore
                     .Depend(Visibility.Public, "DaScriptCore@UriParser")
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "daScript/include"))
                     // parser
-                    .AddFiles(
+                    .AddCppFiles(
                         // "daScript/src/parser/ds_parser.hpp",
                         "daScript/src/parser/ds_parser.cpp",
                         // "daScript/src/parser/ds_parser.output",
                         // "daScript/src/parser/lex.yy.h",
                         "daScript/src/parser/ds_lexer.cpp"
                     )
-                    .AddFiles(
+                    .AddCppFiles(
                         // "daScript/src/parser/ds_parser.ypp",
                         // "daScript/src/parser/ds_lexer.lpp",
                         // "daScript/src/parser/parser_state.h",
@@ -64,7 +64,7 @@ public static class DaScriptCore
                         "daScript/src/parser/parser_impl.cpp"
                     )
                     // vecmath
-                    // .AddFiles(
+                    // .AddCppFiles(
                         // "daScript/include/vecmath/dag_vecMath.h",
                         // "daScript/include/vecmath/dag_vecMathDecl.h",
                         // "daScript/include/vecmath/dag_vecMath_common.h",
@@ -73,7 +73,7 @@ public static class DaScriptCore
                         // "daScript/include/vecmath/dag_vecMath_pc_sse.h"
                     // )
                     // ast
-                    .AddFiles(
+                    .AddCppFiles(
                         "daScript/src/ast/ast.cpp",
                         "daScript/src/ast/ast_tls.cpp",
                         "daScript/src/ast/ast_visitor.cpp",
@@ -98,7 +98,7 @@ public static class DaScriptCore
                         "daScript/src/ast/ast_handle.cpp"
                     )
                     // builtin
-                    .AddFiles(
+                    .AddCppFiles(
                         "daScript/src/builtin/module_builtin.cpp",
                         "daScript/src/builtin/module_builtin_misc_types.cpp",
                         "daScript/src/builtin/module_builtin_runtime.cpp",
@@ -141,7 +141,7 @@ public static class DaScriptCore
                         // "daScript/src/builtin/debugger.das"
                     )
                     // misc
-                    .AddFiles(
+                    .AddCppFiles(
                         "daScript/src/misc/sysos.cpp",
                         "daScript/src/misc/string_writer.cpp",
                         "daScript/src/misc/memory_model.cpp",
@@ -151,7 +151,7 @@ public static class DaScriptCore
                         "daScript/src/misc/uric.cpp"
                     )
                     // simulation fusion
-                    .AddFiles(
+                    .AddCppFiles(
                         "daScript/src/simulate/simulate_fusion.cpp",
                         "daScript/src/simulate/simulate_fusion_op1.cpp",
                         "daScript/src/simulate/simulate_fusion_op1_return.cpp",
@@ -174,7 +174,7 @@ public static class DaScriptCore
                         "daScript/src/simulate/simulate_fusion_if.cpp"
                     )
                     // simulate src
-                    .AddFiles(
+                    .AddCppFiles(
                         "daScript/src/hal/performance_time.cpp",
                         "daScript/src/hal/debug_break.cpp",
                         "daScript/src/hal/project_specific.cpp",
@@ -202,7 +202,7 @@ public static class DaScriptCore
                         "daScript/src/simulate/fs_file_info.cpp"
                     )
                     // test src
-                    .AddFiles(
+                    .AddCppFiles(
                         "daScript/test/test_handles.cpp",
                         "daScript/test/test_enum.cpp"
                     );

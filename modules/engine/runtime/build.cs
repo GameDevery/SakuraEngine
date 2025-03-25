@@ -13,7 +13,7 @@ public static class SkrRT
             .Depend(Visibility.Public, "SkrTask")
             .Depend(Visibility.Public, "SkrGraphics")
             .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "include"))
-            .AddFiles("src/**/build.*.cpp")
+            .AddCppFiles("src/**/build.*.cpp")
             .AddCodegenScript("meta/ecs.ts");
 
         if (BuildSystem.TargetOS == OSPlatform.OSX)
@@ -21,7 +21,8 @@ public static class SkrRT
             SkrRT
                 // .AddFrameworks(Visibility.Public, "CoreFoundation", "IOKit")
                 // .MppFlags(Visibility.Public, "-fno-objc-arc")
-                .AddFiles("src/**/build.*.m", "src/**/build.*.mm");
+                .AddCFiles("src/**/build.*.m")
+                .AddCppFiles("src/**/build.*.mm");
         }
     }
 }

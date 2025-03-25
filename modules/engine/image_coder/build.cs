@@ -16,7 +16,7 @@ public static class SkrImageCoder
             .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "include"))
             .IncludeDirs(Visibility.Private, Path.Combine(SourceLocation.Directory(), "turbojpeg"))
             .IncludeDirs(Visibility.Private, Path.Combine(SourceLocation.Directory(), "libpng/1.5.2"))
-            .AddFiles("src/**.cpp");
+            .AddCppFiles("src/**.cpp");
         
         if (BuildSystem.TargetOS == OSPlatform.OSX)
         {

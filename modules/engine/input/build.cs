@@ -12,13 +12,13 @@ public static class SkrInput
             .EnableUnityBuild()
             .Depend(Visibility.Public, "SkrRT")
             .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "include"))
-            .AddFiles("src/*.cpp", "src/common/*.cpp", "src/sdl2/*.cpp");
+            .AddCppFiles("src/*.cpp", "src/common/*.cpp", "src/sdl2/*.cpp");
 
         if (BuildSystem.TargetOS == OSPlatform.Windows)
         {
             SkrInput
                 .Defines(Visibility.Private, "SKR_INPUT_USE_GAME_INPUT")
-                .AddFiles("src/game_input/**.cpp");
+                .AddCppFiles("src/game_input/**.cpp");
         }
     }
 }

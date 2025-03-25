@@ -8,7 +8,7 @@ namespace SB
     public class PCHEmitter : TaskEmitter
     {
         public PCHEmitter(IToolchain Toolchain) => this.Toolchain = Toolchain;
-        public override bool EnableEmitter(Target Target) => Target.GetAttribute<CreateSharedPCHAttribute>() != null || Target.GetAttribute<CreatePrivatePCHAttribute>() != null;
+        public override bool EnableEmitter(Target Target) => Target.HasAttribute<CreateSharedPCHAttribute>() || Target.HasAttribute<CreatePrivatePCHAttribute>();
         public override bool EmitTargetTask(Target Target) => true;
         public override IArtifact? PerTargetTask(Target Target)
         {

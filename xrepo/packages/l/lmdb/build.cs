@@ -19,7 +19,7 @@ public static class Lmdb
                     .TargetType(TargetType.Static)
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/lmdb/include"))
                     .IncludeDirs(Visibility.Private, Path.Combine(SourceLocation.Directory(), "port/lmdb/include/lmdb"))
-                    .AddFiles("port/lmdb/*.c");
+                    .AddCFiles("port/lmdb/*.c");
             });
     }
 }

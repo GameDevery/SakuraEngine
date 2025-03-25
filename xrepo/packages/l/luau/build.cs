@@ -32,16 +32,16 @@ public static class Luau
                     .Depend(Visibility.Public, "Luau@Common")
                     .Defines(Visibility.Public, "LUA_USE_LONGJMP=1", "LUA_API=extern\\\"C\\\"")
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/luau/VM/include"))
-                    .AddFiles("port/luau/VM/src/**.cpp")
+                    .AddCppFiles("port/luau/VM/src/**.cpp")
                     .CppFlags(Visibility.Public, "-fno-math-errno");
 
                     if (BuildSystem.TargetOS == OSPlatform.Windows)
                     {
-                        Target.AddFiles("port/luau/VM/src/lvmexecute.cc"); //, {force = {cxflags = "/d2ssa-pre-"}});
+                        Target.AddCppFiles("port/luau/VM/src/lvmexecute.cc"); //, {force = {cxflags = "/d2ssa-pre-"}});
                     }
                     else
                     {
-                        Target.AddFiles("port/luau/VM/src/lvmexecute.cc");
+                        Target.AddCppFiles("port/luau/VM/src/lvmexecute.cc");
                     }
             })
             .AddTarget("Ast", (Target Target, PackageConfig Config) =>
@@ -56,7 +56,7 @@ public static class Luau
                     .Require("Luau", Config)
                     .Depend(Visibility.Public, "Luau@Common")
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/luau/Ast/include"))
-                    .AddFiles("port/luau/Ast/src/**.cpp");
+                    .AddCppFiles("port/luau/Ast/src/**.cpp");
             })
             .AddTarget("Compiler", (Target Target, PackageConfig Config) =>
             {
@@ -71,7 +71,7 @@ public static class Luau
                     .Depend(Visibility.Public, "Luau@Ast")
                     .Defines(Visibility.Public, "LUACODE_API=extern\\\"C\\\"")
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/luau/Compiler/include"))
-                    .AddFiles("port/luau/Compiler/src/**.cpp");
+                    .AddCppFiles("port/luau/Compiler/src/**.cpp");
             });
     }
 }

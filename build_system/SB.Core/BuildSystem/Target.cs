@@ -1,5 +1,4 @@
-﻿using Microsoft.Extensions.FileSystemGlobbing;
-using SB.Core;
+﻿using SB.Core;
 using System.Runtime.CompilerServices;
 
 namespace SB
@@ -14,50 +13,20 @@ namespace SB
             BuildSystem.TargetDefaultSettings(this);
         }
 
-        private System.Threading.Lock FileOperationsLock = new();
-        public Target AddFiles(params string[] files)
+        public FileList FileList<T>()
+            where T : FileList, new()
         {
-            lock (FileOperationsLock)
+            foreach (var FileList in FileLists)
             {
-                foreach (var file in files)
-                {
-                    if (file.Contains("*"))
-                    {
-                        if (Path.IsPathFullyQualified(file))
-                            Globs.Add(Path.GetRelativePath(Directory, file));
-                        else
-                            Globs.Add(file);
-                    }
-                    else if (Path.IsPathFullyQualified(file))
-                        Absolutes.Add(file);
-                    else
-                        Absolutes.Add(Path.Combine(Directory, file));
-                }
+                if (FileList is T)
+                    return FileList;
             }
-            return this;
+            var FL = new T { Target = this };
+            FileLists.Add(FL);
+            return FL;
         }
 
-        public Target RemoveFiles(params string[] files)
-        {
-            lock (FileOperationsLock)
-            {
-                foreach (var file in files)
-                {
-                    if (file.Contains("*"))
-                    {
-                        if (Path.IsPathFullyQualified(file))
-                            Globs.Remove(Path.GetRelativePath(Directory, file));
-                        else
-                            Globs.Remove(file);
-                    }
-                    else if (Path.IsPathFullyQualified(file))
-                        Absolutes.Remove(file);
-                    else
-                        Absolutes.Remove(Path.Combine(Directory, file));
-                }
-            }
-            return this;
-        }
+        public bool HasFilesOf<T>() => FileLists.Exists(FL => FL is T && FL.Files.Count > 0);
 
         public Target Depend(Visibility Visibility, params string[] DependNames)
         {
@@ -126,6 +95,7 @@ namespace SB
                 return (T?)Attribute;
             return default;
         }
+        public bool HasAttribute<T>() => GetAttribute<T>() != null;
 
         private bool PackagesResolved = false;
         internal void ResolvePackages(ref Dictionary<string, Target> OutPackageTargets)
@@ -186,12 +156,8 @@ namespace SB
         internal void ResolveArguments()
         {
             // Files
-            if (Globs.Count != 0)
-            {
-                var GlobMatcher = new Matcher();
-                GlobMatcher.AddIncludePatterns(Globs);
-                Absolutes.AddRange(GlobMatcher.GetResultsInFullPath(Directory));
-            }
+            foreach (var FileList in FileLists)
+                FileList.GlobFiles();
             // Arguments
             MergeArguments(FinalArguments, PublicArguments);
             MergeArguments(FinalArguments, PrivateArguments);
@@ -234,18 +200,15 @@ namespace SB
         public IReadOnlySet<string> PublicDependencies => PublicTargetDependencies;
         public IReadOnlySet<string> PrivateDependencies => PrivateTargetDependencies;
         public IReadOnlySet<string> InterfaceDependencies => InterfaceTargetDependencies;
-        public IReadOnlySet<string> AllFiles => Absolutes;
 
         public string Name { get; }
         public string Location { get; }
         public string Directory { get; }
 
         #region Files
-        private SortedSet<string> Globs = new();
-        private SortedSet<string> Absolutes = new();
-        private System.Threading.Lock FilesOperationLock = new();
+        internal List<FileList> FileLists = new();
         #endregion
-        
+
         #region Dependencies
         private SortedDictionary<string, PackageConfig> PackageDependencies = new();
 

@@ -11,7 +11,7 @@ public static class SkrScene
             .EnableUnityBuild()
             .Depend(Visibility.Public, "SkrRT")
             .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "include"))
-            .AddFiles("src/*.cpp")
-            .AddFiles("include/**.h"); // codegen
+            .AddCppFiles("src/*.cpp")
+            .AddMetaHeaders("include/**.h"); // codegen
     }
 }

@@ -10,15 +10,15 @@ public static class SkrTask
         var SkrTask = Engine
             .Module("SkrTask")
             .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "include"))
-            .AddFiles("src/build.*.cpp")
+            .AddCppFiles("src/build.*.cpp")
             .Depend(Visibility.Public, "SkrCore")
             // add marl source
             .IncludeDirs(Visibility.Public, Path.Combine(MarlSourceDir, "include"))
-            .AddFiles(Path.Combine(MarlSourceDir, "src/build.*.cpp"));
+            .AddCppFiles(Path.Combine(MarlSourceDir, "src/build.*.cpp"));
 
         if (BuildSystem.TargetOS != OSPlatform.Windows)
         {
-            SkrTask.AddFiles(Path.Combine(MarlSourceDir, "src/**.c"), Path.Combine(MarlSourceDir, "src/**.S"));
+            SkrTask.AddCFiles(Path.Combine(MarlSourceDir, "src/**.c"), Path.Combine(MarlSourceDir, "src/**.S"));
         }
 
         if (!Engine.ShippingOneArchive)

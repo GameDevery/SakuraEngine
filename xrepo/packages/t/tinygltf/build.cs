@@ -18,7 +18,7 @@ public static class TinyGltf
                     .Exception(false)
                     .TargetType(TargetType.Static)
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/src"))
-                    .AddFiles("port/src/**.cc");
+                    .AddCppFiles("port/src/**.cc");
             });
     }
 }

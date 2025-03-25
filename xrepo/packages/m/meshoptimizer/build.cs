@@ -13,7 +13,7 @@ public static class MeshOptimizer
                 Target
                     .TargetType(TargetType.Static)
                     .CppVersion("20")
-                    .AddFiles("port/src/*.cpp");
+                    .AddCppFiles("port/src/*.cpp");
             });
     }
 }

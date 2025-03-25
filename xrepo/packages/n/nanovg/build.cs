@@ -18,7 +18,7 @@ public static class NanoVg
                     .Exception(false)
                     .TargetType(TargetType.Static)
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/nanovg"))
-                    .AddFiles("port/nanovg/nanovg.cpp");
+                    .AddCppFiles("port/nanovg/nanovg.cpp");
             });
     }
 }

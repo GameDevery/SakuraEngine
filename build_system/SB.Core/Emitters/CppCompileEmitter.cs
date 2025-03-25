@@ -13,10 +13,8 @@ namespace SB
     public class CppCompileEmitter : TaskEmitter
     {
         public CppCompileEmitter(IToolchain Toolchain) => this.Toolchain = Toolchain;
-
-        public override bool EnableEmitter(Target Target) => Target.AllFiles.Any(F => F.Is_C_Cpp() || F.Is_OC_OCpp());
-        public override bool EmitFileTask(Target Target) => true;
-        public override bool FileFilter(Target Target, string File) => Target.GetTargetType() != TargetType.HeaderOnly && File.Is_C_Cpp() || File.Is_OC_OCpp();
+        public override bool EnableEmitter(Target Target) => Target.HasFilesOf<CppFileList>() || Target.HasFilesOf<CFileList>();
+        public override bool EmitFileTask(Target Target, FileList FileList) => FileList.Is<CppFileList>() || FileList.Is<CFileList>();
         public override IArtifact? PerFileTask(Target Target, string SourceFile)
         {
             Stopwatch sw = new();
@@ -64,5 +62,23 @@ namespace SB
         private IToolchain Toolchain { get; }
         public static volatile int Time = 0;
         public static bool WithDebugInfo = false;
+    }
+
+    public class CFileList : FileList {}
+    public class CppFileList : FileList {}
+
+    public static partial class TargetExtensions
+    {
+        public static Target AddCppFiles(this Target @this, params string[] Files)
+        {
+            @this.FileList<CppFileList>().AddFiles(Files);
+            return @this;
+        }
+
+        public static Target AddCFiles(this Target @this, params string[] Files)
+        {
+            @this.FileList<CFileList>().AddFiles(Files);
+            return @this;
+        }
     }
 }

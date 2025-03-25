@@ -19,7 +19,7 @@ public static class Lua
                     .TargetType(TargetType.Static)
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/lua/include"))
                     .IncludeDirs(Visibility.Private, Path.Combine(SourceLocation.Directory(), "port/lua/include/lua"))
-                    .AddFiles("port/lua/src/*.c");
+                    .AddCFiles("port/lua/src/*.c");
             });
     }
 }

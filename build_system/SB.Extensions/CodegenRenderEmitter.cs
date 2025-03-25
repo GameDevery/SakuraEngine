@@ -13,19 +13,8 @@ namespace SB
     [CodegenDoctor]
     public class CodegenRenderEmitter : TaskEmitter
     {
-        public CodegenRenderEmitter(IToolchain Toolchain)
-        {
-            this.Toolchain = Toolchain;
-        }
-        public override bool EnableEmitter(Target Target)
-        {
-            var RenderAttribute = Target.GetAttribute<CodegenRenderAttribute>();
-            if (RenderAttribute is null || !Target.AllFiles.Any(F => F.EndsWith(".h") || F.EndsWith(".hpp")))
-                return false;
-            if (Target.GetTargetType() == TargetType.HeaderOnly)
-                return false;
-            return true;
-        }
+        public CodegenRenderEmitter(IToolchain Toolchain) => this.Toolchain = Toolchain;
+        public override bool EnableEmitter(Target Target) => Target.HasAttribute<CodegenRenderAttribute>() && Target.HasFilesOf<MetaHeaderList>();
         public override bool EmitTargetTask(Target Target) => true;
         public override IArtifact? PerTargetTask(Target Target)
         {
@@ -84,7 +73,7 @@ namespace SB
                 depend.ExternalFiles.AddRange(AllGeneratedHeaders);
             }, DependFiles, null);
             // Add generated files to target
-            Target.AddFiles(Directory.GetFiles(CodegenDirectory, "*.cpp", SearchOption.AllDirectories));
+            Target.AddCppFiles(Directory.GetFiles(CodegenDirectory, "*.cpp", SearchOption.AllDirectories));
             return new PlainArtifact { IsRestored = !Changed };
         }
 

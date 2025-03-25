@@ -19,7 +19,7 @@ public static class Harfbuzz
                     .Depend(Visibility.Public, "freetype@freetype")
                     .Depend(Visibility.Public, "icu@icu")
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/harfbuzz/src"))
-                    .AddFiles(
+                    .AddCppFiles(
                         "port/harfbuzz/src/hb-aat-layout.cc",
                         "port/harfbuzz/src/hb-aat-map.cc",
                         "port/harfbuzz/src/hb-blob.cc",
@@ -79,10 +79,10 @@ public static class Harfbuzz
                         "port/harfbuzz/src/hb-unicode.cc"
                     )
                     // freetype integration
-                    .AddFiles("port/harfbuzz/src/hb-ft.cc")
+                    .AddCppFiles("port/harfbuzz/src/hb-ft.cc")
                     .Defines(Visibility.Private, "HAVE_FREETYPE")
                     // icu integration
-                    .AddFiles("port/harfbuzz/src/hb-icu.cc")
+                    .AddCppFiles("port/harfbuzz/src/hb-icu.cc")
                     .Defines(Visibility.Private, "HAVE_ICU", "HAVE_ICU_BUILTIN")
                     .Defines(Visibility.Private, "HAVE_OT", "HB_NO_MT");
                     // CoreText integration

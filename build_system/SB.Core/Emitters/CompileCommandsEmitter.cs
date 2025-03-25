@@ -7,9 +7,8 @@ namespace SB
     public class CompileCommandsEmitter : TaskEmitter
     {
         public CompileCommandsEmitter(IToolchain Toolchain) => this.Toolchain = Toolchain;
-        public override bool EnableEmitter(Target Target) => Target.AllFiles.Any(F => F.Is_C_Cpp() || F.Is_OC_OCpp());
-        public override bool EmitFileTask(Target Target) => true;
-        public override bool FileFilter(Target Target, string File) => File.Is_C_Cpp() || File.Is_OC_OCpp();
+        public override bool EnableEmitter(Target Target) => Target.HasFilesOf<CppFileList>() || Target.HasFilesOf<CFileList>();
+        public override bool EmitFileTask(Target Target, FileList FileList) => FileList.Is<CppFileList>() || FileList.Is<CFileList>();
         public override IArtifact? PerFileTask(Target Target, string SourceFile)
         {
             Stopwatch sw = new();
