@@ -49,7 +49,7 @@ namespace SB
             // Compiler arguments
             var ArgsWithoutPCH = Target.Arguments.ToDictionary();
             ArgsWithoutPCH.Remove("UsePCHAST");
-            var CompilerArgs = Toolchain.Compiler.CreateArgumentDriver()
+            var CompilerArgs = Toolchain.Compiler.CreateArgumentDriver(CFamily.Cpp)
                 .AddArguments(ArgsWithoutPCH)
                 .CalculateArguments()
                 .Values.SelectMany(x => x).ToList();

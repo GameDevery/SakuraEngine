@@ -19,7 +19,7 @@ namespace SB.Core
         }
 
         public Version Version => new Version(VSVersion, 0);
-        public ICompiler Compiler => ClangCLCC!;
+        public ICompiler Compiler => CLCC!;
         public ILinker Linker => LINK!;
         public IArchiver Archiver => LINK!;
         public string BuildTempPath => Directory.CreateDirectory(Path.Combine(SourceLocation.BuildTempPath, this.Version.ToString())).FullName;

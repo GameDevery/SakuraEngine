@@ -5,6 +5,20 @@ using System.Runtime.CompilerServices;
 
 namespace SB
 {   
+    [Flags]
+    public enum TargetTags
+    {
+        None = 0,
+        Engine = 1,
+        Render = Engine << 1,
+        GUI = Render << 1,
+        Tool = GUI << 1,
+        DCC = Tool << 1,
+        Experimental = DCC << 1,
+        V8 = Experimental << 1,
+        Lua = V8 << 1
+    }
+
     public class ModuleAttribute
     {
         public ModuleAttribute(Target Target, string API)
@@ -78,6 +92,21 @@ namespace SB
             return Target;
         }
 
+        public static void SetTagsUnderDirectory(string Dir, TargetTags Tags, [CallerFilePath] string? Location = null)
+        {
+            if (!Path.IsPathFullyQualified(Dir))
+            {
+                Dir = Path.Combine(Path.GetDirectoryName(Location!)!, Dir);
+                Dir = Path.GetFullPath(Dir);
+            }
+
+            var Matches = BuildSystem.AllTargets.Where(KVP => KVP.Value.Directory.StartsWith(Dir)).Select(KVP => KVP.Value);
+            foreach (var Target in Matches)
+            {
+                Target.SetAttribute(Tags);
+            }
+        }
+
         public static bool ShippingOneArchive = false;
         public static bool UseProfile = true;
     }
@@ -86,6 +115,7 @@ namespace SB
     {
         public static Target ApplyEngineModulePresets(this Target @this)
         {
+            @this.CVersion("11");
             @this.CppVersion("20");
             @this.Exception(false);
             if (BuildSystem.TargetOS == OSPlatform.Windows)
@@ -95,10 +125,7 @@ namespace SB
             return @this;
         }
 
-        public static bool IsEngineModule(this Target @this)
-        {
-            return @this.GetAttribute<ModuleAttribute>() is not null;
-        }
+        public static bool IsEngineModule(this Target @this) => @this.GetAttribute<ModuleAttribute>() is not null;
 
         public static Target EnableCodegen(this Target @this, string API, string Root)
         {
@@ -131,5 +158,8 @@ namespace SB
             Scripts.AddRange(Generators);
             return @this;
         }
+
+        public static Target Tags(this Target @this, TargetTags Tags) => @this.SetAttribute(Tags);
+        public static bool HasTags(this Target @this, TargetTags Tags) => (Tags & @this.GetAttribute<TargetTags>()) == Tags;
     }
 }

@@ -30,9 +30,9 @@ namespace SB.Core
             });
         }
 
-        public IArgumentDriver CreateArgumentDriver()
+        public IArgumentDriver CreateArgumentDriver(CFamily Language)
         {
-            return new ClangCLArgumentDriver();
+            return new ClangCLArgumentDriver(Language);
         }
 
         public CompileResult Compile(TaskEmitter Emitter, Target Target, IArgumentDriver Driver, string? WorkDirectory = null)
@@ -68,8 +68,10 @@ namespace SB.Core
                     depend.ExternalFiles.AddRange(DepIncludes);
                 }
 
-                if (OutputInfo.Contains("warning"))
+                if (OutputInfo != "") 
                     Log.Warning("clang-cl.exe: {OutputInfo}", OutputInfo);
+                if (ErrorInfo != "") 
+                    Log.Warning("clang-cl.exe: {ErrorInfo}", ErrorInfo);
 
                 depend.ExternalFiles.Add(ObjectFile!);
             }, new List<string> { FileToCompile! }, DependArgsList);

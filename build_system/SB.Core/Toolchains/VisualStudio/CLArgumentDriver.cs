@@ -5,6 +5,18 @@
     using BS = BuildSystem;
     public class CLArgumentDriver : IArgumentDriver
     {
+        public CLArgumentDriver(CFamily Language)
+        {
+            this.Language = Language;
+            if (Language == CFamily.C)
+                RawArguments.Add("/TC");
+            else if (Language == CFamily.Cpp)
+            {
+                RawArguments.Add("/TP");
+                RawArguments.Add("/Zc:__cplusplus");
+            }
+        }
+
         [TargetProperty] 
         public virtual string Exception(bool Enable) => Enable ? "/EHsc" : "/EHsc-";
 
@@ -12,12 +24,18 @@
         public virtual string RuntimeLibrary(string what) => VS.IsValidRT(what) ? $"/{what}" : throw new TaskFatalError($"Invalid argument \"{what}\" for MSVC RuntimeLibrary!");
 
         [TargetProperty] 
-        public virtual string CppVersion(string what) => cppVersionMap.TryGetValue(what.Replace("c++", "").Replace("C++", ""), out var r) ? r : throw new TaskFatalError($"Invalid argument \"{what}\" for CppVersion!");
+        public virtual string CppVersion(string what) => 
+            Language == CFamily.Cpp ?
+            cppVersionMap.TryGetValue(what.Replace("c++", "").Replace("C++", ""), out var r) ? r : throw new TaskFatalError($"Invalid argument \"{what}\" for CppVersion!") :
+            "";
         public static readonly Dictionary<string, string> cppVersionMap = new Dictionary<string, string> { { "11", "/std:c++11" }, { "14", "/std:c++14" }, { "17", "/std:c++17" }, { "20", "/std:c++20" }, { "23", "/std:c++23" }, { "latest", "/std:c++latest" } };
         
         [TargetProperty] 
-        public virtual string CVersion(string what) => cVersionMao.TryGetValue(what.Replace("c", "").Replace("C", ""), out var r) ? r : throw new TaskFatalError($"Invalid argument \"{what}\" for CVersion!");
-        public static readonly Dictionary<string, string> cVersionMao = new Dictionary<string, string> { { "11", "/std:c11" }, { "17", "/std:c17" }, { "latest", "/std:clatest" } };
+        public virtual string CVersion(string what) => 
+            Language == CFamily.C ?
+            cVersionMap.TryGetValue(what.Replace("c", "").Replace("C", ""), out var r) ? r : throw new TaskFatalError($"Invalid argument \"{what}\" for CVersion!") :
+            "";
+        public static readonly Dictionary<string, string> cVersionMap = new Dictionary<string, string> { { "11", "/std:c11" }, { "17", "/std:c17" }, { "latest", "/std:clatest" } };
 
         [TargetProperty] 
         public virtual string SIMD(SIMDArchitecture simd) => $"/arch:{simd}".Replace("_", ".");
@@ -50,7 +68,7 @@
         public virtual string FpModel(FpModel v) => $"/fp:{v}".ToLowerInvariant();
 
         [TargetProperty(TargetProperty.InheritBehavior)] 
-        public virtual string[] CppFlags(ArgumentList<string> flags) => flags.Select(flag => flag).ToArray();
+        public virtual string[] CppFlags(ArgumentList<string> flags) => (Language == CFamily.Cpp) ? flags.Select(flag => flag).ToArray() : new string[0];
         
         [TargetProperty(TargetProperty.InheritBehavior)] 
         public virtual string[] Defines(ArgumentList<string> defines) => defines.Select(define => $"-D{define}").ToArray();
@@ -77,6 +95,7 @@
 
         public virtual string UsePCHAST(string path) => "";
 
+        private CFamily Language { get; }
         public ArgumentDictionary Arguments { get; } = new();
         public HashSet<string> RawArguments { get; } = new HashSet<string> { "/c", "/nologo", "/FC", "/source-charset:utf-8" };
         // /c: dont link while compiling, https://learn.microsoft.com/zh-cn/cpp/build/reference/c-compile-without-linking?view=msvc-170

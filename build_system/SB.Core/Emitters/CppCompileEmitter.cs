@@ -15,7 +15,7 @@ namespace SB
         public CppCompileEmitter(IToolchain Toolchain) => this.Toolchain = Toolchain;
         public override bool EnableEmitter(Target Target) => Target.HasFilesOf<CppFileList>() || Target.HasFilesOf<CFileList>();
         public override bool EmitFileTask(Target Target, FileList FileList) => FileList.Is<CppFileList>() || FileList.Is<CFileList>();
-        public override IArtifact? PerFileTask(Target Target, FileOptions? Options, string SourceFile)
+        public override IArtifact? PerFileTask(Target Target, FileList FileList, FileOptions? Options, string SourceFile)
         {
             Stopwatch sw = new();
             sw.Start();
@@ -23,9 +23,10 @@ namespace SB
             var M = Interlocked.Add(ref N, 1);
             Log.Verbose("Compiling {SourceFile} ({N})", SourceFile, M + 1);
 
+            CFamily Language = FileList.Is<CppFileList>() ? CFamily.Cpp : CFamily.C;
             var SourceDependencies = Path.Combine(Target.GetStorePath(BuildSystem.DepsStore), BuildSystem.GetUniqueTempFileName(SourceFile, Target.Name + this.Name, "source.deps.json"));
             var ObjectFile = GetObjectFilePath(Target, SourceFile);
-            var CompilerDriver = Toolchain.Compiler.CreateArgumentDriver()
+            var CompilerDriver = Toolchain.Compiler.CreateArgumentDriver(Language)
                 .AddArguments(Target.Arguments)
                 .MergeArguments(Options?.Arguments)
                 .AddArgument("Source", SourceFile)

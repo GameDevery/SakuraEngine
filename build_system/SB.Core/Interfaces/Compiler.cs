@@ -11,7 +11,7 @@
     {
         public Version Version { get; }
         public string ExecutablePath { get; }
-        public IArgumentDriver CreateArgumentDriver();
+        public IArgumentDriver CreateArgumentDriver(CFamily Language);
         public CompileResult Compile(TaskEmitter Emitter, Target Target, IArgumentDriver Driver, string? WorkDirectory = null);
     }
 }

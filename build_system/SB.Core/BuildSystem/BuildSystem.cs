@@ -199,7 +199,7 @@ namespace SB
                                     {
                                         Stopwatch sw = new();
                                         sw.Start();
-                                        var FileTaskArtifact = Emitter.PerFileTask(Target, FL.GetFileOptions(File), File);
+                                        var FileTaskArtifact = Emitter.PerFileTask(Target, FL, FL.GetFileOptions(File), File);
                                         sw.Stop();
                                         Log.Verbose("[{Percentage:00.0}%][{FileTaskIndex}/{FileTaskCount}]: {EmitterName} {TargetName}: {FileName}", Percentage, FileTaskIndex, FileTaskCount, EmitterName, Target.Name, File);
                                         if (FileTaskArtifact is not null && !FileTaskArtifact.IsRestored)
@@ -224,7 +224,7 @@ namespace SB
         }
 
         private static Dictionary<string, TaskEmitter> TaskEmitters = new();
-        protected static Dictionary<string, Target> AllTargets { get; } = new();
+        public static Dictionary<string, Target> AllTargets { get; } = new();
         protected static Dictionary<string, Package> AllPackages { get; } = new();
         internal static Dictionary<string, Target> _AllTargets => AllTargets;
         public delegate void TargetDelegate(Target Target);

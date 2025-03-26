@@ -23,4 +23,12 @@
         Linux,
         OSX
     }
+
+    public enum CFamily
+    {
+        C,
+        Cpp,
+        ObjC,
+        ObjCpp
+    }
 }

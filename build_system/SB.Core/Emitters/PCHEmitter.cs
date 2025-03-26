@@ -63,7 +63,8 @@ namespace SB
                         PCHArguments = SharedPCHArgs;
                     }
                     // Execute
-                    var CompilerDriver = Toolchain.Compiler.CreateArgumentDriver()
+                    // TODO: SEPERATE C AND CPP PCH
+                    var CompilerDriver = Toolchain.Compiler.CreateArgumentDriver(CFamily.Cpp)
                         .AddArguments(PCHArguments)
                         .AddArgument("Source", PCHFile)
                         .AddArgument("AsPCHHeader", true)

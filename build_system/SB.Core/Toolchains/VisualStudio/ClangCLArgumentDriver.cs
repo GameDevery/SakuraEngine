@@ -7,7 +7,11 @@ namespace SB.Core
     using BS = BuildSystem;
     public class ClangCLArgumentDriver : CLArgumentDriver
     {
-        public ClangCLArgumentDriver() => RawArguments.Add("-ftime-trace");
+        public ClangCLArgumentDriver(CFamily lang)
+            : base(lang)
+        {
+             RawArguments.Add("-ftime-trace");
+        }
 
         public override string SourceDependencies(string path) => BS.CheckFile(path, false) ? $"/clang:-MD /clang:-MF\"{path}\"" : throw new TaskFatalError($"SourceDependencies value {path} is not a valid absolute path!");
         public virtual string AsPCHHeader(bool flag) => flag ? $"-x c++-header" : "";
