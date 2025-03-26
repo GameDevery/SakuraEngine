@@ -62,6 +62,7 @@ struct U8String : protected Memory {
     U8String(const DataType* str, AllocatorCtorParam param = {}) noexcept;
     U8String(const DataType* str, SizeType len, AllocatorCtorParam param = {}) noexcept;
     U8String(ViewType view, AllocatorCtorParam param = {}) noexcept;
+    U8String(DataType ch, AllocatorCtorParam param = {}) noexcept;
     ~U8String();
 
     // cast len
@@ -383,10 +384,10 @@ struct U8String : protected Memory {
     U8String to_upper_copy() const;
 
     // pad
-    void pad_center(SizeType size, const DataType& ch = u8' ');
-    void pad_left(SizeType size, const DataType& ch = u8' ');
-    void pad_right(SizeType size, const DataType& ch = u8' ');
-    U8String pad_center_copy(SizeType size, const DataType& ch = u8' ') const;  
+    void     pad_center(SizeType size, const DataType& ch = u8' ');
+    void     pad_left(SizeType size, const DataType& ch = u8' ');
+    void     pad_right(SizeType size, const DataType& ch = u8' ');
+    U8String pad_center_copy(SizeType size, const DataType& ch = u8' ') const;
     U8String pad_left_copy(SizeType size, const DataType& ch = u8' ') const;
     U8String pad_right_copy(SizeType size, const DataType& ch = u8' ') const;
 
@@ -543,6 +544,15 @@ inline U8String<Memory>::U8String(ViewType view, AllocatorCtorParam param) noexc
     : Memory(std::move(param))
 {
     _assign_with_literal_check(view.data(), view.size());
+}
+template <typename Memory>
+inline U8String<Memory>::U8String(DataType ch, AllocatorCtorParam param) noexcept
+    : Memory(std::move(param))
+{
+    if (ch != 0)
+    {
+        _assign_with_literal_check(&ch, 1);
+    }
 }
 template <typename Memory>
 inline U8String<Memory>::~U8String()
@@ -1896,7 +1906,7 @@ inline U8String<Memory> U8String<Memory>::replace_copy(ViewType from, ViewType t
 
     if (from.is_empty())
     {
-        return 0;
+        return {};
     }
 
     // count result
@@ -1904,7 +1914,7 @@ inline U8String<Memory> U8String<Memory>::replace_copy(ViewType from, ViewType t
     SizeType replace_count = find_view.count(from);
     if (replace_count == 0)
     {
-        return 0;
+        return *this;
     }
     SizeType replace_size_from = from.size() * replace_count;
     SizeType replace_size_to   = to.size() * replace_count;
@@ -2734,8 +2744,8 @@ inline void U8String<Memory>::pad_center(SizeType size, const DataType& ch)
         _pre_modify(size);
 
         SizeType size_need_pad = size - length_buffer();
-        SizeType left = size_need_pad / 2;
-        SizeType right = size_need_pad - left;
+        SizeType left          = size_need_pad / 2;
+        SizeType right         = size_need_pad - left;
 
         if (left > 0)
         {
