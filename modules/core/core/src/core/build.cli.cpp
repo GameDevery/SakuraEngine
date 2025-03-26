@@ -26,14 +26,12 @@ bool CmdOptionData::init(attr::CmdOption config, TypeSignatureView type_sig, voi
         type_sig.read_type_id(type_id);
 
         // get type
-        EKind kind = _solve_kind(type_id);
-        if (kind == EKind::None)
+        _kind = _solve_kind(type_id);
+        if (_kind == EKind::None)
         {
             SKR_LOG_FMT_ERROR(u8"unknown type for option '{}'!", config.name);
             return false;
         }
-
-        _kind = kind;
     }
     else if (type_sig.is_generic_type())
     {
@@ -66,8 +64,8 @@ bool CmdOptionData::init(attr::CmdOption config, TypeSignatureView type_sig, voi
                 GUID type_id;
                 type_sig.jump_modifier();
                 type_sig.read_type_id(type_id);
-                EKind kind = _solve_kind(type_id);
-                if (kind == EKind::None)
+                _kind = _solve_kind(type_id);
+                if (_kind == EKind::None)
                 {
                     SKR_LOG_FMT_ERROR(u8"unknown T of Optional<T> for option '{}'!", config.name);
                     return false;
@@ -475,11 +473,18 @@ void CmdNode::print_help()
             option_str.pad_right(max_option_name_length);
 
             builder
+                // write option
                 .style_bold()
                 .style_front_green()
                 .write(u8"  {} : ", option_str)
+                // write type
                 .style_clear()
-                .write(u8"{}{}", (!option.is_optional() ? "[REQUIRED] " : ""), option.config().help)
+                .style_front_yellow()
+                .write(u8"{} ", option.dump_type_name())
+                .style_clear()
+                // write help
+                .style_clear()
+                .write_indent(u8"{}{}", (!option.is_optional() ? "[REQUIRED] " : ""), option.config().help)
                 .style_clear()
                 .next_line();
         }
@@ -713,7 +718,7 @@ void CmdParser::parse(int argc, char* argv[])
                         current_idx += 1 + params.size();
                         continue;
                     }
-                    
+
                     any_error |= !_process_option(
                         found_option,
                         current_idx,
@@ -831,14 +836,19 @@ void CmdParser::parse(int argc, char* argv[])
             }
             option_str.pad_right(max_option_name_length);
 
-            builder.
+            builder
                 // write options
-                style_front_green()
-                    .write(u8"  {} : ", option_str)
-                    .style_clear()
-                    // write help
-                    .write(option->config().help)
-                    .next_line();
+                .style_bold()
+                .style_front_green()
+                .write(u8"  {} : ", option_str, option->dump_type_name())
+                .style_clear()
+                // write type
+                .style_front_yellow()
+                .write(u8"{} ", option->dump_type_name())
+                .style_clear()
+                // write help
+                .write_indent(option->config().help)
+                .next_line();
         }
         builder.dump();
         current_cmd->print_help();

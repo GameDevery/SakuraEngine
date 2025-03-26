@@ -61,7 +61,10 @@ MainCommand {
     bool test_c = false;
 
     srttr_attr(CmdOption{
-        .help = u8"just test optional arg",
+        .help = u8"just test optional arg\n"
+                u8"test indent-----------\n"
+                u8"test indent>>>>>>>>>>>\n"
+                u8"test indent<<<<<<<<<<<",
     })
     skr::Optional<skr::String> test_optional = {};
 

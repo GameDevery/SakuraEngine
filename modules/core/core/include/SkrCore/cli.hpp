@@ -147,19 +147,39 @@ struct CliOutputBuilder {
     template <typename... Args>
     inline CliOutputBuilder& write(StringView fmt, Args... args)
     {
-        format_to(content, fmt, args...);
+        String str = format(fmt, std::forward<Args>(args)...);
+        _solve_indent(str, _indent_cache);
+        content.append(str);
         return *this;
     }
     template <typename... Args>
     inline CliOutputBuilder& line(StringView fmt, Args... args)
     {
-        format_to(content, fmt, args...);
+        format_to(content, fmt, std::forward<Args>(args)...);
         next_line();
         return *this;
     }
     inline CliOutputBuilder& next_line()
     {
         content.append(u8"\n");
+        _indent_cache = 0;
+        return *this;
+    }
+    template <typename... Args>
+    inline CliOutputBuilder& write_indent(StringView fmt, Args... args)
+    {
+        String   str = format(fmt, std::forward<Args>(args)...);
+        uint64_t new_indent;
+        _solve_indent(str, new_indent);
+        if (_indent_cache > 0)
+        {
+            String indent_str;
+            indent_str.add(u8'\n');
+            indent_str.add(u8' ', _indent_cache);
+            str.replace(u8"\n", indent_str);
+        }
+        _indent_cache = new_indent;
+        content.append(str);
         return *this;
     }
 
@@ -170,6 +190,20 @@ struct CliOutputBuilder {
     }
 
     String content;
+
+private:
+    inline static void _solve_indent(const String& str, uint64_t& indent)
+    {
+        if (auto found_last = str.find_last(u8"\n"))
+        {
+            indent = str.length_buffer() - found_last.index() - 1;
+        }
+        else
+        {
+            indent += str.length_buffer();
+        }
+    }
+    uint64_t _indent_cache = 0;
 };
 
 } // namespace skr
@@ -270,9 +304,34 @@ struct SKR_CORE_API CmdOptionData {
     inline bool                   is_float() const { return _kind == EKind::Float || _kind == EKind::Double; }
     inline bool                   is_string() const { return _kind == EKind::String; }
     inline bool                   is_string_vector() const { return _kind == EKind::StringVector; }
-
-    // getter
-    inline bool is_required() const { return _config.is_required && !_is_optional; }
+    inline bool                   is_required() const { return _config.is_required && !_is_optional; }
+    inline String                 dump_type_name() const
+    {
+        switch (_kind)
+        {
+        case EKind::Bool:
+            return u8"<bool>     ";
+        case EKind::Int8:
+        case EKind::Int16:
+        case EKind::Int32:
+        case EKind::Int64:
+            return u8"<int>      ";
+        case EKind::UInt8:
+        case EKind::UInt16:
+        case EKind::UInt32:
+        case EKind::UInt64:
+            return u8"<uint>     ";
+        case EKind::Float:
+        case EKind::Double:
+            return u8"<float>    ";
+        case EKind::String:
+            return u8"<string>   ";
+        case EKind::StringVector:
+            return u8"<string...>";
+        default:
+            return u8"<unknown>  ";
+        }
+    }
 
     // setter
     void set_value(bool v);
