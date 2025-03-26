@@ -73,7 +73,7 @@ namespace SB.Core
             };
         }
 
-        IArgumentDriver ILinker.CreateArgumentDriver() => new LINKArgumentDriver();
+        IArgumentDriver ILinker.CreateArgumentDriver() => new LINKArgumentDriver(false);
 
         public ArchiveResult Archive(TaskEmitter Emitter, Target Target, IArgumentDriver Driver)
         {
@@ -85,7 +85,7 @@ namespace SB.Core
             };
         }
 
-        IArgumentDriver IArchiver.CreateArgumentDriver() => new LINKArgumentDriver();
+        IArgumentDriver IArchiver.CreateArgumentDriver() => new LINKArgumentDriver(true);
 
         public Version Version => MSVCVersion;
 

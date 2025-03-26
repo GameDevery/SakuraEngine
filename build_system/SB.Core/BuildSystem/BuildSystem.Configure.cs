@@ -33,6 +33,6 @@ namespace SB
         }
 
         public static Dictionary<string, TargetDelegate> Configurations = new();
-        public static string GlobalConfiguration = "releasedbg";
+        public static string GlobalConfiguration = "debug";
     }
 }

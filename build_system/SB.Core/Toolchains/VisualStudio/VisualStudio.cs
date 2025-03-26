@@ -18,8 +18,10 @@ namespace SB.Core
             this.TargetArch = TargetArch ?? HostInformation.HostArch;
         }
 
+        private bool UseClangCl => true;
+        public string Name => UseClangCl ? "clang-cl" : "msvc";
         public Version Version => new Version(VSVersion, 0);
-        public ICompiler Compiler => CLCC!;
+        public ICompiler Compiler => UseClangCl ? ClangCLCC! : CLCC!;
         public ILinker Linker => LINK!;
         public IArchiver Archiver => LINK!;
         public string BuildTempPath => Directory.CreateDirectory(Path.Combine(SourceLocation.BuildTempPath, this.Version.ToString())).FullName;

@@ -92,6 +92,7 @@ namespace SB.Core
             AR = new AR(ARDirectory!);
         }
 
+        public string Name => "apple-clang";
         public Version Version
         {
             get

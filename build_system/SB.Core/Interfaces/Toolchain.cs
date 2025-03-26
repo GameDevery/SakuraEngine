@@ -6,5 +6,6 @@
         public ICompiler Compiler { get; }
         public ILinker Linker { get; }
         public IArchiver Archiver { get; }
+        public string Name { get; }
     }
 }

@@ -7,6 +7,8 @@ namespace SB.Core
     using BS = BuildSystem;
     public class LINKArgumentDriver : IArgumentDriver
     {
+        public LINKArgumentDriver(bool ArchiverMode) => this.ArchiverMode = ArchiverMode;
+
         [TargetProperty] 
         public string RuntimeLibrary(string what) => VS.IsValidRT(what) ? what.StartsWith("MT") ? "/NODEFAULTLIB:msvcrt.lib" : "" : throw new ArgumentException($"Invalid argument \"{what}\" for MSVC RuntimeLibrary!");
 
@@ -27,7 +29,7 @@ namespace SB.Core
         static readonly Dictionary<Architecture, string> archMap = new Dictionary<Architecture, string> { { Architecture.X86, "/MACHINE:X86" }, { Architecture.X64, "/MACHINE:X64" }, { Architecture.ARM64, "/MACHINE:ARM64" } };
 
         [TargetProperty]
-        public string DebugSymbols(bool Enable) => Enable ? "/DEBUG:FULL" : "";
+        public string DebugSymbols(bool Enable) => Enable && !ArchiverMode ? "/DEBUG:FULL" : "";
 
         public string PDB(string path) => BS.CheckPath(path, false) ? $"/PDB:\"{path}\"" : throw new ArgumentException($"PDB value {path} is not a valid absolute path!");
 
@@ -35,6 +37,7 @@ namespace SB.Core
 
         public string Output(string output) => BS.CheckFile(output, false) ? $"/OUT:\"{output}\"" : throw new ArgumentException($"Invalid output file path {output}!");
 
+        private readonly bool ArchiverMode;
         public ArgumentDictionary Arguments { get; } = new ArgumentDictionary();
         public HashSet<string> RawArguments { get; } = new HashSet<string> { "/NOLOGO" };
     }

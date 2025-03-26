@@ -44,7 +44,7 @@ namespace SB
             {
                 Depend.OnChanged("Install.SDK.Copy", Name, "Install.SDKs", (Depend depend) =>
                 {
-                    var BuildDirectory = Path.Combine(BS.BuildPath, BS.TargetOS.ToString(), BS.TargetArch.ToString(), BS.GlobalConfiguration);
+                    var BuildDirectory = Path.Combine(BS.BuildPath, $"{BS.TargetOS}-{BS.TargetArch}-{BS.GlobalConfiguration}");
                     Directory.CreateDirectory(BuildDirectory);
 
                     depend.ExternalFiles.AddRange(Directory.GetFiles(IntermediateDirectory, "*", SearchOption.AllDirectories));
