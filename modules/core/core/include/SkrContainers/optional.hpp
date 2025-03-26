@@ -1,8 +1,9 @@
 #pragma once
 #include "SkrContainersDef/optional.hpp"
-#include "SkrRTTR/type_signature.hpp"
 #include "SkrBase/types/guid.h"
 
+// rttr
+#include "SkrRTTR/type_signature.hpp"
 namespace skr
 {
 static constexpr GUID kOptionalGenericId = u8"bc48634e-85dd-45ce-a7c7-f85d5bab9680"_guid;
@@ -17,6 +18,7 @@ struct TypeSignatureTraits<::skr::Optional<T>> {
 };
 } // namespace skr
 
+// bin serde
 #include "SkrSerde/bin_serde.hpp"
 namespace skr
 {
@@ -62,6 +64,7 @@ struct BinSerde<skr::Optional<T>> {
 };
 } // namespace skr
 
+// json serde
 #include "SkrSerde/json_serde.hpp"
 namespace skr
 {

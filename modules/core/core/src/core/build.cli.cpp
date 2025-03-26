@@ -2,6 +2,269 @@
 #include "SkrCore/log.hpp"
 #include <SkrContainers/optional.hpp>
 
+// helper
+namespace skr::cli_style
+{
+static const char* clear = "\033[0m";
+
+// style
+static const char* bold         = "\033[1m";
+static const char* no_bold      = "\033[22m";
+static const char* underline    = "\033[4m";
+static const char* no_underline = "\033[24m";
+static const char* reverse      = "\033[7m";
+static const char* no_reverse   = "\033[27m";
+
+// front color
+static const char* front_gray    = "\033[30m";
+static const char* front_red     = "\033[31m";
+static const char* front_green   = "\033[32m";
+static const char* front_yellow  = "\033[33m";
+static const char* front_blue    = "\033[34m";
+static const char* front_magenta = "\033[35m";
+static const char* front_cyan    = "\033[36m";
+static const char* front_white   = "\033[37m";
+
+} // namespace skr::cli_style
+
+// cmd option
+namespace skr
+{
+bool CmdOptionData::init(attr::CmdOption config, TypeSignatureView type_sig, void* memory)
+{
+    if (type_sig.is_type())
+    {
+        // check decayed pointer
+        if (type_sig.is_decayed_pointer())
+        {
+            SKR_LOG_FMT_ERROR(u8"option '{}' must be a value field!", config.name);
+            return false;
+        }
+
+        // get type id
+        GUID type_id;
+        type_sig.jump_modifier();
+        type_sig.read_type_id(type_id);
+
+        // get type
+        EKind kind = _solve_kind(type_id);
+        if (kind == EKind::None)
+        {
+            SKR_LOG_FMT_ERROR(u8"unknown type for option '{}'!", config.name);
+            return false;
+        }
+
+        _kind = kind;
+    }
+    else if (type_sig.is_generic_type())
+    {
+        // check decayed pointer
+        if (type_sig.is_decayed_pointer())
+        {
+            SKR_LOG_FMT_ERROR(u8"option '{}' must be a value field!", config.name);
+            return false;
+        }
+
+        // get generic id
+        GUID     generic_id;
+        uint32_t generic_param_count;
+        type_sig.jump_modifier();
+        type_sig.read_generic_type_id(generic_id, generic_param_count);
+
+        if (generic_id == kOptionalGenericId)
+        { // process optional
+            _is_optional = true;
+
+            // get type id
+            if (type_sig.is_decayed_pointer())
+            {
+                SKR_LOG_FMT_ERROR(u8"option '{}' T of Optional<T> must be a value field!", config.name);
+                return false;
+            }
+
+            if (type_sig.is_type())
+            { // read inner type id
+                GUID type_id;
+                type_sig.jump_modifier();
+                type_sig.read_type_id(type_id);
+                EKind kind = _solve_kind(type_id);
+                if (kind == EKind::None)
+                {
+                    SKR_LOG_FMT_ERROR(u8"unknown T of Optional<T> for option '{}'!", config.name);
+                    return false;
+                }
+            }
+            else
+            {
+                SKR_LOG_FMT_ERROR(u8"unknown T of Optional<T> for option '{}'!", config.name);
+                return false;
+            }
+        }
+        else if (generic_id == kVectorGenericId)
+        {
+            // get type id
+            if (type_sig.is_type() && !type_sig.is_decayed_pointer())
+            {
+                // get typeid
+                GUID type_id;
+                type_sig.jump_modifier();
+                type_sig.read_type_id(type_id);
+
+                // check type
+                if (type_id == type_id_of<String>())
+                {
+                    _kind = EKind::StringVector;
+                }
+            }
+            else
+            {
+                SKR_LOG_FMT_ERROR(u8"unknown T of Vector<T> for option '{}'!", config.name);
+                return false;
+            }
+        }
+        else
+        {
+            SKR_LOG_FMT_ERROR(u8"unknown generic type for option '{}'!", config.name);
+            return false;
+        }
+    }
+    else
+    {
+        SKR_LOG_FMT_ERROR(u8"unknown type for option '{}'!", config.name);
+        return false;
+    }
+
+    _memory = memory;
+    _config = std::move(config);
+    return true;
+}
+
+// setter
+void CmdOptionData::set_value(bool v)
+{
+    SKR_ASSERT(_kind == EKind::Bool);
+    _set<bool>(v);
+}
+void CmdOptionData::set_value(int64_t v)
+{
+    SKR_ASSERT(_kind == EKind::Int8 || _kind == EKind::Int16 || _kind == EKind::Int32 || _kind == EKind::Int64);
+    switch (_kind)
+    {
+    case EKind::Int8:
+        _set<int8_t>(static_cast<int8_t>(v));
+        break;
+    case EKind::Int16:
+        _set<int16_t>(static_cast<int16_t>(v));
+        break;
+    case EKind::Int32:
+        _set<int32_t>(static_cast<int32_t>(v));
+        break;
+    case EKind::Int64:
+        _set<int64_t>(static_cast<int64_t>(v));
+        break;
+    default:
+        SKR_UNREACHABLE_CODE()
+        break;
+    }
+}
+void CmdOptionData::set_value(uint64_t v)
+{
+    SKR_ASSERT(_kind == EKind::UInt8 || _kind == EKind::UInt16 || _kind == EKind::UInt32 || _kind == EKind::UInt64);
+    switch (_kind)
+    {
+    case EKind::UInt8:
+        _set<uint8_t>(static_cast<uint8_t>(v));
+        break;
+    case EKind::UInt16:
+        _set<uint16_t>(static_cast<uint16_t>(v));
+        break;
+    case EKind::UInt32:
+        _set<uint32_t>(static_cast<uint32_t>(v));
+        break;
+    case EKind::UInt64:
+        _set<uint64_t>(static_cast<uint64_t>(v));
+        break;
+    default:
+        SKR_UNREACHABLE_CODE()
+        break;
+    }
+}
+void CmdOptionData::set_value(double v)
+{
+    SKR_ASSERT(_kind == EKind::Float || _kind == EKind::Double);
+    switch (_kind)
+    {
+    case EKind::Float:
+        _set<float>(static_cast<float>(v));
+        break;
+    case EKind::Double:
+        _set<double>(static_cast<double>(v));
+        break;
+    default:
+        SKR_UNREACHABLE_CODE()
+        break;
+    }
+}
+void CmdOptionData::set_value(String v)
+{
+    SKR_ASSERT(_kind == EKind::String);
+    if (_kind == EKind::String)
+    {
+        _set<String>(std::move(v));
+    }
+    else
+    {
+        SKR_UNREACHABLE_CODE()
+    }
+}
+void CmdOptionData::add_value(String v)
+{
+    SKR_ASSERT(_kind == EKind::StringVector);
+    if (_kind == EKind::StringVector)
+    {
+        _as<Vector<String>>().add(std::move(v));
+    }
+    else
+    {
+        SKR_UNREACHABLE_CODE()
+    }
+}
+
+// helper
+CmdOptionData::EKind CmdOptionData::_solve_kind(const GUID& type_id)
+{
+    switch (type_id.get_hash())
+    {
+    case type_id_of<bool>().get_hash():
+        return EKind::Bool;
+    case type_id_of<int8_t>().get_hash():
+        return EKind::Int8;
+    case type_id_of<int16_t>().get_hash():
+        return EKind::Int16;
+    case type_id_of<int32_t>().get_hash():
+        return EKind::Int32;
+    case type_id_of<int64_t>().get_hash():
+        return EKind::Int64;
+    case type_id_of<uint8_t>().get_hash():
+        return EKind::UInt8;
+    case type_id_of<uint16_t>().get_hash():
+        return EKind::UInt16;
+    case type_id_of<uint32_t>().get_hash():
+        return EKind::UInt32;
+    case type_id_of<uint64_t>().get_hash():
+        return EKind::UInt64;
+    case type_id_of<float>().get_hash():
+        return EKind::Float;
+    case type_id_of<double>().get_hash():
+        return EKind::Double;
+    case type_id_of<String>().get_hash():
+        return EKind::String;
+    };
+    return EKind::None;
+}
+} // namespace skr
+
+// cmd node
 namespace skr
 {
 // dtor
@@ -14,103 +277,44 @@ CmdNode::~CmdNode()
 }
 
 // solve cmd
-void CmdNode::solve()
+bool CmdNode::solve()
 {
+    bool failed = false;
     type->each_field([&](const RTTRFieldData* field, const RTTRType* owner_type) {
         // find option
-        auto found_option = field->attrs.find_if([&](const Any& v) { return v.type_is<attr::CmdOption>(); });
-        if (found_option)
+        auto found_option_attr_ref = field->attrs.find_if([&](const Any& v) { return v.type_is<attr::CmdOption>(); });
+        if (found_option_attr_ref)
         {
-            const auto& option_attr = found_option.ref().cast<attr::CmdOption>();
-            auto        signature   = field->type.view();
+            // solve config
+            attr::CmdOption option_attr = found_option_attr_ref.ref().as<attr::CmdOption>();
+            option_attr.name            = (!option_attr.name.is_empty()) ? option_attr.name : field->name;
 
-            // check option type
-            if (signature.is_decayed_pointer())
-            {
-                SKR_LOG_FMT_ERROR(u8"option must be a value field!");
-                return;
-            }
-            const RTTRType* option_type          = nullptr;
-            void*           option_field_address = nullptr;
-            GenericOptional optional_data        = {};
-            if (signature.is_generic_type())
-            {
-                // check generic
-                GUID     generic_id;
-                uint32_t data_count;
-                signature.jump_modifier();
-                signature.read_generic_type_id(generic_id, data_count);
-                if (generic_id != kOptionalGenericId)
-                {
-                    SKR_LOG_FMT_ERROR(u8"unknown generic type for option!");
-                    return;
-                }
-
-                // get type
-                GUID type_id;
-                if (signature.is_decayed_pointer())
-                {
-                    SKR_LOG_FMT_ERROR(u8"option must be a value field!");
-                    return;
-                }
-                signature.jump_modifier();
-                signature.read_type_id(type_id);
-                option_type = get_type_from_guid(type_id);
-                if (!option_type)
-                {
-                    SKR_LOG_FMT_ERROR(u8"type not found!");
-                    return;
-                }
-
-                // get field address
-                void* owner_obj      = option_type->cast_to_base(owner_type->type_id(), object);
-                void* field_address  = field->get_address(owner_obj);
-                optional_data        = GenericOptional{ field_address, option_type };
-                option_field_address = field_address;
-            }
-            else if (signature.is_type())
-            {
-                // get type
-                GUID type_id;
-                signature.jump_modifier();
-                signature.read_type_id(type_id);
-                option_type = get_type_from_guid(type_id);
-                if (!option_type)
-                {
-                    SKR_LOG_FMT_ERROR(u8"type not found!");
-                    return;
-                }
-            }
-            else
-            {
-                SKR_LOG_FMT_ERROR(u8"unknown type for option!");
-                return;
-            }
+            // get field address
+            void* owner_obj     = type->cast_to_base(owner_type->type_id(), object);
+            void* field_address = field->get_address(owner_obj);
 
             // add option
-            auto& option_info         = options.add_default().ref();
-            option_info.name          = (!option_attr->name.is_empty()) ? option_attr->name : field->name;
-            option_info.short_name    = option_attr->short_name;
-            option_info.help          = option_attr->help;
-            option_info.type          = option_type;
-            option_info.object        = option_field_address;
-            option_info.optional_data = optional_data;
+            auto& new_option = options.add_default().ref();
+            failed |= !new_option.init(std::move(option_attr), field->type, field_address);
+            return;
         }
 
         // find sub command
-        auto found_sub_cmd = field->attrs.find_if([&](const Any& v) { return v.type_is<attr::CmdSub>(); });
-        if (found_sub_cmd)
+        auto found_sub_cmd_attr_ref = field->attrs.find_if([&](const Any& v) { return v.type_is<attr::CmdSub>(); });
+        if (found_sub_cmd_attr_ref)
         {
-            const auto& sub_cmd_attr = found_sub_cmd.ref().cast<attr::CmdSub>();
-            auto        signature    = field->type.view();
+            // solve config
+            attr::CmdSub sub_cmd_attr = found_sub_cmd_attr_ref.ref().as<attr::CmdSub>();
+            sub_cmd_attr.name         = (!sub_cmd_attr.name.is_empty()) ? sub_cmd_attr.name : field->name;
+            auto field_type_sig       = field->type.view();
 
             // check signature
-            if (!signature.is_type())
+            if (!field_type_sig.is_type())
             {
                 SKR_LOG_FMT_ERROR(u8"sub command must be a type!");
                 return;
             }
-            if (signature.is_decayed_pointer())
+            if (field_type_sig.is_decayed_pointer())
             {
                 SKR_LOG_FMT_ERROR(u8"sub command must be a value field!");
                 return;
@@ -118,8 +322,8 @@ void CmdNode::solve()
 
             // get type
             GUID type_id;
-            signature.jump_modifier();
-            signature.read_type_id(type_id);
+            field_type_sig.jump_modifier();
+            field_type_sig.read_type_id(type_id);
             const RTTRType* sub_cmd_type = get_type_from_guid(type_id);
             if (!sub_cmd_type)
             {
@@ -135,24 +339,24 @@ void CmdNode::solve()
             auto sub_cmd = SkrNew<CmdNode>();
 
             // setup basic info
-            sub_cmd->name       = (!sub_cmd_attr->name.is_empty()) ? sub_cmd_attr->name : field->name;
-            sub_cmd->short_name = sub_cmd_attr->short_name;
-            sub_cmd->help       = sub_cmd_attr->help;
-            sub_cmd->type       = sub_cmd_type;
-            sub_cmd->object     = field_address;
+            sub_cmd->config = std::move(sub_cmd_attr);
+            sub_cmd->type   = sub_cmd_type;
+            sub_cmd->object = field_address;
 
             // solve sub cmd
-            sub_cmd->solve();
+            failed |= !sub_cmd->solve();
 
             // register sub command
             sub_cmds.push_back(sub_cmd);
+            return;
         }
 
         // clang-format off
     }, { .include_bases = true });
     // clang-format on
 
-    check_sub_commands();
+    failed |= check_sub_commands();
+    return !failed;
 }
 bool CmdNode::check_sub_commands()
 {
@@ -164,18 +368,20 @@ bool CmdNode::check_sub_commands()
     for (auto& sub_cmd : sub_cmds)
     {
         // check name
-        if (auto found = sub_cmd_map.find(sub_cmd->name))
+        if (auto found = sub_cmd_map.find(sub_cmd->config.name))
         {
-            SKR_LOG_FMT_ERROR(u8"duplicate sub command name: {}", sub_cmd->name.c_str());
+            SKR_LOG_FMT_ERROR(u8"duplicate sub command name: {}", sub_cmd->config.name);
+            no_error = false;
         }
-        sub_cmd_map.add(sub_cmd->name, sub_cmd);
+        sub_cmd_map.add(sub_cmd->config.name, sub_cmd);
 
         // check short name
-        if (auto found = sub_cmd_short_map.find(sub_cmd->short_name))
+        if (auto found = sub_cmd_short_map.find(sub_cmd->config.short_name))
         {
-            SKR_LOG_FMT_ERROR(u8"duplicate sub command short name: {}", sub_cmd->short_name);
+            SKR_LOG_FMT_ERROR(u8"duplicate sub command short name: {}", sub_cmd->config.short_name);
+            no_error = false;
         }
-        sub_cmd_short_map.add(sub_cmd->short_name, sub_cmd);
+        sub_cmd_short_map.add(sub_cmd->config.short_name, sub_cmd);
     }
 
     return no_error;
@@ -183,19 +389,43 @@ bool CmdNode::check_sub_commands()
 void CmdNode::print_help()
 {
     // print self usage
-    printf("usage: %s\n", help.c_str_raw());
+    printf(
+        "%susage:%s %s%s%s\n",
+        cli_style::bold,
+        cli_style::clear,
+        cli_style::front_blue,
+        config.help.c_str_raw(),
+        cli_style::clear
+    );
     if (!options.is_empty())
     {
-        printf("options:\n");
+        printf(
+            "%soptions:%s\n",
+            cli_style::bold,
+            cli_style::clear
+        );
         for (auto& option : options)
         {
-            if (option.short_name != 0)
+            if (option.config().short_name != 0)
             {
-                printf("  -%c, --%s: %s\n", option.short_name, option.name.c_str_raw(), option.help.c_str_raw());
+                printf(
+                    "%s  -%c, --%s:%s %s\n",
+                    cli_style::front_green,
+                    option.config().short_name,
+                    option.config().name.c_str_raw(),
+                    cli_style::clear,
+                    option.config().help.c_str_raw()
+                );
             }
             else
             {
-                printf("  --%s: %s\n", option.name.c_str_raw(), option.help.c_str_raw());
+                printf(
+                    "%s  --%s:%s %s\n",
+                    cli_style::front_green,
+                    option.config().name.c_str_raw(),
+                    cli_style::clear,
+                    option.config().help.c_str_raw()
+                );
             }
         }
     }
@@ -203,14 +433,28 @@ void CmdNode::print_help()
     // print subcommands
     if (!sub_cmds.is_empty())
     {
-        printf("sub commands:\n");
+        printf(
+            "%ssub commands:%s\n",
+            cli_style::bold,
+            cli_style::clear
+        );
         for (auto& sub_cmd : sub_cmds)
         {
-            printf("  %s: %s\n", sub_cmd->name.c_str_raw(), sub_cmd->help.c_str_raw());
+            printf(
+                "%s  %s:%s %s\n",
+                cli_style::front_cyan,
+                sub_cmd->config.name.c_str_raw(),
+                cli_style::clear,
+                sub_cmd->config.help.c_str_raw()
+            );
         }
     }
 }
+} // namespace skr
 
+// cmd parser
+namespace skr
+{
 // ctor & dtor
 CmdParser::CmdParser()
 {
@@ -220,7 +464,7 @@ CmdParser::~CmdParser()
 }
 
 // register command
-void CmdParser::main_cmd(const RTTRType* type, void* object, CmdConfig config)
+void CmdParser::main_cmd(const RTTRType* type, void* object, attr::CmdSub config)
 {
     if (_root_cmd.object != nullptr)
     {
@@ -229,20 +473,18 @@ void CmdParser::main_cmd(const RTTRType* type, void* object, CmdConfig config)
     }
 
     // fill main command info
+    _root_cmd.config = config;
     _root_cmd.type   = type;
     _root_cmd.object = object;
-    _root_cmd.help   = std::move(config.help);
     _root_cmd.solve();
 }
-void CmdParser::sub_cmd(const RTTRType* type, void* object, CmdConfig config)
+void CmdParser::sub_cmd(const RTTRType* type, void* object, attr::CmdSub config)
 {
     // fill sub command info
-    auto* sub_cmd       = SkrNew<CmdNode>();
-    sub_cmd->name       = std::move(config.name);
-    sub_cmd->short_name = config.short_name;
-    sub_cmd->help       = std::move(config.help);
-    sub_cmd->type       = type;
-    sub_cmd->object     = object;
+    auto* sub_cmd   = SkrNew<CmdNode>();
+    sub_cmd->config = config;
+    sub_cmd->type   = type;
+    sub_cmd->object = object;
     sub_cmd->solve();
     _root_cmd.sub_cmds.push_back(sub_cmd);
     _root_cmd.check_sub_commands();
@@ -269,8 +511,8 @@ void CmdParser::parse(int argc, char* argv[])
         const auto& token = args[current_idx].token;
         auto        found = current_cmd->sub_cmds.find_if([&](const CmdNode* cmd) {
             String short_name;
-            short_name.add(cmd->short_name);
-            return short_name == token || cmd->name == token;
+            short_name.add(cmd->config.short_name);
+            return short_name == token || cmd->config.name == token;
         });
         if (found)
         {

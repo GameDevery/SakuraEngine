@@ -1,6 +1,22 @@
 #pragma once
 #include "SkrContainersDef/vector.hpp"
 
+// rttr
+#include "SkrRTTR/type_signature.hpp"
+namespace skr
+{
+static constexpr GUID kVectorGenericId = u8"bc48634e-85dd-45ce-a7c7-f85d5bab9680"_guid;
+template <typename T>
+struct TypeSignatureTraits<::skr::Vector<T>> {
+    inline static constexpr size_t buffer_size = type_signature_size_v<ETypeSignatureSignal::GenericTypeId> + TypeSignatureTraits<T>::buffer_size;
+    inline static uint8_t*         write(uint8_t* pos, uint8_t* end)
+    {
+        pos = TypeSignatureHelper::write_generic_type_id(pos, end, kVectorGenericId, 1);
+        return TypeSignatureTraits<T>::write(pos, end);
+    }
+};
+} // namespace skr
+
 // bin serde
 #include "SkrSerde/bin_serde.hpp"
 namespace skr
