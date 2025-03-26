@@ -2,6 +2,7 @@
 #include "SkrBase/config.h"
 #include "SkrBase/meta.h"
 #include "SkrContainersDef/string.hpp"
+#include "SkrRTTR/generic_container.hpp"
 #include "SkrRTTR/type.hpp"
 #ifndef __meta__
     #include "SkrCore/SkrCore/cli.generated.h"
@@ -80,7 +81,7 @@ struct SKR_CORE_API CmdNode {
 
         const RTTRType* type          = nullptr;
         void*           object        = nullptr;
-        OptionalBase*   optional_base = nullptr;
+        GenericOptional optional_data = {};
     };
 
     // basic info
