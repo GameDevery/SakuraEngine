@@ -4,6 +4,7 @@ using System.Diagnostics;
 
 namespace SB
 {
+    using BS = BuildSystem;
     public class CompileCommandsEmitter : TaskEmitter
     {
         public CompileCommandsEmitter(IToolchain Toolchain) => this.Toolchain = Toolchain;
@@ -15,7 +16,7 @@ namespace SB
             sw.Start();
 
             CFamily Language = FileList.Is<CppFileList>() ? CFamily.Cpp : CFamily.C;
-            var SourceDependencies = Path.Combine(Target.GetStorePath(BuildSystem.DepsStore), BuildSystem.GetUniqueTempFileName(SourceFile, Target.Name + this.Name, "source.deps.json"));
+            var SourceDependencies = Path.Combine(Target.GetStorePath(BS.DepsStore), BS.GetUniqueTempFileName(SourceFile, Target.Name + this.Name, "source.deps.json"));
             var ObjectFile = GetObjectFilePath(Target, SourceFile);
             var CLDriver = Toolchain.Compiler.CreateArgumentDriver(Language)
                 .AddArguments(Target.Arguments)

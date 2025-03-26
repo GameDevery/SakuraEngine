@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 
 namespace SB
 {   
+    using BS = BuildSystem;
     [Flags]
     public enum TargetTags
     {
@@ -35,7 +36,7 @@ namespace SB
         public static Target Module(string Name, string? API = null, [CallerFilePath] string? Location = null)
         {
             API = API ?? Name.ToUpperSnakeCase();
-            var Target = BuildSystem.Target(Name, Location!);
+            var Target = BS.Target(Name, Location!);
             Target.ApplyEngineModulePresets()
                 .EnableCodegen(API, Path.Combine(Target.Directory, "include"))
                 .SetAttribute(new ModuleAttribute(Target, API))
@@ -59,7 +60,7 @@ namespace SB
         public static Target Program(string Name, string? API = null, [CallerFilePath] string? Location = null)
         {
             API = API ?? Name.ToUpperSnakeCase();
-            var Target = BuildSystem.Target(Name, Location!);
+            var Target = BS.Target(Name, Location!);
             Target.ApplyEngineModulePresets();
             Target.EnableCodegen(API, Path.Combine(Target.Directory, "include"));
             Target.SetAttribute(new ModuleAttribute(Target, API));
@@ -74,12 +75,12 @@ namespace SB
 
         public static Target StaticComponent(string Name, string OwnerName, [CallerFilePath] string? Location = null)
         {
-            var Target = BuildSystem.Target(Name, Location!);
+            var Target = BS.Target(Name, Location!);
             Target.ApplyEngineModulePresets();
             Target.TargetType(TargetType.Static);
             Target.AfterLoad((Target) =>
             {
-                var Owner = BuildSystem.GetTarget(OwnerName);
+                var Owner = BS.GetTarget(OwnerName);
                 var OwnerAttribute = Owner?.GetAttribute<ModuleAttribute>();
                 var OwnerIncludes = (Owner?.PublicArguments["IncludeDirs"]) as ArgumentList<string>;
                 
@@ -100,7 +101,7 @@ namespace SB
                 Dir = Path.GetFullPath(Dir);
             }
 
-            var Matches = BuildSystem.AllTargets.Where(KVP => KVP.Value.Directory.StartsWith(Dir)).Select(KVP => KVP.Value);
+            var Matches = BS.AllTargets.Where(KVP => KVP.Value.Directory.StartsWith(Dir)).Select(KVP => KVP.Value);
             foreach (var Target in Matches)
             {
                 Target.SetAttribute(Tags);
@@ -118,7 +119,7 @@ namespace SB
             @this.CVersion("11");
             @this.CppVersion("20");
             @this.Exception(false);
-            if (BuildSystem.TargetOS == OSPlatform.Windows)
+            if (BS.TargetOS == OSPlatform.Windows)
             {
                 @this.Defines(Visibility.Private, "NOMINMAX");
             }

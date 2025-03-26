@@ -25,15 +25,15 @@ namespace SB
         {
             // Ensure output file
             var MetaAttribute = Target.GetAttribute<CodegenMetaAttribute>()!;
-            MetaAttribute.MetaDirectory = Path.Combine(Target.GetStorePath(BuildSystem.GeneratedSourceStore), "meta_database");
+            MetaAttribute.MetaDirectory = Path.Combine(Target.GetStorePath(BS.GeneratedSourceStore), "meta_database");
             Directory.CreateDirectory(MetaAttribute.MetaDirectory);
-            var BatchDirectory = Path.Combine(Target.GetStorePath(BuildSystem.GeneratedSourceStore), "ReflectionBatch");
+            var BatchDirectory = Path.Combine(Target.GetStorePath(BS.GeneratedSourceStore), "ReflectionBatch");
             Directory.CreateDirectory(BatchDirectory);
 
             // Batch headers to a source file
             var Headers = Target.FileList<MetaHeaderList>().Files;
             var BatchFile = Path.Combine(BatchDirectory, "ReflectionBatch.cpp");
-            Depend.OnChanged(Target.Name, "BatchFiles", Name, (Depend depend) => {
+            Depend.OnChanged(Target.Name, BatchFile, Name, (Depend depend) => {
                 Directory.CreateDirectory(BatchDirectory);
                 File.WriteAllLines(BatchFile, Headers.Select(H => $"#include \"{H}\""));
                 depend.ExternalFiles.Add(BatchFile);
@@ -55,7 +55,7 @@ namespace SB
                 .Values.SelectMany(x => x).ToList();
             // Set addon flags            
             CompilerArgs.Add("-Wno-abstract-final-class");
-            if (BuildSystem.TargetOS == OSPlatform.Windows)
+            if (BS.TargetOS == OSPlatform.Windows)
                 CompilerArgs.Add("--driver-mode=cl");
             MetaArgs.AddRange(CompilerArgs);
             // Run meta.exe
@@ -64,7 +64,7 @@ namespace SB
                 MetaDoctor.Installation!.Wait();
                 var EXE = Path.Combine(MetaDoctor.Installation.Result, BS.HostOS == OSPlatform.Windows ? "meta.exe" : "meta");
 
-                int ExitCode = BuildSystem.RunProcess(EXE, string.Join(" ", MetaArgs), out var OutputInfo, out var ErrorInfo);
+                int ExitCode = BS.RunProcess(EXE, string.Join(" ", MetaArgs), out var OutputInfo, out var ErrorInfo);
                 if (ExitCode != 0)
                     throw new TaskFatalError($"meta.exe {BatchFile} failed with fatal error!", $"meta.exe: {ErrorInfo}");
                 else if (OutputInfo.Contains("warning LNK"))

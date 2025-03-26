@@ -4,6 +4,7 @@ using System.Diagnostics;
 
 namespace SB
 {
+    using BS = BuildSystem;
     public class CppLinkAttribute
     {
         public List<string> LinkOnlys { get; init; } = new();
@@ -24,7 +25,7 @@ namespace SB
                 sw.Start();
 
                 var LinkedFileName = GetLinkedFileName(Target);
-                var DependFile = Path.Combine(Target.GetStorePath(BuildSystem.DepsStore), BuildSystem.GetUniqueTempFileName(LinkedFileName, Target.Name + this.Name, "task.deps.json"));
+                var DependFile = Path.Combine(Target.GetStorePath(BS.DepsStore), BS.GetUniqueTempFileName(LinkedFileName, Target.Name + this.Name, "task.deps.json"));
                 var Inputs = new ArgumentList<string>();
                 // Add obj files
                 var SourceFiles = Target.FileList<CppFileList>().Files.ToList();
@@ -32,18 +33,18 @@ namespace SB
                 Inputs.AddRange(SourceFiles.Select(F => CppCompileEmitter.GetObjectFilePath(Target, F)));
                 // Add dep obj files
                 Inputs.AddRange(Target.Dependencies.Where(
-                    Dep => BuildSystem.GetTarget(Dep)?.GetTargetType() == TargetType.Objects
+                    Dep => BS.GetTarget(Dep)?.GetTargetType() == TargetType.Objects
                 ).SelectMany(
-                    Dep => BuildSystem.GetTarget(Dep)!.GetAttribute<CppCompileAttribute>()!.ObjectFiles
+                    Dep => BS.GetTarget(Dep)!.GetAttribute<CppCompileAttribute>()!.ObjectFiles
                 ));
                 if (TT != TargetType.Static)
                 {
                     Inputs.AddRange(
-                        Target.Dependencies.Select(Dependency => GetStubFileName(BuildSystem.GetTarget(Dependency)!)).Where(Stub => Stub != null).Select(Stub => Stub!)
+                        Target.Dependencies.Select(Dependency => GetStubFileName(BS.GetTarget(Dependency)!)).Where(Stub => Stub != null).Select(Stub => Stub!)
                     );
                     // Collect links from static targets
                     Inputs.AddRange(
-                        Target.Dependencies.Select(Dependency => BuildSystem.GetTarget(Dependency)!.GetAttribute<CppLinkAttribute>()!).SelectMany(A => A.LinkOnlys)
+                        Target.Dependencies.Select(Dependency => BS.GetTarget(Dependency)!.GetAttribute<CppLinkAttribute>()!).SelectMany(A => A.LinkOnlys)
                     );
                     if (Inputs.Count != 0)
                     {
@@ -51,16 +52,11 @@ namespace SB
                             .AddArguments(Target.Arguments)
                             .AddArgument("Inputs", Inputs)
                             .AddArgument("Output", LinkedFileName);
-                        if (WithDebugInfo)
+                        if (Target.Arguments.TryGetValue("DebugSymbols", out var Enable) && (bool)Enable!)
                         {
-                            if (BuildSystem.TargetOS == OSPlatform.Windows)
+                            if (BS.TargetOS == OSPlatform.Windows)
                             {
-                                LINKDriver.AddArgument("PDB", LinkedFileName.Replace("dll", "pdb").Replace("exe", "pdb"))
-                                          .AddArgument("PDBMode", PDBMode.Standalone);
-                            }
-                            else
-                            {
-                                Log.Warning("Debug info is not supported on this platform!");
+                                LINKDriver.AddArgument("PDB", LinkedFileName.Replace("dll", "pdb").Replace("exe", "pdb"));
                             }
                         }
                         return Toolchain.Linker.Link(this, Target, LINKDriver);
@@ -71,7 +67,7 @@ namespace SB
                     // Add dep links.Static libraries don’t really have a link phase. 
                     // Very cruedly they are just an archive of object files that will be propagated to a real link line ( creation of a shared library or executable ).
                     CppLinkAttr.LinkOnlys.AddRange(
-                        Target.Dependencies.Select(Dependency => GetStubFileName(BuildSystem.GetTarget(Dependency)!)).Where(Stub => Stub != null).Select(Stub => Stub!)
+                        Target.Dependencies.Select(Dependency => GetStubFileName(BS.GetTarget(Dependency)!)).Where(Stub => Stub != null).Select(Stub => Stub!)
                     );
                     if (Inputs.Count != 0)
                     {
@@ -92,7 +88,7 @@ namespace SB
         {
             var OutputType = Target.GetTargetType();
             var Extension = GetPlatformLinkedFileExtension(OutputType);
-            var OutputFile = Path.Combine(Target.GetBuildPath(), $"{Target.Name}.{Extension}");
+            var OutputFile = Path.Combine(Target.GetBinaryPath(), $"{Target.Name}.{Extension}");
             return OutputFile;
         }
 
@@ -102,13 +98,13 @@ namespace SB
             var Extension = GetPlatformStubFileExtension(OutputType);
             if (Extension.Length == 0)
                 return null;
-            var OutputFile = Path.Combine(Target.GetBuildPath(), $"{Target.Name}.{Extension}");
+            var OutputFile = Path.Combine(Target.GetBinaryPath(), $"{Target.Name}.{Extension}");
             return OutputFile;
         }
 
         private static string GetPlatformLinkedFileExtension(TargetType? Type)
         {
-            if (BuildSystem.TargetOS == OSPlatform.Windows)
+            if (BS.TargetOS == OSPlatform.Windows)
                 return Type switch
                 {
                     TargetType.Static => "lib",
@@ -116,7 +112,7 @@ namespace SB
                     TargetType.Executable => "exe",
                     _ => ""
                 };
-            else if (BuildSystem.TargetOS == OSPlatform.OSX)
+            else if (BS.TargetOS == OSPlatform.OSX)
                 return Type switch
                 {
                     TargetType.Static => "a",
@@ -124,7 +120,7 @@ namespace SB
                     TargetType.Executable => "",
                     _ => ""
                 };
-            else if (BuildSystem.TargetOS == OSPlatform.Linux)
+            else if (BS.TargetOS == OSPlatform.Linux)
                 return Type switch
                 {
                     TargetType.Static => "a",
@@ -137,21 +133,21 @@ namespace SB
 
         private static string GetPlatformStubFileExtension(TargetType? Type)
         {
-            if (BuildSystem.TargetOS == OSPlatform.Windows)
+            if (BS.TargetOS == OSPlatform.Windows)
                 return Type switch
                 {
                     TargetType.Static => "lib",
                     TargetType.Dynamic => "lib",
                     _ => ""
                 };
-            else if (BuildSystem.TargetOS == OSPlatform.OSX)
+            else if (BS.TargetOS == OSPlatform.OSX)
                 return Type switch
                 {
                     TargetType.Static => "a",
                     TargetType.Dynamic => "dylib",
                     _ => ""
                 };
-            else if (BuildSystem.TargetOS == OSPlatform.Linux)
+            else if (BS.TargetOS == OSPlatform.Linux)
                 return Type switch
                 {
                     TargetType.Static => "a",
@@ -163,6 +159,5 @@ namespace SB
 
         private IToolchain Toolchain { get; }
         public static volatile int Time = 0;
-        public static bool WithDebugInfo = false;
     }
 }

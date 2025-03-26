@@ -26,7 +26,8 @@ namespace SB.Core
         public string Arch(Architecture arch) => archMap.TryGetValue(arch, out var r) ? r : throw new ArgumentException($"Invalid architecture \"{arch}\" for LINK.exe!");
         static readonly Dictionary<Architecture, string> archMap = new Dictionary<Architecture, string> { { Architecture.X86, "/MACHINE:X86" }, { Architecture.X64, "/MACHINE:X64" }, { Architecture.ARM64, "/MACHINE:ARM64" } };
 
-        public string PDBMode(PDBMode mode) => (mode == Core.PDBMode.Disable) ? "/DEBUG:NONE" : "/DEBUG:FULL";
+        [TargetProperty]
+        public string DebugSymbols(bool Enable) => Enable ? "/DEBUG:FULL" : "";
 
         public string PDB(string path) => BS.CheckPath(path, false) ? $"/PDB:\"{path}\"" : throw new ArgumentException($"PDB value {path} is not a valid absolute path!");
 

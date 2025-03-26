@@ -1,5 +1,4 @@
-﻿using SB;
-using SB.Core;
+﻿using SB.Core;
 using Serilog;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -14,7 +13,7 @@ namespace SB
             if (AllTargets.TryGetValue(Name, out var Existed))
                 throw new ArgumentException($"Target with name {Name} already exists! Name should be unique to every target!");
 
-            var NewTarget = new Target(Name, Location!);
+            var NewTarget = new Target(Name, false, Location!);
             if (!AllTargets.TryAdd(Name, NewTarget))
             {
                 throw new ArgumentException($"Failed to add target with name {Name}! Are you adding same targets in parallel?");

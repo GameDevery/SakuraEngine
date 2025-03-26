@@ -5,6 +5,7 @@ using System.Diagnostics;
 
 namespace SB
 {
+    using BS = BuildSystem;
     public class CppCompileAttribute
     {
         public ConcurrentBag<string> ObjectFiles = new();
@@ -24,7 +25,7 @@ namespace SB
             Log.Verbose("Compiling {SourceFile} ({N})", SourceFile, M + 1);
 
             CFamily Language = FileList.Is<CppFileList>() ? CFamily.Cpp : CFamily.C;
-            var SourceDependencies = Path.Combine(Target.GetStorePath(BuildSystem.DepsStore), BuildSystem.GetUniqueTempFileName(SourceFile, Target.Name + this.Name, "source.deps.json"));
+            var SourceDependencies = Path.Combine(Target.GetStorePath(BS.DepsStore), BS.GetUniqueTempFileName(SourceFile, Target.Name + this.Name, "source.deps.json"));
             var ObjectFile = GetObjectFilePath(Target, SourceFile);
             var CompilerDriver = Toolchain.Compiler.CreateArgumentDriver(Language)
                 .AddArguments(Target.Arguments)
@@ -40,13 +41,6 @@ namespace SB
                     CompilerDriver.AddArgument("UsePCHAST", UsePCH.CppPCHAST);
                 }
             }
-            if (WithDebugInfo)
-            {
-                if (BuildSystem.TargetOS == OSPlatform.Windows)
-                    CompilerDriver.AddArgument("PDBMode", PDBMode.Embed);// /Z7
-                else
-                    Log.Warning("Debug info is not supported on this platform!");
-            }
             var R = Toolchain.Compiler.Compile(this, Target, CompilerDriver);
             var CompileAttribute = Target.GetAttribute<CppCompileAttribute>()!;
             CompileAttribute.ObjectFiles.Add(ObjectFile);
@@ -59,11 +53,10 @@ namespace SB
         }
 
         internal int N = 0;
-        public static string GetObjectFilePath(Target Target, string SourceFile) => Path.Combine(Target.GetStorePath(BuildSystem.ObjsStore), BuildSystem.GetUniqueTempFileName(SourceFile, Target.Name, "obj"));
+        public static string GetObjectFilePath(Target Target, string SourceFile) => Path.Combine(Target.GetStorePath(BS.ObjsStore), BS.GetUniqueTempFileName(SourceFile, Target.Name, "obj"));
 
         private IToolchain Toolchain { get; }
         public static volatile int Time = 0;
-        public static bool WithDebugInfo = false;
     }
 
     public class CFileList : FileList {}

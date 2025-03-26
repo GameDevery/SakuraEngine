@@ -87,13 +87,16 @@
 
         public virtual string Object(string path) => BS.CheckFile(path, false) ? $"-Fo\"{path}\"" : throw new TaskFatalError($"Object value {path} is not a valid absolute path!");
 
-        public virtual string PDBMode(PDBMode mode) => (mode == SB.Core.PDBMode.Standalone) ? "/Zi" : (mode == SB.Core.PDBMode.Embed) ? "/Z7" : "";
+        [TargetProperty]
+        public virtual string DebugSymbols(bool Enable) => Enable ? PDBMode(Core.PDBMode.Embed) : ""; // for compile speed, use /Z7 always
 
         public virtual string PDB(string path) => BS.CheckFile(path, false) ? $"/Fd\"{path}\"" : throw new TaskFatalError($"PDB value {path} is not a valid absolute path!");
 
         public virtual string SourceDependencies(string path) => BS.CheckFile(path, false) ? $"/sourceDependencies \"{path}\"" : throw new TaskFatalError($"SourceDependencies value {path} is not a valid absolute path!");
 
         public virtual string UsePCHAST(string path) => "";
+
+        private string PDBMode(PDBMode mode) => (mode == SB.Core.PDBMode.Standalone) ? "/Zi" : (mode == SB.Core.PDBMode.Embed) ? "/Z7" : "";
 
         private CFamily Language { get; }
         public ArgumentDictionary Arguments { get; } = new();

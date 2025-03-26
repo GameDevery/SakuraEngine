@@ -6,6 +6,7 @@ using SB.Core;
 
 namespace SB
 {
+    using BS = BuildSystem;
     public partial class BuildSystem
     {
         public static string GetUniqueTempFileName(string File, string Hint, string Extension, IEnumerable<string>? Args = null)
@@ -88,9 +89,9 @@ namespace SB
 
     public static class BuildPathExtensions
     {
-        public static string GetStorePath(this Target Target, string StoreName) => Directory.CreateDirectory(Path.Combine(Target.GetBuildBasePath(), StoreName, Target.Name)).FullName;
-        public static string GetBuildPath(this Target Target) => Directory.CreateDirectory(Path.Combine(Target.GetBuildBasePath(), $"{BuildSystem.TargetOS}/{BuildSystem.TargetArch}/")).FullName;
-        public static string GetBuildBasePath(this Target Target) => Target.IsFromPackage ? BuildSystem.PackageBuildPath : BuildSystem.BuildPath;
+        public static string GetStorePath(this Target Target, string StoreName) => Directory.CreateDirectory(Path.Combine(Target.GetBuildPath(), StoreName, BS.TargetOS.ToString(), BS.TargetArch.ToString(), BS.GlobalConfiguration, Target.Name)).FullName;
+        public static string GetBinaryPath(this Target Target) => Directory.CreateDirectory(Path.Combine(Target.GetBuildPath(), $"{BS.TargetOS}/{BS.TargetArch}/{BS.GlobalConfiguration}")).FullName;
+        public static string GetBuildPath(this Target Target) => Target.IsFromPackage ? BS.PackageBuildPath : BS.BuildPath;
     }
 
     public static class StringExtensions

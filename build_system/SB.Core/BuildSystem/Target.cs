@@ -5,12 +5,18 @@ namespace SB
 {
     public partial class Target : TargetSetters
     {
-        internal Target(string Name, [CallerFilePath] string? Location = null)
+        internal Target(string Name, bool IsFromPackage, [CallerFilePath] string? Location = null)
         {
             this.Name = Name;
             this.Location = Location!;
             this.Directory = Path.GetDirectoryName(Location)!;
+            this.IsFromPackage = IsFromPackage;
+
             BuildSystem.TargetDefaultSettings(this);
+            if (BuildSystem.Configurations.TryGetValue(BuildSystem.GlobalConfiguration, out var GlobalConfig))
+            {
+                GlobalConfig(this);
+            }
         }
 
         public FileList FileList<T>()
@@ -197,7 +203,7 @@ namespace SB
         #endregion
 
         #region Package
-        public bool IsFromPackage { get; internal set; } = false;
+        public bool IsFromPackage { get; } = false;
         #endregion
 
         internal List<Action<Target>> BeforeBuildActions = new();

@@ -6,6 +6,7 @@ using System.Reflection;
 
 namespace SB
 {
+    using BS = BuildSystem;
     public partial class Engine : BuildSystem
     {
         public static void SetEngineDirectory(string Directory) => EngineDirectory = Directory;
@@ -17,22 +18,20 @@ namespace SB
                 SetupLogger();
                 IToolchain? Toolchain = null;
                 
-                if (BuildSystem.HostOS == OSPlatform.Windows)
+                if (BS.HostOS == OSPlatform.Windows)
                     Toolchain = VisualStudioDoctor.VisualStudio;
-                else if (BuildSystem.HostOS == OSPlatform.OSX)
+                else if (BS.HostOS == OSPlatform.OSX)
                     Toolchain = new XCode();
                 else
                     throw new Exception("Unsupported Platform!");
                 
                 // 
                 Engine.SetEngineDirectory(ProjectRoot);
-                BuildSystem.TempPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".sb")).FullName;
-                BuildSystem.BuildPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".build")).FullName;
-                BuildSystem.PackageTempPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".pkgs/.sb")).FullName;
-                BuildSystem.PackageBuildPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".pkgs/.build")).FullName;
-                
-                // 
-                CppCompileEmitter.WithDebugInfo = CppLinkEmitter.WithDebugInfo = EnableDebugInfo;
+                BS.TempPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".sb")).FullName;
+                BS.BuildPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".build")).FullName;
+                BS.PackageTempPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".pkgs/.sb")).FullName;
+                BS.PackageBuildPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".pkgs/.build")).FullName;
+                BS.LoadConfigurations();
 
                 LoadTargets();
                 
@@ -44,7 +43,7 @@ namespace SB
         public static new void RunBuild()
         {
             DoctorsTask!.Wait();
-            BuildSystem.RunBuild();
+            BS.RunBuild();
         }
 
         private static void SetupLogger()
@@ -88,11 +87,11 @@ namespace SB
 
         private static void LoadTargets()
         {
-            BuildSystem.TargetDefaultSettings += (Target Target) =>
+            BS.TargetDefaultSettings += (Target Target) =>
             {
                 Target.CppVersion("20")
-                    .LinkDirs(Visibility.Public, Target.GetBuildPath());
-                if (BuildSystem.TargetOS == OSPlatform.Windows)
+                    .LinkDirs(Visibility.Public, Target.GetBinaryPath());
+                if (BS.TargetOS == OSPlatform.Windows)
                 {
                     Target.RuntimeLibrary("MD");
                 }
@@ -109,7 +108,7 @@ namespace SB
         public static string EngineDirectory { get; private set; } = Directory.GetCurrentDirectory();
         public static string ToolDirectory => Path.Combine(EngineDirectory, ".sb/tools");
         public static string DownloadDirectory => Path.Combine(EngineDirectory, ".sb/downloads");
-        public static bool EnableDebugInfo = false;
+        public static bool EnableDebugInfo = true;
         private static Task? DoctorsTask = null;
     }
 }

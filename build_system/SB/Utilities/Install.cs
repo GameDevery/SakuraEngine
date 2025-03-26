@@ -3,6 +3,7 @@ using SB.Core;
 
 namespace SB
 {
+    using BS = BuildSystem;
     public static class Install
     {
         public static async Task<string> Tool(string Name)
@@ -43,19 +44,19 @@ namespace SB
             {
                 Depend.OnChanged("Install.SDK.Copy", Name, "Install.SDKs", (Depend depend) =>
                 {
-                    var BuildDirectory = Path.Combine(Engine.BuildPath, BuildSystem.TargetOS.ToString(), BuildSystem.TargetArch.ToString());
+                    var BuildDirectory = Path.Combine(BS.BuildPath, BS.TargetOS.ToString(), BS.TargetArch.ToString(), BS.GlobalConfiguration);
                     Directory.CreateDirectory(BuildDirectory);
 
                     depend.ExternalFiles.AddRange(Directory.GetFiles(IntermediateDirectory, "*", SearchOption.AllDirectories));
                     depend.ExternalFiles.AddRange(DirectoryCopy(IntermediateDirectory, BuildDirectory, true));
-                }, null, null);
+                }, null, new string[] { BS.GlobalConfiguration });
             }
         }
 
         private static string GetToolPostfix()
         {
             string plat = "";
-            switch (BuildSystem.HostOS)
+            switch (BS.HostOS)
             {
                 case OSPlatform.Windows:
                     plat = "windows";
@@ -68,10 +69,10 @@ namespace SB
                     break;
             }
             string arch = "";
-            switch (BuildSystem.HostArch)
+            switch (BS.HostArch)
             {
                 case Architecture.X64:
-                    arch = BuildSystem.HostOS == OSPlatform.OSX ? "x86_64" : "x64";
+                    arch = BS.HostOS == OSPlatform.OSX ? "x86_64" : "x64";
                     break;
                 case Architecture.X86:
                     arch = "x86";
