@@ -32,7 +32,7 @@ void CmdNode::solve()
             }
             const RTTRType* option_type          = nullptr;
             void*           option_field_address = nullptr;
-            OptionalBase*   optional_base        = nullptr;
+            GenericOptional optional_data        = {};
             if (signature.is_generic_type())
             {
                 // check generic
@@ -65,8 +65,8 @@ void CmdNode::solve()
                 // get field address
                 void* owner_obj      = option_type->cast_to_base(owner_type->type_id(), object);
                 void* field_address  = field->get_address(owner_obj);
-                optional_base        = reinterpret_cast<OptionalBase*>(field_address);
-                option_field_address = reinterpret_cast<uint8_t*>(field_address) + optional_base->_padding;
+                optional_data        = GenericOptional{ field_address, option_type };
+                option_field_address = field_address;
             }
             else if (signature.is_type())
             {
@@ -94,7 +94,7 @@ void CmdNode::solve()
             option_info.help          = option_attr->help;
             option_info.type          = option_type;
             option_info.object        = option_field_address;
-            option_info.optional_base = optional_base;
+            option_info.optional_data = optional_data;
         }
 
         // find sub command

@@ -8,13 +8,8 @@ namespace skr::container
 struct Nullopt {
 };
 
-struct OptionalBase {
-    bool     _has_value = false;
-    uint16_t _padding   = 0;
-};
-
 template <typename T>
-struct Optional : private OptionalBase {
+struct Optional {
     using DataType = T;
     static_assert(!std::is_same_v<T, void>, "Optional<void> is not allowed");
 
@@ -72,6 +67,7 @@ private:
     const T* _data_ptr() const;
 
 private:
+    bool           _has_value   = false;
     Placeholder<T> _placeholder = {};
 };
 } // namespace skr::container
@@ -80,29 +76,19 @@ namespace skr::container
 {
 // ctor & dtor
 template <typename T>
-inline Optional<T>::Optional()
-{
-    _has_value = false;
-    _padding   = offsetof(Optional<T>, _placeholder);
-}
+inline Optional<T>::Optional() = default;
 template <typename T>
-inline Optional<T>::Optional(Nullopt)
-{
-    _has_value = false;
-    _padding   = offsetof(Optional<T>, _placeholder);
-}
+inline Optional<T>::Optional(Nullopt) {}
 template <typename T>
 inline Optional<T>::Optional(const T& value)
+    : _has_value(true)
 {
-    _has_value = true;
-    _padding   = offsetof(Optional<T>, _placeholder);
     ::skr::memory::copy(_data_ptr(), &value);
 }
 template <typename T>
 inline Optional<T>::Optional(T&& value)
+    : _has_value(true)
 {
-    _has_value = true;
-    _padding   = offsetof(Optional<T>, _placeholder);
     ::skr::memory::move(_data_ptr(), &value);
 }
 template <typename T>
@@ -117,9 +103,8 @@ inline Optional<T>::~Optional()
 // copy & move
 template <typename T>
 inline Optional<T>::Optional(const Optional& other)
+    : _has_value(other._has_value)
 {
-    _has_value = other._has_value;
-    _padding   = offsetof(Optional<T>, _placeholder);
     if (other._has_value)
     {
         ::skr::memory::copy(_data_ptr(), other._data_ptr());
@@ -127,9 +112,8 @@ inline Optional<T>::Optional(const Optional& other)
 }
 template <typename T>
 inline Optional<T>::Optional(Optional&& other)
+    : _has_value(other._has_value)
 {
-    _has_value = other._has_value;
-    _padding   = offsetof(Optional<T>, _placeholder);
     if (other._has_value)
     {
         ::skr::memory::move(_data_ptr(), other._data_ptr());
@@ -139,8 +123,8 @@ inline Optional<T>::Optional(Optional&& other)
 template <typename T>
 template <typename U>
 inline Optional<T>::Optional(const Optional<U>& other)
+    : _has_value(other.has_value())
 {
-    _has_value = other.has_value();
     if (other.has_value())
     {
         ::skr::memory::copy(_data_ptr(), &other.value());
@@ -149,8 +133,8 @@ inline Optional<T>::Optional(const Optional<U>& other)
 template <typename T>
 template <typename U>
 inline Optional<T>::Optional(Optional<U>&& other)
+    : _has_value(other.has_value())
 {
-    _has_value = other.has_value();
     if (other.has_value())
     {
         ::skr::memory::move(_data_ptr(), &other.value());
