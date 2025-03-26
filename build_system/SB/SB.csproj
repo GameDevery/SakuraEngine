@@ -13,7 +13,6 @@
 
 	<ItemGroup>
 		<Compile Include="./../../**/**/build.cs" />
-		<Compile Include="./../../**/SB.Extensions/*.cs" />
 		<Compile Remove="./../../build_system/**/build.cs" />
 	</ItemGroup>
 

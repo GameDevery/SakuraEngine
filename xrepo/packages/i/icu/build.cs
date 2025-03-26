@@ -6,15 +6,13 @@ public static class ICU
 {
     static ICU()
     {
-        BuildSystem
-            .Package("icu")
+        BuildSystem.Package("icu")
             .AddTarget("icu", (Target Target, PackageConfig Config) =>
             {
                 if (Config.Version != new Version(72, 1, 0))
                     throw new TaskFatalError("icu version mismatch!", "icu version mismatch, only v72.1.0 is supported in source.");
 
-                Target
-                    .TargetType(TargetType.Static)
+                Target.TargetType(TargetType.Static)
                     .OptimizationLevel(OptimizationLevel.Fastest)
                     .CppVersion("17") // Compiles much more faster with C++17 than C++20
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/icu4c/source/common"))

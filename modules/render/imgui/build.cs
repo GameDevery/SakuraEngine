@@ -7,8 +7,7 @@ public static class SkrImGui
 {
     static SkrImGui()
     {
-        Engine
-            .Module("SkrImGui", "SKR_IMGUI")
+        Engine.Module("SkrImGui", "SKR_IMGUI")
             .EnableUnityBuild()
             .Require("imgui", new ImGuiPackageConfig { Version = new Version(1, 89, 0), ImportDynamicAPIFromEngine = !Engine.ShippingOneArchive })
             .Depend(Visibility.Public, "imgui@imgui")

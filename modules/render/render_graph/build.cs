@@ -7,8 +7,7 @@ public static class SkrRenderGraph
 {
     static SkrRenderGraph()
     {
-        Engine
-            .Module("SkrRenderGraph")
+        Engine.Module("SkrRenderGraph")
             .EnableUnityBuild()
             .Depend(Visibility.Public, "SkrRT")
             .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "include"))

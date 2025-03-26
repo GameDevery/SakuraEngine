@@ -6,15 +6,13 @@ public static class Lemon
 {
     static Lemon()
     {
-        BuildSystem
-            .Package("lemon")
+        BuildSystem.Package("lemon")
             .AddTarget("lemon", (Target Target, PackageConfig Config) =>
             {
                 if (Config.Version != new Version(1, 3, 1))
                     throw new TaskFatalError("lemon version mismatch!", "lemon version mismatch, only v1.3.1 is supported in source.");
 
-                Target
-                    .CppVersion("20")
+                Target.CppVersion("20")
                     .Exception(true)
                     .TargetType(TargetType.Static)
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/lemon"))

@@ -8,12 +8,10 @@ public static class Freetype
 {
     static Freetype()
     {
-        BuildSystem
-            .Package("freetype")
+        BuildSystem.Package("freetype")
             .AddTarget("freetype", (Target Target, PackageConfig Config) =>
             {
-                Target
-                    .TargetType(TargetType.Static)
+                Target.TargetType(TargetType.Static)
                     .EnableUnityBuild()
                     .OptimizationLevel(OptimizationLevel.Fastest)
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/freetype/include"))

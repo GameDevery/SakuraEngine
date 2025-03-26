@@ -6,15 +6,13 @@ public static class Luau
 {
     static Luau()
     {
-        BuildSystem
-            .Package("Luau")
+        BuildSystem.Package("Luau")
             .AddTarget("Common", (Target Target, PackageConfig Config) =>
             {
                 if (Config.Version != new Version(0, 613, 1))
                     throw new TaskFatalError("luau version mismatch!", "luau version mismatch, only v0.613.1 is supported in source.");
 
-                Target
-                    .CppVersion("17")
+                Target.CppVersion("17")
                     .Exception(false)
                     .TargetType(TargetType.HeaderOnly)
                     .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/luau/Common/include"));
@@ -24,8 +22,7 @@ public static class Luau
                 if (Config.Version != new Version(0, 613, 1))
                     throw new TaskFatalError("luau version mismatch!", "luau version mismatch, only v0.613.1 is supported in source.");
 
-                Target
-                    .CppVersion("17")
+                Target.CppVersion("17")
                     .Exception(false)
                     .TargetType(TargetType.Static)
                     .Require("Luau", Config)
@@ -52,8 +49,7 @@ public static class Luau
                 if (Config.Version != new Version(0, 613, 1))
                     throw new TaskFatalError("luau version mismatch!", "luau version mismatch, only v0.613.1 is supported in source.");
 
-                Target
-                    .CppVersion("17")
+                Target.CppVersion("17")
                     .Exception(false)
                     .TargetType(TargetType.Static)
                     .Require("Luau", Config)
@@ -66,8 +62,7 @@ public static class Luau
                 if (Config.Version != new Version(0, 613, 1))
                     throw new TaskFatalError("luau version mismatch!", "luau version mismatch, only v0.613.1 is supported in source.");
                 
-                Target
-                    .CppVersion("17")
+                Target.CppVersion("17")
                     .Exception(false)
                     .TargetType(TargetType.Static)
                     .Require("Luau", Config)
