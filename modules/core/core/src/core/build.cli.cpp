@@ -473,14 +473,15 @@ void CmdNode::print_help()
             option_str.pad_right(max_option_name_length);
 
             builder
+                .write(u8"  ")
+                // write type
+                .style_front_yellow()
+                .write(u8"{} ", option.dump_type_name())
+                .style_clear()
                 // write option
                 .style_bold()
                 .style_front_green()
-                .write(u8"  {} : ", option_str)
-                // write type
-                .style_clear()
-                .style_front_yellow()
-                .write(u8"{} ", option.dump_type_name())
+                .write(u8"{} : ", option_str)
                 .style_clear()
                 // write help
                 .style_clear()
@@ -837,14 +838,15 @@ void CmdParser::parse(int argc, char* argv[])
             option_str.pad_right(max_option_name_length);
 
             builder
-                // write options
-                .style_bold()
-                .style_front_green()
-                .write(u8"  {} : ", option_str, option->dump_type_name())
-                .style_clear()
+                .write(u8"  ")
                 // write type
                 .style_front_yellow()
                 .write(u8"{} ", option->dump_type_name())
+                .style_clear()
+                // write options
+                .style_bold()
+                .style_front_green()
+                .write(u8"{} : ", option_str, option->dump_type_name())
                 .style_clear()
                 // write help
                 .write_indent(option->config().help)
