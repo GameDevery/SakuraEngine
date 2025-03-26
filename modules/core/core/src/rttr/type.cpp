@@ -1,5 +1,6 @@
 #include "SkrRTTR/type.hpp"
 #include "SkrCore/log.hpp"
+#include "SkrRTTR/export/extern_methods.hpp"
 
 namespace skr
 {
@@ -222,6 +223,27 @@ Optional<RTTRDtorData> RTTRType::dtor_data() const
         return _record_data.dtor_data;
     default:
         return {};
+    }
+}
+DtorInvoker RTTRType::dtor_invoker() const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Record:
+        return _record_data.dtor_data.native_invoke;
+    default:
+        return nullptr;
+    }
+}
+void RTTRType::invoke_dtor(void* p) const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Record:
+        _record_data.dtor_data.native_invoke(p);
+        break;
+    default:
+        break;
     }
 }
 
@@ -708,11 +730,11 @@ const RTTRExternMethodData* RTTRType::find_extern_method(RTTRTypeFindConfig conf
 }
 
 // find basic functions
-const RTTRCtorData* RTTRType::find_default_ctor() const
+ExportCtorInvoker<void()> RTTRType::find_default_ctor() const
 {
     return find_ctor_t<void()>();
 }
-const RTTRCtorData* RTTRType::find_copy_ctor() const
+ExportCtorInvoker<void(const void*)> RTTRType::find_copy_ctor() const
 {
     TypeSignatureBuilder tb;
     tb.write_function_signature(1);
@@ -721,7 +743,7 @@ const RTTRCtorData* RTTRType::find_copy_ctor() const
     tb.write_type_id(type_id()); // param 1: const T&
     return find_ctor({ .signature = tb.type_signature_view() });
 }
-const RTTRExternMethodData* RTTRType::find_assign() const
+ExportExternMethodInvoker<void(void*, const void*)> RTTRType::find_assign() const
 {
     TypeSignatureBuilder tb;
     tb.write_function_signature(2);
