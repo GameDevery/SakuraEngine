@@ -5,7 +5,7 @@
 #include "SkrContainersDef/string.hpp"
 #include "SkrRTTR/enum_tools.hpp"
 #include "SkrRTTR/export/export_data.hpp"
-#include "SkrRTTR/export/export_builder.hpp"
+#include <SkrRTTR/export/export_accessor.hpp>
 
 // !!!! RTTR 不考虑动态类型建立(从脚本建立), 一切类型都是 CPP 静态注册的 loader !!!!
 namespace skr
@@ -102,6 +102,8 @@ struct SKR_CORE_API RTTRType final {
 
     // get dtor
     Optional<RTTRDtorData> dtor_data() const;
+    DtorInvoker dtor_invoker() const;
+    void invoke_dtor(void* p) const;
 
     // each method & field
     void each_bases(FunctionRef<void(const RTTRBaseData* base_data, const RTTRType* owner)> each_func, RTTRTypeEachConfig config = {}) const;
@@ -121,24 +123,24 @@ struct SKR_CORE_API RTTRType final {
     const RTTRExternMethodData* find_extern_method(RTTRTypeFindConfig config) const;
 
     // template find method & field
-    // TODO. 使用包装器进行包装，辅助进行调用等行为
+    // TODO. method & field 需要根据 Owner 信息进行访问
     template <typename Func>
-    const RTTRCtorData* find_ctor_t(ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict) const;
+    ExportCtorInvoker<Func> find_ctor_t(ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict) const;
     template <typename Func>
-    const RTTRMethodData* find_method_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
+    ExportMethodInvoker<Func> find_method_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
     template <typename Field>
     const RTTRFieldData* find_field_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
     template <typename Func>
-    const RTTRStaticMethodData* find_static_method_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
+    ExportStaticMethodInvoker<Func> find_static_method_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
     template <typename Field>
     const RTTRStaticFieldData* find_static_field_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
     template <typename Func>
-    const RTTRExternMethodData* find_extern_method_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
+    ExportExternMethodInvoker<Func> find_extern_method_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
 
     // find basic functions
-    const RTTRCtorData*         find_default_ctor() const;
-    const RTTRCtorData*         find_copy_ctor() const;
-    const RTTRExternMethodData* find_assign() const;
+    ExportCtorInvoker<void()>                           find_default_ctor() const;
+    ExportCtorInvoker<void(const void*)>                find_copy_ctor() const;
+    ExportExternMethodInvoker<void(void*, const void*)> find_assign() const;
 
     // flag & attribute
     ERTTRRecordFlag record_flag() const;
@@ -311,7 +313,7 @@ inline bool RTTRType::is_enum() const
 
 // template find method & field
 template <typename Func>
-inline const RTTRCtorData* RTTRType::find_ctor_t(ETypeSignatureCompareFlag flag) const
+inline ExportCtorInvoker<Func> RTTRType::find_ctor_t(ETypeSignatureCompareFlag flag) const
 {
     TypeSignatureTyped<Func> signature;
     return find_ctor(RTTRTypeFindConfig{
@@ -320,7 +322,7 @@ inline const RTTRCtorData* RTTRType::find_ctor_t(ETypeSignatureCompareFlag flag)
     });
 }
 template <typename Func>
-inline const RTTRMethodData* RTTRType::find_method_t(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
+inline ExportMethodInvoker<Func> RTTRType::find_method_t(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
 {
     TypeSignatureTyped<Func> signature;
     return find_method(RTTRTypeFindConfig{
@@ -342,7 +344,7 @@ inline const RTTRFieldData* RTTRType::find_field_t(StringView name, ETypeSignatu
     });
 }
 template <typename Func>
-inline const RTTRStaticMethodData* RTTRType::find_static_method_t(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
+inline ExportStaticMethodInvoker<Func> RTTRType::find_static_method_t(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
 {
     TypeSignatureTyped<Func> signature;
     return find_static_method(RTTRTypeFindConfig{
@@ -364,7 +366,7 @@ inline const RTTRStaticFieldData* RTTRType::find_static_field_t(StringView name,
     });
 }
 template <typename Func>
-inline const RTTRExternMethodData* RTTRType::find_extern_method_t(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
+inline ExportExternMethodInvoker<Func> RTTRType::find_extern_method_t(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
 {
     TypeSignatureTyped<Func> signature;
     return find_extern_method(RTTRTypeFindConfig{

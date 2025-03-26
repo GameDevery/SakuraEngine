@@ -154,7 +154,7 @@ V8BindCoreValue* V8BindManager::create_value(const RTTRType* type, const void* s
     if (source_data)
     {
         // find copy ctor
-        auto* found_copy_ctor = type->find_copy_ctor();
+        auto found_copy_ctor = type->find_copy_ctor();
         if (!found_copy_ctor)
         {
             return nullptr;
@@ -164,13 +164,12 @@ V8BindCoreValue* V8BindManager::create_value(const RTTRType* type, const void* s
         alloc_mem = sakura_new_aligned(type->size(), type->alignment());
 
         // call copy ctor
-        auto* invoker = reinterpret_cast<void (*)(void*, const void*)>(found_copy_ctor->native_invoke);
-        invoker(alloc_mem, source_data);
+        found_copy_ctor.invoke(alloc_mem, source_data);
     }
     else
     {
         // find default ctor
-        auto* found_default_ctor = type->find_default_ctor();
+        auto found_default_ctor = type->find_default_ctor();
         if (!found_default_ctor)
         {
             return nullptr;
@@ -180,8 +179,7 @@ V8BindCoreValue* V8BindManager::create_value(const RTTRType* type, const void* s
         alloc_mem = sakura_new_aligned(type->size(), type->alignment());
 
         // call default ctor
-        auto* invoker = reinterpret_cast<void (*)(void*)>(found_default_ctor->native_invoke);
-        invoker(alloc_mem);
+        found_default_ctor.invoke(alloc_mem);
     }
 
     // make object
@@ -654,11 +652,7 @@ void V8BindManager::_gc_callback(const ::v8::WeakCallbackInfo<V8BindCoreRecordBa
         if (value_core->from == V8BindCoreValue::ESource::Create)
         {
             // call destructor
-            auto dtor_data = value_core->type->dtor_data();
-            if (dtor_data)
-            {
-                dtor_data.value().native_invoke(value_core->data);
-            }
+            value_core->type->invoke_dtor(value_core->data);
 
             // release data
             sakura_free_aligned(value_core->data, value_core->type->alignment());
@@ -1526,9 +1520,12 @@ bool V8BindManager::_to_native_mapping(
     // do init
     if (!is_init)
     {
-        void* raw_invoker = type->find_default_ctor()->native_invoke;
-        auto* invoker     = reinterpret_cast<void (*)(void*)>(raw_invoker);
-        invoker(native_data);
+        auto found_ctor = type->find_default_ctor();
+        if (!found_ctor)
+        {
+            return false;
+        }
+        found_ctor.invoke(native_data);
     }
 
     for (const auto& [field_name, field_data] : binder.fields)
@@ -1622,29 +1619,27 @@ bool V8BindManager::_to_native_value(
     if (!is_init)
     {
         // find copy ctor
-        auto* found_copy_ctor = type->find_copy_ctor();
+        auto found_copy_ctor = type->find_copy_ctor();
         if (!found_copy_ctor)
         {
             return false;
         }
 
         // copy to native
-        auto* invoker = reinterpret_cast<void (*)(void*, const void*)>(found_copy_ctor->native_invoke);
-        invoker(native_data, cast_ptr);
+        found_copy_ctor.invoke(native_data, cast_ptr);
         return true;
     }
     else
     {
         // find assign
-        auto* found_assign = type->find_assign();
+        auto found_assign = type->find_assign();
         if (!found_assign)
         {
             return false;
         }
 
         // assign to native
-        auto* invoker = reinterpret_cast<void (*)(void*, const void*)>(found_assign->native_invoke);
-        invoker(native_data, cast_ptr);
+        found_assign.invoke(native_data, cast_ptr);
         return true;
     }
 }
@@ -1808,8 +1803,7 @@ void V8BindManager::_push_param(
     }
     case ScriptBinderRoot::EKind::Mapping: {
         auto*       mapping_binder = param_binder.binder.mapping();
-        auto        dtor_data      = mapping_binder->type->dtor_data();
-        DtorInvoker dtor           = dtor_data.has_value() ? dtor_data.value().native_invoke : nullptr;
+        DtorInvoker dtor           = mapping_binder->type->dtor_invoker();
         void*       native_data    = stack.alloc_param_raw(
             mapping_binder->type->size(),
             mapping_binder->type->alignment(),
@@ -1859,8 +1853,7 @@ void V8BindManager::_push_param(
         else
         {
             auto*       value_binder = param_binder.binder.value();
-            auto        dtor_data    = value_binder->type->dtor_data();
-            DtorInvoker dtor         = dtor_data.has_value() ? dtor_data.value().native_invoke : nullptr;
+            DtorInvoker dtor         = value_binder->type->dtor_invoker();
             native_data              = stack.alloc_param_raw(
                 value_binder->type->size(),
                 value_binder->type->alignment(),
@@ -1912,8 +1905,7 @@ void V8BindManager::_push_param_pure_out(
     }
     case ScriptBinderRoot::EKind::Mapping: {
         auto*       mapping_binder = param_binder.binder.mapping();
-        auto        dtor_data      = mapping_binder->type->dtor_data();
-        DtorInvoker dtor           = dtor_data.has_value() ? dtor_data.value().native_invoke : nullptr;
+        DtorInvoker dtor           = mapping_binder->type->dtor_invoker();
         void*       native_data    = stack.alloc_param_raw(
             mapping_binder->type->size(),
             mapping_binder->type->alignment(),
@@ -1922,9 +1914,8 @@ void V8BindManager::_push_param_pure_out(
         );
 
         // call ctor
-        auto* ctor_data = mapping_binder->type->find_default_ctor();
-        auto* invoker   = reinterpret_cast<void (*)(void*)>(ctor_data->native_invoke);
-        invoker(native_data);
+        auto ctor_data = mapping_binder->type->find_default_ctor();
+        ctor_data.invoke(native_data);
         break;
     }
     case ScriptBinderRoot::EKind::Value: {
