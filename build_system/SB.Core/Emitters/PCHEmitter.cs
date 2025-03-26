@@ -42,38 +42,33 @@ namespace SB
                     depend.ExternalFiles.Add(PCHFile);
                 }, CreatePCH.Headers, null);
 
-                Changed |= Depend.OnChanged(Target.Name, PCHFile, "PCHEmitter.CompilePCH", (Depend depend) =>
+                var SourceDependencies = Path.Combine(Target.GetStorePath(BuildSystem.DepsStore), BuildSystem.GetUniqueTempFileName(PCHFile, Target.Name + this.Name, "source.deps.json"));
+                var PCHArguments = Target.Arguments;
+                if (Mode == PCHMode.Shared)
                 {
-                    var SourceDependencies = Path.Combine(Target.GetStorePath(BuildSystem.DepsStore), BuildSystem.GetUniqueTempFileName(PCHFile, Target.Name + this.Name, "source.deps.json"));
-                    var PCHArguments = Target.Arguments;
-                    if (Mode == PCHMode.Shared)
+                    var SharedPCHArgs = (PCHArguments as ArgumentDictionary)!.Copy();
+                    // Remove all private defines & add all interface args
+                    if (Target.Arguments.TryGetValue("Defines", out var defs))
                     {
-                        var SharedPCHArgs = (PCHArguments as ArgumentDictionary)!.Copy();
-                        // Remove all private defines & add all interface args
-                        if (Target.Arguments.TryGetValue("Defines", out var defs))
+                        ArgumentList<string> Defines = (defs as ArgumentList<string>)?.Copy() as ArgumentList<string> ?? new();
+                        if (Target.PrivateArguments.TryGetValue("Defines", out var PrivateDefines))
                         {
-                            ArgumentList<string> Defines = (defs as ArgumentList<string>)?.Copy() as ArgumentList<string> ?? new();
-                            if (Target.PrivateArguments.TryGetValue("Defines", out var PrivateDefines))
-                            {
-                                Defines.Substract(PrivateDefines as ArgumentList<string>);
-                            }
-                            SharedPCHArgs["Defines"] = Defines;
+                            Defines.Substract(PrivateDefines as ArgumentList<string>);
                         }
-                        SharedPCHArgs.Merge(Target.InterfaceArguments);
-                        PCHArguments = SharedPCHArgs;
+                        SharedPCHArgs["Defines"] = Defines;
                     }
-                    // Execute
-                    // TODO: SEPERATE C AND CPP PCH
-                    var CompilerDriver = Toolchain.Compiler.CreateArgumentDriver(CFamily.Cpp)
-                        .AddArguments(PCHArguments)
-                        .AddArgument("Source", PCHFile)
-                        .AddArgument("AsPCHHeader", true)
-                        .AddArgument("Object", PCHASTFile)
-                        .AddArgument("SourceDependencies", SourceDependencies);
-                    Toolchain.Compiler.Compile(this, Target, CompilerDriver, Path.GetDirectoryName(PCHASTFile));
-                    depend.ExternalFiles.Add(PCHFile);
-                    depend.ExternalFiles.Add(PCHASTFile);
-                }, CreatePCH.Headers, null);
+                    SharedPCHArgs.Merge(Target.InterfaceArguments);
+                    PCHArguments = SharedPCHArgs;
+                }
+                // Execute
+                // TODO: SEPERATE C AND CPP PCH
+                var CompilerDriver = Toolchain.Compiler.CreateArgumentDriver(CFamily.Cpp)
+                    .AddArguments(PCHArguments)
+                    .AddArgument("Source", PCHFile)
+                    .AddArgument("AsPCHHeader", true)
+                    .AddArgument("Object", PCHASTFile)
+                    .AddArgument("SourceDependencies", SourceDependencies);
+                Toolchain.Compiler.Compile(this, Target, CompilerDriver, Path.GetDirectoryName(PCHASTFile));
             };
 
             if (CreateSharedPCH is not null)

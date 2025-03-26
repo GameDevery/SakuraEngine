@@ -8,7 +8,6 @@ public static class SkrRenderer
     static SkrRenderer()
     {
         Engine.Module("SkrRenderer")
-            .EnableUnityBuild()
             .Depend(Visibility.Public, "SkrScene", "SkrRenderGraph", "SkrImGui")
             .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "include"))
             .AddCppFiles("src/*.cpp")
