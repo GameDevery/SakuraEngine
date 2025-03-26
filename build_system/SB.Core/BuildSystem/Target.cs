@@ -147,7 +147,7 @@ namespace SB
             To.AddRange(DepNames);
             foreach (var DepName in DepNames)
             {
-                Target DepTarget = BuildSystem.GetTarget(DepName);
+                Target DepTarget = BuildSystem.GetTarget(DepName)!;
                 RecursiveMergeDependencies(To, DepTarget.PublicTargetDependencies);
                 RecursiveMergeDependencies(To, DepTarget.InterfaceTargetDependencies);
             }
@@ -163,7 +163,7 @@ namespace SB
             FinalArguments.Merge(PrivateArguments);
             foreach (var DepName in Dependencies)
             {
-                Target DepTarget = BuildSystem.GetTarget(DepName);
+                Target DepTarget = BuildSystem.GetTarget(DepName)!;
                 FinalArguments.Merge(DepTarget.PublicArguments);
                 FinalArguments.Merge(DepTarget.InterfaceArguments);
             }

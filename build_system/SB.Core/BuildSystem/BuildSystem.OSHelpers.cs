@@ -88,9 +88,8 @@ namespace SB
 
     public static class BuildPathExtensions
     {
-        public static string GetStorePath(this Target Target, string StoreName) => Directory.CreateDirectory(Path.Combine(Target.GetTempBasePath(), StoreName, Target.Name)).FullName;
+        public static string GetStorePath(this Target Target, string StoreName) => Directory.CreateDirectory(Path.Combine(Target.GetBuildBasePath(), StoreName, Target.Name)).FullName;
         public static string GetBuildPath(this Target Target) => Directory.CreateDirectory(Path.Combine(Target.GetBuildBasePath(), $"{BuildSystem.TargetOS}/{BuildSystem.TargetArch}/")).FullName;
-        public static string GetTempBasePath(this Target Target) => Target.IsFromPackage ? BuildSystem.PackageTempPath : BuildSystem.TempPath;
         public static string GetBuildBasePath(this Target Target) => Target.IsFromPackage ? BuildSystem.PackageBuildPath : BuildSystem.BuildPath;
     }
 

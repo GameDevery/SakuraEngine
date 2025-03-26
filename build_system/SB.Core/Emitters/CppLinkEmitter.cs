@@ -34,16 +34,16 @@ namespace SB
                 Inputs.AddRange(Target.Dependencies.Where(
                     Dep => BuildSystem.GetTarget(Dep)?.GetTargetType() == TargetType.Objects
                 ).SelectMany(
-                    Dep => BuildSystem.GetTarget(Dep).GetAttribute<CppCompileAttribute>()!.ObjectFiles
+                    Dep => BuildSystem.GetTarget(Dep)!.GetAttribute<CppCompileAttribute>()!.ObjectFiles
                 ));
                 if (TT != TargetType.Static)
                 {
                     Inputs.AddRange(
-                        Target.Dependencies.Select(Dependency => GetStubFileName(BuildSystem.GetTarget(Dependency))).Where(Stub => Stub != null).Select(Stub => Stub!)
+                        Target.Dependencies.Select(Dependency => GetStubFileName(BuildSystem.GetTarget(Dependency)!)).Where(Stub => Stub != null).Select(Stub => Stub!)
                     );
                     // Collect links from static targets
                     Inputs.AddRange(
-                        Target.Dependencies.Select(Dependency => BuildSystem.GetTarget(Dependency).GetAttribute<CppLinkAttribute>()!).SelectMany(A => A.LinkOnlys)
+                        Target.Dependencies.Select(Dependency => BuildSystem.GetTarget(Dependency)!.GetAttribute<CppLinkAttribute>()!).SelectMany(A => A.LinkOnlys)
                     );
                     if (Inputs.Count != 0)
                     {
@@ -71,7 +71,7 @@ namespace SB
                     // Add dep links.Static libraries don’t really have a link phase. 
                     // Very cruedly they are just an archive of object files that will be propagated to a real link line ( creation of a shared library or executable ).
                     CppLinkAttr.LinkOnlys.AddRange(
-                        Target.Dependencies.Select(Dependency => GetStubFileName(BuildSystem.GetTarget(Dependency))).Where(Stub => Stub != null).Select(Stub => Stub!)
+                        Target.Dependencies.Select(Dependency => GetStubFileName(BuildSystem.GetTarget(Dependency)!)).Where(Stub => Stub != null).Select(Stub => Stub!)
                     );
                     if (Inputs.Count != 0)
                     {

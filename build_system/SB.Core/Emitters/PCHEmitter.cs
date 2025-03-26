@@ -193,10 +193,10 @@ namespace SB
                 {
                     if (UseAttribute.WantedSharedPCH is null)
                     {
-                        var Providers = @this.Dependencies.Select(D => BS.GetTarget(D)).Where(D => PCHEmitter.ProvideSharedPCH(D));
+                        var Providers = @this.Dependencies.Select(D => BS.GetTarget(D)!).Where(D => PCHEmitter.ProvideSharedPCH(D));
                         if (Providers.Any())
                         {
-                            var Scores = Providers.Select(P => 1 + P.Dependencies.Count(PD => PCHEmitter.ProvideSharedPCH(BS.GetTarget(PD))));
+                            var Scores = Providers.Select(P => 1 + P.Dependencies.Count(PD => PCHEmitter.ProvideSharedPCH(BS.GetTarget(PD)!)));
                             var BestProvider = Providers.ElementAt(Scores.ToList().IndexOf(Scores.Max()));
                             PCHProvider = BestProvider.Name;
                         }
@@ -212,7 +212,7 @@ namespace SB
                 if (PCHProvider is not null)
                 {
                     // later we get it in cpp compile emitter
-                    UseAttribute.CppPCHAST = PCHEmitter.GetPCHASTFile(BS.GetTarget(PCHProvider), UseAttribute.Mode);
+                    UseAttribute.CppPCHAST = PCHEmitter.GetPCHASTFile(BS.GetTarget(PCHProvider)!, UseAttribute.Mode);
                 }
             });
             return UseAttribute;

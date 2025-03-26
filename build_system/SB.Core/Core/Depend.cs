@@ -8,12 +8,17 @@ using System.Text.Json.Serialization;
 
 namespace SB.Core
 {
+    using BS = BuildSystem;
+
     [DependDoctor]
     public class DependContext : DbContext
     {
         static DependContext()
         {
-            WarmUpContext = Factory.CreateDbContext();
+            WarmUpContext = PackagesFactory.CreateDbContext();
+            WarmUpContext!.Database.EnsureCreated();
+
+            WarmUpContext = ProjectFactory.CreateDbContext();
             WarmUpContext!.Database.EnsureCreated();
         }
 
@@ -23,12 +28,23 @@ namespace SB.Core
 
         }
 
-        public static PooledDbContextFactory<DependContext> Factory = new (
+        public static DependContext CreateContext(string TargetName) 
+            => (BS.GetTarget(TargetName)?.IsFromPackage == true) ? PackagesFactory.CreateDbContext() : ProjectFactory.CreateDbContext();
+
+        public static PooledDbContextFactory<DependContext> ProjectFactory = new (
             new DbContextOptionsBuilder<DependContext>()
-                .UseSqlite($"Data Source={Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "depend.db")}")
+                .UseSqlite($"Data Source={Path.Join(BuildSystem.BuildPath, "depend.db")}")
                 .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
                 .Options
         );
+
+        public static PooledDbContextFactory<DependContext> PackagesFactory = new (
+            new DbContextOptionsBuilder<DependContext>()
+                .UseSqlite($"Data Source={Path.Join(BuildSystem.PackageBuildPath, "depend.db")}")
+                .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
+                .Options
+        );
+
         internal DbSet<DependEntity> Depends { get; set; }
         internal static DbContext? WarmUpContext;
     }
@@ -40,7 +56,6 @@ namespace SB.Core
         private List<string> InputFiles { get; init; } = new();
         private List<DateTime> InputFileTimes { get; init; } = new();
         private List<DateTime> ExternalFileTimes { get; set; } = new();
-
         public List<string> ExternalFiles { get; set; } = new();
 
         public struct Options
@@ -69,7 +84,7 @@ namespace SB.Core
                     InputFileTimes = SortedFiles.Select(x => Directory.GetLastWriteTimeUtc(x)).ToList()
                 };
                 func(NewDepend);
-                UpdateDependency(NewDepend, OldDepend);
+                UpdateDependency(TargetName, NewDepend, OldDepend);
                 return true;
             }
             return false;
@@ -93,7 +108,7 @@ namespace SB.Core
                     InputFileTimes = SortedFiles.Select(x => Directory.GetLastWriteTimeUtc(x)).ToList()
                 };
                 await func(NewDepend);
-                UpdateDependency(NewDepend, OldDepend);
+                UpdateDependency(TargetName, NewDepend, OldDepend);
                 return true;
             }
             return false;
@@ -102,7 +117,7 @@ namespace SB.Core
         private static bool CheckDependency(string TargetName, string FileName, string EmitterName, List<string> SortedFiles, List<string> SortedArgs, out Depend? OldDepend)
         {
             OldDepend = null;
-            using (var DB = DependContext.Factory.CreateDbContext())
+            using (var DB = DependContext.CreateContext(TargetName))
             {
                 OldDepend = FromEntity(DB.Depends.Find(TargetName + FileName + EmitterName));
             }
@@ -142,11 +157,11 @@ namespace SB.Core
             return false;
         }
 
-        private static void UpdateDependency(Depend NewDepend, Depend? OldDepend)
+        private static void UpdateDependency(string TargetName, Depend NewDepend, Depend? OldDepend)
         {
             NewDepend.ExternalFileTimes = NewDepend.ExternalFiles.Select(x => Directory.GetLastWriteTimeUtc(x)).ToList();
 
-            using (var DB = DependContext.Factory.CreateDbContext())
+            using (var DB = DependContext.CreateContext(TargetName))
             {
                 if (OldDepend is not null)
                     DB.Depends.Update(ToEntity(NewDepend));

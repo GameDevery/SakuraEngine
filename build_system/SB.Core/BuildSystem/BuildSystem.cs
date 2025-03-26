@@ -35,7 +35,7 @@ namespace SB
             return NewPackage;
         }
 
-        public static Target GetTarget(string Name) => AllTargets.TryGetValue(Name, out var Found) ? Found : throw new ArgumentException($"Target with name {Name} not found!");
+        public static Target? GetTarget(string Name) => AllTargets.TryGetValue(Name, out var Found) ? Found : null;
         public static Package GetPackage(string Name) => AllPackages.TryGetValue(Name, out var Found) ? Found : throw new ArgumentException($"Package with name {Name} not found!");
 
         public static TaskEmitter AddTaskEmitter(string Name, TaskEmitter Emitter)
