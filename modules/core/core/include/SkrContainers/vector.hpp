@@ -5,7 +5,7 @@
 #include "SkrRTTR/type_signature.hpp"
 namespace skr
 {
-static constexpr GUID kVectorGenericId = u8"bc48634e-85dd-45ce-a7c7-f85d5bab9680"_guid;
+static constexpr GUID kVectorGenericId = u8"3e982879-a893-4975-aca6-ed8627f33f91"_guid;
 template <typename T>
 struct TypeSignatureTraits<::skr::Vector<T>> {
     inline static constexpr size_t buffer_size = type_signature_size_v<ETypeSignatureSignal::GenericTypeId> + TypeSignatureTraits<T>::buffer_size;

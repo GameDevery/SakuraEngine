@@ -275,7 +275,9 @@ struct Vector : protected Memory {
     void   erase_swap(const CDataRef& ref);
 
     // syntax
-    const Vector& readonly() const;
+    const Vector&                  readonly() const;
+    Span<DataType, SizeType>       span();
+    Span<const DataType, SizeType> span() const;
 
 private:
     // helper
@@ -1522,6 +1524,16 @@ template <typename Memory>
 SKR_INLINE const Vector<Memory>& Vector<Memory>::readonly() const
 {
     return *this;
+}
+template <typename Memory>
+SKR_INLINE Span<typename Vector<Memory>::DataType, typename Vector<Memory>::SizeType> Vector<Memory>::span()
+{
+    return { data(), size() };
+}
+template <typename Memory>
+SKR_INLINE Span<const typename Vector<Memory>::DataType, typename Vector<Memory>::SizeType> Vector<Memory>::span() const
+{
+    return { data(), size() };
 }
 } // namespace skr::container
 

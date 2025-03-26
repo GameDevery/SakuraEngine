@@ -1,37 +1,16 @@
+#include "SkrContainersDef/set.hpp"
 #include "SkrCore/cli.hpp"
 #include "SkrCore/log.hpp"
 #include <SkrContainers/optional.hpp>
-
-// helper
-namespace skr::cli_style
-{
-static const char* clear = "\033[0m";
-
-// style
-static const char* bold         = "\033[1m";
-static const char* no_bold      = "\033[22m";
-static const char* underline    = "\033[4m";
-static const char* no_underline = "\033[24m";
-static const char* reverse      = "\033[7m";
-static const char* no_reverse   = "\033[27m";
-
-// front color
-static const char* front_gray    = "\033[30m";
-static const char* front_red     = "\033[31m";
-static const char* front_green   = "\033[32m";
-static const char* front_yellow  = "\033[33m";
-static const char* front_blue    = "\033[34m";
-static const char* front_magenta = "\033[35m";
-static const char* front_cyan    = "\033[36m";
-static const char* front_white   = "\033[37m";
-
-} // namespace skr::cli_style
 
 // cmd option
 namespace skr
 {
 bool CmdOptionData::init(attr::CmdOption config, TypeSignatureView type_sig, void* memory)
 {
+    TypeSignatureView raw_type_sig = type_sig;
+
+    // setup type & optional
     if (type_sig.is_type())
     {
         // check decayed pointer
@@ -69,7 +48,7 @@ bool CmdOptionData::init(attr::CmdOption config, TypeSignatureView type_sig, voi
         GUID     generic_id;
         uint32_t generic_param_count;
         type_sig.jump_modifier();
-        type_sig.read_generic_type_id(generic_id, generic_param_count);
+        type_sig = type_sig.read_generic_type_id(generic_id, generic_param_count);
 
         if (generic_id == kOptionalGenericId)
         { // process optional
@@ -96,6 +75,7 @@ bool CmdOptionData::init(attr::CmdOption config, TypeSignatureView type_sig, voi
             }
             else
             {
+                SKR_LOG_FMT_ERROR(u8"fuck '{}'!", raw_type_sig.to_string());
                 SKR_LOG_FMT_ERROR(u8"unknown T of Optional<T> for option '{}'!", config.name);
                 return false;
             }
@@ -134,8 +114,17 @@ bool CmdOptionData::init(attr::CmdOption config, TypeSignatureView type_sig, voi
         return false;
     }
 
+    // setup memory & config
     _memory = memory;
     _config = std::move(config);
+
+    // check reset param kind
+    if (_config.name == u8"..." && _kind != EKind::StringVector)
+    {
+        SKR_LOG_FMT_ERROR(u8"option '...' must be a string vector!");
+        return false;
+    }
+
     return true;
 }
 
@@ -280,6 +269,8 @@ CmdNode::~CmdNode()
 bool CmdNode::solve()
 {
     bool failed = false;
+
+    // solve options & sub commands
     type->each_field([&](const RTTRFieldData* field, const RTTRType* owner_type) {
         // find option
         auto found_option_attr_ref = field->attrs.find_if([&](const Any& v) { return v.type_is<attr::CmdOption>(); });
@@ -332,7 +323,7 @@ bool CmdNode::solve()
             }
 
             // get field address
-            void* owner_obj     = sub_cmd_type->cast_to_base(owner_type->type_id(), object);
+            void* owner_obj     = type->cast_to_base(owner_type->type_id(), object);
             void* field_address = field->get_address(owner_obj);
 
             // create sub command
@@ -355,8 +346,60 @@ bool CmdNode::solve()
     }, { .include_bases = true });
     // clang-format on
 
+    // find exec method
+    type->each_method([&](const RTTRMethodData* method, const RTTRType*) {
+        // find exec
+        auto found_exec_attr_ref = method->attrs.find_if([&](const Any& v) { return v.type_is<attr::CmdExec>(); });
+        if (found_exec_attr_ref)
+        {
+            // check signature
+            TypeSignatureTyped<void()> sig;
+            if (!method->signature_equal(sig.view(), ETypeSignatureCompareFlag::Strict))
+            {
+                SKR_LOG_FMT_ERROR(u8"exec method must be a void() method!");
+                return;
+            }
+
+            // setup exec method
+            exec_method = ExportMethodInvoker<void()>(method);
+        }
+        // clang-format off
+    }, { .include_bases = false });
+    // clang-format on
+
+    failed |= check_options();
     failed |= check_sub_commands();
     return !failed;
+}
+bool CmdNode::check_options()
+{
+    Map<String, CmdOptionData*>    seen_options;
+    Map<skr_char8, CmdOptionData*> seen_short_options;
+    bool                           no_error = true;
+
+    for (auto& option : options)
+    {
+        // check name
+        if (auto found = seen_options.find(option.config().name))
+        {
+            SKR_LOG_FMT_ERROR(u8"duplicate option name: {}", option.config().name);
+            no_error = false;
+        }
+        seen_options.add(option.config().name, &option);
+
+        // check short name
+        if (option.config().short_name != 0)
+        {
+            if (auto found = seen_short_options.find(option.config().short_name))
+            {
+                SKR_LOG_FMT_ERROR(u8"duplicate option short name: {}", option.config().short_name);
+                no_error = false;
+            }
+            seen_short_options.add(option.config().short_name, &option);
+        }
+    }
+
+    return no_error;
 }
 bool CmdNode::check_sub_commands()
 {
@@ -388,67 +431,101 @@ bool CmdNode::check_sub_commands()
 }
 void CmdNode::print_help()
 {
+    CliOutputBuilder builder;
+
+    // print self help
+    builder.line(config.help);
+
     // print self usage
-    printf(
-        "%susage:%s %s%s%s\n",
-        cli_style::bold,
-        cli_style::clear,
-        cli_style::front_blue,
-        config.help.c_str_raw(),
-        cli_style::clear
-    );
+    builder
+        .style_bold()
+        .write(u8"usage: ")
+        .style_clear()
+        .style_front_blue()
+        .write(config.usage)
+        .style_clear()
+        .next_line();
+
     if (!options.is_empty())
     {
-        printf(
-            "%soptions:%s\n",
-            cli_style::bold,
-            cli_style::clear
-        );
+        builder
+            .style_bold()
+            .line(u8"options:")
+            .style_clear();
+        uint64_t max_option_name_length = 0;
         for (auto& option : options)
         {
+            uint64_t len = 0;
+            len += 4;                                        // '-X, '
+            len += 2 + option.config().name.length_buffer(); // '--XXXX'
+            max_option_name_length = std::max(max_option_name_length, len);
+        }
+        for (auto& option : options)
+        {
+            String option_str;
+
             if (option.config().short_name != 0)
             {
-                printf(
-                    "%s  -%c, --%s:%s %s\n",
-                    cli_style::front_green,
-                    option.config().short_name,
-                    option.config().name.c_str_raw(),
-                    cli_style::clear,
-                    option.config().help.c_str_raw()
-                );
+                format_to(option_str, u8"-{}, --{}", option.config().short_name, option.config().name);
             }
             else
             {
-                printf(
-                    "%s  --%s:%s %s\n",
-                    cli_style::front_green,
-                    option.config().name.c_str_raw(),
-                    cli_style::clear,
-                    option.config().help.c_str_raw()
-                );
+                format_to(option_str, u8"    --{}", option.config().name);
             }
+            option_str.pad_right(max_option_name_length);
+
+            builder
+                .style_bold()
+                .style_front_green()
+                .write(u8"  {} : ", option_str)
+                .style_clear()
+                .write(u8"{}{}", (!option.is_optional() ? "[REQUIRED] " : ""), option.config().help)
+                .style_clear()
+                .next_line();
         }
     }
 
     // print subcommands
     if (!sub_cmds.is_empty())
     {
-        printf(
-            "%ssub commands:%s\n",
-            cli_style::bold,
-            cli_style::clear
-        );
+        builder
+            .style_bold()
+            .write(u8"sub commands:")
+            .style_clear()
+            .next_line();
+        uint64_t max_sub_cmd_name_length = 0;
         for (auto& sub_cmd : sub_cmds)
         {
-            printf(
-                "%s  %s:%s %s\n",
-                cli_style::front_cyan,
-                sub_cmd->config.name.c_str_raw(),
-                cli_style::clear,
-                sub_cmd->config.help.c_str_raw()
-            );
+            uint64_t len = 0;
+            len += 3;                                    // 'x, '
+            len += sub_cmd->config.name.length_buffer(); // 'XXXX'
+            max_sub_cmd_name_length = std::max(max_sub_cmd_name_length, len);
+        }
+        for (auto& sub_cmd : sub_cmds)
+        {
+            String sub_cmd_str;
+            if (sub_cmd->config.short_name != 0)
+            {
+                format_to(sub_cmd_str, u8"{}, {}", sub_cmd->config.short_name, sub_cmd->config.name);
+            }
+            else
+            {
+                format_to(sub_cmd_str, u8"   {}", sub_cmd->config.name);
+            }
+            sub_cmd_str.pad_left(max_sub_cmd_name_length);
+
+            builder
+                .style_bold()
+                .style_front_cyan()
+                .write(u8"  {} : ", sub_cmd_str)
+                .style_clear()
+                .write(sub_cmd->config.help)
+                .next_line();
         }
     }
+
+    // output
+    builder.dump();
 }
 } // namespace skr
 
@@ -497,9 +574,20 @@ void CmdParser::parse(int argc, char* argv[])
     String           program_name = String::From(argv[0]);
     Vector<CmdToken> args         = {};
     args.reserve(argc);
-    for (int i = 1; i < argc; ++i)
     {
-        args.add(StringView{ reinterpret_cast<const skr_char8*>(argv[i]) });
+        CliOutputBuilder builder;
+        bool             any_error = false;
+        for (int i = 1; i < argc; ++i)
+        {
+            auto& arg = args.add_default().ref();
+            any_error |= !arg.parse(StringView{ reinterpret_cast<const skr_char8*>(argv[i]) }, builder);
+        }
+        if (any_error)
+        {
+            builder.dump();
+            _root_cmd.print_help();
+            return;
+        }
     }
 
     uint32_t current_idx = 0;
@@ -521,7 +609,18 @@ void CmdParser::parse(int argc, char* argv[])
         }
         else
         {
-            SKR_LOG_FMT_ERROR(u8"unknown sub command: {}", token.c_str());
+            CliOutputBuilder builder;
+            builder
+                .style_bold()
+                .style_front_red()
+                .write(u8"unknown sub command: ")
+                .style_clear()
+                .style_front_cyan()
+                .write(token)
+                .style_clear()
+                .next_line();
+            builder.dump();
+            _root_cmd.print_help();
             return;
         }
     }
@@ -532,17 +631,378 @@ void CmdParser::parse(int argc, char* argv[])
             return (token.type == CmdToken::Type::ShortOption && token.token == u8"h") ||
                    (token.type == CmdToken::Type::Option && token.token == u8"help");
         });
+
         if (found)
         {
+            // dump ignored args
+            if (args.size() - current_idx > 1)
+            {
+                CliOutputBuilder builder;
+                builder.style_bold().style_front_yellow().write(u8"these args will be ignored:").style_clear().next_line();
+                for (uint64_t i = current_idx; i < args.size(); ++i)
+                {
+                    if (i == found.index()) continue;
+                    builder.line(u8"  {}", args[i].raw());
+                }
+                builder.dump();
+            }
+
+            // dump help
             current_cmd->print_help();
             return;
         }
     }
 
+    // collect options info
+    Set<CmdOptionData*>            required_options;
+    Map<String, CmdOptionData*>    options_map;
+    Map<skr_char8, CmdOptionData*> short_options_map;
+    for (auto& option : current_cmd->options)
+    {
+        if (option.is_required())
+        {
+            required_options.add(&option);
+        }
+        options_map.add(option.config().name, &option);
+        if (option.config().short_name != 0)
+        {
+            short_options_map.add(option.config().short_name, &option);
+        }
+    }
+
     // parse options
+    CliOutputBuilder builder;
+    bool             any_error = false;
     while (current_idx < args.size())
     {
-        ++current_idx;
+        const auto& arg = args[current_idx];
+
+        if (arg.is_any_option())
+        { // process option
+            auto params = _find_option_param_pack(args, current_idx);
+
+            // find option
+            CmdOptionData* found_option = nullptr;
+            if (arg.is_option())
+            {
+                found_option = options_map.find(arg.token).value_or(nullptr);
+            }
+            else if (arg.is_short_option())
+            {
+                found_option = short_options_map.find(arg.token.at_buffer(0)).value_or(nullptr);
+            }
+            if (!found_option)
+            { // unknown option will take all params
+                builder
+                    .style_bold()
+                    .style_front_red()
+                    .write(u8"unknown option: ")
+                    .style_clear()
+                    .style_front_green()
+                    .write(arg.raw())
+                    .style_clear()
+                    .next_line();
+                any_error = true;
+                current_idx += 1 + params.size();
+                continue;
+            }
+
+            // check option type
+            if (found_option->is_bool())
+            { // boolean option will not consume any params
+                found_option->set_value(true);
+                required_options.remove(found_option);
+                ++current_idx;
+                continue;
+            }
+            else if (found_option->is_string_vector())
+            { // string vector option will consume all params
+                // check required
+                if (params.is_empty() && found_option->is_required())
+                {
+                    _error_require_params(builder, arg);
+                    any_error = true;
+                    ++current_idx;
+                    continue;
+                }
+
+                // set value
+                for (auto& param : params)
+                {
+                    found_option->add_value(param.token);
+                }
+                required_options.remove(found_option);
+                current_idx += 1 + params.size();
+                continue;
+            }
+            else
+            { // normal value case
+                // check require
+                if (params.is_empty() && found_option->is_required())
+                {
+                    _error_require_params(builder, arg);
+                    any_error = true;
+                    ++current_idx;
+                    continue;
+                }
+
+                // get param
+                auto param = params[0];
+
+                // try set value
+                if (found_option->is_int())
+                {
+                    auto parsed_result = param.token.parse_int();
+                    if (!parsed_result.is_success())
+                    {
+                        _error_parse_params(builder, arg, param.token, u8"int");
+                        any_error = true;
+                        ++current_idx;
+                        continue;
+                    }
+                    found_option->set_value(parsed_result.value);
+                }
+                else if (found_option->is_uint())
+                {
+                    auto parsed_result = param.token.parse_uint();
+                    if (!parsed_result.is_success())
+                    {
+                        _error_parse_params(builder, arg, param.token, u8"uint");
+                        any_error = true;
+                        ++current_idx;
+                        continue;
+                    }
+                    found_option->set_value(parsed_result.value);
+                }
+                else if (found_option->is_float())
+                {
+                    auto parsed_result = param.token.parse_float();
+                    if (!parsed_result.is_success())
+                    {
+                        _error_parse_params(builder, arg, param.token, u8"float");
+                        any_error = true;
+                        ++current_idx;
+                        continue;
+                    }
+                    found_option->set_value(parsed_result.value);
+                }
+                else if (found_option->is_string())
+                {
+                    found_option->set_value(param.token);
+                }
+
+                // pass and jump
+                required_options.remove(found_option);
+                current_idx += 2;
+                continue;
+            }
+        }
+        else
+        { // trigger end of options, parse rest options
+            // get option
+            auto* found_option = options_map.find(u8"...").value_or(nullptr);
+            if (!found_option)
+            {
+                builder
+                    .style_bold()
+                    .style_front_red()
+                    .write(u8"rest params is not supported!")
+                    .style_clear()
+                    .next_line();
+                any_error = true;
+                break;
+            }
+
+            // add params
+            auto params = _find_rest_params_pack(args, current_idx);
+            for (const auto& param : params)
+            {
+                found_option->add_value(param.token);
+            }
+
+            required_options.remove(found_option);
+            current_idx += params.size();
+            break;
+        }
     }
+
+    // check required options
+    if (!required_options.is_empty())
+    {
+        builder
+            .style_bold()
+            .style_front_red()
+            .write(u8"missing required options:")
+            .style_clear()
+            .next_line();
+        uint32_t max_option_name_length = 0;
+        for (auto& option : required_options)
+        {
+            uint32_t len = 0;
+            len += 4;                                         // '-X, '
+            len += 2 + option->config().name.length_buffer(); // '--XXXX'
+            max_option_name_length = std::max(max_option_name_length, len);
+        }
+        for (auto& option : required_options)
+        {
+            String option_str;
+            if (option->config().short_name != 0)
+            {
+                format_to(option_str, u8"-{}, --{}", option->config().short_name, option->config().name);
+            }
+            else
+            {
+                format_to(option_str, u8"    --{}", option->config().name);
+            }
+            option_str.pad_right(max_option_name_length);
+
+            builder.
+                // write options
+                style_front_green()
+                    .write(u8"  {} : ", option_str)
+                    .style_clear()
+                    // write help
+                    .write(option->config().help)
+                    .next_line();
+        }
+        builder.dump();
+        current_cmd->print_help();
+        return;
+    }
+
+    // dump ignored options
+    if (current_idx != args.size())
+    {
+        builder
+            .style_bold()
+            .style_front_yellow()
+            .write(u8"these args will be ignored:")
+            .style_clear()
+            .next_line();
+        for (uint64_t i = current_idx; i < args.size(); ++i)
+        {
+            builder.line(u8"  {}", args[i].raw());
+        }
+        builder.dump();
+    }
+    else
+    {
+        if (any_error)
+        {
+            builder.dump();
+        }
+    }
+
+    // block execute before exec
+    if (any_error)
+    {
+        current_cmd->print_help();
+        return;
+    }
+
+    // invoke command
+    if (current_cmd->exec_method.is_valid())
+    {
+        current_cmd->exec_method.invoke(current_cmd->object);
+    }
+}
+// helper
+span<const CmdToken> CmdParser::_find_option_param_pack(const Vector<CmdToken>& args, uint64_t option_idx)
+{
+    // trigger end
+    if (option_idx == args.size() - 1)
+    {
+        return {};
+    }
+
+    // next token is option
+    {
+        const auto& next_token = args[option_idx + 1];
+        if (next_token.type == CmdToken::Type::Option || next_token.type == CmdToken::Type::ShortOption)
+        {
+            return {};
+        }
+    }
+
+    // find option pack
+    uint64_t search_idx = option_idx + 1;
+    while (search_idx < args.size())
+    {
+        const auto& token = args[search_idx];
+        if (token.type == CmdToken::Type::Option || token.type == CmdToken::Type::ShortOption)
+        {
+            break;
+        }
+        ++search_idx;
+    }
+    return args.span().subspan(option_idx + 1, search_idx - option_idx - 1);
+}
+span<const CmdToken> CmdParser::_find_rest_params_pack(const Vector<CmdToken>& args, uint64_t name_idx)
+{
+    uint64_t search_idx = name_idx;
+    while (search_idx < args.size())
+    {
+        const auto& token = args[search_idx];
+        if (token.type == CmdToken::Type::Option || token.type == CmdToken::Type::ShortOption)
+        {
+            break;
+        }
+        ++search_idx;
+    }
+    return args.span().subspan(name_idx, search_idx - name_idx);
+}
+void CmdParser::_error_require_params(CliOutputBuilder& builder, const CmdToken& arg)
+{
+    builder
+        // error head
+        .style_bold()
+        .style_front_red()
+        .write(u8"option '")
+        .style_clear()
+        // option name
+        .style_front_green()
+        .write(arg.raw())
+        .style_clear()
+        // error tail
+        .style_bold()
+        .style_front_red()
+        .write(u8"' requires at least one parameter!")
+        .style_clear()
+        .next_line();
+}
+void CmdParser::_error_parse_params(CliOutputBuilder& builder, const CmdToken& arg, StringView param, StringView type)
+{
+    builder
+        // error body
+        .style_bold()
+        .style_front_red()
+        .write(u8"failed to parse parameter '")
+        .style_clear()
+        // parameter
+        .write(param)
+        // error body
+        .style_bold()
+        .style_front_red()
+        .write(u8"' for option '")
+        .style_clear()
+        // option name
+        .style_front_green()
+        .write(arg.raw())
+        .style_clear()
+        // error body
+        .style_bold()
+        .style_front_red()
+        .write(u8"' as '")
+        .style_clear()
+        // type
+        .style_front_yellow()
+        .write(type)
+        .style_clear()
+        // error body
+        .style_bold()
+        .style_front_red()
+        .write(u8"'!")
+        .style_clear()
+        .next_line();
 }
 } // namespace skr

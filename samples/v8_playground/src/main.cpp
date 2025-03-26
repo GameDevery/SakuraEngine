@@ -14,7 +14,8 @@ int main(int argc, char* argv[])
     parser.main_cmd(
         &cmd,
         {
-            .help = u8"V8Playground [options]",
+            .help  = u8"V8 Playground",
+            .usage = u8"V8Playground [options]",
         }
     );
     parser.parse(argc, argv);

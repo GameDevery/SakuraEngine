@@ -429,8 +429,8 @@ struct TypeSignatureHelper {
         SKR_ASSERT(has_enough_buffer(pos, end, ETypeSignatureSignal::GenericTypeId));
         SKR_ASSERT(peek_signal(pos, end) == ETypeSignatureSignal::GenericTypeId);
         pos = jump_signal(pos, end);
-        pos = read_buffer(pos, guid);
-        return read_buffer(pos, data_count);
+        pos = read_buffer(pos, data_count);
+        return read_buffer(pos, guid);
     }
     inline static const uint8_t* read_function_signature(const uint8_t* pos, const uint8_t* end, uint32_t& data_count)
     {

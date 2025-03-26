@@ -382,6 +382,14 @@ struct U8String : protected Memory {
     U8String to_lower_copy() const;
     U8String to_upper_copy() const;
 
+    // pad
+    void pad_center(SizeType size, const DataType& ch = u8' ');
+    void pad_left(SizeType size, const DataType& ch = u8' ');
+    void pad_right(SizeType size, const DataType& ch = u8' ');
+    U8String pad_center_copy(SizeType size, const DataType& ch = u8' ') const;  
+    U8String pad_left_copy(SizeType size, const DataType& ch = u8' ') const;
+    U8String pad_right_copy(SizeType size, const DataType& ch = u8' ') const;
+
     // syntax
     const U8String& readonly() const;
     ViewType        view() const;
@@ -2714,6 +2722,70 @@ inline U8String<Memory> U8String<Memory>::to_upper_copy() const
 {
     U8String result{ *this };
     result.to_upper();
+    return std::move(result);
+}
+
+// pad
+template <typename Memory>
+inline void U8String<Memory>::pad_center(SizeType size, const DataType& ch)
+{
+    if (size > length_buffer())
+    {
+        _pre_modify(size);
+
+        SizeType size_need_pad = size - length_buffer();
+        SizeType left = size_need_pad / 2;
+        SizeType right = size_need_pad - left;
+
+        if (left > 0)
+        {
+            add_at(0, ch, left);
+        }
+        if (right > 0)
+        {
+            add(ch, right);
+        }
+    }
+}
+template <typename Memory>
+inline void U8String<Memory>::pad_left(SizeType size, const DataType& ch)
+{
+    if (size > length_buffer())
+    {
+        _pre_modify(size);
+        SizeType size_need_pad = size - length_buffer();
+        add_at(0, ch, size_need_pad);
+    }
+}
+template <typename Memory>
+inline void U8String<Memory>::pad_right(SizeType size, const DataType& ch)
+{
+    if (size > length_buffer())
+    {
+        _pre_modify(size);
+        SizeType size_need_pad = size - length_buffer();
+        add(ch, size_need_pad);
+    }
+}
+template <typename Memory>
+inline U8String<Memory> U8String<Memory>::pad_center_copy(SizeType size, const DataType& ch) const
+{
+    U8String result = *this;
+    result.pad_center(size, ch);
+    return std::move(result);
+}
+template <typename Memory>
+inline U8String<Memory> U8String<Memory>::pad_left_copy(SizeType size, const DataType& ch) const
+{
+    U8String result = *this;
+    result.pad_left(size, ch);
+    return std::move(result);
+}
+template <typename Memory>
+inline U8String<Memory> U8String<Memory>::pad_right_copy(SizeType size, const DataType& ch) const
+{
+    U8String result = *this;
+    result.pad_right(size, ch);
     return std::move(result);
 }
 

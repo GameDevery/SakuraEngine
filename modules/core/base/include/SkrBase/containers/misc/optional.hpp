@@ -47,6 +47,8 @@ struct Optional {
     // getter
     T&        operator*();
     const T&  operator*() const;
+    T*        operator->();
+    const T*  operator->() const;
     T&        value() &;
     const T&  value() const&;
     T&&       value() &&;
@@ -227,6 +229,16 @@ template <typename T>
 inline const T& Optional<T>::operator*() const
 {
     return *_data_ptr();
+}
+template <typename T>
+T* Optional<T>::operator->()
+{
+    return _data_ptr();
+}
+template <typename T>
+const T* Optional<T>::operator->() const
+{
+    return _data_ptr();
 }
 template <typename T>
 inline T& Optional<T>::value() &
