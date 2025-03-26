@@ -1,6 +1,7 @@
 #pragma once
 #include "SkrBase/config.h"
 #include "SkrBase/meta.h"
+#include "SkrContainersDef/set.hpp"
 #include "SkrContainersDef/string.hpp"
 #include "SkrRTTR/generic_container.hpp"
 #include "SkrRTTR/type.hpp"
@@ -194,26 +195,6 @@ struct CmdToken {
         {
             type  = Type::ShortOption;
             token = arg.subview(1);
-            if (token.size() > 1)
-            {
-                out_err
-                    // error body
-                    .style_bold()
-                    .style_front_red()
-                    .write(u8"option '")
-                    .style_clear()
-                    // option name
-                    .style_front_green()
-                    .write(arg)
-                    .style_clear()
-                    .style_bold()
-                    // error body
-                    .style_front_red()
-                    .write(u8"' is not a short option! short option only support one character!")
-                    .style_clear()
-                    .next_line();
-                return false;
-            }
         }
         else
         {
@@ -397,6 +378,15 @@ private:
     static span<const CmdToken> _find_rest_params_pack(const Vector<CmdToken>& args, uint64_t name_idx);
     static void                 _error_require_params(CliOutputBuilder& builder, const CmdToken& arg);
     static void                 _error_parse_params(CliOutputBuilder& builder, const CmdToken& arg, StringView param, StringView type);
+    static void                 _error_unknown_option(CliOutputBuilder& builder, const CmdToken& arg);
+    static bool                 _process_option(
+                        CmdOptionData*       found_option,
+                        uint32_t&            current_idx,
+                        const CmdToken&      arg,
+                        span<const CmdToken> params,
+                        CliOutputBuilder&    builder,
+                        Set<CmdOptionData*>& required_options
+                    );
 
 private:
     CmdNode _root_cmd = {};
