@@ -15,6 +15,7 @@ struct ExportExternMethodInvoker;
 
 template <typename... Args>
 struct ExportCtorInvoker<void(Args...)> {
+    inline ExportCtorInvoker() = default;
     inline ExportCtorInvoker(const RTTRCtorData* ctor_data)
     {
         _ctor_data = ctor_data;
@@ -38,6 +39,7 @@ private:
 };
 template <typename Ret, typename... Args>
 struct ExportMethodInvoker<Ret(Args...)> {
+    inline ExportMethodInvoker() = default;
     inline ExportMethodInvoker(const RTTRMethodData* method_data)
     {
         _method_data = method_data;
@@ -61,6 +63,7 @@ private:
 };
 template <typename Ret, typename... Args>
 struct ExportStaticMethodInvoker<Ret(Args...)> {
+    inline ExportStaticMethodInvoker() = default;
     inline ExportStaticMethodInvoker(const RTTRStaticMethodData* method_data)
     {
         _method_data = method_data;
@@ -84,6 +87,7 @@ private:
 };
 template <typename Ret, typename... Args>
 struct ExportExternMethodInvoker<Ret(Args...)> {
+    inline ExportExternMethodInvoker() = default;
     inline ExportExternMethodInvoker(const RTTRExternMethodData* method_data)
     {
         _method_data = method_data;

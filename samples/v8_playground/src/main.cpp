@@ -9,13 +9,18 @@
 int main(int argc, char* argv[])
 {
     // parse args
-    skr::CmdParser parser;
+    skr::CmdParser       parser;
     v8_play::MainCommand cmd;
-    parser.main_cmd(&cmd, {
-        .help = u8"V8Playground [options]",
-    });
+    parser.main_cmd(
+        &cmd,
+        {
+            .help = u8"V8Playground [options]",
+        }
+    );
     parser.parse(argc, argv);
-    
+
+    return 0;
+
     // init v8
     skr::init_v8();
     skr::V8Isolate isolate;

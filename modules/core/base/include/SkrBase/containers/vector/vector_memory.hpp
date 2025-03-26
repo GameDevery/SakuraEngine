@@ -19,6 +19,9 @@ struct VectorMemoryBase {
     // setter
     inline void set_size(SizeType value) noexcept { _size = value; }
 
+    //! Note. ONLY USED BY GENERIC CONTAINER
+    inline void* _generic_only_data() noexcept { return _data; }
+
 protected:
     void*    _data     = nullptr;
     SizeType _size     = 0;
