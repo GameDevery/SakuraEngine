@@ -36,7 +36,29 @@ MainCommand {
 
     srttr_attr(CmdOption{
         .help = u8"use strict mode for script",
-    }) bool strict_mode = false;
+    }) 
+    bool strict_mode = false;
+
+    srttr_attr(CmdOption{
+        .short_name = u8'a',
+        .help = u8"test compound args a",
+        .is_required = false,
+    })
+    bool test_a = false;
+
+    srttr_attr(CmdOption{
+        .short_name = u8'b',
+        .help = u8"test compound args b",
+        .is_required = false,
+    })
+    bool test_b = false;
+
+    srttr_attr(CmdOption{
+        .short_name = u8'c',
+        .help = u8"test compound args c",
+        .is_required = false,
+    })
+    bool test_c = false;
 
     srttr_attr(CmdOption{
         .help = u8"just test optional arg",
@@ -46,6 +68,7 @@ MainCommand {
     srttr_attr(CmdOption{
         .name = u8"...",
         .help = u8"test rest args",
+        .is_required = false,
     })
     skr::Vector<skr::String> rest_args = {};
 
@@ -64,6 +87,9 @@ MainCommand {
         SKR_LOG_FMT_INFO(u8"strict mode: {}", strict_mode ? u8"true" : u8"false");
         SKR_LOG_FMT_INFO(u8"test optional: {}", test_optional.has_value() ? test_optional->c_str() : u8"nullopt");
         SKR_LOG_FMT_INFO(u8"rest args: {}", skr::String::Join(rest_args, u8", "));
+        SKR_LOG_FMT_INFO(u8"test a: {}", test_a ? u8"true" : u8"false");
+        SKR_LOG_FMT_INFO(u8"test b: {}", test_b ? u8"true" : u8"false");
+        SKR_LOG_FMT_INFO(u8"test c: {}", test_c ? u8"true" : u8"false");
     }
 };
 } // namespace v8_play

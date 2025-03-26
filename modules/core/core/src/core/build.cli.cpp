@@ -682,119 +682,94 @@ void CmdParser::parse(int argc, char* argv[])
             auto params = _find_option_param_pack(args, current_idx);
 
             // find option
-            CmdOptionData* found_option = nullptr;
             if (arg.is_option())
             {
-                found_option = options_map.find(arg.token).value_or(nullptr);
+                auto* found_option = options_map.find(arg.token).value_or(nullptr);
+                if (!found_option)
+                { // unknown option will take all params
+                    _error_unknown_option(builder, arg);
+                    any_error = true;
+                    current_idx += 1 + params.size();
+                    continue;
+                }
+                any_error |= !_process_option(
+                    found_option,
+                    current_idx,
+                    arg,
+                    params,
+                    builder,
+                    required_options
+                );
             }
             else if (arg.is_short_option())
             {
-                found_option = short_options_map.find(arg.token.at_buffer(0)).value_or(nullptr);
-            }
-            if (!found_option)
-            { // unknown option will take all params
-                builder
-                    .style_bold()
-                    .style_front_red()
-                    .write(u8"unknown option: ")
-                    .style_clear()
-                    .style_front_green()
-                    .write(arg.raw())
-                    .style_clear()
-                    .next_line();
-                any_error = true;
-                current_idx += 1 + params.size();
-                continue;
-            }
-
-            // check option type
-            if (found_option->is_bool())
-            { // boolean option will not consume any params
-                found_option->set_value(true);
-                required_options.remove(found_option);
-                ++current_idx;
-                continue;
-            }
-            else if (found_option->is_string_vector())
-            { // string vector option will consume all params
-                // check required
-                if (params.is_empty() && found_option->is_required())
+                if (arg.token.length_buffer() == 1)
                 {
-                    _error_require_params(builder, arg);
-                    any_error = true;
-                    ++current_idx;
-                    continue;
-                }
-
-                // set value
-                for (auto& param : params)
-                {
-                    found_option->add_value(param.token);
-                }
-                required_options.remove(found_option);
-                current_idx += 1 + params.size();
-                continue;
-            }
-            else
-            { // normal value case
-                // check require
-                if (params.is_empty() && found_option->is_required())
-                {
-                    _error_require_params(builder, arg);
-                    any_error = true;
-                    ++current_idx;
-                    continue;
-                }
-
-                // get param
-                auto param = params[0];
-
-                // try set value
-                if (found_option->is_int())
-                {
-                    auto parsed_result = param.token.parse_int();
-                    if (!parsed_result.is_success())
-                    {
-                        _error_parse_params(builder, arg, param.token, u8"int");
+                    auto* found_option = short_options_map.find(arg.token.at_buffer(0)).value_or(nullptr);
+                    if (!found_option)
+                    { // unknown option will take all params
+                        _error_unknown_option(builder, arg);
                         any_error = true;
-                        ++current_idx;
+                        current_idx += 1 + params.size();
                         continue;
                     }
-                    found_option->set_value(parsed_result.value);
+                    
+                    any_error |= !_process_option(
+                        found_option,
+                        current_idx,
+                        arg,
+                        params,
+                        builder,
+                        required_options
+                    );
                 }
-                else if (found_option->is_uint())
-                {
-                    auto parsed_result = param.token.parse_uint();
-                    if (!parsed_result.is_success())
+                else
+                { // process compound short options
+                    for (uint32_t i = 0; i < arg.token.length_buffer(); ++i)
                     {
-                        _error_parse_params(builder, arg, param.token, u8"uint");
-                        any_error = true;
-                        ++current_idx;
-                        continue;
-                    }
-                    found_option->set_value(parsed_result.value);
-                }
-                else if (found_option->is_float())
-                {
-                    auto parsed_result = param.token.parse_float();
-                    if (!parsed_result.is_success())
-                    {
-                        _error_parse_params(builder, arg, param.token, u8"float");
-                        any_error = true;
-                        ++current_idx;
-                        continue;
-                    }
-                    found_option->set_value(parsed_result.value);
-                }
-                else if (found_option->is_string())
-                {
-                    found_option->set_value(param.token);
-                }
+                        auto  short_name   = arg.token.at_buffer(i);
+                        auto* found_option = short_options_map.find(short_name).value_or(nullptr);
+                        if (!found_option)
+                        {
+                            _error_unknown_option(builder, arg);
+                            any_error = true;
+                            continue;
+                        }
+                        if (!found_option->is_bool())
+                        {
+                            builder
+                                // error body
+                                .style_bold()
+                                .style_front_red()
+                                .write(u8"option '")
+                                .style_clear()
+                                // option name
+                                .style_front_green()
+                                .write(u8"-{}", short_name)
+                                .style_clear()
+                                // error tail
+                                .style_bold()
+                                .style_front_red()
+                                .write(u8"' cannot used in compound short options!")
+                                .style_clear()
+                                .next_line();
+                            any_error = true;
+                            continue;
+                        }
 
-                // pass and jump
-                required_options.remove(found_option);
-                current_idx += 2;
-                continue;
+                        uint32_t dummy_idx = current_idx;
+                        any_error |= !_process_option(
+                            found_option,
+                            dummy_idx,
+                            CmdToken{ CmdToken::Type::ShortOption, short_name },
+                            params,
+                            builder,
+                            required_options
+                        );
+                    }
+
+                    current_idx += 1; // skip short option
+                }
             }
         }
         else
@@ -1004,5 +979,111 @@ void CmdParser::_error_parse_params(CliOutputBuilder& builder, const CmdToken& a
         .write(u8"'!")
         .style_clear()
         .next_line();
+}
+void CmdParser::_error_unknown_option(CliOutputBuilder& builder, const CmdToken& arg)
+{
+    builder
+        .style_bold()
+        .style_front_red()
+        .write(u8"unknown option: ")
+        .style_clear()
+        .style_front_green()
+        .write(arg.raw())
+        .style_clear()
+        .next_line();
+}
+bool CmdParser::_process_option(
+    CmdOptionData*       found_option,
+    uint32_t&            current_idx,
+    const CmdToken&      arg,
+    span<const CmdToken> params,
+    CliOutputBuilder&    builder,
+    Set<CmdOptionData*>& required_options
+)
+{
+    // check option type
+    if (found_option->is_bool())
+    { // boolean option will not consume any params
+        found_option->set_value(true);
+        required_options.remove(found_option);
+        ++current_idx;
+        return true;
+    }
+    else if (found_option->is_string_vector())
+    { // string vector option will consume all params
+        // check required
+        if (params.is_empty() && found_option->is_required())
+        {
+            _error_require_params(builder, arg);
+            ++current_idx;
+            return false;
+        }
+
+        // set value
+        for (auto& param : params)
+        {
+            found_option->add_value(param.token);
+        }
+        required_options.remove(found_option);
+        current_idx += 1 + params.size();
+        return true;
+    }
+    else
+    { // normal value case
+        // check require
+        if (params.is_empty() && found_option->is_required())
+        {
+            _error_require_params(builder, arg);
+            ++current_idx;
+            return false;
+        }
+
+        // get param
+        auto param = params[0];
+
+        // try set value
+        if (found_option->is_int())
+        {
+            auto parsed_result = param.token.parse_int();
+            if (!parsed_result.is_success())
+            {
+                _error_parse_params(builder, arg, param.token, u8"int");
+                ++current_idx;
+                return false;
+            }
+            found_option->set_value(parsed_result.value);
+        }
+        else if (found_option->is_uint())
+        {
+            auto parsed_result = param.token.parse_uint();
+            if (!parsed_result.is_success())
+            {
+                _error_parse_params(builder, arg, param.token, u8"uint");
+                ++current_idx;
+                return false;
+            }
+            found_option->set_value(parsed_result.value);
+        }
+        else if (found_option->is_float())
+        {
+            auto parsed_result = param.token.parse_float();
+            if (!parsed_result.is_success())
+            {
+                _error_parse_params(builder, arg, param.token, u8"float");
+                ++current_idx;
+                return false;
+            }
+            found_option->set_value(parsed_result.value);
+        }
+        else if (found_option->is_string())
+        {
+            found_option->set_value(param.token);
+        }
+
+        // pass and jump
+        required_options.remove(found_option);
+        current_idx += 2;
+        return true;
+    }
 }
 } // namespace skr
