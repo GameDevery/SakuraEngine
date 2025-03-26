@@ -484,7 +484,7 @@ void CmdNode::print_help()
                 .style_clear()
                 // write help
                 .style_clear()
-                .write_indent(u8"{}{}", (!option.is_optional() ? "[REQUIRED] " : ""), option.config().help)
+                .write_indent(u8"{}{}", (option.is_required() ? "[REQUIRED] " : ""), option.config().help)
                 .style_clear()
                 .next_line();
         }
