@@ -3,6 +3,6 @@
 
 namespace skr::container
 {
-template <typename T, typename TS, bool kConst>
-using RingBufferDataRef = VectorDataRef<T, TS, kConst>;
+template <typename T, typename TSize, bool kConst>
+using RingBufferDataRef = VectorDataRef<T, TSize, kConst>;
 }

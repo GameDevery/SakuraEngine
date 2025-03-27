@@ -16,18 +16,18 @@ template <typename T>
 SKR_INLINE constexpr bool heap_is_leaf(T index, T count) { return heap_lchild_idx(index) >= count; }
 
 // sift down
-template <typename T, typename TS, typename TP = Less<>>
-SKR_INLINE void heap_sift_down(T heap, TS idx, TS count, TP&& p = TP())
+template <typename T, typename TSize, typename TP = Less<>>
+SKR_INLINE void heap_sift_down(T heap, TSize idx, TSize count, TP&& p = TP())
 {
     using Swapper = Swap<std::decay_t<decltype(*heap)>>;
 
     while (!heap_is_leaf(idx, count))
     {
-        const TS l_child_idx = heap_lchild_idx(idx);
-        const TS r_child_idx = l_child_idx + 1;
+        const TSize l_child_idx = heap_lchild_idx(idx);
+        const TSize r_child_idx = l_child_idx + 1;
 
         // find min child
-        TS min_child_idx = l_child_idx;
+        TSize min_child_idx = l_child_idx;
         if (r_child_idx < count)
         {
             min_child_idx = p(*(heap + l_child_idx), *(heap + r_child_idx)) ? l_child_idx : r_child_idx;
@@ -43,14 +43,14 @@ SKR_INLINE void heap_sift_down(T heap, TS idx, TS count, TP&& p = TP())
 }
 
 // sift up
-template <class T, typename TS, class TP = Less<>>
-SKR_INLINE TS heap_sift_up(T* heap, TS root_idx, TS node_idx, TP&& p = TP())
+template <class T, typename TSize, class TP = Less<>>
+SKR_INLINE TSize heap_sift_up(T* heap, TSize root_idx, TSize node_idx, TP&& p = TP())
 {
     using Swapper = Swap<std::decay_t<decltype(*heap)>>;
 
     while (node_idx > root_idx)
     {
-        TS parent_idx = heap_parent_idx(node_idx);
+        TSize parent_idx = heap_parent_idx(node_idx);
 
         // now element is on his location
         if (!p(*(heap + node_idx), *(heap + parent_idx)))
@@ -64,10 +64,10 @@ SKR_INLINE TS heap_sift_up(T* heap, TS root_idx, TS node_idx, TP&& p = TP())
 }
 
 // is heap
-template <typename T, typename TS, typename TP = Less<>>
-SKR_INLINE bool is_heap(T* heap, TS count, TP&& p = TP())
+template <typename T, typename TSize, typename TP = Less<>>
+SKR_INLINE bool is_heap(T* heap, TSize count, TP&& p = TP())
 {
-    for (TS i = 1; i < count; ++i)
+    for (TSize i = 1; i < count; ++i)
     {
         if (p(*(heap + i), *(heap + heap_parent_idx(i))))
             return false;
@@ -76,12 +76,12 @@ SKR_INLINE bool is_heap(T* heap, TS count, TP&& p = TP())
 }
 
 // heapify
-template <typename T, typename TS, typename TP = Less<>>
-SKR_INLINE void heapify(T* heap, TS count, TP&& p = TP())
+template <typename T, typename TSize, typename TP = Less<>>
+SKR_INLINE void heapify(T* heap, TSize count, TP&& p = TP())
 {
     if (count > 1)
     {
-        TS idx = heap_parent_idx(count - 1);
+        TSize idx = heap_parent_idx(count - 1);
         while (true)
         {
             heap_sift_down(heap, idx, count, std::forward<TP>(p));
@@ -93,8 +93,8 @@ SKR_INLINE void heapify(T* heap, TS count, TP&& p = TP())
 }
 
 // heap sort
-template <typename T, typename TS, class TP = Less<>>
-SKR_INLINE void heap_sort(T heap, TS count, TP&& p = TP())
+template <typename T, typename TSize, class TP = Less<>>
+SKR_INLINE void heap_sort(T heap, TSize count, TP&& p = TP())
 {
     using Swapper = Swap<std::decay_t<decltype(*heap)>>;
 
@@ -104,10 +104,10 @@ SKR_INLINE void heap_sort(T heap, TS count, TP&& p = TP())
     // use reverse_pred heapify, and pop head swap to tail
     heapify(heap, count, reverse_pred);
 
-    for (TS cur_count = count - 1; cur_count > 0; --cur_count)
+    for (TSize cur_count = count - 1; cur_count > 0; --cur_count)
     {
         Swapper::call(*heap, *(heap + cur_count));
-        heap_sift_down(heap, (TS)0, cur_count, reverse_pred);
+        heap_sift_down(heap, (TSize)0, cur_count, reverse_pred);
     }
 }
 } // namespace skr::algo

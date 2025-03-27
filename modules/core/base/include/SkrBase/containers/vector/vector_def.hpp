@@ -6,10 +6,10 @@ namespace skr::container
 {
 // Vector 的数据引用，代替单纯的指针/Index返回
 // 提供足够的信息，并将 npos 封装起来简化调用防止出错
-template <typename T, typename TS, bool kConst>
+template <typename T, typename TSize, bool kConst>
 struct VectorDataRef {
     using DataType = std::conditional_t<kConst, const T, T>;
-    using SizeType = TS;
+    using SizeType = TSize;
 
     // ctor
     SKR_INLINE VectorDataRef() = default;

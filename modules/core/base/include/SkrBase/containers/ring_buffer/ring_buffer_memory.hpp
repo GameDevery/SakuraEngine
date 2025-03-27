@@ -8,9 +8,9 @@
 // ring buffer memory base
 namespace skr::container
 {
-template <typename TS>
+template <typename TSize>
 struct RingBufferMemoryBase {
-    using SizeType = TS;
+    using SizeType = TSize;
 
     // getter
     inline SizeType capacity() const noexcept { return _capacity; }

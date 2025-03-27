@@ -8,13 +8,13 @@
 
 namespace skr::container
 {
-template <typename K, typename V, typename TS, typename THash, bool kConst>
-struct SparseHashMapDataRef : private SparseHashSetDataRef<KVPair<K, V>, TS, THash, kConst> {
-    using Super     = SparseHashSetDataRef<KVPair<K, V>, TS, THash, kConst>;
+template <typename K, typename V, typename TSize, typename THash, bool kConst>
+struct SparseHashMapDataRef : private SparseHashSetDataRef<KVPair<K, V>, TSize, THash, kConst> {
+    using Super     = SparseHashSetDataRef<KVPair<K, V>, TSize, THash, kConst>;
     using PairType  = std::conditional_t<kConst, const KVPair<K, V>, KVPair<K, V>>;
     using KeyType   = std::conditional_t<kConst, const K, K>;
     using ValueType = std::conditional_t<kConst, const V, V>;
-    using SizeType  = TS;
+    using SizeType  = TSize;
     using HashType  = THash;
 
     // ctor

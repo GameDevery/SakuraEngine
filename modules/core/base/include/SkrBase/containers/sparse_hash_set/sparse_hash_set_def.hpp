@@ -9,19 +9,19 @@ namespace skr::container
 {
 // SparseHashSet 的数据定义，存储于 SparseVector 中
 // 存储的 hash 用于快速比较，next 用于查找 hash 链表
-template <typename T, typename TS, typename HashType>
+template <typename T, typename TSize, typename HashType>
 struct SparseHashSetStorage {
     T          _sparse_hash_set_data;
     HashType   _sparse_hash_set_hash;
-    mutable TS _sparse_hash_set_next;
+    mutable TSize _sparse_hash_set_next;
 };
 
 // SparseHashSet 的数据引用，代替单纯的指针/Index返回
 // 提供足够的信息，并将 npos 封装起来简化调用防止出错
-template <typename T, typename TS, typename THash, bool kConst>
+template <typename T, typename TSize, typename THash, bool kConst>
 struct SparseHashSetDataRef {
     using DataType = std::conditional_t<kConst, const T, T>;
-    using SizeType = TS;
+    using SizeType = TSize;
     using HashType = THash;
 
     SKR_INLINE SparseHashSetDataRef() = default;
@@ -93,20 +93,20 @@ private:
 // SparseHashSetStorage memory traits
 namespace skr::memory
 {
-template <typename T, typename TS, typename HashType>
-struct MemoryTraits<skr::container::SparseHashSetStorage<T, TS, HashType>, skr::container::SparseHashSetStorage<T, TS, HashType>> : public MemoryTraits<T, T> {
+template <typename T, typename TSize, typename HashType>
+struct MemoryTraits<skr::container::SparseHashSetStorage<T, TSize, HashType>, skr::container::SparseHashSetStorage<T, TSize, HashType>> : public MemoryTraits<T, T> {
 };
 } // namespace skr::memory
 
 namespace skr
 {
-template <typename T, typename TS, typename HashType>
-struct Swap<::skr::container::SparseHashSetStorage<T, TS, HashType>> {
-    inline static void call(::skr::container::SparseHashSetStorage<T, TS, HashType>& a, ::skr::container::SparseHashSetStorage<T, TS, HashType>& b)
+template <typename T, typename TSize, typename HashType>
+struct Swap<::skr::container::SparseHashSetStorage<T, TSize, HashType>> {
+    inline static void call(::skr::container::SparseHashSetStorage<T, TSize, HashType>& a, ::skr::container::SparseHashSetStorage<T, TSize, HashType>& b)
     {
         Swap<T>::call(a._sparse_hash_set_data, b._sparse_hash_set_data);
         Swap<HashType>::call(a._sparse_hash_set_hash, b._sparse_hash_set_hash);
-        Swap<TS>::call(a._sparse_hash_set_next, b._sparse_hash_set_next);
+        Swap<TSize>::call(a._sparse_hash_set_next, b._sparse_hash_set_next);
     }
 };
 } // namespace skr
