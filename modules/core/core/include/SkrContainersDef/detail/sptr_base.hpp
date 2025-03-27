@@ -2,7 +2,7 @@
 #include "SkrBase/types.h"
 #include "shared_rc.hpp"
 #include <type_traits>
-#include "SkrBase/sinterface.hpp"
+#include "SkrContainersDef/detail/sinterface.hpp"
 
 namespace skr
 {
