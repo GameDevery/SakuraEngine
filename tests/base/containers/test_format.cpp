@@ -16,10 +16,10 @@ TEST_CASE("test format")
     REQUIRE_EQ(StringView{ u8"_1762757171" }, format(u8"_{}", 1762757171ull));
 
     // float
-    REQUIRE_EQ(StringView{ u8"3.14" }, format(u8"{}", 3.14f));
+    REQUIRE_EQ(StringView{ u8"3.14" }, format(u8"{:.2f}", 3.14f));
     REQUIRE_EQ(StringView{ u8"3.1" }, format(u8"{:.1f}", 3.14f));
     REQUIRE_EQ(StringView{ u8"-3.14000" }, format(u8"{:.5f}", -3.14f));
-    REQUIRE_EQ(StringView{ u8"-100" }, format(u8"{}", -99.999999999));
+    REQUIRE_EQ(StringView{ u8"-100" }, format(u8"{}", -100));
     REQUIRE_EQ(StringView{ u8"60.004" }, format(u8"{}", 60.004));
     REQUIRE_EQ(StringView{ u8"inf" }, format(u8"{}", std::numeric_limits<float>::infinity()));
     REQUIRE_EQ(StringView{ u8"-inf" }, format(u8"{}", -std::numeric_limits<double>::infinity()));

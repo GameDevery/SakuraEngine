@@ -31,6 +31,7 @@ shared_module("SkrRT", "SKR_RUNTIME")
     
     -- add source files
     add_includedirs("include", {public = true})
+    add_defines("SUGOI_RESOURCE_SUPPORT", {public = false})
     -- add_files("src/**/build.*.c")
     add_files("src/**/build.*.cpp")
     if (is_os("macosx")) then 
@@ -38,5 +39,22 @@ shared_module("SkrRT", "SKR_RUNTIME")
         add_mxflags("-fno-objc-arc", {force = true})
         add_frameworks("CoreFoundation", "Cocoa", "IOKit", {public = true})
     end
+
+    skr_dbg_natvis_files("dbg/**.natvis")
+
+shared_module("SkrECS", "SKR_RUNTIME")
+    -- dependencies
+    public_dependency("SkrTask")
+
+    -- meta functional
+    add_deps("SkrRTMeta")
+
+    -- link system libs/frameworks
+    add_linkdirs("$(buildir)/$(os)/$(arch)/$(mode)", {public = true})
+    
+    -- add source files
+    add_includedirs("include", {public = true})
+    -- add_files("src/**/build.*.c")
+    add_files("src/ecs/build.*.cpp")
 
     skr_dbg_natvis_files("dbg/**.natvis")

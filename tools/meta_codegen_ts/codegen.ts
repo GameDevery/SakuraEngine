@@ -24,10 +24,13 @@ await generator.load_generators();
 generator.inject_configs();
 
 // run meta-lang
-generator.run_meta()
+await generator.run_meta()
 
 // run codegen
 generator.codegen()
 
 // output
 generator.output()
+
+// TODO. use process.exit control output manually
+// process.exit()

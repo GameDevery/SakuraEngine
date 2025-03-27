@@ -104,6 +104,8 @@ function main()
             download_tool:download_sdk(package.name, {force = opt_force, debug = package.debug})
         elseif package.kind == "file" then
             download_tool:download_file(package.name, {force = opt_force})
+        elseif package.kind == "custom" then
+            download_tool:download_sdk(package.name, {force = opt_force, debug = package.debug})
         end
     end
 end

@@ -115,3 +115,108 @@ export class CodeBuilder {
     return this.#content;
   }
 }
+
+// log shading
+export class LogColor {
+  static red(str: string) {
+    return `\x1b[31m${str}\x1b[0m`;
+  }
+  static green(str: string) {
+    return `\x1b[32m${str}\x1b[0m`;
+  }
+  static yellow(str: string) {
+    return `\x1b[33m${str}\x1b[0m`;
+  }
+  static blue(str: string) {
+    return `\x1b[34m${str}\x1b[0m`;
+  }
+  static magenta(str: string) {
+    return `\x1b[35m${str}\x1b[0m`;
+  }
+  static cyan(str: string) {
+    return `\x1b[36m${str}\x1b[0m`;
+  }
+  static white(str: string) {
+    return `\x1b[37m${str}\x1b[0m`;
+  }
+  static gray(str: string) {
+    return `\x1b[30m${str}\x1b[0m`;
+  }
+}
+
+// error
+export interface MetaLangLocation {
+  line: number;
+  column: number;
+  offset: number;
+}
+export class MetaLangError {
+  constructor(
+    public cpp_location: string,
+    public error_message: string,
+    public source: string,
+    public start: MetaLangLocation,
+    public end: MetaLangLocation,
+  ) {
+  }
+
+  async write_log() {
+    await Bun.write(Bun.stderr, this.error_body());
+  }
+
+  error_body(): string {
+    let result = "";
+
+    // error message
+    const colored_error = LogColor.red("error:");
+    result += `${this.cpp_location}: ${colored_error} ${this.error_message}\n`;
+
+    // source code
+    result += this.#source_preview();
+
+    return result;
+  }
+
+
+  #source_preview(): string {
+    const lines = this.source.split("\n");
+    let result = "";
+
+    // print prev line
+    for (let i = 0; i < this.start.line - 1; ++i) {
+      result += this.#line(i + 1, lines[i]);
+    }
+
+    // print error lines
+    for (let i = this.start.line - 1; i < this.end.line; ++i) {
+      const line_content = lines[i];
+      const error_start = i === this.start.line - 1 ? this.start.column - 1 : 0;
+      const error_end = i === this.end.line - 1 ? this.end.column - 1 : line_content.length;
+      result += this.#line(i + 1, line_content);
+      result += this.#error_indicator(error_start, error_end);
+    }
+
+    // print last line
+    for (let i = this.end.line; i < lines.length; ++i) {
+      result += this.#line(i + 1, lines[i]);
+    }
+
+    return result;
+  }
+  #line_number(line: number): string {
+    return `${line}`.padEnd(4, " ");
+  }
+  #line(line_number: number, content: string): string {
+    return `${this.#line_number(line_number)}|${content}\n`;
+  }
+  #error_indicator(start: number, end: number): string {
+    let indicator_count = end - start;
+    let empty_space_count = start;
+    if (indicator_count <= 0) {
+      // empty_space_count += 1;
+      indicator_count = 1;
+    }
+    const indicator = LogColor.green(" ".repeat(empty_space_count) + "^".repeat(indicator_count));
+    return `${' '.repeat(4)}|${indicator}\n`;
+  }
+}

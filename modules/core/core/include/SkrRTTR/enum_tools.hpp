@@ -20,42 +20,85 @@ enum class EEnumUnderlyingType
 template <typename T>
 inline constexpr EEnumUnderlyingType get_underlying_type()
 {
-    using UnderlyingType = std::underlying_type_t<T>;
-    if constexpr (std::is_same_v<UnderlyingType, uint8_t>)
+    if constexpr (std::is_enum_v<T>)
     {
-        return EEnumUnderlyingType::UINT8;
-    }
-    else if constexpr (std::is_same_v<UnderlyingType, uint16_t>)
-    {
-        return EEnumUnderlyingType::UINT16;
-    }
-    else if constexpr (std::is_same_v<UnderlyingType, uint32_t>)
-    {
-        return EEnumUnderlyingType::UINT32;
-    }
-    else if constexpr (std::is_same_v<UnderlyingType, uint64_t>)
-    {
-        return EEnumUnderlyingType::UINT64;
-    }
-    else if constexpr (std::is_same_v<UnderlyingType, int8_t>)
-    {
-        return EEnumUnderlyingType::INT8;
-    }
-    else if constexpr (std::is_same_v<UnderlyingType, int16_t>)
-    {
-        return EEnumUnderlyingType::INT16;
-    }
-    else if constexpr (std::is_same_v<UnderlyingType, int32_t>)
-    {
-        return EEnumUnderlyingType::INT32;
-    }
-    else if constexpr (std::is_same_v<UnderlyingType, int64_t>)
-    {
-        return EEnumUnderlyingType::INT64;
+        using UnderlyingType = std::underlying_type_t<T>;
+        if constexpr (std::is_same_v<UnderlyingType, uint8_t>)
+        {
+            return EEnumUnderlyingType::UINT8;
+        }
+        else if constexpr (std::is_same_v<UnderlyingType, uint16_t>)
+        {
+            return EEnumUnderlyingType::UINT16;
+        }
+        else if constexpr (std::is_same_v<UnderlyingType, uint32_t>)
+        {
+            return EEnumUnderlyingType::UINT32;
+        }
+        else if constexpr (std::is_same_v<UnderlyingType, uint64_t>)
+        {
+            return EEnumUnderlyingType::UINT64;
+        }
+        else if constexpr (std::is_same_v<UnderlyingType, int8_t>)
+        {
+            return EEnumUnderlyingType::INT8;
+        }
+        else if constexpr (std::is_same_v<UnderlyingType, int16_t>)
+        {
+            return EEnumUnderlyingType::INT16;
+        }
+        else if constexpr (std::is_same_v<UnderlyingType, int32_t>)
+        {
+            return EEnumUnderlyingType::INT32;
+        }
+        else if constexpr (std::is_same_v<UnderlyingType, int64_t>)
+        {
+            return EEnumUnderlyingType::INT64;
+        }
+        else
+        {
+            return EEnumUnderlyingType::INVALID;
+        }
     }
     else
     {
-        return EEnumUnderlyingType::INVALID;
+        using UnderlyingType = T;
+        if constexpr (std::is_same_v<UnderlyingType, uint8_t>)
+        {
+            return EEnumUnderlyingType::UINT8;
+        }
+        else if constexpr (std::is_same_v<UnderlyingType, uint16_t>)
+        {
+            return EEnumUnderlyingType::UINT16;
+        }
+        else if constexpr (std::is_same_v<UnderlyingType, uint32_t>)
+        {
+            return EEnumUnderlyingType::UINT32;
+        }
+        else if constexpr (std::is_same_v<UnderlyingType, uint64_t>)
+        {
+            return EEnumUnderlyingType::UINT64;
+        }
+        else if constexpr (std::is_same_v<UnderlyingType, int8_t>)
+        {
+            return EEnumUnderlyingType::INT8;
+        }
+        else if constexpr (std::is_same_v<UnderlyingType, int16_t>)
+        {
+            return EEnumUnderlyingType::INT16;
+        }
+        else if constexpr (std::is_same_v<UnderlyingType, int32_t>)
+        {
+            return EEnumUnderlyingType::INT32;
+        }
+        else if constexpr (std::is_same_v<UnderlyingType, int64_t>)
+        {
+            return EEnumUnderlyingType::INT64;
+        }
+        else
+        {
+            return EEnumUnderlyingType::INVALID;
+        }
     }
 }
 
@@ -66,55 +109,75 @@ struct EnumValue {
     }
     EnumValue(uint8_t value)
         : _underlying_type(EEnumUnderlyingType::UINT8)
-        , _value_uint8(value)
+        , _value_unsigned(value)
     {
     }
     EnumValue(int8_t value)
         : _underlying_type(EEnumUnderlyingType::INT8)
-        , _value_int8(value)
+        , _value_signed(value)
     {
     }
     EnumValue(uint16_t value)
         : _underlying_type(EEnumUnderlyingType::UINT16)
-        , _value_uint16(value)
+        , _value_unsigned(value)
     {
     }
     EnumValue(int16_t value)
         : _underlying_type(EEnumUnderlyingType::INT16)
-        , _value_int16(value)
+        , _value_signed(value)
     {
     }
     EnumValue(uint32_t value)
         : _underlying_type(EEnumUnderlyingType::UINT32)
-        , _value_uint32(value)
+        , _value_unsigned(value)
     {
     }
     EnumValue(int32_t value)
         : _underlying_type(EEnumUnderlyingType::INT32)
-        , _value_int32(value)
+        , _value_signed(value)
     {
     }
     EnumValue(uint64_t value)
         : _underlying_type(EEnumUnderlyingType::UINT64)
-        , _value_uint64(value)
+        , _value_unsigned(value)
     {
     }
     EnumValue(int64_t value)
         : _underlying_type(EEnumUnderlyingType::INT64)
-        , _value_int64(value)
+        , _value_signed(value)
     {
     }
 
     // getter
     SKR_INLINE EEnumUnderlyingType underlying_type() const { return _underlying_type; }
-    SKR_INLINE uint8_t             value_uint8() const { return _value_uint8; }
-    SKR_INLINE int8_t              value_int8() const { return _value_int8; }
-    SKR_INLINE uint16_t            value_uint16() const { return _value_uint16; }
-    SKR_INLINE int16_t             value_int16() const { return _value_int16; }
-    SKR_INLINE uint32_t            value_uint32() const { return _value_uint32; }
-    SKR_INLINE int32_t             value_int32() const { return _value_int32; }
-    SKR_INLINE uint64_t            value_uint64() const { return _value_uint64; }
-    SKR_INLINE int64_t             value_int64() const { return _value_int64; }
+    SKR_INLINE uint8_t             value_uint8() const { return static_cast<uint8_t>(_value_unsigned); }
+    SKR_INLINE int8_t              value_int8() const { return static_cast<int8_t>(_value_signed); }
+    SKR_INLINE uint16_t            value_uint16() const { return static_cast<uint16_t>(_value_unsigned); }
+    SKR_INLINE int16_t             value_int16() const { return static_cast<int16_t>(_value_signed); }
+    SKR_INLINE uint32_t            value_uint32() const { return static_cast<uint32_t>(_value_unsigned); }
+    SKR_INLINE int32_t             value_int32() const { return static_cast<int32_t>(_value_signed); }
+    SKR_INLINE uint64_t            value_uint64() const { return static_cast<uint64_t>(_value_unsigned); }
+    SKR_INLINE int64_t             value_int64() const { return static_cast<int64_t>(_value_signed); }
+
+    // sign
+    SKR_INLINE bool is_unsigned() const
+    {
+        return _underlying_type >= EEnumUnderlyingType::UINT8 && _underlying_type <= EEnumUnderlyingType::UINT64;
+    }
+    SKR_INLINE bool is_signed() const
+    {
+        return _underlying_type >= EEnumUnderlyingType::INT8 && _underlying_type <= EEnumUnderlyingType::INT64;
+    }
+    SKR_INLINE int64_t value_signed() const
+    {
+        SKR_ASSERT(is_signed());
+        return _value_signed;
+    }
+    SKR_INLINE uint64_t value_unsigned() const
+    {
+        SKR_ASSERT(is_unsigned());
+        return _value_unsigned;
+    }
 
     // caster
     template <typename T>
@@ -130,107 +193,93 @@ struct EnumValue {
         {
             return false;
         }
-        else if (underlying_type == EEnumUnderlyingType::UINT8)
+
+        switch (_underlying_type)
         {
-            if ((_underlying_type >= EEnumUnderlyingType::UINT8 && _underlying_type <= EEnumUnderlyingType::UINT64) ||
-                (_underlying_type >= EEnumUnderlyingType::INT16 && _underlying_type <= EEnumUnderlyingType::INT64))
+        case EEnumUnderlyingType::UINT8:
+            if ((underlying_type >= EEnumUnderlyingType::UINT8 && underlying_type <= EEnumUnderlyingType::UINT64) ||
+                (underlying_type >= EEnumUnderlyingType::INT16 && underlying_type <= EEnumUnderlyingType::INT64))
             {
-                result = static_cast<T>(_value_uint8);
+                result = static_cast<T>(value_uint8());
                 return true;
             }
             else
             {
                 return false;
             }
-        }
-        else if (underlying_type == EEnumUnderlyingType::INT8)
-        {
-            if ((_underlying_type >= EEnumUnderlyingType::INT8 && _underlying_type <= EEnumUnderlyingType::INT64))
+        case EEnumUnderlyingType::INT8:
+            if ((underlying_type >= EEnumUnderlyingType::INT8 && underlying_type <= EEnumUnderlyingType::INT64))
             {
-                result = static_cast<T>(_value_int8);
+                result = static_cast<T>(value_int8());
                 return true;
             }
             else
             {
                 return false;
             }
-        }
-        else if (underlying_type == EEnumUnderlyingType::UINT16)
-        {
-            if ((_underlying_type >= EEnumUnderlyingType::UINT16 && _underlying_type <= EEnumUnderlyingType::UINT64) ||
-                (_underlying_type >= EEnumUnderlyingType::INT32 && _underlying_type <= EEnumUnderlyingType::INT64))
+        case EEnumUnderlyingType::UINT16:
+            if ((underlying_type >= EEnumUnderlyingType::UINT16 && underlying_type <= EEnumUnderlyingType::UINT64) ||
+                (underlying_type >= EEnumUnderlyingType::INT32 && underlying_type <= EEnumUnderlyingType::INT64))
             {
-                result = static_cast<T>(_value_uint16);
+                result = static_cast<T>(value_uint16());
                 return true;
             }
             else
             {
                 return false;
             }
-        }
-        else if (underlying_type == EEnumUnderlyingType::INT16)
-        {
-            if (_underlying_type >= EEnumUnderlyingType::INT16 && _underlying_type <= EEnumUnderlyingType::INT64)
+        case EEnumUnderlyingType::INT16:
+            if (underlying_type >= EEnumUnderlyingType::INT16 && underlying_type <= EEnumUnderlyingType::INT64)
             {
-                result = static_cast<T>(_value_int16);
+                result = static_cast<T>(value_int16());
                 return true;
             }
             else
             {
                 return false;
             }
-        }
-        else if (underlying_type == EEnumUnderlyingType::UINT32)
-        {
-            if ((_underlying_type >= EEnumUnderlyingType::UINT32 && _underlying_type <= EEnumUnderlyingType::UINT64) ||
-                _underlying_type == EEnumUnderlyingType::INT64)
+        case EEnumUnderlyingType::UINT32:
+            if ((underlying_type >= EEnumUnderlyingType::UINT32 && underlying_type <= EEnumUnderlyingType::UINT64) ||
+                underlying_type == EEnumUnderlyingType::INT64)
             {
-                result = static_cast<T>(_value_uint32);
+                result = static_cast<T>(value_uint32());
                 return true;
             }
             else
             {
                 return false;
             }
-        }
-        else if (underlying_type == EEnumUnderlyingType::INT32)
-        {
-            if (_underlying_type >= EEnumUnderlyingType::INT32 && _underlying_type <= EEnumUnderlyingType::INT64)
+        case EEnumUnderlyingType::INT32:
+            if (underlying_type >= EEnumUnderlyingType::INT32 && underlying_type <= EEnumUnderlyingType::INT64)
             {
-                result = static_cast<T>(_value_int32);
+                result = static_cast<T>(value_int32());
                 return true;
             }
             else
             {
                 return false;
             }
-        }
-        else if (underlying_type == EEnumUnderlyingType::UINT64)
-        {
-            if (_underlying_type == EEnumUnderlyingType::UINT64)
+        case EEnumUnderlyingType::UINT64:
+            if (underlying_type == EEnumUnderlyingType::UINT64)
             {
-                result = static_cast<T>(_value_uint64);
+                result = static_cast<T>(value_uint64());
                 return true;
             }
             else
             {
                 return false;
             }
-        }
-        else if (underlying_type == EEnumUnderlyingType::INT64)
-        {
-            if (_underlying_type >= EEnumUnderlyingType::INT64 && _underlying_type <= EEnumUnderlyingType::INT64)
+        case EEnumUnderlyingType::INT64:
+            if (underlying_type >= EEnumUnderlyingType::INT64 && underlying_type <= EEnumUnderlyingType::INT64)
             {
-                result = static_cast<T>(_value_int64);
+                result = static_cast<T>(value_int64());
                 return true;
             }
             else
             {
                 return false;
             }
-        }
-        else
-        {
+        default:
             SKR_UNREACHABLE_CODE();
             return false;
         }
@@ -240,18 +289,50 @@ struct EnumValue {
     SKR_INLINE bool is_valid() const { return _underlying_type != EEnumUnderlyingType::INVALID; }
     SKR_INLINE      operator bool() const { return is_valid(); }
 
+    // compare
+    SKR_INLINE bool operator==(const EnumValue& rhs) const
+    {
+        if (_underlying_type != rhs._underlying_type)
+        {
+            return false;
+        }
+
+        if (is_signed())
+        {
+            return _value_signed == rhs._value_signed;
+        }
+        else
+        {
+            return _value_unsigned == rhs._value_unsigned;
+        }
+    }
+
+    // hash
+    SKR_INLINE size_t _skr_hash() const
+    {
+        auto seed = Hash<EEnumUnderlyingType>()(_underlying_type);
+        if (is_signed())
+        {
+            return hash_combine(
+                seed,
+                Hash<int64_t>()(_value_signed)
+            );
+        }
+        else
+        {
+            return hash_combine(
+                seed,
+                Hash<uint64_t>()(_value_unsigned)
+            );
+        }
+    }
+
 private:
     EEnumUnderlyingType _underlying_type;
     union
     {
-        uint8_t  _value_uint8;
-        int8_t   _value_int8;
-        uint16_t _value_uint16;
-        int16_t  _value_int16;
-        uint32_t _value_uint32;
-        int32_t  _value_int32;
-        uint64_t _value_uint64;
-        int64_t  _value_int64;
+        int64_t  _value_signed;
+        uint64_t _value_unsigned;
     };
 };
 

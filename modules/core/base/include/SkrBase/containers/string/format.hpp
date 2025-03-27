@@ -7,9 +7,9 @@
 // format parser
 namespace skr::container
 {
-template <typename TS>
+template <typename TSize>
 struct FormatToken {
-    using ViewType = U8StringView<TS>;
+    using ViewType = U8StringView<TSize>;
 
     enum class Kind
     {
@@ -22,10 +22,10 @@ struct FormatToken {
     Kind     kind = Kind::Unknow;
     ViewType view = {};
 };
-template <typename TS>
+template <typename TSize>
 struct FormatTokenIter {
-    using ViewType  = U8StringView<TS>;
-    using TokenType = FormatToken<TS>;
+    using ViewType  = U8StringView<TSize>;
+    using TokenType = FormatToken<TSize>;
 
     inline FormatTokenIter(ViewType format_str)
         : _format_str(format_str)
@@ -130,7 +130,7 @@ private:
 
 private:
     ViewType  _format_str;
-    TS        _index;
+    TSize        _index;
     TokenType _cur_token;
 };
 } // namespace skr::container
@@ -631,10 +631,10 @@ struct Formatter<skr_char8[N]> {
 };
 
 // string types
-template <typename TS>
-struct Formatter<U8StringView<TS>> {
+template <typename TSize>
+struct Formatter<U8StringView<TSize>> {
     template <typename TString>
-    inline static void format(TString& out, U8StringView<TS> value, typename TString::ViewType spec)
+    inline static void format(TString& out, U8StringView<TSize> value, typename TString::ViewType spec)
     {
         out.append(value);
     }
@@ -791,12 +791,25 @@ inline void format_to(TString& out, typename TString::ViewType view, Args&&... a
                 {
                     SKR_VERIFY(indexing_mode != IndexingMode::Auto && "Automatic index is not allowed mixing with manual index!");
                     indexing_mode      = IndexingMode::Manual;
-                    auto [last, error] = std::from_chars((const char*)arg_idx.data(),
-                                                         (const char*)(arg_idx.data() + arg_idx.size()), cur_idx);
+                    // clang-format off
+                    auto [last, error] = std::from_chars(
+                        (const char*)arg_idx.data(),
+                        (const char*)(arg_idx.data() + arg_idx.size()), 
+                        cur_idx
+                    );
+                    // clang-format on
                     SKR_VERIFY(last == (const char*)(arg_idx.data() + arg_idx.size()) && "Invalid format index!");
                 }
-                SKR_VERIFY(cur_idx < arg_count && "Invalid format index!");
-                formatters.at(cur_idx).format(out, spec);
+                
+                // protate
+                if (cur_idx < arg_count)
+                {
+                    formatters.at(cur_idx).format(out, spec);
+                }
+                else
+                {
+                    out.append(token.view);
+                }
             }
             break;
             default:
@@ -813,8 +826,6 @@ inline TString format(typename TString::ViewType view, Args&&... args)
     return out;
 }
 
-// TODO. format, 返回 string
-// TODO. format_to, 对特定容器进行 format
 // TODO. formatted_size, format 后的尺寸
 // TODO. vformat, 使用 FormatArgs 结构
 } // namespace skr::container

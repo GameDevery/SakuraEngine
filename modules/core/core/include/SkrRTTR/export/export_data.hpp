@@ -75,7 +75,6 @@ ERTTRFieldFlag : uint32_t
 {
     None          = 0,      // default
     ScriptVisible = 1 << 0, // can script visit this field
-    ScriptWrap    = 1 << 1, // force export field use wrap mode
 };
 // clang-format off
 sreflect_enum_class(guid = "396e9de1-ce51-4a65-8e47-09525e91207f")
@@ -84,7 +83,6 @@ ERTTRStaticFieldFlag : uint32_t
 {
     None          = 0,      // default
     ScriptVisible = 1 << 0, // can script visit this static field
-    ScriptWrap    = 1 << 1, // force export field use wrap mode
 };
 // clang-format off
 sreflect_enum_class(guid = "1f2aa88d-4d2f-47c0-8c97-b03cf574d673")
@@ -102,7 +100,7 @@ ERTTRRecordFlag : uint32_t
     None          = 0,      // default
     ScriptVisible = 1 << 0, // can script visit this record
     ScriptNewable = 1 << 1, // can script new this record
-    ScriptBox     = 1 << 2, // export to script use box mode
+    ScriptMapping = 1 << 2, // export to script use mapping mode
 };
 // clang-format off
 sreflect_enum_class(guid = "a2d04427-aa0a-43b4-9975-bc0e6b92120e")
@@ -127,8 +125,9 @@ struct RTTRParamData {
     using MakeDefaultFunc = void (*)(void*);
 
     // signature
-    String        name = {};
-    TypeSignature type = {};
+    uint64_t      index = 0;
+    String        name  = {};
+    TypeSignature type  = {};
     // TODO. make default 需要处理 xvalue 的 case，以及判断是否是 InitListExpr
     //       同时，需要通过是否是 ExprWithCleanups 来判断是否是 xvalue 类型的构造
     MakeDefaultFunc make_default = nullptr;
@@ -144,18 +143,27 @@ struct RTTRParamData {
         result->type          = type_signature_of<Arg>();
         return result;
     }
+    template <typename... Args>
+    inline static void Fill(Vector<RTTRParamData*>& out)
+    {
+        out = { RTTRParamData::New<Args>()... };
+        for (uint32_t i = 0; i < out.size(); ++i)
+        {
+            out[i]->index = i;
+        }
+    }
 };
 
 // help functions
 template <typename Data>
-inline bool export_function_signature_equal(const Data& data, TypeSignature signature, ETypeSignatureCompareFlag flag)
+inline bool export_function_signature_equal(const Data& data, TypeSignatureView signature, ETypeSignatureCompareFlag flag)
 {
-    SKR_ASSERT(signature.view().is_complete());
-    SKR_ASSERT(signature.view().is_function());
+    SKR_ASSERT(signature.is_complete());
+    SKR_ASSERT(signature.is_function());
 
     // read signature data
     uint32_t param_count;
-    auto     view = signature.view().read_function_signature(param_count);
+    auto     view = signature.read_function_signature(param_count);
     if (param_count != data.param_data.size()) { return false; }
 
     // compare return type
@@ -180,8 +188,10 @@ namespace skr::attr
 // use on:
 //   method
 //   static_method
-sreflect_struct(guid = "982d9f4d-1c0f-4ee2-914a-b211f7539cff") 
+// clang-format off
+sreflect_struct(guid = "982d9f4d-1c0f-4ee2-914a-b211f7539cff")
 ScriptGetter {
+    // clang-format on
     inline ScriptGetter(String name)
         : prop_name(std::move(name))
     {
@@ -193,8 +203,10 @@ ScriptGetter {
 // use on:
 //   method
 //   static_method
+// clang-format off
 sreflect_struct(guid = "ee933720-6b10-4b03-a6e7-20227e4829b2")
 ScriptSetter {
+    // clang-format on
     inline ScriptSetter(String name)
         : prop_name(std::move(name))
     {
@@ -233,11 +245,11 @@ struct RTTRFunctionData {
     template <typename Ret, typename... Args>
     inline void fill_signature(Ret (*)(Args...))
     {
-        ret_type   = type_signature_of<Ret>();
-        param_data = { RTTRParamData::New<Args>()... };
+        ret_type = type_signature_of<Ret>();
+        RTTRParamData::Fill<Args...>(param_data);
     }
 
-    inline bool signature_equal(TypeSignature signature, ETypeSignatureCompareFlag flag) const
+    inline bool signature_equal(TypeSignatureView signature, ETypeSignatureCompareFlag flag) const
     {
         return export_function_signature_equal(*this, signature, flag);
     }
@@ -270,19 +282,19 @@ struct RTTRMethodData {
     template <class T, typename Ret, typename... Args>
     inline void fill_signature(Ret (T::*)(Args...))
     {
-        ret_type   = type_signature_of<Ret>();
-        param_data = { RTTRParamData::New<Args>()... };
-        is_const   = false;
+        ret_type = type_signature_of<Ret>();
+        RTTRParamData::Fill<Args...>(param_data);
+        is_const = false;
     }
     template <class T, typename Ret, typename... Args>
     inline void fill_signature(Ret (T::*)(Args...) const)
     {
-        ret_type   = type_signature_of<Ret>();
-        param_data = { RTTRParamData::New<Args>()... };
-        is_const   = true;
+        ret_type = type_signature_of<Ret>();
+        RTTRParamData::Fill<Args...>(param_data);
+        is_const = true;
     }
 
-    inline bool signature_equal(TypeSignature signature, ETypeSignatureCompareFlag flag) const
+    inline bool signature_equal(TypeSignatureView signature, ETypeSignatureCompareFlag flag) const
     {
         return export_function_signature_equal(*this, signature, flag);
     }
@@ -314,11 +326,11 @@ struct RTTRStaticMethodData {
     template <typename Ret, typename... Args>
     inline void fill_signature(Ret (*)(Args...))
     {
-        ret_type   = type_signature_of<Ret>();
-        param_data = { RTTRParamData::New<Args>()... };
+        ret_type = type_signature_of<Ret>();
+        RTTRParamData::Fill<Args...>(param_data);
     }
 
-    inline bool signature_equal(TypeSignature signature, ETypeSignatureCompareFlag flag) const
+    inline bool signature_equal(TypeSignatureView signature, ETypeSignatureCompareFlag flag) const
     {
         return export_function_signature_equal(*this, signature, flag);
     }
@@ -350,11 +362,11 @@ struct RTTRExternMethodData {
     template <typename Ret, typename... Args>
     inline void fill_signature(Ret (*)(Args...))
     {
-        ret_type   = type_signature_of<Ret>();
-        param_data = { RTTRParamData::New<Args>()... };
+        ret_type = type_signature_of<Ret>();
+        RTTRParamData::Fill<Args...>(param_data);
     }
 
-    inline bool signature_equal(TypeSignature signature, ETypeSignatureCompareFlag flag) const
+    inline bool signature_equal(TypeSignatureView signature, ETypeSignatureCompareFlag flag) const
     {
         return export_function_signature_equal(*this, signature, flag);
     }
@@ -384,17 +396,17 @@ struct RTTRCtorData {
     template <typename... Args>
     inline void fill_signature()
     {
-        param_data = { RTTRParamData::New<Args>()... };
+        RTTRParamData::Fill<Args...>(param_data);
     }
 
-    inline bool signature_equal(TypeSignature signature, ETypeSignatureCompareFlag flag) const
+    inline bool signature_equal(TypeSignatureView signature, ETypeSignatureCompareFlag flag) const
     {
-        SKR_ASSERT(signature.view().is_complete());
-        SKR_ASSERT(signature.view().is_function());
+        SKR_ASSERT(signature.is_complete());
+        SKR_ASSERT(signature.is_function());
 
         // read signature data
         uint32_t param_count;
-        auto     view = signature.view().read_function_signature(param_count);
+        auto     view = signature.read_function_signature(param_count);
         if (param_count != param_data.size()) { return false; }
 
         // compare return type

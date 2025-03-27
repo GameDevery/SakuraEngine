@@ -1,6 +1,7 @@
 #pragma once
 #include "SkrBase/misc/integer_tools.hpp"
 #include "SkrContainersDef/skr_allocator.hpp"
+#include "SkrContainersDef/vector.hpp"
 #include "SkrRTTR/rttr_traits.hpp"
 
 namespace skr
@@ -428,8 +429,8 @@ struct TypeSignatureHelper {
         SKR_ASSERT(has_enough_buffer(pos, end, ETypeSignatureSignal::GenericTypeId));
         SKR_ASSERT(peek_signal(pos, end) == ETypeSignatureSignal::GenericTypeId);
         pos = jump_signal(pos, end);
-        pos = read_buffer(pos, guid);
-        return read_buffer(pos, data_count);
+        pos = read_buffer(pos, data_count);
+        return read_buffer(pos, guid);
     }
     inline static const uint8_t* read_function_signature(const uint8_t* pos, const uint8_t* end, uint32_t& data_count)
     {
@@ -1299,6 +1300,7 @@ struct TypeSignatureTraits<Ret(Args...)> {
 
 #pragma region TYPE SIGNATURE
 struct TypeSignature : private SkrAllocator {
+    friend struct TypeSignatureBuilder;
 
     // ctor & dtor
     inline TypeSignature() = default;
@@ -1392,6 +1394,133 @@ struct TypeSignature : private SkrAllocator {
 private:
     uint8_t* _data = nullptr;
     size_t   _size = 0;
+};
+struct TypeSignatureBuilder {
+    // write helper
+    inline void write_none()
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::None));
+        TypeSignatureHelper::write_none(add_result.ptr(), data.end());
+    }
+    inline void write_type_id(const GUID& guid)
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::TypeId));
+        TypeSignatureHelper::write_type_id(add_result.ptr(), data.end(), guid);
+    }
+    inline void write_generic_type_id(const GUID& guid, uint32_t data_count)
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::GenericTypeId));
+        TypeSignatureHelper::write_generic_type_id(add_result.ptr(), data.end(), guid, data_count);
+    }
+    inline void write_function_signature(uint32_t param_count)
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::FunctionSignature));
+        TypeSignatureHelper::write_function_signature(add_result.ptr(), data.end(), param_count);
+    }
+    inline void write_const()
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::Const));
+        TypeSignatureHelper::write_const(add_result.ptr(), data.end());
+    }
+    inline void write_pointer()
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::Pointer));
+        TypeSignatureHelper::write_pointer(add_result.ptr(), data.end());
+    }
+    inline void write_ref()
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::Ref));
+        TypeSignatureHelper::write_ref(add_result.ptr(), data.end());
+    }
+    inline void write_rvalue_ref()
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::RValueRef));
+        TypeSignatureHelper::write_rvalue_ref(add_result.ptr(), data.end());
+    }
+    inline void write_array_dim(uint32_t dim)
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::ArrayDim));
+        TypeSignatureHelper::write_array_dim(add_result.ptr(), data.end(), dim);
+    }
+    inline void write_bool(bool value)
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::Bool));
+        TypeSignatureHelper::write_bool(add_result.ptr(), data.end(), value);
+    }
+    inline void write_int8(int8_t value)
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::Int8));
+        TypeSignatureHelper::write_int8(add_result.ptr(), data.end(), value);
+    }
+    inline void write_int16(int16_t value)
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::Int16));
+        TypeSignatureHelper::write_int16(add_result.ptr(), data.end(), value);
+    }
+    inline void write_int32(int32_t value)
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::Int32));
+        TypeSignatureHelper::write_int32(add_result.ptr(), data.end(), value);
+    }
+    inline void write_int64(int64_t value)
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::Int64));
+        TypeSignatureHelper::write_int64(add_result.ptr(), data.end(), value);
+    }
+    inline void write_uint8(uint8_t value)
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::UInt8));
+        TypeSignatureHelper::write_uint8(add_result.ptr(), data.end(), value);
+    }
+    inline void write_uint16(uint16_t value)
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::UInt16));
+        TypeSignatureHelper::write_uint16(add_result.ptr(), data.end(), value);
+    }
+    inline void write_uint32(uint32_t value)
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::UInt32));
+        TypeSignatureHelper::write_uint32(add_result.ptr(), data.end(), value);
+    }
+    inline void write_uint64(uint64_t value)
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::UInt64));
+        TypeSignatureHelper::write_uint64(add_result.ptr(), data.end(), value);
+    }
+    inline void write_float(float value)
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::Float));
+        TypeSignatureHelper::write_float(add_result.ptr(), data.end(), value);
+    }
+    inline void write_double(double value)
+    {
+        auto add_result = data.add_unsafe(__helper::get_type_signature_size_of_signal(ETypeSignatureSignal::Double));
+        TypeSignatureHelper::write_double(add_result.ptr(), data.end(), value);
+    }
+
+    // write helpers for const ref and const pointer, to prevent mistake, because const modifier need after pointer or ref
+    inline void write_const_ref()
+    {
+        write_ref();
+        write_const();
+    }
+    inline void write_const_pointer()
+    {
+        write_pointer();
+        write_const();
+    }
+
+    // make
+    inline TypeSignature type_signature()
+    {
+        return { TypeSignatureView{ data.data(), data.size() } };
+    }
+    inline TypeSignatureView type_signature_view()
+    {
+        return { data.data(), data.size() };
+    }
+
+    Vector<uint8_t> data;
 };
 #pragma endregion
 

@@ -17,11 +17,11 @@ static_component("CubismFramework", "SkrLive2D", { public = false })
         if (is_mode("asan")) then
             set_runtimes("MD") -- csmiPlatformDependentLogPrint uses freopen
         end
-        if (is_mode("release")) then
+        -- if (is_mode("release")) then
             add_links("Live2DCubismCore_MD", {public=true})
-        else
-            add_links("Live2DCubismCore_MDd", {public=true})
-        end
+        -- else
+        --     add_links("Live2DCubismCore_MDd", {public=true})
+        -- end
     end
     if (is_os("macosx")) then 
         add_links("Live2DCubismCore", {public=true})

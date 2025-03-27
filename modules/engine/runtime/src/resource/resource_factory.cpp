@@ -4,6 +4,7 @@
 #include "SkrRTTR/type_registry.hpp"
 #include "SkrRTTR/type.hpp"
 #include "SkrCore/log.hpp"
+#include "SkrRTTR/export/extern_methods.hpp"
 
 namespace skr
 {
@@ -12,17 +13,13 @@ namespace resource
 
 bool SResourceFactory::Deserialize(skr_resource_record_t* record, SBinaryReader* reader)
 {
-    // TODO. resume rttr
     if (auto type = skr::get_type_from_guid(record->header.type))
     {
         auto p_obj = sakura_malloc_aligned(type->size(), type->alignment());
         // find & call ctor
         {
-            auto ctor_data = type->find_ctor_t<void()>(
-                skr::ETypeSignatureCompareFlag::Strict
-            );
-            auto ctor = reinterpret_cast<void(*)(void*)>(ctor_data->native_invoke);
-            ctor(p_obj);
+            auto ctor_data = type->find_default_ctor();
+            ctor_data.invoke(p_obj);
         }
         {
             using ReadBinProc = bool(void* o, void* r);
@@ -30,8 +27,7 @@ bool SResourceFactory::Deserialize(skr_resource_record_t* record, SBinaryReader*
                 skr::SkrCoreExternMethods::ReadBin,
                 ETypeSignatureCompareFlag::Strict
             );
-            auto read_bin = reinterpret_cast<ReadBinProc*>(read_bin_data->native_invoke);
-            if (!read_bin(p_obj, reader))
+            if (!read_bin_data.invoke(p_obj, reader))
             {
                 // TODO: CALL DTOR IF FAILED
                 SKR_UNIMPLEMENTED_FUNCTION();

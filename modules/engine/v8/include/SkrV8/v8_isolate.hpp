@@ -6,14 +6,18 @@
 #include "v8-platform.h"
 #include "v8_bind_data.hpp"
 #include "v8-primitive.h"
+#include "v8_bind_manager.hpp"
 
-// TODO. 使用 p-impl 实现多后端，并且对外层屏蔽对 v8 context 的操作，一切操作通过反射注入
-// TODO. custom getter/setter
 namespace skr
 {
 struct V8Context;
+struct V8Module;
 
 struct SKR_V8_API V8Isolate {
+    friend struct V8Context;
+    friend struct V8Value;
+    friend struct V8Module;
+
     // ctor & dtor
     V8Isolate();
     ~V8Isolate();
@@ -31,49 +35,43 @@ struct SKR_V8_API V8Isolate {
     // getter
     inline ::v8::Isolate* v8_isolate() const { return _isolate; }
 
-    // make context
-    V8Context* make_context();
-
     // operator isolate
     void gc(bool full = true);
 
-    // register type
-    void make_record_template(::skr::RTTRType* type);
-    void inject_templates_into_context(::v8::Global<::v8::Context> context);
-
     // bind object
-    V8BindRecordCore* translate_record(::skr::ScriptbleObject* obj);
-    void              mark_record_deleted(::skr::ScriptbleObject* obj);
+    V8BindCoreObject* translate_object(::skr::ScriptbleObject* obj);
+    void              mark_object_deleted(::skr::ScriptbleObject* obj);
+
+    // bind value
+    V8BindCoreValue* create_value(const RTTRType* type, const void* data);
+    V8BindCoreValue* translate_value_field(const RTTRType* type, const void* data, V8BindCoreRecordBase* owner);
 
 private:
-    // bind helpers
-    static void _gc_callback(const ::v8::WeakCallbackInfo<V8BindRecordCore>& data);
-    static void _call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static void _call_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static void _call_static_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static void _get_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static void _set_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static void _get_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static void _set_static_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static void _get_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static void _set_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static void _get_static_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static void _set_static_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
+    // make template
+    void                            register_mapping_type(const RTTRType* type);
+    v8::Local<v8::ObjectTemplate>   _get_enum_template(const RTTRType* type);
+    v8::Local<v8::FunctionTemplate> _get_record_template(const RTTRType* type);
+
+    // module callback
+    static v8::MaybeLocal<v8::Promise> _dynamic_import_module(
+        v8::Local<v8::Context>    context,
+        v8::Local<v8::Data>       host_defined_options,
+        v8::Local<v8::Value>      resource_name,
+        v8::Local<v8::String>     specifier,
+        v8::Local<v8::FixedArray> import_assertions
+    );
 
 private:
     // isolate data
     ::v8::Isolate*              _isolate;
     ::v8::Isolate::CreateParams _isolate_create_params;
 
-    // binder manager
-    ScriptBinderManager _binder_mgr;
+    // bind manager
+    V8BindManager* _bind_manager;
 
-    // templates
-    Map<::skr::RTTRType*, V8BindWrapData*> _record_templates;
-
-    // bind data
-    Map<::skr::ScriptbleObject*, V8BindRecordCore*> _alive_records;
-    Vector<V8BindRecordCore*>                       _deleted_records;
+    // modules
+    Map<String, V8Module*> _modules       = {};
+    Map<int, V8Module*>    _to_skr_module = {};
 };
 } // namespace skr
 

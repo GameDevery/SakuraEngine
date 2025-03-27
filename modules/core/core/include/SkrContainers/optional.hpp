@@ -1,6 +1,24 @@
 #pragma once
 #include "SkrContainersDef/optional.hpp"
+#include "SkrBase/types/guid.h"
 
+// rttr
+#include "SkrRTTR/type_signature.hpp"
+namespace skr
+{
+static constexpr GUID kOptionalGenericId = u8"bc48634e-85dd-45ce-a7c7-f85d5bab9680"_guid;
+template <typename T>
+struct TypeSignatureTraits<::skr::Optional<T>> {
+    inline static constexpr size_t buffer_size = type_signature_size_v<ETypeSignatureSignal::GenericTypeId> + TypeSignatureTraits<T>::buffer_size;
+    inline static uint8_t*         write(uint8_t* pos, uint8_t* end)
+    {
+        pos = TypeSignatureHelper::write_generic_type_id(pos, end, kOptionalGenericId, 1);
+        return TypeSignatureTraits<T>::write(pos, end);
+    }
+};
+} // namespace skr
+
+// bin serde
 #include "SkrSerde/bin_serde.hpp"
 namespace skr
 {
@@ -46,6 +64,7 @@ struct BinSerde<skr::Optional<T>> {
 };
 } // namespace skr
 
+// json serde
 #include "SkrSerde/json_serde.hpp"
 namespace skr
 {
@@ -59,7 +78,7 @@ struct JsonSerde<skr::Optional<T>> {
         bool flag;
         if (!json_read<bool>(r, flag))
             return false;
-        
+
         if (flag)
         {
             SKR_EXPECTED_CHECK(r->Key(u8"value"), false);

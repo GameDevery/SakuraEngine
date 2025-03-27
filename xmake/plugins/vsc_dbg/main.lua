@@ -20,8 +20,8 @@ utils.load_config()
 local _engine_dir = utils.get_env("engine_dir")
 
 -- programs
-local _python = utils.find_python()
-local _merge_natvis_script_path = path.join(_engine_dir, "tools/merge_natvis/merge_natvis.py")
+local _bun = utils.find_bun()
+local _merge_natvis_script_path_ts = path.join(_engine_dir, "tools/merge_natvis_ts/merge_natvis.ts")
 
 -- tools
 function _normalize_cmd_name(cmd_name)
@@ -96,7 +96,8 @@ function _load_launch_from_binary_target(target, build_dir)
         local config_post_cmds = target:values("vsc_dbg.cmd_post")
         
         -- get launch args
-        local args = config_args and config_args or {}
+        local args = config_args and table.wrap(config_args) or {}
+
 
         -- get launch envs
         local envs = {}
@@ -225,7 +226,7 @@ function _generate_natvis_files(natvis_files, cmd_name)
         
         -- combine commands
         local command = {
-            _merge_natvis_script_path,
+            _merge_natvis_script_path_ts,
             "-o", out_put_file_name,
         }
         for _, natvis_file in ipairs(natvis_files) do
@@ -233,7 +234,7 @@ function _generate_natvis_files(natvis_files, cmd_name)
         end
 
         -- run command
-        local out, err = os.iorunv(_python, command)
+        local out, err = os.iorunv(_bun, command)
 
         -- dump output
         if option.get("verbose") then

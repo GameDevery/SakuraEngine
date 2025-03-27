@@ -137,6 +137,7 @@ class EnumConfig extends ConfigBase {
   override enable: boolean = true;
 }
 class EnumValueConfig extends ConfigBase {
+  override enable: boolean = true;
 }
 
 // TODO. 通过 GUID 判断 RTTR 的开关
@@ -364,12 +365,7 @@ class _Gen {
               b.$indent((_b) => {
                 b.$line(`[[maybe_unused]] auto item_builder = builder.item(u8"${enum_value.short_name}", ${enum_value.name});`,);
                 b.$line(``);
-                this.#flags_and_attrs(
-                  b,
-                  enum_value,
-                  enum_value_config,
-                  "item_builder",
-                );
+                this.#flags_and_attrs(b, enum_value, enum_value_config, "item_builder");
               });
               b.$line(`}`);
             });
@@ -429,9 +425,10 @@ class _Gen {
     }
   }
   static #flags_expr(cpp_type: db.CppTypes, flags: string[]) {
-    return flags.map((flags) =>
-      `${this.#flag_enum_name_of(cpp_type)}::${flags}`
-    ).join(" | ");
+    return flags
+      .filter((value, index, self) => self.indexOf(value) === index)    // make list unique
+      .map((flags) => `${this.#flag_enum_name_of(cpp_type)}::${flags}`) // map to name
+      .join(" | ");
   }
 }
 

@@ -18,13 +18,13 @@
             "need-check-nil",
         ],
         // python options for meta codegen
-        "python.analysis.extraPaths": [
-            "${workspaceFolder:root}/tools/meta_codegen/",
-        ],
-        "python.autoComplete.extraPaths": [
-            "${workspaceFolder:root}/tools/meta_codegen/",
-        ],
-        "python.defaultInterpreterPath": "${workspaceFolder:root}/build/.skr/tool/windows/python-embed/python.exe",
+        // "python.analysis.extraPaths": [
+        //     "${workspaceFolder:root}/tools/meta_codegen/",
+        // ],
+        // "python.autoComplete.extraPaths": [
+        //     "${workspaceFolder:root}/tools/meta_codegen/",
+        // ],
+        // "python.defaultInterpreterPath": "${workspaceFolder:root}/build/.skr/tool/windows/python-embed/python.exe",
         // fixed terminal cwd
         "terminal.integrated.cwd": "${workspaceFolder:root}",
         // deno options for meta codegen
@@ -38,6 +38,10 @@
         },
         "[peggy]": {
             "editor.tabSize": 2,
+        },
+        // natvis as xml
+        "files.associations": {
+            "*.natvis": "xml",
         }
     },
     "launch": {

@@ -250,6 +250,11 @@ function _codegen_compile(target, proxy_target, opt)
         )
     end
 
+    -- cleanup outdir
+    if os.isdir(outdir) then
+        os.rmdir(outdir)
+    end
+
     -- compile meta source
     local out, err = os.iorunv(_meta, argv)
     
@@ -353,14 +358,17 @@ function _mako_render(target, scripts, dep_files, opt)
     }
 
     -- collect include modules
-    config.include_modules = {}
+    config.include_modules = json.mark_as_array({})
     for _, dep_target in pairs(target:deps()) do
         local dep_api = dep_target:values("c++.codegen.api")
-        table.insert(config.include_modules, {
-            module_name = dep_target:name(),
-            meta_dir = path.absolute(path.join(utils.skr_codegen_dir(dep_target:name()), "meta_database")),
-            api = dep_api and dep_api:upper() or dep_target:name():upper(),
-        })
+        local dep_codegen_enable = dep_target:values("c++.codegen.enable")
+        if dep_codegen_enable then
+            table.insert(config.include_modules, {
+                module_name = dep_target:name(),
+                meta_dir = path.absolute(path.join(utils.skr_codegen_dir(dep_target:name()), "meta_database")),
+                api = dep_api and dep_api:upper() or dep_target:name():upper(),
+            })
+        end
     end
 
     -- collect generators

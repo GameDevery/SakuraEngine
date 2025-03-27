@@ -5,11 +5,11 @@
 
 namespace skr::container
 {
-template <typename TS, typename TP>
-inline void process_ring_buffer_data(TS capacity, TS front, TS back, TP&& processor) noexcept
+template <typename TSize, typename TP>
+inline void process_ring_buffer_data(TSize capacity, TSize front, TSize back, TP&& processor) noexcept
 {
-    const TS solved_front = front % capacity;
-    const TS solved_back  = back % capacity;
+    const TSize solved_front = front % capacity;
+    const TSize solved_back  = back % capacity;
 
     if (solved_front < solved_back || (solved_front == 0 && solved_back == 0)) // continuous memory
     {
@@ -18,7 +18,7 @@ inline void process_ring_buffer_data(TS capacity, TS front, TS back, TP&& proces
     else // broken memory
     {
         // process front part
-        const TS front_part_size = capacity - solved_front;
+        const TSize front_part_size = capacity - solved_front;
         processor(0, solved_front, front_part_size);
 
         // process back part
@@ -26,8 +26,8 @@ inline void process_ring_buffer_data(TS capacity, TS front, TS back, TP&& proces
     }
 }
 
-template <typename T, typename TS>
-inline void copy_ring_buffer(T* dst, const T* src, TS src_capacity, TS src_front, TS src_back) noexcept
+template <typename T, typename TSize>
+inline void copy_ring_buffer(T* dst, const T* src, TSize src_capacity, TSize src_front, TSize src_back) noexcept
 {
     SKR_ASSERT(src_back != src_front && src_back - src_front <= src_capacity && "src buffer data is invalid");
 
@@ -35,12 +35,12 @@ inline void copy_ring_buffer(T* dst, const T* src, TS src_capacity, TS src_front
     src_capacity,
     src_front,
     src_back,
-    [&dst, &src](TS dst_offset, TS src_offset, TS size) {
+    [&dst, &src](TSize dst_offset, TSize src_offset, TSize size) {
         ::skr::memory::copy(dst + dst_offset, src + src_offset, size);
     });
 }
-template <typename T, typename TS>
-inline void move_ring_buffer(T* dst, T* src, TS src_capacity, TS src_front, TS src_back) noexcept
+template <typename T, typename TSize>
+inline void move_ring_buffer(T* dst, T* src, TSize src_capacity, TSize src_front, TSize src_back) noexcept
 {
     SKR_ASSERT(src_back != src_front && src_back - src_front <= src_capacity && "src buffer data is invalid");
 
@@ -48,12 +48,12 @@ inline void move_ring_buffer(T* dst, T* src, TS src_capacity, TS src_front, TS s
     src_capacity,
     src_front,
     src_back,
-    [&dst, &src](TS dst_offset, TS src_offset, TS size) {
+    [&dst, &src](TSize dst_offset, TSize src_offset, TSize size) {
         ::skr::memory::move(dst + dst_offset, src + src_offset, size);
     });
 }
-template <typename T, typename TS>
-inline void destruct_ring_buffer(T* buffer, TS capacity, TS front, TS back) noexcept
+template <typename T, typename TSize>
+inline void destruct_ring_buffer(T* buffer, TSize capacity, TSize front, TSize back) noexcept
 {
     SKR_ASSERT(back != front && back - front <= capacity && "buffer data is invalid");
 
@@ -61,7 +61,7 @@ inline void destruct_ring_buffer(T* buffer, TS capacity, TS front, TS back) noex
     capacity,
     front,
     back,
-    [&buffer](TS dst_offset, TS src_offset, TS size) {
+    [&buffer](TSize dst_offset, TSize src_offset, TSize size) {
         ::skr::memory::destruct(buffer + src_offset, size);
     });
 }

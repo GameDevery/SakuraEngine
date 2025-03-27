@@ -1,0 +1,15 @@
+{
+    "compilerOptions": {
+        "module": "ES2022",
+        "typeRoots": [
+            "./modules",
+        ],
+        "outDir": "./output",
+    },
+    "include": [
+        "**/*.ts"
+    ],
+    "exclude": [
+        "output",
+    ]
+}

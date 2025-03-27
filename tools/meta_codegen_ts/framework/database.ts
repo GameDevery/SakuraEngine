@@ -81,6 +81,7 @@ export class EnumValue {
 
   // info
   value: number;
+  file_name: string;
   comment: string;
   line: number;
 
@@ -92,6 +93,8 @@ export class EnumValue {
   // deno-lint-ignore no-explicit-any
   constructor(parent: Enum, json_obj: any) {
     this.parent = parent;
+
+    this.file_name = parent.file_name;
 
     // parse name
     fill_name(this, json_obj.name);
@@ -184,6 +187,7 @@ export class Ctor {
 
   parameters: Parameter[] = [];
 
+  file_name: string;
   comment: string;
   line: string;
 
@@ -195,6 +199,7 @@ export class Ctor {
   // deno-lint-ignore no-explicit-any
   constructor(parent: Record, json_obj: any) {
     this.parent = parent;
+    this.file_name = parent.file_name;
 
     fill_name(this, json_obj.name);
 
@@ -230,6 +235,7 @@ export class Field {
   is_functor: boolean;
   is_static: boolean;
   is_anonymous: boolean;
+  file_name: string;
   comment: string;
   line: number;
 
@@ -241,6 +247,7 @@ export class Field {
   // deno-lint-ignore no-explicit-any
   constructor(parent: Record, json_obj: any) {
     this.parent = parent;
+    this.file_name = parent.file_name;
 
     this.short_name = json_obj.name;
 
@@ -274,6 +281,7 @@ export class Method {
   is_static: boolean;
   is_const: boolean;
   is_nothrow: boolean;
+  file_name: string;
   comment: string;
   parameters: Parameter[] = [];
   ret_type: string;
@@ -288,6 +296,8 @@ export class Method {
   // deno-lint-ignore no-explicit-any
   constructor(parent: Record, json_obj: any) {
     this.parent = parent;
+
+    this.file_name = parent.file_name;
 
     fill_name(this, json_obj.name);
 
@@ -368,6 +378,7 @@ export class Parameter {
   is_callback: boolean;
   is_anonymous: boolean;
   default_value: string;
+  file_name: string;
   comment: string;
   line: number;
 
@@ -379,6 +390,7 @@ export class Parameter {
   // deno-lint-ignore no-explicit-any
   constructor(parent: Method | Function | Ctor, json_obj: any) {
     this.parent = parent;
+    this.file_name = parent.file_name;
 
     this.name = json_obj.name;
     this.type = json_obj.type;
@@ -646,6 +658,10 @@ export class Header {
     }
     for (const enum_obj of this.enums) {
       func(enum_obj, this);
+
+      for (const value of enum_obj.values) {
+        func(value, this);
+      }
     }
     for (const function_obj of this.functions) {
       func(function_obj, this);
@@ -667,7 +683,10 @@ export class Module {
     this.config = config;
 
     // check meta dir
-    if (!fs.existsSync(config.meta_dir)) { return }
+    if (!fs.existsSync(config.meta_dir)) {
+      throw new Error(`meta dir not exist "${config.meta_dir}"`);
+      // return
+    }
 
     // glob meta files
     const meta_files = fs.globSync(
@@ -875,7 +894,7 @@ export class Project {
   // tool functions
   is_derived(record: Record, base: string) {
     for (const base_name of record.bases) {
-      if (base_name == base) {
+      if (base_name === base) {
         return true;
       }
       const base_record = this.find_record(base_name);
@@ -886,5 +905,16 @@ export class Project {
   }
   is_derived_or_same(record: Record, base: string) {
     return record.name == base || this.is_derived(record, base);
+  }
+  get_all_bases(record: Record) {
+    const bases: string[] = [];
+    for (const base_name of record.bases) {
+      bases.push(base_name);
+      const base_record = this.find_record(base_name);
+      if (base_record != null) {
+        bases.push(...this.get_all_bases(base_record));
+      }
+    }
+    return bases;
   }
 }

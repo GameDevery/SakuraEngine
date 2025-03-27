@@ -2,6 +2,7 @@
 import * as peggy from "peggy";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import type { MetaLangLocation } from "./utils";
 
 //======================== scheme ========================
 type ValueType = string | number | boolean;
@@ -39,10 +40,18 @@ const symbol_array = Symbol("array");
 const symbol_value_proxy = Symbol("value_proxy");
 const symbol_array_proxy = Symbol("array_proxy");
 const symbol_access_listener = Symbol("access_listener");
+const ml_global_metadata_tables = new Map<any, any>();
+function metadata_dict_of(target: any) {
+  if (!ml_global_metadata_tables.has(target)) {
+    ml_global_metadata_tables.set(target, {});
+  }
+  return ml_global_metadata_tables.get(target);
+}
 function check_and_assign(target: any, meta_symbol: symbol, name: string, value: any) {
   // add metadata
-  target[meta_symbol] ??= {};
-  const values = target[meta_symbol] as Dict<PresetData>;
+  const metadata_dict = metadata_dict_of(target)
+  metadata_dict[meta_symbol] ??= {};
+  const values = metadata_dict[meta_symbol] as Dict<PresetData>;
 
   // solve name
   if (typeof name != "string") throw new Error("name must be string");
@@ -124,7 +133,7 @@ export function array(accept_type: ValueTypeStr, options: { name?: string } = {}
 }
 export function value_proxy(accept_type: ValueTypeStr) {
   return (target: any, method_name: string, desc: TypedPropertyDescriptor<ValueAssignFunc>) => {
-    target[symbol_value_proxy] = {
+    metadata_dict_of(target)[symbol_value_proxy] = {
       func: desc.value,
       accept_type: accept_type,
     } as ValueProxyData;
@@ -132,7 +141,7 @@ export function value_proxy(accept_type: ValueTypeStr) {
 }
 export function array_proxy(accept_type: ValueTypeStr) {
   return (target: any, method_name: string, desc: TypedPropertyDescriptor<ArrayAssignFunc>) => {
-    target[symbol_array_proxy] = {
+    metadata_dict_of(target)[symbol_array_proxy] = {
       func: desc.value,
       accept_type: accept_type,
     } as ArrayProxyData;;
@@ -140,11 +149,21 @@ export function array_proxy(accept_type: ValueTypeStr) {
 }
 export function access_listener() {
   return (target: any, method_name: string, desc: TypedPropertyDescriptor<AccessListenerFunc>) => {
-    target[symbol_access_listener] = desc.value;
+    metadata_dict_of(target)[symbol_access_listener] = desc.value;
   }
 }
 
 //======================== compiler ========================
+export class CompileError extends Error {
+  constructor(
+    public start: MetaLangLocation,
+    public end: MetaLangLocation,
+    public error: string,
+  )
+  {
+    super(error);
+  }
+}
 export class Compiler {
   #parser: peggy.Parser;
 
@@ -155,14 +174,26 @@ export class Compiler {
   compile(input: string): Program {
     try {
       const exprs = this.#parser.parse(input);
-      return new Program(exprs);
+      return new Program(exprs, input);
     } catch (e: any) {
-      e.location as peggy.Location;
-      throw new Error(
-        `failed to parse meta lang expression
-${e}
-source: ${input}
-at line ${e.location.start.line} column ${e.location.start.column}`,
+      const expect_str = e.expected
+        .map((item: any) => {
+          if (item.type === 'literal') {
+            return item.text;
+          } else if (item.type === 'other') {
+            return item.description;
+          } else if (item.type === 'end') {
+            return '[END]'
+          } else {
+            return undefined
+          }
+        })
+        .filter((item: any) => item !== undefined)
+        .join(", ");
+      throw new CompileError(
+        e.location.start,
+        e.location.end,
+        `expected ${expect_str}, but got ${e.found}`
       );
     }
   }
@@ -219,41 +250,38 @@ type OperatorNode = {
 }
 
 //======================== program ========================
-class AccessFailedError extends Error {
+export class AccessFailedError extends Error {
   key: string;
   obj: any;
   location: peggy.LocationRange;
 
   constructor(key: string, obj: any, location: peggy.LocationRange) {
-    super(`failed to access ${key} in ${obj.constructor.name}
-  at script: ${location.start.line}：${location.start.column}`)
+    super(`failed to access ${key} in ${obj.constructor.name}`)
 
     this.key = key;
     this.obj = obj;
     this.location = location;
   }
 }
-class TypeMismatchError extends Error {
+export class TypeMismatchError extends Error {
   expected: string;
   actual: any;
   location: peggy.LocationRange;
 
   constructor(expected: string, actual: any, location: peggy.LocationRange) {
-    super(`type mismatch, expected ${expected}, but got ${actual} (${typeof actual})
-  at script: ${location.start.line}：${location.start.column}`);
+    super(`type mismatch`);
     this.expected = expected;
     this.actual = actual;
     this.location = location;
   }
 }
-class PresetNotFoundError extends Error {
+export class PresetNotFoundError extends Error {
   preset: string;
   obj: any;
   location: peggy.LocationRange;
 
   constructor(preset: string, obj: any, location: peggy.LocationRange) {
-    super(`preset ${preset} not found in ${obj.constructor.name}
-  at script: ${location.start.line}：${location.start.column}`);
+    super(`preset not found`);
     this.preset = preset;
     this.obj = obj;
     this.location = location;
@@ -261,9 +289,11 @@ class PresetNotFoundError extends Error {
 }
 export class Program {
   #exprs: OperatorNode[];
+  source: string;
 
-  constructor(exprs: OperatorNode[]) {
+  constructor(exprs: OperatorNode[], source: string) {
     this.#exprs = exprs;
+    this.source = source;
   }
 
   exec(obj: any) {
@@ -306,8 +336,13 @@ export class Program {
       const proxy_sb = is_array ? symbol_array_proxy : symbol_value_proxy;
 
       // find accessor
-      const metadata = Object.getPrototypeOf(cur_obj)[access_sb];
-      const value_data = metadata?.[cur_key];
+      let value_data
+      Program.#each_metadata(cur_obj, access_sb, (metadata) => {
+        const found_value_data = metadata?.[cur_key];
+        if (found_value_data !== undefined) {
+          value_data = found_value_data
+        }
+      })
       if (value_data !== undefined) {
         // assign field
         Program.#check_type(value_data, expr);
@@ -317,14 +352,15 @@ export class Program {
         // assign by proxy
         const proxy_obj = cur_obj[cur_key];
         if (proxy_obj !== undefined) {
-          const proxy_value_data = Object.getPrototypeOf(proxy_obj)[proxy_sb];
-          if (proxy_value_data !== undefined) {
+          let success = false
+          Program.#each_metadata(proxy_obj, proxy_sb, (proxy_value_data) => {
             proxy_value_data as ValueProxyData;
             Program.#check_type(proxy_value_data, expr);
             Program.#invoke_access_listener(cur_obj, cur_key);
             Program.#do_proxy(proxy_obj, proxy_value_data, expr);
-            return;
-          }
+            success = true
+          })
+          if (success) { return; }
         }
       }
 
@@ -332,24 +368,27 @@ export class Program {
       // find preset expr
       const preset_obj = cur_obj[cur_key];
       if (preset_obj !== undefined) {
-        const preset_data_map = Object.getPrototypeOf(preset_obj)[symbol_preset];
-        if (preset_data_map !== undefined) {
-          Program.#invoke_access_listener(cur_obj, cur_key);
-          // each preset and assign
-          for (const preset_node of expr.right.value) {
-            const preset_data = preset_data_map[preset_node.value];
-            if (preset_data === undefined) {
-              throw new PresetNotFoundError(
-                preset_node.value,
-                preset_obj,
-                preset_node.location,
-              );
-            } else {
-              preset_data.func.call(preset_obj);
-            }
+        const preset_data_map: Dict<any> = {}
+        Program.#each_metadata(preset_obj, symbol_preset, (preset_data) => {
+          for (const k in preset_data) {
+            preset_data_map[k] = preset_data[k];
           }
-          return;
+        })
+        Program.#invoke_access_listener(cur_obj, cur_key);
+        // each preset and assign
+        for (const preset_node of expr.right.value) {
+          const preset_data = preset_data_map[preset_node.value];
+          if (preset_data === undefined) {
+            throw new PresetNotFoundError(
+              preset_node.value,
+              preset_obj,
+              preset_node.location,
+            );
+          } else {
+            preset_data.func.call(preset_obj);
+          }
         }
+        return;
       }
 
     } else {
@@ -444,9 +483,22 @@ export class Program {
     }
   }
   static #invoke_access_listener(obj: any, key: string) {
-    const access_listener = Object.getPrototypeOf(obj)[symbol_access_listener] as AccessListenerFunc;
-    if (access_listener !== undefined) {
+    Program.#each_metadata(obj, symbol_access_listener, (access_listener) => {
+      access_listener as AccessListenerFunc
       access_listener.call(obj, key);
+    })
+  }
+  static #each_metadata(obj: any, meta_symbol: symbol, each_func: (value: any) => void): any {
+    let prototype = Object.getPrototypeOf(obj);
+
+    while (prototype !== null) {
+      // find metadata
+      const metadata = metadata_dict_of(prototype)[meta_symbol];
+      if (metadata !== undefined) {
+        each_func(metadata);
+      }
+
+      prototype = Object.getPrototypeOf(prototype);
     }
   }
 }

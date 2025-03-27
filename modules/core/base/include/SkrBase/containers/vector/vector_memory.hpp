@@ -8,9 +8,9 @@
 // vector memory base
 namespace skr::container
 {
-template <typename TS>
+template <typename TSize>
 struct VectorMemoryBase {
-    using SizeType = TS;
+    using SizeType = TSize;
 
     // getter
     inline SizeType size() const noexcept { return _size; }
@@ -18,6 +18,9 @@ struct VectorMemoryBase {
 
     // setter
     inline void set_size(SizeType value) noexcept { _size = value; }
+
+    //! Note. ONLY USED BY GENERIC CONTAINER
+    inline void* _generic_only_data() noexcept { return _data; }
 
 protected:
     void*    _data     = nullptr;

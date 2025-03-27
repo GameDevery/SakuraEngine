@@ -1015,6 +1015,10 @@ TEST_CASE("Test U8String")
             StringView replace_more_to_view   = u8"🐓鸡";
             StringView replaced_more_view     = u8"🐓鸡🏀🐓鸡🏀🐓鸡🏀🐓鸡🏀🐓鸡🏀🐓鸡🏀";
 
+            StringView replace_none_from_view = u8"🐔";
+            StringView replace_none_to_view   = u8"g";
+            StringView replaced_none_view     = u8"🐓🏀🐓🏀🐓🏀🐓🏀🐓🏀🐓🏀";
+
             String str = view;
             str.replace(replace_less_from_view, replace_less_to_view);
             REQUIRE_EQ(str.size(), replaced_less_view.size());
@@ -1029,6 +1033,11 @@ TEST_CASE("Test U8String")
             str.replace(replace_more_from_view, replace_more_to_view);
             REQUIRE_EQ(str.size(), replaced_more_view.size());
             REQUIRE_EQ(str, replaced_more_view);
+
+            str = view;
+            str.replace(replace_none_from_view, replace_none_to_view);
+            REQUIRE_EQ(str.size(), replaced_none_view.size());
+            REQUIRE_EQ(str, replaced_none_view);
         }
 
         // [ranged] replace
@@ -1050,6 +1059,10 @@ TEST_CASE("Test U8String")
             StringView replace_more_to_view   = u8"🐓鸡";
             StringView replaced_more_view     = u8"🐓🏀🐓鸡🏀🐓鸡🏀🐓鸡🏀🐓鸡🏀🐓🏀";
 
+            StringView replace_none_from_view = u8"🐔";
+            StringView replace_none_to_view   = u8"g";
+            StringView replaced_none_view     = u8"🐓🏀🐓🏀🐓🏀🐓🏀🐓🏀🐓🏀";
+
             String str = view;
             str.replace(replace_less_from_view, replace_less_to_view, replace_start, replace_count);
             REQUIRE_EQ(str.size(), replaced_less_view.size());
@@ -1064,6 +1077,11 @@ TEST_CASE("Test U8String")
             str.replace(replace_more_from_view, replace_more_to_view, replace_start, replace_count);
             REQUIRE_EQ(str.size(), replaced_more_view.size());
             REQUIRE_EQ(str, replaced_more_view);
+
+            str = view;
+            str.replace(replace_none_from_view, replace_none_to_view, replace_start, replace_count);
+            REQUIRE_EQ(str.size(), replaced_none_view.size());
+            REQUIRE_EQ(str, replaced_none_view);
         }
 
         // [copy] replace
@@ -1082,6 +1100,10 @@ TEST_CASE("Test U8String")
             StringView replace_more_to_view   = u8"🐓鸡";
             StringView replaced_more_view     = u8"🐓鸡🏀🐓鸡🏀🐓鸡🏀🐓鸡🏀🐓鸡🏀🐓鸡🏀";
 
+            StringView replace_none_from_view = u8"🐔";
+            StringView replace_none_to_view   = u8"g";
+            StringView replaced_none_view     = u8"🐓🏀🐓🏀🐓🏀🐓🏀🐓🏀🐓🏀";
+
             String str           = view;
             auto   replaced_less = str.replace_copy(replace_less_from_view, replace_less_to_view);
             REQUIRE_EQ(replaced_less.size(), replaced_less_view.size());
@@ -1094,6 +1116,10 @@ TEST_CASE("Test U8String")
             auto replaced_more = str.replace_copy(replace_more_from_view, replace_more_to_view);
             REQUIRE_EQ(replaced_more.size(), replaced_more_view.size());
             REQUIRE_EQ(replaced_more, replaced_more_view);
+
+            auto replaced_none = str.replace_copy(replace_none_from_view, replace_none_to_view);
+            REQUIRE_EQ(replaced_none.size(), replaced_none_view.size());
+            REQUIRE_EQ(replaced_none, replaced_none_view);
 
             REQUIRE_EQ(str.size(), view.size());
             REQUIRE_EQ(str, view);
@@ -1119,6 +1145,10 @@ TEST_CASE("Test U8String")
             StringView replace_more_to_view   = u8"🐓鸡";
             StringView replaced_more_view     = u8"🐓🏀🐓鸡🏀🐓鸡🏀🐓鸡🏀🐓鸡🏀🐓🏀";
 
+            StringView replace_none_from_view = u8"🐔";
+            StringView replace_none_to_view   = u8"g";
+            StringView replaced_none_view     = u8"🐓🏀🐓🏀🐓🏀🐓🏀🐓🏀🐓🏀";
+
             String str           = view;
             auto   replaced_less = str.replace_copy(replace_less_from_view, replace_less_to_view, replace_start, replace_count);
             REQUIRE_EQ(replaced_less.size(), replaced_less_view.size());
@@ -1131,6 +1161,10 @@ TEST_CASE("Test U8String")
             auto replaced_more = str.replace_copy(replace_more_from_view, replace_more_to_view, replace_start, replace_count);
             REQUIRE_EQ(replaced_more.size(), replaced_more_view.size());
             REQUIRE_EQ(replaced_more, replaced_more_view);
+
+            auto replaced_none = str.replace_copy(replace_none_from_view, replace_none_to_view, replace_start, replace_count);
+            REQUIRE_EQ(replaced_none.size(), replaced_none_view.size());
+            REQUIRE_EQ(replaced_none, replaced_none_view);
 
             REQUIRE_EQ(str.size(), view.size());
             REQUIRE_EQ(str, view);
@@ -1854,43 +1888,47 @@ TEST_CASE("Test U8String")
 
             idx   = 0;
             count = str.split_each(
-            [&](const StringView& v) {
-                REQUIRE_EQ(v, split_result[idx]);
-                ++idx;
-            },
-            split_view);
+                [&](const StringView& v) {
+                    REQUIRE_EQ(v, split_result[idx]);
+                    ++idx;
+                },
+                split_view
+            );
             REQUIRE_EQ(count, 5);
 
             idx   = 0;
             count = str.split_each(
-            [&](const StringView& v) {
-                REQUIRE_EQ(v, split_result_cull_empty[idx]);
-                ++idx;
-            },
-            split_view,
-            true);
+                [&](const StringView& v) {
+                    REQUIRE_EQ(v, split_result_cull_empty[idx]);
+                    ++idx;
+                },
+                split_view,
+                true
+            );
             REQUIRE_EQ(count, 4);
 
             idx   = 0;
             count = str.split_each(
-            [&](const StringView& v) {
-                REQUIRE_EQ(v, split_result[idx]);
-                ++idx;
-            },
-            split_view,
-            false,
-            3);
+                [&](const StringView& v) {
+                    REQUIRE_EQ(v, split_result[idx]);
+                    ++idx;
+                },
+                split_view,
+                false,
+                3
+            );
             REQUIRE_EQ(count, 3);
 
             idx   = 0;
             count = str.split_each(
-            [&](const StringView& v) {
-                REQUIRE_EQ(v, split_result_cull_empty[idx]);
-                ++idx;
-            },
-            split_view,
-            true,
-            3);
+                [&](const StringView& v) {
+                    REQUIRE_EQ(v, split_result_cull_empty[idx]);
+                    ++idx;
+                },
+                split_view,
+                true,
+                3
+            );
             REQUIRE_EQ(count, 3);
 
             REQUIRE(is_literal(str));
@@ -2038,6 +2076,60 @@ TEST_CASE("Test U8String")
 
     // [test in view] text index
     // [test in view] convert
+
+    SUBCASE("case convert")
+    {
+        StringView low_view         = u8"abcd";
+        StringView up_view          = u8"ABCD";
+        StringView low_with_u8_view = u8"abcd🐓🏀🐓🏀🐓🏀鸡鸡鸡";
+        StringView up_with_u8_view  = u8"ABCD🐓🏀🐓🏀🐓🏀鸡鸡鸡";
+
+        String low_str         = low_view;
+        String up_str          = up_view;
+        String low_with_u8_str = low_with_u8_view;
+        String up_with_u8_str  = up_with_u8_view;
+
+        // test copy
+        {
+            String copy_low_str         = low_str.to_upper_copy();
+            String copy_up_str          = up_str.to_lower_copy();
+            String copy_low_with_u8_str = low_with_u8_str.to_upper_copy();
+            String copy_up_with_u8_str  = up_with_u8_str.to_lower_copy();
+
+            REQUIRE(low_str.memory().is_literal());
+            REQUIRE(up_str.memory().is_literal());
+            REQUIRE(low_with_u8_str.memory().is_literal());
+            REQUIRE(up_with_u8_str.memory().is_literal());
+
+            REQUIRE_FALSE(copy_low_str.memory().is_literal());
+            REQUIRE_FALSE(copy_up_str.memory().is_literal());
+            REQUIRE_FALSE(copy_low_with_u8_str.memory().is_literal());
+            REQUIRE_FALSE(copy_up_with_u8_str.memory().is_literal());
+
+            REQUIRE_EQ(copy_low_str, up_view);
+            REQUIRE_EQ(copy_up_str, low_view);
+            REQUIRE_EQ(copy_low_with_u8_str, up_with_u8_view);
+            REQUIRE_EQ(copy_up_with_u8_str, low_with_u8_view);
+        }
+
+        // test in place
+        {
+            low_str.to_upper();
+            up_str.to_lower();
+            low_with_u8_str.to_upper();
+            up_with_u8_str.to_lower();
+
+            REQUIRE_FALSE(low_str.memory().is_literal());
+            REQUIRE_FALSE(up_str.memory().is_literal());
+            REQUIRE_FALSE(low_with_u8_str.memory().is_literal());
+            REQUIRE_FALSE(up_with_u8_str.memory().is_literal());
+
+            REQUIRE_EQ(low_str, up_view);
+            REQUIRE_EQ(up_str, low_view);
+            REQUIRE_EQ(low_with_u8_str, up_with_u8_view);
+            REQUIRE_EQ(up_with_u8_str, low_with_u8_view);
+        }
+    }
 
     // TODO. iterators
 }

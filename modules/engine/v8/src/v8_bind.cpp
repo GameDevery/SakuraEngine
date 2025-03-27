@@ -1,66 +1,80 @@
 #include "SkrV8/v8_bind.hpp"
 #include "v8-external.h"
+#include "v8-container.h"
+#include "v8-function.h"
 
 // helpres
 namespace skr
 {
-// util helpers
-void* V8Bind::_get_field_address(
-    const RTTRFieldData* field,
-    const RTTRType*      field_owner,
-    const RTTRType*      obj_type,
-    void*                obj
-)
-{
-    SKR_ASSERT(obj != nullptr);
-    void* field_owner_address = obj_type->cast_to_base(field_owner->type_id(), obj);
-    return field->get_address(field_owner_address);
-}
-
 // match helper
-bool V8Bind::_match_primitive(const ScriptBinderPrimitive& binder, v8::Local<v8::Value> v8_value)
+V8MethodMatchResult V8Bind::_match_primitive(const ScriptBinderPrimitive& binder, v8::Local<v8::Value> v8_value)
 {
     switch (binder.type_id.get_hash())
     {
     case type_id_of<int8_t>().get_hash():
-        return v8_value->IsInt32();
+        return { v8_value->IsInt32(), 0 };
     case type_id_of<int16_t>().get_hash():
-        return v8_value->IsInt32();
+        return { v8_value->IsInt32(), 0 };
     case type_id_of<int32_t>().get_hash():
-        return v8_value->IsInt32();
+        return { v8_value->IsInt32(), 0 };
     case type_id_of<int64_t>().get_hash():
-        return v8_value->IsBigInt();
+        if (v8_value->IsBigInt())
+        {
+            return { true, 0 };
+        }
+        else if (v8_value->IsInt32() || v8_value->IsUint32())
+        {
+            return { true, -1 };
+        }
+        else
+        {
+            return {};
+        }
     case type_id_of<uint8_t>().get_hash():
-        return v8_value->IsUint32();
+        return { v8_value->IsUint32(), 0 };
     case type_id_of<uint16_t>().get_hash():
-        return v8_value->IsUint32();
+        return { v8_value->IsUint32(), 0 };
     case type_id_of<uint32_t>().get_hash():
-        return v8_value->IsUint32();
+        return { v8_value->IsUint32(), 0 };
     case type_id_of<uint64_t>().get_hash():
-        return v8_value->IsBigInt();
+        if (v8_value->IsBigInt())
+        {
+            return { true, 0 };
+        }
+        else if (v8_value->IsInt32() || v8_value->IsUint32())
+        {
+            return { true, -1 };
+        }
+        else
+        {
+            return {};
+        }
     case type_id_of<float>().get_hash():
-        return v8_value->IsNumber();
+        return { v8_value->IsNumber(), 0 };
     case type_id_of<double>().get_hash():
-        return v8_value->IsNumber();
+        return { v8_value->IsNumber(), 0 };
     case type_id_of<bool>().get_hash():
-        return v8_value->IsBoolean();
+        return { v8_value->IsBoolean(), 0 };
     case type_id_of<skr::String>().get_hash():
-        return v8_value->IsString();
+        return { v8_value->IsString(), 0 };
+    case type_id_of<skr::StringView>().get_hash():
+        return { v8_value->IsString(), 0 };
     default:
         SKR_UNREACHABLE_CODE()
-        return false;
+        return {};
     }
 }
-bool V8Bind::_match_box(const ScriptBinderBox& binder, v8::Local<v8::Value> v8_value)
+V8MethodMatchResult V8Bind::_match_mapping(const ScriptBinderMapping& binder, v8::Local<v8::Value> v8_value)
 {
     auto isolate = v8::Isolate::GetCurrent();
     auto context = isolate->GetCurrentContext();
 
     // conv to object
-    if (!v8_value->IsObject()) { return false; }
+    if (!v8_value->IsObject()) { return {}; }
     auto v8_obj = v8_value->ToObject(context).ToLocalChecked();
 
     // match fields
+    int32_t score = 0;
     for (const auto& [field_name, field_data] : binder.fields)
     {
         // find object field
@@ -71,523 +85,87 @@ bool V8Bind::_match_box(const ScriptBinderBox& binder, v8::Local<v8::Value> v8_v
         // clang-format on
 
         // get field value
-        if (v8_field_value_maybe.IsEmpty()) { return false; }
+        if (v8_field_value_maybe.IsEmpty()) { return {}; }
         auto v8_field_value = v8_field_value_maybe.ToLocalChecked();
 
         // match field
-        if (!match(field_data.binder, v8_field_value)) { return false; }
+        auto result = match(field_data.binder, v8_field_value);
+        if (!result.matched) { return {}; }
+
+        score += result.match_score + 1;
     }
 
-    return true;
+    return { true, score };
 }
-bool V8Bind::_match_wrap(const ScriptBinderWrap& binder, v8::Local<v8::Value> v8_value)
+V8MethodMatchResult V8Bind::_match_object(const ScriptBinderObject& binder, v8::Local<v8::Value> v8_value)
 {
     auto isolate = v8::Isolate::GetCurrent();
     auto context = isolate->GetCurrentContext();
-
-    auto* type = binder.type;
 
     // check v8 value type
-    if (!v8_value->IsObject()) { return false; }
+    if (!v8_value->IsObject()) { return {}; }
     auto v8_object = v8_value->ToObject(context).ToLocalChecked();
 
-    // check wrap
-    if (v8_object->InternalFieldCount() < 1) { return false; }
-    void*             raw_bind_core = v8_object->GetInternalField(0).As<v8::External>()->Value();
-    V8BindRecordCore* bind_core     = reinterpret_cast<V8BindRecordCore*>(raw_bind_core);
+    // check object
+    if (v8_object->InternalFieldCount() < 1) { return {}; }
+    void* raw_bind_core = v8_object->GetInternalField(0).As<v8::External>()->Value();
+    auto* bind_core     = reinterpret_cast<V8BindCoreRecordBase*>(raw_bind_core);
+    if (!bind_core->is_valid()) { return {}; }
 
     // check inherit
-    return bind_core->type->based_on(type->type_id());
+    uint32_t cast_count = 0;
+    bool     base_on    = bind_core->type->based_on(binder.type->type_id(), &cast_count);
+    return { base_on, (int32_t)cast_count };
 }
-
-// convert helper
-v8::Local<v8::Value> V8Bind::_to_v8_primitive(
-    const ScriptBinderPrimitive& binder,
-    void*                        native_data
-)
-{
-    switch (binder.type_id.get_hash())
-    {
-    case type_id_of<int8_t>().get_hash():
-        return to_v8(*reinterpret_cast<int8_t*>(native_data));
-    case type_id_of<int16_t>().get_hash():
-        return to_v8(*reinterpret_cast<int16_t*>(native_data));
-    case type_id_of<int32_t>().get_hash():
-        return to_v8(*reinterpret_cast<int32_t*>(native_data));
-    case type_id_of<int64_t>().get_hash():
-        return to_v8(*reinterpret_cast<int64_t*>(native_data));
-    case type_id_of<uint8_t>().get_hash():
-        return to_v8(*reinterpret_cast<uint8_t*>(native_data));
-    case type_id_of<uint16_t>().get_hash():
-        return to_v8(*reinterpret_cast<uint16_t*>(native_data));
-    case type_id_of<uint32_t>().get_hash():
-        return to_v8(*reinterpret_cast<uint32_t*>(native_data));
-    case type_id_of<uint64_t>().get_hash():
-        return to_v8(*reinterpret_cast<uint64_t*>(native_data));
-    case type_id_of<float>().get_hash():
-        return to_v8(*reinterpret_cast<float*>(native_data));
-    case type_id_of<double>().get_hash():
-        return to_v8(*reinterpret_cast<double*>(native_data));
-    case type_id_of<bool>().get_hash():
-        return to_v8(*reinterpret_cast<bool*>(native_data));
-    case type_id_of<skr::String>().get_hash():
-        return to_v8(*reinterpret_cast<skr::String*>(native_data));
-    default:
-        SKR_UNREACHABLE_CODE()
-        return {};
-    }
-}
-bool V8Bind::_to_native_primitive(
-    const ScriptBinderPrimitive& binder,
-    v8::Local<v8::Value>         v8_value,
-    void*                        native_data,
-    bool                         is_init
-)
-{
-    switch (binder.type_id.get_hash())
-    {
-    case type_id_of<int8_t>().get_hash():
-        return to_native(v8_value, *reinterpret_cast<int8_t*>(native_data));
-    case type_id_of<int16_t>().get_hash():
-        return to_native(v8_value, *reinterpret_cast<int16_t*>(native_data));
-    case type_id_of<int32_t>().get_hash():
-        return to_native(v8_value, *reinterpret_cast<int32_t*>(native_data));
-    case type_id_of<int64_t>().get_hash():
-        return to_native(v8_value, *reinterpret_cast<int64_t*>(native_data));
-    case type_id_of<uint8_t>().get_hash():
-        return to_native(v8_value, *reinterpret_cast<uint8_t*>(native_data));
-    case type_id_of<uint16_t>().get_hash():
-        return to_native(v8_value, *reinterpret_cast<uint16_t*>(native_data));
-    case type_id_of<uint32_t>().get_hash():
-        return to_native(v8_value, *reinterpret_cast<uint32_t*>(native_data));
-    case type_id_of<uint64_t>().get_hash():
-        return to_native(v8_value, *reinterpret_cast<uint64_t*>(native_data));
-    case type_id_of<float>().get_hash():
-        return to_native(v8_value, *reinterpret_cast<float*>(native_data));
-    case type_id_of<double>().get_hash():
-        return to_native(v8_value, *reinterpret_cast<double*>(native_data));
-    case type_id_of<bool>().get_hash():
-        return to_native(v8_value, *reinterpret_cast<bool*>(native_data));
-    case type_id_of<skr::String>().get_hash():
-        if (!is_init)
-        {
-            new (native_data) skr::String();
-        }
-        return to_native(v8_value, *reinterpret_cast<skr::String*>(native_data));
-    default:
-        SKR_UNREACHABLE_CODE()
-        return false;
-    }
-}
-v8::Local<v8::Value> V8Bind::_to_v8_box(
-    const ScriptBinderBox& binder,
-    void*                  obj
-)
+V8MethodMatchResult V8Bind::_match_value(const ScriptBinderValue& binder, v8::Local<v8::Value> v8_value)
 {
     auto isolate = v8::Isolate::GetCurrent();
     auto context = isolate->GetCurrentContext();
 
-    auto* type = binder.type;
+    // check v8 value type
+    if (!v8_value->IsObject()) { return {}; }
+    auto v8_object = v8_value->ToObject(context).ToLocalChecked();
 
-    auto result = v8::Object::New(isolate);
-    for (const auto& [field_name, field_data] : binder.fields)
-    {
-        // to v8
-        auto v8_field_value = get_field(field_data, obj, type);
-
-        // set object field
-        // clang-format off
-        result->Set(
-            context,
-            to_v8(field_name, true),
-            v8_field_value
-        ).Check();
-        // clang-format on
-    }
-    return result;
-}
-bool V8Bind::_to_native_box(
-    const ScriptBinderBox& binder,
-    v8::Local<v8::Value>   v8_value,
-    void*                  native_data,
-    bool                   is_init
-)
-{
-    auto isolate = v8::Isolate::GetCurrent();
-    auto context = isolate->GetCurrentContext();
-
-    auto* type      = binder.type;
-    auto  v8_object = v8_value->ToObject(context).ToLocalChecked();
-
-    // do init
-    if (!is_init)
-    {
-        void* raw_invoker = type->find_ctor_t<void()>()->native_invoke;
-        auto* invoker     = reinterpret_cast<void (*)(void*)>(raw_invoker);
-        invoker(native_data);
-    }
-
-    for (const auto& [field_name, field_data] : binder.fields)
-    {
-        // find object field
-        // clang-format off
-        auto v8_field = v8_object->Get(
-            context,
-            to_v8(field_name)
-        ).ToLocalChecked();
-        // clang-format on
-
-        set_field(
-            field_data,
-            v8_field,
-            native_data,
-            type
-        );
-    }
-
-    return false;
-}
-v8::Local<v8::Value> V8Bind::_to_v8_wrap(
-    const ScriptBinderWrap& binder,
-    void*                   native_data
-)
-{
-    auto isolate     = v8::Isolate::GetCurrent();
-    auto skr_isolate = reinterpret_cast<V8Isolate*>(isolate->GetData(0));
-
-    auto* type             = binder.type;
-    void* cast_raw         = type->cast_to_base(type_id_of<ScriptbleObject>(), native_data);
-    auto* scriptble_object = reinterpret_cast<ScriptbleObject*>(cast_raw);
-
-    auto* bind_core = skr_isolate->translate_record(scriptble_object);
-    return bind_core->v8_object.Get(isolate);
-}
-bool V8Bind::_to_native_wrap(
-    const ScriptBinderWrap& binder,
-    v8::Local<v8::Value>    v8_value,
-    void*                   native_data,
-    bool                    is_init
-)
-{
-    auto isolate = v8::Isolate::GetCurrent();
-    auto context = isolate->GetCurrentContext();
-
-    auto* type = binder.type;
-
-    auto  v8_object     = v8_value->ToObject(context).ToLocalChecked();
+    // check object
+    if (v8_object->InternalFieldCount() < 1) { return {}; }
     void* raw_bind_core = v8_object->GetInternalField(0).As<v8::External>()->Value();
-    auto* bind_core     = reinterpret_cast<V8BindRecordCore*>(raw_bind_core);
+    auto* bind_core     = reinterpret_cast<V8BindCoreRecordBase*>(raw_bind_core);
+    if (!bind_core->is_valid()) { return {}; }
 
-    // do cast
-    void* cast_ptr                         = bind_core->cast_to_base(type->type_id());
-    *reinterpret_cast<void**>(native_data) = cast_ptr;
-    return true;
-}
-
-// invoker helper
-void V8Bind::_push_param(
-    DynamicStack&            stack,
-    const ScriptBinderParam& param_binder,
-    v8::Local<v8::Value>     v8_value
-)
-{
-    switch (param_binder.binder.kind())
-    {
-    case ScriptBinderRoot::EKind::Primitive: {
-        auto* primitive   = param_binder.binder.primitive();
-        void* native_data = stack.alloc_param_raw(
-            primitive->size,
-            primitive->alignment,
-            param_binder.pass_by_ref ? EDynamicStackParamKind::XValue : EDynamicStackParamKind::Direct,
-            primitive->dtor
-        );
-        to_native(param_binder.binder, native_data, v8_value, false);
-        break;
-    }
-    case ScriptBinderRoot::EKind::Box: {
-        auto*       box         = param_binder.binder.box();
-        auto        dtor_data   = box->type->dtor_data();
-        DtorInvoker dtor        = dtor_data.has_value() ? dtor_data.value().native_invoke : nullptr;
-        void*       native_data = stack.alloc_param_raw(
-            box->type->size(),
-            box->type->alignment(),
-            param_binder.pass_by_ref ? EDynamicStackParamKind::XValue : EDynamicStackParamKind::Direct,
-            dtor
-        );
-        to_native(param_binder.binder, native_data, v8_value, false);
-        break;
-    }
-    case ScriptBinderRoot::EKind::Wrap: {
-        void* native_data = stack.alloc_param_raw(
-            sizeof(void*),
-            alignof(void*),
-            EDynamicStackParamKind::Direct,
-            nullptr
-        );
-        to_native(param_binder.binder, native_data, v8_value, false);
-        break;
-    }
-    default:
-        SKR_UNREACHABLE_CODE()
-        break;
-    }
-}
-v8::Local<v8::Value> V8Bind::read_return(
-    DynamicStack&             stack,
-    const ScriptBinderReturn& return_binder
-)
-{
-    if (!stack.is_return_stored()) { return {}; }
-    void* native_data;
-    switch (return_binder.binder.kind())
-    {
-    case ScriptBinderRoot::EKind::Primitive:
-    case ScriptBinderRoot::EKind::Box: {
-        native_data    = stack.get_return_raw();
-        if (return_binder.is_nullable)
-        {
-            native_data = *reinterpret_cast<void**>(native_data);
-        }
-        break;
-    }
-    case ScriptBinderRoot::EKind::Wrap: {
-        native_data = stack.get_return_raw();
-        break;
-    }
-    default:
-        SKR_UNREACHABLE_CODE()
-        return {};
-    }
-    return to_v8(return_binder.binder, native_data);
+    // check inherit
+    uint32_t cast_count = 0;
+    bool     base_on    = bind_core->type->based_on(binder.type->type_id());
+    return { base_on, (int32_t)cast_count };
 }
 } // namespace skr
 
 namespace skr
 {
-// field tools
-bool V8Bind::set_field(
-    const ScriptBinderField& binder,
-    v8::Local<v8::Value>     v8_value,
-    void*                    obj,
-    const RTTRType*          obj_type
-)
-{
-    // get field info
-    void* field_address = _get_field_address(binder.data, binder.owner, obj_type, obj);
-
-    // to native
-    return to_native(binder.binder, field_address, v8_value, true);
-}
-bool V8Bind::set_field(
-    const ScriptBinderStaticField& binder,
-    v8::Local<v8::Value>           v8_value
-)
-{
-    // get field info
-    void* field_address = binder.data->address;
-
-    // to native
-    return to_native(binder.binder, field_address, v8_value, true);
-}
-v8::Local<v8::Value> V8Bind::get_field(
-    const ScriptBinderField& binder,
-    const void*              obj,
-    const RTTRType*          obj_type
-)
-{
-    // get field info
-    void* field_address = _get_field_address(
-        binder.data,
-        binder.owner,
-        obj_type,
-        const_cast<void*>(obj)
-    );
-
-    // to v8
-    return to_v8(binder.binder, field_address);
-}
-v8::Local<v8::Value> V8Bind::get_field(
-    const ScriptBinderStaticField& binder
-)
-{
-    // get field info
-    void* field_address = binder.data->address;
-
-    // to v8
-    return to_v8(binder.binder, field_address);
-}
-
-// call native
-bool V8Bind::call_native(
-    const ScriptBinderCtor&                        binder,
-    const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
-    void*                                          obj
-)
-{
-    DynamicStack native_stack;
-
-    // push param
-    for (uint32_t i = 0; i < v8_stack.Length(); ++i)
-    {
-        _push_param(
-            native_stack,
-            binder.params_binder[i],
-            v8_stack[i]
-        );
-    }
-
-    // invoke
-    native_stack.return_behaviour_discard();
-    binder.data->dynamic_stack_invoke(obj, native_stack);
-
-    return true;
-}
-bool V8Bind::call_native(
-    const ScriptBinderMethod&                      binder,
-    const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
-    void*                                          obj,
-    const RTTRType*                                obj_type
-)
-{
-    for (const auto& overload : binder.overloads)
-    {
-        if (!match(overload.params_binder, v8_stack)) { continue; }
-
-        DynamicStack native_stack;
-
-        // push param
-        for (uint32_t i = 0; i < v8_stack.Length(); ++i)
-        {
-            _push_param(
-                native_stack,
-                overload.params_binder[i],
-                v8_stack[i]
-            );
-        }
-
-        // cast
-        void* owner_address = obj_type->cast_to_base(overload.owner->type_id(), obj);
-
-        // invoke
-        native_stack.return_behaviour_store();
-        overload.data->dynamic_stack_invoke(owner_address, native_stack);
-
-        // read return
-        if (native_stack.is_return_stored())
-        {
-            v8::Local<v8::Value> out_value = read_return(
-                native_stack,
-                overload.return_binder
-            );
-            v8_stack.GetReturnValue().Set(out_value);
-        }
-
-        return true;
-    }
-
-    return false;
-}
-bool V8Bind::call_native(
-    const ScriptBinderStaticMethod&                binder,
-    const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack
-)
-{
-    for (const auto& overload : binder.overloads)
-    {
-        if (!match(overload.params_binder, v8_stack)) { continue; }
-
-        DynamicStack native_stack;
-
-        // push param
-        for (uint32_t i = 0; i < v8_stack.Length(); ++i)
-        {
-            _push_param(
-                native_stack,
-                overload.params_binder[i],
-                v8_stack[i]
-            );
-        }
-
-        // invoke
-        native_stack.return_behaviour_store();
-        overload.data->dynamic_stack_invoke(native_stack);
-
-        // read return
-        if (native_stack.is_return_stored())
-        {
-            v8::Local<v8::Value> out_value = read_return(
-                native_stack,
-                overload.return_binder
-            );
-            v8_stack.GetReturnValue().Set(out_value);
-        }
-
-        return true;
-    }
-
-    return false;
-}
-
-// convert
-v8::Local<v8::Value> V8Bind::to_v8(
-    ScriptBinderRoot binder,
-    void*            native_data
-)
-{
-    switch (binder.kind())
-    {
-    case ScriptBinderRoot::EKind::Primitive:
-        return _to_v8_primitive(*binder.primitive(), native_data);
-    case ScriptBinderRoot::EKind::Box:
-        return _to_v8_box(*binder.box(), native_data);
-    case ScriptBinderRoot::EKind::Wrap:
-        return _to_v8_wrap(*binder.wrap(), native_data);
-    }
-    return {};
-}
-bool V8Bind::to_native(
-    ScriptBinderRoot     binder,
-    void*                native_data,
-    v8::Local<v8::Value> v8_value,
-    bool                 is_init
-)
-{
-    switch (binder.kind())
-    {
-    case ScriptBinderRoot::EKind::Primitive:
-        return _to_native_primitive(*binder.primitive(), v8_value, native_data, is_init);
-    case ScriptBinderRoot::EKind::Box:
-        return _to_native_box(*binder.box(), v8_value, native_data, is_init);
-    case ScriptBinderRoot::EKind::Wrap:
-        return _to_native_wrap(*binder.wrap(), v8_value, native_data, is_init);
-    }
-    return {};
-}
-
 // match type
-bool V8Bind::match(
+V8MethodMatchResult V8Bind::match(
     ScriptBinderRoot     binder,
     v8::Local<v8::Value> v8_value
 )
 {
-    if (binder.is_empty()) { return false; }
-
-    auto isolate = v8::Isolate::GetCurrent();
-    auto context = isolate->GetCurrentContext();
+    if (binder.is_empty()) { return {}; }
 
     switch (binder.kind())
     {
     case ScriptBinderRoot::EKind::Primitive:
         return _match_primitive(*binder.primitive(), v8_value);
-    case ScriptBinderRoot::EKind::Box:
-        return _match_box(*binder.box(), v8_value);
-    case ScriptBinderRoot::EKind::Wrap:
-        return _match_wrap(*binder.wrap(), v8_value);
+    case ScriptBinderRoot::EKind::Enum:
+        return _match_primitive(*binder.enum_()->underlying_binder, v8_value);
+    case ScriptBinderRoot::EKind::Mapping:
+        return _match_mapping(*binder.mapping(), v8_value);
+    case ScriptBinderRoot::EKind::Object:
+        return _match_object(*binder.object(), v8_value);
+    case ScriptBinderRoot::EKind::Value:
+        return _match_value(*binder.value(), v8_value);
+    default:
+        return {};
     }
-
-    return false;
 }
-bool V8Bind::match(
+V8MethodMatchResult V8Bind::match(
     const ScriptBinderParam& binder,
     v8::Local<v8::Value>     v8_value
 )
@@ -595,12 +173,13 @@ bool V8Bind::match(
     // check null
     if (v8_value.IsEmpty() || v8_value->IsNull() || v8_value->IsUndefined())
     {
-        return binder.is_nullable;
+        // only object is nullable
+        return { binder.binder.is_object(), 0 };
     }
 
     return match(binder.binder, v8_value);
 }
-bool V8Bind::match(
+V8MethodMatchResult V8Bind::match(
     const ScriptBinderReturn& binder,
     v8::Local<v8::Value>      v8_value
 )
@@ -608,12 +187,13 @@ bool V8Bind::match(
     // check null
     if (v8_value.IsEmpty() || v8_value->IsNull() || v8_value->IsUndefined())
     {
-        return binder.is_nullable;
+        // only object is nullable
+        return { binder.binder.is_object(), 0 };
     }
 
     return match(binder.binder, v8_value);
 }
-bool V8Bind::match(
+V8MethodMatchResult V8Bind::match(
     const ScriptBinderField& binder,
     v8::Local<v8::Value>     v8_value
 )
@@ -621,13 +201,13 @@ bool V8Bind::match(
     // check null
     if (v8_value.IsEmpty() || v8_value->IsNull() || v8_value->IsUndefined())
     {
-        return binder.binder.is_wrap();
+        return { binder.binder.is_object(), 0 };
     }
 
     // check type
     return match(binder.binder, v8_value);
 }
-bool V8Bind::match(
+V8MethodMatchResult V8Bind::match(
     const ScriptBinderStaticField& binder,
     v8::Local<v8::Value>           v8_value
 )
@@ -635,32 +215,95 @@ bool V8Bind::match(
     // check null
     if (v8_value.IsEmpty() || v8_value->IsNull() || v8_value->IsUndefined())
     {
-        return binder.binder.is_wrap();
+        return { binder.binder.is_object(), 0 };
     }
 
     // check type
     return match(binder.binder, v8_value);
 }
-bool V8Bind::match(
+V8MethodMatchResult V8Bind::match(
     const Vector<ScriptBinderParam>&               param_binders,
+    uint32_t                                       solved_param_count,
     const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack
 )
 {
-    auto isolate = v8::Isolate::GetCurrent();
-    auto context = isolate->GetCurrentContext();
-
     // check param count
-    if (param_binders.size() != v8_stack.Length()) { return false; }
+    if (solved_param_count != v8_stack.Length()) { return {}; }
 
     // check param type
+    int32_t score = 0;
     for (size_t i = 0; i < param_binders.size(); i++)
     {
         auto& binder = param_binders[i];
         auto  v8_arg = v8_stack[i];
 
-        if (!match(binder, v8_arg)) { return false; }
+        // skip pure out param
+        if (binder.inout_flag == ERTTRParamFlag::Out) { continue; }
+
+        auto result = match(binder, v8_arg);
+        if (!result.matched) { return {}; }
+        score += result.match_score;
     }
 
-    return true;
+    return { true, score };
+}
+
+// namespace helper
+v8::Local<v8::Value> V8Bind::export_namespace_node(
+    const ScriptNamespaceNode* node,
+    V8BindManager*             bind_manager
+)
+{
+    auto isolate = v8::Isolate::GetCurrent();
+    auto context = isolate->GetCurrentContext();
+
+    if (node->is_namespace())
+    {
+        v8::Local<v8::Object> result = v8::Object::New(isolate);
+        for (const auto& [node_name, node] : node->children())
+        {
+            bool is_mapping = node->is_type() && node->type().is_mapping();
+
+            if (!is_mapping)
+            { // mapping need not export, just used in .d.ts interface
+                // clang-format off
+                result->Set(
+                    context,
+                    V8Bind::to_v8(node_name, true),
+                    export_namespace_node(node, bind_manager)
+                ).Check();
+                // clang-format on
+            }
+        }
+        return result;
+    }
+    else
+    {
+        auto type = node->type();
+        switch (type.kind())
+        {
+        case ScriptBinderRoot::EKind::Object: {
+            auto* object_mapper    = type.object();
+            auto  object_template  = bind_manager->get_record_template(object_mapper->type);
+            auto  object_ctor_func = object_template->GetFunction(context).ToLocalChecked();
+            return object_ctor_func;
+        }
+        case ScriptBinderRoot::EKind::Value: {
+            auto* value_mapper    = type.value();
+            auto  value_template  = bind_manager->get_record_template(value_mapper->type);
+            auto  value_ctor_func = value_template->GetFunction(context).ToLocalChecked();
+            return value_ctor_func;
+        }
+        case ScriptBinderRoot::EKind::Enum: {
+            auto* enum_mapper   = type.enum_();
+            auto  enum_template = bind_manager->get_enum_template(enum_mapper->type);
+            auto  enum_object   = enum_template->NewInstance(context).ToLocalChecked();
+            return enum_object;
+        }
+        default:
+            SKR_UNREACHABLE_CODE()
+            return {};
+        }
+    }
 }
 } // namespace skr

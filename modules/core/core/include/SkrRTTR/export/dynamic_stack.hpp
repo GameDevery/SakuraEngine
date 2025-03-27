@@ -3,7 +3,8 @@
 
 namespace skr
 {
-using DynamicStackDataDtor = void(void* p_stack_data);
+using DynamicStackDataDtor      = void(void* p_stack_data);
+using DynamicStackCustomMapping = void*(void* obj);
 
 // param pass behavior, used to tell invoker how to get param value
 enum class EDynamicStackParamKind : uint8_t
@@ -172,12 +173,11 @@ enum class EDynamicStackReturnKind : uint8_t
 };
 
 // data
-// TODO. 增加 user_mapping 实现 String->StringView 这类高级 XValue 实现
-// TODO. read back param
 struct DynamicStackParamData {
-    EDynamicStackParamKind kind   = EDynamicStackParamKind::Direct;
-    uint64_t               offset = 0;
-    DynamicStackDataDtor*  dtor   = nullptr;
+    EDynamicStackParamKind     kind           = EDynamicStackParamKind::Direct;
+    uint64_t                   offset         = 0;
+    DynamicStackDataDtor*      dtor           = nullptr;
+    DynamicStackCustomMapping* custom_mapping = nullptr;
 };
 struct DynamicStackReturnData {
     EDynamicStackReturnKind kind = EDynamicStackReturnKind::Discard;
@@ -213,19 +213,19 @@ struct DynamicStack {
     void release();
 
     // set param
-    void* alloc_param_raw(uint64_t size, uint64_t align, EDynamicStackParamKind kind, DynamicStackDataDtor* dtor);
+    void* alloc_param_raw(uint64_t size, uint64_t align, EDynamicStackParamKind kind, DynamicStackDataDtor* dtor, DynamicStackCustomMapping* custom_mapping = nullptr);
     template <typename T>
-    T* alloc_param(EDynamicStackParamKind kind = EDynamicStackParamKind::Direct, DynamicStackDataDtor* dtor = nullptr);
+    T* alloc_param(EDynamicStackParamKind kind = EDynamicStackParamKind::Direct, DynamicStackDataDtor* dtor = nullptr, DynamicStackCustomMapping custom_mapping = nullptr);
     template <typename T>
-    void add_param(T&& value, EDynamicStackParamKind kind = EDynamicStackParamKind::Direct, DynamicStackDataDtor* dtor = nullptr);
+    void add_param(T&& value, EDynamicStackParamKind kind = EDynamicStackParamKind::Direct, DynamicStackDataDtor* dtor = nullptr, DynamicStackCustomMapping custom_mapping = nullptr);
     template <typename T>
-    void add_param(const T& value, EDynamicStackParamKind kind = EDynamicStackParamKind::Direct, DynamicStackDataDtor* dtor = nullptr);
+    void add_param(const T& value, EDynamicStackParamKind kind = EDynamicStackParamKind::Direct, DynamicStackDataDtor* dtor = nullptr, DynamicStackCustomMapping custom_mapping = nullptr);
 
     // get param
     EDynamicStackParamKind get_param_kind(uint64_t index);
-    void*                  get_param_raw(uint64_t index);
+    void*                  get_param_raw(uint64_t index, bool apply_custom_mapping = true);
     template <typename T>
-    decltype(auto) get_param(uint64_t index);
+    decltype(auto) get_param(uint64_t index, bool apply_custom_mapping = true);
 
     // set return behaviour
     void return_behaviour_discard();
@@ -366,35 +366,36 @@ inline void DynamicStack::release()
 }
 
 // set param
-inline void* DynamicStack::alloc_param_raw(uint64_t size, uint64_t align, EDynamicStackParamKind kind, DynamicStackDataDtor* dtor)
+inline void* DynamicStack::alloc_param_raw(uint64_t size, uint64_t align, EDynamicStackParamKind kind, DynamicStackDataDtor* dtor, DynamicStackCustomMapping custom_mapping)
 {
     // alloc memory
     auto offset = _grow(size, align);
 
     // add param info
-    auto& info  = _param_info.add_default().ref();
-    info.offset = offset;
-    info.kind   = kind;
-    info.dtor   = dtor;
+    auto& info          = _param_info.add_default().ref();
+    info.offset         = offset;
+    info.kind           = kind;
+    info.dtor           = dtor;
+    info.custom_mapping = custom_mapping;
 
     return _get_memory(offset);
 }
 template <typename T>
-inline T* DynamicStack::alloc_param(EDynamicStackParamKind kind, DynamicStackDataDtor* dtor)
+inline T* DynamicStack::alloc_param(EDynamicStackParamKind kind, DynamicStackDataDtor* dtor, DynamicStackCustomMapping custom_mapping)
 {
     dtor = dtor ? dtor : [](void* p) { static_cast<T*>(p)->~T(); };
-    return static_cast<T*>(alloc_param_raw(sizeof(T), alignof(T), kind, dtor));
+    return static_cast<T*>(alloc_param_raw(sizeof(T), alignof(T), kind, dtor, custom_mapping));
 }
 template <typename T>
-inline void DynamicStack::add_param(T&& value, EDynamicStackParamKind kind, DynamicStackDataDtor* dtor)
+inline void DynamicStack::add_param(T&& value, EDynamicStackParamKind kind, DynamicStackDataDtor* dtor, DynamicStackCustomMapping custom_mapping)
 {
-    T* p = alloc_param<T>(kind, dtor);
+    T* p = alloc_param<T>(kind, dtor, custom_mapping);
     new (p) T(std::move(value));
 }
 template <typename T>
-inline void DynamicStack::add_param(const T& value, EDynamicStackParamKind kind, DynamicStackDataDtor* dtor)
+inline void DynamicStack::add_param(const T& value, EDynamicStackParamKind kind, DynamicStackDataDtor* dtor, DynamicStackCustomMapping custom_mapping)
 {
-    T* p = alloc_param<T>(kind, dtor);
+    T* p = alloc_param<T>(kind, dtor, custom_mapping);
     new (p) T(value);
 }
 
@@ -404,13 +405,18 @@ inline EDynamicStackParamKind DynamicStack::get_param_kind(uint64_t index)
     SKR_ASSERT(index < _param_info.size());
     return _param_info.at(index).kind;
 }
-inline void* DynamicStack::get_param_raw(uint64_t index)
+inline void* DynamicStack::get_param_raw(uint64_t index, bool apply_custom_mapping)
 {
     SKR_ASSERT(index < _param_info.size());
-    return _get_memory(_param_info.at(index).offset);
+    void* data = _get_memory(_param_info.at(index).offset);
+    if (apply_custom_mapping && _param_info.at(index).custom_mapping)
+    {
+        data = _param_info.at(index).custom_mapping(data);
+    }
+    return data;
 }
 template <typename T>
-inline decltype(auto) DynamicStack::get_param(uint64_t index)
+inline decltype(auto) DynamicStack::get_param(uint64_t index, bool apply_custom_mapping)
 {
     // get data
     SKR_ASSERT(index < _param_info.size());
@@ -419,6 +425,10 @@ inline decltype(auto) DynamicStack::get_param(uint64_t index)
     // fill getter
     DynamicStackParamHelper<T> getter;
     getter.data = _get_memory(data.offset);
+    if (apply_custom_mapping && data.custom_mapping)
+    {
+        getter.data = data.custom_mapping(getter.data);
+    }
     getter.kind = data.kind;
 
     return getter.get();

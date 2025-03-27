@@ -11,14 +11,14 @@
 // sparse vector memory base
 namespace skr::container
 {
-template <typename TS>
+template <typename TSize>
 struct SparseVectorMemoryBase {
-    using SizeType = TS;
+    using SizeType = TSize;
 
     // getter
     inline SizeType sparse_size() const noexcept { return _sparse_size; }
     inline SizeType capacity() const noexcept { return _capacity; }
-    inline SizeType bit_size() const noexcept { return algo::BitAlgo<TS>::num_blocks(_capacity) * algo::BitAlgo<TS>::PerBlockSize; }
+    inline SizeType bit_size() const noexcept { return algo::BitAlgo<TSize>::num_blocks(_capacity) * algo::BitAlgo<TSize>::PerBlockSize; }
     inline SizeType freelist_head() const noexcept { return _freelist_head; }
     inline SizeType hole_size() const noexcept { return _hole_size; }
 

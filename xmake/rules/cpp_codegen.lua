@@ -112,3 +112,16 @@ analyzer_target("Codegen.Deps")
         return codegen_deps
     end)
 analyzer_target_end()
+
+analyzer_target("Codegen.MakoDeps")
+analyze(function(target, attributes, analyze_ctx)
+    local codegen_deps = {}
+    for __, dep in ipairs(target:orderdeps()) do
+        local dep_attrs = analyze_ctx.query_attributes(dep:name())
+        if table.contains(dep_attrs, "Codegen.Owner") then
+            table.insert(codegen_deps, dep:name()..".Meta")
+        end
+    end
+    return codegen_deps
+end)
+analyzer_target_end()

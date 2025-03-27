@@ -5,7 +5,7 @@
 #include "SkrContainersDef/string.hpp"
 #include "SkrRTTR/enum_tools.hpp"
 #include "SkrRTTR/export/export_data.hpp"
-#include "SkrRTTR/export/export_builder.hpp"
+#include <SkrRTTR/export/export_accessor.hpp>
 
 // !!!! RTTR 不考虑动态类型建立(从脚本建立), 一切类型都是 CPP 静态注册的 loader !!!!
 namespace skr
@@ -67,10 +67,16 @@ struct SKR_CORE_API RTTRType final {
     ERTTRTypeCategory  type_category() const;
     const skr::String& name() const;
     Vector<String>     name_space() const;
+    String             name_space_str() const;
     GUID               type_id() const;
     size_t             size() const;
     size_t             alignment() const;
     void               each_name_space(FunctionRef<void(StringView)> each_func) const;
+
+    // kind getter
+    bool is_primitive() const;
+    bool is_record() const;
+    bool is_enum() const;
 
     // builders
     void build_primitive(FunctionRef<void(RTTRPrimitiveData* data)> func);
@@ -86,12 +92,18 @@ struct SKR_CORE_API RTTRType final {
     // void validate_export_data() const;
 
     // caster
-    bool           based_on(GUID type_id) const;
+    bool           based_on(GUID type_id, uint32_t* out_cast_count = 0) const;
     void*          cast_to_base(GUID type_id, void* p) const;
     RTTRTypeCaster caster_to_base(GUID type_id) const;
 
+    // enum getter
+    GUID enum_underlying_type_id() const;
+    void each_enum_items(FunctionRef<void(const RTTREnumItemData*)> each_func) const;
+
     // get dtor
     Optional<RTTRDtorData> dtor_data() const;
+    DtorInvoker dtor_invoker() const;
+    void invoke_dtor(void* p) const;
 
     // each method & field
     void each_bases(FunctionRef<void(const RTTRBaseData* base_data, const RTTRType* owner)> each_func, RTTRTypeEachConfig config = {}) const;
@@ -111,24 +123,31 @@ struct SKR_CORE_API RTTRType final {
     const RTTRExternMethodData* find_extern_method(RTTRTypeFindConfig config) const;
 
     // template find method & field
-    // TODO. 使用包装器进行包装，辅助进行调用等行为
+    // TODO. method & field 需要根据 Owner 信息进行访问
     template <typename Func>
-    const RTTRCtorData* find_ctor_t(ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict) const;
+    ExportCtorInvoker<Func> find_ctor_t(ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict) const;
     template <typename Func>
-    const RTTRMethodData* find_method_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
+    ExportMethodInvoker<Func> find_method_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
     template <typename Field>
     const RTTRFieldData* find_field_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
     template <typename Func>
-    const RTTRStaticMethodData* find_static_method_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
+    ExportStaticMethodInvoker<Func> find_static_method_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
     template <typename Field>
     const RTTRStaticFieldData* find_static_field_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
     template <typename Func>
-    const RTTRExternMethodData* find_extern_method_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
+    ExportExternMethodInvoker<Func> find_extern_method_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
+
+    // find basic functions
+    ExportCtorInvoker<void()>                           find_default_ctor() const;
+    ExportCtorInvoker<void(const void*)>                find_copy_ctor() const;
+    ExportExternMethodInvoker<void(void*, const void*)> find_assign() const;
 
     // flag & attribute
     ERTTRRecordFlag record_flag() const;
     ERTTREnumFlag   enum_flag() const;
     const Any*      find_attribute(TypeSignatureView signature) const;
+    void            each_attribute(FunctionRef<void(const Any&)> each_func) const;
+    void            each_attribute(FunctionRef<void(const Any&)> each_func, TypeSignatureView signature) const;
 
 private:
     // helpers
@@ -149,9 +168,152 @@ private:
 // type inline impl
 namespace skr
 {
+// module
+inline void RTTRType::set_module(String module)
+{
+    _module = module;
+}
+inline String RTTRType::module() const
+{
+    return _module;
+}
+
+// basic getter
+inline ERTTRTypeCategory RTTRType::type_category() const
+{
+    return _type_category;
+}
+inline const skr::String& RTTRType::name() const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Primitive:
+        return _primitive_data.name;
+    case ERTTRTypeCategory::Record:
+        return _record_data.name;
+    case ERTTRTypeCategory::Enum:
+        return _enum_data.name;
+    default:
+        SKR_UNREACHABLE_CODE()
+        return _primitive_data.name;
+    }
+}
+inline Vector<String> RTTRType::name_space() const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Primitive:
+        return {};
+    case ERTTRTypeCategory::Record:
+        return _record_data.name_space;
+    case ERTTRTypeCategory::Enum:
+        return _enum_data.name_space;
+    default:
+        SKR_UNREACHABLE_CODE()
+        return {};
+    }
+}
+inline String RTTRType::name_space_str() const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Primitive:
+        return {};
+    case ERTTRTypeCategory::Record:
+        return String::Join(_record_data.name_space, u8"::");
+    case ERTTRTypeCategory::Enum:
+        return String::Join(_enum_data.name_space, u8"::");
+    default:
+        SKR_UNREACHABLE_CODE()
+        return {};
+    }
+}
+inline GUID RTTRType::type_id() const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Primitive:
+        return _primitive_data.type_id;
+    case ERTTRTypeCategory::Record:
+        return _record_data.type_id;
+    case ERTTRTypeCategory::Enum:
+        return _enum_data.type_id;
+    default:
+        SKR_UNREACHABLE_CODE()
+        return _primitive_data.type_id;
+    }
+}
+inline size_t RTTRType::size() const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Primitive:
+        return _primitive_data.size;
+    case ERTTRTypeCategory::Record:
+        return _record_data.size;
+    case ERTTRTypeCategory::Enum:
+        return _enum_data.size;
+    default:
+        SKR_UNREACHABLE_CODE()
+        return _primitive_data.size;
+    }
+}
+inline size_t RTTRType::alignment() const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Primitive:
+        return _primitive_data.alignment;
+    case ERTTRTypeCategory::Record:
+        return _record_data.alignment;
+    case ERTTRTypeCategory::Enum:
+        return _enum_data.alignment;
+    default:
+        SKR_UNREACHABLE_CODE()
+        return _primitive_data.alignment;
+    }
+}
+inline void RTTRType::each_name_space(FunctionRef<void(StringView)> each_func) const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Primitive:
+        break;
+    case ERTTRTypeCategory::Record:
+        for (const String& ns : _record_data.name_space)
+        {
+            each_func(ns);
+        }
+        break;
+    case ERTTRTypeCategory::Enum:
+        for (const String& ns : _enum_data.name_space)
+        {
+            each_func(ns);
+        }
+        break;
+    default:
+        SKR_UNREACHABLE_CODE()
+        break;
+    }
+}
+
+// kind getter
+inline bool RTTRType::is_primitive() const
+{
+    return _type_category == ERTTRTypeCategory::Primitive;
+}
+inline bool RTTRType::is_record() const
+{
+    return _type_category == ERTTRTypeCategory::Record;
+}
+inline bool RTTRType::is_enum() const
+{
+    return _type_category == ERTTRTypeCategory::Enum;
+}
+
 // template find method & field
 template <typename Func>
-inline const RTTRCtorData* RTTRType::find_ctor_t(ETypeSignatureCompareFlag flag) const
+inline ExportCtorInvoker<Func> RTTRType::find_ctor_t(ETypeSignatureCompareFlag flag) const
 {
     TypeSignatureTyped<Func> signature;
     return find_ctor(RTTRTypeFindConfig{
@@ -160,7 +322,7 @@ inline const RTTRCtorData* RTTRType::find_ctor_t(ETypeSignatureCompareFlag flag)
     });
 }
 template <typename Func>
-inline const RTTRMethodData* RTTRType::find_method_t(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
+inline ExportMethodInvoker<Func> RTTRType::find_method_t(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
 {
     TypeSignatureTyped<Func> signature;
     return find_method(RTTRTypeFindConfig{
@@ -182,7 +344,7 @@ inline const RTTRFieldData* RTTRType::find_field_t(StringView name, ETypeSignatu
     });
 }
 template <typename Func>
-inline const RTTRStaticMethodData* RTTRType::find_static_method_t(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
+inline ExportStaticMethodInvoker<Func> RTTRType::find_static_method_t(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
 {
     TypeSignatureTyped<Func> signature;
     return find_static_method(RTTRTypeFindConfig{
@@ -204,7 +366,7 @@ inline const RTTRStaticFieldData* RTTRType::find_static_field_t(StringView name,
     });
 }
 template <typename Func>
-inline const RTTRExternMethodData* RTTRType::find_extern_method_t(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
+inline ExportExternMethodInvoker<Func> RTTRType::find_extern_method_t(StringView name, ETypeSignatureCompareFlag flag, bool include_base) const
 {
     TypeSignatureTyped<Func> signature;
     return find_extern_method(RTTRTypeFindConfig{

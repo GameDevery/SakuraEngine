@@ -45,6 +45,10 @@ struct Any {
     const T* cast(ETypeSignatureCompareFlag compare_flag = ETypeSignatureCompareFlag::Strict) const;
     template <typename T>
     T* cast(ETypeSignatureCompareFlag compare_flag = ETypeSignatureCompareFlag::Strict);
+    template <typename T>
+    const T& as(ETypeSignatureCompareFlag compare_flag = ETypeSignatureCompareFlag::Strict) const;
+    template <typename T>
+    T& as(ETypeSignatureCompareFlag compare_flag = ETypeSignatureCompareFlag::Strict);
 
 private:
     // helper
@@ -228,4 +232,15 @@ inline T* Any::cast(ETypeSignatureCompareFlag compare_flag)
     }
     return nullptr;
 }
+template <typename T>
+inline const T& Any::as(ETypeSignatureCompareFlag compare_flag) const
+{
+    return *cast<T>(compare_flag);
+}
+template <typename T>
+inline T& Any::as(ETypeSignatureCompareFlag compare_flag)
+{
+    return *cast<T>(compare_flag);
+}
+
 } // namespace skr

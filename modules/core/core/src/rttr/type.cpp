@@ -1,5 +1,6 @@
 #include "SkrRTTR/type.hpp"
 #include "SkrCore/log.hpp"
+#include "SkrRTTR/export/extern_methods.hpp"
 
 namespace skr
 {
@@ -21,120 +22,6 @@ RTTRType::~RTTRType()
         break;
     case ERTTRTypeCategory::Enum:
         _enum_data.~RTTREnumData();
-        break;
-    default:
-        SKR_UNREACHABLE_CODE()
-        break;
-    }
-}
-
-// module
-void RTTRType::set_module(String module)
-{
-    _module = module;
-}
-String RTTRType::module() const
-{
-    return _module;
-}
-
-// basic getter
-ERTTRTypeCategory RTTRType::type_category() const
-{
-    return _type_category;
-}
-const skr::String& RTTRType::name() const
-{
-    switch (_type_category)
-    {
-    case ERTTRTypeCategory::Primitive:
-        return _primitive_data.name;
-    case ERTTRTypeCategory::Record:
-        return _record_data.name;
-    case ERTTRTypeCategory::Enum:
-        return _enum_data.name;
-    default:
-        SKR_UNREACHABLE_CODE()
-        return _primitive_data.name;
-    }
-}
-Vector<String> RTTRType::name_space() const
-{
-    switch (_type_category)
-    {
-    case ERTTRTypeCategory::Primitive:
-        return {};
-    case ERTTRTypeCategory::Record:
-        return _record_data.name_space;
-    case ERTTRTypeCategory::Enum:
-        return _enum_data.name_space;
-    default:
-        SKR_UNREACHABLE_CODE()
-        return {};
-    }
-}
-GUID RTTRType::type_id() const
-{
-    switch (_type_category)
-    {
-    case ERTTRTypeCategory::Primitive:
-        return _primitive_data.type_id;
-    case ERTTRTypeCategory::Record:
-        return _record_data.type_id;
-    case ERTTRTypeCategory::Enum:
-        return _enum_data.type_id;
-    default:
-        SKR_UNREACHABLE_CODE()
-        return _primitive_data.type_id;
-    }
-}
-size_t RTTRType::size() const
-{
-    switch (_type_category)
-    {
-    case ERTTRTypeCategory::Primitive:
-        return _primitive_data.size;
-    case ERTTRTypeCategory::Record:
-        return _record_data.size;
-    case ERTTRTypeCategory::Enum:
-        return _enum_data.size;
-    default:
-        SKR_UNREACHABLE_CODE()
-        return _primitive_data.size;
-    }
-}
-size_t RTTRType::alignment() const
-{
-    switch (_type_category)
-    {
-    case ERTTRTypeCategory::Primitive:
-        return _primitive_data.alignment;
-    case ERTTRTypeCategory::Record:
-        return _record_data.alignment;
-    case ERTTRTypeCategory::Enum:
-        return _enum_data.alignment;
-    default:
-        SKR_UNREACHABLE_CODE()
-        return _primitive_data.alignment;
-    }
-}
-void RTTRType::each_name_space(FunctionRef<void(StringView)> each_func) const
-{
-    switch (_type_category)
-    {
-    case ERTTRTypeCategory::Primitive:
-        break;
-    case ERTTRTypeCategory::Record:
-        for (const String& ns : _record_data.name_space)
-        {
-            each_func(ns);
-        }
-        break;
-    case ERTTRTypeCategory::Enum:
-        for (const String& ns : _enum_data.name_space)
-        {
-            each_func(ns);
-        }
         break;
     default:
         SKR_UNREACHABLE_CODE()
@@ -190,7 +77,7 @@ void RTTRType::build_enum(FunctionRef<void(RTTREnumData* data)> func)
 }
 
 // caster
-bool RTTRType::based_on(GUID type_id) const
+bool RTTRType::based_on(GUID type_id, uint32_t* out_cast_count) const
 {
     switch (_type_category)
     {
@@ -204,13 +91,17 @@ bool RTTRType::based_on(GUID type_id) const
         }
         else
         {
+            // add count if walk to base
+            if (out_cast_count)
+            {
+                ++(*out_cast_count);
+            }
             // find base and cast
             for (const auto& base : _record_data.bases_data)
             {
                 if (type_id == base->type_id)
                 {
                     return true;
-                    ;
                 }
             }
 
@@ -220,7 +111,7 @@ bool RTTRType::based_on(GUID type_id) const
                 auto type = get_type_from_guid(base->type_id);
                 if (type)
                 {
-                    if (type->based_on(type_id))
+                    if (type->based_on(type_id, out_cast_count))
                     {
                         return true;
                     }
@@ -300,6 +191,29 @@ RTTRTypeCaster RTTRType::caster_to_base(GUID type_id) const
     return result;
 }
 
+// enum getter
+GUID RTTRType::enum_underlying_type_id() const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Enum:
+        return _enum_data.underlying_type_id;
+    default:
+        SKR_UNREACHABLE_CODE()
+        return {};
+    }
+}
+void RTTRType::each_enum_items(FunctionRef<void(const RTTREnumItemData*)> each_func) const
+{
+    if (_type_category == ERTTRTypeCategory::Enum)
+    {
+        for (const auto& item : _enum_data.items)
+        {
+            each_func(item);
+        }
+    }
+}
+
 // get dtor
 Optional<RTTRDtorData> RTTRType::dtor_data() const
 {
@@ -309,6 +223,27 @@ Optional<RTTRDtorData> RTTRType::dtor_data() const
         return _record_data.dtor_data;
     default:
         return {};
+    }
+}
+DtorInvoker RTTRType::dtor_invoker() const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Record:
+        return _record_data.dtor_data.native_invoke;
+    default:
+        return nullptr;
+    }
+}
+void RTTRType::invoke_dtor(void* p) const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Record:
+        _record_data.dtor_data.native_invoke(p);
+        break;
+    default:
+        break;
     }
 }
 
@@ -794,6 +729,32 @@ const RTTRExternMethodData* RTTRType::find_extern_method(RTTRTypeFindConfig conf
     return nullptr;
 }
 
+// find basic functions
+ExportCtorInvoker<void()> RTTRType::find_default_ctor() const
+{
+    return find_ctor_t<void()>();
+}
+ExportCtorInvoker<void(const void*)> RTTRType::find_copy_ctor() const
+{
+    TypeSignatureBuilder tb;
+    tb.write_function_signature(1);
+    tb.write_type_id(type_id_of<void>()); // return
+    tb.write_const_ref();
+    tb.write_type_id(type_id()); // param 1: const T&
+    return find_ctor({ .signature = tb.type_signature_view() });
+}
+ExportExternMethodInvoker<void(void*, const void*)> RTTRType::find_assign() const
+{
+    TypeSignatureBuilder tb;
+    tb.write_function_signature(2);
+    tb.write_type_id(type_id_of<void>()); // return
+    tb.write_ref();
+    tb.write_type_id(type_id()); // param 1: T&
+    tb.write_const_ref();
+    tb.write_type_id(type_id()); // param 2: const T&
+    return find_extern_method({ .name = { CPPExternMethods::Assign }, .signature = tb.type_signature_view() });
+}
+
 // flag & attribute
 ERTTRRecordFlag RTTRType::record_flag() const
 {
@@ -829,6 +790,56 @@ const Any* RTTRType::find_attribute(TypeSignatureView signature) const
         break;
     }
     return nullptr;
+}
+void RTTRType::each_attribute(FunctionRef<void(const Any&)> each_func) const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Record: {
+        for (const auto& attr : _record_data.attrs)
+        {
+            each_func(attr);
+        }
+        break;
+    }
+    case ERTTRTypeCategory::Enum: {
+        for (const auto& attr : _enum_data.attrs)
+        {
+            each_func(attr);
+        }
+        break;
+    }
+    default:
+        break;
+    }
+}
+void RTTRType::each_attribute(FunctionRef<void(const Any&)> each_func, TypeSignatureView signature) const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Record: {
+        for (const auto& attr : _record_data.attrs)
+        {
+            if (attr.type_is(signature))
+            {
+                each_func(attr);
+            }
+        }
+        break;
+    }
+    case ERTTRTypeCategory::Enum: {
+        for (const auto& attr : _enum_data.attrs)
+        {
+            if (attr.type_is(signature))
+            {
+                each_func(attr);
+            }
+        }
+        break;
+    }
+    default:
+        break;
+    }
 }
 
 // helpers

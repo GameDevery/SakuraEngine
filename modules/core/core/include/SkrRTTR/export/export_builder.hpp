@@ -292,13 +292,13 @@ struct RTTRRecordBuilder {
         // fill assign operator
         if constexpr (std::is_copy_assignable_v<T>)
         {
-            extern_method<+[](T& lhs, const T& rhs) { lhs.operator=(rhs); }>(CPPExternMethods::Assign);
+            extern_method<+[](T& lhs, const T& rhs) -> void { lhs.operator=(rhs); }>(CPPExternMethods::Assign);
         }
 
         // fill move assign operator
         if constexpr (std::is_move_assignable_v<T>)
         {
-            extern_method<+[](T& lhs, T&& rhs) { lhs.operator=(std::move(rhs)); }>(CPPExternMethods::Assign);
+            extern_method<+[](T& lhs, T&& rhs) -> void { lhs.operator=(std::move(rhs)); }>(CPPExternMethods::Assign);
         }
 
         // fill bin serde

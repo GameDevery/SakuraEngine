@@ -7,39 +7,60 @@
 
 namespace skr
 {
+struct V8BindManager;
 //===============================bind data===============================
-struct V8BindMethodData {
+struct V8BindDataMethod {
     ScriptBinderMethod binder;
+    // manager
+    V8BindManager* manager = nullptr;
 };
-struct V8BindStaticMethodData {
+struct V8BindDataStaticMethod {
     ScriptBinderStaticMethod binder;
+    // manager
+    V8BindManager* manager = nullptr;
 };
-struct V8BindFieldData {
+struct V8BindDataField {
     ScriptBinderField binder;
+    // manager
+    V8BindManager* manager = nullptr;
 };
-struct V8BindStaticFieldData {
+struct V8BindDataStaticField {
     ScriptBinderStaticField binder;
+    // manager
+    V8BindManager* manager = nullptr;
 };
-struct V8BindPropertyData {
+struct V8BindDataProperty {
     ScriptBinderProperty binder;
+    // manager
+    V8BindManager* manager = nullptr;
 };
-struct V8BindStaticPropertyData {
+struct V8BindDataStaticProperty {
     ScriptBinderStaticProperty binder;
+    // manager
+    V8BindManager* manager = nullptr;
 };
-struct V8BindWrapData {
+struct V8BindDataObject;
+struct V8BindDataValue;
+struct V8BindDataRecordBase {
     // v8 info
     ::v8::Global<::v8::FunctionTemplate> ctor_template;
 
     // native info
-    ScriptBinderWrap*                      binder;
-    Map<String, V8BindMethodData*>         methods;
-    Map<String, V8BindFieldData*>          fields;
-    Map<String, V8BindStaticMethodData*>   static_methods;
-    Map<String, V8BindStaticFieldData*>    static_fields;
-    Map<String, V8BindPropertyData*>       properties;
-    Map<String, V8BindStaticPropertyData*> static_properties;
+    bool                                   is_value = false;
+    Map<String, V8BindDataMethod*>         methods;
+    Map<String, V8BindDataField*>          fields;
+    Map<String, V8BindDataStaticMethod*>   static_methods;
+    Map<String, V8BindDataStaticField*>    static_fields;
+    Map<String, V8BindDataProperty*>       properties;
+    Map<String, V8BindDataStaticProperty*> static_properties;
 
-    ~V8BindWrapData()
+    // manager
+    V8BindManager* manager = nullptr;
+
+    V8BindDataObject* as_object();
+    V8BindDataValue*  as_value();
+
+    inline ~V8BindDataRecordBase()
     {
         for (auto& pair : methods)
         {
@@ -67,21 +88,130 @@ struct V8BindWrapData {
         }
     }
 };
+struct V8BindDataObject : V8BindDataRecordBase {
+    inline V8BindDataObject()
+    {
+        is_value = false;
+    }
+
+    ScriptBinderObject* binder;
+};
+struct V8BindDataValue : V8BindDataRecordBase {
+    inline V8BindDataValue()
+    {
+        is_value = true;
+    }
+
+    ScriptBinderValue* binder;
+};
+struct V8BindDataEnum {
+    // v8 info
+    v8::Global<v8::ObjectTemplate> enum_template;
+
+    // manager
+    V8BindManager* manager = nullptr;
+
+    ScriptBinderEnum* binder;
+};
+inline V8BindDataObject* V8BindDataRecordBase::as_object()
+{
+    SKR_ASSERT(!is_value);
+    return static_cast<V8BindDataObject*>(this);
+}
+inline V8BindDataValue* V8BindDataRecordBase::as_value()
+{
+    SKR_ASSERT(is_value);
+    return static_cast<V8BindDataValue*>(this);
+}
 
 //===============================bind core===============================
-struct V8BindRecordCore {
-    // native info
-    skr::ScriptbleObject* object      = nullptr;
-    void*                 object_head = nullptr;
-    const skr::RTTRType*  type        = nullptr;
+struct V8BindCoreObject;
+struct V8BindCoreValue;
+struct V8BindManager;
+struct V8BindCoreRecordBase {
+    // type
+    V8BindCoreObject* as_object();
+    V8BindCoreValue*  as_value();
+
+    // type
+    bool is_value = false;
+
+    // record data
+    const skr::RTTRType* type = nullptr;
+    void*                data = nullptr;
+
+    // fields
+    Map<void*, V8BindCoreValue*> cache_value_fields = {};
 
     // v8 info
-    ::v8::Persistent<::v8::Object> v8_object;
+    ::v8::Persistent<::v8::Object> v8_object = {};
 
-    // helper functions
-    inline void* cast_to_base(::skr::GUID type_id)
+    // manager
+    V8BindManager* manager = nullptr;
+
+    inline bool is_valid() const
     {
-        return type->cast_to_base(type_id, object->iobject_get_head_ptr());
+        return data != nullptr;
+    }
+
+    ~V8BindCoreRecordBase();
+};
+struct V8BindCoreObject : V8BindCoreRecordBase {
+    inline V8BindCoreObject()
+    {
+        is_value = false;
+    }
+
+    // native info
+    skr::ScriptbleObject* object = nullptr;
+
+    inline void invalidate()
+    {
+        data   = nullptr;
+        object = nullptr;
     }
 };
+struct V8BindCoreValue : V8BindCoreRecordBase {
+    inline V8BindCoreValue()
+    {
+        is_value = true;
+    }
+
+    // owner info
+    enum class ESource
+    {
+        Invalid,
+        Field,
+        StaticField,
+        Param,
+        Create,
+    };
+    ESource               from             = ESource::Invalid;
+    V8BindCoreRecordBase* from_field_owner = nullptr;
+
+    inline void invalidate()
+    {
+        data             = nullptr;
+        from             = ESource::Invalid;
+        from_field_owner = nullptr;
+    }
+};
+
+inline V8BindCoreObject* V8BindCoreRecordBase::as_object()
+{
+    SKR_ASSERT(!is_value);
+    return static_cast<V8BindCoreObject*>(this);
+}
+inline V8BindCoreValue* V8BindCoreRecordBase::as_value()
+{
+    SKR_ASSERT(is_value);
+    return static_cast<V8BindCoreValue*>(this);
+}
+inline V8BindCoreRecordBase::~V8BindCoreRecordBase()
+{
+    for (auto& [field_ptr, field_core] : cache_value_fields)
+    {
+        field_core->invalidate();
+    }
+}
 } // namespace skr
