@@ -12,6 +12,7 @@
 #include "SkrToolCore/asset/cook_system.hpp"
 #include "SkrToolCore/asset/importer.hpp"
 #include "SkrToolCore/project/project.hpp"
+#include "SkrContainers/hashmap.hpp"
 
 namespace skd::asset
 {

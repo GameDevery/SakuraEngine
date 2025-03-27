@@ -1,6 +1,7 @@
 #include "SkrToolCore/asset/cook_system.hpp"
 #include "SkrToolCore/asset/importer.hpp"
 #include "SkrSerde/json_serde.hpp"
+#include "SkrContainers/hashmap.hpp"
 
 namespace skd::asset
 {
