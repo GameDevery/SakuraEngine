@@ -6,10 +6,16 @@
 #include "v8-platform.h"
 #include "v8_bind_data.hpp"
 #include "v8-primitive.h"
+#ifndef __meta__
+    #include "SkrV8/v8_bind_manager.generated.h"
+#endif
 
 namespace skr
 {
-struct SKR_V8_API V8BindManager : IScriptMixinCore {
+sreflect_struct(guid = "50b1cef1-5171-4251-80a9-24a085f5b627") 
+SKR_V8_API V8BindManager : IScriptMixinCore {
+    SKR_GENERATE_BODY()
+
     // ctor & dtor
     V8BindManager();
     ~V8BindManager();

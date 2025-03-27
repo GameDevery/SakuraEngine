@@ -1,3 +1,6 @@
+codegen_component("SkrV8", {api = "SKR_V8", rootdir = "include/SkrV8"})
+    add_files("include/**.hpp")
+
 shared_module("SkrV8", "SKR_V8")
     -- dependencies
     public_dependency("SkrRT")

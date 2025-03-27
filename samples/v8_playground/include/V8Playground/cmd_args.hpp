@@ -7,10 +7,10 @@
     #include "V8Playground/cmd_args.generated.h"
 #endif
 
-namespace v8_play
+namespace skr
 {
 sreflect_struct(guid = "c30115c5-4945-468f-a579-523202d4f42b" rttr = @full)
-    SubCommandDumpDefine {
+SubCommandDumpDefine {
     srttr_attr(CmdOption{
         .short_name = u8'o',
         .help       = u8"output .d.ts file",
@@ -95,4 +95,4 @@ MainCommand {
         SKR_LOG_FMT_INFO(u8"test c: {}", test_c ? u8"true" : u8"false");
     }
 };
-} // namespace v8_play
+} // namespace skr

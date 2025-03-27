@@ -134,7 +134,7 @@ inline Optional<T> V8Value::get() const
     // solve context
     Local<Context> solved_context = context->v8_context().Get(isolate);
     Context::Scope context_scope(solved_context);
-    auto*          bind_manager    = &context->isolate()->_bind_manager;
+    auto*          bind_manager    = context->isolate()->_bind_manager;
     Local<Value>   solved_v8_value = v8_value.Get(isolate);
 
     if constexpr (
@@ -210,7 +210,7 @@ inline void V8Context::set_global(StringView name, T&& v)
     Local<Context> solved_context = _context.Get(_isolate->v8_isolate());
     Context::Scope context_scope(solved_context);
     Local<Object>  global       = solved_context->Global();
-    auto*          bind_manager = &_isolate->_bind_manager;
+    auto*          bind_manager = _isolate->_bind_manager;
 
     // translate value
     Local<Value> value;

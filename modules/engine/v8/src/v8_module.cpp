@@ -23,13 +23,13 @@ void V8Module::name(StringView name)
 }
 void V8Module::register_type(const RTTRType* type)
 {
-    auto& script_binder_mgr = _isolate->_bind_manager.script_binder_manger();
+    auto& script_binder_mgr = _isolate->_bind_manager->script_binder_manger();
     auto  type_binder       = script_binder_mgr.get_or_build(type->type_id());
     _module_info.register_type(type_binder);
 }
 void V8Module::register_type(const RTTRType* type, StringView name_space)
 {
-    auto& script_binder_mgr = _isolate->_bind_manager.script_binder_manger();
+    auto& script_binder_mgr = _isolate->_bind_manager->script_binder_manger();
     auto  type_binder       = script_binder_mgr.get_or_build(type->type_id());
     _module_info.register_type(type_binder, name_space);
 }
@@ -148,7 +148,7 @@ v8::MaybeLocal<v8::Value> V8Module::_eval_callback(
             module->SetSyntheticModuleExport(
                 isolate,
                 V8Bind::to_v8(k, true),
-                V8Bind::export_namespace_node(v, &skr_iolate->_bind_manager)
+                V8Bind::export_namespace_node(v, skr_iolate->_bind_manager)
             ).Check();
             // clang-format on
         }

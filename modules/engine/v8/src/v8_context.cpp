@@ -40,13 +40,13 @@ void V8Context::shutdown()
 // register type
 void V8Context::register_type(skr::RTTRType* type)
 {
-    auto& script_binder_mgr = _isolate->_bind_manager.script_binder_manger();
+    auto& script_binder_mgr = _isolate->_bind_manager->script_binder_manger();
     auto  binder            = script_binder_mgr.get_or_build(type->type_id());
     _global_module.register_type(binder);
 }
 void V8Context::register_type(skr::RTTRType* type, StringView name_space)
 {
-    auto& script_binder_mgr = _isolate->_bind_manager.script_binder_manger();
+    auto& script_binder_mgr = _isolate->_bind_manager->script_binder_manger();
     auto  binder            = script_binder_mgr.get_or_build(type->type_id());
     _global_module.register_type(binder, name_space);
 }
@@ -98,7 +98,7 @@ bool V8Context::finalize_register()
             context->Global()->Set(
                 context,
                 V8Bind::to_v8(k, true),
-                V8Bind::export_namespace_node(v, &_isolate->_bind_manager)
+                V8Bind::export_namespace_node(v, _isolate->_bind_manager)
             ).Check();
             // clang-format on
         }
