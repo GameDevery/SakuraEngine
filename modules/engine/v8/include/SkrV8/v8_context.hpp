@@ -50,6 +50,7 @@ struct SKR_V8_API V8Context {
     // getter
     ::v8::Global<::v8::Context> v8_context() const;
     inline V8Isolate*           isolate() const { return _isolate; }
+    inline const ScriptModule&  global_module() const { return _global_module; }
 
     // set global value
     template <typename T>

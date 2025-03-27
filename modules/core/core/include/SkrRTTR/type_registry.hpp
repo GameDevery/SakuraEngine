@@ -16,6 +16,7 @@ SKR_CORE_API void unregister_type_loader(const GUID& guid, RTTRTypeLoaderFunc lo
 
 // get type (after register)
 SKR_CORE_API RTTRType* get_type_from_guid(const GUID& guid);
+SKR_CORE_API void      load_all_types();
 SKR_CORE_API void      unload_all_types();
 
 // each types

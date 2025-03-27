@@ -15,7 +15,7 @@ public:
     uint32_t indent_size = 2;
 
     // script binder manager
-    ScriptModule* module = nullptr;
+    const ScriptModule* module = nullptr;
 
 private:
     // codegen unit

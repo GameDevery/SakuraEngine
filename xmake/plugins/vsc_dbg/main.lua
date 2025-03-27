@@ -96,7 +96,8 @@ function _load_launch_from_binary_target(target, build_dir)
         local config_post_cmds = target:values("vsc_dbg.cmd_post")
         
         -- get launch args
-        local args = config_args and config_args or {}
+        local args = config_args and table.wrap(config_args) or {}
+
 
         -- get launch envs
         local envs = {}

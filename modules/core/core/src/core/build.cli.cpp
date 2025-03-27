@@ -614,20 +614,21 @@ void CmdParser::parse(int argc, char* argv[])
             ++current_idx;
         }
         else
-        {
-            CliOutputBuilder builder;
-            builder
-                .style_bold()
-                .style_front_red()
-                .write(u8"unknown sub command: ")
-                .style_clear()
-                .style_front_cyan()
-                .write(token)
-                .style_clear()
-                .next_line();
-            builder.dump();
-            _root_cmd.print_help();
-            return;
+        { // support command like 'run.exe test.js'
+            break;
+            // CliOutputBuilder builder;
+            // builder
+            //     .style_bold()
+            //     .style_front_red()
+            //     .write(u8"unknown sub command: ")
+            //     .style_clear()
+            //     .style_front_cyan()
+            //     .write(token)
+            //     .style_clear()
+            //     .next_line();
+            // builder.dump();
+            // _root_cmd.print_help();
+            // return;
         }
     }
 
