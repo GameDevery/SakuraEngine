@@ -6,37 +6,37 @@
 
 namespace skr::container
 {
-template <typename TBlock, typename TS, bool kConst>
+template <typename TBlock, typename TSize, bool kConst>
 struct BitCursor;
-template <typename TBlock, typename TS, bool kConst>
+template <typename TBlock, typename TSize, bool kConst>
 struct TrueBitCursor;
-template <typename TBlock, typename TS, bool kConst>
+template <typename TBlock, typename TSize, bool kConst>
 struct FalseBitCursor;
 
-template <typename TBlock, typename TS, bool kConst>
-using BitIter = CursorIter<BitCursor<TBlock, TS, kConst>, false>;
-template <typename TBlock, typename TS, bool kConst>
-using BitIterInv = CursorIter<BitCursor<TBlock, TS, kConst>, true>;
+template <typename TBlock, typename TSize, bool kConst>
+using BitIter = CursorIter<BitCursor<TBlock, TSize, kConst>, false>;
+template <typename TBlock, typename TSize, bool kConst>
+using BitIterInv = CursorIter<BitCursor<TBlock, TSize, kConst>, true>;
 
-template <typename TBlock, typename TS, bool kConst>
-using TrueBitIter = CursorIter<TrueBitCursor<TBlock, TS, kConst>, false>;
-template <typename TBlock, typename TS, bool kConst>
-using TrueBitIterInv = CursorIter<TrueBitCursor<TBlock, TS, kConst>, true>;
+template <typename TBlock, typename TSize, bool kConst>
+using TrueBitIter = CursorIter<TrueBitCursor<TBlock, TSize, kConst>, false>;
+template <typename TBlock, typename TSize, bool kConst>
+using TrueBitIterInv = CursorIter<TrueBitCursor<TBlock, TSize, kConst>, true>;
 
-template <typename TBlock, typename TS, bool kConst>
-using FalseBitIter = CursorIter<FalseBitCursor<TBlock, TS, kConst>, false>;
-template <typename TBlock, typename TS, bool kConst>
-using FalseBitIterInv = CursorIter<FalseBitCursor<TBlock, TS, kConst>, true>;
+template <typename TBlock, typename TSize, bool kConst>
+using FalseBitIter = CursorIter<FalseBitCursor<TBlock, TSize, kConst>, false>;
+template <typename TBlock, typename TSize, bool kConst>
+using FalseBitIterInv = CursorIter<FalseBitCursor<TBlock, TSize, kConst>, true>;
 
-template <typename TBlock, typename TS, bool kConst>
+template <typename TBlock, typename TSize, bool kConst>
 struct BitCursor {
     static_assert(std::is_integral_v<TBlock> && !std::is_signed_v<TBlock>);
     using DataType = std::conditional_t<kConst, const TBlock, TBlock>;
     using RefType  = std::conditional_t<kConst, bool, BitRef<TBlock>>;
-    using SizeType = TS;
+    using SizeType = TSize;
     using Algo     = algo::BitAlgo<TBlock>;
 
-    static constexpr SizeType npos = npos_of<TS>;
+    static constexpr SizeType npos = npos_of<TSize>;
 
     // ctor & copy & move & assign & move assign
     inline BitCursor(DataType* data, SizeType size, SizeType index)
@@ -100,15 +100,15 @@ private:
     SizeType  _bit_size;
     SizeType  _bit_index;
 };
-template <typename TBlock, typename TS, bool kConst>
+template <typename TBlock, typename TSize, bool kConst>
 struct TrueBitCursor {
     static_assert(std::is_integral_v<TBlock> && !std::is_signed_v<TBlock>);
     using DataType = std::conditional_t<kConst, const TBlock, TBlock>;
     using RefType  = std::conditional_t<kConst, bool, BitRef<TBlock>>;
-    using SizeType = TS;
+    using SizeType = TSize;
     using Algo     = algo::BitAlgo<TBlock>;
 
-    static constexpr SizeType npos = npos_of<TS>;
+    static constexpr SizeType npos = npos_of<TSize>;
 
     // ctor & copy & move & assign & move assign
     inline TrueBitCursor(DataType* data, SizeType size, SizeType index)
@@ -219,15 +219,15 @@ private:
     SizeType  _bit_size;
     SizeType  _bit_index;
 };
-template <typename TBlock, typename TS, bool kConst>
+template <typename TBlock, typename TSize, bool kConst>
 struct FalseBitCursor {
     static_assert(std::is_integral_v<TBlock> && !std::is_signed_v<TBlock>);
     using DataType = std::conditional_t<kConst, const TBlock, TBlock>;
     using RefType  = std::conditional_t<kConst, bool, BitRef<TBlock>>;
-    using SizeType = TS;
+    using SizeType = TSize;
     using Algo     = algo::BitAlgo<TBlock>;
 
-    static constexpr SizeType npos = npos_of<TS>;
+    static constexpr SizeType npos = npos_of<TSize>;
 
     // ctor & copy & move & assign & move assign
     inline FalseBitCursor(DataType* data, SizeType size, SizeType index)

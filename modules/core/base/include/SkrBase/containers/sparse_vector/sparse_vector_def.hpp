@@ -8,16 +8,16 @@
 namespace skr::container
 {
 // SparseVector 的 Element 定义
-// 空穴状态会变为链表的节点，带来的问题是当 sizeof(T) < sizeof(TS) * 2 时，会产生不必要的浪费的浪费
+// 空穴状态会变为链表的节点，带来的问题是当 sizeof(T) < sizeof(TSize) * 2 时，会产生不必要的浪费的浪费
 // 不过通常这种浪费是可接受的
-template <typename T, typename TS>
+template <typename T, typename TSize>
 union SparseVectorStorage
 {
     // free linked list
     struct
     {
-        TS _sparse_vector_freelist_prev;
-        TS _sparse_vector_freelist_next;
+        TSize _sparse_vector_freelist_prev;
+        TSize _sparse_vector_freelist_next;
     };
 
     // data
@@ -27,23 +27,23 @@ union SparseVectorStorage
 // SparseVector 的数据引用，代替单纯的指针/Index返回
 // 提供足够的信息，并将 npos 封装起来简化调用防止出错
 // 规则见 VectorDataRef
-template <typename T, typename TS, bool kConst>
-using SparseVectorDataRef = VectorDataRef<T, TS, kConst>;
+template <typename T, typename TSize, bool kConst>
+using SparseVectorDataRef = VectorDataRef<T, TSize, kConst>;
 } // namespace skr::container
 
 // SparseVectorStorage data memory traits
 namespace skr::memory
 {
-template <typename T, typename TS>
-struct MemoryTraits<skr::container::SparseVectorStorage<T, TS>, skr::container::SparseVectorStorage<T, TS>> : public MemoryTraits<T, T> {
+template <typename T, typename TSize>
+struct MemoryTraits<skr::container::SparseVectorStorage<T, TSize>, skr::container::SparseVectorStorage<T, TSize>> : public MemoryTraits<T, T> {
 };
 } // namespace skr::memory
 
 namespace skr
 {
-template <typename T, typename TS>
-struct Swap<::skr::container::SparseVectorStorage<T, TS>> {
-    static void call(::skr::container::SparseVectorStorage<T, TS>& a, ::skr::container::SparseVectorStorage<T, TS>& b)
+template <typename T, typename TSize>
+struct Swap<::skr::container::SparseVectorStorage<T, TSize>> {
+    static void call(::skr::container::SparseVectorStorage<T, TSize>& a, ::skr::container::SparseVectorStorage<T, TSize>& b)
     {
         Swap<T>::call(a._sparse_vector_data, b._sparse_vector_data);
     }

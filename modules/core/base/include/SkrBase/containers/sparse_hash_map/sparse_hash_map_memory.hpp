@@ -6,8 +6,8 @@
 // sparse hash map memory base
 namespace skr::container
 {
-template <typename TS>
-using SparseHashMapMemoryBase = SparseHashSetMemoryBase<TS>;
+template <typename TSize>
+using SparseHashMapMemoryBase = SparseHashSetMemoryBase<TSize>;
 }
 
 // sparse hash map memory

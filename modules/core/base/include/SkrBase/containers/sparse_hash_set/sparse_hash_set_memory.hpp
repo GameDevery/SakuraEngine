@@ -9,9 +9,9 @@
 // sparse hash set memory base
 namespace skr::container
 {
-template <typename TS>
-struct SparseHashSetMemoryBase : public SparseVectorMemoryBase<TS> {
-    using SizeType = TS;
+template <typename TSize>
+struct SparseHashSetMemoryBase : public SparseVectorMemoryBase<TSize> {
+    using SizeType = TSize;
 
 protected:
     SizeType* _bucket      = nullptr;

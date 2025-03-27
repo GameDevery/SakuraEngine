@@ -6,8 +6,8 @@
 
 namespace skr::container
 {
-template <typename T, typename TS, bool kConst>
-using StringDataRef = VectorDataRef<T, TS, kConst>;
+template <typename T, typename TSize, bool kConst>
+using StringDataRef = VectorDataRef<T, TSize, kConst>;
 
 template <typename TStr>
 struct StringPartitionResult {

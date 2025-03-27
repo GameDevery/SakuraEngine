@@ -6,41 +6,41 @@
 
 namespace skr
 {
-template <typename TS, bool kConst>
+template <typename TSize, bool kConst>
 struct UTF8Cursor;
-template <typename TS, bool kConst>
-using UTF8Iter = container::CursorIter<UTF8Cursor<TS, kConst>, false>;
-template <typename TS, bool kConst>
-using UTF8IterInv = container::CursorIter<UTF8Cursor<TS, kConst>, true>;
-template <typename TS, bool kConst>
-using UTF8Range = container::CursorRange<UTF8Cursor<TS, kConst>, false>;
-template <typename TS, bool kConst>
-using UTF8RangeInv = container::CursorRange<UTF8Cursor<TS, kConst>, true>;
+template <typename TSize, bool kConst>
+using UTF8Iter = container::CursorIter<UTF8Cursor<TSize, kConst>, false>;
+template <typename TSize, bool kConst>
+using UTF8IterInv = container::CursorIter<UTF8Cursor<TSize, kConst>, true>;
+template <typename TSize, bool kConst>
+using UTF8Range = container::CursorRange<UTF8Cursor<TSize, kConst>, false>;
+template <typename TSize, bool kConst>
+using UTF8RangeInv = container::CursorRange<UTF8Cursor<TSize, kConst>, true>;
 
-template <typename TS, bool kConst>
+template <typename TSize, bool kConst>
 struct UTF16Cursor;
-template <typename TS, bool kConst>
-using UTF16Iter = container::CursorIter<UTF16Cursor<TS, kConst>, false>;
-template <typename TS, bool kConst>
-using UTF16IterInv = container::CursorIter<UTF16Cursor<TS, kConst>, true>;
-template <typename TS, bool kConst>
-using UTF16Range = container::CursorRange<UTF16Cursor<TS, kConst>, false>;
-template <typename TS, bool kConst>
-using UTF16RangeInv = container::CursorRange<UTF16Cursor<TS, kConst>, true>;
+template <typename TSize, bool kConst>
+using UTF16Iter = container::CursorIter<UTF16Cursor<TSize, kConst>, false>;
+template <typename TSize, bool kConst>
+using UTF16IterInv = container::CursorIter<UTF16Cursor<TSize, kConst>, true>;
+template <typename TSize, bool kConst>
+using UTF16Range = container::CursorRange<UTF16Cursor<TSize, kConst>, false>;
+template <typename TSize, bool kConst>
+using UTF16RangeInv = container::CursorRange<UTF16Cursor<TSize, kConst>, true>;
 
-template <typename TS, bool kConst>
+template <typename TSize, bool kConst>
 struct UTF8Cursor {
     using DataType = std::conditional_t<kConst, const skr_char8, skr_char8>;
-    using SizeType = TS;
+    using SizeType = TSize;
     using RefType  = UTF8Seq; // TODO. UTF8SeqRef
 
     static constexpr SizeType npos = npos_of<SizeType>;
 
     // iter & range
-    using Iter     = UTF8Iter<TS, kConst>;
-    using IterInv  = UTF8IterInv<TS, kConst>;
-    using Range    = UTF8Range<TS, kConst>;
-    using RangeInv = UTF8RangeInv<TS, kConst>;
+    using Iter     = UTF8Iter<TSize, kConst>;
+    using IterInv  = UTF8IterInv<TSize, kConst>;
+    using Range    = UTF8Range<TSize, kConst>;
+    using RangeInv = UTF8RangeInv<TSize, kConst>;
 
     // ctor & copy & move & assign & move assign
     inline UTF8Cursor(DataType* data, SizeType size, SizeType index)
@@ -146,19 +146,19 @@ private:
     SizeType  _seq_len = 0; // npos means bad sequence
 };
 
-template <typename TS, bool kConst>
+template <typename TSize, bool kConst>
 struct UTF16Cursor {
     using DataType = std::conditional_t<kConst, const skr_char16, skr_char16>;
-    using SizeType = TS;
+    using SizeType = TSize;
     using RefType  = UTF16Seq; // TODO. UTF16SeqRef
 
     static constexpr SizeType npos = npos_of<SizeType>;
 
     // iter & range
-    using Iter     = UTF16Iter<TS, kConst>;
-    using IterInv  = UTF16IterInv<TS, kConst>;
-    using Range    = UTF16Range<TS, kConst>;
-    using RangeInv = UTF16RangeInv<TS, kConst>;
+    using Iter     = UTF16Iter<TSize, kConst>;
+    using IterInv  = UTF16IterInv<TSize, kConst>;
+    using Range    = UTF16Range<TSize, kConst>;
+    using RangeInv = UTF16RangeInv<TSize, kConst>;
 
     // ctor & copy & move & assign & move assign
     inline UTF16Cursor(DataType* data, SizeType size, SizeType index)

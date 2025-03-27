@@ -9,10 +9,10 @@
 // util bit vector memory
 namespace skr::container
 {
-template <typename TBitBlock, typename TS, typename Allocator>
+template <typename TBitBlock, typename TSize, typename Allocator>
 struct BitVectorMemory : public Allocator {
     using BitBlockType       = TBitBlock;
-    using SizeType           = TS;
+    using SizeType           = TSize;
     using AllocatorCtorParam = typename Allocator::CtorParam;
 
     // ctor & dtor

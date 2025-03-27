@@ -3,12 +3,12 @@
 
 namespace skr::container
 {
-template <typename T, typename TS, bool kConst>
+template <typename T, typename TSize, bool kConst>
 struct RingBufferIt {
     using DataType  = std::conditional_t<kConst, const T*, T*>;
     using ValueType = std::conditional_t<kConst, const T, T>;
 
-    inline RingBufferIt(DataType* data, TS capacity, TS pos)
+    inline RingBufferIt(DataType* data, TSize capacity, TSize pos)
         : _data(data)
         , _capacity(capacity)
         , _pos(pos)
@@ -34,17 +34,17 @@ struct RingBufferIt {
 
 private:
     DataType* _data     = nullptr;
-    TS        _capacity = 0;
-    TS        _pos      = 0;
+    TSize        _capacity = 0;
+    TSize        _pos      = 0;
 };
 } // namespace skr::container
 
 namespace skr::container
 {
-template <typename T, typename TS, bool kConst>
+template <typename T, typename TSize, bool kConst>
 struct RingBufferCursor {
     using DataType = std::conditional_t<kConst, const T, T>;
-    using SizeType = TS;
+    using SizeType = TSize;
 
     // ctor & copy & move & assign & move assign
     inline RingBufferCursor(DataType* data, SizeType capacity, SizeType begin, SizeType end, SizeType index)
@@ -144,11 +144,11 @@ private:
     SizeType  _index;
 };
 
-template <typename T, typename TS, bool kConst>
+template <typename T, typename TSize, bool kConst>
 struct RingBufferIter {
-    using CursorType = RingBufferCursor<T, TS, kConst>;
+    using CursorType = RingBufferCursor<T, TSize, kConst>;
     using DataType   = std::conditional_t<kConst, const T, T>;
-    using SizeType   = TS;
+    using SizeType   = TSize;
 
     // ctor & copy & move & assign & move assign
     inline RingBufferIter(DataType* data, SizeType capacity, SizeType begin, SizeType end)
@@ -173,11 +173,11 @@ struct RingBufferIter {
 private:
     CursorType _cursor;
 };
-template <typename T, typename TS, bool kConst>
+template <typename T, typename TSize, bool kConst>
 struct RingBufferIterInv {
-    using CursorType = RingBufferCursor<T, TS, kConst>;
+    using CursorType = RingBufferCursor<T, TSize, kConst>;
     using DataType   = std::conditional_t<kConst, const T, T>;
-    using SizeType   = TS;
+    using SizeType   = TSize;
 
     // ctor & copy & move & assign & move assign
     inline RingBufferIterInv(DataType* data, SizeType capacity, SizeType begin, SizeType end)

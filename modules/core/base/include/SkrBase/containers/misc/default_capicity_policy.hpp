@@ -5,16 +5,16 @@
 
 namespace skr::container
 {
-template <typename T, typename TS>
-inline TS default_get_grow(TS expect_size, TS current_capacity)
+template <typename T, typename TSize>
+inline TSize default_get_grow(TSize expect_size, TSize current_capacity)
 {
-    constexpr TS first_grow    = 4;
-    constexpr TS constant_grow = 16;
+    constexpr TSize first_grow    = 4;
+    constexpr TSize constant_grow = 16;
 
     SKR_ASSERT(expect_size > current_capacity && expect_size > 0);
 
     // init data
-    TS result = first_grow;
+    TSize result = first_grow;
 
     // calc grow
     if (current_capacity || expect_size > first_grow)
@@ -24,16 +24,16 @@ inline TS default_get_grow(TS expect_size, TS current_capacity)
 
     // handle num over flow
     if (expect_size > result)
-        result = std::numeric_limits<TS>::max();
+        result = std::numeric_limits<TSize>::max();
 
     return result;
 }
-template <typename T, typename TS>
-inline TS default_get_shrink(TS expect_size, TS current_capacity)
+template <typename T, typename TSize>
+inline TSize default_get_shrink(TSize expect_size, TSize current_capacity)
 {
     SKR_ASSERT(expect_size <= current_capacity);
 
-    TS result;
+    TSize result;
     if (((3 * expect_size) < (2 * current_capacity)) &&
         ((current_capacity - expect_size) > 64 || !expect_size))
     {

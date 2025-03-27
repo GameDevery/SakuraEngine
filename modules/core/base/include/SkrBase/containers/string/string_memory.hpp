@@ -17,17 +17,17 @@
 //        |==set_literal()==>[literal]
 namespace skr::container
 {
-template <typename TS, uint64_t SSOSize = 31>
+template <typename TSize, uint64_t SSOSize = 31>
 struct StringMemoryBase {
     static constexpr uint64_t SSOBufferSize = SSOSize + 1;
     static constexpr uint64_t SSOCapacity   = SSOSize - 1;
 
     static_assert(SSOBufferSize % 4 == 0, "SSOSize must be 4n - 2");
-    static_assert(SSOBufferSize > sizeof(TS) * 2 + sizeof(void*), "SSOSize must be larger than heap data size");
+    static_assert(SSOBufferSize > sizeof(TSize) * 2 + sizeof(void*), "SSOSize must be larger than heap data size");
     // uint8_t max (used to store sso string size)
     static_assert(SSOBufferSize < 128, "SSOBufferSize must be less than 127");
 
-    using SizeType = TS;
+    using SizeType = TSize;
 
     // getter
     inline SizeType size() const noexcept { return _is_sso() ? _sso_size : _size; }
@@ -89,9 +89,9 @@ protected:
 
 // SSO string memory
 // TODO. copy 考虑 literal
-template <typename T, typename TS, uint64_t SSOSize, typename Allocator>
-struct StringMemory : public StringMemoryBase<TS, SSOSize>, public Allocator {
-    using Base               = StringMemoryBase<TS, SSOSize>;
+template <typename T, typename TSize, uint64_t SSOSize, typename Allocator>
+struct StringMemory : public StringMemoryBase<TSize, SSOSize>, public Allocator {
+    using Base               = StringMemoryBase<TSize, SSOSize>;
     using DataType           = T;
     using SizeType           = typename Base::SizeType;
     using AllocatorCtorParam = typename Allocator::CtorParam;
