@@ -7,7 +7,7 @@ package("meshoptimizer")
 
     on_install(function (package)
         os.mkdir(package:installdir())
-        os.cp(path.join(package:scriptdir(), "port", "src"), ".")
+        os.cp(path.join(package:scriptdir(), "port", "MeshOpt"), ".")
         os.cp(path.join(package:scriptdir(), "port", "xmake.lua"), "xmake.lua")
 
         local configs = {}

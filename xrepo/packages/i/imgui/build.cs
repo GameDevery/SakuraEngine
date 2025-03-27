@@ -22,9 +22,8 @@ public static class ImGui
 
                 Target.CppVersion("17")
                     .TargetType(TargetType.Static)
-                    .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/imgui/include"))
-                    .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/cimgui/include"))
-                    .IncludeDirs(Visibility.Private, Path.Combine(SourceLocation.Directory(), "port/imgui"))
+                    .IncludeDirs(Visibility.Public, "port/imgui/include", "port/cimgui/include")
+                    .IncludeDirs(Visibility.Private, "port/imgui")
                     .AddCppFiles(
                         "port/imgui/build.*.cpp",
                         "port/cimgui/src/cimgui.cpp"

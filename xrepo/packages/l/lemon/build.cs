@@ -15,7 +15,7 @@ public static class Lemon
                 Target.CppVersion("20")
                     .Exception(true)
                     .TargetType(TargetType.Static)
-                    .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/lemon"))
+                    .IncludeDirs(Visibility.Public, "port/lemon")
                     .AddCppFiles(
                         "port/lemon/lemon/arg_parser.cc",
                         "port/lemon/lemon/base.cc",

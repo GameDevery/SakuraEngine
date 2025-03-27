@@ -13,7 +13,7 @@ public static class SkrGraphics
             .Module("SkrGraphics")
             .Depend(Visibility.Public, "SkrCore")
             .Depend(Visibility.Private, "VulkanHeaders")
-            .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "include"))
+            .IncludeDirs(Visibility.Public, "include")
             .AddCFiles("src/build.*.c")
             .AddCppFiles("src/build.*.cpp");
 

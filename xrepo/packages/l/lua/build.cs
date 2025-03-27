@@ -17,8 +17,8 @@ public static class Lua
                     .CVersion("17")
                     .Exception(true)
                     .TargetType(TargetType.Static)
-                    .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/lua/include"))
-                    .IncludeDirs(Visibility.Private, Path.Combine(SourceLocation.Directory(), "port/lua/include/lua"))
+                    .IncludeDirs(Visibility.Public, "port/lua/include")
+                    .IncludeDirs(Visibility.Private, "port/lua/include/lua")
                     .AddCFiles("port/lua/src/*.c");
             });
     }

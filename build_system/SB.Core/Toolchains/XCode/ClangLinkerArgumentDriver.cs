@@ -16,10 +16,10 @@ namespace SB.Core
         public string TargetType(TargetType type) => typeMap.TryGetValue(type, out var t) ? t : throw new ArgumentException($"Invalid target type \"{type}\" for clang++ Linker!");
         static readonly Dictionary<TargetType, string> typeMap = new Dictionary<TargetType, string> { { Core.TargetType.Dynamic, "-fPIC -shared" }, { Core.TargetType.Executable, "" }};
 
-        [TargetProperty(TargetProperty.InheritBehavior)] 
+        [TargetProperty(InheritBehavior = true, PathBehavior = true)]
         public string[]? LinkDirs(ArgumentList<string> dirs) => dirs.All(x => BS.CheckPath(x, false) ? true : throw new ArgumentException($"Invalid link dir {x}!")) ? dirs.Select(dir => $"-L{dir}").ToArray() : null;
         
-        [TargetProperty(TargetProperty.InheritBehavior)] 
+        [TargetProperty(InheritBehavior = true)] 
         public string[]? Link(ArgumentList<string> dirs) => dirs.Select(dir => $"-l{dir}").ToArray();
 
         public string[] Inputs(ArgumentList<string> inputs) => inputs.Select(dir => $"\"{dir}\"").ToArray();

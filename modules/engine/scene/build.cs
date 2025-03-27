@@ -10,7 +10,7 @@ public static class SkrScene
         Engine.Module("SkrScene")
             .EnableUnityBuild()
             .Depend(Visibility.Public, "SkrRT")
-            .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "include"))
+            .IncludeDirs(Visibility.Public, "include")
             .AddCppFiles("src/*.cpp")
             .AddMetaHeaders("include/**.h"); // codegen
     }

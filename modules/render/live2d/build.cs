@@ -13,9 +13,7 @@ public static class SkrLive2D
             .EnableUnityBuild()
             .OptimizationLevel(OptimizationLevel.Fastest)
             .Depend(Visibility.Public, "SkrBase")
-            .IncludeDirs(Visibility.Private, Path.Combine(SourceLocation.Directory(), "CubismNativeCore/include"))
-            .IncludeDirs(Visibility.Private, Path.Combine(SourceLocation.Directory(), "CubismFramework"))
-            .IncludeDirs(Visibility.Private, Path.Combine(SourceLocation.Directory(), "CubismFramework/Framework"))
+            .IncludeDirs(Visibility.Private, "CubismNativeCore/include", "CubismFramework", "CubismFramework/Framework")
             .AddCppFiles("CubismFramework/Renderer/**.cpp", "CubismFramework/Framework/**.cpp");
 
         CubismFramework.BeforeBuild(Target => SkrLive2DDoctor.SDKInstallation!.Wait());
@@ -33,10 +31,8 @@ public static class SkrLive2D
             .EnableUnityBuild()
             .Depend(Visibility.Public, "SkrImageCoder", "SkrRenderer")
             .Depend(Visibility.Private, "CubismFramework")
-            .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "include"))
-            .IncludeDirs(Visibility.Private, Path.Combine(SourceLocation.Directory(), "CubismNativeCore/include"))
-            .IncludeDirs(Visibility.Private, Path.Combine(SourceLocation.Directory(), "CubismFramework"))
-            .IncludeDirs(Visibility.Private, Path.Combine(SourceLocation.Directory(), "CubismFramework/Framework"))
+            .IncludeDirs(Visibility.Public, "include")
+            .IncludeDirs(Visibility.Private, "CubismNativeCore/include", "CubismFramework", "CubismFramework/Framework")
             .AddCppFiles("src/*.cpp");
         SkrLive2D.UsePrivatePCH("src/pch.hpp");
     }

@@ -9,7 +9,7 @@ public static class SkrTask
         var MarlSourceDir = Path.Combine(Engine.EngineDirectory, "thirdparty/marl");
         var SkrTask = Engine
             .Module("SkrTask")
-            .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "include"))
+            .IncludeDirs(Visibility.Public, "include")
             .AddCppFiles("src/build.*.cpp")
             .Depend(Visibility.Public, "SkrCore")
             // add marl source

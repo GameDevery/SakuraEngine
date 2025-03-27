@@ -49,13 +49,13 @@ namespace SB.Core
         [TargetProperty] 
         public string FpModel(FpModel v) => $"-ffp-model={v}".ToLowerInvariant();
 
-        [TargetProperty(TargetProperty.InheritBehavior)] 
+        [TargetProperty(InheritBehavior = true)] 
         public string[] CppFlags(ArgumentList<string> flags) => flags.Select(flag => flag).ToArray();
         
-        [TargetProperty(TargetProperty.InheritBehavior)] 
+        [TargetProperty(InheritBehavior = true)] 
         public string[] Defines(ArgumentList<string> defines) => defines.Select(define => $"-D{define}").ToArray();
 
-        [TargetProperty(TargetProperty.InheritBehavior)] 
+        [TargetProperty(InheritBehavior = true, PathBehavior = true)] 
         public string[]? IncludeDirs(ArgumentList<string> dirs) => dirs.All(x => BS.CheckPath(x, true) ? true : throw new TaskFatalError($"Invalid include dir {x}!")) ? dirs.Select(dir => $"-I{dir}").ToArray() : null;
         
         [TargetProperty] 

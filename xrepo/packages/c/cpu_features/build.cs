@@ -13,8 +13,8 @@ public static class CPUFeatures
                     throw new TaskFatalError("cpu_features version mismatch!", "cpu_features version mismatch, only v0.9.0 is supported in source.");
 
                 Target.TargetType(TargetType.Static)
-                    .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/cpu_features/include"))
-                    .IncludeDirs(Visibility.Private, Path.Combine(SourceLocation.Directory(), "port/cpu_features/include/cpu_features"))
+                    .IncludeDirs(Visibility.Public, "port/cpu_features/include")
+                    .IncludeDirs(Visibility.Private, "port/cpu_features/include/cpu_features")
                     .FpModel(FpModel.Fast)
                     .AddCFiles("port/cpu_features/build.cpu_features.c");
             });

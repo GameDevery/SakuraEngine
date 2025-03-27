@@ -30,7 +30,7 @@ public static class DaScriptCore
                         "daScript/3rdparty/uriparser/src/UriMemory.c"
                     )
                     .Defines(Visibility.Public, "URIPARSER_BUILD_CHAR", "URI_STATIC_BUILD")
-                    .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "daScript/3rdparty/uriparser/include"));
+                    .IncludeDirs(Visibility.Public, "daScript/3rdparty/uriparser/include");
             })
             .AddTarget("DaScriptCore", (Target Target, PackageConfig Config) =>
             {
@@ -47,7 +47,7 @@ public static class DaScriptCore
                     .CppVersion("17")
                     .Require("DaScriptCore", Config)
                     .Depend(Visibility.Public, "DaScriptCore@UriParser")
-                    .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "daScript/include"))
+                    .IncludeDirs(Visibility.Public, "daScript/include")
                     // parser
                     .AddCppFiles(
                         // "daScript/src/parser/ds_parser.hpp",

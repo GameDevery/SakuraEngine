@@ -8,6 +8,6 @@ public static class VulkanHeaders
     {
         BuildSystem.Target("VulkanHeaders")
             .TargetType(TargetType.HeaderOnly)
-            .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "include"));
+            .IncludeDirs(Visibility.Public, "include");
     }
 }

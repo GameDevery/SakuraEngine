@@ -12,7 +12,7 @@ public static class SkrRT
             .Module("SkrRT", "SKR_RUNTIME")
             .Depend(Visibility.Public, "SkrTask")
             .Depend(Visibility.Public, "SkrGraphics")
-            .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "include"))
+            .IncludeDirs(Visibility.Public, "include")
             .AddCppFiles("src/**/build.*.cpp")
             .AddCodegenScript("meta/ecs.ts");
 

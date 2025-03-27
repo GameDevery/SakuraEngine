@@ -10,7 +10,7 @@ public static class SkrRenderGraph
         Engine.Module("SkrRenderGraph")
             .EnableUnityBuild()
             .Depend(Visibility.Public, "SkrRT")
-            .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "include"))
+            .IncludeDirs(Visibility.Public, "include")
             .AddCppFiles("src/frontend/*.cpp", "src/graphviz/*.cpp")
             .AddCppFiles("src/backend/*.cpp") // {unity_group = "backend"}
             .AddCppFiles("src/phases/*.cpp"); // {unity_group = "backend"}

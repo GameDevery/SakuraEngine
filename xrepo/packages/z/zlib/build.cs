@@ -16,18 +16,18 @@ public static class Zlib
 
                 Target
                     .TargetType(TargetType.HeaderOnly)
-                    .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/zlib/include"));
+                    .IncludeDirs(Visibility.Public, "port/zlib/include");
                 
                 if (BuildSystem.TargetOS == OSPlatform.Windows)
                 {
                     Target
-                        .LinkDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/zlib/lib/windows/x64"))
+                        .LinkDirs(Visibility.Public, "port/zlib/lib/windows/x64")
                         .Link(Visibility.Public, "zlibstatic");
                 }
                 else if (BuildSystem.TargetOS == OSPlatform.OSX)
                 {
                     Target
-                        .LinkDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/zlib/lib/macos/x86_64"))
+                        .LinkDirs(Visibility.Public, "port/zlib/lib/macos/x86_64")
                         .Link(Visibility.Public, "libz.a");
                 }
                 else

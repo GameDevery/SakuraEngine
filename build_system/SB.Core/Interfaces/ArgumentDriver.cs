@@ -138,20 +138,7 @@ namespace SB.Core
     [AttributeUsage(AttributeTargets.Method)]
     public class TargetProperty : Attribute
     {
-        [Flags]
-        public enum PropertyFlags
-        {
-            None = 0,
-            InheritBehavior = 1
-        };
-
-        public TargetProperty(PropertyFlags Flags = PropertyFlags.None)
-        {
-            this.Flags = Flags;
-        }
-
-        public PropertyFlags Flags { get; }
-
-        public const PropertyFlags InheritBehavior = PropertyFlags.InheritBehavior;
+        public bool InheritBehavior { get; init; }
+        public bool PathBehavior { get; init; }
     }
 }

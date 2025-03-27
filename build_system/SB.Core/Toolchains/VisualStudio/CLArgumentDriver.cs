@@ -67,13 +67,13 @@
         [TargetProperty] 
         public virtual string FpModel(FpModel v) => $"/fp:{v}".ToLowerInvariant();
 
-        [TargetProperty(TargetProperty.InheritBehavior)] 
+        [TargetProperty(InheritBehavior = true)] 
         public virtual string[] CppFlags(ArgumentList<string> flags) => (Language == CFamily.Cpp) ? flags.Select(flag => flag).ToArray() : new string[0];
         
-        [TargetProperty(TargetProperty.InheritBehavior)] 
+        [TargetProperty(InheritBehavior = true)] 
         public virtual string[] Defines(ArgumentList<string> defines) => defines.Select(define => $"-D{define}").ToArray();
 
-        [TargetProperty(TargetProperty.InheritBehavior)] 
+        [TargetProperty(InheritBehavior = true, PathBehavior = true)] 
         public virtual string[]? IncludeDirs(ArgumentList<string> dirs) => dirs.All(x => BS.CheckPath(x, true) ? true : throw new TaskFatalError($"Invalid include dir {x}!")) ? dirs.Select(dir => $"/I{dir}").ToArray() : null;
         
         [TargetProperty] 

@@ -13,8 +13,8 @@ public static class YYJson
                     throw new TaskFatalError("YYJson version mismatch!", "YYJson version mismatch, only v0.9.0 is supported in source.");
 
                 Target.TargetType(TargetType.Static)
-                    .IncludeDirs(Visibility.Private, Path.Combine(SourceLocation.Directory(), "port/yyjson"))
-                    .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port"))
+                    .IncludeDirs(Visibility.Private, "port/yyjson")
+                    .IncludeDirs(Visibility.Public, "port")
                     .FpModel(FpModel.Fast)
                     .AddCFiles("port/yyjson/**.c");
             });

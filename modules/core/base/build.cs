@@ -11,7 +11,7 @@ public static class SkrBase
             .Depend(Visibility.Public, "SkrProfile")
             // TODO: MIGRATE COMPILE FLAGS FROM XMAKE
             // .Depend(Visibility.Public, "SkrCompileFlags")
-            .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "include"))
+            .IncludeDirs(Visibility.Public, "include")
             .AddCFiles("src/**/build.*.c")
             .AddCppFiles("src/**/build.*.cpp");
         

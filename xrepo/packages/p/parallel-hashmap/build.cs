@@ -16,7 +16,7 @@ public static class ParallelHashMap
                 Target
                     .CppVersion("17")
                     .TargetType(TargetType.HeaderOnly)
-                    .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port"));
+                    .IncludeDirs(Visibility.Public, "port");
             });
     }
 }

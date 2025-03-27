@@ -94,7 +94,7 @@ using SB.Core;
 
 namespace SB
 {    
-    public class ArgumentDictionary : Dictionary<string, object?>
+    public partial class ArgumentDictionary : Dictionary<string, object?>
     {
 ");
                 foreach (var MethodAndProperty in Methods)
@@ -104,34 +104,46 @@ namespace SB
                     var Param = Method.Parameters[0];
                     var MethodName = Method.Name;
                     {
-                        bool HasFlags = TargetProperty.ConstructorArguments.Any(A => !A.Value!.Equals(0));
-                        var FlagsP = HasFlags ? $"Visibility Visibility, " : "";
-                        var ArgumentsContainer = HasFlags ? "GetArgumentsContainer(Visibility)" : "FinalArguments";
+                        bool InheritBehavior = false;
+                        bool PathBehavior = false;
+                        foreach (var Arg in TargetProperty.NamedArguments)
+                        {
+                            if (Arg.Key == "InheritBehavior" && Arg.Value.Value!.Equals(true))
+                            {
+                                InheritBehavior = true;
+                                continue;
+                            }
+                            if (Arg.Key == "PathBehavior" && Arg.Value.Value!.Equals(true))
+                            {
+                                PathBehavior = true;
+                                continue;
+                            }
+                        }
+                        var FlagsP = InheritBehavior ? $"Visibility Visibility, " : "";
+                        var ArgumentsContainer = InheritBehavior ? "GetArgumentsContainer(Visibility)" : "FinalArguments";
                         var PropertyP = $"params {Param.Type.GetFullTypeName()} {Param.Name}";
-
+                        var ParamP = PathBehavior ? $"HandlePath({Param.Name})" : Param.Name;
                         if (Param.Type.GetUnderlyingTypeIfIsArgumentList(out var ElementType))
                         {
                             sourceBuilder.Append($@"
-        public virtual void {MethodName}({FlagsP}params {ElementType!.GetFullTypeName()}[] {Param.Name}) {{ AppendToArgumentList<{ElementType!.GetFullTypeName()}>(""{MethodName}"", {Param.Name}); }}
+        public virtual void {MethodName}({FlagsP}params {ElementType!.GetFullTypeName()}[] {Param.Name}) {{ AppendToArgumentList<{ElementType!.GetFullTypeName()}>(""{MethodName}"", {ParamP}); }}
 ");
                         }
                         else
                         {
-                            if (HasFlags)
+                            if (InheritBehavior)
                                 throw new Exception($"{MethodName} fails: Single param setters should not have inherit behavior!");
                             sourceBuilder.Append($@"
-        public virtual void {MethodName}({FlagsP}{Param.Type.GetFullTypeName()} {Param.Name}) {{ this.Override(""{MethodName}"", {Param.Name}); }}
-");
+        public virtual void {MethodName}({FlagsP}{Param.Type.GetFullTypeName()} {Param.Name}) {{ this.Override(""{MethodName}"", {ParamP}); }}"
+);
                         }
                     }
                 }
 
                 sourceBuilder.Append(@"
-        public void AppendToArgumentList<T>(string Name, params T[] Args) {{ this.GetOrAddNew<string, ArgumentList<T>>(Name).AddRange(Args); }}
-        public void OverrideArgument<T>(string Name, T value) {{ this.Override(Name, value); }}
     }
 
-    public abstract class TargetSetters
+    public abstract partial class TargetSetters
     {
 ");
 
@@ -142,10 +154,18 @@ namespace SB
                     var Param = Method.Parameters[0];
                     var MethodName = Method.Name;
                     {
-                        bool HasFlags = TargetProperty.ConstructorArguments.Any(A => !A.Value!.Equals(0));
-                        var FlagsP = HasFlags ? $"Visibility Visibility, " : "";
-                        var FlagsA = HasFlags ? $"Visibility, " : "";
-                        var ArgumentsContainer = HasFlags ? "GetArgumentsContainer(Visibility)" : "PrivateArguments";
+                        bool InheritBehavior = false;
+                        foreach (var Arg in TargetProperty.NamedArguments)
+                        {
+                            if (Arg.Key == "InheritBehavior" && Arg.Value.Value!.Equals(true))
+                            {
+                                InheritBehavior = true;
+                                break;
+                            }
+                        }
+                        var FlagsP = InheritBehavior ? $"Visibility Visibility, " : "";
+                        var FlagsA = InheritBehavior ? $"Visibility, " : "";
+                        var ArgumentsContainer = InheritBehavior ? "GetArgumentsContainer(Visibility)" : "PrivateArguments";
                         var PropertyP = $"params {Param.Type.GetFullTypeName()} {Param.Name}";
 
                         if (Param.Type.GetUnderlyingTypeIfIsArgumentList(out var ElementType))
@@ -156,32 +176,16 @@ namespace SB
                         }
                         else
                         {
-                            if (HasFlags)
+                            if (InheritBehavior)
                                 throw new Exception($"{MethodName} fails: Single param setters should not have inherit behavior!");
                             sourceBuilder.Append($@"
-        public virtual SB.Target {MethodName}({FlagsP}{Param.Type.GetFullTypeName()} {Param.Name}) {{ {ArgumentsContainer}.{MethodName}({FlagsA}{Param.Name}); return (SB.Target)this; }}
-");
+        public virtual SB.Target {MethodName}({FlagsP}{Param.Type.GetFullTypeName()} {Param.Name}) {{ {ArgumentsContainer}.{MethodName}({FlagsA}{Param.Name}); return (SB.Target)this; }}"
+);
                         }
                     }
                 }
 
                 sourceBuilder.Append(@"
-        private ArgumentDictionary GetArgumentsContainer(Visibility Visibility)
-        {
-            switch (Visibility)
-            {
-                case Visibility.Public: return PublicArguments;
-                case Visibility.Private: return PrivateArguments;
-                case Visibility.Interface: return InterfaceArguments;
-            }
-            return PrivateArguments;
-        }
-
-        public IReadOnlyDictionary<string, object?> Arguments => FinalArguments;
-        public ArgumentDictionary FinalArguments { get; } = new();
-        public ArgumentDictionary PublicArguments { get; } = new();
-        public ArgumentDictionary PrivateArguments { get; } = new();
-        public ArgumentDictionary InterfaceArguments { get; } = new();
     }
 }");
                 spc.AddSource("TargetSetters.cs", SourceText.From(sourceBuilder.ToString(), Encoding.UTF8));

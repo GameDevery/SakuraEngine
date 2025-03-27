@@ -15,7 +15,7 @@ public static class SkrImGui
             .Depend(Visibility.Public, "SkrInput", "SkrRenderGraph")
             .Defines(Visibility.Private, "\"IMGUI_IMPORT=extern SKR_IMGUI_API\"")
 
-            .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "include"))
+            .IncludeDirs(Visibility.Public, "include")
             .AddCppFiles("src/build.*.cpp");
     }
 }

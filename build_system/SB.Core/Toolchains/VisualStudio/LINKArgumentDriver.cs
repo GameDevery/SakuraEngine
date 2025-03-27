@@ -16,13 +16,13 @@ namespace SB.Core
         public string TargetType(TargetType type) => typeMap.TryGetValue(type, out var t) ? t : throw new ArgumentException($"Invalid target type \"{type}\" for MSVC Linker!");
         static readonly Dictionary<TargetType, string> typeMap = new Dictionary<TargetType, string> { { Core.TargetType.Static, "/LIB" }, { Core.TargetType.Dynamic, "/DLL" }, { Core.TargetType.Executable, "" }, { Core.TargetType.HeaderOnly, "" } };
 
-        [TargetProperty(TargetProperty.InheritBehavior)] 
+        [TargetProperty(InheritBehavior = true, PathBehavior = true)] 
         public string[]? LinkDirs(ArgumentList<string> dirs) => dirs.All(x => BS.CheckPath(x, false) ? true : throw new ArgumentException($"Invalid link dir {x}!")) ? dirs.Select(dir => $"/LIBPATH:{dir}").ToArray() : null;
         
-        [TargetProperty(TargetProperty.InheritBehavior)] 
+        [TargetProperty(InheritBehavior = true)] 
         public string[]? Link(ArgumentList<string> dirs) => dirs.Select(dir => $"{dir}.lib").ToArray();
 
-        [TargetProperty(TargetProperty.InheritBehavior)] 
+        [TargetProperty(InheritBehavior = true)] 
         public string[]? WholeArchive(ArgumentList<string> libs) => libs.Select(lib => $"/WHOLEARCHIVE:\"{lib}.lib\"").ToArray();
 
         public string Arch(Architecture arch) => archMap.TryGetValue(arch, out var r) ? r : throw new ArgumentException($"Invalid architecture \"{arch}\" for LINK.exe!");

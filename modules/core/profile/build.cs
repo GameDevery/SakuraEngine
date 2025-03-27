@@ -10,7 +10,7 @@ public static class SkrProfile
             .Target("SkrProfile")
             .CppVersion("20")
             .TargetType(TargetType.Dynamic)
-            .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "include"))
+            .IncludeDirs(Visibility.Public, "include")
             .AddCppFiles("internal/tracy/TracyClient.cpp")
             .Defines(Visibility.Public, Engine.UseProfile ? "SKR_PROFILE_OVERRIDE_ENABLE" : "SKR_PROFILE_OVERRIDE_DISABLE");
             /*

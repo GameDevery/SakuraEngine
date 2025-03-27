@@ -17,8 +17,8 @@ public static class Lmdb
                     .CVersion("17")
                     .Exception(false)
                     .TargetType(TargetType.Static)
-                    .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/lmdb/include"))
-                    .IncludeDirs(Visibility.Private, Path.Combine(SourceLocation.Directory(), "port/lmdb/include/lmdb"))
+                    .IncludeDirs(Visibility.Public, "port/lmdb/include")
+                    .IncludeDirs(Visibility.Private, "port/lmdb/include/lmdb")
                     .AddCFiles("port/lmdb/*.c");
             });
     }

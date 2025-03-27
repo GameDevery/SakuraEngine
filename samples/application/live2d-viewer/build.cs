@@ -9,8 +9,7 @@ public static class SkrLive2DViewer
     {
         Engine.Program("Live2DViewer", "LIVE2D_VIEWER")
             .Depend(Visibility.Public, "SkrLive2D", "SkrImGui")
-            .IncludeDirs(Visibility.Private, Path.Combine(SourceLocation.Directory(), "./../../common"))
-            .IncludeDirs(Visibility.Private, Path.Combine(SourceLocation.Directory(), "include"))
+            .IncludeDirs(Visibility.Private, "./../../common", "include")
             .AddCppFiles("src/main.cpp", "src/viewer_module.cpp", "src/imgui.cpp");
     }
 }

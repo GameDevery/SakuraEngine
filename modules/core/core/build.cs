@@ -41,7 +41,7 @@ public static class SkrCore
             // TODO: STATIC COMPONENTS, JUST WORKAROUND NOW, WE NEED TO DEPEND THEM AUTOMATICALLY LATTER
             .Depend(Visibility.Public, "SkrDependencyGraph", "SkrString", "SkrSimpleAsync", "SkrArchive")
             // END WORKAROUNDS
-            .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "include"))
+            .IncludeDirs(Visibility.Public, "include")
             .Defines(Visibility.Private, "SKR_MEMORY_IMPL")
             // Core Files
             .AddCFiles("src/core/build.*.c")

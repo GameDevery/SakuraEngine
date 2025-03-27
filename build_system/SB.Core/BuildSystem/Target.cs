@@ -6,10 +6,10 @@ namespace SB
     public partial class Target : TargetSetters
     {
         internal Target(string Name, bool IsFromPackage, [CallerFilePath] string? Location = null)
+            : base(Location!)
         {
             this.Name = Name;
             this.Location = Location!;
-            this.Directory = Path.GetDirectoryName(Location)!;
             this.IsFromPackage = IsFromPackage;
 
             BuildSystem.TargetDefaultSettings(this);
@@ -183,7 +183,6 @@ namespace SB
 
         public string Name { get; }
         public string Location { get; }
-        public string Directory { get; }
 
         #region Files
         internal List<FileList> FileLists = new();

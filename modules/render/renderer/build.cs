@@ -9,7 +9,7 @@ public static class SkrRenderer
     {
         Engine.Module("SkrRenderer")
             .Depend(Visibility.Public, "SkrScene", "SkrRenderGraph", "SkrImGui")
-            .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "include"))
+            .IncludeDirs(Visibility.Public, "include")
             .AddCppFiles("src/*.cpp")
             .AddCppFiles("src/resources/*.cpp") // {unity_group = "resources"})
             .AddMetaHeaders("include/**.h", "include/**.hpp"); // codegen

@@ -11,7 +11,7 @@ public static class SkrInput
             .Module("SkrInput")
             .EnableUnityBuild()
             .Depend(Visibility.Public, "SkrRT")
-            .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "include"))
+            .IncludeDirs(Visibility.Public, "include")
             .AddCppFiles("src/*.cpp", "src/common/*.cpp", "src/sdl2/*.cpp");
 
         if (BuildSystem.TargetOS == OSPlatform.Windows)

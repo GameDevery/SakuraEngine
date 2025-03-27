@@ -13,7 +13,7 @@ public static class CGltf
                     throw new TaskFatalError("cgltf version mismatch!", "cgltf version mismatch, only v1.13.0 is supported in source.");
 
                 Target.TargetType(TargetType.Static)
-                    .IncludeDirs(Visibility.Public, Path.Combine(SourceLocation.Directory(), "port/cgltf/include"))
+                    .IncludeDirs(Visibility.Public, "port/cgltf/include")
                     .FpModel(FpModel.Fast)
                     .AddCFiles("port/cgltf/src/cgltf.c");
             });

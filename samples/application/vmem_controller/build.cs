@@ -9,7 +9,7 @@ public static class VMemController
         Engine.Program("VMemController", "VMEM_CONTROLLER")
             .EnableUnityBuild()
             .Depend(Visibility.Public, "SkrRenderGraph", "SkrImGui")
-            .IncludeDirs(Visibility.Private, Path.Combine(SourceLocation.Directory(), "./../../common"))
+            .IncludeDirs(Visibility.Private, "./../../common")
             .AddCppFiles("*.cpp");
     }
 }
