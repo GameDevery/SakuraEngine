@@ -262,13 +262,18 @@ v8::Local<v8::Value> V8Bind::export_namespace_node(
         v8::Local<v8::Object> result = v8::Object::New(isolate);
         for (const auto& [node_name, node] : node->children())
         {
-            // clang-format off
-            result->Set(
-                context,
-                V8Bind::to_v8(node_name, true),
-                export_namespace_node(node, bind_manager)
-            ).Check();
-            // clang-format on
+            bool is_mapping = node->is_type() && node->type().is_mapping();
+
+            if (!is_mapping)
+            { // mapping need not export, just used in .d.ts interface
+                // clang-format off
+                result->Set(
+                    context,
+                    V8Bind::to_v8(node_name, true),
+                    export_namespace_node(node, bind_manager)
+                ).Check();
+                // clang-format on
+            }
         }
         return result;
     }

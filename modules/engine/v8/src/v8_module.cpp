@@ -10,6 +10,7 @@ namespace skr
 V8Module::V8Module(V8Isolate* isolate)
     : _isolate(isolate)
 {
+    _module_info.manager = &_isolate->_bind_manager->script_binder_manger();
 }
 V8Module::~V8Module()
 {
@@ -21,91 +22,85 @@ void V8Module::name(StringView name)
 {
     _name = name;
 }
-void V8Module::register_type(const RTTRType* type)
+bool V8Module::build(FunctionRef<void(ScriptModule& module)> build_func)
 {
-    auto& script_binder_mgr = _isolate->_bind_manager->script_binder_manger();
-    auto  type_binder       = script_binder_mgr.get_or_build(type->type_id());
-    _module_info.register_type(type_binder);
-}
-void V8Module::register_type(const RTTRType* type, StringView name_space)
-{
-    auto& script_binder_mgr = _isolate->_bind_manager->script_binder_manger();
-    auto  type_binder       = script_binder_mgr.get_or_build(type->type_id());
-    _module_info.register_type(type_binder, name_space);
+    // build
+    build_func(_module_info);
+
+    // finalize
+    {
+        v8::Isolate::Scope isolate_scope(_isolate->v8_isolate());
+        v8::HandleScope    handle_scope(_isolate->v8_isolate());
+
+        if (!_module_info.check_full_export())
+        {
+            // dump lost types
+            for (const auto& lost_item : _module_info.lost_types())
+            {
+                String type_name;
+                switch (lost_item.kind())
+                {
+                case ScriptBinderRoot::EKind::Object: {
+                    auto* type = lost_item.object()->type;
+                    type_name  = format(u8"{}::{}", type->name_space_str(), type->name());
+                    break;
+                }
+                case ScriptBinderRoot::EKind::Value: {
+                    auto* type = lost_item.value()->type;
+                    type_name  = format(u8"{}::{}", type->name_space_str(), type->name());
+                    break;
+                }
+                case ScriptBinderRoot::EKind::Enum: {
+                    auto* type = lost_item.enum_()->type;
+                    type_name  = format(u8"{}::{}", type->name_space_str(), type->name());
+                    break;
+                }
+                default:
+                    SKR_UNREACHABLE_CODE()
+                    break;
+                }
+
+                SKR_LOG_FMT_ERROR(u8"lost type {} when register module {}", type_name, _name);
+            }
+            return false;
+        }
+        else
+        {
+            auto            isolate     = _isolate->v8_isolate();
+            auto            skr_isolate = reinterpret_cast<V8Isolate*>(isolate->GetData(0));
+            v8::HandleScope handle_scope(isolate);
+            if (skr_isolate->_modules.contains(_name))
+            {
+                SKR_LOG_FMT_ERROR(u8"module {} already exists", _name);
+                return false;
+            }
+
+            // build import items
+            std::vector<v8::Local<v8::String>> imports;
+            for (const auto& [k, v] : _module_info.ns_mapper().root().children())
+            {
+                imports.push_back(V8Bind::to_v8(k, true));
+            }
+
+            // create module
+            v8::Local<v8::Module> module = v8::Module::CreateSyntheticModule(
+                isolate,
+                V8Bind::to_v8(_name, true),
+                imports,
+                _eval_callback
+            );
+            _module.Reset(isolate, module);
+
+            // add to skr module map
+            skr_isolate->_modules.add(_name, this);
+            skr_isolate->_to_skr_module.add(module->GetIdentityHash(), this);
+
+            return true;
+        }
+    }
 }
 
 // init & shutdown
-bool V8Module::finalize()
-{
-    v8::Isolate::Scope isolate_scope(_isolate->v8_isolate());
-    v8::HandleScope    handle_scope(_isolate->v8_isolate());
-
-    if (!_module_info.check_full_export())
-    {
-        // dump lost types
-        for (const auto& lost_item : _module_info.lost_types())
-        {
-            String type_name;
-            switch (lost_item.kind())
-            {
-            case ScriptBinderRoot::EKind::Object: {
-                auto* type = lost_item.object()->type;
-                type_name  = format(u8"{}::{}", type->name_space_str(), type->name());
-                break;
-            }
-            case ScriptBinderRoot::EKind::Value: {
-                auto* type = lost_item.value()->type;
-                type_name  = format(u8"{}::{}", type->name_space_str(), type->name());
-                break;
-            }
-            case ScriptBinderRoot::EKind::Enum: {
-                auto* type = lost_item.enum_()->type;
-                type_name  = format(u8"{}::{}", type->name_space_str(), type->name());
-                break;
-            }
-            default:
-                SKR_UNREACHABLE_CODE()
-                break;
-            }
-
-            SKR_LOG_FMT_ERROR(u8"lost type {} when register module {}", type_name, _name);
-        }
-        return false;
-    }
-    else
-    {
-        auto            isolate     = _isolate->v8_isolate();
-        auto            skr_isolate = reinterpret_cast<V8Isolate*>(isolate->GetData(0));
-        v8::HandleScope handle_scope(isolate);
-        if (skr_isolate->_modules.contains(_name))
-        {
-            SKR_LOG_FMT_ERROR(u8"module {} already exists", _name);
-            return false;
-        }
-
-        // build import items
-        std::vector<v8::Local<v8::String>> imports;
-        for (const auto& [k, v] : _module_info.ns_mapper().root().children())
-        {
-            imports.push_back(V8Bind::to_v8(k, true));
-        }
-
-        // create module
-        v8::Local<v8::Module> module = v8::Module::CreateSyntheticModule(
-            isolate,
-            V8Bind::to_v8(_name, true),
-            imports,
-            _eval_callback
-        );
-        _module.Reset(isolate, module);
-
-        // add to skr module map
-        skr_isolate->_modules.add(_name, this);
-        skr_isolate->_to_skr_module.add(module->GetIdentityHash(), this);
-
-        return true;
-    }
-}
 void V8Module::shutdown()
 {
     // handle scope

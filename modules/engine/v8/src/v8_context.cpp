@@ -12,6 +12,7 @@ namespace skr
 V8Context::V8Context(V8Isolate* isolate)
     : _isolate(isolate)
 {
+    _global_module.manager = &_isolate->_bind_manager->script_binder_manger();
 }
 V8Context::~V8Context()
 {
@@ -37,73 +38,67 @@ void V8Context::shutdown()
     _context.Reset();
 }
 
-// register type
-void V8Context::register_type(skr::RTTRType* type)
+// build export
+bool V8Context::build_global_export(FunctionRef<void(ScriptModule& module)> build_func)
 {
-    auto& script_binder_mgr = _isolate->_bind_manager->script_binder_manger();
-    auto  binder            = script_binder_mgr.get_or_build(type->type_id());
-    _global_module.register_type(binder);
-}
-void V8Context::register_type(skr::RTTRType* type, StringView name_space)
-{
-    auto& script_binder_mgr = _isolate->_bind_manager->script_binder_manger();
-    auto  binder            = script_binder_mgr.get_or_build(type->type_id());
-    _global_module.register_type(binder, name_space);
-}
-bool V8Context::finalize_register()
-{
-    auto               isolate = _isolate->v8_isolate();
-    v8::Isolate::Scope isolate_scope(isolate);
-    v8::HandleScope    handle_scope(isolate);
-    auto               context = _context.Get(isolate);
-    v8::Context::Scope context_scope(context);
+    // build global module
+    build_func(_global_module);
 
-    if (!_global_module.check_full_export())
+    // finalize
     {
-        // dump lost types
-        for (const auto& lost_item : _global_module.lost_types())
+        auto               isolate = _isolate->v8_isolate();
+        v8::Isolate::Scope isolate_scope(isolate);
+        v8::HandleScope    handle_scope(isolate);
+        auto               context = _context.Get(isolate);
+        v8::Context::Scope context_scope(context);
+
+        if (!_global_module.check_full_export())
         {
-            String type_name;
-            switch (lost_item.kind())
+            // dump lost types
+            for (const auto& lost_item : _global_module.lost_types())
             {
-            case ScriptBinderRoot::EKind::Object: {
-                auto* type = lost_item.object()->type;
-                type_name  = format(u8"{}::{}", type->name_space_str(), type->name());
-                break;
-            }
-            case ScriptBinderRoot::EKind::Value: {
-                auto* type = lost_item.value()->type;
-                type_name  = format(u8"{}::{}", type->name_space_str(), type->name());
-                break;
-            }
-            case ScriptBinderRoot::EKind::Enum: {
-                auto* type = lost_item.enum_()->type;
-                type_name  = format(u8"{}::{}", type->name_space_str(), type->name());
-                break;
-            }
-            default:
-                SKR_UNREACHABLE_CODE()
-                break;
-            }
+                String type_name;
+                switch (lost_item.kind())
+                {
+                case ScriptBinderRoot::EKind::Object: {
+                    auto* type = lost_item.object()->type;
+                    type_name  = format(u8"{}::{}", type->name_space_str(), type->name());
+                    break;
+                }
+                case ScriptBinderRoot::EKind::Value: {
+                    auto* type = lost_item.value()->type;
+                    type_name  = format(u8"{}::{}", type->name_space_str(), type->name());
+                    break;
+                }
+                case ScriptBinderRoot::EKind::Enum: {
+                    auto* type = lost_item.enum_()->type;
+                    type_name  = format(u8"{}::{}", type->name_space_str(), type->name());
+                    break;
+                }
+                default:
+                    SKR_UNREACHABLE_CODE()
+                    break;
+                }
 
-            SKR_LOG_FMT_ERROR(u8"lost type {} when export context global data", type_name);
+                SKR_LOG_FMT_ERROR(u8"lost type {} when export context global data", type_name);
+            }
+            return false;
         }
-        return false;
-    }
-    else
-    {
-        for (const auto& [k, v] : _global_module.ns_mapper().root().children())
+        else
         {
-            // clang-format off
-            context->Global()->Set(
-                context,
-                V8Bind::to_v8(k, true),
-                V8Bind::export_namespace_node(v, _isolate->_bind_manager)
-            ).Check();
-            // clang-format on
-        }
+            for (const auto& [k, v] : _global_module.ns_mapper().root().children())
+            {
+                // clang-format off
+                context->Global()->Set(
+                    context,
+                    V8Bind::to_v8(k, true),
+                    V8Bind::export_namespace_node(v, _isolate->_bind_manager)
+                ).Check();
+                // clang-format on
+            }
 
-        return true;
+            return true;
+        }
     }
 }
 

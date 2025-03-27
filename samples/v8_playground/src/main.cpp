@@ -11,7 +11,7 @@ int main(int argc, char* argv[])
     using namespace skr;
 
     // parse args
-    CmdParser       parser;
+    CmdParser   parser;
     MainCommand cmd;
     parser.main_cmd(
         &cmd,
@@ -60,12 +60,14 @@ int main(int argc, char* argv[])
 
         // register module
         module.name(u8"fuck");
-        module.register_type<Debug>(u8"");
-        module.finalize();
+        module.build([](ScriptModule& module) {
+            module.register_type<Debug>(u8"");
+        });
 
         // register env
-        context.register_type<Debug>(u8"");
-        context.finalize_register();
+        context.build_global_export([](ScriptModule& module) {
+            module.register_type<Debug>(u8"");
+        });
 
         // execute script
         context.exec_module(script);
