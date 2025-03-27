@@ -4,7 +4,7 @@ codegen_component("SkrToolCore", { api = "TOOL_CORE", rootdir = "include/SkrTool
 
 shared_module("SkrToolCore", "TOOL_CORE")
     set_group("02.tools")
-    add_rules("c++.unity_build", {batchsize = default_unity_batch})
+    skr_unity_build()
     add_files("src/**.cpp")
     public_dependency("SkrRT")
     add_includedirs("include", {public = true})

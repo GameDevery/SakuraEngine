@@ -374,3 +374,8 @@ function skr_includes_with_cull(name, func)
         func()
     end
 end
+
+---------------------------------- unity build ----------------------------------
+function skr_unity_build()
+    add_rules("c++.unity_build", {batchsize = default_unity_batch})
+end

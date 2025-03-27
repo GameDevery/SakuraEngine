@@ -1,7 +1,7 @@
 shared_module("SkrInput", "SKR_INPUT")
     public_dependency("SkrRT")
     add_includedirs("include", {public=true})
-    add_rules("c++.unity_build", {batchsize = default_unity_batch})
+    skr_unity_build()
     if (is_plat("windows")) then
         add_defines("SKR_INPUT_USE_GAME_INPUT", {public=false})
         add_files("src/game_input/**.cpp")

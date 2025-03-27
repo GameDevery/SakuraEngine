@@ -4,7 +4,7 @@ codegen_component("SkrRTExporter", { api = "SKR_RUNTIME_EXPORTER", rootdir = "in
 
 shared_module("SkrRTExporter", "SKR_RUNTIME_EXPORTER")
     public_dependency("SkrRT")
-    add_rules("c++.unity_build", {batchsize = default_unity_batch})
+    skr_unity_build()
     on_load(function (target, opt)
         import("skr.utils")
         

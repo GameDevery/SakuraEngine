@@ -86,6 +86,7 @@ target("SkrCompileFlags")
         "-Wno-microsoft-include", -- microsoft include extension
         "-Wno-microsoft-enum-forward-reference", -- microsoft enum forward declaration extension
         -- "/Zc:dllexportInlines-", -- strip inline function from dll export
+        "-ferror-limit=10086",
         {public = true, tools = {"clang_cl"}}
     )
 

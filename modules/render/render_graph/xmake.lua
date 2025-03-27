@@ -1,6 +1,6 @@
 shared_module("SkrRenderGraph", "SKR_RENDER_GRAPH")
     public_dependency("SkrRT")
-    add_rules("c++.unity_build", {batchsize = default_unity_batch})
+    skr_unity_build()
     add_includedirs("include", {public=true})
     -- add_files("src/graphviz/*.cpp", {unity_ignored = true})
     add_files("src/frontend/*.cpp", "src/graphviz/*.cpp")

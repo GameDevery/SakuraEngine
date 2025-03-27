@@ -9,6 +9,6 @@ shared_module("SkrMeshCore", "MESH_CORE")
     public_dependency("SkrRenderer")
     add_includedirs("include", {public=true})
     add_files("src/**.cpp")
-    add_rules("c++.unity_build", {batchsize = default_unity_batch})
+    skr_unity_build()
     -- meshoptimizer
     add_packages("meshoptimizer", {public=true})
