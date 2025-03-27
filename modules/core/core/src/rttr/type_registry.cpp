@@ -97,4 +97,22 @@ void unload_all_types()
     loaded_types().clear();
 }
 
+// each types
+void each_types(FunctionRef<bool(const RTTRType* type)> func)
+{
+    for (const auto& [type_id, type] : loaded_types())
+    {
+        if (!func(type)) { break; }
+    }
+}
+void each_types_of_module(StringView module_name, FunctionRef<bool(const RTTRType* type)> func)
+{
+    for (const auto& [type_id, type] : loaded_types())
+    {
+        if (type->module() == module_name)
+        {
+            if (!func(type)) { break; }
+        }
+    }
+}
 } // namespace skr
