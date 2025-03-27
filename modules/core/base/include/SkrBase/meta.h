@@ -39,8 +39,8 @@
 #define sscript_mapping sattr(rttr.flags += "ScriptMapping")
 #define sscript_wrap sattr(rttr.flags += "ScriptWrap")
 #define sscript_mixin sattr(rttr.flags += "ScriptMixin")
-#define sscript_getter(__NAME) sattr(rttr.attrs += `ScriptGetter(u8#__NAME)`)
-#define sscript_setter(__NAME) sattr(rttr.attrs += `ScriptSetter(u8#__NAME)`)
+#define sscript_getter(__NAME) sattr(rttr.attrs += `ScriptGetter(SKR_UTF8(#__NAME))`)
+#define sscript_setter(__NAME) sattr(rttr.attrs += `ScriptSetter(SKR_UTF8(u8#__NAME))`)
 
 // rttr helper
 #define srttr_flag(__FLAG) sattr(rttr.flags += #__FLAG)
