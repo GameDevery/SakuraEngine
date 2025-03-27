@@ -140,7 +140,6 @@ class EnumValueConfig extends ConfigBase {
   override enable: boolean = true;
 }
 
-// TODO. 通过 GUID 判断 RTTR 的开关
 class _Gen {
   static body(record: db.Record) {
     const b = record.generate_body_content;
@@ -160,8 +159,8 @@ class _Gen {
   }
   static header(header: db.Header) {
     const b = header.gen_code;
-    const _gen_records = header.records.filter(record => record.ml_configs.rttr.enable && !record.ml_configs.guid.is_empty());
-    const _gen_enums = header.enums.filter(enum_ => enum_.ml_configs.rttr.enable && !enum_.ml_configs.guid.is_empty());
+    const _gen_records = header.records.filter(_Gen.#filter_record);
+    const _gen_enums = header.enums.filter(_Gen.#filter_enum);
 
     b.$line(`// BEGIN RTTR GENERATED`);
     b.$line(`#include "SkrRTTR/rttr_traits.hpp"`);
@@ -174,9 +173,14 @@ class _Gen {
     b.$line(`// END RTTR GENERATED`);
   }
   static source(main_db: db.Module) {
-    const b = main_db.gen_code;
-    const _gen_records = main_db.filter_record(record => record.ml_configs.rttr.enable && !record.ml_configs.guid.is_empty());
-    const _gen_enums = main_db.filter_enum(enum_ => enum_.ml_configs.rttr.enable && !enum_.ml_configs.guid.is_empty());
+    const b = main_db.source_batch.get_default()
+    const _gen_records = main_db.filter_record(_Gen.#filter_record);
+    const _gen_enums = main_db.filter_enum(_Gen.#filter_enum);
+    this.source_batched(b, _gen_records, _gen_enums, main_db.config.module_name);
+  }
+  static source_batched(b: CodeBuilder, in_records: db.Record[], in_enums: db.Enum[], module_name: string) {
+    const _gen_records = in_records;
+    const _gen_enums = in_enums;
 
     // header
     b.$line(`// BEGIN RTTR GENERATED`);
@@ -211,7 +215,7 @@ class _Gen {
         b.$indent((_b) => {
           // module info
           b.$line(`// setup module`);
-          b.$line(`type->set_module(u8"${main_db.config.module_name}");`);
+          b.$line(`type->set_module(u8"${module_name}");`);
           b.$line(``);
 
           // build scope
@@ -339,7 +343,7 @@ class _Gen {
         b.$indent((_b) => {
           // module info
           b.$line(`// setup module`);
-          b.$line(`type->set_module(u8"${main_db.config.module_name}");`);
+          b.$line(`type->set_module(u8"${module_name}");`);
           b.$line(``);
 
           // build scope
@@ -430,6 +434,14 @@ class _Gen {
       .map((flags) => `${this.#flag_enum_name_of(cpp_type)}::${flags}`) // map to name
       .join(" | ");
   }
+
+  // filters
+  static #filter_record(record: db.Record) {
+    return record.ml_configs.rttr.enable && !record.ml_configs.guid.is_empty();
+  }
+  static #filter_enum(enum_: db.Enum) {
+    return enum_.ml_configs.rttr.enable && !enum_.ml_configs.guid.is_empty();
+  }
 }
 
 class RttrGenerator extends gen.Generator {
@@ -475,14 +487,14 @@ class RttrGenerator extends gen.Generator {
     });
   }
 
-  gen_body(): void {
+  override gen_body(): void {
     this.main_module_db.each_record((record, header) => {
       if (this.project_db.is_derived(record, "skr::IObject")) {
         _Gen.body(record);
       }
     });
   }
-  gen(): void {
+  override gen(): void {
     // gen headers
     this.main_module_db.headers.forEach((header) => {
       _Gen.header(header);

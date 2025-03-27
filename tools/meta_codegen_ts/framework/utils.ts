@@ -116,6 +116,30 @@ export class CodeBuilder {
   }
 }
 
+// source batches
+export class SourceBatch {
+  constructor() {
+    this.batches["generated.cpp"] = new CodeBuilder();
+  }
+
+  // default batch
+  get_default() {
+    return this.batches["generated.cpp"]!;
+  }
+
+  // set batch
+  init_batch(name: string) {
+    if (this.batches[name] === undefined) {
+      this.batches[name] = new CodeBuilder();
+    }
+  }
+  get_batch(name: string): CodeBuilder | undefined {
+    return this.batches[name];
+  }
+
+  batches: Dict<CodeBuilder> = {};
+}
+
 // log shading
 export class LogColor {
   static red(str: string) {
