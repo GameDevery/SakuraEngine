@@ -1,8 +1,8 @@
 #pragma once
 #include "SkrBase/atomic/atomic.h"
 #include "SkrBase/config.h"
-#include "SkrBase/sinterface.hpp"
 #include "SkrBase/types.h"
+#include "SkrContainers/sptr.hpp"
 
 namespace skr
 {

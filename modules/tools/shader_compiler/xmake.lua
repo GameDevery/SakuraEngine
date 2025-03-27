@@ -8,7 +8,7 @@ shared_module("SkrShaderCompiler", "SKR_SHADER_COMPILER")
     public_dependency("SkrRenderer")
     public_dependency("SkrToolCore")
     add_files("src/**.cpp")
-    add_rules("c++.unity_build", {batchsize = default_unity_batch})
+    skr_unity_build()
     -- dxc compiler uses ms-extensions
     if (os.host() == "macosx") then
         add_cxflags("-fms-extensions", {public=false})

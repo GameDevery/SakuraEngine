@@ -1,6 +1,6 @@
  shared_module("SkrDevCore", "SKR_DEVCORE")
     set_group("06.devs")
     public_dependency("SkrImGui")
-    add_rules("c++.unity_build", {batchsize = default_unity_batch})
+    skr_unity_build()
     add_includedirs("include", {public=true})
     add_files("src/**.cpp")

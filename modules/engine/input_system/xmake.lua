@@ -1,5 +1,5 @@
 shared_module("SkrInputSystem", "SKR_INPUTSYSTEM")
-    add_rules("c++.unity_build", {batchsize = default_unity_batch})
+    skr_unity_build()
     public_dependency("SkrRT")
     public_dependency("SkrInput")
     add_includedirs("include", {public=true})

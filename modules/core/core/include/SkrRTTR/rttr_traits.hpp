@@ -2,7 +2,7 @@
 #include "SkrRTTR/type_registry.hpp"
 #include "SkrContainersDef/string.hpp"
 #include "SkrBase/meta.h"
-#include "SkrBase/sinterface.hpp"
+#include "SkrContainersDef/sptr.hpp"
 
 // RTTR traits
 // 提供非 GenericType 的静态信息：
@@ -81,15 +81,23 @@ SKR_RTTR_TYPE(float, "42f9cf37-9995-40a7-9776-1cdb67b98fcf")
 SKR_RTTR_TYPE(double, "9454d5cd-68dd-4039-8e67-07732de87e5c")
 
 //======================================== skr types
+// math types
 // TODO. 仅仅为了过编译, 后续实现具体类型
-SKR_RTTR_TYPE(skr_guid_t, "80EE37B7-E9C0-40E6-BF2F-51E12053A7A9");
-SKR_RTTR_TYPE(skr_md5_t, "F8ABEC14-9436-43B5-A93A-460E7D3CBEC2");
 SKR_RTTR_TYPE(skr_rotator_t, "236DFBE6-1554-4BCF-A021-1DAD18BF19B8");
 SKR_RTTR_TYPE(skr_float2_t, "CD0FEAC8-C536-4DE7-854A-EC711E59F17D");
 SKR_RTTR_TYPE(skr_float3_t, "9E6AB3E9-325F-4224-935C-233CC8DE47B6");
 SKR_RTTR_TYPE(skr_float4_t, "38BFB8AD-2287-40FC-8AFE-185CABF84C4A");
 SKR_RTTR_TYPE(skr_float4x4_t, "E49D2F13-9DFF-4A7B-8D43-27F68BA932E0");
 SKR_RTTR_TYPE(skr_quaternion_t, "51977A88-7095-4FA7-8467-541698803936");
-SKR_RTTR_TYPE(::skr::String, "214ED643-54BD-4213-BE37-E336A77FDE84");
-SKR_RTTR_TYPE(::skr::StringView, "B799BA81-6009-405D-9131-E4B6101660DC");
-SKR_RTTR_TYPE(::skr::SInterface, "244617fe-5274-47bc-aa3d-acd76dbbeddd");
+
+// GUID & MD5
+SKR_RTTR_TYPE(skr::MD5, "F8ABEC14-9436-43B5-A93A-460E7D3CBEC2");
+SKR_RTTR_TYPE(skr::GUID, "80EE37B7-E9C0-40E6-BF2F-51E12053A7A9");
+
+// string types
+SKR_RTTR_TYPE(skr::String, "214ED643-54BD-4213-BE37-E336A77FDE84");
+SKR_RTTR_TYPE(skr::StringView, "B799BA81-6009-405D-9131-E4B6101660DC");
+
+// SInterface
+// TODO. 仅仅为了过编译, 后续实现具体类型
+SKR_RTTR_TYPE(skr::SInterface, "244617fe-5274-47bc-aa3d-acd76dbbeddd");

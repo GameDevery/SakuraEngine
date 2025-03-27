@@ -78,8 +78,7 @@ SKR_EXTERN_C void skr_make_guid(skr_guid_t* out_guid);
 namespace skr
 {
 using GUID = skr_guid_t;
-inline namespace literals
-{
+
 namespace details
 {
 
@@ -128,9 +127,11 @@ constexpr skr_guid_t make_guid_helper(const char8_t* begin)
 }
 } // namespace details
 
+inline namespace literals
+{
 constexpr skr_guid_t operator""_guid(const char8_t* str, size_t N)
 {
-    using namespace details;
+    using namespace ::skr::details;
     if (!(N == long_guid_form_length || N == short_guid_form_length))
         SKR_ASSERT(0 && "String GUID of the form {XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX} or XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX is expected");
     if (N == long_guid_form_length && (str[0] != '{' || str[long_guid_form_length - 1] != '}'))
@@ -140,12 +141,6 @@ constexpr skr_guid_t operator""_guid(const char8_t* str, size_t N)
 }
 } // namespace literals
 } // namespace skr
-
-    #define SKR_CONSTEXPR_GUID(__GUID) []() constexpr {  \
-        using namespace skr::literals;                   \
-        constexpr skr_guid_t result = u8##__GUID##_guid; \
-        return result;                                   \
-    }()
 
 inline skr_guid_t skr_guid_t::Create()
 {

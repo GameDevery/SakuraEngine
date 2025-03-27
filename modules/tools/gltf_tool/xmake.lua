@@ -7,7 +7,7 @@ shared_module("SkrGLTFTool", "GLTFTOOL")
     set_group("02.tools")
     add_packages("cgltf", {public=true})
     public_dependency("SkrMeshCore")
-    add_rules("c++.unity_build", {batchsize = default_unity_batch})
+    skr_unity_build()
     add_includedirs("include", {public=true})
     add_files("src/**.cpp")
             
