@@ -59,7 +59,8 @@ namespace SB.Core
             var ObjectFile = Driver.Arguments["Object"] as string;
             var Changed = Depend.OnChanged(Target.Name, SourceFile!, Emitter.Name, (Depend depend) =>
             {
-                int ExitCode = BuildSystem.RunProcess(ExecutablePath, String.Join(" ", CompilerArgsList), out var OutputInfo, out var ErrorInfo, VCEnvVariables, WorkDirectory);
+                var Args = String.Join(" ", CompilerArgsList);
+                int ExitCode = BuildSystem.RunProcess(ExecutablePath, Args, out var OutputInfo, out var ErrorInfo, VCEnvVariables, WorkDirectory);
                 // FUCK YOU MICROSOFT THIS IS WEIRD
                 if (ExitCode != 0)
                 {

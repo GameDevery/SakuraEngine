@@ -31,6 +31,9 @@ namespace SB.Core
         [TargetProperty]
         public string DebugSymbols(bool Enable) => Enable && !ArchiverMode ? "/DEBUG:FULL" : "";
 
+        [TargetProperty]
+        public virtual string DynamicDebug(bool v) => v ? "/DEBUG:FULL /dynamicdeopt" : "";
+
         public string PDB(string path) => BS.CheckPath(path, false) ? $"/PDB:\"{path}\"" : throw new ArgumentException($"PDB value {path} is not a valid absolute path!");
 
         public string[] Inputs(ArgumentList<string> inputs) => inputs.Select(dir => $"\"{dir}\"").ToArray();
