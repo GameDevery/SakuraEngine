@@ -70,12 +70,21 @@ SKR_EXEC_STATIC_CTOR
         }
     );
 
-    // guid
+    // guid & md5
     register_type_loader(
         type_id_of<::skr::GUID>(),
         +[](RTTRType* type) {
             type->build_record([](RTTRRecordData* data) {
                 RTTRRecordBuilder<::skr::GUID> builder(data);
+                builder.basic_info();
+            });
+        }
+    );
+    register_type_loader(
+        type_id_of<::skr::MD5>(),
+        +[](RTTRType* type) {
+            type->build_record([](RTTRRecordData* data) {
+                RTTRRecordBuilder<::skr::MD5> builder(data);
                 builder.basic_info();
             });
         }
