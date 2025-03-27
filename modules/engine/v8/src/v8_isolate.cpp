@@ -75,6 +75,9 @@ void V8Isolate::init()
     _isolate                                      = Isolate::New(_isolate_create_params);
     _isolate->SetData(0, this);
 
+    // init bind manager
+    _bind_manager = SkrNew<V8BindManager>();
+
     // TODO. module support
     _isolate->SetHostImportModuleDynamicallyCallback(_dynamic_import_module); // used for support module
     // _isolate->SetHostInitializeImportMetaObjectCallback(); // used for set import.meta
@@ -88,14 +91,16 @@ void V8Isolate::shutdown()
     if (_isolate)
     {
         // cleanup templates
-        _bind_manager.cleanup_templates();
+        _bind_manager->cleanup_templates();
 
         // dispose isolate
         _isolate->Dispose();
         _isolate = nullptr;
 
         // cleanup cores
-        _bind_manager.cleanup_bind_cores();
+        _bind_manager->cleanup_bind_cores();
+
+        SkrDelete(_bind_manager);
     }
 }
 
@@ -113,13 +118,13 @@ V8BindCoreObject* V8Isolate::translate_object(::skr::ScriptbleObject* obj)
 {
     using namespace ::v8;
     Isolate::Scope isolate_scope(_isolate);
-    return _bind_manager.translate_object(obj);
+    return _bind_manager->translate_object(obj);
 }
 void V8Isolate::mark_object_deleted(::skr::ScriptbleObject* obj)
 {
     using namespace ::v8;
     Isolate::Scope isolate_scope(_isolate);
-    _bind_manager.mark_object_deleted(obj);
+    _bind_manager->mark_object_deleted(obj);
 }
 
 // bind value
@@ -127,13 +132,13 @@ V8BindCoreValue* V8Isolate::create_value(const RTTRType* type, const void* data)
 {
     using namespace ::v8;
     Isolate::Scope isolate_scope(_isolate);
-    return _bind_manager.create_value(type, data);
+    return _bind_manager->create_value(type, data);
 }
 V8BindCoreValue* V8Isolate::translate_value_field(const RTTRType* type, const void* data, V8BindCoreRecordBase* owner)
 {
     using namespace ::v8;
     Isolate::Scope isolate_scope(_isolate);
-    return _bind_manager.translate_value_field(type, data, owner);
+    return _bind_manager->translate_value_field(type, data, owner);
 }
 
 // make template
@@ -143,7 +148,7 @@ void V8Isolate::register_mapping_type(const RTTRType* type)
     // v8 scope
     Isolate::Scope isolate_scope(_isolate);
 
-    _bind_manager.register_mapping_type(type);
+    _bind_manager->register_mapping_type(type);
 }
 v8::Local<v8::ObjectTemplate> V8Isolate::_get_enum_template(const RTTRType* type)
 {
@@ -154,7 +159,7 @@ v8::Local<v8::ObjectTemplate> V8Isolate::_get_enum_template(const RTTRType* type
     // v8 scope
     Isolate::Scope isolate_scope(_isolate);
 
-    return _bind_manager.get_enum_template(type);
+    return _bind_manager->get_enum_template(type);
 }
 v8::Local<v8::FunctionTemplate> V8Isolate::_get_record_template(const RTTRType* type)
 {
@@ -166,7 +171,7 @@ v8::Local<v8::FunctionTemplate> V8Isolate::_get_record_template(const RTTRType* 
     // v8 scope
     Isolate::Scope isolate_scope(_isolate);
 
-    return _bind_manager.get_record_template(type);
+    return _bind_manager->get_record_template(type);
 }
 
 // module callback

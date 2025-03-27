@@ -67,7 +67,7 @@ private:
     ::v8::Isolate::CreateParams _isolate_create_params;
 
     // bind manager
-    V8BindManager _bind_manager;
+    V8BindManager* _bind_manager;
 
     // modules
     Map<String, V8Module*> _modules       = {};

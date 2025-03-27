@@ -8,9 +8,11 @@
 
 int main(int argc, char* argv[])
 {
+    using namespace skr;
+
     // parse args
-    skr::CmdParser       parser;
-    v8_play::MainCommand cmd;
+    CmdParser       parser;
+    MainCommand cmd;
     parser.main_cmd(
         &cmd,
         {
@@ -23,12 +25,12 @@ int main(int argc, char* argv[])
     return 0;
 
     // init v8
-    skr::init_v8();
-    skr::V8Isolate isolate;
+    init_v8();
+    V8Isolate isolate;
     isolate.init();
 
     // load script
-    skr::String script;
+    String script;
     {
         auto handle = fopen("../script/main.js", "rb");
         if (handle)
@@ -52,17 +54,17 @@ int main(int argc, char* argv[])
 
     // run script
     {
-        skr::V8Context context(&isolate);
-        skr::V8Module  module(&isolate);
+        V8Context context(&isolate);
+        V8Module  module(&isolate);
         context.init();
 
         // register module
         module.name(u8"fuck");
-        module.register_type<v8_play::Debug>(u8"");
+        module.register_type<Debug>(u8"");
         module.finalize();
 
         // register env
-        context.register_type<v8_play::Debug>(u8"");
+        context.register_type<Debug>(u8"");
         context.finalize_register();
 
         // execute script
