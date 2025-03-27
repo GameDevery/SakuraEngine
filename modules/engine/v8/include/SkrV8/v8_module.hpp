@@ -22,19 +22,9 @@ struct SKR_V8_API V8Module {
 
     // build api
     void name(StringView name);
-    void register_type(const RTTRType* type);
-    void register_type(const RTTRType* type, StringView name_space);
-    template<typename T>
-    inline void register_type() {
-        register_type(type_of<T>()); 
-    }
-    template<typename T>
-    inline void register_type(StringView name_space) {
-        register_type(type_of<T>(), name_space);
-    }
+    bool build(FunctionRef<void(ScriptModule& module)> build_func);
 
-    // finalize & shutdown
-    bool finalize();
+    // shutdown
     void shutdown();
 
     // getter

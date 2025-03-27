@@ -4,6 +4,7 @@
 
 namespace skr
 {
+// namespace mapping
 struct ScriptNamespaceNode {
     enum class EKind
     {
@@ -23,7 +24,7 @@ struct ScriptNamespaceNode {
         , _kind(EKind::Type)
         , _type(type)
     {
-        SKR_ASSERT(!(type.is_primitive() || type.is_mapping()));
+        SKR_ASSERT(!type.is_primitive());
     }
     inline ~ScriptNamespaceNode()
     {
@@ -86,6 +87,8 @@ private:
             return type.value()->type->name();
         case ScriptBinderRoot::EKind::Enum:
             return type.enum_()->type->name();
+        case ScriptBinderRoot::EKind::Mapping:
+            return type.mapping()->type->name();
         default:
             SKR_UNREACHABLE_CODE()
         }
@@ -102,63 +105,34 @@ struct ScriptNamespaceMapper {
     // register type
     inline bool register_type(ScriptBinderRoot type)
     {
-        String name_space_str = {};
-        switch (type.kind())
+        SKR_ASSERT(!type.is_empty());
+
+        // need not export primitive
+        if (type.is_primitive())
         {
-        case ScriptBinderRoot::EKind::Object:
-            name_space_str = type.object()->type->name_space_str();
-            break;
-        case ScriptBinderRoot::EKind::Value:
-            name_space_str = type.value()->type->name_space_str();
-            break;
-        case ScriptBinderRoot::EKind::Enum:
-            name_space_str = type.enum_()->type->name_space_str();
-            break;
-        // need not export
-        case ScriptBinderRoot::EKind::Primitive: {
             auto* primitive = type.primitive();
             auto* type      = get_type_from_guid(primitive->type_id);
             SKR_LOG_FMT_WARN(u8"primitive type not need export, when register '{}::{}'", type->name_space_str(), type->name());
             return true;
         }
-        case ScriptBinderRoot::EKind::Mapping: {
-            auto* mapping = type.mapping();
-            SKR_LOG_FMT_WARN(u8"mapping type not need export, when register '{}::{}'", mapping->type->name_space_str(), mapping->type->name());
-            return true;
-        }
-        default:
-            SKR_UNREACHABLE_CODE()
-            return false;
-        }
 
-        return register_type(type, name_space_str);
+        return register_type(type, _get_name_space_str(type));
     }
     inline bool register_type(ScriptBinderRoot type, StringView name_space)
     {
-        // filter type
-        switch (type.kind())
+        SKR_ASSERT(!type.is_empty());
+
+        // need not export primitive
+        if (type.is_primitive())
         {
-        // need export
-        case ScriptBinderRoot::EKind::Object:
-        case ScriptBinderRoot::EKind::Value:
-        case ScriptBinderRoot::EKind::Enum:
-            break;
-        // need not export
-        case ScriptBinderRoot::EKind::Primitive: {
             auto* primitive = type.primitive();
             auto* type      = get_type_from_guid(primitive->type_id);
             SKR_LOG_FMT_WARN(u8"primitive type not need export, when register '{}::{}'", type->name_space_str(), type->name());
             return true;
         }
-        case ScriptBinderRoot::EKind::Mapping: {
-            auto* mapping = type.mapping();
-            SKR_LOG_FMT_WARN(u8"mapping type not need export, when register '{}::{}'", mapping->type->name_space_str(), mapping->type->name());
-            return true;
-        }
-        default:
-            SKR_UNREACHABLE_CODE()
-            return false;
-        }
+
+        // save mapping
+        _save_mapping(name_space, type);
 
         // find namespace node
         ScriptNamespaceNode* node = &_root;
@@ -208,6 +182,18 @@ struct ScriptNamespaceMapper {
     // getter
     inline const ScriptNamespaceNode& root() const { return _root; }
 
+    // mapping
+    inline String binder_to_ns(ScriptBinderRoot type) const
+    {
+        SKR_ASSERT(_to_ns.contains(type));
+        return _to_ns.find(type).value_or({});
+    }
+    inline ScriptBinderRoot ns_to_binder(StringView name_space) const
+    {
+        SKR_ASSERT(_to_binder.contains(name_space));
+        return _to_binder.find(name_space).value_or({});
+    }
+
 private:
     // helper
     inline static String _get_name_space_str(ScriptBinderRoot type)
@@ -216,12 +202,12 @@ private:
         {
         case ScriptBinderRoot::EKind::Object:
             return type.object()->type->name_space_str();
-            break;
         case ScriptBinderRoot::EKind::Value:
             return type.value()->type->name_space_str();
-            break;
         case ScriptBinderRoot::EKind::Enum:
             return type.enum_()->type->name_space_str();
+        case ScriptBinderRoot::EKind::Mapping:
+            return type.mapping()->type->name_space_str();
         default:
             SKR_UNREACHABLE_CODE()
             return {};
@@ -233,33 +219,73 @@ private:
         {
         case ScriptBinderRoot::EKind::Object:
             return type.object()->type->name();
-            break;
         case ScriptBinderRoot::EKind::Value:
             return type.value()->type->name();
-            break;
         case ScriptBinderRoot::EKind::Enum:
             return type.enum_()->type->name();
+        case ScriptBinderRoot::EKind::Mapping:
+            return type.mapping()->type->name();
         default:
             SKR_UNREACHABLE_CODE()
             return {};
         }
     }
+    inline void _save_mapping(String ns, ScriptBinderRoot binder)
+    {
+        if (ns.is_empty())
+        {
+            ns = _get_name(binder);
+        }
+        else
+        {
+            ns.append(u8"::");
+            ns.append(_get_name(binder));
+        }
+        _to_binder.add(ns, binder);
+        _to_ns.add(binder, ns);
+    }
 
 private:
-    ScriptNamespaceNode _root = { u8"[ROOT]" };
+    ScriptNamespaceNode           _root      = { u8"[ROOT]" };
+    Map<String, ScriptBinderRoot> _to_binder = {};
+    Map<ScriptBinderRoot, String> _to_ns     = {};
 };
 
+// module concept
 struct ScriptModule {
     // register type
-    inline bool register_type(ScriptBinderRoot type)
+    inline bool register_type(const RTTRType* type)
     {
-        _exported_types.add(type);
-        return _ns_mapper.register_type(type);
+        SKR_ASSERT(type);
+        SKR_ASSERT(manager);
+        return register_type(type, type->name_space_str());
     }
-    inline bool register_type(ScriptBinderRoot type, StringView name_space)
+    inline bool register_type(const RTTRType* type, StringView name_space)
     {
-        _exported_types.add(type);
-        return _ns_mapper.register_type(type, name_space);
+        SKR_ASSERT(type);
+        SKR_ASSERT(manager);
+        auto binder = manager->get_or_build(type->type_id());
+        if (!binder.is_empty())
+        {
+            _exported_types.add(binder);
+            return _ns_mapper.register_type(binder, name_space);
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    // template register
+    template <typename T>
+    inline bool register_type()
+    {
+        return register_type(type_of<T>());
+    }
+    template <typename T>
+    inline bool register_type(StringView name_space)
+    {
+        return register_type(type_of<T>(), name_space);
     }
 
     // finalize
@@ -294,6 +320,9 @@ struct ScriptModule {
     inline const ScriptNamespaceMapper& ns_mapper() const { return _ns_mapper; }
     inline const Set<ScriptBinderRoot>& exported_types() const { return _exported_types; }
     inline const Set<ScriptBinderRoot>& lost_types() const { return _lost_types; }
+
+public:
+    ScriptBinderManager* manager = nullptr;
 
 private:
     // check helper

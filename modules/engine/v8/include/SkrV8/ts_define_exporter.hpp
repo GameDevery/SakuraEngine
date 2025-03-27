@@ -1,26 +1,26 @@
 #pragma once
-#include "SkrRTTR/script_binder.hpp"
+#include "SkrRTTR/script_tools.hpp"
 
 namespace skr
 {
 struct TSDefineExporter {
-    // register
-    void register_type(skr::RTTRType* type);
-    template <typename T>
-    void register_type();
-
     // generate
     String generate_global();
 
     // generate module
     String generate_module(StringView module_name);
 
-    // cleanup
-    void clear();
+public:
+    // codegen config
+    uint32_t indent_size = 2;
+
+    // script binder manager
+    ScriptModule* module = nullptr;
 
 private:
     // codegen unit
     void _gen();
+    void _gen_ns_node(const ScriptNamespaceNode& ns_node);
     void _gen_enum(ScriptBinderEnum& enum_binder);
     void _gen_mapping(ScriptBinderMapping& mapping);
     void _gen_object(ScriptBinderObject& object_binder);
@@ -29,6 +29,7 @@ private:
 
     // codegen utils
     String _type_name(ScriptBinderRoot binder) const;
+    String _type_name_with_ns(ScriptBinderRoot binder) const;
     String _params_signature(const Vector<ScriptBinderParam>& params) const;
     String _return_signature(
         const Vector<ScriptBinderParam>& params,
@@ -43,14 +44,7 @@ private:
     template <typename Func>
     void $indent(Func&& func);
 
-public:
-    // codegen config
-    uint32_t indent_size = 2;
-
 private:
-    // script binder manager
-    ScriptBinderManager _binder_mgr;
-
     // codegen tools
     uint32_t _cur_indent = 0;
     String   _result;
@@ -59,28 +53,11 @@ private:
 
 namespace skr
 {
-// register
-inline void TSDefineExporter::register_type(skr::RTTRType* type)
-{
-    _binder_mgr.get_or_build(type->type_id());
-}
-template <typename T>
-inline void TSDefineExporter::register_type()
-{
-    if (auto type = skr::type_of<T>())
-    {
-        register_type(type);
-    }
-    else
-    {
-        SKR_LOG_FMT_ERROR(u8"failed to register type {}", skr::type_name_of<T>());
-        return;
-    }
-}
-
 // generate
 inline String TSDefineExporter::generate_global()
 {
+    SKR_ASSERT(module && "please specify module first");
+
     _result.clear();
     $line(u8"export {{}};");
     $line(u8"declare global {{");
@@ -94,6 +71,8 @@ inline String TSDefineExporter::generate_global()
 // generate module
 inline String TSDefineExporter::generate_module(StringView module_name)
 {
+    SKR_ASSERT(module && "please specify module first");
+
     _result.clear();
     $line(u8"declare module \"{}\" {{", module_name);
     $indent([this] {
@@ -106,7 +85,28 @@ inline String TSDefineExporter::generate_module(StringView module_name)
 // codegen unit
 inline void TSDefineExporter::_gen()
 {
-    _binder_mgr.each_cached_root_binder([this](const GUID& type_id, const ScriptBinderRoot& binder) {
+    auto& root_node = module->ns_mapper().root();
+    for (const auto& [node_name, child] : root_node.children())
+    {
+        _gen_ns_node(*child);
+    }
+}
+inline void TSDefineExporter::_gen_ns_node(const ScriptNamespaceNode& ns_node)
+{
+    if (ns_node.is_namespace())
+    {
+        $line(u8"export namespace {} {{", ns_node.name());
+        $indent([&]() {
+            for (const auto& [node_name, child] : ns_node.children())
+            {
+                _gen_ns_node(*child);
+            }
+        });
+        $line(u8"}}");
+    }
+    else
+    {
+        auto binder = ns_node.type();
         switch (binder.kind())
         {
         case ScriptBinderRoot::EKind::Enum: {
@@ -137,10 +137,10 @@ inline void TSDefineExporter::_gen()
             // won't export primitive
             break;
         default:
-            $line(u8"// failed to generate type '{}'", type_id);
+            $line(u8"// failed to generate type");
             break;
         }
-    });
+    }
 }
 inline void TSDefineExporter::_gen_enum(ScriptBinderEnum& enum_binder)
 {
@@ -196,7 +196,7 @@ inline void TSDefineExporter::_gen_mapping(ScriptBinderMapping& mapping)
         // fields
         for (auto& [field_name, field_value] : mapping.fields)
         {
-            $line(u8"{}: {};", field_name, _type_name(field_value.binder));
+            $line(u8"{}: {};", field_name, _type_name_with_ns(field_value.binder));
         }
     });
     $line(u8"}}");
@@ -247,7 +247,7 @@ inline void TSDefineExporter::_gen_record(ScriptBinderRecordBase& record_binder)
                 record_full_name,
                 field_value.data->name
             );
-            $line(u8"{}: {};", field_name, _type_name(field_value.binder));
+            $line(u8"{}: {};", field_name, _type_name_with_ns(field_value.binder));
         }
 
         // methods
@@ -277,7 +277,7 @@ inline void TSDefineExporter::_gen_record(ScriptBinderRecordBase& record_binder)
                 record_full_name,
                 static_field_value.data->name
             );
-            $line(u8"static {}: {};", static_field_name, _type_name(static_field_value.binder));
+            $line(u8"static {}: {};", static_field_name, _type_name_with_ns(static_field_value.binder));
         }
 
         // static methods
@@ -309,7 +309,7 @@ inline void TSDefineExporter::_gen_record(ScriptBinderRecordBase& record_binder)
                     record_full_name,
                     property_value.setter.overloads[0].data->name
                 );
-                $line(u8"set {}(value: {});", property_name, _type_name(property_value.binder));
+                $line(u8"set {}(value: {});", property_name, _type_name_with_ns(property_value.binder));
             }
             if (!property_value.getter.overloads.is_empty())
             {
@@ -318,7 +318,7 @@ inline void TSDefineExporter::_gen_record(ScriptBinderRecordBase& record_binder)
                     record_full_name,
                     property_value.getter.overloads[0].data->name
                 );
-                $line(u8"get {}(): {};", property_name, _type_name(property_value.binder));
+                $line(u8"get {}(): {};", property_name, _type_name_with_ns(property_value.binder));
             }
         }
 
@@ -332,7 +332,7 @@ inline void TSDefineExporter::_gen_record(ScriptBinderRecordBase& record_binder)
                     record_full_name,
                     static_property_value.setter.overloads[0].data->name
                 );
-                $line(u8"static set {}(value: {});", static_property_name, _type_name(static_property_value.binder));
+                $line(u8"static set {}(value: {});", static_property_name, _type_name_with_ns(static_property_value.binder));
             }
             if (!static_property_value.getter.overloads.is_empty())
             {
@@ -341,7 +341,7 @@ inline void TSDefineExporter::_gen_record(ScriptBinderRecordBase& record_binder)
                     record_full_name,
                     static_property_value.getter.overloads[0].data->name
                 );
-                $line(u8"static get {}(): {};", static_property_name, _type_name(static_property_value.binder));
+                $line(u8"static get {}(): {};", static_property_name, _type_name_with_ns(static_property_value.binder));
             }
         }
     });
@@ -361,6 +361,49 @@ inline String TSDefineExporter::_type_name(ScriptBinderRoot binder) const
         return binder.object()->type->name();
     case ScriptBinderRoot::EKind::Value:
         return binder.value()->type->name();
+    case ScriptBinderRoot::EKind::Primitive: {
+        auto* primitive_binder = binder.primitive();
+        switch (primitive_binder->type_id.get_hash())
+        {
+        case type_id_of<bool>().get_hash():
+            return u8"boolean";
+        case type_id_of<int8_t>().get_hash():
+        case type_id_of<uint8_t>().get_hash():
+        case type_id_of<int16_t>().get_hash():
+        case type_id_of<uint16_t>().get_hash():
+        case type_id_of<int32_t>().get_hash():
+        case type_id_of<uint32_t>().get_hash():
+        case type_id_of<float>().get_hash():
+        case type_id_of<double>().get_hash():
+            return u8"number";
+        case type_id_of<int64_t>().get_hash():
+        case type_id_of<uint64_t>().get_hash():
+            return u8"bigint";
+        case type_id_of<StringView>().get_hash():
+        case type_id_of<String>().get_hash():
+            return u8"string";
+        default:
+            SKR_UNREACHABLE_CODE()
+            return {};
+        }
+    }
+    default:
+        SKR_UNREACHABLE_CODE()
+        return {};
+    }
+}
+inline String TSDefineExporter::_type_name_with_ns(ScriptBinderRoot binder) const
+{
+    switch (binder.kind())
+    {
+    case ScriptBinderRoot::EKind::Enum:
+    case ScriptBinderRoot::EKind::Mapping:
+    case ScriptBinderRoot::EKind::Object:
+    case ScriptBinderRoot::EKind::Value: {
+        auto result = module->ns_mapper().binder_to_ns(binder);
+        result.replace(u8"::", u8".");
+        return result;
+    }
     case ScriptBinderRoot::EKind::Primitive: {
         auto* primitive_binder = binder.primitive();
         switch (primitive_binder->type_id.get_hash())
@@ -423,7 +466,7 @@ inline String TSDefineExporter::_params_signature(const Vector<ScriptBinderParam
         result.append(u8": ");
 
         // push type
-        result.append(_type_name(param.binder));
+        result.append(_type_name_with_ns(param.binder));
     }
     return result;
 }
@@ -456,7 +499,7 @@ inline String TSDefineExporter::_return_signature(
 
                 if (is_out)
                 {
-                    return format(u8"{} /*{}*/", _type_name(param.binder), param.data->name);
+                    return format(u8"{} /*{}*/", _type_name_with_ns(param.binder), param.data->name);
                 }
             }
             SKR_UNREACHABLE_CODE();
@@ -464,7 +507,7 @@ inline String TSDefineExporter::_return_signature(
         }
         else
         {
-            return _type_name(ret.binder);
+            return _type_name_with_ns(ret.binder);
         }
     }
     else
@@ -473,7 +516,7 @@ inline String TSDefineExporter::_return_signature(
         result.append(u8"[");
         if (!ret.is_void)
         {
-            result.append(format(u8"{} /*[return]*/", _type_name(ret.binder)));
+            result.append(format(u8"{} /*[return]*/", _type_name_with_ns(ret.binder)));
             result.append(u8", ");
         }
         for (auto& param : params)
@@ -490,7 +533,7 @@ inline String TSDefineExporter::_return_signature(
 
             if (is_out)
             {
-                result.append(format(u8"{} /*{}*/", _type_name(param.binder), param.data->name));
+                result.append(format(u8"{} /*{}*/", _type_name_with_ns(param.binder), param.data->name));
                 result.append(u8", ");
             }
         }
@@ -499,12 +542,6 @@ inline String TSDefineExporter::_return_signature(
         result.append(u8"]");
         return result;
     }
-}
-
-// cleanup
-inline void TSDefineExporter::clear()
-{
-    _binder_mgr.clear();
 }
 
 // codegen tools
