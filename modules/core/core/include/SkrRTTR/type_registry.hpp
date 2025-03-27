@@ -1,5 +1,7 @@
 #pragma once
 #include "SkrBase/types.h"
+#include "SkrContainersDef/function_ref.hpp"
+#include "SkrContainersDef/string.hpp"
 
 namespace skr
 {
@@ -12,10 +14,12 @@ SKR_CORE_API void unregister_type_loader(const GUID& guid, RTTRTypeLoaderFunc lo
 
 // TODO. type extender
 
-// TODO. type convert for any support
-
 // get type (after register)
 SKR_CORE_API RTTRType* get_type_from_guid(const GUID& guid);
 SKR_CORE_API void      unload_all_types();
+
+// each types
+SKR_CORE_API void each_types(FunctionRef<bool(const RTTRType* type)> func);
+SKR_CORE_API void each_types_of_module(StringView module_name, FunctionRef<bool(const RTTRType* type)> func);
 
 } // namespace skr

@@ -395,24 +395,26 @@ TEST_CASE("test v8")
         ScriptBinderManager bm;
         ScriptModule        sm;
         sm.manager = &bm;
-        sm.register_type<test_v8::BasicObject>(u8"fuck::you::圆头");
-        sm.register_type<test_v8::InheritObject>(u8"fuck::you::圆头");
-        sm.register_type<test_v8::BasicValue>(u8"fuck::you::圆头");
-        sm.register_type<test_v8::InheritValue>(u8"fuck::you::圆头");
-        sm.register_type<test_v8::BasicMapping>(u8"fuck::you::圆头");
-        sm.register_type<test_v8::InheritMapping>(u8"fuck::you::圆头");
-        sm.register_type<test_v8::BasicMappingHelper>();
-        sm.register_type<test_v8::BasicEnum>();
-        sm.register_type<test_v8::BasicEnumHelper>();
-        sm.register_type<test_v8::ParamFlagTest>();
-        sm.register_type<test_v8::ParamFlagTestValue>();
-        sm.register_type<test_v8::TestString>();
+        uint32_t count = 0;
+        each_types_of_module(u8"V8Test", [&](const RTTRType* type) -> bool {
+            if (count % 2 == 0)
+            {
+                sm.register_type(type);
+            }
+            else
+            {
+                sm.register_type(type, u8"fuck::you::圆头");
+            }
+            
+            ++count;
+            return true;
+        });
         sm.check_full_export();
 
         // export module
         TSDefineExporter exporter;
         exporter.module = &sm;
-        auto result     = exporter.generate_global();
+        auto result     = exporter.generate_module(u8"圆头");
 
         // write to file
         auto file = fopen("test_v8.d.ts", "wb");
