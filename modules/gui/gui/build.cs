@@ -6,7 +6,6 @@ public static class SkrGui
 {
     static SkrGui()
     {
-        /* TODO: FIX GODOT TS DEFINE
         Engine.Module("SkrGui")
             // .EnableUnityBuild()
             .Require("freetype", new PackageConfig { Version = new Version(1, 2, 8) })
@@ -32,6 +31,5 @@ public static class SkrGui
             .AddCppFiles("src/backend/text_server_adv/*.cpp")//, {unity_group  = "text_adv"})
 
             .UsePrivatePCH("include/**.hpp");
-        */
     }
 }

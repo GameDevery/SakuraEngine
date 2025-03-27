@@ -31,6 +31,7 @@ namespace SB
                 {
                     var PCHIncludes = String.Join("\n", CreatePCH.Headers.Select(H => $"#include \"{H}\""));
                     var PCHFileContent = $"""
+                    #pragma once
                     #ifdef __cplusplus
                     #ifdef _WIN32
                     #include <intrin.h>

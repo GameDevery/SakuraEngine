@@ -18,7 +18,7 @@ namespace SB.Core
             this.TargetArch = TargetArch ?? HostInformation.HostArch;
         }
 
-        private bool UseClangCl => true;
+        private bool UseClangCl => false;
         public string Name => UseClangCl ? "clang-cl" : "msvc";
         public Version Version => new Version(VSVersion, 0);
         public ICompiler Compiler => UseClangCl ? ClangCLCC! : CLCC!;
@@ -57,15 +57,15 @@ namespace SB.Core
                     {
                         case "vcvarsall.bat":
                             FoundVS = true;
-                            VCVarsAllBat = file;
+                            VCVarsAllBat = file.Contains("Preview") ? file : VCVarsAllBat;
                             break;
                         case "vcvars.bat":
                             FoundVS = true;
-                            VCVarsBat = file;
+                            VCVarsBat = file.Contains("Preview") ? file : VCVarsBat;
                             break;
                         case "winsdk.bat":
                             FoundVS = true;
-                            WindowsSDKBat = file;
+                            WindowsSDKBat = file.Contains("Preview") ? file : WindowsSDKBat;
                             break;
                     }
                 }
@@ -77,7 +77,6 @@ namespace SB.Core
                         .Replace("\\", "/")
                         .Replace(searchDirectory, "")
                         .Split('/')[1];
-
                     VSInstallDir = $"{searchDirectory}/{PayInfo}/";
                     break;
                 }

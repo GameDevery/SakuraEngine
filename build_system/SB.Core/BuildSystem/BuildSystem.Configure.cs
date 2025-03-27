@@ -9,24 +9,21 @@ namespace SB
         {
             TargetDelegate Debug = (Target) =>
             {
-                Target
-                    .DebugSymbols(true)
+                Target.DebugSymbols(true)
                     .OptimizationLevel(OptimizationLevel.Fast);
             };
             Configurations.Add("debug", Debug);
 
             TargetDelegate DebugRelease = (Target) =>
             {
-                Target
-                    .DebugSymbols(true)
+                Target.DebugSymbols(true)
                     .OptimizationLevel(OptimizationLevel.Faster);
             };
             Configurations.Add("releasedbg", DebugRelease);
 
             TargetDelegate Release = (Target) =>
             {
-                Target
-                    .DebugSymbols(false)
+                Target.DebugSymbols(false)
                     .OptimizationLevel(OptimizationLevel.Fastest);
             };
             Configurations.Add("release", Release);

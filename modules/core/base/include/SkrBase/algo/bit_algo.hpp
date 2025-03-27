@@ -12,7 +12,43 @@ namespace skr::algo
 template <typename T>
 struct BitAlgo {
 private:
-    static inline constexpr T _per_block_size_log2();
+    static inline constexpr T _per_block_size_log2()
+    {
+        static_assert(PerBlockSize <= 512);
+
+        if constexpr (PerBlockSize == 8)
+        {
+            return 3;
+        }
+        else if constexpr (PerBlockSize == 16)
+        {
+            return 4;
+        }
+        else if constexpr (PerBlockSize == 32)
+        {
+            return 5;
+        }
+        else if constexpr (PerBlockSize == 64)
+        {
+            return 6;
+        }
+        else if constexpr (PerBlockSize == 128)
+        {
+            return 7;
+        }
+        else if constexpr (PerBlockSize == 256)
+        {
+            return 8;
+        }
+        else if constexpr (PerBlockSize == 512)
+        {
+            return 9;
+        }
+        else
+        {
+            return static_cast<T>(-1);
+        }
+    }
 
 public:
     static_assert(std::is_integral_v<T> && !std::is_signed_v<T>);
@@ -93,45 +129,6 @@ SKR_INLINE T BitAlgo<T>::last_block_mask(TSize num_bits)
 
     // 两次 & 是为了防止 num_bits 为 0 的情况
     return FullMask >> ((static_cast<TSize>(PerBlockSize) - num_bits & static_cast<TSize>(PerBlockSizeMask)) & static_cast<TSize>(PerBlockSizeMask));
-}
-
-template <typename T>
-inline constexpr T BitAlgo<T>::_per_block_size_log2()
-{
-    static_assert(PerBlockSize <= 512);
-
-    if constexpr (PerBlockSize == 8)
-    {
-        return 3;
-    }
-    else if constexpr (PerBlockSize == 16)
-    {
-        return 4;
-    }
-    else if constexpr (PerBlockSize == 32)
-    {
-        return 5;
-    }
-    else if constexpr (PerBlockSize == 64)
-    {
-        return 6;
-    }
-    else if constexpr (PerBlockSize == 128)
-    {
-        return 7;
-    }
-    else if constexpr (PerBlockSize == 256)
-    {
-        return 8;
-    }
-    else if constexpr (PerBlockSize == 512)
-    {
-        return 9;
-    }
-    else
-    {
-        return static_cast<T>(-1);
-    }
 }
 } // namespace skr::algo
 

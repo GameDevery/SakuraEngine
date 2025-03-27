@@ -52,7 +52,8 @@ public static class SkrCore
             .AddMetaHeaders(
                 "include/SkrRTTR/iobject.hpp",
                 "include/SkrRTTR/scriptble_object.hpp",
-                "include/SkrRTTR/export/export_data.hpp"
+                "include/SkrRTTR/export/export_data.hpp",
+                "include/SkrCore/cli.hpp"
             )
             .AddCodegenScript("meta/basic.ts")
             .AddCodegenScript("meta/rttr.ts")

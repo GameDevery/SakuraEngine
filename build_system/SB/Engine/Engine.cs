@@ -90,6 +90,7 @@ namespace SB
             BS.TargetDefaultSettings += (Target Target) =>
             {
                 Target.CppVersion("20")
+                    .RTTI(false)
                     .LinkDirs(Visibility.Public, Target.GetBinaryPath());
                 if (BS.TargetOS == OSPlatform.Windows)
                 {

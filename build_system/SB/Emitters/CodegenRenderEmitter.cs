@@ -34,6 +34,9 @@ namespace SB
             // Collect include modules
             Target.Dependencies.Select(D => GetModAttr(D)).Where(D => D is not null).Select(D => D!).ToList()
                 .ForEach(D => {
+                    if (D!.Target.GetAttribute<CodegenMetaAttribute>()!.MetaDirectory is null)
+                        return;
+                        
                     Config.include_modules.Add(new CodegenModuleInfo {
                         meta_dir = D!.Target.GetAttribute<CodegenMetaAttribute>()!.MetaDirectory!,
                         api = D!.API,
