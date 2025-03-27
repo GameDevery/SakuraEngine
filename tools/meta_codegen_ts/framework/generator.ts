@@ -2,13 +2,7 @@ import * as db from "./database.ts";
 import * as fs from "node:fs";
 import * as ml from "./meta_lang.ts";
 import path from "node:path";
-import { LogColor, MetaLangError, type CodeBuilder } from "./utils.ts";
-
-// TODO. 重组生成步骤
-//   1. load database
-//   2. inject configs
-//   3. run meta-lang
-//   4. generate code
+import { CodeBuilder, LogColor, MetaLangError } from "./utils.ts";
 
 export class Generator {
   owner!: GenerateManager;
@@ -22,6 +16,8 @@ export class Generator {
   // inject configs into object
   inject_configs(): void { }
 
+  // pre compute source batches
+  compute_source_batches(batch_size: number): string[] { return [] }
 
   // generate functions
   gen_body() { }
@@ -160,6 +156,21 @@ export class GenerateManager {
 
   // step 5. generate code
   codegen() {
+    // compute source batches
+    const batch_size = this.project_db.config.batch_size
+    if (typeof batch_size === "number") {
+      for (const key in this.#generators) {
+        const generator = this.#generators[key]!;
+        const source_batches = generator.compute_source_batches(batch_size);
+        const main_db = this.project_db.main_module;
+        if (source_batches.length > 0) {
+          for (const batch of source_batches) {
+            main_db.source_batch.init_batch(batch)
+          }
+        }
+      }
+    }
+
     // generate body
     for (const key in this.#generators) {
       this.#generators[key]!.gen_body();
@@ -192,7 +203,13 @@ export class GenerateManager {
     }
 
     // output sources
-    this.#output_code(path.join(out_dir, "generated.cpp"), this.project_db.main_module.gen_code);
+    const source_batch = this.project_db.main_module.source_batch
+    for (const key in source_batch.batches) {
+      const generator = source_batch.batches[key];
+      if (generator) {
+        this.#output_code(path.join(out_dir, key), generator);
+      }
+    }
   }
   #output_code(out_path: string, code: CodeBuilder) {
     const out_dir = path.dirname(out_path);

@@ -103,7 +103,7 @@ class _Gen {
     b.$line(`// END SERIALIZE GENERATED`);
   }
   static source(main_db: db.Module) {
-    const b = main_db.gen_code;
+    const b = main_db.source_batch.get_default()
     const _gen_records_json = main_db.filter_record(record => record.ml_configs.serde.json);
     const _gen_records_bin = main_db.filter_record(record => record.ml_configs.serde.bin);
     const _gen_enum_json = main_db.filter_enum(enum_ => enum_.ml_configs.serde.json);
@@ -356,7 +356,7 @@ class SerializeGenerator extends gen.Generator {
     });
   }
 
-  gen(): void {
+  override gen(): void {
     this.main_module_db.headers.forEach((header) => {
       _Gen.header(header);
     });
