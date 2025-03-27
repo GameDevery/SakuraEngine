@@ -22,6 +22,9 @@ Debug {
     sscript_visible
     static void error(StringView message);
 
+    sscript_visible
+    static void exit(int32_t exit_code);
+
 private:
     bool _shit;
 };

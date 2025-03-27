@@ -3,6 +3,7 @@
 #include <SkrBase/config.h>
 #include <SkrBase/meta.h>
 #include <SkrCore/cli.hpp>
+#include <V8Playground/app.hpp>
 #ifndef __meta__
     #include "V8Playground/cmd_args.generated.h"
 #endif
@@ -13,67 +14,39 @@ sreflect_struct(guid = "c30115c5-4945-468f-a579-523202d4f42b" rttr = @full)
 SubCommandDumpDefine {
     srttr_attr(CmdOption{
         .short_name = u8'o',
-        .help       = u8"output .d.ts file",
+        .help       = u8"where to output .d.ts file",
     })
-    skr::String output = {};
+    skr::String outdir = {};
 
-    srttr_attr(CmdExec{})
-    void exec()
+    srttr_attr(CmdExec{}) void exec()
     {
-        SKR_LOG_FMT_INFO(u8"Sub Command Dump Define Called");
-        SKR_LOG_FMT_INFO(u8"output: {}", output.c_str());
+        SKR_LOG_FMT_INFO(u8"dump .d.ts into dir '{}'", outdir);
+        V8PlaygroundApp::env_init();
+
+        V8PlaygroundApp app;
+        app.init();
+        app.load_native_types();
+        if (!app.dump_types(outdir))
+        {
+            SKR_LOG_FMT_ERROR(u8"Failed to dump types to dir: {}", outdir);
+            exit(1);
+        }
+        app.shutdown();
+
+        V8PlaygroundApp::env_shutdown();
+
+        exit(0);
     }
 };
 
 sreflect_struct(guid = "1bfb194d-abcd-42c0-9597-96f359a786aa" rttr = @full)
 MainCommand {
     srttr_attr(CmdOption{
-        .name       = u8"entry",
-        .short_name = u8'e',
-        .help       = u8"entry point for script",
-    })
-    skr::String entry = {};
-
-    srttr_attr(CmdOption{
-        .help = u8"use strict mode for script",
-    }) 
-    bool strict_mode = false;
-
-    srttr_attr(CmdOption{
-        .short_name = u8'a',
-        .help = u8"test compound args a",
+        .name        = u8"...",
+        .help        = u8"js files to execute",
         .is_required = false,
     })
-    bool test_a = false;
-
-    srttr_attr(CmdOption{
-        .short_name = u8'b',
-        .help = u8"test compound args b",
-        .is_required = false,
-    })
-    bool test_b = false;
-
-    srttr_attr(CmdOption{
-        .short_name = u8'c',
-        .help = u8"test compound args c",
-        .is_required = false,
-    })
-    bool test_c = false;
-
-    srttr_attr(CmdOption{
-        .help = u8"just test optional arg\n"
-                u8"test indent-----------\n"
-                u8"test indent>>>>>>>>>>>\n"
-                u8"test indent<<<<<<<<<<<",
-    })
-    skr::Optional<skr::String> test_optional = {};
-
-    srttr_attr(CmdOption{
-        .name = u8"...",
-        .help = u8"test rest args",
-        .is_required = false,
-    })
-    skr::Vector<skr::String> rest_args = {};
+    skr::Vector<skr::String> exec_files = {};
 
     srttr_attr(CmdSub{
         .short_name = u8'd',
@@ -82,17 +55,30 @@ MainCommand {
     })
     SubCommandDumpDefine dump_def = {};
 
-    srttr_attr(CmdExec{})
-    void exec()
+    srttr_attr(CmdExec{}) void exec()
     {
-        SKR_LOG_FMT_INFO(u8"Main Command Called");
-        SKR_LOG_FMT_INFO(u8"entry: {}", entry.c_str());
-        SKR_LOG_FMT_INFO(u8"strict mode: {}", strict_mode ? u8"true" : u8"false");
-        SKR_LOG_FMT_INFO(u8"test optional: {}", test_optional.has_value() ? test_optional->c_str() : u8"nullopt");
-        SKR_LOG_FMT_INFO(u8"rest args: {}", skr::String::Join(rest_args, u8", "));
-        SKR_LOG_FMT_INFO(u8"test a: {}", test_a ? u8"true" : u8"false");
-        SKR_LOG_FMT_INFO(u8"test b: {}", test_b ? u8"true" : u8"false");
-        SKR_LOG_FMT_INFO(u8"test c: {}", test_c ? u8"true" : u8"false");
+        V8PlaygroundApp::env_init();
+
+        V8PlaygroundApp app;
+        app.init();
+        app.load_native_types();
+
+        // run scripts
+        bool any_failed = false;
+        for (auto& file : exec_files)
+        {
+            any_failed |= !app.run_script(file);
+        }
+        if (any_failed)
+        {
+            exit(1);
+        }
+
+        app.shutdown();
+
+        V8PlaygroundApp::env_shutdown();
+
+        exit(0);
     }
 };
 } // namespace skr

@@ -81,6 +81,22 @@ RTTRType* get_type_from_guid(const GUID& guid)
 
     return nullptr;
 }
+void load_all_types()
+{
+    std::lock_guard _lock(load_type_mutex());
+    for (const auto& [type_id, type_loader] : type_load_funcs())
+    {
+        if (!loaded_types().contains(type_id))
+        {
+            // create type
+            auto type = SkrNew<RTTRType>();
+            loaded_types().add(type_id, type);
+
+            // load type
+            type_loader(type);
+        }
+    }
+}
 void unload_all_types()
 {
     std::lock_guard _lock(load_type_mutex());
