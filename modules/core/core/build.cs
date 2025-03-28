@@ -67,8 +67,6 @@ public static class SkrCore
             SkrCore.Link(Visibility.Private, "user32", "shell32", "Ole32", "Shlwapi");
         else
             SkrCore.Link(Visibility.Private, "pthread");
-
-        SkrCore.BeforeBuild((Target) => SkrCoreDoctor.Installation!.Wait());
     }
 }
 
@@ -76,7 +74,7 @@ public class SkrCoreDoctor : DoctorAttribute
 {
     public override bool Check()
     {
-        Installation = Install.SDK("SDL2");
+        Install.SDK("SDL2").Wait();
         return true;
     }
     public override bool Fix() 
@@ -84,5 +82,4 @@ public class SkrCoreDoctor : DoctorAttribute
         Log.Fatal("core sdks install failed!");
         return true; 
     }
-    public static Task? Installation;
 }

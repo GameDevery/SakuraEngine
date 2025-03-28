@@ -29,8 +29,6 @@ public static class SkrImageCoder
             ImageCoder.Link(Visibility.Public, "libpng15_static");
             ImageCoder.Link(Visibility.Public, "turbojpeg_static");
         }
-
-        ImageCoder.BeforeBuild((Target) => ImageCoderDoctor.Installation!.Wait());
     }
 }
 
@@ -38,7 +36,7 @@ public class ImageCoderDoctor : DoctorAttribute
 {
     public override bool Check()
     {
-        Installation = Task.WhenAll(
+        Task.WaitAll(
             Install.SDK("libpng"),
             Install.SDK("turbojpeg")
         );

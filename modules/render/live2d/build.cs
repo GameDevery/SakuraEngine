@@ -16,7 +16,6 @@ public static class SkrLive2D
             .IncludeDirs(Visibility.Private, "CubismNativeCore/include", "CubismFramework", "CubismFramework/Framework")
             .AddCppFiles("CubismFramework/Renderer/**.cpp", "CubismFramework/Framework/**.cpp");
 
-        CubismFramework.BeforeBuild(Target => SkrLive2DDoctor.SDKInstallation!.Wait());
         if (BuildSystem.TargetOS == OSPlatform.Windows)
         {
             CubismFramework.Link(Visibility.Public, "Live2DCubismCore_MD");
@@ -44,7 +43,7 @@ public class SkrLive2DDoctor : DoctorAttribute
 {
     public override bool Check()
     {
-        SDKInstallation = Install.SDK("CubismNativeCore");
+        Install.SDK("CubismNativeCore").Wait();
         return true;
     }
 
@@ -53,5 +52,4 @@ public class SkrLive2DDoctor : DoctorAttribute
         Log.Fatal("Cubism SDK install failed!");
         return true;
     }
-    public static Task? SDKInstallation;
 }
