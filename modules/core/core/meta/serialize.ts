@@ -103,7 +103,7 @@ class _Gen {
     b.$line(`// END SERIALIZE GENERATED`);
   }
   static source(main_db: db.Module) {
-    const b = main_db.source_batch.get_default()
+    const b = main_db.main_file
     const _gen_records_json = main_db.filter_record(record => record.ml_configs.serde.json);
     const _gen_records_bin = main_db.filter_record(record => record.ml_configs.serde.bin);
     const _gen_enum_json = main_db.filter_enum(enum_ => enum_.ml_configs.serde.json);

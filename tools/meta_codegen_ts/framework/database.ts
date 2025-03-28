@@ -1,7 +1,7 @@
 import * as path from "node:path";
 import * as fs from "node:fs";
 import * as ml from "./meta_lang.ts";
-import { CodeBuilder, SourceBatch } from "./utils.ts";
+import { CodeBuilder } from "./utils.ts";
 
 //============================================================
 // cpp types
@@ -480,7 +480,7 @@ export class CodegenConfig {
   main_module: ModuleConfig;
   include_modules: ModuleConfig[] = [];
   generators: GeneratorConfig[] = [];
-  batch_size?: number = undefined;
+  batch_size: number = 0; // 0 means no batch
 
   // deno-lint-ignore no-explicit-any
   constructor(json_obj: any) {
@@ -504,12 +504,10 @@ export class CodegenConfig {
     }
 
     // load custom config
-    if (json_obj.batch_size !== undefined) {
-      if (typeof json_obj.batch_size === "number") {
-        this.batch_size = json_obj.batch_size;
-      } else {
-        throw new Error(`batch size must be a number`)
-      }
+    if (typeof json_obj.batch_size === "number") {
+      this.batch_size = json_obj.batch_size;
+    } else {
+      throw new Error(`batch size must be a number`)
     }
   }
 }
@@ -687,7 +685,11 @@ export class Module {
   config: ModuleConfig;
   headers: Header[] = [];
 
-  source_batch: SourceBatch = new SourceBatch();
+  // source info
+  pre_all_file: CodeBuilder = new CodeBuilder();
+  post_all_file: CodeBuilder = new CodeBuilder();
+  main_file: CodeBuilder = new CodeBuilder();
+  batch_files: Dict<CodeBuilder> = {};
 
   constructor(parent: Project, config: ModuleConfig) {
     this.parent = parent;

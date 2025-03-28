@@ -114,19 +114,11 @@ class BasicGenerator extends gen.Generator {
     })
 
     // gen source
-    const source_batch = this.main_module_db.source_batch
-    for (const key in source_batch.batches) {
-      const b = source_batch.batches[key]!; 
-      _Gen.source_pre(b, this.main_module_db);
-    }
+    _Gen.source_pre(this.main_module_db.pre_all_file, this.main_module_db);
   }
   override post_gen(): void {
     // gen source
-    const source_batch = this.main_module_db.source_batch
-    for (const key in source_batch.batches) {
-      const b = source_batch.batches[key]!; 
-      _Gen.source_post(b)
-    }
+    _Gen.source_post(this.main_module_db.post_all_file);
   }
 }
 

@@ -159,8 +159,8 @@ class _Gen {
   }
   static header(header: db.Header) {
     const b = header.gen_code;
-    const _gen_records = header.records.filter(_Gen.#filter_record);
-    const _gen_enums = header.enums.filter(_Gen.#filter_enum);
+    const _gen_records = header.records.filter(_Gen.filter_record);
+    const _gen_enums = header.enums.filter(_Gen.filter_enum);
 
     b.$line(`// BEGIN RTTR GENERATED`);
     b.$line(`#include "SkrRTTR/rttr_traits.hpp"`);
@@ -173,9 +173,9 @@ class _Gen {
     b.$line(`// END RTTR GENERATED`);
   }
   static source(main_db: db.Module) {
-    const b = main_db.source_batch.get_default()
-    const _gen_records = main_db.filter_record(_Gen.#filter_record);
-    const _gen_enums = main_db.filter_enum(_Gen.#filter_enum);
+    const b = main_db.main_file
+    const _gen_records = main_db.filter_record(_Gen.filter_record);
+    const _gen_enums = main_db.filter_enum(_Gen.filter_enum);
     this.source_batched(b, _gen_records, _gen_enums, main_db.config.module_name);
   }
   static source_batched(b: CodeBuilder, in_records: db.Record[], in_enums: db.Enum[], module_name: string) {
@@ -436,10 +436,10 @@ class _Gen {
   }
 
   // filters
-  static #filter_record(record: db.Record) {
+  static filter_record(record: db.Record) {
     return record.ml_configs.rttr.enable && !record.ml_configs.guid.is_empty();
   }
-  static #filter_enum(enum_: db.Enum) {
+  static filter_enum(enum_: db.Enum) {
     return enum_.ml_configs.rttr.enable && !enum_.ml_configs.guid.is_empty();
   }
 }
@@ -501,7 +501,55 @@ class RttrGenerator extends gen.Generator {
     });
 
     // gen source
-    _Gen.source(this.main_module_db);
+    if (this.project_db.config.batch_size === 0) {
+      _Gen.source(this.main_module_db);
+    } else {
+      const main_db = this.main_module_db;
+      const _gen_records = main_db.filter_record(_Gen.filter_record);
+      const _gen_enums = main_db.filter_enum(_Gen.filter_enum);
+
+      // do batch
+      const batch_size = this.project_db.config.batch_size;
+      let batch_idx = 1;
+      const elem_count = _gen_records.length + _gen_enums.length;
+      let elem_idx = 0;
+      const _batch_records: db.Record[] = [];
+      const _batch_enums: db.Enum[] = [];
+      while (elem_idx < elem_count) {
+        // clean up batch
+        _batch_records.length = 0;
+        _batch_enums.length = 0;
+
+        // build batch
+        for (let i = 0; i < batch_size; ++i) {
+          if (elem_idx >= elem_count) break;
+
+          // push element
+          if (elem_idx < _gen_records.length) {
+            _batch_records.push(_gen_records[elem_idx]);
+          } else {
+            _batch_enums.push(_gen_enums[elem_idx - _gen_records.length]);
+          }
+
+          // inc element idx
+          elem_idx++;
+        }
+
+        // output batch
+        const b = new CodeBuilder();
+        _Gen.source_batched(
+          b,
+          _batch_records,
+          _batch_enums,
+          main_db.config.module_name
+        );
+        main_db.batch_files[`rttr_${batch_idx}`] = b;
+
+        // add batch idx
+        batch_idx++;
+      }
+
+    }
   }
 }
 

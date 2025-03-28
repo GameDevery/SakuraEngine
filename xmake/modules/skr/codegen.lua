@@ -355,6 +355,7 @@ function _mako_render(target, scripts, dep_files, opt)
             meta_dir = path.absolute(metadir),
             api = api and api:upper() or target:name():upper(),
         },
+        batch_size = 0,
     }
 
     -- collect include modules
