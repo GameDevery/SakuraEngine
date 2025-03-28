@@ -108,6 +108,7 @@ namespace SB
         public CodegenModuleInfo main_module { get; set; }
         public required string output_dir { get; set; }
         public List<CodegenGenerator> generators { get; set; } = new();
+        public int batch_size { get; init; } = 60;
     }
 
     public static partial class TargetExtensions
