@@ -13,3 +13,4 @@ target("libwebsockets")
 
     -- add links
     add_links("websockets_static", {public=true})
+    add_syslinks("ws2_32", {public=true})

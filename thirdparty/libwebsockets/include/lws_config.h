@@ -1,10 +1,10 @@
 /* lws_config.h  Generated from lws_config.h.in  */
 
-#ifndef NDEBUG
-	#ifndef _DEBUG
-		#define _DEBUG
-	#endif
-#endif
+// #ifndef NDEBUG
+// 	#ifndef _DEBUG
+// 		#define _DEBUG
+// 	#endif
+// #endif
 
 #define LWS_INSTALL_DATADIR "C:/Program Files (x86)/libwebsockets/share"
 #define LWS_INSTALL_LIBDIR "C:/Program Files (x86)/libwebsockets/lib"
