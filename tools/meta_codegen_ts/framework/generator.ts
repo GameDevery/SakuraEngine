@@ -16,9 +16,6 @@ export class Generator {
   // inject configs into object
   inject_configs(): void { }
 
-  // pre compute source batches
-  compute_source_batches(batch_size: number): string[] { return [] }
-
   // generate functions
   gen_body() { }
   pre_gen() { }
@@ -156,21 +153,6 @@ export class GenerateManager {
 
   // step 5. generate code
   codegen() {
-    // compute source batches
-    const batch_size = this.project_db.config.batch_size
-    if (typeof batch_size === "number") {
-      for (const key in this.#generators) {
-        const generator = this.#generators[key]!;
-        const source_batches = generator.compute_source_batches(batch_size);
-        const main_db = this.project_db.main_module;
-        if (source_batches.length > 0) {
-          for (const batch of source_batches) {
-            main_db.source_batch.init_batch(batch)
-          }
-        }
-      }
-    }
-
     // generate body
     for (const key in this.#generators) {
       this.#generators[key]!.gen_body();
@@ -199,19 +181,32 @@ export class GenerateManager {
     // output headers
     for (const header of this.project_db.main_module.headers) {
       const out_path = path.join(out_dir, header.output_header_path);
-      this.#output_code(out_path, header.gen_code)
+      this.#output_code(out_path, header.gen_code.content)
     }
 
-    // output sources
-    const source_batch = this.project_db.main_module.source_batch
-    for (const key in source_batch.batches) {
-      const generator = source_batch.batches[key];
-      if (generator) {
-        this.#output_code(path.join(out_dir, key), generator);
-      }
+    const main_db = this.project_db.main_module;
+
+    // output main source
+    {
+      this.#output_code(path.join(out_dir, "generated.cpp"),
+        main_db.pre_all_file.content
+        + main_db.main_file.content
+        + main_db.post_all_file.content
+      );
+    }
+
+    // output batcher
+    for (const batch_name in main_db.batch_files) {
+      const batch_file = main_db.batch_files[batch_name];
+      if (batch_file === undefined) continue;
+      this.#output_code(path.join(out_dir, `${batch_name}.cpp`),
+        main_db.pre_all_file.content
+        + batch_file.content
+        + main_db.post_all_file.content
+      );
     }
   }
-  #output_code(out_path: string, code: CodeBuilder) {
+  #output_code(out_path: string, code: string) {
     const out_dir = path.dirname(out_path);
 
     // make dir
@@ -220,7 +215,7 @@ export class GenerateManager {
     }
 
     // write file
-    fs.writeFileSync(out_path, code.content, { encoding: "utf-8" });
+    fs.writeFileSync(out_path, code, { encoding: "utf-8" });
   }
 
   // generator apis

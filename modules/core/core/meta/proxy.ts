@@ -215,7 +215,7 @@ class _Gen {
     b.$line(`// END PROXY GENERATED`);
   }
   static source(main_db: db.Module) {
-    const b = main_db.source_batch.get_default()
+    const b = main_db.main_file
     const _gen_records = main_db.filter_record(record => record.ml_configs.proxy.enable);
 
     // gen member func impl
