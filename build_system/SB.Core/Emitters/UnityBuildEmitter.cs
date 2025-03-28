@@ -39,7 +39,7 @@ namespace SB
                 return UnityFiles;
             };
 
-            if (UnityBuildAttribute.C)
+            if (UnityBuildAttribute.C && Target.HasFilesOf<CFileList>())
             {
                 var CFilesList = Target.FileList<CFileList>();
                 var CBatches = CFilesList.Files.Chunk(UnityBuildAttribute.BatchCount);
@@ -47,7 +47,7 @@ namespace SB
                 CFilesList.AddFiles(UnityFiles.ToArray());
             }
             
-            if (UnityBuildAttribute.Cpp)
+            if (UnityBuildAttribute.Cpp && Target.HasFilesOf<CppFileList>())
             {
                 var CppFileList = Target.FileList<CppFileList>();
                 var CppBatches = CppFileList.Files.Chunk(UnityBuildAttribute.BatchCount);

@@ -172,7 +172,7 @@ namespace SB
                             }
                         }
 
-                        foreach (var FL in Target.FileLists.Where(FL => Emitter.EmitFileTask(Target, FL)))
+                        foreach (var FL in Target.FileLists.ToArray().Where(FL => Emitter.EmitFileTask(Target, FL)))
                         {
                             foreach (var File in FL.Files)
                             {
