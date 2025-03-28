@@ -10,19 +10,25 @@ public static class CGPUSamples
             .EnableUnityBuild()
             .Depend(Visibility.Public, "SkrRT")
             .IncludeDirs(Visibility.Private, "./../../common")
-            .AddCFiles("mandelbrot/*.c");
+            .AddCFiles("mandelbrot/*.c")
+            .AddHLSLFiles("mandelbrot/**.hlsl")
+            .DXCOutputDirectory("resources/shaders/cgpu-mandelbrot");
 
         Engine.Program("CGPUIndexedInstance")
             .EnableUnityBuild()
             .Depend(Visibility.Public, "SkrRT")
             .IncludeDirs(Visibility.Private, "./../../common")
-            .AddCFiles("indexed-instance/*.c");
+            .AddCFiles("indexed-instance/*.c")
+            .AddHLSLFiles("indexed-instance/**.hlsl")
+            .DXCOutputDirectory("resources/shaders/cgpu-indexed-instance");
 
         Engine.Program("CGPUTexture")
             .EnableUnityBuild()
             .Depend(Visibility.Public, "SkrRT")
             .IncludeDirs(Visibility.Private, "./../../common")
-            .AddCFiles("texture/texture.c");
+            .AddCFiles("texture/texture.c")
+            .AddHLSLFiles("texture/**.hlsl")
+            .DXCOutputDirectory("resources/shaders/cgpu-texture");
 
         Engine.Program("CGPUTiledTexture")
             .EnableUnityBuild()

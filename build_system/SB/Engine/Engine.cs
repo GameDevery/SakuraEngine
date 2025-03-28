@@ -26,6 +26,14 @@ namespace SB
                     throw new Exception("Unsupported Platform!");
                 
                 // 
+                if (BS.HostOS == OSPlatform.Windows)
+                {
+                    char DriveLetter = SourceLocation.Directory()[0];
+                    if (Char.IsLower(DriveLetter))
+                        throw new Exception($"Drive letter {DriveLetter} from source location must be upper case! You might compiled SB in git bash environment, please recompile it in cmd.exe or powershell.exe!");
+                }
+
+                // 
                 Engine.SetEngineDirectory(ProjectRoot);
                 BS.TempPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".sb", Toolchain.Name)).FullName;
                 BS.BuildPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".build", Toolchain.Name)).FullName;

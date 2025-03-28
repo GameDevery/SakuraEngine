@@ -8,6 +8,8 @@ before_sw.Start();
 
 var Toolchain = Engine.Bootstrap(SourceLocation.Directory());
 
+Engine.AddTaskEmitter("DXC.Compile", new DXCEmitter());
+
 Engine.AddTaskEmitter("ModuleMeta", new ModuleMetaEmitter());
 
 Engine.AddTaskEmitter("Codgen.Meta", new CodegenMetaEmitter(Toolchain));

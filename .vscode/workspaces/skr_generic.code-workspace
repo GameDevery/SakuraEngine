@@ -8,6 +8,10 @@
             "path": "../../build/.skr/codegen",
             "name": "codegen",
         },
+        {
+            "path": "../../build_system",
+            "name": "sb",
+        }
     ],
     "settings": {
         // lua options for xmake
@@ -43,6 +47,51 @@
         "files.associations": {
             "*.natvis": "xml",
         }
+    },
+    "tasks": {
+        "version": "2.0.0",
+        "tasks": [
+            {
+                "options": {
+                    "cwd": "${workspaceFolder}"
+                },
+                "label": "build_SB_Debug",
+                "presentation": {
+                    "echo": true,
+                    "focus": false,
+                    "panel": "new",
+                    "reveal": "always",
+                    "close": true,
+                    "showReuseMessage": false
+                },
+                "type": "shell",
+                "group": {
+                    "isDefault": false,
+                    "kind": "build"
+                },
+                "command": "dotnet build --configuration Debug D:/SakuraEngine/SakuraEngine/build_system/SB/SB.csproj"
+            },
+            {
+                "options": {
+                    "cwd": "${workspaceFolder}"
+                },
+                "label": "build_SB_Release",
+                "presentation": {
+                    "echo": true,
+                    "focus": false,
+                    "panel": "new",
+                    "reveal": "always",
+                    "close": true,
+                    "showReuseMessage": false
+                },
+                "type": "shell",
+                "group": {
+                    "isDefault": false,
+                    "kind": "build"
+                },
+                "command": "dotnet build --configuration Release D:/SakuraEngine/SakuraEngine/build_system/SB/SB.csproj"
+            },
+        ]
     },
     "launch": {
         "version": "0.2.0",
@@ -81,7 +130,23 @@
                 "args": [
                     "${file}"
                 ],
-            }
+            },
+            {
+                "name": "C#: SB Debug",
+                "type": "coreclr",
+                "request": "launch",
+                "preLaunchTask": "build_SB_Debug",
+                "console": "integratedTerminal",
+                "program": "${workspaceFolder:root}\\build_system\\SB\\bin\\Debug\\net9.0\\SB.exe"
+            },
+            {
+                "name": "C#: SB Build",
+                "type": "coreclr",
+                "request": "launch",
+                "preLaunchTask": "build_SB_Release",
+                "console": "integratedTerminal",
+                "program": "${workspaceFolder:root}\\build_system\\SB\\bin\\Release\\net9.0\\SB.exe"
+            },
         ]
     }
 }

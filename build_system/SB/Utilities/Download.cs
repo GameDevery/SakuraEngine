@@ -1,9 +1,7 @@
 using Serilog;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Net;
+using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
-using System.Threading.Tasks;
 
 namespace SB
 {  
@@ -127,6 +125,7 @@ namespace SB
                 Download.FetchManifests();
             }
 
+            // Already exist on disk
             var FilePath = Path.Combine(Engine.DownloadDirectory, FileName);
             if (!Force && File.Exists(FilePath))
             {
@@ -138,13 +137,26 @@ namespace SB
                     return FilePath;
                 }
             }
-            await DownloadFromSource(Sources.Values.First(), FileName);
+
+            // Download from source
+            Task? DownloadTask = null;
+            lock (DownloadingLocks.GetOrAdd(FileName, (Name) => new System.Threading.Lock()))
+            {
+                if (!DownloadingTasks.TryGetValue(FileName, out DownloadTask))
+                {
+                    DownloadTask = DownloadFromSource(Sources.Values.First(), FileName);
+                    DownloadingTasks.TryAdd(FileName, DownloadTask);
+                }
+            }
+            await DownloadTask!;
             return FilePath;
         }
 
         private static Dictionary<string, HashSet<string>> FileSHAs = new();
         private static Dictionary<string, List<DownloadSource>> FileSources = new();
         private static Dictionary<string, DownloadSource> Sources = new();
+        private static ConcurrentDictionary<string, Task> DownloadingTasks = new();
+        private static ConcurrentDictionary<string, System.Threading.Lock> DownloadingLocks = new();
     }
 
     public class DownloadSource

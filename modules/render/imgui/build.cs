@@ -16,6 +16,7 @@ public static class SkrImGui
             .Defines(Visibility.Private, "\"IMGUI_IMPORT=extern SKR_IMGUI_API\"")
 
             .IncludeDirs(Visibility.Public, "include")
-            .AddCppFiles("src/build.*.cpp");
+            .AddCppFiles("src/build.*.cpp")
+            .AddHLSLFiles("shaders/*.hlsl");
     }
 }

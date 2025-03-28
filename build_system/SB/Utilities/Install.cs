@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using SB.Core;
 
@@ -11,14 +12,18 @@ namespace SB
             var ToolDirectory = Path.Combine(Engine.ToolDirectory, Name);
             await Depend.OnChanged("Install.Tool.Download", Name, "Install.Tools", async (Depend depend) =>
             {
-                var ZipFile = await Download.DownloadFile(Name + GetToolPostfix());
-                using (Profiler.BeginZone($"Install.Tools | {Name} | Download", color: (uint)Profiler.ColorType.Pink1))
-                {
-                    Directory.CreateDirectory(ToolDirectory);
-                    System.IO.Compression.ZipFile.ExtractToDirectory(ZipFile, ToolDirectory, true);
+                var ZipFile = await Download.DownloadFile(Name + GetPlatPostfix());
 
-                    depend.ExternalFiles.Add(ZipFile);
-                    depend.ExternalFiles.AddRange(Directory.GetFiles(ToolDirectory, "*", SearchOption.AllDirectories));
+                lock (InstallLocks.GetOrAdd($"Install.Tool | {Name} | Copy", (Name) => new System.Threading.Lock()))
+                {
+                    using (Profiler.BeginZone($"Install.Tool | {Name} | Copy", color: (uint)Profiler.ColorType.Pink1))
+                    {
+                        Directory.CreateDirectory(ToolDirectory);
+                        System.IO.Compression.ZipFile.ExtractToDirectory(ZipFile, ToolDirectory, true);
+
+                        depend.ExternalFiles.Add(ZipFile);
+                        depend.ExternalFiles.AddRange(Directory.GetFiles(ToolDirectory, "*", SearchOption.AllDirectories));
+                    }
                 }
             }, null, null);
             return ToolDirectory;
@@ -31,7 +36,7 @@ namespace SB
             await Depend.OnChanged("Install.SDK.Download", Name, "Install.SDKs", async (Depend depend) =>
             {
                 Directory.CreateDirectory(IntermediateDirectory);
-                var ZipFile = await Download.DownloadFile(Name + GetToolPostfix());
+                var ZipFile = await Download.DownloadFile(Name + GetPlatPostfix());
                 using (Profiler.BeginZone($"Install.SDKs | {Name} | Download", color: (uint)Profiler.ColorType.Pink1))
                 {
                     System.IO.Compression.ZipFile.ExtractToDirectory(ZipFile, IntermediateDirectory, true);
@@ -40,20 +45,25 @@ namespace SB
                 }
             }, null, null);
             
-            using (Profiler.BeginZone($"Install.SDKs | {Name} | Copy", color: (uint)Profiler.ColorType.Pink1))
+            lock (InstallLocks.GetOrAdd($"Install.SDKs | {Name} | Copy", (Name) => new System.Threading.Lock()))
             {
-                Depend.OnChanged("Install.SDK.Copy", Name, "Install.SDKs", (Depend depend) =>
+                using (Profiler.BeginZone($"Install.SDKs | {Name} | Copy", color: (uint)Profiler.ColorType.Pink1))
                 {
-                    var BuildDirectory = Path.Combine(BS.BuildPath, $"{BS.TargetOS}-{BS.TargetArch}-{BS.GlobalConfiguration}");
-                    Directory.CreateDirectory(BuildDirectory);
+                    Depend.OnChanged("Install.SDK.Copy", Name, "Install.SDKs", (Depend depend) =>
+                    {
+                        var BuildDirectory = Path.Combine(BS.BuildPath, $"{BS.TargetOS}-{BS.TargetArch}-{BS.GlobalConfiguration}");
+                        Directory.CreateDirectory(BuildDirectory);
 
-                    depend.ExternalFiles.AddRange(Directory.GetFiles(IntermediateDirectory, "*", SearchOption.AllDirectories));
-                    depend.ExternalFiles.AddRange(DirectoryCopy(IntermediateDirectory, BuildDirectory, true));
-                }, null, new string[] { BS.GlobalConfiguration });
+                        depend.ExternalFiles.AddRange(Directory.GetFiles(IntermediateDirectory, "*", SearchOption.AllDirectories));
+                        depend.ExternalFiles.AddRange(DirectoryCopy(IntermediateDirectory, BuildDirectory, true));
+                    }, null, new string[] { BS.GlobalConfiguration });
+                }
             }
         }
 
-        private static string GetToolPostfix()
+        private static ConcurrentDictionary<string, System.Threading.Lock> InstallLocks = new();
+
+        private static string GetPlatPostfix()
         {
             string plat = "";
             switch (BS.HostOS)
