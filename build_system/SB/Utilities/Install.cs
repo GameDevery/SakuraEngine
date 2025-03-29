@@ -29,7 +29,7 @@ namespace SB
             return ToolDirectory;
         }
 
-        public static async Task SDK(string Name)
+        public static async Task SDK(string Name, Dictionary<string, string>? DirectoryMappings = null)
         {
             var IntermediateDirectory = Path.Combine(Engine.DownloadDirectory, "SDKs", Name);
 
@@ -55,7 +55,19 @@ namespace SB
                         Directory.CreateDirectory(BuildDirectory);
 
                         depend.ExternalFiles.AddRange(Directory.GetFiles(IntermediateDirectory, "*", SearchOption.AllDirectories));
-                        depend.ExternalFiles.AddRange(DirectoryCopy(IntermediateDirectory, BuildDirectory, true));
+                        if (DirectoryMappings is null)
+                        {
+                            depend.ExternalFiles.AddRange(DirectoryCopy(IntermediateDirectory, BuildDirectory, true));
+                        }
+                        else
+                        {
+                            foreach (var Mapping in DirectoryMappings)
+                            {
+                                var Source = Path.Combine(IntermediateDirectory, Mapping.Key);
+                                var Destination = Path.Combine(BuildDirectory, Mapping.Value);
+                                depend.ExternalFiles.AddRange(DirectoryCopy(Source, Destination, true));
+                            }
+                        }
                     }, null, new string[] { BS.GlobalConfiguration });
                 }
             }

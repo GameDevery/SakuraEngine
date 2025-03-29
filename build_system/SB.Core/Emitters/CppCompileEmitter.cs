@@ -21,9 +21,6 @@ namespace SB
             Stopwatch sw = new();
             sw.Start();
 
-            var M = Interlocked.Add(ref N, 1);
-            Log.Verbose("Compiling {SourceFile} ({N})", SourceFile, M + 1);
-
             CFamily Language = FileList.Is<CppFileList>() ? CFamily.Cpp : CFamily.C;
             var SourceDependencies = Path.Combine(Target.GetStorePath(BS.DepsStore), BS.GetUniqueTempFileName(SourceFile, Target.Name + this.Name, "source.deps.json"));
             var ObjectFile = GetObjectFilePath(Target, SourceFile);
@@ -45,14 +42,11 @@ namespace SB
             var CompileAttribute = Target.GetAttribute<CppCompileAttribute>()!;
             CompileAttribute.ObjectFiles.Add(ObjectFile);
 
-            Interlocked.Add(ref N, -1);
-
             sw.Stop();
             Time += (int)sw.ElapsedMilliseconds;
             return R;
         }
 
-        internal int N = 0;
         public static string GetObjectFilePath(Target Target, string SourceFile) => Path.Combine(Target.GetStorePath(BS.ObjsStore), BS.GetUniqueTempFileName(SourceFile, Target.Name, "obj"));
 
         private IToolchain Toolchain { get; }

@@ -45,8 +45,6 @@ public class SkrGraphicsDoctor : DoctorAttribute
     {
         if (BuildSystem.TargetOS == OSPlatform.Windows)
         {
-            Stopwatch sw = new();
-            sw.Start();
             Task.WaitAll(
                 Install.SDK("dxc-2025_02_21"),
                 Install.SDK("amdags"),
@@ -54,8 +52,6 @@ public class SkrGraphicsDoctor : DoctorAttribute
                 Install.SDK("nsight"),
                 Install.SDK("WinPixEventRuntime")
             );
-            sw.Stop();
-            Log.Information("graphics sdks install took {0} ms", sw.ElapsedMilliseconds);
         }
         return true;
     }

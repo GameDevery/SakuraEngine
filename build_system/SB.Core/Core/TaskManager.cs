@@ -90,6 +90,11 @@ namespace SB.Core
             Task.WaitAll(tasks);
         }
 
+        public static void WaitAll()
+        {
+            Task.WaitAll(AllTasks.Values);
+        }
+
         public static void ForceQuit()
         {
             StopAll = true;

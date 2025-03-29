@@ -5,11 +5,12 @@ namespace SB
 {
     public partial class Target : TargetSetters
     {
-        internal Target(string Name, bool IsFromPackage, [CallerFilePath] string? Location = null)
+        internal Target(string Name, bool IsFromPackage, [CallerFilePath] string? Location = null, [CallerLineNumber] int LineNumber = 0)
             : base(Location!)
         {
             this.Name = Name;
             this.Location = Location!;
+            this.LineNumber = LineNumber;
             this.IsFromPackage = IsFromPackage;
 
             BuildSystem.TargetDefaultSettings(this);
@@ -101,6 +102,15 @@ namespace SB
                 return (T?)Attribute;
             return default;
         }
+        public object? GetAttribute(string TypeName)
+        {
+            foreach (var Attribute in Attributes)
+            {
+                if (Attribute.Key.Name == TypeName)
+                    return Attribute.Value;
+            }
+            return default;
+        }
         public bool HasAttribute<T>() => GetAttribute<T>() != null;
 
         private bool PackagesResolved = false;
@@ -163,7 +173,12 @@ namespace SB
         {
             // Files
             foreach (var FileList in FileLists)
-                FileList.GlobFiles();
+            {
+                using (Profiler.BeginZone($"GlobFiles | {Name}", color: (uint)Profiler.ColorType.Pink))
+                {
+                    FileList.GlobFiles();
+                }
+            }
             // Arguments
             FinalArguments.Merge(PublicArguments);
             FinalArguments.Merge(PrivateArguments);
@@ -183,6 +198,7 @@ namespace SB
 
         public string Name { get; }
         public string Location { get; }
+        public int LineNumber { get; }
 
         #region Files
         internal List<FileList> FileLists = new();

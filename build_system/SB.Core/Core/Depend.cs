@@ -1,19 +1,13 @@
-using System.Collections.Immutable;
-using System.Runtime.CompilerServices;
 using Microsoft.EntityFrameworkCore;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using System.Text.Json.Serialization;
 
 namespace SB.Core
 {
     using BS = BuildSystem;
-
-    [DependDoctor]
-    public class DependContext : DbContext
+    [DependDbDoctor]
+    public class DependDbContext : DbContext
     {
-        static DependContext()
+        static DependDbContext()
         {
             WarmUpContext = PackagesFactory.CreateDbContext();
             WarmUpContext!.Database.EnsureCreated();
@@ -22,24 +16,24 @@ namespace SB.Core
             WarmUpContext!.Database.EnsureCreated();
         }
 
-        public DependContext(DbContextOptions<DependContext> options)
+        public DependDbContext(DbContextOptions<DependDbContext> options)
             : base(options)
         {
 
         }
 
-        public static DependContext CreateContext(string TargetName) 
+        public static DependDbContext CreateContext(string TargetName) 
             => (BS.GetTarget(TargetName)?.IsFromPackage == true) ? PackagesFactory.CreateDbContext() : ProjectFactory.CreateDbContext();
 
-        public static PooledDbContextFactory<DependContext> ProjectFactory = new (
-            new DbContextOptionsBuilder<DependContext>()
+        public static PooledDbContextFactory<DependDbContext> ProjectFactory = new (
+            new DbContextOptionsBuilder<DependDbContext>()
                 .UseSqlite($"Data Source={Path.Join(BS.BuildPath, "depend.db")}")
                 .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
                 .Options
         );
 
-        public static PooledDbContextFactory<DependContext> PackagesFactory = new (
-            new DbContextOptionsBuilder<DependContext>()
+        public static PooledDbContextFactory<DependDbContext> PackagesFactory = new (
+            new DbContextOptionsBuilder<DependDbContext>()
                 .UseSqlite($"Data Source={Path.Join(BS.PackageBuildPath, "depend.db")}")
                 .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
                 .Options
@@ -117,7 +111,7 @@ namespace SB.Core
         private static bool CheckDependency(string TargetName, string FileName, string EmitterName, List<string> SortedFiles, List<string> SortedArgs, out Depend? OldDepend)
         {
             OldDepend = null;
-            using (var DB = DependContext.CreateContext(TargetName))
+            using (var DB = DependDbContext.CreateContext(TargetName))
             {
                 OldDepend = FromEntity(DB.Depends.Find(TargetName + FileName + EmitterName));
             }
@@ -161,7 +155,7 @@ namespace SB.Core
         {
             NewDepend.ExternalFileTimes = NewDepend.ExternalFiles.Select(x => Directory.GetLastWriteTimeUtc(x)).ToList();
 
-            using (var DB = DependContext.CreateContext(TargetName))
+            using (var DB = DependDbContext.CreateContext(TargetName))
             {
                 if (OldDepend is not null)
                     DB.Depends.Update(ToEntity(NewDepend));
@@ -213,13 +207,13 @@ namespace SB.Core
         public List<DateTime> ExternalFileTimes { get; init; } = new();
     }
 
-    public class DependDoctor : DoctorAttribute
+    public class DependDbDoctor : DoctorAttribute
     {
         public override bool Check()
         {
             using (Profiler.BeginZone("WarmUp | EntityFramework", color: (uint)Profiler.ColorType.WebMaroon))
             {
-                DependContext.WarmUpContext!.FindAsync<DependEntity>("");
+                DependDbContext.WarmUpContext!.FindAsync<DependEntity>("");
                 return true;
             }
         }

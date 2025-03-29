@@ -35,9 +35,9 @@ namespace SB
 
                 // 
                 Engine.SetEngineDirectory(ProjectRoot);
-                BS.TempPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".sb", Toolchain.Name)).FullName;
+                BS.TempPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".sb")).FullName;
                 BS.BuildPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".build", Toolchain.Name)).FullName;
-                BS.PackageTempPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".pkgs/.sb", Toolchain.Name)).FullName;
+                BS.PackageTempPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".pkgs/.sb")).FullName;
                 BS.PackageBuildPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".pkgs/.build", Toolchain.Name)).FullName;
                 BS.LoadConfigurations();
 
@@ -116,8 +116,8 @@ namespace SB
         }
         
         public static string EngineDirectory { get; private set; } = Directory.GetCurrentDirectory();
-        public static string ToolDirectory => Path.Combine(EngineDirectory, ".sb/tools");
-        public static string DownloadDirectory => Path.Combine(EngineDirectory, ".sb/downloads");
+        public static string ToolDirectory => Path.Combine(TempPath, "tools");
+        public static string DownloadDirectory => Path.Combine(TempPath, "downloads");
         public static bool EnableDebugInfo = true;
         private static Task? DoctorsTask = null;
     }

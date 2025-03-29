@@ -6,11 +6,18 @@ using System.Text.Json.Serialization.Metadata;
 
 namespace SB.Core
 {
-    [JsonSerializable(typeof(CompileCommand))]
+    [JsonSerializable(typeof(System.Boolean))]
     [JsonSerializable(typeof(DateTime))]
+    [JsonSerializable(typeof(CompileCommand))]
     [JsonSerializable(typeof(Depend))]
+    [JsonSerializable(typeof(SB.Core.OptimizationLevel))]
+    [JsonSerializable(typeof(SB.Core.TargetType))]
+    [JsonSerializable(typeof(SB.Core.FpModel))]
     [JsonSerializable(typeof(CLDependenciesData))]
     [JsonSerializable(typeof(CLDependencies))]
+    [JsonSerializable(typeof(ArgumentList<string>))]
+    [JsonSerializable(typeof(Dictionary<string, IReadOnlySet<string>>))]
+    [JsonSerializable(typeof(IReadOnlyDictionary<string, object>))]
     [JsonSerializable(typeof(List<string>))]
     [JsonSerializable(typeof(List<KeyValuePair<string, DateTime>>))]
     internal partial class JsonContext : JsonSerializerContext

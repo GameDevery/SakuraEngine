@@ -45,7 +45,7 @@ namespace SB.Core
                 if (StringLength > 30000)
                 {
                     var Content = String.Join("\n", LinkerArgsList);
-                    string ResponseFile = Path.Combine(BuildSystem.TempPath, $"{Guid.CreateVersion7()}.txt");
+                    string ResponseFile = Path.Combine(BuildSystem.BuildPath, $"{Guid.CreateVersion7()}.txt");
                     File.WriteAllText(ResponseFile, Content);
 
                     Arguments = $"{TargetTypeArg} @{ResponseFile}";

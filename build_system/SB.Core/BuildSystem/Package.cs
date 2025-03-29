@@ -20,12 +20,12 @@ namespace SB.Core
             return this;
         }
 
-        public Package AddTarget(string TargetName, Action<Target, PackageConfig> Installer, [CallerFilePath] string? Loc = null)
+        public Package AddTarget(string TargetName, Action<Target, PackageConfig> Installer, [CallerFilePath] string? Loc = null, [CallerLineNumber] int LineNumber = 0)
         {
             if (Installers.TryGetValue(TargetName, out var _))
                 throw new PackageInstallException(Name, TargetName, $"Package {Name}: Installer for target {TargetName} already exists!");
 
-            Installers.Add(TargetName, new TargetInstaller { Action = Installer, Loc = Loc! });
+            Installers.Add(TargetName, new TargetInstaller { Action = Installer, Loc = Loc!, LineNumber = LineNumber });
             return this;
         }
 
@@ -51,7 +51,7 @@ namespace SB.Core
                 if (!Installers.TryGetValue(TargetName, out Installer))
                     throw new PackageInstallException(Name, TargetName, $"Package {Name}: Installer for target {TargetName} not found!");
 
-                Target ToInstall = new Target($"{Name}@{TargetName}@{Config.Version}", true, Installer.Loc);
+                Target ToInstall = new Target($"{Name}@{TargetName}@{Config.Version}", true, Installer.Loc, Installer.LineNumber);
                 Installer.Action(ToInstall, Config);
                 TargetPermutations.Add(Config, ToInstall);
                 return ToInstall;
@@ -60,7 +60,8 @@ namespace SB.Core
 
         internal struct TargetInstaller
         {
-            public string Loc;
+            public required string Loc;
+            public required int LineNumber;
             public Action<Target, PackageConfig> Action;
         }
 

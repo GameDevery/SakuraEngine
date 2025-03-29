@@ -47,13 +47,16 @@ Engine.AddTaskEmitter("Cpp.Link", new CppLinkEmitter(Toolchain))
     .AddDependency("Cpp.Link", DependencyModel.ExternalTarget)
     .AddDependency("Cpp.Compile", DependencyModel.PerTarget);
 
+Engine.SetTagsUnderDirectory("thirdparty", TargetTags.ThirdParty);
 Engine.SetTagsUnderDirectory("modules/core", TargetTags.Engine);
+Engine.SetTagsUnderDirectory("modules/engine", TargetTags.Engine);
 Engine.SetTagsUnderDirectory("modules/render", TargetTags.Render);
 Engine.SetTagsUnderDirectory("modules/gui", TargetTags.GUI);
 Engine.SetTagsUnderDirectory("modules/dcc", TargetTags.DCC);
 Engine.SetTagsUnderDirectory("modules/devtime", TargetTags.Tool);
 Engine.SetTagsUnderDirectory("modules/tools", TargetTags.Tool);
 Engine.SetTagsUnderDirectory("modules/experimental", TargetTags.Experimental);
+Engine.SetTagsUnderDirectory("samples", TargetTags.Application);
 
 before_sw.Stop();
 

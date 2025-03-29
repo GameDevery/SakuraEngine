@@ -8,12 +8,12 @@ namespace SB
 {
     public partial class BuildSystem
     {
-        public static Target Target(string Name, [CallerFilePath] string? Location = null)
+        public static Target Target(string Name, [CallerFilePath] string? Location = null, [CallerLineNumber] int LineNumber = 0)
         {
             if (AllTargets.TryGetValue(Name, out var Existed))
                 throw new ArgumentException($"Target with name {Name} already exists! Name should be unique to every target!");
 
-            var NewTarget = new Target(Name, false, Location!);
+            var NewTarget = new Target(Name, false, Location!, LineNumber);
             if (!AllTargets.TryAdd(Name, NewTarget))
             {
                 throw new ArgumentException($"Failed to add target with name {Name}! Are you adding same targets in parallel?");
@@ -78,22 +78,47 @@ namespace SB
 
         public static void RunBuildImpl()
         {
-            Dictionary<string, Target> PackageTargets = new();
-            foreach (var TargetKVP in AllTargets)
-                TargetKVP.Value.ResolvePackages(ref PackageTargets);
-            AllTargets.AddRange(PackageTargets);
+            using (Profiler.BeginZone($"ResolvePackages", color: (uint)Profiler.ColorType.Yellow))
+            {
+                Dictionary<string, Target> PackageTargets = new();
+                foreach (var TargetKVP in AllTargets)
+                    TargetKVP.Value.ResolvePackages(ref PackageTargets);
+                AllTargets.AddRange(PackageTargets);
+            }
 
-            foreach (var TargetKVP in AllTargets)
-                TargetKVP.Value.ResolveDependencies();
+            using (Profiler.BeginZone($"ResolveDependencies", color: (uint)Profiler.ColorType.Blue2))
+            {
+                foreach (var TargetKVP in AllTargets)
+                    TargetKVP.Value.ResolveDependencies();
+            }
 
-            foreach (var TargetKVP in AllTargets)
-                TargetKVP.Value.CallAllActions(TargetKVP.Value.AfterLoadActions);
+            using (Profiler.BeginZone($"CallAfterLoads", color: (uint)Profiler.ColorType.Green))
+            {
+                foreach (var TargetKVP in AllTargets)
+                    TargetKVP.Value.CallAllActions(TargetKVP.Value.AfterLoadActions);
+            }
 
-            foreach (var TargetKVP in AllTargets)
-                TargetKVP.Value.ResolveArguments();
+            using (Profiler.BeginZone($"ResolveArguments", color: (uint)Profiler.ColorType.Pink))
+            {
+                Parallel.ForEach(AllTargets.Values, Target => {
+                    using (Profiler.BeginZone($"ResolveArgument | {Target.Name}", color: (uint)Profiler.ColorType.Pink))
+                    {
+                        Target.ResolveArguments();
+                    }
+                });
+            }
 
-            ConcurrentDictionary<TaskFingerprint, Task> EmitterTasks = new();
-            var SortedTargets = AllTargets.Values.OrderBy(T => T.Dependencies.Count).ToList();
+            List<Target> SortedTargets;
+            using (Profiler.BeginZone($"SortTargets", color: (uint)Profiler.ColorType.Purple))
+            {
+                SortedTargets = AllTargets.Values.OrderBy(T => T.Dependencies.Count).ToList();
+            }
+
+            using (Profiler.BeginZone($"UpdateTargetDatabase", color: (uint)Profiler.ColorType.Brown))
+            {
+                // TODO: MOVE THIS TO SOMEWHERE ELES
+                UpdateTargetDatabase();
+            }
 
             // Run Checks
             uint FileTaskCount = 0;
@@ -215,11 +240,10 @@ namespace SB
                         }
                         return FileTasks.All(FileTask => (FileTask.Result == true));
                     });
-                    EmitterTasks.TryAdd(Fingerprint, EmitterTask);
                     await EmitterTask;
                 }
             }).Wait();
-            TaskManager.WaitAll(EmitterTasks.Values);
+            TaskManager.WaitAll();
         }
 
         private static Dictionary<string, TaskEmitter> TaskEmitters = new();
@@ -306,7 +330,12 @@ namespace SB
         public static void CallAllActions(this Target Target, IList<Action<Target>> Actions)
         {
             foreach (var Action in Actions)
-                Action(Target);
+            {
+                using (Profiler.BeginZone($"Action | {Target.Name}", color: (uint)Profiler.ColorType.Green)) 
+                {
+                    Action(Target);
+                }
+            }
         }
     }
 }

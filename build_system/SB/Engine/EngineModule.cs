@@ -11,14 +11,16 @@ namespace SB
     public enum TargetTags
     {
         None = 0,
-        Engine = 1,
+        ThirdParty = 1,
+        Engine = ThirdParty << 1,
         Render = Engine << 1,
         GUI = Render << 1,
         Tool = GUI << 1,
         DCC = Tool << 1,
         Experimental = DCC << 1,
         V8 = Experimental << 1,
-        Lua = V8 << 1
+        Lua = V8 << 1,
+        Application = Lua << 1
     }
 
     public class ModuleAttribute
@@ -34,10 +36,10 @@ namespace SB
 
     public partial class Engine : BuildSystem
     {
-        public static Target Module(string Name, string? API = null, [CallerFilePath] string? Location = null)
+        public static Target Module(string Name, string? API = null, [CallerFilePath] string? Location = null, [CallerLineNumber] int LineNumber = 0)
         {
             API = API ?? Name.ToUpperSnakeCase();
-            var Target = BS.Target(Name, Location!);
+            var Target = BS.Target(Name, Location!, LineNumber);
             Target.ApplyEngineModulePresets()
                 .EnableCodegen(API, Path.Combine(Target.Directory, "include"))
                 .SetAttribute(new ModuleAttribute(Target, API))
@@ -58,10 +60,10 @@ namespace SB
             return Target;
         }
 
-        public static Target Program(string Name, string? API = null, [CallerFilePath] string? Location = null)
+        public static Target Program(string Name, string? API = null, [CallerFilePath] string? Location = null, [CallerLineNumber] int LineNumber = 0)
         {
             API = API ?? Name.ToUpperSnakeCase();
-            var Target = BS.Target(Name, Location!);
+            var Target = BS.Target(Name, Location!, LineNumber);
             Target.ApplyEngineModulePresets();
             Target.EnableCodegen(API, Path.Combine(Target.Directory, "include"));
             Target.SetAttribute(new ModuleAttribute(Target, API));
@@ -74,9 +76,9 @@ namespace SB
             return Target;
         }
 
-        public static Target StaticComponent(string Name, string OwnerName, [CallerFilePath] string? Location = null)
+        public static Target StaticComponent(string Name, string OwnerName, [CallerFilePath] string? Location = null, [CallerLineNumber] int LineNumber = 0)
         {
-            var Target = BS.Target(Name, Location!);
+            var Target = BS.Target(Name, Location!, LineNumber);
             Target.ApplyEngineModulePresets();
             Target.TargetType(TargetType.Static);
             Target.AfterLoad((Target) =>

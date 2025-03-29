@@ -23,7 +23,10 @@ public class CefDoctor : DoctorAttribute
 {
     public override bool Check()
     {
-        Install.SDK("cef-6778").Wait();
+        Install.SDK("cef-6778", new Dictionary<string, string> {
+            { "Release", "./" }, 
+            { "Resources", "Resources" }
+        }).Wait();
         return true;
     }
 
