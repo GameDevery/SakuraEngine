@@ -90,8 +90,12 @@ namespace SB
             return this;
         }
 
-        public Target SetAttribute<T>(T Attribute)
+        public Target SetAttribute<T>(T Attribute, bool OverrideIfExisted = false)
         {
+            if (OverrideIfExisted && Attributes.TryGetValue(typeof(T), out var _))
+            {
+                Attributes.Remove(typeof(T));
+            }
             Attributes.Add(typeof(T), Attribute);
             return this;
         }

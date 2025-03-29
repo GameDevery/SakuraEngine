@@ -17,7 +17,8 @@ namespace SB
         Experimental = DCC << 1,
         V8 = Experimental << 1,
         Lua = V8 << 1,
-        Application = Lua << 1
+        Tests = Lua << 1,
+        Application = Tests << 1,
     }
 
     public class ModuleAttribute
@@ -104,7 +105,7 @@ namespace SB
             var Matches = BS.AllTargets.Where(KVP => KVP.Value.Directory.StartsWith(Dir)).Select(KVP => KVP.Value);
             foreach (var Target in Matches)
             {
-                Target.SetAttribute(Tags);
+                Target.Tags(Tags);
             }
         }
 
@@ -173,7 +174,12 @@ namespace SB
             return @this;
         }
 
-        public static Target Tags(this Target @this, TargetTags Tags) => @this.SetAttribute(Tags);
+        public static Target Tags(this Target @this, TargetTags Tags)
+        {
+            TargetTags Existed = @this.GetAttribute<TargetTags>();
+            @this.SetAttribute(Tags | Existed, true);
+            return @this;
+        }
         public static bool HasTags(this Target @this, TargetTags Tags) => (Tags & @this.GetAttribute<TargetTags>()) == Tags;
     }
 }

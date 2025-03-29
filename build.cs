@@ -57,6 +57,7 @@ Engine.SetTagsUnderDirectory("modules/devtime", TargetTags.Tool);
 Engine.SetTagsUnderDirectory("modules/tools", TargetTags.Tool);
 Engine.SetTagsUnderDirectory("modules/experimental", TargetTags.Experimental);
 Engine.SetTagsUnderDirectory("samples", TargetTags.Application);
+Engine.SetTagsUnderDirectory("tests", TargetTags.Tests);
 
 before_sw.Stop();
 
