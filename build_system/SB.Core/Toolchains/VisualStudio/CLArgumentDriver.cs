@@ -69,6 +69,12 @@
 
         [TargetProperty(InheritBehavior = true)] 
         public virtual string[] CppFlags(ArgumentList<string> flags) => (Language == CFamily.Cpp) ? flags.Select(flag => flag).ToArray() : new string[0];
+
+        [TargetProperty(InheritBehavior = true)] 
+        public virtual string[] CFlags(ArgumentList<string> flags) => (Language == CFamily.C) ? flags.Select(flag => flag).ToArray() : new string[0];
+
+        [TargetProperty(InheritBehavior = true)] 
+        public virtual string[] CXFlags(ArgumentList<string> flags) => (Language == CFamily.C || Language == CFamily.Cpp) ? flags.Select(flag => flag).ToArray() : new string[0];
         
         [TargetProperty(InheritBehavior = true)] 
         public virtual string[] Defines(ArgumentList<string> defines) => defines.Select(define => $"-D{define}").ToArray();
@@ -103,7 +109,7 @@
 
         private CFamily Language { get; }
         public ArgumentDictionary Arguments { get; } = new();
-        public HashSet<string> RawArguments { get; } = new HashSet<string> { "/c", "/nologo", "/FC", "/source-charset:utf-8" };
+        public HashSet<string> RawArguments { get; } = new HashSet<string> { "/c", "/nologo", "/FC" };
         // /c: dont link while compiling, https://learn.microsoft.com/zh-cn/cpp/build/reference/c-compile-without-linking?view=msvc-170
         // /logo: dont show info to output stream, https://learn.microsoft.com/zh-cn/cpp/build/reference/nologo-suppress-startup-banner-c-cpp?view=msvc-170
         // /FC use full path within compiler diagnostics

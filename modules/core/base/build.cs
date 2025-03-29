@@ -16,7 +16,7 @@ public static class SkrBase
             .AddCppFiles("src/**/build.*.cpp");
         
         if (BuildSystem.TargetOS == OSPlatform.Windows)
-            Target.Link(Visibility.Private, "advapi32", "Ole32");
+            Target.Link(Visibility.Private, "advapi32");
         else if (BuildSystem.TargetOS == OSPlatform.OSX)
             Target.Link(Visibility.Private, "CoreFoundation");
     }

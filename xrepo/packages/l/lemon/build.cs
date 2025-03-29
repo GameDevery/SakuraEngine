@@ -29,7 +29,7 @@ public static class Lemon
                 if (BuildSystem.TargetOS == OSPlatform.Windows)
                 {
                     Target.Defines(Visibility.Private, "WIN32")
-                        .Link(Visibility.Private, "User32");
+                        .Link(Visibility.Private, "ole32");
                 }
                 else
                 {

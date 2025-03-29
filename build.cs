@@ -61,7 +61,7 @@ Stopwatch sw = new();
 sw.Start();
 
 Engine.RunBuild();
-CompileCommandsEmitter.WriteToFile(Path.Combine(SourceLocation.Directory(), ".vscode/compile_commands.json"));
+CompileCommandsEmitter.WriteToFile(Path.Combine(SourceLocation.Directory(), "./compile_commands.json"));
 
 sw.Stop();
 

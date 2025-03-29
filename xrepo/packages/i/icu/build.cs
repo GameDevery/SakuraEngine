@@ -26,11 +26,11 @@ public static class ICU
                         "port/icu4c/source/common/**.cpp",
                         "port/icu4c/source/stubdata/**.cpp"
                     );
-                /*
-                if (is_plat("windows")) then
-                    add_cxflags("/wd4267", "/wd4244", "/source-charset:utf-8", {public=false})
-                end
-                */
+                    
+                    if (BuildSystem.TargetOS == OSPlatform.Windows)
+                    {
+                        Target.CXFlags(Visibility.Private, "/wd4804", "/wd4805", "/wd4267", "/wd4244", "/source-charset:utf-8");
+                    }
             });
     }
 }

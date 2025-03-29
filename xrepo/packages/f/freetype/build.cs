@@ -66,7 +66,7 @@ public static class Freetype
                 {
                     Target
                         .AddCFiles("port/freetype/builds/windows/ftsystem.c", "port/freetype/builds/windows/ftdebug.c")
-                        .CppFlags(Visibility.Private, "/wd4267", "/wd4244", "/source-charset:utf-8");
+                        .CXFlags(Visibility.Private, "/wd4267", "/wd4244", "/source-charset:utf-8");
                 }
                 else
                 {

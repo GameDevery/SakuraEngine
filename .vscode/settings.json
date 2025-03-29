@@ -7,4 +7,5 @@
         "undefined-field",
         "need-check-nil"
     ],
+    "cmake.ignoreCMakeListsMissing": true,
 }

@@ -17,7 +17,7 @@ public static class MiMalloc
         
         if (BuildSystem.TargetOS == OSPlatform.Windows)
         {
-            MiMalloc.Link(Visibility.Private, "psapi", "shell32", "user32", "advapi32", "bcrypt");
+            MiMalloc.Link(Visibility.Private, "psapi", "shell32", "ole32", "advapi32", "bcrypt");
             MiMalloc.Defines(Visibility.Private, "_CRT_SECURE_NO_WARNINGS");
         }
     }

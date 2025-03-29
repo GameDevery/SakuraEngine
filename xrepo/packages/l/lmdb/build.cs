@@ -13,13 +13,17 @@ public static class Lmdb
                 if (Config.Version != new Version(0, 9, 29))
                     throw new TaskFatalError("lmdb version mismatch!", "lmdb version mismatch, only v0.9.29 is supported in source.");
 
-                Target
-                    .CVersion("17")
+                Target.CVersion("11")
                     .Exception(false)
                     .TargetType(TargetType.Static)
                     .IncludeDirs(Visibility.Public, "port/lmdb/include")
                     .IncludeDirs(Visibility.Private, "port/lmdb/include/lmdb")
                     .AddCFiles("port/lmdb/*.c");
+                
+                if (BuildSystem.TargetOS == OSPlatform.Windows)
+                {
+                    Target.CFlags(Visibility.Private, "/wd4333", "/wd4172");
+                }
             });
     }
 }

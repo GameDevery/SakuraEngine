@@ -7,6 +7,11 @@
 // SparseVector structs
 namespace skr::container
 {
+#ifdef _MSC_VER
+#pragma warning( push )
+#pragma warning( disable : 4624 )
+#endif
+
 // SparseVector 的 Element 定义
 // 空穴状态会变为链表的节点，带来的问题是当 sizeof(T) < sizeof(TSize) * 2 时，会产生不必要的浪费的浪费
 // 不过通常这种浪费是可接受的
@@ -23,6 +28,10 @@ union SparseVectorStorage
     // data
     T _sparse_vector_data;
 };
+
+#ifdef _MSC_VER
+#pragma warning( pop )
+#endif
 
 // SparseVector 的数据引用，代替单纯的指针/Index返回
 // 提供足够的信息，并将 npos 封装起来简化调用防止出错

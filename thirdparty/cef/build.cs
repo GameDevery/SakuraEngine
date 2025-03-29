@@ -14,7 +14,7 @@ public static class Cef
             .Defines(Visibility.Private, "_HAS_EXCEPTIONS=0")
             .IncludeDirs(Visibility.Public, "include")
             .IncludeDirs(Visibility.Private, "./")
-            .Link(Visibility.Private, "libcef", "User32")
+            .Link(Visibility.Private, "libcef")
             .AddCppFiles("libcef_dll/**.cc");
     }
 }

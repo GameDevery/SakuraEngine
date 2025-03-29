@@ -64,7 +64,7 @@ public static class SkrCore
             .Depend(Visibility.Public, "SDL2");
 
         if (BuildSystem.TargetOS == OSPlatform.Windows)
-            SkrCore.Link(Visibility.Private, "user32", "shell32", "Ole32", "Shlwapi");
+            SkrCore.Link(Visibility.Private, "shell32", "Ole32", "Shlwapi");
         else
             SkrCore.Link(Visibility.Private, "pthread");
     }

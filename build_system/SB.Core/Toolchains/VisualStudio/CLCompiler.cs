@@ -1,5 +1,6 @@
 ﻿using Serilog;
 using System.Diagnostics;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace SB.Core
@@ -61,6 +62,9 @@ namespace SB.Core
             {
                 var Args = String.Join(" ", CompilerArgsList);
                 int ExitCode = BuildSystem.RunProcess(ExecutablePath, Args, out var OutputInfo, out var ErrorInfo, VCEnvVariables, WorkDirectory);
+
+                var BYTES = Encoding.Default.GetBytes(OutputInfo);
+                OutputInfo = Encoding.UTF8.GetString(BYTES);
                 // FUCK YOU MICROSOFT THIS IS WEIRD
                 if (ExitCode != 0)
                 {

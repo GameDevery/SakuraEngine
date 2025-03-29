@@ -13,6 +13,7 @@ public static class SkrGuiRenderer
             .Defines(Visibility.Private, "SKR_GUI_RENDERER_USE_IMAGE_CODER")
             .IncludeDirs(Visibility.Public, "include")
             .IncludeDirs(Visibility.Private, "src")
+            .AddMetaHeaders("include/**.hpp")
             .AddCppFiles("src/**.cpp")
             .AddHLSLFiles("shaders/*.hlsl")
             .DXCOutputDirectory("resources/shaders/GUI");

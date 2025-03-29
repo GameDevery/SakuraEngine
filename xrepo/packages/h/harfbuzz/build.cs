@@ -98,10 +98,11 @@ public static class Harfbuzz
                         add_files("harfbuzz/src/hb-coretext.cc")
                         add_frameworks("CoreGraphics", "CoreText", {public= false})
                     end
-                    if (is_plat("windows")) then
-                        add_cxflags("/wd4267", "/wd4244", "/source-charset:utf-8", {public= false})
-                    end
                     */
+                    if (BuildSystem.TargetOS == OSPlatform.Windows)
+                    {
+                        Target.CXFlags(Visibility.Private, "/wd4267", "/wd4244", "/source-charset:utf-8");
+                    }
             });
 
     }

@@ -56,6 +56,7 @@ namespace SB
 
         private static void SetupLogger()
         {
+            Console.OutputEncoding = System.Text.Encoding.UTF8;
             SystemConsoleTheme ConsoleLogTheme = new SystemConsoleTheme(
                new Dictionary<ConsoleThemeStyle, SystemConsoleThemeStyle>
                {
