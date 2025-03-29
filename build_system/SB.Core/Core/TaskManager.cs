@@ -44,24 +44,22 @@ namespace SB.Core
 
             var NewTask = new Task<bool>(
                 () => {
-                    using (Profiler.BeginZone($"Run | {Fingerprint.TaskName} | {Fingerprint.TargetName} | {Fingerprint.File}", color: (uint)Profiler.ColorType.PowderBlue))
+                    try
                     {
-                        if (StopAll)
-                            return false;
-                        return Function();
+                        using (Profiler.BeginZone($"Run | {Fingerprint.TaskName} | {Fingerprint.TargetName} | {Fingerprint.File}", color: (uint)Profiler.ColorType.PowderBlue))
+                        {
+                            if (StopAll)
+                                return false;
+                            return Function();
+                        }
+                    }
+                    catch (TaskFatalError fatal)
+                    {
+                        FatalErrors.Enqueue(fatal);
+                        RootCTS.Cancel();
+                        return false;
                     }
                 }, TaskCreationOptions.AttachedToParent);
-            NewTask.ContinueWith(_ =>
-            {
-                if (_.Exception?.InnerException is TaskFatalError fatal)
-                {
-                    FatalErrors.Enqueue(fatal);
-                    RootCTS.Cancel();
-                    return false;
-                }
-                return _.Result;
-            },
-            TaskContinuationOptions.ExecuteSynchronously);
             NewTask.Start();
 
             if (!AllTasks.TryAdd(Fingerprint, NewTask))

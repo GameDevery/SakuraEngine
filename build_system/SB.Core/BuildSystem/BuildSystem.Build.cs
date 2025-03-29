@@ -292,8 +292,15 @@ namespace SB
 
         public static bool WaitAndGet(this Task<bool> T)
         {
-            T.Wait();
-            return T.Result;
+            try
+            {
+                T.Wait(TaskManager.RootCTS.Token);
+                return T.Result;
+            }
+            catch (OperationCanceledException)
+            {
+                return false;
+            }
         }
 
         public static void CallAllActions(this Target Target, IList<Action<Target>> Actions)
