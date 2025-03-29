@@ -195,7 +195,7 @@ int _main_client()
         // check connect
         if (try_send_seconds > 1)
         {
-            lws_service(lws_ctx, 250);
+            lws_service(lws_ctx, -1);
             lws_callback_on_writable(connect_socket);
             last_try_send = now;
         }

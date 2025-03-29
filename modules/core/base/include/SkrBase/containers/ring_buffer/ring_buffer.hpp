@@ -108,6 +108,12 @@ struct RingBuffer : protected Memory {
     DataType&       back();
     const DataType& back() const;
 
+    // support foreach
+    StlIt  begin();
+    CStlIt begin() const;
+    StlIt  end();
+    CStlIt end() const;
+
     // syntax
     const RingBuffer& readonly() const;
 
@@ -223,37 +229,40 @@ template <typename Memory>
 inline void RingBuffer<Memory>::_construct_default(SizeType front, SizeType back)
 {
     process_ring_buffer_data(
-    capacity(),
-    front,
-    back,
-    [this](SizeType dst_idx, SizeType src_idx, SizeType size) {
-        ::skr::memory::construct(_data() + src_idx, size);
-    });
+        capacity(),
+        front,
+        back,
+        [this](SizeType dst_idx, SizeType src_idx, SizeType size) {
+            ::skr::memory::construct(_data() + src_idx, size);
+        }
+    );
 }
 template <typename Memory>
 inline void RingBuffer<Memory>::_construct_value(SizeType front, SizeType back, const DataType& v)
 {
     process_ring_buffer_data(
-    capacity(),
-    front,
-    back,
-    [this, &v](SizeType dst_idx, SizeType src_idx, SizeType size) {
-        for (SizeType i = 0; i < size; ++i)
-        {
-            new (_data() + src_idx + i) DataType(v);
+        capacity(),
+        front,
+        back,
+        [this, &v](SizeType dst_idx, SizeType src_idx, SizeType size) {
+            for (SizeType i = 0; i < size; ++i)
+            {
+                new (_data() + src_idx + i) DataType(v);
+            }
         }
-    });
+    );
 }
 template <typename Memory>
 inline void RingBuffer<Memory>::_construct_zeroed(SizeType front, SizeType back)
 {
     process_ring_buffer_data(
-    capacity(),
-    front,
-    back,
-    [this](SizeType dst_idx, SizeType src_idx, SizeType size) {
-        std::memset(_data() + src_idx, 0, (size * sizeof(DataType)));
-    });
+        capacity(),
+        front,
+        back,
+        [this](SizeType dst_idx, SizeType src_idx, SizeType size) {
+            std::memset(_data() + src_idx, 0, (size * sizeof(DataType)));
+        }
+    );
 }
 
 // ctor & dtor
@@ -608,12 +617,13 @@ inline typename RingBuffer<Memory>::DataRef RingBuffer<Memory>::append_back(cons
 {
     SizeType old_back = _grow_back(n);
     process_ring_buffer_data(
-    capacity(),
-    old_back,
-    _back(),
-    [this, &p](SizeType dst_idx, SizeType src_idx, SizeType size) {
-        ::skr::memory::copy(_data() + src_idx, p + dst_idx, size);
-    });
+        capacity(),
+        old_back,
+        _back(),
+        [this, &p](SizeType dst_idx, SizeType src_idx, SizeType size) {
+            ::skr::memory::copy(_data() + src_idx, p + dst_idx, size);
+        }
+    );
     return { _data() + (old_back % capacity()), old_back - _front() };
 }
 template <typename Memory>
@@ -621,12 +631,13 @@ inline typename RingBuffer<Memory>::DataRef RingBuffer<Memory>::append_back(std:
 {
     SizeType old_back = _grow_back(init_list.size());
     process_ring_buffer_data(
-    capacity(),
-    old_back,
-    _back(),
-    [this, &init_list](SizeType dst_idx, SizeType src_idx, SizeType size) {
-        ::skr::memory::copy(_data() + src_idx, init_list.begin() + dst_idx, size);
-    });
+        capacity(),
+        old_back,
+        _back(),
+        [this, &init_list](SizeType dst_idx, SizeType src_idx, SizeType size) {
+            ::skr::memory::copy(_data() + src_idx, init_list.begin() + dst_idx, size);
+        }
+    );
     return { _data() + (old_back % capacity()), old_back - _front() };
 }
 template <typename Memory>
@@ -634,12 +645,13 @@ inline typename RingBuffer<Memory>::DataRef RingBuffer<Memory>::append_front(con
 {
     SizeType old_front = _grow_front(n);
     process_ring_buffer_data(
-    capacity(),
-    _front(),
-    old_front,
-    [this, &p](SizeType dst_idx, SizeType src_idx, SizeType size) {
-        ::skr::memory::copy(_data() + src_idx, p + dst_idx, size);
-    });
+        capacity(),
+        _front(),
+        old_front,
+        [this, &p](SizeType dst_idx, SizeType src_idx, SizeType size) {
+            ::skr::memory::copy(_data() + src_idx, p + dst_idx, size);
+        }
+    );
     return { _data() + (_front() % capacity()), 0 };
 }
 template <typename Memory>
@@ -647,12 +659,13 @@ inline typename RingBuffer<Memory>::DataRef RingBuffer<Memory>::append_front(std
 {
     SizeType old_front = _grow_front(init_list.size());
     process_ring_buffer_data(
-    capacity(),
-    _front(),
-    old_front,
-    [this, &init_list](SizeType dst_idx, SizeType src_idx, SizeType size) {
-        ::skr::memory::copy(_data() + src_idx, init_list.begin() + dst_idx, size);
-    });
+        capacity(),
+        _front(),
+        old_front,
+        [this, &init_list](SizeType dst_idx, SizeType src_idx, SizeType size) {
+            ::skr::memory::copy(_data() + src_idx, init_list.begin() + dst_idx, size);
+        }
+    );
     return { _data() + (_front() % capacity()), 0 };
 }
 
@@ -768,6 +781,28 @@ inline const typename RingBuffer<Memory>::DataType& RingBuffer<Memory>::back() c
 {
     SKR_ASSERT(size() > 0 && "visit an empty buffer");
     return *(_data() + ((_back() - 1) % capacity()));
+}
+
+// support foreach
+template <typename Memory>
+inline typename RingBuffer<Memory>::StlIt RingBuffer<Memory>::begin()
+{
+    return StlIt(_data(), capacity(), _front());
+}
+template <typename Memory>
+inline typename RingBuffer<Memory>::CStlIt RingBuffer<Memory>::begin() const
+{
+    return CStlIt(_data(), capacity(), _front());
+}
+template <typename Memory>
+inline typename RingBuffer<Memory>::StlIt RingBuffer<Memory>::end()
+{
+    return StlIt(_data(), capacity(), _back());
+}
+template <typename Memory>
+inline typename RingBuffer<Memory>::CStlIt RingBuffer<Memory>::end() const
+{
+    return CStlIt(_data(), capacity(), _back());
 }
 
 // syntax

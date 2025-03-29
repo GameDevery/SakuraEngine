@@ -45,6 +45,39 @@ void V8PlaygroundApp::shutdown()
     }
 }
 
+// debug
+void V8PlaygroundApp::init_debugger(int port)
+{
+    _websocket_server.init(port);
+    _inspector_client.server = &_websocket_server;
+    _inspector_client.init(_isolate);
+    _inspector_client.notify_context_created(_main_context, u8"main");
+}
+void V8PlaygroundApp::shutdown_debugger()
+{
+    _inspector_client.shutdown();
+    _websocket_server.shutdown();
+    _inspector_client.server = nullptr;
+}
+void V8PlaygroundApp::pump_debugger_messages()
+{
+    _websocket_server.pump_messages();
+}
+void V8PlaygroundApp::wait_for_debugger_connected()
+{
+    while (!_inspector_client.is_connected())
+    {
+        // pump v8 messages
+        _isolate->pump_message_loop();
+
+        // pump net messages
+        _websocket_server.pump_messages();
+
+        // sleep for a while
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+}
+
 // load native
 void V8PlaygroundApp::load_native_types()
 {

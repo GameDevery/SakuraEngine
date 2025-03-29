@@ -32,6 +32,9 @@ struct SKR_V8_API V8Isolate {
     void init();
     void shutdown();
 
+    // message loop
+    void pump_message_loop();
+
     // getter
     inline ::v8::Isolate* v8_isolate() const { return _isolate; }
 
@@ -80,4 +83,5 @@ namespace skr
 {
 SKR_V8_API void init_v8();
 SKR_V8_API void shutdown_v8();
+SKR_V8_API v8::Platform& get_v8_platform();
 } // namespace skr

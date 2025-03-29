@@ -5,10 +5,10 @@ namespace skr::container
 {
 template <typename T, typename TSize, bool kConst>
 struct RingBufferIt {
-    using DataType  = std::conditional_t<kConst, const T*, T*>;
-    using ValueType = std::conditional_t<kConst, const T, T>;
+    using DataPtrType = std::conditional_t<kConst, const T*, T*>;
+    using ValueType   = std::conditional_t<kConst, const T, T>;
 
-    inline RingBufferIt(DataType* data, TSize capacity, TSize pos)
+    inline RingBufferIt(DataPtrType data, TSize capacity, TSize pos)
         : _data(data)
         , _capacity(capacity)
         , _pos(pos)
@@ -33,9 +33,9 @@ struct RingBufferIt {
     }
 
 private:
-    DataType* _data     = nullptr;
-    TSize        _capacity = 0;
-    TSize        _pos      = 0;
+    DataPtrType _data     = nullptr;
+    TSize       _capacity = 0;
+    TSize       _pos      = 0;
 };
 } // namespace skr::container
 

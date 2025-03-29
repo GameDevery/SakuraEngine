@@ -48,13 +48,17 @@
         "version": "0.2.0",
         "configurations": [
             {
-                "name": "codegen",
-                "type": "debugpy",
-                "request": "launch",
-                "program": "${workspaceFolder:root}/tools/meta_codegen/codegen.py",
-                "args": [
-                    "--config=${file}",
+                "name": "AttachV8PlaygroundTS",
+                "type": "node",
+                "request": "attach",
+                "port": 9865,
+                "sourceMaps": true,
+                "remoteRoot": "${workspaceFolder:root}/samples/v8_playground/script/output",
+                "skipFiles": [
+                    "<node_internals>/**"
                 ],
+                // see content use https://microsoft.github.io/vscode-pwa-analyzer/index.html
+                "trace": true,
             },
             {
                 "name": "DenoTest",
@@ -73,7 +77,7 @@
                 "console": "integratedTerminal"
             },
             {
-                "name": "BunTest",
+                "name": "BunCodegen",
                 "type": "bun",
                 "request": "launch",
                 "cwd": "${workspaceFolder:root}",
