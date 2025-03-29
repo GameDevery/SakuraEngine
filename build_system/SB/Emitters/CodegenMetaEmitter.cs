@@ -7,7 +7,7 @@ namespace SB
     using BS = BuildSystem;
     public class CodegenMetaAttribute
     {
-        public required string RootDirectory { get; init; }
+        public required string RootDirectory { get; set; }
         public string? MetaDirectory { get; internal set; }
         public string[]? AllGeneratedMetaFiles { get; internal set; }
     }

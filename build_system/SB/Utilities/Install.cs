@@ -64,7 +64,11 @@ namespace SB
                             foreach (var Mapping in DirectoryMappings)
                             {
                                 var Source = Path.Combine(IntermediateDirectory, Mapping.Key);
-                                var Destination = Path.Combine(BuildDirectory, Mapping.Value);
+                                string Destination;
+                                if (Path.IsPathFullyQualified(Mapping.Value))
+                                    Destination = Mapping.Value;
+                                else
+                                    Destination = Path.Combine(BuildDirectory, Mapping.Value);
                                 depend.ExternalFiles.AddRange(DirectoryCopy(Source, Destination, true));
                             }
                         }

@@ -1,7 +1,4 @@
-using SB;
 using SB.Core;
-using Serilog;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace SB
@@ -41,7 +38,7 @@ namespace SB
             API = API ?? Name.ToUpperSnakeCase();
             var Target = BS.Target(Name, Location!, LineNumber);
             Target.ApplyEngineModulePresets()
-                .EnableCodegen(API, Path.Combine(Target.Directory, "include"))
+                .EnableCodegen(Path.Combine(Target.Directory, "include"))
                 .SetAttribute(new ModuleAttribute(Target, API))
                 .UseSharedPCH();
             if (ShippingOneArchive)
@@ -65,7 +62,7 @@ namespace SB
             API = API ?? Name.ToUpperSnakeCase();
             var Target = BS.Target(Name, Location!, LineNumber);
             Target.ApplyEngineModulePresets();
-            Target.EnableCodegen(API, Path.Combine(Target.Directory, "include"));
+            Target.EnableCodegen(Path.Combine(Target.Directory, "include"));
             Target.SetAttribute(new ModuleAttribute(Target, API));
             Target.TargetType(TargetType.Executable);
             Target.Defines(Visibility.Private, $"{API}_API=");
@@ -122,9 +119,9 @@ namespace SB
             @this.CVersion("11");
             @this.CppVersion("20");
             @this.Exception(false);
-            @this.CXFlags(Visibility.Private, "/source-charset:utf-8");
             if (BS.TargetOS == OSPlatform.Windows)
             {
+                @this.CXFlags(Visibility.Private, "/utf-8");
                 @this.Defines(Visibility.Private, "NOMINMAX", "UNICODE", "_WINDOWS")
                     .Defines(Visibility.Private, "_CRT_SECURE_NO_WARNINGS")
                     .Defines(Visibility.Private, "_ENABLE_EXTENDED_ALIGNED_STORAGE")
@@ -135,8 +132,17 @@ namespace SB
 
         public static bool IsEngineModule(this Target @this) => @this.GetAttribute<ModuleAttribute>() is not null;
 
-        public static Target EnableCodegen(this Target @this, string API, string Root)
+        public static Target EnableCodegen(this Target @this, string Root)
         {
+            if (!Path.IsPathFullyQualified(Root))
+                Root = Path.Combine(@this.Directory, Root);
+
+            if (@this.GetAttribute<CodegenMetaAttribute>() is CodegenMetaAttribute A)
+            {
+                A.RootDirectory = Root;
+                return @this;
+            }
+            
             @this.SetAttribute(new CodegenMetaAttribute{ RootDirectory = Root });
             @this.SetAttribute(new CodegenRenderAttribute());
             var CodegenDirectory = @this.GetCodegenDirectory();

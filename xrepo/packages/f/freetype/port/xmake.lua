@@ -64,5 +64,5 @@ target("freetype")
     add_defines("FT2_BUILD_LIBRARY", {public=false})
 
     if (is_plat("windows")) then
-        add_cxflags("/wd4267", "/wd4244", "/source-charset:utf-8", {public=false})
+        add_cxflags("/wd4267", "/wd4244", "/utf-8", {public=false})
     end

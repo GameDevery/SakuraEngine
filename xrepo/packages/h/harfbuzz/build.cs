@@ -101,7 +101,7 @@ public static class Harfbuzz
                     */
                     if (BuildSystem.TargetOS == OSPlatform.Windows)
                     {
-                        Target.CXFlags(Visibility.Private, "/wd4267", "/wd4244", "/source-charset:utf-8");
+                        Target.CXFlags(Visibility.Private, "/wd4267", "/wd4244", "/utf-8");
                     }
             });
 

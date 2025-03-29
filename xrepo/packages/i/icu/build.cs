@@ -29,7 +29,7 @@ public static class ICU
                     
                     if (BuildSystem.TargetOS == OSPlatform.Windows)
                     {
-                        Target.CXFlags(Visibility.Private, "/wd4804", "/wd4805", "/wd4267", "/wd4244", "/source-charset:utf-8");
+                        Target.CXFlags(Visibility.Private, "/wd4804", "/wd4805", "/wd4267", "/wd4244", "/utf-8");
                     }
             });
     }

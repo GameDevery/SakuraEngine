@@ -10,7 +10,7 @@ var Toolchain = Engine.Bootstrap(SourceLocation.Directory());
 
 Engine.AddTaskEmitter("DXC.Compile", new DXCEmitter());
 
-Engine.AddTaskEmitter("ModuleMeta", new ModuleMetaEmitter());
+Engine.AddTaskEmitter("Module.Info", new ModuleInfoEmitter());
 
 Engine.AddTaskEmitter("Codgen.Meta", new CodegenMetaEmitter(Toolchain));
 
@@ -23,11 +23,11 @@ Engine.AddTaskEmitter("Cpp.PCH", new PCHEmitter(Toolchain))
     .AddDependency("Codgen.Codegen", DependencyModel.PerTarget);
 
 Engine.AddTaskEmitter("Cpp.UnityBuild", new UnityBuildEmitter())
-    .AddDependency("ModuleMeta", DependencyModel.PerTarget)
+    .AddDependency("Module.Info", DependencyModel.PerTarget)
     .AddDependency("Codgen.Codegen", DependencyModel.PerTarget);
 
 Engine.AddTaskEmitter("Cpp.Compile", new CppCompileEmitter(Toolchain))
-    .AddDependency("ModuleMeta", DependencyModel.PerTarget)
+    .AddDependency("Module.Info", DependencyModel.PerTarget)
     .AddDependency("Cpp.UnityBuild", DependencyModel.PerTarget)
     .AddDependency("Cpp.PCH", DependencyModel.PerTarget)
     .AddDependency("Cpp.PCH", DependencyModel.ExternalTarget)
@@ -36,7 +36,7 @@ Engine.AddTaskEmitter("Cpp.Compile", new CppCompileEmitter(Toolchain))
 
 var CompileCommandsEmitter = new CompileCommandsEmitter(Toolchain);
 Engine.AddTaskEmitter("Cpp.CompileCommands", CompileCommandsEmitter)
-    .AddDependency("ModuleMeta", DependencyModel.PerTarget)
+    .AddDependency("Module.Info", DependencyModel.PerTarget)
     .AddDependency("Cpp.UnityBuild", DependencyModel.PerTarget)
     .AddDependency("Cpp.PCH", DependencyModel.PerTarget)
     .AddDependency("Cpp.PCH", DependencyModel.ExternalTarget)

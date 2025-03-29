@@ -4,7 +4,7 @@ using System.Diagnostics;
 
 namespace SB
 {
-    public class ModuleMetaEmitter : TaskEmitter
+    public class ModuleInfoEmitter : TaskEmitter
     {
         public override bool EnableEmitter(Target Target) => Target.HasAttribute<ModuleAttribute>();
         public override bool EmitTargetTask(Target Target) => true;
@@ -20,7 +20,7 @@ namespace SB
             var DepArgs = ModuleDependencies.ToList();
             DepArgs.Add(Target.Name);
             DepArgs.Add(Target.GetTargetType()?.ToString() ?? "none");
-            Depend.OnChanged(Target.Name, GenFileName, Name, (Depend depend) => {
+            bool Changed = Depend.OnChanged(Target.Name, GenFileName, Name, (Depend depend) => {
                 string DependenciesArray = "[" + String.Join(",", ModuleDependencies.Select(D => FormatDependency(D))) + "]";
                 string JSON = $$"""
                 {
@@ -42,7 +42,7 @@ namespace SB
 
             sw.Stop();
             Time += (int)sw.ElapsedMilliseconds;
-            return null;
+            return new PlainArtifact { IsRestored = !Changed };
         }
 
         private static string FormatDependency(string Dependency)

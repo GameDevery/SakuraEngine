@@ -1,7 +1,7 @@
 #include "SkrCore/log.hpp"
 #include <SkrRTTR/scriptble_object.hpp>
 #ifndef __meta__
-    #include "V8Test/test_v8_types.generated.h"
+    #include "test_v8_types.generated.h"
 #endif
 
 // basic object

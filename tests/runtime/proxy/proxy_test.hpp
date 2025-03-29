@@ -2,7 +2,7 @@
 #include "SkrRT/config.h"
 #include "SkrRTTR/proxy.hpp"
 #if !defined(__meta__)
-    #include "ProxyTest/proxy_test.generated.h"
+    #include "proxy_test.generated.h"
 #endif
 
 sreflect_struct(
