@@ -4,7 +4,7 @@
 #include "SkrCore/delegate/event.hpp"
 #include "v8-inspector.h"
 #include "SkrV8/v8_isolate.hpp"
-#include <libwebsockets.h>
+#include "hv/WebSocketServer.h"
 
 namespace skr
 {
@@ -19,7 +19,6 @@ struct SKR_V8_API V8WebSocketServer {
 
     // message
     void send_message(StringView message);
-    void send_http_response(StringView message);
     void pump_messages();
 
 public:
@@ -27,24 +26,6 @@ public:
     Event<void(StringView)> on_message_received;
 
 private:
-    // pooling api
-    inline Vector<uint8_t>* _alloc_buffer()
-    {
-        if (_buffer_pool.size() > 0)
-        {
-            return _buffer_pool.pop_back_get();
-        }
-        else
-        {
-            return SkrNew<Vector<uint8_t>>();
-        }
-    }
-    inline void _free_buffer(Vector<uint8_t>* buffer)
-    {
-        buffer->clear();
-        _buffer_pool.push_back(buffer);
-    }
-
     // callback
     static int _callback_server(struct lws* wsi, enum lws_callback_reasons reason, void* user, void* in, size_t len);
 
@@ -52,14 +33,14 @@ private:
     void _combine_json_response();
 
 private:
-    lws_context*                 _ctx                  = nullptr;
-    lws_protocols                _proto[3]             = {};
-    lws_protocol_vhost_options   _pvo                  = {};
-    lws_protocol_vhost_options   _pvo_default          = {};
-    RingBuffer<Vector<uint8_t>*> _pending_package      = {};
-    RingBuffer<Vector<uint8_t>*> _pending_http_package = {};
-    Vector<Vector<uint8_t>*>     _buffer_pool          = {};
-    int                          _port                 = 0;
+    hv::WebSocketService _ws_service        = {};
+    hv::HttpService      _http_service      = {};
+    hv::WebSocketServer  _ws_server         = {};
+    WebSocketChannelPtr  _main_channel      = nullptr;
+    Vector<String>       _received_messages = {};
+    std::mutex           _mutex             = {};
+    int                  _port              = 0;
+    bool                 _is_running        = false;
 
     // receive
     String _json_version;

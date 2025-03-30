@@ -109,7 +109,7 @@ bool V8Context::build_global_export(FunctionRef<void(ScriptModule& module)> buil
 }
 
 // run as script
-V8Value V8Context::exec_script(StringView script)
+V8Value V8Context::exec_script(StringView script, StringView file_path)
 {
     auto                   isolate = _isolate->v8_isolate();
     v8::Isolate::Scope     isolate_scope(isolate);
@@ -118,8 +118,24 @@ V8Value V8Context::exec_script(StringView script)
     v8::Context::Scope     context_scope(context);
 
     // compile script
-    v8::Local<v8::String> source        = V8Bind::to_v8(script, false);
-    auto                  may_be_script = ::v8::Script::Compile(context, source);
+    v8::Local<v8::String> source = V8Bind::to_v8(script, false);
+    v8::ScriptOrigin      origin(
+        isolate,
+        V8Bind::to_v8(file_path),
+        0,
+        0,
+        true,
+        -1,
+        {},
+        false,
+        false,
+        true,
+        {}
+    );
+    auto may_be_script = ::v8::Script::Compile(
+        context,
+        source
+    );
     if (may_be_script.IsEmpty())
     {
         SKR_LOG_ERROR(u8"compile script failed");
@@ -141,7 +157,7 @@ V8Value V8Context::exec_script(StringView script)
 }
 
 // run as ES module
-V8Value V8Context::exec_module(StringView script)
+V8Value V8Context::exec_module(StringView script, StringView file_path)
 {
     auto                   isolate = _isolate->v8_isolate();
     v8::Isolate::Scope     isolate_scope(isolate);
@@ -152,7 +168,7 @@ V8Value V8Context::exec_module(StringView script)
     // compile module
     v8::ScriptOrigin origin(
         isolate,
-        V8Bind::to_v8(skr::StringView{ u8"" }),
+        V8Bind::to_v8(file_path),
         0,
         0,
         true,

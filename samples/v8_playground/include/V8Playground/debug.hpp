@@ -25,6 +25,9 @@ Debug {
     sscript_visible
     static void exit(int32_t exit_code);
 
+    sscript_visible
+    static void wait(int32_t ms);
+
 private:
     bool _shit;
 };

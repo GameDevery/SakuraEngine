@@ -8,8 +8,13 @@ int _main_server()
 {
     using namespace hv;
 
-    WebSocketService ws;
-    ws.onopen = [](const WebSocketChannelPtr& channel, const HttpRequestPtr& req) {
+    WebSocketChannelPtr first_channel = nullptr;
+    WebSocketService    ws;
+    ws.onopen = [&](const WebSocketChannelPtr& channel, const HttpRequestPtr& req) {
+        if (!first_channel)
+        {
+            first_channel = channel;
+        }
         SKR_LOG_INFO(u8"圆头: GET %s", req->Path().c_str());
     };
     ws.onmessage = [](const WebSocketChannelPtr& channel, const std::string& msg) {
@@ -34,12 +39,15 @@ int _main_server()
     server.setPort(9999);
     server.setThreadNum(4);
     server.service = &http;
-    server.run();
-    // while (true)
-    // {
-    //     server.run(nullptr, false);
-    //     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    // }
+    server.start();
+    while (true)
+    {
+        if (first_channel)
+        {
+            first_channel->send("我们的架构非常优秀！！");
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    }
     return 0;
 }
 int _main_client()

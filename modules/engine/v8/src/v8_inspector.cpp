@@ -10,17 +10,6 @@ V8WebSocketServer::V8WebSocketServer() = default;
 V8WebSocketServer::~V8WebSocketServer()
 {
     shutdown();
-    for (auto* buffer : _pending_package)
-    {
-        SkrDelete(buffer);
-    }
-    _pending_package.clear();
-
-    for (auto* buffer : _buffer_pool)
-    {
-        SkrDelete(buffer);
-    }
-    _buffer_pool.clear();
 }
 
 // init & shutdown
@@ -30,159 +19,74 @@ bool V8WebSocketServer::init(int port)
 
     _port = port;
 
-    // vhost
-    _pvo_default.next    = nullptr;
-    _pvo_default.options = nullptr;
-    _pvo_default.name    = "default";
-    _pvo_default.value   = "1";
-    _pvo.next            = &_pvo_default;
-    _pvo.options         = nullptr;
-    _pvo.name            = "inspect";
-    _pvo.value           = "";
+    // init websocket server
+    _ws_service.onopen = [this](const WebSocketChannelPtr& channel, const HttpRequestPtr& req) {
+        if (!_main_channel)
+        {
+            _main_channel = channel;
+            SKR_LOG_INFO(u8"V8WebSocketServer: new channel connected");
+        }
+    };
+    _ws_service.onmessage = [this](const WebSocketChannelPtr& channel, const std::string& msg) {
+        std::lock_guard<std::mutex> _lck(_mutex);
+        _received_messages.push_back(String::From(msg.data(), msg.size()));
+    };
+    _ws_service.onclose = [this](const WebSocketChannelPtr& channel) {
+        _main_channel.reset();
+        SKR_LOG_INFO(u8"V8WebSocketServer: channel closed");
+    };
 
-    // fill protocol
-    _proto[0].name     = "http"; // support document
-    _proto[0].user     = this;
-    _proto[0].callback = _callback_server;
-    _proto[1].name     = "inspect";
-    _proto[1].user     = this;
-    _proto[1].callback = _callback_server;
+    // init http service
+    _http_service.GET("/json/version", [this](HttpRequest* req, HttpResponse* resp) {
+        return resp->String(_json_version.data_raw());
+    });
+    _http_service.GET("/json/list", [this](HttpRequest* req, HttpResponse* resp) {
+        return resp->String(_json_list.data_raw());
+    });
 
-    // create context
-    lws_context_creation_info create_info{};
-    create_info.port      = port;
-    create_info.protocols = _proto;
-    create_info.pvo       = &_pvo;
-    create_info.gid       = -1;
-    create_info.uid       = -1;
-    create_info.user      = this;
-    create_info.options   = LWS_SERVER_OPTION_VALIDATE_UTF8; // accept utf8
-    _ctx                  = lws_create_context(&create_info);
-    if (!_ctx)
-    {
-        SKR_LOG_FMT_ERROR(u8"failed to create websocket server on port '{}'", port);
-        return false;
-    }
+    // startup server
+    _ws_server         = hv::WebSocketServer(&_ws_service);
+    _ws_server.service = &_http_service;
+    _ws_server.setPort(_port);
+    _ws_server.setThreadNum(1);
+    _ws_server.start();
 
     _combine_json_response();
+
+    _is_running = true;
 
     return true;
 }
 void V8WebSocketServer::shutdown()
 {
-    if (_ctx)
+    if (_is_running)
     {
-        lws_context_destroy(_ctx);
-        _ctx = nullptr;
+        _ws_server.stop();
+        _main_channel.reset();
+        _is_running = false;
     }
 }
 
 // message
 void V8WebSocketServer::send_message(StringView message)
 {
-    // push package
-    auto* buffer = _alloc_buffer();
-    buffer->reserve(
-        LWS_SEND_BUFFER_PRE_PADDING +
-        LWS_SEND_BUFFER_POST_PADDING +
-        message.length_buffer()
-    );
-    buffer->add_zeroed(LWS_SEND_BUFFER_PRE_PADDING);
-    buffer->append(message.data_raw(), message.length_buffer());
-    buffer->add_zeroed(LWS_SEND_BUFFER_POST_PADDING);
-    _pending_package.push_back(buffer);
-
-    // send message
-    lws_callback_on_writable_all_protocol(_ctx, _proto);
-}
-void V8WebSocketServer::send_http_response(StringView message)
-{
-    // push message
-    auto* buffer = _alloc_buffer();
-    buffer->reserve(message.length_buffer());
-    buffer->append(message.data_raw(), message.length_buffer());
-    _pending_http_package.push_back(buffer);
-
-    // send message
-    lws_callback_on_writable_all_protocol(_ctx, _proto);
+    if (_main_channel)
+    {
+        _main_channel->send(message.data_raw());
+    }
+    else
+    {
+        SKR_LOG_ERROR(u8"V8WebSocketServer: no main channel, message not sent!");
+    }
 }
 void V8WebSocketServer::pump_messages()
 {
-    if (!_pending_package.is_empty())
+    std::lock_guard _lck(_mutex);
+    for (auto& message : _received_messages)
     {
-        lws_callback_on_writable_all_protocol(_ctx, _proto);
+        on_message_received.invoke(message);
     }
-    lws_service(_ctx, 0);
-}
-
-// callback
-int V8WebSocketServer::_callback_server(struct lws* wsi, enum lws_callback_reasons reason, void* user, void* in, size_t len)
-{
-    auto* self = reinterpret_cast<V8WebSocketServer*>(lws_context_user(lws_get_context(wsi)));
-    switch (reason)
-    {
-    case LWS_CALLBACK_HTTP: {
-        String url = (const char8_t*)in;
-
-        // SKR_LOG_FMT_DEBUG(u8"receive http request: {}", url.c_str());
-        if (url == u8"/json/version")
-        {
-            self->send_http_response(u8"HTTP/1.0 200 OK\r\nContent-Type: application/json; charset=UTF-8\r\nCache-Control: no-cache\r\n\r\n");
-            self->send_http_response(self->_json_version);
-        }
-        else if (url == u8"/json/list")
-        {
-            self->send_http_response(u8"HTTP/1.0 200 OK\r\nContent-Type: application/json; charset=UTF-8\r\nCache-Control: no-cache\r\n\r\n");
-            self->send_http_response(self->_json_list);
-        }
-        else
-        {
-            lws_return_http_status(wsi, HTTP_STATUS_NOT_FOUND, nullptr);
-        }
-        break;
-    }
-    case LWS_CALLBACK_HTTP_WRITEABLE: {
-        auto* buffer = self->_pending_http_package.pop_front_get();
-        lws_write(
-            wsi,
-            buffer->data(),
-            buffer->size(),
-            LWS_WRITE_HTTP
-        );
-        self->_free_buffer(buffer);
-
-        if (!self->_pending_http_package.is_empty())
-        {
-            lws_callback_on_writable(wsi);
-        }
-        break;
-    }
-    case LWS_CALLBACK_RECEIVE: {
-        // receive data
-        String data;
-        data.reserve(len);
-        data.append((const skr_char8*)in, len);
-        self->on_message_received.invoke(data);
-        SKR_LOG_FMT_DEBUG(u8"receive message: {}", data.c_str());
-        break;
-    }
-    case LWS_CALLBACK_SERVER_WRITEABLE: {
-        auto* buffer = self->_pending_package.pop_front_get();
-        lws_write(
-            wsi,
-            &buffer->at(LWS_SEND_BUFFER_PRE_PADDING),
-            buffer->size() - LWS_SEND_BUFFER_PRE_PADDING - LWS_SEND_BUFFER_POST_PADDING,
-            LWS_WRITE_TEXT
-        );
-        self->_free_buffer(buffer);
-        break;
-    }
-    default:
-        // SKR_LOG_FMT_DEBUG(u8"lost message: {}", (int32_t)reason);
-        break;
-    }
-
-    return 0;
+    _received_messages.clear();
 }
 
 // json response
@@ -281,12 +185,15 @@ void V8InspectorClient::runMessageLoopOnPause(int contextGroupId)
     if (_is_runing_message_loop) { return; }
 
     _is_runing_message_loop = true;
+    _run_message_loop = true;
 
     while (_run_message_loop)
     {
+        server->pump_messages();
         _isolate->pump_message_loop();
     }
 
+    _run_message_loop = false;
     _is_runing_message_loop = false;
 }
 void V8InspectorClient::quitMessageLoopOnPause()
@@ -295,7 +202,9 @@ void V8InspectorClient::quitMessageLoopOnPause()
 }
 void V8InspectorClient::runIfWaitingForDebugger(int contextGroupId)
 {
-    _connected = true;
+    // pause_on_next_statement(u8"for test");
+    _run_message_loop = true;
+    _connected        = true;
 }
 
 // notify

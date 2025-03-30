@@ -111,7 +111,7 @@ bool V8PlaygroundApp::run_script(StringView script_path)
     }
 
     // run script
-    _main_context->exec_module(script);
+    _main_context->exec_module(script, script_path);
 
     return true;
 }

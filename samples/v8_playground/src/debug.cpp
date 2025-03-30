@@ -19,4 +19,8 @@ void Debug::exit(int32_t exit_code)
 {
     ::exit(exit_code);
 }
+void Debug::wait(int32_t ms)
+{
+    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
 }
+} // namespace skr

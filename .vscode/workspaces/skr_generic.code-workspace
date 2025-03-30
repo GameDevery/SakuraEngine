@@ -53,7 +53,6 @@
                 "request": "attach",
                 "port": 9865,
                 "sourceMaps": true,
-                "remoteRoot": "${workspaceFolder:root}/samples/v8_playground/script/output",
                 "skipFiles": [
                     "<node_internals>/**"
                 ],
