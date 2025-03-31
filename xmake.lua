@@ -71,7 +71,7 @@ skr_global_target()
         end
     })
     skr_install("download", {
-        name = "meta_v1.0.3-llvm_19.1.7",
+        name = "meta_v1.0.3-llvm_18.1.6",
         install_func = "tool",
     })
     skr_install("download", {
