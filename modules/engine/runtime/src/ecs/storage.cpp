@@ -998,9 +998,9 @@ void sugoiS_cast_view_delta(sugoi_storage_t* storage, const sugoi_chunk_view_t* 
     storage->cast(*view, storage->cast(view->chunk->group, *delta), callback, u);
 }
 
-void sugoiS_cast_view_group(sugoi_storage_t* storage, const sugoi_chunk_view_t* view, const sugoi_group_t* group, sugoi_cast_callback_t callback, void* u)
+void sugoiS_cast_view_type(sugoi_storage_t* storage, const sugoi_chunk_view_t* view, const sugoi_entity_type_t* type, sugoi_cast_callback_t callback, void* u)
 {
-    storage->cast(*view, (sugoi_group_t*)group, callback, u);
+    storage->cast(*view, storage->get_group(*type), callback, u);
 }
 
 void sugoiS_cast_group_delta(sugoi_storage_t* storage, sugoi_group_t* group, const sugoi_delta_type_t* delta, sugoi_cast_callback_t callback, void* u)

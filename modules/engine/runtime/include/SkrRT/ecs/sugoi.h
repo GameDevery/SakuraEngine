@@ -372,10 +372,10 @@ SKR_RUNTIME_API void sugoiS_cast_view_delta(sugoi_storage_t* storage, const sugo
  * there can be more than one chunk view allocated
  * @param storage
  * @param view
- * @param group
+ * @param type
  * @param callback optional callback before casting chunk view
  */
-SKR_RUNTIME_API void sugoiS_cast_view_group(sugoi_storage_t* storage, const sugoi_chunk_view_t* view, const sugoi_group_t* group, sugoi_cast_callback_t callback, void* u);
+SKR_RUNTIME_API void sugoiS_cast_view_type(sugoi_storage_t* storage, const sugoi_chunk_view_t* view, const sugoi_entity_type_t* type, sugoi_cast_callback_t callback, void* u);
 
 /**
  * @brief change entities' type
