@@ -78,6 +78,9 @@ void V8Isolate::init()
     // init bind manager
     _bind_manager = SkrNew<V8BindManager>();
 
+    // auto microtasks
+    _isolate->SetMicrotasksPolicy(v8::MicrotasksPolicy::kAuto);
+
     // TODO. module support
     _isolate->SetHostImportModuleDynamicallyCallback(_dynamic_import_module); // used for support module
     // _isolate->SetHostInitializeImportMetaObjectCallback(); // used for set import.meta
@@ -102,6 +105,12 @@ void V8Isolate::shutdown()
 
         SkrDelete(_bind_manager);
     }
+}
+
+// message loop
+void V8Isolate::pump_message_loop()
+{
+    while (v8::platform::PumpMessageLoop(&get_v8_platform(), _isolate)) {};
 }
 
 // operator isolate
@@ -229,5 +238,9 @@ void shutdown_v8()
     // shutdown platform
     ::v8::V8::DisposePlatform();
     _v8_platform().reset();
+}
+v8::Platform& get_v8_platform()
+{
+    return *_v8_platform();
 }
 } // namespace skr

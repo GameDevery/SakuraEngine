@@ -1,5 +1,6 @@
 #pragma once
 #include "SkrV8/v8_context.hpp"
+#include "SkrV8/v8_inspector.hpp"
 #include <SkrV8/v8_isolate.hpp>
 #include <SkrV8/v8_module.hpp>
 #include <SkrCore/log.hpp>
@@ -19,6 +20,12 @@ struct V8PlaygroundApp {
     void init();
     void shutdown();
 
+    // debug
+    void init_debugger(int port);
+    void shutdown_debugger();
+    void pump_debugger_messages();
+    void wait_for_debugger_connected();
+
     // load native
     void load_native_types();
 
@@ -36,5 +43,8 @@ private:
 private:
     V8Isolate* _isolate      = nullptr;
     V8Context* _main_context = nullptr;
+
+    V8WebSocketServer _websocket_server = {};
+    V8InspectorClient _inspector_client = {};
 };
 } // namespace skr

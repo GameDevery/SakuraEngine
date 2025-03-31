@@ -37,7 +37,7 @@ class _Gen {
   }
 
   static source(main_db: db.Module) {
-    const b = main_db.gen_code
+    const b = main_db.main_file
 
     const _gen_records = main_db.filter_record(record => record.ml_configs.ecs.enable);
 

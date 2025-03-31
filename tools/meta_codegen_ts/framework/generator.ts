@@ -2,13 +2,7 @@ import * as db from "./database.ts";
 import * as fs from "node:fs";
 import * as ml from "./meta_lang.ts";
 import path from "node:path";
-import { LogColor, MetaLangError, type CodeBuilder } from "./utils.ts";
-
-// TODO. 重组生成步骤
-//   1. load database
-//   2. inject configs
-//   3. run meta-lang
-//   4. generate code
+import { CodeBuilder, LogColor, MetaLangError } from "./utils.ts";
 
 export class Generator {
   owner!: GenerateManager;
@@ -21,7 +15,6 @@ export class Generator {
 
   // inject configs into object
   inject_configs(): void { }
-
 
   // generate functions
   gen_body() { }
@@ -188,13 +181,32 @@ export class GenerateManager {
     // output headers
     for (const header of this.project_db.main_module.headers) {
       const out_path = path.join(out_dir, header.output_header_path);
-      this.#output_code(out_path, header.gen_code)
+      this.#output_code(out_path, header.gen_code.content)
     }
 
-    // output sources
-    this.#output_code(path.join(out_dir, "generated.cpp"), this.project_db.main_module.gen_code);
+    const main_db = this.project_db.main_module;
+
+    // output main source
+    {
+      this.#output_code(path.join(out_dir, "generated.cpp"),
+        main_db.pre_all_file.content
+        + main_db.main_file.content
+        + main_db.post_all_file.content
+      );
+    }
+
+    // output batcher
+    for (const batch_name in main_db.batch_files) {
+      const batch_file = main_db.batch_files[batch_name];
+      if (batch_file === undefined) continue;
+      this.#output_code(path.join(out_dir, `${batch_name}.cpp`),
+        main_db.pre_all_file.content
+        + batch_file.content
+        + main_db.post_all_file.content
+      );
+    }
   }
-  #output_code(out_path: string, code: CodeBuilder) {
+  #output_code(out_path: string, code: string) {
     const out_dir = path.dirname(out_path);
 
     // make dir
@@ -203,7 +215,7 @@ export class GenerateManager {
     }
 
     // write file
-    fs.writeFileSync(out_path, code.content, { encoding: "utf-8" });
+    fs.writeFileSync(out_path, code, { encoding: "utf-8" });
   }
 
   // generator apis

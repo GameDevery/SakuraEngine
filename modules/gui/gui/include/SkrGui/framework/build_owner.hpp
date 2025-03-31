@@ -2,6 +2,9 @@
 #include "SkrGui/fwd_config.hpp"
 #include "SkrGui/framework/key.hpp"
 #include "SkrGui/framework/fwd_framework.hpp"
+#ifndef __meta__
+    #include "SkrGui/framework/build_owner.generated.h"
+#endif
 
 namespace skr::gui
 {
@@ -10,7 +13,8 @@ struct InputManager;
 
 // 三颗控件树的总控制器，管理所有控件树的 update/layout/paint
 // 同时提供环境 InputManager/WindowManager
-struct SKR_GUI_API BuildOwner final {
+sreflect_struct(guid = "602d1ec3-3dad-46a1-bdfe-e21de87136c0")
+SKR_GUI_API BuildOwner final {
     BuildOwner(NotNull<INativeDevice*> native_device) SKR_NOEXCEPT;
 
     // schedule

@@ -4,6 +4,7 @@
 #include "SkrContainers/sptr.hpp"
 #include "SkrContainers/span.hpp"
 #include "SkrContainers/string.hpp"
+#include "SkrCore/blob.hpp"
 #ifndef __meta__
     #include "SkrShaderCompiler/shader_compiler.generated.h" // IWYU pragma: export
 #endif

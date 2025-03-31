@@ -1,5 +1,6 @@
 #include "SkrGraphics/api.h"
 #include "SkrBase/misc/make_zeroed.hpp"
+#include <vector>
 
 #include "SkrTestFramework/framework.hpp"
 

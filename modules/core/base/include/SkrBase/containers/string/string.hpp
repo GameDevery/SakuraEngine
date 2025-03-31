@@ -213,7 +213,7 @@ struct U8String : protected Memory {
     void append_at(SizeType idx, const U& container);
 
     // remove
-    void     remove_at(SizeType index, SizeType n);
+    void     remove_at(SizeType index, SizeType n = 1);
     bool     remove(ViewType view);
     bool     remove_last(ViewType view);
     SizeType remove_all(ViewType view);

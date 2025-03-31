@@ -4,6 +4,7 @@
 #include "SkrGui/framework/painting_context.hpp"
 #include "SkrGui/system/input/input_manager.hpp"
 #include "SkrGui/framework/element/render_native_window_element.hpp"
+#include "SkrGui/framework/render_object/render_native_window.hpp"
 
 namespace skr::gui
 {

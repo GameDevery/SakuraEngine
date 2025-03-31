@@ -176,7 +176,7 @@ struct Vector : protected Memory {
     void            push_back(const DataType& v);
     void            push_back(DataType&& v);
     void            pop_back();
-    DataType&       pop_back_get();
+    DataType        pop_back_get();
 
     // find
     template <typename U = DataType>
@@ -1134,9 +1134,9 @@ SKR_INLINE void Vector<Memory>::pop_back()
     stack_pop();
 }
 template <typename Memory>
-SKR_INLINE typename Vector<Memory>::DataType& Vector<Memory>::pop_back_get()
+SKR_INLINE typename Vector<Memory>::DataType Vector<Memory>::pop_back_get()
 {
-    return stack_pop_get();
+    return std::move(stack_pop_get());
 }
 
 // find

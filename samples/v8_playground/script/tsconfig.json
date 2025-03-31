@@ -5,6 +5,8 @@
             "./modules",
         ],
         "outDir": "./output",
+        // "sourceMap": true,
+        "inlineSourceMap": true,
     },
     "include": [
         "**/*.ts"

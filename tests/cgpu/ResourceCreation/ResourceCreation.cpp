@@ -4,6 +4,7 @@
 
 #include "spirv.h"
 #include "dxil.h"
+#include <vector>
 
 #include "SkrTestFramework/framework.hpp"
 

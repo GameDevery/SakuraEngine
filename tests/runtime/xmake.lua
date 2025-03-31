@@ -27,7 +27,7 @@ test_target("IOServiceTest")
 test_target("SceneTest")
     set_group("05.tests/runtime")
     public_dependency("SkrScene")
-    add_rules("c++.unity_build", {batchsize = default_unity_batch})
+    skr_unity_build()
     add_files("scene/main.cpp")
 
 test_target("ECSTest_CStyle")
