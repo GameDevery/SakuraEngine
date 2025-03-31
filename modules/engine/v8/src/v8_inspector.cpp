@@ -24,7 +24,7 @@ bool V8WebSocketServer::init(int port)
         if (!_main_channel)
         {
             _main_channel = channel;
-            SKR_LOG_INFO(u8"V8WebSocketServer: new channel connected");
+            SKR_LOG_DEBUG(u8"V8WebSocketServer: new channel connected");
         }
     };
     _ws_service.onmessage = [this](const WebSocketChannelPtr& channel, const std::string& msg) {
@@ -33,7 +33,7 @@ bool V8WebSocketServer::init(int port)
     };
     _ws_service.onclose = [this](const WebSocketChannelPtr& channel) {
         _main_channel.reset();
-        SKR_LOG_INFO(u8"V8WebSocketServer: channel closed");
+        SKR_LOG_DEBUG(u8"V8WebSocketServer: channel closed");
     };
 
     // init http service
@@ -146,6 +146,8 @@ void V8InspectorChannel::flushProtocolNotifications()
 void V8InspectorClient::init(V8Isolate* isolate)
 {
     _isolate = isolate;
+
+    // TODO. session & channel 根据连接情况动态创建
 
     // pass server
     _channel.server = server;
