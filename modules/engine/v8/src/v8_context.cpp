@@ -108,6 +108,33 @@ bool V8Context::build_global_export(FunctionRef<void(ScriptModule& module)> buil
     return ::v8::Global<::v8::Context>(_isolate->v8_isolate(), _context);
 }
 
+// get global value
+V8Value V8Context::get_global(StringView name)
+{
+    // scopes
+    auto                   isolate = _isolate->v8_isolate();
+    v8::Isolate::Scope     isolate_scope(isolate);
+    v8::HandleScope        handle_scope(isolate);
+    v8::Local<v8::Context> context = _context.Get(isolate);
+    v8::Context::Scope     context_scope(context);
+
+    // find value
+    auto                   global = context->Global();
+    v8::Local<v8::String> name_v8 = V8Bind::to_v8(name, true);
+    auto                   maybe_value = global->Get(context, name_v8);
+    if (maybe_value.IsEmpty())
+    {
+        SKR_LOG_FMT_ERROR(u8"failed to get global value {}", name);
+        return {};
+    }
+
+    // return value
+    V8Value result;
+    result.context = this;
+    result.v8_value.Reset(isolate, maybe_value.ToLocalChecked());
+    return result;
+}
+
 // run as script
 V8Value V8Context::exec_script(StringView script, StringView file_path)
 {

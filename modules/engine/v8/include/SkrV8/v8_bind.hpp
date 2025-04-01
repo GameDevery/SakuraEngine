@@ -3,6 +3,7 @@
 #include "SkrRTTR/script_binder.hpp"
 #include "SkrRTTR/script_tools.hpp"
 #include "v8_isolate.hpp"
+#include <SkrRTTR/stack_proxy.hpp>
 
 namespace skr
 {

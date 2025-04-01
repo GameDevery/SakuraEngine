@@ -24,6 +24,7 @@ struct Span {
     constexpr Span(T* begin, T* end);
     template <size_t N, typename = std::enable_if_t<(Extent == kDynamicExtent || N == Extent)>>
     constexpr Span(T (&arr)[N]);
+    constexpr Span(std::initializer_list<T> init_list);
     template <LinearMemoryContainer U>
     constexpr Span(U&& container);
     ~Span();
@@ -104,6 +105,14 @@ SKR_INLINE constexpr Span<T, TSize, Extent>::Span(T (&arr)[N])
     , _size(static_cast<TSize>(N))
 {
     static_assert(Extent == kDynamicExtent || Extent == 0 || Extent <= N, "impossible to default construct a span with a fixed Extent different than 0");
+    SKR_ASSERT(_data != nullptr || _data == 0 && "when data is null, size must be 0");
+}
+template <typename T, typename TSize, size_t Extent>
+SKR_INLINE constexpr Span<T, TSize, Extent>::Span(std::initializer_list<T> init_list)
+    : _data(init_list.begin())
+    , _size(static_cast<TSize>(init_list.size()))
+{
+    static_assert(Extent == kDynamicExtent || Extent == 0, "impossible to default construct a span with a fixed Extent different than 0");
     SKR_ASSERT(_data != nullptr || _data == 0 && "when data is null, size must be 0");
 }
 template <typename T, typename TSize, size_t Extent>

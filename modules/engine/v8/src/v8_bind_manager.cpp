@@ -3,6 +3,7 @@
 #include "v8-external.h"
 #include <SkrV8/v8_bind.hpp>
 #include "v8-container.h"
+#include <v8-function.h>
 
 namespace skr
 {
@@ -414,31 +415,107 @@ v8::Local<v8::FunctionTemplate> V8BindManager::get_record_template(const RTTRTyp
 }
 
 // convert
-v8::Local<v8::Value> V8BindManager::to_v8(const RTTRType* type, const void* data)
+v8::Local<v8::Value> V8BindManager::to_v8(TypeSignatureView sig_view, const void* data)
 {
     using namespace ::v8;
 
-    // check
-    SKR_ASSERT(type);
+    if (sig_view.is_type())
+    {
+        // get binder
+        GUID type_id;
+        sig_view.jump_modifier();
+        sig_view.read_type_id(type_id);
+        ScriptBinderRoot binder = _binder_mgr.get_or_build(type_id);
 
-    // get binder
-    ScriptBinderRoot binder = _binder_mgr.get_or_build(type->type_id());
-
-    // convert
-    return _to_v8(binder, const_cast<void*>(data));
+        // convert
+        return _to_v8(binder, const_cast<void*>(data));
+    }
+    else if (sig_view.is_generic_type())
+    {
+        SKR_LOG_FMT_ERROR(u8"generic type not supported yet");
+        return {};
+    }
+    else
+    {
+        SKR_LOG_FMT_ERROR(u8"unsupported type signature");
+        return {};
+    }
 }
-bool V8BindManager::to_native(const RTTRType* type, void* data, v8::Local<v8::Value> v8_value, bool is_init)
+bool V8BindManager::to_native(TypeSignatureView sig_view, void* data, v8::Local<v8::Value> v8_value, bool is_init)
 {
     using namespace ::v8;
 
-    // check
-    SKR_ASSERT(type);
+    if (sig_view.is_type())
+    {
+        // get binder
+        GUID type_id;
+        sig_view.jump_modifier();
+        sig_view.read_type_id(type_id);
+        ScriptBinderRoot binder = _binder_mgr.get_or_build(type_id);
 
-    // get binder
-    ScriptBinderRoot binder = _binder_mgr.get_or_build(type->type_id());
+        // convert
+        return _to_native(binder, const_cast<void*>(data), v8_value, is_init);
+    }
+    else if (sig_view.is_generic_type())
+    {
+        SKR_LOG_FMT_ERROR(u8"generic type not supported yet");
+        return {};
+    }
+    else
+    {
+        SKR_LOG_FMT_ERROR(u8"unsupported type signature");
+        return {};
+    }
+}
 
-    // convert
-    return _to_native(binder, const_cast<void*>(data), v8_value, is_init);
+// invoke script
+bool V8BindManager::invoke_v8(
+    v8::Local<v8::Value>    v8_this,
+    v8::Local<v8::Function> v8_func,
+    span<const StackProxy>        params,
+    StackProxy              return_value
+)
+{
+    auto*           isolate = v8::Isolate::GetCurrent();
+    auto            context = isolate->GetCurrentContext();
+    v8::HandleScope handle_scope(isolate);
+
+    // TODO. check call v8 params & return
+
+    // push params
+    Vector<v8::Local<v8::Value>> v8_params;
+    v8_params.reserve(params.size());
+    for (const auto& proxy : params)
+    {
+        v8::Local<v8::Value> v8_value = to_v8(proxy.signature.view(), proxy.data);
+        if (v8_value.IsEmpty())
+        {
+            SKR_LOG_FMT_ERROR(u8"convert param to v8 failed");
+            return false;
+        }
+        v8_params.push_back(v8_value);
+    }
+
+    // call script
+    auto v8_ret = v8_func->Call(context, v8_this, v8_params.size(), v8_params.data());
+
+    // check return
+    if (return_value.data != nullptr)
+    {
+        if (v8_ret.IsEmpty())
+        {
+            SKR_LOG_FMT_ERROR(u8"return value not found");
+            return false;
+        }
+        v8::Local<v8::Value> v8_return = v8_ret.ToLocalChecked();
+        if (!to_native(return_value.signature.view(), return_value.data, v8_return, false))
+        {
+            SKR_LOG_FMT_ERROR(u8"convert return value to native failed");
+            return false;
+        }
+    }
+
+    return true;
 }
 
 // => IScriptMixinCore API

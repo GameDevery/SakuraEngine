@@ -6,14 +6,17 @@
 #include "v8-platform.h"
 #include "v8_bind_data.hpp"
 #include "v8-primitive.h"
+#include <SkrRTTR/stack_proxy.hpp>
 #ifndef __meta__
     #include "SkrV8/v8_bind_manager.generated.h"
 #endif
 
 namespace skr
 {
+// clang-format off
 sreflect_struct(guid = "50b1cef1-5171-4251-80a9-24a085f5b627") 
 SKR_V8_API V8BindManager : IScriptMixinCore {
+    // clang-format on
     SKR_GENERATE_BODY()
 
     // ctor & dtor
@@ -44,8 +47,16 @@ SKR_V8_API V8BindManager : IScriptMixinCore {
     v8::Local<v8::FunctionTemplate> get_record_template(const RTTRType* type);
 
     // convert
-    v8::Local<v8::Value> to_v8(const RTTRType* type, const void* data);
-    bool                 to_native(const RTTRType* type, void* data, v8::Local<v8::Value> v8_value, bool is_init);
+    v8::Local<v8::Value> to_v8(TypeSignatureView sig_view, const void* data);
+    bool                 to_native(TypeSignatureView sig_view, void* data, v8::Local<v8::Value> v8_value, bool is_init);
+
+    // invoke script
+    bool invoke_v8(
+        v8::Local<v8::Value>    v8_this,
+        v8::Local<v8::Function> v8_func,
+        span<const StackProxy>        params,
+        StackProxy              return_value
+    );
 
     // get script binder
     inline const ScriptBinderManager& script_binder_manger() const { return _binder_mgr; }

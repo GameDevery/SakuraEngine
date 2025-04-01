@@ -388,13 +388,33 @@ TEST_CASE("test v8")
         context.shutdown();
     }
 
+    SUBCASE("call script")
+    {
+        V8Context context(&isolate);
+        context.init();
+        context.build_global_export([](ScriptModule& module) {
+        });
+
+        context.exec_script(u8R"__(
+            function str_join(a, b, c) {
+                return `${a} + ${b} + ${c}`
+            }
+        )__");
+        auto str_join_func = context.get_global(u8"str_join");
+        auto result        = str_join_func.call<skr::String>(skr::String{ u8"hello" }, skr::String{ u8"world" }, skr::String{ u8"!" });
+        REQUIRE(result.has_value());
+        REQUIRE_EQ(result.value(), u8"hello + world + !");
+
+        context.shutdown();
+    }
+
     // output .d.ts
     SUBCASE("output d.ts")
     {
         // build module
         ScriptBinderManager bm;
         ScriptModule        sm;
-        sm.manager = &bm;
+        sm.manager     = &bm;
         uint32_t count = 0;
         each_types_of_module(u8"V8Test", [&](const RTTRType* type) -> bool {
             if (count % 2 == 0)
@@ -405,7 +425,7 @@ TEST_CASE("test v8")
             {
                 sm.register_type(type, u8"fuck::you::圆头");
             }
-            
+
             ++count;
             return true;
         });
