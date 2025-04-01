@@ -252,7 +252,7 @@ V8BindCoreValue* V8Isolate::create_value(const RTTRType* type, const void* sourc
     Local<Object>         object            = instance_template->NewInstance(context).ToLocalChecked();
 
     // make bind core
-    auto value_bind_core     = SkrNew<V8BindCoreValue>();
+    auto value_bind_core     = _new_bind_core<V8BindCoreValue>();
     value_bind_core->manager = this;
     value_bind_core->type    = type;
     value_bind_core->data    = alloc_mem;
@@ -310,7 +310,7 @@ V8BindCoreValue* V8Isolate::translate_value_field(const RTTRType* type, const vo
         Local<Object>         object            = instance_template->NewInstance(context).ToLocalChecked();
 
         // make bind core
-        auto value_bind_core     = SkrNew<V8BindCoreValue>();
+        auto value_bind_core     = _new_bind_core<V8BindCoreValue>();
         value_bind_core->manager = this;
         value_bind_core->type    = type;
         value_bind_core->data    = const_cast<void*>(data);
@@ -347,7 +347,7 @@ V8BindCoreValue* V8Isolate::translate_value_field(const RTTRType* type, const vo
         Local<Object>         object            = instance_template->NewInstance(context).ToLocalChecked();
 
         // create new core
-        auto* value_bind_core    = SkrNew<V8BindCoreValue>();
+        auto* value_bind_core    = _new_bind_core<V8BindCoreValue>();
         value_bind_core->manager = this;
         value_bind_core->type    = type;
         value_bind_core->data    = const_cast<void*>(data);
@@ -629,7 +629,9 @@ void V8Isolate::on_object_destroyed(ScriptbleObject* obj)
 }
 bool V8Isolate::try_invoke_mixin(ScriptbleObject* obj, StringView name, const span<const StackProxy> params, StackProxy ret)
 {
-    auto* isolate = v8::Isolate::GetCurrent();
+    v8::Isolate::Scope isolate_scope(_isolate);
+
+    auto* isolate = _isolate;
     auto  context = isolate->GetCurrentContext();
 
     // find bound object
@@ -734,6 +736,22 @@ void V8Isolate::_fill_record_template(
 
     // setup internal field count
     ctor_template->InstanceTemplate()->SetInternalFieldCount(1);
+
+    // bind mixin
+    for (const auto& [mixin_name, mixin_binder] : binder->mixin_methods)
+    {
+        auto mixin_bind_data    = _new_bind_data<V8BindDataMixin>();
+        mixin_bind_data->binder = mixin_binder;
+        ctor_template->PrototypeTemplate()->Set(
+            V8Bind::to_v8(mixin_name, true),
+            FunctionTemplate::New(
+                isolate,
+                _call_mixin,
+                External::New(isolate, mixin_bind_data)
+            )
+        );
+        bind_data->mixins.add(mixin_name, mixin_bind_data);
+    }
 
     // bind method
     for (const auto& [method_name, method_binder] : binder->methods)
@@ -929,7 +947,7 @@ void V8Isolate::_gc_callback(const ::v8::WeakCallbackInfo<V8BindCoreRecordBase>&
         auto* object_core = bind_core->as_object();
 
         // get data
-        auto* bind_manager = bind_core->manager;
+        auto* skr_isolate = bind_core->manager;
 
         // remove alive object
         if (object_core->object)
@@ -943,12 +961,12 @@ void V8Isolate::_gc_callback(const ::v8::WeakCallbackInfo<V8BindCoreRecordBase>&
                 SkrDelete(object_core->object);
             }
 
-            bind_manager->_alive_objects.remove(object_core->object);
+            skr_isolate->_alive_objects.remove(object_core->object);
         }
         else
         {
             // remove from deleted records
-            bind_manager->_deleted_objects.remove(bind_core);
+            skr_isolate->_deleted_objects.remove(bind_core);
         }
 
         // reset object handle
@@ -970,7 +988,7 @@ void V8Isolate::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 
     // get user data
     auto* bind_data    = reinterpret_cast<V8BindDataRecordBase*>(info.Data().As<External>()->Value());
-    auto* bind_manager = bind_data->manager;
+    auto* skr_isolate = bind_data->manager;
 
     // handle call
     if (info.IsConstructCall())
@@ -1045,7 +1063,7 @@ void V8Isolate::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
                 self->SetInternalField(0, External::New(Isolate, bind_core));
 
                 // add to map
-                bind_manager->_script_created_values.add(bind_core->data, bind_core);
+                skr_isolate->_script_created_values.add(bind_core->data, bind_core);
             }
             else
             {
@@ -1103,14 +1121,14 @@ void V8Isolate::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
                 void* casted_mem = binder->type->cast_to_base(type_id_of<ScriptbleObject>(), alloc_mem);
 
                 // make bind core
-                V8BindCoreObject* bind_core = SkrNew<V8BindCoreObject>();
+                V8BindCoreObject* bind_core = skr_isolate->_new_bind_core<V8BindCoreObject>();
                 bind_core->manager          = bind_data->manager;
                 bind_core->type             = binder->type;
                 bind_core->data             = alloc_mem;
                 bind_core->object           = reinterpret_cast<ScriptbleObject*>(casted_mem);
 
                 // setup mixin
-                bind_core->object->set_mixin_core(bind_manager);
+                bind_core->object->set_mixin_core(skr_isolate);
 
                 // setup owner ship
                 bind_core->object->ownership_take_script();
@@ -1127,7 +1145,7 @@ void V8Isolate::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
                 self->SetInternalField(0, External::New(Isolate, bind_core));
 
                 // add to map
-                bind_manager->_alive_objects.add(bind_core->object, bind_core);
+                skr_isolate->_alive_objects.add(bind_core->object, bind_core);
             }
             else
             {
@@ -1139,6 +1157,52 @@ void V8Isolate::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
     else
     {
         Isolate->ThrowError("must be called with new");
+    }
+}
+void V8Isolate::_call_mixin(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
+{
+    using namespace ::v8;
+
+    // get v8 basic info
+    Isolate* Isolate = info.GetIsolate();
+
+    // scopes
+    HandleScope HandleScope(Isolate);
+
+    // get self data
+    Local<Object> self      = info.This();
+    auto*         bind_core = reinterpret_cast<V8BindCoreRecordBase*>(self->GetInternalField(0).As<External>()->Value());
+
+    // check core
+    if (!bind_core->is_valid())
+    {
+        Isolate->ThrowError("calling on a released object");
+        return;
+    }
+
+    // get user data
+    auto* bind_data = reinterpret_cast<V8BindDataMixin*>(info.Data().As<External>()->Value());
+
+    // block ctor call
+    if (info.IsConstructCall())
+    {
+        Isolate->ThrowError("method can not be called with new");
+        return;
+    }
+
+    // call method
+    bool success = bind_data->manager->_call_native(
+        bind_data->binder,
+        info,
+        bind_core->data,
+        bind_core->type
+    );
+
+    // throw
+    if (!success)
+    {
+        Isolate->ThrowError("no matched method");
+        return;
     }
 }
 void V8Isolate::_call_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
@@ -2386,6 +2450,80 @@ bool V8Isolate::_call_native(
     binder.data->dynamic_stack_invoke(obj, native_stack);
 
     return true;
+}
+bool V8Isolate::_call_native(
+    const ScriptBinderMixinMethod&                 binder,
+    const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
+    void*                                          obj,
+    const RTTRType*                                obj_type
+)
+{
+    // match overload
+    const ScriptBinderMixinMethod::Overload* final_overload = nullptr;
+    int32_t                             highest_score  = std::numeric_limits<int32_t>::min();
+    for (const auto& overload : binder.overloads)
+    {
+        auto result = V8Bind::match(overload.params_binder, overload.params_count, v8_stack);
+        if (!result.matched) { continue; }
+        if (result.match_score > highest_score)
+        {
+            highest_score  = result.match_score;
+            final_overload = &overload;
+        }
+    }
+
+    // invoke overload
+    if (final_overload)
+    {
+        DynamicStack native_stack;
+
+        // push param
+        uint32_t v8_stack_index = 0;
+        for (const auto& param_binder : final_overload->params_binder)
+        {
+            if (param_binder.inout_flag == ERTTRParamFlag::Out)
+            { // pure out param, we will push a dummy xvalue
+                _push_param_pure_out(
+                    native_stack,
+                    param_binder
+                );
+            }
+            else
+            {
+                _push_param(
+                    native_stack,
+                    param_binder,
+                    v8_stack[v8_stack_index]
+                );
+                ++v8_stack_index;
+            }
+        }
+
+        // cast
+        void* owner_address = obj_type->cast_to_base(final_overload->owner->type_id(), obj);
+
+        // invoke
+        native_stack.return_behaviour_store();
+        final_overload->impl_data->dynamic_stack_invoke(owner_address, native_stack);
+
+        // read return
+        auto return_value = _read_return(
+            native_stack,
+            final_overload->params_binder,
+            final_overload->return_binder,
+            final_overload->return_count
+        );
+        if (!return_value.IsEmpty())
+        {
+            v8_stack.GetReturnValue().Set(return_value);
+        }
+
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 bool V8Isolate::_call_native(
     const ScriptBinderMethod&                      binder,

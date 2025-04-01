@@ -39,12 +39,12 @@ SKR_V8_API V8Isolate: IScriptMixinCore {
     void shutdown();
 
     // isolate operators
-    void                  pump_message_loop();
-    void                  gc(bool full = true);
+    void pump_message_loop();
+    void gc(bool full = true);
 
     // getter
-    inline v8::Isolate* v8_isolate() const { return _isolate; }
-    inline ScriptBinderManager& script_binder_manger() { return _binder_mgr; }
+    inline v8::Isolate*               v8_isolate() const { return _isolate; }
+    inline ScriptBinderManager&       script_binder_manger() { return _binder_mgr; }
     inline const ScriptBinderManager& script_binder_manger() const { return _binder_mgr; }
 
     // bind object
@@ -108,10 +108,18 @@ private:
         result->manager = this;
         return result;
     }
+    template <typename T>
+    inline T* _new_bind_core()
+    {
+        auto* result        = SkrNew<T>();
+        result->skr_isolate = this;
+        return result;
+    }
 
     // bind methods
     static void _gc_callback(const ::v8::WeakCallbackInfo<V8BindCoreRecordBase>& data);
     static void _call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
+    static void _call_mixin(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
     static void _call_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
     static void _call_static_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
     static void _get_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
@@ -246,6 +254,12 @@ private:
         const ScriptBinderCtor&                        binder,
         const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
         void*                                          obj
+    );
+    bool _call_native(
+        const ScriptBinderMixinMethod&                 binder,
+        const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
+        void*                                          obj,
+        const RTTRType*                                obj_type
     );
     bool _call_native(
         const ScriptBinderMethod&                      binder,

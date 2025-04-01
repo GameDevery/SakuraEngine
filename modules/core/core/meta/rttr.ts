@@ -393,7 +393,6 @@ class _Gen {
         b.$line(`// mixin methods of ${record.name}`);
         b.$namespace(record.namespace.join("::"), _b => {
           mixin_methods.forEach(method => {
-            const impl_method = record.methods.find(m => m.short_name === `${method.short_name}_impl` && !m.is_static);
             b.$line(`${method.ret_type} ${record.short_name}::${method.short_name}(${method.dump_params()}){`)
             b.$indent(_b => {
               b.$line(`auto mixin_result = try_invoke_mixin_method<${method.ret_type}${method.dump_params_type_only_with_comma()}>(u8"${method.short_name}"${method.dump_params_name_only_with_comma()});`);
@@ -414,15 +413,7 @@ class _Gen {
               // no value case
               b.$line(`} else {`)
               b.$indent(_b => {
-                if (impl_method !== undefined) {
-                  b.$line(`return this->${impl_method.short_name}(${method.dump_params_name_only()});`)
-                } else {
-                  if (method.ret_type !== "void") {
-                    b.$line(`return {};`)
-                  } else {
-                    b.$line(`return;`)
-                  }
-                }
+                b.$line(`return this->${method.short_name}_impl(${method.dump_params_name_only()});`)
               })
               b.$line(`}`)
 

@@ -294,6 +294,21 @@ struct ScriptBinderStaticMethod {
     Vector<Overload> overloads = {};
     bool             failed    = false;
 };
+struct ScriptBinderMixinMethod {
+    struct Overload {
+        const RTTRType*           owner         = nullptr;
+        const RTTRMethodData*     data          = nullptr;
+        const RTTRMethodData*     impl_data     = nullptr;
+        ScriptBinderReturn        return_binder = {};
+        Vector<ScriptBinderParam> params_binder = {};
+        uint32_t                  params_count  = 0;
+        uint32_t                  return_count  = 1;
+        bool                      failed        = false;
+    };
+
+    Vector<Overload> overloads = {};
+    bool             failed    = false;
+};
 
 // nested binder, property
 struct ScriptBinderProperty {
@@ -341,6 +356,7 @@ struct ScriptBinderRecordBase {
     Map<String, ScriptBinderStaticField>    static_fields     = {};
     Map<String, ScriptBinderMethod>         methods           = {};
     Map<String, ScriptBinderStaticMethod>   static_methods    = {};
+    Map<String, ScriptBinderMixinMethod>    mixin_methods     = {};
     Map<String, ScriptBinderProperty>       properties        = {};
     Map<String, ScriptBinderStaticProperty> static_properties = {};
 
@@ -388,6 +404,7 @@ private:
     void _make_ctor(ScriptBinderCtor& out, const RTTRCtorData* ctor, const RTTRType* owner);
     void _make_method(ScriptBinderMethod::Overload& out, const RTTRMethodData* method, const RTTRType* owner);
     void _make_static_method(ScriptBinderStaticMethod::Overload& out, const RTTRStaticMethodData* method, const RTTRType* owner);
+    void _make_mixin_method(ScriptBinderMixinMethod::Overload& out, const RTTRMethodData* method, const RTTRMethodData* impl_method, const RTTRType* owner);
     void _make_prop_getter(ScriptBinderMethod& out, const RTTRMethodData* method, const RTTRType* owner);
     void _make_prop_setter(ScriptBinderMethod& out, const RTTRMethodData* method, const RTTRType* owner);
     void _make_static_prop_getter(ScriptBinderStaticMethod& out, const RTTRStaticMethodData* method, const RTTRType* owner);
@@ -396,6 +413,8 @@ private:
     void _make_static_field(ScriptBinderStaticField& out, const RTTRStaticFieldData* field, const RTTRType* owner);
     void _make_param(ScriptBinderParam& out, const RTTRParamData* param);
     void _make_return(ScriptBinderReturn& out, TypeSignatureView signature);
+    void _make_mixin_param(ScriptBinderParam& out, const RTTRParamData* param);
+    void _make_mixin_return(ScriptBinderReturn& out, TypeSignatureView signature);
 
     // checker
     void _try_export_field(TypeSignatureView signature, ScriptBinderRoot& out_binder);

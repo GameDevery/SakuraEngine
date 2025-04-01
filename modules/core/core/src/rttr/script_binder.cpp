@@ -1,3 +1,4 @@
+#include "SkrContainersDef/set.hpp"
 #include "SkrCore/log.hpp"
 #include "SkrRTTR/scriptble_object.hpp"
 #include <SkrRTTR/script_binder.hpp>
@@ -312,6 +313,37 @@ void ScriptBinderManager::_fill_record_info(ScriptBinderRecordBase& out, const R
         });
     }
 
+    Set<const RTTRMethodData*> mixin_consumed_methods;
+
+    // export mixin
+    type->each_method([&](const RTTRMethodData* method, const RTTRType* owner_type) {
+        if (!flag_all(owner_type->record_flag(), ERTTRRecordFlag::ScriptVisible)) { return; }
+        if (!flag_all(method->flag, ERTTRMethodFlag::ScriptVisible)) { return; }
+        if (!flag_all(method->flag, ERTTRMethodFlag::ScriptMixin)) { return; }
+
+        mixin_consumed_methods.add(method);
+
+        // find mixin impl
+        String impl_method_name  = String::Build(method->name, u8"_impl");
+        auto   found_impl_method = owner_type->find_method({
+              .name          = impl_method_name,
+              .include_bases = false,
+        });
+        if (!found_impl_method)
+        {
+            _logger.error(u8"miss impl for mixin method '{}', witch should be named '{}'", method->name, impl_method_name);
+            return;
+        }
+
+        // export
+        auto& mixin_method_data = out.mixin_methods.try_add_default(method->name).value();
+        auto& overload_data     = mixin_method_data.overloads.add_default().ref();
+        _make_mixin_method(overload_data, method, found_impl_method, owner_type);
+
+        // clang-format off
+    }, {.include_bases = true});
+    // clang-format on
+
     // export fields
     type->each_field([&](const RTTRFieldData* field, const RTTRType* owner_type) {
         if (!flag_all(owner_type->record_flag(), ERTTRRecordFlag::ScriptVisible)) { return; }
@@ -338,6 +370,7 @@ void ScriptBinderManager::_fill_record_info(ScriptBinderRecordBase& out, const R
     type->each_method([&](const RTTRMethodData* method, const RTTRType* owner_type) {
         if (!flag_all(owner_type->record_flag(), ERTTRRecordFlag::ScriptVisible)) { return; }
         if (!flag_all(method->flag, ERTTRMethodFlag::ScriptVisible)) { return; }
+        if (mixin_consumed_methods.contains(method)) { return; }
 
         auto find_getter_result = method->attrs.find_if([&](const Any& attr) {
             return attr.type_is<skr::attr::ScriptGetter>();
@@ -692,6 +725,36 @@ void ScriptBinderManager::_make_static_method(ScriptBinderStaticMethod::Overload
 
     out.failed |= _logger.any_error();
 }
+void ScriptBinderManager::_make_mixin_method(ScriptBinderMixinMethod::Overload& out, const RTTRMethodData* method, const RTTRMethodData* impl_method, const RTTRType* owner)
+{
+    auto _log_stack = _logger.stack(u8"export mixin method {}", method->name);
+
+    // basic data
+    out.data      = method;
+    out.impl_data = impl_method;
+    out.owner     = owner;
+
+    // check signature
+    if (!method->signature_equal(*impl_method, ETypeSignatureCompareFlag::Strict))
+    {
+        _logger.error(u8"mixin method '{}' and '{}'_impl signature not match", method->name);
+    }
+
+    // export params
+    for (const auto* param : method->param_data)
+    {
+        auto& param_binder = out.params_binder.add_default().ref();
+        _make_mixin_param(param_binder, param);
+    }
+
+    // export return
+    _make_mixin_return(out.return_binder, method->ret_type.view());
+
+    // solve param count and return count
+    _solve_param_return_count(out);
+
+    out.failed |= _logger.any_error();
+}
 void ScriptBinderManager::_make_prop_getter(ScriptBinderMethod& out, const RTTRMethodData* method, const RTTRType* owner)
 {
     // check param count
@@ -1034,6 +1097,105 @@ void ScriptBinderManager::_make_return(ScriptBinderReturn& out, TypeSignatureVie
         {
             _logger.error(
                 u8"export value {} as pointer type",
+                out.binder.value()->type->name()
+            );
+        }
+        break;
+    }
+    case ScriptBinderRoot::EKind::Object: {
+        if (!is_pointer)
+        {
+            _logger.error(
+                u8"export object {} as value or reference type",
+                out.binder.object()->type->name()
+            );
+        }
+        break;
+    }
+    default: {
+        _logger.error(u8"unsupported type");
+        break;
+    }
+    }
+}
+void ScriptBinderManager::_make_mixin_param(ScriptBinderParam& out, const RTTRParamData* param)
+{
+    // just same as call native param
+    _make_param(out, param);
+}
+void ScriptBinderManager::_make_mixin_return(ScriptBinderReturn& out, TypeSignatureView signature)
+{
+    auto _log_stack = _logger.stack(u8"export return");
+
+    // check signature type
+    if (!signature.is_type())
+    {
+        _logger.error(u8"unsupported type");
+        return;
+    }
+
+    // check pointer level
+    if (signature.decayed_pointer_level() > 1)
+    {
+        _logger.error(u8"pointer level greater than 1");
+        return;
+    }
+
+    // solve modifier
+    bool is_pointer         = signature.is_pointer();
+    bool is_decayed_pointer = signature.is_decayed_pointer();
+    out.pass_by_ref         = is_decayed_pointer;
+
+    // read type id
+    skr::GUID param_type_id;
+    signature.jump_modifier();
+    signature.read_type_id(param_type_id);
+
+    // get binder
+    out.binder = get_or_build(param_type_id);
+
+    // check binder
+    switch (out.binder.kind())
+    {
+    case ScriptBinderRoot::EKind::Primitive: {
+        if (is_decayed_pointer)
+        {
+            _logger.error(
+                u8"cannot return primitive reference when using mixin",
+                out.binder.primitive()->type_id
+            );
+        }
+        if (out.binder.primitive()->type_id == type_id_of<void>())
+        {
+            out.is_void = true;
+        }
+        break;
+    }
+    case ScriptBinderRoot::EKind::Enum: {
+        if (is_decayed_pointer)
+        {
+            _logger.error(
+                u8"cannot return enum reference when using mixin",
+                out.binder.enum_()->type->name()
+            );
+        }
+        break;
+    }
+    case ScriptBinderRoot::EKind::Mapping: {
+        if (is_decayed_pointer)
+        {
+            _logger.error(
+                u8"cannot return primitive/mapping reference when using mixin",
+                out.binder.mapping()->type->name()
+            );
+        }
+        break;
+    }
+    case ScriptBinderRoot::EKind::Value: {
+        if (is_decayed_pointer)
+        {
+            _logger.error(
+                u8"cannot return value reference when using mixin",
                 out.binder.value()->type->name()
             );
         }

@@ -14,9 +14,11 @@ BasicMapping   BasicMappingHelper::basic_value   = {};
 InheritMapping BasicMappingHelper::inherit_value = {};
 
 BasicEnum   BasicEnumHelper::test_value = BasicEnum::Value1;
-skr::String BasicEnumHelper::test_name = {};
+skr::String BasicEnumHelper::test_name  = {};
 
 skr::String ParamFlagTest::test_value = u8"";
 
 skr::String TestString::value = {};
+
+RttrMixin* MixinHelper::mixin = nullptr;
 } // namespace test_v8

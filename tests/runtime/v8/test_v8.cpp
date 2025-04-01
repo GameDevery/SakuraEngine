@@ -408,7 +408,7 @@ TEST_CASE("test v8")
         context.shutdown();
     }
 
-    SUBCASE("mixin")
+    SUBCASE("manual mixin")
     {
         V8Context context(&isolate);
         context.init();
@@ -460,6 +460,80 @@ TEST_CASE("test v8")
             auto result_str = result.get<String>();
             SKR_ASSERT(result_str.has_value());
             REQUIRE_EQ(result_str.value(), u8"object_mixin");
+        }
+
+        context.shutdown();
+    }
+
+    SUBCASE("rttr mixin")
+    {
+        V8Context context(&isolate);
+        context.init();
+        context.build_global_export([](ScriptModule& module) {
+            module.register_type<test_v8::RttrMixin>(u8"");
+            module.register_type<test_v8::MixinHelper>(u8"");
+        });
+
+        v8::HandleScope handle_scope(isolate.v8_isolate());
+        v8::Context::Scope context_scope(context.v8_context().Get(isolate.v8_isolate()));
+
+        // no mixin
+        {
+            context.exec_script(u8R"__(
+                let native = new RttrMixin()
+                MixinHelper.mixin = native
+            )__");
+
+            REQUIRE(test_v8::MixinHelper::mixin != nullptr);
+            REQUIRE_EQ(test_v8::MixinHelper::mixin->test_mixin_ret(), u8"FUCK");
+            test_v8::MixinHelper::mixin->test_mixin_param(114514);
+            REQUIRE_EQ(test_v8::MixinHelper::mixin->test_mixin_value, 114514 * 2);
+        }
+
+        // class mixin
+        {
+            context.exec_script(u8R"__(
+                class MixInImpl extends RttrMixin {
+                    constructor() {
+                        super();
+                    }
+                    test_mixin_ret() {
+                        return `${super.test_mixin_ret()} + mixin`;
+                    }
+                    test_mixin_param(v) {
+                        super.test_mixin_param(v * BigInt(5));
+                    }
+                }
+                let mixin = new MixInImpl()
+                MixinHelper.mixin = mixin
+            )__");
+
+            REQUIRE(test_v8::MixinHelper::mixin != nullptr);
+            REQUIRE_EQ(test_v8::MixinHelper::mixin->test_mixin_ret(), u8"FUCK + mixin");
+            test_v8::MixinHelper::mixin->test_mixin_param(114514);
+            REQUIRE_EQ(test_v8::MixinHelper::mixin->test_mixin_value, 114514 * 6);
+        }
+
+        // object mixin
+        {
+            context.exec_script(u8R"__(
+                const raw_mixin_ret = object_mixin.raw_mixin_ret
+                const raw_mixin_param = object_mixin.raw_mixin_param
+
+                object_mixin.raw_mixin_ret = function() {
+                    return `${raw_mixin_ret.call(this)} + mixin`;
+                }
+                object_mixin.raw_mixin_param = function(v) {
+                    raw_mixin_param.call(this, v * BigInt(5));
+                }
+
+                MixinHelper.mixin = object_mixin
+            )__");
+
+            REQUIRE(test_v8::MixinHelper::mixin != nullptr);
+            REQUIRE_EQ(test_v8::MixinHelper::mixin->test_mixin_ret(), u8"FUCK + mixin");
+            test_v8::MixinHelper::mixin->test_mixin_param(114514);
+            REQUIRE_EQ(test_v8::MixinHelper::mixin->test_mixin_value, 114514 * 6);
         }
 
         context.shutdown();

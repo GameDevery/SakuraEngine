@@ -320,13 +320,28 @@ sscript_visible sscript_newable
 RttrMixin : skr::ScriptbleObject {
     SKR_GENERATE_BODY()
 
-    sscript_visible sscript_mixin
-    skr::String test_pure_mixin();
+    sscript_visible
+    RttrMixin() = default;
 
     sscript_visible sscript_mixin
-    void test_mixin_with_native(uint64_t v);
-    void test_mixin_with_native_impl(uint64_t v) { test_mixin_value = v + 114514; }
+    skr::String test_mixin_ret();
+    skr::String test_mixin_ret_impl() { return u8"FUCK"; }
 
+    sscript_visible sscript_mixin
+    void test_mixin_param(uint64_t v);
+    void test_mixin_param_impl(uint64_t v) { 
+        test_mixin_value = v + 114514; 
+    }
+
+    sscript_visible
     uint64_t test_mixin_value = 0;
 };
+
+sreflect_struct(guid = "3d784c7b-0333-44d6-9759-3724d32f9d70" rttr = @full)
+sscript_visible
+MixinHelper {
+    sscript_visible
+    static RttrMixin* mixin;
+};
+
 }
