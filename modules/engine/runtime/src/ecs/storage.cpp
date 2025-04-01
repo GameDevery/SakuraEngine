@@ -1000,6 +1000,7 @@ void sugoiS_cast_view_delta(sugoi_storage_t* storage, const sugoi_chunk_view_t* 
 
 void sugoiS_cast_view_type(sugoi_storage_t* storage, const sugoi_chunk_view_t* view, const sugoi_entity_type_t* type, sugoi_cast_callback_t callback, void* u)
 {
+    SKR_ASSERT(sugoi::ordered(*type));
     storage->cast(*view, storage->get_group(*type), callback, u);
 }
 
@@ -1007,6 +1008,12 @@ void sugoiS_cast_group_delta(sugoi_storage_t* storage, sugoi_group_t* group, con
 {
     SKR_ASSERT(sugoi::ordered(*delta));
     storage->cast(group, storage->cast(group, *delta), callback, u);
+}
+
+void sugoiS_cast_group_type(sugoi_storage_t* storage, sugoi_group_t* group, const sugoi_entity_type_t* type, sugoi_cast_callback_t callback, void* u)
+{
+    SKR_ASSERT(sugoi::ordered(*type));
+    storage->cast(group, storage->get_group(*type), callback, u);
 }
 
 void sugoiS_access(sugoi_storage_t* storage, sugoi_entity_t ent, sugoi_chunk_view_t* view)

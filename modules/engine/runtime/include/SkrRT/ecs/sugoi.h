@@ -380,10 +380,21 @@ SKR_RUNTIME_API void sugoiS_cast_view_type(sugoi_storage_t* storage, const sugoi
 /**
  * @brief change entities' type
  * move whole group to another group, the original group will be destoryed
+ * @param storage
  * @param group
- * @param type
+ * @param delta
+ * @param callback optional callback before casting chunk view
  */
 SKR_RUNTIME_API void sugoiS_cast_group_delta(sugoi_storage_t* storage, sugoi_group_t* group, const sugoi_delta_type_t* delta, sugoi_cast_callback_t callback, void* u);
+/**
+ * @brief change entities' type
+ * move whole group to another group, the original group will be destoryed
+ * @param storage
+ * @param group
+ * @param type
+ * @param callback optional callback before casting chunk view
+ */
+SKR_RUNTIME_API void sugoiS_cast_group_type(sugoi_storage_t* storage, sugoi_group_t* group, const sugoi_entity_type_t* type, sugoi_cast_callback_t callback, void* u);
 /**
  * @brief get the chunk view of an entity
  * entity it self does not contain any data, get the chunk view of an entity to access it's data (all structural change apis and data access apis is based on chunk view)
