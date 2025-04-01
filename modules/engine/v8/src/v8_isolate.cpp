@@ -1806,8 +1806,10 @@ v8::Local<v8::Value> V8Isolate::_to_v8_object(
 {
     auto isolate = v8::Isolate::GetCurrent();
 
+    auto* object_pointer = *reinterpret_cast<void**>(native_data);
+
     auto* type             = binder.type;
-    void* cast_raw         = type->cast_to_base(type_id_of<ScriptbleObject>(), native_data);
+    void* cast_raw         = type->cast_to_base(type_id_of<ScriptbleObject>(), object_pointer);
     auto* scriptble_object = reinterpret_cast<ScriptbleObject*>(cast_raw);
 
     auto* bind_core = translate_object(scriptble_object);

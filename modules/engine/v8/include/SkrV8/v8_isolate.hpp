@@ -266,6 +266,11 @@ private:
         const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack
     );
 
+    // TODO. call native helper
+    // param helper for call script
+    // v8::Local<v8::Value> _translate_param(StackProxy proxy);
+    // void                 _translate_return(StackProxy proxy, v8::Local<v8::Value> v8_value);
+
 private:
     // isolate data
     v8::Isolate*              _isolate;

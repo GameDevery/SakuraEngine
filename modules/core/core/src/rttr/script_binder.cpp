@@ -745,11 +745,11 @@ void ScriptBinderManager::_make_mixin_method(ScriptBinderMethod::Overload& out, 
     for (const auto* param : method->param_data)
     {
         auto& param_binder = out.params_binder.add_default().ref();
-        _make_mixin_param(param_binder, param);
+        _make_param_call_script(param_binder, param);
     }
 
     // export return
-    _make_mixin_return(out.return_binder, method->ret_type.view());
+    _make_return_call_script(out.return_binder, method->ret_type.view());
 
     // solve param count and return count
     _solve_param_return_count(out);
@@ -1119,12 +1119,12 @@ void ScriptBinderManager::_make_return(ScriptBinderReturn& out, TypeSignatureVie
     }
     }
 }
-void ScriptBinderManager::_make_mixin_param(ScriptBinderParam& out, const RTTRParamData* param)
+void ScriptBinderManager::_make_param_call_script(ScriptBinderParam& out, const RTTRParamData* param)
 {
     // just same as call native param
     _make_param(out, param);
 }
-void ScriptBinderManager::_make_mixin_return(ScriptBinderReturn& out, TypeSignatureView signature)
+void ScriptBinderManager::_make_return_call_script(ScriptBinderReturn& out, TypeSignatureView signature)
 {
     auto _log_stack = _logger.stack(u8"export return");
 

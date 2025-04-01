@@ -25,21 +25,21 @@ struct StackProxyMaker {
     }
 };
 template <typename T>
-struct StackProxyMaker<T*> {
-    inline static StackProxy Make(T* data)
+struct StackProxyMaker<T*> { // see object export, we only pass object by pointer, and we should change pointer value when return it
+    inline static StackProxy Make(T*& data)
     {
         return {
-            .data      = data,
+            .data      = &data,
             .signature = type_signature_of<T*>(),
         };
     }
 };
 template <typename T>
-struct StackProxyMaker<const T*> {
-    inline static StackProxy Make(const T* data)
+struct StackProxyMaker<const T*> { // see object export, we only pass object by pointer, and we should change pointer value when return it
+    inline static StackProxy Make(const T*& data)
     {
         return {
-            .data      = const_cast<T*>(data),
+            .data      = &data,
             .signature = type_signature_of<T*>(),
         };
     }

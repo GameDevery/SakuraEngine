@@ -28,6 +28,7 @@ SKR_CORE_API IScriptMixinCore : virtual public skr::IObject
     virtual ~IScriptMixinCore() = default;
 
     virtual void on_object_destroyed(ScriptbleObject* obj)                                                                     = 0;
+    // TODO. 可以不传递 signature 信息，用缓存的 mixin 签名来做，以加速调用
     virtual bool try_invoke_mixin(ScriptbleObject* obj, StringView name, const span<const StackProxy> args, StackProxy result) = 0;
 };
 
