@@ -111,7 +111,7 @@ inline Optional<T> V8Value::get() const
     // solve context
     Local<Context> solved_context = context->v8_context().Get(isolate);
     Context::Scope context_scope(solved_context);
-    auto*          bind_manager    = context->isolate()->_bind_manager;
+    auto*          skr_isolate     = context->isolate();
     Local<Value>   solved_v8_value = v8_value.Get(isolate);
 
     if constexpr (
@@ -139,7 +139,7 @@ inline Optional<T> V8Value::get() const
         if constexpr (std::derived_from<RawType, ScriptbleObject>)
         {
             T result;
-            if (bind_manager->to_native(type_of<RawType>(), &result, solved_v8_value, false))
+            if (skr_isolate->to_native(type_of<RawType>(), &result, solved_v8_value, false))
             {
                 return { result };
             }
@@ -157,7 +157,7 @@ inline Optional<T> V8Value::get() const
     {
         T                     result;
         TypeSignatureTyped<T> type_sig;
-        if (bind_manager->to_native(type_sig.view(), &result, solved_v8_value, true))
+        if (skr_isolate->to_native(type_sig.view(), &result, solved_v8_value, true))
         {
             return { result };
         }
@@ -195,8 +195,8 @@ inline decltype(auto) V8Value::call(Args&&... args) const
         }
 
         // call function
-        auto* bind_manager = context->isolate()->_bind_manager;
-        bind_manager->invoke_v8(
+        auto* skr_isolate = context->isolate();
+        skr_isolate->invoke_v8(
             context->v8_context().Get(isolate)->Global(),
             v8_value_local.As<v8::Function>(),
             { StackProxyMaker<Args>::Make(std::forward<Args>(args))... },
@@ -214,9 +214,9 @@ inline decltype(auto) V8Value::call(Args&&... args) const
         }
 
         // call function
-        auto*            bind_manager = context->isolate()->_bind_manager;
+        auto*            skr_isolate = context->isolate();
         Placeholder<Ret> result_holder;
-        bool             call_success = bind_manager->invoke_v8(
+        bool             call_success = skr_isolate->invoke_v8(
             context->v8_context().Get(isolate)->Global(),
             v8_value_local.As<v8::Function>(),
             { StackProxyMaker<Args>::Make(std::forward<Args>(args))... },
@@ -248,8 +248,7 @@ inline void V8Context::set_global(StringView name, T&& v)
     // solve context
     Local<Context> solved_context = _context.Get(_isolate->v8_isolate());
     Context::Scope context_scope(solved_context);
-    Local<Object>  global       = solved_context->Global();
-    auto*          bind_manager = _isolate->_bind_manager;
+    Local<Object>  global = solved_context->Global();
 
     // translate value
     Local<Value> value;
@@ -269,16 +268,16 @@ inline void V8Context::set_global(StringView name, T&& v)
 
         if constexpr (std::derived_from<RawType, ScriptbleObject>)
         {
-            value = bind_manager->translate_object(v)->v8_object.Get(_isolate->v8_isolate());
+            value = _isolate->translate_object(v)->v8_object.Get(_isolate->v8_isolate());
         }
         else
         {
-            value = bind_manager->create_value(type_of<RawType>(), v)->v8_object.Get(_isolate->v8_isolate());
+            value = _isolate->create_value(type_of<RawType>(), v)->v8_object.Get(_isolate->v8_isolate());
         }
     }
     else
     {
-        value = bind_manager->create_value(type_of<DecayType>(), &v)->v8_object.Get(_isolate->v8_isolate());
+        value = _isolate->create_value(type_of<DecayType>(), &v)->v8_object.Get(_isolate->v8_isolate());
     }
 
     // set value

@@ -251,7 +251,7 @@ V8MethodMatchResult V8Bind::match(
 // namespace helper
 v8::Local<v8::Value> V8Bind::export_namespace_node(
     const ScriptNamespaceNode* node,
-    V8BindManager*             bind_manager
+    V8Isolate*                 skr_isolate
 )
 {
     auto isolate = v8::Isolate::GetCurrent();
@@ -270,7 +270,7 @@ v8::Local<v8::Value> V8Bind::export_namespace_node(
                 result->Set(
                     context,
                     V8Bind::to_v8(node_name, true),
-                    export_namespace_node(node, bind_manager)
+                    export_namespace_node(node, skr_isolate)
                 ).Check();
                 // clang-format on
             }
@@ -284,19 +284,19 @@ v8::Local<v8::Value> V8Bind::export_namespace_node(
         {
         case ScriptBinderRoot::EKind::Object: {
             auto* object_mapper    = type.object();
-            auto  object_template  = bind_manager->get_record_template(object_mapper->type);
+            auto  object_template  = skr_isolate->get_or_add_record_template(object_mapper->type);
             auto  object_ctor_func = object_template->GetFunction(context).ToLocalChecked();
             return object_ctor_func;
         }
         case ScriptBinderRoot::EKind::Value: {
             auto* value_mapper    = type.value();
-            auto  value_template  = bind_manager->get_record_template(value_mapper->type);
+            auto  value_template  = skr_isolate->get_or_add_record_template(value_mapper->type);
             auto  value_ctor_func = value_template->GetFunction(context).ToLocalChecked();
             return value_ctor_func;
         }
         case ScriptBinderRoot::EKind::Enum: {
             auto* enum_mapper   = type.enum_();
-            auto  enum_template = bind_manager->get_enum_template(enum_mapper->type);
+            auto  enum_template = skr_isolate->get_or_add_enum_template(enum_mapper->type);
             auto  enum_object   = enum_template->NewInstance(context).ToLocalChecked();
             return enum_object;
         }

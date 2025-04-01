@@ -12,7 +12,7 @@ namespace skr
 V8Context::V8Context(V8Isolate* isolate)
     : _isolate(isolate)
 {
-    _global_module.manager = &_isolate->_bind_manager->script_binder_manger();
+    _global_module.manager = &_isolate->script_binder_manger();
 }
 V8Context::~V8Context()
 {
@@ -92,7 +92,7 @@ bool V8Context::build_global_export(FunctionRef<void(ScriptModule& module)> buil
                 context->Global()->Set(
                     context,
                     V8Bind::to_v8(k, true),
-                    V8Bind::export_namespace_node(v, _isolate->_bind_manager)
+                    V8Bind::export_namespace_node(v, _isolate)
                 ).Check();
                 // clang-format on
             }

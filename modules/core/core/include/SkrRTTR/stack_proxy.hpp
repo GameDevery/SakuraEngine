@@ -4,8 +4,8 @@
 namespace skr
 {
 struct StackProxy {
-    void*         data;
-    TypeSignature signature;
+    void*         data      = nullptr;
+    TypeSignature signature = {};
 };
 template <typename T>
 struct StackProxyMaker {

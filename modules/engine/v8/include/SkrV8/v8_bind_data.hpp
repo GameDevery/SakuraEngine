@@ -7,37 +7,37 @@
 
 namespace skr
 {
-struct V8BindManager;
+struct V8Isolate;
 //===============================bind data===============================
 struct V8BindDataMethod {
     ScriptBinderMethod binder;
     // manager
-    V8BindManager* manager = nullptr;
+    V8Isolate* manager = nullptr;
 };
 struct V8BindDataStaticMethod {
     ScriptBinderStaticMethod binder;
     // manager
-    V8BindManager* manager = nullptr;
+    V8Isolate* manager = nullptr;
 };
 struct V8BindDataField {
     ScriptBinderField binder;
     // manager
-    V8BindManager* manager = nullptr;
+    V8Isolate* manager = nullptr;
 };
 struct V8BindDataStaticField {
     ScriptBinderStaticField binder;
     // manager
-    V8BindManager* manager = nullptr;
+    V8Isolate* manager = nullptr;
 };
 struct V8BindDataProperty {
     ScriptBinderProperty binder;
     // manager
-    V8BindManager* manager = nullptr;
+    V8Isolate* manager = nullptr;
 };
 struct V8BindDataStaticProperty {
     ScriptBinderStaticProperty binder;
     // manager
-    V8BindManager* manager = nullptr;
+    V8Isolate* manager = nullptr;
 };
 struct V8BindDataObject;
 struct V8BindDataValue;
@@ -55,7 +55,7 @@ struct V8BindDataRecordBase {
     Map<String, V8BindDataStaticProperty*> static_properties;
 
     // manager
-    V8BindManager* manager = nullptr;
+    V8Isolate* manager = nullptr;
 
     V8BindDataObject* as_object();
     V8BindDataValue*  as_value();
@@ -109,7 +109,7 @@ struct V8BindDataEnum {
     v8::Global<v8::ObjectTemplate> enum_template;
 
     // manager
-    V8BindManager* manager = nullptr;
+    V8Isolate* manager = nullptr;
 
     ScriptBinderEnum* binder;
 };
@@ -127,7 +127,6 @@ inline V8BindDataValue* V8BindDataRecordBase::as_value()
 //===============================bind core===============================
 struct V8BindCoreObject;
 struct V8BindCoreValue;
-struct V8BindManager;
 struct V8BindCoreRecordBase {
     // type
     V8BindCoreObject* as_object();
@@ -147,7 +146,7 @@ struct V8BindCoreRecordBase {
     ::v8::Persistent<::v8::Object> v8_object = {};
 
     // manager
-    V8BindManager* manager = nullptr;
+    V8Isolate* manager = nullptr;
 
     inline bool is_valid() const
     {

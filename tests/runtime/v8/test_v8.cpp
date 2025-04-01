@@ -408,6 +408,52 @@ TEST_CASE("test v8")
         context.shutdown();
     }
 
+    SUBCASE("mixin")
+    {
+        V8Context context(&isolate);
+        context.init();
+        context.build_global_export([](ScriptModule& module) {
+            module.register_type<test_v8::ManualMixin>(u8"");
+        });
+
+        // class mixin
+        {
+            auto result = context.exec_script(u8R"__(
+                class MixInImpl extends ManualMixin {
+                    constructor() {
+                        super();
+                    }
+                    get_name() {
+                        return "mixin";
+                    }
+                }
+                let mixin = new MixInImpl();
+                ManualMixin.call_get_name(mixin);
+            )__");
+
+            auto result_str = result.get<String>();
+            SKR_ASSERT(result_str.has_value());
+            REQUIRE_EQ(result_str.value(), u8"mixin");
+        }
+
+        // object mixin
+        {
+            auto result = context.exec_script(u8R"__(
+                let object_mixin = new ManualMixin();
+                object_mixin.get_name = function() {
+                    return "object_mixin";
+                }
+                ManualMixin.call_get_name(object_mixin);
+            )__");
+
+            auto result_str = result.get<String>();
+            SKR_ASSERT(result_str.has_value());
+            REQUIRE_EQ(result_str.value(), u8"object_mixin");
+        }
+
+        context.shutdown();
+    }
+
     // output .d.ts
     SUBCASE("output d.ts")
     {

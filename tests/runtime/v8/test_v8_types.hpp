@@ -285,5 +285,33 @@ TestString {
 };
 }
 
-// TODO. test value field
-// TODO. test complex type
+// mixin
+namespace test_v8
+{
+sreflect_struct(guid = "749ccab0-c7fb-4078-b4a3-97d7f61d7596" rttr = @full)
+sscript_visible sscript_newable
+ManualMixin : skr::ScriptbleObject {
+    SKR_GENERATE_BODY()
+
+    sscript_visible
+    ManualMixin() = default;
+
+    skr::String get_name() {
+        auto mixin_result = try_invoke_mixin_method<skr::String>(u8"get_name");
+        if (mixin_result.has_value())
+        {
+            return mixin_result.value();
+        }
+        else
+        {
+            return u8"DEFAULT";
+        }
+    }
+
+    sscript_visible
+    static skr::String call_get_name(ManualMixin* obj)
+    {
+        return obj->get_name();
+    }
+};
+}
