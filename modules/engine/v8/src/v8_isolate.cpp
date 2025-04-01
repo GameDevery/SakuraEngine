@@ -2106,6 +2106,13 @@ void V8Isolate::_push_param(
             auto  v8_object = v8_value->ToObject(context).ToLocalChecked();
             auto  bind_core = reinterpret_cast<V8BindCoreValue*>(v8_object->GetInternalField(0).As<v8::External>()->Value());
 
+            // check bind core
+            if (!bind_core->is_valid())
+            {
+                isolate->ThrowError("calling on a released object");
+                return;
+            }
+
             // push pointer
             auto* cast_ptr = bind_core->type->cast_to_base(value_binder->type->type_id(), bind_core->data);
             stack.add_param<void*>(cast_ptr);
