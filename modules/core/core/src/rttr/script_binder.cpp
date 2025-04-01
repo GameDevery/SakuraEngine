@@ -334,9 +334,10 @@ void ScriptBinderManager::_fill_record_info(ScriptBinderRecordBase& out, const R
             _logger.error(u8"miss impl for mixin method '{}', witch should be named '{}'", method->name, impl_method_name);
             return;
         }
+        mixin_consumed_methods.add(found_impl_method);
 
         // export
-        auto& mixin_method_data = out.mixin_methods.try_add_default(method->name).value();
+        auto& mixin_method_data = out.methods.try_add_default(method->name).value();
         auto& overload_data     = mixin_method_data.overloads.add_default().ref();
         _make_mixin_method(overload_data, method, found_impl_method, owner_type);
 
@@ -725,14 +726,14 @@ void ScriptBinderManager::_make_static_method(ScriptBinderStaticMethod::Overload
 
     out.failed |= _logger.any_error();
 }
-void ScriptBinderManager::_make_mixin_method(ScriptBinderMixinMethod::Overload& out, const RTTRMethodData* method, const RTTRMethodData* impl_method, const RTTRType* owner)
+void ScriptBinderManager::_make_mixin_method(ScriptBinderMethod::Overload& out, const RTTRMethodData* method, const RTTRMethodData* impl_method, const RTTRType* owner)
 {
     auto _log_stack = _logger.stack(u8"export mixin method {}", method->name);
 
     // basic data
-    out.data      = method;
-    out.impl_data = impl_method;
-    out.owner     = owner;
+    out.data            = method;
+    out.mixin_impl_data = impl_method;
+    out.owner           = owner;
 
     // check signature
     if (!method->signature_equal(*impl_method, ETypeSignatureCompareFlag::Strict))

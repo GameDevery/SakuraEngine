@@ -9,11 +9,6 @@ namespace skr
 {
 struct V8Isolate;
 //===============================bind data===============================
-struct V8BindDataMixin {
-    ScriptBinderMixinMethod binder;
-    // manager
-    V8Isolate* manager = nullptr;
-};
 struct V8BindDataMethod {
     ScriptBinderMethod binder;
     // manager
@@ -52,7 +47,6 @@ struct V8BindDataRecordBase {
 
     // native info
     bool                                   is_value = false;
-    Map<String, V8BindDataMixin*>          mixins;
     Map<String, V8BindDataMethod*>         methods;
     Map<String, V8BindDataField*>          fields;
     Map<String, V8BindDataStaticMethod*>   static_methods;
@@ -68,10 +62,6 @@ struct V8BindDataRecordBase {
 
     inline ~V8BindDataRecordBase()
     {
-        for (auto& pair : mixins)
-        {
-            SkrDelete(pair.value);
-        }
         for (auto& pair : methods)
         {
             SkrDelete(pair.value);

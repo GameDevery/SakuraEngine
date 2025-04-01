@@ -256,12 +256,6 @@ private:
         void*                                          obj
     );
     bool _call_native(
-        const ScriptBinderMixinMethod&                 binder,
-        const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
-        void*                                          obj,
-        const RTTRType*                                obj_type
-    );
-    bool _call_native(
         const ScriptBinderMethod&                      binder,
         const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
         void*                                          obj,

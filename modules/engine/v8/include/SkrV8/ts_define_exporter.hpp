@@ -250,31 +250,16 @@ inline void TSDefineExporter::_gen_record(ScriptBinderRecordBase& record_binder)
             $line(u8"{}: {};", field_name, _type_name_with_ns(field_value.binder));
         }
 
-        // mixin methods
-        for (auto& [mixin_method_name, mixin_method_value] : record_binder.mixin_methods)
-        {
-            for (auto& overload : mixin_method_value.overloads)
-            {
-                $line(u8"// [MIXIN]");
-                $line(
-                    u8"// cpp symbol: {}::{}",
-                    record_full_name,
-                    overload.data->name
-                );
-                $line(
-                    u8"{}({}): {};",
-                    mixin_method_name,
-                    _params_signature(overload.params_binder),
-                    _return_signature(overload.params_binder, overload.return_binder, overload.return_count)
-                );
-            }
-        }
-
         // methods
         for (auto& [method_name, method_value] : record_binder.methods)
         {
             for (auto& overload : method_value.overloads)
             {
+                if (overload.mixin_impl_data)
+                {
+                    $line(u8"// [MIXIN]");
+                }
+
                 $line(
                     u8"// cpp symbol: {}::{}",
                     record_full_name,

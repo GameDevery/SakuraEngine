@@ -517,13 +517,14 @@ TEST_CASE("test v8")
         // object mixin
         {
             context.exec_script(u8R"__(
-                const raw_mixin_ret = object_mixin.raw_mixin_ret
-                const raw_mixin_param = object_mixin.raw_mixin_param
+                let object_mixin = new RttrMixin()
+                const raw_mixin_ret = object_mixin.test_mixin_ret
+                const raw_mixin_param = object_mixin.test_mixin_param
 
-                object_mixin.raw_mixin_ret = function() {
+                object_mixin.test_mixin_ret = function() {
                     return `${raw_mixin_ret.call(this)} + mixin`;
                 }
-                object_mixin.raw_mixin_param = function(v) {
+                object_mixin.test_mixin_param = function(v) {
                     raw_mixin_param.call(this, v * BigInt(5));
                 }
 

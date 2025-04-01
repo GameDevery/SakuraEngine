@@ -737,22 +737,6 @@ void V8Isolate::_fill_record_template(
     // setup internal field count
     ctor_template->InstanceTemplate()->SetInternalFieldCount(1);
 
-    // bind mixin
-    for (const auto& [mixin_name, mixin_binder] : binder->mixin_methods)
-    {
-        auto mixin_bind_data    = _new_bind_data<V8BindDataMixin>();
-        mixin_bind_data->binder = mixin_binder;
-        ctor_template->PrototypeTemplate()->Set(
-            V8Bind::to_v8(mixin_name, true),
-            FunctionTemplate::New(
-                isolate,
-                _call_mixin,
-                External::New(isolate, mixin_bind_data)
-            )
-        );
-        bind_data->mixins.add(mixin_name, mixin_bind_data);
-    }
-
     // bind method
     for (const auto& [method_name, method_binder] : binder->methods)
     {
@@ -987,7 +971,7 @@ void V8Isolate::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
     HandleScope HandleScope(Isolate);
 
     // get user data
-    auto* bind_data    = reinterpret_cast<V8BindDataRecordBase*>(info.Data().As<External>()->Value());
+    auto* bind_data   = reinterpret_cast<V8BindDataRecordBase*>(info.Data().As<External>()->Value());
     auto* skr_isolate = bind_data->manager;
 
     // handle call
@@ -1157,52 +1141,6 @@ void V8Isolate::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
     else
     {
         Isolate->ThrowError("must be called with new");
-    }
-}
-void V8Isolate::_call_mixin(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
-{
-    using namespace ::v8;
-
-    // get v8 basic info
-    Isolate* Isolate = info.GetIsolate();
-
-    // scopes
-    HandleScope HandleScope(Isolate);
-
-    // get self data
-    Local<Object> self      = info.This();
-    auto*         bind_core = reinterpret_cast<V8BindCoreRecordBase*>(self->GetInternalField(0).As<External>()->Value());
-
-    // check core
-    if (!bind_core->is_valid())
-    {
-        Isolate->ThrowError("calling on a released object");
-        return;
-    }
-
-    // get user data
-    auto* bind_data = reinterpret_cast<V8BindDataMixin*>(info.Data().As<External>()->Value());
-
-    // block ctor call
-    if (info.IsConstructCall())
-    {
-        Isolate->ThrowError("method can not be called with new");
-        return;
-    }
-
-    // call method
-    bool success = bind_data->manager->_call_native(
-        bind_data->binder,
-        info,
-        bind_core->data,
-        bind_core->type
-    );
-
-    // throw
-    if (!success)
-    {
-        Isolate->ThrowError("no matched method");
-        return;
     }
 }
 void V8Isolate::_call_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
@@ -2452,80 +2390,6 @@ bool V8Isolate::_call_native(
     return true;
 }
 bool V8Isolate::_call_native(
-    const ScriptBinderMixinMethod&                 binder,
-    const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
-    void*                                          obj,
-    const RTTRType*                                obj_type
-)
-{
-    // match overload
-    const ScriptBinderMixinMethod::Overload* final_overload = nullptr;
-    int32_t                             highest_score  = std::numeric_limits<int32_t>::min();
-    for (const auto& overload : binder.overloads)
-    {
-        auto result = V8Bind::match(overload.params_binder, overload.params_count, v8_stack);
-        if (!result.matched) { continue; }
-        if (result.match_score > highest_score)
-        {
-            highest_score  = result.match_score;
-            final_overload = &overload;
-        }
-    }
-
-    // invoke overload
-    if (final_overload)
-    {
-        DynamicStack native_stack;
-
-        // push param
-        uint32_t v8_stack_index = 0;
-        for (const auto& param_binder : final_overload->params_binder)
-        {
-            if (param_binder.inout_flag == ERTTRParamFlag::Out)
-            { // pure out param, we will push a dummy xvalue
-                _push_param_pure_out(
-                    native_stack,
-                    param_binder
-                );
-            }
-            else
-            {
-                _push_param(
-                    native_stack,
-                    param_binder,
-                    v8_stack[v8_stack_index]
-                );
-                ++v8_stack_index;
-            }
-        }
-
-        // cast
-        void* owner_address = obj_type->cast_to_base(final_overload->owner->type_id(), obj);
-
-        // invoke
-        native_stack.return_behaviour_store();
-        final_overload->impl_data->dynamic_stack_invoke(owner_address, native_stack);
-
-        // read return
-        auto return_value = _read_return(
-            native_stack,
-            final_overload->params_binder,
-            final_overload->return_binder,
-            final_overload->return_count
-        );
-        if (!return_value.IsEmpty())
-        {
-            v8_stack.GetReturnValue().Set(return_value);
-        }
-
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-}
-bool V8Isolate::_call_native(
     const ScriptBinderMethod&                      binder,
     const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
     void*                                          obj,
@@ -2578,7 +2442,14 @@ bool V8Isolate::_call_native(
 
         // invoke
         native_stack.return_behaviour_store();
-        final_overload->data->dynamic_stack_invoke(owner_address, native_stack);
+        if (final_overload->mixin_impl_data)
+        {
+            final_overload->mixin_impl_data->dynamic_stack_invoke(owner_address, native_stack);
+        }
+        else
+        {
+            final_overload->data->dynamic_stack_invoke(owner_address, native_stack);
+        }
 
         // read return
         auto return_value = _read_return(
