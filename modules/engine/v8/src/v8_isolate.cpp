@@ -648,7 +648,6 @@ bool V8Isolate::try_invoke_mixin(ScriptbleObject* obj, StringView name, const sp
         // check if function
         if (v8_func.IsEmpty() || !v8_func.ToLocalChecked()->IsFunction())
         {
-            SKR_LOG_FMT_ERROR(u8"{} not found in object", name);
             return false;
         }
 

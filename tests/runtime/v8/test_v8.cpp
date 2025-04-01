@@ -416,6 +416,17 @@ TEST_CASE("test v8")
             module.register_type<test_v8::ManualMixin>(u8"");
         });
 
+        // no mixin
+        {
+            auto result = context.exec_script(u8R"__(
+                let native = new ManualMixin()
+                ManualMixin.call_get_name(native);
+            )__");
+            auto result_str = result.get<String>();
+            SKR_ASSERT(result_str.has_value());
+            REQUIRE_EQ(result_str.value(), u8"DEFAULT");
+        }
+
         // class mixin
         {
             auto result = context.exec_script(u8R"__(
