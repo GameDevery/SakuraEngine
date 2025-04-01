@@ -578,6 +578,8 @@ bool V8Isolate::invoke_v8(
     StackProxy              return_value
 )
 {
+    //! NOTE. isolate & context must be setted before call this function
+
     auto*           isolate = v8::Isolate::GetCurrent();
     auto            context = isolate->GetCurrentContext();
     v8::HandleScope handle_scope(isolate);
@@ -1826,6 +1828,13 @@ bool V8Isolate::_to_native_object(
     void* raw_bind_core = v8_object->GetInternalField(0).As<v8::External>()->Value();
     auto* bind_core     = reinterpret_cast<V8BindCoreObject*>(raw_bind_core);
 
+    // check bind core
+    if (!bind_core->is_valid())
+    {
+        isolate->ThrowError("calling on a released object");
+        return false;
+    }
+
     // do cast
     void* cast_ptr                         = bind_core->type->cast_to_base(type->type_id(), bind_core->data);
     *reinterpret_cast<void**>(native_data) = cast_ptr;
@@ -1857,9 +1866,17 @@ bool V8Isolate::_to_native_value(
     void* raw_bind_core = v8_object->GetInternalField(0).As<v8::External>()->Value();
     auto* bind_core     = reinterpret_cast<V8BindCoreValue*>(raw_bind_core);
 
+    // check bind core
+    if (!bind_core->is_valid())
+    {
+        isolate->ThrowError("calling on a released object");
+        return false;
+    }
+
     // do cast
     void* cast_ptr = bind_core->type->cast_to_base(type->type_id(), bind_core->data);
 
+    // assign to native
     if (!is_init)
     {
         // find copy ctor

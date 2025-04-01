@@ -154,6 +154,9 @@ struct V8BindCoreRecordBase {
     }
 
     ~V8BindCoreRecordBase();
+
+protected:
+    void invalidate();
 };
 struct V8BindCoreObject : V8BindCoreRecordBase {
     inline V8BindCoreObject()
@@ -166,7 +169,7 @@ struct V8BindCoreObject : V8BindCoreRecordBase {
 
     inline void invalidate()
     {
-        data   = nullptr;
+        V8BindCoreRecordBase::invalidate();
         object = nullptr;
     }
 };
@@ -190,7 +193,7 @@ struct V8BindCoreValue : V8BindCoreRecordBase {
 
     inline void invalidate()
     {
-        data             = nullptr;
+        V8BindCoreRecordBase::invalidate();
         from             = ESource::Invalid;
         from_field_owner = nullptr;
     }
@@ -212,5 +215,13 @@ inline V8BindCoreRecordBase::~V8BindCoreRecordBase()
     {
         field_core->invalidate();
     }
+}
+inline void V8BindCoreRecordBase::invalidate()
+{
+    for (auto& [field_ptr, field_core] : cache_value_fields)
+    {
+        field_core->invalidate();
+    }
+    data = nullptr;
 }
 } // namespace skr
