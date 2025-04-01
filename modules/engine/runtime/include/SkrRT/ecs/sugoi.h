@@ -32,17 +32,15 @@ typedef struct sugoi_mapper_t {
 typedef struct SBinaryWriter SBinaryWriter;
 typedef struct SBinaryReader SBinaryReader;
 typedef struct sugoi_callback_v {
-    void (*constructor)(sugoi_chunk_t* chunk, EIndex index, char* data) SKR_IF_CPP(= nullptr);
-    void (*copy)(sugoi_chunk_t* chunk, EIndex index, char* dst, sugoi_chunk_t* schunk, EIndex sindex, const char* src) SKR_IF_CPP(= nullptr);
-    void (*destructor)(sugoi_chunk_t* chunk, EIndex index, char* data) SKR_IF_CPP(= nullptr);
-    void (*move)(sugoi_chunk_t* chunk, EIndex index, char* dst, sugoi_chunk_t* schunk, EIndex sindex, char* src) SKR_IF_CPP(= nullptr);
-    void (*serialize)(sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, SBinaryWriter* writer) SKR_IF_CPP(= nullptr);
-    void (*deserialize)(sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, SBinaryReader* reader) SKR_IF_CPP(= nullptr);
-    void (*serialize_text)(sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, skr::archive::JsonWriter* writer) SKR_IF_CPP(= nullptr);
-    void (*deserialize_text)(sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, skr::archive::JsonReader* reader) SKR_IF_CPP(= nullptr);
-    void (*map)(sugoi_chunk_t* chunk, EIndex index, char* data, sugoi_mapper_t* v) SKR_IF_CPP(= nullptr);
-    int (*lua_push)(sugoi_chunk_t* chunk, EIndex index, char* data, struct lua_State* L) SKR_IF_CPP(= nullptr);
-    void (*lua_check)(sugoi_chunk_t* chunk, EIndex index, char* data, struct lua_State* L, int idx) SKR_IF_CPP(= nullptr);
+    void (*constructor)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* data) SKR_IF_CPP(= nullptr);
+    void (*copy)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* dst, sugoi_chunk_t* schunk, EIndex sindex, const char* src) SKR_IF_CPP(= nullptr);
+    void (*destructor)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* data) SKR_IF_CPP(= nullptr);
+    void (*move)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* dst, sugoi_chunk_t* schunk, EIndex sindex, char* src) SKR_IF_CPP(= nullptr);
+    void (*serialize)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, SBinaryWriter* writer) SKR_IF_CPP(= nullptr);
+    void (*deserialize)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, SBinaryReader* reader) SKR_IF_CPP(= nullptr);
+    void (*serialize_text)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, skr::archive::JsonWriter* writer) SKR_IF_CPP(= nullptr);
+    void (*deserialize_text)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, skr::archive::JsonReader* reader) SKR_IF_CPP(= nullptr);
+    void (*map)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* data, sugoi_mapper_t* v) SKR_IF_CPP(= nullptr);
 } sugoi_callback_v;
 
 enum ESugoiTypeFlag SKR_IF_CPP( : uint32_t){
@@ -913,28 +911,28 @@ void managed_component(sugoi_type_description_t& desc, skr::type_t<C>)
     if constexpr ((flags & SUGOI_CALLBACK_FLAG_CTOR) != 0)
     {
         if constexpr (std::is_default_constructible_v<C>)
-            desc.callback.constructor = +[](sugoi_chunk_t* chunk, EIndex index, char* data) {
+            desc.callback.constructor = +[](sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* data) {
                 new (data) C();
             };
     }
     if constexpr ((flags & SUGOI_CALLBACK_FLAG_DTOR) != 0)
     {
         if constexpr (std::is_destructible_v<C>)
-            desc.callback.destructor = +[](sugoi_chunk_t* chunk, EIndex index, char* data) {
+            desc.callback.destructor = +[](sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* data) {
                 ((C*)data)->~C();
             };
     }
     if constexpr ((flags & SUGOI_CALLBACK_FLAG_COPY) != 0)
     {
         if constexpr (std::is_copy_constructible_v<C>)
-            desc.callback.copy = +[](sugoi_chunk_t* chunk, EIndex index, char* dst, sugoi_chunk_t* schunk, EIndex sindex, const char* src) {
+            desc.callback.copy = +[](sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* dst, sugoi_chunk_t* schunk, EIndex sindex, const char* src) {
                 new (dst) C(*(const C*)src);
             };
     }
     if constexpr ((flags & SUGOI_CALLBACK_FLAG_MOVE) != 0)
     {
         if constexpr (std::is_move_constructible_v<C>)
-            desc.callback.move = +[](sugoi_chunk_t* chunk, EIndex index, char* dst, sugoi_chunk_t* schunk, EIndex sindex, char* src) {
+            desc.callback.move = +[](sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* dst, sugoi_chunk_t* schunk, EIndex sindex, char* src) {
                 new (dst) C(std::move(*(C*)src));
             };
     }
@@ -1236,7 +1234,7 @@ template <typename T>
 skr::span<T> get_components(sugoi_chunk_view_t* view)
 {
     if (auto ptrs = get_owned<T>(view))
-        return skr::span<T>(get_owned<T>(view), view->count);
+        return skr::span<T>(ptrs, view->count);
     return {};
 }
 
