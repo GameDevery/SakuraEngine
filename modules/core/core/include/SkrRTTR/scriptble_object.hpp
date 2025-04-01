@@ -61,7 +61,7 @@ SKR_CORE_API ScriptbleObject : virtual public skr::IObject
         }
     }
     template <typename Ret, typename... Args>
-    inline auto try_invoke_mixin_method(StringView name, Args&&... args)
+    inline auto try_invoke_mixin_method(StringView name, Args... args)
     {
         if constexpr (std::is_same_v<Ret, void>)
         {

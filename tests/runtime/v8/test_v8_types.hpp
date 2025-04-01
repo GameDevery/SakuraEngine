@@ -314,4 +314,19 @@ ManualMixin : skr::ScriptbleObject {
         return obj->get_name();
     }
 };
+
+sreflect_struct(guid = "f67c4345-e723-4597-9e88-1e48564b130d" rttr = @full)
+sscript_visible sscript_newable
+RttrMixin : skr::ScriptbleObject {
+    SKR_GENERATE_BODY()
+
+    sscript_visible sscript_mixin
+    skr::String test_pure_mixin();
+
+    sscript_visible sscript_mixin
+    void test_mixin_with_native(uint64_t v);
+    void test_mixin_with_native_impl(uint64_t v) { test_mixin_value = v + 114514; }
+
+    uint64_t test_mixin_value = 0;
+};
 }
