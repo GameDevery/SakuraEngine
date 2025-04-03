@@ -243,6 +243,13 @@ V8Value V8Context::exec_module(StringView script, StringView file_path)
     // evaluate module
     auto eval_result = module->Evaluate(context);
 
+    // check module error
+    if (module->GetStatus() == v8::Module::kErrored)
+    {
+        // won't stop, see https://github.com/nodejs/node/issues/50430
+        _isolate->v8_isolate()->ThrowException(module->GetException());
+    }
+
     // finish promise
     // TODO. generic promise api
     if (eval_result.ToLocalChecked()->IsPromise())
@@ -254,7 +261,7 @@ V8Value V8Context::exec_module(StringView script, StringView file_path)
         }
         if (promise->State() == v8::Promise::kRejected)
         {
-            promise->MarkAsHandled();
+            // promise->MarkAsHandled();
             _isolate->v8_isolate()->ThrowException(promise->Result());
         }
     }
@@ -265,6 +272,7 @@ V8Value V8Context::exec_module(StringView script, StringView file_path)
         String exception_str;
         V8Bind::to_native(try_catch.Exception()->ToString(context).ToLocalChecked(), exception_str);
         SKR_LOG_FMT_ERROR(u8"[V8] uncaught exception: {}\n  at: {}", exception_str.c_str(), file_path);
+        try_catch.ReThrow();
     }
 
     // return result

@@ -57,7 +57,7 @@
                     "<node_internals>/**"
                 ],
                 // see content use https://microsoft.github.io/vscode-pwa-analyzer/index.html
-                "trace": true,
+                // "trace": true,
             },
             {
                 "name": "DenoTest",
