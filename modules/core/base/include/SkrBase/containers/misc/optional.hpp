@@ -18,6 +18,8 @@ struct Optional {
     Optional(Nullopt);
     Optional(const T& value);
     Optional(T&& value);
+    template <std::convertible_to<T> U>
+    Optional(const U& value);
     ~Optional();
 
     // copy & move
@@ -92,6 +94,13 @@ inline Optional<T>::Optional(T&& value)
     : _has_value(true)
 {
     ::skr::memory::move(_data_ptr(), &value);
+}
+template <typename T>
+template <std::convertible_to<T> U>
+inline Optional<T>::Optional(const U& value)
+    : _has_value(true)
+{
+    new (_data_ptr()) T(value);
 }
 template <typename T>
 inline Optional<T>::~Optional()

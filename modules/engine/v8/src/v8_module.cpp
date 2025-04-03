@@ -1,6 +1,5 @@
 #include <SkrV8/v8_module.hpp>
 #include <SkrV8/v8_isolate.hpp>
-#include <SkrV8/v8_bind_manager.hpp>
 #include <SkrV8/v8_bind.hpp>
 #include <SkrRTTR/script_binder.hpp>
 
@@ -10,7 +9,7 @@ namespace skr
 V8Module::V8Module(V8Isolate* isolate)
     : _isolate(isolate)
 {
-    _module_info.manager = &_isolate->_bind_manager->script_binder_manger();
+    _module_info.manager = &_isolate->script_binder_manger();
 }
 V8Module::~V8Module()
 {
@@ -143,7 +142,7 @@ v8::MaybeLocal<v8::Value> V8Module::_eval_callback(
             module->SetSyntheticModuleExport(
                 isolate,
                 V8Bind::to_v8(k, true),
-                V8Bind::export_namespace_node(v, skr_iolate->_bind_manager)
+                V8Bind::export_namespace_node(v, skr_iolate)
             ).Check();
             // clang-format on
         }

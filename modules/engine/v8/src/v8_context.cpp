@@ -12,7 +12,7 @@ namespace skr
 V8Context::V8Context(V8Isolate* isolate)
     : _isolate(isolate)
 {
-    _global_module.manager = &_isolate->_bind_manager->script_binder_manger();
+    _global_module.manager = &_isolate->script_binder_manger();
 }
 V8Context::~V8Context()
 {
@@ -92,7 +92,7 @@ bool V8Context::build_global_export(FunctionRef<void(ScriptModule& module)> buil
                 context->Global()->Set(
                     context,
                     V8Bind::to_v8(k, true),
-                    V8Bind::export_namespace_node(v, _isolate->_bind_manager)
+                    V8Bind::export_namespace_node(v, _isolate)
                 ).Check();
                 // clang-format on
             }
@@ -108,8 +108,35 @@ bool V8Context::build_global_export(FunctionRef<void(ScriptModule& module)> buil
     return ::v8::Global<::v8::Context>(_isolate->v8_isolate(), _context);
 }
 
+// get global value
+V8Value V8Context::get_global(StringView name)
+{
+    // scopes
+    auto                   isolate = _isolate->v8_isolate();
+    v8::Isolate::Scope     isolate_scope(isolate);
+    v8::HandleScope        handle_scope(isolate);
+    v8::Local<v8::Context> context = _context.Get(isolate);
+    v8::Context::Scope     context_scope(context);
+
+    // find value
+    auto                   global = context->Global();
+    v8::Local<v8::String> name_v8 = V8Bind::to_v8(name, true);
+    auto                   maybe_value = global->Get(context, name_v8);
+    if (maybe_value.IsEmpty())
+    {
+        SKR_LOG_FMT_ERROR(u8"failed to get global value {}", name);
+        return {};
+    }
+
+    // return value
+    V8Value result;
+    result.context = this;
+    result.v8_value.Reset(isolate, maybe_value.ToLocalChecked());
+    return result;
+}
+
 // run as script
-V8Value V8Context::exec_script(StringView script)
+V8Value V8Context::exec_script(StringView script, StringView file_path)
 {
     auto                   isolate = _isolate->v8_isolate();
     v8::Isolate::Scope     isolate_scope(isolate);
@@ -118,8 +145,24 @@ V8Value V8Context::exec_script(StringView script)
     v8::Context::Scope     context_scope(context);
 
     // compile script
-    v8::Local<v8::String> source        = V8Bind::to_v8(script, false);
-    auto                  may_be_script = ::v8::Script::Compile(context, source);
+    v8::Local<v8::String> source = V8Bind::to_v8(script, false);
+    v8::ScriptOrigin      origin(
+        isolate,
+        V8Bind::to_v8(file_path),
+        0,
+        0,
+        true,
+        -1,
+        {},
+        false,
+        false,
+        true,
+        {}
+    );
+    auto may_be_script = ::v8::Script::Compile(
+        context,
+        source
+    );
     if (may_be_script.IsEmpty())
     {
         SKR_LOG_ERROR(u8"compile script failed");
@@ -141,7 +184,7 @@ V8Value V8Context::exec_script(StringView script)
 }
 
 // run as ES module
-V8Value V8Context::exec_module(StringView script)
+V8Value V8Context::exec_module(StringView script, StringView file_path)
 {
     auto                   isolate = _isolate->v8_isolate();
     v8::Isolate::Scope     isolate_scope(isolate);
@@ -152,7 +195,7 @@ V8Value V8Context::exec_module(StringView script)
     // compile module
     v8::ScriptOrigin origin(
         isolate,
-        V8Bind::to_v8(skr::StringView{ u8"" }),
+        V8Bind::to_v8(file_path),
         0,
         0,
         true,

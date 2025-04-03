@@ -388,13 +388,197 @@ TEST_CASE("test v8")
         context.shutdown();
     }
 
+    SUBCASE("call script")
+    {
+        V8Context context(&isolate);
+        context.init();
+        context.build_global_export([](ScriptModule& module) {
+        });
+
+        context.exec_script(u8R"__(
+            function str_join(a, b, c) {
+                return `${a} + ${b} + ${c}`
+            }
+        )__");
+        auto str_join_func = context.get_global(u8"str_join");
+        auto result        = str_join_func.call<skr::String>(skr::String{ u8"hello" }, skr::String{ u8"world" }, skr::String{ u8"!" });
+        REQUIRE(result.has_value());
+        REQUIRE_EQ(result.value(), u8"hello + world + !");
+
+        context.shutdown();
+    }
+
+    SUBCASE("rttr mixin")
+    {
+        V8Context context(&isolate);
+        context.init();
+        context.build_global_export([](ScriptModule& module) {
+            module.register_type<test_v8::TestMixinValue>(u8"");
+            module.register_type<test_v8::RttrMixin>(u8"");
+            module.register_type<test_v8::MixinHelper>(u8"");
+        });
+
+        v8::HandleScope    handle_scope(isolate.v8_isolate());
+        v8::Context::Scope context_scope(context.v8_context().Get(isolate.v8_isolate()));
+
+        // no mixin
+        {
+            context.exec_script(u8R"__(
+                let native = new RttrMixin()
+                MixinHelper.mixin = native
+            )__");
+
+            REQUIRE(test_v8::MixinHelper::mixin != nullptr);
+            REQUIRE_EQ(test_v8::MixinHelper::mixin->test_mixin_ret(), u8"FUCK");
+            test_v8::MixinHelper::mixin->test_mixin_param(114514);
+            REQUIRE_EQ(test_v8::MixinHelper::mixin->test_mixin_value, 114514 * 2);
+        }
+
+        // class mixin
+        {
+            context.exec_script(u8R"__(
+                class MixInImpl extends RttrMixin {
+                    constructor() {
+                        super();
+                    }
+                    test_mixin_ret() {
+                        return `${super.test_mixin_ret()} + mixin`;
+                    }
+                    test_mixin_param(v) {
+                        super.test_mixin_param(v * BigInt(5));
+                    }
+                }
+                let mixin = new MixInImpl()
+                MixinHelper.mixin = mixin
+            )__");
+
+            REQUIRE(test_v8::MixinHelper::mixin != nullptr);
+            REQUIRE_EQ(test_v8::MixinHelper::mixin->test_mixin_ret(), u8"FUCK + mixin");
+            test_v8::MixinHelper::mixin->test_mixin_param(114514);
+            REQUIRE_EQ(test_v8::MixinHelper::mixin->test_mixin_value, 114514 * 6);
+        }
+
+        // object mixin
+        {
+            context.exec_script(u8R"__(
+                let object_mixin = new RttrMixin()
+                const raw_mixin_ret = object_mixin.test_mixin_ret
+                const raw_mixin_param = object_mixin.test_mixin_param
+
+                object_mixin.test_mixin_ret = function() {
+                    return `${raw_mixin_ret.call(this)} + mixin`;
+                }
+                object_mixin.test_mixin_param = function(v) {
+                    raw_mixin_param.call(this, v * BigInt(5));
+                }
+
+                MixinHelper.mixin = object_mixin
+            )__");
+
+            REQUIRE(test_v8::MixinHelper::mixin != nullptr);
+            REQUIRE_EQ(test_v8::MixinHelper::mixin->test_mixin_ret(), u8"FUCK + mixin");
+            test_v8::MixinHelper::mixin->test_mixin_param(114514);
+            REQUIRE_EQ(test_v8::MixinHelper::mixin->test_mixin_value, 114514 * 6);
+        }
+
+        // test value
+        {
+            context.exec_script(u8R"__(
+                let test_value = new RttrMixin()
+                MixinHelper.mixin = test_value
+            )__");
+
+            // no mixin
+            test_v8::TestMixinValue test, test_b;
+            test.name = u8"TEST_";
+            test_v8::MixinHelper::mixin->test_inout_value(test);
+            REQUIRE_EQ(test.name, u8"TEST_INOUT_VALUE");
+            test.name = u8"INVALID";
+            test_v8::MixinHelper::mixin->test_pure_out_value(test);
+            REQUIRE_EQ(test.name, u8"PURE_OUT_VALUE");
+            test.name = u8"INVALID";
+            test = test_v8::MixinHelper::mixin->test_return_value();
+            REQUIRE_EQ(test.name, u8"RETURN_VALUE");
+            test.name = u8"INVALID";
+            test_b.name = u8"INVALID";
+            skr::String multi_out_ret = test_v8::MixinHelper::mixin->test_multi_out_value(test, test_b);
+            REQUIRE_EQ(multi_out_ret, u8"MULTI_OUT");
+            REQUIRE_EQ(test.name, u8"OUT_VALUE_1");
+            REQUIRE_EQ(test_b.name, u8"OUT_VALUE_2");
+
+            // apply mixin
+            context.exec_script(u8R"__(
+                let old_test_input_value = test_value.test_inout_value
+                let old_test_pure_out_value = test_value.test_pure_out_value
+                let old_test_return_value = test_value.test_return_value
+                let old_test_multi_out_value = test_value.test_multi_out_value
+                let test_out_scope_param = undefined
+
+                test_value.test_inout_value = function(v) {
+                    old_test_input_value.call(this, v)
+                    v.name += ' + mixin'
+                    test_out_scope_param = v
+                }
+                test_value.test_pure_out_value = function() {
+                    let v = old_test_pure_out_value.call(this)
+                    v.name += ' + mixin'
+                    return v
+                }
+                test_value.test_return_value = function() {
+                    let v = old_test_return_value.call(this)
+                    v.name += ' + mixin'
+                    return v
+                }
+                test_value.test_multi_out_value = function() {
+                    return [
+                        "MULTI_OUT_FROM_JS",
+                        new TestMixinValue('OUT_VALUE_1 + mixin'),
+                        new TestMixinValue('OUT_VALUE_2 + mixin')
+                    ]
+                }
+            )__");
+
+            // with mixin
+            test.name = u8"TEST_";
+            test_v8::MixinHelper::mixin->test_inout_value(test);
+            REQUIRE_EQ(test.name, u8"TEST_INOUT_VALUE + mixin");
+            test.name = u8"INVALID";
+            test_v8::MixinHelper::mixin->test_pure_out_value(test);
+            REQUIRE_EQ(test.name, u8"PURE_OUT_VALUE + mixin");
+            test.name = u8"INVALID";
+            test = test_v8::MixinHelper::mixin->test_return_value();
+            REQUIRE_EQ(test.name, u8"RETURN_VALUE + mixin");
+            test.name = u8"INVALID";
+            test_b.name = u8"INVALID";
+            multi_out_ret = test_v8::MixinHelper::mixin->test_multi_out_value(test, test_b);    
+            REQUIRE_EQ(multi_out_ret, u8"MULTI_OUT_FROM_JS");
+            REQUIRE_EQ(test.name, u8"OUT_VALUE_1 + mixin");
+            REQUIRE_EQ(test_b.name, u8"OUT_VALUE_2 + mixin");
+
+            // test use out scope param
+            auto call_out_scope_result = context.exec_script(u8R"__(
+                let error = false
+                try {
+                    test_out_scope_param.name = 'fuck u'
+                } catch (e) {
+                    error = true
+                }
+                error
+            )__");
+            REQUIRE(call_out_scope_result.get<bool>().has_value());
+            REQUIRE_EQ(call_out_scope_result.get<bool>().value(), true);
+        }
+
+        context.shutdown();
+    }
+
     // output .d.ts
     SUBCASE("output d.ts")
     {
         // build module
         ScriptBinderManager bm;
         ScriptModule        sm;
-        sm.manager = &bm;
+        sm.manager     = &bm;
         uint32_t count = 0;
         each_types_of_module(u8"V8Test", [&](const RTTRType* type) -> bool {
             if (count % 2 == 0)
@@ -405,7 +589,7 @@ TEST_CASE("test v8")
             {
                 sm.register_type(type, u8"fuck::you::圆头");
             }
-            
+
             ++count;
             return true;
         });

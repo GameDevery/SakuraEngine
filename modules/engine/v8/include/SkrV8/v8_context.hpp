@@ -10,6 +10,7 @@
 #include <SkrCore/log.hpp>
 #include "SkrV8/v8_bind.hpp"
 #include "SkrV8/v8_isolate.hpp"
+#include "v8-function.h"
 
 namespace skr
 {
@@ -25,11 +26,16 @@ struct V8Value {
 
     void reset();
 
+    template <typename Ret, typename... Args>
+    decltype(auto) call(Args&&... args) const;
+
     v8::Global<v8::Value> v8_value = {};
     V8Context*            context  = nullptr;
 };
 
 struct SKR_V8_API V8Context {
+    friend struct V8Value;
+
     // ctor & dtor
     V8Context(V8Isolate* isolate);
     ~V8Context();
@@ -56,11 +62,14 @@ struct SKR_V8_API V8Context {
     template <typename T>
     void set_global(StringView name, T&& v);
 
+    // get global value
+    V8Value get_global(StringView name);
+
     // run as script
-    V8Value exec_script(StringView script);
+    V8Value exec_script(StringView script, StringView file_path = {});
 
     // run as ES module
-    V8Value exec_module(StringView script);
+    V8Value exec_module(StringView script, StringView file_path = {});
 
 private:
     // callback
@@ -102,7 +111,7 @@ inline Optional<T> V8Value::get() const
     // solve context
     Local<Context> solved_context = context->v8_context().Get(isolate);
     Context::Scope context_scope(solved_context);
-    auto*          bind_manager    = context->isolate()->_bind_manager;
+    auto*          skr_isolate     = context->isolate();
     Local<Value>   solved_v8_value = v8_value.Get(isolate);
 
     if constexpr (
@@ -130,7 +139,7 @@ inline Optional<T> V8Value::get() const
         if constexpr (std::derived_from<RawType, ScriptbleObject>)
         {
             T result;
-            if (bind_manager->to_native(type_of<RawType>(), &result, solved_v8_value, false))
+            if (skr_isolate->to_native(type_of<RawType>(), &result, solved_v8_value, false))
             {
                 return { result };
             }
@@ -146,8 +155,9 @@ inline Optional<T> V8Value::get() const
     }
     else
     {
-        T result;
-        if (bind_manager->to_native(type_of<T>(), &result, solved_v8_value, true))
+        T                     result;
+        TypeSignatureTyped<T> type_sig;
+        if (skr_isolate->to_native(type_sig.view(), &result, solved_v8_value, true))
         {
             return { result };
         }
@@ -161,6 +171,67 @@ inline void V8Value::reset()
 {
     v8_value.Reset();
     context = nullptr;
+}
+template <typename Ret, typename... Args>
+inline decltype(auto) V8Value::call(Args&&... args) const
+{
+    using namespace ::v8;
+
+    // scopes
+    auto*          isolate = context->isolate()->v8_isolate();
+    Isolate::Scope isolate_scope(isolate);
+    HandleScope    handle_scope(isolate);
+
+    // solve context
+    Local<Context> solved_context = context->v8_context().Get(isolate);
+    Context::Scope context_scope(solved_context);
+
+    if constexpr (std::is_same_v<Ret, void>)
+    {
+        auto v8_value_local = v8_value.Get(isolate);
+        if (!v8_value_local->IsFunction())
+        {
+            return false;
+        }
+
+        // call function
+        auto* skr_isolate = context->isolate();
+        skr_isolate->invoke_v8(
+            context->v8_context().Get(isolate)->Global(),
+            v8_value_local.As<v8::Function>(),
+            { StackProxyMaker<Args>::Make(std::forward<Args>(args))... },
+            {}
+        );
+
+        return true;
+    }
+    else
+    {
+        auto v8_value_local = v8_value.Get(isolate);
+        if (!v8_value_local->IsFunction())
+        {
+            return Optional<Ret>{};
+        }
+
+        // call function
+        auto*            skr_isolate = context->isolate();
+        Placeholder<Ret> result_holder;
+        bool             call_success = skr_isolate->invoke_v8(
+            context->v8_context().Get(isolate)->Global(),
+            v8_value_local.As<v8::Function>(),
+            { StackProxyMaker<Args>::Make(std::forward<Args>(args))... },
+            { .data = result_holder.data(), .signature = type_signature_of<Ret>() }
+        );
+
+        if (!call_success)
+        {
+            return Optional<Ret>{};
+        }
+        else
+        {
+            return Optional<Ret>{ std::move(*result_holder.data_typed()) };
+        }
+    }
 }
 
 template <typename T>
@@ -177,8 +248,7 @@ inline void V8Context::set_global(StringView name, T&& v)
     // solve context
     Local<Context> solved_context = _context.Get(_isolate->v8_isolate());
     Context::Scope context_scope(solved_context);
-    Local<Object>  global       = solved_context->Global();
-    auto*          bind_manager = _isolate->_bind_manager;
+    Local<Object>  global = solved_context->Global();
 
     // translate value
     Local<Value> value;
@@ -198,16 +268,16 @@ inline void V8Context::set_global(StringView name, T&& v)
 
         if constexpr (std::derived_from<RawType, ScriptbleObject>)
         {
-            value = bind_manager->translate_object(v)->v8_object.Get(_isolate->v8_isolate());
+            value = _isolate->translate_object(v)->v8_object.Get(_isolate->v8_isolate());
         }
         else
         {
-            value = bind_manager->create_value(type_of<RawType>(), v)->v8_object.Get(_isolate->v8_isolate());
+            value = _isolate->create_value(type_of<RawType>(), v)->v8_object.Get(_isolate->v8_isolate());
         }
     }
     else
     {
-        value = bind_manager->create_value(type_of<DecayType>(), &v)->v8_object.Get(_isolate->v8_isolate());
+        value = _isolate->create_value(type_of<DecayType>(), &v)->v8_object.Get(_isolate->v8_isolate());
     }
 
     // set value

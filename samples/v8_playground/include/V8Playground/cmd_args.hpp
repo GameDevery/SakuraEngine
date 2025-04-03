@@ -60,9 +60,15 @@ MainCommand {
         V8PlaygroundApp::env_init();
 
         V8PlaygroundApp app;
+        
+        // init
         app.init();
         app.load_native_types();
 
+        // wait for debugger
+        app.init_debugger(9865);
+        app.wait_for_debugger_connected();
+        
         // run scripts
         bool any_failed = false;
         for (auto& file : exec_files)
@@ -73,7 +79,9 @@ MainCommand {
         {
             exit(1);
         }
-
+        
+        // shutdown
+        app.shutdown_debugger();
         app.shutdown();
 
         V8PlaygroundApp::env_shutdown();

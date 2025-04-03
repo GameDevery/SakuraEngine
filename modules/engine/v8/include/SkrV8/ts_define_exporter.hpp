@@ -255,6 +255,11 @@ inline void TSDefineExporter::_gen_record(ScriptBinderRecordBase& record_binder)
         {
             for (auto& overload : method_value.overloads)
             {
+                if (overload.mixin_impl_data)
+                {
+                    $line(u8"// [MIXIN]");
+                }
+
                 $line(
                     u8"// cpp symbol: {}::{}",
                     record_full_name,
@@ -454,6 +459,12 @@ inline String TSDefineExporter::_params_signature(const Vector<ScriptBinderParam
             result.append(u8", ");
         }
 
+        // push inout flags
+        if (param.inout_flag == ERTTRParamFlag::InOut)
+        {
+            result.append(u8"/*inout*/");
+        }
+
         // push param name
         result.append(param.data->name);
 
@@ -487,17 +498,7 @@ inline String TSDefineExporter::_return_signature(
         {
             for (auto& param : params)
             {
-                bool is_out = false;
-                if (param.binder.is_value())
-                { // optimize for value case
-                    is_out = param.inout_flag == ERTTRParamFlag::Out;
-                }
-                else
-                {
-                    is_out = flag_all(param.inout_flag, ERTTRParamFlag::Out);
-                }
-
-                if (is_out)
+                if (param.appare_in_return)
                 {
                     return format(u8"{} /*{}*/", _type_name_with_ns(param.binder), param.data->name);
                 }
@@ -521,17 +522,7 @@ inline String TSDefineExporter::_return_signature(
         }
         for (auto& param : params)
         {
-            bool is_out = false;
-            if (param.binder.is_value())
-            { // optimize for value case
-                is_out = param.inout_flag == ERTTRParamFlag::Out;
-            }
-            else
-            {
-                is_out = flag_all(param.inout_flag, ERTTRParamFlag::Out);
-            }
-
-            if (is_out)
+            if (param.appare_in_return)
             {
                 result.append(format(u8"{} /*{}*/", _type_name_with_ns(param.binder), param.data->name));
                 result.append(u8", ");
