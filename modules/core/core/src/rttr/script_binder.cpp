@@ -405,8 +405,9 @@ void ScriptBinderManager::_fill_record_info(ScriptBinderRecordBase& out, const R
         mixin_consumed_methods.add(found_impl_method);
 
         // export
-        auto& mixin_method_data = out.methods.try_add_default(method->name).value();
-        auto& overload_data     = mixin_method_data.overloads.add_default().ref();
+        auto& mixin_method_data    = out.methods.try_add_default(method->name).value();
+        auto& overload_data        = mixin_method_data.overloads.add_default().ref();
+        mixin_method_data.is_mixin = true;
         _make_mixin_method(overload_data, method, found_impl_method, owner_type);
 
         // clang-format off
@@ -677,6 +678,15 @@ void ScriptBinderManager::_fill_record_info(ScriptBinderRecordBase& out, const R
                 }
                 static_prop.binder = getter_binder;
             }
+        }
+    }
+
+    // check mixin overloads
+    for (auto& [name, method] : out.methods)
+    {
+        if (method.is_mixin && method.overloads.size() > 1)
+        {
+            _logger.error(u8"method '{}' with mixin flag not allow overloads", name);
         }
     }
 

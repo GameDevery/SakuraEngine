@@ -287,6 +287,7 @@ struct ScriptBinderMethod {
     };
 
     Vector<Overload> overloads = {};
+    bool             is_mixin  = false;
     bool             failed    = false;
 };
 struct ScriptBinderStaticMethod {
