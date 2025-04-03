@@ -119,9 +119,9 @@ V8Value V8Context::get_global(StringView name)
     v8::Context::Scope     context_scope(context);
 
     // find value
-    auto                   global = context->Global();
-    v8::Local<v8::String> name_v8 = V8Bind::to_v8(name, true);
-    auto                   maybe_value = global->Get(context, name_v8);
+    auto                  global      = context->Global();
+    v8::Local<v8::String> name_v8     = V8Bind::to_v8(name, true);
+    auto                  maybe_value = global->Get(context, name_v8);
     if (maybe_value.IsEmpty())
     {
         SKR_LOG_FMT_ERROR(u8"failed to get global value {}", name);
@@ -143,6 +143,7 @@ V8Value V8Context::exec_script(StringView script, StringView file_path)
     v8::HandleScope        handle_scope(isolate);
     v8::Local<v8::Context> context = _context.Get(isolate);
     v8::Context::Scope     context_scope(context);
+    v8::TryCatch           try_catch(isolate);
 
     // compile script
     v8::Local<v8::String> source = V8Bind::to_v8(script, false);
@@ -172,6 +173,16 @@ V8Value V8Context::exec_script(StringView script, StringView file_path)
     // run script
     auto compiled_script = may_be_script.ToLocalChecked();
     auto exec_result     = compiled_script->Run(context);
+
+    // dump exception
+    if (try_catch.HasCaught())
+    {
+        String exception_str;
+        V8Bind::to_native(try_catch.Exception()->ToString(context).ToLocalChecked(), exception_str);
+        SKR_LOG_FMT_ERROR(u8"[V8] uncaught exception: {}\n  at: {}", exception_str.c_str(), file_path);
+    }
+
+    // return result
     if (!exec_result.IsEmpty())
     {
         V8Value result;
@@ -191,6 +202,7 @@ V8Value V8Context::exec_module(StringView script, StringView file_path)
     v8::HandleScope        handle_scope(isolate);
     v8::Local<v8::Context> context = _context.Get(isolate);
     v8::Context::Scope     context_scope(context);
+    v8::TryCatch           try_catch(isolate);
 
     // compile module
     v8::ScriptOrigin origin(
@@ -219,8 +231,6 @@ V8Value V8Context::exec_module(StringView script, StringView file_path)
         return {};
     }
 
-    v8::TryCatch try_catch(isolate);
-
     // instantiate module
     auto module             = maybe_module.ToLocalChecked();
     auto instantiate_result = module->InstantiateModule(context, _resolve_module);
@@ -232,6 +242,32 @@ V8Value V8Context::exec_module(StringView script, StringView file_path)
 
     // evaluate module
     auto eval_result = module->Evaluate(context);
+
+    // finish promise
+    // TODO. generic promise api
+    if (eval_result.ToLocalChecked()->IsPromise())
+    {
+        auto promise = eval_result.ToLocalChecked().As<v8::Promise>();
+        while (promise->State() == v8::Promise::kPending)
+        {
+            _isolate->v8_isolate()->PerformMicrotaskCheckpoint();
+        }
+        if (promise->State() == v8::Promise::kRejected)
+        {
+            promise->MarkAsHandled();
+            _isolate->v8_isolate()->ThrowException(promise->Result());
+        }
+    }
+
+    // dump exception
+    if (try_catch.HasCaught())
+    {
+        String exception_str;
+        V8Bind::to_native(try_catch.Exception()->ToString(context).ToLocalChecked(), exception_str);
+        SKR_LOG_FMT_ERROR(u8"[V8] uncaught exception: {}\n  at: {}", exception_str.c_str(), file_path);
+    }
+
+    // return result
     if (!eval_result.IsEmpty())
     {
         V8Value result;
