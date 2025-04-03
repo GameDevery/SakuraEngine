@@ -3,6 +3,45 @@
 #include "SkrRTTR/scriptble_object.hpp"
 #include <SkrRTTR/script_binder.hpp>
 
+// helpers
+namespace skr
+{
+template <typename OverloadType>
+inline void _solve_param_return_count(OverloadType& overload)
+{
+    // solve return count
+    overload.return_count = overload.return_binder.is_void ? 0 : 1;
+    overload.params_count = 0;
+
+    // each param and add count
+    for (const ScriptBinderParam& param : overload.params_binder)
+    {
+        if (param.binder.is_value())
+        { // optimize case for value
+            if (param.inout_flag == ERTTRParamFlag::Out)
+            { // pure out, return
+                ++overload.return_count;
+            }
+            else
+            {
+                ++overload.params_count;
+            }
+        }
+        else
+        {
+            if (param.inout_flag != ERTTRParamFlag::Out)
+            { // not pure out
+                ++overload.params_count;
+            }
+            if (flag_all(param.inout_flag, ERTTRParamFlag::Out))
+            { // has out flag
+                ++overload.return_count;
+            }
+        }
+    }
+}
+} // namespace skr
+
 namespace skr
 {
 // ctor & dtor
@@ -80,6 +119,35 @@ ScriptBinderRoot ScriptBinderManager::get_or_build(GUID type_id)
     }
     _cached_root_binders.add(type_id, {});
     return {};
+}
+ScriptBinderCallScript ScriptBinderManager::build_call_script_binder(span<StackProxy> params, StackProxy ret)
+{
+    auto _log_stack = _logger.stack(u8"export call script binder");
+
+    ScriptBinderCallScript out;
+
+    // export params
+    uint32_t index = 0;
+    for (const auto& param : params)
+    {
+        RTTRParamData param_data = {};
+        param_data.type          = param.signature;
+        param_data.index         = index;
+        format_to(param_data.name, u8"#{}", index);
+
+        auto& param_binder = out.params_binder.add_default().ref();
+        _make_param_call_script(param_binder, &param_data);
+        param_binder.data = nullptr; // temporal data
+    }
+
+    // export return
+    _make_return_call_script(out.return_binder, ret.data ? ret.signature : type_signature_of<void>());
+
+    // solve param count and return count
+    _solve_param_return_count(out);
+
+    out.failed |= _logger.any_error();
+    return out;
 }
 
 // each
@@ -616,40 +684,6 @@ void ScriptBinderManager::_fill_record_info(ScriptBinderRecordBase& out, const R
 }
 
 // make nested binder
-template <typename OverloadType>
-inline void _solve_param_return_count(OverloadType& overload)
-{
-    // solve return count
-    overload.return_count = overload.return_binder.is_void ? 0 : 1;
-    overload.params_count = 0;
-
-    // each param and add count
-    for (const ScriptBinderParam& param : overload.params_binder)
-    {
-        if (param.binder.is_value())
-        { // optimize case for value
-            if (param.inout_flag == ERTTRParamFlag::Out)
-            { // pure out, return
-                ++overload.return_count;
-            }
-            else
-            {
-                ++overload.params_count;
-            }
-        }
-        else
-        {
-            if (param.inout_flag != ERTTRParamFlag::Out)
-            { // not pure out
-                ++overload.params_count;
-            }
-            if (flag_all(param.inout_flag, ERTTRParamFlag::Out))
-            { // has out flag
-                ++overload.return_count;
-            }
-        }
-    }
-}
 void ScriptBinderManager::_make_ctor(ScriptBinderCtor& out, const RTTRCtorData* ctor, const RTTRType* owner)
 {
     auto _log_stack = _logger.stack(u8"export ctor");

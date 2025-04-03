@@ -375,6 +375,8 @@ struct ScriptBinderCallScript {
     Vector<ScriptBinderParam> params_binder = {};
     uint32_t                  params_count  = 0;
     uint32_t                  return_count  = 1;
+
+    bool failed = false;
 };
 
 // TODO. Generic type support
@@ -384,8 +386,8 @@ struct SKR_CORE_API ScriptBinderManager {
     ~ScriptBinderManager();
 
     // get binder
-    ScriptBinderRoot get_or_build(GUID type_id);
-    // ScriptBinderCallScript build_call_script_binder(span<StackProxy> params, StackProxy ret); // TODO. not implemented
+    ScriptBinderRoot       get_or_build(GUID type_id);
+    ScriptBinderCallScript build_call_script_binder(span<StackProxy> params, StackProxy ret);
 
     // each
     void each_cached_root_binder(FunctionRef<void(const GUID&, const ScriptBinderRoot&)> func);
