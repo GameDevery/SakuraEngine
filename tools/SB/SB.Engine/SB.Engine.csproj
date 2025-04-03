@@ -12,8 +12,8 @@
   </ItemGroup>
 
 	<ItemGroup>
-		<Compile Include="./../../**/**/build.cs" />
-		<Compile Remove="./../../build_system/**/build.cs" />
+		<Compile Include="./../../../**/**/build.cs" />
+		<Compile Remove="./../../../build_system/**/build.cs" />
 	</ItemGroup>
 
 </Project>

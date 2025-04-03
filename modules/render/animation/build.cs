@@ -13,7 +13,8 @@ public static class SkrAnim
             .Depend(Visibility.Public, "SkrRT")
             .IncludeDirs(Visibility.Public, "ozz")
             .IncludeDirs(Visibility.Private, "ozz_src")
-            .AddCppFiles("ozz_src/**.cc");
+            .AddCppFiles("ozz_src/**.cc")
+            .UsePrivatePCH("ozz/SkrAnim/ozz/*.h");
 
         Engine.Module("SkrAnim")
             .EnableUnityBuild()
@@ -21,6 +22,7 @@ public static class SkrAnim
             .IncludeDirs(Visibility.Public, "include")
             .IncludeDirs(Visibility.Public, "ozz")
             .AddCppFiles("src/**.cpp")
-            .AddMetaHeaders("include/**.h", "include/**.hpp");
+            .AddMetaHeaders("include/**.h", "include/**.hpp")
+            .UsePrivatePCH("src/pch.hpp");
     }
 }

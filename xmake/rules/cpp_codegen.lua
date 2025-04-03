@@ -87,6 +87,7 @@ rule("c++.codegen.load")
             -- add to target configure
             target:add("files", source_file, { unity_ignored = true })
             target:add("includedirs", codegen_dir, {public = true})
+            target:add("includedirs", path.join(codegen_dir, target:name()), {public = true})
 
             -- add deps
             local analyze_tbl = analyze.load(target:name())

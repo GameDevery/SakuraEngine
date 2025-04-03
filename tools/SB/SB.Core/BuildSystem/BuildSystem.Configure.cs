@@ -10,7 +10,7 @@ namespace SB
             TargetDelegate Debug = (Target) =>
             {
                 Target.DebugSymbols(true)
-                    .OptimizationLevel(OptimizationLevel.Fast);
+                    .OptimizationLevel(OptimizationLevel.None);
             };
             Configurations.Add("debug", Debug);
 

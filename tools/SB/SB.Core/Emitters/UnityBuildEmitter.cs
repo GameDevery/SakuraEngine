@@ -6,7 +6,7 @@ namespace SB
 
     public class UnityBuildAttribute
     {
-        public int BatchCount { get; set; } = 32;
+        public int BatchCount { get; set; } = 16;
         public required bool Cpp;
         public required bool C;
     }

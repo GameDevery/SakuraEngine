@@ -9,7 +9,7 @@ public static class SkrAnimTool
     {
         Engine.Module("SkrAnimTool", "SKR_ANIMTOOL")
             // .EnableUnityBuild()
-            .Exception(true)
+            // .Exception(true)
             .Depend(Visibility.Public, "SkrMeshCore", "SkrAnim")
             .IncludeDirs(Visibility.Public, "include", "ozz")
             .IncludeDirs(Visibility.Private, "src")
