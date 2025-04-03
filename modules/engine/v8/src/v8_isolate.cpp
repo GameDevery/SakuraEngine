@@ -252,10 +252,11 @@ V8BindCoreValue* V8Isolate::create_value(const RTTRType* type, const void* sourc
     Local<Object>         object            = instance_template->NewInstance(context).ToLocalChecked();
 
     // make bind core
-    auto value_bind_core     = _new_bind_core<V8BindCoreValue>();
-    value_bind_core->manager = this;
-    value_bind_core->type    = type;
-    value_bind_core->data    = alloc_mem;
+    auto value_bind_core       = _new_bind_core<V8BindCoreValue>();
+    value_bind_core->manager   = this;
+    value_bind_core->type      = type;
+    value_bind_core->data      = alloc_mem;
+    value_bind_core->bind_data = found_template.value()->as_value();
     value_bind_core->v8_object.Reset(isolate, object);
 
     // setup source
@@ -310,10 +311,11 @@ V8BindCoreValue* V8Isolate::translate_value_field(const RTTRType* type, const vo
         Local<Object>         object            = instance_template->NewInstance(context).ToLocalChecked();
 
         // make bind core
-        auto value_bind_core     = _new_bind_core<V8BindCoreValue>();
-        value_bind_core->manager = this;
-        value_bind_core->type    = type;
-        value_bind_core->data    = const_cast<void*>(data);
+        auto value_bind_core       = _new_bind_core<V8BindCoreValue>();
+        value_bind_core->manager   = this;
+        value_bind_core->type      = type;
+        value_bind_core->data      = const_cast<void*>(data);
+        value_bind_core->bind_data = found_template.value()->as_value();
         value_bind_core->v8_object.Reset(isolate, object);
 
         // setup source
@@ -347,10 +349,11 @@ V8BindCoreValue* V8Isolate::translate_value_field(const RTTRType* type, const vo
         Local<Object>         object            = instance_template->NewInstance(context).ToLocalChecked();
 
         // create new core
-        auto* value_bind_core    = _new_bind_core<V8BindCoreValue>();
-        value_bind_core->manager = this;
-        value_bind_core->type    = type;
-        value_bind_core->data    = const_cast<void*>(data);
+        auto* value_bind_core      = _new_bind_core<V8BindCoreValue>();
+        value_bind_core->manager   = this;
+        value_bind_core->type      = type;
+        value_bind_core->data      = const_cast<void*>(data);
+        value_bind_core->bind_data = found_template.value()->as_value();
         value_bind_core->v8_object.Reset(isolate, object);
 
         // setup source
@@ -1109,6 +1112,7 @@ void V8Isolate::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
                 bind_core->manager          = bind_data->manager;
                 bind_core->type             = binder->type;
                 bind_core->data             = alloc_mem;
+                bind_core->bind_data        = object_data;
                 bind_core->object           = reinterpret_cast<ScriptbleObject*>(casted_mem);
 
                 // setup mixin

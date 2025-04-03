@@ -166,7 +166,8 @@ struct V8BindCoreObject : V8BindCoreRecordBase {
     }
 
     // native info
-    skr::ScriptbleObject* object = nullptr;
+    skr::ScriptbleObject* object    = nullptr;
+    V8BindDataObject*     bind_data = nullptr;
 
     inline void invalidate()
     {
@@ -191,6 +192,7 @@ struct V8BindCoreValue : V8BindCoreRecordBase {
     };
     ESource               from             = ESource::Invalid;
     V8BindCoreRecordBase* from_field_owner = nullptr;
+    V8BindDataValue*      bind_data        = nullptr;
 
     inline void invalidate()
     {
