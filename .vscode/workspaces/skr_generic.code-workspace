@@ -9,7 +9,7 @@
             "name": "codegen",
         },
         {
-            "path": "../../build_system",
+            "path": "../../tools/SB",
             "name": "sb",
         }
     ],
