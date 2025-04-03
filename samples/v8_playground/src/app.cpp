@@ -56,8 +56,8 @@ void V8PlaygroundApp::init_debugger(int port)
 void V8PlaygroundApp::shutdown_debugger()
 {
     _inspector_client.shutdown();
-    _websocket_server.shutdown();
     _inspector_client.server = nullptr;
+    _websocket_server.shutdown();
 }
 void V8PlaygroundApp::pump_debugger_messages()
 {
