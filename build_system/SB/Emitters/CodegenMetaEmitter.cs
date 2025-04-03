@@ -37,7 +37,7 @@ namespace SB
                 Directory.CreateDirectory(BatchDirectory);
                 File.WriteAllLines(BatchFile, Headers.Select(H => $"#include \"{H}\""));
                 depend.ExternalFiles.Add(BatchFile);
-            }, null, null);
+            }, Headers, null);
 
             // Set meta args
             var MetaArgs = new List<string>{

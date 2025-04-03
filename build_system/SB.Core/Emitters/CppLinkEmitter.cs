@@ -84,7 +84,7 @@ namespace SB
             return null;
         }
 
-        private static string GetLinkedFileName(Target Target)
+        public static string GetLinkedFileName(Target Target)
         {
             var OutputType = Target.GetTargetType();
             var Extension = GetPlatformLinkedFileExtension(OutputType);
@@ -92,7 +92,7 @@ namespace SB
             return OutputFile;
         }
 
-        private static string? GetStubFileName(Target Target)
+        public static string? GetStubFileName(Target Target)
         {
             var OutputType = Target.GetTargetType();
             var Extension = GetPlatformStubFileExtension(OutputType);
@@ -102,7 +102,7 @@ namespace SB
             return OutputFile;
         }
 
-        private static string GetPlatformLinkedFileExtension(TargetType? Type)
+        public static string GetPlatformLinkedFileExtension(TargetType? Type)
         {
             if (BS.TargetOS == OSPlatform.Windows)
                 return Type switch

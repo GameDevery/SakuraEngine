@@ -3,49 +3,12 @@ using SB.Core;
 using Serilog;
 using System.Diagnostics;
 
-Stopwatch before_sw = new();
-before_sw.Start();
+Stopwatch sw = new();
+sw.Start();
 
 var Toolchain = Engine.Bootstrap(SourceLocation.Directory());
-
-Engine.AddTaskEmitter("DXC.Compile", new DXCEmitter());
-
-Engine.AddTaskEmitter("Module.Info", new ModuleInfoEmitter());
-
-Engine.AddTaskEmitter("Codgen.Meta", new CodegenMetaEmitter(Toolchain));
-
-Engine.AddTaskEmitter("Codgen.Codegen", new CodegenRenderEmitter(Toolchain))
-    .AddDependency("Codgen.Meta", DependencyModel.ExternalTarget)
-    .AddDependency("Codgen.Meta", DependencyModel.PerTarget);
-
-Engine.AddTaskEmitter("Cpp.PCH", new PCHEmitter(Toolchain))
-    .AddDependency("Codgen.Codegen", DependencyModel.ExternalTarget)
-    .AddDependency("Codgen.Codegen", DependencyModel.PerTarget);
-
-Engine.AddTaskEmitter("Cpp.UnityBuild", new UnityBuildEmitter())
-    .AddDependency("Module.Info", DependencyModel.PerTarget)
-    .AddDependency("Codgen.Codegen", DependencyModel.PerTarget);
-
-Engine.AddTaskEmitter("Cpp.Compile", new CppCompileEmitter(Toolchain))
-    .AddDependency("Module.Info", DependencyModel.PerTarget)
-    .AddDependency("Cpp.UnityBuild", DependencyModel.PerTarget)
-    .AddDependency("Cpp.PCH", DependencyModel.PerTarget)
-    .AddDependency("Cpp.PCH", DependencyModel.ExternalTarget)
-    .AddDependency("Codgen.Codegen", DependencyModel.ExternalTarget)
-    .AddDependency("Codgen.Codegen", DependencyModel.PerTarget);
-
-var CompileCommandsEmitter = new CompileCommandsEmitter(Toolchain);
-Engine.AddTaskEmitter("Cpp.CompileCommands", CompileCommandsEmitter)
-    .AddDependency("Module.Info", DependencyModel.PerTarget)
-    .AddDependency("Cpp.UnityBuild", DependencyModel.PerTarget)
-    .AddDependency("Cpp.PCH", DependencyModel.PerTarget)
-    .AddDependency("Cpp.PCH", DependencyModel.ExternalTarget)
-    .AddDependency("Codgen.Codegen", DependencyModel.ExternalTarget)
-    .AddDependency("Codgen.Codegen", DependencyModel.PerTarget);
-
-Engine.AddTaskEmitter("Cpp.Link", new CppLinkEmitter(Toolchain))
-    .AddDependency("Cpp.Link", DependencyModel.ExternalTarget)
-    .AddDependency("Cpp.Compile", DependencyModel.PerTarget);
+Engine.AddEngineTaskEmitters(Toolchain);
+Engine.AddCompileCommandsEmitter(Toolchain);
 
 Engine.SetTagsUnderDirectory("thirdparty", TargetTags.ThirdParty);
 Engine.SetTagsUnderDirectory("modules/core", TargetTags.Engine);
@@ -59,18 +22,12 @@ Engine.SetTagsUnderDirectory("modules/experimental", TargetTags.Experimental);
 Engine.SetTagsUnderDirectory("samples", TargetTags.Application);
 Engine.SetTagsUnderDirectory("tests", TargetTags.Tests);
 
-before_sw.Stop();
-
-Stopwatch sw = new();
-sw.Start();
-
 Engine.RunBuild();
 CompileCommandsEmitter.WriteToFile(Path.Combine(SourceLocation.Directory(), "./compile_commands.json"));
 
 sw.Stop();
 
-Log.Information($"Total: {(sw.ElapsedMilliseconds + before_sw.ElapsedMilliseconds) / 1000.0f}s");
-Log.Information($"Prepare Total: {before_sw.ElapsedMilliseconds / 1000.0f}s");
+Log.Information($"Total: {sw.ElapsedMilliseconds / 1000.0f}s");
 Log.Information($"Execution Total: {sw.ElapsedMilliseconds / 1000.0f}s");
 Log.Information($"Compile Commands Total: {CompileCommandsEmitter.Time / 1000.0f}s");
 Log.Information($"Compile Total: {CppCompileEmitter.Time / 1000.0f}s");

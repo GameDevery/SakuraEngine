@@ -45,6 +45,7 @@ namespace SB
             Emitter.SelfName = Name;
             return Emitter;
         }
+        public static TaskEmitter? GetTaskEmitter(string Name) => TaskEmitters.TryGetValue(Name, out var Found) ? Found : null;
 
         public static void RunBuild()
         {

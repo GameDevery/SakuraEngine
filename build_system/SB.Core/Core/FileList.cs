@@ -71,7 +71,7 @@ namespace SB
             return null;
         }
 
-        internal void GlobFiles()
+        public void GlobFiles()
         {
             if (Globs.Count != 0)
             {

@@ -48,6 +48,54 @@ namespace SB
             }
         }
 
+        public static void AddEngineTaskEmitters(IToolchain Toolchain)
+        {
+            Engine.AddTaskEmitter("ISPC.Compile", new ISPCEmitter());
+
+            Engine.AddTaskEmitter("DXC.Compile", new DXCEmitter());
+
+            Engine.AddTaskEmitter("Module.Info", new ModuleInfoEmitter());
+
+            Engine.AddTaskEmitter("Codgen.Meta", new CodegenMetaEmitter(Toolchain));
+
+            Engine.AddTaskEmitter("Codgen.Codegen", new CodegenRenderEmitter(Toolchain))
+                .AddDependency("Codgen.Meta", DependencyModel.ExternalTarget)
+                .AddDependency("Codgen.Meta", DependencyModel.PerTarget);
+
+            Engine.AddTaskEmitter("Cpp.PCH", new PCHEmitter(Toolchain))
+                .AddDependency("ISPC.Compile", DependencyModel.PerTarget)
+                .AddDependency("Codgen.Codegen", DependencyModel.ExternalTarget)
+                .AddDependency("Codgen.Codegen", DependencyModel.PerTarget);
+
+            Engine.AddTaskEmitter("Cpp.UnityBuild", new UnityBuildEmitter())
+                .AddDependency("Module.Info", DependencyModel.PerTarget)
+                .AddDependency("Codgen.Codegen", DependencyModel.PerTarget);
+
+            Engine.AddTaskEmitter("Cpp.Compile", new CppCompileEmitter(Toolchain))
+                .AddDependency("ISPC.Compile", DependencyModel.PerTarget)
+                .AddDependency("Module.Info", DependencyModel.PerTarget)
+                .AddDependency("Cpp.UnityBuild", DependencyModel.PerTarget)
+                .AddDependency("Cpp.PCH", DependencyModel.PerTarget)
+                .AddDependency("Cpp.PCH", DependencyModel.ExternalTarget)
+                .AddDependency("Codgen.Codegen", DependencyModel.ExternalTarget)
+                .AddDependency("Codgen.Codegen", DependencyModel.PerTarget);
+            
+            Engine.AddTaskEmitter("Cpp.Link", new CppLinkEmitter(Toolchain))
+                .AddDependency("Cpp.Link", DependencyModel.ExternalTarget)
+                .AddDependency("Cpp.Compile", DependencyModel.PerTarget);
+        }
+
+        public static void AddCompileCommandsEmitter(IToolchain Toolchain)
+        {
+            Engine.AddTaskEmitter("Cpp.CompileCommands",  new CompileCommandsEmitter(Toolchain))
+                .AddDependency("Module.Info", DependencyModel.PerTarget)
+                .AddDependency("Cpp.UnityBuild", DependencyModel.PerTarget)
+                .AddDependency("Cpp.PCH", DependencyModel.PerTarget)
+                .AddDependency("Cpp.PCH", DependencyModel.ExternalTarget)
+                .AddDependency("Codgen.Codegen", DependencyModel.ExternalTarget)
+                .AddDependency("Codgen.Codegen", DependencyModel.PerTarget);
+        }
+
         public static new void RunBuild()
         {
             DoctorsTask!.Wait();

@@ -3,10 +3,16 @@ using SB.Core;
 using Serilog;
 
 [TargetScript]
-public static class ISPCTextureCompressor
+public static class SkrTextureCompiler
 {
-    static ISPCTextureCompressor()
+    static SkrTextureCompiler()
     {
-        // TODO: ISPC TEX COMPRESSOR
+        Engine.Module("SkrTextureCompiler")
+            .EnableUnityBuild()
+            .Depend(Visibility.Public, "SkrRenderer", "SkrImageCoder", "SkrToolCore")
+            .IncludeDirs(Visibility.Public, "include")
+            .AddMetaHeaders("include/**.hpp")
+            .AddCppFiles("src/**.cpp")
+            .AddISPCFiles("src/ispc/**.ispc");
     }
 }
