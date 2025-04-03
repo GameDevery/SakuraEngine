@@ -9,68 +9,68 @@ struct StackProxy {
 };
 template <typename T>
 struct StackProxyMaker {
-    inline static StackProxy Make(T& data)
+    inline static StackProxy Make(T& data, bool with_signature = true)
     {
         return {
             .data      = &data,
-            .signature = type_signature_of<T>(),
+            .signature = with_signature ? type_signature_of<T>() : TypeSignature{},
         };
     }
-    inline static StackProxy Make(T&& data)
+    inline static StackProxy Make(T&& data, bool with_signature = true)
     {
         return {
             .data      = &data,
-            .signature = type_signature_of<T>(),
+            .signature = with_signature ? type_signature_of<T>() : TypeSignature{},
         };
     }
 };
 template <typename T>
 struct StackProxyMaker<T*> { // see object export, we only pass object by pointer, and we should change pointer value when return it
-    inline static StackProxy Make(T*& data)
+    inline static StackProxy Make(T*& data, bool with_signature = true)
     {
         return {
             .data      = &data,
-            .signature = type_signature_of<T*>(),
+            .signature = with_signature ? type_signature_of<T>() : TypeSignature{},
         };
     }
 };
 template <typename T>
 struct StackProxyMaker<const T*> { // see object export, we only pass object by pointer, and we should change pointer value when return it
-    inline static StackProxy Make(const T*& data)
+    inline static StackProxy Make(const T*& data, bool with_signature = true)
     {
         return {
             .data      = &data,
-            .signature = type_signature_of<T*>(),
+            .signature = with_signature ? type_signature_of<T>() : TypeSignature{},
         };
     }
 };
 template <typename T>
 struct StackProxyMaker<T&> {
-    inline static StackProxy Make(T& data)
+    inline static StackProxy Make(T& data, bool with_signature = true)
     {
         return {
             .data      = &data,
-            .signature = type_signature_of<T&>(),
+            .signature = with_signature ? type_signature_of<T>() : TypeSignature{},
         };
     }
 };
 template <typename T>
 struct StackProxyMaker<const T&> {
-    inline static StackProxy Make(const T& data)
+    inline static StackProxy Make(const T& data, bool with_signature = true)
     {
         return {
             .data      = const_cast<T*>(&data),
-            .signature = type_signature_of<const T&>(),
+            .signature = with_signature ? type_signature_of<T>() : TypeSignature{},
         };
     }
 };
 template <typename T>
 struct StackProxyMaker<T&&> {
-    inline static StackProxy Make(T&& data)
+    inline static StackProxy Make(T&& data, bool with_signature = true)
     {
         return {
             .data      = &data,
-            .signature = type_signature_of<T&&>(),
+            .signature = with_signature ? type_signature_of<T>() : TypeSignature{},
         };
     }
 };

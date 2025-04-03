@@ -492,17 +492,7 @@ inline String TSDefineExporter::_return_signature(
         {
             for (auto& param : params)
             {
-                bool is_out = false;
-                if (param.binder.is_value())
-                { // optimize for value case
-                    is_out = param.inout_flag == ERTTRParamFlag::Out;
-                }
-                else
-                {
-                    is_out = flag_all(param.inout_flag, ERTTRParamFlag::Out);
-                }
-
-                if (is_out)
+                if (param.appare_in_return)
                 {
                     return format(u8"{} /*{}*/", _type_name_with_ns(param.binder), param.data->name);
                 }
@@ -526,17 +516,7 @@ inline String TSDefineExporter::_return_signature(
         }
         for (auto& param : params)
         {
-            bool is_out = false;
-            if (param.binder.is_value())
-            { // optimize for value case
-                is_out = param.inout_flag == ERTTRParamFlag::Out;
-            }
-            else
-            {
-                is_out = flag_all(param.inout_flag, ERTTRParamFlag::Out);
-            }
-
-            if (is_out)
+            if (param.appare_in_return)
             {
                 result.append(format(u8"{} /*{}*/", _type_name_with_ns(param.binder), param.data->name));
                 result.append(u8", ");

@@ -21,4 +21,7 @@ skr::String ParamFlagTest::test_value = u8"";
 skr::String TestString::value = {};
 
 RttrMixin* MixinHelper::mixin = nullptr;
+
+TestMixinValue MixinHelper::test_value = {};
+
 } // namespace test_v8

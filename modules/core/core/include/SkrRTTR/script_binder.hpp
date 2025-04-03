@@ -264,10 +264,11 @@ struct ScriptBinderStaticField {
 
 // nested binder, method & static method
 struct ScriptBinderParam {
-    ScriptBinderRoot     binder      = {};
-    const RTTRParamData* data        = nullptr;
-    bool                 pass_by_ref = false;
-    ERTTRParamFlag       inout_flag  = ERTTRParamFlag::None;
+    ScriptBinderRoot     binder           = {};
+    const RTTRParamData* data             = nullptr;
+    bool                 pass_by_ref      = false;
+    bool                 appare_in_return = false;
+    ERTTRParamFlag       inout_flag       = ERTTRParamFlag::None;
 };
 struct ScriptBinderReturn {
     ScriptBinderRoot binder      = {};

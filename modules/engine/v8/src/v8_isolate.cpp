@@ -256,6 +256,7 @@ V8BindCoreValue* V8Isolate::create_value(const RTTRType* type, const void* sourc
     value_bind_core->manager   = this;
     value_bind_core->type      = type;
     value_bind_core->data      = alloc_mem;
+    value_bind_core->binder    = found_template.value()->as_value()->binder;
     value_bind_core->bind_data = found_template.value()->as_value();
     value_bind_core->v8_object.Reset(isolate, object);
 
@@ -298,6 +299,16 @@ V8BindCoreValue* V8Isolate::translate_value_field(const RTTRType* type, const vo
         return nullptr;
     }
 
+    // check if value
+    if (!found_template.value()->is_value)
+    {
+        SKR_LOG_FMT_ERROR(
+            u8"type {} is not a value type",
+            type->name()
+        );
+        return nullptr;
+    }
+
     if (owner)
     { // means field
         // find exported data
@@ -315,6 +326,7 @@ V8BindCoreValue* V8Isolate::translate_value_field(const RTTRType* type, const vo
         value_bind_core->manager   = this;
         value_bind_core->type      = type;
         value_bind_core->data      = const_cast<void*>(data);
+        value_bind_core->binder    = found_template.value()->as_value()->binder;
         value_bind_core->bind_data = found_template.value()->as_value();
         value_bind_core->v8_object.Reset(isolate, object);
 
@@ -353,6 +365,7 @@ V8BindCoreValue* V8Isolate::translate_value_field(const RTTRType* type, const vo
         value_bind_core->manager   = this;
         value_bind_core->type      = type;
         value_bind_core->data      = const_cast<void*>(data);
+        value_bind_core->binder    = found_template.value()->as_value()->binder;
         value_bind_core->bind_data = found_template.value()->as_value();
         value_bind_core->v8_object.Reset(isolate, object);
 
@@ -373,6 +386,67 @@ V8BindCoreValue* V8Isolate::translate_value_field(const RTTRType* type, const vo
         _static_field_values.add(const_cast<void*>(data), value_bind_core);
         return value_bind_core;
     }
+}
+V8BindCoreValue* V8Isolate::translate_value_temporal(const RTTRType* type, const void* data, V8BindCoreValue::ESource source)
+{
+    //! NOTE. isolate & context must be setted before call this function
+    using namespace ::v8;
+
+    auto* isolate = Isolate::GetCurrent();
+    auto  context = isolate->GetCurrentContext();
+
+    HandleScope handle_scope(isolate);
+
+    // get template
+    auto found_template = _record_templates.find(type);
+    if (!found_template)
+    {
+        SKR_LOG_FMT_ERROR(
+            u8"type {} template not found, please register it first",
+            type->name()
+        );
+        return nullptr;
+    }
+
+    // check if value
+    if (!found_template.value()->is_value)
+    {
+        SKR_LOG_FMT_ERROR(
+            u8"type {} is not a value type",
+            type->name()
+        );
+        return nullptr;
+    }
+
+    // make object
+    Local<ObjectTemplate> instance_template = found_template.value()->ctor_template.Get(isolate)->InstanceTemplate();
+    Local<Object>         object            = instance_template->NewInstance(context).ToLocalChecked();
+
+    // make bind core
+    auto value_bind_core       = _new_bind_core<V8BindCoreValue>();
+    value_bind_core->manager   = this;
+    value_bind_core->type      = type;
+    value_bind_core->data      = const_cast<void*>(data);
+    value_bind_core->binder    = found_template.value()->as_value()->binder;
+    value_bind_core->bind_data = found_template.value()->as_value();
+    value_bind_core->v8_object.Reset(isolate, object);
+
+    // setup source
+    value_bind_core->from = source;
+
+    // setup gc callback
+    value_bind_core->v8_object.SetWeak(
+        (V8BindCoreRecordBase*)value_bind_core,
+        _gc_callback,
+        WeakCallbackType::kInternalFields
+    );
+
+    // add extern data
+    object->SetInternalField(0, External::New(isolate, value_bind_core));
+
+    // add to map
+    _temporal_values.add(const_cast<void*>(data), value_bind_core);
+    return value_bind_core;
 }
 
 // query template
@@ -581,8 +655,6 @@ bool V8Isolate::invoke_v8(
     StackProxy              return_value
 )
 {
-    //! NOTE. isolate & context must be setted before call this function
-
     auto*           isolate = v8::Isolate::GetCurrent();
     auto            context = isolate->GetCurrentContext();
     v8::HandleScope handle_scope(isolate);
@@ -624,6 +696,64 @@ bool V8Isolate::invoke_v8(
 
     return true;
 }
+bool V8Isolate::invoke_v8_mixin(
+    v8::Local<v8::Value>                v8_this,
+    v8::Local<v8::Function>             v8_func,
+    const ScriptBinderMethod::Overload& mixin_data,
+    span<const StackProxy>              params,
+    StackProxy                          return_value
+)
+{
+    auto*           isolate = v8::Isolate::GetCurrent();
+    auto            context = isolate->GetCurrentContext();
+    v8::HandleScope handle_scope(isolate);
+
+    // push params
+    InlineVector<v8::Local<v8::Value>, 16> v8_params;
+    for (const auto& param_binder : mixin_data.params_binder)
+    {
+        // filter pure out
+        if (param_binder.inout_flag == ERTTRParamFlag::Out) { continue; }
+
+        // push param
+        auto param = _make_v8_param(param_binder, params[param_binder.data->index].data);
+        v8_params.add(param);
+    }
+
+    // call script
+    auto v8_ret = v8_func->Call(context, v8_this, v8_params.size(), v8_params.data());
+
+    // check return
+    bool success_read_return = _read_v8_return(
+        params,
+        return_value,
+        mixin_data.params_binder,
+        mixin_data.return_binder,
+        mixin_data.return_count,
+        v8_ret.ToLocalChecked()
+    );
+
+    // invalidate value params
+    for (const auto& param_binder : mixin_data.params_binder)
+    {
+        if (param_binder.binder.is_value() && param_binder.inout_flag != ERTTRParamFlag::Out)
+        {
+            auto found = _temporal_values.find(params[param_binder.data->index].data);
+            if (found)
+            {
+                // invalidate value bind core
+                found.value()->invalidate();
+                _temporal_values.remove_at(found.index());
+            }
+            else
+            {
+                SKR_UNREACHABLE_CODE()
+            }
+        }
+    }
+
+    return success_read_return;
+}
 
 // => IScriptMixinCore API
 void V8Isolate::on_object_destroyed(ScriptbleObject* obj)
@@ -643,6 +773,22 @@ bool V8Isolate::try_invoke_mixin(ScriptbleObject* obj, StringView name, const sp
         // get bind core
         auto* bind_core = found.value();
 
+        // find method overload data
+        auto found_method = bind_core->bind_data->methods.find(name);
+        if (!found_method)
+        {
+            SKR_LOG_FMT_ERROR(u8"mixin method {} not found", name);
+            return false;
+        }
+
+        // get overload
+        if (!found_method.value()->binder.is_mixin)
+        {
+            SKR_LOG_FMT_ERROR(u8"find method {} but not a mixin", name);
+            return false;
+        }
+        const auto& overload = found_method.value()->binder.overloads[0];
+
         // find method in object
         auto v8_object = bind_core->v8_object.Get(v8::Isolate::GetCurrent());
         auto v8_func   = v8_object->Get(
@@ -656,10 +802,18 @@ bool V8Isolate::try_invoke_mixin(ScriptbleObject* obj, StringView name, const sp
             return false;
         }
 
+        // check if native function
+        auto v8_func_checked = v8_func.ToLocalChecked().As<v8::Function>();
+        if (found_method.value()->v8_template.Get(isolate)->GetFunction(context).ToLocalChecked() == v8_func_checked)
+        {
+            return false;
+        }
+
         // call script
-        return invoke_v8(
+        return invoke_v8_mixin(
             v8_object,
-            v8_func.ToLocalChecked().As<v8::Function>(),
+            v8_func_checked,
+            overload,
             params,
             ret
         );
@@ -745,13 +899,15 @@ void V8Isolate::_fill_record_template(
     {
         auto method_bind_data    = _new_bind_data<V8BindDataMethod>();
         method_bind_data->binder = method_binder;
+        auto v8_template         = FunctionTemplate::New(
+            isolate,
+            _call_method,
+            External::New(isolate, method_bind_data)
+        );
+        method_bind_data->v8_template.Reset(isolate, v8_template);
         ctor_template->PrototypeTemplate()->Set(
             V8Bind::to_v8(method_name, true),
-            FunctionTemplate::New(
-                isolate,
-                _call_method,
-                External::New(isolate, method_bind_data)
-            )
+            v8_template
         );
         bind_data->methods.add(method_name, method_bind_data);
     }
@@ -761,13 +917,15 @@ void V8Isolate::_fill_record_template(
     {
         auto static_method_bind_data    = _new_bind_data<V8BindDataStaticMethod>();
         static_method_bind_data->binder = static_method_binder;
+        auto v8_template                = FunctionTemplate::New(
+            isolate,
+            _call_static_method,
+            External::New(isolate, static_method_bind_data)
+        );
+        static_method_bind_data->v8_template.Reset(isolate, v8_template);
         ctor_template->Set(
             V8Bind::to_v8(static_method_name, true),
-            FunctionTemplate::New(
-                isolate,
-                _call_static_method,
-                External::New(isolate, static_method_bind_data)
-            )
+            v8_template
         );
         bind_data->static_methods.add(static_method_name, static_method_bind_data);
     }
@@ -777,18 +935,23 @@ void V8Isolate::_fill_record_template(
     {
         auto field_bind_data    = _new_bind_data<V8BindDataField>();
         field_bind_data->binder = field_binder;
-        ctor_template->PrototypeTemplate()->SetAccessorProperty(
-            V8Bind::to_v8(field_name, true),
-            FunctionTemplate::New(
-                isolate,
-                _get_field,
-                External::New(isolate, field_bind_data)
-            ),
+        auto getter_template    = FunctionTemplate::New(
+            isolate,
+            _get_field,
+            External::New(isolate, field_bind_data)
+        );
+        auto setter_template =
             FunctionTemplate::New(
                 isolate,
                 _set_field,
                 External::New(isolate, field_bind_data)
-            )
+            );
+        field_bind_data->v8_template_getter.Reset(isolate, getter_template);
+        field_bind_data->v8_template_setter.Reset(isolate, setter_template);
+        ctor_template->PrototypeTemplate()->SetAccessorProperty(
+            V8Bind::to_v8(field_name, true),
+            getter_template,
+            setter_template
         );
         bind_data->fields.add(field_name, field_bind_data);
     }
@@ -798,18 +961,23 @@ void V8Isolate::_fill_record_template(
     {
         auto static_field_bind_data    = _new_bind_data<V8BindDataStaticField>();
         static_field_bind_data->binder = static_field_binder;
-        ctor_template->SetAccessorProperty(
-            V8Bind::to_v8(static_field_name, true),
-            FunctionTemplate::New(
-                isolate,
-                _get_static_field,
-                External::New(isolate, static_field_bind_data)
-            ),
+        auto getter_template           = FunctionTemplate::New(
+            isolate,
+            _get_static_field,
+            External::New(isolate, static_field_bind_data)
+        );
+        auto setter_template =
             FunctionTemplate::New(
                 isolate,
                 _set_static_field,
                 External::New(isolate, static_field_bind_data)
-            )
+            );
+        static_field_bind_data->v8_template_getter.Reset(isolate, getter_template);
+        static_field_bind_data->v8_template_setter.Reset(isolate, setter_template);
+        ctor_template->SetAccessorProperty(
+            V8Bind::to_v8(static_field_name, true),
+            getter_template,
+            setter_template
         );
         bind_data->static_fields.add(static_field_name, static_field_bind_data);
     }
@@ -819,18 +987,20 @@ void V8Isolate::_fill_record_template(
     {
         auto property_bind_data    = _new_bind_data<V8BindDataProperty>();
         property_bind_data->binder = property_binder;
+        auto getter_template       = FunctionTemplate::New(
+            isolate,
+            _get_prop,
+            External::New(isolate, property_bind_data)
+        );
+        auto setter_template = FunctionTemplate::New(
+            isolate,
+            _set_prop,
+            External::New(isolate, property_bind_data)
+        );
         ctor_template->PrototypeTemplate()->SetAccessorProperty(
             V8Bind::to_v8(property_name, true),
-            FunctionTemplate::New(
-                isolate,
-                _get_prop,
-                External::New(isolate, property_bind_data)
-            ),
-            FunctionTemplate::New(
-                isolate,
-                _set_prop,
-                External::New(isolate, property_bind_data)
-            )
+            getter_template,
+            setter_template
         );
         bind_data->properties.add(property_name, property_bind_data);
     }
@@ -840,18 +1010,22 @@ void V8Isolate::_fill_record_template(
     {
         auto static_property_bind_data    = _new_bind_data<V8BindDataStaticProperty>();
         static_property_bind_data->binder = static_property_binder;
+        auto getter_template              = FunctionTemplate::New(
+            isolate,
+            _get_static_prop,
+            External::New(isolate, static_property_bind_data)
+        );
+        auto setter_template = FunctionTemplate::New(
+            isolate,
+            _set_static_prop,
+            External::New(isolate, static_property_bind_data)
+        );
+        static_property_bind_data->v8_template_getter.Reset(isolate, getter_template);
+        static_property_bind_data->v8_template_setter.Reset(isolate, setter_template);
         ctor_template->SetAccessorProperty(
             V8Bind::to_v8(static_property_name, true),
-            FunctionTemplate::New(
-                isolate,
-                _get_static_prop,
-                External::New(isolate, static_property_bind_data)
-            ),
-            FunctionTemplate::New(
-                isolate,
-                _set_static_prop,
-                External::New(isolate, static_property_bind_data)
-            )
+            getter_template,
+            setter_template
         );
         bind_data->static_properties.add(static_property_name, static_property_bind_data);
     }
@@ -1112,6 +1286,7 @@ void V8Isolate::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
                 bind_core->manager          = bind_data->manager;
                 bind_core->type             = binder->type;
                 bind_core->data             = alloc_mem;
+                bind_core->binder           = object_data->binder;
                 bind_core->bind_data        = object_data;
                 bind_core->object           = reinterpret_cast<ScriptbleObject*>(casted_mem);
 
@@ -2226,18 +2401,7 @@ v8::Local<v8::Value> V8Isolate::_read_return(
         { // read from out param
             for (const auto& param_binder : params_binder)
             {
-                bool do_read = false;
-                if (param_binder.binder.is_value())
-                { // optimize for value case
-                    // only pure out need read
-                    do_read = param_binder.inout_flag == ERTTRParamFlag::Out;
-                }
-                else
-                {
-                    do_read = flag_all(param_binder.inout_flag, ERTTRParamFlag::Out);
-                }
-
-                if (do_read)
+                if (param_binder.appare_in_return)
                 {
                     return _read_return_from_out_param(
                         stack,
@@ -2279,18 +2443,7 @@ v8::Local<v8::Value> V8Isolate::_read_return(
         // read return value from out param
         for (const auto& param_binder : params_binder)
         {
-            bool do_read = false;
-            if (param_binder.binder.is_value())
-            { // optimize for value case
-                // only pure out need read
-                do_read = param_binder.inout_flag == ERTTRParamFlag::Out;
-            }
-            else
-            {
-                do_read = flag_all(param_binder.inout_flag, ERTTRParamFlag::Out);
-            }
-
-            if (do_read)
+            if (param_binder.appare_in_return)
             {
                 // clang-format off
                 out_array->Set(context, cur_index,_read_return_from_out_param(
@@ -2367,6 +2520,112 @@ v8::Local<v8::Value> V8Isolate::_read_return_from_out_param(
             param_binder.binder,
             native_data
         );
+    }
+}
+
+// call native helper
+v8::Local<v8::Value> V8Isolate::_make_v8_param(
+    const ScriptBinderParam& param_binder,
+    void*                    native_data
+)
+{
+    if (param_binder.binder.is_value())
+    { // optimize for value case, pass by ref
+        auto* bind_data = translate_value_temporal(
+            param_binder.binder.value()->type,
+            native_data,
+            V8BindCoreValue::ESource::Param
+        );
+        return bind_data->v8_object.Get(v8::Isolate::GetCurrent());
+    }
+    return _to_v8(param_binder.binder, native_data);
+}
+bool V8Isolate::_read_v8_return(
+    span<const StackProxy>           params,
+    StackProxy                       return_value,
+    const Vector<ScriptBinderParam>& params_binder,
+    const ScriptBinderReturn&        return_binder,
+    uint32_t                         solved_return_count,
+    v8::Local<v8::Value>             v8_return_value
+)
+{
+    auto* isolate = v8::Isolate::GetCurrent();
+    auto  context = isolate->GetCurrentContext();
+
+    if (solved_return_count == 0)
+    {
+        return true;
+    }
+    else if (solved_return_count == 1)
+    {
+        if (v8_return_value.IsEmpty()) { return false; }
+
+        if (return_binder.is_void)
+        { // read to out param
+            for (const auto& param_binder : params_binder)
+            {
+                if (param_binder.appare_in_return)
+                {
+                    return _to_native(
+                        param_binder.binder,
+                        params[param_binder.data->index].data,
+                        v8_return_value,
+                        true
+                    );
+                }
+            }
+
+            // must checked before
+            SKR_UNREACHABLE_CODE()
+            return false;
+        }
+        else
+        { // read to return
+            return _to_native(
+                return_binder.binder,
+                return_value.data,
+                v8_return_value,
+                false
+            );
+        }
+    }
+    else
+    {
+        if (!v8_return_value->IsArray()) { return false; }
+        v8::Local<v8::Array> v8_array = v8_return_value.As<v8::Array>();
+        if (v8_array.IsEmpty() || v8_array->Length() != solved_return_count) { return false; }
+
+        uint32_t cur_index = 0;
+
+        // read return value
+        bool success = true;
+        if (!return_binder.is_void)
+        {
+            success &= _to_native(
+                return_binder.binder,
+                return_value.data,
+                v8_array->Get(context, cur_index).ToLocalChecked(),
+                false
+            );
+            ++cur_index;
+        }
+
+        // read out param
+        for (const auto& param_binder : params_binder)
+        {
+            if (param_binder.appare_in_return)
+            {
+                success &= _to_native(
+                    param_binder.binder,
+                    params[param_binder.data->index].data,
+                    v8_array->Get(context, cur_index).ToLocalChecked(),
+                    true
+                );
+                ++cur_index;
+            }
+        }
+
+        return success;
     }
 }
 

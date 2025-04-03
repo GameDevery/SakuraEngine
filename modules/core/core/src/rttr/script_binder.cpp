@@ -14,12 +14,14 @@ inline void _solve_param_return_count(OverloadType& overload)
     overload.params_count = 0;
 
     // each param and add count
-    for (const ScriptBinderParam& param : overload.params_binder)
+    for (ScriptBinderParam& param : overload.params_binder)
     {
+
         if (param.binder.is_value())
         { // optimize case for value
             if (param.inout_flag == ERTTRParamFlag::Out)
             { // pure out, return
+                param.appare_in_return = true;
                 ++overload.return_count;
             }
             else
@@ -35,6 +37,7 @@ inline void _solve_param_return_count(OverloadType& overload)
             }
             if (flag_all(param.inout_flag, ERTTRParamFlag::Out))
             { // has out flag
+                param.appare_in_return = true;
                 ++overload.return_count;
             }
         }

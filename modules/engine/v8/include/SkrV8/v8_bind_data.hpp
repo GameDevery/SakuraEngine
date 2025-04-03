@@ -11,31 +11,41 @@ struct V8Isolate;
 //===============================bind data===============================
 struct V8BindDataMethod {
     ScriptBinderMethod binder;
+    v8::Global<::v8::FunctionTemplate> v8_template;
     // manager
     V8Isolate* manager = nullptr;
 };
 struct V8BindDataStaticMethod {
     ScriptBinderStaticMethod binder;
+    v8::Global<::v8::FunctionTemplate> v8_template;
     // manager
     V8Isolate* manager = nullptr;
 };
 struct V8BindDataField {
     ScriptBinderField binder;
+    v8::Global<::v8::FunctionTemplate> v8_template_getter;
+    v8::Global<::v8::FunctionTemplate> v8_template_setter;
     // manager
     V8Isolate* manager = nullptr;
 };
 struct V8BindDataStaticField {
     ScriptBinderStaticField binder;
+    v8::Global<::v8::FunctionTemplate> v8_template_getter;
+    v8::Global<::v8::FunctionTemplate> v8_template_setter;
     // manager
     V8Isolate* manager = nullptr;
 };
 struct V8BindDataProperty {
     ScriptBinderProperty binder;
+    v8::Global<::v8::FunctionTemplate> v8_template_getter;
+    v8::Global<::v8::FunctionTemplate> v8_template_setter;
     // manager
     V8Isolate* manager = nullptr;
 };
 struct V8BindDataStaticProperty {
     ScriptBinderStaticProperty binder;
+    v8::Global<::v8::FunctionTemplate> v8_template_getter;
+    v8::Global<::v8::FunctionTemplate> v8_template_setter;
     // manager
     V8Isolate* manager = nullptr;
 };
@@ -43,7 +53,7 @@ struct V8BindDataObject;
 struct V8BindDataValue;
 struct V8BindDataRecordBase {
     // v8 info
-    ::v8::Global<::v8::FunctionTemplate> ctor_template;
+    v8::Global<::v8::FunctionTemplate> ctor_template;
 
     // native info
     bool                                   is_value = false;
@@ -167,6 +177,7 @@ struct V8BindCoreObject : V8BindCoreRecordBase {
 
     // native info
     skr::ScriptbleObject* object    = nullptr;
+    ScriptBinderObject*   binder    = nullptr;
     V8BindDataObject*     bind_data = nullptr;
 
     inline void invalidate()
@@ -192,6 +203,7 @@ struct V8BindCoreValue : V8BindCoreRecordBase {
     };
     ESource               from             = ESource::Invalid;
     V8BindCoreRecordBase* from_field_owner = nullptr;
+    ScriptBinderValue*    binder           = nullptr;
     V8BindDataValue*      bind_data        = nullptr;
 
     inline void invalidate()

@@ -73,7 +73,7 @@ SKR_CORE_API ScriptbleObject : virtual public skr::IObject
             return _mixin_core->try_invoke_mixin(
                 this,
                 name,
-                { StackProxyMaker<Args>::Make(args)... },
+                { StackProxyMaker<Args>::Make(args, /*mixin data must exist*/false)... },
                 {}
             );
         }
@@ -88,7 +88,7 @@ SKR_CORE_API ScriptbleObject : virtual public skr::IObject
             bool             invoke_success = _mixin_core->try_invoke_mixin(
                 this,
                 name,
-                { StackProxyMaker<Args>::Make(args)... },
+                { StackProxyMaker<Args>::Make(args, /*mixin data must exist*/false)... },
                 { .data = ret.data(), .signature = type_signature_of<Ret>() }
             );
 

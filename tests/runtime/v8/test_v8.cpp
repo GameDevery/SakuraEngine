@@ -408,73 +408,17 @@ TEST_CASE("test v8")
         context.shutdown();
     }
 
-    SUBCASE("manual mixin")
-    {
-        V8Context context(&isolate);
-        context.init();
-        context.build_global_export([](ScriptModule& module) {
-            module.register_type<test_v8::ManualMixin>(u8"");
-        });
-
-        // no mixin
-        {
-            auto result = context.exec_script(u8R"__(
-                let native = new ManualMixin()
-                ManualMixin.call_get_name(native);
-            )__");
-            auto result_str = result.get<String>();
-            SKR_ASSERT(result_str.has_value());
-            REQUIRE_EQ(result_str.value(), u8"DEFAULT");
-        }
-
-        // class mixin
-        {
-            auto result = context.exec_script(u8R"__(
-                class MixInImpl extends ManualMixin {
-                    constructor() {
-                        super();
-                    }
-                    get_name() {
-                        return "mixin";
-                    }
-                }
-                let mixin = new MixInImpl();
-                ManualMixin.call_get_name(mixin);
-            )__");
-
-            auto result_str = result.get<String>();
-            SKR_ASSERT(result_str.has_value());
-            REQUIRE_EQ(result_str.value(), u8"mixin");
-        }
-
-        // object mixin
-        {
-            auto result = context.exec_script(u8R"__(
-                let object_mixin = new ManualMixin();
-                object_mixin.get_name = function() {
-                    return "object_mixin";
-                }
-                ManualMixin.call_get_name(object_mixin);
-            )__");
-
-            auto result_str = result.get<String>();
-            SKR_ASSERT(result_str.has_value());
-            REQUIRE_EQ(result_str.value(), u8"object_mixin");
-        }
-
-        context.shutdown();
-    }
-
     SUBCASE("rttr mixin")
     {
         V8Context context(&isolate);
         context.init();
         context.build_global_export([](ScriptModule& module) {
+            module.register_type<test_v8::TestMixinValue>(u8"");
             module.register_type<test_v8::RttrMixin>(u8"");
             module.register_type<test_v8::MixinHelper>(u8"");
         });
 
-        v8::HandleScope handle_scope(isolate.v8_isolate());
+        v8::HandleScope    handle_scope(isolate.v8_isolate());
         v8::Context::Scope context_scope(context.v8_context().Get(isolate.v8_isolate()));
 
         // no mixin
@@ -535,6 +479,94 @@ TEST_CASE("test v8")
             REQUIRE_EQ(test_v8::MixinHelper::mixin->test_mixin_ret(), u8"FUCK + mixin");
             test_v8::MixinHelper::mixin->test_mixin_param(114514);
             REQUIRE_EQ(test_v8::MixinHelper::mixin->test_mixin_value, 114514 * 6);
+        }
+
+        // test value
+        {
+            context.exec_script(u8R"__(
+                let test_value = new RttrMixin()
+                MixinHelper.mixin = test_value
+            )__");
+
+            // no mixin
+            test_v8::TestMixinValue test, test_b;
+            test.name = u8"TEST_";
+            test_v8::MixinHelper::mixin->test_inout_value(test);
+            REQUIRE_EQ(test.name, u8"TEST_INOUT_VALUE");
+            test.name = u8"INVALID";
+            test_v8::MixinHelper::mixin->test_pure_out_value(test);
+            REQUIRE_EQ(test.name, u8"PURE_OUT_VALUE");
+            test.name = u8"INVALID";
+            test = test_v8::MixinHelper::mixin->test_return_value();
+            REQUIRE_EQ(test.name, u8"RETURN_VALUE");
+            test.name = u8"INVALID";
+            test_b.name = u8"INVALID";
+            skr::String multi_out_ret = test_v8::MixinHelper::mixin->test_multi_out_value(test, test_b);
+            REQUIRE_EQ(multi_out_ret, u8"MULTI_OUT");
+            REQUIRE_EQ(test.name, u8"OUT_VALUE_1");
+            REQUIRE_EQ(test_b.name, u8"OUT_VALUE_2");
+
+            // apply mixin
+            context.exec_script(u8R"__(
+                let old_test_input_value = test_value.test_inout_value
+                let old_test_pure_out_value = test_value.test_pure_out_value
+                let old_test_return_value = test_value.test_return_value
+                let old_test_multi_out_value = test_value.test_multi_out_value
+                let test_out_scope_param = undefined
+
+                test_value.test_inout_value = function(v) {
+                    old_test_input_value.call(this, v)
+                    v.name += ' + mixin'
+                    test_out_scope_param = v
+                }
+                test_value.test_pure_out_value = function() {
+                    let v = old_test_pure_out_value.call(this)
+                    v.name += ' + mixin'
+                    return v
+                }
+                test_value.test_return_value = function() {
+                    let v = old_test_return_value.call(this)
+                    v.name += ' + mixin'
+                    return v
+                }
+                test_value.test_multi_out_value = function() {
+                    return [
+                        "MULTI_OUT_FROM_JS",
+                        new TestMixinValue('OUT_VALUE_1 + mixin'),
+                        new TestMixinValue('OUT_VALUE_2 + mixin')
+                    ]
+                }
+            )__");
+
+            // with mixin
+            test.name = u8"TEST_";
+            test_v8::MixinHelper::mixin->test_inout_value(test);
+            REQUIRE_EQ(test.name, u8"TEST_INOUT_VALUE + mixin");
+            test.name = u8"INVALID";
+            test_v8::MixinHelper::mixin->test_pure_out_value(test);
+            REQUIRE_EQ(test.name, u8"PURE_OUT_VALUE + mixin");
+            test.name = u8"INVALID";
+            test = test_v8::MixinHelper::mixin->test_return_value();
+            REQUIRE_EQ(test.name, u8"RETURN_VALUE + mixin");
+            test.name = u8"INVALID";
+            test_b.name = u8"INVALID";
+            multi_out_ret = test_v8::MixinHelper::mixin->test_multi_out_value(test, test_b);    
+            REQUIRE_EQ(multi_out_ret, u8"MULTI_OUT_FROM_JS");
+            REQUIRE_EQ(test.name, u8"OUT_VALUE_1 + mixin");
+            REQUIRE_EQ(test_b.name, u8"OUT_VALUE_2 + mixin");
+
+            // test use out scope param
+            auto call_out_scope_result = context.exec_script(u8R"__(
+                let error = false
+                try {
+                    test_out_scope_param.name = 'fuck u'
+                } catch (e) {
+                    error = true
+                }
+                error
+            )__");
+            REQUIRE(call_out_scope_result.get<bool>().has_value());
+            REQUIRE_EQ(call_out_scope_result.get<bool>().value(), true);
         }
 
         context.shutdown();

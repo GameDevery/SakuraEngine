@@ -54,6 +54,7 @@ SKR_V8_API V8Isolate: IScriptMixinCore {
     // bind value
     V8BindCoreValue* create_value(const RTTRType* type, const void* source_data = nullptr);
     V8BindCoreValue* translate_value_field(const RTTRType* type, const void* data, V8BindCoreRecordBase* owner);
+    V8BindCoreValue* translate_value_temporal(const RTTRType* type, const void* data, V8BindCoreValue::ESource source);
 
     // query template
     v8::Local<v8::ObjectTemplate>   get_or_add_enum_template(const RTTRType* type);
@@ -73,6 +74,13 @@ SKR_V8_API V8Isolate: IScriptMixinCore {
         v8::Local<v8::Function> v8_func,
         span<const StackProxy>  params,
         StackProxy              return_value
+    );
+    bool invoke_v8_mixin(
+        v8::Local<v8::Value>                v8_this,
+        v8::Local<v8::Function>             v8_func,
+        const ScriptBinderMethod::Overload& mixin_data,
+        span<const StackProxy>              params,
+        StackProxy                          return_value
     );
 
     // => IScriptMixinCore API
@@ -249,6 +257,20 @@ private:
         const ScriptBinderParam& param_binder
     );
 
+    // call native helper
+    v8::Local<v8::Value> _make_v8_param(
+        const ScriptBinderParam& param_binder,
+        void*                    native_data
+    );
+    bool _read_v8_return(
+        span<const StackProxy>           params,
+        StackProxy                       return_value,
+        const Vector<ScriptBinderParam>& params_binder,
+        const ScriptBinderReturn&        return_binder,
+        uint32_t                         solved_return_count,
+        v8::Local<v8::Value>             v8_return_value
+    );
+
     // invoke helper
     bool _call_native(
         const ScriptBinderCtor&                        binder,
@@ -265,11 +287,6 @@ private:
         const ScriptBinderStaticMethod&                binder,
         const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack
     );
-
-    // TODO. call native helper
-    // param helper for call script
-    // v8::Local<v8::Value> _translate_param(StackProxy proxy);
-    // void                 _translate_return(StackProxy proxy, v8::Local<v8::Value> v8_value);
 
 private:
     // isolate data
@@ -292,6 +309,7 @@ private:
     Vector<V8BindCoreObject*>                _deleted_objects;
     Map<void*, V8BindCoreValue*>             _script_created_values;
     Map<void*, V8BindCoreValue*>             _static_field_values;
+    Map<void*, V8BindCoreValue*>             _temporal_values;
 };
 } // namespace skr
 

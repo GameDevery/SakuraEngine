@@ -288,31 +288,16 @@ TestString {
 // mixin
 namespace test_v8
 {
-sreflect_struct(guid = "749ccab0-c7fb-4078-b4a3-97d7f61d7596" rttr = @full)
+sreflect_struct(guid = "fe94dd7f-9c4e-4cb3-a275-0f8f8011145c" rttr = @full)
 sscript_visible sscript_newable
-ManualMixin : skr::ScriptbleObject {
-    SKR_GENERATE_BODY()
+TestMixinValue {
+    sscript_visible
+    TestMixinValue() = default;
+    sscript_visible
+    TestMixinValue(skr::String v) : name(v) {}
 
     sscript_visible
-    ManualMixin() = default;
-
-    skr::String get_name() {
-        auto mixin_result = try_invoke_mixin_method<skr::String>(u8"get_name");
-        if (mixin_result.has_value())
-        {
-            return mixin_result.value();
-        }
-        else
-        {
-            return u8"DEFAULT";
-        }
-    }
-
-    sscript_visible
-    static skr::String call_get_name(ManualMixin* obj)
-    {
-        return obj->get_name();
-    }
+    skr::String name;
 };
 
 sreflect_struct(guid = "f67c4345-e723-4597-9e88-1e48564b130d" rttr = @full)
@@ -333,6 +318,32 @@ RttrMixin : skr::ScriptbleObject {
         test_mixin_value = v + 114514; 
     }
 
+    sscript_visible sscript_mixin
+    void test_inout_value(TestMixinValue& v);
+    void test_inout_value_impl(TestMixinValue& v) { 
+        v.name.append(u8"INOUT_VALUE"); 
+    }
+
+    sscript_visible sscript_mixin
+    void test_pure_out_value(sparam_out TestMixinValue& v);
+    void test_pure_out_value_impl(sparam_out TestMixinValue& v) { 
+        v.name = u8"PURE_OUT_VALUE"; 
+    }
+
+    sscript_visible sscript_mixin
+    skr::String test_multi_out_value(sparam_out TestMixinValue& v1, sparam_out TestMixinValue& v2);
+    skr::String test_multi_out_value_impl(sparam_out TestMixinValue& v1, sparam_out TestMixinValue& v2) { 
+        v1.name = u8"OUT_VALUE_1"; 
+        v2.name = u8"OUT_VALUE_2"; 
+        return u8"MULTI_OUT"; 
+    }
+
+    sscript_visible sscript_mixin
+    TestMixinValue test_return_value();
+    TestMixinValue test_return_value_impl() { 
+        return TestMixinValue(u8"RETURN_VALUE"); 
+    }
+
     sscript_visible
     uint64_t test_mixin_value = 0;
 };
@@ -342,6 +353,9 @@ sscript_visible
 MixinHelper {
     sscript_visible
     static RttrMixin* mixin;
+
+    sscript_visible
+    static TestMixinValue test_value;
 };
 
 }
