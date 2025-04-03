@@ -34,6 +34,8 @@ ERTTRParamFlag : uint32_t
     None = 0,      // default
     In   = 1 << 0, // is input native pointer/reference
     Out  = 1 << 1, // is output native pointer/reference
+
+    InOut = In | Out, // is input/output native pointer/reference
 };
 // clang-format off
 sreflect_enum_class(guid = "cf941db5-afa5-476e-9890-af836a373e73")

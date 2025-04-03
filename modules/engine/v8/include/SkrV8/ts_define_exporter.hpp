@@ -459,6 +459,12 @@ inline String TSDefineExporter::_params_signature(const Vector<ScriptBinderParam
             result.append(u8", ");
         }
 
+        // push inout flags
+        if (param.inout_flag == ERTTRParamFlag::InOut)
+        {
+            result.append(u8"/*inout*/");
+        }
+
         // push param name
         result.append(param.data->name);
 

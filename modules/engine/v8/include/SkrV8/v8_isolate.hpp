@@ -268,7 +268,11 @@ private:
         const Vector<ScriptBinderParam>& params_binder,
         const ScriptBinderReturn&        return_binder,
         uint32_t                         solved_return_count,
-        v8::Local<v8::Value>             v8_return_value
+        v8::MaybeLocal<v8::Value>        v8_return_value
+    );
+    void _cleanup_value_param(
+        span<const StackProxy>           params,
+        const Vector<ScriptBinderParam>& params_binder
     );
 
     // invoke helper

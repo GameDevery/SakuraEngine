@@ -123,7 +123,7 @@ ScriptBinderRoot ScriptBinderManager::get_or_build(GUID type_id)
     _cached_root_binders.add(type_id, {});
     return {};
 }
-ScriptBinderCallScript ScriptBinderManager::build_call_script_binder(span<StackProxy> params, StackProxy ret)
+ScriptBinderCallScript ScriptBinderManager::build_call_script_binder(span<const StackProxy> params, StackProxy ret)
 {
     auto _log_stack = _logger.stack(u8"export call script binder");
 
@@ -141,6 +141,8 @@ ScriptBinderCallScript ScriptBinderManager::build_call_script_binder(span<StackP
         auto& param_binder = out.params_binder.add_default().ref();
         _make_param_call_script(param_binder, &param_data);
         param_binder.data = nullptr; // temporal data
+
+        ++index;
     }
 
     // export return
@@ -939,7 +941,8 @@ void ScriptBinderManager::_make_param(ScriptBinderParam& out, const RTTRParamDat
 {
     auto _log_stack = _logger.stack(u8"export param '{}', index {}", param->name, param->index);
 
-    out.data = param;
+    out.data  = param;
+    out.index = param->index;
 
     // get type signature
     auto signature = param->type.view();

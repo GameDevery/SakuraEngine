@@ -266,6 +266,7 @@ struct ScriptBinderStaticField {
 struct ScriptBinderParam {
     ScriptBinderRoot     binder           = {};
     const RTTRParamData* data             = nullptr;
+    uint32_t             index            = 0;
     bool                 pass_by_ref      = false;
     bool                 appare_in_return = false;
     ERTTRParamFlag       inout_flag       = ERTTRParamFlag::None;
@@ -389,7 +390,7 @@ struct SKR_CORE_API ScriptBinderManager {
 
     // get binder
     ScriptBinderRoot       get_or_build(GUID type_id);
-    ScriptBinderCallScript build_call_script_binder(span<StackProxy> params, StackProxy ret);
+    ScriptBinderCallScript build_call_script_binder(span<const StackProxy> params, StackProxy ret);
 
     // each
     void each_cached_root_binder(FunctionRef<void(const GUID&, const ScriptBinderRoot&)> func);

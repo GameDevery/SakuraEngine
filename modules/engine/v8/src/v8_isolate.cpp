@@ -659,42 +659,38 @@ bool V8Isolate::invoke_v8(
     auto            context = isolate->GetCurrentContext();
     v8::HandleScope handle_scope(isolate);
 
-    // TODO. check call v8 params & return
+    // get invoke binder
+    auto binder = _binder_mgr.build_call_script_binder(params, return_value);
 
     // push params
-    Vector<v8::Local<v8::Value>> v8_params;
-    v8_params.reserve(params.size());
-    for (const auto& proxy : params)
+    InlineVector<v8::Local<v8::Value>, 16> v8_params;
+    for (const auto& param_binder : binder.params_binder)
     {
-        v8::Local<v8::Value> v8_value = to_v8(proxy.signature.view(), proxy.data);
-        if (v8_value.IsEmpty())
-        {
-            SKR_LOG_FMT_ERROR(u8"convert param to v8 failed");
-            return false;
-        }
-        v8_params.push_back(v8_value);
+        // filter pure out
+        if (param_binder.inout_flag == ERTTRParamFlag::Out) { continue; }
+
+        // push param
+        auto param = _make_v8_param(param_binder, params[param_binder.index].data);
+        v8_params.add(param);
     }
 
     // call script
     auto v8_ret = v8_func->Call(context, v8_this, v8_params.size(), v8_params.data());
 
     // check return
-    if (return_value.data != nullptr)
-    {
-        if (v8_ret.IsEmpty())
-        {
-            SKR_LOG_FMT_ERROR(u8"return value not found");
-            return false;
-        }
-        v8::Local<v8::Value> v8_return = v8_ret.ToLocalChecked();
-        if (!to_native(return_value.signature.view(), return_value.data, v8_return, false))
-        {
-            SKR_LOG_FMT_ERROR(u8"convert return value to native failed");
-            return false;
-        }
-    }
+    bool success_read_return = _read_v8_return(
+        params,
+        return_value,
+        binder.params_binder,
+        binder.return_binder,
+        binder.return_count,
+        v8_ret
+    );
 
-    return true;
+    // invalidate value params
+    _cleanup_value_param(params, binder.params_binder);
+
+    return success_read_return;
 }
 bool V8Isolate::invoke_v8_mixin(
     v8::Local<v8::Value>                v8_this,
@@ -716,7 +712,7 @@ bool V8Isolate::invoke_v8_mixin(
         if (param_binder.inout_flag == ERTTRParamFlag::Out) { continue; }
 
         // push param
-        auto param = _make_v8_param(param_binder, params[param_binder.data->index].data);
+        auto param = _make_v8_param(param_binder, params[param_binder.index].data);
         v8_params.add(param);
     }
 
@@ -730,27 +726,11 @@ bool V8Isolate::invoke_v8_mixin(
         mixin_data.params_binder,
         mixin_data.return_binder,
         mixin_data.return_count,
-        v8_ret.ToLocalChecked()
+        v8_ret
     );
 
     // invalidate value params
-    for (const auto& param_binder : mixin_data.params_binder)
-    {
-        if (param_binder.binder.is_value() && param_binder.inout_flag != ERTTRParamFlag::Out)
-        {
-            auto found = _temporal_values.find(params[param_binder.data->index].data);
-            if (found)
-            {
-                // invalidate value bind core
-                found.value()->invalidate();
-                _temporal_values.remove_at(found.index());
-            }
-            else
-            {
-                SKR_UNREACHABLE_CODE()
-            }
-        }
-    }
+    _cleanup_value_param(params, mixin_data.params_binder);
 
     return success_read_return;
 }
@@ -2497,7 +2477,7 @@ v8::Local<v8::Value> V8Isolate::_read_return_from_out_param(
 )
 {
     // get out param data
-    void* native_data = stack.get_param_raw(param_binder.data->index);
+    void* native_data = stack.get_param_raw(param_binder.index);
 
     if (param_binder.binder.is_value())
     { // optimize for value case
@@ -2546,7 +2526,7 @@ bool V8Isolate::_read_v8_return(
     const Vector<ScriptBinderParam>& params_binder,
     const ScriptBinderReturn&        return_binder,
     uint32_t                         solved_return_count,
-    v8::Local<v8::Value>             v8_return_value
+    v8::MaybeLocal<v8::Value>        v8_return_value
 )
 {
     auto* isolate = v8::Isolate::GetCurrent();
@@ -2568,8 +2548,8 @@ bool V8Isolate::_read_v8_return(
                 {
                     return _to_native(
                         param_binder.binder,
-                        params[param_binder.data->index].data,
-                        v8_return_value,
+                        params[param_binder.index].data,
+                        v8_return_value.ToLocalChecked(),
                         true
                     );
                 }
@@ -2584,15 +2564,16 @@ bool V8Isolate::_read_v8_return(
             return _to_native(
                 return_binder.binder,
                 return_value.data,
-                v8_return_value,
+                v8_return_value.ToLocalChecked(),
                 false
             );
         }
     }
     else
     {
-        if (!v8_return_value->IsArray()) { return false; }
-        v8::Local<v8::Array> v8_array = v8_return_value.As<v8::Array>();
+        if (v8_return_value.IsEmpty()) { return false; }
+        if (!v8_return_value.ToLocalChecked()->IsArray()) { return false; }
+        v8::Local<v8::Array> v8_array = v8_return_value.ToLocalChecked().As<v8::Array>();
         if (v8_array.IsEmpty() || v8_array->Length() != solved_return_count) { return false; }
 
         uint32_t cur_index = 0;
@@ -2617,7 +2598,7 @@ bool V8Isolate::_read_v8_return(
             {
                 success &= _to_native(
                     param_binder.binder,
-                    params[param_binder.data->index].data,
+                    params[param_binder.index].data,
                     v8_array->Get(context, cur_index).ToLocalChecked(),
                     true
                 );
@@ -2626,6 +2607,29 @@ bool V8Isolate::_read_v8_return(
         }
 
         return success;
+    }
+}
+void V8Isolate::_cleanup_value_param(
+    span<const StackProxy>           params,
+    const Vector<ScriptBinderParam>& params_binder
+)
+{
+    for (const auto& param_binder : params_binder)
+    {
+        if (param_binder.binder.is_value() && param_binder.inout_flag != ERTTRParamFlag::Out)
+        {
+            auto found = _temporal_values.find(params[param_binder.index].data);
+            if (found)
+            {
+                // invalidate value bind core
+                found.value()->invalidate();
+                _temporal_values.remove_at(found.index());
+            }
+            else
+            {
+                SKR_UNREACHABLE_CODE()
+            }
+        }
     }
 }
 
