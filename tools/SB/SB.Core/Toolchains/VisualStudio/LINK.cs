@@ -42,10 +42,11 @@ namespace SB.Core
             {
                 var StringLength = LinkerArgsList.Sum(x => x.Length);
                 string Arguments = "";
+                string ResponseFile = "";
                 if (StringLength > 30000)
                 {
                     var Content = String.Join("\n", LinkerArgsList);
-                    string ResponseFile = Path.Combine(BuildSystem.BuildPath, $"{Guid.CreateVersion7()}.txt");
+                    ResponseFile = Path.Combine(BuildSystem.BuildPath, $"{Guid.CreateVersion7()}.txt");
                     File.WriteAllText(ResponseFile, Content);
 
                     Arguments = $"{TargetTypeArg} @{ResponseFile}";
@@ -55,6 +56,10 @@ namespace SB.Core
                     Arguments = $"{TargetTypeArg} {String.Join(" ", LinkerArgsList)}";
                 }
                 int ExitCode = BuildSystem.RunProcess(ExePath, Arguments, out var OutputInfo, out var ErrorInfo, VCEnvVariables);
+                if (ResponseFile != "")
+                {
+                    File.Delete(ResponseFile);
+                }
 
                 // FUCK YOU MICROSOFT THIS IS WEIRD, WHY YOU DUMP ERRORS THROUGH STDOUT ?
                 if (ExitCode != 0)
