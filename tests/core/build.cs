@@ -11,6 +11,7 @@ public static class CoreTests
             .AddCppFiles("json/main.cpp");
 
         Engine.UnitTest("SerdeTest")
+            .EnableUnityBuild()
             .AddCppFiles("serde/main.cpp");
 
         Engine.UnitTest("NatvisTest")

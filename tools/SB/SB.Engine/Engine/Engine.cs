@@ -50,25 +50,25 @@ namespace SB
 
         public static void AddEngineTaskEmitters(IToolchain Toolchain)
         {
+            Engine.AddTaskEmitter("Codgen.Meta", new CodegenMetaEmitter(Toolchain));
+
+            Engine.AddTaskEmitter("Module.Info", new ModuleInfoEmitter());
+
             Engine.AddTaskEmitter("ISPC.Compile", new ISPCEmitter());
 
             Engine.AddTaskEmitter("DXC.Compile", new DXCEmitter());
 
-            Engine.AddTaskEmitter("Module.Info", new ModuleInfoEmitter());
-
-            Engine.AddTaskEmitter("Codgen.Meta", new CodegenMetaEmitter(Toolchain));
+            Engine.AddTaskEmitter("Cpp.UnityBuild", new UnityBuildEmitter())
+                .AddDependency("Module.Info", DependencyModel.PerTarget);
 
             Engine.AddTaskEmitter("Codgen.Codegen", new CodegenRenderEmitter(Toolchain))
+                .AddDependency("Cpp.UnityBuild", DependencyModel.PerTarget)
                 .AddDependency("Codgen.Meta", DependencyModel.ExternalTarget)
                 .AddDependency("Codgen.Meta", DependencyModel.PerTarget);
 
             Engine.AddTaskEmitter("Cpp.PCH", new PCHEmitter(Toolchain))
                 .AddDependency("ISPC.Compile", DependencyModel.PerTarget)
                 .AddDependency("Codgen.Codegen", DependencyModel.ExternalTarget)
-                .AddDependency("Codgen.Codegen", DependencyModel.PerTarget);
-
-            Engine.AddTaskEmitter("Cpp.UnityBuild", new UnityBuildEmitter())
-                .AddDependency("Module.Info", DependencyModel.PerTarget)
                 .AddDependency("Codgen.Codegen", DependencyModel.PerTarget);
 
             Engine.AddTaskEmitter("Cpp.Compile", new CppCompileEmitter(Toolchain))

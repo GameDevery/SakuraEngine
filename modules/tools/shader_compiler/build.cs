@@ -13,7 +13,8 @@ public static class SkrShaderCompiler
             .IncludeDirs(Visibility.Public, "include")
             .IncludeDirs(Visibility.Private, "src")
             .AddMetaHeaders("include/**.hpp")
-            .AddCppFiles("src/**.cpp");
+            .AddCppFiles("src/**.cpp")
+            .UsePrivatePCH("src/pch.hpp");
 
         if (BuildSystem.TargetOS == OSPlatform.Windows)
         {

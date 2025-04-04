@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Serilog;
 
 namespace SB.Core
 {

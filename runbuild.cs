@@ -8,7 +8,6 @@ sw.Start();
 
 var Toolchain = Engine.Bootstrap(SourceLocation.Directory());
 Engine.AddEngineTaskEmitters(Toolchain);
-Engine.AddCompileCommandsEmitter(Toolchain);
 
 Engine.SetTagsUnderDirectory("thirdparty", TargetTags.ThirdParty);
 Engine.SetTagsUnderDirectory("modules/core", TargetTags.Engine);
@@ -23,7 +22,6 @@ Engine.SetTagsUnderDirectory("samples", TargetTags.Application);
 Engine.SetTagsUnderDirectory("tests", TargetTags.Tests);
 
 Engine.RunBuild();
-CompileCommandsEmitter.WriteToFile(Path.Combine(SourceLocation.Directory(), "./compile_commands.json"));
 
 sw.Stop();
 

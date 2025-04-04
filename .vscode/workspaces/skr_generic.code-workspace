@@ -69,7 +69,7 @@
                     "isDefault": false,
                     "kind": "build"
                 },
-                "command": "dotnet build --configuration Debug D:/SakuraEngine/SakuraEngine/build_system/SB/SB.csproj"
+                "command": "dotnet build --configuration Debug D:/SakuraEngine/SakuraEngine/SB.csproj"
             },
             {
                 "options": {
@@ -89,7 +89,7 @@
                     "isDefault": false,
                     "kind": "build"
                 },
-                "command": "dotnet build --configuration Release D:/SakuraEngine/SakuraEngine/build_system/SB/SB.csproj"
+                "command": "dotnet build --configuration Release D:/SakuraEngine/SakuraEngine/SB.csproj"
             },
         ]
     },
@@ -140,7 +140,7 @@
                 "request": "launch",
                 "preLaunchTask": "build_SB_Debug",
                 "console": "integratedTerminal",
-                "program": "${workspaceFolder:root}\\build_system\\SB\\bin\\Debug\\net9.0\\SB.exe"
+                "program": "${workspaceFolder:root}\\.sb\\SB\\bin\\Debug\\net9.0\\SB.exe"
             },
             {
                 "name": "C#: SB Build",
@@ -148,7 +148,7 @@
                 "request": "launch",
                 "preLaunchTask": "build_SB_Release",
                 "console": "integratedTerminal",
-                "program": "${workspaceFolder:root}\\build_system\\SB\\bin\\Release\\net9.0\\SB.exe"
+                "program": "${workspaceFolder:root}\\.sb\\SB\\bin\\Release\\net9.0\\SB.exe"
             },
         ]
     }

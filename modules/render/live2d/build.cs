@@ -14,7 +14,8 @@ public static class SkrLive2D
             .OptimizationLevel(OptimizationLevel.Fastest)
             .Depend(Visibility.Public, "SkrBase")
             .IncludeDirs(Visibility.Private, "CubismNativeCore/include", "CubismFramework", "CubismFramework/Framework")
-            .AddCppFiles("CubismFramework/Renderer/**.cpp", "CubismFramework/Framework/**.cpp");
+            .AddCppFiles("CubismFramework/Renderer/**.cpp", "CubismFramework/Framework/**.cpp")
+            .UsePrivatePCH("CubismFramework/pch.hpp");
 
         if (BuildSystem.TargetOS == OSPlatform.Windows)
         {

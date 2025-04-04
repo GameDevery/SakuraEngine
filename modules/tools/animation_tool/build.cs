@@ -16,6 +16,7 @@ public static class SkrAnimTool
             .AddCppFiles("src/*.cc") //, {unity_group = "utils"})
             .AddCppFiles("src/tools/*.cc", "src/*.cpp") //, {unity_group = "tool"})
             .AddCppFiles("src/gltf/**.cc", "src/gltf/**.cpp") //, {unity_ignored = false})
+            .UsePrivatePCH("src/pch.hpp")
 
             .AddMetaHeaders("include/**.h")
 

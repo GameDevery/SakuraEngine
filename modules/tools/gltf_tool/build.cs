@@ -14,6 +14,7 @@ public static class SkrGLTFTool
             .AddCppFiles("src/**.cpp")
             .AddMetaHeaders("include/**.hpp")
             .Require("cgltf", new PackageConfig { Version = new Version(1, 13, 0) })
-            .Depend(Visibility.Public, "cgltf@cgltf");
+            .Depend(Visibility.Public, "cgltf@cgltf")
+            .UsePrivatePCH("src/pch.hpp");
     }
 }
