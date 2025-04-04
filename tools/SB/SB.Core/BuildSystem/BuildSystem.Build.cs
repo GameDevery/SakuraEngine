@@ -78,6 +78,7 @@ namespace SB
             }
         }
 
+        private static LimitedConcurrencyLevelTaskScheduler lcts = new LimitedConcurrencyLevelTaskScheduler(32);
         public static void RunBuildImpl()
         {
             using (Profiler.BeginZone($"ResolvePackages", color: (uint)Profiler.ColorType.Yellow))
@@ -201,7 +202,7 @@ namespace SB
                                     }
                                 }
                                 return await Task.FromResult(true);
-                            });
+                            }, lcts);
                         }
 
                         foreach (var FL in Target.FileLists.ToArray().Where(FL => Emitter.EmitFileTask(Target, FL)))
@@ -239,14 +240,14 @@ namespace SB
                                         }
                                     }
                                     return await Task.FromResult(true);
-                                });
+                                }, lcts);
                                 FileTasks.Add(FileTask);
                             }
                         }
                         await PerTargetEmitterTask;
                         await Task.WhenAll(FileTasks);
                         return true;
-                    }, false);
+                    });
                     EmitterTasks.Add(EmitterTask);
                 }
                 await Task.WhenAll(EmitterTasks);

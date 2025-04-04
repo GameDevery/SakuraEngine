@@ -153,22 +153,27 @@ namespace SB.Core
             return false;
         }
 
+        private static LimitedConcurrencyLevelTaskScheduler lcts = new LimitedConcurrencyLevelTaskScheduler(1);
         private static void UpdateDependency(string TargetName, Depend NewDepend, Depend? OldDepend)
         {
             NewDepend.ExternalFileTimes = NewDepend.ExternalFiles.Select(x => Directory.GetLastWriteTimeUtc(x)).ToList();
 
-            using (Profiler.BeginZone($"WriteToDB", color: (uint)Profiler.ColorType.Gray))
-            {
-                using (var DB = DependDbContext.CreateContext(TargetName))
+            TaskFingerprint Fingerprint = new TaskFingerprint{ TargetName = TargetName, File = NewDepend.PrimaryKey, TaskName = "UpdateDependency"};
+            TaskManager.Run(Fingerprint, async () => {
+                using (Profiler.BeginZone($"WriteToDB", color: (uint)Profiler.ColorType.Gray))
                 {
-                    if (OldDepend is not null)
-                        DB.Depends.Update(ToEntity(NewDepend));
-                    else
-                        DB.Depends.Add(ToEntity(NewDepend));
-                            
-                    DB.SaveChanges();
+                    var DB = DependDbContext.CreateContext(TargetName);
+                    {
+                        if (OldDepend is not null)
+                            DB.Depends.Update(ToEntity(NewDepend));
+                        else
+                            DB.Depends.Add(ToEntity(NewDepend));
+                                
+                        await DB.SaveChangesAsync();
+                    }
+                    return true;
                 }
-            }
+            }, lcts).GetAwaiter();
         }
 
         private static DependEntity ToEntity(Depend depend)

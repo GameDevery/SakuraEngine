@@ -37,8 +37,7 @@ namespace SB.Core
             }
         }
 
-        private static LimitedConcurrencyLevelTaskScheduler lcts = new LimitedConcurrencyLevelTaskScheduler(32);
-        public static async Task Run(TaskFingerprint Fingerprint, Func<Task<bool>> Function, bool UseLCTS = true)
+        public static async Task Run(TaskFingerprint Fingerprint, Func<Task<bool>> Function, TaskScheduler? TS = null)
         {
             if (AllTasks.TryGetValue(Fingerprint, out var _))
                 throw new ArgumentException($"Task with fingerprint {Fingerprint} already exists! Fingerprint should be unique to every task!");
@@ -48,11 +47,9 @@ namespace SB.Core
                 {
                     try
                     {
-                        {
-                            if (StopAll)
-                                return await Task.FromResult(false);
-                            return await Function();
-                        }
+                        if (StopAll)
+                            return await Task.FromResult(false);
+                        return await Function();
                     }
                     catch (TaskFatalError fatal)
                     {
@@ -60,8 +57,8 @@ namespace SB.Core
                         RootCTS.Cancel();
                         return await Task.FromResult(false);
                     }
-                }, TaskCreationOptions.AttachedToParent);
-            NewTask.Start(UseLCTS ? lcts : TaskScheduler.Default);
+                }, TaskCreationOptions.AttachedToParent | TaskCreationOptions.PreferFairness);
+            NewTask.Start(TS is not null ? TS : TaskScheduler.Default);
 
             if (!AllTasks.TryAdd(Fingerprint, await NewTask))
             {
