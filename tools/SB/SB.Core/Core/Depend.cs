@@ -157,14 +157,17 @@ namespace SB.Core
         {
             NewDepend.ExternalFileTimes = NewDepend.ExternalFiles.Select(x => Directory.GetLastWriteTimeUtc(x)).ToList();
 
-            using (var DB = DependDbContext.CreateContext(TargetName))
+            using (Profiler.BeginZone($"WriteToDB", color: (uint)Profiler.ColorType.Gray))
             {
-                if (OldDepend is not null)
-                    DB.Depends.Update(ToEntity(NewDepend));
-                else
-                    DB.Depends.Add(ToEntity(NewDepend));
-                    
-                DB.SaveChanges();
+                using (var DB = DependDbContext.CreateContext(TargetName))
+                {
+                    if (OldDepend is not null)
+                        DB.Depends.Update(ToEntity(NewDepend));
+                    else
+                        DB.Depends.Add(ToEntity(NewDepend));
+                            
+                    DB.SaveChanges();
+                }
             }
         }
 

@@ -61,7 +61,7 @@ namespace SB
                 File = "",
                 TaskName = "UpdateTargetDatabase"
             };
-            TaskManager.Run(Fingerprint, () => {
+            TaskManager.Run(Fingerprint, async () => {
                 using (Profiler.BeginZone($"FlushTargetDatabase", color: (uint)Profiler.ColorType.Green))
                 {
                     foreach (var Entity in TargetEntities)
@@ -73,8 +73,8 @@ namespace SB
                     }
                     TargetDbContext.UpdateContext!.SaveChanges();
                 }
-                return true;
-            });
+                return await Task.FromResult(true);
+            }).Wait();
         }
     }
 

@@ -3,6 +3,7 @@ using Serilog;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 
 namespace SB
 {
@@ -121,11 +122,17 @@ namespace SB
                 UpdateTargetDatabase();
             }
 
-            // Run Checks
+            // Run Build
             uint FileTaskCount = 0;
             uint AllTaskCount = 0;
-            foreach (var Target in SortedTargets)
+            uint AllTaskCounter = 0;
+            uint FileTaskCounter = 0;
+            Parallel.ForEachAsync(SortedTargets, 
+            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+            async (Target Target, CancellationToken Cancel) =>
             {
+                Target.CallAllActions(Target.BeforeBuildActions);
+
                 foreach (var EmitterKVP in TaskEmitters)
                 {
                     if (EmitterKVP.Value.EmitTargetTask(Target))
@@ -140,18 +147,8 @@ namespace SB
                         }
                     }
                 }
-            }
 
-            // Run Build
-            uint AllTaskCounter = 0;
-            uint FileTaskCounter = 0;
-            Parallel.ForEachAsync(SortedTargets, 
-            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
-            async (Target Target, CancellationToken Cancel) =>
-            {
-                Target.CallAllActions(Target.BeforeBuildActions);
-
-                // emitters
+                List<Task> EmitterTasks = new();
                 foreach (var EmitterKVP in TaskEmitters)
                 {
                     var EmitterName = EmitterKVP.Key;
@@ -167,46 +164,53 @@ namespace SB
                         TaskManager.AddCompleted(Fingerprint);
                         continue;
                     }
-                    var EmitterTask = TaskManager.Run(Fingerprint, () =>
+                    var EmitterTask = TaskManager.Run(Fingerprint, async () =>
                     {
-                        List<Task<bool>> FileTasks = new();
-                        using (Profiler.BeginZone($"Wait | {Target.Name} | {EmitterName}", color: (uint)Profiler.ColorType.Gray))
+                        List<Task> FileTasks = new();
+                        Task PerTargetEmitterTask = Task.CompletedTask;
                         {
-                            if (!Emitter.AwaitExternalTargetDependencies(Target).WaitAndGet())
+                            if (!await Emitter.AwaitExternalTargetDependencies(Target))
                                 return false;
-                            if (!Emitter.AwaitPerTargetDependencies(Target).WaitAndGet())
+                            if (!await Emitter.AwaitPerTargetDependencies(Target))
                                 return false;
                         }
 
                         if (Emitter.EmitTargetTask(Target))
                         {
-                            var TaskIndex = Interlocked.Increment(ref AllTaskCounter);
-                            var Percentage = 100.0f * TaskIndex / AllTaskCount;
-                            using (Profiler.BeginZone($"{EmitterName} | {Target.Name}", color: (uint)Profiler.ColorType.Green1))
+                            TaskFingerprint Fingerprint = new TaskFingerprint
                             {
-                                Stopwatch sw = new();
-                                sw.Start();
-                                var TargetTaskArtifact = Emitter.PerTargetTask(Target);
-                                sw.Stop();
-
-                                Log.Verbose("[{Percentage:00.0}%] {EmitterName} {TargetName}", Percentage, EmitterName, Target.Name);
-                                if (TargetTaskArtifact is not null && !TargetTaskArtifact.IsRestored)
+                                TargetName = Target.Name,
+                                File = "Target",
+                                TaskName = EmitterName
+                            };
+                            PerTargetEmitterTask = TaskManager.Run(Fingerprint, async () => {
+                                var TaskIndex = Interlocked.Increment(ref AllTaskCounter);
+                                var Percentage = 100.0f * TaskIndex / AllTaskCount;
+                                using (Profiler.BeginZone($"{EmitterName} | {Target.Name}", color: (uint)Profiler.ColorType.Green1))
                                 {
-                                    var CostTime = sw.ElapsedMilliseconds;
-                                    Log.Information("[{Percentage:00.0}%]: {EmitterName} {TargetName}, cost {CostTime:00.00}s", Percentage, EmitterName, Target.Name, CostTime / 1000.0f);
+                                    Stopwatch sw = new();
+                                    sw.Start();
+                                    var TargetTaskArtifact = Emitter.PerTargetTask(Target);
+                                    sw.Stop();
+
+                                    Log.Verbose("[{Percentage:00.0}%] {EmitterName} {TargetName}", Percentage, EmitterName, Target.Name);
+                                    if (TargetTaskArtifact is not null && !TargetTaskArtifact.IsRestored)
+                                    {
+                                        var CostTime = sw.ElapsedMilliseconds;
+                                        Log.Information("[{Percentage:00.0}%]: {EmitterName} {TargetName}, cost {CostTime:00.00}s", Percentage, EmitterName, Target.Name, CostTime / 1000.0f);
+                                    }
                                 }
-                            }
+                                return await Task.FromResult(true);
+                            });
                         }
 
                         foreach (var FL in Target.FileLists.ToArray().Where(FL => Emitter.EmitFileTask(Target, FL)))
                         {
                             foreach (var File in FL.Files)
                             {
-                                using (Profiler.BeginZone($"Wait | {File} | {EmitterName}", color: (uint)Profiler.ColorType.Gray))
-                                {
-                                    if (!Emitter.AwaitPerFileDependencies(Target, File).WaitAndGet())
-                                        return false;
-                                }
+                                if (!await Emitter.AwaitPerFileDependencies(Target, File))
+                                    return false;
+                                await PerTargetEmitterTask;
 
                                 TaskFingerprint FileFingerprint = new TaskFingerprint
                                 {
@@ -214,7 +218,7 @@ namespace SB
                                     File = File,
                                     TaskName = EmitterName
                                 };
-                                var FileTask = TaskManager.Run(FileFingerprint, () =>
+                                var FileTask = TaskManager.Run(FileFingerprint, async () =>
                                 {
                                     var FileTaskIndex = Interlocked.Increment(ref FileTaskCounter);
                                     var TaskIndex = Interlocked.Increment(ref AllTaskCounter);
@@ -234,15 +238,18 @@ namespace SB
                                                 Percentage, FileTaskIndex, FileTaskCount, EmitterName, Target.Name, File, CostTime / 1000.0f);
                                         }
                                     }
-                                    return true;
+                                    return await Task.FromResult(true);
                                 });
                                 FileTasks.Add(FileTask);
                             }
                         }
-                        return FileTasks.All(FileTask => (FileTask.Result == true));
-                    });
-                    await EmitterTask;
+                        await PerTargetEmitterTask;
+                        await Task.WhenAll(FileTasks);
+                        return true;
+                    }, false);
+                    EmitterTasks.Add(EmitterTask);
                 }
+                await Task.WhenAll(EmitterTasks);
             }).Wait();
             TaskManager.WaitAll();
         }

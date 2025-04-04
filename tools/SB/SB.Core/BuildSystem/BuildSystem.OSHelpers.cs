@@ -35,45 +35,48 @@ namespace SB
 
         public static int RunProcess(string ExecutablePath, string Arguments, out string Output, out string Error, Dictionary<string, string?>? Env = null, string? WorkingDirectory = null)
         {
-            try
+            using (Profiler.BeginZone($"RunProcess", color: (uint)Profiler.ColorType.Yellow1))
             {
-                Process P = new Process
+                try
                 {
-                    StartInfo = new ProcessStartInfo
+                    Process P = new Process
                     {
-                        FileName = ExecutablePath,
-                        RedirectStandardInput = false,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        CreateNoWindow = false,
-                        UseShellExecute = false,
-                        Arguments = Arguments
-                    }
-                };
-                if (WorkingDirectory is not null)
-                    P.StartInfo.WorkingDirectory = WorkingDirectory;
-                if (Env is not null)
-                {
-                    foreach (var kvp in Env)
+                        StartInfo = new ProcessStartInfo
+                        {
+                            FileName = ExecutablePath,
+                            RedirectStandardInput = false,
+                            RedirectStandardOutput = true,
+                            RedirectStandardError = true,
+                            CreateNoWindow = false,
+                            UseShellExecute = false,
+                            Arguments = Arguments
+                        }
+                    };
+                    if (WorkingDirectory is not null)
+                        P.StartInfo.WorkingDirectory = WorkingDirectory;
+                    if (Env is not null)
                     {
-                        P.StartInfo.Environment.Add(kvp.Key, kvp.Value);
+                        foreach (var kvp in Env)
+                        {
+                            P.StartInfo.Environment.Add(kvp.Key, kvp.Value);
+                        }
                     }
+                    string localOutput = string.Empty;
+                    string localError = string.Empty;
+                    P.OutputDataReceived += (sender, e) => { if (e.Data is not null) localOutput += e.Data + "\n"; };
+                    P.ErrorDataReceived += (sender, e) => { if (e.Data is not null) localError += e.Data + "\n"; };
+                    P.Start();
+                    P.BeginOutputReadLine();
+                    P.BeginErrorReadLine();
+                    P.WaitForExit();
+                    Output = localOutput;
+                    Error = localError;
+                    return P.ExitCode;
                 }
-                string localOutput = string.Empty;
-                string localError = string.Empty;
-                P.OutputDataReceived += (sender, e) => { if (e.Data is not null) localOutput += e.Data + "\n"; };
-                P.ErrorDataReceived += (sender, e) => { if (e.Data is not null) localError += e.Data + "\n"; };
-                P.Start();
-                P.BeginOutputReadLine();
-                P.BeginErrorReadLine();
-                P.WaitForExit();
-                Output = localOutput;
-                Error = localError;
-                return P.ExitCode;
-            }
-            catch (Exception e)
-            {
-                throw new TaskFatalError($"Failed to run process {ExecutablePath} with arguments {Arguments}", e.Message);
+                catch (Exception e)
+                {
+                    throw new TaskFatalError($"Failed to run process {ExecutablePath} with arguments {Arguments}", e.Message);
+                }
             }
         }
 

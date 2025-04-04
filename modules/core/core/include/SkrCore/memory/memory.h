@@ -231,7 +231,7 @@ struct SkrNewCore
     };
 
     template<class T>
-    [[nodiscard]] SKR_FORCEINLINE void Free(T* p)
+    SKR_FORCEINLINE void Free(T* p)
     {
         if (p != nullptr)
         {
@@ -264,7 +264,7 @@ struct SkrNewCore
     };
 
     template<class T>
-    [[nodiscard]] SKR_FORCEINLINE void Free(T* p)
+    SKR_FORCEINLINE void Free(T* p)
     {
         if (p != nullptr)
         {
