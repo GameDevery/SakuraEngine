@@ -17,18 +17,10 @@
             "undefined-field",
             "need-check-nil",
         ],
-        // python options for meta codegen
-        // "python.analysis.extraPaths": [
-        //     "${workspaceFolder:root}/tools/meta_codegen/",
-        // ],
-        // "python.autoComplete.extraPaths": [
-        //     "${workspaceFolder:root}/tools/meta_codegen/",
-        // ],
-        // "python.defaultInterpreterPath": "${workspaceFolder:root}/build/.skr/tool/windows/python-embed/python.exe",
         // fixed terminal cwd
         "terminal.integrated.cwd": "${workspaceFolder:root}",
-        // deno options for meta codegen
-        "deno.enable": false,
+        // typescript settings
+        "deno.enable": false, // disable deno for codegen files
         "[typescript]": {
             "editor.defaultFormatter": "vscode.typescript-language-features",
             "editor.formatOnType": true,
@@ -39,7 +31,7 @@
         "[peggy]": {
             "editor.tabSize": 2,
         },
-        // natvis as xml
+        // file associations
         "files.associations": {
             "*.natvis": "xml",
         }
