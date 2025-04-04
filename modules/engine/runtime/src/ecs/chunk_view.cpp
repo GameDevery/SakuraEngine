@@ -154,8 +154,8 @@ static void clone_impl(sugoi_chunk_view_t dstV, const sugoi_chunk_t* srcC, uint3
     SKR_ASSERT(!type.is_chunk());
     char* dst = dstV.chunk->data() + (size_t)dstOffset + (size_t)size * dstV.start;
     char* src = srcC->data() + (size_t)srcOffset + (size_t)size * srcStart;
-    auto storage = dstV.chunk->structure->storage;
 #ifdef SUGOI_RESOURCE_SUPPORT
+    auto storage = dstV.chunk->structure->storage;
     auto patchResources = [&](char* data)
     {
         forloop(k, 0, resourceFields.count)
@@ -266,8 +266,8 @@ static void duplicate_impl(sugoi_chunk_view_t dstV, const sugoi_chunk_t* srcC, u
             guidDst[j] = registry.make_guid();
         return;
     }
-    auto storage = dstV.chunk->structure->storage;
 #ifdef SUGOI_RESOURCE_SUPPORT
+    auto storage = dstV.chunk->structure->storage;
     auto patchResources = [&](char* data)
     {
         forloop(k, 0, resourceFields.count)

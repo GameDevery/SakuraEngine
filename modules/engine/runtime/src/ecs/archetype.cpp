@@ -170,8 +170,8 @@ sugoi::archetype_t* sugoi_storage_t::constructArchetype(const sugoi_type_set_t& 
             new_type = archetypes.insert({ archetype.type, &archetype }).first->second;
             pimpl->archetype_timestamp += 1;
         }, 
-        [&](){
-            return pimpl->groups_timestamp;
+        [&](){ 
+            return pimpl->archetype_timestamp;
         });
     }
     return new_type;
@@ -225,7 +225,7 @@ sugoi::archetype_t* sugoi_storage_t::cloneArchetype(archetype_t *src)
             pimpl->archetype_timestamp += 1;
         }, 
         [&](){
-            return pimpl->groups_timestamp;
+            return pimpl->archetype_timestamp;
         });
     }
     return new_type;
