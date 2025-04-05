@@ -1,15 +1,12 @@
-using System.Diagnostics;
 using SB;
 using SB.Core;
-using Serilog;
 
 [TargetScript]
 public static class SkrRT
 {
     static SkrRT()
     {
-        var SkrRT = Engine
-            .Module("SkrRT", "SKR_RUNTIME")
+        var SkrRT = Engine.Module("SkrRT", "SKR_RUNTIME")
             .Depend(Visibility.Public, "SkrTask")
             .Depend(Visibility.Public, "SkrGraphics")
             .IncludeDirs(Visibility.Public, "include")
