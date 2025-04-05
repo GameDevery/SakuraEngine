@@ -12,7 +12,7 @@ public static class SkrRenderGraph
             .Depend(Visibility.Public, "SkrRT")
             .IncludeDirs(Visibility.Public, "include")
             .AddCppFiles("src/frontend/*.cpp", "src/graphviz/*.cpp")
-            .AddCppFiles("src/backend/*.cpp") // {unity_group = "backend"}
-            .AddCppFiles("src/phases/*.cpp"); // {unity_group = "backend"}
+            .AddCppFiles(new CFamilyFileOptions { UnityGroup = "backend" }, "src/backend/*.cpp")
+            .AddCppFiles(new CFamilyFileOptions { UnityGroup = "backend" }, "src/phases/*.cpp");
     }
 }

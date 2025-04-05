@@ -52,6 +52,13 @@ namespace SB
         public static volatile int Time = 0;
     }
 
+    public class UnityBuildableFileOptions : FileOptions
+    {
+        public bool DisableUnityBuild = false;
+        public string UnityGroup = "";
+    }
+
+    public class CFamilyFileOptions : UnityBuildableFileOptions {}
     public class CFileList : FileList {}
     public class CppFileList : FileList {}
 
@@ -69,13 +76,13 @@ namespace SB
             return @this;
         }
 
-        public static Target AddCppFiles(this Target @this, FileOptions Options, params string[] Files)
+        public static Target AddCppFiles(this Target @this, CFamilyFileOptions Options, params string[] Files)
         {
             @this.FileList<CppFileList>().AddFiles(Options, Files);
             return @this;
         }
 
-        public static Target AddCFiles(this Target @this, FileOptions Options, params string[] Files)
+        public static Target AddCFiles(this Target @this, CFamilyFileOptions Options, params string[] Files)
         {
             @this.FileList<CFileList>().AddFiles(Options, Files);
             return @this;

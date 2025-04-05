@@ -13,9 +13,9 @@ public static class SkrAnimTool
             .Depend(Visibility.Public, "SkrMeshCore", "SkrAnim")
             .IncludeDirs(Visibility.Public, "include", "ozz")
             .IncludeDirs(Visibility.Private, "src")
-            .AddCppFiles("src/*.cc") //, {unity_group = "utils"})
-            .AddCppFiles("src/tools/*.cc", "src/*.cpp") //, {unity_group = "tool"})
-            .AddCppFiles("src/gltf/**.cc", "src/gltf/**.cpp") //, {unity_ignored = false})
+            .AddCppFiles(new CFamilyFileOptions { UnityGroup = "utils" }, "src/*.cc")
+            .AddCppFiles(new CFamilyFileOptions { UnityGroup = "tool" }, "src/tools/*.cc", "src/*.cpp")
+            .AddCppFiles("src/gltf/**.cc", "src/gltf/**.cpp")
             .UsePrivatePCH("src/pch.hpp")
 
             .AddMetaHeaders("include/**.h")

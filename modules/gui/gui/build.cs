@@ -19,16 +19,16 @@ public static class SkrGui
             .AddMetaHeaders("include/**.hpp")
             .AddCppFiles("src/*.cpp")
             .AddCppFiles("src/math/*.cpp")
-            .AddCppFiles("src/framework/**.cpp")//, {unity_group = "framework"})
-            .AddCppFiles("src/render_objects/**.cpp")//, {unity_group = "render_objects"})
-            .AddCppFiles("src/widgets/**.cpp")//, {unity_group = "widgets"})
-            .AddCppFiles("src/dev/**.cpp")//, {unity_group = "dev"})
-            .AddCppFiles("src/system/**.cpp")//, {unity_group = "system"})
+            .AddCppFiles(new CFamilyFileOptions { UnityGroup = "framework" }, "src/framework/**.cpp")
+            .AddCppFiles(new CFamilyFileOptions { UnityGroup = "render_objects" }, "src/render_objects/**.cpp")
+            .AddCppFiles(new CFamilyFileOptions { UnityGroup = "widgets" }, "src/widgets/**.cpp")
+            .AddCppFiles(new CFamilyFileOptions { UnityGroup = "dev" }, "src/dev/**.cpp")
+            .AddCppFiles(new CFamilyFileOptions { UnityGroup = "system" }, "src/system/**.cpp")
 
             .AddCppFiles("src/backend/*.cpp")
-            .AddCppFiles("src/backend/paragraph/*.cpp")//, {unity_group  = "text"})
-            .AddCppFiles("src/backend/text_server/*.cpp")//, {unity_group  = "text"})
-            .AddCppFiles("src/backend/text_server_adv/*.cpp")//, {unity_group  = "text_adv"})
+            .AddCppFiles(new CFamilyFileOptions { UnityGroup = "text" }, "src/backend/paragraph/*.cpp")
+            .AddCppFiles(new CFamilyFileOptions { UnityGroup = "text" }, "src/backend/text_server/*.cpp")
+            .AddCppFiles(new CFamilyFileOptions { UnityGroup = "text_adv" }, "src/backend/text_server_adv/*.cpp")
 
             .UsePrivatePCH("include/**.hpp");
     }

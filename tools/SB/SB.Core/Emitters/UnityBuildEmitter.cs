@@ -22,40 +22,71 @@ namespace SB
 
             var UnityBuildAttribute = Target.GetAttribute<UnityBuildAttribute>()!;
             bool Changed = false;
-            var RunBatch = (FileList FileList, IEnumerable<string[]> Batches, string Postfix) => {
+
+            var RunBatch = (FileList FileList, string[] Batch, string BatchName, string Postfix) => {
+                var UnityFile = Path.Combine(UnityFileDirectory, $"unity_build.{BatchName}.{Postfix}");
+                Changed |= Depend.OnChanged(Target.Name, UnityFile, this.Name, (Depend depend) => {
+                    var UnityContent = String.Join("\n", Batch.Select(F => $"#include \"{F}\""));
+                    File.WriteAllText(UnityFile, UnityContent);
+                    depend.ExternalFiles.Add(UnityFile);
+                }, Batch, null);
+                FileList.RemoveFiles(Batch);
+                return UnityFile;
+            };
+
+            var RunBatches = (FileList FileList, IEnumerable<string[]> Batches, string Postfix) => {
                 List<string> UnityFiles = new(Batches.Count());
                 int BatchIndex = 0;
                 foreach (var Batch in Batches.ToArray())
                 {
-                    var UnityFile = Path.Combine(UnityFileDirectory, $"unity_build.{BatchIndex++}.{Postfix}");
-                    Changed |= Depend.OnChanged(Target.Name, UnityFile, this.Name, (Depend depend) => {
-                        var UnityContent = String.Join("\n", Batch.Select(F => $"#include \"{F}\""));
-                        File.WriteAllText(UnityFile, UnityContent);
-                        depend.ExternalFiles.Add(UnityFile);
-                    }, Batch, null);
-                    FileList.RemoveFiles(Batch);
+                    var UnityFile = RunBatch(FileList, Batch, BatchIndex.ToString(), Postfix);
                     UnityFiles.Add(UnityFile);
+                    BatchIndex += 1;
                 }
                 return UnityFiles;
             };
 
+            var Unity = (FileList FileList, string Lang) => {
+                var FileGroups = FileList.Files.GroupBy(F => UnityGroup(F, FileList));
+                foreach (var FileGroup in FileGroups)
+                {
+                    if (FileGroup.Key is null) 
+                        continue; // Skip files with UnityGroup == null, which means unity build is disabled
+                    else if (FileGroup.Key == "")
+                    {
+                        var CommonBatches = FileGroup.Chunk(UnityBuildAttribute.BatchCount);
+                        var UnityFiles = RunBatches(FileList, CommonBatches, Lang);
+                        FileList.AddFiles(UnityFiles.ToArray());
+                    }
+                    else
+                    {
+                        var UnityFile = RunBatch(FileList, FileGroup.ToArray(), FileGroup.Key, Lang);
+                        FileList.AddFiles(UnityFile);
+                    }
+                }
+            };
+
             if (UnityBuildAttribute.C && Target.HasFilesOf<CFileList>())
             {
-                var CFilesList = Target.FileList<CFileList>();
-                var CBatches = CFilesList.Files.Chunk(UnityBuildAttribute.BatchCount);
-                var UnityFiles = RunBatch(CFilesList, CBatches, "c");
-                CFilesList.AddFiles(UnityFiles.ToArray());
+                Unity(Target.FileList<CFileList>(), "c");
             }
             
             if (UnityBuildAttribute.Cpp && Target.HasFilesOf<CppFileList>())
             {
-                var CppFileList = Target.FileList<CppFileList>();
-                var CppBatches = CppFileList.Files.Chunk(UnityBuildAttribute.BatchCount);
-                var UnityFiles = RunBatch(CppFileList, CppBatches, "cpp");
-                CppFileList.AddFiles(UnityFiles.ToArray());
+                Unity(Target.FileList<CppFileList>(), "cpp");
             }
             
             return new PlainArtifact { IsRestored = !Changed };
+        }
+
+        private static string? UnityGroup(string File, FileList FL)
+        {
+            var UnityOptions = FL.GetFileOptions(File) as UnityBuildableFileOptions;
+            if (UnityOptions is null) 
+                return "";
+            if (UnityOptions.DisableUnityBuild) 
+                return null;
+            return UnityOptions.UnityGroup;
         }
     }
 

@@ -11,7 +11,7 @@ public static class SkrRenderer
             .Depend(Visibility.Public, "SkrScene", "SkrRenderGraph", "SkrImGui")
             .IncludeDirs(Visibility.Public, "include")
             .AddCppFiles("src/*.cpp")
-            .AddCppFiles("src/resources/*.cpp") // {unity_group = "resources"})
+            .AddCppFiles(new CFamilyFileOptions { UnityGroup = "resources" }, "src/resources/*.cpp")
             .AddMetaHeaders("include/**.h", "include/**.hpp"); // codegen
     }
 }
