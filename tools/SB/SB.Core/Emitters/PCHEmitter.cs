@@ -20,6 +20,8 @@ namespace SB
                 var PCHFile = GetPCHFile(Target, Mode);
                 var PCHASTFile = GetPCHASTFile(Target, Mode);
 
+                Profiler.Message(Mode.ToString());
+
                 if (CreatePCH.Globs.Count != 0)
                 {
                     var GlobMatcher = new Matcher();

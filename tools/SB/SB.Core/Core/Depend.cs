@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Threading.Tasks.Schedulers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Serilog;
@@ -153,7 +154,6 @@ namespace SB.Core
             return false;
         }
 
-        private static LimitedConcurrencyLevelTaskScheduler lcts = new LimitedConcurrencyLevelTaskScheduler(1);
         private static void UpdateDependency(string TargetName, Depend NewDepend, Depend? OldDepend)
         {
             NewDepend.ExternalFileTimes = NewDepend.ExternalFiles.Select(x => Directory.GetLastWriteTimeUtc(x)).ToList();
@@ -173,7 +173,7 @@ namespace SB.Core
                     }
                     return true;
                 }
-            }, lcts).GetAwaiter();
+            }, TaskManager.IOQTS).GetAwaiter();
         }
 
         private static DependEntity ToEntity(Depend depend)

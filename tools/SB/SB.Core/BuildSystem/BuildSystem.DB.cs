@@ -74,7 +74,7 @@ namespace SB
                     TargetDbContext.UpdateContext!.SaveChanges();
                 }
                 return await Task.FromResult(true);
-            }).Wait();
+            }, TaskManager.IOQTS).GetAwaiter();
         }
     }
 

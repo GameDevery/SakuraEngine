@@ -17,7 +17,7 @@ namespace SB
     {
         public static Task RunDoctors()
         {
-            return Task.Run(() => {
+            var LaunchTask = new Task(() => {
                 using (Profiler.BeginZone("RunDoctors", color: (uint)Profiler.ColorType.WebMaroon))
                 {
                     var Doctors = new ConcurrentBag<DoctorAttribute>();
@@ -35,7 +35,9 @@ namespace SB
                             }
                         }
                     }
-                    Parallel.ForEach(Doctors, (Doctor) =>
+                    Parallel.ForEach(Doctors, 
+                    new ParallelOptions { TaskScheduler = TQTS },
+                    (Doctor) =>
                     {
                         using (Profiler.BeginZone($"{Doctor.GetType().Name}", color: (uint)Profiler.ColorType.WebMaroon))
                         {
@@ -50,6 +52,8 @@ namespace SB
                     });
                 }
             });
+            LaunchTask.Start(TQTS);
+            return LaunchTask;
         }
     }
 }

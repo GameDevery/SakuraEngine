@@ -130,6 +130,12 @@ public static class Profiler
         TracyEmitMessageAppinfo(infostr, infoln);
     }
 
+    public static void Message(string message)
+    {
+        using var messagestr = GetCString(message, out var messageln);
+        TracyEmitMessage(messagestr, messageln, 0);
+    }
+
 
     /// <summary>
     /// Emit the top-level frame marker.

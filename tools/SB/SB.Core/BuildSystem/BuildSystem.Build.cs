@@ -1,9 +1,7 @@
 ﻿using SB.Core;
 using Serilog;
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 
 namespace SB
 {
@@ -54,7 +52,14 @@ namespace SB
             {
                 using (Profiler.BeginZone("RunBuild", color: (uint)Profiler.ColorType.WebPurple))
                 {
-                    Task.Run(() => RunBuildImpl(), TaskManager.RootCTS.Token).Wait(TaskManager.RootCTS.Token);
+                    var RunBuildTask = new Task(() => { 
+                        using (Profiler.BeginZone("RunBuild", color: (uint)Profiler.ColorType.WebPurple))
+                        {
+                            RunBuildImpl();
+                        }
+                    }, TaskManager.RootCTS.Token);
+                    RunBuildTask.Start(TaskManager.SchedulerTS);
+                    RunBuildTask.Wait(TaskManager.RootCTS.Token);
                 }
             }
             catch (OperationCanceledException)
@@ -78,7 +83,8 @@ namespace SB
             }
         }
 
-        private static LimitedConcurrencyLevelTaskScheduler lcts = new LimitedConcurrencyLevelTaskScheduler(32);
+        private static TaskScheduler TQTS = TaskManager.BuildQTS.ActivateNewQueue(0);
+        private static TaskScheduler FQTS = TaskManager.BuildQTS.ActivateNewQueue(1);
         public static void RunBuildImpl()
         {
             using (Profiler.BeginZone($"ResolvePackages", color: (uint)Profiler.ColorType.Yellow))
@@ -103,7 +109,9 @@ namespace SB
 
             using (Profiler.BeginZone($"ResolveArguments", color: (uint)Profiler.ColorType.Pink))
             {
-                Parallel.ForEach(AllTargets.Values, Target => {
+                Parallel.ForEach(AllTargets.Values, 
+                new ParallelOptions { TaskScheduler = TQTS },
+                Target => {
                     using (Profiler.BeginZone($"ResolveArgument | {Target.Name}", color: (uint)Profiler.ColorType.Pink))
                     {
                         Target.ResolveArguments();
@@ -129,7 +137,7 @@ namespace SB
             uint AllTaskCounter = 0;
             uint FileTaskCounter = 0;
             Parallel.ForEachAsync(SortedTargets, 
-            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, TaskScheduler = TaskManager.SchedulerTS },
             async (Target Target, CancellationToken Cancel) =>
             {
                 Target.CallAllActions(Target.BeforeBuildActions);
@@ -202,7 +210,7 @@ namespace SB
                                     }
                                 }
                                 return await Task.FromResult(true);
-                            }, lcts);
+                            }, TQTS);
                         }
 
                         foreach (var FL in Target.FileLists.ToArray().Where(FL => Emitter.EmitFileTask(Target, FL)))
@@ -240,7 +248,7 @@ namespace SB
                                         }
                                     }
                                     return await Task.FromResult(true);
-                                }, lcts);
+                                }, FQTS);
                                 FileTasks.Add(FileTask);
                             }
                         }

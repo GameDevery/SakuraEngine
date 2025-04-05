@@ -10,7 +10,7 @@ public static class Cef
     {
         Engine.Target("cef")
             .TargetType(TargetType.Static)
-            .Defines(Visibility.Public, "WRAPPING_CEF_SHARED", "NOMINMAX", "USING_CEF_SHARED")
+            .Defines(Visibility.Public, "WRAPPING_CEF_SHARED", "NOMINMAX", "USING_CEF_SHARED=1")
             .Defines(Visibility.Private, "_HAS_EXCEPTIONS=0")
             .IncludeDirs(Visibility.Public, "include")
             .IncludeDirs(Visibility.Private, "./")
