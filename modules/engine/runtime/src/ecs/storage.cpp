@@ -84,6 +84,42 @@ void sugoi_storage_t::allocate(sugoi_group_t* group, EIndex count, sugoi_view_ca
     allocate_unsafe(group, count, callback, u);
 }
 
+void sugoi_storage_t::reserve_entities(EIndex count)
+{
+    using namespace sugoi;
+    SkrZoneScopedN("sugoi_storage_t::reserve_entities");
+    pimpl->entity_registry.reserve_external(count);
+}
+
+void sugoi_storage_t::allocate_reserved_unsafe(sugoi_group_t* group, const sugoi_entity_t* ents, EIndex count, sugoi_view_callback_t callback, void* u)
+{
+    using namespace sugoi;
+    if (count != 0)
+        pimpl->entity_registry.reserve(count);
+    
+    while (count != 0)
+    {
+        sugoi_chunk_view_t v = allocateView(group, count);
+        pimpl->entity_registry.fill_entities_external(v, ents);
+        construct_view(v);
+        count -= v.count;
+        ents += v.count;
+        if (callback)
+            callback(u, &v);
+    }
+}
+
+void sugoi_storage_t::allocate_reserved(sugoi_group_t* group, const sugoi_entity_t* ents, EIndex count, sugoi_view_callback_t callback, void* u)
+{
+    using namespace sugoi;
+    SkrZoneScopedN("sugoi_storage_t::allocate_reserved");
+    if (pimpl->scheduler)
+    {
+        pimpl->scheduler->sync_archetype(group->archetype);
+    }
+    allocate_reserved_unsafe(group, ents, count, callback, u);
+}
+
 sugoi_chunk_view_t sugoi_storage_t::allocateView(sugoi_group_t* group, EIndex count)
 {
     SkrZoneScopedN("sugoi_storage_t::allocateView");
@@ -948,6 +984,22 @@ void sugoiS_allocate_type(sugoi_storage_t* storage, const sugoi_entity_type_t* t
 void sugoiS_allocate_group(sugoi_storage_t* storage, sugoi_group_t* group, EIndex count, sugoi_view_callback_t callback, void* u)
 {
     storage->allocate(group, count, callback, u);
+}
+
+void sugoiS_reserve_entities(sugoi_storage_t *storage, EIndex count)
+{
+    storage->reserve_entities(count);
+}
+
+void sugoiS_allocate_reserved_type(sugoi_storage_t *storage, const sugoi_entity_type_t *type, const sugoi_entity_t *ents, EIndex count, sugoi_view_callback_t callback, void *u)
+{
+    SKR_ASSERT(sugoi::ordered(*type));
+    storage->allocate_reserved(storage->get_group(*type), ents, count, callback, u);
+}
+
+void sugoiS_allocate_reserved_group(sugoi_storage_t *storage, sugoi_group_t *group, const sugoi_entity_t *ents, EIndex count, sugoi_view_callback_t callback, void *u)
+{
+    storage->allocate_reserved(group, ents, count, callback, u);
 }
 
 void sugoiS_instantiate(sugoi_storage_t* storage, sugoi_entity_t prefab, EIndex count, sugoi_view_callback_t callback, void* u)

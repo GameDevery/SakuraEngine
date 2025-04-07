@@ -296,6 +296,35 @@ SKR_RUNTIME_API void sugoiS_allocate_type(sugoi_storage_t* storage, const sugoi_
  */
 SKR_RUNTIME_API void sugoiS_allocate_group(sugoi_storage_t* storage, sugoi_group_t* group, EIndex count, sugoi_view_callback_t callback, void* u);
 /**
+ * @brief reserve entities
+ * reserve numbers of entities which will be allocated later
+ * must be called before any allocate function
+ * @param storage
+ * @param count
+ */
+SKR_RUNTIME_API void sugoiS_reserve_entities(sugoi_storage_t* storage, EIndex count);
+/**
+ * @brief allocate entities with reserved ids
+ * batch allocate numbers of entities with entity type
+ * @param storage
+ * @param type
+ * @param ents reserved entity ids, the size of ents should be equal to count
+ * @param count
+ * @param callback optional callback after allocating chunk view
+ */
+SKR_RUNTIME_API void sugoiS_allocate_reserved_type(sugoi_storage_t* storage, const sugoi_entity_type_t* type, const sugoi_entity_t* ents, EIndex count, sugoi_view_callback_t callback, void* u);
+/**
+ * @brief allocate entities with reserved ids
+ * batch allocate numbers of entities within a group
+ * @param storage
+ * @param group
+ * @param ents reserved entity ids, the size of ents should be equal to count
+ * @param count
+ * @param callback optional callback after allocating chunk view
+ */
+SKR_RUNTIME_API void sugoiS_allocate_reserved_group(sugoi_storage_t* storage, sugoi_group_t* group, const sugoi_entity_t* ents, EIndex count, sugoi_view_callback_t callback, void* u);
+
+/**
  * @brief instantiate entity
  * instantiate an entity n times
  * @param storage

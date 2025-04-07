@@ -49,6 +49,9 @@ struct SKR_RUNTIME_API sugoi_storage_t {
 
     void allocate_unsafe(sugoi_group_t* group, EIndex count, sugoi_view_callback_t callback, void* u);
     void allocate(sugoi_group_t* group, EIndex count, sugoi_view_callback_t callback, void* u);
+    void reserve_entities(EIndex count);
+    void allocate_reserved_unsafe(sugoi_group_t* group, const sugoi_entity_t* ents, EIndex count, sugoi_view_callback_t callback, void* u);
+    void allocate_reserved(sugoi_group_t* group, const sugoi_entity_t* ents, EIndex count, sugoi_view_callback_t callback, void* u);
 
     void get_linked_recursive(const sugoi_chunk_view_t& view, sugoi::cache_t<sugoi_entity_t>& result);
     void linked_to_prefab(const sugoi_entity_t* src, uint32_t size, bool keepExternal = true);
