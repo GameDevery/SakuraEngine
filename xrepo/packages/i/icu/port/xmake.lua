@@ -14,5 +14,5 @@ target("icu")
     add_defines("U_COMMON_IMPLEMENTATION", {public=false})
     add_defines("U_STATIC_IMPLEMENTATION", {public=false})
     if (is_plat("windows")) then
-        add_cxflags("/wd4267", "/wd4244", "/source-charset:utf-8", {public=false})
+        add_cxflags("/wd4267", "/wd4244", "/utf-8", {public=false})
     end

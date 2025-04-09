@@ -12,7 +12,7 @@ namespace skr
 V8Context::V8Context(V8Isolate* isolate)
     : _isolate(isolate)
 {
-    _global_module.manager = &_isolate->_bind_manager->script_binder_manger();
+    _global_module.manager = &_isolate->script_binder_manger();
 }
 V8Context::~V8Context()
 {
@@ -92,7 +92,7 @@ bool V8Context::build_global_export(FunctionRef<void(ScriptModule& module)> buil
                 context->Global()->Set(
                     context,
                     V8Bind::to_v8(k, true),
-                    V8Bind::export_namespace_node(v, _isolate->_bind_manager)
+                    V8Bind::export_namespace_node(v, _isolate)
                 ).Check();
                 // clang-format on
             }
@@ -106,6 +106,33 @@ bool V8Context::build_global_export(FunctionRef<void(ScriptModule& module)> buil
 ::v8::Global<::v8::Context> V8Context::v8_context() const
 {
     return ::v8::Global<::v8::Context>(_isolate->v8_isolate(), _context);
+}
+
+// get global value
+V8Value V8Context::get_global(StringView name)
+{
+    // scopes
+    auto                   isolate = _isolate->v8_isolate();
+    v8::Isolate::Scope     isolate_scope(isolate);
+    v8::HandleScope        handle_scope(isolate);
+    v8::Local<v8::Context> context = _context.Get(isolate);
+    v8::Context::Scope     context_scope(context);
+
+    // find value
+    auto                   global = context->Global();
+    v8::Local<v8::String> name_v8 = V8Bind::to_v8(name, true);
+    auto                   maybe_value = global->Get(context, name_v8);
+    if (maybe_value.IsEmpty())
+    {
+        SKR_LOG_FMT_ERROR(u8"failed to get global value {}", name);
+        return {};
+    }
+
+    // return value
+    V8Value result;
+    result.context = this;
+    result.v8_value.Reset(isolate, maybe_value.ToLocalChecked());
+    return result;
 }
 
 // run as script

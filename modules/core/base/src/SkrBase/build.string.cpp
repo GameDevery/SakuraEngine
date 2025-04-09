@@ -4,7 +4,7 @@
 
 // platform specific imports
 #if SKR_PLAT_WINDOWS
-    #include <windows.h>
+    #include <Windows.h>
     #include <psapi.h>
     #include <processthreadsapi.h>
     #include <libloaderapi.h>

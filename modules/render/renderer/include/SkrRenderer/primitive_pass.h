@@ -35,10 +35,10 @@ struct IPrimitiveRenderPass {
 extern "C" {
 #endif
 
-SKR_RENDERER_EXTERN_C SKR_RENDERER_API void
+SKR_EXTERN_C SKR_RENDERER_API void
 skr_renderer_register_render_pass(SRendererId renderer, skr_render_pass_name_t name, IPrimitiveRenderPass* pass);
 
-SKR_RENDERER_EXTERN_C SKR_RENDERER_API void
+SKR_EXTERN_C SKR_RENDERER_API void
 skr_renderer_remove_render_pass(SRendererId renderer, skr_render_pass_name_t name);
 
 #ifdef __cplusplus

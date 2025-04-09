@@ -7,7 +7,7 @@ target("SkrCompileFlags")
     -- uses utf-8 charset at runtime
     add_cxflags(
         "/execution-charset:utf-8", 
-        "/source-charset:utf-8",
+        "/utf-8",
         {public = true, tools = {"clang_cl", "cl"}})
 
     -- disable c++ warnings for gcc/clang

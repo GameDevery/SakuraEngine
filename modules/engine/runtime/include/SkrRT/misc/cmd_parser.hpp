@@ -105,7 +105,7 @@ struct parser {
         {
             if (is_required) m_required += 1;
             m_names.add(name);
-            m_shorthands.emplace(shorthand, m_names.size() - 1);
+            m_shorthands.emplace(shorthand, (int32_t)m_names.size() - 1);
         }
         return ret;
     }

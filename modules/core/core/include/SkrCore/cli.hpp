@@ -6,7 +6,7 @@
 #include "SkrRTTR/generic_container.hpp"
 #include "SkrRTTR/type.hpp"
 #ifndef __meta__
-    #include "SkrCore/SkrCore/cli.generated.h"
+    #include "SkrCore/cli.generated.h"
 #endif
 
 // attributes

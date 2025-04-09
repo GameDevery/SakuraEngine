@@ -11,7 +11,7 @@ struct InputContextOptions
     uint32_t nothing_and_useless = 0;
 };
 
-struct SKR_INPUTSYSTEM_API InputSystem
+struct SKR_INPUT_SYSTEM_API InputSystem
 {
     virtual ~InputSystem() SKR_NOEXCEPT;
 

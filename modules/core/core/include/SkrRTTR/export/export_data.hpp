@@ -8,7 +8,7 @@
 #include "SkrRTTR/export/dynamic_stack.hpp"
 #include <SkrRTTR/any.hpp>
 #ifndef __meta__
-    #include "SkrCore/SkrRTTR/export/export_data.generated.h"
+    #include "SkrRTTR/export/export_data.generated.h"
 #endif
 
 // utils
@@ -34,6 +34,8 @@ ERTTRParamFlag : uint32_t
     None = 0,      // default
     In   = 1 << 0, // is input native pointer/reference
     Out  = 1 << 1, // is output native pointer/reference
+
+    InOut = In | Out, // is input/output native pointer/reference
 };
 // clang-format off
 sreflect_enum_class(guid = "cf941db5-afa5-476e-9890-af836a373e73")
@@ -179,6 +181,23 @@ inline bool export_function_signature_equal(const Data& data, TypeSignatureView 
 
     return true;
 }
+template <typename DataA, typename DataB>
+inline bool cross_data_signature_equal(const DataA& data_a, const DataB& data_b, ETypeSignatureCompareFlag flag)
+{
+    // compare param count
+    if (data_a.param_data.size() != data_b.param_data.size()) { return false; }
+
+    // compare return type
+    if (!data_a.ret_type.view().equal(data_b.ret_type.view(), flag)) { return false; }
+
+    // compare param type
+    for (uint32_t i = 0; i < data_a.param_data.size(); ++i)
+    {
+        if (!data_a.param_data[i]->type.view().equal(data_b.param_data[i]->type.view(), flag)) { return false; }
+    }
+
+    return true;
+}
 } // namespace skr
 
 // attributes
@@ -253,6 +272,11 @@ struct RTTRFunctionData {
     {
         return export_function_signature_equal(*this, signature, flag);
     }
+    template <typename Data>
+    inline bool signature_equal(const Data& data, ETypeSignatureCompareFlag flag) const
+    {
+        return cross_data_signature_equal(*this, data, flag);
+    }
 };
 struct RTTRMethodData {
     // signature
@@ -298,6 +322,11 @@ struct RTTRMethodData {
     {
         return export_function_signature_equal(*this, signature, flag);
     }
+    template <typename Data>
+    inline bool signature_equal(const Data& data, ETypeSignatureCompareFlag flag) const
+    {
+        return cross_data_signature_equal(*this, data, flag);
+    }
 };
 struct RTTRStaticMethodData {
     // signature
@@ -334,6 +363,11 @@ struct RTTRStaticMethodData {
     {
         return export_function_signature_equal(*this, signature, flag);
     }
+    template <typename Data>
+    inline bool signature_equal(const Data& data, ETypeSignatureCompareFlag flag) const
+    {
+        return cross_data_signature_equal(*this, data, flag);
+    }
 };
 struct RTTRExternMethodData {
     // signature
@@ -369,6 +403,11 @@ struct RTTRExternMethodData {
     inline bool signature_equal(TypeSignatureView signature, ETypeSignatureCompareFlag flag) const
     {
         return export_function_signature_equal(*this, signature, flag);
+    }
+    template <typename Data>
+    inline bool signature_equal(const Data& data, ETypeSignatureCompareFlag flag) const
+    {
+        return cross_data_signature_equal(*this, data, flag);
     }
 };
 struct RTTRCtorData {

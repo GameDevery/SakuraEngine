@@ -15,41 +15,41 @@ typedef enum ESkrPSOMapPSOStatus
 } ESkrPSOMapPSOStatus;
 
 // create a pso map
-SKR_RENDERER_EXTERN_C SKR_RENDERER_API 
+SKR_EXTERN_C SKR_RENDERER_API 
 skr_pso_map_id skr_pso_map_create(const struct skr_pso_map_root_t* desc);
 
 // (RC) create a pso map key
-SKR_RENDERER_EXTERN_C SKR_RENDERER_API 
+SKR_EXTERN_C SKR_RENDERER_API 
 skr_pso_map_key_id skr_pso_map_create_key(skr_pso_map_id map, const struct CGPURenderPipelineDescriptor* desc);
 
 // (RC) free a pso map key
-SKR_RENDERER_EXTERN_C SKR_RENDERER_API
+SKR_EXTERN_C SKR_RENDERER_API
 void skr_pso_map_free_key(skr_pso_map_id map, skr_pso_map_key_id key);
 
 // (RC) request a pso install
-SKR_RENDERER_EXTERN_C SKR_RENDERER_API
+SKR_EXTERN_C SKR_RENDERER_API
 ESkrPSOMapPSOStatus skr_pso_map_install_pso(skr_pso_map_id map, skr_pso_map_key_id key);
 
 // thread-safe.
 // fetch pso in pso map
-SKR_RENDERER_EXTERN_C SKR_RENDERER_API 
+SKR_EXTERN_C SKR_RENDERER_API 
 CGPURenderPipelineId skr_pso_map_find_pso(skr_pso_map_id map, skr_pso_map_key_id key);
 
 // (RC) request a pso uninstall
-SKR_RENDERER_EXTERN_C SKR_RENDERER_API
+SKR_EXTERN_C SKR_RENDERER_API
 bool skr_pso_map_uninstall_pso(skr_pso_map_id map, skr_pso_map_key_id key);
 
 // pso map new frame
-SKR_RENDERER_EXTERN_C SKR_RENDERER_API
+SKR_EXTERN_C SKR_RENDERER_API
 void skr_pso_map_new_frame(skr_pso_map_id psoMap, uint64_t frame_index);
 
 // thread-safe.
 // do (RC) garbage collect once for pso map
-SKR_RENDERER_EXTERN_C SKR_RENDERER_API
+SKR_EXTERN_C SKR_RENDERER_API
 void skr_pso_map_garbage_collect(skr_pso_map_id psoMap, uint64_t critical_frame);
 
 // free a pso map
-SKR_RENDERER_EXTERN_C SKR_RENDERER_API 
+SKR_EXTERN_C SKR_RENDERER_API 
 void skr_pso_map_free(skr_pso_map_id pso_map);
 
 typedef struct skr_pso_map_root_t {

@@ -1,7 +1,8 @@
 #pragma once
 #include "SkrRTTR/iobject.hpp"
+#include "stack_proxy.hpp"
 #ifndef __meta__
-    #include "SkrCore/SkrRTTR/scriptble_object.generated.h"
+    #include "SkrRTTR/scriptble_object.generated.h"
 #endif
 
 namespace skr
@@ -26,8 +27,9 @@ SKR_CORE_API IScriptMixinCore : virtual public skr::IObject
     SKR_GENERATE_BODY()
     virtual ~IScriptMixinCore() = default;
 
-    virtual void on_object_destroyed(ScriptbleObject* obj) = 0;
-    // TODO. invoke mixin functions
+    virtual void on_object_destroyed(ScriptbleObject* obj)                                                                     = 0;
+    // TODO. 可以不传递 signature 信息，用缓存的 mixin 签名来做，以加速调用
+    virtual bool try_invoke_mixin(ScriptbleObject* obj, StringView name, const span<const StackProxy> args, StackProxy result) = 0;
 };
 
 // clang-format off
@@ -51,12 +53,53 @@ SKR_CORE_API ScriptbleObject : virtual public skr::IObject
     // mixin api
     inline IScriptMixinCore* mixin_core() const { return _mixin_core; }
     inline void              set_mixin_core(IScriptMixinCore* core) { _mixin_core = core; }
-    inline void notify_mixin_core_destroyed()
+    inline void              notify_mixin_core_destroyed()
     {
         if (_mixin_core)
         {
             _mixin_core->on_object_destroyed(this);
             _mixin_core = nullptr;
+        }
+    }
+    template <typename Ret, typename... Args>
+    inline auto try_invoke_mixin_method(StringView name, Args... args)
+    {
+        if constexpr (std::is_same_v<Ret, void>)
+        {
+            if (!_mixin_core)
+            {
+                return false;
+            }
+            return _mixin_core->try_invoke_mixin(
+                this,
+                name,
+                { StackProxyMaker<Args>::Make(args, /*mixin data must exist*/false)... },
+                {}
+            );
+        }
+        else
+        {
+            if (!_mixin_core)
+            {
+                return Optional<Ret>{};
+            }
+
+            Placeholder<Ret> ret;
+            bool             invoke_success = _mixin_core->try_invoke_mixin(
+                this,
+                name,
+                { StackProxyMaker<Args>::Make(args, /*mixin data must exist*/false)... },
+                { .data = ret.data(), .signature = type_signature_of<Ret>() }
+            );
+
+            if (invoke_success)
+            {
+                return Optional<Ret>{ std::move(*ret.data_typed()) };
+            }
+            else
+            {
+                return Optional<Ret>{};
+            }
         }
     }
 

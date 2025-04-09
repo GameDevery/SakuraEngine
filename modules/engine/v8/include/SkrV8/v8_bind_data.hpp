@@ -7,43 +7,53 @@
 
 namespace skr
 {
-struct V8BindManager;
+struct V8Isolate;
 //===============================bind data===============================
 struct V8BindDataMethod {
     ScriptBinderMethod binder;
+    v8::Global<::v8::FunctionTemplate> v8_template;
     // manager
-    V8BindManager* manager = nullptr;
+    V8Isolate* manager = nullptr;
 };
 struct V8BindDataStaticMethod {
     ScriptBinderStaticMethod binder;
+    v8::Global<::v8::FunctionTemplate> v8_template;
     // manager
-    V8BindManager* manager = nullptr;
+    V8Isolate* manager = nullptr;
 };
 struct V8BindDataField {
     ScriptBinderField binder;
+    v8::Global<::v8::FunctionTemplate> v8_template_getter;
+    v8::Global<::v8::FunctionTemplate> v8_template_setter;
     // manager
-    V8BindManager* manager = nullptr;
+    V8Isolate* manager = nullptr;
 };
 struct V8BindDataStaticField {
     ScriptBinderStaticField binder;
+    v8::Global<::v8::FunctionTemplate> v8_template_getter;
+    v8::Global<::v8::FunctionTemplate> v8_template_setter;
     // manager
-    V8BindManager* manager = nullptr;
+    V8Isolate* manager = nullptr;
 };
 struct V8BindDataProperty {
     ScriptBinderProperty binder;
+    v8::Global<::v8::FunctionTemplate> v8_template_getter;
+    v8::Global<::v8::FunctionTemplate> v8_template_setter;
     // manager
-    V8BindManager* manager = nullptr;
+    V8Isolate* manager = nullptr;
 };
 struct V8BindDataStaticProperty {
     ScriptBinderStaticProperty binder;
+    v8::Global<::v8::FunctionTemplate> v8_template_getter;
+    v8::Global<::v8::FunctionTemplate> v8_template_setter;
     // manager
-    V8BindManager* manager = nullptr;
+    V8Isolate* manager = nullptr;
 };
 struct V8BindDataObject;
 struct V8BindDataValue;
 struct V8BindDataRecordBase {
     // v8 info
-    ::v8::Global<::v8::FunctionTemplate> ctor_template;
+    v8::Global<::v8::FunctionTemplate> ctor_template;
 
     // native info
     bool                                   is_value = false;
@@ -55,7 +65,7 @@ struct V8BindDataRecordBase {
     Map<String, V8BindDataStaticProperty*> static_properties;
 
     // manager
-    V8BindManager* manager = nullptr;
+    V8Isolate* manager = nullptr;
 
     V8BindDataObject* as_object();
     V8BindDataValue*  as_value();
@@ -109,7 +119,7 @@ struct V8BindDataEnum {
     v8::Global<v8::ObjectTemplate> enum_template;
 
     // manager
-    V8BindManager* manager = nullptr;
+    V8Isolate* manager = nullptr;
 
     ScriptBinderEnum* binder;
 };
@@ -127,7 +137,6 @@ inline V8BindDataValue* V8BindDataRecordBase::as_value()
 //===============================bind core===============================
 struct V8BindCoreObject;
 struct V8BindCoreValue;
-struct V8BindManager;
 struct V8BindCoreRecordBase {
     // type
     V8BindCoreObject* as_object();
@@ -144,10 +153,11 @@ struct V8BindCoreRecordBase {
     Map<void*, V8BindCoreValue*> cache_value_fields = {};
 
     // v8 info
-    ::v8::Persistent<::v8::Object> v8_object = {};
+    v8::Persistent<::v8::Object> v8_object   = {};
+    V8Isolate*                   skr_isolate = nullptr;
 
     // manager
-    V8BindManager* manager = nullptr;
+    V8Isolate* manager = nullptr;
 
     inline bool is_valid() const
     {
@@ -155,6 +165,9 @@ struct V8BindCoreRecordBase {
     }
 
     ~V8BindCoreRecordBase();
+
+protected:
+    void invalidate();
 };
 struct V8BindCoreObject : V8BindCoreRecordBase {
     inline V8BindCoreObject()
@@ -163,11 +176,13 @@ struct V8BindCoreObject : V8BindCoreRecordBase {
     }
 
     // native info
-    skr::ScriptbleObject* object = nullptr;
+    skr::ScriptbleObject* object    = nullptr;
+    ScriptBinderObject*   binder    = nullptr;
+    V8BindDataObject*     bind_data = nullptr;
 
     inline void invalidate()
     {
-        data   = nullptr;
+        V8BindCoreRecordBase::invalidate();
         object = nullptr;
     }
 };
@@ -188,10 +203,12 @@ struct V8BindCoreValue : V8BindCoreRecordBase {
     };
     ESource               from             = ESource::Invalid;
     V8BindCoreRecordBase* from_field_owner = nullptr;
+    ScriptBinderValue*    binder           = nullptr;
+    V8BindDataValue*      bind_data        = nullptr;
 
     inline void invalidate()
     {
-        data             = nullptr;
+        V8BindCoreRecordBase::invalidate();
         from             = ESource::Invalid;
         from_field_owner = nullptr;
     }
@@ -213,5 +230,13 @@ inline V8BindCoreRecordBase::~V8BindCoreRecordBase()
     {
         field_core->invalidate();
     }
+}
+inline void V8BindCoreRecordBase::invalidate()
+{
+    for (auto& [field_ptr, field_core] : cache_value_fields)
+    {
+        field_core->invalidate();
+    }
+    data = nullptr;
 }
 } // namespace skr

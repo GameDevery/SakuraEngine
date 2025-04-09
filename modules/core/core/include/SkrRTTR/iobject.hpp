@@ -3,7 +3,7 @@
 #include "SkrRTTR/type.hpp"
 #include "SkrRTTR/rttr_traits.hpp"
 #ifndef __meta__
-    #include "SkrCore/SkrRTTR/iobject.generated.h"
+    #include "SkrRTTR/iobject.generated.h"
 #endif
 
 //!===================================== 比较良好的模式 =====================================

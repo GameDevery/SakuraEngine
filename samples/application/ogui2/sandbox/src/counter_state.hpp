@@ -2,7 +2,7 @@
 #include "SkrGui/framework/widget/stateful_widget.hpp"
 #include "SkrBase/config.h"
 #ifndef __meta__
-    #include "OGUI_Sandbox/counter_state.generated.h"
+    #include "counter_state.generated.h"
 #endif
 
 namespace skr::gui

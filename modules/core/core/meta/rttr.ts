@@ -130,6 +130,8 @@ class CtorConfig extends ConfigBase {
 class FieldConfig extends ConfigBase {
 }
 class MethodConfig extends ConfigBase {
+  @ml.value("boolean")
+  script_mixin: boolean = false;
 }
 class ParamConfig extends ConfigBase {
 }
@@ -382,6 +384,45 @@ class _Gen {
       });
     });
     b.$line(`};`);
+
+    // impl script mixin
+    b.$line(``);
+    in_records.forEach(record => {
+      const mixin_methods = record.methods.filter(method => method.ml_configs.rttr.script_mixin);
+      if (mixin_methods.length > 0) {
+        b.$line(`// mixin methods of ${record.name}`);
+        b.$namespace(record.namespace.join("::"), _b => {
+          mixin_methods.forEach(method => {
+            b.$line(`${method.ret_type} ${record.short_name}::${method.short_name}(${method.dump_params()}){`)
+            b.$indent(_b => {
+              b.$line(`auto mixin_result = try_invoke_mixin_method<${method.ret_type}${method.dump_params_type_only_with_comma()}>(u8"${method.short_name}"${method.dump_params_name_only_with_comma()});`);
+
+              // has value case
+              if (method.ret_type !== "void") {
+                b.$line(`if (mixin_result.has_value()) {`)
+                b.$indent(_b => {
+                  b.$line(`return mixin_result.value();`)
+                })
+              } else {
+                b.$line(`if (mixin_result) {`)
+                b.$indent(_b => {
+                  b.$line(`return;`)
+                })
+              }
+
+              // no value case
+              b.$line(`} else {`)
+              b.$indent(_b => {
+                b.$line(`return this->${method.short_name}_impl(${method.dump_params_name_only()});`)
+              })
+              b.$line(`}`)
+
+            })
+            b.$line(`}`)
+          })
+        })
+      }
+    });
 
     // bottom
     b.$line(`// END RTTR GENERATED`);

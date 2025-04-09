@@ -93,5 +93,5 @@ target("harfbuzz")
     add_defines("HAVE_OT", {public=false})
     add_defines("HB_NO_MT", {public=false})
     if (is_plat("windows")) then
-        add_cxflags("/wd4267", "/wd4244", "/source-charset:utf-8", {public=false})
+        add_cxflags("/wd4267", "/wd4244", "/utf-8", {public=false})
     end

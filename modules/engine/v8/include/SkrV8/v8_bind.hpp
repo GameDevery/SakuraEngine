@@ -3,6 +3,7 @@
 #include "SkrRTTR/script_binder.hpp"
 #include "SkrRTTR/script_tools.hpp"
 #include "v8_isolate.hpp"
+#include <SkrRTTR/stack_proxy.hpp>
 
 namespace skr
 {
@@ -67,7 +68,7 @@ struct V8Bind {
     // namespace helper
     static v8::Local<v8::Value> export_namespace_node(
         const ScriptNamespaceNode* node,
-        V8BindManager*             bind_manager
+        V8Isolate*                 skr_isolate
     );
 
 private:
