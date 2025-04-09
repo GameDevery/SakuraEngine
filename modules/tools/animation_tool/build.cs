@@ -7,6 +7,11 @@ public static class SkrAnimTool
 {
     static SkrAnimTool()
     {
+        var Gltf2OzzOptions = new CFamilyFileOptions();
+        Gltf2OzzOptions.Arguments.CXFlags_ClangCl(Visibility.Private, 
+            "-Wno-format-invalid-specifier"
+        );
+
         Engine.Module("SkrAnimTool", "SKR_ANIMTOOL")
             // .EnableUnityBuild()
             // .Exception(true)
@@ -15,7 +20,7 @@ public static class SkrAnimTool
             .IncludeDirs(Visibility.Private, "src")
             .AddCppFiles(new CFamilyFileOptions { UnityGroup = "utils" }, "src/*.cc")
             .AddCppFiles(new CFamilyFileOptions { UnityGroup = "tool" }, "src/tools/*.cc", "src/*.cpp")
-            .AddCppFiles("src/gltf/**.cc", "src/gltf/**.cpp")
+            .AddCppFiles(Gltf2OzzOptions, "src/gltf/**.cc", "src/gltf/**.cpp")
             .UsePrivatePCH("src/pch.hpp")
 
             .AddMetaHeaders("include/**.h")

@@ -405,7 +405,7 @@ int main(int argc, char* argv[])
                 if (profiler.times_ms.size() == profiler.query_names.size())
                 {
                     // text
-                    ImGui::Text("frame: %d(%d frames before)",
+                    ImGui::Text("frame: %llu(%llu frames before)",
                     profiler.frame_index,
                     frame_index - profiler.frame_index);
                     float total_ms = 0.f;

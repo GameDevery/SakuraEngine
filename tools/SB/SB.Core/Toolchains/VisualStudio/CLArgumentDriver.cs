@@ -9,7 +9,9 @@
         {
             this.Language = Language;
             if (Language == CFamily.C)
+            {
                 RawArguments.Add("/TC");
+            }
             else if (Language == CFamily.Cpp)
             {
                 RawArguments.Add("/TP");
@@ -107,7 +109,7 @@
         [TargetProperty]
         public virtual string DynamicDebug(bool v) => v ? "/dynamicdeopt /Z7" : "";
 
-        private CFamily Language { get; }
+        protected CFamily Language { get; }
         public ArgumentDictionary Arguments { get; } = new();
         public HashSet<string> RawArguments { get; } = new HashSet<string> { "/c", "/nologo", "/FC" };
         // /c: dont link while compiling, https://learn.microsoft.com/zh-cn/cpp/build/reference/c-compile-without-linking?view=msvc-170

@@ -34,6 +34,8 @@ inline static const uint8_t* _append_modifier(const uint8_t* pos, const uint8_t*
         result = skr::format(u8"[{}] {}", dim, result);
         break;
     }
+    default:
+        SKR_UNREACHABLE_CODE()
     }
     return pos;
 }
@@ -108,6 +110,8 @@ inline static const uint8_t* _append_data(const uint8_t* pos, const uint8_t* end
         result = skr::format(u8"{}{}", result, value);
         break;
     }
+    default:
+        SKR_UNREACHABLE_CODE()
     }
     return pos;
 }
@@ -209,6 +213,8 @@ String TypeSignatureHelper::signal_to_string(const uint8_t* pos, const uint8_t* 
         result.append(u8")");
         break;
     }
+    default:
+        SKR_UNREACHABLE_CODE()
     }
     return result;
 }

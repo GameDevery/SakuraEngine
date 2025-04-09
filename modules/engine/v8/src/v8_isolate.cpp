@@ -1747,6 +1747,8 @@ v8::Local<v8::Value> V8Isolate::_to_v8(
         return _to_v8_object(*binder.object(), native_data);
     case ScriptBinderRoot::EKind::Value:
         return _to_v8_value(*binder.value(), native_data);
+    default:
+        SKR_UNREACHABLE_CODE()
     }
     return {};
 }
@@ -1769,6 +1771,8 @@ bool V8Isolate::_to_native(
         return _to_native_object(*binder.object(), v8_value, native_data, is_init);
     case ScriptBinderRoot::EKind::Value:
         return _to_native_value(*binder.value(), v8_value, native_data, is_init);
+    default:
+        SKR_UNREACHABLE_CODE()
     }
     return false;
 }

@@ -186,7 +186,7 @@ struct CliOutputBuilder {
     // dump
     inline void dump()
     {
-        printf(content.c_str_raw());
+        printf( content.c_str_raw());
     }
 
     String content;

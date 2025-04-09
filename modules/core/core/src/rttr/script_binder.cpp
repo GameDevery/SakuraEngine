@@ -187,6 +187,8 @@ void ScriptBinderManager::clear()
         case ScriptBinderRoot::EKind::Value:
             SkrDelete(binder.value());
             break;
+        default:
+            SKR_UNREACHABLE_CODE()
         }
     }
     _cached_root_binders.clear();

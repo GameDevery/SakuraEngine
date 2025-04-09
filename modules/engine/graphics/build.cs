@@ -17,6 +17,15 @@ public static class SkrGraphics
             .AddCFiles("src/build.*.c")
             .AddCppFiles("src/build.*.cpp");
 
+        // ignore warnings from SDKs
+        SkrGraphics.CXFlags_ClangCl(Visibility.Private, 
+            "-Wno-switch",
+            "-Wno-microsoft-cast",
+            "-Wno-ignored-attributes",
+            "-Wno-nullability-completeness",
+            "-Wno-tautological-undefined-compare"
+        );
+
         if (BuildSystem.TargetOS == OSPlatform.OSX)
         {
             var OCOptions = new CFamilyFileOptions();

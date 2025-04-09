@@ -12,14 +12,12 @@ public static class SkrProfile
             .TargetType(TargetType.Dynamic)
             .IncludeDirs(Visibility.Public, "include")
             .AddCppFiles("internal/tracy/TracyClient.cpp")
-            .Defines(Visibility.Public, Engine.UseProfile ? "SKR_PROFILE_OVERRIDE_ENABLE" : "SKR_PROFILE_OVERRIDE_DISABLE");
-            /*
-            .CppFlags(
+            .Defines(Visibility.Public, Engine.UseProfile ? "SKR_PROFILE_OVERRIDE_ENABLE" : "SKR_PROFILE_OVERRIDE_DISABLE")
+            .CXFlags_ClangCl(Visibility.Private,
                 "-Wno-missing-field-initializers", 
                 "-Wno-format",
                 "-Wno-unused-variable",
                 "-Wno-unused-but-set-variable"
-            ) // GCC, CLANG, CLANG_CL
-            */
+            ); // GCC, CLANG, CLANG_CL
     }
 }

@@ -292,7 +292,7 @@ struct SkrNewImpl
     [[nodiscard]] SKR_FORCEINLINE T* NewZeroed(Args&&...args)
     {
         T* p = core.Alloc<T>();
-        memset(p, 0, sizeof(T));
+        memset((void*)p, 0, sizeof(T));
         return new (p) DEBUG_NEW_SOURCE_LINE T{ skr::forward<Args>(args)... };
     }
     template<class F>

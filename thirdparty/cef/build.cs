@@ -8,7 +8,7 @@ public static class Cef
 {
     static Cef()
     {
-        Engine.Target("cef")
+        var @this = Engine.Target("cef")
             .TargetType(TargetType.Static)
             .Defines(Visibility.Public, "WRAPPING_CEF_SHARED", "NOMINMAX", "USING_CEF_SHARED=1")
             .Defines(Visibility.Private, "_HAS_EXCEPTIONS=0")
@@ -16,6 +16,8 @@ public static class Cef
             .IncludeDirs(Visibility.Private, "./")
             .Link(Visibility.Private, "libcef")
             .AddCppFiles("libcef_dll/**.cc");
+
+        @this.CXFlags_ClangCl(Visibility.Private, "-Wno-undefined-var-template");
     }
 }
 

@@ -36,6 +36,9 @@ namespace SB
                     #pragma once
                     #ifdef __cplusplus
                     #ifdef _WIN32
+                    #ifndef _CRT_SECURE_NO_WARNINGS
+                    #define _CRT_SECURE_NO_WARNINGS 1
+                    #endif
                     #include <intrin.h>
                     #endif
                     {PCHIncludes}
