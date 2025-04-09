@@ -6,6 +6,7 @@ using System.Diagnostics;
 Stopwatch sw = new();
 sw.Start();
 
+Engine.SetEngineDirectory(SourceLocation.Directory());
 var Toolchain = Engine.Bootstrap(SourceLocation.Directory());
 Engine.AddEngineTaskEmitters(Toolchain);
 
