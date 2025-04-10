@@ -151,7 +151,8 @@ analyzer_target("SharedPCH.Score")
 analyzer_target_end()
 
 analyzer_target("SharedPCH.ShareFrom")
-    add_deps("__Analyzer.SharedPCH.Score", { order = true })
+    add_deps("__Analyzer.SharedPCH.Score")
+    add_orders("__Analyzer.SharedPCH.Score", "__Analyzer.SharedPCH.ShareFrom")
     analyze(function(target, attributes, analyze_ctx)
         local share_from = ""
         local has_private_pch = table.contains(attributes, "PrivatePCH.Owner")
