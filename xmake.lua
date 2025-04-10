@@ -1,4 +1,4 @@
-set_xmakever("2.9.9")
+set_xmakever("2.9.2")
 
 -- description scope extensions
 includes("xmake/skr_desc_ext.lua")
