@@ -17,7 +17,7 @@ public static class Cef
             .Link(Visibility.Private, "libcef")
             .AddCppFiles("libcef_dll/**.cc");
 
-        @this.CXFlags_ClangCl(Visibility.Private, "-Wno-undefined-var-template");
+        @this.ClangCl_CXFlags(Visibility.Private, "-Wno-undefined-var-template");
     }
 }
 

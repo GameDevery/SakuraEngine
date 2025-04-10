@@ -11,6 +11,7 @@ public static class SkrImGui
             .EnableUnityBuild()
             .Require("imgui", new ImGuiPackageConfig { Version = new Version(1, 89, 0), ImportDynamicAPIFromEngine = !Engine.ShippingOneArchive })
             .Depend(Visibility.Public, "imgui@imgui")
+            .MSVC_LinkerArgs(Visibility.Private, "/ignore:4217")
 
             .Depend(Visibility.Public, "SkrInput", "SkrRenderGraph")
             .Defines(Visibility.Private, "\"IMGUI_IMPORT=extern SKR_IMGUI_API\"")

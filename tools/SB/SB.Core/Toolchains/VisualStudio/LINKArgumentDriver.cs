@@ -22,8 +22,14 @@ namespace SB.Core
         [TargetProperty(InheritBehavior = true)] 
         public string[]? Link(ArgumentList<string> dirs) => dirs.Select(dir => $"{dir}.lib").ToArray();
 
-        [TargetProperty(InheritBehavior = true)] 
+        [TargetProperty(InheritBehavior = true)]
         public string[]? WholeArchive(ArgumentList<string> libs) => libs.Select(lib => $"/WHOLEARCHIVE:\"{lib}.lib\"").ToArray();
+
+        [TargetProperty(InheritBehavior = true)]
+        public string[]? MSVC_NoDefaultLibrary(ArgumentList<string> libs) => libs.Select(lib => lib.Length > 0 ? $"/NODEFAULTLIB:{lib}.lib" : "").ToArray();
+
+        [TargetProperty(InheritBehavior = true)]
+        public string[]? MSVC_LinkerArgs(ArgumentList<string> libs) => libs.ToArray();
 
         public string Arch(Architecture arch) => archMap.TryGetValue(arch, out var r) ? r : throw new ArgumentException($"Invalid architecture \"{arch}\" for LINK.exe!");
         static readonly Dictionary<Architecture, string> archMap = new Dictionary<Architecture, string> { { Architecture.X86, "/MACHINE:X86" }, { Architecture.X64, "/MACHINE:X64" }, { Architecture.ARM64, "/MACHINE:ARM64" } };

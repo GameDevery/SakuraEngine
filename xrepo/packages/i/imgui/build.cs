@@ -12,7 +12,7 @@ public static class ImGui
     static ImGui()
     {
         BuildSystem.Package("imgui")
-            .AddTarget("imgui", (Target Target, PackageConfig Config) =>
+            .AddTarget("imgui", (Target @this, PackageConfig Config) =>
             {
                 bool ImportDynamicAPIFromEngine = false;
                 if (Config.Version != new Version(1, 89, 0))
@@ -20,7 +20,7 @@ public static class ImGui
                 if (Config is ImGuiPackageConfig ImGuiConfig)
                     ImportDynamicAPIFromEngine = ImGuiConfig.ImportDynamicAPIFromEngine;
 
-                Target.CppVersion("17")
+                @this.CppVersion("17")
                     .TargetType(TargetType.Static)
                     .IncludeDirs(Visibility.Public, "port/imgui/include", "port/cimgui/include")
                     .IncludeDirs(Visibility.Private, "port/imgui")
@@ -30,7 +30,7 @@ public static class ImGui
                     );
                 
                 if (!ImportDynamicAPIFromEngine)
-                    Target.Defines(Visibility.Private, "RUNTIME_ALL_STATIC");
+                    @this.Defines(Visibility.Private, "RUNTIME_ALL_STATIC");
             });
     }
 }

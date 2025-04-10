@@ -30,7 +30,7 @@ public static class ICU
                     if (BuildSystem.TargetOS == OSPlatform.Windows)
                     {
                         Target.CXFlags(Visibility.Private, "/wd4804", "/wd4805", "/wd4267", "/wd4244", "/utf-8")
-                            .CXFlags_ClangCl(Visibility.Private, "-Wno-deprecated-declarations")
+                            .ClangCl_CXFlags(Visibility.Private, "-Wno-deprecated-declarations")
                             .Defines(Visibility.Private, "_CRT_SECURE_NO_WARNINGS");
                     }
             });

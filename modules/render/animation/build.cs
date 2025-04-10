@@ -14,6 +14,7 @@ public static class SkrAnim
             .IncludeDirs(Visibility.Public, "ozz")
             .IncludeDirs(Visibility.Private, "ozz_src")
             .AddCppFiles("ozz_src/**.cc")
+            .Cl_CXFlags(Visibility.Private, "/wd4661")
             .UsePrivatePCH("ozz/SkrAnim/ozz/*.h");
 
         Engine.Module("SkrAnim")
