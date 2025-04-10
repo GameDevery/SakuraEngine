@@ -125,7 +125,7 @@ namespace SB
                 @this.CXFlags(Visibility.Private, "/utf-8");
                 
                 // MSVC & CRT
-                @this.Defines(Visibility.Private, "NOMINMAX", "UNICODE", "_WINDOWS")
+                @this.Defines(Visibility.Private, "NOMINMAX", "UNICODE", "_UNICODE", "_WINDOWS")
                     .Defines(Visibility.Private, "_CRT_SECURE_NO_WARNINGS")
                     .Defines(Visibility.Private, "_ENABLE_EXTENDED_ALIGNED_STORAGE")
                     .Defines(Visibility.Private, "_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR");
