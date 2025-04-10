@@ -153,7 +153,8 @@ namespace SB
                 }
             };
 
-            var Types = typeof(Engine).Assembly.GetTypes();
+            var Assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            var Types = Assemblies.AsParallel().SelectMany(A => A.GetTypes());
             var Scripts = Types.Where(Type => Type.GetCustomAttribute<TargetScript>() is not null);
             foreach (var Script in Scripts)
             {
