@@ -92,9 +92,9 @@ namespace SB
 
     public static partial class TargetExtensions
     {
-        public static Target EnableUnityBuild(this Target @this, bool Cpp = true, bool C = true)
+        public static Target EnableUnityBuild(this Target @this, int BatchCount = 16, bool Cpp = true, bool C = true)
         {
-            @this.SetAttribute(new UnityBuildAttribute { Cpp = Cpp, C = C });
+            @this.SetAttribute(new UnityBuildAttribute { BatchCount = BatchCount, Cpp = Cpp, C = C });
             return @this;
         }
     }

@@ -17,7 +17,7 @@ public static class Lmdb
                     .Exception(false)
                     .TargetType(TargetType.Static)
                     .IncludeDirs(Visibility.Public, "port/lmdb/include")
-                    .IncludeDirs(Visibility.Private, "port/lmdb/include/lmdb")
+                    .IncludeDirs(Visibility.Public, "port/lmdb/include/lmdb")
                     .AddCFiles("port/lmdb/*.c");
                 
                 if (BuildSystem.TargetOS == OSPlatform.Windows)
