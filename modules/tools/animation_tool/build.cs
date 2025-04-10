@@ -8,7 +8,7 @@ public static class SkrAnimTool
     static SkrAnimTool()
     {
         var Gltf2OzzOptions = new CFamilyFileOptions();
-        Gltf2OzzOptions.Arguments.CXFlags_ClangCl(Visibility.Private, 
+        Gltf2OzzOptions.Arguments.ClangCl_CXFlags(Visibility.Private, 
             "-Wno-format-invalid-specifier"
         );
 

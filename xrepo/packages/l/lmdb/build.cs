@@ -23,7 +23,7 @@ public static class Lmdb
                 if (BuildSystem.TargetOS == OSPlatform.Windows)
                 {
                     Target.CFlags(Visibility.Private, "/wd4333", "/wd4172")
-                        .CFlags_ClangCl(Visibility.Private, "-Wno-deprecated-declarations")
+                        .ClangCl_CFlags(Visibility.Private, "-Wno-deprecated-declarations")
                         .Defines(Visibility.Private, "_CRT_SECURE_NO_WARNINGS");
                 }
             });

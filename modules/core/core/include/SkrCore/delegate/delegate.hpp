@@ -389,6 +389,7 @@ inline typename Delegate<Ret(Args...)>::InvokeResult Delegate<Ret(Args...)>::inv
                 _functor_delegate->invoke(_functor_delegate, std::forward<Args>(args)...);
                 return true;
         };
+        return false;
     }
     else
     {
@@ -403,6 +404,7 @@ inline typename Delegate<Ret(Args...)>::InvokeResult Delegate<Ret(Args...)>::inv
             case EDelegateKind::Functor:
                 return _functor_delegate->invoke(_functor_delegate, std::forward<Args>(args)...);
         };
+        return {};
     }
 }
 

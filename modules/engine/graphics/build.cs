@@ -18,7 +18,7 @@ public static class SkrGraphics
             .AddCppFiles("src/build.*.cpp");
 
         // ignore warnings from SDKs
-        SkrGraphics.CXFlags_ClangCl(Visibility.Private, 
+        SkrGraphics.ClangCl_CXFlags(Visibility.Private, 
             "-Wno-switch",
             "-Wno-microsoft-cast",
             "-Wno-ignored-attributes",

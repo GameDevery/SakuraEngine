@@ -19,6 +19,8 @@ public static class Freetype
                     .Defines(Visibility.Private, "FT2_BUILD_LIBRARY", "FT_CONFIG_OPTION_SYSTEM_ZLIB")
                     .Require("zlib", new PackageConfig { Version = new(1, 2, 8) })
                     .Depend(Visibility.Private, "zlib@zlib")
+                    .ClangCl_CFlags(Visibility.Private, "-Wno-macro-redefined")
+                    .Cl_CFlags(Visibility.Private, "/wd4005")
                     .AddCFiles(
                         "port/freetype/src/autofit/autofit.c",
                         "port/freetype/src/base/ftbase.c",

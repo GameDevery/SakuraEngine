@@ -131,8 +131,8 @@ namespace SB
                     .Defines(Visibility.Private, "_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR");
 
                 // Disable Warnings
-                @this.CXFlags_ClangCl(Visibility.Private, "-Wno-microsoft-enum-forward-reference")
-                    .CXFlags_ClangCl(Visibility.Private, "-Wno-format-security");
+                @this.ClangCl_CXFlags(Visibility.Private, "-Wno-microsoft-enum-forward-reference")
+                    .ClangCl_CXFlags(Visibility.Private, "-Wno-format-security");
             }
             return @this;
         }

@@ -26,8 +26,9 @@ public static class SkrImageCoder
 
         if (BuildSystem.TargetOS == OSPlatform.Windows)
         {
-            ImageCoder.Link(Visibility.Public, "libpng15_static");
-            ImageCoder.Link(Visibility.Public, "turbojpeg_static");
+            ImageCoder.Link(Visibility.Public, "libpng15_static")
+                .Link(Visibility.Public, "turbojpeg_static")
+                .MSVC_NoDefaultLibrary(Visibility.Private, "libcmt");
         }
     }
 }

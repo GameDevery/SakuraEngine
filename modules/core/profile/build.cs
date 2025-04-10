@@ -13,7 +13,7 @@ public static class SkrProfile
             .IncludeDirs(Visibility.Public, "include")
             .AddCppFiles("internal/tracy/TracyClient.cpp")
             .Defines(Visibility.Public, Engine.UseProfile ? "SKR_PROFILE_OVERRIDE_ENABLE" : "SKR_PROFILE_OVERRIDE_DISABLE")
-            .CXFlags_ClangCl(Visibility.Private,
+            .ClangCl_CXFlags(Visibility.Private,
                 "-Wno-missing-field-initializers", 
                 "-Wno-format",
                 "-Wno-unused-variable",

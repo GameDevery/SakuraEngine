@@ -78,7 +78,7 @@ namespace SB.Core
                 }
 
                 if (OutputInfo.Contains("warning"))
-                    Log.Warning("CL.exe: {OutputInfo}", OutputInfo);
+                    Log.Warning("CL.exe: {TargetName} {OutputInfo}", Target.Name, OutputInfo);
 
                 depend.ExternalFiles.Add(ObjectFile!);
             }, new List<string> { SourceFile! }, DependArgsList);

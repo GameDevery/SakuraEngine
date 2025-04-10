@@ -20,7 +20,7 @@
         }
 
         [TargetProperty] 
-        public virtual string Exception(bool Enable) => Enable ? "/EHsc" : "/EHsc-";
+        public virtual string[] Exception(bool Enable) => Enable ? new string[] { "/EHsc", "-D_HAS_EXCEPTIONS=1" } : new string[] { "/EHsc-", "-D_HAS_EXCEPTIONS=0" };
 
         [TargetProperty] 
         public virtual string RuntimeLibrary(string what) => VS.IsValidRT(what) ? $"/{what}" : throw new TaskFatalError($"Invalid argument \"{what}\" for MSVC RuntimeLibrary!");
@@ -109,9 +109,27 @@
         [TargetProperty]
         public virtual string DynamicDebug(bool v) => v ? "/dynamicdeopt /Z7" : "";
 
+        [TargetProperty(InheritBehavior = true)] 
+        public virtual string[] MSVC_CppFlags(ArgumentList<string> flags) => CppFlags(flags);
+
+        [TargetProperty(InheritBehavior = true)] 
+        public virtual string[] MSVC_CFlags(ArgumentList<string> flags) => CFlags(flags);
+
+        [TargetProperty(InheritBehavior = true)] 
+        public virtual string[] MSVC_CXFlags(ArgumentList<string> flags) => CXFlags(flags);
+
+        [TargetProperty(InheritBehavior = true)] 
+        public virtual string[] Cl_CppFlags(ArgumentList<string> flags) => CppFlags(flags);
+
+        [TargetProperty(InheritBehavior = true)] 
+        public virtual string[] Cl_CFlags(ArgumentList<string> flags) => CFlags(flags);
+
+        [TargetProperty(InheritBehavior = true)] 
+        public virtual string[] Cl_CXFlags(ArgumentList<string> flags) => CXFlags(flags);
+
         protected CFamily Language { get; }
         public ArgumentDictionary Arguments { get; } = new();
-        public HashSet<string> RawArguments { get; } = new HashSet<string> { "/c", "/nologo", "/FC" };
+        public HashSet<string> RawArguments { get; } = new HashSet<string> { "/c", "/cgthreads1", "/nologo", "/FC" };
         // /c: dont link while compiling, https://learn.microsoft.com/zh-cn/cpp/build/reference/c-compile-without-linking?view=msvc-170
         // /logo: dont show info to output stream, https://learn.microsoft.com/zh-cn/cpp/build/reference/nologo-suppress-startup-banner-c-cpp?view=msvc-170
         // /FC use full path within compiler diagnostics
