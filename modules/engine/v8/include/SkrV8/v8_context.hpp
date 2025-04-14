@@ -66,10 +66,10 @@ struct SKR_V8_API V8Context {
     V8Value get_global(StringView name);
 
     // run as script
-    V8Value exec_script(StringView script, StringView file_path = {});
+    V8Value exec_script(StringView script, StringView file_path = u8"[CPP]");
 
     // run as ES module
-    V8Value exec_module(StringView script, StringView file_path = {});
+    V8Value exec_module(StringView script, StringView file_path = u8"[CPP]");
 
 private:
     // callback

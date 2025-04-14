@@ -80,7 +80,7 @@ void V8Isolate::init()
     _isolate->SetMicrotasksPolicy(v8::MicrotasksPolicy::kAuto);
 
     // TODO. module support
-    _isolate->SetHostImportModuleDynamicallyCallback(_dynamic_import_module); // used for support module
+    // _isolate->SetHostImportModuleDynamicallyCallback(_dynamic_import_module); // used for support module
     // _isolate->SetHostInitializeImportMetaObjectCallback(); // used for set import.meta
     // v8::Module::CreateSyntheticModule
 

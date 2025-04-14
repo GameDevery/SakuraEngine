@@ -1,4 +1,5 @@
 #include "SkrV8/ts_define_exporter.hpp"
+#include "v8-exception.h"
 #include <V8Playground/app.hpp>
 #include <filesystem>
 
@@ -56,8 +57,8 @@ void V8PlaygroundApp::init_debugger(int port)
 void V8PlaygroundApp::shutdown_debugger()
 {
     _inspector_client.shutdown();
-    _websocket_server.shutdown();
     _inspector_client.server = nullptr;
+    _websocket_server.shutdown();
 }
 void V8PlaygroundApp::pump_debugger_messages()
 {
@@ -110,8 +111,46 @@ bool V8PlaygroundApp::run_script(StringView script_path)
         return false;
     }
 
+    // // scopes
+    // auto                   isolate = _isolate->v8_isolate();
+    // v8::Isolate::Scope     isolate_scope(isolate);
+    // v8::HandleScope        handle_scope(isolate);
+    // v8::Local<v8::Context> context = _main_context->v8_context().Get(isolate);
+    // v8::Context::Scope     context_scope(context);
+
+    // v8::TryCatch try_catch(isolate);
+
     // run script
     _main_context->exec_module(script, script_path);
+
+    // auto _inspect_str = +[](const skr_char8* str) {
+    //     return v8_inspector::StringView{
+    //         (const uint8_t*)str,
+    //         strlen((const char*)str)
+    //     };
+    // };
+    // auto _skr_str = [&](v8::Local<v8::Value> str) {
+    //     return String::From(*v8::String::Utf8Value(isolate, str));
+    // };
+
+    // if (try_catch.HasCaught())
+    // {
+    //     String detail = _skr_str(try_catch.Message()->Get());
+    //     String url    = _skr_str(try_catch.Message()->GetScriptResourceName());
+
+    //     _inspector_client.v8_inspector()->exceptionThrown(
+    //         _main_context->v8_context().Get(_isolate->v8_isolate()),
+    //         _inspect_str(u8"uncaught exception"),
+    //         try_catch.Exception(),
+    //         _inspect_str(detail.c_str()),
+    //         _inspect_str(url.c_str()),
+    //         try_catch.Message()->GetLineNumber(context).FromMaybe(0),
+    //         try_catch.Message()->GetStartColumn(context).FromMaybe(0),
+    //         _inspector_client.v8_inspector()->createStackTrace(try_catch.Message()->GetStackTrace()),
+    //         0
+    //     );
+    //     // _inspector_client.runMessageLoopOnPause(0);
+    // }
 
     return true;
 }

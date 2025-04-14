@@ -176,9 +176,9 @@ void V8InspectorClient::shutdown()
 {
     // unregister callback
     server->on_message_received.remove(_on_message_received_handle);
-
-    _inspector.reset();
+    
     _session.reset();
+    _inspector.reset();
 }
 
 // override
