@@ -423,7 +423,8 @@ void sugoi_group_t::add_chunk(sugoi_chunk_t* chunk)
     size += chunk->count;
     chunk->structure = archetype;
     chunk->group = this;
-    if(chunk->count < chunk->get_capacity())
+    bool isFull      = chunk->count == chunk->get_capacity();
+    if (!isFull || firstFree == (uint32_t)chunks.size())
     {
         chunk->index = (uint32_t)chunks.size();
         chunks.push_back(chunk);
@@ -431,15 +432,17 @@ void sugoi_group_t::add_chunk(sugoi_chunk_t* chunk)
     else
     {
         chunks.resize(chunks.size() + 1);
-        for(uint32_t i = firstFree; i < (uint32_t)chunks.size() - 1; ++i)
+        for (uint32_t i = firstFree; i < (uint32_t)chunks.size() - 1; ++i)
         {
-            chunks[i]->index = i+1;
-            chunks[i + 1] = chunks[i];
+            auto j = (uint32_t)chunks.size() - 1 + firstFree - i;
+            chunks[j] = chunks[j - 1];
+            chunks[j]->index = j;
         }
         chunks[firstFree] = chunk;
         chunk->index = firstFree;
-        firstFree++;
     }
+    if (isFull)
+        firstFree++;
 }
 
 void sugoi_group_t::resize_chunk(sugoi_chunk_t* chunk, EIndex newSize)
@@ -467,19 +470,15 @@ void sugoi_group_t::remove_chunk(sugoi_chunk_t* chunk)
 {
     using namespace sugoi;
     size -= chunk->count;
-    if(chunk->index < firstFree)
-        firstFree--;
-    for(uint32_t i = chunk->index; i < (uint32_t)chunks.size(); ++i)
+    for(uint32_t i = chunk->index; i < (uint32_t)chunks.size() - 1; ++i)
     {
-        if (i + 1 < (uint32_t)chunks.size())
-        {
-            chunks[i] = chunks[i + 1];
-            chunks[i]->index = i;
-        }
-        else
-            chunks.pop_back();
+        chunks[i] = chunks[i + 1];
+        chunks[i]->index = i;
     }
+    chunks.pop_back();
     chunk->group = nullptr;
+    if (chunk->index < firstFree)
+        firstFree--;
 }
 
 void sugoi_group_t::mark_free(sugoi_chunk_t* chunk)
@@ -497,9 +496,12 @@ void sugoi_group_t::mark_full(sugoi_chunk_t* chunk)
     using namespace sugoi;
     
     SKR_ASSERT(chunk->index >= firstFree);
-    auto& slot = chunks[chunk->index];
-    std::swap(chunks[firstFree]->index, chunk->index);
-    std::swap(chunks[firstFree], slot);
+    if (chunk->index != firstFree)
+    {
+        auto& slot = chunks[chunk->index];
+        std::swap(chunks[firstFree]->index, chunk->index);
+        std::swap(chunks[firstFree], slot);
+    }
     firstFree++;
 }
 
