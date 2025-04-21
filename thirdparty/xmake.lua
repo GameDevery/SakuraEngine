@@ -18,3 +18,7 @@ end)
 skr_includes_with_cull("cef", function()
     includes('cef')
 end)
+
+skr_includes_with_cull("openssl", function()
+    includes("openssl")
+end)

@@ -14,3 +14,7 @@ end)
 skr_includes_with_cull("v8", function ()
     includes('v8_playground')
 end)
+
+skr_includes_with_cull("openssl", function()
+    includes('openssl')
+end)
