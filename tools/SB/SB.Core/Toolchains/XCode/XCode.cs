@@ -112,9 +112,12 @@ namespace SB.Core
     {
         public override bool Check()
         {
-            XCode.FastPathFind();
-            XCode.XCRunFind();
-            XCode.InitializeTools();
+            if (BuildSystem.HostOS == OSPlatform.OSX)
+            {
+                XCode.FastPathFind();
+                XCode.XCRunFind();
+                XCode.InitializeTools();
+            }
             return true;
         }
         public override bool Fix()
