@@ -8,6 +8,9 @@ public static class V8
 {
     static V8()
     {
+        if (BuildSystem.TargetOS != OSPlatform.Windows)
+            return;
+            
         BuildSystem.Target("v8")
             .TargetType(TargetType.HeaderOnly)
             .Depend(Visibility.Public, "SkrRT")
@@ -21,6 +24,9 @@ public class V8Doctor : DoctorAttribute
 {
     public override bool Check()
     {
+        if (BuildSystem.TargetOS != OSPlatform.Windows)
+            return true;
+            
         Install.SDK("v8_11.2_msvc", new Dictionary<string, string> {
             { "include", Path.Combine(SourceLocation.Directory(), "include") }, 
             { "bin", "./" }, 

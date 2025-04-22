@@ -7,10 +7,16 @@ namespace SB.Core
     using BS = BuildSystem;
     public class ClangCLArgumentDriver : CLArgumentDriver, IArgumentDriver
     {
-        public ClangCLArgumentDriver(CFamily lang)
-            : base(lang)
+        public ClangCLArgumentDriver(CFamily lang, bool isPCH)
+            : base(lang, isPCH)
         {
             RawArguments.Add("-ftime-trace");
+            if (isPCH)
+            {
+                RawArguments.Remove("/TP");
+                RawArguments.Remove("/TC");
+                RawArguments.Add("-x c++-header");
+            }
         }
 
         [TargetProperty(InheritBehavior = true)] 
@@ -27,16 +33,6 @@ namespace SB.Core
         public override string[] Cl_CXFlags(ArgumentList<string> flags) => new string[0];
 
         public override string SourceDependencies(string path) => BS.CheckFile(path, false) ? $"/clang:-MD /clang:-MF\"{path}\"" : throw new TaskFatalError($"SourceDependencies value {path} is not a valid absolute path!");
-        public virtual string AsPCHHeader(bool flag)
-        {
-            if (flag)
-            {
-                RawArguments.Remove("/TP");
-                RawArguments.Remove("/TC");
-                return "-x c++-header";
-            }
-            return "";
-        }
         public override string UsePCHAST(string path) => BS.CheckFile(path, false) ? $"/clang:-include-pch /clang:\"{path}\"" : throw new TaskFatalError($"PCHObject value {path} is not a valid absolute path!");
         public override string DynamicDebug(bool v) => "";
     }

@@ -55,12 +55,15 @@ public static class RuntimeTests
             .Depend(Visibility.Public, "SkrRT")
             .AddCppFiles("proxy/**.cpp");
 
-        Engine.Program("V8Test")
-            .Tags(TargetTags.V8)
-            .EnableCodegen("v8")
-            .AddMetaHeaders("v8/**.hpp")
-            .Depend(Visibility.Private, "SkrTestFramework")
-            .Depend(Visibility.Public, "SkrV8")
-            .AddCppFiles("v8/**.cpp");
+        if (BuildSystem.TargetOS == OSPlatform.Windows)
+        {
+            Engine.Program("V8Test")
+                .Tags(TargetTags.V8)
+                .EnableCodegen("v8")
+                .AddMetaHeaders("v8/**.hpp")
+                .Depend(Visibility.Private, "SkrTestFramework")
+                .Depend(Visibility.Public, "SkrV8")
+                .AddCppFiles("v8/**.cpp");
+        }
     }
 }

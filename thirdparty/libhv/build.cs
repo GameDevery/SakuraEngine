@@ -8,6 +8,9 @@ public static class LibHV
 {
     static LibHV()
     {
+        if (BuildSystem.TargetOS != OSPlatform.Windows)
+            return;
+
         Engine.Target("libhv")
             .TargetType(TargetType.HeaderOnly)
             .Defines(Visibility.Public, "HV_STATICLIB")
@@ -20,6 +23,9 @@ public class LibHVDoctor : DoctorAttribute
 {
     public override bool Check()
     {
+        if (BuildSystem.TargetOS != OSPlatform.Windows)
+            return true;
+
         Install.SDK("libhv").Wait();
         return true;
     }
