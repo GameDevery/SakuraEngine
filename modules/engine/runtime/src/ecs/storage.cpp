@@ -973,7 +973,7 @@ void sugoiS_destroy_entities(sugoi_storage_t* storage, const sugoi_entity_t* ent
     auto destroy_callback = [storage](sugoi_chunk_view_t* view) {
         storage->destroy_entities(*view);
     };
-    storage->batch(ents, 1, SUGOI_LAMBDA(destroy_callback));
+    storage->batch(ents, n, SUGOI_LAMBDA(destroy_callback));
 }
 
 void sugoiS_destroy_in_query(const sugoi_query_t* q)
