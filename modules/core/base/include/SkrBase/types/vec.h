@@ -1,5 +1,6 @@
 #pragma once
 #include "SkrBase/config.h"
+#include "SkrBase/types/md5.h"
 
 #ifdef __cplusplus
     #define SKR_DECLARE_VEC2_BODY(TT, NAME)                                                          \
@@ -81,14 +82,14 @@ typedef struct SKR_ALIGNAS(16) skr_float4x4_t {
 namespace skr
 {
 
-using float2 = skr_float2_t;
-using float3 = skr_float3_t;
-using float4 = skr_float4_t;
-using float4x4 = skr_float4x4_t;
+// using float2 = skr_float2_t;
+// using float3 = skr_float3_t;
+// using float4 = skr_float4_t;
+// using float4x4 = skr_float4x4_t;
 
-using Rotator = skr_rotator_t;
-using Quaternion = skr_quaternion_t;
-using Transform = skr_transform_t;
+// using Rotator = skr_rotator_t;
+// using Quaternion = skr_quaternion_t;
+// using Transform = skr_transform_t;
 
 namespace scalar_math
 {

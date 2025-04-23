@@ -57,7 +57,7 @@ sreflect_struct(
     ecs.comp = @enable;
 )
 TranslationComponent {
-    float3 value;
+    skr_float3_t value;
 };
 
 sreflect_struct(
@@ -66,7 +66,7 @@ sreflect_struct(
     ecs.comp = @enable;
 )
 ScaleComponent {
-    float3 value;
+    skr_float3_t value;
 };
 
 sreflect_struct(
@@ -74,7 +74,7 @@ sreflect_struct(
     ecs.comp = @enable;
 )
 MovementComponent {
-    float3 value;
+    skr_float3_t value;
 };
 
 sreflect_struct(
