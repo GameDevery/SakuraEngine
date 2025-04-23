@@ -33,6 +33,6 @@ namespace SB.Core
         public string BundleLoader(string loader) => $"-bundle -bundle_loader {loader}";
 
         public ArgumentDictionary Arguments { get; } = new ArgumentDictionary();
-        public HashSet<string> RawArguments { get; } = new HashSet<string> {  };
+        public HashSet<string> RawArguments { get; } = new HashSet<string> { "-Wl,-rpath,." };
     }
 }

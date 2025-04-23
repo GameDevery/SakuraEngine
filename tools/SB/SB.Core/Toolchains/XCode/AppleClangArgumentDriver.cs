@@ -75,6 +75,9 @@ namespace SB.Core
         
         [TargetProperty] 
         public string RTTI(bool v) => v ? "-frtti" : "-fno-rtti";
+
+        [TargetProperty]
+        public virtual string DebugSymbols(bool Enable) => Enable ? "-g" : "";
         
         [TargetProperty] 
         public string Source(string path) => BS.CheckFile(path, true) ? GetLanguageArgString() + $" \"{path}\"" : throw new TaskFatalError($"Source value {path} is not an existed absolute path!");
