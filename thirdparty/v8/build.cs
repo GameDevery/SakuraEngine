@@ -15,7 +15,7 @@ public static class V8
             .Defines(Visibility.Public, "USING_V8_PLATFORM_SHARED", "USING_V8_SHARED");
         
         if (BuildSystem.TargetOS == OSPlatform.Windows)
-            V8.Link(Visibility.Public, "v8.dll", "v8_libbase.dll", "v8_libplatform.dll", "third_party_zlib.dll");
+            V8.Link(Visibility.Public, "v8.dll", "v8_libplatform.dll");
         else if (BuildSystem.TargetOS == OSPlatform.OSX)
             V8.Link(Visibility.Public, "v8", "v8_libbase", "v8_libplatform", "chrome_zlib", "third_party_abseil-cpp_absl");
     }
