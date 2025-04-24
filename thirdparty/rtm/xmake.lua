@@ -3,3 +3,4 @@ target("rtm")
 
     -- add packages
     add_includedirs("include", {public = true})
+    skr_dbg_natvis_files("rtm.natvis")
