@@ -591,13 +591,13 @@ void register_managed_component()
     desc.elementSize              = 0;
     desc.alignment                = alignof(managed);
     desc.callback                 = {
-        +[](sugoi_chunk_t* chunk, EIndex index, char* data) { new (data) managed; },
-        +[](sugoi_chunk_t* chunk, EIndex index, char* dst, sugoi_chunk_t* schunk, EIndex sindex, const char* src) { new (dst) managed(*(managed*)src); },
-        +[](sugoi_chunk_t* chunk, EIndex index, char* data) { ((managed*)data)->~managed(); },
-        +[](sugoi_chunk_t* chunk, EIndex index, char* dst, sugoi_chunk_t* schunk, EIndex sindex, char* src) { new (dst) managed(std::move(*(managed*)src)); },
-        +[](sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, SBinaryWriter* v) {
+        +[](sugoi_type_index_t, sugoi_chunk_t* chunk, EIndex index, char* data) { new (data) managed; },
+        +[](sugoi_type_index_t, sugoi_chunk_t* chunk, EIndex index, char* dst, sugoi_chunk_t* schunk, EIndex sindex, const char* src) { new (dst) managed(*(managed*)src); },
+        +[](sugoi_type_index_t, sugoi_chunk_t* chunk, EIndex index, char* data) { ((managed*)data)->~managed(); },
+        +[](sugoi_type_index_t, sugoi_chunk_t* chunk, EIndex index, char* dst, sugoi_chunk_t* schunk, EIndex sindex, char* src) { new (dst) managed(std::move(*(managed*)src)); },
+        +[](sugoi_type_index_t, sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, SBinaryWriter* v) {
         },
-        +[](sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, SBinaryReader* v) {
+        +[](sugoi_type_index_t, sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, SBinaryReader* v) {
         },
         nullptr
     };
