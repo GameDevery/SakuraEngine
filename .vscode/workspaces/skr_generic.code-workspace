@@ -28,7 +28,7 @@
         "[typescript]": {
             "editor.defaultFormatter": "vscode.typescript-language-features",
             "editor.formatOnType": true,
-            "editor.formatOnSave": false,
+            "editor.formatOnSave": true,
             "editor.detectIndentation": false,
             "editor.tabSize": 2,
         },
@@ -101,23 +101,17 @@
                 // "trace": true,
             },
             {
-                "name": "DenoTest",
-                "type": "node",
+                "name": "[Gen] Math",
+                "type": "bun",
                 "request": "launch",
                 "cwd": "${workspaceFolder:root}",
-                "runtimeExecutable": "deno",
-                "runtimeArgs": [
-                    "run",
-                    "--config=${workspaceFolder:root}/tools/meta_codegen_ts/deno.json"
-                ],
-                "program": "${workspaceFolder:root}/tools/meta_codegen_ts/codegen.ts",
+                "program": "${workspaceFolder:root}/tools/gen_math/gen_math.ts",
                 "args": [
-                    "${file}"
+                    "${workspaceFolder:root}/modules/core/base/include/SkrBase/math/gen"
                 ],
-                "console": "integratedTerminal"
             },
             {
-                "name": "BunCodegen",
+                "name": "[Gen] Meta",
                 "type": "bun",
                 "request": "launch",
                 "cwd": "${workspaceFolder:root}",
