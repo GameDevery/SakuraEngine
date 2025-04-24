@@ -693,6 +693,11 @@ void sugoiG_get_type(const sugoi_group_t* group, sugoi_entity_type_t* type)
     *type = group->type;
 }
 
+uint32_t sugoiG_get_size(const sugoi_group_t* group)
+{
+    return group->size;
+}
+
 uint32_t sugoiG_get_stable_order(const sugoi_group_t* group, sugoi_type_index_t localType)
 {
     return group->archetype->stableOrder[localType];

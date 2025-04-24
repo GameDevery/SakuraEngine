@@ -683,6 +683,12 @@ SKR_RUNTIME_API const void* sugoiG_get_shared_ro(const sugoi_group_t* group, sug
  */
 SKR_RUNTIME_API void sugoiG_get_type(const sugoi_group_t* group, sugoi_entity_type_t* type);
 /**
+ * @brief get size of group
+ *
+ * @param group
+ */
+SKR_RUNTIME_API uint32_t sugoiG_get_size(const sugoi_group_t* group);
+/**
  * @brief get type stable order, flag component will be ignored
  *
  * @param group
