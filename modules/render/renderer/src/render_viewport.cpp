@@ -1,5 +1,7 @@
-#include "SkrBase/math/rtm/vector4f.h"
-#include "SkrBase/math/rtm/rtmx.h"
+#include "rtm/vector4f.h"
+#include "rtm/camera_utilsf.h"
+#include "rtm/matrix3x4f.h"
+#include "rtm/matrix4x4f.h"
 #include "SkrContainers/hashmap.hpp"
 #include "SkrContainers/vector.hpp"
 #include "SkrRT/ecs/storage.hpp"
@@ -103,16 +105,16 @@ void skr_resolve_camera_to_viewport(const skr::CameraComponent* camera, const sk
     const rtm::vector4f eye = rtm::vector_load3((const uint8_t*)&translation->value);
     const rtm::vector4f camera_dir = rtm::vector_set(0.f, 1.f, 0.f, 0.f);
     const rtm::vector4f focus_pos = rtm::vector_add(eye, camera_dir);
-    const auto view = rtm::look_at_matrix(
+    const auto view = rtm::matrix_look_at(
         eye /*eye*/, 
         focus_pos /*at*/,
         { 0.f, 0.f, 1.f } /*up*/
     );
-    auto proj = rtm::perspective_fov(                    
+    auto proj = rtm::proj_perspective_fov(                    
         3.1415926f / 2.f, 
         (float)camera->viewport_width / (float)camera->viewport_height, 
         1.f, 1000.f);
-    auto view_projection = rtm::matrix_mul(view, proj);
+    auto view_projection = rtm::matrix_mul(rtm::matrix_cast(view), proj);
     
     viewport->view_projection = *(skr_float4x4_t*)&view_projection;
     viewport->viewport_width = camera->viewport_width;

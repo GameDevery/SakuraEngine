@@ -1,7 +1,7 @@
 #include "SkrBase/types.h"
 #include "SkrBase/math/vector.h"
 #include "SkrBase/math/quat.h"
-#include "SkrBase/math/rtm/qvvf.h"
+#include "rtm/qvvf.h"
 #include "SkrOS/thread.h"
 #include "SkrCore/log.h"
 #include "SkrContainers/vector.hpp"

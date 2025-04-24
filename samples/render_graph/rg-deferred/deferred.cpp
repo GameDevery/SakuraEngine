@@ -10,7 +10,7 @@
 #include "SkrProfile/profile.h"
 #include "pass_profiler.h"
 #include "SkrOS/thread.h"
-#include "SkrBase/math/rtm/qvvf.h"
+#include "rtm/qvvf.h"
 
 thread_local SWindowHandle window;
 thread_local CGPUSurfaceId surface;
@@ -152,7 +152,7 @@ void create_resources()
     ib_cpy.size = sizeof(CubeGeometry::g_Indices);
     cgpu_cmd_transfer_buffer_to_buffer(cpy_cmd, &ib_cpy);
     // wvp
-    const auto quat = rtm::quat_from_euler_rh(
+    const auto quat = rtm::quat_from_euler(
         rtm::scalar_deg_to_rad(0.f),
         rtm::scalar_deg_to_rad(0.f),
         rtm::scalar_deg_to_rad(0.f));

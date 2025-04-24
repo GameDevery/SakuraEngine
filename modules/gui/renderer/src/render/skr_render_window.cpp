@@ -3,7 +3,8 @@
 #include "SkrGui/framework/layer/offset_layer.hpp"
 #include "SkrGui/framework/layer/geometry_layer.hpp"
 #include "SkrGui/backend/canvas/canvas.hpp"
-#include "SkrBase/math/rtm/qvvf.h"
+#include "rtm/qvvf.h"
+#include "rtm/matrix4x4f.h"
 #include "SkrProfile/profile.h"
 #include "SkrGui/backend/resource/resource.hpp"
 #include "SkrGuiRenderer/resource/skr_updatable_image.hpp"
@@ -148,8 +149,8 @@ void SkrRenderWindow::_prepare_draw_data(const NativeWindowLayer* layer, Sizef w
         const auto pitchInDegrees = 0.f;
         const auto yawInDegrees   = 0.f;
         const auto rollInDegrees  = 0.f;
-        const auto quat           = rtm::quat_from_euler_rh(
-        rtm::scalar_deg_to_rad(-pitchInDegrees),
+        const auto quat           = rtm::quat_from_euler(
+        rtm::scalar_deg_to_rad(pitchInDegrees),
         rtm::scalar_deg_to_rad(yawInDegrees),
         rtm::scalar_deg_to_rad(rollInDegrees));
         const rtm::vector4f translation   = rtm::vector_set(transformX, transformY, 0.f, transformW);
@@ -162,13 +163,13 @@ void SkrRenderWindow::_prepare_draw_data(const NativeWindowLayer* layer, Sizef w
         auto&              projection   = _projections.add_default().ref();
         const skr_float2_t zero_point   = { window_size.width * 0.5f, window_size.height * 0.5f };
         const skr_float2_t eye_position = { zero_point.x, zero_point.y };
-        const auto         view         = rtm::look_at_matrix(
+        const auto         view         = rtm::matrix_look_at(
         { eye_position.x, eye_position.y, 0.f } /*eye*/,
         { eye_position.x, eye_position.y, 1000.f } /*at*/,
         { 0.f, -1.f, 0.f } /*up*/
         );
-        const auto proj = rtm::orthographic(window_size.width, window_size.height, 0.f, 1000.f);
-        projection      = rtm::matrix_mul(view, proj);
+        const auto proj = rtm::proj_orthographic(window_size.width, window_size.height, 0.f, 1000.f);
+        projection      = rtm::matrix_mul(rtm::matrix_cast(view), proj);
 
         // make render data
         auto  rb_cursor     = _render_data.size();

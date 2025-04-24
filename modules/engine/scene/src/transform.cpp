@@ -1,6 +1,6 @@
 #include "SkrBase/math/vector.h"
 #include "SkrBase/math/quat.h"
-#include "SkrBase/math/rtm/qvvf.h"
+#include "rtm/qvvf.h"
 #include "SkrContainers/hashmap.hpp"
 #include "SkrRT/ecs/sugoi.h"
 #include "SkrRT/ecs/array.hpp"

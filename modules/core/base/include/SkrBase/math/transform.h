@@ -1,7 +1,7 @@
 #pragma once
 #include "SkrBase/math/vector.h"
 #include "SkrBase/math/quat.h"
-#include "SkrBase/math/rtm/qvvf.h"
+#include "rtm/qvvf.h"
 
 namespace skr
 {

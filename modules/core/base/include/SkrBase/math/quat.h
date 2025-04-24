@@ -1,6 +1,6 @@
 #pragma once
 #include "SkrBase/config.h"
-#include "SkrBase/math/rtm/quatf.h"
+#include "rtm/quatf.h"
 #include "SkrBase/types.h"
 
 namespace skr
@@ -39,17 +39,10 @@ SKR_FORCEINLINE T normalize_axis(T Angle)
 
 inline rtm::quatf load(skr_rotator_t r)
 {
-#if 1
-    return rtm::quat_from_euler_rh(
-    rtm::scalar_deg_to_rad(-r.pitch),
-    rtm::scalar_deg_to_rad(r.yaw),
-    rtm::scalar_deg_to_rad(r.roll));
-#else
     return rtm::quat_from_euler(
     rtm::scalar_deg_to_rad(r.pitch),
     rtm::scalar_deg_to_rad(r.yaw),
     rtm::scalar_deg_to_rad(r.roll));
-#endif
 }
 
 inline void store(rtm::quatf q, skr_rotator_t& rot)
