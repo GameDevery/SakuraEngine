@@ -1,20 +1,16 @@
-import { CodeBuilder } from "./util"
+import { CodeBuilder, type_convert_options, type_options } from "./util"
+import type { TypeOption } from "./util";
+import path from "node:path";
 
 const _comp_lut = ['x', 'y', 'z', 'w'];
 const _arithmetic_ops = ['+', '-', '*', '/', '%']
+const _compare_ops = ['==', '!=', '<', '<=', '>', '>=']
+const _boolean_ops = ['&&', '||', '==', '!=']
 
-export enum EVectorCompKind {
-  integer,
-  float,
-  boolean,
-}
-
-export interface GenVectorOption {
+export interface GenVectorOption extends TypeOption {
   fwd_builder: CodeBuilder;
   builder: CodeBuilder;
   base_name: string    // [basename][2/3/4]
-  component_name: string // component name
-  component_kind: EVectorCompKind; // component kind
 };
 
 // generate ctor
@@ -173,7 +169,87 @@ function _gen_swizzle_recursive(
   }
 }
 
-export function gen(opt: GenVectorOption) {
+// generate operators
+function _gen_arithmetic_operator(dim: number, opt: GenVectorOption) {
+  const b = opt.builder;
+  const base_name = opt.base_name;
+  const comp_name = opt.component_name;
+  const vec_name = `${base_name}${dim}`;
+  const comp_kind = opt.component_kind;
+
+  // unary operator
+  if (comp_kind == "floating" || comp_kind == "integer") {
+    b.$line(`// unary operator`);
+
+    // neg
+    const init_list = _comp_lut
+      .slice(0, dim)
+      .map(comp => `-${comp}`)
+      .join(", ");
+    b.$line(`inline ${vec_name} operator-() const { return { ${init_list} }; }`);
+
+    b.$line(``);
+  } else {
+    b.$line(`// unary operator`);
+
+    // not
+    const init_list = _comp_lut
+      .slice(0, dim)
+      .map(comp => `!${comp}`)
+      .join(", ");
+    b.$line(`inline ${vec_name} operator!() const { return { ${init_list} }; }`);
+
+    b.$line(``);
+  }
+
+  // arithmetic operator
+  if (comp_kind == "floating" || comp_kind == "integer") {
+    b.$line(`// arithmetic operator`);
+    for (const op of _arithmetic_ops) {
+      let init_list
+      if (op === '%' && comp_kind == "floating") {
+        const fmod_name = comp_name === "double" ? "fmod" : "fmodf";
+        init_list = _comp_lut
+          .slice(0, dim)
+          .map(comp => `::std::${fmod_name}(${comp}, rhs.${comp})`)
+          .join(", ");
+      } else {
+        init_list = _comp_lut
+          .slice(0, dim)
+          .map(comp => `${comp} ${op} rhs.${comp}`)
+          .join(", ");
+      }
+      b.$line(`inline ${vec_name} operator${op}(const ${vec_name}& rhs) const { return { ${init_list} }; }`);
+    }
+    b.$line(``);
+  }
+
+  // arithmetic assign operator
+  if (comp_kind == "floating" || comp_kind == "integer") {
+    b.$line(`// arithmetic assign operator`);
+    for (const op of _arithmetic_ops) {
+      let assign_exprs
+      if (op === "%" && comp_kind == "floating") {
+        const fmod_name = comp_name === "double" ? "fmod" : "fmodf";
+        assign_exprs = _comp_lut
+          .slice(0, dim)
+          .map(comp => `${comp} = ::std::${fmod_name}(${comp}, rhs.${comp})`)
+          .join(", ");
+      } else {
+        assign_exprs = _comp_lut
+          .slice(0, dim)
+          .map(comp => `${comp} ${op}= rhs.${comp}`)
+          .join(", ");
+      }
+
+      b.$line(`inline ${vec_name}& operator${op}=(const ${vec_name}& rhs) { ${assign_exprs}; return *this; }`);
+    }
+    b.$line(``);
+  }
+}
+
+// generate class body
+function _gen_class_body(opt: GenVectorOption) {
   const fwd_b = opt.fwd_builder;
   const b = opt.builder;
   const base_name = opt.base_name;
@@ -187,7 +263,7 @@ export function gen(opt: GenVectorOption) {
   }
   fwd_b.$line(``);
 
-  // generate vector
+  // generate class body
   for (let dim = 2; dim <= 4; ++dim) {
     const vec_name = `${base_name}${dim}`;
 
@@ -202,6 +278,22 @@ export function gen(opt: GenVectorOption) {
       _gen_ctor(dim, opt);
       b.$line(`inline ~${vec_name}() = default;`);
       b.$line(``)
+
+      // cast ctor
+      {
+        b.$line(`// cast ctor`)
+        const convert_option = type_convert_options[base_name]!;
+        if (convert_option === undefined) { throw Error(`convert option of '${base_name}' not found`) }
+        for (const rhs_base_name in type_options) {
+          if (rhs_base_name === base_name) continue; // skip self cast
+          if (convert_option.accept_list.find(c => c === rhs_base_name) === undefined) continue; // skip not accept type
+          const is_implicit = convert_option.implicit_list.find(c => c === rhs_base_name) !== undefined; // check if implicit cast
+          const explicit_decl = is_implicit ? "" : "explicit ";
+
+          b.$line(`${explicit_decl}${vec_name}(const ${rhs_base_name}${dim}& rhs);`)
+        }
+        b.$line(``)
+      }
 
       // copy & move & assign & move assign
       b.$line(`// copy & move & assign & move assign`);
@@ -226,57 +318,23 @@ export function gen(opt: GenVectorOption) {
       b.$line(`}`);
       b.$line(``);
 
-      // unary operator
-      if (comp_kind == EVectorCompKind.float ||
-        comp_kind == EVectorCompKind.integer) {
-        b.$line(`// unary operator`);
+      // arithmetic operators
+      _gen_arithmetic_operator(dim, opt);
 
-        // neg
-        const init_list = _comp_lut
-          .slice(0, dim)
-          .map(comp => `-${comp}`)
-          .join(", ");
-        b.$line(`inline ${vec_name} operator-() const { return { ${init_list} }; }`);
-
-        b.$line(``);
-      } else {
-        b.$line(`// unary operator`);
-
-        // not
-        const init_list = _comp_lut
-          .slice(0, dim)
-          .map(comp => `!${comp}`)
-          .join(", ");
-        b.$line(`inline ${vec_name} operator!() const { return { ${init_list} }; }`);
-
-        b.$line(``);
-      }
-
-      // arithmetic operator
-      if (comp_kind == EVectorCompKind.float ||
-        comp_kind == EVectorCompKind.integer) {
-        b.$line(`// arithmetic operator`);
-        for (const op of _arithmetic_ops) {
-          let init_list, scale_init_list
-          if (op === '%' && comp_kind == EVectorCompKind.float) {
-            const fmod_name = comp_name === "double" ? "fmod" : "fmodf";
-            init_list = _comp_lut
-              .slice(0, dim)
-              .map(comp => `::std::${fmod_name}(${comp}, rhs.${comp})`)
-              .join(", ");
-          }
-          else {
-            init_list = _comp_lut
-              .slice(0, dim)
-              .map(comp => `${comp} ${op} rhs.${comp}`)
-              .join(", ");
-          }
-          b.$line(`inline ${vec_name} operator${op}(const ${vec_name}& rhs) const { return { ${init_list} }; }`);
+      // boolean & compare operators
+      if (comp_kind === "boolean") {
+        b.$line(`// boolean operator`);
+        for (const op of _boolean_ops) {
+          b.$line(`${vec_name} friend operator${op}(const ${vec_name}& lhs, const ${vec_name}& rhs);`);
         }
         b.$line(``);
-
+      } else {
+        b.$line(`// compare operator`);
+        for (const op of _compare_ops) {
+          b.$line(`bool${dim} friend operator${op}(const ${vec_name}& lhs, const ${vec_name}& rhs);`);
+        }
+        b.$line(``);
       }
-
 
       // swizzle
       b.$line(`// swizzle`);
@@ -298,4 +356,39 @@ export function gen(opt: GenVectorOption) {
     })
     b.$line(`};`);
   }
+}
+
+export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
+  // generate class body
+  for (const base_name in type_options) {
+    const type_opt = type_options[base_name]!;
+
+    // header
+    let vector_builder = new CodeBuilder()
+    vector_builder.$util_header();
+
+    // include
+    vector_builder.$line(`#include <cstdint>`);
+    vector_builder.$line(`#include <cmath>`);
+    vector_builder.$line(`#include "../gen_math_fwd.hpp"`);
+    vector_builder.$line(`#include <SkrBase/misc/debug.h>`);
+    vector_builder.$line(`#include <SkrBase/misc/hash.hpp>`);
+    vector_builder.$line(``);
+
+    // gen code
+    vector_builder.$line(`namespace skr {`)
+    _gen_class_body({
+      ...type_opt,
+      fwd_builder: fwd_builder,
+      builder: vector_builder,
+      base_name: base_name,
+    })
+    vector_builder.$line(`}`);
+
+    // write to file
+    const out_path = path.join(gen_dir, `${base_name}_vec.hpp`);
+    vector_builder.write_file(out_path);
+  }
+
+  // generate compare & convert
 }

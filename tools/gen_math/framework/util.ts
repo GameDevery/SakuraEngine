@@ -84,3 +84,75 @@ export class CodeBuilder {
     fs.writeFileSync(out_path, this.to_string(), { encoding: "utf-8" });
   }
 }
+
+export interface TypeOption {
+  component_name: string;
+  component_kind: "floating" | "integer" | "boolean";
+}
+
+export const type_options: Dict<TypeOption> = {
+  "float": {
+    component_name: "float",
+    component_kind: "floating",
+  },
+  "double": {
+    component_name: "double",
+    component_kind: "floating",
+  },
+  "bool": {
+    component_name: "bool",
+    component_kind: "boolean",
+  },
+  "int": {
+    component_name: "int32_t",
+    component_kind: "integer",
+  },
+  "uint": {
+    component_name: "uint32_t",
+    component_kind: "integer",
+  },
+  "long": {
+    component_name: "int64_t",
+    component_kind: "integer",
+  },
+  "ulong": {
+    component_name: "uint64_t",
+    component_kind: "integer",
+  },
+}
+
+export interface TypeConvertOption {
+  accept_list: string[]
+  implicit_list: string[]
+}
+
+export const type_convert_options: Dict<TypeConvertOption> = {
+  "float": {
+    accept_list: ["bool", "int", "uint", "long", "ulong", "double"],
+    implicit_list: ["bool", "int", "uint", "long", "ulong"],
+  },
+  "double": {
+    accept_list: ["bool", "int", "uint", "long", "ulong", "float"],
+    implicit_list: ["bool", "int", "uint", "long", "ulong", "float"],
+  },
+  "bool": {
+    accept_list: ["int", "uint", "long", "ulong", "float", "double"],
+    implicit_list: ["int", "uint", "long", "ulong", "float", "double"],
+  },
+  "int": {
+    accept_list: ["bool", "uint", "long", "ulong", "float", "double"],
+    implicit_list: ["bool"],
+  },
+  "uint": {
+    accept_list: ["bool", "int", "long", "ulong", "float", "double"],
+    implicit_list: ["bool"],
+  },
+  "long": {
+    accept_list: ["bool", "int", "uint", "ulong", "float", "double"],
+    implicit_list: ["bool", "int"],
+  },
+  "ulong": {
+    accept_list: ["bool", "int", "uint", "long", "float", "double"],
+    implicit_list: ["bool", "uint"],
+  },
+}
