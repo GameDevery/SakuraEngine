@@ -571,6 +571,53 @@ void sugoi_storage_t::pack_entities()
     });
 }
 
+void sugoi_storage_t::redirect(sugoi_entity_t* ents, sugoi_entity_t* newEnts, EIndex n)
+{
+    struct mapper {
+        sugoi_entity_t* ents;
+        sugoi_entity_t* newEnts;
+        EIndex           n;
+        void                 move() {}
+        void                 reset() {}
+        void                 map(sugoi_entity_t& e)
+        {
+            forloop (i, 0, n)
+            {
+                if (e == ents[i])
+                {
+                    e = newEnts[i];
+                    return;
+                }
+            }
+        }
+    } m;
+    skr::stl_vector<sugoi_chunk_t*> chunks;
+    pimpl->groups.read_versioned([&](auto& groups){
+        for (auto i : groups)
+        {
+            sugoi_group_t* g = i.second;
+            for (auto c : g->chunks)
+            {
+                chunks.push_back(c);
+            }
+        }
+        pimpl->groups_timestamp += 1;
+    }, 
+    [&](){
+        return pimpl->groups_timestamp;
+    });
+    using iter_t = decltype(chunks)::iterator;
+    skr::parallel_for(chunks.begin(), chunks.end(), 1, [&](iter_t begin, iter_t end)
+    {
+        for (auto i = begin; i != end; ++i)
+        {
+            auto chunk = *i;
+            sugoi::iterator_ref_chunk(chunk, m);
+            sugoi::iterator_ref_view({ chunk, 0, chunk->count }, m);
+        }
+    });
+}
+
 void sugoi_storage_t::castImpl(const sugoi_chunk_view_t& view, sugoi_group_t* group, sugoi_cast_callback_t callback, void* u)
 {
     using namespace sugoi;
@@ -1142,6 +1189,11 @@ void sugoiS_defragement(sugoi_storage_t* storage)
 void sugoiS_pack_entities(sugoi_storage_t* storage)
 {
     storage->pack_entities();
+}
+
+void sugoiS_redirect(sugoi_storage_t* storage, sugoi_entity_t* ents, sugoi_entity_t* newEnts, EIndex n)
+{
+    storage->redirect(ents, newEnts, n);
 }
 
 void sugoiS_enable_components(const sugoi_chunk_view_t* view, const sugoi_type_set_t* types)

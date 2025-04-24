@@ -113,6 +113,7 @@ struct SKR_RUNTIME_API sugoi_storage_t {
     void validate(sugoi_entity_set_t& meta);
     void defragment();
     void pack_entities();
+    void redirect(sugoi_entity_t* ents, sugoi_entity_t* newEnts, EIndex n);
 
     void make_alias(skr::StringView name, skr::StringView alias);
     

@@ -571,6 +571,15 @@ SKR_RUNTIME_API void sugoiS_defragement(sugoi_storage_t* storage);
  */
 SKR_RUNTIME_API void sugoiS_pack_entities(sugoi_storage_t* storage);
 /**
+ * @brief redirect references of entities to new entities
+ * note meta entities will be ignored, no structural change will be performed
+ * @param storage
+ * @param ents old entities
+ * @param newEnts new entities
+ * @param n count of entities
+ */
+SKR_RUNTIME_API void sugoiS_redirect(sugoi_storage_t* storage, sugoi_entity_t* ents, sugoi_entity_t* newEnts, EIndex n);
+/**
  * @brief create a query which combine filter and parameters
  * query can be overloaded
  * @param storage
