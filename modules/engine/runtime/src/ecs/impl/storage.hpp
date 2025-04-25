@@ -84,6 +84,7 @@ public:
 
 private:
     friend struct sugoi_storage_t;
+    friend struct sugoi::JobScheduler;
     sugoi_timestamp_t groups_timestamp = 0;
     sugoi_timestamp_t archetype_timestamp = 0;
     sugoi_timestamp_t queries_timestamp = 0;

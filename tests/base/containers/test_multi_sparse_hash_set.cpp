@@ -45,6 +45,7 @@ void template_test_multi_sparse_hash_set(ModifyCapacity&& capacity_of, ClampCapa
     SUBCASE("copy & move")
     {
         TestHashSet a({ 1, 1, 4, 5, 1, 4 });
+        a.reserve(capacity_of(114514)); // test for bad capacity copy
         REQUIRE_EQ(a.size(), 6);
         REQUIRE_EQ(a.sparse_size(), 6);
         REQUIRE_EQ(a.hole_size(), 0);

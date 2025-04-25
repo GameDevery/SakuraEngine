@@ -25,7 +25,7 @@ static void iter_ref_impl(sugoi_chunk_view_t view, type_index_t type, EIndex off
         };
         mapper.user = &iter;
         if (map)
-            map(chunk, index, curr, &mapper);
+            map(type, chunk, index, curr, &mapper);
         else
         {
             forloop (i, 0, desc.entityFieldsCount)
