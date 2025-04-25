@@ -325,7 +325,11 @@ function _gen_class_body(opt: GenVectorOption) {
       if (comp_kind === "boolean") {
         b.$line(`// boolean operator`);
         for (const op of _boolean_ops) {
-          b.$line(`${vec_name} friend operator${op}(const ${vec_name}& lhs, const ${vec_name}& rhs);`);
+          const compare_exprs = _comp_lut
+            .slice(0, dim)
+            .map(comp => `lhs.${comp} ${op} rhs.${comp}`)
+            .join(", ");
+          b.$line(`inline ${vec_name} friend operator${op}(const ${vec_name}& lhs, const ${vec_name}& rhs) { return {${compare_exprs}}; }`);
         }
         b.$line(``);
       } else {
@@ -358,6 +362,33 @@ function _gen_class_body(opt: GenVectorOption) {
   }
 }
 
+// generate compare operators
+function _gen_compare_operator(compare_builder: CodeBuilder) {
+  const b = compare_builder;
+
+  for (const base_name in type_options) {
+    const type_opt = type_options[base_name]!;
+    const comp_name = type_opt.component_name;
+    if (type_opt.component_kind === "boolean") continue; // skip boolean type
+
+    for (let dim = 2; dim <= 4; ++dim) {
+      const vec_name = `${base_name}${dim}`;
+      const boolean_vec_name = `bool${dim}`;
+
+      b.$line(`// compare operator for [${vec_name}]`);
+      for (const op of _compare_ops) {
+        const compare_exprs = _comp_lut
+          .slice(0, dim)
+          .map(comp => `lhs.${comp} ${op} rhs.${comp}`)
+          .join(", ")
+
+        b.$line(`inline ${boolean_vec_name} operator${op}(const ${vec_name}& lhs, const ${vec_name}& rhs) { return {${compare_exprs}}; }`);
+      }
+      b.$line(``);
+    }
+  }
+}
+
 export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
   // generate class body
   for (const base_name in type_options) {
@@ -378,10 +409,10 @@ export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
     // gen code
     vector_builder.$line(`namespace skr {`)
     _gen_class_body({
-      ...type_opt,
       fwd_builder: fwd_builder,
       builder: vector_builder,
       base_name: base_name,
+      ...type_opt,
     })
     vector_builder.$line(`}`);
 
@@ -390,5 +421,32 @@ export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
     vector_builder.write_file(out_path);
   }
 
+  // get has boolean type
+  const has_boolean_type = Object.values(type_options).find(
+    t => t!.component_kind === "boolean") !== undefined;
+
   // generate compare & convert
+  {
+    // header
+    let compare_op_builder = new CodeBuilder()
+    compare_op_builder.$util_header();
+
+    // include
+    for (const base_name in type_options) {
+      const type_opt = type_options[base_name]!;
+      compare_op_builder.$line(`#include "${base_name}_vec.hpp"`);
+    }
+    compare_op_builder.$line(``);
+
+    // compare operator
+    compare_op_builder.$line(`namespace skr {`)
+    compare_op_builder.$indent(_b => {
+      _gen_compare_operator(compare_op_builder)
+    })
+    compare_op_builder.$line(`}`)
+
+    // write to file
+    const out_path = path.join(gen_dir, `vec_compare.hpp`);
+    compare_op_builder.write_file(out_path);
+  }
 }
