@@ -1,8 +1,7 @@
 import {
   CodeBuilder, type_convert_options,
   type_options, all_component_kinds,
-  dims_all,
-  dims_no_scale
+  dims_all, dims_no_scalar
 } from "./util"
 import type { TypeOption, ComponentKind } from "./util";
 import path from "node:path";
@@ -338,7 +337,7 @@ class _MathFuncGenerator {
   }
 
   //=====================simple functions===================== 
-  @math_func("select", { accept_dim: dims_no_scale })
+  @math_func("select", { accept_dim: dims_no_scalar })
   static gen_select(b: CodeBuilder, opt: MathGenOptions) {
     const base_name = opt.base_name;
     const comp_name = opt.component_name;
@@ -355,7 +354,7 @@ class _MathFuncGenerator {
   }
 
   // all & any
-  @math_func("all", { accept_comp_kind: ["boolean"], accept_dim: dims_no_scale })
+  @math_func("all", { accept_comp_kind: ["boolean"], accept_dim: dims_no_scalar })
   static gen_all(b: CodeBuilder, opt: MathGenOptions) {
     const base_name = opt.base_name;
     const comp_name = opt.component_name;
@@ -370,7 +369,7 @@ class _MathFuncGenerator {
 
     b.$line(`inline bool all(const ${vec_name} &v) { return ${compare_expr}; }`);
   }
-  @math_func("any", { accept_comp_kind: ["boolean"], accept_dim: dims_no_scale })
+  @math_func("any", { accept_comp_kind: ["boolean"], accept_dim: dims_no_scalar })
   static gen_any(b: CodeBuilder, opt: MathGenOptions) {
     const base_name = opt.base_name;
     const comp_name = opt.component_name;
@@ -471,7 +470,7 @@ class _MathFuncGenerator {
   }
 
   // cross & dot
-  @math_func("dot", { accept_comp_kind: ["floating"], accept_dim: dims_no_scale })
+  @math_func("dot", { accept_comp_kind: ["floating"], accept_dim: dims_no_scalar })
   static gen_dot(b: CodeBuilder, opt: MathGenOptions) {
     const base_name = opt.base_name;
     const dim = opt.dim;
@@ -498,7 +497,7 @@ class _MathFuncGenerator {
   }
 
   // length & distance Squared
-  @math_func("length", { accept_comp_kind: ["floating"], accept_dim: dims_no_scale })
+  @math_func("length", { accept_comp_kind: ["floating"], accept_dim: dims_no_scalar })
   static gen_length(b: CodeBuilder, opt: MathGenOptions) {
     const base_name = opt.base_name;
     const dim = opt.dim;
@@ -507,7 +506,7 @@ class _MathFuncGenerator {
 
     b.$line(`inline ${comp_name} length(const ${vec_name} &v) { return ::std::sqrt(dot(v, v)); }`)
   }
-  @math_func("length_squared", { accept_comp_kind: ["floating"], accept_dim: dims_no_scale })
+  @math_func("length_squared", { accept_comp_kind: ["floating"], accept_dim: dims_no_scalar })
   static gen_length_squared(b: CodeBuilder, opt: MathGenOptions) {
     const base_name = opt.base_name;
     const dim = opt.dim;
@@ -516,7 +515,7 @@ class _MathFuncGenerator {
 
     b.$line(`inline ${comp_name} length_squared(const ${vec_name} &v) { return dot(v, v); }`)
   }
-  @math_func("distance", { accept_comp_kind: ["floating"], accept_dim: dims_no_scale })
+  @math_func("distance", { accept_comp_kind: ["floating"], accept_dim: dims_no_scalar })
   static gen_distance(b: CodeBuilder, opt: MathGenOptions) {
     const base_name = opt.base_name;
     const dim = opt.dim;
@@ -525,7 +524,7 @@ class _MathFuncGenerator {
 
     b.$line(`inline ${comp_name} distance(const ${vec_name} &x, const ${vec_name} &y) { return length_squared(y - x); }`)
   }
-  @math_func("distance_squared", { accept_comp_kind: ["floating"], accept_dim: dims_no_scale })
+  @math_func("distance_squared", { accept_comp_kind: ["floating"], accept_dim: dims_no_scalar })
   static gen_distance_squared(b: CodeBuilder, opt: MathGenOptions) {
     const base_name = opt.base_name;
     const dim = opt.dim;
@@ -536,7 +535,7 @@ class _MathFuncGenerator {
   }
 
   // normalize
-  @math_func("normalize", { accept_comp_kind: ["floating"], accept_dim: dims_no_scale })
+  @math_func("normalize", { accept_comp_kind: ["floating"], accept_dim: dims_no_scalar })
   static gen_normalize(b: CodeBuilder, opt: MathGenOptions) {
     const base_name = opt.base_name;
     const dim = opt.dim;
@@ -602,6 +601,28 @@ class _MathFuncGenerator {
       b.$line(`return t * t * (${comp_name}(3) - ${comp_name}(2) * v);`)
     })
     b.$line(`}`)
+  }
+
+  // nearly equal
+  @math_func("nearly_equal", { accept_comp_kind: ["floating"] })
+  static gen_nearly_equal(b: CodeBuilder, opt: MathGenOptions) {
+    const base_name = opt.base_name;
+    const dim = opt.dim;
+    const comp_name = opt.component_name;
+    const vec_name = dim === 1 ? comp_name : `${base_name}${dim}`;
+    const ret_vec_name = dim === 1 ? "bool" : `bool${dim}`;
+
+    if (dim === 1) {
+      const init_list = `abs(x - y) <= epsilon`;
+      b.$line(`inline ${ret_vec_name} nearly_equal(${vec_name} x, ${vec_name} y, ${comp_name} epsilon = ${comp_name}(0.000001)) { return ${init_list}; }`)
+    } else {
+      const init_list = _comp_lut
+        .slice(0, dim)
+        .map(c => `(abs(x.${c} - y.${c}) <= epsilon)`)
+        .join(', ');
+      b.$line(`inline ${ret_vec_name} nearly_equal(const ${vec_name}& x, const ${vec_name}& y, ${comp_name} epsilon = ${comp_name}(0.000001)) { return { ${init_list} }; }`)
+    }
+
   }
 }
 

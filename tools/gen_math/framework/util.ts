@@ -88,7 +88,8 @@ export class CodeBuilder {
 export type ComponentKind = "floating" | "integer" | "boolean";
 export const all_component_kinds: ComponentKind[] = ["floating", "integer", "boolean"]
 export const dims_all: number[] = [1, 2, 3, 4]
-export const dims_no_scale: number[] = [2, 3, 4]
+export const dims_no_scalar: number[] = [2, 3, 4]
+export const matrix_dims: number[] = [3, 4]
 
 export interface TypeOption {
   component_name: string;
