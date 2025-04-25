@@ -1,6 +1,7 @@
 import * as process from "node:process";
 import * as gen_vector from "./framework/gen_vector";
 import * as gen_math_func from "./framework/gen_math_func";
+import * as gen_matrix from "./framework/gen_matrix";
 import path from "node:path";
 import { CodeBuilder } from "./framework/util";
 
@@ -22,6 +23,12 @@ fwd_builder.$line("namespace skr {");
 gen_vector.gen(
   fwd_builder,
   path.join(gen_dir, "vec")
+)
+
+// generate matrix types
+gen_matrix.gen(
+  fwd_builder,
+  path.join(gen_dir, "mat")
 )
 
 // generate math functions

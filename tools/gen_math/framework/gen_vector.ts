@@ -1,4 +1,7 @@
-import { CodeBuilder, type_convert_options, type_options } from "./util"
+import {
+  CodeBuilder, dims_no_scalar,
+  type_convert_options, type_options
+} from "./util"
 import type { TypeOption } from "./util";
 import path from "node:path";
 
@@ -260,13 +263,13 @@ function _gen_class_body(opt: GenVectorOption) {
 
   // generate forward declaration
   fwd_b.$line(`// ${base_name} vector, component: ${comp_name}`);
-  for (let dim = 2; dim <= 4; ++dim) {
+  for (const dim of dims_no_scalar) {
     fwd_b.$line(`struct ${base_name}${dim};`);
   }
   fwd_b.$line(``);
 
   // generate class body
-  for (let dim = 2; dim <= 4; ++dim) {
+  for (const dim of dims_no_scalar) {
     const vec_name = `${base_name}${dim}`;
 
     b.$line(`struct ${vec_name} {`);
@@ -373,7 +376,7 @@ function _gen_compare_operator(compare_builder: CodeBuilder) {
     const comp_name = type_opt.component_name;
     if (type_opt.component_kind === "boolean") continue; // skip boolean type
 
-    for (let dim = 2; dim <= 4; ++dim) {
+    for (const dim of dims_no_scalar) {
       const vec_name = `${base_name}${dim}`;
       const boolean_vec_name = `bool${dim}`;
 
