@@ -52,10 +52,11 @@ void template_test_vector(ModifyCapacity&& capacity_of, ClampCapacity&& clamp_ca
     SUBCASE("copy & move")
     {
         TestVector a(100, 114514);
+        a.reserve(capacity_of(114514)); // test for bad capacity copy
 
         TestVector b = a;
         REQUIRE_EQ(b.size(), a.size());
-        REQUIRE_GE(b.capacity(), capacity_of(a.capacity()));
+        REQUIRE_GE(b.capacity(), capacity_of(a.size()));
         check_data(b);
 
         auto       old_size     = a.size();
