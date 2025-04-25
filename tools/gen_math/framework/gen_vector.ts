@@ -394,6 +394,37 @@ function _gen_compare_operator(compare_builder: CodeBuilder) {
   }
 }
 
+// generate convert constructors
+function _gen_covert_operator(compare_builder: CodeBuilder) {
+  const b = compare_builder;
+
+  for (const base_name in type_options) {
+    const type_opt = type_options[base_name]!;
+    const comp_name = type_opt.component_name;
+
+    for (const dim of dims_no_scalar) {
+      const vec_name = `${base_name}${dim}`;
+      const convert_opt = type_convert_options[base_name]!;
+
+      b.$line(`// convert operator for [${vec_name}]`);
+      for (const from_base_name in type_options) {
+        if (from_base_name === base_name) continue; // skip self cast
+        if (!convert_opt.accept_list.includes(from_base_name)) continue; // skip not accept type
+        const from_type_opt = type_options[from_base_name]!;
+        const from_vec_name = `${from_base_name}${dim}`;
+
+        const init_list = _comp_lut
+          .slice(0, dim)
+          .map(comp => `${comp}(static_cast<${comp_name}>(rhs.${comp}))`)
+          .join(", ")
+
+        b.$line(`inline ${vec_name}::${vec_name}(const ${from_vec_name}& rhs) : ${init_list} {}`)
+      }
+      b.$line(``);
+    }
+  }
+}
+
 export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
   // generate class body
   for (const base_name in type_options) {
@@ -443,15 +474,18 @@ export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
     }
     compare_op_builder.$line(``);
 
-    // compare operator
     compare_op_builder.$line(`namespace skr {`)
     compare_op_builder.$indent(_b => {
+      // compare operator
       _gen_compare_operator(compare_op_builder)
+
+      // convert operator
+      _gen_covert_operator(compare_op_builder)
     })
     compare_op_builder.$line(`}`)
 
     // write to file
-    const out_path = path.join(gen_dir, `vec_compare.hpp`);
+    const out_path = path.join(gen_dir, `vec_compare_and_convert.hpp`);
     compare_op_builder.write_file(out_path);
   }
 }
