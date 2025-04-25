@@ -603,6 +603,43 @@ class _MathFuncGenerator {
     b.$line(`}`)
   }
 
+  // lerp
+  @math_func("lerp", { accept_comp_kind: ["floating"] })
+  static gen_lerp(b: CodeBuilder, opt: MathGenOptions) {
+    const base_name = opt.base_name;
+    const dim = opt.dim;
+    const comp_name = opt.component_name;
+    const vec_name = dim === 1 ? comp_name : `${base_name}${dim}`;
+
+    if (dim === 1) {
+      const init_expr = `v0 + t * (v1 - v0)`;
+      b.$line(`inline ${comp_name} lerp(const ${comp_name} &v0, const ${comp_name} &v1, const ${comp_name} &t) { return ${init_expr}; }`)
+      return;
+    }
+
+    b.$line(`inline ${vec_name} lerp(const ${vec_name} &v0, const ${vec_name} &v1, const ${comp_name} &t) { return v0 + t * (v1 - v0); }`)
+  }
+
+  // slerp
+  // @math_func("slerp", { accept_comp_kind: ["floating"], accept_dim: [2, 3] })
+  // static gen_slerp(b: CodeBuilder, opt: MathGenOptions) {
+  //   const base_name = opt.base_name;
+  //   const dim = opt.dim;
+  //   const comp_name = opt.component_name;
+  //   const vec_name = dim === 1 ? comp_name : `${base_name}${dim}`;
+
+  //   b.$line(`inline ${vec_name} slerp(const ${vec_name} &v0, const ${vec_name} &v1, const ${comp_name} &t) {`)
+  //   b.$indent(_b => {
+  //     b.$line(`const ${comp_name} cos_theta = dot(v0, v1);`)
+  //     b.$line(`const ${comp_name} theta = acos(cos_theta);`)
+  //     b.$line(`const ${comp_name} sin_theta = sin(theta);`)
+  //     b.$line(`const ${comp_name} a = sin((1 - t) * theta) / sin_theta;`)
+  //     b.$line(`const ${comp_name} b = sin(t * theta) / sin_theta;`)
+  //     b.$line(`return a * v0 + b * v1;`)
+  //   })
+  //   b.$line(`}`)
+  // }
+
   // nearly equal
   @math_func("nearly_equal", { accept_comp_kind: ["floating"] })
   static gen_nearly_equal(b: CodeBuilder, opt: MathGenOptions) {

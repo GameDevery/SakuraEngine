@@ -345,6 +345,12 @@ inline double4 smoothstep(const double4 &edge0, const double4 &edge1, const doub
     return t * t * (double(3) - double(2) * v);
 }
 
+// lerp
+inline double lerp(const double &v0, const double &v1, const double &t) { return v0 + t * (v1 - v0); }
+inline double2 lerp(const double2 &v0, const double2 &v1, const double &t) { return v0 + t * (v1 - v0); }
+inline double3 lerp(const double3 &v0, const double3 &v1, const double &t) { return v0 + t * (v1 - v0); }
+inline double4 lerp(const double4 &v0, const double4 &v1, const double &t) { return v0 + t * (v1 - v0); }
+
 // nearly_equal
 inline bool nearly_equal(double x, double y, double epsilon = double(0.000001)) { return abs(x - y) <= epsilon; }
 inline bool2 nearly_equal(const double2& x, const double2& y, double epsilon = double(0.000001)) { return { (abs(x.x - y.x) <= epsilon), (abs(x.y - y.y) <= epsilon) }; }
