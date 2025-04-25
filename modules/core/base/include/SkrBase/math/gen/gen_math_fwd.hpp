@@ -48,4 +48,8 @@ struct float4x4;
 struct double3x3;
 struct double4x4;
 
+// quaternion
+struct Quatf;
+struct Quatd;
+
 }

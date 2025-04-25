@@ -222,7 +222,7 @@ export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
     builder.$line(`}`)
 
     // write to file
-    const file_name = path.join(gen_dir, `${base_name}_matrix.h`);
+    const file_name = path.join(gen_dir, `${base_name}_matrix.hpp`);
     builder.write_file(file_name)
   }
 }

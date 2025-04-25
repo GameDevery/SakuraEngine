@@ -2,6 +2,7 @@ import * as process from "node:process";
 import * as gen_vector from "./framework/gen_vector";
 import * as gen_math_func from "./framework/gen_math_func";
 import * as gen_matrix from "./framework/gen_matrix";
+import * as gen_misc_types from "./framework/gen_misc_types";
 import path from "node:path";
 import { CodeBuilder } from "./framework/util";
 
@@ -35,6 +36,12 @@ gen_matrix.gen(
 gen_math_func.gen(
   fwd_builder,
   path.join(gen_dir, "math")
+)
+
+// generate misc types
+gen_misc_types.gen(
+  fwd_builder,
+  path.join(gen_dir, "misc")
 )
 
 // write forward declaration
