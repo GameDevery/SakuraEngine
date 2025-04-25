@@ -85,9 +85,14 @@ export class CodeBuilder {
   }
 }
 
+export type ComponentKind = "floating" | "integer" | "boolean";
+export const all_component_kinds: ComponentKind[] = ["floating", "integer", "boolean"]
+export const dims_all: number[] = [1, 2, 3, 4]
+export const dims_no_scale: number[] = [2, 3, 4]
+
 export interface TypeOption {
   component_name: string;
-  component_kind: "floating" | "integer" | "boolean";
+  component_kind: ComponentKind;
 }
 
 export const type_options: Dict<TypeOption> = {

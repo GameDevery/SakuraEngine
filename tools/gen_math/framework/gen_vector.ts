@@ -147,7 +147,7 @@ function _gen_swizzle_recursive(
       let is_unique = true;
       const seen_comp: number[] = [];
       for (const comp of comps) {
-        if (seen_comp.find(c => c === comp) !== undefined) {
+        if (seen_comp.includes(comp)) {
           is_unique = false;
           break;
         } else {
@@ -208,18 +208,19 @@ function _gen_arithmetic_operator(dim: number, opt: GenVectorOption) {
     for (const op of _arithmetic_ops) {
       let init_list
       if (op === '%' && comp_kind == "floating") {
-        const fmod_name = comp_name === "double" ? "fmod" : "fmodf";
+        // const fmod_name = comp_name === "double" ? "fmod" : "fmodf";
+        const fmod_name = "fmod"
         init_list = _comp_lut
           .slice(0, dim)
-          .map(comp => `::std::${fmod_name}(${comp}, rhs.${comp})`)
+          .map(comp => `::std::${fmod_name}(lhs.${comp}, rhs.${comp})`)
           .join(", ");
       } else {
         init_list = _comp_lut
           .slice(0, dim)
-          .map(comp => `${comp} ${op} rhs.${comp}`)
+          .map(comp => `lhs.${comp} ${op} rhs.${comp}`)
           .join(", ");
       }
-      b.$line(`inline ${vec_name} operator${op}(const ${vec_name}& rhs) const { return { ${init_list} }; }`);
+      b.$line(`inline friend ${vec_name} operator${op}(const ${vec_name}& lhs, const ${vec_name}& rhs) { return { ${init_list} }; }`);
     }
     b.$line(``);
   }
@@ -230,7 +231,8 @@ function _gen_arithmetic_operator(dim: number, opt: GenVectorOption) {
     for (const op of _arithmetic_ops) {
       let assign_exprs
       if (op === "%" && comp_kind == "floating") {
-        const fmod_name = comp_name === "double" ? "fmod" : "fmodf";
+        // const fmod_name = comp_name === "double" ? "fmod" : "fmodf";
+        const fmod_name = "fmod"
         assign_exprs = _comp_lut
           .slice(0, dim)
           .map(comp => `${comp} = ::std::${fmod_name}(${comp}, rhs.${comp})`)
@@ -286,8 +288,8 @@ function _gen_class_body(opt: GenVectorOption) {
         if (convert_option === undefined) { throw Error(`convert option of '${base_name}' not found`) }
         for (const rhs_base_name in type_options) {
           if (rhs_base_name === base_name) continue; // skip self cast
-          if (convert_option.accept_list.find(c => c === rhs_base_name) === undefined) continue; // skip not accept type
-          const is_implicit = convert_option.implicit_list.find(c => c === rhs_base_name) !== undefined; // check if implicit cast
+          if (!convert_option.accept_list.includes(rhs_base_name)) continue; // skip not accept type
+          const is_implicit = convert_option.implicit_list.includes(rhs_base_name); // check if implicit cast
           const explicit_decl = is_implicit ? "" : "explicit ";
 
           b.$line(`${explicit_decl}${vec_name}(const ${rhs_base_name}${dim}& rhs);`)
@@ -426,7 +428,7 @@ export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
     t => t!.component_kind === "boolean") !== undefined;
 
   // generate compare & convert
-  {
+  if (has_boolean_type) {
     // header
     let compare_op_builder = new CodeBuilder()
     compare_op_builder.$util_header();

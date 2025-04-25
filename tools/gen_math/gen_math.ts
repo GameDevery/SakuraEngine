@@ -1,5 +1,6 @@
 import * as process from "node:process";
 import * as gen_vector from "./framework/gen_vector";
+import * as gen_math_func from "./framework/gen_math_func";
 import path from "node:path";
 import { CodeBuilder } from "./framework/util";
 
@@ -21,6 +22,12 @@ fwd_builder.$line("namespace skr {");
 gen_vector.gen(
   fwd_builder,
   path.join(gen_dir, "vec")
+)
+
+// generate math functions
+gen_math_func.gen(
+  fwd_builder,
+  path.join(gen_dir, "math")
 )
 
 // write forward declaration
