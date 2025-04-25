@@ -53,12 +53,137 @@ function _gen_class_body(opt: GenMatrixOption) {
         // column based
         b.$line(`// base columns`)
         b.$line(`${vec_name} columns[${dim}];`)
+        b.$line(``)
 
-        // 
-
+        // variable based
+        b.$line(`// vector based`)
+        b.$line(`struct {`)
+        b.$indent(_b => {
+          for (let col_idx = 0; col_idx < dim; ++col_idx) {
+            const row_members = dims_all
+              .slice(0, dim)
+              .map(d => `m${d - 1}${col_idx}`)
+              .join(`, `);
+            b.$line(`${comp_name} ${row_members};`)
+          }
+        })
+        b.$line(`};`)
       })
       b.$line(`};`)
 
+      // ctor & dtor
+      {
+        b.$line(`// ctor & dtor`)
+        const default_ctor_exprs = _axis_lut
+          .slice(0, dim)
+          .map(axis => `axis_${axis}(0)`)
+          .join(`, `);
+        b.$line(`inline ${mat_name}() : ${default_ctor_exprs} {}`)
+        b.$line(`inline ${mat_name}(`)
+        b.$indent(_b => {
+          for (let row_idx = 0; row_idx < dim; ++row_idx) {
+            const row_members = dims_all
+              .slice(0, dim)
+              .map(d => `float m${row_idx}${d - 1}`)
+              .join(`, `);
+            if (row_idx === dim - 1) {
+              b.$line(`${row_members}`)
+            } else {
+              b.$line(`${row_members},`)
+            }
+          }
+        })
+        b.$line(`):`)
+        b.$indent(_b => {
+          for (let col_idx = 0; col_idx < dim; ++col_idx) {
+            const row_members = dims_all
+              .slice(0, dim)
+              .map(d => `m${d - 1}${col_idx}(m${d - 1}${col_idx})`)
+              .join(`, `);
+            if (col_idx === dim - 1) {
+              b.$line(`${row_members}`)
+            }
+            else {
+              b.$line(`${row_members},`)
+            }
+          }
+        })
+        b.$line(`{}`)
+        b.$line(`inline ~${mat_name}() = default;`)
+        b.$line(``)
+      }
+
+      // factory
+      {
+        b.$line(`// factory`)
+        b.$line(`inline static ${mat_name} eye(${comp_name} v) {`)
+        b.$indent(_b => {
+          b.$line(`return ${mat_name}{`)
+          b.$indent(_b => {
+            for (let row_idx = 0; row_idx < dim; ++row_idx) {
+              const row_members = dims_all
+                .slice(0, dim)
+                .map(d => d === row_idx + 1 ? `v` : `0`)
+                .join(`, `);
+              if (row_idx === dim - 1) {
+                b.$line(`${row_members}`)
+              } else {
+                b.$line(`${row_members},`)
+              }
+            }
+          })
+          b.$line(`};`)
+        })
+        b.$line(`}`)
+        b.$line(`inline static ${mat_name} fill(${comp_name} v) {`)
+        b.$indent(_b => {
+          b.$line(`return ${mat_name}{`)
+          b.$indent(_b => {
+            for (let row_idx = 0; row_idx < dim; ++row_idx) {
+              const row_members = dims_all
+                .slice(0, dim)
+                .map(d => `v`)
+                .join(`, `);
+              if (row_idx === dim - 1) {
+                b.$line(`${row_members}`)
+              } else {
+                b.$line(`${row_members},`)
+              }
+            }
+          })
+          b.$line(`};`)
+        })
+        b.$line(`}`)
+        b.$line(`inline static ${mat_name} identity() { return eye(1); }`)
+        b.$line(`inline static ${mat_name} zero() { return fill(0); }`)
+        b.$line(`inline static ${mat_name} one() { return fill(1); }`)
+        b.$line(``)
+      }
+
+      // copy & move & assign & move assign
+      {
+        b.$line(`// copy & move & assign & move assign`)
+        const copy_exprs = _axis_lut
+          .slice(0, dim)
+          .map(axis => `axis_${axis}(rhs.axis_${axis})`)
+          .join(`, `);
+        b.$line(`inline ${mat_name}(const ${mat_name}& rhs) noexcept : ${copy_exprs} {}`)
+        const move_exprs = _axis_lut
+          .slice(0, dim)
+          .map(axis => `axis_${axis}(std::move(rhs.axis_${axis}))`)
+          .join(`, `);
+        b.$line(`inline ${mat_name}(${mat_name}&& rhs) noexcept : ${move_exprs} {}`)
+        const assign_exprs = _axis_lut
+          .slice(0, dim)
+          .map(axis => `this->axis_${axis} = rhs.axis_${axis};`)
+          .join(` `);
+        b.$line(`inline ${mat_name}& operator=(const ${mat_name}& rhs) noexcept { ${assign_exprs} return *this; }`)
+        const move_assign_exprs = _axis_lut
+          .slice(0, dim)
+          .map(axis => `this->axis_${axis} = std::move(rhs.axis_${axis});`)
+          .join(` `);
+        b.$line(`inline ${mat_name}& operator=(${mat_name}&& rhs) noexcept { ${move_assign_exprs} return *this; }`)
+      }
 
     })
     b.$line(`};`)
