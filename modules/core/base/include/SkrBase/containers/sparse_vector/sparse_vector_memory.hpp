@@ -110,7 +110,6 @@ struct SparseVectorMemory : public Base, public Allocator {
                 copy_sparse_vector_data(data(), rhs.data(), rhs.bit_data(), rhs._sparse_size);
                 copy_sparse_vector_bit_data(bit_data(), rhs.bit_data(), rhs._sparse_size);
                 Base::_sparse_size   = rhs._sparse_size;
-                Base::_capacity      = rhs._capacity;
                 Base::_freelist_head = rhs._freelist_head;
                 Base::_hole_size     = rhs._hole_size;
             }
@@ -575,7 +574,6 @@ struct InlineSparseVectorMemory : public Base, public Allocator {
                 copy_sparse_vector_data(data(), rhs.data(), rhs.bit_data(), rhs._sparse_size);
                 copy_sparse_vector_bit_data(bit_data(), rhs.bit_data(), rhs._sparse_size);
                 Base::_sparse_size   = rhs._sparse_size;
-                Base::_capacity      = rhs._capacity;
                 Base::_freelist_head = rhs._freelist_head;
                 Base::_hole_size     = rhs._hole_size;
             }
