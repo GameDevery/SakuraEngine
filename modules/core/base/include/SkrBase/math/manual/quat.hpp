@@ -8,23 +8,23 @@ namespace skr
 // rtm caster
 inline namespace math
 {
-inline rtm::quatf to_rtm(const Quatf& q)
+inline rtm::quatf to_rtm(const QuatF& q)
 {
     return rtm::quat_load(&q.x);
 }
-inline Quatf from_rtm(const rtm::quatf& q)
+inline QuatF from_rtm(const rtm::quatf& q)
 {
-    Quatf result;
+    QuatF result;
     rtm::quat_store(q, &result.x);
     return result;
 }
-inline rtm::quatd to_rtm(const Quatd& q)
+inline rtm::quatd to_rtm(const QuatD& q)
 {
     return rtm::quat_load(&q.x);
 }
-inline Quatd from_rtm(const rtm::quatd& q)
+inline QuatD from_rtm(const rtm::quatd& q)
 {
-    Quatd result;
+    QuatD result;
     rtm::quat_store(q, &result.x);
     return result;
 }

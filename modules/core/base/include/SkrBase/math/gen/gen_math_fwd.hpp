@@ -49,7 +49,19 @@ struct double3x3;
 struct double4x4;
 
 // quaternion
-struct Quatf;
-struct Quatd;
+struct QuatF;
+struct QuatD;
+
+// rotator
+struct RotatorF;
+struct RotatorD;
+
+// transform
+struct TransformF;
+struct TransformD;
+
+// transform
+struct CameraF;
+struct CameraD;
 
 }

@@ -10,40 +10,40 @@
 #include <SkrBase/misc/hash.hpp>
 
 namespace skr {
-struct Quatf {
+struct QuatF {
     float x, y, z, w;
     
     // ctor & dtor
-    inline Quatf() : x(0), y(0), z(0), w(1) {}
-    inline Quatf(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
-    inline ~Quatf() = default;
+    inline QuatF() : x(0), y(0), z(0), w(1) {}
+    inline QuatF(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
+    inline ~QuatF() = default;
     
     // factory
-    inline static Quatf Identity() { return { 0, 0, 0, 1 }; }
-    inline static Quatf Fill(float v) { return { v, v, v, v }; }
+    inline static QuatF Identity() { return { 0, 0, 0, 1 }; }
+    inline static QuatF Fill(float v) { return { v, v, v, v }; }
     
     // copy & move & assign & move assign
-    inline Quatf(Quatf const&) = default;
-    inline Quatf(Quatf&&) = default;
-    inline Quatf& operator=(Quatf const&) = default;
-    inline Quatf& operator=(Quatf&&) = default;
+    inline QuatF(QuatF const&) = default;
+    inline QuatF(QuatF&&) = default;
+    inline QuatF& operator=(QuatF const&) = default;
+    inline QuatF& operator=(QuatF&&) = default;
 };
-struct Quatd {
+struct QuatD {
     double x, y, z, w;
     
     // ctor & dtor
-    inline Quatd() : x(0), y(0), z(0), w(1) {}
-    inline Quatd(double x, double y, double z, double w) : x(x), y(y), z(z), w(w) {}
-    inline ~Quatd() = default;
+    inline QuatD() : x(0), y(0), z(0), w(1) {}
+    inline QuatD(double x, double y, double z, double w) : x(x), y(y), z(z), w(w) {}
+    inline ~QuatD() = default;
     
     // factory
-    inline static Quatd Identity() { return { 0, 0, 0, 1 }; }
-    inline static Quatd Fill(double v) { return { v, v, v, v }; }
+    inline static QuatD Identity() { return { 0, 0, 0, 1 }; }
+    inline static QuatD Fill(double v) { return { v, v, v, v }; }
     
     // copy & move & assign & move assign
-    inline Quatd(Quatd const&) = default;
-    inline Quatd(Quatd&&) = default;
-    inline Quatd& operator=(Quatd const&) = default;
-    inline Quatd& operator=(Quatd&&) = default;
+    inline QuatD(QuatD const&) = default;
+    inline QuatD(QuatD&&) = default;
+    inline QuatD& operator=(QuatD const&) = default;
+    inline QuatD& operator=(QuatD&&) = default;
 };
 }
