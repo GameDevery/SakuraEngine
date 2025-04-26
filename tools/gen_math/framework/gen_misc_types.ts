@@ -234,6 +234,24 @@ function _gen_transform(opt: GenMiscOption) {
       throw new Error(`unknown component name ${type_opt.component_name} for quat`);
     }
 
+    // get data
+    const comp_name = type_opt.component_name;
+    const vec3_name = `${base_name}3`;
+    const vec4_name = `${base_name}4`;
+    const mat3_name = `${base_name}3x3`;
+    const mat4_name = `${base_name}4x4`;
+    const quat_name = `Quat${suffix}`;
+    const transform_name = `Transform${suffix}`;
+
+    b.$line(`struct ${transform_name} {`)
+    b.$indent(_b => {
+      // gen member
+      b.$line(`alignas(16) ${quat_name} rotation;`)
+      b.$line(`alignas(16) ${vec3_name} position;`)
+      b.$line(`alignas(16) ${vec3_name} scale;`)
+    })
+    b.$line(`};`)
+
     fwd_b.$line(`struct Transform${suffix};`);
   }
   fwd_b.$line(``);
@@ -330,6 +348,7 @@ export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
     builder.$line(`#include "../vec/gen_vector.hpp"`);
     builder.$line(`#include "../mat/gen_matrix.hpp"`);
     builder.$line(`#include "../math/gen_math_func.hpp"`);
+    builder.$line(`#include "./quat.hpp"`);
     builder.$line(``);
 
     // gen code

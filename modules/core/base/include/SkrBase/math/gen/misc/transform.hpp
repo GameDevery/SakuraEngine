@@ -6,8 +6,19 @@
 #include "../vec/gen_vector.hpp"
 #include "../mat/gen_matrix.hpp"
 #include "../math/gen_math_func.hpp"
+#include "./quat.hpp"
 
 namespace skr {
 inline namespace math {
+struct TransformF {
+    alignas(16) QuatF rotation;
+    alignas(16) float3 position;
+    alignas(16) float3 scale;
+};
+struct TransformD {
+    alignas(16) QuatD rotation;
+    alignas(16) double3 position;
+    alignas(16) double3 scale;
+};
 }
 }
