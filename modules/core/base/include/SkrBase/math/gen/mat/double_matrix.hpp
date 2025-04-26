@@ -69,6 +69,11 @@ struct double3x3 {
     inline double3x3(double3x3&& rhs) noexcept : axis_x(std::move(rhs.axis_x)), axis_y(std::move(rhs.axis_y)), axis_z(std::move(rhs.axis_z)) {}
     inline double3x3& operator=(const double3x3& rhs) noexcept { this->axis_x = rhs.axis_x; this->axis_y = rhs.axis_y; this->axis_z = rhs.axis_z; return *this; }
     inline double3x3& operator=(double3x3&& rhs) noexcept { this->axis_x = std::move(rhs.axis_x); this->axis_y = std::move(rhs.axis_y); this->axis_z = std::move(rhs.axis_z); return *this; }
+    
+    // mul operator
+    friend double3x3 operator*(const double3x3& lhs, const double3x3& rhs);
+    double3x3& operator*=(const double3x3& rhs);
+    friend double3 operator*(const double3& lhs, const double3x3& rhs);
 };
 struct double4x4 {
     union {
@@ -133,6 +138,11 @@ struct double4x4 {
     inline double4x4(double4x4&& rhs) noexcept : axis_x(std::move(rhs.axis_x)), axis_y(std::move(rhs.axis_y)), axis_z(std::move(rhs.axis_z)), axis_w(std::move(rhs.axis_w)) {}
     inline double4x4& operator=(const double4x4& rhs) noexcept { this->axis_x = rhs.axis_x; this->axis_y = rhs.axis_y; this->axis_z = rhs.axis_z; this->axis_w = rhs.axis_w; return *this; }
     inline double4x4& operator=(double4x4&& rhs) noexcept { this->axis_x = std::move(rhs.axis_x); this->axis_y = std::move(rhs.axis_y); this->axis_z = std::move(rhs.axis_z); this->axis_w = std::move(rhs.axis_w); return *this; }
+    
+    // mul operator
+    friend double4x4 operator*(const double4x4& lhs, const double4x4& rhs);
+    double4x4& operator*=(const double4x4& rhs);
+    friend double4 operator*(const double4& lhs, const double4x4& rhs);
 };
 }
 }

@@ -196,7 +196,14 @@ function _gen_class_body(opt: GenMatrixOption) {
           .map(axis => `this->axis_${axis} = std::move(rhs.axis_${axis});`)
           .join(` `);
         b.$line(`inline ${mat_name}& operator=(${mat_name}&& rhs) noexcept { ${move_assign_exprs} return *this; }`)
+        b.$line(``)
       }
+
+      // mul operator
+      b.$line(`// mul operator`)
+      b.$line(`friend ${mat_name} operator*(const ${mat_name}& lhs, const ${mat_name}& rhs);`)
+      b.$line(`${mat_name}& operator*=(const ${mat_name}& rhs);`)
+      b.$line(`friend ${vec_name} operator*(const ${vec_name}& lhs, const ${mat_name}& rhs);`)
 
     })
     b.$line(`};`)

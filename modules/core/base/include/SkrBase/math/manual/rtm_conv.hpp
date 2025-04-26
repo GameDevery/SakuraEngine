@@ -14,7 +14,7 @@
 #include <rtm/matrix3x4f.h>
 #include <rtm/matrix3x4d.h>
 #include <rtm/matrix4x4f.h>
-#include <rtm/matrix4x4f.h>
+#include <rtm/matrix4x4d.h>
 
 namespace skr
 {
@@ -202,6 +202,31 @@ struct RtmConvert<float4x4> {
     inline static float4x4 from_rtm(const rtm::matrix4x4f& m)
     {
         float4x4 result;
+        store(m, result);
+        return result;
+    }
+};
+template <>
+struct RtmConvert<double4x4> {
+    inline static rtm::matrix4x4d to_rtm(const double4x4& m)
+    {
+        return {
+            RtmConvert<double4>::to_rtm(m.axis_x),
+            RtmConvert<double4>::to_rtm(m.axis_y),
+            RtmConvert<double4>::to_rtm(m.axis_z),
+            RtmConvert<double4>::to_rtm(m.axis_w),
+        };
+    }
+    inline static void store(const rtm::matrix4x4d& m, double4x4& out)
+    {
+        RtmConvert<double4>::store(m.x_axis, out.axis_x);
+        RtmConvert<double4>::store(m.y_axis, out.axis_y);
+        RtmConvert<double4>::store(m.z_axis, out.axis_z);
+        RtmConvert<double4>::store(m.w_axis, out.axis_w);
+    }
+    inline static double4x4 from_rtm(const rtm::matrix4x4d& m)
+    {
+        double4x4 result;
         store(m, result);
         return result;
     }

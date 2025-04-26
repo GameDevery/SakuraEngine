@@ -69,6 +69,11 @@ struct float3x3 {
     inline float3x3(float3x3&& rhs) noexcept : axis_x(std::move(rhs.axis_x)), axis_y(std::move(rhs.axis_y)), axis_z(std::move(rhs.axis_z)) {}
     inline float3x3& operator=(const float3x3& rhs) noexcept { this->axis_x = rhs.axis_x; this->axis_y = rhs.axis_y; this->axis_z = rhs.axis_z; return *this; }
     inline float3x3& operator=(float3x3&& rhs) noexcept { this->axis_x = std::move(rhs.axis_x); this->axis_y = std::move(rhs.axis_y); this->axis_z = std::move(rhs.axis_z); return *this; }
+    
+    // mul operator
+    friend float3x3 operator*(const float3x3& lhs, const float3x3& rhs);
+    float3x3& operator*=(const float3x3& rhs);
+    friend float3 operator*(const float3& lhs, const float3x3& rhs);
 };
 struct float4x4 {
     union {
@@ -133,6 +138,11 @@ struct float4x4 {
     inline float4x4(float4x4&& rhs) noexcept : axis_x(std::move(rhs.axis_x)), axis_y(std::move(rhs.axis_y)), axis_z(std::move(rhs.axis_z)), axis_w(std::move(rhs.axis_w)) {}
     inline float4x4& operator=(const float4x4& rhs) noexcept { this->axis_x = rhs.axis_x; this->axis_y = rhs.axis_y; this->axis_z = rhs.axis_z; this->axis_w = rhs.axis_w; return *this; }
     inline float4x4& operator=(float4x4&& rhs) noexcept { this->axis_x = std::move(rhs.axis_x); this->axis_y = std::move(rhs.axis_y); this->axis_z = std::move(rhs.axis_z); this->axis_w = std::move(rhs.axis_w); return *this; }
+    
+    // mul operator
+    friend float4x4 operator*(const float4x4& lhs, const float4x4& rhs);
+    float4x4& operator*=(const float4x4& rhs);
+    friend float4 operator*(const float4& lhs, const float4x4& rhs);
 };
 }
 }
