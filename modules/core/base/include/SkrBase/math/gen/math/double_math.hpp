@@ -87,6 +87,12 @@ inline double2 tanh(const double2& v) { return {::std::tanh(v.x), ::std::tanh(v.
 inline double3 tanh(const double3& v) { return {::std::tanh(v.x), ::std::tanh(v.y), ::std::tanh(v.z)}; }
 inline double4 tanh(const double4& v) { return {::std::tanh(v.x), ::std::tanh(v.y), ::std::tanh(v.z), ::std::tanh(v.w)}; }
 
+// sincos
+inline void sincos(double v, double& out_sin, double& out_cos) { out_sin = ::std::sin(v); out_cos = ::std::cos(v); }
+inline void sincos(const double2& v, double2& out_sin, double2& out_cos) { sincos(v.x, out_sin.x, out_cos.x); sincos(v.y, out_sin.y, out_cos.y); }
+inline void sincos(const double3& v, double3& out_sin, double3& out_cos) { sincos(v.x, out_sin.x, out_cos.x); sincos(v.y, out_sin.y, out_cos.y); sincos(v.z, out_sin.z, out_cos.z); }
+inline void sincos(const double4& v, double4& out_sin, double4& out_cos) { sincos(v.x, out_sin.x, out_cos.x); sincos(v.y, out_sin.y, out_cos.y); sincos(v.z, out_sin.z, out_cos.z); sincos(v.w, out_sin.w, out_cos.w); }
+
 // atan2
 inline double atan2(double y, double x) { return ::std::atan2(y, x); }
 inline double2 atan2(const double2& y, const double2& x) { return {::std::atan2(y.x, x.x), ::std::atan2(y.y, x.y)}; }

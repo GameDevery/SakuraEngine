@@ -87,6 +87,12 @@ inline float2 tanh(const float2& v) { return {::std::tanh(v.x), ::std::tanh(v.y)
 inline float3 tanh(const float3& v) { return {::std::tanh(v.x), ::std::tanh(v.y), ::std::tanh(v.z)}; }
 inline float4 tanh(const float4& v) { return {::std::tanh(v.x), ::std::tanh(v.y), ::std::tanh(v.z), ::std::tanh(v.w)}; }
 
+// sincos
+inline void sincos(float v, float& out_sin, float& out_cos) { out_sin = ::std::sin(v); out_cos = ::std::cos(v); }
+inline void sincos(const float2& v, float2& out_sin, float2& out_cos) { sincos(v.x, out_sin.x, out_cos.x); sincos(v.y, out_sin.y, out_cos.y); }
+inline void sincos(const float3& v, float3& out_sin, float3& out_cos) { sincos(v.x, out_sin.x, out_cos.x); sincos(v.y, out_sin.y, out_cos.y); sincos(v.z, out_sin.z, out_cos.z); }
+inline void sincos(const float4& v, float4& out_sin, float4& out_cos) { sincos(v.x, out_sin.x, out_cos.x); sincos(v.y, out_sin.y, out_cos.y); sincos(v.z, out_sin.z, out_cos.z); sincos(v.w, out_sin.w, out_cos.w); }
+
 // atan2
 inline float atan2(float y, float x) { return ::std::atan2(y, x); }
 inline float2 atan2(const float2& y, const float2& x) { return {::std::atan2(y.x, x.x), ::std::atan2(y.y, x.y)}; }

@@ -145,6 +145,29 @@ class _MathFuncGenerator {
     this.#call_std_func("tanh", "tanh", b, opt, ["v"]);
   }
 
+  // sincos
+  @math_func("sincos", { accept_comp_kind: ["floating"] })
+  static gen_sincos(b: CodeBuilder, opt: MathGenOptions) {
+    const base_name = opt.base_name;
+    const dim = opt.dim;
+    const comp_name = opt.component_name;
+    const vec_name = `${base_name}${dim}`;
+
+    if (dim === 1) {
+      b.$line(`inline void sincos(${comp_name} v, ${comp_name}& out_sin, ${comp_name}& out_cos) { out_sin = ::std::sin(v); out_cos = ::std::cos(v); }`)
+      return;
+    }
+    else {
+      // use sincos
+      const exprs = _comp_lut
+        .slice(0, dim)
+        .map(c => `sincos(v.${c}, out_sin.${c}, out_cos.${c});`)
+        .join(' ');
+      b.$line(`inline void sincos(const ${vec_name}& v, ${vec_name}& out_sin, ${vec_name}& out_cos) { ${exprs} }`)
+    }
+  }
+
+
   // tan2
   @math_func("atan2", { accept_comp_kind: ["floating"] })
   static gen_atan2(b: CodeBuilder, opt: MathGenOptions) {
