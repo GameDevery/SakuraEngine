@@ -41,7 +41,6 @@ struct RtmConvert<float2> {
         store(v, result);
         return result;
     }
-    
 };
 template <>
 struct RtmConvert<double2> {
@@ -128,7 +127,82 @@ struct RtmConvert<double4> {
     inline static double4 from_rtm(const rtm::vector4d& v)
     {
         double4 result;
-        store(v, result);   
+        store(v, result);
+        return result;
+    }
+};
+
+// matrix3x3
+template <>
+struct RtmConvert<float3x3> {
+    inline static rtm::matrix3x3f to_rtm(const float3x3& m)
+    {
+        return {
+            RtmConvert<float3>::to_rtm(m.axis_x),
+            RtmConvert<float3>::to_rtm(m.axis_y),
+            RtmConvert<float3>::to_rtm(m.axis_z),
+        };
+    }
+    inline static void store(const rtm::matrix3x3f& m, float3x3& out)
+    {
+        RtmConvert<float3>::store(m.x_axis, out.axis_x);
+        RtmConvert<float3>::store(m.y_axis, out.axis_y);
+        RtmConvert<float3>::store(m.z_axis, out.axis_z);
+    }
+    inline static float3x3 from_rtm(const rtm::matrix3x3f& m)
+    {
+        float3x3 result;
+        store(m, result);
+        return result;
+    }
+};
+template <>
+struct RtmConvert<double3x3> {
+    inline static rtm::matrix3x3d to_rtm(const double3x3& m)
+    {
+        return {
+            RtmConvert<double3>::to_rtm(m.axis_x),
+            RtmConvert<double3>::to_rtm(m.axis_y),
+            RtmConvert<double3>::to_rtm(m.axis_z),
+        };
+    }
+    inline static void store(const rtm::matrix3x3d& m, double3x3& out)
+    {
+        RtmConvert<double3>::store(m.x_axis, out.axis_x);
+        RtmConvert<double3>::store(m.y_axis, out.axis_y);
+        RtmConvert<double3>::store(m.z_axis, out.axis_z);
+    }
+    inline static double3x3 from_rtm(const rtm::matrix3x3d& m)
+    {
+        double3x3 result;
+        store(m, result);
+        return result;
+    }
+};
+
+// matrix4x4
+template <>
+struct RtmConvert<float4x4> {
+    inline static rtm::matrix4x4f to_rtm(const float4x4& m)
+    {
+        return {
+            RtmConvert<float4>::to_rtm(m.axis_x),
+            RtmConvert<float4>::to_rtm(m.axis_y),
+            RtmConvert<float4>::to_rtm(m.axis_z),
+            RtmConvert<float4>::to_rtm(m.axis_w),
+        };
+    }
+    inline static void store(const rtm::matrix4x4f& m, float4x4& out)
+    {
+        RtmConvert<float4>::store(m.x_axis, out.axis_x);
+        RtmConvert<float4>::store(m.y_axis, out.axis_y);
+        RtmConvert<float4>::store(m.z_axis, out.axis_z);
+        RtmConvert<float4>::store(m.w_axis, out.axis_w);
+    }
+    inline static float4x4 from_rtm(const rtm::matrix4x4f& m)
+    {
+        float4x4 result;
+        store(m, result);
         return result;
     }
 };

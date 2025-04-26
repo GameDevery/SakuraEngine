@@ -129,6 +129,12 @@ inline double2 modf(const double2 &v, double2& int_part) { return { ::std::modf(
 inline double3 modf(const double3 &v, double3& int_part) { return { ::std::modf(v.x, &int_part.x), ::std::modf(v.y, &int_part.y), ::std::modf(v.z, &int_part.z) }; }
 inline double4 modf(const double4 &v, double4& int_part) { return { ::std::modf(v.x, &int_part.x), ::std::modf(v.y, &int_part.y), ::std::modf(v.z, &int_part.z), ::std::modf(v.w, &int_part.w) }; }
 
+// fmod
+inline double fmod(double x, double y) { return ::std::fmod(x, y); }
+inline double2 fmod(const double2& x, const double2& y) { return {::std::fmod(x.x, y.x), ::std::fmod(x.y, y.y)}; }
+inline double3 fmod(const double3& x, const double3& y) { return {::std::fmod(x.x, y.x), ::std::fmod(x.y, y.y), ::std::fmod(x.z, y.z)}; }
+inline double4 fmod(const double4& x, const double4& y) { return {::std::fmod(x.x, y.x), ::std::fmod(x.y, y.y), ::std::fmod(x.z, y.z), ::std::fmod(x.w, y.w)}; }
+
 // exp
 inline double exp(double v) { return ::std::exp(v); }
 inline double2 exp(const double2& v) { return {::std::exp(v.x), ::std::exp(v.y)}; }
@@ -356,6 +362,54 @@ inline bool nearly_equal(double x, double y, double epsilon = double(0.000001)) 
 inline bool2 nearly_equal(const double2& x, const double2& y, double epsilon = double(0.000001)) { return { (abs(x.x - y.x) <= epsilon), (abs(x.y - y.y) <= epsilon) }; }
 inline bool3 nearly_equal(const double3& x, const double3& y, double epsilon = double(0.000001)) { return { (abs(x.x - y.x) <= epsilon), (abs(x.y - y.y) <= epsilon), (abs(x.z - y.z) <= epsilon) }; }
 inline bool4 nearly_equal(const double4& x, const double4& y, double epsilon = double(0.000001)) { return { (abs(x.x - y.x) <= epsilon), (abs(x.y - y.y) <= epsilon), (abs(x.z - y.z) <= epsilon), (abs(x.w - y.w) <= epsilon) }; }
+
+// clamp_radians
+inline double clamp_radians(double v) {
+    v = fmod(v, double(kPi2));
+    if (v < double(0)) {
+        v += double(kPi2);
+    }
+    return v;
+}
+inline double2 clamp_radians(const double2 &v) { return { clamp_radians(v.x), clamp_radians(v.y) }; }
+inline double3 clamp_radians(const double3 &v) { return { clamp_radians(v.x), clamp_radians(v.y), clamp_radians(v.z) }; }
+inline double4 clamp_radians(const double4 &v) { return { clamp_radians(v.x), clamp_radians(v.y), clamp_radians(v.z), clamp_radians(v.w) }; }
+
+// clamp_degrees
+inline double clamp_degrees(double v) {
+    v = fmod(v, double(360));
+    if (v < double(0)) {
+        v += double(360);
+    }
+    return v;
+}
+inline double2 clamp_degrees(const double2 &v) { return { clamp_degrees(v.x), clamp_degrees(v.y) }; }
+inline double3 clamp_degrees(const double3 &v) { return { clamp_degrees(v.x), clamp_degrees(v.y), clamp_degrees(v.z) }; }
+inline double4 clamp_degrees(const double4 &v) { return { clamp_degrees(v.x), clamp_degrees(v.y), clamp_degrees(v.z), clamp_degrees(v.w) }; }
+
+// normalize_radians
+inline double normalize_radians(double v) {
+    v = clamp_radians(v);
+    if (v > double(kPi)) {
+        v -= double(kPi2);
+    }
+    return v;
+}
+inline double2 normalize_radians(const double2 &v) { return { normalize_radians(v.x), normalize_radians(v.y) }; }
+inline double3 normalize_radians(const double3 &v) { return { normalize_radians(v.x), normalize_radians(v.y), normalize_radians(v.z) }; }
+inline double4 normalize_radians(const double4 &v) { return { normalize_radians(v.x), normalize_radians(v.y), normalize_radians(v.z), normalize_radians(v.w) }; }
+
+// normalize_degrees
+inline double normalize_degrees(double v) {
+    v = clamp_degrees(v);
+    if (v > double(180)) {
+        v -= double(360);
+    }
+    return v;
+}
+inline double2 normalize_degrees(const double2 &v) { return { normalize_degrees(v.x), normalize_degrees(v.y) }; }
+inline double3 normalize_degrees(const double3 &v) { return { normalize_degrees(v.x), normalize_degrees(v.y), normalize_degrees(v.z) }; }
+inline double4 normalize_degrees(const double4 &v) { return { normalize_degrees(v.x), normalize_degrees(v.y), normalize_degrees(v.z), normalize_degrees(v.w) }; }
 
 }
 }

@@ -213,6 +213,12 @@ class _MathFuncGenerator {
     b.$line(`inline ${vec_name} modf(const ${vec_name} &v, ${vec_name}& int_part) { return { ${init_expr} }; }`)
   }
 
+  // fmod
+  @math_func("fmod", { accept_comp_kind: ["floating"] })
+  static gen_fmod(b: CodeBuilder, opt: MathGenOptions) {
+    this.#call_std_func("fmod", "fmod", b, opt, ["x", "y"]);
+  }
+
   // exp & log
   @math_func("exp", { accept_comp_kind: ["floating"] })
   static gen_exp(b: CodeBuilder, opt: MathGenOptions) {
@@ -659,8 +665,124 @@ class _MathFuncGenerator {
         .join(', ');
       b.$line(`inline ${ret_vec_name} nearly_equal(const ${vec_name}& x, const ${vec_name}& y, ${comp_name} epsilon = ${comp_name}(0.000001)) { return { ${init_list} }; }`)
     }
-
   }
+
+  // clamp radians
+  @math_func("clamp_radians", { accept_comp_kind: ["floating"] })
+  static gen_clamp_radians(b: CodeBuilder, opt: MathGenOptions) {
+    const base_name = opt.base_name;
+    const dim = opt.dim;
+    const comp_name = opt.component_name;
+    const vec_name = dim === 1 ? comp_name : `${base_name}${dim}`;
+
+    if (dim === 1) {
+      b.$line(`inline ${comp_name} clamp_radians(${comp_name} v) {`)
+      b.$indent(_b => {
+        b.$line(`v = fmod(v, ${comp_name}(kPi2));`)
+        b.$line(`if (v < ${comp_name}(0)) {`)
+        b.$indent(_b => {
+          b.$line(`v += ${comp_name}(kPi2);`)
+        })
+        b.$line(`}`)
+        b.$line(`return v;`)
+      })
+      b.$line(`}`)
+    } else {
+      const init_expr = _comp_lut
+        .slice(0, dim)
+        .map(c => `clamp_radians(v.${c})`)
+        .join(', ');
+      b.$line(`inline ${vec_name} clamp_radians(const ${vec_name} &v) { return { ${init_expr} }; }`)
+    }
+  }
+
+  // clamp degrees
+  @math_func("clamp_degrees", { accept_comp_kind: ["floating"] })
+  static gen_clamp_degrees(b: CodeBuilder, opt: MathGenOptions) {
+    const base_name = opt.base_name;
+    const dim = opt.dim;
+    const comp_name = opt.component_name;
+    const vec_name = dim === 1 ? comp_name : `${base_name}${dim}`;
+
+    if (dim === 1) {
+      b.$line(`inline ${comp_name} clamp_degrees(${comp_name} v) {`)
+      b.$indent(_b => {
+        b.$line(`v = fmod(v, ${comp_name}(360));`)
+        b.$line(`if (v < ${comp_name}(0)) {`)
+        b.$indent(_b => {
+          b.$line(`v += ${comp_name}(360);`)
+        })
+        b.$line(`}`)
+        b.$line(`return v;`)
+      })
+      b.$line(`}`)
+    } else {
+      const init_expr = _comp_lut
+        .slice(0, dim)
+        .map(c => `clamp_degrees(v.${c})`)
+        .join(', ');
+      b.$line(`inline ${vec_name} clamp_degrees(const ${vec_name} &v) { return { ${init_expr} }; }`)
+    }
+  }
+
+  // normalize radians
+  @math_func("normalize_radians", { accept_comp_kind: ["floating"] })
+  static gen_normalize_radians(b: CodeBuilder, opt: MathGenOptions) {
+    const base_name = opt.base_name;
+    const dim = opt.dim;
+    const comp_name = opt.component_name;
+    const vec_name = dim === 1 ? comp_name : `${base_name}${dim}`;
+
+    if (dim === 1) {
+      b.$line(`inline ${comp_name} normalize_radians(${comp_name} v) {`)
+      b.$indent(_b => {
+        b.$line(`v = clamp_radians(v);`)
+        b.$line(`if (v > ${comp_name}(kPi)) {`)
+        b.$indent(_b => {
+          b.$line(`v -= ${comp_name}(kPi2);`)
+        })
+        b.$line(`}`)
+        b.$line(`return v;`)
+      })
+      b.$line(`}`)
+    } else {
+      const init_expr = _comp_lut
+        .slice(0, dim)
+        .map(c => `normalize_radians(v.${c})`)
+        .join(', ');
+      b.$line(`inline ${vec_name} normalize_radians(const ${vec_name} &v) { return { ${init_expr} }; }`)
+    }
+  }
+
+  // normalize degrees
+  @math_func("normalize_degrees", { accept_comp_kind: ["floating"] })
+  static gen_normalize_degrees(b: CodeBuilder, opt: MathGenOptions) {
+    const base_name = opt.base_name;
+    const dim = opt.dim;
+    const comp_name = opt.component_name;
+    const vec_name = dim === 1 ? comp_name : `${base_name}${dim}`;
+
+    if (dim === 1) {
+      b.$line(`inline ${comp_name} normalize_degrees(${comp_name} v) {`)
+      b.$indent(_b => {
+        b.$line(`v = clamp_degrees(v);`)
+        b.$line(`if (v > ${comp_name}(180)) {`)
+        b.$indent(_b => {
+          b.$line(`v -= ${comp_name}(360);`)
+        })
+        b.$line(`}`)
+        b.$line(`return v;`)
+      })
+      b.$line(`}`)
+    } else {
+      const init_expr = _comp_lut
+        .slice(0, dim)
+        .map(c => `normalize_degrees(v.${c})`)
+        .join(', ');
+      b.$line(`inline ${vec_name} normalize_degrees(const ${vec_name} &v) { return { ${init_expr} }; }`)
+    }
+  }
+
 }
 
 export function gen(fwd_builder: CodeBuilder, gen_dir: string) {

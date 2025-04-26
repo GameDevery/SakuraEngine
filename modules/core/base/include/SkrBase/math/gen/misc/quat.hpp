@@ -5,6 +5,7 @@
 #pragma once
 #include "../vec/gen_vector.hpp"
 #include "../mat/gen_matrix.hpp"
+#include "../math/gen_math_func.hpp"
 
 namespace skr {
 inline namespace math {
@@ -28,12 +29,19 @@ struct QuatF {
     inline QuatF& operator=(QuatF const&) = default;
     inline QuatF& operator=(QuatF&&) = default;
     
+    // convert with vector
+    inline explicit QuatF(const float4& vec) : x(vec.x), y(vec.y), z(vec.z), w(vec.w) {}
+    inline explicit operator float4() const { return { x, y, z, w }; }
+    
+    // as vector
+    inline float4& as_vector() { return *reinterpret_cast<float4*>(this); }
+    inline const float4& as_vector() const { return *reinterpret_cast<const float4*>(this); }
+    
+    // convert with rotator
+    QuatF(const RotatorF& rotator);
+    
     // negative operator
     QuatF operator-() const;
-    
-    // compare operator
-    friend bool operator==(QuatF const& lhs, QuatF const& rhs);
-    friend bool operator!=(QuatF const& lhs, QuatF const& rhs);
     
     // get axis & angle
     float3 axis() const;
@@ -64,12 +72,19 @@ struct QuatD {
     inline QuatD& operator=(QuatD const&) = default;
     inline QuatD& operator=(QuatD&&) = default;
     
+    // convert with vector
+    inline explicit QuatD(const double4& vec) : x(vec.x), y(vec.y), z(vec.z), w(vec.w) {}
+    inline explicit operator double4() const { return { x, y, z, w }; }
+    
+    // as vector
+    inline double4& as_vector() { return *reinterpret_cast<double4*>(this); }
+    inline const double4& as_vector() const { return *reinterpret_cast<const double4*>(this); }
+    
+    // convert with rotator
+    QuatD(const RotatorD& rotator);
+    
     // negative operator
     QuatD operator-() const;
-    
-    // compare operator
-    friend bool operator==(QuatD const& lhs, QuatD const& rhs);
-    friend bool operator!=(QuatD const& lhs, QuatD const& rhs);
     
     // get axis & angle
     double3 axis() const;

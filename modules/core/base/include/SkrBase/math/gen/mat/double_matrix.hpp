@@ -42,6 +42,7 @@ struct double3x3 {
         m01(m01), m11(m11), m21(m21),
         m02(m02), m12(m12), m22(m22)
     {}
+    inline double3x3(double3 axis_x, double3 axis_y, double3 axis_z) noexcept : axis_x(axis_x), axis_y(axis_y), axis_z(axis_z) {}
     inline ~double3x3() = default;
     
     // factory
@@ -103,6 +104,7 @@ struct double4x4 {
         m02(m02), m12(m12), m22(m22), m32(m32),
         m03(m03), m13(m13), m23(m23), m33(m33)
     {}
+    inline double4x4(double4 axis_x, double4 axis_y, double4 axis_z, double4 axis_w) noexcept : axis_x(axis_x), axis_y(axis_y), axis_z(axis_z), axis_w(axis_w) {}
     inline ~double4x4() = default;
     
     // factory

@@ -11,6 +11,7 @@ const _suffix_lut: Dict<string> = {
   "double": "D",
 }
 const _quat_comp_lut = ["x", "y", "z", "w"];
+const _rotator_comp_lut = ["pitch", "yaw", "roll"];
 
 interface GenMiscOption {
   fwd_builder: CodeBuilder;
@@ -55,6 +56,7 @@ function _gen_quat(opt: GenMiscOption) {
     // get data
     const comp_name = type_opt.component_name;
     const quat_name = `Quat${suffix}`;
+    const rotator_name = `Rotator${suffix}`;
     const vec3_name = `${base_name}3`;
     const vec4_name = `${base_name}4`;
 
@@ -95,16 +97,29 @@ function _gen_quat(opt: GenMiscOption) {
       b.$line(`inline ${quat_name}& operator=(${quat_name}&&) = default;`)
       b.$line(``)
 
+      // convert with vector
+      b.$line(`// convert with vector`)
+      b.$line(`inline explicit ${quat_name}(const ${vec4_name}& vec) : x(vec.x), y(vec.y), z(vec.z), w(vec.w) {}`)
+      b.$line(`inline explicit operator ${vec4_name}() const { return { x, y, z, w }; }`)
+      b.$line(``)
+
+      // as vector
+      b.$line(`// as vector`)
+      b.$line(`inline ${vec4_name}& as_vector() { return *reinterpret_cast<${vec4_name}*>(this); }`)
+      b.$line(`inline const ${vec4_name}& as_vector() const { return *reinterpret_cast<const ${vec4_name}*>(this); }`)
+      b.$line(``)
+
+      // convert with rotator
+      b.$line(`// convert with rotator`)
+      b.$line(`${quat_name}(const ${rotator_name}& rotator);`)
+      b.$line(``)
+
       // neg operator
       b.$line(`// negative operator`)
       b.$line(`${quat_name} operator-() const;`)
       b.$line(``)
 
-      // compare operator
-      b.$line(`// compare operator`)
-      b.$line(`friend bool operator==(${quat_name} const& lhs, ${quat_name} const& rhs);`)
-      b.$line(`friend bool operator!=(${quat_name} const& lhs, ${quat_name} const& rhs);`)
-      b.$line(``)
+      // [use as_vector()] compare operator
 
       // get axis & angle
       b.$line(`// get axis & angle`)
@@ -139,6 +154,62 @@ function _gen_rotator(opt: GenMiscOption) {
     if (suffix === undefined) {
       throw new Error(`unknown component name ${type_opt.component_name} for quat`);
     }
+
+    // get data
+    const comp_name = type_opt.component_name;
+    const rotator_name = `Rotator${suffix}`;
+    const vec3_name = `${base_name}3`;
+    const vec4_name = `${base_name}4`;
+    const quat_name = `Quat${suffix}`;
+
+    b.$line(`struct ${rotator_name} {`)
+    b.$indent(_b => {
+      // member
+      b.$line(`${comp_name} ${_rotator_comp_lut.join(`, `)};`)
+      b.$line(``)
+
+      // ctor & dtor
+      b.$line(`// ctor & dtor`)
+      b.$line(`inline ${rotator_name}() : pitch(0), yaw(0), roll(0) {}`)
+      {
+        const ctor_params = _rotator_comp_lut
+          .map(c => `${comp_name} ${c}`)
+          .join(`, `);
+        const init_list = _rotator_comp_lut
+          .map(c => `${c}(${c})`)
+          .join(`, `);
+        b.$line(`inline ${rotator_name}(${ctor_params}) : ${init_list} {}`)
+      }
+      b.$line(`inline ~${rotator_name}() = default;`)
+      b.$line(``)
+
+      // factory
+      b.$line(`// factory`)
+      b.$line(``)
+
+      // convert with vector
+      b.$line(`// convert with vector`)
+      b.$line(`inline explicit ${rotator_name}(const ${vec3_name}& vec) : pitch(vec.x), yaw(vec.y), roll(vec.z) {}`)
+      b.$line(`inline explicit operator ${vec3_name}() const { return { pitch, yaw, roll }; }`)
+      b.$line(``)
+
+      // as vector
+      b.$line(`// as vector`)
+      b.$line(`inline ${vec3_name}& as_vector() { return *reinterpret_cast<${vec3_name}*>(this); }`)
+      b.$line(`inline const ${vec3_name}& as_vector() const { return *reinterpret_cast<const ${vec3_name}*>(this); }`)
+      b.$line(``)
+
+      // convert with quat
+      b.$line(`// convert with quat`)
+      b.$line(`${rotator_name}(const ${quat_name}& quat);`)
+      b.$line(``)
+
+      // [use quat] negative operator
+      // [use as_vector()] arithmetic operator
+      // [use as_vector()] compare operator
+
+    })
+    b.$line(`}; `)
 
     fwd_b.$line(`struct Rotator${suffix};`);
   }
@@ -204,6 +275,7 @@ export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
     // include
     builder.$line(`#include "../vec/gen_vector.hpp"`);
     builder.$line(`#include "../mat/gen_matrix.hpp"`);
+    builder.$line(`#include "../math/gen_math_func.hpp"`);
     builder.$line(``);
 
     // gen code
@@ -230,6 +302,8 @@ export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
     // include
     builder.$line(`#include "../vec/gen_vector.hpp"`);
     builder.$line(`#include "../mat/gen_matrix.hpp"`);
+    builder.$line(`#include "../math/gen_math_func.hpp"`);
+    builder.$line(``);
 
     // gen code
     builder.$line(`namespace skr {`);
@@ -255,6 +329,8 @@ export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
     // include
     builder.$line(`#include "../vec/gen_vector.hpp"`);
     builder.$line(`#include "../mat/gen_matrix.hpp"`);
+    builder.$line(`#include "../math/gen_math_func.hpp"`);
+    builder.$line(``);
 
     // gen code
     builder.$line(`namespace skr {`);
@@ -280,6 +356,8 @@ export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
     // include
     builder.$line(`#include "../vec/gen_vector.hpp"`);
     builder.$line(`#include "../mat/gen_matrix.hpp"`);
+    builder.$line(`#include "../math/gen_math_func.hpp"`);
+    builder.$line(``);
 
     // gen code
     builder.$line(`namespace skr {`);

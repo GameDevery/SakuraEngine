@@ -5,7 +5,53 @@
 #pragma once
 #include "../vec/gen_vector.hpp"
 #include "../mat/gen_matrix.hpp"
+#include "../math/gen_math_func.hpp"
+
 namespace skr {
 inline namespace math {
+struct RotatorF {
+    float pitch, yaw, roll;
+    
+    // ctor & dtor
+    inline RotatorF() : pitch(0), yaw(0), roll(0) {}
+    inline RotatorF(float pitch, float yaw, float roll) : pitch(pitch), yaw(yaw), roll(roll) {}
+    inline ~RotatorF() = default;
+    
+    // factory
+    
+    // convert with vector
+    inline explicit RotatorF(const float3& vec) : pitch(vec.x), yaw(vec.y), roll(vec.z) {}
+    inline explicit operator float3() const { return { pitch, yaw, roll }; }
+    
+    // as vector
+    inline float3& as_vector() { return *reinterpret_cast<float3*>(this); }
+    inline const float3& as_vector() const { return *reinterpret_cast<const float3*>(this); }
+    
+    // convert with quat
+    RotatorF(const QuatF& quat);
+    
+}; 
+struct RotatorD {
+    double pitch, yaw, roll;
+    
+    // ctor & dtor
+    inline RotatorD() : pitch(0), yaw(0), roll(0) {}
+    inline RotatorD(double pitch, double yaw, double roll) : pitch(pitch), yaw(yaw), roll(roll) {}
+    inline ~RotatorD() = default;
+    
+    // factory
+    
+    // convert with vector
+    inline explicit RotatorD(const double3& vec) : pitch(vec.x), yaw(vec.y), roll(vec.z) {}
+    inline explicit operator double3() const { return { pitch, yaw, roll }; }
+    
+    // as vector
+    inline double3& as_vector() { return *reinterpret_cast<double3*>(this); }
+    inline const double3& as_vector() const { return *reinterpret_cast<const double3*>(this); }
+    
+    // convert with quat
+    RotatorD(const QuatD& quat);
+    
+}; 
 }
 }

@@ -42,6 +42,7 @@ struct float3x3 {
         m01(m01), m11(m11), m21(m21),
         m02(m02), m12(m12), m22(m22)
     {}
+    inline float3x3(float3 axis_x, float3 axis_y, float3 axis_z) noexcept : axis_x(axis_x), axis_y(axis_y), axis_z(axis_z) {}
     inline ~float3x3() = default;
     
     // factory
@@ -103,6 +104,7 @@ struct float4x4 {
         m02(m02), m12(m12), m22(m22), m32(m32),
         m03(m03), m13(m13), m23(m23), m33(m33)
     {}
+    inline float4x4(float4 axis_x, float4 axis_y, float4 axis_z, float4 axis_w) noexcept : axis_x(axis_x), axis_y(axis_y), axis_z(axis_z), axis_w(axis_w) {}
     inline ~float4x4() = default;
     
     // factory

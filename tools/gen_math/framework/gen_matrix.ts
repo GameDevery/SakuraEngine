@@ -110,6 +110,18 @@ function _gen_class_body(opt: GenMatrixOption) {
           }
         })
         b.$line(`{}`)
+        {
+          const axis_params = _axis_lut
+            .slice(0, dim)
+            .map(axis => `${vec_name} axis_${axis}`)
+            .join(`, `);
+          const axis_init_list = _axis_lut
+            .slice(0, dim)
+            .map(axis => `axis_${axis}(axis_${axis})`)
+            .join(`, `);
+
+          b.$line(`inline ${mat_name}(${axis_params}) noexcept : ${axis_init_list} {}`)
+        }
         b.$line(`inline ~${mat_name}() = default;`)
         b.$line(``)
       }

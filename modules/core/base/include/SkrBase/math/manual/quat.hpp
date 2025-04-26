@@ -9,25 +9,11 @@ inline namespace math
 // impl quat factory
 inline QuatF QuatF::Euler(float pitch, float yaw, float roll)
 {
-    // we just need to match direction  order, then the quat will be correct
-    return RtmConvert<QuatF>::from_rtm(
-        rtm::quat_from_euler(
-            yaw,  // [Right] rtm: pitch->y means right, skr: yaw->y means up
-            roll, // [Up] rtm: yaw->z means up, skr: roll->z means forward
-            pitch // [Forward] rtm: roll->x means forward, skr: pitch->x means right
-        )
-    );
+    return { RotatorF(pitch, yaw, roll) };
 }
 inline QuatD QuatD::Euler(double pitch, double yaw, double roll)
 {
-    // we just need to match direction order, then the quat will be correct
-    return RtmConvert<QuatD>::from_rtm(
-        rtm::quat_from_euler(
-            yaw,  // [Right] rtm: pitch->y means [Right], skr: yaw->y means up
-            roll, // [Up] rtm: yaw->z means [Up], skr: roll->z means forward
-            pitch // [Forward] rtm: roll->x means [Forward], skr: pitch->x means right
-        )
-    );
+    return { RotatorD(pitch, yaw, roll) };
 }
 inline QuatF QuatF::AxisAngle(float3 axis, float angle)
 {
@@ -46,6 +32,28 @@ inline QuatD QuatD::AxisAngle(double3 axis, double angle)
             angle
         )
     );
+}
+
+// impl convert with rotator
+inline QuatF::QuatF(const RotatorF& rotator)
+{
+    // we just need to match direction order, then the quat will be correct
+    auto quat = rtm::quat_from_euler(
+        rotator.yaw,  // [Right] rtm: pitch->y means [Right], skr: yaw->y means up
+        rotator.roll, // [Up] rtm: yaw->z means [Up], skr: roll->z means forward
+        rotator.pitch // [Forward] rtm: roll->x means [Forward], skr: pitch->x means right
+    );
+    RtmConvert<QuatF>::store(quat, *this);
+}
+inline QuatD::QuatD(const RotatorD& rotator)
+{
+    // we just need to match direction order, then the quat will be correct
+    auto quat = rtm::quat_from_euler(
+        rotator.yaw,  // [Right] rtm: pitch->y means [Right], skr: yaw->y means up
+        rotator.roll, // [Up] rtm: yaw->z means [Up], skr: roll->z means forward
+        rotator.pitch // [Forward] rtm: roll->x means [Forward], skr: pitch->x means right
+    );
+    RtmConvert<QuatD>::store(quat, *this);
 }
 
 // impl negative operator
@@ -376,32 +384,6 @@ inline bool is_normalized(const QuatD& q, double threshold = 0.00001)
     );
 }
 
-// equal
-inline bool operator==(const QuatF& lhs, const QuatF& rhs)
-{
-    return rtm::quat_are_equal(
-        RtmConvert<QuatF>::to_rtm(lhs),
-        RtmConvert<QuatF>::to_rtm(rhs)
-    );
-}
-inline bool operator==(const QuatD& lhs, const QuatD& rhs)
-{
-    return rtm::quat_are_equal(
-        RtmConvert<QuatD>::to_rtm(lhs),
-        RtmConvert<QuatD>::to_rtm(rhs)
-    );
-}
-
-// not equal
-inline bool operator!=(const QuatF& lhs, const QuatF& rhs)
-{
-    return !operator==(lhs, rhs);
-}
-inline bool operator!=(const QuatD& lhs, const QuatD& rhs)
-{
-    return !operator==(lhs, rhs);
-}
-
 // nearly equal
 inline bool nearly_equal(const QuatF& lhs, const QuatF& rhs, float threshold = 0.00001f)
 {
@@ -423,11 +405,11 @@ inline bool nearly_equal(const QuatD& lhs, const QuatD& rhs, double threshold = 
 // identity
 inline bool is_identity(const QuatF& q)
 {
-    return q == QuatF::Identity();
+    return all(q.as_vector() == QuatF::Identity().as_vector());
 }
 inline bool is_identity(const QuatD& q)
 {
-    return q == QuatD::Identity();
+    return all(q.as_vector() == QuatD::Identity().as_vector());
 }
 
 // nearly identity
