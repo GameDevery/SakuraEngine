@@ -664,6 +664,9 @@ class _MathFuncGenerator {
 }
 
 export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
+  const inc_builder = new CodeBuilder()
+  inc_builder.$util_header();
+
   for (const base_name in type_options) {
     const type_opt = type_options[base_name]!;
 
@@ -710,5 +713,10 @@ export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
     // write to file
     const file_name = path.join(gen_dir, `${base_name}_math.hpp`);
     builder.write_file(file_name);
+    inc_builder.$line(`#include "./${base_name}_math.hpp"`);
   }
+
+  // write inc file
+  const inc_file_name = path.join(gen_dir, `gen_math_func.hpp`);
+  inc_builder.write_file(inc_file_name);
 }

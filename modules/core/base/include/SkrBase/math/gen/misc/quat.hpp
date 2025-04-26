@@ -3,13 +3,11 @@
 //! *************************************************************************
 
 #pragma once
-#include <cstdint>
-#include <cmath>
-#include "../gen_math_fwd.hpp"
-#include <SkrBase/misc/debug.h>
-#include <SkrBase/misc/hash.hpp>
+#include "../vec/gen_vector.hpp"
+#include "../mat/gen_matrix.hpp"
 
 namespace skr {
+inline namespace math {
 struct QuatF {
     float x, y, z, w;
     
@@ -21,12 +19,30 @@ struct QuatF {
     // factory
     inline static QuatF Identity() { return { 0, 0, 0, 1 }; }
     inline static QuatF Fill(float v) { return { v, v, v, v }; }
+    static QuatF Euler(float pitch, float yaw, float roll);
+    static QuatF AxisAngle(float3 axis, float angle);
     
     // copy & move & assign & move assign
     inline QuatF(QuatF const&) = default;
     inline QuatF(QuatF&&) = default;
     inline QuatF& operator=(QuatF const&) = default;
     inline QuatF& operator=(QuatF&&) = default;
+    
+    // negative operator
+    QuatF operator-() const;
+    
+    // compare operator
+    friend bool operator==(QuatF const& lhs, QuatF const& rhs);
+    friend bool operator!=(QuatF const& lhs, QuatF const& rhs);
+    
+    // get axis & angle
+    float3 axis() const;
+    float angle() const;
+    void axis_angle(float3& axis, float& angle) const;
+    
+    // identity
+    bool is_identity() const;
+    bool is_nearly_identity(float threshold_angle = float(0.00001)) const;
 };
 struct QuatD {
     double x, y, z, w;
@@ -39,11 +55,30 @@ struct QuatD {
     // factory
     inline static QuatD Identity() { return { 0, 0, 0, 1 }; }
     inline static QuatD Fill(double v) { return { v, v, v, v }; }
+    static QuatD Euler(double pitch, double yaw, double roll);
+    static QuatD AxisAngle(double3 axis, double angle);
     
     // copy & move & assign & move assign
     inline QuatD(QuatD const&) = default;
     inline QuatD(QuatD&&) = default;
     inline QuatD& operator=(QuatD const&) = default;
     inline QuatD& operator=(QuatD&&) = default;
+    
+    // negative operator
+    QuatD operator-() const;
+    
+    // compare operator
+    friend bool operator==(QuatD const& lhs, QuatD const& rhs);
+    friend bool operator!=(QuatD const& lhs, QuatD const& rhs);
+    
+    // get axis & angle
+    double3 axis() const;
+    double angle() const;
+    void axis_angle(double3& axis, double& angle) const;
+    
+    // identity
+    bool is_identity() const;
+    bool is_nearly_identity(double threshold_angle = double(0.00001)) const;
 };
+}
 }

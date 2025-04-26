@@ -10,6 +10,7 @@
 #include <SkrBase/misc/hash.hpp>
 
 namespace skr {
+inline namespace math {
 struct bool2 {
     bool x, y;
     
@@ -46,10 +47,10 @@ struct bool2 {
     inline bool2 operator!() const { return { !x, !y }; }
     
     // boolean operator
-    inline bool2 friend operator&&(const bool2& lhs, const bool2& rhs) { return {lhs.x && rhs.x, lhs.y && rhs.y}; }
-    inline bool2 friend operator||(const bool2& lhs, const bool2& rhs) { return {lhs.x || rhs.x, lhs.y || rhs.y}; }
-    inline bool2 friend operator==(const bool2& lhs, const bool2& rhs) { return {lhs.x == rhs.x, lhs.y == rhs.y}; }
-    inline bool2 friend operator!=(const bool2& lhs, const bool2& rhs) { return {lhs.x != rhs.x, lhs.y != rhs.y}; }
+    inline friend bool2 operator&&(const bool2& lhs, const bool2& rhs) { return {lhs.x && rhs.x, lhs.y && rhs.y}; }
+    inline friend bool2 operator||(const bool2& lhs, const bool2& rhs) { return {lhs.x || rhs.x, lhs.y || rhs.y}; }
+    inline friend bool2 operator==(const bool2& lhs, const bool2& rhs) { return {lhs.x == rhs.x, lhs.y == rhs.y}; }
+    inline friend bool2 operator!=(const bool2& lhs, const bool2& rhs) { return {lhs.x != rhs.x, lhs.y != rhs.y}; }
     
     // swizzle
     inline bool2 xx() const { return {x, x}; }
@@ -105,10 +106,10 @@ struct bool3 {
     inline bool3 operator!() const { return { !x, !y, !z }; }
     
     // boolean operator
-    inline bool3 friend operator&&(const bool3& lhs, const bool3& rhs) { return {lhs.x && rhs.x, lhs.y && rhs.y, lhs.z && rhs.z}; }
-    inline bool3 friend operator||(const bool3& lhs, const bool3& rhs) { return {lhs.x || rhs.x, lhs.y || rhs.y, lhs.z || rhs.z}; }
-    inline bool3 friend operator==(const bool3& lhs, const bool3& rhs) { return {lhs.x == rhs.x, lhs.y == rhs.y, lhs.z == rhs.z}; }
-    inline bool3 friend operator!=(const bool3& lhs, const bool3& rhs) { return {lhs.x != rhs.x, lhs.y != rhs.y, lhs.z != rhs.z}; }
+    inline friend bool3 operator&&(const bool3& lhs, const bool3& rhs) { return {lhs.x && rhs.x, lhs.y && rhs.y, lhs.z && rhs.z}; }
+    inline friend bool3 operator||(const bool3& lhs, const bool3& rhs) { return {lhs.x || rhs.x, lhs.y || rhs.y, lhs.z || rhs.z}; }
+    inline friend bool3 operator==(const bool3& lhs, const bool3& rhs) { return {lhs.x == rhs.x, lhs.y == rhs.y, lhs.z == rhs.z}; }
+    inline friend bool3 operator!=(const bool3& lhs, const bool3& rhs) { return {lhs.x != rhs.x, lhs.y != rhs.y, lhs.z != rhs.z}; }
     
     // swizzle
     inline bool2 xx() const { return {x, x}; }
@@ -211,10 +212,10 @@ struct bool4 {
     inline bool4 operator!() const { return { !x, !y, !z, !w }; }
     
     // boolean operator
-    inline bool4 friend operator&&(const bool4& lhs, const bool4& rhs) { return {lhs.x && rhs.x, lhs.y && rhs.y, lhs.z && rhs.z, lhs.w && rhs.w}; }
-    inline bool4 friend operator||(const bool4& lhs, const bool4& rhs) { return {lhs.x || rhs.x, lhs.y || rhs.y, lhs.z || rhs.z, lhs.w || rhs.w}; }
-    inline bool4 friend operator==(const bool4& lhs, const bool4& rhs) { return {lhs.x == rhs.x, lhs.y == rhs.y, lhs.z == rhs.z, lhs.w == rhs.w}; }
-    inline bool4 friend operator!=(const bool4& lhs, const bool4& rhs) { return {lhs.x != rhs.x, lhs.y != rhs.y, lhs.z != rhs.z, lhs.w != rhs.w}; }
+    inline friend bool4 operator&&(const bool4& lhs, const bool4& rhs) { return {lhs.x && rhs.x, lhs.y && rhs.y, lhs.z && rhs.z, lhs.w && rhs.w}; }
+    inline friend bool4 operator||(const bool4& lhs, const bool4& rhs) { return {lhs.x || rhs.x, lhs.y || rhs.y, lhs.z || rhs.z, lhs.w || rhs.w}; }
+    inline friend bool4 operator==(const bool4& lhs, const bool4& rhs) { return {lhs.x == rhs.x, lhs.y == rhs.y, lhs.z == rhs.z, lhs.w == rhs.w}; }
+    inline friend bool4 operator!=(const bool4& lhs, const bool4& rhs) { return {lhs.x != rhs.x, lhs.y != rhs.y, lhs.z != rhs.z, lhs.w != rhs.w}; }
     
     // swizzle
     inline bool2 xx() const { return {x, x}; }
@@ -624,4 +625,5 @@ struct bool4 {
         return result;
     }
 };
+}
 }

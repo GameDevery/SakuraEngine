@@ -74,11 +74,12 @@ function _gen_class_body(opt: GenMatrixOption) {
       // ctor & dtor
       {
         b.$line(`// ctor & dtor`)
-        const default_ctor_exprs = _axis_lut
-          .slice(0, dim)
-          .map(axis => `axis_${axis}(0)`)
-          .join(`, `);
-        b.$line(`inline ${mat_name}() : ${default_ctor_exprs} {}`)
+        // const default_ctor_exprs = `: ` + _axis_lut
+        //   .slice(0, dim)
+        //   .map(axis => `axis_${axis}(0)`)
+        //   .join(`, `);
+        const default_ctor_exprs = `/*do noting for performance purpose, use factory init will be better*/`
+        b.$line(`inline ${mat_name}() ${default_ctor_exprs} {}`)
         b.$line(`inline ${mat_name}(`)
         b.$indent(_b => {
           for (let row_idx = 0; row_idx < dim; ++row_idx) {
@@ -192,6 +193,9 @@ function _gen_class_body(opt: GenMatrixOption) {
 
 
 export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
+  const inc_builder = new CodeBuilder();
+  inc_builder.$util_header();
+
   for (const base_name in type_options) {
     const type_opt = type_options[base_name]!;
 
@@ -213,6 +217,8 @@ export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
 
     // gen code
     builder.$line(`namespace skr {`);
+    builder.$line(`inline namespace math {`);
+
     _gen_class_body({
       fwd_builder,
       builder,
@@ -220,9 +226,15 @@ export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
       ...type_opt
     })
     builder.$line(`}`)
+    builder.$line(`}`)
 
     // write to file
     const file_name = path.join(gen_dir, `${base_name}_matrix.hpp`);
     builder.write_file(file_name)
+    inc_builder.$line(`#include "./${path.basename(file_name)}"`);
   }
+
+  // write include file
+  const file_name = path.join(gen_dir, `gen_matrix.hpp`);
+  inc_builder.write_file(file_name);
 }

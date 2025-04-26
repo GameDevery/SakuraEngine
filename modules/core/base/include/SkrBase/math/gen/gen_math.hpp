@@ -3,9 +3,8 @@
 //! *************************************************************************
 
 #pragma once
-#include "../vec/gen_vector.hpp"
-#include "../mat/gen_matrix.hpp"
-namespace skr {
-inline namespace math {
-}
-}
+#include "gen_math_fwd.hpp"
+#include "./vec/gen_vector.hpp"
+#include "./mat/gen_matrix.hpp"
+#include "./math/gen_math_func.hpp"
+#include "./misc/gen_misc.hpp"

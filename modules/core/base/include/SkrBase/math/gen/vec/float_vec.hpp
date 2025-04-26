@@ -10,6 +10,7 @@
 #include <SkrBase/misc/hash.hpp>
 
 namespace skr {
+inline namespace math {
 struct float2 {
     float x, y;
     
@@ -60,12 +61,12 @@ struct float2 {
     inline float2& operator%=(const float2& rhs) { x = ::std::fmod(x, rhs.x), y = ::std::fmod(y, rhs.y); return *this; }
     
     // compare operator
-    bool2 friend operator==(const float2& lhs, const float2& rhs);
-    bool2 friend operator!=(const float2& lhs, const float2& rhs);
-    bool2 friend operator<(const float2& lhs, const float2& rhs);
-    bool2 friend operator<=(const float2& lhs, const float2& rhs);
-    bool2 friend operator>(const float2& lhs, const float2& rhs);
-    bool2 friend operator>=(const float2& lhs, const float2& rhs);
+    friend bool2 operator==(const float2& lhs, const float2& rhs);
+    friend bool2 operator!=(const float2& lhs, const float2& rhs);
+    friend bool2 operator<(const float2& lhs, const float2& rhs);
+    friend bool2 operator<=(const float2& lhs, const float2& rhs);
+    friend bool2 operator>(const float2& lhs, const float2& rhs);
+    friend bool2 operator>=(const float2& lhs, const float2& rhs);
     
     // swizzle
     inline float2 xx() const { return {x, x}; }
@@ -135,12 +136,12 @@ struct float3 {
     inline float3& operator%=(const float3& rhs) { x = ::std::fmod(x, rhs.x), y = ::std::fmod(y, rhs.y), z = ::std::fmod(z, rhs.z); return *this; }
     
     // compare operator
-    bool3 friend operator==(const float3& lhs, const float3& rhs);
-    bool3 friend operator!=(const float3& lhs, const float3& rhs);
-    bool3 friend operator<(const float3& lhs, const float3& rhs);
-    bool3 friend operator<=(const float3& lhs, const float3& rhs);
-    bool3 friend operator>(const float3& lhs, const float3& rhs);
-    bool3 friend operator>=(const float3& lhs, const float3& rhs);
+    friend bool3 operator==(const float3& lhs, const float3& rhs);
+    friend bool3 operator!=(const float3& lhs, const float3& rhs);
+    friend bool3 operator<(const float3& lhs, const float3& rhs);
+    friend bool3 operator<=(const float3& lhs, const float3& rhs);
+    friend bool3 operator>(const float3& lhs, const float3& rhs);
+    friend bool3 operator>=(const float3& lhs, const float3& rhs);
     
     // swizzle
     inline float2 xx() const { return {x, x}; }
@@ -257,12 +258,12 @@ struct float4 {
     inline float4& operator%=(const float4& rhs) { x = ::std::fmod(x, rhs.x), y = ::std::fmod(y, rhs.y), z = ::std::fmod(z, rhs.z), w = ::std::fmod(w, rhs.w); return *this; }
     
     // compare operator
-    bool4 friend operator==(const float4& lhs, const float4& rhs);
-    bool4 friend operator!=(const float4& lhs, const float4& rhs);
-    bool4 friend operator<(const float4& lhs, const float4& rhs);
-    bool4 friend operator<=(const float4& lhs, const float4& rhs);
-    bool4 friend operator>(const float4& lhs, const float4& rhs);
-    bool4 friend operator>=(const float4& lhs, const float4& rhs);
+    friend bool4 operator==(const float4& lhs, const float4& rhs);
+    friend bool4 operator!=(const float4& lhs, const float4& rhs);
+    friend bool4 operator<(const float4& lhs, const float4& rhs);
+    friend bool4 operator<=(const float4& lhs, const float4& rhs);
+    friend bool4 operator>(const float4& lhs, const float4& rhs);
+    friend bool4 operator>=(const float4& lhs, const float4& rhs);
     
     // swizzle
     inline float2 xx() const { return {x, x}; }
@@ -672,4 +673,5 @@ struct float4 {
         return result;
     }
 };
+}
 }

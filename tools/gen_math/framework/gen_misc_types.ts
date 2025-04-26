@@ -55,6 +55,8 @@ function _gen_quat(opt: GenMiscOption) {
     // get data
     const comp_name = type_opt.component_name;
     const quat_name = `Quat${suffix}`;
+    const vec3_name = `${base_name}3`;
+    const vec4_name = `${base_name}4`;
 
     b.$line(`struct ${quat_name} {`)
     b.$indent(_b => {
@@ -81,6 +83,8 @@ function _gen_quat(opt: GenMiscOption) {
       b.$line(`// factory`)
       b.$line(`inline static ${quat_name} Identity() { return { 0, 0, 0, 1 }; }`)
       b.$line(`inline static ${quat_name} Fill(${comp_name} v) { return { v, v, v, v }; }`)
+      b.$line(`static ${quat_name} Euler(${comp_name} pitch, ${comp_name} yaw, ${comp_name} roll);`)
+      b.$line(`static ${quat_name} AxisAngle(${vec3_name} axis, ${comp_name} angle);`)
       b.$line(``)
 
       // copy & move & assign & move assign
@@ -89,7 +93,30 @@ function _gen_quat(opt: GenMiscOption) {
       b.$line(`inline ${quat_name}(${quat_name}&&) = default;`)
       b.$line(`inline ${quat_name}& operator=(${quat_name} const&) = default;`)
       b.$line(`inline ${quat_name}& operator=(${quat_name}&&) = default;`)
+      b.$line(``)
 
+      // neg operator
+      b.$line(`// negative operator`)
+      b.$line(`${quat_name} operator-() const;`)
+      b.$line(``)
+
+      // compare operator
+      b.$line(`// compare operator`)
+      b.$line(`friend bool operator==(${quat_name} const& lhs, ${quat_name} const& rhs);`)
+      b.$line(`friend bool operator!=(${quat_name} const& lhs, ${quat_name} const& rhs);`)
+      b.$line(``)
+
+      // get axis & angle
+      b.$line(`// get axis & angle`)
+      b.$line(`${vec3_name} axis() const;`)
+      b.$line(`${comp_name} angle() const;`)
+      b.$line(`void axis_angle(${vec3_name}& axis, ${comp_name}& angle) const;`);
+      b.$line(``)
+
+      // identity
+      b.$line(`// identity`)
+      b.$line(`bool is_identity() const;`)
+      b.$line(`bool is_nearly_identity(${comp_name} threshold_angle = ${comp_name}(0.00001)) const;`)
     })
     b.$line(`};`)
   }
@@ -165,6 +192,9 @@ function _gen_camera(opt: GenMiscOption) {
 }
 
 export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
+  const inc_builder = new CodeBuilder();
+  inc_builder.$util_header();
+
   // generate quat
   {
     // header
@@ -172,24 +202,24 @@ export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
     builder.$util_header();
 
     // include
-    builder.$line(`#include <cstdint>`);
-    builder.$line(`#include <cmath>`);
-    builder.$line(`#include "../gen_math_fwd.hpp"`);
-    builder.$line(`#include <SkrBase/misc/debug.h>`);
-    builder.$line(`#include <SkrBase/misc/hash.hpp>`);
+    builder.$line(`#include "../vec/gen_vector.hpp"`);
+    builder.$line(`#include "../mat/gen_matrix.hpp"`);
     builder.$line(``);
 
     // gen code
     builder.$line(`namespace skr {`);
+    builder.$line(`inline namespace math {`);
     _gen_quat({
       fwd_builder,
       builder,
     })
     builder.$line(`}`)
+    builder.$line(`}`)
 
     // write to file
     const file_name = path.join(gen_dir, `quat.hpp`);
     builder.write_file(file_name);
+    inc_builder.$line(`#include "./quat.hpp"`);
   }
 
   // generate rotator
@@ -198,22 +228,23 @@ export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
     builder.$util_header();
 
     // include
-    builder.$line(`#include <cstdint>`);
-    builder.$line(`#include <cmath>`);
-    builder.$line(`#include "../gen_math_fwd.hpp"`);
-    builder.$line(`#include <SkrBase/misc/debug.h>`);
+    builder.$line(`#include "../vec/gen_vector.hpp"`);
+    builder.$line(`#include "../mat/gen_matrix.hpp"`);
 
     // gen code
     builder.$line(`namespace skr {`);
+    builder.$line(`inline namespace math {`);
     _gen_rotator({
       fwd_builder,
       builder,
     })
     builder.$line(`}`)
+    builder.$line(`}`)
 
     // write to file
     const file_name = path.join(gen_dir, `rotator.hpp`);
     builder.write_file(file_name);
+    inc_builder.$line(`#include "./rotator.hpp"`);
   }
 
   // generate transform
@@ -222,22 +253,23 @@ export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
     builder.$util_header();
 
     // include
-    builder.$line(`#include <cstdint>`);
-    builder.$line(`#include <cmath>`);
-    builder.$line(`#include "../gen_math_fwd.hpp"`);
-    builder.$line(`#include <SkrBase/misc/debug.h>`);
+    builder.$line(`#include "../vec/gen_vector.hpp"`);
+    builder.$line(`#include "../mat/gen_matrix.hpp"`);
 
     // gen code
     builder.$line(`namespace skr {`);
+    builder.$line(`inline namespace math {`);
     _gen_transform({
       fwd_builder,
       builder,
     })
     builder.$line(`}`)
+    builder.$line(`}`)
 
     // write to file
     const file_name = path.join(gen_dir, `transform.hpp`);
     builder.write_file(file_name);
+    inc_builder.$line(`#include "./transform.hpp"`);
   }
 
   // generate camera
@@ -246,21 +278,26 @@ export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
     builder.$util_header();
 
     // include
-    builder.$line(`#include <cstdint>`);
-    builder.$line(`#include <cmath>`);
-    builder.$line(`#include "../gen_math_fwd.hpp"`);
-    builder.$line(`#include <SkrBase/misc/debug.h>`);
+    builder.$line(`#include "../vec/gen_vector.hpp"`);
+    builder.$line(`#include "../mat/gen_matrix.hpp"`);
 
     // gen code
     builder.$line(`namespace skr {`);
+    builder.$line(`inline namespace math {`);
     _gen_camera({
       fwd_builder,
       builder,
     })
     builder.$line(`}`)
+    builder.$line(`}`)
 
     // write to file
     const file_name = path.join(gen_dir, `camera.hpp`);
     builder.write_file(file_name);
+    inc_builder.$line(`#include "./camera.hpp"`);
   }
+
+  // write inc file
+  const full_inc_path = path.join(gen_dir, "gen_misc.hpp");
+  inc_builder.write_file(full_inc_path);
 }

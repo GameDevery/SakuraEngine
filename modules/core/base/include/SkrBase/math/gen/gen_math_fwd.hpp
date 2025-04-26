@@ -5,6 +5,7 @@
 #pragma once
 
 namespace skr {
+inline namespace math {
 // float vector, component: float
 struct float2;
 struct float3;
@@ -64,4 +65,5 @@ struct TransformD;
 struct CameraF;
 struct CameraD;
 
+}
 }

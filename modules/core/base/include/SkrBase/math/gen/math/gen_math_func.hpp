@@ -3,9 +3,10 @@
 //! *************************************************************************
 
 #pragma once
-#include "../vec/gen_vector.hpp"
-#include "../mat/gen_matrix.hpp"
-namespace skr {
-inline namespace math {
-}
-}
+#include "./float_math.hpp"
+#include "./double_math.hpp"
+#include "./bool_math.hpp"
+#include "./int_math.hpp"
+#include "./uint_math.hpp"
+#include "./long_math.hpp"
+#include "./ulong_math.hpp"

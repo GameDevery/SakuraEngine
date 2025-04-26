@@ -11,6 +11,7 @@
 #include <SkrBase/misc/hash.hpp>
 
 namespace skr {
+inline namespace math {
 struct float3x3 {
     union {
         // base axis
@@ -31,7 +32,7 @@ struct float3x3 {
         };
     };
     // ctor & dtor
-    inline float3x3() : axis_x(0), axis_y(0), axis_z(0) {}
+    inline float3x3() /*do noting for performance purpose, use factory init will be better*/ {}
     inline float3x3(
         float m00, float m01, float m02,
         float m10, float m11, float m12,
@@ -90,7 +91,7 @@ struct float4x4 {
         };
     };
     // ctor & dtor
-    inline float4x4() : axis_x(0), axis_y(0), axis_z(0), axis_w(0) {}
+    inline float4x4() /*do noting for performance purpose, use factory init will be better*/ {}
     inline float4x4(
         float m00, float m01, float m02, float m03,
         float m10, float m11, float m12, float m13,
@@ -131,4 +132,5 @@ struct float4x4 {
     inline float4x4& operator=(const float4x4& rhs) noexcept { this->axis_x = rhs.axis_x; this->axis_y = rhs.axis_y; this->axis_z = rhs.axis_z; this->axis_w = rhs.axis_w; return *this; }
     inline float4x4& operator=(float4x4&& rhs) noexcept { this->axis_x = std::move(rhs.axis_x); this->axis_y = std::move(rhs.axis_y); this->axis_z = std::move(rhs.axis_z); this->axis_w = std::move(rhs.axis_w); return *this; }
 };
+}
 }

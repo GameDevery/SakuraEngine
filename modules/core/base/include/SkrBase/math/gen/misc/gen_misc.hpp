@@ -3,9 +3,7 @@
 //! *************************************************************************
 
 #pragma once
-#include "../vec/gen_vector.hpp"
-#include "../mat/gen_matrix.hpp"
-namespace skr {
-inline namespace math {
-}
-}
+#include "./quat.hpp"
+#include "./rotator.hpp"
+#include "./transform.hpp"
+#include "./camera.hpp"

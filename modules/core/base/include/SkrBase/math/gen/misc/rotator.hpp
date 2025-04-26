@@ -3,9 +3,9 @@
 //! *************************************************************************
 
 #pragma once
-#include <cstdint>
-#include <cmath>
-#include "../gen_math_fwd.hpp"
-#include <SkrBase/misc/debug.h>
+#include "../vec/gen_vector.hpp"
+#include "../mat/gen_matrix.hpp"
 namespace skr {
+inline namespace math {
+}
 }

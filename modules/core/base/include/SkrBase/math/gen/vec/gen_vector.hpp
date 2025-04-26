@@ -3,9 +3,11 @@
 //! *************************************************************************
 
 #pragma once
-#include "../vec/gen_vector.hpp"
-#include "../mat/gen_matrix.hpp"
-namespace skr {
-inline namespace math {
-}
-}
+#include "./float_vec.hpp"
+#include "./double_vec.hpp"
+#include "./bool_vec.hpp"
+#include "./int_vec.hpp"
+#include "./uint_vec.hpp"
+#include "./long_vec.hpp"
+#include "./ulong_vec.hpp"
+#include "./vec_compare_and_convert.hpp"

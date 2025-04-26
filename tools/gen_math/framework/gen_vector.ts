@@ -334,13 +334,13 @@ function _gen_class_body(opt: GenVectorOption) {
             .slice(0, dim)
             .map(comp => `lhs.${comp} ${op} rhs.${comp}`)
             .join(", ");
-          b.$line(`inline ${vec_name} friend operator${op}(const ${vec_name}& lhs, const ${vec_name}& rhs) { return {${compare_exprs}}; }`);
+          b.$line(`inline friend ${vec_name} operator${op}(const ${vec_name}& lhs, const ${vec_name}& rhs) { return {${compare_exprs}}; }`);
         }
         b.$line(``);
       } else {
         b.$line(`// compare operator`);
         for (const op of _compare_ops) {
-          b.$line(`bool${dim} friend operator${op}(const ${vec_name}& lhs, const ${vec_name}& rhs);`);
+          b.$line(`friend bool${dim} operator${op}(const ${vec_name}& lhs, const ${vec_name}& rhs);`);
         }
         b.$line(``);
       }
@@ -426,6 +426,9 @@ function _gen_covert_operator(compare_builder: CodeBuilder) {
 }
 
 export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
+  const inc_builder = new CodeBuilder()
+  inc_builder.$util_header();
+
   // generate class body
   for (const base_name in type_options) {
     const type_opt = type_options[base_name]!;
@@ -444,6 +447,7 @@ export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
 
     // gen code
     vector_builder.$line(`namespace skr {`)
+    vector_builder.$line(`inline namespace math {`);
     _gen_class_body({
       fwd_builder: fwd_builder,
       builder: vector_builder,
@@ -451,10 +455,12 @@ export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
       ...type_opt,
     })
     vector_builder.$line(`}`);
+    vector_builder.$line(`}`);
 
     // write to file
     const out_path = path.join(gen_dir, `${base_name}_vec.hpp`);
     vector_builder.write_file(out_path);
+    inc_builder.$line(`#include "./${base_name}_vec.hpp"`);
   }
 
   // get has boolean type
@@ -475,17 +481,24 @@ export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
     compare_op_builder.$line(``);
 
     compare_op_builder.$line(`namespace skr {`)
-    compare_op_builder.$indent(_b => {
-      // compare operator
-      _gen_compare_operator(compare_op_builder)
+    compare_op_builder.$line(`inline namespace math {`);
 
-      // convert operator
-      _gen_covert_operator(compare_op_builder)
-    })
+    // compare operator
+    _gen_compare_operator(compare_op_builder)
+
+    // convert operator
+    _gen_covert_operator(compare_op_builder)
+
+    compare_op_builder.$line(`}`)
     compare_op_builder.$line(`}`)
 
     // write to file
     const out_path = path.join(gen_dir, `vec_compare_and_convert.hpp`);
     compare_op_builder.write_file(out_path);
+    inc_builder.$line(`#include "./vec_compare_and_convert.hpp"`);
   }
+
+  // write include file
+  const inc_path = path.join(gen_dir, `gen_vector.hpp`);
+  inc_builder.write_file(inc_path);
 }

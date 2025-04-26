@@ -10,6 +10,7 @@
 #include <SkrBase/misc/hash.hpp>
 
 namespace skr {
+inline namespace math {
 struct ulong2 {
     uint64_t x, y;
     
@@ -60,12 +61,12 @@ struct ulong2 {
     inline ulong2& operator%=(const ulong2& rhs) { x %= rhs.x, y %= rhs.y; return *this; }
     
     // compare operator
-    bool2 friend operator==(const ulong2& lhs, const ulong2& rhs);
-    bool2 friend operator!=(const ulong2& lhs, const ulong2& rhs);
-    bool2 friend operator<(const ulong2& lhs, const ulong2& rhs);
-    bool2 friend operator<=(const ulong2& lhs, const ulong2& rhs);
-    bool2 friend operator>(const ulong2& lhs, const ulong2& rhs);
-    bool2 friend operator>=(const ulong2& lhs, const ulong2& rhs);
+    friend bool2 operator==(const ulong2& lhs, const ulong2& rhs);
+    friend bool2 operator!=(const ulong2& lhs, const ulong2& rhs);
+    friend bool2 operator<(const ulong2& lhs, const ulong2& rhs);
+    friend bool2 operator<=(const ulong2& lhs, const ulong2& rhs);
+    friend bool2 operator>(const ulong2& lhs, const ulong2& rhs);
+    friend bool2 operator>=(const ulong2& lhs, const ulong2& rhs);
     
     // swizzle
     inline ulong2 xx() const { return {x, x}; }
@@ -135,12 +136,12 @@ struct ulong3 {
     inline ulong3& operator%=(const ulong3& rhs) { x %= rhs.x, y %= rhs.y, z %= rhs.z; return *this; }
     
     // compare operator
-    bool3 friend operator==(const ulong3& lhs, const ulong3& rhs);
-    bool3 friend operator!=(const ulong3& lhs, const ulong3& rhs);
-    bool3 friend operator<(const ulong3& lhs, const ulong3& rhs);
-    bool3 friend operator<=(const ulong3& lhs, const ulong3& rhs);
-    bool3 friend operator>(const ulong3& lhs, const ulong3& rhs);
-    bool3 friend operator>=(const ulong3& lhs, const ulong3& rhs);
+    friend bool3 operator==(const ulong3& lhs, const ulong3& rhs);
+    friend bool3 operator!=(const ulong3& lhs, const ulong3& rhs);
+    friend bool3 operator<(const ulong3& lhs, const ulong3& rhs);
+    friend bool3 operator<=(const ulong3& lhs, const ulong3& rhs);
+    friend bool3 operator>(const ulong3& lhs, const ulong3& rhs);
+    friend bool3 operator>=(const ulong3& lhs, const ulong3& rhs);
     
     // swizzle
     inline ulong2 xx() const { return {x, x}; }
@@ -257,12 +258,12 @@ struct ulong4 {
     inline ulong4& operator%=(const ulong4& rhs) { x %= rhs.x, y %= rhs.y, z %= rhs.z, w %= rhs.w; return *this; }
     
     // compare operator
-    bool4 friend operator==(const ulong4& lhs, const ulong4& rhs);
-    bool4 friend operator!=(const ulong4& lhs, const ulong4& rhs);
-    bool4 friend operator<(const ulong4& lhs, const ulong4& rhs);
-    bool4 friend operator<=(const ulong4& lhs, const ulong4& rhs);
-    bool4 friend operator>(const ulong4& lhs, const ulong4& rhs);
-    bool4 friend operator>=(const ulong4& lhs, const ulong4& rhs);
+    friend bool4 operator==(const ulong4& lhs, const ulong4& rhs);
+    friend bool4 operator!=(const ulong4& lhs, const ulong4& rhs);
+    friend bool4 operator<(const ulong4& lhs, const ulong4& rhs);
+    friend bool4 operator<=(const ulong4& lhs, const ulong4& rhs);
+    friend bool4 operator>(const ulong4& lhs, const ulong4& rhs);
+    friend bool4 operator>=(const ulong4& lhs, const ulong4& rhs);
     
     // swizzle
     inline ulong2 xx() const { return {x, x}; }
@@ -672,4 +673,5 @@ struct ulong4 {
         return result;
     }
 };
+}
 }

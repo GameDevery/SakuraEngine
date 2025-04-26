@@ -10,6 +10,7 @@
 #include <SkrBase/misc/hash.hpp>
 
 namespace skr {
+inline namespace math {
 struct uint2 {
     uint32_t x, y;
     
@@ -60,12 +61,12 @@ struct uint2 {
     inline uint2& operator%=(const uint2& rhs) { x %= rhs.x, y %= rhs.y; return *this; }
     
     // compare operator
-    bool2 friend operator==(const uint2& lhs, const uint2& rhs);
-    bool2 friend operator!=(const uint2& lhs, const uint2& rhs);
-    bool2 friend operator<(const uint2& lhs, const uint2& rhs);
-    bool2 friend operator<=(const uint2& lhs, const uint2& rhs);
-    bool2 friend operator>(const uint2& lhs, const uint2& rhs);
-    bool2 friend operator>=(const uint2& lhs, const uint2& rhs);
+    friend bool2 operator==(const uint2& lhs, const uint2& rhs);
+    friend bool2 operator!=(const uint2& lhs, const uint2& rhs);
+    friend bool2 operator<(const uint2& lhs, const uint2& rhs);
+    friend bool2 operator<=(const uint2& lhs, const uint2& rhs);
+    friend bool2 operator>(const uint2& lhs, const uint2& rhs);
+    friend bool2 operator>=(const uint2& lhs, const uint2& rhs);
     
     // swizzle
     inline uint2 xx() const { return {x, x}; }
@@ -135,12 +136,12 @@ struct uint3 {
     inline uint3& operator%=(const uint3& rhs) { x %= rhs.x, y %= rhs.y, z %= rhs.z; return *this; }
     
     // compare operator
-    bool3 friend operator==(const uint3& lhs, const uint3& rhs);
-    bool3 friend operator!=(const uint3& lhs, const uint3& rhs);
-    bool3 friend operator<(const uint3& lhs, const uint3& rhs);
-    bool3 friend operator<=(const uint3& lhs, const uint3& rhs);
-    bool3 friend operator>(const uint3& lhs, const uint3& rhs);
-    bool3 friend operator>=(const uint3& lhs, const uint3& rhs);
+    friend bool3 operator==(const uint3& lhs, const uint3& rhs);
+    friend bool3 operator!=(const uint3& lhs, const uint3& rhs);
+    friend bool3 operator<(const uint3& lhs, const uint3& rhs);
+    friend bool3 operator<=(const uint3& lhs, const uint3& rhs);
+    friend bool3 operator>(const uint3& lhs, const uint3& rhs);
+    friend bool3 operator>=(const uint3& lhs, const uint3& rhs);
     
     // swizzle
     inline uint2 xx() const { return {x, x}; }
@@ -257,12 +258,12 @@ struct uint4 {
     inline uint4& operator%=(const uint4& rhs) { x %= rhs.x, y %= rhs.y, z %= rhs.z, w %= rhs.w; return *this; }
     
     // compare operator
-    bool4 friend operator==(const uint4& lhs, const uint4& rhs);
-    bool4 friend operator!=(const uint4& lhs, const uint4& rhs);
-    bool4 friend operator<(const uint4& lhs, const uint4& rhs);
-    bool4 friend operator<=(const uint4& lhs, const uint4& rhs);
-    bool4 friend operator>(const uint4& lhs, const uint4& rhs);
-    bool4 friend operator>=(const uint4& lhs, const uint4& rhs);
+    friend bool4 operator==(const uint4& lhs, const uint4& rhs);
+    friend bool4 operator!=(const uint4& lhs, const uint4& rhs);
+    friend bool4 operator<(const uint4& lhs, const uint4& rhs);
+    friend bool4 operator<=(const uint4& lhs, const uint4& rhs);
+    friend bool4 operator>(const uint4& lhs, const uint4& rhs);
+    friend bool4 operator>=(const uint4& lhs, const uint4& rhs);
     
     // swizzle
     inline uint2 xx() const { return {x, x}; }
@@ -672,4 +673,5 @@ struct uint4 {
         return result;
     }
 };
+}
 }
