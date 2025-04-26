@@ -6,7 +6,7 @@ namespace skr
 {
 inline namespace math
 {
-// vector3 mul operator
+// matrix3x3 mul operator
 inline float3x3 operator*(const float3x3& lhs, const float3x3& rhs)
 {
     const auto rtm_lhs    = RtmConvert<float3x3>::to_rtm(lhs);
@@ -64,7 +64,7 @@ inline double3 operator*(const double3& lhs, const double3x3& rhs)
     return RtmConvert<double3>::from_rtm(rtm_result);
 }
 
-// vector4 mul operator
+// matrix4x4 mul operator
 inline float4x4 operator*(const float4x4& lhs, const float4x4& rhs)
 {
     const auto rtm_lhs    = RtmConvert<float4x4>::to_rtm(lhs);
@@ -126,7 +126,7 @@ inline double4 operator*(const double4& lhs, const double4x4& rhs)
     return RtmConvert<double4>::from_rtm(rtm_result);
 }
 
-// vector3 mul free function
+// matrix3x3 mul free function
 inline float3x3 mul(const float3x3& lhs, const float3x3& rhs)
 {
     return lhs * rhs;
@@ -144,7 +144,7 @@ inline double3 mul(const double3& lhs, const double3x3& rhs)
     return lhs * rhs;
 }
 
-// vector4 mul free function
+// matrix4x4 mul free function
 inline float4x4 mul(const float4x4& lhs, const float4x4& rhs)
 {
     return lhs * rhs;
@@ -160,6 +160,218 @@ inline double4x4 mul(const double4x4& lhs, const double4x4& rhs)
 inline double4 mul(const double4& lhs, const double4x4& rhs)
 {
     return lhs * rhs;
+}
+
+// matrix3x3 transpose
+inline float3x3 transpose(const float3x3& m)
+{
+    const auto rtm_mtx    = RtmConvert<float3x3>::to_rtm(m);
+    const auto rtm_result = rtm::matrix_transpose(rtm_mtx);
+    return RtmConvert<float3x3>::from_rtm(rtm_result);
+}
+inline double3x3 transpose(const double3x3& m)
+{
+    const auto rtm_mtx    = RtmConvert<double3x3>::to_rtm(m);
+    const auto rtm_result = rtm::matrix_transpose(rtm_mtx);
+    return RtmConvert<double3x3>::from_rtm(rtm_result);
+}
+
+// matrix4x4 transpose
+inline float4x4 transpose(const float4x4& m)
+{
+    const auto rtm_mtx    = RtmConvert<float4x4>::to_rtm(m);
+    const auto rtm_result = rtm::matrix_transpose(rtm_mtx);
+    return RtmConvert<float4x4>::from_rtm(rtm_result);
+}
+inline double4x4 transpose(const double4x4& m)
+{
+    const auto rtm_mtx    = RtmConvert<double4x4>::to_rtm(m);
+    const auto rtm_result = rtm::matrix_transpose(rtm_mtx);
+    return RtmConvert<double4x4>::from_rtm(rtm_result);
+}
+
+// matrix3x3 inverse
+inline float3x3 inverse(const float3x3& mtx)
+{
+    const auto rtm_mtx    = RtmConvert<float3x3>::to_rtm(mtx);
+    const auto rtm_result = rtm::matrix_inverse(rtm_mtx);
+    return RtmConvert<float3x3>::from_rtm(rtm_result);
+}
+inline float3x3 inverse(const float3x3& mtx, const float3x3& fallback)
+{
+    const auto rtm_mtx      = RtmConvert<float3x3>::to_rtm(mtx);
+    const auto rtm_fallback = RtmConvert<float3x3>::to_rtm(fallback);
+    const auto rtm_result   = rtm::matrix_inverse(rtm_mtx, rtm_fallback);
+    return RtmConvert<float3x3>::from_rtm(rtm_result);
+}
+inline double3x3 inverse(const double3x3& mtx)
+{
+    const auto rtm_mtx    = RtmConvert<double3x3>::to_rtm(mtx);
+    const auto rtm_result = rtm::matrix_inverse(rtm_mtx);
+    return RtmConvert<double3x3>::from_rtm(rtm_result);
+}
+inline double3x3 inverse(const double3x3& mtx, const double3x3& fallback)
+{
+    const auto rtm_mtx      = RtmConvert<double3x3>::to_rtm(mtx);
+    const auto rtm_fallback = RtmConvert<double3x3>::to_rtm(fallback);
+    const auto rtm_result   = rtm::matrix_inverse(rtm_mtx, rtm_fallback);
+    return RtmConvert<double3x3>::from_rtm(rtm_result);
+}
+
+// matrix4x4 inverse
+inline float4x4 inverse(const float4x4& mtx)
+{
+    const auto rtm_matrix = RtmConvert<float4x4>::to_rtm(mtx);
+    const auto rtm_result = rtm::matrix_inverse(rtm_matrix);
+    return RtmConvert<float4x4>::from_rtm(rtm_result);
+}
+inline float4x4 inverse(const float4x4& mtx, const float4x4& fallback)
+{
+    const auto rtm_matrix   = RtmConvert<float4x4>::to_rtm(mtx);
+    const auto rtm_fallback = RtmConvert<float4x4>::to_rtm(fallback);
+    const auto rtm_result   = rtm::matrix_inverse(rtm_matrix, rtm_fallback);
+    return RtmConvert<float4x4>::from_rtm(rtm_result);
+}
+inline double4x4 inverse(const double4x4& mtx)
+{
+    const auto rtm_matrix = RtmConvert<double4x4>::to_rtm(mtx);
+    const auto rtm_result = rtm::matrix_inverse(rtm_matrix);
+    return RtmConvert<double4x4>::from_rtm(rtm_result);
+}
+inline double4x4 inverse(const double4x4& mtx, const double4x4& fallback)
+{
+    const auto rtm_matrix   = RtmConvert<double4x4>::to_rtm(mtx);
+    const auto rtm_fallback = RtmConvert<double4x4>::to_rtm(fallback);
+    const auto rtm_result   = rtm::matrix_inverse(rtm_matrix, rtm_fallback);
+    return RtmConvert<double4x4>::from_rtm(rtm_result);
+}
+
+// matrix3x3 determinant
+inline float determinant(const float3x3& m)
+{
+    const auto rtm_matrix = RtmConvert<float3x3>::to_rtm(m);
+    const auto rtm_result = rtm::matrix_determinant(rtm_matrix);
+    return rtm::scalar_cast(rtm_result);
+}
+inline double determinant(const double3x3& m)
+{
+    const auto rtm_matrix = RtmConvert<double3x3>::to_rtm(m);
+    const auto rtm_result = rtm::matrix_determinant(rtm_matrix);
+    return rtm::scalar_cast(rtm_result);
+}
+
+// matrix4x4 determinant
+inline float determinant(const float4x4& m)
+{
+    const auto rtm_matrix = RtmConvert<float4x4>::to_rtm(m);
+    const auto rtm_result = rtm::matrix_determinant(rtm_matrix);
+    return rtm::scalar_cast(rtm_result);
+}
+inline double determinant(const double4x4& m)
+{
+    const auto rtm_matrix = RtmConvert<double4x4>::to_rtm(m);
+    const auto rtm_result = rtm::matrix_determinant(rtm_matrix);
+    return rtm::scalar_cast(rtm_result);
+}
+
+// matrix3x3 minor
+inline float minor(const float3x3& m, EAxis3 row, EAxis3 col)
+{
+    const auto rtm_matrix = RtmConvert<float3x3>::to_rtm(m);
+    const auto rtm_result = rtm::matrix_minor(
+        rtm_matrix,
+        static_cast<rtm::axis3>(row),
+        static_cast<rtm::axis3>(col)
+    );
+    return rtm::scalar_cast(rtm_result);
+}
+inline double minor(const double3x3& m, EAxis3 row, EAxis3 col)
+{
+    const auto rtm_matrix = RtmConvert<double3x3>::to_rtm(m);
+    const auto rtm_result = rtm::matrix_minor(
+        rtm_matrix,
+        static_cast<rtm::axis3>(row),
+        static_cast<rtm::axis3>(col)
+    );
+    return rtm::scalar_cast(rtm_result);
+}
+
+// matrix4x4 minor
+inline float minor(const float4x4& m, EAxis4 row, EAxis4 col)
+{
+    const auto rtm_matrix = RtmConvert<float4x4>::to_rtm(m);
+    const auto rtm_result = rtm::matrix_minor(
+        rtm_matrix,
+        static_cast<rtm::axis4>(row),
+        static_cast<rtm::axis4>(col)
+    );
+    return rtm::scalar_cast(rtm_result);
+}
+inline double minor(const double4x4& m, EAxis4 row, EAxis4 col)
+{
+    const auto rtm_matrix = RtmConvert<double4x4>::to_rtm(m);
+    const auto rtm_result = rtm::matrix_minor(
+        rtm_matrix,
+        static_cast<rtm::axis4>(row),
+        static_cast<rtm::axis4>(col)
+    );
+    return rtm::scalar_cast(rtm_result);
+}
+
+// matrix3x3 cofactor
+inline float3x3 cofactor(const float3x3& m)
+{
+    const auto rtm_matrix = RtmConvert<float3x3>::to_rtm(m);
+    const auto rtm_result = rtm::matrix_cofactor(rtm_matrix);
+    return RtmConvert<float3x3>::from_rtm(rtm_result);
+}
+inline double3x3 cofactor(const double3x3& m)
+{
+    const auto rtm_matrix = RtmConvert<double3x3>::to_rtm(m);
+    const auto rtm_result = rtm::matrix_cofactor(rtm_matrix);
+    return RtmConvert<double3x3>::from_rtm(rtm_result);
+}
+
+// matrix4x4 cofactor
+inline float4x4 cofactor(const float4x4& m)
+{
+    const auto rtm_matrix = RtmConvert<float4x4>::to_rtm(m);
+    const auto rtm_result = rtm::matrix_cofactor(rtm_matrix);
+    return RtmConvert<float4x4>::from_rtm(rtm_result);
+}
+inline double4x4 cofactor(const double4x4& m)
+{
+    const auto rtm_matrix = RtmConvert<double4x4>::to_rtm(m);
+    const auto rtm_result = rtm::matrix_cofactor(rtm_matrix);
+    return RtmConvert<double4x4>::from_rtm(rtm_result);
+}
+
+// matrix3x3 adjugate
+inline float3x3 adjugate(const float3x3& m)
+{
+    const auto rtm_matrix = RtmConvert<float3x3>::to_rtm(m);
+    const auto rtm_result = rtm::matrix_adjugate(rtm_matrix);
+    return RtmConvert<float3x3>::from_rtm(rtm_result);
+}
+inline double3x3 adjugate(const double3x3& m)
+{
+    const auto rtm_matrix = RtmConvert<double3x3>::to_rtm(m);
+    const auto rtm_result = rtm::matrix_adjugate(rtm_matrix);
+    return RtmConvert<double3x3>::from_rtm(rtm_result);
+}
+
+// matrix4x4 adjugate
+inline float4x4 adjugate(const float4x4& m)
+{
+    const auto rtm_matrix = RtmConvert<float4x4>::to_rtm(m);
+    const auto rtm_result = rtm::matrix_adjugate(rtm_matrix);
+    return RtmConvert<float4x4>::from_rtm(rtm_result);
+}
+inline double4x4 adjugate(const double4x4& m)
+{
+    const auto rtm_matrix = RtmConvert<double4x4>::to_rtm(m);
+    const auto rtm_result = rtm::matrix_adjugate(rtm_matrix);
+    return RtmConvert<double4x4>::from_rtm(rtm_result);
 }
 
 } // namespace math
