@@ -29,12 +29,10 @@ struct TransformF {
     inline TransformF& operator=(TransformF const&) = default;
     inline TransformF& operator=(TransformF&&) = default;
     
-    // negative(inverse) operator
-    TransformF operator-() const;
-    
     // identity
     bool is_identity() const;
     bool is_nearly_identity(float threshold = float(0.00001)) const;
+    
 };
 struct TransformD {
     alignas(16) QuatD rotation;
@@ -55,12 +53,10 @@ struct TransformD {
     inline TransformD& operator=(TransformD const&) = default;
     inline TransformD& operator=(TransformD&&) = default;
     
-    // negative(inverse) operator
-    TransformD operator-() const;
-    
     // identity
     bool is_identity() const;
     bool is_nearly_identity(double threshold = double(0.00001)) const;
+    
 };
 }
 }

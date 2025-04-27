@@ -267,5 +267,55 @@ struct RtmConvert<QuatD> {
         return result;
     }
 };
+
+// transform
+template <>
+struct RtmConvert<TransformF> {
+    inline static rtm::qvvf to_rtm(const TransformF& t)
+    {
+        return rtm::qvvf(
+            RtmConvert<QuatF>::to_rtm(t.rotation),
+            RtmConvert<float3>::to_rtm(t.position),
+            RtmConvert<float3>::to_rtm(t.scale)
+        );
+    }
+    inline static void store(const rtm::qvvf& t, TransformF& out)
+    {
+        RtmConvert<QuatF>::store(t.rotation, out.rotation);
+        RtmConvert<float3>::store(t.translation, out.position);
+        RtmConvert<float3>::store(t.scale, out.scale);
+    }
+    inline static TransformF from_rtm(const rtm::qvvf& t)
+    {
+        TransformF result;
+        store(t, result);
+        return result;
+    }
+};
+template <>
+struct RtmConvert<TransformD> {
+    inline static rtm::qvvd to_rtm(const TransformD& t)
+    {
+        return rtm::qvvd(
+            RtmConvert<QuatD>::to_rtm(t.rotation),
+            RtmConvert<double3>::to_rtm(t.position),
+            RtmConvert<double3>::to_rtm(t.scale)
+        );
+    }
+    inline static void store(const rtm::qvvd& t, TransformD& out)
+    {
+        RtmConvert<QuatD>::store(t.rotation, out.rotation);
+        RtmConvert<double3>::store(t.translation, out.position);
+        RtmConvert<double3>::store(t.scale, out.scale);
+    }
+    inline static TransformD from_rtm(const rtm::qvvd& t)
+    {
+        TransformD result;
+        store(t, result);
+        return result;
+    }
+};
+
+
 } // namespace math
 } // namespace skr

@@ -285,15 +285,12 @@ function _gen_transform(opt: GenMiscOption) {
       b.$line(`inline ${transform_name}& operator=(${transform_name}&&) = default;`)
       b.$line(``)
 
-      // negative(inverse) operator
-      b.$line(`// negative(inverse) operator`)
-      b.$line(`${transform_name} operator-() const;`)
-      b.$line(``)
-
       // identity
       b.$line(`// identity`)
       b.$line(`bool is_identity() const;`)
       b.$line(`bool is_nearly_identity(${comp_name} threshold = ${comp_name}(0.00001)) const;`)
+      b.$line(``)
+
     })
     b.$line(`};`)
 
