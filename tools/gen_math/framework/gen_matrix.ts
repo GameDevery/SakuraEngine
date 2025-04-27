@@ -233,6 +233,19 @@ function _gen_class_body(opt: GenMatrixOption) {
         b.$line(``)
       }
 
+      // factory for utility usage
+      b.$line(`// factory for utility usage`)
+      if (dim === 4) {
+        b.$line(`static ${mat_name} look_to(const ${vec_name}& from, const ${vec_name}& dir, const ${vec_name}& up);`)
+        b.$line(`static ${mat_name} look_at(const ${vec_name}& from, const ${vec_name}& to, const ${vec_name}& up);`)
+        b.$line(`static ${mat_name} view_to(const ${vec_name}& from, const ${vec_name}& dir, const ${vec_name}& up);`)
+        b.$line(`static ${mat_name} view_at(const ${vec_name}& from, const ${vec_name}& to, const ${vec_name}& up);`)
+        b.$line(`static ${mat_name} perspective(${comp_name} view_width, ${comp_name} view_height, ${comp_name} near, ${comp_name} far);`)
+        b.$line(`static ${mat_name} perspective_fov(${comp_name} fov_y, ${comp_name} aspect_ratio, ${comp_name} near, ${comp_name} far);`)
+        b.$line(`static ${mat_name} ortho(${comp_name} width, ${comp_name} height, ${comp_name} near, ${comp_name} far);`)
+      }
+      b.$line(``)
+
       // copy & move & assign & move assign
       {
         b.$line(`// copy & move & assign & move assign`)

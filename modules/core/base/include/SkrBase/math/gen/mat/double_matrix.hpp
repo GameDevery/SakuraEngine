@@ -72,6 +72,8 @@ struct double3x3 {
     inline static double3x3 zero() { return fill(0); }
     inline static double3x3 one() { return fill(1); }
     
+    // factory for utility usage
+    
     // copy & move & assign & move assign
     inline double3x3(const double3x3& rhs) noexcept : axis_x(rhs.axis_x), axis_y(rhs.axis_y), axis_z(rhs.axis_z) {}
     inline double3x3(double3x3&& rhs) noexcept : axis_x(std::move(rhs.axis_x)), axis_y(std::move(rhs.axis_y)), axis_z(std::move(rhs.axis_z)) {}
@@ -148,6 +150,15 @@ struct alignas(16) double4x4 {
     inline static double4x4 identity() { return eye(1); }
     inline static double4x4 zero() { return fill(0); }
     inline static double4x4 one() { return fill(1); }
+    
+    // factory for utility usage
+    static double4x4 look_to(const double4& from, const double4& dir, const double4& up);
+    static double4x4 look_at(const double4& from, const double4& to, const double4& up);
+    static double4x4 view_to(const double4& from, const double4& dir, const double4& up);
+    static double4x4 view_at(const double4& from, const double4& to, const double4& up);
+    static double4x4 perspective(double view_width, double view_height, double near, double far);
+    static double4x4 perspective_fov(double fov_y, double aspect_ratio, double near, double far);
+    static double4x4 ortho(double width, double height, double near, double far);
     
     // copy & move & assign & move assign
     inline double4x4(const double4x4& rhs) noexcept : axis_x(rhs.axis_x), axis_y(rhs.axis_y), axis_z(rhs.axis_z), axis_w(rhs.axis_w) {}

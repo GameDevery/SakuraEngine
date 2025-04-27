@@ -72,6 +72,8 @@ struct float3x3 {
     inline static float3x3 zero() { return fill(0); }
     inline static float3x3 one() { return fill(1); }
     
+    // factory for utility usage
+    
     // copy & move & assign & move assign
     inline float3x3(const float3x3& rhs) noexcept : axis_x(rhs.axis_x), axis_y(rhs.axis_y), axis_z(rhs.axis_z) {}
     inline float3x3(float3x3&& rhs) noexcept : axis_x(std::move(rhs.axis_x)), axis_y(std::move(rhs.axis_y)), axis_z(std::move(rhs.axis_z)) {}
@@ -148,6 +150,15 @@ struct alignas(16) float4x4 {
     inline static float4x4 identity() { return eye(1); }
     inline static float4x4 zero() { return fill(0); }
     inline static float4x4 one() { return fill(1); }
+    
+    // factory for utility usage
+    static float4x4 look_to(const float4& from, const float4& dir, const float4& up);
+    static float4x4 look_at(const float4& from, const float4& to, const float4& up);
+    static float4x4 view_to(const float4& from, const float4& dir, const float4& up);
+    static float4x4 view_at(const float4& from, const float4& to, const float4& up);
+    static float4x4 perspective(float view_width, float view_height, float near, float far);
+    static float4x4 perspective_fov(float fov_y, float aspect_ratio, float near, float far);
+    static float4x4 ortho(float width, float height, float near, float far);
     
     // copy & move & assign & move assign
     inline float4x4(const float4x4& rhs) noexcept : axis_x(rhs.axis_x), axis_y(rhs.axis_y), axis_z(rhs.axis_z), axis_w(rhs.axis_w) {}
