@@ -21,5 +21,8 @@ enum class EAxis4
     W = 3,
 };
 
+struct MathNoInitType {};
+inline constexpr MathNoInitType kMathNoInit = MathNoInitType{};
+
 } // namespace math
 } // namespace skr
