@@ -32,7 +32,7 @@ struct double3x3 {
         };
     };
     // ctor & dtor
-    inline double3x3() /*do noting for performance purpose, use factory init will be better*/ {}
+    inline double3x3() : axis_x(0), axis_y(0), axis_z(0) {}
     inline double3x3(
         float m00, float m01, float m02,
         float m10, float m11, float m12,
@@ -97,7 +97,7 @@ struct double4x4 {
         };
     };
     // ctor & dtor
-    inline double4x4() /*do noting for performance purpose, use factory init will be better*/ {}
+    inline double4x4() : axis_x(0), axis_y(0), axis_z(0), axis_w(0) {}
     inline double4x4(
         float m00, float m01, float m02, float m03,
         float m10, float m11, float m12, float m13,

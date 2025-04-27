@@ -249,6 +249,51 @@ function _gen_transform(opt: GenMiscOption) {
       b.$line(`alignas(16) ${quat_name} rotation;`)
       b.$line(`alignas(16) ${vec3_name} position;`)
       b.$line(`alignas(16) ${vec3_name} scale;`)
+      b.$line(``)
+
+      // ctor & dtor
+      b.$line(`// ctor & dtor`)
+      b.$line(`inline ${transform_name}() = default;`)
+      {
+        const ctor_params = [
+          `const ${quat_name}& rotation`,
+          `const ${vec3_name}& position`,
+          `const ${vec3_name}& scale`,
+        ].join(`, `);
+
+        const init_list = [
+          `rotation(rotation)`,
+          `position(position)`,
+          `scale(scale)`,
+        ].join(`, `);
+
+        b.$line(`inline ${transform_name}(${ctor_params}) : ${init_list} {}`)
+      }
+      b.$line(`inline ~${transform_name}() = default;`)
+      b.$line(``)
+
+      // factory
+      b.$line(`// factory`)
+      b.$line(`inline static ${transform_name} Identity() { return { ${quat_name}::Identity(), ${vec3_name}(0), ${vec3_name}(1) }; }`)
+      b.$line(``)
+
+      // copy & move & assign & move assign
+      b.$line(`// copy & move & assign & move assign`)
+      b.$line(`inline ${transform_name}(${transform_name} const&) = default;`)
+      b.$line(`inline ${transform_name}(${transform_name}&&) = default;`)
+      b.$line(`inline ${transform_name}& operator=(${transform_name} const&) = default;`)
+      b.$line(`inline ${transform_name}& operator=(${transform_name}&&) = default;`)
+      b.$line(``)
+
+      // negative(inverse) operator
+      b.$line(`// negative(inverse) operator`)
+      b.$line(`${transform_name} operator-() const;`)
+      b.$line(``)
+
+      // identity
+      b.$line(`// identity`)
+      b.$line(`bool is_identity() const;`)
+      b.$line(`bool is_nearly_identity(${comp_name} threshold = ${comp_name}(0.00001)) const;`)
     })
     b.$line(`};`)
 

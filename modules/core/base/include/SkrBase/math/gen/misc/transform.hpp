@@ -14,11 +14,53 @@ struct TransformF {
     alignas(16) QuatF rotation;
     alignas(16) float3 position;
     alignas(16) float3 scale;
+    
+    // ctor & dtor
+    inline TransformF() = default;
+    inline TransformF(const QuatF& rotation, const float3& position, const float3& scale) : rotation(rotation), position(position), scale(scale) {}
+    inline ~TransformF() = default;
+    
+    // factory
+    inline static TransformF Identity() { return { QuatF::Identity(), float3(0), float3(1) }; }
+    
+    // copy & move & assign & move assign
+    inline TransformF(TransformF const&) = default;
+    inline TransformF(TransformF&&) = default;
+    inline TransformF& operator=(TransformF const&) = default;
+    inline TransformF& operator=(TransformF&&) = default;
+    
+    // negative(inverse) operator
+    TransformF operator-() const;
+    
+    // identity
+    bool is_identity() const;
+    bool is_nearly_identity(float threshold = float(0.00001)) const;
 };
 struct TransformD {
     alignas(16) QuatD rotation;
     alignas(16) double3 position;
     alignas(16) double3 scale;
+    
+    // ctor & dtor
+    inline TransformD() = default;
+    inline TransformD(const QuatD& rotation, const double3& position, const double3& scale) : rotation(rotation), position(position), scale(scale) {}
+    inline ~TransformD() = default;
+    
+    // factory
+    inline static TransformD Identity() { return { QuatD::Identity(), double3(0), double3(1) }; }
+    
+    // copy & move & assign & move assign
+    inline TransformD(TransformD const&) = default;
+    inline TransformD(TransformD&&) = default;
+    inline TransformD& operator=(TransformD const&) = default;
+    inline TransformD& operator=(TransformD&&) = default;
+    
+    // negative(inverse) operator
+    TransformD operator-() const;
+    
+    // identity
+    bool is_identity() const;
+    bool is_nearly_identity(double threshold = double(0.00001)) const;
 };
 }
 }

@@ -74,11 +74,11 @@ function _gen_class_body(opt: GenMatrixOption) {
       // ctor & dtor
       {
         b.$line(`// ctor & dtor`)
-        // const default_ctor_exprs = `: ` + _axis_lut
-        //   .slice(0, dim)
-        //   .map(axis => `axis_${axis}(0)`)
-        //   .join(`, `);
-        const default_ctor_exprs = `/*do noting for performance purpose, use factory init will be better*/`
+        const default_ctor_exprs = `: ` + _axis_lut
+          .slice(0, dim)
+          .map(axis => `axis_${axis}(0)`)
+          .join(`, `);
+        // const default_ctor_exprs = `/*do noting for performance purpose, use factory init will be better*/`
         b.$line(`inline ${mat_name}() ${default_ctor_exprs} {}`)
         b.$line(`inline ${mat_name}(`)
         b.$indent(_b => {
