@@ -586,5 +586,15 @@ inline bool4 operator!=(const QuatD& lhs, const QuatD& rhs) SKR_NOEXCEPT
     return lhs.as_vector() != rhs.as_vector();
 }
 
+// distance
+inline float distance(const QuatF& lhs, const QuatF& rhs)
+{
+    return acos(2 * dot(lhs, rhs) - 1);
+}
+inline double distance(const QuatD& lhs, const QuatD& rhs)
+{
+    return acos(2 * dot(lhs, rhs) - 1);
+}
+
 } // namespace math
 } // namespace skr
