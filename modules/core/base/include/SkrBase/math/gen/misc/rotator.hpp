@@ -14,6 +14,7 @@ struct RotatorF {
     
     // ctor & dtor
     inline RotatorF() : pitch(0), yaw(0), roll(0) {}
+    inline RotatorF(MathNoInitType) {}
     inline RotatorF(float pitch, float yaw, float roll) : pitch(pitch), yaw(yaw), roll(roll) {}
     inline ~RotatorF() = default;
     
@@ -54,6 +55,7 @@ struct RotatorD {
     
     // ctor & dtor
     inline RotatorD() : pitch(0), yaw(0), roll(0) {}
+    inline RotatorD(MathNoInitType) {}
     inline RotatorD(double pitch, double yaw, double roll) : pitch(pitch), yaw(yaw), roll(roll) {}
     inline ~RotatorD() = default;
     

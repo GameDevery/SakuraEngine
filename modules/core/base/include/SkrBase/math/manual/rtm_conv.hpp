@@ -37,7 +37,7 @@ struct RtmConvert<float2> {
     }
     inline static float2 from_rtm(const rtm::vector4f& v)
     {
-        float2 result;
+        float2 result{ kMathNoInit };
         store(v, result);
         return result;
     }
@@ -54,7 +54,7 @@ struct RtmConvert<double2> {
     }
     inline static double2 from_rtm(const rtm::vector4d& v)
     {
-        double2 result;
+        double2 result{ kMathNoInit };
         store(v, result);
         return result;
     }
@@ -73,7 +73,7 @@ struct RtmConvert<float3> {
     }
     inline static float3 from_rtm(const rtm::vector4f& v)
     {
-        float3 result;
+        float3 result{ kMathNoInit };
         store(v, result);
         return result;
     }
@@ -90,7 +90,7 @@ struct RtmConvert<double3> {
     }
     inline static double3 from_rtm(const rtm::vector4d& v)
     {
-        double3 result;
+        double3 result{ kMathNoInit };
         store(v, result);
         return result;
     }
@@ -109,7 +109,7 @@ struct RtmConvert<float4> {
     }
     inline static float4 from_rtm(const rtm::vector4f& v)
     {
-        float4 result;
+        float4 result{ kMathNoInit };
         store(v, result);
         return result;
     }
@@ -126,7 +126,7 @@ struct RtmConvert<double4> {
     }
     inline static double4 from_rtm(const rtm::vector4d& v)
     {
-        double4 result;
+        double4 result{ kMathNoInit };
         store(v, result);
         return result;
     }
@@ -151,7 +151,7 @@ struct RtmConvert<float3x3> {
     }
     inline static float3x3 from_rtm(const rtm::matrix3x3f& m)
     {
-        float3x3 result;
+        float3x3 result{ kMathNoInit };
         store(m, result);
         return result;
     }
@@ -174,7 +174,7 @@ struct RtmConvert<double3x3> {
     }
     inline static double3x3 from_rtm(const rtm::matrix3x3d& m)
     {
-        double3x3 result;
+        double3x3 result{ kMathNoInit };
         store(m, result);
         return result;
     }
@@ -201,7 +201,7 @@ struct RtmConvert<float4x4> {
     }
     inline static float4x4 from_rtm(const rtm::matrix4x4f& m)
     {
-        float4x4 result;
+        float4x4 result{ kMathNoInit };
         store(m, result);
         return result;
     }
@@ -245,7 +245,7 @@ struct RtmConvert<QuatF> {
     }
     inline static QuatF from_rtm(const rtm::quatf& q)
     {
-        QuatF result;
+        QuatF result{ kMathNoInit };
         store(q, result);
         return result;
     }
@@ -262,7 +262,7 @@ struct RtmConvert<QuatD> {
     }
     inline static QuatD from_rtm(const rtm::quatd& q)
     {
-        QuatD result;
+        QuatD result{ kMathNoInit };
         store(q, result);
         return result;
     }
@@ -287,7 +287,7 @@ struct RtmConvert<TransformF> {
     }
     inline static TransformF from_rtm(const rtm::qvvf& t)
     {
-        TransformF result;
+        TransformF result{ kMathNoInit };
         store(t, result);
         return result;
     }
@@ -310,12 +310,11 @@ struct RtmConvert<TransformD> {
     }
     inline static TransformD from_rtm(const rtm::qvvd& t)
     {
-        TransformD result;
+        TransformD result{ kMathNoInit };
         store(t, result);
         return result;
     }
 };
-
 
 } // namespace math
 } // namespace skr

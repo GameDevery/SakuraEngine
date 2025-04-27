@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cmath>
 #include "../gen_math_fwd.hpp"
+#include "../../math_constants.hpp"
 #include <SkrBase/misc/debug.h>
 #include <SkrBase/misc/hash.hpp>
 
@@ -16,6 +17,7 @@ struct int2 {
     
     // ctor & dtor
     inline int2(): x(0), y(0) {}
+    inline int2(MathNoInitType) {}
     inline int2(int32_t v): x(v), y(v) {}
     inline int2(int32_t v0, int32_t v1): x(v0), y(v1) {}
     inline ~int2() = default;
@@ -89,6 +91,7 @@ struct int3 {
     
     // ctor & dtor
     inline int3(): x(0), y(0), z(0) {}
+    inline int3(MathNoInitType) {}
     inline int3(int32_t v): x(v), y(v), z(v) {}
     inline int3(int32_t v0, int32_t v1, int32_t v2): x(v0), y(v1), z(v2) {}
     inline int3(int32_t v0, int2 v1): x(v0), y(v1.x), z(v1.y) {}
@@ -207,6 +210,7 @@ struct int4 {
     
     // ctor & dtor
     inline int4(): x(0), y(0), z(0), w(0) {}
+    inline int4(MathNoInitType) {}
     inline int4(int32_t v): x(v), y(v), z(v), w(v) {}
     inline int4(int32_t v0, int32_t v1, int32_t v2, int32_t v3): x(v0), y(v1), z(v2), w(v3) {}
     inline int4(int32_t v0, int32_t v1, int2 v2): x(v0), y(v1), z(v2.x), w(v2.y) {}

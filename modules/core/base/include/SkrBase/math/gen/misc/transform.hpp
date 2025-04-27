@@ -17,6 +17,7 @@ struct TransformF {
     
     // ctor & dtor
     inline TransformF() = default;
+    inline TransformF(MathNoInitType) : rotation(kMathNoInit), position(kMathNoInit), scale(kMathNoInit) {}
     inline TransformF(const QuatF& rotation, const float3& position, const float3& scale) : rotation(rotation), position(position), scale(scale) {}
     inline ~TransformF() = default;
     
@@ -54,6 +55,7 @@ struct TransformD {
     
     // ctor & dtor
     inline TransformD() = default;
+    inline TransformD(MathNoInitType) : rotation(kMathNoInit), position(kMathNoInit), scale(kMathNoInit) {}
     inline TransformD(const QuatD& rotation, const double3& position, const double3& scale) : rotation(rotation), position(position), scale(scale) {}
     inline ~TransformD() = default;
     

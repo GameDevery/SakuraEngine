@@ -34,6 +34,7 @@ struct double3x3 {
     
     // ctor & dtor
     inline double3x3() : axis_x(0), axis_y(0), axis_z(0) {}
+    inline double3x3(MathNoInitType) {}
     inline double3x3(
         double m00, double m01, double m02,
         double m10, double m11, double m12,
@@ -106,6 +107,7 @@ struct alignas(16) double4x4 {
     
     // ctor & dtor
     inline double4x4() : axis_x(0), axis_y(0), axis_z(0), axis_w(0) {}
+    inline double4x4(MathNoInitType) {}
     inline double4x4(
         double m00, double m01, double m02, double m03,
         double m10, double m11, double m12, double m13,

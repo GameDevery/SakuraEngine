@@ -30,6 +30,9 @@ function _gen_ctor(dim: number, opt: GenVectorOption) {
     .join(", ");
   b.$line(`inline ${vec_name}(): ${default_init} {}`);
 
+  // no init ctor
+  b.$line(`inline ${vec_name}(MathNoInitType) {}`)
+
   // scalar ctor
   const scalar_init = _comp_lut
     .slice(0, dim)
@@ -464,6 +467,7 @@ export function gen(global_builders: GlobalBuilders, gen_dir: string) {
     vector_builder.$line(`#include <cstdint>`);
     vector_builder.$line(`#include <cmath>`);
     vector_builder.$line(`#include "../gen_math_fwd.hpp"`);
+    vector_builder.$line(`#include "../../math_constants.hpp"`);
     vector_builder.$line(`#include <SkrBase/misc/debug.h>`);
     vector_builder.$line(`#include <SkrBase/misc/hash.hpp>`);
     vector_builder.$line(``);

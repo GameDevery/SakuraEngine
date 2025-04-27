@@ -71,6 +71,7 @@ function _gen_quat(opt: GenMiscOption) {
       // ctor & dtor
       b.$line(`// ctor & dtor`)
       b.$line(`inline ${quat_name}() : x(0), y(0), z(0), w(1) {}`)
+      b.$line(`inline ${quat_name}(MathNoInitType) {}`)
       {
         const ctor_params = _quat_comp_lut
           .map(c => `${comp_name} ${c}`)
@@ -219,6 +220,7 @@ function _gen_rotator(opt: GenMiscOption) {
       // ctor & dtor
       b.$line(`// ctor & dtor`)
       b.$line(`inline ${rotator_name}() : pitch(0), yaw(0), roll(0) {}`)
+      b.$line(`inline ${rotator_name}(MathNoInitType) {}`)
       {
         const ctor_params = _rotator_comp_lut
           .map(c => `${comp_name} ${c}`)
@@ -348,6 +350,7 @@ function _gen_transform(opt: GenMiscOption) {
       // ctor & dtor
       b.$line(`// ctor & dtor`)
       b.$line(`inline ${transform_name}() = default;`)
+      b.$line(`inline ${transform_name}(MathNoInitType) : rotation(kMathNoInit), position(kMathNoInit), scale(kMathNoInit) {}`)
       {
         const ctor_params = [
           `const ${quat_name}& rotation`,

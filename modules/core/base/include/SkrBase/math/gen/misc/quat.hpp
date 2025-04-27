@@ -14,6 +14,7 @@ struct alignas(16) QuatF {
     
     // ctor & dtor
     inline QuatF() : x(0), y(0), z(0), w(1) {}
+    inline QuatF(MathNoInitType) {}
     inline QuatF(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
     inline ~QuatF() = default;
     
@@ -73,6 +74,7 @@ struct alignas(16) QuatD {
     
     // ctor & dtor
     inline QuatD() : x(0), y(0), z(0), w(1) {}
+    inline QuatD(MathNoInitType) {}
     inline QuatD(double x, double y, double z, double w) : x(x), y(y), z(z), w(w) {}
     inline ~QuatD() = default;
     

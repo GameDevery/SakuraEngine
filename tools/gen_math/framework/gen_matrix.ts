@@ -109,6 +109,7 @@ function _gen_class_body(opt: GenMatrixOption) {
           .join(`, `);
         // const default_ctor_exprs = `/*do noting for performance purpose, use factory init will be better*/`
         b.$line(`inline ${mat_name}() ${default_ctor_exprs} {}`)
+        b.$line(`inline ${mat_name}(MathNoInitType) {}`)
         b.$line(`inline ${mat_name}(`)
         b.$indent(_b => {
           for (let row_idx = 0; row_idx < dim; ++row_idx) {

@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cmath>
 #include "../gen_math_fwd.hpp"
+#include "../../math_constants.hpp"
 #include <SkrBase/misc/debug.h>
 #include <SkrBase/misc/hash.hpp>
 
@@ -16,6 +17,7 @@ struct long2 {
     
     // ctor & dtor
     inline long2(): x(0), y(0) {}
+    inline long2(MathNoInitType) {}
     inline long2(int64_t v): x(v), y(v) {}
     inline long2(int64_t v0, int64_t v1): x(v0), y(v1) {}
     inline ~long2() = default;
@@ -89,6 +91,7 @@ struct long3 {
     
     // ctor & dtor
     inline long3(): x(0), y(0), z(0) {}
+    inline long3(MathNoInitType) {}
     inline long3(int64_t v): x(v), y(v), z(v) {}
     inline long3(int64_t v0, int64_t v1, int64_t v2): x(v0), y(v1), z(v2) {}
     inline long3(int64_t v0, long2 v1): x(v0), y(v1.x), z(v1.y) {}
@@ -207,6 +210,7 @@ struct long4 {
     
     // ctor & dtor
     inline long4(): x(0), y(0), z(0), w(0) {}
+    inline long4(MathNoInitType) {}
     inline long4(int64_t v): x(v), y(v), z(v), w(v) {}
     inline long4(int64_t v0, int64_t v1, int64_t v2, int64_t v3): x(v0), y(v1), z(v2), w(v3) {}
     inline long4(int64_t v0, int64_t v1, long2 v2): x(v0), y(v1), z(v2.x), w(v2.y) {}

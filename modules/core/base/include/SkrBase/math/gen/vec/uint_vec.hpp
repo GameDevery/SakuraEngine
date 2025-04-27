@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cmath>
 #include "../gen_math_fwd.hpp"
+#include "../../math_constants.hpp"
 #include <SkrBase/misc/debug.h>
 #include <SkrBase/misc/hash.hpp>
 
@@ -16,6 +17,7 @@ struct uint2 {
     
     // ctor & dtor
     inline uint2(): x(0), y(0) {}
+    inline uint2(MathNoInitType) {}
     inline uint2(uint32_t v): x(v), y(v) {}
     inline uint2(uint32_t v0, uint32_t v1): x(v0), y(v1) {}
     inline ~uint2() = default;
@@ -89,6 +91,7 @@ struct uint3 {
     
     // ctor & dtor
     inline uint3(): x(0), y(0), z(0) {}
+    inline uint3(MathNoInitType) {}
     inline uint3(uint32_t v): x(v), y(v), z(v) {}
     inline uint3(uint32_t v0, uint32_t v1, uint32_t v2): x(v0), y(v1), z(v2) {}
     inline uint3(uint32_t v0, uint2 v1): x(v0), y(v1.x), z(v1.y) {}
@@ -207,6 +210,7 @@ struct uint4 {
     
     // ctor & dtor
     inline uint4(): x(0), y(0), z(0), w(0) {}
+    inline uint4(MathNoInitType) {}
     inline uint4(uint32_t v): x(v), y(v), z(v), w(v) {}
     inline uint4(uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3): x(v0), y(v1), z(v2), w(v3) {}
     inline uint4(uint32_t v0, uint32_t v1, uint2 v2): x(v0), y(v1), z(v2.x), w(v2.y) {}

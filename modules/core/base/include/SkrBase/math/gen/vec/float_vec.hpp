@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cmath>
 #include "../gen_math_fwd.hpp"
+#include "../../math_constants.hpp"
 #include <SkrBase/misc/debug.h>
 #include <SkrBase/misc/hash.hpp>
 
@@ -16,6 +17,7 @@ struct float2 {
     
     // ctor & dtor
     inline float2(): x(0), y(0) {}
+    inline float2(MathNoInitType) {}
     inline float2(float v): x(v), y(v) {}
     inline float2(float v0, float v1): x(v0), y(v1) {}
     inline ~float2() = default;
@@ -89,6 +91,7 @@ struct float3 {
     
     // ctor & dtor
     inline float3(): x(0), y(0), z(0) {}
+    inline float3(MathNoInitType) {}
     inline float3(float v): x(v), y(v), z(v) {}
     inline float3(float v0, float v1, float v2): x(v0), y(v1), z(v2) {}
     inline float3(float v0, float2 v1): x(v0), y(v1.x), z(v1.y) {}
@@ -207,6 +210,7 @@ struct alignas(16) float4 {
     
     // ctor & dtor
     inline float4(): x(0), y(0), z(0), w(0) {}
+    inline float4(MathNoInitType) {}
     inline float4(float v): x(v), y(v), z(v), w(v) {}
     inline float4(float v0, float v1, float v2, float v3): x(v0), y(v1), z(v2), w(v3) {}
     inline float4(float v0, float v1, float2 v2): x(v0), y(v1), z(v2.x), w(v2.y) {}
