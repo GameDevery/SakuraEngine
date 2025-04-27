@@ -547,5 +547,24 @@ inline QuatD QuatD::FromMatrix(const double4x4& mat)
 {
     return QuatD(mat);
 }
+
+// compare
+inline bool4 operator==(const QuatF& lhs, const QuatF& rhs) SKR_NOEXCEPT
+{
+    return lhs.as_vector() == rhs.as_vector();
+}
+inline bool4 operator==(const QuatD& lhs, const QuatD& rhs) SKR_NOEXCEPT
+{
+    return lhs.as_vector() == rhs.as_vector();
+}
+inline bool4 operator!=(const QuatF& lhs, const QuatF& rhs) SKR_NOEXCEPT
+{
+    return lhs.as_vector() != rhs.as_vector();
+}
+inline bool4 operator!=(const QuatD& lhs, const QuatD& rhs) SKR_NOEXCEPT
+{
+    return lhs.as_vector() != rhs.as_vector();
+}
+
 } // namespace math
 } // namespace skr

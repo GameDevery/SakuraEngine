@@ -68,19 +68,19 @@ inline RotatorD RotatorD::FromQuat(const QuatD& quat)
 // compare
 inline bool3 operator==(const RotatorF& lhs, const RotatorF& rhs) SKR_NOEXCEPT
 {
-    return all(lhs.as_vector() == rhs.as_vector());
+    return lhs.as_vector() == rhs.as_vector();
 }
 inline bool3 operator==(const RotatorD& lhs, const RotatorD& rhs) SKR_NOEXCEPT
 {
-    return all(lhs.as_vector() == rhs.as_vector());
+    return lhs.as_vector() == rhs.as_vector();
 }
 inline bool3 operator!=(const RotatorF& lhs, const RotatorF& rhs) SKR_NOEXCEPT
 {
-    return any(lhs.as_vector() != rhs.as_vector());
+    return lhs.as_vector() != rhs.as_vector();
 }
 inline bool3 operator!=(const RotatorD& lhs, const RotatorD& rhs) SKR_NOEXCEPT
 {
-    return any(lhs.as_vector() != rhs.as_vector());
+    return lhs.as_vector() != rhs.as_vector();
 }
 } // namespace math
 } // namespace skr
