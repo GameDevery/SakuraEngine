@@ -29,6 +29,7 @@ struct RotatorF {
     
     // convert with quat
     RotatorF(const QuatF& quat);
+    static RotatorF FromQuat(const QuatF& quat);
     
 }; 
 struct RotatorD {
@@ -51,6 +52,7 @@ struct RotatorD {
     
     // convert with quat
     RotatorD(const QuatD& quat);
+    static RotatorD FromQuat(const QuatD& quat);
     
 }; 
 }

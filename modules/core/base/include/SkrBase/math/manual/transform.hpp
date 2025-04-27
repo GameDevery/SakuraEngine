@@ -452,5 +452,65 @@ inline double4x4 TransformD::to_matrix_no_scale() const
         )
     );
 }
+
+// from matrix ctor
+inline TransformF::TransformF(const float3x3& mat)
+{
+    auto result = rtm::qvv_from_matrix(
+        RtmConvert<float3x3>::to_rtm(mat)
+    );
+    RtmConvert<QuatF>::store(result.rotation, rotation);
+    RtmConvert<float3>::store(result.translation, position);
+    RtmConvert<float3>::store(result.scale, scale);
+}
+inline TransformF::TransformF(const float4x4& mat)
+{
+    auto result = rtm::qvv_from_matrix(
+        (rtm::matrix3x4f)rtm::matrix_cast(
+            RtmConvert<float4x4>::to_rtm(mat)
+        )
+    );
+    RtmConvert<QuatF>::store(result.rotation, rotation);
+    RtmConvert<float3>::store(result.translation, position);
+    RtmConvert<float3>::store(result.scale, scale);
+}
+inline TransformD::TransformD(const double3x3& mat)
+{
+    auto result = rtm::qvv_from_matrix(
+        RtmConvert<double3x3>::to_rtm(mat)
+    );
+    rotation = RtmConvert<QuatD>::from_rtm(result.rotation);
+    position = RtmConvert<double3>::from_rtm(result.translation);
+    scale    = RtmConvert<double3>::from_rtm(result.scale);
+}
+inline TransformD::TransformD(const double4x4& mat)
+{
+    auto result = rtm::qvv_from_matrix(
+        (rtm::matrix3x4d)rtm::matrix_cast(
+            RtmConvert<double4x4>::to_rtm(mat)
+        )
+    );
+    rotation = RtmConvert<QuatD>::from_rtm(result.rotation);
+    position = RtmConvert<double3>::from_rtm(result.translation);
+    scale    = RtmConvert<double3>::from_rtm(result.scale);
+}
+
+// from matrix factory
+inline TransformF TransformF::FromMatrix(const float3x3& mat)
+{
+    return TransformF(mat);
+}
+inline TransformF TransformF::FromMatrix(const float4x4& mat)
+{
+    return TransformF(mat);
+}
+inline TransformD TransformD::FromMatrix(const double3x3& mat)
+{
+    return TransformD(mat);
+}
+inline TransformD TransformD::FromMatrix(const double4x4& mat)
+{
+    return TransformD(mat);
+}
 } // namespace math
 } // namespace skr

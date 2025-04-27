@@ -55,6 +55,14 @@ inline QuatD::QuatD(const RotatorD& rotator)
     );
     RtmConvert<QuatD>::store(quat, *this);
 }
+inline QuatF QuatF::FromRotator(const RotatorF& rotator)
+{
+    return QuatF(rotator);
+}
+inline QuatD QuatD::FromRotator(const RotatorD& rotator)
+{
+    return QuatD(rotator);
+}
 
 // impl negative operator
 inline QuatF QuatF::operator-() const
@@ -488,5 +496,56 @@ inline double4x4 QuatD::to_matrix4() const
     );
 }
 
+// from matrix ctor
+inline QuatF::QuatF(const float3x3& mat)
+{
+    auto quat = rtm::quat_from_matrix(
+        RtmConvert<float3x3>::to_rtm(mat)
+    );
+    RtmConvert<QuatF>::store(quat, *this);
+}
+inline QuatF::QuatF(const float4x4& mat)
+{
+    auto quat = rtm::quat_from_matrix(
+        (rtm::matrix3x4f)rtm::matrix_cast(
+            RtmConvert<float4x4>::to_rtm(mat)
+        )
+    );
+    RtmConvert<QuatF>::store(quat, *this);
+}
+inline QuatD::QuatD(const double3x3& mat)
+{
+    auto quat = rtm::quat_from_matrix(
+        RtmConvert<double3x3>::to_rtm(mat)
+    );
+    RtmConvert<QuatD>::store(quat, *this);
+}
+inline QuatD::QuatD(const double4x4& mat)
+{
+    auto quat = rtm::quat_from_matrix(
+        (rtm::matrix3x4d)rtm::matrix_cast(
+            RtmConvert<double4x4>::to_rtm(mat)
+        )
+    );
+    RtmConvert<QuatD>::store(quat, *this);
+}
+
+// from matrix factory
+inline QuatF QuatF::FromMatrix(const float3x3& mat)
+{
+    return QuatF(mat);
+}
+inline QuatF QuatF::FromMatrix(const float4x4& mat)
+{
+    return QuatF(mat);
+}
+inline QuatD QuatD::FromMatrix(const double3x3& mat)
+{
+    return QuatD(mat);
+}
+inline QuatD QuatD::FromMatrix(const double4x4& mat)
+{
+    return QuatD(mat);
+}
 } // namespace math
 } // namespace skr

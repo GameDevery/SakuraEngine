@@ -37,6 +37,12 @@ struct TransformF {
     operator float4x4() const;
     float4x4 to_matrix() const;
     float4x4 to_matrix_no_scale() const;
+    
+    // from matrix
+    TransformF(const float3x3& mat);
+    TransformF(const float4x4& mat);
+    static TransformF FromMatrix(const float3x3& mat);
+    static TransformF FromMatrix(const float4x4& mat);
 };
 struct TransformD {
     alignas(16) QuatD rotation;
@@ -65,6 +71,12 @@ struct TransformD {
     operator double4x4() const;
     double4x4 to_matrix() const;
     double4x4 to_matrix_no_scale() const;
+    
+    // from matrix
+    TransformD(const double3x3& mat);
+    TransformD(const double4x4& mat);
+    static TransformD FromMatrix(const double3x3& mat);
+    static TransformD FromMatrix(const double4x4& mat);
 };
 }
 }

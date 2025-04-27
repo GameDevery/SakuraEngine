@@ -6,18 +6,18 @@ namespace skr
 {
 inline namespace math
 {
-// convert with quat
-inline RotatorF::RotatorF(const QuatF& quat)
+template <typename Real, typename Rotator, typename Quat>
+inline void _convert_quat_to_rotator(const Quat& quat, Rotator& rotator)
 {
     // get quaternion components
-    float X = quat.x;
-    float Y = quat.y;
-    float Z = quat.z;
-    float W = quat.w;
+    Real X = quat.x;
+    Real Y = quat.y;
+    Real Z = quat.z;
+    Real W = quat.w;
 
-    const float SingularityTest = Z * X + W * Y;
-    const float RollY           = 2.f * (W * Z - X * Y);
-    const float RollX           = (1.f - 2.f * (Y * Y + Z * Z));
+    const Real SingularityTest = Z * X + W * Y;
+    const Real RollY           = 2.f * (W * Z - X * Y);
+    const Real RollX           = (1.f - 2.f * (Y * Y + Z * Z));
 
     // reference
     // http://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
@@ -26,25 +26,43 @@ inline RotatorF::RotatorF(const QuatF& quat)
     // this value was found from experience, the above websites recommend different values
     // but that isn't the case for us, so I went through different testing, and finally found the case
     // where both of world lives happily.
-    const float SINGULARITY_THRESHOLD = 0.4999995f;
+    const Real SINGULARITY_THRESHOLD = 0.4999995f;
     if (SingularityTest < -SINGULARITY_THRESHOLD)
     {
-        yaw   = -kPi / 2;
-        roll  = (rtm::scalar_atan2(RollY, RollX));
-        pitch = normalize_radians(roll + (2.f * rtm::scalar_atan2(X, W)));
+        rotator.yaw   = -kPi / 2;
+        rotator.roll  = (rtm::scalar_atan2(RollY, RollX));
+        rotator.pitch = normalize_radians(rotator.roll + (2.f * rtm::scalar_atan2(X, W)));
     }
     else if (SingularityTest > SINGULARITY_THRESHOLD)
     {
-        yaw   = kPi / 2;
-        roll  = (rtm::scalar_atan2(RollY, RollX));
-        pitch = normalize_radians(-roll + (2.f * rtm::scalar_atan2(X, W)));
+        rotator.yaw   = kPi / 2;
+        rotator.roll  = (rtm::scalar_atan2(RollY, RollX));
+        rotator.pitch = normalize_radians(-rotator.roll + (2.f * rtm::scalar_atan2(X, W)));
     }
     else
     {
-        yaw   = (rtm::scalar_asin(-2.f * SingularityTest));
-        roll  = (rtm::scalar_atan2(RollY, RollX));
-        pitch = (rtm::scalar_atan2(2.f * (W * X - Y * Z), (1.f - 2.f * (X * X + Y * Y))));
+        rotator.yaw   = (rtm::scalar_asin(-2.f * SingularityTest));
+        rotator.roll  = (rtm::scalar_atan2(RollY, RollX));
+        rotator.pitch = (rtm::scalar_atan2(2.f * (W * X - Y * Z), (1.f - 2.f * (X * X + Y * Y))));
     }
+}
+
+// convert with quat
+inline RotatorF::RotatorF(const QuatF& quat)
+{
+    _convert_quat_to_rotator<float, RotatorF, QuatF>(quat, *this);
+}
+inline RotatorD::RotatorD(const QuatD& quat)
+{
+    _convert_quat_to_rotator<double, RotatorD, QuatD>(quat, *this);
+}
+inline RotatorF RotatorF::FromQuat(const QuatF& quat)
+{
+    return RotatorF(quat);
+}
+inline RotatorD RotatorD::FromQuat(const QuatD& quat)
+{
+    return RotatorD(quat);
 }
 
 // compare

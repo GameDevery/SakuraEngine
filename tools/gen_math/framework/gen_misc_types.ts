@@ -114,6 +114,7 @@ function _gen_quat(opt: GenMiscOption) {
       // convert with rotator
       b.$line(`// convert with rotator`)
       b.$line(`${quat_name}(const ${rotator_name}& rotator);`)
+      b.$line(`static ${quat_name} FromRotator(const ${rotator_name}& rotator);`)
       b.$line(``)
 
       // neg operator
@@ -142,6 +143,14 @@ function _gen_quat(opt: GenMiscOption) {
       b.$line(`operator ${matrix4_name}() const;`)
       b.$line(`${matrix3_name} to_matrix3() const;`)
       b.$line(`${matrix4_name} to_matrix4() const;`)
+      b.$line(``)
+
+      // from matrix
+      b.$line(`// from matrix`)
+      b.$line(`${quat_name}(const ${matrix3_name}& mat);`)
+      b.$line(`${quat_name}(const ${matrix4_name}& mat);`)
+      b.$line(`static ${quat_name} FromMatrix(const ${matrix3_name}& mat);`)
+      b.$line(`static ${quat_name} FromMatrix(const ${matrix4_name}& mat);`)
     })
     b.$line(`};`)
   }
@@ -234,6 +243,7 @@ function _gen_rotator(opt: GenMiscOption) {
       // convert with quat
       b.$line(`// convert with quat`)
       b.$line(`${rotator_name}(const ${quat_name}& quat);`)
+      b.$line(`static ${rotator_name} FromQuat(const ${quat_name}& quat);`)
       b.$line(``)
 
       // [use quat] negative operator
@@ -350,6 +360,14 @@ function _gen_transform(opt: GenMiscOption) {
       b.$line(`operator ${mat4_name}() const;`)
       b.$line(`${mat4_name} to_matrix() const;`)
       b.$line(`${mat4_name} to_matrix_no_scale() const;`)
+      b.$line(``)
+
+      // from matrix
+      b.$line(`// from matrix`)
+      b.$line(`${transform_name}(const ${mat3_name}& mat);`)
+      b.$line(`${transform_name}(const ${mat4_name}& mat);`)
+      b.$line(`static ${transform_name} FromMatrix(const ${mat3_name}& mat);`)
+      b.$line(`static ${transform_name} FromMatrix(const ${mat4_name}& mat);`)
     })
     b.$line(`};`)
   }

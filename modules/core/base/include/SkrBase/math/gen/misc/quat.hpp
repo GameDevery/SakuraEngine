@@ -39,6 +39,7 @@ struct alignas(16) QuatF {
     
     // convert with rotator
     QuatF(const RotatorF& rotator);
+    static QuatF FromRotator(const RotatorF& rotator);
     
     // negative operator
     QuatF operator-() const;
@@ -57,6 +58,12 @@ struct alignas(16) QuatF {
     operator float4x4() const;
     float3x3 to_matrix3() const;
     float4x4 to_matrix4() const;
+    
+    // from matrix
+    QuatF(const float3x3& mat);
+    QuatF(const float4x4& mat);
+    static QuatF FromMatrix(const float3x3& mat);
+    static QuatF FromMatrix(const float4x4& mat);
 };
 struct alignas(16) QuatD {
     double x, y, z, w;
@@ -88,6 +95,7 @@ struct alignas(16) QuatD {
     
     // convert with rotator
     QuatD(const RotatorD& rotator);
+    static QuatD FromRotator(const RotatorD& rotator);
     
     // negative operator
     QuatD operator-() const;
@@ -106,6 +114,12 @@ struct alignas(16) QuatD {
     operator double4x4() const;
     double3x3 to_matrix3() const;
     double4x4 to_matrix4() const;
+    
+    // from matrix
+    QuatD(const double3x3& mat);
+    QuatD(const double4x4& mat);
+    static QuatD FromMatrix(const double3x3& mat);
+    static QuatD FromMatrix(const double4x4& mat);
 };
 }
 }
