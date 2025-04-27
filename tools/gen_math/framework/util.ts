@@ -169,6 +169,14 @@ export const type_convert_options: Dict<TypeConvertOption> = {
   },
 }
 
+export function filter_matrix_comp_kind(kind: ComponentKind) {
+  if (kind === "floating") {
+    return true;
+  } else {
+    return false
+  }
+}
+
 export function get_alignas_vector(opt: TypeOption, dim: number): string {
   if (dim === 4 && opt.component_kind === "floating") {
     return `alignas(16) `;

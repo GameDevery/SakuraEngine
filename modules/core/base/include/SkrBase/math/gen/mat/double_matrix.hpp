@@ -31,6 +31,7 @@ struct double3x3 {
             double m02, m12, m22;
         };
     };
+    
     // ctor & dtor
     inline double3x3() : axis_x(0), axis_y(0), axis_z(0) {}
     inline double3x3(
@@ -44,6 +45,12 @@ struct double3x3 {
     {}
     inline double3x3(double3 axis_x, double3 axis_y, double3 axis_z) noexcept : axis_x(axis_x), axis_y(axis_y), axis_z(axis_z) {}
     inline ~double3x3() = default;
+    
+    // convert with other dimensions
+    explicit double3x3(const double4x4& rhs);
+    
+    // convert with other component kinds
+    double3x3(const float3x3& rhs);
     
     // factory
     inline static double3x3 eye(double v) {
@@ -96,6 +103,7 @@ struct alignas(16) double4x4 {
             double m03, m13, m23, m33;
         };
     };
+    
     // ctor & dtor
     inline double4x4() : axis_x(0), axis_y(0), axis_z(0), axis_w(0) {}
     inline double4x4(
@@ -111,6 +119,12 @@ struct alignas(16) double4x4 {
     {}
     inline double4x4(double4 axis_x, double4 axis_y, double4 axis_z, double4 axis_w) noexcept : axis_x(axis_x), axis_y(axis_y), axis_z(axis_z), axis_w(axis_w) {}
     inline ~double4x4() = default;
+    
+    // convert with other dimensions
+    explicit double4x4(const double3x3& rhs);
+    
+    // convert with other component kinds
+    double4x4(const float4x4& rhs);
     
     // factory
     inline static double4x4 eye(double v) {
@@ -144,5 +158,6 @@ struct alignas(16) double4x4 {
     double4x4& operator*=(const double4x4& rhs);
     friend double4 operator*(const double4& lhs, const double4x4& rhs);
 };
+
 }
 }

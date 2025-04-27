@@ -428,12 +428,42 @@ inline bool is_nearly_identity(const QuatD& q, double threshold_angle)
     );
 }
 
-// to matrix
+// to matrix3
+inline QuatF::operator float3x3() const
+{
+    return to_matrix3();
+}
+inline float3x3 QuatF::to_matrix3() const
+{
+    return RtmConvert<float3x3>::from_rtm(
+        rtm::matrix_cast(
+            (rtm::matrix3x4f)rtm::matrix_from_quat(
+                RtmConvert<QuatF>::to_rtm(*this)
+            )
+        )
+    );
+}
+inline QuatD::operator double3x3() const
+{
+    return to_matrix3();
+}
+inline double3x3 QuatD::to_matrix3() const
+{
+    return RtmConvert<double3x3>::from_rtm(
+        rtm::matrix_cast(
+            (rtm::matrix3x4d)rtm::matrix_from_quat(
+                RtmConvert<QuatD>::to_rtm(*this)
+            )
+        )
+    );
+}
+
+// to matrix4
 inline QuatF::operator float4x4() const
 {
-    return to_matrix();
+    return to_matrix4();
 }
-inline float4x4 QuatF::to_matrix() const
+inline float4x4 QuatF::to_matrix4() const
 {
     return RtmConvert<float4x4>::from_rtm(
         rtm::matrix_cast(
@@ -445,9 +475,9 @@ inline float4x4 QuatF::to_matrix() const
 }
 inline QuatD::operator double4x4() const
 {
-    return to_matrix();
+    return to_matrix4();
 }
-inline double4x4 QuatD::to_matrix() const
+inline double4x4 QuatD::to_matrix4() const
 {
     return RtmConvert<double4x4>::from_rtm(
         rtm::matrix_cast(

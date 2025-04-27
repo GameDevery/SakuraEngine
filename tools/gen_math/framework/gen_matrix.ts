@@ -2,12 +2,14 @@ import {
   CodeBuilder, type_convert_options,
   type_options, all_component_kinds,
   dims_all, dims_no_scalar,
-  matrix_dims, get_alignas_matrix
+  matrix_dims, get_alignas_matrix,
+  filter_matrix_comp_kind
 } from "./util"
 import type { TypeOption, ComponentKind, GlobalBuilders } from "./util";
 import path from "node:path";
 
 const _axis_lut = ["x", "y", "z", "w"]
+const _comp_lut = ["x", "y", "z", "w"]
 
 interface GenMatrixOption extends TypeOption, GlobalBuilders {
   builder: CodeBuilder;
@@ -22,6 +24,7 @@ function _gen_class_body(opt: GenMatrixOption) {
   const base_name = opt.base_name;
   const comp_name = opt.component_name;
   const comp_kind = opt.component_kind;
+  const convert_opt = type_convert_options[base_name]!;
 
   // generate forward declaration
   fwd_b.$line(`// ${base_name} matrix, component: ${comp_name}`)
@@ -95,6 +98,7 @@ function _gen_class_body(opt: GenMatrixOption) {
         b.$line(`};`)
       })
       b.$line(`};`)
+      b.$line(``)
 
       // ctor & dtor
       {
@@ -150,6 +154,36 @@ function _gen_class_body(opt: GenMatrixOption) {
         b.$line(`inline ~${mat_name}() = default;`)
         b.$line(``)
       }
+
+      // convert with other dimensions
+      b.$line(`// convert with other dimensions`)
+      for (const other_dim of matrix_dims) {
+        if (other_dim === dim) continue;
+        const other_mat_name = `${base_name}${other_dim}x${other_dim}`;
+
+        const copy_exprs = _axis_lut
+          .slice(0, dim)
+          .map(axis => `axis_${axis}(rhs.axis_${axis}.${_comp_lut.slice(0, dim).join(``)}())`)
+          .join(`, `);
+
+        b.$line(`explicit ${mat_name}(const ${other_mat_name}& rhs);`)
+      }
+      b.$line(``);
+
+      // convert with other component kinds
+      b.$line(`// convert with other component kinds`)
+      for (const other_base_name in type_options) {
+        const other_type_opt = type_options[other_base_name]!;
+        if (!filter_matrix_comp_kind(other_type_opt.component_kind)) continue;
+        const allow_cast = convert_opt.accept_list.includes(other_base_name)
+        if (!allow_cast) continue;
+        const allow_implicit = convert_opt.implicit_list.includes(other_base_name)
+        const explicit_decorator = allow_implicit ? `` : `explicit `;
+        const other_mat_name = `${other_base_name}${dim}x${dim}`;
+
+        b.$line(`${explicit_decorator}${mat_name}(const ${other_mat_name}& rhs);`)
+      }
+      b.$line(``)
 
       // factory
       {
@@ -234,17 +268,99 @@ function _gen_class_body(opt: GenMatrixOption) {
     b.$line(`};`)
   }
 }
+function _gen_convert_func_body(opt: GenMatrixOption) {
+  const b = opt.builder;
+  const base_name = opt.base_name;
+  const comp_name = opt.component_name;
+  const comp_kind = opt.component_kind;
+  const convert_opt = type_convert_options[base_name]!;
 
+  b.$line(`// [${base_name}] convert with other dimensions`)
+  for (const dim of matrix_dims) {
+    const mat_name = `${base_name}${dim}x${dim}`;
+    const vec_name = `${base_name}${dim}`;
+
+    for (const other_dim of matrix_dims) {
+      if (other_dim === dim) continue;
+      const other_mat_name = `${base_name}${other_dim}x${other_dim}`;
+
+      b.$line(`inline ${mat_name}::${mat_name}(const ${other_mat_name}& rhs) :`)
+      b.$indent(_b => {
+        for (let cur_axis_idx = 0; cur_axis_idx < dim; ++cur_axis_idx) {
+          const end_comma = cur_axis_idx === dim - 1 ? `` : `,`;
+          const cur_axis = _axis_lut[cur_axis_idx];
+
+          let swizzle_init_exprs: string
+          if (cur_axis_idx < other_dim) {
+            if (other_dim > dim) {
+              swizzle_init_exprs = `rhs.axis_${cur_axis}.` + _comp_lut
+                .slice(0, dim)
+                .join(``) + `()`;
+            } else {
+              swizzle_init_exprs = `rhs.axis_${cur_axis}` + `, ${comp_name}(0)`.repeat(dim - other_dim);
+            }
+          } else {
+            const axis_init_exprs = _axis_lut
+              .slice(0, dim)
+              .map((axis, i) => i === cur_axis_idx ? `1` : `0`)
+              .map(v => `${comp_name}(${v})`)
+              .join(`, `);
+
+            swizzle_init_exprs = axis_init_exprs
+          }
+
+          b.$line(`axis_${cur_axis}(${swizzle_init_exprs})${end_comma}`)
+        }
+      })
+      b.$line(`{}`)
+    }
+  }
+}
+
+function _gen_convert_func_body_cross_type(opt: GenMatrixOption) {
+  const b = opt.builder;
+  const base_name = opt.base_name;
+  const comp_name = opt.component_name;
+  const comp_kind = opt.component_kind;
+  const convert_opt = type_convert_options[base_name]!;
+
+  b.$line(`// [${base_name}] convert with other component kinds`)
+  for (const dim of matrix_dims) {
+    const mat_name = `${base_name}${dim}x${dim}`;
+    const vec_name = `${base_name}${dim}`;
+
+    for (const other_base_name in type_options) {
+      const other_type_opt = type_options[other_base_name]!;
+      if (!filter_matrix_comp_kind(other_type_opt.component_kind)) continue;
+      const allow_cast = convert_opt.accept_list.includes(other_base_name)
+      if (!allow_cast) continue;
+      const allow_implicit = convert_opt.implicit_list.includes(other_base_name)
+      const other_mat_name = `${other_base_name}${dim}x${dim}`;
+
+      b.$line(`inline ${mat_name}::${mat_name}(const ${other_mat_name}& rhs) :`)
+      b.$indent(_b => {
+        for (let cur_axis_idx = 0; cur_axis_idx < dim; ++cur_axis_idx) {
+          const end_comma = cur_axis_idx === dim - 1 ? `` : `,`;
+          const cur_axis = _axis_lut[cur_axis_idx];
+
+          const axis_init_exprs = `axis_${cur_axis}(${vec_name}(rhs.axis_${cur_axis}))`
+          b.$line(`${axis_init_exprs}${end_comma}`)
+        }
+      })
+      b.$line(`{}`)
+    }
+  }
+}
 
 export function gen(global_builders: GlobalBuilders, gen_dir: string) {
   const inc_builder = new CodeBuilder();
   inc_builder.$util_header();
 
+  // generate class body
   for (const base_name in type_options) {
     const type_opt = type_options[base_name]!;
 
-    // filter component kinds
-    if (type_opt.component_kind !== "floating") continue;
+    if (!filter_matrix_comp_kind(type_opt.component_kind)) continue;
 
     // header
     const builder = new CodeBuilder();
@@ -269,6 +385,8 @@ export function gen(global_builders: GlobalBuilders, gen_dir: string) {
       ...type_opt,
       ...global_builders
     })
+    builder.$line(``);
+
     builder.$line(`}`)
     builder.$line(`}`)
 
@@ -278,7 +396,52 @@ export function gen(global_builders: GlobalBuilders, gen_dir: string) {
     inc_builder.$line(`#include "./${path.basename(file_name)}"`);
   }
 
+  // generate convert functions
+  {
+    const convert_builder = new CodeBuilder();
+    convert_builder.$util_header();
+
+    for (const base_name in type_options) {
+      const type_opt = type_options[base_name]!;
+      if (!filter_matrix_comp_kind(type_opt.component_kind)) continue;
+
+      convert_builder.$line(`#include "./${base_name}_matrix.hpp"`);
+    }
+    convert_builder.$line(``);
+
+    convert_builder.$line(`namespace skr {`);
+    convert_builder.$line(`inline namespace math {`);
+
+    for (const base_name in type_options) {
+      const type_opt = type_options[base_name]!;
+      if (!filter_matrix_comp_kind(type_opt.component_kind)) continue;
+
+      _gen_convert_func_body({
+        builder: convert_builder,
+        base_name,
+        ...type_opt,
+        ...global_builders
+      })
+      convert_builder.$line(``);
+
+      _gen_convert_func_body_cross_type({
+        builder: convert_builder,
+        base_name,
+        ...type_opt,
+        ...global_builders
+      })
+      convert_builder.$line(``);
+    }
+
+    convert_builder.$line(`}`)
+    convert_builder.$line(`}`)
+
+    const convert_file_name = path.join(gen_dir, `matrix_convert.hpp`);
+    convert_builder.write_file(convert_file_name);
+    inc_builder.$line(`#include "./matrix_convert.hpp"`);
+  }
+
   // write include file
-  const file_name = path.join(gen_dir, `gen_matrix.hpp`);
-  inc_builder.write_file(file_name);
+  const include_file_name = path.join(gen_dir, `gen_matrix.hpp`);
+  inc_builder.write_file(include_file_name);
 }

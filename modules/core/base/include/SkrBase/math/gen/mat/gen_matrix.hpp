@@ -5,3 +5,4 @@
 #pragma once
 #include "./float_matrix.hpp"
 #include "./double_matrix.hpp"
+#include "./matrix_convert.hpp"

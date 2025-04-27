@@ -138,8 +138,10 @@ function _gen_quat(opt: GenMiscOption) {
 
       // to matrix
       b.$line(`// to matrix`)
+      b.$line(`operator ${matrix3_name}() const;`)
       b.$line(`operator ${matrix4_name}() const;`)
-      b.$line(`${matrix4_name} to_matrix() const;`)
+      b.$line(`${matrix3_name} to_matrix3() const;`)
+      b.$line(`${matrix4_name} to_matrix4() const;`)
     })
     b.$line(`};`)
   }
