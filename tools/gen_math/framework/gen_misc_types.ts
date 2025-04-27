@@ -59,6 +59,8 @@ function _gen_quat(opt: GenMiscOption) {
     const rotator_name = `Rotator${suffix}`;
     const vec3_name = `${base_name}3`;
     const vec4_name = `${base_name}4`;
+    const matrix3_name = `${base_name}3x3`;
+    const matrix4_name = `${base_name}4x4`;
 
     b.$line(`struct ${quat_name} {`)
     b.$indent(_b => {
@@ -132,6 +134,12 @@ function _gen_quat(opt: GenMiscOption) {
       b.$line(`// identity`)
       b.$line(`bool is_identity() const;`)
       b.$line(`bool is_nearly_identity(${comp_name} threshold_angle = ${comp_name}(0.00001)) const;`)
+      b.$line(``)
+
+      // to matrix
+      b.$line(`// to matrix`)
+      b.$line(`operator ${matrix4_name}() const;`)
+      b.$line(`${matrix4_name} to_matrix() const;`)
     })
     b.$line(`};`)
   }
@@ -291,6 +299,11 @@ function _gen_transform(opt: GenMiscOption) {
       b.$line(`bool is_nearly_identity(${comp_name} threshold = ${comp_name}(0.00001)) const;`)
       b.$line(``)
 
+      // to matrix
+      b.$line(`// to matrix`)
+      b.$line(`operator ${mat4_name}() const;`)
+      b.$line(`${mat4_name} to_matrix() const;`)
+      b.$line(`${mat4_name} to_matrix_no_scale() const;`)
     })
     b.$line(`};`)
 

@@ -10,10 +10,10 @@
 namespace skr {
 inline namespace math {
 // abs
-inline int32_t abs(int32_t v) { return ::std::abs(v); }
-inline int2 abs(const int2& v) { return {::std::abs(v.x), ::std::abs(v.y)}; }
-inline int3 abs(const int3& v) { return {::std::abs(v.x), ::std::abs(v.y), ::std::abs(v.z)}; }
-inline int4 abs(const int4& v) { return {::std::abs(v.x), ::std::abs(v.y), ::std::abs(v.z), ::std::abs(v.w)}; }
+inline int32_t abs(int32_t v) { return v < int32_t(0) ? -v : v; }
+inline int2 abs(const int2 &v) { return {abs(v.x), abs(v.y)}; }
+inline int3 abs(const int3 &v) { return {abs(v.x), abs(v.y), abs(v.z)}; }
+inline int4 abs(const int4 &v) { return {abs(v.x), abs(v.y), abs(v.z), abs(v.w)}; }
 
 // max
 inline int32_t max(int32_t v1, int32_t v2) { return ::std::max(v1, v2); }

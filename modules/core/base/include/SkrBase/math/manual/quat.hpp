@@ -427,5 +427,36 @@ inline bool is_nearly_identity(const QuatD& q, double threshold_angle)
         threshold_angle
     );
 }
+
+// to matrix
+inline QuatF::operator float4x4() const
+{
+    return to_matrix();
+}
+inline float4x4 QuatF::to_matrix() const
+{
+    return RtmConvert<float4x4>::from_rtm(
+        rtm::matrix_cast(
+            (rtm::matrix3x4f)rtm::matrix_from_quat(
+                RtmConvert<QuatF>::to_rtm(*this)
+            )
+        )
+    );
+}
+inline QuatD::operator double4x4() const
+{
+    return to_matrix();
+}
+inline double4x4 QuatD::to_matrix() const
+{
+    return RtmConvert<double4x4>::from_rtm(
+        rtm::matrix_cast(
+            (rtm::matrix3x4d)rtm::matrix_from_quat(
+                RtmConvert<QuatD>::to_rtm(*this)
+            )
+        )
+    );
+}
+
 } // namespace math
 } // namespace skr

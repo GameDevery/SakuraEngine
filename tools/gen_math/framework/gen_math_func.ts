@@ -88,7 +88,28 @@ class _MathFuncGenerator {
 
   @math_func("abs", { accept_comp_kind: ["floating", "integer"] })
   static gen_abs(b: CodeBuilder, opt: MathGenOptions) {
-    this.#call_std_func("abs", "abs", b, opt, ["v"]);
+    if (opt.component_kind === "integer") {
+      const base_name = opt.base_name;
+      const dim = opt.dim;
+      const vec_name = `${base_name}${dim}`;
+      const comp_name = opt.component_name;
+      const return_vec_name = `${base_name}${dim}`;
+
+      if (dim === 1) {
+        const init_expr = `v < ${comp_name}(0) ? -v : v`;
+        b.$line(`inline ${comp_name} abs(${comp_name} v) { return ${init_expr}; }`)
+      } else {
+        const init_expr = _comp_lut
+          .slice(0, dim)
+          .map(c => `abs(v.${c})`)
+          .join(', ');
+
+        b.$line(`inline ${return_vec_name} abs(const ${vec_name} &v) { return {${init_expr}}; }`)
+      }
+
+    } else {
+      this.#call_std_func("abs", "abs", b, opt, ["v"]);
+    }
   }
 
   // cos
@@ -615,7 +636,7 @@ class _MathFuncGenerator {
       return;
     }
 
-    b.$line(`inline ${vec_name} step(const ${vec_name} &edge, const ${vec_name} &v) { return select(edge < v, ${comp_name}(0), ${comp_name}(1)); }`)
+    b.$line(`inline ${vec_name} step(const ${vec_name} &edge, const ${vec_name} &v) { return select(edge < v, ${vec_name}(0), ${vec_name}(1)); }`)
   }
   @math_func("smoothstep", { accept_comp_kind: ["floating"] })
   static gen_smoothstep(b: CodeBuilder, opt: MathGenOptions) {

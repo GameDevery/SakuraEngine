@@ -399,5 +399,58 @@ inline bool TransformD::is_nearly_identity(double threshold) const
            all(nearly_equal(scale, double3(1), threshold));
 }
 
+// to matrix
+inline TransformF::operator float4x4() const
+{
+    return to_matrix();
+}
+inline float4x4 TransformF::to_matrix() const
+{
+    return RtmConvert<float4x4>::from_rtm(
+        rtm::matrix_cast(
+            rtm::matrix_from_qvv(
+                RtmConvert<TransformF>::to_rtm(*this)
+            )
+        )
+    );
+}
+inline float4x4 TransformF::to_matrix_no_scale() const
+{
+    return RtmConvert<float4x4>::from_rtm(
+        rtm::matrix_cast(
+            rtm::matrix_from_qvv(
+                RtmConvert<QuatF>::to_rtm(rotation),
+                RtmConvert<float3>::to_rtm(position),
+                rtm::vector_set(1.f, 1.f, 1.f, 0.f)
+            )
+        )
+    );
+}
+inline TransformD::operator double4x4() const
+{
+    return to_matrix();
+}
+inline double4x4 TransformD::to_matrix() const
+{
+    return RtmConvert<double4x4>::from_rtm(
+        rtm::matrix_cast(
+            rtm::matrix_from_qvv(
+                RtmConvert<TransformD>::to_rtm(*this)
+            )
+        )
+    );
+}
+inline double4x4 TransformD::to_matrix_no_scale() const
+{
+    return RtmConvert<double4x4>::from_rtm(
+        rtm::matrix_cast(
+            rtm::matrix_from_qvv(
+                RtmConvert<QuatD>::to_rtm(rotation),
+                RtmConvert<double3>::to_rtm(position),
+                rtm::vector_set(1.0, 1.0, 1.0, 0.0)
+            )
+        )
+    );
+}
 } // namespace math
 } // namespace skr

@@ -10,10 +10,10 @@
 namespace skr {
 inline namespace math {
 // abs
-inline uint64_t abs(uint64_t v) { return ::std::abs(v); }
-inline ulong2 abs(const ulong2& v) { return {::std::abs(v.x), ::std::abs(v.y)}; }
-inline ulong3 abs(const ulong3& v) { return {::std::abs(v.x), ::std::abs(v.y), ::std::abs(v.z)}; }
-inline ulong4 abs(const ulong4& v) { return {::std::abs(v.x), ::std::abs(v.y), ::std::abs(v.z), ::std::abs(v.w)}; }
+inline uint64_t abs(uint64_t v) { return v < uint64_t(0) ? -v : v; }
+inline ulong2 abs(const ulong2 &v) { return {abs(v.x), abs(v.y)}; }
+inline ulong3 abs(const ulong3 &v) { return {abs(v.x), abs(v.y), abs(v.z)}; }
+inline ulong4 abs(const ulong4 &v) { return {abs(v.x), abs(v.y), abs(v.z), abs(v.w)}; }
 
 // max
 inline uint64_t max(uint64_t v1, uint64_t v2) { return ::std::max(v1, v2); }

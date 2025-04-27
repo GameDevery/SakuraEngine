@@ -335,9 +335,9 @@ inline double3 refract(const double3 &v, const double3 &n, double eta) {
 
 // step
 inline double step(const double &edge, const double &v) { return v < edge ? double(0) : double(1); }
-inline double2 step(const double2 &edge, const double2 &v) { return select(edge < v, double(0), double(1)); }
-inline double3 step(const double3 &edge, const double3 &v) { return select(edge < v, double(0), double(1)); }
-inline double4 step(const double4 &edge, const double4 &v) { return select(edge < v, double(0), double(1)); }
+inline double2 step(const double2 &edge, const double2 &v) { return select(edge < v, double2(0), double2(1)); }
+inline double3 step(const double3 &edge, const double3 &v) { return select(edge < v, double3(0), double3(1)); }
+inline double4 step(const double4 &edge, const double4 &v) { return select(edge < v, double4(0), double4(1)); }
 
 // smoothstep
 inline double smoothstep(const double &edge0, const double &edge1, const double &v) {

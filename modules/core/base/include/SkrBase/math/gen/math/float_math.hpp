@@ -335,9 +335,9 @@ inline float3 refract(const float3 &v, const float3 &n, float eta) {
 
 // step
 inline float step(const float &edge, const float &v) { return v < edge ? float(0) : float(1); }
-inline float2 step(const float2 &edge, const float2 &v) { return select(edge < v, float(0), float(1)); }
-inline float3 step(const float3 &edge, const float3 &v) { return select(edge < v, float(0), float(1)); }
-inline float4 step(const float4 &edge, const float4 &v) { return select(edge < v, float(0), float(1)); }
+inline float2 step(const float2 &edge, const float2 &v) { return select(edge < v, float2(0), float2(1)); }
+inline float3 step(const float3 &edge, const float3 &v) { return select(edge < v, float3(0), float3(1)); }
+inline float4 step(const float4 &edge, const float4 &v) { return select(edge < v, float4(0), float4(1)); }
 
 // smoothstep
 inline float smoothstep(const float &edge0, const float &edge1, const float &v) {

@@ -10,10 +10,10 @@
 namespace skr {
 inline namespace math {
 // abs
-inline int64_t abs(int64_t v) { return ::std::abs(v); }
-inline long2 abs(const long2& v) { return {::std::abs(v.x), ::std::abs(v.y)}; }
-inline long3 abs(const long3& v) { return {::std::abs(v.x), ::std::abs(v.y), ::std::abs(v.z)}; }
-inline long4 abs(const long4& v) { return {::std::abs(v.x), ::std::abs(v.y), ::std::abs(v.z), ::std::abs(v.w)}; }
+inline int64_t abs(int64_t v) { return v < int64_t(0) ? -v : v; }
+inline long2 abs(const long2 &v) { return {abs(v.x), abs(v.y)}; }
+inline long3 abs(const long3 &v) { return {abs(v.x), abs(v.y), abs(v.z)}; }
+inline long4 abs(const long4 &v) { return {abs(v.x), abs(v.y), abs(v.z), abs(v.w)}; }
 
 // max
 inline int64_t max(int64_t v1, int64_t v2) { return ::std::max(v1, v2); }

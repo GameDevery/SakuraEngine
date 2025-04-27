@@ -51,6 +51,10 @@ struct QuatF {
     // identity
     bool is_identity() const;
     bool is_nearly_identity(float threshold_angle = float(0.00001)) const;
+    
+    // to matrix
+    operator float4x4() const;
+    float4x4 to_matrix() const;
 };
 struct QuatD {
     double x, y, z, w;
@@ -94,6 +98,10 @@ struct QuatD {
     // identity
     bool is_identity() const;
     bool is_nearly_identity(double threshold_angle = double(0.00001)) const;
+    
+    // to matrix
+    operator double4x4() const;
+    double4x4 to_matrix() const;
 };
 }
 }

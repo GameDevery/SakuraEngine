@@ -33,6 +33,10 @@ struct TransformF {
     bool is_identity() const;
     bool is_nearly_identity(float threshold = float(0.00001)) const;
     
+    // to matrix
+    operator float4x4() const;
+    float4x4 to_matrix() const;
+    float4x4 to_matrix_no_scale() const;
 };
 struct TransformD {
     alignas(16) QuatD rotation;
@@ -57,6 +61,10 @@ struct TransformD {
     bool is_identity() const;
     bool is_nearly_identity(double threshold = double(0.00001)) const;
     
+    // to matrix
+    operator double4x4() const;
+    double4x4 to_matrix() const;
+    double4x4 to_matrix_no_scale() const;
 };
 }
 }

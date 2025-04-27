@@ -85,7 +85,7 @@ function _gen_class_body(opt: GenMatrixOption) {
           for (let row_idx = 0; row_idx < dim; ++row_idx) {
             const row_members = dims_all
               .slice(0, dim)
-              .map(d => `float m${row_idx}${d - 1}`)
+              .map(d => `${comp_name} m${row_idx}${d - 1}`)
               .join(`, `);
             if (row_idx === dim - 1) {
               b.$line(`${row_members}`)
