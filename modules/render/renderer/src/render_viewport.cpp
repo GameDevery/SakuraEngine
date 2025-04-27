@@ -108,7 +108,7 @@ void skr_resolve_camera_to_viewport(const skr::CameraComponent* camera, const sk
     const auto view = rtm::matrix_look_at(
         eye /*eye*/, 
         focus_pos /*at*/,
-        { 0.f, 0.f, 1.f } /*up*/
+        rtm::vector_set( 0.f, 0.f, 1.f) /*up*/
     );
     auto proj = rtm::proj_perspective_fov(                    
         3.1415926f / 2.f, 
