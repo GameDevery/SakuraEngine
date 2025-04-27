@@ -1,5 +1,5 @@
 #include "SkrBase/misc/traits.hpp"
-#include "SkrBase/math/math.h"
+#include "SkrBase/math.h"
 #include "SkrBase/types.h"
 #include "SkrContainers/string.hpp"
 

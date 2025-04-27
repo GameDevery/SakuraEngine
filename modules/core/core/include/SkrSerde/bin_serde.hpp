@@ -3,7 +3,7 @@
 #include "SkrBase/template/concepts.hpp"
 #include "SkrCore/log.h"
 #include "SkrBase/types.h"
-#include "SkrBase/math/math.h"
+#include "SkrBase/math.h"
 
 // writer & reader
 // TODO. 搬到 archive 里面去

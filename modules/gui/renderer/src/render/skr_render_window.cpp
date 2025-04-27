@@ -11,7 +11,7 @@
 #include "SkrGuiRenderer/resource/skr_updatable_image.hpp"
 #include "SkrBase/misc/make_zeroed.hpp"
 #include "SkrGui/framework/layer/native_window_layer.hpp"
-#include "SkrBase/math/math.h"
+#include "SkrBase/math.h"
 
 namespace skr::gui
 {

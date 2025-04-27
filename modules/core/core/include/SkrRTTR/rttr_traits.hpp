@@ -3,7 +3,7 @@
 #include "SkrContainersDef/string.hpp"
 #include "SkrBase/meta.h"
 #include "SkrContainersDef/sptr.hpp"
-#include "SkrBase/math/math.h"
+#include "SkrBase/math.h"
 
 // RTTR traits
 // 提供非 GenericType 的静态信息：

@@ -1,4 +1,4 @@
-#include "SkrBase/math/math.h"
+#include "SkrBase/math.h"
 #include "rtm/qvvf.h"
 #include "SkrContainers/hashmap.hpp"
 #include "SkrRT/ecs/sugoi.h"

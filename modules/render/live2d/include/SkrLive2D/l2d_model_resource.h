@@ -1,6 +1,6 @@
 #pragma once
 #include "SkrBase/config.h"
-#include "SkrBase/math/math.h"
+#include "SkrBase/math.h"
 
 #ifdef __cplusplus
 namespace Live2D { namespace Cubism { namespace Framework {

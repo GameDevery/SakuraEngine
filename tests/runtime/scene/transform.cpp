@@ -1,5 +1,5 @@
 #include "SkrBase/types.h"
-#include "SkrBase/math/math.h"
+#include "SkrBase/math.h"
 #include "rtm/qvvf.h"
 #include "SkrOS/thread.h"
 #include "SkrCore/log.h"
