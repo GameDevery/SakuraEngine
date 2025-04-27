@@ -113,13 +113,18 @@ function _gen_quat(opt: GenMiscOption) {
 
       // convert with rotator
       b.$line(`// convert with rotator`)
-      b.$line(`${quat_name}(const ${rotator_name}& rotator);`)
+      b.$line(`explicit ${quat_name}(const ${rotator_name}& rotator);`)
       b.$line(`static ${quat_name} FromRotator(const ${rotator_name}& rotator);`)
       b.$line(``)
 
       // neg operator
       b.$line(`// negative operator`)
       b.$line(`${quat_name} operator-() const;`)
+      b.$line(``)
+
+      // mul assign operator
+      b.$line(`// mul assign operator`)
+      b.$line(`${quat_name}& operator*=(const ${quat_name}& rhs);`)
       b.$line(``)
 
       // [use as_vector()] compare operator
@@ -201,6 +206,8 @@ function _gen_rotator(opt: GenMiscOption) {
     const rotator_name = `Rotator${suffix}`;
     const vec3_name = `${base_name}3`;
     const vec4_name = `${base_name}4`;
+    const mat3_name = `${base_name}3x3`;
+    const mat4_name = `${base_name}4x4`;
     const quat_name = `Quat${suffix}`;
 
     b.$line(`struct ${rotator_name} {`)
@@ -242,14 +249,37 @@ function _gen_rotator(opt: GenMiscOption) {
 
       // convert with quat
       b.$line(`// convert with quat`)
-      b.$line(`${rotator_name}(const ${quat_name}& quat);`)
+      b.$line(`explicit ${rotator_name}(const ${quat_name}& quat);`)
       b.$line(`static ${rotator_name} FromQuat(const ${quat_name}& quat);`)
       b.$line(``)
 
-      // [use quat] negative operator
       // [use as_vector()] arithmetic operator
       // [use as_vector()] compare operator
 
+      // negative operator
+      b.$line(`// negative operator`)
+      b.$line(`${rotator_name} operator-() const;`)
+      b.$line(``)
+
+      // mul assign operator
+      b.$line(`// mul assign operator`)
+      b.$line(`${rotator_name}& operator*=(const ${rotator_name}& rhs);`)
+      b.$line(``)
+
+      // to matrix
+      b.$line(`// to matrix`)
+      b.$line(`operator ${mat3_name}() const;`)
+      b.$line(`operator ${mat4_name}() const;`)
+      b.$line(`${mat3_name} to_matrix3() const;`)
+      b.$line(`${mat4_name} to_matrix4() const;`)
+      b.$line(``)
+
+      // from matrix
+      b.$line(`// from matrix`)
+      b.$line(`${rotator_name}(const ${mat3_name}& mat);`)
+      b.$line(`${rotator_name}(const ${mat4_name}& mat);`)
+      b.$line(`static ${rotator_name} FromMatrix(const ${mat3_name}& mat);`)
+      b.$line(`static ${rotator_name} FromMatrix(const ${mat4_name}& mat);`)
     })
     b.$line(`}; `)
   }
@@ -347,6 +377,11 @@ function _gen_transform(opt: GenMiscOption) {
       b.$line(`inline ${transform_name}(${transform_name}&&) = default;`)
       b.$line(`inline ${transform_name}& operator=(${transform_name} const&) = default;`)
       b.$line(`inline ${transform_name}& operator=(${transform_name}&&) = default;`)
+      b.$line(``)
+
+      // mul assign operator
+      b.$line(`// mul assign operator`)
+      b.$line(`${transform_name}& operator*=(const ${transform_name}& rhs);`)
       b.$line(``)
 
       // identity

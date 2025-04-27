@@ -371,6 +371,26 @@ inline bool is_nearly_equal(const TransformF& lhs, const TransformF& rhs, float 
            all(nearly_equal(lhs.scale, rhs.scale, threshold));
 }
 
+// mul assign operator
+inline TransformF& TransformF::operator*=(const TransformF& rhs)
+{
+    auto result = rtm::qvv_mul(
+        RtmConvert<TransformF>::to_rtm(*this),
+        RtmConvert<TransformF>::to_rtm(rhs)
+    );
+    RtmConvert<TransformF>::store(result, *this);
+    return *this;
+}
+inline TransformD& TransformD::operator*=(const TransformD& rhs)
+{
+    auto result = rtm::qvv_mul(
+        RtmConvert<TransformD>::to_rtm(*this),
+        RtmConvert<TransformD>::to_rtm(rhs)
+    );
+    RtmConvert<TransformD>::store(result, *this);
+    return *this;
+}
+
 // is identity
 inline bool TransformF::is_identity() const
 {

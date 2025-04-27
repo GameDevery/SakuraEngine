@@ -29,6 +29,9 @@ struct TransformF {
     inline TransformF& operator=(TransformF const&) = default;
     inline TransformF& operator=(TransformF&&) = default;
     
+    // mul assign operator
+    TransformF& operator*=(const TransformF& rhs);
+    
     // identity
     bool is_identity() const;
     bool is_nearly_identity(float threshold = float(0.00001)) const;
@@ -62,6 +65,9 @@ struct TransformD {
     inline TransformD(TransformD&&) = default;
     inline TransformD& operator=(TransformD const&) = default;
     inline TransformD& operator=(TransformD&&) = default;
+    
+    // mul assign operator
+    TransformD& operator*=(const TransformD& rhs);
     
     // identity
     bool is_identity() const;

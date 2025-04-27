@@ -146,7 +146,7 @@ void SkrRenderWindow::_prepare_draw_data(const NativeWindowLayer* layer, Sizef w
             TransformF t;
             t.scale    = { 1.f, 1.f, 1.f };
             t.position = { 0.f, 0.f, 0.f };
-            t.rotation = RotatorF(0.f, 0.f, 0);
+            t.rotation = QuatF(RotatorF(0.f, 0.f, 0));
             transform  = RtmConvert<float4x4>::to_rtm(t);
         }
 

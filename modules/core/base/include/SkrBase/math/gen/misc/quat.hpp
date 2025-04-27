@@ -38,11 +38,14 @@ struct alignas(16) QuatF {
     inline const float4& as_vector() const { return *reinterpret_cast<const float4*>(this); }
     
     // convert with rotator
-    QuatF(const RotatorF& rotator);
+    explicit QuatF(const RotatorF& rotator);
     static QuatF FromRotator(const RotatorF& rotator);
     
     // negative operator
     QuatF operator-() const;
+    
+    // mul assign operator
+    QuatF& operator*=(const QuatF& rhs);
     
     // get axis & angle
     float3 axis() const;
@@ -94,11 +97,14 @@ struct alignas(16) QuatD {
     inline const double4& as_vector() const { return *reinterpret_cast<const double4*>(this); }
     
     // convert with rotator
-    QuatD(const RotatorD& rotator);
+    explicit QuatD(const RotatorD& rotator);
     static QuatD FromRotator(const RotatorD& rotator);
     
     // negative operator
     QuatD operator-() const;
+    
+    // mul assign operator
+    QuatD& operator*=(const QuatD& rhs);
     
     // get axis & angle
     double3 axis() const;

@@ -28,9 +28,26 @@ struct RotatorF {
     inline const float3& as_vector() const { return *reinterpret_cast<const float3*>(this); }
     
     // convert with quat
-    RotatorF(const QuatF& quat);
+    explicit RotatorF(const QuatF& quat);
     static RotatorF FromQuat(const QuatF& quat);
     
+    // negative operator
+    RotatorF operator-() const;
+    
+    // mul assign operator
+    RotatorF& operator*=(const RotatorF& rhs);
+    
+    // to matrix
+    operator float3x3() const;
+    operator float4x4() const;
+    float3x3 to_matrix3() const;
+    float4x4 to_matrix4() const;
+    
+    // from matrix
+    RotatorF(const float3x3& mat);
+    RotatorF(const float4x4& mat);
+    static RotatorF FromMatrix(const float3x3& mat);
+    static RotatorF FromMatrix(const float4x4& mat);
 }; 
 struct RotatorD {
     double pitch, yaw, roll;
@@ -51,9 +68,26 @@ struct RotatorD {
     inline const double3& as_vector() const { return *reinterpret_cast<const double3*>(this); }
     
     // convert with quat
-    RotatorD(const QuatD& quat);
+    explicit RotatorD(const QuatD& quat);
     static RotatorD FromQuat(const QuatD& quat);
     
+    // negative operator
+    RotatorD operator-() const;
+    
+    // mul assign operator
+    RotatorD& operator*=(const RotatorD& rhs);
+    
+    // to matrix
+    operator double3x3() const;
+    operator double4x4() const;
+    double3x3 to_matrix3() const;
+    double4x4 to_matrix4() const;
+    
+    // from matrix
+    RotatorD(const double3x3& mat);
+    RotatorD(const double4x4& mat);
+    static RotatorD FromMatrix(const double3x3& mat);
+    static RotatorD FromMatrix(const double4x4& mat);
 }; 
 }
 }

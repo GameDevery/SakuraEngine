@@ -9,11 +9,11 @@ inline namespace math
 // impl quat factory
 inline QuatF QuatF::Euler(float pitch, float yaw, float roll)
 {
-    return { RotatorF(pitch, yaw, roll) };
+    return QuatF{ RotatorF(pitch, yaw, roll) };
 }
 inline QuatD QuatD::Euler(double pitch, double yaw, double roll)
 {
-    return { RotatorD(pitch, yaw, roll) };
+    return QuatD{ RotatorD(pitch, yaw, roll) };
 }
 inline QuatF QuatF::AxisAngle(float3 axis, float angle)
 {
@@ -80,6 +80,26 @@ inline QuatD QuatD::operator-() const
             RtmConvert<QuatD>::to_rtm(*this)
         )
     );
+}
+
+// mul assign operator
+inline QuatF& QuatF::operator*=(const QuatF& rhs)
+{
+    auto quat = rtm::quat_mul(
+        RtmConvert<QuatF>::to_rtm(*this),
+        RtmConvert<QuatF>::to_rtm(rhs)
+    );
+    RtmConvert<QuatF>::store(quat, *this);
+    return *this;
+}
+inline QuatD& QuatD::operator*=(const QuatD& rhs)
+{
+    auto quat = rtm::quat_mul(
+        RtmConvert<QuatD>::to_rtm(*this),
+        RtmConvert<QuatD>::to_rtm(rhs)
+    );
+    RtmConvert<QuatD>::store(quat, *this);
+    return *this;
 }
 
 // get axis & angle
