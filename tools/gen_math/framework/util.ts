@@ -162,3 +162,19 @@ export const type_convert_options: Dict<TypeConvertOption> = {
     implicit_list: ["bool", "uint"],
   },
 }
+
+export function get_alignas_vector(opt: TypeOption, dim: number): string {
+  if (dim === 4 && opt.component_kind === "floating") {
+    return `alignas(16) `;
+  } else {
+    return ``;
+  }
+}
+
+export function get_alignas_matrix(opt: TypeOption, dim: number): string {
+  if (dim === 4 && opt.component_kind === "floating") {
+    return `alignas(16) `;
+  } else {
+    return ``;
+  }
+}

@@ -202,7 +202,7 @@ struct double3 {
         return result;
     }
 };
-struct double4 {
+struct alignas(16) double4 {
     double x, y, z, w;
     
     // ctor & dtor

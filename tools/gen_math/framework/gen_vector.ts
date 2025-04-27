@@ -1,6 +1,7 @@
 import {
   CodeBuilder, dims_no_scalar,
-  type_convert_options, type_options
+  type_convert_options, type_options,
+  get_alignas_vector
 } from "./util"
 import type { TypeOption } from "./util";
 import path from "node:path";
@@ -272,7 +273,7 @@ function _gen_class_body(opt: GenVectorOption) {
   for (const dim of dims_no_scalar) {
     const vec_name = `${base_name}${dim}`;
 
-    b.$line(`struct ${vec_name} {`);
+    b.$line(`struct ${get_alignas_vector(opt, dim)}${vec_name} {`);
     b.$indent(b => {
       // fill components
       b.$line(`${comp_name} ${_comp_lut.slice(0, dim).join(", ")};`)

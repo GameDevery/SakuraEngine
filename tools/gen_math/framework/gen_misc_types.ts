@@ -62,7 +62,7 @@ function _gen_quat(opt: GenMiscOption) {
     const matrix3_name = `${base_name}3x3`;
     const matrix4_name = `${base_name}4x4`;
 
-    b.$line(`struct ${quat_name} {`)
+    b.$line(`struct alignas(16) ${quat_name} {`)
     b.$indent(_b => {
       // member
       b.$line(`${comp_name} ${_quat_comp_lut.join(`, `)};`)

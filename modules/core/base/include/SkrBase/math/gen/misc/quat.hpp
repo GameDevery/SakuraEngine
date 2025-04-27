@@ -9,7 +9,7 @@
 
 namespace skr {
 inline namespace math {
-struct QuatF {
+struct alignas(16) QuatF {
     float x, y, z, w;
     
     // ctor & dtor
@@ -56,7 +56,7 @@ struct QuatF {
     operator float4x4() const;
     float4x4 to_matrix() const;
 };
-struct QuatD {
+struct alignas(16) QuatD {
     double x, y, z, w;
     
     // ctor & dtor

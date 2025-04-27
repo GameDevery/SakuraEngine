@@ -2,7 +2,7 @@ import {
   CodeBuilder, type_convert_options,
   type_options, all_component_kinds,
   dims_all, dims_no_scalar,
-  matrix_dims
+  matrix_dims, get_alignas_matrix
 } from "./util"
 import type { TypeOption, ComponentKind } from "./util";
 import path from "node:path";
@@ -34,7 +34,7 @@ function _gen_class_body(opt: GenMatrixOption) {
     const mat_name = `${base_name}${dim}x${dim}`;
     const vec_name = `${base_name}${dim}`;
 
-    b.$line(`struct ${mat_name} {`)
+    b.$line(`struct ${get_alignas_matrix(opt, dim)}${mat_name} {`)
     b.$indent(_b => {
       // fill component types
       b.$line(`union {`)

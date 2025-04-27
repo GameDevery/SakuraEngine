@@ -75,7 +75,7 @@ struct float3x3 {
     float3x3& operator*=(const float3x3& rhs);
     friend float3 operator*(const float3& lhs, const float3x3& rhs);
 };
-struct float4x4 {
+struct alignas(16) float4x4 {
     union {
         // base axis
         struct {

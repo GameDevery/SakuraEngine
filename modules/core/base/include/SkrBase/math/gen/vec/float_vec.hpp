@@ -202,7 +202,7 @@ struct float3 {
         return result;
     }
 };
-struct float4 {
+struct alignas(16) float4 {
     float x, y, z, w;
     
     // ctor & dtor
