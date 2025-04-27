@@ -490,15 +490,15 @@ int main(int argc, char* argv[])
                 .allow_readwrite();
             });
             // camera
-            auto view = rtm::look_at_matrix(
+            auto view = rtm::view_look_at(
                 { 0.f, 2.5f, 2.5f } /*eye*/,
                 { 0.f, 0.f, 0.f } /*at*/,
                 { 0.f, 1.f, 0.f } /*up*/);
-            auto proj = rtm::perspective_fov(
+            auto proj = rtm::proj_perspective_fov(
                 3.1415926f / 2.f,
                 (float)BACK_BUFFER_WIDTH / (float)BACK_BUFFER_HEIGHT,
                 1.f, 1000.f);
-            auto view_proj = rtm::matrix_mul(view, proj);
+            auto view_proj = rtm::matrix_mul(rtm::matrix_cast(view), proj);
             graph->add_render_pass(
             [=](render_graph::RenderGraph& g, render_graph::RenderPassBuilder& builder) {
                 builder.set_name(u8"gbuffer_pass")
