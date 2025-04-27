@@ -3,7 +3,7 @@
 #include "SkrBase/config.h"
 
 namespace skr {
-namespace log {
+namespace logging {
 
 extern const char* kLogMemoryName;
 enum class LogLevel : uint32_t
@@ -57,20 +57,20 @@ protected:
 
 struct SKR_CORE_API LogConstants
 {
-    static skr::log::LogLevel gLogLevel;
-    static skr::log::LogFlushBehavior gFlushBehavior;
-    static constexpr skr::log::LogFlushBehavior kFlushBehaviorLUT[] = {
-        skr::log::LogFlushBehavior::kAuto,
-        skr::log::LogFlushBehavior::kFlushImmediate
+    static skr::logging::LogLevel gLogLevel;
+    static skr::logging::LogFlushBehavior gFlushBehavior;
+    static constexpr skr::logging::LogFlushBehavior kFlushBehaviorLUT[] = {
+        skr::logging::LogFlushBehavior::kAuto,
+        skr::logging::LogFlushBehavior::kFlushImmediate
     };
-    static constexpr skr::log::LogLevel kLogLevelsLUT[] = {
-        skr::log::LogLevel::kTrace, 
-        skr::log::LogLevel::kDebug, 
-        skr::log::LogLevel::kInfo, 
-        skr::log::LogLevel::kWarning, 
-        skr::log::LogLevel::kError, 
-        skr::log::LogLevel::kFatal,
-        skr::log::LogLevel::kBackTrace
+    static constexpr skr::logging::LogLevel kLogLevelsLUT[] = {
+        skr::logging::LogLevel::kTrace, 
+        skr::logging::LogLevel::kDebug, 
+        skr::logging::LogLevel::kInfo, 
+        skr::logging::LogLevel::kWarning, 
+        skr::logging::LogLevel::kError, 
+        skr::logging::LogLevel::kFatal,
+        skr::logging::LogLevel::kBackTrace
     };
     static constexpr const char8_t* kLogLevelNameLUT[] = {
         u8"TRACE",
@@ -81,7 +81,7 @@ struct SKR_CORE_API LogConstants
         u8"FATAL",
         u8"BACKTRACE"
     };
-    static_assert(sizeof(kLogLevelsLUT) / sizeof(kLogLevelsLUT[0]) == (int)skr::log::LogLevel::kCount, "kLogLevelsLUT size mismatch");
+    static_assert(sizeof(kLogLevelsLUT) / sizeof(kLogLevelsLUT[0]) == (int)skr::logging::LogLevel::kCount, "kLogLevelsLUT size mismatch");
 
     static const skr_guid_t kDefaultPatternId;
     static const skr_guid_t kDefaultConsolePatternId;
@@ -90,5 +90,5 @@ struct SKR_CORE_API LogConstants
     static const skr_guid_t kDefaultFileSinkId;
 };
 
-} // namespace log
+} // namespace logging
 } // namespace skr

@@ -6,7 +6,7 @@
 #include "SkrProfile/profile.h"
 
 namespace skr {
-namespace log {
+namespace logging {
 
 ThreadToken::ThreadToken(LogQueue& q) SKR_NOEXCEPT
     : ptok_(q.queue_), backtraces_(4)
@@ -297,7 +297,7 @@ void LogWorker::patternAndSink(const LogElement& e) SKR_NOEXCEPT
         const auto& what = e.need_format ? 
             formatter_.format(e.format, e.args) :
             e.format;
-        skr::log::LogManager::Get()->PatternAndSink(e.event, what.view());
+        skr::logging::LogManager::Get()->PatternAndSink(e.event, what.view());
         
         if (auto should_backtrace = LogManager::Get()->ShouldBacktrace(e.event))
         {
@@ -313,7 +313,7 @@ void LogWorker::patternAndSink(const LogElement& e) SKR_NOEXCEPT
                         const auto& bt_what = bt_e.need_format ? 
                             formatter_.format(bt_e.format, bt_e.args) :
                             bt_e.format;
-                        skr::log::LogManager::Get()->PatternAndSink(bt_e.event, bt_what.view());
+                        skr::logging::LogManager::Get()->PatternAndSink(bt_e.event, bt_what.view());
                     }
                 }
                 token->backtraces_.zero();
@@ -324,12 +324,12 @@ void LogWorker::patternAndSink(const LogElement& e) SKR_NOEXCEPT
     }
 }
 
-} } // namespace skr::log
+} } // namespace skr::logging
 
 SKR_EXTERN_C 
 void skr_log_flush()
 {
-    auto worker = skr::log::LogManager::Get()->TryGetWorker();
+    auto worker = skr::logging::LogManager::Get()->TryGetWorker();
     if (worker)
     {
         auto tid = skr_current_thread_id();
@@ -340,13 +340,13 @@ void skr_log_flush()
 SKR_EXTERN_C
 void skr_log_initialize_async_worker()
 {
-    skr::log::LogManager::Get()->InitializeAsyncWorker();
+    skr::logging::LogManager::Get()->InitializeAsyncWorker();
 
-    auto worker = skr::log::LogManager::Get()->TryGetWorker();
+    auto worker = skr::logging::LogManager::Get()->TryGetWorker();
     SKR_ASSERT(worker && "worker must not be null & something is wrong with initialization!");
 
     ::atexit(+[]() {
-        auto worker = skr::log::LogManager::Get()->TryGetWorker();
+        auto worker = skr::logging::LogManager::Get()->TryGetWorker();
         SKR_ASSERT(!worker && "worker must be null & properly stopped at exit!");
     });
 }

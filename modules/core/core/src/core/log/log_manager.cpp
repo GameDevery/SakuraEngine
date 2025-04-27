@@ -4,7 +4,7 @@
 
 namespace skr
 {
-namespace log
+namespace logging
 {
 
 std::once_flag default_logger_once_;
@@ -17,7 +17,7 @@ void LogManager::Initialize() SKR_NOEXCEPT
 {
     tscns_.init();
     datetime_.reset_date();
-    logger_ = skr::make_unique<skr::log::Logger>(u8"Log");
+    logger_ = skr::make_unique<skr::logging::Logger>(u8"Log");
 
     // register default pattern
     auto ret = RegisterPattern(LogConstants::kDefaultPatternId,
@@ -73,7 +73,7 @@ void LogManager::InitializeAsyncWorker() SKR_NOEXCEPT
 
 void LogManager::FinalizeAsyncWorker() SKR_NOEXCEPT
 {
-    // skr::log::LogManager::logger_.reset();
+    // skr::logging::LogManager::logger_.reset();
     if (skr_atomic_load_acquire(&available_) != 0)
     {
         worker_.reset();
@@ -91,7 +91,7 @@ LogWorker* LogManager::TryGetWorker() SKR_NOEXCEPT
 
 Logger* LogManager::GetDefaultLogger() SKR_NOEXCEPT
 {
-    auto Manager = skr::log::LogManager::Get();
+    auto Manager = skr::logging::LogManager::Get();
     return Manager->logger_.get();
 }
 
@@ -226,5 +226,5 @@ void LogManager::DateTime::reset_date() SKR_NOEXCEPT
     day                                                     = timeinfo->tm_mday;
 }
 
-} // namespace log
+} // namespace logging
 } // namespace skr

@@ -6,7 +6,7 @@
 
 namespace skr
 {
-namespace log
+namespace logging
 {
 
 struct Logger;
@@ -46,5 +46,5 @@ static const ServiceThreadDesc kLoggerWorkerThreadDesc = {
     u8"AsyncLogWorker", SKR_THREAD_ABOVE_NORMAL
 };
 
-} // namespace log
+} // namespace logging
 } // namespace skr

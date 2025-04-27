@@ -8,7 +8,7 @@
 // TODO: REMOVE THIS
 #include <string>
 
-namespace skr::log
+namespace skr::logging
 {
 
 using U8String = std::basic_string<char8_t, std::char_traits<char8_t>, skr_stl_allocator<char8_t>>;
@@ -363,4 +363,4 @@ skr::String LogPattern::pattern(const LogEvent& event, skr::StringView formatted
     return formatted_string;
 }
 
-} // namespace skr::log
+} // namespace skr::logging
