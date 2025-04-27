@@ -21,6 +21,13 @@ struct float3x3 {
             float3 axis_z;
         };
         
+        // base direction
+        struct {
+            float3 right;
+            float3 up;
+            float3 forward;
+        };
+        
         // base columns
         float3 columns[3];
         
@@ -95,6 +102,14 @@ struct alignas(16) float4x4 {
             float4 axis_w;
         };
         
+        // base direction
+        struct {
+            float4 right;
+            float4 up;
+            float4 forward;
+            float4 translation;
+        };
+        
         // base columns
         float4 columns[4];
         
@@ -156,9 +171,9 @@ struct alignas(16) float4x4 {
     static float4x4 look_at(const float4& from, const float4& to, const float4& up);
     static float4x4 view_to(const float4& from, const float4& dir, const float4& up);
     static float4x4 view_at(const float4& from, const float4& to, const float4& up);
-    static float4x4 perspective(float view_width, float view_height, float near, float far);
-    static float4x4 perspective_fov(float fov_y, float aspect_ratio, float near, float far);
-    static float4x4 ortho(float width, float height, float near, float far);
+    static float4x4 perspective(float view_width, float view_height, float near_distance, float far_distance);
+    static float4x4 perspective_fov(float fov_y, float aspect_ratio, float near_distance, float far_distance);
+    static float4x4 ortho(float width, float height, float near_distance, float far_distance);
     
     // copy & move & assign & move assign
     inline float4x4(const float4x4& rhs) noexcept : axis_x(rhs.axis_x), axis_y(rhs.axis_y), axis_z(rhs.axis_z), axis_w(rhs.axis_w) {}

@@ -21,6 +21,13 @@ struct double3x3 {
             double3 axis_z;
         };
         
+        // base direction
+        struct {
+            double3 right;
+            double3 up;
+            double3 forward;
+        };
+        
         // base columns
         double3 columns[3];
         
@@ -95,6 +102,14 @@ struct alignas(16) double4x4 {
             double4 axis_w;
         };
         
+        // base direction
+        struct {
+            double4 right;
+            double4 up;
+            double4 forward;
+            double4 translation;
+        };
+        
         // base columns
         double4 columns[4];
         
@@ -156,9 +171,9 @@ struct alignas(16) double4x4 {
     static double4x4 look_at(const double4& from, const double4& to, const double4& up);
     static double4x4 view_to(const double4& from, const double4& dir, const double4& up);
     static double4x4 view_at(const double4& from, const double4& to, const double4& up);
-    static double4x4 perspective(double view_width, double view_height, double near, double far);
-    static double4x4 perspective_fov(double fov_y, double aspect_ratio, double near, double far);
-    static double4x4 ortho(double width, double height, double near, double far);
+    static double4x4 perspective(double view_width, double view_height, double near_distance, double far_distance);
+    static double4x4 perspective_fov(double fov_y, double aspect_ratio, double near_distance, double far_distance);
+    static double4x4 ortho(double width, double height, double near_distance, double far_distance);
     
     // copy & move & assign & move assign
     inline double4x4(const double4x4& rhs) noexcept : axis_x(rhs.axis_x), axis_y(rhs.axis_y), axis_z(rhs.axis_z), axis_w(rhs.axis_w) {}

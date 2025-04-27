@@ -106,6 +106,14 @@ struct float3 {
     float3(const long3& rhs);
     float3(const ulong3& rhs);
     
+    // directions factory
+    inline static float3 forward() { return {0, 0, 1}; }
+    inline static float3 back() { return {0, 0, -1}; }
+    inline static float3 right() { return {1, 0, 0}; }
+    inline static float3 left() { return {-1, 0, 0}; }
+    inline static float3 up() { return {0, 1, 0}; }
+    inline static float3 down() { return {0, -1, 0}; }
+    
     // copy & move & assign & move assign
     inline float3(const float3&) = default;
     inline float3(float3&&) = default;

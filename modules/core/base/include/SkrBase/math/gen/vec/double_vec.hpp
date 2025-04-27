@@ -106,6 +106,14 @@ struct double3 {
     double3(const long3& rhs);
     double3(const ulong3& rhs);
     
+    // directions factory
+    inline static double3 forward() { return {0, 0, 1}; }
+    inline static double3 back() { return {0, 0, -1}; }
+    inline static double3 right() { return {1, 0, 0}; }
+    inline static double3 left() { return {-1, 0, 0}; }
+    inline static double3 up() { return {0, 1, 0}; }
+    inline static double3 down() { return {0, -1, 0}; }
+    
     // copy & move & assign & move assign
     inline double3(const double3&) = default;
     inline double3(double3&&) = default;

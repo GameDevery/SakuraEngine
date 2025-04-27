@@ -326,6 +326,18 @@ function _gen_class_body(opt: GenVectorOption) {
         b.$line(``)
       }
 
+      // directions factory
+      if (dim === 3 && comp_kind === "floating") {
+        b.$line(`// directions factory`);
+        b.$line(`inline static ${vec_name} forward() { return {0, 0, 1}; }`);
+        b.$line(`inline static ${vec_name} back() { return {0, 0, -1}; }`);
+        b.$line(`inline static ${vec_name} right() { return {1, 0, 0}; }`);
+        b.$line(`inline static ${vec_name} left() { return {-1, 0, 0}; }`);
+        b.$line(`inline static ${vec_name} up() { return {0, 1, 0}; }`);
+        b.$line(`inline static ${vec_name} down() { return {0, -1, 0}; }`);
+        b.$line(``)
+      }
+
       // copy & move & assign & move assign
       b.$line(`// copy & move & assign & move assign`);
       b.$line(`inline ${vec_name}(const ${vec_name}&) = default;`);

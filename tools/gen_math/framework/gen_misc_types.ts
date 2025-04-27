@@ -406,6 +406,17 @@ function _gen_transform(opt: GenMiscOption) {
       b.$line(`${transform_name}(const ${mat4_name}& mat);`)
       b.$line(`static ${transform_name} FromMatrix(const ${mat3_name}& mat);`)
       b.$line(`static ${transform_name} FromMatrix(const ${mat4_name}& mat);`)
+      b.$line(``)
+
+      // directions
+      b.$line(`// directions`)
+      b.$line(`${vec3_name} right() const;`)
+      b.$line(`${vec3_name} up() const;`)
+      b.$line(`${vec3_name} forward() const;`)
+      b.$line(`${vec3_name} left() const;`)
+      b.$line(`${vec3_name} down() const;`)
+      b.$line(`${vec3_name} back() const;`)
+      b.$line(``)
     })
     b.$line(`};`)
   }

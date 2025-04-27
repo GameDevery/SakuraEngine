@@ -532,5 +532,55 @@ inline TransformD TransformD::FromMatrix(const double4x4& mat)
 {
     return TransformD(mat);
 }
+
+// directions
+inline float3 TransformF::right() const
+{
+    return mul_vector_no_scale(float3::right(), *this);
+}
+inline float3 TransformF::up() const
+{
+    return mul_vector_no_scale(float3::up(), *this);
+}
+inline float3 TransformF::forward() const
+{
+    return mul_vector_no_scale(float3::forward(), *this);
+}
+inline float3 TransformF::left() const
+{
+    return mul_vector_no_scale(float3::left(), *this);
+}
+inline float3 TransformF::down() const
+{
+    return mul_vector_no_scale(float3::down(), *this);
+}
+inline float3 TransformF::back() const
+{
+    return mul_vector_no_scale(float3::back(), *this);
+}
+inline double3 TransformD::right() const
+{
+    return mul_vector_no_scale(double3::right(), *this);
+}
+inline double3 TransformD::up() const
+{
+    return mul_vector_no_scale(double3::up(), *this);
+}
+inline double3 TransformD::forward() const
+{
+    return mul_vector_no_scale(double3::forward(), *this);
+}
+inline double3 TransformD::left() const
+{
+    return mul_vector_no_scale(double3::left(), *this);
+}
+inline double3 TransformD::down() const
+{
+    return mul_vector_no_scale(double3::down(), *this);
+}
+inline double3 TransformD::back() const
+{
+    return mul_vector_no_scale(double3::back(), *this);
+}
 } // namespace math
 } // namespace skr

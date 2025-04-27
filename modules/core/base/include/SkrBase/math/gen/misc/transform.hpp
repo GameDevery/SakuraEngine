@@ -47,6 +47,15 @@ struct TransformF {
     TransformF(const float4x4& mat);
     static TransformF FromMatrix(const float3x3& mat);
     static TransformF FromMatrix(const float4x4& mat);
+    
+    // directions
+    float3 right() const;
+    float3 up() const;
+    float3 forward() const;
+    float3 left() const;
+    float3 down() const;
+    float3 back() const;
+    
 };
 struct TransformD {
     alignas(16) QuatD rotation;
@@ -85,6 +94,15 @@ struct TransformD {
     TransformD(const double4x4& mat);
     static TransformD FromMatrix(const double3x3& mat);
     static TransformD FromMatrix(const double4x4& mat);
+    
+    // directions
+    double3 right() const;
+    double3 up() const;
+    double3 forward() const;
+    double3 left() const;
+    double3 down() const;
+    double3 back() const;
+    
 };
 }
 }

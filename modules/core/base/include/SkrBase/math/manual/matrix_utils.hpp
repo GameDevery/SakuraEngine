@@ -57,41 +57,41 @@ inline float4x4 float4x4::view_at(const float4& from, const float4& to, const fl
         )
     );
 }
-inline float4x4 float4x4::perspective(float view_width, float view_height, float near, float far)
+inline float4x4 float4x4::perspective(float view_width, float view_height, float near_distance, float far_distance)
 {
     return RtmConvert<float4x4>::from_rtm(
         rtm::matrix_cast(
             rtm::proj_perspective(
                 view_width,
                 view_height,
-                near,
-                far
+                near_distance,
+                far_distance
             )
         )
     );
 }
-inline float4x4 float4x4::perspective_fov(float fov_y, float aspect_ratio, float near, float far)
+inline float4x4 float4x4::perspective_fov(float fov_y, float aspect_ratio, float near_distance, float far_distance)
 {
     return RtmConvert<float4x4>::from_rtm(
         rtm::matrix_cast(
             rtm::proj_perspective_fov(
                 fov_y,
                 aspect_ratio,
-                near,
-                far
+                near_distance,
+                far_distance
             )
         )
     );
 }
-inline float4x4 float4x4::ortho(float width, float height, float near, float far)
+inline float4x4 float4x4::ortho(float width, float height, float near_distance, float far_distance)
 {
     return RtmConvert<float4x4>::from_rtm(
         rtm::matrix_cast(
             rtm::proj_orthographic(
                 width,
                 height,
-                near,
-                far
+                near_distance,
+                far_distance
             )
         )
     );
@@ -144,41 +144,41 @@ inline double4x4 double4x4::view_at(const double4& from, const double4& to, cons
         )
     );
 }
-inline double4x4 double4x4::perspective(double view_width, double view_height, double near, double far)
+inline double4x4 double4x4::perspective(double view_width, double view_height, double near_distance, double far_distance)
 {
     return RtmConvert<double4x4>::from_rtm(
         rtm::matrix_cast(
             rtm::proj_perspective(
                 view_width,
                 view_height,
-                near,
-                far
+                near_distance,
+                far_distance
             )
         )
     );
 }
-inline double4x4 double4x4::perspective_fov(double fov_y, double aspect_ratio, double near, double far)
+inline double4x4 double4x4::perspective_fov(double fov_y, double aspect_ratio, double near_distance, double far_distance)
 {
     return RtmConvert<double4x4>::from_rtm(
         rtm::matrix_cast(
             rtm::proj_perspective_fov(
                 fov_y,
                 aspect_ratio,
-                near,
-                far
+                near_distance,
+                far_distance
             )
         )
     );
 }
-inline double4x4 double4x4::ortho(double width, double height, double near, double far)
+inline double4x4 double4x4::ortho(double width, double height, double near_distance, double far_distance)
 {
     return RtmConvert<double4x4>::from_rtm(
         rtm::matrix_cast(
             rtm::proj_orthographic(
                 width,
                 height,
-                near,
-                far
+                near_distance,
+                far_distance
             )
         )
     );
