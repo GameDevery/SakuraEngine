@@ -19,11 +19,11 @@ inline bool is_parallel(const double3& normal_a, const double3& normal_b, double
 // is coincident
 inline bool is_coincident(const float3& normal_a, const float3& normal_b, float threshold = 0.999845f)
 {
-    return dot(normal_a, normal_b) <= threshold;
+    return dot(normal_a, normal_b) >= threshold;
 }
 inline bool is_coincident(const double3& normal_a, const double3& normal_b, double threshold = 0.999845f)
 {
-    return dot(normal_a, normal_b) <= threshold;
+    return dot(normal_a, normal_b) >= threshold;
 }
 
 // is orthogonal
