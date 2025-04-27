@@ -3,7 +3,7 @@ import {
   type_options, all_component_kinds,
   dims_all, dims_no_scalar
 } from "./util"
-import type { TypeOption, ComponentKind } from "./util";
+import type { TypeOption, ComponentKind, GlobalBuilders } from "./util";
 import path from "node:path";
 
 const _suffix_lut: Dict<string> = {
@@ -13,17 +13,21 @@ const _suffix_lut: Dict<string> = {
 const _quat_comp_lut = ["x", "y", "z", "w"];
 const _rotator_comp_lut = ["pitch", "yaw", "roll"];
 
-interface GenMiscOption {
-  fwd_builder: CodeBuilder;
+interface GenMiscOption extends GlobalBuilders {
   builder: CodeBuilder;
 };
 
 function _gen_quat(opt: GenMiscOption) {
   const fwd_b = opt.fwd_builder;
+  const c_decl_cpp_b = opt.c_decl_cpp_builder;
+  const c_decl_c_b = opt.c_decl_c_builder;
   const b = opt.builder;
 
-  // generate forward declaration
   fwd_b.$line(`// quaternion`)
+  c_decl_cpp_b.$line(`// quaternion`)
+  c_decl_c_b.$line(`// quaternion`)
+
+  // generate body
   for (const base_name in type_options) {
     const type_opt = type_options[base_name]!;
 
@@ -36,22 +40,18 @@ function _gen_quat(opt: GenMiscOption) {
       throw new Error(`unknown component name ${type_opt.component_name} for quat`);
     }
 
+    // gen forward & c decls
     fwd_b.$line(`struct Quat${suffix};`);
-  }
-  fwd_b.$line(``);
+    c_decl_cpp_b.$line(`using skr_quat_${suffix.toLowerCase()}_t = ::skr::math::Quat${suffix};`);
+    c_decl_c_b.$line(`typedef struct alignas(16) skr_quat_${suffix.toLowerCase()}_t {`);
+    c_decl_c_b.$indent(_b => {
+      const comp_name = type_opt.component_name;
+      const quat_comp_lut = _quat_comp_lut
+        .join(`, `);
 
-  // generate quat body
-  for (const base_name in type_options) {
-    const type_opt = type_options[base_name]!;
-
-    // filter component kinds
-    if (type_opt.component_kind !== "floating") continue;
-
-    // get suffix
-    const suffix = _suffix_lut[type_opt.component_name];
-    if (suffix === undefined) {
-      throw new Error(`unknown component name ${type_opt.component_name} for quat`);
-    }
+      c_decl_c_b.$line(`${comp_name} ${quat_comp_lut};`)
+    })
+    c_decl_c_b.$line(`} skr_quat_${suffix.toLowerCase()}_t;`);
 
     // get data
     const comp_name = type_opt.component_name;
@@ -143,14 +143,23 @@ function _gen_quat(opt: GenMiscOption) {
     })
     b.$line(`};`)
   }
+
+  fwd_b.$line(``);
+  c_decl_cpp_b.$line(``);
+  c_decl_c_b.$line(``);
 }
 
 function _gen_rotator(opt: GenMiscOption) {
   const fwd_b = opt.fwd_builder;
+  const c_decl_cpp_b = opt.c_decl_cpp_builder;
+  const c_decl_c_b = opt.c_decl_c_builder;
   const b = opt.builder;
 
-  // generate forward declaration
   fwd_b.$line(`// rotator`)
+  c_decl_cpp_b.$line(`// rotator`)
+  c_decl_c_b.$line(`// rotator`)
+
+  // generate body
   for (const base_name in type_options) {
     const type_opt = type_options[base_name]!;
 
@@ -162,6 +171,19 @@ function _gen_rotator(opt: GenMiscOption) {
     if (suffix === undefined) {
       throw new Error(`unknown component name ${type_opt.component_name} for quat`);
     }
+
+    // gen forward & c decls
+    fwd_b.$line(`struct Rotator${suffix};`);
+    c_decl_cpp_b.$line(`using skr_rotator_${suffix.toLowerCase()}_t = ::skr::math::Rotator${suffix};`);
+    c_decl_c_b.$line(`typedef struct skr_rotator_${suffix.toLowerCase()}_t {`);
+    c_decl_c_b.$indent(_b => {
+      const comp_name = type_opt.component_name;
+      const rotator_comp_lut = _rotator_comp_lut
+        .join(`, `);
+
+      c_decl_c_b.$line(`${comp_name} ${rotator_comp_lut};`)
+    })
+    c_decl_c_b.$line(`} skr_rotator_${suffix.toLowerCase()}_t;`);
 
     // get data
     const comp_name = type_opt.component_name;
@@ -218,18 +240,24 @@ function _gen_rotator(opt: GenMiscOption) {
 
     })
     b.$line(`}; `)
-
-    fwd_b.$line(`struct Rotator${suffix};`);
   }
+
   fwd_b.$line(``);
+  c_decl_cpp_b.$line(``);
+  c_decl_c_b.$line(``);
 }
 
 function _gen_transform(opt: GenMiscOption) {
   const fwd_b = opt.fwd_builder;
+  const c_decl_cpp_b = opt.c_decl_cpp_builder;
+  const c_decl_c_b = opt.c_decl_c_builder;
   const b = opt.builder;
 
-  // generate forward declaration
   fwd_b.$line(`// transform`)
+  c_decl_cpp_b.$line(`// transform`)
+  c_decl_c_b.$line(`// transform`)
+
+  // generate body
   for (const base_name in type_options) {
     const type_opt = type_options[base_name]!;
 
@@ -241,6 +269,22 @@ function _gen_transform(opt: GenMiscOption) {
     if (suffix === undefined) {
       throw new Error(`unknown component name ${type_opt.component_name} for quat`);
     }
+
+    // gen forward & c decls
+    fwd_b.$line(`struct Transform${suffix};`);
+    c_decl_cpp_b.$line(`using skr_transform_${suffix.toLowerCase()}_t = ::skr::math::Transform${suffix};`);
+    c_decl_c_b.$line(`typedef struct skr_transform_${suffix.toLowerCase()}_t {`);
+    c_decl_c_b.$indent(_b => {
+      const comp_name = type_opt.component_name;
+      const vec3_name = `skr_${base_name}3_t`;
+      const vec4_name = `skr_${base_name}4_t`;
+      const quat_name = `skr_quat_${suffix.toLowerCase()}_t`;
+
+      c_decl_c_b.$line(`${quat_name} rotation;`)
+      c_decl_c_b.$line(`${vec3_name} position;`)
+      c_decl_c_b.$line(`${vec3_name} scale;`)
+    })
+    c_decl_c_b.$line(`} skr_transform_${suffix.toLowerCase()}_t;`);
 
     // get data
     const comp_name = type_opt.component_name;
@@ -306,18 +350,24 @@ function _gen_transform(opt: GenMiscOption) {
       b.$line(`${mat4_name} to_matrix_no_scale() const;`)
     })
     b.$line(`};`)
-
-    fwd_b.$line(`struct Transform${suffix};`);
   }
+
   fwd_b.$line(``);
+  c_decl_cpp_b.$line(``);
+  c_decl_c_b.$line(``);
 }
 
 function _gen_camera(opt: GenMiscOption) {
   const fwd_b = opt.fwd_builder;
+  const c_decl_cpp_b = opt.c_decl_cpp_builder;
+  const c_decl_c_b = opt.c_decl_c_builder;
   const b = opt.builder;
 
-  // generate forward declaration
-  fwd_b.$line(`// transform`)
+  fwd_b.$line(`// camera`)
+  c_decl_cpp_b.$line(`// camera`)
+  c_decl_c_b.$line(`// camera`)
+
+  // generate body
   for (const base_name in type_options) {
     const type_opt = type_options[base_name]!;
 
@@ -330,12 +380,16 @@ function _gen_camera(opt: GenMiscOption) {
       throw new Error(`unknown component name ${type_opt.component_name} for quat`);
     }
 
+    // gen forward & c decls
     fwd_b.$line(`struct Camera${suffix};`);
   }
+
   fwd_b.$line(``);
+  c_decl_cpp_b.$line(``);
+  c_decl_c_b.$line(``);
 }
 
-export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
+export function gen(global_builders: GlobalBuilders, gen_dir: string) {
   const inc_builder = new CodeBuilder();
   inc_builder.$util_header();
 
@@ -355,8 +409,8 @@ export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
     builder.$line(`namespace skr {`);
     builder.$line(`inline namespace math {`);
     _gen_quat({
-      fwd_builder,
       builder,
+      ...global_builders,
     })
     builder.$line(`}`)
     builder.$line(`}`)
@@ -382,8 +436,8 @@ export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
     builder.$line(`namespace skr {`);
     builder.$line(`inline namespace math {`);
     _gen_rotator({
-      fwd_builder,
       builder,
+      ...global_builders,
     })
     builder.$line(`}`)
     builder.$line(`}`)
@@ -410,8 +464,8 @@ export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
     builder.$line(`namespace skr {`);
     builder.$line(`inline namespace math {`);
     _gen_transform({
-      fwd_builder,
       builder,
+      ...global_builders,
     })
     builder.$line(`}`)
     builder.$line(`}`)
@@ -437,8 +491,8 @@ export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
     builder.$line(`namespace skr {`);
     builder.$line(`inline namespace math {`);
     _gen_camera({
-      fwd_builder,
       builder,
+      ...global_builders,
     })
     builder.$line(`}`)
     builder.$line(`}`)

@@ -85,6 +85,12 @@ export class CodeBuilder {
   }
 }
 
+export interface GlobalBuilders {
+  fwd_builder: CodeBuilder
+  c_decl_cpp_builder: CodeBuilder
+  c_decl_c_builder: CodeBuilder
+}
+
 export type ComponentKind = "floating" | "integer" | "boolean";
 export const all_component_kinds: ComponentKind[] = ["floating", "integer", "boolean"]
 export const dims_all: number[] = [1, 2, 3, 4]

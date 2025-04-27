@@ -21,27 +21,51 @@ fwd_builder.$line("");
 fwd_builder.$line("namespace skr {");
 fwd_builder.$line("inline namespace math {");
 
+// c decl builder
+const c_decl_cpp_builder = new CodeBuilder();
+c_decl_cpp_builder.$util_header();
+c_decl_cpp_builder.$line(`#include "./gen_math.hpp"`);
+const c_decl_c_builder = new CodeBuilder();
+c_decl_c_builder.$util_header();
+c_decl_c_builder.$line(`#include <SkrBase/config.h>`)
+
 // generate vector types
 gen_vector.gen(
-  fwd_builder,
+  {
+    fwd_builder,
+    c_decl_cpp_builder,
+    c_decl_c_builder,
+  },
   path.join(gen_dir, "vec")
 )
 
 // generate matrix types
 gen_matrix.gen(
-  fwd_builder,
+  {
+    fwd_builder,
+    c_decl_cpp_builder,
+    c_decl_c_builder,
+  },
   path.join(gen_dir, "mat")
 )
 
 // generate math functions
 gen_math_func.gen(
-  fwd_builder,
+  {
+    fwd_builder,
+    c_decl_cpp_builder,
+    c_decl_c_builder,
+  },
   path.join(gen_dir, "math")
 )
 
 // generate misc types
 gen_misc_types.gen(
-  fwd_builder,
+  {
+    fwd_builder,
+    c_decl_cpp_builder,
+    c_decl_c_builder,
+  },
   path.join(gen_dir, "misc")
 )
 
@@ -50,6 +74,12 @@ fwd_builder.$line("}");
 fwd_builder.$line("}");
 const fwd_out_path = path.join(gen_dir, "gen_math_fwd.hpp");
 fwd_builder.write_file(fwd_out_path);
+
+// write c decls
+const c_decl_cpp_out_path = path.join(gen_dir, "gen_math_c_decl.hpp");
+const c_decl_c_out_path = path.join(gen_dir, "gen_math_c_decl.h");
+c_decl_cpp_builder.write_file(c_decl_cpp_out_path);
+c_decl_c_builder.write_file(c_decl_c_out_path);
 
 // full include builder
 const full_inc_builder = new CodeBuilder();

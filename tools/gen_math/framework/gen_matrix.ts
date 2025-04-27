@@ -4,19 +4,20 @@ import {
   dims_all, dims_no_scalar,
   matrix_dims, get_alignas_matrix
 } from "./util"
-import type { TypeOption, ComponentKind } from "./util";
+import type { TypeOption, ComponentKind, GlobalBuilders } from "./util";
 import path from "node:path";
 
 const _axis_lut = ["x", "y", "z", "w"]
 
-interface GenMatrixOption extends TypeOption {
-  fwd_builder: CodeBuilder;
+interface GenMatrixOption extends TypeOption, GlobalBuilders {
   builder: CodeBuilder;
   base_name: string    // [basename][2/3/4]
 };
 
 function _gen_class_body(opt: GenMatrixOption) {
   const fwd_b = opt.fwd_builder;
+  const c_decl_cpp_b = opt.c_decl_cpp_builder;
+  const c_decl_c_b = opt.c_decl_c_builder;
   const b = opt.builder;
   const base_name = opt.base_name;
   const comp_name = opt.component_name;
@@ -28,6 +29,30 @@ function _gen_class_body(opt: GenMatrixOption) {
     fwd_b.$line(`struct ${base_name}${dim}x${dim};`)
   }
   fwd_b.$line(``);
+
+  // generate c decls in cpp
+  c_decl_cpp_b.$line(`// ${base_name} matrix, component: ${comp_name}`)
+  for (const dim of matrix_dims) {
+    c_decl_cpp_b.$line(`using skr_${base_name}${dim}x${dim}_t = ::skr::math::${base_name}${dim}x${dim};`)
+  }
+  c_decl_cpp_b.$line(``);
+
+  // generate c decls in c
+  c_decl_c_b.$line(`// ${base_name} matrix, component: ${comp_name}`)
+  for (const dim of matrix_dims) {
+    const vec_name = `skr_${base_name}${dim}_t`;
+
+    c_decl_c_b.$line(`typedef struct ${get_alignas_matrix(opt, dim)}${base_name}${dim}x${dim}_t {`)
+    c_decl_c_b.$indent(_b => {
+      const axis_decls = _axis_lut
+        .slice(0, dim)
+        .map(axis => `axis_${axis}`)
+        .join(`, `);
+      c_decl_c_b.$line(`${vec_name} ${axis_decls};`)
+    })
+    c_decl_c_b.$line(`} ${base_name}${dim}x${dim}_t;`)
+  }
+  c_decl_c_b.$line(``);
 
   // generate class body
   for (const dim of matrix_dims) {
@@ -211,7 +236,7 @@ function _gen_class_body(opt: GenMatrixOption) {
 }
 
 
-export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
+export function gen(global_builders: GlobalBuilders, gen_dir: string) {
   const inc_builder = new CodeBuilder();
   inc_builder.$util_header();
 
@@ -239,10 +264,10 @@ export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
     builder.$line(`inline namespace math {`);
 
     _gen_class_body({
-      fwd_builder,
       builder,
       base_name,
-      ...type_opt
+      ...type_opt,
+      ...global_builders
     })
     builder.$line(`}`)
     builder.$line(`}`)

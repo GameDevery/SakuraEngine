@@ -3,7 +3,7 @@ import {
   type_options, all_component_kinds,
   dims_all, dims_no_scalar
 } from "./util"
-import type { TypeOption, ComponentKind } from "./util";
+import type { TypeOption, ComponentKind, GlobalBuilders } from "./util";
 import path from "node:path";
 
 const _comp_lut = ['x', 'y', 'z', 'w'];
@@ -829,7 +829,7 @@ class _MathFuncGenerator {
 
 }
 
-export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
+export function gen(global_builders: GlobalBuilders, gen_dir: string) {
   const inc_builder = new CodeBuilder()
   inc_builder.$util_header();
 

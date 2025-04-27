@@ -3,7 +3,7 @@ import {
   type_convert_options, type_options,
   get_alignas_vector
 } from "./util"
-import type { TypeOption } from "./util";
+import type { TypeOption, GlobalBuilders } from "./util";
 import path from "node:path";
 
 const _comp_lut = ['x', 'y', 'z', 'w'];
@@ -11,8 +11,7 @@ const _arithmetic_ops = ['+', '-', '*', '/', '%']
 const _compare_ops = ['==', '!=', '<', '<=', '>', '>=']
 const _boolean_ops = ['&&', '||', '==', '!=']
 
-export interface GenVectorOption extends TypeOption {
-  fwd_builder: CodeBuilder;
+export interface GenVectorOption extends TypeOption, GlobalBuilders {
   builder: CodeBuilder;
   base_name: string    // [basename][2/3/4]
 };
@@ -257,6 +256,8 @@ function _gen_arithmetic_operator(dim: number, opt: GenVectorOption) {
 // generate class body
 function _gen_class_body(opt: GenVectorOption) {
   const fwd_b = opt.fwd_builder;
+  const c_decl_cpp_b = opt.c_decl_cpp_builder;
+  const c_decl_c_b = opt.c_decl_c_builder;
   const b = opt.builder;
   const base_name = opt.base_name;
   const comp_name = opt.component_name;
@@ -268,6 +269,27 @@ function _gen_class_body(opt: GenVectorOption) {
     fwd_b.$line(`struct ${base_name}${dim};`);
   }
   fwd_b.$line(``);
+
+  // generate c decl in cpp
+  c_decl_cpp_b.$line(`// ${base_name} vector, component: ${comp_name}`);
+  for (const dim of dims_no_scalar) {
+    c_decl_cpp_b.$line(`using skr_${base_name}${dim}_t = ::skr::math::${base_name}${dim};`);
+  }
+  c_decl_cpp_b.$line(``);
+
+  // generate c decl in c
+  c_decl_c_b.$line(`// ${base_name} vector, component: ${comp_name}`);
+  for (const dim of dims_no_scalar) {
+    c_decl_c_b.$line(`typedef struct ${get_alignas_vector(opt, dim)}skr_${base_name}${dim}_t{`);
+    c_decl_c_b.$indent(_b => {
+      const comp_decls = _comp_lut
+        .slice(0, dim)
+        .join(", ");
+      c_decl_c_b.$line(`${comp_name} ${comp_decls};`);
+    })
+    c_decl_c_b.$line(`} skr_${base_name}${dim}_t;`);
+  }
+  c_decl_c_b.$line(``);
 
   // generate class body
   for (const dim of dims_no_scalar) {
@@ -426,7 +448,7 @@ function _gen_covert_operator(compare_builder: CodeBuilder) {
   }
 }
 
-export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
+export function gen(global_builders: GlobalBuilders, gen_dir: string) {
   const inc_builder = new CodeBuilder()
   inc_builder.$util_header();
 
@@ -450,10 +472,10 @@ export function gen(fwd_builder: CodeBuilder, gen_dir: string) {
     vector_builder.$line(`namespace skr {`)
     vector_builder.$line(`inline namespace math {`);
     _gen_class_body({
-      fwd_builder: fwd_builder,
       builder: vector_builder,
       base_name: base_name,
       ...type_opt,
+      ...global_builders
     })
     vector_builder.$line(`}`);
     vector_builder.$line(`}`);

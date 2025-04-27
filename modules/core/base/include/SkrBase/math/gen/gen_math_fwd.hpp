@@ -61,7 +61,7 @@ struct RotatorD;
 struct TransformF;
 struct TransformD;
 
-// transform
+// camera
 struct CameraF;
 struct CameraD;
 
