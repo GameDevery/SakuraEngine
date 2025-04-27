@@ -1,5 +1,6 @@
 #pragma once
 #include "SkrBase/config.h"
+#include "SkrBase/math/math.h"
 
 #ifdef __cplusplus
 namespace Live2D { namespace Cubism { namespace Framework {
@@ -89,7 +90,7 @@ skr_live2d_model_get_sorted_drawable_list(skr_live2d_model_resource_id live2d_re
 
 SKR_EXTERN_C SKR_LIVE2D_API void
 skr_live2d_model_get_drawable_colors(skr_live2d_model_resource_id model, 
-    uint32_t drawable_index, struct skr_float4_t* multiply_color, struct skr_float4_t* screen_color);
+    uint32_t drawable_index, skr_float4_t* multiply_color, skr_float4_t* screen_color);
 
 SKR_EXTERN_C SKR_LIVE2D_API const skr_live2d_vertex_pos_t*
 skr_live2d_model_get_drawable_vertex_positions(skr_live2d_model_resource_id live2d_resource, uint32_t drawable_index, uint32_t* out_count);

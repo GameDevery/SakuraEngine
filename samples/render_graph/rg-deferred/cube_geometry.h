@@ -2,6 +2,7 @@
 #include "rtm/camera_utilsf.h"
 #include "SkrBase/types.h"
 #include "SkrBase/math/rtmx.h"
+#include "SkrBase/math/math.h"
 
 struct CubeGeometry {
     struct InstanceData {

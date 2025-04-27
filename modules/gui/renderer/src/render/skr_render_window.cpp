@@ -11,7 +11,7 @@
 #include "SkrGuiRenderer/resource/skr_updatable_image.hpp"
 #include "SkrBase/misc/make_zeroed.hpp"
 #include "SkrGui/framework/layer/native_window_layer.hpp"
-#include "SkrBase/math/math.hpp"
+#include "SkrBase/math/math.h"
 
 namespace skr::gui
 {
@@ -146,7 +146,7 @@ void SkrRenderWindow::_prepare_draw_data(const NativeWindowLayer* layer, Sizef w
             TransformF t;
             t.scale    = { 1.f, 1.f, 1.f };
             t.position = { 0.f, 0.f, 0.f };
-            t.rotation = RotatorF(0.f, 0.f, kPi / 12);
+            t.rotation = RotatorF(0.f, 0.f, 0);
             transform  = RtmConvert<float4x4>::to_rtm(t);
         }
 
@@ -169,10 +169,10 @@ void SkrRenderWindow::_prepare_draw_data(const NativeWindowLayer* layer, Sizef w
         // make render data
         auto  rb_cursor     = _render_data.size();
         auto& render_data   = _render_data.add_default().ref();
-        render_data.M[0][0] = static_cast<float>(cmd.texture_swizzle.r);
-        render_data.M[0][1] = static_cast<float>(cmd.texture_swizzle.g);
-        render_data.M[0][2] = static_cast<float>(cmd.texture_swizzle.b);
-        render_data.M[0][3] = static_cast<float>(cmd.texture_swizzle.a);
+        render_data.columns[0][0] = static_cast<float>(cmd.texture_swizzle.r);
+        render_data.columns[0][1] = static_cast<float>(cmd.texture_swizzle.g);
+        render_data.columns[0][2] = static_cast<float>(cmd.texture_swizzle.b);
+        render_data.columns[0][3] = static_cast<float>(cmd.texture_swizzle.a);
 
         // record buffer info
         draw_cmd.transform_buffer_offset   = tb_cursor * sizeof(rtm::matrix4x4f);

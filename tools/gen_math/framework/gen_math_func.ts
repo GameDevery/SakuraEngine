@@ -358,10 +358,29 @@ class _MathFuncGenerator {
     this.#call_std_func("hypot", "hypot", b, opt, ["x", "y", "z"]);
   }
 
+
+  //=====================simple functions=====================
   // clamp & saturate
   @math_func("clamp", { accept_comp_kind: ["floating", "integer"] })
   static gen_clamp(b: CodeBuilder, opt: MathGenOptions) {
-    this.#call_std_func("clamp", "clamp", b, opt, ["v", "min", "max"]);
+    const base_name = opt.base_name;
+    const comp_name = opt.component_name;
+    const comp_kind = opt.component_kind;
+    const dim = opt.dim;
+    const vec_name = `${base_name}${dim}`;
+
+    if (dim === 1) {
+      const init_expr = `v < min ? min : v > max ? max : v`;
+      b.$line(`inline ${comp_name} clamp(const ${comp_name} &v, const ${comp_name} &min, const ${comp_name} &max) { return ${init_expr}; }`)
+    } else {
+      // use clamp
+      const init_expr = _comp_lut
+        .slice(0, dim)
+        .map(c => `clamp(v.${c}, min.${c}, max.${c})`)
+        .join(', ');
+
+      b.$line(`inline ${vec_name} clamp(const ${vec_name} &v, const ${vec_name} &min, const ${vec_name} &max) { return {${init_expr}}; }`)
+    }
   }
   @math_func("saturate", { accept_comp_kind: ["floating"] })
   static gen_saturate(b: CodeBuilder, opt: MathGenOptions) {
@@ -372,7 +391,7 @@ class _MathFuncGenerator {
     const vec_name = `${base_name}${dim}`;
 
     if (dim === 1) {
-      const init_expr = `::std::clamp(v, ${comp_name}(0), ${comp_name}(1))`;
+      const init_expr = `clamp(v, ${comp_name}(0), ${comp_name}(1))`;
       b.$line(`inline ${comp_name} saturate(const ${comp_name} &v) { return ${init_expr}; }`)
       return;
     }
@@ -380,13 +399,12 @@ class _MathFuncGenerator {
     // use clamp
     const init_expr = _comp_lut
       .slice(0, dim)
-      .map(c => `::std::clamp(v.${c}, ${comp_name}(0), ${comp_name}(1))`)
+      .map(c => `clamp(v.${c}, ${comp_name}(0), ${comp_name}(1))`)
       .join(', ');
 
     b.$line(`inline ${vec_name} saturate(const ${vec_name} &v) { return {${init_expr}}; }`)
   }
 
-  //=====================simple functions===================== 
   @math_func("select", { accept_dim: dims_no_scalar })
   static gen_select(b: CodeBuilder, opt: MathGenOptions) {
     const base_name = opt.base_name;

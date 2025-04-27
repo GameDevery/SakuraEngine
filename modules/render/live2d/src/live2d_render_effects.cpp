@@ -211,7 +211,7 @@ struct RenderEffectLive2D : public IRenderEffectProcessor {
                             push_const.use_mask                     = clipping_context && clipping_context->_isUsing;
                             if (push_const.use_mask)
                             {
-                                const auto clip_mat = rtm::matrix_set(
+                                const rtm::matrix4x4f clip_mat = rtm::matrix_set(
                                 rtm::vector_load(&clipping_context->_matrixForDraw.GetArray()[4 * 0]),
                                 rtm::vector_load(&clipping_context->_matrixForDraw.GetArray()[4 * 1]),
                                 rtm::vector_load(&clipping_context->_matrixForDraw.GetArray()[4 * 2]),
@@ -221,7 +221,7 @@ struct RenderEffectLive2D : public IRenderEffectProcessor {
                                 CubismRenderer::CubismTextureColor* colorChannel = clipping_context->GetClippingManager()->GetChannelFlagAsColor(channelNo);
                                 push_const.channel_flag                          = { colorChannel->R, colorChannel->G, colorChannel->B, colorChannel->A };
                             }
-                            const auto proj_mat = rtm::matrix_set(
+                            const rtm::matrix4x4f proj_mat = rtm::matrix_set(
                             rtm::vector_load(&projection.GetArray()[4 * 0]),
                             rtm::vector_load(&projection.GetArray()[4 * 1]),
                             rtm::vector_load(&projection.GetArray()[4 * 2]),
@@ -331,7 +331,7 @@ struct RenderEffectLive2D : public IRenderEffectProcessor {
 
                                     sorted_mask_drawable_lists.try_add_default(render_model).value().emplace(clipDrawIndex);
                                     auto&&     push_const = mask_push_constants.find(render_model).value().emplace_back();
-                                    const auto proj_mat   = rtm::matrix_set(
+                                    const rtm::matrix4x4f proj_mat   = rtm::matrix_set(
                                     rtm::vector_load(&clipping_context->_matrixForMask.GetArray()[4 * 0]),
                                     rtm::vector_load(&clipping_context->_matrixForMask.GetArray()[4 * 1]),
                                     rtm::vector_load(&clipping_context->_matrixForMask.GetArray()[4 * 2]),

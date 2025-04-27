@@ -46,5 +46,23 @@ inline RotatorF::RotatorF(const QuatF& quat)
         pitch = (rtm::scalar_atan2(2.f * (W * X - Y * Z), (1.f - 2.f * (X * X + Y * Y))));
     }
 }
+
+// compare
+inline bool3 operator==(const RotatorF& lhs, const RotatorF& rhs) SKR_NOEXCEPT
+{
+    return all(lhs.as_vector() == rhs.as_vector());
+}
+inline bool3 operator==(const RotatorD& lhs, const RotatorD& rhs) SKR_NOEXCEPT
+{
+    return all(lhs.as_vector() == rhs.as_vector());
+}
+inline bool3 operator!=(const RotatorF& lhs, const RotatorF& rhs) SKR_NOEXCEPT
+{
+    return any(lhs.as_vector() != rhs.as_vector());
+}
+inline bool3 operator!=(const RotatorD& lhs, const RotatorD& rhs) SKR_NOEXCEPT
+{
+    return any(lhs.as_vector() != rhs.as_vector());
+}
 } // namespace math
 } // namespace skr

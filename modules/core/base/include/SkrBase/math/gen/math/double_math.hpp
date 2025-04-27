@@ -242,16 +242,16 @@ inline double4 hypot(const double4& x, const double4& y) { return {::std::hypot(
 inline double4 hypot(const double4& x, const double4& y, const double4& z) { return {::std::hypot(x.x, y.x, z.x), ::std::hypot(x.y, y.y, z.y), ::std::hypot(x.z, y.z, z.z), ::std::hypot(x.w, y.w, z.w)}; }
 
 // clamp
-inline double clamp(double v, double min, double max) { return ::std::clamp(v, min, max); }
-inline double2 clamp(const double2& v, const double2& min, const double2& max) { return {::std::clamp(v.x, min.x, max.x), ::std::clamp(v.y, min.y, max.y)}; }
-inline double3 clamp(const double3& v, const double3& min, const double3& max) { return {::std::clamp(v.x, min.x, max.x), ::std::clamp(v.y, min.y, max.y), ::std::clamp(v.z, min.z, max.z)}; }
-inline double4 clamp(const double4& v, const double4& min, const double4& max) { return {::std::clamp(v.x, min.x, max.x), ::std::clamp(v.y, min.y, max.y), ::std::clamp(v.z, min.z, max.z), ::std::clamp(v.w, min.w, max.w)}; }
+inline double clamp(const double &v, const double &min, const double &max) { return v < min ? min : v > max ? max : v; }
+inline double2 clamp(const double2 &v, const double2 &min, const double2 &max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y)}; }
+inline double3 clamp(const double3 &v, const double3 &min, const double3 &max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y), clamp(v.z, min.z, max.z)}; }
+inline double4 clamp(const double4 &v, const double4 &min, const double4 &max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y), clamp(v.z, min.z, max.z), clamp(v.w, min.w, max.w)}; }
 
 // saturate
-inline double saturate(const double &v) { return ::std::clamp(v, double(0), double(1)); }
-inline double2 saturate(const double2 &v) { return {::std::clamp(v.x, double(0), double(1)), ::std::clamp(v.y, double(0), double(1))}; }
-inline double3 saturate(const double3 &v) { return {::std::clamp(v.x, double(0), double(1)), ::std::clamp(v.y, double(0), double(1)), ::std::clamp(v.z, double(0), double(1))}; }
-inline double4 saturate(const double4 &v) { return {::std::clamp(v.x, double(0), double(1)), ::std::clamp(v.y, double(0), double(1)), ::std::clamp(v.z, double(0), double(1)), ::std::clamp(v.w, double(0), double(1))}; }
+inline double saturate(const double &v) { return clamp(v, double(0), double(1)); }
+inline double2 saturate(const double2 &v) { return {clamp(v.x, double(0), double(1)), clamp(v.y, double(0), double(1))}; }
+inline double3 saturate(const double3 &v) { return {clamp(v.x, double(0), double(1)), clamp(v.y, double(0), double(1)), clamp(v.z, double(0), double(1))}; }
+inline double4 saturate(const double4 &v) { return {clamp(v.x, double(0), double(1)), clamp(v.y, double(0), double(1)), clamp(v.z, double(0), double(1)), clamp(v.w, double(0), double(1))}; }
 
 // select
 inline double2 select(bool2 c, double2 if_true, double2 if_false) { return { c.x ? if_true.x : if_false.x, c.y ? if_true.y : if_false.y }; }

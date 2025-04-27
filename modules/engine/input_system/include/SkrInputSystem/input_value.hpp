@@ -2,6 +2,7 @@
 #include "SkrBase/atomic/atomic.h"
 #include "SkrBase/config.h"
 #include "SkrBase/types.h"
+#include "SkrBase/math/math.h"
 #include "SkrContainers/sptr.hpp"
 
 namespace skr

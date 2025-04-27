@@ -18,6 +18,17 @@ namespace skr
 {
 using MD5 = skr_md5_t;
 }
+inline bool operator==(skr_md5_t a, skr_md5_t b)
+{
+    const skr_md5_u32x4_view_t* va     = (skr_md5_u32x4_view_t*)&a;
+    const skr_md5_u32x4_view_t* vb     = (skr_md5_u32x4_view_t*)&b;
+    int                         result = true;
+    result &= (va->a == vb->a);
+    result &= (va->b == vb->b);
+    result &= (va->c == vb->c);
+    result &= (va->d == vb->d);
+    return result;
+}
 #endif
 
 SKR_EXTERN_C bool skr_parse_md5(const char8_t* str32, skr_md5_t* out_md5);

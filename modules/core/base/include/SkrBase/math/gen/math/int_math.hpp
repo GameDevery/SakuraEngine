@@ -28,10 +28,10 @@ inline int3 min(const int3& v1, const int3& v2) { return {::std::min(v1.x, v2.x)
 inline int4 min(const int4& v1, const int4& v2) { return {::std::min(v1.x, v2.x), ::std::min(v1.y, v2.y), ::std::min(v1.z, v2.z), ::std::min(v1.w, v2.w)}; }
 
 // clamp
-inline int32_t clamp(int32_t v, int32_t min, int32_t max) { return ::std::clamp(v, min, max); }
-inline int2 clamp(const int2& v, const int2& min, const int2& max) { return {::std::clamp(v.x, min.x, max.x), ::std::clamp(v.y, min.y, max.y)}; }
-inline int3 clamp(const int3& v, const int3& min, const int3& max) { return {::std::clamp(v.x, min.x, max.x), ::std::clamp(v.y, min.y, max.y), ::std::clamp(v.z, min.z, max.z)}; }
-inline int4 clamp(const int4& v, const int4& min, const int4& max) { return {::std::clamp(v.x, min.x, max.x), ::std::clamp(v.y, min.y, max.y), ::std::clamp(v.z, min.z, max.z), ::std::clamp(v.w, min.w, max.w)}; }
+inline int32_t clamp(const int32_t &v, const int32_t &min, const int32_t &max) { return v < min ? min : v > max ? max : v; }
+inline int2 clamp(const int2 &v, const int2 &min, const int2 &max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y)}; }
+inline int3 clamp(const int3 &v, const int3 &min, const int3 &max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y), clamp(v.z, min.z, max.z)}; }
+inline int4 clamp(const int4 &v, const int4 &min, const int4 &max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y), clamp(v.z, min.z, max.z), clamp(v.w, min.w, max.w)}; }
 
 // select
 inline int2 select(bool2 c, int2 if_true, int2 if_false) { return { c.x ? if_true.x : if_false.x, c.y ? if_true.y : if_false.y }; }

@@ -28,10 +28,10 @@ inline ulong3 min(const ulong3& v1, const ulong3& v2) { return {::std::min(v1.x,
 inline ulong4 min(const ulong4& v1, const ulong4& v2) { return {::std::min(v1.x, v2.x), ::std::min(v1.y, v2.y), ::std::min(v1.z, v2.z), ::std::min(v1.w, v2.w)}; }
 
 // clamp
-inline uint64_t clamp(uint64_t v, uint64_t min, uint64_t max) { return ::std::clamp(v, min, max); }
-inline ulong2 clamp(const ulong2& v, const ulong2& min, const ulong2& max) { return {::std::clamp(v.x, min.x, max.x), ::std::clamp(v.y, min.y, max.y)}; }
-inline ulong3 clamp(const ulong3& v, const ulong3& min, const ulong3& max) { return {::std::clamp(v.x, min.x, max.x), ::std::clamp(v.y, min.y, max.y), ::std::clamp(v.z, min.z, max.z)}; }
-inline ulong4 clamp(const ulong4& v, const ulong4& min, const ulong4& max) { return {::std::clamp(v.x, min.x, max.x), ::std::clamp(v.y, min.y, max.y), ::std::clamp(v.z, min.z, max.z), ::std::clamp(v.w, min.w, max.w)}; }
+inline uint64_t clamp(const uint64_t &v, const uint64_t &min, const uint64_t &max) { return v < min ? min : v > max ? max : v; }
+inline ulong2 clamp(const ulong2 &v, const ulong2 &min, const ulong2 &max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y)}; }
+inline ulong3 clamp(const ulong3 &v, const ulong3 &min, const ulong3 &max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y), clamp(v.z, min.z, max.z)}; }
+inline ulong4 clamp(const ulong4 &v, const ulong4 &min, const ulong4 &max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y), clamp(v.z, min.z, max.z), clamp(v.w, min.w, max.w)}; }
 
 // select
 inline ulong2 select(bool2 c, ulong2 if_true, ulong2 if_false) { return { c.x ? if_true.x : if_false.x, c.y ? if_true.y : if_false.y }; }
