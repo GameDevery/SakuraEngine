@@ -80,6 +80,7 @@ struct float3x3 {
     inline static float3x3 one() { return fill(1); }
     
     // factory for utility usage
+    static float3x3 from_scale(const float3& scale);
     
     // copy & move & assign & move assign
     inline float3x3(const float3x3& rhs) noexcept : axis_x(rhs.axis_x), axis_y(rhs.axis_y), axis_z(rhs.axis_z) {}
@@ -167,6 +168,8 @@ struct alignas(16) float4x4 {
     inline static float4x4 one() { return fill(1); }
     
     // factory for utility usage
+    static float4x4 from_scale(const float3& scale);
+    static float4x4 from_translation(const float3& translation);
     static float4x4 look_to(const float4& from, const float4& dir, const float4& up);
     static float4x4 look_at(const float4& from, const float4& to, const float4& up);
     static float4x4 view_to(const float4& from, const float4& dir, const float4& up);

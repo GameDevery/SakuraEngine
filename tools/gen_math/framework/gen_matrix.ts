@@ -247,7 +247,11 @@ function _gen_class_body(opt: GenMatrixOption) {
 
       // factory for utility usage
       b.$line(`// factory for utility usage`)
+      if (dim >= 3) {
+        b.$line(`static ${mat_name} from_scale(const ${base_name}3& scale);`)
+      }
       if (dim === 4) {
+        b.$line(`static ${mat_name} from_translation(const ${base_name}3& translation);`)
         b.$line(`static ${mat_name} look_to(const ${vec_name}& from, const ${vec_name}& dir, const ${vec_name}& up);`)
         b.$line(`static ${mat_name} look_at(const ${vec_name}& from, const ${vec_name}& to, const ${vec_name}& up);`)
         b.$line(`static ${mat_name} view_to(const ${vec_name}& from, const ${vec_name}& dir, const ${vec_name}& up);`)

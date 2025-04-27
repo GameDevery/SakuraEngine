@@ -80,6 +80,7 @@ struct double3x3 {
     inline static double3x3 one() { return fill(1); }
     
     // factory for utility usage
+    static double3x3 from_scale(const double3& scale);
     
     // copy & move & assign & move assign
     inline double3x3(const double3x3& rhs) noexcept : axis_x(rhs.axis_x), axis_y(rhs.axis_y), axis_z(rhs.axis_z) {}
@@ -167,6 +168,8 @@ struct alignas(16) double4x4 {
     inline static double4x4 one() { return fill(1); }
     
     // factory for utility usage
+    static double4x4 from_scale(const double3& scale);
+    static double4x4 from_translation(const double3& translation);
     static double4x4 look_to(const double4& from, const double4& dir, const double4& up);
     static double4x4 look_at(const double4& from, const double4& to, const double4& up);
     static double4x4 view_to(const double4& from, const double4& dir, const double4& up);

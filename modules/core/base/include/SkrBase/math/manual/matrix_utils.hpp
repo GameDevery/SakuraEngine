@@ -8,7 +8,61 @@ namespace skr
 {
 inline namespace math
 {
-// factory for utility usage
+// for scale & translation
+inline float3x3 float3x3::from_scale(const float3& scale)
+{
+    return {
+        { scale.x, 0, 0 },
+        { 0, scale.y, 0 },
+        { 0, 0, scale.z }
+    };
+}
+inline float4x4 float4x4::from_scale(const float3& scale)
+{
+    return {
+        { scale.x, 0, 0, 0 },
+        { 0, scale.y, 0, 0 },
+        { 0, 0, scale.z, 0 },
+        { 0, 0, 0, 1 }
+    };
+}
+inline float4x4 float4x4::from_translation(const float3& translation)
+{
+    return {
+        { 1, 0, 0, 0 },
+        { 0, 1, 0, 0 },
+        { 0, 0, 1, 0 },
+        { translation.x, translation.y, translation.z, 1 }
+    };
+}
+inline double3x3 double3x3::from_scale(const double3& scale)
+{
+    return {
+        { scale.x, 0, 0 },
+        { 0, scale.y, 0 },
+        { 0, 0, scale.z }
+    };
+}
+inline double4x4 double4x4::from_scale(const double3& scale)
+{
+    return {
+        { scale.x, 0, 0, 0 },
+        { 0, scale.y, 0, 0 },
+        { 0, 0, scale.z, 0 },
+        { 0, 0, 0, 1 }
+    };
+}
+inline double4x4 double4x4::from_translation(const double3& translation)
+{
+    return {
+        { 1, 0, 0, 0 },
+        { 0, 1, 0, 0 },
+        { 0, 0, 1, 0 },
+        { translation.x, translation.y, translation.z, 1 }
+    };
+}
+
+// for camera
 inline float4x4 float4x4::look_to(const float4& from, const float4& dir, const float4& up)
 {
     return RtmConvert<float4x4>::from_rtm(
