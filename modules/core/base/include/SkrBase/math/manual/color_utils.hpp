@@ -124,6 +124,10 @@ struct ColorSpace {
         EChromaticAdaptationMethod method = EChromaticAdaptationMethod::Bradford
     );
 
+    // convert color
+    double3 color_to_XYZ(const double3& color) const;
+    double3 color_from_XYZ(const double3& XYZ) const;
+
     Chromaticities chromaticities;
     double3x3      to_xyz;
     double3x3      from_xyz;
@@ -512,6 +516,16 @@ inline double3x3 ColorSpace::convert_matrix(
             return from.to_xyz * adaptation_matrix * to.from_xyz;
         }
     }
+}
+
+// convert color
+inline double3 ColorSpace::color_to_XYZ(const double3& color) const
+{
+    return mul(color, to_xyz);
+}
+inline double3 ColorSpace::color_from_XYZ(const double3& XYZ) const
+{
+    return mul(XYZ, from_xyz);
 }
 } // namespace math
 } // namespace skr
