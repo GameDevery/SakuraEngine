@@ -261,6 +261,7 @@ function _gen_class_body(opt: GenVectorOption) {
   const fwd_b = opt.fwd_builder;
   const c_decl_cpp_b = opt.c_decl_cpp_builder;
   const c_decl_c_b = opt.c_decl_c_builder;
+  const traits_b = opt.traits_builder;
   const b = opt.builder;
   const base_name = opt.base_name;
   const comp_name = opt.component_name;
@@ -293,6 +294,27 @@ function _gen_class_body(opt: GenVectorOption) {
     c_decl_c_b.$line(`} skr_${base_name}${dim}_t;`);
   }
   c_decl_c_b.$line(``);
+
+  // generate vector traits
+  traits_b.$line(`// ${base_name} vector, component: ${comp_name}`);
+  for (const dim of dims_no_scalar) {
+    // generate maker
+    traits_b.$line(`template<> struct MathVectorMaker<${comp_name}, ${dim}> {`);
+    traits_b.$indent(b => {
+      traits_b.$line(`using Type = ${base_name}${dim};`);
+    })
+    traits_b.$line(`};`)
+
+    // generate traits
+    traits_b.$line(`template<> struct MathVectorTraits<${base_name}${dim}> {`);
+    traits_b.$indent(b => {
+      traits_b.$line(`inline static constexpr size_t kDimensions = ${dim};`);
+      traits_b.$line(`using ComponentType = ${comp_name};`);
+      traits_b.$line(`using ImplementationFlag = void;`);
+    })
+    traits_b.$line(`};`)
+  }
+  traits_b.$line(``);
 
   // generate class body
   for (const dim of dims_no_scalar) {

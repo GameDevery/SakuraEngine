@@ -29,12 +29,20 @@ const c_decl_c_builder = new CodeBuilder();
 c_decl_c_builder.$util_header();
 c_decl_c_builder.$line(`#include <SkrBase/config.h>`)
 
+// traits builder
+const traits_builder = new CodeBuilder();
+traits_builder.$util_header();
+traits_builder.$line(`#include "./gen_math.hpp"`)
+traits_builder.$line(`namespace skr {`)
+traits_builder.$line(`inline namespace math {`)
+
 // generate vector types
 gen_vector.gen(
   {
     fwd_builder,
     c_decl_cpp_builder,
     c_decl_c_builder,
+    traits_builder,
   },
   path.join(gen_dir, "vec")
 )
@@ -45,6 +53,7 @@ gen_matrix.gen(
     fwd_builder,
     c_decl_cpp_builder,
     c_decl_c_builder,
+    traits_builder,
   },
   path.join(gen_dir, "mat")
 )
@@ -55,6 +64,7 @@ gen_math_func.gen(
     fwd_builder,
     c_decl_cpp_builder,
     c_decl_c_builder,
+    traits_builder,
   },
   path.join(gen_dir, "math")
 )
@@ -65,6 +75,7 @@ gen_misc_types.gen(
     fwd_builder,
     c_decl_cpp_builder,
     c_decl_c_builder,
+    traits_builder,
   },
   path.join(gen_dir, "misc")
 )
@@ -80,6 +91,12 @@ const c_decl_cpp_out_path = path.join(gen_dir, "gen_math_c_decl.hpp");
 const c_decl_c_out_path = path.join(gen_dir, "gen_math_c_decl.h");
 c_decl_cpp_builder.write_file(c_decl_cpp_out_path);
 c_decl_c_builder.write_file(c_decl_c_out_path);
+
+// write traits
+traits_builder.$line("}");
+traits_builder.$line("}");
+const traits_out_path = path.join(gen_dir, "gen_math_traits.hpp");
+traits_builder.write_file(traits_out_path);
 
 // full include builder
 const full_inc_builder = new CodeBuilder();

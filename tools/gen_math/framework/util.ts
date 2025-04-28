@@ -89,6 +89,7 @@ export interface GlobalBuilders {
   fwd_builder: CodeBuilder
   c_decl_cpp_builder: CodeBuilder
   c_decl_c_builder: CodeBuilder
+  traits_builder: CodeBuilder
 }
 
 export type ComponentKind = "floating" | "integer" | "boolean";

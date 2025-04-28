@@ -1,4 +1,5 @@
 #pragma once
+#include <concepts>
 
 namespace skr
 {
@@ -21,8 +22,45 @@ enum class EAxis4
     W = 3,
 };
 
-struct MathNoInitType {};
+struct MathNoInitType {
+};
 inline constexpr MathNoInitType kMathNoInit = MathNoInitType{};
+
+// template maker
+template <typename T, size_t kDimensions>
+struct MathVectorMaker {
+    // using Type = float3; // make vector from type and dimension
+};
+template <typename T, size_t kDimensions>
+struct MathMatrixMaker {
+    // using Type = float3x3; // make matrix from type and dimension
+};
+template <typename T, size_t kDimensions>
+using vec_t = typename MathVectorMaker<T, kDimensions>::Type;
+template <typename T, size_t kDimensions>
+using matrix_t = typename MathMatrixMaker<T, kDimensions>::Type;
+
+// traits
+template <typename T>
+struct MathVectorTraits {
+    // inline static constexpr size_t kDimensions = 3; // get vector dimension
+    // using ComponentType = float; // get vector component type
+    // using ImplementationFlag = void;
+};
+template <typename T>
+struct MathMatrixTraits {
+    // inline static constexpr size_t kDimensions = 3; // get matrix dimension
+    // using ComponentType = float; // get matrix component type
+    // using ImplementationFlag = void;
+};
+template <typename T>
+concept MathVector = requires() {
+    typename MathVectorTraits<T>::ImplementationFlag;
+};
+template <typename T>
+concept MathMatrix = requires() {
+    typename MathMatrixTraits<T>::ImplementationFlag;
+};
 
 } // namespace math
 } // namespace skr
