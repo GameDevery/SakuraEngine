@@ -1,6 +1,7 @@
 #include "SkrV8/v8_bind.hpp"
 #include "v8-external.h"
 #include "v8-container.h"
+#include "v8-function.h"
 
 // helpres
 namespace skr
@@ -245,5 +246,64 @@ V8MethodMatchResult V8Bind::match(
     }
 
     return { true, score };
+}
+
+// namespace helper
+v8::Local<v8::Value> V8Bind::export_namespace_node(
+    const ScriptNamespaceNode* node,
+    V8Isolate*                 skr_isolate
+)
+{
+    auto isolate = v8::Isolate::GetCurrent();
+    auto context = isolate->GetCurrentContext();
+
+    if (node->is_namespace())
+    {
+        v8::Local<v8::Object> result = v8::Object::New(isolate);
+        for (const auto& [node_name, node] : node->children())
+        {
+            bool is_mapping = node->is_type() && node->type().is_mapping();
+
+            if (!is_mapping)
+            { // mapping need not export, just used in .d.ts interface
+                // clang-format off
+                result->Set(
+                    context,
+                    V8Bind::to_v8(node_name, true),
+                    export_namespace_node(node, skr_isolate)
+                ).Check();
+                // clang-format on
+            }
+        }
+        return result;
+    }
+    else
+    {
+        auto type = node->type();
+        switch (type.kind())
+        {
+        case ScriptBinderRoot::EKind::Object: {
+            auto* object_mapper    = type.object();
+            auto  object_template  = skr_isolate->get_or_add_record_template(object_mapper->type);
+            auto  object_ctor_func = object_template->GetFunction(context).ToLocalChecked();
+            return object_ctor_func;
+        }
+        case ScriptBinderRoot::EKind::Value: {
+            auto* value_mapper    = type.value();
+            auto  value_template  = skr_isolate->get_or_add_record_template(value_mapper->type);
+            auto  value_ctor_func = value_template->GetFunction(context).ToLocalChecked();
+            return value_ctor_func;
+        }
+        case ScriptBinderRoot::EKind::Enum: {
+            auto* enum_mapper   = type.enum_();
+            auto  enum_template = skr_isolate->get_or_add_enum_template(enum_mapper->type);
+            auto  enum_object   = enum_template->NewInstance(context).ToLocalChecked();
+            return enum_object;
+        }
+        default:
+            SKR_UNREACHABLE_CODE()
+            return {};
+        }
+    }
 }
 } // namespace skr

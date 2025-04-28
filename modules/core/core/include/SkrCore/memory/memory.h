@@ -231,7 +231,7 @@ struct SkrNewCore
     };
 
     template<class T>
-    [[nodiscard]] SKR_FORCEINLINE void Free(T* p)
+    SKR_FORCEINLINE void Free(T* p)
     {
         if (p != nullptr)
         {
@@ -264,7 +264,7 @@ struct SkrNewCore
     };
 
     template<class T>
-    [[nodiscard]] SKR_FORCEINLINE void Free(T* p)
+    SKR_FORCEINLINE void Free(T* p)
     {
         if (p != nullptr)
         {
@@ -292,7 +292,7 @@ struct SkrNewImpl
     [[nodiscard]] SKR_FORCEINLINE T* NewZeroed(Args&&...args)
     {
         T* p = core.Alloc<T>();
-        memset(p, 0, sizeof(T));
+        memset((void*)p, 0, sizeof(T));
         return new (p) DEBUG_NEW_SOURCE_LINE T{ skr::forward<Args>(args)... };
     }
     template<class F>

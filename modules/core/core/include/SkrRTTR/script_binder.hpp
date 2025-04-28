@@ -1,4 +1,5 @@
 #pragma once
+#include "SkrRTTR/stack_proxy.hpp"
 #include <SkrRTTR/type.hpp>
 #include <SkrCore/log.hpp>
 
@@ -65,6 +66,13 @@
 //   |  const T*  |      -     |    -    |     -     |    -    |(by ref)T?|
 //   |  const T&  |      -     |    -    |     -     |    -    |    -     |
 //   |     T&     |      -     |    -    |     -     |    -    |    -     |
+//
+// suggestions for type erase(data memory -> void*):
+//   Primitive: void* means T*
+//   Enum: void* means underlying type*
+//   Mapping: void* means T*
+//   Value: void* means T*
+//!  Object: void* means T**, because we only pass object by pointer, and when we talk about object, we always trait it as a pointer
 //
 // about enum export
 //   many script has no enum concept, so we need to export enum as an object
@@ -183,6 +191,15 @@ struct ScriptBinderRoot {
         return !operator==(other);
     }
 
+    // hash
+    inline static size_t _skr_hash(const ScriptBinderRoot& self)
+    {
+        return hash_combine(
+            Hash<EKind>()(self._kind),
+            Hash<void*>()(self._binder)
+        );
+    }
+
     // kind getter
     inline EKind kind() const { return _kind; }
     inline bool  is_empty() const { return _kind == EKind::None; }
@@ -247,10 +264,12 @@ struct ScriptBinderStaticField {
 
 // nested binder, method & static method
 struct ScriptBinderParam {
-    ScriptBinderRoot     binder      = {};
-    const RTTRParamData* data        = nullptr;
-    bool                 pass_by_ref = false;
-    ERTTRParamFlag       inout_flag  = ERTTRParamFlag::None;
+    ScriptBinderRoot     binder           = {};
+    const RTTRParamData* data             = nullptr;
+    uint32_t             index            = 0;
+    bool                 pass_by_ref      = false;
+    bool                 appare_in_return = false;
+    ERTTRParamFlag       inout_flag       = ERTTRParamFlag::None;
 };
 struct ScriptBinderReturn {
     ScriptBinderRoot binder      = {};
@@ -259,16 +278,18 @@ struct ScriptBinderReturn {
 };
 struct ScriptBinderMethod {
     struct Overload {
-        const RTTRType*           owner         = nullptr;
-        const RTTRMethodData*     data          = nullptr;
-        ScriptBinderReturn        return_binder = {};
-        Vector<ScriptBinderParam> params_binder = {};
-        uint32_t                  params_count  = 0;
-        uint32_t                  return_count  = 1;
-        bool                      failed        = false;
+        const RTTRType*           owner           = nullptr;
+        const RTTRMethodData*     data            = nullptr;
+        const RTTRMethodData*     mixin_impl_data = nullptr;
+        ScriptBinderReturn        return_binder   = {};
+        Vector<ScriptBinderParam> params_binder   = {};
+        uint32_t                  params_count    = 0;
+        uint32_t                  return_count    = 0;
+        bool                      failed          = false;
     };
 
     Vector<Overload> overloads = {};
+    bool             is_mixin  = false;
     bool             failed    = false;
 };
 struct ScriptBinderStaticMethod {
@@ -351,6 +372,16 @@ struct ScriptBinderEnum {
     bool is_signed = false;
 };
 
+// function binder, used for call script function
+struct ScriptBinderCallScript {
+    ScriptBinderReturn        return_binder = {};
+    Vector<ScriptBinderParam> params_binder = {};
+    uint32_t                  params_count  = 0;
+    uint32_t                  return_count  = 1;
+
+    bool failed = false;
+};
+
 // TODO. Generic type support
 struct SKR_CORE_API ScriptBinderManager {
     // ctor & dtor
@@ -358,7 +389,8 @@ struct SKR_CORE_API ScriptBinderManager {
     ~ScriptBinderManager();
 
     // get binder
-    ScriptBinderRoot get_or_build(GUID type_id);
+    ScriptBinderRoot       get_or_build(GUID type_id);
+    ScriptBinderCallScript build_call_script_binder(span<const StackProxy> params, StackProxy ret);
 
     // each
     void each_cached_root_binder(FunctionRef<void(const GUID&, const ScriptBinderRoot&)> func);
@@ -379,6 +411,7 @@ private:
     void _make_ctor(ScriptBinderCtor& out, const RTTRCtorData* ctor, const RTTRType* owner);
     void _make_method(ScriptBinderMethod::Overload& out, const RTTRMethodData* method, const RTTRType* owner);
     void _make_static_method(ScriptBinderStaticMethod::Overload& out, const RTTRStaticMethodData* method, const RTTRType* owner);
+    void _make_mixin_method(ScriptBinderMethod::Overload& out, const RTTRMethodData* method, const RTTRMethodData* impl_method, const RTTRType* owner);
     void _make_prop_getter(ScriptBinderMethod& out, const RTTRMethodData* method, const RTTRType* owner);
     void _make_prop_setter(ScriptBinderMethod& out, const RTTRMethodData* method, const RTTRType* owner);
     void _make_static_prop_getter(ScriptBinderStaticMethod& out, const RTTRStaticMethodData* method, const RTTRType* owner);
@@ -387,6 +420,8 @@ private:
     void _make_static_field(ScriptBinderStaticField& out, const RTTRStaticFieldData* field, const RTTRType* owner);
     void _make_param(ScriptBinderParam& out, const RTTRParamData* param);
     void _make_return(ScriptBinderReturn& out, TypeSignatureView signature);
+    void _make_param_call_script(ScriptBinderParam& out, const RTTRParamData* param);
+    void _make_return_call_script(ScriptBinderReturn& out, TypeSignatureView signature);
 
     // checker
     void _try_export_field(TypeSignatureView signature, ScriptBinderRoot& out_binder);

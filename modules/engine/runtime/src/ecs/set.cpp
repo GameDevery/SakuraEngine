@@ -36,11 +36,11 @@ namespace sugoi
 
     bool ordered(const sugoi_type_set_t& value)
     {
-        return value.length == 0 || std::is_sorted(value.data, value.data+value.length);
+        return value.length == 0 || value.length == 1 || std::is_sorted(value.data, value.data+value.length);
     }
     bool ordered(const sugoi_entity_set_t& value)
     {
-        return value.length == 0 ||std::is_sorted(value.data, value.data+value.length);
+        return value.length == 0 || value.length == 1 ||std::is_sorted(value.data, value.data+value.length);
     }
     bool ordered(const sugoi_entity_type_t& value)
     {

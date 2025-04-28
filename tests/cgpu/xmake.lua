@@ -4,7 +4,7 @@ test_target("CGPUTests")
         dxil_outdir = "/../resources/shaders/cgpu-rspool-test"})
     set_group("05.vid_tests/cgpu")
     public_dependency("SkrRT")
-    add_rules("c++.unity_build", {batchsize = default_unity_batch})
+    skr_unity_build()
     add_files(
         "Common.cpp",
         -- Device Initialize

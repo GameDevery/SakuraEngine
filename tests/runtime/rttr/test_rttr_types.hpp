@@ -2,7 +2,7 @@
 #include "SkrRT/config.h"
 #include "SkrRTTR/iobject.hpp"
 #if !defined(__meta__)
-    #include "RTTRTest/test_rttr_types.generated.h"
+    #include "test_rttr_types.generated.h"
 #endif
 
 // TODO. test invoke & field visit

@@ -8,13 +8,13 @@
 
 namespace skr::container
 {
-template <typename K, typename V, typename TS, typename THash, bool kConst>
-struct SparseHashMapDataRef : private SparseHashSetDataRef<KVPair<K, V>, TS, THash, kConst> {
-    using Super     = SparseHashSetDataRef<KVPair<K, V>, TS, THash, kConst>;
+template <typename K, typename V, typename TSize, typename THash, bool kConst>
+struct SparseHashMapDataRef : private SparseHashSetDataRef<KVPair<K, V>, TSize, THash, kConst> {
+    using Super     = SparseHashSetDataRef<KVPair<K, V>, TSize, THash, kConst>;
     using PairType  = std::conditional_t<kConst, const KVPair<K, V>, KVPair<K, V>>;
     using KeyType   = std::conditional_t<kConst, const K, K>;
     using ValueType = std::conditional_t<kConst, const V, V>;
-    using SizeType  = TS;
+    using SizeType  = TSize;
     using HashType  = THash;
 
     // ctor
@@ -47,6 +47,30 @@ struct SparseHashMapDataRef : private SparseHashSetDataRef<KVPair<K, V>, TS, THa
     SKR_INLINE HashType   hash() const { return Super::hash(); }
     SKR_INLINE bool       already_exist() const { return Super::already_exist(); }
     SKR_INLINE bool       is_valid() const { return Super::is_valid(); }
+
+    // value or
+    SKR_INLINE KeyType key_or(KeyType k) const
+    {
+        if (is_valid())
+        {
+            return key();
+        }
+        else
+        {
+            return k;
+        }
+    }
+    SKR_INLINE ValueType value_or(ValueType v) const
+    {
+        if (is_valid())
+        {
+            return value();
+        }
+        else
+        {
+            return v;
+        }
+    }
 
     // operators
     SKR_INLINE explicit operator bool() { return is_valid(); }

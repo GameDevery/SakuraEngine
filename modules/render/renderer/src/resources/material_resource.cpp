@@ -363,6 +363,7 @@ struct SMaterialFactoryImpl : public SMaterialFactory {
                     blend_state.dst_alpha_factors[i] = CGPU_BLEND_CONST_ZERO;
                 }
                 break;
+                case EMaterialBlendMode::Count: 
                 case EMaterialBlendMode::Mask: {
                     SKR_UNIMPLEMENTED_FUNCTION();
                 }

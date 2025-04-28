@@ -4,7 +4,7 @@
 #include "SkrRT/ecs/type_registry.hpp"
 #include "SkrTestFramework/framework.hpp"
 #ifndef __meta__
-    #include "ECSTest_CPPStyle/cpp_style.generated.h"
+    #include "cpp_style.generated.h"
 #endif
 
 template <typename Result>

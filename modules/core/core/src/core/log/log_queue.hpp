@@ -12,7 +12,7 @@
 
 namespace skr
 {
-namespace log
+namespace logging
 {
 
 struct LogQueue;
@@ -97,5 +97,5 @@ private:
     mutable skr::Vector<uint64_t> tids_cpy_;
 };
 
-} // namespace log
+} // namespace logging
 } // namespace skr

@@ -1,8 +1,26 @@
-includes("gamenetworkingsockets/xmake.lua")
-includes("mimalloc/xmake.lua")
-includes("SDL2/xmake.lua")
-includes(("vulkan/xmake.lua"))
+-- basement, can not be culled
+includes("mimalloc")
+includes("SDL2")
+includes("rtm")
 
-skr_includes_with_cull("v8", function ()
+skr_includes_with_cull("gamenetworkingsockets", function()
+    includes("gamenetworkingsockets")
+end)
+skr_includes_with_cull("vulkan", function()
+    includes("vulkan")
+end)
+skr_includes_with_cull("libhv", function()
+    includes("libhv")
+end)
+
+skr_includes_with_cull("v8", function()
     includes('v8')
+end)
+
+skr_includes_with_cull("cef", function()
+    includes('cef')
+end)
+
+skr_includes_with_cull("openssl", function()
+    includes("openssl")
 end)

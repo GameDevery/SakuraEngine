@@ -431,6 +431,8 @@ sugoi_query_t* sugoi_storage_t::make_query(const char8_t* inDesc)
     }
 
     SKR_DECLARE_ZERO(sugoi_filter_t, filter);
+    all.sort(); none.sort();
+    all_shared.sort(); none_shared.sort();
     filter.all = { all.data(), (SIndex)all.size() };
     filter.none = { none.data(), (SIndex)none.size() };
     filter.all_shared = { all_shared.data(), (SIndex)all_shared.size() };
@@ -631,9 +633,23 @@ void sugoi_storage_t::buildQueryOverloads()
     }
 }
 
+void sugoi_storage_t::query_unsafe(const sugoi_query_t* q, sugoi_view_callback_t callback, void* u)
+{
+    auto filterChunk = [&](sugoi_group_t* group) {
+        filter_in_single_group(&q->pimpl->parameters, group, q->pimpl->filter, q->pimpl->meta, q->pimpl->customFilter, q->pimpl->customFilterUserData, callback, u);
+    };
+    query_groups(q, SUGOI_LAMBDA(filterChunk));
+}
+
 void sugoi_storage_t::query(const sugoi_query_t* q, sugoi_view_callback_t callback, void* u)
 {
     auto filterChunk = [&](sugoi_group_t* group) {
+        for (EIndex i = 0; i < q->pimpl->parameters.length; ++i)
+            {
+                int idx = group->index(q->pimpl->parameters.types[i]);
+                if (idx != sugoi::kInvalidTypeIndex)
+                    pimpl->scheduler->sync_entry(group->archetype, idx, q->pimpl->parameters.accesses[i].readonly);
+            }
         filter_in_single_group(&q->pimpl->parameters, group, q->pimpl->filter, q->pimpl->meta, q->pimpl->customFilter, q->pimpl->customFilterUserData, callback, u);
     };
     query_groups(q, SUGOI_LAMBDA(filterChunk));

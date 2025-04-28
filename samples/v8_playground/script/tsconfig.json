@@ -1,0 +1,18 @@
+{
+    "compilerOptions": {
+        "module": "ES2022",
+        "target": "ES2023",
+        "typeRoots": [
+            "./modules",
+        ],
+        "outDir": "./output",
+        // "sourceMap": true,
+        "inlineSourceMap": true,
+    },
+    "include": [
+        "**/*.ts"
+    ],
+    "exclude": [
+        "output",
+    ]
+}

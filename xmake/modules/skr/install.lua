@@ -102,7 +102,7 @@ function install_pkg_tool(opt)
     })
 end
 function install_pkg_resources(opt)
-    local package_path = utils.find_download_package_sdk(opt.name)
+    local package_path = utils.find_download_package_sdk(opt.name, opt)
     if not package_path then
         raise("resources %s not found", opt.name)
     end
@@ -144,7 +144,7 @@ function install_pkg_resources(opt)
     })
 end
 function install_pkg_sdk(opt)
-    local package_path = utils.find_download_package_sdk(opt.name)
+    local package_path = utils.find_download_package_sdk(opt.name, opt)
     if not package_path then
         raise("sdk %s not found", opt.name)
     end
@@ -216,7 +216,7 @@ function install_pkg_file(opt)
     })
 end
 function install_pkg_custom(opt)
-    local package_path = utils.find_download_package_sdk(opt.name)
+    local package_path = utils.find_download_package_sdk(opt.name, opt)
     if not package_path then
         raise("package %s not found", opt.name)
     end

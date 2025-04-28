@@ -28,8 +28,8 @@ void skr_save_scene(sugoi_storage_t* world, skr::archive::JsonWriter* writer)
     sugoiS_all(world, true, false, SUGOI_LAMBDA(accumulate));
     skr::Vector<sugoi_entity_t> indices;
     indices.resize_default(guids.size());
-    skr::parallel_for(indices.begin(), indices.end(), 2048, [&](auto&& begin, auto&& end) {
-        std::iota(begin, end, begin - indices.begin());
+    skr::parallel_for(indices.begin(), indices.end(), 2048ull, [&](auto&& begin, auto&& end) {
+        std::iota(begin, end, static_cast<uint32_t>(begin - indices.begin()));
     });
     // sort by guid to ensure deterministic order
     std::sort(
@@ -41,7 +41,7 @@ void skr_save_scene(sugoi_storage_t* world, skr::archive::JsonWriter* writer)
     });
     skr::Vector<sugoi_entity_t> sortedEntities;
     sortedEntities.resize_default(guids.size());
-    skr::parallel_for(indices.begin(), indices.end(), 2048, [&](auto&& begin, auto&& end) {
+    skr::parallel_for(indices.begin(), indices.end(), 2048ull, [&](auto&& begin, auto&& end) {
         for (auto it = begin; it != end; ++it)
         {
             sortedEntities[*it] = entities[it - indices.begin()];
@@ -68,7 +68,7 @@ void skr_save_scene(sugoi_storage_t* world, skr::archive::JsonWriter* writer)
                 if (!serde)
                     continue;
                 writer->Key(desc->name);
-                serde(view->chunk, view->start + i, (char*)data, 1, writer);
+                serde(component, view->chunk, view->start + i, (char*)data, 1, writer);
             }
             writer->EndObject();
         }

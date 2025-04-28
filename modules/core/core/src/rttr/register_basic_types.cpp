@@ -16,7 +16,6 @@ void primitive_type_loader(RTTRType* type)
         data->alignment = alignof(T);
     });
 }
-
 static void primitive_type_loader_void(RTTRType* type)
 {
     type->build_primitive([&](RTTRPrimitiveData* data) {
@@ -24,6 +23,15 @@ static void primitive_type_loader_void(RTTRType* type)
         data->type_id   = RTTRTraits<void>::get_guid();
         data->size      = 0;
         data->alignment = 0;
+    });
+}
+
+template <typename T>
+void minimal_type_loader_record(RTTRType* type)
+{
+    type->build_record([](RTTRRecordData* data) {
+        RTTRRecordBuilder<T> builder(data);
+        builder.basic_info();
     });
 }
 } // namespace skr
@@ -49,4 +57,53 @@ SKR_EXEC_STATIC_CTOR
     // float
     register_type_loader(type_id_of<float>(), &primitive_type_loader<float>);
     register_type_loader(type_id_of<double>(), &primitive_type_loader<double>);
+
+#define REG_MINIMAL_TYPE_LOADER(__TYPE) register_type_loader(type_id_of<__TYPE>(), &minimal_type_loader_record<__TYPE>)
+
+    // guid & md5
+    REG_MINIMAL_TYPE_LOADER(::skr::GUID);
+    REG_MINIMAL_TYPE_LOADER(::skr::MD5);
+
+    // string types
+    REG_MINIMAL_TYPE_LOADER(::skr::String);
+    REG_MINIMAL_TYPE_LOADER(::skr::StringView);
+
+    // math misc types
+    REG_MINIMAL_TYPE_LOADER(::skr::RotatorF);
+    REG_MINIMAL_TYPE_LOADER(::skr::RotatorD);
+    REG_MINIMAL_TYPE_LOADER(::skr::QuatF);
+    REG_MINIMAL_TYPE_LOADER(::skr::QuatD);
+    REG_MINIMAL_TYPE_LOADER(::skr::TransformF);
+    REG_MINIMAL_TYPE_LOADER(::skr::TransformD);
+
+    // math vector types
+    REG_MINIMAL_TYPE_LOADER(::skr::float2);
+    REG_MINIMAL_TYPE_LOADER(::skr::float3);
+    REG_MINIMAL_TYPE_LOADER(::skr::float4);
+    REG_MINIMAL_TYPE_LOADER(::skr::double2);
+    REG_MINIMAL_TYPE_LOADER(::skr::double3);
+    REG_MINIMAL_TYPE_LOADER(::skr::double4);
+    REG_MINIMAL_TYPE_LOADER(::skr::int2);
+    REG_MINIMAL_TYPE_LOADER(::skr::int3);
+    REG_MINIMAL_TYPE_LOADER(::skr::int4);
+    REG_MINIMAL_TYPE_LOADER(::skr::uint2);
+    REG_MINIMAL_TYPE_LOADER(::skr::uint3);
+    REG_MINIMAL_TYPE_LOADER(::skr::uint4);
+    REG_MINIMAL_TYPE_LOADER(::skr::long2);
+    REG_MINIMAL_TYPE_LOADER(::skr::long3);
+    REG_MINIMAL_TYPE_LOADER(::skr::long4);
+    REG_MINIMAL_TYPE_LOADER(::skr::ulong2);
+    REG_MINIMAL_TYPE_LOADER(::skr::ulong3);
+    REG_MINIMAL_TYPE_LOADER(::skr::ulong4);
+    REG_MINIMAL_TYPE_LOADER(::skr::bool2);
+    REG_MINIMAL_TYPE_LOADER(::skr::bool3);
+    REG_MINIMAL_TYPE_LOADER(::skr::bool4);
+
+    // matrix types
+    REG_MINIMAL_TYPE_LOADER(::skr::float3x3);
+    REG_MINIMAL_TYPE_LOADER(::skr::float4x4);
+    REG_MINIMAL_TYPE_LOADER(::skr::double3x3);
+    REG_MINIMAL_TYPE_LOADER(::skr::double4x4);
+
+#undef REG_MINIMAL_TYPE_LOADER
 };

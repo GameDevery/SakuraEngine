@@ -168,7 +168,7 @@ void RAMService::Runner::enqueueBatch(const IOBatchId& batch) SKR_NOEXCEPT
         }
     }
     batch_buffer->fetch(priority, batch);
-    skr_atomic_fetch_add_relaxed(&processing_request_counts[priority], 1);
+    skr_atomic_fetch_add_relaxed(&processing_request_counts[priority], batch->get_requests().size());
 }
 
 void RAMService::Runner::set_resolvers() SKR_NOEXCEPT

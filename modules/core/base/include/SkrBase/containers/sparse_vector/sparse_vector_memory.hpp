@@ -11,14 +11,14 @@
 // sparse vector memory base
 namespace skr::container
 {
-template <typename TS>
+template <typename TSize>
 struct SparseVectorMemoryBase {
-    using SizeType = TS;
+    using SizeType = TSize;
 
     // getter
     inline SizeType sparse_size() const noexcept { return _sparse_size; }
     inline SizeType capacity() const noexcept { return _capacity; }
-    inline SizeType bit_size() const noexcept { return algo::BitAlgo<TS>::num_blocks(_capacity) * algo::BitAlgo<TS>::PerBlockSize; }
+    inline SizeType bit_size() const noexcept { return algo::BitAlgo<TSize>::num_blocks(_capacity) * algo::BitAlgo<TSize>::PerBlockSize; }
     inline SizeType freelist_head() const noexcept { return _freelist_head; }
     inline SizeType hole_size() const noexcept { return _hole_size; }
 
@@ -110,7 +110,6 @@ struct SparseVectorMemory : public Base, public Allocator {
                 copy_sparse_vector_data(data(), rhs.data(), rhs.bit_data(), rhs._sparse_size);
                 copy_sparse_vector_bit_data(bit_data(), rhs.bit_data(), rhs._sparse_size);
                 Base::_sparse_size   = rhs._sparse_size;
-                Base::_capacity      = rhs._capacity;
                 Base::_freelist_head = rhs._freelist_head;
                 Base::_hole_size     = rhs._hole_size;
             }
@@ -575,7 +574,6 @@ struct InlineSparseVectorMemory : public Base, public Allocator {
                 copy_sparse_vector_data(data(), rhs.data(), rhs.bit_data(), rhs._sparse_size);
                 copy_sparse_vector_bit_data(bit_data(), rhs.bit_data(), rhs._sparse_size);
                 Base::_sparse_size   = rhs._sparse_size;
-                Base::_capacity      = rhs._capacity;
                 Base::_freelist_head = rhs._freelist_head;
                 Base::_hole_size     = rhs._hole_size;
             }

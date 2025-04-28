@@ -10,12 +10,12 @@
     {
         SkrZoneScopedN("LogCxx");
 
-        const auto kLogLevel = skr::log::LogConstants::kLogLevelsLUT[level];
-        if (kLogLevel < skr::log::LogConstants::gLogLevel) return;
+        const auto kLogLevel = skr::logging::LogConstants::kLogLevelsLUT[level];
+        if (kLogLevel < skr::logging::LogConstants::gLogLevel) return;
 
-        auto logger = skr::log::Logger::GetDefault();
-        const skr::log::LogSourceData Src = { file, func, line  };
-        const auto Event = skr::log::LogEvent(logger, kLogLevel, Src);
+        auto logger = skr::logging::Logger::GetDefault();
+        const skr::logging::LogSourceData Src = { file, func, line  };
+        const auto Event = skr::logging::LogEvent(logger, kLogLevel, Src);
 
         logger->log(Event, fmt, skr::forward<Args>(args)...);
     }

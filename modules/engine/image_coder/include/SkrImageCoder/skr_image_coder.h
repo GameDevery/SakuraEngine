@@ -83,6 +83,6 @@ using ImageDecoderId = skr::SObjectPtr<IImageDecoder>;
 } // namespace skr
 #endif
 
-SKR_IMAGE_CODER_EXTERN_C SKR_IMAGE_CODER_API
+SKR_EXTERN_C SKR_IMAGE_CODER_API
 EImageCoderFormat
 skr_image_coder_detect_format(const uint8_t* encoded_data, uint64_t size);

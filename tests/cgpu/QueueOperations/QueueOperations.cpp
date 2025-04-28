@@ -1,5 +1,6 @@
 #include "SkrGraphics/api.h"
 #include "SkrTestFramework/framework.hpp"
+#include <vector>
 
 template <ECGPUBackend backend>
 class QueueOperations

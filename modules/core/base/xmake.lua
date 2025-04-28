@@ -1,7 +1,8 @@
 static_component("SkrBase", "SkrCore")
-    add_rules("c++.unity_build", {batchsize = default_unity_batch})
+    skr_unity_build()
     add_deps("SkrProfile", {public = true})
     add_deps("SkrCompileFlags", {public = true})
+    add_deps("rtm", {public = true})
     add_includedirs("include", {public = true})
     add_files("src/**/build.*.c", "src/**/build.*.cpp")
     -- for guid/uuid

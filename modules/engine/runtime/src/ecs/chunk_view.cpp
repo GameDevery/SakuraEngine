@@ -31,7 +31,7 @@ bool is_array_small(sugoi_array_comp_t* ptr)
 #define for_buffer(i, array, size) \
     for (char* i = (char*)array->BeginX; i != array->EndX; i += size)
 
-static void construct_impl(sugoi_chunk_view_t view, sugoi_chunk_t::RSlice& slice, type_index_t type, EIndex offset, uint32_t size, uint32_t align, uint32_t elemSize, uint32_t maskValue, void (*constructor)(sugoi_chunk_t* chunk, EIndex index, char* data))
+static void construct_impl(sugoi_chunk_view_t view, sugoi_chunk_t::RSlice& slice, type_index_t type, EIndex offset, uint32_t size, uint32_t align, uint32_t elemSize, uint32_t maskValue, void (*constructor)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* data))
 {
     char* dst = view.chunk->data() + (size_t)offset + (size_t)size * view.start;
     if (type.is_buffer())
@@ -41,7 +41,7 @@ static void construct_impl(sugoi_chunk_view_t view, sugoi_chunk_t::RSlice& slice
             auto array = new_array(buf, size, elemSize, align);
             if (constructor)
                 for_buffer(curr, array, elemSize)
-                    constructor(view.chunk, view.start + j, curr);
+                    constructor(type, view.chunk, view.start + j, curr);
         }
     else if (type == kMaskComponent)
         forloop (j, 0, view.count)
@@ -50,12 +50,12 @@ static void construct_impl(sugoi_chunk_view_t view, sugoi_chunk_t::RSlice& slice
         memset(dst, 0xFFFFFFFF, (size_t)size * view.count);
     else if (constructor)
         forloop (j, 0, view.count)
-            constructor(view.chunk, view.start + j, (size_t)j * size + dst);
+            constructor(type, view.chunk, view.start + j, (size_t)j * size + dst);
     else
         memset(dst, 0, (size_t)size * view.count);
 }
 
-static void destruct_impl(sugoi_chunk_view_t view, type_index_t type, EIndex offset, uint32_t size, uint32_t elemSize, resource_fields_t resourceFields, void (*destructor)(sugoi_chunk_t* chunk, EIndex index, char* data))
+static void destruct_impl(sugoi_chunk_view_t view, type_index_t type, EIndex offset, uint32_t size, uint32_t elemSize, resource_fields_t resourceFields, void (*destructor)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* data))
 {
     char* src = view.chunk->data() + (size_t)offset + (size_t)size * view.start;
 #ifdef SUGOI_RESOURCE_SUPPORT
@@ -76,7 +76,7 @@ static void destruct_impl(sugoi_chunk_view_t view, type_index_t type, EIndex off
             auto array = (sugoi_array_comp_t*)((size_t)j * size + src);
             if (destructor)
                 for_buffer(curr, array, elemSize)
-                    destructor(view.chunk, view.start + j, curr);
+                    destructor(type, view.chunk, view.start + j, curr);
 #ifdef SUGOI_RESOURCE_SUPPORT
             else if(resourceFields.count > 0)
                 for_buffer(curr, array, elemSize)
@@ -87,7 +87,7 @@ static void destruct_impl(sugoi_chunk_view_t view, type_index_t type, EIndex off
         }
     else if (destructor)
         forloop (j, 0, view.count)
-            destructor(view.chunk, view.start + j, (size_t)j * size + src);
+            destructor(type, view.chunk, view.start + j, (size_t)j * size + src);
 #ifdef SUGOI_RESOURCE_SUPPORT
     else if (resourceFields.count > 0)
     {
@@ -97,7 +97,7 @@ static void destruct_impl(sugoi_chunk_view_t view, type_index_t type, EIndex off
 #endif
 }
 
-static void move_impl(sugoi_chunk_view_t dstV, const sugoi_chunk_t* srcC, uint32_t srcStart, type_index_t type, EIndex srcOffset, EIndex dstOffset, uint32_t size, uint32_t align, uint32_t elemSize, void (*move)(sugoi_chunk_t* chunk, EIndex index, char* dst, sugoi_chunk_t* schunk, EIndex sindex, char* src))
+static void move_impl(sugoi_chunk_view_t dstV, const sugoi_chunk_t* srcC, uint32_t srcStart, type_index_t type, EIndex srcOffset, EIndex dstOffset, uint32_t size, uint32_t align, uint32_t elemSize, void (*move)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* dst, sugoi_chunk_t* schunk, EIndex sindex, char* src))
 {
     SKR_ASSERT(!type.is_chunk());
     char* dst = dstV.chunk->data() + (size_t)dstOffset + (size_t)size * dstV.start;
@@ -118,13 +118,13 @@ static void move_impl(sugoi_chunk_view_t dstV, const sugoi_chunk_t* srcC, uint32
                     arrayDst->EndX = (char*)arrayDst->BeginX + arraySrc->size_in_bytes();
                     for (char *currDst = (char*)arrayDst->BeginX, *currSrc = (char*)arraySrc->BeginX;
                          currDst != arrayDst->EndX; currDst += elemSize, currSrc += elemSize)
-                        move(dstV.chunk, dstV.start + j, currDst, (sugoi_chunk_t*)srcC, srcStart + j, currSrc);
+                        move(type, dstV.chunk, dstV.start + j, currDst, (sugoi_chunk_t*)srcC, srcStart + j, currSrc);
                 }
             }
         }
         else
             forloop (j, 0, dstV.count)
-                move(dstV.chunk, dstV.start + j, (size_t)j * size + dst, (sugoi_chunk_t*)srcC, srcStart + j, (size_t)j * size + src);
+                move(type, dstV.chunk, dstV.start + j, (size_t)j * size + dst, (sugoi_chunk_t*)srcC, srcStart + j, (size_t)j * size + src);
     }
     else
     {
@@ -154,8 +154,8 @@ static void clone_impl(sugoi_chunk_view_t dstV, const sugoi_chunk_t* srcC, uint3
     SKR_ASSERT(!type.is_chunk());
     char* dst = dstV.chunk->data() + (size_t)dstOffset + (size_t)size * dstV.start;
     char* src = srcC->data() + (size_t)srcOffset + (size_t)size * srcStart;
-    auto storage = dstV.chunk->structure->storage;
 #ifdef SUGOI_RESOURCE_SUPPORT
+    auto storage = dstV.chunk->structure->storage;
     auto patchResources = [&](char* data)
     {
         forloop(k, 0, resourceFields.count)
@@ -253,7 +253,7 @@ void memdup(void* dst, const void* src, size_t size, size_t count) noexcept
         memcpy((char*)dst + copied * size, dst, (count - copied) * size);
 }
 
-static void duplicate_impl(sugoi_chunk_view_t dstV, const sugoi_chunk_t* srcC, uint32_t srcIndex, type_index_t type, EIndex offset, EIndex dstOffset, uint32_t size, uint32_t align, uint32_t elemSize, resource_fields_t resourceFields, void (*copy)(sugoi_chunk_t* chunk, EIndex index, char* dst, sugoi_chunk_t* schunk, EIndex sindex, const char* src))
+static void duplicate_impl(sugoi_chunk_view_t dstV, const sugoi_chunk_t* srcC, uint32_t srcIndex, type_index_t type, EIndex offset, EIndex dstOffset, uint32_t size, uint32_t align, uint32_t elemSize, resource_fields_t resourceFields, void (*copy)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* dst, sugoi_chunk_t* schunk, EIndex sindex, const char* src))
 {
     SKR_ASSERT(!type.is_chunk());
     char* dst = dstV.chunk->data() + (size_t)dstOffset + (size_t)size * dstV.start;
@@ -266,8 +266,8 @@ static void duplicate_impl(sugoi_chunk_view_t dstV, const sugoi_chunk_t* srcC, u
             guidDst[j] = registry.make_guid();
         return;
     }
-    auto storage = dstV.chunk->structure->storage;
 #ifdef SUGOI_RESOURCE_SUPPORT
+    auto storage = dstV.chunk->structure->storage;
     auto patchResources = [&](char* data)
     {
         forloop(k, 0, resourceFields.count)
@@ -303,12 +303,12 @@ static void duplicate_impl(sugoi_chunk_view_t dstV, const sugoi_chunk_t* srcC, u
 
                 for (char *currDst = (char*)arrayDst->BeginX, *currSrc = (char*)arraySrc->BeginX;
                      currDst != arrayDst->EndX; currDst += elemSize, currSrc += elemSize)
-                    copy(dstV.chunk, dstV.start + j, currDst, (sugoi_chunk_t*)srcC, srcIndex, currSrc);
+                    copy(type, dstV.chunk, dstV.start + j, currDst, (sugoi_chunk_t*)srcC, srcIndex, currSrc);
             }
         }
         else
             forloop (j, 0, dstV.count)
-                copy(dstV.chunk, dstV.start + j, (size_t)j * size + dst, (sugoi_chunk_t*)srcC, srcIndex, src);
+                copy(type, dstV.chunk, dstV.start + j, (size_t)j * size + dst, (sugoi_chunk_t*)srcC, srcIndex, src);
     }
     else
     {
@@ -788,7 +788,7 @@ auto sugoiV_get_owned(const sugoi_chunk_view_t* view, sugoi_type_index_t type)
     {
         for (uint32_t idx = 0; view->params && (idx < view->params->length); idx++)
         {
-            if ((view->params->types[idx] == tid) && (view->params->accesses[idx].readonly == true))
+            if ((view->params->types[idx] == tid) && (view->params->accesses[idx].readonly != 0))
             {
                 SKR_LOG_WARN(u8"readwrite access to a component(tid: %d, name: %s) which is queried as readonly!", 
                     tid, sugoiT_get_desc(tid)->name);

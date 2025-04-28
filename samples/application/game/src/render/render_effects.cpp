@@ -34,10 +34,10 @@
 #include "SkrRT/resource/resource_system.h"
 #include "SkrProfile/profile.h"
 
-#include "SkrBase/math/rtm/quatf.h"
-#include "SkrBase/math/rtm/scalarf.h"
-#include "SkrBase/math/rtm/qvvf.h"
-#include "SkrBase/math/rtm/rtmx.h"
+#include "rtm/quatf.h"
+#include "rtm/scalarf.h"
+#include "rtm/qvvf.h"
+#include "rtm/rtmx.h"
 #include "SkrBase/math/transform.h"
 
 using namespace game;

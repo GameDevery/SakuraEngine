@@ -6,8 +6,8 @@ target("SkrCompileFlags")
 
     -- uses utf-8 charset at runtime
     add_cxflags(
-        "/execution-charset:utf-8", 
-        "/source-charset:utf-8",
+        -- "/execution-charset:utf-8", 
+        "/utf-8",
         {public = true, tools = {"clang_cl", "cl"}})
 
     -- disable c++ warnings for gcc/clang
@@ -86,6 +86,7 @@ target("SkrCompileFlags")
         "-Wno-microsoft-include", -- microsoft include extension
         "-Wno-microsoft-enum-forward-reference", -- microsoft enum forward declaration extension
         -- "/Zc:dllexportInlines-", -- strip inline function from dll export
+        "-ferror-limit=10086",
         {public = true, tools = {"clang_cl"}}
     )
 

@@ -18,6 +18,8 @@ struct Optional {
     Optional(Nullopt);
     Optional(const T& value);
     Optional(T&& value);
+    template <std::convertible_to<T> U>
+    Optional(const U& value);
     ~Optional();
 
     // copy & move
@@ -47,6 +49,8 @@ struct Optional {
     // getter
     T&        operator*();
     const T&  operator*() const;
+    T*        operator->();
+    const T*  operator->() const;
     T&        value() &;
     const T&  value() const&;
     T&&       value() &&;
@@ -67,8 +71,8 @@ private:
     const T* _data_ptr() const;
 
 private:
-    Placeholder<T> _placeholder = {};
     bool           _has_value   = false;
+    Placeholder<T> _placeholder = {};
 };
 } // namespace skr::container
 
@@ -90,6 +94,13 @@ inline Optional<T>::Optional(T&& value)
     : _has_value(true)
 {
     ::skr::memory::move(_data_ptr(), &value);
+}
+template <typename T>
+template <std::convertible_to<T> U>
+inline Optional<T>::Optional(const U& value)
+    : _has_value(true)
+{
+    new (_data_ptr()) T(value);
 }
 template <typename T>
 inline Optional<T>::~Optional()
@@ -227,6 +238,16 @@ template <typename T>
 inline const T& Optional<T>::operator*() const
 {
     return *_data_ptr();
+}
+template <typename T>
+T* Optional<T>::operator->()
+{
+    return _data_ptr();
+}
+template <typename T>
+const T* Optional<T>::operator->() const
+{
+    return _data_ptr();
 }
 template <typename T>
 inline T& Optional<T>::value() &

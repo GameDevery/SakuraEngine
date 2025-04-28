@@ -57,23 +57,23 @@ private:
     TBlock  _mask = Algo::EmptyMask;
 };
 
-template <typename TBlock, typename TS>
+template <typename TBlock, typename TSize>
 struct BitDataRef {
     BitRef<TBlock> data  = {};
-    TS             index = npos_of<TS>;
+    TSize             index = npos_of<TSize>;
 
     inline BitDataRef() = default;
-    inline BitDataRef(TS index)
+    inline BitDataRef(TSize index)
         : index(index)
     {
     }
-    inline BitDataRef(BitRef<TBlock> data, TS index)
+    inline BitDataRef(BitRef<TBlock> data, TSize index)
         : data(data)
         , index(index)
     {
     }
 
-    inline                 operator bool() const { return data.is_valid() || index != npos_of<TS>; }
+    inline                 operator bool() const { return data.is_valid() || index != npos_of<TSize>; }
     inline BitRef<TBlock>& operator*() const { return *data; }
 };
 } // namespace skr::container

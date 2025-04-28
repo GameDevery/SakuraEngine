@@ -12,11 +12,11 @@
 
 namespace skr::container
 {
-template <typename TS>
+template <typename TSize>
 struct U8StringView {
     // basic
     using DataType = skr_char8;
-    using SizeType = TS;
+    using SizeType = TSize;
 
     // data ref
     // using DataRef  = StringDataRef<DataType, SizeType, false>;
@@ -65,6 +65,10 @@ struct U8StringView {
     // compare
     constexpr bool operator==(const U8StringView& rhs) const;
     constexpr bool operator!=(const U8StringView& rhs) const;
+    constexpr bool operator>(const U8StringView& rhs) const;
+    constexpr bool operator<(const U8StringView& rhs) const;
+    constexpr bool operator>=(const U8StringView& rhs) const;
+    constexpr bool operator<=(const U8StringView& rhs) const;
 
     // getter
     constexpr const DataType* data() const;
@@ -134,16 +138,16 @@ struct U8StringView {
 
     // split
     // TODO. concept for fucking apple
-    // template <CanAdd<const U8StringView<TS>&> Buffer>
+    // template <CanAdd<const U8StringView<TSize>&> Buffer>
     template <typename Buffer>
     constexpr SizeType split(Buffer& out, const U8StringView& delimiter, bool cull_empty = false, SizeType limit = npos) const;
-    // template <std::invocable<const U8StringView<TS>&> F>
+    // template <std::invocable<const U8StringView<TSize>&> F>
     template <typename F>
     constexpr SizeType split_each(F&& func, const U8StringView& delimiter, bool cull_empty = false, SizeType limit = npos) const;
-    // template <CanAdd<const U8StringView<TS>&> Buffer>
+    // template <CanAdd<const U8StringView<TSize>&> Buffer>
     template <typename Buffer>
     constexpr SizeType split(Buffer& out, const UTF8Seq& delimiter, bool cull_empty = false, SizeType limit = npos) const;
-    // template <std::invocable<const U8StringView<TS>&> F>
+    // template <std::invocable<const U8StringView<TSize>&> F>
     template <typename F>
     constexpr SizeType split_each(F&& func, const UTF8Seq& delimiter, bool cull_empty = false, SizeType limit = npos) const;
 
@@ -192,45 +196,45 @@ private:
 namespace skr::container
 {
 // ctor & dtor
-template <typename TS>
-inline constexpr U8StringView<TS>::U8StringView() = default;
-template <typename TS>
-inline constexpr U8StringView<TS>::U8StringView(const DataType* str)
+template <typename TSize>
+inline constexpr U8StringView<TSize>::U8StringView() = default;
+template <typename TSize>
+inline constexpr U8StringView<TSize>::U8StringView(const DataType* str)
     : _data(const_cast<DataType*>(str))
     , _size(str ? CharTraits::length(str) : 0)
 {
 }
-template <typename TS>
-inline constexpr U8StringView<TS>::U8StringView(const DataType* str, SizeType len)
+template <typename TSize>
+inline constexpr U8StringView<TSize>::U8StringView(const DataType* str, SizeType len)
     : _data(const_cast<DataType*>(str))
     , _size(len)
 {
 }
-// template <typename TS>
+// template <typename TSize>
 // template <LinearMemoryContainer U>
-// inline constexpr U8StringView<TS>::U8StringView(const U& container)
+// inline constexpr U8StringView<TSize>::U8StringView(const U& container)
 //     : _data(const_cast<DataType*>(container.data()))
 //     , _size(container.size())
 // {
 // }
-template <typename TS>
-inline constexpr U8StringView<TS>::~U8StringView() = default;
+template <typename TSize>
+inline constexpr U8StringView<TSize>::~U8StringView() = default;
 
 // copy & move
-template <typename TS>
-inline constexpr U8StringView<TS>::U8StringView(const U8StringView& other) = default;
-template <typename TS>
-inline constexpr U8StringView<TS>::U8StringView(U8StringView&& other) noexcept = default;
+template <typename TSize>
+inline constexpr U8StringView<TSize>::U8StringView(const U8StringView& other) = default;
+template <typename TSize>
+inline constexpr U8StringView<TSize>::U8StringView(U8StringView&& other) noexcept = default;
 
 // assign & move assign
-template <typename TS>
-inline constexpr U8StringView<TS>& U8StringView<TS>::operator=(const U8StringView& rhs) = default;
-template <typename TS>
-inline constexpr U8StringView<TS>& U8StringView<TS>::operator=(U8StringView&& rhs) noexcept = default;
+template <typename TSize>
+inline constexpr U8StringView<TSize>& U8StringView<TSize>::operator=(const U8StringView& rhs) = default;
+template <typename TSize>
+inline constexpr U8StringView<TSize>& U8StringView<TSize>::operator=(U8StringView&& rhs) noexcept = default;
 
 // compare
-template <typename TS>
-inline constexpr bool U8StringView<TS>::operator==(const U8StringView& rhs) const
+template <typename TSize>
+inline constexpr bool U8StringView<TSize>::operator==(const U8StringView& rhs) const
 {
     if (_size != rhs._size)
     {
@@ -249,85 +253,115 @@ inline constexpr bool U8StringView<TS>::operator==(const U8StringView& rhs) cons
         return CharTraits::compare(_data, rhs._data, _size) == 0;
     }
 }
-template <typename TS>
-inline constexpr bool U8StringView<TS>::operator!=(const U8StringView& rhs) const
+template <typename TSize>
+inline constexpr bool U8StringView<TSize>::operator!=(const U8StringView& rhs) const
 {
     return !(*this == rhs);
 }
+template <typename TSize>
+inline constexpr bool U8StringView<TSize>::operator>(const U8StringView& rhs) const
+{
+    if (_size < rhs._size) { return false; }
+    else if (_size > rhs._size) { return true; }
+    else if (_size == 0 && rhs._size == 0) { return false; }
+    else {
+        return CharTraits::compare(_data, rhs._data, _size) > 0;
+    }
+}
+template <typename TSize>
+inline constexpr bool U8StringView<TSize>::operator<(const U8StringView& rhs) const
+{
+    if (_size > rhs._size) { return false; }
+    else if (_size < rhs._size) { return true; }
+    else if (_size == 0 && rhs._size == 0) { return false; }
+    else {
+        return CharTraits::compare(_data, rhs._data, _size) < 0;
+    }
+}
+template <typename TSize>
+inline constexpr bool U8StringView<TSize>::operator>=(const U8StringView& rhs) const
+{
+    return !((*this) < rhs);
+}
+template <typename TSize>
+inline constexpr bool U8StringView<TSize>::operator<=(const U8StringView& rhs) const
+{
+    return !((*this) > rhs);
+}
 
 // getter
-template <typename TS>
-inline constexpr const typename U8StringView<TS>::DataType* U8StringView<TS>::data() const
+template <typename TSize>
+inline constexpr const typename U8StringView<TSize>::DataType* U8StringView<TSize>::data() const
 {
     return _data;
 }
-template <typename TS>
-inline constexpr const char* U8StringView<TS>::data_raw() const
+template <typename TSize>
+inline constexpr const char* U8StringView<TSize>::data_raw() const
 {
     return reinterpret_cast<const char*>(_data);
 }
-template <typename TS>
-inline constexpr typename U8StringView<TS>::SizeType U8StringView<TS>::size() const
+template <typename TSize>
+inline constexpr typename U8StringView<TSize>::SizeType U8StringView<TSize>::size() const
 {
     return _size;
 }
-template <typename TS>
-inline constexpr bool U8StringView<TS>::is_empty() const
+template <typename TSize>
+inline constexpr bool U8StringView<TSize>::is_empty() const
 {
     return _size == 0;
 }
 
 // str getter
-template <typename TS>
-inline constexpr typename U8StringView<TS>::SizeType U8StringView<TS>::length_buffer() const
+template <typename TSize>
+inline constexpr typename U8StringView<TSize>::SizeType U8StringView<TSize>::length_buffer() const
 {
     return _size;
 }
-template <typename TS>
-inline constexpr typename U8StringView<TS>::SizeType U8StringView<TS>::length_text() const
+template <typename TSize>
+inline constexpr typename U8StringView<TSize>::SizeType U8StringView<TSize>::length_text() const
 {
     return is_empty() ? 0 : utf8_code_point_index(_data, _size, _size - 1) + 1;
 }
 
 // validator
-template <typename TS>
-inline constexpr bool U8StringView<TS>::is_valid_index(SizeType index) const
+template <typename TSize>
+inline constexpr bool U8StringView<TSize>::is_valid_index(SizeType index) const
 {
     return index >= 0 && index < _size;
 }
-template <typename TS>
-inline constexpr bool U8StringView<TS>::is_valid_ptr(const DataType* ptr) const
+template <typename TSize>
+inline constexpr bool U8StringView<TSize>::is_valid_ptr(const DataType* ptr) const
 {
     return ptr >= _data && ptr < (_data + _size);
 }
 
 // index & modify
-template <typename TS>
-inline constexpr const typename U8StringView<TS>::DataType& U8StringView<TS>::at_buffer(SizeType index) const
+template <typename TSize>
+inline constexpr const typename U8StringView<TSize>::DataType& U8StringView<TSize>::at_buffer(SizeType index) const
 {
     SKR_ASSERT(!is_empty() && "undefined behavior accessing an empty string view");
     SKR_ASSERT(is_valid_index(index) && "undefined behavior accessing out of bounds");
 
     return _data[index];
 }
-template <typename TS>
-inline constexpr const typename U8StringView<TS>::DataType& U8StringView<TS>::last_buffer(SizeType index) const
+template <typename TSize>
+inline constexpr const typename U8StringView<TSize>::DataType& U8StringView<TSize>::last_buffer(SizeType index) const
 {
     index = _size - index - 1;
     SKR_ASSERT(!is_empty() && "undefined behavior accessing an empty string view");
     SKR_ASSERT(is_valid_index(index) && "undefined behavior accessing out of bounds");
     return _data[index];
 }
-template <typename TS>
-inline constexpr UTF8Seq U8StringView<TS>::at_text(SizeType index) const
+template <typename TSize>
+inline constexpr UTF8Seq U8StringView<TSize>::at_text(SizeType index) const
 {
     SKR_ASSERT(!is_empty() && "undefined behavior accessing an empty string view");
     SKR_ASSERT(is_valid_index(index) && "undefined behavior accessing out of bounds");
     uint64_t seq_index;
     return UTF8Seq::ParseUTF8(_data, _size, index, seq_index);
 }
-template <typename TS>
-inline constexpr UTF8Seq U8StringView<TS>::last_text(SizeType index) const
+template <typename TSize>
+inline constexpr UTF8Seq U8StringView<TSize>::last_text(SizeType index) const
 {
     index = _size - index - 1;
     SKR_ASSERT(!is_empty() && "undefined behavior accessing an empty string view");
@@ -337,20 +371,20 @@ inline constexpr UTF8Seq U8StringView<TS>::last_text(SizeType index) const
 }
 
 // sub views
-template <typename TS>
-inline constexpr U8StringView<TS> U8StringView<TS>::first(SizeType count) const
+template <typename TSize>
+inline constexpr U8StringView<TSize> U8StringView<TSize>::first(SizeType count) const
 {
     SKR_ASSERT(count <= size() && "undefined behavior accessing out of bounds");
     return { _data, count };
 }
-template <typename TS>
-inline constexpr U8StringView<TS> U8StringView<TS>::last(SizeType count) const
+template <typename TSize>
+inline constexpr U8StringView<TSize> U8StringView<TSize>::last(SizeType count) const
 {
     SKR_ASSERT(count <= size() && "undefined behavior accessing out of bounds");
     return { _data + _size - count, count };
 }
-template <typename TS>
-inline constexpr U8StringView<TS> U8StringView<TS>::subview(SizeType start, SizeType count) const
+template <typename TSize>
+inline constexpr U8StringView<TSize> U8StringView<TSize>::subview(SizeType start, SizeType count) const
 {
     SKR_ASSERT(start <= size() && "undefined behaviour accessing out of bounds");
     SKR_ASSERT(count == npos || count <= (size() - start) && "undefined behaviour exceeding size of string view");
@@ -358,8 +392,8 @@ inline constexpr U8StringView<TS> U8StringView<TS>::subview(SizeType start, Size
 }
 
 // find
-template <typename TS>
-inline constexpr typename U8StringView<TS>::CDataRef U8StringView<TS>::find(const U8StringView& pattern) const
+template <typename TSize>
+inline constexpr typename U8StringView<TSize>::CDataRef U8StringView<TSize>::find(const U8StringView& pattern) const
 {
     if (is_empty() || pattern.is_empty() || size() < pattern.size())
     {
@@ -384,8 +418,8 @@ inline constexpr typename U8StringView<TS>::CDataRef U8StringView<TS>::find(cons
         ++match_try;
     }
 }
-template <typename TS>
-inline constexpr typename U8StringView<TS>::CDataRef U8StringView<TS>::find_last(const U8StringView& pattern) const
+template <typename TSize>
+inline constexpr typename U8StringView<TSize>::CDataRef U8StringView<TSize>::find_last(const U8StringView& pattern) const
 {
     if (is_empty() || pattern.is_empty() || size() < pattern.size())
     {
@@ -411,8 +445,8 @@ inline constexpr typename U8StringView<TS>::CDataRef U8StringView<TS>::find_last
 
     return {};
 }
-template <typename TS>
-inline constexpr typename U8StringView<TS>::CDataRef U8StringView<TS>::find(const UTF8Seq& pattern) const
+template <typename TSize>
+inline constexpr typename U8StringView<TSize>::CDataRef U8StringView<TSize>::find(const UTF8Seq& pattern) const
 {
     if (pattern.is_valid())
     {
@@ -438,8 +472,8 @@ inline constexpr typename U8StringView<TS>::CDataRef U8StringView<TS>::find(cons
         return {};
     }
 }
-template <typename TS>
-inline constexpr typename U8StringView<TS>::CDataRef U8StringView<TS>::find_last(const UTF8Seq& pattern) const
+template <typename TSize>
+inline constexpr typename U8StringView<TSize>::CDataRef U8StringView<TSize>::find_last(const UTF8Seq& pattern) const
 {
     if (pattern.is_valid())
     {
@@ -452,13 +486,13 @@ inline constexpr typename U8StringView<TS>::CDataRef U8StringView<TS>::find_last
 }
 
 // contains & count
-template <typename TS>
-inline constexpr bool U8StringView<TS>::contains(const U8StringView& pattern) const
+template <typename TSize>
+inline constexpr bool U8StringView<TSize>::contains(const U8StringView& pattern) const
 {
     return (bool)find(pattern);
 }
-template <typename TS>
-inline constexpr typename U8StringView<TS>::SizeType U8StringView<TS>::count(const U8StringView& pattern) const
+template <typename TSize>
+inline constexpr typename U8StringView<TSize>::SizeType U8StringView<TSize>::count(const U8StringView& pattern) const
 {
     auto     find_view{ *this };
     SizeType result = 0;
@@ -477,13 +511,13 @@ inline constexpr typename U8StringView<TS>::SizeType U8StringView<TS>::count(con
     }
     return result;
 }
-template <typename TS>
-inline constexpr bool U8StringView<TS>::contains(const UTF8Seq& pattern) const
+template <typename TSize>
+inline constexpr bool U8StringView<TSize>::contains(const UTF8Seq& pattern) const
 {
     return (bool)find(pattern);
 }
-template <typename TS>
-inline constexpr typename U8StringView<TS>::SizeType U8StringView<TS>::count(const UTF8Seq& pattern) const
+template <typename TSize>
+inline constexpr typename U8StringView<TSize>::SizeType U8StringView<TSize>::count(const UTF8Seq& pattern) const
 {
     if (pattern.is_valid())
     {
@@ -496,8 +530,8 @@ inline constexpr typename U8StringView<TS>::SizeType U8StringView<TS>::count(con
 }
 
 // starts & ends
-template <typename TS>
-inline constexpr bool U8StringView<TS>::starts_with(const U8StringView& prefix) const
+template <typename TSize>
+inline constexpr bool U8StringView<TSize>::starts_with(const U8StringView& prefix) const
 {
     if (prefix.is_empty())
     {
@@ -509,8 +543,8 @@ inline constexpr bool U8StringView<TS>::starts_with(const U8StringView& prefix) 
     }
     return CharTraits::compare(_data, prefix.data(), prefix.size()) == 0;
 }
-template <typename TS>
-inline constexpr bool U8StringView<TS>::ends_with(const U8StringView& suffix) const
+template <typename TSize>
+inline constexpr bool U8StringView<TSize>::ends_with(const U8StringView& suffix) const
 {
     if (suffix.is_empty())
     {
@@ -523,8 +557,8 @@ inline constexpr bool U8StringView<TS>::ends_with(const U8StringView& suffix) co
 
     return CharTraits::compare(_data + (_size - suffix.size()), suffix.data(), suffix.size()) == 0;
 }
-template <typename TS>
-inline constexpr bool U8StringView<TS>::starts_with(const UTF8Seq& prefix) const
+template <typename TSize>
+inline constexpr bool U8StringView<TSize>::starts_with(const UTF8Seq& prefix) const
 {
     if (prefix.is_valid())
     {
@@ -535,8 +569,8 @@ inline constexpr bool U8StringView<TS>::starts_with(const UTF8Seq& prefix) const
         return false;
     }
 }
-template <typename TS>
-inline constexpr bool U8StringView<TS>::ends_with(const UTF8Seq& suffix) const
+template <typename TSize>
+inline constexpr bool U8StringView<TSize>::ends_with(const UTF8Seq& suffix) const
 {
     if (suffix.is_valid())
     {
@@ -549,18 +583,18 @@ inline constexpr bool U8StringView<TS>::ends_with(const UTF8Seq& suffix) const
 }
 
 // remove prefix & suffix
-template <typename TS>
-inline constexpr U8StringView<TS> U8StringView<TS>::remove_prefix(const U8StringView& prefix) const
+template <typename TSize>
+inline constexpr U8StringView<TSize> U8StringView<TSize>::remove_prefix(const U8StringView& prefix) const
 {
     return starts_with(prefix) ? subview(prefix.size()) : *this;
 }
-template <typename TS>
-inline constexpr U8StringView<TS> U8StringView<TS>::remove_suffix(const U8StringView& suffix) const
+template <typename TSize>
+inline constexpr U8StringView<TSize> U8StringView<TSize>::remove_suffix(const U8StringView& suffix) const
 {
     return ends_with(suffix) ? subview(0, size() - suffix.size()) : *this;
 }
-template <typename TS>
-inline constexpr U8StringView<TS> U8StringView<TS>::remove_prefix(const UTF8Seq& prefix) const
+template <typename TSize>
+inline constexpr U8StringView<TSize> U8StringView<TSize>::remove_prefix(const UTF8Seq& prefix) const
 {
     if (prefix.is_valid())
     {
@@ -571,8 +605,8 @@ inline constexpr U8StringView<TS> U8StringView<TS>::remove_prefix(const UTF8Seq&
         return *this;
     }
 }
-template <typename TS>
-inline constexpr U8StringView<TS> U8StringView<TS>::remove_suffix(const UTF8Seq& suffix) const
+template <typename TSize>
+inline constexpr U8StringView<TSize> U8StringView<TSize>::remove_suffix(const UTF8Seq& suffix) const
 {
     if (suffix.is_valid())
     {
@@ -585,13 +619,13 @@ inline constexpr U8StringView<TS> U8StringView<TS>::remove_suffix(const UTF8Seq&
 }
 
 // trim
-template <typename TS>
-inline constexpr U8StringView<TS> U8StringView<TS>::trim(const U8StringView& characters) const
+template <typename TSize>
+inline constexpr U8StringView<TSize> U8StringView<TSize>::trim(const U8StringView& characters) const
 {
     return trim_start(characters).trim_end(characters);
 }
-template <typename TS>
-inline constexpr U8StringView<TS> U8StringView<TS>::trim_start(const U8StringView& characters) const
+template <typename TSize>
+inline constexpr U8StringView<TSize> U8StringView<TSize>::trim_start(const U8StringView& characters) const
 {
     if (is_empty())
     {
@@ -611,8 +645,8 @@ inline constexpr U8StringView<TS> U8StringView<TS>::trim_start(const U8StringVie
     }
     return {};
 }
-template <typename TS>
-inline constexpr U8StringView<TS> U8StringView<TS>::trim_end(const U8StringView& characters) const
+template <typename TSize>
+inline constexpr U8StringView<TSize> U8StringView<TSize>::trim_end(const U8StringView& characters) const
 {
     if (is_empty())
     {
@@ -632,8 +666,8 @@ inline constexpr U8StringView<TS> U8StringView<TS>::trim_end(const U8StringView&
     }
     return {};
 }
-template <typename TS>
-inline constexpr U8StringView<TS> U8StringView<TS>::trim(const UTF8Seq& ch) const
+template <typename TSize>
+inline constexpr U8StringView<TSize> U8StringView<TSize>::trim(const UTF8Seq& ch) const
 {
     if (ch.is_valid())
     {
@@ -644,8 +678,8 @@ inline constexpr U8StringView<TS> U8StringView<TS>::trim(const UTF8Seq& ch) cons
         return { *this };
     }
 }
-template <typename TS>
-inline constexpr U8StringView<TS> U8StringView<TS>::trim_start(const UTF8Seq& ch) const
+template <typename TSize>
+inline constexpr U8StringView<TSize> U8StringView<TSize>::trim_start(const UTF8Seq& ch) const
 {
     if (ch.is_valid())
     {
@@ -656,8 +690,8 @@ inline constexpr U8StringView<TS> U8StringView<TS>::trim_start(const UTF8Seq& ch
         return { *this };
     }
 }
-template <typename TS>
-inline constexpr U8StringView<TS> U8StringView<TS>::trim_end(const UTF8Seq& ch) const
+template <typename TSize>
+inline constexpr U8StringView<TSize> U8StringView<TSize>::trim_end(const UTF8Seq& ch) const
 {
     if (ch.is_valid())
     {
@@ -670,13 +704,13 @@ inline constexpr U8StringView<TS> U8StringView<TS>::trim_end(const UTF8Seq& ch) 
 }
 
 // trim invalid
-template <typename TS>
-inline constexpr U8StringView<TS> U8StringView<TS>::trim_invalid() const
+template <typename TSize>
+inline constexpr U8StringView<TSize> U8StringView<TSize>::trim_invalid() const
 {
     return trim_invalid_start().trim_invalid_end();
 }
-template <typename TS>
-inline constexpr U8StringView<TS> U8StringView<TS>::trim_invalid_start() const
+template <typename TSize>
+inline constexpr U8StringView<TSize> U8StringView<TSize>::trim_invalid_start() const
 {
     if (is_empty())
     {
@@ -692,8 +726,8 @@ inline constexpr U8StringView<TS> U8StringView<TS>::trim_invalid_start() const
     }
     return {};
 }
-template <typename TS>
-inline constexpr U8StringView<TS> U8StringView<TS>::trim_invalid_end() const
+template <typename TSize>
+inline constexpr U8StringView<TSize> U8StringView<TSize>::trim_invalid_end() const
 {
     if (is_empty())
     {
@@ -711,8 +745,8 @@ inline constexpr U8StringView<TS> U8StringView<TS>::trim_invalid_end() const
 }
 
 // partition
-template <typename TS>
-inline constexpr typename U8StringView<TS>::PartitionResult U8StringView<TS>::partition(const U8StringView& delimiter) const
+template <typename TSize>
+inline constexpr typename U8StringView<TSize>::PartitionResult U8StringView<TSize>::partition(const U8StringView& delimiter) const
 {
     if (auto found = find(delimiter))
     {
@@ -731,8 +765,8 @@ inline constexpr typename U8StringView<TS>::PartitionResult U8StringView<TS>::pa
         };
     }
 }
-template <typename TS>
-inline constexpr typename U8StringView<TS>::PartitionResult U8StringView<TS>::partition(const UTF8Seq& delimiter) const
+template <typename TSize>
+inline constexpr typename U8StringView<TSize>::PartitionResult U8StringView<TSize>::partition(const UTF8Seq& delimiter) const
 {
     if (delimiter.is_valid())
     {
@@ -745,10 +779,10 @@ inline constexpr typename U8StringView<TS>::PartitionResult U8StringView<TS>::pa
 }
 
 // split
-template <typename TS>
-// template <CanAdd<const U8StringView<TS>&> Buffer>
+template <typename TSize>
+// template <CanAdd<const U8StringView<TSize>&> Buffer>
 template <typename Buffer>
-inline constexpr typename U8StringView<TS>::SizeType U8StringView<TS>::split(Buffer& out, const U8StringView& delimiter, bool cull_empty, SizeType limit) const
+inline constexpr typename U8StringView<TSize>::SizeType U8StringView<TSize>::split(Buffer& out, const U8StringView& delimiter, bool cull_empty, SizeType limit) const
 {
     U8StringView each_view{ *this };
     SizeType     count = 0;
@@ -764,7 +798,7 @@ inline constexpr typename U8StringView<TS>::SizeType U8StringView<TS>::split(Buf
             {
                 out.add(left);
             }
-            else if constexpr (HasAppend<Buffer, U8StringView<TS>>)
+            else if constexpr (HasAppend<Buffer, U8StringView<TSize>>)
             {
                 out.append(left);
             }
@@ -791,12 +825,12 @@ inline constexpr typename U8StringView<TS>::SizeType U8StringView<TS>::split(Buf
     }
     return count;
 }
-template <typename TS>
-// template <std::invocable<const U8StringView<TS>&> F>
+template <typename TSize>
+// template <std::invocable<const U8StringView<TSize>&> F>
 template <typename F>
-inline constexpr typename U8StringView<TS>::SizeType U8StringView<TS>::split_each(F&& func, const U8StringView& delimiter, bool cull_empty, SizeType limit) const
+inline constexpr typename U8StringView<TSize>::SizeType U8StringView<TSize>::split_each(F&& func, const U8StringView& delimiter, bool cull_empty, SizeType limit) const
 {
-    using EachFuncResultType = std::invoke_result_t<F, const U8StringView<TS>&>;
+    using EachFuncResultType = std::invoke_result_t<F, const U8StringView<TSize>&>;
 
     U8StringView each_view{ *this };
     SizeType     count = 0;
@@ -838,10 +872,10 @@ inline constexpr typename U8StringView<TS>::SizeType U8StringView<TS>::split_eac
     }
     return count;
 }
-template <typename TS>
-// template <CanAdd<const U8StringView<TS>&> Buffer>
+template <typename TSize>
+// template <CanAdd<const U8StringView<TSize>&> Buffer>
 template <typename Buffer>
-inline constexpr typename U8StringView<TS>::SizeType U8StringView<TS>::split(Buffer& out, const UTF8Seq& delimiter, bool cull_empty, SizeType limit) const
+inline constexpr typename U8StringView<TSize>::SizeType U8StringView<TSize>::split(Buffer& out, const UTF8Seq& delimiter, bool cull_empty, SizeType limit) const
 {
     return split(
     out,
@@ -849,10 +883,10 @@ inline constexpr typename U8StringView<TS>::SizeType U8StringView<TS>::split(Buf
     cull_empty,
     limit);
 }
-template <typename TS>
-// template <std::invocable<const U8StringView<TS>&> F>
+template <typename TSize>
+// template <std::invocable<const U8StringView<TSize>&> F>
 template <typename F>
-inline constexpr typename U8StringView<TS>::SizeType U8StringView<TS>::split_each(F&& func, const UTF8Seq& delimiter, bool cull_empty, SizeType limit) const
+inline constexpr typename U8StringView<TSize>::SizeType U8StringView<TSize>::split_each(F&& func, const UTF8Seq& delimiter, bool cull_empty, SizeType limit) const
 {
     return split_each(
     std::forward<F>(func),
@@ -862,13 +896,13 @@ inline constexpr typename U8StringView<TS>::SizeType U8StringView<TS>::split_eac
 }
 
 // convert size
-template <typename TS>
-inline typename U8StringView<TS>::SizeType U8StringView<TS>::to_raw_length() const
+template <typename TSize>
+inline typename U8StringView<TSize>::SizeType U8StringView<TSize>::to_raw_length() const
 {
     return length_buffer();
 }
-template <typename TS>
-inline typename U8StringView<TS>::SizeType U8StringView<TS>::to_wide_length() const
+template <typename TSize>
+inline typename U8StringView<TSize>::SizeType U8StringView<TSize>::to_wide_length() const
 {
 #if _WIN64
     return to_u16_length();
@@ -876,13 +910,13 @@ inline typename U8StringView<TS>::SizeType U8StringView<TS>::to_wide_length() co
     return to_u32_length();
 #endif
 }
-template <typename TS>
-inline typename U8StringView<TS>::SizeType U8StringView<TS>::to_u8_length() const
+template <typename TSize>
+inline typename U8StringView<TSize>::SizeType U8StringView<TSize>::to_u8_length() const
 {
     return length_buffer();
 }
-template <typename TS>
-inline typename U8StringView<TS>::SizeType U8StringView<TS>::to_u16_length() const
+template <typename TSize>
+inline typename U8StringView<TSize>::SizeType U8StringView<TSize>::to_u16_length() const
 {
     if (is_empty())
     {
@@ -908,8 +942,8 @@ inline typename U8StringView<TS>::SizeType U8StringView<TS>::to_u16_length() con
         return utf16_len;
     }
 }
-template <typename TS>
-inline typename U8StringView<TS>::SizeType U8StringView<TS>::to_u32_length() const
+template <typename TSize>
+inline typename U8StringView<TSize>::SizeType U8StringView<TSize>::to_u32_length() const
 {
     if (is_empty())
     {
@@ -927,9 +961,9 @@ inline typename U8StringView<TS>::SizeType U8StringView<TS>::to_u32_length() con
         return utf32_len;
     }
 }
-template <typename TS>
+template <typename TSize>
 template <typename T>
-inline typename U8StringView<TS>::SizeType U8StringView<TS>::to_length() const
+inline typename U8StringView<TSize>::SizeType U8StringView<TSize>::to_length() const
 {
     if constexpr (std::is_same_v<T, char>)
     {
@@ -959,13 +993,13 @@ inline typename U8StringView<TS>::SizeType U8StringView<TS>::to_length() const
 
 // convert
 // !NOTE: please ensure the buffer is large enough
-template <typename TS>
-inline void U8StringView<TS>::to_raw(char* buffer) const
+template <typename TSize>
+inline void U8StringView<TSize>::to_raw(char* buffer) const
 {
     ::skr::memory::copy(buffer, reinterpret_cast<const char*>(data()), length_buffer());
 }
-template <typename TS>
-inline void U8StringView<TS>::to_wide(wchar_t* buffer) const
+template <typename TSize>
+inline void U8StringView<TSize>::to_wide(wchar_t* buffer) const
 {
 #if _WIN64
     to_u16(reinterpret_cast<skr_char16*>(buffer));
@@ -973,13 +1007,13 @@ inline void U8StringView<TS>::to_wide(wchar_t* buffer) const
     to_u32(reinterpret_cast<skr_char32*>(buffer));
 #endif
 }
-template <typename TS>
-inline void U8StringView<TS>::to_u8(skr_char8* buffer) const
+template <typename TSize>
+inline void U8StringView<TSize>::to_u8(skr_char8* buffer) const
 {
     ::skr::memory::copy(buffer, data(), length_buffer());
 }
-template <typename TS>
-inline void U8StringView<TS>::to_u16(skr_char16* buffer) const
+template <typename TSize>
+inline void U8StringView<TSize>::to_u16(skr_char16* buffer) const
 {
     if (!is_empty())
     {
@@ -1002,8 +1036,8 @@ inline void U8StringView<TS>::to_u16(skr_char16* buffer) const
         }
     }
 }
-template <typename TS>
-inline void U8StringView<TS>::to_u32(skr_char32* buffer) const
+template <typename TSize>
+inline void U8StringView<TSize>::to_u32(skr_char32* buffer) const
 {
     if (!is_empty())
     {
@@ -1017,9 +1051,9 @@ inline void U8StringView<TS>::to_u32(skr_char32* buffer) const
         }
     }
 }
-template <typename TS>
+template <typename TSize>
 template <typename T>
-inline void U8StringView<TS>::to(T* buffer) const
+inline void U8StringView<TSize>::to(T* buffer) const
 {
     if constexpr (std::is_same_v<T, char>)
     {
@@ -1048,8 +1082,8 @@ inline void U8StringView<TS>::to(T* buffer) const
 }
 
 // parse
-template <typename TS>
-inline U8StringView<TS>::ParseResult<int64_t> U8StringView<TS>::parse_int(uint32_t base) const
+template <typename TSize>
+inline U8StringView<TSize>::ParseResult<int64_t> U8StringView<TSize>::parse_int(uint32_t base) const
 {
     const char* start = data_raw();
     const char* end   = start + size();
@@ -1096,8 +1130,8 @@ inline U8StringView<TS>::ParseResult<int64_t> U8StringView<TS>::parse_int(uint32
         };
     }
 }
-template <typename TS>
-inline U8StringView<TS>::ParseResult<uint64_t> U8StringView<TS>::parse_uint(uint32_t base) const
+template <typename TSize>
+inline U8StringView<TSize>::ParseResult<uint64_t> U8StringView<TSize>::parse_uint(uint32_t base) const
 {
     const char* start = data_raw();
     const char* end   = start + size();
@@ -1144,8 +1178,8 @@ inline U8StringView<TS>::ParseResult<uint64_t> U8StringView<TS>::parse_uint(uint
         };
     }
 }
-template <typename TS>
-inline U8StringView<TS>::ParseResult<double> U8StringView<TS>::parse_float() const
+template <typename TSize>
+inline U8StringView<TSize>::ParseResult<double> U8StringView<TSize>::parse_float() const
 {
     const char* start = data_raw();
     const char* end   = start + size();
@@ -1194,45 +1228,45 @@ inline U8StringView<TS>::ParseResult<double> U8StringView<TS>::parse_float() con
 }
 
 // text index
-template <typename TS>
-inline constexpr typename U8StringView<TS>::SizeType U8StringView<TS>::buffer_index_to_text(SizeType index) const
+template <typename TSize>
+inline constexpr typename U8StringView<TSize>::SizeType U8StringView<TSize>::buffer_index_to_text(SizeType index) const
 {
     return utf8_code_point_index(_data, _size, index);
 }
-template <typename TS>
-inline constexpr typename U8StringView<TS>::SizeType U8StringView<TS>::text_index_to_buffer(SizeType index) const
+template <typename TSize>
+inline constexpr typename U8StringView<TSize>::SizeType U8StringView<TSize>::text_index_to_buffer(SizeType index) const
 {
     return utf8_code_unit_index(_data, _size, index);
 }
 
 // cursor & iter
-template <typename TS>
-inline typename U8StringView<TS>::CCursor U8StringView<TS>::cursor_begin() const
+template <typename TSize>
+inline typename U8StringView<TSize>::CCursor U8StringView<TSize>::cursor_begin() const
 {
     return CCursor::Begin(_data, _size);
 }
-template <typename TS>
-inline typename U8StringView<TS>::CCursor U8StringView<TS>::cursor_end() const
+template <typename TSize>
+inline typename U8StringView<TSize>::CCursor U8StringView<TSize>::cursor_end() const
 {
     return CCursor::End(_data, _size);
 }
-template <typename TS>
-inline typename U8StringView<TS>::CIter U8StringView<TS>::iter() const
+template <typename TSize>
+inline typename U8StringView<TSize>::CIter U8StringView<TSize>::iter() const
 {
     return CCursor::Begin(_data, _size).as_iter();
 }
-template <typename TS>
-inline typename U8StringView<TS>::CIterInv U8StringView<TS>::iter_inv() const
+template <typename TSize>
+inline typename U8StringView<TSize>::CIterInv U8StringView<TSize>::iter_inv() const
 {
     return CCursor::End(_data, _size).as_iter_inv();
 }
-template <typename TS>
-inline typename U8StringView<TS>::CRange U8StringView<TS>::range() const
+template <typename TSize>
+inline typename U8StringView<TSize>::CRange U8StringView<TSize>::range() const
 {
     return CCursor::Begin(_data, _size).as_range();
 }
-template <typename TS>
-inline typename U8StringView<TS>::CRangeInv U8StringView<TS>::range_inv() const
+template <typename TSize>
+inline typename U8StringView<TSize>::CRangeInv U8StringView<TSize>::range_inv() const
 {
     return CCursor::End(_data, _size).as_range_inv();
 }

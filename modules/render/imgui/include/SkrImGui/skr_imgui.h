@@ -12,5 +12,5 @@ void skr_imgui_initialize(skr_system_handler_id handler);
 SKR_EXTERN_C SKR_IMGUI_API 
 void skr_imgui_new_frame(SWindowHandle window, float delta_time);
 
-SKR_IMGUI_EXTERN_C SKR_IMGUI_API 
+SKR_EXTERN_C SKR_IMGUI_API 
 void skr_lua_bind_imgui(lua_State* L);

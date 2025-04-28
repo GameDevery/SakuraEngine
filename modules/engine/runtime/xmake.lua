@@ -41,20 +41,3 @@ shared_module("SkrRT", "SKR_RUNTIME")
     end
 
     skr_dbg_natvis_files("dbg/**.natvis")
-
-shared_module("SkrECS", "SKR_RUNTIME")
-    -- dependencies
-    public_dependency("SkrTask")
-
-    -- meta functional
-    add_deps("SkrRTMeta")
-
-    -- link system libs/frameworks
-    add_linkdirs("$(buildir)/$(os)/$(arch)/$(mode)", {public = true})
-    
-    -- add source files
-    add_includedirs("include", {public = true})
-    -- add_files("src/**/build.*.c")
-    add_files("src/ecs/build.*.cpp")
-
-    skr_dbg_natvis_files("dbg/**.natvis")

@@ -59,9 +59,7 @@ class _Gen {
     b.$line(`// END forward declarations`)
 
   }
-  static source_pre(main_db: db.Module) {
-    const b = main_db.gen_code
-
+  static source_pre(b: CodeBuilder, main_db: db.Module) {
     // header
     b.$line(`//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`)
     b.$line(`//!! THIS FILE IS GENERATED, ANY CHANGES WILL BE LOST !!`)
@@ -90,9 +88,7 @@ class _Gen {
     b.$line(`// END push diagnostic`)
 
   }
-  static source_post(main_db: db.Module) {
-    const b = main_db.gen_code
-
+  static source_post(b: CodeBuilder) {
     b.$line(`// BEGIN pop diagnostic`)
     b.$line(`#if defined(__clang__)`)
     b.$line(`#pragma clang diagnostic pop`)
@@ -102,7 +98,7 @@ class _Gen {
 }
 
 class BasicGenerator extends gen.Generator {
-  pre_gen(): void {
+  override pre_gen(): void {
     this.main_module_db.each_record((record, _header) => {
       // check GENERATE_BODY()
       if (!record.generate_body_content.is_empty() && !record.has_generate_body_flag) {
@@ -118,11 +114,11 @@ class BasicGenerator extends gen.Generator {
     })
 
     // gen source
-    _Gen.source_pre(this.main_module_db)
+    _Gen.source_pre(this.main_module_db.pre_all_file, this.main_module_db);
   }
-  post_gen(): void {
+  override post_gen(): void {
     // gen source
-    _Gen.source_post(this.main_module_db)
+    _Gen.source_post(this.main_module_db.post_all_file);
   }
 }
 

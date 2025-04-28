@@ -6,8 +6,8 @@
 
 namespace skr::container
 {
-template <typename T, typename TS, bool kConst>
-using StringDataRef = VectorDataRef<T, TS, kConst>;
+template <typename T, typename TSize, bool kConst>
+using StringDataRef = VectorDataRef<T, TSize, kConst>;
 
 template <typename TStr>
 struct StringPartitionResult {
@@ -35,6 +35,18 @@ struct StringParseResult {
     inline bool is_full_parsed() const noexcept { return is_success() && rest.is_empty(); }
     inline bool is_out_of_range() const noexcept { return parse_status == EStringParseStatus::OutOfRange; }
     inline bool is_invalid() const noexcept { return parse_status == EStringParseStatus::Invalid; }
+
+    inline T value_or(T v) const noexcept
+    {
+        if (is_success())
+        {
+            return value;
+        }
+        else
+        {
+            return v;
+        }
+    }
 
     inline operator bool() const noexcept { return is_success(); }
 };

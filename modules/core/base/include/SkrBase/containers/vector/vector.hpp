@@ -176,7 +176,7 @@ struct Vector : protected Memory {
     void            push_back(const DataType& v);
     void            push_back(DataType&& v);
     void            pop_back();
-    DataType&       pop_back_get();
+    DataType        pop_back_get();
 
     // find
     template <typename U = DataType>
@@ -275,7 +275,9 @@ struct Vector : protected Memory {
     void   erase_swap(const CDataRef& ref);
 
     // syntax
-    const Vector& readonly() const;
+    const Vector&                  readonly() const;
+    Span<DataType, SizeType>       span();
+    Span<const DataType, SizeType> span() const;
 
 private:
     // helper
@@ -1132,9 +1134,9 @@ SKR_INLINE void Vector<Memory>::pop_back()
     stack_pop();
 }
 template <typename Memory>
-SKR_INLINE typename Vector<Memory>::DataType& Vector<Memory>::pop_back_get()
+SKR_INLINE typename Vector<Memory>::DataType Vector<Memory>::pop_back_get()
 {
-    return stack_pop_get();
+    return std::move(stack_pop_get());
 }
 
 // find
@@ -1522,6 +1524,16 @@ template <typename Memory>
 SKR_INLINE const Vector<Memory>& Vector<Memory>::readonly() const
 {
     return *this;
+}
+template <typename Memory>
+SKR_INLINE Span<typename Vector<Memory>::DataType, typename Vector<Memory>::SizeType> Vector<Memory>::span()
+{
+    return { data(), size() };
+}
+template <typename Memory>
+SKR_INLINE Span<const typename Vector<Memory>::DataType, typename Vector<Memory>::SizeType> Vector<Memory>::span() const
+{
+    return { data(), size() };
 }
 } // namespace skr::container
 

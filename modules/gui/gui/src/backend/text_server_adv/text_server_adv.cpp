@@ -3612,6 +3612,8 @@ void TextServerAdvanced::_font_draw_glyph(const RID& p_font_rid, const RID& p_ca
                             case FontAtlasImage::Format::LA8:
                                 swizzle = { skr::gui::ESwizzleChannel::R, skr::gui::ESwizzleChannel::R, skr::gui::ESwizzleChannel::R, skr::gui::ESwizzleChannel::G };
                                 break;
+                            case FontAtlasImage::Format::Unknown:
+                                break;
                         }
 
                         // resolve UV

@@ -5,25 +5,25 @@ namespace skr {
 namespace input {
 
 InputValueStorage::InputValueStorage(float f) SKR_NOEXCEPT
-    : type(EValueType::kFloat), v({f, 0.0f, 0.0f, 0.0f})
+    : type(EValueType::kFloat), v(f, 0.0f, 0.0f, 0.0f)
 {
 
 }
 
 InputValueStorage::InputValueStorage(skr_float2_t f2) SKR_NOEXCEPT
-    : type(EValueType::kFloat2), v({f2.x, f2.y, 0.0f, 0.0f})
+    : type(EValueType::kFloat2), v(f2.x, f2.y, 0.0f, 0.0f)
 {
 
 }
 
 InputValueStorage::InputValueStorage(skr_float3_t f3) SKR_NOEXCEPT
-    : type(EValueType::kFloat3), v({f3.x, f3.y, f3.z, 0.0f})
+    : type(EValueType::kFloat3), v(f3.x, f3.y, f3.z, 0.0f)
 {
 
 }
 
 InputValueStorage::InputValueStorage(bool b) SKR_NOEXCEPT
-    : type(EValueType::kBool), v({b ? 1.0f : 0.0f, 0.0f, 0.0f, 0.0f})
+    : type(EValueType::kBool), v(b ? 1.0f : 0.0f, 0.0f, 0.0f, 0.0f)
 {
 
 }

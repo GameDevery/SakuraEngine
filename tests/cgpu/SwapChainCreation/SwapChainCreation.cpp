@@ -1,6 +1,7 @@
 #include "SkrGraphics/api.h"
 #include "SkrTestFramework/framework.hpp"
 #include <iostream>
+#include <vector>
 
 #if defined(_WIN32) || defined(_WIN64)
     #ifndef WIN32_LEAN_AND_MEAN

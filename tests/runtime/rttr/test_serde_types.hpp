@@ -3,7 +3,7 @@
 #include "SkrRT/config.h"
 #include "SkrRTTR/iobject.hpp"
 #if !defined(__meta__)
-    #include "RTTRTest/test_serde_types.generated.h"
+    #include "test_serde_types.generated.h"
 #endif
 
 namespace test_serde

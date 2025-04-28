@@ -5,6 +5,7 @@
 
 #define DOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS
 #include "doctest_fwd.h" // IWYU pragma: export
+DOCTEST_MSVC_SUPPRESS_WARNING(4805)
 
 #ifndef SkrTestLine
 #  define SkrTestLine __LINE__

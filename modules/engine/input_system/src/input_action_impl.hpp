@@ -16,7 +16,7 @@ struct ActionEventStorage {
     skr_guid_t event_id = kEventId_Invalid;
 };
 
-struct SKR_INPUTSYSTEM_API InputActionImpl : public InputAction {
+struct SKR_INPUT_SYSTEM_API InputActionImpl : public InputAction {
     InputActionImpl(EValueType type) SKR_NOEXCEPT
         : InputAction(type),
           current_value(type, skr_float4_t{ 0.f, 0.f, 0.f, 0.f })

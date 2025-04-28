@@ -13,7 +13,7 @@ shared_module("SkrGui", "SKR_GUI")
     public_dependency("SkrRT")
 
     -- unity build & pch
-    add_rules("c++.unity_build", {batchsize = default_unity_batch})
+    skr_unity_build()
     add_includedirs("include", {public = true})
     add_includedirs("src", {public = false})
     add_files("src/*.cpp")

@@ -8,6 +8,10 @@
             "path": "../../build/.skr/codegen",
             "name": "codegen",
         },
+        {
+            "path": "../../tools/SB",
+            "name": "sb",
+        }
     ],
     "settings": {
         // lua options for xmake
@@ -17,59 +21,97 @@
             "undefined-field",
             "need-check-nil",
         ],
-        // python options for meta codegen
-        "python.analysis.extraPaths": [
-            "${workspaceFolder:root}/tools/meta_codegen/",
-        ],
-        "python.autoComplete.extraPaths": [
-            "${workspaceFolder:root}/tools/meta_codegen/",
-        ],
-        "python.defaultInterpreterPath": "${workspaceFolder:root}/build/.skr/tool/windows/python-embed/python.exe",
         // fixed terminal cwd
         "terminal.integrated.cwd": "${workspaceFolder:root}",
-        // deno options for meta codegen
-        "deno.enable": false,
+        // typescript settings
+        "deno.enable": false, // disable deno for codegen files
         "[typescript]": {
             "editor.defaultFormatter": "vscode.typescript-language-features",
             "editor.formatOnType": true,
-            "editor.formatOnSave": false,
+            "editor.formatOnSave": true,
             "editor.detectIndentation": false,
             "editor.tabSize": 2,
         },
         "[peggy]": {
             "editor.tabSize": 2,
+        },
+        // file associations
+        "files.associations": {
+            "*.natvis": "xml",
         }
+    },
+    "tasks": {
+        "version": "2.0.0",
+        "tasks": [
+            {
+                "options": {
+                    "cwd": "${workspaceFolder}"
+                },
+                "label": "build_SB_Debug",
+                "presentation": {
+                    "echo": true,
+                    "focus": false,
+                    "panel": "new",
+                    "reveal": "always",
+                    "close": true,
+                    "showReuseMessage": false
+                },
+                "type": "shell",
+                "group": {
+                    "isDefault": false,
+                    "kind": "build"
+                },
+                "command": "dotnet build --configuration Debug D:/SakuraEngine/SakuraEngine/SB.csproj"
+            },
+            {
+                "options": {
+                    "cwd": "${workspaceFolder}"
+                },
+                "label": "build_SB_Release",
+                "presentation": {
+                    "echo": true,
+                    "focus": false,
+                    "panel": "new",
+                    "reveal": "always",
+                    "close": true,
+                    "showReuseMessage": false
+                },
+                "type": "shell",
+                "group": {
+                    "isDefault": false,
+                    "kind": "build"
+                },
+                "command": "dotnet build --configuration Release D:/SakuraEngine/SakuraEngine/SB.csproj"
+            },
+        ]
     },
     "launch": {
         "version": "0.2.0",
         "configurations": [
             {
-                "name": "codegen",
-                "type": "debugpy",
-                "request": "launch",
-                "program": "${workspaceFolder:root}/tools/meta_codegen/codegen.py",
-                "args": [
-                    "--config=${file}",
+                "name": "AttachV8PlaygroundTS",
+                "type": "node",
+                "request": "attach",
+                "port": 9865,
+                "sourceMaps": true,
+                "skipFiles": [
+                    "<node_internals>/**"
                 ],
+                // see content use https://microsoft.github.io/vscode-pwa-analyzer/index.html
+                // "trace": true,
             },
             {
-                "name": "DenoTest",
-                "type": "node",
+                "name": "[Gen] Math",
+                "type": "bun",
                 "request": "launch",
                 "cwd": "${workspaceFolder:root}",
-                "runtimeExecutable": "deno",
-                "runtimeArgs": [
-                    "run",
-                    "--config=${workspaceFolder:root}/tools/meta_codegen_ts/deno.json"
-                ],
-                "program": "${workspaceFolder:root}/tools/meta_codegen_ts/codegen.ts",
+                "program": "${workspaceFolder:root}/tools/gen_math/gen_math.ts",
                 "args": [
-                    "${file}"
+                    "${workspaceFolder:root}/modules/core/base/include/SkrBase/math/gen"
                 ],
-                "console": "integratedTerminal"
             },
             {
-                "name": "BunTest",
+                "name": "[Gen] Meta",
                 "type": "bun",
                 "request": "launch",
                 "cwd": "${workspaceFolder:root}",
@@ -77,7 +119,23 @@
                 "args": [
                     "${file}"
                 ],
-            }
+            },
+            {
+                "name": "C#: SB Debug",
+                "type": "coreclr",
+                "request": "launch",
+                "preLaunchTask": "build_SB_Debug",
+                "console": "integratedTerminal",
+                "program": "${workspaceFolder:root}\\.sb\\SB\\bin\\Debug\\net9.0\\SB.exe"
+            },
+            {
+                "name": "C#: SB Build",
+                "type": "coreclr",
+                "request": "launch",
+                "preLaunchTask": "build_SB_Release",
+                "console": "integratedTerminal",
+                "program": "${workspaceFolder:root}\\.sb\\SB\\bin\\Release\\net9.0\\SB.exe"
+            },
         ]
     }
 }

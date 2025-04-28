@@ -1,8 +1,9 @@
 #pragma once
 #include "SkrBase/atomic/atomic.h"
 #include "SkrBase/config.h"
-#include "SkrBase/sinterface.hpp"
 #include "SkrBase/types.h"
+#include "SkrBase/math.h"
+#include "SkrContainers/sptr.hpp"
 
 namespace skr
 {
@@ -20,7 +21,7 @@ enum class EValueType
     kBool
 };
 
-struct SKR_INPUTSYSTEM_API InputValueStorage {
+struct SKR_INPUT_SYSTEM_API InputValueStorage {
     InputValueStorage() SKR_NOEXCEPT
     {
     }
@@ -57,7 +58,7 @@ protected:
     */
 };
 
-struct SKR_INPUTSYSTEM_API RC : public skr::SInterface {
+struct SKR_INPUT_SYSTEM_API RC : public skr::SInterface {
     virtual ~RC() SKR_NOEXCEPT;
 
     uint32_t add_refcount() SKR_NOEXCEPT;

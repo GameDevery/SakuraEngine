@@ -30,7 +30,8 @@ function skr_global_config()
         elseif (is_mode("asan")) then
             add_defines("_DISABLE_VECTOR_ANNOTATION")
         else
-            set_runtimes("MDd")
+            -- set_runtimes("MDd")
+            set_runtimes("MD")
         end
     end
 end 
@@ -150,7 +151,7 @@ function codegen_component(owner, opt)
                     target:add("deps", dep, { public = true })
                 end
             else
-                print("failed to load analyze table for %s", target:name())
+                -- print("failed to load analyze table for %s", target:name())
             end
         end)
 
@@ -372,4 +373,9 @@ function skr_includes_with_cull(name, func)
     if (not culled) or (not table.contains(culled, name)) then
         func()
     end
+end
+
+---------------------------------- unity build ----------------------------------
+function skr_unity_build()
+    add_rules("c++.unity_build", {batchsize = default_unity_batch})
 end

@@ -645,7 +645,7 @@ const uint32_t* skr_live2d_model_get_sorted_drawable_list(skr_live2d_model_resou
 }
 
 void skr_live2d_model_get_drawable_colors(skr_live2d_model_resource_id model, uint32_t drawable_index, 
-    struct skr_float4_t* multiply_color, struct skr_float4_t* screen_color)
+    skr_float4_t* multiply_color, skr_float4_t* screen_color)
 {
     auto _model = model->model->GetModel();
     const auto _multiply_color = _model->GetMultiplyColor(drawable_index);
