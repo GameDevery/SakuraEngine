@@ -12,30 +12,31 @@
 
 namespace skr {
 inline namespace math {
+//! row major matrix
 struct float3x3 {
     union {
-        // base axis
+        // axis based
         struct {
             float3 axis_x;
             float3 axis_y;
             float3 axis_z;
         };
         
-        // base direction
+        // direction based
         struct {
             float3 right;
             float3 up;
             float3 forward;
         };
         
-        // base columns
-        float3 columns[3];
+        // row based
+        float3 rows[3];
         
         // vector based
         struct {
-            float m00, m10, m20;
-            float m01, m11, m21;
-            float m02, m12, m22;
+            float m00, m01, m02;
+            float m10, m11, m12;
+            float m20, m21, m22;
         };
     };
     
@@ -47,9 +48,9 @@ struct float3x3 {
         float m10, float m11, float m12,
         float m20, float m21, float m22
     ):
-        m00(m00), m10(m10), m20(m20),
-        m01(m01), m11(m11), m21(m21),
-        m02(m02), m12(m12), m22(m22)
+        m00(m00), m01(m01), m02(m02),
+        m10(m10), m11(m11), m12(m12),
+        m20(m20), m21(m21), m22(m22)
     {}
     inline float3x3(float3 axis_x, float3 axis_y, float3 axis_z) noexcept : axis_x(axis_x), axis_y(axis_y), axis_z(axis_z) {}
     inline ~float3x3() = default;
@@ -93,9 +94,10 @@ struct float3x3 {
     float3x3& operator*=(const float3x3& rhs);
     friend float3 operator*(const float3& lhs, const float3x3& rhs);
 };
+//! row major matrix
 struct alignas(16) float4x4 {
     union {
-        // base axis
+        // axis based
         struct {
             float4 axis_x;
             float4 axis_y;
@@ -103,7 +105,7 @@ struct alignas(16) float4x4 {
             float4 axis_w;
         };
         
-        // base direction
+        // direction based
         struct {
             float4 right;
             float4 up;
@@ -111,15 +113,15 @@ struct alignas(16) float4x4 {
             float4 translation;
         };
         
-        // base columns
-        float4 columns[4];
+        // row based
+        float4 rows[4];
         
         // vector based
         struct {
-            float m00, m10, m20, m30;
-            float m01, m11, m21, m31;
-            float m02, m12, m22, m32;
-            float m03, m13, m23, m33;
+            float m00, m01, m02, m03;
+            float m10, m11, m12, m13;
+            float m20, m21, m22, m23;
+            float m30, m31, m32, m33;
         };
     };
     
@@ -132,10 +134,10 @@ struct alignas(16) float4x4 {
         float m20, float m21, float m22, float m23,
         float m30, float m31, float m32, float m33
     ):
-        m00(m00), m10(m10), m20(m20), m30(m30),
-        m01(m01), m11(m11), m21(m21), m31(m31),
-        m02(m02), m12(m12), m22(m22), m32(m32),
-        m03(m03), m13(m13), m23(m23), m33(m33)
+        m00(m00), m01(m01), m02(m02), m03(m03),
+        m10(m10), m11(m11), m12(m12), m13(m13),
+        m20(m20), m21(m21), m22(m22), m23(m23),
+        m30(m30), m31(m31), m32(m32), m33(m33)
     {}
     inline float4x4(float4 axis_x, float4 axis_y, float4 axis_z, float4 axis_w) noexcept : axis_x(axis_x), axis_y(axis_y), axis_z(axis_z), axis_w(axis_w) {}
     inline ~float4x4() = default;

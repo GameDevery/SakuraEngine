@@ -12,30 +12,31 @@
 
 namespace skr {
 inline namespace math {
+//! row major matrix
 struct double3x3 {
     union {
-        // base axis
+        // axis based
         struct {
             double3 axis_x;
             double3 axis_y;
             double3 axis_z;
         };
         
-        // base direction
+        // direction based
         struct {
             double3 right;
             double3 up;
             double3 forward;
         };
         
-        // base columns
-        double3 columns[3];
+        // row based
+        double3 rows[3];
         
         // vector based
         struct {
-            double m00, m10, m20;
-            double m01, m11, m21;
-            double m02, m12, m22;
+            double m00, m01, m02;
+            double m10, m11, m12;
+            double m20, m21, m22;
         };
     };
     
@@ -47,9 +48,9 @@ struct double3x3 {
         double m10, double m11, double m12,
         double m20, double m21, double m22
     ):
-        m00(m00), m10(m10), m20(m20),
-        m01(m01), m11(m11), m21(m21),
-        m02(m02), m12(m12), m22(m22)
+        m00(m00), m01(m01), m02(m02),
+        m10(m10), m11(m11), m12(m12),
+        m20(m20), m21(m21), m22(m22)
     {}
     inline double3x3(double3 axis_x, double3 axis_y, double3 axis_z) noexcept : axis_x(axis_x), axis_y(axis_y), axis_z(axis_z) {}
     inline ~double3x3() = default;
@@ -93,9 +94,10 @@ struct double3x3 {
     double3x3& operator*=(const double3x3& rhs);
     friend double3 operator*(const double3& lhs, const double3x3& rhs);
 };
+//! row major matrix
 struct alignas(16) double4x4 {
     union {
-        // base axis
+        // axis based
         struct {
             double4 axis_x;
             double4 axis_y;
@@ -103,7 +105,7 @@ struct alignas(16) double4x4 {
             double4 axis_w;
         };
         
-        // base direction
+        // direction based
         struct {
             double4 right;
             double4 up;
@@ -111,15 +113,15 @@ struct alignas(16) double4x4 {
             double4 translation;
         };
         
-        // base columns
-        double4 columns[4];
+        // row based
+        double4 rows[4];
         
         // vector based
         struct {
-            double m00, m10, m20, m30;
-            double m01, m11, m21, m31;
-            double m02, m12, m22, m32;
-            double m03, m13, m23, m33;
+            double m00, m01, m02, m03;
+            double m10, m11, m12, m13;
+            double m20, m21, m22, m23;
+            double m30, m31, m32, m33;
         };
     };
     
@@ -132,10 +134,10 @@ struct alignas(16) double4x4 {
         double m20, double m21, double m22, double m23,
         double m30, double m31, double m32, double m33
     ):
-        m00(m00), m10(m10), m20(m20), m30(m30),
-        m01(m01), m11(m11), m21(m21), m31(m31),
-        m02(m02), m12(m12), m22(m22), m32(m32),
-        m03(m03), m13(m13), m23(m23), m33(m33)
+        m00(m00), m01(m01), m02(m02), m03(m03),
+        m10(m10), m11(m11), m12(m12), m13(m13),
+        m20(m20), m21(m21), m22(m22), m23(m23),
+        m30(m30), m31(m31), m32(m32), m33(m33)
     {}
     inline double4x4(double4 axis_x, double4 axis_y, double4 axis_z, double4 axis_w) noexcept : axis_x(axis_x), axis_y(axis_y), axis_z(axis_z), axis_w(axis_w) {}
     inline ~double4x4() = default;

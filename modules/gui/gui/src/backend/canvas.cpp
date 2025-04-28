@@ -188,11 +188,11 @@ struct _NVGHelper {
             v.position                = { nv.x, nv.y, 0.f, 1.f };
             v.aa                      = { nv.u, fringe };
             const rtm::vector4f pos   = rtm::vector_load((const uint8_t*)&v.position);
-            const auto          col0  = rtm::vector_set(transform.columns[0][0], transform.columns[0][1], transform.columns[0][2], transform.columns[0][3]);
-            const auto          col1  = rtm::vector_set(transform.columns[1][0], transform.columns[1][1], transform.columns[1][2], transform.columns[1][3]);
-            const auto          col2  = rtm::vector_set(transform.columns[2][0], transform.columns[2][1], transform.columns[2][2], transform.columns[2][3]);
-            const auto          col3  = rtm::vector_set(transform.columns[3][0], transform.columns[3][1], transform.columns[3][2], transform.columns[3][3]);
-            const auto          trans = rtm::matrix_set(col0, col1, col2, col3);
+            const auto          row0  = rtm::vector_set(transform.rows[0][0], transform.rows[0][1], transform.rows[0][2], transform.rows[0][3]);
+            const auto          row1  = rtm::vector_set(transform.rows[1][0], transform.rows[1][1], transform.rows[1][2], transform.rows[1][3]);
+            const auto          row2  = rtm::vector_set(transform.rows[2][0], transform.rows[2][1], transform.rows[2][2], transform.rows[2][3]);
+            const auto          row3  = rtm::vector_set(transform.rows[3][0], transform.rows[3][1], transform.rows[3][2], transform.rows[3][3]);
+            const auto          trans = rtm::matrix_set(row0, row1, row2, row3);
             v.color                   = ToColor32ABGR(paint->innerColor);
 
             if (brush->type() == EBrushType::SurfaceNine)

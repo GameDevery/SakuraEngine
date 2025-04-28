@@ -170,10 +170,10 @@ void SkrRenderWindow::_prepare_draw_data(const NativeWindowLayer* layer, Sizef w
         // make render data
         auto  rb_cursor     = _render_data.size();
         auto& render_data   = _render_data.add_default().ref();
-        render_data.columns[0][0] = static_cast<float>(cmd.texture_swizzle.r);
-        render_data.columns[0][1] = static_cast<float>(cmd.texture_swizzle.g);
-        render_data.columns[0][2] = static_cast<float>(cmd.texture_swizzle.b);
-        render_data.columns[0][3] = static_cast<float>(cmd.texture_swizzle.a);
+        render_data.rows[0][0] = static_cast<float>(cmd.texture_swizzle.r);
+        render_data.rows[0][1] = static_cast<float>(cmd.texture_swizzle.g);
+        render_data.rows[0][2] = static_cast<float>(cmd.texture_swizzle.b);
+        render_data.rows[0][3] = static_cast<float>(cmd.texture_swizzle.a);
 
         // record buffer info
         draw_cmd.transform_buffer_offset   = tb_cursor * sizeof(rtm::matrix4x4f);

@@ -207,25 +207,24 @@ inline double3x3 Chromaticities::chromatic_adaptation_matrix(
         to_cone_response = double3x3::identity();
         break;
     case EChromaticAdaptationMethod::Bradford:
-        to_cone_response = {
+        to_cone_response = transpose(double3x3{
             { 0.8951, 0.2664, -0.1614 },
             { -0.7502, 1.7135, 0.0367 },
-            { 0.0389, -0.0685, 1.0296 }
-        };
+            { 0.0389, -0.0685, 1.0296 } });
         break;
     case EChromaticAdaptationMethod::CAT02:
-        to_cone_response = {
+        to_cone_response = transpose(double3x3{
             { 0.7328, 0.4296, -0.1624 },
             { -0.7036, 1.6975, 0.0061 },
             { 0.0030, 0.0136, 0.9834 },
-        };
+        });
         break;
     case EChromaticAdaptationMethod::VonKries:
-        to_cone_response = {
+        to_cone_response = transpose(double3x3{
             { 0.4002, 0.7076, -0.0808 },
             { -0.2263, 1.1653, 0.0457 },
             { 0.0000, 0.0000, 0.8252 },
-        };
+        });
         break;
     }
 
@@ -425,11 +424,11 @@ inline void Chromaticities::setup_by_color_space(EColorSpace color_space)
 
 inline double3x3 Chromaticities::matrix_to_xyz()
 {
-    double3x3 mat = {
+    double3x3 mat = inverse(double3x3{
         { red.x, red.y, 1 - red.x - red.y },
         { green.x, green.y, 1 - green.x - green.y },
         { blue.x, blue.y, 1 - blue.x - blue.y },
-    };
+    });
 
     double3 white_xyz = xyY_to_XYZ({ white_point, 1.0 });
 
