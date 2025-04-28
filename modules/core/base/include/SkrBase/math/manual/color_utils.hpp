@@ -263,16 +263,13 @@ inline double3x3 Chromaticities::chromatic_adaptation_matrix(
 // calc xy from temperature
 inline double2 Chromaticities::cct_to_xy_planckian_locus(double cct)
 {
-    cct = clamp(cct, 1000.0, 15000.0);
-
-    // Approximate Planckian locus in CIE 1960 UCS
     float u = (0.860117757f + 1.54118254e-4f * cct + 1.28641212e-7f * cct * cct) / (1.0f + 8.42420235e-4f * cct + 7.08145163e-7f * cct * cct);
     float v = (0.317398726f + 4.22806245e-5f * cct + 4.20481691e-8f * cct * cct) / (1.0f - 2.89741816e-5f * cct + 1.61456053e-7f * cct * cct);
 
-    float x = 3.0f * u / (2.0f * u - 8.0f * v + 4.0f);
-    float y = 2.0f * v / (2.0f * u - 8.0f * v + 4.0f);
+    float x = 3 * u / (2 * u - 8 * v + 4);
+    float y = 2 * v / (2 * u - 8 * v + 4);
 
-    return { x, y };
+    return float2(x, y);
 }
 inline double2 Chromaticities::cct_to_xy_daylight(double cct)
 {
