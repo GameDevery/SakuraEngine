@@ -564,8 +564,8 @@ template <MathMatrix T>
 struct JsonSerde<T> {
     inline static bool read(skr::archive::JsonReader* r, T& v)
     {
-        constexpr auto dim = MathVectorTraits<T>::kDimensions;
-        using CompType     = typename MathVectorTraits<T>::ComponentType;
+        constexpr auto dim = MathMatrixTraits<T>::kDimensions;
+        using CompType     = typename MathMatrixTraits<T>::ComponentType;
         using CompSerde    = JsonSerde<CompType>;
 
         size_t count;
@@ -586,8 +586,8 @@ struct JsonSerde<T> {
     }
     inline static bool write(skr::archive::JsonWriter* w, const T& v)
     {
-        constexpr auto dim = MathVectorTraits<T>::kDimensions;
-        using CompType     = typename MathVectorTraits<T>::ComponentType;
+        constexpr auto dim = MathMatrixTraits<T>::kDimensions;
+        using CompType     = typename MathMatrixTraits<T>::ComponentType;
         using CompSerde    = JsonSerde<CompType>;
 
         SKR_EXPECTED_CHECK(w->StartArray(), false);
