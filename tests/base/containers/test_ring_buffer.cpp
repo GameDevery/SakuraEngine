@@ -46,11 +46,12 @@ void template_test_ring_buffer(ModifyCapacity&& capacity_of, ClampCapacity&& cla
     SUBCASE("copy & move")
     {
         TestRingBuffer a;
+        a.reserve(capacity_of(114514)); // test for bad capacity copy
         a.resize(100, 114514);
 
         TestRingBuffer b = a;
         REQUIRE_EQ(b.size(), a.size());
-        REQUIRE_GE(b.capacity(), capacity_of(a.capacity()));
+        REQUIRE_GE(b.capacity(), capacity_of(a.size()));
 
         auto           old_size     = a.size();
         auto           old_capacity = a.capacity();

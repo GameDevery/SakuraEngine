@@ -3,7 +3,7 @@
 #include "SkrCore/log/log_formatter.hpp"
 
 namespace skr {
-namespace log {
+namespace logging {
 
 template<typename Arg>
 struct IsCStringFamily {
@@ -92,4 +92,4 @@ private:
     skr::String name;
 };
 
-} } // namespace skr::log
+} } // namespace skr::logging

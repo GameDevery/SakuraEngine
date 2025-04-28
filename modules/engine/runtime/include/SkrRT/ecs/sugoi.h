@@ -32,17 +32,15 @@ typedef struct sugoi_mapper_t {
 typedef struct SBinaryWriter SBinaryWriter;
 typedef struct SBinaryReader SBinaryReader;
 typedef struct sugoi_callback_v {
-    void (*constructor)(sugoi_chunk_t* chunk, EIndex index, char* data) SKR_IF_CPP(= nullptr);
-    void (*copy)(sugoi_chunk_t* chunk, EIndex index, char* dst, sugoi_chunk_t* schunk, EIndex sindex, const char* src) SKR_IF_CPP(= nullptr);
-    void (*destructor)(sugoi_chunk_t* chunk, EIndex index, char* data) SKR_IF_CPP(= nullptr);
-    void (*move)(sugoi_chunk_t* chunk, EIndex index, char* dst, sugoi_chunk_t* schunk, EIndex sindex, char* src) SKR_IF_CPP(= nullptr);
-    void (*serialize)(sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, SBinaryWriter* writer) SKR_IF_CPP(= nullptr);
-    void (*deserialize)(sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, SBinaryReader* reader) SKR_IF_CPP(= nullptr);
-    void (*serialize_text)(sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, skr::archive::JsonWriter* writer) SKR_IF_CPP(= nullptr);
-    void (*deserialize_text)(sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, skr::archive::JsonReader* reader) SKR_IF_CPP(= nullptr);
-    void (*map)(sugoi_chunk_t* chunk, EIndex index, char* data, sugoi_mapper_t* v) SKR_IF_CPP(= nullptr);
-    int (*lua_push)(sugoi_chunk_t* chunk, EIndex index, char* data, struct lua_State* L) SKR_IF_CPP(= nullptr);
-    void (*lua_check)(sugoi_chunk_t* chunk, EIndex index, char* data, struct lua_State* L, int idx) SKR_IF_CPP(= nullptr);
+    void (*constructor)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* data) SKR_IF_CPP(= nullptr);
+    void (*copy)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* dst, sugoi_chunk_t* schunk, EIndex sindex, const char* src) SKR_IF_CPP(= nullptr);
+    void (*destructor)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* data) SKR_IF_CPP(= nullptr);
+    void (*move)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* dst, sugoi_chunk_t* schunk, EIndex sindex, char* src) SKR_IF_CPP(= nullptr);
+    void (*serialize)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, SBinaryWriter* writer) SKR_IF_CPP(= nullptr);
+    void (*deserialize)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, SBinaryReader* reader) SKR_IF_CPP(= nullptr);
+    void (*serialize_text)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, skr::archive::JsonWriter* writer) SKR_IF_CPP(= nullptr);
+    void (*deserialize_text)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, skr::archive::JsonReader* reader) SKR_IF_CPP(= nullptr);
+    void (*map)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* data, sugoi_mapper_t* v) SKR_IF_CPP(= nullptr);
 } sugoi_callback_v;
 
 enum ESugoiTypeFlag SKR_IF_CPP( : uint32_t){
@@ -298,6 +296,35 @@ SKR_RUNTIME_API void sugoiS_allocate_type(sugoi_storage_t* storage, const sugoi_
  */
 SKR_RUNTIME_API void sugoiS_allocate_group(sugoi_storage_t* storage, sugoi_group_t* group, EIndex count, sugoi_view_callback_t callback, void* u);
 /**
+ * @brief reserve entities
+ * reserve numbers of entities which will be allocated later
+ * must be called before any allocate function
+ * @param storage
+ * @param count
+ */
+SKR_RUNTIME_API void sugoiS_reserve_entities(sugoi_storage_t* storage, EIndex count);
+/**
+ * @brief allocate entities with reserved ids
+ * batch allocate numbers of entities with entity type
+ * @param storage
+ * @param type
+ * @param ents reserved entity ids, the size of ents should be equal to count
+ * @param count
+ * @param callback optional callback after allocating chunk view
+ */
+SKR_RUNTIME_API void sugoiS_allocate_reserved_type(sugoi_storage_t* storage, const sugoi_entity_type_t* type, const sugoi_entity_t* ents, EIndex count, sugoi_view_callback_t callback, void* u);
+/**
+ * @brief allocate entities with reserved ids
+ * batch allocate numbers of entities within a group
+ * @param storage
+ * @param group
+ * @param ents reserved entity ids, the size of ents should be equal to count
+ * @param count
+ * @param callback optional callback after allocating chunk view
+ */
+SKR_RUNTIME_API void sugoiS_allocate_reserved_group(sugoi_storage_t* storage, sugoi_group_t* group, const sugoi_entity_t* ents, EIndex count, sugoi_view_callback_t callback, void* u);
+
+/**
  * @brief instantiate entity
  * instantiate an entity n times
  * @param storage
@@ -372,18 +399,29 @@ SKR_RUNTIME_API void sugoiS_cast_view_delta(sugoi_storage_t* storage, const sugo
  * there can be more than one chunk view allocated
  * @param storage
  * @param view
- * @param group
+ * @param type
  * @param callback optional callback before casting chunk view
  */
-SKR_RUNTIME_API void sugoiS_cast_view_group(sugoi_storage_t* storage, const sugoi_chunk_view_t* view, const sugoi_group_t* group, sugoi_cast_callback_t callback, void* u);
+SKR_RUNTIME_API void sugoiS_cast_view_type(sugoi_storage_t* storage, const sugoi_chunk_view_t* view, const sugoi_entity_type_t* type, sugoi_cast_callback_t callback, void* u);
 
 /**
  * @brief change entities' type
  * move whole group to another group, the original group will be destoryed
+ * @param storage
  * @param group
- * @param type
+ * @param delta
+ * @param callback optional callback before casting chunk view
  */
 SKR_RUNTIME_API void sugoiS_cast_group_delta(sugoi_storage_t* storage, sugoi_group_t* group, const sugoi_delta_type_t* delta, sugoi_cast_callback_t callback, void* u);
+/**
+ * @brief change entities' type
+ * move whole group to another group, the original group will be destoryed
+ * @param storage
+ * @param group
+ * @param type
+ * @param callback optional callback before casting chunk view
+ */
+SKR_RUNTIME_API void sugoiS_cast_group_type(sugoi_storage_t* storage, sugoi_group_t* group, const sugoi_entity_type_t* type, sugoi_cast_callback_t callback, void* u);
 /**
  * @brief get the chunk view of an entity
  * entity it self does not contain any data, get the chunk view of an entity to access it's data (all structural change apis and data access apis is based on chunk view)
@@ -533,6 +571,15 @@ SKR_RUNTIME_API void sugoiS_defragement(sugoi_storage_t* storage);
  */
 SKR_RUNTIME_API void sugoiS_pack_entities(sugoi_storage_t* storage);
 /**
+ * @brief redirect references of entities to new entities
+ * note meta entities will be ignored, no structural change will be performed
+ * @param storage
+ * @param ents old entities
+ * @param newEnts new entities
+ * @param n count of entities
+ */
+SKR_RUNTIME_API void sugoiS_redirect(sugoi_storage_t* storage, sugoi_entity_t* ents, sugoi_entity_t* newEnts, EIndex n);
+/**
  * @brief create a query which combine filter and parameters
  * query can be overloaded
  * @param storage
@@ -644,6 +691,12 @@ SKR_RUNTIME_API const void* sugoiG_get_shared_ro(const sugoi_group_t* group, sug
  * @param type
  */
 SKR_RUNTIME_API void sugoiG_get_type(const sugoi_group_t* group, sugoi_entity_type_t* type);
+/**
+ * @brief get size of group
+ *
+ * @param group
+ */
+SKR_RUNTIME_API uint32_t sugoiG_get_size(const sugoi_group_t* group);
 /**
  * @brief get type stable order, flag component will be ignored
  *
@@ -902,28 +955,28 @@ void managed_component(sugoi_type_description_t& desc, skr::type_t<C>)
     if constexpr ((flags & SUGOI_CALLBACK_FLAG_CTOR) != 0)
     {
         if constexpr (std::is_default_constructible_v<C>)
-            desc.callback.constructor = +[](sugoi_chunk_t* chunk, EIndex index, char* data) {
+            desc.callback.constructor = +[](sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* data) {
                 new (data) C();
             };
     }
     if constexpr ((flags & SUGOI_CALLBACK_FLAG_DTOR) != 0)
     {
         if constexpr (std::is_destructible_v<C>)
-            desc.callback.destructor = +[](sugoi_chunk_t* chunk, EIndex index, char* data) {
+            desc.callback.destructor = +[](sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* data) {
                 ((C*)data)->~C();
             };
     }
     if constexpr ((flags & SUGOI_CALLBACK_FLAG_COPY) != 0)
     {
         if constexpr (std::is_copy_constructible_v<C>)
-            desc.callback.copy = +[](sugoi_chunk_t* chunk, EIndex index, char* dst, sugoi_chunk_t* schunk, EIndex sindex, const char* src) {
+            desc.callback.copy = +[](sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* dst, sugoi_chunk_t* schunk, EIndex sindex, const char* src) {
                 new (dst) C(*(const C*)src);
             };
     }
     if constexpr ((flags & SUGOI_CALLBACK_FLAG_MOVE) != 0)
     {
         if constexpr (std::is_move_constructible_v<C>)
-            desc.callback.move = +[](sugoi_chunk_t* chunk, EIndex index, char* dst, sugoi_chunk_t* schunk, EIndex sindex, char* src) {
+            desc.callback.move = +[](sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* dst, sugoi_chunk_t* schunk, EIndex sindex, char* src) {
                 new (dst) C(std::move(*(C*)src));
             };
     }
@@ -1225,7 +1278,7 @@ template <typename T>
 skr::span<T> get_components(sugoi_chunk_view_t* view)
 {
     if (auto ptrs = get_owned<T>(view))
-        return skr::span<T>(get_owned<T>(view), view->count);
+        return skr::span<T>(ptrs, view->count);
     return {};
 }
 

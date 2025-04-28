@@ -45,6 +45,7 @@ void template_test_sparse_hash_map(ModifyCapacity&& capacity_of, ClampCapacity&&
     SUBCASE("copy & move")
     {
         TestHashMap a({ { 1, 1 }, { 1, 1 }, { 4, 4 }, { 5, 5 }, { 1, 1 }, { 4, 4 } });
+        a.reserve(capacity_of(114514)); // test for bad capacity copy
         REQUIRE_EQ(a.size(), 6);
         REQUIRE_EQ(a.sparse_size(), 6);
         REQUIRE_EQ(a.hole_size(), 0);

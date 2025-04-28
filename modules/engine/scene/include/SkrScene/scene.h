@@ -39,7 +39,7 @@ sreflect_struct(
 )
 SKR_ALIGNAS(16) 
 TransformComponent {
-    skr_transform_t value;
+    skr_transform_f_t value;
 };
 
 sreflect_struct(
@@ -48,7 +48,7 @@ sreflect_struct(
     ecs.comp = @enable;
 )
 RotationComponent {
-    skr_rotator_t euler;
+    skr_rotator_f_t euler;
 };
 
 sreflect_struct(
@@ -57,7 +57,7 @@ sreflect_struct(
     ecs.comp = @enable;
 )
 TranslationComponent {
-    float3 value;
+    skr_float3_t value;
 };
 
 sreflect_struct(
@@ -66,7 +66,7 @@ sreflect_struct(
     ecs.comp = @enable;
 )
 ScaleComponent {
-    float3 value;
+    skr_float3_t value;
 };
 
 sreflect_struct(
@@ -74,7 +74,7 @@ sreflect_struct(
     ecs.comp = @enable;
 )
 MovementComponent {
-    float3 value;
+    skr_float3_t value;
 };
 
 sreflect_struct(
@@ -190,31 +190,31 @@ SKR_EXTERN_C SKR_SCENE_API void skr_load_scene(sugoi_storage_t* world, struct sk
 // };
 // } // namespace skr::lua
 
-inline static SKR_CONSTEXPR bool operator==(skr::ScaleComponent l, skr::ScaleComponent r)
+inline static bool operator==(skr::ScaleComponent l, skr::ScaleComponent r)
 {
-    return (l.value == r.value);
+    return all(l.value == r.value);
 }
-inline static SKR_CONSTEXPR bool operator!=(skr::ScaleComponent l, skr::ScaleComponent r)
+inline static bool operator!=(skr::ScaleComponent l, skr::ScaleComponent r)
 {
-    return (l.value != r.value);
-}
-
-inline static SKR_CONSTEXPR bool operator==(skr::TranslationComponent l, skr::TranslationComponent r)
-{
-    return (l.value == r.value);
-}
-inline static SKR_CONSTEXPR bool operator!=(skr::TranslationComponent l, skr::TranslationComponent r)
-{
-    return (l.value != r.value);
+    return any(l.value != r.value);
 }
 
-inline static SKR_CONSTEXPR bool operator==(skr::RotationComponent l, skr::RotationComponent r)
+inline static bool operator==(skr::TranslationComponent l, skr::TranslationComponent r)
 {
-    return (l.euler == r.euler);
+    return all(l.value == r.value);
 }
-inline static SKR_CONSTEXPR bool operator!=(skr::RotationComponent l, skr::RotationComponent r)
+inline static bool operator!=(skr::TranslationComponent l, skr::TranslationComponent r)
 {
-    return (l.euler != r.euler);
+    return any(l.value != r.value);
+}
+
+inline static bool operator==(skr::RotationComponent l, skr::RotationComponent r)
+{
+    return all(l.euler == r.euler);
+}
+inline static bool operator!=(skr::RotationComponent l, skr::RotationComponent r)
+{
+    return any(l.euler != r.euler);
 }
 
 #endif

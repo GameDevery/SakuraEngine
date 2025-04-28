@@ -10,7 +10,7 @@
 #include "SkrProfile/profile.h"
 #include "pass_profiler.h"
 #include "SkrOS/thread.h"
-#include "SkrBase/math/rtm/qvvf.h"
+#include "rtm/qvvf.h"
 
 thread_local SWindowHandle window;
 thread_local CGPUSurfaceId surface;
@@ -152,7 +152,7 @@ void create_resources()
     ib_cpy.size = sizeof(CubeGeometry::g_Indices);
     cgpu_cmd_transfer_buffer_to_buffer(cpy_cmd, &ib_cpy);
     // wvp
-    const auto quat = rtm::quat_from_euler_rh(
+    const auto quat = rtm::quat_from_euler(
         rtm::scalar_deg_to_rad(0.f),
         rtm::scalar_deg_to_rad(0.f),
         rtm::scalar_deg_to_rad(0.f));
@@ -490,15 +490,15 @@ int main(int argc, char* argv[])
                 .allow_readwrite();
             });
             // camera
-            auto view = rtm::look_at_matrix(
+            auto view = rtm::view_look_at(
                 { 0.f, 2.5f, 2.5f } /*eye*/,
                 { 0.f, 0.f, 0.f } /*at*/,
                 { 0.f, 1.f, 0.f } /*up*/);
-            auto proj = rtm::perspective_fov(
+            auto proj = rtm::proj_perspective_fov(
                 3.1415926f / 2.f,
                 (float)BACK_BUFFER_WIDTH / (float)BACK_BUFFER_HEIGHT,
                 1.f, 1000.f);
-            auto view_proj = rtm::matrix_mul(view, proj);
+            auto view_proj = rtm::matrix_mul(rtm::matrix_cast(view), proj);
             graph->add_render_pass(
             [=](render_graph::RenderGraph& g, render_graph::RenderPassBuilder& builder) {
                 builder.set_name(u8"gbuffer_pass")

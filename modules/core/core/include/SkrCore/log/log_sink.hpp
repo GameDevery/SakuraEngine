@@ -5,7 +5,7 @@
 
 namespace skr
 {
-namespace log
+namespace logging
 {
 
 struct SKR_CORE_API LogSink {
@@ -85,5 +85,5 @@ struct SKR_CORE_API LogFileSink : public LogSink {
     struct CFILE* file_ = nullptr;
 };
 
-} // namespace log
+} // namespace logging
 } // namespace skr

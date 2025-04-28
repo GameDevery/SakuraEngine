@@ -1,7 +1,7 @@
 #include "SkrGui/backend/canvas/canvas.hpp"
 #include <nanovg.h>
 #include "SkrBase/misc/make_zeroed.hpp"
-#include "SkrBase/math/rtm/rtmx.h"
+#include "rtm/camera_utilsf.h"
 #include "SkrGui/backend/resource/resource.hpp"
 
 // nvg integration
@@ -169,10 +169,10 @@ struct _NVGHelper {
     {
         float invxform[6];
         nvg__xformInverse(invxform, paint->xform);
-        return { { { invxform[0], invxform[1], 0.f, 0.f },
-                   { invxform[2], invxform[3], 0.f, 0.f },
-                   { 0.f, 0.f, 1.f, 0.f },
-                   { invxform[4], invxform[5], 0.f, 1.f } } };
+        return { { invxform[0], invxform[1], 0.f, 0.f },
+                 { invxform[2], invxform[3], 0.f, 0.f },
+                 { 0.f, 0.f, 1.f, 0.f },
+                 { invxform[4], invxform[5], 0.f, 1.f } };
     }
 
     static void nvg__renderPath(ICanvas* canvas, const NVGpath& path, NVGpaint* paint, const skr_float4x4_t& transform, float fringe)
@@ -188,10 +188,10 @@ struct _NVGHelper {
             v.position                = { nv.x, nv.y, 0.f, 1.f };
             v.aa                      = { nv.u, fringe };
             const rtm::vector4f pos   = rtm::vector_load((const uint8_t*)&v.position);
-            const auto          col0  = rtm::vector_set(transform.M[0][0], transform.M[0][1], transform.M[0][2], transform.M[0][3]);
-            const auto          col1  = rtm::vector_set(transform.M[1][0], transform.M[1][1], transform.M[1][2], transform.M[1][3]);
-            const auto          col2  = rtm::vector_set(transform.M[2][0], transform.M[2][1], transform.M[2][2], transform.M[2][3]);
-            const auto          col3  = rtm::vector_set(transform.M[3][0], transform.M[3][1], transform.M[3][2], transform.M[3][3]);
+            const auto          col0  = rtm::vector_set(transform.columns[0][0], transform.columns[0][1], transform.columns[0][2], transform.columns[0][3]);
+            const auto          col1  = rtm::vector_set(transform.columns[1][0], transform.columns[1][1], transform.columns[1][2], transform.columns[1][3]);
+            const auto          col2  = rtm::vector_set(transform.columns[2][0], transform.columns[2][1], transform.columns[2][2], transform.columns[2][3]);
+            const auto          col3  = rtm::vector_set(transform.columns[3][0], transform.columns[3][1], transform.columns[3][2], transform.columns[3][3]);
             const auto          trans = rtm::matrix_set(col0, col1, col2, col3);
             v.color                   = ToColor32ABGR(paint->innerColor);
 
@@ -275,8 +275,7 @@ struct _NVGHelper {
         }
     }
 
-    static void nvg__renderFill(void* uptr, NVGpaint* paint, NVGcompositeOperationState compositeOperation, float fringe,
-                                const float* bounds, const NVGpath* paths, int npaths)
+    static void nvg__renderFill(void* uptr, NVGpaint* paint, NVGcompositeOperationState compositeOperation, float fringe, const float* bounds, const NVGpath* paths, int npaths)
     {
         // fast path
         if (npaths == 1 && paths[0].convex)
@@ -329,8 +328,7 @@ struct _NVGHelper {
         }
     }
 
-    static void nvg__renderStroke(void* uptr, NVGpaint* paint, NVGcompositeOperationState compositeOperation, float fringe,
-                                  float strokeWidth, const NVGpath* paths, int npaths)
+    static void nvg__renderStroke(void* uptr, NVGpaint* paint, NVGcompositeOperationState compositeOperation, float fringe, float strokeWidth, const NVGpath* paths, int npaths)
     {
         // init data
         auto  canvas       = (ICanvas*)uptr;
@@ -520,56 +518,40 @@ void ICanvas::path_end(const Pen& pen, const Brush& brush) SKR_NOEXCEPT
         _tmp_brush = &brush;
         switch (pen.type())
         {
-            case EPenType::Fill: {
-                if (brush.type() == EBrushType::Surface)
-                {
-                    auto surface_brush = brush.as_surface();
-                    nvgFillPaint(_nvg, nvgImagePattern(
-                                       _nvg,
-                                       surface_brush._uv_rect.left,
-                                       surface_brush._uv_rect.top,
-                                       surface_brush._uv_rect.width(),
-                                       surface_brush._uv_rect.height(),
-                                       surface_brush._rotation,
-                                       surface_brush._surface,
-                                       { { { surface_brush._color.r, surface_brush._color.g, surface_brush._color.b, surface_brush._color.a } } }));
-                }
-                else if (brush.type() == EBrushType::SurfaceNine)
-                {
-                    auto surface_nine_brush = brush.as_surface_nine();
-                    nvgFillPaint(_nvg, nvgImagePattern(
-                                       _nvg,
-                                       surface_nine_brush._uv_rect.left,
-                                       surface_nine_brush._uv_rect.top,
-                                       surface_nine_brush._uv_rect.width(),
-                                       surface_nine_brush._uv_rect.height(),
-                                       surface_nine_brush._rotation,
-                                       surface_nine_brush._surface,
-                                       { { { surface_nine_brush._color.r, surface_nine_brush._color.g, surface_nine_brush._color.b, surface_nine_brush._color.a } } }));
-                }
-                else if (brush.type() == EBrushType::Color)
-                {
-                    auto color_brush = brush.as_color();
-                    nvgFillColor(_nvg, nvgRGBAf(color_brush._color.r, color_brush._color.g, color_brush._color.b, color_brush._color.a));
-                }
-
-                const FillPen& fill_pen = pen.as_fill();
-                nvgShapeAntiAlias(_nvg, fill_pen._anti_alias);
-                nvgFill(_nvg);
-                break;
+        case EPenType::Fill: {
+            if (brush.type() == EBrushType::Surface)
+            {
+                auto surface_brush = brush.as_surface();
+                nvgFillPaint(_nvg, nvgImagePattern(_nvg, surface_brush._uv_rect.left, surface_brush._uv_rect.top, surface_brush._uv_rect.width(), surface_brush._uv_rect.height(), surface_brush._rotation, surface_brush._surface, { { { surface_brush._color.r, surface_brush._color.g, surface_brush._color.b, surface_brush._color.a } } }));
             }
-            case EPenType::Stroke: {
-                nvgStrokeColor(_nvg, nvgRGBAf(brush._color.r, brush._color.g, brush._color.b, brush._color.a));
-
-                const StrokePen& stroke_pen = pen.as_stroke();
-                nvgStrokeWidth(_nvg, stroke_pen._width);
-                nvgMiterLimit(_nvg, stroke_pen._miter_limit);
-                nvgLineCap(_nvg, static_cast<int>(stroke_pen._cap));
-                nvgLineJoin(_nvg, static_cast<int>(stroke_pen._join));
-                // TODO. AA
-                nvgStroke(_nvg);
-                break;
+            else if (brush.type() == EBrushType::SurfaceNine)
+            {
+                auto surface_nine_brush = brush.as_surface_nine();
+                nvgFillPaint(_nvg, nvgImagePattern(_nvg, surface_nine_brush._uv_rect.left, surface_nine_brush._uv_rect.top, surface_nine_brush._uv_rect.width(), surface_nine_brush._uv_rect.height(), surface_nine_brush._rotation, surface_nine_brush._surface, { { { surface_nine_brush._color.r, surface_nine_brush._color.g, surface_nine_brush._color.b, surface_nine_brush._color.a } } }));
             }
+            else if (brush.type() == EBrushType::Color)
+            {
+                auto color_brush = brush.as_color();
+                nvgFillColor(_nvg, nvgRGBAf(color_brush._color.r, color_brush._color.g, color_brush._color.b, color_brush._color.a));
+            }
+
+            const FillPen& fill_pen = pen.as_fill();
+            nvgShapeAntiAlias(_nvg, fill_pen._anti_alias);
+            nvgFill(_nvg);
+            break;
+        }
+        case EPenType::Stroke: {
+            nvgStrokeColor(_nvg, nvgRGBAf(brush._color.r, brush._color.g, brush._color.b, brush._color.a));
+
+            const StrokePen& stroke_pen = pen.as_stroke();
+            nvgStrokeWidth(_nvg, stroke_pen._width);
+            nvgMiterLimit(_nvg, stroke_pen._miter_limit);
+            nvgLineCap(_nvg, static_cast<int>(stroke_pen._cap));
+            nvgLineJoin(_nvg, static_cast<int>(stroke_pen._join));
+            // TODO. AA
+            nvgStroke(_nvg);
+            break;
+        }
         }
         _tmp_brush = nullptr;
     }

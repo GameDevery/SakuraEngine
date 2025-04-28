@@ -6,7 +6,7 @@
 
 namespace skr
 {
-namespace log
+namespace logging
 {
 
 struct LogFormatter;
@@ -42,5 +42,5 @@ SKR_FORCEINLINE void ArgsList::push(Args&&... args) SKR_NOEXCEPT
     };
 }
 
-} // namespace log
+} // namespace logging
 } // namespace skr

@@ -3,6 +3,7 @@
 #include "SkrBase/template/concepts.hpp"
 #include "SkrCore/log.h"
 #include "SkrBase/types.h"
+#include "SkrBase/math.h"
 
 // writer & reader
 // TODO. 搬到 archive 里面去
@@ -223,10 +224,10 @@ template <>
 struct BinSerde<skr_float4x4_t> : BinSerdePOD<skr_float4x4_t> {
 };
 template <>
-struct BinSerde<skr_rotator_t> : BinSerdePOD<skr_rotator_t> {
+struct BinSerde<skr_rotator_f_t> : BinSerdePOD<skr_rotator_f_t> {
 };
 template <>
-struct BinSerde<skr_quaternion_t> : BinSerdePOD<skr_quaternion_t> {
+struct BinSerde<skr_quat_f_t> : BinSerdePOD<skr_quat_f_t> {
 };
 
 template <>

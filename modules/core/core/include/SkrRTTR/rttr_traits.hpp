@@ -3,6 +3,7 @@
 #include "SkrContainersDef/string.hpp"
 #include "SkrBase/meta.h"
 #include "SkrContainersDef/sptr.hpp"
+#include "SkrBase/math.h"
 
 // RTTR traits
 // 提供非 GenericType 的静态信息：
@@ -83,12 +84,12 @@ SKR_RTTR_TYPE(double, "9454d5cd-68dd-4039-8e67-07732de87e5c")
 //======================================== skr types
 // math types
 // TODO. 仅仅为了过编译, 后续实现具体类型
-SKR_RTTR_TYPE(skr_rotator_t, "236DFBE6-1554-4BCF-A021-1DAD18BF19B8");
-SKR_RTTR_TYPE(skr_float2_t, "CD0FEAC8-C536-4DE7-854A-EC711E59F17D");
-SKR_RTTR_TYPE(skr_float3_t, "9E6AB3E9-325F-4224-935C-233CC8DE47B6");
-SKR_RTTR_TYPE(skr_float4_t, "38BFB8AD-2287-40FC-8AFE-185CABF84C4A");
-SKR_RTTR_TYPE(skr_float4x4_t, "E49D2F13-9DFF-4A7B-8D43-27F68BA932E0");
-SKR_RTTR_TYPE(skr_quaternion_t, "51977A88-7095-4FA7-8467-541698803936");
+SKR_RTTR_TYPE(skr::RotatorF, "236DFBE6-1554-4BCF-A021-1DAD18BF19B8");
+SKR_RTTR_TYPE(skr::float2, "CD0FEAC8-C536-4DE7-854A-EC711E59F17D");
+SKR_RTTR_TYPE(skr::float3, "9E6AB3E9-325F-4224-935C-233CC8DE47B6");
+SKR_RTTR_TYPE(skr::float4, "38BFB8AD-2287-40FC-8AFE-185CABF84C4A");
+SKR_RTTR_TYPE(skr::float4x4, "E49D2F13-9DFF-4A7B-8D43-27F68BA932E0");
+SKR_RTTR_TYPE(skr::QuatF, "51977A88-7095-4FA7-8467-541698803936");
 
 // GUID & MD5
 SKR_RTTR_TYPE(skr::MD5, "F8ABEC14-9436-43B5-A93A-460E7D3CBEC2");

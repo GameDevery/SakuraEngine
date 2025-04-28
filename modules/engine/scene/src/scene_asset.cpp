@@ -68,7 +68,7 @@ void skr_save_scene(sugoi_storage_t* world, skr::archive::JsonWriter* writer)
                 if (!serde)
                     continue;
                 writer->Key(desc->name);
-                serde(view->chunk, view->start + i, (char*)data, 1, writer);
+                serde(component, view->chunk, view->start + i, (char*)data, 1, writer);
             }
             writer->EndObject();
         }
