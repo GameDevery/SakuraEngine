@@ -176,7 +176,7 @@ struct BinSerde<T> {
 template <typename T, size_t N>
 struct BinSerde<T[N]> {
     inline static bool read(SBinaryReader* r, T (&v)[N])
-    requires(HasBinRead<T>)
+        requires(HasBinRead<T>)
     {
         for (size_t i = 0; i < N; ++i)
         {
@@ -189,7 +189,7 @@ struct BinSerde<T[N]> {
         return true;
     }
     inline static bool write(SBinaryWriter* w, const T (&v)[N])
-    requires(HasBinWrite<T>)
+        requires(HasBinWrite<T>)
     {
         for (size_t i = 0; i < N; ++i)
         {
@@ -204,36 +204,53 @@ struct BinSerde<T[N]> {
 };
 } // namespace skr
 
-// skr types, 主要指 skr base 中的类型，遵循模块依赖的规则
-//  float2/float3/float4
-//  float4x4/rotator/quaternion
-//  guid/md5
+// guid / md5
 namespace skr
 {
 template <>
-struct BinSerde<skr_float2_t> : BinSerdePOD<skr_float2_t> {
+struct BinSerde<GUID> : BinSerdePOD<GUID> {
 };
 template <>
-struct BinSerde<skr_float3_t> : BinSerdePOD<skr_float3_t> {
-};
-template <>
-struct BinSerde<skr_float4_t> : BinSerdePOD<skr_float4_t> {
-};
-
-template <>
-struct BinSerde<skr_float4x4_t> : BinSerdePOD<skr_float4x4_t> {
-};
-template <>
-struct BinSerde<skr_rotator_f_t> : BinSerdePOD<skr_rotator_f_t> {
-};
-template <>
-struct BinSerde<skr_quat_f_t> : BinSerdePOD<skr_quat_f_t> {
-};
-
-template <>
-struct BinSerde<skr_guid_t> : BinSerdePOD<skr_guid_t> {
-};
-template <>
-struct BinSerde<skr_md5_t> : BinSerdePOD<skr_md5_t> {
+struct BinSerde<MD5> : BinSerdePOD<MD5> {
 };
 } // namespace skr
+
+// math misc
+namespace skr
+{
+// rotator
+template <>
+struct BinSerde<RotatorF> : BinSerdePOD<RotatorF> {
+};
+template <>
+struct BinSerde<RotatorD> : BinSerdePOD<RotatorD> {
+};
+
+// quat
+template <>
+struct BinSerde<QuatF> : BinSerdePOD<QuatF> {
+};
+template <>
+struct BinSerde<QuatD> : BinSerdePOD<QuatD> {
+};
+
+// transform
+template <>
+struct BinSerde<TransformF> : BinSerdePOD<TransformF> {
+};
+template <>
+struct BinSerde<TransformD> : BinSerdePOD<TransformD> {
+};
+} // namespace skr
+
+// vector & matrix
+namespace skr
+{
+template <MathVector T>
+struct BinSerde<T> : BinSerdePOD<T> {
+};
+
+template <MathMatrix T>
+struct BinSerde<T> : BinSerdePOD<T> {
+};
+}

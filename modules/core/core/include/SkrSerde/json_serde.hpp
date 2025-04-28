@@ -271,134 +271,55 @@ struct JsonSerde<T[N]> {
 };
 } // namespace skr
 
-// skr types, 主要指 skr base 中的类型，遵循模块依赖的规则
-//  float2/float3/float4
-//  float4x4/rotator/quaternion
 //  guid/md5
 namespace skr
 {
 template <>
-struct JsonSerde<skr_float2_t> {
-    inline static bool read(skr::archive::JsonReader* r, skr_float2_t& v)
+struct JsonSerde<GUID> {
+    inline static bool read(skr::archive::JsonReader* r, skr_guid_t& v)
     {
-        size_t count;
-        SKR_EXPECTED_CHECK(r->StartArray(count), false);
-        if (count != 2)
-            return false;
-        SKR_EXPECTED_CHECK(r->Float(v.x), false);
-        SKR_EXPECTED_CHECK(r->Float(v.y), false);
-        SKR_EXPECTED_CHECK(r->EndArray(), false);
-        return true;
+        skr::String str;
+        if (r->String(str).has_value())
+        {
+            if (!skr::guid_from_sv(str.c_str(), v))
+                return false;
+            return true;
+        }
+        return false;
     }
-    inline static bool write(skr::archive::JsonWriter* w, const skr_float2_t& v)
+    inline static bool write(skr::archive::JsonWriter* w, const skr_guid_t& v)
     {
-        SKR_EXPECTED_CHECK(w->StartArray(), false);
-        SKR_EXPECTED_CHECK(w->Float(v.x), false);
-        SKR_EXPECTED_CHECK(w->Float(v.y), false);
-        SKR_EXPECTED_CHECK(w->EndArray(), false);
-        return true;
-    }
-};
-template <>
-struct JsonSerde<skr_float3_t> {
-    inline static bool read(skr::archive::JsonReader* r, skr_float3_t& v)
-    {
-        size_t count;
-        SKR_EXPECTED_CHECK(r->StartArray(count), false);
-        if (count != 3)
-            return false;
-        SKR_EXPECTED_CHECK(r->Float(v.x), false);
-        SKR_EXPECTED_CHECK(r->Float(v.y), false);
-        SKR_EXPECTED_CHECK(r->Float(v.z), false);
-        SKR_EXPECTED_CHECK(r->EndArray(), false);
-        return true;
-    }
-    inline static bool write(skr::archive::JsonWriter* w, const skr_float3_t& v)
-    {
-        SKR_EXPECTED_CHECK(w->StartArray(), false);
-        SKR_EXPECTED_CHECK(w->Float(v.x), false);
-        SKR_EXPECTED_CHECK(w->Float(v.y), false);
-        SKR_EXPECTED_CHECK(w->Float(v.z), false);
-        SKR_EXPECTED_CHECK(w->EndArray(), false);
+        auto str = skr::format(u8"{}", v);
+        SKR_EXPECTED_CHECK(w->String(str), false);
         return true;
     }
 };
 template <>
-struct JsonSerde<skr_float4_t> {
-    inline static bool read(skr::archive::JsonReader* r, skr_float4_t& v)
+struct JsonSerde<MD5> {
+    inline static bool read(skr::archive::JsonReader* r, skr_md5_t& v)
     {
-        size_t count;
-        SKR_EXPECTED_CHECK(r->StartArray(count), false);
-        if (count != 4)
-            return false;
-        SKR_EXPECTED_CHECK(r->Float(v.x), false);
-        SKR_EXPECTED_CHECK(r->Float(v.y), false);
-        SKR_EXPECTED_CHECK(r->Float(v.z), false);
-        SKR_EXPECTED_CHECK(r->Float(v.w), false);
-        SKR_EXPECTED_CHECK(r->EndArray(), false);
-        return true;
+        skr::String str;
+        if (r->String(str).has_value())
+        {
+            if (!skr_parse_md5(str.c_str(), &v))
+                return false;
+            return true;
+        }
+        return false;
     }
-    inline static bool write(skr::archive::JsonWriter* w, const skr_float4_t& v)
+    inline static bool write(skr::archive::JsonWriter* w, const skr_md5_t& v)
     {
-        SKR_EXPECTED_CHECK(w->StartArray(), false);
-        SKR_EXPECTED_CHECK(w->Float(v.x), false);
-        SKR_EXPECTED_CHECK(w->Float(v.y), false);
-        SKR_EXPECTED_CHECK(w->Float(v.z), false);
-        SKR_EXPECTED_CHECK(w->Float(v.w), false);
-        SKR_EXPECTED_CHECK(w->EndArray(), false);
+        auto str = skr::format(u8"{}", v);
+        SKR_EXPECTED_CHECK(w->String(str), false);
         return true;
     }
 };
-template <>
-struct JsonSerde<skr_float4x4_t> {
-    inline static bool read(skr::archive::JsonReader* r, skr_float4x4_t& v)
-    {
-        size_t count;
-        SKR_EXPECTED_CHECK(r->StartArray(count), false);
-        if (count != 16)
-            return false;
-        SKR_EXPECTED_CHECK(r->Float(v.columns[0][0]), false);
-        SKR_EXPECTED_CHECK(r->Float(v.columns[0][1]), false);
-        SKR_EXPECTED_CHECK(r->Float(v.columns[0][2]), false);
-        SKR_EXPECTED_CHECK(r->Float(v.columns[0][3]), false);
-        SKR_EXPECTED_CHECK(r->Float(v.columns[1][0]), false);
-        SKR_EXPECTED_CHECK(r->Float(v.columns[1][1]), false);
-        SKR_EXPECTED_CHECK(r->Float(v.columns[1][2]), false);
-        SKR_EXPECTED_CHECK(r->Float(v.columns[1][3]), false);
-        SKR_EXPECTED_CHECK(r->Float(v.columns[2][0]), false);
-        SKR_EXPECTED_CHECK(r->Float(v.columns[2][1]), false);
-        SKR_EXPECTED_CHECK(r->Float(v.columns[2][2]), false);
-        SKR_EXPECTED_CHECK(r->Float(v.columns[2][3]), false);
-        SKR_EXPECTED_CHECK(r->Float(v.columns[3][0]), false);
-        SKR_EXPECTED_CHECK(r->Float(v.columns[3][1]), false);
-        SKR_EXPECTED_CHECK(r->Float(v.columns[3][2]), false);
-        SKR_EXPECTED_CHECK(r->Float(v.columns[3][3]), false);
-        SKR_EXPECTED_CHECK(r->EndArray(), false);
-        return true;
-    }
-    inline static bool write(skr::archive::JsonWriter* w, const skr_float4x4_t& v)
-    {
-        SKR_EXPECTED_CHECK(w->StartArray(), false);
-        SKR_EXPECTED_CHECK(w->Float(v.columns[0][0]), false);
-        SKR_EXPECTED_CHECK(w->Float(v.columns[0][1]), false);
-        SKR_EXPECTED_CHECK(w->Float(v.columns[0][2]), false);
-        SKR_EXPECTED_CHECK(w->Float(v.columns[0][3]), false);
-        SKR_EXPECTED_CHECK(w->Float(v.columns[1][0]), false);
-        SKR_EXPECTED_CHECK(w->Float(v.columns[1][1]), false);
-        SKR_EXPECTED_CHECK(w->Float(v.columns[1][2]), false);
-        SKR_EXPECTED_CHECK(w->Float(v.columns[1][3]), false);
-        SKR_EXPECTED_CHECK(w->Float(v.columns[2][0]), false);
-        SKR_EXPECTED_CHECK(w->Float(v.columns[2][1]), false);
-        SKR_EXPECTED_CHECK(w->Float(v.columns[2][2]), false);
-        SKR_EXPECTED_CHECK(w->Float(v.columns[2][3]), false);
-        SKR_EXPECTED_CHECK(w->Float(v.columns[3][0]), false);
-        SKR_EXPECTED_CHECK(w->Float(v.columns[3][1]), false);
-        SKR_EXPECTED_CHECK(w->Float(v.columns[3][2]), false);
-        SKR_EXPECTED_CHECK(w->Float(v.columns[3][3]), false);
-        SKR_EXPECTED_CHECK(w->EndArray(), false);
-        return true;
-    }
-};
+} // namespace skr
+
+// math misc
+namespace skr
+{
+// rotator
 template <>
 struct JsonSerde<skr::RotatorF> {
     inline static bool read(skr::archive::JsonReader* r, skr::RotatorF& v)
@@ -423,6 +344,32 @@ struct JsonSerde<skr::RotatorF> {
         return true;
     }
 };
+template <>
+struct JsonSerde<skr::RotatorD> {
+    inline static bool read(skr::archive::JsonReader* r, skr::RotatorD& v)
+    {
+        size_t count;
+        SKR_EXPECTED_CHECK(r->StartArray(count), false);
+        if (count != 3)
+            return false;
+        SKR_EXPECTED_CHECK(r->Double(v.pitch), false);
+        SKR_EXPECTED_CHECK(r->Double(v.yaw), false);
+        SKR_EXPECTED_CHECK(r->Double(v.roll), false);
+        SKR_EXPECTED_CHECK(r->EndArray(), false);
+        return true;
+    }
+    inline static bool write(skr::archive::JsonWriter* w, const skr::RotatorD& v)
+    {
+        SKR_EXPECTED_CHECK(w->StartArray(), false);
+        SKR_EXPECTED_CHECK(w->Double(v.pitch), false);
+        SKR_EXPECTED_CHECK(w->Double(v.yaw), false);
+        SKR_EXPECTED_CHECK(w->Double(v.roll), false);
+        SKR_EXPECTED_CHECK(w->EndArray(), false);
+        return true;
+    }
+};
+
+// quat
 template <>
 struct JsonSerde<skr::QuatF> {
     inline static bool read(skr::archive::JsonReader* r, skr::QuatF& v)
@@ -450,43 +397,212 @@ struct JsonSerde<skr::QuatF> {
     }
 };
 template <>
-struct JsonSerde<skr_guid_t> {
-    inline static bool read(skr::archive::JsonReader* r, skr_guid_t& v)
+struct JsonSerde<skr::QuatD> {
+    inline static bool read(skr::archive::JsonReader* r, skr::QuatD& v)
     {
-        skr::String str;
-        if (r->String(str).has_value())
-        {
-            if (!skr::guid_from_sv(str.c_str(), v))
-                return false;
-            return true;
-        }
-        return false;
+        size_t count;
+        SKR_EXPECTED_CHECK(r->StartArray(count), false);
+        if (count != 4)
+            return false;
+        SKR_EXPECTED_CHECK(r->Double(v.x), false);
+        SKR_EXPECTED_CHECK(r->Double(v.y), false);
+        SKR_EXPECTED_CHECK(r->Double(v.z), false);
+        SKR_EXPECTED_CHECK(r->Double(v.w), false);
+        SKR_EXPECTED_CHECK(r->EndArray(), false);
+        return true;
     }
-    inline static bool write(skr::archive::JsonWriter* w, const skr_guid_t& v)
+    inline static bool write(skr::archive::JsonWriter* w, const skr::QuatD& v)
     {
-        auto str = skr::format(u8"{}", v);
-        SKR_EXPECTED_CHECK(w->String(str), false);
+        SKR_EXPECTED_CHECK(w->StartArray(), false);
+        SKR_EXPECTED_CHECK(w->Double(v.x), false);
+        SKR_EXPECTED_CHECK(w->Double(v.y), false);
+        SKR_EXPECTED_CHECK(w->Double(v.z), false);
+        SKR_EXPECTED_CHECK(w->Double(v.w), false);
+        SKR_EXPECTED_CHECK(w->EndArray(), false);
+        return true;
+    }
+};
+
+// transform
+template <>
+struct JsonSerde<skr::TransformF> {
+    inline static bool read(skr::archive::JsonReader* r, skr::TransformF& t)
+    {
+        size_t count;
+        SKR_EXPECTED_CHECK(r->StartArray(count), false);
+        if (count != 4)
+            return false;
+
+        SKR_EXPECTED_CHECK(r->Float(t.rotation.x), false);
+        SKR_EXPECTED_CHECK(r->Float(t.rotation.y), false);
+        SKR_EXPECTED_CHECK(r->Float(t.rotation.z), false);
+        SKR_EXPECTED_CHECK(r->Float(t.rotation.w), false);
+
+        SKR_EXPECTED_CHECK(r->Float(t.position.x), false);
+        SKR_EXPECTED_CHECK(r->Float(t.position.y), false);
+        SKR_EXPECTED_CHECK(r->Float(t.position.z), false);
+
+        SKR_EXPECTED_CHECK(r->Float(t.scale.x), false);
+        SKR_EXPECTED_CHECK(r->Float(t.scale.y), false);
+        SKR_EXPECTED_CHECK(r->Float(t.scale.z), false);
+
+        SKR_EXPECTED_CHECK(r->EndArray(), false);
+        return true;
+    }
+    inline static bool write(skr::archive::JsonWriter* w, const skr::TransformF& t)
+    {
+        SKR_EXPECTED_CHECK(w->StartArray(), false);
+
+        SKR_EXPECTED_CHECK(w->Float(t.rotation.x), false);
+        SKR_EXPECTED_CHECK(w->Float(t.rotation.y), false);
+        SKR_EXPECTED_CHECK(w->Float(t.rotation.z), false);
+        SKR_EXPECTED_CHECK(w->Float(t.rotation.w), false);
+
+        SKR_EXPECTED_CHECK(w->Float(t.position.x), false);
+        SKR_EXPECTED_CHECK(w->Float(t.position.y), false);
+        SKR_EXPECTED_CHECK(w->Float(t.position.z), false);
+
+        SKR_EXPECTED_CHECK(w->Float(t.scale.x), false);
+        SKR_EXPECTED_CHECK(w->Float(t.scale.y), false);
+        SKR_EXPECTED_CHECK(w->Float(t.scale.z), false);
+
+        SKR_EXPECTED_CHECK(w->EndArray(), false);
         return true;
     }
 };
 template <>
-struct JsonSerde<skr_md5_t> {
-    inline static bool read(skr::archive::JsonReader* r, skr_md5_t& v)
+struct JsonSerde<skr::TransformD> {
+    inline static bool read(skr::archive::JsonReader* r, skr::TransformD& t)
     {
-        skr::String str;
-        if (r->String(str).has_value())
-        {
-            if (!skr_parse_md5(str.c_str(), &v))
-                return false;
-            return true;
-        }
-        return false;
+        size_t count;
+        SKR_EXPECTED_CHECK(r->StartArray(count), false);
+        if (count != 4)
+            return false;
+
+        SKR_EXPECTED_CHECK(r->Double(t.rotation.x), false);
+        SKR_EXPECTED_CHECK(r->Double(t.rotation.y), false);
+        SKR_EXPECTED_CHECK(r->Double(t.rotation.z), false);
+        SKR_EXPECTED_CHECK(r->Double(t.rotation.w), false);
+
+        SKR_EXPECTED_CHECK(r->Double(t.position.x), false);
+        SKR_EXPECTED_CHECK(r->Double(t.position.y), false);
+        SKR_EXPECTED_CHECK(r->Double(t.position.z), false);
+
+        SKR_EXPECTED_CHECK(r->Double(t.scale.x), false);
+        SKR_EXPECTED_CHECK(r->Double(t.scale.y), false);
+        SKR_EXPECTED_CHECK(r->Double(t.scale.z), false);
+
+        SKR_EXPECTED_CHECK(r->EndArray(), false);
+        return true;
     }
-    inline static bool write(skr::archive::JsonWriter* w, const skr_md5_t& v)
+    inline static bool write(skr::archive::JsonWriter* w, const skr::TransformD& t)
     {
-        auto str = skr::format(u8"{}", v);
-        SKR_EXPECTED_CHECK(w->String(str), false);
+        SKR_EXPECTED_CHECK(w->StartArray(), false);
+
+        SKR_EXPECTED_CHECK(w->Double(t.rotation.x), false);
+        SKR_EXPECTED_CHECK(w->Double(t.rotation.y), false);
+        SKR_EXPECTED_CHECK(w->Double(t.rotation.z), false);
+        SKR_EXPECTED_CHECK(w->Double(t.rotation.w), false);
+
+        SKR_EXPECTED_CHECK(w->Double(t.position.x), false);
+        SKR_EXPECTED_CHECK(w->Double(t.position.y), false);
+        SKR_EXPECTED_CHECK(w->Double(t.position.z), false);
+
+        SKR_EXPECTED_CHECK(w->Double(t.scale.x), false);
+        SKR_EXPECTED_CHECK(w->Double(t.scale.y), false);
+        SKR_EXPECTED_CHECK(w->Double(t.scale.z), false);
+
+        SKR_EXPECTED_CHECK(w->EndArray(), false);
         return true;
     }
 };
+} // namespace skr
+
+// math vector & matrix
+namespace skr
+{
+template <MathVector T>
+struct JsonSerde<T> {
+    inline static bool read(skr::archive::JsonReader* r, T& v)
+    {
+        constexpr auto dim = MathVectorTraits<T>::kDimensions;
+        using CompType     = typename MathVectorTraits<T>::ComponentType;
+        using CompSerde    = JsonSerde<CompType>;
+
+        size_t count;
+        SKR_EXPECTED_CHECK(r->StartArray(count), false);
+        if (count != 2)
+            return false;
+
+        for (size_t i = 0; i < dim; ++i)
+        {
+            if (!CompSerde::read(r, v[i])) { return false; }
+        }
+
+        SKR_EXPECTED_CHECK(r->EndArray(), false);
+        return true;
+    }
+    inline static bool write(skr::archive::JsonWriter* w, const T& v)
+    {
+        constexpr auto dim = MathVectorTraits<T>::kDimensions;
+        using CompType     = typename MathVectorTraits<T>::ComponentType;
+        using CompSerde    = JsonSerde<CompType>;
+
+        SKR_EXPECTED_CHECK(w->StartArray(), false);
+
+        for (size_t i = 0; i < dim; ++i)
+        {
+            if (!CompSerde::write(w, v[i])) { return false; }
+        }
+
+        SKR_EXPECTED_CHECK(w->EndArray(), false);
+        return true;
+    }
+};
+
+template <MathMatrix T>
+struct JsonSerde<T> {
+    inline static bool read(skr::archive::JsonReader* r, T& v)
+    {
+        constexpr auto dim = MathVectorTraits<T>::kDimensions;
+        using CompType     = typename MathVectorTraits<T>::ComponentType;
+        using CompSerde    = JsonSerde<CompType>;
+
+        size_t count;
+        SKR_EXPECTED_CHECK(r->StartArray(count), false);
+        if (count != 2)
+            return false;
+
+        for (size_t col_idx = 0; col_idx < dim; ++col_idx)
+        {
+            for (size_t row_idx = 0; row_idx < dim; ++row_idx)
+            {
+                if (!CompSerde::read(r, v.columns[col_idx][row_idx])) { return false; }
+            }
+        }
+
+        SKR_EXPECTED_CHECK(r->EndArray(), false);
+        return true;
+    }
+    inline static bool write(skr::archive::JsonWriter* w, const T& v)
+    {
+        constexpr auto dim = MathVectorTraits<T>::kDimensions;
+        using CompType     = typename MathVectorTraits<T>::ComponentType;
+        using CompSerde    = JsonSerde<CompType>;
+
+        SKR_EXPECTED_CHECK(w->StartArray(), false);
+
+        for (size_t col_idx = 0; col_idx < dim; ++col_idx)
+        {
+            for (size_t row_idx = 0; row_idx < dim; ++row_idx)
+            {
+                if (!CompSerde::write(w, v.columns[col_idx][row_idx])) { return false; }
+            }
+        }
+
+        SKR_EXPECTED_CHECK(w->EndArray(), false);
+        return true;
+    }
+};
+
 } // namespace skr
