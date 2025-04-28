@@ -53,11 +53,16 @@ struct Chromaticities {
     static double3 xyY_to_XYZ(const double3& xyY);
     static double3 XYZ_to_xyY(const double3& XYZ);
 
+    // xyY <=> LMS
+    static double3 XYZ_to_LMS(const double3& XYZ, EChromaticAdaptationMethod method = EChromaticAdaptationMethod::Bradford);
+    static double3 LMS_to_XYZ(const double3& LMS, EChromaticAdaptationMethod method = EChromaticAdaptationMethod::Bradford);
+
     // white point getter
     static double2 get_white_point(EWhitePoint white_point);
 
     // chromatic adaptation matrix
     // see: http://brucelindbloom.com/index.html?Eqn_ChromAdapt.html
+    static double3x3 chromatic_adaptation_matrix(EChromaticAdaptationMethod method);
     static double3x3 chromatic_adaptation_matrix(
         EChromaticAdaptationMethod method,
         const double3&             from_white_in_XYZ,
@@ -178,6 +183,16 @@ inline double3 Chromaticities::XYZ_to_xyY(const double3& XYZ)
     };
 }
 
+// xyY <=> LMS
+inline double3 Chromaticities::XYZ_to_LMS(const double3& XYZ, EChromaticAdaptationMethod method)
+{
+    return XYZ * chromatic_adaptation_matrix(method);
+}
+inline double3 Chromaticities::LMS_to_XYZ(const double3& LMS, EChromaticAdaptationMethod method)
+{
+    return LMS * inverse(chromatic_adaptation_matrix(method));
+}
+
 inline double2 Chromaticities::get_white_point(EWhitePoint white_point)
 {
     switch (white_point)
@@ -194,39 +209,42 @@ inline double2 Chromaticities::get_white_point(EWhitePoint white_point)
     }
 }
 
+inline double3x3 Chromaticities::chromatic_adaptation_matrix(EChromaticAdaptationMethod method)
+{
+    switch (method)
+    {
+    case EChromaticAdaptationMethod::XYZScaling:
+        return double3x3::identity();
+    case EChromaticAdaptationMethod::Bradford:
+        return transpose(double3x3{
+            { 0.8951, 0.2664, -0.1614 },
+            { -0.7502, 1.7135, 0.0367 },
+            { 0.0389, -0.0685, 1.0296 },
+        });
+    case EChromaticAdaptationMethod::CAT02:
+        return transpose(double3x3{
+            { 0.7328, 0.4296, -0.1624 },
+            { -0.7036, 1.6975, 0.0061 },
+            { 0.0030, 0.0136, 0.9834 },
+        });
+    case EChromaticAdaptationMethod::VonKries:
+        return transpose(double3x3{
+            { 0.4002, 0.7076, -0.0808 },
+            { -0.2263, 1.1653, 0.0457 },
+            { 0.0000, 0.0000, 0.8252 },
+        });
+    default:
+        SKR_UNREACHABLE_CODE();
+        return double3x3::identity();
+    }
+}
 inline double3x3 Chromaticities::chromatic_adaptation_matrix(
     EChromaticAdaptationMethod method,
     const double3&             from_white_in_XYZ,
     const double3&             to_white_in_XYZ
 )
 {
-    double3x3 to_cone_response = kMathNoInit;
-    switch (method)
-    {
-    case EChromaticAdaptationMethod::XYZScaling:
-        to_cone_response = double3x3::identity();
-        break;
-    case EChromaticAdaptationMethod::Bradford:
-        to_cone_response = transpose(double3x3{
-            { 0.8951, 0.2664, -0.1614 },
-            { -0.7502, 1.7135, 0.0367 },
-            { 0.0389, -0.0685, 1.0296 } });
-        break;
-    case EChromaticAdaptationMethod::CAT02:
-        to_cone_response = transpose(double3x3{
-            { 0.7328, 0.4296, -0.1624 },
-            { -0.7036, 1.6975, 0.0061 },
-            { 0.0030, 0.0136, 0.9834 },
-        });
-        break;
-    case EChromaticAdaptationMethod::VonKries:
-        to_cone_response = transpose(double3x3{
-            { 0.4002, 0.7076, -0.0808 },
-            { -0.2263, 1.1653, 0.0457 },
-            { 0.0000, 0.0000, 0.8252 },
-        });
-        break;
-    }
+    double3x3 to_cone_response = chromatic_adaptation_matrix(method);
 
     auto from_white_cone_response = from_white_in_XYZ * to_cone_response;
     auto to_white_cone_response   = to_white_in_XYZ * to_cone_response;
