@@ -845,6 +845,45 @@ class _MathFuncGenerator {
     }
   }
 
+  // square & cube
+  @math_func("square", { accept_comp_kind: ["floating"] })
+  static gen_square(b: CodeBuilder, opt: MathGenOptions) {
+    const base_name = opt.base_name;
+    const dim = opt.dim;
+    const comp_name = opt.component_name;
+    const vec_name = `${base_name}${dim}`;
+
+    if (dim === 1) {
+      const init_expr = `v * v`;
+      b.$line(`inline ${comp_name} square(const ${comp_name} &v) { return ${init_expr}; }`)
+      return;
+    } else {
+      const init_expr = _comp_lut
+        .slice(0, dim)
+        .map(c => `v.${c} * v.${c}`)
+        .join(', ');
+      b.$line(`inline ${vec_name} square(const ${vec_name} &v) { return { ${init_expr} }; }`)
+    }
+  }
+  @math_func("cube", { accept_comp_kind: ["floating"] })
+  static gen_cube(b: CodeBuilder, opt: MathGenOptions) {
+    const base_name = opt.base_name;
+    const dim = opt.dim;
+    const comp_name = opt.component_name;
+    const vec_name = `${base_name}${dim}`;
+
+    if (dim === 1) {
+      const init_expr = `v * v * v`;
+      b.$line(`inline ${comp_name} cube(const ${comp_name} &v) { return ${init_expr}; }`)
+      return;
+    } else {
+      const init_expr = _comp_lut
+        .slice(0, dim)
+        .map(c => `v.${c} * v.${c} * v.${c}`)
+        .join(', ');
+      b.$line(`inline ${vec_name} cube(const ${vec_name} &v) { return { ${init_expr} }; }`)
+    }
+  }
 }
 
 export function gen(global_builders: GlobalBuilders, gen_dir: string) {

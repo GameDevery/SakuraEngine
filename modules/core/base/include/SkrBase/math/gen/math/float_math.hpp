@@ -417,5 +417,17 @@ inline float2 normalize_degrees(const float2 &v) { return { normalize_degrees(v.
 inline float3 normalize_degrees(const float3 &v) { return { normalize_degrees(v.x), normalize_degrees(v.y), normalize_degrees(v.z) }; }
 inline float4 normalize_degrees(const float4 &v) { return { normalize_degrees(v.x), normalize_degrees(v.y), normalize_degrees(v.z), normalize_degrees(v.w) }; }
 
+// square
+inline float square(const float &v) { return v * v; }
+inline float2 square(const float2 &v) { return { v.x * v.x, v.y * v.y }; }
+inline float3 square(const float3 &v) { return { v.x * v.x, v.y * v.y, v.z * v.z }; }
+inline float4 square(const float4 &v) { return { v.x * v.x, v.y * v.y, v.z * v.z, v.w * v.w }; }
+
+// cube
+inline float cube(const float &v) { return v * v * v; }
+inline float2 cube(const float2 &v) { return { v.x * v.x * v.x, v.y * v.y * v.y }; }
+inline float3 cube(const float3 &v) { return { v.x * v.x * v.x, v.y * v.y * v.y, v.z * v.z * v.z }; }
+inline float4 cube(const float4 &v) { return { v.x * v.x * v.x, v.y * v.y * v.y, v.z * v.z * v.z, v.w * v.w * v.w }; }
+
 }
 }

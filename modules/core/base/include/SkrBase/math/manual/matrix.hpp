@@ -162,30 +162,6 @@ inline double4 mul(const double4& lhs, const double4x4& rhs)
     return lhs * rhs;
 }
 
-// matrix 3x3 mul point
-inline float3 mul_point(const float3& lhs, const float3x3& rhs)
-{
-    return RtmConvert<float3>::from_rtm(
-        rtm::matrix_mul_point3(
-            RtmConvert<float3>::to_rtm(lhs),
-            rtm::matrix_cast(
-                RtmConvert<float3x3>::to_rtm(rhs)
-            )
-        )
-    );
-}
-inline double3 mul_point(const double3& lhs, const double3x3& rhs)
-{
-    return RtmConvert<double3>::from_rtm(
-        rtm::matrix_mul_point3(
-            RtmConvert<double3>::to_rtm(lhs),
-            rtm::matrix_cast(
-                RtmConvert<double3x3>::to_rtm(rhs)
-            )
-        )
-    );
-}
-
 // matrix4x4 mul point
 inline float3 mul_point(const float3& lhs, const float4x4& rhs)
 {
@@ -206,27 +182,6 @@ inline double3 mul_point(const double3& lhs, const double4x4& rhs)
             rtm::matrix_cast(
                 RtmConvert<double4x4>::to_rtm(rhs)
             )
-        )
-    );
-}
-
-// matrix3x3 mul vector
-inline float3 mul_vector(const float3& lhs, const float3x3& rhs)
-{
-    return RtmConvert<float3>::from_rtm(
-        rtm::matrix_mul_vector3(
-            RtmConvert<float3>::to_rtm(lhs),
-            RtmConvert<float3x3>::to_rtm(rhs)
-        )
-    );
-}
-inline double3 mul_vector(const double3& lhs, const double3x3& rhs)
-{
-    return RtmConvert<double3>::from_rtm(
-        rtm::matrix_mul_vector3(
-            RtmConvert<double3>::to_rtm(lhs),
-            RtmConvert<double3x3>::to_rtm(rhs)
-
         )
     );
 }

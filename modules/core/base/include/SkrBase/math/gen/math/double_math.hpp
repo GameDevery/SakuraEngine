@@ -417,5 +417,17 @@ inline double2 normalize_degrees(const double2 &v) { return { normalize_degrees(
 inline double3 normalize_degrees(const double3 &v) { return { normalize_degrees(v.x), normalize_degrees(v.y), normalize_degrees(v.z) }; }
 inline double4 normalize_degrees(const double4 &v) { return { normalize_degrees(v.x), normalize_degrees(v.y), normalize_degrees(v.z), normalize_degrees(v.w) }; }
 
+// square
+inline double square(const double &v) { return v * v; }
+inline double2 square(const double2 &v) { return { v.x * v.x, v.y * v.y }; }
+inline double3 square(const double3 &v) { return { v.x * v.x, v.y * v.y, v.z * v.z }; }
+inline double4 square(const double4 &v) { return { v.x * v.x, v.y * v.y, v.z * v.z, v.w * v.w }; }
+
+// cube
+inline double cube(const double &v) { return v * v * v; }
+inline double2 cube(const double2 &v) { return { v.x * v.x * v.x, v.y * v.y * v.y }; }
+inline double3 cube(const double3 &v) { return { v.x * v.x * v.x, v.y * v.y * v.y, v.z * v.z * v.z }; }
+inline double4 cube(const double4 &v) { return { v.x * v.x * v.x, v.y * v.y * v.y, v.z * v.z * v.z, v.w * v.w * v.w }; }
+
 }
 }
