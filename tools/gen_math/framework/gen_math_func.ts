@@ -284,6 +284,28 @@ class _MathFuncGenerator {
   static gen_log10(b: CodeBuilder, opt: MathGenOptions) {
     this.#call_std_func("log10", "log10", b, opt, ["v"]);
   }
+  @math_func("logx", { accept_comp_kind: ["floating"] })
+  static gen_logx(b: CodeBuilder, opt: MathGenOptions) {
+    const base_name = opt.base_name;
+    const comp_name = opt.component_name;
+    const comp_kind = opt.component_kind;
+    const dim = opt.dim;
+    const vec_name = `${base_name}${dim}`;
+
+    if (dim === 1) {
+      // use ::std::log
+      const init_expr = `::std::log(v) / ::std::log(base)`;
+      b.$line(`inline ${comp_name} logx(const ${comp_name} &v, const ${comp_name} &base) { return ${init_expr}; }`)
+    } else {
+      // use logx
+      const init_expr = _comp_lut
+        .slice(0, dim)
+        .map(c => `logx(v.${c}, base.${c})`)
+        .join(', ');
+      b.$line(`inline ${vec_name} logx(const ${vec_name} &v, const ${vec_name} &base) { return {${init_expr}}; }`)
+    }
+
+  }
 
   // isfinite & isinf & isnan
   @math_func("isfinite", { accept_comp_kind: ["floating"] })

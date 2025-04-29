@@ -171,6 +171,12 @@ inline float2 log10(const float2& v) { return {::std::log10(v.x), ::std::log10(v
 inline float3 log10(const float3& v) { return {::std::log10(v.x), ::std::log10(v.y), ::std::log10(v.z)}; }
 inline float4 log10(const float4& v) { return {::std::log10(v.x), ::std::log10(v.y), ::std::log10(v.z), ::std::log10(v.w)}; }
 
+// logx
+inline float logx(const float &v, const float &base) { return ::std::log(v) / ::std::log(base); }
+inline float2 logx(const float2 &v, const float2 &base) { return {logx(v.x, base.x), logx(v.y, base.y)}; }
+inline float3 logx(const float3 &v, const float3 &base) { return {logx(v.x, base.x), logx(v.y, base.y), logx(v.z, base.z)}; }
+inline float4 logx(const float4 &v, const float4 &base) { return {logx(v.x, base.x), logx(v.y, base.y), logx(v.z, base.z), logx(v.w, base.w)}; }
+
 // isfinite
 inline bool isfinite(float v) { return ::std::isfinite(v); }
 inline bool2 isfinite(const float2& v) { return {::std::isfinite(v.x), ::std::isfinite(v.y)}; }

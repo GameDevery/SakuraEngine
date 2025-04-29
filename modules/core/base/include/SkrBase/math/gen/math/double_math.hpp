@@ -171,6 +171,12 @@ inline double2 log10(const double2& v) { return {::std::log10(v.x), ::std::log10
 inline double3 log10(const double3& v) { return {::std::log10(v.x), ::std::log10(v.y), ::std::log10(v.z)}; }
 inline double4 log10(const double4& v) { return {::std::log10(v.x), ::std::log10(v.y), ::std::log10(v.z), ::std::log10(v.w)}; }
 
+// logx
+inline double logx(const double &v, const double &base) { return ::std::log(v) / ::std::log(base); }
+inline double2 logx(const double2 &v, const double2 &base) { return {logx(v.x, base.x), logx(v.y, base.y)}; }
+inline double3 logx(const double3 &v, const double3 &base) { return {logx(v.x, base.x), logx(v.y, base.y), logx(v.z, base.z)}; }
+inline double4 logx(const double4 &v, const double4 &base) { return {logx(v.x, base.x), logx(v.y, base.y), logx(v.z, base.z), logx(v.w, base.w)}; }
+
 // isfinite
 inline bool isfinite(double v) { return ::std::isfinite(v); }
 inline bool2 isfinite(const double2& v) { return {::std::isfinite(v.x), ::std::isfinite(v.y)}; }
