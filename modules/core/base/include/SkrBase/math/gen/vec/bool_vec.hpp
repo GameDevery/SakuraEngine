@@ -19,7 +19,7 @@ struct bool2 {
     inline bool2(): x(0), y(0) {}
     inline bool2(MathNoInitType) {}
     inline bool2(bool v): x(v), y(v) {}
-    inline bool2(bool v0, bool v1): x(v0), y(v1) {}
+    inline bool2(bool v_x, bool v_y): x(v_x), y(v_y) {}
     inline ~bool2() = default;
     
     // cast ctor
@@ -77,9 +77,9 @@ struct bool3 {
     inline bool3(): x(0), y(0), z(0) {}
     inline bool3(MathNoInitType) {}
     inline bool3(bool v): x(v), y(v), z(v) {}
-    inline bool3(bool v0, bool v1, bool v2): x(v0), y(v1), z(v2) {}
-    inline bool3(bool v0, bool2 v1): x(v0), y(v1.x), z(v1.y) {}
-    inline bool3(bool2 v0, bool v1): x(v0.x), y(v0.y), z(v1) {}
+    inline bool3(bool v_x, bool v_y, bool v_z): x(v_x), y(v_y), z(v_z) {}
+    inline bool3(bool v_x, bool2 v_yz): x(v_x), y(v_yz.x), z(v_yz.y) {}
+    inline bool3(bool2 v_xy, bool v_z): x(v_xy.x), y(v_xy.y), z(v_z) {}
     inline ~bool3() = default;
     
     // cast ctor
@@ -180,13 +180,13 @@ struct bool4 {
     inline bool4(): x(0), y(0), z(0), w(0) {}
     inline bool4(MathNoInitType) {}
     inline bool4(bool v): x(v), y(v), z(v), w(v) {}
-    inline bool4(bool v0, bool v1, bool v2, bool v3): x(v0), y(v1), z(v2), w(v3) {}
-    inline bool4(bool v0, bool v1, bool2 v2): x(v0), y(v1), z(v2.x), w(v2.y) {}
-    inline bool4(bool v0, bool2 v1, bool v2): x(v0), y(v1.x), z(v1.y), w(v2) {}
-    inline bool4(bool v0, bool3 v1): x(v0), y(v1.x), z(v1.y), w(v1.z) {}
-    inline bool4(bool2 v0, bool v1, bool v2): x(v0.x), y(v0.y), z(v1), w(v2) {}
-    inline bool4(bool2 v0, bool2 v1): x(v0.x), y(v0.y), z(v1.x), w(v1.y) {}
-    inline bool4(bool3 v0, bool v1): x(v0.x), y(v0.y), z(v0.z), w(v1) {}
+    inline bool4(bool v_x, bool v_y, bool v_z, bool v_w): x(v_x), y(v_y), z(v_z), w(v_w) {}
+    inline bool4(bool v_x, bool v_y, bool2 v_zw): x(v_x), y(v_y), z(v_zw.x), w(v_zw.y) {}
+    inline bool4(bool v_x, bool2 v_yz, bool v_w): x(v_x), y(v_yz.x), z(v_yz.y), w(v_w) {}
+    inline bool4(bool v_x, bool3 v_yzw): x(v_x), y(v_yzw.x), z(v_yzw.y), w(v_yzw.z) {}
+    inline bool4(bool2 v_xy, bool v_z, bool v_w): x(v_xy.x), y(v_xy.y), z(v_z), w(v_w) {}
+    inline bool4(bool2 v_xy, bool2 v_zw): x(v_xy.x), y(v_xy.y), z(v_zw.x), w(v_zw.y) {}
+    inline bool4(bool3 v_xyz, bool v_w): x(v_xyz.x), y(v_xyz.y), z(v_xyz.z), w(v_w) {}
     inline ~bool4() = default;
     
     // cast ctor

@@ -19,7 +19,7 @@ struct uint2 {
     inline uint2(): x(0), y(0) {}
     inline uint2(MathNoInitType) {}
     inline uint2(uint32_t v): x(v), y(v) {}
-    inline uint2(uint32_t v0, uint32_t v1): x(v0), y(v1) {}
+    inline uint2(uint32_t v_x, uint32_t v_y): x(v_x), y(v_y) {}
     inline ~uint2() = default;
     
     // cast ctor
@@ -93,9 +93,9 @@ struct uint3 {
     inline uint3(): x(0), y(0), z(0) {}
     inline uint3(MathNoInitType) {}
     inline uint3(uint32_t v): x(v), y(v), z(v) {}
-    inline uint3(uint32_t v0, uint32_t v1, uint32_t v2): x(v0), y(v1), z(v2) {}
-    inline uint3(uint32_t v0, uint2 v1): x(v0), y(v1.x), z(v1.y) {}
-    inline uint3(uint2 v0, uint32_t v1): x(v0.x), y(v0.y), z(v1) {}
+    inline uint3(uint32_t v_x, uint32_t v_y, uint32_t v_z): x(v_x), y(v_y), z(v_z) {}
+    inline uint3(uint32_t v_x, uint2 v_yz): x(v_x), y(v_yz.x), z(v_yz.y) {}
+    inline uint3(uint2 v_xy, uint32_t v_z): x(v_xy.x), y(v_xy.y), z(v_z) {}
     inline ~uint3() = default;
     
     // cast ctor
@@ -212,13 +212,13 @@ struct uint4 {
     inline uint4(): x(0), y(0), z(0), w(0) {}
     inline uint4(MathNoInitType) {}
     inline uint4(uint32_t v): x(v), y(v), z(v), w(v) {}
-    inline uint4(uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3): x(v0), y(v1), z(v2), w(v3) {}
-    inline uint4(uint32_t v0, uint32_t v1, uint2 v2): x(v0), y(v1), z(v2.x), w(v2.y) {}
-    inline uint4(uint32_t v0, uint2 v1, uint32_t v2): x(v0), y(v1.x), z(v1.y), w(v2) {}
-    inline uint4(uint32_t v0, uint3 v1): x(v0), y(v1.x), z(v1.y), w(v1.z) {}
-    inline uint4(uint2 v0, uint32_t v1, uint32_t v2): x(v0.x), y(v0.y), z(v1), w(v2) {}
-    inline uint4(uint2 v0, uint2 v1): x(v0.x), y(v0.y), z(v1.x), w(v1.y) {}
-    inline uint4(uint3 v0, uint32_t v1): x(v0.x), y(v0.y), z(v0.z), w(v1) {}
+    inline uint4(uint32_t v_x, uint32_t v_y, uint32_t v_z, uint32_t v_w): x(v_x), y(v_y), z(v_z), w(v_w) {}
+    inline uint4(uint32_t v_x, uint32_t v_y, uint2 v_zw): x(v_x), y(v_y), z(v_zw.x), w(v_zw.y) {}
+    inline uint4(uint32_t v_x, uint2 v_yz, uint32_t v_w): x(v_x), y(v_yz.x), z(v_yz.y), w(v_w) {}
+    inline uint4(uint32_t v_x, uint3 v_yzw): x(v_x), y(v_yzw.x), z(v_yzw.y), w(v_yzw.z) {}
+    inline uint4(uint2 v_xy, uint32_t v_z, uint32_t v_w): x(v_xy.x), y(v_xy.y), z(v_z), w(v_w) {}
+    inline uint4(uint2 v_xy, uint2 v_zw): x(v_xy.x), y(v_xy.y), z(v_zw.x), w(v_zw.y) {}
+    inline uint4(uint3 v_xyz, uint32_t v_w): x(v_xyz.x), y(v_xyz.y), z(v_xyz.z), w(v_w) {}
     inline ~uint4() = default;
     
     // cast ctor

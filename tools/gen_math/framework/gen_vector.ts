@@ -74,24 +74,40 @@ function _gen_ctor_swizzle_recursive(
     const vec_name = `${base_name}${dim}`;
 
     // generate params
+    let cur_idx = 0;
     const params = param_dims
       .map((len, i) => {
+        let param_suffix = ""
+        for (let j = 0; j < len; ++j) {
+          param_suffix += _comp_lut[cur_idx + j]
+        }
+
+        cur_idx += len;
+
         return len == 1 ?
-          `${comp_name} v${i}` :
-          `${base_name}${len} v${i}`
+          `${comp_name} v_${param_suffix}` :
+          `${base_name}${len} v_${param_suffix}`
       })
       .join(", ");
 
     // generate init list
+    cur_idx = 0;
     let cur_comp = 0;
     const init_list = param_dims
       .flatMap((len, i) => {
+        let param_suffix = ""
+        for (let j = 0; j < len; ++j) {
+          param_suffix += _comp_lut[cur_idx + j]
+        }
+
         const result = []
         for (let j = 0; j < len; ++j) {
           const visitor = len != 1 ? `.${_comp_lut[j]}` : ``;
-          result.push(`${_comp_lut[cur_comp]}(v${i}${visitor})`)
+          result.push(`${_comp_lut[cur_comp]}(v_${param_suffix}${visitor})`)
           ++cur_comp
         }
+
+        cur_idx += len;
         return result
       })
       .join(", ");
