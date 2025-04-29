@@ -36,6 +36,25 @@ enum class EColorSpace : uint8_t
     PanasonicVGamut,
     PLASA_E1_54,
 };
+enum class EColorEncodeMethod : uint8_t
+{
+    Linear,
+    sRGB,
+    ST2084,
+    Gamma22,
+    BT1886,
+    Gamma26,
+    Cineon,
+    REDLog,
+    REDLog3G10,
+    SLog1,
+    SLog2,
+    SLog3,
+    AlexaV3LogC,
+    CanonLog,
+    ProTune,
+    VLog,
+};
 
 // TODO. color encoding TransferFunctions.h
 
@@ -133,6 +152,451 @@ struct ColorSpace {
     double3x3      from_xyz;
 };
 
+// color encoding
+struct ColorEncode {
+    // srgb
+    inline static float SRGB_encode(float v)
+    {
+        if (v <= 0.04045f / 12.92f)
+        {
+            return v * 12.92f;
+        }
+        else
+        {
+            return pow(v, (1.0f / 2.4f)) * 1.055f - 0.055f;
+        }
+    }
+    inline static float SRGB_decode(float v)
+    {
+        if (v <= 0.04045f)
+        {
+            return v / 12.92f;
+        }
+        else
+        {
+            return pow((v + 0.055f) / 1.055f, 2.4f);
+        }
+    }
+
+    // st2084
+    inline static float ST2084_encode(float v)
+    {
+        const float Lp = 10000.0f;
+        const float m1 = 2610 / 4096.0f * (1.0f / 4.0f);
+        const float m2 = 2523 / 4096.0f * 128.0f;
+        const float c1 = 3424 / 4096.0f;
+        const float c2 = 2413 / 4096.0f * 32.f;
+        const float c3 = 2392 / 4096.0f * 32.f;
+
+        v = pow(v / Lp, m1);
+        return pow((c1 + c2 * v) / (c3 * v + 1), m2);
+    }
+    inline static float ST2084_decode(float v)
+    {
+        const float Lp = 10000.0f;
+        const float m1 = 2610 / 4096.0f * (1.0f / 4.0f);
+        const float m2 = 2523 / 4096.0f * 128.0f;
+        const float c1 = 3424 / 4096.0f;
+        const float c2 = 2413 / 4096.0f * 32.f;
+        const float c3 = 2392 / 4096.0f * 32.f;
+
+        const float Vp = pow(v, 1.0f / m2);
+        v              = max(0.0f, Vp - c1);
+        return pow((v / (c2 - c3 * Vp)), 1.0f / m1) * Lp;
+    }
+
+    // gamma 2.2
+    inline static float Gamma22_encode(float v)
+    {
+        return pow(v, 1.0f / 2.2f);
+    }
+    inline static float Gamma22_decode(float v)
+    {
+        return pow(v, 2.2f);
+    }
+
+    // bt1886
+    inline static float BT1886_encode(float v)
+    {
+        const float L_B      = 0;
+        const float L_W      = 1;
+        float       Gamma    = 2.40f;
+        float       GammaInv = 1.0f / Gamma;
+        float       N        = pow(L_W, GammaInv) - pow(L_B, GammaInv);
+        float       A        = pow(N, Gamma);
+        float       B        = pow(L_B, GammaInv) / N;
+        return pow(v / A, GammaInv) - B;
+    }
+    inline static float BT1886_decode(float Value)
+    {
+        const float L_B      = 0;
+        const float L_W      = 1;
+        float       Gamma    = 2.40f;
+        float       GammaInv = 1.0f / Gamma;
+        float       N        = pow(L_W, GammaInv) - pow(L_B, GammaInv);
+        float       A        = pow(N, Gamma);
+        float       B        = pow(L_B, GammaInv) / N;
+        return A * pow(max(Value + B, 0.0f), Gamma);
+    }
+
+    // gamma 2.6
+    inline static float Gamma26_encode(float v)
+    {
+        return pow(v, 1.0f / 2.6f);
+    }
+    inline static float Gamma26_decode(float v)
+    {
+        return pow(v, 2.6f);
+    }
+
+    // cineon
+    inline static float Cineon_encode(float v)
+    {
+        const float BlackOffset = pow(10.0f, (95.0f - 685.0f) / 300.0f);
+        return (685.0f + 300.0f * log10(v * (1.0f - BlackOffset) + BlackOffset)) / 1023.0f;
+    }
+    inline static float Cineon_decode(float v)
+    {
+        const float BlackOffset = pow(10.0f, (95.0f - 685.0f) / 300.0f);
+        return (pow(10.0f, (1023.0f * v - 685.0f) / 300.0f) - BlackOffset) / (1.0f - BlackOffset);
+    }
+
+    // REDLog
+    inline static float REDLog_encode(float v)
+    {
+        const float BlackOffset = pow(10.0f, (0.0f - 1023.0f) / 511.0f);
+        return (1023.0f + 511.0f * log10(v * (1.0f - BlackOffset) + BlackOffset)) / 1023.0f;
+    }
+    inline static float REDLog_decode(float v)
+    {
+        const float BlackOffset = pow(10.0f, (0.0f - 1023.0f) / 511.0f);
+        return (pow(10.0f, (1023.0f * v - 1023.0f) / 511.0f) - BlackOffset) / (1.0f - BlackOffset);
+    }
+
+    // REDLog3G10
+    inline static float REDLog3G10_encode(float v)
+    {
+        const float A = 0.224282f;
+        const float B = 155.975327f;
+        const float C = 0.01f;
+        const float G = 15.1927f;
+
+        v += C;
+
+        if (v < 0.0f)
+        {
+            return v * G;
+        }
+        else
+        {
+            return sign(v) * A * log10(B * abs(v) + 1.0f);
+        }
+    }
+    inline static float REDLog3G10_decode(float v)
+    {
+        const float A = 0.224282f;
+        const float B = 155.975327f;
+        const float C = 0.01f;
+        const float G = 15.1927f;
+
+        if (v < 0.0f)
+        {
+            v /= G;
+        }
+        else
+        {
+            v = sign(v) * (pow(10.0f, abs(v) / A) - 1.0f) / B;
+        }
+
+        return v - C;
+    }
+
+    // SLog1
+    inline static float SLog1_encode(float v)
+    {
+        v /= 0.9f;
+        v = 0.432699f * log10(v + 0.037584f) + 0.616596f + 0.03f;
+        return (v * 219.0f + 16.0f) * 4.0f / 1023.0f;
+    }
+    inline static float SLog1_decode(float v)
+    {
+        v = ((v * 1023.f) / 4.0f - 16.0f) / 219.0f;
+        v = pow(10.0f, (v - 0.616596f - 0.03f) / 0.432699f) - 0.037584f;
+        return v * 0.9f;
+    }
+
+    // SLog2
+    inline static float SLog2_encode(float v)
+    {
+        if (v >= 0.0f)
+        {
+            return (64.0f + 876.0f * (0.432699f * log10(155.0f * v / 197.1f + 0.037584f) + 0.646596f)) / 1023.f;
+        }
+        else
+        {
+            return (64.0f + 876.0f * (v * 3.53881278538813f / 0.9f) + 0.646596f + 0.030001222851889303f) / 1023.f;
+        }
+    }
+    inline static float SLog2_decode(float v)
+    {
+        if (v >= (64.f + 0.030001222851889303f * 876.f) / 1023.f)
+        {
+            return 197.1f * (pow(10.0f, ((v * 1023.f - 64.f) / 876.f - 0.646596f) / 0.432699f) - 0.037584f) / 155.f;
+        }
+        else
+        {
+            return 0.9f * ((v * 1023.f - 64.f) / 876.f - 0.030001222851889303f) / 3.53881278538813f;
+        }
+    }
+
+    // SLog3
+    inline static float SLog3_encode(float v)
+    {
+        if (v >= 0.01125000f)
+        {
+            return (420.0f + log10((v + 0.01f) / 0.19f) * 261.5f) / 1023.0f;
+        }
+        else
+        {
+            return (v * 76.2102946929f / 0.01125f + 95.0f) / 1023.0f;
+        }
+    }
+    inline static float SLog3_decode(float v)
+    {
+        if (v >= 171.2102946929f / 1023.0f)
+        {
+            return (pow(10.0f, (v * 1023.0f - 420.f) / 261.5f)) * 0.19f - 0.01f;
+        }
+        else
+        {
+            return (v * 1023.0f - 95.0f) * 0.01125000f / (171.2102946929f - 95.0f);
+        }
+    }
+
+    // AlexaV3LogC
+    inline static float ArriAlexaV3LogC_encode(float v)
+    {
+        const float cut = 0.010591f;
+        const float a   = 5.555556f;
+        const float b   = 0.052272f;
+        const float c   = 0.247190f;
+        const float d   = 0.385537f;
+        const float e   = 5.367655f;
+        const float f   = 0.092809f;
+
+        if (v > cut)
+        {
+            return c * log10(a * v + b) + d;
+        }
+        else
+        {
+            return e * v + f;
+        }
+    }
+    inline static float ArriAlexaV3LogC_decode(float v)
+    {
+        const float cut = 0.010591f;
+        const float a   = 5.555556f;
+        const float b   = 0.052272f;
+        const float c   = 0.247190f;
+        const float d   = 0.385537f;
+        const float e   = 5.367655f;
+        const float f   = 0.092809f;
+
+        if (v > e * cut + f)
+        {
+            return (pow(10.0f, (v - d) / c) - b) / a;
+        }
+        else
+        {
+            return (v - f) / e;
+        }
+    }
+
+    // CanonLog
+    inline static float CanonLog_encode(float v)
+    {
+        if (v < 0.0f)
+        {
+            return -(0.529136f * (log10(-v * 10.1596f + 1.0f)) - 0.0730597f);
+        }
+        else
+        {
+            return 0.529136f * log10(10.1596f * v + 1.0f) + 0.0730597f;
+        }
+    }
+    inline static float CanonLog_decode(float v)
+    {
+        if (v < 0.0730597f)
+        {
+            return -(pow(10.0f, (0.0730597f - v) / 0.529136f) - 1.0f) / 10.1596f;
+        }
+        else
+        {
+            return (pow(10.0f, (v - 0.0730597f) / 0.529136f) - 1.0f) / 10.1596f;
+        }
+    }
+
+    // ProTune
+    inline static float GoProProTune_encode(float v)
+    {
+        return log(v * 112.f + 1.0f) / log(113.0f);
+    }
+    inline static float GoProProTune_decode(float v)
+    {
+        return (pow(113.f, v) - 1.0f) / 112.f;
+    }
+
+    // VLog
+    inline static float PanasonicVLog_encode(float v)
+    {
+        const float b = 0.00873f;
+        const float c = 0.241514f;
+        const float d = 0.598206f;
+
+        if (v < 0.01f)
+        {
+            return 5.6f * v + 0.125f;
+        }
+        else
+        {
+            return c * log10(v + b) + d;
+        }
+    }
+    inline static float PanasonicVLog_decode(float v)
+    {
+        const float b = 0.00873f;
+        const float c = 0.241514f;
+        const float d = 0.598206f;
+
+        if (v < 0.181f)
+        {
+            return (v - 0.125f) / 5.6f;
+        }
+        else
+        {
+            return pow(10.0f, (v - d) / c) - b;
+        }
+    }
+
+    // encode & decode
+    inline static float encode(float v, EColorEncodeMethod method)
+    {
+        switch (method)
+        {
+        case EColorEncodeMethod::Linear:
+            return v;
+        case EColorEncodeMethod::sRGB:
+            return SRGB_encode(v);
+        case EColorEncodeMethod::ST2084:
+            return ST2084_encode(v);
+        case EColorEncodeMethod::Gamma22:
+            return Gamma22_encode(v);
+        case EColorEncodeMethod::BT1886:
+            return BT1886_encode(v);
+        case EColorEncodeMethod::Gamma26:
+            return Gamma26_encode(v);
+        case EColorEncodeMethod::Cineon:
+            return Cineon_encode(v);
+        case EColorEncodeMethod::REDLog:
+            return REDLog_encode(v);
+        case EColorEncodeMethod::REDLog3G10:
+            return REDLog3G10_encode(v);
+        case EColorEncodeMethod::SLog1:
+            return SLog1_encode(v);
+        case EColorEncodeMethod::SLog2:
+            return SLog2_encode(v);
+        case EColorEncodeMethod::SLog3:
+            return SLog3_encode(v);
+        case EColorEncodeMethod::AlexaV3LogC:
+            return ArriAlexaV3LogC_encode(v);
+        case EColorEncodeMethod::CanonLog:
+            return CanonLog_encode(v);
+        case EColorEncodeMethod::ProTune:
+            return GoProProTune_encode(v);
+        case EColorEncodeMethod::VLog:
+            return PanasonicVLog_encode(v);
+        default:
+            SKR_UNREACHABLE_CODE()
+            return 0.0f;
+        }
+    }
+    inline static float decode(float v, EColorEncodeMethod method)
+    {
+        switch (method)
+        {
+        case skr::EColorEncodeMethod::Linear:
+            return v;
+        case EColorEncodeMethod::sRGB:
+            return SRGB_decode(v);
+        case EColorEncodeMethod::ST2084:
+            return ST2084_decode(v);
+        case EColorEncodeMethod::Gamma22:
+            return Gamma22_decode(v);
+        case EColorEncodeMethod::BT1886:
+            return BT1886_decode(v);
+        case EColorEncodeMethod::Gamma26:
+            return Gamma26_decode(v);
+        case EColorEncodeMethod::Cineon:
+            return Cineon_decode(v);
+        case EColorEncodeMethod::REDLog:
+            return REDLog_decode(v);
+        case EColorEncodeMethod::REDLog3G10:
+            return REDLog3G10_decode(v);
+        case EColorEncodeMethod::SLog1:
+            return SLog1_decode(v);
+        case EColorEncodeMethod::SLog2:
+            return SLog2_decode(v);
+        case EColorEncodeMethod::SLog3:
+            return SLog3_decode(v);
+        case EColorEncodeMethod::AlexaV3LogC:
+            return ArriAlexaV3LogC_decode(v);
+        case EColorEncodeMethod::CanonLog:
+            return CanonLog_decode(v);
+        case EColorEncodeMethod::ProTune:
+            return GoProProTune_decode(v);
+        case EColorEncodeMethod::VLog:
+            return PanasonicVLog_decode(v);
+        default:
+            SKR_UNREACHABLE_CODE()
+            return 0.0f;
+        }
+    }
+
+    // encode & decode vector
+    inline static double3 encode(const double3& v, EColorEncodeMethod method)
+    {
+        return { encode(v.x, method), encode(v.y, method), encode(v.z, method) };
+    }
+    inline static double3 decode(const double3& v, EColorEncodeMethod method)
+    {
+        return { decode(v.x, method), decode(v.y, method), decode(v.z, method) };
+    }
+    inline static double4 encode(const double4& v, EColorEncodeMethod method)
+    {
+        return { encode(v.x, method), encode(v.y, method), encode(v.z, method), v.w };
+    }
+    inline static double4 decode(const double4& v, EColorEncodeMethod method)
+    {
+        return { decode(v.x, method), decode(v.y, method), decode(v.z, method), v.w };
+    }
+    inline static float3 encode(const float3& v, EColorEncodeMethod method)
+    {
+        return { encode(v.x, method), encode(v.y, method), encode(v.z, method) };
+    }
+    inline static float3 decode(const float3& v, EColorEncodeMethod method)
+    {
+        return { decode(v.x, method), decode(v.y, method), decode(v.z, method) };
+    }
+    inline static float4 encode(const float4& v, EColorEncodeMethod method)
+    {
+        return { encode(v.x, method), encode(v.y, method), encode(v.z, method), v.w };
+    }
+    inline static float4 decode(const float4& v, EColorEncodeMethod method)
+    {
+        return { decode(v.x, method), decode(v.y, method), decode(v.z, method), v.w };
+    }
+};
 } // namespace math
 } // namespace skr
 
