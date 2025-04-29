@@ -137,6 +137,7 @@ bool WinCrashHandler::Initialize() SKR_NOEXCEPT
 
 int WinCrashHandler::internalHandler(struct SCrashContext* context) SKR_NOEXCEPT
 {
+    debug_break();
     if (!context->exception_pointers)
         context->exception_pointers = (PEXCEPTION_POINTERS)_pxcptinfoptrs;
 
