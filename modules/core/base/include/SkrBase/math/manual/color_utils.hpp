@@ -597,6 +597,95 @@ struct ColorEncode {
         return { decode(v.x, method), decode(v.y, method), decode(v.z, method), v.w };
     }
 };
+
+// luminance
+inline float luminance(const float3& color, const float3& factor)
+{
+    return dot(color, factor);
+}
+inline float luminance(const float3& color)
+{
+    return dot(color, { 0.299, 0.587, 0.114 });
+}
+inline double luminance(const double3& color, const double3& factor)
+{
+    return dot(color, factor);
+}
+inline double luminance(const double3& color)
+{
+    return dot(color, { 0.299, 0.587, 0.114 });
+}
+
+// rgb <=> hsv
+inline double3 rgb_to_hsv(double3 rgb)
+{
+    double r = rgb.x;
+    double g = rgb.y;
+    double b = rgb.z;
+
+    double K = 0.f;
+    if (g < b)
+    {
+        ::std::swap(g, b);
+        K = -1.f;
+    }
+    if (r < g)
+    {
+        ::std::swap(r, g);
+        K = -2.f / 6.f - K;
+    }
+
+    const double chroma = r - (g < b ? g : b);
+    double       out_h  = abs(K + (g - b) / (6.f * chroma + 1e-20f));
+    double       out_s  = chroma / (r + 1e-20f);
+    double       out_v  = r;
+
+    return { out_h, out_s, out_v };
+}
+inline double3 hsv_to_rgb(const double3& hsv)
+{
+    double h = hsv.x;
+    double s = hsv.y;
+    double v = hsv.z;
+
+    if (s == 0.0f)
+    {
+        return { v };
+    }
+
+    h        = fmod(h, 1.0) / (60.0 / 360.0);
+    int    i = (int)h;
+    double f = h - (double)i;
+    double p = v * (1.0f - s);
+    double q = v * (1.0f - s * f);
+    double t = v * (1.0f - s * (1.0f - f));
+
+    switch (i)
+    {
+    case 0:
+        return { v, t, p };
+    case 1:
+        return { q, v, p };
+    case 2:
+        return { p, v, t };
+    case 3:
+        return { p, q, v };
+    case 4:
+        return { t, p, v };
+    case 5:
+    default:
+        return { v, p, q };
+    }
+}
+inline float3 rgb_to_hsv(float3 rgb)
+{
+    return (float3)rgb_to_hsv((double3)rgb);
+}
+inline float3 hsv_to_rgb(const float3& hsv)
+{
+    return (float3)hsv_to_rgb((double3)hsv);
+}
+
 } // namespace math
 } // namespace skr
 
