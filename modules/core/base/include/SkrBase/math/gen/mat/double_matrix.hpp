@@ -79,6 +79,17 @@ struct double3x3 {
     inline static double3x3 identity() { return eye(1); }
     inline static double3x3 zero() { return fill(0); }
     inline static double3x3 one() { return fill(1); }
+    inline static double3x3 transposed(
+        double m00, double m10, double m20,
+        double m01, double m11, double m21,
+        double m02, double m12, double m22
+    ) {
+        return {
+            m00, m01, m02,
+            m10, m11, m12,
+            m20, m21, m22
+        };
+    }
     
     // factory for utility usage
     static double3x3 from_scale(const double3& scale);
@@ -168,6 +179,19 @@ struct alignas(16) double4x4 {
     inline static double4x4 identity() { return eye(1); }
     inline static double4x4 zero() { return fill(0); }
     inline static double4x4 one() { return fill(1); }
+    inline static double4x4 transposed(
+        double m00, double m10, double m20, double m30,
+        double m01, double m11, double m21, double m31,
+        double m02, double m12, double m22, double m32,
+        double m03, double m13, double m23, double m33
+    ) {
+        return {
+            m00, m01, m02, m03,
+            m10, m11, m12, m13,
+            m20, m21, m22, m23,
+            m30, m31, m32, m33
+        };
+    }
     
     // factory for utility usage
     static double4x4 from_scale(const double3& scale);

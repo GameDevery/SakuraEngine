@@ -265,6 +265,39 @@ function _gen_class_body(opt: GenMatrixOption) {
         b.$line(`inline static ${mat_name} identity() { return eye(1); }`)
         b.$line(`inline static ${mat_name} zero() { return fill(0); }`)
         b.$line(`inline static ${mat_name} one() { return fill(1); }`)
+        b.$line(`inline static ${mat_name} transposed(`);
+        b.$indent(_b => {
+          for (let col_idx = 0; col_idx < dim; ++col_idx) {
+            const members = dims_all
+              .slice(0, dim)
+              .map(d => `${comp_name} m${d - 1}${col_idx}`)
+              .join(`, `);
+            if (col_idx === dim - 1) {
+              b.$line(`${members}`)
+            } else {
+              b.$line(`${members},`)
+            }
+          }
+        })
+        b.$line(`) {`)
+        b.$indent(_b => {
+          b.$line(`return {`)
+          b.$indent(_b => {
+            for (let row_idx = 0; row_idx < dim; ++row_idx) {
+              const row_members = dims_all
+                .slice(0, dim)
+                .map(d => `m${row_idx}${d - 1}`)
+                .join(`, `);
+              if (row_idx === dim - 1) {
+                b.$line(`${row_members}`)
+              } else {
+                b.$line(`${row_members},`)
+              }
+            }
+          })
+          b.$line(`};`)
+        })
+        b.$line(`}`)
         b.$line(``)
       }
 

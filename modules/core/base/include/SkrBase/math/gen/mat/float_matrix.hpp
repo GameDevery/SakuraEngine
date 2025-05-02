@@ -79,6 +79,17 @@ struct float3x3 {
     inline static float3x3 identity() { return eye(1); }
     inline static float3x3 zero() { return fill(0); }
     inline static float3x3 one() { return fill(1); }
+    inline static float3x3 transposed(
+        float m00, float m10, float m20,
+        float m01, float m11, float m21,
+        float m02, float m12, float m22
+    ) {
+        return {
+            m00, m01, m02,
+            m10, m11, m12,
+            m20, m21, m22
+        };
+    }
     
     // factory for utility usage
     static float3x3 from_scale(const float3& scale);
@@ -168,6 +179,19 @@ struct alignas(16) float4x4 {
     inline static float4x4 identity() { return eye(1); }
     inline static float4x4 zero() { return fill(0); }
     inline static float4x4 one() { return fill(1); }
+    inline static float4x4 transposed(
+        float m00, float m10, float m20, float m30,
+        float m01, float m11, float m21, float m31,
+        float m02, float m12, float m22, float m32,
+        float m03, float m13, float m23, float m33
+    ) {
+        return {
+            m00, m01, m02, m03,
+            m10, m11, m12, m13,
+            m20, m21, m22, m23,
+            m30, m31, m32, m33
+        };
+    }
     
     // factory for utility usage
     static float4x4 from_scale(const float3& scale);
