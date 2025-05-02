@@ -137,7 +137,7 @@ inline float4x4 float4x4::perspective_fov(float fov_y, float aspect_ratio, float
         )
     );
 }
-inline float4x4 float4x4::ortho(float width, float height, float near_distance, float far_distance)
+inline float4x4 float4x4::orthographic(float width, float height, float near_distance, float far_distance)
 {
     return RtmConvert<float4x4>::from_rtm(
         rtm::matrix_cast(
@@ -224,7 +224,7 @@ inline double4x4 double4x4::perspective_fov(double fov_y, double aspect_ratio, d
         )
     );
 }
-inline double4x4 double4x4::ortho(double width, double height, double near_distance, double far_distance)
+inline double4x4 double4x4::orthographic(double width, double height, double near_distance, double far_distance)
 {
     return RtmConvert<double4x4>::from_rtm(
         rtm::matrix_cast(

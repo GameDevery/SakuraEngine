@@ -314,7 +314,7 @@ function _gen_class_body(opt: GenMatrixOption) {
         b.$line(`static ${mat_name} view_at(const ${vec_name}& from, const ${vec_name}& to, const ${vec_name}& up);`)
         b.$line(`static ${mat_name} perspective(${comp_name} view_width, ${comp_name} view_height, ${comp_name} near_distance, ${comp_name} far_distance);`)
         b.$line(`static ${mat_name} perspective_fov(${comp_name} fov_y, ${comp_name} aspect_ratio, ${comp_name} near_distance, ${comp_name} far_distance);`)
-        b.$line(`static ${mat_name} ortho(${comp_name} width, ${comp_name} height, ${comp_name} near_distance, ${comp_name} far_distance);`)
+        b.$line(`static ${mat_name} orthographic(${comp_name} width, ${comp_name} height, ${comp_name} near_distance, ${comp_name} far_distance);`)
       }
       b.$line(``)
 
