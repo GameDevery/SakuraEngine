@@ -426,38 +426,6 @@ function _gen_transform(opt: GenMiscOption) {
   c_decl_c_b.$line(``);
 }
 
-function _gen_camera(opt: GenMiscOption) {
-  const fwd_b = opt.fwd_builder;
-  const c_decl_cpp_b = opt.c_decl_cpp_builder;
-  const c_decl_c_b = opt.c_decl_c_builder;
-  const b = opt.builder;
-
-  fwd_b.$line(`// camera`)
-  c_decl_cpp_b.$line(`// camera`)
-  c_decl_c_b.$line(`// camera`)
-
-  // generate body
-  for (const base_name in type_options) {
-    const type_opt = type_options[base_name]!;
-
-    // filter component kinds
-    if (type_opt.component_kind !== "floating") continue;
-
-    // get suffix
-    const suffix = _suffix_lut[type_opt.component_name];
-    if (suffix === undefined) {
-      throw new Error(`unknown component name ${type_opt.component_name} for quat`);
-    }
-
-    // gen forward & c decls
-    fwd_b.$line(`struct Camera${suffix};`);
-  }
-
-  fwd_b.$line(``);
-  c_decl_cpp_b.$line(``);
-  c_decl_c_b.$line(``);
-}
-
 export function gen(global_builders: GlobalBuilders, gen_dir: string) {
   const inc_builder = new CodeBuilder();
   inc_builder.$util_header();
@@ -543,33 +511,6 @@ export function gen(global_builders: GlobalBuilders, gen_dir: string) {
     const file_name = path.join(gen_dir, `transform.hpp`);
     builder.write_file(file_name);
     inc_builder.$line(`#include "./transform.hpp"`);
-  }
-
-  // generate camera
-  {
-    const builder = new CodeBuilder();
-    builder.$util_header();
-
-    // include
-    builder.$line(`#include "../vec/gen_vector.hpp"`);
-    builder.$line(`#include "../mat/gen_matrix.hpp"`);
-    builder.$line(`#include "../math/gen_math_func.hpp"`);
-    builder.$line(``);
-
-    // gen code
-    builder.$line(`namespace skr {`);
-    builder.$line(`inline namespace math {`);
-    _gen_camera({
-      builder,
-      ...global_builders,
-    })
-    builder.$line(`}`)
-    builder.$line(`}`)
-
-    // write to file
-    const file_name = path.join(gen_dir, `camera.hpp`);
-    builder.write_file(file_name);
-    inc_builder.$line(`#include "./camera.hpp"`);
   }
 
   // write inc file
