@@ -218,6 +218,8 @@ export function vector_has_simd_optimize(name: string, opt: TypeOption, dim: num
       case "length_squared":
       case "rlength":
         return true;
+      case "normalize":
+        return true;
       default:
         return false;
     }

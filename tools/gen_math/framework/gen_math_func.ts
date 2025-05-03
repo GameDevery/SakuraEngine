@@ -686,7 +686,11 @@ class _MathFuncGenerator {
     const comp_name = opt.component_name;
     const vec_name = `${base_name}${dim}`;
 
-    b.$line(`inline ${vec_name} normalize(const ${vec_name}& v) { return v / length(v); }`)
+    if (vector_has_simd_optimize("normalize", opt, dim)) {
+      b.$line(`${vec_name} normalize(const ${vec_name}& v);`)
+    } else {
+      b.$line(`inline ${vec_name} normalize(const ${vec_name}& v) { return v / length(v); }`)
+    }
   }
 
   // reflect & refract

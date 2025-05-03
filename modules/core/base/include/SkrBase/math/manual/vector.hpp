@@ -720,6 +720,56 @@ inline double rlength(const double4& v)
     );
 }
 
+// normalize
+inline float2 normalize(const float2& v)
+{
+    return RtmConvert<float2>::from_rtm(
+        rtm::vector_normalize2(
+            RtmConvert<float2>::to_rtm(v)
+        )
+    );
+}
+inline float3 normalize(const float3& v)
+{
+    return RtmConvert<float3>::from_rtm(
+        rtm::vector_normalize3(
+            RtmConvert<float3>::to_rtm(v)
+        )
+    );
+}
+inline float4 normalize(const float4& v)
+{
+    return RtmConvert<float4>::from_rtm(
+        rtm::vector_normalize(
+            RtmConvert<float4>::to_rtm(v)
+        )
+    );
+}
+inline double2 normalize(const double2& v)
+{
+    return RtmConvert<double2>::from_rtm(
+        rtm::vector_normalize2(
+            RtmConvert<double2>::to_rtm(v)
+        )
+    );
+}
+inline double3 normalize(const double3& v)
+{
+    return RtmConvert<double3>::from_rtm(
+        rtm::vector_normalize3(
+            RtmConvert<double3>::to_rtm(v)
+        )
+    );
+}
+inline double4 normalize(const double4& v)
+{
+    return RtmConvert<double4>::from_rtm(
+        rtm::vector_normalize(
+            RtmConvert<double4>::to_rtm(v)
+        )
+    );
+}
+
 // is parallel
 inline bool is_parallel(const float3& normal_a, const float3& normal_b, float threshold = 0.999845f)
 {

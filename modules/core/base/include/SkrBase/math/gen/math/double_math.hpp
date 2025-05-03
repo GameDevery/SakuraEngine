@@ -322,9 +322,9 @@ inline double distance_squared(const double3& x, const double3& y) { return leng
 inline double distance_squared(const double4& x, const double4& y) { return length(y - x); }
 
 // normalize
-inline double2 normalize(const double2& v) { return v / length(v); }
-inline double3 normalize(const double3& v) { return v / length(v); }
-inline double4 normalize(const double4& v) { return v / length(v); }
+double2 normalize(const double2& v);
+double3 normalize(const double3& v);
+double4 normalize(const double4& v);
 
 // reflect
 inline double2 reflect(const double2& v, const double2& n) { return v - 2 * dot(n, v) * n; }
