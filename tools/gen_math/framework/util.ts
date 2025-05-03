@@ -207,6 +207,10 @@ export function vector_has_simd_optimize(name: string, opt: TypeOption, dim: num
       case "sqrt":
       case "rsqrt":
         return true;
+      case "ceil":
+      case "floor":
+      case "round":
+        return true;
       default:
         return false;
     }

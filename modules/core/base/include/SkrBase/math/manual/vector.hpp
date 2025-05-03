@@ -366,6 +366,180 @@ inline double4 rsqrt(const double4& v)
     );
 }
 
+// ceil
+inline float ceil(float v)
+{
+    return rtm::scalar_ceil(v);
+}
+inline float2 ceil(const float2& v)
+{
+    return RtmConvert<float2>::from_rtm(
+        rtm::vector_ceil(
+            RtmConvert<float2>::to_rtm(v)
+        )
+    );
+}
+inline float3 ceil(const float3& v)
+{
+    return RtmConvert<float3>::from_rtm(
+        rtm::vector_ceil(
+            RtmConvert<float3>::to_rtm(v)
+        )
+    );
+}
+inline float4 ceil(const float4& v)
+{
+    return RtmConvert<float4>::from_rtm(
+        rtm::vector_ceil(
+            RtmConvert<float4>::to_rtm(v)
+        )
+    );
+}
+inline double ceil(double v)
+{
+    return rtm::scalar_ceil(v);
+}
+inline double2 ceil(const double2& v)
+{
+    return RtmConvert<double2>::from_rtm(
+        rtm::vector_ceil(
+            RtmConvert<double2>::to_rtm(v)
+        )
+    );
+}
+inline double3 ceil(const double3& v)
+{
+    return RtmConvert<double3>::from_rtm(
+        rtm::vector_ceil(
+            RtmConvert<double3>::to_rtm(v)
+        )
+    );
+}
+inline double4 ceil(const double4& v)
+{
+    return RtmConvert<double4>::from_rtm(
+        rtm::vector_ceil(
+            RtmConvert<double4>::to_rtm(v)
+        )
+    );
+}
+
+// floor
+inline float floor(float v)
+{
+    return rtm::scalar_floor(v);
+}
+inline float2 floor(const float2& v)
+{
+    return RtmConvert<float2>::from_rtm(
+        rtm::vector_floor(
+            RtmConvert<float2>::to_rtm(v)
+        )
+    );
+}
+inline float3 floor(const float3& v)
+{
+    return RtmConvert<float3>::from_rtm(
+        rtm::vector_floor(
+            RtmConvert<float3>::to_rtm(v)
+        )
+    );
+}
+inline float4 floor(const float4& v)
+{
+    return RtmConvert<float4>::from_rtm(
+        rtm::vector_floor(
+            RtmConvert<float4>::to_rtm(v)
+        )
+    );
+}
+inline double floor(double v)
+{
+    return rtm::scalar_floor(v);
+}
+inline double2 floor(const double2& v)
+{
+    return RtmConvert<double2>::from_rtm(
+        rtm::vector_floor(
+            RtmConvert<double2>::to_rtm(v)
+        )
+    );
+}
+inline double3 floor(const double3& v)
+{
+    return RtmConvert<double3>::from_rtm(
+        rtm::vector_floor(
+            RtmConvert<double3>::to_rtm(v)
+        )
+    );
+}
+inline double4 floor(const double4& v)
+{
+    return RtmConvert<double4>::from_rtm(
+        rtm::vector_floor(
+            RtmConvert<double4>::to_rtm(v)
+        )
+    );
+}
+
+// round
+inline float round(float v)
+{
+    return rtm::scalar_round_symmetric(v);
+}
+inline float2 round(const float2& v)
+{
+    return RtmConvert<float2>::from_rtm(
+        rtm::vector_round_symmetric(
+            RtmConvert<float2>::to_rtm(v)
+        )
+    );
+}
+inline float3 round(const float3& v)
+{
+    return RtmConvert<float3>::from_rtm(
+        rtm::vector_round_symmetric(
+            RtmConvert<float3>::to_rtm(v)
+        )
+    );
+}
+inline float4 round(const float4& v)
+{
+    return RtmConvert<float4>::from_rtm(
+        rtm::vector_round_symmetric(
+            RtmConvert<float4>::to_rtm(v)
+        )
+    );
+}
+inline double round(double v)
+{
+    return rtm::scalar_round_symmetric(v);
+}
+inline double2 round(const double2& v)
+{
+    return RtmConvert<double2>::from_rtm(
+        rtm::vector_round_symmetric(
+            RtmConvert<double2>::to_rtm(v)
+        )
+    );
+}
+inline double3 round(const double3& v)
+{
+    return RtmConvert<double3>::from_rtm(
+        rtm::vector_round_symmetric(
+            RtmConvert<double3>::to_rtm(v)
+        )
+    );
+}
+inline double4 round(const double4& v)
+{
+    return RtmConvert<double4>::from_rtm(
+        rtm::vector_round_symmetric(
+            RtmConvert<double4>::to_rtm(v)
+        )
+    );
+}
+
 // is parallel
 inline bool is_parallel(const float3& normal_a, const float3& normal_b, float threshold = 0.999845f)
 {

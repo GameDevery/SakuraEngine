@@ -100,22 +100,22 @@ inline double3 atan2(const double3& y, const double3& x) { return {::std::atan2(
 inline double4 atan2(const double4& y, const double4& x) { return {::std::atan2(y.x, x.x), ::std::atan2(y.y, x.y), ::std::atan2(y.z, x.z), ::std::atan2(y.w, x.w)}; }
 
 // ceil
-inline double ceil(double v) { return ::std::ceil(v); }
-inline double2 ceil(const double2& v) { return {::std::ceil(v.x), ::std::ceil(v.y)}; }
-inline double3 ceil(const double3& v) { return {::std::ceil(v.x), ::std::ceil(v.y), ::std::ceil(v.z)}; }
-inline double4 ceil(const double4& v) { return {::std::ceil(v.x), ::std::ceil(v.y), ::std::ceil(v.z), ::std::ceil(v.w)}; }
+double ceil(double v);
+double2 ceil(const double2& v);
+double3 ceil(const double3& v);
+double4 ceil(const double4& v);
 
 // floor
-inline double floor(double v) { return ::std::floor(v); }
-inline double2 floor(const double2& v) { return {::std::floor(v.x), ::std::floor(v.y)}; }
-inline double3 floor(const double3& v) { return {::std::floor(v.x), ::std::floor(v.y), ::std::floor(v.z)}; }
-inline double4 floor(const double4& v) { return {::std::floor(v.x), ::std::floor(v.y), ::std::floor(v.z), ::std::floor(v.w)}; }
+double floor(double v);
+double2 floor(const double2& v);
+double3 floor(const double3& v);
+double4 floor(const double4& v);
 
 // round
-inline double round(double v) { return ::std::round(v); }
-inline double2 round(const double2& v) { return {::std::round(v.x), ::std::round(v.y)}; }
-inline double3 round(const double3& v) { return {::std::round(v.x), ::std::round(v.y), ::std::round(v.z)}; }
-inline double4 round(const double4& v) { return {::std::round(v.x), ::std::round(v.y), ::std::round(v.z), ::std::round(v.w)}; }
+double round(double v);
+double2 round(const double2& v);
+double3 round(const double3& v);
+double4 round(const double4& v);
 
 // trunc
 inline double trunc(double v) { return ::std::trunc(v); }
