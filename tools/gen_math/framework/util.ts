@@ -204,6 +204,9 @@ export function vector_has_simd_optimize(name: string, opt: TypeOption, dim: num
         return true;
       case "rcp":
         return true;
+      case "sqrt":
+      case "rsqrt":
+        return true;
       default:
         return false;
     }

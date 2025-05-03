@@ -371,19 +371,26 @@ class _MathFuncGenerator {
     const dim = opt.dim;
     const vec_name = `${base_name}${dim}`;
 
-    if (dim === 1) {
-      const init_expr = `${comp_name}(1) / ::std::sqrt(v)`;
-      b.$line(`inline ${comp_name} rsqrt(const ${comp_name} &v) { return ${init_expr}; }`)
-      return;
+    if (vector_has_simd_optimize("rsqrt", opt, dim)) {
+      if (dim === 1) {
+        b.$line(`${comp_name} rsqrt(${comp_name} v);`)
+      } else {
+        b.$line(`${vec_name} rsqrt(const ${vec_name}& v);`)
+      }
+    } else {
+      if (dim === 1) {
+        const init_expr = `${comp_name}(1) / ::std::sqrt(v)`;
+        b.$line(`inline ${comp_name} rsqrt(${comp_name} v) { return ${init_expr}; }`)
+      } else {
+        // use sqrt
+        const init_expr = _comp_lut
+          .slice(0, dim)
+          .map(c => `${comp_name}(1) / ::std::sqrt(v.${c})`)
+          .join(', ');
+
+        b.$line(`inline ${vec_name} rsqrt(const ${vec_name} &v) { return {${init_expr}}; }`)
+      }
     }
-
-    // use sqrt
-    const init_expr = _comp_lut
-      .slice(0, dim)
-      .map(c => `${comp_name}(1) / ::std::sqrt(v.${c})`)
-      .join(', ');
-
-    b.$line(`inline ${vec_name} rsqrt(const ${vec_name} &v) { return {${init_expr}}; }`)
   }
 
   // cbrt & hypot

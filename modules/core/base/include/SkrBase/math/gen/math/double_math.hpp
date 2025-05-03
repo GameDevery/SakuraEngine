@@ -220,16 +220,16 @@ inline double3 pow(const double3& x, const double3& y) { return {::std::pow(x.x,
 inline double4 pow(const double4& x, const double4& y) { return {::std::pow(x.x, y.x), ::std::pow(x.y, y.y), ::std::pow(x.z, y.z), ::std::pow(x.w, y.w)}; }
 
 // sqrt
-inline double sqrt(double v) { return ::std::sqrt(v); }
-inline double2 sqrt(const double2& v) { return {::std::sqrt(v.x), ::std::sqrt(v.y)}; }
-inline double3 sqrt(const double3& v) { return {::std::sqrt(v.x), ::std::sqrt(v.y), ::std::sqrt(v.z)}; }
-inline double4 sqrt(const double4& v) { return {::std::sqrt(v.x), ::std::sqrt(v.y), ::std::sqrt(v.z), ::std::sqrt(v.w)}; }
+double sqrt(double v);
+double2 sqrt(const double2& v);
+double3 sqrt(const double3& v);
+double4 sqrt(const double4& v);
 
 // rsqrt
-inline double rsqrt(const double &v) { return double(1) / ::std::sqrt(v); }
-inline double2 rsqrt(const double2 &v) { return {double(1) / ::std::sqrt(v.x), double(1) / ::std::sqrt(v.y)}; }
-inline double3 rsqrt(const double3 &v) { return {double(1) / ::std::sqrt(v.x), double(1) / ::std::sqrt(v.y), double(1) / ::std::sqrt(v.z)}; }
-inline double4 rsqrt(const double4 &v) { return {double(1) / ::std::sqrt(v.x), double(1) / ::std::sqrt(v.y), double(1) / ::std::sqrt(v.z), double(1) / ::std::sqrt(v.w)}; }
+double rsqrt(double v);
+double2 rsqrt(const double2& v);
+double3 rsqrt(const double3& v);
+double4 rsqrt(const double4& v);
 
 // cbrt
 inline double cbrt(double v) { return ::std::cbrt(v); }

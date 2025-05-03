@@ -250,6 +250,122 @@ inline double4 rcp(const double4& v)
     );
 }
 
+// sqrt
+inline float sqrt(float v)
+{
+    return rtm::scalar_sqrt(v);
+}
+inline float2 sqrt(const float2& v)
+{
+    return RtmConvert<float2>::from_rtm(
+        rtm::vector_sqrt(
+            RtmConvert<float2>::to_rtm(v)
+        )
+    );
+}
+inline float3 sqrt(const float3& v)
+{
+    return RtmConvert<float3>::from_rtm(
+        rtm::vector_sqrt(
+            RtmConvert<float3>::to_rtm(v)
+        )
+    );
+}
+inline float4 sqrt(const float4& v)
+{
+    return RtmConvert<float4>::from_rtm(
+        rtm::vector_sqrt(
+            RtmConvert<float4>::to_rtm(v)
+        )
+    );
+}
+inline double sqrt(double v)
+{
+    return rtm::scalar_sqrt(v);
+}
+inline double2 sqrt(const double2& v)
+{
+    return RtmConvert<double2>::from_rtm(
+        rtm::vector_sqrt(
+            RtmConvert<double2>::to_rtm(v)
+        )
+    );
+}
+inline double3 sqrt(const double3& v)
+{
+    return RtmConvert<double3>::from_rtm(
+        rtm::vector_sqrt(
+            RtmConvert<double3>::to_rtm(v)
+        )
+    );
+}
+inline double4 sqrt(const double4& v)
+{
+    return RtmConvert<double4>::from_rtm(
+        rtm::vector_sqrt(
+            RtmConvert<double4>::to_rtm(v)
+        )
+    );
+}
+
+// rsqrt
+inline float rsqrt(float v)
+{
+    return rtm::scalar_sqrt_reciprocal(v);
+}
+inline float2 rsqrt(const float2& v)
+{
+    return RtmConvert<float2>::from_rtm(
+        rtm::vector_sqrt_reciprocal(
+            RtmConvert<float2>::to_rtm(v)
+        )
+    );
+}
+inline float3 rsqrt(const float3& v)
+{
+    return RtmConvert<float3>::from_rtm(
+        rtm::vector_sqrt_reciprocal(
+            RtmConvert<float3>::to_rtm(v)
+        )
+    );
+}
+inline float4 rsqrt(const float4& v)
+{
+    return RtmConvert<float4>::from_rtm(
+        rtm::vector_sqrt_reciprocal(
+            RtmConvert<float4>::to_rtm(v)
+        )
+    );
+}
+inline double rsqrt(double v)
+{
+    return rtm::scalar_sqrt_reciprocal(v);
+}
+inline double2 rsqrt(const double2& v)
+{
+    return RtmConvert<double2>::from_rtm(
+        rtm::vector_sqrt_reciprocal(
+            RtmConvert<double2>::to_rtm(v)
+        )
+    );
+}
+inline double3 rsqrt(const double3& v)
+{
+    return RtmConvert<double3>::from_rtm(
+        rtm::vector_sqrt_reciprocal(
+            RtmConvert<double3>::to_rtm(v)
+        )
+    );
+}
+inline double4 rsqrt(const double4& v)
+{
+    return RtmConvert<double4>::from_rtm(
+        rtm::vector_sqrt_reciprocal(
+            RtmConvert<double4>::to_rtm(v)
+        )
+    );
+}
+
 // is parallel
 inline bool is_parallel(const float3& normal_a, const float3& normal_b, float threshold = 0.999845f)
 {

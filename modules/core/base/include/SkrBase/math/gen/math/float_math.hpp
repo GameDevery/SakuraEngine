@@ -220,16 +220,16 @@ inline float3 pow(const float3& x, const float3& y) { return {::std::pow(x.x, y.
 inline float4 pow(const float4& x, const float4& y) { return {::std::pow(x.x, y.x), ::std::pow(x.y, y.y), ::std::pow(x.z, y.z), ::std::pow(x.w, y.w)}; }
 
 // sqrt
-inline float sqrt(float v) { return ::std::sqrt(v); }
-inline float2 sqrt(const float2& v) { return {::std::sqrt(v.x), ::std::sqrt(v.y)}; }
-inline float3 sqrt(const float3& v) { return {::std::sqrt(v.x), ::std::sqrt(v.y), ::std::sqrt(v.z)}; }
-inline float4 sqrt(const float4& v) { return {::std::sqrt(v.x), ::std::sqrt(v.y), ::std::sqrt(v.z), ::std::sqrt(v.w)}; }
+float sqrt(float v);
+float2 sqrt(const float2& v);
+float3 sqrt(const float3& v);
+float4 sqrt(const float4& v);
 
 // rsqrt
-inline float rsqrt(const float &v) { return float(1) / ::std::sqrt(v); }
-inline float2 rsqrt(const float2 &v) { return {float(1) / ::std::sqrt(v.x), float(1) / ::std::sqrt(v.y)}; }
-inline float3 rsqrt(const float3 &v) { return {float(1) / ::std::sqrt(v.x), float(1) / ::std::sqrt(v.y), float(1) / ::std::sqrt(v.z)}; }
-inline float4 rsqrt(const float4 &v) { return {float(1) / ::std::sqrt(v.x), float(1) / ::std::sqrt(v.y), float(1) / ::std::sqrt(v.z), float(1) / ::std::sqrt(v.w)}; }
+float rsqrt(float v);
+float2 rsqrt(const float2& v);
+float3 rsqrt(const float3& v);
+float4 rsqrt(const float4& v);
 
 // cbrt
 inline float cbrt(float v) { return ::std::cbrt(v); }
