@@ -11,9 +11,9 @@ namespace skr {
 inline namespace math {
 // abs
 inline int32_t abs(int32_t v) { return v < int32_t(0) ? -v : v; }
-inline int2 abs(const int2 &v) { return {abs(v.x), abs(v.y)}; }
-inline int3 abs(const int3 &v) { return {abs(v.x), abs(v.y), abs(v.z)}; }
-inline int4 abs(const int4 &v) { return {abs(v.x), abs(v.y), abs(v.z), abs(v.w)}; }
+inline int2 abs(const int2& v) { return {abs(v.x), abs(v.y)}; }
+inline int3 abs(const int3& v) { return {abs(v.x), abs(v.y), abs(v.z)}; }
+inline int4 abs(const int4& v) { return {abs(v.x), abs(v.y), abs(v.z), abs(v.w)}; }
 
 // max
 inline int32_t max(int32_t v1, int32_t v2) { return ::std::max(v1, v2); }
@@ -29,9 +29,9 @@ inline int4 min(const int4& v1, const int4& v2) { return {::std::min(v1.x, v2.x)
 
 // clamp
 inline int32_t clamp(int32_t v, int32_t min, int32_t max) { return v < min ? min : v > max ? max : v; }
-inline int2 clamp(const int2 &v, const int2 &min, const int2 &max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y)}; }
-inline int3 clamp(const int3 &v, const int3 &min, const int3 &max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y), clamp(v.z, min.z, max.z)}; }
-inline int4 clamp(const int4 &v, const int4 &min, const int4 &max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y), clamp(v.z, min.z, max.z), clamp(v.w, min.w, max.w)}; }
+inline int2 clamp(const int2& v, const int2& min, const int2& max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y)}; }
+inline int3 clamp(const int3& v, const int3& min, const int3& max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y), clamp(v.z, min.z, max.z)}; }
+inline int4 clamp(const int4& v, const int4& min, const int4& max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y), clamp(v.z, min.z, max.z), clamp(v.w, min.w, max.w)}; }
 
 // select
 inline int2 select(bool2 c, int2 if_true, int2 if_false) { return { c.x ? if_true.x : if_false.x, c.y ? if_true.y : if_false.y }; }

@@ -121,7 +121,7 @@ class _MathFuncGenerator {
           .map(c => `abs(v.${c})`)
           .join(', ');
 
-        b.$line(`inline ${return_vec_name} abs(const ${vec_name} &v) { return {${init_expr}}; }`)
+        b.$line(`inline ${return_vec_name} abs(const ${vec_name}& v) { return {${init_expr}}; }`)
       }
 
     } else {
@@ -248,7 +248,7 @@ class _MathFuncGenerator {
         .map(c => `::std::modf(v.${c}, &int_ptr.${c})`)
         .join(', ');
 
-      b.$line(`inline ${vec_name} frac(const ${vec_name} &v) { ${int_ptr_vec}; return {${init_expr}}; }`)
+      b.$line(`inline ${vec_name} frac(const ${vec_name}& v) { ${int_ptr_vec}; return {${init_expr}}; }`)
     }
   }
   @math_func("modf", { accept_comp_kind: ["floating"] })
@@ -268,7 +268,7 @@ class _MathFuncGenerator {
         .map(c => `::std::modf(v.${c}, &int_part.${c})`)
         .join(', ');
 
-      b.$line(`inline ${vec_name} modf(const ${vec_name} &v, ${vec_name}& int_part) { return { ${init_expr} }; }`)
+      b.$line(`inline ${vec_name} modf(const ${vec_name}& v, ${vec_name}& int_part) { return { ${init_expr} }; }`)
     }
   }
 
@@ -317,7 +317,7 @@ class _MathFuncGenerator {
         .slice(0, dim)
         .map(c => `logx(v.${c}, base.${c})`)
         .join(', ');
-      b.$line(`inline ${vec_name} logx(const ${vec_name} &v, const ${vec_name} &base) { return {${init_expr}}; }`)
+      b.$line(`inline ${vec_name} logx(const ${vec_name}& v, const ${vec_name}& base) { return {${init_expr}}; }`)
     }
 
   }
@@ -386,7 +386,7 @@ class _MathFuncGenerator {
           .map(c => `${comp_name}(1) / ::std::sqrt(v.${c})`)
           .join(', ');
 
-        b.$line(`inline ${vec_name} rsqrt(const ${vec_name} &v) { return {${init_expr}}; }`)
+        b.$line(`inline ${vec_name} rsqrt(const ${vec_name}& v) { return {${init_expr}}; }`)
       }
     }
   }
@@ -423,7 +423,7 @@ class _MathFuncGenerator {
         .map(c => `clamp(v.${c}, min.${c}, max.${c})`)
         .join(', ');
 
-      b.$line(`inline ${vec_name} clamp(const ${vec_name} &v, const ${vec_name} &min, const ${vec_name} &max) { return {${init_expr}}; }`)
+      b.$line(`inline ${vec_name} clamp(const ${vec_name}& v, const ${vec_name}& min, const ${vec_name}& max) { return {${init_expr}}; }`)
     }
   }
   @math_func("saturate", { accept_comp_kind: ["floating"] })
@@ -444,7 +444,7 @@ class _MathFuncGenerator {
         .map(c => `clamp(v.${c}, ${comp_name}(0), ${comp_name}(1))`)
         .join(', ');
 
-      b.$line(`inline ${vec_name} saturate(const ${vec_name} &v) { return {${init_expr}}; }`)
+      b.$line(`inline ${vec_name} saturate(const ${vec_name}& v) { return {${init_expr}}; }`)
     }
   }
 
@@ -478,7 +478,7 @@ class _MathFuncGenerator {
       .map(c => `v.${c}`)
       .join(' && ');
 
-    b.$line(`inline bool all(const ${vec_name} &v) { return ${compare_expr}; }`);
+    b.$line(`inline bool all(const ${vec_name}& v) { return ${compare_expr}; }`);
   }
   @math_func("any", { accept_comp_kind: ["boolean"], accept_dim: dims_no_scalar })
   static gen_any(b: CodeBuilder, opt: MathGenOptions) {
@@ -493,7 +493,7 @@ class _MathFuncGenerator {
       .map(c => `v.${c}`)
       .join(' || ');
 
-    b.$line(`inline bool any(const ${vec_name} &v) { return ${compare_expr}; }`);
+    b.$line(`inline bool any(const ${vec_name}& v) { return ${compare_expr}; }`);
   }
 
   @math_func("rcp", { accept_comp_kind: ["floating"] })
@@ -540,7 +540,7 @@ class _MathFuncGenerator {
         .map(c => `v.${c} < ${comp_name}(0) ? ${comp_name}(-1) : v.${c} > ${comp_name}(0) ? ${comp_name}(1) : ${comp_name}(0)`)
         .join(', ');
 
-      b.$line(`inline ${vec_name} sign(const ${vec_name} &v) { return {${init_expr}}; }`)
+      b.$line(`inline ${vec_name} sign(const ${vec_name}& v) { return {${init_expr}}; }`)
     }
   }
 
@@ -561,7 +561,7 @@ class _MathFuncGenerator {
         .map(c => `v.${c} * ${comp_name}(180) / ${comp_name}(kPi)`)
         .join(', ');
 
-      b.$line(`inline ${vec_name} degrees(const ${vec_name} &v) { return {${init_expr}}; }`)
+      b.$line(`inline ${vec_name} degrees(const ${vec_name}& v) { return {${init_expr}}; }`)
     }
   }
   @math_func("radians", { accept_comp_kind: ["floating"] })
@@ -580,7 +580,7 @@ class _MathFuncGenerator {
         .map(c => `v.${c} * ${comp_name}(kPi) / ${comp_name}(180)`)
         .join(', ');
 
-      b.$line(`inline ${vec_name} radians(const ${vec_name} &v) { return {${init_expr}}; }`)
+      b.$line(`inline ${vec_name} radians(const ${vec_name}& v) { return {${init_expr}}; }`)
     }
   }
 
@@ -597,7 +597,7 @@ class _MathFuncGenerator {
       .map(c => `v1.${c} * v2.${c}`)
       .join(' + ');
 
-    b.$line(`inline ${comp_name} dot(const ${vec_name} &v1, const ${vec_name} &v2) { return ${init_expr}; }`)
+    b.$line(`inline ${comp_name} dot(const ${vec_name}& v1, const ${vec_name}& v2) { return ${init_expr}; }`)
   }
   @math_func("cross", { accept_comp_kind: ["floating"], accept_dim: [3] })
   static gen_cross(b: CodeBuilder, opt: MathGenOptions) {
@@ -608,7 +608,7 @@ class _MathFuncGenerator {
 
     const init_expr = `(x * y.yzx() - x.yzx() * y).yzx()`;
 
-    b.$line(`inline ${vec_name} cross(const ${vec_name} &x, const ${vec_name} &y) { return {${init_expr}}; }`)
+    b.$line(`inline ${vec_name} cross(const ${vec_name}& x, const ${vec_name}& y) { return {${init_expr}}; }`)
   }
 
   // length & distance Squared
@@ -619,7 +619,7 @@ class _MathFuncGenerator {
     const comp_name = opt.component_name;
     const vec_name = `${base_name}${dim}`;
 
-    b.$line(`inline ${comp_name} length(const ${vec_name} &v) { return ::std::sqrt(dot(v, v)); }`)
+    b.$line(`inline ${comp_name} length(const ${vec_name}& v) { return ::std::sqrt(dot(v, v)); }`)
   }
   @math_func("length_squared", { accept_comp_kind: ["floating"], accept_dim: dims_no_scalar })
   static gen_length_squared(b: CodeBuilder, opt: MathGenOptions) {
@@ -628,7 +628,7 @@ class _MathFuncGenerator {
     const comp_name = opt.component_name;
     const vec_name = `${base_name}${dim}`;
 
-    b.$line(`inline ${comp_name} length_squared(const ${vec_name} &v) { return dot(v, v); }`)
+    b.$line(`inline ${comp_name} length_squared(const ${vec_name}& v) { return dot(v, v); }`)
   }
   @math_func("distance", { accept_comp_kind: ["floating"], accept_dim: dims_no_scalar })
   static gen_distance(b: CodeBuilder, opt: MathGenOptions) {
@@ -637,7 +637,7 @@ class _MathFuncGenerator {
     const comp_name = opt.component_name;
     const vec_name = `${base_name}${dim}`;
 
-    b.$line(`inline ${comp_name} distance(const ${vec_name} &x, const ${vec_name} &y) { return length_squared(y - x); }`)
+    b.$line(`inline ${comp_name} distance(const ${vec_name}& x, const ${vec_name}& y) { return length_squared(y - x); }`)
   }
   @math_func("distance_squared", { accept_comp_kind: ["floating"], accept_dim: dims_no_scalar })
   static gen_distance_squared(b: CodeBuilder, opt: MathGenOptions) {
@@ -646,7 +646,7 @@ class _MathFuncGenerator {
     const comp_name = opt.component_name;
     const vec_name = `${base_name}${dim}`;
 
-    b.$line(`inline ${comp_name} distance_squared(const ${vec_name} &x, const ${vec_name} &y) { return length(y - x); }`)
+    b.$line(`inline ${comp_name} distance_squared(const ${vec_name}& x, const ${vec_name}& y) { return length(y - x); }`)
   }
 
   // normalize
@@ -657,7 +657,7 @@ class _MathFuncGenerator {
     const comp_name = opt.component_name;
     const vec_name = `${base_name}${dim}`;
 
-    b.$line(`inline ${vec_name} normalize(const ${vec_name} &v) { return v / length(v); }`)
+    b.$line(`inline ${vec_name} normalize(const ${vec_name}& v) { return v / length(v); }`)
   }
 
   // reflect & refract
@@ -668,7 +668,7 @@ class _MathFuncGenerator {
     const comp_name = opt.component_name;
     const vec_name = `${base_name}${dim}`;
 
-    b.$line(`inline ${vec_name} reflect(const ${vec_name} &v, const ${vec_name} &n) { return v - 2 * dot(n, v) * n; }`)
+    b.$line(`inline ${vec_name} reflect(const ${vec_name}& v, const ${vec_name}& n) { return v - 2 * dot(n, v) * n; }`)
   }
   @math_func("refract", { accept_comp_kind: ["floating"], accept_dim: [2, 3] })
   static gen_refract(b: CodeBuilder, opt: MathGenOptions) {
@@ -677,7 +677,7 @@ class _MathFuncGenerator {
     const comp_name = opt.component_name;
     const vec_name = `${base_name}${dim}`;
 
-    b.$line(`inline ${vec_name} refract(const ${vec_name} &v, const ${vec_name} &n, ${comp_name} eta) {`)
+    b.$line(`inline ${vec_name} refract(const ${vec_name}& v, const ${vec_name}& n, ${comp_name} eta) {`)
     b.$indent(_b => {
       b.$line(`const ${comp_name} cos_i = dot(-v, n);`)
       b.$line(`const ${comp_name} cos_t2 = ${comp_name}(1) - eta * eta * (${comp_name}(1) - cos_i * cos_i);`)
@@ -699,7 +699,7 @@ class _MathFuncGenerator {
       const init_expr = `v < edge ? ${comp_name}(0) : ${comp_name}(1)`;
       b.$line(`inline ${comp_name} step(${comp_name} edge, ${comp_name} v) { return ${init_expr}; }`)
     } else {
-      b.$line(`inline ${vec_name} step(const ${vec_name} &edge, const ${vec_name} &v) { return select(edge < v, ${vec_name}(0), ${vec_name}(1)); }`)
+      b.$line(`inline ${vec_name} step(const ${vec_name}& edge, const ${vec_name}& v) { return select(edge < v, ${vec_name}(0), ${vec_name}(1)); }`)
     }
 
   }
@@ -731,7 +731,7 @@ class _MathFuncGenerator {
       const init_expr = `v0 + t * (v1 - v0)`;
       b.$line(`inline ${comp_name} lerp(${comp_name} v0, ${comp_name} v1, ${comp_name} t) { return ${init_expr}; }`)
     } else {
-      b.$line(`inline ${vec_name} lerp(const ${vec_name} &v0, const ${vec_name} &v1, ${comp_name} t) { return v0 + t * (v1 - v0); }`)
+      b.$line(`inline ${vec_name} lerp(const ${vec_name}& v0, const ${vec_name}& v1, ${comp_name} t) { return v0 + t * (v1 - v0); }`)
     }
   }
 
@@ -743,7 +743,7 @@ class _MathFuncGenerator {
   //   const comp_name = opt.component_name;
   //   const vec_name = dim === 1 ? comp_name : `${base_name}${dim}`;
 
-  //   b.$line(`inline ${vec_name} slerp(const ${vec_name} &v0, const ${vec_name} &v1, const ${comp_name} &t) {`)
+  //   b.$line(`inline ${vec_name} slerp(const ${vec_name}& v0, const ${vec_name}& v1, const ${comp_name} &t) {`)
   //   b.$indent(_b => {
   //     b.$line(`const ${comp_name} cos_theta = dot(v0, v1);`)
   //     b.$line(`const ${comp_name} theta = acos(cos_theta);`)
@@ -801,7 +801,7 @@ class _MathFuncGenerator {
         .slice(0, dim)
         .map(c => `clamp_radians(v.${c})`)
         .join(', ');
-      b.$line(`inline ${vec_name} clamp_radians(const ${vec_name} &v) { return { ${init_expr} }; }`)
+      b.$line(`inline ${vec_name} clamp_radians(const ${vec_name}& v) { return { ${init_expr} }; }`)
     }
   }
 
@@ -830,7 +830,7 @@ class _MathFuncGenerator {
         .slice(0, dim)
         .map(c => `clamp_degrees(v.${c})`)
         .join(', ');
-      b.$line(`inline ${vec_name} clamp_degrees(const ${vec_name} &v) { return { ${init_expr} }; }`)
+      b.$line(`inline ${vec_name} clamp_degrees(const ${vec_name}& v) { return { ${init_expr} }; }`)
     }
   }
 
@@ -859,7 +859,7 @@ class _MathFuncGenerator {
         .slice(0, dim)
         .map(c => `normalize_radians(v.${c})`)
         .join(', ');
-      b.$line(`inline ${vec_name} normalize_radians(const ${vec_name} &v) { return { ${init_expr} }; }`)
+      b.$line(`inline ${vec_name} normalize_radians(const ${vec_name}& v) { return { ${init_expr} }; }`)
     }
   }
 
@@ -888,7 +888,7 @@ class _MathFuncGenerator {
         .slice(0, dim)
         .map(c => `normalize_degrees(v.${c})`)
         .join(', ');
-      b.$line(`inline ${vec_name} normalize_degrees(const ${vec_name} &v) { return { ${init_expr} }; }`)
+      b.$line(`inline ${vec_name} normalize_degrees(const ${vec_name}& v) { return { ${init_expr} }; }`)
     }
   }
 
@@ -908,7 +908,7 @@ class _MathFuncGenerator {
         .slice(0, dim)
         .map(c => `v.${c} * v.${c}`)
         .join(', ');
-      b.$line(`inline ${vec_name} square(const ${vec_name} &v) { return { ${init_expr} }; }`)
+      b.$line(`inline ${vec_name} square(const ${vec_name}& v) { return { ${init_expr} }; }`)
     }
   }
   @math_func("cube", { accept_comp_kind: ["floating"] })
@@ -926,7 +926,7 @@ class _MathFuncGenerator {
         .slice(0, dim)
         .map(c => `v.${c} * v.${c} * v.${c}`)
         .join(', ');
-      b.$line(`inline ${vec_name} cube(const ${vec_name} &v) { return { ${init_expr} }; }`)
+      b.$line(`inline ${vec_name} cube(const ${vec_name}& v) { return { ${init_expr} }; }`)
     }
   }
 }

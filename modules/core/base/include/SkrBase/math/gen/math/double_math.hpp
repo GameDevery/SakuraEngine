@@ -125,15 +125,15 @@ inline double4 trunc(const double4& v) { return {::std::trunc(v.x), ::std::trunc
 
 // frac
 inline double frac(double v) { double int_ptr; return ::std::modf(v, &int_ptr); }
-inline double2 frac(const double2 &v) { double2 int_ptr; return {::std::modf(v.x, &int_ptr.x), ::std::modf(v.y, &int_ptr.y)}; }
-inline double3 frac(const double3 &v) { double3 int_ptr; return {::std::modf(v.x, &int_ptr.x), ::std::modf(v.y, &int_ptr.y), ::std::modf(v.z, &int_ptr.z)}; }
-inline double4 frac(const double4 &v) { double4 int_ptr; return {::std::modf(v.x, &int_ptr.x), ::std::modf(v.y, &int_ptr.y), ::std::modf(v.z, &int_ptr.z), ::std::modf(v.w, &int_ptr.w)}; }
+inline double2 frac(const double2& v) { double2 int_ptr; return {::std::modf(v.x, &int_ptr.x), ::std::modf(v.y, &int_ptr.y)}; }
+inline double3 frac(const double3& v) { double3 int_ptr; return {::std::modf(v.x, &int_ptr.x), ::std::modf(v.y, &int_ptr.y), ::std::modf(v.z, &int_ptr.z)}; }
+inline double4 frac(const double4& v) { double4 int_ptr; return {::std::modf(v.x, &int_ptr.x), ::std::modf(v.y, &int_ptr.y), ::std::modf(v.z, &int_ptr.z), ::std::modf(v.w, &int_ptr.w)}; }
 
 // modf
 inline double modf(double v, double& int_part) { return ::std::modf(v, &int_part); }
-inline double2 modf(const double2 &v, double2& int_part) { return { ::std::modf(v.x, &int_part.x), ::std::modf(v.y, &int_part.y) }; }
-inline double3 modf(const double3 &v, double3& int_part) { return { ::std::modf(v.x, &int_part.x), ::std::modf(v.y, &int_part.y), ::std::modf(v.z, &int_part.z) }; }
-inline double4 modf(const double4 &v, double4& int_part) { return { ::std::modf(v.x, &int_part.x), ::std::modf(v.y, &int_part.y), ::std::modf(v.z, &int_part.z), ::std::modf(v.w, &int_part.w) }; }
+inline double2 modf(const double2& v, double2& int_part) { return { ::std::modf(v.x, &int_part.x), ::std::modf(v.y, &int_part.y) }; }
+inline double3 modf(const double3& v, double3& int_part) { return { ::std::modf(v.x, &int_part.x), ::std::modf(v.y, &int_part.y), ::std::modf(v.z, &int_part.z) }; }
+inline double4 modf(const double4& v, double4& int_part) { return { ::std::modf(v.x, &int_part.x), ::std::modf(v.y, &int_part.y), ::std::modf(v.z, &int_part.z), ::std::modf(v.w, &int_part.w) }; }
 
 // fmod
 inline double fmod(double x, double y) { return ::std::fmod(x, y); }
@@ -173,9 +173,9 @@ inline double4 log10(const double4& v) { return {::std::log10(v.x), ::std::log10
 
 // logx
 inline double logx(double v, double base) { return ::std::log(v) / ::std::log(base); }
-inline double2 logx(const double2 &v, const double2 &base) { return {logx(v.x, base.x), logx(v.y, base.y)}; }
-inline double3 logx(const double3 &v, const double3 &base) { return {logx(v.x, base.x), logx(v.y, base.y), logx(v.z, base.z)}; }
-inline double4 logx(const double4 &v, const double4 &base) { return {logx(v.x, base.x), logx(v.y, base.y), logx(v.z, base.z), logx(v.w, base.w)}; }
+inline double2 logx(const double2& v, const double2& base) { return {logx(v.x, base.x), logx(v.y, base.y)}; }
+inline double3 logx(const double3& v, const double3& base) { return {logx(v.x, base.x), logx(v.y, base.y), logx(v.z, base.z)}; }
+inline double4 logx(const double4& v, const double4& base) { return {logx(v.x, base.x), logx(v.y, base.y), logx(v.z, base.z), logx(v.w, base.w)}; }
 
 // isfinite
 inline bool isfinite(double v) { return ::std::isfinite(v); }
@@ -249,15 +249,15 @@ inline double4 hypot(const double4& x, const double4& y, const double4& z) { ret
 
 // clamp
 inline double clamp(double v, double min, double max) { return v < min ? min : v > max ? max : v; }
-inline double2 clamp(const double2 &v, const double2 &min, const double2 &max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y)}; }
-inline double3 clamp(const double3 &v, const double3 &min, const double3 &max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y), clamp(v.z, min.z, max.z)}; }
-inline double4 clamp(const double4 &v, const double4 &min, const double4 &max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y), clamp(v.z, min.z, max.z), clamp(v.w, min.w, max.w)}; }
+inline double2 clamp(const double2& v, const double2& min, const double2& max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y)}; }
+inline double3 clamp(const double3& v, const double3& min, const double3& max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y), clamp(v.z, min.z, max.z)}; }
+inline double4 clamp(const double4& v, const double4& min, const double4& max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y), clamp(v.z, min.z, max.z), clamp(v.w, min.w, max.w)}; }
 
 // saturate
 inline double saturate(double v) { return clamp(v, double(0), double(1)); }
-inline double2 saturate(const double2 &v) { return {clamp(v.x, double(0), double(1)), clamp(v.y, double(0), double(1))}; }
-inline double3 saturate(const double3 &v) { return {clamp(v.x, double(0), double(1)), clamp(v.y, double(0), double(1)), clamp(v.z, double(0), double(1))}; }
-inline double4 saturate(const double4 &v) { return {clamp(v.x, double(0), double(1)), clamp(v.y, double(0), double(1)), clamp(v.z, double(0), double(1)), clamp(v.w, double(0), double(1))}; }
+inline double2 saturate(const double2& v) { return {clamp(v.x, double(0), double(1)), clamp(v.y, double(0), double(1))}; }
+inline double3 saturate(const double3& v) { return {clamp(v.x, double(0), double(1)), clamp(v.y, double(0), double(1)), clamp(v.z, double(0), double(1))}; }
+inline double4 saturate(const double4& v) { return {clamp(v.x, double(0), double(1)), clamp(v.y, double(0), double(1)), clamp(v.z, double(0), double(1)), clamp(v.w, double(0), double(1))}; }
 
 // select
 inline double2 select(bool2 c, double2 if_true, double2 if_false) { return { c.x ? if_true.x : if_false.x, c.y ? if_true.y : if_false.y }; }
@@ -272,67 +272,67 @@ double4 rcp(const double4& v);
 
 // sign
 inline double sign(double v) { return v < double(0) ? double(-1) : v > double(0) ? double(1) : double(0); }
-inline double2 sign(const double2 &v) { return {v.x < double(0) ? double(-1) : v.x > double(0) ? double(1) : double(0), v.y < double(0) ? double(-1) : v.y > double(0) ? double(1) : double(0)}; }
-inline double3 sign(const double3 &v) { return {v.x < double(0) ? double(-1) : v.x > double(0) ? double(1) : double(0), v.y < double(0) ? double(-1) : v.y > double(0) ? double(1) : double(0), v.z < double(0) ? double(-1) : v.z > double(0) ? double(1) : double(0)}; }
-inline double4 sign(const double4 &v) { return {v.x < double(0) ? double(-1) : v.x > double(0) ? double(1) : double(0), v.y < double(0) ? double(-1) : v.y > double(0) ? double(1) : double(0), v.z < double(0) ? double(-1) : v.z > double(0) ? double(1) : double(0), v.w < double(0) ? double(-1) : v.w > double(0) ? double(1) : double(0)}; }
+inline double2 sign(const double2& v) { return {v.x < double(0) ? double(-1) : v.x > double(0) ? double(1) : double(0), v.y < double(0) ? double(-1) : v.y > double(0) ? double(1) : double(0)}; }
+inline double3 sign(const double3& v) { return {v.x < double(0) ? double(-1) : v.x > double(0) ? double(1) : double(0), v.y < double(0) ? double(-1) : v.y > double(0) ? double(1) : double(0), v.z < double(0) ? double(-1) : v.z > double(0) ? double(1) : double(0)}; }
+inline double4 sign(const double4& v) { return {v.x < double(0) ? double(-1) : v.x > double(0) ? double(1) : double(0), v.y < double(0) ? double(-1) : v.y > double(0) ? double(1) : double(0), v.z < double(0) ? double(-1) : v.z > double(0) ? double(1) : double(0), v.w < double(0) ? double(-1) : v.w > double(0) ? double(1) : double(0)}; }
 
 // degrees
 inline double degrees(double v) { return v * double(180) / double(kPi); }
-inline double2 degrees(const double2 &v) { return {v.x * double(180) / double(kPi), v.y * double(180) / double(kPi)}; }
-inline double3 degrees(const double3 &v) { return {v.x * double(180) / double(kPi), v.y * double(180) / double(kPi), v.z * double(180) / double(kPi)}; }
-inline double4 degrees(const double4 &v) { return {v.x * double(180) / double(kPi), v.y * double(180) / double(kPi), v.z * double(180) / double(kPi), v.w * double(180) / double(kPi)}; }
+inline double2 degrees(const double2& v) { return {v.x * double(180) / double(kPi), v.y * double(180) / double(kPi)}; }
+inline double3 degrees(const double3& v) { return {v.x * double(180) / double(kPi), v.y * double(180) / double(kPi), v.z * double(180) / double(kPi)}; }
+inline double4 degrees(const double4& v) { return {v.x * double(180) / double(kPi), v.y * double(180) / double(kPi), v.z * double(180) / double(kPi), v.w * double(180) / double(kPi)}; }
 
 // radians
 inline double radians(double v) { return v * double(kPi) / double(180); }
-inline double2 radians(const double2 &v) { return {v.x * double(kPi) / double(180), v.y * double(kPi) / double(180)}; }
-inline double3 radians(const double3 &v) { return {v.x * double(kPi) / double(180), v.y * double(kPi) / double(180), v.z * double(kPi) / double(180)}; }
-inline double4 radians(const double4 &v) { return {v.x * double(kPi) / double(180), v.y * double(kPi) / double(180), v.z * double(kPi) / double(180), v.w * double(kPi) / double(180)}; }
+inline double2 radians(const double2& v) { return {v.x * double(kPi) / double(180), v.y * double(kPi) / double(180)}; }
+inline double3 radians(const double3& v) { return {v.x * double(kPi) / double(180), v.y * double(kPi) / double(180), v.z * double(kPi) / double(180)}; }
+inline double4 radians(const double4& v) { return {v.x * double(kPi) / double(180), v.y * double(kPi) / double(180), v.z * double(kPi) / double(180), v.w * double(kPi) / double(180)}; }
 
 // dot
-inline double dot(const double2 &v1, const double2 &v2) { return v1.x * v2.x + v1.y * v2.y; }
-inline double dot(const double3 &v1, const double3 &v2) { return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z; }
-inline double dot(const double4 &v1, const double4 &v2) { return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z + v1.w * v2.w; }
+inline double dot(const double2& v1, const double2& v2) { return v1.x * v2.x + v1.y * v2.y; }
+inline double dot(const double3& v1, const double3& v2) { return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z; }
+inline double dot(const double4& v1, const double4& v2) { return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z + v1.w * v2.w; }
 
 // cross
-inline double3 cross(const double3 &x, const double3 &y) { return {(x * y.yzx() - x.yzx() * y).yzx()}; }
+inline double3 cross(const double3& x, const double3& y) { return {(x * y.yzx() - x.yzx() * y).yzx()}; }
 
 // length
-inline double length(const double2 &v) { return ::std::sqrt(dot(v, v)); }
-inline double length(const double3 &v) { return ::std::sqrt(dot(v, v)); }
-inline double length(const double4 &v) { return ::std::sqrt(dot(v, v)); }
+inline double length(const double2& v) { return ::std::sqrt(dot(v, v)); }
+inline double length(const double3& v) { return ::std::sqrt(dot(v, v)); }
+inline double length(const double4& v) { return ::std::sqrt(dot(v, v)); }
 
 // length_squared
-inline double length_squared(const double2 &v) { return dot(v, v); }
-inline double length_squared(const double3 &v) { return dot(v, v); }
-inline double length_squared(const double4 &v) { return dot(v, v); }
+inline double length_squared(const double2& v) { return dot(v, v); }
+inline double length_squared(const double3& v) { return dot(v, v); }
+inline double length_squared(const double4& v) { return dot(v, v); }
 
 // distance
-inline double distance(const double2 &x, const double2 &y) { return length_squared(y - x); }
-inline double distance(const double3 &x, const double3 &y) { return length_squared(y - x); }
-inline double distance(const double4 &x, const double4 &y) { return length_squared(y - x); }
+inline double distance(const double2& x, const double2& y) { return length_squared(y - x); }
+inline double distance(const double3& x, const double3& y) { return length_squared(y - x); }
+inline double distance(const double4& x, const double4& y) { return length_squared(y - x); }
 
 // distance_squared
-inline double distance_squared(const double2 &x, const double2 &y) { return length(y - x); }
-inline double distance_squared(const double3 &x, const double3 &y) { return length(y - x); }
-inline double distance_squared(const double4 &x, const double4 &y) { return length(y - x); }
+inline double distance_squared(const double2& x, const double2& y) { return length(y - x); }
+inline double distance_squared(const double3& x, const double3& y) { return length(y - x); }
+inline double distance_squared(const double4& x, const double4& y) { return length(y - x); }
 
 // normalize
-inline double2 normalize(const double2 &v) { return v / length(v); }
-inline double3 normalize(const double3 &v) { return v / length(v); }
-inline double4 normalize(const double4 &v) { return v / length(v); }
+inline double2 normalize(const double2& v) { return v / length(v); }
+inline double3 normalize(const double3& v) { return v / length(v); }
+inline double4 normalize(const double4& v) { return v / length(v); }
 
 // reflect
-inline double2 reflect(const double2 &v, const double2 &n) { return v - 2 * dot(n, v) * n; }
-inline double3 reflect(const double3 &v, const double3 &n) { return v - 2 * dot(n, v) * n; }
+inline double2 reflect(const double2& v, const double2& n) { return v - 2 * dot(n, v) * n; }
+inline double3 reflect(const double3& v, const double3& n) { return v - 2 * dot(n, v) * n; }
 
 // refract
-inline double2 refract(const double2 &v, const double2 &n, double eta) {
+inline double2 refract(const double2& v, const double2& n, double eta) {
     const double cos_i = dot(-v, n);
     const double cos_t2 = double(1) - eta * eta * (double(1) - cos_i * cos_i);
     const double2 t = eta * v + (eta * cos_i - ::std::sqrt(::std::abs(cos_t2))) * n;
     return t * double2(cos_t2 > 0);
 }
-inline double3 refract(const double3 &v, const double3 &n, double eta) {
+inline double3 refract(const double3& v, const double3& n, double eta) {
     const double cos_i = dot(-v, n);
     const double cos_t2 = double(1) - eta * eta * (double(1) - cos_i * cos_i);
     const double3 t = eta * v + (eta * cos_i - ::std::sqrt(::std::abs(cos_t2))) * n;
@@ -341,9 +341,9 @@ inline double3 refract(const double3 &v, const double3 &n, double eta) {
 
 // step
 inline double step(double edge, double v) { return v < edge ? double(0) : double(1); }
-inline double2 step(const double2 &edge, const double2 &v) { return select(edge < v, double2(0), double2(1)); }
-inline double3 step(const double3 &edge, const double3 &v) { return select(edge < v, double3(0), double3(1)); }
-inline double4 step(const double4 &edge, const double4 &v) { return select(edge < v, double4(0), double4(1)); }
+inline double2 step(const double2& edge, const double2& v) { return select(edge < v, double2(0), double2(1)); }
+inline double3 step(const double3& edge, const double3& v) { return select(edge < v, double3(0), double3(1)); }
+inline double4 step(const double4& edge, const double4& v) { return select(edge < v, double4(0), double4(1)); }
 
 // smoothstep
 inline double smoothstep(double edge0, double edge1, double v) {
@@ -365,9 +365,9 @@ inline double4 smoothstep(const double4& edge0, const double4& edge1, const doub
 
 // lerp
 inline double lerp(double v0, double v1, double t) { return v0 + t * (v1 - v0); }
-inline double2 lerp(const double2 &v0, const double2 &v1, double t) { return v0 + t * (v1 - v0); }
-inline double3 lerp(const double3 &v0, const double3 &v1, double t) { return v0 + t * (v1 - v0); }
-inline double4 lerp(const double4 &v0, const double4 &v1, double t) { return v0 + t * (v1 - v0); }
+inline double2 lerp(const double2& v0, const double2& v1, double t) { return v0 + t * (v1 - v0); }
+inline double3 lerp(const double3& v0, const double3& v1, double t) { return v0 + t * (v1 - v0); }
+inline double4 lerp(const double4& v0, const double4& v1, double t) { return v0 + t * (v1 - v0); }
 
 // nearly_equal
 inline bool nearly_equal(double x, double y, double epsilon = double(0.000001)) { return abs(x - y) <= epsilon; }
@@ -383,9 +383,9 @@ inline double clamp_radians(double v) {
     }
     return v;
 }
-inline double2 clamp_radians(const double2 &v) { return { clamp_radians(v.x), clamp_radians(v.y) }; }
-inline double3 clamp_radians(const double3 &v) { return { clamp_radians(v.x), clamp_radians(v.y), clamp_radians(v.z) }; }
-inline double4 clamp_radians(const double4 &v) { return { clamp_radians(v.x), clamp_radians(v.y), clamp_radians(v.z), clamp_radians(v.w) }; }
+inline double2 clamp_radians(const double2& v) { return { clamp_radians(v.x), clamp_radians(v.y) }; }
+inline double3 clamp_radians(const double3& v) { return { clamp_radians(v.x), clamp_radians(v.y), clamp_radians(v.z) }; }
+inline double4 clamp_radians(const double4& v) { return { clamp_radians(v.x), clamp_radians(v.y), clamp_radians(v.z), clamp_radians(v.w) }; }
 
 // clamp_degrees
 inline double clamp_degrees(double v) {
@@ -395,9 +395,9 @@ inline double clamp_degrees(double v) {
     }
     return v;
 }
-inline double2 clamp_degrees(const double2 &v) { return { clamp_degrees(v.x), clamp_degrees(v.y) }; }
-inline double3 clamp_degrees(const double3 &v) { return { clamp_degrees(v.x), clamp_degrees(v.y), clamp_degrees(v.z) }; }
-inline double4 clamp_degrees(const double4 &v) { return { clamp_degrees(v.x), clamp_degrees(v.y), clamp_degrees(v.z), clamp_degrees(v.w) }; }
+inline double2 clamp_degrees(const double2& v) { return { clamp_degrees(v.x), clamp_degrees(v.y) }; }
+inline double3 clamp_degrees(const double3& v) { return { clamp_degrees(v.x), clamp_degrees(v.y), clamp_degrees(v.z) }; }
+inline double4 clamp_degrees(const double4& v) { return { clamp_degrees(v.x), clamp_degrees(v.y), clamp_degrees(v.z), clamp_degrees(v.w) }; }
 
 // normalize_radians
 inline double normalize_radians(double v) {
@@ -407,9 +407,9 @@ inline double normalize_radians(double v) {
     }
     return v;
 }
-inline double2 normalize_radians(const double2 &v) { return { normalize_radians(v.x), normalize_radians(v.y) }; }
-inline double3 normalize_radians(const double3 &v) { return { normalize_radians(v.x), normalize_radians(v.y), normalize_radians(v.z) }; }
-inline double4 normalize_radians(const double4 &v) { return { normalize_radians(v.x), normalize_radians(v.y), normalize_radians(v.z), normalize_radians(v.w) }; }
+inline double2 normalize_radians(const double2& v) { return { normalize_radians(v.x), normalize_radians(v.y) }; }
+inline double3 normalize_radians(const double3& v) { return { normalize_radians(v.x), normalize_radians(v.y), normalize_radians(v.z) }; }
+inline double4 normalize_radians(const double4& v) { return { normalize_radians(v.x), normalize_radians(v.y), normalize_radians(v.z), normalize_radians(v.w) }; }
 
 // normalize_degrees
 inline double normalize_degrees(double v) {
@@ -419,21 +419,21 @@ inline double normalize_degrees(double v) {
     }
     return v;
 }
-inline double2 normalize_degrees(const double2 &v) { return { normalize_degrees(v.x), normalize_degrees(v.y) }; }
-inline double3 normalize_degrees(const double3 &v) { return { normalize_degrees(v.x), normalize_degrees(v.y), normalize_degrees(v.z) }; }
-inline double4 normalize_degrees(const double4 &v) { return { normalize_degrees(v.x), normalize_degrees(v.y), normalize_degrees(v.z), normalize_degrees(v.w) }; }
+inline double2 normalize_degrees(const double2& v) { return { normalize_degrees(v.x), normalize_degrees(v.y) }; }
+inline double3 normalize_degrees(const double3& v) { return { normalize_degrees(v.x), normalize_degrees(v.y), normalize_degrees(v.z) }; }
+inline double4 normalize_degrees(const double4& v) { return { normalize_degrees(v.x), normalize_degrees(v.y), normalize_degrees(v.z), normalize_degrees(v.w) }; }
 
 // square
 inline double square(double v) { return v * v; }
-inline double2 square(const double2 &v) { return { v.x * v.x, v.y * v.y }; }
-inline double3 square(const double3 &v) { return { v.x * v.x, v.y * v.y, v.z * v.z }; }
-inline double4 square(const double4 &v) { return { v.x * v.x, v.y * v.y, v.z * v.z, v.w * v.w }; }
+inline double2 square(const double2& v) { return { v.x * v.x, v.y * v.y }; }
+inline double3 square(const double3& v) { return { v.x * v.x, v.y * v.y, v.z * v.z }; }
+inline double4 square(const double4& v) { return { v.x * v.x, v.y * v.y, v.z * v.z, v.w * v.w }; }
 
 // cube
 inline double cube(double v) { return v * v * v; }
-inline double2 cube(const double2 &v) { return { v.x * v.x * v.x, v.y * v.y * v.y }; }
-inline double3 cube(const double3 &v) { return { v.x * v.x * v.x, v.y * v.y * v.y, v.z * v.z * v.z }; }
-inline double4 cube(const double4 &v) { return { v.x * v.x * v.x, v.y * v.y * v.y, v.z * v.z * v.z, v.w * v.w * v.w }; }
+inline double2 cube(const double2& v) { return { v.x * v.x * v.x, v.y * v.y * v.y }; }
+inline double3 cube(const double3& v) { return { v.x * v.x * v.x, v.y * v.y * v.y, v.z * v.z * v.z }; }
+inline double4 cube(const double4& v) { return { v.x * v.x * v.x, v.y * v.y * v.y, v.z * v.z * v.z, v.w * v.w * v.w }; }
 
 }
 }

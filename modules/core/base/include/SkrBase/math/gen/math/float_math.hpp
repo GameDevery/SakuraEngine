@@ -125,15 +125,15 @@ inline float4 trunc(const float4& v) { return {::std::trunc(v.x), ::std::trunc(v
 
 // frac
 inline float frac(float v) { float int_ptr; return ::std::modf(v, &int_ptr); }
-inline float2 frac(const float2 &v) { float2 int_ptr; return {::std::modf(v.x, &int_ptr.x), ::std::modf(v.y, &int_ptr.y)}; }
-inline float3 frac(const float3 &v) { float3 int_ptr; return {::std::modf(v.x, &int_ptr.x), ::std::modf(v.y, &int_ptr.y), ::std::modf(v.z, &int_ptr.z)}; }
-inline float4 frac(const float4 &v) { float4 int_ptr; return {::std::modf(v.x, &int_ptr.x), ::std::modf(v.y, &int_ptr.y), ::std::modf(v.z, &int_ptr.z), ::std::modf(v.w, &int_ptr.w)}; }
+inline float2 frac(const float2& v) { float2 int_ptr; return {::std::modf(v.x, &int_ptr.x), ::std::modf(v.y, &int_ptr.y)}; }
+inline float3 frac(const float3& v) { float3 int_ptr; return {::std::modf(v.x, &int_ptr.x), ::std::modf(v.y, &int_ptr.y), ::std::modf(v.z, &int_ptr.z)}; }
+inline float4 frac(const float4& v) { float4 int_ptr; return {::std::modf(v.x, &int_ptr.x), ::std::modf(v.y, &int_ptr.y), ::std::modf(v.z, &int_ptr.z), ::std::modf(v.w, &int_ptr.w)}; }
 
 // modf
 inline float modf(float v, float& int_part) { return ::std::modf(v, &int_part); }
-inline float2 modf(const float2 &v, float2& int_part) { return { ::std::modf(v.x, &int_part.x), ::std::modf(v.y, &int_part.y) }; }
-inline float3 modf(const float3 &v, float3& int_part) { return { ::std::modf(v.x, &int_part.x), ::std::modf(v.y, &int_part.y), ::std::modf(v.z, &int_part.z) }; }
-inline float4 modf(const float4 &v, float4& int_part) { return { ::std::modf(v.x, &int_part.x), ::std::modf(v.y, &int_part.y), ::std::modf(v.z, &int_part.z), ::std::modf(v.w, &int_part.w) }; }
+inline float2 modf(const float2& v, float2& int_part) { return { ::std::modf(v.x, &int_part.x), ::std::modf(v.y, &int_part.y) }; }
+inline float3 modf(const float3& v, float3& int_part) { return { ::std::modf(v.x, &int_part.x), ::std::modf(v.y, &int_part.y), ::std::modf(v.z, &int_part.z) }; }
+inline float4 modf(const float4& v, float4& int_part) { return { ::std::modf(v.x, &int_part.x), ::std::modf(v.y, &int_part.y), ::std::modf(v.z, &int_part.z), ::std::modf(v.w, &int_part.w) }; }
 
 // fmod
 inline float fmod(float x, float y) { return ::std::fmod(x, y); }
@@ -173,9 +173,9 @@ inline float4 log10(const float4& v) { return {::std::log10(v.x), ::std::log10(v
 
 // logx
 inline float logx(float v, float base) { return ::std::log(v) / ::std::log(base); }
-inline float2 logx(const float2 &v, const float2 &base) { return {logx(v.x, base.x), logx(v.y, base.y)}; }
-inline float3 logx(const float3 &v, const float3 &base) { return {logx(v.x, base.x), logx(v.y, base.y), logx(v.z, base.z)}; }
-inline float4 logx(const float4 &v, const float4 &base) { return {logx(v.x, base.x), logx(v.y, base.y), logx(v.z, base.z), logx(v.w, base.w)}; }
+inline float2 logx(const float2& v, const float2& base) { return {logx(v.x, base.x), logx(v.y, base.y)}; }
+inline float3 logx(const float3& v, const float3& base) { return {logx(v.x, base.x), logx(v.y, base.y), logx(v.z, base.z)}; }
+inline float4 logx(const float4& v, const float4& base) { return {logx(v.x, base.x), logx(v.y, base.y), logx(v.z, base.z), logx(v.w, base.w)}; }
 
 // isfinite
 inline bool isfinite(float v) { return ::std::isfinite(v); }
@@ -249,15 +249,15 @@ inline float4 hypot(const float4& x, const float4& y, const float4& z) { return 
 
 // clamp
 inline float clamp(float v, float min, float max) { return v < min ? min : v > max ? max : v; }
-inline float2 clamp(const float2 &v, const float2 &min, const float2 &max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y)}; }
-inline float3 clamp(const float3 &v, const float3 &min, const float3 &max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y), clamp(v.z, min.z, max.z)}; }
-inline float4 clamp(const float4 &v, const float4 &min, const float4 &max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y), clamp(v.z, min.z, max.z), clamp(v.w, min.w, max.w)}; }
+inline float2 clamp(const float2& v, const float2& min, const float2& max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y)}; }
+inline float3 clamp(const float3& v, const float3& min, const float3& max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y), clamp(v.z, min.z, max.z)}; }
+inline float4 clamp(const float4& v, const float4& min, const float4& max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y), clamp(v.z, min.z, max.z), clamp(v.w, min.w, max.w)}; }
 
 // saturate
 inline float saturate(float v) { return clamp(v, float(0), float(1)); }
-inline float2 saturate(const float2 &v) { return {clamp(v.x, float(0), float(1)), clamp(v.y, float(0), float(1))}; }
-inline float3 saturate(const float3 &v) { return {clamp(v.x, float(0), float(1)), clamp(v.y, float(0), float(1)), clamp(v.z, float(0), float(1))}; }
-inline float4 saturate(const float4 &v) { return {clamp(v.x, float(0), float(1)), clamp(v.y, float(0), float(1)), clamp(v.z, float(0), float(1)), clamp(v.w, float(0), float(1))}; }
+inline float2 saturate(const float2& v) { return {clamp(v.x, float(0), float(1)), clamp(v.y, float(0), float(1))}; }
+inline float3 saturate(const float3& v) { return {clamp(v.x, float(0), float(1)), clamp(v.y, float(0), float(1)), clamp(v.z, float(0), float(1))}; }
+inline float4 saturate(const float4& v) { return {clamp(v.x, float(0), float(1)), clamp(v.y, float(0), float(1)), clamp(v.z, float(0), float(1)), clamp(v.w, float(0), float(1))}; }
 
 // select
 inline float2 select(bool2 c, float2 if_true, float2 if_false) { return { c.x ? if_true.x : if_false.x, c.y ? if_true.y : if_false.y }; }
@@ -272,67 +272,67 @@ float4 rcp(const float4& v);
 
 // sign
 inline float sign(float v) { return v < float(0) ? float(-1) : v > float(0) ? float(1) : float(0); }
-inline float2 sign(const float2 &v) { return {v.x < float(0) ? float(-1) : v.x > float(0) ? float(1) : float(0), v.y < float(0) ? float(-1) : v.y > float(0) ? float(1) : float(0)}; }
-inline float3 sign(const float3 &v) { return {v.x < float(0) ? float(-1) : v.x > float(0) ? float(1) : float(0), v.y < float(0) ? float(-1) : v.y > float(0) ? float(1) : float(0), v.z < float(0) ? float(-1) : v.z > float(0) ? float(1) : float(0)}; }
-inline float4 sign(const float4 &v) { return {v.x < float(0) ? float(-1) : v.x > float(0) ? float(1) : float(0), v.y < float(0) ? float(-1) : v.y > float(0) ? float(1) : float(0), v.z < float(0) ? float(-1) : v.z > float(0) ? float(1) : float(0), v.w < float(0) ? float(-1) : v.w > float(0) ? float(1) : float(0)}; }
+inline float2 sign(const float2& v) { return {v.x < float(0) ? float(-1) : v.x > float(0) ? float(1) : float(0), v.y < float(0) ? float(-1) : v.y > float(0) ? float(1) : float(0)}; }
+inline float3 sign(const float3& v) { return {v.x < float(0) ? float(-1) : v.x > float(0) ? float(1) : float(0), v.y < float(0) ? float(-1) : v.y > float(0) ? float(1) : float(0), v.z < float(0) ? float(-1) : v.z > float(0) ? float(1) : float(0)}; }
+inline float4 sign(const float4& v) { return {v.x < float(0) ? float(-1) : v.x > float(0) ? float(1) : float(0), v.y < float(0) ? float(-1) : v.y > float(0) ? float(1) : float(0), v.z < float(0) ? float(-1) : v.z > float(0) ? float(1) : float(0), v.w < float(0) ? float(-1) : v.w > float(0) ? float(1) : float(0)}; }
 
 // degrees
 inline float degrees(float v) { return v * float(180) / float(kPi); }
-inline float2 degrees(const float2 &v) { return {v.x * float(180) / float(kPi), v.y * float(180) / float(kPi)}; }
-inline float3 degrees(const float3 &v) { return {v.x * float(180) / float(kPi), v.y * float(180) / float(kPi), v.z * float(180) / float(kPi)}; }
-inline float4 degrees(const float4 &v) { return {v.x * float(180) / float(kPi), v.y * float(180) / float(kPi), v.z * float(180) / float(kPi), v.w * float(180) / float(kPi)}; }
+inline float2 degrees(const float2& v) { return {v.x * float(180) / float(kPi), v.y * float(180) / float(kPi)}; }
+inline float3 degrees(const float3& v) { return {v.x * float(180) / float(kPi), v.y * float(180) / float(kPi), v.z * float(180) / float(kPi)}; }
+inline float4 degrees(const float4& v) { return {v.x * float(180) / float(kPi), v.y * float(180) / float(kPi), v.z * float(180) / float(kPi), v.w * float(180) / float(kPi)}; }
 
 // radians
 inline float radians(float v) { return v * float(kPi) / float(180); }
-inline float2 radians(const float2 &v) { return {v.x * float(kPi) / float(180), v.y * float(kPi) / float(180)}; }
-inline float3 radians(const float3 &v) { return {v.x * float(kPi) / float(180), v.y * float(kPi) / float(180), v.z * float(kPi) / float(180)}; }
-inline float4 radians(const float4 &v) { return {v.x * float(kPi) / float(180), v.y * float(kPi) / float(180), v.z * float(kPi) / float(180), v.w * float(kPi) / float(180)}; }
+inline float2 radians(const float2& v) { return {v.x * float(kPi) / float(180), v.y * float(kPi) / float(180)}; }
+inline float3 radians(const float3& v) { return {v.x * float(kPi) / float(180), v.y * float(kPi) / float(180), v.z * float(kPi) / float(180)}; }
+inline float4 radians(const float4& v) { return {v.x * float(kPi) / float(180), v.y * float(kPi) / float(180), v.z * float(kPi) / float(180), v.w * float(kPi) / float(180)}; }
 
 // dot
-inline float dot(const float2 &v1, const float2 &v2) { return v1.x * v2.x + v1.y * v2.y; }
-inline float dot(const float3 &v1, const float3 &v2) { return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z; }
-inline float dot(const float4 &v1, const float4 &v2) { return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z + v1.w * v2.w; }
+inline float dot(const float2& v1, const float2& v2) { return v1.x * v2.x + v1.y * v2.y; }
+inline float dot(const float3& v1, const float3& v2) { return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z; }
+inline float dot(const float4& v1, const float4& v2) { return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z + v1.w * v2.w; }
 
 // cross
-inline float3 cross(const float3 &x, const float3 &y) { return {(x * y.yzx() - x.yzx() * y).yzx()}; }
+inline float3 cross(const float3& x, const float3& y) { return {(x * y.yzx() - x.yzx() * y).yzx()}; }
 
 // length
-inline float length(const float2 &v) { return ::std::sqrt(dot(v, v)); }
-inline float length(const float3 &v) { return ::std::sqrt(dot(v, v)); }
-inline float length(const float4 &v) { return ::std::sqrt(dot(v, v)); }
+inline float length(const float2& v) { return ::std::sqrt(dot(v, v)); }
+inline float length(const float3& v) { return ::std::sqrt(dot(v, v)); }
+inline float length(const float4& v) { return ::std::sqrt(dot(v, v)); }
 
 // length_squared
-inline float length_squared(const float2 &v) { return dot(v, v); }
-inline float length_squared(const float3 &v) { return dot(v, v); }
-inline float length_squared(const float4 &v) { return dot(v, v); }
+inline float length_squared(const float2& v) { return dot(v, v); }
+inline float length_squared(const float3& v) { return dot(v, v); }
+inline float length_squared(const float4& v) { return dot(v, v); }
 
 // distance
-inline float distance(const float2 &x, const float2 &y) { return length_squared(y - x); }
-inline float distance(const float3 &x, const float3 &y) { return length_squared(y - x); }
-inline float distance(const float4 &x, const float4 &y) { return length_squared(y - x); }
+inline float distance(const float2& x, const float2& y) { return length_squared(y - x); }
+inline float distance(const float3& x, const float3& y) { return length_squared(y - x); }
+inline float distance(const float4& x, const float4& y) { return length_squared(y - x); }
 
 // distance_squared
-inline float distance_squared(const float2 &x, const float2 &y) { return length(y - x); }
-inline float distance_squared(const float3 &x, const float3 &y) { return length(y - x); }
-inline float distance_squared(const float4 &x, const float4 &y) { return length(y - x); }
+inline float distance_squared(const float2& x, const float2& y) { return length(y - x); }
+inline float distance_squared(const float3& x, const float3& y) { return length(y - x); }
+inline float distance_squared(const float4& x, const float4& y) { return length(y - x); }
 
 // normalize
-inline float2 normalize(const float2 &v) { return v / length(v); }
-inline float3 normalize(const float3 &v) { return v / length(v); }
-inline float4 normalize(const float4 &v) { return v / length(v); }
+inline float2 normalize(const float2& v) { return v / length(v); }
+inline float3 normalize(const float3& v) { return v / length(v); }
+inline float4 normalize(const float4& v) { return v / length(v); }
 
 // reflect
-inline float2 reflect(const float2 &v, const float2 &n) { return v - 2 * dot(n, v) * n; }
-inline float3 reflect(const float3 &v, const float3 &n) { return v - 2 * dot(n, v) * n; }
+inline float2 reflect(const float2& v, const float2& n) { return v - 2 * dot(n, v) * n; }
+inline float3 reflect(const float3& v, const float3& n) { return v - 2 * dot(n, v) * n; }
 
 // refract
-inline float2 refract(const float2 &v, const float2 &n, float eta) {
+inline float2 refract(const float2& v, const float2& n, float eta) {
     const float cos_i = dot(-v, n);
     const float cos_t2 = float(1) - eta * eta * (float(1) - cos_i * cos_i);
     const float2 t = eta * v + (eta * cos_i - ::std::sqrt(::std::abs(cos_t2))) * n;
     return t * float2(cos_t2 > 0);
 }
-inline float3 refract(const float3 &v, const float3 &n, float eta) {
+inline float3 refract(const float3& v, const float3& n, float eta) {
     const float cos_i = dot(-v, n);
     const float cos_t2 = float(1) - eta * eta * (float(1) - cos_i * cos_i);
     const float3 t = eta * v + (eta * cos_i - ::std::sqrt(::std::abs(cos_t2))) * n;
@@ -341,9 +341,9 @@ inline float3 refract(const float3 &v, const float3 &n, float eta) {
 
 // step
 inline float step(float edge, float v) { return v < edge ? float(0) : float(1); }
-inline float2 step(const float2 &edge, const float2 &v) { return select(edge < v, float2(0), float2(1)); }
-inline float3 step(const float3 &edge, const float3 &v) { return select(edge < v, float3(0), float3(1)); }
-inline float4 step(const float4 &edge, const float4 &v) { return select(edge < v, float4(0), float4(1)); }
+inline float2 step(const float2& edge, const float2& v) { return select(edge < v, float2(0), float2(1)); }
+inline float3 step(const float3& edge, const float3& v) { return select(edge < v, float3(0), float3(1)); }
+inline float4 step(const float4& edge, const float4& v) { return select(edge < v, float4(0), float4(1)); }
 
 // smoothstep
 inline float smoothstep(float edge0, float edge1, float v) {
@@ -365,9 +365,9 @@ inline float4 smoothstep(const float4& edge0, const float4& edge1, const float4&
 
 // lerp
 inline float lerp(float v0, float v1, float t) { return v0 + t * (v1 - v0); }
-inline float2 lerp(const float2 &v0, const float2 &v1, float t) { return v0 + t * (v1 - v0); }
-inline float3 lerp(const float3 &v0, const float3 &v1, float t) { return v0 + t * (v1 - v0); }
-inline float4 lerp(const float4 &v0, const float4 &v1, float t) { return v0 + t * (v1 - v0); }
+inline float2 lerp(const float2& v0, const float2& v1, float t) { return v0 + t * (v1 - v0); }
+inline float3 lerp(const float3& v0, const float3& v1, float t) { return v0 + t * (v1 - v0); }
+inline float4 lerp(const float4& v0, const float4& v1, float t) { return v0 + t * (v1 - v0); }
 
 // nearly_equal
 inline bool nearly_equal(float x, float y, float epsilon = float(0.000001)) { return abs(x - y) <= epsilon; }
@@ -383,9 +383,9 @@ inline float clamp_radians(float v) {
     }
     return v;
 }
-inline float2 clamp_radians(const float2 &v) { return { clamp_radians(v.x), clamp_radians(v.y) }; }
-inline float3 clamp_radians(const float3 &v) { return { clamp_radians(v.x), clamp_radians(v.y), clamp_radians(v.z) }; }
-inline float4 clamp_radians(const float4 &v) { return { clamp_radians(v.x), clamp_radians(v.y), clamp_radians(v.z), clamp_radians(v.w) }; }
+inline float2 clamp_radians(const float2& v) { return { clamp_radians(v.x), clamp_radians(v.y) }; }
+inline float3 clamp_radians(const float3& v) { return { clamp_radians(v.x), clamp_radians(v.y), clamp_radians(v.z) }; }
+inline float4 clamp_radians(const float4& v) { return { clamp_radians(v.x), clamp_radians(v.y), clamp_radians(v.z), clamp_radians(v.w) }; }
 
 // clamp_degrees
 inline float clamp_degrees(float v) {
@@ -395,9 +395,9 @@ inline float clamp_degrees(float v) {
     }
     return v;
 }
-inline float2 clamp_degrees(const float2 &v) { return { clamp_degrees(v.x), clamp_degrees(v.y) }; }
-inline float3 clamp_degrees(const float3 &v) { return { clamp_degrees(v.x), clamp_degrees(v.y), clamp_degrees(v.z) }; }
-inline float4 clamp_degrees(const float4 &v) { return { clamp_degrees(v.x), clamp_degrees(v.y), clamp_degrees(v.z), clamp_degrees(v.w) }; }
+inline float2 clamp_degrees(const float2& v) { return { clamp_degrees(v.x), clamp_degrees(v.y) }; }
+inline float3 clamp_degrees(const float3& v) { return { clamp_degrees(v.x), clamp_degrees(v.y), clamp_degrees(v.z) }; }
+inline float4 clamp_degrees(const float4& v) { return { clamp_degrees(v.x), clamp_degrees(v.y), clamp_degrees(v.z), clamp_degrees(v.w) }; }
 
 // normalize_radians
 inline float normalize_radians(float v) {
@@ -407,9 +407,9 @@ inline float normalize_radians(float v) {
     }
     return v;
 }
-inline float2 normalize_radians(const float2 &v) { return { normalize_radians(v.x), normalize_radians(v.y) }; }
-inline float3 normalize_radians(const float3 &v) { return { normalize_radians(v.x), normalize_radians(v.y), normalize_radians(v.z) }; }
-inline float4 normalize_radians(const float4 &v) { return { normalize_radians(v.x), normalize_radians(v.y), normalize_radians(v.z), normalize_radians(v.w) }; }
+inline float2 normalize_radians(const float2& v) { return { normalize_radians(v.x), normalize_radians(v.y) }; }
+inline float3 normalize_radians(const float3& v) { return { normalize_radians(v.x), normalize_radians(v.y), normalize_radians(v.z) }; }
+inline float4 normalize_radians(const float4& v) { return { normalize_radians(v.x), normalize_radians(v.y), normalize_radians(v.z), normalize_radians(v.w) }; }
 
 // normalize_degrees
 inline float normalize_degrees(float v) {
@@ -419,21 +419,21 @@ inline float normalize_degrees(float v) {
     }
     return v;
 }
-inline float2 normalize_degrees(const float2 &v) { return { normalize_degrees(v.x), normalize_degrees(v.y) }; }
-inline float3 normalize_degrees(const float3 &v) { return { normalize_degrees(v.x), normalize_degrees(v.y), normalize_degrees(v.z) }; }
-inline float4 normalize_degrees(const float4 &v) { return { normalize_degrees(v.x), normalize_degrees(v.y), normalize_degrees(v.z), normalize_degrees(v.w) }; }
+inline float2 normalize_degrees(const float2& v) { return { normalize_degrees(v.x), normalize_degrees(v.y) }; }
+inline float3 normalize_degrees(const float3& v) { return { normalize_degrees(v.x), normalize_degrees(v.y), normalize_degrees(v.z) }; }
+inline float4 normalize_degrees(const float4& v) { return { normalize_degrees(v.x), normalize_degrees(v.y), normalize_degrees(v.z), normalize_degrees(v.w) }; }
 
 // square
 inline float square(float v) { return v * v; }
-inline float2 square(const float2 &v) { return { v.x * v.x, v.y * v.y }; }
-inline float3 square(const float3 &v) { return { v.x * v.x, v.y * v.y, v.z * v.z }; }
-inline float4 square(const float4 &v) { return { v.x * v.x, v.y * v.y, v.z * v.z, v.w * v.w }; }
+inline float2 square(const float2& v) { return { v.x * v.x, v.y * v.y }; }
+inline float3 square(const float3& v) { return { v.x * v.x, v.y * v.y, v.z * v.z }; }
+inline float4 square(const float4& v) { return { v.x * v.x, v.y * v.y, v.z * v.z, v.w * v.w }; }
 
 // cube
 inline float cube(float v) { return v * v * v; }
-inline float2 cube(const float2 &v) { return { v.x * v.x * v.x, v.y * v.y * v.y }; }
-inline float3 cube(const float3 &v) { return { v.x * v.x * v.x, v.y * v.y * v.y, v.z * v.z * v.z }; }
-inline float4 cube(const float4 &v) { return { v.x * v.x * v.x, v.y * v.y * v.y, v.z * v.z * v.z, v.w * v.w * v.w }; }
+inline float2 cube(const float2& v) { return { v.x * v.x * v.x, v.y * v.y * v.y }; }
+inline float3 cube(const float3& v) { return { v.x * v.x * v.x, v.y * v.y * v.y, v.z * v.z * v.z }; }
+inline float4 cube(const float4& v) { return { v.x * v.x * v.x, v.y * v.y * v.y, v.z * v.z * v.z, v.w * v.w * v.w }; }
 
 }
 }
