@@ -192,6 +192,64 @@ inline double4 abs(const double4& v)
     );
 }
 
+// rcp
+inline float rcp(float v)
+{
+    return rtm::scalar_reciprocal(v);
+}
+inline float2 rcp(const float2& v)
+{
+    return RtmConvert<float2>::from_rtm(
+        rtm::vector_reciprocal(
+            RtmConvert<float2>::to_rtm(v)
+        )
+    );
+}
+inline float3 rcp(const float3& v)
+{
+    return RtmConvert<float3>::from_rtm(
+        rtm::vector_reciprocal(
+            RtmConvert<float3>::to_rtm(v)
+        )
+    );
+}
+inline float4 rcp(const float4& v)
+{
+    return RtmConvert<float4>::from_rtm(
+        rtm::vector_reciprocal(
+            RtmConvert<float4>::to_rtm(v)
+        )
+    );
+}
+inline double rcp(double v)
+{
+    return rtm::scalar_reciprocal(v);
+}
+inline double2 rcp(const double2& v)
+{
+    return RtmConvert<double2>::from_rtm(
+        rtm::vector_reciprocal(
+            RtmConvert<double2>::to_rtm(v)
+        )
+    );
+}
+inline double3 rcp(const double3& v)
+{
+    return RtmConvert<double3>::from_rtm(
+        rtm::vector_reciprocal(
+            RtmConvert<double3>::to_rtm(v)
+        )
+    );
+}
+inline double4 rcp(const double4& v)
+{
+    return RtmConvert<double4>::from_rtm(
+        rtm::vector_reciprocal(
+            RtmConvert<double4>::to_rtm(v)
+        )
+    );
+}
+
 // is parallel
 inline bool is_parallel(const float3& normal_a, const float3& normal_b, float threshold = 0.999845f)
 {

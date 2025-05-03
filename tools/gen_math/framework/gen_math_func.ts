@@ -499,18 +499,25 @@ class _MathFuncGenerator {
     const comp_name = opt.component_name;
     const vec_name = `${base_name}${dim}`;
 
-    if (dim === 1) {
-      const init_expr = `${comp_name}(1) / v`;
-      b.$line(`inline ${comp_name} rcp(const ${comp_name} &v) { return ${init_expr}; }`)
-      return;
+    if (vector_has_simd_optimize("rcp", opt, dim)) {
+      if (dim === 1) {
+        b.$line(`${comp_name} rcp(${comp_name} v);`)
+      } else {
+        b.$line(`${vec_name} rcp(const ${vec_name}& v);`)
+      }
+    } else {
+      if (dim === 1) {
+        const init_expr = `${comp_name}(1) / v`;
+        b.$line(`inline ${comp_name} rcp(${comp_name} v) { return ${init_expr}; }`)
+      } else {
+        const init_expr = _comp_lut
+          .slice(0, dim)
+          .map(c => `${comp_name}(1) / v.${c}`)
+          .join(', ');
+
+        b.$line(`inline ${vec_name} rcp(const ${vec_name}& v) { return {${init_expr}}; }`)
+      }
     }
-
-    const init_expr = _comp_lut
-      .slice(0, dim)
-      .map(c => `${comp_name}(1) / v.${c}`)
-      .join(', ');
-
-    b.$line(`inline ${vec_name} rcp(const ${vec_name} &v) { return {${init_expr}}; }`)
   }
 
   @math_func("sign", { accept_comp_kind: ["floating"] })

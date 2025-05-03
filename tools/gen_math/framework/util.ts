@@ -196,12 +196,16 @@ export function get_alignas_matrix(opt: TypeOption, dim: number): string {
 
 export function vector_has_simd_optimize(name: string, opt: TypeOption, dim: number): boolean {
   if (opt.component_kind === "floating") {
-    if (name === "min" || name === "max") {
-      return true;
-    } else if (name === "abs") {
-      return true;
-    } else {
-      return false;
+    switch (name) {
+      case "min":
+      case "max":
+        return true;
+      case "abs":
+        return true;
+      case "rcp":
+        return true;
+      default:
+        return false;
     }
   } else {
     return false;

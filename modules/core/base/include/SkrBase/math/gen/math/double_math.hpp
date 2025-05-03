@@ -265,10 +265,10 @@ inline double3 select(bool3 c, double3 if_true, double3 if_false) { return { c.x
 inline double4 select(bool4 c, double4 if_true, double4 if_false) { return { c.x ? if_true.x : if_false.x, c.y ? if_true.y : if_false.y, c.z ? if_true.z : if_false.z, c.w ? if_true.w : if_false.w }; }
 
 // rcp
-inline double rcp(const double &v) { return double(1) / v; }
-inline double2 rcp(const double2 &v) { return {double(1) / v.x, double(1) / v.y}; }
-inline double3 rcp(const double3 &v) { return {double(1) / v.x, double(1) / v.y, double(1) / v.z}; }
-inline double4 rcp(const double4 &v) { return {double(1) / v.x, double(1) / v.y, double(1) / v.z, double(1) / v.w}; }
+double rcp(double v);
+double2 rcp(const double2& v);
+double3 rcp(const double3& v);
+double4 rcp(const double4& v);
 
 // sign
 inline double sign(const double &v) { return v < double(0) ? double(-1) : v > double(0) ? double(1) : double(0); }

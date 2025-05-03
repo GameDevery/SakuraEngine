@@ -265,10 +265,10 @@ inline float3 select(bool3 c, float3 if_true, float3 if_false) { return { c.x ? 
 inline float4 select(bool4 c, float4 if_true, float4 if_false) { return { c.x ? if_true.x : if_false.x, c.y ? if_true.y : if_false.y, c.z ? if_true.z : if_false.z, c.w ? if_true.w : if_false.w }; }
 
 // rcp
-inline float rcp(const float &v) { return float(1) / v; }
-inline float2 rcp(const float2 &v) { return {float(1) / v.x, float(1) / v.y}; }
-inline float3 rcp(const float3 &v) { return {float(1) / v.x, float(1) / v.y, float(1) / v.z}; }
-inline float4 rcp(const float4 &v) { return {float(1) / v.x, float(1) / v.y, float(1) / v.z, float(1) / v.w}; }
+float rcp(float v);
+float2 rcp(const float2& v);
+float3 rcp(const float3& v);
+float4 rcp(const float4& v);
 
 // sign
 inline float sign(const float &v) { return v < float(0) ? float(-1) : v > float(0) ? float(1) : float(0); }
