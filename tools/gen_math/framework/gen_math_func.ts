@@ -760,11 +760,19 @@ class _MathFuncGenerator {
     const comp_name = opt.component_name;
     const vec_name = dim === 1 ? comp_name : `${base_name}${dim}`;
 
-    if (dim === 1) {
-      const init_expr = `v0 + t * (v1 - v0)`;
-      b.$line(`inline ${comp_name} lerp(${comp_name} v0, ${comp_name} v1, ${comp_name} t) { return ${init_expr}; }`)
+    if (vector_has_simd_optimize("lerp", opt, dim)) {
+      if (dim === 1) {
+        b.$line(`${comp_name} lerp(${comp_name} v0, ${comp_name} v1, ${comp_name} t);`)
+      } else {
+        b.$line(`${vec_name} lerp(const ${vec_name}& v0, const ${vec_name}& v1, ${comp_name} t);`)
+      }
     } else {
-      b.$line(`inline ${vec_name} lerp(const ${vec_name}& v0, const ${vec_name}& v1, ${comp_name} t) { return v0 + t * (v1 - v0); }`)
+      if (dim === 1) {
+        const init_expr = `v0 + t * (v1 - v0)`;
+        b.$line(`inline ${comp_name} lerp(${comp_name} v0, ${comp_name} v1, ${comp_name} t) { return ${init_expr}; }`)
+      } else {
+        b.$line(`inline ${vec_name} lerp(const ${vec_name}& v0, const ${vec_name}& v1, ${comp_name} t) { return v0 + t * (v1 - v0); }`)
+      }
     }
   }
 

@@ -220,6 +220,8 @@ export function vector_has_simd_optimize(name: string, opt: TypeOption, dim: num
         return true;
       case "normalize":
         return true;
+      case "lerp":
+        return dim > 2;
       default:
         return false;
     }

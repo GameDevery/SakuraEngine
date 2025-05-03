@@ -770,6 +770,48 @@ inline double4 normalize(const double4& v)
     );
 }
 
+// lerp
+inline float3 lerp(const float3& a, const float3& b, float t)
+{
+    return RtmConvert<float3>::from_rtm(
+        rtm::vector_lerp(
+            RtmConvert<float3>::to_rtm(a),
+            RtmConvert<float3>::to_rtm(b),
+            t
+        )
+    );
+}
+inline float4 lerp(const float4& a, const float4& b, float t)
+{
+    return RtmConvert<float4>::from_rtm(
+        rtm::vector_lerp(
+            RtmConvert<float4>::to_rtm(a),
+            RtmConvert<float4>::to_rtm(b),
+            t
+        )
+    );
+}
+inline double3 lerp(const double3& a, const double3& b, double t)
+{
+    return RtmConvert<double3>::from_rtm(
+        rtm::vector_lerp(
+            RtmConvert<double3>::to_rtm(a),
+            RtmConvert<double3>::to_rtm(b),
+            t
+        )
+    );
+}
+inline double4 lerp(const double4& a, const double4& b, double t)
+{
+    return RtmConvert<double4>::from_rtm(
+        rtm::vector_lerp(
+            RtmConvert<double4>::to_rtm(a),
+            RtmConvert<double4>::to_rtm(b),
+            t
+        )
+    );
+}
+
 // is parallel
 inline bool is_parallel(const float3& normal_a, const float3& normal_b, float threshold = 0.999845f)
 {

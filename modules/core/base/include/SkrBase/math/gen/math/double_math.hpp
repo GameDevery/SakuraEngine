@@ -371,8 +371,8 @@ inline double4 smoothstep(const double4& edge0, const double4& edge1, const doub
 // lerp
 inline double lerp(double v0, double v1, double t) { return v0 + t * (v1 - v0); }
 inline double2 lerp(const double2& v0, const double2& v1, double t) { return v0 + t * (v1 - v0); }
-inline double3 lerp(const double3& v0, const double3& v1, double t) { return v0 + t * (v1 - v0); }
-inline double4 lerp(const double4& v0, const double4& v1, double t) { return v0 + t * (v1 - v0); }
+double3 lerp(const double3& v0, const double3& v1, double t);
+double4 lerp(const double4& v0, const double4& v1, double t);
 
 // nearly_equal
 inline bool nearly_equal(double x, double y, double epsilon = double(0.000001)) { return abs(x - y) <= epsilon; }
