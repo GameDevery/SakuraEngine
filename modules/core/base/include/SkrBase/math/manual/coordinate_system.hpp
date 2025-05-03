@@ -9,6 +9,14 @@ inline namespace math
 template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
 struct CoordinateSystem {
     static_assert(kCrossAxis != kUpAxis && kCrossAxis != kForwardAxis && kUpAxis != kForwardAxis, "Axes must be distinct.");
+    static_assert(kCrossAxis >= EAxis3::X && kCrossAxis <= EAxis3::Z, "Invalid cross axis.");
+    static_assert(kUpAxis >= EAxis3::X && kUpAxis <= EAxis3::Z, "Invalid up axis.");
+    static_assert(kForwardAxis >= EAxis3::X && kForwardAxis <= EAxis3::Z, "Invalid forward axis.");
+
+    inline static constexpr float  kCrossSign        = (kCoordHand == ECoordinateSystemHand::LeftHand) ? 1.0f : -1.0f;
+    inline static constexpr size_t kCrossAxisIndex   = static_cast<size_t>(kCrossAxis);
+    inline static constexpr size_t kUpAxisIndex      = static_cast<size_t>(kUpAxis);
+    inline static constexpr size_t kForwardAxisIndex = static_cast<size_t>(kForwardAxis);
 
     // convert vector3
     static float3  to_skr(const float3& vec);
@@ -47,8 +55,15 @@ struct CoordinateSystem {
     static double4x4 from_skr(const double4x4& mat);
 
 private:
-    // helper
-    static size_t _axis_to_index(EAxis3 axis);
+    // helpers
+    template <typename T>
+    static float* _as_float_ptr(T* ptr);
+    template <typename T>
+    static const float* _as_float_ptr(const T* ptr);
+    template <typename T>
+    static double* _as_double_ptr(T* ptr);
+    template <typename T>
+    static const double* _as_double_ptr(const T* ptr);
 };
 
 //======================utility coordinate system======================
@@ -105,6 +120,263 @@ using CoordinateSystem_Blender  = CoordinateSystem_RightHand_ZUp;
 using CoordinateSystem_SketchUp = CoordinateSystem_RightHand_ZUp;
 using CoordinateSystem_Source   = CoordinateSystem_RightHand_ZUp;
 using CoordinateSystem_AutoCAD  = CoordinateSystem_RightHand_ZUp;
+
+} // namespace math
+} // namespace skr
+
+namespace skr
+{
+inline namespace math
+{
+// helpers
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+template <typename T>
+inline float* CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::_as_float_ptr(T* ptr)
+{
+    return reinterpret_cast<float*>(ptr);
+}
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+template <typename T>
+inline const float* CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::_as_float_ptr(const T* ptr)
+{
+    return reinterpret_cast<const float*>(ptr);
+}
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+template <typename T>
+inline double* CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::_as_double_ptr(T* ptr)
+{
+    return reinterpret_cast<double*>(ptr);
+}
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+template <typename T>
+inline const double* CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::_as_double_ptr(const T* ptr)
+{
+    return reinterpret_cast<const double*>(ptr);
+}
+
+// convert vector3
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+inline float3 CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::to_skr(const float3& vec)
+{
+    auto p_float = _as_float_ptr(&vec);
+    return float3(
+        kCrossSign * p_float[kCrossAxisIndex],
+        p_float[kUpAxisIndex],
+        p_float[kForwardAxisIndex]
+    );
+}
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+inline float3 CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::from_skr(const float3& vec)
+{
+    float3 result;
+    auto   p_float_result             = _as_float_ptr(&result);
+    p_float_result[kCrossAxisIndex]   = kCrossSign * vec.x;
+    p_float_result[kUpAxisIndex]      = vec.y;
+    p_float_result[kForwardAxisIndex] = vec.z;
+    return result;
+}
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+inline double3 CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::to_skr(const double3& vec)
+{
+    auto p_double = _as_double_ptr(&vec);
+    return double3(
+        kCrossSign * p_double[kCrossAxisIndex],
+        p_double[kUpAxisIndex],
+        p_double[kForwardAxisIndex]
+    );
+}
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+inline double3 CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::from_skr(const double3& vec)
+{
+    double3 result;
+    auto    p_double_result            = _as_double_ptr(&result);
+    p_double_result[kCrossAxisIndex]   = kCrossSign * vec.x;
+    p_double_result[kUpAxisIndex]      = vec.y;
+    p_double_result[kForwardAxisIndex] = vec.z;
+    return result;
+}
+
+// convert rotator
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+inline RotatorF CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::to_skr(const RotatorF& rot)
+{
+    auto p_float = _as_float_ptr(&rot);
+    return RotatorF(
+        kCrossSign * p_float[kCrossAxisIndex],
+        p_float[kUpAxisIndex],
+        p_float[kForwardAxisIndex]
+    );
+}
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+inline RotatorF CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::from_skr(const RotatorF& rot)
+{
+    RotatorF result;
+    auto     p_float_result           = _as_float_ptr(&result);
+    p_float_result[kCrossAxisIndex]   = kCrossSign * rot.pitch;
+    p_float_result[kUpAxisIndex]      = rot.yaw;
+    p_float_result[kForwardAxisIndex] = rot.roll;
+    return result;
+}
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+inline RotatorD CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::to_skr(const RotatorD& rot)
+{
+    auto p_double = _as_double_ptr(&rot);
+    return RotatorD(
+        kCrossSign * p_double[kCrossAxisIndex],
+        p_double[kUpAxisIndex],
+        p_double[kForwardAxisIndex]
+    );
+}
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+inline RotatorD CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::from_skr(const RotatorD& rot)
+{
+    RotatorD result;
+    auto     p_double_result           = _as_double_ptr(&result);
+    p_double_result[kCrossAxisIndex]   = kCrossSign * rot.pitch;
+    p_double_result[kUpAxisIndex]      = rot.yaw;
+    p_double_result[kForwardAxisIndex] = rot.roll;
+    return result;
+}
+
+// convert quaternion (by translate to rotator)
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+inline QuatF CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::to_skr(const QuatF& quat)
+{
+    return QuatF(to_skr(RotatorF(quat)));
+}
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+inline QuatF CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::from_skr(const QuatF& quat)
+{
+    return QuatF(from_skr(RotatorF(quat)));
+}
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+inline QuatD CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::to_skr(const QuatD& quat)
+{
+    return QuatD(to_skr(RotatorD(quat)));
+}
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+inline QuatD CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::from_skr(const QuatD& quat)
+{
+    return QuatD(from_skr(RotatorD(quat)));
+}
+
+// convert transform
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+inline TransformF CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::to_skr(const TransformF& transform)
+{
+    return TransformF(
+        to_skr(transform.rotation),
+        to_skr(transform.position),
+        to_skr(transform.scale)
+    );
+}
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+inline TransformF CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::from_skr(const TransformF& transform)
+{
+    return TransformF(
+        from_skr(transform.rotation),
+        from_skr(transform.position),
+        from_skr(transform.scale)
+    );
+}
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+inline TransformD CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::to_skr(const TransformD& transform)
+{
+    return TransformD(
+        to_skr(transform.rotation),
+        to_skr(transform.position),
+        to_skr(transform.scale)
+    );
+}
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+inline TransformD CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::from_skr(const TransformD& transform)
+{
+    return TransformD(
+        from_skr(transform.rotation),
+        from_skr(transform.position),
+        from_skr(transform.scale)
+    );
+}
+
+// convert AFFINE matrix3, if matrix isnot affine, the behavior is undefined
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+inline float3x3 CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::to_skr(const float3x3& mat)
+{
+    return float3x3(
+        kCrossSign * mat.rows[kCrossAxisIndex],
+        mat.rows[kUpAxisIndex],
+        mat.rows[kForwardAxisIndex]
+    );
+}
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+inline float3x3 CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::from_skr(const float3x3& mat)
+{
+    float3x3 result;
+    result.rows[kCrossAxisIndex]   = kCrossSign * mat.axis_x;
+    result.rows[kUpAxisIndex]      = mat.axis_y;
+    result.rows[kForwardAxisIndex] = mat.axis_z;
+    return result;
+}
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+inline double3x3 CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::to_skr(const double3x3& mat)
+{
+    return double3x3(
+        kCrossSign * mat.rows[kCrossAxisIndex],
+        mat.rows[kUpAxisIndex],
+        mat.rows[kForwardAxisIndex]
+    );
+}
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+inline double3x3 CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::from_skr(const double3x3& mat)
+{
+    double3x3 result;
+    result.rows[kCrossAxisIndex]   = kCrossSign * mat.axis_x;
+    result.rows[kUpAxisIndex]      = mat.axis_y;
+    result.rows[kForwardAxisIndex] = mat.axis_z;
+    return result;
+}
+
+// convert AFFINE matrix4, if matrix isnot affine, the behavior is undefined
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+inline float4x4 CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::to_skr(const float4x4& mat)
+{
+    return float4x4(
+        kCrossSign * mat.rows[kCrossAxisIndex],
+        mat.rows[kUpAxisIndex],
+        mat.rows[kForwardAxisIndex],
+        float4(to_skr(mat.translation.xyz()), 1.0f)
+    );
+}
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+inline float4x4 CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::from_skr(const float4x4& mat)
+{
+    float4x4 result;
+    result.rows[kCrossAxisIndex]   = kCrossSign * mat.axis_x;
+    result.rows[kUpAxisIndex]      = mat.axis_y;
+    result.rows[kForwardAxisIndex] = mat.axis_z;
+    result.translation             = float4(from_skr(mat.translation.xyz()), 1.0f);
+    return result;
+}
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+inline double4x4 CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::to_skr(const double4x4& mat)
+{
+    return double4x4(
+        kCrossSign * mat.rows[kCrossAxisIndex],
+        mat.rows[kUpAxisIndex],
+        mat.rows[kForwardAxisIndex],
+        double4(to_skr(mat.translation.xyz()), 1.0)
+    );
+}
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+inline double4x4 CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::from_skr(const double4x4& mat)
+{
+    double4x4 result;
+    result.rows[kCrossAxisIndex]   = kCrossSign * mat.axis_x;
+    result.rows[kUpAxisIndex]      = mat.axis_y;
+    result.rows[kForwardAxisIndex] = mat.axis_z;
+    result.translation             = double4(from_skr(mat.translation.xyz()), 1.0);
+    return result;
+}
 
 } // namespace math
 } // namespace skr
