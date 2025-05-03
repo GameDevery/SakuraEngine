@@ -214,6 +214,9 @@ export function vector_has_simd_optimize(name: string, opt: TypeOption, dim: num
       case "cross":
       case "dot":
         return true;
+      case "length":
+      case "length_squared":
+        return true;
       default:
         return false;
     }

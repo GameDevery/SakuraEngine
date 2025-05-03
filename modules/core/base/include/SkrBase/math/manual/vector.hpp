@@ -604,6 +604,84 @@ inline double3 cross(const double3& a, const double3& b)
     );
 }
 
+// length
+inline float length(const float2& v)
+{
+    auto length_squared = rtm::vector_length_squared2_as_scalar(
+        RtmConvert<float2>::to_rtm(v)
+    );
+    return rtm::scalar_cast(rtm::scalar_sqrt(length_squared));
+}
+inline float length(const float3& v)
+{
+    return rtm::vector_length3(
+        RtmConvert<float3>::to_rtm(v)
+    );
+}
+inline float length(const float4& v)
+{
+    return rtm::vector_length(
+        RtmConvert<float4>::to_rtm(v)
+    );
+}
+inline double length(const double2& v)
+{
+    auto length_squared = rtm::vector_length_squared2_as_scalar(
+        RtmConvert<double2>::to_rtm(v)
+    );
+    return rtm::scalar_cast(rtm::scalar_sqrt(length_squared));
+}
+inline double length(const double3& v)
+{
+    return rtm::vector_length3(
+        RtmConvert<double3>::to_rtm(v)
+    );
+}
+inline double length(const double4& v)
+{
+    return rtm::vector_length(
+        RtmConvert<double4>::to_rtm(v)
+    );
+}
+
+// length squared
+inline float length_squared(const float2& v)
+{
+    return rtm::vector_length_squared2(
+        RtmConvert<float2>::to_rtm(v)
+    );
+}
+inline float length_squared(const float3& v)
+{
+    return rtm::vector_length_squared3(
+        RtmConvert<float3>::to_rtm(v)
+    );
+}
+inline float length_squared(const float4& v)
+{
+    return rtm::vector_length_squared(
+        RtmConvert<float4>::to_rtm(v)
+    );
+}
+inline double length_squared(const double2& v)
+{
+    return rtm::vector_length_squared2(
+        RtmConvert<double2>::to_rtm(v)
+    );
+}
+inline double length_squared(const double3& v)
+{
+    return rtm::vector_length_squared3(
+        RtmConvert<double3>::to_rtm(v)
+    );
+}
+inline double length_squared(const double4& v)
+{
+    return rtm::vector_length_squared(
+        RtmConvert<double4>::to_rtm(v)
+    );
+}
+
 // is parallel
 inline bool is_parallel(const float3& normal_a, const float3& normal_b, float threshold = 0.999845f)
 {

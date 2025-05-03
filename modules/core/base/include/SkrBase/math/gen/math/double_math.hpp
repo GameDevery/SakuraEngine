@@ -297,14 +297,14 @@ double dot(const double4& v1, const double4& v2);
 double3 cross(const double3& x, const double3& y);
 
 // length
-inline double length(const double2& v) { return ::std::sqrt(dot(v, v)); }
-inline double length(const double3& v) { return ::std::sqrt(dot(v, v)); }
-inline double length(const double4& v) { return ::std::sqrt(dot(v, v)); }
+double length(const double2& v);
+double length(const double3& v);
+double length(const double4& v);
 
 // length_squared
-inline double length_squared(const double2& v) { return dot(v, v); }
-inline double length_squared(const double3& v) { return dot(v, v); }
-inline double length_squared(const double4& v) { return dot(v, v); }
+double length_squared(const double2& v);
+double length_squared(const double3& v);
+double length_squared(const double4& v);
 
 // distance
 inline double distance(const double2& x, const double2& y) { return length_squared(y - x); }

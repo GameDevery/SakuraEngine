@@ -627,7 +627,11 @@ class _MathFuncGenerator {
     const comp_name = opt.component_name;
     const vec_name = `${base_name}${dim}`;
 
-    b.$line(`inline ${comp_name} length(const ${vec_name}& v) { return ::std::sqrt(dot(v, v)); }`)
+    if (vector_has_simd_optimize("length", opt, dim)) {
+      b.$line(`${comp_name} length(const ${vec_name}& v);`)
+    } else {
+      b.$line(`inline ${comp_name} length(const ${vec_name}& v) { return ::std::sqrt(dot(v, v)); }`)
+    }
   }
   @math_func("length_squared", { accept_comp_kind: ["floating"], accept_dim: dims_no_scalar })
   static gen_length_squared(b: CodeBuilder, opt: MathGenOptions) {
@@ -636,7 +640,11 @@ class _MathFuncGenerator {
     const comp_name = opt.component_name;
     const vec_name = `${base_name}${dim}`;
 
-    b.$line(`inline ${comp_name} length_squared(const ${vec_name}& v) { return dot(v, v); }`)
+    if (vector_has_simd_optimize("length", opt, dim)) {
+      b.$line(`${comp_name} length_squared(const ${vec_name}& v);`)
+    } else {
+      b.$line(`inline ${comp_name} length_squared(const ${vec_name}& v) { return dot(v, v); }`)
+    }
   }
   @math_func("distance", { accept_comp_kind: ["floating"], accept_dim: dims_no_scalar })
   static gen_distance(b: CodeBuilder, opt: MathGenOptions) {
