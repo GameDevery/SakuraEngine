@@ -24,6 +24,12 @@ struct CoordinateSystem {
     static double3 to_skr(const double3& vec);
     static double3 from_skr(const double3& vec);
 
+    // convert vector3 no cross flip
+    static float3  to_skr_no_cross_flip(const float3& vec);
+    static float3  from_skr_no_cross_flip(const float3& vec);
+    static double3 to_skr_no_cross_flip(const double3& vec);
+    static double3 from_skr_no_cross_flip(const double3& vec);
+
     // convert rotator
     static RotatorF to_skr(const RotatorF& rot);
     static RotatorF from_skr(const RotatorF& rot);
@@ -184,6 +190,48 @@ inline double3 CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::
     return result;
 }
 
+// convert vector3 no cross flip
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+inline float3 CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::to_skr_no_cross_flip(const float3& vec)
+{
+    auto p_float = _as_float_ptr(&vec);
+    return float3(
+        p_float[kCrossAxisIndex],
+        p_float[kUpAxisIndex],
+        p_float[kForwardAxisIndex]
+    );
+}
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+inline float3 CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::from_skr_no_cross_flip(const float3& vec)
+{
+    float3 result;
+    auto   p_float_result             = _as_float_ptr(&result);
+    p_float_result[kCrossAxisIndex]   = vec.x;
+    p_float_result[kUpAxisIndex]      = vec.y;
+    p_float_result[kForwardAxisIndex] = vec.z;
+    return result;
+}
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+inline double3 CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::to_skr_no_cross_flip(const double3& vec)
+{
+    auto p_double = _as_double_ptr(&vec);
+    return double3(
+        p_double[kCrossAxisIndex],
+        p_double[kUpAxisIndex],
+        p_double[kForwardAxisIndex]
+    );
+}
+template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
+inline double3 CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::from_skr_no_cross_flip(const double3& vec)
+{
+    double3 result;
+    auto    p_double_result            = _as_double_ptr(&result);
+    p_double_result[kCrossAxisIndex]   = vec.x;
+    p_double_result[kUpAxisIndex]      = vec.y;
+    p_double_result[kForwardAxisIndex] = vec.z;
+    return result;
+}
+
 // convert rotator
 template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
 inline RotatorF CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis>::to_skr(const RotatorF& rot)
@@ -255,7 +303,7 @@ inline TransformF CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis
     return TransformF(
         to_skr(transform.rotation),
         to_skr(transform.position),
-        to_skr(transform.scale)
+        to_skr_no_cross_flip(transform.scale)
     );
 }
 template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
@@ -264,7 +312,7 @@ inline TransformF CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis
     return TransformF(
         from_skr(transform.rotation),
         from_skr(transform.position),
-        from_skr(transform.scale)
+        to_skr_no_cross_flip(transform.scale)
     );
 }
 template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
@@ -273,7 +321,7 @@ inline TransformD CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis
     return TransformD(
         to_skr(transform.rotation),
         to_skr(transform.position),
-        to_skr(transform.scale)
+        to_skr_no_cross_flip(transform.scale)
     );
 }
 template <ECoordinateSystemHand kCoordHand, EAxis3 kCrossAxis, EAxis3 kUpAxis, EAxis3 kForwardAxis>
@@ -282,7 +330,7 @@ inline TransformD CoordinateSystem<kCoordHand, kCrossAxis, kUpAxis, kForwardAxis
     return TransformD(
         from_skr(transform.rotation),
         from_skr(transform.position),
-        from_skr(transform.scale)
+        to_skr_no_cross_flip(transform.scale)
     );
 }
 } // namespace math
