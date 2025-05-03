@@ -10,10 +10,10 @@
 namespace skr {
 inline namespace math {
 // abs
-inline float abs(float v) { return ::std::abs(v); }
-inline float2 abs(const float2& v) { return {::std::abs(v.x), ::std::abs(v.y)}; }
-inline float3 abs(const float3& v) { return {::std::abs(v.x), ::std::abs(v.y), ::std::abs(v.z)}; }
-inline float4 abs(const float4& v) { return {::std::abs(v.x), ::std::abs(v.y), ::std::abs(v.z), ::std::abs(v.w)}; }
+float abs(float v);
+float2 abs(const float2& v);
+float3 abs(const float3& v);
+float4 abs(const float4& v);
 
 // acos
 inline float acos(float v) { return ::std::acos(v); }

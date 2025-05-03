@@ -198,6 +198,8 @@ export function vector_has_simd_optimize(name: string, opt: TypeOption, dim: num
   if (opt.component_kind === "floating") {
     if (name === "min" || name === "max") {
       return true;
+    } else if (name === "abs") {
+      return true;
     } else {
       return false;
     }
