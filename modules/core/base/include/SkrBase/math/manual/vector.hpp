@@ -812,6 +812,418 @@ inline double4 lerp(const double4& a, const double4& b, double t)
     );
 }
 
+// sin
+inline float sin(float v)
+{
+    return rtm::scalar_sin(v);
+}
+inline float2 sin(const float2& v)
+{
+    return RtmConvert<float2>::from_rtm(
+        rtm::vector_sin(
+            RtmConvert<float2>::to_rtm(v)
+        )
+    );
+}
+inline float3 sin(const float3& v)
+{
+    return RtmConvert<float3>::from_rtm(
+        rtm::vector_sin(
+            RtmConvert<float3>::to_rtm(v)
+        )
+    );
+}
+inline float4 sin(const float4& v)
+{
+    return RtmConvert<float4>::from_rtm(
+        rtm::vector_sin(
+            RtmConvert<float4>::to_rtm(v)
+        )
+    );
+}
+inline double sin(double v)
+{
+    return rtm::scalar_sin(v);
+}
+inline double2 sin(const double2& v)
+{
+    return RtmConvert<double2>::from_rtm(
+        rtm::vector_sin(
+            RtmConvert<double2>::to_rtm(v)
+        )
+    );
+}
+inline double3 sin(const double3& v)
+{
+    return RtmConvert<double3>::from_rtm(
+        rtm::vector_sin(
+            RtmConvert<double3>::to_rtm(v)
+        )
+    );
+}
+inline double4 sin(const double4& v)
+{
+    return RtmConvert<double4>::from_rtm(
+        rtm::vector_sin(
+            RtmConvert<double4>::to_rtm(v)
+        )
+    );
+}
+
+// asin
+inline float asin(float v)
+{
+    return rtm::scalar_asin(v);
+}
+inline float2 asin(const float2& v)
+{
+    return RtmConvert<float2>::from_rtm(
+        rtm::vector_asin(
+            RtmConvert<float2>::to_rtm(v)
+        )
+    );
+}
+inline float3 asin(const float3& v)
+{
+    return RtmConvert<float3>::from_rtm(
+        rtm::vector_asin(
+            RtmConvert<float3>::to_rtm(v)
+        )
+    );
+}
+inline float4 asin(const float4& v)
+{
+    return RtmConvert<float4>::from_rtm(
+        rtm::vector_asin(
+            RtmConvert<float4>::to_rtm(v)
+        )
+    );
+}
+inline double asin(double v)
+{
+    return rtm::scalar_asin(v);
+}
+inline double2 asin(const double2& v)
+{
+    return RtmConvert<double2>::from_rtm(
+        rtm::vector_asin(
+            RtmConvert<double2>::to_rtm(v)
+        )
+    );
+}
+inline double3 asin(const double3& v)
+{
+    return RtmConvert<double3>::from_rtm(
+        rtm::vector_asin(
+            RtmConvert<double3>::to_rtm(v)
+        )
+    );
+}
+inline double4 asin(const double4& v)
+{
+    return RtmConvert<double4>::from_rtm(
+        rtm::vector_asin(
+            RtmConvert<double4>::to_rtm(v)
+        )
+    );
+}
+
+// cos
+inline float cos(float v)
+{
+    return rtm::scalar_cos(v);
+}
+inline float2 cos(const float2& v)
+{
+    return RtmConvert<float2>::from_rtm(
+        rtm::vector_cos(
+            RtmConvert<float2>::to_rtm(v)
+        )
+    );
+}
+inline float3 cos(const float3& v)
+{
+    return RtmConvert<float3>::from_rtm(
+        rtm::vector_cos(
+            RtmConvert<float3>::to_rtm(v)
+        )
+    );
+}
+inline float4 cos(const float4& v)
+{
+    return RtmConvert<float4>::from_rtm(
+        rtm::vector_cos(
+            RtmConvert<float4>::to_rtm(v)
+        )
+    );
+}
+inline double cos(double v)
+{
+    return rtm::scalar_cos(v);
+}
+inline double2 cos(const double2& v)
+{
+    return RtmConvert<double2>::from_rtm(
+        rtm::vector_cos(
+            RtmConvert<double2>::to_rtm(v)
+        )
+    );
+}
+inline double3 cos(const double3& v)
+{
+    return RtmConvert<double3>::from_rtm(
+        rtm::vector_cos(
+            RtmConvert<double3>::to_rtm(v)
+        )
+    );
+}
+inline double4 cos(const double4& v)
+{
+    return RtmConvert<double4>::from_rtm(
+        rtm::vector_cos(
+            RtmConvert<double4>::to_rtm(v)
+        )
+    );
+}
+
+// acos
+inline float acos(float v)
+{
+    return rtm::scalar_acos(v);
+}
+inline float2 acos(const float2& v)
+{
+    return RtmConvert<float2>::from_rtm(
+        rtm::vector_acos(
+            RtmConvert<float2>::to_rtm(v)
+        )
+    );
+}
+inline float3 acos(const float3& v)
+{
+    return RtmConvert<float3>::from_rtm(
+        rtm::vector_acos(
+            RtmConvert<float3>::to_rtm(v)
+        )
+    );
+}
+inline float4 acos(const float4& v)
+{
+    return RtmConvert<float4>::from_rtm(
+        rtm::vector_acos(
+            RtmConvert<float4>::to_rtm(v)
+        )
+    );
+}
+inline double acos(double v)
+{
+    return rtm::scalar_acos(v);
+}
+inline double2 acos(const double2& v)
+{
+    return RtmConvert<double2>::from_rtm(
+        rtm::vector_acos(
+            RtmConvert<double2>::to_rtm(v)
+        )
+    );
+}
+inline double3 acos(const double3& v)
+{
+    return RtmConvert<double3>::from_rtm(
+        rtm::vector_acos(
+            RtmConvert<double3>::to_rtm(v)
+        )
+    );
+}
+inline double4 acos(const double4& v)
+{
+    return RtmConvert<double4>::from_rtm(
+        rtm::vector_acos(
+            RtmConvert<double4>::to_rtm(v)
+        )
+    );
+}
+
+// tan
+inline float tan(float v)
+{
+    return rtm::scalar_tan(v);
+}
+inline float2 tan(const float2& v)
+{
+    return RtmConvert<float2>::from_rtm(
+        rtm::vector_tan(
+            RtmConvert<float2>::to_rtm(v)
+        )
+    );
+}
+inline float3 tan(const float3& v)
+{
+    return RtmConvert<float3>::from_rtm(
+        rtm::vector_tan(
+            RtmConvert<float3>::to_rtm(v)
+        )
+    );
+}
+inline float4 tan(const float4& v)
+{
+    return RtmConvert<float4>::from_rtm(
+        rtm::vector_tan(
+            RtmConvert<float4>::to_rtm(v)
+        )
+    );
+}
+inline double tan(double v)
+{
+    return rtm::scalar_tan(v);
+}
+inline double2 tan(const double2& v)
+{
+    return RtmConvert<double2>::from_rtm(
+        rtm::vector_tan(
+            RtmConvert<double2>::to_rtm(v)
+        )
+    );
+}
+inline double3 tan(const double3& v)
+{
+    return RtmConvert<double3>::from_rtm(
+        rtm::vector_tan(
+            RtmConvert<double3>::to_rtm(v)
+        )
+    );
+}
+inline double4 tan(const double4& v)
+{
+    return RtmConvert<double4>::from_rtm(
+        rtm::vector_tan(
+            RtmConvert<double4>::to_rtm(v)
+        )
+    );
+}
+
+// atan
+inline float atan(float v)
+{
+    return rtm::scalar_atan(v);
+}
+inline float2 atan(const float2& v)
+{
+    return RtmConvert<float2>::from_rtm(
+        rtm::vector_atan(
+            RtmConvert<float2>::to_rtm(v)
+        )
+    );
+}
+inline float3 atan(const float3& v)
+{
+    return RtmConvert<float3>::from_rtm(
+        rtm::vector_atan(
+            RtmConvert<float3>::to_rtm(v)
+        )
+    );
+}
+inline float4 atan(const float4& v)
+{
+    return RtmConvert<float4>::from_rtm(
+        rtm::vector_atan(
+            RtmConvert<float4>::to_rtm(v)
+        )
+    );
+}
+inline double atan(double v)
+{
+    return rtm::scalar_atan(v);
+}
+inline double2 atan(const double2& v)
+{
+    return RtmConvert<double2>::from_rtm(
+        rtm::vector_atan(
+            RtmConvert<double2>::to_rtm(v)
+        )
+    );
+}
+inline double3 atan(const double3& v)
+{
+    return RtmConvert<double3>::from_rtm(
+        rtm::vector_atan(
+            RtmConvert<double3>::to_rtm(v)
+        )
+    );
+}
+inline double4 atan(const double4& v)
+{
+    return RtmConvert<double4>::from_rtm(
+        rtm::vector_atan(
+            RtmConvert<double4>::to_rtm(v)
+        )
+    );
+}
+
+// atan2
+inline float atan2(float y, float x)
+{
+    return rtm::scalar_atan2(y, x);
+}
+inline float2 atan2(const float2& y, const float2& x)
+{
+    return RtmConvert<float2>::from_rtm(
+        rtm::vector_atan2(
+            RtmConvert<float2>::to_rtm(y),
+            RtmConvert<float2>::to_rtm(x)
+        )
+    );
+}
+inline float3 atan2(const float3& y, const float3& x)
+{
+    return RtmConvert<float3>::from_rtm(
+        rtm::vector_atan2(
+            RtmConvert<float3>::to_rtm(y),
+            RtmConvert<float3>::to_rtm(x)
+        )
+    );
+}
+inline float4 atan2(const float4& y, const float4& x)
+{
+    return RtmConvert<float4>::from_rtm(
+        rtm::vector_atan2(
+            RtmConvert<float4>::to_rtm(y),
+            RtmConvert<float4>::to_rtm(x)
+        )
+    );
+}
+inline double atan2(double y, double x)
+{
+    return rtm::scalar_atan2(y, x);
+}
+inline double2 atan2(const double2& y, const double2& x)
+{
+    return RtmConvert<double2>::from_rtm(
+        rtm::vector_atan2(
+            RtmConvert<double2>::to_rtm(y),
+            RtmConvert<double2>::to_rtm(x)
+        )
+    );
+}
+inline double3 atan2(const double3& y, const double3& x)
+{
+    return RtmConvert<double3>::from_rtm(
+        rtm::vector_atan2(
+            RtmConvert<double3>::to_rtm(y),
+            RtmConvert<double3>::to_rtm(x)
+        )
+    );
+}
+inline double4 atan2(const double4& y, const double4& x)
+{
+    return RtmConvert<double4>::from_rtm(
+        rtm::vector_atan2(
+            RtmConvert<double4>::to_rtm(y),
+            RtmConvert<double4>::to_rtm(x)
+        )
+    );
+}
+
 // is parallel
 inline bool is_parallel(const float3& normal_a, const float3& normal_b, float threshold = 0.999845f)
 {

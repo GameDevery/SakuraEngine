@@ -16,10 +16,10 @@ double3 abs(const double3& v);
 double4 abs(const double4& v);
 
 // acos
-inline double acos(double v) { return ::std::acos(v); }
-inline double2 acos(const double2& v) { return {::std::acos(v.x), ::std::acos(v.y)}; }
-inline double3 acos(const double3& v) { return {::std::acos(v.x), ::std::acos(v.y), ::std::acos(v.z)}; }
-inline double4 acos(const double4& v) { return {::std::acos(v.x), ::std::acos(v.y), ::std::acos(v.z), ::std::acos(v.w)}; }
+double acos(double v);
+double2 acos(const double2& v);
+double3 acos(const double3& v);
+double4 acos(const double4& v);
 
 // acosh
 inline double acosh(double v) { return ::std::acosh(v); }
@@ -28,10 +28,10 @@ inline double3 acosh(const double3& v) { return {::std::acosh(v.x), ::std::acosh
 inline double4 acosh(const double4& v) { return {::std::acosh(v.x), ::std::acosh(v.y), ::std::acosh(v.z), ::std::acosh(v.w)}; }
 
 // cos
-inline double cos(double v) { return ::std::cos(v); }
-inline double2 cos(const double2& v) { return {::std::cos(v.x), ::std::cos(v.y)}; }
-inline double3 cos(const double3& v) { return {::std::cos(v.x), ::std::cos(v.y), ::std::cos(v.z)}; }
-inline double4 cos(const double4& v) { return {::std::cos(v.x), ::std::cos(v.y), ::std::cos(v.z), ::std::cos(v.w)}; }
+double cos(double v);
+double2 cos(const double2& v);
+double3 cos(const double3& v);
+double4 cos(const double4& v);
 
 // cosh
 inline double cosh(double v) { return ::std::cosh(v); }
@@ -40,10 +40,10 @@ inline double3 cosh(const double3& v) { return {::std::cosh(v.x), ::std::cosh(v.
 inline double4 cosh(const double4& v) { return {::std::cosh(v.x), ::std::cosh(v.y), ::std::cosh(v.z), ::std::cosh(v.w)}; }
 
 // asin
-inline double asin(double v) { return ::std::asin(v); }
-inline double2 asin(const double2& v) { return {::std::asin(v.x), ::std::asin(v.y)}; }
-inline double3 asin(const double3& v) { return {::std::asin(v.x), ::std::asin(v.y), ::std::asin(v.z)}; }
-inline double4 asin(const double4& v) { return {::std::asin(v.x), ::std::asin(v.y), ::std::asin(v.z), ::std::asin(v.w)}; }
+double asin(double v);
+double2 asin(const double2& v);
+double3 asin(const double3& v);
+double4 asin(const double4& v);
 
 // asinh
 inline double asinh(double v) { return ::std::asinh(v); }
@@ -52,10 +52,10 @@ inline double3 asinh(const double3& v) { return {::std::asinh(v.x), ::std::asinh
 inline double4 asinh(const double4& v) { return {::std::asinh(v.x), ::std::asinh(v.y), ::std::asinh(v.z), ::std::asinh(v.w)}; }
 
 // sin
-inline double sin(double v) { return ::std::sin(v); }
-inline double2 sin(const double2& v) { return {::std::sin(v.x), ::std::sin(v.y)}; }
-inline double3 sin(const double3& v) { return {::std::sin(v.x), ::std::sin(v.y), ::std::sin(v.z)}; }
-inline double4 sin(const double4& v) { return {::std::sin(v.x), ::std::sin(v.y), ::std::sin(v.z), ::std::sin(v.w)}; }
+double sin(double v);
+double2 sin(const double2& v);
+double3 sin(const double3& v);
+double4 sin(const double4& v);
 
 // sinh
 inline double sinh(double v) { return ::std::sinh(v); }
@@ -64,10 +64,10 @@ inline double3 sinh(const double3& v) { return {::std::sinh(v.x), ::std::sinh(v.
 inline double4 sinh(const double4& v) { return {::std::sinh(v.x), ::std::sinh(v.y), ::std::sinh(v.z), ::std::sinh(v.w)}; }
 
 // atan
-inline double atan(double v) { return ::std::atan(v); }
-inline double2 atan(const double2& v) { return {::std::atan(v.x), ::std::atan(v.y)}; }
-inline double3 atan(const double3& v) { return {::std::atan(v.x), ::std::atan(v.y), ::std::atan(v.z)}; }
-inline double4 atan(const double4& v) { return {::std::atan(v.x), ::std::atan(v.y), ::std::atan(v.z), ::std::atan(v.w)}; }
+double atan(double v);
+double2 atan(const double2& v);
+double3 atan(const double3& v);
+double4 atan(const double4& v);
 
 // atanh
 inline double atanh(double v) { return ::std::atanh(v); }
@@ -76,10 +76,10 @@ inline double3 atanh(const double3& v) { return {::std::atanh(v.x), ::std::atanh
 inline double4 atanh(const double4& v) { return {::std::atanh(v.x), ::std::atanh(v.y), ::std::atanh(v.z), ::std::atanh(v.w)}; }
 
 // tan
-inline double tan(double v) { return ::std::tan(v); }
-inline double2 tan(const double2& v) { return {::std::tan(v.x), ::std::tan(v.y)}; }
-inline double3 tan(const double3& v) { return {::std::tan(v.x), ::std::tan(v.y), ::std::tan(v.z)}; }
-inline double4 tan(const double4& v) { return {::std::tan(v.x), ::std::tan(v.y), ::std::tan(v.z), ::std::tan(v.w)}; }
+double tan(double v);
+double2 tan(const double2& v);
+double3 tan(const double3& v);
+double4 tan(const double4& v);
 
 // tanh
 inline double tanh(double v) { return ::std::tanh(v); }
@@ -94,10 +94,10 @@ inline void sincos(const double3& v, double3& out_sin, double3& out_cos) { sinco
 inline void sincos(const double4& v, double4& out_sin, double4& out_cos) { sincos(v.x, out_sin.x, out_cos.x); sincos(v.y, out_sin.y, out_cos.y); sincos(v.z, out_sin.z, out_cos.z); sincos(v.w, out_sin.w, out_cos.w); }
 
 // atan2
-inline double atan2(double y, double x) { return ::std::atan2(y, x); }
-inline double2 atan2(const double2& y, const double2& x) { return {::std::atan2(y.x, x.x), ::std::atan2(y.y, x.y)}; }
-inline double3 atan2(const double3& y, const double3& x) { return {::std::atan2(y.x, x.x), ::std::atan2(y.y, x.y), ::std::atan2(y.z, x.z)}; }
-inline double4 atan2(const double4& y, const double4& x) { return {::std::atan2(y.x, x.x), ::std::atan2(y.y, x.y), ::std::atan2(y.z, x.z), ::std::atan2(y.w, x.w)}; }
+double atan2(double y, double x);
+double2 atan2(const double2& y, const double2& x);
+double3 atan2(const double3& y, const double3& x);
+double4 atan2(const double4& y, const double4& x);
 
 // ceil
 double ceil(double v);

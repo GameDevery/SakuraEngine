@@ -16,10 +16,10 @@ float3 abs(const float3& v);
 float4 abs(const float4& v);
 
 // acos
-inline float acos(float v) { return ::std::acos(v); }
-inline float2 acos(const float2& v) { return {::std::acos(v.x), ::std::acos(v.y)}; }
-inline float3 acos(const float3& v) { return {::std::acos(v.x), ::std::acos(v.y), ::std::acos(v.z)}; }
-inline float4 acos(const float4& v) { return {::std::acos(v.x), ::std::acos(v.y), ::std::acos(v.z), ::std::acos(v.w)}; }
+float acos(float v);
+float2 acos(const float2& v);
+float3 acos(const float3& v);
+float4 acos(const float4& v);
 
 // acosh
 inline float acosh(float v) { return ::std::acosh(v); }
@@ -28,10 +28,10 @@ inline float3 acosh(const float3& v) { return {::std::acosh(v.x), ::std::acosh(v
 inline float4 acosh(const float4& v) { return {::std::acosh(v.x), ::std::acosh(v.y), ::std::acosh(v.z), ::std::acosh(v.w)}; }
 
 // cos
-inline float cos(float v) { return ::std::cos(v); }
-inline float2 cos(const float2& v) { return {::std::cos(v.x), ::std::cos(v.y)}; }
-inline float3 cos(const float3& v) { return {::std::cos(v.x), ::std::cos(v.y), ::std::cos(v.z)}; }
-inline float4 cos(const float4& v) { return {::std::cos(v.x), ::std::cos(v.y), ::std::cos(v.z), ::std::cos(v.w)}; }
+float cos(float v);
+float2 cos(const float2& v);
+float3 cos(const float3& v);
+float4 cos(const float4& v);
 
 // cosh
 inline float cosh(float v) { return ::std::cosh(v); }
@@ -40,10 +40,10 @@ inline float3 cosh(const float3& v) { return {::std::cosh(v.x), ::std::cosh(v.y)
 inline float4 cosh(const float4& v) { return {::std::cosh(v.x), ::std::cosh(v.y), ::std::cosh(v.z), ::std::cosh(v.w)}; }
 
 // asin
-inline float asin(float v) { return ::std::asin(v); }
-inline float2 asin(const float2& v) { return {::std::asin(v.x), ::std::asin(v.y)}; }
-inline float3 asin(const float3& v) { return {::std::asin(v.x), ::std::asin(v.y), ::std::asin(v.z)}; }
-inline float4 asin(const float4& v) { return {::std::asin(v.x), ::std::asin(v.y), ::std::asin(v.z), ::std::asin(v.w)}; }
+float asin(float v);
+float2 asin(const float2& v);
+float3 asin(const float3& v);
+float4 asin(const float4& v);
 
 // asinh
 inline float asinh(float v) { return ::std::asinh(v); }
@@ -52,10 +52,10 @@ inline float3 asinh(const float3& v) { return {::std::asinh(v.x), ::std::asinh(v
 inline float4 asinh(const float4& v) { return {::std::asinh(v.x), ::std::asinh(v.y), ::std::asinh(v.z), ::std::asinh(v.w)}; }
 
 // sin
-inline float sin(float v) { return ::std::sin(v); }
-inline float2 sin(const float2& v) { return {::std::sin(v.x), ::std::sin(v.y)}; }
-inline float3 sin(const float3& v) { return {::std::sin(v.x), ::std::sin(v.y), ::std::sin(v.z)}; }
-inline float4 sin(const float4& v) { return {::std::sin(v.x), ::std::sin(v.y), ::std::sin(v.z), ::std::sin(v.w)}; }
+float sin(float v);
+float2 sin(const float2& v);
+float3 sin(const float3& v);
+float4 sin(const float4& v);
 
 // sinh
 inline float sinh(float v) { return ::std::sinh(v); }
@@ -64,10 +64,10 @@ inline float3 sinh(const float3& v) { return {::std::sinh(v.x), ::std::sinh(v.y)
 inline float4 sinh(const float4& v) { return {::std::sinh(v.x), ::std::sinh(v.y), ::std::sinh(v.z), ::std::sinh(v.w)}; }
 
 // atan
-inline float atan(float v) { return ::std::atan(v); }
-inline float2 atan(const float2& v) { return {::std::atan(v.x), ::std::atan(v.y)}; }
-inline float3 atan(const float3& v) { return {::std::atan(v.x), ::std::atan(v.y), ::std::atan(v.z)}; }
-inline float4 atan(const float4& v) { return {::std::atan(v.x), ::std::atan(v.y), ::std::atan(v.z), ::std::atan(v.w)}; }
+float atan(float v);
+float2 atan(const float2& v);
+float3 atan(const float3& v);
+float4 atan(const float4& v);
 
 // atanh
 inline float atanh(float v) { return ::std::atanh(v); }
@@ -76,10 +76,10 @@ inline float3 atanh(const float3& v) { return {::std::atanh(v.x), ::std::atanh(v
 inline float4 atanh(const float4& v) { return {::std::atanh(v.x), ::std::atanh(v.y), ::std::atanh(v.z), ::std::atanh(v.w)}; }
 
 // tan
-inline float tan(float v) { return ::std::tan(v); }
-inline float2 tan(const float2& v) { return {::std::tan(v.x), ::std::tan(v.y)}; }
-inline float3 tan(const float3& v) { return {::std::tan(v.x), ::std::tan(v.y), ::std::tan(v.z)}; }
-inline float4 tan(const float4& v) { return {::std::tan(v.x), ::std::tan(v.y), ::std::tan(v.z), ::std::tan(v.w)}; }
+float tan(float v);
+float2 tan(const float2& v);
+float3 tan(const float3& v);
+float4 tan(const float4& v);
 
 // tanh
 inline float tanh(float v) { return ::std::tanh(v); }
@@ -94,10 +94,10 @@ inline void sincos(const float3& v, float3& out_sin, float3& out_cos) { sincos(v
 inline void sincos(const float4& v, float4& out_sin, float4& out_cos) { sincos(v.x, out_sin.x, out_cos.x); sincos(v.y, out_sin.y, out_cos.y); sincos(v.z, out_sin.z, out_cos.z); sincos(v.w, out_sin.w, out_cos.w); }
 
 // atan2
-inline float atan2(float y, float x) { return ::std::atan2(y, x); }
-inline float2 atan2(const float2& y, const float2& x) { return {::std::atan2(y.x, x.x), ::std::atan2(y.y, x.y)}; }
-inline float3 atan2(const float3& y, const float3& x) { return {::std::atan2(y.x, x.x), ::std::atan2(y.y, x.y), ::std::atan2(y.z, x.z)}; }
-inline float4 atan2(const float4& y, const float4& x) { return {::std::atan2(y.x, x.x), ::std::atan2(y.y, x.y), ::std::atan2(y.z, x.z), ::std::atan2(y.w, x.w)}; }
+float atan2(float y, float x);
+float2 atan2(const float2& y, const float2& x);
+float3 atan2(const float3& y, const float3& x);
+float4 atan2(const float4& y, const float4& x);
 
 // ceil
 float ceil(float v);

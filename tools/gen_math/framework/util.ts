@@ -222,6 +222,14 @@ export function vector_has_simd_optimize(name: string, opt: TypeOption, dim: num
         return true;
       case "lerp":
         return dim > 2;
+      case "sin":
+      case "asin":
+      case "cos":
+      case "acos":
+      case "tan":
+      case "atan":
+      case "atan2":
+        return true;
       default:
         return false;
     }
