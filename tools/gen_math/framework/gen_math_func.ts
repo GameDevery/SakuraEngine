@@ -1,7 +1,7 @@
 import {
   CodeBuilder, type_convert_options,
   type_options, all_component_kinds,
-  dims_all, dims_no_scalar
+  dims_all, dims_no_scalar, vector_has_simd_optimize
 } from "./util"
 import type { TypeOption, ComponentKind, GlobalBuilders } from "./util";
 import path from "node:path";
@@ -55,35 +55,52 @@ class _MathFuncGenerator {
     const comp_name = opt.component_name;
     const return_vec_name = override_result_type ? `${override_result_type}${dim}` : vec_name;
 
-    if (dim === 1) {
-      const return_comp_name = override_result_type ? override_result_type : comp_name;
-
-      const param_list = param_names
-        .map(p => `${comp_name} ${p}`)
-        .join(', ')
-
-      const param_expr = param_names
-        .join(', ')
-
-      b.$line(`inline ${return_comp_name} ${name}(${param_list}) { return ::std::${std_name}(${param_expr}); }`)
-      return;
-    }
-
-    const param_list = param_names
-      .map(p => `const ${vec_name}& ${p}`)
-      .join(', ')
-
-    const init_expr = _comp_lut
-      .slice(0, dim)
-      .map(c => {
+    if (vector_has_simd_optimize(opt, dim)) {
+      if (dim === 1) {
+        const return_comp_name = override_result_type ? override_result_type : comp_name;
         const param_list = param_names
-          .map(p => `${p}.${c}`)
+          .map(p => `${comp_name} ${p}`)
           .join(', ')
-        return `::std::${std_name}(${param_list})`
-      })
-      .join(', ');
 
-    b.$line(`inline ${return_vec_name} ${name}(${param_list}) { return {${init_expr}}; }`)
+        b.$line(`${return_comp_name} ${name}(${param_list});`)
+      } else {
+        const param_list = param_names
+          .map(p => `const ${vec_name}& ${p}`)
+          .join(', ')
+
+        b.$line(`${return_vec_name} ${name}(${param_list});`)
+      }
+
+    } else {
+      if (dim === 1) {
+        const return_comp_name = override_result_type ? override_result_type : comp_name;
+
+        const param_list = param_names
+          .map(p => `${comp_name} ${p}`)
+          .join(', ')
+
+        const param_expr = param_names
+          .join(', ')
+
+        b.$line(`inline ${return_comp_name} ${name}(${param_list}) { return ::std::${std_name}(${param_expr}); }`)
+      } else {
+        const param_list = param_names
+          .map(p => `const ${vec_name}& ${p}`)
+          .join(', ')
+
+        const init_expr = _comp_lut
+          .slice(0, dim)
+          .map(c => {
+            const param_list = param_names
+              .map(p => `${p}.${c}`)
+              .join(', ')
+            return `::std::${std_name}(${param_list})`
+          })
+          .join(', ');
+
+        b.$line(`inline ${return_vec_name} ${name}(${param_list}) { return {${init_expr}}; }`)
+      }
+    }
   }
 
   @math_func("abs", { accept_comp_kind: ["floating", "integer"] })

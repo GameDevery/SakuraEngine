@@ -193,3 +193,7 @@ export function get_alignas_matrix(opt: TypeOption, dim: number): string {
     return ``;
   }
 }
+
+export function vector_has_simd_optimize(opt: TypeOption, dim: number): boolean {
+  return false;
+}

@@ -1,7 +1,7 @@
 import {
   CodeBuilder, dims_no_scalar,
   type_convert_options, type_options,
-  get_alignas_vector
+  get_alignas_vector, vector_has_simd_optimize
 } from "./util"
 import type { TypeOption, GlobalBuilders } from "./util";
 import path from "node:path";
