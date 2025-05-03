@@ -3,6 +3,8 @@
 #include "../gen/gen_math.hpp"
 
 // rtm types
+#include <rtm/scalarf.h>
+#include <rtm/scalard.h>
 #include <rtm/quatf.h>
 #include <rtm/quatd.h>
 #include <rtm/vector4f.h>

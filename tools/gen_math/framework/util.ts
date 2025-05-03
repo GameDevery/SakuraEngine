@@ -194,6 +194,14 @@ export function get_alignas_matrix(opt: TypeOption, dim: number): string {
   }
 }
 
-export function vector_has_simd_optimize(opt: TypeOption, dim: number): boolean {
-  return false;
+export function vector_has_simd_optimize(name: string, opt: TypeOption, dim: number): boolean {
+  if (opt.component_kind === "floating") {
+    if (name === "min" || name === "max") {
+      return true;
+    } else {
+      return false;
+    }
+  } else {
+    return false;
+  }
 }

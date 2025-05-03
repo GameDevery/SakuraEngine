@@ -6,6 +6,134 @@ namespace skr
 {
 inline namespace math
 {
+// max
+inline float max(float a, float b)
+{
+    return rtm::scalar_max(a, b);
+}
+inline float2 max(const float2& a, const float2& b)
+{
+    return RtmConvert<float2>::from_rtm(
+        rtm::vector_max(
+            RtmConvert<float2>::to_rtm(a),
+            RtmConvert<float2>::to_rtm(b)
+        )
+    );
+}
+inline float3 max(const float3& a, const float3& b)
+{
+    return RtmConvert<float3>::from_rtm(
+        rtm::vector_max(
+            RtmConvert<float3>::to_rtm(a),
+            RtmConvert<float3>::to_rtm(b)
+        )
+    );
+}
+inline float4 max(const float4& a, const float4& b)
+{
+    return RtmConvert<float4>::from_rtm(
+        rtm::vector_max(
+            RtmConvert<float4>::to_rtm(a),
+            RtmConvert<float4>::to_rtm(b)
+        )
+    );
+}
+inline double max(double a, double b)
+{
+    return rtm::scalar_max(a, b);
+}
+inline double2 max(const double2& a, const double2& b)
+{
+    return RtmConvert<double2>::from_rtm(
+        rtm::vector_max(
+            RtmConvert<double2>::to_rtm(a),
+            RtmConvert<double2>::to_rtm(b)
+        )
+    );
+}
+inline double3 max(const double3& a, const double3& b)
+{
+    return RtmConvert<double3>::from_rtm(
+        rtm::vector_max(
+            RtmConvert<double3>::to_rtm(a),
+            RtmConvert<double3>::to_rtm(b)
+        )
+    );
+}
+inline double4 max(const double4& a, const double4& b)
+{
+    return RtmConvert<double4>::from_rtm(
+        rtm::vector_max(
+            RtmConvert<double4>::to_rtm(a),
+            RtmConvert<double4>::to_rtm(b)
+        )
+    );
+}
+
+// min
+inline float min(float a, float b)
+{
+    return rtm::scalar_min(a, b);
+}
+inline float2 min(const float2& a, const float2& b)
+{
+    return RtmConvert<float2>::from_rtm(
+        rtm::vector_min(
+            RtmConvert<float2>::to_rtm(a),
+            RtmConvert<float2>::to_rtm(b)
+        )
+    );
+}
+inline float3 min(const float3& a, const float3& b)
+{
+    return RtmConvert<float3>::from_rtm(
+        rtm::vector_min(
+            RtmConvert<float3>::to_rtm(a),
+            RtmConvert<float3>::to_rtm(b)
+        )
+    );
+}
+inline float4 min(const float4& a, const float4& b)
+{
+    return RtmConvert<float4>::from_rtm(
+        rtm::vector_min(
+            RtmConvert<float4>::to_rtm(a),
+            RtmConvert<float4>::to_rtm(b)
+        )
+    );
+}
+inline double min(double a, double b)
+{
+    return rtm::scalar_min(a, b);
+}
+inline double2 min(const double2& a, const double2& b)
+{
+    return RtmConvert<double2>::from_rtm(
+        rtm::vector_min(
+            RtmConvert<double2>::to_rtm(a),
+            RtmConvert<double2>::to_rtm(b)
+        )
+    );
+}
+inline double3 min(const double3& a, const double3& b)
+{
+    return RtmConvert<double3>::from_rtm(
+        rtm::vector_min(
+            RtmConvert<double3>::to_rtm(a),
+            RtmConvert<double3>::to_rtm(b)
+        )
+    );
+}
+inline double4 min(const double4& a, const double4& b)
+{
+    return RtmConvert<double4>::from_rtm(
+        rtm::vector_min(
+            RtmConvert<double4>::to_rtm(a),
+            RtmConvert<double4>::to_rtm(b)
+        )
+    );
+}
+
 // is parallel
 inline bool is_parallel(const float3& normal_a, const float3& normal_b, float threshold = 0.999845f)
 {

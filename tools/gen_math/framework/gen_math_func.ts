@@ -55,7 +55,7 @@ class _MathFuncGenerator {
     const comp_name = opt.component_name;
     const return_vec_name = override_result_type ? `${override_result_type}${dim}` : vec_name;
 
-    if (vector_has_simd_optimize(opt, dim)) {
+    if (vector_has_simd_optimize(name, opt, dim)) {
       if (dim === 1) {
         const return_comp_name = override_result_type ? override_result_type : comp_name;
         const param_list = param_names

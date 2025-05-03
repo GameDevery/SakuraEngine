@@ -196,16 +196,16 @@ inline bool3 isnan(const double3& v) { return {::std::isnan(v.x), ::std::isnan(v
 inline bool4 isnan(const double4& v) { return {::std::isnan(v.x), ::std::isnan(v.y), ::std::isnan(v.z), ::std::isnan(v.w)}; }
 
 // max
-inline double max(double v1, double v2) { return ::std::max(v1, v2); }
-inline double2 max(const double2& v1, const double2& v2) { return {::std::max(v1.x, v2.x), ::std::max(v1.y, v2.y)}; }
-inline double3 max(const double3& v1, const double3& v2) { return {::std::max(v1.x, v2.x), ::std::max(v1.y, v2.y), ::std::max(v1.z, v2.z)}; }
-inline double4 max(const double4& v1, const double4& v2) { return {::std::max(v1.x, v2.x), ::std::max(v1.y, v2.y), ::std::max(v1.z, v2.z), ::std::max(v1.w, v2.w)}; }
+double max(double v1, double v2);
+double2 max(const double2& v1, const double2& v2);
+double3 max(const double3& v1, const double3& v2);
+double4 max(const double4& v1, const double4& v2);
 
 // min
-inline double min(double v1, double v2) { return ::std::min(v1, v2); }
-inline double2 min(const double2& v1, const double2& v2) { return {::std::min(v1.x, v2.x), ::std::min(v1.y, v2.y)}; }
-inline double3 min(const double3& v1, const double3& v2) { return {::std::min(v1.x, v2.x), ::std::min(v1.y, v2.y), ::std::min(v1.z, v2.z)}; }
-inline double4 min(const double4& v1, const double4& v2) { return {::std::min(v1.x, v2.x), ::std::min(v1.y, v2.y), ::std::min(v1.z, v2.z), ::std::min(v1.w, v2.w)}; }
+double min(double v1, double v2);
+double2 min(const double2& v1, const double2& v2);
+double3 min(const double3& v1, const double3& v2);
+double4 min(const double4& v1, const double4& v2);
 
 // mad
 inline double mad(double x, double mul, double add) { return ::std::fma(x, mul, add); }
