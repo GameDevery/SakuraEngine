@@ -12,6 +12,7 @@
     #include "./math/manual/color_utils.hpp"
     #include "./math/manual/camera_utils.hpp"
     #include "./math/manual/coordinate_system.hpp"
+    #include "./math/manual/ease_curve.hpp"
 
     #include "./math/gen/gen_math_c_decl.hpp"
     #include "./math/gen/gen_math_traits.hpp"
