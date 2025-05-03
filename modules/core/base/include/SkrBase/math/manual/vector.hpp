@@ -540,6 +540,70 @@ inline double4 round(const double4& v)
     );
 }
 
+// dot
+inline float dot(const float2& a, const float2& b)
+{
+    return rtm::vector_dot2(
+        RtmConvert<float2>::to_rtm(a),
+        RtmConvert<float2>::to_rtm(b)
+    );
+}
+inline float dot(const float3& a, const float3& b)
+{
+    return rtm::vector_dot3(
+        RtmConvert<float3>::to_rtm(a),
+        RtmConvert<float3>::to_rtm(b)
+    );
+}
+inline float dot(const float4& a, const float4& b)
+{
+    return rtm::vector_dot(
+        RtmConvert<float4>::to_rtm(a),
+        RtmConvert<float4>::to_rtm(b)
+    );
+}
+inline double dot(const double2& a, const double2& b)
+{
+    return rtm::vector_dot2(
+        RtmConvert<double2>::to_rtm(a),
+        RtmConvert<double2>::to_rtm(b)
+    );
+}
+inline double dot(const double3& a, const double3& b)
+{
+    return rtm::vector_dot3(
+        RtmConvert<double3>::to_rtm(a),
+        RtmConvert<double3>::to_rtm(b)
+    );
+}
+inline double dot(const double4& a, const double4& b)
+{
+    return rtm::vector_dot(
+        RtmConvert<double4>::to_rtm(a),
+        RtmConvert<double4>::to_rtm(b)
+    );
+}
+
+// cross
+inline float3 cross(const float3& a, const float3& b)
+{
+    return RtmConvert<float3>::from_rtm(
+        rtm::vector_cross3(
+            RtmConvert<float3>::to_rtm(a),
+            RtmConvert<float3>::to_rtm(b)
+        )
+    );
+}
+inline double3 cross(const double3& a, const double3& b)
+{
+    return RtmConvert<double3>::from_rtm(
+        rtm::vector_cross3(
+            RtmConvert<double3>::to_rtm(a),
+            RtmConvert<double3>::to_rtm(b)
+        )
+    );
+}
+
 // is parallel
 inline bool is_parallel(const float3& normal_a, const float3& normal_b, float threshold = 0.999845f)
 {

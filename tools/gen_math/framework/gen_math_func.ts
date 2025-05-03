@@ -592,12 +592,16 @@ class _MathFuncGenerator {
     const comp_name = opt.component_name;
     const vec_name = `${base_name}${dim}`;
 
-    const init_expr = _comp_lut
-      .slice(0, dim)
-      .map(c => `v1.${c} * v2.${c}`)
-      .join(' + ');
+    if (vector_has_simd_optimize("cross", opt, dim)) {
+      b.$line(`${comp_name} dot(const ${vec_name}& v1, const ${vec_name}& v2);`)
+    } else {
+      const init_expr = _comp_lut
+        .slice(0, dim)
+        .map(c => `v1.${c} * v2.${c}`)
+        .join(' + ');
 
-    b.$line(`inline ${comp_name} dot(const ${vec_name}& v1, const ${vec_name}& v2) { return ${init_expr}; }`)
+      b.$line(`inline ${comp_name} dot(const ${vec_name}& v1, const ${vec_name}& v2) { return ${init_expr}; }`)
+    }
   }
   @math_func("cross", { accept_comp_kind: ["floating"], accept_dim: [3] })
   static gen_cross(b: CodeBuilder, opt: MathGenOptions) {
@@ -608,7 +612,11 @@ class _MathFuncGenerator {
 
     const init_expr = `(x * y.yzx() - x.yzx() * y).yzx()`;
 
-    b.$line(`inline ${vec_name} cross(const ${vec_name}& x, const ${vec_name}& y) { return {${init_expr}}; }`)
+    if (vector_has_simd_optimize("cross", opt, dim)) {
+      b.$line(`${vec_name} cross(const ${vec_name}& x, const ${vec_name}& y);`)
+    } else {
+      b.$line(`inline ${vec_name} cross(const ${vec_name}& x, const ${vec_name}& y) { return {${init_expr}}; }`)
+    }
   }
 
   // length & distance Squared

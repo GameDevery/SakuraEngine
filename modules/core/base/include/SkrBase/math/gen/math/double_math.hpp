@@ -289,12 +289,12 @@ inline double3 radians(const double3& v) { return {v.x * double(kPi) / double(18
 inline double4 radians(const double4& v) { return {v.x * double(kPi) / double(180), v.y * double(kPi) / double(180), v.z * double(kPi) / double(180), v.w * double(kPi) / double(180)}; }
 
 // dot
-inline double dot(const double2& v1, const double2& v2) { return v1.x * v2.x + v1.y * v2.y; }
-inline double dot(const double3& v1, const double3& v2) { return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z; }
-inline double dot(const double4& v1, const double4& v2) { return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z + v1.w * v2.w; }
+double dot(const double2& v1, const double2& v2);
+double dot(const double3& v1, const double3& v2);
+double dot(const double4& v1, const double4& v2);
 
 // cross
-inline double3 cross(const double3& x, const double3& y) { return {(x * y.yzx() - x.yzx() * y).yzx()}; }
+double3 cross(const double3& x, const double3& y);
 
 // length
 inline double length(const double2& v) { return ::std::sqrt(dot(v, v)); }

@@ -211,6 +211,9 @@ export function vector_has_simd_optimize(name: string, opt: TypeOption, dim: num
       case "floor":
       case "round":
         return true;
+      case "cross":
+      case "dot":
+        return true;
       default:
         return false;
     }
