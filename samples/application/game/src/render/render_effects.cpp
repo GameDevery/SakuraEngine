@@ -37,7 +37,6 @@
 #include "rtm/quatf.h"
 #include "rtm/scalarf.h"
 #include "rtm/qvvf.h"
-#include "rtm/rtmx.h"
 #include "SkrBase/math/transform.h"
 
 using namespace game;
