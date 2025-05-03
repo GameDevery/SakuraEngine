@@ -124,13 +124,13 @@ inline float3 trunc(const float3& v) { return {::std::trunc(v.x), ::std::trunc(v
 inline float4 trunc(const float4& v) { return {::std::trunc(v.x), ::std::trunc(v.y), ::std::trunc(v.z), ::std::trunc(v.w)}; }
 
 // frac
-inline float frac(const float &v) { float int_ptr; return ::std::modf(v, &int_ptr); }
+inline float frac(float v) { float int_ptr; return ::std::modf(v, &int_ptr); }
 inline float2 frac(const float2 &v) { float2 int_ptr; return {::std::modf(v.x, &int_ptr.x), ::std::modf(v.y, &int_ptr.y)}; }
 inline float3 frac(const float3 &v) { float3 int_ptr; return {::std::modf(v.x, &int_ptr.x), ::std::modf(v.y, &int_ptr.y), ::std::modf(v.z, &int_ptr.z)}; }
 inline float4 frac(const float4 &v) { float4 int_ptr; return {::std::modf(v.x, &int_ptr.x), ::std::modf(v.y, &int_ptr.y), ::std::modf(v.z, &int_ptr.z), ::std::modf(v.w, &int_ptr.w)}; }
 
 // modf
-inline float modf(const float &v, float& int_part) { return ::std::modf(v, &int_part); }
+inline float modf(float v, float& int_part) { return ::std::modf(v, &int_part); }
 inline float2 modf(const float2 &v, float2& int_part) { return { ::std::modf(v.x, &int_part.x), ::std::modf(v.y, &int_part.y) }; }
 inline float3 modf(const float3 &v, float3& int_part) { return { ::std::modf(v.x, &int_part.x), ::std::modf(v.y, &int_part.y), ::std::modf(v.z, &int_part.z) }; }
 inline float4 modf(const float4 &v, float4& int_part) { return { ::std::modf(v.x, &int_part.x), ::std::modf(v.y, &int_part.y), ::std::modf(v.z, &int_part.z), ::std::modf(v.w, &int_part.w) }; }
@@ -172,7 +172,7 @@ inline float3 log10(const float3& v) { return {::std::log10(v.x), ::std::log10(v
 inline float4 log10(const float4& v) { return {::std::log10(v.x), ::std::log10(v.y), ::std::log10(v.z), ::std::log10(v.w)}; }
 
 // logx
-inline float logx(const float &v, const float &base) { return ::std::log(v) / ::std::log(base); }
+inline float logx(float v, float base) { return ::std::log(v) / ::std::log(base); }
 inline float2 logx(const float2 &v, const float2 &base) { return {logx(v.x, base.x), logx(v.y, base.y)}; }
 inline float3 logx(const float3 &v, const float3 &base) { return {logx(v.x, base.x), logx(v.y, base.y), logx(v.z, base.z)}; }
 inline float4 logx(const float4 &v, const float4 &base) { return {logx(v.x, base.x), logx(v.y, base.y), logx(v.z, base.z), logx(v.w, base.w)}; }
@@ -248,13 +248,13 @@ inline float4 hypot(const float4& x, const float4& y) { return {::std::hypot(x.x
 inline float4 hypot(const float4& x, const float4& y, const float4& z) { return {::std::hypot(x.x, y.x, z.x), ::std::hypot(x.y, y.y, z.y), ::std::hypot(x.z, y.z, z.z), ::std::hypot(x.w, y.w, z.w)}; }
 
 // clamp
-inline float clamp(const float &v, const float &min, const float &max) { return v < min ? min : v > max ? max : v; }
+inline float clamp(float v, float min, float max) { return v < min ? min : v > max ? max : v; }
 inline float2 clamp(const float2 &v, const float2 &min, const float2 &max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y)}; }
 inline float3 clamp(const float3 &v, const float3 &min, const float3 &max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y), clamp(v.z, min.z, max.z)}; }
 inline float4 clamp(const float4 &v, const float4 &min, const float4 &max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y), clamp(v.z, min.z, max.z), clamp(v.w, min.w, max.w)}; }
 
 // saturate
-inline float saturate(const float &v) { return clamp(v, float(0), float(1)); }
+inline float saturate(float v) { return clamp(v, float(0), float(1)); }
 inline float2 saturate(const float2 &v) { return {clamp(v.x, float(0), float(1)), clamp(v.y, float(0), float(1))}; }
 inline float3 saturate(const float3 &v) { return {clamp(v.x, float(0), float(1)), clamp(v.y, float(0), float(1)), clamp(v.z, float(0), float(1))}; }
 inline float4 saturate(const float4 &v) { return {clamp(v.x, float(0), float(1)), clamp(v.y, float(0), float(1)), clamp(v.z, float(0), float(1)), clamp(v.w, float(0), float(1))}; }
@@ -271,19 +271,19 @@ float3 rcp(const float3& v);
 float4 rcp(const float4& v);
 
 // sign
-inline float sign(const float &v) { return v < float(0) ? float(-1) : v > float(0) ? float(1) : float(0); }
+inline float sign(float v) { return v < float(0) ? float(-1) : v > float(0) ? float(1) : float(0); }
 inline float2 sign(const float2 &v) { return {v.x < float(0) ? float(-1) : v.x > float(0) ? float(1) : float(0), v.y < float(0) ? float(-1) : v.y > float(0) ? float(1) : float(0)}; }
 inline float3 sign(const float3 &v) { return {v.x < float(0) ? float(-1) : v.x > float(0) ? float(1) : float(0), v.y < float(0) ? float(-1) : v.y > float(0) ? float(1) : float(0), v.z < float(0) ? float(-1) : v.z > float(0) ? float(1) : float(0)}; }
 inline float4 sign(const float4 &v) { return {v.x < float(0) ? float(-1) : v.x > float(0) ? float(1) : float(0), v.y < float(0) ? float(-1) : v.y > float(0) ? float(1) : float(0), v.z < float(0) ? float(-1) : v.z > float(0) ? float(1) : float(0), v.w < float(0) ? float(-1) : v.w > float(0) ? float(1) : float(0)}; }
 
 // degrees
-inline float degrees(const float &v) { return v * float(180) / float(kPi); }
+inline float degrees(float v) { return v * float(180) / float(kPi); }
 inline float2 degrees(const float2 &v) { return {v.x * float(180) / float(kPi), v.y * float(180) / float(kPi)}; }
 inline float3 degrees(const float3 &v) { return {v.x * float(180) / float(kPi), v.y * float(180) / float(kPi), v.z * float(180) / float(kPi)}; }
 inline float4 degrees(const float4 &v) { return {v.x * float(180) / float(kPi), v.y * float(180) / float(kPi), v.z * float(180) / float(kPi), v.w * float(180) / float(kPi)}; }
 
 // radians
-inline float radians(const float &v) { return v * float(kPi) / float(180); }
+inline float radians(float v) { return v * float(kPi) / float(180); }
 inline float2 radians(const float2 &v) { return {v.x * float(kPi) / float(180), v.y * float(kPi) / float(180)}; }
 inline float3 radians(const float3 &v) { return {v.x * float(kPi) / float(180), v.y * float(kPi) / float(180), v.z * float(kPi) / float(180)}; }
 inline float4 radians(const float4 &v) { return {v.x * float(kPi) / float(180), v.y * float(kPi) / float(180), v.z * float(kPi) / float(180), v.w * float(kPi) / float(180)}; }
@@ -340,34 +340,34 @@ inline float3 refract(const float3 &v, const float3 &n, float eta) {
 }
 
 // step
-inline float step(const float &edge, const float &v) { return v < edge ? float(0) : float(1); }
+inline float step(float edge, float v) { return v < edge ? float(0) : float(1); }
 inline float2 step(const float2 &edge, const float2 &v) { return select(edge < v, float2(0), float2(1)); }
 inline float3 step(const float3 &edge, const float3 &v) { return select(edge < v, float3(0), float3(1)); }
 inline float4 step(const float4 &edge, const float4 &v) { return select(edge < v, float4(0), float4(1)); }
 
 // smoothstep
-inline float smoothstep(const float &edge0, const float &edge1, const float &v) {
+inline float smoothstep(float edge0, float edge1, float v) {
     const float t = saturate((v - edge0) / (edge1 - edge0));
     return t * t * (float(3) - float(2) * v);
 }
-inline float2 smoothstep(const float2 &edge0, const float2 &edge1, const float2 &v) {
+inline float2 smoothstep(const float2& edge0, const float2& edge1, const float2& v) {
     const float2 t = saturate((v - edge0) / (edge1 - edge0));
     return t * t * (float(3) - float(2) * v);
 }
-inline float3 smoothstep(const float3 &edge0, const float3 &edge1, const float3 &v) {
+inline float3 smoothstep(const float3& edge0, const float3& edge1, const float3& v) {
     const float3 t = saturate((v - edge0) / (edge1 - edge0));
     return t * t * (float(3) - float(2) * v);
 }
-inline float4 smoothstep(const float4 &edge0, const float4 &edge1, const float4 &v) {
+inline float4 smoothstep(const float4& edge0, const float4& edge1, const float4& v) {
     const float4 t = saturate((v - edge0) / (edge1 - edge0));
     return t * t * (float(3) - float(2) * v);
 }
 
 // lerp
-inline float lerp(const float &v0, const float &v1, const float &t) { return v0 + t * (v1 - v0); }
-inline float2 lerp(const float2 &v0, const float2 &v1, const float &t) { return v0 + t * (v1 - v0); }
-inline float3 lerp(const float3 &v0, const float3 &v1, const float &t) { return v0 + t * (v1 - v0); }
-inline float4 lerp(const float4 &v0, const float4 &v1, const float &t) { return v0 + t * (v1 - v0); }
+inline float lerp(float v0, float v1, float t) { return v0 + t * (v1 - v0); }
+inline float2 lerp(const float2 &v0, const float2 &v1, float t) { return v0 + t * (v1 - v0); }
+inline float3 lerp(const float3 &v0, const float3 &v1, float t) { return v0 + t * (v1 - v0); }
+inline float4 lerp(const float4 &v0, const float4 &v1, float t) { return v0 + t * (v1 - v0); }
 
 // nearly_equal
 inline bool nearly_equal(float x, float y, float epsilon = float(0.000001)) { return abs(x - y) <= epsilon; }
@@ -424,13 +424,13 @@ inline float3 normalize_degrees(const float3 &v) { return { normalize_degrees(v.
 inline float4 normalize_degrees(const float4 &v) { return { normalize_degrees(v.x), normalize_degrees(v.y), normalize_degrees(v.z), normalize_degrees(v.w) }; }
 
 // square
-inline float square(const float &v) { return v * v; }
+inline float square(float v) { return v * v; }
 inline float2 square(const float2 &v) { return { v.x * v.x, v.y * v.y }; }
 inline float3 square(const float3 &v) { return { v.x * v.x, v.y * v.y, v.z * v.z }; }
 inline float4 square(const float4 &v) { return { v.x * v.x, v.y * v.y, v.z * v.z, v.w * v.w }; }
 
 // cube
-inline float cube(const float &v) { return v * v * v; }
+inline float cube(float v) { return v * v * v; }
 inline float2 cube(const float2 &v) { return { v.x * v.x * v.x, v.y * v.y * v.y }; }
 inline float3 cube(const float3 &v) { return { v.x * v.x * v.x, v.y * v.y * v.y, v.z * v.z * v.z }; }
 inline float4 cube(const float4 &v) { return { v.x * v.x * v.x, v.y * v.y * v.y, v.z * v.z * v.z, v.w * v.w * v.w }; }

@@ -239,18 +239,17 @@ class _MathFuncGenerator {
     if (dim === 1) {
       const int_ptr = `${comp_name} int_ptr`;
       const init_expr = `::std::modf(v, &int_ptr)`;
-      b.$line(`inline ${comp_name} frac(const ${comp_name} &v) { ${int_ptr}; return ${init_expr}; }`)
-      return;
+      b.$line(`inline ${comp_name} frac(${comp_name} v) { ${int_ptr}; return ${init_expr}; }`)
+    } else {
+      // use modf
+      const int_ptr_vec = `${base_name}${dim} int_ptr`;
+      const init_expr = _comp_lut
+        .slice(0, dim)
+        .map(c => `::std::modf(v.${c}, &int_ptr.${c})`)
+        .join(', ');
+
+      b.$line(`inline ${vec_name} frac(const ${vec_name} &v) { ${int_ptr_vec}; return {${init_expr}}; }`)
     }
-
-    // use modf
-    const int_ptr_vec = `${base_name}${dim} int_ptr`;
-    const init_expr = _comp_lut
-      .slice(0, dim)
-      .map(c => `::std::modf(v.${c}, &int_ptr.${c})`)
-      .join(', ');
-
-    b.$line(`inline ${vec_name} frac(const ${vec_name} &v) { ${int_ptr_vec}; return {${init_expr}}; }`)
   }
   @math_func("modf", { accept_comp_kind: ["floating"] })
   static gen_modf(b: CodeBuilder, opt: MathGenOptions) {
@@ -261,17 +260,16 @@ class _MathFuncGenerator {
 
     if (dim === 1) {
       const init_expr = `::std::modf(v, &int_part)`;
-      b.$line(`inline ${comp_name} modf(const ${comp_name} &v, ${comp_name}& int_part) { return ${init_expr}; }`)
-      return;
+      b.$line(`inline ${comp_name} modf(${comp_name} v, ${comp_name}& int_part) { return ${init_expr}; }`)
+    } else {
+      // use modf
+      const init_expr = _comp_lut
+        .slice(0, dim)
+        .map(c => `::std::modf(v.${c}, &int_part.${c})`)
+        .join(', ');
+
+      b.$line(`inline ${vec_name} modf(const ${vec_name} &v, ${vec_name}& int_part) { return { ${init_expr} }; }`)
     }
-
-    // use modf
-    const init_expr = _comp_lut
-      .slice(0, dim)
-      .map(c => `::std::modf(v.${c}, &int_part.${c})`)
-      .join(', ');
-
-    b.$line(`inline ${vec_name} modf(const ${vec_name} &v, ${vec_name}& int_part) { return { ${init_expr} }; }`)
   }
 
   // fmod
@@ -312,7 +310,7 @@ class _MathFuncGenerator {
     if (dim === 1) {
       // use ::std::log
       const init_expr = `::std::log(v) / ::std::log(base)`;
-      b.$line(`inline ${comp_name} logx(const ${comp_name} &v, const ${comp_name} &base) { return ${init_expr}; }`)
+      b.$line(`inline ${comp_name} logx(${comp_name} v, ${comp_name} base) { return ${init_expr}; }`)
     } else {
       // use logx
       const init_expr = _comp_lut
@@ -417,7 +415,7 @@ class _MathFuncGenerator {
 
     if (dim === 1) {
       const init_expr = `v < min ? min : v > max ? max : v`;
-      b.$line(`inline ${comp_name} clamp(const ${comp_name} &v, const ${comp_name} &min, const ${comp_name} &max) { return ${init_expr}; }`)
+      b.$line(`inline ${comp_name} clamp(${comp_name} v, ${comp_name} min, ${comp_name} max) { return ${init_expr}; }`)
     } else {
       // use clamp
       const init_expr = _comp_lut
@@ -438,17 +436,16 @@ class _MathFuncGenerator {
 
     if (dim === 1) {
       const init_expr = `clamp(v, ${comp_name}(0), ${comp_name}(1))`;
-      b.$line(`inline ${comp_name} saturate(const ${comp_name} &v) { return ${init_expr}; }`)
-      return;
+      b.$line(`inline ${comp_name} saturate(${comp_name} v) { return ${init_expr}; }`)
+    } else {
+      // use clamp
+      const init_expr = _comp_lut
+        .slice(0, dim)
+        .map(c => `clamp(v.${c}, ${comp_name}(0), ${comp_name}(1))`)
+        .join(', ');
+
+      b.$line(`inline ${vec_name} saturate(const ${vec_name} &v) { return {${init_expr}}; }`)
     }
-
-    // use clamp
-    const init_expr = _comp_lut
-      .slice(0, dim)
-      .map(c => `clamp(v.${c}, ${comp_name}(0), ${comp_name}(1))`)
-      .join(', ');
-
-    b.$line(`inline ${vec_name} saturate(const ${vec_name} &v) { return {${init_expr}}; }`)
   }
 
   @math_func("select", { accept_dim: dims_no_scalar })
@@ -536,16 +533,15 @@ class _MathFuncGenerator {
 
     if (dim === 1) {
       const init_expr = `v < ${comp_name}(0) ? ${comp_name}(-1) : v > ${comp_name}(0) ? ${comp_name}(1) : ${comp_name}(0)`;
-      b.$line(`inline ${comp_name} sign(const ${comp_name} &v) { return ${init_expr}; }`)
-      return;
+      b.$line(`inline ${comp_name} sign(${comp_name} v) { return ${init_expr}; }`)
+    } else {
+      const init_expr = _comp_lut
+        .slice(0, dim)
+        .map(c => `v.${c} < ${comp_name}(0) ? ${comp_name}(-1) : v.${c} > ${comp_name}(0) ? ${comp_name}(1) : ${comp_name}(0)`)
+        .join(', ');
+
+      b.$line(`inline ${vec_name} sign(const ${vec_name} &v) { return {${init_expr}}; }`)
     }
-
-    const init_expr = _comp_lut
-      .slice(0, dim)
-      .map(c => `v.${c} < ${comp_name}(0) ? ${comp_name}(-1) : v.${c} > ${comp_name}(0) ? ${comp_name}(1) : ${comp_name}(0)`)
-      .join(', ');
-
-    b.$line(`inline ${vec_name} sign(const ${vec_name} &v) { return {${init_expr}}; }`)
   }
 
   // deg & rad
@@ -558,16 +554,15 @@ class _MathFuncGenerator {
 
     if (dim === 1) {
       const init_expr = `v * ${comp_name}(180) / ${comp_name}(kPi)`;
-      b.$line(`inline ${comp_name} degrees(const ${comp_name} &v) { return ${init_expr}; }`)
-      return;
+      b.$line(`inline ${comp_name} degrees(${comp_name} v) { return ${init_expr}; }`)
+    } else {
+      const init_expr = _comp_lut
+        .slice(0, dim)
+        .map(c => `v.${c} * ${comp_name}(180) / ${comp_name}(kPi)`)
+        .join(', ');
+
+      b.$line(`inline ${vec_name} degrees(const ${vec_name} &v) { return {${init_expr}}; }`)
     }
-
-    const init_expr = _comp_lut
-      .slice(0, dim)
-      .map(c => `v.${c} * ${comp_name}(180) / ${comp_name}(kPi)`)
-      .join(', ');
-
-    b.$line(`inline ${vec_name} degrees(const ${vec_name} &v) { return {${init_expr}}; }`)
   }
   @math_func("radians", { accept_comp_kind: ["floating"] })
   static gen_radians(b: CodeBuilder, opt: MathGenOptions) {
@@ -578,16 +573,15 @@ class _MathFuncGenerator {
 
     if (dim === 1) {
       const init_expr = `v * ${comp_name}(kPi) / ${comp_name}(180)`;
-      b.$line(`inline ${comp_name} radians(const ${comp_name} &v) { return ${init_expr}; }`)
-      return;
+      b.$line(`inline ${comp_name} radians(${comp_name} v) { return ${init_expr}; }`)
+    } else {
+      const init_expr = _comp_lut
+        .slice(0, dim)
+        .map(c => `v.${c} * ${comp_name}(kPi) / ${comp_name}(180)`)
+        .join(', ');
+
+      b.$line(`inline ${vec_name} radians(const ${vec_name} &v) { return {${init_expr}}; }`)
     }
-
-    const init_expr = _comp_lut
-      .slice(0, dim)
-      .map(c => `v.${c} * ${comp_name}(kPi) / ${comp_name}(180)`)
-      .join(', ');
-
-    b.$line(`inline ${vec_name} radians(const ${vec_name} &v) { return {${init_expr}}; }`)
   }
 
   // cross & dot
@@ -703,11 +697,11 @@ class _MathFuncGenerator {
 
     if (dim === 1) {
       const init_expr = `v < edge ? ${comp_name}(0) : ${comp_name}(1)`;
-      b.$line(`inline ${comp_name} step(const ${comp_name} &edge, const ${comp_name} &v) { return ${init_expr}; }`)
-      return;
+      b.$line(`inline ${comp_name} step(${comp_name} edge, ${comp_name} v) { return ${init_expr}; }`)
+    } else {
+      b.$line(`inline ${vec_name} step(const ${vec_name} &edge, const ${vec_name} &v) { return select(edge < v, ${vec_name}(0), ${vec_name}(1)); }`)
     }
 
-    b.$line(`inline ${vec_name} step(const ${vec_name} &edge, const ${vec_name} &v) { return select(edge < v, ${vec_name}(0), ${vec_name}(1)); }`)
   }
   @math_func("smoothstep", { accept_comp_kind: ["floating"] })
   static gen_smoothstep(b: CodeBuilder, opt: MathGenOptions) {
@@ -715,8 +709,9 @@ class _MathFuncGenerator {
     const dim = opt.dim;
     const comp_name = opt.component_name;
     const vec_name = dim === 1 ? comp_name : `${base_name}${dim}`;
+    const param_name = dim === 1 ? comp_name : `const ${vec_name}&`;
 
-    b.$line(`inline ${vec_name} smoothstep(const ${vec_name} &edge0, const ${vec_name} &edge1, const ${vec_name} &v) {`)
+    b.$line(`inline ${vec_name} smoothstep(${param_name} edge0, ${param_name} edge1, ${param_name} v) {`)
     b.$indent(_b => {
       b.$line(`const ${vec_name} t = saturate((v - edge0) / (edge1 - edge0));`)
       b.$line(`return t * t * (${comp_name}(3) - ${comp_name}(2) * v);`)
@@ -734,11 +729,10 @@ class _MathFuncGenerator {
 
     if (dim === 1) {
       const init_expr = `v0 + t * (v1 - v0)`;
-      b.$line(`inline ${comp_name} lerp(const ${comp_name} &v0, const ${comp_name} &v1, const ${comp_name} &t) { return ${init_expr}; }`)
-      return;
+      b.$line(`inline ${comp_name} lerp(${comp_name} v0, ${comp_name} v1, ${comp_name} t) { return ${init_expr}; }`)
+    } else {
+      b.$line(`inline ${vec_name} lerp(const ${vec_name} &v0, const ${vec_name} &v1, ${comp_name} t) { return v0 + t * (v1 - v0); }`)
     }
-
-    b.$line(`inline ${vec_name} lerp(const ${vec_name} &v0, const ${vec_name} &v1, const ${comp_name} &t) { return v0 + t * (v1 - v0); }`)
   }
 
   // slerp
@@ -908,8 +902,7 @@ class _MathFuncGenerator {
 
     if (dim === 1) {
       const init_expr = `v * v`;
-      b.$line(`inline ${comp_name} square(const ${comp_name} &v) { return ${init_expr}; }`)
-      return;
+      b.$line(`inline ${comp_name} square(${comp_name} v) { return ${init_expr}; }`)
     } else {
       const init_expr = _comp_lut
         .slice(0, dim)
@@ -927,8 +920,7 @@ class _MathFuncGenerator {
 
     if (dim === 1) {
       const init_expr = `v * v * v`;
-      b.$line(`inline ${comp_name} cube(const ${comp_name} &v) { return ${init_expr}; }`)
-      return;
+      b.$line(`inline ${comp_name} cube(${comp_name} v) { return ${init_expr}; }`)
     } else {
       const init_expr = _comp_lut
         .slice(0, dim)

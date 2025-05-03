@@ -28,7 +28,7 @@ inline long3 min(const long3& v1, const long3& v2) { return {::std::min(v1.x, v2
 inline long4 min(const long4& v1, const long4& v2) { return {::std::min(v1.x, v2.x), ::std::min(v1.y, v2.y), ::std::min(v1.z, v2.z), ::std::min(v1.w, v2.w)}; }
 
 // clamp
-inline int64_t clamp(const int64_t &v, const int64_t &min, const int64_t &max) { return v < min ? min : v > max ? max : v; }
+inline int64_t clamp(int64_t v, int64_t min, int64_t max) { return v < min ? min : v > max ? max : v; }
 inline long2 clamp(const long2 &v, const long2 &min, const long2 &max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y)}; }
 inline long3 clamp(const long3 &v, const long3 &min, const long3 &max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y), clamp(v.z, min.z, max.z)}; }
 inline long4 clamp(const long4 &v, const long4 &min, const long4 &max) { return {clamp(v.x, min.x, max.x), clamp(v.y, min.y, max.y), clamp(v.z, min.z, max.z), clamp(v.w, min.w, max.w)}; }
