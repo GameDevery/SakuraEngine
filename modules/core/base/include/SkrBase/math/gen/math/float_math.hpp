@@ -306,6 +306,11 @@ float length_squared(const float2& v);
 float length_squared(const float3& v);
 float length_squared(const float4& v);
 
+// rlength
+float rlength(const float2& v);
+float rlength(const float3& v);
+float rlength(const float4& v);
+
 // distance
 inline float distance(const float2& x, const float2& y) { return length_squared(y - x); }
 inline float distance(const float3& x, const float3& y) { return length_squared(y - x); }

@@ -306,6 +306,11 @@ double length_squared(const double2& v);
 double length_squared(const double3& v);
 double length_squared(const double4& v);
 
+// rlength
+double rlength(const double2& v);
+double rlength(const double3& v);
+double rlength(const double4& v);
+
 // distance
 inline double distance(const double2& x, const double2& y) { return length_squared(y - x); }
 inline double distance(const double3& x, const double3& y) { return length_squared(y - x); }

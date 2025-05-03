@@ -216,6 +216,7 @@ export function vector_has_simd_optimize(name: string, opt: TypeOption, dim: num
         return true;
       case "length":
       case "length_squared":
+      case "rlength":
         return true;
       default:
         return false;

@@ -682,6 +682,44 @@ inline double length_squared(const double4& v)
     );
 }
 
+// rlength
+inline float rlength(const float2& v)
+{
+    return rtm::vector_length_reciprocal2(
+        RtmConvert<float2>::to_rtm(v)
+    );
+}
+inline float rlength(const float3& v)
+{
+    return rtm::vector_length_reciprocal3(
+        RtmConvert<float3>::to_rtm(v)
+    );
+}
+inline float rlength(const float4& v)
+{
+    return rtm::vector_length_reciprocal(
+        RtmConvert<float4>::to_rtm(v)
+    );
+}
+inline double rlength(const double2& v)
+{
+    return rtm::vector_length_reciprocal2(
+        RtmConvert<double2>::to_rtm(v)
+    );
+}
+inline double rlength(const double3& v)
+{
+    return rtm::vector_length_reciprocal3(
+        RtmConvert<double3>::to_rtm(v)
+    );
+}
+inline double rlength(const double4& v)
+{
+    return rtm::vector_length_reciprocal(
+        RtmConvert<double4>::to_rtm(v)
+    );
+}
+
 // is parallel
 inline bool is_parallel(const float3& normal_a, const float3& normal_b, float threshold = 0.999845f)
 {

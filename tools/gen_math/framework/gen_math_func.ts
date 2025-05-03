@@ -646,6 +646,19 @@ class _MathFuncGenerator {
       b.$line(`inline ${comp_name} length_squared(const ${vec_name}& v) { return dot(v, v); }`)
     }
   }
+  @math_func("rlength", { accept_comp_kind: ["floating"], accept_dim: dims_no_scalar })
+  static gen_rlength(b: CodeBuilder, opt: MathGenOptions) {
+    const base_name = opt.base_name;
+    const dim = opt.dim;
+    const comp_name = opt.component_name;
+    const vec_name = `${base_name}${dim}`;
+
+    if (vector_has_simd_optimize("rlength", opt, dim)) {
+      b.$line(`${comp_name} rlength(const ${vec_name}& v);`)
+    } else {
+      b.$line(`inline ${comp_name} rlength(const ${vec_name}& v) { return ${comp_name}(1) / length(v); }`)
+    }
+  }
   @math_func("distance", { accept_comp_kind: ["floating"], accept_dim: dims_no_scalar })
   static gen_distance(b: CodeBuilder, opt: MathGenOptions) {
     const base_name = opt.base_name;
