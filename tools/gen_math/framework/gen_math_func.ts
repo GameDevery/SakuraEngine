@@ -191,17 +191,23 @@ class _MathFuncGenerator {
     const comp_name = opt.component_name;
     const vec_name = `${base_name}${dim}`;
 
-    if (dim === 1) {
-      b.$line(`inline void sincos(${comp_name} v, ${comp_name}& out_sin, ${comp_name}& out_cos) { out_sin = ::std::sin(v); out_cos = ::std::cos(v); }`)
-      return;
-    }
-    else {
-      // use sincos
-      const exprs = _comp_lut
-        .slice(0, dim)
-        .map(c => `sincos(v.${c}, out_sin.${c}, out_cos.${c});`)
-        .join(' ');
-      b.$line(`inline void sincos(const ${vec_name}& v, ${vec_name}& out_sin, ${vec_name}& out_cos) { ${exprs} }`)
+    if (vector_has_simd_optimize("sincos", opt, dim)) {
+      if (dim === 1) {
+        b.$line(`void sincos(${comp_name} v, ${comp_name}& out_sin, ${comp_name}& out_cos);`)
+      } else {
+        b.$line(`void sincos(const ${vec_name}& v, ${vec_name}& out_sin, ${vec_name}& out_cos);`)
+      }
+    } else {
+      if (dim === 1) {
+        b.$line(`inline void sincos(${comp_name} v, ${comp_name}& out_sin, ${comp_name}& out_cos) { out_sin = ::std::sin(v); out_cos = ::std::cos(v); }`)
+      } else {
+        // use sincos
+        const exprs = _comp_lut
+          .slice(0, dim)
+          .map(c => `sincos(v.${c}, out_sin.${c}, out_cos.${c});`)
+          .join(' ');
+        b.$line(`inline void sincos(const ${vec_name}& v, ${vec_name}& out_sin, ${vec_name}& out_cos) { ${exprs} }`)
+      }
     }
   }
 

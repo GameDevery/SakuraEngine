@@ -1224,6 +1224,82 @@ inline double4 atan2(const double4& y, const double4& x)
     );
 }
 
+// sincos
+inline void sincos(float v, float& out_sin, float& out_cos)
+{
+    rtm::scalar_sincos(v, out_sin, out_cos);
+}
+inline void sincos(const float2& v, float2& out_sin, float2& out_cos)
+{
+    rtm::vector4f rtm_out_sin, rtm_out_cos;
+    rtm::vector_sincos(
+        RtmConvert<float2>::to_rtm(v),
+        rtm_out_sin,
+        rtm_out_cos
+    );
+    RtmConvert<float2>::store(rtm_out_sin, out_sin);
+    RtmConvert<float2>::store(rtm_out_cos, out_cos);
+}
+inline void sincos(const float3& v, float3& out_sin, float3& out_cos)
+{
+    rtm::vector4f rtm_out_sin, rtm_out_cos;
+    rtm::vector_sincos(
+        RtmConvert<float3>::to_rtm(v),
+        rtm_out_sin,
+        rtm_out_cos
+    );
+    RtmConvert<float3>::store(rtm_out_sin, out_sin);
+    RtmConvert<float3>::store(rtm_out_cos, out_cos);
+}
+inline void sincos(const float4& v, float4& out_sin, float4& out_cos)
+{
+    rtm::vector4f rtm_out_sin, rtm_out_cos;
+    rtm::vector_sincos(
+        RtmConvert<float4>::to_rtm(v),
+        rtm_out_sin,
+        rtm_out_cos
+    );
+    RtmConvert<float4>::store(rtm_out_sin, out_sin);
+    RtmConvert<float4>::store(rtm_out_cos, out_cos);
+}
+inline void sincos(double v, double& out_sin, double& out_cos)
+{
+    rtm::scalar_sincos(v, out_sin, out_cos);
+}
+inline void sincos(const double2& v, double2& out_sin, double2& out_cos)
+{
+    rtm::vector4d rtm_out_sin, rtm_out_cos;
+    rtm::vector_sincos(
+        RtmConvert<double2>::to_rtm(v),
+        rtm_out_sin,
+        rtm_out_cos
+    );
+    RtmConvert<double2>::store(rtm_out_sin, out_sin);
+    RtmConvert<double2>::store(rtm_out_cos, out_cos);
+}
+inline void sincos(const double3& v, double3& out_sin, double3& out_cos)
+{
+    rtm::vector4d rtm_out_sin, rtm_out_cos;
+    rtm::vector_sincos(
+        RtmConvert<double3>::to_rtm(v),
+        rtm_out_sin,
+        rtm_out_cos
+    );
+    RtmConvert<double3>::store(rtm_out_sin, out_sin);
+    RtmConvert<double3>::store(rtm_out_cos, out_cos);
+}
+inline void sincos(const double4& v, double4& out_sin, double4& out_cos)
+{
+    rtm::vector4d rtm_out_sin, rtm_out_cos;
+    rtm::vector_sincos(
+        RtmConvert<double4>::to_rtm(v),
+        rtm_out_sin,
+        rtm_out_cos
+    );
+    RtmConvert<double4>::store(rtm_out_sin, out_sin);
+    RtmConvert<double4>::store(rtm_out_cos, out_cos);
+}
+
 // is parallel
 inline bool is_parallel(const float3& normal_a, const float3& normal_b, float threshold = 0.999845f)
 {

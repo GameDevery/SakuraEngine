@@ -230,6 +230,8 @@ export function vector_has_simd_optimize(name: string, opt: TypeOption, dim: num
       case "atan":
       case "atan2":
         return true;
+      case "sincos":
+        return true;
       default:
         return false;
     }
