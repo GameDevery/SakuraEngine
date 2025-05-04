@@ -52,6 +52,9 @@ struct RC {
     T&       operator*();
     const T& operator*() const;
 
+    // skr hash
+    static size_t _skr_hash(const RC& obj);
+
 private:
     T* _ptr = nullptr;
 };
