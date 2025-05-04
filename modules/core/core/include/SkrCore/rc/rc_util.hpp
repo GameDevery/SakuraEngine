@@ -213,20 +213,29 @@ concept ObjectWithRCConvertible = requires(From obj) {
     virtual void skr_rc_delete() = 0;
 
 // impl macros
-#define SKR_RC_IMPL()                                                                                   \
-private:                                                                                                \
-    inline ::std::atomic<::skr::RCCounterType>     zz_skr_rc           = 0;                             \
-    inline ::std::atomic<::skr::RCWeakRefCounter*> zz_skr_weak_counter = nullptr;                       \
-                                                                                                        \
-public:                                                                                                 \
-    inline skr::RCCounterType     skr_rc_add_ref() { return skr::rc_add_ref(zz_skr_rc); }               \
-    inline skr::RCCounterType     skr_rc_add_ref_unique() { return skr::rc_add_ref_unique(zz_skr_rc); } \
-    inline skr::RCCounterType     skr_rc_release() { return skr::rc_release(zz_skr_rc); }               \
-    inline skr::RCWeakRefCounter* skr_rc_weak_ref_counter()                                             \
-    {                                                                                                   \
-        return skr::rc_get_or_new_weak_ref_counter(zz_skr_weak_counter);                                \
-    }                                                                                                   \
-    inline void skr_rc_weak_ref_counter_notify_dead()                                                   \
-    {                                                                                                   \
-        skr::rc_notify_weak_ref_counter_dead(zz_skr_weak_counter);                                      \
+#define SKR_RC_IMPL()                                                             \
+private:                                                                          \
+    inline ::std::atomic<::skr::RCCounterType>     zz_skr_rc           = 0;       \
+    inline ::std::atomic<::skr::RCWeakRefCounter*> zz_skr_weak_counter = nullptr; \
+                                                                                  \
+public:                                                                           \
+    inline skr::RCCounterType skr_rc_add_ref()                                    \
+    {                                                                             \
+        return skr::rc_add_ref(zz_skr_rc);                                        \
+    }                                                                             \
+    inline skr::RCCounterType skr_rc_add_ref_unique()                             \
+    {                                                                             \
+        return skr::rc_add_ref_unique(zz_skr_rc);                                 \
+    }                                                                             \
+    inline skr::RCCounterType skr_rc_release()                                    \
+    {                                                                             \
+        return skr::rc_release(zz_skr_rc);                                        \
+    }                                                                             \
+    inline skr::RCWeakRefCounter* skr_rc_weak_ref_counter()                       \
+    {                                                                             \
+        return skr::rc_get_or_new_weak_ref_counter(zz_skr_weak_counter);          \
+    }                                                                             \
+    inline void skr_rc_weak_ref_counter_notify_dead()                             \
+    {                                                                             \
+        skr::rc_notify_weak_ref_counter_dead(zz_skr_weak_counter);                \
     }
