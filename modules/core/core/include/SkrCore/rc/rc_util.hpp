@@ -7,7 +7,7 @@
 
 namespace skr
 {
-using RCCounterType = uint32_t;
+using RCCounterType = uint64_t;
 
 // constants
 inline static constexpr RCCounterType kRCCounterUniqueFlag = 1 << 31;

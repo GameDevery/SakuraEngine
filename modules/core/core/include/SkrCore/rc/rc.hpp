@@ -213,6 +213,11 @@ struct RCWeak {
     static size_t _skr_hash(const RCWeak& obj);
 
 private:
+    // helper
+    void _release();
+    void _take_weak_ref_counter();
+
+private:
     T*                     _ptr     = nullptr;
     skr::RCWeakRefCounter* _counter = nullptr;
 };
@@ -450,9 +455,12 @@ inline void RC<T>::reset(T* ptr)
 template <ObjectWithRC T>
 inline void RC<T>::swap(RC& rhs)
 {
-    T* tmp   = _ptr;
-    _ptr     = rhs._ptr;
-    rhs._ptr = tmp;
+    if (this != &rhs)
+    {
+        T* tmp   = _ptr;
+        _ptr     = rhs._ptr;
+        rhs._ptr = tmp;
+    }
 }
 
 // pointer behaviour
@@ -683,9 +691,12 @@ inline void RCUnique<T>::reset(T* ptr)
 template <ObjectWithRC T>
 inline void RCUnique<T>::swap(RCUnique& rhs)
 {
-    T* tmp   = _ptr;
-    _ptr     = rhs._ptr;
-    rhs._ptr = tmp;
+    if (this != &rhs)
+    {
+        T* tmp   = _ptr;
+        _ptr     = rhs._ptr;
+        rhs._ptr = tmp;
+    }
 }
 
 // pointer behaviour
@@ -716,4 +727,310 @@ inline size_t RCUnique<T>::_skr_hash(const RCUnique& obj)
 {
     return skr::Hash<T*>()(obj._ptr);
 }
+} // namespace skr
+
+// impl for RCWeak
+namespace skr
+{
+// helper
+template <ObjectWithRC T>
+inline void RCWeak<T>::_release()
+{
+    SKR_ASSERT(_ptr != nullptr);
+    _counter->release();
+}
+template <ObjectWithRC T>
+inline void RCWeak<T>::_take_weak_ref_counter()
+{
+    SKR_ASSERT(_ptr != nullptr);
+    _counter = _ptr->skr_rc_weak_ref_counter();
+    SKR_ASSERT(_counter != nullptr);
+    _counter->add_ref();
+}
+
+// ctor & dtor
+template <ObjectWithRC T>
+inline RCWeak<T>::RCWeak()
+{
+}
+template <ObjectWithRC T>
+inline RCWeak<T>::RCWeak(std::nullptr_t)
+{
+}
+template <ObjectWithRC T>
+inline RCWeak<T>::RCWeak(T* ptr)
+    : _ptr(ptr)
+{
+    if (_ptr)
+    {
+        _take_weak_ref_counter();
+    }
+}
+template <ObjectWithRC T>
+template <ObjectWithRCConvertible<T> U>
+inline RCWeak<T>::RCWeak(const RC<U>& ptr)
+    : _ptr(static_cast<T*>(ptr.get()))
+{
+    if (_ptr)
+    {
+        _take_weak_ref_counter();
+    }
+}
+template <ObjectWithRC T>
+template <ObjectWithRCConvertible<T> U>
+inline RCWeak<T>::RCWeak(const RCUnique<U>& ptr)
+    : _ptr(static_cast<T*>(ptr.get()))
+{
+    if (_ptr)
+    {
+        _take_weak_ref_counter();
+    }
+}
+template <ObjectWithRC T>
+inline RCWeak<T>::~RCWeak()
+{
+    reset();
+}
+
+// copy & move
+template <ObjectWithRC T>
+template <ObjectWithRCConvertible<T> U>
+inline RCWeak<T>::RCWeak(const RCWeak<U>& rhs)
+    : _ptr(static_cast<T*>(rhs._ptr))
+    , _counter(rhs._counter)
+{
+    if (_counter)
+    {
+        _counter->add_ref();
+    }
+}
+template <ObjectWithRC T>
+inline RCWeak<T>::RCWeak(const RCWeak& rhs)
+    : _ptr(rhs._ptr)
+    , _counter(rhs._counter)
+{
+    if (_counter)
+    {
+        _counter->add_ref();
+    }
+}
+template <ObjectWithRC T>
+inline RCWeak<T>::RCWeak(RCWeak&& rhs)
+    : _ptr(rhs._ptr)
+    , _counter(rhs._counter)
+{
+    rhs._ptr     = nullptr;
+    rhs._counter = nullptr;
+}
+
+// assign & move assign
+template <ObjectWithRC T>
+inline RCWeak<T>& RCWeak<T>::operator=(T* ptr)
+{
+    reset(ptr);
+    return *this;
+}
+template <ObjectWithRC T>
+template <ObjectWithRCConvertible<T> U>
+inline RCWeak<T>& RCWeak<T>::operator=(const RCWeak<U>& rhs)
+{
+    reset(rhs);
+    return *this;
+}
+template <ObjectWithRC T>
+template <ObjectWithRCConvertible<T> U>
+inline RCWeak<T>& RCWeak<T>::operator=(const RC<U>& rhs)
+{
+    reset(rhs);
+    return *this;
+}
+template <ObjectWithRC T>
+template <ObjectWithRCConvertible<T> U>
+inline RCWeak<T>& RCWeak<T>::operator=(const RCUnique<U>& rhs)
+{
+    reset(rhs);
+    return *this;
+}
+template <ObjectWithRC T>
+inline RCWeak<T>& RCWeak<T>::operator=(const RCWeak& rhs)
+{
+    if (this != &rhs)
+    {
+        reset(rhs._ptr);
+    }
+    return *this;
+}
+template <ObjectWithRC T>
+inline RCWeak<T>& RCWeak<T>::operator=(RCWeak&& rhs)
+{
+    if (this != &rhs)
+    {
+        reset();
+        _ptr         = rhs._ptr;
+        _counter     = rhs._counter;
+        rhs._ptr     = nullptr;
+        rhs._counter = nullptr;
+    }
+    return *this;
+}
+
+// compare
+template <ObjectWithRC T, ObjectWithRC U>
+inline bool operator==(const RCWeak<T>& lhs, const RCWeak<U>& rhs)
+{
+    return lhs._ptr == rhs._ptr && lhs._counter == rhs._counter;
+}
+template <ObjectWithRC T, ObjectWithRC U>
+inline bool operator!=(const RCWeak<T>& lhs, const RCWeak<U>& rhs)
+{
+    return lhs._ptr != rhs._ptr || lhs._counter != rhs._counter;
+}
+template <ObjectWithRC T, ObjectWithRC U>
+inline bool operator<(const RCWeak<T>& lhs, const RCWeak<U>& rhs)
+{
+    if (lhs._ptr != rhs._ptr) return lhs._ptr < rhs._ptr;
+    return lhs._counter < rhs._counter;
+}
+template <ObjectWithRC T, ObjectWithRC U>
+inline bool operator>(const RCWeak<T>& lhs, const RCWeak<U>& rhs)
+{
+    if (lhs._ptr != rhs._ptr) return lhs._ptr > rhs._ptr;
+    return lhs._counter > rhs._counter;
+}
+template <ObjectWithRC T, ObjectWithRC U>
+inline bool operator<=(const RCWeak<T>& lhs, const RCWeak<U>& rhs)
+{
+    return !(lhs > rhs);
+}
+template <ObjectWithRC T, ObjectWithRC U>
+inline bool operator>=(const RCWeak<T>& lhs, const RCWeak<U>& rhs)
+{
+    return !(lhs < rhs);
+}
+
+// compare with nullptr
+template <ObjectWithRC T>
+inline bool operator==(const RCWeak<T>& lhs, std::nullptr_t)
+{
+    return lhs._ptr == nullptr;
+}
+template <ObjectWithRC T>
+inline bool operator!=(const RCWeak<T>& lhs, std::nullptr_t)
+{
+    return lhs._ptr != nullptr;
+}
+template <ObjectWithRC T>
+inline bool operator==(std::nullptr_t, const RCWeak<T>& rhs)
+{
+    return nullptr == rhs._ptr;
+}
+template <ObjectWithRC T>
+inline bool operator!=(std::nullptr_t, const RCWeak<T>& rhs)
+{
+    return nullptr != rhs._ptr;
+}
+
+// getter
+template <ObjectWithRC T>
+inline T* RCWeak<T>::get()
+{
+    return is_alive() ? _ptr : nullptr;
+}
+template <ObjectWithRC T>
+inline const T* RCWeak<T>::get() const
+{
+    return is_alive() ? _ptr : nullptr;
+}
+
+// lock
+template <ObjectWithRC T>
+inline RC<T> RCWeak<T>::lock() const
+{
+    return is_alive() ? RC<T>(_ptr) : RC<T>(nullptr);
+}
+
+// empty
+template <ObjectWithRC T>
+inline bool RCWeak<T>::is_expired() const
+{
+    return !is_alive();
+}
+template <ObjectWithRC T>
+inline bool RCWeak<T>::is_alive() const
+{
+    if (_ptr == nullptr) { return false; }
+    return _counter->is_alive();
+}
+template <ObjectWithRC T>
+inline RCWeak<T>::operator bool() const
+{
+    return is_alive();
+}
+
+// ops
+template <ObjectWithRC T>
+inline void RCWeak<T>::reset()
+{
+    if (_ptr)
+    {
+        _release();
+        _ptr     = nullptr;
+        _counter = nullptr;
+    }
+}
+template <ObjectWithRC T>
+inline void RCWeak<T>::reset(T* ptr)
+{
+    if (_ptr != ptr)
+    {
+        // release old ptr
+        if (_ptr)
+        {
+            _release();
+        }
+
+        // add ref to new ptr
+        _ptr = ptr;
+        if (_ptr)
+        {
+            _take_weak_ref_counter();
+        }
+    }
+}
+template <ObjectWithRC T>
+template <ObjectWithRCConvertible<T> U>
+inline void RCWeak<T>::reset(const RC<U>& ptr)
+{
+    reset(static_cast<T*>(ptr.get()));
+}
+template <ObjectWithRC T>
+template <ObjectWithRCConvertible<T> U>
+inline void RCWeak<T>::reset(const RCUnique<U>& ptr)
+{
+    reset(static_cast<T*>(ptr.get()));
+}
+template <ObjectWithRC T>
+inline void RCWeak<T>::swap(RCWeak& rhs)
+{
+    if (this != &rhs)
+    {
+        T*                     tmp_ptr     = _ptr;
+        skr::RCWeakRefCounter* tmp_counter = _counter;
+        _ptr                               = rhs._ptr;
+        _counter                           = rhs._counter;
+        rhs._ptr                           = tmp_ptr;
+        rhs._counter                       = tmp_counter;
+    }
+}
+
+// skr hash
+template <ObjectWithRC T>
+inline size_t RCWeak<T>::_skr_hash(const RCWeak& obj)
+{
+    return hash_combine(
+        skr::Hash<T*>()(obj._ptr),
+        skr::Hash<skr::RCWeakRefCounter*>()(obj._counter)
+    );
+}
+
 } // namespace skr
