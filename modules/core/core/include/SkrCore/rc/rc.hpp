@@ -75,6 +75,7 @@ private:
 private:
     T* _ptr = nullptr;
 };
+
 template <ObjectWithRC T>
 struct RCUnique {
     // ctor & dtor
@@ -136,8 +137,13 @@ struct RCUnique {
     static size_t _skr_hash(const RCUnique& obj);
 
 private:
+    // helper
+    void _release();
+
+private:
     T* _ptr = nullptr;
 };
+
 template <ObjectWithRC T>
 struct RCWeak {
     // ctor & dtor
@@ -483,5 +489,231 @@ inline size_t RC<T>::_skr_hash(const RC& obj)
 // impl for RCUnique
 namespace skr
 {
-
+// helper
+template <ObjectWithRC T>
+inline void RCUnique<T>::_release()
+{
+    SKR_ASSERT(_ptr != nullptr);
+    if (_ptr->skr_rc_release() == 0)
+    {
+        _ptr->skr_rc_weak_ref_counter_notify_dead();
+        if constexpr (ObjectWithRCDeleter<T>)
+        {
+            _ptr->skr_rc_release();
+        }
+        else
+        {
+            SkrDelete(_ptr);
+        }
+    }
 }
+
+// ctor & dtor
+template <ObjectWithRC T>
+inline RCUnique<T>::RCUnique()
+{
+}
+template <ObjectWithRC T>
+inline RCUnique<T>::RCUnique(std::nullptr_t)
+{
+}
+template <ObjectWithRC T>
+inline RCUnique<T>::RCUnique(T* ptr)
+    : _ptr(ptr)
+{
+    if (_ptr)
+    {
+        _ptr->skr_rc_add_ref_unique();
+    }
+}
+template <ObjectWithRC T>
+inline RCUnique<T>::~RCUnique()
+{
+    reset();
+}
+
+// copy & move
+template <ObjectWithRC T>
+inline RCUnique<T>::RCUnique(RCUnique&& rhs)
+    : _ptr(rhs._ptr)
+{
+    rhs._ptr = nullptr;
+}
+
+// assign & move assign
+template <ObjectWithRC T>
+inline RCUnique<T>& RCUnique<T>::operator=(T* ptr)
+{
+    reset(ptr);
+    return *this;
+}
+template <ObjectWithRC T>
+inline RCUnique<T>& RCUnique<T>::operator=(RCUnique&& rhs)
+{
+    if (this != &rhs)
+    {
+        reset();
+        _ptr     = rhs._ptr;
+        rhs._ptr = nullptr;
+    }
+    return *this;
+}
+
+// factory
+template <ObjectWithRC T>
+template <typename... Args>
+inline RCUnique<T> RCUnique<T>::New(Args&&... args)
+{
+    return { SkrNew<T>(std::forward<Args>(args)...) };
+}
+template <ObjectWithRC T>
+template <typename... Args>
+inline RCUnique<T> RCUnique<T>::NewZeroed(Args&&... args)
+{
+    return { SkrNewZeroed<T>(std::forward<Args>(args)...) };
+}
+
+// compare
+template <ObjectWithRC T, ObjectWithRC U>
+inline bool operator==(const RCUnique<T>& lhs, const RCUnique<U>& rhs)
+{
+    return lhs._ptr == rhs._ptr;
+}
+template <ObjectWithRC T, ObjectWithRC U>
+inline bool operator!=(const RCUnique<T>& lhs, const RCUnique<U>& rhs)
+{
+    return lhs._ptr != rhs._ptr;
+}
+template <ObjectWithRC T, ObjectWithRC U>
+inline bool operator<(const RCUnique<T>& lhs, const RCUnique<U>& rhs)
+{
+    return lhs._ptr < rhs._ptr;
+}
+template <ObjectWithRC T, ObjectWithRC U>
+inline bool operator>(const RCUnique<T>& lhs, const RCUnique<U>& rhs)
+{
+    return lhs._ptr > rhs._ptr;
+}
+template <ObjectWithRC T, ObjectWithRC U>
+inline bool operator<=(const RCUnique<T>& lhs, const RCUnique<U>& rhs)
+{
+    return lhs._ptr <= rhs._ptr;
+}
+template <ObjectWithRC T, ObjectWithRC U>
+inline bool operator>=(const RCUnique<T>& lhs, const RCUnique<U>& rhs)
+{
+    return lhs._ptr >= rhs._ptr;
+}
+
+// compare with nullptr
+template <ObjectWithRC T>
+inline bool operator==(const RCUnique<T>& lhs, std::nullptr_t)
+{
+    return lhs._ptr == nullptr;
+}
+template <ObjectWithRC T>
+inline bool operator!=(const RCUnique<T>& lhs, std::nullptr_t)
+{
+    return lhs._ptr != nullptr;
+}
+template <ObjectWithRC T>
+inline bool operator==(std::nullptr_t, const RCUnique<T>& rhs)
+{
+    return nullptr == rhs._ptr;
+}
+template <ObjectWithRC T>
+inline bool operator!=(std::nullptr_t, const RCUnique<T>& rhs)
+{
+    return nullptr != rhs._ptr;
+}
+
+// getter
+template <ObjectWithRC T>
+inline T* RCUnique<T>::get()
+{
+    return _ptr;
+}
+template <ObjectWithRC T>
+inline const T* RCUnique<T>::get() const
+{
+    return _ptr;
+}
+
+// empty
+template <ObjectWithRC T>
+inline bool RCUnique<T>::is_empty() const
+{
+    return _ptr == nullptr;
+}
+template <ObjectWithRC T>
+inline RCUnique<T>::operator bool() const
+{
+    return !is_empty();
+}
+
+// ops
+template <ObjectWithRC T>
+inline void RCUnique<T>::reset()
+{
+    if (_ptr)
+    {
+        _release();
+        _ptr = nullptr;
+    }
+}
+template <ObjectWithRC T>
+inline void RCUnique<T>::reset(T* ptr)
+{
+    if (_ptr != ptr)
+    {
+        // release old ptr
+        if (_ptr)
+        {
+            _release();
+        }
+
+        // add ref to new ptr
+        _ptr = ptr;
+        if (_ptr)
+        {
+            _ptr->skr_rc_add_ref_unique();
+        }
+    }
+}
+template <ObjectWithRC T>
+inline void RCUnique<T>::swap(RCUnique& rhs)
+{
+    T* tmp   = _ptr;
+    _ptr     = rhs._ptr;
+    rhs._ptr = tmp;
+}
+
+// pointer behaviour
+template <ObjectWithRC T>
+inline T* RCUnique<T>::operator->()
+{
+    return _ptr;
+}
+template <ObjectWithRC T>
+inline const T* RCUnique<T>::operator->() const
+{
+    return _ptr;
+}
+template <ObjectWithRC T>
+inline T& RCUnique<T>::operator*()
+{
+    return *_ptr;
+}
+template <ObjectWithRC T>
+inline const T& RCUnique<T>::operator*() const
+{
+    return *_ptr;
+}
+
+// skr hash
+template <ObjectWithRC T>
+inline size_t RCUnique<T>::_skr_hash(const RCUnique& obj)
+{
+    return skr::Hash<T*>()(obj._ptr);
+}
+} // namespace skr
