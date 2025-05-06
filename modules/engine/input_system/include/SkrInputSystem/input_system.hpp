@@ -22,13 +22,13 @@ struct SKR_INPUT_SYSTEM_API InputSystem
 
 #pragma region InputMappingContexts
     // create
-    [[nodiscard]] virtual SObjectPtr<InputMappingContext> create_mapping_context() SKR_NOEXCEPT = 0;
+    [[nodiscard]] virtual RC<InputMappingContext> create_mapping_context() SKR_NOEXCEPT = 0;
 
     // remove
-    virtual void remove_mapping_context(SObjectPtr<InputMappingContext> ctx) SKR_NOEXCEPT = 0;
+    virtual void remove_mapping_context(RC<InputMappingContext> ctx) SKR_NOEXCEPT = 0;
 
     // add
-    virtual SObjectPtr<InputMappingContext> add_mapping_context(SObjectPtr<InputMappingContext> ctx, int32_t priority, const InputContextOptions& opts) SKR_NOEXCEPT = 0;
+    virtual RC<InputMappingContext> add_mapping_context(RC<InputMappingContext> ctx, int32_t priority, const InputContextOptions& opts) SKR_NOEXCEPT = 0;
 
     // unmap and free all mapping contexts
     virtual void remove_all_contexts() SKR_NOEXCEPT = 0;
@@ -36,23 +36,23 @@ struct SKR_INPUT_SYSTEM_API InputSystem
 
 #pragma region InputMapping
     template<typename T, typename...Args>
-    SObjectPtr<T> create_mapping(Args&&...args) SKR_NOEXCEPT
+    RC<T> create_mapping(Args&&...args) SKR_NOEXCEPT
     {
-        return SObjectPtr<T>::Create(std::forward<Args>(args)...);
+        return RC<T>::New(std::forward<Args>(args)...);
     }
 #pragma endregion
 
 #pragma region InputTrigger
     template<typename T, typename...Args>
-    SObjectPtr<T> create_trigger(Args&&...args) SKR_NOEXCEPT
+    RC<T> create_trigger(Args&&...args) SKR_NOEXCEPT
     {
-        return SObjectPtr<T>::Create(std::forward<Args>(args)...);
+        return RC<T>::New(std::forward<Args>(args)...);
     }
 #pragma endregion
 
 #pragma region InputActions
     // create
-    [[nodiscard]] virtual SObjectPtr<InputAction> create_input_action(EValueType type) SKR_NOEXCEPT = 0;
+    [[nodiscard]] virtual RC<InputAction> create_input_action(EValueType type) SKR_NOEXCEPT = 0;
 #pragma endregion
 };
 

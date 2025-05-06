@@ -49,24 +49,24 @@ struct SKR_INPUT_SYSTEM_API InputActionImpl : public InputAction {
         return cnt > 0;
     }
 
-    void add_trigger(SObjectPtr<InputTrigger> trigger) SKR_NOEXCEPT
+    void add_trigger(RC<InputTrigger> trigger) SKR_NOEXCEPT
     {
         triggers.add(trigger);
     }
 
-    void remove_trigger(SObjectPtr<InputTrigger> trigger) SKR_NOEXCEPT
+    void remove_trigger(RC<InputTrigger> trigger) SKR_NOEXCEPT
     {
-        triggers.remove_all_if([trigger](SObjectPtr<InputTrigger> t) { return t == trigger; });
+        triggers.remove_all_if([trigger](RC<InputTrigger> t) { return t == trigger; });
     }
 
-    void add_modifier(SObjectPtr<InputModifier> modifier) SKR_NOEXCEPT final
+    void add_modifier(RC<InputModifier> modifier) SKR_NOEXCEPT final
     {
         modifiers.add(modifier);
     }
 
-    void remove_modifier(SObjectPtr<InputModifier> modifier) SKR_NOEXCEPT final
+    void remove_modifier(RC<InputModifier> modifier) SKR_NOEXCEPT final
     {
-        modifiers.remove_all_if([modifier](SObjectPtr<InputModifier> m) { return m == modifier; });
+        modifiers.remove_all_if([modifier](RC<InputModifier> m) { return m == modifier; });
     }
 
     void set_value(InputValueStorage value) SKR_NOEXCEPT final
@@ -116,8 +116,8 @@ struct SKR_INPUT_SYSTEM_API InputActionImpl : public InputAction {
 protected:
     InputValueStorage current_value;
     skr::Vector<ActionEventStorage> events;
-    skr::Vector<SObjectPtr<InputTrigger>> triggers;
-    skr::Vector<SObjectPtr<InputModifier>> modifiers;
+    skr::Vector<RC<InputTrigger>> triggers;
+    skr::Vector<RC<InputModifier>> modifiers;
 };
 
 } // namespace input

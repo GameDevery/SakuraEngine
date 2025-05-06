@@ -5,6 +5,6 @@
 
 namespace skr::gui
 {
-void bind_pointer_event(skr::input::InputSystem* system, SObjectPtr<input::InputMappingContext> ctx, Sandbox* sandbox);
+void bind_pointer_event(skr::input::InputSystem* system, RC<input::InputMappingContext> ctx, Sandbox* sandbox);
 
 } // namespace skr::gui
