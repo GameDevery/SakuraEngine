@@ -21,6 +21,11 @@ enum class EAxis4
     Z = 2,
     W = 3,
 };
+enum class ECoordinateSystemHand
+{
+    LeftHand  = 0,
+    RightHand = 1,
+};
 
 struct MathNoInitType {
 };

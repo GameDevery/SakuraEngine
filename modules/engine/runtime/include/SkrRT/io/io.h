@@ -41,8 +41,8 @@ typedef enum ESkrIOFinishPoint
     SKR_IO_FINISH_POINT_MAX_ENUM = UINT32_MAX
 } ESkrIOFinishPoint;
 
-typedef struct skr_guid_t skr_io_decompress_method_t;
-typedef struct skr_guid_t skr_io_request_resolve_pass_t;
+typedef skr_guid_t skr_io_decompress_method_t;
+typedef skr_guid_t skr_io_request_resolve_pass_t;
 
 typedef struct skr_io_future_t {
     SAtomicU32 status         SKR_IF_CPP(= 0);

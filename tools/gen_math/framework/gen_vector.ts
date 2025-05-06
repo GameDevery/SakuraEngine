@@ -1,7 +1,7 @@
 import {
   CodeBuilder, dims_no_scalar,
   type_convert_options, type_options,
-  get_alignas_vector
+  get_alignas_vector, vector_has_simd_optimize
 } from "./util"
 import type { TypeOption, GlobalBuilders } from "./util";
 import path from "node:path";
@@ -198,17 +198,20 @@ function _gen_arithmetic_operator(dim: number, opt: GenVectorOption) {
   const comp_name = opt.component_name;
   const vec_name = `${base_name}${dim}`;
   const comp_kind = opt.component_kind;
+  const is_signed = opt.is_signed;
 
   // unary operator
   if (comp_kind == "floating" || comp_kind == "integer") {
     b.$line(`// unary operator`);
 
     // neg
-    const init_list = _comp_lut
-      .slice(0, dim)
-      .map(comp => `-${comp}`)
-      .join(", ");
-    b.$line(`inline ${vec_name} operator-() const { return { ${init_list} }; }`);
+    if (is_signed) {
+      const init_list = _comp_lut
+        .slice(0, dim)
+        .map(comp => `-${comp}`)
+        .join(", ");
+      b.$line(`inline ${vec_name} operator-() const { return { ${init_list} }; }`);
+    }
 
     b.$line(``);
   } else {

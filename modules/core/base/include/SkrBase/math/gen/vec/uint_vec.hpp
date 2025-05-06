@@ -46,7 +46,6 @@ struct uint2 {
     }
     
     // unary operator
-    inline uint2 operator-() const { return { -x, -y }; }
     
     // arithmetic operator
     inline friend uint2 operator+(const uint2& lhs, const uint2& rhs) { return { lhs.x + rhs.x, lhs.y + rhs.y }; }
@@ -122,7 +121,6 @@ struct uint3 {
     }
     
     // unary operator
-    inline uint3 operator-() const { return { -x, -y, -z }; }
     
     // arithmetic operator
     inline friend uint3 operator+(const uint3& lhs, const uint3& rhs) { return { lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z }; }
@@ -245,7 +243,6 @@ struct uint4 {
     }
     
     // unary operator
-    inline uint4 operator-() const { return { -x, -y, -z, -w }; }
     
     // arithmetic operator
     inline friend uint4 operator+(const uint4& lhs, const uint4& rhs) { return { lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z, lhs.w + rhs.w }; }

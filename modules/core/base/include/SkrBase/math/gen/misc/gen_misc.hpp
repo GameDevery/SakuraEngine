@@ -6,4 +6,3 @@
 #include "./quat.hpp"
 #include "./rotator.hpp"
 #include "./transform.hpp"
-#include "./camera.hpp"

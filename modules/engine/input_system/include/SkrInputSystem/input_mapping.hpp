@@ -14,7 +14,7 @@ namespace input
 struct InputLayer;
 struct InputReading;
 
-typedef struct skr_guid_t     InputTypeId;
+typedef skr_guid_t     InputTypeId;
 typedef struct InputAction*   InputActionId;
 typedef struct InputModifier* InputModifierId;
 

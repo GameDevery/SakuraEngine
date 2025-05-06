@@ -605,7 +605,7 @@ inline float luminance(const float3& color, const float3& factor)
 }
 inline float luminance(const float3& color)
 {
-    return dot(color, { 0.299, 0.587, 0.114 });
+    return dot(color, float3{ 0.299f, 0.587f, 0.114f });
 }
 inline double luminance(const double3& color, const double3& factor)
 {
@@ -613,7 +613,7 @@ inline double luminance(const double3& color, const double3& factor)
 }
 inline double luminance(const double3& color)
 {
-    return dot(color, { 0.299, 0.587, 0.114 });
+    return dot(color, double3{ 0.299, 0.587, 0.114 });
 }
 
 // rgb <=> hsv
@@ -773,23 +773,23 @@ inline double3x3 Chromaticities::chromatic_adaptation_matrix(EChromaticAdaptatio
     case EChromaticAdaptationMethod::XYZScaling:
         return double3x3::identity();
     case EChromaticAdaptationMethod::Bradford:
-        return transpose(double3x3{
-            { 0.8951, 0.2664, -0.1614 },
-            { -0.7502, 1.7135, 0.0367 },
-            { 0.0389, -0.0685, 1.0296 },
-        });
+        return double3x3::transposed(
+            0.8951, 0.2664, -0.1614,
+            -0.7502, 1.7135, 0.0367,
+            0.0389, -0.0685, 1.0296
+        );
     case EChromaticAdaptationMethod::CAT02:
-        return transpose(double3x3{
-            { 0.7328, 0.4296, -0.1624 },
-            { -0.7036, 1.6975, 0.0061 },
-            { 0.0030, 0.0136, 0.9834 },
-        });
+        return double3x3::transposed(
+            0.7328, 0.4296, -0.1624,
+            -0.7036, 1.6975, 0.0061,
+            0.0030, 0.0136, 0.9834
+        );
     case EChromaticAdaptationMethod::VonKries:
-        return transpose(double3x3{
-            { 0.4002, 0.7076, -0.0808 },
-            { -0.2263, 1.1653, 0.0457 },
-            { 0.0000, 0.0000, 0.8252 },
-        });
+        return double3x3::transposed(
+            0.4002, 0.7076, -0.0808,
+            -0.2263, 1.1653, 0.0457,
+            0.0000, 0.0000, 0.8252
+        );
     default:
         SKR_UNREACHABLE_CODE();
         return double3x3::identity();

@@ -5,8 +5,7 @@
 #include "SkrCore/log.hpp"
 #include "SkrRTTR/type.hpp"
 #include "SkrBase/misc.h"
-
-#include <mutex>
+#include <SkrOS/thread.h>
 
 namespace skr
 {
@@ -23,7 +22,8 @@ static Map<GUID, RTTRType*>& loaded_types()
 }
 static auto& load_type_mutex()
 {
-    static std::recursive_mutex s_load_type_mutex;
+    // TODO. use shared_atomic_mutex for better performance
+    static SMutexObject s_load_type_mutex;
     return s_load_type_mutex;
 }
 
@@ -55,7 +55,7 @@ void unregister_type_loader(const GUID& guid, RTTRTypeLoaderFunc load_func)
 // get type (after register)
 RTTRType* get_type_from_guid(const GUID& guid)
 {
-    std::lock_guard _lock(load_type_mutex());
+    SMutexLock _lock(load_type_mutex().mMutex);
 
     auto loaded_result = loaded_types().find(guid);
     if (loaded_result)
@@ -83,7 +83,7 @@ RTTRType* get_type_from_guid(const GUID& guid)
 }
 void load_all_types()
 {
-    std::lock_guard _lock(load_type_mutex());
+    SMutexLock _lock(load_type_mutex().mMutex);
     for (const auto& [type_id, type_loader] : type_load_funcs())
     {
         if (!loaded_types().contains(type_id))
@@ -99,7 +99,7 @@ void load_all_types()
 }
 void unload_all_types()
 {
-    std::lock_guard _lock(load_type_mutex());
+    SMutexLock _lock(load_type_mutex().mMutex);
 
     // release type memory
     for (auto& type : loaded_types())

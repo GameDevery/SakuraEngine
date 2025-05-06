@@ -79,6 +79,17 @@ struct double3x3 {
     inline static double3x3 identity() { return eye(1); }
     inline static double3x3 zero() { return fill(0); }
     inline static double3x3 one() { return fill(1); }
+    inline static double3x3 transposed(
+        double m00, double m10, double m20,
+        double m01, double m11, double m21,
+        double m02, double m12, double m22
+    ) {
+        return {
+            m00, m01, m02,
+            m10, m11, m12,
+            m20, m21, m22
+        };
+    }
     
     // factory for utility usage
     static double3x3 from_scale(const double3& scale);
@@ -168,6 +179,19 @@ struct alignas(16) double4x4 {
     inline static double4x4 identity() { return eye(1); }
     inline static double4x4 zero() { return fill(0); }
     inline static double4x4 one() { return fill(1); }
+    inline static double4x4 transposed(
+        double m00, double m10, double m20, double m30,
+        double m01, double m11, double m21, double m31,
+        double m02, double m12, double m22, double m32,
+        double m03, double m13, double m23, double m33
+    ) {
+        return {
+            m00, m01, m02, m03,
+            m10, m11, m12, m13,
+            m20, m21, m22, m23,
+            m30, m31, m32, m33
+        };
+    }
     
     // factory for utility usage
     static double4x4 from_scale(const double3& scale);
@@ -178,7 +202,7 @@ struct alignas(16) double4x4 {
     static double4x4 view_at(const double4& from, const double4& to, const double4& up);
     static double4x4 perspective(double view_width, double view_height, double near_distance, double far_distance);
     static double4x4 perspective_fov(double fov_y, double aspect_ratio, double near_distance, double far_distance);
-    static double4x4 ortho(double width, double height, double near_distance, double far_distance);
+    static double4x4 orthographic(double width, double height, double near_distance, double far_distance);
     
     // copy & move & assign & move assign
     inline double4x4(const double4x4& rhs) noexcept : axis_x(rhs.axis_x), axis_y(rhs.axis_y), axis_z(rhs.axis_z), axis_w(rhs.axis_w) {}

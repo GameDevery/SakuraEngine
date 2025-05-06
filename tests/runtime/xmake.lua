@@ -44,6 +44,15 @@ executable_module("ECSTest_CPPStyle", "ECS_TEST")
     add_deps("SkrTestFramework", {public = false})
     add_files("ecs/cpp_style/*.cpp")
 
+
+--------------------------------------------------------------------------------------
+executable_module("RCTest", "RC_TEST")
+    set_group("05.tests/runtime")
+    set_kind("binary")
+    public_dependency("SkrRT")
+    add_deps("SkrTestFramework", {public = false})
+    add_files("rc/**.cpp")
+
 --------------------------------------------------------------------------------------
 
 codegen_component("RTTRTest", { api = "RTTR_TEST", rootdir = "rttr" })
