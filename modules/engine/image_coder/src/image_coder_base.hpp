@@ -14,14 +14,15 @@ struct ImageProps {
 };
 
 struct SKR_IMAGE_CODER_API BaseImageEncoder : public skr::IImageEncoder {
+    SKR_RC_IMPL()
+    SKR_RC_DELETER_IMPL()
     virtual ~BaseImageEncoder() SKR_NOEXCEPT;
 
     virtual uint64_t get_alignment() const SKR_NOEXCEPT { return alignof(uint8_t); }
     static uint8_t*  Allocate(uint64_t size, uint64_t alignment) SKR_NOEXCEPT;
     static void      Deallocate(uint8_t* ptr, uint64_t alignment) SKR_NOEXCEPT;
 
-    virtual bool initialize(const uint8_t* data, uint64_t size, uint32_t width, uint32_t height,
-                            EImageCoderColorFormat format, uint32_t bit_depth) SKR_NOEXCEPT;
+    virtual bool initialize(const uint8_t* data, uint64_t size, uint32_t width, uint32_t height, EImageCoderColorFormat format, uint32_t bit_depth) SKR_NOEXCEPT;
 
     skr::span<const uint8_t> decoded_view;
 
@@ -57,6 +58,9 @@ private:
 };
 
 struct SKR_IMAGE_CODER_API BaseImageDecoder : public skr::IImageDecoder {
+    SKR_RC_IMPL()
+    SKR_RC_DELETER_IMPL()
+
     virtual ~BaseImageDecoder() SKR_NOEXCEPT;
 
     virtual uint64_t get_alignment() const SKR_NOEXCEPT { return alignof(uint8_t); }

@@ -67,6 +67,10 @@ struct RC {
     T* operator->() const;
     T& operator*() const;
 
+    // cast
+    template <typename U>
+    RC<U> cast_static() const;
+
     // skr hash
     static size_t _skr_hash(const RC& obj);
 
@@ -540,6 +544,21 @@ template <typename T>
 inline T& RC<T>::operator*() const
 {
     return *_ptr;
+}
+
+// cast
+template <typename T>
+template <typename U>
+inline RC<U> RC<T>::cast_static() const
+{
+    if (_ptr)
+    {
+        return RC<U>(static_cast<U*>(_ptr));
+    }
+    else
+    {
+        return nullptr;
+    }
 }
 
 // skr hash

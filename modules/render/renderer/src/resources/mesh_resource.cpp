@@ -316,11 +316,10 @@ ESkrInstallStatus SMeshFactoryImpl::InstallImpl(skr_resource_record_t* record)
                 if (mesh_resource->install_to_ram)
                 {
                     auto blob                   = request->pin_staging_buffer();
-                    mesh_resource->bins[i].blob = blob.get();
-                    blob->add_refcount();
+                    mesh_resource->bins[i].blob = blob;
                 }
                 auto result     = batch->add_request(request, &thisFuture);
-                thisDestination = skr::static_pointer_cast<skr::io::IVRAMIOBuffer>(result);
+                thisDestination = result.cast_static<skr::io::IVRAMIOBuffer>();
             }
             mRequests.emplace(mesh_resource, dRequest);
             mInstallTypes.emplace(mesh_resource, installType);
@@ -387,10 +386,7 @@ bool SMeshFactoryImpl::Uninstall(skr_resource_record_t* record)
     auto mesh_resource = (skr_mesh_resource_id)record->resource;
     if (mesh_resource->install_to_ram)
     {
-        for (auto&& bin : mesh_resource->bins)
-        {
-            bin.blob->release();
-        }
+        mesh_resource->bins.clear();
     }
     skr_render_mesh_free(mesh_resource->render_mesh);
     mesh_resource->render_mesh = nullptr;

@@ -16,10 +16,7 @@ skr::anim::AnimComponent::~AnimComponent()
     {
        if (vb) cgpu_free_buffer(vb);
     }
-    for(auto buffer : buffers)
-    {
-        buffer->release();
-    }
+    buffers.clear();
 }
 
 void skr_init_skin_component(skr::anim::SkinComponent* component, const skr::anim::SkeletonResource* skeleton)
@@ -106,7 +103,6 @@ void skr_init_anim_component(skr::anim::AnimComponent* component, const skr_mesh
     }
     auto blob = skr::IBlob::CreateAligned(nullptr, buffer_size, 16, false);
     component->buffers[0] = blob.get();
-    blob->add_refcount();
 }
 
 void skr_init_anim_buffers(CGPUDeviceId device, skr::anim::AnimComponent* anim, const skr_mesh_resource_t* mesh)

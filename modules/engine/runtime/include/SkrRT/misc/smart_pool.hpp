@@ -3,36 +3,25 @@
 #include "SkrBase/atomic/atomic.h"
 #include "SkrContainers/sptr.hpp"
 #include "SkrContainers/concurrent_queue.hpp"
+#include "SkrCore/rc/rc.hpp"
 
-namespace skr {
-
-template<typename I>
-struct ISmartPool : public skr::SInterface
+namespace skr
 {
+
+template <typename I>
+struct ISmartPool : public skr::IRCAble {
+    SKR_RC_IMPL();
+
     virtual ~ISmartPool() SKR_NOEXCEPT = default;
     // template<typename...Args>
     // virtual SObjectPtr<I> allocate(Args&&... args) SKR_NOEXCEPT = 0;
     virtual void deallocate(I* ptr) SKR_NOEXCEPT = 0;
-
-public:
-    inline uint32_t add_refcount() SKR_NOEXCEPT
-    { 
-        return 1 + skr_atomic_fetch_add_relaxed(&rc, 1); 
-    }
-    inline uint32_t release() SKR_NOEXCEPT
-    {
-        skr_atomic_fetch_add_relaxed(&rc, -1);
-        return skr_atomic_load_acquire(&rc);
-    }
-private:
-    SAtomicU32 rc = 0;
 };
-template<typename I>
-using ISmartPoolPtr = skr::SObjectPtr<ISmartPool<I>>;
+template <typename I>
+using ISmartPoolPtr = skr::RC<ISmartPool<I>>;
 
-template<typename T, typename I = T>
-struct SmartPool : public ISmartPool<I>
-{
+template <typename T, typename I = T>
+struct SmartPool : public ISmartPool<I> {
     static_assert(std::is_base_of_v<I, T>, "T must be derived from I");
     const char* kPoolMemoryPoolName = nullptr;
 
@@ -60,8 +49,8 @@ struct SmartPool : public ISmartPool<I>
         }
     }
 
-    template<typename...Args>
-    SObjectPtr<I> allocate(Args&&... args) SKR_NOEXCEPT
+    template <typename... Args>
+    RC<I> allocate(Args&&... args) SKR_NOEXCEPT
     {
         T* ptr = nullptr;
         if (!blocks.try_dequeue(ptr))
@@ -71,14 +60,14 @@ struct SmartPool : public ISmartPool<I>
         new (ptr) T(this, std::forward<Args>(args)...);
 
         skr_atomic_fetch_add_relaxed(&objcnt, 1);
-        return skr::static_pointer_cast<I>(SObjectPtr<T>(ptr));
+        return RC<T>(ptr).template cast_static<I>();
     }
 
     void deallocate(I* iptr) SKR_NOEXCEPT
     {
         if (auto ptr = static_cast<T*>(iptr))
         {
-            ptr->~T(); 
+            ptr->~T();
             blocks.enqueue(ptr);
             skr_atomic_fetch_add_relaxed(&objcnt, -1);
         }
@@ -87,37 +76,19 @@ struct SmartPool : public ISmartPool<I>
     }
 
     bool recursive_deleting = false;
-    SInterfaceDeleter custom_deleter() const 
-    { 
-        return +[](SInterface* ptr) 
-        { 
-            auto* p = static_cast<SmartPool<T, I>*>(ptr);
-            const auto N = skr_atomic_load_acquire(&p->objcnt);
-            if (N)
-                p->recursive_deleting = true;
-            else
-                SkrDelete(p);
-        };
+    void skr_rc_delete() override
+    {
+        const auto N = skr_atomic_load_acquire(&objcnt);
+        if (N)
+            recursive_deleting = true;
+        else
+            SkrDelete(this);
     }
 
     skr::ConcurrentQueue<T*> blocks;
-    SAtomic64 objcnt = 0;
+    SAtomic64                objcnt = 0;
 };
-template<typename T, typename I = T>
-using SmartPoolPtr = skr::SObjectPtr<SmartPool<T, I>>;
+template <typename T, typename I = T>
+using SmartPoolPtr = skr::RC<SmartPool<T, I>>;
 
 } // namespace skr
-
-#define SKR_RC_OBJECT_BODY \
-private:\
-    SAtomicU32 rc = 0;\
-public:\
-    uint32_t add_refcount() final\
-    {\
-        return 1 + skr_atomic_fetch_add_relaxed(&rc, 1);\
-    }\
-    uint32_t release() final\
-    {\
-        skr_atomic_fetch_add_relaxed(&rc, -1);\
-        return skr_atomic_load_acquire(&rc);\
-    }

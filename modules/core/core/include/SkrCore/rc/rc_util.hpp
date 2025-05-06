@@ -285,7 +285,7 @@ concept ObjectWithRCConvertible = requires(From obj) {
     virtual skr::RCWeakRefCounter* skr_rc_weak_ref_counter() const             = 0; \
     virtual void                   skr_rc_weak_ref_counter_notify_dead() const = 0;
 #define SKR_RC_DELETER_INTERFACE() \
-    virtual void skr_rc_delete() const = 0;
+    virtual void skr_rc_delete() = 0;
 
 // impl macros
 #define SKR_RC_IMPL()                                                              \
@@ -330,6 +330,11 @@ public:                                                                         
     {                                                                              \
         skr::rc_notify_weak_ref_counter_dead(zz_skr_weak_counter);                 \
     }
+#define SKR_RC_DELETER_IMPL()   \
+    inline void skr_rc_delete() \
+    {                           \
+        SkrDelete(this);        \
+    }
 
 // TODO. remove it
 namespace skr
@@ -337,5 +342,6 @@ namespace skr
 struct SKR_CORE_API IRCAble {
     virtual ~IRCAble() SKR_NOEXCEPT = default;
     SKR_RC_INTEFACE();
+    SKR_RC_DELETER_INTERFACE();
 };
 } // namespace skr
