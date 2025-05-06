@@ -5,7 +5,16 @@
 namespace skr
 {
 template <ObjectWithRC T>
+struct RC;
+template <ObjectWithRC T>
+struct RCWeak;
+template <ObjectWithRC T>
+struct RCUnique;
+
+template <ObjectWithRC T>
 struct RC {
+    friend struct RCWeak<T>;
+
     // ctor & dtor
     RC();
     RC(std::nullptr_t);
@@ -49,6 +58,10 @@ struct RC {
     // getter
     T*       get();
     const T* get() const;
+
+    // count getter
+    RCCounterType ref_count() const;
+    RCCounterType ref_count_weak() const;
 
     // empty
     bool is_empty() const;
@@ -117,6 +130,10 @@ struct RCUnique {
     // getter
     T*       get();
     const T* get() const;
+
+    // count getter
+    RCCounterType ref_count() const;
+    RCCounterType ref_count_weak() const;
 
     // empty
     bool is_empty() const;
@@ -191,6 +208,9 @@ struct RCWeak {
     // getter
     T*       get();
     const T* get() const;
+
+    // count getter
+    RCCounterType ref_count_weak() const;
 
     // lock
     RC<T> lock() const;
@@ -409,6 +429,18 @@ template <ObjectWithRC T>
 inline const T* RC<T>::get() const
 {
     return _ptr;
+}
+
+// count getter
+template <ObjectWithRC T>
+inline RCCounterType RC<T>::ref_count() const
+{
+    return _ptr ? _ptr->skr_rc_count() : 0;
+}
+template <ObjectWithRC T>
+inline RCCounterType RC<T>::ref_count_weak() const
+{
+    return _ptr ? _ptr->skr_rc_weak_ref_count() : 0;
 }
 
 // empty
@@ -645,6 +677,18 @@ template <ObjectWithRC T>
 inline const T* RCUnique<T>::get() const
 {
     return _ptr;
+}
+
+// count getter
+template <ObjectWithRC T>
+inline RCCounterType RCUnique<T>::ref_count() const
+{
+    return _ptr ? _ptr->skr_rc_count() : 0;
+}
+template <ObjectWithRC T>
+inline RCCounterType RCUnique<T>::ref_count_weak() const
+{
+    return _ptr ? _ptr->skr_rc_weak_ref_count() : 0;
 }
 
 // empty
@@ -942,11 +986,27 @@ inline const T* RCWeak<T>::get() const
     return is_alive() ? _ptr : nullptr;
 }
 
+// count getter
+template <ObjectWithRC T>
+inline RCCounterType RCWeak<T>::ref_count_weak() const
+{
+    return _counter ? _counter->ref_count() : 0;
+}
+
 // lock
 template <ObjectWithRC T>
 inline RC<T> RCWeak<T>::lock() const
 {
-    return is_alive() ? RC<T>(_ptr) : RC<T>(nullptr);
+    RC<T> result;
+    if (is_alive())
+    {
+        auto lock_result = _ptr->skr_rc_weak_lock();
+        if (lock_result != 0)
+        {
+            result._ptr = _ptr;
+        }
+    }
+    return result;
 }
 
 // empty

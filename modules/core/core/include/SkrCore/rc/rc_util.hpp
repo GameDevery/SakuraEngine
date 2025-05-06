@@ -26,7 +26,7 @@ inline static RCCounterType rc_add_ref(std::atomic<RCCounterType>& counter)
 {
     RCCounterType old = counter.load(std::memory_order_relaxed);
     SKR_ASSERT(!rc_is_unique(old) && "try to add ref on a unique object");
-    while (!counter.compare_exchange_strong(
+    while (!counter.compare_exchange_weak(
         old,
         old + 1,
         std::memory_order_relaxed
@@ -36,11 +36,26 @@ inline static RCCounterType rc_add_ref(std::atomic<RCCounterType>& counter)
     }
     return old + 1;
 }
+inline static RCCounterType rc_weak_lock(std::atomic<RCCounterType>& counter)
+{
+    for (RCCounterType old = counter.load(std::memory_order_relaxed); old != 0;)
+    {
+        if (counter.compare_exchange_weak(
+                old,
+                old + 1,
+                std::memory_order_relaxed
+            ))
+        {
+            return old;
+        }
+    }
+    return 0;
+}
 inline static RCCounterType rc_add_ref_unique(std::atomic<RCCounterType>& counter)
 {
     RCCounterType old = counter.load(std::memory_order_relaxed);
     SKR_ASSERT(old == 0 && "try to add ref on a non-unique object");
-    while (!counter.compare_exchange_strong(
+    while (!counter.compare_exchange_weak(
         old,
         kRCCounterUniqueFlag,
         std::memory_order_relaxed
@@ -106,6 +121,21 @@ inline static bool rc_is_weak_ref_released(RCWeakRefCounter* counter)
 {
     return reinterpret_cast<size_t>(counter) == size_t(-1);
 }
+inline static RCCounterType rc_weak_ref_count(
+    std::atomic<RCWeakRefCounter*>& counter
+)
+{
+    RCWeakRefCounter* weak_counter = counter.load(std::memory_order_relaxed);
+    if (!weak_counter || rc_is_weak_ref_released(weak_counter))
+    {
+        return 0;
+    }
+    else
+    {
+        std::atomic_thread_fence(std::memory_order_acquire);
+        return weak_counter->ref_count();
+    }
+}
 inline static RCWeakRefCounter* rc_get_or_new_weak_ref_counter(
     std::atomic<RCWeakRefCounter*>& counter
 )
@@ -118,7 +148,7 @@ inline static RCWeakRefCounter* rc_get_or_new_weak_ref_counter(
     else
     {
         RCWeakRefCounter* new_counter = SkrNew<RCWeakRefCounter>();
-        if (counter.compare_exchange_strong(
+        if (counter.compare_exchange_weak(
                 weak_counter,
                 new_counter,
                 std::memory_order_release
@@ -154,7 +184,7 @@ inline static void rc_notify_weak_ref_counter_dead(
     RCWeakRefCounter* weak_counter = counter.load(std::memory_order_relaxed);
 
     // take release permissions
-    while (!counter.compare_exchange_strong(
+    while (!counter.compare_exchange_weak(
         weak_counter,
         rc_get_weak_ref_released(),
         std::memory_order_release
@@ -204,9 +234,12 @@ concept ObjectWithRCConvertible = requires(From obj) {
 
 // interface macros
 #define SKR_RC_INTEFACE()                                                           \
+    virtual skr::RCCounterType     skr_rc_count() const                        = 0; \
     virtual skr::RCCounterType     skr_rc_add_ref() const                      = 0; \
     virtual skr::RCCounterType     skr_rc_add_ref_unique() const               = 0; \
+    virtual skr::RCCounterType     skr_rc_weak_lock() const                    = 0; \
     virtual skr::RCCounterType     skr_rc_release() const                      = 0; \
+    virtual skr::RCCounterType     skr_rc_weak_ref_count() const               = 0; \
     virtual skr::RCWeakRefCounter* skr_rc_weak_ref_counter() const             = 0; \
     virtual void                   skr_rc_weak_ref_counter_notify_dead() const = 0;
 #define SKR_RC_DELETER_INTERFACE() \
@@ -219,6 +252,10 @@ private:                                                                        
     mutable ::std::atomic<::skr::RCWeakRefCounter*> zz_skr_weak_counter = nullptr; \
                                                                                    \
 public:                                                                            \
+    inline skr::RCCounterType skr_rc_count() const                                 \
+    {                                                                              \
+        return skr::rc_get(zz_skr_rc);                                             \
+    }                                                                              \
     inline skr::RCCounterType skr_rc_add_ref() const                               \
     {                                                                              \
         return skr::rc_add_ref(zz_skr_rc);                                         \
@@ -227,9 +264,17 @@ public:                                                                         
     {                                                                              \
         return skr::rc_add_ref_unique(zz_skr_rc);                                  \
     }                                                                              \
+    inline skr::RCCounterType skr_rc_weak_lock() const                             \
+    {                                                                              \
+        return skr::rc_weak_lock(zz_skr_rc);                                       \
+    }                                                                              \
     inline skr::RCCounterType skr_rc_release() const                               \
     {                                                                              \
         return skr::rc_release(zz_skr_rc);                                         \
+    }                                                                              \
+    inline skr::RCCounterType skr_rc_weak_ref_count() const                        \
+    {                                                                              \
+        return skr::rc_weak_ref_count(zz_skr_weak_counter);                        \
     }                                                                              \
     inline skr::RCWeakRefCounter* skr_rc_weak_ref_counter() const                  \
     {                                                                              \
