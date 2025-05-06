@@ -330,3 +330,12 @@ public:                                                                         
     {                                                                              \
         skr::rc_notify_weak_ref_counter_dead(zz_skr_weak_counter);                 \
     }
+
+// TODO. remove it
+namespace skr
+{
+struct SKR_CORE_API IRCAble {
+    virtual ~IRCAble() SKR_NOEXCEPT = default;
+    SKR_RC_INTEFACE();
+};
+} // namespace skr
