@@ -2,8 +2,9 @@
 
 #include <SkrCore/rc/rc.hpp>
 
-static uint64_t base_count    = 0;
-static uint64_t derived_count = 0;
+static uint64_t base_count           = 0;
+static uint64_t derived_count        = 0;
+static uint64_t custom_deleter_count = 0;
 
 struct TestCounterBase {
     SKR_RC_IMPL()
@@ -27,6 +28,16 @@ public:
     ~TestCounterDerived()
     {
         --derived_count;
+    }
+};
+
+struct TestCustomDeleter {
+    SKR_RC_IMPL()
+
+    inline void skr_rc_delete() const
+    {
+        ++custom_deleter_count;
+        SkrDelete(this);
     }
 };
 
@@ -500,4 +511,12 @@ TEST_CASE("Test RCUnique")
         empty.swap(empty_move);
         empty.release();
     }
+}
+
+TEST_CASE("Test RCWeak")
+{
+}
+
+TEST_CASE("Test Custom Deleter")
+{
 }

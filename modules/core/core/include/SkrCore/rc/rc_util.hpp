@@ -1,4 +1,5 @@
 #pragma once
+#include <SkrBase/atomic/atomic_mutex.hpp>
 #include <SkrCore/memory/memory.h>
 #include <SkrBase/config.h>
 #include <atomic>
@@ -120,12 +121,27 @@ struct RCWeakRefCounter {
     {
         return _is_alive.load(std::memory_order_relaxed);
     }
+    inline void lock_for_use()
+    {
+        _delete_mutex.lock_shared();
+    }
+    inline void unlock_for_use()
+    {
+        _delete_mutex.unlock_shared();
+    }
+    inline void lock_for_delete()
+    {
+        _delete_mutex.lock();
+    }
+    inline void unlock_for_delete()
+    {
+        _delete_mutex.unlock();
+    }
 
 private:
-    // just store ref count and live info
-    // true object pointer will stored by RCWeak
-    std::atomic<bool>          _is_alive  = true;
-    std::atomic<RCCounterType> _ref_count = 0;
+    std::atomic<RCCounterType> _ref_count    = 0;
+    shared_atomic_mutex        _delete_mutex = {};
+    std::atomic<bool>          _is_alive     = true;
 };
 inline static RCWeakRefCounter* rc_get_weak_ref_released()
 {
@@ -206,23 +222,29 @@ inline static void rc_notify_weak_ref_counter_dead(
     {
         if (rc_is_weak_ref_released(weak_counter))
         {
-            // another thread released the weak counter
-            return;
+            // unexpected, another thread released the weak counter
+            SKR_UNREACHABLE_CODE();
         }
         else
         {
-            // unexpected, should not happen
-            SKR_UNREACHABLE_CODE();
+            // another thread created a weak counter
+            SKR_ASSERT(weak_counter != nullptr);
         }
     }
 
     // now release the weak counter
     if (weak_counter)
     {
+        // lock for delete
+        weak_counter->lock_for_delete();
+
+        // release
         std::atomic_thread_fence(std::memory_order_acquire);
         weak_counter->notify_dead();
         weak_counter->release();
-        counter.store(nullptr, std::memory_order_relaxed);
+
+        // unlock for delete
+        weak_counter->unlock_for_delete();
     }
 }
 

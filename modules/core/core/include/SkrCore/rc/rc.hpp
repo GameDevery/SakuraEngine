@@ -62,10 +62,8 @@ struct RC {
     void swap(RC& rhs);
 
     // pointer behaviour
-    T*       operator->();
-    const T* operator->() const;
-    T&       operator*();
-    const T& operator*() const;
+    T* operator->() const;
+    T& operator*() const;
 
     // skr hash
     static size_t _skr_hash(const RC& obj);
@@ -124,10 +122,8 @@ struct RCUnique {
     void swap(RCUnique& rhs);
 
     // pointer behaviour
-    T*       operator->();
-    const T* operator->() const;
-    T&       operator*();
-    const T& operator*() const;
+    T* operator->() const;
+    T& operator*() const;
 
     // skr hash
     static size_t _skr_hash(const RCUnique& obj);
@@ -138,6 +134,36 @@ private:
 
 private:
     T* _ptr = nullptr;
+};
+
+template <ObjectWithRC T>
+struct RCWeakLocker {
+    // ctor & dtor
+    RCWeakLocker(T* ptr, RCWeakRefCounter* counter);
+    ~RCWeakLocker();
+
+    // copy & move
+    RCWeakLocker(const RCWeakLocker& rhs) = delete;
+    RCWeakLocker(RCWeakLocker&& rhs);
+
+    // assign & move assign
+    RCWeakLocker& operator=(const RCWeakLocker& rhs) = delete;
+    RCWeakLocker& operator=(RCWeakLocker&& rhs);
+
+    // is empty
+    bool is_empty() const;
+
+    // pointer behaviour
+    T* operator->();
+    T& operator*();
+
+    // lock to RC
+    RC<T> rc() const;
+    operator RC<T>() const;
+
+private:
+    T*                _ptr;
+    RCWeakRefCounter* _counter;
 };
 
 template <ObjectWithRC T>
@@ -174,9 +200,6 @@ struct RCWeak {
     RCWeak& operator=(const RCWeak& rhs);
     RCWeak& operator=(RCWeak&& rhs);
 
-    // getter
-    T* get() const;
-
     // unsafe getter
     T*                get_unsafe() const;
     RCWeakRefCounter* get_counter() const;
@@ -185,7 +208,7 @@ struct RCWeak {
     RCCounterType ref_count_weak() const;
 
     // lock
-    RC<T> lock() const;
+    RCWeakLocker<T> lock() const;
 
     // empty
     bool is_expired() const;
@@ -502,22 +525,12 @@ inline void RC<T>::swap(RC& rhs)
 
 // pointer behaviour
 template <ObjectWithRC T>
-inline T* RC<T>::operator->()
+inline T* RC<T>::operator->() const
 {
     return _ptr;
 }
 template <ObjectWithRC T>
-inline const T* RC<T>::operator->() const
-{
-    return _ptr;
-}
-template <ObjectWithRC T>
-inline T& RC<T>::operator*()
-{
-    return *_ptr;
-}
-template <ObjectWithRC T>
-inline const T& RC<T>::operator*() const
+inline T& RC<T>::operator*() const
 {
     return *_ptr;
 }
@@ -789,22 +802,12 @@ inline void RCUnique<T>::swap(RCUnique& rhs)
 
 // pointer behaviour
 template <ObjectWithRC T>
-inline T* RCUnique<T>::operator->()
+inline T* RCUnique<T>::operator->() const
 {
     return _ptr;
 }
 template <ObjectWithRC T>
-inline const T* RCUnique<T>::operator->() const
-{
-    return _ptr;
-}
-template <ObjectWithRC T>
-inline T& RCUnique<T>::operator*()
-{
-    return *_ptr;
-}
-template <ObjectWithRC T>
-inline const T& RCUnique<T>::operator*() const
+inline T& RCUnique<T>::operator*() const
 {
     return *_ptr;
 }
@@ -815,6 +818,110 @@ inline size_t RCUnique<T>::_skr_hash(const RCUnique& obj)
 {
     return skr::Hash<T*>()(obj._ptr);
 }
+} // namespace skr
+
+// impl for RCWeakLocker
+namespace skr
+{
+// ctor & dtor
+template <ObjectWithRC T>
+inline RCWeakLocker<T>::RCWeakLocker(T* ptr, RCWeakRefCounter* counter)
+    : _ptr(ptr)
+    , _counter(counter)
+{
+    SKR_ASSERT(ptr && counter);
+    if (counter->is_alive())
+    {
+        _counter->lock_for_use();
+        if (counter->is_alive())
+        {
+            _ptr     = ptr;
+            _counter = counter;
+        }
+        else
+        {
+            _counter->unlock_for_use();
+        }
+    }
+}
+template <ObjectWithRC T>
+inline RCWeakLocker<T>::~RCWeakLocker()
+{
+    if (_ptr)
+    {
+        _counter->unlock_for_use();
+    }
+}
+
+// copy & move
+template <ObjectWithRC T>
+inline RCWeakLocker<T>::RCWeakLocker(RCWeakLocker&& rhs)
+    : _ptr(rhs._ptr)
+    , _counter(rhs._counter)
+{
+    rhs._ptr     = nullptr;
+    rhs._counter = nullptr;
+}
+
+// assign & move assign
+template <ObjectWithRC T>
+inline RCWeakLocker<T>& RCWeakLocker<T>::operator=(RCWeakLocker&& rhs)
+{
+    if (this != &rhs)
+    {
+        if (_ptr)
+        {
+            _counter->unlock_for_use();
+        }
+
+        _ptr         = rhs._ptr;
+        _counter     = rhs._counter;
+        rhs._ptr     = nullptr;
+        rhs._counter = nullptr;
+    }
+    return *this;
+}
+
+// is empty
+template <ObjectWithRC T>
+inline bool RCWeakLocker<T>::is_empty() const
+{
+    return _ptr == nullptr;
+}
+
+// pointer behaviour
+template <ObjectWithRC T>
+inline T* RCWeakLocker<T>::operator->()
+{
+    return _ptr;
+}
+template <ObjectWithRC T>
+inline T& RCWeakLocker<T>::operator*()
+{
+    return *_ptr;
+}
+
+// lock to RC
+template <ObjectWithRC T>
+inline RC<T> RCWeakLocker<T>::rc() const
+{
+    RC<T> result;
+    if (is_alive())
+    {
+        auto lock_result = _ptr->skr_rc_weak_lock();
+        if (lock_result != 0)
+        {
+            result._ptr = _ptr;
+        }
+    }
+    return result;
+}
+template <ObjectWithRC T>
+inline RCWeakLocker<T>::operator RC<T>() const
+{
+    return rc();
+}
+
 } // namespace skr
 
 // impl for RCWeak
@@ -1054,13 +1161,6 @@ inline bool operator!=(std::nullptr_t, const RCWeak<T>& rhs)
     return nullptr != rhs._ptr;
 }
 
-// getter
-template <ObjectWithRC T>
-inline T* RCWeak<T>::get() const
-{
-    return is_alive() ? _ptr : nullptr;
-}
-
 // unsafe getter
 template <ObjectWithRC T>
 inline T* RCWeak<T>::get_unsafe() const
@@ -1082,18 +1182,12 @@ inline RCCounterType RCWeak<T>::ref_count_weak() const
 
 // lock
 template <ObjectWithRC T>
-inline RC<T> RCWeak<T>::lock() const
+inline RCWeakLocker<T> RCWeak<T>::lock() const
 {
-    RC<T> result;
-    if (is_alive())
+    if (_ptr)
     {
-        auto lock_result = _ptr->skr_rc_weak_lock();
-        if (lock_result != 0)
-        {
-            result._ptr = _ptr;
-        }
+        return { _ptr, _counter };
     }
-    return result;
 }
 
 // empty
