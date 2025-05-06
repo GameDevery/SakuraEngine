@@ -24,13 +24,18 @@ struct RC {
     // copy & move
     template <ObjectWithRCConvertible<T> U>
     RC(const RC<U>& rhs);
+    template <ObjectWithRCConvertible<T> U>
+    RC(RC<U>&& rhs);
     RC(const RC& rhs);
     RC(RC&& rhs);
 
     // assign & move assign
+    RC& operator=(std::nullptr_t);
     RC& operator=(T* ptr);
     template <ObjectWithRCConvertible<T> U>
     RC& operator=(const RC<U>& rhs);
+    template <ObjectWithRCConvertible<T> U>
+    RC& operator=(RC<U>&& rhs);
     RC& operator=(const RC& rhs);
     RC& operator=(RC&& rhs);
 
@@ -40,24 +45,8 @@ struct RC {
     template <typename... Args>
     static RC NewZeroed(Args&&... args);
 
-    // compare
-    //! Note: use T/U compare, see above for details
-    // friend bool operator==(const RC& lhs, const RC& rhs);
-    // friend bool operator!=(const RC& lhs, const RC& rhs);
-    // friend bool operator< (const RC& lhs, const RC& rhs);
-    // friend bool operator> (const RC& lhs, const RC& rhs);
-    // friend bool operator<=(const RC& lhs, const RC& rhs);
-    // friend bool operator>=(const RC& lhs, const RC& rhs);
-
-    // compare with nullptr
-    friend bool operator==(const RC& lhs, std::nullptr_t);
-    friend bool operator!=(const RC& lhs, std::nullptr_t);
-    friend bool operator==(std::nullptr_t, const RC& rhs);
-    friend bool operator!=(std::nullptr_t, const RC& rhs);
-
     // getter
-    T*       get();
-    const T* get() const;
+    T* get() const;
 
     // count getter
     RCCounterType ref_count() const;
@@ -99,11 +88,16 @@ struct RCUnique {
 
     // copy & move
     RCUnique(const RCUnique& rhs) = delete;
+    template <ObjectWithRCConvertible<T> U>
+    RCUnique(RCUnique<U>&& rhs);
     RCUnique(RCUnique&& rhs);
 
     // assign & move assign
+    RCUnique& operator=(std::nullptr_t);
     RCUnique& operator=(T* ptr);
     RCUnique& operator=(const RCUnique& rhs) = delete;
+    template <ObjectWithRCConvertible<T> U>
+    RCUnique& operator=(RCUnique<U>&& rhs);
     RCUnique& operator=(RCUnique&& rhs);
 
     // factory
@@ -112,24 +106,8 @@ struct RCUnique {
     template <typename... Args>
     static RCUnique NewZeroed(Args&&... args);
 
-    // compare
-    //! Note: use T/U compare, see above for details
-    // friend bool operator==(const RCUnique& lhs, const RCUnique& rhs);
-    // friend bool operator!=(const RCUnique& lhs, const RCUnique& rhs);
-    // friend bool operator< (const RCUnique& lhs, const RCUnique& rhs);
-    // friend bool operator> (const RCUnique& lhs, const RCUnique& rhs);
-    // friend bool operator<=(const RCUnique& lhs, const RCUnique& rhs);
-    // friend bool operator>=(const RCUnique& lhs, const RCUnique& rhs);
-
-    // compare with nullptr
-    friend bool operator==(const RCUnique& lhs, std::nullptr_t);
-    friend bool operator!=(const RCUnique& lhs, std::nullptr_t);
-    friend bool operator==(std::nullptr_t, const RCUnique& rhs);
-    friend bool operator!=(std::nullptr_t, const RCUnique& rhs);
-
     // getter
-    T*       get();
-    const T* get() const;
+    T* get() const;
 
     // count getter
     RCCounterType ref_count() const;
@@ -142,6 +120,7 @@ struct RCUnique {
     // ops
     void reset();
     void reset(T* ptr);
+    T*   release();
     void swap(RCUnique& rhs);
 
     // pointer behaviour
@@ -176,13 +155,18 @@ struct RCWeak {
     // copy & move
     template <ObjectWithRCConvertible<T> U>
     RCWeak(const RCWeak<U>& rhs);
+    template <ObjectWithRCConvertible<T> U>
+    RCWeak(RCWeak<U>&& rhs);
     RCWeak(const RCWeak& rhs);
     RCWeak(RCWeak&& rhs);
 
     // assign & move assign
+    RCWeak& operator=(std::nullptr_t);
     RCWeak& operator=(T* ptr);
     template <ObjectWithRCConvertible<T> U>
     RCWeak& operator=(const RCWeak<U>& rhs);
+    template <ObjectWithRCConvertible<T> U>
+    RCWeak& operator=(RCWeak<U>&& rhs);
     template <ObjectWithRCConvertible<T> U>
     RCWeak& operator=(const RC<U>& rhs);
     template <ObjectWithRCConvertible<T> U>
@@ -190,24 +174,12 @@ struct RCWeak {
     RCWeak& operator=(const RCWeak& rhs);
     RCWeak& operator=(RCWeak&& rhs);
 
-    // compare
-    //! Note: use T/U compare, see above for details
-    // friend bool operator==(const RCWeak& lhs, const RCWeak& rhs);
-    // friend bool operator!=(const RCWeak& lhs, const RCWeak& rhs);
-    // friend bool operator< (const RCWeak& lhs, const RCWeak& rhs);
-    // friend bool operator> (const RCWeak& lhs, const RCWeak& rhs);
-    // friend bool operator<=(const RCWeak& lhs, const RCWeak& rhs);
-    // friend bool operator>=(const RCWeak& lhs, const RCWeak& rhs);
-
-    // compare with nullptr
-    friend bool operator==(const RCWeak& lhs, std::nullptr_t);
-    friend bool operator!=(const RCWeak& lhs, std::nullptr_t);
-    friend bool operator==(std::nullptr_t, const RCWeak& rhs);
-    friend bool operator!=(std::nullptr_t, const RCWeak& rhs);
-
     // getter
-    T*       get();
-    const T* get() const;
+    T* get() const;
+
+    // unsafe getter
+    T*                get_unsafe() const;
+    RCWeakRefCounter* get_counter() const;
 
     // count getter
     RCCounterType ref_count_weak() const;
@@ -293,11 +265,20 @@ inline RC<T>::~RC()
 template <ObjectWithRC T>
 template <ObjectWithRCConvertible<T> U>
 inline RC<T>::RC(const RC<U>& rhs)
-    : _ptr(static_cast<T*>(rhs._ptr))
 {
-    if (_ptr)
+    if (!rhs.is_empty())
     {
-        _ptr->skr_rc_add_ref();
+        reset(static_cast<T*>(rhs.get()));
+    }
+}
+template <ObjectWithRC T>
+template <ObjectWithRCConvertible<T> U>
+inline RC<T>::RC(RC<U>&& rhs)
+{
+    if (!rhs.is_empty())
+    {
+        reset(static_cast<T*>(rhs.get()));
+        rhs.reset();
     }
 }
 template <ObjectWithRC T>
@@ -318,6 +299,12 @@ inline RC<T>::RC(RC&& rhs)
 
 // assign & move assign
 template <ObjectWithRC T>
+inline RC<T>& RC<T>::operator=(std::nullptr_t)
+{
+    reset();
+    return *this;
+}
+template <ObjectWithRC T>
 inline RC<T>& RC<T>::operator=(T* ptr)
 {
     reset(ptr);
@@ -327,7 +314,30 @@ template <ObjectWithRC T>
 template <ObjectWithRCConvertible<T> U>
 inline RC<T>& RC<T>::operator=(const RC<U>& rhs)
 {
-    reset(static_cast<T*>(rhs._ptr));
+    if (rhs.is_empty())
+    {
+        reset();
+    }
+    else
+    {
+        reset(static_cast<T*>(rhs.get()));
+    }
+    return *this;
+}
+
+template <ObjectWithRC T>
+template <ObjectWithRCConvertible<T> U>
+inline RC<T>& RC<T>::operator=(RC<U>&& rhs)
+{
+    if (rhs.is_empty())
+    {
+        reset();
+    }
+    else
+    {
+        reset(static_cast<T*>(rhs.get()));
+        rhs.reset();
+    }
     return *this;
 }
 template <ObjectWithRC T>
@@ -367,66 +377,61 @@ inline RC<T> RC<T>::NewZeroed(Args&&... args)
 
 // compare
 template <ObjectWithRC T, ObjectWithRC U>
-inline bool operator==(const RC<T>& lhs, const RC<T>& rhs)
+inline bool operator==(const RC<T>& lhs, const RC<U>& rhs)
 {
-    return lhs._ptr == rhs._ptr;
+    return lhs.get() == rhs.get();
 }
 template <ObjectWithRC T, ObjectWithRC U>
-inline bool operator!=(const RC<T>& lhs, const RC<T>& rhs)
+inline bool operator!=(const RC<T>& lhs, const RC<U>& rhs)
 {
-    return lhs._ptr != rhs._ptr;
+    return lhs.get() != rhs.get();
 }
 template <ObjectWithRC T, ObjectWithRC U>
-inline bool operator<(const RC<T>& lhs, const RC<T>& rhs)
+inline bool operator<(const RC<T>& lhs, const RC<U>& rhs)
 {
-    return lhs._ptr < rhs._ptr;
+    return lhs.get() < rhs.get();
 }
 template <ObjectWithRC T, ObjectWithRC U>
-inline bool operator>(const RC<T>& lhs, const RC<T>& rhs)
+inline bool operator>(const RC<T>& lhs, const RC<U>& rhs)
 {
-    return lhs._ptr > rhs._ptr;
+    return lhs.get() > rhs.get();
 }
 template <ObjectWithRC T, ObjectWithRC U>
-inline bool operator<=(const RC<T>& lhs, const RC<T>& rhs)
+inline bool operator<=(const RC<T>& lhs, const RC<U>& rhs)
 {
-    return lhs._ptr <= rhs._ptr;
+    return lhs.get() <= rhs.get();
 }
 template <ObjectWithRC T, ObjectWithRC U>
-inline bool operator>=(const RC<T>& lhs, const RC<T>& rhs)
+inline bool operator>=(const RC<T>& lhs, const RC<U>& rhs)
 {
-    return lhs._ptr >= rhs._ptr;
+    return lhs.get() >= rhs.get();
 }
 
 // compare with nullptr
 template <ObjectWithRC T>
 inline bool operator==(const RC<T>& lhs, std::nullptr_t)
 {
-    return lhs._ptr == nullptr;
+    return lhs.get() == nullptr;
 }
 template <ObjectWithRC T>
 inline bool operator!=(const RC<T>& lhs, std::nullptr_t)
 {
-    return lhs._ptr != nullptr;
+    return lhs.get() != nullptr;
 }
 template <ObjectWithRC T>
 inline bool operator==(std::nullptr_t, const RC<T>& rhs)
 {
-    return nullptr == rhs._ptr;
+    return nullptr == rhs.get();
 }
 template <ObjectWithRC T>
 inline bool operator!=(std::nullptr_t, const RC<T>& rhs)
 {
-    return nullptr != rhs._ptr;
+    return nullptr != rhs.get();
 }
 
 // getter
 template <ObjectWithRC T>
-inline T* RC<T>::get()
-{
-    return _ptr;
-}
-template <ObjectWithRC T>
-inline const T* RC<T>::get() const
+inline T* RC<T>::get() const
 {
     return _ptr;
 }
@@ -574,6 +579,15 @@ inline RCUnique<T>::~RCUnique()
 
 // copy & move
 template <ObjectWithRC T>
+template <ObjectWithRCConvertible<T> U>
+inline RCUnique<T>::RCUnique(RCUnique<U>&& rhs)
+{
+    if (!rhs.is_empty())
+    {
+        reset(static_cast<T*>(rhs.release()));
+    }
+}
+template <ObjectWithRC T>
 inline RCUnique<T>::RCUnique(RCUnique&& rhs)
     : _ptr(rhs._ptr)
 {
@@ -582,9 +596,29 @@ inline RCUnique<T>::RCUnique(RCUnique&& rhs)
 
 // assign & move assign
 template <ObjectWithRC T>
+inline RCUnique<T>& RCUnique<T>::operator=(std::nullptr_t)
+{
+    reset();
+    return *this;
+}
+template <ObjectWithRC T>
 inline RCUnique<T>& RCUnique<T>::operator=(T* ptr)
 {
     reset(ptr);
+    return *this;
+}
+template <ObjectWithRC T>
+template <ObjectWithRCConvertible<T> U>
+inline RCUnique<T>& RCUnique<T>::operator=(RCUnique<U>&& rhs)
+{
+    if (rhs.is_empty())
+    {
+        reset();
+    }
+    else
+    {
+        reset(static_cast<T*>(rhs.release()));
+    }
     return *this;
 }
 template <ObjectWithRC T>
@@ -669,12 +703,7 @@ inline bool operator!=(std::nullptr_t, const RCUnique<T>& rhs)
 
 // getter
 template <ObjectWithRC T>
-inline T* RCUnique<T>::get()
-{
-    return _ptr;
-}
-template <ObjectWithRC T>
-inline const T* RCUnique<T>::get() const
+inline T* RCUnique<T>::get() const
 {
     return _ptr;
 }
@@ -730,6 +759,21 @@ inline void RCUnique<T>::reset(T* ptr)
         {
             _ptr->skr_rc_add_ref_unique();
         }
+    }
+}
+template <ObjectWithRC T>
+inline T* RCUnique<T>::release()
+{
+    if (_ptr)
+    {
+        T* tmp = _ptr;
+        _ptr->skr_rc_release_unique();
+        _ptr = nullptr;
+        return tmp;
+    }
+    else
+    {
+        return nullptr;
     }
 }
 template <ObjectWithRC T>
@@ -840,12 +884,20 @@ inline RCWeak<T>::~RCWeak()
 template <ObjectWithRC T>
 template <ObjectWithRCConvertible<T> U>
 inline RCWeak<T>::RCWeak(const RCWeak<U>& rhs)
-    : _ptr(static_cast<T*>(rhs._ptr))
-    , _counter(rhs._counter)
 {
-    if (_counter)
+    if (rhs.is_alive())
     {
-        _counter->add_ref();
+        reset(rhs.get());
+    }
+}
+template <ObjectWithRC T>
+template <ObjectWithRCConvertible<T> U>
+inline RCWeak<T>::RCWeak(RCWeak<U>&& rhs)
+{
+    if (rhs.is_alive())
+    {
+        reset(rhs.get());
+        rhs.reset();
     }
 }
 template <ObjectWithRC T>
@@ -869,6 +921,12 @@ inline RCWeak<T>::RCWeak(RCWeak&& rhs)
 
 // assign & move assign
 template <ObjectWithRC T>
+inline RCWeak<T>& RCWeak<T>::operator=(std::nullptr_t)
+{
+    reset();
+    return *this;
+}
+template <ObjectWithRC T>
 inline RCWeak<T>& RCWeak<T>::operator=(T* ptr)
 {
     reset(ptr);
@@ -878,7 +936,29 @@ template <ObjectWithRC T>
 template <ObjectWithRCConvertible<T> U>
 inline RCWeak<T>& RCWeak<T>::operator=(const RCWeak<U>& rhs)
 {
-    reset(rhs);
+    if (rhs.is_alive())
+    {
+        reset(rhs.get());
+    }
+    else
+    {
+        reset();
+    }
+    return *this;
+}
+template <ObjectWithRC T>
+template <ObjectWithRCConvertible<T> U>
+inline RCWeak<T>& RCWeak<T>::operator=(RCWeak<U>&& rhs)
+{
+    if (rhs.is_alive())
+    {
+        reset(rhs.get());
+        rhs.reset();
+    }
+    else
+    {
+        reset();
+    }
     return *this;
 }
 template <ObjectWithRC T>
@@ -976,14 +1056,21 @@ inline bool operator!=(std::nullptr_t, const RCWeak<T>& rhs)
 
 // getter
 template <ObjectWithRC T>
-inline T* RCWeak<T>::get()
+inline T* RCWeak<T>::get() const
 {
     return is_alive() ? _ptr : nullptr;
 }
+
+// unsafe getter
 template <ObjectWithRC T>
-inline const T* RCWeak<T>::get() const
+inline T* RCWeak<T>::get_unsafe() const
 {
-    return is_alive() ? _ptr : nullptr;
+    return _ptr;
+}
+template <ObjectWithRC T>
+inline RCWeakRefCounter* RCWeak<T>::get_counter() const
+{
+    return _counter;
 }
 
 // count getter
