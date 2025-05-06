@@ -251,19 +251,12 @@ inline static void rc_notify_weak_ref_counter_dead(
 
 // concept
 template <typename T>
-concept ObjectWithRC = requires(const T& const_obj, T& obj) {
-    { const_obj.skr_rc_count() } -> std::same_as<skr::RCCounterType>;
-    { const_obj.skr_rc_add_ref() } -> std::same_as<skr::RCCounterType>;
-    { const_obj.skr_rc_add_ref_unique() } -> std::same_as<skr::RCCounterType>;
-    { const_obj.skr_rc_release_unique() } -> std::same_as<skr::RCCounterType>;
-    { const_obj.skr_rc_weak_lock() } -> std::same_as<skr::RCCounterType>;
-    { const_obj.skr_rc_release() } -> std::same_as<skr::RCCounterType>;
-    { const_obj.skr_rc_weak_ref_count() } -> std::same_as<skr::RCCounterType>;
-    { const_obj.skr_rc_weak_ref_counter() } -> std::same_as<skr::RCWeakRefCounter*>;
+concept ObjectWithRC = requires(const T* const_obj, T* obj) {
+    std::is_same_v<typename T::zzSKR_RC_FLAG, void>;
 };
 template <typename T>
-concept ObjectWithRCDeleter = requires(const T& const_obj, T& obj) {
-    { obj.skr_rc_delete() } -> std::same_as<void>;
+concept ObjectWithRCDeleter = requires(const T* const_obj, T* obj) {
+    { obj->skr_rc_delete() } -> std::same_as<void>;
 };
 template <typename From, typename To>
 concept ObjectWithRCConvertible = requires(From obj) {
@@ -273,7 +266,9 @@ concept ObjectWithRCConvertible = requires(From obj) {
 } // namespace skr
 
 // interface macros
+#define SKR_RC_IMPL_FLAG() using zzSKR_RC_FLAG = void;
 #define SKR_RC_INTEFACE()                                                           \
+    SKR_RC_IMPL_FLAG()                                                              \
     virtual skr::RCCounterType     skr_rc_count() const                        = 0; \
     virtual skr::RCCounterType     skr_rc_add_ref() const                      = 0; \
     virtual skr::RCCounterType     skr_rc_add_ref_unique() const               = 0; \
@@ -288,6 +283,8 @@ concept ObjectWithRCConvertible = requires(From obj) {
 
 // impl macros
 #define SKR_RC_IMPL()                                                              \
+    SKR_RC_IMPL_FLAG()                                                             \
+                                                                                   \
 private:                                                                           \
     mutable ::std::atomic<::skr::RCCounterType>     zz_skr_rc           = 0;       \
     mutable ::std::atomic<::skr::RCWeakRefCounter*> zz_skr_weak_counter = nullptr; \
