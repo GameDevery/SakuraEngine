@@ -4,16 +4,16 @@
 
 namespace skr
 {
-template <ObjectWithRC T>
+template <typename T>
 struct RC;
-template <ObjectWithRC T>
+template <typename T>
 struct RCWeak;
-template <ObjectWithRC T>
+template <typename T>
 struct RCUnique;
-template <ObjectWithRC T>
+template <typename T>
 struct RCWeakLocker;
 
-template <ObjectWithRC T>
+template <typename T>
 struct RC {
     friend struct RCWeakLocker<T>;
 
@@ -78,7 +78,7 @@ private:
     T* _ptr = nullptr;
 };
 
-template <ObjectWithRC T>
+template <typename T>
 struct RCUnique {
     // ctor & dtor
     RCUnique();
@@ -138,7 +138,7 @@ private:
     T* _ptr = nullptr;
 };
 
-template <ObjectWithRC T>
+template <typename T>
 struct RCWeakLocker {
     // ctor & dtor
     RCWeakLocker(T* ptr, RCWeakRefCounter* counter);
@@ -172,7 +172,7 @@ private:
     RCWeakRefCounter* _counter;
 };
 
-template <ObjectWithRC T>
+template <typename T>
 struct RCWeak {
     // ctor & dtor
     RCWeak();
@@ -249,7 +249,7 @@ private:
 namespace skr
 {
 // helper
-template <ObjectWithRC T>
+template <typename T>
 inline void RC<T>::_release()
 {
     SKR_ASSERT(_ptr != nullptr);
@@ -268,15 +268,15 @@ inline void RC<T>::_release()
 }
 
 // ctor & dtor
-template <ObjectWithRC T>
+template <typename T>
 inline RC<T>::RC()
 {
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RC<T>::RC(std::nullptr_t)
 {
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RC<T>::RC(T* ptr)
     : _ptr(ptr)
 {
@@ -285,14 +285,14 @@ inline RC<T>::RC(T* ptr)
         _ptr->skr_rc_add_ref();
     }
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RC<T>::~RC()
 {
     reset();
 }
 
 // copy & move
-template <ObjectWithRC T>
+template <typename T>
 template <ObjectWithRCConvertible<T> U>
 inline RC<T>::RC(const RC<U>& rhs)
 {
@@ -301,7 +301,7 @@ inline RC<T>::RC(const RC<U>& rhs)
         reset(static_cast<T*>(rhs.get()));
     }
 }
-template <ObjectWithRC T>
+template <typename T>
 template <ObjectWithRCConvertible<T> U>
 inline RC<T>::RC(RC<U>&& rhs)
 {
@@ -311,7 +311,7 @@ inline RC<T>::RC(RC<U>&& rhs)
         rhs.reset();
     }
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RC<T>::RC(const RC& rhs)
     : _ptr(rhs._ptr)
 {
@@ -320,7 +320,7 @@ inline RC<T>::RC(const RC& rhs)
         _ptr->skr_rc_add_ref();
     }
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RC<T>::RC(RC&& rhs)
     : _ptr(rhs._ptr)
 {
@@ -328,19 +328,19 @@ inline RC<T>::RC(RC&& rhs)
 }
 
 // assign & move assign
-template <ObjectWithRC T>
+template <typename T>
 inline RC<T>& RC<T>::operator=(std::nullptr_t)
 {
     reset();
     return *this;
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RC<T>& RC<T>::operator=(T* ptr)
 {
     reset(ptr);
     return *this;
 }
-template <ObjectWithRC T>
+template <typename T>
 template <ObjectWithRCConvertible<T> U>
 inline RC<T>& RC<T>::operator=(const RC<U>& rhs)
 {
@@ -355,7 +355,7 @@ inline RC<T>& RC<T>::operator=(const RC<U>& rhs)
     return *this;
 }
 
-template <ObjectWithRC T>
+template <typename T>
 template <ObjectWithRCConvertible<T> U>
 inline RC<T>& RC<T>::operator=(RC<U>&& rhs)
 {
@@ -370,7 +370,7 @@ inline RC<T>& RC<T>::operator=(RC<U>&& rhs)
     }
     return *this;
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RC<T>& RC<T>::operator=(const RC& rhs)
 {
     if (this != &rhs)
@@ -379,7 +379,7 @@ inline RC<T>& RC<T>::operator=(const RC& rhs)
     }
     return *this;
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RC<T>& RC<T>::operator=(RC&& rhs)
 {
     if (this != &rhs)
@@ -392,13 +392,13 @@ inline RC<T>& RC<T>::operator=(RC&& rhs)
 }
 
 // factory
-template <ObjectWithRC T>
+template <typename T>
 template <typename... Args>
 inline RC<T> RC<T>::New(Args&&... args)
 {
     return { SkrNew<T>(std::forward<Args>(args)...) };
 }
-template <ObjectWithRC T>
+template <typename T>
 template <typename... Args>
 inline RC<T> RC<T>::NewZeroed(Args&&... args)
 {
@@ -406,92 +406,92 @@ inline RC<T> RC<T>::NewZeroed(Args&&... args)
 }
 
 // compare
-template <ObjectWithRC T, ObjectWithRC U>
+template <typename T, typename U>
 inline bool operator==(const RC<T>& lhs, const RC<U>& rhs)
 {
     return lhs.get() == rhs.get();
 }
-template <ObjectWithRC T, ObjectWithRC U>
+template <typename T, typename U>
 inline bool operator!=(const RC<T>& lhs, const RC<U>& rhs)
 {
     return lhs.get() != rhs.get();
 }
-template <ObjectWithRC T, ObjectWithRC U>
+template <typename T, typename U>
 inline bool operator<(const RC<T>& lhs, const RC<U>& rhs)
 {
     return lhs.get() < rhs.get();
 }
-template <ObjectWithRC T, ObjectWithRC U>
+template <typename T, typename U>
 inline bool operator>(const RC<T>& lhs, const RC<U>& rhs)
 {
     return lhs.get() > rhs.get();
 }
-template <ObjectWithRC T, ObjectWithRC U>
+template <typename T, typename U>
 inline bool operator<=(const RC<T>& lhs, const RC<U>& rhs)
 {
     return lhs.get() <= rhs.get();
 }
-template <ObjectWithRC T, ObjectWithRC U>
+template <typename T, typename U>
 inline bool operator>=(const RC<T>& lhs, const RC<U>& rhs)
 {
     return lhs.get() >= rhs.get();
 }
 
 // compare with nullptr
-template <ObjectWithRC T>
+template <typename T>
 inline bool operator==(const RC<T>& lhs, std::nullptr_t)
 {
     return lhs.get() == nullptr;
 }
-template <ObjectWithRC T>
+template <typename T>
 inline bool operator!=(const RC<T>& lhs, std::nullptr_t)
 {
     return lhs.get() != nullptr;
 }
-template <ObjectWithRC T>
+template <typename T>
 inline bool operator==(std::nullptr_t, const RC<T>& rhs)
 {
     return nullptr == rhs.get();
 }
-template <ObjectWithRC T>
+template <typename T>
 inline bool operator!=(std::nullptr_t, const RC<T>& rhs)
 {
     return nullptr != rhs.get();
 }
 
 // getter
-template <ObjectWithRC T>
+template <typename T>
 inline T* RC<T>::get() const
 {
     return _ptr;
 }
 
 // count getter
-template <ObjectWithRC T>
+template <typename T>
 inline RCCounterType RC<T>::ref_count() const
 {
     return _ptr ? _ptr->skr_rc_count() : 0;
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RCCounterType RC<T>::ref_count_weak() const
 {
     return _ptr ? _ptr->skr_rc_weak_ref_count() : 0;
 }
 
 // empty
-template <ObjectWithRC T>
+template <typename T>
 inline bool RC<T>::is_empty() const
 {
     return _ptr == nullptr;
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RC<T>::operator bool() const
 {
     return !is_empty();
 }
 
 // ops
-template <ObjectWithRC T>
+template <typename T>
 inline void RC<T>::reset()
 {
     if (_ptr)
@@ -500,7 +500,7 @@ inline void RC<T>::reset()
         _ptr = nullptr;
     }
 }
-template <ObjectWithRC T>
+template <typename T>
 inline void RC<T>::reset(T* ptr)
 {
     if (_ptr != ptr)
@@ -519,7 +519,7 @@ inline void RC<T>::reset(T* ptr)
         }
     }
 }
-template <ObjectWithRC T>
+template <typename T>
 inline void RC<T>::swap(RC& rhs)
 {
     if (this != &rhs)
@@ -531,19 +531,19 @@ inline void RC<T>::swap(RC& rhs)
 }
 
 // pointer behaviour
-template <ObjectWithRC T>
+template <typename T>
 inline T* RC<T>::operator->() const
 {
     return _ptr;
 }
-template <ObjectWithRC T>
+template <typename T>
 inline T& RC<T>::operator*() const
 {
     return *_ptr;
 }
 
 // skr hash
-template <ObjectWithRC T>
+template <typename T>
 inline size_t RC<T>::_skr_hash(const RC& obj)
 {
     return skr::Hash<T*>()(obj._ptr);
@@ -555,7 +555,7 @@ inline size_t RC<T>::_skr_hash(const RC& obj)
 namespace skr
 {
 // helper
-template <ObjectWithRC T>
+template <typename T>
 inline void RCUnique<T>::_release()
 {
     SKR_ASSERT(_ptr != nullptr);
@@ -574,15 +574,15 @@ inline void RCUnique<T>::_release()
 }
 
 // ctor & dtor
-template <ObjectWithRC T>
+template <typename T>
 inline RCUnique<T>::RCUnique()
 {
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RCUnique<T>::RCUnique(std::nullptr_t)
 {
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RCUnique<T>::RCUnique(T* ptr)
     : _ptr(ptr)
 {
@@ -591,14 +591,14 @@ inline RCUnique<T>::RCUnique(T* ptr)
         _ptr->skr_rc_add_ref_unique();
     }
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RCUnique<T>::~RCUnique()
 {
     reset();
 }
 
 // copy & move
-template <ObjectWithRC T>
+template <typename T>
 template <ObjectWithRCConvertible<T> U>
 inline RCUnique<T>::RCUnique(RCUnique<U>&& rhs)
 {
@@ -607,7 +607,7 @@ inline RCUnique<T>::RCUnique(RCUnique<U>&& rhs)
         reset(static_cast<T*>(rhs.release()));
     }
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RCUnique<T>::RCUnique(RCUnique&& rhs)
     : _ptr(rhs._ptr)
 {
@@ -615,19 +615,19 @@ inline RCUnique<T>::RCUnique(RCUnique&& rhs)
 }
 
 // assign & move assign
-template <ObjectWithRC T>
+template <typename T>
 inline RCUnique<T>& RCUnique<T>::operator=(std::nullptr_t)
 {
     reset();
     return *this;
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RCUnique<T>& RCUnique<T>::operator=(T* ptr)
 {
     reset(ptr);
     return *this;
 }
-template <ObjectWithRC T>
+template <typename T>
 template <ObjectWithRCConvertible<T> U>
 inline RCUnique<T>& RCUnique<T>::operator=(RCUnique<U>&& rhs)
 {
@@ -641,7 +641,7 @@ inline RCUnique<T>& RCUnique<T>::operator=(RCUnique<U>&& rhs)
     }
     return *this;
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RCUnique<T>& RCUnique<T>::operator=(RCUnique&& rhs)
 {
     if (this != &rhs)
@@ -654,13 +654,13 @@ inline RCUnique<T>& RCUnique<T>::operator=(RCUnique&& rhs)
 }
 
 // factory
-template <ObjectWithRC T>
+template <typename T>
 template <typename... Args>
 inline RCUnique<T> RCUnique<T>::New(Args&&... args)
 {
     return { SkrNew<T>(std::forward<Args>(args)...) };
 }
-template <ObjectWithRC T>
+template <typename T>
 template <typename... Args>
 inline RCUnique<T> RCUnique<T>::NewZeroed(Args&&... args)
 {
@@ -668,92 +668,92 @@ inline RCUnique<T> RCUnique<T>::NewZeroed(Args&&... args)
 }
 
 // compare
-template <ObjectWithRC T, ObjectWithRC U>
+template <typename T, typename U>
 inline bool operator==(const RCUnique<T>& lhs, const RCUnique<U>& rhs)
 {
     return lhs.get() == rhs.get();
 }
-template <ObjectWithRC T, ObjectWithRC U>
+template <typename T, typename U>
 inline bool operator!=(const RCUnique<T>& lhs, const RCUnique<U>& rhs)
 {
     return lhs.get() != rhs.get();
 }
-template <ObjectWithRC T, ObjectWithRC U>
+template <typename T, typename U>
 inline bool operator<(const RCUnique<T>& lhs, const RCUnique<U>& rhs)
 {
     return lhs.get() < rhs.get();
 }
-template <ObjectWithRC T, ObjectWithRC U>
+template <typename T, typename U>
 inline bool operator>(const RCUnique<T>& lhs, const RCUnique<U>& rhs)
 {
     return lhs.get() > rhs.get();
 }
-template <ObjectWithRC T, ObjectWithRC U>
+template <typename T, typename U>
 inline bool operator<=(const RCUnique<T>& lhs, const RCUnique<U>& rhs)
 {
     return lhs.get() <= rhs.get();
 }
-template <ObjectWithRC T, ObjectWithRC U>
+template <typename T, typename U>
 inline bool operator>=(const RCUnique<T>& lhs, const RCUnique<U>& rhs)
 {
     return lhs.get() >= rhs.get();
 }
 
 // compare with nullptr
-template <ObjectWithRC T>
+template <typename T>
 inline bool operator==(const RCUnique<T>& lhs, std::nullptr_t)
 {
     return lhs.get() == nullptr;
 }
-template <ObjectWithRC T>
+template <typename T>
 inline bool operator!=(const RCUnique<T>& lhs, std::nullptr_t)
 {
     return lhs.get() != nullptr;
 }
-template <ObjectWithRC T>
+template <typename T>
 inline bool operator==(std::nullptr_t, const RCUnique<T>& rhs)
 {
     return nullptr == rhs.get();
 }
-template <ObjectWithRC T>
+template <typename T>
 inline bool operator!=(std::nullptr_t, const RCUnique<T>& rhs)
 {
     return nullptr != rhs.get();
 }
 
 // getter
-template <ObjectWithRC T>
+template <typename T>
 inline T* RCUnique<T>::get() const
 {
     return _ptr;
 }
 
 // count getter
-template <ObjectWithRC T>
+template <typename T>
 inline RCCounterType RCUnique<T>::ref_count() const
 {
     return _ptr ? _ptr->skr_rc_count() : 0;
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RCCounterType RCUnique<T>::ref_count_weak() const
 {
     return _ptr ? _ptr->skr_rc_weak_ref_count() : 0;
 }
 
 // empty
-template <ObjectWithRC T>
+template <typename T>
 inline bool RCUnique<T>::is_empty() const
 {
     return _ptr == nullptr;
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RCUnique<T>::operator bool() const
 {
     return !is_empty();
 }
 
 // ops
-template <ObjectWithRC T>
+template <typename T>
 inline void RCUnique<T>::reset()
 {
     if (_ptr)
@@ -762,7 +762,7 @@ inline void RCUnique<T>::reset()
         _ptr = nullptr;
     }
 }
-template <ObjectWithRC T>
+template <typename T>
 inline void RCUnique<T>::reset(T* ptr)
 {
     if (_ptr != ptr)
@@ -781,7 +781,7 @@ inline void RCUnique<T>::reset(T* ptr)
         }
     }
 }
-template <ObjectWithRC T>
+template <typename T>
 inline T* RCUnique<T>::release()
 {
     if (_ptr)
@@ -796,7 +796,7 @@ inline T* RCUnique<T>::release()
         return nullptr;
     }
 }
-template <ObjectWithRC T>
+template <typename T>
 inline void RCUnique<T>::swap(RCUnique& rhs)
 {
     if (this != &rhs)
@@ -808,19 +808,19 @@ inline void RCUnique<T>::swap(RCUnique& rhs)
 }
 
 // pointer behaviour
-template <ObjectWithRC T>
+template <typename T>
 inline T* RCUnique<T>::operator->() const
 {
     return _ptr;
 }
-template <ObjectWithRC T>
+template <typename T>
 inline T& RCUnique<T>::operator*() const
 {
     return *_ptr;
 }
 
 // skr hash
-template <ObjectWithRC T>
+template <typename T>
 inline size_t RCUnique<T>::_skr_hash(const RCUnique& obj)
 {
     return skr::Hash<T*>()(obj._ptr);
@@ -831,7 +831,7 @@ inline size_t RCUnique<T>::_skr_hash(const RCUnique& obj)
 namespace skr
 {
 // ctor & dtor
-template <ObjectWithRC T>
+template <typename T>
 inline RCWeakLocker<T>::RCWeakLocker(T* ptr, RCWeakRefCounter* counter)
     : _ptr(ptr)
     , _counter(counter)
@@ -853,7 +853,7 @@ inline RCWeakLocker<T>::RCWeakLocker(T* ptr, RCWeakRefCounter* counter)
     _ptr     = nullptr;
     _counter = nullptr;
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RCWeakLocker<T>::~RCWeakLocker()
 {
     if (_ptr)
@@ -863,7 +863,7 @@ inline RCWeakLocker<T>::~RCWeakLocker()
 }
 
 // copy & move
-template <ObjectWithRC T>
+template <typename T>
 inline RCWeakLocker<T>::RCWeakLocker(RCWeakLocker&& rhs)
     : _ptr(rhs._ptr)
     , _counter(rhs._counter)
@@ -873,7 +873,7 @@ inline RCWeakLocker<T>::RCWeakLocker(RCWeakLocker&& rhs)
 }
 
 // assign & move assign
-template <ObjectWithRC T>
+template <typename T>
 inline RCWeakLocker<T>& RCWeakLocker<T>::operator=(RCWeakLocker&& rhs)
 {
     if (this != &rhs)
@@ -892,38 +892,38 @@ inline RCWeakLocker<T>& RCWeakLocker<T>::operator=(RCWeakLocker&& rhs)
 }
 
 // is empty
-template <ObjectWithRC T>
+template <typename T>
 inline bool RCWeakLocker<T>::is_empty() const
 {
     return _ptr == nullptr;
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RCWeakLocker<T>::operator bool() const
 {
     return !is_empty();
 }
 
 // getter
-template <ObjectWithRC T>
+template <typename T>
 inline T* RCWeakLocker<T>::get() const
 {
     return _ptr;
 }
 
 // pointer behaviour
-template <ObjectWithRC T>
+template <typename T>
 inline T* RCWeakLocker<T>::operator->() const
 {
     return _ptr;
 }
-template <ObjectWithRC T>
+template <typename T>
 inline T& RCWeakLocker<T>::operator*() const
 {
     return *_ptr;
 }
 
 // lock to RC
-template <ObjectWithRC T>
+template <typename T>
 inline RC<T> RCWeakLocker<T>::rc() const
 {
     RC<T> result;
@@ -937,7 +937,7 @@ inline RC<T> RCWeakLocker<T>::rc() const
     }
     return result;
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RCWeakLocker<T>::operator RC<T>() const
 {
     return rc();
@@ -949,13 +949,13 @@ inline RCWeakLocker<T>::operator RC<T>() const
 namespace skr
 {
 // helper
-template <ObjectWithRC T>
+template <typename T>
 inline void RCWeak<T>::_release()
 {
     SKR_ASSERT(_ptr != nullptr);
     _counter->release();
 }
-template <ObjectWithRC T>
+template <typename T>
 inline void RCWeak<T>::_take_weak_ref_counter()
 {
     SKR_ASSERT(_ptr != nullptr);
@@ -965,15 +965,15 @@ inline void RCWeak<T>::_take_weak_ref_counter()
 }
 
 // ctor & dtor
-template <ObjectWithRC T>
+template <typename T>
 inline RCWeak<T>::RCWeak()
 {
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RCWeak<T>::RCWeak(std::nullptr_t)
 {
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RCWeak<T>::RCWeak(T* ptr)
     : _ptr(ptr)
 {
@@ -982,7 +982,7 @@ inline RCWeak<T>::RCWeak(T* ptr)
         _take_weak_ref_counter();
     }
 }
-template <ObjectWithRC T>
+template <typename T>
 template <ObjectWithRCConvertible<T> U>
 inline RCWeak<T>::RCWeak(const RC<U>& ptr)
     : _ptr(static_cast<T*>(ptr.get()))
@@ -992,7 +992,7 @@ inline RCWeak<T>::RCWeak(const RC<U>& ptr)
         _take_weak_ref_counter();
     }
 }
-template <ObjectWithRC T>
+template <typename T>
 template <ObjectWithRCConvertible<T> U>
 inline RCWeak<T>::RCWeak(const RCUnique<U>& ptr)
     : _ptr(static_cast<T*>(ptr.get()))
@@ -1002,14 +1002,14 @@ inline RCWeak<T>::RCWeak(const RCUnique<U>& ptr)
         _take_weak_ref_counter();
     }
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RCWeak<T>::~RCWeak()
 {
     reset();
 }
 
 // copy & move
-template <ObjectWithRC T>
+template <typename T>
 template <ObjectWithRCConvertible<T> U>
 inline RCWeak<T>::RCWeak(const RCWeak<U>& rhs)
 {
@@ -1020,7 +1020,7 @@ inline RCWeak<T>::RCWeak(const RCWeak<U>& rhs)
         _counter->add_ref();
     }
 }
-template <ObjectWithRC T>
+template <typename T>
 template <ObjectWithRCConvertible<T> U>
 inline RCWeak<T>::RCWeak(RCWeak<U>&& rhs)
 {
@@ -1032,7 +1032,7 @@ inline RCWeak<T>::RCWeak(RCWeak<U>&& rhs)
         rhs.reset();
     }
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RCWeak<T>::RCWeak(const RCWeak& rhs)
     : _ptr(rhs._ptr)
     , _counter(rhs._counter)
@@ -1042,7 +1042,7 @@ inline RCWeak<T>::RCWeak(const RCWeak& rhs)
         _counter->add_ref();
     }
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RCWeak<T>::RCWeak(RCWeak&& rhs)
     : _ptr(rhs._ptr)
     , _counter(rhs._counter)
@@ -1052,19 +1052,19 @@ inline RCWeak<T>::RCWeak(RCWeak&& rhs)
 }
 
 // assign & move assign
-template <ObjectWithRC T>
+template <typename T>
 inline RCWeak<T>& RCWeak<T>::operator=(std::nullptr_t)
 {
     reset();
     return *this;
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RCWeak<T>& RCWeak<T>::operator=(T* ptr)
 {
     reset(ptr);
     return *this;
 }
-template <ObjectWithRC T>
+template <typename T>
 template <ObjectWithRCConvertible<T> U>
 inline RCWeak<T>& RCWeak<T>::operator=(const RCWeak<U>& rhs)
 {
@@ -1077,7 +1077,7 @@ inline RCWeak<T>& RCWeak<T>::operator=(const RCWeak<U>& rhs)
     }
     return *this;
 }
-template <ObjectWithRC T>
+template <typename T>
 template <ObjectWithRCConvertible<T> U>
 inline RCWeak<T>& RCWeak<T>::operator=(RCWeak<U>&& rhs)
 {
@@ -1091,21 +1091,21 @@ inline RCWeak<T>& RCWeak<T>::operator=(RCWeak<U>&& rhs)
     }
     return *this;
 }
-template <ObjectWithRC T>
+template <typename T>
 template <ObjectWithRCConvertible<T> U>
 inline RCWeak<T>& RCWeak<T>::operator=(const RC<U>& rhs)
 {
     reset(rhs);
     return *this;
 }
-template <ObjectWithRC T>
+template <typename T>
 template <ObjectWithRCConvertible<T> U>
 inline RCWeak<T>& RCWeak<T>::operator=(const RCUnique<U>& rhs)
 {
     reset(rhs);
     return *this;
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RCWeak<T>& RCWeak<T>::operator=(const RCWeak& rhs)
 {
     if (this != &rhs)
@@ -1114,7 +1114,7 @@ inline RCWeak<T>& RCWeak<T>::operator=(const RCWeak& rhs)
     }
     return *this;
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RCWeak<T>& RCWeak<T>::operator=(RCWeak&& rhs)
 {
     if (this != &rhs)
@@ -1129,112 +1129,112 @@ inline RCWeak<T>& RCWeak<T>::operator=(RCWeak&& rhs)
 }
 
 // compare
-template <ObjectWithRC T, ObjectWithRC U>
+template <typename T, typename U>
 inline bool operator==(const RCWeak<T>& lhs, const RCWeak<U>& rhs)
 {
     return lhs.get_unsafe() == rhs.get_unsafe() && lhs.get_counter() == rhs.get_counter();
 }
-template <ObjectWithRC T, ObjectWithRC U>
+template <typename T, typename U>
 inline bool operator!=(const RCWeak<T>& lhs, const RCWeak<U>& rhs)
 {
     return lhs.get_unsafe() != rhs.get_unsafe() || lhs.get_counter() != rhs.get_counter();
 }
-template <ObjectWithRC T, ObjectWithRC U>
+template <typename T, typename U>
 inline bool operator<(const RCWeak<T>& lhs, const RCWeak<U>& rhs)
 {
     if (lhs.get_unsafe() != rhs.get_unsafe()) return lhs.get_unsafe() < rhs.get_unsafe();
     return lhs.get_counter() < rhs.get_counter();
 }
-template <ObjectWithRC T, ObjectWithRC U>
+template <typename T, typename U>
 inline bool operator>(const RCWeak<T>& lhs, const RCWeak<U>& rhs)
 {
     if (lhs.get_unsafe() != rhs.get_unsafe()) return lhs.get_unsafe() > rhs.get_unsafe();
     return lhs.get_counter() > rhs.get_counter();
 }
-template <ObjectWithRC T, ObjectWithRC U>
+template <typename T, typename U>
 inline bool operator<=(const RCWeak<T>& lhs, const RCWeak<U>& rhs)
 {
     return !(lhs > rhs);
 }
-template <ObjectWithRC T, ObjectWithRC U>
+template <typename T, typename U>
 inline bool operator>=(const RCWeak<T>& lhs, const RCWeak<U>& rhs)
 {
     return !(lhs < rhs);
 }
 
 // compare with nullptr
-template <ObjectWithRC T>
+template <typename T>
 inline bool operator==(const RCWeak<T>& lhs, std::nullptr_t)
 {
     return lhs.get_unsafe() == nullptr;
 }
-template <ObjectWithRC T>
+template <typename T>
 inline bool operator!=(const RCWeak<T>& lhs, std::nullptr_t)
 {
     return lhs.get_unsafe() != nullptr;
 }
-template <ObjectWithRC T>
+template <typename T>
 inline bool operator==(std::nullptr_t, const RCWeak<T>& rhs)
 {
     return nullptr == rhs.get_unsafe();
 }
-template <ObjectWithRC T>
+template <typename T>
 inline bool operator!=(std::nullptr_t, const RCWeak<T>& rhs)
 {
     return nullptr != rhs.get_unsafe();
 }
 
 // unsafe getter
-template <ObjectWithRC T>
+template <typename T>
 inline T* RCWeak<T>::get_unsafe() const
 {
     return _ptr;
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RCWeakRefCounter* RCWeak<T>::get_counter() const
 {
     return _counter;
 }
 
 // count getter
-template <ObjectWithRC T>
+template <typename T>
 inline RCCounterType RCWeak<T>::ref_count_weak() const
 {
     return _counter ? _counter->ref_count() : 0;
 }
 
 // lock
-template <ObjectWithRC T>
+template <typename T>
 inline RCWeakLocker<T> RCWeak<T>::lock() const
 {
     return { _ptr, _counter };
 }
 
 // empty
-template <ObjectWithRC T>
+template <typename T>
 inline bool RCWeak<T>::is_empty() const
 {
     return _ptr == nullptr;
 }
-template <ObjectWithRC T>
+template <typename T>
 inline bool RCWeak<T>::is_expired() const
 {
     return !is_alive();
 }
-template <ObjectWithRC T>
+template <typename T>
 inline bool RCWeak<T>::is_alive() const
 {
     if (_ptr == nullptr) { return false; }
     return _counter->is_alive();
 }
-template <ObjectWithRC T>
+template <typename T>
 inline RCWeak<T>::operator bool() const
 {
     return is_alive();
 }
 
 // ops
-template <ObjectWithRC T>
+template <typename T>
 inline void RCWeak<T>::reset()
 {
     if (_ptr)
@@ -1244,7 +1244,7 @@ inline void RCWeak<T>::reset()
         _counter = nullptr;
     }
 }
-template <ObjectWithRC T>
+template <typename T>
 inline void RCWeak<T>::reset(T* ptr)
 {
     if (_ptr != ptr)
@@ -1263,19 +1263,19 @@ inline void RCWeak<T>::reset(T* ptr)
         }
     }
 }
-template <ObjectWithRC T>
+template <typename T>
 template <ObjectWithRCConvertible<T> U>
 inline void RCWeak<T>::reset(const RC<U>& ptr)
 {
     reset(static_cast<T*>(ptr.get()));
 }
-template <ObjectWithRC T>
+template <typename T>
 template <ObjectWithRCConvertible<T> U>
 inline void RCWeak<T>::reset(const RCUnique<U>& ptr)
 {
     reset(static_cast<T*>(ptr.get()));
 }
-template <ObjectWithRC T>
+template <typename T>
 inline void RCWeak<T>::swap(RCWeak& rhs)
 {
     if (this != &rhs)
@@ -1290,7 +1290,7 @@ inline void RCWeak<T>::swap(RCWeak& rhs)
 }
 
 // skr hash
-template <ObjectWithRC T>
+template <typename T>
 inline size_t RCWeak<T>::_skr_hash(const RCWeak& obj)
 {
     return hash_combine(
