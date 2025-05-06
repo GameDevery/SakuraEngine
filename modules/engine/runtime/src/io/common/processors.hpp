@@ -7,8 +7,8 @@ struct RunnerBase;
 
 struct IOBatchBuffer : public IIOBatchProcessor
 {
-    SKR_RC_IMPL()
-    SKR_RC_DELETER_IMPL()
+    SKR_RC_IMPL(override)
+    SKR_RC_DELETER_IMPL_DEFAULT(override)
 public:
     IOBatchBuffer() SKR_NOEXCEPT 
     {
@@ -64,8 +64,8 @@ protected:
 using IOBatchBufferId = RC<IOBatchBuffer>;
 
 #define IO_RESOLVER_OBJECT_BODY \
-    SKR_RC_IMPL();\
-    SKR_RC_DELETER_IMPL()\
+    SKR_RC_IMPL(override);\
+    SKR_RC_DELETER_IMPL_DEFAULT(override)\
     uint64_t processing_count(SkrAsyncServicePriority priority = SKR_ASYNC_SERVICE_PRIORITY_COUNT) const SKR_NOEXCEPT\
     {\
         if (priority != SKR_ASYNC_SERVICE_PRIORITY_COUNT)\

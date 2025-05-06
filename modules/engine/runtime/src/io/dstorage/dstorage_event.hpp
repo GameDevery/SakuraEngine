@@ -8,7 +8,7 @@ namespace io
 {
 
 struct SKR_RUNTIME_API DStorageEvent : public skr::IRCAble {
-    SKR_RC_IMPL();
+    SKR_RC_IMPL(override);
 
 public:
     void skr_rc_delete() override

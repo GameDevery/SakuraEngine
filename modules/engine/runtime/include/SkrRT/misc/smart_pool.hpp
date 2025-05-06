@@ -10,7 +10,7 @@ namespace skr
 
 template <typename I>
 struct ISmartPool : public skr::IRCAble {
-    SKR_RC_IMPL();
+    SKR_RC_IMPL(override);
 
     virtual ~ISmartPool() SKR_NOEXCEPT = default;
     // template<typename...Args>

@@ -7,8 +7,8 @@ namespace skr
 {
 const char* kSimpleBlobName = "SimpleBlob";
 struct SimpleBlob : public IBlob {
-    SKR_RC_IMPL();
-    SKR_RC_DELETER_IMPL()
+    SKR_RC_IMPL(override);
+    SKR_RC_DELETER_IMPL_DEFAULT(override)
 public:
     SimpleBlob(const uint8_t* data, uint64_t size, uint64_t alignment, bool move, const char* name) SKR_NOEXCEPT
         : size(size),

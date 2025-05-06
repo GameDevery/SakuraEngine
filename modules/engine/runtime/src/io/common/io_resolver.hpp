@@ -8,8 +8,8 @@ struct RunnerBase;
 
 struct IORequestResolverBase : public IIORequestResolver
 {
-    SKR_RC_IMPL()
-    SKR_RC_DELETER_IMPL()
+    SKR_RC_IMPL(override)
+    SKR_RC_DELETER_IMPL_DEFAULT(override)
 };
 
 struct VFSFileResolver final : public IORequestResolverBase

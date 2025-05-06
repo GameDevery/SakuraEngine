@@ -8,7 +8,7 @@ namespace io
 {
 
 struct SKR_RUNTIME_API RAMIOBuffer : public IRAMIOBuffer {
-    SKR_RC_IMPL()
+    SKR_RC_IMPL(override)
     virtual ~RAMIOBuffer() SKR_NOEXCEPT;
 
     uint8_t* get_data() const SKR_NOEXCEPT { return bytes; }

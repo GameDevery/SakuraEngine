@@ -11,7 +11,7 @@ namespace io
 {
 
 struct IOBatchBase : public IIOBatch {
-    SKR_RC_IMPL()
+    SKR_RC_IMPL(override)
 public:
     void reserve(uint64_t n) SKR_NOEXCEPT
     {

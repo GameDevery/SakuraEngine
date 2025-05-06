@@ -8,7 +8,7 @@ namespace io
 {
 
 struct SKR_RUNTIME_API VRAMBuffer : public IVRAMIOBuffer {
-    SKR_RC_IMPL()
+    SKR_RC_IMPL(override)
 public:
     virtual ~VRAMBuffer() SKR_NOEXCEPT;
 
@@ -36,7 +36,7 @@ protected:
 };
 
 struct SKR_RUNTIME_API VRAMTexture : public IVRAMIOTexture {
-    SKR_RC_IMPL()
+    SKR_RC_IMPL(override)
 public:
     virtual ~VRAMTexture() SKR_NOEXCEPT;
 

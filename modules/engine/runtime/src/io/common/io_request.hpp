@@ -31,7 +31,7 @@ template <typename T>
 
 template <typename Interface, typename... Components>
 struct IORequestMixin : public Interface {
-    SKR_RC_IMPL();
+    SKR_RC_IMPL(override);
 
 public:
     IORequestMixin(ISmartPoolPtr<Interface> pool, IIOService* service)

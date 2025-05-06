@@ -14,8 +14,8 @@ struct ImageProps {
 };
 
 struct SKR_IMAGE_CODER_API BaseImageEncoder : public skr::IImageEncoder {
-    SKR_RC_IMPL()
-    SKR_RC_DELETER_IMPL()
+    SKR_RC_IMPL(override)
+    SKR_RC_DELETER_IMPL_DEFAULT(override)
     virtual ~BaseImageEncoder() SKR_NOEXCEPT;
 
     virtual uint64_t get_alignment() const SKR_NOEXCEPT { return alignof(uint8_t); }
@@ -58,8 +58,8 @@ private:
 };
 
 struct SKR_IMAGE_CODER_API BaseImageDecoder : public skr::IImageDecoder {
-    SKR_RC_IMPL()
-    SKR_RC_DELETER_IMPL()
+    SKR_RC_IMPL(override)
+    SKR_RC_DELETER_IMPL_DEFAULT(override)
 
     virtual ~BaseImageDecoder() SKR_NOEXCEPT;
 
