@@ -651,54 +651,54 @@ inline RCUnique<T> RCUnique<T>::NewZeroed(Args&&... args)
 template <ObjectWithRC T, ObjectWithRC U>
 inline bool operator==(const RCUnique<T>& lhs, const RCUnique<U>& rhs)
 {
-    return lhs._ptr == rhs._ptr;
+    return lhs.get() == rhs.get();
 }
 template <ObjectWithRC T, ObjectWithRC U>
 inline bool operator!=(const RCUnique<T>& lhs, const RCUnique<U>& rhs)
 {
-    return lhs._ptr != rhs._ptr;
+    return lhs.get() != rhs.get();
 }
 template <ObjectWithRC T, ObjectWithRC U>
 inline bool operator<(const RCUnique<T>& lhs, const RCUnique<U>& rhs)
 {
-    return lhs._ptr < rhs._ptr;
+    return lhs.get() < rhs.get();
 }
 template <ObjectWithRC T, ObjectWithRC U>
 inline bool operator>(const RCUnique<T>& lhs, const RCUnique<U>& rhs)
 {
-    return lhs._ptr > rhs._ptr;
+    return lhs.get() > rhs.get();
 }
 template <ObjectWithRC T, ObjectWithRC U>
 inline bool operator<=(const RCUnique<T>& lhs, const RCUnique<U>& rhs)
 {
-    return lhs._ptr <= rhs._ptr;
+    return lhs.get() <= rhs.get();
 }
 template <ObjectWithRC T, ObjectWithRC U>
 inline bool operator>=(const RCUnique<T>& lhs, const RCUnique<U>& rhs)
 {
-    return lhs._ptr >= rhs._ptr;
+    return lhs.get() >= rhs.get();
 }
 
 // compare with nullptr
 template <ObjectWithRC T>
 inline bool operator==(const RCUnique<T>& lhs, std::nullptr_t)
 {
-    return lhs._ptr == nullptr;
+    return lhs.get() == nullptr;
 }
 template <ObjectWithRC T>
 inline bool operator!=(const RCUnique<T>& lhs, std::nullptr_t)
 {
-    return lhs._ptr != nullptr;
+    return lhs.get() != nullptr;
 }
 template <ObjectWithRC T>
 inline bool operator==(std::nullptr_t, const RCUnique<T>& rhs)
 {
-    return nullptr == rhs._ptr;
+    return nullptr == rhs.get();
 }
 template <ObjectWithRC T>
 inline bool operator!=(std::nullptr_t, const RCUnique<T>& rhs)
 {
-    return nullptr != rhs._ptr;
+    return nullptr != rhs.get();
 }
 
 // getter

@@ -14,9 +14,9 @@ inline static constexpr RCCounterType kRCCounterUniqueFlag = 1 << 31;
 inline static constexpr RCCounterType kRCCounterMax        = kRCCounterUniqueFlag - 1;
 
 // operations
-inline static RCCounterType rc_get(const std::atomic<RCCounterType>& counter)
+inline static RCCounterType rc_ref_count(const std::atomic<RCCounterType>& counter)
 {
-    return counter.load(std::memory_order_relaxed);
+    return counter.load(std::memory_order_relaxed) & ~kRCCounterUniqueFlag;
 }
 inline static bool rc_is_unique(RCCounterType counter)
 {
@@ -57,7 +57,7 @@ inline static RCCounterType rc_add_ref_unique(std::atomic<RCCounterType>& counte
     SKR_ASSERT(old == 0 && "try to add ref on a non-unique object");
     while (!counter.compare_exchange_weak(
         old,
-        kRCCounterUniqueFlag & 1,
+        kRCCounterUniqueFlag | 1,
         std::memory_order_relaxed
     ))
     {
@@ -272,7 +272,7 @@ private:                                                                        
 public:                                                                            \
     inline skr::RCCounterType skr_rc_count() const                                 \
     {                                                                              \
-        return skr::rc_get(zz_skr_rc);                                             \
+        return skr::rc_ref_count(zz_skr_rc);                                       \
     }                                                                              \
     inline skr::RCCounterType skr_rc_add_ref() const                               \
     {                                                                              \
