@@ -111,6 +111,9 @@ class _MathFuncGenerator {
       const vec_name = `${base_name}${dim}`;
       const comp_name = opt.component_name;
       const return_vec_name = `${base_name}${dim}`;
+      const is_signed = opt.is_signed
+
+      if (!is_signed) return;
 
       if (dim === 1) {
         const init_expr = `v < ${comp_name}(0) ? -v : v`;

@@ -10,10 +10,6 @@
 namespace skr {
 inline namespace math {
 // abs
-inline uint32_t abs(uint32_t v) { return v < uint32_t(0) ? -v : v; }
-inline uint2 abs(const uint2& v) { return {abs(v.x), abs(v.y)}; }
-inline uint3 abs(const uint3& v) { return {abs(v.x), abs(v.y), abs(v.z)}; }
-inline uint4 abs(const uint4& v) { return {abs(v.x), abs(v.y), abs(v.z), abs(v.w)}; }
 
 // max
 inline uint32_t max(uint32_t v1, uint32_t v2) { return ::std::max(v1, v2); }
