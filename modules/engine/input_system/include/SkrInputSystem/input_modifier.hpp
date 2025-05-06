@@ -10,6 +10,7 @@ namespace input
 struct SKR_INPUT_SYSTEM_API InputModifier {
     SKR_RC_IMPL();
 
+    virtual ~InputModifier() SKR_NOEXCEPT = default;
     virtual InputValueStorage modify_raw(const InputValueStorage& raw) SKR_NOEXCEPT = 0;
 };
 
