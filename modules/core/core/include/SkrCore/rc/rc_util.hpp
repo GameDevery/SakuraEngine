@@ -41,6 +41,7 @@ inline static RCCounterType rc_weak_lock(std::atomic<RCCounterType>& counter)
 {
     for (RCCounterType old = counter.load(std::memory_order_relaxed); old != 0;)
     {
+        SKR_ASSERT(!rc_is_unique(old));
         if (counter.compare_exchange_weak(
                 old,
                 old + 1,
@@ -250,18 +251,18 @@ inline static void rc_notify_weak_ref_counter_dead(
 
 // concept
 template <typename T>
-concept ObjectWithRC = requires(const T& obj) {
-    { obj.skr_rc_count() } -> std::same_as<skr::RCCounterType>;
-    { obj.skr_rc_add_ref() } -> std::same_as<skr::RCCounterType>;
-    { obj.skr_rc_add_ref_unique() } -> std::same_as<skr::RCCounterType>;
-    { obj.skr_rc_release_unique() } -> std::same_as<skr::RCCounterType>;
-    { obj.skr_rc_weak_lock() } -> std::same_as<skr::RCCounterType>;
-    { obj.skr_rc_release() } -> std::same_as<skr::RCCounterType>;
-    { obj.skr_rc_weak_ref_count() } -> std::same_as<skr::RCCounterType>;
-    { obj.skr_rc_weak_ref_counter() } -> std::same_as<skr::RCWeakRefCounter*>;
+concept ObjectWithRC = requires(const T& const_obj, T& obj) {
+    { const_obj.skr_rc_count() } -> std::same_as<skr::RCCounterType>;
+    { const_obj.skr_rc_add_ref() } -> std::same_as<skr::RCCounterType>;
+    { const_obj.skr_rc_add_ref_unique() } -> std::same_as<skr::RCCounterType>;
+    { const_obj.skr_rc_release_unique() } -> std::same_as<skr::RCCounterType>;
+    { const_obj.skr_rc_weak_lock() } -> std::same_as<skr::RCCounterType>;
+    { const_obj.skr_rc_release() } -> std::same_as<skr::RCCounterType>;
+    { const_obj.skr_rc_weak_ref_count() } -> std::same_as<skr::RCCounterType>;
+    { const_obj.skr_rc_weak_ref_counter() } -> std::same_as<skr::RCWeakRefCounter*>;
 };
 template <typename T>
-concept ObjectWithRCDeleter = requires(T obj) {
+concept ObjectWithRCDeleter = requires(const T& const_obj, T& obj) {
     { obj.skr_rc_delete() } -> std::same_as<void>;
 };
 template <typename From, typename To>

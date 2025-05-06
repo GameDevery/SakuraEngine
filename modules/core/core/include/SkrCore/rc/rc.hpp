@@ -10,10 +10,12 @@ template <ObjectWithRC T>
 struct RCWeak;
 template <ObjectWithRC T>
 struct RCUnique;
+template <ObjectWithRC T>
+struct RCWeakLocker;
 
 template <ObjectWithRC T>
 struct RC {
-    friend struct RCWeak<T>;
+    friend struct RCWeakLocker<T>;
 
     // ctor & dtor
     RC();
@@ -152,10 +154,14 @@ struct RCWeakLocker {
 
     // is empty
     bool is_empty() const;
+    operator bool() const;
+
+    // getter
+    T* get() const;
 
     // pointer behaviour
-    T* operator->();
-    T& operator*();
+    T* operator->() const;
+    T& operator*() const;
 
     // lock to RC
     RC<T> rc() const;
@@ -211,6 +217,7 @@ struct RCWeak {
     RCWeakLocker<T> lock() const;
 
     // empty
+    bool is_empty() const;
     bool is_expired() const;
     bool is_alive() const;
     operator bool() const;
@@ -251,7 +258,7 @@ inline void RC<T>::_release()
         _ptr->skr_rc_weak_ref_counter_notify_dead();
         if constexpr (ObjectWithRCDeleter<T>)
         {
-            _ptr->skr_rc_release();
+            _ptr->skr_rc_delete();
         }
         else
         {
@@ -557,7 +564,7 @@ inline void RCUnique<T>::_release()
         _ptr->skr_rc_weak_ref_counter_notify_dead();
         if constexpr (ObjectWithRCDeleter<T>)
         {
-            _ptr->skr_rc_release();
+            _ptr->skr_rc_delete();
         }
         else
         {
@@ -829,20 +836,22 @@ inline RCWeakLocker<T>::RCWeakLocker(T* ptr, RCWeakRefCounter* counter)
     : _ptr(ptr)
     , _counter(counter)
 {
-    SKR_ASSERT(ptr && counter);
-    if (counter->is_alive())
+    if (counter && counter->is_alive())
     {
         _counter->lock_for_use();
         if (counter->is_alive())
-        {
-            _ptr     = ptr;
-            _counter = counter;
+        { // success lock
+            return;
         }
         else
-        {
+        { // failed lock
             _counter->unlock_for_use();
         }
     }
+
+    // failed lock, reset ptr
+    _ptr     = nullptr;
+    _counter = nullptr;
 }
 template <ObjectWithRC T>
 inline RCWeakLocker<T>::~RCWeakLocker()
@@ -888,15 +897,27 @@ inline bool RCWeakLocker<T>::is_empty() const
 {
     return _ptr == nullptr;
 }
+template <ObjectWithRC T>
+inline RCWeakLocker<T>::operator bool() const
+{
+    return !is_empty();
+}
+
+// getter
+template <ObjectWithRC T>
+inline T* RCWeakLocker<T>::get() const
+{
+    return _ptr;
+}
 
 // pointer behaviour
 template <ObjectWithRC T>
-inline T* RCWeakLocker<T>::operator->()
+inline T* RCWeakLocker<T>::operator->() const
 {
     return _ptr;
 }
 template <ObjectWithRC T>
-inline T& RCWeakLocker<T>::operator*()
+inline T& RCWeakLocker<T>::operator*() const
 {
     return *_ptr;
 }
@@ -906,7 +927,7 @@ template <ObjectWithRC T>
 inline RC<T> RCWeakLocker<T>::rc() const
 {
     RC<T> result;
-    if (is_alive())
+    if (_ptr)
     {
         auto lock_result = _ptr->skr_rc_weak_lock();
         if (lock_result != 0)
@@ -994,7 +1015,9 @@ inline RCWeak<T>::RCWeak(const RCWeak<U>& rhs)
 {
     if (rhs.is_alive())
     {
-        reset(rhs.get());
+        _ptr     = static_cast<T*>(rhs.get_unsafe());
+        _counter = rhs.get_counter();
+        _counter->add_ref();
     }
 }
 template <ObjectWithRC T>
@@ -1003,7 +1026,9 @@ inline RCWeak<T>::RCWeak(RCWeak<U>&& rhs)
 {
     if (rhs.is_alive())
     {
-        reset(rhs.get());
+        _ptr     = static_cast<T*>(rhs.get_unsafe());
+        _counter = rhs.get_counter();
+        _counter->add_ref();
         rhs.reset();
     }
 }
@@ -1043,13 +1068,12 @@ template <ObjectWithRC T>
 template <ObjectWithRCConvertible<T> U>
 inline RCWeak<T>& RCWeak<T>::operator=(const RCWeak<U>& rhs)
 {
+    reset();
     if (rhs.is_alive())
     {
-        reset(rhs.get());
-    }
-    else
-    {
-        reset();
+        _ptr     = static_cast<T*>(rhs.get_unsafe());
+        _counter = rhs.get_counter();
+        _counter->add_ref();
     }
     return *this;
 }
@@ -1057,14 +1081,13 @@ template <ObjectWithRC T>
 template <ObjectWithRCConvertible<T> U>
 inline RCWeak<T>& RCWeak<T>::operator=(RCWeak<U>&& rhs)
 {
+    reset();
     if (rhs.is_alive())
     {
-        reset(rhs.get());
+        _ptr     = static_cast<T*>(rhs.get_unsafe());
+        _counter = rhs.get_counter();
+        _counter->add_ref();
         rhs.reset();
-    }
-    else
-    {
-        reset();
     }
     return *this;
 }
@@ -1109,24 +1132,24 @@ inline RCWeak<T>& RCWeak<T>::operator=(RCWeak&& rhs)
 template <ObjectWithRC T, ObjectWithRC U>
 inline bool operator==(const RCWeak<T>& lhs, const RCWeak<U>& rhs)
 {
-    return lhs._ptr == rhs._ptr && lhs._counter == rhs._counter;
+    return lhs.get_unsafe() == rhs.get_unsafe() && lhs.get_counter() == rhs.get_counter();
 }
 template <ObjectWithRC T, ObjectWithRC U>
 inline bool operator!=(const RCWeak<T>& lhs, const RCWeak<U>& rhs)
 {
-    return lhs._ptr != rhs._ptr || lhs._counter != rhs._counter;
+    return lhs.get_unsafe() != rhs.get_unsafe() || lhs.get_counter() != rhs.get_counter();
 }
 template <ObjectWithRC T, ObjectWithRC U>
 inline bool operator<(const RCWeak<T>& lhs, const RCWeak<U>& rhs)
 {
-    if (lhs._ptr != rhs._ptr) return lhs._ptr < rhs._ptr;
-    return lhs._counter < rhs._counter;
+    if (lhs.get_unsafe() != rhs.get_unsafe()) return lhs.get_unsafe() < rhs.get_unsafe();
+    return lhs.get_counter() < rhs.get_counter();
 }
 template <ObjectWithRC T, ObjectWithRC U>
 inline bool operator>(const RCWeak<T>& lhs, const RCWeak<U>& rhs)
 {
-    if (lhs._ptr != rhs._ptr) return lhs._ptr > rhs._ptr;
-    return lhs._counter > rhs._counter;
+    if (lhs.get_unsafe() != rhs.get_unsafe()) return lhs.get_unsafe() > rhs.get_unsafe();
+    return lhs.get_counter() > rhs.get_counter();
 }
 template <ObjectWithRC T, ObjectWithRC U>
 inline bool operator<=(const RCWeak<T>& lhs, const RCWeak<U>& rhs)
@@ -1143,22 +1166,22 @@ inline bool operator>=(const RCWeak<T>& lhs, const RCWeak<U>& rhs)
 template <ObjectWithRC T>
 inline bool operator==(const RCWeak<T>& lhs, std::nullptr_t)
 {
-    return lhs._ptr == nullptr;
+    return lhs.get_unsafe() == nullptr;
 }
 template <ObjectWithRC T>
 inline bool operator!=(const RCWeak<T>& lhs, std::nullptr_t)
 {
-    return lhs._ptr != nullptr;
+    return lhs.get_unsafe() != nullptr;
 }
 template <ObjectWithRC T>
 inline bool operator==(std::nullptr_t, const RCWeak<T>& rhs)
 {
-    return nullptr == rhs._ptr;
+    return nullptr == rhs.get_unsafe();
 }
 template <ObjectWithRC T>
 inline bool operator!=(std::nullptr_t, const RCWeak<T>& rhs)
 {
-    return nullptr != rhs._ptr;
+    return nullptr != rhs.get_unsafe();
 }
 
 // unsafe getter
@@ -1184,13 +1207,15 @@ inline RCCounterType RCWeak<T>::ref_count_weak() const
 template <ObjectWithRC T>
 inline RCWeakLocker<T> RCWeak<T>::lock() const
 {
-    if (_ptr)
-    {
-        return { _ptr, _counter };
-    }
+    return { _ptr, _counter };
 }
 
 // empty
+template <ObjectWithRC T>
+inline bool RCWeak<T>::is_empty() const
+{
+    return _ptr == nullptr;
+}
 template <ObjectWithRC T>
 inline bool RCWeak<T>::is_expired() const
 {
