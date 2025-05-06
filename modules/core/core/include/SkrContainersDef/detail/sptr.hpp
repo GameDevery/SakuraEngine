@@ -73,9 +73,6 @@ public:
 
 template <typename T>
 using SPtr = SPtrHelper<T, true>;
-
-template <typename T>
-using SObjectPtr = SPtrHelper<T, false>;
 } // namespace skr
 
 // implement SPtrHelper

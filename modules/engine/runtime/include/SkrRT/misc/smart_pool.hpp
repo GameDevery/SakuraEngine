@@ -14,7 +14,7 @@ struct ISmartPool : public skr::IRCAble {
 
     virtual ~ISmartPool() SKR_NOEXCEPT = default;
     // template<typename...Args>
-    // virtual SObjectPtr<I> allocate(Args&&... args) SKR_NOEXCEPT = 0;
+    // virtual RC<I> allocate(Args&&... args) SKR_NOEXCEPT = 0;
     virtual void deallocate(I* ptr) SKR_NOEXCEPT = 0;
 };
 template <typename I>

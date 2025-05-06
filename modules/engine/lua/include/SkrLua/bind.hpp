@@ -36,8 +36,8 @@ SKR_LUA_API int   push_unknown_value(lua_State* L, const void* value, std::strin
 SKR_LUA_API void* check_unknown(lua_State* L, int index, std::string_view tid);
 SKR_LUA_API int   push_sptr(lua_State* L, const skr::SPtr<void>& value, std::string_view tid);
 SKR_LUA_API skr::SPtr<void> check_sptr(lua_State* L, int index, std::string_view tid);
-SKR_LUA_API int             push_sobjectptr(lua_State* L, const skr::SObjectPtr<SInterface>& value, std::string_view tid);
-SKR_LUA_API skr::SObjectPtr<SInterface> check_sobjectptr(lua_State* L, int index, std::string_view tid);
+SKR_LUA_API int             push_sobjectptr(lua_State* L, const skr::RC<SInterface>& value, std::string_view tid);
+SKR_LUA_API skr::RC<SInterface> check_sobjectptr(lua_State* L, int index, std::string_view tid);
 // TODO: how should we handle math operations in lua?
 // SKR_LUA_API int push_float2(lua_State* L, const skr_float2_t* float2);
 // SKR_LUA_API skr_float2_t check_float2(lua_State* L, int index);
@@ -92,14 +92,14 @@ struct DefaultBindTrait<skr::SPtr<T>, std::enable_if_t<!std::is_enum_v<T> && skr
 };
 
 template <class T>
-struct DefaultBindTrait<skr::SObjectPtr<T>, std::enable_if_t<!std::is_enum_v<T> && skr::is_complete_v<skr::RTTRTraits<T>>>> {
-    static int push(lua_State* L, const skr::SObjectPtr<T>& value)
+struct DefaultBindTrait<skr::RC<T>, std::enable_if_t<!std::is_enum_v<T> && skr::is_complete_v<skr::RTTRTraits<T>>>> {
+    static int push(lua_State* L, const skr::RC<T>& value)
     {
         static constexpr std::string_view prefix = "[shared]";
         static constexpr std::string_view tid    = skr::type_name_of<T>();
         return push_sobjectptr(L, value, constexpr_join_v<prefix, tid>);
     }
-    static skr::SObjectPtr<T> check(lua_State* L, int index)
+    static skr::RC<T> check(lua_State* L, int index)
     {
         return reinterpret_pointer_cast<T>(check_sobjectptr(L, index, ::skr::type_id_of<T>()));
     }
@@ -370,7 +370,7 @@ decltype(auto) deref(T value)
 template <class T>
 struct SharedUserdata {
     T* data;
-    using shared_t = std::conditional_t<is_object_v<T>, SObjectPtr<T>, SPtr<T>>;
+    using shared_t = std::conditional_t<is_object_v<T>, RC<T>, SPtr<T>>;
     shared_t shared;
     SharedUserdata(shared_t shared)
         : data(shared.get())
