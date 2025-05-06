@@ -605,7 +605,7 @@ inline float luminance(const float3& color, const float3& factor)
 }
 inline float luminance(const float3& color)
 {
-    return dot(color, { 0.299, 0.587, 0.114 });
+    return dot(color, float3{ 0.299f, 0.587f, 0.114f });
 }
 inline double luminance(const double3& color, const double3& factor)
 {
@@ -613,7 +613,7 @@ inline double luminance(const double3& color, const double3& factor)
 }
 inline double luminance(const double3& color)
 {
-    return dot(color, { 0.299, 0.587, 0.114 });
+    return dot(color, double3{ 0.299, 0.587, 0.114 });
 }
 
 // rgb <=> hsv
