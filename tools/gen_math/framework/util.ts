@@ -101,36 +101,44 @@ export const matrix_dims: number[] = [3, 4]
 export interface TypeOption {
   component_name: string;
   component_kind: ComponentKind;
+  is_signed: boolean;
 }
 
 export const type_options: Dict<TypeOption> = {
   "float": {
     component_name: "float",
     component_kind: "floating",
+    is_signed: true,
   },
   "double": {
     component_name: "double",
     component_kind: "floating",
+    is_signed: true,
   },
   "bool": {
     component_name: "bool",
     component_kind: "boolean",
+    is_signed: false,
   },
   "int": {
     component_name: "int32_t",
     component_kind: "integer",
+    is_signed: true,
   },
   "uint": {
     component_name: "uint32_t",
     component_kind: "integer",
+    is_signed: false,
   },
   "long": {
     component_name: "int64_t",
     component_kind: "integer",
+    is_signed: true,
   },
   "ulong": {
     component_name: "uint64_t",
     component_kind: "integer",
+    is_signed: false,
   },
 }
 

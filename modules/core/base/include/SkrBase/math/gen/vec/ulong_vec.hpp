@@ -46,7 +46,6 @@ struct ulong2 {
     }
     
     // unary operator
-    inline ulong2 operator-() const { return { -x, -y }; }
     
     // arithmetic operator
     inline friend ulong2 operator+(const ulong2& lhs, const ulong2& rhs) { return { lhs.x + rhs.x, lhs.y + rhs.y }; }
@@ -122,7 +121,6 @@ struct ulong3 {
     }
     
     // unary operator
-    inline ulong3 operator-() const { return { -x, -y, -z }; }
     
     // arithmetic operator
     inline friend ulong3 operator+(const ulong3& lhs, const ulong3& rhs) { return { lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z }; }
@@ -245,7 +243,6 @@ struct ulong4 {
     }
     
     // unary operator
-    inline ulong4 operator-() const { return { -x, -y, -z, -w }; }
     
     // arithmetic operator
     inline friend ulong4 operator+(const ulong4& lhs, const ulong4& rhs) { return { lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z, lhs.w + rhs.w }; }
