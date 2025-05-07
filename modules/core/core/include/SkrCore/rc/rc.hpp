@@ -256,19 +256,7 @@ namespace skr
 template <typename T>
 inline void RC<T>::_release()
 {
-    SKR_ASSERT(_ptr != nullptr);
-    if (_ptr->skr_rc_release() == 0)
-    {
-        _ptr->skr_rc_weak_ref_counter_notify_dead();
-        if constexpr (ObjectWithRCDeleter<T>)
-        {
-            _ptr->skr_rc_delete();
-        }
-        else
-        {
-            SkrDelete(_ptr);
-        }
-    }
+    rc_release_with_delete(_ptr);
 }
 
 // ctor & dtor
@@ -577,19 +565,7 @@ namespace skr
 template <typename T>
 inline void RCUnique<T>::_release()
 {
-    SKR_ASSERT(_ptr != nullptr);
-    if (_ptr->skr_rc_release() == 0)
-    {
-        _ptr->skr_rc_weak_ref_counter_notify_dead();
-        if constexpr (ObjectWithRCDeleter<T>)
-        {
-            _ptr->skr_rc_delete();
-        }
-        else
-        {
-            SkrDelete(_ptr);
-        }
-    }
+    rc_release_with_delete(_ptr);
 }
 
 // ctor & dtor

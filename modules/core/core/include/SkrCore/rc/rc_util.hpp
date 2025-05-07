@@ -271,6 +271,26 @@ concept ObjectWithRCConvertible = requires(From obj) {
     ObjectWithRC<To>;
     std::convertible_to<From*, To*>;
 };
+
+// release helper
+template <typename T>
+inline void rc_release_with_delete(T* p)
+{
+    SKR_ASSERT(p != nullptr);
+    if (p->skr_rc_release() == 0)
+    {
+        p->skr_rc_weak_ref_counter_notify_dead();
+        if constexpr (ObjectWithRCDeleter<T>)
+        {
+            p->skr_rc_delete();
+        }
+        else
+        {
+            SkrDelete(p);
+        }
+    }
+}
+
 } // namespace skr
 
 // interface macros
