@@ -21,6 +21,8 @@ struct RC {
     RC();
     RC(std::nullptr_t);
     RC(T* ptr);
+    template <ObjectWithRCConvertible<T> U>
+    RC(RCUnique<U>&& rhs);
     ~RC();
 
     // copy & move
@@ -275,6 +277,19 @@ inline RC<T>::RC(T* ptr)
     if (_ptr)
     {
         _ptr->skr_rc_add_ref();
+    }
+}
+template <typename T>
+template <ObjectWithRCConvertible<T> U>
+inline RC<T>::RC(RCUnique<U>&& rhs)
+{
+    if (!rhs.is_empty())
+    {
+        _ptr = rhs.release();
+        if (_ptr)
+        {
+            _ptr->skr_rc_add_ref();
+        }
     }
 }
 template <typename T>

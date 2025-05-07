@@ -70,6 +70,18 @@ TEST_CASE("Test RC")
             REQUIRE_EQ(pointer_ctor.ref_count_weak(), 0);
         }
 
+        {
+            RCUnique<TestCounterBase> unique{ SkrNew<TestCounterBase>() };
+            RC<TestCounterBase>       rc{ std::move(unique) };
+            REQUIRE_EQ(base_count, 1);
+            REQUIRE_EQ(derived_count, 0);
+            REQUIRE_NE(rc.get(), nullptr);
+            REQUIRE_EQ(rc.ref_count(), 1);
+            REQUIRE_EQ(rc.ref_count_weak(), 0);
+
+            REQUIRE_EQ(unique.get(), nullptr);
+        }
+
         REQUIRE_EQ(base_count, 0);
         REQUIRE_EQ(derived_count, 0);
     }
