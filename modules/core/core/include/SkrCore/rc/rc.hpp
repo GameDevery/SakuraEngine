@@ -21,18 +21,18 @@ struct RC {
     RC();
     RC(std::nullptr_t);
     RC(T* ptr);
-    template <ObjectWithRCConvertible<T> U>
+    template <RCConvertible<T> U>
     RC(U* ptr);
-    template <ObjectWithRCConvertible<T> U>
+    template <RCConvertible<T> U>
     RC(RCUnique<U>&& rhs);
     ~RC();
 
     // copy & move
     RC(const RC& rhs);
     RC(RC&& rhs);
-    template <ObjectWithRCConvertible<T> U>
+    template <RCConvertible<T> U>
     RC(const RC<U>& rhs);
-    template <ObjectWithRCConvertible<T> U>
+    template <RCConvertible<T> U>
     RC(RC<U>&& rhs);
 
     // assign & move assign
@@ -40,11 +40,11 @@ struct RC {
     RC& operator=(T* ptr);
     RC& operator=(const RC& rhs);
     RC& operator=(RC&& rhs);
-    template <ObjectWithRCConvertible<T> U>
+    template <RCConvertible<T> U>
     RC& operator=(U* ptr);
-    template <ObjectWithRCConvertible<T> U>
+    template <RCConvertible<T> U>
     RC& operator=(const RC<U>& rhs);
-    template <ObjectWithRCConvertible<T> U>
+    template <RCConvertible<T> U>
     RC& operator=(RC<U>&& rhs);
 
     // factory
@@ -67,7 +67,7 @@ struct RC {
     // ops
     void reset();
     void reset(T* ptr);
-    template <ObjectWithRCConvertible<T> U>
+    template <RCConvertible<T> U>
     void reset(U* ptr);
     void swap(RC& rhs);
 
@@ -96,14 +96,14 @@ struct RCUnique {
     RCUnique();
     RCUnique(std::nullptr_t);
     RCUnique(T* ptr);
-    template <ObjectWithRCConvertible<T> U>
+    template <RCConvertible<T> U>
     RCUnique(U* ptr);
     ~RCUnique();
 
     // copy & move
     RCUnique(const RCUnique& rhs) = delete;
     RCUnique(RCUnique&& rhs);
-    template <ObjectWithRCConvertible<T> U>
+    template <RCConvertible<T> U>
     RCUnique(RCUnique<U>&& rhs);
 
     // assign & move assign
@@ -111,9 +111,9 @@ struct RCUnique {
     RCUnique& operator=(T* ptr);
     RCUnique& operator=(const RCUnique& rhs) = delete;
     RCUnique& operator=(RCUnique&& rhs);
-    template <ObjectWithRCConvertible<T> U>
+    template <RCConvertible<T> U>
     RCUnique& operator=(U* ptr);
-    template <ObjectWithRCConvertible<T> U>
+    template <RCConvertible<T> U>
     RCUnique& operator=(RCUnique<U>&& rhs);
 
     // factory
@@ -136,7 +136,7 @@ struct RCUnique {
     // ops
     void reset();
     void reset(T* ptr);
-    template <ObjectWithRCConvertible<T> U>
+    template <RCConvertible<T> U>
     void reset(U* ptr);
     T*   release();
     void swap(RCUnique& rhs);
@@ -196,20 +196,20 @@ struct RCWeak {
     RCWeak();
     RCWeak(std::nullptr_t);
     RCWeak(T* ptr);
-    template <ObjectWithRCConvertible<T> U>
+    template <RCConvertible<T> U>
     RCWeak(U* ptr);
-    template <ObjectWithRCConvertible<T> U>
+    template <RCConvertible<T> U>
     RCWeak(const RC<U>& ptr);
-    template <ObjectWithRCConvertible<T> U>
+    template <RCConvertible<T> U>
     RCWeak(const RCUnique<U>& ptr);
     ~RCWeak();
 
     // copy & move
     RCWeak(const RCWeak& rhs);
     RCWeak(RCWeak&& rhs);
-    template <ObjectWithRCConvertible<T> U>
+    template <RCConvertible<T> U>
     RCWeak(const RCWeak<U>& rhs);
-    template <ObjectWithRCConvertible<T> U>
+    template <RCConvertible<T> U>
     RCWeak(RCWeak<U>&& rhs);
 
     // assign & move assign
@@ -217,15 +217,15 @@ struct RCWeak {
     RCWeak& operator=(T* ptr);
     RCWeak& operator=(const RCWeak& rhs);
     RCWeak& operator=(RCWeak&& rhs);
-    template <ObjectWithRCConvertible<T> U>
+    template <RCConvertible<T> U>
     RCWeak& operator=(U* ptr);
-    template <ObjectWithRCConvertible<T> U>
+    template <RCConvertible<T> U>
     RCWeak& operator=(const RCWeak<U>& rhs);
-    template <ObjectWithRCConvertible<T> U>
+    template <RCConvertible<T> U>
     RCWeak& operator=(RCWeak<U>&& rhs);
-    template <ObjectWithRCConvertible<T> U>
+    template <RCConvertible<T> U>
     RCWeak& operator=(const RC<U>& rhs);
-    template <ObjectWithRCConvertible<T> U>
+    template <RCConvertible<T> U>
     RCWeak& operator=(const RCUnique<U>& rhs);
 
     // unsafe getter
@@ -247,11 +247,11 @@ struct RCWeak {
     // ops
     void reset();
     void reset(T* ptr);
-    template <ObjectWithRCConvertible<T> U>
+    template <RCConvertible<T> U>
     void reset(U* ptr);
-    template <ObjectWithRCConvertible<T> U>
+    template <RCConvertible<T> U>
     void reset(const RC<U>& ptr);
-    template <ObjectWithRCConvertible<T> U>
+    template <RCConvertible<T> U>
     void reset(const RCUnique<U>& ptr);
     void swap(RCWeak& rhs);
 
@@ -298,7 +298,7 @@ inline RC<T>::RC(T* ptr)
     }
 }
 template <typename T>
-template <ObjectWithRCConvertible<T> U>
+template <RCConvertible<T> U>
 inline RC<T>::RC(U* ptr)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
@@ -309,7 +309,7 @@ inline RC<T>::RC(U* ptr)
     }
 }
 template <typename T>
-template <ObjectWithRCConvertible<T> U>
+template <RCConvertible<T> U>
 inline RC<T>::RC(RCUnique<U>&& rhs)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
@@ -345,7 +345,7 @@ inline RC<T>::RC(RC&& rhs)
     rhs._ptr = nullptr;
 }
 template <typename T>
-template <ObjectWithRCConvertible<T> U>
+template <RCConvertible<T> U>
 inline RC<T>::RC(const RC<U>& rhs)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
@@ -355,7 +355,7 @@ inline RC<T>::RC(const RC<U>& rhs)
     }
 }
 template <typename T>
-template <ObjectWithRCConvertible<T> U>
+template <RCConvertible<T> U>
 inline RC<T>::RC(RC<U>&& rhs)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
@@ -389,7 +389,7 @@ inline RC<T>& RC<T>::operator=(const RC& rhs)
     return *this;
 }
 template <typename T>
-template <ObjectWithRCConvertible<T> U>
+template <RCConvertible<T> U>
 inline RC<T>& RC<T>::operator=(U* ptr)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
@@ -408,7 +408,7 @@ inline RC<T>& RC<T>::operator=(RC&& rhs)
     return *this;
 }
 template <typename T>
-template <ObjectWithRCConvertible<T> U>
+template <RCConvertible<T> U>
 inline RC<T>& RC<T>::operator=(const RC<U>& rhs)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
@@ -424,7 +424,7 @@ inline RC<T>& RC<T>::operator=(const RC<U>& rhs)
 }
 
 template <typename T>
-template <ObjectWithRCConvertible<T> U>
+template <RCConvertible<T> U>
 inline RC<T>& RC<T>::operator=(RC<U>&& rhs)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
@@ -569,7 +569,7 @@ inline void RC<T>::reset(T* ptr)
     }
 }
 template <typename T>
-template <ObjectWithRCConvertible<T> U>
+template <RCConvertible<T> U>
 inline void RC<T>::reset(U* ptr)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
@@ -642,7 +642,7 @@ inline RCUnique<T>::RCUnique(std::nullptr_t)
 {
 }
 template <typename T>
-template <ObjectWithRCConvertible<T> U>
+template <RCConvertible<T> U>
 inline RCUnique<T>::RCUnique(U* ptr)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
@@ -675,7 +675,7 @@ inline RCUnique<T>::RCUnique(RCUnique&& rhs)
     rhs._ptr = nullptr;
 }
 template <typename T>
-template <ObjectWithRCConvertible<T> U>
+template <RCConvertible<T> U>
 inline RCUnique<T>::RCUnique(RCUnique<U>&& rhs)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
@@ -710,7 +710,7 @@ inline RCUnique<T>& RCUnique<T>::operator=(RCUnique&& rhs)
     return *this;
 }
 template <typename T>
-template <ObjectWithRCConvertible<T> U>
+template <RCConvertible<T> U>
 inline RCUnique<T>& RCUnique<T>::operator=(U* ptr)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
@@ -718,7 +718,7 @@ inline RCUnique<T>& RCUnique<T>::operator=(U* ptr)
     return *this;
 }
 template <typename T>
-template <ObjectWithRCConvertible<T> U>
+template <RCConvertible<T> U>
 inline RCUnique<T>& RCUnique<T>::operator=(RCUnique<U>&& rhs)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
@@ -862,7 +862,7 @@ inline void RCUnique<T>::reset(T* ptr)
     }
 }
 template <typename T>
-template <ObjectWithRCConvertible<T> U>
+template <RCConvertible<T> U>
 inline void RCUnique<T>::reset(U* ptr)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
@@ -1070,7 +1070,7 @@ inline RCWeak<T>::RCWeak(T* ptr)
     }
 }
 template <typename T>
-template <ObjectWithRCConvertible<T> U>
+template <RCConvertible<T> U>
 inline RCWeak<T>::RCWeak(U* ptr)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
@@ -1081,7 +1081,7 @@ inline RCWeak<T>::RCWeak(U* ptr)
     }
 }
 template <typename T>
-template <ObjectWithRCConvertible<T> U>
+template <RCConvertible<T> U>
 inline RCWeak<T>::RCWeak(const RC<U>& ptr)
     : _ptr(static_cast<T*>(ptr.get()))
 {
@@ -1092,7 +1092,7 @@ inline RCWeak<T>::RCWeak(const RC<U>& ptr)
     }
 }
 template <typename T>
-template <ObjectWithRCConvertible<T> U>
+template <RCConvertible<T> U>
 inline RCWeak<T>::RCWeak(const RCUnique<U>& ptr)
     : _ptr(static_cast<T*>(ptr.get()))
 {
@@ -1128,7 +1128,7 @@ inline RCWeak<T>::RCWeak(RCWeak&& rhs)
     rhs._counter = nullptr;
 }
 template <typename T>
-template <ObjectWithRCConvertible<T> U>
+template <RCConvertible<T> U>
 inline RCWeak<T>::RCWeak(const RCWeak<U>& rhs)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
@@ -1140,7 +1140,7 @@ inline RCWeak<T>::RCWeak(const RCWeak<U>& rhs)
     }
 }
 template <typename T>
-template <ObjectWithRCConvertible<T> U>
+template <RCConvertible<T> U>
 inline RCWeak<T>::RCWeak(RCWeak<U>&& rhs)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
@@ -1189,7 +1189,7 @@ inline RCWeak<T>& RCWeak<T>::operator=(RCWeak&& rhs)
     return *this;
 }
 template <typename T>
-template <ObjectWithRCConvertible<T> U>
+template <RCConvertible<T> U>
 inline RCWeak<T>& RCWeak<T>::operator=(U* ptr)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
@@ -1197,7 +1197,7 @@ inline RCWeak<T>& RCWeak<T>::operator=(U* ptr)
     return *this;
 }
 template <typename T>
-template <ObjectWithRCConvertible<T> U>
+template <RCConvertible<T> U>
 inline RCWeak<T>& RCWeak<T>::operator=(const RCWeak<U>& rhs)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
@@ -1211,7 +1211,7 @@ inline RCWeak<T>& RCWeak<T>::operator=(const RCWeak<U>& rhs)
     return *this;
 }
 template <typename T>
-template <ObjectWithRCConvertible<T> U>
+template <RCConvertible<T> U>
 inline RCWeak<T>& RCWeak<T>::operator=(RCWeak<U>&& rhs)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
@@ -1226,7 +1226,7 @@ inline RCWeak<T>& RCWeak<T>::operator=(RCWeak<U>&& rhs)
     return *this;
 }
 template <typename T>
-template <ObjectWithRCConvertible<T> U>
+template <RCConvertible<T> U>
 inline RCWeak<T>& RCWeak<T>::operator=(const RC<U>& rhs)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
@@ -1234,7 +1234,7 @@ inline RCWeak<T>& RCWeak<T>::operator=(const RC<U>& rhs)
     return *this;
 }
 template <typename T>
-template <ObjectWithRCConvertible<T> U>
+template <RCConvertible<T> U>
 inline RCWeak<T>& RCWeak<T>::operator=(const RCUnique<U>& rhs)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
@@ -1378,21 +1378,21 @@ inline void RCWeak<T>::reset(T* ptr)
     }
 }
 template <typename T>
-template <ObjectWithRCConvertible<T> U>
+template <RCConvertible<T> U>
 inline void RCWeak<T>::reset(U* ptr)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
     reset(static_cast<T*>(ptr));
 }
 template <typename T>
-template <ObjectWithRCConvertible<T> U>
+template <RCConvertible<T> U>
 inline void RCWeak<T>::reset(const RC<U>& ptr)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
     reset(static_cast<T*>(ptr.get()));
 }
 template <typename T>
-template <ObjectWithRCConvertible<T> U>
+template <RCConvertible<T> U>
 inline void RCWeak<T>::reset(const RCUnique<U>& ptr)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");

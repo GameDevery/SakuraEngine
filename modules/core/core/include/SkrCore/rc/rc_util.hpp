@@ -266,10 +266,26 @@ concept ObjectWithRCDeleter = requires(const T* const_obj, T* obj) {
     { obj->skr_rc_delete() } -> std::same_as<void>;
 };
 template <typename From, typename To>
-concept ObjectWithRCConvertible = requires(From obj) {
+concept RCConvertible = requires(From obj) {
     ObjectWithRC<From>;
     ObjectWithRC<To>;
     std::convertible_to<From*, To*>;
+};
+
+// deleter traits
+template <typename T>
+struct RCDeleterTraits {
+    inline static void do_delete(T* obj)
+    {
+        SkrDelete(obj);
+    }
+};
+template <ObjectWithRCDeleter T>
+struct RCDeleterTraits<T> {
+    inline static void do_delete(T* obj)
+    {
+        obj->skr_rc_delete();
+    }
 };
 
 // release helper
@@ -280,14 +296,7 @@ inline void rc_release_with_delete(T* p)
     if (p->skr_rc_release() == 0)
     {
         p->skr_rc_weak_ref_counter_notify_dead();
-        if constexpr (ObjectWithRCDeleter<T>)
-        {
-            p->skr_rc_delete();
-        }
-        else
-        {
-            SkrDelete(p);
-        }
+        RCDeleterTraits<T>::do_delete(p);
     }
 }
 
