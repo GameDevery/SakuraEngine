@@ -573,7 +573,14 @@ template <RCConvertible<T> U>
 inline void RC<T>::reset(U* ptr)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
-    reset(static_cast<T*>(ptr));
+    if (ptr)
+    {
+        reset(static_cast<T*>(ptr));
+    }
+    else
+    {
+        reset();
+    }
 }
 template <typename T>
 inline void RC<T>::swap(RC& rhs)
@@ -866,7 +873,14 @@ template <RCConvertible<T> U>
 inline void RCUnique<T>::reset(U* ptr)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
-    reset(static_cast<T*>(ptr));
+    if (ptr)
+    {
+        reset(static_cast<T*>(ptr));
+    }
+    else
+    {
+        reset();
+    }
 }
 template <typename T>
 inline T* RCUnique<T>::release()
@@ -1382,21 +1396,42 @@ template <RCConvertible<T> U>
 inline void RCWeak<T>::reset(U* ptr)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
-    reset(static_cast<T*>(ptr));
+    if (ptr)
+    {
+        reset(static_cast<T*>(ptr));
+    }
+    else
+    {
+        reset();
+    }
 }
 template <typename T>
 template <RCConvertible<T> U>
 inline void RCWeak<T>::reset(const RC<U>& ptr)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
-    reset(static_cast<T*>(ptr.get()));
+    if (!ptr.is_empty())
+    {
+        reset(static_cast<T*>(ptr.get()));
+    }
+    else
+    {
+        reset();
+    }
 }
 template <typename T>
 template <RCConvertible<T> U>
 inline void RCWeak<T>::reset(const RCUnique<U>& ptr)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
-    reset(static_cast<T*>(ptr.get()));
+    if (!ptr.is_empty())
+    {
+        reset(static_cast<T*>(ptr.get()));
+    }
+    else
+    {
+        reset();
+    }
 }
 template <typename T>
 inline void RCWeak<T>::swap(RCWeak& rhs)
