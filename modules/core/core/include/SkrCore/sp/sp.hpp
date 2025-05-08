@@ -63,11 +63,143 @@ private:
 // shared pointer
 template <typename T>
 struct SP {
+    // ctor & dtor
+    SP();
+    SP(std::nullptr_t);
+    SP(T* ptr);
+    template <SPConvertible<T> U>
+    SP(U* ptr);
+    template <SPConvertible<T> U>
+    SP(UPtr<U>&& rhs);
+    ~SP();
+
+    // copy & move
+    SP(const SP& rhs);
+    SP(SP&& rhs);
+    template <SPConvertible<T> U>
+    SP(const SP<U>& rhs);
+    template <SPConvertible<T> U>
+    SP(SP<U>&& rhs);
+
+    // assign & move assign
+    SP& operator=(std::nullptr_t);
+    SP& operator=(T* ptr);
+    SP& operator=(const SP& rhs);
+    SP& operator=(SP&& rhs);
+    template <SPConvertible<T> U>
+    SP& operator=(U* ptr);
+    template <SPConvertible<T> U>
+    SP& operator=(const SP<U>& rhs);
+    template <SPConvertible<T> U>
+    SP& operator=(SP<U>&& rhs);
+
+    // factory
+    template <typename... Args>
+    static SP New(Args&&... args);
+    template <typename... Args>
+    static SP NewZeroed(Args&&... args);
+
+    // getter
+    T* get() const;
+
+    // count getter
+    SPCounterType  ref_count() const;
+    SPCounterType  ref_count_weak() const;
+    SPCounterType* get_counter() const;
+
+    // empty
+    bool is_empty() const;
+    operator bool() const;
+
+    // ops
+    void reset();
+    void reset(T* ptr);
+    template <SPConvertible<T> U>
+    void reset(U* ptr);
+    void swap(SP& rhs);
+
+    // pointer behaviour
+    T* operator->() const;
+    T& operator*() const;
+
+    // cast
+    template <typename U>
+    SP<U> cast_static() const;
+
+    // skr hash
+    static size_t _skr_hash(const SP& obj);
+
+private:
+    T*            _ptr     = nullptr;
+    SPRefCounter* _counter = nullptr;
 };
 
 // weak pointer
 template <typename T>
 struct SPWeak {
+    // ctor & dtor
+    SPWeak();
+    SPWeak(std::nullptr_t);
+    SPWeak(T* ptr);
+    template <SPConvertible<T> U>
+    SPWeak(U* ptr);
+    template <SPConvertible<T> U>
+    SPWeak(const SP<U>& ptr);
+    ~SPWeak();
+
+    // copy & move
+    SPWeak(const SPWeak& rhs);
+    SPWeak(SPWeak&& rhs);
+    template <SPConvertible<T> U>
+    SPWeak(const SPWeak<U>& rhs);
+    template <SPConvertible<T> U>
+    SPWeak(SPWeak<U>&& rhs);
+
+    // assign & move assign
+    SPWeak& operator=(std::nullptr_t);
+    SPWeak& operator=(T* ptr);
+    SPWeak& operator=(const SPWeak& rhs);
+    SPWeak& operator=(SPWeak&& rhs);
+    template <SPConvertible<T> U>
+    SPWeak& operator=(U* ptr);
+    template <SPConvertible<T> U>
+    SPWeak& operator=(const SPWeak<U>& rhs);
+    template <SPConvertible<T> U>
+    SPWeak& operator=(SPWeak<U>&& rhs);
+    template <SPConvertible<T> U>
+    SPWeak& operator=(const SP<U>& rhs);
+
+    // unsafe getter
+    T*             get_unsafe() const;
+    SPCounterType* get_counter() const;
+
+    // count getter
+    SPCounterType ref_count_weak() const;
+
+    // lock
+    SP<T> lock() const;
+
+    // empty
+    bool is_empty() const;
+    bool is_expired() const;
+    bool is_alive() const;
+    operator bool() const;
+
+    // ops
+    void reset();
+    void reset(T* ptr);
+    template <SPConvertible<T> U>
+    void reset(U* ptr);
+    template <SPConvertible<T> U>
+    void reset(const SP<U>& ptr);
+    void swap(SPWeak& rhs);
+
+    // skr hash
+    static size_t _skr_hash(const SPWeak& obj);
+
+private:
+    T*            _ptr     = nullptr;
+    SPRefCounter* _counter = nullptr;
 };
 } // namespace skr
 
