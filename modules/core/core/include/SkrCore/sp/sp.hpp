@@ -162,6 +162,124 @@ inline UPtr<T> UPtr<T>::NewZeroed(Args&&... args)
     return { SkrNewZeroed<T>(std::forward<Args>(args)...) };
 }
 
+// compare
+template <typename T>
+inline bool operator==(const UPtr<T>& lhs, const UPtr<T>& rhs)
+{
+    return lhs.get() == rhs.get();
+}
+template <typename T>
+inline bool operator!=(const UPtr<T>& lhs, const UPtr<T>& rhs)
+{
+    return lhs.get() != rhs.get();
+}
+template <typename T>
+inline bool operator<(const UPtr<T>& lhs, const UPtr<T>& rhs)
+{
+    return lhs.get() < rhs.get();
+}
+template <typename T>
+inline bool operator>(const UPtr<T>& lhs, const UPtr<T>& rhs)
+{
+    return lhs.get() > rhs.get();
+}
+template <typename T>
+inline bool operator<=(const UPtr<T>& lhs, const UPtr<T>& rhs)
+{
+    return lhs.get() <= rhs.get();
+}
+template <typename T>
+inline bool operator>=(const UPtr<T>& lhs, const UPtr<T>& rhs)
+{
+    return lhs.get() >= rhs.get();
+}
+
+// compare with raw pointer (right)
+template <typename T>
+inline bool operator==(const UPtr<T>& lhs, T* rhs)
+{
+    return lhs.get() == rhs;
+}
+template <typename T>
+inline bool operator!=(const UPtr<T>& lhs, T* rhs)
+{
+    return lhs.get() != rhs;
+}
+template <typename T>
+inline bool operator<(const UPtr<T>& lhs, T* rhs)
+{
+    return lhs.get() < rhs;
+}
+template <typename T>
+inline bool operator>(const UPtr<T>& lhs, T* rhs)
+{
+    return lhs.get() > rhs;
+}
+template <typename T>
+inline bool operator<=(const UPtr<T>& lhs, T* rhs)
+{
+    return lhs.get() <= rhs;
+}
+template <typename T>
+inline bool operator>=(const UPtr<T>& lhs, T* rhs)
+{
+    return lhs.get() >= rhs;
+}
+
+// compare with raw pointer (left)
+template <typename T>
+inline bool operator==(T* lhs, const UPtr<T>& rhs)
+{
+    return lhs == rhs.get();
+}
+template <typename T>
+inline bool operator!=(T* lhs, const UPtr<T>& rhs)
+{
+    return lhs != rhs.get();
+}
+template <typename T>
+inline bool operator<(T* lhs, const UPtr<T>& rhs)
+{
+    return lhs < rhs.get();
+}
+template <typename T>
+inline bool operator>(T* lhs, const UPtr<T>& rhs)
+{
+    return lhs > rhs.get();
+}
+template <typename T>
+inline bool operator<=(T* lhs, const UPtr<T>& rhs)
+{
+    return lhs <= rhs.get();
+}
+template <typename T>
+inline bool operator>=(T* lhs, const UPtr<T>& rhs)
+{
+    return lhs >= rhs.get();
+}
+
+// compare with nullptr
+template <typename T>
+inline bool operator==(const UPtr<T>& lhs, std::nullptr_t)
+{
+    return lhs.get() == nullptr;
+}
+template <typename T>
+inline bool operator!=(const UPtr<T>& lhs, std::nullptr_t)
+{
+    return lhs.get() != nullptr;
+}
+template <typename T>
+inline bool operator==(std::nullptr_t, const UPtr<T>& rhs)
+{
+    return nullptr == rhs.get();
+}
+template <typename T>
+inline bool operator!=(std::nullptr_t, const UPtr<T>& rhs)
+{
+    return nullptr != rhs.get();
+}
+
 // getter
 template <typename T>
 inline T* UPtr<T>::get() const
