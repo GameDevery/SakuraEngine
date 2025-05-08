@@ -11,21 +11,21 @@ struct UPtr {
     UPtr();
     UPtr(std::nullptr_t);
     UPtr(T* ptr);
-    template <UPtrConvertible<T> U>
+    template <SPConvertible<T> U>
     UPtr(U* ptr);
     ~UPtr();
 
     // copy & move
     UPtr(const UPtr& rhs) = delete;
     UPtr(UPtr&& rhs);
-    template <UPtrConvertible<T> U>
+    template <SPConvertible<T> U>
     UPtr(UPtr<U>&& rhs);
 
     // assign & move assign
     UPtr& operator=(std::nullptr_t);
     UPtr& operator=(const UPtr& rhs) = delete;
     UPtr& operator=(UPtr&& rhs);
-    template <UPtrConvertible<T> U>
+    template <SPConvertible<T> U>
     UPtr& operator=(UPtr<U>&& rhs);
 
     // factory
@@ -44,7 +44,7 @@ struct UPtr {
     // ops
     void reset();
     void reset(T* ptr);
-    template <UPtrConvertible<T> U>
+    template <SPConvertible<T> U>
     void reset(U* ptr);
     T*   release();
     void swap(UPtr& rhs);
@@ -58,6 +58,16 @@ struct UPtr {
 
 private:
     T* _ptr = nullptr;
+};
+
+// shared pointer
+template <typename T>
+struct SP {
+};
+
+// weak pointer
+template <typename T>
+struct SPWeak {
 };
 } // namespace skr
 
@@ -78,7 +88,7 @@ inline UPtr<T>::UPtr(T* ptr)
 {
 }
 template <typename T>
-template <UPtrConvertible<T> U>
+template <SPConvertible<T> U>
 inline UPtr<T>::UPtr(U* ptr)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
@@ -101,7 +111,7 @@ inline UPtr<T>::UPtr(UPtr&& rhs)
     rhs._ptr = nullptr;
 }
 template <typename T>
-template <UPtrConvertible<T> U>
+template <SPConvertible<T> U>
 inline UPtr<T>::UPtr(UPtr<U>&& rhs)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
@@ -133,7 +143,7 @@ inline UPtr<T>& UPtr<T>::operator=(UPtr&& rhs)
     return *this;
 }
 template <typename T>
-template <UPtrConvertible<T> U>
+template <SPConvertible<T> U>
 inline UPtr<T>& UPtr<T>::operator=(UPtr<U>&& rhs)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
@@ -305,7 +315,7 @@ inline void UPtr<T>::reset()
 {
     if (_ptr)
     {
-        UPtrDeleterTraits<T>::do_delete(_ptr);
+        SPDeleterTraits<T>::do_delete(_ptr);
         _ptr = nullptr;
     }
 }
@@ -316,13 +326,13 @@ inline void UPtr<T>::reset(T* ptr)
     {
         if (_ptr)
         {
-            UPtrDeleterTraits<T>::do_delete(_ptr);
+            SPDeleterTraits<T>::do_delete(_ptr);
         }
         _ptr = ptr;
     }
 }
 template <typename T>
-template <UPtrConvertible<T> U>
+template <SPConvertible<T> U>
 inline void UPtr<T>::reset(U* ptr)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");

@@ -31,7 +31,7 @@ public:
     }
 };
 
-struct TestCustomDeleter {
+struct TestCustomDeleterRC {
     SKR_RC_IMPL()
 
     inline void skr_rc_delete()
@@ -993,21 +993,21 @@ TEST_CASE("Test Custom Deleter")
 {
     using namespace skr;
 
-    RC<TestCustomDeleter> rc{ SkrNew<TestCustomDeleter>() };
+    RC<TestCustomDeleterRC> rc{ SkrNew<TestCustomDeleterRC>() };
     rc.reset();
     REQUIRE_EQ(rc_custom_deleter_count, 1);
 
-    RCUnique<TestCustomDeleter> rc_unique{ SkrNew<TestCustomDeleter>() };
+    RCUnique<TestCustomDeleterRC> rc_unique{ SkrNew<TestCustomDeleterRC>() };
     rc_unique.reset();
     REQUIRE_EQ(rc_custom_deleter_count, 2);
 
     {
-        RC<TestCustomDeleter> rc{ SkrNew<TestCustomDeleter>() };
+        RC<TestCustomDeleterRC> rc{ SkrNew<TestCustomDeleterRC>() };
     }
     REQUIRE_EQ(rc_custom_deleter_count, 3);
 
     {
-        RCUnique<TestCustomDeleter> rc_unique{ SkrNew<TestCustomDeleter>() };
+        RCUnique<TestCustomDeleterRC> rc_unique{ SkrNew<TestCustomDeleterRC>() };
     }
     REQUIRE_EQ(rc_custom_deleter_count, 4);
 }

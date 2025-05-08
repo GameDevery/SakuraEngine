@@ -29,8 +29,8 @@ public:
     }
 };
 
-struct TestCustomDeleter {
-    inline void skr_rc_delete()
+struct TestCustomDeleterSP {
+    inline void skr_sp_delete()
     {
         ++sp_custom_deleter_count;
         SkrDelete(this);
@@ -198,4 +198,19 @@ TEST_CASE("Test UPtr")
         empty.release();
         empty.swap(empty_move);
     }
+}
+
+TEST_CASE("Test Custom Deleter")
+{
+    using namespace skr;
+
+    UPtr<TestCustomDeleterSP> uptr{ SkrNew<TestCustomDeleterSP>() };
+    uptr.reset();
+    REQUIRE_EQ(sp_custom_deleter_count, 1);
+
+    {
+        UPtr<TestCustomDeleterSP> uptr{ SkrNew<TestCustomDeleterSP>() };
+        REQUIRE_EQ(sp_custom_deleter_count, 1);
+    }
+    REQUIRE_EQ(sp_custom_deleter_count, 2);
 }
