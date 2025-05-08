@@ -1,6 +1,7 @@
 #pragma once
 #include "SkrRT/config.h"
 #include "SkrRTTR/iobject.hpp"
+#include <SkrRTTR/iobject.hpp>
 #if !defined(__meta__)
     #include "test_rttr_types.generated.h"
 #endif
@@ -184,3 +185,73 @@ DynamicStackInvoke {
     static void    add_use_out_param(int32_t a, int32_t b, int32_t& out) { out = a + b; }
 };
 } // namespace test_rttr
+
+// test new/delete
+namespace test_rttr
+{
+sreflect_struct(
+    guid = "dc14be19-8a13-4ca3-841d-9f41bd784185"
+)
+ITestInterfaceA : virtual skr::IObject {
+    SKR_GENERATE_BODY()
+    virtual ~ITestInterfaceA() = default;
+};
+
+sreflect_struct(
+    guid = "25188c1c-fd6f-41af-b11a-7c4260118746"
+)
+ITestInterfaceB : virtual skr::IObject {
+    SKR_GENERATE_BODY()
+    virtual ~ITestInterfaceB() = default;
+};
+
+sreflect_struct(
+    guid = "8ff501cb-2d54-4cb0-aae5-6a339805f1a6"
+)
+TestDerivedA : public ITestInterfaceA {
+    SKR_GENERATE_BODY()
+    TestDerivedA() = default;
+    TestDerivedA(int32_t a, int32_t b)
+        : a(a)
+        , b(b)
+    {
+    }
+    ~TestDerivedA() override = default;
+    int32_t a = 0;
+    int32_t b = 0;
+};
+
+sreflect_struct(
+    guid = "03e02960-b997-491d-89a3-10c718c9e7c8"
+)
+TestDerivedB : public ITestInterfaceB {
+    SKR_GENERATE_BODY()
+    TestDerivedB() = default;
+    TestDerivedB(int32_t a, int32_t b)
+        : a(a)
+        , b(b)
+    {
+    }
+    ~TestDerivedB() override = default;
+    int32_t a = 0;
+    int32_t b = 0;
+};
+
+sreflect_struct(
+    guid = "f1a0b8d2-4c3e-4f5b-8a6c-7d9e0f1b2c3d"
+)
+TestDerivedC : public TestDerivedA,
+               public TestDerivedB {
+    SKR_GENERATE_BODY()
+    TestDerivedC() = default;
+    TestDerivedC(int32_t a, int32_t b, int32_t c)
+        : TestDerivedA(a, b)
+        , TestDerivedB(a, b)
+        , c(c)
+    {
+    }
+    ~TestDerivedC() override = default;
+    int32_t c = 0;
+};
+
+}
