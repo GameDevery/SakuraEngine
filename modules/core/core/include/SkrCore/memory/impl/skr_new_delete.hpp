@@ -1,5 +1,6 @@
 #pragma once
 #include "./skr_malloc.h"
+#include <SkrBase/misc/integer_tools.hpp>
 #include <cstddef> // std::size_t
 #include <cstdint> // PTRDIFF_MAX
 #include <new>     // 'operator new' function for non-allocating placement new expression
@@ -94,6 +95,17 @@ struct SkrNewCore {
     SkrNewCore {}
 #endif
 
+//=======================new/delete flag=======================
+enum SkrNewFlag
+{
+    SkrNewFlag_None = 0,
+};
+enum SkrDeleteFlag
+{
+    SkrDeleteFlag_None    = 0,
+    SkrDeleteFlag_No_Dtor = 1 << 0,
+};
+
 //=======================delete traits=======================
 template <typename T>
 struct SkrDeleteTraits {
@@ -136,10 +148,13 @@ struct SkrNewImpl {
         F* p = core.Alloc<F>();
         return new (p) SKR_DEBUG_NEW_SOURCE_LINE auto(std::forward<F>(lambda));
     }
-    void Delete(T* p)
+    void Delete(T* p, SkrDeleteFlag flags)
     {
         SKR_ASSERT(p != nullptr);
-        p->~T();
+        if (!::skr::flag_all(flags, SkrDeleteFlag_No_Dtor))
+        {
+            p->~T();
+        }
         core.Free<T>(reinterpret_cast<T*>(SkrDeleteTraits<T>::get_free_ptr(p)));
     }
 };
@@ -169,9 +184,9 @@ struct SkrNewWrapper {
         return SkrNewImpl<F>(core).NewLambda(std::forward<F>(lambda));
     }
     template <typename T>
-    void Delete(T* p)
+    void Delete(T* p, SkrDeleteFlag flags = SkrDeleteFlag_None)
     {
-        return SkrNewImpl<T>(core).Delete(p);
+        return SkrNewImpl<T>(core).Delete(p, flags);
     }
 };
 

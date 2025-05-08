@@ -99,7 +99,7 @@ struct FunctorDelegateCore<Ret(Args...)> {
         {
             std::atomic_thread_fence(std::memory_order_acquire);
             dtor(this);
-            SkrDelete(this);
+            SkrDelete(this, SkrDeleteFlag_No_Dtor);
         }
     }
 
