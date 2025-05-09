@@ -2,6 +2,7 @@
 #include "SkrCore/async/async_service.h"
 #include "SkrContainersDef/vector.hpp"
 #include "SkrContainersDef/sptr.hpp"
+#include "SkrCore/sp/sp.hpp"
 #include "log_queue.hpp"
 
 namespace skr
@@ -37,7 +38,7 @@ protected:
     void patternAndSink(const LogElement& e) SKR_NOEXCEPT;
 
     friend struct Logger;
-    skr::SPtr<LogQueue>  queue_;
+    skr::SP<LogQueue>    queue_;
     skr::Vector<Logger*> loggers_;
     LogFormatter         formatter_;
 };

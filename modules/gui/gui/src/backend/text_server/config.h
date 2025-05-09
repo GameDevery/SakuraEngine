@@ -7,6 +7,7 @@
 #include <SkrContainers/set.hpp>
 #include <SkrContainers/hashmap.hpp>
 #include "SkrContainers/sptr.hpp"
+#include "SkrCore/sp/sp.hpp"
 
 #include <limits>
 #include <type_traits>

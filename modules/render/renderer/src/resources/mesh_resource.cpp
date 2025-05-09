@@ -1,6 +1,7 @@
 #include "SkrRenderer/resources/mesh_resource.h"
 #include "SkrCore/memory/memory.h"
 #include "SkrCore/platform/vfs.h"
+#include "SkrCore/sp/sp.hpp"
 #include "SkrGraphics/cgpux.hpp"
 #include "SkrRT/io/ram_io.hpp"
 #include "SkrRT/io/vram_io.hpp"
@@ -33,7 +34,7 @@ static struct SkrMeshResourceUtil {
         uint64_t             hash;
     };
 
-    using VertexLayoutIdMap   = skr::FlatHashMap<skr_vertex_layout_id, skr::SPtr<RegisteredVertexLayout>, skr::Hash<skr_guid_t>>;
+    using VertexLayoutIdMap   = skr::FlatHashMap<skr_vertex_layout_id, skr::SP<RegisteredVertexLayout>, skr::Hash<skr_guid_t>>;
     using VertexLayoutHashMap = skr::FlatHashMap<uint64_t, RegisteredVertexLayout*>;
 
     SkrMeshResourceUtil()
@@ -50,7 +51,7 @@ static struct SkrMeshResourceUtil {
     {
         SMutexLock lock(vertex_layouts_mutex_);
 
-        auto pLayout = skr::SPtr<RegisteredVertexLayout>::Create(layout, id, name);
+        auto pLayout = skr::SP<RegisteredVertexLayout>::New(layout, id, name);
         if (id_map.find(id) == id_map.end())
         {
             id_map.emplace(id, pLayout);
@@ -228,7 +229,7 @@ struct SKR_RENDERER_API SMeshFactoryImpl : public SMeshFactory {
     skr::String                                                 dstorage_root;
     Root                                                        root;
     skr::FlatHashMap<skr_mesh_resource_id, InstallType>         mInstallTypes;
-    skr::FlatHashMap<skr_mesh_resource_id, SPtr<BufferRequest>> mRequests;
+    skr::FlatHashMap<skr_mesh_resource_id, SP<BufferRequest>> mRequests;
 };
 
 SMeshFactory* SMeshFactory::Create(const Root& root)
@@ -282,7 +283,7 @@ ESkrInstallStatus SMeshFactoryImpl::InstallImpl(skr_resource_record_t* record)
         auto                  batch   = vram_service->open_batch(mesh_resource->bins.size());
         if (noCompression)
         {
-            auto dRequest = SPtr<BufferRequest>::Create();
+            auto dRequest = SP<BufferRequest>::New();
             dRequest->absPaths.resize_default(mesh_resource->bins.size());
             dRequest->dFutures.resize_zeroed(mesh_resource->bins.size());
             dRequest->dBuffers.resize_zeroed(mesh_resource->bins.size());

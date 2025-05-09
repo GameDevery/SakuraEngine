@@ -34,8 +34,8 @@ using destructor_t       = void (*)(void* dst);
 SKR_LUA_API int   push_unknown(lua_State* L, void* value, std::string_view tid);
 SKR_LUA_API int   push_unknown_value(lua_State* L, const void* value, std::string_view tid, size_t size, copy_constructor_t copy_constructor, destructor_t destructor);
 SKR_LUA_API void* check_unknown(lua_State* L, int index, std::string_view tid);
-SKR_LUA_API int   push_sptr(lua_State* L, const skr::SPtr<void>& value, std::string_view tid);
-SKR_LUA_API skr::SPtr<void> check_sptr(lua_State* L, int index, std::string_view tid);
+SKR_LUA_API int   push_sptr(lua_State* L, const skr::SP<void>& value, std::string_view tid);
+SKR_LUA_API skr::SP<void> check_sptr(lua_State* L, int index, std::string_view tid);
 SKR_LUA_API int             push_sobjectptr(lua_State* L, const skr::RC<SInterface>& value, std::string_view tid);
 SKR_LUA_API skr::RC<SInterface> check_sobjectptr(lua_State* L, int index, std::string_view tid);
 // TODO: how should we handle math operations in lua?
@@ -78,14 +78,14 @@ struct DefaultBindTrait<T, std::enable_if_t<!std::is_enum_v<T> && skr::is_comple
 };
 
 template <class T>
-struct DefaultBindTrait<skr::SPtr<T>, std::enable_if_t<!std::is_enum_v<T> && skr::is_complete_v<skr::RTTRTraits<T>>>> {
-    static int push(lua_State* L, const skr::SPtr<T>& value)
+struct DefaultBindTrait<skr::SP<T>, std::enable_if_t<!std::is_enum_v<T> && skr::is_complete_v<skr::RTTRTraits<T>>>> {
+    static int push(lua_State* L, const skr::SP<T>& value)
     {
         static constexpr std::string_view prefix = "[shared]";
         static constexpr std::string_view tid    = skr::type_name_of<T>();
         return push_sptr(L, value, constexpr_join_v<prefix, tid>);
     }
-    static skr::SPtr<T> check(lua_State* L, int index)
+    static skr::SP<T> check(lua_State* L, int index)
     {
         return reinterpret_pointer_cast<T>(check_sptr(L, index, ::skr::type_id_of<T>()));
     }
@@ -160,7 +160,7 @@ decltype(auto) check(lua_State* L, int index, int& used)
 
 struct shared_userdata_t {
     void*      data;
-    SPtr<void> shared;
+    SP<void> shared;
 };
 
 template <>
@@ -370,7 +370,7 @@ decltype(auto) deref(T value)
 template <class T>
 struct SharedUserdata {
     T* data;
-    using shared_t = std::conditional_t<is_object_v<T>, RC<T>, SPtr<T>>;
+    using shared_t = std::conditional_t<is_object_v<T>, RC<T>, SP<T>>;
     shared_t shared;
     SharedUserdata(shared_t shared)
         : data(shared.get())

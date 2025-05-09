@@ -3,6 +3,7 @@
 #include "SkrBase/misc/make_zeroed.hpp"
 #include "SkrCore/async/thread_job.hpp"
 
+#include "SkrCore/sp/sp.hpp"
 #include "SkrTestFramework/framework.hpp"
 
 static struct ProcInitializer
@@ -123,7 +124,7 @@ struct Launcher_ThreadJobQueue
     }
     static skr::JobQueue* GetQueue()
     {
-        static skr::SPtr<skr::JobQueue> jq = nullptr;
+        static skr::SP<skr::JobQueue> jq = nullptr;
         if (!jq)
         {
             auto qn = skr::format(u8"Launcher{}_JobQueue", TestIdx);
@@ -131,7 +132,7 @@ struct Launcher_ThreadJobQueue
             jqDesc.thread_count = 2;
             jqDesc.priority = SKR_THREAD_NORMAL;
             jqDesc.name = qn.c_str();
-            jq = skr::SPtr<skr::JobQueue>::Create(jqDesc);
+            jq = skr::SP<skr::JobQueue>::New(jqDesc);
         }
         SKR_ASSERT(jq);
         return jq.get();

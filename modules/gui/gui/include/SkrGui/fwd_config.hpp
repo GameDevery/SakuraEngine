@@ -56,10 +56,6 @@ using FunctionRef = ::skr::FunctionRef<F>;
 template <typename F>
 using Function = ::skr::stl_function<F>;
 
-// smart ptr
-template <typename T>
-using SPtr = ::skr::SPtr<T>;
-
 // not null
 template <typename T>
 using NotNull = ::skr::not_null<T>;

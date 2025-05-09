@@ -8,6 +8,7 @@
 #include "SkrContainers/sptr.hpp"
 #include "SkrContainers/vector.hpp"
 #include "SkrContainers/stl_function.hpp"
+#include "SkrCore/sp/sp.hpp"
 
 #if __cpp_lib_coroutine
     #include <coroutine>
@@ -30,9 +31,9 @@ namespace skr
 namespace task2
 {
     template<class T>
-    using state_ptr_t = SPtr<T>;
+    using state_ptr_t = SP<T>;
     template<class T>
-    using state_weak_ptr_t = SWeakPtr<T>;
+    using state_weak_ptr_t = SPWeak<T>;
     struct SKR_TASK_API scheudler_config_t
     {
         scheudler_config_t();
@@ -161,7 +162,7 @@ namespace task2
         weak_event_t(std::nullptr_t) {}
         ~weak_event_t() = default;
         event_t lock() const { return event_t{ state.lock() }; }
-        bool expired() const { return state.expired(); }
+        bool expired() const { return state.is_expired(); }
 
         state_weak_ptr_t<event_t::State> state;
     };
@@ -226,7 +227,7 @@ namespace task2
         weak_counter_t(std::nullptr_t) {}
         ~weak_counter_t() = default;
         counter_t lock() const { return counter_t{ state.lock() }; }
-        bool expired() const { return state.expired(); }
+        bool expired() const { return state.is_expired(); }
 
         state_weak_ptr_t<counter_t::State> state;
     };

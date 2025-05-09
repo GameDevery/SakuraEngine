@@ -1,4 +1,5 @@
 #include "SkrRenderer/shader_map.h"
+#include "SkrCore/sp/sp.hpp"
 #include "SkrRenderer/shader_hash.h"
 #include "SkrBase/misc/make_zeroed.hpp"
 #include "SkrBase/atomic/atomic.h"
@@ -37,7 +38,7 @@ struct ShaderMapImpl : public skr_shader_map_t
     ShaderMapImpl(const skr_shader_map_root_t& root)
         : root(root)
     {
-        future_launcher = SPtr<skr::FutureLauncher<bool>>::Create(root.job_queue);
+        future_launcher = SP<skr::FutureLauncher<bool>>::New(root.job_queue);
     }
 
     ~ShaderMapImpl()
@@ -68,12 +69,12 @@ struct ShaderMapImpl : public skr_shader_map_t
         SAtomicU32 shader_status = 0;
     };
 
-    SPtr<skr::FutureLauncher<bool>> future_launcher;
+    SP<skr::FutureLauncher<bool>> future_launcher;
     uint64_t frame_index = 0;
     skr_shader_map_root_t root;
 
-    skr::ParallelFlatHashMap<skr_platform_shader_identifier_t, SPtr<MappedShader>, skr_platform_shader_identifier_t::hasher> mShaderMap;
-    skr::ParallelFlatHashMap<skr_platform_shader_identifier_t, SPtr<ShaderProgress>, skr_platform_shader_identifier_t::hasher> mShaderTasks;
+    skr::ParallelFlatHashMap<skr_platform_shader_identifier_t, SP<MappedShader>, skr_platform_shader_identifier_t::hasher> mShaderMap;
+    skr::ParallelFlatHashMap<skr_platform_shader_identifier_t, SP<ShaderProgress>, skr_platform_shader_identifier_t::hasher> mShaderTasks;
 };
 
 bool ShaderProgress::do_in_background()
@@ -153,7 +154,7 @@ ESkrShaderMapShaderStatus ShaderMapImpl::install_shader(const skr_platform_shade
     else
     {
         // fire request
-        auto mapped_shader = SPtr<MappedShader>::Create();
+        auto mapped_shader = SP<MappedShader>::New();
         skr_atomic_fetch_add_relaxed(&mapped_shader->rc, 1);
         // keep mapped_shader::frame at UINT64_MAX until shader is loaded
         mShaderMap.emplace(identifier, mapped_shader);
@@ -169,7 +170,7 @@ ESkrShaderMapShaderStatus ShaderMapImpl::install_shader_from_vfs(const skr_platf
     const auto hash = identifier.hash;
     const auto uri = skr::format(u8"{}#{}-{}-{}-{}.bytes", hash.flags, 
         hash.encoded_digits[0], hash.encoded_digits[1], hash.encoded_digits[2], hash.encoded_digits[3]);
-    auto sRequest = SPtr<ShaderProgress>::Create(this, uri.c_str(), identifier);
+    auto sRequest = SP<ShaderProgress>::New(this, uri.c_str(), identifier);
     auto found = mShaderTasks.find(identifier);
     SKR_ASSERT(found == mShaderTasks.end());
     mShaderTasks.emplace(identifier, sRequest);
