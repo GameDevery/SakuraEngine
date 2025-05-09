@@ -88,6 +88,10 @@ struct SPRefCounter {
         }
         return false;
     }
+    inline bool is_alive() const
+    {
+        return _ref_count.load(std::memory_order_relaxed) > 0;
+    }
 
 private:
     std::atomic<SPCounterType> _ref_count      = 0;
