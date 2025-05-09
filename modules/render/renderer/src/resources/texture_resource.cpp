@@ -1,3 +1,4 @@
+#include "SkrCore/sp/sp.hpp"
 #include "SkrGraphics/api.h"
 #include "SkrRT/io/ram_io.hpp"
 #include <SkrOS/filesystem.hpp>
@@ -9,7 +10,6 @@
 #include "SkrBase/misc/make_zeroed.hpp"
 
 #include "SkrContainers/string.hpp"
-#include "SkrContainers/sptr.hpp"
 #include "SkrContainers/hashmap.hpp"
 
 #include "SkrRenderer/render_device.h"
@@ -107,7 +107,7 @@ struct SKR_RENDERER_API STextureFactoryImpl : public STextureFactory {
     skr::String                                                     dstorage_root;
     Root                                                            root;
     skr::FlatHashMap<skr_texture_resource_id, InstallType>          mInstallTypes;
-    skr::FlatHashMap<skr_texture_resource_id, SPtr<TextureRequest>> mTextureRequests;
+    skr::FlatHashMap<skr_texture_resource_id, SP<TextureRequest>> mTextureRequests;
 };
 
 STextureFactory* STextureFactory::Create(const Root& root)
@@ -161,7 +161,7 @@ ESkrInstallStatus STextureFactoryImpl::InstallImpl(skr_resource_record_t* record
         {
             const char* suffix        = GetSuffixWithCompressionFormat((ECGPUFormat)texture_resource->format);
             auto        compressedBin = skr::format(u8"{}{}", guid, suffix); // TODO: choose compression format
-            auto        dRequest      = SPtr<TextureRequest>::Create();
+            auto        dRequest      = SP<TextureRequest>::New();
             InstallType installType   = { ECompressMethod::BC_OR_ASTC };
             auto        found         = mTextureRequests.find(texture_resource);
             SKR_ASSERT(found == mTextureRequests.end());
@@ -184,7 +184,7 @@ ESkrInstallStatus STextureFactoryImpl::InstallImpl(skr_resource_record_t* record
             request->set_texture(render_device->get_cgpu_device(), &tdesc);
             request->set_transfer_queue(render_device->get_cpy_queue());
             auto result          = batch->add_request(request, &dRequest->vtexture_future);
-            dRequest->io_texture = skr::static_pointer_cast<skr::io::IVRAMIOTexture>(result);
+            dRequest->io_texture = result.cast_static<skr::io::IVRAMIOTexture>();
         }
         else
         {

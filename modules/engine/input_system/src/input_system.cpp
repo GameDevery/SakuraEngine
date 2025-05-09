@@ -16,21 +16,21 @@ struct InputSystemImpl : public InputSystem {
     void update(float delta) SKR_NOEXCEPT final;
 
     // create and add
-    SObjectPtr<InputMappingContext> create_mapping_context() SKR_NOEXCEPT final;
+    RC<InputMappingContext> create_mapping_context() SKR_NOEXCEPT final;
 
     // remove but not free
-    void remove_mapping_context(SObjectPtr<InputMappingContext> ctx) SKR_NOEXCEPT final;
+    void remove_mapping_context(RC<InputMappingContext> ctx) SKR_NOEXCEPT final;
 
     // add
-    SObjectPtr<InputMappingContext> add_mapping_context(SObjectPtr<InputMappingContext> ctx, int32_t priority, const InputContextOptions& opts) SKR_NOEXCEPT final;
+    RC<InputMappingContext> add_mapping_context(RC<InputMappingContext> ctx, int32_t priority, const InputContextOptions& opts) SKR_NOEXCEPT final;
 
     // unmap and free all mapping contexts
     void remove_all_contexts() SKR_NOEXCEPT;
 
     // create
-    [[nodiscard]] SObjectPtr<InputAction> create_input_action(EValueType type) SKR_NOEXCEPT final;
+    [[nodiscard]] RC<InputAction> create_input_action(EValueType type) SKR_NOEXCEPT final;
 
-    skr::Map<int32_t, SObjectPtr<InputMappingContext>> contexts;
+    skr::Map<int32_t, RC<InputMappingContext>> contexts;
     struct RawInput {
         RawInput() SKR_NOEXCEPT = default;
         RawInput(InputLayer* layer, InputReading* reading, EInputKind kind) SKR_NOEXCEPT
@@ -43,7 +43,7 @@ struct InputSystemImpl : public InputSystem {
         InputReading* reading = nullptr;
     };
     skr::Map<EInputKind, skr::Vector<RawInput>> inputs;
-    skr::Vector<SObjectPtr<InputAction>>         actions;
+    skr::Vector<RC<InputAction>>                actions;
 };
 
 InputSystem::~InputSystem() SKR_NOEXCEPT
@@ -145,18 +145,18 @@ void InputSystemImpl::update(float delta) SKR_NOEXCEPT
     }
 }
 
-#pragma region                  InputMappingContexts
-SObjectPtr<InputMappingContext> InputSystemImpl::create_mapping_context() SKR_NOEXCEPT
+#pragma region InputMappingContexts
+RC<InputMappingContext> InputSystemImpl::create_mapping_context() SKR_NOEXCEPT
 {
-    return SObjectPtr<InputMappingContext>::Create();
+    return RC<InputMappingContext>::New();
 }
 
-void InputSystemImpl::remove_mapping_context(SObjectPtr<InputMappingContext> ctx) SKR_NOEXCEPT
+void InputSystemImpl::remove_mapping_context(RC<InputMappingContext> ctx) SKR_NOEXCEPT
 {
     contexts.remove_value(ctx);
 }
 
-SObjectPtr<InputMappingContext> InputSystemImpl::add_mapping_context(SObjectPtr<InputMappingContext> ctx, int32_t priority, const InputContextOptions& opts) SKR_NOEXCEPT
+RC<InputMappingContext> InputSystemImpl::add_mapping_context(RC<InputMappingContext> ctx, int32_t priority, const InputContextOptions& opts) SKR_NOEXCEPT
 {
     auto it = contexts.add(priority, ctx);
     if (it.already_exist())
@@ -173,10 +173,10 @@ void InputSystemImpl::remove_all_contexts() SKR_NOEXCEPT
 }
 #pragma endregion
 
-#pragma region          InputActions
-SObjectPtr<InputAction> InputSystemImpl::create_input_action(EValueType type) SKR_NOEXCEPT
+#pragma region InputActions
+RC<InputAction> InputSystemImpl::create_input_action(EValueType type) SKR_NOEXCEPT
 {
-    auto result = SObjectPtr<InputActionImpl>::Create(type);
+    auto result = RC<InputActionImpl>::New(type);
     actions.add(result);
     return result;
 }

@@ -111,7 +111,7 @@ struct VRAMBufferComponent final : public IORequestComponent {
     void set_buffer(CGPUBufferId buffer, uint64_t offset) SKR_NOEXCEPT;
     void set_buffer(CGPUDeviceId device, const CGPUBufferDescriptor* desc) SKR_NOEXCEPT;
 
-    SObjectPtr<IVRAMIOBuffer> artifact;
+    RC<IVRAMIOBuffer> artifact;
 
     enum class Type
     {
@@ -138,7 +138,7 @@ struct VRAMTextureComponent final : public IORequestComponent {
     void set_texture(CGPUDeviceId device, const CGPUTextureDescriptor* desc) SKR_NOEXCEPT;
     void set_slices(uint32_t first_slice, uint32_t slice_count) SKR_NOEXCEPT;
 
-    SObjectPtr<IVRAMIOTexture> artifact;
+    RC<IVRAMIOTexture> artifact;
 
     enum class Type
     {

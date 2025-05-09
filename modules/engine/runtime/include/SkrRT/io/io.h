@@ -2,7 +2,7 @@
 #include "SkrBase/atomic/atomic.h"
 #include "SkrCore/async/async_service.h"
 #ifdef __cplusplus
-    #include "SkrContainers/sptr.hpp"
+    #include "SkrCore/rc/rc.hpp"
     #include "SkrContainers/span.hpp"
 #endif
 
@@ -81,11 +81,11 @@ using IOBlock           = skr_io_block_t;
 using IOCompressedBlock = skr_io_compressed_block_t;
 using IOFuture          = skr_io_future_t;
 using IOCallback        = skr_io_callback_t;
-using IOResultId        = SObjectPtr<skr::SInterface>;
+using IOResultId        = RC<skr::IRCAble>;
 struct IORequestComponent;
 struct IIOService;
 
-struct SKR_RUNTIME_API IIORequest : public skr::SInterface {
+struct SKR_RUNTIME_API IIORequest : public skr::IRCAble {
     virtual ~IIORequest() SKR_NOEXCEPT;
 
     virtual IORequestComponent*       get_component(skr_guid_t tid) SKR_NOEXCEPT       = 0;
@@ -107,9 +107,11 @@ struct SKR_RUNTIME_API IIORequest : public skr::SInterface {
     virtual void add_finish_callback(ESkrIOFinishPoint point, IOCallback callback, void* data) SKR_NOEXCEPT = 0;
     #pragma endregion
 };
-using IORequestId = SObjectPtr<IIORequest>;
+using IORequestId = RC<IIORequest>;
 
-struct SKR_RUNTIME_API IIOBatch : public skr::SInterface {
+struct SKR_RUNTIME_API IIOBatch : public skr::IRCAble {
+    SKR_RC_DELETER_INTERFACE()
+
     virtual void                   reserve(uint64_t size) SKR_NOEXCEPT                             = 0;
     virtual IOResultId             add_request(IORequestId request, IOFuture* future) SKR_NOEXCEPT = 0;
     virtual skr::span<IORequestId> get_requests() SKR_NOEXCEPT                                     = 0;
@@ -117,16 +119,16 @@ struct SKR_RUNTIME_API IIOBatch : public skr::SInterface {
     virtual void                    set_priority(SkrAsyncServicePriority pri) SKR_NOEXCEPT = 0;
     virtual SkrAsyncServicePriority get_priority() const SKR_NOEXCEPT                      = 0;
 };
-using IOBatchId = SObjectPtr<IIOBatch>;
+using IOBatchId = RC<IIOBatch>;
 
-struct SKR_RUNTIME_API IIORequestResolver : public skr::SInterface {
+struct SKR_RUNTIME_API IIORequestResolver : public skr::IRCAble {
     virtual void resolve(SkrAsyncServicePriority priority, IOBatchId batch, IORequestId request) SKR_NOEXCEPT;
 
     virtual ~IIORequestResolver() SKR_NOEXCEPT;
 };
-using IORequestResolverId = SObjectPtr<IIORequestResolver>;
+using IORequestResolverId = RC<IIORequestResolver>;
 
-struct SKR_RUNTIME_API IIOProcessor : public skr::SInterface {
+struct SKR_RUNTIME_API IIOProcessor : public skr::IRCAble {
     virtual void     dispatch(SkrAsyncServicePriority priority) SKR_NOEXCEPT                                                  = 0;
     virtual void     recycle(SkrAsyncServicePriority priority) SKR_NOEXCEPT                                                   = 0;
     virtual bool     is_async(SkrAsyncServicePriority priority = SKR_ASYNC_SERVICE_PRIORITY_COUNT) const SKR_NOEXCEPT         = 0;
@@ -146,7 +148,7 @@ struct SKR_RUNTIME_API IIOBatchProcessor : public IIOProcessor {
     virtual ~IIOBatchProcessor() SKR_NOEXCEPT;
     IIOBatchProcessor() SKR_NOEXCEPT = default;
 };
-using IOBatchProcessorId = SObjectPtr<IIOBatchProcessor>;
+using IOBatchProcessorId = RC<IIOBatchProcessor>;
 
 struct SKR_RUNTIME_API IIORequestProcessor : public IIOProcessor {
     virtual bool fetch(SkrAsyncServicePriority priority, IORequestId request) SKR_NOEXCEPT                   = 0;
@@ -155,15 +157,15 @@ struct SKR_RUNTIME_API IIORequestProcessor : public IIOProcessor {
     virtual ~IIORequestProcessor() SKR_NOEXCEPT;
     IIORequestProcessor() SKR_NOEXCEPT = default;
 };
-using IORequestProcessorId = SObjectPtr<IIORequestProcessor>;
+using IORequestProcessorId = RC<IIORequestProcessor>;
 
 struct SKR_RUNTIME_API IIORequestResolverChain : public IIOBatchProcessor {
-    static SObjectPtr<IIORequestResolverChain>  Create(IORequestResolverId resolver = nullptr) SKR_NOEXCEPT;
-    virtual SObjectPtr<IIORequestResolverChain> then(IORequestResolverId resolver) SKR_NOEXCEPT = 0;
+    static RC<IIORequestResolverChain>  Create(IORequestResolverId resolver = nullptr) SKR_NOEXCEPT;
+    virtual RC<IIORequestResolverChain> then(IORequestResolverId resolver) SKR_NOEXCEPT = 0;
 
     virtual ~IIORequestResolverChain() SKR_NOEXCEPT;
 };
-using IORequestResolverChainId = SObjectPtr<IIORequestResolverChain>;
+using IORequestResolverChainId = RC<IIORequestResolverChain>;
 
 template <typename I = IIORequestProcessor>
 struct SKR_RUNTIME_API IIOReader : public I {
@@ -171,7 +173,7 @@ struct SKR_RUNTIME_API IIOReader : public I {
     IIOReader() SKR_NOEXCEPT = default;
 };
 template <typename I = IIORequestProcessor>
-using IOReaderId = SObjectPtr<IIOReader<I>>;
+using IOReaderId = RC<IIOReader<I>>;
 
 template <typename I = IIORequestProcessor>
 struct SKR_RUNTIME_API IIODecompressor : public I {
@@ -179,7 +181,7 @@ struct SKR_RUNTIME_API IIODecompressor : public I {
     IIODecompressor() SKR_NOEXCEPT = default;
 };
 template <typename I = IIORequestProcessor>
-using IODecompressorId = SObjectPtr<IIODecompressor<I>>;
+using IODecompressorId = RC<IIODecompressor<I>>;
 
 struct SKR_RUNTIME_API IIOService {
     // add a resolver to service

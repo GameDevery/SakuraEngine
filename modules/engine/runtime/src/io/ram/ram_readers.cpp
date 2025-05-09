@@ -35,8 +35,8 @@ uint64_t VFSRAMReader::get_prefer_batch_size() const SKR_NOEXCEPT
 
 void VFSRAMReader::dispatchFunction(SkrAsyncServicePriority priority, const IORequestId& request) SKR_NOEXCEPT
 {
-    auto rq = skr::static_pointer_cast<RAMRequestMixin>(request);
-    auto buf = skr::static_pointer_cast<RAMIOBuffer>(rq->destination);
+    auto rq = request.cast_static<RAMRequestMixin>();
+    auto buf = rq->destination.cast_static<RAMIOBuffer>();
     auto pBlocks = io_component<BlocksComponent>(request.get());
     if (auto pFile = io_component<FileComponent>(request.get()))
     {
@@ -167,7 +167,7 @@ DStorageRAMReader::DStorageRAMReader(RAMService* service) SKR_NOEXCEPT
     SkrDStorageQueueDescriptor desc = {};
     for (auto i = 0; i < SKR_ASYNC_SERVICE_PRIORITY_COUNT; ++i)
     {
-        events[i] = SmartPoolPtr<DStorageEvent>::Create(kIOPoolObjectsMemoryName);
+        events[i] = SmartPoolPtr<DStorageEvent>::New(kIOPoolObjectsMemoryName);
     }
     for (auto i = 0; i < SKR_ASYNC_SERVICE_PRIORITY_COUNT; ++i)
     {
@@ -214,7 +214,7 @@ void DStorageRAMReader::enqueueAndSubmit(SkrAsyncServicePriority priority) SKR_N
     auto queue = f2m_queues[priority];
     auto instance = skr_get_dstorage_instnace();
     IOBatchId batch;
-    skr::SObjectPtr<DStorageEvent> event;
+    skr::RC<DStorageEvent> event;
 #ifdef SKR_PROFILE_ENABLE
     SkrCZoneCtx Zone;
     bool bZoneSet = false;
@@ -229,12 +229,12 @@ void DStorageRAMReader::enqueueAndSubmit(SkrAsyncServicePriority priority) SKR_N
             Zone = z;
             bZoneSet = true;
 #endif
-            eref = skr::static_pointer_cast<DStorageEvent>(events[priority]->allocate(queue));
+            eref = events[priority]->allocate(queue).cast_static<DStorageEvent>();
         }
         for (auto&& request : batch->get_requests())
         {
-            auto rq = skr::static_pointer_cast<RAMRequestMixin>(request);
-            auto buf = skr::static_pointer_cast<RAMIOBuffer>(rq->destination);
+            auto rq = request.cast_static<RAMRequestMixin>();
+            auto buf = rq->destination.cast_static<RAMIOBuffer>();
             auto pBlocks = io_component<BlocksComponent>(request.get());
             if (auto pFile = io_component<FileComponent>(request.get()))
             {

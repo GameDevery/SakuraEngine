@@ -47,19 +47,19 @@ InputMappingContext::~InputMappingContext() SKR_NOEXCEPT
 {
 }
 
-span<SObjectPtr<InputMapping> const> InputMappingContext::get_mappings() const SKR_NOEXCEPT
+span<RC<InputMapping> const> InputMappingContext::get_mappings() const SKR_NOEXCEPT
 {
     return { mappings_.data(), mappings_.size() };
 }
 
-SObjectPtr<InputMapping> InputMappingContext::add_mapping(SObjectPtr<InputMapping> mapping) SKR_NOEXCEPT
+RC<InputMapping> InputMappingContext::add_mapping(RC<InputMapping> mapping) SKR_NOEXCEPT
 {
     return mappings_.add(mapping).ref();
 }
 
-void InputMappingContext::remove_mapping(SObjectPtr<InputMapping> mapping) SKR_NOEXCEPT
+void InputMappingContext::remove_mapping(RC<InputMapping> mapping) SKR_NOEXCEPT
 {
-    mappings_.remove_all_if([&mapping](SObjectPtr<InputMapping> m) { return m == mapping; });
+    mappings_.remove_all_if([&mapping](RC<InputMapping> m) { return m == mapping; });
 }
 
 void InputMappingContext::unmap_all() SKR_NOEXCEPT

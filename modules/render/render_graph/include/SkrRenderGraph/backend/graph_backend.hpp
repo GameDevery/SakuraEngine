@@ -1,7 +1,7 @@
 #pragma once
 #include "SkrContainers/set.hpp"
+#include "SkrCore/sp/sp.hpp"
 #include "SkrGraphics/extensions/cgpu_marker_buffer.h"
-#include "SkrContainers/sptr.hpp"
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrRenderGraph/backend/texture_pool.hpp"
 #include "SkrRenderGraph/backend/buffer_pool.hpp"
@@ -95,7 +95,7 @@ protected:
 
     uint64_t get_latest_finished_frame() SKR_NOEXCEPT;
 
-    skr::Vector<skr::SPtr<IRenderGraphPhase>> phases;
+    skr::Vector<skr::SP<IRenderGraphPhase>> phases;
 
     ECGPUBackend             backend;
     CGPUDeviceId             device;

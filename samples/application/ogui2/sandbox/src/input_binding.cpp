@@ -12,7 +12,7 @@ inline static void _fill_pointer_event(PointerEvent* event)
     event->global_position = { (float)cursor_x, (float)cursor_y };
     event->global_delta    = { 0, 0 };
 }
-inline static void _bind_mouse_button(skr::input::InputSystem* system, SObjectPtr<input::InputMappingContext> ctx, Sandbox* sandbox, EPointerButton button)
+inline static void _bind_mouse_button(skr::input::InputSystem* system, RC<input::InputMappingContext> ctx, Sandbox* sandbox, EPointerButton button)
 {
     // translate key
     EMouseKey key;
@@ -65,7 +65,7 @@ inline static void _bind_mouse_button(skr::input::InputSystem* system, SObjectPt
     }
 }
 
-void bind_pointer_event(skr::input::InputSystem* system, SObjectPtr<input::InputMappingContext> ctx, Sandbox* sandbox)
+void bind_pointer_event(skr::input::InputSystem* system, RC<input::InputMappingContext> ctx, Sandbox* sandbox)
 {
     // bind buttons (down/up)
     _bind_mouse_button(system, ctx, sandbox, EPointerButton::Left);

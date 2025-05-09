@@ -251,25 +251,55 @@ inline static void rc_notify_weak_ref_counter_dead(
 
 // concept
 template <typename T>
-concept ObjectWithRC = requires(const T& const_obj, T& obj) {
-    { const_obj.skr_rc_count() } -> std::same_as<skr::RCCounterType>;
-    { const_obj.skr_rc_add_ref() } -> std::same_as<skr::RCCounterType>;
-    { const_obj.skr_rc_add_ref_unique() } -> std::same_as<skr::RCCounterType>;
-    { const_obj.skr_rc_release_unique() } -> std::same_as<skr::RCCounterType>;
-    { const_obj.skr_rc_weak_lock() } -> std::same_as<skr::RCCounterType>;
-    { const_obj.skr_rc_release() } -> std::same_as<skr::RCCounterType>;
-    { const_obj.skr_rc_weak_ref_count() } -> std::same_as<skr::RCCounterType>;
-    { const_obj.skr_rc_weak_ref_counter() } -> std::same_as<skr::RCWeakRefCounter*>;
+concept ObjectWithRC = requires(const T* const_obj, T* obj) {
+    { const_obj->skr_rc_count() } -> std::same_as<skr::RCCounterType>;
+    { const_obj->skr_rc_add_ref() } -> std::same_as<skr::RCCounterType>;
+    { const_obj->skr_rc_add_ref_unique() } -> std::same_as<skr::RCCounterType>;
+    { const_obj->skr_rc_release_unique() } -> std::same_as<skr::RCCounterType>;
+    { const_obj->skr_rc_weak_lock() } -> std::same_as<skr::RCCounterType>;
+    { const_obj->skr_rc_release() } -> std::same_as<skr::RCCounterType>;
+    { const_obj->skr_rc_weak_ref_count() } -> std::same_as<skr::RCCounterType>;
+    { const_obj->skr_rc_weak_ref_counter() } -> std::same_as<skr::RCWeakRefCounter*>;
 };
 template <typename T>
-concept ObjectWithRCDeleter = requires(const T& const_obj, T& obj) {
-    { obj.skr_rc_delete() } -> std::same_as<void>;
+concept ObjectWithRCDeleter = requires(const T* const_obj, T* obj) {
+    { obj->skr_rc_delete() } -> std::same_as<void>;
 };
 template <typename From, typename To>
-concept ObjectWithRCConvertible = requires(From obj) {
+concept RCConvertible = requires(From obj) {
     ObjectWithRC<From>;
+    ObjectWithRC<To>;
     std::convertible_to<From*, To*>;
 };
+
+// deleter traits
+template <typename T>
+struct RCDeleterTraits {
+    inline static void do_delete(T* obj)
+    {
+        SkrDelete(obj);
+    }
+};
+template <ObjectWithRCDeleter T>
+struct RCDeleterTraits<T> {
+    inline static void do_delete(T* obj)
+    {
+        obj->skr_rc_delete();
+    }
+};
+
+// release helper
+template <typename T>
+inline void rc_release_with_delete(T* p)
+{
+    SKR_ASSERT(p != nullptr);
+    if (p->skr_rc_release() == 0)
+    {
+        p->skr_rc_weak_ref_counter_notify_dead();
+        RCDeleterTraits<T>::do_delete(p);
+    }
+}
+
 } // namespace skr
 
 // interface macros
@@ -284,48 +314,63 @@ concept ObjectWithRCConvertible = requires(From obj) {
     virtual skr::RCWeakRefCounter* skr_rc_weak_ref_counter() const             = 0; \
     virtual void                   skr_rc_weak_ref_counter_notify_dead() const = 0;
 #define SKR_RC_DELETER_INTERFACE() \
-    virtual void skr_rc_delete() const = 0;
+    virtual void skr_rc_delete() = 0;
 
 // impl macros
-#define SKR_RC_IMPL()                                                              \
+#define SKR_RC_IMPL(__SUFFIX)                                                      \
 private:                                                                           \
     mutable ::std::atomic<::skr::RCCounterType>     zz_skr_rc           = 0;       \
     mutable ::std::atomic<::skr::RCWeakRefCounter*> zz_skr_weak_counter = nullptr; \
                                                                                    \
 public:                                                                            \
-    inline skr::RCCounterType skr_rc_count() const                                 \
+    inline skr::RCCounterType skr_rc_count() const __SUFFIX                        \
     {                                                                              \
         return skr::rc_ref_count(zz_skr_rc);                                       \
     }                                                                              \
-    inline skr::RCCounterType skr_rc_add_ref() const                               \
+    inline skr::RCCounterType skr_rc_add_ref() const __SUFFIX                      \
     {                                                                              \
         return skr::rc_add_ref(zz_skr_rc);                                         \
     }                                                                              \
-    inline skr::RCCounterType skr_rc_add_ref_unique() const                        \
+    inline skr::RCCounterType skr_rc_add_ref_unique() const __SUFFIX               \
     {                                                                              \
         return skr::rc_add_ref_unique(zz_skr_rc);                                  \
     }                                                                              \
-    inline skr::RCCounterType skr_rc_release_unique() const                        \
+    inline skr::RCCounterType skr_rc_release_unique() const __SUFFIX               \
     {                                                                              \
         return skr::rc_release_unique(zz_skr_rc);                                  \
     }                                                                              \
-    inline skr::RCCounterType skr_rc_weak_lock() const                             \
+    inline skr::RCCounterType skr_rc_weak_lock() const __SUFFIX                    \
     {                                                                              \
         return skr::rc_weak_lock(zz_skr_rc);                                       \
     }                                                                              \
-    inline skr::RCCounterType skr_rc_release() const                               \
+    inline skr::RCCounterType skr_rc_release() const __SUFFIX                      \
     {                                                                              \
         return skr::rc_release(zz_skr_rc);                                         \
     }                                                                              \
-    inline skr::RCCounterType skr_rc_weak_ref_count() const                        \
+    inline skr::RCCounterType skr_rc_weak_ref_count() const __SUFFIX               \
     {                                                                              \
         return skr::rc_weak_ref_count(zz_skr_weak_counter);                        \
     }                                                                              \
-    inline skr::RCWeakRefCounter* skr_rc_weak_ref_counter() const                  \
+    inline skr::RCWeakRefCounter* skr_rc_weak_ref_counter() const __SUFFIX         \
     {                                                                              \
         return skr::rc_get_or_new_weak_ref_counter(zz_skr_weak_counter);           \
     }                                                                              \
-    inline void skr_rc_weak_ref_counter_notify_dead() const                        \
+    inline void skr_rc_weak_ref_counter_notify_dead() const __SUFFIX               \
     {                                                                              \
         skr::rc_notify_weak_ref_counter_dead(zz_skr_weak_counter);                 \
     }
+#define SKR_RC_DELETER_IMPL_DEFAULT(__SUFFIX) \
+    inline void skr_rc_delete() __SUFFIX      \
+    {                                         \
+        SkrDelete(this);                      \
+    }
+
+// TODO. remove it
+namespace skr
+{
+struct SKR_CORE_API IRCAble {
+    virtual ~IRCAble() SKR_NOEXCEPT = default;
+    SKR_RC_INTEFACE();
+    SKR_RC_DELETER_INTERFACE();
+};
+} // namespace skr

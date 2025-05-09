@@ -1,3 +1,4 @@
+#include "SkrCore/sp/sp.hpp"
 #include "SkrGui/backend/canvas/canvas.hpp"
 #include "SkrGui/framework/painting_context.hpp"
 #include "SkrGui/_private/paragraph.hpp"
@@ -8,8 +9,8 @@
 #include <fstream>
 namespace skr::gui
 {
-static SPtr<godot::FontFile> _font = nullptr;
-void                         _init_font()
+static SP<godot::FontFile> _font = nullptr;
+void                       _init_font()
 {
     if (!_font)
     {
@@ -25,7 +26,7 @@ void                         _init_font()
             file.read((char*)data.ptrw(), size);
             file.close();
 
-            _font = SPtr<godot::FontFile>::Create();
+            _font = SP<godot::FontFile>::New();
             _font->set_data(data);
         }
     }
@@ -59,7 +60,7 @@ void _EmbeddedParagraph::build()
 
         for (const auto& text : _texts)
         {
-            auto font = static_pointer_cast<godot::Font>(_font);
+            auto font = _font.cast_static<godot::Font>();
             auto ft   = godot::Ref<godot::Font>(font);
             this->add_string(godot::String::utf8(text.c_str_raw()), ft, 42, "", {});
         }
@@ -173,15 +174,15 @@ void _EmbeddedParagraph::_draw(godot::TextServer::TextDrawProxy* proxy, const sk
             float offset = 0.f;
             switch (alignment)
             {
-                case godot::HORIZONTAL_ALIGNMENT_FILL:
-                case godot::HORIZONTAL_ALIGNMENT_LEFT:
-                    break;
-                case godot::HORIZONTAL_ALIGNMENT_CENTER:
-                    offset = std::floor((l_width - line_width) / 2.0);
-                    break;
-                case godot::HORIZONTAL_ALIGNMENT_RIGHT:
-                    offset = l_width - line_width;
-                    break;
+            case godot::HORIZONTAL_ALIGNMENT_FILL:
+            case godot::HORIZONTAL_ALIGNMENT_LEFT:
+                break;
+            case godot::HORIZONTAL_ALIGNMENT_CENTER:
+                offset = std::floor((l_width - line_width) / 2.0);
+                break;
+            case godot::HORIZONTAL_ALIGNMENT_RIGHT:
+                offset = l_width - line_width;
+                break;
             }
 
             if (TS->shaped_text_get_orientation(lines_rid[i]) == godot::TextServer::ORIENTATION_HORIZONTAL)
@@ -264,7 +265,7 @@ void _EmbeddedParagraph::_draw(godot::TextServer::TextDrawProxy* proxy, const sk
 //                        StyleText& ctxt = TODO_StyleText;
 //                        child->buildParagraphRec(p, ctxt);
 //                    },
-//                    [&](skr::SPtr<BindText>& Bind) {
+//                    [&](skr::SP<BindText>& Bind) {
 //                        godot::Color color(txt.color.x, txt.color.y, txt.color.z, txt.color.w);
 //                        /*
 //                        godot::Color decorationColor(txt.textDecorationColor.X, txt.textDecorationColor.Y, txt.textDecorationColor.Z, txt.textDecorationColor.W);

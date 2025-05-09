@@ -31,7 +31,6 @@
 #ifdef __cplusplus
     #include "SkrOS/shared_library.hpp"
     #include <SkrContainersDef/string.hpp>
-    #include <SkrContainersDef/sptr.hpp>
     #include <SkrContainersDef/vector.hpp>
 
 namespace skr

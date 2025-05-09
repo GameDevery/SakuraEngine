@@ -313,7 +313,7 @@ void skr_live2d_render_model_create_from_raw(skr_io_ram_service_t* ram_service, 
                     render_model->buffer_finish(future);
                 }, render_model);
                 auto result = batch->add_request(request, &buffer_future);
-                io_buffer = skr::static_pointer_cast<skr::io::IVRAMIOBuffer>(result);
+                io_buffer = result.cast_static<skr::io::IVRAMIOBuffer>();
                 index_buffer_cursor += icount * sizeof(Csm::csmUint16);
             }
             else

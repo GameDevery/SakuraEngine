@@ -2,41 +2,41 @@
 
 #include <SkrCore/rc/rc.hpp>
 
-static uint64_t base_count           = 0;
-static uint64_t derived_count        = 0;
-static uint64_t custom_deleter_count = 0;
+static uint64_t rc_base_count           = 0;
+static uint64_t rc_derived_count        = 0;
+static uint64_t rc_custom_deleter_count = 0;
 
-struct TestCounterBase {
+struct TestRCBase {
     SKR_RC_IMPL()
 public:
-    TestCounterBase()
+    TestRCBase()
     {
-        ++base_count;
+        ++rc_base_count;
     }
-    virtual ~TestCounterBase()
+    virtual ~TestRCBase()
     {
-        --base_count;
+        --rc_base_count;
     }
 };
 
-struct TestCounterDerived : public TestCounterBase {
+struct TestRCDerived : public TestRCBase {
 public:
-    TestCounterDerived()
+    TestRCDerived()
     {
-        ++derived_count;
+        ++rc_derived_count;
     }
-    ~TestCounterDerived()
+    ~TestRCDerived()
     {
-        --derived_count;
+        --rc_derived_count;
     }
 };
 
-struct TestCustomDeleter {
+struct TestCustomDeleterRC {
     SKR_RC_IMPL()
 
     inline void skr_rc_delete()
     {
-        ++custom_deleter_count;
+        ++rc_custom_deleter_count;
         SkrDelete(this);
     }
 };
@@ -47,59 +47,71 @@ TEST_CASE("Test RC")
 
     SUBCASE("ctor & dtor")
     {
-        RC<TestCounterBase> empty_ctor{};
-        REQUIRE_EQ(base_count, 0);
-        REQUIRE_EQ(derived_count, 0);
+        RC<TestRCBase> empty_ctor{};
+        REQUIRE_EQ(rc_base_count, 0);
+        REQUIRE_EQ(rc_derived_count, 0);
         REQUIRE_EQ(empty_ctor.get(), nullptr);
         REQUIRE_EQ(empty_ctor.ref_count(), 0);
         REQUIRE_EQ(empty_ctor.ref_count_weak(), 0);
 
-        RC<TestCounterBase> null_ctor{ nullptr };
-        REQUIRE_EQ(base_count, 0);
-        REQUIRE_EQ(derived_count, 0);
+        RC<TestRCBase> null_ctor{ nullptr };
+        REQUIRE_EQ(rc_base_count, 0);
+        REQUIRE_EQ(rc_derived_count, 0);
         REQUIRE_EQ(null_ctor.get(), nullptr);
         REQUIRE_EQ(null_ctor.ref_count(), 0);
         REQUIRE_EQ(null_ctor.ref_count_weak(), 0);
 
         {
-            RC<TestCounterBase> pointer_ctor{ SkrNew<TestCounterBase>() };
-            REQUIRE_EQ(base_count, 1);
-            REQUIRE_EQ(derived_count, 0);
+            RC<TestRCBase> pointer_ctor{ SkrNew<TestRCBase>() };
+            REQUIRE_EQ(rc_base_count, 1);
+            REQUIRE_EQ(rc_derived_count, 0);
             REQUIRE_NE(pointer_ctor.get(), nullptr);
             REQUIRE_EQ(pointer_ctor.ref_count(), 1);
             REQUIRE_EQ(pointer_ctor.ref_count_weak(), 0);
         }
 
-        REQUIRE_EQ(base_count, 0);
-        REQUIRE_EQ(derived_count, 0);
+        {
+            RCUnique<TestRCBase> unique{ SkrNew<TestRCBase>() };
+            RC<TestRCBase>       rc{ std::move(unique) };
+            REQUIRE_EQ(rc_base_count, 1);
+            REQUIRE_EQ(rc_derived_count, 0);
+            REQUIRE_NE(rc.get(), nullptr);
+            REQUIRE_EQ(rc.ref_count(), 1);
+            REQUIRE_EQ(rc.ref_count_weak(), 0);
+
+            REQUIRE_EQ(unique.get(), nullptr);
+        }
+
+        REQUIRE_EQ(rc_base_count, 0);
+        REQUIRE_EQ(rc_derived_count, 0);
     }
 
     SUBCASE("copy & move")
     {
-        RC<TestCounterBase>    base{ SkrNew<TestCounterBase>() };
-        RC<TestCounterDerived> derived{ SkrNew<TestCounterDerived>() };
+        RC<TestRCBase>    base{ SkrNew<TestRCBase>() };
+        RC<TestRCDerived> derived{ SkrNew<TestRCDerived>() };
 
-        RC<TestCounterBase> copy_base{ base };
-        REQUIRE_EQ(base_count, 2);
-        REQUIRE_EQ(derived_count, 1);
+        RC<TestRCBase> copy_base{ base };
+        REQUIRE_EQ(rc_base_count, 2);
+        REQUIRE_EQ(rc_derived_count, 1);
         REQUIRE_EQ(base.get(), copy_base.get());
         REQUIRE_EQ(base.ref_count(), 2);
         REQUIRE_EQ(copy_base.ref_count(), 2);
         REQUIRE_EQ(base.ref_count_weak(), 0);
         REQUIRE_EQ(copy_base.ref_count_weak(), 0);
 
-        RC<TestCounterBase> copy_derived{ derived };
-        REQUIRE_EQ(base_count, 2);
-        REQUIRE_EQ(derived_count, 1);
+        RC<TestRCBase> copy_derived{ derived };
+        REQUIRE_EQ(rc_base_count, 2);
+        REQUIRE_EQ(rc_derived_count, 1);
         REQUIRE_EQ(derived.get(), copy_derived.get());
         REQUIRE_EQ(derived.ref_count(), 2);
         REQUIRE_EQ(copy_derived.ref_count(), 2);
         REQUIRE_EQ(derived.ref_count_weak(), 0);
         REQUIRE_EQ(copy_derived.ref_count_weak(), 0);
 
-        RC<TestCounterBase> move_base{ std::move(base) };
-        REQUIRE_EQ(base_count, 2);
-        REQUIRE_EQ(derived_count, 1);
+        RC<TestRCBase> move_base{ std::move(base) };
+        REQUIRE_EQ(rc_base_count, 2);
+        REQUIRE_EQ(rc_derived_count, 1);
         REQUIRE_EQ(base.get(), nullptr);
         REQUIRE_EQ(move_base.get(), copy_base.get());
         REQUIRE_EQ(base.ref_count(), 0);
@@ -108,9 +120,9 @@ TEST_CASE("Test RC")
         REQUIRE_EQ(base.ref_count_weak(), 0);
         REQUIRE_EQ(copy_base.ref_count_weak(), 0);
 
-        RC<TestCounterBase> move_derived{ std::move(derived) };
-        REQUIRE_EQ(base_count, 2);
-        REQUIRE_EQ(derived_count, 1);
+        RC<TestRCBase> move_derived{ std::move(derived) };
+        REQUIRE_EQ(rc_base_count, 2);
+        REQUIRE_EQ(rc_derived_count, 1);
         REQUIRE_EQ(derived.get(), nullptr);
         REQUIRE_EQ(move_derived.get(), copy_derived.get());
         REQUIRE_EQ(derived.ref_count(), 0);
@@ -124,25 +136,25 @@ TEST_CASE("Test RC")
         copy_derived = nullptr;
         move_derived = nullptr;
 
-        REQUIRE_EQ(base_count, 0);
-        REQUIRE_EQ(derived_count, 0);
+        REQUIRE_EQ(rc_base_count, 0);
+        REQUIRE_EQ(rc_derived_count, 0);
     }
 
     SUBCASE("assign & move assign")
     {
-        RC<TestCounterBase>    base{ SkrNew<TestCounterBase>() };
-        RC<TestCounterDerived> derived{ SkrNew<TestCounterDerived>() };
+        RC<TestRCBase>    base{ SkrNew<TestRCBase>() };
+        RC<TestRCDerived> derived{ SkrNew<TestRCDerived>() };
 
-        REQUIRE_EQ(base_count, 2);
-        REQUIRE_EQ(derived_count, 1);
+        REQUIRE_EQ(rc_base_count, 2);
+        REQUIRE_EQ(rc_derived_count, 1);
         REQUIRE_EQ(base.ref_count(), 1);
         REQUIRE_EQ(derived.ref_count(), 1);
         {
             // assign
-            RC<TestCounterBase> assign{};
+            RC<TestRCBase> assign{};
             assign = base;
-            REQUIRE_EQ(base_count, 2);
-            REQUIRE_EQ(derived_count, 1);
+            REQUIRE_EQ(rc_base_count, 2);
+            REQUIRE_EQ(rc_derived_count, 1);
             REQUIRE_EQ(base.ref_count(), 2);
             REQUIRE_EQ(derived.ref_count(), 1);
             REQUIRE_EQ(assign.ref_count(), 2);
@@ -150,8 +162,8 @@ TEST_CASE("Test RC")
 
             // assign derived
             assign = derived;
-            REQUIRE_EQ(base_count, 2);
-            REQUIRE_EQ(derived_count, 1);
+            REQUIRE_EQ(rc_base_count, 2);
+            REQUIRE_EQ(rc_derived_count, 1);
             REQUIRE_EQ(base.ref_count(), 1);
             REQUIRE_EQ(derived.ref_count(), 2);
             REQUIRE_EQ(assign.ref_count(), 2);
@@ -160,11 +172,11 @@ TEST_CASE("Test RC")
 
         {
             // move assign
-            RC<TestCounterBase> move_assign{};
-            auto                cached_base = base.get();
-            move_assign                     = std::move(base);
-            REQUIRE_EQ(base_count, 2);
-            REQUIRE_EQ(derived_count, 1);
+            RC<TestRCBase> move_assign{};
+            auto           cached_base = base.get();
+            move_assign                = std::move(base);
+            REQUIRE_EQ(rc_base_count, 2);
+            REQUIRE_EQ(rc_derived_count, 1);
             REQUIRE_EQ(base.ref_count(), 0);
             REQUIRE_EQ(derived.ref_count(), 1);
             REQUIRE_EQ(move_assign.ref_count(), 1);
@@ -174,12 +186,26 @@ TEST_CASE("Test RC")
             // move assign derived
             auto cached_derived = derived.get();
             move_assign         = std::move(derived);
-            REQUIRE_EQ(base_count, 1);
-            REQUIRE_EQ(derived_count, 1);
+            REQUIRE_EQ(rc_base_count, 1);
+            REQUIRE_EQ(rc_derived_count, 1);
             REQUIRE_EQ(base.ref_count(), 0);
             REQUIRE_EQ(derived.ref_count(), 0);
             REQUIRE_EQ(move_assign.ref_count(), 1);
             REQUIRE_EQ(move_assign.get(), cached_derived);
+            REQUIRE_EQ(derived.get(), nullptr);
+        }
+
+        {
+            RCUnique<TestRCDerived> unique{ SkrNew<TestRCDerived>() };
+            RC<TestRCBase>          move_assign_unique{};
+            auto                    cached_unique = unique.get();
+            move_assign_unique                    = std::move(unique);
+            REQUIRE_EQ(rc_base_count, 1);
+            REQUIRE_EQ(rc_derived_count, 1);
+            REQUIRE_EQ(base.ref_count(), 0);
+            REQUIRE_EQ(derived.ref_count(), 0);
+            REQUIRE_EQ(move_assign_unique.ref_count(), 1);
+            REQUIRE_EQ(move_assign_unique.get(), cached_unique);
             REQUIRE_EQ(derived.get(), nullptr);
         }
     }
@@ -188,13 +214,13 @@ TEST_CASE("Test RC")
 
     SUBCASE("test compare")
     {
-        RC<TestCounterBase>    base1{ SkrNew<TestCounterBase>() };
-        RC<TestCounterBase>    base2{ SkrNew<TestCounterBase>() };
-        RC<TestCounterDerived> derived1{ SkrNew<TestCounterDerived>() };
-        RC<TestCounterDerived> derived2{ SkrNew<TestCounterDerived>() };
+        RC<TestRCBase>    base1{ SkrNew<TestRCBase>() };
+        RC<TestRCBase>    base2{ SkrNew<TestRCBase>() };
+        RC<TestRCDerived> derived1{ SkrNew<TestRCDerived>() };
+        RC<TestRCDerived> derived2{ SkrNew<TestRCDerived>() };
 
-        RC<TestCounterBase> copy_base1    = base1;
-        RC<TestCounterBase> copy_derived1 = derived1;
+        RC<TestRCBase> copy_base1    = base1;
+        RC<TestRCBase> copy_derived1 = derived1;
 
         // eq
         REQUIRE_EQ(base1 == base1, true);
@@ -244,8 +270,8 @@ TEST_CASE("Test RC")
 
     SUBCASE("test is empty")
     {
-        RC<TestCounterBase> empty{};
-        RC<TestCounterBase> something{ SkrNew<TestCounterBase>() };
+        RC<TestRCBase> empty{};
+        RC<TestRCBase> something{ SkrNew<TestRCBase>() };
 
         REQUIRE_EQ(empty.is_empty(), true);
         REQUIRE_EQ(something.is_empty(), false);
@@ -255,31 +281,31 @@ TEST_CASE("Test RC")
 
     SUBCASE("test ops")
     {
-        RC<TestCounterBase> rc = SkrNew<TestCounterBase>();
-        REQUIRE_EQ(base_count, 1);
-        REQUIRE_EQ(derived_count, 0);
+        RC<TestRCBase> rc = SkrNew<TestRCBase>();
+        REQUIRE_EQ(rc_base_count, 1);
+        REQUIRE_EQ(rc_derived_count, 0);
         REQUIRE_NE(rc.get(), nullptr);
 
         rc.reset();
-        REQUIRE_EQ(base_count, 0);
-        REQUIRE_EQ(derived_count, 0);
+        REQUIRE_EQ(rc_base_count, 0);
+        REQUIRE_EQ(rc_derived_count, 0);
         REQUIRE_EQ(rc.get(), nullptr);
 
-        rc.reset(SkrNew<TestCounterBase>());
-        REQUIRE_EQ(base_count, 1);
-        REQUIRE_EQ(derived_count, 0);
+        rc.reset(SkrNew<TestRCBase>());
+        REQUIRE_EQ(rc_base_count, 1);
+        REQUIRE_EQ(rc_derived_count, 0);
         REQUIRE_NE(rc.get(), nullptr);
 
-        RC<TestCounterBase> other;
+        RC<TestRCBase> other;
         rc.swap(other);
-        REQUIRE_EQ(base_count, 1);
-        REQUIRE_EQ(derived_count, 0);
+        REQUIRE_EQ(rc_base_count, 1);
+        REQUIRE_EQ(rc_derived_count, 0);
         REQUIRE_EQ(rc.get(), nullptr);
         REQUIRE_NE(other.get(), nullptr);
 
-        other.reset(SkrNew<TestCounterBase>());
-        REQUIRE_EQ(base_count, 1);
-        REQUIRE_EQ(derived_count, 0);
+        other.reset(SkrNew<TestRCBase>());
+        REQUIRE_EQ(rc_base_count, 1);
+        REQUIRE_EQ(rc_derived_count, 0);
         REQUIRE_NE(other.get(), nullptr);
     }
 
@@ -288,10 +314,10 @@ TEST_CASE("Test RC")
 
     SUBCASE("test empty")
     {
-        RC<TestCounterBase> empty{};
-        RC<TestCounterBase> empty_copy{ empty };
-        RC<TestCounterBase> empty_move{ std::move(empty) };
-        RC<TestCounterBase> empty_assign, empty_move_assign;
+        RC<TestRCBase> empty{};
+        RC<TestRCBase> empty_copy{ empty };
+        RC<TestRCBase> empty_move{ std::move(empty) };
+        RC<TestRCBase> empty_assign, empty_move_assign;
         empty_assign      = empty;
         empty_move_assign = std::move(empty);
 
@@ -312,51 +338,51 @@ TEST_CASE("Test RCUnique")
 
     SUBCASE("ctor & dtor")
     {
-        RCUnique<TestCounterBase> empty_ctor{};
-        REQUIRE_EQ(base_count, 0);
-        REQUIRE_EQ(derived_count, 0);
+        RCUnique<TestRCBase> empty_ctor{};
+        REQUIRE_EQ(rc_base_count, 0);
+        REQUIRE_EQ(rc_derived_count, 0);
         REQUIRE_EQ(empty_ctor.get(), nullptr);
         REQUIRE_EQ(empty_ctor.ref_count(), 0);
         REQUIRE_EQ(empty_ctor.ref_count_weak(), 0);
 
-        RCUnique<TestCounterBase> null_ctor{ nullptr };
-        REQUIRE_EQ(base_count, 0);
-        REQUIRE_EQ(derived_count, 0);
+        RCUnique<TestRCBase> null_ctor{ nullptr };
+        REQUIRE_EQ(rc_base_count, 0);
+        REQUIRE_EQ(rc_derived_count, 0);
         REQUIRE_EQ(null_ctor.get(), nullptr);
         REQUIRE_EQ(null_ctor.ref_count(), 0);
         REQUIRE_EQ(null_ctor.ref_count_weak(), 0);
 
         {
-            RCUnique<TestCounterBase> pointer_ctor{ SkrNew<TestCounterBase>() };
-            REQUIRE_EQ(base_count, 1);
-            REQUIRE_EQ(derived_count, 0);
+            RCUnique<TestRCBase> pointer_ctor{ SkrNew<TestRCBase>() };
+            REQUIRE_EQ(rc_base_count, 1);
+            REQUIRE_EQ(rc_derived_count, 0);
             REQUIRE_NE(pointer_ctor.get(), nullptr);
             REQUIRE_EQ(pointer_ctor.ref_count(), 1);
             REQUIRE_EQ(pointer_ctor.ref_count_weak(), 0);
         }
 
-        REQUIRE_EQ(base_count, 0);
-        REQUIRE_EQ(derived_count, 0);
+        REQUIRE_EQ(rc_base_count, 0);
+        REQUIRE_EQ(rc_derived_count, 0);
     }
 
     SUBCASE("copy & move")
     {
-        RCUnique<TestCounterBase>    base{ SkrNew<TestCounterBase>() };
-        RCUnique<TestCounterDerived> derived{ SkrNew<TestCounterDerived>() };
+        RCUnique<TestRCBase>    base{ SkrNew<TestRCBase>() };
+        RCUnique<TestRCDerived> derived{ SkrNew<TestRCDerived>() };
 
-        auto                      cached_base = base.get();
-        RCUnique<TestCounterBase> move_base{ std::move(base) };
-        REQUIRE_EQ(base_count, 2);
-        REQUIRE_EQ(derived_count, 1);
+        auto                 cached_base = base.get();
+        RCUnique<TestRCBase> move_base{ std::move(base) };
+        REQUIRE_EQ(rc_base_count, 2);
+        REQUIRE_EQ(rc_derived_count, 1);
         REQUIRE_EQ(base.get(), nullptr);
         REQUIRE_EQ(base.ref_count(), 0);
         REQUIRE_EQ(move_base.ref_count(), 1);
         REQUIRE_EQ(move_base.get(), cached_base);
 
-        auto                      cached_derived = derived.get();
-        RCUnique<TestCounterBase> move_derived{ std::move(derived) };
-        REQUIRE_EQ(base_count, 2);
-        REQUIRE_EQ(derived_count, 1);
+        auto                 cached_derived = derived.get();
+        RCUnique<TestRCBase> move_derived{ std::move(derived) };
+        REQUIRE_EQ(rc_base_count, 2);
+        REQUIRE_EQ(rc_derived_count, 1);
         REQUIRE_EQ(derived.get(), nullptr);
         REQUIRE_EQ(move_derived.ref_count(), 1);
         REQUIRE_EQ(move_derived.get(), cached_derived);
@@ -364,22 +390,22 @@ TEST_CASE("Test RCUnique")
         move_base    = nullptr;
         move_derived = nullptr;
 
-        REQUIRE_EQ(base_count, 0);
-        REQUIRE_EQ(derived_count, 0);
+        REQUIRE_EQ(rc_base_count, 0);
+        REQUIRE_EQ(rc_derived_count, 0);
     }
 
     SUBCASE("assign & move assign")
     {
-        RCUnique<TestCounterBase>    base{ SkrNew<TestCounterBase>() };
-        RCUnique<TestCounterDerived> derived{ SkrNew<TestCounterDerived>() };
+        RCUnique<TestRCBase>    base{ SkrNew<TestRCBase>() };
+        RCUnique<TestRCDerived> derived{ SkrNew<TestRCDerived>() };
 
-        RCUnique<TestCounterBase> move_assign{};
+        RCUnique<TestRCBase> move_assign{};
 
         // move assign base
         auto cached_base = base.get();
         move_assign      = std::move(base);
-        REQUIRE_EQ(base_count, 2);
-        REQUIRE_EQ(derived_count, 1);
+        REQUIRE_EQ(rc_base_count, 2);
+        REQUIRE_EQ(rc_derived_count, 1);
         REQUIRE_EQ(base.get(), nullptr);
         REQUIRE_EQ(base.ref_count(), 0);
         REQUIRE_EQ(move_assign.ref_count(), 1);
@@ -388,8 +414,8 @@ TEST_CASE("Test RCUnique")
         // move assign derived
         auto cached_derived = derived.get();
         move_assign         = std::move(derived);
-        REQUIRE_EQ(base_count, 1);
-        REQUIRE_EQ(derived_count, 1);
+        REQUIRE_EQ(rc_base_count, 1);
+        REQUIRE_EQ(rc_derived_count, 1);
         REQUIRE_EQ(derived.get(), nullptr);
         REQUIRE_EQ(derived.ref_count(), 0);
         REQUIRE_EQ(move_assign.ref_count(), 1);
@@ -397,18 +423,18 @@ TEST_CASE("Test RCUnique")
         REQUIRE_EQ(derived.get(), nullptr);
 
         move_assign = nullptr;
-        REQUIRE_EQ(base_count, 0);
-        REQUIRE_EQ(derived_count, 0);
+        REQUIRE_EQ(rc_base_count, 0);
+        REQUIRE_EQ(rc_derived_count, 0);
         REQUIRE_EQ(move_assign.get(), nullptr);
         REQUIRE_EQ(move_assign.ref_count(), 0);
     }
 
     SUBCASE("test compare")
     {
-        RCUnique<TestCounterBase>    base1{ SkrNew<TestCounterBase>() };
-        RCUnique<TestCounterBase>    base2{ SkrNew<TestCounterBase>() };
-        RCUnique<TestCounterDerived> derived1{ SkrNew<TestCounterDerived>() };
-        RCUnique<TestCounterDerived> derived2{ SkrNew<TestCounterDerived>() };
+        RCUnique<TestRCBase>    base1{ SkrNew<TestRCBase>() };
+        RCUnique<TestRCBase>    base2{ SkrNew<TestRCBase>() };
+        RCUnique<TestRCDerived> derived1{ SkrNew<TestRCDerived>() };
+        RCUnique<TestRCDerived> derived2{ SkrNew<TestRCDerived>() };
 
         // eq
         REQUIRE_EQ(base1 == base1, true);
@@ -444,8 +470,8 @@ TEST_CASE("Test RCUnique")
 
     SUBCASE("test is empty")
     {
-        RCUnique<TestCounterBase> empty{};
-        RCUnique<TestCounterBase> something{ SkrNew<TestCounterBase>() };
+        RCUnique<TestRCBase> empty{};
+        RCUnique<TestRCBase> something{ SkrNew<TestRCBase>() };
 
         REQUIRE_EQ(empty.is_empty(), true);
         REQUIRE_EQ(something.is_empty(), false);
@@ -455,37 +481,37 @@ TEST_CASE("Test RCUnique")
 
     SUBCASE("test ops")
     {
-        RCUnique<TestCounterBase> rc = SkrNew<TestCounterBase>();
-        REQUIRE_EQ(base_count, 1);
-        REQUIRE_EQ(derived_count, 0);
+        RCUnique<TestRCBase> rc = SkrNew<TestRCBase>();
+        REQUIRE_EQ(rc_base_count, 1);
+        REQUIRE_EQ(rc_derived_count, 0);
         REQUIRE_NE(rc.get(), nullptr);
 
         rc.reset();
-        REQUIRE_EQ(base_count, 0);
-        REQUIRE_EQ(derived_count, 0);
+        REQUIRE_EQ(rc_base_count, 0);
+        REQUIRE_EQ(rc_derived_count, 0);
         REQUIRE_EQ(rc.get(), nullptr);
 
-        rc.reset(SkrNew<TestCounterBase>());
-        REQUIRE_EQ(base_count, 1);
-        REQUIRE_EQ(derived_count, 0);
+        rc.reset(SkrNew<TestRCBase>());
+        REQUIRE_EQ(rc_base_count, 1);
+        REQUIRE_EQ(rc_derived_count, 0);
         REQUIRE_NE(rc.get(), nullptr);
 
-        RCUnique<TestCounterBase> other;
+        RCUnique<TestRCBase> other;
         rc.swap(other);
-        REQUIRE_EQ(base_count, 1);
-        REQUIRE_EQ(derived_count, 0);
+        REQUIRE_EQ(rc_base_count, 1);
+        REQUIRE_EQ(rc_derived_count, 0);
         REQUIRE_EQ(rc.get(), nullptr);
         REQUIRE_NE(other.get(), nullptr);
 
-        other.reset(SkrNew<TestCounterBase>());
-        REQUIRE_EQ(base_count, 1);
-        REQUIRE_EQ(derived_count, 0);
+        other.reset(SkrNew<TestRCBase>());
+        REQUIRE_EQ(rc_base_count, 1);
+        REQUIRE_EQ(rc_derived_count, 0);
         REQUIRE_NE(other.get(), nullptr);
 
         auto* cached_other   = other.get();
         auto* released_other = other.release();
-        REQUIRE_EQ(base_count, 1);
-        REQUIRE_EQ(derived_count, 0);
+        REQUIRE_EQ(rc_base_count, 1);
+        REQUIRE_EQ(rc_derived_count, 0);
         REQUIRE_EQ(other.get(), nullptr);
         REQUIRE_EQ(released_other, cached_other);
         SkrDelete(released_other);
@@ -496,9 +522,9 @@ TEST_CASE("Test RCUnique")
 
     SUBCASE("test empty")
     {
-        RCUnique<TestCounterBase> empty{};
-        RCUnique<TestCounterBase> empty_move{ std::move(empty) };
-        RCUnique<TestCounterBase> empty_move_assign;
+        RCUnique<TestRCBase> empty{};
+        RCUnique<TestRCBase> empty_move{ std::move(empty) };
+        RCUnique<TestRCBase> empty_move_assign;
         empty_move_assign = std::move(empty);
 
         empty.get();
@@ -519,32 +545,32 @@ TEST_CASE("Test RCWeak")
 
     SUBCASE("test ctor")
     {
-        RCWeak<TestCounterBase> empty_ctor{};
-        REQUIRE_EQ(base_count, 0);
-        REQUIRE_EQ(derived_count, 0);
+        RCWeak<TestRCBase> empty_ctor{};
+        REQUIRE_EQ(rc_base_count, 0);
+        REQUIRE_EQ(rc_derived_count, 0);
         REQUIRE(empty_ctor.lock().is_empty());
         REQUIRE_EQ(empty_ctor.ref_count_weak(), 0);
 
-        RCWeak<TestCounterBase> null_ctor{ nullptr };
-        REQUIRE_EQ(base_count, 0);
-        REQUIRE_EQ(derived_count, 0);
+        RCWeak<TestRCBase> null_ctor{ nullptr };
+        REQUIRE_EQ(rc_base_count, 0);
+        REQUIRE_EQ(rc_derived_count, 0);
         REQUIRE(null_ctor.lock().is_empty());
         REQUIRE_EQ(null_ctor.ref_count_weak(), 0);
 
         // from raw ptr
         {
-            auto                    rc_unique = RCUnique<TestCounterBase>::New();
-            RCWeak<TestCounterBase> rc_weak{ rc_unique.get() };
-            REQUIRE_EQ(base_count, 1);
-            REQUIRE_EQ(derived_count, 0);
+            auto               rc_unique = RCUnique<TestRCBase>::New();
+            RCWeak<TestRCBase> rc_weak{ rc_unique.get() };
+            REQUIRE_EQ(rc_base_count, 1);
+            REQUIRE_EQ(rc_derived_count, 0);
             REQUIRE_FALSE(rc_weak.lock().is_empty());
             REQUIRE_EQ(rc_weak.ref_count_weak(), 2);
             REQUIRE_EQ(rc_unique.ref_count_weak(), 2);
             REQUIRE_EQ(rc_unique.ref_count(), 1);
             if (auto locked = rc_weak.lock())
             {
-                REQUIRE_EQ(base_count, 1);
-                REQUIRE_EQ(derived_count, 0);
+                REQUIRE_EQ(rc_base_count, 1);
+                REQUIRE_EQ(rc_derived_count, 0);
                 REQUIRE_EQ(locked.get(), rc_unique.get());
             }
             else
@@ -555,18 +581,18 @@ TEST_CASE("Test RCWeak")
 
         // from raw ptr derived
         {
-            auto                    rc_unique = RCUnique<TestCounterDerived>::New();
-            RCWeak<TestCounterBase> rc_weak{ rc_unique.get() };
-            REQUIRE_EQ(base_count, 1);
-            REQUIRE_EQ(derived_count, 1);
+            auto               rc_unique = RCUnique<TestRCDerived>::New();
+            RCWeak<TestRCBase> rc_weak{ rc_unique.get() };
+            REQUIRE_EQ(rc_base_count, 1);
+            REQUIRE_EQ(rc_derived_count, 1);
             REQUIRE_FALSE(rc_weak.lock().is_empty());
             REQUIRE_EQ(rc_weak.ref_count_weak(), 2);
             REQUIRE_EQ(rc_unique.ref_count_weak(), 2);
             REQUIRE_EQ(rc_unique.ref_count(), 1);
             if (auto locked = rc_weak.lock())
             {
-                REQUIRE_EQ(base_count, 1);
-                REQUIRE_EQ(derived_count, 1);
+                REQUIRE_EQ(rc_base_count, 1);
+                REQUIRE_EQ(rc_derived_count, 1);
                 REQUIRE_EQ(locked.get(), rc_unique.get());
             }
             else
@@ -577,18 +603,18 @@ TEST_CASE("Test RCWeak")
 
         // from rc
         {
-            auto rc      = RC<TestCounterBase>::New();
-            auto rc_weak = RCWeak<TestCounterBase>(rc);
-            REQUIRE_EQ(base_count, 1);
-            REQUIRE_EQ(derived_count, 0);
+            auto rc      = RC<TestRCBase>::New();
+            auto rc_weak = RCWeak<TestRCBase>(rc);
+            REQUIRE_EQ(rc_base_count, 1);
+            REQUIRE_EQ(rc_derived_count, 0);
             REQUIRE_FALSE(rc_weak.lock().is_empty());
             REQUIRE_EQ(rc_weak.ref_count_weak(), 2);
             REQUIRE_EQ(rc.ref_count_weak(), 2);
             REQUIRE_EQ(rc.ref_count(), 1);
             if (auto locked = rc_weak.lock())
             {
-                REQUIRE_EQ(base_count, 1);
-                REQUIRE_EQ(derived_count, 0);
+                REQUIRE_EQ(rc_base_count, 1);
+                REQUIRE_EQ(rc_derived_count, 0);
                 REQUIRE_EQ(locked.get(), rc.get());
             }
             else
@@ -599,18 +625,18 @@ TEST_CASE("Test RCWeak")
 
         // from rc derived
         {
-            auto rc      = RC<TestCounterDerived>::New();
-            auto rc_weak = RCWeak<TestCounterBase>(rc);
-            REQUIRE_EQ(base_count, 1);
-            REQUIRE_EQ(derived_count, 1);
+            auto rc      = RC<TestRCDerived>::New();
+            auto rc_weak = RCWeak<TestRCBase>(rc);
+            REQUIRE_EQ(rc_base_count, 1);
+            REQUIRE_EQ(rc_derived_count, 1);
             REQUIRE_FALSE(rc_weak.lock().is_empty());
             REQUIRE_EQ(rc_weak.ref_count_weak(), 2);
             REQUIRE_EQ(rc.ref_count_weak(), 2);
             REQUIRE_EQ(rc.ref_count(), 1);
             if (auto locked = rc_weak.lock())
             {
-                REQUIRE_EQ(base_count, 1);
-                REQUIRE_EQ(derived_count, 1);
+                REQUIRE_EQ(rc_base_count, 1);
+                REQUIRE_EQ(rc_derived_count, 1);
                 REQUIRE_EQ(locked.get(), rc.get());
             }
             else
@@ -621,18 +647,18 @@ TEST_CASE("Test RCWeak")
 
         // from unique
         {
-            auto rc_unique = RCUnique<TestCounterBase>::New();
-            auto rc_weak   = RCWeak<TestCounterBase>(rc_unique);
-            REQUIRE_EQ(base_count, 1);
-            REQUIRE_EQ(derived_count, 0);
+            auto rc_unique = RCUnique<TestRCBase>::New();
+            auto rc_weak   = RCWeak<TestRCBase>(rc_unique);
+            REQUIRE_EQ(rc_base_count, 1);
+            REQUIRE_EQ(rc_derived_count, 0);
             REQUIRE_FALSE(rc_weak.lock().is_empty());
             REQUIRE_EQ(rc_weak.ref_count_weak(), 2);
             REQUIRE_EQ(rc_unique.ref_count_weak(), 2);
             REQUIRE_EQ(rc_unique.ref_count(), 1);
             if (auto locked = rc_weak.lock())
             {
-                REQUIRE_EQ(base_count, 1);
-                REQUIRE_EQ(derived_count, 0);
+                REQUIRE_EQ(rc_base_count, 1);
+                REQUIRE_EQ(rc_derived_count, 0);
                 REQUIRE_EQ(locked.get(), rc_unique.get());
             }
             else
@@ -643,18 +669,18 @@ TEST_CASE("Test RCWeak")
 
         // from unique derived
         {
-            auto rc_unique = RCUnique<TestCounterDerived>::New();
-            auto rc_weak   = RCWeak<TestCounterBase>(rc_unique);
-            REQUIRE_EQ(base_count, 1);
-            REQUIRE_EQ(derived_count, 1);
+            auto rc_unique = RCUnique<TestRCDerived>::New();
+            auto rc_weak   = RCWeak<TestRCBase>(rc_unique);
+            REQUIRE_EQ(rc_base_count, 1);
+            REQUIRE_EQ(rc_derived_count, 1);
             REQUIRE_FALSE(rc_weak.lock().is_empty());
             REQUIRE_EQ(rc_weak.ref_count_weak(), 2);
             REQUIRE_EQ(rc_unique.ref_count_weak(), 2);
             REQUIRE_EQ(rc_unique.ref_count(), 1);
             if (auto locked = rc_weak.lock())
             {
-                REQUIRE_EQ(base_count, 1);
-                REQUIRE_EQ(derived_count, 1);
+                REQUIRE_EQ(rc_base_count, 1);
+                REQUIRE_EQ(rc_derived_count, 1);
                 REQUIRE_EQ(locked.get(), rc_unique.get());
             }
             else
@@ -663,42 +689,42 @@ TEST_CASE("Test RCWeak")
             }
         }
 
-        REQUIRE_EQ(base_count, 0);
-        REQUIRE_EQ(derived_count, 0);
+        REQUIRE_EQ(rc_base_count, 0);
+        REQUIRE_EQ(rc_derived_count, 0);
     }
 
     SUBCASE("copy & move")
     {
-        auto base    = RCUnique<TestCounterBase>::New();
-        auto derived = RCUnique<TestCounterDerived>::New();
+        auto base    = RCUnique<TestRCBase>::New();
+        auto derived = RCUnique<TestRCDerived>::New();
 
-        RCWeak<TestCounterBase>    base_weak{ base };
-        RCWeak<TestCounterDerived> derived_weak{ derived };
+        RCWeak<TestRCBase>    base_weak{ base };
+        RCWeak<TestRCDerived> derived_weak{ derived };
 
-        RCWeak<TestCounterBase> copy_base{ base_weak };
-        REQUIRE_EQ(base_count, 2);
-        REQUIRE_EQ(derived_count, 1);
+        RCWeak<TestRCBase> copy_base{ base_weak };
+        REQUIRE_EQ(rc_base_count, 2);
+        REQUIRE_EQ(rc_derived_count, 1);
         REQUIRE_EQ(base_weak.ref_count_weak(), 3);
         REQUIRE_EQ(copy_base.ref_count_weak(), 3);
         REQUIRE_EQ(copy_base.lock().get(), base_weak.lock().get());
 
-        RCWeak<TestCounterBase> copy_derived{ derived_weak };
-        REQUIRE_EQ(base_count, 2);
-        REQUIRE_EQ(derived_count, 1);
+        RCWeak<TestRCBase> copy_derived{ derived_weak };
+        REQUIRE_EQ(rc_base_count, 2);
+        REQUIRE_EQ(rc_derived_count, 1);
         REQUIRE_EQ(derived_weak.ref_count_weak(), 3);
         REQUIRE_EQ(copy_derived.ref_count_weak(), 3);
         REQUIRE_EQ(copy_derived.lock().get(), derived_weak.lock().get());
 
-        RCWeak<TestCounterBase> move_base{ std::move(base_weak) };
-        REQUIRE_EQ(base_count, 2);
-        REQUIRE_EQ(derived_count, 1);
+        RCWeak<TestRCBase> move_base{ std::move(base_weak) };
+        REQUIRE_EQ(rc_base_count, 2);
+        REQUIRE_EQ(rc_derived_count, 1);
         REQUIRE_EQ(base.ref_count_weak(), 3);
         REQUIRE_EQ(move_base.ref_count_weak(), 3);
         REQUIRE_EQ(move_base.lock().get(), base.get());
 
-        RCWeak<TestCounterBase> move_derived{ std::move(derived_weak) };
-        REQUIRE_EQ(base_count, 2);
-        REQUIRE_EQ(derived_count, 1);
+        RCWeak<TestRCBase> move_derived{ std::move(derived_weak) };
+        REQUIRE_EQ(rc_base_count, 2);
+        REQUIRE_EQ(rc_derived_count, 1);
         REQUIRE_EQ(base.ref_count_weak(), 3);
         REQUIRE_EQ(move_derived.ref_count_weak(), 3);
         REQUIRE_EQ(move_derived.lock().get(), derived.get());
@@ -712,34 +738,34 @@ TEST_CASE("Test RCWeak")
         move_base    = nullptr;
         move_derived = nullptr;
 
-        REQUIRE_EQ(base_count, 0);
-        REQUIRE_EQ(derived_count, 0);
+        REQUIRE_EQ(rc_base_count, 0);
+        REQUIRE_EQ(rc_derived_count, 0);
     }
 
     SUBCASE("assign & move assign")
     {
-        auto base    = RCUnique<TestCounterBase>::New();
-        auto derived = RC<TestCounterDerived>::New();
+        auto base    = RCUnique<TestRCBase>::New();
+        auto derived = RC<TestRCDerived>::New();
 
-        RCWeak<TestCounterBase>    base_weak{ base };
-        RCWeak<TestCounterDerived> derived_weak{ derived };
+        RCWeak<TestRCBase>    base_weak{ base };
+        RCWeak<TestRCDerived> derived_weak{ derived };
 
         // assign weak
         {
-            RCWeak<TestCounterBase> assign{};
+            RCWeak<TestRCBase> assign{};
 
             // assign
             assign = base_weak;
-            REQUIRE_EQ(base_count, 2);
-            REQUIRE_EQ(derived_count, 1);
+            REQUIRE_EQ(rc_base_count, 2);
+            REQUIRE_EQ(rc_derived_count, 1);
             REQUIRE_EQ(base_weak.ref_count_weak(), 3);
             REQUIRE_EQ(assign.ref_count_weak(), 3);
             REQUIRE_EQ(assign.lock().get(), base_weak.lock().get());
 
             // assign derived
             assign = derived_weak;
-            REQUIRE_EQ(base_count, 2);
-            REQUIRE_EQ(derived_count, 1);
+            REQUIRE_EQ(rc_base_count, 2);
+            REQUIRE_EQ(rc_derived_count, 1);
             REQUIRE_EQ(derived_weak.ref_count_weak(), 3);
             REQUIRE_EQ(assign.ref_count_weak(), 3);
             REQUIRE_EQ(assign.lock().get(), derived_weak.lock().get());
@@ -749,13 +775,13 @@ TEST_CASE("Test RCWeak")
 
         // move assign weak
         {
-            RCWeak<TestCounterBase> move_assign{};
+            RCWeak<TestRCBase> move_assign{};
 
             // move assign base
             auto cached_base = base_weak.lock().get();
             move_assign      = std::move(base_weak);
-            REQUIRE_EQ(base_count, 2);
-            REQUIRE_EQ(derived_count, 1);
+            REQUIRE_EQ(rc_base_count, 2);
+            REQUIRE_EQ(rc_derived_count, 1);
             REQUIRE(base_weak.is_empty());
             REQUIRE_EQ(move_assign.ref_count_weak(), 2);
             REQUIRE_EQ(move_assign.lock().get(), cached_base);
@@ -763,8 +789,8 @@ TEST_CASE("Test RCWeak")
             // move assign derived
             auto cached_derived = derived_weak.lock().get();
             move_assign         = std::move(derived_weak);
-            REQUIRE_EQ(base_count, 2);
-            REQUIRE_EQ(derived_count, 1);
+            REQUIRE_EQ(rc_base_count, 2);
+            REQUIRE_EQ(rc_derived_count, 1);
             REQUIRE(derived_weak.is_empty());
             REQUIRE_EQ(move_assign.ref_count_weak(), 2);
             REQUIRE_EQ(move_assign.lock().get(), cached_derived);
@@ -774,18 +800,18 @@ TEST_CASE("Test RCWeak")
 
         // assign rc & unique rc
         {
-            RCWeak<TestCounterBase> assign{};
+            RCWeak<TestRCBase> assign{};
             assign = base;
-            REQUIRE_EQ(base_count, 2);
-            REQUIRE_EQ(derived_count, 1);
+            REQUIRE_EQ(rc_base_count, 2);
+            REQUIRE_EQ(rc_derived_count, 1);
             REQUIRE_EQ(base.ref_count_weak(), 2);
             REQUIRE_EQ(assign.ref_count_weak(), 2);
             REQUIRE_EQ(assign.lock().get(), base.get());
 
             // assign derived
             assign = derived;
-            REQUIRE_EQ(base_count, 2);
-            REQUIRE_EQ(derived_count, 1);
+            REQUIRE_EQ(rc_base_count, 2);
+            REQUIRE_EQ(rc_derived_count, 1);
             REQUIRE_EQ(derived.ref_count_weak(), 2);
             REQUIRE_EQ(assign.ref_count_weak(), 2);
             REQUIRE_EQ(assign.lock().get(), derived.get());
@@ -794,18 +820,18 @@ TEST_CASE("Test RCWeak")
 
     SUBCASE("test compare")
     {
-        RC<TestCounterBase>    rc_base1{ SkrNew<TestCounterBase>() };
-        RC<TestCounterBase>    rc_base2{ SkrNew<TestCounterBase>() };
-        RC<TestCounterDerived> rc_derived1{ SkrNew<TestCounterDerived>() };
-        RC<TestCounterDerived> rc_derived2{ SkrNew<TestCounterDerived>() };
+        RC<TestRCBase>    rc_base1{ SkrNew<TestRCBase>() };
+        RC<TestRCBase>    rc_base2{ SkrNew<TestRCBase>() };
+        RC<TestRCDerived> rc_derived1{ SkrNew<TestRCDerived>() };
+        RC<TestRCDerived> rc_derived2{ SkrNew<TestRCDerived>() };
 
-        RCWeak<TestCounterBase>    base1{ rc_base1 };
-        RCWeak<TestCounterBase>    base2{ rc_base2 };
-        RCWeak<TestCounterDerived> derived1{ rc_derived1 };
-        RCWeak<TestCounterDerived> derived2{ rc_derived2 };
+        RCWeak<TestRCBase>    base1{ rc_base1 };
+        RCWeak<TestRCBase>    base2{ rc_base2 };
+        RCWeak<TestRCDerived> derived1{ rc_derived1 };
+        RCWeak<TestRCDerived> derived2{ rc_derived2 };
 
-        RCWeak<TestCounterBase> copy_base1    = base1;
-        RCWeak<TestCounterBase> copy_derived1 = derived1;
+        RCWeak<TestRCBase> copy_base1    = base1;
+        RCWeak<TestRCBase> copy_derived1 = derived1;
 
         // eq
         REQUIRE_EQ(base1 == base1, true);
@@ -855,17 +881,17 @@ TEST_CASE("Test RCWeak")
 
     SUBCASE("lock")
     {
-        RC<TestCounterBase> rc{ SkrNew<TestCounterBase>() };
+        RC<TestRCBase> rc{ SkrNew<TestRCBase>() };
 
         // basic lock
-        RCWeak<TestCounterBase> weak{ rc };
+        RCWeak<TestRCBase> weak{ rc };
         REQUIRE(weak.is_alive());
         REQUIRE_FALSE(weak.is_expired());
         REQUIRE_FALSE(weak.lock().is_empty());
         {
             auto locked = weak.lock();
-            REQUIRE_EQ(base_count, 1);
-            REQUIRE_EQ(derived_count, 0);
+            REQUIRE_EQ(rc_base_count, 1);
+            REQUIRE_EQ(rc_derived_count, 0);
             REQUIRE_EQ(locked.get(), rc.get());
         }
 
@@ -876,45 +902,46 @@ TEST_CASE("Test RCWeak")
         REQUIRE(weak.lock().is_empty());
         {
             auto locked = weak.lock();
-            REQUIRE_EQ(base_count, 0);
-            REQUIRE_EQ(derived_count, 0);
+            REQUIRE_EQ(rc_base_count, 0);
+            REQUIRE_EQ(rc_derived_count, 0);
             REQUIRE_EQ(locked.get(), nullptr);
         }
 
         // try lock a destroyed weak to rc
         {
-            RC<TestCounterBase> locked_rc = weak.lock().rc();
-            REQUIRE_EQ(base_count, 0);
-            REQUIRE_EQ(derived_count, 0);
+            RC<TestRCBase> locked_rc = weak.lock().rc();
+            REQUIRE_EQ(rc_base_count, 0);
+            REQUIRE_EQ(rc_derived_count, 0);
             REQUIRE_EQ(locked_rc.get(), nullptr);
         }
 
         // lock and cast to rc
-        rc   = SkrNew<TestCounterBase>();
+        rc   = SkrNew<TestRCBase>();
         weak = rc;
         REQUIRE(weak.is_alive());
         REQUIRE_FALSE(weak.is_expired());
         REQUIRE_FALSE(weak.lock().is_empty());
         {
-            RC<TestCounterBase> locked_rc = weak.lock();
-            REQUIRE_EQ(base_count, 1);
-            REQUIRE_EQ(derived_count, 0);
+            RC<TestRCBase> locked_rc = weak.lock();
+            REQUIRE_EQ(rc_base_count, 1);
+            REQUIRE_EQ(rc_derived_count, 0);
             REQUIRE_EQ(locked_rc.get(), rc.get());
             REQUIRE_EQ(locked_rc.ref_count(), 2);
         }
     }
 
     // [need't test] is empty
+
     SUBCASE("test ops")
     {
-        RC<TestCounterBase> rc = SkrNew<TestCounterBase>();
-        REQUIRE_EQ(base_count, 1);
-        REQUIRE_EQ(derived_count, 0);
+        RC<TestRCBase> rc = SkrNew<TestRCBase>();
+        REQUIRE_EQ(rc_base_count, 1);
+        REQUIRE_EQ(rc_derived_count, 0);
         REQUIRE_NE(rc.get(), nullptr);
 
-        RCWeak<TestCounterBase> weak{ rc };
-        REQUIRE_EQ(base_count, 1);
-        REQUIRE_EQ(derived_count, 0);
+        RCWeak<TestRCBase> weak{ rc };
+        REQUIRE_EQ(rc_base_count, 1);
+        REQUIRE_EQ(rc_derived_count, 0);
         REQUIRE_FALSE(weak.is_empty());
         REQUIRE_EQ(weak.ref_count_weak(), 2);
         REQUIRE_EQ(weak.get_unsafe(), rc.get());
@@ -923,35 +950,35 @@ TEST_CASE("Test RCWeak")
         REQUIRE(weak.is_empty());
         REQUIRE_EQ(weak.ref_count_weak(), 0);
         REQUIRE_EQ(weak.get_unsafe(), nullptr);
-        REQUIRE_EQ(rc->skr_rc_weak_ref_count(), 1);
+        REQUIRE_EQ(rc.ref_count_weak(), 1);
 
         weak.reset(rc);
         REQUIRE_FALSE(weak.is_empty());
         REQUIRE_EQ(weak.ref_count_weak(), 2);
         REQUIRE_EQ(weak.get_unsafe(), rc.get());
-        REQUIRE_EQ(rc->skr_rc_weak_ref_count(), 2);
+        REQUIRE_EQ(rc.ref_count_weak(), 2);
 
-        RCUnique<TestCounterBase> new_rc = SkrNew<TestCounterBase>();
+        RCUnique<TestRCBase> new_rc = SkrNew<TestRCBase>();
         weak.reset(new_rc);
         REQUIRE_FALSE(weak.is_empty());
         REQUIRE_EQ(weak.ref_count_weak(), 2);
         REQUIRE_EQ(weak.get_unsafe(), new_rc.get());
-        REQUIRE_EQ(rc->skr_rc_weak_ref_count(), 1);
-        REQUIRE_EQ(new_rc->skr_rc_weak_ref_count(), 2);
+        REQUIRE_EQ(rc.ref_count_weak(), 1);
+        REQUIRE_EQ(new_rc.ref_count_weak(), 2);
 
         weak.reset(rc.get());
         REQUIRE_FALSE(weak.is_empty());
         REQUIRE_EQ(weak.ref_count_weak(), 2);
         REQUIRE_EQ(weak.get_unsafe(), rc.get());
-        REQUIRE_EQ(rc->skr_rc_weak_ref_count(), 2);
-        REQUIRE_EQ(new_rc->skr_rc_weak_ref_count(), 1);
+        REQUIRE_EQ(rc.ref_count_weak(), 2);
+        REQUIRE_EQ(new_rc.ref_count_weak(), 1);
 
-        RCWeak<TestCounterBase> new_weak = new_rc;
+        RCWeak<TestRCBase> new_weak = new_rc;
         new_weak.swap(weak);
         REQUIRE_EQ(new_weak.ref_count_weak(), 2);
         REQUIRE_EQ(weak.ref_count_weak(), 2);
         REQUIRE_EQ(new_rc.ref_count_weak(), 2);
-        REQUIRE_EQ(rc->skr_rc_weak_ref_count(), 2);
+        REQUIRE_EQ(rc.ref_count_weak(), 2);
         REQUIRE_EQ(new_rc.get(), weak.get_unsafe());
         REQUIRE_EQ(rc.get(), new_weak.get_unsafe());
     }
@@ -959,10 +986,10 @@ TEST_CASE("Test RCWeak")
     // [need't test] skr hash
     SUBCASE("test empty")
     {
-        RCWeak<TestCounterBase> empty{};
-        RCWeak<TestCounterBase> empty_copy{ empty };
-        RCWeak<TestCounterBase> empty_move{ std::move(empty) };
-        RCWeak<TestCounterBase> empty_assign, empty_move_assign;
+        RCWeak<TestRCBase> empty{};
+        RCWeak<TestRCBase> empty_copy{ empty };
+        RCWeak<TestRCBase> empty_move{ std::move(empty) };
+        RCWeak<TestRCBase> empty_assign, empty_move_assign;
         empty_assign      = empty;
         empty_move_assign = std::move(empty);
 
@@ -974,6 +1001,7 @@ TEST_CASE("Test RCWeak")
         empty.reset();
         empty.reset(nullptr);
         empty.swap(empty_copy);
+        empty.lock();
     }
 }
 
@@ -981,21 +1009,21 @@ TEST_CASE("Test Custom Deleter")
 {
     using namespace skr;
 
-    RC<TestCustomDeleter> rc{ SkrNew<TestCustomDeleter>() };
+    RC<TestCustomDeleterRC> rc{ SkrNew<TestCustomDeleterRC>() };
     rc.reset();
-    REQUIRE_EQ(custom_deleter_count, 1);
+    REQUIRE_EQ(rc_custom_deleter_count, 1);
 
-    RCUnique<TestCustomDeleter> rc_unique{ SkrNew<TestCustomDeleter>() };
+    RCUnique<TestCustomDeleterRC> rc_unique{ SkrNew<TestCustomDeleterRC>() };
     rc_unique.reset();
-    REQUIRE_EQ(custom_deleter_count, 2);
+    REQUIRE_EQ(rc_custom_deleter_count, 2);
 
     {
-        RC<TestCustomDeleter> rc{ SkrNew<TestCustomDeleter>() };
+        RC<TestCustomDeleterRC> rc{ SkrNew<TestCustomDeleterRC>() };
     }
-    REQUIRE_EQ(custom_deleter_count, 3);
+    REQUIRE_EQ(rc_custom_deleter_count, 3);
 
     {
-        RCUnique<TestCustomDeleter> rc_unique{ SkrNew<TestCustomDeleter>() };
+        RCUnique<TestCustomDeleterRC> rc_unique{ SkrNew<TestCustomDeleterRC>() };
     }
-    REQUIRE_EQ(custom_deleter_count, 4);
+    REQUIRE_EQ(rc_custom_deleter_count, 4);
 }

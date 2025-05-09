@@ -1,3 +1,4 @@
+#include "SkrCore/sp/sp.hpp"
 #include "common/utils.h"
 #include "GameRuntime/gamert.h"
 #include "SkrBase/misc/make_zeroed.hpp"
@@ -96,7 +97,7 @@ class SGameModule : public skr::IDynamicModule
     CGPUFenceId             present_fence      = nullptr;
     SWindowHandle           main_window        = nullptr;
 
-    skr::SPtr<skr::JobQueue> job_queue = nullptr;
+    skr::SP<skr::JobQueue> job_queue = nullptr;
 
     skr::task::scheduler_t scheduler;
 };
@@ -316,7 +317,7 @@ void SGameModule::on_load(int argc, char8_t** argv)
         job_queueDesc.thread_count = 2;
         job_queueDesc.priority     = SKR_THREAD_NORMAL;
         job_queueDesc.name         = qn.u8_str();
-        job_queue                  = skr::SPtr<skr::JobQueue>::Create(job_queueDesc);
+        job_queue                  = skr::SP<skr::JobQueue>::New(job_queueDesc);
     }
     SKR_ASSERT(job_queue);
 

@@ -16,7 +16,7 @@ struct RAMIOBatch : public IOBatchBase
     IOResultId add_request(IORequestId request, skr_io_future_t* future) SKR_NOEXCEPT;
     void add_request(IORequestId request, RAMIOBufferId dest, skr_io_future_t* future) SKR_NOEXCEPT;
 };
-using RAMBatchPtr = skr::SObjectPtr<RAMIOBatch>;
+using RAMBatchPtr = skr::RC<RAMIOBatch>;
 
 } // namespace io
 } // namespace skr

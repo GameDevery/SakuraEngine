@@ -39,7 +39,7 @@ void RAMIOBuffer::free_buffer() SKR_NOEXCEPT
 
 void RAMIOBatch::add_request(IORequestId request, RAMIOBufferId buffer, skr_io_future_t* future) SKR_NOEXCEPT
 {
-    auto rq = skr::static_pointer_cast<RAMRequestMixin>(request);
+    auto rq = request.cast_static<RAMRequestMixin>();
     if (auto pStatus = io_component<IOStatusComponent>(request.get()))
     {
         pStatus->owner_batch = this;

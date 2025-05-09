@@ -13,7 +13,7 @@ namespace VRAMUtils
 {
 inline static IOReaderId<IIOBatchProcessor> CreateCommonReader(VRAMService* service, const VRAMServiceDescriptor* desc) SKR_NOEXCEPT
 {
-    auto reader = skr::SObjectPtr<CommonVRAMReader>::Create(service, desc->ram_service);
+    auto reader = skr::RC<CommonVRAMReader>::New(service, desc->ram_service);
     return std::move(reader);
 }
 
@@ -24,7 +24,7 @@ inline static IOReaderId<IIOBatchProcessor> CreateDSReader(VRAMService* service,
         return nullptr;
     if (skr_query_dstorage_availability() == SKR_DSTORAGE_AVAILABILITY_HARDWARE)
     {
-        auto reader = skr::SObjectPtr<DStorageVRAMReader>::Create(service, desc->gpu_device);
+        auto reader = skr::RC<DStorageVRAMReader>::New(service, desc->gpu_device);
         return std::move(reader);
     }
 #endif
@@ -39,14 +39,14 @@ VRAMService::VRAMService(const VRAMServiceDescriptor* desc) SKR_NOEXCEPT
       runner(this, desc->callback_job_queue),
       ram_service(desc->ram_service)
 {
-    slices_pool = VRAMRequestPool<ISlicesVRAMRequest>::Create(kIOPoolObjectsMemoryName);
-    tiles_pool = VRAMRequestPool<ITilesVRAMRequest>::Create(kIOPoolObjectsMemoryName);
-    blocks_pool = VRAMRequestPool<IBlocksVRAMRequest>::Create(kIOPoolObjectsMemoryName);
+    slices_pool = VRAMRequestPool<ISlicesVRAMRequest>::New(kIOPoolObjectsMemoryName);
+    tiles_pool = VRAMRequestPool<ITilesVRAMRequest>::New(kIOPoolObjectsMemoryName);
+    blocks_pool = VRAMRequestPool<IBlocksVRAMRequest>::New(kIOPoolObjectsMemoryName);
 
-    vram_batch_pool = SmartPoolPtr<VRAMIOBatch, IIOBatch>::Create(kIOPoolObjectsMemoryName);
+    vram_batch_pool = SmartPoolPtr<VRAMIOBatch, IIOBatch>::New(kIOPoolObjectsMemoryName);
     
-    vram_buffer_pool = SmartPoolPtr<VRAMBuffer, IVRAMIOBuffer>::Create(kIOPoolObjectsMemoryName);
-    vram_texture_pool = SmartPoolPtr<VRAMTexture, IVRAMIOTexture>::Create(kIOPoolObjectsMemoryName);
+    vram_buffer_pool = SmartPoolPtr<VRAMBuffer, IVRAMIOBuffer>::New(kIOPoolObjectsMemoryName);
+    vram_texture_pool = SmartPoolPtr<VRAMTexture, IVRAMIOTexture>::New(kIOPoolObjectsMemoryName);
 
     if (desc->use_dstorage)
     {
@@ -80,19 +80,19 @@ void IVRAMService::destroy(IVRAMService* service) SKR_NOEXCEPT
 IOBatchId VRAMService::open_batch(uint64_t n) SKR_NOEXCEPT
 {
     uint64_t seq = (uint64_t)skr_atomic_fetch_add_relaxed(&batch_sequence, 1);
-    return skr::static_pointer_cast<IIOBatch>(vram_batch_pool->allocate(this, seq, n));
+    return vram_batch_pool->allocate(this, seq, n).cast_static<IIOBatch>();
 }
 
 SlicesIORequestId VRAMService::open_texture_request() SKR_NOEXCEPT
 {
     uint64_t seq = (uint64_t)skr_atomic_fetch_add_relaxed(&request_sequence, 1);
-    return skr::static_pointer_cast<ISlicesVRAMRequest>(slices_pool->allocate(this, seq));
+    return slices_pool->allocate(this, seq).cast_static<ISlicesVRAMRequest>();
 }
 
 BlocksVRAMRequestId VRAMService::open_buffer_request() SKR_NOEXCEPT
 {
     uint64_t seq = (uint64_t)skr_atomic_fetch_add_relaxed(&request_sequence, 1);
-    return skr::static_pointer_cast<IBlocksVRAMRequest>(blocks_pool->allocate(this, seq));
+    return blocks_pool->allocate(this, seq).cast_static<IBlocksVRAMRequest>();
 }
 
 void VRAMService::request(IOBatchId batch) SKR_NOEXCEPT
@@ -108,7 +108,7 @@ VRAMIOBufferId VRAMService::request(BlocksVRAMRequestId request, IOFuture* futur
 {
     auto batch = open_batch(1);
     auto result = batch->add_request(request, future);
-    auto buffer = skr::static_pointer_cast<IVRAMIOBuffer>(result);
+    auto buffer = result.cast_static<IVRAMIOBuffer>();
     batch->set_priority(priority);
     this->request(batch);
     return buffer;
@@ -118,7 +118,7 @@ VRAMIOTextureId VRAMService::request(SlicesIORequestId request, IOFuture* future
 {
     auto batch = open_batch(1);
     auto result = batch->add_request(request, future);
-    auto texture = skr::static_pointer_cast<IVRAMIOTexture>(result);
+    auto texture = result.cast_static<IVRAMIOTexture>();
     batch->set_priority(priority);
     this->request(batch);
     return texture;
@@ -195,12 +195,12 @@ void VRAMService::Runner::enqueueBatch(const IOBatchId& batch) SKR_NOEXCEPT
 
 void VRAMService::Runner::set_resolvers() SKR_NOEXCEPT
 {
-    auto chain = skr::static_pointer_cast<IORequestResolverChain>(IIORequestResolverChain::Create());
+    auto chain = IIORequestResolverChain::Create().cast_static<IORequestResolverChain>();
     chain->runner = this;
 
-    auto alloc_resource = SObjectPtr<AllocateVRAMResourceResolver>::Create();
+    auto alloc_resource = RC<AllocateVRAMResourceResolver>::New();
     chain->then(alloc_resource); // VRAMService: we open dstorage files in this resolver
-    batch_buffer = SObjectPtr<IOBatchBuffer>::Create(); // hold batches
+    batch_buffer = RC<IOBatchBuffer>::New(); // hold batches
     batch_processors = { batch_buffer, chain, common_reader };
     if (const bool ds_available = ds_reader.get())
     {

@@ -75,9 +75,9 @@ IIODecompressor<IIORequestProcessor>::~IIODecompressor() SKR_NOEXCEPT {}
 template<>
 IIODecompressor<IIOBatchProcessor>::~IIODecompressor() SKR_NOEXCEPT {}
 
-SObjectPtr<IIORequestResolverChain> IIORequestResolverChain::Create(IORequestResolverId resolver) SKR_NOEXCEPT
+RC<IIORequestResolverChain> IIORequestResolverChain::Create(IORequestResolverId resolver) SKR_NOEXCEPT
 {
-    auto chain = SObjectPtr<IORequestResolverChain>::Create(resolver);
+    auto chain = RC<IORequestResolverChain>::New(resolver);
     return chain;
 }
 

@@ -1,7 +1,7 @@
+#include "SkrCore/sp/sp.hpp"
 #include "SkrGraphics/cgpux.hpp"
 #include "SkrBase/atomic/atomic.h"
 #include "SkrCore/async/thread_job.hpp"
-#include "SkrContainers/sptr.hpp"
 #include "SkrContainers/hashmap.hpp"
 
 #include "SkrRenderer/pso_key.hpp"
@@ -43,7 +43,7 @@ struct PSOMapImpl : public skr_pso_map_t
     PSOMapImpl(const skr_pso_map_root_t& root)
         : root(root)
     {
-        future_launcher = SPtr<PSOFutureLauncher>::Create(root.job_queue);
+        future_launcher = SP<PSOFutureLauncher>::New(root.job_queue);
     }
 
     ~PSOMapImpl()
@@ -58,12 +58,12 @@ struct PSOMapImpl : public skr_pso_map_t
     {
         using is_transparent = void;
 
-        size_t operator()(const SPtr<PSOMapKey>& a, const SPtr<PSOMapKey>& b) const
+        size_t operator()(const SP<PSOMapKey>& a, const SP<PSOMapKey>& b) const
         {
             return cgpux::equal_to<CGPURenderPipelineDescriptor>()(a->descriptor, b->descriptor);
         }
 
-        size_t operator()(const SPtr<PSOMapKey>& a, const CGPURenderPipelineDescriptor& b) const
+        size_t operator()(const SP<PSOMapKey>& a, const CGPURenderPipelineDescriptor& b) const
         {
             return cgpux::equal_to<CGPURenderPipelineDescriptor>()(a->descriptor, b);
         }
@@ -73,7 +73,7 @@ struct PSOMapImpl : public skr_pso_map_t
     {
         using is_transparent = void;
 
-        size_t operator()(const SPtr<PSOMapKey>& key) const
+        size_t operator()(const SP<PSOMapKey>& key) const
         {
             return cgpux::hash<CGPURenderPipelineDescriptor>()(key->descriptor);
         }
@@ -97,7 +97,7 @@ struct PSOMapImpl : public skr_pso_map_t
         }
         else
         {
-            auto key = SPtr<PSOMapKey>::CreateZeroed(*desc, frame_index);
+            auto key = SP<PSOMapKey>::NewZeroed(*desc, frame_index);
             const auto oldSize = sets.size();
             auto inserted = sets.insert(key);
             const auto newSize = sets.size();
@@ -127,7 +127,7 @@ struct PSOMapImpl : public skr_pso_map_t
     ESkrPSOMapPSOStatus install_pso_impl(skr_pso_map_key_id key) SKR_NOEXCEPT
     {
         // 1. use async service install
-        auto progress = SPtr<PSOProgress>::Create(this, key);
+        auto progress = SP<PSOProgress>::New(this, key);
         mPSOProgresses.emplace(key, progress);
         skr_atomic_store_relaxed(&progress->key->pso_status, SKR_PSO_MAP_PSO_STATUS_REQUESTED);
         if (auto launcher = future_launcher.get()) // create shaders on aux thread
@@ -262,10 +262,10 @@ struct PSOMapImpl : public skr_pso_map_t
         clearFinishedRequests();
     }
 
-    SPtr<PSOFutureLauncher> future_launcher;
+    SP<PSOFutureLauncher> future_launcher;
     skr_pso_map_root_t root;
-    skr::ParallelFlatHashSet<SPtr<PSOMapKey>, key_ptr_hasher, key_ptr_equal> sets;
-    skr::ParallelFlatHashMap<skr_pso_map_key_id, SPtr<PSOProgress>> mPSOProgresses;
+    skr::ParallelFlatHashSet<SP<PSOMapKey>, key_ptr_hasher, key_ptr_equal> sets;
+    skr::ParallelFlatHashMap<skr_pso_map_key_id, SP<PSOProgress>> mPSOProgresses;
     SAtomicU64 keys_counter = 0;
     uint64_t frame_index;
 };

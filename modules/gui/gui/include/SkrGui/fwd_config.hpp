@@ -23,7 +23,6 @@
 #include "SkrContainers/optional.hpp"
 #include "SkrContainers/span.hpp"
 #include "SkrContainers/string.hpp"
-#include "SkrContainers/sptr.hpp"
 #include "SkrContainers/stl_function.hpp"
 
 // function ref
@@ -55,10 +54,6 @@ using FunctionRef = ::skr::FunctionRef<F>;
 
 template <typename F>
 using Function = ::skr::stl_function<F>;
-
-// smart ptr
-template <typename T>
-using SPtr = ::skr::SPtr<T>;
 
 // not null
 template <typename T>
