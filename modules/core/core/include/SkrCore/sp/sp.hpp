@@ -262,7 +262,7 @@ template <SPConvertible<T> U>
 inline UPtr<T>::UPtr(UPtr<U>&& rhs)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
-    if (rhs.get())
+    if (!rhs.is_empty())
     {
         reset(static_cast<T*>(rhs.release()));
     }
@@ -278,7 +278,7 @@ inline UPtr<T>& UPtr<T>::operator=(std::nullptr_t)
 template <typename T>
 inline UPtr<T>& UPtr<T>::operator=(UPtr&& rhs)
 {
-    if (rhs.get())
+    if (!rhs.is_empty())
     {
         reset(rhs._ptr);
         rhs._ptr = nullptr;
@@ -294,7 +294,7 @@ template <SPConvertible<T> U>
 inline UPtr<T>& UPtr<T>::operator=(UPtr<U>&& rhs)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
-    if (rhs.get())
+    if (!rhs.is_empty())
     {
         reset(static_cast<T*>(rhs.release()));
     }
@@ -1069,7 +1069,7 @@ template <SPConvertible<T> U>
 inline SPWeak<T>::SPWeak(const SP<U>& ptr)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
-    if (ptr.get())
+    if (!ptr.is_empty())
     {
         _ptr     = static_cast<T*>(ptr.get());
         _counter = ptr.get_counter();
@@ -1106,7 +1106,7 @@ template <SPConvertible<T> U>
 inline SPWeak<T>::SPWeak(const SPWeak<U>& rhs)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
-    if (rhs.get())
+    if (!rhs.is_empty())
     {
         _ptr     = static_cast<T*>(rhs.get_unsafe());
         _counter = rhs.get_counter();
@@ -1118,7 +1118,7 @@ template <SPConvertible<T> U>
 inline SPWeak<T>::SPWeak(SPWeak<U>&& rhs)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
-    if (rhs.get())
+    if (!rhs.is_empty())
     {
         _ptr     = static_cast<T*>(rhs.get_unsafe());
         _counter = rhs.get_counter();
@@ -1140,13 +1140,14 @@ inline SPWeak<T>& SPWeak<T>::operator=(const SPWeak& rhs)
     if (this != &rhs)
     {
         reset();
-        if (rhs.get())
+        if (!rhs.is_empty())
         {
             _ptr     = rhs._ptr;
             _counter = rhs._counter;
             _counter->add_ref_weak();
         }
     }
+    return *this;
 }
 template <typename T>
 inline SPWeak<T>& SPWeak<T>::operator=(SPWeak&& rhs)
@@ -1159,6 +1160,7 @@ inline SPWeak<T>& SPWeak<T>::operator=(SPWeak&& rhs)
         rhs._ptr     = nullptr;
         rhs._counter = nullptr;
     }
+    return *this;
 }
 template <typename T>
 template <SPConvertible<T> U>
@@ -1172,6 +1174,7 @@ inline SPWeak<T>& SPWeak<T>::operator=(const SPWeak<U>& rhs)
         _counter = rhs.get_counter();
         _counter->add_ref_weak();
     }
+    return *this;
 }
 template <typename T>
 template <SPConvertible<T> U>
@@ -1186,6 +1189,7 @@ inline SPWeak<T>& SPWeak<T>::operator=(SPWeak<U>&& rhs)
         _counter->add_ref_weak();
         rhs.reset();
     }
+    return *this;
 }
 template <typename T>
 template <SPConvertible<T> U>
@@ -1193,12 +1197,13 @@ inline SPWeak<T>& SPWeak<T>::operator=(const SP<U>& rhs)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
     reset();
-    if (rhs.get())
+    if (!rhs.is_empty())
     {
-        _ptr     = static_cast<T*>(rhs.get_unsafe());
+        _ptr     = static_cast<T*>(rhs.get());
         _counter = rhs.get_counter();
         _counter->add_ref_weak();
     }
+    return *this;
 }
 
 // compare
@@ -1324,7 +1329,7 @@ inline bool SPWeak<T>::is_empty() const
 template <typename T>
 inline bool SPWeak<T>::is_expired() const
 {
-    !is_alive();
+    return !is_alive();
 }
 template <typename T>
 inline bool SPWeak<T>::is_alive() const
@@ -1354,11 +1359,15 @@ template <SPConvertible<T> U>
 inline void SPWeak<T>::reset(const SP<U>& ptr)
 {
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
-    if (!ptr.is_empty())
+    if (ptr.get() != _ptr)
     {
-        _ptr     = static_cast<T*>(ptr.get());
-        _counter = ptr.get_counter();
-        _counter->add_ref_weak();
+        reset();
+        if (!ptr.is_empty())
+        {
+            _ptr     = static_cast<T*>(ptr.get());
+            _counter = ptr.get_counter();
+            _counter->add_ref_weak();
+        }
     }
 }
 template <typename T>

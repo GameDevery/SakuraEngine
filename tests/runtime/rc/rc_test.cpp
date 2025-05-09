@@ -931,6 +931,7 @@ TEST_CASE("Test RCWeak")
     }
 
     // [need't test] is empty
+
     SUBCASE("test ops")
     {
         RC<TestRCBase> rc = SkrNew<TestRCBase>();
@@ -949,35 +950,35 @@ TEST_CASE("Test RCWeak")
         REQUIRE(weak.is_empty());
         REQUIRE_EQ(weak.ref_count_weak(), 0);
         REQUIRE_EQ(weak.get_unsafe(), nullptr);
-        REQUIRE_EQ(rc->skr_rc_weak_ref_count(), 1);
+        REQUIRE_EQ(rc.ref_count_weak(), 1);
 
         weak.reset(rc);
         REQUIRE_FALSE(weak.is_empty());
         REQUIRE_EQ(weak.ref_count_weak(), 2);
         REQUIRE_EQ(weak.get_unsafe(), rc.get());
-        REQUIRE_EQ(rc->skr_rc_weak_ref_count(), 2);
+        REQUIRE_EQ(rc.ref_count_weak(), 2);
 
         RCUnique<TestRCBase> new_rc = SkrNew<TestRCBase>();
         weak.reset(new_rc);
         REQUIRE_FALSE(weak.is_empty());
         REQUIRE_EQ(weak.ref_count_weak(), 2);
         REQUIRE_EQ(weak.get_unsafe(), new_rc.get());
-        REQUIRE_EQ(rc->skr_rc_weak_ref_count(), 1);
-        REQUIRE_EQ(new_rc->skr_rc_weak_ref_count(), 2);
+        REQUIRE_EQ(rc.ref_count_weak(), 1);
+        REQUIRE_EQ(new_rc.ref_count_weak(), 2);
 
         weak.reset(rc.get());
         REQUIRE_FALSE(weak.is_empty());
         REQUIRE_EQ(weak.ref_count_weak(), 2);
         REQUIRE_EQ(weak.get_unsafe(), rc.get());
-        REQUIRE_EQ(rc->skr_rc_weak_ref_count(), 2);
-        REQUIRE_EQ(new_rc->skr_rc_weak_ref_count(), 1);
+        REQUIRE_EQ(rc.ref_count_weak(), 2);
+        REQUIRE_EQ(new_rc.ref_count_weak(), 1);
 
         RCWeak<TestRCBase> new_weak = new_rc;
         new_weak.swap(weak);
         REQUIRE_EQ(new_weak.ref_count_weak(), 2);
         REQUIRE_EQ(weak.ref_count_weak(), 2);
         REQUIRE_EQ(new_rc.ref_count_weak(), 2);
-        REQUIRE_EQ(rc->skr_rc_weak_ref_count(), 2);
+        REQUIRE_EQ(rc.ref_count_weak(), 2);
         REQUIRE_EQ(new_rc.get(), weak.get_unsafe());
         REQUIRE_EQ(rc.get(), new_weak.get_unsafe());
     }
