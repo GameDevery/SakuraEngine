@@ -140,7 +140,7 @@ function _gen_quat(opt: GenMiscOption) {
       // identity
       b.$line(`// identity`)
       b.$line(`bool is_identity() const;`)
-      b.$line(`bool is_nearly_identity(${comp_name} threshold_angle = ${comp_name}(0.00001)) const;`)
+      b.$line(`bool is_nearly_identity(${comp_name} threshold_angle = ${comp_name}(0.00284714461)) const;`)
       b.$line(``)
 
       // to matrix
@@ -266,6 +266,12 @@ function _gen_rotator(opt: GenMiscOption) {
       // mul assign operator
       b.$line(`// mul assign operator`)
       b.$line(`${rotator_name}& operator*=(const ${rotator_name}& rhs);`)
+      b.$line(``)
+
+      // add & sub assign operator
+      b.$line(`// add & sub assign operator`)
+      b.$line(`${rotator_name}& operator+=(const ${rotator_name}& rhs);`)
+      b.$line(`${rotator_name}& operator-=(const ${rotator_name}& rhs);`)
       b.$line(``)
 
       // to matrix

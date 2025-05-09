@@ -55,7 +55,7 @@ struct alignas(16) QuatF {
     
     // identity
     bool is_identity() const;
-    bool is_nearly_identity(float threshold_angle = float(0.00001)) const;
+    bool is_nearly_identity(float threshold_angle = float(0.00284714461)) const;
     
     // to matrix
     operator float3x3() const;
@@ -115,7 +115,7 @@ struct alignas(16) QuatD {
     
     // identity
     bool is_identity() const;
-    bool is_nearly_identity(double threshold_angle = double(0.00001)) const;
+    bool is_nearly_identity(double threshold_angle = double(0.00284714461)) const;
     
     // to matrix
     operator double3x3() const;

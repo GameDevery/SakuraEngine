@@ -15,9 +15,9 @@ inline void _convert_quat_to_rotator(const Quat& quat, Rotator& rotator)
     Real Z = quat.z;
     Real W = quat.w;
 
-    const Real SingularityTest = Z * X + W * Y;
-    const Real RollY           = 2.f * (W * Z - X * Y);
-    const Real RollX           = (1.f - 2.f * (Y * Y + Z * Z));
+    const float SingularityTest = Z * X - W * Y;
+    const float YawY            = 2.f * (W * Z + X * Y);
+    const float YawX            = (1.f - 2.f * (square(Y) + square(Z)));
 
     // reference
     // http://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
@@ -26,25 +26,31 @@ inline void _convert_quat_to_rotator(const Quat& quat, Rotator& rotator)
     // this value was found from experience, the above websites recommend different values
     // but that isn't the case for us, so I went through different testing, and finally found the case
     // where both of world lives happily.
-    const Real SINGULARITY_THRESHOLD = 0.4999995f;
+    const float SINGULARITY_THRESHOLD = 0.4999995f;
+    float       Pitch, Yaw, Roll;
+
     if (SingularityTest < -SINGULARITY_THRESHOLD)
     {
-        rotator.yaw   = -kPi / 2;
-        rotator.roll  = (rtm::scalar_atan2(RollY, RollX));
-        rotator.pitch = normalize_radians(rotator.roll + (2.f * rtm::scalar_atan2(X, W)));
+        Pitch = -kPi / 2;
+        Yaw   = (atan2(YawY, YawX));
+        Roll  = normalize_radians(-Yaw - (2.f * atan2(X, W)));
     }
     else if (SingularityTest > SINGULARITY_THRESHOLD)
     {
-        rotator.yaw   = kPi / 2;
-        rotator.roll  = (rtm::scalar_atan2(RollY, RollX));
-        rotator.pitch = normalize_radians(-rotator.roll + (2.f * rtm::scalar_atan2(X, W)));
+        Pitch = kPi / 2;
+        Yaw   = (atan2(YawY, YawX));
+        Roll  = normalize_radians(Yaw - (2.f * atan2(X, W)));
     }
     else
     {
-        rotator.yaw   = (rtm::scalar_asin(-2.f * SingularityTest));
-        rotator.roll  = (rtm::scalar_atan2(RollY, RollX));
-        rotator.pitch = (rtm::scalar_atan2(2.f * (W * X - Y * Z), (1.f - 2.f * (X * X + Y * Y))));
+        Pitch = (asin(2.f * SingularityTest));
+        Yaw   = (atan2(YawY, YawX));
+        Roll  = (atan2(-2.f * (W * X + Y * Z), (1.f - 2.f * (square(X) + square(Y)))));
     }
+
+    rotator.pitch = Roll;
+    rotator.yaw   = Pitch;
+    rotator.roll  = Yaw;
 }
 
 // convert with quat
@@ -86,11 +92,11 @@ inline bool3 operator!=(const RotatorD& lhs, const RotatorD& rhs) SKR_NOEXCEPT
 // negative operator
 inline RotatorF RotatorF::operator-() const
 {
-    return RotatorF(-QuatF(*this));
+    return { -pitch, -yaw, -roll };
 }
 inline RotatorD RotatorD::operator-() const
 {
-    return RotatorD(-QuatD(*this));
+    return { -pitch, -yaw, -roll };
 }
 
 // mul assign operator
@@ -104,6 +110,36 @@ inline RotatorD& RotatorD::operator*=(const RotatorD& rhs)
 {
     auto quat = QuatD(*this) * QuatD(rhs);
     _convert_quat_to_rotator<double, RotatorD, QuatD>(quat, *this);
+    return *this;
+}
+
+// add & sub assign operator
+inline RotatorF& RotatorF::operator+=(const RotatorF& rhs)
+{
+    pitch += rhs.pitch;
+    yaw += rhs.yaw;
+    roll += rhs.roll;
+    return *this;
+}
+inline RotatorF& RotatorF::operator-=(const RotatorF& rhs)
+{
+    pitch -= rhs.pitch;
+    yaw -= rhs.yaw;
+    roll -= rhs.roll;
+    return *this;
+}
+inline RotatorD& RotatorD::operator+=(const RotatorD& rhs)
+{
+    pitch += rhs.pitch;
+    yaw += rhs.yaw;
+    roll += rhs.roll;
+    return *this;
+}
+inline RotatorD& RotatorD::operator-=(const RotatorD& rhs)
+{
+    pitch -= rhs.pitch;
+    yaw -= rhs.yaw;
+    roll -= rhs.roll;
     return *this;
 }
 
@@ -180,21 +216,55 @@ inline RotatorD RotatorD::FromMatrix(const double4x4& mat)
 }
 
 // mul
-inline RotatorF operator*(const RotatorF& lhs, const RotatorF& rhs)
+inline RotatorF mul(const RotatorF& lhs, const RotatorF& rhs)
 {
     return RotatorF(QuatF(lhs) * QuatF(rhs));
 }
-inline RotatorD operator*(const RotatorD& lhs, const RotatorD& rhs)
+inline RotatorD mul(const RotatorD& lhs, const RotatorD& rhs)
 {
     return RotatorD(QuatD(lhs) * QuatD(rhs));
 }
-inline RotatorF mul(const RotatorF& lhs, const RotatorF& rhs)
+inline RotatorF operator*(const RotatorF& lhs, const RotatorF& rhs)
 {
-    return lhs * rhs;
+    return mul(lhs, rhs);
 }
-inline RotatorD mul(const RotatorD& lhs, const RotatorD& rhs)
+inline RotatorD operator*(const RotatorD& lhs, const RotatorD& rhs)
 {
-    return lhs * rhs;
+    return mul(lhs, rhs);
+}
+
+// add
+inline RotatorF operator+(const RotatorF& lhs, const RotatorF& rhs)
+{
+    return {
+        lhs.pitch + rhs.pitch,
+        lhs.yaw + rhs.yaw,
+        lhs.roll + rhs.roll,
+    };
+}
+inline RotatorF operator-(const RotatorF& lhs, const RotatorF& rhs)
+{
+    return {
+        lhs.pitch - rhs.pitch,
+        lhs.yaw - rhs.yaw,
+        lhs.roll - rhs.roll,
+    };
+}
+inline RotatorD operator+(const RotatorD& lhs, const RotatorD& rhs)
+{
+    return {
+        lhs.pitch + rhs.pitch,
+        lhs.yaw + rhs.yaw,
+        lhs.roll + rhs.roll,
+    };
+}
+inline RotatorD operator-(const RotatorD& lhs, const RotatorD& rhs)
+{
+    return {
+        lhs.pitch - rhs.pitch,
+        lhs.yaw - rhs.yaw,
+        lhs.roll - rhs.roll,
+    };
 }
 
 // vector mul
@@ -215,5 +285,14 @@ inline double3 mul(const double3& lhs, const RotatorD& rhs)
     return mul(lhs, QuatD(rhs));
 }
 
+// nearly equal
+inline bool3 nearly_equal(const RotatorF& lhs, const RotatorF& rhs, float epsilon = double(1.e-4))
+{
+    return all(nearly_equal(lhs.as_vector(), rhs.as_vector(), epsilon));
+}
+inline bool3 nearly_equal(const RotatorD& lhs, const RotatorD& rhs, double epsilon = double(1.e-4))
+{
+    return all(nearly_equal(lhs.as_vector(), rhs.as_vector(), epsilon));
+}
 } // namespace math
 } // namespace skr
