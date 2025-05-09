@@ -148,6 +148,11 @@ TEST_CASE("Test relative Transform")
             // REQUIRE(nearly_equal(transform_relative.rotation, transform_child.rotation));
             REQUIRE(all(nearly_equal(transform_relative.position, transform_child.position)));
             REQUIRE(all(nearly_equal(transform_relative.scale, transform_child.scale)));
+
+            // float3 v{ 1.f, 1.f, 1.f };
+            // float3 v_child    = mul_point(v, transform_child);
+            // float3 v_relative = mul_point(v, transform_relative);
+            // REQUIRE(all(nearly_equal(v_relative, v_child, 1.e-2f)));
         }
 
         // for TransformD
@@ -179,6 +184,11 @@ TEST_CASE("Test relative Transform")
             // REQUIRE(nearly_equal(transform_relative.rotation, transform_child.rotation));
             REQUIRE(all(nearly_equal(transform_relative.position, transform_child.position)));
             REQUIRE(all(nearly_equal(transform_relative.scale, transform_child.scale)));
+
+            // double3 v{ 1.f, 1.f, 1.f };
+            // double3 v_child    = mul_point(v, transform_child);
+            // double3 v_relative = mul_point(v, transform_relative);
+            // REQUIRE(all(nearly_equal(v_relative, v_child)));
         }
     }
 }

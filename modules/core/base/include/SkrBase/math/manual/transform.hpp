@@ -610,37 +610,41 @@ inline TransformF relative(const TransformF& parent, const TransformF& world)
             rtm::vector_zero()
         ))
     { // any neg scale, use matrix
-        auto parent_mtx       = rtm::matrix_from_qvv(rtm_parent);
-        auto world_mtx        = rtm::matrix_from_qvv(rtm_world);
+        auto parent_mat       = rtm::matrix_from_qvv(rtm_parent);
+        auto world_mat        = rtm::matrix_from_qvv(rtm_world);
         auto parent_scale_rcp = _safe_rcp(rtm_parent.scale);
 
+        // get scale
         auto result_scale = rtm::vector_mul(
             rtm_world.scale,
             parent_scale_rcp
         );
+        rtm_result.scale = result_scale;
 
-        auto result_mtx = rtm::matrix_mul(
-            world_mtx,
-            rtm::matrix_inverse(parent_mtx)
-        );
-        result_mtx = rtm::matrix_remove_scale(result_mtx);
-
-        result_mtx.x_axis = rtm::vector_mul(
-            result_mtx.x_axis,
-            rtm::vector_dup_x(result_scale)
-        );
-        result_mtx.y_axis = rtm::vector_mul(
-            result_mtx.y_axis,
-            rtm::vector_dup_y(result_scale)
-        );
-        result_mtx.z_axis = rtm::vector_mul(
-            result_mtx.z_axis,
-            rtm::vector_dup_z(result_scale)
+        auto result_mat = rtm::matrix_mul(
+            world_mat,
+            rtm::matrix_inverse(parent_mat)
         );
 
-        rtm_result.scale       = result_scale;
-        rtm_result.translation = result_mtx.w_axis;
-        rtm_result.rotation    = rtm::quat_from_matrix(result_mtx);
+        // get translation
+        rtm_result.translation = result_mat.w_axis;
+
+        // get rotation
+        result_mat        = rtm::matrix_remove_scale(result_mat);
+        auto scale_sign   = rtm::vector_sign(result_scale);
+        result_mat.x_axis = rtm::vector_mul(
+            rtm::vector_dup_x(scale_sign),
+            result_mat.x_axis
+        );
+        result_mat.y_axis = rtm::vector_mul(
+            rtm::vector_dup_y(scale_sign),
+            result_mat.y_axis
+        );
+        result_mat.z_axis = rtm::vector_mul(
+            rtm::vector_dup_z(scale_sign),
+            result_mat.z_axis
+        );
+        rtm_result.rotation = rtm::quat_from_matrix(result_mat);
     }
     else
     {
@@ -693,37 +697,41 @@ inline TransformD relative(const TransformD& parent, const TransformD& world)
             rtm::vector_zero()
         ))
     { // any neg scale, use matrix
-        auto parent_mtx       = rtm::matrix_from_qvv(rtm_parent);
-        auto world_mtx        = rtm::matrix_from_qvv(rtm_world);
+        auto parent_mat       = rtm::matrix_from_qvv(rtm_parent);
+        auto world_mat        = rtm::matrix_from_qvv(rtm_world);
         auto parent_scale_rcp = _safe_rcp(rtm_parent.scale);
 
+        // get scale
         auto result_scale = rtm::vector_mul(
             rtm_world.scale,
             parent_scale_rcp
         );
+        rtm_result.scale = result_scale;
 
-        auto result_mtx = rtm::matrix_mul(
-            world_mtx,
-            rtm::matrix_inverse(parent_mtx)
-        );
-        result_mtx = rtm::matrix_remove_scale(result_mtx);
-
-        result_mtx.x_axis = rtm::vector_mul(
-            result_mtx.x_axis,
-            rtm::vector_dup_x(result_scale)
-        );
-        result_mtx.y_axis = rtm::vector_mul(
-            result_mtx.y_axis,
-            rtm::vector_dup_y(result_scale)
-        );
-        result_mtx.z_axis = rtm::vector_mul(
-            result_mtx.z_axis,
-            rtm::vector_dup_z(result_scale)
+        auto result_mat = rtm::matrix_mul(
+            world_mat,
+            rtm::matrix_inverse(parent_mat)
         );
 
-        rtm_result.scale       = result_scale;
-        rtm_result.translation = result_mtx.w_axis;
-        rtm_result.rotation    = rtm::quat_from_matrix(result_mtx);
+        // get translation
+        rtm_result.translation = result_mat.w_axis;
+
+        // get rotation
+        result_mat        = rtm::matrix_remove_scale(result_mat);
+        auto scale_sign   = rtm::vector_sign(result_scale);
+        result_mat.x_axis = rtm::vector_mul(
+            rtm::vector_dup_x(scale_sign),
+            result_mat.x_axis
+        );
+        result_mat.y_axis = rtm::vector_mul(
+            rtm::vector_dup_y(scale_sign),
+            result_mat.y_axis
+        );
+        result_mat.z_axis = rtm::vector_mul(
+            rtm::vector_dup_z(scale_sign),
+            result_mat.z_axis
+        );
+        rtm_result.rotation = rtm::quat_from_matrix(result_mat);
     }
     else
     {
