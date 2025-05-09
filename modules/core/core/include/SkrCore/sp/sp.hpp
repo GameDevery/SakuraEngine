@@ -67,6 +67,7 @@ struct SP {
     SP();
     SP(std::nullptr_t);
     SP(T* ptr);
+    SP(T* ptr, SPRefCounter* counter);
     template <SPConvertible<T> U>
     SP(U* ptr);
     template <SPConvertible<T> U>
@@ -103,9 +104,9 @@ struct SP {
     T* get() const;
 
     // count getter
-    SPCounterType  ref_count() const;
-    SPCounterType  ref_count_weak() const;
-    SPCounterType* get_counter() const;
+    SPCounterType ref_count() const;
+    SPCounterType ref_count_weak() const;
+    SPRefCounter* get_counter() const;
 
     // empty
     bool is_empty() const;
@@ -130,6 +131,10 @@ struct SP {
     static size_t _skr_hash(const SP& obj);
 
 private:
+    // helper
+    void _release();
+
+private:
     T*            _ptr     = nullptr;
     SPRefCounter* _counter = nullptr;
 };
@@ -140,9 +145,6 @@ struct SPWeak {
     // ctor & dtor
     SPWeak();
     SPWeak(std::nullptr_t);
-    SPWeak(T* ptr);
-    template <SPConvertible<T> U>
-    SPWeak(U* ptr);
     template <SPConvertible<T> U>
     SPWeak(const SP<U>& ptr);
     ~SPWeak();
@@ -157,11 +159,8 @@ struct SPWeak {
 
     // assign & move assign
     SPWeak& operator=(std::nullptr_t);
-    SPWeak& operator=(T* ptr);
     SPWeak& operator=(const SPWeak& rhs);
     SPWeak& operator=(SPWeak&& rhs);
-    template <SPConvertible<T> U>
-    SPWeak& operator=(U* ptr);
     template <SPConvertible<T> U>
     SPWeak& operator=(const SPWeak<U>& rhs);
     template <SPConvertible<T> U>
@@ -187,9 +186,6 @@ struct SPWeak {
 
     // ops
     void reset();
-    void reset(T* ptr);
-    template <SPConvertible<T> U>
-    void reset(U* ptr);
     template <SPConvertible<T> U>
     void reset(const SP<U>& ptr);
     void swap(SPWeak& rhs);
@@ -203,6 +199,7 @@ private:
 };
 } // namespace skr
 
+// impl UPtr
 namespace skr
 {
 // ctor & dtor
@@ -518,3 +515,418 @@ inline size_t UPtr<T>::_skr_hash(const UPtr& obj)
     return skr::Hash<T*>()(obj._ptr);
 }
 } // namespace skr
+
+// impl SP
+namespace skr
+{
+// helper
+template <typename T>
+inline void SP<T>::_release()
+{
+    SKR_ASSERT(_ptr != nullptr);
+    if (_counter->release())
+    {
+        SPDeleterTraits<T>::do_delete(_ptr);
+    }
+}
+
+// ctor & dtor
+template <typename T>
+inline SP<T>::SP()
+{
+}
+template <typename T>
+inline SP<T>::SP(std::nullptr_t)
+{
+}
+template <typename T>
+inline SP<T>::SP(T* ptr)
+    : _ptr(ptr)
+{
+    if (_ptr)
+    {
+        _counter = SkrNew<SPRefCounter>();
+    }
+}
+template <typename T>
+inline SP<T>::SP(T* ptr, SPRefCounter* counter)
+    : _ptr(ptr)
+    , _counter(counter)
+{
+    if (_ptr)
+    {
+        _counter->add_ref();
+    }
+}
+template <typename T>
+template <SPConvertible<T> U>
+inline SP<T>::SP(U* ptr)
+{
+    static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
+    if (ptr)
+    {
+        _ptr     = ptr;
+        _counter = SkrNew<SPRefCounter>();
+    }
+}
+template <typename T>
+template <SPConvertible<T> U>
+inline SP<T>::SP(UPtr<U>&& rhs)
+{
+    static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
+    if (!rhs.is_empty())
+    {
+        _ptr     = static_cast<T*>(rhs.release());
+        _counter = SkrNew<SPRefCounter>();
+    }
+}
+template <typename T>
+inline SP<T>::~SP()
+{
+    reset();
+}
+
+// copy & move
+template <typename T>
+inline SP<T>::SP(const SP& rhs)
+    : _ptr(rhs._ptr)
+    , _counter(rhs._counter)
+{
+    if (_ptr)
+    {
+        _counter->add_ref();
+    }
+}
+template <typename T>
+inline SP<T>::SP(SP&& rhs)
+    : _ptr(rhs._ptr)
+    , _counter(rhs._counter)
+{
+    rhs._ptr     = nullptr;
+    rhs._counter = nullptr;
+}
+template <typename T>
+template <SPConvertible<T> U>
+inline SP<T>::SP(const SP<U>& rhs)
+{
+    static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
+    if (!rhs.is_empty())
+    {
+        _ptr     = static_cast<T*>(rhs.get());
+        _counter = rhs.get_counter();
+        _counter->add_ref();
+    }
+}
+template <typename T>
+template <SPConvertible<T> U>
+inline SP<T>::SP(SP<U>&& rhs)
+{
+    static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
+    if (!rhs.is_empty())
+    {
+        _ptr     = static_cast<T*>(rhs.release());
+        _counter = rhs.get_counter();
+        _counter->add_ref();
+    }
+}
+
+// assign & move assign
+template <typename T>
+inline SP<T>& SP<T>::operator=(std::nullptr_t)
+{
+    reset();
+    return *this;
+}
+template <typename T>
+inline SP<T>& SP<T>::operator=(T* ptr)
+{
+    reset(ptr);
+    return *this;
+}
+template <typename T>
+inline SP<T>& SP<T>::operator=(const SP& rhs)
+{
+    reset();
+    if (this != &rhs)
+    {
+        _ptr     = rhs._ptr;
+        _counter = rhs._counter;
+        if (_counter)
+        {
+            _counter->add_ref();
+        }
+    }
+    return *this;
+}
+template <typename T>
+inline SP<T>& SP<T>::operator=(SP&& rhs)
+{
+    reset();
+    if (this != &rhs)
+    {
+        _ptr         = rhs._ptr;
+        _counter     = rhs._counter;
+        rhs._ptr     = nullptr;
+        rhs._counter = nullptr;
+    }
+}
+template <typename T>
+template <SPConvertible<T> U>
+inline SP<T>& SP<T>::operator=(U* ptr)
+{
+    if (ptr)
+    {
+        reset(static_cast<T*>(ptr));
+    }
+    else
+    {
+        reset();
+    }
+}
+template <typename T>
+template <SPConvertible<T> U>
+inline SP<T>& SP<T>::operator=(const SP<U>& rhs)
+{
+    reset();
+    if (!rhs.is_empty())
+    {
+        _ptr     = static_cast<T*>(rhs.get());
+        _counter = rhs.get_counter();
+        _counter->add_ref();
+    }
+}
+template <typename T>
+template <SPConvertible<T> U>
+inline SP<T>& SP<T>::operator=(SP<U>&& rhs)
+{
+    reset();
+    if (!rhs.is_empty())
+    {
+        _ptr     = static_cast<T*>(rhs.get());
+        _counter = rhs.get_counter();
+        _counter->add_ref();
+        rhs.reset();
+    }
+}
+
+// factory
+template <typename T>
+template <typename... Args>
+inline SP<T> SP<T>::New(Args&&... args)
+{
+    return { SkrNew<T>(std::forward<Args>(args)...) };
+}
+template <typename T>
+template <typename... Args>
+inline SP<T> SP<T>::NewZeroed(Args&&... args)
+{
+    return { SkrNewZeroed<T>(std::forward<Args>(args)...) };
+}
+
+// compare
+template <typename T, typename U>
+inline bool operator==(const SP<T>& lhs, const SP<U>& rhs)
+{
+    SKR_ASSERT(
+        (lhs.get() == rhs.get()) == (lhs.get_counter() == rhs.get_counter()) &&
+        "SP compare with different counter, this is undefined behavior"
+    );
+    return lhs.get() == rhs.get();
+}
+template <typename T, typename U>
+inline bool operator!=(const SP<T>& lhs, const SP<U>& rhs)
+{
+    SKR_ASSERT(
+        (lhs.get() == rhs.get()) == (lhs.get_counter() == rhs.get_counter()) &&
+        "SP compare with different counter, this is undefined behavior"
+    );
+    return lhs.get() != rhs.get();
+}
+template <typename T, typename U>
+inline bool operator<(const SP<T>& lhs, const SP<U>& rhs)
+{
+    SKR_ASSERT(
+        (lhs.get() == rhs.get()) == (lhs.get_counter() == rhs.get_counter()) &&
+        "SP compare with different counter, this is undefined behavior"
+    );
+    return lhs.get() < rhs.get();
+}
+template <typename T, typename U>
+inline bool operator>(const SP<T>& lhs, const SP<U>& rhs)
+{
+    SKR_ASSERT(
+        (lhs.get() == rhs.get()) == (lhs.get_counter() == rhs.get_counter()) &&
+        "SP compare with different counter, this is undefined behavior"
+    );
+    return lhs.get() > rhs.get();
+}
+template <typename T, typename U>
+inline bool operator<=(const SP<T>& lhs, const SP<U>& rhs)
+{
+    SKR_ASSERT(
+        (lhs.get() == rhs.get()) == (lhs.get_counter() == rhs.get_counter()) &&
+        "SP compare with different counter, this is undefined behavior"
+    );
+    return lhs.get() <= rhs.get();
+}
+template <typename T, typename U>
+inline bool operator>=(const SP<T>& lhs, const SP<U>& rhs)
+{
+    SKR_ASSERT(
+        (lhs.get() == rhs.get()) == (lhs.get_counter() == rhs.get_counter()) &&
+        "SP compare with different counter, this is undefined behavior"
+    );
+    return lhs.get() >= rhs.get();
+}
+
+// compare with nullptr
+template <typename T>
+inline bool operator==(const SP<T>& lhs, std::nullptr_t)
+{
+    return lhs.get() == nullptr;
+}
+template <typename T>
+inline bool operator!=(const SP<T>& lhs, std::nullptr_t)
+{
+    return lhs.get() != nullptr;
+}
+template <typename T>
+inline bool operator==(std::nullptr_t, const SP<T>& rhs)
+{
+    return nullptr == rhs.get();
+}
+template <typename T>
+inline bool operator!=(std::nullptr_t, const SP<T>& rhs)
+{
+    return nullptr != rhs.get();
+}
+
+// getter
+template <typename T>
+inline T* SP<T>::get() const
+{
+    return _ptr;
+}
+
+// count getter
+template <typename T>
+inline SPCounterType SP<T>::ref_count() const
+{
+    return _counter ? _counter->ref_count() : 0;
+}
+template <typename T>
+inline SPCounterType SP<T>::ref_count_weak() const
+{
+    return _counter ? _counter->ref_count_weak() : 0;
+}
+template <typename T>
+inline SPRefCounter* SP<T>::get_counter() const
+{
+    return _counter;
+}
+
+// empty
+template <typename T>
+inline bool SP<T>::is_empty() const
+{
+    return _ptr == nullptr;
+}
+template <typename T>
+inline SP<T>::operator bool() const
+{
+    return !is_empty();
+}
+
+// ops
+template <typename T>
+inline void SP<T>::reset()
+{
+    if (_ptr)
+    {
+        _release();
+        _ptr     = nullptr;
+        _counter = nullptr;
+    }
+}
+template <typename T>
+inline void SP<T>::reset(T* ptr)
+{
+    if (_ptr != ptr)
+    {
+        reset();
+
+        _ptr = ptr;
+        if (_ptr)
+        {
+            _counter = SkrNew<SPRefCounter>();
+        }
+    }
+}
+template <typename T>
+template <SPConvertible<T> U>
+inline void SP<T>::reset(U* ptr)
+{
+    static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
+    if (ptr)
+    {
+        reset(static_cast<T*>(ptr));
+    }
+    else
+    {
+        reset();
+    }
+}
+template <typename T>
+inline void SP<T>::swap(SP& rhs)
+{
+    if (this != &rhs)
+    {
+        T*            tmp_ptr     = _ptr;
+        SPRefCounter* tmp_counter = _counter;
+        _ptr                      = rhs._ptr;
+        _counter                  = rhs._counter;
+        rhs._ptr                  = tmp_ptr;
+        rhs._counter              = tmp_counter;
+    }
+}
+
+// pointer behaviour
+template <typename T>
+inline T* SP<T>::operator->() const
+{
+    return _ptr;
+}
+template <typename T>
+inline T& SP<T>::operator*() const
+{
+    return *_ptr;
+}
+
+// cast
+template <typename T>
+template <typename U>
+inline SP<U> SP<T>::cast_static() const
+{
+    static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<U>, "when use covariance, T must have virtual destructor for safe delete");
+    if (_ptr)
+    {
+        return { static_cast<U*>(_ptr), _counter };
+    }
+    else
+    {
+        return nullptr;
+    }
+}
+
+// skr hash
+template <typename T>
+inline size_t SP<T>::_skr_hash(const SP& obj)
+{
+    return ::skr::Hash<T*>()(obj._ptr);
+}
+} // namespace skr
+
+// impl SPWeak
+namespace skr
+{
+}

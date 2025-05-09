@@ -38,6 +38,10 @@ struct SPRefCounter {
     {
         return _ref_count.load(std::memory_order_relaxed);
     }
+    inline SPCounterType ref_count_weak() const
+    {
+        return _ref_count_weak.load(std::memory_order_relaxed);
+    }
     inline void add_ref()
     {
         _ref_count.fetch_add(1, std::memory_order_relaxed);
