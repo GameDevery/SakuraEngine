@@ -268,6 +268,12 @@ function _gen_rotator(opt: GenMiscOption) {
       b.$line(`${rotator_name}& operator*=(const ${rotator_name}& rhs);`)
       b.$line(``)
 
+      // add & sub assign operator
+      b.$line(`// add & sub assign operator`)
+      b.$line(`${rotator_name}& operator+=(const ${rotator_name}& rhs);`)
+      b.$line(`${rotator_name}& operator-=(const ${rotator_name}& rhs);`)
+      b.$line(``)
+
       // to matrix
       b.$line(`// to matrix`)
       b.$line(`operator ${mat3_name}() const;`)

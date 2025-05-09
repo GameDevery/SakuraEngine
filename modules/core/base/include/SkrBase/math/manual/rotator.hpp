@@ -86,11 +86,11 @@ inline bool3 operator!=(const RotatorD& lhs, const RotatorD& rhs) SKR_NOEXCEPT
 // negative operator
 inline RotatorF RotatorF::operator-() const
 {
-    return RotatorF(-QuatF(*this));
+    return { -pitch, -yaw, -roll };
 }
 inline RotatorD RotatorD::operator-() const
 {
-    return RotatorD(-QuatD(*this));
+    return { -pitch, -yaw, -roll };
 }
 
 // mul assign operator
@@ -104,6 +104,36 @@ inline RotatorD& RotatorD::operator*=(const RotatorD& rhs)
 {
     auto quat = QuatD(*this) * QuatD(rhs);
     _convert_quat_to_rotator<double, RotatorD, QuatD>(quat, *this);
+    return *this;
+}
+
+// add & sub assign operator
+inline RotatorF& RotatorF::operator+=(const RotatorF& rhs)
+{
+    pitch += rhs.pitch;
+    yaw += rhs.yaw;
+    roll += rhs.roll;
+    return *this;
+}
+inline RotatorF& RotatorF::operator-=(const RotatorF& rhs)
+{
+    pitch -= rhs.pitch;
+    yaw -= rhs.yaw;
+    roll -= rhs.roll;
+    return *this;
+}
+inline RotatorD& RotatorD::operator+=(const RotatorD& rhs)
+{
+    pitch += rhs.pitch;
+    yaw += rhs.yaw;
+    roll += rhs.roll;
+    return *this;
+}
+inline RotatorD& RotatorD::operator-=(const RotatorD& rhs)
+{
+    pitch -= rhs.pitch;
+    yaw -= rhs.yaw;
+    roll -= rhs.roll;
     return *this;
 }
 
@@ -180,21 +210,55 @@ inline RotatorD RotatorD::FromMatrix(const double4x4& mat)
 }
 
 // mul
-inline RotatorF operator*(const RotatorF& lhs, const RotatorF& rhs)
+inline RotatorF mul(const RotatorF& lhs, const RotatorF& rhs)
 {
     return RotatorF(QuatF(lhs) * QuatF(rhs));
 }
-inline RotatorD operator*(const RotatorD& lhs, const RotatorD& rhs)
+inline RotatorD mul(const RotatorD& lhs, const RotatorD& rhs)
 {
     return RotatorD(QuatD(lhs) * QuatD(rhs));
 }
-inline RotatorF mul(const RotatorF& lhs, const RotatorF& rhs)
+inline RotatorF operator*(const RotatorF& lhs, const RotatorF& rhs)
 {
-    return lhs * rhs;
+    return mul(lhs, rhs);
 }
-inline RotatorD mul(const RotatorD& lhs, const RotatorD& rhs)
+inline RotatorD operator*(const RotatorD& lhs, const RotatorD& rhs)
 {
-    return lhs * rhs;
+    return mul(lhs, rhs);
+}
+
+// add
+inline RotatorF operator+(const RotatorF& lhs, const RotatorF& rhs)
+{
+    return {
+        lhs.pitch + rhs.pitch,
+        lhs.yaw + rhs.yaw,
+        lhs.roll + rhs.roll,
+    };
+}
+inline RotatorF operator-(const RotatorF& lhs, const RotatorF& rhs)
+{
+    return {
+        lhs.pitch - rhs.pitch,
+        lhs.yaw - rhs.yaw,
+        lhs.roll - rhs.roll,
+    };
+}
+inline RotatorD operator+(const RotatorD& lhs, const RotatorD& rhs)
+{
+    return {
+        lhs.pitch + rhs.pitch,
+        lhs.yaw + rhs.yaw,
+        lhs.roll + rhs.roll,
+    };
+}
+inline RotatorD operator-(const RotatorD& lhs, const RotatorD& rhs)
+{
+    return {
+        lhs.pitch - rhs.pitch,
+        lhs.yaw - rhs.yaw,
+        lhs.roll - rhs.roll,
+    };
 }
 
 // vector mul
