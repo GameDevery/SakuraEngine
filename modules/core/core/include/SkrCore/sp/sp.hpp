@@ -648,9 +648,10 @@ inline SP<T>::SP(SP<U>&& rhs)
     static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
     if (!rhs.is_empty())
     {
-        _ptr     = static_cast<T*>(rhs.release());
+        _ptr     = static_cast<T*>(rhs.get());
         _counter = rhs.get_counter();
         _counter->add_ref();
+        rhs.reset();
     }
 }
 
@@ -693,6 +694,7 @@ inline SP<T>& SP<T>::operator=(SP&& rhs)
         rhs._ptr     = nullptr;
         rhs._counter = nullptr;
     }
+    return *this;
 }
 template <typename T>
 template <SPConvertible<T> U>
@@ -706,6 +708,7 @@ inline SP<T>& SP<T>::operator=(U* ptr)
     {
         reset();
     }
+    return *this;
 }
 template <typename T>
 template <SPConvertible<T> U>
@@ -718,6 +721,7 @@ inline SP<T>& SP<T>::operator=(const SP<U>& rhs)
         _counter = rhs.get_counter();
         _counter->add_ref();
     }
+    return *this;
 }
 template <typename T>
 template <SPConvertible<T> U>
@@ -731,6 +735,7 @@ inline SP<T>& SP<T>::operator=(SP<U>&& rhs)
         _counter->add_ref();
         rhs.reset();
     }
+    return *this;
 }
 
 // factory

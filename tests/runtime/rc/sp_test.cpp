@@ -200,6 +200,283 @@ TEST_CASE("Test UPtr")
     }
 }
 
+TEST_CASE("Test SP")
+{
+    using namespace skr;
+
+    SUBCASE("ctor & dtor")
+    {
+        SP<TestSPBase> empty_ctor{};
+        REQUIRE_EQ(sp_base_count, 0);
+        REQUIRE_EQ(sp_derived_count, 0);
+        REQUIRE_EQ(empty_ctor.get(), nullptr);
+        REQUIRE_EQ(empty_ctor.ref_count(), 0);
+        REQUIRE_EQ(empty_ctor.ref_count_weak(), 0);
+
+        SP<TestSPBase> null_ctor{ nullptr };
+        REQUIRE_EQ(sp_base_count, 0);
+        REQUIRE_EQ(sp_derived_count, 0);
+        REQUIRE_EQ(null_ctor.get(), nullptr);
+        REQUIRE_EQ(null_ctor.ref_count(), 0);
+        REQUIRE_EQ(null_ctor.ref_count_weak(), 0);
+
+        {
+            SP<TestSPBase> pointer_ctor{ SkrNew<TestSPBase>() };
+            REQUIRE_EQ(sp_base_count, 1);
+            REQUIRE_EQ(sp_derived_count, 0);
+            REQUIRE_NE(pointer_ctor.get(), nullptr);
+            REQUIRE_EQ(pointer_ctor.ref_count(), 1);
+            REQUIRE_EQ(pointer_ctor.ref_count_weak(), 1);
+        }
+
+        {
+            UPtr<TestSPBase> unique{ SkrNew<TestSPBase>() };
+            SP<TestSPBase>   sp{ std::move(unique) };
+            REQUIRE_EQ(sp_base_count, 1);
+            REQUIRE_EQ(sp_derived_count, 0);
+            REQUIRE_NE(sp.get(), nullptr);
+            REQUIRE_EQ(sp.ref_count(), 1);
+            REQUIRE_EQ(sp.ref_count_weak(), 1);
+
+            REQUIRE_EQ(unique.get(), nullptr);
+        }
+
+        REQUIRE_EQ(sp_base_count, 0);
+        REQUIRE_EQ(sp_derived_count, 0);
+    }
+
+    SUBCASE("copy & move")
+    {
+        SP<TestSPBase>    base{ SkrNew<TestSPBase>() };
+        SP<TestSPDerived> derived{ SkrNew<TestSPDerived>() };
+
+        SP<TestSPBase> copy_base{ base };
+        REQUIRE_EQ(sp_base_count, 2);
+        REQUIRE_EQ(sp_derived_count, 1);
+        REQUIRE_EQ(base.get(), copy_base.get());
+        REQUIRE_EQ(base.ref_count(), 2);
+        REQUIRE_EQ(copy_base.ref_count(), 2);
+        REQUIRE_EQ(base.ref_count_weak(), 2);
+        REQUIRE_EQ(copy_base.ref_count_weak(), 2);
+
+        SP<TestSPBase> copy_derived{ derived };
+        REQUIRE_EQ(sp_base_count, 2);
+        REQUIRE_EQ(sp_derived_count, 1);
+        REQUIRE_EQ(derived.get(), copy_derived.get());
+        REQUIRE_EQ(derived.ref_count(), 2);
+        REQUIRE_EQ(copy_derived.ref_count(), 2);
+        REQUIRE_EQ(derived.ref_count_weak(), 2);
+        REQUIRE_EQ(copy_derived.ref_count_weak(), 2);
+
+        SP<TestSPBase> move_base{ std::move(base) };
+        REQUIRE_EQ(sp_base_count, 2);
+        REQUIRE_EQ(sp_derived_count, 1);
+        REQUIRE_EQ(base.get(), nullptr);
+        REQUIRE_EQ(move_base.get(), copy_base.get());
+        REQUIRE_EQ(base.ref_count(), 0);
+        REQUIRE_EQ(copy_base.ref_count(), 2);
+        REQUIRE_EQ(move_base.ref_count(), 2);
+        REQUIRE_EQ(base.ref_count_weak(), 0);
+        REQUIRE_EQ(copy_base.ref_count_weak(), 2);
+
+        SP<TestSPBase> move_derived{ std::move(derived) };
+        REQUIRE_EQ(sp_base_count, 2);
+        REQUIRE_EQ(sp_derived_count, 1);
+        REQUIRE_EQ(derived.get(), nullptr);
+        REQUIRE_EQ(move_derived.get(), copy_derived.get());
+        REQUIRE_EQ(derived.ref_count(), 0);
+        REQUIRE_EQ(copy_derived.ref_count(), 2);
+        REQUIRE_EQ(move_derived.ref_count(), 2);
+        REQUIRE_EQ(derived.ref_count_weak(), 0);
+        REQUIRE_EQ(copy_derived.ref_count_weak(), 2);
+
+        copy_base    = nullptr;
+        move_base    = nullptr;
+        copy_derived = nullptr;
+        move_derived = nullptr;
+
+        REQUIRE_EQ(sp_base_count, 0);
+        REQUIRE_EQ(sp_derived_count, 0);
+    }
+
+    SUBCASE("assign & move assign")
+    {
+        SP<TestSPBase>    base{ SkrNew<TestSPBase>() };
+        SP<TestSPDerived> derived{ SkrNew<TestSPDerived>() };
+
+        REQUIRE_EQ(sp_base_count, 2);
+        REQUIRE_EQ(sp_derived_count, 1);
+        REQUIRE_EQ(base.ref_count(), 1);
+        REQUIRE_EQ(derived.ref_count(), 1);
+        {
+            // assign
+            SP<TestSPBase> assign{};
+            assign = base;
+            REQUIRE_EQ(sp_base_count, 2);
+            REQUIRE_EQ(sp_derived_count, 1);
+            REQUIRE_EQ(base.ref_count(), 2);
+            REQUIRE_EQ(derived.ref_count(), 1);
+            REQUIRE_EQ(assign.ref_count(), 2);
+            REQUIRE_EQ(assign.get(), base.get());
+
+            // assign derived
+            assign = derived;
+            REQUIRE_EQ(sp_base_count, 2);
+            REQUIRE_EQ(sp_derived_count, 1);
+            REQUIRE_EQ(base.ref_count(), 1);
+            REQUIRE_EQ(derived.ref_count(), 2);
+            REQUIRE_EQ(assign.ref_count(), 2);
+            REQUIRE_EQ(assign.get(), derived.get());
+        }
+
+        {
+            // move assign
+            SP<TestSPBase> move_assign{};
+            auto           cached_base = base.get();
+            move_assign                = std::move(base);
+            REQUIRE_EQ(sp_base_count, 2);
+            REQUIRE_EQ(sp_derived_count, 1);
+            REQUIRE_EQ(base.ref_count(), 0);
+            REQUIRE_EQ(derived.ref_count(), 1);
+            REQUIRE_EQ(move_assign.ref_count(), 1);
+            REQUIRE_EQ(move_assign.get(), cached_base);
+            REQUIRE_EQ(base.get(), nullptr);
+
+            // move assign derived
+            auto cached_derived = derived.get();
+            move_assign         = std::move(derived);
+            REQUIRE_EQ(sp_base_count, 1);
+            REQUIRE_EQ(sp_derived_count, 1);
+            REQUIRE_EQ(base.ref_count(), 0);
+            REQUIRE_EQ(derived.ref_count(), 0);
+            REQUIRE_EQ(move_assign.ref_count(), 1);
+            REQUIRE_EQ(move_assign.get(), cached_derived);
+            REQUIRE_EQ(derived.get(), nullptr);
+        }
+    }
+
+    // [need't test] factory
+
+    SUBCASE("test compare")
+    {
+        SP<TestSPBase>    base1{ SkrNew<TestSPBase>() };
+        SP<TestSPBase>    base2{ SkrNew<TestSPBase>() };
+        SP<TestSPDerived> derived1{ SkrNew<TestSPDerived>() };
+        SP<TestSPDerived> derived2{ SkrNew<TestSPDerived>() };
+
+        SP<TestSPBase> copy_base1    = base1;
+        SP<TestSPBase> copy_derived1 = derived1;
+
+        // eq
+        REQUIRE_EQ(base1 == base1, true);
+        REQUIRE_EQ(base1 == base2, false);
+        REQUIRE_EQ(base1 == derived1, false);
+        REQUIRE_EQ(base1 == copy_base1, true);
+        REQUIRE_EQ(derived1 == copy_derived1, true);
+        REQUIRE_EQ(derived2 == copy_derived1, false);
+
+        // neq
+        REQUIRE_EQ(base1 != base1, false);
+        REQUIRE_EQ(base1 != base2, true);
+        REQUIRE_EQ(base1 != derived1, true);
+        REQUIRE_EQ(base1 != copy_base1, false);
+        REQUIRE_EQ(derived1 != copy_derived1, false);
+        REQUIRE_EQ(derived2 != copy_derived1, true);
+
+        // nullptr
+        REQUIRE_EQ(base1 == nullptr, false);
+        REQUIRE_EQ(nullptr == base1, false);
+        REQUIRE_EQ(base1 != nullptr, true);
+        REQUIRE_EQ(nullptr != base1, true);
+
+        // lt (just test for compile)
+        REQUIRE_EQ(base1 < base1, false);
+        REQUIRE_EQ(derived1 < copy_derived1, false);
+        REQUIRE_EQ(copy_derived1 < derived1, false);
+
+        // gt (just test for compile)
+        REQUIRE_EQ(base1 > base1, false);
+        REQUIRE_EQ(derived1 > copy_derived1, false);
+        REQUIRE_EQ(copy_derived1 > derived1, false);
+
+        // le (just test for compile)
+        REQUIRE_EQ(base1 <= base1, true);
+        REQUIRE_EQ(derived1 <= copy_derived1, true);
+        REQUIRE_EQ(copy_derived1 <= derived1, true);
+
+        // ge (just test for compile)
+        REQUIRE_EQ(base1 >= base1, true);
+        REQUIRE_EQ(derived1 >= copy_derived1, true);
+        REQUIRE_EQ(copy_derived1 >= derived1, true);
+    }
+
+    // [need't test] getter
+    // [need't test] count getter
+
+    SUBCASE("test is empty")
+    {
+        SP<TestSPBase> empty{};
+        SP<TestSPBase> something{ SkrNew<TestSPBase>() };
+
+        REQUIRE_EQ(empty.is_empty(), true);
+        REQUIRE_EQ(something.is_empty(), false);
+        REQUIRE_EQ(empty, false);
+        REQUIRE_EQ(something, true);
+    }
+
+    SUBCASE("test ops")
+    {
+        SP<TestSPBase> rc = SkrNew<TestSPBase>();
+        REQUIRE_EQ(sp_base_count, 1);
+        REQUIRE_EQ(sp_derived_count, 0);
+        REQUIRE_NE(rc.get(), nullptr);
+
+        rc.reset();
+        REQUIRE_EQ(sp_base_count, 0);
+        REQUIRE_EQ(sp_derived_count, 0);
+        REQUIRE_EQ(rc.get(), nullptr);
+
+        rc.reset(SkrNew<TestSPBase>());
+        REQUIRE_EQ(sp_base_count, 1);
+        REQUIRE_EQ(sp_derived_count, 0);
+        REQUIRE_NE(rc.get(), nullptr);
+
+        SP<TestSPBase> other;
+        rc.swap(other);
+        REQUIRE_EQ(sp_base_count, 1);
+        REQUIRE_EQ(sp_derived_count, 0);
+        REQUIRE_EQ(rc.get(), nullptr);
+        REQUIRE_NE(other.get(), nullptr);
+
+        other.reset(SkrNew<TestSPBase>());
+        REQUIRE_EQ(sp_base_count, 1);
+        REQUIRE_EQ(sp_derived_count, 0);
+        REQUIRE_NE(other.get(), nullptr);
+    }
+
+    // [need't test] pointer behaviour
+    // [need't test] skr hash
+
+    SUBCASE("test empty")
+    {
+        SP<TestSPBase> empty{};
+        SP<TestSPBase> empty_copy{ empty };
+        SP<TestSPBase> empty_move{ std::move(empty) };
+        SP<TestSPBase> empty_assign, empty_move_assign;
+        empty_assign      = empty;
+        empty_move_assign = std::move(empty);
+
+        empty.get();
+        empty.ref_count();
+        empty.ref_count_weak();
+        empty.is_empty();
+        empty.operator bool();
+        empty.reset();
+        empty.reset(nullptr);
+        empty.swap(empty_copy);
+    }
+}
+
 TEST_CASE("Test Custom Deleter")
 {
     using namespace skr;
