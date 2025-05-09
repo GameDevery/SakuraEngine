@@ -353,6 +353,20 @@ TEST_CASE("Test SP")
             REQUIRE_EQ(move_assign.get(), cached_derived);
             REQUIRE_EQ(derived.get(), nullptr);
         }
+
+        {
+            UPtr<TestSPDerived> unique{ SkrNew<TestSPDerived>() };
+            SP<TestSPBase>      move_assign_unique{};
+            auto                cached_unique = unique.get();
+            move_assign_unique                = std::move(unique);
+            REQUIRE_EQ(sp_base_count, 1);
+            REQUIRE_EQ(sp_derived_count, 1);
+            REQUIRE_EQ(base.ref_count(), 0);
+            REQUIRE_EQ(derived.ref_count(), 0);
+            REQUIRE_EQ(move_assign_unique.ref_count(), 1);
+            REQUIRE_EQ(move_assign_unique.get(), cached_unique);
+            REQUIRE_EQ(derived.get(), nullptr);
+        }
     }
 
     // [need't test] factory

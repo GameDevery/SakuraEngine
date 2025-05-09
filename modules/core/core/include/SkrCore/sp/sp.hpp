@@ -103,6 +103,8 @@ struct SP {
     SP& operator=(const SP<U>& rhs);
     template <SPConvertible<T> U>
     SP& operator=(SP<U>&& rhs);
+    template <SPConvertible<T> U>
+    SP& operator=(UPtr<U>&& rhs);
 
     // factory
     template <typename... Args>
@@ -732,6 +734,21 @@ inline SP<T>& SP<T>::operator=(SP<U>&& rhs)
     {
         _ptr     = static_cast<T*>(rhs.get());
         _counter = rhs.get_counter();
+        _counter->add_ref();
+        rhs.reset();
+    }
+    return *this;
+}
+template <typename T>
+template <SPConvertible<T> U>
+inline SP<T>& SP<T>::operator=(UPtr<U>&& rhs)
+{
+    static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
+    reset();
+    if (!rhs.is_empty())
+    {
+        _ptr     = static_cast<T*>(rhs.release());
+        _counter = SkrNew<SPRefCounter>();
         _counter->add_ref();
         rhs.reset();
     }
