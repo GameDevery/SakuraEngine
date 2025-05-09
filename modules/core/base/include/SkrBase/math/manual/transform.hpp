@@ -364,7 +364,13 @@ inline bool operator==(const TransformD& lhs, const TransformD& rhs)
 }
 
 // nearly equal
-inline bool is_nearly_equal(const TransformF& lhs, const TransformF& rhs, float threshold = float(0.00001))
+inline bool nearly_equal(const TransformF& lhs, const TransformF& rhs, float threshold = float(0.00001))
+{
+    return nearly_equal(lhs.rotation, rhs.rotation, threshold) &&
+           all(nearly_equal(lhs.position, rhs.position, threshold)) &&
+           all(nearly_equal(lhs.scale, rhs.scale, threshold));
+}
+inline bool nearly_equal(const TransformD& lhs, const TransformD& rhs, double threshold = double(0.00001))
 {
     return nearly_equal(lhs.rotation, rhs.rotation, threshold) &&
            all(nearly_equal(lhs.position, rhs.position, threshold)) &&
@@ -584,106 +590,168 @@ inline double3 TransformD::back() const
 }
 
 // relative
-inline TransformF relative(const TransformF& from, const TransformF& to)
+inline TransformF relative(const TransformF& parent, const TransformF& world)
 {
-    auto      rtm_from = RtmConvert<TransformF>::to_rtm(from);
-    auto      rtm_to   = RtmConvert<TransformF>::to_rtm(to);
+    auto      rtm_parent = RtmConvert<TransformF>::to_rtm(parent);
+    auto      rtm_world  = RtmConvert<TransformF>::to_rtm(world);
     rtm::qvvf rtm_result;
 
+    auto _safe_rcp = +[](rtm::vector4f v) {
+        auto rcp = rtm::vector_reciprocal(v);
+        return rtm::vector_select(
+            rtm::vector_greater_than(rtm::vector_abs(v), rtm::vector_set(1.e-8f)),
+            rcp,
+            rtm::vector_zero()
+        );
+    };
+
     if (rtm::vector_any_less_than3(
-            rtm::vector_min(rtm_from.scale, rtm_to.scale),
+            rtm::vector_min(rtm_parent.scale, rtm_world.scale),
             rtm::vector_zero()
         ))
     { // any neg scale, use matrix
-        auto from_mtx   = rtm::matrix_from_qvv(rtm_from);
-        auto to_mtx     = rtm::matrix_from_qvv(rtm_to);
-        auto result_mtx = rtm::matrix_mul(
-            to_mtx,
-            rtm::matrix_inverse(from_mtx)
+        auto parent_mtx       = rtm::matrix_from_qvv(rtm_parent);
+        auto world_mtx        = rtm::matrix_from_qvv(rtm_world);
+        auto parent_scale_rcp = _safe_rcp(rtm_parent.scale);
+
+        auto result_scale = rtm::vector_mul(
+            rtm_world.scale,
+            parent_scale_rcp
         );
-        rtm_result = rtm::qvv_from_matrix(result_mtx);
+
+        auto result_mtx = rtm::matrix_mul(
+            world_mtx,
+            rtm::matrix_inverse(parent_mtx)
+        );
+        result_mtx = rtm::matrix_remove_scale(result_mtx);
+
+        result_mtx.x_axis = rtm::vector_mul(
+            result_mtx.x_axis,
+            rtm::vector_dup_x(result_scale)
+        );
+        result_mtx.y_axis = rtm::vector_mul(
+            result_mtx.y_axis,
+            rtm::vector_dup_y(result_scale)
+        );
+        result_mtx.z_axis = rtm::vector_mul(
+            result_mtx.z_axis,
+            rtm::vector_dup_z(result_scale)
+        );
+
+        rtm_result.scale       = result_scale;
+        rtm_result.translation = result_mtx.w_axis;
+        rtm_result.rotation    = rtm::quat_from_matrix(result_mtx);
     }
     else
     {
-        // scale = S(to) / S(from)
-        auto from_scale_rcp = rtm::vector_reciprocal(
-            rtm::vector_max(rtm_from.scale, rtm::vector_set(1.e-8f))
-        );
-        rtm_result.scale = rtm::vector_mul(rtm_to.scale, from_scale_rcp);
+        // scale = S(world) / S(parent)
+        auto parent_scale_rcp = _safe_rcp(rtm_parent.scale);
+        rtm_result.scale      = rtm::vector_mul(rtm_world.scale, parent_scale_rcp);
 
-        // -R(from)
-        auto from_rotation_inv = rtm::quat_conjugate(rtm_from.rotation);
+        // -R(parent)
+        auto parent_rotation_inv = rtm::quat_conjugate(rtm_parent.rotation);
 
-        // translation = (T(to) - T(from)) * -Q(from) / S(from)
+        // translation = (T(world) - T(parent)) * -Q(parent) / S(parent)
         auto direct_translation = rtm::vector_sub(
-            rtm_to.translation,
-            rtm_from.translation
+            rtm_world.translation,
+            rtm_parent.translation
         );
         auto rotated_translation = rtm::quat_mul_vector3(
             direct_translation,
-            from_rotation_inv
+            parent_rotation_inv
         );
         rtm_result.translation = rtm::vector_mul(
             rotated_translation,
-            from_scale_rcp
+            parent_scale_rcp
         );
 
-        // rotation = -Q(from) * Q(to)
+        // rotation = -Q(parent) * Q(world)
         rtm_result.rotation = rtm::quat_mul(
-            rtm::quat_conjugate(rtm_from.rotation),
-            rtm_to.rotation
+            parent_rotation_inv,
+            rtm_world.rotation
         );
     }
     return RtmConvert<TransformF>::from_rtm(rtm_result);
 }
-inline TransformD relative(const TransformD& from, const TransformD& to)
+inline TransformD relative(const TransformD& parent, const TransformD& world)
 {
-    auto      rtm_from = RtmConvert<TransformD>::to_rtm(from);
-    auto      rtm_to   = RtmConvert<TransformD>::to_rtm(to);
+    auto      rtm_parent = RtmConvert<TransformD>::to_rtm(parent);
+    auto      rtm_world  = RtmConvert<TransformD>::to_rtm(world);
     rtm::qvvd rtm_result;
 
+    auto _safe_rcp = +[](rtm::vector4d v) {
+        auto rcp = rtm::vector_reciprocal(v);
+        return rtm::vector_select(
+            rtm::vector_greater_than(rtm::vector_abs(v), rtm::vector_set(1.e-8)),
+            rcp,
+            rtm::vector_zero()
+        );
+    };
+
     if (rtm::vector_any_less_than3(
-            rtm::vector_min(rtm_from.scale, rtm_to.scale),
+            rtm::vector_min(rtm_parent.scale, rtm_world.scale),
             rtm::vector_zero()
         ))
     { // any neg scale, use matrix
-        auto from_mtx   = rtm::matrix_from_qvv(rtm_from);
-        auto to_mtx     = rtm::matrix_from_qvv(rtm_to);
-        auto result_mtx = rtm::matrix_mul(
-            to_mtx,
-            rtm::matrix_inverse(from_mtx)
+        auto parent_mtx       = rtm::matrix_from_qvv(rtm_parent);
+        auto world_mtx        = rtm::matrix_from_qvv(rtm_world);
+        auto parent_scale_rcp = _safe_rcp(rtm_parent.scale);
+
+        auto result_scale = rtm::vector_mul(
+            rtm_world.scale,
+            parent_scale_rcp
         );
-        rtm_result = rtm::qvv_from_matrix(result_mtx);
+
+        auto result_mtx = rtm::matrix_mul(
+            world_mtx,
+            rtm::matrix_inverse(parent_mtx)
+        );
+        result_mtx = rtm::matrix_remove_scale(result_mtx);
+
+        result_mtx.x_axis = rtm::vector_mul(
+            result_mtx.x_axis,
+            rtm::vector_dup_x(result_scale)
+        );
+        result_mtx.y_axis = rtm::vector_mul(
+            result_mtx.y_axis,
+            rtm::vector_dup_y(result_scale)
+        );
+        result_mtx.z_axis = rtm::vector_mul(
+            result_mtx.z_axis,
+            rtm::vector_dup_z(result_scale)
+        );
+
+        rtm_result.scale       = result_scale;
+        rtm_result.translation = result_mtx.w_axis;
+        rtm_result.rotation    = rtm::quat_from_matrix(result_mtx);
     }
     else
     {
-        // scale = S(to) / S(from)
-        auto from_scale_rcp = rtm::vector_reciprocal(
-            rtm::vector_max(rtm_from.scale, rtm::vector_set(1.e-8))
-        );
-        rtm_result.scale = rtm::vector_mul(rtm_to.scale, from_scale_rcp);
+        // scale = S(world) / S(parent)
+        auto parent_scale_rcp = _safe_rcp(rtm_parent.scale);
+        rtm_result.scale      = rtm::vector_mul(rtm_world.scale, parent_scale_rcp);
 
-        // -R(from)
-        auto from_rotation_inv = rtm::quat_conjugate(rtm_from.rotation);
+        // -R(parent)
+        auto parent_rotation_inv = rtm::quat_conjugate(rtm_parent.rotation);
 
-        // translation = (T(to) - T(from)) * -Q(from) / S(from)
+        // translation = (T(world) - T(parent)) * -Q(parent) / S(parent)
         auto direct_translation = rtm::vector_sub(
-            rtm_to.translation,
-            rtm_from.translation
+            rtm_world.translation,
+            rtm_parent.translation
         );
         auto rotated_translation = rtm::quat_mul_vector3(
             direct_translation,
-            from_rotation_inv
+            parent_rotation_inv
         );
         rtm_result.translation = rtm::vector_mul(
             rotated_translation,
-            from_scale_rcp
+            parent_scale_rcp
         );
 
-        // rotation = -Q(from) * Q(to)
+        // rotation = -Q(parent) * Q(world)
         rtm_result.rotation = rtm::quat_mul(
-            rtm::quat_conjugate(rtm_from.rotation),
-            rtm_to.rotation
+            parent_rotation_inv,
+            rtm_world.rotation
         );
     }
     return RtmConvert<TransformD>::from_rtm(rtm_result);

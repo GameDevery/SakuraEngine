@@ -140,7 +140,7 @@ function _gen_quat(opt: GenMiscOption) {
       // identity
       b.$line(`// identity`)
       b.$line(`bool is_identity() const;`)
-      b.$line(`bool is_nearly_identity(${comp_name} threshold_angle = ${comp_name}(0.00001)) const;`)
+      b.$line(`bool is_nearly_identity(${comp_name} threshold_angle = ${comp_name}(0.00284714461)) const;`)
       b.$line(``)
 
       // to matrix

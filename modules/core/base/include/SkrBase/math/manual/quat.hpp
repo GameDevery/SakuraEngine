@@ -431,27 +431,27 @@ inline bool nearly_equal(const QuatD& lhs, const QuatD& rhs, double threshold = 
 }
 
 // identity
-inline bool is_identity(const QuatF& q)
+inline bool QuatF::is_identity() const
 {
-    return all(q.as_vector() == QuatF::Identity().as_vector());
+    return all(as_vector() == QuatF::Identity().as_vector());
 }
-inline bool is_identity(const QuatD& q)
+inline bool QuatD::is_identity() const
 {
-    return all(q.as_vector() == QuatD::Identity().as_vector());
+    return all(as_vector() == QuatD::Identity().as_vector());
 }
 
 // nearly identity
-inline bool is_nearly_identity(const QuatF& q, float threshold_angle)
+inline bool QuatF::is_nearly_identity(float threshold_angle) const
 {
     return rtm::quat_near_identity(
-        RtmConvert<QuatF>::to_rtm(q),
+        RtmConvert<QuatF>::to_rtm(*this),
         threshold_angle
     );
 }
-inline bool is_nearly_identity(const QuatD& q, double threshold_angle)
+inline bool QuatD::is_nearly_identity(double threshold_angle) const
 {
     return rtm::quat_near_identity(
-        RtmConvert<QuatD>::to_rtm(q),
+        RtmConvert<QuatD>::to_rtm(*this),
         threshold_angle
     );
 }
@@ -597,32 +597,31 @@ inline double distance(const QuatD& lhs, const QuatD& rhs)
 }
 
 // relative
-inline QuatF relative(const QuatF& from, const QuatF& to)
+inline QuatF relative(const QuatF& parent, const QuatF& world)
 {
-    auto from_rtm = RtmConvert<QuatF>::to_rtm(from);
-    auto to_rtm   = RtmConvert<QuatF>::to_rtm(to);
+    auto rtm_parent = RtmConvert<QuatF>::to_rtm(parent);
+    auto rtm_world  = RtmConvert<QuatF>::to_rtm(world);
 
-    // -from * to
-    auto result_rtm = rtm::quat_mul(
-        rtm::quat_conjugate(from_rtm),
-        to_rtm
+    // -parent * world
+    auto rtm_result = rtm::quat_mul(
+        rtm::quat_conjugate(rtm_parent),
+        rtm_world
     );
 
-    return RtmConvert<QuatF>::from_rtm(result_rtm);
+    return RtmConvert<QuatF>::from_rtm(rtm_result);
 }
-inline QuatD relative(const QuatD& from, const QuatD& to)
+inline QuatD relative(const QuatD& parent, const QuatD& world)
 {
-    auto from_rtm = RtmConvert<QuatD>::to_rtm(from);
-    auto to_rtm   = RtmConvert<QuatD>::to_rtm(to);
+    auto rtm_parent = RtmConvert<QuatD>::to_rtm(parent);
+    auto rtm_world  = RtmConvert<QuatD>::to_rtm(world);
 
-    // -from * to
+    // -parent * world
     auto result_rtm = rtm::quat_mul(
-        rtm::quat_conjugate(from_rtm),
-        to_rtm
+        rtm::quat_conjugate(rtm_parent),
+        rtm_world
     );
 
     return RtmConvert<QuatD>::from_rtm(result_rtm);
 }
-
 } // namespace math
 } // namespace skr

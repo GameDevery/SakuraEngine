@@ -445,23 +445,23 @@ inline double3x3 relative(const double3x3& from, const double3x3& to)
 }
 
 // matrix4x4 relative
-inline float4x4 relative(const float4x4& from, const float4x4& to)
+inline float4x4 relative(const float4x4& parent, const float4x4& world)
 {
-    const auto rtm_from   = RtmConvert<float4x4>::to_rtm(from);
-    const auto rtm_to     = RtmConvert<float4x4>::to_rtm(to);
+    const auto rtm_parent = RtmConvert<float4x4>::to_rtm(parent);
+    const auto rtm_world  = RtmConvert<float4x4>::to_rtm(world);
     const auto rtm_result = rtm::matrix_mul(
-        rtm_to,
-        rtm::matrix_inverse(rtm_from)
+        rtm_world,
+        rtm::matrix_inverse(rtm_parent)
     );
     return RtmConvert<float4x4>::from_rtm(rtm_result);
 }
-inline double4x4 relative(const double4x4& from, const double4x4& to)
+inline double4x4 relative(const double4x4& parent, const double4x4& world)
 {
-    const auto rtm_from   = RtmConvert<double4x4>::to_rtm(from);
-    const auto rtm_to     = RtmConvert<double4x4>::to_rtm(to);
+    const auto rtm_parent = RtmConvert<double4x4>::to_rtm(parent);
+    const auto rtm_world  = RtmConvert<double4x4>::to_rtm(world);
     const auto rtm_result = rtm::matrix_mul(
-        rtm_to,
-        rtm::matrix_inverse(rtm_from)
+        rtm_world,
+        rtm::matrix_inverse(rtm_parent)
     );
     return RtmConvert<double4x4>::from_rtm(rtm_result);
 }
