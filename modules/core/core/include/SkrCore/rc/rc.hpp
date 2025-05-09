@@ -255,6 +255,10 @@ struct RCWeak {
     void reset(const RCUnique<U>& ptr);
     void swap(RCWeak& rhs);
 
+    // cast
+    template <typename U>
+    RCWeak<U> cast_static() const;
+
     // skr hash
     static size_t _skr_hash(const RCWeak& obj);
 
@@ -486,6 +490,70 @@ inline bool operator>=(const RC<T>& lhs, const RC<U>& rhs)
     return lhs.get() >= rhs.get();
 }
 
+// compare with pointer(right)
+template <typename T, typename U>
+inline bool operator==(const RC<T>& lhs, U* rhs)
+{
+    return lhs.get() == rhs;
+}
+template <typename T, typename U>
+inline bool operator!=(const RC<T>& lhs, U* rhs)
+{
+    return lhs.get() != rhs;
+}
+template <typename T, typename U>
+inline bool operator<(const RC<T>& lhs, U* rhs)
+{
+    return lhs.get() < rhs;
+}
+template <typename T, typename U>
+inline bool operator>(const RC<T>& lhs, U* rhs)
+{
+    return lhs.get() > rhs;
+}
+template <typename T, typename U>
+inline bool operator<=(const RC<T>& lhs, U* rhs)
+{
+    return lhs.get() <= rhs;
+}
+template <typename T, typename U>
+inline bool operator>=(const RC<T>& lhs, U* rhs)
+{
+    return lhs.get() >= rhs;
+}
+
+// compare with pointer(left)
+template <typename T, typename U>
+inline bool operator==(U* lhs, const RC<T>& rhs)
+{
+    return lhs == rhs.get();
+}
+template <typename T, typename U>
+inline bool operator!=(U* lhs, const RC<T>& rhs)
+{
+    return lhs != rhs.get();
+}
+template <typename T, typename U>
+inline bool operator<(U* lhs, const RC<T>& rhs)
+{
+    return lhs < rhs.get();
+}
+template <typename T, typename U>
+inline bool operator>(U* lhs, const RC<T>& rhs)
+{
+    return lhs > rhs.get();
+}
+template <typename T, typename U>
+inline bool operator<=(U* lhs, const RC<T>& rhs)
+{
+    return lhs <= rhs.get();
+}
+template <typename T, typename U>
+inline bool operator>=(U* lhs, const RC<T>& rhs)
+{
+    return lhs >= rhs.get();
+}
+
 // compare with nullptr
 template <typename T>
 inline bool operator==(const RC<T>& lhs, std::nullptr_t)
@@ -554,11 +622,7 @@ inline void RC<T>::reset(T* ptr)
 {
     if (_ptr != ptr)
     {
-        // release old ptr
-        if (_ptr)
-        {
-            _release();
-        }
+        reset();
 
         // add ref to new ptr
         _ptr = ptr;
@@ -610,6 +674,7 @@ template <typename T>
 template <typename U>
 inline RC<U> RC<T>::cast_static() const
 {
+    static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<U>, "when use covariance, T must have virtual destructor for safe delete");
     if (_ptr)
     {
         return RC<U>(static_cast<U*>(_ptr));
@@ -784,6 +849,70 @@ template <typename T, typename U>
 inline bool operator>=(const RCUnique<T>& lhs, const RCUnique<U>& rhs)
 {
     return lhs.get() >= rhs.get();
+}
+
+// compare with pointer(right)
+template <typename T, typename U>
+inline bool operator==(const RCUnique<T>& lhs, U* rhs)
+{
+    return lhs.get() == rhs;
+}
+template <typename T, typename U>
+inline bool operator!=(const RCUnique<T>& lhs, U* rhs)
+{
+    return lhs.get() != rhs;
+}
+template <typename T, typename U>
+inline bool operator<(const RCUnique<T>& lhs, U* rhs)
+{
+    return lhs.get() < rhs;
+}
+template <typename T, typename U>
+inline bool operator>(const RCUnique<T>& lhs, U* rhs)
+{
+    return lhs.get() > rhs;
+}
+template <typename T, typename U>
+inline bool operator<=(const RCUnique<T>& lhs, U* rhs)
+{
+    return lhs.get() <= rhs;
+}
+template <typename T, typename U>
+inline bool operator>=(const RCUnique<T>& lhs, U* rhs)
+{
+    return lhs.get() >= rhs;
+}
+
+// compare with pointer(left)
+template <typename T, typename U>
+inline bool operator==(U* lhs, const RCUnique<T>& rhs)
+{
+    return lhs == rhs.get();
+}
+template <typename T, typename U>
+inline bool operator!=(U* lhs, const RCUnique<T>& rhs)
+{
+    return lhs != rhs.get();
+}
+template <typename T, typename U>
+inline bool operator<(U* lhs, const RCUnique<T>& rhs)
+{
+    return lhs < rhs.get();
+}
+template <typename T, typename U>
+inline bool operator>(U* lhs, const RCUnique<T>& rhs)
+{
+    return lhs > rhs.get();
+}
+template <typename T, typename U>
+inline bool operator<=(U* lhs, const RCUnique<T>& rhs)
+{
+    return lhs <= rhs.get();
+}
+template <typename T, typename U>
+inline bool operator>=(U* lhs, const RCUnique<T>& rhs)
+{
+    return lhs >= rhs.get();
 }
 
 // compare with nullptr
@@ -1444,6 +1573,29 @@ inline void RCWeak<T>::swap(RCWeak& rhs)
         _counter                           = rhs._counter;
         rhs._ptr                           = tmp_ptr;
         rhs._counter                       = tmp_counter;
+    }
+}
+
+// cast
+template <typename T>
+template <typename U>
+inline RCWeak<U> RCWeak<T>::cast_static() const
+{
+    static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<U>, "when use covariance, T must have virtual destructor for safe delete");
+    if (_ptr)
+    {
+        if (auto locker = lock())
+        {
+            return RCWeak<U>(static_cast<U*>(_ptr));
+        }
+        else
+        {
+            return nullptr;
+        }
+    }
+    else
+    {
+        return nullptr;
     }
 }
 

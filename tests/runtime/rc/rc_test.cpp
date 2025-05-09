@@ -986,6 +986,7 @@ TEST_CASE("Test RCWeak")
         empty.reset();
         empty.reset(nullptr);
         empty.swap(empty_copy);
+        empty.lock();
     }
 }
 
