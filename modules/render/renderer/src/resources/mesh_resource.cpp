@@ -13,7 +13,6 @@
 #include "SkrRT/resource/resource_system.h"
 #include "SkrRenderer/render_device.h"
 
-#include "SkrContainers/sptr.hpp"
 #include "SkrContainers/string.hpp"
 #include "SkrContainers/vector.hpp"
 #include "SkrContainers/hashmap.hpp"

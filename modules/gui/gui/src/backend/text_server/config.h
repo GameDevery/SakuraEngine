@@ -6,7 +6,6 @@
 #include <SkrContainers/vector.hpp>
 #include <SkrContainers/set.hpp>
 #include <SkrContainers/hashmap.hpp>
-#include "SkrContainers/sptr.hpp"
 #include "SkrCore/sp/sp.hpp"
 
 #include <limits>

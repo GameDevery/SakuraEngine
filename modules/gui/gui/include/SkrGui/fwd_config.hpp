@@ -23,7 +23,6 @@
 #include "SkrContainers/optional.hpp"
 #include "SkrContainers/span.hpp"
 #include "SkrContainers/string.hpp"
-#include "SkrContainers/sptr.hpp"
 #include "SkrContainers/stl_function.hpp"
 
 // function ref

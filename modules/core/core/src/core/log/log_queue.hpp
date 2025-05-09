@@ -8,7 +8,6 @@
 
 #include "SkrContainersDef/concurrent_queue.hpp"
 #include "SkrContainersDef/vector.hpp"
-#include "SkrContainersDef/sptr.hpp"
 #include "SkrContainersDef/ring_buffer.hpp"
 
 namespace skr

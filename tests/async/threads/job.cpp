@@ -51,7 +51,6 @@ TEST_CASE("JobQueue")
 #include "SkrCore/log.h"
 #include "SkrCore/async/async_progress.hpp"
 #include <SkrContainers/string.hpp>
-#include <SkrContainers/sptr.hpp>
 
 using Progress = int;
 using InputParam1 = int;

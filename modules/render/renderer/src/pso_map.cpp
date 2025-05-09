@@ -2,7 +2,6 @@
 #include "SkrGraphics/cgpux.hpp"
 #include "SkrBase/atomic/atomic.h"
 #include "SkrCore/async/thread_job.hpp"
-#include "SkrContainers/sptr.hpp"
 #include "SkrContainers/hashmap.hpp"
 
 #include "SkrRenderer/pso_key.hpp"

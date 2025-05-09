@@ -1,6 +1,5 @@
 #include "SkrCore/sp/sp.hpp"
 #include "SkrProfile/profile.h"
-#include "SkrContainers/sptr.hpp"
 #include "SkrRT/ecs/sugoi.h"
 #include "SkrRT/ecs/array.hpp"
 #include "SkrRT/ecs/type_index.hpp"

@@ -10,7 +10,6 @@
 #include "SkrBase/misc/make_zeroed.hpp"
 
 #include "SkrContainers/string.hpp"
-#include "SkrContainers/sptr.hpp"
 #include "SkrContainers/hashmap.hpp"
 
 #include "SkrRenderer/render_device.h"

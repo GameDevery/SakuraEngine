@@ -1,7 +1,6 @@
 #pragma once
 #include "SkrCore/log.h"
 #include "SkrBase/atomic/atomic.h"
-#include "SkrContainers/sptr.hpp"
 #include "SkrContainers/concurrent_queue.hpp"
 #include "SkrCore/rc/rc.hpp"
 

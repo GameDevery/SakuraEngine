@@ -3,7 +3,6 @@
 #include "SkrBase/config.h"
 #include "SkrBase/types.h"
 #include "SkrBase/math.h"
-#include "SkrContainers/sptr.hpp"
 
 namespace skr
 {

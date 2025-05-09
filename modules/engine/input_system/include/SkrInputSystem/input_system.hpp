@@ -1,5 +1,4 @@
 #pragma once
-#include "SkrContainers/sptr.hpp"
 #include "SkrInputSystem/input_mapping.hpp"
 #include "SkrInputSystem/input_action.hpp"
 

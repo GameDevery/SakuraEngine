@@ -2,7 +2,6 @@
 #include "SkrBase/misc/traits.hpp"
 #include "SkrBase/misc/constexpr_join.hpp"
 #include "SkrContainers/string.hpp"
-#include "SkrContainers/sptr.hpp"
 #include "SkrRT/resource/resource_handle.h"
 #include "SkrRTTR/rttr_traits.hpp"
 #include "SkrBase/config.h"
