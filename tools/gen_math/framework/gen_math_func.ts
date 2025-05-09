@@ -816,13 +816,13 @@ class _MathFuncGenerator {
 
     if (dim === 1) {
       const init_list = `abs(x - y) <= epsilon`;
-      b.$line(`inline ${ret_vec_name} nearly_equal(${vec_name} x, ${vec_name} y, ${comp_name} epsilon = ${comp_name}(0.000001)) { return ${init_list}; }`)
+      b.$line(`inline ${ret_vec_name} nearly_equal(${vec_name} x, ${vec_name} y, ${comp_name} epsilon = ${comp_name}(1.e-8)) { return ${init_list}; }`)
     } else {
       const init_list = _comp_lut
         .slice(0, dim)
         .map(c => `(abs(x.${c} - y.${c}) <= epsilon)`)
         .join(', ');
-      b.$line(`inline ${ret_vec_name} nearly_equal(const ${vec_name}& x, const ${vec_name}& y, ${comp_name} epsilon = ${comp_name}(0.000001)) { return { ${init_list} }; }`)
+      b.$line(`inline ${ret_vec_name} nearly_equal(const ${vec_name}& x, const ${vec_name}& y, ${comp_name} epsilon = ${comp_name}(1.e-8)) { return { ${init_list} }; }`)
     }
   }
 

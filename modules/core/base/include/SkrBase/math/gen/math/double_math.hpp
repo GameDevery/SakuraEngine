@@ -375,10 +375,10 @@ double3 lerp(const double3& v0, const double3& v1, double t);
 double4 lerp(const double4& v0, const double4& v1, double t);
 
 // nearly_equal
-inline bool nearly_equal(double x, double y, double epsilon = double(0.000001)) { return abs(x - y) <= epsilon; }
-inline bool2 nearly_equal(const double2& x, const double2& y, double epsilon = double(0.000001)) { return { (abs(x.x - y.x) <= epsilon), (abs(x.y - y.y) <= epsilon) }; }
-inline bool3 nearly_equal(const double3& x, const double3& y, double epsilon = double(0.000001)) { return { (abs(x.x - y.x) <= epsilon), (abs(x.y - y.y) <= epsilon), (abs(x.z - y.z) <= epsilon) }; }
-inline bool4 nearly_equal(const double4& x, const double4& y, double epsilon = double(0.000001)) { return { (abs(x.x - y.x) <= epsilon), (abs(x.y - y.y) <= epsilon), (abs(x.z - y.z) <= epsilon), (abs(x.w - y.w) <= epsilon) }; }
+inline bool nearly_equal(double x, double y, double epsilon = double(1.e-8)) { return abs(x - y) <= epsilon; }
+inline bool2 nearly_equal(const double2& x, const double2& y, double epsilon = double(1.e-8)) { return { (abs(x.x - y.x) <= epsilon), (abs(x.y - y.y) <= epsilon) }; }
+inline bool3 nearly_equal(const double3& x, const double3& y, double epsilon = double(1.e-8)) { return { (abs(x.x - y.x) <= epsilon), (abs(x.y - y.y) <= epsilon), (abs(x.z - y.z) <= epsilon) }; }
+inline bool4 nearly_equal(const double4& x, const double4& y, double epsilon = double(1.e-8)) { return { (abs(x.x - y.x) <= epsilon), (abs(x.y - y.y) <= epsilon), (abs(x.z - y.z) <= epsilon), (abs(x.w - y.w) <= epsilon) }; }
 
 // clamp_radians
 inline double clamp_radians(double v) {

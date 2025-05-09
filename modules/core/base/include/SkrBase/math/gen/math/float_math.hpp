@@ -375,10 +375,10 @@ float3 lerp(const float3& v0, const float3& v1, float t);
 float4 lerp(const float4& v0, const float4& v1, float t);
 
 // nearly_equal
-inline bool nearly_equal(float x, float y, float epsilon = float(0.000001)) { return abs(x - y) <= epsilon; }
-inline bool2 nearly_equal(const float2& x, const float2& y, float epsilon = float(0.000001)) { return { (abs(x.x - y.x) <= epsilon), (abs(x.y - y.y) <= epsilon) }; }
-inline bool3 nearly_equal(const float3& x, const float3& y, float epsilon = float(0.000001)) { return { (abs(x.x - y.x) <= epsilon), (abs(x.y - y.y) <= epsilon), (abs(x.z - y.z) <= epsilon) }; }
-inline bool4 nearly_equal(const float4& x, const float4& y, float epsilon = float(0.000001)) { return { (abs(x.x - y.x) <= epsilon), (abs(x.y - y.y) <= epsilon), (abs(x.z - y.z) <= epsilon), (abs(x.w - y.w) <= epsilon) }; }
+inline bool nearly_equal(float x, float y, float epsilon = float(1.e-8)) { return abs(x - y) <= epsilon; }
+inline bool2 nearly_equal(const float2& x, const float2& y, float epsilon = float(1.e-8)) { return { (abs(x.x - y.x) <= epsilon), (abs(x.y - y.y) <= epsilon) }; }
+inline bool3 nearly_equal(const float3& x, const float3& y, float epsilon = float(1.e-8)) { return { (abs(x.x - y.x) <= epsilon), (abs(x.y - y.y) <= epsilon), (abs(x.z - y.z) <= epsilon) }; }
+inline bool4 nearly_equal(const float4& x, const float4& y, float epsilon = float(1.e-8)) { return { (abs(x.x - y.x) <= epsilon), (abs(x.y - y.y) <= epsilon), (abs(x.z - y.z) <= epsilon), (abs(x.w - y.w) <= epsilon) }; }
 
 // clamp_radians
 inline float clamp_radians(float v) {
