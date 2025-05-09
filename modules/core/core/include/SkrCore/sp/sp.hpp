@@ -62,6 +62,7 @@ struct UPtr {
 
     // skr hash
     static size_t _skr_hash(const UPtr& obj);
+    static size_t _skr_hash(T* ptr);
 
 private:
     T* _ptr = nullptr;
@@ -138,6 +139,7 @@ struct SP {
 
     // skr hash
     static size_t _skr_hash(const SP& obj);
+    static size_t _skr_hash(T* ptr);
 
 private:
     // helper
@@ -527,6 +529,11 @@ template <typename T>
 inline size_t UPtr<T>::_skr_hash(const UPtr& obj)
 {
     return skr::Hash<T*>()(obj._ptr);
+}
+template <typename T>
+inline size_t UPtr<T>::_skr_hash(T* ptr)
+{
+    return skr::Hash<T*>()(ptr);
 }
 } // namespace skr
 
@@ -1005,6 +1012,11 @@ template <typename T>
 inline size_t SP<T>::_skr_hash(const SP& obj)
 {
     return ::skr::Hash<T*>()(obj._ptr);
+}
+template <typename T>
+inline size_t SP<T>::_skr_hash(T* ptr)
+{
+    return ::skr::Hash<T*>()(ptr);
 }
 } // namespace skr
 
