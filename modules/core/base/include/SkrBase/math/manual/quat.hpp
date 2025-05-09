@@ -413,21 +413,13 @@ inline bool is_normalized(const QuatD& q, double threshold = 1.e-4)
 }
 
 // nearly equal
-inline bool nearly_equal(const QuatF& lhs, const QuatF& rhs, float threshold = 1.e-4f)
+inline bool4 nearly_equal(const QuatF& lhs, const QuatF& rhs, float threshold = 1.e-4f)
 {
-    return rtm::quat_near_equal(
-        RtmConvert<QuatF>::to_rtm(lhs),
-        RtmConvert<QuatF>::to_rtm(rhs),
-        threshold
-    );
+    return nearly_equal(lhs.as_vector(), rhs.as_vector(), threshold);
 }
-inline bool nearly_equal(const QuatD& lhs, const QuatD& rhs, double threshold = 1.e-4)
+inline bool4 nearly_equal(const QuatD& lhs, const QuatD& rhs, double threshold = 1.e-4)
 {
-    return rtm::quat_near_equal(
-        RtmConvert<QuatD>::to_rtm(lhs),
-        RtmConvert<QuatD>::to_rtm(rhs),
-        threshold
-    );
+    return nearly_equal(lhs.as_vector(), rhs.as_vector(), threshold);
 }
 
 // identity

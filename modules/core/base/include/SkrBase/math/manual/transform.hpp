@@ -366,13 +366,13 @@ inline bool operator==(const TransformD& lhs, const TransformD& rhs)
 // nearly equal
 inline bool nearly_equal(const TransformF& lhs, const TransformF& rhs, float threshold = float(0.00001))
 {
-    return nearly_equal(lhs.rotation, rhs.rotation, threshold) &&
+    return all(nearly_equal(lhs.rotation, rhs.rotation, threshold)) &&
            all(nearly_equal(lhs.position, rhs.position, threshold)) &&
            all(nearly_equal(lhs.scale, rhs.scale, threshold));
 }
 inline bool nearly_equal(const TransformD& lhs, const TransformD& rhs, double threshold = double(0.00001))
 {
-    return nearly_equal(lhs.rotation, rhs.rotation, threshold) &&
+    return all(nearly_equal(lhs.rotation, rhs.rotation, threshold)) &&
            all(nearly_equal(lhs.position, rhs.position, threshold)) &&
            all(nearly_equal(lhs.scale, rhs.scale, threshold));
 }

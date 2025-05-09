@@ -19,7 +19,7 @@ TEST_CASE("Test relative Quat")
         );
         QuatF quat_world    = quat_child * quat_parent;
         QuatF quat_relative = relative(quat_parent, quat_world);
-        REQUIRE(nearly_equal(quat_relative, quat_child));
+        REQUIRE(all(nearly_equal(quat_relative, quat_child)));
 
         float3 v{ 1, 1, 1 };
         float3 v_child    = v * quat_child;
@@ -41,7 +41,7 @@ TEST_CASE("Test relative Quat")
         );
         QuatD quat_world    = quat_child * quat_parent;
         QuatD quat_relative = relative(quat_parent, quat_world);
-        REQUIRE(nearly_equal(quat_relative, quat_child));
+        REQUIRE(all(nearly_equal(quat_relative, quat_child)));
 
         double3 v{ 1, 1, 1 };
         double3 v_child    = v * quat_child;
@@ -208,7 +208,7 @@ TEST_CASE("Rotator Quat convert")
         RotatorF conv_back{ quat };
         QuatF    conv_back_quat{ conv_back };
         REQUIRE(all(nearly_equal(rotator, conv_back)));
-        REQUIRE(nearly_equal(quat, conv_back_quat));
+        REQUIRE(all(nearly_equal(quat, conv_back_quat)));
     }
 
     // for double
@@ -222,6 +222,6 @@ TEST_CASE("Rotator Quat convert")
         RotatorD conv_back{ quat };
         QuatD    conv_back_quat{ conv_back };
         REQUIRE(all(nearly_equal(rotator, conv_back)));
-        REQUIRE(nearly_equal(quat, conv_back_quat));
+        REQUIRE(all(nearly_equal(quat, conv_back_quat)));
     }
 }
