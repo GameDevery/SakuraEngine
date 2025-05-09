@@ -397,14 +397,14 @@ inline bool is_finite(const QuatD& q)
 }
 
 // is normalized
-inline bool is_normalized(const QuatF& q, float threshold = 0.00001f)
+inline bool is_normalized(const QuatF& q, float threshold = 1.e-4)
 {
     return rtm::quat_is_normalized(
         RtmConvert<QuatF>::to_rtm(q),
         threshold
     );
 }
-inline bool is_normalized(const QuatD& q, double threshold = 0.00001)
+inline bool is_normalized(const QuatD& q, double threshold = 1.e-4)
 {
     return rtm::quat_is_normalized(
         RtmConvert<QuatD>::to_rtm(q),
@@ -413,7 +413,7 @@ inline bool is_normalized(const QuatD& q, double threshold = 0.00001)
 }
 
 // nearly equal
-inline bool nearly_equal(const QuatF& lhs, const QuatF& rhs, float threshold = 0.00001f)
+inline bool nearly_equal(const QuatF& lhs, const QuatF& rhs, float threshold = 1.e-4f)
 {
     return rtm::quat_near_equal(
         RtmConvert<QuatF>::to_rtm(lhs),
@@ -421,7 +421,7 @@ inline bool nearly_equal(const QuatF& lhs, const QuatF& rhs, float threshold = 0
         threshold
     );
 }
-inline bool nearly_equal(const QuatD& lhs, const QuatD& rhs, double threshold = 0.00001)
+inline bool nearly_equal(const QuatD& lhs, const QuatD& rhs, double threshold = 1.e-4)
 {
     return rtm::quat_near_equal(
         RtmConvert<QuatD>::to_rtm(lhs),
@@ -602,10 +602,10 @@ inline QuatF relative(const QuatF& parent, const QuatF& world)
     auto rtm_parent = RtmConvert<QuatF>::to_rtm(parent);
     auto rtm_world  = RtmConvert<QuatF>::to_rtm(world);
 
-    // -parent * world
+    // world * -parent
     auto rtm_result = rtm::quat_mul(
-        rtm::quat_conjugate(rtm_parent),
-        rtm_world
+        rtm_world,
+        rtm::quat_conjugate(rtm_parent)
     );
 
     return RtmConvert<QuatF>::from_rtm(rtm_result);
@@ -615,10 +615,10 @@ inline QuatD relative(const QuatD& parent, const QuatD& world)
     auto rtm_parent = RtmConvert<QuatD>::to_rtm(parent);
     auto rtm_world  = RtmConvert<QuatD>::to_rtm(world);
 
-    // -parent * world
+    // world * -parent
     auto result_rtm = rtm::quat_mul(
-        rtm::quat_conjugate(rtm_parent),
-        rtm_world
+        rtm_world,
+        rtm::quat_conjugate(rtm_parent)
     );
 
     return RtmConvert<QuatD>::from_rtm(result_rtm);

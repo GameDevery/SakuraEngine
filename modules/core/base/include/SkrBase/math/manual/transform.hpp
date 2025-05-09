@@ -665,10 +665,10 @@ inline TransformF relative(const TransformF& parent, const TransformF& world)
             parent_scale_rcp
         );
 
-        // rotation = -Q(parent) * Q(world)
+        // rotation = Q(world) * -Q(parent)
         rtm_result.rotation = rtm::quat_mul(
-            parent_rotation_inv,
-            rtm_world.rotation
+            rtm_world.rotation,
+            parent_rotation_inv
         );
     }
     return RtmConvert<TransformF>::from_rtm(rtm_result);
@@ -748,10 +748,10 @@ inline TransformD relative(const TransformD& parent, const TransformD& world)
             parent_scale_rcp
         );
 
-        // rotation = -Q(parent) * Q(world)
+        // rotation = Q(world) * -Q(parent)
         rtm_result.rotation = rtm::quat_mul(
-            parent_rotation_inv,
-            rtm_world.rotation
+            rtm_world.rotation,
+            parent_rotation_inv
         );
     }
     return RtmConvert<TransformD>::from_rtm(rtm_result);
