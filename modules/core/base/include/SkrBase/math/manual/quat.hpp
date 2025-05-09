@@ -596,5 +596,33 @@ inline double distance(const QuatD& lhs, const QuatD& rhs)
     return acos(2 * dot(lhs, rhs) - 1);
 }
 
+// relative
+inline QuatF relative(const QuatF& from, const QuatF& to)
+{
+    auto from_rtm = RtmConvert<QuatF>::to_rtm(from);
+    auto to_rtm   = RtmConvert<QuatF>::to_rtm(to);
+
+    // -from * to
+    auto result_rtm = rtm::quat_mul(
+        rtm::quat_conjugate(from_rtm),
+        to_rtm
+    );
+
+    return RtmConvert<QuatF>::from_rtm(result_rtm);
+}
+inline QuatD relative(const QuatD& from, const QuatD& to)
+{
+    auto from_rtm = RtmConvert<QuatD>::to_rtm(from);
+    auto to_rtm   = RtmConvert<QuatD>::to_rtm(to);
+
+    // -from * to
+    auto result_rtm = rtm::quat_mul(
+        rtm::quat_conjugate(from_rtm),
+        to_rtm
+    );
+
+    return RtmConvert<QuatD>::from_rtm(result_rtm);
+}
+
 } // namespace math
 } // namespace skr

@@ -422,5 +422,48 @@ inline double4x4 adjugate(const double4x4& m)
     return RtmConvert<double4x4>::from_rtm(rtm_result);
 }
 
+// matrix3x3 relative
+inline float3x3 relative(const float3x3& from, const float3x3& to)
+{
+    const auto rtm_from   = RtmConvert<float3x3>::to_rtm(from);
+    const auto rtm_to     = RtmConvert<float3x3>::to_rtm(to);
+    const auto rtm_result = rtm::matrix_mul(
+        rtm_to,
+        rtm::matrix_inverse(rtm_from)
+    );
+    return RtmConvert<float3x3>::from_rtm(rtm_result);
+}
+inline double3x3 relative(const double3x3& from, const double3x3& to)
+{
+    const auto rtm_from   = RtmConvert<double3x3>::to_rtm(from);
+    const auto rtm_to     = RtmConvert<double3x3>::to_rtm(to);
+    const auto rtm_result = rtm::matrix_mul(
+        rtm_to,
+        rtm::matrix_inverse(rtm_from)
+    );
+    return RtmConvert<double3x3>::from_rtm(rtm_result);
+}
+
+// matrix4x4 relative
+inline float4x4 relative(const float4x4& from, const float4x4& to)
+{
+    const auto rtm_from   = RtmConvert<float4x4>::to_rtm(from);
+    const auto rtm_to     = RtmConvert<float4x4>::to_rtm(to);
+    const auto rtm_result = rtm::matrix_mul(
+        rtm_to,
+        rtm::matrix_inverse(rtm_from)
+    );
+    return RtmConvert<float4x4>::from_rtm(rtm_result);
+}
+inline double4x4 relative(const double4x4& from, const double4x4& to)
+{
+    const auto rtm_from   = RtmConvert<double4x4>::to_rtm(from);
+    const auto rtm_to     = RtmConvert<double4x4>::to_rtm(to);
+    const auto rtm_result = rtm::matrix_mul(
+        rtm_to,
+        rtm::matrix_inverse(rtm_from)
+    );
+    return RtmConvert<double4x4>::from_rtm(rtm_result);
+}
 } // namespace math
 } // namespace skr

@@ -582,5 +582,111 @@ inline double3 TransformD::back() const
 {
     return mul_vector_no_scale(double3::back(), *this);
 }
+
+// relative
+inline TransformF relative(const TransformF& from, const TransformF& to)
+{
+    auto      rtm_from = RtmConvert<TransformF>::to_rtm(from);
+    auto      rtm_to   = RtmConvert<TransformF>::to_rtm(to);
+    rtm::qvvf rtm_result;
+
+    if (rtm::vector_any_less_than3(
+            rtm::vector_min(rtm_from.scale, rtm_to.scale),
+            rtm::vector_zero()
+        ))
+    { // any neg scale, use matrix
+        auto from_mtx   = rtm::matrix_from_qvv(rtm_from);
+        auto to_mtx     = rtm::matrix_from_qvv(rtm_to);
+        auto result_mtx = rtm::matrix_mul(
+            to_mtx,
+            rtm::matrix_inverse(from_mtx)
+        );
+        rtm_result = rtm::qvv_from_matrix(result_mtx);
+    }
+    else
+    {
+        // scale = S(to) / S(from)
+        auto from_scale_rcp = rtm::vector_reciprocal(
+            rtm::vector_max(rtm_from.scale, rtm::vector_set(1.e-8f))
+        );
+        rtm_result.scale = rtm::vector_mul(rtm_to.scale, from_scale_rcp);
+
+        // -R(from)
+        auto from_rotation_inv = rtm::quat_conjugate(rtm_from.rotation);
+
+        // translation = (T(to) - T(from)) * -Q(from) / S(from)
+        auto direct_translation = rtm::vector_sub(
+            rtm_to.translation,
+            rtm_from.translation
+        );
+        auto rotated_translation = rtm::quat_mul_vector3(
+            direct_translation,
+            from_rotation_inv
+        );
+        rtm_result.translation = rtm::vector_mul(
+            rotated_translation,
+            from_scale_rcp
+        );
+
+        // rotation = -Q(from) * Q(to)
+        rtm_result.rotation = rtm::quat_mul(
+            rtm::quat_conjugate(rtm_from.rotation),
+            rtm_to.rotation
+        );
+    }
+    return RtmConvert<TransformF>::from_rtm(rtm_result);
+}
+inline TransformD relative(const TransformD& from, const TransformD& to)
+{
+    auto      rtm_from = RtmConvert<TransformD>::to_rtm(from);
+    auto      rtm_to   = RtmConvert<TransformD>::to_rtm(to);
+    rtm::qvvd rtm_result;
+
+    if (rtm::vector_any_less_than3(
+            rtm::vector_min(rtm_from.scale, rtm_to.scale),
+            rtm::vector_zero()
+        ))
+    { // any neg scale, use matrix
+        auto from_mtx   = rtm::matrix_from_qvv(rtm_from);
+        auto to_mtx     = rtm::matrix_from_qvv(rtm_to);
+        auto result_mtx = rtm::matrix_mul(
+            to_mtx,
+            rtm::matrix_inverse(from_mtx)
+        );
+        rtm_result = rtm::qvv_from_matrix(result_mtx);
+    }
+    else
+    {
+        // scale = S(to) / S(from)
+        auto from_scale_rcp = rtm::vector_reciprocal(
+            rtm::vector_max(rtm_from.scale, rtm::vector_set(1.e-8))
+        );
+        rtm_result.scale = rtm::vector_mul(rtm_to.scale, from_scale_rcp);
+
+        // -R(from)
+        auto from_rotation_inv = rtm::quat_conjugate(rtm_from.rotation);
+
+        // translation = (T(to) - T(from)) * -Q(from) / S(from)
+        auto direct_translation = rtm::vector_sub(
+            rtm_to.translation,
+            rtm_from.translation
+        );
+        auto rotated_translation = rtm::quat_mul_vector3(
+            direct_translation,
+            from_rotation_inv
+        );
+        rtm_result.translation = rtm::vector_mul(
+            rotated_translation,
+            from_scale_rcp
+        );
+
+        // rotation = -Q(from) * Q(to)
+        rtm_result.rotation = rtm::quat_mul(
+            rtm::quat_conjugate(rtm_from.rotation),
+            rtm_to.rotation
+        );
+    }
+    return RtmConvert<TransformD>::from_rtm(rtm_result);
+}
 } // namespace math
 } // namespace skr
