@@ -46,6 +46,8 @@ struct RC {
     RC& operator=(const RC<U>& rhs);
     template <RCConvertible<T> U>
     RC& operator=(RC<U>&& rhs);
+    template <RCConvertible<T> U>
+    RC& operator=(RCUnique<U>&& rhs);
 
     // factory
     template <typename... Args>
@@ -442,6 +444,22 @@ inline RC<T>& RC<T>::operator=(RC<U>&& rhs)
     {
         reset(static_cast<T*>(rhs.get()));
         rhs.reset();
+    }
+    return *this;
+}
+template <typename T>
+template <RCConvertible<T> U>
+inline RC<T>& RC<T>::operator=(RCUnique<U>&& rhs)
+{
+    static_assert(std::is_same_v<U, T> || std::has_virtual_destructor_v<T>, "when use covariance, T must have virtual destructor for safe delete");
+    reset();
+    if (!rhs.is_empty())
+    {
+        _ptr = rhs.release();
+        if (_ptr)
+        {
+            _ptr->skr_rc_add_ref();
+        }
     }
     return *this;
 }

@@ -173,8 +173,8 @@ TEST_CASE("Test RC")
         {
             // move assign
             RC<TestRCBase> move_assign{};
-            auto                cached_base = base.get();
-            move_assign                     = std::move(base);
+            auto           cached_base = base.get();
+            move_assign                = std::move(base);
             REQUIRE_EQ(rc_base_count, 2);
             REQUIRE_EQ(rc_derived_count, 1);
             REQUIRE_EQ(base.ref_count(), 0);
@@ -192,6 +192,20 @@ TEST_CASE("Test RC")
             REQUIRE_EQ(derived.ref_count(), 0);
             REQUIRE_EQ(move_assign.ref_count(), 1);
             REQUIRE_EQ(move_assign.get(), cached_derived);
+            REQUIRE_EQ(derived.get(), nullptr);
+        }
+
+        {
+            RCUnique<TestRCDerived> unique{ SkrNew<TestRCDerived>() };
+            RC<TestRCBase>          move_assign_unique{};
+            auto                    cached_unique = unique.get();
+            move_assign_unique                    = std::move(unique);
+            REQUIRE_EQ(rc_base_count, 1);
+            REQUIRE_EQ(rc_derived_count, 1);
+            REQUIRE_EQ(base.ref_count(), 0);
+            REQUIRE_EQ(derived.ref_count(), 0);
+            REQUIRE_EQ(move_assign_unique.ref_count(), 1);
+            REQUIRE_EQ(move_assign_unique.get(), cached_unique);
             REQUIRE_EQ(derived.get(), nullptr);
         }
     }
@@ -356,7 +370,7 @@ TEST_CASE("Test RCUnique")
         RCUnique<TestRCBase>    base{ SkrNew<TestRCBase>() };
         RCUnique<TestRCDerived> derived{ SkrNew<TestRCDerived>() };
 
-        auto                      cached_base = base.get();
+        auto                 cached_base = base.get();
         RCUnique<TestRCBase> move_base{ std::move(base) };
         REQUIRE_EQ(rc_base_count, 2);
         REQUIRE_EQ(rc_derived_count, 1);
@@ -365,7 +379,7 @@ TEST_CASE("Test RCUnique")
         REQUIRE_EQ(move_base.ref_count(), 1);
         REQUIRE_EQ(move_base.get(), cached_base);
 
-        auto                      cached_derived = derived.get();
+        auto                 cached_derived = derived.get();
         RCUnique<TestRCBase> move_derived{ std::move(derived) };
         REQUIRE_EQ(rc_base_count, 2);
         REQUIRE_EQ(rc_derived_count, 1);
@@ -545,7 +559,7 @@ TEST_CASE("Test RCWeak")
 
         // from raw ptr
         {
-            auto                    rc_unique = RCUnique<TestRCBase>::New();
+            auto               rc_unique = RCUnique<TestRCBase>::New();
             RCWeak<TestRCBase> rc_weak{ rc_unique.get() };
             REQUIRE_EQ(rc_base_count, 1);
             REQUIRE_EQ(rc_derived_count, 0);
@@ -567,7 +581,7 @@ TEST_CASE("Test RCWeak")
 
         // from raw ptr derived
         {
-            auto                    rc_unique = RCUnique<TestRCDerived>::New();
+            auto               rc_unique = RCUnique<TestRCDerived>::New();
             RCWeak<TestRCBase> rc_weak{ rc_unique.get() };
             REQUIRE_EQ(rc_base_count, 1);
             REQUIRE_EQ(rc_derived_count, 1);
