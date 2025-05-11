@@ -694,21 +694,9 @@ void sugoi_storage_t::query_groups(const sugoi_query_t* q, sugoi_group_callback_
     
     buildQueryCache(const_cast<sugoi_query_t*>(q));
     
-    fixed_stack_scope_t  _(localStack);
     bool                 filterShared  = (q->pimpl->filter.all_shared.length + q->pimpl->filter.none_shared.length) != 0;
-    sugoi_meta_filter_t* validatedMeta = nullptr;
-    if (q->pimpl->meta.all_meta.length > 0 || q->pimpl->meta.none_meta.length > 0)
-    {
-        validatedMeta  = localStack.allocate<sugoi_meta_filter_t>();
-        auto data      = (char*)localStack.allocate(data_size(q->pimpl->meta));
-        *validatedMeta = sugoi::clone(q->pimpl->meta, data);
-        validate(validatedMeta->all_meta);
-        validate(validatedMeta->none_meta);
-    }
-    else
-    {
-        validatedMeta = (sugoi_meta_filter_t*)&q->pimpl->meta;
-    }
+    auto& meta = q->pimpl->meta;
+    bool filterMeta = (meta.all_meta.length + meta.none_meta.length) != 0;
 
     sugoi_query_t::Impl::GroupsCache::GroupsCacheVector groups_cache;
     q->pimpl->groups_cache.read([&](auto& val){ groups_cache = val; });
@@ -716,44 +704,55 @@ void sugoi_storage_t::query_groups(const sugoi_query_t* q, sugoi_group_callback_
     {
         if (filterShared)
         {
-            fixed_stack_scope_t _(localStack);
-            sugoi_type_set_t    shared;
-            shared.length = 0;
-            // todo: is 256 enough?
-            shared.data = localStack.allocate<sugoi_type_index_t>(256);
-            group->get_shared_type(shared, localStack.allocate<sugoi_type_index_t>(256));
             // check(shared.length < 256);
-            if (!match_group_shared(shared, q->pimpl->filter))
+            if (!match_group_shared(group->sharedType, q->pimpl->filter))
                 continue;
         }
-        if (bool filterMeta = ((validatedMeta->all_meta.length + validatedMeta->none_meta.length) != 0))
+        if (filterMeta)
         {
-            if (!match_group_meta(group->type, *validatedMeta))
+            if (!match_group_meta(group->type, meta))
                 continue;
         }
         callback(u, group);
     }
 }
 
+bool sugoi_storage_t::match_entity(const sugoi_query_t* q, sugoi_entity_t entity)
+{
+    using namespace sugoi;
+    sugoi_chunk_view_t view = entity_view(entity);
+    if (!view.chunk)
+        return false;
+    auto group = view.chunk->group;
+    bool found = false;
+    q->pimpl->groups_cache.read([&](auto& cache){
+        auto iter = std::find(cache.begin(), cache.end(), group);
+        if (iter != cache.end())
+            found = true;
+    });
+    if (!found)
+        return false;
+    bool filterShared  = (q->pimpl->filter.all_shared.length + q->pimpl->filter.none_shared.length) != 0;
+    auto& meta = q->pimpl->meta;
+    bool filterMeta = (meta.all_meta.length + meta.none_meta.length) != 0;
+    if (filterShared)
+    {
+        if (!match_group_shared(group->sharedType, q->pimpl->filter))
+            return false;
+    }
+    if (filterMeta)
+    {
+        if (!match_group_meta(group->type, meta))
+            return false;
+    }
+    return true;
+}
+
 void sugoi_storage_t::filter_groups(const sugoi_filter_t& filter, const sugoi_meta_filter_t& meta, sugoi_group_callback_t callback, void* u)
 {
     using namespace sugoi;
-    fixed_stack_scope_t  _(localStack);
     bool                 filterShared  = (filter.all_shared.length + filter.none_shared.length) != 0;
-    sugoi_meta_filter_t* validatedMeta = nullptr;
-    if (meta.all_meta.length > 0 || meta.none_meta.length > 0)
-    {
-        validatedMeta  = localStack.allocate<sugoi_meta_filter_t>();
-        auto data      = (char*)localStack.allocate(data_size(meta));
-        *validatedMeta = sugoi::clone(meta, data);
-        validate(validatedMeta->all_meta);
-        validate(validatedMeta->none_meta);
-    }
-    else
-    {
-        validatedMeta = (sugoi_meta_filter_t*)&meta;
-    }
-    bool filterMeta      = (validatedMeta->all_meta.length + validatedMeta->none_meta.length) != 0;
+    bool filterMeta      = (meta.all_meta.length + meta.none_meta.length) != 0;
     bool includeDead     = false;
     bool includeDisabled = false;
     {
@@ -782,19 +781,12 @@ void sugoi_storage_t::filter_groups(const sugoi_filter_t& filter, const sugoi_me
                 continue;
             if (filterShared)
             {
-                fixed_stack_scope_t _(localStack);
-                sugoi_type_set_t    shared;
-                shared.length = 0;
-                // todo: is 256 enough?
-                shared.data = localStack.allocate<sugoi_type_index_t>(256);
-                group->get_shared_type(shared, localStack.allocate<sugoi_type_index_t>(256));
-                // check(shared.length < 256);
-                if (!match_group_shared(shared, filter))
+                if (!match_group_shared(group->sharedType, filter))
                     continue;
             }
             if (filterMeta)
             {
-                if (!match_group_meta(group->type, *validatedMeta))
+                if (!match_group_meta(group->type, meta))
                     continue;
             }
             callback(u, group);
@@ -808,37 +800,16 @@ void sugoi_storage_t::filter_groups(const sugoi_filter_t& filter, const sugoi_me
 bool sugoi_storage_t::match_group(const sugoi_filter_t& filter, const sugoi_meta_filter_t& meta, const sugoi_group_t* group)
 {
     using namespace sugoi;
-    fixed_stack_scope_t  _(localStack);
     bool                 filterShared  = (filter.all_shared.length + filter.none_shared.length) != 0;
-    sugoi_meta_filter_t* validatedMeta = nullptr;
-    if (meta.all_meta.length > 0 || meta.none_meta.length > 0)
-    {
-        validatedMeta  = localStack.allocate<sugoi_meta_filter_t>();
-        auto data      = (char*)localStack.allocate(data_size(meta));
-        *validatedMeta = sugoi::clone(meta, data);
-        validate(validatedMeta->all_meta);
-        validate(validatedMeta->none_meta);
-    }
-    else
-    {
-        validatedMeta = (sugoi_meta_filter_t*)&meta;
-    }
-    bool filterMeta = (validatedMeta->all_meta.length + validatedMeta->none_meta.length) != 0;
+    bool filterMeta = (meta.all_meta.length + meta.none_meta.length) != 0;
     if (filterShared)
     {
-        fixed_stack_scope_t _(localStack);
-        sugoi_type_set_t    shared;
-        shared.length = 0;
-        // todo: is 256 enough?
-        shared.data = localStack.allocate<sugoi_type_index_t>(256);
-        group->get_shared_type(shared, localStack.allocate<sugoi_type_index_t>(256));
-        // check(shared.length < 256);
-        if (!match_group_shared(shared, filter))
+        if (!match_group_shared(group->sharedType, filter))
             return false;
     }
     if (filterMeta)
     {
-        if (!match_group_meta(group->type, *validatedMeta))
+        if (!match_group_meta(group->type, meta))
             return false;
     }
     return match_group_type(group->type, filter, group->archetype->withMask);

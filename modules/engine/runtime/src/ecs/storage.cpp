@@ -1296,6 +1296,11 @@ void sugoiQ_in_group(sugoi_query_t* q, sugoi_group_t* group, sugoi_view_callback
         q->pimpl->customFilter, q->pimpl->customFilterUserData, callback, u);
 }
 
+bool sugoiQ_match_entity(sugoi_query_t* query, sugoi_entity_t ent)
+{
+    return query->pimpl->storage->match_entity(query, ent);
+}
+
 const char8_t* sugoiQ_get_error()
 {
     return sugoi::get_error().c_str();

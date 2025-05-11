@@ -6,7 +6,7 @@ namespace sugoi
 {
 struct resource_fields_t
 {
-    intptr_t offsets;
+    intptr_t* offsets;
     uint32_t count;
 };
 
@@ -47,6 +47,7 @@ struct sugoi_group_t {
     uint32_t timestamp;
     uint32_t size;
     sugoi_entity_type_t type;
+    sugoi_type_set_t sharedType;
     sugoi::archetype_t* archetype;
     sugoi_group_t* dead;
     sugoi_group_t* cloned;

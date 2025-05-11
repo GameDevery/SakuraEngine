@@ -250,6 +250,15 @@ sugoi_group_t* sugoi_storage_t::constructGroup(const sugoi_entity_type_t& inType
     group.firstFree = 0;
     sugoi_entity_type_t type = sugoi::clone(inType, buffer);
     group.type = type;
+
+
+    sugoi_type_set_t shared;
+    shared.length = 0;
+    // todo: is 256 enough?
+    shared.data = localStack.allocate<sugoi_type_index_t>(256);
+    group.get_shared_type(shared, localStack.allocate<sugoi_type_index_t>(256));
+    group.sharedType = sugoi::clone(shared, buffer);
+
     auto toClean = localStack.allocate<TIndex>(group.type.type.length + 1);
     SIndex toCleanCount = 0;
     auto toClone = localStack.allocate<TIndex>(group.type.type.length + 1);
