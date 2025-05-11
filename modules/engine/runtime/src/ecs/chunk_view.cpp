@@ -63,7 +63,7 @@ static void destruct_impl(sugoi_chunk_view_t view, type_index_t type, EIndex off
     {
         forloop(k, 0, resourceFields.count)
         {
-            auto field = ((intptr_t*)resourceFields.offsets)[k];
+            auto field = resourceFields.offsets[k];
             auto* resource = (skr_resource_handle_t*)(data + field);
             if(resource->is_resolved())
                 resource->reset();
@@ -160,7 +160,7 @@ static void clone_impl(sugoi_chunk_view_t dstV, const sugoi_chunk_t* srcC, uint3
     {
         forloop(k, 0, resourceFields.count)
         {
-            auto field = ((intptr_t*)resourceFields.offsets)[k];
+            auto field = resourceFields.offsets[k];
             auto* resource = (skr_resource_handle_t*)(data + field);
             if(resource->is_resolved())
             {
@@ -272,7 +272,7 @@ static void duplicate_impl(sugoi_chunk_view_t dstV, const sugoi_chunk_t* srcC, u
     {
         forloop(k, 0, resourceFields.count)
         {
-            auto field = ((intptr_t*)resourceFields.offsets)[k];
+            auto field = resourceFields.offsets[k];
             auto* resource = (skr_resource_handle_t*)(data + field);
             if(resource->is_resolved())
             {

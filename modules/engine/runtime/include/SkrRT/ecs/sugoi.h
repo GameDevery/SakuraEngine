@@ -84,10 +84,10 @@ typedef struct sugoi_type_description_t {
     uint16_t elementSize;
     uint16_t alignment;
     // entity field is used to guarantee references between entities are keeping valid after operations like instantiate, merge world, deserialize etc.
-    intptr_t entityFields;
+    intptr_t* entityFields;
     uint32_t entityFieldsCount;
     // resource field is used to track resource lifetime
-    intptr_t resourceFields;
+    intptr_t* resourceFields;
     uint32_t resourceFieldsCount;
     // lifetime callbacks of this component
     sugoi_callback_v callback;

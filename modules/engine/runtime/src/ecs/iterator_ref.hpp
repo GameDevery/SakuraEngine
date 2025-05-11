@@ -30,9 +30,8 @@ static void iter_ref_impl(sugoi_chunk_view_t view, type_index_t type, EIndex off
         {
             forloop (i, 0, desc.entityFieldsCount)
             {
-                auto off = desc.entityFields + i;
-                auto field = type_registry.map_entity_field(off);
-                iter.map(*(sugoi_entity_t*)(curr + field));
+                auto off = desc.entityFields[i];
+                iter.map(*(sugoi_entity_t*)(curr + off));
             }
         }
     };
