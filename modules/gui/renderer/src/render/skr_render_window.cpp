@@ -156,9 +156,9 @@ void SkrRenderWindow::_prepare_draw_data(const NativeWindowLayer* layer, Sizef w
         const skr_float2_t zero_point   = { window_size.width * 0.5f, window_size.height * 0.5f };
         const skr_float2_t eye_position = { zero_point.x, zero_point.y };
         rtm::matrix3x4f               view         = rtm::matrix_cast(rtm::view_look_to(
-            { eye_position.x, eye_position.y, 0.f },
-            { 0.f, 0.f, 1.f },
-            { 0.0f, 1.0f, 0.0f }
+            rtm::vector_set(eye_position.x, eye_position.y, 0.f, 0.0f),
+            rtm::vector_set(0.f, 0.f, 1.f, 0.0f),
+            rtm::vector_set(0.0f, 1.0f, 0.0f, 0.0f)
         ));
         // flip y axis for direct x
         view = rtm::matrix_mul(view, (rtm::matrix3x4f)rtm::matrix_from_scale(rtm::vector_set(1.f, -1.f, 1.f, 0.f)));
