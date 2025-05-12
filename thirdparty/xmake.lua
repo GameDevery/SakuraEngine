@@ -3,6 +3,7 @@ includes("mimalloc")
 includes("SDL2")
 includes("SDL3")
 includes("rtm")
+includes("imgui")
 
 skr_includes_with_cull("gamenetworkingsockets", function()
     includes("gamenetworkingsockets")
