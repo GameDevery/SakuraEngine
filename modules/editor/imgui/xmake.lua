@@ -11,6 +11,9 @@ shared_module("SkrImGuiNG", "SKR_IMGUI_NG")
     add_includedirs("include", {public=true})
     add_files("src/**.cpp")
 
+    -- for export ImGui API
+    add_defines("IMGUI_IMPORT= extern SKR_IMGUI_NG_API", {public=false})
+
     -- font files
     skr_install_rule()
     skr_install("download", {
