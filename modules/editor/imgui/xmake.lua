@@ -3,7 +3,8 @@ shared_module("SkrImGuiNG", "SKR_IMGUI_NG")
     skr_unity_build()
 
     -- deps
-    add_deps("ImGui")
+    add_deps("ImGui", {public = true})
+    add_deps("SDL3")
     public_dependency("SkrInput")
     public_dependency("SkrRenderGraph")
 
