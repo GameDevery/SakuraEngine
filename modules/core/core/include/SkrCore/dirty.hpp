@@ -22,13 +22,13 @@ struct Trigger {
     void trigger_if(bool condition);
     void trigger_if(Trigger other);
     void clean();
-    bool comsume();
+    bool comsume() const; // const for allow consume, but prevent trigger
 
     // getter
     bool is_triggered() const;
 
 private:
-    bool _triggered = false;
+    mutable bool _triggered = false;
 };
 
 template <typename T>
@@ -55,7 +55,7 @@ struct Dirty {
     void dirty();
     void dirty_if(bool condition);
     void clean();
-    bool comsume();
+    bool comsume() const; // const for allow consume, but prevent trigger
 
     // getter
     const T& ref() const;
@@ -71,8 +71,8 @@ struct Dirty {
     // T&       operator*(); // for safe dirty, no implicit reference getter
 
 private:
-    T    _value = {};
-    bool _dirty = false;
+    T            _value = {};
+    mutable bool _dirty = false;
 };
 } // namespace skr
 
@@ -134,7 +134,7 @@ inline void Trigger::clean()
 {
     _triggered = false;
 }
-inline bool Trigger::comsume()
+inline bool Trigger::comsume() const
 {
     bool old   = _triggered;
     _triggered = false;
@@ -235,7 +235,7 @@ inline void Dirty<T>::clean()
     _dirty = false;
 }
 template <typename T>
-inline bool Dirty<T>::comsume()
+inline bool Dirty<T>::comsume() const
 {
     bool old = _dirty;
     _dirty   = false;
