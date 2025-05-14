@@ -10,4 +10,20 @@ ImGuiBackend::~ImGuiBackend()
 {
     destroy();
 }
+
+// imgui context
+void ImGuiBackend::attach(ImGuiContext* context)
+{
+}
+ImGuiContext* ImGuiBackend::detach()
+{
+    return nullptr;
+}
+void ImGuiBackend::create()
+{
+}
+void ImGuiBackend::destroy()
+{
+}
+
 } // namespace skr
