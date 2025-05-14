@@ -1,4 +1,4 @@
-#include "SkrCore/sp/sp.hpp"
+#include "SkrCore/memory/sp.hpp"
 #include "common/utils.h"
 #include "GameRuntime/gamert.h"
 #include "SkrBase/misc/make_zeroed.hpp"
