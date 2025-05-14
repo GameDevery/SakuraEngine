@@ -18,18 +18,12 @@ struct SKR_IMGUI_NG_API ImGuiBackend {
     ~ImGuiBackend();
 
     // imgui context
-    void          apply_context();
-    void          attach(ImGuiContext* context);
-    ImGuiContext* detach();
-    void          create();  // means create a imgui context and attach
-    void          destroy(); // means detach and destroy context
-
-    // render backend
-    void set_renderer_backend(RCUnique<ImGuiRendererBackend> backend);
-
-    // main window
-    void create_main_window(const ImGuiWindowCreateInfo& create_info = {});
-    void destroy_main_window();
+    void apply_context();
+    void create(
+        const ImGuiWindowCreateInfo&   main_wnd_create_info,
+        RCUnique<ImGuiRendererBackend> backend
+    );
+    void destroy();
 
     // frame
     void pump_message();
@@ -48,27 +42,22 @@ struct SKR_IMGUI_NG_API ImGuiBackend {
     void enable_move_window_by_blank_area(bool enable = true);
 
     // getter
-    inline bool                      is_attached() const { return _context != nullptr; }
-    inline bool                      has_main_window() const { return _main_window.is_valid(); }
-    inline const Trigger&            pixel_size_changed() const { return _pixel_size_changed; }
-    inline const Trigger&            content_scale_changed() const { return _content_scale_changed; }
-    inline const Trigger&            want_resize() const { return _want_resize; }
-    inline const Trigger&            want_exit() const { return _want_exit; }
+    inline bool                      is_created() const { return _context != nullptr; }
     inline ImGuiContext*             context() const { return _context; }
     inline const ImGuiWindowBackend& main_window() const { return _main_window; }
 
 private:
-    // dirty & trigger
-    Trigger _pixel_size_changed    = {};
-    Trigger _content_scale_changed = {};
-    Trigger _want_resize           = {};
-    Trigger _want_exit             = {};
-
     // context & main window
     ImGuiContext*      _context     = nullptr;
     ImGuiWindowBackend _main_window = {};
 
     // render backend
     RCUnique<ImGuiRendererBackend> _renderer_backend = nullptr;
+
+    // dirty & trigger
+    Trigger _pixel_size_changed    = {};
+    Trigger _content_scale_changed = {};
+    Trigger _want_resize           = {};
+    Trigger _want_exit             = {};
 };
 } // namespace skr
