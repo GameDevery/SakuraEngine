@@ -1,4 +1,5 @@
 #include <SkrImGui/imgui_backend.hpp>
+#include <SkrImGui/imgui_render_backend.hpp>
 #include <SDL3/SDL.h>
 #include <SkrCore/log.hpp>
 #include "./private/imgui_impl_sdl3.h"
@@ -26,6 +27,7 @@ ImGuiBackend::~ImGuiBackend()
 void ImGuiBackend::apply_context()
 {
     SKR_ASSERT(is_attached() && "please attach context before apply");
+    SKR_ASSERT(!_renderer_backend.is_empty() && "please set render backend before apply");
 
     ImGui::SetCurrentContext(_context);
 }
@@ -45,6 +47,37 @@ void ImGuiBackend::attach(ImGuiContext* context)
         ImGui_ImplSDL3_InitForOther(reinterpret_cast<SDL_Window*>(_main_window.payload()));
         ImGui::SetCurrentContext(cache);
     }
+
+    // init render backend
+    {
+        _context->IO.BackendRendererUserData = _renderer_backend.get();
+        _context->IO.BackendRendererName     = "Sakura ImGui Renderer";
+
+        _context->PlatformIO.Renderer_CreateWindow = +[](ImGuiViewport* vp) {
+            auto backend = static_cast<ImGuiRendererBackend*>(
+                ImGui::GetCurrentContext()->IO.BackendRendererUserData
+            );
+            backend->create_window(vp);
+        };
+        _context->PlatformIO.Renderer_DestroyWindow = +[](ImGuiViewport* vp) {
+            auto backend = static_cast<ImGuiRendererBackend*>(
+                ImGui::GetCurrentContext()->IO.BackendRendererUserData
+            );
+            backend->destroy_window(vp);
+        };
+        _context->PlatformIO.Renderer_SetWindowSize = +[](ImGuiViewport* vp, ImVec2 size) {
+            auto backend = static_cast<ImGuiRendererBackend*>(
+                ImGui::GetCurrentContext()->IO.BackendRendererUserData
+            );
+            backend->resize_window(vp, size);
+        };
+        _context->PlatformIO.Renderer_RenderWindow = +[](ImGuiViewport* vp, void*) {
+            auto backend = static_cast<ImGuiRendererBackend*>(
+                ImGui::GetCurrentContext()->IO.BackendRendererUserData
+            );
+            backend->render_window(vp, nullptr);
+        };
+    }
 }
 ImGuiContext* ImGuiBackend::detach()
 {
@@ -59,6 +92,30 @@ ImGuiContext* ImGuiBackend::detach()
         ImGui::SetCurrentContext(old);
         ImGui_ImplSDL3_Shutdown();
         ImGui::SetCurrentContext(cache);
+    }
+
+    // destroy all textures
+    {
+        for (ImTextureData* tex : old->PlatformIO.Textures)
+        {
+            if (tex->RefCount == 1)
+            {
+                _renderer_backend->destroy_texture(tex);
+                tex->TexID  = 0;
+                tex->Status = ImTextureStatus_Destroyed;
+            }
+        }
+    }
+
+    // reset render backend
+    {
+        old->IO.BackendRendererUserData = nullptr;
+        old->IO.BackendRendererName     = nullptr;
+
+        old->PlatformIO.Renderer_CreateWindow  = nullptr;
+        old->PlatformIO.Renderer_DestroyWindow = nullptr;
+        old->PlatformIO.Renderer_SetWindowSize = nullptr;
+        old->PlatformIO.Renderer_RenderWindow  = nullptr;
     }
 
     return old;
@@ -76,16 +133,29 @@ void ImGuiBackend::destroy()
     ImGui::DestroyContext(old);
 }
 
+// render backend
+void ImGuiBackend::set_renderer_backend(RCUnique<ImGuiRendererBackend> backend)
+{
+    SKR_ASSERT(!is_attached() && "cannot set render backend after attach");
+    _renderer_backend = std::move(backend);
+}
+
 // main window
 void ImGuiBackend::create_main_window(const ImGuiWindowCreateInfo& create_info)
 {
     SKR_ASSERT(!has_main_window() && "please destroy main window before create");
+    SKR_ASSERT(!_renderer_backend.is_empty() && "please set render backend before create");
+
     _main_window.create(create_info);
+    _renderer_backend->create_main_window(&_main_window);
 }
 void ImGuiBackend::destroy_main_window()
 {
     SKR_ASSERT(has_main_window() && "please create main window before destroy");
+    SKR_ASSERT(!_renderer_backend.is_empty() && "please set render backend before destroy");
+
     _main_window.destroy();
+    _renderer_backend->destroy_main_window(&_main_window);
 }
 
 // frame
@@ -142,7 +212,28 @@ void ImGuiBackend::render()
     SKR_ASSERT(is_attached() && "please attach context before render");
     SKR_ASSERT(ImGui::GetCurrentContext() == _context && "context mismatch");
 
+    // update textures
+    for (ImTextureData* tex : ImGui::GetPlatformIO().Textures)
+    {
+        switch (tex->Status)
+        {
+        case ImTextureStatus_WantCreate:
+            _renderer_backend->create_texture(tex);
+            break;
+        case ImTextureStatus_WantUpdates:
+            _renderer_backend->update_texture(tex);
+            break;
+        case ImTextureStatus_WantDestroy:
+            _renderer_backend->destroy_texture(tex);
+            break;
+        }
+    }
+
+    // render main window
     ImGui::Render();
+    _renderer_backend->render_main_window(&_main_window, ImGui::GetDrawData());
+
+    // render other viewports
     if (_context->IO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
     {
         ImGui::RenderPlatformWindowsDefault();

@@ -4,11 +4,14 @@
 #include <SkrContainers/optional.hpp>
 #include <SkrBase/math.h>
 #include <SkrCore/dirty.hpp>
+#include <SkrCore/memory/rc.hpp>
 #include <imgui.h>
 #include <imgui_internal.h>
 
 namespace skr
 {
+struct ImGuiRendererBackend;
+
 struct SKR_IMGUI_NG_API ImGuiBackend {
     // ctor & dtor
     ImGuiBackend();
@@ -20,6 +23,9 @@ struct SKR_IMGUI_NG_API ImGuiBackend {
     ImGuiContext* detach();
     void          create();  // means create a imgui context and attach
     void          destroy(); // means detach and destroy context
+
+    // render backend
+    void set_renderer_backend(RCUnique<ImGuiRendererBackend> backend);
 
     // main window
     void create_main_window(const ImGuiWindowCreateInfo& create_info = {});
@@ -61,5 +67,8 @@ private:
     // context & main window
     ImGuiContext*      _context     = nullptr;
     ImGuiWindowBackend _main_window = {};
+
+    // render backend
+    RCUnique<ImGuiRendererBackend> _renderer_backend = nullptr;
 };
 } // namespace skr
