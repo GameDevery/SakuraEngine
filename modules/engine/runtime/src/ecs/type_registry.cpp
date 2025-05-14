@@ -58,7 +58,7 @@ TypeRegistry::Impl::Impl(pool_t& pool)
         auto desc = make_zeroed<type_description_t>();
         desc.guid = u8"{54BD68D5-FD66-4DBE-85CF-70F535C27389}"_guid;
         desc.name = u8"sugoi::link_comp_t";
-        desc.size = sizeof(sugoi_entity_t) * kLinkComponentSize;
+        desc.size = sizeof(ArrayComponent<sugoi_entity_t, kLinkComponentSize>);
         desc.elementSize = sizeof(sugoi_entity_t);
         desc.alignment = alignof(sugoi_entity_t);
         desc.entityFieldsCount = 1;
