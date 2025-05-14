@@ -1,9 +1,10 @@
 #pragma once
-#include <SkrImGui/window.hpp>
+#include <SkrImGui/imgui_window_backend.hpp>
 #include <SkrContainers/string.hpp>
 #include <SkrContainers/optional.hpp>
 #include <SkrBase/math.h>
 #include <imgui.h>
+#include <imgui_internal.h>
 
 namespace skr
 {
@@ -29,6 +30,8 @@ struct SKR_IMGUI_NG_API ImGuiBackend {
     void pump_message();
     void begin_frame();
     void end_frame();
+
+    // TODO. main window 的 resize 消息
 
 private:
     ImGuiContext*      _context     = nullptr;

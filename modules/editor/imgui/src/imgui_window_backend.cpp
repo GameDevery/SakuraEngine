@@ -1,4 +1,4 @@
-#include <SkrImGui/window.hpp>
+#include <SkrImGui/imgui_window_backend.hpp>
 #include <SDL3/SDL.h>
 
 namespace skr
