@@ -25,7 +25,7 @@ static sugoi_array_comp_t* new_array(void* ptr, size_t cap, size_t elemSize, siz
 
 bool is_array_small(sugoi_array_comp_t* ptr)
 {
-    return ptr->BeginX < ((char*)(ptr + 1) + alignof(std::max_align_t));
+    return ptr->BeginX < ((char*)(ptr + 1) + sugoi::kSmallBinSize);
 }
 
 #define for_buffer(i, array, size) \
