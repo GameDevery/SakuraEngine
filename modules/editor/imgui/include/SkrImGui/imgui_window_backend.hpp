@@ -51,8 +51,9 @@ struct SKR_IMGUI_NG_API ImGuiWindowBackend {
     String              title() const;
     uint2               size() const;
     uint2               pos() const;
-    uint2               client_size() const;
-    uint2               client_pos() const;
+    uint2               size_client() const;
+    uint2               pos_client() const;
+    uint2               size_client_pixel() const;
     bool                is_hidden() const;
     bool                is_minimized() const;
     bool                is_keyboard_focused() const;

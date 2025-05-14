@@ -154,7 +154,7 @@ uint2 ImGuiWindowBackend::pos() const
         static_cast<uint32_t>(y)
     };
 }
-uint2 ImGuiWindowBackend::client_size() const
+uint2 ImGuiWindowBackend::size_client() const
 {
     auto* wnd = reinterpret_cast<SDL_Window*>(_payload);
 
@@ -165,7 +165,7 @@ uint2 ImGuiWindowBackend::client_size() const
         static_cast<uint32_t>(h)
     };
 }
-uint2 ImGuiWindowBackend::client_pos() const
+uint2 ImGuiWindowBackend::pos_client() const
 {
     auto* wnd = reinterpret_cast<SDL_Window*>(_payload);
 
@@ -176,6 +176,17 @@ uint2 ImGuiWindowBackend::client_pos() const
     return {
         static_cast<uint32_t>(x - l),
         static_cast<uint32_t>(y - t)
+    };
+}
+uint2 ImGuiWindowBackend::size_client_pixel() const
+{
+    auto* wnd = reinterpret_cast<SDL_Window*>(_payload);
+
+    int w, h;
+    SDL_GetWindowSizeInPixels(wnd, &w, &h);
+    return {
+        static_cast<uint32_t>(w),
+        static_cast<uint32_t>(h)
     };
 }
 bool ImGuiWindowBackend::is_hidden() const
