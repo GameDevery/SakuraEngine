@@ -79,7 +79,7 @@ void ImGuiBackend::create(const ImGuiWindowCreateInfo& main_wnd_create_info, RCU
     }
 
     // init main window render data
-    _renderer_backend->create_main_window(&_main_window);
+    _renderer_backend->create_main_window(_context->Viewports[0]);
 }
 void ImGuiBackend::destroy()
 {
@@ -107,7 +107,7 @@ void ImGuiBackend::destroy()
     }
 
     // destroy main window render data
-    _renderer_backend->destroy_main_window(&_main_window);
+    _renderer_backend->destroy_main_window(_context->Viewports[0]);
 
     // reset render backend
     {
@@ -185,12 +185,18 @@ void ImGuiBackend::render()
         {
         case ImTextureStatus_WantCreate:
             _renderer_backend->create_texture(tex);
+            SKR_ASSERT(tex->Status == ImTextureStatus_OK);
             break;
         case ImTextureStatus_WantUpdates:
             _renderer_backend->update_texture(tex);
+            SKR_ASSERT(tex->Status == ImTextureStatus_OK);
             break;
         case ImTextureStatus_WantDestroy:
-            _renderer_backend->destroy_texture(tex);
+            if (tex->UnusedFrames >= _renderer_backend->backbuffer_count())
+            {
+                _renderer_backend->destroy_texture(tex);
+                SKR_ASSERT(tex->Status == ImTextureStatus_Destroyed);
+            }
             break;
         }
     }
@@ -198,12 +204,18 @@ void ImGuiBackend::render()
     // resize main window
     if (_want_resize.comsume())
     {
-        _renderer_backend->resize_main_window(&_main_window, _main_window.size_client());
+        auto new_size = _main_window.size_client();
+        _renderer_backend->resize_main_window(
+            _context->Viewports[0],
+            { (float)new_size.x, (float)new_size.y }
+        );
     }
 
     // render main window
     ImGui::Render();
-    _renderer_backend->render_main_window(&_main_window, ImGui::GetDrawData());
+    _renderer_backend->render_main_window(
+        _context->Viewports[0]
+    );
 
     // render other viewports
     if (_context->IO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)

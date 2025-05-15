@@ -1,5 +1,6 @@
 #include <SkrImGui/imgui_render_backend.hpp>
 #include <filesystem>
+#include <SDL3/SDL.h>
 
 // helpers
 namespace skr
@@ -10,12 +11,26 @@ struct ImGuiRendererBackendRGViewportData {
     CGPUFenceId     fence            = nullptr;
     CGPUQueueId     present_queue    = nullptr;
     uint32_t        backbuffer_index = 0;
+    ECGPULoadAction load_action      = CGPU_LOAD_ACTION_DONTCARE;
+
+    inline void destroy()
+    {
+        // wait rendering done
+        cgpu_wait_fences(&fence, 1);
+        cgpu_wait_queue_idle(present_queue);
+
+        // destroy resources
+        auto device = swapchain->device;
+        cgpu_free_fence(fence);
+        cgpu_free_swapchain(swapchain);
+        cgpu_free_surface(device, surface);
+    }
 };
 struct ImGuiRendererBackendRGTextureData {
     CGPUTextureId texture = nullptr;
 };
 
-inline static Vector<uint8_t> read_shader_bytes(
+inline static Vector<uint8_t> _read_shader_bytes(
     String       virtual_path,
     ECGPUBackend backend
 )
@@ -56,7 +71,282 @@ inline static Vector<uint8_t> read_shader_bytes(
     return result;
 }
 
-// TODO. update swapchain
+inline static void _rebuild_swapchain(
+    ImGuiViewport* vp,
+    CGPUDeviceId   device,
+    CGPUQueueId    present_queue,
+    ImVec2         size,
+    ECGPUFormat    backbuffer_format,
+    uint32_t       backbuffer_count,
+    bool           enable_vsync
+)
+{
+    auto       rdata      = (ImGuiRendererBackendRGViewportData*)vp->RendererUserData;
+    const auto wnd_native = vp->PlatformHandleRaw;
+
+    // create fence & surface
+    if (!rdata->fence)
+    {
+        rdata->fence = cgpu_create_fence(device);
+    }
+    if (!rdata->surface)
+    {
+        rdata->surface = cgpu_surface_from_native_view(
+            device,
+            wnd_native
+        );
+    }
+
+    // wait fence
+    cgpu_wait_fences(&rdata->fence, 1);
+
+    // destroy old swapchain
+    if (rdata->swapchain)
+    {
+        cgpu_free_swapchain(rdata->swapchain);
+    }
+
+    // create swapchain
+    CGPUSwapChainDescriptor chain_desc = {};
+    chain_desc.surface                 = rdata->surface;
+    chain_desc.present_queues          = &present_queue;
+    chain_desc.present_queues_count    = 1;
+    chain_desc.width                   = size.x;
+    chain_desc.height                  = size.y;
+    chain_desc.image_count             = backbuffer_count;
+    chain_desc.format                  = backbuffer_format;
+    chain_desc.enable_vsync            = enable_vsync;
+    rdata->swapchain                   = cgpu_create_swapchain(device, &chain_desc);
+    rdata->present_queue               = present_queue;
+}
+
+inline static SDL_Window* _get_sdl_wnd(ImGuiViewport* vp)
+{
+
+    auto wnd_id = (SDL_WindowID) reinterpret_cast<size_t>(vp->PlatformHandle);
+    auto wnd    = SDL_GetWindowFromID(wnd_id);
+    SKR_ASSERT(wnd);
+    return wnd;
+}
+
+inline static void _draw_viewport(
+    ImGuiViewport*             vp,
+    render_graph::RenderGraph* render_graph,
+    CGPURootSignatureId        root_sig,
+    CGPURenderPipelineId       render_pipeline
+)
+{
+    namespace rg = skr::render_graph;
+
+    SkrZoneScopedN("RenderIMGUI");
+    auto rdata = (ImGuiRendererBackendRGViewportData*)vp->RendererUserData;
+    SKR_ASSERT(rdata != nullptr);
+
+    // get data
+    auto draw_data   = vp->DrawData;
+    auto load_action = rdata->load_action;
+    if (draw_data->TotalVtxCount == 0) { return; }
+    uint32_t vertex_size = draw_data->TotalVtxCount * (uint32_t)sizeof(ImDrawVert);
+    uint32_t index_size  = draw_data->TotalIdxCount * (uint32_t)sizeof(ImDrawIdx);
+
+    // import backbuffer
+    CGPUAcquireNextDescriptor acquire = {};
+    acquire.fence                     = rdata->fence;
+    acquire.signal_semaphore          = nullptr;
+    cgpu_wait_fences(&rdata->fence, 1);
+    auto          backbuffer_index = rdata->backbuffer_index = cgpu_acquire_next_image(rdata->swapchain, &acquire);
+    CGPUTextureId native_backbuffer                          = rdata->swapchain->back_buffers[backbuffer_index];
+    auto          back_buffer                                = render_graph->create_texture(
+        [=](rg::RenderGraph& g, rg::TextureBuilder& builder) {
+            skr::String buf_name = skr::format(u8"imgui-window-{}", vp->ID);
+            builder.set_name((const char8_t*)buf_name.c_str())
+                .import(native_backbuffer, CGPU_RESOURCE_STATE_UNDEFINED)
+                .allow_render_target();
+        }
+    );
+
+    // use CVV
+    bool useCVV = true;
+#if SKR_PLAT_MACOSX
+    useCVV = false;
+#endif
+
+    // create or resize vb/ib
+    auto vertex_buffer_handle = render_graph->create_buffer(
+        [=](rg::RenderGraph& g, rg::BufferBuilder& builder) {
+            SkrZoneScopedN("ConstructVBHandle");
+
+            String name = skr::format(u8"imgui_vertices-{}", draw_data->OwnerViewport->ID);
+            builder.set_name(name.c_str())
+                .size(vertex_size)
+                .memory_usage(useCVV ? CGPU_MEM_USAGE_CPU_TO_GPU : CGPU_MEM_USAGE_GPU_ONLY)
+                .with_flags(useCVV ? CGPU_BCF_PERSISTENT_MAP_BIT : CGPU_BCF_NONE)
+                .with_tags(useCVV ? kRenderGraphDynamicResourceTag : kRenderGraphDefaultResourceTag)
+                .prefer_on_device()
+                .as_vertex_buffer();
+        }
+    );
+    auto index_buffer_handle = render_graph->create_buffer(
+        [=](rg::RenderGraph& g, rg::BufferBuilder& builder) {
+            SkrZoneScopedN("ConstructIBHandle");
+
+            String name = skr::format(u8"imgui_indices-{}", draw_data->OwnerViewport->ID);
+            builder.set_name(name.c_str())
+                .size(index_size)
+                .memory_usage(useCVV ? CGPU_MEM_USAGE_CPU_TO_GPU : CGPU_MEM_USAGE_GPU_ONLY)
+                .with_flags(useCVV ? CGPU_BCF_PERSISTENT_MAP_BIT : CGPU_BCF_NONE)
+                .with_tags(useCVV ? kRenderGraphDynamicResourceTag : kRenderGraphDefaultResourceTag)
+                .prefer_on_device()
+                .as_index_buffer();
+        }
+    );
+
+    // upload vb/ib
+    if (!useCVV)
+    {
+        auto upload_buffer_handle = render_graph->create_buffer(
+            [=](rg::RenderGraph& g, rg::BufferBuilder& builder) {
+                SkrZoneScopedN("ConstructUploadPass");
+
+                String name = skr::format(u8"imgui_upload-{}", draw_data->OwnerViewport->ID);
+                builder.set_name(name.c_str())
+                    .size(index_size + vertex_size)
+                    .with_tags(kRenderGraphDefaultResourceTag)
+                    .as_upload_buffer();
+            }
+        );
+        render_graph->add_copy_pass(
+            [=](rg::RenderGraph& g, rg::CopyPassBuilder& builder) {
+                SkrZoneScopedN("ConstructCopyPass");
+
+                String name = skr::format(u8"imgui_copy-{}", draw_data->OwnerViewport->ID);
+                builder.set_name(name.c_str())
+                    .buffer_to_buffer(upload_buffer_handle.range(0, vertex_size), vertex_buffer_handle.range(0, vertex_size))
+                    .buffer_to_buffer(upload_buffer_handle.range(vertex_size, vertex_size + index_size), index_buffer_handle.range(0, index_size));
+            },
+            [upload_buffer_handle, draw_data](rg::RenderGraph& g, rg::CopyPassContext& context) {
+                auto        upload_buffer = context.resolve(upload_buffer_handle);
+                ImDrawVert* vtx_dst       = (ImDrawVert*)upload_buffer->info->cpu_mapped_address;
+                ImDrawIdx*  idx_dst       = (ImDrawIdx*)(vtx_dst + draw_data->TotalVtxCount);
+                for (int n = 0; n < draw_data->CmdListsCount; n++)
+                {
+                    const ImDrawList* cmd_list = draw_data->CmdLists[n];
+                    memcpy(vtx_dst, cmd_list->VtxBuffer.Data, cmd_list->VtxBuffer.Size * sizeof(ImDrawVert));
+                    memcpy(idx_dst, cmd_list->IdxBuffer.Data, cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx));
+                    vtx_dst += cmd_list->VtxBuffer.Size;
+                    idx_dst += cmd_list->IdxBuffer.Size;
+                }
+            }
+        );
+    }
+
+    // cbuffer
+    auto constant_buffer = render_graph->create_buffer(
+        [=](rg::RenderGraph& g, rg::BufferBuilder& builder) {
+            SkrZoneScopedN("ConstructCBHandle");
+
+            String name = skr::format(u8"imgui_cbuffer-{}", draw_data->OwnerViewport->ID);
+            builder.set_name(name.c_str())
+                .size(sizeof(float) * 4 * 4)
+                .memory_usage(CGPU_MEM_USAGE_CPU_TO_GPU)
+                .with_flags(CGPU_BCF_PERSISTENT_MAP_BIT)
+                .prefer_on_device()
+                .as_uniform_buffer();
+        }
+    );
+
+    // render passes
+    render_graph->add_render_pass(
+        [&](rg::RenderGraph& g, rg::RenderPassBuilder& builder) {
+            SkrZoneScopedN("ConstructRenderPass");
+
+            String name = skr::format(u8"imgui_render-{}", draw_data->OwnerViewport->ID);
+            builder.set_name(name.c_str())
+                .set_pipeline(render_pipeline)
+                .read(u8"Constants", constant_buffer.range(0, sizeof(float) * 4 * 4))
+                .use_buffer(vertex_buffer_handle, CGPU_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER)
+                .use_buffer(index_buffer_handle, CGPU_RESOURCE_STATE_INDEX_BUFFER)
+                // .read(u8"texture0", font_handle)
+                .write(0, back_buffer, load_action);
+        },
+        [back_buffer, useCVV, draw_data, constant_buffer, index_buffer_handle, vertex_buffer_handle](rg::RenderGraph& g, rg::RenderPassContext& context) {
+            SkrZoneScopedN("ImGuiPass");
+
+            // auto target_node = g.resolve(target);
+            const auto target_desc = g.resolve_descriptor(back_buffer);
+            SKR_ASSERT(target_desc && "ImGui render target not found!");
+            {
+                float L         = draw_data->DisplayPos.x;
+                float R         = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
+                float T         = draw_data->DisplayPos.y;
+                float B         = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
+                float mvp[4][4] = {
+                    { 2.0f / (R - L), 0.0f, 0.0f, 0.0f },
+                    { 0.0f, 2.0f / (T - B), 0.0f, 0.0f },
+                    { 0.0f, 0.0f, 0.5f, 0.0f },
+                    { (R + L) / (L - R), (T + B) / (B - T), 0.5f, 1.0f },
+                };
+                auto buf = context.resolve(constant_buffer);
+                memcpy(buf->info->cpu_mapped_address, mvp, sizeof(mvp));
+            }
+            cgpu_render_encoder_set_viewport(context.encoder, 0.0f, 0.0f, (float)target_desc->width, (float)target_desc->height, 0.f, 1.f);
+            // drawcalls
+            // Will project scissor/clipping rectangles into framebuffer space
+            const ImVec2 clip_off   = draw_data->DisplayPos;       // (0,0) unless using multi-viewports
+            const ImVec2 clip_scale = draw_data->FramebufferScale; // (1,1) unless using retina display which are often (2,2)
+            // Render command lists
+            // (Because we merged all buffers into a single one, we maintain our own offset into them)
+            int  global_vtx_offset = 0;
+            int  global_idx_offset = 0;
+            auto resolved_ib       = context.resolve(index_buffer_handle);
+            auto resolved_vb       = context.resolve(vertex_buffer_handle);
+            if (useCVV)
+            {
+                // upload
+                ImDrawVert* vtx_dst = (ImDrawVert*)resolved_vb->info->cpu_mapped_address;
+                ImDrawIdx*  idx_dst = (ImDrawIdx*)resolved_ib->info->cpu_mapped_address;
+                for (int n = 0; n < draw_data->CmdListsCount; n++)
+                {
+                    const ImDrawList* cmd_list = draw_data->CmdLists[n];
+                    memcpy(vtx_dst, cmd_list->VtxBuffer.Data, cmd_list->VtxBuffer.Size * sizeof(ImDrawVert));
+                    memcpy(idx_dst, cmd_list->IdxBuffer.Data, cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx));
+                    vtx_dst += cmd_list->VtxBuffer.Size;
+                    idx_dst += cmd_list->IdxBuffer.Size;
+                }
+            }
+            for (int n = 0; n < draw_data->CmdListsCount; n++)
+            {
+                const ImDrawList* cmd_list = draw_data->CmdLists[n];
+                for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++)
+                {
+                    const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
+                    if (pcmd->UserCallback != NULL)
+                    {
+                    }
+                    else
+                    {
+                        // Project scissor/clipping rectangles into framebuffer space
+                        ImVec4 clip_rect;
+                        clip_rect.x = (pcmd->ClipRect.x - clip_off.x) * clip_scale.x;
+                        clip_rect.y = (pcmd->ClipRect.y - clip_off.y) * clip_scale.y;
+                        clip_rect.z = (pcmd->ClipRect.z - clip_off.x) * clip_scale.x;
+                        clip_rect.w = (pcmd->ClipRect.w - clip_off.y) * clip_scale.y;
+                        if (clip_rect.x < 0.0f) clip_rect.x = 0.0f;
+                        if (clip_rect.y < 0.0f) clip_rect.y = 0.0f;
+                        cgpu_render_encoder_set_scissor(context.encoder, (uint32_t)clip_rect.x, (uint32_t)clip_rect.y, (uint32_t)(clip_rect.z - clip_rect.x), (uint32_t)(clip_rect.w - clip_rect.y));
+
+                        cgpu_render_encoder_bind_index_buffer(context.encoder, resolved_ib, sizeof(uint16_t), 0);
+                        const uint32_t vert_stride = sizeof(ImDrawVert);
+                        cgpu_render_encoder_bind_vertex_buffers(context.encoder, 1, &resolved_vb, &vert_stride, NULL);
+                        cgpu_render_encoder_draw_indexed(context.encoder, pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);
+                    }
+                }
+                global_idx_offset += cmd_list->IdxBuffer.Size;
+                global_vtx_offset += cmd_list->VtxBuffer.Size;
+            }
+        }
+    );
+}
 
 } // namespace skr
 
@@ -86,10 +376,10 @@ void ImGuiRendererBackendRG::init(const ImGuiRendererBackendRGConfig& config)
     SKR_ASSERT(config.ps.has_value() == config.vs.has_value() && "only one shader is setted");
 
     // setup draw data
-    _gfx_queue              = config.queue;
-    _render_graph           = config.render_graph;
-    _concurrent_frame_count = config.concurrent_frame_count;
-    _backbuffer_format      = config.format;
+    _gfx_queue         = config.queue;
+    _render_graph      = config.render_graph;
+    _backbuffer_count  = config.backbuffer_count;
+    _backbuffer_format = config.format;
 
     // load shaders
     CGPUShaderEntryDescriptor ppl_shaders[2] = {};
@@ -100,11 +390,11 @@ void ImGuiRendererBackendRG::init(const ImGuiRendererBackendRGConfig& config)
     }
     else
     {
-        auto vs_bytes = read_shader_bytes(
+        auto vs_bytes = _read_shader_bytes(
             u8"imgui_vertex",
             _gfx_queue->device->adapter->instance->backend
         );
-        auto ps_bytes = read_shader_bytes(
+        auto ps_bytes = _read_shader_bytes(
             u8"imgui_fragment",
             _gfx_queue->device->adapter->instance->backend
         );
@@ -272,10 +562,10 @@ void ImGuiRendererBackendRG::shutdown()
     }
 
     // reset config
-    _gfx_queue              = nullptr;
-    _render_graph           = nullptr;
-    _concurrent_frame_count = 1;
-    _backbuffer_format      = CGPU_FORMAT_R8G8B8A8_UNORM;
+    _gfx_queue         = nullptr;
+    _render_graph      = nullptr;
+    _backbuffer_count  = 1;
+    _backbuffer_format = CGPU_FORMAT_R8G8B8A8_UNORM;
 }
 
 // real present
@@ -307,34 +597,78 @@ void ImGuiRendererBackendRG::setup_io(ImGuiIO& io)
 }
 
 // main window api
-void ImGuiRendererBackendRG::create_main_window(ImGuiWindowBackend* wnd)
+void ImGuiRendererBackendRG::create_main_window(ImGuiViewport* vp)
 {
+    create_window(vp);
 }
-void ImGuiRendererBackendRG::destroy_main_window(ImGuiWindowBackend* wnd)
+void ImGuiRendererBackendRG::destroy_main_window(ImGuiViewport* vp)
 {
+    destroy_window(vp);
 }
-void ImGuiRendererBackendRG::resize_main_window(ImGuiWindowBackend* wnd, uint2 size)
+void ImGuiRendererBackendRG::resize_main_window(ImGuiViewport* vp, ImVec2 size)
 {
+    resize_window(vp, size);
 }
-void ImGuiRendererBackendRG::render_main_window(ImGuiWindowBackend* wnd, ImDrawData* data)
+void ImGuiRendererBackendRG::render_main_window(ImGuiViewport* vp)
 {
+    render_window(vp, nullptr);
 }
 
 // multi viewport api
-void ImGuiRendererBackendRG::create_window(ImGuiViewport* viewport)
+void ImGuiRendererBackendRG::create_window(ImGuiViewport* vp)
 {
+    SKR_ASSERT(!vp->RendererUserData);
+    auto wnd = _get_sdl_wnd(vp);
+    int  w, h;
+    SDL_GetWindowSize(wnd, &w, &h);
+
+    vp->RendererUserData = SkrNew<ImGuiRendererBackendRGViewportData>();
+    _rebuild_swapchain(
+        vp,
+        _render_graph->get_backend_device(),
+        _render_graph->get_gfx_queue(),
+        { (float)w, (float)h },
+        _backbuffer_format,
+        _backbuffer_count,
+        false
+    );
 }
-void ImGuiRendererBackendRG::destroy_window(ImGuiViewport* viewport)
+void ImGuiRendererBackendRG::destroy_window(ImGuiViewport* vp)
 {
+    SKR_ASSERT(vp->RendererUserData);
+    auto rdata = (ImGuiRendererBackendRGViewportData*)vp->RendererUserData;
+    rdata->destroy();
+    vp->RendererUserData = nullptr;
+    SkrDelete(rdata);
 }
-void ImGuiRendererBackendRG::resize_window(ImGuiViewport* viewport, ImVec2 size)
+void ImGuiRendererBackendRG::resize_window(ImGuiViewport* vp, ImVec2 size)
 {
+    SKR_ASSERT(vp->RendererUserData);
+    auto rdata = (ImGuiRendererBackendRGViewportData*)vp->RendererUserData;
+
+    // wait rendering done
+    cgpu_wait_fences(&rdata->fence, 1);
+
+    // recreate swapchain
+    _rebuild_swapchain(
+        vp,
+        _render_graph->get_backend_device(),
+        _render_graph->get_gfx_queue(),
+        size,
+        _backbuffer_format,
+        _backbuffer_count,
+        false
+    );
 }
-void ImGuiRendererBackendRG::render_window(ImGuiViewport* viewport, void*)
+void ImGuiRendererBackendRG::render_window(ImGuiViewport* vp, void*)
 {
 }
 
 // texture api
+uint32_t ImGuiRendererBackendRG::backbuffer_count() const
+{
+    return _backbuffer_count;
+}
 void ImGuiRendererBackendRG::create_texture(ImTextureData* tex_data)
 {
 }
