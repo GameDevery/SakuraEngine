@@ -139,3 +139,5 @@ namespace ImGui
     void MyFunction(const char* name, MyMatrix44* mtx);
 }
 */
+
+#define IMGUI_API SKR_IMGUI_NG_API

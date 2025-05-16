@@ -63,6 +63,7 @@ struct SKR_IMGUI_NG_API ImGuiRendererBackendRG : ImGuiRendererBackend {
     void shutdown();
 
     // real present
+    void present_main_viewport();
     void present_sub_viewports();
 
     // get viewport backbuffer

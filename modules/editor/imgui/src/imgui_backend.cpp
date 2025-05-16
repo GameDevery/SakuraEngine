@@ -50,6 +50,7 @@ void ImGuiBackend::create(const ImGuiWindowCreateInfo& main_wnd_create_info, RCU
     {
         _context->IO.BackendRendererUserData = _renderer_backend.get();
         _context->IO.BackendRendererName     = "Sakura ImGui Renderer";
+        _context->IO.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
         _renderer_backend->setup_io(_context->IO);
 
         _context->PlatformIO.Renderer_CreateWindow = +[](ImGuiViewport* vp) {
@@ -85,14 +86,6 @@ void ImGuiBackend::destroy()
 {
     SKR_ASSERT(is_created() && "try destroy context before create");
 
-    // destroy platform backend
-    {
-        ImGuiContext* cache = ImGui::GetCurrentContext();
-        ImGui::SetCurrentContext(_context);
-        ImGui_ImplSDL3_Shutdown();
-        ImGui::SetCurrentContext(cache);
-    }
-
     // destroy all textures
     {
         for (ImTextureData* tex : _context->PlatformIO.Textures)
@@ -120,8 +113,21 @@ void ImGuiBackend::destroy()
         _context->PlatformIO.Renderer_RenderWindow  = nullptr;
     }
 
+    // destroy render backend
+    _renderer_backend.reset();
+
+    // destroy platform backend
+    {
+        ImGuiContext* cache = ImGui::GetCurrentContext();
+        ImGui::SetCurrentContext(_context);
+        ImGui_ImplSDL3_Shutdown();
+        ImGui::SetCurrentContext(cache);
+    }
+
     // destroy context
     ImGui::DestroyContext(_context);
+
+    _context = nullptr;
 }
 
 // frame
@@ -159,6 +165,7 @@ void ImGuiBackend::begin_frame()
     SKR_ASSERT(is_created() && "please create context before begin frame");
     SKR_ASSERT(ImGui::GetCurrentContext() == _context && "context mismatch");
 
+    apply_context();
     ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
 }

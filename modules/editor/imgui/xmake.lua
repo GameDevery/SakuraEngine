@@ -3,7 +3,6 @@ shared_module("SkrImGuiNG", "SKR_IMGUI_NG")
     skr_unity_build()
 
     -- deps
-    add_deps("ImGui", {public = true})
     add_deps("SDL3")
     public_dependency("SkrInput")
     public_dependency("SkrRenderGraph")
@@ -12,9 +11,6 @@ shared_module("SkrImGuiNG", "SKR_IMGUI_NG")
     add_includedirs("include", {public=true})
     add_files("src/**.cpp")
 
-    -- for export ImGui API
-    add_defines("IMGUI_IMPORT= extern SKR_IMGUI_NG_API", {public=false})
-
     -- font files
     skr_install_rule()
     skr_install("download", {
@@ -22,3 +18,13 @@ shared_module("SkrImGuiNG", "SKR_IMGUI_NG")
         install_func = "file",
         out_dir = "resources/font"
     })
+
+    -- ImGui
+    --! use version with dynamic fonts, maybe unstable
+    --! Branch: features/dynamic_fonts
+    --! Commit: cde94b1 - WIP - Fonts: fixed broken support for legacy backend due to a mismatch with initial pre-build baked id.
+    --! CommitSHA: cde94b14f3d26506d324fc2826bd92b463dd4248
+    add_includedirs("imgui/include", {public = true})
+    add_includedirs("imgui/src", {private = true})
+    add_files("imgui/src/**.cpp")
+    add_defines("IMGUI_DEFINE_MATH_OPERATORS")

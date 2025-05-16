@@ -154,13 +154,8 @@ inline static void _draw_viewport(
     uint32_t index_size  = draw_data->TotalIdxCount * (uint32_t)sizeof(ImDrawIdx);
 
     // import backbuffer
-    CGPUAcquireNextDescriptor acquire = {};
-    acquire.fence                     = rdata->fence;
-    acquire.signal_semaphore          = nullptr;
-    cgpu_wait_fences(&rdata->fence, 1);
-    auto          backbuffer_index = rdata->backbuffer_index = cgpu_acquire_next_image(rdata->swapchain, &acquire);
-    CGPUTextureId native_backbuffer                          = rdata->swapchain->back_buffers[backbuffer_index];
-    auto          back_buffer                                = render_graph->create_texture(
+    CGPUTextureId native_backbuffer = rdata->swapchain->back_buffers[rdata->backbuffer_index];
+    auto          back_buffer       = render_graph->create_texture(
         [=](rg::RenderGraph& g, rg::TextureBuilder& builder) {
             skr::String buf_name = skr::format(u8"imgui-window-{}", vp->ID);
             builder.set_name((const char8_t*)buf_name.c_str())
@@ -624,6 +619,20 @@ void ImGuiRendererBackendRG::shutdown()
 }
 
 // real present
+void ImGuiRendererBackendRG::present_main_viewport()
+{
+    auto viewport = ImGui::GetMainViewport();
+
+    // get render data
+    auto rdata = (ImGuiRendererBackendRGViewportData*)viewport->RendererUserData;
+    SKR_ASSERT(rdata != nullptr);
+
+    // do present
+    CGPUQueuePresentDescriptor present_desc{};
+    present_desc.index     = rdata->backbuffer_index;
+    present_desc.swapchain = rdata->swapchain;
+    cgpu_queue_present(rdata->present_queue, &present_desc);
+}
 void ImGuiRendererBackendRG::present_sub_viewports()
 {
     ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
@@ -717,11 +726,41 @@ void ImGuiRendererBackendRG::resize_window(ImGuiViewport* vp, ImVec2 size)
 }
 void ImGuiRendererBackendRG::render_window(ImGuiViewport* vp, void*)
 {
+    SKR_ASSERT(vp->RendererUserData);
+    auto rdata = (ImGuiRendererBackendRGViewportData*)vp->RendererUserData;
+
+    // wait fence
+    CGPUAcquireNextDescriptor acquire = {};
+    acquire.fence                     = rdata->fence;
+    acquire.signal_semaphore          = nullptr;
+    cgpu_wait_fences(&rdata->fence, 1);
+    rdata->backbuffer_index         = cgpu_acquire_next_image(rdata->swapchain, &acquire);
+    CGPUTextureId native_backbuffer = rdata->swapchain->back_buffers[rdata->backbuffer_index];
+    auto          back_buffer       = _render_graph->create_texture(
+        [=](render_graph::RenderGraph& g, render_graph::TextureBuilder& builder) {
+            skr::String buf_name = skr::format(u8"imgui-window-{}", vp->ID);
+            builder.set_name((const char8_t*)buf_name.c_str())
+                .import(native_backbuffer, CGPU_RESOURCE_STATE_UNDEFINED)
+                .allow_render_target();
+        }
+    );
+
+    // draw
     _draw_viewport(
         vp,
         _render_graph,
         _root_sig,
         _render_pipeline
+    );
+
+    // present
+    _render_graph->add_present_pass(
+        [=](render_graph::RenderGraph& g, render_graph::PresentPassBuilder& builder) {
+            skr::String pass_name = skr::format(u8"imgui-present-{}", vp->ID);
+            builder.set_name((const char8_t*)pass_name.c_str())
+                .swapchain(rdata->swapchain, rdata->backbuffer_index)
+                .texture(back_buffer, true);
+        }
     );
 }
 

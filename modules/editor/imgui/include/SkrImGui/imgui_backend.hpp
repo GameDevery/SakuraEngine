@@ -43,8 +43,10 @@ struct SKR_IMGUI_NG_API ImGuiBackend {
 
     // getter
     inline bool                      is_created() const { return _context != nullptr; }
+    inline const Trigger&            want_exit() const { return _want_exit; }
     inline ImGuiContext*             context() const { return _context; }
     inline const ImGuiWindowBackend& main_window() const { return _main_window; }
+    inline ImGuiWindowBackend&       main_window() { return _main_window; }
 
 private:
     // context & main window
