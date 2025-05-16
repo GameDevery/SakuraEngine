@@ -188,6 +188,9 @@ void ImGuiBackend::render()
     SKR_ASSERT(is_created() && "please create context before render");
     SKR_ASSERT(ImGui::GetCurrentContext() == _context && "context mismatch");
 
+    // acquire next frame
+    _renderer_backend->acquire_next_frame();
+
     // update textures
     for (ImTextureData* tex : ImGui::GetPlatformIO().Textures)
     {

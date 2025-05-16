@@ -728,6 +728,18 @@ void ImGuiRendererBackendRG::wait_rendering_done()
 {
     cgpu_wait_queue_idle(_gfx_queue);
 }
+void ImGuiRendererBackendRG::acquire_next_frame()
+{
+    for (auto* vp : ImGui::GetPlatformIO().Viewports)
+    {
+        auto rdata = (ImGuiRendererBackendRGViewportData*)vp->RendererUserData;
+        cgpu_wait_fences(&rdata->fence, 1);
+        CGPUAcquireNextDescriptor acquire{};
+        acquire.fence            = rdata->fence;
+        acquire.signal_semaphore = nullptr;
+        rdata->backbuffer_index  = cgpu_acquire_next_image(rdata->swapchain, &acquire);
+    }
+}
 
 // main window api
 void ImGuiRendererBackendRG::create_main_window(ImGuiViewport* vp)
@@ -799,11 +811,6 @@ void ImGuiRendererBackendRG::render_window(ImGuiViewport* vp, void*)
     auto rdata = (ImGuiRendererBackendRGViewportData*)vp->RendererUserData;
 
     // wait fence
-    cgpu_wait_fences(&rdata->fence, 1);
-    CGPUAcquireNextDescriptor acquire{};
-    acquire.fence                   = rdata->fence;
-    acquire.signal_semaphore        = nullptr;
-    rdata->backbuffer_index         = cgpu_acquire_next_image(rdata->swapchain, &acquire);
     CGPUTextureId native_backbuffer = rdata->swapchain->back_buffers[rdata->backbuffer_index];
 
     // import rtv
