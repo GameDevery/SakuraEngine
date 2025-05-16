@@ -23,6 +23,9 @@ struct SKR_IMGUI_NG_API ImGuiRendererBackend {
     // setup io
     virtual void setup_io(ImGuiIO& io) = 0;
 
+    // rendering utils
+    virtual void wait_rendering_done() = 0;
+
     // main window api
     virtual void create_main_window(ImGuiViewport* wnd)              = 0;
     virtual void destroy_main_window(ImGuiViewport* wnd)             = 0;
@@ -72,6 +75,9 @@ struct SKR_IMGUI_NG_API ImGuiRendererBackendRG : ImGuiRendererBackend {
     //==> ImGuiRendererBackend API
     // setup io
     void setup_io(ImGuiIO& io) override;
+
+    // rendering utils
+    void wait_rendering_done() override;
 
     // main window api
     void create_main_window(ImGuiViewport* vp) override;

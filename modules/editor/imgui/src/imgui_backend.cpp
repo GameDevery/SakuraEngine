@@ -86,6 +86,9 @@ void ImGuiBackend::destroy()
 {
     SKR_ASSERT(is_created() && "try destroy context before create");
 
+    // wait rendering done
+    _renderer_backend->wait_rendering_done();
+
     // destroy all textures
     {
         for (ImTextureData* tex : _context->PlatformIO.Textures)

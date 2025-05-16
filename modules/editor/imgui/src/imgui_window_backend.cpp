@@ -76,6 +76,7 @@ void ImGuiWindowBackend::create(const ImGuiWindowCreateInfo& create_info)
     if (create_info.is_topmost) { flags |= SDL_WINDOW_ALWAYS_ON_TOP; }
     if (create_info.is_tooltip) { flags |= SDL_WINDOW_TOOLTIP; }
     if (create_info.is_borderless) { flags |= SDL_WINDOW_BORDERLESS; }
+    if (create_info.is_resizable) { flags |= SDL_WINDOW_RESIZABLE; }
 
     // create window
     if (create_info.popup_parent)

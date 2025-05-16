@@ -53,7 +53,7 @@ int main()
         imgui_backend.create({}, std::move(render_backend));
         imgui_backend.main_window().show();
         imgui_backend.enable_docking();
-        imgui_backend.enable_multi_viewport();
+        // imgui_backend.enable_multi_viewport();
     }
 
     // draw loop
@@ -109,8 +109,10 @@ int main()
 
         imgui_backend.end_frame();
 
-        // draw
+        // add render passes
         imgui_backend.render();
+
+        // draw render graph
         render_graph->compile();
         render_graph->execute();
         if (frame_index >= RG_MAX_FRAME_IN_FLIGHT * 10)
@@ -122,11 +124,14 @@ int main()
         ++frame_index;
     }
 
-    // destroy imgui
-    imgui_backend.destroy();
+    // wait for rendering done
+    cgpu_wait_queue_idle(gfx_queue);
 
     // destroy render graph
     render_graph::RenderGraph::destroy(render_graph);
+
+    // destroy imgui
+    imgui_backend.destroy();
 
     // shutdown cgpu
     cgpu_free_queue(gfx_queue);

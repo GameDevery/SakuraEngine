@@ -15,6 +15,7 @@ struct ImGuiWindowCreateInfo {
     bool                is_topmost    = false;
     bool                is_tooltip    = false;
     bool                is_borderless = false;
+    bool                is_resizable  = true;
 };
 
 struct SKR_IMGUI_NG_API ImGuiMonitorBackend {

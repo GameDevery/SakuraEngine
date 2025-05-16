@@ -1,3 +1,4 @@
+#include <SkrCore/log.hpp>
 #include <SkrGraphics/cgpux.h>
 #include <SkrRenderGraph/backend/texture_view_pool.hpp>
 #include <SkrContainers/map.hpp>
@@ -30,8 +31,9 @@ struct ImGuiRendererBackendRGViewportData {
     }
 };
 struct ImGuiRendererBackendRGTextureData {
-    CGPUTextureId     texture = nullptr;
-    CGPUTextureViewId srv     = nullptr;
+    CGPUTextureId     texture      = nullptr;
+    CGPUTextureViewId srv          = nullptr;
+    bool              first_update = true;
 };
 
 inline static Vector<uint8_t> _read_shader_bytes(
@@ -135,11 +137,11 @@ inline static SDL_Window* _get_sdl_wnd(ImGuiViewport* vp)
 }
 
 inline static void _draw_viewport(
-    ImGuiViewport*              vp,
-    render_graph::RenderGraph*  render_graph,
-    CGPURootSignatureId         root_sig,
-    CGPURenderPipelineId        render_pipeline,
-    render_graph::TextureHandle back_buffer
+    ImGuiViewport*                 vp,
+    render_graph::RenderGraph*     render_graph,
+    CGPURootSignatureId            root_sig,
+    CGPURenderPipelineId           render_pipeline,
+    render_graph::TextureRTVHandle back_buffer
 )
 {
     namespace rg = skr::render_graph;
@@ -257,12 +259,11 @@ inline static void _draw_viewport(
 
                     auto tex_data = (ImGuiRendererBackendRGTextureData*)tex->BackendUserData;
 
-                    String name = skr::format(u8"imgui_font-{}", draw_data->OwnerViewport->ID);
+                    String name = skr::format(u8"imgui_font-{}", tex->UniqueID);
                     builder.set_name((const char8_t*)name.c_str())
                         .import(tex_data->texture, CGPU_RESOURCE_STATE_SHADER_RESOURCE);
                 }
             );
-
             break;
         }
     }
@@ -318,8 +319,16 @@ inline static void _draw_viewport(
                 for (int n = 0; n < draw_data->CmdListsCount; n++)
                 {
                     const ImDrawList* cmd_list = draw_data->CmdLists[n];
-                    memcpy(vtx_dst, cmd_list->VtxBuffer.Data, cmd_list->VtxBuffer.Size * sizeof(ImDrawVert));
-                    memcpy(idx_dst, cmd_list->IdxBuffer.Data, cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx));
+                    memcpy(
+                        vtx_dst,
+                        cmd_list->VtxBuffer.Data,
+                        cmd_list->VtxBuffer.Size * sizeof(ImDrawVert)
+                    );
+                    memcpy(
+                        idx_dst,
+                        cmd_list->IdxBuffer.Data,
+                        cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx)
+                    );
                     vtx_dst += cmd_list->VtxBuffer.Size;
                     idx_dst += cmd_list->IdxBuffer.Size;
                 }
@@ -339,48 +348,48 @@ inline static void _draw_viewport(
 
                     // update bind table
                     {
-                        auto imgui_tex = pcmd->TexRef;
-                        if (imgui_tex._TexData)
-                        {
-                            auto tex_user_data = (ImGuiRendererBackendRGTextureData*)imgui_tex._TexData->BackendUserData;
+                        // auto imgui_tex = pcmd->TexRef;
+                        // if (imgui_tex._TexData)
+                        // {
+                        //     auto tex_user_data = (ImGuiRendererBackendRGTextureData*)imgui_tex._TexData->BackendUserData;
 
-                            CGPUDescriptorData tex_update = {};
-                            tex_update.name               = u8"texture0";
-                            tex_update.binding_type       = CGPU_RESOURCE_TYPE_TEXTURE;
-                            tex_update.binding            = 0;
-                            tex_update.textures           = &tex_user_data->srv;
-                            tex_update.count              = 1;
+                        //     CGPUDescriptorData tex_update = {};
+                        //     tex_update.name               = u8"texture0";
+                        //     tex_update.binding_type       = CGPU_RESOURCE_TYPE_TEXTURE;
+                        //     tex_update.binding            = 0;
+                        //     tex_update.textures           = &tex_user_data->srv;
+                        //     tex_update.count              = 1;
 
-                            cgpux_bind_table_update(
-                                context.bind_table,
-                                &tex_update,
-                                1
-                            );
-                            cgpux_render_encoder_bind_bind_table(
-                                context.encoder,
-                                context.bind_table
-                            );
-                        }
-                        else
-                        {
-                            auto               srv        = reinterpret_cast<CGPUTextureViewId>(pcmd->TexRef._TexID);
-                            CGPUDescriptorData tex_update = {};
-                            tex_update.name               = u8"texture0";
-                            tex_update.binding_type       = CGPU_RESOURCE_TYPE_TEXTURE;
-                            tex_update.binding            = 0;
-                            tex_update.textures           = &srv;
-                            tex_update.count              = 1;
+                        //     cgpux_bind_table_update(
+                        //         context.bind_table,
+                        //         &tex_update,
+                        //         1
+                        //     );
+                        //     cgpux_render_encoder_bind_bind_table(
+                        //         context.encoder,
+                        //         context.bind_table
+                        //     );
+                        // }
+                        // else
+                        // {
+                        //     auto               srv        = reinterpret_cast<CGPUTextureViewId>(pcmd->TexRef._TexID);
+                        //     CGPUDescriptorData tex_update = {};
+                        //     tex_update.name               = u8"texture0";
+                        //     tex_update.binding_type       = CGPU_RESOURCE_TYPE_TEXTURE;
+                        //     tex_update.binding            = 0;
+                        //     tex_update.textures           = &srv;
+                        //     tex_update.count              = 1;
 
-                            cgpux_bind_table_update(
-                                context.bind_table,
-                                &tex_update,
-                                1
-                            );
-                            cgpux_render_encoder_bind_bind_table(
-                                context.encoder,
-                                context.bind_table
-                            );
-                        }
+                        //     cgpux_bind_table_update(
+                        //         context.bind_table,
+                        //         &tex_update,
+                        //         1
+                        //     );
+                        //     cgpux_render_encoder_bind_bind_table(
+                        //         context.encoder,
+                        //         context.bind_table
+                        //     );
+                        // }
                     }
 
                     // draw
@@ -397,12 +406,34 @@ inline static void _draw_viewport(
                         clip_rect.w = (pcmd->ClipRect.w - clip_off.y) * clip_scale.y;
                         if (clip_rect.x < 0.0f) clip_rect.x = 0.0f;
                         if (clip_rect.y < 0.0f) clip_rect.y = 0.0f;
-                        cgpu_render_encoder_set_scissor(context.encoder, (uint32_t)clip_rect.x, (uint32_t)clip_rect.y, (uint32_t)(clip_rect.z - clip_rect.x), (uint32_t)(clip_rect.w - clip_rect.y));
+                        cgpu_render_encoder_set_scissor(
+                            context.encoder,
+                            (uint32_t)clip_rect.x,
+                            (uint32_t)clip_rect.y,
+                            (uint32_t)(clip_rect.z - clip_rect.x),
+                            (uint32_t)(clip_rect.w - clip_rect.y)
+                        );
 
-                        cgpu_render_encoder_bind_index_buffer(context.encoder, resolved_ib, sizeof(uint16_t), 0);
+                        cgpu_render_encoder_bind_index_buffer(
+                            context.encoder,
+                            resolved_ib,
+                            sizeof(uint16_t),
+                            0
+                        );
                         const uint32_t vert_stride = sizeof(ImDrawVert);
-                        cgpu_render_encoder_bind_vertex_buffers(context.encoder, 1, &resolved_vb, &vert_stride, NULL);
-                        cgpu_render_encoder_draw_indexed(context.encoder, pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);
+                        cgpu_render_encoder_bind_vertex_buffers(
+                            context.encoder,
+                            1,
+                            &resolved_vb,
+                            &vert_stride,
+                            NULL
+                        );
+                        cgpu_render_encoder_draw_indexed(
+                            context.encoder,
+                            pcmd->ElemCount,
+                            pcmd->IdxOffset + global_idx_offset,
+                            pcmd->VtxOffset + global_vtx_offset
+                        );
                     }
                 }
                 global_idx_offset += cmd_list->IdxBuffer.Size;
@@ -692,6 +723,12 @@ void ImGuiRendererBackendRG::setup_io(ImGuiIO& io)
     io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;
 }
 
+// rendering utils
+void ImGuiRendererBackendRG::wait_rendering_done()
+{
+    cgpu_wait_queue_idle(_gfx_queue);
+}
+
 // main window api
 void ImGuiRendererBackendRG::create_main_window(ImGuiViewport* vp)
 {
@@ -763,12 +800,14 @@ void ImGuiRendererBackendRG::render_window(ImGuiViewport* vp, void*)
 
     // wait fence
     cgpu_wait_fences(&rdata->fence, 1);
-    CGPUAcquireNextDescriptor acquire = {};
-    acquire.fence                     = rdata->fence;
-    acquire.signal_semaphore          = nullptr;
-    rdata->backbuffer_index           = cgpu_acquire_next_image(rdata->swapchain, &acquire);
-    CGPUTextureId native_backbuffer   = rdata->swapchain->back_buffers[rdata->backbuffer_index];
-    auto          back_buffer         = _render_graph->create_texture(
+    CGPUAcquireNextDescriptor acquire{};
+    acquire.fence                   = rdata->fence;
+    acquire.signal_semaphore        = nullptr;
+    rdata->backbuffer_index         = cgpu_acquire_next_image(rdata->swapchain, &acquire);
+    CGPUTextureId native_backbuffer = rdata->swapchain->back_buffers[rdata->backbuffer_index];
+
+    // import rtv
+    render_graph::TextureRTVHandle back_buffer = _render_graph->create_texture(
         [=](render_graph::RenderGraph& g, render_graph::TextureBuilder& builder) {
             skr::String buf_name = skr::format(u8"imgui-window-{}", vp->ID);
             builder.set_name((const char8_t*)buf_name.c_str())
@@ -839,6 +878,7 @@ void ImGuiRendererBackendRG::create_texture(ImTextureData* tex_data)
     tex_data->TexID = reinterpret_cast<ImTextureID>(user_data->srv);
 
     // upload data
+    user_data->first_update = true;
     update_texture(tex_data);
 }
 void ImGuiRendererBackendRG::destroy_texture(ImTextureData* tex_data)
@@ -891,16 +931,19 @@ void ImGuiRendererBackendRG::update_texture(ImTextureData* tex_data)
     // combine commands
     cgpu_cmd_begin(cpy_cmd);
     {
-        // srv -> copy_dst
-        CGPUTextureBarrier cpy_dst_barrier{};
-        cpy_dst_barrier.texture   = user_data->texture;
-        cpy_dst_barrier.src_state = CGPU_RESOURCE_STATE_SHADER_RESOURCE;
-        cpy_dst_barrier.dst_state = CGPU_RESOURCE_STATE_COPY_DEST;
+        if (!user_data->first_update)
         {
-            CGPUResourceBarrierDescriptor barrier_desc = {};
-            barrier_desc.texture_barriers              = &cpy_dst_barrier;
-            barrier_desc.texture_barriers_count        = 1;
-            cgpu_cmd_resource_barrier(cpy_cmd, &barrier_desc);
+            // srv -> copy_dst
+            CGPUTextureBarrier cpy_dst_barrier{};
+            cpy_dst_barrier.texture   = user_data->texture;
+            cpy_dst_barrier.src_state = CGPU_RESOURCE_STATE_SHADER_RESOURCE;
+            cpy_dst_barrier.dst_state = CGPU_RESOURCE_STATE_COPY_DEST;
+            {
+                CGPUResourceBarrierDescriptor barrier_desc = {};
+                barrier_desc.texture_barriers              = &cpy_dst_barrier;
+                barrier_desc.texture_barriers_count        = 1;
+                cgpu_cmd_resource_barrier(cpy_cmd, &barrier_desc);
+            }
         }
 
         // copy
@@ -924,6 +967,7 @@ void ImGuiRendererBackendRG::update_texture(ImTextureData* tex_data)
             barrier_desc.texture_barriers_count        = 1;
             cgpu_cmd_resource_barrier(cpy_cmd, &barrier_desc);
         }
+        user_data->first_update = false;
     }
     cgpu_cmd_end(cpy_cmd);
 
