@@ -103,6 +103,7 @@ inline static void _rebuild_swapchain(
 
     // wait fence
     cgpu_wait_fences(&rdata->fence, 1);
+    cgpu_wait_queue_idle(present_queue);
 
     // destroy old swapchain
     if (rdata->swapchain)
@@ -268,7 +269,7 @@ inline static void _draw_viewport(
 
     // render passes
     render_graph->add_render_pass(
-        [&](rg::RenderGraph& g, rg::RenderPassBuilder& builder) {
+        [=](rg::RenderGraph& g, rg::RenderPassBuilder& builder) {
             SkrZoneScopedN("ConstructRenderPass");
 
             String name = skr::format(u8"imgui_render-{}", draw_data->OwnerViewport->ID);
@@ -622,7 +623,6 @@ void ImGuiRendererBackendRG::shutdown()
 {
     SKR_ASSERT(has_init() && "not init");
 
-    
     // destroy bind table
     if (_bind_table)
     {
