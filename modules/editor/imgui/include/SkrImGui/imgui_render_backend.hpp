@@ -1,4 +1,5 @@
 #pragma once
+#include <SkrGraphics/cgpux.h>
 #include <SkrGraphics/api.h>
 #include <SkrRenderGraph/frontend/render_graph.hpp>
 #include <SkrContainers/string.hpp>
@@ -101,6 +102,7 @@ private:
     // state
     CGPURootSignatureId  _root_sig        = nullptr;
     CGPURenderPipelineId _render_pipeline = nullptr;
+    CGPUXBindTableId     _bind_table      = nullptr;
     CGPUSamplerId        _static_sampler  = nullptr;
 };
 

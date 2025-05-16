@@ -52,6 +52,8 @@ int main()
         render_backend->init(config);
         imgui_backend.create({}, std::move(render_backend));
         imgui_backend.main_window().show();
+        imgui_backend.enable_docking();
+        imgui_backend.enable_multi_viewport();
     }
 
     // draw loop
@@ -106,13 +108,15 @@ int main()
         }
 
         imgui_backend.end_frame();
-        imgui_backend.render();
 
+        // draw
+        imgui_backend.render();
         render_graph->compile();
         render_graph->execute();
         if (frame_index >= RG_MAX_FRAME_IN_FLIGHT * 10)
             render_graph->collect_garbage(frame_index - RG_MAX_FRAME_IN_FLIGHT * 10);
 
+        // present
         render_backend_rg->present_main_viewport();
         render_backend_rg->present_sub_viewports();
         ++frame_index;

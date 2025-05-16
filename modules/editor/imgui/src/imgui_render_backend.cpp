@@ -14,7 +14,7 @@ struct ImGuiRendererBackendRGViewportData {
     CGPUFenceId     fence            = nullptr;
     CGPUQueueId     present_queue    = nullptr;
     uint32_t        backbuffer_index = 0;
-    ECGPULoadAction load_action      = CGPU_LOAD_ACTION_DONTCARE;
+    ECGPULoadAction load_action      = CGPU_LOAD_ACTION_CLEAR;
 
     inline void destroy()
     {
@@ -134,10 +134,11 @@ inline static SDL_Window* _get_sdl_wnd(ImGuiViewport* vp)
 }
 
 inline static void _draw_viewport(
-    ImGuiViewport*             vp,
-    render_graph::RenderGraph* render_graph,
-    CGPURootSignatureId        root_sig,
-    CGPURenderPipelineId       render_pipeline
+    ImGuiViewport*              vp,
+    render_graph::RenderGraph*  render_graph,
+    CGPURootSignatureId         root_sig,
+    CGPURenderPipelineId        render_pipeline,
+    render_graph::TextureHandle back_buffer
 )
 {
     namespace rg = skr::render_graph;
@@ -152,17 +153,6 @@ inline static void _draw_viewport(
     if (draw_data->TotalVtxCount == 0) { return; }
     uint32_t vertex_size = draw_data->TotalVtxCount * (uint32_t)sizeof(ImDrawVert);
     uint32_t index_size  = draw_data->TotalIdxCount * (uint32_t)sizeof(ImDrawIdx);
-
-    // import backbuffer
-    CGPUTextureId native_backbuffer = rdata->swapchain->back_buffers[rdata->backbuffer_index];
-    auto          back_buffer       = render_graph->create_texture(
-        [=](rg::RenderGraph& g, rg::TextureBuilder& builder) {
-            skr::String buf_name = skr::format(u8"imgui-window-{}", vp->ID);
-            builder.set_name((const char8_t*)buf_name.c_str())
-                .import(native_backbuffer, CGPU_RESOURCE_STATE_UNDEFINED)
-                .allow_render_target();
-        }
-    );
 
     // use CVV
     bool useCVV = true;
@@ -255,26 +245,26 @@ inline static void _draw_viewport(
     );
 
     // import textures
-    // InlineMap<ImTextureID, rg::TextureHandle, 8> texture_map;
-    // for (auto tex : ImGui::GetCurrentContext()->PlatformIO.Textures)
-    // {
-    //     if (tex->Status == ImTextureStatus_OK)
-    //     {
-    //         auto tex_handle = render_graph->create_texture(
-    //             [=](rg::RenderGraph& g, rg::TextureBuilder& builder) {
-    //                 SkrZoneScopedN("ConstructTextureHandle");
+    rg::TextureHandle dummy_tex_handle;
+    for (auto tex : ImGui::GetCurrentContext()->PlatformIO.Textures)
+    {
+        if (tex->Status == ImTextureStatus_OK)
+        {
+            dummy_tex_handle = render_graph->create_texture(
+                [=](rg::RenderGraph& g, rg::TextureBuilder& builder) {
+                    SkrZoneScopedN("ConstructTextureHandle");
 
-    //                 auto tex_data = (ImGuiRendererBackendRGTextureData*)tex->BackendUserData;
+                    auto tex_data = (ImGuiRendererBackendRGTextureData*)tex->BackendUserData;
 
-    //                 String name = skr::format(u8"imgui_font-{}", draw_data->OwnerViewport->ID);
-    //                 builder.set_name((const char8_t*)name.c_str())
-    //                     .import(tex_data->texture, CGPU_RESOURCE_STATE_SHADER_RESOURCE);
-    //             }
-    //         );
+                    String name = skr::format(u8"imgui_font-{}", draw_data->OwnerViewport->ID);
+                    builder.set_name((const char8_t*)name.c_str())
+                        .import(tex_data->texture, CGPU_RESOURCE_STATE_SHADER_RESOURCE);
+                }
+            );
 
-    //         texture_map.add(tex->TexID, tex_handle);
-    //     }
-    // }
+            break;
+        }
+    }
 
     // render passes
     render_graph->add_render_pass(
@@ -287,7 +277,7 @@ inline static void _draw_viewport(
                 .read(u8"Constants", constant_buffer.range(0, sizeof(float) * 4 * 4))
                 .use_buffer(vertex_buffer_handle, CGPU_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER)
                 .use_buffer(index_buffer_handle, CGPU_RESOURCE_STATE_INDEX_BUFFER)
-                // .read(u8"texture0", font_handle)
+                .read(u8"texture0", dummy_tex_handle)
                 .write(0, back_buffer, load_action);
         },
         [back_buffer, useCVV, draw_data, constant_buffer, index_buffer_handle, vertex_buffer_handle](rg::RenderGraph& g, rg::RenderPassContext& context) {
@@ -348,25 +338,48 @@ inline static void _draw_viewport(
 
                     // update bind table
                     {
-                        auto imgui_tex     = pcmd->TexRef;
-                        auto tex_user_data = (ImGuiRendererBackendRGTextureData*)imgui_tex._TexData->BackendUserData;
+                        auto imgui_tex = pcmd->TexRef;
+                        if (imgui_tex._TexData)
+                        {
+                            auto tex_user_data = (ImGuiRendererBackendRGTextureData*)imgui_tex._TexData->BackendUserData;
 
-                        CGPUDescriptorData tex_update = {};
-                        tex_update.name               = u8"texture0";
-                        tex_update.binding_type       = CGPU_RESOURCE_TYPE_TEXTURE;
-                        tex_update.binding            = 0;
-                        tex_update.textures           = &tex_user_data->srv;
-                        tex_update.count              = 1;
+                            CGPUDescriptorData tex_update = {};
+                            tex_update.name               = u8"texture0";
+                            tex_update.binding_type       = CGPU_RESOURCE_TYPE_TEXTURE;
+                            tex_update.binding            = 0;
+                            tex_update.textures           = &tex_user_data->srv;
+                            tex_update.count              = 1;
 
-                        cgpux_bind_table_update(
-                            context.bind_table,
-                            &tex_update,
-                            1
-                        );
-                        cgpux_render_encoder_bind_bind_table(
-                            context.encoder,
-                            context.bind_table
-                        );
+                            cgpux_bind_table_update(
+                                context.bind_table,
+                                &tex_update,
+                                1
+                            );
+                            cgpux_render_encoder_bind_bind_table(
+                                context.encoder,
+                                context.bind_table
+                            );
+                        }
+                        else
+                        {
+                            auto               srv        = reinterpret_cast<CGPUTextureViewId>(pcmd->TexRef._TexID);
+                            CGPUDescriptorData tex_update = {};
+                            tex_update.name               = u8"texture0";
+                            tex_update.binding_type       = CGPU_RESOURCE_TYPE_TEXTURE;
+                            tex_update.binding            = 0;
+                            tex_update.textures           = &srv;
+                            tex_update.count              = 1;
+
+                            cgpux_bind_table_update(
+                                context.bind_table,
+                                &tex_update,
+                                1
+                            );
+                            cgpux_render_encoder_bind_bind_table(
+                                context.encoder,
+                                context.bind_table
+                            );
+                        }
                     }
 
                     // draw
@@ -593,10 +606,29 @@ void ImGuiRendererBackendRG::init(const ImGuiRendererBackendRGConfig& config)
         cgpu_free_shader_library(ppl_shaders[0].library);
         cgpu_free_shader_library(ppl_shaders[1].library);
     }
+
+    // create bind table
+    const char8_t*           bind_table_names[1] = { u8"texture0" };
+    CGPUXBindTableDescriptor bind_table_desc     = {};
+    bind_table_desc.root_signature               = _root_sig;
+    bind_table_desc.names                        = bind_table_names;
+    bind_table_desc.names_count                  = 1;
+    _bind_table                                  = cgpux_create_bind_table(
+        _render_graph->get_backend_device(),
+        &bind_table_desc
+    );
 }
 void ImGuiRendererBackendRG::shutdown()
 {
     SKR_ASSERT(has_init() && "not init");
+
+    
+    // destroy bind table
+    if (_bind_table)
+    {
+        cgpux_free_bind_table(_bind_table);
+        _bind_table = nullptr;
+    }
 
     // destroy render pipeline & root signature
     cgpu_free_render_pipeline(_render_pipeline);
@@ -730,13 +762,13 @@ void ImGuiRendererBackendRG::render_window(ImGuiViewport* vp, void*)
     auto rdata = (ImGuiRendererBackendRGViewportData*)vp->RendererUserData;
 
     // wait fence
+    cgpu_wait_fences(&rdata->fence, 1);
     CGPUAcquireNextDescriptor acquire = {};
     acquire.fence                     = rdata->fence;
     acquire.signal_semaphore          = nullptr;
-    cgpu_wait_fences(&rdata->fence, 1);
-    rdata->backbuffer_index         = cgpu_acquire_next_image(rdata->swapchain, &acquire);
-    CGPUTextureId native_backbuffer = rdata->swapchain->back_buffers[rdata->backbuffer_index];
-    auto          back_buffer       = _render_graph->create_texture(
+    rdata->backbuffer_index           = cgpu_acquire_next_image(rdata->swapchain, &acquire);
+    CGPUTextureId native_backbuffer   = rdata->swapchain->back_buffers[rdata->backbuffer_index];
+    auto          back_buffer         = _render_graph->create_texture(
         [=](render_graph::RenderGraph& g, render_graph::TextureBuilder& builder) {
             skr::String buf_name = skr::format(u8"imgui-window-{}", vp->ID);
             builder.set_name((const char8_t*)buf_name.c_str())
@@ -750,7 +782,8 @@ void ImGuiRendererBackendRG::render_window(ImGuiViewport* vp, void*)
         vp,
         _render_graph,
         _root_sig,
-        _render_pipeline
+        _render_pipeline,
+        back_buffer
     );
 
     // present
@@ -803,15 +836,23 @@ void ImGuiRendererBackendRG::create_texture(ImTextureData* tex_data)
     view_desc.dims              = CGPU_TEX_DIMENSION_2D;
     user_data->srv              = cgpu_create_texture_view(_gfx_queue->device, &view_desc);
 
+    tex_data->TexID = reinterpret_cast<ImTextureID>(user_data->srv);
+
     // upload data
     update_texture(tex_data);
 }
 void ImGuiRendererBackendRG::destroy_texture(ImTextureData* tex_data)
 {
+    // destroy user data
     auto user_data = (ImGuiRendererBackendRGTextureData*)tex_data->BackendUserData;
     cgpu_free_texture(user_data->texture);
     cgpu_free_texture_view(user_data->srv);
-    tex_data->Status = ImTextureStatus_Destroyed;
+    SkrDelete(user_data);
+
+    // reset data
+    tex_data->TexID           = 0;
+    tex_data->BackendUserData = nullptr;
+    tex_data->Status          = ImTextureStatus_Destroyed;
 }
 void ImGuiRendererBackendRG::update_texture(ImTextureData* tex_data)
 {
