@@ -1,3 +1,6 @@
+#include <SkrGraphics/cgpux.h>
+#include <SkrRenderGraph/backend/texture_view_pool.hpp>
+#include <SkrContainers/map.hpp>
 #include <SkrImGui/imgui_render_backend.hpp>
 #include <filesystem>
 #include <SDL3/SDL.h>
@@ -27,7 +30,8 @@ struct ImGuiRendererBackendRGViewportData {
     }
 };
 struct ImGuiRendererBackendRGTextureData {
-    CGPUTextureId texture = nullptr;
+    CGPUTextureId     texture = nullptr;
+    CGPUTextureViewId srv     = nullptr;
 };
 
 inline static Vector<uint8_t> _read_shader_bytes(
@@ -255,6 +259,28 @@ inline static void _draw_viewport(
         }
     );
 
+    // import textures
+    // InlineMap<ImTextureID, rg::TextureHandle, 8> texture_map;
+    // for (auto tex : ImGui::GetCurrentContext()->PlatformIO.Textures)
+    // {
+    //     if (tex->Status == ImTextureStatus_OK)
+    //     {
+    //         auto tex_handle = render_graph->create_texture(
+    //             [=](rg::RenderGraph& g, rg::TextureBuilder& builder) {
+    //                 SkrZoneScopedN("ConstructTextureHandle");
+
+    //                 auto tex_data = (ImGuiRendererBackendRGTextureData*)tex->BackendUserData;
+
+    //                 String name = skr::format(u8"imgui_font-{}", draw_data->OwnerViewport->ID);
+    //                 builder.set_name((const char8_t*)name.c_str())
+    //                     .import(tex_data->texture, CGPU_RESOURCE_STATE_SHADER_RESOURCE);
+    //             }
+    //         );
+
+    //         texture_map.add(tex->TexID, tex_handle);
+    //     }
+    // }
+
     // render passes
     render_graph->add_render_pass(
         [&](rg::RenderGraph& g, rg::RenderPassBuilder& builder) {
@@ -272,9 +298,11 @@ inline static void _draw_viewport(
         [back_buffer, useCVV, draw_data, constant_buffer, index_buffer_handle, vertex_buffer_handle](rg::RenderGraph& g, rg::RenderPassContext& context) {
             SkrZoneScopedN("ImGuiPass");
 
-            // auto target_node = g.resolve(target);
+            // get info
             const auto target_desc = g.resolve_descriptor(back_buffer);
             SKR_ASSERT(target_desc && "ImGui render target not found!");
+
+            // upload cbuffer
             {
                 float L         = draw_data->DisplayPos.x;
                 float R         = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
@@ -289,17 +317,13 @@ inline static void _draw_viewport(
                 auto buf = context.resolve(constant_buffer);
                 memcpy(buf->info->cpu_mapped_address, mvp, sizeof(mvp));
             }
+
+            // set viewport
             cgpu_render_encoder_set_viewport(context.encoder, 0.0f, 0.0f, (float)target_desc->width, (float)target_desc->height, 0.f, 1.f);
-            // drawcalls
-            // Will project scissor/clipping rectangles into framebuffer space
-            const ImVec2 clip_off   = draw_data->DisplayPos;       // (0,0) unless using multi-viewports
-            const ImVec2 clip_scale = draw_data->FramebufferScale; // (1,1) unless using retina display which are often (2,2)
-            // Render command lists
-            // (Because we merged all buffers into a single one, we maintain our own offset into them)
-            int  global_vtx_offset = 0;
-            int  global_idx_offset = 0;
-            auto resolved_ib       = context.resolve(index_buffer_handle);
-            auto resolved_vb       = context.resolve(vertex_buffer_handle);
+
+            // upload IB/VB
+            auto resolved_ib = context.resolve(index_buffer_handle);
+            auto resolved_vb = context.resolve(vertex_buffer_handle);
             if (useCVV)
             {
                 // upload
@@ -314,12 +338,43 @@ inline static void _draw_viewport(
                     idx_dst += cmd_list->IdxBuffer.Size;
                 }
             }
+
+            // draw commands
+            int          global_vtx_offset = 0;
+            int          global_idx_offset = 0;
+            const ImVec2 clip_off          = draw_data->DisplayPos;       // (0,0) unless using multi-viewports
+            const ImVec2 clip_scale        = draw_data->FramebufferScale; // (1,1) unless using retina display which are often (2,2)
             for (int n = 0; n < draw_data->CmdListsCount; n++)
             {
                 const ImDrawList* cmd_list = draw_data->CmdLists[n];
                 for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++)
                 {
                     const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
+
+                    // update bind table
+                    {
+                        auto imgui_tex     = pcmd->TexRef;
+                        auto tex_user_data = (ImGuiRendererBackendRGTextureData*)imgui_tex._TexData->BackendUserData;
+
+                        CGPUDescriptorData tex_update = {};
+                        tex_update.name               = u8"texture0";
+                        tex_update.binding_type       = CGPU_RESOURCE_TYPE_TEXTURE;
+                        tex_update.binding            = 0;
+                        tex_update.textures           = &tex_user_data->srv;
+                        tex_update.count              = 1;
+
+                        cgpux_bind_table_update(
+                            context.bind_table,
+                            &tex_update,
+                            1
+                        );
+                        cgpux_render_encoder_bind_bind_table(
+                            context.encoder,
+                            context.bind_table
+                        );
+                    }
+
+                    // draw
                     if (pcmd->UserCallback != NULL)
                     {
                     }
@@ -662,6 +717,12 @@ void ImGuiRendererBackendRG::resize_window(ImGuiViewport* vp, ImVec2 size)
 }
 void ImGuiRendererBackendRG::render_window(ImGuiViewport* vp, void*)
 {
+    _draw_viewport(
+        vp,
+        _render_graph,
+        _root_sig,
+        _render_pipeline
+    );
 }
 
 // texture api
@@ -671,12 +732,135 @@ uint32_t ImGuiRendererBackendRG::backbuffer_count() const
 }
 void ImGuiRendererBackendRG::create_texture(ImTextureData* tex_data)
 {
+    // create user data
+    auto user_data            = SkrNew<ImGuiRendererBackendRGTextureData>();
+    tex_data->BackendUserData = user_data;
+
+    // create texture
+    CGPUTextureDescriptor tex_desc = {};
+    tex_desc.name                  = u8"imgui_font";
+    tex_desc.width                 = static_cast<uint32_t>(tex_data->Width);
+    tex_desc.height                = static_cast<uint32_t>(tex_data->Height);
+    tex_desc.depth                 = 1;
+    tex_desc.descriptors           = CGPU_RESOURCE_TYPE_TEXTURE;
+    tex_desc.array_size            = 1;
+    tex_desc.flags                 = CGPU_TCF_NONE;
+    tex_desc.mip_levels            = 1;
+    tex_desc.format                = CGPU_FORMAT_R8G8B8A8_UNORM;
+    tex_desc.start_state           = CGPU_RESOURCE_STATE_COPY_DEST;
+    tex_desc.owner_queue           = _gfx_queue;
+    user_data->texture             = cgpu_create_texture(_gfx_queue->device, &tex_desc);
+
+    // create texture view
+    CGPUTextureViewDescriptor view_desc{};
+    view_desc.texture           = user_data->texture;
+    view_desc.base_array_layer  = 0;
+    view_desc.array_layer_count = 1;
+    view_desc.base_mip_level    = 0;
+    view_desc.mip_level_count   = 1;
+    view_desc.format            = user_data->texture->info->format;
+    view_desc.aspects           = CGPU_TVA_COLOR;
+    view_desc.usages            = CGPU_TVU_SRV;
+    view_desc.dims              = CGPU_TEX_DIMENSION_2D;
+    user_data->srv              = cgpu_create_texture_view(_gfx_queue->device, &view_desc);
+
+    // upload data
+    update_texture(tex_data);
 }
 void ImGuiRendererBackendRG::destroy_texture(ImTextureData* tex_data)
 {
+    auto user_data = (ImGuiRendererBackendRGTextureData*)tex_data->BackendUserData;
+    cgpu_free_texture(user_data->texture);
+    cgpu_free_texture_view(user_data->srv);
+    tex_data->Status = ImTextureStatus_Destroyed;
 }
 void ImGuiRendererBackendRG::update_texture(ImTextureData* tex_data)
 {
+    // get user data
+    auto user_data = (ImGuiRendererBackendRGTextureData*)tex_data->BackendUserData;
+
+    // create command buffer
+    CGPUCommandPoolDescriptor   cmd_pool_desc = {};
+    CGPUCommandBufferDescriptor cmd_desc      = {};
+    auto                        cpy_cmd_pool  = cgpu_create_command_pool(
+        _gfx_queue,
+        &cmd_pool_desc
+    );
+    auto cpy_cmd = cgpu_create_command_buffer(
+        cpy_cmd_pool,
+        &cmd_desc
+    );
+
+    // create upload buffer
+    // TODO. use updata rect
+    CGPUBufferDescriptor upload_buffer_desc{};
+    upload_buffer_desc.name         = u8"IMGUI_FontUploadBuffer";
+    upload_buffer_desc.flags        = CGPU_BCF_PERSISTENT_MAP_BIT;
+    upload_buffer_desc.descriptors  = CGPU_RESOURCE_TYPE_NONE;
+    upload_buffer_desc.memory_usage = CGPU_MEM_USAGE_CPU_ONLY;
+    upload_buffer_desc.size         = tex_data->GetSizeInBytes();
+    CGPUBufferId tex_upload_buffer  = cgpu_create_buffer(_gfx_queue->device, &upload_buffer_desc);
+
+    // copy data
+    memcpy(
+        tex_upload_buffer->info->cpu_mapped_address,
+        tex_data->Pixels,
+        tex_data->GetSizeInBytes()
+    );
+
+    // combine commands
+    cgpu_cmd_begin(cpy_cmd);
+    {
+        // srv -> copy_dst
+        CGPUTextureBarrier cpy_dst_barrier{};
+        cpy_dst_barrier.texture   = user_data->texture;
+        cpy_dst_barrier.src_state = CGPU_RESOURCE_STATE_SHADER_RESOURCE;
+        cpy_dst_barrier.dst_state = CGPU_RESOURCE_STATE_COPY_DEST;
+        {
+            CGPUResourceBarrierDescriptor barrier_desc = {};
+            barrier_desc.texture_barriers              = &cpy_dst_barrier;
+            barrier_desc.texture_barriers_count        = 1;
+            cgpu_cmd_resource_barrier(cpy_cmd, &barrier_desc);
+        }
+
+        // copy
+        CGPUBufferToTextureTransfer b2t{};
+        b2t.src                              = tex_upload_buffer;
+        b2t.src_offset                       = 0;
+        b2t.dst                              = user_data->texture;
+        b2t.dst_subresource.mip_level        = 0;
+        b2t.dst_subresource.base_array_layer = 0;
+        b2t.dst_subresource.layer_count      = 1;
+        cgpu_cmd_transfer_buffer_to_texture(cpy_cmd, &b2t);
+
+        // copy_dst -> srv
+        CGPUTextureBarrier srv_barrier{};
+        srv_barrier.texture   = user_data->texture;
+        srv_barrier.src_state = CGPU_RESOURCE_STATE_COPY_DEST;
+        srv_barrier.dst_state = CGPU_RESOURCE_STATE_SHADER_RESOURCE;
+        {
+            CGPUResourceBarrierDescriptor barrier_desc = {};
+            barrier_desc.texture_barriers              = &srv_barrier;
+            barrier_desc.texture_barriers_count        = 1;
+            cgpu_cmd_resource_barrier(cpy_cmd, &barrier_desc);
+        }
+    }
+    cgpu_cmd_end(cpy_cmd);
+
+    // submit commands
+    CGPUQueueSubmitDescriptor cpy_submit{};
+    cpy_submit.cmds       = &cpy_cmd;
+    cpy_submit.cmds_count = 1;
+    cgpu_submit_queue(_gfx_queue, &cpy_submit);
+
+    // wait for completion
+    // TODO. use frame resource
+    cgpu_wait_queue_idle(_gfx_queue);
+    cgpu_free_command_buffer(cpy_cmd);
+    cgpu_free_command_pool(cpy_cmd_pool);
+    cgpu_free_buffer(tex_upload_buffer);
+
+    tex_data->Status = ImTextureStatus_OK;
 }
 
 } // namespace skr
