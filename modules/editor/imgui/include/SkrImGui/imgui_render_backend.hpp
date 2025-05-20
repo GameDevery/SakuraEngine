@@ -24,11 +24,10 @@ struct SKR_IMGUI_NG_API ImGuiRendererBackend {
     virtual void setup_io(ImGuiIO& io) = 0;
 
     // rendering utils
-    virtual void          wait_rendering_done()                 = 0;
-    virtual void          acquire_next_frame(ImGuiViewport* vp) = 0;
-    virtual CGPUTextureId get_backbuffer(ImGuiViewport* vp)     = 0;
-    virtual void          begin_frame()                         = 0;
-    virtual void          end_frame()                           = 0;
+    virtual void wait_rendering_done()                 = 0;
+    virtual void acquire_next_frame(ImGuiViewport* vp) = 0;
+    virtual void begin_frame()                         = 0;
+    virtual void end_frame()                           = 0;
 
     // main window api
     virtual void create_main_window(ImGuiViewport* wnd)              = 0;
@@ -71,21 +70,25 @@ struct SKR_IMGUI_NG_API ImGuiRendererBackendRG : ImGuiRendererBackend {
     void shutdown();
 
     // real present
+    void present_all();
     void present_main_viewport();
     void present_sub_viewports();
 
-    // get viewport backbuffer
+    // viewport info
+    CGPUTextureId   get_backbuffer(ImGuiViewport* vp);
+    uint32_t        get_backbuffer_index(ImGuiViewport* vp);
+    CGPUSwapChainId get_swapchain(ImGuiViewport* vp);
+    void            set_load_action(ImGuiViewport* vp, ECGPULoadAction load_action);
 
     //==> ImGuiRendererBackend API
     // setup io
     void setup_io(ImGuiIO& io) override;
 
     // rendering utils
-    void          wait_rendering_done() override;
-    void          acquire_next_frame(ImGuiViewport* vp) override;
-    CGPUTextureId get_backbuffer(ImGuiViewport* vp) override;
-    void          begin_frame() override;
-    void          end_frame() override;
+    void wait_rendering_done() override;
+    void acquire_next_frame(ImGuiViewport* vp) override;
+    void begin_frame() override;
+    void end_frame() override;
 
     // main window api
     void create_main_window(ImGuiViewport* vp) override;

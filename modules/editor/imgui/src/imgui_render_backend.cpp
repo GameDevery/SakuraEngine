@@ -684,6 +684,11 @@ void ImGuiRendererBackendRG::shutdown()
 }
 
 // real present
+void ImGuiRendererBackendRG::present_all()
+{
+    present_main_viewport();
+    present_sub_viewports();
+}
 void ImGuiRendererBackendRG::present_main_viewport()
 {
     auto viewport = ImGui::GetMainViewport();
@@ -718,6 +723,34 @@ void ImGuiRendererBackendRG::present_sub_viewports()
     }
 }
 
+// viewport info
+CGPUTextureId ImGuiRendererBackendRG::get_backbuffer(ImGuiViewport* vp)
+{
+    acquire_next_frame(vp);
+    auto rdata = (ImGuiRendererBackendRGViewportData*)vp->RendererUserData;
+    SKR_ASSERT(rdata != nullptr);
+    return rdata->swapchain->back_buffers[rdata->backbuffer_index];
+}
+uint32_t ImGuiRendererBackendRG::get_backbuffer_index(ImGuiViewport* vp)
+{
+    acquire_next_frame(vp);
+    auto rdata = (ImGuiRendererBackendRGViewportData*)vp->RendererUserData;
+    SKR_ASSERT(rdata != nullptr);
+    return rdata->backbuffer_index;
+}
+CGPUSwapChainId ImGuiRendererBackendRG::get_swapchain(ImGuiViewport* vp)
+{
+    auto rdata = (ImGuiRendererBackendRGViewportData*)vp->RendererUserData;
+    SKR_ASSERT(rdata != nullptr);
+    return rdata->swapchain;
+}
+void ImGuiRendererBackendRG::set_load_action(ImGuiViewport* vp, ECGPULoadAction load_action)
+{
+    auto rdata = (ImGuiRendererBackendRGViewportData*)vp->RendererUserData;
+    SKR_ASSERT(rdata != nullptr);
+    rdata->load_action = load_action;
+}
+
 // setup io
 void ImGuiRendererBackendRG::setup_io(ImGuiIO& io)
 {
@@ -741,12 +774,6 @@ void ImGuiRendererBackendRG::acquire_next_frame(ImGuiViewport* vp)
         acquire.signal_semaphore = nullptr;
         rdata->backbuffer_index  = cgpu_acquire_next_image(rdata->swapchain, &acquire);
     }
-}
-CGPUTextureId ImGuiRendererBackendRG::get_backbuffer(ImGuiViewport* vp)
-{
-    auto rdata = (ImGuiRendererBackendRGViewportData*)vp->RendererUserData;
-    acquire_next_frame(vp);
-    return rdata->swapchain->back_buffers[rdata->backbuffer_index];
 }
 void ImGuiRendererBackendRG::begin_frame()
 {

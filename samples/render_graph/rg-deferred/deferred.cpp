@@ -4,19 +4,13 @@
 #include "lighting_pipeline.h"
 #include "blit_pipeline.h"
 #include "SkrRenderGraph/frontend/render_graph.hpp"
-#include "SkrImGui/skr_imgui.h"
-#include "SkrImGui/skr_imgui_rg.h"
+#include "SkrImGui/imgui_backend.hpp"
+#include "SkrImGui/imgui_render_backend.hpp"
 #include "SkrCore/platform/window.h"
 #include "SkrProfile/profile.h"
 #include "pass_profiler.h"
 #include "SkrOS/thread.h"
 #include "rtm/qvvf.h"
-
-thread_local SWindowHandle   window;
-thread_local CGPUSurfaceId   surface;
-thread_local CGPUSwapChainId swapchain;
-thread_local uint32_t        backbuffer_index;
-thread_local CGPUFenceId     present_fence;
 
 CubeGeometry::InstanceData CubeGeometry::instance_data;
 
@@ -67,7 +61,7 @@ void create_api_objects()
     device_desc.queue_group_count             = 1;
     device                                    = cgpu_create_device(adapter, &device_desc);
     gfx_queue                                 = cgpu_get_queue(device, CGPU_QUEUE_TYPE_GRAPHICS, 0);
-    present_fence                             = cgpu_create_fence(device);
+
     // Sampler
     CGPUSamplerDescriptor sampler_desc = {};
     sampler_desc.address_u             = CGPU_ADDRESS_MODE_REPEAT;
@@ -78,19 +72,6 @@ void create_api_objects()
     sampler_desc.mag_filter            = CGPU_FILTER_TYPE_LINEAR;
     sampler_desc.compare_func          = CGPU_CMP_NEVER;
     static_sampler                     = cgpu_create_sampler(device, &sampler_desc);
-
-    // Create swapchain
-    surface                            = cgpu_surface_from_native_view(device, skr_window_get_native_view(window));
-    CGPUSwapChainDescriptor chain_desc = {};
-    chain_desc.present_queues          = &gfx_queue;
-    chain_desc.present_queues_count    = 1;
-    chain_desc.width                   = BACK_BUFFER_WIDTH;
-    chain_desc.height                  = BACK_BUFFER_HEIGHT;
-    chain_desc.surface                 = surface;
-    chain_desc.image_count             = 2;
-    chain_desc.format                  = CGPU_FORMAT_R8G8B8A8_UNORM;
-    chain_desc.enable_vsync            = false;
-    swapchain                          = cgpu_create_swapchain(device, &chain_desc);
 }
 
 void create_resources()
@@ -202,21 +183,17 @@ void create_resources()
 void create_render_pipeline()
 {
     gbuffer_pipeline     = create_gbuffer_render_pipeline(device);
-    lighting_pipeline    = create_lighting_render_pipeline(device, static_sampler, (ECGPUFormat)swapchain->back_buffers[0]->info->format);
+    lighting_pipeline    = create_lighting_render_pipeline(device, static_sampler, CGPU_FORMAT_R8G8B8A8_UNORM);
     lighting_cs_pipeline = create_lighting_compute_pipeline(device);
-    blit_pipeline        = create_blit_render_pipeline(device, static_sampler, (ECGPUFormat)swapchain->back_buffers[0]->info->format);
+    blit_pipeline        = create_blit_render_pipeline(device, static_sampler, CGPU_FORMAT_R8G8B8A8_UNORM);
 }
 
 void finalize()
 {
     // Free cgpu objects
-    cgpu_wait_fences(&present_fence, 1);
-    cgpu_free_fence(present_fence);
     cgpu_free_buffer(index_buffer);
     cgpu_free_buffer(vertex_buffer);
     cgpu_free_buffer(instance_buffer);
-    cgpu_free_swapchain(swapchain);
-    cgpu_free_surface(device, surface);
     free_pipeline_and_signature(gbuffer_pipeline);
     free_pipeline_and_signature(lighting_pipeline);
     free_pipeline_and_signature(lighting_cs_pipeline);
@@ -247,20 +224,12 @@ int main(int argc, char* argv[])
 {
     DPIAware = skr_runtime_is_dpi_aware();
 
-    // init sdl
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0) return -1;
-
-    // open main window
-    SWindowDescriptor window_desc = {};
-    window_desc.flags             = SKR_WINDOW_CENTERED | SKR_WINDOW_RESIZABLE;
-    window_desc.height            = BACK_BUFFER_HEIGHT;
-    window_desc.width             = BACK_BUFFER_WIDTH;
-    window                        = skr_create_window(gCGPUBackendNames[backend], &window_desc);
-
     // init rendering
     namespace render_graph = skr::render_graph;
-    render_graph::RenderGraph* graph;
-    PassProfiler               profilers[RG_MAX_FRAME_IN_FLIGHT];
+    render_graph::RenderGraph*   graph;
+    PassProfiler                 profilers[RG_MAX_FRAME_IN_FLIGHT];
+    skr::ImGuiBackend            imgui_backend           = {};
+    skr::ImGuiRendererBackendRG* imgui_render_backend_rg = nullptr;
     {
         // init rendering data
         create_api_objects();
@@ -282,129 +251,51 @@ int main(int argc, char* argv[])
             profilers[i].initialize(device);
         }
 
-        // init imguiImGui::CreateContext();
-        ImGuiIO& io = ImGui::GetIO();
-        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
-        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;     // Enable Docking
-        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;   // Enable Multi-Viewport / Platform Windows
-        ImGui::StyleColorsDark();
+        // init imgui backend
         {
-            auto& style = ImGui::GetStyle();
-            if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-            {
-                style.WindowRounding              = 0.0f;
-                style.Colors[ImGuiCol_WindowBg].w = 1.0f;
-            }
+            using namespace skr;
+
+            // init imgui backend
+            auto render_backend     = RCUnique<ImGuiRendererBackendRG>::New();
+            imgui_render_backend_rg = render_backend.get();
+            ImGuiRendererBackendRGConfig config{};
+            config.render_graph   = graph;
+            config.queue          = gfx_queue;
+            config.static_sampler = static_sampler;
+            render_backend->init(config);
+            imgui_backend.create({}, std::move(render_backend));
+            imgui_backend.main_window().show();
+            imgui_backend.enable_docking();
+
+            // load font
             const char8_t* font_path = u8"./../resources/font/SourceSansPro-Regular.ttf";
             uint32_t *     font_bytes, font_length;
             read_bytes(font_path, &font_bytes, &font_length);
-            float dpi_scaling = 1.f;
-            if (!DPIAware)
-            {
-                float ddpi;
-                SDL_GetDisplayDPI(0, &ddpi, NULL, NULL);
-                dpi_scaling = ddpi / OS_DPI;
-                // scale back
-                style.ScaleAllSizes(1.f / dpi_scaling);
-                ImGui::GetIO().FontGlobalScale = 1.f / dpi_scaling;
-            }
-            else
-            {
-                float ddpi;
-                SDL_GetDisplayDPI(0, &ddpi, NULL, NULL);
-                dpi_scaling = ddpi / OS_DPI;
-                // scale back
-                style.ScaleAllSizes(dpi_scaling);
-            }
             ImFontConfig cfg = {};
-            cfg.SizePixels   = 16.f * dpi_scaling;
+            cfg.SizePixels   = 16.f;
             cfg.OversampleH = cfg.OversampleV = 1;
             cfg.PixelSnapH                    = true;
-            ImGui::GetIO().Fonts->AddFontFromMemoryTTF(font_bytes, font_length, cfg.SizePixels, &cfg);
+            ImGui::GetIO().Fonts->AddFontFromMemoryTTF(
+                font_bytes,
+                font_length,
+                cfg.SizePixels,
+                &cfg
+            );
             ImGui::GetIO().Fonts->Build();
-            free(font_bytes);
         }
-
-        // init imgui rendering
-        uint32_t *im_vs_bytes, im_vs_length;
-        read_shader_bytes(u8"imgui_vertex", &im_vs_bytes, &im_vs_length, device->adapter->instance->backend);
-        uint32_t *im_fs_bytes, im_fs_length;
-        read_shader_bytes(u8"imgui_fragment", &im_fs_bytes, &im_fs_length, device->adapter->instance->backend);
-        CGPUShaderLibraryDescriptor vs_desc = {};
-        vs_desc.name                        = u8"imgui_vertex_shader";
-        vs_desc.stage                       = CGPU_SHADER_STAGE_VERT;
-        vs_desc.code                        = im_vs_bytes;
-        vs_desc.code_size                   = im_vs_length;
-        CGPUShaderLibraryDescriptor fs_desc = {};
-        fs_desc.name                        = u8"imgui_fragment_shader";
-        fs_desc.stage                       = CGPU_SHADER_STAGE_FRAG;
-        fs_desc.code                        = im_fs_bytes;
-        fs_desc.code_size                   = im_fs_length;
-        CGPUShaderLibraryId imgui_vs        = cgpu_create_shader_library(device, &vs_desc);
-        CGPUShaderLibraryId imgui_fs        = cgpu_create_shader_library(device, &fs_desc);
-        free(im_vs_bytes);
-        free(im_fs_bytes);
-        RenderGraphImGuiDescriptor imgui_graph_desc = {};
-        imgui_graph_desc.render_graph               = graph;
-        imgui_graph_desc.backbuffer_format          = (ECGPUFormat)swapchain->back_buffers[backbuffer_index]->info->format;
-        imgui_graph_desc.vs.library                 = imgui_vs;
-        imgui_graph_desc.vs.stage                   = CGPU_SHADER_STAGE_VERT;
-        imgui_graph_desc.vs.entry                   = u8"main";
-        imgui_graph_desc.ps.library                 = imgui_fs;
-        imgui_graph_desc.ps.stage                   = CGPU_SHADER_STAGE_FRAG;
-        imgui_graph_desc.ps.entry                   = u8"main";
-        imgui_graph_desc.queue                      = gfx_queue;
-        imgui_graph_desc.static_sampler             = static_sampler;
-        render_graph_imgui_initialize(&imgui_graph_desc);
-        cgpu_free_shader_library(imgui_vs);
-        cgpu_free_shader_library(imgui_fs);
     }
 
     // loop
-    bool quit = false;
-    while (!quit)
+    while (!imgui_backend.want_exit().comsume())
     {
-        SDL_Event event;
-        auto      sdl_window = (SDL_Window*)window;
-
-        // poll events
-        while (SDL_PollEvent(&event))
-        {
-            if (SDL_GetWindowID(sdl_window) == event.window.windowID)
-            {
-                if (!SDLEventHandler(&event, sdl_window))
-                {
-                    quit = true;
-                }
-            }
-
-            if (event.type == SDL_WINDOWEVENT)
-            {
-                Uint8 window_event = event.window.event;
-                if (window_event == SDL_WINDOWEVENT_CLOSE || window_event == SDL_WINDOWEVENT_MOVED || window_event == SDL_WINDOWEVENT_RESIZED)
-                    if (ImGuiViewport* viewport = ImGui::FindViewportByPlatformHandle((void*)SDL_GetWindowFromID(event.window.windowID)))
-                    {
-                        if (window_event == SDL_WINDOWEVENT_CLOSE)
-                            viewport->PlatformRequestClose = true;
-                        if (window_event == SDL_WINDOWEVENT_MOVED)
-                            viewport->PlatformRequestMove = true;
-                        if (window_event == SDL_WINDOWEVENT_RESIZED)
-                            viewport->PlatformRequestResize = true;
-                    }
-            }
-        }
+        imgui_backend.pump_message();
 
         // draw imgui
         SkrZoneScopedN("FrameTime");
         static uint64_t frame_index = 0;
         {
             SkrZoneScopedN("ImGui");
-            auto& io       = ImGui::GetIO();
-            io.DisplaySize = ImVec2(
-                (float)swapchain->back_buffers[0]->info->width,
-                (float)swapchain->back_buffers[0]->info->height
-            );
-            skr_imgui_new_frame(window, 1.f / 60.f);
+            imgui_backend.begin_frame();
             ImGui::Begin("RenderGraphProfile");
             if (ImGui::Button(fragmentLightingPass ? "SwitchToComputeLightingPass" : "SwitchToFragmentLightingPass"))
             {
@@ -440,20 +331,12 @@ int main(int argc, char* argv[])
                 }
             }
             ImGui::End();
-        }
-
-        // wait frame
-        {
-            // acquire frame
-            SkrZoneScopedN("AcquireFrame");
-            cgpu_wait_fences(&present_fence, 1);
-            CGPUAcquireNextDescriptor acquire_desc = {};
-            acquire_desc.fence                     = present_fence;
-            backbuffer_index                       = cgpu_acquire_next_image(swapchain, &acquire_desc);
+            imgui_backend.end_frame();
         }
 
         // rendering
-        CGPUTextureId native_backbuffer = swapchain->back_buffers[backbuffer_index];
+        auto native_backbuffer = imgui_render_backend_rg->get_backbuffer(ImGui::GetMainViewport());
+        imgui_render_backend_rg->set_load_action(ImGui::GetMainViewport(), CGPU_LOAD_ACTION_LOAD);
         {
             SkrZoneScopedN("GraphSetup");
             // render graph setup & compile & exec
@@ -468,7 +351,7 @@ int main(int argc, char* argv[])
                 [=](render_graph::RenderGraph& g, render_graph::TextureBuilder& builder) {
                     builder.set_name(u8"composite_buffer")
                         .extent(native_backbuffer->info->width, native_backbuffer->info->height)
-                        .format((ECGPUFormat)native_backbuffer->info->format)
+                        .format(CGPU_FORMAT_R8G8B8A8_UNORM)
                         .allocate_dedicated()
                         .allow_render_target();
                 }
@@ -601,7 +484,6 @@ int main(int argc, char* argv[])
                     }
                 );
             }
-            render_graph_imgui_add_render_pass(graph, composite_buffer, CGPU_LOAD_ACTION_LOAD);
             graph->add_render_pass(
                 [=](render_graph::RenderGraph& g, render_graph::RenderPassBuilder& builder) {
                     builder.set_name(u8"final_blit")
@@ -615,13 +497,7 @@ int main(int argc, char* argv[])
                     cgpu_render_encoder_draw(stack.encoder, 3, 0);
                 }
             );
-            graph->add_present_pass(
-                [=](render_graph::RenderGraph& g, render_graph::PresentPassBuilder& builder) {
-                    builder.set_name(u8"present_pass")
-                        .swapchain(swapchain, backbuffer_index)
-                        .texture(back_buffer, true);
-                }
-            );
+            imgui_backend.render();
         }
 
         // compile and draw rg
@@ -647,12 +523,7 @@ int main(int argc, char* argv[])
         // present
         {
             SkrZoneScopedN("Present");
-            CGPUQueuePresentDescriptor present_desc = {};
-            present_desc.index                      = backbuffer_index;
-            present_desc.swapchain                  = swapchain;
-            cgpu_queue_present(gfx_queue, &present_desc);
-            render_graph_imgui_present_sub_viewports();
-
+            imgui_render_backend_rg->present_all();
             if (lockFPS) skr_thread_sleep(16);
         }
     }
@@ -666,9 +537,7 @@ int main(int argc, char* argv[])
         profilers[i].finalize();
     }
     render_graph::RenderGraph::destroy(graph);
-    render_graph_imgui_finalize();
+    imgui_backend.destroy();
     finalize();
-    skr_free_window(window);
-    SDL_Quit();
     return 0;
 }
