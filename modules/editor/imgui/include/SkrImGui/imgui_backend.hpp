@@ -29,6 +29,7 @@ struct SKR_IMGUI_NG_API ImGuiBackend {
     void pump_message();
     void begin_frame();
     void end_frame();
+    void acquire_next_frame();
     void render();
 
     // imgui functional

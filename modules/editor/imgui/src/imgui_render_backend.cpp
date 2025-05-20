@@ -1,3 +1,4 @@
+#include <SkrCore/dirty.hpp>
 #include <SkrCore/log.hpp>
 #include <SkrGraphics/cgpux.h>
 #include <SkrRenderGraph/backend/texture_view_pool.hpp>
@@ -10,12 +11,13 @@
 namespace skr
 {
 struct ImGuiRendererBackendRGViewportData {
-    CGPUSurfaceId   surface          = nullptr;
-    CGPUSwapChainId swapchain        = nullptr;
-    CGPUFenceId     fence            = nullptr;
-    CGPUQueueId     present_queue    = nullptr;
-    uint32_t        backbuffer_index = 0;
-    ECGPULoadAction load_action      = CGPU_LOAD_ACTION_CLEAR;
+    CGPUSurfaceId   surface                 = nullptr;
+    CGPUSwapChainId swapchain               = nullptr;
+    CGPUFenceId     fence                   = nullptr;
+    CGPUQueueId     present_queue           = nullptr;
+    uint32_t        backbuffer_index        = 0;
+    ECGPULoadAction load_action             = CGPU_LOAD_ACTION_CLEAR;
+    Trigger         need_acquire_next_frame = {};
 
     inline void destroy()
     {
@@ -728,17 +730,37 @@ void ImGuiRendererBackendRG::wait_rendering_done()
 {
     cgpu_wait_queue_idle(_gfx_queue);
 }
-void ImGuiRendererBackendRG::acquire_next_frame()
+void ImGuiRendererBackendRG::acquire_next_frame(ImGuiViewport* vp)
 {
-    for (auto* vp : ImGui::GetPlatformIO().Viewports)
+    auto rdata = (ImGuiRendererBackendRGViewportData*)vp->RendererUserData;
+    if (rdata->need_acquire_next_frame.comsume())
     {
-        auto rdata = (ImGuiRendererBackendRGViewportData*)vp->RendererUserData;
         cgpu_wait_fences(&rdata->fence, 1);
         CGPUAcquireNextDescriptor acquire{};
         acquire.fence            = rdata->fence;
         acquire.signal_semaphore = nullptr;
         rdata->backbuffer_index  = cgpu_acquire_next_image(rdata->swapchain, &acquire);
     }
+}
+CGPUTextureId ImGuiRendererBackendRG::get_backbuffer(ImGuiViewport* vp)
+{
+    auto rdata = (ImGuiRendererBackendRGViewportData*)vp->RendererUserData;
+    acquire_next_frame(vp);
+    return rdata->swapchain->back_buffers[rdata->backbuffer_index];
+}
+void ImGuiRendererBackendRG::begin_frame()
+{
+    for (auto vp : ImGui::GetPlatformIO().Viewports)
+    {
+        auto rdata = (ImGuiRendererBackendRGViewportData*)vp->RendererUserData;
+        if (rdata)
+        {
+            rdata->need_acquire_next_frame.trigger();
+        }
+    }
+}
+void ImGuiRendererBackendRG::end_frame()
+{
 }
 
 // main window api
@@ -811,7 +833,7 @@ void ImGuiRendererBackendRG::render_window(ImGuiViewport* vp, void*)
     auto rdata = (ImGuiRendererBackendRGViewportData*)vp->RendererUserData;
 
     // wait fence
-    CGPUTextureId native_backbuffer = rdata->swapchain->back_buffers[rdata->backbuffer_index];
+    CGPUTextureId native_backbuffer = get_backbuffer(vp);
 
     // import rtv
     render_graph::TextureRTVHandle back_buffer = _render_graph->create_texture(

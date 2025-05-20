@@ -24,8 +24,11 @@ struct SKR_IMGUI_NG_API ImGuiRendererBackend {
     virtual void setup_io(ImGuiIO& io) = 0;
 
     // rendering utils
-    virtual void wait_rendering_done() = 0;
-    virtual void acquire_next_frame()  = 0;
+    virtual void          wait_rendering_done()                 = 0;
+    virtual void          acquire_next_frame(ImGuiViewport* vp) = 0;
+    virtual CGPUTextureId get_backbuffer(ImGuiViewport* vp)     = 0;
+    virtual void          begin_frame()                         = 0;
+    virtual void          end_frame()                           = 0;
 
     // main window api
     virtual void create_main_window(ImGuiViewport* wnd)              = 0;
@@ -78,8 +81,11 @@ struct SKR_IMGUI_NG_API ImGuiRendererBackendRG : ImGuiRendererBackend {
     void setup_io(ImGuiIO& io) override;
 
     // rendering utils
-    void wait_rendering_done() override;
-    void acquire_next_frame() override;
+    void          wait_rendering_done() override;
+    void          acquire_next_frame(ImGuiViewport* vp) override;
+    CGPUTextureId get_backbuffer(ImGuiViewport* vp) override;
+    void          begin_frame() override;
+    void          end_frame() override;
 
     // main window api
     void create_main_window(ImGuiViewport* vp) override;

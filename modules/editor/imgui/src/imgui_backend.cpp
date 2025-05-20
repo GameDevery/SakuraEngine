@@ -171,6 +171,7 @@ void ImGuiBackend::begin_frame()
     apply_context();
     ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
+    _renderer_backend->begin_frame();
 }
 void ImGuiBackend::end_frame()
 {
@@ -182,14 +183,12 @@ void ImGuiBackend::end_frame()
     {
         ImGui::UpdatePlatformWindows();
     }
+    _renderer_backend->end_frame();
 }
 void ImGuiBackend::render()
 {
     SKR_ASSERT(is_created() && "please create context before render");
     SKR_ASSERT(ImGui::GetCurrentContext() == _context && "context mismatch");
-
-    // acquire next frame
-    _renderer_backend->acquire_next_frame();
 
     // update textures
     for (ImTextureData* tex : ImGui::GetPlatformIO().Textures)
