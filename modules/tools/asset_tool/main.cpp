@@ -1,4 +1,4 @@
-#include "../../../../samples/common/common/utils.h"
+#include "common/utils.h"
 #include "SkrCore/time.h"
 #include "SkrCore/platform/vfs.h"
 #include <SkrContainers/string.hpp>

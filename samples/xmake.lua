@@ -7,6 +7,7 @@ includes("dcc/xmake.lua")
 
 includes("websocket")
 includes("imgui")
+includes("common")
 
 skr_includes_with_cull("cef", function()
     includes('cef')

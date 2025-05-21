@@ -14,6 +14,7 @@ shared_module("SkrAssetTool", "SKR_ASSET_TOOL")
     add_packages("nativefiledialog", {public=false})
     set_exceptions("no-cxx")
     skr_unity_build()
+    add_deps("AppSampleCommon")
 
 executable_module("SkrAssetImport", "SKR_ASSET_IMPORT")
     set_group("02.tools")
