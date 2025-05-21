@@ -517,9 +517,6 @@ int              SGameModule::main_module_exec(int argc, char8_t** argv)
     // auto moduleManager = skr_get_module_manager();
     SKR_LOG_INFO(u8"game executed as main module!");
 
-    if (SDL_Init(SDL_INIT_EVERYTHING) != 0)
-        return -1;
-
     auto render_device = skr_get_default_render_device();
     auto cgpu_device   = render_device->get_cgpu_device();
     auto gfx_queue     = render_device->get_gfx_queue();
@@ -1004,7 +1001,6 @@ int              SGameModule::main_module_exec(int argc, char8_t** argv)
     game_finalize_render_effects(game_renderer, renderGraph);
     // render_graph_imgui_finalize();
     skr_free_window(main_window);
-    SDL_Quit();
     return 0;
 }
 

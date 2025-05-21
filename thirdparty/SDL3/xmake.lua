@@ -17,3 +17,9 @@ target("SDL3")
     else
         -- add_links("SDL3-3.2.12", {public = true})
     end
+
+    -- for clangd
+    add_files("./_dummy_SDL3_for_clangd.cpp")
+
+    -- avoid define main
+    add_defines("SDL_MAIN_HANDLED=1", {public = true})

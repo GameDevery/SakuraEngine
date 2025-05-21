@@ -242,7 +242,6 @@ void SVMemCCModule::on_unload()
 
     // clean up
     finalize();
-    SDL_Quit();
 }
 
 void SVMemCCModule::create_api_objects()
