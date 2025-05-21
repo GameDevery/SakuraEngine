@@ -52,7 +52,6 @@
 #include "SkrScene/resources/scene_resource.h"
 
 uint32_t    backbuffer_index;
-extern void create_imgui_resources(skr_vfs_t* resource_vfs, SRenderDeviceId render_device, skr::render_graph::RenderGraph* renderGraph);
 extern void game_initialize_render_effects(SRendererId renderer, skr::render_graph::RenderGraph* renderGraph, skr_vfs_t* resource_vfs);
 extern void game_register_render_effects(SRendererId renderer, skr::render_graph::RenderGraph* renderGraph);
 extern void game_finalize_render_effects(SRendererId renderer, skr::render_graph::RenderGraph* renderGraph);
@@ -545,7 +544,6 @@ int              SGameModule::main_module_exec(int argc, char8_t** argv)
     });
     game_initialize_render_effects(game_renderer, renderGraph, resource_vfs);
     create_test_scene(game_renderer);
-    create_imgui_resources(resource_vfs, render_device, renderGraph);
     // Lua
     auto L = skr_lua_newstate(resource_vfs);
     skr_lua_bind_imgui(L);
@@ -939,7 +937,7 @@ int              SGameModule::main_module_exec(int argc, char8_t** argv)
             present_desc.index                      = backbuffer_index;
             present_desc.swapchain                  = swapchain;
             cgpu_queue_present(gfx_queue, &present_desc);
-            render_graph_imgui_present_sub_viewports();
+            // render_graph_imgui_present_sub_viewports();
         }
         else
         {
@@ -949,7 +947,7 @@ int              SGameModule::main_module_exec(int argc, char8_t** argv)
         // render graph setup & compile & exec
         {
             SkrZoneScopedN("RenderIMGUI");
-            render_graph_imgui_add_render_pass(renderGraph, back_buffer, CGPU_LOAD_ACTION_LOAD);
+            // render_graph_imgui_add_render_pass(renderGraph, back_buffer, CGPU_LOAD_ACTION_LOAD);
         }
 
         // blit backbuffer & present
@@ -1005,7 +1003,7 @@ int              SGameModule::main_module_exec(int argc, char8_t** argv)
     cgpu_free_fence(present_fence);
     render_graph::RenderGraph::destroy(renderGraph);
     game_finalize_render_effects(game_renderer, renderGraph);
-    render_graph_imgui_finalize();
+    // render_graph_imgui_finalize();
     skr_free_window(main_window);
     SDL_Quit();
     return 0;

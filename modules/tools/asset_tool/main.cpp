@@ -17,7 +17,6 @@
 #include "SkrProfile/profile.h"
 
 #include "SkrAssetTool/gltf_factory.h"
-#include "imgui_impl_sdl.h"
 #include "nfd.h"
 #include <algorithm>
 
@@ -27,11 +26,12 @@ class SAssetImportModule : public skr::IDynamicModule
     virtual int  main_module_exec(int argc, char8_t** argv) override;
     virtual void on_unload() override;
 
+    // imgui
+    skr::ImGuiBackend            imgui_backend;
+    skr::ImGuiRendererBackendRG* render_backend_rg = nullptr;
+
 public:
     static SAssetImportModule* Get();
-
-    SWindowHandle window;
-    uint32_t      backbuffer_index;
 
     struct sugoi_storage_t* l2d_world    = nullptr;
     skr_vfs_t*              resource_vfs = nullptr;
@@ -66,97 +66,65 @@ void SAssetImportModule::on_unload()
     skr_free_vfs(resource_vfs);
 }
 
-extern void create_imgui_resources(SRenderDeviceId render_device, skr::render_graph::RenderGraph* renderGraph, skr_vfs_t* vfs);
-
 int SAssetImportModule::main_module_exec(int argc, char8_t** argv)
 {
+    namespace render_graph = skr::render_graph;
+
+    // configs
     skr::String                                filePath;
     skr::Vector<skd::asset::SImporterFactory*> factories;
     skr::Vector<skd::asset::SImporterFactory*> availableFactories;
 
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0)
-        return -1;
+    // get rendering context
     auto render_device = skr_get_default_render_device();
     auto cgpu_device   = render_device->get_cgpu_device();
     auto gfx_queue     = render_device->get_gfx_queue();
-    auto window_desc   = make_zeroed<SWindowDescriptor>();
-    window_desc.flags  = SKR_WINDOW_CENTERED | SKR_WINDOW_RESIZABLE;
-    window_desc.height = 1000;
-    window_desc.width  = 1500;
-    window             = skr_create_window(
-        skr::format(u8"Asset Tool [{}]", gCGPUBackendNames[cgpu_device->adapter->instance->backend]).u8_str(),
-        &window_desc
-    );
-
-    // Initialize renderer
-    auto swapchain         = skr_render_device_register_window(render_device, window);
-    auto present_fence     = cgpu_create_fence(cgpu_device);
-    namespace render_graph = skr::render_graph;
-    auto renderGraph       = render_graph::RenderGraph::create(
+    auto renderGraph   = render_graph::RenderGraph::create(
         [=](skr::render_graph::RenderGraphBuilder& builder) {
             builder.with_device(cgpu_device)
                 .with_gfx_queue(gfx_queue)
                 .enable_memory_aliasing();
         }
     );
-    create_imgui_resources(render_device, renderGraph, resource_vfs);
-    ImGui_ImplSDL2_InitForCGPU((SDL_Window*)window, swapchain);
-    uint64_t    frame_index = 0;
+
+    // init imgui
+    uint64_t frame_index = 0;
+    {
+        using namespace skr;
+        auto render_backend = RCUnique<ImGuiRendererBackendRG>::New();
+        render_backend_rg   = render_backend.get();
+        ImGuiRendererBackendRGConfig config{};
+        config.render_graph = renderGraph;
+        config.queue        = gfx_queue;
+        render_backend->init(config);
+        imgui_backend.create({}, std::move(render_backend));
+        imgui_backend.main_window().show();
+        imgui_backend.enable_docking();
+        // imgui_backend.enable_multi_viewport();
+    }
+
+    // timer
     SHiresTimer tick_timer;
     skr_init_hires_timer(&tick_timer);
 
-    bool quit = false;
-    while (!quit)
+    while (!imgui_backend.want_exit().comsume())
     {
         FrameMark;
-        SDL_Event event;
-        while (SDL_PollEvent(&event))
-        {
-            ImGui_ImplSDL2_ProcessEvent(&event);
-            if (event.type == SDL_WINDOWEVENT)
-            {
-                Uint8 window_event = event.window.event;
-                if (window_event == SDL_WINDOWEVENT_SIZE_CHANGED)
-                {
-                    cgpu_wait_queue_idle(gfx_queue);
-                    cgpu_wait_fences(&present_fence, 1);
-                    swapchain = skr_render_device_recreate_window_swapchain(render_device, window);
-                    ImGui_ImplSDL2_UpdateSwapChain(swapchain);
-                }
-            }
-            if (event.type == SDL_WINDOWEVENT)
-            {
-                Uint8 window_event = event.window.event;
-                if (window_event == SDL_WINDOWEVENT_CLOSE || window_event == SDL_WINDOWEVENT_MOVED || window_event == SDL_WINDOWEVENT_RESIZED)
-                    if (ImGuiViewport* viewport = ImGui::FindViewportByPlatformHandle((void*)SDL_GetWindowFromID(event.window.windowID)))
-                    {
-                        if (window_event == SDL_WINDOWEVENT_CLOSE)
-                            viewport->PlatformRequestClose = true;
-                        if (window_event == SDL_WINDOWEVENT_MOVED)
-                            viewport->PlatformRequestMove = true;
-                        if (window_event == SDL_WINDOWEVENT_RESIZED)
-                            viewport->PlatformRequestResize = true;
-                    }
-            }
-            if (event.type == SDL_QUIT)
-            {
-                quit = true;
-                break;
-            }
-        }
-        // LoopBody
         SkrZoneScopedN("LoopBody");
+
+        // pump message
+        {
+            SkrZoneScopedN("PumpMessage");
+            imgui_backend.pump_message();
+        }
+
+        // imgui new frame
         {
             SkrZoneScopedN("ImGUINewFrame");
-
-            ImGui_ImplSDL2_NewFrame();
-            ImGui::NewFrame();
-            // auto& io = ImGui::GetIO();
-            // io.DisplaySize = ImVec2(
-            // (float)swapchain->back_buffers[0]->width,
-            // (float)swapchain->back_buffers[0]->height);
-            // skr_imgui_new_frame(window, 1.f / 60.f);
+            imgui_backend.begin_frame();
         }
+
+        // imgui update
         {
             ImGui::Begin("Asset Importer");
             if (availableFactories.is_empty())
@@ -217,35 +185,20 @@ int SAssetImportModule::main_module_exec(int argc, char8_t** argv)
             }
             ImGui::End();
         }
-        {
-            SkrZoneScopedN("AcquireFrame");
 
-            // acquire frame
-            cgpu_wait_fences(&present_fence, 1);
-            CGPUAcquireNextDescriptor acquire_desc = {};
-            acquire_desc.fence                     = present_fence;
-            backbuffer_index                       = cgpu_acquire_next_image(swapchain, &acquire_desc);
-        }
-        // render graph setup & compile & exec
-        CGPUTextureId native_backbuffer = swapchain->back_buffers[backbuffer_index];
-        auto          back_buffer       = renderGraph->create_texture(
-            [=](render_graph::RenderGraph& g, render_graph::TextureBuilder& builder) {
-                builder.set_name(u8"backbuffer")
-                    .import(native_backbuffer, CGPU_RESOURCE_STATE_UNDEFINED)
-                    .allow_render_target();
-            }
-        );
+        // imgui end frame
         {
-            SkrZoneScopedN("RenderIMGUI");
-            render_graph_imgui_add_render_pass(renderGraph, back_buffer, CGPU_LOAD_ACTION_CLEAR);
+            SkrZoneScopedN("ImGUIEndFrame");
+            imgui_backend.end_frame();
         }
-        renderGraph->add_present_pass(
-            [=, this](render_graph::RenderGraph& g, render_graph::PresentPassBuilder& builder) {
-                builder.set_name(u8"present_pass")
-                    .swapchain(swapchain, backbuffer_index)
-                    .texture(back_buffer, true);
-            }
-        );
+
+        // render imgui
+        {
+            SkrZoneScopedN("RenderImGui");
+            imgui_backend.render();
+        }
+
+        // compile and execute render graph
         {
             SkrZoneScopedN("CompileRenderGraph");
             renderGraph->compile();
@@ -261,21 +214,16 @@ int SAssetImportModule::main_module_exec(int argc, char8_t** argv)
                     renderGraph->collect_garbage(frame_index - RG_MAX_FRAME_IN_FLIGHT * 10);
             }
         }
+
+        // do present
         {
-            SkrZoneScopedN("QueuePresentSwapchain");
-            // present
-            CGPUQueuePresentDescriptor present_desc = {};
-            present_desc.index                      = backbuffer_index;
-            present_desc.swapchain                  = swapchain;
-            cgpu_queue_present(gfx_queue, &present_desc);
-            render_graph_imgui_present_sub_viewports();
+            SkrZoneScopedN("Present");
+            render_backend_rg->present_all();
         }
     }
     cgpu_wait_queue_idle(gfx_queue);
-    cgpu_wait_fences(&present_fence, 1);
-    cgpu_free_fence(present_fence);
     render_graph::RenderGraph::destroy(renderGraph);
-    render_graph_imgui_finalize();
+    imgui_backend.destroy();
     return 0;
 }
 

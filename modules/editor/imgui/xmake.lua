@@ -3,7 +3,7 @@ shared_module("SkrImGuiNG", "SKR_IMGUI_NG")
     skr_unity_build()
 
     -- deps
-    add_deps("SDL3")
+    add_deps("SDL3", {private=true})
     public_dependency("SkrInput")
     public_dependency("SkrRenderGraph")
 
@@ -18,6 +18,13 @@ shared_module("SkrImGuiNG", "SKR_IMGUI_NG")
         install_func = "file",
         out_dir = "resources/font"
     })
+
+    -- compile shader
+    add_rules("utils.dxc", {
+        spv_outdir = "/../resources/shaders",
+        dxil_outdir = "/../resources/shaders"
+    })
+    add_files("shaders/*.hlsl")
 
     -- ImGui
     --! use version with dynamic fonts, maybe unstable
