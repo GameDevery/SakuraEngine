@@ -1,6 +1,6 @@
 #include "../common/common_device_base.hpp"
-#include <SDL2/SDL_mouse.h>
-#include <SDL2/SDL_events.h>
+#include <SDL3/SDL_mouse.h>
+#include <SDL3/SDL_events.h>
 #include <algorithm>
 #include "SkrContainers/span.hpp"
 
@@ -17,8 +17,8 @@ struct MouseState {
     int64_t  wheelY = 0;
 };
 
-struct InputReading_SDL2Mouse : public CommonInputReading {
-    InputReading_SDL2Mouse(CommonInputReadingProxy* pPool, struct CommonInputDevice* pDevice, const MouseState& State, uint64_t Timestamp) SKR_NOEXCEPT
+struct InputReading_SDL3Mouse : public CommonInputReading {
+    InputReading_SDL3Mouse(CommonInputReadingProxy* pPool, struct CommonInputDevice* pDevice, const MouseState& State, uint64_t Timestamp) SKR_NOEXCEPT
         : CommonInputReading(pPool, pDevice),
           State(State),
           Timestamp(Timestamp)
@@ -43,11 +43,11 @@ struct InputReading_SDL2Mouse : public CommonInputReading {
     bool GetMouseState(InputMouseState* state) SKR_NOEXCEPT final
     {
         state->buttons = 0;
-        state->buttons |= (State.ButtonFlags & SDL_BUTTON(SDL_BUTTON_LEFT)) ? InputMouseLeftButton : 0;
-        state->buttons |= (State.ButtonFlags & SDL_BUTTON(SDL_BUTTON_RIGHT)) ? InputMouseRightButton : 0;
-        state->buttons |= (State.ButtonFlags & SDL_BUTTON(SDL_BUTTON_MIDDLE)) ? InputMouseMiddleButton : 0;
-        state->buttons |= (State.ButtonFlags & SDL_BUTTON(SDL_BUTTON_X1)) ? InputMouseButton4 : 0;
-        state->buttons |= (State.ButtonFlags & SDL_BUTTON(SDL_BUTTON_X2)) ? InputMouseButton5 : 0;
+        state->buttons |= (State.ButtonFlags & SDL_BUTTON_MASK(SDL_BUTTON_LEFT)) ? InputMouseLeftButton : 0;
+        state->buttons |= (State.ButtonFlags & SDL_BUTTON_MASK(SDL_BUTTON_RIGHT)) ? InputMouseRightButton : 0;
+        state->buttons |= (State.ButtonFlags & SDL_BUTTON_MASK(SDL_BUTTON_MIDDLE)) ? InputMouseMiddleButton : 0;
+        state->buttons |= (State.ButtonFlags & SDL_BUTTON_MASK(SDL_BUTTON_X1)) ? InputMouseButton4 : 0;
+        state->buttons |= (State.ButtonFlags & SDL_BUTTON_MASK(SDL_BUTTON_X2)) ? InputMouseButton5 : 0;
 
         state->positionX = State.x;
         state->positionY = State.y;
@@ -66,9 +66,9 @@ struct InputReading_SDL2Mouse : public CommonInputReading {
     uint64_t   Timestamp;
 };
 
-struct InputDevice_SDL2Mouse : public CommonInputDeviceBase<InputReading_SDL2Mouse> {
-    InputDevice_SDL2Mouse(CommonInputLayer* Layer) SKR_NOEXCEPT
-        : CommonInputDeviceBase<InputReading_SDL2Mouse>(Layer)
+struct InputDevice_SDL3Mouse : public CommonInputDeviceBase<InputReading_SDL3Mouse> {
+    InputDevice_SDL3Mouse(CommonInputLayer* Layer) SKR_NOEXCEPT
+        : CommonInputDeviceBase<InputReading_SDL3Mouse>(Layer)
     {
     }
 
@@ -100,10 +100,13 @@ struct InputDevice_SDL2Mouse : public CommonInputDeviceBase<InputReading_SDL2Mou
 
     void updateScan(MouseState& outState)
     {
-        outState.ButtonFlags = SDL_GetMouseState(&outState.x, &outState.y);
+        float mouse_x, mouse_y;
+        outState.ButtonFlags = SDL_GetMouseState(&mouse_x, &mouse_y);
+        outState.x = (int)mouse_x;
+        outState.y = (int)mouse_y;
         SDL_PumpEvents();
         SDL_Event events[8];
-        if (auto count = SDL_PeepEvents(events, 8, SDL_GETEVENT, SDL_MOUSEWHEEL, SDL_MOUSEWHEEL))
+        if (auto count = SDL_PeepEvents(events, 8, SDL_GETEVENT, SDL_EVENT_MOUSE_WHEEL, SDL_EVENT_MOUSE_WHEEL))
         {
             for (int i = 0; i < count; i++)
             {
@@ -120,9 +123,9 @@ struct InputDevice_SDL2Mouse : public CommonInputDeviceBase<InputReading_SDL2Mou
     SAtomic64 wheelYAccum = 0;
 };
 
-CommonInputDevice* CreateInputDevice_SDL2Mouse(CommonInputLayer* pLayer) SKR_NOEXCEPT
+CommonInputDevice* CreateInputDevice_SDL3Mouse(CommonInputLayer* pLayer) SKR_NOEXCEPT
 {
-    InputDevice_SDL2Mouse* pDevice = SkrNew<InputDevice_SDL2Mouse>(pLayer);
+    InputDevice_SDL3Mouse* pDevice = SkrNew<InputDevice_SDL3Mouse>(pLayer);
     return pDevice;
 }
 

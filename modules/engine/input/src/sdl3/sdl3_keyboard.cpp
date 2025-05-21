@@ -1,5 +1,5 @@
 #include "../common/common_device_base.hpp"
-#include <SDL2/SDL_keyboard.h>
+#include <SDL3/SDL_keyboard.h>
 #include "SkrContainers/span.hpp"
 #include <algorithm>
 #include "SkrContainers/span.hpp"
@@ -11,8 +11,8 @@ namespace input
 static EKeyCode KeyCodeTranslator(SDL_Scancode keycode);
 
 using ScanCodeBuffer = skr::InlineVector<uint8_t, 16>;
-struct InputReading_SDL2Keyboard : public CommonInputReading {
-    InputReading_SDL2Keyboard(CommonInputReadingProxy* pPool, struct CommonInputDevice* pDevice, ScanCodeBuffer&& InScanCodes, uint64_t Timestamp) SKR_NOEXCEPT
+struct InputReading_SDL3Keyboard : public CommonInputReading {
+    InputReading_SDL3Keyboard(CommonInputReadingProxy* pPool, struct CommonInputDevice* pDevice, ScanCodeBuffer&& InScanCodes, uint64_t Timestamp) SKR_NOEXCEPT
         : CommonInputReading(pPool, pDevice),
           ScanCodes(std::move(InScanCodes)),
           Timestamp(Timestamp)
@@ -60,9 +60,9 @@ struct InputReading_SDL2Keyboard : public CommonInputReading {
     uint64_t       Timestamp;
 };
 
-struct InputDevice_SDL2Keyboard : public CommonInputDeviceBase<InputReading_SDL2Keyboard> {
-    InputDevice_SDL2Keyboard(CommonInputLayer* Layer) SKR_NOEXCEPT
-        : CommonInputDeviceBase<InputReading_SDL2Keyboard>(Layer)
+struct InputDevice_SDL3Keyboard : public CommonInputDeviceBase<InputReading_SDL3Keyboard> {
+    InputDevice_SDL3Keyboard(CommonInputLayer* Layer) SKR_NOEXCEPT
+        : CommonInputDeviceBase<InputReading_SDL3Keyboard>(Layer)
     {
     }
 
@@ -74,7 +74,8 @@ struct InputDevice_SDL2Keyboard : public CommonInputDeviceBase<InputReading_SDL2
         if (!LastReading || !LastReading->Equal({ ScanCodes.data(), ScanCodes.size() }))
         {
             if (auto old = ReadingQueue.add(
-                ReadingPool.acquire(&ReadingPool, this, std::move(ScanCodes), layer->GetCurrentTimestampUSec())))
+                    ReadingPool.acquire(&ReadingPool, this, std::move(ScanCodes), layer->GetCurrentTimestampUSec())
+                ))
             {
                 old->release();
             }
@@ -95,12 +96,12 @@ struct InputDevice_SDL2Keyboard : public CommonInputDeviceBase<InputReading_SDL2
     static void updateScan(ScanCodeBuffer& write_span, uint32_t max_count);
 };
 
-void InputDevice_SDL2Keyboard::updateScan(ScanCodeBuffer& output, uint32_t max_count)
+void InputDevice_SDL3Keyboard::updateScan(ScanCodeBuffer& output, uint32_t max_count)
 {
-    int            numkeys;
-    const uint8_t* state    = SDL_GetKeyboardState(&numkeys);
-    const auto     n        = std::min(max_count, (uint32_t)output.capacity());
-    int            scancode = 0;
+    int         numkeys;
+    const bool* state    = SDL_GetKeyboardState(&numkeys);
+    const auto  n        = std::min(max_count, (uint32_t)output.capacity());
+    int         scancode = 0;
     for (uint32_t i = 0; scancode < numkeys && i < n; ++scancode)
     {
         if (state[scancode])
@@ -110,9 +111,9 @@ void InputDevice_SDL2Keyboard::updateScan(ScanCodeBuffer& output, uint32_t max_c
     }
 }
 
-CommonInputDevice* CreateInputDevice_SDL2Keyboard(CommonInputLayer* pLayer) SKR_NOEXCEPT
+CommonInputDevice* CreateInputDevice_SDL3Keyboard(CommonInputLayer* pLayer) SKR_NOEXCEPT
 {
-    InputDevice_SDL2Keyboard* pDevice = SkrNew<InputDevice_SDL2Keyboard>(pLayer);
+    InputDevice_SDL3Keyboard* pDevice = SkrNew<InputDevice_SDL3Keyboard>(pLayer);
     return pDevice;
 }
 
@@ -248,8 +249,8 @@ inline static EKeyCode KeyCodeTranslator(SDL_Scancode keycode)
         KEY_CODE_TRANS(KEY_CODE_RBracket, SDL_SCANCODE_RIGHTBRACKET)
         KEY_CODE_TRANS(KEY_CODE_Quote, SDL_SCANCODE_APOSTROPHE)
 
-        default:
-            return KEY_CODE_Invalid;
+    default:
+        return KEY_CODE_Invalid;
     }
 }
 
