@@ -1,7 +1,6 @@
 #pragma once
 #include "SkrBase/config.h"
 #include "SkrGui/backend/device/window.hpp"
-#include "SkrCore/platform/window.h"
 #include "SkrGui/backend/device/device.hpp"
 #include <SDL3/SDL.h>
 #ifndef __meta__

@@ -1,6 +1,5 @@
 #pragma once
 #include "SkrGraphics/api.h"
-#include "SkrCore/platform/window.h"
 #include "SkrRT/io/vram_io.hpp"
 #include "SkrContainers/map.hpp"
 #include "SkrRenderGraph/frontend/render_graph.hpp"

@@ -27,12 +27,6 @@ SkrNativeWindow::~SkrNativeWindow()
 // init functions
 void SkrNativeWindow::init_normal(const WindowDesc& desc)
 {
-    SWindowDescriptor create_desc;
-    create_desc.width  = (int32_t)desc.size.width;
-    create_desc.height = (int32_t)desc.size.height;
-    create_desc.posx   = (int32_t)desc.pos.x;
-    create_desc.posy   = (int32_t)desc.pos.y;
-    create_desc.flags  = SKR_WINDOW_RESIZABLE;
     _window            = SDL_CreateWindow(
         desc.name.c_str_raw(),
         desc.size.width,

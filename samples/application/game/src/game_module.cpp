@@ -6,7 +6,6 @@
 #include "SkrRT/config.h"
 #include "SkrCore/memory/memory.h"
 #include "SkrCore/time.h"
-#include "SkrCore/platform/window.h"
 
 #include "SkrRT/ecs/type_builder.hpp"
 

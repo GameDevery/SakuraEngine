@@ -6,7 +6,6 @@
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrImGui/imgui_backend.hpp"
 #include "SkrImGui/imgui_render_backend.hpp"
-#include "SkrCore/platform/window.h"
 #include "SkrProfile/profile.h"
 #include "pass_profiler.h"
 #include "SkrOS/thread.h"

@@ -1,1 +1,0 @@
-#include "platform/sdl2/sdl2_window.c"
