@@ -64,19 +64,19 @@ int main(void)
 
     // handler
     bool b_quit  = false;
-    auto handler = skr_system_get_default_handler();
-    handler->add_window_close_handler(
-    +[](SWindowHandle window, void* pQuit) {
-        bool& quit = *(bool*)pQuit;
-        quit       = true;
-    },
-    &b_quit);
-    handler->add_window_resize_handler(
-    +[](SWindowHandle window, int32_t w, int32_t h, void* usr_data) {
-        auto sandbox = reinterpret_cast<Sandbox*>(usr_data);
-        sandbox->resize_window(w, h);
-    },
-    sandbox);
+    // auto handler = skr_system_get_default_handler();
+    // handler->add_window_close_handler(
+    // +[](SWindowHandle window, void* pQuit) {
+    //     bool& quit = *(bool*)pQuit;
+    //     quit       = true;
+    // },
+    // &b_quit);
+    // handler->add_window_resize_handler(
+    // +[](SWindowHandle window, int32_t w, int32_t h, void* usr_data) {
+    //     auto sandbox = reinterpret_cast<Sandbox*>(usr_data);
+    //     sandbox->resize_window(w, h);
+    // },
+    // sandbox);
 
     // show window
     {
@@ -103,8 +103,8 @@ int main(void)
         FrameMark;
         {
             SkrZoneScopedN("SystemEvents");
-            handler->pump_messages(delta_sec);
-            handler->process_messages(delta_sec);
+            // handler->pump_messages(delta_sec);
+            // handler->process_messages(delta_sec);
         }
         {
             SkrZoneScopedN("InputSystem");
