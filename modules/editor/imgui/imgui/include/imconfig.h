@@ -141,4 +141,4 @@ namespace ImGui
 */
 
 #include <SkrBase/config.h>
-#define IMGUI_API SKR_IMGUI_NG_API
+#define IMGUI_API SKR_IMGUI_API

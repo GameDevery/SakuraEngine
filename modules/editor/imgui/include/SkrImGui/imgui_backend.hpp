@@ -12,7 +12,7 @@ namespace skr
 {
 struct ImGuiRendererBackend;
 
-struct SKR_IMGUI_NG_API ImGuiBackend {
+struct SKR_IMGUI_API ImGuiBackend {
     // ctor & dtor
     ImGuiBackend();
     ~ImGuiBackend();

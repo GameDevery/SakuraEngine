@@ -13,7 +13,7 @@ namespace skr
 {
 struct ImGuiWindowBackend;
 
-struct SKR_IMGUI_NG_API ImGuiRendererBackend {
+struct SKR_IMGUI_API ImGuiRendererBackend {
     SKR_RC_IMPL();
 
     // ctor & dtor
@@ -59,7 +59,7 @@ struct ImGuiRendererBackendRGConfig {
     Optional<CGPUShaderEntryDescriptor> ps             = {}; // default: shaders/imgui_fragment
 };
 
-struct SKR_IMGUI_NG_API ImGuiRendererBackendRG : ImGuiRendererBackend {
+struct SKR_IMGUI_API ImGuiRendererBackendRG : ImGuiRendererBackend {
     // ctor & dtor
     ImGuiRendererBackendRG();
     ~ImGuiRendererBackendRG();

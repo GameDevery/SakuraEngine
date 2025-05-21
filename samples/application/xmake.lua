@@ -9,7 +9,7 @@ end
 executable_module("VMemController", "VMEM_CONTROLLER")
     set_group("04.examples/application")
     public_dependency("SkrRenderGraph")
-    public_dependency("SkrImGuiNG")
+    public_dependency("SkrImGui")
     set_exceptions("no-cxx")
     add_includedirs("./../common", {public = false})
     skr_unity_build()
@@ -18,7 +18,7 @@ executable_module("VMemController", "VMEM_CONTROLLER")
 executable_module("Live2DViewer", "LIVE2D_VIEWER")
     set_group("04.examples/application")
     public_dependency("SkrLive2D")
-    public_dependency("SkrImGuiNG")
+    public_dependency("SkrImGui")
 
     -- install
     skr_install_rule()
@@ -45,7 +45,7 @@ executable_module("Live2DViewer", "LIVE2D_VIEWER")
     skr_unity_build()
     add_includedirs("./../common", {public = false})
     add_includedirs("live2d-viewer/include", {public=true})
-    add_files("live2d-viewer/src/main.cpp", "live2d-viewer/src/viewer_module.cpp", "live2d-viewer/src/imgui.cpp")
+    add_files("live2d-viewer/src/main.cpp", "live2d-viewer/src/viewer_module.cpp")
     -- add_files("live2d-viewer/shaders/**.hlsl")
 
 --[[

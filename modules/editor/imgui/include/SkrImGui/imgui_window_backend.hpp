@@ -18,7 +18,7 @@ struct ImGuiWindowCreateInfo {
     bool                is_resizable  = true;
 };
 
-struct SKR_IMGUI_NG_API ImGuiMonitorBackend {
+struct SKR_IMGUI_API ImGuiMonitorBackend {
     ImGuiMonitorBackend(uint64_t id);
 
     // monitor count
@@ -38,7 +38,7 @@ private:
     uint64_t _id = 0;
 };
 
-struct SKR_IMGUI_NG_API ImGuiWindowBackend {
+struct SKR_IMGUI_API ImGuiWindowBackend {
     // ctor & dtor
     ImGuiWindowBackend();
     ~ImGuiWindowBackend();

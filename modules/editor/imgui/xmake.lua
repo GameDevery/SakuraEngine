@@ -1,4 +1,4 @@
-shared_module("SkrImGuiNG", "SKR_IMGUI_NG")
+shared_module("SkrImGui", "SKR_IMGUI")
     -- misc
     skr_unity_build()
 

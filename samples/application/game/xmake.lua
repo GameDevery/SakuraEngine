@@ -5,7 +5,7 @@ codegen_component("GameRuntime", { api = "GAME_RUNTIME", rootdir = "include/Game
 shared_module("GameRuntime", "GAME_RUNTIME")
     set_group("04.examples/application")
     public_dependency("SkrRenderer")
-    public_dependency("SkrImGuiNG")
+    public_dependency("SkrImGui")
     public_dependency("SkrInputSystem")
     public_dependency("SkrAnim")
     -- public_dependency("SkrTweak")
