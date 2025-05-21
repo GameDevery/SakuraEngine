@@ -9,7 +9,7 @@ end
 executable_module("VMemController", "VMEM_CONTROLLER")
     set_group("04.examples/application")
     public_dependency("SkrRenderGraph")
-    public_dependency("SkrImGui")
+    public_dependency("SkrImGuiNG")
     set_exceptions("no-cxx")
     add_includedirs("./../common", {public = false})
     skr_unity_build()
