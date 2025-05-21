@@ -249,7 +249,8 @@ sugoi_group_t* sugoi_storage_t::constructGroup(const sugoi_entity_type_t& inType
     char* buffer = (char*)(&group + 1);
     group.firstFree = 0;
     sugoi_entity_type_t type = sugoi::clone(inType, buffer);
-    group.type = type;
+    group.type               = type;
+    group.archetype          = archetype;
 
 
     sugoi_type_set_t shared;
@@ -259,18 +260,22 @@ sugoi_group_t* sugoi_storage_t::constructGroup(const sugoi_entity_type_t& inType
     group.get_shared_type(shared, localStack.allocate<sugoi_type_index_t>(256));
     group.sharedType = sugoi::clone(shared, buffer);
 
-    auto toClean = localStack.allocate<TIndex>(group.type.type.length + 1);
+    auto toClean = localStack.allocate<TIndex>(group.type.type.length + 5);
     SIndex toCleanCount = 0;
-    auto toClone = localStack.allocate<TIndex>(group.type.type.length + 1);
+    auto toClone = localStack.allocate<TIndex>(group.type.type.length + 5);
     SIndex toCloneCount = 0;
     group.isDead = false;
     group.disabled = false;
+    bool deadAdded  = false;
     bool hasTracked = false;
     forloop (i, 0, group.type.type.length)
     {
         type_index_t t = group.type.type.data[i];
-        if(t > kDeadComponent)
+        if (t > kDeadComponent && !deadAdded)
+        {
             toClean[toCleanCount++] = kDeadComponent;
+            deadAdded               = true;
+        }
         toClean[toCleanCount++] = t;
         if (!t.is_pinned())
             toClone[toCloneCount++] = t;
@@ -281,10 +286,9 @@ sugoi_group_t* sugoi_storage_t::constructGroup(const sugoi_entity_type_t& inType
         if (t == kDisableComponent)
             group.disabled = true;
     }
-    if(toCleanCount == group.type.type.length)
+    if (!deadAdded)
         toClean[toCleanCount++] = kDeadComponent;
     // std::sort(&toClean[0], &toClean[toCleanCount]); dead is always smaller
-    group.archetype = archetype;
     group.size = 0;
     group.timestamp = 0;
     group.dead = nullptr;
@@ -374,6 +378,7 @@ sugoi::archetype_t* sugoi_storage_t::get_archetype(const sugoi_type_set_t& type)
 
 sugoi_group_t* sugoi_storage_t::get_group(const sugoi_entity_type_t& type)
 {
+    SKR_ASSERT(sugoi::ordered(type));
     bool withPinned = false;
     bool dead = false;
     for(SIndex i = 0; i < type.type.length; ++i)
