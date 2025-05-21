@@ -14,8 +14,8 @@
 #include "SkrCore/module/module_manager.hpp"
 #include "SkrRT/runtime_module.h"
 #include "SkrInput/input.h"
-#include "SkrImGui/skr_imgui.h"
-#include "SkrImGui/skr_imgui_rg.h"
+#include <SkrImGui/imgui_backend.hpp>
+#include <SkrImGui/imgui_render_backend.hpp>
 #include "SkrRenderer/skr_renderer.h"
 #include "SkrRenderer/render_effect.h"
 #include "SkrLive2D/l2d_model_resource.h"

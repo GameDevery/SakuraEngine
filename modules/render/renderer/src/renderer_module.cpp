@@ -7,7 +7,6 @@
 #include "SkrBase/misc/make_zeroed.hpp"
 #include "SkrCore/module/module_manager.hpp"
 
-#include "SkrImGui/skr_imgui.h"
 #include "SkrRenderer/skr_renderer.h"
 #include "SkrRenderer/render_mesh.h"
 

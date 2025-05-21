@@ -6,7 +6,6 @@ executable_module("OGUI_Sandbox", "OGUI_SANDBOX")
     set_kind("binary")
     add_deps("OpenGUI_DemoResources")
     public_dependency("SkrInputSystem", "0.1.0")
-    public_dependency("SkrImGui", "0.1.0")
     public_dependency("SkrGui", "0.1.0")
     public_dependency("SkrGuiRenderer", "0.1.0")
 

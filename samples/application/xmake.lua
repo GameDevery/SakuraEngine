@@ -18,7 +18,7 @@ executable_module("VMemController", "VMEM_CONTROLLER")
 executable_module("Live2DViewer", "LIVE2D_VIEWER")
     set_group("04.examples/application")
     public_dependency("SkrLive2D")
-    public_dependency("SkrImGui")
+    public_dependency("SkrImGuiNG")
 
     -- install
     skr_install_rule()

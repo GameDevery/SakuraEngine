@@ -5,7 +5,7 @@ codegen_component("SkrRenderer", { api = "SKR_RENDERER", rootdir = "include/SkrR
 shared_module("SkrRenderer", "SKR_RENDERER")
     public_dependency("SkrScene")
     public_dependency("SkrRenderGraph")
-    public_dependency("SkrImGui")
+    public_dependency("SkrImGuiNG")
     add_includedirs("include", {public=true})
     skr_unity_build()
     add_files("src/*.cpp")

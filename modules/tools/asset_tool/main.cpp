@@ -7,8 +7,9 @@
 #include "SkrRT/io/vram_io.hpp"
 #include "SkrCore/module/module_manager.hpp"
 
-#include "SkrImGui/skr_imgui.h"
-#include "SkrImGui/skr_imgui_rg.h"
+#include <SkrImGui/imgui_backend.hpp>
+#include <SkrImGui/imgui_render_backend.hpp>
+#include <SkrImGui/imgui_utils.hpp>
 
 #include "SkrRenderer/skr_renderer.h"
 #include "SkrRenderGraph/frontend/render_graph.hpp"
@@ -17,25 +18,23 @@
 
 #include "SkrAssetTool/gltf_factory.h"
 #include "imgui_impl_sdl.h"
-#include "SkrImGui/imgui_utils.h"
 #include "nfd.h"
 #include <algorithm>
 
 class SAssetImportModule : public skr::IDynamicModule
 {
     virtual void on_load(int argc, char8_t** argv) override;
-    virtual int main_module_exec(int argc, char8_t** argv) override;
+    virtual int  main_module_exec(int argc, char8_t** argv) override;
     virtual void on_unload() override;
 
 public:
     static SAssetImportModule* Get();
 
     SWindowHandle window;
-    uint32_t backbuffer_index;
+    uint32_t      backbuffer_index;
 
-    struct sugoi_storage_t* l2d_world = nullptr;
-    skr_vfs_t* resource_vfs = nullptr;
-
+    struct sugoi_storage_t* l2d_world    = nullptr;
+    skr_vfs_t*              resource_vfs = nullptr;
 };
 #include "SkrOS/filesystem.hpp"
 
@@ -43,7 +42,7 @@ IMPLEMENT_DYNAMIC_MODULE(SAssetImportModule, SkrAssetImport);
 
 SAssetImportModule* SAssetImportModule::Get()
 {
-    auto mm = skr_get_module_manager();
+    auto        mm = skr_get_module_manager();
     static auto rm = static_cast<SAssetImportModule*>(mm->get_module(u8"SkrAssetTool"));
     return rm;
 }
@@ -52,12 +51,12 @@ void SAssetImportModule::on_load(int argc, char8_t** argv)
 {
     SKR_LOG_INFO(u8"live2d viewer loaded!");
 
-    std::error_code ec = {};
-    auto resourceRoot = (skr::filesystem::current_path(ec) / "../resources").u8string();
-    skr_vfs_desc_t vfs_desc = {};
-    vfs_desc.mount_type = SKR_MOUNT_TYPE_CONTENT;
-    vfs_desc.override_mount_dir = resourceRoot.c_str();
-    resource_vfs = skr_create_vfs(&vfs_desc);
+    std::error_code ec           = {};
+    auto            resourceRoot = (skr::filesystem::current_path(ec) / "../resources").u8string();
+    skr_vfs_desc_t  vfs_desc     = {};
+    vfs_desc.mount_type          = SKR_MOUNT_TYPE_CONTENT;
+    vfs_desc.override_mount_dir  = resourceRoot.c_str();
+    resource_vfs                 = skr_create_vfs(&vfs_desc);
 }
 
 void SAssetImportModule::on_unload()
@@ -71,36 +70,38 @@ extern void create_imgui_resources(SRenderDeviceId render_device, skr::render_gr
 
 int SAssetImportModule::main_module_exec(int argc, char8_t** argv)
 {
-    skr::String filePath;
+    skr::String                                filePath;
     skr::Vector<skd::asset::SImporterFactory*> factories;
     skr::Vector<skd::asset::SImporterFactory*> availableFactories;
 
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0) 
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0)
         return -1;
     auto render_device = skr_get_default_render_device();
-    auto cgpu_device = render_device->get_cgpu_device();
-    auto gfx_queue = render_device->get_gfx_queue();
-    auto window_desc = make_zeroed<SWindowDescriptor>();
-    window_desc.flags = SKR_WINDOW_CENTERED | SKR_WINDOW_RESIZABLE;
+    auto cgpu_device   = render_device->get_cgpu_device();
+    auto gfx_queue     = render_device->get_gfx_queue();
+    auto window_desc   = make_zeroed<SWindowDescriptor>();
+    window_desc.flags  = SKR_WINDOW_CENTERED | SKR_WINDOW_RESIZABLE;
     window_desc.height = 1000;
-    window_desc.width = 1500;
-    window = skr_create_window(
+    window_desc.width  = 1500;
+    window             = skr_create_window(
         skr::format(u8"Asset Tool [{}]", gCGPUBackendNames[cgpu_device->adapter->instance->backend]).u8_str(),
-        &window_desc);
+        &window_desc
+    );
 
     // Initialize renderer
-    auto swapchain = skr_render_device_register_window(render_device, window);
-    auto present_fence = cgpu_create_fence(cgpu_device);
+    auto swapchain         = skr_render_device_register_window(render_device, window);
+    auto present_fence     = cgpu_create_fence(cgpu_device);
     namespace render_graph = skr::render_graph;
-    auto renderGraph = render_graph::RenderGraph::create(
-    [=](skr::render_graph::RenderGraphBuilder& builder) {
-        builder.with_device(cgpu_device)
-            .with_gfx_queue(gfx_queue)
-            .enable_memory_aliasing();
-    });
+    auto renderGraph       = render_graph::RenderGraph::create(
+        [=](skr::render_graph::RenderGraphBuilder& builder) {
+            builder.with_device(cgpu_device)
+                .with_gfx_queue(gfx_queue)
+                .enable_memory_aliasing();
+        }
+    );
     create_imgui_resources(render_device, renderGraph, resource_vfs);
     ImGui_ImplSDL2_InitForCGPU((SDL_Window*)window, swapchain);
-    uint64_t frame_index = 0;
+    uint64_t    frame_index = 0;
     SHiresTimer tick_timer;
     skr_init_hires_timer(&tick_timer);
 
@@ -127,15 +128,15 @@ int SAssetImportModule::main_module_exec(int argc, char8_t** argv)
             {
                 Uint8 window_event = event.window.event;
                 if (window_event == SDL_WINDOWEVENT_CLOSE || window_event == SDL_WINDOWEVENT_MOVED || window_event == SDL_WINDOWEVENT_RESIZED)
-                if (ImGuiViewport* viewport = ImGui::FindViewportByPlatformHandle((void*)SDL_GetWindowFromID(event.window.windowID)))
-                {
-                    if (window_event == SDL_WINDOWEVENT_CLOSE)
-                        viewport->PlatformRequestClose = true;
-                    if (window_event == SDL_WINDOWEVENT_MOVED)
-                        viewport->PlatformRequestMove = true;
-                    if (window_event == SDL_WINDOWEVENT_RESIZED)
-                        viewport->PlatformRequestResize = true;
-                }
+                    if (ImGuiViewport* viewport = ImGui::FindViewportByPlatformHandle((void*)SDL_GetWindowFromID(event.window.windowID)))
+                    {
+                        if (window_event == SDL_WINDOWEVENT_CLOSE)
+                            viewport->PlatformRequestClose = true;
+                        if (window_event == SDL_WINDOWEVENT_MOVED)
+                            viewport->PlatformRequestMove = true;
+                        if (window_event == SDL_WINDOWEVENT_RESIZED)
+                            viewport->PlatformRequestResize = true;
+                    }
             }
             if (event.type == SDL_QUIT)
             {
@@ -158,43 +159,43 @@ int SAssetImportModule::main_module_exec(int argc, char8_t** argv)
         }
         {
             ImGui::Begin("Asset Importer");
-            if(availableFactories.is_empty())
+            if (availableFactories.is_empty())
             {
                 ImGui::InputText("File Path", &filePath);
                 ImGui::SameLine();
-                if(ImGui::Button("browse"))
+                if (ImGui::Button("browse"))
                 {
-                    nfdchar_t* outPath = nullptr;
-                    nfdresult_t result = NFD_OpenDialog("*", nullptr, &outPath);
-                    if(result == NFD_OKAY)
+                    nfdchar_t*  outPath = nullptr;
+                    nfdresult_t result  = NFD_OpenDialog("*", nullptr, &outPath);
+                    if (result == NFD_OKAY)
                     {
                         filePath = (const char8_t*)outPath;
                         free(outPath);
                     }
                 }
                 ImGui::SameLine();
-                if(ImGui::Button("Import"))
+                if (ImGui::Button("Import"))
                 {
-                    for(auto factory : factories)
-                        if(factory->CanImport(filePath))
+                    for (auto factory : factories)
+                        if (factory->CanImport(filePath))
                             availableFactories.add(factory);
-                    if(availableFactories.is_empty())
+                    if (availableFactories.is_empty())
                         SKR_LOG_ERROR(u8"No importer found for file: %s", filePath.c_str());
-                    if(availableFactories.size() == 1)
-                        if(availableFactories[0]->Import(filePath) != 0)
+                    if (availableFactories.size() == 1)
+                        if (availableFactories[0]->Import(filePath) != 0)
                         {
                             availableFactories.clear();
                             SKR_LOG_ERROR(u8"Failed to import file: %s", filePath.c_str());
                         }
                 }
             }
-            else if(availableFactories.size() > 1)
+            else if (availableFactories.size() > 1)
             {
-                for(auto factory : availableFactories)
+                for (auto factory : availableFactories)
                 {
-                    if(ImGui::Button(factory->GetName().c_str_raw()))
+                    if (ImGui::Button(factory->GetName().c_str_raw()))
                     {
-                        if(factory->Import(filePath) == 0)
+                        if (factory->Import(filePath) == 0)
                         {
                             availableFactories.clear();
                             availableFactories.add(factory);
@@ -209,9 +210,9 @@ int SAssetImportModule::main_module_exec(int argc, char8_t** argv)
                     }
                 }
             }
-            else if(availableFactories.size() == 1)
+            else if (availableFactories.size() == 1)
             {
-                if(availableFactories[0]->Update() != 0)
+                if (availableFactories[0]->Update() != 0)
                     availableFactories.clear();
             }
             ImGui::End();
@@ -222,27 +223,29 @@ int SAssetImportModule::main_module_exec(int argc, char8_t** argv)
             // acquire frame
             cgpu_wait_fences(&present_fence, 1);
             CGPUAcquireNextDescriptor acquire_desc = {};
-            acquire_desc.fence = present_fence;
-            backbuffer_index = cgpu_acquire_next_image(swapchain, &acquire_desc);
+            acquire_desc.fence                     = present_fence;
+            backbuffer_index                       = cgpu_acquire_next_image(swapchain, &acquire_desc);
         }
         // render graph setup & compile & exec
         CGPUTextureId native_backbuffer = swapchain->back_buffers[backbuffer_index];
-        auto back_buffer = renderGraph->create_texture(
-        [=](render_graph::RenderGraph& g, render_graph::TextureBuilder& builder) {
-            builder.set_name(u8"backbuffer")
-            .import(native_backbuffer, CGPU_RESOURCE_STATE_UNDEFINED)
-            .allow_render_target();
-        });
+        auto          back_buffer       = renderGraph->create_texture(
+            [=](render_graph::RenderGraph& g, render_graph::TextureBuilder& builder) {
+                builder.set_name(u8"backbuffer")
+                    .import(native_backbuffer, CGPU_RESOURCE_STATE_UNDEFINED)
+                    .allow_render_target();
+            }
+        );
         {
             SkrZoneScopedN("RenderIMGUI");
             render_graph_imgui_add_render_pass(renderGraph, back_buffer, CGPU_LOAD_ACTION_CLEAR);
         }
         renderGraph->add_present_pass(
-        [=, this](render_graph::RenderGraph& g, render_graph::PresentPassBuilder& builder) {
-            builder.set_name(u8"present_pass")
-            .swapchain(swapchain, backbuffer_index)
-            .texture(back_buffer, true);
-        });
+            [=, this](render_graph::RenderGraph& g, render_graph::PresentPassBuilder& builder) {
+                builder.set_name(u8"present_pass")
+                    .swapchain(swapchain, backbuffer_index)
+                    .texture(back_buffer, true);
+            }
+        );
         {
             SkrZoneScopedN("CompileRenderGraph");
             renderGraph->compile();
@@ -262,8 +265,8 @@ int SAssetImportModule::main_module_exec(int argc, char8_t** argv)
             SkrZoneScopedN("QueuePresentSwapchain");
             // present
             CGPUQueuePresentDescriptor present_desc = {};
-            present_desc.index = backbuffer_index;
-            present_desc.swapchain = swapchain;
+            present_desc.index                      = backbuffer_index;
+            present_desc.swapchain                  = swapchain;
             cgpu_queue_present(gfx_queue, &present_desc);
             render_graph_imgui_present_sub_viewports();
         }
@@ -276,16 +279,16 @@ int SAssetImportModule::main_module_exec(int argc, char8_t** argv)
     return 0;
 }
 
-
 int main(int argc, char** argv)
 {
-    auto moduleManager = skr_get_module_manager();
-    std::error_code ec = {};
-    auto root = skr::filesystem::current_path(ec);
+    auto            moduleManager = skr_get_module_manager();
+    std::error_code ec            = {};
+    auto            root          = skr::filesystem::current_path(ec);
     moduleManager->mount(root.u8string().c_str());
     moduleManager->make_module_graph(u8"SkrAssetImport", true);
     auto result = moduleManager->init_module_graph(argc, argv);
-    if (result != 0) {
+    if (result != 0)
+    {
         SKR_LOG_ERROR(u8"module graph init failed!");
     }
     moduleManager->destroy_module_graph();
