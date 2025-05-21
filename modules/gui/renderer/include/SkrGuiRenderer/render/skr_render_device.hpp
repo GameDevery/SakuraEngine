@@ -6,6 +6,7 @@
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrBase/config.h"
 #include "SkrGui/fwd_config.hpp"
+#include <SDL3/SDL.h>
 
 namespace skr::gui
 {
@@ -65,7 +66,7 @@ struct SKR_GUI_RENDERER_API SkrRenderDevice final {
     void shutdown();
 
     // create view
-    SkrRenderWindow* create_window(SWindowHandle window);
+    SkrRenderWindow* create_window(SDL_Window* window);
     void             destroy_window(SkrRenderWindow* view);
 
     // getter

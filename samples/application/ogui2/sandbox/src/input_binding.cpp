@@ -1,15 +1,16 @@
 #include "input_binding.hpp"
+#include "SDL3/SDL.h"
 #include "SkrGui/system/input/pointer_event.hpp"
 
 namespace skr::gui
 {
 inline static void _fill_pointer_event(PointerEvent* event)
 {
-    int32_t cursor_x, cursor_y;
-    // skr_cursor_pos(&cursor_x, &cursor_y, ECursorCoordinate::CURSOR_COORDINATE_SCREEN);
+    float cursor_x, cursor_y;
+    SDL_GetGlobalMouseState(&cursor_x, &cursor_y);
 
     event->device_type     = EPointerDeviceType::Mouse;
-    // event->global_position = { (float)cursor_x, (float)cursor_y };
+    event->global_position = { (float)cursor_x, (float)cursor_y };
     event->global_delta    = { 0, 0 };
 }
 inline static void _bind_mouse_button(skr::input::InputSystem* system, RC<input::InputMappingContext> ctx, Sandbox* sandbox, EPointerButton button)
@@ -18,24 +19,24 @@ inline static void _bind_mouse_button(skr::input::InputSystem* system, RC<input:
     EMouseKey key;
     switch (button)
     {
-        case EPointerButton::Left:
-            key = EMouseKey::MOUSE_KEY_LB;
-            break;
-        case EPointerButton::Right:
-            key = EMouseKey::MOUSE_KEY_RB;
-            break;
-        case EPointerButton::Middle:
-            key = EMouseKey::MOUSE_KEY_MB;
-            break;
-        case EPointerButton::X1B:
-            key = EMouseKey::MOUSE_KEY_X1B;
-            break;
-        case EPointerButton::X2B:
-            key = EMouseKey::MOUSE_KEY_X2B;
-            break;
-        default:
-            key = EMouseKey::MOUSE_KEY_None;
-            break;
+    case EPointerButton::Left:
+        key = EMouseKey::MOUSE_KEY_LB;
+        break;
+    case EPointerButton::Right:
+        key = EMouseKey::MOUSE_KEY_RB;
+        break;
+    case EPointerButton::Middle:
+        key = EMouseKey::MOUSE_KEY_MB;
+        break;
+    case EPointerButton::X1B:
+        key = EMouseKey::MOUSE_KEY_X1B;
+        break;
+    case EPointerButton::X2B:
+        key = EMouseKey::MOUSE_KEY_X2B;
+        break;
+    default:
+        key = EMouseKey::MOUSE_KEY_None;
+        break;
     }
 
     // down/up
