@@ -93,7 +93,7 @@ class SGameModule : public skr::IDynamicModule
     SRendererId             game_renderer      = nullptr;
     CGPUSwapChainId         swapchain          = nullptr;
     CGPUFenceId             present_fence      = nullptr;
-    SWindowHandle           main_window        = nullptr;
+    // SWindowHandle           main_window        = nullptr;
 
     skr::SP<skr::JobQueue> job_queue = nullptr;
 
@@ -607,22 +607,22 @@ int              SGameModule::main_module_exec(int argc, char8_t** argv)
                                             u8"[in]skr::anim::AnimComponent, [inout]skr::anim::SkinComponent, [in]skr::renderer::MeshComponent, [in]skr::anim::SkeletonComponent");
 
     // auto handler = skr_system_get_default_handler();
-    handler->add_window_close_handler(
-    +[](SWindowHandle window, void* pQuit) {
-        bool& quit = *(bool*)pQuit;
-        quit       = true;
-    },
-    &quit);
-    handler->add_window_resize_handler(
-    +[](SWindowHandle window, int32_t w, int32_t h, void* usr_data) {
-        auto _this = (SGameModule*)usr_data;
-        if (window != _this->main_window) return;
+    // handler->add_window_close_handler(
+    // +[](SWindowHandle window, void* pQuit) {
+    //     bool& quit = *(bool*)pQuit;
+    //     quit       = true;
+    // },
+    // &quit);
+    // handler->add_window_resize_handler(
+    // +[](SWindowHandle window, int32_t w, int32_t h, void* usr_data) {
+    //     auto _this = (SGameModule*)usr_data;
+    //     if (window != _this->main_window) return;
 
-        cgpu_wait_queue_idle(_this->game_render_device->get_gfx_queue());
-        cgpu_wait_fences(&_this->present_fence, 1);
-        _this->swapchain = skr_render_device_recreate_window_swapchain(_this->game_render_device, window);
-    },
-    this);
+    //     cgpu_wait_queue_idle(_this->game_render_device->get_gfx_queue());
+    //     cgpu_wait_fences(&_this->present_fence, 1);
+    //     _this->swapchain = skr_render_device_recreate_window_swapchain(_this->game_render_device, window);
+    // },
+    // this);
     skr_imgui_initialize(handler);
 
     while (!quit)
