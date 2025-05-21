@@ -72,7 +72,7 @@ struct Input_Common : public CommonInputLayer {
 
     bool Initialize() SKR_NOEXCEPT final
     {
-        // Add SDL2 keyboard device
+        // Add SDL3 keyboard device
         devices.add(CreateInputDevice_SDL3Keyboard(this));
         devices.add(CreateInputDevice_SDL3Mouse(this));
 

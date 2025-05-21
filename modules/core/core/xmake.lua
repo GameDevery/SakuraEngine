@@ -79,9 +79,6 @@ shared_module("SkrCore", "SKR_CORE")
         add_syslinks("pthread")
     end
 
-    -- add deps
-    add_deps("SDL2", {public= true})
-
 --[[
 shared_pch("SkrCore")
     add_files("include/**.h")
