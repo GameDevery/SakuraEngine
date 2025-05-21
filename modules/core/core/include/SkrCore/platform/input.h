@@ -199,16 +199,3 @@ typedef enum ECursorCoordinate {
     CURSOR_COORDINATE_SCREEN,
     CURSOR_COORDINATE_WINDOW
 } ECursorCoordinate;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-SKR_CORE_API bool
-skr_key_down(EKeyCode key_code);
-SKR_CORE_API bool skr_mouse_key_down(EMouseKey key_code);
-SKR_CORE_API bool skr_set_cursor_pos(int32_t x, int32_t y);
-SKR_CORE_API bool skr_set_cursor(EMouseCursor cursor);
-SKR_CORE_API void skr_cursor_pos(int32_t* x, int32_t* y, ECursorCoordinate corrdinate);
-#ifdef __cplusplus
-}
-#endif

@@ -3,7 +3,6 @@
 #include "GameRuntime/gamert.h"
 #include "SkrBase/misc/make_zeroed.hpp"
 #include "SkrOS/filesystem.hpp"
-#include "SkrCore/platform/system.h"
 #include "SkrRT/config.h"
 #include "SkrCore/memory/memory.h"
 #include "SkrCore/time.h"
@@ -610,7 +609,7 @@ int              SGameModule::main_module_exec(int argc, char8_t** argv)
     skinQuery         = sugoiQ_from_literal(game_world,
                                             u8"[in]skr::anim::AnimComponent, [inout]skr::anim::SkinComponent, [in]skr::renderer::MeshComponent, [in]skr::anim::SkeletonComponent");
 
-    auto handler = skr_system_get_default_handler();
+    // auto handler = skr_system_get_default_handler();
     handler->add_window_close_handler(
     +[](SWindowHandle window, void* pQuit) {
         bool& quit = *(bool*)pQuit;

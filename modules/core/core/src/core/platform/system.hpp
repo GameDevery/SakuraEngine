@@ -1,5 +1,4 @@
 #pragma once
-#include "SkrCore/platform/system.h"
 #include "SkrContainers/vector.hpp"
 #include "SkrContainers/map.hpp"
 

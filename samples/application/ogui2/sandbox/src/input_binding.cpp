@@ -6,10 +6,10 @@ namespace skr::gui
 inline static void _fill_pointer_event(PointerEvent* event)
 {
     int32_t cursor_x, cursor_y;
-    skr_cursor_pos(&cursor_x, &cursor_y, ECursorCoordinate::CURSOR_COORDINATE_SCREEN);
+    // skr_cursor_pos(&cursor_x, &cursor_y, ECursorCoordinate::CURSOR_COORDINATE_SCREEN);
 
     event->device_type     = EPointerDeviceType::Mouse;
-    event->global_position = { (float)cursor_x, (float)cursor_y };
+    // event->global_position = { (float)cursor_x, (float)cursor_y };
     event->global_delta    = { 0, 0 };
 }
 inline static void _bind_mouse_button(skr::input::InputSystem* system, RC<input::InputMappingContext> ctx, Sandbox* sandbox, EPointerButton button)
