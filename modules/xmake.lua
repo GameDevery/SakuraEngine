@@ -1,5 +1,8 @@
 includes("core")
-includes("editor")
+
+skr_includes_with_cull("editor", function ()
+    includes("editor")
+end)
 
 skr_includes_with_cull("engine", function ()
     includes("engine")
