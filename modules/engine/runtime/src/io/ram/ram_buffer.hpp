@@ -2,12 +2,13 @@
 #include "SkrRT/io/ram_io.hpp"
 #include "../common/pool.hpp"
 
-namespace skr {
-namespace io {
-
-struct SKR_RUNTIME_API RAMIOBuffer : public IRAMIOBuffer
+namespace skr
 {
-    IO_RC_OBJECT_BODY
+namespace io
+{
+
+struct SKR_RUNTIME_API RAMIOBuffer : public IRAMIOBuffer {
+    SKR_RC_IMPL(override)
     virtual ~RAMIOBuffer() SKR_NOEXCEPT;
 
     uint8_t* get_data() const SKR_NOEXCEPT { return bytes; }
@@ -17,21 +18,19 @@ struct SKR_RUNTIME_API RAMIOBuffer : public IRAMIOBuffer
     void free_buffer() SKR_NOEXCEPT;
 
 public:
-    SInterfaceDeleter custom_deleter() const 
-    { 
-        return +[](SInterface* ptr) 
-        { 
-            auto* p = static_cast<RAMIOBuffer*>(ptr);
-            SKR_ASSERT(p->pool && "Invalid pool detected!");
-            p->pool->deallocate(p); 
-        };
+    void skr_rc_delete() override
+    {
+        SKR_ASSERT(pool && "Invalid pool detected!");
+        pool->deallocate(this);
     }
+
     friend struct AllocateIOBufferResolver;
     friend struct SmartPool<RAMIOBuffer, IRAMIOBuffer>;
+
 protected:
     uint8_t* bytes = nullptr;
-    uint64_t size = 0;
-    RAMIOBuffer(ISmartPoolPtr<IRAMIOBuffer> pool) 
+    uint64_t size  = 0;
+    RAMIOBuffer(ISmartPoolPtr<IRAMIOBuffer> pool)
         : pool(pool)
     {
         SKR_ASSERT(pool && "Invalid pool detected!");

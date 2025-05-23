@@ -180,7 +180,7 @@ void CommonVRAMReader::addRAMRequests(SkrAsyncServicePriority priority) SKR_NOEX
                     auto ram_request = ram_service->open_request();
                     if (!ram_batch)
                     {
-                        ram_batch = skr::static_pointer_cast<RAMIOBatch>(ram_service->open_batch(8));
+                        ram_batch = ram_service->open_batch(8).cast_static<RAMIOBatch>();
                     }
                     if (auto vfs = pPath->get_vfs())
                         ram_request->set_vfs(vfs);
@@ -193,7 +193,7 @@ void CommonVRAMReader::addRAMRequests(SkrAsyncServicePriority priority) SKR_NOEX
                     }
                     else if (auto result = ram_batch->add_request(ram_request, &pUpload->ram_future))
                     {
-                        pUpload->ram_buffer = skr::static_pointer_cast<IRAMIOBuffer>(result);
+                        pUpload->ram_buffer = result.cast_static<IRAMIOBuffer>();
                     }
                 }
                 auto pMemory = io_component<MemorySrcComponent>(vram_request.get());
@@ -358,7 +358,7 @@ void CommonVRAMReader::addUploadRequests(SkrAsyncServicePriority priority) SKR_N
                     buf_cpy.size = pUpload->src_size;
                     cgpu_cmd_transfer_buffer_to_buffer(cmdbuf, &buf_cpy);
                 }
-                auto&& Artifact = skr::static_pointer_cast<VRAMBuffer>(pBuffer->artifact);
+                auto&& Artifact = pBuffer->artifact.cast_static<VRAMBuffer>();
                 Artifact->buffer = pBuffer->buffer;
                 // TODO: RELEASE BARRIER
                 auto buffer_barrier = make_zeroed<CGPUBufferBarrier>();
@@ -407,7 +407,7 @@ void CommonVRAMReader::addUploadRequests(SkrAsyncServicePriority priority) SKR_N
                     tex_cpy.src_offset = 0;
                     cgpu_cmd_transfer_buffer_to_texture(cmdbuf, &tex_cpy);
                 }
-                auto&& Artifact = skr::static_pointer_cast<VRAMTexture>(pTexture->artifact);
+                auto&& Artifact = pTexture->artifact.cast_static<VRAMTexture>();
                 Artifact->texture = pTexture->texture;
                 // TODO: RELEASE BARRIER
                 auto texture_barrier = make_zeroed<CGPUTextureBarrier>();
@@ -512,7 +512,7 @@ DStorageVRAMReader::DStorageVRAMReader(VRAMService* service, CGPUDeviceId device
     SkrDStorageQueueDescriptor desc = {};
     for (auto i = 0; i < SKR_ASYNC_SERVICE_PRIORITY_COUNT; ++i)
     {
-        events[i] = SmartPoolPtr<DStorageEvent>::Create(kIOPoolObjectsMemoryName);
+        events[i] = SmartPoolPtr<DStorageEvent>::New(kIOPoolObjectsMemoryName);
     }
     for (auto i = 0; i < SKR_ASYNC_SERVICE_PRIORITY_COUNT; ++i)
     {
@@ -568,7 +568,7 @@ void DStorageVRAMReader::enqueueAndSubmit(SkrAsyncServicePriority priority) SKR_
 {
     auto instance = skr_get_dstorage_instnace();
     IOBatchId batch;
-    skr::FixedMap<SkrDStorageQueueId, skr::SObjectPtr<DStorageEvent>, 2> _events;
+    skr::FixedMap<SkrDStorageQueueId, skr::RC<DStorageEvent>, 2> _events;
 #ifdef SKR_PROFILE_ENABLE
     SkrCZoneCtx Zone;
     bool bZoneSet = false;
@@ -639,7 +639,7 @@ void DStorageVRAMReader::enqueueAndSubmit(SkrAsyncServicePriority priority) SKR_
                 addOrGetEvent(queue);
                 cgpu_dstorage_enqueue_buffer_request(queue, &io);
 
-                auto&& Artifact = skr::static_pointer_cast<VRAMBuffer>(pBuffer->artifact);
+                auto&& Artifact = pBuffer->artifact.cast_static<VRAMBuffer>();
                 Artifact->buffer = pBuffer->buffer;
             }
             else if (auto pTexture = io_component<VRAMTextureComponent>(vram_request.get()))
@@ -679,7 +679,7 @@ void DStorageVRAMReader::enqueueAndSubmit(SkrAsyncServicePriority priority) SKR_
                 addOrGetEvent(queue);
                 cgpu_dstorage_enqueue_texture_request(queue, &io);
 
-                auto&& Artifact = skr::static_pointer_cast<VRAMTexture>(pTexture->artifact);
+                auto&& Artifact = pTexture->artifact.cast_static<VRAMTexture>();
                 Artifact->texture = pTexture->texture;
             }
         }

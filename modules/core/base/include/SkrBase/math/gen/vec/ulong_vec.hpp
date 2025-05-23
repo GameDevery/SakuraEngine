@@ -19,7 +19,7 @@ struct ulong2 {
     inline ulong2(): x(0), y(0) {}
     inline ulong2(MathNoInitType) {}
     inline ulong2(uint64_t v): x(v), y(v) {}
-    inline ulong2(uint64_t v0, uint64_t v1): x(v0), y(v1) {}
+    inline ulong2(uint64_t v_x, uint64_t v_y): x(v_x), y(v_y) {}
     inline ~ulong2() = default;
     
     // cast ctor
@@ -46,7 +46,6 @@ struct ulong2 {
     }
     
     // unary operator
-    inline ulong2 operator-() const { return { -x, -y }; }
     
     // arithmetic operator
     inline friend ulong2 operator+(const ulong2& lhs, const ulong2& rhs) { return { lhs.x + rhs.x, lhs.y + rhs.y }; }
@@ -93,9 +92,9 @@ struct ulong3 {
     inline ulong3(): x(0), y(0), z(0) {}
     inline ulong3(MathNoInitType) {}
     inline ulong3(uint64_t v): x(v), y(v), z(v) {}
-    inline ulong3(uint64_t v0, uint64_t v1, uint64_t v2): x(v0), y(v1), z(v2) {}
-    inline ulong3(uint64_t v0, ulong2 v1): x(v0), y(v1.x), z(v1.y) {}
-    inline ulong3(ulong2 v0, uint64_t v1): x(v0.x), y(v0.y), z(v1) {}
+    inline ulong3(uint64_t v_x, uint64_t v_y, uint64_t v_z): x(v_x), y(v_y), z(v_z) {}
+    inline ulong3(uint64_t v_x, ulong2 v_yz): x(v_x), y(v_yz.x), z(v_yz.y) {}
+    inline ulong3(ulong2 v_xy, uint64_t v_z): x(v_xy.x), y(v_xy.y), z(v_z) {}
     inline ~ulong3() = default;
     
     // cast ctor
@@ -122,7 +121,6 @@ struct ulong3 {
     }
     
     // unary operator
-    inline ulong3 operator-() const { return { -x, -y, -z }; }
     
     // arithmetic operator
     inline friend ulong3 operator+(const ulong3& lhs, const ulong3& rhs) { return { lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z }; }
@@ -212,13 +210,13 @@ struct ulong4 {
     inline ulong4(): x(0), y(0), z(0), w(0) {}
     inline ulong4(MathNoInitType) {}
     inline ulong4(uint64_t v): x(v), y(v), z(v), w(v) {}
-    inline ulong4(uint64_t v0, uint64_t v1, uint64_t v2, uint64_t v3): x(v0), y(v1), z(v2), w(v3) {}
-    inline ulong4(uint64_t v0, uint64_t v1, ulong2 v2): x(v0), y(v1), z(v2.x), w(v2.y) {}
-    inline ulong4(uint64_t v0, ulong2 v1, uint64_t v2): x(v0), y(v1.x), z(v1.y), w(v2) {}
-    inline ulong4(uint64_t v0, ulong3 v1): x(v0), y(v1.x), z(v1.y), w(v1.z) {}
-    inline ulong4(ulong2 v0, uint64_t v1, uint64_t v2): x(v0.x), y(v0.y), z(v1), w(v2) {}
-    inline ulong4(ulong2 v0, ulong2 v1): x(v0.x), y(v0.y), z(v1.x), w(v1.y) {}
-    inline ulong4(ulong3 v0, uint64_t v1): x(v0.x), y(v0.y), z(v0.z), w(v1) {}
+    inline ulong4(uint64_t v_x, uint64_t v_y, uint64_t v_z, uint64_t v_w): x(v_x), y(v_y), z(v_z), w(v_w) {}
+    inline ulong4(uint64_t v_x, uint64_t v_y, ulong2 v_zw): x(v_x), y(v_y), z(v_zw.x), w(v_zw.y) {}
+    inline ulong4(uint64_t v_x, ulong2 v_yz, uint64_t v_w): x(v_x), y(v_yz.x), z(v_yz.y), w(v_w) {}
+    inline ulong4(uint64_t v_x, ulong3 v_yzw): x(v_x), y(v_yzw.x), z(v_yzw.y), w(v_yzw.z) {}
+    inline ulong4(ulong2 v_xy, uint64_t v_z, uint64_t v_w): x(v_xy.x), y(v_xy.y), z(v_z), w(v_w) {}
+    inline ulong4(ulong2 v_xy, ulong2 v_zw): x(v_xy.x), y(v_xy.y), z(v_zw.x), w(v_zw.y) {}
+    inline ulong4(ulong3 v_xyz, uint64_t v_w): x(v_xyz.x), y(v_xyz.y), z(v_xyz.z), w(v_w) {}
     inline ~ulong4() = default;
     
     // cast ctor
@@ -245,7 +243,6 @@ struct ulong4 {
     }
     
     // unary operator
-    inline ulong4 operator-() const { return { -x, -y, -z, -w }; }
     
     // arithmetic operator
     inline friend ulong4 operator+(const ulong4& lhs, const ulong4& rhs) { return { lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z, lhs.w + rhs.w }; }

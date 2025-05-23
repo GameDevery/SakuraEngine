@@ -18,5 +18,3 @@ using IOConcurrentQueue = moodycamel::ConcurrentQueue<T, IOConcurrentQueueTraits
 
 } // namespace io
 } // namespace skr
-
-#define IO_RC_OBJECT_BODY SKR_RC_OBJECT_BODY

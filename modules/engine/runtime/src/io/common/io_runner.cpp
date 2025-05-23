@@ -144,7 +144,7 @@ void RunnerBase::phaseProcessBatches() SKR_NOEXCEPT
             auto& back_processor = batch_processors.back();
             while (back_processor->poll_processed_batch(priority, batch))
             {
-                auto bq = skr::static_pointer_cast<IOBatchBase>(batch);
+                auto bq = batch.cast_static<IOBatchBase>();
                 for (auto&& request : bq->get_requests())
                 {
                     request_processors.front()->fetch(priority, request);

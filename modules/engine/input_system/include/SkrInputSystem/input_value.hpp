@@ -3,7 +3,6 @@
 #include "SkrBase/config.h"
 #include "SkrBase/types.h"
 #include "SkrBase/math.h"
-#include "SkrContainers/sptr.hpp"
 
 namespace skr
 {
@@ -57,16 +56,5 @@ protected:
     } lowlevel;
     */
 };
-
-struct SKR_INPUT_SYSTEM_API RC : public skr::SInterface {
-    virtual ~RC() SKR_NOEXCEPT;
-
-    uint32_t add_refcount() SKR_NOEXCEPT;
-    uint32_t release() SKR_NOEXCEPT;
-    uint32_t use_count() const SKR_NOEXCEPT;
-
-    SAtomicU32 rc = 0;
-};
-
 } // namespace input
 } // namespace skr

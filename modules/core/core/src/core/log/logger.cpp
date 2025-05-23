@@ -91,7 +91,7 @@ bool Logger::tryPushToQueue(LogEvent ev, skr::StringView format, ArgsList&& args
     if (worker)
     {
         auto queue_ = worker->queue_;
-        queue_->push(ev, format, skr::move(args_list), ev.get_level() == LogLevel::kBackTrace);
+        queue_->push(ev, format, std::move(args_list), ev.get_level() == LogLevel::kBackTrace);
         notifyWorker();
         return true;
     }
@@ -104,7 +104,7 @@ bool Logger::tryPushToQueue(LogEvent ev, skr::String&& what) SKR_NOEXCEPT
     if (worker)
     {
         auto queue_ = worker->queue_;
-        queue_->push(ev, skr::move(what), ev.get_level() == LogLevel::kBackTrace);
+        queue_->push(ev, std::move(what), ev.get_level() == LogLevel::kBackTrace);
         notifyWorker();
         return true;
     }

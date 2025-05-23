@@ -59,5 +59,3 @@ using skr_rotator_d_t = ::skr::math::RotatorD;
 using skr_transform_f_t = ::skr::math::TransformF;
 using skr_transform_d_t = ::skr::math::TransformD;
 
-// camera
-

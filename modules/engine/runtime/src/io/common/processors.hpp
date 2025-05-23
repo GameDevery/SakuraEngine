@@ -7,7 +7,8 @@ struct RunnerBase;
 
 struct IOBatchBuffer : public IIOBatchProcessor
 {
-    IO_RC_OBJECT_BODY
+    SKR_RC_IMPL(override)
+    SKR_RC_DELETER_IMPL_DEFAULT(override)
 public:
     IOBatchBuffer() SKR_NOEXCEPT 
     {
@@ -60,10 +61,11 @@ protected:
     SAtomic64 counts[SKR_ASYNC_SERVICE_PRIORITY_COUNT];
     IOBatchQueue queues[SKR_ASYNC_SERVICE_PRIORITY_COUNT];
 };
-using IOBatchBufferId = SObjectPtr<IOBatchBuffer>;
+using IOBatchBufferId = RC<IOBatchBuffer>;
 
 #define IO_RESOLVER_OBJECT_BODY \
-    IO_RC_OBJECT_BODY\
+    SKR_RC_IMPL(override);\
+    SKR_RC_DELETER_IMPL_DEFAULT(override)\
     uint64_t processing_count(SkrAsyncServicePriority priority = SKR_ASYNC_SERVICE_PRIORITY_COUNT) const SKR_NOEXCEPT\
     {\
         if (priority != SKR_ASYNC_SERVICE_PRIORITY_COUNT)\
@@ -146,7 +148,7 @@ public:
             chain.add(resolver);
         }
     }
-    SObjectPtr<IIORequestResolverChain> then(IORequestResolverId resolver) SKR_NOEXCEPT
+    RC<IIORequestResolverChain> then(IORequestResolverId resolver) SKR_NOEXCEPT
     {
         chain.add(resolver);
         return this;

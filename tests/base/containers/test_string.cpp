@@ -2131,5 +2131,65 @@ TEST_CASE("Test U8String")
         }
     }
 
-    // TODO. iterators
+    SUBCASE("Cursor & iterator")
+    {
+        String       a     = u8"🐓🏀🐓🏀🐓🏀🐓🏀🐓🏀🐓🏀";
+        skr::UTF8Seq seq_a = { U'🐓' };
+        skr::UTF8Seq seq_b = { U'🏀' };
+
+        auto test_function = [&](auto&& arr) {
+            uint64_t count;
+
+            // iter
+            count = 0;
+            for (auto it = arr.iter(); it.has_next(); it.move_next())
+            {
+                REQUIRE_EQ(it.ref(), (count % 2 ? seq_b : seq_a));
+                ++count;
+            }
+            REQUIRE_EQ(count, a.length_text());
+            count = 0;
+            for (auto it = arr.iter_inv(); it.has_next(); it.move_next())
+            {
+                REQUIRE_EQ(it.ref(), (count % 2 ? seq_a : seq_b));
+                ++count;
+            }
+            REQUIRE_EQ(count, a.length_text());
+
+            // range
+            count = 0;
+            for (auto v : arr.range())
+            {
+                REQUIRE_EQ(v, (count % 2 ? seq_b : seq_a));
+                ++count;
+            }
+            REQUIRE_EQ(count, a.length_text());
+            count = 0;
+            for (auto v : arr.range_inv())
+            {
+                REQUIRE_EQ(v, (count % 2 ? seq_a : seq_b));
+                ++count;
+            }
+            REQUIRE_EQ(count, a.length_text());
+
+            // cursor
+            count = 0;
+            for (auto it = arr.cursor_begin(); !it.reach_end(); it.move_next())
+            {
+                REQUIRE_EQ(it.ref(), (count % 2 ? seq_b : seq_a));
+                ++count;
+            }
+            REQUIRE_EQ(count, a.length_text());
+            count = 0;
+            for (auto it = arr.cursor_end(); !it.reach_begin(); it.move_prev())
+            {
+                REQUIRE_EQ(it.ref(), (count % 2 ? seq_a : seq_b));
+                ++count;
+            }
+            REQUIRE_EQ(count, a.length_text());
+        };
+
+        test_function(a);
+        test_function(a.readonly());
+    }
 }

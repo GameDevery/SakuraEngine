@@ -1,4 +1,5 @@
 ﻿#include "SkrRenderGraph/backend/graph_backend.hpp"
+#include "SkrCore/memory/sp.hpp"
 #include "SkrRenderGraph/frontend/pass_node.hpp"
 #include "SkrRenderGraph/frontend/node_and_edge_factory.hpp"
 #include "SkrBase/misc/debug.h" 
@@ -156,7 +157,7 @@ RenderGraphBackend::RenderGraphBackend(const RenderGraphBuilder& builder)
     , device(builder.device)
     , gfx_queue(builder.gfx_queue)
 {
-    phases.add(skr::SPtr<CullPhase>::Create());
+    phases.add(skr::SP<CullPhase>::New());
 }
 
 RenderGraph* RenderGraph::create(const RenderGraphSetupFunction& setup) SKR_NOEXCEPT

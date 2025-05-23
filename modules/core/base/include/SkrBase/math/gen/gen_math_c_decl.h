@@ -125,5 +125,3 @@ typedef struct skr_transform_d_t {
     skr_double3_t scale;
 } skr_transform_d_t;
 
-// camera
-

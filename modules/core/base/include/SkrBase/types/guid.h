@@ -1,166 +1,26 @@
 #pragma once
 #include "SkrBase/config.h"
 #ifdef __cplusplus
-    #include "SkrBase/misc/hash.hpp"
-    #include "SkrBase/misc/debug.h"
-    #include <initializer_list>
-#endif
+    #include "./impl/guid.hpp"
 
-typedef struct skr_guid_t {
-#ifdef __cplusplus
-    SKR_CONSTEXPR skr_guid_t() = default;
-    SKR_CONSTEXPR skr_guid_t(uint32_t b0, uint16_t b1, uint16_t b2, const uint8_t b3s[8])
-        : storage0(b0)
-        , storage1(_combine_16(b1, b2))
-        , storage2(_combine_8(b3s[0], b3s[1], b3s[2], b3s[3]))
-        , storage3(_combine_8(b3s[4], b3s[5], b3s[6], b3s[7]))
-    {
-    }
-    SKR_CONSTEXPR skr_guid_t(uint32_t b0, uint16_t b1, uint16_t b2, std::initializer_list<uint8_t> b3s_l)
-        : storage0(b0)
-        , storage1(_combine_16(b1, b2))
-        , storage2(_combine_8(b3s_l.begin()[0], b3s_l.begin()[1], b3s_l.begin()[2], b3s_l.begin()[3]))
-        , storage3(_combine_8(b3s_l.begin()[4], b3s_l.begin()[5], b3s_l.begin()[6], b3s_l.begin()[7]))
-    {
-    }
-    SKR_CONSTEXPR bool     is_zero() const { return !(storage0 && storage1 && storage2 && storage3); }
-    SKR_CONSTEXPR uint32_t data1() const { return storage0; }
-    SKR_CONSTEXPR uint16_t data2() const { return ((uint16_t*)&storage1)[0]; }
-    SKR_CONSTEXPR uint16_t data3() const { return ((uint16_t*)&storage1)[1]; }
-    SKR_CONSTEXPR uint8_t  data4(uint8_t idx0_7) const { return ((uint8_t*)&storage2)[idx0_7]; }
-
-    static skr_guid_t Create();
-
-    SKR_INLINE constexpr size_t get_hash() const
-    {
-        using namespace skr;
-        constexpr Hash<uint64_t> hasher{};
-
-        size_t result = hasher.operator()(static_cast<uint64_t>(storage0) << 32 | storage1);
-        return hash_combine(result, hasher.operator()(static_cast<uint64_t>(storage2) << 32 | storage3));
-    }
-
-    // for skr::Hash
-    SKR_INLINE static size_t _skr_hash(const skr_guid_t& guid)
-    {
-        return guid.get_hash();
-    }
-
-private:
-    constexpr inline uint32_t _combine_16(uint16_t a, uint16_t b) const
-    {
-    #if SKR_LITTLE_ENDIAN
-        return a | b << 16;
-    #else
-        return a << 16 | b;
-    #endif
-    }
-    constexpr inline uint32_t _combine_8(uint8_t a, uint8_t b, uint8_t c, uint8_t d) const
-    {
-    #if SKR_LITTLE_ENDIAN
-        return a | b << 8 | c << 16 | d << 24;
-    #else
-        return a << 24 | b << 16 | c << 8 | d;
-    #endif
-    }
-
-public:
-#endif
-    uint32_t storage0 SKR_IF_CPP(= 0);
-    uint32_t storage1 SKR_IF_CPP(= 0);
-    uint32_t storage2 SKR_IF_CPP(= 0);
-    uint32_t storage3 SKR_IF_CPP(= 0);
-} skr_guid_t;
+using skr_guid_t = ::skr::GUID;
 
 SKR_EXTERN_C void skr_make_guid(skr_guid_t* out_guid);
-
-#ifdef __cplusplus
 namespace skr
 {
-using GUID = skr_guid_t;
-
-namespace details
+inline GUID GUID::Create()
 {
-
-constexpr const size_t short_guid_form_length = 36; // XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
-constexpr const size_t long_guid_form_length  = 38; // {XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}
-
-constexpr int parse_hex_digit(const char8_t c)
-{
-    if ('0' <= c && c <= '9')
-        return c - '0';
-    else if ('a' <= c && c <= 'f')
-        return 10 + c - 'a';
-    else if ('A' <= c && c <= 'F')
-        return 10 + c - 'A';
-    else
-        SKR_ASSERT(0 && "invalid character in GUID");
-    return -1;
-}
-
-template <class T>
-constexpr T parse_hex(const char8_t* ptr)
-{
-    constexpr size_t digits = sizeof(T) * 2;
-    T                result{};
-    for (size_t i = 0; i < digits; ++i)
-        result |= parse_hex_digit(ptr[i]) << (4 * (digits - i - 1));
-    return result;
-}
-
-constexpr skr_guid_t make_guid_helper(const char8_t* begin)
-{
-    auto Data1 = parse_hex<uint32_t>(begin);
-    begin += 8 + 1;
-    auto Data2 = parse_hex<uint16_t>(begin);
-    begin += 4 + 1;
-    auto Data3 = parse_hex<uint16_t>(begin);
-    begin += 4 + 1;
-    uint8_t Data4[8] = {};
-    Data4[0]         = parse_hex<uint8_t>(begin);
-    begin += 2;
-    Data4[1] = parse_hex<uint8_t>(begin);
-    begin += 2 + 1;
-    for (size_t i = 0; i < 6; ++i)
-        Data4[i + 2] = parse_hex<uint8_t>(begin + i * 2);
-    return skr_guid_t(Data1, Data2, Data3, Data4);
-}
-} // namespace details
-
-inline namespace literals
-{
-constexpr skr_guid_t operator""_guid(const char8_t* str, size_t N)
-{
-    using namespace ::skr::details;
-    if (!(N == long_guid_form_length || N == short_guid_form_length))
-        SKR_ASSERT(0 && "String GUID of the form {XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX} or XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX is expected");
-    if (N == long_guid_form_length && (str[0] != '{' || str[long_guid_form_length - 1] != '}'))
-        SKR_ASSERT(0 && "Missing opening or closing brace");
-
-    return make_guid_helper(str + (N == long_guid_form_length ? 1 : 0));
-}
-} // namespace literals
-} // namespace skr
-
-inline skr_guid_t skr_guid_t::Create()
-{
-    skr_guid_t guid;
+    GUID guid;
     skr_make_guid(&guid);
     return guid;
 }
-
-inline SKR_CONSTEXPR bool operator==(skr_guid_t a, skr_guid_t b)
-{
-    int result = true;
-    result &= (a.storage0 == b.storage0);
-    result &= (a.storage0 == b.storage0);
-    result &= (a.storage0 == b.storage0);
-    result &= (a.storage0 == b.storage0);
-    return result;
-}
-
-inline SKR_CONSTEXPR bool operator!=(skr_guid_t a, skr_guid_t b)
-{
-    return !(a == b);
-}
+} // namespace skr
+#else
+typedef struct skr_guid_t {
+    uint32_t storage0;
+    uint32_t storage1;
+    uint32_t storage2;
+    uint32_t storage3;
+} skr_guid_t;
+SKR_EXTERN_C void skr_make_guid(skr_guid_t* out_guid);
 #endif

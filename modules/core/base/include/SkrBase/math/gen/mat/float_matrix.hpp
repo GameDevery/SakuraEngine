@@ -12,30 +12,31 @@
 
 namespace skr {
 inline namespace math {
+//! row major matrix
 struct float3x3 {
     union {
-        // base axis
+        // axis based
         struct {
             float3 axis_x;
             float3 axis_y;
             float3 axis_z;
         };
         
-        // base direction
+        // direction based
         struct {
             float3 right;
             float3 up;
             float3 forward;
         };
         
-        // base columns
-        float3 columns[3];
+        // row based
+        float3 rows[3];
         
         // vector based
         struct {
-            float m00, m10, m20;
-            float m01, m11, m21;
-            float m02, m12, m22;
+            float m00, m01, m02;
+            float m10, m11, m12;
+            float m20, m21, m22;
         };
     };
     
@@ -47,9 +48,9 @@ struct float3x3 {
         float m10, float m11, float m12,
         float m20, float m21, float m22
     ):
-        m00(m00), m10(m10), m20(m20),
-        m01(m01), m11(m11), m21(m21),
-        m02(m02), m12(m12), m22(m22)
+        m00(m00), m01(m01), m02(m02),
+        m10(m10), m11(m11), m12(m12),
+        m20(m20), m21(m21), m22(m22)
     {}
     inline float3x3(float3 axis_x, float3 axis_y, float3 axis_z) noexcept : axis_x(axis_x), axis_y(axis_y), axis_z(axis_z) {}
     inline ~float3x3() = default;
@@ -78,6 +79,17 @@ struct float3x3 {
     inline static float3x3 identity() { return eye(1); }
     inline static float3x3 zero() { return fill(0); }
     inline static float3x3 one() { return fill(1); }
+    inline static float3x3 transposed(
+        float m00, float m10, float m20,
+        float m01, float m11, float m21,
+        float m02, float m12, float m22
+    ) {
+        return {
+            m00, m01, m02,
+            m10, m11, m12,
+            m20, m21, m22
+        };
+    }
     
     // factory for utility usage
     static float3x3 from_scale(const float3& scale);
@@ -93,9 +105,10 @@ struct float3x3 {
     float3x3& operator*=(const float3x3& rhs);
     friend float3 operator*(const float3& lhs, const float3x3& rhs);
 };
+//! row major matrix
 struct alignas(16) float4x4 {
     union {
-        // base axis
+        // axis based
         struct {
             float4 axis_x;
             float4 axis_y;
@@ -103,7 +116,7 @@ struct alignas(16) float4x4 {
             float4 axis_w;
         };
         
-        // base direction
+        // direction based
         struct {
             float4 right;
             float4 up;
@@ -111,15 +124,15 @@ struct alignas(16) float4x4 {
             float4 translation;
         };
         
-        // base columns
-        float4 columns[4];
+        // row based
+        float4 rows[4];
         
         // vector based
         struct {
-            float m00, m10, m20, m30;
-            float m01, m11, m21, m31;
-            float m02, m12, m22, m32;
-            float m03, m13, m23, m33;
+            float m00, m01, m02, m03;
+            float m10, m11, m12, m13;
+            float m20, m21, m22, m23;
+            float m30, m31, m32, m33;
         };
     };
     
@@ -132,10 +145,10 @@ struct alignas(16) float4x4 {
         float m20, float m21, float m22, float m23,
         float m30, float m31, float m32, float m33
     ):
-        m00(m00), m10(m10), m20(m20), m30(m30),
-        m01(m01), m11(m11), m21(m21), m31(m31),
-        m02(m02), m12(m12), m22(m22), m32(m32),
-        m03(m03), m13(m13), m23(m23), m33(m33)
+        m00(m00), m01(m01), m02(m02), m03(m03),
+        m10(m10), m11(m11), m12(m12), m13(m13),
+        m20(m20), m21(m21), m22(m22), m23(m23),
+        m30(m30), m31(m31), m32(m32), m33(m33)
     {}
     inline float4x4(float4 axis_x, float4 axis_y, float4 axis_z, float4 axis_w) noexcept : axis_x(axis_x), axis_y(axis_y), axis_z(axis_z), axis_w(axis_w) {}
     inline ~float4x4() = default;
@@ -166,6 +179,19 @@ struct alignas(16) float4x4 {
     inline static float4x4 identity() { return eye(1); }
     inline static float4x4 zero() { return fill(0); }
     inline static float4x4 one() { return fill(1); }
+    inline static float4x4 transposed(
+        float m00, float m10, float m20, float m30,
+        float m01, float m11, float m21, float m31,
+        float m02, float m12, float m22, float m32,
+        float m03, float m13, float m23, float m33
+    ) {
+        return {
+            m00, m01, m02, m03,
+            m10, m11, m12, m13,
+            m20, m21, m22, m23,
+            m30, m31, m32, m33
+        };
+    }
     
     // factory for utility usage
     static float4x4 from_scale(const float3& scale);
@@ -176,7 +202,7 @@ struct alignas(16) float4x4 {
     static float4x4 view_at(const float4& from, const float4& to, const float4& up);
     static float4x4 perspective(float view_width, float view_height, float near_distance, float far_distance);
     static float4x4 perspective_fov(float fov_y, float aspect_ratio, float near_distance, float far_distance);
-    static float4x4 ortho(float width, float height, float near_distance, float far_distance);
+    static float4x4 orthographic(float width, float height, float near_distance, float far_distance);
     
     // copy & move & assign & move assign
     inline float4x4(const float4x4& rhs) noexcept : axis_x(rhs.axis_x), axis_y(rhs.axis_y), axis_z(rhs.axis_z), axis_w(rhs.axis_w) {}

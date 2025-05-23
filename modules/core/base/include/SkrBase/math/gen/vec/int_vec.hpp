@@ -19,7 +19,7 @@ struct int2 {
     inline int2(): x(0), y(0) {}
     inline int2(MathNoInitType) {}
     inline int2(int32_t v): x(v), y(v) {}
-    inline int2(int32_t v0, int32_t v1): x(v0), y(v1) {}
+    inline int2(int32_t v_x, int32_t v_y): x(v_x), y(v_y) {}
     inline ~int2() = default;
     
     // cast ctor
@@ -93,9 +93,9 @@ struct int3 {
     inline int3(): x(0), y(0), z(0) {}
     inline int3(MathNoInitType) {}
     inline int3(int32_t v): x(v), y(v), z(v) {}
-    inline int3(int32_t v0, int32_t v1, int32_t v2): x(v0), y(v1), z(v2) {}
-    inline int3(int32_t v0, int2 v1): x(v0), y(v1.x), z(v1.y) {}
-    inline int3(int2 v0, int32_t v1): x(v0.x), y(v0.y), z(v1) {}
+    inline int3(int32_t v_x, int32_t v_y, int32_t v_z): x(v_x), y(v_y), z(v_z) {}
+    inline int3(int32_t v_x, int2 v_yz): x(v_x), y(v_yz.x), z(v_yz.y) {}
+    inline int3(int2 v_xy, int32_t v_z): x(v_xy.x), y(v_xy.y), z(v_z) {}
     inline ~int3() = default;
     
     // cast ctor
@@ -212,13 +212,13 @@ struct int4 {
     inline int4(): x(0), y(0), z(0), w(0) {}
     inline int4(MathNoInitType) {}
     inline int4(int32_t v): x(v), y(v), z(v), w(v) {}
-    inline int4(int32_t v0, int32_t v1, int32_t v2, int32_t v3): x(v0), y(v1), z(v2), w(v3) {}
-    inline int4(int32_t v0, int32_t v1, int2 v2): x(v0), y(v1), z(v2.x), w(v2.y) {}
-    inline int4(int32_t v0, int2 v1, int32_t v2): x(v0), y(v1.x), z(v1.y), w(v2) {}
-    inline int4(int32_t v0, int3 v1): x(v0), y(v1.x), z(v1.y), w(v1.z) {}
-    inline int4(int2 v0, int32_t v1, int32_t v2): x(v0.x), y(v0.y), z(v1), w(v2) {}
-    inline int4(int2 v0, int2 v1): x(v0.x), y(v0.y), z(v1.x), w(v1.y) {}
-    inline int4(int3 v0, int32_t v1): x(v0.x), y(v0.y), z(v0.z), w(v1) {}
+    inline int4(int32_t v_x, int32_t v_y, int32_t v_z, int32_t v_w): x(v_x), y(v_y), z(v_z), w(v_w) {}
+    inline int4(int32_t v_x, int32_t v_y, int2 v_zw): x(v_x), y(v_y), z(v_zw.x), w(v_zw.y) {}
+    inline int4(int32_t v_x, int2 v_yz, int32_t v_w): x(v_x), y(v_yz.x), z(v_yz.y), w(v_w) {}
+    inline int4(int32_t v_x, int3 v_yzw): x(v_x), y(v_yzw.x), z(v_yzw.y), w(v_yzw.z) {}
+    inline int4(int2 v_xy, int32_t v_z, int32_t v_w): x(v_xy.x), y(v_xy.y), z(v_z), w(v_w) {}
+    inline int4(int2 v_xy, int2 v_zw): x(v_xy.x), y(v_xy.y), z(v_zw.x), w(v_zw.y) {}
+    inline int4(int3 v_xyz, int32_t v_w): x(v_xyz.x), y(v_xyz.y), z(v_xyz.z), w(v_w) {}
     inline ~int4() = default;
     
     // cast ctor

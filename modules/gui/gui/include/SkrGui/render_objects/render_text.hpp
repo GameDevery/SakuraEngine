@@ -1,9 +1,7 @@
 #pragma once
 #include "SkrGui/framework/render_object/render_box.hpp"
 #include "SkrGui/math/color.hpp"
-// Avoid including type/type.hpp by including "containers/detail/sptr.hpp" instead.
-// #include "SkrContainers/sptr.hpp"
-#include "SkrContainers/sptr.hpp"
+#include "SkrCore/memory/sp.hpp"
 #include <variant> // TODO. use skr::variant, here for shit msvc
 
 #ifndef __meta__
@@ -31,11 +29,11 @@ struct StyleText {
 struct SKR_GUI_API BindText {
     String text = {};
 };
-struct InlineType : public std::variant<skr::String, RenderObject*, RenderText*, skr::SPtr<BindText>> {
+struct InlineType : public std::variant<skr::String, RenderObject*, RenderText*, skr::SP<BindText>> {
 };
 
 sreflect_struct(guid = "5179c185-bc7f-4f12-9c11-d979fc14e515")
-SKR_GUI_API RenderText : public RenderBox {
+    SKR_GUI_API RenderText : public RenderBox {
 public:
     SKR_GENERATE_BODY()
     using Super = RenderBox;

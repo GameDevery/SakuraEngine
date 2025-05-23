@@ -19,7 +19,7 @@ struct float2 {
     inline float2(): x(0), y(0) {}
     inline float2(MathNoInitType) {}
     inline float2(float v): x(v), y(v) {}
-    inline float2(float v0, float v1): x(v0), y(v1) {}
+    inline float2(float v_x, float v_y): x(v_x), y(v_y) {}
     inline ~float2() = default;
     
     // cast ctor
@@ -93,9 +93,9 @@ struct float3 {
     inline float3(): x(0), y(0), z(0) {}
     inline float3(MathNoInitType) {}
     inline float3(float v): x(v), y(v), z(v) {}
-    inline float3(float v0, float v1, float v2): x(v0), y(v1), z(v2) {}
-    inline float3(float v0, float2 v1): x(v0), y(v1.x), z(v1.y) {}
-    inline float3(float2 v0, float v1): x(v0.x), y(v0.y), z(v1) {}
+    inline float3(float v_x, float v_y, float v_z): x(v_x), y(v_y), z(v_z) {}
+    inline float3(float v_x, float2 v_yz): x(v_x), y(v_yz.x), z(v_yz.y) {}
+    inline float3(float2 v_xy, float v_z): x(v_xy.x), y(v_xy.y), z(v_z) {}
     inline ~float3() = default;
     
     // cast ctor
@@ -220,13 +220,13 @@ struct alignas(16) float4 {
     inline float4(): x(0), y(0), z(0), w(0) {}
     inline float4(MathNoInitType) {}
     inline float4(float v): x(v), y(v), z(v), w(v) {}
-    inline float4(float v0, float v1, float v2, float v3): x(v0), y(v1), z(v2), w(v3) {}
-    inline float4(float v0, float v1, float2 v2): x(v0), y(v1), z(v2.x), w(v2.y) {}
-    inline float4(float v0, float2 v1, float v2): x(v0), y(v1.x), z(v1.y), w(v2) {}
-    inline float4(float v0, float3 v1): x(v0), y(v1.x), z(v1.y), w(v1.z) {}
-    inline float4(float2 v0, float v1, float v2): x(v0.x), y(v0.y), z(v1), w(v2) {}
-    inline float4(float2 v0, float2 v1): x(v0.x), y(v0.y), z(v1.x), w(v1.y) {}
-    inline float4(float3 v0, float v1): x(v0.x), y(v0.y), z(v0.z), w(v1) {}
+    inline float4(float v_x, float v_y, float v_z, float v_w): x(v_x), y(v_y), z(v_z), w(v_w) {}
+    inline float4(float v_x, float v_y, float2 v_zw): x(v_x), y(v_y), z(v_zw.x), w(v_zw.y) {}
+    inline float4(float v_x, float2 v_yz, float v_w): x(v_x), y(v_yz.x), z(v_yz.y), w(v_w) {}
+    inline float4(float v_x, float3 v_yzw): x(v_x), y(v_yzw.x), z(v_yzw.y), w(v_yzw.z) {}
+    inline float4(float2 v_xy, float v_z, float v_w): x(v_xy.x), y(v_xy.y), z(v_z), w(v_w) {}
+    inline float4(float2 v_xy, float2 v_zw): x(v_xy.x), y(v_xy.y), z(v_zw.x), w(v_zw.y) {}
+    inline float4(float3 v_xyz, float v_w): x(v_xyz.x), y(v_xyz.y), z(v_xyz.z), w(v_w) {}
     inline ~float4() = default;
     
     // cast ctor

@@ -2,7 +2,6 @@
 #include "SkrRTTR/type_registry.hpp"
 #include "SkrContainersDef/string.hpp"
 #include "SkrBase/meta.h"
-#include "SkrContainersDef/sptr.hpp"
 #include "SkrBase/math.h"
 
 // RTTR traits
@@ -126,7 +125,3 @@ SKR_RTTR_TYPE(skr::float3x3, "391ae9db-ba6c-4bb5-9ce1-67363b9cd437");
 SKR_RTTR_TYPE(skr::float4x4, "b8b4c30c-96bc-491a-bb00-9d09a13f0405");
 SKR_RTTR_TYPE(skr::double3x3, "04854107-ff25-4a46-9dff-9de7fa363943");
 SKR_RTTR_TYPE(skr::double4x4, "96422197-3e05-4622-bb80-471019a798e9");
-
-// SInterface
-// TODO. 仅仅为了过编译, 后续实现具体类型
-SKR_RTTR_TYPE(skr::SInterface, "244617fe-5274-47bc-aa3d-acd76dbbeddd");

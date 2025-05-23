@@ -99,7 +99,7 @@ skr_guid_t LogManager::RegisterPattern(skr::unique_ptr<LogPattern> pattern)
 {
     auto guid = skr_guid_t();
     skr_make_guid(&guid);
-    patterns_.emplace(guid, skr::move(pattern));
+    patterns_.emplace(guid, std::move(pattern));
     return guid;
 }
 
@@ -107,7 +107,7 @@ bool LogManager::RegisterPattern(skr_guid_t guid, skr::unique_ptr<LogPattern> pa
 {
     if (patterns_.find(guid) != patterns_.end())
         return false;
-    patterns_.emplace(guid, skr::move(pattern));
+    patterns_.emplace(guid, std::move(pattern));
     return true;
 }
 
@@ -123,7 +123,7 @@ skr_guid_t LogManager::RegisterSink(skr::unique_ptr<LogSink> sink)
 {
     auto guid = skr_guid_t();
     skr_make_guid(&guid);
-    sinks_.emplace(guid, skr::move(sink));
+    sinks_.emplace(guid, std::move(sink));
     return guid;
 }
 
@@ -131,7 +131,7 @@ bool LogManager::RegisterSink(skr_guid_t guid, skr::unique_ptr<LogSink> sink)
 {
     if (sinks_.find(guid) != sinks_.end())
         return false;
-    sinks_.emplace(guid, skr::move(sink));
+    sinks_.emplace(guid, std::move(sink));
     return true;
 }
 

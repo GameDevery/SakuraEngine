@@ -19,7 +19,7 @@ struct double2 {
     inline double2(): x(0), y(0) {}
     inline double2(MathNoInitType) {}
     inline double2(double v): x(v), y(v) {}
-    inline double2(double v0, double v1): x(v0), y(v1) {}
+    inline double2(double v_x, double v_y): x(v_x), y(v_y) {}
     inline ~double2() = default;
     
     // cast ctor
@@ -93,9 +93,9 @@ struct double3 {
     inline double3(): x(0), y(0), z(0) {}
     inline double3(MathNoInitType) {}
     inline double3(double v): x(v), y(v), z(v) {}
-    inline double3(double v0, double v1, double v2): x(v0), y(v1), z(v2) {}
-    inline double3(double v0, double2 v1): x(v0), y(v1.x), z(v1.y) {}
-    inline double3(double2 v0, double v1): x(v0.x), y(v0.y), z(v1) {}
+    inline double3(double v_x, double v_y, double v_z): x(v_x), y(v_y), z(v_z) {}
+    inline double3(double v_x, double2 v_yz): x(v_x), y(v_yz.x), z(v_yz.y) {}
+    inline double3(double2 v_xy, double v_z): x(v_xy.x), y(v_xy.y), z(v_z) {}
     inline ~double3() = default;
     
     // cast ctor
@@ -220,13 +220,13 @@ struct alignas(16) double4 {
     inline double4(): x(0), y(0), z(0), w(0) {}
     inline double4(MathNoInitType) {}
     inline double4(double v): x(v), y(v), z(v), w(v) {}
-    inline double4(double v0, double v1, double v2, double v3): x(v0), y(v1), z(v2), w(v3) {}
-    inline double4(double v0, double v1, double2 v2): x(v0), y(v1), z(v2.x), w(v2.y) {}
-    inline double4(double v0, double2 v1, double v2): x(v0), y(v1.x), z(v1.y), w(v2) {}
-    inline double4(double v0, double3 v1): x(v0), y(v1.x), z(v1.y), w(v1.z) {}
-    inline double4(double2 v0, double v1, double v2): x(v0.x), y(v0.y), z(v1), w(v2) {}
-    inline double4(double2 v0, double2 v1): x(v0.x), y(v0.y), z(v1.x), w(v1.y) {}
-    inline double4(double3 v0, double v1): x(v0.x), y(v0.y), z(v0.z), w(v1) {}
+    inline double4(double v_x, double v_y, double v_z, double v_w): x(v_x), y(v_y), z(v_z), w(v_w) {}
+    inline double4(double v_x, double v_y, double2 v_zw): x(v_x), y(v_y), z(v_zw.x), w(v_zw.y) {}
+    inline double4(double v_x, double2 v_yz, double v_w): x(v_x), y(v_yz.x), z(v_yz.y), w(v_w) {}
+    inline double4(double v_x, double3 v_yzw): x(v_x), y(v_yzw.x), z(v_yzw.y), w(v_yzw.z) {}
+    inline double4(double2 v_xy, double v_z, double v_w): x(v_xy.x), y(v_xy.y), z(v_z), w(v_w) {}
+    inline double4(double2 v_xy, double2 v_zw): x(v_xy.x), y(v_xy.y), z(v_zw.x), w(v_zw.y) {}
+    inline double4(double3 v_xyz, double v_w): x(v_xyz.x), y(v_xyz.y), z(v_xyz.z), w(v_w) {}
     inline ~double4() = default;
     
     // cast ctor

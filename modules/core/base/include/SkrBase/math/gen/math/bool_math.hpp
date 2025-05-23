@@ -15,14 +15,14 @@ inline bool3 select(bool3 c, bool3 if_true, bool3 if_false) { return { c.x ? if_
 inline bool4 select(bool4 c, bool4 if_true, bool4 if_false) { return { c.x ? if_true.x : if_false.x, c.y ? if_true.y : if_false.y, c.z ? if_true.z : if_false.z, c.w ? if_true.w : if_false.w }; }
 
 // all
-inline bool all(const bool2 &v) { return v.x && v.y; }
-inline bool all(const bool3 &v) { return v.x && v.y && v.z; }
-inline bool all(const bool4 &v) { return v.x && v.y && v.z && v.w; }
+inline bool all(const bool2& v) { return v.x && v.y; }
+inline bool all(const bool3& v) { return v.x && v.y && v.z; }
+inline bool all(const bool4& v) { return v.x && v.y && v.z && v.w; }
 
 // any
-inline bool any(const bool2 &v) { return v.x || v.y; }
-inline bool any(const bool3 &v) { return v.x || v.y || v.z; }
-inline bool any(const bool4 &v) { return v.x || v.y || v.z || v.w; }
+inline bool any(const bool2& v) { return v.x || v.y; }
+inline bool any(const bool3& v) { return v.x || v.y || v.z; }
+inline bool any(const bool4& v) { return v.x || v.y || v.z || v.w; }
 
 }
 }

@@ -531,7 +531,7 @@ struct JsonSerde<T> {
 
         size_t count;
         SKR_EXPECTED_CHECK(r->StartArray(count), false);
-        if (count != 2)
+        if (count != dim)
             return false;
 
         for (size_t i = 0; i < dim; ++i)
@@ -570,14 +570,14 @@ struct JsonSerde<T> {
 
         size_t count;
         SKR_EXPECTED_CHECK(r->StartArray(count), false);
-        if (count != 2)
+        if (count != dim)
             return false;
 
-        for (size_t col_idx = 0; col_idx < dim; ++col_idx)
+        for (size_t row_idx = 0; row_idx < dim; ++row_idx)
         {
-            for (size_t row_idx = 0; row_idx < dim; ++row_idx)
+            for (size_t col_idx = 0; col_idx < dim; ++col_idx)
             {
-                if (!CompSerde::read(r, v.columns[col_idx][row_idx])) { return false; }
+                if (!CompSerde::read(r, v.rows[row_idx][col_idx])) { return false; }
             }
         }
 
@@ -592,11 +592,11 @@ struct JsonSerde<T> {
 
         SKR_EXPECTED_CHECK(w->StartArray(), false);
 
-        for (size_t col_idx = 0; col_idx < dim; ++col_idx)
+        for (size_t row_idx = 0; row_idx < dim; ++row_idx)
         {
-            for (size_t row_idx = 0; row_idx < dim; ++row_idx)
+            for (size_t col_idx = 0; col_idx < dim; ++col_idx)
             {
-                if (!CompSerde::write(w, v.columns[col_idx][row_idx])) { return false; }
+                if (!CompSerde::write(w, v.rows[row_idx][col_idx])) { return false; }
             }
         }
 

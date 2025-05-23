@@ -38,6 +38,10 @@ struct RotatorF {
     // mul assign operator
     RotatorF& operator*=(const RotatorF& rhs);
     
+    // add & sub assign operator
+    RotatorF& operator+=(const RotatorF& rhs);
+    RotatorF& operator-=(const RotatorF& rhs);
+    
     // to matrix
     operator float3x3() const;
     operator float4x4() const;
@@ -78,6 +82,10 @@ struct RotatorD {
     
     // mul assign operator
     RotatorD& operator*=(const RotatorD& rhs);
+    
+    // add & sub assign operator
+    RotatorD& operator+=(const RotatorD& rhs);
+    RotatorD& operator-=(const RotatorD& rhs);
     
     // to matrix
     operator double3x3() const;

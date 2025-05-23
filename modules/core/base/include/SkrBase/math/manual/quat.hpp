@@ -397,14 +397,14 @@ inline bool is_finite(const QuatD& q)
 }
 
 // is normalized
-inline bool is_normalized(const QuatF& q, float threshold = 0.00001f)
+inline bool is_normalized(const QuatF& q, float threshold = 1.e-4)
 {
     return rtm::quat_is_normalized(
         RtmConvert<QuatF>::to_rtm(q),
         threshold
     );
 }
-inline bool is_normalized(const QuatD& q, double threshold = 0.00001)
+inline bool is_normalized(const QuatD& q, double threshold = 1.e-4)
 {
     return rtm::quat_is_normalized(
         RtmConvert<QuatD>::to_rtm(q),
@@ -413,45 +413,37 @@ inline bool is_normalized(const QuatD& q, double threshold = 0.00001)
 }
 
 // nearly equal
-inline bool nearly_equal(const QuatF& lhs, const QuatF& rhs, float threshold = 0.00001f)
+inline bool4 nearly_equal(const QuatF& lhs, const QuatF& rhs, float threshold = 1.e-4f)
 {
-    return rtm::quat_near_equal(
-        RtmConvert<QuatF>::to_rtm(lhs),
-        RtmConvert<QuatF>::to_rtm(rhs),
-        threshold
-    );
+    return nearly_equal(lhs.as_vector(), rhs.as_vector(), threshold);
 }
-inline bool nearly_equal(const QuatD& lhs, const QuatD& rhs, double threshold = 0.00001)
+inline bool4 nearly_equal(const QuatD& lhs, const QuatD& rhs, double threshold = 1.e-4)
 {
-    return rtm::quat_near_equal(
-        RtmConvert<QuatD>::to_rtm(lhs),
-        RtmConvert<QuatD>::to_rtm(rhs),
-        threshold
-    );
+    return nearly_equal(lhs.as_vector(), rhs.as_vector(), threshold);
 }
 
 // identity
-inline bool is_identity(const QuatF& q)
+inline bool QuatF::is_identity() const
 {
-    return all(q.as_vector() == QuatF::Identity().as_vector());
+    return all(as_vector() == QuatF::Identity().as_vector());
 }
-inline bool is_identity(const QuatD& q)
+inline bool QuatD::is_identity() const
 {
-    return all(q.as_vector() == QuatD::Identity().as_vector());
+    return all(as_vector() == QuatD::Identity().as_vector());
 }
 
 // nearly identity
-inline bool is_nearly_identity(const QuatF& q, float threshold_angle)
+inline bool QuatF::is_nearly_identity(float threshold_angle) const
 {
     return rtm::quat_near_identity(
-        RtmConvert<QuatF>::to_rtm(q),
+        RtmConvert<QuatF>::to_rtm(*this),
         threshold_angle
     );
 }
-inline bool is_nearly_identity(const QuatD& q, double threshold_angle)
+inline bool QuatD::is_nearly_identity(double threshold_angle) const
 {
     return rtm::quat_near_identity(
-        RtmConvert<QuatD>::to_rtm(q),
+        RtmConvert<QuatD>::to_rtm(*this),
         threshold_angle
     );
 }
@@ -596,5 +588,32 @@ inline double distance(const QuatD& lhs, const QuatD& rhs)
     return acos(2 * dot(lhs, rhs) - 1);
 }
 
+// relative
+inline QuatF relative(const QuatF& parent, const QuatF& world)
+{
+    auto rtm_parent = RtmConvert<QuatF>::to_rtm(parent);
+    auto rtm_world  = RtmConvert<QuatF>::to_rtm(world);
+
+    // world * -parent
+    auto rtm_result = rtm::quat_mul(
+        rtm_world,
+        rtm::quat_conjugate(rtm_parent)
+    );
+
+    return RtmConvert<QuatF>::from_rtm(rtm_result);
+}
+inline QuatD relative(const QuatD& parent, const QuatD& world)
+{
+    auto rtm_parent = RtmConvert<QuatD>::to_rtm(parent);
+    auto rtm_world  = RtmConvert<QuatD>::to_rtm(world);
+
+    // world * -parent
+    auto result_rtm = rtm::quat_mul(
+        rtm_world,
+        rtm::quat_conjugate(rtm_parent)
+    );
+
+    return RtmConvert<QuatD>::from_rtm(result_rtm);
+}
 } // namespace math
 } // namespace skr

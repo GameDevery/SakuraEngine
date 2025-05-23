@@ -17,7 +17,7 @@
         const skr::logging::LogSourceData Src = { file, func, line  };
         const auto Event = skr::logging::LogEvent(logger, kLogLevel, Src);
 
-        logger->log(Event, fmt, skr::forward<Args>(args)...);
+        logger->log(Event, fmt, std::forward<Args>(args)...);
     }
 
     #define SKR_LOG_FMT_WITH_LEVEL(level, fmt, ...) skr_log_log_cxx((level), __FILE__, __LOG_FUNC__, SKR_MAKE_STRING(__LINE__), (fmt), __VA_ARGS__)

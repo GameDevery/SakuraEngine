@@ -1,7 +1,7 @@
 import {
   CodeBuilder, dims_no_scalar,
   type_convert_options, type_options,
-  get_alignas_vector
+  get_alignas_vector, vector_has_simd_optimize
 } from "./util"
 import type { TypeOption, GlobalBuilders } from "./util";
 import path from "node:path";
@@ -74,24 +74,40 @@ function _gen_ctor_swizzle_recursive(
     const vec_name = `${base_name}${dim}`;
 
     // generate params
+    let cur_idx = 0;
     const params = param_dims
       .map((len, i) => {
+        let param_suffix = ""
+        for (let j = 0; j < len; ++j) {
+          param_suffix += _comp_lut[cur_idx + j]
+        }
+
+        cur_idx += len;
+
         return len == 1 ?
-          `${comp_name} v${i}` :
-          `${base_name}${len} v${i}`
+          `${comp_name} v_${param_suffix}` :
+          `${base_name}${len} v_${param_suffix}`
       })
       .join(", ");
 
     // generate init list
+    cur_idx = 0;
     let cur_comp = 0;
     const init_list = param_dims
       .flatMap((len, i) => {
+        let param_suffix = ""
+        for (let j = 0; j < len; ++j) {
+          param_suffix += _comp_lut[cur_idx + j]
+        }
+
         const result = []
         for (let j = 0; j < len; ++j) {
           const visitor = len != 1 ? `.${_comp_lut[j]}` : ``;
-          result.push(`${_comp_lut[cur_comp]}(v${i}${visitor})`)
+          result.push(`${_comp_lut[cur_comp]}(v_${param_suffix}${visitor})`)
           ++cur_comp
         }
+
+        cur_idx += len;
         return result
       })
       .join(", ");
@@ -182,17 +198,20 @@ function _gen_arithmetic_operator(dim: number, opt: GenVectorOption) {
   const comp_name = opt.component_name;
   const vec_name = `${base_name}${dim}`;
   const comp_kind = opt.component_kind;
+  const is_signed = opt.is_signed;
 
   // unary operator
   if (comp_kind == "floating" || comp_kind == "integer") {
     b.$line(`// unary operator`);
 
     // neg
-    const init_list = _comp_lut
-      .slice(0, dim)
-      .map(comp => `-${comp}`)
-      .join(", ");
-    b.$line(`inline ${vec_name} operator-() const { return { ${init_list} }; }`);
+    if (is_signed) {
+      const init_list = _comp_lut
+        .slice(0, dim)
+        .map(comp => `-${comp}`)
+        .join(", ");
+      b.$line(`inline ${vec_name} operator-() const { return { ${init_list} }; }`);
+    }
 
     b.$line(``);
   } else {

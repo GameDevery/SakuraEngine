@@ -1,7 +1,7 @@
-#include "SkrContainers/sptr.hpp"
 #include "SkrBase/misc/make_zeroed.hpp"
 #include "SkrCore/async/thread_job.hpp"
 
+#include "SkrCore/memory/sp.hpp"
 #include "SkrRenderer/resources/mesh_resource.h"
 #include "SkrRenderer/resources/material_resource.hpp"
 #include "SkrRenderer/resources/material_type_resource.hpp"
@@ -22,7 +22,7 @@ struct SMaterialFactoryImpl : public SMaterialFactory {
         : root(root)
     {
         // 0.async launcher
-        launcher = skr::SPtr<MaterialFutureLancher>::Create(root.job_queue);
+        launcher = skr::SP<MaterialFutureLancher>::New(root.job_queue);
 
         // 1.create shader map
         shader_map = root.shader_map;
@@ -264,7 +264,7 @@ struct SMaterialFactoryImpl : public SMaterialFactory {
         auto       iter         = mRootSignatureRequests.find(materialGUID);
         if (iter == mRootSignatureRequests.end())
         {
-            auto rsRequest = SPtr<RootSignatureRequest>::Create(material, this, installed_pass, shaders);
+            auto rsRequest = SP<RootSignatureRequest>::New(material, this, installed_pass, shaders);
             mRootSignatureRequests.emplace(materialGUID, rsRequest);
             if (auto async_launcher = launcher.get())
             {
@@ -482,8 +482,8 @@ struct SMaterialFactoryImpl : public SMaterialFactory {
         skr::InlineVector<CGPUShaderLibraryId, CGPU_SHADER_STAGE_COUNT> shaders;
     };
 
-    skr::FlatHashMap<skr_guid_t, SPtr<RootSignatureRequest>, skr::Hash<skr_guid_t>> mRootSignatureRequests;
-    skr::SPtr<MaterialFutureLancher>                                          launcher = nullptr;
+    skr::FlatHashMap<skr_guid_t, SP<RootSignatureRequest>, skr::Hash<skr_guid_t>> mRootSignatureRequests;
+    skr::SP<MaterialFutureLancher>                                          launcher = nullptr;
 
     skr_shader_map_id       shader_map = nullptr;
     skr_pso_map_id          pso_map    = nullptr;

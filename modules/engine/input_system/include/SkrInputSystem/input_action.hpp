@@ -1,7 +1,7 @@
 #pragma once
 #include "SkrInputSystem/input_value.hpp"
 #include "SkrContainers/stl_function.hpp" // IWYU pragma: keep
-#include "SkrContainers/sptr.hpp"
+#include "SkrCore/memory/rc.hpp"
 
 namespace skr
 {
@@ -18,7 +18,9 @@ using ActionEventId = skr_guid_t;
 
 static const ActionEventId kEventId_Invalid = { 0xbbd09231, 0xa76b, 0x4c0f, { 0x83, 0x2e, 0x11, 0x7f, 0xd6, 0xac, 0x5c, 0x1b } };
 
-struct SKR_INPUT_SYSTEM_API InputAction : public RC {
+struct SKR_INPUT_SYSTEM_API InputAction {
+    SKR_RC_IMPL()
+
     inline InputAction(EValueType type) SKR_NOEXCEPT
         : value_type(type)
     {
@@ -35,13 +37,13 @@ struct SKR_INPUT_SYSTEM_API InputAction : public RC {
 
     virtual bool unbind_event(ActionEventId id) SKR_NOEXCEPT = 0;
 
-    virtual void add_trigger(SObjectPtr<InputTrigger> trigger) SKR_NOEXCEPT = 0;
+    virtual void add_trigger(RC<InputTrigger> trigger) SKR_NOEXCEPT = 0;
 
-    virtual void remove_trigger(SObjectPtr<InputTrigger> trigger) SKR_NOEXCEPT = 0;
+    virtual void remove_trigger(RC<InputTrigger> trigger) SKR_NOEXCEPT = 0;
 
-    virtual void add_modifier(SObjectPtr<InputModifier> modifier) SKR_NOEXCEPT = 0;
+    virtual void add_modifier(RC<InputModifier> modifier) SKR_NOEXCEPT = 0;
 
-    virtual void remove_modifier(SObjectPtr<InputModifier> modifier) SKR_NOEXCEPT = 0;
+    virtual void remove_modifier(RC<InputModifier> modifier) SKR_NOEXCEPT = 0;
 
     const EValueType value_type = EValueType::kBool;
 

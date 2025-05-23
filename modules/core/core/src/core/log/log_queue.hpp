@@ -1,13 +1,13 @@
 #pragma once
 #include "SkrContainersDef/hashmap.hpp"
 #include "SkrBase/atomic/atomic.h"
+#include "SkrCore/memory/sp.hpp"
 #include "SkrOS/thread.h"
 #include "SkrCore/log/log_base.hpp"
 #include "SkrCore/log/log_formatter.hpp"
 
 #include "SkrContainersDef/concurrent_queue.hpp"
 #include "SkrContainersDef/vector.hpp"
-#include "SkrContainersDef/sptr.hpp"
 #include "SkrContainersDef/ring_buffer.hpp"
 
 namespace skr
@@ -88,9 +88,9 @@ private:
     friend struct ThreadToken;
     SAtomic64 total_cnt_ = 0;
     // MPSC
-    skr::ConsumerToken                                         ctok_;
-    skr::ParallelFlatHashMap<uint64_t, skr::SPtr<ThreadToken>> thread_id_map_;
-    skr::ConcurrentQueue<LogElement, LogQueueTraits<256>>      queue_;
+    skr::ConsumerToken                                       ctok_;
+    skr::ParallelFlatHashMap<uint64_t, skr::SP<ThreadToken>> thread_id_map_;
+    skr::ConcurrentQueue<LogElement, LogQueueTraits<256>>    queue_;
 
     skr::Vector<uint64_t>         tids_;
     mutable SRWMutex              tids_mutex_;
