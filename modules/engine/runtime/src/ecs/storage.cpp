@@ -513,7 +513,11 @@ void sugoi_storage_t::defragment()
                         ++o;
                     }
                     else // or create new chunk
-                        newChunks.push_back(sugoi_chunk_t::create(type));
+                    {
+                        auto newChunk = sugoi_chunk_t::create(type);
+                        newChunk->init(g->archetype);
+                        newChunks.push_back(newChunk);
+                    }
                     fillChunk(newChunks.back());
                 }
             };

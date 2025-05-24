@@ -133,7 +133,7 @@ sugoi::archetype_t* sugoi_storage_t::constructArchetype(const sugoi_type_set_t& 
     {
         uint32_t* offsets = const_cast<uint32_t*>(archetype.offsets[i]);
         uint32_t& capacity = const_cast<uint32_t&>(archetype.chunkCapacity[i]);
-        write_const(archetype.sliceDataOffsets[i], static_cast<sugoi_timestamp_t>(caps[i] - sliceDataSize));
+        write_const(archetype.sliceDataOffsets[i], static_cast<uint32_t>(caps[i] - sliceDataSize));
         uint32_t ccOffset = (uint32_t)(caps[i] - sliceDataSize);
         forloop (j, 0, archetype.type.length)
         {
@@ -426,6 +426,7 @@ sugoi_chunk_t* sugoi_group_t::new_chunk(uint32_t hint)
     else
         pt = PT_default;
     sugoi_chunk_t* chunk = sugoi_chunk_t::create(pt);
+    chunk->init(archetype);
     add_chunk(chunk);
     construct_chunk(chunk);
     return chunk;
