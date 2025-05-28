@@ -1,15 +1,18 @@
-#include "SkrV8/v8_isolate.hpp"
-#include "SkrContainers/set.hpp"
-#include "SkrCore/log.hpp"
-#include "SkrV8/v8_bind_data.hpp"
-#include "libplatform/libplatform.h"
-#include "v8-initialization.h"
-#include "SkrRTTR/type.hpp"
-#include "v8-template.h"
-#include "v8-external.h"
-#include "v8-function.h"
-#include "v8-container.h"
-#include "SkrV8/v8_bind.hpp"
+#include <SkrV8/v8_isolate.hpp>
+#include <SkrContainers/set.hpp>
+#include <SkrV8/v8_bind_data.hpp>
+#include <SkrCore/log.hpp>
+#include <SkrRTTR/type.hpp>
+#include <SkrV8/v8_bind.hpp>
+#include <SkrV8/v8_context.hpp>
+
+// v8 includes
+#include <libplatform/libplatform.h>
+#include <v8-initialization.h>
+#include <v8-template.h>
+#include <v8-external.h>
+#include <v8-function.h>
+#include <v8-container.h>
 
 // allocator
 namespace skr
@@ -64,12 +67,16 @@ V8Isolate::V8Isolate()
 }
 V8Isolate::~V8Isolate()
 {
-    shutdown();
+    if (is_init())
+    {
+        shutdown();
+    }
 }
 
 void V8Isolate::init()
 {
     using namespace ::v8;
+    SKR_ASSERT(!is_init());
 
     // init isolate
     _isolate_create_params.array_buffer_allocator = SkrNew<V8Allocator>();
@@ -86,28 +93,39 @@ void V8Isolate::init()
 
     // TODO. promise support
     // _isolate->SetPromiseRejectCallback; // used for capture unhandledRejection
+
+    // init main isolate
+    _main_context = SkrNew<V8Context>(this, u8"[Main]");
+    _main_context->init();
 }
 void V8Isolate::shutdown()
 {
+    SKR_ASSERT(is_init());
+
     // shutdown debugger
     if (is_debugger_init())
     {
         shutdown_debugger();
     }
 
-    // shutdown isolate
-    if (_isolate)
-    {
-        // cleanup templates
-        cleanup_templates();
+    // shutdown main context
+    _main_context->shutdown();
+    SkrDelete(_main_context);
+    _main_context = nullptr;
 
-        // dispose isolate
-        _isolate->Dispose();
-        _isolate = nullptr;
+    // cleanup templates
+    cleanup_templates();
 
-        // cleanup bind cores
-        cleanup_bind_cores();
-    }
+    // dispose isolate
+    _isolate->Dispose();
+    _isolate = nullptr;
+
+    // cleanup bind cores
+    cleanup_bind_cores();
+}
+bool V8Isolate::is_init() const
+{
+    return _isolate != nullptr;
 }
 
 // isolate operators
@@ -123,17 +141,27 @@ void V8Isolate::gc(bool full)
     _isolate->IdleNotificationDeadline(0);
 }
 
+// context
+V8Context* V8Isolate::main_context() const
+{
+    return _main_context;
+}
+
 // debugger
 void V8Isolate::init_debugger(int port)
 {
+    SKR_ASSERT(is_init());
     SKR_ASSERT(!is_debugger_init());
     _websocket_server.init(port);
     _inspector_client.server = &_websocket_server;
     _inspector_client.init(this);
-    // TODO. notify main context created
+
+    // notify main context created
+    _inspector_client.notify_context_created(_main_context);
 }
 void V8Isolate::shutdown_debugger()
 {
+    SKR_ASSERT(is_init());
     SKR_ASSERT(is_debugger_init());
     _inspector_client.shutdown();
     _inspector_client.server = nullptr;

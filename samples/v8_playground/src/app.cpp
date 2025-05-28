@@ -30,19 +30,14 @@ void V8PlaygroundApp::init()
     shutdown();
     _isolate = SkrNew<V8Isolate>();
     _isolate->init();
-    _main_context = SkrNew<V8Context>(_isolate);
-    _main_context->init();
 }
 void V8PlaygroundApp::shutdown()
 {
     if (_isolate)
     {
-        _main_context->shutdown();
-        SkrDelete(_main_context);
         _isolate->shutdown();
         SkrDelete(_isolate);
         _isolate      = nullptr;
-        _main_context = nullptr;
     }
 }
 
@@ -68,7 +63,7 @@ void V8PlaygroundApp::wait_for_debugger_connected()
 void V8PlaygroundApp::load_native_types()
 {
     load_all_types();
-    _main_context->build_global_export([](ScriptModule& module) {
+    _isolate->main_context()->build_global_export([](ScriptModule& module) {
         each_types_of_module(u8"V8Playground", [&](const RTTRType* type) -> bool {
             bool do_export =
                 (type->is_record() && flag_all(type->record_flag(), ERTTRRecordFlag::ScriptVisible)) ||
@@ -106,7 +101,7 @@ bool V8PlaygroundApp::run_script(StringView script_path)
     // v8::TryCatch try_catch(isolate);
 
     // run script
-    _main_context->exec_module(script, script_path);
+    _isolate->main_context()->exec_module(script, script_path);
 
     // auto _inspect_str = +[](const skr_char8* str) {
     //     return v8_inspector::StringView{
@@ -164,7 +159,7 @@ bool V8PlaygroundApp::dump_types(StringView output_dir)
 
     // do export
     TSDefineExporter exporter;
-    exporter.module = &_main_context->global_module();
+    exporter.module = &_isolate->main_context()->global_module();
     return _save_to_file(String::From(out_file_path.c_str()), exporter.generate_global());
 }
 

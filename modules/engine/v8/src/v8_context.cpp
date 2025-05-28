@@ -1,16 +1,18 @@
-#include "SkrV8/v8_context.hpp"
-#include "SkrCore/log.hpp"
-#include "SkrV8/v8_isolate.hpp"
-#include "SkrV8/v8_bind.hpp"
-#include "SkrV8/v8_module.hpp"
-#include "v8-exception.h"
-#include "v8-function.h"
+#include <SkrV8/v8_context.hpp>
+#include <SkrCore/log.hpp>
+#include <SkrV8/v8_isolate.hpp>
+#include <SkrV8/v8_bind.hpp>
+#include <SkrV8/v8_module.hpp>
+
+#include <v8-exception.h>
+#include <v8-function.h>
 
 namespace skr
 {
 // ctor & dtor
-V8Context::V8Context(V8Isolate* isolate)
+V8Context::V8Context(V8Isolate* isolate, String name)
     : _isolate(isolate)
+    , _name(std::move(name))
 {
     _global_module.manager = &_isolate->script_binder_manger();
 }

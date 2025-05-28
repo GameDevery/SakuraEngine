@@ -180,7 +180,7 @@ void V8InspectorClient::shutdown()
 {
     // unregister callback
     server->on_message_received.remove(_on_message_received_handle);
-    
+
     _session.reset();
     _inspector.reset();
 }
@@ -218,11 +218,14 @@ void V8InspectorClient::runIfWaitingForDebugger(int contextGroupId)
 }
 
 // notify
-void V8InspectorClient::notify_context_created(V8Context* context, StringView name)
+void V8InspectorClient::notify_context_created(V8Context* context)
 {
     v8::HandleScope handle_scope(_isolate->v8_isolate());
 
-    v8_inspector::StringView name_view{ (const uint8_t*)name.data_raw(), name.length_buffer() };
+    v8_inspector::StringView name_view{
+        (const uint8_t*)context->name().data_raw(),
+        context->name().length_buffer()
+    };
 
     v8_inspector::V8ContextInfo info{
         context->v8_context().Get(_isolate->v8_isolate()),
@@ -230,6 +233,11 @@ void V8InspectorClient::notify_context_created(V8Context* context, StringView na
         name_view,
     };
     _inspector->contextCreated(info);
+}
+void V8InspectorClient::notify_context_destroyed(V8Context* context)
+{
+    v8::HandleScope handle_scope(_isolate->v8_isolate());
+    _inspector->contextDestroyed(context->v8_context().Get(_isolate->v8_isolate()));
 }
 
 // debug control

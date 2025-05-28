@@ -74,7 +74,8 @@ public:
     void runIfWaitingForDebugger(int contextGroupId) override;
 
     // notify
-    void notify_context_created(V8Context* context, StringView name);
+    void notify_context_created(V8Context* context);
+    void notify_context_destroyed(V8Context* context);
 
     // getter
     inline v8_inspector::V8InspectorSession*       v8_session() { return _session.get(); }

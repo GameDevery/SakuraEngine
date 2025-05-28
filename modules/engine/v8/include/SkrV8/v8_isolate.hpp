@@ -1,11 +1,14 @@
 #pragma once
-#include "SkrRTTR/script_binder.hpp"
+#include <SkrCore/memory/rc.hpp>
+#include <SkrRTTR/script_binder.hpp>
 #include <SkrRTTR/stack_proxy.hpp>
-#include "SkrV8/v8_inspector.hpp"
-#include "v8-isolate.h"
-#include "v8-platform.h"
-#include "v8_bind_data.hpp"
-#include "v8-primitive.h"
+#include <SkrV8/v8_inspector.hpp>
+#include <SkrV8/v8_bind_data.hpp>
+
+// v8 includes
+#include <v8-isolate.h>
+#include <v8-platform.h>
+#include <v8-primitive.h>
 #ifndef __meta__
     #include "SkrV8/v8_isolate.generated.h"
 #endif
@@ -38,10 +41,14 @@ SKR_V8_API V8Isolate: IScriptMixinCore {
     // init & shutdown
     void init();
     void shutdown();
+    bool is_init() const;
 
     // isolate operators
     void pump_message_loop();
     void gc(bool full = true);
+
+    // context
+    V8Context* main_context() const;
 
     // debugger
     void init_debugger(int port);
@@ -303,26 +310,30 @@ private:
 
 private:
     // isolate data
-    v8::Isolate*              _isolate;
-    v8::Isolate::CreateParams _isolate_create_params;
+    v8::Isolate*              _isolate               = nullptr;
+    v8::Isolate::CreateParams _isolate_create_params = {};
 
     // modules
     Map<String, V8Module*> _modules       = {};
     Map<int, V8Module*>    _to_skr_module = {};
 
     // binder manager
-    ScriptBinderManager _binder_mgr;
+    ScriptBinderManager _binder_mgr = {};
 
     // template & bind data
-    Map<const RTTRType*, V8BindDataRecordBase*> _record_templates;
-    Map<const RTTRType*, V8BindDataEnum*>       _enum_templates;
+    Map<const RTTRType*, V8BindDataRecordBase*> _record_templates = {};
+    Map<const RTTRType*, V8BindDataEnum*>       _enum_templates   = {};
 
     // bind cores & objects
-    Map<ScriptbleObject*, V8BindCoreObject*> _alive_objects;
-    Vector<V8BindCoreObject*>                _deleted_objects;
-    Map<void*, V8BindCoreValue*>             _script_created_values;
-    Map<void*, V8BindCoreValue*>             _static_field_values;
-    Map<void*, V8BindCoreValue*>             _temporal_values;
+    Map<ScriptbleObject*, V8BindCoreObject*> _alive_objects         = {};
+    Vector<V8BindCoreObject*>                _deleted_objects       = {};
+    Map<void*, V8BindCoreValue*>             _script_created_values = {};
+    Map<void*, V8BindCoreValue*>             _static_field_values   = {};
+    Map<void*, V8BindCoreValue*>             _temporal_values       = {};
+
+    // context manager
+    V8Context*                  _main_context = nullptr;
+    Vector<RCUnique<V8Context>> _contexts     = {};
 
     // debugger
     V8WebSocketServer _websocket_server = {};

@@ -1,16 +1,15 @@
 #pragma once
-#include "SkrBase/config.h"
-#include "SkrContainers/string.hpp"
-#include "SkrRTTR/script_tools.hpp"
-#include "SkrRTTR/scriptble_object.hpp"
-#include "v8-context.h"
-#include "v8-isolate.h"
-#include "v8-persistent-handle.h"
-#include "v8_isolate.hpp"
+#include <SkrRTTR/script_tools.hpp>
+#include <SkrRTTR/scriptble_object.hpp>
 #include <SkrCore/log.hpp>
-#include "SkrV8/v8_bind.hpp"
-#include "SkrV8/v8_isolate.hpp"
-#include "v8-function.h"
+#include <SkrV8/v8_bind.hpp>
+#include <SkrV8/v8_isolate.hpp>
+
+// v8 includes
+#include <v8-function.h>
+#include <v8-context.h>
+#include <v8-isolate.h>
+#include <v8-persistent-handle.h>
 
 namespace skr
 {
@@ -34,10 +33,11 @@ struct V8Value {
 };
 
 struct SKR_V8_API V8Context {
+    SKR_RC_IMPL();
     friend struct V8Value;
 
     // ctor & dtor
-    V8Context(V8Isolate* isolate);
+    V8Context(V8Isolate* isolate, String name = u8"unnamed");
     ~V8Context();
 
     // delete copy & move
@@ -57,6 +57,7 @@ struct SKR_V8_API V8Context {
     ::v8::Global<::v8::Context> v8_context() const;
     inline V8Isolate*           isolate() const { return _isolate; }
     inline const ScriptModule&  global_module() const { return _global_module; }
+    inline const String&        name() const { return _name; }
 
     // set global value
     template <typename T>
@@ -89,6 +90,9 @@ private:
 
     // context data
     v8::Persistent<v8::Context> _context;
+
+    // name (for debug)
+    String _name;
 };
 } // namespace skr
 

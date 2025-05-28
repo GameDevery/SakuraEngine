@@ -41,7 +41,6 @@ private:
     bool   _save_to_file(StringView _path, StringView _content);
 
 private:
-    V8Isolate* _isolate      = nullptr;
-    V8Context* _main_context = nullptr;
+    V8Isolate* _isolate = nullptr;
 };
 } // namespace skr
