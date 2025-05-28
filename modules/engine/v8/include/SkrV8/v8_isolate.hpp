@@ -1,6 +1,7 @@
 #pragma once
 #include "SkrRTTR/script_binder.hpp"
 #include <SkrRTTR/stack_proxy.hpp>
+#include "SkrV8/v8_inspector.hpp"
 #include "v8-isolate.h"
 #include "v8-platform.h"
 #include "v8_bind_data.hpp"
@@ -41,6 +42,14 @@ SKR_V8_API V8Isolate: IScriptMixinCore {
     // isolate operators
     void pump_message_loop();
     void gc(bool full = true);
+
+    // debugger
+    void init_debugger(int port);
+    void shutdown_debugger();
+    bool is_debugger_init() const;
+    void pump_debugger_messages();
+    void wait_for_debugger_connected(uint64_t timeout_ms = std::numeric_limits<uint64_t>::max());
+    bool any_debugger_connected() const;
 
     // getter
     inline v8::Isolate*               v8_isolate() const { return _isolate; }
@@ -314,6 +323,10 @@ private:
     Map<void*, V8BindCoreValue*>             _script_created_values;
     Map<void*, V8BindCoreValue*>             _static_field_values;
     Map<void*, V8BindCoreValue*>             _temporal_values;
+
+    // debugger
+    V8WebSocketServer _websocket_server = {};
+    V8InspectorClient _inspector_client = {};
 };
 } // namespace skr
 

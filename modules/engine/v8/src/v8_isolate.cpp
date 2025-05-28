@@ -79,7 +79,7 @@ void V8Isolate::init()
     // auto microtasks
     _isolate->SetMicrotasksPolicy(v8::MicrotasksPolicy::kAuto);
 
-    // TODO. module support
+    // TODO. dynamic module support
     // _isolate->SetHostImportModuleDynamicallyCallback(_dynamic_import_module); // used for support module
     // _isolate->SetHostInitializeImportMetaObjectCallback(); // used for set import.meta
     // v8::Module::CreateSyntheticModule
@@ -89,6 +89,13 @@ void V8Isolate::init()
 }
 void V8Isolate::shutdown()
 {
+    // shutdown debugger
+    if (is_debugger_init())
+    {
+        shutdown_debugger();
+    }
+
+    // shutdown isolate
     if (_isolate)
     {
         // cleanup templates
@@ -98,7 +105,7 @@ void V8Isolate::shutdown()
         _isolate->Dispose();
         _isolate = nullptr;
 
-        // cleanup cores
+        // cleanup bind cores
         cleanup_bind_cores();
     }
 }
@@ -114,6 +121,58 @@ void V8Isolate::gc(bool full)
 
     _isolate->LowMemoryNotification();
     _isolate->IdleNotificationDeadline(0);
+}
+
+// debugger
+void V8Isolate::init_debugger(int port)
+{
+    SKR_ASSERT(!is_debugger_init());
+    _websocket_server.init(port);
+    _inspector_client.server = &_websocket_server;
+    _inspector_client.init(this);
+    // TODO. notify main context created
+}
+void V8Isolate::shutdown_debugger()
+{
+    SKR_ASSERT(is_debugger_init());
+    _inspector_client.shutdown();
+    _inspector_client.server = nullptr;
+    _websocket_server.shutdown();
+}
+bool V8Isolate::is_debugger_init() const
+{
+    return _websocket_server.is_init();
+}
+void V8Isolate::pump_debugger_messages()
+{
+    _websocket_server.pump_messages();
+}
+void V8Isolate::wait_for_debugger_connected(uint64_t timeout_ms)
+{
+    auto start_time = std::chrono::high_resolution_clock::now();
+    while (!_inspector_client.is_connected())
+    {
+        // pump v8 messages
+        this->pump_message_loop();
+
+        // pump net messages
+        _websocket_server.pump_messages();
+
+        // check timeout
+        auto current_time = std::chrono::high_resolution_clock::now();
+        auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - start_time).count();
+        if (elapsed_time >= timeout_ms)
+        {
+            break;
+        }
+
+        // sleep for a while
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+}
+bool V8Isolate::any_debugger_connected() const
+{
+    return is_debugger_init() && _inspector_client.is_connected();
 }
 
 // bind object

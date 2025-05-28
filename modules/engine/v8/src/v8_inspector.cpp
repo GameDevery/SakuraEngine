@@ -66,6 +66,10 @@ void V8WebSocketServer::shutdown()
         _is_running = false;
     }
 }
+bool V8WebSocketServer::is_init() const
+{
+    return _is_running;
+}
 
 // message
 void V8WebSocketServer::send_message(StringView message)
@@ -180,6 +184,10 @@ void V8InspectorClient::shutdown()
     _session.reset();
     _inspector.reset();
 }
+bool V8InspectorClient::is_init() const
+{
+    return _session != nullptr && _inspector != nullptr;
+}
 
 // override
 void V8InspectorClient::runMessageLoopOnPause(int contextGroupId)
@@ -187,7 +195,7 @@ void V8InspectorClient::runMessageLoopOnPause(int contextGroupId)
     if (_is_runing_message_loop) { return; }
 
     _is_runing_message_loop = true;
-    _run_message_loop = true;
+    _run_message_loop       = true;
 
     while (_run_message_loop)
     {
@@ -195,7 +203,7 @@ void V8InspectorClient::runMessageLoopOnPause(int contextGroupId)
         _isolate->pump_message_loop();
     }
 
-    _run_message_loop = false;
+    _run_message_loop       = false;
     _is_runing_message_loop = false;
 }
 void V8InspectorClient::quitMessageLoopOnPause()

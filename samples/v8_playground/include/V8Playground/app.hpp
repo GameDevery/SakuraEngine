@@ -43,8 +43,5 @@ private:
 private:
     V8Isolate* _isolate      = nullptr;
     V8Context* _main_context = nullptr;
-
-    V8WebSocketServer _websocket_server = {};
-    V8InspectorClient _inspector_client = {};
 };
 } // namespace skr
