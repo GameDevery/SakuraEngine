@@ -37,7 +37,7 @@ struct U8String : protected Memory {
     using CCursor   = UTF8Cursor<SizeType, true>;
     using Iter      = UTF8Iter<SizeType, false>;
     using CIter     = UTF8Iter<SizeType, true>;
-    using IterInv   = UTF8IterInv<SizeType, true>;
+    using IterInv   = UTF8IterInv<SizeType, false>;
     using CIterInv  = UTF8IterInv<SizeType, true>;
     using Range     = UTF8Range<SizeType, false>;
     using CRange    = UTF8Range<SizeType, true>;
@@ -390,6 +390,20 @@ struct U8String : protected Memory {
     U8String pad_center_copy(SizeType size, const DataType& ch = u8' ') const;
     U8String pad_left_copy(SizeType size, const DataType& ch = u8' ') const;
     U8String pad_right_copy(SizeType size, const DataType& ch = u8' ') const;
+
+    // cursor & iter
+    Cursor   cursor_begin();
+    CCursor  cursor_begin() const;
+    Cursor   cursor_end();
+    CCursor  cursor_end() const;
+    Iter     iter();
+    CIter    iter() const;
+    IterInv  iter_inv();
+    CIterInv iter_inv() const;
+    auto     range();
+    auto     range() const;
+    auto     range_inv();
+    auto     range_inv() const;
 
     // syntax
     const U8String& readonly() const;
@@ -2797,6 +2811,68 @@ inline U8String<Memory> U8String<Memory>::pad_right_copy(SizeType size, const Da
     U8String result = *this;
     result.pad_right(size, ch);
     return std::move(result);
+}
+
+// cursor & iter
+template <typename Memory>
+inline typename U8String<Memory>::Cursor U8String<Memory>::cursor_begin()
+{
+    return Cursor::Begin(_data(), length_buffer());
+}
+template <typename Memory>
+inline typename U8String<Memory>::CCursor U8String<Memory>::cursor_begin() const
+{
+    return CCursor::Begin(_data(), length_buffer());
+}
+template <typename Memory>
+inline typename U8String<Memory>::Cursor U8String<Memory>::cursor_end()
+{
+    return Cursor::End(_data(), length_buffer());
+}
+template <typename Memory>
+inline typename U8String<Memory>::CCursor U8String<Memory>::cursor_end() const
+{
+    return CCursor::End(_data(), length_buffer());
+}
+template <typename Memory>
+inline typename U8String<Memory>::Iter U8String<Memory>::iter()
+{
+    return { cursor_begin() };
+}
+template <typename Memory>
+inline typename U8String<Memory>::CIter U8String<Memory>::iter() const
+{
+    return { cursor_begin() };
+}
+template <typename Memory>
+inline typename U8String<Memory>::IterInv U8String<Memory>::iter_inv()
+{
+    return { cursor_end() };
+}
+template <typename Memory>
+inline typename U8String<Memory>::CIterInv U8String<Memory>::iter_inv() const
+{
+    return { cursor_end() };
+}
+template <typename Memory>
+inline auto U8String<Memory>::range()
+{
+    return cursor_begin().as_range();
+}
+template <typename Memory>
+inline auto U8String<Memory>::range() const
+{
+    return cursor_begin().as_range();
+}
+template <typename Memory>
+inline auto U8String<Memory>::range_inv()
+{
+    return cursor_end().as_range_inv();
+}
+template <typename Memory>
+inline auto U8String<Memory>::range_inv() const
+{
+    return cursor_end().as_range_inv();
 }
 
 // syntax

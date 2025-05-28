@@ -49,6 +49,9 @@ struct SKR_RUNTIME_API sugoi_storage_t {
 
     void allocate_unsafe(sugoi_group_t* group, EIndex count, sugoi_view_callback_t callback, void* u);
     void allocate(sugoi_group_t* group, EIndex count, sugoi_view_callback_t callback, void* u);
+    void reserve_entities(EIndex count);
+    void allocate_reserved_unsafe(sugoi_group_t* group, const sugoi_entity_t* ents, EIndex count, sugoi_view_callback_t callback, void* u);
+    void allocate_reserved(sugoi_group_t* group, const sugoi_entity_t* ents, EIndex count, sugoi_view_callback_t callback, void* u);
 
     void get_linked_recursive(const sugoi_chunk_view_t& view, sugoi::cache_t<sugoi_entity_t>& result);
     void linked_to_prefab(const sugoi_entity_t* src, uint32_t size, bool keepExternal = true);
@@ -82,6 +85,7 @@ struct SKR_RUNTIME_API sugoi_storage_t {
     void filter_in_single_group(const sugoi_parameters_t* params, const sugoi_group_t* group, const sugoi_filter_t& filter, const sugoi_meta_filter_t& meta, sugoi_custom_filter_callback_t customFilter, void* u1, sugoi_view_callback_t callback, void* u);
     // TODO: add this to scheduler API
     void filter_safe(const sugoi_filter_t& filter, const sugoi_meta_filter_t& meta, sugoi_view_callback_t callback, void* u);
+    void query_unsafe(const sugoi_query_t* query, sugoi_view_callback_t callback, void* u);
     void query(const sugoi_query_t* query, sugoi_view_callback_t callback, void* u);
     void query_groups(const sugoi_query_t* query, sugoi_group_callback_t callback, void* u);
     
@@ -109,6 +113,7 @@ struct SKR_RUNTIME_API sugoi_storage_t {
     void validate(sugoi_entity_set_t& meta);
     void defragment();
     void pack_entities();
+    void redirect(sugoi_entity_t* ents, sugoi_entity_t* newEnts, EIndex n);
 
     void make_alias(skr::StringView name, skr::StringView alias);
     

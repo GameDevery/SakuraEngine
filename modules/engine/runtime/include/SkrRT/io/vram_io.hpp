@@ -22,7 +22,7 @@ namespace io {
 struct IVRAMService;
 using VRAMServiceDescriptor = skr_vram_io_service_desc_t;
 
-struct SKR_RUNTIME_API IVRAMIOResource : public skr::SInterface
+struct SKR_RUNTIME_API IVRAMIOResource : public skr::IRCAble
 {
     virtual ~IVRAMIOResource() SKR_NOEXCEPT;
 };
@@ -95,12 +95,12 @@ struct SKR_RUNTIME_API ITilesVRAMRequest : public IVRAMIORequest
     virtual ~ITilesVRAMRequest() SKR_NOEXCEPT;
 };
 
-using VRAMIOResourceId = SObjectPtr<IVRAMIOResource>;
-using VRAMIOBufferId = SObjectPtr<IVRAMIOBuffer>;
-using VRAMIOTextureId = SObjectPtr<IVRAMIOTexture>;
-using SlicesIORequestId = SObjectPtr<ISlicesVRAMRequest>;
-using TilesIORequestId = SObjectPtr<ITilesVRAMRequest>;
-using BlocksVRAMRequestId = SObjectPtr<IBlocksVRAMRequest>;
+using VRAMIOResourceId = RC<IVRAMIOResource>;
+using VRAMIOBufferId = RC<IVRAMIOBuffer>;
+using VRAMIOTextureId = RC<IVRAMIOTexture>;
+using SlicesIORequestId = RC<ISlicesVRAMRequest>;
+using TilesIORequestId = RC<ITilesVRAMRequest>;
+using BlocksVRAMRequestId = RC<IBlocksVRAMRequest>;
 
 struct SKR_RUNTIME_API IVRAMService : public IIOService
 {

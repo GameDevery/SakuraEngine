@@ -6,7 +6,7 @@
 #include "SkrProfile/profile.h"
 
 namespace skr {
-namespace log {
+namespace logging {
 
 ThreadToken::ThreadToken(LogQueue& q) SKR_NOEXCEPT
     : ptok_(q.queue_), backtraces_(4)
@@ -65,11 +65,11 @@ void LogQueue::push(LogEvent ev, const skr::String&& what, bool backtrace) SKR_N
     
     auto element = LogElement(ev, ptok_);
 
-    element.format = skr::move(what);
+    element.format = std::move(what);
     element.need_format = false;
     
     if (!backtrace)
-        queue_.enqueue(ptok_->ptok_, skr::move(element));
+        queue_.enqueue(ptok_->ptok_, std::move(element));
     else
         ptok_->backtraces_.add(element);
 }
@@ -81,11 +81,11 @@ void LogQueue::push(LogEvent ev, const skr::StringView format, ArgsList&& args, 
     auto element = LogElement(ev, ptok_);
 
     element.format = format;
-    element.args = skr::move(args);
+    element.args = std::move(args);
     element.need_format = true;
 
     if (!backtrace)
-        queue_.enqueue(ptok_->ptok_, skr::move(element));
+        queue_.enqueue(ptok_->ptok_, std::move(element));
     else
         ptok_->backtraces_.add(element);
 }
@@ -163,7 +163,7 @@ ThreadToken* LogQueue::on_push(const LogEvent& ev, bool backtrace) SKR_NOEXCEPT
         tids_.add(tid);
         skr_rw_mutex_release_w(&tids_mutex_);
 
-        thread_id_map_.emplace(tid, skr::SPtr<ThreadToken>::Create(*this));
+        thread_id_map_.emplace(tid, skr::SP<ThreadToken>::New(*this));
     }
     
     if (auto token = thread_id_map_[tid].get())
@@ -182,7 +182,7 @@ ThreadToken* LogQueue::on_push(const LogEvent& ev, bool backtrace) SKR_NOEXCEPT
 }
 
 LogWorker::LogWorker(const ServiceThreadDesc& desc) SKR_NOEXCEPT
-    : AsyncService(desc), queue_(SPtr<LogQueue>::Create())
+    : AsyncService(desc), queue_(SP<LogQueue>::New())
 {
 
 }
@@ -297,7 +297,7 @@ void LogWorker::patternAndSink(const LogElement& e) SKR_NOEXCEPT
         const auto& what = e.need_format ? 
             formatter_.format(e.format, e.args) :
             e.format;
-        skr::log::LogManager::Get()->PatternAndSink(e.event, what.view());
+        skr::logging::LogManager::Get()->PatternAndSink(e.event, what.view());
         
         if (auto should_backtrace = LogManager::Get()->ShouldBacktrace(e.event))
         {
@@ -313,7 +313,7 @@ void LogWorker::patternAndSink(const LogElement& e) SKR_NOEXCEPT
                         const auto& bt_what = bt_e.need_format ? 
                             formatter_.format(bt_e.format, bt_e.args) :
                             bt_e.format;
-                        skr::log::LogManager::Get()->PatternAndSink(bt_e.event, bt_what.view());
+                        skr::logging::LogManager::Get()->PatternAndSink(bt_e.event, bt_what.view());
                     }
                 }
                 token->backtraces_.zero();
@@ -324,12 +324,12 @@ void LogWorker::patternAndSink(const LogElement& e) SKR_NOEXCEPT
     }
 }
 
-} } // namespace skr::log
+} } // namespace skr::logging
 
 SKR_EXTERN_C 
 void skr_log_flush()
 {
-    auto worker = skr::log::LogManager::Get()->TryGetWorker();
+    auto worker = skr::logging::LogManager::Get()->TryGetWorker();
     if (worker)
     {
         auto tid = skr_current_thread_id();
@@ -340,13 +340,13 @@ void skr_log_flush()
 SKR_EXTERN_C
 void skr_log_initialize_async_worker()
 {
-    skr::log::LogManager::Get()->InitializeAsyncWorker();
+    skr::logging::LogManager::Get()->InitializeAsyncWorker();
 
-    auto worker = skr::log::LogManager::Get()->TryGetWorker();
+    auto worker = skr::logging::LogManager::Get()->TryGetWorker();
     SKR_ASSERT(worker && "worker must not be null & something is wrong with initialization!");
 
     ::atexit(+[]() {
-        auto worker = skr::log::LogManager::Get()->TryGetWorker();
+        auto worker = skr::logging::LogManager::Get()->TryGetWorker();
         SKR_ASSERT(!worker && "worker must be null & properly stopped at exit!");
     });
 }

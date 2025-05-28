@@ -149,9 +149,9 @@ struct SKR_RUNTIME_API DStorageVRAMReader final
     SkrDStorageQueueId f2v_queues[SKR_ASYNC_SERVICE_PRIORITY_COUNT];
     SkrDStorageQueueId m2v_queue;
 
-    IOBatchQueue                                fetched_batches[SKR_ASYNC_SERVICE_PRIORITY_COUNT];
-    IOBatchQueue                                processed_batches[SKR_ASYNC_SERVICE_PRIORITY_COUNT];
-    skr::Vector<skr::SObjectPtr<DStorageEvent>> submitted[SKR_ASYNC_SERVICE_PRIORITY_COUNT];
+    IOBatchQueue                        fetched_batches[SKR_ASYNC_SERVICE_PRIORITY_COUNT];
+    IOBatchQueue                        processed_batches[SKR_ASYNC_SERVICE_PRIORITY_COUNT];
+    skr::Vector<skr::RC<DStorageEvent>> submitted[SKR_ASYNC_SERVICE_PRIORITY_COUNT];
 
     SmartPoolPtr<DStorageEvent> events[SKR_ASYNC_SERVICE_PRIORITY_COUNT] = { nullptr, nullptr, nullptr };
 };

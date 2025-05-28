@@ -9,14 +9,14 @@ sugoi_entity_debug_proxy_t dummy;
 namespace sugoi
 {
 
-void EntityRegistry::reserve(size_t size)
+void EntityRegistry::reserve(EIndex size)
 {
     mutex.lock();
     SKR_DEFER({ mutex.unlock(); });
     entries.reserve(size);
 }
 
-void EntityRegistry::reserve_free_entries(size_t size)
+void EntityRegistry::reserve_free_entries(EIndex size)
 {
     mutex.lock();
     SKR_DEFER({ mutex.unlock(); });
@@ -30,6 +30,19 @@ void EntityRegistry::reset()
 
     entries.clear();
     freeEntries.clear();
+}
+
+void EntityRegistry::reserve_external(EIndex size)
+{
+    mutex.lock();
+    SKR_DEFER({ mutex.unlock(); });
+    SKR_ASSERT(entries.size() == 0 && freeEntries.size() == 0 && externalReserved == 0);
+    entries.resize_unsafe(size);
+    forloop (i, 0, size)
+    {
+        entries[i] = { nullptr, 0, kEntityTransientVersion };
+    }
+    externalReserved = size;
 }
 
 void EntityRegistry::shrink()
@@ -129,6 +142,12 @@ void EntityRegistry::free_entities(const sugoi_entity_t* dst, EIndex count)
     {
         auto id = e_id(dst[i]);
         Entry& freeData = entries[id];
+        SKR_ASSERT(e_version(dst[i]) == freeData.version);
+        if (id < externalReserved)
+        {
+            freeData = { nullptr, 0, kEntityTransientVersion };
+            continue;
+        }
         freeData = { nullptr, 0, e_inc_version(freeData.version) };
         freeEntries.add(id);
     }
@@ -166,6 +185,25 @@ void EntityRegistry::fill_entities(const sugoi_chunk_view_t& view, const sugoi_e
         Entry& e = entries[e_id(src[i])];
         e.indexInChunk = view.start + i;
         e.chunk = view.chunk;
+    }
+}
+
+void EntityRegistry::fill_entities_external(const sugoi_chunk_view_t& view, const sugoi_entity_t* src)
+{
+    SkrZoneScopedN("sugoi_storage_t::fill_entities_external");
+    
+    mutex.lock();
+    SKR_DEFER({ mutex.unlock(); });
+
+    auto ents = (sugoi_entity_t*)view.chunk->get_entities() + view.start;
+    memcpy(ents, src, view.count * sizeof(sugoi_entity_t));
+    forloop (i, 0, view.count)
+    {
+        Entry& e = entries[e_id(src[i])];
+        SKR_ASSERT(e.chunk == nullptr);
+        e.indexInChunk = view.start + i;
+        e.chunk = view.chunk;
+        e.version = e_version(src[i]);
     }
 }
 

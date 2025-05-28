@@ -7,7 +7,7 @@
 
 namespace skr
 {
-namespace log
+namespace logging
 {
 
 struct FormatArg {
@@ -144,15 +144,15 @@ protected:
 
 static constexpr uint64_t kAttributeCount = LogPattern::kAttributeCount;
 
-} // namespace log
+} // namespace logging
 } // namespace skr
 
 namespace skr::container
 {
 
 template <>
-struct Formatter<skr::log::FormatArg> {
-    inline static void format(String& out, const skr::log::FormatArg& value, StringView spec)
+struct Formatter<skr::logging::FormatArg> {
+    inline static void format(String& out, const skr::logging::FormatArg& value, StringView spec)
     {
         value.get_formatter()(out, value, spec);
     }

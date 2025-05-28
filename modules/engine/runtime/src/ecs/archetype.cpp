@@ -170,8 +170,8 @@ sugoi::archetype_t* sugoi_storage_t::constructArchetype(const sugoi_type_set_t& 
             new_type = archetypes.insert({ archetype.type, &archetype }).first->second;
             pimpl->archetype_timestamp += 1;
         }, 
-        [&](){
-            return pimpl->groups_timestamp;
+        [&](){ 
+            return pimpl->archetype_timestamp;
         });
     }
     return new_type;
@@ -225,7 +225,7 @@ sugoi::archetype_t* sugoi_storage_t::cloneArchetype(archetype_t *src)
             pimpl->archetype_timestamp += 1;
         }, 
         [&](){
-            return pimpl->groups_timestamp;
+            return pimpl->archetype_timestamp;
         });
     }
     return new_type;
@@ -423,7 +423,8 @@ void sugoi_group_t::add_chunk(sugoi_chunk_t* chunk)
     size += chunk->count;
     chunk->structure = archetype;
     chunk->group = this;
-    if(chunk->count < chunk->get_capacity())
+    bool isFull      = chunk->count == chunk->get_capacity();
+    if (!isFull || firstFree == (uint32_t)chunks.size())
     {
         chunk->index = (uint32_t)chunks.size();
         chunks.push_back(chunk);
@@ -431,15 +432,17 @@ void sugoi_group_t::add_chunk(sugoi_chunk_t* chunk)
     else
     {
         chunks.resize(chunks.size() + 1);
-        for(uint32_t i = firstFree; i < (uint32_t)chunks.size() - 1; ++i)
+        for (uint32_t i = firstFree; i < (uint32_t)chunks.size() - 1; ++i)
         {
-            chunks[i]->index = i+1;
-            chunks[i + 1] = chunks[i];
+            auto j = (uint32_t)chunks.size() - 1 + firstFree - i;
+            chunks[j] = chunks[j - 1];
+            chunks[j]->index = j;
         }
         chunks[firstFree] = chunk;
         chunk->index = firstFree;
-        firstFree++;
     }
+    if (isFull)
+        firstFree++;
 }
 
 void sugoi_group_t::resize_chunk(sugoi_chunk_t* chunk, EIndex newSize)
@@ -467,19 +470,15 @@ void sugoi_group_t::remove_chunk(sugoi_chunk_t* chunk)
 {
     using namespace sugoi;
     size -= chunk->count;
-    if(chunk->index < firstFree)
-        firstFree--;
-    for(uint32_t i = chunk->index; i < (uint32_t)chunks.size(); ++i)
+    for(uint32_t i = chunk->index; i < (uint32_t)chunks.size() - 1; ++i)
     {
-        if (i + 1 < (uint32_t)chunks.size())
-        {
-            chunks[i] = chunks[i + 1];
-            chunks[i]->index = i;
-        }
-        else
-            chunks.pop_back();
+        chunks[i] = chunks[i + 1];
+        chunks[i]->index = i;
     }
+    chunks.pop_back();
     chunk->group = nullptr;
+    if (chunk->index < firstFree)
+        firstFree--;
 }
 
 void sugoi_group_t::mark_free(sugoi_chunk_t* chunk)
@@ -497,9 +496,12 @@ void sugoi_group_t::mark_full(sugoi_chunk_t* chunk)
     using namespace sugoi;
     
     SKR_ASSERT(chunk->index >= firstFree);
-    auto& slot = chunks[chunk->index];
-    std::swap(chunks[firstFree]->index, chunk->index);
-    std::swap(chunks[firstFree], slot);
+    if (chunk->index != firstFree)
+    {
+        auto& slot = chunks[chunk->index];
+        std::swap(chunks[firstFree]->index, chunk->index);
+        std::swap(chunks[firstFree], slot);
+    }
     firstFree++;
 }
 
@@ -689,6 +691,11 @@ int sugoiG_share_components(const sugoi_group_t* group, const sugoi_type_set_t* 
 void sugoiG_get_type(const sugoi_group_t* group, sugoi_entity_type_t* type)
 {
     *type = group->type;
+}
+
+uint32_t sugoiG_get_size(const sugoi_group_t* group)
+{
+    return group->size;
 }
 
 uint32_t sugoiG_get_stable_order(const sugoi_group_t* group, sugoi_type_index_t localType)

@@ -9,7 +9,7 @@
 
 namespace skr
 {
-namespace log
+namespace logging
 {
 
 using LogPatternMap = skr::ParallelFlatHashMap<skr_guid_t, skr::unique_ptr<LogPattern>, skr::Hash<skr_guid_t>>;
@@ -42,7 +42,7 @@ struct SKR_CORE_API LogManager {
     skr::unique_ptr<LogWorker>        worker_    = nullptr;
     LogPatternMap                     patterns_  = {};
     LogSinkMap                        sinks_     = {};
-    skr::unique_ptr<skr::log::Logger> logger_    = nullptr;
+    skr::unique_ptr<skr::logging::Logger> logger_    = nullptr;
 
     TSCNS tscns_ = {};
     struct DateTime {
@@ -54,5 +54,5 @@ struct SKR_CORE_API LogManager {
     } datetime_ = {};
 };
 
-} // namespace log
+} // namespace logging
 } // namespace skr

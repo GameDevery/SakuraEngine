@@ -3,7 +3,7 @@
 #include "SkrCore/log/log_formatter.hpp"
 
 namespace skr {
-namespace log {
+namespace logging {
 
 template<typename Arg>
 struct IsCStringFamily {
@@ -44,18 +44,18 @@ struct SKR_CORE_API Logger
             if constexpr (copyable)
             {
                 ArgsList args_list = {};
-                args_list.push(skr::forward<Args>(args)...);
-                sucess = tryPushToQueue(ev, format, skr::move(args_list));
+                args_list.push(std::forward<Args>(args)...);
+                sucess = tryPushToQueue(ev, format, std::move(args_list));
             }
             else // foramt inplace, expensive
             {
-                skr::String s = skr::format(format, skr::forward<Args>(args)...);
-                sucess = tryPushToQueue(ev, skr::move(s));
+                skr::String s = skr::format(format, std::forward<Args>(args)...);
+                sucess = tryPushToQueue(ev, std::move(s));
             }
         }
         if (!sucess && !(ev.get_level() == LogLevel::kBackTrace)) // sink immediate
         {
-            skr::String s = skr::format(format, skr::forward<Args>(args)...);
+            skr::String s = skr::format(format, std::forward<Args>(args)...);
             sinkDefaultImmediate(ev, s.view());
         }
         onLog(ev);
@@ -92,4 +92,4 @@ private:
     skr::String name;
 };
 
-} } // namespace skr::log
+} } // namespace skr::logging

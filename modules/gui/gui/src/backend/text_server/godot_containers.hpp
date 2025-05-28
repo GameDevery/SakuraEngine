@@ -267,7 +267,7 @@ struct Hasher<Variant> {
 };
 
 template <class T>
-struct Ref : public skr::SPtr<T> {
+struct Ref : public skr::SP<T> {
     Ref() = default;
     Ref(T* p_ptr)
     {
@@ -277,21 +277,21 @@ struct Ref : public skr::SPtr<T> {
     Ref(Ref<T>&& p_other)                    = default;
     Ref<T>& operator=(const Ref<T>& p_other) = default;
     Ref<T>& operator=(Ref<T>&& p_other)      = default;
-    Ref(const skr::SPtr<T>& p_other)
-        : skr::SPtr<T>(p_other)
+    Ref(const skr::SP<T>& p_other)
+        : skr::SP<T>(p_other)
     {
     }
-    Ref(skr::SPtr<T>&& p_other)
-        : skr::SPtr<T>(p_other)
+    Ref(skr::SP<T>&& p_other)
+        : skr::SP<T>(p_other)
     {
     }
-    Ref<T>& operator=(const skr::SPtr<T>& p_other)
+    Ref<T>& operator=(const skr::SP<T>& p_other)
     {
-        skr::SPtr<T>::operator=(p_other);
+        skr::SP<T>::operator=(p_other);
     }
-    Ref<T>& operator=(skr::SPtr<T>&& p_other)
+    Ref<T>& operator=(skr::SP<T>&& p_other)
     {
-        skr::SPtr<T>::operator=(p_other);
+        skr::SP<T>::operator=(p_other);
     }
 
     void instantiate()

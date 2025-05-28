@@ -26,7 +26,7 @@ static void ReadBuffer(SBinaryReader* reader, T* buffer, uint32_t count)
     reader->read((void*)buffer, sizeof(T) * count);
 }
 
-static void serialize_impl(const sugoi_chunk_view_t& view, sugoi_type_index_t type, EIndex offset, uint32_t size, uint32_t elemSize, SBinaryWriter* s, SBinaryReader* ds, void (*serialize)(sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, SBinaryWriter* writer), void (*deserialize)(sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, SBinaryReader* writer))
+static void serialize_impl(const sugoi_chunk_view_t& view, sugoi_type_index_t type, EIndex offset, uint32_t size, uint32_t elemSize, SBinaryWriter* s, SBinaryReader* ds, void (*serialize)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, SBinaryWriter* writer), void (*deserialize)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, SBinaryReader* writer))
 {
     using namespace sugoi;
 
@@ -45,7 +45,7 @@ static void serialize_impl(const sugoi_chunk_view_t& view, sugoi_type_index_t ty
                 skr::bin_write(s, (uint32_t)padding);
                 skr::bin_write(s, (uint32_t)length);
                 if (serialize)
-                    serialize(view.chunk, view.start + i, (char*)array->BeginX, (EIndex)(length / elemSize), s);
+                    serialize(type, view.chunk, view.start + i, (char*)array->BeginX, (EIndex)(length / elemSize), s);
                 else
                     WriteBuffer(s, (uint8_t*)array->BeginX, static_cast<uint32_t>(length));
             }
@@ -70,7 +70,7 @@ static void serialize_impl(const sugoi_chunk_view_t& view, sugoi_type_index_t ty
                     array->CapacityX = (char*)array + size;
                 }
                 if (deserialize)
-                    deserialize(view.chunk, view.start + i, (char*)array->BeginX, (EIndex)length, ds);
+                    deserialize(type, view.chunk, view.start + i, (char*)array->BeginX, (EIndex)length, ds);
                 else
                     ReadBuffer(ds, (uint8_t*)array->BeginX, length);
             }
@@ -81,14 +81,14 @@ static void serialize_impl(const sugoi_chunk_view_t& view, sugoi_type_index_t ty
         if (isSerialize)
         {
             if (serialize)
-                serialize(view.chunk, view.start, src, view.count, s);
+                serialize(type, view.chunk, view.start, src, view.count, s);
             else
                 WriteBuffer(s, src, size * view.count);
         }
         else
         {
             if (deserialize)
-                deserialize(view.chunk, view.start, src, view.count, ds);
+                deserialize(type, view.chunk, view.start, src, view.count, ds);
             else
                 ReadBuffer(ds, src, size * view.count);
         }

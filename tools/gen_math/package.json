@@ -1,0 +1,13 @@
+{
+  "name": "merge_natvis_ts",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {},
+  "module": "index.ts",
+  "type": "module"
+}

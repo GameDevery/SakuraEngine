@@ -35,7 +35,7 @@ using RAMServiceDescriptor = skr_ram_io_service_desc_t;
 struct SKR_RUNTIME_API IRAMIOBuffer : public skr::IBlob {
     virtual ~IRAMIOBuffer() SKR_NOEXCEPT;
 };
-using RAMIOBufferId = SObjectPtr<IRAMIOBuffer>;
+using RAMIOBufferId = RC<IRAMIOBuffer>;
 
 struct SKR_RUNTIME_API IBlocksRAMRequest : public IIORequest {
     virtual ~IBlocksRAMRequest() SKR_NOEXCEPT;
@@ -52,7 +52,7 @@ struct SKR_RUNTIME_API IBlocksRAMRequest : public IIORequest {
     virtual void                                 reset_compressed_blocks() SKR_NOEXCEPT                         = 0;
 #pragma endregion
 };
-using BlocksRAMRequestId = SObjectPtr<IBlocksRAMRequest>;
+using BlocksRAMRequestId = RC<IBlocksRAMRequest>;
 
 struct SKR_RUNTIME_API IRAMService : public IIOService {
     [[nodiscard]] static IRAMService* create(const RAMServiceDescriptor* desc) SKR_NOEXCEPT;

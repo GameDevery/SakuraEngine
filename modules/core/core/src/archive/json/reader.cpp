@@ -42,6 +42,7 @@ struct _ReaderHelper {
         }
 
         auto FoundType = yyjson_get_type(found);
+        auto SubType = yyjson_get_subtype(found);
         IS_TYPE(_JsonReader::ValueType*)
             value = (_JsonReader::ValueType*)found;
         else IS_TYPE(bool)
@@ -78,13 +79,39 @@ struct _ReaderHelper {
         {
             if (FoundType != YYJSON_TYPE_NUM)
                 return JsonReadError::TypeMismatch;
-            value = yyjson_get_real(found);
+            if (SubType == YYJSON_SUBTYPE_SINT)
+            {
+                int64_t v = yyjson_get_sint(found);
+                value = static_cast<float>(v);
+            }
+            else if (SubType == YYJSON_SUBTYPE_UINT)
+            {
+                uint64_t v = yyjson_get_uint(found);
+                value = static_cast<float>(v);
+            }
+            else
+            {
+                value = yyjson_get_real(found);
+            }
         }
         else IS_TYPE(double)
         {
             if (FoundType != YYJSON_TYPE_NUM)
                 return JsonReadError::TypeMismatch;
-            value = yyjson_get_real(found);
+            if (SubType == YYJSON_SUBTYPE_SINT)
+            {
+                int64_t v = yyjson_get_sint(found);
+                value = static_cast<double>(v);
+            }
+            else if (SubType == YYJSON_SUBTYPE_UINT)
+            {
+                uint64_t v = yyjson_get_uint(found);
+                value = static_cast<double>(v);
+            }
+            else
+            {
+                value = yyjson_get_real(found);
+            }
         }
         else IS_TYPE(skr::String)
         {

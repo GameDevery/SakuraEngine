@@ -1,12 +1,13 @@
 #include "SkrBase/atomic/atomic.h"
 #include "SkrCore/blob.hpp"
 #include "SkrCore/memory/memory.h"
-#include "SkrContainersDef/sptr.hpp"
 
 namespace skr
 {
 const char* kSimpleBlobName = "SimpleBlob";
 struct SimpleBlob : public IBlob {
+    SKR_RC_IMPL(override);
+    SKR_RC_DELETER_IMPL_DEFAULT(override)
 public:
     SimpleBlob(const uint8_t* data, uint64_t size, uint64_t alignment, bool move, const char* name) SKR_NOEXCEPT
         : size(size),
@@ -36,31 +37,19 @@ public:
     uint8_t* get_data() const SKR_NOEXCEPT { return bytes; }
     uint64_t get_size() const SKR_NOEXCEPT { return size; }
 
-public:
-    uint32_t add_refcount()
-    {
-        return 1 + skr_atomic_fetch_add_relaxed(&rc, 1);
-    }
-    uint32_t release()
-    {
-        skr_atomic_fetch_add_relaxed(&rc, -1);
-        return skr_atomic_load_acquire(&rc);
-    }
-
 private:
-    uint64_t   size      = 0;
-    uint64_t   alignment = 0;
-    uint8_t*   bytes     = nullptr;
-    SAtomicU32 rc        = 0;
+    uint64_t size      = 0;
+    uint64_t alignment = 0;
+    uint8_t* bytes     = nullptr;
 };
 } // namespace skr
 
 skr::BlobId skr::IBlob::Create(const uint8_t* data, uint64_t size, bool move, const char* name) SKR_NOEXCEPT
 {
-    return skr::SObjectPtr<skr::SimpleBlob>::Create(data, size, alignof(uint8_t), move, name);
+    return skr::RC<skr::SimpleBlob>::New(data, size, alignof(uint8_t), move, name);
 }
 
 skr::BlobId skr::IBlob::CreateAligned(const uint8_t* data, uint64_t size, uint64_t alignment, bool move, const char* name) SKR_NOEXCEPT
 {
-    return skr::SObjectPtr<skr::SimpleBlob>::Create(data, size, alignment, move, name);
+    return skr::RC<skr::SimpleBlob>::New(data, size, alignment, move, name);
 }

@@ -2,7 +2,6 @@
 #include "SkrBase/misc/defer.hpp"
 #include "SkrCore/memory/memory.h"
 #include "SkrBase/misc/debug.h" 
-#include "SkrContainers/sptr.hpp"
 #include "SkrImageCoder/skr_image_coder.h"
 #include "image_coder_png.hpp"
 #include "image_coder_jpeg.hpp"
@@ -11,14 +10,14 @@
 namespace skr
 {
 
-skr::SObjectPtr<IImageEncoder> IImageEncoder::Create(EImageCoderFormat format) SKR_NOEXCEPT
+skr::RC<IImageEncoder> IImageEncoder::Create(EImageCoderFormat format) SKR_NOEXCEPT
 {
     switch (format)
     {
     case IMAGE_CODER_FORMAT_PNG:
-        return SObjectPtr<skr::PNGImageEncoder>::Create();
+        return RC<skr::PNGImageEncoder>::New();
     case IMAGE_CODER_FORMAT_JPEG:
-        return SObjectPtr<skr::JPEGImageEncoder>::Create();
+        return RC<skr::JPEGImageEncoder>::New();
     case IMAGE_CODER_FORMAT_GrayScaleJPEG:
     case IMAGE_CODER_FORMAT_BMP:
     case IMAGE_CODER_FORMAT_ICO:
@@ -33,16 +32,16 @@ skr::SObjectPtr<IImageEncoder> IImageEncoder::Create(EImageCoderFormat format) S
     }
 }
 
-skr::SObjectPtr<IImageDecoder> IImageDecoder::Create(EImageCoderFormat format) SKR_NOEXCEPT
+skr::RC<IImageDecoder> IImageDecoder::Create(EImageCoderFormat format) SKR_NOEXCEPT
 {
     switch (format)
     {
     case IMAGE_CODER_FORMAT_PNG:
-        return SObjectPtr<skr::PNGImageDecoder>::Create();
+        return RC<skr::PNGImageDecoder>::New();
     case IMAGE_CODER_FORMAT_JPEG:
-        return SObjectPtr<skr::JPEGImageDecoder>::Create();
+        return RC<skr::JPEGImageDecoder>::New();
     case IMAGE_CODER_FORMAT_BMP:
-        return SObjectPtr<skr::BMPImageDecoder>::Create();
+        return RC<skr::BMPImageDecoder>::New();
     case IMAGE_CODER_FORMAT_GrayScaleJPEG:
     case IMAGE_CODER_FORMAT_ICO:
     case IMAGE_CODER_FORMAT_EXR:

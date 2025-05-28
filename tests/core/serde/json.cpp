@@ -87,15 +87,21 @@ TEST_CASE_METHOD(JSONSerdeTests, "types")
     // float2/3/4
     {
         skr_float2_t v2 = { 1.f, 2.f };
-        TestTypeSerde(u8"float2", v2, DEFAULT_EQ);
+        TestTypeSerde(u8"float2", v2, +[](const skr_float2_t& v1, const skr_float2_t& v2){
+            return all(v1 == v2);
+        });
     }
     {
         skr_float3_t v3 = { 1.f, 2.f, 3.f };
-        TestTypeSerde(u8"float3", v3, DEFAULT_EQ);
+        TestTypeSerde(u8"float3", v3, +[](const skr_float3_t& v1, const skr_float3_t& v2){
+            return all(v1 == v2);
+        });
     }
     {
         skr_float4_t v4 = { 1.f, 2.f, 3.f, 4.f };
-        TestTypeSerde(u8"float4", v4, DEFAULT_EQ);
+        TestTypeSerde(u8"float4", v4, +[](const skr_float4_t& v1, const skr_float4_t& v2){
+            return all(v1 == v2);
+        });
     }
 }
 

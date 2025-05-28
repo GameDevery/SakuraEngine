@@ -1,24 +1,42 @@
 #pragma once
 #include "SkrBase/config.h"
 
-#define SKR_MD5_DIGEST_LENGTH 128 / 8
-typedef struct skr_md5_t {
-    uint8_t digest[SKR_MD5_DIGEST_LENGTH];
-} skr_md5_t;
-
-typedef struct skr_md5_u32x4_view_t {
-    uint32_t a;
-    uint32_t b;
-    uint32_t c;
-    uint32_t d;
-} skr_md5_u32x4_view_t;
-
 #ifdef __cplusplus
-namespace skr
-{
-using MD5 = skr_md5_t;
-}
-#endif
+    #include "./impl/md5.hpp"
+
+using skr_md5_t = skr::MD5;
 
 SKR_EXTERN_C bool skr_parse_md5(const char8_t* str32, skr_md5_t* out_md5);
 SKR_EXTERN_C void skr_make_md5(const char8_t* str, uint32_t str_size, skr_md5_t* out_md5);
+
+namespace skr
+{
+inline MD5 MD5::Parse(const char8_t* str)
+{
+    MD5 result;
+    if (skr_parse_md5(str, &result))
+    {
+        return result;
+    }
+    else
+    {
+        return {};
+    }
+}
+inline MD5 MD5::Make(const char8_t* str, uint32_t str_size)
+{
+    MD5 result;
+    skr_make_md5(str, str_size, &result);
+    return result;
+}
+
+} // namespace skr
+
+#else
+typedef struct skr_md5_t {
+    uint8_t digest[128 / 8];
+} skr_md5_t;
+
+SKR_EXTERN_C bool skr_parse_md5(const char8_t* str32, skr_md5_t* out_md5);
+SKR_EXTERN_C void skr_make_md5(const char8_t* str, uint32_t str_size, skr_md5_t* out_md5);
+#endif

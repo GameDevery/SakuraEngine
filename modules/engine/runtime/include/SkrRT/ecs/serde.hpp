@@ -10,25 +10,25 @@ void SetSerdeCallback(sugoi_type_description_t& desc)
 {
     if constexpr (skr::HasBinWrite<C>)
     {
-        desc.callback.serialize = +[](sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, SBinaryWriter* writer) {
+        desc.callback.serialize = +[](sugoi_type_index_t, sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, SBinaryWriter* writer) {
             ::skr::bin_write<C>(writer, *(C*)data);
         };
     }
     if constexpr (skr::HasBinRead<C>)
     {
-        desc.callback.deserialize = +[](sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, SBinaryReader* reader) {
+        desc.callback.deserialize = +[](sugoi_type_index_t, sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, SBinaryReader* reader) {
             ::skr::bin_read<C>(reader, *(C*)data);
         };
     }
     if constexpr (skr::HasJsonWrite<C>)
     {
-        desc.callback.serialize_text = +[](sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, skr::archive::JsonWriter* writer) {
+        desc.callback.serialize_text = +[](sugoi_type_index_t, sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, skr::archive::JsonWriter* writer) {
             ::skr::json_write<C>(writer, *(C*)data);
         };
     }
     if constexpr (skr::HasJsonRead<C>)
     {
-        desc.callback.deserialize_text = +[](sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, skr::archive::JsonReader* reader) {
+        desc.callback.deserialize_text = +[](sugoi_type_index_t, sugoi_chunk_t* chunk, EIndex index, char* data, EIndex count, skr::archive::JsonReader* reader) {
             ::skr::json_read(reader, *(C*)data);
         };
     }

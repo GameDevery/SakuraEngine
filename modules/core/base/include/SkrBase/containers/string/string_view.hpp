@@ -261,22 +261,32 @@ inline constexpr bool U8StringView<TSize>::operator!=(const U8StringView& rhs) c
 template <typename TSize>
 inline constexpr bool U8StringView<TSize>::operator>(const U8StringView& rhs) const
 {
-    return CharTraits::compare(_data, rhs._data, _size) > 0;
+    if (_size < rhs._size) { return false; }
+    else if (_size > rhs._size) { return true; }
+    else if (_size == 0 && rhs._size == 0) { return false; }
+    else {
+        return CharTraits::compare(_data, rhs._data, _size) > 0;
+    }
 }
 template <typename TSize>
 inline constexpr bool U8StringView<TSize>::operator<(const U8StringView& rhs) const
 {
-    return CharTraits::compare(_data, rhs._data, _size) < 0;
+    if (_size > rhs._size) { return false; }
+    else if (_size < rhs._size) { return true; }
+    else if (_size == 0 && rhs._size == 0) { return false; }
+    else {
+        return CharTraits::compare(_data, rhs._data, _size) < 0;
+    }
 }
 template <typename TSize>
 inline constexpr bool U8StringView<TSize>::operator>=(const U8StringView& rhs) const
 {
-    return CharTraits::compare(_data, rhs._data, _size) >= 0;
+    return !((*this) < rhs);
 }
 template <typename TSize>
 inline constexpr bool U8StringView<TSize>::operator<=(const U8StringView& rhs) const
 {
-    return CharTraits::compare(_data, rhs._data, _size) <= 0;
+    return !((*this) > rhs);
 }
 
 // getter

@@ -61,7 +61,7 @@ struct SKR_IMAGE_CODER_API IImageInterface : public skr::IBlob {
 };
 
 struct SKR_IMAGE_CODER_API IImageEncoder : public IImageInterface {
-    static skr::SObjectPtr<IImageEncoder> Create(EImageCoderFormat format) SKR_NOEXCEPT;
+    static skr::RC<IImageEncoder> Create(EImageCoderFormat format) SKR_NOEXCEPT;
 
     virtual ~IImageEncoder() SKR_NOEXCEPT = default;
 
@@ -69,16 +69,16 @@ struct SKR_IMAGE_CODER_API IImageEncoder : public IImageInterface {
                             EImageCoderColorFormat format, uint32_t bit_depth) SKR_NOEXCEPT = 0;
     virtual bool encode() SKR_NOEXCEPT                                                      = 0;
 };
-using ImageEncoderId = skr::SObjectPtr<IImageEncoder>;
+using ImageEncoderId = skr::RC<IImageEncoder>;
 
 struct SKR_IMAGE_CODER_API IImageDecoder : public IImageInterface {
-    static skr::SObjectPtr<IImageDecoder> Create(EImageCoderFormat format) SKR_NOEXCEPT;
+    static skr::RC<IImageDecoder> Create(EImageCoderFormat format) SKR_NOEXCEPT;
 
     virtual ~IImageDecoder() SKR_NOEXCEPT                                               = default;
     virtual bool initialize(const uint8_t* data, uint64_t size) SKR_NOEXCEPT            = 0;
     virtual bool decode(EImageCoderColorFormat format, uint32_t bit_depth) SKR_NOEXCEPT = 0;
 };
-using ImageDecoderId = skr::SObjectPtr<IImageDecoder>;
+using ImageDecoderId = skr::RC<IImageDecoder>;
 
 } // namespace skr
 #endif

@@ -237,11 +237,11 @@ void dtor_unique(void* p)
 }
 void dtor_shared(void* p)
 {
-    ((skr::SPtr<void>*)((char*)p + sizeof(void*)))->reset();
+    ((skr::SP<void>*)((char*)p + sizeof(void*)))->reset();
 }
 void dtor_object(void* p)
 {
-    ((skr::SObjectPtr<skr::SInterface>*)((char*)p + sizeof(void*)))->reset();
+    ((skr::RC<skr::SInterface>*)((char*)p + sizeof(void*)))->reset();
 }
 void bind_unknown(lua_State* L)
 {
@@ -718,11 +718,11 @@ int push_unknown_value(lua_State* L, const void* value, std::string_view tid, si
     }
 }
 
-int push_sptr(lua_State* L, const skr::SPtr<void>& value, std::string_view tid)
+int push_sptr(lua_State* L, const skr::SP<void>& value, std::string_view tid)
 {
-    void* p    = lua_newuserdatadtor(L, sizeof(void*) + sizeof(skr::SPtr<void>), dtor_shared);
+    void* p    = lua_newuserdatadtor(L, sizeof(void*) + sizeof(skr::SP<void>), dtor_shared);
     void* obj  = (char*)p + sizeof(void*);
-    auto  ptr  = new (obj) skr::SPtr<void>(value);
+    auto  ptr  = new (obj) skr::SP<void>(value);
     *(void**)p = ptr->get();
     luaL_getmetatable(L, tid.data());
     if (lua_isnil(L, -1))
@@ -740,17 +740,17 @@ int push_sptr(lua_State* L, const skr::SPtr<void>& value, std::string_view tid)
     }
 }
 
-skr::SPtr<void> check_sptr(lua_State* L, int index, std::string_view tid)
+skr::SP<void> check_sptr(lua_State* L, int index, std::string_view tid)
 {
     void* p = skr_check_unknown(L, index, tid, "[shared]skr_opaque_t");
-    return *(skr::SPtr<void>*)((char*)p + sizeof(void*));
+    return *(skr::SP<void>*)((char*)p + sizeof(void*));
 }
 
-int push_sobjectptr(lua_State* L, const skr::SObjectPtr<SInterface>& value, std::string_view tid)
+int push_sobjectptr(lua_State* L, const skr::RC<SInterface>& value, std::string_view tid)
 {
-    void* p    = lua_newuserdatadtor(L, sizeof(void*) + sizeof(skr::SObjectPtr<SInterface>), dtor_object);
+    void* p    = lua_newuserdatadtor(L, sizeof(void*) + sizeof(skr::RC<SInterface>), dtor_object);
     void* obj  = (char*)p + sizeof(void*);
-    auto  ptr  = new (obj) skr::SObjectPtr<SInterface>(value);
+    auto  ptr  = new (obj) skr::RC<SInterface>(value);
     *(void**)p = ptr->get();
     luaL_getmetatable(L, tid.data());
     if (lua_isnil(L, -1))
@@ -768,10 +768,10 @@ int push_sobjectptr(lua_State* L, const skr::SObjectPtr<SInterface>& value, std:
     }
 }
 
-skr::SObjectPtr<SInterface> check_sobjectptr(lua_State* L, int index, std::string_view tid)
+skr::RC<SInterface> check_sobjectptr(lua_State* L, int index, std::string_view tid)
 {
     void* p = skr_check_unknown(L, index, tid, "[object]skr_opaque_t");
-    return *(skr::SObjectPtr<SInterface>*)((char*)p + sizeof(void*));
+    return *(skr::RC<SInterface>*)((char*)p + sizeof(void*));
 }
 
 } // namespace skr::lua
