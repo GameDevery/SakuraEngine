@@ -1,17 +1,25 @@
 #pragma once
-#include "SkrBase/config.h"
-#include "SkrBase/meta.h"
-#include "v8-persistent-handle.h"
-#include "v8-script.h"
+#include <SkrBase/config.h>
+#include <SkrBase/meta.h>
 #include <SkrRTTR/script_tools.hpp>
+
+#include <v8-persistent-handle.h>
+#include <v8-script.h>
 
 namespace skr
 {
 struct V8Isolate;
 
 struct SKR_V8_API V8Module {
+    friend struct V8Isolate;
+
+private:
+    // setup by isolate
+    void _init_basic(V8Isolate* isolate, StringView name);
+
+public:
     // ctor & dtor
-    V8Module(V8Isolate* isolate);
+    V8Module();
     ~V8Module();
 
     // delate copy & move
@@ -21,11 +29,9 @@ struct SKR_V8_API V8Module {
     V8Module& operator=(V8Module&&)      = delete;
 
     // build api
-    void name(StringView name);
     bool build(FunctionRef<void(ScriptModule& module)> build_func);
-
-    // shutdown
     void shutdown();
+    bool is_built() const;
 
     // getter
     inline const String&       name() const { return _name; }
@@ -44,10 +50,10 @@ private:
     V8Isolate* _isolate = nullptr;
 
     // module info
-    String       _name;
-    ScriptModule _module_info;
+    String       _name        = {};
+    ScriptModule _module_info = {};
 
     // module data
-    v8::Persistent<v8::Module> _module;
+    v8::Persistent<v8::Module> _module = {};
 };
 } // namespace skr

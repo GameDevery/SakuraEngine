@@ -5,6 +5,7 @@
 #include <SkrRTTR/type.hpp>
 #include <SkrV8/v8_bind.hpp>
 #include <SkrV8/v8_context.hpp>
+#include <SkrV8/v8_module.hpp>
 
 // v8 includes
 #include <libplatform/libplatform.h>
@@ -145,6 +146,76 @@ void V8Isolate::gc(bool full)
 V8Context* V8Isolate::main_context() const
 {
     return _main_context;
+}
+
+// module
+V8Module* V8Isolate::add_cpp_module(StringView name)
+{
+    if (auto found = _cpp_modules.find(name))
+    {
+        SKR_LOG_FMT_ERROR(u8"module {} already exists", name);
+        return found.value();
+    }
+    else
+    {
+        auto* module = SkrNew<V8Module>();
+        module->_init_basic(this, name);
+        _cpp_modules.add(name, module).value();
+        return module;
+    }
+}
+void V8Isolate::remove_cpp_module(V8Module* module)
+{
+    if (auto found = _cpp_modules.find(module->name()))
+    {
+        auto* module = found.value();
+        if (module->is_built())
+        {
+            module->shutdown();
+        }
+        _cpp_modules.remove(module->name());
+        SkrDelete(module);
+    }
+    else
+    {
+        SKR_LOG_FMT_ERROR(u8"module {} not found", module->name());
+        return;
+    }
+}
+
+void V8Isolate::register_v8_module_id(V8Module* module, int v8_module_id)
+{
+    auto add_result = _v8_module_id_to_skr.add(v8_module_id, module);
+    if (add_result.already_exist())
+    {
+        SKR_LOG_FMT_ERROR(u8"v8 module id {} already registered for module {}", v8_module_id, module->name());
+        return;
+    }
+}
+void V8Isolate::unregister_v8_module_id(V8Module* module, int v8_module_id)
+{
+    auto remove_result = _v8_module_id_to_skr.remove(v8_module_id);
+    if (!remove_result)
+    {
+        SKR_LOG_FMT_ERROR(u8"v8 module id {} not found for module {}", v8_module_id, module->name());
+        return;
+    }
+}
+V8Module* V8Isolate::find_cpp_module(StringView name) const
+{
+    if (auto result = _cpp_modules.find(name))
+    {
+        return result.value();
+    }
+    return nullptr;
+}
+V8Module* V8Isolate::find_cpp_module(int v8_module_id) const
+{
+    if (auto result = _v8_module_id_to_skr.find(v8_module_id))
+    {
+        return result.value();
+    }
+    return nullptr;
 }
 
 // debugger

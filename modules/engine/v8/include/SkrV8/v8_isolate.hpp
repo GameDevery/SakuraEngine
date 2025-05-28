@@ -24,9 +24,8 @@ SKR_V8_API V8Isolate: IScriptMixinCore {
     // clang-format on
     SKR_GENERATE_BODY()
 
-    friend struct V8Context;
+    // friend struct V8Context;
     friend struct V8Value;
-    friend struct V8Module;
 
     // ctor & dtor
     V8Isolate();
@@ -49,6 +48,14 @@ SKR_V8_API V8Isolate: IScriptMixinCore {
 
     // context
     V8Context* main_context() const;
+
+    // module
+    V8Module* add_cpp_module(StringView name);
+    void      remove_cpp_module(V8Module* module);
+    void      register_v8_module_id(V8Module* module, int v8_module_id);
+    void      unregister_v8_module_id(V8Module* module, int v8_module_id);
+    V8Module* find_cpp_module(StringView name) const;
+    V8Module* find_cpp_module(int v8_module_id) const;
 
     // debugger
     void init_debugger(int port);
@@ -313,10 +320,6 @@ private:
     v8::Isolate*              _isolate               = nullptr;
     v8::Isolate::CreateParams _isolate_create_params = {};
 
-    // modules
-    Map<String, V8Module*> _modules       = {};
-    Map<int, V8Module*>    _to_skr_module = {};
-
     // binder manager
     ScriptBinderManager _binder_mgr = {};
 
@@ -331,9 +334,13 @@ private:
     Map<void*, V8BindCoreValue*>             _static_field_values   = {};
     Map<void*, V8BindCoreValue*>             _temporal_values       = {};
 
-    // context manager
+    // context manage
     V8Context*                  _main_context = nullptr;
     Vector<RCUnique<V8Context>> _contexts     = {};
+
+    // modules manage
+    Map<String, V8Module*> _cpp_modules         = {};
+    Map<int, V8Module*>    _v8_module_id_to_skr = {};
 
     // debugger
     V8WebSocketServer _websocket_server = {};

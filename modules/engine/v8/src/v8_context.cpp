@@ -310,7 +310,7 @@ v8::MaybeLocal<v8::Module> V8Context::_resolve_module(
     }
 
     // find module
-    auto found_module = skr_isolate->_modules.find(module_name);
+    auto found_module = skr_isolate->find_cpp_module(module_name);
     if (!found_module)
     {
         isolate->ThrowException(V8Bind::to_v8(u8"cannot find module"));
@@ -319,7 +319,7 @@ v8::MaybeLocal<v8::Module> V8Context::_resolve_module(
     }
 
     // return module
-    return found_module.value()->v8_module();
+    return found_module->v8_module();
 }
 
 } // namespace skr
