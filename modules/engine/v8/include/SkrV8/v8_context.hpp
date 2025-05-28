@@ -35,9 +35,15 @@ struct V8Value {
 struct SKR_V8_API V8Context {
     SKR_RC_IMPL();
     friend struct V8Value;
+    friend struct V8Isolate;
 
+private:
+    // setup by isolate
+    void _init_basic(V8Isolate* isolate, String name);
+
+public:
     // ctor & dtor
-    V8Context(V8Isolate* isolate, String name = u8"unnamed");
+    V8Context();
     ~V8Context();
 
     // delete copy & move

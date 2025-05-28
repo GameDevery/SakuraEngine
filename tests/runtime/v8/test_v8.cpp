@@ -27,8 +27,8 @@ TEST_CASE("test v8")
 
     SUBCASE("basic object")
     {
-        V8Context context(&isolate);
-        context.init();
+        V8Context& context = *isolate.create_context();
+        SKR_DEFER({ isolate.destroy_context(&context); });
 
         // register context
         context.build_global_export([](ScriptModule& module) {
@@ -134,8 +134,8 @@ TEST_CASE("test v8")
 
     SUBCASE("basic value")
     {
-        V8Context context(&isolate);
-        context.init();
+        V8Context& context = *isolate.create_context();
+        SKR_DEFER({ isolate.destroy_context(&context); });
 
         // register context
         context.build_global_export([](ScriptModule& module) {
@@ -238,8 +238,8 @@ TEST_CASE("test v8")
 
     SUBCASE("basic mapping")
     {
-        V8Context context(&isolate);
-        context.init();
+        V8Context& context = *isolate.create_context();
+        SKR_DEFER({ isolate.destroy_context(&context); });
 
         context.build_global_export([](ScriptModule& module) {
             // module.register_type<test_v8::BasicMapping>(u8"");    //!NOTE. mapping type need not to be registered
@@ -284,8 +284,8 @@ TEST_CASE("test v8")
 
     SUBCASE("basic enum")
     {
-        V8Context context(&isolate);
-        context.init();
+        V8Context& context = *isolate.create_context();
+        SKR_DEFER({ isolate.destroy_context(&context); });
 
         context.build_global_export([](ScriptModule& module) {
             module.register_type<test_v8::BasicEnum>(u8"");
@@ -313,8 +313,8 @@ TEST_CASE("test v8")
 
     SUBCASE("param flag")
     {
-        V8Context context(&isolate);
-        context.init();
+        V8Context& context = *isolate.create_context();
+        SKR_DEFER({ isolate.destroy_context(&context); });
 
         context.build_global_export([](ScriptModule& module) {
             module.register_type<test_v8::ParamFlagTest>(u8"");
@@ -356,8 +356,8 @@ TEST_CASE("test v8")
 
     SUBCASE("string")
     {
-        V8Context context(&isolate);
-        context.init();
+        V8Context& context = *isolate.create_context();
+        SKR_DEFER({ isolate.destroy_context(&context); });
 
         context.build_global_export([](ScriptModule& module) {
             module.register_type<test_v8::TestString>(u8"");
@@ -390,8 +390,8 @@ TEST_CASE("test v8")
 
     SUBCASE("call script")
     {
-        V8Context context(&isolate);
-        context.init();
+        V8Context& context = *isolate.create_context();
+        SKR_DEFER({ isolate.destroy_context(&context); });
         context.build_global_export([](ScriptModule& module) {
         });
 
@@ -410,8 +410,8 @@ TEST_CASE("test v8")
 
     SUBCASE("rttr mixin")
     {
-        V8Context context(&isolate);
-        context.init();
+        V8Context& context = *isolate.create_context();
+        SKR_DEFER({ isolate.destroy_context(&context); });
         context.build_global_export([](ScriptModule& module) {
             module.register_type<test_v8::TestMixinValue>(u8"");
             module.register_type<test_v8::RttrMixin>(u8"");
@@ -497,10 +497,10 @@ TEST_CASE("test v8")
             test_v8::MixinHelper::mixin->test_pure_out_value(test);
             REQUIRE_EQ(test.name, u8"PURE_OUT_VALUE");
             test.name = u8"INVALID";
-            test = test_v8::MixinHelper::mixin->test_return_value();
+            test      = test_v8::MixinHelper::mixin->test_return_value();
             REQUIRE_EQ(test.name, u8"RETURN_VALUE");
-            test.name = u8"INVALID";
-            test_b.name = u8"INVALID";
+            test.name                 = u8"INVALID";
+            test_b.name               = u8"INVALID";
             skr::String multi_out_ret = test_v8::MixinHelper::mixin->test_multi_out_value(test, test_b);
             REQUIRE_EQ(multi_out_ret, u8"MULTI_OUT");
             REQUIRE_EQ(test.name, u8"OUT_VALUE_1");
@@ -546,11 +546,11 @@ TEST_CASE("test v8")
             test_v8::MixinHelper::mixin->test_pure_out_value(test);
             REQUIRE_EQ(test.name, u8"PURE_OUT_VALUE + mixin");
             test.name = u8"INVALID";
-            test = test_v8::MixinHelper::mixin->test_return_value();
+            test      = test_v8::MixinHelper::mixin->test_return_value();
             REQUIRE_EQ(test.name, u8"RETURN_VALUE + mixin");
-            test.name = u8"INVALID";
-            test_b.name = u8"INVALID";
-            multi_out_ret = test_v8::MixinHelper::mixin->test_multi_out_value(test, test_b);    
+            test.name     = u8"INVALID";
+            test_b.name   = u8"INVALID";
+            multi_out_ret = test_v8::MixinHelper::mixin->test_multi_out_value(test, test_b);
             REQUIRE_EQ(multi_out_ret, u8"MULTI_OUT_FROM_JS");
             REQUIRE_EQ(test.name, u8"OUT_VALUE_1 + mixin");
             REQUIRE_EQ(test_b.name, u8"OUT_VALUE_2 + mixin");

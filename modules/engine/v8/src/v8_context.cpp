@@ -9,12 +9,17 @@
 
 namespace skr
 {
-// ctor & dtor
-V8Context::V8Context(V8Isolate* isolate, String name)
-    : _isolate(isolate)
-    , _name(std::move(name))
+// setup by isolate
+void V8Context::_init_basic(V8Isolate* isolate, String name)
 {
+    _isolate               = isolate;
+    _name                  = name;
     _global_module.manager = &_isolate->script_binder_manger();
+}
+
+// ctor & dtor
+V8Context::V8Context()
+{
 }
 V8Context::~V8Context()
 {

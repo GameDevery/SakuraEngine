@@ -48,6 +48,8 @@ SKR_V8_API V8Isolate: IScriptMixinCore {
 
     // context
     V8Context* main_context() const;
+    V8Context* create_context(String name = {});
+    void       destroy_context(V8Context* context);
 
     // module
     V8Module* add_cpp_module(StringView name);
@@ -335,12 +337,12 @@ private:
     Map<void*, V8BindCoreValue*>             _temporal_values       = {};
 
     // context manage
-    V8Context*                  _main_context = nullptr;
+    RCUnique<V8Context>         _main_context = nullptr;
     Vector<RCUnique<V8Context>> _contexts     = {};
 
     // modules manage
-    Map<String, V8Module*> _cpp_modules         = {};
-    Map<int, V8Module*>    _v8_module_id_to_skr = {};
+    Map<String, RCUnique<V8Module>> _cpp_modules         = {};
+    Map<int, V8Module*>             _v8_module_id_to_skr = {};
 
     // debugger
     V8WebSocketServer _websocket_server = {};

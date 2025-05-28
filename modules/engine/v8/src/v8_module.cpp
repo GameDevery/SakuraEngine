@@ -10,7 +10,7 @@ void V8Module::_init_basic(V8Isolate* isolate, StringView name)
 {
     _isolate             = isolate;
     _module_info.manager = &_isolate->script_binder_manger();
-    _name = name;
+    _name                = name;
 }
 
 // ctor & dtor
@@ -19,7 +19,10 @@ V8Module::V8Module()
 }
 V8Module::~V8Module()
 {
-    shutdown();
+    if (is_built())
+    {
+        shutdown();
+    }
 }
 
 // build api

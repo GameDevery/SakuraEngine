@@ -96,7 +96,8 @@ void V8Isolate::init()
     // _isolate->SetPromiseRejectCallback; // used for capture unhandledRejection
 
     // init main isolate
-    _main_context = SkrNew<V8Context>(this, u8"[Main]");
+    _main_context = SkrNew<V8Context>();
+    _main_context->_init_basic(this, u8"[Main]");
     _main_context->init();
 }
 void V8Isolate::shutdown()
@@ -111,8 +112,13 @@ void V8Isolate::shutdown()
 
     // shutdown main context
     _main_context->shutdown();
-    SkrDelete(_main_context);
-    _main_context = nullptr;
+    _main_context.reset();
+
+    // shutdown contexts
+    _contexts.clear();
+
+    // shutdown modules
+    _cpp_modules.clear();
 
     // cleanup templates
     cleanup_templates();
@@ -145,7 +151,41 @@ void V8Isolate::gc(bool full)
 // context
 V8Context* V8Isolate::main_context() const
 {
-    return _main_context;
+    return _main_context.get();
+}
+V8Context* V8Isolate::create_context(String name)
+{
+    // solve name
+    if (name.is_empty())
+    {
+        name = skr::format(u8"context_{}", _contexts.size());
+    }
+
+    // create context
+    auto* context = SkrNew<V8Context>();
+    context->_init_basic(this, name);
+    context->init();
+    _contexts.add(context);
+
+    // notify inspector client
+    if (is_debugger_init())
+    {
+        _inspector_client.notify_context_created(context);
+    }
+
+    return context;
+}
+void V8Isolate::destroy_context(V8Context* context)
+{
+    // shutdown context
+    context->shutdown();
+    _contexts.remove(context);
+
+    // notify inspector client
+    if (is_debugger_init())
+    {
+        _inspector_client.notify_context_destroyed(context);
+    }
 }
 
 // module
@@ -154,7 +194,7 @@ V8Module* V8Isolate::add_cpp_module(StringView name)
     if (auto found = _cpp_modules.find(name))
     {
         SKR_LOG_FMT_ERROR(u8"module {} already exists", name);
-        return found.value();
+        return found.value().get();
     }
     else
     {
@@ -168,13 +208,12 @@ void V8Isolate::remove_cpp_module(V8Module* module)
 {
     if (auto found = _cpp_modules.find(module->name()))
     {
-        auto* module = found.value();
+        auto* module = found.value().get();
         if (module->is_built())
         {
             module->shutdown();
         }
         _cpp_modules.remove(module->name());
-        SkrDelete(module);
     }
     else
     {
@@ -205,7 +244,7 @@ V8Module* V8Isolate::find_cpp_module(StringView name) const
 {
     if (auto result = _cpp_modules.find(name))
     {
-        return result.value();
+        return result.value().get();
     }
     return nullptr;
 }
@@ -228,7 +267,13 @@ void V8Isolate::init_debugger(int port)
     _inspector_client.init(this);
 
     // notify main context created
-    _inspector_client.notify_context_created(_main_context);
+    _inspector_client.notify_context_created(_main_context.get());
+
+    // notify created context
+    for (const auto& context : _contexts)
+    {
+        _inspector_client.notify_context_created(context.get());
+    }
 }
 void V8Isolate::shutdown_debugger()
 {
@@ -1342,7 +1387,7 @@ void V8Isolate::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
                 }
 
                 // make bind core
-                V8BindCoreValue* bind_core = SkrNew<V8BindCoreValue>();
+                V8BindCoreValue* bind_core = skr_isolate->_new_bind_core<V8BindCoreValue>();
                 bind_core->manager         = bind_data->manager;
                 bind_core->type            = binder->type;
                 bind_core->data            = alloc_mem;

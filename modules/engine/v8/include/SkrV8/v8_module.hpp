@@ -2,6 +2,7 @@
 #include <SkrBase/config.h>
 #include <SkrBase/meta.h>
 #include <SkrRTTR/script_tools.hpp>
+#include <SkrCore/memory/rc.hpp>
 
 #include <v8-persistent-handle.h>
 #include <v8-script.h>
@@ -11,6 +12,7 @@ namespace skr
 struct V8Isolate;
 
 struct SKR_V8_API V8Module {
+    SKR_RC_IMPL();
     friend struct V8Isolate;
 
 private:
