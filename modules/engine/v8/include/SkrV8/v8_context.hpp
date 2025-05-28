@@ -73,10 +73,10 @@ public:
     V8Value get_global(StringView name);
 
     // run as script
-    V8Value exec_script(StringView script, StringView file_path = u8"[CPP]");
+    V8Value exec_script(StringView script, StringView file_path = {});
 
     // run as ES module
-    V8Value exec_module(StringView script, StringView file_path = u8"[CPP]");
+    V8Value exec_module(StringView script, StringView file_path = {});
 
 private:
     // callback

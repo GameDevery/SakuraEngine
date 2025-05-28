@@ -95,7 +95,7 @@ void V8Isolate::init()
     // TODO. promise support
     // _isolate->SetPromiseRejectCallback; // used for capture unhandledRejection
 
-    // init main isolate
+    // init main context
     _main_context = SkrNew<V8Context>();
     _main_context->_init_basic(this, u8"[Main]");
     _main_context->init();
