@@ -4,6 +4,7 @@
 #include <SkrRTTR/stack_proxy.hpp>
 #include <SkrV8/v8_inspector.hpp>
 #include <SkrV8/v8_bind_data.hpp>
+#include <SkrV8/v8_script_loader.hpp>
 
 // v8 includes
 #include <v8-isolate.h>
@@ -51,13 +52,15 @@ SKR_V8_API V8Isolate: IScriptMixinCore {
     V8Context* create_context(String name = {});
     void       destroy_context(V8Context* context);
 
-    // module
+    // cpp module
     V8Module* add_cpp_module(StringView name);
     void      remove_cpp_module(V8Module* module);
-    void      register_v8_module_id(V8Module* module, int v8_module_id);
-    void      unregister_v8_module_id(V8Module* module, int v8_module_id);
+    void      register_cpp_module_id(V8Module* module, int v8_module_id);
+    void      unregister_cpp_module_id(V8Module* module, int v8_module_id);
     V8Module* find_cpp_module(StringView name) const;
     V8Module* find_cpp_module(int v8_module_id) const;
+
+    // script loader & file modules
 
     // debugger
     void init_debugger(int port);
@@ -341,8 +344,15 @@ private:
     Vector<RCUnique<V8Context>> _contexts     = {};
 
     // modules manage
-    Map<String, RCUnique<V8Module>> _cpp_modules         = {};
-    Map<int, V8Module*>             _v8_module_id_to_skr = {};
+    Map<String, RCUnique<V8Module>> _cpp_modules    = {};
+    Map<int, V8Module*>             _cpp_modules_id = {};
+
+    // script file loader
+    RCUnique<IV8ScriptLoader> _script_loader = nullptr;
+
+    // file module cache
+    Map<String, v8::Global<v8::Module>> _file_module_cache    = {};
+    Map<int, v8::Global<v8::Module>>    _file_module_cache_id = {};
 
     // debugger
     V8WebSocketServer _websocket_server = {};

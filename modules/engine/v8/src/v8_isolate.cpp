@@ -222,18 +222,18 @@ void V8Isolate::remove_cpp_module(V8Module* module)
     }
 }
 
-void V8Isolate::register_v8_module_id(V8Module* module, int v8_module_id)
+void V8Isolate::register_cpp_module_id(V8Module* module, int v8_module_id)
 {
-    auto add_result = _v8_module_id_to_skr.add(v8_module_id, module);
+    auto add_result = _cpp_modules_id.add(v8_module_id, module);
     if (add_result.already_exist())
     {
         SKR_LOG_FMT_ERROR(u8"v8 module id {} already registered for module {}", v8_module_id, module->name());
         return;
     }
 }
-void V8Isolate::unregister_v8_module_id(V8Module* module, int v8_module_id)
+void V8Isolate::unregister_cpp_module_id(V8Module* module, int v8_module_id)
 {
-    auto remove_result = _v8_module_id_to_skr.remove(v8_module_id);
+    auto remove_result = _cpp_modules_id.remove(v8_module_id);
     if (!remove_result)
     {
         SKR_LOG_FMT_ERROR(u8"v8 module id {} not found for module {}", v8_module_id, module->name());
@@ -250,7 +250,7 @@ V8Module* V8Isolate::find_cpp_module(StringView name) const
 }
 V8Module* V8Isolate::find_cpp_module(int v8_module_id) const
 {
-    if (auto result = _v8_module_id_to_skr.find(v8_module_id))
+    if (auto result = _cpp_modules_id.find(v8_module_id))
     {
         return result.value();
     }

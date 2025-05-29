@@ -94,7 +94,7 @@ bool V8Module::build(FunctionRef<void(ScriptModule& module)> build_func)
             _module.Reset(isolate, module);
 
             // add to skr module map
-            skr_isolate->register_v8_module_id(
+            skr_isolate->register_cpp_module_id(
                 this,
                 module->GetIdentityHash()
             );
@@ -115,7 +115,7 @@ void V8Module::shutdown()
     auto isolate     = _isolate->v8_isolate();
     auto skr_isolate = reinterpret_cast<V8Isolate*>(isolate->GetData(0));
     auto module      = _module.Get(isolate);
-    skr_isolate->unregister_v8_module_id(
+    skr_isolate->unregister_cpp_module_id(
         this,
         module->GetIdentityHash()
     );
