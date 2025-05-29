@@ -11,6 +11,7 @@ namespace skr
 {
 struct V8Isolate;
 
+// TODO. V8 Module 改为一个包装类，分为 File/Export 两类，File 由 Compile 生成，Export 由传入的 ScriptModule 导出生成
 struct SKR_V8_API V8Module {
     SKR_RC_IMPL();
     friend struct V8Isolate;
