@@ -6,6 +6,33 @@
 
 namespace skr
 {
+// generic interface
+enum class EGenericKind
+{
+    Generic,
+    Type,
+};
+enum class EGenericError
+{
+    Unknown,
+    InvalidType,
+    NoFunctional
+};
+struct IGenericWrapper {
+    virtual ~IGenericWrapper() = default;
+
+    // get type info
+    virtual EGenericKind kind() const = 0;
+    virtual GUID         guid() const = 0;
+
+    // operations, used for generic container algorithms
+    virtual Expected<EGenericError>         copy(void* dst, const void* src) const = 0;
+    virtual Expected<EGenericError>         move(void* dst, void* src) const       = 0;
+    virtual Expected<EGenericError, size_t> hash(const void* src)                  = 0;
+};
+
+// generic registry
+
 struct GenericOptional {
     inline GenericOptional() = default;
     inline GenericOptional(void* memory, const RTTRType* inner_type)
@@ -124,6 +151,7 @@ private:
     ExportCtorInvoker<void()>            _ctor       = nullptr;
     ExportCtorInvoker<void(const void*)> _copy_ctor  = nullptr;
 };
+
 struct GenericVector {
     inline GenericVector() = default;
     inline GenericVector(VectorMemoryBase* memory, const RTTRType* inner_type)
