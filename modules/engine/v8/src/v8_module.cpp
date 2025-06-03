@@ -1,7 +1,7 @@
 #include <SkrV8/v8_module.hpp>
 #include <SkrV8/v8_isolate.hpp>
 #include <SkrV8/v8_bind.hpp>
-#include <SkrRTTR/script_binder.hpp>
+#include <SkrRTTR/script/script_binder.hpp>
 
 namespace skr
 {

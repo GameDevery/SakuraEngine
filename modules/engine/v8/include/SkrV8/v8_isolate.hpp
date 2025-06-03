@@ -1,7 +1,7 @@
 #pragma once
 #include <SkrCore/memory/rc.hpp>
-#include <SkrRTTR/script_binder.hpp>
-#include <SkrRTTR/stack_proxy.hpp>
+#include <SkrRTTR/script/script_binder.hpp>
+#include <SkrRTTR/script/stack_proxy.hpp>
 #include <SkrV8/v8_inspector.hpp>
 #include <SkrV8/v8_bind_data.hpp>
 #include <SkrV8/v8_script_loader.hpp>

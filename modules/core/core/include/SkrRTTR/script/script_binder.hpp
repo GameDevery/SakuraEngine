@@ -1,5 +1,5 @@
 #pragma once
-#include "SkrRTTR/stack_proxy.hpp"
+#include "SkrRTTR/script/stack_proxy.hpp"
 #include <SkrRTTR/type.hpp>
 #include <SkrCore/log.hpp>
 

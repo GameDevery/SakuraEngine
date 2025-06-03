@@ -1,8 +1,8 @@
 #pragma once
-#include <SkrRTTR/scriptble_object.hpp>
-#include <SkrRTTR/script_binder.hpp>
-#include <SkrRTTR/script_tools.hpp>
-#include <SkrRTTR/stack_proxy.hpp>
+#include <SkrRTTR/script/scriptble_object.hpp>
+#include <SkrRTTR/script/script_binder.hpp>
+#include <SkrRTTR/script/script_tools.hpp>
+#include <SkrRTTR/script/stack_proxy.hpp>
 
 // v8 includes
 #include <v8-isolate.h>

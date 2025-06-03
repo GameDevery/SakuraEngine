@@ -1,7 +1,7 @@
 #include "SkrContainersDef/set.hpp"
 #include "SkrCore/log.hpp"
-#include "SkrRTTR/scriptble_object.hpp"
-#include <SkrRTTR/script_binder.hpp>
+#include "SkrRTTR/script/scriptble_object.hpp"
+#include <SkrRTTR/script/script_binder.hpp>
 
 // helpers
 namespace skr

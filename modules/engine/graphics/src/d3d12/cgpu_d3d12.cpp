@@ -1772,7 +1772,7 @@ CGPURenderPassEncoderId cgpu_cmd_begin_render_pass_d3d12(CGPUCommandBufferId cmd
 
             D3D12_RENDER_PASS_ENDING_ACCESS_TYPE endingAccess             = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_RESOLVE;
             renderPassRenderTargetDescs[colorTargetCount].cpuDescriptor   = TV->mDxRtvDsvDescriptorHandle;
-            renderPassRenderTargetDescs[colorTargetCount].BeginningAccess = { beginningAccess, { clearValues[i] } };
+            renderPassRenderTargetDescs[colorTargetCount].BeginningAccess = { beginningAccess, { {clearValues[i]} } };
             renderPassRenderTargetDescs[colorTargetCount].EndingAccess    = { endingAccess, {} };
             auto& Resolve                                                 = renderPassRenderTargetDescs[colorTargetCount].EndingAccess.Resolve;
             Resolve.ResolveMode                                           = D3D12_RESOLVE_MODE_AVERAGE; // TODO: int->MODE_MAX
@@ -1797,7 +1797,7 @@ CGPURenderPassEncoderId cgpu_cmd_begin_render_pass_d3d12(CGPUCommandBufferId cmd
             // Load & Store action
             D3D12_RENDER_PASS_ENDING_ACCESS_TYPE endingAccess             = gDx12PassEndOpTranslator[desc->color_attachments[i].store_action];
             renderPassRenderTargetDescs[colorTargetCount].cpuDescriptor   = TV->mDxRtvDsvDescriptorHandle;
-            renderPassRenderTargetDescs[colorTargetCount].BeginningAccess = { beginningAccess, { clearValues[i] } };
+            renderPassRenderTargetDescs[colorTargetCount].BeginningAccess = { beginningAccess, { {clearValues[i]} } };
             renderPassRenderTargetDescs[colorTargetCount].EndingAccess    = { endingAccess, {} };
         }
         colorTargetCount++;
@@ -1816,9 +1816,9 @@ CGPURenderPassEncoderId cgpu_cmd_begin_render_pass_d3d12(CGPUCommandBufferId cmd
         clearStencil.Format                                     = DXGIUtil_TranslatePixelFormat(desc->depth_stencil->view->info.format);
         clearStencil.DepthStencil.Stencil                       = desc->depth_stencil->clear_stencil;
         renderPassDepthStencilDesc.cpuDescriptor                = DTV->mDxRtvDsvDescriptorHandle;
-        renderPassDepthStencilDesc.DepthBeginningAccess         = { dBeginingAccess, { clearDepth } };
+        renderPassDepthStencilDesc.DepthBeginningAccess         = { dBeginingAccess, { {clearDepth} } };
         renderPassDepthStencilDesc.DepthEndingAccess            = { dEndingAccess, {} };
-        renderPassDepthStencilDesc.StencilBeginningAccess       = { sBeginingAccess, { clearStencil } };
+        renderPassDepthStencilDesc.StencilBeginningAccess       = { sBeginingAccess, { {clearStencil} } };
         renderPassDepthStencilDesc.StencilEndingAccess          = { sEndingAccess, {} };
         pRenderPassDepthStencilDesc                             = &renderPassDepthStencilDesc;
     }

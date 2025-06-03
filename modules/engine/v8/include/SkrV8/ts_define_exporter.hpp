@@ -1,5 +1,5 @@
 #pragma once
-#include "SkrRTTR/script_tools.hpp"
+#include "SkrRTTR/script/script_tools.hpp"
 
 namespace skr
 {

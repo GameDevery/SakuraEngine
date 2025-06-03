@@ -1,6 +1,6 @@
 #pragma once
-#include <SkrRTTR/script_tools.hpp>
-#include <SkrRTTR/scriptble_object.hpp>
+#include <SkrRTTR/script/script_tools.hpp>
+#include <SkrRTTR/script/scriptble_object.hpp>
 #include <SkrCore/log.hpp>
 #include <SkrV8/v8_bind.hpp>
 #include <SkrV8/v8_isolate.hpp>

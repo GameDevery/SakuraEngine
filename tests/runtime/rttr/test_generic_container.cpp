@@ -1,6 +1,6 @@
 #include "SkrTestFramework/framework.hpp"
 #include "SkrCore/log.hpp"
-#include "SkrRTTR/generic_utils.hpp"
+#include "SkrRTTR/generic/generic_optional.hpp"
 #include "SkrContainersDef/optional.hpp"
 
 TEST_CASE("test generic container")
@@ -43,7 +43,7 @@ TEST_CASE("test generic container")
         REQUIRE_EQ(&opt_float.value(), generic_opt_float.value_ptr());
         REQUIRE_EQ(&opt_double.value(), generic_opt_double.value_ptr());
         REQUIRE_EQ(&opt_guid.value(), generic_opt_guid.value_ptr());
-        
+
         // check has_value
         REQUIRE_FALSE(generic_opt_bool.has_value());
         REQUIRE_FALSE(generic_opt_int16.has_value());
@@ -54,13 +54,13 @@ TEST_CASE("test generic container")
         REQUIRE_FALSE(generic_opt_guid.has_value());
 
         // do assign
-        opt_bool = true;
-        opt_int16 = 1;
-        opt_int32 = 2;
-        opt_int64 = 3;
-        opt_float = 4.0f;
+        opt_bool   = true;
+        opt_int16  = 1;
+        opt_int32  = 2;
+        opt_int64  = 3;
+        opt_float  = 4.0f;
         opt_double = 5.0;
-        opt_guid = u8"051b41eb-2f26-4509-9032-0ca30d9b1990"_guid;
+        opt_guid   = u8"051b41eb-2f26-4509-9032-0ca30d9b1990"_guid;
 
         // check assigned has value
         REQUIRE(generic_opt_bool.has_value());

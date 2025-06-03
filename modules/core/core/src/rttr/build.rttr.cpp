@@ -1,6 +1,6 @@
 // objects header
 #include "SkrRTTR/iobject.hpp"
-#include "SkrRTTR/scriptble_object.hpp"
+#include "SkrRTTR/script/scriptble_object.hpp"
 
 // rttr/
 #include "./register_basic_types.cpp"

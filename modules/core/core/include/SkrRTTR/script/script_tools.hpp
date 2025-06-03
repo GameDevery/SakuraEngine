@@ -1,6 +1,6 @@
 #pragma once
 #include "SkrContainers/set.hpp"
-#include <SkrRTTR/script_binder.hpp>
+#include <SkrRTTR/script/script_binder.hpp>
 
 namespace skr
 {

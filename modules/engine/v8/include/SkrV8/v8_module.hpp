@@ -1,7 +1,7 @@
 #pragma once
 #include <SkrBase/config.h>
 #include <SkrBase/meta.h>
-#include <SkrRTTR/script_tools.hpp>
+#include <SkrRTTR/script/script_tools.hpp>
 #include <SkrCore/memory/rc.hpp>
 
 #include <v8-persistent-handle.h>

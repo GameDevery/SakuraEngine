@@ -1,5 +1,5 @@
 #include "SkrCore/log.hpp"
-#include <SkrRTTR/scriptble_object.hpp>
+#include <SkrRTTR/script/scriptble_object.hpp>
 #ifndef __meta__
     #include "test_v8_types.generated.h"
 #endif
