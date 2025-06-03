@@ -14,6 +14,7 @@ void primitive_type_loader(RTTRType* type)
         data->type_id   = RTTRTraits<T>::get_guid();
         data->size      = sizeof(T);
         data->alignment = alignof(T);
+        data->memory_traits_data.Fill<T>();
     });
 }
 static void primitive_type_loader_void(RTTRType* type)

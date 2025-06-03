@@ -269,12 +269,19 @@ struct RTTRRecordBuilder {
         _data->size      = sizeof(T);
         _data->alignment = alignof(T);
 
-        // TODO. 带参构造的反射导出
+        // fill memory traits
+        _data->memory_traits_data.Fill<T>();
 
         // fill default ctor
         if constexpr (std::is_default_constructible_v<T>)
         {
             ctor<>();
+        }
+
+        // fill dtor
+        if constexpr (std::is_destructible_v<T>)
+        {
+            _data->dtor_data.native_invoke = RTTRExportHelper::export_dtor<T>();
         }
 
         // fill copy ctor
@@ -333,12 +340,6 @@ struct RTTRRecordBuilder {
                 }>(SkrCoreExternMethods::WriteJson);
         }
 
-        // fill dtor
-        if constexpr (std::is_destructible_v<T>)
-        {
-            _data->dtor_data.native_invoke = RTTRExportHelper::export_dtor<T>();
-        }
-
         return *this;
     }
 
@@ -347,6 +348,7 @@ struct RTTRRecordBuilder {
     inline RTTRCtorBuilder ctor()
     {
         // find first
+        // TODO. use extern mode flag will be better?
         {
             TypeSignatureTyped<void(Args...)> signature;
 
@@ -529,6 +531,9 @@ struct RTTREnumBuilder {
         // fill size & alignment
         _data->size      = sizeof(T);
         _data->alignment = alignof(T);
+
+        // fill memory traits
+        _data->memory_traits_data.Fill<T>();
 
         // fill underlying type id
         _data->underlying_type_id = RTTRTraits<std::underlying_type_t<T>>::get_guid();

@@ -72,6 +72,7 @@ struct SKR_CORE_API RTTRType final {
     size_t             size() const;
     size_t             alignment() const;
     void               each_name_space(FunctionRef<void(StringView)> each_func) const;
+    MemoryTraitsData   memory_traits_data() const;
 
     // kind getter
     bool is_primitive() const;
@@ -102,8 +103,8 @@ struct SKR_CORE_API RTTRType final {
 
     // get dtor
     Optional<RTTRDtorData> dtor_data() const;
-    DtorInvoker dtor_invoker() const;
-    void invoke_dtor(void* p) const;
+    DtorInvoker            dtor_invoker() const;
+    void                   invoke_dtor(void* p) const;
 
     // each method & field
     void each_bases(FunctionRef<void(const RTTRBaseData* base_data, const RTTRType* owner)> each_func, RTTRTypeEachConfig config = {}) const;
@@ -294,6 +295,21 @@ inline void RTTRType::each_name_space(FunctionRef<void(StringView)> each_func) c
     default:
         SKR_UNREACHABLE_CODE()
         break;
+    }
+}
+inline MemoryTraitsData RTTRType::memory_traits_data() const
+{
+    switch (_type_category)
+    {
+    case ERTTRTypeCategory::Primitive:
+        return _primitive_data.memory_traits_data;
+    case ERTTRTypeCategory::Record:
+        return _record_data.memory_traits_data;
+    case ERTTRTypeCategory::Enum:
+        return _enum_data.memory_traits_data;
+    default:
+        SKR_UNREACHABLE_CODE()
+        return {};
     }
 }
 
