@@ -362,7 +362,7 @@ class SerializeGenerator extends gen.Generator {
         const _gen_fields_json = record.fields.filter(field => !field.is_static && field.ml_configs.serde.json);
         let _has_private_json_field = false;
         _gen_fields_json.forEach((field) => {
-          if (field.access === "private") {
+          if (field.access !== "public") {
             _has_private_json_field = true;
           }
         });
@@ -374,7 +374,7 @@ class SerializeGenerator extends gen.Generator {
         const _gen_fields_bin = record.fields.filter(field => !field.is_static && field.ml_configs.serde.bin);
         let _has_private_bin_field = false;
         _gen_fields_bin.forEach((field) => {
-          if (field.access === "private") {
+          if (field.access !== "public") {
             _has_private_bin_field = true;
           }
         });

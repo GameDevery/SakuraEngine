@@ -171,17 +171,17 @@ class _Gen {
         const _gen_ctors: db.Ctor[] = record.ctors.filter(ctor => ctor.ml_configs.rttr.enable);
         let _any_private_export = false;
         _gen_fields.forEach((field) => {
-          if (field.access === "private") {
+          if (field.access !== "public") {
             _any_private_export = true;
           }
         });
         _gen_methods.forEach((method) => {
-          if (method.access === "private") {
+          if (method.access !== "public") {
             _any_private_export = true;
           }
         });
         _gen_ctors.forEach((ctor) => {
-          if (ctor.access === "private") {
+          if (ctor.access !== "public") {
             _any_private_export = true;
           }
         });
