@@ -29,7 +29,7 @@ struct CPPExternMethods {
     static constexpr const char8_t* LogicOr  = u8"__LOGIC_OR__";  // ||
 
     // assign op
-    static constexpr const char8_t* Assign    = u8"__ASSIGN__";     // "=
+    static constexpr const char8_t* Assign    = u8"__ASSIGN__";     // =
     static constexpr const char8_t* AddAssign = u8"__ADD_ASSIGN__"; // +=
     static constexpr const char8_t* SubAssign = u8"__SUB_ASSIGN__"; // -=
     static constexpr const char8_t* MulAssign = u8"__MUL_ASSIGN__"; // *=

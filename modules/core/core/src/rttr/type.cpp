@@ -743,6 +743,15 @@ ExportCtorInvoker<void(const void*)> RTTRType::find_copy_ctor() const
     tb.write_type_id(type_id()); // param 1: const T&
     return find_ctor({ .signature = tb.type_signature_view() });
 }
+ExportCtorInvoker<void(void*)> RTTRType::find_move_ctor() const
+{
+    TypeSignatureBuilder tb;
+    tb.write_function_signature(1);
+    tb.write_type_id(type_id_of<void>()); // return
+    tb.write_ref();
+    tb.write_type_id(type_id()); // param 1: T&
+    return find_ctor({ .signature = tb.type_signature_view() });
+}
 ExportExternMethodInvoker<void(void*, const void*)> RTTRType::find_assign() const
 {
     TypeSignatureBuilder tb;
@@ -753,6 +762,37 @@ ExportExternMethodInvoker<void(void*, const void*)> RTTRType::find_assign() cons
     tb.write_const_ref();
     tb.write_type_id(type_id()); // param 2: const T&
     return find_extern_method({ .name = { CPPExternMethods::Assign }, .signature = tb.type_signature_view() });
+}
+ExportExternMethodInvoker<void(void*, void*)> RTTRType::find_move_assign() const
+{
+    TypeSignatureBuilder tb;
+    tb.write_function_signature(2);
+    tb.write_type_id(type_id_of<void>()); // return
+    tb.write_ref();
+    tb.write_type_id(type_id()); // param 1: T&
+    tb.write_ref();
+    tb.write_type_id(type_id()); // param 2: T&
+    return find_extern_method({ .name = { CPPExternMethods::Assign }, .signature = tb.type_signature_view() });
+}
+ExportExternMethodInvoker<bool(const void*, const void*)> RTTRType::find_equal() const
+{
+    TypeSignatureBuilder tb;
+    tb.write_function_signature(2);
+    tb.write_type_id(type_id_of<bool>()); // return
+    tb.write_const_ref();
+    tb.write_type_id(type_id()); // param 1: const T&
+    tb.write_const_ref();
+    tb.write_type_id(type_id()); // param 2: const T&
+    return find_extern_method({ .name = { CPPExternMethods::Eq }, .signature = tb.type_signature_view() });
+}
+ExportExternMethodInvoker<size_t(const void*)> RTTRType::find_hash() const
+{
+    TypeSignatureBuilder tb;
+    tb.write_function_signature(1);
+    tb.write_type_id(type_id_of<size_t>()); // return
+    tb.write_const_ref();
+    tb.write_type_id(type_id()); // param 1: const T&
+    return find_extern_method({ .name = { SkrCoreExternMethods::Hash }, .signature = tb.type_signature_view() });
 }
 
 // flag & attribute

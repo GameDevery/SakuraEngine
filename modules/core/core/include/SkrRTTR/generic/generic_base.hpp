@@ -33,8 +33,8 @@ struct IGenericBase {
     // operations, used for generic container algorithms
     virtual Expected<EGenericError>         copy(void* dst, const void* src) const        = 0;
     virtual Expected<EGenericError>         move(void* dst, void* src) const              = 0;
-    virtual Expected<EGenericError, size_t> hash(const void* src)                         = 0;
     virtual Expected<EGenericError, bool>   equal(const void* lhs, const void* rhs) const = 0;
+    virtual Expected<EGenericError, size_t> hash(const void* src)                         = 0;
 };
 
 // TODO. Generic Registry

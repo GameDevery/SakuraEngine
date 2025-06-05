@@ -428,7 +428,7 @@ struct SKR_CORE_API ScriptBinderManager {
     ~ScriptBinderManager();
 
     // get binder
-    ScriptBinderRoot       get_or_build(GUID type_id);
+    ScriptBinderRoot       get_or_build(GUID type_id); // TODO. 直接传入 TypeSignatureView，若带有 Modifier 则抛出 warning，并提醒在外部清除 Modifier 以进行抑制
     ScriptBinderCallScript build_call_script_binder(span<const StackProxy> params, StackProxy ret);
 
     // each
