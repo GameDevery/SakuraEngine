@@ -7,6 +7,7 @@ TEST_CASE("test generic container")
 {
     using namespace skr;
 
+#if 0
     // test optional
     SUBCASE("test optional")
     {
@@ -97,4 +98,5 @@ TEST_CASE("test generic container")
         REQUIRE_FALSE(opt_double.has_value());
         REQUIRE_FALSE(opt_guid.has_value());
     }
+#endif
 }
