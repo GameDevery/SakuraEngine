@@ -5,18 +5,17 @@
 namespace skr
 {
 struct GenericVector {
-    inline GenericVector() = default;
-    inline GenericVector(VectorMemoryBase* memory, const RTTRType* inner_type)
-        : _memory(memory)
-        , _inner_type(inner_type)
-    {
-    }
+    // ctor & dtor
+    GenericVector(RC<IGenericBase> inner);
+    ~GenericVector();
 
     // getter
-    inline bool     is_valid() const { return _memory != nullptr; }
-    inline uint64_t size() const { return _memory->size(); }
-    inline uint64_t capacity() const { return _memory->capacity(); }
-    inline void*    data() const { return _memory->_generic_only_data(); }
+    inline bool is_valid() const { return _inner != nullptr; }
+
+    // vector getter
+    // uint64_t size() const;
+    // uint64_t capacity() const;
+    // void*    data() const;
 
     // memory op
     // void clear();
@@ -72,7 +71,7 @@ struct GenericVector {
     // void sort_stable_greater();
 
 private:
-    VectorMemoryBase* _memory     = nullptr;
-    const RTTRType*   _inner_type = nullptr;
+    RC<IGenericBase> _inner            = nullptr;
+    MemoryTraitsData _inner_mem_traits = {};
 };
 } // namespace skr

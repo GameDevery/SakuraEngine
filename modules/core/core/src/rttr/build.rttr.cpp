@@ -9,3 +9,7 @@
 #include "./type_registry.cpp"
 #include "./type_signature.cpp"
 #include "./type.cpp"
+
+// rttr/generic/
+#include "./generic/generic_base.cpp"
+#include "./generic/generic_optional.cpp"
