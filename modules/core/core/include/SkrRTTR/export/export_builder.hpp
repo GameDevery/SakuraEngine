@@ -315,6 +315,17 @@ struct RTTRRecordBuilder {
         // fill compare operator
         if constexpr (skr::concepts::HasEq<const T&, const T&>)
         {
+            extern_method<+[](const T& lhs, const T& rhs) -> bool {
+                return lhs == rhs;
+            }>(CPPExternMethods::Eq);
+        }
+
+        // fill hash
+        if constexpr (skr::concepts::HasHasher<T>)
+        {
+            extern_method<+[](const T& object) -> size_t {
+                return skr::Hash<T>{}(object);
+            }>(SkrCoreExternMethods::Hash);
         }
 
         // fill bin serde
