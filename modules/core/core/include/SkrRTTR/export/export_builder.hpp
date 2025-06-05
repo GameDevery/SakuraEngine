@@ -299,45 +299,50 @@ struct RTTRRecordBuilder {
         // fill assign operator
         if constexpr (std::is_copy_assignable_v<T>)
         {
-            extern_method<+[](T& lhs, const T& rhs) -> void { lhs.operator=(rhs); }>(CPPExternMethods::Assign);
+            extern_method<+[](T& lhs, const T& rhs) -> void {
+                lhs.operator=(rhs);
+            }>(CPPExternMethods::Assign);
         }
 
         // fill move assign operator
         if constexpr (std::is_move_assignable_v<T>)
         {
-            extern_method<+[](T& lhs, T&& rhs) -> void { lhs.operator=(std::move(rhs)); }>(CPPExternMethods::Assign);
+            extern_method<+[](T& lhs, T&& rhs) -> void {
+                lhs.operator=(std::move(rhs));
+            }>(CPPExternMethods::Assign);
+        }
+
+        // fill compare operator
+        if constexpr (skr::concepts::HasEq<const T&, const T&>)
+        {
         }
 
         // fill bin serde
-        if constexpr (skr::HasBinRead<T>)
+        if constexpr (skr::concepts::HasBinRead<T>)
         {
-            extern_method<
-                +[](void* object, void* reader) -> bool {
-                    return skr::bin_read<T>((SBinaryReader*)reader, *(T*)object);
-                }>(SkrCoreExternMethods::ReadBin);
+            extern_method<+[](void* object, void* reader) -> bool {
+                return skr::bin_read<T>((SBinaryReader*)reader, *(T*)object);
+            }>(SkrCoreExternMethods::ReadBin);
         }
-        if constexpr (skr::HasBinWrite<T>)
+        if constexpr (skr::concepts::HasBinWrite<T>)
         {
-            extern_method<
-                +[](void* object, void* writer) -> bool {
-                    return skr::bin_write<T>((SBinaryWriter*)writer, *(T*)object);
-                }>(SkrCoreExternMethods::WriteBin);
+            extern_method<+[](void* object, void* writer) -> bool {
+                return skr::bin_write<T>((SBinaryWriter*)writer, *(T*)object);
+            }>(SkrCoreExternMethods::WriteBin);
         }
 
         // fill json serde
-        if constexpr (skr::HasJsonRead<T>)
+        if constexpr (skr::concepts::HasJsonRead<T>)
         {
-            extern_method<
-                +[](void* object, void* reader) -> bool {
-                    return skr::json_read<T>((skr::archive::JsonReader*)reader, *(T*)object);
-                }>(SkrCoreExternMethods::ReadJson);
+            extern_method<+[](void* object, void* reader) -> bool {
+                return skr::json_read<T>((skr::archive::JsonReader*)reader, *(T*)object);
+            }>(SkrCoreExternMethods::ReadJson);
         }
-        if constexpr (skr::HasJsonWrite<T>)
+        if constexpr (skr::concepts::HasJsonWrite<T>)
         {
-            extern_method<
-                +[](void* object, void* writer) -> bool {
-                    return skr::json_write<T>((skr::archive::JsonWriter*)writer, *(T*)object);
-                }>(SkrCoreExternMethods::WriteJson);
+            extern_method<+[](void* object, void* writer) -> bool {
+                return skr::json_write<T>((skr::archive::JsonWriter*)writer, *(T*)object);
+            }>(SkrCoreExternMethods::WriteJson);
         }
 
         return *this;
