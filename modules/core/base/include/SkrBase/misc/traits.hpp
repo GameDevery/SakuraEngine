@@ -60,9 +60,11 @@ inline constexpr bool is_convertible_to_specialization_v = std::is_convertible_v
 
 template <template <class...> class ChildTemplate, template <class...> class Template, typename... Args>
 inline constexpr bool is_convertible_to_specialization_v<ChildTemplate<Args...>, Template> =
-std::is_convertible_v<ChildTemplate<Args...>*, Template<Args...>*>;
+    std::is_convertible_v<ChildTemplate<Args...>*, Template<Args...>*>;
 
 // is detected
+//?NOTE: deprecated by concept
+#if 0
 namespace detail
 {
 template <typename, template <typename...> class Op, typename... T>
@@ -77,7 +79,7 @@ template <template <typename...> class Op, typename... T>
 using is_detected = detail::is_detected_impl<void, Op, T...>;
 template <template <typename...> class Op, typename... T>
 inline constexpr bool is_detected_v = is_detected<Op, T...>::value;
-
+#endif
 
 template <std::size_t N, class T>
 [[nodiscard]] constexpr T* assume_aligned(T* ptr)
@@ -92,27 +94,27 @@ template <std::size_t N, class T>
 #elif defined(__ICC)
     switch (N)
     {
-        case 2:
-            __assume_aligned(ptr, 2);
-            break;
-        case 4:
-            __assume_aligned(ptr, 4);
-            break;
-        case 8:
-            __assume_aligned(ptr, 8);
-            break;
-        case 16:
-            __assume_aligned(ptr, 16);
-            break;
-        case 32:
-            __assume_aligned(ptr, 32);
-            break;
-        case 64:
-            __assume_aligned(ptr, 64);
-            break;
-        case 128:
-            __assume_aligned(ptr, 128);
-            break;
+    case 2:
+        __assume_aligned(ptr, 2);
+        break;
+    case 4:
+        __assume_aligned(ptr, 4);
+        break;
+    case 8:
+        __assume_aligned(ptr, 8);
+        break;
+    case 16:
+        __assume_aligned(ptr, 16);
+        break;
+    case 32:
+        __assume_aligned(ptr, 32);
+        break;
+    case 64:
+        __assume_aligned(ptr, 64);
+        break;
+    case 128:
+        __assume_aligned(ptr, 128);
+        break;
     }
     return ptr;
 #else // unknown compiler
