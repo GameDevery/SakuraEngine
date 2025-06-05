@@ -5,9 +5,20 @@
 #include "SkrBase/types.h"
 #include "SkrBase/math.h"
 
+namespace skr::concepts
+{
+template <typename T>
+concept BinWriterSupportBitPacking = requires(T t, void* data, size_t size) {
+    t.write_bits(data, size);
+};
+template <typename T>
+concept BinReaderSupportBitPacking = requires(T t, void* data, size_t size) {
+    t.read_bits(data, size);
+};
+} // namespace skr::concepts
+
 // writer & reader
-// TODO. 搬到 archive 里面去
-// TODO. use proxy instead
+// TODO. proxy 样式
 struct SBinaryWriter {
     using WriteFunc     = bool(void* user_data, const void* data, size_t size);
     using WriteBitsFunc = bool(void* user_data, const void* data, size_t size);
@@ -19,8 +30,7 @@ struct SBinaryWriter {
         _vwrite    = +[](void* user, const void* data, size_t size) -> bool {
             return static_cast<T*>(user)->write(data, size);
         };
-        auto SupportBitPacking = SKR_VALIDATOR((auto t), t.write_bits((void*)0, (size_t)0));
-        if constexpr (SupportBitPacking(SKR_TYPELIST(T)))
+        if constexpr (skr::concepts::BinWriterSupportBitPacking<T>)
         {
             _vwrite_bits = +[](void* user, const void* data, size_t size) -> bool {
                 return static_cast<T*>(user)->write_bits(data, size);
@@ -52,8 +62,7 @@ struct SBinaryReader {
         _vread     = +[](void* user, void* data, size_t size) -> bool {
             return static_cast<T*>(user)->read(data, size);
         };
-        auto SupportBitPacking = SKR_VALIDATOR((auto t), t.read_bits((void*)0, (size_t)0));
-        if constexpr (SupportBitPacking(SKR_TYPELIST(T)))
+        if constexpr (skr::concepts::BinReaderSupportBitPacking<T>)
         {
             _vread_bits = +[](void* user, void* data, size_t size) -> bool {
                 return static_cast<T*>(user)->read_bits(data, size);

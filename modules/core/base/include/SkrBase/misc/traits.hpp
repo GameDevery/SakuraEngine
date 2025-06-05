@@ -13,6 +13,9 @@ struct type_t {
 #define SKR_TYPELIST(...) \
     skr::type_t<void(__VA_ARGS__)> {}
 
+// validate
+//?NOTE: deprecated, use c++20 concept will be better
+#if 0
 template <class F>
 struct validator {
     template <class T>
@@ -32,12 +35,16 @@ struct validator {
 };
 template <class F>
 validator(F&&) -> validator<F&&>;
-#define SKR_VALIDATOR(def, ...)                                 \
-    ::skr::validator                                            \
-    {                                                           \
-        [] def -> decltype(__VA_ARGS__) { return __VA_ARGS__; } \
-    }
+    #define SKR_VALIDATOR(def, ...)                                 \
+        ::skr::validator                                            \
+        {                                                           \
+            [] def -> decltype(__VA_ARGS__) { return __VA_ARGS__; } \
+        }
+#endif
 
+// misc traits
+//?NOTE: deprecated, use c++20 concept will be better
+#if 0
 // use sizeof to check if a type is complete
 constexpr static auto is_complete = SKR_VALIDATOR((auto t), sizeof(t));
 template <class T>
@@ -61,9 +68,10 @@ inline constexpr bool is_convertible_to_specialization_v = std::is_convertible_v
 template <template <class...> class ChildTemplate, template <class...> class Template, typename... Args>
 inline constexpr bool is_convertible_to_specialization_v<ChildTemplate<Args...>, Template> =
     std::is_convertible_v<ChildTemplate<Args...>*, Template<Args...>*>;
+#endif
 
 // is detected
-//?NOTE: deprecated by concept
+//?NOTE: deprecated, use c++20 concept will be better
 #if 0
 namespace detail
 {
