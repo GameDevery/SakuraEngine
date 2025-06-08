@@ -1291,6 +1291,11 @@ void sugoiQ_get_views(sugoi_query_t* q, sugoi_view_callback_t callback, void* u)
     return q->pimpl->storage->query(q, callback, u);
 }
 
+void sugoiQ_get_views_unsafe(sugoi_query_t* q, sugoi_view_callback_t callback, void* u)
+{
+    return q->pimpl->storage->query_unsafe(q, callback, u);
+}
+
 void sugoiQ_get_groups(sugoi_query_t* q, sugoi_group_callback_t callback, void* u)
 {
     skr::Vector<sugoi_group_t*> groups;

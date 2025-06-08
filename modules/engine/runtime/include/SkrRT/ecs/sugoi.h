@@ -652,6 +652,7 @@ SKR_RUNTIME_API void sugoiQ_set_custom_filter(sugoi_query_t* query, sugoi_custom
  * @param callback callback for each filtered chunk view
  */
 SKR_RUNTIME_API void             sugoiQ_get_views(sugoi_query_t* query, sugoi_view_callback_t callback, void* u);
+SKR_RUNTIME_API void             sugoiQ_get_views_unsafe(sugoi_query_t* query, sugoi_view_callback_t callback, void* u);
 SKR_RUNTIME_API void             sugoiQ_get_groups(sugoi_query_t* query, sugoi_group_callback_t callback, void* u);
 SKR_RUNTIME_API void             sugoiQ_in_group(sugoi_query_t* query, sugoi_group_t* group, sugoi_view_callback_t callback, void* u);
 SKR_RUNTIME_API int              sugoiQ_match_entity(sugoi_query_t* query, sugoi_entity_t entity);
