@@ -18,6 +18,6 @@ public static class SkrBase
         if (BuildSystem.TargetOS == OSPlatform.Windows)
             Target.Link(Visibility.Private, "advapi32");
         else if (BuildSystem.TargetOS == OSPlatform.OSX)
-            Target.Link(Visibility.Private, "CoreFoundation");
+            Target.AppleFramework(Visibility.Private, "CoreFoundation");
     }
 }

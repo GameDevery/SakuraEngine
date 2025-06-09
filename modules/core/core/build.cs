@@ -9,6 +9,7 @@ public static class SkrCore
     static SkrCore()
     {
         var DependencyGraph = Engine.StaticComponent("SkrDependencyGraph", "SkrCore")
+            .Exception(true) // DAG uses lemon which uses exceptions
             .OptimizationLevel(OptimizationLevel.Fastest)
             .Depend(Visibility.Public, "SkrBase")
             .Require("lemon", new PackageConfig { Version = new Version(1, 3, 1) })
@@ -65,6 +66,11 @@ public static class SkrCore
 
         if (BuildSystem.TargetOS == OSPlatform.Windows)
             SkrCore.Link(Visibility.Private, "shell32", "Ole32", "Shlwapi");
+        else if (BuildSystem.TargetOS == OSPlatform.OSX)
+        {
+            SkrCore.AddObjCppFiles("src/**/build.*.mm")
+                .AppleFramework(Visibility.Public, "CoreFoundation", "Cocoa", "IOKit");
+        }
         else
             SkrCore.Link(Visibility.Private, "pthread");
     }
