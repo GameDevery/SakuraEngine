@@ -47,11 +47,28 @@ struct SKR_CORE_API IGenericBase {
     virtual Expected<EGenericError, size_t> hash(const void* src) const                   = 0;
 };
 
-struct GenericRecord final : IGenericBase {
+// TODO. 支持一重指针/引用等
+enum class EGenericTypeFlag : uint8_t
+{
+    None      = 0,
+    Const     = 1 << 0, // const pointer
+    Pointer   = 1 << 1, // pointer type
+    Ref       = 1 << 2, // reference type
+    RValueRef = 1 << 3, // rvalue reference type
+};
+struct SKR_CORE_API GenericType final : IGenericBase {
     SKR_RC_IMPL(override final)
 
     // ctor & dtor
-    GenericRecord(not_null<RTTRType*> type);
+    GenericType(not_null<RTTRType*> type, EGenericTypeFlag flag = EGenericTypeFlag::None);
+
+    // getter
+    EGenericTypeFlag flag() const;
+    bool             is_const() const;
+    bool             is_pointer() const;
+    bool             is_ref() const;
+    bool             is_rvalue_ref() const;
+    bool             is_decayed_pointer() const;
 
     //===> IGenericBase API
     // get type info
@@ -76,7 +93,8 @@ struct GenericRecord final : IGenericBase {
     Expected<EGenericError, size_t> hash(const void* src) const override final;
     //===> IGenericBase API
 private:
-    RTTRType* _type = nullptr;
+    RTTRType*        _type = nullptr;
+    EGenericTypeFlag _flag = EGenericTypeFlag::None;
 };
 
 // TODO. Generic Registry

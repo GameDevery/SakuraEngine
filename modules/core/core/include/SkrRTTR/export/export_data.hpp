@@ -179,6 +179,13 @@ struct MemoryTraitsData {
         use_realloc          = memory::MemoryTraits<T>::use_realloc;
         use_compare          = memory::MemoryTraits<T>::use_compare;
     }
+    template <typename T>
+    inline static MemoryTraitsData Make()
+    {
+        MemoryTraitsData data;
+        data.Fill<T>();
+        return data;
+    }
 };
 
 // help functions
