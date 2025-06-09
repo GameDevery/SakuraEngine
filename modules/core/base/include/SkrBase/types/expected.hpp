@@ -283,7 +283,7 @@ void Expected<E, T>::CondPanic(PanicReasion reason) const
 } // namespace skr
 
 #define SKR_EXPECTED_THROW(__E) \
-    if (!__E.has_value()) return std::move(__E);
+    if (!__E.has_value()) return __E;
 
 #define SKR_EXPECTED_THROW_EXPR(__EXPR) \
     if (auto _e = (__EXPR); !_e.has_value()) return std::move(_e);

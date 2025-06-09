@@ -49,9 +49,9 @@ struct SKR_CORE_API GenericOptional final : IGenericBase {
     void reset(void* memory) const;
 
     // assign
-    void assign_value(void* dst, const void* v) const;
-    void assign_value_move(void* dst, void* v) const;
-    void assign_default(void* dst);
+    Expected<EGenericError> assign_value(void* dst, const void* v) const;
+    Expected<EGenericError> assign_value_move(void* dst, void* v) const;
+    Expected<EGenericError> assign_default(void* dst);
 
 private:
     RC<IGenericBase> _inner            = nullptr;

@@ -47,6 +47,64 @@ struct SKR_CORE_API IGenericBase {
     virtual Expected<EGenericError, size_t> hash(const void* src) const                   = 0;
 };
 
+struct SKR_CORE_API GenericMemoryOps {
+    static Expected<EGenericError> construct(
+        IGenericBase*    generic,
+        MemoryTraitsData traits,
+        void*            dst,
+        uint64_t         count = 1
+    );
+    static Expected<EGenericError> destruct(
+        IGenericBase*    generic,
+        MemoryTraitsData traits,
+        void*            dst,
+        uint64_t         count = 1
+    );
+    static Expected<EGenericError> copy(
+        IGenericBase*    generic,
+        MemoryTraitsData traits,
+        void*            dst,
+        const void*      src,
+        uint64_t         count = 1
+    );
+    static Expected<EGenericError> move(
+        IGenericBase*    generic,
+        MemoryTraitsData traits,
+        void*            dst,
+        void*            src,
+        uint64_t         count = 1
+    );
+    static Expected<EGenericError> assign(
+        IGenericBase*    generic,
+        MemoryTraitsData traits,
+        void*            dst,
+        const void*      src,
+        uint64_t         count = 1
+    );
+    static Expected<EGenericError> move_assign(
+        IGenericBase*    generic,
+        MemoryTraitsData traits,
+        void*            dst,
+        void*            src,
+        uint64_t         count = 1
+    );
+    static Expected<EGenericError, bool> equal(
+        IGenericBase*    generic,
+        MemoryTraitsData traits,
+        const void*      lhs,
+        const void*      rhs,
+        uint64_t         count = 1
+    );
+    inline static void* offset_bytes(void* p, uint64_t offset) noexcept
+    {
+        return static_cast<uint8_t*>(p) + offset;
+    }
+    inline static void* offset_item(void* p, uint64_t item_size, uint64_t count) noexcept
+    {
+        return static_cast<uint8_t*>(p) + item_size * count;
+    }
+};
+
 // TODO. 支持一重指针/引用等
 enum class EGenericTypeFlag : uint8_t
 {
@@ -56,6 +114,7 @@ enum class EGenericTypeFlag : uint8_t
     Ref       = 1 << 2, // reference type
     RValueRef = 1 << 3, // rvalue reference type
 };
+// TODO. 缓存函数，减少查找开销
 struct SKR_CORE_API GenericType final : IGenericBase {
     SKR_RC_IMPL(override final)
 

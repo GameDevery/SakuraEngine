@@ -186,85 +186,80 @@ void GenericOptional::reset(void* memory) const
     SKR_ASSERT(memory);
     if (has_value(memory))
     {
-        if (_inner_mem_traits.use_dtor)
-        {
-            auto value_ptr = this->value_ptr(memory);
-            _inner->dtor(value_ptr);
-        }
+        auto p_value = this->value_ptr(memory);
+        GenericMemoryOps::destruct(
+            _inner.get(),
+            _inner_mem_traits,
+            p_value
+        );
     }
 }
 
 // assign
-void GenericOptional::assign_value(void* dst, const void* v) const
+Expected<EGenericError> GenericOptional::assign_value(void* dst, const void* v) const
 {
     SKR_ASSERT(dst);
     SKR_ASSERT(v);
 
     if (has_value(dst))
     {
-        if (_inner_mem_traits.use_assign)
-        {
-            _inner->assign(value_ptr(dst), v);
-        }
-        else
-        {
-            ::std::memcpy(value_ptr(dst), v, _inner->size());
-        }
+        auto p_value = this->value_ptr(dst);
+        return GenericMemoryOps::assign(
+            _inner.get(),
+            _inner_mem_traits,
+            p_value,
+            v
+        );
     }
     else
     {
         has_value(dst) = true;
-        if (_inner_mem_traits.use_ctor)
-        {
-            _inner->copy(value_ptr(dst), v);
-        }
-        else
-        {
-            ::std::memcpy(value_ptr(dst), v, _inner->size());
-        }
+        auto p_value   = this->value_ptr(dst);
+        return GenericMemoryOps::copy(
+            _inner.get(),
+            _inner_mem_traits,
+            p_value,
+            v
+        );
     }
 }
-void GenericOptional::assign_value_move(void* dst, void* v) const
+Expected<EGenericError> GenericOptional::assign_value_move(void* dst, void* v) const
 {
     SKR_ASSERT(dst);
     SKR_ASSERT(v);
 
     if (has_value(dst))
     {
-        if (_inner_mem_traits.use_move_assign)
-        {
-            _inner->move_assign(value_ptr(dst), v);
-        }
-        else
-        {
-            ::std::memmove(value_ptr(dst), v, _inner->size());
-        }
+        auto p_value = this->value_ptr(dst);
+        return GenericMemoryOps::move_assign(
+            _inner.get(),
+            _inner_mem_traits,
+            p_value,
+            v
+        );
     }
     else
     {
         has_value(dst) = true;
-        if (_inner_mem_traits.use_move)
-        {
-            _inner->move(value_ptr(dst), v);
-        }
-        else
-        {
-            ::std::memmove(value_ptr(dst), v, _inner->size());
-        }
+        auto p_value   = this->value_ptr(dst);
+        return GenericMemoryOps::move(
+            _inner.get(),
+            _inner_mem_traits,
+            p_value,
+            v
+        );
     }
 }
-void GenericOptional::assign_default(void* dst)
+Expected<EGenericError> GenericOptional::assign_default(void* dst)
 {
     SKR_ASSERT(dst);
     reset(dst);
     has_value(dst) = false;
-    if (_inner_mem_traits.use_ctor)
-    {
-        _inner->default_ctor(value_ptr(dst));
-    }
-    else
-    {
-        ::std::memset(value_ptr(dst), 0, _inner->size());
-    }
+    auto p_value   = this->value_ptr(dst);
+    return GenericMemoryOps::construct(
+        _inner.get(),
+        _inner_mem_traits,
+        p_value
+    );
 }
 } // namespace skr

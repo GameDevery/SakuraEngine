@@ -6,6 +6,190 @@ namespace skr
 IGenericBase::~IGenericBase() {}
 } // namespace skr
 
+// memory ops
+namespace skr
+{
+Expected<EGenericError> GenericMemoryOps::construct(
+    IGenericBase*    generic,
+    MemoryTraitsData traits,
+    void*            dst,
+    uint64_t         count
+)
+{
+    if (traits.use_ctor)
+    {
+        for (uint64_t i = 0; i < count; ++i)
+        {
+            auto result = generic->default_ctor(dst);
+            SKR_EXPECTED_THROW(result);
+        }
+        return {};
+    }
+    else
+    {
+        ::std::memset(dst, 0, generic->size() * count);
+        return {};
+    }
+}
+Expected<EGenericError> GenericMemoryOps::destruct(
+    IGenericBase*    generic,
+    MemoryTraitsData traits,
+    void*            dst,
+    uint64_t         count
+)
+{
+    if (traits.use_dtor)
+    {
+        for (uint64_t i = 0; i < count; ++i)
+        {
+            auto result = generic->dtor(dst);
+            SKR_EXPECTED_THROW(result);
+        }
+        return {};
+    }
+    else
+    {
+        // do nothing
+        return {};
+    }
+}
+Expected<EGenericError> GenericMemoryOps::copy(
+    IGenericBase*    generic,
+    MemoryTraitsData traits,
+    void*            dst,
+    const void*      src,
+    uint64_t         count
+)
+{
+    if (traits.use_copy)
+    {
+        for (uint64_t i = 0; i < count; ++i)
+        {
+            auto result = generic->copy(dst, src);
+            SKR_EXPECTED_THROW(result);
+        }
+        return {};
+    }
+    else
+    {
+        ::std::memcpy(dst, src, generic->size() * count);
+        return {};
+    }
+}
+Expected<EGenericError> GenericMemoryOps::move(
+    IGenericBase*    generic,
+    MemoryTraitsData traits,
+    void*            dst,
+    void*            src,
+    uint64_t         count
+)
+{
+    if (traits.use_move)
+    {
+        for (uint64_t i = 0; i < count; ++i)
+        {
+            auto result = generic->move(dst, src);
+            SKR_EXPECTED_THROW(result);
+        }
+        if (traits.need_dtor_after_move)
+        {
+            for (uint64_t i = 0; i < count; ++i)
+            {
+                auto result = generic->dtor(src);
+                SKR_EXPECTED_THROW(result);
+            }
+        }
+        return {};
+    }
+    else
+    {
+        ::std::memmove(dst, src, generic->size() * count);
+        return {};
+    }
+}
+Expected<EGenericError> GenericMemoryOps::assign(
+    IGenericBase*    generic,
+    MemoryTraitsData traits,
+    void*            dst,
+    const void*      src,
+    uint64_t         count
+)
+{
+    if (traits.use_assign)
+    {
+        for (uint64_t i = 0; i < count; ++i)
+        {
+            auto result = generic->assign(dst, src);
+            SKR_EXPECTED_THROW(result);
+        }
+        return {};
+    }
+    else
+    {
+        ::std::memcpy(dst, src, generic->size() * count);
+        return {};
+    }
+}
+Expected<EGenericError> GenericMemoryOps::move_assign(
+    IGenericBase*    generic,
+    MemoryTraitsData traits,
+    void*            dst,
+    void*            src,
+    uint64_t         count
+)
+{
+    if (traits.use_move_assign)
+    {
+        for (uint64_t i = 0; i < count; ++i)
+        {
+            auto result = generic->move_assign(dst, src);
+            SKR_EXPECTED_THROW(result);
+        }
+        if (traits.need_dtor_after_move)
+        {
+            for (uint64_t i = 0; i < count; ++i)
+            {
+                auto result = generic->dtor(src);
+                SKR_EXPECTED_THROW(result);
+            }
+        }
+        return {};
+    }
+    else
+    {
+        ::std::memmove(dst, src, generic->size() * count);
+        return {};
+    }
+}
+Expected<EGenericError, bool> GenericMemoryOps::equal(
+    IGenericBase*    generic,
+    MemoryTraitsData traits,
+    const void*      lhs,
+    const void*      rhs,
+    uint64_t         count
+)
+{
+    if (traits.use_compare)
+    {
+        for (uint64_t i = 0; i < count; ++i)
+        {
+            auto result = generic->equal(lhs, rhs);
+            SKR_EXPECTED_THROW(result);
+            if (!result.value())
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+    else
+    {
+        return ::std::memcmp(lhs, rhs, generic->size() * count) == 0;
+    }
+}
+} // namespace skr
+
+// generic type
 namespace skr
 {
 // ctor & dtor
