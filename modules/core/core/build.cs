@@ -62,7 +62,7 @@ public static class SkrCore
             .AddCodegenScript("meta/proxy.ts")
             .CreateSharedPCH("include/**.h", "include/**.hpp", "../profile/include/SkrProfile/profile.h")
             // TODO: REMOVE THIS
-            .Depend(Visibility.Public, "SDL2");
+            .Depend(Visibility.Public, "SDL3");
 
         if (BuildSystem.TargetOS == OSPlatform.Windows)
             SkrCore.Link(Visibility.Private, "shell32", "Ole32", "Shlwapi");
@@ -80,7 +80,7 @@ public class SkrCoreDoctor : DoctorAttribute
 {
     public override bool Check()
     {
-        Install.SDK("SDL2").Wait();
+        Install.SDK("SDL_3.2.12").Wait();
         return true;
     }
     public override bool Fix() 

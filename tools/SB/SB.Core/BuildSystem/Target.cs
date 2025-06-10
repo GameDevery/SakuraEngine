@@ -20,13 +20,13 @@ namespace SB
             }
         }
 
-        public FileList FileList<T>()
+        public T FileList<T>()
             where T : FileList, new()
         {
             foreach (var FileList in FileLists)
             {
                 if (FileList is T)
-                    return FileList;
+                    return (FileList as T)!;
             }
             var FL = new T { Target = this };
             FileLists.Add(FL);
