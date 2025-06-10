@@ -260,6 +260,11 @@ bool GenericVector::is_valid() const
 {
     return _inner != nullptr;
 }
+RC<IGenericBase> GenericVector::inner() const
+{
+    SKR_ASSERT(is_valid());
+    return _inner;
+}
 
 // vector getter
 uint64_t GenericVector::size(const void* dst) const
@@ -274,6 +279,19 @@ uint64_t GenericVector::capacity(const void* dst) const
     SKR_ASSERT(dst);
     return reinterpret_cast<const VectorMemoryBase*>(dst)->capacity();
 }
+uint64_t GenericVector::slack(const void* dst) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    auto* dst_mem = reinterpret_cast<const VectorMemoryBase*>(dst);
+    return dst_mem->capacity() - dst_mem->size();
+}
+bool GenericVector::is_empty(const void* dst) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    return reinterpret_cast<const VectorMemoryBase*>(dst)->size() == 0;
+}
 const void* GenericVector::data(const void* dst) const
 {
     SKR_ASSERT(is_valid());
@@ -285,6 +303,16 @@ void* GenericVector::data(void* dst) const
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
     return reinterpret_cast<VectorMemoryBase*>(dst)->_generic_only_data();
+}
+
+// validate
+bool GenericVector::is_valid_index(const void* dst, uint64_t idx) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+
+    auto* dst_mem = reinterpret_cast<const VectorMemoryBase*>(dst);
+    return idx >= 0 && idx < dst_mem->size();
 }
 
 // memory op
@@ -517,6 +545,251 @@ void GenericVector::resize_zeroed(void* dst, uint64_t expect_size) const
     dst_mem->set_size(expect_size);
 }
 
+// add
+GenericVectorDataRef GenericVector::add(void* dst, const void* v, uint64_t n) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+
+    auto result = add_unsafe(dst, n);
+    for (uint64_t i = 0; i < n; ++i)
+    {
+        _inner->copy(
+            ::skr::memory::offset_item(
+                result.ptr,
+                _inner->size(),
+                i
+            ),
+            v
+        );
+    }
+    return result;
+}
+GenericVectorDataRef GenericVector::add_move(void* dst, void* v) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    auto result = add_unsafe(dst, 1);
+    _inner->move(result.ptr, v, 1);
+    return result;
+}
+GenericVectorDataRef GenericVector::add_unsafe(void* dst, uint64_t n) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    auto dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
+
+    auto old_size = _grow(dst, n);
+    return {
+        ::skr::memory::offset_item(dst_mem->_generic_only_data(), _inner->size(), old_size),
+        old_size
+    };
+}
+GenericVectorDataRef GenericVector::add_default(void* dst, uint64_t n) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+
+    auto result = add_unsafe(dst, n);
+    _inner->default_ctor(
+        ::skr::memory::offset_item(
+            result.ptr,
+            _inner->size(),
+            n
+        )
+    );
+    return result;
+}
+GenericVectorDataRef GenericVector::add_zeroed(void* dst, uint64_t n) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+
+    auto result = add_unsafe(dst, n);
+    ::skr::memory::zero_memory(result.ptr, n * _inner->size());
+    return result;
+}
+GenericVectorDataRef GenericVector::add_unique(void* dst, const void* v) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+
+    // if (auto ref = find(dst, v))
+    // {
+    //     return ref;
+    // }
+    // else
+    // {
+    //     return add(dst, v);
+    // }
+
+    return {};
+}
+GenericVectorDataRef GenericVector::add_unique_move(void* dst, void* v) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+
+    // if (auto ref = find(dst, v))
+    // {
+    //     return ref;
+    // }
+    // else
+    // {
+    //     return add_move(dst, v);
+    // }
+
+    return {};
+}
+
+// add at
+void GenericVector::add_at(void* dst, uint64_t idx, const void* v, uint64_t n) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    auto dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
+
+    add_at_unsafe(dst, idx, n);
+    for (uint64_t i = 0; i < n; ++i)
+    {
+        _inner->copy(
+            ::skr::memory::offset_item(
+                dst_mem->_generic_only_data(),
+                _inner->size(),
+                idx + i
+            ),
+            v
+        );
+    }
+}
+void GenericVector::add_at_move(void* dst, uint64_t idx, void* v) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    auto dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
+
+    add_at_unsafe(dst, idx, 1);
+    for (uint64_t i = 0; i < dst_mem->size(); ++i)
+    {
+        _inner->move(
+            ::skr::memory::offset_item(
+                dst_mem->_generic_only_data(),
+                _inner->size(),
+                idx + i
+            ),
+            v
+        );
+    }
+}
+void GenericVector::add_at_unsafe(void* dst, uint64_t idx, uint64_t n) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT((is_empty(dst) && idx == 0) || is_valid_index(dst, idx));
+    auto dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
+
+    auto move_n = dst_mem->size() - idx;
+    add_unsafe(dst, n);
+    _inner->move(
+        ::skr::memory::offset_item(
+            dst_mem->_generic_only_data(),
+            _inner->size(),
+            idx + n
+        ),
+        ::skr::memory::offset_item(
+            dst_mem->_generic_only_data(),
+            _inner->size(),
+            idx
+        ),
+        move_n
+    );
+}
+void GenericVector::add_at_default(void* dst, uint64_t idx, uint64_t n) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+
+    add_at_unsafe(dst, idx, n);
+    _inner->default_ctor(
+        ::skr::memory::offset_item(
+            reinterpret_cast<VectorMemoryBase*>(dst)->_generic_only_data(),
+            _inner->size(),
+            idx
+        ),
+        n
+    );
+}
+void GenericVector::add_at_zeroed(void* dst, uint64_t idx, uint64_t n) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+
+    add_at_unsafe(dst, idx, n);
+    ::skr::memory::zero_memory(
+        ::skr::memory::offset_item(
+            reinterpret_cast<VectorMemoryBase*>(dst)->_generic_only_data(),
+            _inner->size(),
+            idx
+        ),
+        n
+    );
+}
+
+// append
+GenericVectorDataRef GenericVector::append(void* dst, const void* other) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(other);
+    auto*       dst_mem   = reinterpret_cast<VectorMemoryBase*>(dst);
+    const auto* other_mem = reinterpret_cast<const VectorMemoryBase*>(other);
+
+    auto other_size = other_mem->size();
+    if (other_size)
+    {
+        auto result = add_unsafe(dst, other_size);
+        _inner->copy(
+            result.ptr,
+            other_mem->_generic_only_data(),
+            other_size
+        );
+        return result;
+    }
+    return {
+        ::skr::memory::offset_item(
+            dst_mem->_generic_only_data(),
+            _inner->size(),
+            dst_mem->size()
+        ),
+        dst_mem->size()
+    };
+}
+
+// append at
+void GenericVector::append_at(void* dst, uint64_t idx, const void* other) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(other);
+    auto*       dst_mem   = reinterpret_cast<VectorMemoryBase*>(dst);
+    const auto* other_mem = reinterpret_cast<const VectorMemoryBase*>(other);
+
+    auto other_size = other_mem->size();
+    if (other_size)
+    {
+        add_at_unsafe(dst, idx, other_size);
+        _inner->copy(
+            ::skr::memory::offset_item(
+                dst_mem->_generic_only_data(),
+                _inner->size(),
+                idx
+            ),
+            other_mem->_generic_only_data(),
+            other_size
+        );
+    }
+}
+
 // helper
 void GenericVector::_realloc(void* dst, uint64_t new_capacity) const
 {
@@ -587,5 +860,30 @@ void GenericVector::_free(void* dst) const
         dst_mem->_generic_only_set_data(nullptr);
         dst_mem->_generic_only_set_capacity(0);
     }
+}
+uint64_t GenericVector::_grow(void* dst, uint64_t grow_size) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    auto dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
+
+    uint64_t old_size = dst_mem->size();
+    uint64_t new_size = old_size + grow_size;
+
+    if (new_size > dst_mem->capacity())
+    {
+        uint64_t new_capacity = container::default_get_grow<uint64_t>(
+            new_size,
+            dst_mem->capacity()
+        );
+        SKR_ASSERT(new_capacity >= dst_mem->capacity());
+        if (new_capacity >= dst_mem->capacity())
+        {
+            _realloc(dst, new_capacity);
+        }
+    }
+
+    dst_mem->set_size(new_size);
+    return old_size;
 }
 } // namespace skr

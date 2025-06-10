@@ -4,6 +4,32 @@
 
 namespace skr
 {
+struct GenericVectorDataRef {
+    void*    ptr   = nullptr;
+    uint64_t index = 0;
+
+    inline bool is_valid() const
+    {
+        return ptr != nullptr && index != npos_of<uint64_t>;
+    }
+    inline operator bool()
+    {
+        return is_valid();
+    }
+};
+struct CGenericVectorDataRef {
+    const void* ptr   = nullptr;
+    uint64_t    index = 0;
+
+    inline bool is_valid() const
+    {
+        return ptr != nullptr && index != npos_of<uint64_t>;
+    }
+    inline operator bool()
+    {
+        return is_valid();
+    }
+};
 struct SKR_CORE_API GenericVector final : IGenericBase {
     SKR_RC_IMPL(override final)
 
@@ -36,13 +62,19 @@ struct SKR_CORE_API GenericVector final : IGenericBase {
     //===> IGenericBase API
 
     // getter
-    bool is_valid() const;
+    bool             is_valid() const;
+    RC<IGenericBase> inner() const;
 
     // vector getter
     uint64_t    size(const void* dst) const;
     uint64_t    capacity(const void* dst) const;
+    uint64_t    slack(const void* dst) const;
+    bool        is_empty(const void* dst) const;
     const void* data(const void* dst) const;
     void*       data(void* dst) const;
+
+    // validate
+    bool is_valid_index(const void* dst, uint64_t idx) const;
 
     // memory op
     void clear(void* dst) const;
@@ -55,52 +87,65 @@ struct SKR_CORE_API GenericVector final : IGenericBase {
     void resize_zeroed(void* dst, uint64_t expect_size) const;
 
     // add
-    // void add(void* v, uint64_t n = 1);
-    // void add_unsafe(uint64_t n = 1);
-    // void add_default(uint64_t n = 1);
-    // void add_zeroed(uint64_t n = 1);
-    // void add_unique(void* v);
+    GenericVectorDataRef add(void* dst, const void* v, uint64_t n = 1) const;
+    GenericVectorDataRef add_move(void* dst, void* v) const;
+    GenericVectorDataRef add_unsafe(void* dst, uint64_t n = 1) const;
+    GenericVectorDataRef add_default(void* dst, uint64_t n = 1) const;
+    GenericVectorDataRef add_zeroed(void* dst, uint64_t n = 1) const;
+    GenericVectorDataRef add_unique(void* dst, const void* v) const;
+    GenericVectorDataRef add_unique_move(void* dst, void* v) const;
 
     // add at
-    // void add_at(uint64_t idx, void* v, uint64_t n = 1);
-    // void add_at_unsafe(uint64_t idx, uint64_t n = 1);
-    // void add_at_default(uint64_t idx, uint64_t n = 1);
-    // void add_at_zeroed(uint64_t idx, uint64_t n = 1);
+    void add_at(void* dst, uint64_t idx, const void* v, uint64_t n = 1) const;
+    void add_at_move(void* dst, uint64_t idx, void* v) const;
+    void add_at_unsafe(void* dst, uint64_t idx, uint64_t n = 1) const;
+    void add_at_default(void* dst, uint64_t idx, uint64_t n = 1) const;
+    void add_at_zeroed(void* dst, uint64_t idx, uint64_t n = 1) const;
 
     // append
-    // void append(GenericVector* other);
+    GenericVectorDataRef append(void* dst, const void* other) const;
 
     // append at
-    // void append_at(uint64_t idx, GenericVector* other);
+    void append_at(void* dst, uint64_t idx, const void* other) const;
 
     // remove
-    // void remove_at(uint64_t idx, uint64_t n = 1);
-    // void remove_at_swap(uint64_t idx, uint64_t n = 1);
-    // void remove(void* v);
-    // void remove_swap(void* v);
-    // void remove_last(void* v);
-    // void remove_last_swap(void* v);
-    // void remove_all(void* v);
-    // void remove_all_swap(void* v);
+    // void remove_at(void* dst, uint64_t idx, uint64_t n = 1) const;
+    // void remove_at_swap(void* dst, uint64_t idx, uint64_t n = 1) const;
+    // bool remove(void* dst, const void* v) const;
+    // bool remove_swap(void* dst, const void* v) const;
+    // bool remove_last(void* dst, const void* v) const;
+    // bool remove_last_swap(void* dst, const void* v) const;
+    // uint64_t remove_all(void* dst, const void* v) const;
+    // uint64_t remove_all_swap(void* dst, const void* v) const;
 
     // access
-    // void* at(uint64_t idx) const;
-    // void* at_last(uint64_t idx) const;
+    // void* at(void* dst, uint64_t idx) const;
+    // void* at_last(void* dst, uint64_t idx) const;
+    // const void* at(const void* dst, uint64_t idx) const;
+    // const void* at_last(const void* dst, uint64_t idx) const;
 
     // find
-    // uint64_t find(void* v) const;
-    // uint64_t find_last(void* v) const;
+    // GenericVectorDataRef find(void* dst, const void* v) const;
+    // GenericVectorDataRef find_last(void* dst, const void* v) const;
+    // CGenericVectorDataRef find(const void* dst, const void* v) const;
+    // CGenericVectorDataRef find_last(const void* dst, const void* v) const;
+
+    // contains & count
+    // bool contains(const void* dst, const void* v) const;
+    // uint64_t count(const void* dst, const void* v) const;
 
     // sort
-    // void sort_less();
-    // void sort_greater();
-    // void sort_stable_less();
-    // void sort_stable_greater();
+    // TODO. 需要比较 op，Swapper
+    // void sort_less(void* dst) const;
+    // void sort_greater(void* dst) const;
+    // void sort_stable_less(void* dst) const;
+    // void sort_stable_greater(void* dst) const;
 
 private:
     // helper
-    void _realloc(void* dst, uint64_t new_capacity) const;
-    void _free(void* dst) const;
+    void     _realloc(void* dst, uint64_t new_capacity) const;
+    void     _free(void* dst) const;
+    uint64_t _grow(void* dst, uint64_t grow_size) const;
 
 private:
     RC<IGenericBase> _inner            = nullptr;

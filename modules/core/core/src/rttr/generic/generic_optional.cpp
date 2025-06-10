@@ -254,7 +254,12 @@ size_t GenericOptional::hash(const void* src) const
 //===> IGenericBase API
 
 // getter
-bool GenericOptional::is_valid() const { return _inner != nullptr; }
+bool             GenericOptional::is_valid() const { return _inner != nullptr; }
+RC<IGenericBase> GenericOptional::inner() const
+{
+    SKR_ASSERT(is_valid());
+    return _inner;
+}
 
 // has value
 bool GenericOptional::has_value(const void* memory) const

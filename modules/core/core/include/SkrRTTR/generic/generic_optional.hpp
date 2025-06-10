@@ -36,7 +36,8 @@ struct SKR_CORE_API GenericOptional final : IGenericBase {
     //===> IGenericBase API
 
     // getter
-    bool is_valid() const;
+    bool             is_valid() const;
+    RC<IGenericBase> inner() const;
 
     // has value
     bool  has_value(const void* memory) const;

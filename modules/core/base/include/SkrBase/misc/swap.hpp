@@ -3,6 +3,9 @@
 
 namespace skr
 {
+template <typename T>
+struct Swap;
+
 namespace concepts
 {
 template <typename T>
@@ -11,10 +14,13 @@ concept HasStdSwap = requires(T a, T b) {
 };
 template <typename T>
 concept NoStdSwap = !HasStdSwap<T>;
-} // namespace concepts
 
 template <typename T>
-struct Swap;
+concept HasSwap = requires(T a, T b) {
+    Swap<T>::call(a, b);
+};
+
+} // namespace concepts
 
 template <concepts::NoStdSwap T>
 struct Swap<T> {

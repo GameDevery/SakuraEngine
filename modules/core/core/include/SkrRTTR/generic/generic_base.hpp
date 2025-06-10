@@ -52,7 +52,6 @@ struct SKR_CORE_API IGenericBase {
     virtual size_t hash(const void* src) const                                       = 0;
 };
 
-// TODO. 支持一重指针/引用等
 enum class EGenericTypeFlag : uint8_t
 {
     None      = 0,

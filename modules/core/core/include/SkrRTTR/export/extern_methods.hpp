@@ -49,6 +49,9 @@ struct SkrCoreExternMethods {
     // hasher
     static constexpr const char8_t* Hash = u8"__SKR_HASH__";
 
+    // swap
+    static constexpr const char8_t* Swap = u8"__SKR_SWAP__";
+
     // serialize
     static constexpr const char8_t* WriteJson = u8"__WRITE_JSON__";
     static constexpr const char8_t* ReadJson  = u8"__READ_JSON__";
