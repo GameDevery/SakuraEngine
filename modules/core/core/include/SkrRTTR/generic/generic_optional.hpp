@@ -24,14 +24,15 @@ struct SKR_CORE_API GenericOptional final : IGenericBase {
     uint64_t alignment() const override final;
 
     // operations, used for generic container algorithms
-    Expected<EGenericError>         default_ctor(void* dst) const override final;
-    Expected<EGenericError>         dtor(void* dst) const override final;
-    Expected<EGenericError>         copy(void* dst, const void* src) const override final;
-    Expected<EGenericError>         move(void* dst, void* src) const override final;
-    Expected<EGenericError>         assign(void* dst, const void* src) const override final;
-    Expected<EGenericError>         move_assign(void* dst, void* src) const override final;
-    Expected<EGenericError, bool>   equal(const void* lhs, const void* rhs) const override final;
-    Expected<EGenericError, size_t> hash(const void* src) const override final;
+    bool   support(EGenericFeature feature) const override final;
+    void   default_ctor(void* dst, uint64_t count = 1) const override final;
+    void   dtor(void* dst, uint64_t count = 1) const override final;
+    void   copy(void* dst, const void* src, uint64_t count = 1) const override final;
+    void   move(void* dst, void* src, uint64_t count = 1) const override final;
+    void   assign(void* dst, const void* src, uint64_t count = 1) const override final;
+    void   move_assign(void* dst, void* src, uint64_t count = 1) const override final;
+    bool   equal(const void* lhs, const void* rhs) const override final;
+    size_t hash(const void* src) const override final;
     //===> IGenericBase API
 
     // getter
@@ -49,9 +50,9 @@ struct SKR_CORE_API GenericOptional final : IGenericBase {
     void reset(void* memory) const;
 
     // assign
-    Expected<EGenericError> assign_value(void* dst, const void* v) const;
-    Expected<EGenericError> assign_value_move(void* dst, void* v) const;
-    Expected<EGenericError> assign_default(void* dst);
+    void assign_value(void* dst, const void* v) const;
+    void assign_value_move(void* dst, void* v) const;
+    void assign_default(void* dst);
 
 private:
     RC<IGenericBase> _inner            = nullptr;

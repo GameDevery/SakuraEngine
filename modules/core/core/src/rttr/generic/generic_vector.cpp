@@ -50,47 +50,82 @@ uint64_t GenericVector::alignment() const
 }
 
 // operations, used for generic container algorithms
-Expected<EGenericError> GenericVector::default_ctor(void* dst) const
+bool GenericVector::support(EGenericFeature feature) const
 {
-    SKR_ASSERT(is_valid());
-    // reset to zero
-    std::memset(dst, 0, size());
-    return {};
+    switch (feature)
+    {
+    case EGenericFeature::DefaultCtor:
+        return true;
+    case EGenericFeature::Dtor:
+    case EGenericFeature::Copy:
+    case EGenericFeature::Move:
+    case EGenericFeature::Assign:
+    case EGenericFeature::MoveAssign:
+    case EGenericFeature::Equal:
+        return _inner && _inner->support(feature);
+    case EGenericFeature::Hash:
+        return false;
+    default:
+        SKR_UNREACHABLE_CODE()
+        return false;
+    }
 }
-Expected<EGenericError> GenericVector::dtor(void* dst) const
+void GenericVector::default_ctor(void* dst, uint64_t count) const
 {
     SKR_ASSERT(is_valid());
-    return {};
+    SKR_ASSERT(dst);
+    SKR_ASSERT(count > 0);
+
+    std::memset(dst, 0, size() * count);
 }
-Expected<EGenericError> GenericVector::copy(void* dst, const void* src) const
+void GenericVector::dtor(void* dst, uint64_t count) const
 {
     SKR_ASSERT(is_valid());
-    return {};
+    SKR_ASSERT(dst);
+    SKR_ASSERT(count > 0);
 }
-Expected<EGenericError> GenericVector::move(void* dst, void* src) const
+void GenericVector::copy(void* dst, const void* src, uint64_t count) const
 {
     SKR_ASSERT(is_valid());
-    return {};
+    SKR_ASSERT(dst);
+    SKR_ASSERT(src);
+    SKR_ASSERT(count > 0);
 }
-Expected<EGenericError> GenericVector::assign(void* dst, const void* src) const
+void GenericVector::move(void* dst, void* src, uint64_t count) const
 {
     SKR_ASSERT(is_valid());
-    return {};
+    SKR_ASSERT(dst);
+    SKR_ASSERT(src);
+    SKR_ASSERT(count > 0);
 }
-Expected<EGenericError> GenericVector::move_assign(void* dst, void* src) const
+void GenericVector::assign(void* dst, const void* src, uint64_t count) const
 {
     SKR_ASSERT(is_valid());
-    return {};
+    SKR_ASSERT(dst);
+    SKR_ASSERT(src);
+    SKR_ASSERT(count > 0);
 }
-Expected<EGenericError, bool> GenericVector::equal(const void* lhs, const void* rhs) const
+void GenericVector::move_assign(void* dst, void* src, uint64_t count) const
 {
     SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(src);
+    SKR_ASSERT(count > 0);
+}
+bool GenericVector::equal(const void* lhs, const void* rhs) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(lhs);
+    SKR_ASSERT(rhs);
+
     return false;
 }
-Expected<EGenericError, size_t> GenericVector::hash(const void* src) const
+size_t GenericVector::hash(const void* src) const
 {
     SKR_ASSERT(is_valid());
-    return EGenericError::NoSuchFeature;
+    SKR_ASSERT(src);
+
+    return 0;
 }
 
 // getter
@@ -136,9 +171,7 @@ void GenericVector::clear(void* dst) const
     {
         if (_inner_mem_traits.use_dtor)
         {
-            GenericMemoryOps::destruct(
-                _inner.get(),
-                _inner_mem_traits,
+            _inner->dtor(
                 dst_mem->_generic_only_data(),
                 dst_mem->size()
             );
@@ -223,9 +256,7 @@ void GenericVector::resize(void* dst, uint64_t expect_size, void* new_value) con
                 item_size,
                 i
             );
-            GenericMemoryOps::copy(
-                _inner.get(),
-                _inner_mem_traits,
+            _inner->copy(
                 p_copy_data,
                 new_value
             );
@@ -238,9 +269,7 @@ void GenericVector::resize(void* dst, uint64_t expect_size, void* new_value) con
             item_size,
             expect_size
         );
-        GenericMemoryOps::destruct(
-            _inner.get(),
-            _inner_mem_traits,
+        _inner->dtor(
             p_destruct_data,
             dst_mem->size() - expect_size
         );
@@ -270,9 +299,7 @@ void GenericVector::resize_unsafe(void* dst, uint64_t expect_size) const
             item_size,
             expect_size
         );
-        GenericMemoryOps::destruct(
-            _inner.get(),
-            _inner_mem_traits,
+        _inner->dtor(
             p_destruct_data,
             dst_mem->size() - expect_size
         );
@@ -302,9 +329,7 @@ void GenericVector::resize_default(void* dst, uint64_t expect_size) const
             item_size,
             dst_mem->size()
         );
-        GenericMemoryOps::construct(
-            _inner.get(),
-            _inner_mem_traits,
+        _inner->default_ctor(
             p_construct_data,
             expect_size - dst_mem->size()
         );
@@ -316,9 +341,7 @@ void GenericVector::resize_default(void* dst, uint64_t expect_size) const
             item_size,
             expect_size
         );
-        GenericMemoryOps::destruct(
-            _inner.get(),
-            _inner_mem_traits,
+        _inner->dtor(
             p_destruct_data,
             dst_mem->size() - expect_size
         );
@@ -357,9 +380,7 @@ void GenericVector::resize_zeroed(void* dst, uint64_t expect_size) const
             item_size,
             expect_size
         );
-        GenericMemoryOps::destruct(
-            _inner.get(),
-            _inner_mem_traits,
+        _inner->dtor(
             p_destruct_data,
             dst_mem->size() - expect_size
         );
@@ -404,9 +425,7 @@ void GenericVector::_realloc(void* dst, uint64_t new_capacity) const
         // move items
         if (dst_mem->size())
         {
-            GenericMemoryOps::move(
-                _inner.get(),
-                _inner_mem_traits,
+            _inner->move(
                 new_memory,
                 dst_mem->_generic_only_data(),
                 dst_mem->size()

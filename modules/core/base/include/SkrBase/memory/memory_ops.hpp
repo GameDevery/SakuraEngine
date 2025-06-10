@@ -330,9 +330,23 @@ SKR_INLINE void* offset_bytes(void* p, uint64_t offset) noexcept
 {
     return static_cast<uint8_t*>(p) + offset;
 }
+SKR_INLINE const void* offset_bytes(const void* p, uint64_t offset) noexcept
+{
+    return static_cast<const uint8_t*>(p) + offset;
+}
 SKR_INLINE void* offset_item(void* p, uint64_t item_size, uint64_t count) noexcept
 {
     return offset_bytes(p, item_size * count);
+}
+SKR_INLINE const void* offset_item(const void* p, uint64_t item_size, uint64_t count) noexcept
+{
+    return offset_bytes(p, item_size * count);
+}
+
+// zero memory
+SKR_INLINE void zero_memory(void* p, size_t size) noexcept
+{
+    ::std::memset(p, 0, size);
 }
 
 } // namespace skr::memory

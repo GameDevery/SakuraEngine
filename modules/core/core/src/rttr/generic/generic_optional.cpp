@@ -49,102 +49,206 @@ uint64_t GenericOptional::alignment() const
 }
 
 // operations, used for generic container algorithms
-Expected<EGenericError> GenericOptional::default_ctor(void* dst) const
+bool GenericOptional::support(EGenericFeature feature) const
 {
     SKR_ASSERT(is_valid());
-    has_value(dst) = false;
-    return {};
+
+    switch (feature)
+    {
+    case EGenericFeature::DefaultCtor:
+        return true;
+    case EGenericFeature::Dtor:
+    case EGenericFeature::Copy:
+    case EGenericFeature::Move:
+    case EGenericFeature::Assign:
+    case EGenericFeature::MoveAssign:
+        return _inner->support(feature);
+    case EGenericFeature::Equal:
+    case EGenericFeature::Hash:
+        return false;
+    default:
+        SKR_UNREACHABLE_CODE()
+        return false;
+    }
 }
-Expected<EGenericError> GenericOptional::dtor(void* dst) const
+void GenericOptional::default_ctor(void* dst, uint64_t count) const
 {
     SKR_ASSERT(is_valid());
-    if (!_inner_mem_traits.use_dtor) return EGenericError::ShouldNotCall;
-    reset(dst);
-    return {};
+    SKR_ASSERT(dst);
+    SKR_ASSERT(count > 0);
+
+    ::skr::memory::zero_memory(dst, size() * count);
 }
-Expected<EGenericError> GenericOptional::copy(void* dst, const void* src) const
+void GenericOptional::dtor(void* dst, uint64_t count) const
 {
     SKR_ASSERT(is_valid());
-    if (!_inner_mem_traits.use_copy) return EGenericError::ShouldNotCall;
-    if (has_value(src))
+    SKR_ASSERT(dst);
+    SKR_ASSERT(count > 0);
+
+    auto optional_size = size();
+
+    if (_inner_mem_traits.use_dtor)
     {
-        has_value(dst) = true;
-        _inner->copy(value_ptr(dst), value_ptr(src));
-    }
-    else
-    {
-        has_value(dst) = false;
-    }
-    return {};
-}
-Expected<EGenericError> GenericOptional::move(void* dst, void* src) const
-{
-    SKR_ASSERT(is_valid());
-    if (!_inner_mem_traits.use_move) return EGenericError::ShouldNotCall;
-    if (has_value(src))
-    {
-        has_value(dst) = true;
-        _inner->move(value_ptr(dst), value_ptr(src));
-    }
-    else
-    {
-        has_value(dst) = false;
-    }
-    return {};
-}
-Expected<EGenericError> GenericOptional::assign(void* dst, const void* src) const
-{
-    SKR_ASSERT(is_valid());
-    if (!_inner_mem_traits.use_assign) return EGenericError::ShouldNotCall;
-    if (has_value(src))
-    {
-        assign_value(dst, value_ptr(src));
-    }
-    else
-    {
-        reset(dst);
-    }
-    return {};
-}
-Expected<EGenericError> GenericOptional::move_assign(void* dst, void* src) const
-{
-    SKR_ASSERT(is_valid());
-    if (!_inner_mem_traits.use_move_assign) return EGenericError::ShouldNotCall;
-    if (has_value(src))
-    {
-        assign_value_move(dst, value_ptr(src));
-        if (_inner_mem_traits.need_dtor_after_move)
+        // each items
+        for (uint64_t i = 0; i < count; ++i)
         {
-            reset(src);
-        }
-        else
-        {
-            has_value(src) = false; // reset has_value only
+            auto p_dst = ::skr::memory::offset_item(dst, optional_size, i);
+
+            // call dtor if has value
+            if (has_value(p_dst))
+            {
+                auto p_value = value_ptr(p_dst);
+                _inner->dtor(p_value);
+            }
         }
     }
     else
     {
-        reset(dst);
+        ::skr::memory::zero_memory(dst, optional_size * count);
     }
-    return {};
 }
-Expected<EGenericError, bool> GenericOptional::equal(const void* lhs, const void* rhs) const
+void GenericOptional::copy(void* dst, const void* src, uint64_t count) const
 {
     SKR_ASSERT(is_valid());
-    if (!_inner_mem_traits.use_compare) return EGenericError::ShouldNotCall;
-    if (has_value(lhs) && has_value(rhs))
+    SKR_ASSERT(dst);
+    SKR_ASSERT(src);
+    SKR_ASSERT(count > 0);
+
+    auto optional_size = size();
+
+    if (_inner_mem_traits.use_copy)
     {
-        return _inner->equal(value_ptr(lhs), value_ptr(rhs));
+        // each items
+        for (uint64_t i = 0; i < count; ++i)
+        {
+            auto p_dst = ::skr::memory::offset_item(dst, optional_size, i);
+            auto p_src = ::skr::memory::offset_item(src, optional_size, i);
+
+            if (has_value(p_src))
+            {
+                has_value(p_dst) = true;
+                _inner->copy(value_ptr(p_dst), value_ptr(p_src));
+            }
+            else
+            {
+                has_value(p_dst) = false;
+            }
+        }
     }
     else
     {
-        return has_value(lhs) == has_value(rhs);
+        ::std::memcpy(dst, src, optional_size * count);
     }
 }
-Expected<EGenericError, size_t> GenericOptional::hash(const void* src) const
+void GenericOptional::move(void* dst, void* src, uint64_t count) const
 {
     SKR_ASSERT(is_valid());
-    return EGenericError::NoSuchFeature;
+    SKR_ASSERT(dst);
+    SKR_ASSERT(src);
+    SKR_ASSERT(count > 0);
+
+    auto optional_size = size();
+
+    if (_inner_mem_traits.use_move)
+    {
+        // each items
+        for (uint64_t i = 0; i < count; ++i)
+        {
+            auto p_dst = ::skr::memory::offset_item(dst, optional_size, i);
+            auto p_src = ::skr::memory::offset_item(src, optional_size, i);
+
+            if (has_value(p_src))
+            {
+                has_value(p_dst) = true;
+                _inner->move(value_ptr(p_dst), value_ptr(p_src));
+                has_value(src) = false; // reset rhs
+            }
+            else
+            {
+                has_value(p_dst) = false;
+            }
+        }
+    }
+    else
+    {
+        ::std::memmove(dst, src, optional_size * count);
+    }
+}
+void GenericOptional::assign(void* dst, const void* src, uint64_t count) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(src);
+    SKR_ASSERT(count > 0);
+
+    if (_inner_mem_traits.use_assign)
+    {
+        // each items
+        for (uint64_t i = 0; i < count; ++i)
+        {
+            auto p_dst = ::skr::memory::offset_item(dst, size(), i);
+            auto p_src = ::skr::memory::offset_item(src, size(), i);
+
+            if (has_value(p_src))
+            {
+                assign_value(p_dst, value_ptr(p_src));
+            }
+            else
+            {
+                reset(p_dst);
+            }
+        }
+    }
+    else
+    {
+        ::std::memcpy(dst, src, size() * count);
+    }
+}
+void GenericOptional::move_assign(void* dst, void* src, uint64_t count) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(src);
+    SKR_ASSERT(count > 0);
+
+    if (_inner_mem_traits.use_move_assign)
+    {
+        // each items
+        for (uint64_t i = 0; i < count; ++i)
+        {
+            auto p_dst = ::skr::memory::offset_item(dst, size(), i);
+            auto p_src = ::skr::memory::offset_item(src, size(), i);
+
+            if (has_value(p_src))
+            {
+                assign_value_move(p_dst, value_ptr(p_src));
+                has_value(src) = false; // reset rhs
+            }
+            else
+            {
+                reset(p_dst);
+            }
+        }
+    }
+    else
+    {
+        ::std::memmove(dst, src, size() * count);
+    }
+}
+bool GenericOptional::equal(const void* lhs, const void* rhs) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(lhs);
+    SKR_ASSERT(rhs);
+
+    SKR_ASSERT(false && "equal not support for GenericOptional, please check feature before call this function");
+    return false;
+}
+size_t GenericOptional::hash(const void* src) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(false && "hash not support for GenericOptional, please check feature before call this function");
+    return 0;
 }
 //===> IGenericBase API
 
@@ -187,16 +291,12 @@ void GenericOptional::reset(void* memory) const
     if (has_value(memory))
     {
         auto p_value = this->value_ptr(memory);
-        GenericMemoryOps::destruct(
-            _inner.get(),
-            _inner_mem_traits,
-            p_value
-        );
+        _inner->dtor(p_value);
     }
 }
 
 // assign
-Expected<EGenericError> GenericOptional::assign_value(void* dst, const void* v) const
+void GenericOptional::assign_value(void* dst, const void* v) const
 {
     SKR_ASSERT(dst);
     SKR_ASSERT(v);
@@ -204,26 +304,16 @@ Expected<EGenericError> GenericOptional::assign_value(void* dst, const void* v) 
     if (has_value(dst))
     {
         auto p_value = this->value_ptr(dst);
-        return GenericMemoryOps::assign(
-            _inner.get(),
-            _inner_mem_traits,
-            p_value,
-            v
-        );
+        _inner->assign(p_value, v);
     }
     else
     {
         has_value(dst) = true;
         auto p_value   = this->value_ptr(dst);
-        return GenericMemoryOps::copy(
-            _inner.get(),
-            _inner_mem_traits,
-            p_value,
-            v
-        );
+        _inner->copy(p_value, v);
     }
 }
-Expected<EGenericError> GenericOptional::assign_value_move(void* dst, void* v) const
+void GenericOptional::assign_value_move(void* dst, void* v) const
 {
     SKR_ASSERT(dst);
     SKR_ASSERT(v);
@@ -231,35 +321,21 @@ Expected<EGenericError> GenericOptional::assign_value_move(void* dst, void* v) c
     if (has_value(dst))
     {
         auto p_value = this->value_ptr(dst);
-        return GenericMemoryOps::move_assign(
-            _inner.get(),
-            _inner_mem_traits,
-            p_value,
-            v
-        );
+        _inner->move(p_value, v);
     }
     else
     {
         has_value(dst) = true;
         auto p_value   = this->value_ptr(dst);
-        return GenericMemoryOps::move(
-            _inner.get(),
-            _inner_mem_traits,
-            p_value,
-            v
-        );
+        _inner->move(p_value, v);
     }
 }
-Expected<EGenericError> GenericOptional::assign_default(void* dst)
+void GenericOptional::assign_default(void* dst)
 {
     SKR_ASSERT(dst);
     reset(dst);
     has_value(dst) = false;
     auto p_value   = this->value_ptr(dst);
-    return GenericMemoryOps::construct(
-        _inner.get(),
-        _inner_mem_traits,
-        p_value
-    );
+    return _inner->default_ctor(p_value);
 }
 } // namespace skr

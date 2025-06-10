@@ -6,189 +6,6 @@ namespace skr
 IGenericBase::~IGenericBase() {}
 } // namespace skr
 
-// memory ops
-namespace skr
-{
-Expected<EGenericError> GenericMemoryOps::construct(
-    IGenericBase*    generic,
-    MemoryTraitsData traits,
-    void*            dst,
-    uint64_t         count
-)
-{
-    if (traits.use_ctor)
-    {
-        for (uint64_t i = 0; i < count; ++i)
-        {
-            auto result = generic->default_ctor(dst);
-            SKR_EXPECTED_THROW(result);
-        }
-        return {};
-    }
-    else
-    {
-        ::std::memset(dst, 0, generic->size() * count);
-        return {};
-    }
-}
-Expected<EGenericError> GenericMemoryOps::destruct(
-    IGenericBase*    generic,
-    MemoryTraitsData traits,
-    void*            dst,
-    uint64_t         count
-)
-{
-    if (traits.use_dtor)
-    {
-        for (uint64_t i = 0; i < count; ++i)
-        {
-            auto result = generic->dtor(dst);
-            SKR_EXPECTED_THROW(result);
-        }
-        return {};
-    }
-    else
-    {
-        // do nothing
-        return {};
-    }
-}
-Expected<EGenericError> GenericMemoryOps::copy(
-    IGenericBase*    generic,
-    MemoryTraitsData traits,
-    void*            dst,
-    const void*      src,
-    uint64_t         count
-)
-{
-    if (traits.use_copy)
-    {
-        for (uint64_t i = 0; i < count; ++i)
-        {
-            auto result = generic->copy(dst, src);
-            SKR_EXPECTED_THROW(result);
-        }
-        return {};
-    }
-    else
-    {
-        ::std::memcpy(dst, src, generic->size() * count);
-        return {};
-    }
-}
-Expected<EGenericError> GenericMemoryOps::move(
-    IGenericBase*    generic,
-    MemoryTraitsData traits,
-    void*            dst,
-    void*            src,
-    uint64_t         count
-)
-{
-    if (traits.use_move)
-    {
-        for (uint64_t i = 0; i < count; ++i)
-        {
-            auto result = generic->move(dst, src);
-            SKR_EXPECTED_THROW(result);
-        }
-        if (traits.need_dtor_after_move)
-        {
-            for (uint64_t i = 0; i < count; ++i)
-            {
-                auto result = generic->dtor(src);
-                SKR_EXPECTED_THROW(result);
-            }
-        }
-        return {};
-    }
-    else
-    {
-        ::std::memmove(dst, src, generic->size() * count);
-        return {};
-    }
-}
-Expected<EGenericError> GenericMemoryOps::assign(
-    IGenericBase*    generic,
-    MemoryTraitsData traits,
-    void*            dst,
-    const void*      src,
-    uint64_t         count
-)
-{
-    if (traits.use_assign)
-    {
-        for (uint64_t i = 0; i < count; ++i)
-        {
-            auto result = generic->assign(dst, src);
-            SKR_EXPECTED_THROW(result);
-        }
-        return {};
-    }
-    else
-    {
-        ::std::memcpy(dst, src, generic->size() * count);
-        return {};
-    }
-}
-Expected<EGenericError> GenericMemoryOps::move_assign(
-    IGenericBase*    generic,
-    MemoryTraitsData traits,
-    void*            dst,
-    void*            src,
-    uint64_t         count
-)
-{
-    if (traits.use_move_assign)
-    {
-        for (uint64_t i = 0; i < count; ++i)
-        {
-            auto result = generic->move_assign(dst, src);
-            SKR_EXPECTED_THROW(result);
-        }
-        if (traits.need_dtor_after_move)
-        {
-            for (uint64_t i = 0; i < count; ++i)
-            {
-                auto result = generic->dtor(src);
-                SKR_EXPECTED_THROW(result);
-            }
-        }
-        return {};
-    }
-    else
-    {
-        ::std::memmove(dst, src, generic->size() * count);
-        return {};
-    }
-}
-Expected<EGenericError, bool> GenericMemoryOps::equal(
-    IGenericBase*    generic,
-    MemoryTraitsData traits,
-    const void*      lhs,
-    const void*      rhs,
-    uint64_t         count
-)
-{
-    if (traits.use_compare)
-    {
-        for (uint64_t i = 0; i < count; ++i)
-        {
-            auto result = generic->equal(lhs, rhs);
-            SKR_EXPECTED_THROW(result);
-            if (!result.value())
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-    else
-    {
-        return ::std::memcmp(lhs, rhs, generic->size() * count) == 0;
-    }
-}
-} // namespace skr
-
 // generic type
 namespace skr
 {
@@ -258,124 +75,248 @@ uint64_t GenericType::alignment() const
 }
 
 // operations, used for generic container algorithms
-Expected<EGenericError> GenericType::default_ctor(void* dst) const
+bool GenericType::support(EGenericFeature feature) const
 {
+    switch (feature)
+    {
+    case EGenericFeature::DefaultCtor:
+        return !_type->memory_traits_data().use_ctor || _type->find_default_ctor();
+    case EGenericFeature::Dtor:
+        return !_type->memory_traits_data().use_dtor || _type->dtor_invoker();
+    case EGenericFeature::Copy:
+        return !_type->memory_traits_data().use_copy || _type->find_copy_ctor();
+    case EGenericFeature::Move:
+        return !_type->memory_traits_data().use_move || _type->find_move_ctor();
+    case EGenericFeature::Assign:
+        return !_type->memory_traits_data().use_assign || _type->find_assign();
+    case EGenericFeature::MoveAssign:
+        return !_type->memory_traits_data().use_move_assign || _type->find_move_assign();
+    case EGenericFeature::Equal:
+        return !_type->memory_traits_data().use_compare || _type->find_equal();
+    case EGenericFeature::Hash:
+        return _type->find_hash();
+    default:
+        SKR_UNREACHABLE_CODE()
+        return false;
+    }
+}
+void GenericType::default_ctor(void* dst, uint64_t count) const
+{
+    SKR_ASSERT(dst);
+    SKR_ASSERT(count > 0);
+
     if (is_decayed_pointer())
     {
-        return EGenericError::ShouldNotCall;
+        // do noting
     }
     else
     {
-        SKR_ASSERT(dst);
-        if (!_type->memory_traits_data().use_ctor) { return EGenericError::ShouldNotCall; }
-        auto default_ctor = _type->find_default_ctor();
-        if (!default_ctor) { return EGenericError::NoSuchFeature; }
-        default_ctor.invoke(dst);
-        return {};
+        if (_type->memory_traits_data().use_ctor)
+        {
+            auto default_ctor = _type->find_default_ctor();
+            SKR_ASSERT(default_ctor && "please check feature before call this function");
+            for (uint64_t i = 0; i < count; ++i)
+            {
+                default_ctor.invoke(dst);
+            }
+        }
+        else
+        {
+            // set to zero
+            ::skr::memory::zero_memory(dst, _type->size() * count);
+        }
     }
 }
-Expected<EGenericError> GenericType::dtor(void* dst) const
+void GenericType::dtor(void* dst, uint64_t count) const
 {
+    SKR_ASSERT(dst);
+    SKR_ASSERT(count > 0);
+
     if (is_decayed_pointer())
     {
-        return EGenericError::ShouldNotCall;
+        // do nothing
     }
     else
     {
-        SKR_ASSERT(dst);
-        if (!_type->memory_traits_data().use_dtor) { return EGenericError::ShouldNotCall; }
-        auto dtor = _type->dtor_invoker();
-        if (!dtor) { return EGenericError::NoSuchFeature; }
-        dtor(dst);
-        return {};
+        if (_type->memory_traits_data().use_dtor)
+        {
+            auto dtor = _type->dtor_invoker();
+            SKR_ASSERT(dtor && "please check feature before call this function");
+            for (uint64_t i = 0; i < count; ++i)
+            {
+                dtor(dst);
+            }
+        }
+        else
+        {
+            // do noting
+        }
     }
 }
-Expected<EGenericError> GenericType::copy(void* dst, const void* src) const
+void GenericType::copy(void* dst, const void* src, uint64_t count) const
 {
+    SKR_ASSERT(dst);
+    SKR_ASSERT(src);
+    SKR_ASSERT(count > 0);
+
     if (is_decayed_pointer())
     {
-        return EGenericError::ShouldNotCall;
+        // do noting
     }
     else
     {
-        SKR_ASSERT(dst);
-        SKR_ASSERT(src);
-        if (!_type->memory_traits_data().use_copy) { return EGenericError::ShouldNotCall; }
-        auto copy = _type->find_copy_ctor();
-        if (!copy) { return EGenericError::NoSuchFeature; }
-        copy.invoke(dst, src);
-        return {};
+        if (_type->memory_traits_data().use_copy)
+        {
+            auto copy_ctor = _type->find_copy_ctor();
+            SKR_ASSERT(copy_ctor && "please check feature before call this function");
+            for (uint64_t i = 0; i < count; ++i)
+            {
+                copy_ctor.invoke(dst, src);
+            }
+        }
+        else
+        {
+            // use memcpy
+            std::memcpy(dst, src, _type->size() * count);
+        }
     }
 }
-Expected<EGenericError> GenericType::move(void* dst, void* src) const
+void GenericType::move(void* dst, void* src, uint64_t count) const
 {
+    SKR_ASSERT(dst);
+    SKR_ASSERT(src);
+    SKR_ASSERT(count > 0);
+
     if (is_decayed_pointer())
     {
-        return EGenericError::ShouldNotCall;
+        // do noting
     }
     else
     {
-        SKR_ASSERT(dst);
-        SKR_ASSERT(src);
-        if (!_type->memory_traits_data().use_move) { return EGenericError::ShouldNotCall; }
-        auto move = _type->find_move_ctor();
-        if (!move) { return EGenericError::NoSuchFeature; }
-        move.invoke(dst, src);
-        return {};
+        if (_type->memory_traits_data().use_move)
+        {
+            // do move
+            auto move_ctor = _type->find_move_ctor();
+            SKR_ASSERT(move_ctor && "please check feature before call this function");
+            for (uint64_t i = 0; i < count; ++i)
+            {
+                move_ctor.invoke(dst, src);
+            }
+
+            // call dtor after move if needed
+            if (_type->memory_traits_data().need_dtor_after_move)
+            {
+                auto dtor = _type->dtor_invoker();
+                SKR_ASSERT(dtor && "please check feature before call this function");
+                for (uint64_t i = 0; i < count; ++i)
+                {
+                    dtor(src);
+                }
+            }
+        }
+        else
+        {
+            // use memmove
+            std::memmove(dst, src, _type->size() * count);
+        }
     }
 }
-Expected<EGenericError> GenericType::assign(void* dst, const void* src) const
+void GenericType::assign(void* dst, const void* src, uint64_t count) const
 {
+    SKR_ASSERT(dst);
+    SKR_ASSERT(src);
+    SKR_ASSERT(count > 0);
+
     if (is_decayed_pointer())
     {
-        return EGenericError::ShouldNotCall;
+        // do noting
     }
     else
     {
-        SKR_ASSERT(dst);
-        SKR_ASSERT(src);
-        if (!_type->memory_traits_data().use_assign) { return EGenericError::ShouldNotCall; }
-        auto assign = _type->find_assign();
-        if (!assign) { return EGenericError::NoSuchFeature; }
-        assign.invoke(dst, src);
-        return {};
+        if (_type->memory_traits_data().use_assign)
+        {
+            auto copy_assign = _type->find_assign();
+            SKR_ASSERT(copy_assign && "please check feature before call this function");
+            for (uint64_t i = 0; i < count; ++i)
+            {
+                copy_assign.invoke(dst, src);
+            }
+        }
+        else
+        {
+            // use memcpy
+            std::memcpy(dst, src, _type->size() * count);
+        }
     }
 }
-Expected<EGenericError> GenericType::move_assign(void* dst, void* src) const
+void GenericType::move_assign(void* dst, void* src, uint64_t count) const
 {
+    SKR_ASSERT(dst);
+    SKR_ASSERT(src);
+    SKR_ASSERT(count > 0);
+
     if (is_decayed_pointer())
     {
-        return EGenericError::ShouldNotCall;
+        // do noting
     }
     else
     {
-        SKR_ASSERT(dst);
-        SKR_ASSERT(src);
-        if (!_type->memory_traits_data().use_move_assign) { return EGenericError::ShouldNotCall; }
-        auto assign_move = _type->find_move_assign();
-        if (!assign_move) { return EGenericError::NoSuchFeature; }
-        assign_move.invoke(dst, src);
-        return {};
+        if (_type->memory_traits_data().use_move_assign)
+        {
+            auto move_assign = _type->find_move_assign();
+            SKR_ASSERT(move_assign && "please check feature before call this function");
+            for (uint64_t i = 0; i < count; ++i)
+            {
+                move_assign.invoke(dst, src);
+            }
+
+            // call dtor after move if needed
+            if (_type->memory_traits_data().need_dtor_after_move)
+            {
+                auto dtor = _type->dtor_invoker();
+                SKR_ASSERT(dtor && "please check feature before call this function");
+                for (uint64_t i = 0; i < count; ++i)
+                {
+                    dtor(src);
+                }
+            }
+        }
+        else
+        {
+            // use memmove
+            std::memmove(dst, src, _type->size() * count);
+        }
     }
 }
-Expected<EGenericError, bool> GenericType::equal(const void* lhs, const void* rhs) const
+bool GenericType::equal(const void* lhs, const void* rhs) const
 {
+    SKR_ASSERT(lhs);
+    SKR_ASSERT(rhs);
+
     if (is_decayed_pointer())
     {
-        return EGenericError::ShouldNotCall;
+        return reinterpret_cast<void* const*>(lhs) == reinterpret_cast<void* const*>(rhs);
     }
     else
     {
-        SKR_ASSERT(lhs);
-        SKR_ASSERT(rhs);
-        if (!_type->memory_traits_data().use_compare) { return EGenericError::ShouldNotCall; }
-        auto equal = _type->find_equal();
-        if (!equal) { return EGenericError::NoSuchFeature; }
-        return equal.invoke(lhs, rhs);
+        if (_type->memory_traits_data().use_compare)
+        {
+            auto equal_op = _type->find_equal();
+            SKR_ASSERT(equal_op && "please check feature before call this function");
+
+            return equal_op.invoke(lhs, rhs);
+        }
+        else
+        {
+            // use memcmp
+            return std::memcmp(lhs, rhs, _type->size()) == 0;
+        }
     }
 }
-Expected<EGenericError, size_t> GenericType::hash(const void* src) const
+size_t GenericType::hash(const void* src) const
 {
+    SKR_ASSERT(src);
+
     if (is_decayed_pointer())
     {
         if (
@@ -393,10 +334,9 @@ Expected<EGenericError, size_t> GenericType::hash(const void* src) const
     }
     else
     {
-        SKR_ASSERT(src);
-        auto hash = _type->find_hash();
-        if (!hash) { return EGenericError::NoSuchFeature; }
-        return hash.invoke(src);
+        auto hash_op = _type->find_hash();
+        SKR_ASSERT(hash_op && "please check feature before call this function");
+        return hash_op.invoke(src);
     }
 }
 //===> IGenericBase API
