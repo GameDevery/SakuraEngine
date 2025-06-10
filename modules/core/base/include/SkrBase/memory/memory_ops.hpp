@@ -325,4 +325,14 @@ SKR_INLINE bool compare(const A* a, const B* b, size_t count)
     }
 }
 
+// offset
+SKR_INLINE void* offset_bytes(void* p, uint64_t offset) noexcept
+{
+    return static_cast<uint8_t*>(p) + offset;
+}
+SKR_INLINE void* offset_item(void* p, uint64_t item_size, uint64_t count) noexcept
+{
+    return offset_bytes(p, item_size * count);
+}
+
 } // namespace skr::memory

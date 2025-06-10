@@ -13,3 +13,4 @@
 // rttr/generic/
 #include "./generic/generic_base.cpp"
 #include "./generic/generic_optional.cpp"
+#include "./generic/generic_vector.cpp"

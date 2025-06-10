@@ -136,7 +136,12 @@ void GenericVector::clear(void* dst) const
     {
         if (_inner_mem_traits.use_dtor)
         {
-            ::skr::memory::destruct(dst_mem->_generic_only_data(), dst_mem->size());
+            GenericMemoryOps::destruct(
+                _inner.get(),
+                _inner_mem_traits,
+                dst_mem->_generic_only_data(),
+                dst_mem->size()
+            );
         }
         dst_mem->set_size(0);
     }
@@ -213,7 +218,7 @@ void GenericVector::resize(void* dst, uint64_t expect_size, void* new_value) con
     {
         for (uint64_t i = dst_mem->size(); i < expect_size; ++i)
         {
-            void* p_copy_data = GenericMemoryOps::offset_item(
+            void* p_copy_data = ::skr::memory::offset_item(
                 dst_mem->_generic_only_data(),
                 item_size,
                 i
@@ -228,7 +233,7 @@ void GenericVector::resize(void* dst, uint64_t expect_size, void* new_value) con
     }
     else if (expect_size < dst_mem->size())
     {
-        void* p_destruct_data = GenericMemoryOps::offset_item(
+        void* p_destruct_data = ::skr::memory::offset_item(
             dst_mem->_generic_only_data(),
             item_size,
             expect_size
@@ -260,7 +265,7 @@ void GenericVector::resize_unsafe(void* dst, uint64_t expect_size) const
     // construct item or destruct item if need
     if (expect_size < dst_mem->size())
     {
-        void* p_destruct_data = GenericMemoryOps::offset_item(
+        void* p_destruct_data = ::skr::memory::offset_item(
             dst_mem->_generic_only_data(),
             item_size,
             expect_size
@@ -292,7 +297,7 @@ void GenericVector::resize_default(void* dst, uint64_t expect_size) const
     // construct item or destruct item if need
     if (expect_size > dst_mem->size())
     {
-        void* p_construct_data = GenericMemoryOps::offset_item(
+        void* p_construct_data = ::skr::memory::offset_item(
             dst_mem->_generic_only_data(),
             item_size,
             dst_mem->size()
@@ -306,7 +311,7 @@ void GenericVector::resize_default(void* dst, uint64_t expect_size) const
     }
     else if (expect_size < dst_mem->size())
     {
-        void* p_destruct_data = GenericMemoryOps::offset_item(
+        void* p_destruct_data = ::skr::memory::offset_item(
             dst_mem->_generic_only_data(),
             item_size,
             expect_size
@@ -338,7 +343,7 @@ void GenericVector::resize_zeroed(void* dst, uint64_t expect_size) const
     // construct item or destruct item if need
     if (expect_size > dst_mem->size())
     {
-        void* p_zero_data = GenericMemoryOps::offset_item(
+        void* p_zero_data = ::skr::memory::offset_item(
             dst_mem->_generic_only_data(),
             item_size,
             dst_mem->size()
@@ -347,7 +352,7 @@ void GenericVector::resize_zeroed(void* dst, uint64_t expect_size) const
     }
     else if (expect_size < dst_mem->size())
     {
-        void* p_destruct_data = GenericMemoryOps::offset_item(
+        void* p_destruct_data = ::skr::memory::offset_item(
             dst_mem->_generic_only_data(),
             item_size,
             expect_size

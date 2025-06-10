@@ -95,14 +95,6 @@ struct SKR_CORE_API GenericMemoryOps {
         const void*      rhs,
         uint64_t         count = 1
     );
-    inline static void* offset_bytes(void* p, uint64_t offset) noexcept
-    {
-        return static_cast<uint8_t*>(p) + offset;
-    }
-    inline static void* offset_item(void* p, uint64_t item_size, uint64_t count) noexcept
-    {
-        return static_cast<uint8_t*>(p) + item_size * count;
-    }
 };
 
 // TODO. 支持一重指针/引用等
