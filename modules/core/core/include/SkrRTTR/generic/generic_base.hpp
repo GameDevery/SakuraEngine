@@ -41,15 +41,15 @@ struct SKR_CORE_API IGenericBase {
     virtual uint64_t alignment() const = 0;
 
     // operations, used for generic container algorithms
-    virtual bool   support(EGenericFeature feature) const                       = 0;
-    virtual void   default_ctor(void* dst, uint64_t count = 1) const            = 0;
-    virtual void   dtor(void* dst, uint64_t count = 1) const                    = 0;
-    virtual void   copy(void* dst, const void* src, uint64_t count = 1) const   = 0;
-    virtual void   move(void* dst, void* src, uint64_t count = 1) const         = 0;
-    virtual void   assign(void* dst, const void* src, uint64_t count = 1) const = 0;
-    virtual void   move_assign(void* dst, void* src, uint64_t count = 1) const  = 0;
-    virtual bool   equal(const void* lhs, const void* rhs) const                = 0;
-    virtual size_t hash(const void* src) const                                  = 0;
+    virtual bool   support(EGenericFeature feature) const                            = 0;
+    virtual void   default_ctor(void* dst, uint64_t count = 1) const                 = 0;
+    virtual void   dtor(void* dst, uint64_t count = 1) const                         = 0;
+    virtual void   copy(void* dst, const void* src, uint64_t count = 1) const        = 0;
+    virtual void   move(void* dst, void* src, uint64_t count = 1) const              = 0;
+    virtual void   assign(void* dst, const void* src, uint64_t count = 1) const      = 0;
+    virtual void   move_assign(void* dst, void* src, uint64_t count = 1) const       = 0;
+    virtual bool   equal(const void* lhs, const void* rhs, uint64_t count = 1) const = 0;
+    virtual size_t hash(const void* src) const                                       = 0;
 };
 
 // TODO. 支持一重指针/引用等
@@ -96,7 +96,7 @@ struct SKR_CORE_API GenericType final : IGenericBase {
     void   move(void* dst, void* src, uint64_t count = 1) const override final;
     void   assign(void* dst, const void* src, uint64_t count = 1) const override final;
     void   move_assign(void* dst, void* src, uint64_t count = 1) const override final;
-    bool   equal(const void* lhs, const void* rhs) const override final;
+    bool   equal(const void* lhs, const void* rhs, uint64_t count = 1) const override final;
     size_t hash(const void* src) const override final;
     //===> IGenericBase API
 private:

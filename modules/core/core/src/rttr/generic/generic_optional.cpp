@@ -235,11 +235,12 @@ void GenericOptional::move_assign(void* dst, void* src, uint64_t count) const
         ::std::memmove(dst, src, size() * count);
     }
 }
-bool GenericOptional::equal(const void* lhs, const void* rhs) const
+bool GenericOptional::equal(const void* lhs, const void* rhs, uint64_t count) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(lhs);
     SKR_ASSERT(rhs);
+    SKR_ASSERT(count > 0);
 
     SKR_ASSERT(false && "equal not support for GenericOptional, please check feature before call this function");
     return false;

@@ -288,10 +288,11 @@ void GenericType::move_assign(void* dst, void* src, uint64_t count) const
         }
     }
 }
-bool GenericType::equal(const void* lhs, const void* rhs) const
+bool GenericType::equal(const void* lhs, const void* rhs, uint64_t count) const
 {
     SKR_ASSERT(lhs);
     SKR_ASSERT(rhs);
+    SKR_ASSERT(count > 0);
 
     if (is_decayed_pointer())
     {
@@ -304,12 +305,23 @@ bool GenericType::equal(const void* lhs, const void* rhs) const
             auto equal_op = _type->find_equal();
             SKR_ASSERT(equal_op && "please check feature before call this function");
 
-            return equal_op.invoke(lhs, rhs);
+            auto item_size = _type->size();
+            for (uint64_t i = 0; i < count; ++i)
+            {
+                if (!equal_op.invoke(
+                        ::skr::memory::offset_item(lhs, item_size, i),
+                        ::skr::memory::offset_item(rhs, item_size, i)
+                    ))
+                {
+                    return false;
+                }
+            }
+            return true;
         }
         else
         {
             // use memcmp
-            return std::memcmp(lhs, rhs, _type->size()) == 0;
+            return std::memcmp(lhs, rhs, _type->size() * count) == 0;
         }
     }
 }

@@ -83,6 +83,12 @@ void GenericVector::dtor(void* dst, uint64_t count) const
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
     SKR_ASSERT(count > 0);
+
+    for (uint64_t i = 0; i < count; ++i)
+    {
+        auto* p_dst = ::skr::memory::offset_item(dst, sizeof(VectorMemoryBase), i);
+        release(p_dst);
+    }
 }
 void GenericVector::copy(void* dst, const void* src, uint64_t count) const
 {
@@ -90,6 +96,27 @@ void GenericVector::copy(void* dst, const void* src, uint64_t count) const
     SKR_ASSERT(dst);
     SKR_ASSERT(src);
     SKR_ASSERT(count > 0);
+
+    for (uint64_t i = 0; i < count; ++i)
+    {
+        auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(
+            ::skr::memory::offset_item(dst, sizeof(VectorMemoryBase), i)
+        );
+        const auto* src_mem = reinterpret_cast<const VectorMemoryBase*>(
+            ::skr::memory::offset_item(src, sizeof(VectorMemoryBase), i)
+        );
+
+        if (src_mem->size())
+        {
+            _realloc(dst, src_mem->size());
+            _inner->copy(
+                dst_mem->_generic_only_data(),
+                src_mem->_generic_only_data(),
+                src_mem->size()
+            );
+            dst_mem->set_size(src_mem->size());
+        }
+    }
 }
 void GenericVector::move(void* dst, void* src, uint64_t count) const
 {
@@ -97,6 +124,24 @@ void GenericVector::move(void* dst, void* src, uint64_t count) const
     SKR_ASSERT(dst);
     SKR_ASSERT(src);
     SKR_ASSERT(count > 0);
+
+    for (uint64_t i = 0; i < count; ++i)
+    {
+        auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(
+            ::skr::memory::offset_item(dst, sizeof(VectorMemoryBase), i)
+        );
+        auto* src_mem = reinterpret_cast<VectorMemoryBase*>(
+            ::skr::memory::offset_item(src, sizeof(VectorMemoryBase), i)
+        );
+
+        dst_mem->set_size(src_mem->size());
+        dst_mem->_generic_only_set_capacity(src_mem->capacity());
+        dst_mem->_generic_only_set_data(src_mem->_generic_only_data());
+
+        src_mem->_generic_only_set_data(nullptr);
+        src_mem->_generic_only_set_capacity(0);
+        src_mem->set_size(0);
+    }
 }
 void GenericVector::assign(void* dst, const void* src, uint64_t count) const
 {
@@ -104,6 +149,37 @@ void GenericVector::assign(void* dst, const void* src, uint64_t count) const
     SKR_ASSERT(dst);
     SKR_ASSERT(src);
     SKR_ASSERT(count > 0);
+
+    for (uint64_t i = 0; i < count; ++i)
+    {
+        auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(
+            ::skr::memory::offset_item(dst, sizeof(VectorMemoryBase), i)
+        );
+        const auto* src_mem = reinterpret_cast<const VectorMemoryBase*>(
+            ::skr::memory::offset_item(src, sizeof(VectorMemoryBase), i)
+        );
+
+        // clean up dst
+        clear(dst);
+
+        // copy data
+        if (src_mem->size())
+        {
+            // reserve memory
+            if (dst_mem->capacity() < src_mem->size())
+            {
+                _realloc(dst, src_mem->size());
+            }
+
+            // copy data
+            _inner->copy(
+                dst_mem->_generic_only_data(),
+                src_mem->_generic_only_data(),
+                src_mem->size()
+            );
+            dst_mem->set_size(src_mem->size());
+        }
+    }
 }
 void GenericVector::move_assign(void* dst, void* src, uint64_t count) const
 {
@@ -111,20 +187,71 @@ void GenericVector::move_assign(void* dst, void* src, uint64_t count) const
     SKR_ASSERT(dst);
     SKR_ASSERT(src);
     SKR_ASSERT(count > 0);
+
+    for (uint64_t i = 0; i < count; ++i)
+    {
+        auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(
+            ::skr::memory::offset_item(dst, sizeof(VectorMemoryBase), i)
+        );
+        auto* src_mem = reinterpret_cast<VectorMemoryBase*>(
+            ::skr::memory::offset_item(src, sizeof(VectorMemoryBase), i)
+        );
+
+        // clean up dst
+        clear(dst);
+        free(dst);
+
+        // move data
+        dst_mem->set_size(src_mem->size());
+        dst_mem->_generic_only_set_capacity(src_mem->capacity());
+        dst_mem->_generic_only_set_data(src_mem->_generic_only_data());
+
+        // clean up src
+        src_mem->_generic_only_set_data(nullptr);
+        src_mem->_generic_only_set_capacity(0);
+        src_mem->set_size(0);
+    }
 }
-bool GenericVector::equal(const void* lhs, const void* rhs) const
+bool GenericVector::equal(const void* lhs, const void* rhs, uint64_t count) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(lhs);
     SKR_ASSERT(rhs);
+    SKR_ASSERT(count > 0);
 
-    return false;
+    for (uint64_t i = 0; i < count; ++i)
+    {
+        auto lhs_mem = reinterpret_cast<const VectorMemoryBase*>(
+            ::skr::memory::offset_item(lhs, sizeof(VectorMemoryBase), i)
+        );
+        auto rhs_mem = reinterpret_cast<const VectorMemoryBase*>(
+            ::skr::memory::offset_item(rhs, sizeof(VectorMemoryBase), i)
+        );
+
+        // check size
+        if (lhs_mem->size() != rhs_mem->size())
+        {
+            return false;
+        }
+
+        // check data
+        if (!_inner->equal(
+                lhs_mem->_generic_only_data(),
+                rhs_mem->_generic_only_data(),
+                lhs_mem->size()
+            ))
+        {
+            return false;
+        }
+    }
+
+    return true;
 }
 size_t GenericVector::hash(const void* src) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(src);
-
+    SKR_ASSERT(false && "GenericVector does not support hash operation, please check feature first");
     return 0;
 }
 
