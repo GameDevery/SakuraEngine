@@ -59,11 +59,11 @@ namespace SB
                 CompilerArgs.Add("--driver-mode=cl");
             MetaArgs.AddRange(CompilerArgs);
             MetaArgs.AddRange(
-                "-isystem /Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk/usr/include/c++/v1",
-                "-isystem /Library/Developer/CommandLineTools/usr/lib/clang/16/include",
-                "-isystem /Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk/usr/include",
+                "-isystem /Library/Developer/CommandLineTools/SDKs/MacOSX15.5.sdk/usr/include/c++/v1",
+                "-isystem /Library/Developer/CommandLineTools/usr/lib/clang/17/include",
+                "-isystem /Library/Developer/CommandLineTools/SDKs/MacOSX15.5.sdk/usr/include",
                 "-isystem /Library/Developer/CommandLineTools/usr/include",
-                "-isystem /Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk/System/Library/Frameworks"
+                "-isystem /Library/Developer/CommandLineTools/SDKs/MacOSX15.5.sdk/System/Library/Frameworks"
             );
             // Run meta.exe
             bool Changed = Depend.OnChanged(Target.Name, MetaAttribute.MetaDirectory, Name, (Depend depend) =>
