@@ -273,7 +273,6 @@ int main(void)
 #endif
 
 #ifdef CGPU_USE_D3D12
-        ,
         CGPU_BACKEND_D3D12
 #endif
     };
