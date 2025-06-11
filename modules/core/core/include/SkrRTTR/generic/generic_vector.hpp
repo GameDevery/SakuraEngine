@@ -22,6 +22,16 @@ struct CGenericVectorDataRef {
     const void* ptr   = nullptr;
     uint64_t    index = 0;
 
+    inline CGenericVectorDataRef(const GenericVectorDataRef& ref)
+        : ptr(ref.ptr)
+        , index(ref.index)
+    {
+    }
+    inline operator GenericVectorDataRef() const
+    {
+        return { const_cast<void*>(ptr), index };
+    }
+
     inline bool is_valid() const
     {
         return ptr != nullptr && index != npos_of<uint64_t>;
@@ -113,30 +123,30 @@ struct SKR_CORE_API GenericVector final : IGenericBase {
     void append_at(void* dst, uint64_t idx, const void* other) const;
 
     // remove
-    // void remove_at(void* dst, uint64_t idx, uint64_t n = 1) const;
-    // void remove_at_swap(void* dst, uint64_t idx, uint64_t n = 1) const;
-    // bool remove(void* dst, const void* v) const;
-    // bool remove_swap(void* dst, const void* v) const;
-    // bool remove_last(void* dst, const void* v) const;
-    // bool remove_last_swap(void* dst, const void* v) const;
-    // uint64_t remove_all(void* dst, const void* v) const;
-    // uint64_t remove_all_swap(void* dst, const void* v) const;
+    void     remove_at(void* dst, uint64_t idx, uint64_t n = 1) const;
+    void     remove_at_swap(void* dst, uint64_t idx, uint64_t n = 1) const;
+    bool     remove(void* dst, const void* v) const;
+    bool     remove_swap(void* dst, const void* v) const;
+    bool     remove_last(void* dst, const void* v) const;
+    bool     remove_last_swap(void* dst, const void* v) const;
+    uint64_t remove_all(void* dst, const void* v) const;
+    uint64_t remove_all_swap(void* dst, const void* v) const;
 
     // access
-    // void* at(void* dst, uint64_t idx) const;
-    // void* at_last(void* dst, uint64_t idx) const;
-    // const void* at(const void* dst, uint64_t idx) const;
-    // const void* at_last(const void* dst, uint64_t idx) const;
+    void*       at(void* dst, uint64_t idx) const;
+    void*       at_last(void* dst, uint64_t idx) const;
+    const void* at(const void* dst, uint64_t idx) const;
+    const void* at_last(const void* dst, uint64_t idx) const;
 
     // find
-    // GenericVectorDataRef find(void* dst, const void* v) const;
-    // GenericVectorDataRef find_last(void* dst, const void* v) const;
-    // CGenericVectorDataRef find(const void* dst, const void* v) const;
-    // CGenericVectorDataRef find_last(const void* dst, const void* v) const;
+    GenericVectorDataRef  find(void* dst, const void* v) const;
+    GenericVectorDataRef  find_last(void* dst, const void* v) const;
+    CGenericVectorDataRef find(const void* dst, const void* v) const;
+    CGenericVectorDataRef find_last(const void* dst, const void* v) const;
 
     // contains & count
-    // bool contains(const void* dst, const void* v) const;
-    // uint64_t count(const void* dst, const void* v) const;
+    bool     contains(const void* dst, const void* v) const;
+    uint64_t count(const void* dst, const void* v) const;
 
     // sort
     // TODO. 需要比较 op，Swapper
@@ -157,5 +167,6 @@ private:
 };
 
 // TODO. 一套 Cursor 和迭代器用于元素遍历
+// TODO. ItemProxy 用于代理元素
 
 } // namespace skr

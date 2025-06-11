@@ -326,21 +326,29 @@ SKR_INLINE bool compare(const A* a, const B* b, size_t count)
 }
 
 // offset
-SKR_INLINE void* offset_bytes(void* p, uint64_t offset) noexcept
+SKR_INLINE void* offset_bytes(void* p, int64_t offset) noexcept
 {
     return static_cast<uint8_t*>(p) + offset;
 }
-SKR_INLINE const void* offset_bytes(const void* p, uint64_t offset) noexcept
+SKR_INLINE const void* offset_bytes(const void* p, int64_t offset) noexcept
 {
     return static_cast<const uint8_t*>(p) + offset;
 }
-SKR_INLINE void* offset_item(void* p, uint64_t item_size, uint64_t count) noexcept
+SKR_INLINE void* offset_item(void* p, uint64_t item_size, int64_t count) noexcept
 {
     return offset_bytes(p, item_size * count);
 }
-SKR_INLINE const void* offset_item(const void* p, uint64_t item_size, uint64_t count) noexcept
+SKR_INLINE const void* offset_item(const void* p, uint64_t item_size, int64_t count) noexcept
 {
     return offset_bytes(p, item_size * count);
+}
+SKR_INLINE int64_t distance_bytes(const void* p1, const void* p2) noexcept
+{
+    return static_cast<const uint8_t*>(p2) - static_cast<const uint8_t*>(p1);
+}
+SKR_INLINE int64_t distance_item(const void* p1, const void* p2, uint64_t item_size) noexcept
+{
+    return distance_bytes(p1, p2) / item_size;
 }
 
 // zero memory

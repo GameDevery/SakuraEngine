@@ -648,14 +648,14 @@ GenericVectorDataRef GenericVector::add_unique(void* dst, const void* v) const
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
 
-    // if (auto ref = find(dst, v))
-    // {
-    //     return ref;
-    // }
-    // else
-    // {
-    //     return add(dst, v);
-    // }
+    if (auto ref = find(dst, v))
+    {
+        return ref;
+    }
+    else
+    {
+        return add(dst, v);
+    }
 
     return {};
 }
@@ -664,14 +664,14 @@ GenericVectorDataRef GenericVector::add_unique_move(void* dst, void* v) const
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
 
-    // if (auto ref = find(dst, v))
-    // {
-    //     return ref;
-    // }
-    // else
-    // {
-    //     return add_move(dst, v);
-    // }
+    if (auto ref = find(dst, v))
+    {
+        return ref;
+    }
+    else
+    {
+        return add_move(dst, v);
+    }
 
     return {};
 }
@@ -821,6 +821,456 @@ void GenericVector::append_at(void* dst, uint64_t idx, const void* other) const
             other_mem->_generic_only_data(),
             other_size
         );
+    }
+}
+
+// remove
+void GenericVector::remove_at(void* dst, uint64_t idx, uint64_t n) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
+    SKR_ASSERT(is_valid_index(dst, idx) && (dst_mem->size() - idx >= n));
+
+    if (n)
+    {
+        // calc move size
+        auto move_n = dst_mem->size() - idx - n;
+
+        // destruct remove items
+        _inner->dtor(
+            ::skr::memory::offset_item(
+                dst_mem->_generic_only_data(),
+                _inner->size(),
+                idx
+            ),
+            n
+        );
+
+        // move data
+        if (move_n)
+        {
+            _inner->move(
+                ::skr::memory::offset_item(
+                    dst_mem->_generic_only_data(),
+                    _inner->size(),
+                    idx
+                ),
+                ::skr::memory::offset_item(
+                    dst_mem->_generic_only_data(),
+                    _inner->size(),
+                    idx + n
+                ),
+                move_n
+            );
+        }
+
+        // update size
+        dst_mem->set_size(dst_mem->size() - n);
+    }
+}
+void GenericVector::remove_at_swap(void* dst, uint64_t idx, uint64_t n) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
+    SKR_ASSERT(is_valid_index(dst, idx) && (dst_mem->size() - idx >= n));
+
+    if (n)
+    {
+        // calc move size
+        auto move_n = std::min(dst_mem->size() - idx - n, n);
+
+        // destruct remove items
+        _inner->dtor(
+            ::skr::memory::offset_item(
+                dst_mem->_generic_only_data(),
+                _inner->size(),
+                idx
+            ),
+            n
+        );
+
+        // move data
+        if (move_n)
+        {
+            _inner->move(
+                ::skr::memory::offset_item(
+                    dst_mem->_generic_only_data(),
+                    _inner->size(),
+                    idx
+                ),
+                ::skr::memory::offset_item(
+                    dst_mem->_generic_only_data(),
+                    _inner->size(),
+                    dst_mem->size() - move_n
+                ),
+                move_n
+            );
+        }
+
+        // update size
+        dst_mem->set_size(dst_mem->size() - n);
+    }
+}
+bool GenericVector::remove(void* dst, const void* v) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(v);
+
+    if (auto ref = find(dst, v))
+    {
+        remove_at(dst, ref.index);
+        return true;
+    }
+    return false;
+}
+bool GenericVector::remove_swap(void* dst, const void* v) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(v);
+
+    if (auto ref = find(dst, v))
+    {
+        remove_at_swap(dst, ref.index);
+        return true;
+    }
+    return false;
+}
+bool GenericVector::remove_last(void* dst, const void* v) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(v);
+
+    if (auto ref = find_last(dst, v))
+    {
+        remove_at(dst, ref.index);
+        return true;
+    }
+    return false;
+}
+bool GenericVector::remove_last_swap(void* dst, const void* v) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(v);
+
+    if (auto ref = find_last(dst, v))
+    {
+        remove_at_swap(dst, ref.index);
+        return true;
+    }
+    return false;
+}
+uint64_t GenericVector::remove_all(void* dst, const void* v) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(v);
+    auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
+
+    if (is_empty(dst))
+    {
+        return 0;
+    }
+    else
+    {
+        auto  inner_size = _inner->size();
+        void* begin      = dst_mem->_generic_only_data();
+        void* end        = ::skr::memory::offset_item(begin, inner_size, dst_mem->size());
+        void* write      = begin;
+        void* read       = begin;
+        bool  do_remove  = _inner->equal(read, v, 1);
+
+        // remove loop
+        do
+        {
+            auto run_start = read;
+            read           = ::skr::memory::offset_item(read, inner_size, 1);
+
+            // collect run scope
+            while (read < end && do_remove == _inner->equal(read, v, 1))
+            {
+                read = ::skr::memory::offset_item(read, inner_size, 1);
+            }
+            uint64_t run_len = ::skr::memory::distance_item(run_start, read, inner_size);
+            SKR_ASSERT(run_len > 0);
+
+            // do scope op
+            if (do_remove)
+            {
+                _inner->dtor(
+                    run_start,
+                    run_len
+                );
+            }
+            else
+            {
+                if (write != run_start)
+                {
+                    _inner->move(
+                        write,
+                        run_start,
+                        run_len
+                    );
+                }
+            }
+
+            // update flag
+            do_remove = !do_remove;
+        } while (read < end);
+
+        // get remove count
+        uint64_t remove_count = ::skr::memory::distance_item(write, end, inner_size);
+
+        // update size
+        if (remove_count)
+        {
+            dst_mem->set_size(dst_mem->size() - remove_count);
+        }
+        return remove_count;
+    }
+}
+uint64_t GenericVector::remove_all_swap(void* dst, const void* v) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(v);
+    auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
+
+    if (is_empty(dst))
+    {
+        return 0;
+    }
+    else
+    {
+        auto  inner_size = _inner->size();
+        void* begin      = dst_mem->_generic_only_data();
+        void* end        = ::skr::memory::offset_item(begin, inner_size, dst_mem->size());
+        void* cache_end  = end;
+
+        // for swap
+        end = ::skr::memory::offset_item(end, inner_size, -1);
+
+        // remove loop
+        while (true)
+        {
+            // skip items that needn't remove on header
+            while (true)
+            {
+                if (begin > end)
+                {
+                    goto LoopEnd;
+                }
+                if (_inner->equal(begin, v, 1))
+                {
+                    break;
+                }
+                begin = ::skr::memory::offset_item(begin, inner_size, 1);
+            }
+
+            // skip items that needn't remove on tail
+            while (true)
+            {
+                if (begin > end)
+                {
+                    goto LoopEnd;
+                }
+                if (!_inner->equal(end, v, 1))
+                {
+                    break;
+                }
+                _inner->dtor(
+                    end,
+                    1
+                );
+                end = ::skr::memory::offset_item(end, inner_size, -1);
+            }
+
+            // swap items at bad pos
+            _inner->dtor(
+                begin,
+                1
+            );
+            _inner->move(
+                begin,
+                end,
+                1
+            );
+
+            // update iterator
+            begin = ::skr::memory::offset_item(begin, inner_size, 1);
+            end   = ::skr::memory::offset_item(end, inner_size, -1);
+        }
+    LoopEnd:
+
+        // get remove count
+        uint64_t remove_count = ::skr::memory::distance_item(begin, cache_end, inner_size);
+
+        // update size
+        if (remove_count)
+        {
+            dst_mem->set_size(dst_mem->size() - remove_count);
+        }
+        return remove_count;
+    }
+}
+
+// access
+void* GenericVector::at(void* dst, uint64_t idx) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(!is_empty(dst) && is_valid_index(dst, idx));
+    auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
+    return ::skr::memory::offset_item(
+        dst_mem->_generic_only_data(),
+        _inner->size(),
+        idx
+    );
+}
+void* GenericVector::at_last(void* dst, uint64_t idx) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(!is_empty(dst) && is_valid_index(dst, idx));
+    auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
+    return ::skr::memory::offset_item(
+        dst_mem->_generic_only_data(),
+        _inner->size(),
+        dst_mem->size() - 1 - idx
+    );
+}
+const void* GenericVector::at(const void* dst, uint64_t idx) const
+{
+    return at(const_cast<void*>(dst), idx);
+}
+const void* GenericVector::at_last(const void* dst, uint64_t idx) const
+{
+    return at_last(const_cast<void*>(dst), idx);
+}
+
+// find
+GenericVectorDataRef GenericVector::find(void* dst, const void* v) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(v);
+    auto* dst_mem    = reinterpret_cast<VectorMemoryBase*>(dst);
+    auto  inner_size = _inner->size();
+
+    if (is_empty(dst))
+    {
+        return {};
+    }
+    else
+    {
+        void* begin = dst_mem->_generic_only_data();
+        void* end   = ::skr::memory::offset_item(begin, inner_size, dst_mem->size());
+
+        while (begin < end)
+        {
+            if (_inner->equal(begin, v, 1))
+            {
+                return {
+                    begin,
+                    (uint64_t)::skr::memory::distance_item(
+                        dst_mem->_generic_only_data(),
+                        begin,
+                        inner_size
+                    )
+                };
+            }
+            begin = ::skr::memory::offset_item(begin, inner_size, 1);
+        }
+        return {};
+    }
+}
+GenericVectorDataRef GenericVector::find_last(void* dst, const void* v) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(v);
+    auto* dst_mem    = reinterpret_cast<VectorMemoryBase*>(dst);
+    auto  inner_size = _inner->size();
+
+    if (is_empty(dst))
+    {
+        return {};
+    }
+    else
+    {
+        void* begin = dst_mem->_generic_only_data();
+        void* end   = ::skr::memory::offset_item(begin, inner_size, dst_mem->size());
+
+        end = ::skr::memory::offset_item(end, inner_size, -1);
+
+        while (end >= begin)
+        {
+            if (_inner->equal(end, v, 1))
+            {
+                return {
+                    end,
+                    (uint64_t)::skr::memory::distance_item(
+                        dst_mem->_generic_only_data(),
+                        end,
+                        inner_size
+                    )
+                };
+            }
+            end = ::skr::memory::offset_item(end, inner_size, -1);
+        }
+        return {};
+    }
+}
+CGenericVectorDataRef GenericVector::find(const void* dst, const void* v) const
+{
+    return find(const_cast<void*>(dst), v);
+}
+CGenericVectorDataRef GenericVector::find_last(const void* dst, const void* v) const
+{
+    return find_last(const_cast<void*>(dst), v);
+}
+
+// contains & count
+bool GenericVector::contains(const void* dst, const void* v) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(v);
+
+    return (bool)find(dst, v);
+}
+uint64_t GenericVector::count(const void* dst, const void* v) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(v);
+    auto* dst_mem    = reinterpret_cast<const VectorMemoryBase*>(dst);
+    auto  inner_size = _inner->size();
+
+    if (is_empty(dst))
+    {
+        return 0;
+    }
+    else
+    {
+        uint64_t    count = 0;
+        const void* begin = dst_mem->_generic_only_data();
+        const void* end   = ::skr::memory::offset_item(begin, inner_size, dst_mem->size());
+
+        while (begin < end)
+        {
+            if (_inner->equal(begin, v, 1))
+            {
+                ++count;
+            }
+            begin = ::skr::memory::offset_item(begin, inner_size, 1);
+        }
+        return count;
     }
 }
 
