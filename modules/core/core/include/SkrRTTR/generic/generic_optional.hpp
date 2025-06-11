@@ -33,6 +33,7 @@ struct SKR_CORE_API GenericOptional final : IGenericBase {
     void   move_assign(void* dst, void* src, uint64_t count = 1) const override final;
     bool   equal(const void* lhs, const void* rhs, uint64_t count = 1) const override final;
     size_t hash(const void* src) const override final;
+    void   swap(void* dst, void* src, uint64_t count = 1) const override final;
     //===> IGenericBase API
 
     // getter

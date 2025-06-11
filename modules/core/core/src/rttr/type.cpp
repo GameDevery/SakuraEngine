@@ -794,6 +794,17 @@ ExportExternMethodInvoker<size_t(const void*)> RTTRType::find_hash() const
     tb.write_type_id(type_id()); // param 1: const T&
     return find_extern_method({ .name = { SkrCoreExternMethods::Hash }, .signature = tb.type_signature_view() });
 }
+ExportExternMethodInvoker<void(void*, void*)> RTTRType::find_swap() const
+{
+    TypeSignatureBuilder tb;
+    tb.write_function_signature(2);
+    tb.write_type_id(type_id_of<void>()); // return
+    tb.write_ref();
+    tb.write_type_id(type_id()); // param 1: T&
+    tb.write_ref();
+    tb.write_type_id(type_id()); // param 2: T&
+    return find_extern_method({ .name = { SkrCoreExternMethods::Swap }, .signature = tb.type_signature_view() });
+}
 
 // flag & attribute
 ERTTRRecordFlag RTTRType::record_flag() const

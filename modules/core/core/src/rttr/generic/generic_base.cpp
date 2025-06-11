@@ -95,6 +95,8 @@ bool GenericType::support(EGenericFeature feature) const
         return !_type->memory_traits_data().use_compare || _type->find_equal();
     case EGenericFeature::Hash:
         return _type->find_hash();
+    case EGenericFeature::Swap:
+        return _type->find_swap();
     default:
         SKR_UNREACHABLE_CODE()
         return false;
@@ -349,6 +351,35 @@ size_t GenericType::hash(const void* src) const
         auto hash_op = _type->find_hash();
         SKR_ASSERT(hash_op && "please check feature before call this function");
         return hash_op.invoke(src);
+    }
+}
+void GenericType::swap(void* dst, void* src, uint64_t count) const
+{
+    SKR_ASSERT(dst);
+    SKR_ASSERT(src);
+
+    if (is_decayed_pointer())
+    {
+        for (uint64_t i = 0; i < count; ++i)
+        {
+            auto  dst_ptr = reinterpret_cast<void**>(dst) + i;
+            auto  src_ptr = reinterpret_cast<void**>(src) + i;
+            void* tmp     = *dst_ptr;
+            *dst_ptr      = *src_ptr;
+            *src_ptr      = tmp;
+        }
+    }
+    else
+    {
+        auto swap_op = _type->find_swap();
+        SKR_ASSERT(swap_op && "please check feature before call this function");
+        for (uint64_t i = 0; i < count; ++i)
+        {
+            swap_op.invoke(
+                ::skr::memory::offset_item(dst, _type->size(), i),
+                ::skr::memory::offset_item(src, _type->size(), i)
+            );
+        }
     }
 }
 //===> IGenericBase API

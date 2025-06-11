@@ -328,6 +328,14 @@ struct RTTRRecordBuilder {
             }>(SkrCoreExternMethods::Hash);
         }
 
+        // fill swap
+        if constexpr (skr::concepts::HasSwap<T>)
+        {
+            extern_method<+[](T& lhs, T& rhs) -> void {
+                skr::Swap<T>::call(lhs, rhs);
+            }>(SkrCoreExternMethods::Swap);
+        }
+
         // fill bin serde
         if constexpr (skr::concepts::HasBinRead<T>)
         {
@@ -582,3 +590,5 @@ private:
     RTTREnumData* _data;
 };
 } // namespace skr
+
+// TODO. Primitive Builder 用于导出一些 Extern Methods

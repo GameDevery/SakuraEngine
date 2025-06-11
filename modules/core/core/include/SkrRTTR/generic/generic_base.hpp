@@ -24,6 +24,7 @@ enum class EGenericFeature
     MoveAssign,
     Equal,
     Hash,
+    Swap,
 };
 struct SKR_CORE_API IGenericBase {
     SKR_RC_INTEFACE()
@@ -50,6 +51,7 @@ struct SKR_CORE_API IGenericBase {
     virtual void   move_assign(void* dst, void* src, uint64_t count = 1) const       = 0;
     virtual bool   equal(const void* lhs, const void* rhs, uint64_t count = 1) const = 0;
     virtual size_t hash(const void* src) const                                       = 0;
+    virtual void   swap(void* dst, void* src, uint64_t count = 1) const              = 0;
 };
 
 enum class EGenericTypeFlag : uint8_t
@@ -97,6 +99,7 @@ struct SKR_CORE_API GenericType final : IGenericBase {
     void   move_assign(void* dst, void* src, uint64_t count = 1) const override final;
     bool   equal(const void* lhs, const void* rhs, uint64_t count = 1) const override final;
     size_t hash(const void* src) const override final;
+    void   swap(void* dst, void* src, uint64_t count = 1) const override final;
     //===> IGenericBase API
 private:
     RTTRType*        _type = nullptr;

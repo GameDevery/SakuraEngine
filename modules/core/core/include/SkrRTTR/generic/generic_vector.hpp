@@ -4,6 +4,7 @@
 
 namespace skr
 {
+// data ref
 struct GenericVectorDataRef {
     void*    ptr   = nullptr;
     uint64_t index = 0;
@@ -30,6 +31,8 @@ struct CGenericVectorDataRef {
         return is_valid();
     }
 };
+
+// generic vector
 struct SKR_CORE_API GenericVector final : IGenericBase {
     SKR_RC_IMPL(override final)
 
@@ -59,6 +62,7 @@ struct SKR_CORE_API GenericVector final : IGenericBase {
     void   move_assign(void* dst, void* src, uint64_t count = 1) const override final;
     bool   equal(const void* lhs, const void* rhs, uint64_t count = 1) const override final;
     size_t hash(const void* src) const override final;
+    void   swap(void* dst, void* src, uint64_t count = 1) const override final;
     //===> IGenericBase API
 
     // getter
@@ -151,4 +155,7 @@ private:
     RC<IGenericBase> _inner            = nullptr;
     MemoryTraitsData _inner_mem_traits = {};
 };
+
+// TODO. 一套 Cursor 和迭代器用于元素遍历
+
 } // namespace skr

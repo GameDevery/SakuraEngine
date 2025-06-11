@@ -146,6 +146,7 @@ struct SKR_CORE_API RTTRType final {
     ExportExternMethodInvoker<void(void*, void*)>             find_move_assign() const;
     ExportExternMethodInvoker<bool(const void*, const void*)> find_equal() const;
     ExportExternMethodInvoker<size_t(const void*)>            find_hash() const;
+    ExportExternMethodInvoker<void(void*, void*)>             find_swap() const;
 
     // flag & attribute
     ERTTRRecordFlag record_flag() const;

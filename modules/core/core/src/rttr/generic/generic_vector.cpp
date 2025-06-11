@@ -65,6 +65,8 @@ bool GenericVector::support(EGenericFeature feature) const
         return _inner && _inner->support(feature);
     case EGenericFeature::Hash:
         return false;
+    case EGenericFeature::Swap:
+        return true;
     default:
         SKR_UNREACHABLE_CODE()
         return false;
@@ -253,6 +255,38 @@ size_t GenericVector::hash(const void* src) const
     SKR_ASSERT(src);
     SKR_ASSERT(false && "GenericVector does not support hash operation, please check feature first");
     return 0;
+}
+void GenericVector::swap(void* dst, void* src, uint64_t count) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(src);
+    SKR_ASSERT(count > 0);
+
+    for (uint64_t i = 0; i < count; ++i)
+    {
+        auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(
+            ::skr::memory::offset_item(dst, sizeof(VectorMemoryBase), i)
+        );
+        auto* src_mem = reinterpret_cast<VectorMemoryBase*>(
+            ::skr::memory::offset_item(src, sizeof(VectorMemoryBase), i)
+        );
+
+        // swap size
+        auto tmp_size = dst_mem->size();
+        dst_mem->set_size(src_mem->size());
+        src_mem->set_size(tmp_size);
+
+        // swap capacity
+        auto tmp_capacity = dst_mem->capacity();
+        dst_mem->_generic_only_set_capacity(src_mem->capacity());
+        src_mem->_generic_only_set_capacity(tmp_capacity);
+
+        // swap data
+        auto tmp_data = dst_mem->_generic_only_data();
+        dst_mem->_generic_only_set_data(src_mem->_generic_only_data());
+        src_mem->_generic_only_set_data(tmp_data);
+    }
 }
 
 // getter

@@ -62,6 +62,7 @@ bool GenericOptional::support(EGenericFeature feature) const
     case EGenericFeature::Move:
     case EGenericFeature::Assign:
     case EGenericFeature::MoveAssign:
+    case EGenericFeature::Swap:
         return _inner->support(feature);
     case EGenericFeature::Equal:
     case EGenericFeature::Hash:
@@ -250,6 +251,45 @@ size_t GenericOptional::hash(const void* src) const
     SKR_ASSERT(is_valid());
     SKR_ASSERT(false && "hash not support for GenericOptional, please check feature before call this function");
     return 0;
+}
+void GenericOptional::swap(void* dst, void* src, uint64_t count) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(src);
+    SKR_ASSERT(count > 0);
+
+    auto optional_size = size();
+
+    for (uint64_t i = 0; i < count; ++i)
+    {
+        auto p_dst = ::skr::memory::offset_item(dst, optional_size, i);
+        auto p_src = ::skr::memory::offset_item(src, optional_size, i);
+
+        if (has_value(p_dst) && has_value(p_src))
+        {
+            // swap value
+            _inner->swap(value_ptr(p_dst), value_ptr(p_src));
+        }
+        else if (has_value(p_dst) && !has_value(p_src))
+        {
+            // move value from dst to src
+            auto p_value = value_ptr(p_dst);
+            _inner->move(value_ptr(p_src), p_value);
+
+            // reset dst
+            has_value(dst) = false;
+        }
+        else if (!has_value(p_dst) && has_value(p_src))
+        {
+            // move value from src to dst
+            auto p_value = value_ptr(p_src);
+            _inner->move(value_ptr(p_dst), p_value);
+
+            // reset src
+            has_value(src) = false;
+        }
+    }
 }
 //===> IGenericBase API
 
