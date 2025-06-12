@@ -450,20 +450,43 @@ RC<IGenericBase> build_generic(TypeSignatureView signature)
 {
     // process signature
     auto jumped_modifiers = signature.jump_modifier();
-    if (!jumped_modifiers.is_empty())
-    {
-        SKR_LOG_FMT_WARN(u8"generic signature has modifiers, modifiers will be ignored, call `sig.jump_modifier();` to suppress this warning");
-    }
 
-    auto signal = jumped_modifiers.peek_signal();
+    auto signal = signature.peek_signal();
     if (signal == ETypeSignatureSignal::TypeId)
     {
+        // check pointer level
+        if (jumped_modifiers.decayed_pointer_level() > 1)
+        {
+            SKR_LOG_FMT_ERROR(u8"invalid type, decayed pointer level must be 0 or 1");
+            return nullptr;
+        }
+
+        // read type id
         GUID type_id;
-        jumped_modifiers.read_type_id(type_id);
+        signature.read_type_id(type_id);
         RTTRType* type = get_type_from_guid(type_id);
         if (type)
         {
-            return RC<GenericType>::New(type);
+            // build generic type flag
+            EGenericTypeFlag type_flag = EGenericTypeFlag::None;
+            if (jumped_modifiers.is_const())
+            {
+                type_flag = flag_set(type_flag, EGenericTypeFlag::Const);
+            }
+            if (jumped_modifiers.is_pointer())
+            {
+                type_flag = flag_set(type_flag, EGenericTypeFlag::Pointer);
+            }
+            else if (jumped_modifiers.is_ref())
+            {
+                type_flag = flag_set(type_flag, EGenericTypeFlag::Ref);
+            }
+            else if (jumped_modifiers.is_rvalue_ref())
+            {
+                type_flag = flag_set(type_flag, EGenericTypeFlag::RValueRef);
+            }
+
+            return RC<GenericType>::New(type, type_flag);
         }
         else
         {
@@ -472,12 +495,21 @@ RC<IGenericBase> build_generic(TypeSignatureView signature)
     }
     else if (signal == ETypeSignatureSignal::GenericTypeId)
     {
+        // check pointer level
+        if (jumped_modifiers.is_decayed_pointer())
+        {
+            SKR_LOG_FMT_ERROR(u8"generic cannot be pointer type");
+            return nullptr;
+        }
+
         GUID     generic_id;
         uint32_t data_count;
-        jumped_modifiers.read_generic_type_id(generic_id, data_count);
+        signature.read_generic_type_id(generic_id, data_count);
         if (auto found = _generic_processor_map().find(generic_id))
         {
-            return found.value()(jumped_modifiers);
+            auto generic_params = signature;
+            generic_params.jump_next_data();
+            return found.value()(generic_params);
         }
         else
         {
