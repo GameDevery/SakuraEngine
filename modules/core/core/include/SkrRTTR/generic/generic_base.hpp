@@ -106,7 +106,9 @@ private:
     EGenericTypeFlag _flag = EGenericTypeFlag::None;
 };
 
-// TODO. Generic Registry
-//   register generic handlers
-//   make generic from type signature
+// generic registry
+using GenericProcessor = RC<IGenericBase> (*)(TypeSignatureView signature);
+SKR_CORE_API void register_generic_processor(GUID generic_id, GenericProcessor processor);
+SKR_CORE_API bool dry_build_generic(TypeSignatureView signature);
+SKR_CORE_API RC<IGenericBase> build_generic(TypeSignatureView signature);
 } // namespace skr
