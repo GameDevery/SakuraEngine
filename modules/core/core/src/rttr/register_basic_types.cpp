@@ -10,11 +10,8 @@ template <typename T>
 void primitive_type_loader(RTTRType* type)
 {
     type->build_primitive([&](RTTRPrimitiveData* data) {
-        data->name      = RTTRTraits<T>::get_name();
-        data->type_id   = RTTRTraits<T>::get_guid();
-        data->size      = sizeof(T);
-        data->alignment = alignof(T);
-        data->memory_traits_data.Fill<T>();
+        RTTRPrimitiveBuilder<T> builder(data);
+        builder.basic_info();
     });
 }
 static void primitive_type_loader_void(RTTRType* type)
