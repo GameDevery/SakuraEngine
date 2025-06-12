@@ -460,10 +460,13 @@ RC<IGenericBase> build_generic(TypeSignatureView signature)
     if (signal == ETypeSignatureSignal::TypeId)
     {
         // check pointer level
-        if (jumped_modifiers.decayed_pointer_level() > 1)
+        if (!jumped_modifiers.is_empty())
         {
-            SKR_LOG_FMT_ERROR(u8"invalid type, decayed pointer level must be 0 or 1");
-            return nullptr;
+            if (jumped_modifiers.decayed_pointer_level() > 1)
+            {
+                SKR_LOG_FMT_ERROR(u8"invalid type, decayed pointer level must be 0 or 1");
+                return nullptr;
+            }
         }
 
         // read type id
@@ -474,21 +477,24 @@ RC<IGenericBase> build_generic(TypeSignatureView signature)
         {
             // build generic type flag
             EGenericTypeFlag type_flag = EGenericTypeFlag::None;
-            if (jumped_modifiers.is_const())
+            if (!jumped_modifiers.is_empty())
             {
-                type_flag = flag_set(type_flag, EGenericTypeFlag::Const);
-            }
-            if (jumped_modifiers.is_pointer())
-            {
-                type_flag = flag_set(type_flag, EGenericTypeFlag::Pointer);
-            }
-            else if (jumped_modifiers.is_ref())
-            {
-                type_flag = flag_set(type_flag, EGenericTypeFlag::Ref);
-            }
-            else if (jumped_modifiers.is_rvalue_ref())
-            {
-                type_flag = flag_set(type_flag, EGenericTypeFlag::RValueRef);
+                if (jumped_modifiers.is_const())
+                {
+                    type_flag = flag_set(type_flag, EGenericTypeFlag::Const);
+                }
+                if (jumped_modifiers.is_pointer())
+                {
+                    type_flag = flag_set(type_flag, EGenericTypeFlag::Pointer);
+                }
+                else if (jumped_modifiers.is_ref())
+                {
+                    type_flag = flag_set(type_flag, EGenericTypeFlag::Ref);
+                }
+                else if (jumped_modifiers.is_rvalue_ref())
+                {
+                    type_flag = flag_set(type_flag, EGenericTypeFlag::RValueRef);
+                }
             }
 
             return RC<GenericType>::New(type, type_flag);
@@ -501,10 +507,13 @@ RC<IGenericBase> build_generic(TypeSignatureView signature)
     else if (signal == ETypeSignatureSignal::GenericTypeId)
     {
         // check pointer level
-        if (jumped_modifiers.is_decayed_pointer())
+        if (!jumped_modifiers.is_empty())
         {
-            SKR_LOG_FMT_ERROR(u8"generic cannot be pointer type");
-            return nullptr;
+            if (jumped_modifiers.is_decayed_pointer())
+            {
+                SKR_LOG_FMT_ERROR(u8"generic cannot be pointer type");
+                return nullptr;
+            }
         }
 
         GUID     generic_id;

@@ -173,6 +173,7 @@ void GenericOptional::move(void* dst, void* src, uint64_t count) const
     else
     {
         ::std::memmove(dst, src, optional_size * count);
+        ::skr::memory::zero_memory(src, optional_size * count);
     }
 }
 void GenericOptional::assign(void* dst, const void* src, uint64_t count) const
@@ -211,14 +212,15 @@ void GenericOptional::move_assign(void* dst, void* src, uint64_t count) const
     SKR_ASSERT(dst);
     SKR_ASSERT(src);
     SKR_ASSERT(count > 0);
+    auto optional_size = size();
 
     if (_inner_mem_traits.use_move_assign)
     {
         // each items
         for (uint64_t i = 0; i < count; ++i)
         {
-            auto p_dst = ::skr::memory::offset_item(dst, size(), i);
-            auto p_src = ::skr::memory::offset_item(src, size(), i);
+            auto p_dst = ::skr::memory::offset_item(dst, optional_size, i);
+            auto p_src = ::skr::memory::offset_item(src, optional_size, i);
 
             if (has_value(p_src))
             {
@@ -233,7 +235,8 @@ void GenericOptional::move_assign(void* dst, void* src, uint64_t count) const
     }
     else
     {
-        ::std::memmove(dst, src, size() * count);
+        ::std::memmove(dst, src, optional_size * count);
+        ::skr::memory::zero_memory(src, optional_size * count);
     }
 }
 bool GenericOptional::equal(const void* lhs, const void* rhs, uint64_t count) const
@@ -320,13 +323,13 @@ void* GenericOptional::value_ptr(void* memory) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(memory);
-    return reinterpret_cast<uint8_t*>(memory) + sizeof(bool);
+    return reinterpret_cast<uint8_t*>(memory) + std::max(sizeof(bool), _inner->alignment());
 }
 const void* GenericOptional::value_ptr(const void* memory) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(memory);
-    return reinterpret_cast<const uint8_t*>(memory) + sizeof(bool);
+    return reinterpret_cast<const uint8_t*>(memory) + std::max(sizeof(bool), _inner->alignment());
 }
 
 // reset
@@ -338,6 +341,7 @@ void GenericOptional::reset(void* memory) const
     {
         auto p_value = this->value_ptr(memory);
         _inner->dtor(p_value);
+        has_value(memory) = false;
     }
 }
 
