@@ -104,6 +104,17 @@ struct SKR_CORE_API GenericType final : IGenericBase {
 private:
     RTTRType*        _type = nullptr;
     EGenericTypeFlag _flag = EGenericTypeFlag::None;
+
+    // cached functions
+    RTTRInvokerDefaultCtor _cached_default_ctor = {};
+    DtorInvoker            _cached_dtor         = nullptr;
+    RTTRInvokerCopyCtor    _cached_copy_ctor    = {};
+    RTTRInvokerMoveCtor    _cached_move_ctor    = {};
+    RTTRInvokerAssign      _cached_assign       = {};
+    RTTRInvokerMoveAssign  _cached_move_assign  = {};
+    RTTRInvokerEqual       _cached_equal        = {};
+    RTTRInvokerHash        _cached_hash         = {};
+    RTTRInvokerSwap        _cached_swap         = {};
 };
 
 // generic registry

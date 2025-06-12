@@ -54,6 +54,15 @@ struct RTTRTypeFindConfig {
     bool include_bases = true;
 };
 
+using RTTRInvokerDefaultCtor = ExportCtorInvoker<void()>;
+using RTTRInvokerCopyCtor    = ExportCtorInvoker<void(const void*)>;
+using RTTRInvokerMoveCtor    = ExportCtorInvoker<void(void*)>;
+using RTTRInvokerAssign      = ExportExternMethodInvoker<void(void*, const void*)>;
+using RTTRInvokerMoveAssign  = ExportExternMethodInvoker<void(void*, void*)>;
+using RTTRInvokerEqual       = ExportExternMethodInvoker<bool(const void*, const void*)>;
+using RTTRInvokerHash        = ExportExternMethodInvoker<size_t(const void*)>;
+using RTTRInvokerSwap        = ExportExternMethodInvoker<void(void*, void*)>;
+
 struct SKR_CORE_API RTTRType final {
     // ctor & dtor
     RTTRType();
@@ -139,14 +148,14 @@ struct SKR_CORE_API RTTRType final {
     ExportExternMethodInvoker<Func> find_extern_method_t(StringView name, ETypeSignatureCompareFlag flag = ETypeSignatureCompareFlag::Strict, bool include_base = true) const;
 
     // find basic functions
-    ExportCtorInvoker<void()>                                 find_default_ctor() const;
-    ExportCtorInvoker<void(const void*)>                      find_copy_ctor() const;
-    ExportCtorInvoker<void(void*)>                            find_move_ctor() const;
-    ExportExternMethodInvoker<void(void*, const void*)>       find_assign() const;
-    ExportExternMethodInvoker<void(void*, void*)>             find_move_assign() const;
-    ExportExternMethodInvoker<bool(const void*, const void*)> find_equal() const;
-    ExportExternMethodInvoker<size_t(const void*)>            find_hash() const;
-    ExportExternMethodInvoker<void(void*, void*)>             find_swap() const;
+    RTTRInvokerDefaultCtor find_default_ctor() const;
+    RTTRInvokerCopyCtor    find_copy_ctor() const;
+    RTTRInvokerMoveCtor    find_move_ctor() const;
+    RTTRInvokerAssign      find_assign() const;
+    RTTRInvokerMoveAssign  find_move_assign() const;
+    RTTRInvokerEqual       find_equal() const;
+    RTTRInvokerHash        find_hash() const;
+    RTTRInvokerSwap        find_swap() const;
 
     // flag & attribute
     ERTTRRecordFlag record_flag() const;

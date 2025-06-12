@@ -14,6 +14,19 @@ GenericType::GenericType(not_null<RTTRType*> type, EGenericTypeFlag flag)
     : _type(type)
     , _flag(flag)
 {
+    // cache functions
+    if (!flag_any(flag, EGenericTypeFlag::Pointer | EGenericTypeFlag::Ref | EGenericTypeFlag::RValueRef))
+    {
+        _cached_default_ctor = type->find_default_ctor();
+        _cached_dtor         = type->dtor_invoker();
+        _cached_copy_ctor    = type->find_copy_ctor();
+        _cached_move_ctor    = type->find_move_ctor();
+        _cached_assign       = type->find_assign();
+        _cached_move_assign  = type->find_move_assign();
+        _cached_equal        = type->find_equal();
+        _cached_hash         = type->find_hash();
+        _cached_swap         = type->find_swap();
+    }
 }
 
 // getter
@@ -80,23 +93,23 @@ bool GenericType::support(EGenericFeature feature) const
     switch (feature)
     {
     case EGenericFeature::DefaultCtor:
-        return !_type->memory_traits_data().use_ctor || _type->find_default_ctor();
+        return !_type->memory_traits_data().use_ctor || _cached_default_ctor;
     case EGenericFeature::Dtor:
-        return !_type->memory_traits_data().use_dtor || _type->dtor_invoker();
+        return !_type->memory_traits_data().use_dtor || _cached_dtor;
     case EGenericFeature::Copy:
-        return !_type->memory_traits_data().use_copy || _type->find_copy_ctor();
+        return !_type->memory_traits_data().use_copy || _cached_copy_ctor;
     case EGenericFeature::Move:
-        return !_type->memory_traits_data().use_move || _type->find_move_ctor();
+        return !_type->memory_traits_data().use_move || _cached_move_ctor;
     case EGenericFeature::Assign:
-        return !_type->memory_traits_data().use_assign || _type->find_assign();
+        return !_type->memory_traits_data().use_assign || _cached_assign;
     case EGenericFeature::MoveAssign:
-        return !_type->memory_traits_data().use_move_assign || _type->find_move_assign();
+        return !_type->memory_traits_data().use_move_assign || _cached_move_assign;
     case EGenericFeature::Equal:
-        return !_type->memory_traits_data().use_compare || _type->find_equal();
+        return !_type->memory_traits_data().use_compare || _cached_equal;
     case EGenericFeature::Hash:
-        return _type->find_hash();
+        return _cached_hash;
     case EGenericFeature::Swap:
-        return _type->find_swap();
+        return _cached_swap;
     default:
         SKR_UNREACHABLE_CODE()
         return false;
@@ -115,11 +128,10 @@ void GenericType::default_ctor(void* dst, uint64_t count) const
     {
         if (_type->memory_traits_data().use_ctor)
         {
-            auto default_ctor = _type->find_default_ctor();
-            SKR_ASSERT(default_ctor && "please check feature before call this function");
+            SKR_ASSERT(_cached_default_ctor && "please check feature before call this function");
             for (uint64_t i = 0; i < count; ++i)
             {
-                default_ctor.invoke(dst);
+                _cached_default_ctor.invoke(dst);
             }
         }
         else
@@ -169,11 +181,10 @@ void GenericType::copy(void* dst, const void* src, uint64_t count) const
     {
         if (_type->memory_traits_data().use_copy)
         {
-            auto copy_ctor = _type->find_copy_ctor();
-            SKR_ASSERT(copy_ctor && "please check feature before call this function");
+            SKR_ASSERT(_cached_copy_ctor && "please check feature before call this function");
             for (uint64_t i = 0; i < count; ++i)
             {
-                copy_ctor.invoke(dst, src);
+                _cached_copy_ctor.invoke(dst, src);
             }
         }
         else
@@ -198,11 +209,10 @@ void GenericType::move(void* dst, void* src, uint64_t count) const
         if (_type->memory_traits_data().use_move)
         {
             // do move
-            auto move_ctor = _type->find_move_ctor();
-            SKR_ASSERT(move_ctor && "please check feature before call this function");
+            SKR_ASSERT(_cached_move_ctor && "please check feature before call this function");
             for (uint64_t i = 0; i < count; ++i)
             {
-                move_ctor.invoke(dst, src);
+                _cached_move_ctor.invoke(dst, src);
             }
 
             // call dtor after move if needed
@@ -237,11 +247,10 @@ void GenericType::assign(void* dst, const void* src, uint64_t count) const
     {
         if (_type->memory_traits_data().use_assign)
         {
-            auto copy_assign = _type->find_assign();
-            SKR_ASSERT(copy_assign && "please check feature before call this function");
+            SKR_ASSERT(_cached_assign && "please check feature before call this function");
             for (uint64_t i = 0; i < count; ++i)
             {
-                copy_assign.invoke(dst, src);
+                _cached_assign.invoke(dst, src);
             }
         }
         else
@@ -265,11 +274,10 @@ void GenericType::move_assign(void* dst, void* src, uint64_t count) const
     {
         if (_type->memory_traits_data().use_move_assign)
         {
-            auto move_assign = _type->find_move_assign();
-            SKR_ASSERT(move_assign && "please check feature before call this function");
+            SKR_ASSERT(_cached_move_assign && "please check feature before call this function");
             for (uint64_t i = 0; i < count; ++i)
             {
-                move_assign.invoke(dst, src);
+                _cached_move_assign.invoke(dst, src);
             }
 
             // call dtor after move if needed
@@ -304,13 +312,12 @@ bool GenericType::equal(const void* lhs, const void* rhs, uint64_t count) const
     {
         if (_type->memory_traits_data().use_compare)
         {
-            auto equal_op = _type->find_equal();
-            SKR_ASSERT(equal_op && "please check feature before call this function");
+            SKR_ASSERT(_cached_equal && "please check feature before call this function");
 
             auto item_size = _type->size();
             for (uint64_t i = 0; i < count; ++i)
             {
-                if (!equal_op.invoke(
+                if (!_cached_equal.invoke(
                         ::skr::memory::offset_item(lhs, item_size, i),
                         ::skr::memory::offset_item(rhs, item_size, i)
                     ))
@@ -348,9 +355,8 @@ size_t GenericType::hash(const void* src) const
     }
     else
     {
-        auto hash_op = _type->find_hash();
-        SKR_ASSERT(hash_op && "please check feature before call this function");
-        return hash_op.invoke(src);
+        SKR_ASSERT(_cached_hash && "please check feature before call this function");
+        return _cached_hash.invoke(src);
     }
 }
 void GenericType::swap(void* dst, void* src, uint64_t count) const
@@ -371,11 +377,10 @@ void GenericType::swap(void* dst, void* src, uint64_t count) const
     }
     else
     {
-        auto swap_op = _type->find_swap();
-        SKR_ASSERT(swap_op && "please check feature before call this function");
+        SKR_ASSERT(_cached_swap && "please check feature before call this function");
         for (uint64_t i = 0; i < count; ++i)
         {
-            swap_op.invoke(
+            _cached_swap.invoke(
                 ::skr::memory::offset_item(dst, _type->size(), i),
                 ::skr::memory::offset_item(src, _type->size(), i)
             );
