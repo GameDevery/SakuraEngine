@@ -48,6 +48,8 @@ const CGPUProcTable tbl_metal = {
 
     // Device APIs
     .create_device = &cgpu_create_device_metal,
+    .query_video_memory_info = &cgpu_query_video_memory_info_metal,
+    .query_shared_memory_info = &cgpu_query_shared_memory_info_metal,
     .free_device = &cgpu_free_device_metal,
 
     // API Objects APIs
@@ -188,6 +190,27 @@ CGPUDeviceId cgpu_create_device_metal(CGPUAdapterId adapter, const CGPUDeviceDes
         }
     }
     return &MA->device.super;
+}
+
+void cgpu_query_video_memory_info_metal(const CGPUDeviceId device, uint64_t* total, uint64_t* used_bytes)
+{
+    CGPUDevice_Metal* D = (CGPUDevice_Metal*)device;
+    *total = D->pDevice.recommendedMaxWorkingSetSize;
+    *used_bytes = D->pDevice.currentAllocatedSize;
+}
+
+void cgpu_query_shared_memory_info_metal(const CGPUDeviceId device, uint64_t* total, uint64_t* used_bytes)
+{
+    CGPUDevice_Metal* D = (CGPUDevice_Metal*)device;
+    if (D->pDevice.hasUnifiedMemory)
+    {
+        cgpu_query_video_memory_info_metal(device, total, used_bytes);
+    }
+    else
+    {
+        *total = UINT64_MAX;
+        *used_bytes = 0;
+    }
 }
 
 void cgpu_free_device_metal(CGPUDeviceId device)
@@ -395,7 +418,6 @@ void cgpu_update_descriptor_set_metal(CGPUDescriptorSetId set, const struct CGPU
             // fill argument
             typedef struct BUFFER { uint64_t ptr; uint64_t size; } BUFFER;
             typedef struct CBUFFER { uint64_t ptr; } CBUFFER;
-            typedef struct TEXTURE { MTLResourceID id; } TEXTURE;
             switch (data->binding_type)
             {
                 case CGPU_RESOURCE_TYPE_BUFFER:

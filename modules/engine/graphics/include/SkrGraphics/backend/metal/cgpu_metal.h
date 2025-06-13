@@ -1,6 +1,5 @@
 #pragma once
 #include "SkrGraphics/api.h"
-#include "metal_availability.h"
 
 /* Resouce Binding Schema:
 
@@ -66,6 +65,8 @@ CGPU_API uint32_t cgpu_query_queue_count_metal(const CGPUAdapterId adapter, cons
 
 // Device APIs
 CGPU_API CGPUDeviceId cgpu_create_device_metal(CGPUAdapterId adapter, const CGPUDeviceDescriptor* desc);
+CGPU_API void cgpu_query_video_memory_info_metal(const CGPUDeviceId device, uint64_t* total, uint64_t* used_bytes);
+CGPU_API void cgpu_query_shared_memory_info_metal(const CGPUDeviceId device, uint64_t* total, uint64_t* used_bytes);
 CGPU_API void cgpu_free_device_metal(CGPUDeviceId device);
 
 // API Object APIs
