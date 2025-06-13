@@ -55,6 +55,7 @@ const CGPUProcTable tbl_metal = {
     // API Objects APIs
     .create_fence = &cgpu_create_fence_metal,
     .query_fence_status = &cgpu_query_fence_status_metal,
+    .wait_fences = &cgpu_wait_fences_metal,
     .free_fence = &cgpu_free_fence_metal,
     .create_semaphore = &cgpu_create_semaphore_metal,
     .free_semaphore = &cgpu_free_semaphore_metal,
@@ -252,6 +253,15 @@ void cgpu_free_fence_metal(CGPUFenceId fence)
     cgpu_free(F);
 }
 
+void cgpu_wait_fences_metal(const CGPUFenceId* fences, uint32_t fence_count)
+{
+    for (uint32_t i = 0; i < fence_count; ++i)
+    {
+        CGPUFence_Metal* F = (CGPUFence_Metal*)fences[i];
+        dispatch_semaphore_wait(F->sysSemaphore, DISPATCH_TIME_FOREVER);
+    }
+}
+
 CGPUSemaphoreId cgpu_create_semaphore_metal(CGPUDeviceId device)
 {
     CGPUDevice_Metal* D = (CGPUDevice_Metal*)device;
@@ -418,6 +428,8 @@ void cgpu_update_descriptor_set_metal(CGPUDescriptorSetId set, const struct CGPU
             // fill argument
             typedef struct BUFFER { uint64_t ptr; uint64_t size; } BUFFER;
             typedef struct CBUFFER { uint64_t ptr; } CBUFFER;
+            // typedef struct TEXTURE { MTLResourceID id; } TEXTURE;
+            // typedef struct SAMPLER { MTLResourceID id; } SAMPLER;
             switch (data->binding_type)
             {
                 case CGPU_RESOURCE_TYPE_BUFFER:

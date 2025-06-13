@@ -71,6 +71,7 @@ CGPU_API void cgpu_free_device_metal(CGPUDeviceId device);
 
 // API Object APIs
 CGPU_API CGPUFenceId cgpu_create_fence_metal(CGPUDeviceId device);
+CGPU_API void cgpu_wait_fences_metal(const CGPUFenceId* fences, uint32_t fence_count);
 CGPU_API ECGPUFenceStatus cgpu_query_fence_status_metal(CGPUFenceId fence);
 CGPU_API void cgpu_free_fence_metal(CGPUFenceId fence);
 CGPU_API CGPUSemaphoreId cgpu_create_semaphore_metal(CGPUDeviceId device);
