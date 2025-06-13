@@ -13,16 +13,9 @@ typedef struct CGPUDevice_Metal {
     uint32_t pMtlQueueCounts[CGPU_QUEUE_TYPE_COUNT];
 } CGPUDevice_Metal;
 
-typedef struct CGPUFence_Metal {
-    CGPUFence super;
-    dispatch_semaphore_t pMtlSemaphore;
-    uint32_t mSubmitted : 1;
-} CGPUFence_Metal;
-
 typedef struct CGPUAdapter_Metal {
     CGPUAdapter super;
     CGPUDevice_Metal device;
-
     CGPUAdapterDetail adapter_detail;
 } CGPUAdapter_Metal;
 
@@ -31,6 +24,17 @@ typedef struct CGPUInstance_Metal {
     CGPUAdapter_Metal* adapters;
     uint32_t adapters_count;
 } CGPUInstance_Metal;
+
+typedef struct CGPUFence_Metal {
+    CGPUFence super;
+    dispatch_semaphore_t sysSemaphore;
+} CGPUFence_Metal;
+
+typedef struct CGPUSemaphore_Metal {
+	CGPUSemaphore super;
+	id<MTLEvent> mtlSemaphore;
+	uint64_t value;
+} CGPUSemaphore_Metal;
 
 typedef struct CGPUQueue_Metal {
     CGPUQueue super;

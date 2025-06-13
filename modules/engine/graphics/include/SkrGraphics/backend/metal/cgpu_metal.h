@@ -70,7 +70,10 @@ CGPU_API void cgpu_free_device_metal(CGPUDeviceId device);
 
 // API Object APIs
 CGPU_API CGPUFenceId cgpu_create_fence_metal(CGPUDeviceId device);
+CGPU_API ECGPUFenceStatus cgpu_query_fence_status_metal(CGPUFenceId fence);
 CGPU_API void cgpu_free_fence_metal(CGPUFenceId fence);
+CGPU_API CGPUSemaphoreId cgpu_create_semaphore_metal(CGPUDeviceId device);
+CGPU_API void cgpu_free_semaphore_metal(CGPUSemaphoreId semaphore);
 CGPU_API CGPURootSignatureId cgpu_create_root_signature_metal(CGPUDeviceId device, const struct CGPURootSignatureDescriptor* desc);
 CGPU_API void cgpu_free_root_signature_metal(CGPURootSignatureId signature);
 CGPU_API CGPUDescriptorSetId cgpu_create_descriptor_set_metal(CGPUDeviceId device, const struct CGPUDescriptorSetDescriptor* desc);
