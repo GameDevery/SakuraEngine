@@ -166,6 +166,7 @@ void ComputeFunc(void* usrdata)
     // Update descriptor set
     CGPUDescriptorData descriptor_data = {
         .name = "buf",
+        .binding_type = CGPU_RESOURCE_TYPE_RW_BUFFER,
         .buffers = &data_buffer,
         .count = 1
     };

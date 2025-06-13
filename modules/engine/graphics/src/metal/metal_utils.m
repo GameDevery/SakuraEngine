@@ -20,6 +20,7 @@ void MetalUtil_RecordAdapterDetail(struct CGPUAdapter_Metal* MAdapter)
     MAdapter->adapter_detail.is_cpu = false;
     MAdapter->adapter_detail.is_uma = isMTLDeviceUMA(MAdapter->device.pDevice);
     MAdapter->adapter_detail.is_virtual = false;
+    MAdapter->adapter_detail.uniform_buffer_alignment = 256;
 
     CGPUVendorPreset* vendor = &MAdapter->adapter_detail.vendor_preset;
     const char* mDeviceName = [MAdapter->device.pDevice.name UTF8String];

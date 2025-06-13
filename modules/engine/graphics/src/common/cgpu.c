@@ -150,8 +150,9 @@ CGPUDeviceId cgpu_create_device(CGPUAdapterId adapter, const CGPUDeviceDescripto
     cgpu_assert(adapter != CGPU_NULLPTR && "fatal: call on NULL adapter!");
     cgpu_assert(adapter->proc_table_cache->create_device && "create_device Proc Missing!");
 
-    CGPUDeviceId device = adapter->proc_table_cache->create_device(adapter, desc);
-    ((CGPUDevice*)device)->next_texture_id = 0;
+    CGPUDevice* device = (CGPUDevice*)adapter->proc_table_cache->create_device(adapter, desc);
+    device->next_texture_id = 0;
+    *((CGPUAdapterId*)&device->adapter) = adapter;
     // ++ proc_table_cache
     if (device != CGPU_NULLPTR)
     {

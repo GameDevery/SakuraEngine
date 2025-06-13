@@ -13,6 +13,7 @@
 #define CGPU_COLOR_MASK_ALPHA 0x8
 #define CGPU_COLOR_MASK_ALL CGPU_COLOR_MASK_RED | CGPU_COLOR_MASK_GREEN | CGPU_COLOR_MASK_BLUE | CGPU_COLOR_MASK_ALPHA
 #define CGPU_COLOR_MASK_NONE 0
+#define CGPU_ALIGN(size, align) ((size + align - 1) & (~(align - 1)))
 
 #if SKR_ARCH_WA32
 #define DEFINE_CGPU_OBJECT(name) struct name##Descriptor; typedef const host_ptr_t name##Id;
@@ -1424,8 +1425,14 @@ typedef struct CGPUMemoryPool {
 typedef struct CGPUParameterTable {
     // This should be stored here because shader could be destoryed after RS creation
     CGPUShaderResource* resources;
-    uint32_t resources_count;
-    uint32_t set_index;
+    uint16_t resources_count;
+    uint16_t set_index;
+    union {
+        uint32_t __storage;
+        struct {
+            uint32_t arg_buf_size;
+        } metal;
+    };
 } CGPUParameterTable;
 
 typedef struct CGPURootSignaturePool {

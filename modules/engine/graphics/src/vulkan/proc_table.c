@@ -213,8 +213,6 @@ static void VKAPI_PTR cgpu_vulkan_internal_free_notify(
 
 }
 
-#define CGPU_ALIGN(size, align) ((size + align - 1) & (~(align - 1)))
-
 typedef struct AllocHeader
 {
     int16_t padding;

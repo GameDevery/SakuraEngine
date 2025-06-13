@@ -44,11 +44,13 @@ typedef struct CGPUCommandPool_Metal {
 } CGPUCommandPool_Metal;
 
 typedef struct CGPURenderPassEncoder_Metal {
+	CGPURenderPassEncoder super;
     struct CGPUCommandBuffer_Metal* cmdBuffer;
     id<MTLRenderCommandEncoder> mtlRenderEncoder;
 } CGPURenderPassEncoder_Metal;
 
 typedef struct CGPUComputePassEncoder_Metal {
+	CGPUComputePassEncoder super;
     struct CGPUCommandBuffer_Metal* cmdBuffer;
     id<MTLComputeCommandEncoder> mtlComputeEncoder;
 } CGPUComputePassEncoder_Metal;
@@ -69,7 +71,36 @@ typedef struct CGPUShaderLibrary_Metal {
 typedef struct CGPURootSignature_Metal {
 	CGPURootSignature super;
 	id<MTLFunction> mtlFunctions[CGPU_SHADER_STAGE_COUNT];
+	id<MTLComputePipelineState> mtlPipelineState;
 } CGPURootSignature_Metal;
+
+typedef struct BindSlot_Metal {
+	__unsafe_unretained id<MTLResource> mtlResource;
+	uint32_t binding_index;
+	MTLResourceUsage mtlUsage;
+} BindSlot_Metal;
+
+typedef struct CGPUDescriptorSet_Metal {
+	CGPUDescriptorSet super;
+	CGPUBufferId mtlArgumentBuffer;
+	BindSlot_Metal* mtlBindSlots;
+	uint32_t mtlBindSlotCount;
+	__unsafe_unretained id* mtlReadArgsCache;
+	__unsafe_unretained id* mtlReadWriteArgsCache;
+} CGPUDescriptorSet_Metal;
+
+typedef struct CGPUComputePipeline_Metal {
+	CGPUComputePipeline super;
+	id<MTLComputePipelineState> mtlPipelineState;
+} CGPUComputePipeline_Metal;
+
+typedef struct CGPUBuffer_Metal {
+	CGPUBuffer super;
+	struct VmaAllocation_T*      pAllocation;
+	id<MTLBuffer>                mtlBuffer;
+	id<MTLIndirectCommandBuffer> mtlIndirectCommandBuffer;
+	uint64_t                     mOffset;
+} CGPUBuffer_Metal;
 
 // Mac Catalyst does not support feature sets, so we redefine them to GPU families in MVKDevice.h.
 #if TARGET_MACCAT
