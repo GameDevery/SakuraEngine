@@ -497,28 +497,31 @@ SKR_INLINE void SparseVector<Memory>::assign(U&& container)
 template <typename Memory>
 SKR_INLINE bool SparseVector<Memory>::operator==(const SparseVector& rhs) const
 {
-    if (sparse_size() == rhs.sparse_size())
+    // compare size
+    if (sparse_size() != rhs.sparse_size() || hole_size() != rhs.hole_size())
     {
-        for (SizeType i = 0; i < sparse_size(); ++i)
-        {
-            bool lhs_has_data = has_data(i);
-            bool rhs_has_data = rhs.has_data(i);
+        return false;
+    }
 
-            if (lhs_has_data != rhs_has_data)
+    // compare data
+    for (SizeType i = 0; i < sparse_size(); ++i)
+    {
+        bool lhs_has_data = has_data(i);
+        bool rhs_has_data = rhs.has_data(i);
+
+        if (lhs_has_data != rhs_has_data)
+        {
+            return false;
+        }
+        else if (lhs_has_data)
+        {
+            if ((*this)[i] != rhs[i])
             {
                 return false;
             }
-            else if (lhs_has_data)
-            {
-                if ((*this)[i] != rhs[i])
-                {
-                    return false;
-                }
-            }
         }
-        return true;
     }
-    return false;
+    return true;
 }
 template <typename Memory>
 SKR_INLINE bool SparseVector<Memory>::operator!=(const SparseVector& rhs) const
@@ -1283,11 +1286,12 @@ SKR_INLINE void SparseVector<Memory>::sort(Functor&& f)
     {
         compact();
         algo::intro_sort(
-        storage(),
-        storage() + sparse_size(),
-        [&f](const StorageType& a, const StorageType& b) {
-            return f(a._sparse_vector_data, b._sparse_vector_data);
-        });
+            storage(),
+            storage() + sparse_size(),
+            [&f](const StorageType& a, const StorageType& b) {
+                return f(a._sparse_vector_data, b._sparse_vector_data);
+            }
+        );
     }
 }
 template <typename Memory>
@@ -1298,11 +1302,12 @@ SKR_INLINE void SparseVector<Memory>::sort_stable(Functor&& f)
     {
         compact_stable();
         algo::merge_sort(
-        storage(),
-        storage() + sparse_size(),
-        [&f](const StorageType& a, const StorageType& b) {
-            return f(a._sparse_vector_data, b._sparse_vector_data);
-        });
+            storage(),
+            storage() + sparse_size(),
+            [&f](const StorageType& a, const StorageType& b) {
+                return f(a._sparse_vector_data, b._sparse_vector_data);
+            }
+        );
     }
 }
 
