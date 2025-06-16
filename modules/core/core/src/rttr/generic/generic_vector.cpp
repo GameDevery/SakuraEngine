@@ -1017,6 +1017,7 @@ uint64_t GenericVector::remove_all(void* dst, const void* v) const
                         run_len
                     );
                 }
+                write = ::skr::memory::offset_item(write, inner_size, run_len);
             }
 
             // update flag

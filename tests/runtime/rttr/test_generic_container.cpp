@@ -249,10 +249,11 @@ TEST_CASE("test generic vector")
     using namespace skr;
 
     RC<GenericVector> generic_vec = build_generic(type_signature_of<Vector<int32_t>>()).cast_static<GenericVector>();
+    using VecType                 = Vector<int32_t>;
 
     SUBCASE("data get")
     {
-        Vector<int32_t> vec;
+        VecType vec;
 
         // check data
         REQUIRE_EQ(generic_vec->capacity(&vec), vec.capacity());
@@ -272,7 +273,7 @@ TEST_CASE("test generic vector")
 
     SUBCASE("memory op")
     {
-        Vector<int32_t> vec{ 1, 1, 4, 5, 1, 4 };
+        VecType vec{ 1, 1, 4, 5, 1, 4 };
 
         // clear
         auto old_capacity = vec.capacity();
@@ -341,10 +342,302 @@ TEST_CASE("test generic vector")
 
     SUBCASE("add")
     {
-        
+        VecType vec = {};
+
+        // add
+        {
+            int32_t value = 114514;
+            generic_vec->add(&vec, &value);
+            REQUIRE_EQ(vec.size(), 1);
+            REQUIRE_GE(vec.capacity(), 1);
+            REQUIRE_EQ(vec[0], value);
+        }
+
+        // add n
+        {
+            int32_t value = 1919810;
+            generic_vec->add(&vec, &value, 10);
+            REQUIRE_EQ(vec.size(), 11);
+            REQUIRE_GE(vec.capacity(), 11);
+            for (size_t i = 1; i < vec.size(); ++i)
+            {
+                REQUIRE_EQ(vec[i], value);
+            }
+        }
+
+        // add move
+        {
+            int32_t value = 123456;
+            generic_vec->add_move(&vec, &value);
+            REQUIRE_EQ(vec.size(), 12);
+            REQUIRE_GE(vec.capacity(), 12);
+            REQUIRE_EQ(vec[11], 123456);
+        }
+
+        vec.clear();
+
+        // add zeroed
+        {
+            generic_vec->add_zeroed(&vec, 10);
+            REQUIRE_EQ(vec.size(), 10);
+            REQUIRE_GE(vec.capacity(), 10);
+            for (size_t i = 0; i < vec.size(); ++i)
+            {
+                REQUIRE_EQ(vec[i], 0);
+            }
+        }
+
+        // add unique
+        vec.clear();
+        {
+            for (int32_t i = 0; i < 10; ++i)
+            {
+                generic_vec->add_unique(&vec, &i);
+            }
+            for (int32_t i = 0; i < 10; ++i)
+            {
+                generic_vec->add_unique(&vec, &i);
+            }
+
+            REQUIRE_EQ(vec.size(), 10);
+            REQUIRE_GE(vec.capacity(), 10);
+            for (int32_t i = 0; i < 10; ++i)
+            {
+                REQUIRE_EQ(vec[i], i);
+            }
+        }
     }
 
     SUBCASE("add at")
     {
+        VecType vec = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+
+        // add at
+        {
+            int32_t value = 0;
+            generic_vec->add_at(&vec, 0, &value);
+            REQUIRE_EQ(vec.size(), 11);
+            REQUIRE_GE(vec.capacity(), 11);
+            REQUIRE_EQ(vec[0], value);
+            for (size_t i = 1; i < vec.size(); ++i)
+            {
+                REQUIRE_EQ(vec[i], i);
+            }
+        }
+
+        // add at n
+        {
+            int32_t value = 114514;
+            generic_vec->add_at(&vec, 5, &value, 10);
+            REQUIRE_EQ(vec.size(), 21);
+            REQUIRE_GE(vec.capacity(), 21);
+            for (size_t i = 0; i < 5; ++i)
+            {
+                REQUIRE_EQ(vec[i], i);
+            }
+            for (size_t i = 5; i < 15; ++i)
+            {
+                REQUIRE_EQ(vec[i], value);
+            }
+            for (size_t i = 15; i < vec.size(); ++i)
+            {
+                REQUIRE_EQ(vec[i], i - 10);
+            }
+        }
+    }
+
+    SUBCASE("append")
+    {
+        VecType vec1 = { 1, 2, 3, 4, 5 };
+        VecType vec2 = { 6, 7, 8, 9, 10 };
+
+        // append
+        generic_vec->append(&vec1, &vec2);
+        REQUIRE_EQ(vec1.size(), 10);
+        REQUIRE_GE(vec1.capacity(), 10);
+        for (size_t i = 0; i < 10; ++i)
+        {
+            REQUIRE_EQ(vec1[i], i + 1);
+        }
+    }
+
+    SUBCASE("append at")
+    {
+        VecType vec1 = { 1, 2, 3, 4, 5 };
+        VecType vec2 = { 6, 7, 8, 9, 10 };
+
+        // append at
+        generic_vec->append_at(&vec1, 2, &vec2);
+        REQUIRE_EQ(vec1.size(), 10);
+        REQUIRE_GE(vec1.capacity(), 10);
+        for (size_t i = 0; i < 2; ++i)
+        {
+            REQUIRE_EQ(vec1[i], i + 1);
+        }
+        for (size_t i = 2; i < 7; ++i)
+        {
+            REQUIRE_EQ(vec1[i], i + 4);
+        }
+        for (size_t i = 7; i < 10; ++i)
+        {
+            REQUIRE_EQ(vec1[i], i - 4);
+        }
+    }
+
+    SUBCASE("remove at")
+    {
+        VecType vec = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+
+        // remove at
+        generic_vec->remove_at(&vec, 0);
+        REQUIRE_EQ(vec.size(), 9);
+        REQUIRE_GE(vec.capacity(), 9);
+        for (size_t i = 0; i < vec.size(); ++i)
+        {
+            REQUIRE_EQ(vec[i], i + 2);
+        }
+
+        // remove at n
+        generic_vec->remove_at(&vec, 5, 3);
+        REQUIRE_EQ(vec.size(), 6);
+        REQUIRE_GE(vec.capacity(), 6);
+        for (size_t i = 0; i < vec.size(); ++i)
+        {
+            if (i < 5)
+            {
+                REQUIRE_EQ(vec[i], i + 2);
+            }
+            else
+            {
+                REQUIRE_EQ(vec[i], i + 5);
+            }
+        }
+    }
+
+    SUBCASE("remove")
+    {
+        VecType vec = { 1, 1, 4, 5, 1, 4 };
+
+        // remove
+        int32_t value_to_remove = 1;
+        bool    removed         = generic_vec->remove(&vec, &value_to_remove);
+        REQUIRE(removed);
+        REQUIRE_EQ(vec.size(), 5);
+        REQUIRE_GE(vec.capacity(), 5);
+        REQUIRE_EQ(vec[0], 1);
+        REQUIRE_EQ(vec[1], 4);
+        REQUIRE_EQ(vec[2], 5);
+        REQUIRE_EQ(vec[3], 1);
+        REQUIRE_EQ(vec[4], 4);
+
+        // remove last
+        value_to_remove = 1;
+        removed         = generic_vec->remove_last(&vec, &value_to_remove);
+        REQUIRE(removed);
+        REQUIRE_EQ(vec.size(), 4);
+        REQUIRE_GE(vec.capacity(), 4);
+        REQUIRE_EQ(vec[0], 1);
+        REQUIRE_EQ(vec[1], 4);
+        REQUIRE_EQ(vec[2], 5);
+        REQUIRE_EQ(vec[3], 4);
+
+        // remove all
+        value_to_remove        = 4;
+        uint64_t removed_count = generic_vec->remove_all(&vec, &value_to_remove);
+        REQUIRE_EQ(removed_count, 2);
+        REQUIRE_EQ(vec.size(), 2);
+        REQUIRE_GE(vec.capacity(), 2);
+        REQUIRE_EQ(vec[0], 1);
+        REQUIRE_EQ(vec[1], 5);
+
+        vec = { 1, 1, 4, 5, 1, 4 };
+
+        // remove swap
+        value_to_remove = 1;
+        removed         = generic_vec->remove_swap(&vec, &value_to_remove);
+        REQUIRE(removed);
+        REQUIRE_EQ(vec.size(), 5);
+        REQUIRE_GE(vec.capacity(), 5);
+        REQUIRE_EQ(vec.count(1), 2);
+
+        // remove last swap
+        value_to_remove = 1;
+        removed         = generic_vec->remove_last_swap(&vec, &value_to_remove);
+        REQUIRE(removed);
+        REQUIRE_EQ(vec.size(), 4);
+        REQUIRE_GE(vec.capacity(), 4);
+        REQUIRE_EQ(vec.count(1), 1);
+
+        // remove all swap
+        value_to_remove = 4;
+        removed_count   = generic_vec->remove_all_swap(&vec, &value_to_remove);
+        REQUIRE_EQ(removed_count, 2);
+        REQUIRE_EQ(vec.size(), 2);
+        REQUIRE_GE(vec.capacity(), 2);
+        REQUIRE_FALSE(vec.contains(value_to_remove));
+    }
+
+    SUBCASE("access")
+    {
+        VecType vec;
+        vec.resize_unsafe(100);
+        for (size_t i = 0; i < vec.size(); ++i)
+        {
+            vec[i] = static_cast<int32_t>(i + 1);
+        }
+
+        for (size_t i = 0; i < vec.size(); ++i)
+        {
+            REQUIRE_EQ(generic_vec->at(&vec, i), &vec.at(i));
+            REQUIRE_EQ(generic_vec->at_last(&vec, i), &vec.at_last(i));
+        }
+    }
+
+    SUBCASE("find")
+    {
+        VecType vec = { 1, 1, 4, 5, 1, 4 };
+
+        // find
+        int32_t value_to_find = 1;
+        auto    found_ref     = generic_vec->find(&vec, &value_to_find);
+        REQUIRE(found_ref.is_valid());
+        REQUIRE_EQ(found_ref.index, 0);
+        REQUIRE_EQ(found_ref.ptr, &vec.at(0));
+
+        // find last
+        value_to_find = 1;
+        found_ref     = generic_vec->find_last(&vec, &value_to_find);
+        REQUIRE(found_ref.is_valid());
+        REQUIRE_EQ(found_ref.index, 4);
+        REQUIRE_EQ(found_ref.ptr, &vec.at(4));
+
+        // find not found
+        value_to_find = 114514;
+        found_ref     = generic_vec->find(&vec, &value_to_find);
+        REQUIRE_FALSE(found_ref.is_valid());
+
+        // find last not found
+        value_to_find = 1919810;
+        found_ref     = generic_vec->find_last(&vec, &value_to_find);
+        REQUIRE_FALSE(found_ref.is_valid());
+    }
+
+    SUBCASE("contains & count")
+    {
+        VecType vec = { 1, 1, 4, 5, 1, 4 };
+
+        // contains
+        int32_t value_to_check = 1;
+        REQUIRE(generic_vec->contains(&vec, &value_to_check));
+        value_to_check = 114514;
+        REQUIRE_FALSE(generic_vec->contains(&vec, &value_to_check));
+
+        // count
+        value_to_check = 1;
+        REQUIRE_EQ(generic_vec->count(&vec, &value_to_check), 3);
+        value_to_check = 4;
+        REQUIRE_EQ(generic_vec->count(&vec, &value_to_check), 2);
+        value_to_check = 1919810;
+        REQUIRE_EQ(generic_vec->count(&vec, &value_to_check), 0);
     }
 }
