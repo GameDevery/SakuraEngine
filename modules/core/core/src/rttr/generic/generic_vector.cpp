@@ -9,6 +9,8 @@ GenericVector::GenericVector(RC<IGenericBase> inner)
     if (_inner)
     {
         _inner_mem_traits = _inner->memory_traits_data();
+        _inner_size       = _inner->size();
+        _inner_alignment  = _inner->alignment();
     }
 }
 GenericVector::~GenericVector() = default;
@@ -78,7 +80,7 @@ void GenericVector::default_ctor(void* dst, uint64_t count) const
     SKR_ASSERT(dst);
     SKR_ASSERT(count > 0);
 
-    std::memset(dst, 0, size() * count);
+    std::memset(dst, 0, sizeof(VectorMemoryBase) * count);
 }
 void GenericVector::dtor(void* dst, uint64_t count) const
 {
@@ -88,7 +90,7 @@ void GenericVector::dtor(void* dst, uint64_t count) const
 
     for (uint64_t i = 0; i < count; ++i)
     {
-        auto* p_dst = ::skr::memory::offset_item(dst, sizeof(VectorMemoryBase), i);
+        auto* p_dst = VectorMemoryBase::_memory_at(dst, i);
         release(p_dst);
     }
 }
@@ -101,22 +103,18 @@ void GenericVector::copy(void* dst, const void* src, uint64_t count) const
 
     for (uint64_t i = 0; i < count; ++i)
     {
-        auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(
-            ::skr::memory::offset_item(dst, sizeof(VectorMemoryBase), i)
-        );
-        const auto* src_mem = reinterpret_cast<const VectorMemoryBase*>(
-            ::skr::memory::offset_item(src, sizeof(VectorMemoryBase), i)
-        );
+        auto*       dst_mem = VectorMemoryBase::_memory_at(dst, i);
+        const auto* src_mem = VectorMemoryBase::_memory_at(src, i);
 
-        if (src_mem->size())
+        if (src_mem->_size)
         {
-            _realloc(dst, src_mem->size());
+            _realloc(dst_mem, src_mem->_size);
             _inner->copy(
-                dst_mem->_generic_only_data(),
-                src_mem->_generic_only_data(),
-                src_mem->size()
+                dst_mem->_data,
+                src_mem->_data,
+                src_mem->_size
             );
-            dst_mem->set_size(src_mem->size());
+            dst_mem->_size = src_mem->_size;
         }
     }
 }
@@ -127,22 +125,22 @@ void GenericVector::move(void* dst, void* src, uint64_t count) const
     SKR_ASSERT(src);
     SKR_ASSERT(count > 0);
 
+    if (dst == src) { return; }
+
     for (uint64_t i = 0; i < count; ++i)
     {
-        auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(
-            ::skr::memory::offset_item(dst, sizeof(VectorMemoryBase), i)
-        );
-        auto* src_mem = reinterpret_cast<VectorMemoryBase*>(
-            ::skr::memory::offset_item(src, sizeof(VectorMemoryBase), i)
-        );
+        auto* dst_mem = VectorMemoryBase::_memory_at(dst, i);
+        auto* src_mem = VectorMemoryBase::_memory_at(src, i);
 
-        dst_mem->set_size(src_mem->size());
-        dst_mem->_generic_only_set_capacity(src_mem->capacity());
-        dst_mem->_generic_only_set_data(src_mem->_generic_only_data());
+        // move data
+        dst_mem->_size     = src_mem->_size;
+        dst_mem->_capacity = src_mem->_capacity;
+        dst_mem->_data     = src_mem->_data;
 
-        src_mem->_generic_only_set_data(nullptr);
-        src_mem->_generic_only_set_capacity(0);
-        src_mem->set_size(0);
+        // clean up src
+        src_mem->_data     = nullptr;
+        src_mem->_capacity = 0;
+        src_mem->_size     = 0;
     }
 }
 void GenericVector::assign(void* dst, const void* src, uint64_t count) const
@@ -152,34 +150,32 @@ void GenericVector::assign(void* dst, const void* src, uint64_t count) const
     SKR_ASSERT(src);
     SKR_ASSERT(count > 0);
 
+    if (dst == src) { return; }
+
     for (uint64_t i = 0; i < count; ++i)
     {
-        auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(
-            ::skr::memory::offset_item(dst, sizeof(VectorMemoryBase), i)
-        );
-        const auto* src_mem = reinterpret_cast<const VectorMemoryBase*>(
-            ::skr::memory::offset_item(src, sizeof(VectorMemoryBase), i)
-        );
+        auto*       dst_mem = VectorMemoryBase::_memory_at(dst, i);
+        const auto* src_mem = VectorMemoryBase::_memory_at(src, i);
 
         // clean up dst
-        clear(dst);
+        clear(dst_mem);
 
         // copy data
-        if (src_mem->size())
+        if (src_mem->_size)
         {
             // reserve memory
-            if (dst_mem->capacity() < src_mem->size())
+            if (dst_mem->capacity() < src_mem->_size)
             {
-                _realloc(dst, src_mem->size());
+                _realloc(dst_mem, src_mem->_size);
             }
 
             // copy data
             _inner->copy(
-                dst_mem->_generic_only_data(),
-                src_mem->_generic_only_data(),
-                src_mem->size()
+                dst_mem->_data,
+                src_mem->_data,
+                src_mem->_size
             );
-            dst_mem->set_size(src_mem->size());
+            dst_mem->_size = src_mem->_size;
         }
     }
 }
@@ -192,26 +188,22 @@ void GenericVector::move_assign(void* dst, void* src, uint64_t count) const
 
     for (uint64_t i = 0; i < count; ++i)
     {
-        auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(
-            ::skr::memory::offset_item(dst, sizeof(VectorMemoryBase), i)
-        );
-        auto* src_mem = reinterpret_cast<VectorMemoryBase*>(
-            ::skr::memory::offset_item(src, sizeof(VectorMemoryBase), i)
-        );
+        auto* dst_mem = VectorMemoryBase::_memory_at(dst, i);
+        auto* src_mem = VectorMemoryBase::_memory_at(src, i);
 
         // clean up dst
-        clear(dst);
-        free(dst);
+        clear(dst_mem);
+        free(dst_mem);
 
         // move data
-        dst_mem->set_size(src_mem->size());
-        dst_mem->_generic_only_set_capacity(src_mem->capacity());
-        dst_mem->_generic_only_set_data(src_mem->_generic_only_data());
+        dst_mem->_size     = src_mem->_size;
+        dst_mem->_capacity = src_mem->_capacity;
+        dst_mem->_data     = src_mem->_data;
 
         // clean up src
-        src_mem->_generic_only_set_data(nullptr);
-        src_mem->_generic_only_set_capacity(0);
-        src_mem->set_size(0);
+        src_mem->_size     = 0;
+        src_mem->_capacity = 0;
+        src_mem->_data     = nullptr;
     }
 }
 bool GenericVector::equal(const void* lhs, const void* rhs, uint64_t count) const
@@ -223,24 +215,20 @@ bool GenericVector::equal(const void* lhs, const void* rhs, uint64_t count) cons
 
     for (uint64_t i = 0; i < count; ++i)
     {
-        auto lhs_mem = reinterpret_cast<const VectorMemoryBase*>(
-            ::skr::memory::offset_item(lhs, sizeof(VectorMemoryBase), i)
-        );
-        auto rhs_mem = reinterpret_cast<const VectorMemoryBase*>(
-            ::skr::memory::offset_item(rhs, sizeof(VectorMemoryBase), i)
-        );
+        auto lhs_mem = VectorMemoryBase::_memory_at(lhs, i);
+        auto rhs_mem = VectorMemoryBase::_memory_at(rhs, i);
 
         // check size
-        if (lhs_mem->size() != rhs_mem->size())
+        if (lhs_mem->_size != rhs_mem->_size)
         {
             return false;
         }
 
         // check data
         if (!_inner->equal(
-                lhs_mem->_generic_only_data(),
-                rhs_mem->_generic_only_data(),
-                lhs_mem->size()
+                lhs_mem->_data,
+                rhs_mem->_data,
+                lhs_mem->_size
             ))
         {
             return false;
@@ -265,27 +253,13 @@ void GenericVector::swap(void* dst, void* src, uint64_t count) const
 
     for (uint64_t i = 0; i < count; ++i)
     {
-        auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(
-            ::skr::memory::offset_item(dst, sizeof(VectorMemoryBase), i)
-        );
-        auto* src_mem = reinterpret_cast<VectorMemoryBase*>(
-            ::skr::memory::offset_item(src, sizeof(VectorMemoryBase), i)
-        );
-
-        // swap size
-        auto tmp_size = dst_mem->size();
-        dst_mem->set_size(src_mem->size());
-        src_mem->set_size(tmp_size);
-
-        // swap capacity
-        auto tmp_capacity = dst_mem->capacity();
-        dst_mem->_generic_only_set_capacity(src_mem->capacity());
-        src_mem->_generic_only_set_capacity(tmp_capacity);
+        auto* dst_mem = VectorMemoryBase::_memory_at(dst, i);
+        auto* src_mem = VectorMemoryBase::_memory_at(src, i);
 
         // swap data
-        auto tmp_data = dst_mem->_generic_only_data();
-        dst_mem->_generic_only_set_data(src_mem->_generic_only_data());
-        src_mem->_generic_only_set_data(tmp_data);
+        VectorMemoryBase tmp = std::move(*dst_mem);
+        *dst_mem             = std::move(*src_mem);
+        *src_mem             = std::move(tmp);
     }
 }
 
@@ -305,7 +279,7 @@ uint64_t GenericVector::size(const void* dst) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
-    return reinterpret_cast<const VectorMemoryBase*>(dst)->size();
+    return reinterpret_cast<const VectorMemoryBase*>(dst)->_size;
 }
 uint64_t GenericVector::capacity(const void* dst) const
 {
@@ -318,25 +292,25 @@ uint64_t GenericVector::slack(const void* dst) const
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
     auto* dst_mem = reinterpret_cast<const VectorMemoryBase*>(dst);
-    return dst_mem->capacity() - dst_mem->size();
+    return dst_mem->capacity() - dst_mem->_size;
 }
 bool GenericVector::is_empty(const void* dst) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
-    return reinterpret_cast<const VectorMemoryBase*>(dst)->size() == 0;
+    return reinterpret_cast<const VectorMemoryBase*>(dst)->_size == 0;
 }
 const void* GenericVector::data(const void* dst) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
-    return reinterpret_cast<const VectorMemoryBase*>(dst)->_generic_only_data();
+    return reinterpret_cast<const VectorMemoryBase*>(dst)->_data;
 }
 void* GenericVector::data(void* dst) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
-    return reinterpret_cast<VectorMemoryBase*>(dst)->_generic_only_data();
+    return reinterpret_cast<VectorMemoryBase*>(dst)->_data;
 }
 
 // validate
@@ -346,7 +320,7 @@ bool GenericVector::is_valid_index(const void* dst, uint64_t idx) const
     SKR_ASSERT(dst);
 
     auto* dst_mem = reinterpret_cast<const VectorMemoryBase*>(dst);
-    return idx >= 0 && idx < dst_mem->size();
+    return idx >= 0 && idx < dst_mem->_size;
 }
 
 // memory op
@@ -356,16 +330,16 @@ void GenericVector::clear(void* dst) const
     SKR_ASSERT(dst);
     auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
 
-    if (dst_mem->size())
+    if (dst_mem->_size)
     {
         if (_inner_mem_traits.use_dtor)
         {
             _inner->dtor(
-                dst_mem->_generic_only_data(),
-                dst_mem->size()
+                dst_mem->_data,
+                dst_mem->_size
             );
         }
-        dst_mem->set_size(0);
+        dst_mem->_size = 0;
     }
 }
 void GenericVector::release(void* dst, uint64_t reserve_capacity) const
@@ -406,10 +380,10 @@ void GenericVector::shrink(void* dst) const
     auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
 
     auto new_capacity = container::default_get_shrink<uint64_t>(
-        dst_mem->size(),
+        dst_mem->_size,
         dst_mem->capacity()
     );
-    SKR_ASSERT(new_capacity >= dst_mem->size());
+    SKR_ASSERT(new_capacity >= dst_mem->_size);
     if (new_capacity < dst_mem->capacity())
     {
         if (new_capacity)
@@ -426,8 +400,7 @@ void GenericVector::resize(void* dst, uint64_t expect_size, void* new_value) con
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
-    auto* dst_mem   = reinterpret_cast<VectorMemoryBase*>(dst);
-    auto  item_size = _inner->size();
+    auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
 
     // realloc memory if need
     if (expect_size > dst_mem->capacity())
@@ -436,43 +409,34 @@ void GenericVector::resize(void* dst, uint64_t expect_size, void* new_value) con
     }
 
     // construct item or destruct item if need
-    if (expect_size > dst_mem->size())
+    if (expect_size > dst_mem->_size)
     {
-        for (uint64_t i = dst_mem->size(); i < expect_size; ++i)
+        for (uint64_t i = dst_mem->_size; i < expect_size; ++i)
         {
-            void* p_copy_data = ::skr::memory::offset_item(
-                dst_mem->_generic_only_data(),
-                item_size,
-                i
-            );
+            void* p_copy_data = dst_mem->_item_at(i, _inner_size);
             _inner->copy(
                 p_copy_data,
                 new_value
             );
         }
     }
-    else if (expect_size < dst_mem->size())
+    else if (expect_size < dst_mem->_size)
     {
-        void* p_destruct_data = ::skr::memory::offset_item(
-            dst_mem->_generic_only_data(),
-            item_size,
-            expect_size
-        );
+        void* p_destruct_data = dst_mem->_item_at(expect_size, _inner_size);
         _inner->dtor(
             p_destruct_data,
-            dst_mem->size() - expect_size
+            dst_mem->_size - expect_size
         );
     }
 
     // set size
-    dst_mem->set_size(expect_size);
+    dst_mem->_size = expect_size;
 }
 void GenericVector::resize_unsafe(void* dst, uint64_t expect_size) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
-    auto* dst_mem   = reinterpret_cast<VectorMemoryBase*>(dst);
-    auto  item_size = _inner->size();
+    auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
 
     // realloc memory if need
     if (expect_size > dst_mem->capacity())
@@ -481,28 +445,23 @@ void GenericVector::resize_unsafe(void* dst, uint64_t expect_size) const
     }
 
     // construct item or destruct item if need
-    if (expect_size < dst_mem->size())
+    if (expect_size < dst_mem->_size)
     {
-        void* p_destruct_data = ::skr::memory::offset_item(
-            dst_mem->_generic_only_data(),
-            item_size,
-            expect_size
-        );
+        void* p_destruct_data = dst_mem->_item_at(expect_size, _inner_size);
         _inner->dtor(
             p_destruct_data,
-            dst_mem->size() - expect_size
+            dst_mem->_size - expect_size
         );
     }
 
     // set size
-    dst_mem->set_size(expect_size);
+    dst_mem->_size = expect_size;
 }
 void GenericVector::resize_default(void* dst, uint64_t expect_size) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
-    auto* dst_mem   = reinterpret_cast<VectorMemoryBase*>(dst);
-    auto  item_size = _inner->size();
+    auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
 
     // realloc memory if need
     if (expect_size > dst_mem->capacity())
@@ -511,40 +470,31 @@ void GenericVector::resize_default(void* dst, uint64_t expect_size) const
     }
 
     // construct item or destruct item if need
-    if (expect_size > dst_mem->size())
+    if (expect_size > dst_mem->_size)
     {
-        void* p_construct_data = ::skr::memory::offset_item(
-            dst_mem->_generic_only_data(),
-            item_size,
-            dst_mem->size()
-        );
+        void* p_construct_data = dst_mem->_item_at(dst_mem->_size, _inner_size);
         _inner->default_ctor(
             p_construct_data,
-            expect_size - dst_mem->size()
+            expect_size - dst_mem->_size
         );
     }
-    else if (expect_size < dst_mem->size())
+    else if (expect_size < dst_mem->_size)
     {
-        void* p_destruct_data = ::skr::memory::offset_item(
-            dst_mem->_generic_only_data(),
-            item_size,
-            expect_size
-        );
+        void* p_destruct_data = dst_mem->_item_at(expect_size, _inner_size);
         _inner->dtor(
             p_destruct_data,
-            dst_mem->size() - expect_size
+            dst_mem->_size - expect_size
         );
     }
 
     // set size
-    dst_mem->set_size(expect_size);
+    dst_mem->_size = expect_size;
 }
 void GenericVector::resize_zeroed(void* dst, uint64_t expect_size) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
-    auto* dst_mem   = reinterpret_cast<VectorMemoryBase*>(dst);
-    auto  item_size = _inner->size();
+    auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
 
     // realloc memory if need
     if (expect_size > dst_mem->capacity())
@@ -553,30 +503,22 @@ void GenericVector::resize_zeroed(void* dst, uint64_t expect_size) const
     }
 
     // construct item or destruct item if need
-    if (expect_size > dst_mem->size())
+    if (expect_size > dst_mem->_size)
     {
-        void* p_zero_data = ::skr::memory::offset_item(
-            dst_mem->_generic_only_data(),
-            item_size,
-            dst_mem->size()
-        );
-        std::memset(p_zero_data, 0, (expect_size - dst_mem->size()) * item_size);
+        void* p_zero_data = dst_mem->_item_at(dst_mem->_size, _inner_size);
+        std::memset(p_zero_data, 0, (expect_size - dst_mem->_size) * _inner_size);
     }
-    else if (expect_size < dst_mem->size())
+    else if (expect_size < dst_mem->_size)
     {
-        void* p_destruct_data = ::skr::memory::offset_item(
-            dst_mem->_generic_only_data(),
-            item_size,
-            expect_size
-        );
+        void* p_destruct_data = dst_mem->_item_at(expect_size, _inner_size);
         _inner->dtor(
             p_destruct_data,
-            dst_mem->size() - expect_size
+            dst_mem->_size - expect_size
         );
     }
 
     // set size
-    dst_mem->set_size(expect_size);
+    dst_mem->_size = expect_size;
 }
 
 // add
@@ -589,11 +531,7 @@ GenericVectorDataRef GenericVector::add(void* dst, const void* v, uint64_t n) co
     for (uint64_t i = 0; i < n; ++i)
     {
         _inner->copy(
-            ::skr::memory::offset_item(
-                result.ptr,
-                _inner->size(),
-                i
-            ),
+            result.offset(i, _inner_size),
             v
         );
     }
@@ -615,7 +553,7 @@ GenericVectorDataRef GenericVector::add_unsafe(void* dst, uint64_t n) const
 
     auto old_size = _grow(dst, n);
     return {
-        ::skr::memory::offset_item(dst_mem->_generic_only_data(), _inner->size(), old_size),
+        dst_mem->_item_at(old_size, _inner_size),
         old_size
     };
 }
@@ -626,11 +564,8 @@ GenericVectorDataRef GenericVector::add_default(void* dst, uint64_t n) const
 
     auto result = add_unsafe(dst, n);
     _inner->default_ctor(
-        ::skr::memory::offset_item(
-            result.ptr,
-            _inner->size(),
-            n
-        )
+        result.ptr,
+        n
     );
     return result;
 }
@@ -640,7 +575,7 @@ GenericVectorDataRef GenericVector::add_zeroed(void* dst, uint64_t n) const
     SKR_ASSERT(dst);
 
     auto result = add_unsafe(dst, n);
-    ::skr::memory::zero_memory(result.ptr, n * _inner->size());
+    ::skr::memory::zero_memory(result.ptr, n * _inner_size);
     return result;
 }
 GenericVectorDataRef GenericVector::add_unique(void* dst, const void* v) const
@@ -687,11 +622,7 @@ void GenericVector::add_at(void* dst, uint64_t idx, const void* v, uint64_t n) c
     for (uint64_t i = 0; i < n; ++i)
     {
         _inner->copy(
-            ::skr::memory::offset_item(
-                dst_mem->_generic_only_data(),
-                _inner->size(),
-                idx + i
-            ),
+            dst_mem->_item_at(idx + i, _inner_size),
             v
         );
     }
@@ -703,14 +634,10 @@ void GenericVector::add_at_move(void* dst, uint64_t idx, void* v) const
     auto dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
 
     add_at_unsafe(dst, idx, 1);
-    for (uint64_t i = 0; i < dst_mem->size(); ++i)
+    for (uint64_t i = 0; i < dst_mem->_size; ++i)
     {
         _inner->move(
-            ::skr::memory::offset_item(
-                dst_mem->_generic_only_data(),
-                _inner->size(),
-                idx + i
-            ),
+            dst_mem->_item_at(idx + i, _inner_size),
             v
         );
     }
@@ -722,19 +649,11 @@ void GenericVector::add_at_unsafe(void* dst, uint64_t idx, uint64_t n) const
     SKR_ASSERT((is_empty(dst) && idx == 0) || is_valid_index(dst, idx));
     auto dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
 
-    auto move_n = dst_mem->size() - idx;
+    auto move_n = dst_mem->_size - idx;
     add_unsafe(dst, n);
     _inner->move(
-        ::skr::memory::offset_item(
-            dst_mem->_generic_only_data(),
-            _inner->size(),
-            idx + n
-        ),
-        ::skr::memory::offset_item(
-            dst_mem->_generic_only_data(),
-            _inner->size(),
-            idx
-        ),
+        dst_mem->_item_at(idx + n, _inner_size),
+        dst_mem->_item_at(idx, _inner_size),
         move_n
     );
 }
@@ -742,14 +661,11 @@ void GenericVector::add_at_default(void* dst, uint64_t idx, uint64_t n) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
+    auto dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
 
     add_at_unsafe(dst, idx, n);
     _inner->default_ctor(
-        ::skr::memory::offset_item(
-            reinterpret_cast<VectorMemoryBase*>(dst)->_generic_only_data(),
-            _inner->size(),
-            idx
-        ),
+        dst_mem->_item_at(idx, _inner_size),
         n
     );
 }
@@ -757,14 +673,11 @@ void GenericVector::add_at_zeroed(void* dst, uint64_t idx, uint64_t n) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
+    auto dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
 
     add_at_unsafe(dst, idx, n);
     ::skr::memory::zero_memory(
-        ::skr::memory::offset_item(
-            reinterpret_cast<VectorMemoryBase*>(dst)->_generic_only_data(),
-            _inner->size(),
-            idx
-        ),
+        dst_mem->_item_at(idx, _inner_size),
         n
     );
 }
@@ -778,24 +691,21 @@ GenericVectorDataRef GenericVector::append(void* dst, const void* other) const
     auto*       dst_mem   = reinterpret_cast<VectorMemoryBase*>(dst);
     const auto* other_mem = reinterpret_cast<const VectorMemoryBase*>(other);
 
-    auto other_size = other_mem->size();
+    auto old_size   = dst_mem->_size;
+    auto other_size = other_mem->_size;
     if (other_size)
     {
         auto result = add_unsafe(dst, other_size);
         _inner->copy(
             result.ptr,
-            other_mem->_generic_only_data(),
+            other_mem->_data,
             other_size
         );
         return result;
     }
     return {
-        ::skr::memory::offset_item(
-            dst_mem->_generic_only_data(),
-            _inner->size(),
-            dst_mem->size()
-        ),
-        dst_mem->size()
+        dst_mem->_item_at(old_size, _inner_size),
+        old_size
     };
 }
 
@@ -808,17 +718,13 @@ void GenericVector::append_at(void* dst, uint64_t idx, const void* other) const
     auto*       dst_mem   = reinterpret_cast<VectorMemoryBase*>(dst);
     const auto* other_mem = reinterpret_cast<const VectorMemoryBase*>(other);
 
-    auto other_size = other_mem->size();
+    auto other_size = other_mem->_size;
     if (other_size)
     {
         add_at_unsafe(dst, idx, other_size);
         _inner->copy(
-            ::skr::memory::offset_item(
-                dst_mem->_generic_only_data(),
-                _inner->size(),
-                idx
-            ),
-            other_mem->_generic_only_data(),
+            dst_mem->_item_at(idx, _inner_size),
+            other_mem->_data,
             other_size
         );
     }
@@ -830,20 +736,16 @@ void GenericVector::remove_at(void* dst, uint64_t idx, uint64_t n) const
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
     auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
-    SKR_ASSERT(is_valid_index(dst, idx) && (dst_mem->size() - idx >= n));
+    SKR_ASSERT(is_valid_index(dst, idx) && (dst_mem->_size - idx >= n));
 
     if (n)
     {
         // calc move size
-        auto move_n = dst_mem->size() - idx - n;
+        auto move_n = dst_mem->_size - idx - n;
 
         // destruct remove items
         _inner->dtor(
-            ::skr::memory::offset_item(
-                dst_mem->_generic_only_data(),
-                _inner->size(),
-                idx
-            ),
+            dst_mem->_item_at(idx, _inner_size),
             n
         );
 
@@ -851,22 +753,14 @@ void GenericVector::remove_at(void* dst, uint64_t idx, uint64_t n) const
         if (move_n)
         {
             _inner->move(
-                ::skr::memory::offset_item(
-                    dst_mem->_generic_only_data(),
-                    _inner->size(),
-                    idx
-                ),
-                ::skr::memory::offset_item(
-                    dst_mem->_generic_only_data(),
-                    _inner->size(),
-                    idx + n
-                ),
+                dst_mem->_item_at(idx, _inner_size),
+                dst_mem->_item_at(idx + n, _inner_size),
                 move_n
             );
         }
 
         // update size
-        dst_mem->set_size(dst_mem->size() - n);
+        dst_mem->_size = dst_mem->_size - n;
     }
 }
 void GenericVector::remove_at_swap(void* dst, uint64_t idx, uint64_t n) const
@@ -874,20 +768,16 @@ void GenericVector::remove_at_swap(void* dst, uint64_t idx, uint64_t n) const
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
     auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
-    SKR_ASSERT(is_valid_index(dst, idx) && (dst_mem->size() - idx >= n));
+    SKR_ASSERT(is_valid_index(dst, idx) && (dst_mem->_size - idx >= n));
 
     if (n)
     {
         // calc move size
-        auto move_n = std::min(dst_mem->size() - idx - n, n);
+        auto move_n = std::min(dst_mem->_size - idx - n, n);
 
         // destruct remove items
         _inner->dtor(
-            ::skr::memory::offset_item(
-                dst_mem->_generic_only_data(),
-                _inner->size(),
-                idx
-            ),
+            dst_mem->_item_at(idx, _inner_size),
             n
         );
 
@@ -895,22 +785,14 @@ void GenericVector::remove_at_swap(void* dst, uint64_t idx, uint64_t n) const
         if (move_n)
         {
             _inner->move(
-                ::skr::memory::offset_item(
-                    dst_mem->_generic_only_data(),
-                    _inner->size(),
-                    idx
-                ),
-                ::skr::memory::offset_item(
-                    dst_mem->_generic_only_data(),
-                    _inner->size(),
-                    dst_mem->size() - move_n
-                ),
+                dst_mem->_item_at(idx, _inner_size),
+                dst_mem->_item_at(dst_mem->_size - move_n, _inner_size),
                 move_n
             );
         }
 
         // update size
-        dst_mem->set_size(dst_mem->size() - n);
+        dst_mem->_size = dst_mem->_size - n;
     }
 }
 bool GenericVector::remove(void* dst, const void* v) const
@@ -978,25 +860,24 @@ uint64_t GenericVector::remove_all(void* dst, const void* v) const
     }
     else
     {
-        auto  inner_size = _inner->size();
-        void* begin      = dst_mem->_generic_only_data();
-        void* end        = ::skr::memory::offset_item(begin, inner_size, dst_mem->size());
-        void* write      = begin;
-        void* read       = begin;
-        bool  do_remove  = _inner->equal(read, v, 1);
+        void* begin     = dst_mem->_data;
+        void* end       = ::skr::memory::offset_item(begin, _inner_size, dst_mem->_size);
+        void* write     = begin;
+        void* read      = begin;
+        bool  do_remove = _inner->equal(read, v, 1);
 
         // remove loop
         do
         {
             auto run_start = read;
-            read           = ::skr::memory::offset_item(read, inner_size, 1);
+            read           = ::skr::memory::offset_item(read, _inner_size, 1);
 
             // collect run scope
             while (read < end && do_remove == _inner->equal(read, v, 1))
             {
-                read = ::skr::memory::offset_item(read, inner_size, 1);
+                read = ::skr::memory::offset_item(read, _inner_size, 1);
             }
-            uint64_t run_len = ::skr::memory::distance_item(run_start, read, inner_size);
+            uint64_t run_len = ::skr::memory::distance_item(run_start, read, _inner_size);
             SKR_ASSERT(run_len > 0);
 
             // do scope op
@@ -1017,7 +898,7 @@ uint64_t GenericVector::remove_all(void* dst, const void* v) const
                         run_len
                     );
                 }
-                write = ::skr::memory::offset_item(write, inner_size, run_len);
+                write = ::skr::memory::offset_item(write, _inner_size, run_len);
             }
 
             // update flag
@@ -1025,12 +906,12 @@ uint64_t GenericVector::remove_all(void* dst, const void* v) const
         } while (read < end);
 
         // get remove count
-        uint64_t remove_count = ::skr::memory::distance_item(write, end, inner_size);
+        uint64_t remove_count = ::skr::memory::distance_item(write, end, _inner_size);
 
         // update size
         if (remove_count)
         {
-            dst_mem->set_size(dst_mem->size() - remove_count);
+            dst_mem->_size = dst_mem->_size - remove_count;
         }
         return remove_count;
     }
@@ -1048,13 +929,12 @@ uint64_t GenericVector::remove_all_swap(void* dst, const void* v) const
     }
     else
     {
-        auto  inner_size = _inner->size();
-        void* begin      = dst_mem->_generic_only_data();
-        void* end        = ::skr::memory::offset_item(begin, inner_size, dst_mem->size());
-        void* cache_end  = end;
+        void* begin     = dst_mem->_data;
+        void* end       = ::skr::memory::offset_item(begin, _inner_size, dst_mem->_size);
+        void* cache_end = end;
 
         // for swap
-        end = ::skr::memory::offset_item(end, inner_size, -1);
+        end = ::skr::memory::offset_item(end, _inner_size, -1);
 
         // remove loop
         while (true)
@@ -1070,7 +950,7 @@ uint64_t GenericVector::remove_all_swap(void* dst, const void* v) const
                 {
                     break;
                 }
-                begin = ::skr::memory::offset_item(begin, inner_size, 1);
+                begin = ::skr::memory::offset_item(begin, _inner_size, 1);
             }
 
             // skip items that needn't remove on tail
@@ -1088,7 +968,7 @@ uint64_t GenericVector::remove_all_swap(void* dst, const void* v) const
                     end,
                     1
                 );
-                end = ::skr::memory::offset_item(end, inner_size, -1);
+                end = ::skr::memory::offset_item(end, _inner_size, -1);
             }
 
             // swap items at bad pos
@@ -1103,18 +983,18 @@ uint64_t GenericVector::remove_all_swap(void* dst, const void* v) const
             );
 
             // update iterator
-            begin = ::skr::memory::offset_item(begin, inner_size, 1);
-            end   = ::skr::memory::offset_item(end, inner_size, -1);
+            begin = ::skr::memory::offset_item(begin, _inner_size, 1);
+            end   = ::skr::memory::offset_item(end, _inner_size, -1);
         }
     LoopEnd:
 
         // get remove count
-        uint64_t remove_count = ::skr::memory::distance_item(begin, cache_end, inner_size);
+        uint64_t remove_count = ::skr::memory::distance_item(begin, cache_end, _inner_size);
 
         // update size
         if (remove_count)
         {
-            dst_mem->set_size(dst_mem->size() - remove_count);
+            dst_mem->_size = dst_mem->_size - remove_count;
         }
         return remove_count;
     }
@@ -1127,11 +1007,7 @@ void* GenericVector::at(void* dst, uint64_t idx) const
     SKR_ASSERT(dst);
     SKR_ASSERT(!is_empty(dst) && is_valid_index(dst, idx));
     auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
-    return ::skr::memory::offset_item(
-        dst_mem->_generic_only_data(),
-        _inner->size(),
-        idx
-    );
+    return dst_mem->_item_at(idx, _inner_size);
 }
 void* GenericVector::at_last(void* dst, uint64_t idx) const
 {
@@ -1139,11 +1015,7 @@ void* GenericVector::at_last(void* dst, uint64_t idx) const
     SKR_ASSERT(dst);
     SKR_ASSERT(!is_empty(dst) && is_valid_index(dst, idx));
     auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
-    return ::skr::memory::offset_item(
-        dst_mem->_generic_only_data(),
-        _inner->size(),
-        dst_mem->size() - 1 - idx
-    );
+    return dst_mem->_item_at(dst_mem->_size - 1 - idx, _inner_size);
 }
 const void* GenericVector::at(const void* dst, uint64_t idx) const
 {
@@ -1160,8 +1032,7 @@ GenericVectorDataRef GenericVector::find(void* dst, const void* v) const
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
     SKR_ASSERT(v);
-    auto* dst_mem    = reinterpret_cast<VectorMemoryBase*>(dst);
-    auto  inner_size = _inner->size();
+    auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
 
     if (is_empty(dst))
     {
@@ -1169,8 +1040,8 @@ GenericVectorDataRef GenericVector::find(void* dst, const void* v) const
     }
     else
     {
-        void* begin = dst_mem->_generic_only_data();
-        void* end   = ::skr::memory::offset_item(begin, inner_size, dst_mem->size());
+        void* begin = dst_mem->_data;
+        void* end   = ::skr::memory::offset_item(begin, _inner_size, dst_mem->_size);
 
         while (begin < end)
         {
@@ -1179,13 +1050,13 @@ GenericVectorDataRef GenericVector::find(void* dst, const void* v) const
                 return {
                     begin,
                     (uint64_t)::skr::memory::distance_item(
-                        dst_mem->_generic_only_data(),
+                        dst_mem->_data,
                         begin,
-                        inner_size
+                        _inner_size
                     )
                 };
             }
-            begin = ::skr::memory::offset_item(begin, inner_size, 1);
+            begin = ::skr::memory::offset_item(begin, _inner_size, 1);
         }
         return {};
     }
@@ -1195,8 +1066,7 @@ GenericVectorDataRef GenericVector::find_last(void* dst, const void* v) const
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
     SKR_ASSERT(v);
-    auto* dst_mem    = reinterpret_cast<VectorMemoryBase*>(dst);
-    auto  inner_size = _inner->size();
+    auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
 
     if (is_empty(dst))
     {
@@ -1204,10 +1074,10 @@ GenericVectorDataRef GenericVector::find_last(void* dst, const void* v) const
     }
     else
     {
-        void* begin = dst_mem->_generic_only_data();
-        void* end   = ::skr::memory::offset_item(begin, inner_size, dst_mem->size());
+        void* begin = dst_mem->_data;
+        void* end   = ::skr::memory::offset_item(begin, _inner_size, dst_mem->_size);
 
-        end = ::skr::memory::offset_item(end, inner_size, -1);
+        end = ::skr::memory::offset_item(end, _inner_size, -1);
 
         while (end >= begin)
         {
@@ -1216,13 +1086,13 @@ GenericVectorDataRef GenericVector::find_last(void* dst, const void* v) const
                 return {
                     end,
                     (uint64_t)::skr::memory::distance_item(
-                        dst_mem->_generic_only_data(),
+                        dst_mem->_data,
                         end,
-                        inner_size
+                        _inner_size
                     )
                 };
             }
-            end = ::skr::memory::offset_item(end, inner_size, -1);
+            end = ::skr::memory::offset_item(end, _inner_size, -1);
         }
         return {};
     }
@@ -1250,8 +1120,7 @@ uint64_t GenericVector::count(const void* dst, const void* v) const
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
     SKR_ASSERT(v);
-    auto* dst_mem    = reinterpret_cast<const VectorMemoryBase*>(dst);
-    auto  inner_size = _inner->size();
+    auto* dst_mem = reinterpret_cast<const VectorMemoryBase*>(dst);
 
     if (is_empty(dst))
     {
@@ -1260,8 +1129,8 @@ uint64_t GenericVector::count(const void* dst, const void* v) const
     else
     {
         uint64_t    count = 0;
-        const void* begin = dst_mem->_generic_only_data();
-        const void* end   = ::skr::memory::offset_item(begin, inner_size, dst_mem->size());
+        const void* begin = dst_mem->_data;
+        const void* end   = ::skr::memory::offset_item(begin, _inner_size, dst_mem->_size);
 
         while (begin < end)
         {
@@ -1269,7 +1138,7 @@ uint64_t GenericVector::count(const void* dst, const void* v) const
             {
                 ++count;
             }
-            begin = ::skr::memory::offset_item(begin, inner_size, 1);
+            begin = ::skr::memory::offset_item(begin, _inner_size, 1);
         }
         return count;
     }
@@ -1284,18 +1153,16 @@ void GenericVector::_realloc(void* dst, uint64_t new_capacity) const
 
     SKR_ASSERT(new_capacity != dst_mem->capacity());
     SKR_ASSERT(new_capacity > 0);
-    SKR_ASSERT(dst_mem->size() <= new_capacity);
-    SKR_ASSERT((dst_mem->capacity() > 0 && dst_mem->_generic_only_data() != nullptr) || (dst_mem->capacity() == 0 && dst_mem->_generic_only_data() == nullptr));
+    SKR_ASSERT(dst_mem->_size <= new_capacity);
+    SKR_ASSERT((dst_mem->capacity() > 0 && dst_mem->_data != nullptr) || (dst_mem->capacity() == 0 && dst_mem->_data == nullptr));
 
     if (_inner_mem_traits.use_realloc)
     {
-        dst_mem->_generic_only_set_data(
-            SkrAllocator::realloc_raw(
-                dst_mem->_generic_only_data(),
-                new_capacity,
-                _inner->size(),
-                _inner->alignment()
-            )
+        dst_mem->_data = SkrAllocator::realloc_raw(
+            dst_mem->_data,
+            new_capacity,
+            _inner_size,
+            _inner_alignment
         );
     }
     else
@@ -1303,32 +1170,32 @@ void GenericVector::_realloc(void* dst, uint64_t new_capacity) const
         // alloc new memory
         void* new_memory = SkrAllocator::alloc_raw(
             new_capacity,
-            _inner->size(),
-            _inner->alignment()
+            _inner_size,
+            _inner_alignment
         );
 
         // move items
-        if (dst_mem->size())
+        if (dst_mem->_size)
         {
             _inner->move(
                 new_memory,
-                dst_mem->_generic_only_data(),
-                dst_mem->size()
+                dst_mem->_data,
+                dst_mem->_size
             );
         }
 
         // release old memory
         SkrAllocator::free_raw(
-            dst_mem->_generic_only_data(),
-            _inner->alignment()
+            dst_mem->_data,
+            _inner_alignment
         );
 
         // update data
-        dst_mem->_generic_only_set_data(new_memory);
+        dst_mem->_data = new_memory;
     }
 
     // update capacity
-    dst_mem->_generic_only_set_capacity(new_capacity);
+    dst_mem->_capacity = new_capacity;
 }
 void GenericVector::_free(void* dst) const
 {
@@ -1336,14 +1203,14 @@ void GenericVector::_free(void* dst) const
     SKR_ASSERT(dst);
     auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
 
-    if (dst_mem->_generic_only_data())
+    if (dst_mem->_data)
     {
         SkrAllocator::free_raw(
-            dst_mem->_generic_only_data(),
-            _inner->alignment()
+            dst_mem->_data,
+            _inner_alignment
         );
-        dst_mem->_generic_only_set_data(nullptr);
-        dst_mem->_generic_only_set_capacity(0);
+        dst_mem->_data     = nullptr;
+        dst_mem->_capacity = 0;
     }
 }
 uint64_t GenericVector::_grow(void* dst, uint64_t grow_size) const
@@ -1352,7 +1219,7 @@ uint64_t GenericVector::_grow(void* dst, uint64_t grow_size) const
     SKR_ASSERT(dst);
     auto dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
 
-    uint64_t old_size = dst_mem->size();
+    uint64_t old_size = dst_mem->_size;
     uint64_t new_size = old_size + grow_size;
 
     if (new_size > dst_mem->capacity())
@@ -1368,7 +1235,7 @@ uint64_t GenericVector::_grow(void* dst, uint64_t grow_size) const
         }
     }
 
-    dst_mem->set_size(new_size);
+    dst_mem->_size = new_size;
     return old_size;
 }
 } // namespace skr

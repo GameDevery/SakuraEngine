@@ -17,6 +17,12 @@ struct GenericVectorDataRef {
     {
         return is_valid();
     }
+    inline void* offset(uint64_t index, uint64_t item_size) const
+    {
+        SKR_ASSERT(is_valid());
+        SKR_ASSERT(index < npos_of<uint64_t>);
+        return ::skr::memory::offset_item(ptr, item_size, index);
+    }
 };
 struct CGenericVectorDataRef {
     const void* ptr   = nullptr;
@@ -39,6 +45,12 @@ struct CGenericVectorDataRef {
     inline operator bool()
     {
         return is_valid();
+    }
+    inline const void* offset(uint64_t index, uint64_t item_size) const
+    {
+        SKR_ASSERT(is_valid());
+        SKR_ASSERT(index < npos_of<uint64_t>);
+        return ::skr::memory::offset_item(ptr, item_size, index);
     }
 };
 
@@ -164,6 +176,8 @@ private:
 private:
     RC<IGenericBase> _inner            = nullptr;
     MemoryTraitsData _inner_mem_traits = {};
+    uint64_t         _inner_size       = 0;
+    uint64_t         _inner_alignment  = 0;
 };
 
 // TODO. 一套 Cursor 和迭代器用于元素遍历
