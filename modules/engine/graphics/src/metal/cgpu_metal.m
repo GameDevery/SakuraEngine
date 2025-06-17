@@ -1,39 +1,6 @@
 #include "SkrBase/misc/debug.h"
 #include "SkrGraphics/api.h"
-#include "SkrGraphics/config.h"
-#include "SkrGraphics/flags.h"
-#include "SkrOS/thread.h"
 #include "metal_utils.h"
-#include "metal_vma.h"
-#include "SkrGraphics/backend/metal/cgpu_metal.h"
-#include "SkrGraphics/backend/metal/cgpu_metal_types.h"
-#include <Foundation/Foundation.h>
-#include <Metal/Metal.h>
-#include <Metal/MTLArgument.h>
-
-inline static char8_t* duplicate_string(const char8_t* src_string)
-{
-    if (src_string != CGPU_NULLPTR)
-    {
-        const size_t source_len = strlen((const char*)src_string);
-        char8_t* result = (char8_t*)cgpu_malloc(sizeof(char8_t) * (1 + source_len));
-#ifdef _WIN32
-        strcpy_s((char*)result, source_len + 1, (const char*)src_string);
-#else
-        strcpy((char*)result, (const char*)src_string);
-#endif
-        return result;
-    }
-    return CGPU_NULLPTR;
-}
-
-NSArray<id<MTLDevice>>* MetalUtil_GetAvailableMTLDeviceArray();
-void MetalUtil_GetShaderResourceType(uint32_t set, const MTLStructMember* member, CGPUShaderResource* resource);
-MTLBindingAccess MetalUtil_ResourceTypeToAccess(ECGPUResourceType type);
-MemoryType MetalUtil_MemoryUsageToMemoryType(ECGPUMemoryUsage usage);
-MTLResourceOptions MetalUtil_MemoryTypeToResourceOptions(MemoryType usage);
-bool MetalUtil_DSHasBindAtIndex(const CGPUDescriptorSet_Metal* ds, uint32_t binding_index, uint32_t* out_index);
-bool MetalUtil_DSBindAtIndex(CGPUDescriptorSet_Metal* ds, uint32_t binding_index, __unsafe_unretained id<MTLResource> resource, MTLResourceUsage usage);
 
 const CGPUProcTable tbl_metal = {
     // Instance APIs
@@ -59,6 +26,8 @@ const CGPUProcTable tbl_metal = {
     .free_fence = &cgpu_free_fence_metal,
     .create_semaphore = &cgpu_create_semaphore_metal,
     .free_semaphore = &cgpu_free_semaphore_metal,
+    .create_root_signature_pool = &cgpu_create_root_signature_pool_metal,
+    .free_root_signature_pool = &cgpu_free_root_signature_pool_metal,
     .create_root_signature = &cgpu_create_root_signature_metal,
     .free_root_signature = &cgpu_free_root_signature_metal,
     .create_descriptor_set = &cgpu_create_descriptor_set_metal,
@@ -66,6 +35,8 @@ const CGPUProcTable tbl_metal = {
     .free_descriptor_set = &cgpu_free_descriptor_set_metal,
     .create_compute_pipeline = &cgpu_create_compute_pipeline_metal,
     .free_compute_pipeline = &cgpu_free_compute_pipeline_metal,
+    .create_query_pool = &cgpu_create_query_pool_metal,
+    .free_query_pool = &cgpu_free_query_pool_metal,
 
     // Queue APIs
     .get_queue = &cgpu_get_queue_metal,
@@ -93,6 +64,10 @@ const CGPUProcTable tbl_metal = {
     .cmd_begin = &cgpu_cmd_begin_metal,
     .cmd_transfer_buffer_to_buffer = &cgpu_cmd_transfer_buffer_to_buffer_metal,
     .cmd_resource_barrier = &cgpu_cmd_resource_barrier_metal,
+    .cmd_begin_query = &cgpu_cmd_begin_query_metal,
+    .cmd_end_query = &cgpu_cmd_end_query_metal,
+    .cmd_reset_query_pool = &cgpu_cmd_reset_query_pool_metal,
+    .cmd_resolve_query = &cgpu_cmd_resolve_query_metal,
     .cmd_end = &cgpu_cmd_end_metal,
 
     // Compute CMDs
@@ -183,7 +158,7 @@ CGPUDeviceId cgpu_create_device_metal(CGPUAdapterId adapter, const CGPUDeviceDes
     {
         const CGPUQueueGroupDescriptor* queueGroup = desc->queue_groups + i;
         const ECGPUQueueType type = queueGroup->queue_type;
-        MA->device.ppMtlQueues[type] = cgpu_calloc(queueGroup->queue_count, sizeof(id<MTLCommandQueue>));
+        MA->device.ppMtlQueues[type] = (__strong id<MTLCommandQueue>*)cgpu_calloc(queueGroup->queue_count, sizeof(id<MTLCommandQueue>));
         MA->device.pMtlQueueCounts[type] = queueGroup->queue_count;
         for (uint32_t j = 0u; j < queueGroup->queue_count; j++)
         {
@@ -277,6 +252,16 @@ void cgpu_free_semaphore_metal(CGPUSemaphoreId semaphore)
     cgpu_free(MS);
 }
 
+CGPURootSignaturePoolId cgpu_create_root_signature_pool_metal(CGPUDeviceId device, const struct CGPURootSignaturePoolDescriptor* desc)
+{
+    return CGPU_NULLPTR;
+}
+
+void cgpu_free_root_signature_pool_metal(CGPURootSignaturePoolId pool)
+{
+    
+}
+
 CGPURootSignatureId cgpu_create_root_signature_metal(CGPUDeviceId device, const struct CGPURootSignatureDescriptor* desc)
 {
     CGPURootSignature_Metal* RS = (CGPURootSignature_Metal*)cgpu_calloc(1, sizeof(CGPURootSignature_Metal));
@@ -360,14 +345,30 @@ void cgpu_free_root_signature_metal(CGPURootSignatureId root_signature)
     cgpu_free(RS);
 }
 
+CGPUQueryPoolId cgpu_create_query_pool_metal(CGPUDeviceId device, const struct CGPUQueryPoolDescriptor* desc)
+{
+    SKR_ASSERT(desc->type == CGPU_QUERY_TYPE_TIMESTAMP);
+    CGPUQueryPool_Metal* P = (CGPUQueryPool_Metal*)cgpu_calloc(1, sizeof(CGPUQueryPool_Metal));
+    P->queryType = desc->type;
+    P->super.count = desc->query_count;
+    return &P->super;
+}
+
+void cgpu_free_query_pool_metal(CGPUQueryPoolId pool)
+{
+    CGPUQueryPool_Metal* P = (CGPUQueryPool_Metal*)pool;
+    P->mtlCounterSampleBuffer = nil;
+    cgpu_free(P);
+}
+
 CGPUDescriptorSetId cgpu_create_descriptor_set_metal(CGPUDeviceId device, const struct CGPUDescriptorSetDescriptor* desc)
 {
     CGPUDescriptorSet_Metal* DS = (CGPUDescriptorSet_Metal*)cgpu_calloc(1, sizeof(CGPUDescriptorSet_Metal));
     CGPURootSignature_Metal* RS = (CGPURootSignature_Metal*)desc->root_signature;
     CGPUParameterTable* set_table = RS->super.tables + desc->set_index;
     DS->mtlBindSlots = cgpu_calloc(set_table->resources_count, sizeof(BindSlot_Metal));
-    DS->mtlReadArgsCache = cgpu_calloc(set_table->resources_count, sizeof(id));
-    DS->mtlReadWriteArgsCache = cgpu_calloc(set_table->resources_count, sizeof(id));
+    DS->mtlReadArgsCache = (__strong id*)cgpu_calloc(set_table->resources_count, sizeof(id));
+    DS->mtlReadWriteArgsCache = (__strong id*)cgpu_calloc(set_table->resources_count, sizeof(id));
     if (set_table->resources_count > 0)
     {
         CGPUBufferDescriptor buffer_desc = {};
@@ -430,6 +431,7 @@ void cgpu_update_descriptor_set_metal(CGPUDescriptorSetId set, const struct CGPU
             typedef struct CBUFFER { uint64_t ptr; } CBUFFER;
             // typedef struct TEXTURE { MTLResourceID id; } TEXTURE;
             // typedef struct SAMPLER { MTLResourceID id; } SAMPLER;
+            typedef struct TLAS { MTLResourceID id; } TLAS;
             switch (data->binding_type)
             {
                 case CGPU_RESOURCE_TYPE_BUFFER:
@@ -446,7 +448,7 @@ void cgpu_update_descriptor_set_metal(CGPUDescriptorSetId set, const struct CGPU
                                 B->mtlBuffer.gpuAddress + B->mOffset,
                                 B->super.info->size
                             };
-                            MetalUtil_DSBindAtIndex(DS, binding_index, B->mtlBuffer, usage);
+                            MetalUtil_DSBindResourceAtIndex(DS, binding_index, B->mtlBuffer, usage);
                             memcpy(pBufferArg, &ARG, sizeof(ARG));
                         }
                     }
@@ -465,13 +467,25 @@ void cgpu_update_descriptor_set_metal(CGPUDescriptorSetId set, const struct CGPU
                     struct CBUFFER ARG = { 
                         B->mtlBuffer.gpuAddress + B->mOffset
                     };
-                    MetalUtil_DSBindAtIndex(DS, binding_index, B->mtlBuffer, MTLResourceUsageRead);
+                    MetalUtil_DSBindResourceAtIndex(DS, binding_index, B->mtlBuffer, MTLResourceUsageRead);
                     memcpy(pBufferArg, &ARG, sizeof(ARG));
                 }
                 break;
                 case CGPU_RESOURCE_TYPE_TEXTURE:
                 {
                     SKR_UNIMPLEMENTED_FUNCTION();
+                }
+                break;
+                case CGPU_RESOURCE_TYPE_RAY_TRACING:
+                {
+                    SKR_ASSERT(resource->size == 1 && "TLAS must have size 1");
+                    TLAS* pTLAS = (TLAS*)pArg;
+                    const CGPUAccelerationStructure_Metal* AS = (const CGPUAccelerationStructure_Metal*)data->acceleration_structures[0];
+                    struct TLAS ARG = { 
+                        AS->mtlAS.gpuResourceID
+                    };
+                    MetalUtil_DSBindResourceAtIndex(DS, binding_index, AS->mtlAS, MTLResourceUsageRead);
+                    memcpy(pTLAS, &ARG, sizeof(ARG));
                 }
                 break;
                 default:
@@ -582,6 +596,7 @@ void cgpu_submit_queue_metal(CGPUQueueId queue, const struct CGPUQueueSubmitDesc
         for (uint32_t i = 0; i < desc->cmds_count; i++)
         {
             CGPUCommandBuffer_Metal* CMD = (CGPUCommandBuffer_Metal*)desc->cmds[desc->cmds_count - 1];
+            MetalUtil_FlushUtilEncoders(CMD, MTLUtilEncoderTypeAS | MTLUtilEncoderTypeBlit);
             [CMD->mtlCommandBuffer commit];
         }
     }
@@ -627,7 +642,6 @@ void cgpu_free_command_buffer_metal(CGPUCommandBufferId cmd)
 {
     CGPUCommandBuffer_Metal* MB = (CGPUCommandBuffer_Metal*)cmd;
     MB->mtlCommandBuffer = nil;
-    MB->mtlBlitEncoder = nil;
     MB->cmptEncoder.mtlComputeEncoder = nil;
     MB->renderEncoder.mtlRenderEncoder = nil;
     cgpu_free(MB);
@@ -682,6 +696,9 @@ CGPUBufferId cgpu_create_buffer_metal(CGPUDeviceId device, const CGPUBufferDescr
     B->mtlBuffer = [D->pDevice newBufferWithLength:pInfo->size options:options];
     B->mOffset = 0;
 
+    if (desc->flags & CGPU_BCF_PERSISTENT_MAP_BIT)
+        pInfo->cpu_mapped_address = B->mtlBuffer.contents + B->mOffset;
+
     pInfo->descriptors = desc->descriptors;
     pInfo->memory_usage = desc->memory_usage;
     B->super.info = pInfo;
@@ -720,18 +737,17 @@ void cgpu_cmd_begin_metal(CGPUCommandBufferId cmd) {  }
 void cgpu_cmd_transfer_buffer_to_buffer_metal(CGPUCommandBufferId cmd, const struct CGPUBufferToBufferTransfer* desc)
 {
     CGPUCommandBuffer_Metal* CMD = (CGPUCommandBuffer_Metal*)cmd;
-    id<MTLBlitCommandEncoder> blit = [CMD->mtlCommandBuffer blitCommandEncoder];
+    MetalUtil_FlushUtilEncoders(CMD, MTLUtilEncoderTypeAS);
+
+    CMD->UtilEncoders.mtlBlitEncoder = CMD->UtilEncoders.mtlBlitEncoder ? CMD->UtilEncoders.mtlBlitEncoder : [CMD->mtlCommandBuffer blitCommandEncoder];
 
     CGPUBuffer_Metal* srcBuffer = (CGPUBuffer_Metal*)desc->src;
     CGPUBuffer_Metal* dstBuffer = (CGPUBuffer_Metal*)desc->dst;
-    [blit copyFromBuffer: srcBuffer->mtlBuffer
+    [CMD->UtilEncoders.mtlBlitEncoder copyFromBuffer: srcBuffer->mtlBuffer
         sourceOffset: srcBuffer->mOffset + desc->src_offset
         toBuffer: dstBuffer->mtlBuffer
         destinationOffset: dstBuffer->mOffset + desc->dst_offset
         size: desc->size];
-
-    [blit endEncoding];
-    blit = nil;
 }
 
 void cgpu_cmd_resource_barrier_metal(CGPUCommandBufferId cmd, const struct CGPUResourceBarrierDescriptor* desc)
@@ -741,11 +757,42 @@ void cgpu_cmd_resource_barrier_metal(CGPUCommandBufferId cmd, const struct CGPUR
 
 void cgpu_cmd_end_metal(CGPUCommandBufferId cmd) {  }
 
+// Query CMDs
+void cgpu_cmd_begin_query_metal(CGPUCommandBufferId cmd, CGPUQueryPoolId pool, const struct CGPUQueryDescriptor* desc)
+{
+    // Metal doesn't have direct begin/end query like D3D12/Vulkan
+    // For timestamp queries, we would use addCompletedHandler or similar
+    // For now, this is a placeholder implementation
+}
+
+void cgpu_cmd_end_query_metal(CGPUCommandBufferId cmd, CGPUQueryPoolId pool, const struct CGPUQueryDescriptor* desc)
+{
+    // Metal doesn't have direct begin/end query like D3D12/Vulkan
+    // For timestamp queries, we would use addCompletedHandler or similar
+    // For now, this is a placeholder implementation
+}
+
+void cgpu_cmd_reset_query_pool_metal(CGPUCommandBufferId cmd, CGPUQueryPoolId pool, uint32_t start_query, uint32_t query_count)
+{
+    // Metal doesn't require explicit query pool reset
+    // This is a no-op for Metal backend
+}
+
+void cgpu_cmd_resolve_query_metal(CGPUCommandBufferId cmd, CGPUQueryPoolId pool, CGPUBufferId readback, uint32_t start_query, uint32_t query_count)
+{
+    // Metal query resolution would be handled differently
+    // For timestamp queries, data would be available through completion handlers
+    // For now, this is a placeholder implementation
+}
+
 // Compute CMDs
 CGPUComputePassEncoderId cgpu_cmd_begin_compute_pass_metal(CGPUCommandBufferId cmd, const struct CGPUComputePassDescriptor* desc)
 {
     CGPUCommandBuffer_Metal* CMD = (CGPUCommandBuffer_Metal*)cmd;
-    CGPUComputePassEncoder_Metal* CE = (CGPUComputePassEncoder_Metal*)cgpu_calloc(1, sizeof(CGPUComputePassEncoder_Metal));
+    MetalUtil_FlushUtilEncoders(CMD, MTLUtilEncoderTypeAS | MTLUtilEncoderTypeBlit);
+
+    CGPUComputePassEncoder_Metal* CE = &CMD->cmptEncoder;
+    memset(CE, 0, sizeof(CGPUComputePassEncoder_Metal));
     CE->super.device = CMD->super.device;
     CE->mtlComputeEncoder = [CMD->mtlCommandBuffer computeCommandEncoder];
     CMD->cmptEncoder = *CE;
@@ -816,243 +863,4 @@ void cgpu_cmd_end_compute_pass_metal(CGPUCommandBufferId cmd, CGPUComputePassEnc
     [CE->mtlComputeEncoder endEncoding];
     CE->mtlComputeEncoder = nil;
     MB->cmptEncoder.mtlComputeEncoder = nil;
-    cgpu_free(CE);
-}
-
-// Helpers
-NSArray<id<MTLDevice>>* MetalUtil_GetAvailableMTLDeviceArray()
-{
-    NSMutableArray* mtlDevs = [NSMutableArray array];
-#ifndef TARGET_IOS
-    NSArray* rawMTLDevs = [MTLCopyAllDevices() autorelease];
-    if (rawMTLDevs)
-    {
-        const bool forceLowPower = false;
-
-        // Populate the array of appropriate MTLDevices
-        for (id<MTLDevice> md in rawMTLDevs)
-        {
-            if (!forceLowPower || md.isLowPower) { [mtlDevs addObject:md]; }
-        }
-
-        // Sort by power
-        [mtlDevs sortUsingComparator:^(id<MTLDevice> md1, id<MTLDevice> md2) {
-            BOOL md1IsLP = md1.isLowPower;
-            BOOL md2IsLP = md2.isLowPower;
-
-            if (md1IsLP == md2IsLP)
-            {
-                // If one device is headless and the other one is not, select the
-                // one that is not headless first.
-                BOOL md1IsHeadless = md1.isHeadless;
-                BOOL md2IsHeadless = md2.isHeadless;
-                if (md1IsHeadless == md2IsHeadless)
-                {
-                    return NSOrderedSame;
-                }
-                return md2IsHeadless ? NSOrderedAscending : NSOrderedDescending;
-            }
-
-            return md2IsLP ? NSOrderedAscending : NSOrderedDescending;
-        }];
-    }
-#else  // _IOS_OR_TVOS
-    id<MTLDevice> md = [MTLCreateSystemDefaultDevice() autorelease];
-    if (md) { [mtlDevs addObject:md]; }
-#endif // TARGET_IOS
-
-    return mtlDevs; // retained
-}
-
-static const ECGPUTextureDimension gTexDimLUT[] = {
-    CGPU_TEX_DIMENSION_1D,        // MTLTextureType1D
-    CGPU_TEX_DIMENSION_UNDEFINED, // MTLTextureType1DArray
-    CGPU_TEX_DIMENSION_2D,        // MTLTextureType2D
-    CGPU_TEX_DIMENSION_UNDEFINED, // MTLTextureType2DArray
-    CGPU_TEX_DIMENSION_2DMS,      // MTLTextureType2DMultisample
-    CGPU_TEX_DIMENSION_CUBE,      // MTLTextureTypeCube
-    CGPU_TEX_DIMENSION_UNDEFINED, // MTLTextureTypeCubeArray
-    CGPU_TEX_DIMENSION_3D,        // MTLTextureType3D
-    CGPU_TEX_DIMENSION_UNDEFINED, // MTLTextureType2DMultisampleArray
-};
-
-static const MTLResourceOptions gResourceOptionsLUT[VK_MAX_MEMORY_TYPES] = {
-    MTLResourceStorageModePrivate,
-    MTLResourceStorageModePrivate,
-    MTLResourceStorageModeShared | MTLResourceCPUCacheModeWriteCombined,
-    MTLResourceStorageModeShared | MTLResourceCPUCacheModeDefaultCache,
-};
-
-MTLResourceOptions MetalUtil_MemoryTypeToResourceOptions(MemoryType usage)
-{
-    return gResourceOptionsLUT[usage];
-}
-
-MTLTextureType MetalUtil_TextureDimensionToType(ECGPUTextureDimension dim)
-{
-    switch (dim)
-    {
-    case CGPU_TEX_DIMENSION_1D:
-        return MTLTextureType1D;
-    case CGPU_TEX_DIMENSION_2D:
-        return MTLTextureType2D;
-    case CGPU_TEX_DIMENSION_3D:
-        return MTLTextureType3D;
-    case CGPU_TEX_DIMENSION_CUBE:
-        return MTLTextureTypeCube;
-    case CGPU_TEX_DIMENSION_2DMS:
-        return MTLTextureType2DMultisample;
-    default:
-        SKR_ASSERT(false && "Unsupported texture dimension");
-        return MTLTextureType1D; // Default fallback
-    }
-}
-
-MTLBindingAccess MetalUtil_ResourceTypeToAccess(ECGPUResourceType type)
-{
-    switch (type)
-    {
-    case CGPU_RESOURCE_TYPE_BUFFER:
-    case CGPU_RESOURCE_TYPE_TEXTURE:
-    case CGPU_RESOURCE_TYPE_SAMPLER:
-    case CGPU_RESOURCE_TYPE_UNIFORM_BUFFER:
-        return MTLBindingAccessReadOnly;
-
-    case CGPU_RESOURCE_TYPE_RW_BUFFER:
-    case CGPU_RESOURCE_TYPE_INDIRECT_BUFFER:
-    case CGPU_RESOURCE_TYPE_RW_TEXTURE:
-        return MTLBindingAccessReadWrite;
-        
-    default:
-        SKR_ASSERT(false && "Unsupported resource type");
-        return MTLBindingAccessReadOnly;
-    }
-}
-
-ECGPUResourceType MetalUtil_GetResourceType(MTLStructType* structure, ECGPUTextureDimension* dim)
-{
-    ECGPUResourceType r = CGPU_RESOURCE_TYPE_NONE;
-    if (structure.members.count == 1)
-    {
-        MTLDataType T = structure.members[0].dataType;
-        if (T == MTLDataTypeTexture)
-        {
-            MTLTextureReferenceType* TexType = structure.members[0].textureReferenceType;
-            r = (TexType.access == MTLBindingAccessReadOnly) ? CGPU_RESOURCE_TYPE_TEXTURE : CGPU_RESOURCE_TYPE_RW_TEXTURE;
-            *dim = gTexDimLUT[TexType.textureType];
-            SKR_ASSERT(*dim != CGPU_TEX_DIMENSION_UNDEFINED);
-        }
-        else if (T == MTLDataTypeSampler)
-            r = CGPU_RESOURCE_TYPE_SAMPLER;
-        else if (T == MTLDataTypePointer)
-            r = CGPU_RESOURCE_TYPE_UNIFORM_BUFFER;
-    }
-    else if (structure.members.count == 2)
-    {
-        MTLDataType T = structure.members[0].dataType;
-        if (T == MTLDataTypePointer) // RW/RO Buffer
-        {
-            MTLBindingAccess Access = structure.members[0].pointerType.access;
-            r = (Access == MTLBindingAccessReadOnly) ? CGPU_RESOURCE_TYPE_BUFFER : CGPU_RESOURCE_TYPE_RW_BUFFER;
-        }
-    }
-    return r;
-}
-
-void MetalUtil_GetShaderResourceType(uint32_t set, const MTLStructMember* member, CGPUShaderResource* resource)
-{
-    MTLStructType* structure = member.structType;
-    MTLArrayType* arrayType = member.arrayType;
-    MTLPointerType* pointerType = member.pointerType;
-    const bool is_array = (arrayType != nil) || (pointerType != nil);
-    ECGPUResourceType resource_type = CGPU_RESOURCE_TYPE_NONE;
-    resource->dim = CGPU_TEX_DIMENSION_UNDEFINED;
-    resource->set = set;
-    resource->binding = member.argumentIndex;
-    resource->name = duplicate_string(member.name.UTF8String);
-    resource->name_hash = cgpu_name_hash(resource->name, member.name.length);
-    resource->offset = member.offset;
-
-    if (!is_array)
-        resource_type = MetalUtil_GetResourceType(structure, &resource->dim);
-
-    if (resource_type == CGPU_RESOURCE_TYPE_BUFFER ||
-        resource_type == CGPU_RESOURCE_TYPE_RW_BUFFER ||
-        resource_type == CGPU_RESOURCE_TYPE_UNIFORM_BUFFER)
-    {
-        resource->size = 1;
-    }
-    else if (resource_type == CGPU_RESOURCE_TYPE_TEXTURE)
-    {
-        resource->size = 1;
-    }
-    else if (is_array)
-    {
-        MTLStructType* elementStructType = arrayType ? arrayType.elementStructType : pointerType.elementStructType;
-        resource_type = MetalUtil_GetResourceType(elementStructType, &resource->dim);
-        resource->size = arrayType ? arrayType.arrayLength : ~0;
-    }
-    resource->type = resource_type;
-    SKR_ASSERT(resource->type != CGPU_RESOURCE_TYPE_NONE);
-}
-
-MemoryType MetalUtil_MemoryUsageToMemoryType(ECGPUMemoryUsage usage)
-{
-    switch (usage)
-    {
-    case CGPU_MEM_USAGE_GPU_ONLY:
-        return MEMORY_TYPE_GPU_ONLY;
-    case CGPU_MEM_USAGE_CPU_TO_GPU:
-        return MEMORY_TYPE_CPU_TO_GPU;
-    case CGPU_MEM_USAGE_GPU_TO_CPU:
-        return MEMORY_TYPE_GPU_TO_CPU;
-    case CGPU_MEM_USAGE_CPU_ONLY:
-        return MEMORY_TYPE_CPU_TO_GPU;
-    default:
-        SKR_ASSERT(false && "Unsupported memory usage");
-        return MEMORY_TYPE_GPU_ONLY;
-    }
-}
-
-bool MetalUtil_DSHasBindAtIndex(const CGPUDescriptorSet_Metal* ds, uint32_t binding_index, uint32_t* out_index)
-{
-    if (ds->mtlBindSlots == CGPU_NULLPTR || ds->mtlBindSlotCount == 0)
-        return false;
-    for (uint32_t i = 0; i < ds->mtlBindSlotCount; i++)
-    {
-        if (ds->mtlBindSlots[i].binding_index == binding_index)
-        {
-            *out_index = i;
-            return true;
-        }
-    }
-    return false;
-}
-
-bool MetalUtil_DSBindAtIndex(CGPUDescriptorSet_Metal* ds, uint32_t binding_index, __unsafe_unretained id<MTLResource> resource, MTLResourceUsage usage)
-{
-    uint32_t existed = 0;
-    if (MetalUtil_DSHasBindAtIndex(ds, binding_index, &existed))
-    {
-        ds->mtlBindSlots[existed].mtlResource = resource;
-        ds->mtlBindSlots[existed].mtlUsage = usage;
-        return true;
-    }
-    else
-    {
-        // Add new bind slot
-        if (ds->mtlBindSlotCount < ds->super.root_signature->tables[ds->super.index].resources_count)
-        {
-            ds->mtlBindSlots[ds->mtlBindSlotCount].binding_index = binding_index;
-            ds->mtlBindSlots[ds->mtlBindSlotCount].mtlResource = resource;
-            ds->mtlBindSlots[ds->mtlBindSlotCount].mtlUsage = usage;
-            ds->mtlBindSlotCount++;
-            return true;
-        }
-        else
-        {
-            SKR_ASSERT(false && "Expected Error: Metal descriptor set bind slots overflow");
-        }
-    }
-    return false;
 }

@@ -1621,8 +1621,9 @@ void cgpu_cmd_resolve_query_d3d12(CGPUCommandBufferId cmd, CGPUQueryPoolId pool,
     auto pQueryPool      = (CGPUQueryPool_D3D12*)pool;
     auto pReadbackBuffer = (CGPUBuffer_D3D12*)readback;
     Cmd->pDxCmdList->ResolveQueryData(
-    pQueryPool->pDxQueryHeap, pQueryPool->mType, start_query, query_count,
-    pReadbackBuffer->pDxResource, start_query * 8);
+        pQueryPool->pDxQueryHeap, pQueryPool->mType, start_query, query_count,
+        pReadbackBuffer->pDxResource, start_query * 8
+    );
 }
 
 void cgpu_cmd_end_d3d12(CGPUCommandBufferId cmd)

@@ -1,5 +1,6 @@
 #pragma once
 #include "SkrGraphics/api.h"
+#include "SkrGraphics/raytracing.h"
 
 /* Resouce Binding Schema:
 
@@ -50,8 +51,9 @@ Descriptors:
 extern "C" {
 #endif
 
-CGPU_API const CGPUProcTable* CGPU_MetalProcTable();
-CGPU_API const CGPUSurfacesProcTable* CGPU_MetalSurfacesProcTable();
+CGPU_API const struct CGPUProcTable* CGPU_MetalProcTable();
+CGPU_API const struct CGPUSurfacesProcTable* CGPU_MetalSurfacesProcTable();
+CGPU_API const struct CGPURayTracingProcTable* CGPU_MetalRayTracingProcTable();
 
 // Instance APIs
 CGPU_API CGPUInstanceId cgpu_create_instance_metal(CGPUInstanceDescriptor const* descriptor);
@@ -76,6 +78,8 @@ CGPU_API ECGPUFenceStatus cgpu_query_fence_status_metal(CGPUFenceId fence);
 CGPU_API void cgpu_free_fence_metal(CGPUFenceId fence);
 CGPU_API CGPUSemaphoreId cgpu_create_semaphore_metal(CGPUDeviceId device);
 CGPU_API void cgpu_free_semaphore_metal(CGPUSemaphoreId semaphore);
+CGPU_API CGPURootSignaturePoolId cgpu_create_root_signature_pool_metal(CGPUDeviceId device, const struct CGPURootSignaturePoolDescriptor* desc);
+CGPU_API void cgpu_free_root_signature_pool_metal(CGPURootSignaturePoolId pool);
 CGPU_API CGPURootSignatureId cgpu_create_root_signature_metal(CGPUDeviceId device, const struct CGPURootSignatureDescriptor* desc);
 CGPU_API void cgpu_free_root_signature_metal(CGPURootSignatureId signature);
 CGPU_API CGPUDescriptorSetId cgpu_create_descriptor_set_metal(CGPUDeviceId device, const struct CGPUDescriptorSetDescriptor* desc);
@@ -83,6 +87,8 @@ CGPU_API void cgpu_update_descriptor_set_metal(CGPUDescriptorSetId set, const st
 CGPU_API void cgpu_free_descriptor_set_metal(CGPUDescriptorSetId set);
 CGPU_API CGPUComputePipelineId cgpu_create_compute_pipeline_metal(CGPUDeviceId device, const CGPUComputePipelineDescriptor* desc);
 CGPU_API void cgpu_free_compute_pipeline_metal(CGPUComputePipelineId pipeline);
+CGPU_API CGPUQueryPoolId cgpu_create_query_pool_metal(CGPUDeviceId device, const struct CGPUQueryPoolDescriptor* desc);
+CGPU_API void cgpu_free_query_pool_metal(CGPUQueryPoolId pool);
 
 // Queue APIs
 CGPU_API CGPUQueueId cgpu_get_queue_metal(CGPUDeviceId device, ECGPUQueueType type, uint32_t index);
@@ -110,6 +116,10 @@ CGPU_API void cgpu_free_buffer_metal(CGPUBufferId buffer);
 CGPU_API void cgpu_cmd_begin_metal(CGPUCommandBufferId cmd);
 CGPU_API void cgpu_cmd_transfer_buffer_to_buffer_metal(CGPUCommandBufferId cmd, const struct CGPUBufferToBufferTransfer* desc);
 CGPU_API void cgpu_cmd_resource_barrier_metal(CGPUCommandBufferId cmd, const struct CGPUResourceBarrierDescriptor* desc);
+CGPU_API void cgpu_cmd_begin_query_metal(CGPUCommandBufferId cmd, CGPUQueryPoolId pool, const struct CGPUQueryDescriptor* desc);
+CGPU_API void cgpu_cmd_end_query_metal(CGPUCommandBufferId cmd, CGPUQueryPoolId pool, const struct CGPUQueryDescriptor* desc);
+CGPU_API void cgpu_cmd_reset_query_pool_metal(CGPUCommandBufferId cmd, CGPUQueryPoolId pool, uint32_t start_query, uint32_t query_count);
+CGPU_API void cgpu_cmd_resolve_query_metal(CGPUCommandBufferId cmd, CGPUQueryPoolId pool, CGPUBufferId readback, uint32_t start_query, uint32_t query_count);
 CGPU_API void cgpu_cmd_end_metal(CGPUCommandBufferId cmd);
 
 // Compute CMDs
@@ -119,6 +129,11 @@ CGPU_API void cgpu_compute_encoder_push_constants_metal(CGPUComputePassEncoderId
 CGPU_API void cgpu_compute_encoder_bind_pipeline_metal(CGPUComputePassEncoderId encoder, CGPUComputePipelineId pipeline);
 CGPU_API void cgpu_compute_encoder_dispatch_metal(CGPUComputePassEncoderId encoder, uint32_t X, uint32_t Y, uint32_t Z);
 CGPU_API void cgpu_cmd_end_compute_pass_metal(CGPUCommandBufferId cmd, CGPUComputePassEncoderId encoder);
+
+// RayTracing APIs
+CGPU_API CGPUAccelerationStructureId cgpu_create_acceleration_structure_metal(CGPUDeviceId device, const struct CGPUAccelerationStructureDescriptor* desc);
+CGPU_API void cgpu_free_acceleration_structure_metal(CGPUAccelerationStructureId as);
+CGPU_API void cgpu_cmd_build_acceleration_structure_metal(CGPUCommandBufferId cmd, const struct CGPUAccelerationStructureBuildDescriptor* desc);
 
 #ifdef __cplusplus
 }

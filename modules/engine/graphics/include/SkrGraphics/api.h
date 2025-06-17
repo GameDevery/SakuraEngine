@@ -49,6 +49,7 @@ DEFINE_CGPU_OBJECT(CGPURenderPipeline)
 DEFINE_CGPU_OBJECT(CGPUComputePipeline)
 DEFINE_CGPU_OBJECT(CGPUShaderReflection)
 DEFINE_CGPU_OBJECT(CGPUPipelineReflection)
+DEFINE_CGPU_OBJECT(CGPUAccelerationStructure)
 
 typedef struct SkrDStorageQueueDescriptor CGPUDStorageQueueDescriptor;
 typedef struct SkrDStorageFileInfo CGPUDStorageFileInfo;
@@ -839,8 +840,9 @@ typedef struct CGPUAdapterDetail {
 
 // Objects (Heap Safety)
 typedef struct CGPUInstance {
-    const CGPUProcTable* proc_table;
-    const CGPUSurfacesProcTable* surfaces_table;
+    const struct CGPUProcTable* proc_table;
+    const struct CGPUSurfacesProcTable* surfaces_table;
+    const struct CGPURayTracingProcTable* raytracing_table;
     // Some Cached Data
     struct CGPURuntimeTable* runtime_table;
     ECGPUBackend backend;
@@ -999,7 +1001,7 @@ typedef struct CGPUDescriptorData {
         /// DescriptorSet buffer extraction
         CGPUDescriptorSetId* descriptor_sets;
         /// Custom binding (raytracing acceleration structure ...)
-        // CGPUAccelerationStructureId* acceleration_structures;
+        CGPUAccelerationStructureId* acceleration_structures;
     };
     uint32_t count;
 } CGPUDescriptorData;
