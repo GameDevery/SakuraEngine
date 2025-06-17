@@ -1,6 +1,6 @@
 #pragma once
 #include "SkrGraphics/api.h"
-#include "SkrGraphics/backend/d3d12/cgpu_d3d12.h"
+#include "SkrGraphics/raytracing.h"
 #ifndef WIN32_LEAN_AND_MEAN
     #define WIN32_LEAN_AND_MEAN
 #endif
@@ -205,6 +205,7 @@ typedef struct CGPUAdapter_D3D12 {
     bool mStandardSwizzle64KBSupported : 1;
     bool mEnhancedBarriersSupported : 1;
     uint8_t mTiledResourceTier;
+    uint8_t mRayTracingTier;
 } CGPUAdapter_D3D12;
 
 typedef struct CGPUEmptyDescriptors_D3D12 {
@@ -237,6 +238,8 @@ typedef struct CGPUDevice_D3D12 {
     ID3D12PipelineLibrary* pPipelineLibrary;
     void* pPSOCacheData;
     uint32_t next_shared_id;
+    // ray tracing, TODO: add a 'CGPUDeviceFeatures' struct
+    ID3D12Device5* pDxDevice5;
 } CGPUDevice_D3D12;
 
 typedef struct CGPUFence_D3D12 {
@@ -389,15 +392,6 @@ typedef struct CGPUSwapChain_D3D12 {
     uint32_t mEnableVsync : 1;
 } CGPUSwapChain_D3D12;
 
-#ifndef SAFE_RELEASE
-    #define SAFE_RELEASE(p_var) \
-        if (p_var)              \
-        {                       \
-            p_var->Release();   \
-            p_var = NULL;       \
-        }
-#endif
-
 static const D3D_FEATURE_LEVEL d3d_feature_levels[] = {
     D3D_FEATURE_LEVEL_12_1,
     D3D_FEATURE_LEVEL_12_0,
@@ -411,4 +405,25 @@ static const D3D12_COMMAND_LIST_TYPE gDx12CmdTypeTranslator[CGPU_QUEUE_TYPE_COUN
     D3D12_COMMAND_LIST_TYPE_COPY
 };
 
+// COM HELPERS
+
+#ifndef IID_ARGS
 #define IID_ARGS IID_PPV_ARGS
+#endif
+
+#ifndef COM_CALL
+#define COM_CALL(METHOD, CALLER, ...) (CALLER)->lpVtbl->METHOD(CALLER, ##__VA_ARGS__)
+#endif
+
+#ifndef IID_REF
+#define IID_REF(Type)                 &IID_##Type
+#endif
+
+#ifndef SAFE_RELEASE
+    #define SAFE_RELEASE(p_var) \
+        if (p_var)              \
+        {                       \
+            p_var->Release();   \
+            p_var = NULL;       \
+        }
+#endif

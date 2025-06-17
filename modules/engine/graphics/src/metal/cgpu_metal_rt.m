@@ -2,8 +2,6 @@
 #include "SkrGraphics/raytracing.h"
 #include "metal_utils.h"
 
-inline static MTLAccelerationStructureInstanceOptions ToMTLASOptions(CGPUAccelerationStructureInstanceFlags flags);
-
 const CGPURayTracingProcTable rt_tbl_metal = {
     .create_acceleration_structure = &cgpu_create_acceleration_structure_metal,
     .free_acceleration_structure = &cgpu_free_acceleration_structure_metal,
@@ -14,6 +12,8 @@ const struct CGPURayTracingProcTable* CGPU_MetalRayTracingProcTable()
 {
     return &rt_tbl_metal;
 }
+
+inline static MTLAccelerationStructureInstanceOptions ToMTLASOptions(CGPUAccelerationStructureInstanceFlags flags);
 
 CGPUAccelerationStructureId cgpu_create_acceleration_structure_metal(CGPUDeviceId device, const struct CGPUAccelerationStructureDescriptor* desc)
 {

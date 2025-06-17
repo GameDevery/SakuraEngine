@@ -205,7 +205,7 @@ void D3D12Util_EnumFormatSupports(CGPUAdapter_D3D12* D3DAdapter, ID3D12Device* p
         adapter_detail->format_supports[i].shader_read = 0;
         adapter_detail->format_supports[i].shader_write = 0;
         adapter_detail->format_supports[i].render_target_write = 0;
-        DXGI_FORMAT fmt = DXGIUtil_TranslatePixelFormat((ECGPUFormat)i);
+        DXGI_FORMAT fmt = DXGIUtil_TranslatePixelFormat((ECGPUFormat)i, false);
         if (fmt == DXGI_FORMAT_UNKNOWN) continue;
 
         D3D12_FEATURE_DATA_FORMAT_SUPPORT formatSupport = { fmt, {}, {} };
@@ -272,6 +272,12 @@ void D3D12Util_RecordAdapterDetail(struct CGPUAdapter_D3D12* D3D12Adapter)
 	if (SUCCEEDED(pCheckDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS1, &options1, sizeof(options1))))
     {
         adapter_detail.wave_lane_count = options1.WaveLaneCountMin;
+    }
+    D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = make_zeroed<D3D12_FEATURE_DATA_D3D12_OPTIONS5>();
+	if (SUCCEEDED(pCheckDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5))))
+    {
+        adapter.mRayTracingTier = options5.RaytracingTier;
+        adapter_detail.support_ray_tracing = options5.RaytracingTier != D3D12_RAYTRACING_TIER_NOT_SUPPORTED;
     }
 #ifdef D3D12_HEADER_SUPPORT_VRS
     D3D12_FEATURE_DATA_D3D12_OPTIONS6 options6 = make_zeroed<D3D12_FEATURE_DATA_D3D12_OPTIONS6>();

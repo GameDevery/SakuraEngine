@@ -308,17 +308,16 @@ CGPUDeviceId cgpu_create_device_d3d12(CGPUAdapterId adapter, const CGPUDeviceDes
         D3D12Util_CreateUAV(D, NULL, NULL, &uavDesc, &D->pNullDescriptors->BufferUAV);
         D3D12Util_CreateCBV(D, NULL, &D->pNullDescriptors->BufferCBV);
     }
-    // Pipeline cache
+    // pipeline cache
     D3D12_FEATURE_DATA_SHADER_CACHE feature = {};
-    HRESULT                         result  = D->pDxDevice->CheckFeatureSupport(
-    D3D12_FEATURE_SHADER_CACHE, &feature, sizeof(feature));
+    HRESULT result = D->pDxDevice->CheckFeatureSupport(D3D12_FEATURE_SHADER_CACHE, &feature, sizeof(feature));
     if (SUCCEEDED(result))
     {
         result = E_NOTIMPL;
         if (feature.SupportFlags & D3D12_SHADER_CACHE_SUPPORT_LIBRARY)
         {
             ID3D12Device1* device1 = NULL;
-            result                 = D->pDxDevice->QueryInterface(IID_ARGS(&device1));
+            result = D->pDxDevice->QueryInterface(IID_ARGS(&device1));
             if (SUCCEEDED(result))
             {
                 result = device1->CreatePipelineLibrary(
@@ -327,6 +326,8 @@ CGPUDeviceId cgpu_create_device_d3d12(CGPUAdapterId adapter, const CGPUDeviceDes
             SAFE_RELEASE(device1);
         }
     }
+    // for ray tracing
+    result = D->pDxDevice->QueryInterface(IID_ARGS(&D->pDxDevice5));
     return &D->super;
 }
 
@@ -378,10 +379,10 @@ void cgpu_free_device_d3d12(CGPUDeviceId device)
     cgpu_free(D->pCbvSrvUavHeaps);
     cgpu_free(D->pSamplerHeaps);
     cgpu_free(D->pNullDescriptors);
-    // Release D3D12 Device
     SAFE_RELEASE(D->pDxDevice);
     SAFE_RELEASE(D->pPipelineLibrary);
     if (D->pPSOCacheData) cgpu_free(D->pPSOCacheData);
+    SAFE_RELEASE(D->pDxDevice5);
     cgpu_delete(D);
 }
 
@@ -998,7 +999,7 @@ CGPURenderPipelineId     cgpu_create_render_pipeline_d3d12(CGPUDeviceId device, 
                     semanticIndexMap.add(attrib->semantic_name, 0);
                 found                                        = semanticIndexMap.find(attrib->semantic_name);
                 input_elements[fill_index].SemanticIndex     = found.value();
-                input_elements[fill_index].Format            = DXGIUtil_TranslatePixelFormat(attrib->format);
+                input_elements[fill_index].Format            = DXGIUtil_TranslatePixelFormat(attrib->format, false);
                 input_elements[fill_index].InputSlot         = attrib->binding;
                 input_elements[fill_index].AlignedByteOffset = attrib->offset + arr_index * FormatUtil_BitSizeOfBlock(attrib->format) / 8;
                 if (attrib->rate == CGPU_INPUT_RATE_INSTANCE)
@@ -1112,13 +1113,13 @@ CGPURenderPipelineId     cgpu_create_render_pipeline_d3d12(CGPUDeviceId device, 
     PPL->mDxGfxPipelineStateDesc.IBStripCutValue       = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
     PPL->mDxGfxPipelineStateDesc.PrimitiveTopologyType = D3D12Util_TranslatePrimitiveTopology(desc->prim_topology);
     PPL->mDxGfxPipelineStateDesc.NumRenderTargets      = desc->render_target_count;
-    PPL->mDxGfxPipelineStateDesc.DSVFormat             = DXGIUtil_TranslatePixelFormat(desc->depth_stencil_format);
+    PPL->mDxGfxPipelineStateDesc.DSVFormat             = DXGIUtil_TranslatePixelFormat(desc->depth_stencil_format, false);
     PPL->mDxGfxPipelineStateDesc.SampleDesc            = sample_desc;
     PPL->mDxGfxPipelineStateDesc.CachedPSO             = cached_pso_desc;
     PPL->mDxGfxPipelineStateDesc.Flags                 = D3D12_PIPELINE_STATE_FLAG_NONE;
     for (uint32_t i = 0; i < PPL->mDxGfxPipelineStateDesc.NumRenderTargets; ++i)
     {
-        PPL->mDxGfxPipelineStateDesc.RTVFormats[i] = DXGIUtil_TranslatePixelFormat(desc->color_formats[i]);
+        PPL->mDxGfxPipelineStateDesc.RTVFormats[i] = DXGIUtil_TranslatePixelFormat(desc->color_formats[i], false);
     }
     // Create pipeline object
     HRESULT result                        = E_FAIL;
@@ -1758,7 +1759,7 @@ CGPURenderPassEncoderId cgpu_cmd_begin_render_pass_d3d12(CGPUCommandBufferId cmd
     for (uint32_t i = 0; i < desc->render_target_count; i++)
     {
         CGPUTextureView_D3D12* TV                               = (CGPUTextureView_D3D12*)desc->color_attachments[i].view;
-        clearValues[i].Format                                   = DXGIUtil_TranslatePixelFormat(TV->super.info.format);
+        clearValues[i].Format                                   = DXGIUtil_TranslatePixelFormat(TV->super.info.format, false);
         clearValues[i].Color[0]                                 = desc->color_attachments[i].clear_color.r;
         clearValues[i].Color[1]                                 = desc->color_attachments[i].clear_color.g;
         clearValues[i].Color[2]                                 = desc->color_attachments[i].clear_color.b;
@@ -1813,9 +1814,9 @@ CGPURenderPassEncoderId cgpu_cmd_begin_render_pass_d3d12(CGPUCommandBufferId cmd
         D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE sBeginingAccess = gDx12PassBeginOpTranslator[desc->depth_stencil->stencil_load_action];
         D3D12_RENDER_PASS_ENDING_ACCESS_TYPE    dEndingAccess   = gDx12PassEndOpTranslator[desc->depth_stencil->depth_store_action];
         D3D12_RENDER_PASS_ENDING_ACCESS_TYPE    sEndingAccess   = gDx12PassEndOpTranslator[desc->depth_stencil->stencil_store_action];
-        clearDepth.Format                                       = DXGIUtil_TranslatePixelFormat(desc->depth_stencil->view->info.format);
+        clearDepth.Format                                       = DXGIUtil_TranslatePixelFormat(desc->depth_stencil->view->info.format, false);
         clearDepth.DepthStencil.Depth                           = desc->depth_stencil->clear_depth;
-        clearStencil.Format                                     = DXGIUtil_TranslatePixelFormat(desc->depth_stencil->view->info.format);
+        clearStencil.Format                                     = DXGIUtil_TranslatePixelFormat(desc->depth_stencil->view->info.format, false);
         clearStencil.DepthStencil.Stencil                       = desc->depth_stencil->clear_stencil;
         renderPassDepthStencilDesc.cpuDescriptor                = DTV->mDxRtvDsvDescriptorHandle;
         renderPassDepthStencilDesc.DepthBeginningAccess         = { dBeginingAccess, { clearDepth } };
@@ -1990,7 +1991,7 @@ CGPUSwapChainId cgpu_create_swapchain_d3d12_impl(CGPUDeviceId device, const CGPU
     SKR_DECLARE_ZERO(DXGI_SWAP_CHAIN_DESC1, chain_desc1)
     chain_desc1.Width              = desc->width;
     chain_desc1.Height             = desc->height;
-    chain_desc1.Format             = DXGIUtil_TranslatePixelFormat(desc->format);
+    chain_desc1.Format             = DXGIUtil_TranslatePixelFormat(desc->format, false);
     chain_desc1.Stereo             = false;
     chain_desc1.SampleDesc.Count   = 1; // If multisampling is needed, we'll resolve it later
     chain_desc1.SampleDesc.Quality = 0;

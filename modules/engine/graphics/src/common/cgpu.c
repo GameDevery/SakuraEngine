@@ -3,15 +3,20 @@
 #include "SkrGraphics/flags.h"
 #include "common_utils.h"
 #include <stdint.h>
+
 #ifdef CGPU_USE_VULKAN
     #include "SkrGraphics/backend/vulkan/cgpu_vulkan.h"
 #endif
+
 #ifdef CGPU_USE_D3D12
     #include "SkrGraphics/backend/d3d12/cgpu_d3d12.h"
+    #include "SkrGraphics/backend/d3d12/cgpu_d3d12_raytracing.h"
 #endif
+
 #ifdef CGPU_USE_METAL
     #include "SkrGraphics/backend/metal/cgpu_metal.h"
 #endif
+
 #ifdef __APPLE__
     #include "TargetConditionals.h"
     #if TARGET_OS_MAC
@@ -63,6 +68,7 @@ CGPU_API CGPUInstanceId cgpu_create_instance(const CGPUInstanceDescriptor* desc)
     {
         tbl = CGPU_D3D12ProcTable();
         s_tbl = CGPU_D3D12SurfacesProcTable();
+        rt_tbl = CGPU_D3D12RayTracingProcTable();
     }
 #endif
     CGPUInstance* instance = (CGPUInstance*)tbl->create_instance(desc);

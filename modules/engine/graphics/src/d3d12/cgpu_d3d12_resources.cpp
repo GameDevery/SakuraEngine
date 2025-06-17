@@ -207,7 +207,7 @@ CGPUBufferId cgpu_create_buffer_d3d12(CGPUDeviceId device, const struct CGPUBuff
             srvDesc.Buffer.NumElements              = (UINT)(desc->elemet_count);
             srvDesc.Buffer.StructureByteStride      = (UINT)(desc->element_stride);
             srvDesc.Buffer.Flags                    = D3D12_BUFFER_SRV_FLAG_NONE;
-            srvDesc.Format                          = (DXGI_FORMAT)DXGIUtil_TranslatePixelFormat(desc->format);
+            srvDesc.Format                          = (DXGI_FORMAT)DXGIUtil_TranslatePixelFormat(desc->format, false);
             if (CGPU_RESOURCE_TYPE_BUFFER_RAW == (desc->descriptors & CGPU_RESOURCE_TYPE_BUFFER_RAW))
             {
                 if (desc->format != CGPU_FORMAT_UNDEFINED)
@@ -248,14 +248,13 @@ CGPUBufferId cgpu_create_buffer_d3d12(CGPUDeviceId device, const struct CGPUBuff
             }
             else if (desc->format != CGPU_FORMAT_UNDEFINED)
             {
-                uavDesc.Format                                  = (DXGI_FORMAT)DXGIUtil_TranslatePixelFormat(desc->format);
+                uavDesc.Format = (DXGI_FORMAT)DXGIUtil_TranslatePixelFormat(desc->format, false);
                 D3D12_FEATURE_DATA_FORMAT_SUPPORT FormatSupport = {
                     uavDesc.Format,
                     D3D12_FORMAT_SUPPORT1_NONE,
                     D3D12_FORMAT_SUPPORT2_NONE
                 };
-                HRESULT hr =
-                D->pDxDevice->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT, &FormatSupport, sizeof(FormatSupport));
+                HRESULT hr = D->pDxDevice->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT, &FormatSupport, sizeof(FormatSupport));
                 if (!SUCCEEDED(hr) || !(FormatSupport.Support2 & D3D12_FORMAT_SUPPORT2_UAV_TYPED_LOAD) ||
                     !(FormatSupport.Support2 & D3D12_FORMAT_SUPPORT2_UAV_TYPED_STORE))
                 {
@@ -1065,7 +1064,7 @@ CGPUTextureId cgpu_create_texture_d3d12(CGPUDeviceId device, const struct CGPUTe
     CGPUAdapter_D3D12*  A        = (CGPUAdapter_D3D12*)device->adapter;
     CGPUTexture_D3D12*  T        = nullptr;
     D3D12_RESOURCE_DESC resDesc  = make_zeroed<D3D12_RESOURCE_DESC>();
-    DXGI_FORMAT         dxFormat = DXGIUtil_TranslatePixelFormat(desc->format);
+    DXGI_FORMAT         dxFormat = DXGIUtil_TranslatePixelFormat(desc->format, false);
     if (desc->native_handle == CGPU_NULLPTR)
     {
         // On PC, If Alignment is set to 0, the runtime will use 4MB for MSAA
@@ -1499,7 +1498,7 @@ CGPUTextureViewId cgpu_create_texture_view_d3d12(CGPUDeviceId device, const stru
             D3D12Util_DescriptorHeap* pDsvHeap    = D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_DSV];
             TV->mDxRtvDsvDescriptorHandle         = D3D12Util_ConsumeDescriptorHandles(pDsvHeap, 1).mCpu;
             D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
-            dsvDesc.Format                        = (DXGI_FORMAT)DXGIUtil_TranslatePixelFormat(desc->format);
+            dsvDesc.Format                        = (DXGI_FORMAT)DXGIUtil_TranslatePixelFormat(desc->format, false);
             switch (desc->dims)
             {
                 case CGPU_TEX_DIMENSION_1D: {
@@ -1546,7 +1545,7 @@ CGPUTextureViewId cgpu_create_texture_view_d3d12(CGPUDeviceId device, const stru
             D3D12Util_DescriptorHeap* pRtvHeap    = D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_RTV];
             TV->mDxRtvDsvDescriptorHandle         = D3D12Util_ConsumeDescriptorHandles(pRtvHeap, 1).mCpu;
             D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
-            rtvDesc.Format                        = (DXGI_FORMAT)DXGIUtil_TranslatePixelFormat(desc->format);
+            rtvDesc.Format                        = (DXGI_FORMAT)DXGIUtil_TranslatePixelFormat(desc->format, false);
             switch (desc->dims)
             {
                 case CGPU_TEX_DIMENSION_1D: {

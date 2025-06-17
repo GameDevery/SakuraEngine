@@ -834,6 +834,8 @@ typedef struct CGPUAdapterDetail {
     bool support_shading_rate : 1;
     bool support_shading_rate_mask : 1;
     bool support_shading_rate_sv : 1;
+    // RayTracing
+    bool support_ray_tracing : 1;
     CGPUFormatSupport format_supports[CGPU_FORMAT_COUNT];
     CGPUVendorPreset vendor_preset;
 } CGPUAdapterDetail;

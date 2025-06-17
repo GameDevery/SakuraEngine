@@ -19,7 +19,7 @@ public static class CGPUSamples
             .Depend(Visibility.Private, "AppSampleCommon", "lodepng")
             .IncludeDirs(Visibility.Private, "./../../common")
             .AddCFiles("raytracing/raytracing.c")
-            // .AddHLSLFilesWithEntry("compute_main", "raytracing/**.hlsl")
+            .AddHLSLFilesWithEntry("compute_main", "raytracing/**.hlsl")
             .DXCOutputDirectory("resources/shaders/cgpu-raytracing");
 
         Engine.Program("CGPUIndexedInstance")

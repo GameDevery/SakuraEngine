@@ -41,8 +41,10 @@ typedef uint32_t CGPUAccelerationStructureInstanceFlags;
 
 CGPU_EXTERN_C CGPU_API CGPUAccelerationStructureId cgpu_create_acceleration_structure(CGPUDeviceId device, const struct CGPUAccelerationStructureDescriptor* desc);
 typedef CGPUAccelerationStructureId (*CGPUProcCreateAccelerationStructure)(CGPUDeviceId device, const struct CGPUAccelerationStructureDescriptor* desc);
+
 CGPU_EXTERN_C CGPU_API void cgpu_free_acceleration_structure(CGPUAccelerationStructureId as);
 typedef void (*CGPUProcFreeAccelerationStructure)(CGPUAccelerationStructureId as);
+
 CGPU_EXTERN_C CGPU_API void cgpu_cmd_build_acceleration_structure(CGPUCommandBufferId cmd, const struct CGPUAccelerationStructureBuildDescriptor* desc);
 typedef void (*CGPUProcCmdBuildAccelerationStructure)(CGPUCommandBufferId cmd, const struct CGPUAccelerationStructureBuildDescriptor* desc);
 

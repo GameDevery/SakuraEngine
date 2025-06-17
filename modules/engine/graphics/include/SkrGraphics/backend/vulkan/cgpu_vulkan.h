@@ -223,6 +223,12 @@ typedef struct CGPUAdapter_Vulkan {
     VkPhysicalDeviceDescriptorBufferFeaturesEXT mPhysicalDeviceDescriptorBufferFeatures;
     VkPhysicalDeviceDescriptorBufferPropertiesEXT mPhysicalDeviceDescriptorBufferProperties;
 #endif
+#if VK_KHR_acceleration_structure
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR mPhysicalDeviceAccelerationStructureFeatures;
+#endif
+#if VK_KHR_ray_query
+    VkPhysicalDeviceRayQueryFeaturesKHR mPhysicalDeviceRayQueryFeatures;
+#endif
     VkPhysicalDeviceFeatures2 mPhysicalDeviceFeatures;
     VkPhysicalDeviceSubgroupProperties mSubgroupProperties;
     /// Queue Families
@@ -449,9 +455,7 @@ static const VkPipelineBindPoint gPipelineBindPoint[CGPU_PIPELINE_TYPE_COUNT] = 
     VK_PIPELINE_BIND_POINT_MAX_ENUM,
     VK_PIPELINE_BIND_POINT_COMPUTE,
     VK_PIPELINE_BIND_POINT_GRAPHICS,
-#ifdef ENABLE_RAYTRACING
-    VK_PIPELINE_BIND_POINT_RAY_TRACING_NV
-#endif
+    VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR
 };
 
 static const VkAttachmentStoreOp gVkAttachmentStoreOpTranslator[CGPU_STORE_ACTION_COUNT] = {

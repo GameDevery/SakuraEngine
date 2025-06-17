@@ -21,14 +21,6 @@ void D3D12Util_Optionalenable_debug_layer(CGPUInstance_D3D12* result, CGPUInstan
 // Device Helpers
 void D3D12Util_CreateDMAAllocator(CGPUInstance_D3D12* I, CGPUAdapter_D3D12* A, CGPUDevice_D3D12* D);
 
-#if !defined(XBOX) && defined(_WIN32)
-    #include "dxc/dxcapi.h"
-
-void D3D12Util_LoadDxcDLL();
-void D3D12Util_UnloadDxcDLL();
-DxcCreateInstanceProc D3D12Util_GetDxcCreateInstanceProc();
-#endif
-
 // Crash Report Helpers
 void D3D12Util_LogDREDPageFault(const D3D12_DRED_PAGE_FAULT_OUTPUT* pageFault);
 void D3D12Util_LogDREDBreadcrumbs(const D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT* breadcrumbs);
@@ -73,191 +65,6 @@ void D3D12Util_CreateCBV(CGPUDevice_D3D12* D,
                          const D3D12_CONSTANT_BUFFER_VIEW_DESC* pSrvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle);
 void D3D12Util_CreateRTV(CGPUDevice_D3D12* D, ID3D12Resource* pResource,
                          const D3D12_RENDER_TARGET_VIEW_DESC* pRtvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle);
-
-typedef struct D3D12Util_DescriptorHeap {
-    /// DX Heap
-    ID3D12DescriptorHeap* pCurrentHeap;
-    ID3D12Device* pDevice;
-    D3D12_CPU_DESCRIPTOR_HANDLE* pHandles;
-    /// Start position in the heap
-    D3D12Util_DescriptorHandle mStartHandle;
-    /// Free List used for CPU only descriptor heaps
-    cgpu::Vector<D3D12Util_DescriptorHandle> mFreeList;
-    /// Description
-    D3D12_DESCRIPTOR_HEAP_DESC mDesc;
-    /// DescriptorInfo Increment Size
-    uint32_t mDescriptorSize;
-#ifdef CGPU_THREAD_SAFETY
-    /// Lock for multi-threaded descriptor allocations
-    struct SMutex* pMutex;
-    /// Used
-    SAtomicU32 mUsedDescriptors;
-#else
-    /// Used
-    uint32_t mUsedDescriptors;
-#endif
-} D3D12Util_DescriptorHeap;
-
-struct CGPUTiledMemoryPool_D3D12 : public CGPUMemoryPool_D3D12 {
-    void AllocateTiles(uint32_t N, D3D12MA::Allocation** ppAllocation, uint32_t Scale = 1) SKR_NOEXCEPT
-    {
-        CGPUDevice_D3D12* D = (CGPUDevice_D3D12*)super.device;
-        const auto kPageSize = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
-        D3D12MA::ALLOCATION_DESC allocDesc = {};
-        allocDesc.CustomPool = pDxPool;
-        D3D12_RESOURCE_ALLOCATION_INFO allocInfo = {};
-        allocInfo.Alignment = kPageSize;
-        allocInfo.SizeInBytes = kPageSize * Scale;
-        for (uint32_t i = 0; i < N; ++i)
-        {
-            D->pResourceAllocator->AllocateMemory(&allocDesc, &allocInfo, &ppAllocation[i]);
-        }
-    }
-
-    ~CGPUTiledMemoryPool_D3D12() SKR_NOEXCEPT
-    {
-        SAFE_RELEASE(pDxPool);
-    }
-};
-
-enum ETileMappingStatus_D3D12
-{
-    D3D12_TILE_MAPPING_STATUS_UNMAPPED = 0,
-    D3D12_TILE_MAPPING_STATUS_PENDING = 1,
-    D3D12_TILE_MAPPING_STATUS_MAPPING = 2,
-    D3D12_TILE_MAPPING_STATUS_MAPPED = 3,
-    D3D12_TILE_MAPPING_STATUS_UNMAPPING = 4
-};
-
-struct TileMapping_D3D12 {
-    D3D12MA::Allocation* pDxAllocation;
-    SAtomic32 status;
-};
-static_assert(std::is_trivially_constructible_v<TileMapping_D3D12>, "TileMapping_D3D12 Must Be Trivially Constructible!");
-
-struct SubresTileMappings_D3D12 {
-    SubresTileMappings_D3D12(CGPUTexture_D3D12* T, uint32_t X, uint32_t Y, uint32_t Z) SKR_NOEXCEPT
-        : T(T),
-          X(X),
-          Y(Y),
-          Z(Z)
-    {
-        if (X * Y * Z)
-            mappings = (TileMapping_D3D12*)cgpu_calloc(1, X * Y * Z * sizeof(TileMapping_D3D12));
-    }
-    ~SubresTileMappings_D3D12() SKR_NOEXCEPT
-    {
-        if (mappings)
-        {
-            for (uint32_t x = 0; x < X; x++)
-                for (uint32_t y = 0; y < Y; y++)
-                    for (uint32_t z = 0; z < Z; z++)
-                    {
-                        unmap(x, y, z);
-                    }
-            cgpu_free(mappings);
-        }
-    }
-    TileMapping_D3D12* at(uint32_t x, uint32_t y, uint32_t z)
-    {
-        SKR_ASSERT(mappings && x < X && y < Y && z < Z && "SubresTileMappings::at: Out of Range!");
-        return mappings + (x + y * X + z * X * Y);
-    }
-    const TileMapping_D3D12* at(uint32_t x, uint32_t y, uint32_t z) const
-    {
-        SKR_ASSERT(mappings && x < X && y < Y && z < Z && "SubresTileMappings::at: Out of Range!");
-        return mappings + (x + y * X + z * X * Y);
-    }
-    void unmap(uint32_t x, uint32_t y, uint32_t z)
-    {
-        auto pTiledInfo = const_cast<CGPUTiledTextureInfo*>(T->super.tiled_resource);
-        auto* mapping = at(x, y, z);
-
-        int32_t expect_mapped = D3D12_TILE_MAPPING_STATUS_MAPPED;
-        if (skr_atomic_compare_exchange_strong(&mapping->status,
-                                        &expect_mapped, D3D12_TILE_MAPPING_STATUS_UNMAPPING))
-        {
-            SAFE_RELEASE(mapping->pDxAllocation);
-            skr_atomic_fetch_add_relaxed(&pTiledInfo->alive_tiles_count, -1);
-        }
-
-        int32_t expect_unmapping = D3D12_TILE_MAPPING_STATUS_UNMAPPING;
-        skr_atomic_compare_exchange_strong(&mapping->status,
-                                 &expect_unmapping, D3D12_TILE_MAPPING_STATUS_UNMAPPED);
-    }
-
-private:
-    CGPUTexture_D3D12* T = nullptr;
-    const uint32_t X = 0;
-    const uint32_t Y = 0;
-    const uint32_t Z = 0;
-    TileMapping_D3D12* mappings = nullptr;
-};
-
-struct PackedMipMapping_D3D12 {
-    PackedMipMapping_D3D12(CGPUTexture_D3D12* T, uint32_t N) SKR_NOEXCEPT
-        : N(N),
-          T(T)
-    {
-    }
-    ~PackedMipMapping_D3D12() SKR_NOEXCEPT
-    {
-        unmap();
-    }
-    void unmap()
-    {
-        auto pTiledInfo = const_cast<CGPUTiledTextureInfo*>(T->super.tiled_resource);
-        int32_t expect_mapped = D3D12_TILE_MAPPING_STATUS_MAPPED;
-        if (skr_atomic_compare_exchange_strong(&status,
-                &expect_mapped, D3D12_TILE_MAPPING_STATUS_UNMAPPING))
-        {
-            SAFE_RELEASE(pAllocation);
-            skr_atomic_fetch_add_relaxed(&pTiledInfo->alive_tiles_count, -1);
-        }
-
-        int32_t expect_unmapping = D3D12_TILE_MAPPING_STATUS_UNMAPPING;
-        skr_atomic_compare_exchange_strong(&status,
-                                 &expect_unmapping, D3D12_TILE_MAPPING_STATUS_UNMAPPED);
-    }
-    D3D12MA::Allocation* pAllocation = nullptr;
-    const uint32_t N = 0;
-    SAtomic32 status;
-
-private:
-    CGPUTexture_D3D12* T = nullptr;
-};
-
-struct CGPUTiledTexture_D3D12 : public CGPUTexture_D3D12 {
-    CGPUTiledTexture_D3D12(SubresTileMappings_D3D12* pMappings, PackedMipMapping_D3D12* pPackedMips, uint32_t NumPacks) SKR_NOEXCEPT
-        : CGPUTexture_D3D12(),
-          pMappings(pMappings),
-          pPackedMips(pPackedMips),
-          NumPacks(NumPacks)
-    {
-    }
-    ~CGPUTiledTexture_D3D12() SKR_NOEXCEPT
-    {
-        const auto N = super.info->mip_levels * (super.info->array_size_minus_one + 1);
-        for (uint32_t i = 0; i < N; i++)
-            pMappings[i].~SubresTileMappings_D3D12();
-        for (uint32_t i = 0; i < NumPacks; i++)
-            pPackedMips[i].~PackedMipMapping_D3D12();
-    }
-    SubresTileMappings_D3D12* getSubresTileMappings(uint32_t mip_level, uint32_t array_index)
-    {
-        SKR_ASSERT(mip_level < super.info->mip_levels && array_index < super.info->array_size_minus_one + 1);
-        return pMappings + (mip_level * (super.info->array_size_minus_one + 1) + array_index);
-    }
-    PackedMipMapping_D3D12* getPackedMipMapping(uint32_t layer)
-    {
-        return pPackedMips + layer;
-    }
-
-private:
-    SubresTileMappings_D3D12* pMappings;
-    PackedMipMapping_D3D12* pPackedMips;
-    uint32_t NumPacks;
-};
 
 typedef struct DescriptorHeapProperties {
     uint32_t mMaxDescriptors;
@@ -339,68 +146,7 @@ static const D3D12_FILL_MODE gDx12FillModeTranslator[CGPU_FILL_MODE_COUNT] = {
     D3D12_FILL_MODE_WIREFRAME,
 };
 
-//
-// C++ is the only language supported by D3D12:
-//   https://msdn.microsoft.com/en-us/library/windows/desktop/dn899120(v=vs.85).aspx
-//
-#if !defined(__cplusplus)
-    #error "D3D12 requires C++! Sorry!"
-#endif
-
 /* clang-format off */
-SKR_FORCEINLINE static void D3D12Util_CopyDescriptorHandle(D3D12Util_DescriptorHeap *pHeap,
-                                   const D3D12_CPU_DESCRIPTOR_HANDLE &srcHandle,
-                                   const uint64_t &dstHandle, uint32_t index) {
-  pHeap->pHandles[(dstHandle / pHeap->mDescriptorSize) + index] = srcHandle;
-  pHeap->pDevice->CopyDescriptorsSimple(1,
-                                        {pHeap->mStartHandle.mCpu.ptr +
-                                         dstHandle +
-                                         (index * pHeap->mDescriptorSize)},
-                                        srcHandle, pHeap->mDesc.Type);
-}
-
-SKR_FORCEINLINE static void D3D12Util_CreateSRV(CGPUDevice_D3D12* D, ID3D12Resource* pResource,
-    const D3D12_SHADER_RESOURCE_VIEW_DESC* pSrvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle)
-{
-    if (D3D12_GPU_VIRTUAL_ADDRESS_NULL == pHandle->ptr)
-        *pHandle = D3D12Util_ConsumeDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], 1).mCpu;
-    D->pDxDevice->CreateShaderResourceView(pResource, pSrvDesc, *pHandle);
-}
-
-SKR_FORCEINLINE static void D3D12Util_CreateUAV(CGPUDevice_D3D12* D, ID3D12Resource* pResource,
-    ID3D12Resource* pCounterResource,
-    const D3D12_UNORDERED_ACCESS_VIEW_DESC* pSrvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle)
-{
-    if (D3D12_GPU_VIRTUAL_ADDRESS_NULL == pHandle->ptr)
-        *pHandle = D3D12Util_ConsumeDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], 1).mCpu;
-    D->pDxDevice->CreateUnorderedAccessView(pResource, pCounterResource, pSrvDesc, *pHandle);
-}
-
-SKR_FORCEINLINE static void D3D12Util_CreateCBV(CGPUDevice_D3D12* D,
-    const D3D12_CONSTANT_BUFFER_VIEW_DESC* pSrvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle)
-{
-    if (D3D12_GPU_VIRTUAL_ADDRESS_NULL == pHandle->ptr)
-        *pHandle = D3D12Util_ConsumeDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], 1).mCpu;
-    D->pDxDevice->CreateConstantBufferView(pSrvDesc, *pHandle);
-}
-
-SKR_FORCEINLINE static void D3D12Util_CreateRTV(CGPUDevice_D3D12* D,
-    ID3D12Resource* pResource,
-    const D3D12_RENDER_TARGET_VIEW_DESC* pRtvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle)
-{
-    if (D3D12_GPU_VIRTUAL_ADDRESS_NULL == pHandle->ptr)
-        *pHandle = D3D12Util_ConsumeDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_RTV], 1).mCpu;
-    D->pDxDevice->CreateRenderTargetView(pResource, pRtvDesc, *pHandle);
-}
-
-SKR_FORCEINLINE static void D3D12Util_CreateDSV(CGPUDevice_D3D12* D,
-    ID3D12Resource* pResource,
-    const D3D12_DEPTH_STENCIL_VIEW_DESC* pDsvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle)
-{
-    if (D3D12_GPU_VIRTUAL_ADDRESS_NULL == pHandle->ptr)
-        *pHandle = D3D12Util_ConsumeDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_DSV], 1).mCpu;
-    D->pDxDevice->CreateDepthStencilView(pResource, pDsvDesc, *pHandle);
-}
 
 #ifdef __ID3D12GraphicsCommandList5_INTERFACE_DEFINED__
 #define D3D12_HEADER_SUPPORT_VRS
@@ -638,14 +384,14 @@ SKR_FORCEINLINE static D3D12_RESOURCE_STATES D3D12Util_TranslateResourceState(CG
         ret |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
     if (state & CGPU_RESOURCE_STATE_PIXEL_SHADER_RESOURCE)
         ret |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-#ifdef ENABLE_RAYTRACING
-    if (state & CGPU_RESOURCE_STATE_ACCELERATION_STRUCTURE)
-        ret |= D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
-#endif
-#ifdef ENABLE_VRS
     if (state & CGPU_RESOURCE_STATE_SHADING_RATE_SOURCE)
         ret |= D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE;
-#endif
+    
+    if (state & CGPU_RESOURCE_STATE_ACCELERATION_STRUCTURE_READ)
+        ret |= D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
+    else if (state & CGPU_RESOURCE_STATE_ACCELERATION_STRUCTURE_WRITE)
+        ret |= D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
+
     return ret;
 }
 
@@ -683,7 +429,7 @@ SKR_FORCEINLINE static D3D12_SHADER_VISIBILITY D3D12Util_TranslateShaderStages(C
 }
 
 
-SKR_FORCEINLINE static DXGI_FORMAT DXGIUtil_TranslatePixelFormat(const ECGPUFormat fmt, bool ShaderResource = false)
+SKR_FORCEINLINE static DXGI_FORMAT DXGIUtil_TranslatePixelFormat(const ECGPUFormat fmt, bool ShaderResource)
 {
 	switch (fmt) {
 	case CGPU_FORMAT_R1_UNORM: return DXGI_FORMAT_R1_UNORM;
@@ -1031,3 +777,254 @@ SKR_FORCEINLINE static DXGI_FORMAT DXGIUtil_FormatToTypeless(DXGI_FORMAT fmt) {
 	}
 	return DXGI_FORMAT_UNKNOWN;
 }
+
+#ifdef __cplusplus
+
+#if !defined(XBOX) && defined(_WIN32)
+#include "dxc/dxcapi.h"
+
+void D3D12Util_LoadDxcDLL();
+void D3D12Util_UnloadDxcDLL();
+DxcCreateInstanceProc D3D12Util_GetDxcCreateInstanceProc();
+#endif
+
+struct CGPUTiledMemoryPool_D3D12 : public CGPUMemoryPool_D3D12 {
+    void AllocateTiles(uint32_t N, D3D12MA::Allocation** ppAllocation, uint32_t Scale = 1) SKR_NOEXCEPT
+    {
+        CGPUDevice_D3D12* D = (CGPUDevice_D3D12*)super.device;
+        const auto kPageSize = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+        D3D12MA::ALLOCATION_DESC allocDesc = {};
+        allocDesc.CustomPool = pDxPool;
+        D3D12_RESOURCE_ALLOCATION_INFO allocInfo = {};
+        allocInfo.Alignment = kPageSize;
+        allocInfo.SizeInBytes = kPageSize * Scale;
+        for (uint32_t i = 0; i < N; ++i)
+        {
+            D->pResourceAllocator->AllocateMemory(&allocDesc, &allocInfo, &ppAllocation[i]);
+        }
+    }
+
+    ~CGPUTiledMemoryPool_D3D12() SKR_NOEXCEPT
+    {
+        SAFE_RELEASE(pDxPool);
+    }
+};
+
+enum ETileMappingStatus_D3D12
+{
+    D3D12_TILE_MAPPING_STATUS_UNMAPPED = 0,
+    D3D12_TILE_MAPPING_STATUS_PENDING = 1,
+    D3D12_TILE_MAPPING_STATUS_MAPPING = 2,
+    D3D12_TILE_MAPPING_STATUS_MAPPED = 3,
+    D3D12_TILE_MAPPING_STATUS_UNMAPPING = 4
+};
+
+struct TileMapping_D3D12 {
+    D3D12MA::Allocation* pDxAllocation;
+    SAtomic32 status;
+};
+static_assert(std::is_trivially_constructible_v<TileMapping_D3D12>, "TileMapping_D3D12 Must Be Trivially Constructible!");
+
+struct SubresTileMappings_D3D12 {
+    SubresTileMappings_D3D12(CGPUTexture_D3D12* T, uint32_t X, uint32_t Y, uint32_t Z) SKR_NOEXCEPT
+        : T(T),
+          X(X),
+          Y(Y),
+          Z(Z)
+    {
+        if (X * Y * Z)
+            mappings = (TileMapping_D3D12*)cgpu_calloc(1, X * Y * Z * sizeof(TileMapping_D3D12));
+    }
+    ~SubresTileMappings_D3D12() SKR_NOEXCEPT
+    {
+        if (mappings)
+        {
+            for (uint32_t x = 0; x < X; x++)
+                for (uint32_t y = 0; y < Y; y++)
+                    for (uint32_t z = 0; z < Z; z++)
+                    {
+                        unmap(x, y, z);
+                    }
+            cgpu_free(mappings);
+        }
+    }
+    TileMapping_D3D12* at(uint32_t x, uint32_t y, uint32_t z)
+    {
+        SKR_ASSERT(mappings && x < X && y < Y && z < Z && "SubresTileMappings::at: Out of Range!");
+        return mappings + (x + y * X + z * X * Y);
+    }
+    const TileMapping_D3D12* at(uint32_t x, uint32_t y, uint32_t z) const
+    {
+        SKR_ASSERT(mappings && x < X && y < Y && z < Z && "SubresTileMappings::at: Out of Range!");
+        return mappings + (x + y * X + z * X * Y);
+    }
+    void unmap(uint32_t x, uint32_t y, uint32_t z)
+    {
+        auto pTiledInfo = const_cast<CGPUTiledTextureInfo*>(T->super.tiled_resource);
+        auto* mapping = at(x, y, z);
+
+        int32_t expect_mapped = D3D12_TILE_MAPPING_STATUS_MAPPED;
+        if (skr_atomic_compare_exchange_strong(&mapping->status,
+                                        &expect_mapped, D3D12_TILE_MAPPING_STATUS_UNMAPPING))
+        {
+            SAFE_RELEASE(mapping->pDxAllocation);
+            skr_atomic_fetch_add_relaxed(&pTiledInfo->alive_tiles_count, -1);
+        }
+
+        int32_t expect_unmapping = D3D12_TILE_MAPPING_STATUS_UNMAPPING;
+        skr_atomic_compare_exchange_strong(&mapping->status,
+                                 &expect_unmapping, D3D12_TILE_MAPPING_STATUS_UNMAPPED);
+    }
+
+private:
+    CGPUTexture_D3D12* T = nullptr;
+    const uint32_t X = 0;
+    const uint32_t Y = 0;
+    const uint32_t Z = 0;
+    TileMapping_D3D12* mappings = nullptr;
+};
+
+struct PackedMipMapping_D3D12 {
+    PackedMipMapping_D3D12(CGPUTexture_D3D12* T, uint32_t N) SKR_NOEXCEPT
+        : N(N),
+          T(T)
+    {
+    }
+    ~PackedMipMapping_D3D12() SKR_NOEXCEPT
+    {
+        unmap();
+    }
+    void unmap()
+    {
+        auto pTiledInfo = const_cast<CGPUTiledTextureInfo*>(T->super.tiled_resource);
+        int32_t expect_mapped = D3D12_TILE_MAPPING_STATUS_MAPPED;
+        if (skr_atomic_compare_exchange_strong(&status,
+                &expect_mapped, D3D12_TILE_MAPPING_STATUS_UNMAPPING))
+        {
+            SAFE_RELEASE(pAllocation);
+            skr_atomic_fetch_add_relaxed(&pTiledInfo->alive_tiles_count, -1);
+        }
+
+        int32_t expect_unmapping = D3D12_TILE_MAPPING_STATUS_UNMAPPING;
+        skr_atomic_compare_exchange_strong(&status,
+                                 &expect_unmapping, D3D12_TILE_MAPPING_STATUS_UNMAPPED);
+    }
+    D3D12MA::Allocation* pAllocation = nullptr;
+    const uint32_t N = 0;
+    SAtomic32 status;
+
+private:
+    CGPUTexture_D3D12* T = nullptr;
+};
+
+struct CGPUTiledTexture_D3D12 : public CGPUTexture_D3D12 {
+    CGPUTiledTexture_D3D12(SubresTileMappings_D3D12* pMappings, PackedMipMapping_D3D12* pPackedMips, uint32_t NumPacks) SKR_NOEXCEPT
+        : CGPUTexture_D3D12(),
+          pMappings(pMappings),
+          pPackedMips(pPackedMips),
+          NumPacks(NumPacks)
+    {
+    }
+    ~CGPUTiledTexture_D3D12() SKR_NOEXCEPT
+    {
+        const auto N = super.info->mip_levels * (super.info->array_size_minus_one + 1);
+        for (uint32_t i = 0; i < N; i++)
+            pMappings[i].~SubresTileMappings_D3D12();
+        for (uint32_t i = 0; i < NumPacks; i++)
+            pPackedMips[i].~PackedMipMapping_D3D12();
+    }
+    SubresTileMappings_D3D12* getSubresTileMappings(uint32_t mip_level, uint32_t array_index)
+    {
+        SKR_ASSERT(mip_level < super.info->mip_levels && array_index < super.info->array_size_minus_one + 1);
+        return pMappings + (mip_level * (super.info->array_size_minus_one + 1) + array_index);
+    }
+    PackedMipMapping_D3D12* getPackedMipMapping(uint32_t layer)
+    {
+        return pPackedMips + layer;
+    }
+
+private:
+    SubresTileMappings_D3D12* pMappings;
+    PackedMipMapping_D3D12* pPackedMips;
+    uint32_t NumPacks;
+};
+
+typedef struct D3D12Util_DescriptorHeap {
+    /// DX Heap
+    ID3D12DescriptorHeap* pCurrentHeap;
+    ID3D12Device* pDevice;
+    D3D12_CPU_DESCRIPTOR_HANDLE* pHandles;
+    /// Start position in the heap
+    D3D12Util_DescriptorHandle mStartHandle;
+    /// Free List used for CPU only descriptor heaps
+    cgpu::Vector<D3D12Util_DescriptorHandle> mFreeList;
+    /// Description
+    D3D12_DESCRIPTOR_HEAP_DESC mDesc;
+    /// DescriptorInfo Increment Size
+    uint32_t mDescriptorSize;
+#ifdef CGPU_THREAD_SAFETY
+    /// Lock for multi-threaded descriptor allocations
+    struct SMutex* pMutex;
+    /// Used
+    SAtomicU32 mUsedDescriptors;
+#else
+    /// Used
+    uint32_t mUsedDescriptors;
+#endif
+} D3D12Util_DescriptorHeap;
+
+SKR_FORCEINLINE static void D3D12Util_CopyDescriptorHandle(D3D12Util_DescriptorHeap *pHeap,
+                                   const D3D12_CPU_DESCRIPTOR_HANDLE &srcHandle,
+                                   const uint64_t &dstHandle, uint32_t index) {
+  pHeap->pHandles[(dstHandle / pHeap->mDescriptorSize) + index] = srcHandle;
+  pHeap->pDevice->CopyDescriptorsSimple(1,
+                                        {pHeap->mStartHandle.mCpu.ptr +
+                                         dstHandle +
+                                         (index * pHeap->mDescriptorSize)},
+                                        srcHandle, pHeap->mDesc.Type);
+}
+
+SKR_FORCEINLINE static void D3D12Util_CreateSRV(CGPUDevice_D3D12* D, ID3D12Resource* pResource,
+    const D3D12_SHADER_RESOURCE_VIEW_DESC* pSrvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle)
+{
+    if (D3D12_GPU_VIRTUAL_ADDRESS_NULL == pHandle->ptr)
+        *pHandle = D3D12Util_ConsumeDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], 1).mCpu;
+    D->pDxDevice->CreateShaderResourceView(pResource, pSrvDesc, *pHandle);
+}
+
+SKR_FORCEINLINE static void D3D12Util_CreateUAV(CGPUDevice_D3D12* D, ID3D12Resource* pResource,
+    ID3D12Resource* pCounterResource,
+    const D3D12_UNORDERED_ACCESS_VIEW_DESC* pSrvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle)
+{
+    if (D3D12_GPU_VIRTUAL_ADDRESS_NULL == pHandle->ptr)
+        *pHandle = D3D12Util_ConsumeDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], 1).mCpu;
+    D->pDxDevice->CreateUnorderedAccessView(pResource, pCounterResource, pSrvDesc, *pHandle);
+}
+
+SKR_FORCEINLINE static void D3D12Util_CreateCBV(CGPUDevice_D3D12* D,
+    const D3D12_CONSTANT_BUFFER_VIEW_DESC* pSrvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle)
+{
+    if (D3D12_GPU_VIRTUAL_ADDRESS_NULL == pHandle->ptr)
+        *pHandle = D3D12Util_ConsumeDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], 1).mCpu;
+    D->pDxDevice->CreateConstantBufferView(pSrvDesc, *pHandle);
+}
+
+SKR_FORCEINLINE static void D3D12Util_CreateRTV(CGPUDevice_D3D12* D,
+    ID3D12Resource* pResource,
+    const D3D12_RENDER_TARGET_VIEW_DESC* pRtvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle)
+{
+    if (D3D12_GPU_VIRTUAL_ADDRESS_NULL == pHandle->ptr)
+        *pHandle = D3D12Util_ConsumeDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_RTV], 1).mCpu;
+    D->pDxDevice->CreateRenderTargetView(pResource, pRtvDesc, *pHandle);
+}
+
+SKR_FORCEINLINE static void D3D12Util_CreateDSV(CGPUDevice_D3D12* D,
+    ID3D12Resource* pResource,
+    const D3D12_DEPTH_STENCIL_VIEW_DESC* pDsvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle)
+{
+    if (D3D12_GPU_VIRTUAL_ADDRESS_NULL == pHandle->ptr)
+        *pHandle = D3D12Util_ConsumeDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_DSV], 1).mCpu;
+    D->pDxDevice->CreateDepthStencilView(pResource, pDsvDesc, *pHandle);
+}
+
+#endif // __cplusplus

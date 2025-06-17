@@ -355,12 +355,14 @@ int main(void)
     ECGPUBackend backends[] = {
 #if SKR_PLAT_MACOSX
         CGPU_BACKEND_METAL,
-#else
-        CGPU_BACKEND_VULKAN,
+#endif
+
+#ifdef CGPU_USE_VULKAN
+       //  CGPU_BACKEND_VULKAN,
 #endif
 
 #ifdef CGPU_USE_D3D12
-        CGPU_BACKEND_D3D12
+        CGPU_BACKEND_D3D12,
 #endif
     };
     const uint32_t CGPU_BACKEND_COUNT = sizeof(backends) / sizeof(ECGPUBackend);
