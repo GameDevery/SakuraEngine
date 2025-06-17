@@ -60,6 +60,10 @@ private:
             _storage_at(index, _storage_size(item_size))
         );
     }
+    inline uint64_t* _typed_bit_data() const
+    {
+        return reinterpret_cast<uint64_t*>(_bit_data);
+    }
 
 protected:
     void*    _data          = nullptr;

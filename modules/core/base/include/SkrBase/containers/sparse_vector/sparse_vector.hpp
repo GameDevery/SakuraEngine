@@ -752,16 +752,16 @@ SKR_INLINE bool SparseVector<Memory>::compact_stable()
 template <typename Memory>
 SKR_INLINE bool SparseVector<Memory>::compact_top()
 {
-    if (!is_compact())
+    if (!is_empty() && !is_compact())
     {
         bool has_changes = false;
-        for (SizeType i(sparse_size() - 1), n(sparse_size()); n; --i, --n)
+        for (SizeType i = sparse_size(); i; --i)
         {
-            if (is_hole(i))
+            if (is_hole(i - 1))
             {
                 // remove from freelist
                 _set_hole_size(hole_size() - 1);
-                _break_freelist_at(i);
+                _break_freelist_at(i - 1);
 
                 // update size
                 _set_sparse_size(sparse_size() - 1);
@@ -808,7 +808,7 @@ SKR_INLINE typename SparseVector<Memory>::DataRef SparseVector<Memory>::add_unsa
         _set_freelist_head(storage()[index]._sparse_vector_freelist_next);
         _set_hole_size(hole_size() - 1);
 
-        // break link
+        // break prev link
         if (hole_size())
         {
             storage()[freelist_head()]._sparse_vector_freelist_prev = npos;

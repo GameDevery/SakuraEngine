@@ -45,7 +45,8 @@ struct CGenericSparseVectorDataRef {
 // generic vector
 struct SKR_CORE_API GenericSparseVector : IGenericBase {
     SKR_RC_IMPL(override final)
-    using BitAlgo = algo::BitAlgo<uint64_t>;
+    using BitAlgo                         = algo::BitAlgo<uint64_t>;
+    inline static constexpr uint64_t npos = npos_of<uint64_t>;
 
     // ctor & dtor
     GenericSparseVector(RC<IGenericBase> inner);
@@ -159,10 +160,13 @@ private:
     void     _copy_sparse_vector_bit_data(void* dst, const void* src, uint64_t size) const;
     void     _move_sparse_vector_bit_data(void* dst, void* src, uint64_t size) const;
     void     _destruct_sparse_vector_data(void* dst, const void* bit_data, uint64_t size) const;
+    void     _break_freelist_at(void* dst, uint64_t idx) const;
 
 private:
     RC<IGenericBase> _inner            = nullptr;
     MemoryTraitsData _inner_mem_traits = {};
+    uint64_t         _inner_size       = 0;
+    uint64_t         _inner_alignment  = 0;
 };
 
 } // namespace skr
