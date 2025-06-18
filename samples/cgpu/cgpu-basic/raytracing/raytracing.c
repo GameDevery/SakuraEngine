@@ -147,7 +147,7 @@ void ComputeFunc(void* usrdata)
         .start_state = CGPU_RESOURCE_STATE_UNORDERED_ACCESS,
         .memory_usage = CGPU_MEM_USAGE_GPU_ONLY,
         .element_stride = sizeof(Pixel),
-        .elemet_count = RAYTRACING_WIDTH * RAYTRACING_HEIGHT,
+        .element_count = RAYTRACING_WIDTH * RAYTRACING_HEIGHT,
         .size = sizeof(Pixel) * RAYTRACING_WIDTH * RAYTRACING_HEIGHT
     };
     CGPUBufferId data_buffer = cgpu_create_buffer(device, &buffer_desc);
@@ -160,7 +160,7 @@ void ComputeFunc(void* usrdata)
         .start_state = CGPU_RESOURCE_STATE_COPY_DEST,
         .memory_usage = CGPU_MEM_USAGE_GPU_TO_CPU,
         .element_stride = buffer_desc.element_stride,
-        .elemet_count = buffer_desc.elemet_count,
+        .element_count = buffer_desc.element_count,
         .size = buffer_desc.size
     };
     CGPUBufferId readback_buffer = cgpu_create_buffer(device, &rb_desc);
@@ -178,8 +178,8 @@ void ComputeFunc(void* usrdata)
         .descriptors = CGPU_RESOURCE_TYPE_VERTEX_BUFFER,
         .start_state = CGPU_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
         .memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU,
-        .element_stride = sizeof(float) * 12,
-        .elemet_count = 12,
+        .element_stride = sizeof(float) * 3,
+        .element_count = 12,
         .size = sizeof(vertices)
     };
     CGPUBufferId vertex_buffer = cgpu_create_buffer(device, &vertex_buffer_desc);
@@ -197,17 +197,18 @@ void ComputeFunc(void* usrdata)
         .start_state = CGPU_RESOURCE_STATE_INDEX_BUFFER,
         .memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU,
         .element_stride = sizeof(uint16_t),
-        .elemet_count = 6,
+        .element_count = 6,
         .size = sizeof(indices)
     };
     CGPUBufferId index_buffer = cgpu_create_buffer(device, &index_buffer_desc);
     memcpy(index_buffer->info->cpu_mapped_address, indices, index_buffer_desc.size);
 
     CGPUAccelerationStructureGeometryDesc blas_geom = { 0 };
+    blas_geom.flags = CGPU_ACCELERATION_STRUCTURE_GEOMETRY_FLAG_OPAQUE;
     blas_geom.vertex_buffer = vertex_buffer;
     blas_geom.index_buffer = index_buffer;
     blas_geom.vertex_offset = 0;
-    blas_geom.vertex_count = 12;
+    blas_geom.vertex_count = 4;
     blas_geom.vertex_stride = sizeof(float) * 3;
     blas_geom.vertex_format = CGPU_FORMAT_R32G32B32_SFLOAT;
     blas_geom.index_offset = 0;
@@ -216,7 +217,7 @@ void ComputeFunc(void* usrdata)
 
     CGPUAccelerationStructureDescriptor blas_desc = { 0 };
     blas_desc.type = CGPU_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
-    blas_desc.flags = CGPU_ACCELERATION_STRUCTURE_BUILD_FLAG_NONE;
+    blas_desc.flags = CGPU_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
     blas_desc.bottom.count = 1;
     blas_desc.bottom.geometries = &blas_geom;
     CGPUAccelerationStructureId blas = cgpu_create_acceleration_structure(device, &blas_desc);
@@ -224,14 +225,14 @@ void ComputeFunc(void* usrdata)
     CGPUAccelerationStructureInstanceDesc tlas_instance = { 0 };
     tlas_instance.bottom = blas;
     tlas_instance.instance_id = 0;
-    tlas_instance.instance_mask = 1;
+    tlas_instance.instance_mask = 255;
     tlas_instance.transform[0] = 1.f;
     tlas_instance.transform[5] = 1.f;
     tlas_instance.transform[10] = 1.f;
 
     CGPUAccelerationStructureDescriptor tlas_desc = { 0 };
     tlas_desc.type = CGPU_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
-    tlas_desc.flags = CGPU_ACCELERATION_STRUCTURE_BUILD_FLAG_NONE;
+    tlas_desc.flags = CGPU_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
     tlas_desc.top.count = 1;
     tlas_desc.top.instances = &tlas_instance;
     CGPUAccelerationStructureId tlas = cgpu_create_acceleration_structure(device, &tlas_desc);
@@ -263,10 +264,10 @@ void ComputeFunc(void* usrdata)
     {
         cgpu_cmd_begin(cmd);
         // Build BLAS then TLAS
-        CGPUAccelerationStructureBuildDescriptor blas_build = { .as = blas };
-        cgpu_cmd_build_acceleration_structure(cmd, &blas_build);
-        CGPUAccelerationStructureBuildDescriptor tlas_build = { .as = tlas };
-        cgpu_cmd_build_acceleration_structure(cmd, &tlas_build);
+        CGPUAccelerationStructureBuildDescriptor blas_build = { .type = CGPU_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL, .as = &blas, .as_count = 1 };
+        cgpu_cmd_build_acceleration_structures(cmd, &blas_build);
+        CGPUAccelerationStructureBuildDescriptor tlas_build = { .type = CGPU_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL, .as = &tlas, .as_count = 1 };
+        cgpu_cmd_build_acceleration_structures(cmd, &tlas_build);
         // Begin dispatch compute pass
         CGPUComputePassDescriptor pass_desc = { .name = "ComputePass" };
         CGPUComputePassEncoderId encoder = cgpu_cmd_begin_compute_pass(cmd, &pass_desc);
@@ -335,6 +336,10 @@ void ComputeFunc(void* usrdata)
     // Clean up
     cgpu_free_command_buffer(cmd);
     cgpu_free_command_pool(pool);
+    cgpu_free_acceleration_structure(blas);
+    cgpu_free_acceleration_structure(tlas);
+    cgpu_free_buffer(vertex_buffer);
+    cgpu_free_buffer(index_buffer);
     cgpu_free_buffer(data_buffer);
     cgpu_free_buffer(readback_buffer);
     cgpu_free_queue(gfx_queue);

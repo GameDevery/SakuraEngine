@@ -1,5 +1,6 @@
 // clang-format off
 #include "SkrGraphics/backend/d3d12/cgpu_d3d12.h"
+#include "SkrGraphics/backend/d3d12/cgpu_d3d12_raytracing.h"
 #include "../common/common_utils.h"
 #include "d3d12_utils.h"
 
@@ -414,7 +415,7 @@ void cgpu_cmd_resource_barrier_d3d12(CGPUCommandBufferId cmd, const struct CGPUR
 {
     CGPUCommandBuffer_D3D12* Cmd             = (CGPUCommandBuffer_D3D12*)cmd;
     const uint32_t barriers_count  = desc->buffer_barriers_count + desc->texture_barriers_count;
-    D3D12_RESOURCE_BARRIER  barriers[barriers_count];
+    D3D12_RESOURCE_BARRIER barriers[barriers_count];
     uint32_t transitionCount = 0;
     for (uint32_t i = 0; i < desc->buffer_barriers_count; ++i)
     {
@@ -428,6 +429,14 @@ void cgpu_cmd_resource_barrier_d3d12(CGPUCommandBufferId cmd, const struct CGPUR
         {
             if (CGPU_RESOURCE_STATE_UNORDERED_ACCESS == pTransBarrier->src_state &&
                 CGPU_RESOURCE_STATE_UNORDERED_ACCESS == pTransBarrier->dst_state)
+            {
+                pBarrier->Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+                pBarrier->Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+                pBarrier->UAV.pResource = pBuffer->pDxResource;
+                ++transitionCount;
+            }
+            else if (CGPU_RESOURCE_STATE_ACCELERATION_STRUCTURE_WRITE == pTransBarrier->src_state &&
+                CGPU_RESOURCE_STATE_ACCELERATION_STRUCTURE_READ == pTransBarrier->dst_state)
             {
                 pBarrier->Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
                 pBarrier->Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
@@ -534,21 +543,6 @@ void cgpu_cmd_end_d3d12(CGPUCommandBufferId cmd)
     CHECK_HRESULT(COM_CALL(Close, Cmd->pDxCmdList));
 }
 
-// Compute CMDs
-CGPUComputePassEncoderId cgpu_cmd_begin_compute_pass_d3d12(CGPUCommandBufferId cmd, const struct CGPUComputePassDescriptor* desc)
-{
-    // DO NOTHING NOW
-    return (CGPUComputePassEncoderId)cmd;
-}
-
-void cgpu_compute_encoder_bind_descriptor_set_d3d12(CGPUComputePassEncoderId encoder, CGPUDescriptorSetId set)
-{
-    CGPUCommandBuffer_D3D12*       Cmd = (CGPUCommandBuffer_D3D12*)encoder;
-    const CGPUDescriptorSet_D3D12* Set = (CGPUDescriptorSet_D3D12*)set;
-    D3D12_GPU_DESCRIPTOR_HANDLE HeapToBind = { Cmd->mBoundHeapStartHandles[0].ptr + Set->mCbvSrvUavHandle };
-    COM_CALL(SetComputeRootDescriptorTable, Cmd->pDxCmdList, set->index, HeapToBind);
-}
-
 inline static bool D3D12Util_ResetRootSignature(CGPUCommandBuffer_D3D12* pCmd, ECGPUPipelineType type, ID3D12RootSignature* pRootSignature)
 {
     // Set root signature if the current one differs from pRootSignature
@@ -561,6 +555,43 @@ inline static bool D3D12Util_ResetRootSignature(CGPUCommandBuffer_D3D12* pCmd, E
             COM_CALL(SetComputeRootSignature, pCmd->pDxCmdList, pRootSignature);
     }
     return true;
+}
+
+inline static bool D3D12Util_UseAccel(CGPUCommandBufferId cmd, const CGPUDescriptorSet_D3D12* Set)
+{
+    if (Set->pBoundAccel)
+    {
+        if (Set->pBoundAccel->bIsDirty) // issue uav barrier
+        {
+            CGPUResourceBarrierDescriptor b = { 0 };
+            CGPUBufferBarrier bb = {
+                .buffer = Set->pBoundAccel->pASBuffer,
+                .src_state = CGPU_RESOURCE_STATE_ACCELERATION_STRUCTURE_WRITE,
+                .dst_state = CGPU_RESOURCE_STATE_ACCELERATION_STRUCTURE_READ,
+            };
+            b.buffer_barriers = &bb;
+            b.buffer_barriers_count = 1;
+            cgpu_cmd_resource_barrier(cmd, &b);
+            Set->pBoundAccel->bIsDirty = false;
+        }
+    }
+    return true;
+}
+
+// Compute CMDs
+CGPUComputePassEncoderId cgpu_cmd_begin_compute_pass_d3d12(CGPUCommandBufferId cmd, const struct CGPUComputePassDescriptor* desc)
+{
+    // DO NOTHING NOW
+    return (CGPUComputePassEncoderId)cmd;
+}
+
+void cgpu_compute_encoder_bind_descriptor_set_d3d12(CGPUComputePassEncoderId encoder, CGPUDescriptorSetId set)
+{
+    CGPUCommandBuffer_D3D12*       Cmd = (CGPUCommandBuffer_D3D12*)encoder;
+    const CGPUDescriptorSet_D3D12* Set = (CGPUDescriptorSet_D3D12*)set;
+    D3D12_GPU_DESCRIPTOR_HANDLE HeapToBind = { Cmd->mBoundHeapStartHandles[0].ptr + Set->mCbvSrvUavHandle };
+    D3D12Util_UseAccel(&Cmd->super, Set);
+    COM_CALL(SetComputeRootDescriptorTable, Cmd->pDxCmdList, set->index, HeapToBind);
 }
 
 void cgpu_compute_encoder_bind_pipeline_d3d12(CGPUComputePassEncoderId encoder, CGPUComputePipelineId pipeline)
@@ -799,6 +830,7 @@ void cgpu_render_encoder_bind_descriptor_set_d3d12(CGPURenderPassEncoderId encod
     CGPURootSignature_D3D12*       RS  = (CGPURootSignature_D3D12*)Set->super.root_signature;
     SKR_ASSERT(RS);
     D3D12Util_ResetRootSignature(Cmd, CGPU_PIPELINE_TYPE_GRAPHICS, RS->pDxRootSignature);
+    D3D12Util_UseAccel(&Cmd->super, Set);
     if (Set->mCbvSrvUavHandle != D3D12_GPU_VIRTUAL_ADDRESS_UNKNOWN)
     {
         D3D12_GPU_DESCRIPTOR_HANDLE HeapToBind = { Cmd->mBoundHeapStartHandles[0].ptr + Set->mCbvSrvUavHandle };

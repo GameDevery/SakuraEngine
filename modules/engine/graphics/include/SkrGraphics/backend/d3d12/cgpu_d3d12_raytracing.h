@@ -9,7 +9,7 @@ CGPU_API const CGPURayTracingProcTable* CGPU_D3D12RayTracingProcTable();
 
 CGPU_API CGPUAccelerationStructureId cgpu_create_acceleration_structure_d3d12(CGPUDeviceId device, const struct CGPUAccelerationStructureDescriptor* desc);
 CGPU_API void cgpu_free_acceleration_structure_d3d12(CGPUAccelerationStructureId as);
-CGPU_API void cgpu_cmd_build_acceleration_structure_d3d12(CGPUCommandBufferId cmd, const struct CGPUAccelerationStructureBuildDescriptor* desc);
+CGPU_API void cgpu_cmd_build_acceleration_structures_d3d12(CGPUCommandBufferId cmd, const struct CGPUAccelerationStructureBuildDescriptor* desc);
 
 typedef struct CGPUAccelerationStructure_D3D12 {
     CGPUAccelerationStructure super;
@@ -24,8 +24,11 @@ typedef struct CGPUAccelerationStructure_D3D12 {
         struct
         {
             CGPUBufferId pInstanceDescBuffer;
+            CGPUAccelerationStructure_D3D12** ppBLASRefs;
+            uint32_t mBLASRefCount;
         } asTop;
     };
+    bool bIsDirty;
     uint32_t mDescCount;
     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS mFlags;
     D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE mType;

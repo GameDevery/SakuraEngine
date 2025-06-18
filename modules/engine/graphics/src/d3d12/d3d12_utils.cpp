@@ -544,3 +544,55 @@ void D3D12Util_FreeShaderReflection(CGPUShaderLibrary_D3D12* S)
     }
     cgpu_free(S->super.entry_reflections);
 }
+
+void D3D12Util_CopyDescriptorHandle(D3D12Util_DescriptorHeap *pHeap, D3D12_CPU_DESCRIPTOR_HANDLE srcHandle, uint64_t dstHandle, uint32_t index) {
+  pHeap->pHandles[(dstHandle / pHeap->mDescriptorSize) + index] = srcHandle;
+  pHeap->pDevice->CopyDescriptorsSimple(1,
+                                        {pHeap->mStartHandle.mCpu.ptr +
+                                         dstHandle +
+                                         (index * pHeap->mDescriptorSize)},
+                                        srcHandle, pHeap->mDesc.Type);
+}
+
+void D3D12Util_CreateSRV(CGPUDevice_D3D12* D, ID3D12Resource* pResource,
+    const D3D12_SHADER_RESOURCE_VIEW_DESC* pSrvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle)
+{
+    if (D3D12_GPU_VIRTUAL_ADDRESS_NULL == pHandle->ptr)
+        *pHandle = D3D12Util_ConsumeDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], 1).mCpu;
+    D->pDxDevice->CreateShaderResourceView(pResource, pSrvDesc, *pHandle);
+}
+
+void D3D12Util_CreateUAV(CGPUDevice_D3D12* D, ID3D12Resource* pResource,
+    ID3D12Resource* pCounterResource,
+    const D3D12_UNORDERED_ACCESS_VIEW_DESC* pSrvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle)
+{
+    if (D3D12_GPU_VIRTUAL_ADDRESS_NULL == pHandle->ptr)
+        *pHandle = D3D12Util_ConsumeDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], 1).mCpu;
+    D->pDxDevice->CreateUnorderedAccessView(pResource, pCounterResource, pSrvDesc, *pHandle);
+}
+
+void D3D12Util_CreateCBV(CGPUDevice_D3D12* D,
+    const D3D12_CONSTANT_BUFFER_VIEW_DESC* pSrvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle)
+{
+    if (D3D12_GPU_VIRTUAL_ADDRESS_NULL == pHandle->ptr)
+        *pHandle = D3D12Util_ConsumeDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], 1).mCpu;
+    D->pDxDevice->CreateConstantBufferView(pSrvDesc, *pHandle);
+}
+
+void D3D12Util_CreateRTV(CGPUDevice_D3D12* D,
+    ID3D12Resource* pResource,
+    const D3D12_RENDER_TARGET_VIEW_DESC* pRtvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle)
+{
+    if (D3D12_GPU_VIRTUAL_ADDRESS_NULL == pHandle->ptr)
+        *pHandle = D3D12Util_ConsumeDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_RTV], 1).mCpu;
+    D->pDxDevice->CreateRenderTargetView(pResource, pRtvDesc, *pHandle);
+}
+
+void D3D12Util_CreateDSV(CGPUDevice_D3D12* D,
+    ID3D12Resource* pResource,
+    const D3D12_DEPTH_STENCIL_VIEW_DESC* pDsvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle)
+{
+    if (D3D12_GPU_VIRTUAL_ADDRESS_NULL == pHandle->ptr)
+        *pHandle = D3D12Util_ConsumeDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_DSV], 1).mCpu;
+    D->pDxDevice->CreateDepthStencilView(pResource, pDsvDesc, *pHandle);
+}

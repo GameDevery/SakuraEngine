@@ -133,7 +133,7 @@ CGPU_API void cgpu_cmd_end_compute_pass_metal(CGPUCommandBufferId cmd, CGPUCompu
 // RayTracing APIs
 CGPU_API CGPUAccelerationStructureId cgpu_create_acceleration_structure_metal(CGPUDeviceId device, const struct CGPUAccelerationStructureDescriptor* desc);
 CGPU_API void cgpu_free_acceleration_structure_metal(CGPUAccelerationStructureId as);
-CGPU_API void cgpu_cmd_build_acceleration_structure_metal(CGPUCommandBufferId cmd, const struct CGPUAccelerationStructureBuildDescriptor* desc);
+CGPU_API void cgpu_cmd_build_acceleration_structures_metal(CGPUCommandBufferId cmd, const struct CGPUAccelerationStructureBuildDescriptor* desc);
 
 #ifdef __cplusplus
 }

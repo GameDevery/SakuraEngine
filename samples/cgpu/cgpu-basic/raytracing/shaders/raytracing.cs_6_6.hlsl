@@ -11,12 +11,12 @@ float4 trace(uint2 tid, uint2 tsize)
 {
     RayDesc ray;
     ray.Origin = float3((float)tid.x / (float)tsize.x, (float)tid.y / (float)tsize.y, 100.0f);
-    ray.Direction = float3(0, 0, -100.0f);
-    ray.TMin = 0;
-    ray.TMax = ~0;
+    ray.Direction = float3(0, 0, -1.0f);
+    ray.TMin = 0.01f;
+    ray.TMax = 9999.f;
 
     RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> q;
-    q.TraceRayInline(AS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, ~0, ray);
+    q.TraceRayInline(AS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xFF, ray);
     q.Proceed();
 
     if (q.CommittedStatus() == COMMITTED_TRIANGLE_HIT)

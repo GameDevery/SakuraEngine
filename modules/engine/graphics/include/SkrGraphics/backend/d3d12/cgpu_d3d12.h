@@ -21,6 +21,7 @@ struct DMA_Pool;
 struct DMA_Allocation;
 struct D3D12Util_DescriptorHandle;
 struct D3D12Util_DescriptorHeap;
+typedef struct CGPUAccelerationStructure_D3D12 CGPUAccelerationStructure_D3D12;
 
 CGPU_API const CGPUProcTable* CGPU_D3D12ProcTable();
 CGPU_API const CGPUSurfacesProcTable* CGPU_D3D12SurfacesProcTable();
@@ -308,6 +309,8 @@ typedef struct CGPUDescriptorSet_D3D12 {
     uint32_t mSamplerStride;
     // TODO: Support root descriptors
     // D3D12_GPU_VIRTUAL_ADDRESS* pRootAddresses;
+    // Raytracing
+    CGPUAccelerationStructure_D3D12* pBoundAccel;
 } CGPUDescriptorSet_D3D12;
 
 typedef struct CGPUComputePipeline_D3D12 {

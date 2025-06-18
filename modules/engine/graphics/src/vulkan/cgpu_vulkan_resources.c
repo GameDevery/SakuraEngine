@@ -184,7 +184,7 @@ CGPUBufferId cgpu_create_buffer_vulkan(CGPUDeviceId device, const struct CGPUBuf
             .flags = 0,
             .format = texel_format,
             .offset = desc->first_element * desc->element_stride,
-            .range = desc->elemet_count * desc->element_stride
+            .range = desc->element_count * desc->element_stride
         };
         if (add_info.usage & VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT)
         {

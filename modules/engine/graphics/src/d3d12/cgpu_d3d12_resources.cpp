@@ -35,19 +35,19 @@ CGPUMemoryPoolId cgpu_create_memory_pool_d3d12(CGPUDeviceId device, const struct
     {
         case CGPU_MEM_POOL_TYPE_TILED:
             poolDesc.HeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
-            pool               = cgpu_new<CGPUTiledMemoryPool_D3D12>();
+            pool = cgpu_new<CGPUTiledMemoryPool_D3D12>();
             break;
         default:
             poolDesc.HeapFlags = D3D12_HEAP_FLAG_NONE;
-            pool               = cgpu_new<CGPUMemoryPool_D3D12>();
+            pool = cgpu_new<CGPUMemoryPool_D3D12>();
             break;
     }
-    poolDesc.HeapProperties.Type    = D3D12Util_TranslateHeapType(desc->memory_usage);
+    poolDesc.HeapProperties.Type = D3D12Util_TranslateHeapType(desc->memory_usage);
     poolDesc.MinAllocationAlignment = desc->min_alloc_alignment;
-    poolDesc.BlockSize              = desc->block_size;
-    poolDesc.MinBlockCount          = desc->min_block_count;
-    poolDesc.MaxBlockCount          = desc->max_block_count;
-    auto hres                       = D->pResourceAllocator->CreatePool(&poolDesc, &pool->pDxPool);
+    poolDesc.BlockSize = desc->block_size;
+    poolDesc.MinBlockCount = desc->min_block_count;
+    poolDesc.MaxBlockCount = desc->max_block_count;
+    auto hres = D->pResourceAllocator->CreatePool(&poolDesc, &pool->pDxPool);
     CHECK_HRESULT(hres);
 
     pool->super.device = device;
@@ -187,24 +187,24 @@ CGPUBufferId cgpu_create_buffer_d3d12(CGPUDeviceId device, const struct CGPUBuff
         if (desc->descriptors & CGPU_RESOURCE_TYPE_UNIFORM_BUFFER)
         {
             D3D12_CPU_DESCRIPTOR_HANDLE cbv = { B->mDxDescriptorHandles.ptr };
-            B->mDxSrvOffset                 = pHeap->mDescriptorSize * 1;
+            B->mDxSrvOffset = pHeap->mDescriptorSize * 1;
 
             D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
-            cbvDesc.BufferLocation                  = B->mDxGpuAddress;
-            cbvDesc.SizeInBytes                     = (UINT)allocationSize;
+            cbvDesc.BufferLocation = B->mDxGpuAddress;
+            cbvDesc.SizeInBytes = (UINT)allocationSize;
             D3D12Util_CreateCBV(D, &cbvDesc, &cbv);
         }
         // Create SRV
         if (desc->descriptors & CGPU_RESOURCE_TYPE_BUFFER)
         {
             D3D12_CPU_DESCRIPTOR_HANDLE srv = { B->mDxDescriptorHandles.ptr + B->mDxSrvOffset };
-            B->mDxUavOffset                 = B->mDxSrvOffset + pHeap->mDescriptorSize * 1;
+            B->mDxUavOffset = B->mDxSrvOffset + pHeap->mDescriptorSize * 1;
 
             D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
             srvDesc.ViewDimension                   = D3D12_SRV_DIMENSION_BUFFER;
             srvDesc.Shader4ComponentMapping         = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
             srvDesc.Buffer.FirstElement             = desc->first_element;
-            srvDesc.Buffer.NumElements              = (UINT)(desc->elemet_count);
+            srvDesc.Buffer.NumElements              = (UINT)(desc->element_count);
             srvDesc.Buffer.StructureByteStride      = (UINT)(desc->element_stride);
             srvDesc.Buffer.Flags                    = D3D12_BUFFER_SRV_FLAG_NONE;
             srvDesc.Format                          = (DXGI_FORMAT)DXGIUtil_TranslatePixelFormat(desc->format, false);
@@ -233,7 +233,7 @@ CGPUBufferId cgpu_create_buffer_d3d12(CGPUDeviceId device, const struct CGPUBuff
             uavDesc.Format                           = DXGI_FORMAT_UNKNOWN;
             uavDesc.ViewDimension                    = D3D12_UAV_DIMENSION_BUFFER;
             uavDesc.Buffer.FirstElement              = desc->first_element;
-            uavDesc.Buffer.NumElements               = (UINT)(desc->elemet_count);
+            uavDesc.Buffer.NumElements               = (UINT)(desc->element_count);
             uavDesc.Buffer.StructureByteStride       = (UINT)(desc->element_stride);
             uavDesc.Buffer.CounterOffsetInBytes      = 0;
             uavDesc.Buffer.Flags                     = D3D12_BUFFER_UAV_FLAG_NONE;

@@ -45,7 +45,7 @@ typedef CGPUAccelerationStructureId (*CGPUProcCreateAccelerationStructure)(CGPUD
 CGPU_EXTERN_C CGPU_API void cgpu_free_acceleration_structure(CGPUAccelerationStructureId as);
 typedef void (*CGPUProcFreeAccelerationStructure)(CGPUAccelerationStructureId as);
 
-CGPU_EXTERN_C CGPU_API void cgpu_cmd_build_acceleration_structure(CGPUCommandBufferId cmd, const struct CGPUAccelerationStructureBuildDescriptor* desc);
+CGPU_EXTERN_C CGPU_API void cgpu_cmd_build_acceleration_structures(CGPUCommandBufferId cmd, const struct CGPUAccelerationStructureBuildDescriptor* desc);
 typedef void (*CGPUProcCmdBuildAccelerationStructure)(CGPUCommandBufferId cmd, const struct CGPUAccelerationStructureBuildDescriptor* desc);
 
 // TODO: MANUAL SCRATCH BUFFER MANAGEMENT
@@ -98,7 +98,9 @@ typedef struct CGPUAccelerationStructureDescriptor {
 } CGPUAccelerationStructureDescriptor;
 
 typedef struct CGPUAccelerationStructureBuildDescriptor {
-    CGPUAccelerationStructureId as;
+    ECGPUAccelerationStructureType type;
+    uint32_t as_count;
+    const CGPUAccelerationStructureId* as;
 } CGPUAccelerationStructureBuildDescriptor;
 
 typedef struct CGPUAccelerationStructure {

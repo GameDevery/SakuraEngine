@@ -2,7 +2,9 @@
 #include "d3d12_utils.h"
 
 const CGPURayTracingProcTable rt_tbl_d3d12 = {
-
+    .create_acceleration_structure = &cgpu_create_acceleration_structure_d3d12,
+    .free_acceleration_structure = &cgpu_free_acceleration_structure_d3d12,
+    .cmd_build_acceleration_structure = &cgpu_cmd_build_acceleration_structures_d3d12,
 };
 
 const CGPURayTracingProcTable* CGPU_D3D12RayTracingProcTable()
@@ -10,16 +12,16 @@ const CGPURayTracingProcTable* CGPU_D3D12RayTracingProcTable()
     return &rt_tbl_d3d12;
 }
 
-
 inline static D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE ToDXRASType(ECGPUAccelerationStructureType type);
 inline static D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS ToDXRBuildFlags(CGPUAccelerationStructureBuildFlags flags);
 inline static D3D12_RAYTRACING_GEOMETRY_FLAGS ToDXRGeometryFlags(CGPUAccelerationStructureGeometryFlags flags);
+inline static D3D12_RAYTRACING_INSTANCE_FLAGS ToDXRInstanceFlags(CGPUAccelerationStructureInstanceFlags flags);
 
 CGPUAccelerationStructureId cgpu_create_acceleration_structure_d3d12(CGPUDeviceId device, const struct CGPUAccelerationStructureDescriptor* desc)
 {
     CGPUDevice_D3D12* D = (CGPUDevice_D3D12*)device;
     const CGPUAdapter_D3D12* A = (CGPUAdapter_D3D12*)device->adapter;
-    size_t memSize = sizeof(CGPUAccelerationStructure);
+    size_t memSize = sizeof(CGPUAccelerationStructure_D3D12);
     if (desc->type == CGPU_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL)
     {
         memSize += desc->bottom.count * sizeof(D3D12_RAYTRACING_GEOMETRY_DESC);
@@ -110,9 +112,9 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_d3d12(CGPUDeviceI
             .descriptors = CGPU_RESOURCE_TYPE_RW_BUFFER,
             .memory_usage = CGPU_MEM_USAGE_GPU_ONLY,
             .flags = CGPU_BCF_NO_DESCRIPTOR_VIEW_CREATION | CGPU_BCF_DEDICATED_BIT,
-            .element_stride = 0,
+            .element_stride = sizeof(uint32_t),
             .first_element = 0,
-            .elemet_count = (uint32_t)(info.ResultDataMaxSizeInBytes / sizeof(UINT32)),
+            .element_count = (uint32_t)(info.ResultDataMaxSizeInBytes / sizeof(UINT32)),
             .size = info.ResultDataMaxSizeInBytes,
             .start_state = CGPU_RESOURCE_STATE_ACCELERATION_STRUCTURE_WRITE
         };
@@ -121,8 +123,90 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_d3d12(CGPUDeviceI
     }
     else if (desc->type == CGPU_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL)
     {
+        AS->mDescCount = desc->top.count;
+        /************************************************************************/
+        // Get the size requirement for the Acceleration Structures
+        /************************************************************************/
+        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS prebuildDesc = {
+            .DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY,
+            .Flags = AS->mFlags,
+            .NumDescs = desc->top.count,
+            .pGeometryDescs = NULL,
+            .Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL,
+        };
 
+        D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO info = { 0 };
+        COM_CALL(GetRaytracingAccelerationStructurePrebuildInfo, D->pDxDevice5, &prebuildDesc, &info);
+
+        /************************************************************************/
+        /*  Construct buffer with instances descriptions                        */
+        /************************************************************************/
+        D3D12_RAYTRACING_INSTANCE_DESC* instanceDescs = cgpu_calloc(desc->top.count, sizeof(D3D12_RAYTRACING_INSTANCE_DESC));
+        for (uint32_t i = 0; i < desc->top.count; ++i)
+        {
+            const CGPUAccelerationStructureInstanceDesc* pInst = &desc->top.instances[i];
+            CGPUAccelerationStructure_D3D12* pBLAS = (CGPUAccelerationStructure_D3D12*)pInst->bottom;
+            cgpu_assert(pBLAS && "cgpu_assert: Instance Bottom AS must not be NULL!");
+
+            const CGPUBuffer_D3D12* pASBuffer = (const CGPUBuffer_D3D12*)pBLAS->pASBuffer;
+            instanceDescs[i] = (D3D12_RAYTRACING_INSTANCE_DESC){
+                .AccelerationStructure = COM_CALL(GetGPUVirtualAddress, pASBuffer->pDxResource),
+                .Flags = ToDXRInstanceFlags(pInst->flags),
+                .InstanceContributionToHitGroupIndex = 0, // TODO: support hit group index
+                .InstanceID = pInst->instance_id,
+                .InstanceMask = pInst->instance_mask,
+            };
+            memcpy(instanceDescs[i].Transform, pInst->transform, sizeof(float[12]));
+        }
+
+        CGPUBufferDescriptor instanceDesc = {
+            .memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU,
+            .flags = CGPU_BCF_PERSISTENT_MAP_BIT,
+            .size = desc->top.count * sizeof(instanceDescs[0]),
+        };
+        AS->asTop.pInstanceDescBuffer = cgpu_create_buffer(device, &instanceDesc);
+        if (desc->top.count)
+        {
+            memcpy(AS->asTop.pInstanceDescBuffer->info->cpu_mapped_address, instanceDescs, instanceDesc.size);
+        }
+        cgpu_free(instanceDescs);
+        /************************************************************************/
+        // Allocate Acceleration Structure Buffer
+        /************************************************************************/
+        CGPUBufferDescriptor bufferDesc = {
+            .descriptors = CGPU_RESOURCE_TYPE_RW_BUFFER_RAW | CGPU_RESOURCE_TYPE_BUFFER_RAW,
+            .memory_usage = CGPU_MEM_USAGE_GPU_ONLY,
+            .flags = CGPU_BCF_DEDICATED_BIT,
+            .element_stride = sizeof(uint32_t),
+            .first_element = 0,
+            .element_count = (uint32_t)(info.ResultDataMaxSizeInBytes / sizeof(UINT32)),
+            .size = info.ResultDataMaxSizeInBytes,
+            .start_state = CGPU_RESOURCE_STATE_ACCELERATION_STRUCTURE_WRITE
+        };
+        AS->pASBuffer = cgpu_create_buffer(device, &bufferDesc);
+        
+        const CGPUBuffer_D3D12* pASBuffer = (const CGPUBuffer_D3D12*)AS->pASBuffer;
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {
+            .ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE,
+            .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+            .Format = DXGI_FORMAT_UNKNOWN,
+            .RaytracingAccelerationStructure.Location = pASBuffer->mDxGpuAddress
+        };
+        D3D12_CPU_DESCRIPTOR_HANDLE SRV = { pASBuffer->mDxDescriptorHandles.ptr + pASBuffer->mDxSrvOffset };
+        D3D12Util_CreateSRV(D, CGPU_NULLPTR, &srvDesc, &SRV);
+
+        AS->super.scratch_buffer_size = (UINT)info.ScratchDataSizeInBytes;
     }
+
+    // Create scratch buffer
+    CGPUBufferDescriptor scratchBufferDesc = {
+        .descriptors = CGPU_RESOURCE_TYPE_RW_BUFFER,
+        .memory_usage = CGPU_MEM_USAGE_GPU_ONLY,
+        .start_state = CGPU_RESOURCE_STATE_COMMON,
+        .flags = CGPU_BCF_NO_DESCRIPTOR_VIEW_CREATION,
+        .size = AS->super.scratch_buffer_size,
+    };
+    AS->pScratchBuffer = cgpu_create_buffer(device, &scratchBufferDesc);
     return &AS->super;
 }
 
@@ -139,12 +223,80 @@ void cgpu_free_acceleration_structure_d3d12(CGPUAccelerationStructureId as)
         cgpu_free_buffer(AS->pScratchBuffer);
         AS->pScratchBuffer = CGPU_NULLPTR;
     }
+    if (AS->super.type == CGPU_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL)
+    {
+        if (AS->asTop.pInstanceDescBuffer)
+        {
+            cgpu_free_buffer(AS->asTop.pInstanceDescBuffer);
+            AS->asTop.pInstanceDescBuffer = CGPU_NULLPTR;
+        }
+    }
     cgpu_free(AS);
 }
 
-void cgpu_cmd_build_acceleration_structure_d3d12(CGPUCommandBufferId cmd, const struct CGPUAccelerationStructureBuildDescriptor* desc)
+void cgpu_cmd_build_acceleration_structures_d3d12(CGPUCommandBufferId cmd, const struct CGPUAccelerationStructureBuildDescriptor* desc)
 {
+    const CGPUCommandBuffer_D3D12* CMD = (const CGPUCommandBuffer_D3D12*)cmd;
+    ID3D12GraphicsCommandList4* dxrCmd = NULL;
+    COM_CALL(QueryInterface, CMD->pDxCmdList, IID_ARGS(ID3D12GraphicsCommandList4, &dxrCmd));
+    cgpu_assert(dxrCmd);
 
+    for (uint32_t i = 0; i < desc->as_count; i++)
+    {
+        CGPUAccelerationStructure_D3D12* AS = (CGPUAccelerationStructure_D3D12*)desc->as[i];
+        const D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE type = AS->mType;
+
+        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc = {
+            .DestAccelerationStructureData = COM_CALL(GetGPUVirtualAddress, ((const CGPUBuffer_D3D12*)AS->pASBuffer)->pDxResource),
+            .ScratchAccelerationStructureData = COM_CALL(GetGPUVirtualAddress, ((const CGPUBuffer_D3D12*)AS->pScratchBuffer)->pDxResource),
+            .Inputs = 
+                {
+                    .Type = type,
+                    .DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY,
+                    .Flags = AS->mFlags,
+                    .pGeometryDescs = NULL,
+                    .NumDescs = AS->mDescCount,
+                },
+        };
+        if (type == D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL)
+        {
+            buildDesc.Inputs.pGeometryDescs = AS->asBottom.pGeometryDescs;
+        }
+        else if (type == D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL)
+        {
+            buildDesc.Inputs.InstanceDescs = COM_CALL(GetGPUVirtualAddress, ((const CGPUBuffer_D3D12*)AS->asTop.pInstanceDescBuffer)->pDxResource);
+        }
+        AS->bIsDirty = true;
+
+        COM_CALL(BuildRaytracingAccelerationStructure, dxrCmd, &buildDesc, 0, CGPU_NULLPTR);
+    }
+
+    if (desc->type == CGPU_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL)
+    {
+        const uint32_t STORE_COUNT = 4;
+        CGPUBufferBarrier STORE[STORE_COUNT];
+        const bool USE_STORE = desc->as_count < STORE_COUNT;
+
+        CGPUBufferBarrier* BufferBarriers = USE_STORE ? STORE : cgpu_malloc(desc->as_count * sizeof(CGPUBufferBarrier));
+        for (uint32_t i = 0; i < desc->as_count; i++)
+        {
+            CGPUAccelerationStructure_D3D12* AS = (CGPUAccelerationStructure_D3D12*)desc->as[i];
+            if (AS->pASBuffer)
+            {
+                BufferBarriers[i].buffer = AS->pASBuffer;
+                BufferBarriers[i].src_state = CGPU_RESOURCE_STATE_ACCELERATION_STRUCTURE_WRITE;
+                BufferBarriers[i].dst_state = CGPU_RESOURCE_STATE_ACCELERATION_STRUCTURE_READ;
+            }
+        }
+        CGPUResourceBarrierDescriptor barriers = { .buffer_barriers = BufferBarriers, .buffer_barriers_count = desc->as_count };
+        cgpu_cmd_resource_barrier(cmd, &barriers);
+
+        if (!USE_STORE)
+            cgpu_free(BufferBarriers);
+    }
+
+
+    COM_CALL(Release, dxrCmd);
 }
 
 inline static D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE ToDXRASType(ECGPUAccelerationStructureType type)
@@ -178,6 +330,19 @@ inline static D3D12_RAYTRACING_GEOMETRY_FLAGS ToDXRGeometryFlags(CGPUAcceleratio
         ret |= D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
     if (flags & CGPU_ACCELERATION_STRUCTURE_GEOMETRY_FLAG_NO_DUPLICATE_ANYHIT_INVOCATION)
         ret |= D3D12_RAYTRACING_GEOMETRY_FLAG_NO_DUPLICATE_ANYHIT_INVOCATION;
+
+    return ret;
+}
+
+inline static D3D12_RAYTRACING_INSTANCE_FLAGS ToDXRInstanceFlags(CGPUAccelerationStructureInstanceFlags flags)
+{
+    D3D12_RAYTRACING_INSTANCE_FLAGS ret = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
+    if (flags & CGPU_ACCELERATION_STRUCTURE_INSTANCE_FLAG_FORCE_OPAQUE)
+        ret |= D3D12_RAYTRACING_INSTANCE_FLAG_FORCE_OPAQUE;
+    if (flags & CGPU_ACCELERATION_STRUCTURE_INSTANCE_FLAG_TRIANGLE_CULL_DISABLE)
+        ret |= D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_CULL_DISABLE;
+    if (flags & CGPU_ACCELERATION_STRUCTURE_INSTANCE_FLAG_TRIANGLE_FRONT_COUNTERCLOCKWISE)
+        ret |= D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_FRONT_COUNTERCLOCKWISE;
 
     return ret;
 }

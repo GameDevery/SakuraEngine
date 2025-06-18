@@ -5,7 +5,7 @@
 const CGPURayTracingProcTable rt_tbl_metal = {
     .create_acceleration_structure = &cgpu_create_acceleration_structure_metal,
     .free_acceleration_structure = &cgpu_free_acceleration_structure_metal,
-    .cmd_build_acceleration_structure = &cgpu_cmd_build_acceleration_structure_metal,
+    .cmd_build_acceleration_structure = &cgpu_cmd_build_acceleration_structures_metal,
 };
 
 const struct CGPURayTracingProcTable* CGPU_MetalRayTracingProcTable()
@@ -167,7 +167,7 @@ void cgpu_free_acceleration_structure_metal(CGPUAccelerationStructureId as)
     cgpu_free(AS);
 }
 
-void cgpu_cmd_build_acceleration_structure_metal(CGPUCommandBufferId cmd, const struct CGPUAccelerationStructureBuildDescriptor* desc)
+void cgpu_cmd_build_acceleration_structures_metal(CGPUCommandBufferId cmd, const struct CGPUAccelerationStructureBuildDescriptor* desc)
 {
     CGPUCommandBuffer_Metal* CMD = (CGPUCommandBuffer_Metal*)cmd;
     MetalUtil_FlushUtilEncoders(CMD, MTLUtilEncoderTypeBlit);

@@ -1775,7 +1775,7 @@ void cgpu_free_acceleration_structure(CGPUAccelerationStructureId as)
     SkrCZoneEnd(zz);
 }
 
-void cgpu_cmd_build_acceleration_structure(CGPUCommandBufferId cmd, const struct CGPUAccelerationStructureBuildDescriptor* desc)
+void cgpu_cmd_build_acceleration_structures(CGPUCommandBufferId cmd, const struct CGPUAccelerationStructureBuildDescriptor* desc)
 {
     SkrCZoneN(zz, "CGPUCmdBuildAccelerationStructure", 1);
 

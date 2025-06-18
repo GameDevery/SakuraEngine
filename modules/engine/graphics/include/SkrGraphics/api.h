@@ -1172,9 +1172,9 @@ typedef struct CGPUBufferBarrier {
     CGPUBufferId buffer;
     ECGPUResourceState src_state;
     ECGPUResourceState dst_state;
+    ECGPUQueueType queue_type;
     uint8_t queue_acquire;
     uint8_t queue_release;
-    ECGPUQueueType queue_type;
     uint8_t d3d12_begin_only;
     uint8_t d3d12_end_only;
 } CGPUBufferBarrier;
@@ -1532,7 +1532,7 @@ typedef struct CGPUBufferDescriptor {
     /// Index of the first element accessible by the SRV/UAV (applicable to BUFFER_USAGE_STORAGE_SRV, BUFFER_USAGE_STORAGE_UAV)
     uint64_t first_element;
     /// Number of elements in the buffer (applicable to BUFFER_USAGE_STORAGE_SRV, BUFFER_USAGE_STORAGE_UAV)
-    uint64_t elemet_count;
+    uint64_t element_count;
     /// Size of each element (in bytes) in the buffer (applicable to BUFFER_USAGE_STORAGE_SRV, BUFFER_USAGE_STORAGE_UAV)
     uint64_t element_stride;
     /// Owner queue of the resource at creation

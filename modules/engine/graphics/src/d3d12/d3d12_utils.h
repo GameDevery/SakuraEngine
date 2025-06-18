@@ -55,6 +55,9 @@ CGPU_EXTERN_C D3D12Util_DescriptorHandle D3D12Util_ConsumeDescriptorHandles(stru
 CGPU_EXTERN_C void D3D12Util_ReturnDescriptorHandles(struct D3D12Util_DescriptorHeap* pHeap, D3D12_CPU_DESCRIPTOR_HANDLE handle, uint32_t count);
 
 // Use Views
+CGPU_EXTERN_C void D3D12Util_CopyDescriptorHandle(struct D3D12Util_DescriptorHeap *pHeap,
+                                   D3D12_CPU_DESCRIPTOR_HANDLE srcHandle,
+                                   uint64_t dstHandle, uint32_t index);
 CGPU_EXTERN_C void D3D12Util_CreateSRV(CGPUDevice_D3D12* D, ID3D12Resource* pResource,
                          const D3D12_SHADER_RESOURCE_VIEW_DESC* pSrvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle);
 CGPU_EXTERN_C void D3D12Util_CreateUAV(CGPUDevice_D3D12* D, ID3D12Resource* pResource,
@@ -971,59 +974,5 @@ typedef struct D3D12Util_DescriptorHeap {
     uint32_t mUsedDescriptors;
 #endif
 } D3D12Util_DescriptorHeap;
-
-SKR_FORCEINLINE static void D3D12Util_CopyDescriptorHandle(D3D12Util_DescriptorHeap *pHeap,
-                                   const D3D12_CPU_DESCRIPTOR_HANDLE &srcHandle,
-                                   const uint64_t &dstHandle, uint32_t index) {
-  pHeap->pHandles[(dstHandle / pHeap->mDescriptorSize) + index] = srcHandle;
-  pHeap->pDevice->CopyDescriptorsSimple(1,
-                                        {pHeap->mStartHandle.mCpu.ptr +
-                                         dstHandle +
-                                         (index * pHeap->mDescriptorSize)},
-                                        srcHandle, pHeap->mDesc.Type);
-}
-
-SKR_FORCEINLINE static void D3D12Util_CreateSRV(CGPUDevice_D3D12* D, ID3D12Resource* pResource,
-    const D3D12_SHADER_RESOURCE_VIEW_DESC* pSrvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle)
-{
-    if (D3D12_GPU_VIRTUAL_ADDRESS_NULL == pHandle->ptr)
-        *pHandle = D3D12Util_ConsumeDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], 1).mCpu;
-    D->pDxDevice->CreateShaderResourceView(pResource, pSrvDesc, *pHandle);
-}
-
-SKR_FORCEINLINE static void D3D12Util_CreateUAV(CGPUDevice_D3D12* D, ID3D12Resource* pResource,
-    ID3D12Resource* pCounterResource,
-    const D3D12_UNORDERED_ACCESS_VIEW_DESC* pSrvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle)
-{
-    if (D3D12_GPU_VIRTUAL_ADDRESS_NULL == pHandle->ptr)
-        *pHandle = D3D12Util_ConsumeDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], 1).mCpu;
-    D->pDxDevice->CreateUnorderedAccessView(pResource, pCounterResource, pSrvDesc, *pHandle);
-}
-
-SKR_FORCEINLINE static void D3D12Util_CreateCBV(CGPUDevice_D3D12* D,
-    const D3D12_CONSTANT_BUFFER_VIEW_DESC* pSrvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle)
-{
-    if (D3D12_GPU_VIRTUAL_ADDRESS_NULL == pHandle->ptr)
-        *pHandle = D3D12Util_ConsumeDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], 1).mCpu;
-    D->pDxDevice->CreateConstantBufferView(pSrvDesc, *pHandle);
-}
-
-SKR_FORCEINLINE static void D3D12Util_CreateRTV(CGPUDevice_D3D12* D,
-    ID3D12Resource* pResource,
-    const D3D12_RENDER_TARGET_VIEW_DESC* pRtvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle)
-{
-    if (D3D12_GPU_VIRTUAL_ADDRESS_NULL == pHandle->ptr)
-        *pHandle = D3D12Util_ConsumeDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_RTV], 1).mCpu;
-    D->pDxDevice->CreateRenderTargetView(pResource, pRtvDesc, *pHandle);
-}
-
-SKR_FORCEINLINE static void D3D12Util_CreateDSV(CGPUDevice_D3D12* D,
-    ID3D12Resource* pResource,
-    const D3D12_DEPTH_STENCIL_VIEW_DESC* pDsvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle)
-{
-    if (D3D12_GPU_VIRTUAL_ADDRESS_NULL == pHandle->ptr)
-        *pHandle = D3D12Util_ConsumeDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_DSV], 1).mCpu;
-    D->pDxDevice->CreateDepthStencilView(pResource, pDsvDesc, *pHandle);
-}
 
 #endif // __cplusplus
