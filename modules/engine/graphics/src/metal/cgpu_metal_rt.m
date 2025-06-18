@@ -108,11 +108,12 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_metal(CGPUDeviceI
         {
             const CGPUAccelerationStructureInstanceDesc* pInst = &desc->top.instances[i];
             const CGPUAccelerationStructure_Metal* pBLAS = (const CGPUAccelerationStructure_Metal*)pInst->bottom;
-            
+            MTLAccelerationStructureInstanceDescriptor* ToBuild = &instanceDescs[pInst->instance_id];
+
             cgpu_assert(pInst->bottom);
-            instanceDescs[i].options = ToMTLASOptions(pInst->flags);
-            instanceDescs[i].mask = pInst->instance_mask;
-            instanceDescs[i].accelerationStructureIndex = (uint32_t)[primitiveASArray indexOfObject:pBLAS->mtlAS];
+            ToBuild->options = ToMTLASOptions(pInst->flags);
+            ToBuild->mask = pInst->instance_mask;
+            ToBuild->accelerationStructureIndex = (uint32_t)[primitiveASArray indexOfObject:pBLAS->mtlAS];
             // Copy the first three rows of the instance transformation matrix. Metal
             // assumes that the bottom row is (0, 0, 0, 1), which allows the renderer to
             // tightly pack instance descriptors in memory.
@@ -120,7 +121,7 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_metal(CGPUDeviceI
             {
                 for (uint32_t row = 0; row < 3; ++row)
                 {
-                    instanceDescs[i].transformationMatrix.columns[column].elements[row] = pInst->transform[row * 4 + column];
+                    ToBuild->transformationMatrix.columns[column].elements[row] = pInst->transform[row * 4 + column];
                 }
             }
         }
@@ -173,23 +174,26 @@ void cgpu_cmd_build_acceleration_structures_metal(CGPUCommandBufferId cmd, const
     MetalUtil_FlushUtilEncoders(CMD, MTLUtilEncoderTypeBlit);
 
     CMD->UtilEncoders.mtlASCommandEncoder = CMD->UtilEncoders.mtlASCommandEncoder ? CMD->UtilEncoders.mtlASCommandEncoder : [CMD->mtlCommandBuffer accelerationStructureCommandEncoder];
-    const CGPUAccelerationStructure_Metal* AS = (const CGPUAccelerationStructure_Metal*)desc->as;
-    const CGPUBuffer_Metal* pScratchBuffer = (const CGPUBuffer_Metal*)AS->scratch_buffer;
+    for (uint32_t i = 0; i < desc->as_count; i++)
+    {
+        const CGPUAccelerationStructure_Metal* AS = (const CGPUAccelerationStructure_Metal*)desc->as[i];
+        const CGPUBuffer_Metal* pScratchBuffer = (const CGPUBuffer_Metal*)AS->scratch_buffer;
+        if (desc->type == CGPU_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL)
+        {
+            [CMD->UtilEncoders.mtlASCommandEncoder buildAccelerationStructure:AS->mtlAS
+                                            descriptor:AS->asBottom.mtlBottomDesc
+                                        scratchBuffer:pScratchBuffer->mtlBuffer
+                                    scratchBufferOffset:0];
+        }
+        else
+        {
+            [CMD->UtilEncoders.mtlASCommandEncoder buildAccelerationStructure:AS->mtlAS
+                                            descriptor:AS->asTop.mtlTopDesc
+                                        scratchBuffer:pScratchBuffer->mtlBuffer
+                                    scratchBufferOffset:0];
+        }
+    }
 
-    if (AS->super.type == CGPU_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL)
-    {
-        [CMD->UtilEncoders.mtlASCommandEncoder buildAccelerationStructure:AS->mtlAS
-                                          descriptor:AS->asBottom.mtlBottomDesc
-                                       scratchBuffer:pScratchBuffer->mtlBuffer
-                                 scratchBufferOffset:0];
-    }
-    else
-    {
-        [CMD->UtilEncoders.mtlASCommandEncoder buildAccelerationStructure:AS->mtlAS
-                                          descriptor:AS->asTop.mtlTopDesc
-                                       scratchBuffer:pScratchBuffer->mtlBuffer
-                                 scratchBufferOffset:0];
-    }
 }
 
 inline static MTLAccelerationStructureInstanceOptions ToMTLASOptions(CGPUAccelerationStructureInstanceFlags flags)
