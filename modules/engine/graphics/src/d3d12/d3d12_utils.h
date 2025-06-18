@@ -13,26 +13,26 @@
 #define CALC_SUBRESOURCE_INDEX(MipSlice, ArraySlice, PlaneSlice, MipLevels, ArraySize) ((MipSlice) + ((ArraySlice) * (MipLevels)) + ((PlaneSlice) * (MipLevels) * (ArraySize)))
 
 // Instance Helpers
-void D3D12Util_QueryAllAdapters(CGPUInstance_D3D12* I, uint32_t* count, bool* foundSoftwareAdapter);
-bool D3D12Util_InitializeEnvironment(struct CGPUInstance* Inst);
-void D3D12Util_DeInitializeEnvironment(struct CGPUInstance* Inst);
-void D3D12Util_Optionalenable_debug_layer(CGPUInstance_D3D12* result, CGPUInstanceDescriptor const* descriptor);
+CGPU_EXTERN_C void D3D12Util_QueryAllAdapters(CGPUInstance_D3D12* I, uint32_t* count, bool* foundSoftwareAdapter);
+CGPU_EXTERN_C bool D3D12Util_InitializeEnvironment(struct CGPUInstance* Inst);
+CGPU_EXTERN_C void D3D12Util_DeInitializeEnvironment(struct CGPUInstance* Inst);
+CGPU_EXTERN_C void D3D12Util_Optionalenable_debug_layer(CGPUInstance_D3D12* result, CGPUInstanceDescriptor const* descriptor);
 
 // Device Helpers
-void D3D12Util_CreateDMAAllocator(CGPUInstance_D3D12* I, CGPUAdapter_D3D12* A, CGPUDevice_D3D12* D);
+CGPU_EXTERN_C void D3D12Util_CreateDMAAllocator(CGPUInstance_D3D12* I, CGPUAdapter_D3D12* A, CGPUDevice_D3D12* D);
 
 // Crash Report Helpers
-void D3D12Util_LogDREDPageFault(const D3D12_DRED_PAGE_FAULT_OUTPUT* pageFault);
-void D3D12Util_LogDREDBreadcrumbs(const D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT* breadcrumbs);
+CGPU_EXTERN_C void D3D12Util_LogDREDPageFault(const D3D12_DRED_PAGE_FAULT_OUTPUT* pageFault);
+CGPU_EXTERN_C void D3D12Util_LogDREDBreadcrumbs(const D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT* breadcrumbs);
 #ifdef __ID3D12DeviceRemovedExtendedData1_INTERFACE_DEFINED__
-void D3D12Util_LogDREDBreadcrumbs1(const D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT1* breadcrumbs);
+CGPU_EXTERN_C void D3D12Util_LogDREDBreadcrumbs1(const D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT1* breadcrumbs);
 #endif
-void D3D12Util_ReportGPUCrash(ID3D12Device* device);
+CGPU_EXTERN_C void D3D12Util_ReportGPUCrash(ID3D12Device* device);
 
 // API Objects Helpers
-void D3D12Util_SignalFence(CGPUQueue_D3D12* Q, ID3D12Fence* DxF, uint64_t fenceValue);
-void D3D12Util_InitializeShaderReflection(CGPUDevice_D3D12* device, CGPUShaderLibrary_D3D12* library, const struct CGPUShaderLibraryDescriptor* desc);
-void D3D12Util_FreeShaderReflection(CGPUShaderLibrary_D3D12* library);
+CGPU_EXTERN_C void D3D12Util_SignalFence(CGPUQueue_D3D12* Q, ID3D12Fence* DxF, uint64_t fenceValue);
+CGPU_EXTERN_C void D3D12Util_InitializeShaderReflection(CGPUDevice_D3D12* device, CGPUShaderLibrary_D3D12* library, const struct CGPUShaderLibraryDescriptor* desc);
+CGPU_EXTERN_C void D3D12Util_FreeShaderReflection(CGPUShaderLibrary_D3D12* library);
 
 // Feature Select Helpers
 void D3D12Util_RecordAdapterDetail(struct CGPUAdapter_D3D12* D3D12Adapter);
@@ -45,25 +45,24 @@ typedef struct D3D12Util_DescriptorHandle {
     D3D12_GPU_DESCRIPTOR_HANDLE mGpu;
 } D3D12Util_DescriptorHandle;
 
-void D3D12Util_CreateDescriptorHeap(ID3D12Device* pDevice,
+CGPU_EXTERN_C void D3D12Util_CreateDescriptorHeap(ID3D12Device* pDevice,
                                     const D3D12_DESCRIPTOR_HEAP_DESC* pDesc, struct D3D12Util_DescriptorHeap** ppDescHeap);
-void D3D12Util_ResetDescriptorHeap(struct D3D12Util_DescriptorHeap* pHeap);
-void D3D12Util_FreeDescriptorHeap(struct D3D12Util_DescriptorHeap* pHeap);
+CGPU_EXTERN_C void D3D12Util_ResetDescriptorHeap(struct D3D12Util_DescriptorHeap* pHeap);
+CGPU_EXTERN_C void D3D12Util_FreeDescriptorHeap(struct D3D12Util_DescriptorHeap* pHeap);
 
 // Consume & Return
-D3D12Util_DescriptorHandle D3D12Util_ConsumeDescriptorHandles(struct D3D12Util_DescriptorHeap* pHeap, uint32_t count);
-void D3D12Util_ReturnDescriptorHandles(
-struct D3D12Util_DescriptorHeap* pHeap, D3D12_CPU_DESCRIPTOR_HANDLE handle, uint32_t count);
+CGPU_EXTERN_C D3D12Util_DescriptorHandle D3D12Util_ConsumeDescriptorHandles(struct D3D12Util_DescriptorHeap* pHeap, uint32_t count);
+CGPU_EXTERN_C void D3D12Util_ReturnDescriptorHandles(struct D3D12Util_DescriptorHeap* pHeap, D3D12_CPU_DESCRIPTOR_HANDLE handle, uint32_t count);
 
 // Use Views
-void D3D12Util_CreateSRV(CGPUDevice_D3D12* D, ID3D12Resource* pResource,
+CGPU_EXTERN_C void D3D12Util_CreateSRV(CGPUDevice_D3D12* D, ID3D12Resource* pResource,
                          const D3D12_SHADER_RESOURCE_VIEW_DESC* pSrvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle);
-void D3D12Util_CreateUAV(CGPUDevice_D3D12* D, ID3D12Resource* pResource,
+CGPU_EXTERN_C void D3D12Util_CreateUAV(CGPUDevice_D3D12* D, ID3D12Resource* pResource,
                          ID3D12Resource* pCounterResource,
                          const D3D12_UNORDERED_ACCESS_VIEW_DESC* pSrvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle);
-void D3D12Util_CreateCBV(CGPUDevice_D3D12* D,
+CGPU_EXTERN_C void D3D12Util_CreateCBV(CGPUDevice_D3D12* D,
                          const D3D12_CONSTANT_BUFFER_VIEW_DESC* pSrvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle);
-void D3D12Util_CreateRTV(CGPUDevice_D3D12* D, ID3D12Resource* pResource,
+CGPU_EXTERN_C void D3D12Util_CreateRTV(CGPUDevice_D3D12* D, ID3D12Resource* pResource,
                          const D3D12_RENDER_TARGET_VIEW_DESC* pRtvDesc, D3D12_CPU_DESCRIPTOR_HANDLE* pHandle);
 
 typedef struct DescriptorHeapProperties {

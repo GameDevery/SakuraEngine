@@ -408,7 +408,11 @@ static const D3D12_COMMAND_LIST_TYPE gDx12CmdTypeTranslator[CGPU_QUEUE_TYPE_COUN
 // COM HELPERS
 
 #ifndef IID_ARGS
-#define IID_ARGS IID_PPV_ARGS
+    #ifdef __cplusplus
+    #define IID_ARGS IID_PPV_ARGS
+    #else
+    #define IID_ARGS(Type, Ptr) &IID_##Type, (void**)(Ptr)
+    #endif
 #endif
 
 #ifndef COM_CALL
