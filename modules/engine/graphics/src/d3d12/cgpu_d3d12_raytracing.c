@@ -1,5 +1,5 @@
 #include "SkrGraphics/backend/d3d12/cgpu_d3d12_raytracing.h"
-#include "d3d12_utils.hpp"
+#include "d3d12_utils.h"
 
 const CGPURayTracingProcTable rt_tbl_d3d12 = {
 
@@ -123,8 +123,6 @@ CGPUAccelerationStructureId cgpu_create_acceleration_structure_d3d12(CGPUDeviceI
     {
 
     }
-
-
     return &AS->super;
 }
 

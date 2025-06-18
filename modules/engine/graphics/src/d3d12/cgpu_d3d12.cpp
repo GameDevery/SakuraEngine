@@ -1,7 +1,7 @@
 #include "SkrGraphics/containers.hpp"
 #include "SkrGraphics/backend/d3d12/cgpu_d3d12.h"
 #include "../common/common_utils.h"
-#include "d3d12_utils.hpp"
+#include "d3d12_utils.h"
 
 #if !defined(XBOX)
     #pragma comment(lib, "d3d12.lib")

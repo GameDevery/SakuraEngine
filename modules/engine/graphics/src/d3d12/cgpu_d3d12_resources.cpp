@@ -5,7 +5,7 @@
 #include "SkrGraphics/backend/d3d12/cgpu_d3d12.h"
 #include "SkrGraphics/drivers/cgpu_nvapi.h"
 
-#include "d3d12_utils.hpp"
+#include "d3d12_utils.h"
 #include <dxcapi.h>
 #include <memory>
 
