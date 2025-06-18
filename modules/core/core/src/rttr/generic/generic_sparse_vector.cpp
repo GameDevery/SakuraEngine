@@ -831,4 +831,588 @@ void GenericSparseVector::add_at_zeroed(void* dst, uint64_t idx) const
     );
 }
 
+// append
+void GenericSparseVector::append(void* dst, const void* other) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(other);
+    auto*       dst_mem   = reinterpret_cast<SparseVectorMemoryBase*>(dst);
+    const auto* other_mem = reinterpret_cast<const SparseVectorMemoryBase*>(other);
+
+    const uint64_t other_size = other_mem->sparse_size() - other_mem->hole_size();
+
+    auto bit_cursor = CTrueBitCursor::Begin(
+        other_mem->_typed_bit_data(),
+        other_mem->sparse_size()
+    );
+
+    // fill holes
+    uint64_t count = 0;
+    while (dst_mem->hole_size() > 0 && !bit_cursor.reach_end())
+    {
+        add(dst_mem, other_mem->_storage_at(bit_cursor.index(), _inner_size));
+        bit_cursor.move_next();
+        ++count;
+    }
+
+    // grow and copy
+    if (!bit_cursor.reach_end())
+    {
+        auto write_idx  = dst_mem->sparse_size();
+        auto grow_count = other_size - count;
+        _grow(dst, grow_count);
+        BitAlgo::set_range(dst_mem->_typed_bit_data(), write_idx, grow_count, true);
+        while (!bit_cursor.reach_end())
+        {
+            _inner->copy(
+                dst_mem->_storage_at(write_idx, _inner_size),
+                other_mem->_storage_at(bit_cursor.index(), _inner_size)
+            );
+            ++write_idx;
+            bit_cursor.move_next();
+        }
+        SKR_ASSERT(write_idx == sparse_size(dst));
+    }
+}
+
+// remove
+void GenericSparseVector::remove_at(void* dst, uint64_t idx, uint64_t n) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(is_valid_index(dst, idx));
+    SKR_ASSERT(is_valid_index(dst, idx + n - 1));
+    SKR_ASSERT(n > 0);
+    auto* dst_mem = reinterpret_cast<SparseVectorMemoryBase*>(dst);
+
+    // destruct items
+    if (_inner_mem_traits.use_dtor)
+    {
+        for (uint64_t i = 0; i < n; ++i)
+        {
+            SKR_ASSERT(has_data(dst, idx + i));
+            _inner->dtor(dst_mem->_storage_at(idx + i, _inner_size), 1);
+        }
+    }
+
+    // remove at unsafe
+    remove_at_unsafe(dst, idx, n);
+}
+void GenericSparseVector::remove_at_unsafe(void* dst, uint64_t idx, uint64_t n) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(is_valid_index(dst, idx));
+    SKR_ASSERT(is_valid_index(dst, idx + n - 1));
+    SKR_ASSERT(n > 0);
+    auto* dst_mem = reinterpret_cast<SparseVectorMemoryBase*>(dst);
+
+    for (; n; --n)
+    {
+        SKR_ASSERT(has_data(dst, idx));
+
+        // link to free list
+        auto* node = dst_mem->_freelist_node_at(idx, _inner_size);
+        if (dst_mem->_hole_size)
+        { // link head
+            auto* old_head_node = dst_mem->_freelist_node_at(dst_mem->_freelist_head, _inner_size);
+            old_head_node->prev = idx;
+        }
+        node->prev              = npos;
+        node->next              = dst_mem->_freelist_head;
+        dst_mem->_freelist_head = idx;
+        dst_mem->_hole_size++;
+
+        // set flag
+        BitAlgo::set(dst_mem->_typed_bit_data(), idx, false);
+
+        // update index
+        ++idx;
+    }
+}
+bool GenericSparseVector::remove(void* dst, const void* v) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(v);
+
+    if (auto ref = find(dst, v))
+    {
+        remove_at(dst, ref.index);
+        return true;
+    }
+    return false;
+}
+bool GenericSparseVector::remove_last(void* dst, const void* v) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(v);
+
+    if (auto ref = find_last(dst, v))
+    {
+        remove_at(dst, ref.index);
+        return true;
+    }
+    return false;
+}
+uint64_t GenericSparseVector::remove_all(void* dst, const void* v) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(v);
+    auto* dst_mem = reinterpret_cast<SparseVectorMemoryBase*>(dst);
+
+    uint64_t count      = 0;
+    auto     bit_cursor = CTrueBitCursor::Begin(
+        dst_mem->_typed_bit_data(),
+        dst_mem->_sparse_size
+    );
+
+    while (!bit_cursor.reach_end())
+    {
+        if (_inner->equal(
+                dst_mem->_storage_at(bit_cursor.index(), _inner_size),
+                v,
+                1
+            ))
+        {
+            // remove at
+            remove_at(dst, bit_cursor.index(), 1);
+            ++count;
+        }
+
+        bit_cursor.move_next();
+    }
+
+    return count;
+}
+
+// access
+void* GenericSparseVector::at(void* dst, uint64_t idx) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(is_valid_index(dst, idx));
+    SKR_ASSERT(has_data(dst, idx));
+    auto* dst_mem = reinterpret_cast<SparseVectorMemoryBase*>(dst);
+    return dst_mem->_storage_at(idx, _inner_size);
+}
+void* GenericSparseVector::at_last(void* dst, uint64_t idx) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+
+    auto* dst_mem = reinterpret_cast<SparseVectorMemoryBase*>(dst);
+    idx           = dst_mem->_sparse_size - idx - 1;
+    SKR_ASSERT(is_valid_index(dst, idx));
+    SKR_ASSERT(has_data(dst, idx));
+    return dst_mem->_storage_at(idx, _inner_size);
+}
+const void* GenericSparseVector::at(const void* dst, uint64_t idx) const
+{
+    return at(const_cast<void*>(dst), idx);
+}
+const void* GenericSparseVector::at_last(const void* dst, uint64_t idx) const
+{
+    return at_last(const_cast<void*>(dst), idx);
+}
+
+// find
+GenericSparseVectorDataRef GenericSparseVector::find(void* dst, const void* v) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(v);
+    auto* dst_mem = reinterpret_cast<SparseVectorMemoryBase*>(dst);
+
+    auto bit_cursor = CTrueBitCursor::Begin(
+        dst_mem->_typed_bit_data(),
+        dst_mem->_sparse_size
+    );
+
+    while (!bit_cursor.reach_end())
+    {
+        if (_inner->equal(
+                dst_mem->_storage_at(bit_cursor.index(), _inner_size),
+                v,
+                1
+            ))
+        {
+            return {
+                dst_mem->_storage_at(bit_cursor.index(), _inner_size),
+                bit_cursor.index()
+            };
+        }
+        bit_cursor.move_next();
+    }
+    return {};
+}
+GenericSparseVectorDataRef GenericSparseVector::find_last(void* dst, const void* v) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(v);
+    auto* dst_mem = reinterpret_cast<SparseVectorMemoryBase*>(dst);
+
+    auto bit_cursor = CTrueBitCursor::End(
+        dst_mem->_typed_bit_data(),
+        dst_mem->_sparse_size
+    );
+
+    while (!bit_cursor.reach_begin())
+    {
+        if (_inner->equal(
+                dst_mem->_storage_at(bit_cursor.index(), _inner_size),
+                v,
+                1
+            ))
+        {
+            return {
+                dst_mem->_storage_at(bit_cursor.index(), _inner_size),
+                bit_cursor.index()
+            };
+        }
+        bit_cursor.move_prev();
+    }
+    return {};
+}
+CGenericSparseVectorDataRef GenericSparseVector::find(const void* dst, const void* v) const
+{
+    return find(const_cast<void*>(dst), v);
+}
+CGenericSparseVectorDataRef GenericSparseVector::find_last(const void* dst, const void* v) const
+{
+    return find_last(const_cast<void*>(dst), v);
+}
+
+// contains & count
+bool GenericSparseVector::contains(const void* dst, const void* v) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(v);
+
+    return (bool)find(dst, v);
+}
+uint64_t GenericSparseVector::count(const void* dst, const void* v) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(v);
+    auto* dst_mem = reinterpret_cast<const SparseVectorMemoryBase*>(dst);
+
+    uint64_t count      = 0;
+    auto     bit_cursor = CTrueBitCursor::Begin(
+        dst_mem->_typed_bit_data(),
+        dst_mem->sparse_size()
+    );
+
+    while (!bit_cursor.reach_end())
+    {
+        if (_inner->equal(
+                dst_mem->_storage_at(bit_cursor.index(), _inner_size),
+                v,
+                1
+            ))
+        {
+            ++count;
+        }
+        bit_cursor.move_next();
+    }
+    return count;
+}
+
+// helper
+void GenericSparseVector::_realloc(void* dst, uint64_t new_capacity) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+
+    auto* dst_mem = reinterpret_cast<SparseVectorMemoryBase*>(dst);
+    SKR_ASSERT(new_capacity != dst_mem->_capacity);
+    SKR_ASSERT(new_capacity > 0);
+    SKR_ASSERT((dst_mem->_capacity > 0 && dst_mem->_data != nullptr) || (dst_mem->_capacity == 0 && dst_mem->_data == nullptr));
+
+    // realloc bit data
+    uint64_t new_block_size = BitAlgo::num_blocks(new_capacity);
+    uint64_t old_block_size = BitAlgo::num_blocks(dst_mem->_capacity);
+    if (new_block_size != old_block_size)
+    {
+        if constexpr (::skr::memory::MemoryTraits<uint64_t>::use_realloc)
+        {
+            dst_mem->_bit_data = SkrAllocator::realloc_raw(
+                dst_mem->_bit_data,
+                new_block_size,
+                sizeof(uint64_t),
+                alignof(uint64_t)
+            );
+        }
+        else
+        {
+            // alloc new memory
+            void* new_memory = SkrAllocator::alloc_raw(
+                new_block_size,
+                sizeof(uint64_t),
+                alignof(uint64_t)
+            );
+
+            // move data
+            if (old_block_size)
+            {
+                ::skr::memory::move(
+                    (uint64_t*)new_memory,
+                    (uint64_t*)dst_mem->_bit_data,
+                    std::min(old_block_size, new_block_size)
+                );
+            }
+
+            // release old memory
+            SkrAllocator::free_raw(dst_mem->_bit_data, alignof(uint64_t));
+
+            // updata data
+            dst_mem->_bit_data = new_memory;
+        }
+    }
+
+    // realloc data
+    if (_inner_mem_traits.use_realloc)
+    {
+        dst_mem->_data = SkrAllocator::realloc_raw(
+            dst_mem->_data,
+            new_capacity,
+            _inner_size,
+            _inner_alignment
+        );
+    }
+    else
+    {
+        // alloc new memory
+        void* new_memory = SkrAllocator::alloc_raw(
+            new_capacity,
+            _inner_size,
+            _inner_alignment
+        );
+
+        // move items
+        if (dst_mem->_sparse_size)
+        {
+            _move_sparse_vector_data(
+                new_memory,
+                dst_mem->_data,
+                dst_mem->_bit_data,
+                dst_mem->_sparse_size
+            );
+        }
+
+        // release old memory
+        SkrAllocator::free_raw(dst_mem->_data, _inner_alignment);
+
+        // update data
+        dst_mem->_data = new_memory;
+    }
+
+    // update capacity
+    dst_mem->_capacity = new_capacity;
+}
+void GenericSparseVector::_free(void* dst) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    auto* dst_mem = reinterpret_cast<SparseVectorMemoryBase*>(dst);
+
+    if (dst_mem->_data)
+    {
+        // release memory
+        SkrAllocator::free_raw(
+            dst_mem->_data,
+            _inner_alignment
+        );
+        SkrAllocator::free_raw(
+            dst_mem->_bit_data,
+            alignof(uint64_t)
+        );
+
+        // reset data
+        dst_mem->_data     = nullptr;
+        dst_mem->_bit_data = nullptr;
+        dst_mem->_capacity = 0;
+    }
+}
+uint64_t GenericSparseVector::_grow(void* dst, uint64_t grow_size) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(grow_size > 0);
+    auto* dst_mem = reinterpret_cast<SparseVectorMemoryBase*>(dst);
+
+    auto old_sparse_size = dst_mem->_sparse_size;
+    auto new_sparse_size = old_sparse_size + grow_size;
+
+    if (new_sparse_size > dst_mem->_capacity)
+    {
+        auto new_capacity = container::default_get_grow<uint64_t>(
+            new_sparse_size,
+            dst_mem->_capacity
+        );
+        SKR_ASSERT(new_capacity >= new_sparse_size);
+        if (new_capacity > dst_mem->_capacity)
+        {
+            _realloc(dst_mem, new_capacity);
+        }
+    }
+
+    dst_mem->_sparse_size = new_sparse_size;
+    return old_sparse_size;
+}
+void GenericSparseVector::_copy_sparse_vector_data(void* dst, const void* src, const void* src_bit_data, uint64_t size) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(src);
+    SKR_ASSERT(src_bit_data);
+    SKR_ASSERT(size > 0);
+    auto storage_size = SparseVectorMemoryBase::_storage_size(_inner_size);
+
+    if (_inner_mem_traits.use_copy)
+    {
+        for (uint64_t i = 0; i < size; ++i)
+        {
+            auto* p_dst_data = ::skr::memory::offset_item(
+                dst,
+                storage_size,
+                i
+            );
+            auto* p_src_data = ::skr::memory::offset_item(
+                src,
+                storage_size,
+                i
+            );
+
+            if (BitAlgo::get((const uint64_t*)src_bit_data, i))
+            {
+                _inner->copy(p_dst_data, p_src_data, 1);
+            }
+            else
+            {
+                auto* dst_node = reinterpret_cast<SparseVectorFreeListNode*>(p_dst_data);
+                auto* src_node = reinterpret_cast<const SparseVectorFreeListNode*>(p_src_data);
+
+                dst_node->next = src_node->next;
+                dst_node->prev = src_node->prev;
+            }
+        }
+    }
+    else
+    {
+        std::memcpy(dst, src, storage_size * size);
+    }
+}
+void GenericSparseVector::_move_sparse_vector_data(void* dst, void* src, const void* src_bit_data, uint64_t size) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(src);
+    SKR_ASSERT(src_bit_data);
+    SKR_ASSERT(size > 0);
+    auto storage_size = SparseVectorMemoryBase::_storage_size(_inner_size);
+
+    if (_inner_mem_traits.use_move)
+    {
+        for (uint64_t i = 0; i < size; ++i)
+        {
+            auto* p_dst_data = ::skr::memory::offset_item(
+                dst,
+                storage_size,
+                i
+            );
+            auto* p_src_data = ::skr::memory::offset_item(
+                src,
+                storage_size,
+                i
+            );
+
+            if (BitAlgo::get((const uint64_t*)src_bit_data, i))
+            {
+                _inner->move(p_dst_data, p_src_data);
+            }
+            else
+            {
+                auto* dst_node = reinterpret_cast<SparseVectorFreeListNode*>(p_dst_data);
+                auto* src_node = reinterpret_cast<SparseVectorFreeListNode*>(p_src_data);
+
+                dst_node->next = src_node->next;
+                dst_node->prev = src_node->prev;
+            }
+        }
+    }
+    else
+    {
+        std::memmove(dst, src, storage_size * size);
+    }
+}
+void GenericSparseVector::_copy_sparse_vector_bit_data(void* dst, const void* src, uint64_t size) const
+{
+    std::memcpy(
+        dst,
+        src,
+        BitAlgo::num_blocks(size) * sizeof(uint64_t)
+    );
+}
+void GenericSparseVector::_move_sparse_vector_bit_data(void* dst, void* src, uint64_t size) const
+{
+    std::memcpy(
+        dst,
+        src,
+        BitAlgo::num_blocks(size) * sizeof(uint64_t)
+    );
+}
+void GenericSparseVector::_destruct_sparse_vector_data(void* dst, const void* bit_data, uint64_t size) const
+{
+    if (_inner_mem_traits.use_dtor)
+    {
+        auto bit_cursor = CTrueBitCursor::Begin(
+            (const uint64_t*)bit_data,
+            size
+        );
+        auto storage_size = SparseVectorMemoryBase::_storage_size(_inner_size);
+
+        while (!bit_cursor.reach_end())
+        {
+            auto* p_dst_data = ::skr::memory::offset_item(
+                dst,
+                storage_size,
+                bit_cursor.index()
+            );
+
+            _inner->dtor(p_dst_data);
+            bit_cursor.move_next();
+        }
+    }
+}
+void GenericSparseVector::_break_freelist_at(void* dst, uint64_t idx) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(is_valid_index(dst, idx));
+    auto* dst_mem = reinterpret_cast<SparseVectorMemoryBase*>(dst);
+
+    auto* node = dst_mem->_freelist_node_at(idx, _inner_size);
+
+    if (dst_mem->_freelist_head == idx)
+    {
+        dst_mem->_freelist_head = node->next;
+    }
+    if (node->next != npos)
+    {
+        auto* next_node = dst_mem->_freelist_node_at(node->next, _inner_size);
+        next_node->prev = node->prev;
+    }
+    if (node->prev != npos)
+    {
+        auto* prev_node = dst_mem->_freelist_node_at(node->prev, _inner_size);
+        prev_node->next = node->next;
+    }
+}
 } // namespace skr

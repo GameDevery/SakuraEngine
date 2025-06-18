@@ -45,7 +45,10 @@ struct CGenericSparseVectorDataRef {
 // generic vector
 struct SKR_CORE_API GenericSparseVector : IGenericBase {
     SKR_RC_IMPL(override final)
-    using BitAlgo                         = algo::BitAlgo<uint64_t>;
+    using BitAlgo        = algo::BitAlgo<uint64_t>;
+    using TrueBitCursor  = container::BitCursor<uint64_t, uint64_t, false>;
+    using CTrueBitCursor = container::BitCursor<uint64_t, uint64_t, true>;
+
     inline static constexpr uint64_t npos = npos_of<uint64_t>;
 
     // ctor & dtor
@@ -128,17 +131,17 @@ struct SKR_CORE_API GenericSparseVector : IGenericBase {
     void append(void* dst, const void* other) const;
 
     // remove
-    void remove_at(void* dst, uint64_t idx, uint64_t n = 1) const;
-    void remove_at_unsafe(void* dst, uint64_t idx, uint64_t n = 1) const;
-    void remove(void* dst, const void* v) const;
-    void remove_last(void* dst, const void* v) const;
-    void remove_all(void* dst, const void* v) const;
+    void     remove_at(void* dst, uint64_t idx, uint64_t n = 1) const;
+    void     remove_at_unsafe(void* dst, uint64_t idx, uint64_t n = 1) const;
+    bool     remove(void* dst, const void* v) const;
+    bool     remove_last(void* dst, const void* v) const;
+    uint64_t remove_all(void* dst, const void* v) const;
 
     // access
     void*       at(void* dst, uint64_t idx) const;
+    void*       at_last(void* dst, uint64_t idx) const;
     const void* at(const void* dst, uint64_t idx) const;
-    void*       at_last(void* dst) const;
-    const void* at_last(const void* dst) const;
+    const void* at_last(const void* dst, uint64_t idx) const;
 
     // find
     GenericSparseVectorDataRef  find(void* dst, const void* v) const;
