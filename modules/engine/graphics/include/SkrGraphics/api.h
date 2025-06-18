@@ -1550,8 +1550,8 @@ typedef struct CGPUBufferDescriptor {
 typedef struct CGPUBufferInfo {
     uint64_t size;
     void* cpu_mapped_address;
-    uint32_t descriptors;
-    uint32_t memory_usage;
+    CGPUResourceTypes descriptors;
+    CGPUMemoryUsages memory_usage;
 } CGPUBufferInfo;
 
 typedef struct CGPUBuffer {

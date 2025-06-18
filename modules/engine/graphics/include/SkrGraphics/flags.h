@@ -588,6 +588,7 @@ typedef enum ECGPUMemoryUsage
     CGPU_MEM_USAGE_COUNT,
     CGPU_MEM_USAGE_MAX_ENUM = 0x7FFFFFFF
 } ECGPUMemoryUsage;
+typedef uint32_t CGPUMemoryUsages;
 
 typedef enum ECGPUMemoryPoolType
 {
