@@ -765,3 +765,175 @@ void cgpu_render_encoder_draw_indexed_instanced_d3d12(CGPURenderPassEncoderId en
     CGPUCommandBuffer_D3D12* Cmd = (CGPUCommandBuffer_D3D12*)encoder;
     COM_CALL(DrawIndexedInstanced, Cmd->pDxCmdList, (UINT)index_count, (UINT)instance_count, (UINT)first_index, (UINT)first_vertex, (UINT)first_instance);
 }
+
+// SwapChain APIs
+CGPUSwapChainId cgpu_create_swapchain_d3d12_impl(CGPUDeviceId device, const CGPUSwapChainDescriptor* desc, CGPUSwapChain_D3D12* old)
+{
+    CGPUInstance_D3D12* I = (CGPUInstance_D3D12*)device->adapter->instance;
+    CGPUDevice_D3D12* D = (CGPUDevice_D3D12*)device;
+    CGPUSwapChain_D3D12* S = (CGPUSwapChain_D3D12*)old;
+    const uint32_t buffer_count = desc->image_count;
+    if (!old)
+    {
+        const size_t size = sizeof(CGPUSwapChain_D3D12) +
+                          (sizeof(CGPUTexture_D3D12) + sizeof(CGPUTextureInfo)) * buffer_count +
+                          sizeof(CGPUTextureId) * buffer_count;
+        S = (CGPUSwapChain_D3D12*)cgpu_calloc_aligned(1, size, _Alignof(CGPUSwapChain_D3D12));
+    }
+    S->mDxSyncInterval = 0;
+    SKR_DECLARE_ZERO(DXGI_SWAP_CHAIN_DESC1, chain_desc1)
+    chain_desc1.Width = desc->width;
+    chain_desc1.Height = desc->height;
+    chain_desc1.Format = DXGIUtil_TranslatePixelFormat(desc->format, false);
+    chain_desc1.Stereo = false;
+    chain_desc1.SampleDesc.Count = 1; // If multisampling is needed, we'll resolve it later
+    chain_desc1.SampleDesc.Quality = 0;
+    chain_desc1.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    chain_desc1.BufferCount = desc->image_count;
+    chain_desc1.Scaling = DXGI_SCALING_STRETCH;
+    chain_desc1.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD; // for better performance.
+    chain_desc1.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
+    chain_desc1.Flags = 0;
+    BOOL allowTearing = FALSE;
+    COM_CALL(CheckFeatureSupport, I->pDXGIFactory, DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allowTearing, sizeof(allowTearing));
+    chain_desc1.Flags |= allowTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
+    S->mFlags |= (!desc->enable_vsync && allowTearing) ? DXGI_PRESENT_ALLOW_TEARING : 0;
+
+    IDXGISwapChain1* swapchain;
+    HWND             hwnd = (HWND)desc->surface;
+
+    CGPUQueue_D3D12* Q = CGPU_NULLPTR;
+    if (desc->present_queues == CGPU_NULLPTR)
+    {
+        Q = (CGPUQueue_D3D12*)cgpu_get_queue_d3d12(device, CGPU_QUEUE_TYPE_GRAPHICS, 0);
+    }
+    else
+    {
+        Q = (CGPUQueue_D3D12*)desc->present_queues[0];
+    }
+    bool bCreated = SUCCEEDED(COM_CALL(CreateSwapChainForHwnd, I->pDXGIFactory, (IUnknown*)Q->pCommandQueue, hwnd, &chain_desc1, NULL, NULL, &swapchain));
+    (void)bCreated;
+    cgpu_assert(bCreated && "Failed to Try to Create SwapChain! An existed swapchain might be destroyed!");
+
+    bool bAssociation = SUCCEEDED(COM_CALL(MakeWindowAssociation, I->pDXGIFactory, hwnd, DXGI_MWA_NO_ALT_ENTER));
+    (void)bAssociation;
+    cgpu_assert(bAssociation && "Failed to Try to Associate SwapChain With Window!");
+
+    bool bQueryChain3 = SUCCEEDED(COM_CALL(QueryInterface, swapchain, IID_ARGS(IDXGISwapChain3, &S->pDxSwapChain)));
+    (void)bQueryChain3;
+    cgpu_assert(bQueryChain3 && "Failed to Query IDXGISwapChain3 from Created SwapChain!");
+
+    COM_CALL(Release, swapchain);
+
+    // Get swapchain images
+    ID3D12Resource* backbuffers[desc->image_count];
+    for (uint32_t i = 0; i < desc->image_count; ++i)
+    {
+        CHECK_HRESULT(COM_CALL(GetBuffer, S->pDxSwapChain, i, IID_ARGS(ID3D12Resource, &backbuffers[i])));
+    }
+    typedef struct THeader {
+        CGPUTexture_D3D12 T;
+        CGPUTextureInfo   I;
+    } THeader;
+    THeader* Ts = (THeader*)(S + 1);
+    for (uint32_t i = 0; i < buffer_count; i++)
+    {
+        Ts[i].T.pDxResource          = backbuffers[i];
+        Ts[i].T.pDxAllocation        = CGPU_NULLPTR;
+        Ts[i].T.super.device         = &D->super;
+        Ts[i].T.super.info           = &Ts[i].I;
+        Ts[i].I.is_cube              = false;
+        Ts[i].I.array_size_minus_one = 0;
+        Ts[i].I.sample_count         = CGPU_SAMPLE_COUNT_1; // TODO: ?
+        Ts[i].I.format               = desc->format;
+        Ts[i].I.aspect_mask          = 1;
+        Ts[i].I.depth                = 1;
+        Ts[i].I.width                = desc->width;
+        Ts[i].I.height               = desc->height;
+        Ts[i].I.mip_levels           = 1;
+        Ts[i].I.node_index           = CGPU_SINGLE_GPU_NODE_INDEX;
+        Ts[i].I.owns_image           = false;
+    }
+    CGPUTextureId* Vs = (CGPUTextureId*)(Ts + buffer_count);
+    for (uint32_t i = 0; i < buffer_count; i++)
+    {
+        Vs[i] = &Ts[i].T.super;
+    }
+    S->super.back_buffers = Vs;
+    S->super.buffer_count = buffer_count;
+    return &S->super;
+}
+
+void cgpu_free_swapchain_d3d12_impl(CGPUSwapChainId swapchain)
+{
+    CGPUSwapChain_D3D12* S = (CGPUSwapChain_D3D12*)swapchain;
+    for (uint32_t i = 0; i < S->super.buffer_count; i++)
+    {
+        CGPUTexture_D3D12* Texture = (CGPUTexture_D3D12*)S->super.back_buffers[i];
+        COM_CALL(Release, Texture->pDxResource);
+    }
+    COM_CALL(Release, S->pDxSwapChain);
+}
+
+CGPUSwapChainId cgpu_create_swapchain_d3d12(CGPUDeviceId device, const CGPUSwapChainDescriptor* desc)
+{
+    return cgpu_create_swapchain_d3d12_impl(device, desc, CGPU_NULLPTR);
+}
+
+void cgpu_free_swapchain_d3d12(CGPUSwapChainId swapchain)
+{
+    CGPUSwapChain_D3D12* S = (CGPUSwapChain_D3D12*)swapchain;
+    cgpu_free_swapchain_d3d12_impl(swapchain);
+    cgpu_free_aligned(S, _Alignof(CGPUSwapChain_D3D12));
+}
+
+uint32_t cgpu_acquire_next_image_d3d12(CGPUSwapChainId swapchain, const struct CGPUAcquireNextDescriptor* desc)
+{
+    CGPUSwapChain_D3D12* S = (CGPUSwapChain_D3D12*)swapchain;
+    // On PC AquireNext is always true
+    HRESULT hr = S_OK;
+    if (FAILED(hr))
+    {
+        cgpu_error(u8"Failed to acquire next image");
+        return UINT32_MAX;
+    }
+    return COM_CALL(GetCurrentBackBufferIndex, S->pDxSwapChain);
+}
+
+#include "SkrGraphics/extensions/cgpu_d3d12_exts.h"
+// extentions
+CGPUDREDSettingsId cgpu_d3d12_enable_DRED()
+{
+    CGPUDREDSettingsId settings = cgpu_calloc(1, sizeof(CGPUDREDSettings));
+    SUCCEEDED(D3D12GetDebugInterface(IID_ARGS(ID3D12DeviceRemovedExtendedDataSettings, &settings->pDredSettings)));
+    // Turn on auto-breadcrumbs and page fault reporting.
+    COM_CALL(SetAutoBreadcrumbsEnablement, settings->pDredSettings, D3D12_DRED_ENABLEMENT_FORCED_ON);
+    COM_CALL(SetPageFaultEnablement, settings->pDredSettings, D3D12_DRED_ENABLEMENT_FORCED_ON);
+    return settings;
+}
+
+void cgpu_d3d12_disable_DRED(CGPUDREDSettingsId settings)
+{
+    COM_CALL(SetAutoBreadcrumbsEnablement, settings->pDredSettings, D3D12_DRED_ENABLEMENT_FORCED_OFF);
+    COM_CALL(SetPageFaultEnablement, settings->pDredSettings, D3D12_DRED_ENABLEMENT_FORCED_OFF);
+    COM_CALL(Release, settings->pDredSettings);
+    cgpu_free(settings);
+}
+
+ID3D12GraphicsCommandList* cgpu_d3d12_get_command_list(CGPUCommandBufferId cmd)
+{
+    CGPUCommandBuffer_D3D12* Cmd = (CGPUCommandBuffer_D3D12*)cmd;
+    return Cmd->pDxCmdList;
+}
+
+ID3D12Resource* cgpu_d3d12_get_buffer(CGPUBufferId buffer)
+{
+    CGPUBuffer_D3D12* Buf = (CGPUBuffer_D3D12*)buffer;
+    return Buf->pDxResource;
+}
+
+ID3D12Device* cgpu_d3d12_get_device(CGPUDeviceId device)
+{
+    CGPUDevice_D3D12* D = (CGPUDevice_D3D12*)device;
+    return D->pDxDevice;
+}
