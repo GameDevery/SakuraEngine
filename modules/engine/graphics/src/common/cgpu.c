@@ -706,6 +706,28 @@ void cgpu_cmd_transfer_buffer_to_tiles(CGPUCommandBufferId cmd, const struct CGP
     fn_cmd_transfer_buffer_to_tiles(cmd, desc);
 }
 
+void cgpu_cmd_fill_buffer(CGPUCommandBufferId cmd, CGPUBufferId buffer, const struct CGPUFillBufferDescriptor* desc)
+{
+    cgpu_assert(cmd != CGPU_NULLPTR && "fatal: call on NULL cmdbuffer!");
+    cgpu_assert(cmd->current_dispatch == CGPU_PIPELINE_TYPE_NONE && "fatal: can't call transfer apis on commdn buffer while preparing dispatching!");
+    cgpu_assert(cmd->device != CGPU_NULLPTR && "fatal: call on NULL device!");
+    cgpu_assert(desc != CGPU_NULLPTR && "fatal: call on NULL cpy_desc!");
+    const CGPUProcCmdFillBuffer fn_fill_buffer = cmd->device->proc_table_cache->cmd_fill_buffer;
+    cgpu_assert(fn_fill_buffer && "cgpu_cmd_fill_buffer Proc Missing!");
+    fn_fill_buffer(cmd, buffer, desc);
+}
+
+void cgpu_cmd_fill_buffer_n(CGPUCommandBufferId cmd, CGPUBufferId buffer, const struct CGPUFillBufferDescriptor* desc, uint32_t count)
+{
+    cgpu_assert(cmd != CGPU_NULLPTR && "fatal: call on NULL cmdbuffer!");
+    cgpu_assert(cmd->current_dispatch == CGPU_PIPELINE_TYPE_NONE && "fatal: can't call transfer apis on commdn buffer while preparing dispatching!");
+    cgpu_assert(cmd->device != CGPU_NULLPTR && "fatal: call on NULL device!");
+    cgpu_assert(desc != CGPU_NULLPTR && "fatal: call on NULL cpy_desc!");
+    const CGPUProcCmdFillBufferN fn_fill_buffer_n = cmd->device->proc_table_cache->cmd_fill_buffer_n;
+    cgpu_assert(fn_fill_buffer_n && "cgpu_cmd_fill_buffer_n Proc Missing!");
+    fn_fill_buffer_n(cmd, buffer, desc, count);
+}
+
 void cgpu_cmd_resource_barrier(CGPUCommandBufferId cmd, const struct CGPUResourceBarrierDescriptor* desc)
 {
     cgpu_assert(cmd != CGPU_NULLPTR && "fatal: call on NULL cmdbuffer!");

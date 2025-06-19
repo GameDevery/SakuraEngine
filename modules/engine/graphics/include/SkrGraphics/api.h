@@ -81,6 +81,7 @@ struct CGPUBufferToBufferTransfer;
 struct CGPUBufferToTilesTransfer;
 struct CGPUBufferToTextureTransfer;
 struct CGPUTextureToTextureTransfer;
+struct CGPUFillBufferDescriptor;
 struct CGPUQueryDescriptor;
 struct CGPUDescriptorData;
 struct CGPUResourceBarrierDescriptor;
@@ -326,6 +327,10 @@ CGPU_API void cgpu_cmd_transfer_buffer_to_texture(CGPUCommandBufferId cmd, const
 typedef void (*CGPUProcCmdTransferBufferToTexture)(CGPUCommandBufferId cmd, const struct CGPUBufferToTextureTransfer* desc);
 CGPU_API void cgpu_cmd_transfer_buffer_to_tiles(CGPUCommandBufferId cmd, const struct CGPUBufferToTilesTransfer* desc);
 typedef void (*CGPUProcCmdTransferBufferToTiles)(CGPUCommandBufferId cmd, const struct CGPUBufferToTilesTransfer* desc);
+CGPU_API void cgpu_cmd_fill_buffer(CGPUCommandBufferId cmd, CGPUBufferId buffer, const struct CGPUFillBufferDescriptor* desc);
+typedef void (*CGPUProcCmdFillBuffer)(CGPUCommandBufferId cmd, CGPUBufferId buffer, const struct CGPUFillBufferDescriptor* desc);
+CGPU_API void cgpu_cmd_fill_buffer_n(CGPUCommandBufferId cmd, CGPUBufferId buffer, const struct CGPUFillBufferDescriptor* desc, uint32_t count);
+typedef void (*CGPUProcCmdFillBufferN)(CGPUCommandBufferId cmd, CGPUBufferId buffer, const struct CGPUFillBufferDescriptor* desc, uint32_t count);
 CGPU_API void cgpu_cmd_resource_barrier(CGPUCommandBufferId cmd, const struct CGPUResourceBarrierDescriptor* desc);
 typedef void (*CGPUProcCmdResourceBarrier)(CGPUCommandBufferId cmd, const struct CGPUResourceBarrierDescriptor* desc);
 CGPU_API void cgpu_cmd_begin_query(CGPUCommandBufferId cmd, CGPUQueryPoolId pool, const struct CGPUQueryDescriptor* desc);
@@ -631,6 +636,8 @@ typedef struct CGPUProcTable {
     const CGPUProcCmdTransferBufferToBuffer cmd_transfer_buffer_to_buffer;
     const CGPUProcCmdTransferBufferToTexture cmd_transfer_buffer_to_texture;
     const CGPUProcCmdTransferBufferToTiles cmd_transfer_buffer_to_tiles;
+    const CGPUProcCmdFillBuffer cmd_fill_buffer;
+    const CGPUProcCmdFillBufferN cmd_fill_buffer_n;
     const CGPUProcCmdTransferTextureToTexture cmd_transfer_texture_to_texture;
     const CGPUProcCmdResourceBarrier cmd_resource_barrier;
     const CGPUProcCmdBeginQuery cmd_begin_query;
@@ -1167,6 +1174,11 @@ typedef struct CGPUBufferToTextureTransfer {
     CGPUBufferId src;
     uint64_t src_offset;
 } CGPUBufferToTextureTransfer;
+
+typedef struct CGPUFillBufferDescriptor {
+    uint64_t offset;
+    uint32_t value;
+} CGPUFillBufferDescriptor;
 
 typedef struct CGPUBufferBarrier {
     CGPUBufferId buffer;

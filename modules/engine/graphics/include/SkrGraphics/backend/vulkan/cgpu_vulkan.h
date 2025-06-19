@@ -122,6 +122,8 @@ CGPU_API void cgpu_cmd_transfer_buffer_to_buffer_vulkan(CGPUCommandBufferId cmd,
 CGPU_API void cgpu_cmd_transfer_buffer_to_texture_vulkan(CGPUCommandBufferId cmd, const struct CGPUBufferToTextureTransfer* desc);
 CGPU_API void cgpu_cmd_transfer_buffer_to_tiles_vulkan(CGPUCommandBufferId cmd, const struct CGPUBufferToTilesTransfer* desc);
 CGPU_API void cgpu_cmd_transfer_texture_to_texture_vulkan(CGPUCommandBufferId cmd, const struct CGPUTextureToTextureTransfer* desc);
+CGPU_API void cgpu_cmd_fill_buffer_vulkan(CGPUCommandBufferId cmd, CGPUBufferId buffer, const struct CGPUFillBufferDescriptor* desc);
+CGPU_API void cgpu_cmd_fill_buffer_n_vulkan(CGPUCommandBufferId cmd, CGPUBufferId buffer, const struct CGPUFillBufferDescriptor* desc, uint32_t count);
 CGPU_API void cgpu_cmd_resource_barrier_vulkan(CGPUCommandBufferId cmd, const struct CGPUResourceBarrierDescriptor* desc);
 CGPU_API void cgpu_cmd_begin_query_vulkan(CGPUCommandBufferId cmd, CGPUQueryPoolId pool, const struct CGPUQueryDescriptor* desc);
 CGPU_API void cgpu_cmd_end_query_vulkan(CGPUCommandBufferId cmd, CGPUQueryPoolId pool, const struct CGPUQueryDescriptor* desc);
@@ -499,8 +501,8 @@ extern "C" {
 #endif
 
 SKR_FORCEINLINE static VkFormat VkUtil_FormatTranslateToVk(const ECGPUFormat format);
-
 #include "cgpu_vulkan.inl"
+
 #ifdef __cplusplus
 } // end extern "C"
 #endif

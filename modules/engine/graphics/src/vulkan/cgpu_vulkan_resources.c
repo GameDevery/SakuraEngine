@@ -413,6 +413,26 @@ void cgpu_cmd_transfer_texture_to_texture_vulkan(CGPUCommandBufferId cmd, const 
     }
 }
 
+void cgpu_cmd_fill_buffer_vulkan(CGPUCommandBufferId cmd, CGPUBufferId buffer, const struct CGPUFillBufferDescriptor* desc)
+{
+    CGPUCommandBuffer_Vulkan* Cmd = (CGPUCommandBuffer_Vulkan*)cmd;
+    CGPUBuffer_Vulkan* Buffer = (CGPUBuffer_Vulkan*)buffer;
+    CGPUDevice_Vulkan* Device = (CGPUDevice_Vulkan*)buffer->device;
+    PFN_vkCmdFillBuffer write_fn = Device->mVkDeviceTable.vkCmdFillBuffer;
+    if (write_fn)
+    {
+        write_fn(Cmd->pVkCmdBuf, Buffer->pVkBuffer, desc->offset, sizeof(uint32_t), desc->value);
+    }
+}
+
+void cgpu_cmd_fill_buffer_n_vulkan(CGPUCommandBufferId cmd, CGPUBufferId buffer, const struct CGPUFillBufferDescriptor* desc, uint32_t count)
+{
+    for (uint32_t i = 0; i < count; i++)
+    {
+        cgpu_cmd_fill_buffer_vulkan(cmd, buffer, desc);
+    }
+}
+
 void cgpu_free_buffer_vulkan(CGPUBufferId buffer)
 {
     CGPUBuffer_Vulkan* B = (CGPUBuffer_Vulkan*)buffer;

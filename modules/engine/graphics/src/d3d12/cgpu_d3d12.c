@@ -1461,6 +1461,39 @@ void cgpu_cmd_begin_d3d12(CGPUCommandBufferId cmd)
     Cmd->pBoundRootSignature = NULL;
 }
 
+void cgpu_cmd_fill_buffer_d3d12(CGPUCommandBufferId cmd, CGPUBufferId buffer, const struct CGPUFillBufferDescriptor* desc)
+{
+    const CGPUCommandBuffer_D3D12* CMD = (const CGPUCommandBuffer_D3D12*)cmd;
+    const CGPUBuffer_D3D12* B = (const CGPUBuffer_D3D12*)buffer;
+
+    ID3D12GraphicsCommandList2* pCommandList2 = CGPU_NULLPTR;
+    COM_CALL(QueryInterface, CMD->pDxCmdList, IID_ARGS(ID3D12GraphicsCommandList, &pCommandList2));
+
+    D3D12_WRITEBUFFERIMMEDIATE_PARAMETER param = { B->mDxGpuAddress + desc->offset, desc->value };
+    D3D12_WRITEBUFFERIMMEDIATE_MODE mode = D3D12_WRITEBUFFERIMMEDIATE_MODE_MARKER_OUT;
+    COM_CALL(WriteBufferImmediate, pCommandList2, 1, &param, &mode);
+    SAFE_RELEASE(pCommandList2);
+}
+
+void cgpu_cmd_fill_buffer_n_d3d12(CGPUCommandBufferId cmd, CGPUBufferId buffer, const struct CGPUFillBufferDescriptor* desc, uint32_t count)
+{
+    const CGPUCommandBuffer_D3D12* CMD = (const CGPUCommandBuffer_D3D12*)cmd;
+    const CGPUBuffer_D3D12* B = (const CGPUBuffer_D3D12*)buffer;
+
+    ID3D12GraphicsCommandList2* pCommandList2 = CGPU_NULLPTR;
+    COM_CALL(QueryInterface, CMD->pDxCmdList, IID_ARGS(ID3D12GraphicsCommandList, &pCommandList2));
+
+    D3D12_WRITEBUFFERIMMEDIATE_PARAMETER params[count];
+    for (uint32_t i = 0; i < count; i++)
+    {
+        params[i].Dest = B->mDxGpuAddress + desc->offset;
+        params[i].Value = desc->value;
+    }
+    D3D12_WRITEBUFFERIMMEDIATE_MODE mode = D3D12_WRITEBUFFERIMMEDIATE_MODE_MARKER_OUT;
+    COM_CALL(WriteBufferImmediate, pCommandList2, count, params, &mode);
+    SAFE_RELEASE(pCommandList2);
+}
+
 void cgpu_cmd_begin_query_d3d12(CGPUCommandBufferId cmd, CGPUQueryPoolId pool, const struct CGPUQueryDescriptor* desc)
 {
     CGPUCommandBuffer_D3D12* CMD = (CGPUCommandBuffer_D3D12*)cmd;
