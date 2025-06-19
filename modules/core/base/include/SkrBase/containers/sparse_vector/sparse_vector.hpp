@@ -1159,14 +1159,14 @@ SKR_INLINE typename SparseVector<Memory>::DataType& SparseVector<Memory>::at_las
 {
     index = sparse_size() - index - 1;
     SKR_ASSERT(!is_empty() && is_valid_index(index) && has_data(index));
-    return *(storage() + index);
+    return storage()[index]._sparse_vector_data;
 }
 template <typename Memory>
 SKR_INLINE const typename SparseVector<Memory>::DataType& SparseVector<Memory>::at_last(SizeType index) const
 {
     index = sparse_size() - index - 1;
     SKR_ASSERT(!is_empty() && is_valid_index(index) && has_data(index));
-    return *(storage() + index);
+    return storage()[index]._sparse_vector_data;
 }
 
 // find

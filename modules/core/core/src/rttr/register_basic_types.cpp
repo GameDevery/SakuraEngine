@@ -4,6 +4,7 @@
 #include "SkrRTTR/type.hpp"
 #include <SkrRTTR/generic/generic_base.hpp>
 #include <SkrRTTR/generic/generic_vector.hpp>
+#include <SkrRTTR/generic/generic_sparse_vector.hpp>
 #include <SkrRTTR/generic/generic_optional.hpp>
 
 // primitive type helper
@@ -134,6 +135,16 @@ SKR_EXEC_STATIC_CTOR
             kVectorGenericId,
             +[](TypeSignatureView sig) -> RC<IGenericBase> {
                 return RC<GenericVector>::New(
+                    build_generic(sig)
+                );
+            }
+        );
+
+        // sparse vector
+        register_generic_processor(
+            kSparseVectorGenericId,
+            +[](TypeSignatureView sig) -> RC<IGenericBase> {
+                return RC<GenericSparseVector>::New(
                     build_generic(sig)
                 );
             }

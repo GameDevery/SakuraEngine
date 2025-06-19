@@ -1,10 +1,15 @@
-#include "SkrRTTR/export/export_builder.hpp"
-#include "SkrRTTR/generic/generic_vector.hpp"
-#include "SkrTestFramework/framework.hpp"
-#include "SkrCore/log.hpp"
-#include "SkrRTTR/generic/generic_optional.hpp"
-#include "SkrContainersDef/optional.hpp"
-#include "SkrCore/exec_static.hpp"
+#include <SkrTestFramework/framework.hpp>
+#include <SkrCore/log.hpp>
+#include <SkrRTTR/export/export_builder.hpp>
+#include <SkrCore/exec_static.hpp>
+
+#include <SkrContainers/optional.hpp>
+#include <SkrContainers/vector.hpp>
+#include <SkrContainers/sparse_vector.hpp>
+
+#include <SkrRTTR/generic/generic_optional.hpp>
+#include <SkrRTTR/generic/generic_vector.hpp>
+#include <SkrRTTR/generic/generic_sparse_vector.hpp>
 
 struct OpTester {
     static int  ctor_count;
@@ -255,7 +260,7 @@ TEST_CASE("test generic vector")
     {
         VecType vec;
 
-        // check data
+        // check data empty
         REQUIRE_EQ(generic_vec->capacity(&vec), vec.capacity());
         REQUIRE_EQ(generic_vec->slack(&vec), vec.slack());
         REQUIRE_EQ(generic_vec->size(&vec), vec.size());
@@ -628,6 +633,514 @@ TEST_CASE("test generic vector")
 
         // contains
         int32_t value_to_check = 1;
+        REQUIRE(generic_vec->contains(&vec, &value_to_check));
+        value_to_check = 114514;
+        REQUIRE_FALSE(generic_vec->contains(&vec, &value_to_check));
+
+        // count
+        value_to_check = 1;
+        REQUIRE_EQ(generic_vec->count(&vec, &value_to_check), 3);
+        value_to_check = 4;
+        REQUIRE_EQ(generic_vec->count(&vec, &value_to_check), 2);
+        value_to_check = 1919810;
+        REQUIRE_EQ(generic_vec->count(&vec, &value_to_check), 0);
+    }
+}
+
+TEST_CASE("test generic sparse vector")
+{
+    using namespace skr;
+
+    RC<GenericSparseVector> generic_vec = build_generic(type_signature_of<SparseVector<int32_t>>()).cast_static<GenericSparseVector>();
+    using VecType                       = SparseVector<int32_t>;
+
+    auto _make_vec_with_hole = +[]() {
+        VecType vec{
+            1, 1,
+            1, 1,
+            4, 4,
+            5, 5,
+            1, 1,
+            4, 4
+        };
+        for (size_t i = 0; i < vec.sparse_size(); ++i)
+        {
+            if (i % 2 == 0)
+            {
+                vec.remove_at(i);
+            }
+        }
+        return vec;
+    };
+
+    SUBCASE("data get")
+    {
+        VecType vec;
+
+        // check data empty
+        REQUIRE_EQ(generic_vec->size(&vec), vec.size());
+        REQUIRE_EQ(generic_vec->capacity(&vec), vec.capacity());
+        REQUIRE_EQ(generic_vec->slack(&vec), vec.slack());
+        REQUIRE_EQ(generic_vec->sparse_size(&vec), vec.sparse_size());
+        REQUIRE_EQ(generic_vec->hole_size(&vec), vec.hole_size());
+        REQUIRE_EQ(generic_vec->bit_size(&vec), vec.bit_size());
+        REQUIRE_EQ(generic_vec->freelist_head(&vec), vec.freelist_head());
+        REQUIRE_EQ(generic_vec->is_compact(&vec), vec.is_compact());
+        REQUIRE_EQ(generic_vec->is_empty(&vec), vec.is_empty());
+        REQUIRE_EQ(generic_vec->storage(&vec), vec.storage());
+        REQUIRE_EQ(generic_vec->bit_data(&vec), vec.bit_data());
+
+        // check data with content
+        vec = { 1, 1, 4, 5, 1, 4 };
+        REQUIRE_EQ(generic_vec->size(&vec), vec.size());
+        REQUIRE_EQ(generic_vec->capacity(&vec), vec.capacity());
+        REQUIRE_EQ(generic_vec->slack(&vec), vec.slack());
+        REQUIRE_EQ(generic_vec->sparse_size(&vec), vec.sparse_size());
+        REQUIRE_EQ(generic_vec->hole_size(&vec), vec.hole_size());
+        REQUIRE_EQ(generic_vec->bit_size(&vec), vec.bit_size());
+        REQUIRE_EQ(generic_vec->freelist_head(&vec), vec.freelist_head());
+        REQUIRE_EQ(generic_vec->is_compact(&vec), vec.is_compact());
+        REQUIRE_EQ(generic_vec->is_empty(&vec), vec.is_empty());
+        REQUIRE_EQ(generic_vec->storage(&vec), vec.storage());
+        REQUIRE_EQ(generic_vec->bit_data(&vec), vec.bit_data());
+    }
+
+    SUBCASE("validate")
+    {
+        VecType vec = _make_vec_with_hole();
+
+        // check has data
+        for (size_t i = 0; i < vec.sparse_size(); ++i)
+        {
+            REQUIRE_EQ(generic_vec->has_data(&vec, i), i % 2 != 0);
+        }
+
+        // check is hole
+        for (size_t i = 0; i < vec.sparse_size(); ++i)
+        {
+            REQUIRE_EQ(generic_vec->is_hole(&vec, i), i % 2 == 0);
+        }
+
+        // check valid index
+        for (size_t i = 0; i < vec.sparse_size(); ++i)
+        {
+            REQUIRE(generic_vec->is_valid_index(&vec, i));
+        }
+    }
+
+    SUBCASE("memory op")
+    {
+        VecType vec = _make_vec_with_hole();
+
+        // clear
+        auto old_capacity = vec.capacity();
+        generic_vec->clear(&vec);
+        REQUIRE_EQ(vec.size(), 0);
+        REQUIRE_EQ(vec.sparse_size(), 0);
+        REQUIRE_EQ(vec.hole_size(), 0);
+        REQUIRE_EQ(vec.capacity(), old_capacity);
+        REQUIRE_NE(vec.storage(), nullptr);
+        REQUIRE_NE(vec.bit_data(), nullptr);
+
+        // release
+        generic_vec->release(&vec);
+        REQUIRE_EQ(vec.size(), 0);
+        REQUIRE_EQ(vec.sparse_size(), 0);
+        REQUIRE_EQ(vec.hole_size(), 0);
+        REQUIRE_EQ(vec.capacity(), 0);
+        REQUIRE_EQ(vec.storage(), nullptr);
+        REQUIRE_EQ(vec.bit_data(), nullptr);
+
+        // release with reserve
+        vec = _make_vec_with_hole();
+        generic_vec->release(&vec, 10);
+        REQUIRE_EQ(vec.size(), 0);
+        REQUIRE_EQ(vec.sparse_size(), 0);
+        REQUIRE_EQ(vec.hole_size(), 0);
+        REQUIRE_EQ(vec.capacity(), 10);
+        REQUIRE_NE(vec.storage(), nullptr);
+        REQUIRE_NE(vec.bit_data(), nullptr);
+
+        // reserve
+        generic_vec->reserve(&vec, 114514);
+        REQUIRE_EQ(vec.size(), 0);
+        REQUIRE_EQ(vec.sparse_size(), 0);
+        REQUIRE_EQ(vec.hole_size(), 0);
+        REQUIRE_EQ(vec.capacity(), 114514);
+
+        // shrink
+        generic_vec->shrink(&vec);
+        REQUIRE_EQ(vec.size(), 0);
+        REQUIRE_EQ(vec.sparse_size(), 0);
+        REQUIRE_EQ(vec.hole_size(), 0);
+        REQUIRE_EQ(vec.capacity(), 0);
+
+        // compact
+        vec = _make_vec_with_hole();
+        REQUIRE_FALSE(generic_vec->is_compact(&vec));
+        REQUIRE(generic_vec->compact(&vec));
+        REQUIRE_EQ(vec.size(), 6);
+        REQUIRE_EQ(vec.sparse_size(), 6);
+        REQUIRE_EQ(vec.hole_size(), 0);
+        REQUIRE_GE(vec.capacity(), 12);
+        REQUIRE_EQ(vec.count(1), 3);
+        REQUIRE_EQ(vec.count(4), 2);
+        REQUIRE_EQ(vec.count(5), 1);
+
+        // compact stable
+        vec = _make_vec_with_hole();
+        REQUIRE_FALSE(generic_vec->is_compact(&vec));
+        REQUIRE(generic_vec->compact_stable(&vec));
+        REQUIRE_EQ(vec.size(), 6);
+        REQUIRE_EQ(vec.sparse_size(), 6);
+        REQUIRE_EQ(vec.hole_size(), 0);
+        REQUIRE_GE(vec.capacity(), 12);
+        REQUIRE_EQ(vec[0], 1);
+        REQUIRE_EQ(vec[1], 1);
+        REQUIRE_EQ(vec[2], 4);
+        REQUIRE_EQ(vec[3], 5);
+        REQUIRE_EQ(vec[4], 1);
+        REQUIRE_EQ(vec[5], 4);
+
+        // compact top
+        vec.clear();
+        for (size_t i = 0; i < 100; ++i)
+        {
+            vec.add(i);
+        }
+        for (size_t i = 0; i < 50; ++i)
+        {
+            if (i % 2 == 0)
+            {
+                vec.remove_at(i);
+            }
+        }
+        for (size_t i = 50; i < 100; ++i)
+        {
+            vec.remove_at(i);
+        }
+        REQUIRE_FALSE(generic_vec->is_compact(&vec));
+        REQUIRE(generic_vec->compact_top(&vec));
+        REQUIRE_EQ(vec.size(), 25);
+        REQUIRE_EQ(vec.sparse_size(), 50);
+        REQUIRE_EQ(vec.hole_size(), 25);
+        REQUIRE_GE(vec.capacity(), 50);
+        for (size_t i = 0; i < vec.sparse_size(); ++i)
+        {
+            if (i % 2 == 0)
+            {
+                REQUIRE_FALSE(vec.has_data(i));
+            }
+            else
+            {
+                REQUIRE_EQ(vec[i], i);
+            }
+        }
+    }
+
+    SUBCASE("add")
+    {
+        VecType vec = {};
+
+        // add
+        {
+            vec.clear();
+            int32_t value = 114514;
+            generic_vec->add(&vec, &value);
+            REQUIRE_EQ(vec.size(), 1);
+            REQUIRE_GE(vec.capacity(), 1);
+            REQUIRE_EQ(vec[0], value);
+        }
+
+        // add with hole
+        {
+            vec           = _make_vec_with_hole();
+            int32_t value = 1919810;
+            generic_vec->add(&vec, &value);
+            REQUIRE_EQ(vec.size(), 7);
+            REQUIRE_EQ(vec.sparse_size(), 12);
+            REQUIRE_EQ(vec.hole_size(), 5);
+            REQUIRE_GE(vec.capacity(), 7);
+        }
+
+        // add move
+        {
+            vec.clear();
+            int32_t value = 123456;
+            generic_vec->add_move(&vec, &value);
+            REQUIRE_EQ(vec.size(), 1);
+            REQUIRE_GE(vec.capacity(), 1);
+            REQUIRE_EQ(vec[0], 123456);
+        }
+
+        // add move with hole
+        {
+            vec           = _make_vec_with_hole();
+            int32_t value = 654321;
+            generic_vec->add_move(&vec, &value);
+            REQUIRE_EQ(vec.size(), 7);
+            REQUIRE_EQ(vec.sparse_size(), 12);
+            REQUIRE_EQ(vec.hole_size(), 5);
+            REQUIRE_GE(vec.capacity(), 7);
+        }
+
+        // add zeroed
+        {
+            vec.clear();
+            generic_vec->add_zeroed(&vec);
+            REQUIRE_EQ(vec.size(), 1);
+            REQUIRE_GE(vec.capacity(), 1);
+            REQUIRE_EQ(vec[0], 0);
+        }
+
+        // add zeroed with hole
+        {
+            vec = _make_vec_with_hole();
+            generic_vec->add_zeroed(&vec);
+            REQUIRE_EQ(vec.size(), 7);
+            REQUIRE_EQ(vec.sparse_size(), 12);
+            REQUIRE_EQ(vec.hole_size(), 5);
+            REQUIRE_GE(vec.capacity(), 7);
+        }
+    }
+
+    SUBCASE("add at")
+    {
+        VecType vec      = _make_vec_with_hole();
+        int32_t values[] = { 1, 1, 4, 5, 1, 4 };
+
+        // add at
+        {
+            for (int32_t i = 0; i < vec.sparse_size(); ++i)
+            {
+                if (!vec.has_data(i))
+                {
+                    generic_vec->add_at(&vec, i, &values[i / 2]);
+                }
+            }
+            REQUIRE_EQ(vec.size(), 12);
+            REQUIRE_EQ(vec.sparse_size(), 12);
+            REQUIRE_EQ(vec.hole_size(), 0);
+            REQUIRE_GE(vec.capacity(), 12);
+            for (size_t i = 0; i < vec.sparse_size(); ++i)
+            {
+                REQUIRE_EQ(vec[i], values[i / 2]);
+            }
+        }
+
+        // add at move
+        {
+            vec = _make_vec_with_hole();
+            for (int32_t i = 0; i < vec.sparse_size(); ++i)
+            {
+                if (!vec.has_data(i))
+                {
+                    generic_vec->add_at_move(&vec, i, &values[i / 2]);
+                }
+            }
+            REQUIRE_EQ(vec.size(), 12);
+            REQUIRE_EQ(vec.sparse_size(), 12);
+            REQUIRE_EQ(vec.hole_size(), 0);
+            REQUIRE_GE(vec.capacity(), 12);
+            for (size_t i = 0; i < vec.sparse_size(); ++i)
+            {
+                REQUIRE_EQ(vec[i], values[i / 2]);
+            }
+        }
+
+        // add at zeroed
+        {
+            vec = _make_vec_with_hole();
+            for (int32_t i = 0; i < vec.sparse_size(); ++i)
+            {
+                if (!vec.has_data(i))
+                {
+                    generic_vec->add_at_zeroed(&vec, i);
+                }
+            }
+            REQUIRE_EQ(vec.size(), 12);
+            REQUIRE_EQ(vec.sparse_size(), 12);
+            REQUIRE_EQ(vec.hole_size(), 0);
+            REQUIRE_EQ(vec.capacity(), 12);
+            for (size_t i = 0; i < vec.sparse_size(); ++i)
+            {
+                if (i % 2 == 0)
+                {
+                    REQUIRE_EQ(vec[i], 0);
+                }
+                else
+                {
+                    REQUIRE_EQ(vec[i], values[i / 2]);
+                }
+            }
+        }
+    }
+
+    SUBCASE("append")
+    {
+        VecType vec1     = { 1, 1, 4, 5, 1, 4 };
+        VecType vec2     = { 6, 7, 8, 9, 10, 11 };
+        int32_t values[] = { 1, 1, 4, 5, 1, 4 };
+
+        // append
+        generic_vec->append(&vec1, &vec2);
+        REQUIRE_EQ(vec1.size(), 12);
+        REQUIRE_EQ(vec1.sparse_size(), 12);
+        REQUIRE_EQ(vec1.hole_size(), 0);
+        REQUIRE_GE(vec1.capacity(), 12);
+        for (size_t i = 0; i < vec1.sparse_size(); ++i)
+        {
+            if (i < 6)
+            {
+                REQUIRE_EQ(vec1[i], values[i]);
+            }
+            else
+            {
+                REQUIRE_EQ(vec1[i], i);
+            }
+        }
+    }
+
+    SUBCASE("remove")
+    {
+        VecType vec;
+
+        // remove at
+        {
+            int32_t values[] = { 1, 1, 4, 5, 1, 4 };
+            vec              = {
+                1, 1,
+                1, 1,
+                4, 4,
+                5, 5,
+                1, 1,
+                4, 4
+            };
+
+            for (size_t i = 0; i < vec.sparse_size(); ++i)
+            {
+                if (i % 2 == 0)
+                {
+                    generic_vec->remove_at(&vec, i);
+                }
+            }
+
+            REQUIRE_EQ(vec.size(), 6);
+            REQUIRE_EQ(vec.sparse_size(), 12);
+            REQUIRE_EQ(vec.hole_size(), 6);
+            REQUIRE_GE(vec.capacity(), 12);
+
+            for (size_t i = 0; i < vec.sparse_size(); ++i)
+            {
+                if (i % 2 == 0)
+                {
+                    REQUIRE_FALSE(vec.has_data(i));
+                }
+                else
+                {
+                    REQUIRE_EQ(vec[i], values[i / 2]);
+                }
+            }
+        }
+
+        // remove
+        {
+            vec                      = { 1, 1, 4, 5, 1, 4 };
+            uint32_t value_to_remove = 1;
+            generic_vec->remove(&vec, &value_to_remove);
+            REQUIRE_EQ(vec.size(), 5);
+            REQUIRE_EQ(vec.sparse_size(), 6);
+            REQUIRE_EQ(vec.hole_size(), 1);
+            REQUIRE_GE(vec.capacity(), 6);
+            REQUIRE_FALSE(vec.has_data(0));
+            REQUIRE_EQ(vec.count(1), 2);
+            REQUIRE_EQ(vec.count(4), 2);
+            REQUIRE_EQ(vec.count(5), 1);
+        }
+
+        // remove last
+        {
+            vec                      = { 1, 1, 4, 5, 1, 4 };
+            uint32_t value_to_remove = 1;
+            generic_vec->remove_last(&vec, &value_to_remove);
+            REQUIRE_EQ(vec.size(), 5);
+            REQUIRE_EQ(vec.sparse_size(), 6);
+            REQUIRE_EQ(vec.hole_size(), 1);
+            REQUIRE_GE(vec.capacity(), 6);
+            REQUIRE_FALSE(vec.has_data(4));
+            REQUIRE_EQ(vec.count(1), 2);
+            REQUIRE_EQ(vec.count(4), 2);
+            REQUIRE_EQ(vec.count(5), 1);
+        }
+
+        // remove all
+        {
+            vec                      = { 1, 1, 4, 5, 1, 4 };
+            uint32_t value_to_remove = 4;
+            uint64_t removed_count   = generic_vec->remove_all(&vec, &value_to_remove);
+            REQUIRE_EQ(removed_count, 2);
+            REQUIRE_EQ(vec.size(), 4);
+            REQUIRE_EQ(vec.sparse_size(), 6);
+            REQUIRE_EQ(vec.hole_size(), 2);
+            REQUIRE_GE(vec.capacity(), 6);
+            REQUIRE_FALSE(vec.has_data(2));
+            REQUIRE_FALSE(vec.has_data(5));
+            REQUIRE_EQ(vec.count(1), 3);
+            REQUIRE_EQ(vec.count(4), 0);
+            REQUIRE_EQ(vec.count(5), 1);
+        }
+    }
+
+    SUBCASE("access")
+    {
+        VecType vec;
+        for (size_t i = 0; i < 100; ++i)
+        {
+            vec.add(i);
+        }
+
+        for (size_t i = 0; i < 100; ++i)
+        {
+            REQUIRE_EQ(&vec.at(i), generic_vec->at(&vec, i));
+            REQUIRE_EQ(&vec.at_last(i), generic_vec->at_last(&vec, i));
+        }
+    }
+
+    SUBCASE("find")
+    {
+        VecType vec = { 1, 1, 4, 5, 1, 4 };
+
+        // find
+        uint32_t value_to_find = 1;
+        auto     found_ref     = generic_vec->find(&vec, &value_to_find);
+        REQUIRE(found_ref.is_valid());
+        REQUIRE_EQ(found_ref.index, 0);
+        REQUIRE_EQ(found_ref.ptr, &vec.at(0));
+
+        // find last
+        value_to_find = 1;
+        found_ref     = generic_vec->find_last(&vec, &value_to_find);
+        REQUIRE(found_ref.is_valid());
+        REQUIRE_EQ(found_ref.index, 4);
+        REQUIRE_EQ(found_ref.ptr, &vec.at(4));
+
+        // find not found
+        value_to_find = 114514;
+        found_ref     = generic_vec->find(&vec, &value_to_find);
+        REQUIRE_FALSE(found_ref.is_valid());
+
+        // find last not found
+        value_to_find = 1919810;
+        found_ref     = generic_vec->find_last(&vec, &value_to_find);
+        REQUIRE_FALSE(found_ref.is_valid());
+    }
+
+    SUBCASE("contains & count")
+    {
+        VecType vec = { 1, 1, 4, 5, 1, 4 };
+
+        // contains
+        uint32_t value_to_check = 1;
         REQUIRE(generic_vec->contains(&vec, &value_to_check));
         value_to_check = 114514;
         REQUIRE_FALSE(generic_vec->contains(&vec, &value_to_check));

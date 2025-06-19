@@ -1135,6 +1135,8 @@ void GenericSparseVector::_realloc(void* dst, uint64_t new_capacity) const
     SKR_ASSERT(new_capacity > 0);
     SKR_ASSERT((dst_mem->_capacity > 0 && dst_mem->_data != nullptr) || (dst_mem->_capacity == 0 && dst_mem->_data == nullptr));
 
+    auto storage_size = SparseVectorMemoryBase::_storage_size(_inner_size);
+
     // realloc bit data
     uint64_t new_block_size = BitAlgo::num_blocks(new_capacity);
     uint64_t old_block_size = BitAlgo::num_blocks(dst_mem->_capacity);
@@ -1182,7 +1184,7 @@ void GenericSparseVector::_realloc(void* dst, uint64_t new_capacity) const
         dst_mem->_data = SkrAllocator::realloc_raw(
             dst_mem->_data,
             new_capacity,
-            _inner_size,
+            storage_size,
             _inner_alignment
         );
     }
@@ -1191,7 +1193,7 @@ void GenericSparseVector::_realloc(void* dst, uint64_t new_capacity) const
         // alloc new memory
         void* new_memory = SkrAllocator::alloc_raw(
             new_capacity,
-            _inner_size,
+            storage_size,
             _inner_alignment
         );
 
