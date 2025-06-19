@@ -12,9 +12,7 @@
 #define D3D12_GPU_VIRTUAL_ADDRESS_UNKNOWN ((D3D12_GPU_VIRTUAL_ADDRESS)-1)
 #define D3D12_DESCRIPTOR_ID_NONE (D3D12_CPU_DESCRIPTOR_HANDLE{(size_t)~0})
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+CGPU_EXTERN_C_BEGIN
 
 struct DMA_Allocator;
 struct DMA_Pool;
@@ -168,8 +166,9 @@ CGPU_API void cgpu_dstorage_queue_submit_d3d12(CGPUDStorageQueueId queue, CGPUFe
 CGPU_API void cgpu_dstorage_close_file_d3d12(CGPUDStorageQueueId queue, CGPUDStorageFileHandle file);
 CGPU_API void cgpu_free_dstorage_queue_d3d12(CGPUDStorageQueueId queue);
 
+CGPU_EXTERN_C_END
+
 #ifdef __cplusplus
-} // end extern "C"
 namespace D3D12MA
 {
 class Allocator;
@@ -427,10 +426,19 @@ static const D3D12_COMMAND_LIST_TYPE gDx12CmdTypeTranslator[CGPU_QUEUE_TYPE_COUN
 #endif
 
 #ifndef SAFE_RELEASE
+#ifdef __cplusplus
     #define SAFE_RELEASE(p_var) \
-        if (p_var)              \
+        if (p_var != CGPU_NULLPTR)              \
         {                       \
             p_var->Release();   \
-            p_var = NULL;       \
+            p_var = CGPU_NULLPTR;       \
         }
+#else
+    #define SAFE_RELEASE(p_var) \
+        if (p_var != CGPU_NULLPTR)              \
+        {                       \
+            COM_CALL(Release, (p_var)); \
+            (p_var) = CGPU_NULLPTR;     \
+        }
+#endif
 #endif

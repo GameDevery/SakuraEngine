@@ -296,7 +296,7 @@ void cgpu_cmd_build_acceleration_structures_d3d12(CGPUCommandBufferId cmd, const
     }
 
 
-    COM_CALL(Release, dxrCmd);
+    SAFE_RELEASE(dxrCmd);
 }
 
 inline static D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE ToDXRASType(ECGPUAccelerationStructureType type)

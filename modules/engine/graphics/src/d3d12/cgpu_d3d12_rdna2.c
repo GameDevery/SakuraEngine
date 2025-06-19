@@ -15,7 +15,7 @@ void cgpu_render_encoder_set_shading_rate_d3d12(CGPURenderPassEncoderId encoder,
         ID3D12GraphicsCommandList5* CmdList5 = CGPU_NULLPTR;
         CHECK_HRESULT(COM_CALL(QueryInterface, Cmd->pDxCmdList, IID_REF(ID3D12GraphicsCommandList5), (void**)&CmdList5));
         COM_CALL(RSSetShadingRate, CmdList5, D3D12Util_TranslateShadingRate(shading_rate), combiners);
-        COM_CALL(Release, CmdList5);
+        SAFE_RELEASE(CmdList5);
     }
     // TODO: VRS Tier2
     if (Adapter->adapter_detail.support_shading_rate_mask)

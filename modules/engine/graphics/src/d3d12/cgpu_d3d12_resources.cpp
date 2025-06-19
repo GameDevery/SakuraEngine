@@ -1,13 +1,11 @@
 #include "SkrBase/misc/make_zeroed.hpp"
 #include "SkrBase/misc/defer.hpp"
-#include "SkrCore/memory/memory.h"
 #include "SkrGraphics/containers.hpp"
 #include "SkrGraphics/backend/d3d12/cgpu_d3d12.h"
 #include "SkrGraphics/drivers/cgpu_nvapi.h"
 
 #include "d3d12_utils.h"
 #include <dxcapi.h>
-#include <memory>
 
 #include "SkrProfile/profile.h"
 
@@ -24,6 +22,167 @@ inline D3D12_HEAP_TYPE D3D12Util_TranslateHeapType(ECGPUMemoryUsage usage)
     else
         return D3D12_HEAP_TYPE_DEFAULT;
 }
+
+struct CGPUTiledMemoryPool_D3D12 : public CGPUMemoryPool_D3D12 {
+    void AllocateTiles(uint32_t N, D3D12MA::Allocation** ppAllocation, uint32_t Scale = 1) SKR_NOEXCEPT
+    {
+        CGPUDevice_D3D12* D = (CGPUDevice_D3D12*)super.device;
+        const auto kPageSize = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+        D3D12MA::ALLOCATION_DESC allocDesc = {};
+        allocDesc.CustomPool = pDxPool;
+        D3D12_RESOURCE_ALLOCATION_INFO allocInfo = {};
+        allocInfo.Alignment = kPageSize;
+        allocInfo.SizeInBytes = kPageSize * Scale;
+        for (uint32_t i = 0; i < N; ++i)
+        {
+            D->pResourceAllocator->AllocateMemory(&allocDesc, &allocInfo, &ppAllocation[i]);
+        }
+    }
+
+    ~CGPUTiledMemoryPool_D3D12() SKR_NOEXCEPT
+    {
+        SAFE_RELEASE(pDxPool);
+    }
+};
+
+enum ETileMappingStatus_D3D12
+{
+    D3D12_TILE_MAPPING_STATUS_UNMAPPED = 0,
+    D3D12_TILE_MAPPING_STATUS_PENDING = 1,
+    D3D12_TILE_MAPPING_STATUS_MAPPING = 2,
+    D3D12_TILE_MAPPING_STATUS_MAPPED = 3,
+    D3D12_TILE_MAPPING_STATUS_UNMAPPING = 4
+};
+
+struct TileMapping_D3D12 {
+    D3D12MA::Allocation* pDxAllocation;
+    SAtomic32 status;
+};
+static_assert(std::is_trivially_constructible_v<TileMapping_D3D12>, "TileMapping_D3D12 Must Be Trivially Constructible!");
+
+struct SubresTileMappings_D3D12 {
+    SubresTileMappings_D3D12(CGPUTexture_D3D12* T, uint32_t X, uint32_t Y, uint32_t Z) SKR_NOEXCEPT
+        : T(T),
+          X(X),
+          Y(Y),
+          Z(Z)
+    {
+        if (X * Y * Z)
+            mappings = (TileMapping_D3D12*)cgpu_calloc(1, X * Y * Z * sizeof(TileMapping_D3D12));
+    }
+    ~SubresTileMappings_D3D12() SKR_NOEXCEPT
+    {
+        if (mappings)
+        {
+            for (uint32_t x = 0; x < X; x++)
+                for (uint32_t y = 0; y < Y; y++)
+                    for (uint32_t z = 0; z < Z; z++)
+                    {
+                        unmap(x, y, z);
+                    }
+            cgpu_free(mappings);
+        }
+    }
+    TileMapping_D3D12* at(uint32_t x, uint32_t y, uint32_t z)
+    {
+        SKR_ASSERT(mappings && x < X && y < Y && z < Z && "SubresTileMappings::at: Out of Range!");
+        return mappings + (x + y * X + z * X * Y);
+    }
+    const TileMapping_D3D12* at(uint32_t x, uint32_t y, uint32_t z) const
+    {
+        SKR_ASSERT(mappings && x < X && y < Y && z < Z && "SubresTileMappings::at: Out of Range!");
+        return mappings + (x + y * X + z * X * Y);
+    }
+    void unmap(uint32_t x, uint32_t y, uint32_t z)
+    {
+        auto pTiledInfo = const_cast<CGPUTiledTextureInfo*>(T->super.tiled_resource);
+        auto* mapping = at(x, y, z);
+
+        int32_t expect_mapped = D3D12_TILE_MAPPING_STATUS_MAPPED;
+        if (skr_atomic_compare_exchange_strong(&mapping->status,
+                                        &expect_mapped, D3D12_TILE_MAPPING_STATUS_UNMAPPING))
+        {
+            SAFE_RELEASE(mapping->pDxAllocation);
+            skr_atomic_fetch_add_relaxed(&pTiledInfo->alive_tiles_count, -1);
+        }
+
+        int32_t expect_unmapping = D3D12_TILE_MAPPING_STATUS_UNMAPPING;
+        skr_atomic_compare_exchange_strong(&mapping->status,
+                                 &expect_unmapping, D3D12_TILE_MAPPING_STATUS_UNMAPPED);
+    }
+
+private:
+    CGPUTexture_D3D12* T = nullptr;
+    const uint32_t X = 0;
+    const uint32_t Y = 0;
+    const uint32_t Z = 0;
+    TileMapping_D3D12* mappings = nullptr;
+};
+
+struct PackedMipMapping_D3D12 {
+    PackedMipMapping_D3D12(CGPUTexture_D3D12* T, uint32_t N) SKR_NOEXCEPT
+        : N(N),
+          T(T)
+    {
+    }
+    ~PackedMipMapping_D3D12() SKR_NOEXCEPT
+    {
+        unmap();
+    }
+    void unmap()
+    {
+        auto pTiledInfo = const_cast<CGPUTiledTextureInfo*>(T->super.tiled_resource);
+        int32_t expect_mapped = D3D12_TILE_MAPPING_STATUS_MAPPED;
+        if (skr_atomic_compare_exchange_strong(&status,
+                &expect_mapped, D3D12_TILE_MAPPING_STATUS_UNMAPPING))
+        {
+            SAFE_RELEASE(pAllocation);
+            skr_atomic_fetch_add_relaxed(&pTiledInfo->alive_tiles_count, -1);
+        }
+
+        int32_t expect_unmapping = D3D12_TILE_MAPPING_STATUS_UNMAPPING;
+        skr_atomic_compare_exchange_strong(&status,
+                                 &expect_unmapping, D3D12_TILE_MAPPING_STATUS_UNMAPPED);
+    }
+    D3D12MA::Allocation* pAllocation = nullptr;
+    const uint32_t N = 0;
+    SAtomic32 status;
+
+private:
+    CGPUTexture_D3D12* T = nullptr;
+};
+
+struct CGPUTiledTexture_D3D12 : public CGPUTexture_D3D12 {
+    CGPUTiledTexture_D3D12(SubresTileMappings_D3D12* pMappings, PackedMipMapping_D3D12* pPackedMips, uint32_t NumPacks) SKR_NOEXCEPT
+        : CGPUTexture_D3D12(),
+          pMappings(pMappings),
+          pPackedMips(pPackedMips),
+          NumPacks(NumPacks)
+    {
+    }
+    ~CGPUTiledTexture_D3D12() SKR_NOEXCEPT
+    {
+        const auto N = super.info->mip_levels * (super.info->array_size_minus_one + 1);
+        for (uint32_t i = 0; i < N; i++)
+            pMappings[i].~SubresTileMappings_D3D12();
+        for (uint32_t i = 0; i < NumPacks; i++)
+            pPackedMips[i].~PackedMipMapping_D3D12();
+    }
+    SubresTileMappings_D3D12* getSubresTileMappings(uint32_t mip_level, uint32_t array_index)
+    {
+        SKR_ASSERT(mip_level < super.info->mip_levels && array_index < super.info->array_size_minus_one + 1);
+        return pMappings + (mip_level * (super.info->array_size_minus_one + 1) + array_index);
+    }
+    PackedMipMapping_D3D12* getPackedMipMapping(uint32_t layer)
+    {
+        return pPackedMips + layer;
+    }
+
+private:
+    SubresTileMappings_D3D12* pMappings;
+    PackedMipMapping_D3D12* pPackedMips;
+    uint32_t NumPacks;
+};
 
 CGPUMemoryPoolId cgpu_create_memory_pool_d3d12(CGPUDeviceId device, const struct CGPUMemoryPoolDescriptor* desc)
 {
@@ -178,8 +337,10 @@ CGPUBufferId cgpu_create_buffer_d3d12(CGPUDeviceId device, const struct CGPUBuff
     // Create Descriptors
     if (!(desc->flags & CGPU_BCF_NO_DESCRIPTOR_VIEW_CREATION))
     {
-        D3D12Util_DescriptorHeap* pHeap       = D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV];
-        uint32_t                  handleCount = ((desc->descriptors & CGPU_RESOURCE_TYPE_UNIFORM_BUFFER) ? 1 : 0) +
+        D3D12Util_DescriptorHeap* pHeap = D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV];
+        const size_t kDescriptorSize = D3D12Util_GetDescriptorSize(pHeap);
+
+        uint32_t handleCount = ((desc->descriptors & CGPU_RESOURCE_TYPE_UNIFORM_BUFFER) ? 1 : 0) +
                                ((desc->descriptors & CGPU_RESOURCE_TYPE_BUFFER) ? 1 : 0) +
                                ((desc->descriptors & CGPU_RESOURCE_TYPE_RW_BUFFER) ? 1 : 0);
         B->mDxDescriptorHandles = D3D12Util_ConsumeDescriptorHandles(pHeap, handleCount).mCpu;
@@ -187,7 +348,7 @@ CGPUBufferId cgpu_create_buffer_d3d12(CGPUDeviceId device, const struct CGPUBuff
         if (desc->descriptors & CGPU_RESOURCE_TYPE_UNIFORM_BUFFER)
         {
             D3D12_CPU_DESCRIPTOR_HANDLE cbv = { B->mDxDescriptorHandles.ptr };
-            B->mDxSrvOffset = pHeap->mDescriptorSize * 1;
+            B->mDxSrvOffset = kDescriptorSize * 1;
 
             D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
             cbvDesc.BufferLocation = B->mDxGpuAddress;
@@ -198,16 +359,16 @@ CGPUBufferId cgpu_create_buffer_d3d12(CGPUDeviceId device, const struct CGPUBuff
         if (desc->descriptors & CGPU_RESOURCE_TYPE_BUFFER)
         {
             D3D12_CPU_DESCRIPTOR_HANDLE srv = { B->mDxDescriptorHandles.ptr + B->mDxSrvOffset };
-            B->mDxUavOffset = B->mDxSrvOffset + pHeap->mDescriptorSize * 1;
+            B->mDxUavOffset = B->mDxSrvOffset + kDescriptorSize * 1;
 
             D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-            srvDesc.ViewDimension                   = D3D12_SRV_DIMENSION_BUFFER;
-            srvDesc.Shader4ComponentMapping         = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-            srvDesc.Buffer.FirstElement             = desc->first_element;
-            srvDesc.Buffer.NumElements              = (UINT)(desc->element_count);
-            srvDesc.Buffer.StructureByteStride      = (UINT)(desc->element_stride);
-            srvDesc.Buffer.Flags                    = D3D12_BUFFER_SRV_FLAG_NONE;
-            srvDesc.Format                          = (DXGI_FORMAT)DXGIUtil_TranslatePixelFormat(desc->format, false);
+            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+            srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            srvDesc.Buffer.FirstElement = desc->first_element;
+            srvDesc.Buffer.NumElements = (UINT)(desc->element_count);
+            srvDesc.Buffer.StructureByteStride = (UINT)(desc->element_stride);
+            srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+            srvDesc.Format = (DXGI_FORMAT)DXGIUtil_TranslatePixelFormat(desc->format, false);
             if (CGPU_RESOURCE_TYPE_BUFFER_RAW == (desc->descriptors & CGPU_RESOURCE_TYPE_BUFFER_RAW))
             {
                 if (desc->format != CGPU_FORMAT_UNDEFINED)
@@ -230,13 +391,13 @@ CGPUBufferId cgpu_create_buffer_d3d12(CGPUDeviceId device, const struct CGPUBuff
             D3D12_CPU_DESCRIPTOR_HANDLE uav = { B->mDxDescriptorHandles.ptr + B->mDxUavOffset };
 
             D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-            uavDesc.Format                           = DXGI_FORMAT_UNKNOWN;
-            uavDesc.ViewDimension                    = D3D12_UAV_DIMENSION_BUFFER;
-            uavDesc.Buffer.FirstElement              = desc->first_element;
-            uavDesc.Buffer.NumElements               = (UINT)(desc->element_count);
-            uavDesc.Buffer.StructureByteStride       = (UINT)(desc->element_stride);
-            uavDesc.Buffer.CounterOffsetInBytes      = 0;
-            uavDesc.Buffer.Flags                     = D3D12_BUFFER_UAV_FLAG_NONE;
+            uavDesc.Format = DXGI_FORMAT_UNKNOWN;
+            uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+            uavDesc.Buffer.FirstElement = desc->first_element;
+            uavDesc.Buffer.NumElements = (UINT)(desc->element_count);
+            uavDesc.Buffer.StructureByteStride = (UINT)(desc->element_stride);
+            uavDesc.Buffer.CounterOffsetInBytes = 0;
+            uavDesc.Buffer.Flags |= D3D12_BUFFER_UAV_FLAG_NONE;
             if (CGPU_RESOURCE_TYPE_RW_BUFFER_RAW == (desc->descriptors & CGPU_RESOURCE_TYPE_RW_BUFFER_RAW))
             {
                 if (desc->format != CGPU_FORMAT_UNDEFINED)
@@ -286,17 +447,17 @@ CGPUBufferId cgpu_create_buffer_d3d12(CGPUDeviceId device, const struct CGPUBuff
     }
 
     // Set Buffer Object Props
-    B->super.info       = pInfo;
-    pInfo->size         = allocationSize;
+    B->super.info = pInfo;
+    pInfo->size = allocationSize;
     pInfo->memory_usage = desc->memory_usage;
-    pInfo->descriptors  = desc->descriptors;
+    pInfo->descriptors = desc->descriptors;
     return &B->super;
 }
 
 void cgpu_map_buffer_d3d12(CGPUBufferId buffer, const struct CGPUBufferRange* range)
 {
-    CGPUBuffer_D3D12* B     = (CGPUBuffer_D3D12*)buffer;
-    CGPUBufferInfo*   pInfo = (CGPUBufferInfo*)B->super.info;
+    CGPUBuffer_D3D12* B = (CGPUBuffer_D3D12*)buffer;
+    CGPUBufferInfo* pInfo = (CGPUBufferInfo*)B->super.info;
     cgpu_assert(pInfo->memory_usage != CGPU_MEM_USAGE_GPU_ONLY && "Trying to map non-cpu accessible resource");
 
     D3D12_RANGE dxrange = { 0, pInfo->size };
@@ -310,8 +471,8 @@ void cgpu_map_buffer_d3d12(CGPUBufferId buffer, const struct CGPUBufferRange* ra
 
 void cgpu_unmap_buffer_d3d12(CGPUBufferId buffer)
 {
-    CGPUBuffer_D3D12* B     = (CGPUBuffer_D3D12*)buffer;
-    CGPUBufferInfo*   pInfo = (CGPUBufferInfo*)B->super.info;
+    CGPUBuffer_D3D12* B = (CGPUBuffer_D3D12*)buffer;
+    CGPUBufferInfo* pInfo = (CGPUBufferInfo*)B->super.info;
     cgpu_assert(pInfo->memory_usage != CGPU_MEM_USAGE_GPU_ONLY && "Trying to unmap non-cpu accessible resource");
 
     B->pDxResource->Unmap(0, NULL);
@@ -321,8 +482,8 @@ void cgpu_unmap_buffer_d3d12(CGPUBufferId buffer)
 void cgpu_cmd_transfer_buffer_to_buffer_d3d12(CGPUCommandBufferId cmd, const struct CGPUBufferToBufferTransfer* desc)
 {
     CGPUCommandBuffer_D3D12* Cmd = (CGPUCommandBuffer_D3D12*)cmd;
-    CGPUBuffer_D3D12*        Src = (CGPUBuffer_D3D12*)desc->src;
-    CGPUBuffer_D3D12*        Dst = (CGPUBuffer_D3D12*)desc->dst;
+    CGPUBuffer_D3D12* Src = (CGPUBuffer_D3D12*)desc->src;
+    CGPUBuffer_D3D12* Dst = (CGPUBuffer_D3D12*)desc->dst;
 #if defined(XBOX)
     Cmd->mDma.pDxCmdList->CopyBufferRegion(Dst->pDxResource, desc->dst_offset, Src->pDxResource, desc->src_offset, desc->size);
 #else
@@ -332,19 +493,21 @@ void cgpu_cmd_transfer_buffer_to_buffer_d3d12(CGPUCommandBufferId cmd, const str
 
 void cgpu_cmd_transfer_texture_to_texture_d3d12(CGPUCommandBufferId cmd, const struct CGPUTextureToTextureTransfer* desc)
 {
-    CGPUDevice_D3D12*        D   = (CGPUDevice_D3D12*)cmd->device;
+    CGPUDevice_D3D12* D = (CGPUDevice_D3D12*)cmd->device;
     CGPUCommandBuffer_D3D12* Cmd = (CGPUCommandBuffer_D3D12*)cmd;
-    CGPUTexture_D3D12*       Src = (CGPUTexture_D3D12*)desc->src;
-    CGPUTexture_D3D12*       Dst = (CGPUTexture_D3D12*)desc->dst;
+    CGPUTexture_D3D12* Src = (CGPUTexture_D3D12*)desc->src;
+    CGPUTexture_D3D12* Dst = (CGPUTexture_D3D12*)desc->dst;
 
     uint32_t src_subresource = CALC_SUBRESOURCE_INDEX(
-    desc->src_subresource.mip_level, desc->src_subresource.base_array_layer,
-    0, 1,
-    desc->src_subresource.layer_count);
+        desc->src_subresource.mip_level, desc->src_subresource.base_array_layer,
+        0, 1,
+        desc->src_subresource.layer_count
+    );
     uint32_t dst_subresource = CALC_SUBRESOURCE_INDEX(
-    desc->dst_subresource.mip_level, desc->dst_subresource.base_array_layer,
-    0, 1,
-    desc->dst_subresource.layer_count);
+        desc->dst_subresource.mip_level, desc->dst_subresource.base_array_layer,
+        0, 1,
+        desc->dst_subresource.layer_count
+    );
     D3D12_RESOURCE_DESC src_resourceDesc = Src->pDxResource->GetDesc();
     D3D12_RESOURCE_DESC dst_resourceDesc = Dst->pDxResource->GetDesc();
 
@@ -358,11 +521,11 @@ void cgpu_cmd_transfer_texture_to_texture_d3d12(CGPUCommandBufferId cmd, const s
     &dst_resourceDesc, dst_subresource, 1,
     0, &dst.PlacedFootprint,
     NULL, NULL, NULL);
-    src.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-    src.pResource        = Src->pDxResource;
+    src.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+    src.pResource = Src->pDxResource;
     src.SubresourceIndex = src_subresource;
-    dst.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-    dst.pResource        = Dst->pDxResource;
+    dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+    dst.pResource = Dst->pDxResource;
     dst.SubresourceIndex = dst_subresource;
 
 #if defined(XBOX)
@@ -374,30 +537,30 @@ void cgpu_cmd_transfer_texture_to_texture_d3d12(CGPUCommandBufferId cmd, const s
 
 void cgpu_cmd_transfer_buffer_to_texture_d3d12(CGPUCommandBufferId cmd, const struct CGPUBufferToTextureTransfer* desc)
 {
-    CGPUDevice_D3D12*        D   = (CGPUDevice_D3D12*)cmd->device;
+    CGPUDevice_D3D12* D = (CGPUDevice_D3D12*)cmd->device;
     CGPUCommandBuffer_D3D12* Cmd = (CGPUCommandBuffer_D3D12*)cmd;
-    CGPUBuffer_D3D12*        Src = (CGPUBuffer_D3D12*)desc->src;
-    CGPUTexture_D3D12*       Dst = (CGPUTexture_D3D12*)desc->dst;
+    CGPUBuffer_D3D12* Src = (CGPUBuffer_D3D12*)desc->src;
+    CGPUTexture_D3D12* Dst = (CGPUTexture_D3D12*)desc->dst;
 
     uint32_t subresource = CALC_SUBRESOURCE_INDEX(
-    desc->dst_subresource.mip_level,
-    desc->dst_subresource.base_array_layer,
-    0, 1,
-    desc->dst_subresource.layer_count);
+        desc->dst_subresource.mip_level,
+        desc->dst_subresource.base_array_layer,
+        0, 1,
+        desc->dst_subresource.layer_count);
     D3D12_RESOURCE_DESC resourceDesc = Dst->pDxResource->GetDesc();
 
     D3D12_TEXTURE_COPY_LOCATION src = {};
     D3D12_TEXTURE_COPY_LOCATION dst = {};
-    src.Type                        = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-    src.pResource                   = Src->pDxResource;
+    src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+    src.pResource = Src->pDxResource;
     D->pDxDevice->GetCopyableFootprints(
     &resourceDesc, subresource, 1,
     desc->src_offset, &src.PlacedFootprint,
     NULL, NULL, NULL);
     src.PlacedFootprint.Offset = desc->src_offset;
-    dst.Type                   = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-    dst.pResource              = Dst->pDxResource;
-    dst.SubresourceIndex       = subresource;
+    dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+    dst.pResource = Dst->pDxResource;
+    dst.SubresourceIndex = subresource;
 #if defined(XBOX)
     Cmd->mDma.pDxCmdList->CopyTextureRegion(&dst, 0, 0, 0, &src, NULL);
 #else
@@ -408,20 +571,21 @@ void cgpu_cmd_transfer_buffer_to_texture_d3d12(CGPUCommandBufferId cmd, const st
 void cgpu_cmd_transfer_buffer_to_tiles_d3d12(CGPUCommandBufferId cmd, const struct CGPUBufferToTilesTransfer* desc)
 {
     CGPUCommandBuffer_D3D12* Cmd = (CGPUCommandBuffer_D3D12*)cmd;
-    CGPUBuffer_D3D12*        Src = (CGPUBuffer_D3D12*)desc->src;
-    CGPUTexture_D3D12*       Dst = (CGPUTexture_D3D12*)desc->dst;
+    CGPUBuffer_D3D12* Src = (CGPUBuffer_D3D12*)desc->src;
+    CGPUTexture_D3D12* Dst = (CGPUTexture_D3D12*)desc->dst;
 
     uint32_t subresource = CALC_SUBRESOURCE_INDEX(
-    desc->region.mip_level,
-    desc->region.layer,
-    0, 1, 1);
+        desc->region.mip_level,
+        desc->region.layer,
+        0, 1, 1
+    );
     D3D12_TILED_RESOURCE_COORDINATE DstCoord = {
         desc->region.start.x, desc->region.start.y, desc->region.start.z, subresource
     };
-    const auto             Width     = desc->region.end.x - desc->region.start.x;
-    const auto             Height    = desc->region.end.y - desc->region.start.y;
-    const auto             Depth     = desc->region.end.z - desc->region.start.z;
-    const auto             N         = Width * Height * Depth;
+    const auto Width = desc->region.end.x - desc->region.start.x;
+    const auto Height = desc->region.end.y - desc->region.start.y;
+    const auto Depth = desc->region.end.z - desc->region.start.z;
+    const auto N = Width * Height * Depth;
     D3D12_TILE_REGION_SIZE CoordSize = {
         N, TRUE, Width, (UINT16)Height, (UINT16)Depth
     };
@@ -433,9 +597,9 @@ void cgpu_cmd_transfer_buffer_to_tiles_d3d12(CGPUCommandBufferId cmd, const stru
 
 void cgpu_free_buffer_d3d12(CGPUBufferId buffer)
 {
-    CGPUBuffer_D3D12* B     = (CGPUBuffer_D3D12*)buffer;
-    CGPUBufferInfo*   pInfo = (CGPUBufferInfo*)B->super.info;
-    CGPUDevice_D3D12* D     = (CGPUDevice_D3D12*)B->super.device;
+    CGPUBuffer_D3D12* B = (CGPUBuffer_D3D12*)buffer;
+    CGPUBufferInfo* pInfo = (CGPUBufferInfo*)B->super.info;
+    CGPUDevice_D3D12* D = (CGPUDevice_D3D12*)B->super.device;
     if (B->mDxDescriptorHandles.ptr != D3D12_GPU_VIRTUAL_ADDRESS_NULL)
     {
         uint32_t handleCount = ((pInfo->descriptors & CGPU_RESOURCE_TYPE_UNIFORM_BUFFER) ? 1 : 0) +
@@ -454,7 +618,7 @@ void cgpu_free_buffer_d3d12(CGPUBufferId buffer)
 CGPUSamplerId cgpu_create_sampler_d3d12(CGPUDeviceId device, const struct CGPUSamplerDescriptor* desc)
 {
     // initialize to zero
-    CGPUDevice_D3D12*  D        = (CGPUDevice_D3D12*)device;
+    CGPUDevice_D3D12* D = (CGPUDevice_D3D12*)device;
     CGPUSampler_D3D12* pSampler = cgpu_new<CGPUSampler_D3D12>();
 
     D3D12_SAMPLER_DESC add_desc = {};
@@ -463,24 +627,20 @@ CGPUSamplerId cgpu_create_sampler_d3d12(CGPUDeviceId device, const struct CGPUSa
     desc->min_filter, desc->mag_filter,
     desc->mipmap_mode, desc->max_anisotropy > 0.0f,
     (desc->compare_func != CGPU_CMP_NEVER ? true : false));
-    add_desc.AddressU       = D3D12Util_TranslateAddressMode(desc->address_u);
-    add_desc.AddressV       = D3D12Util_TranslateAddressMode(desc->address_v);
-    add_desc.AddressW       = D3D12Util_TranslateAddressMode(desc->address_w);
-    add_desc.MipLODBias     = desc->mip_lod_bias;
-    add_desc.MaxAnisotropy  = cgpu_max((UINT)desc->max_anisotropy, 1U);
+    add_desc.AddressU = D3D12Util_TranslateAddressMode(desc->address_u);
+    add_desc.AddressV = D3D12Util_TranslateAddressMode(desc->address_v);
+    add_desc.AddressW = D3D12Util_TranslateAddressMode(desc->address_w);
+    add_desc.MipLODBias = desc->mip_lod_bias;
+    add_desc.MaxAnisotropy = cgpu_max((UINT)desc->max_anisotropy, 1U);
     add_desc.ComparisonFunc = gDx12ComparisonFuncTranslator[desc->compare_func];
     add_desc.BorderColor[0] = 0.0f;
     add_desc.BorderColor[1] = 0.0f;
     add_desc.BorderColor[2] = 0.0f;
     add_desc.BorderColor[3] = 0.0f;
-    add_desc.MinLOD         = 0.0f;
-    add_desc.MaxLOD =
-    ((desc->mipmap_mode == CGPU_MIPMAP_MODE_LINEAR) ? D3D12_FLOAT32_MAX : 0.0f);
-    ;
-    pSampler->mDxDesc   = add_desc;
-    pSampler->mDxHandle = D3D12Util_ConsumeDescriptorHandles(
-                          D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER], 1)
-                          .mCpu;
+    add_desc.MinLOD = 0.0f;
+    add_desc.MaxLOD = (desc->mipmap_mode == CGPU_MIPMAP_MODE_LINEAR) ? D3D12_FLOAT32_MAX : 0.0f;
+    pSampler->mDxDesc = add_desc;
+    pSampler->mDxHandle = D3D12Util_ConsumeDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER], 1).mCpu;
     D->pDxDevice->CreateSampler(&pSampler->mDxDesc, pSampler->mDxHandle);
     return &pSampler->super;
 }
@@ -488,11 +648,9 @@ CGPUSamplerId cgpu_create_sampler_d3d12(CGPUDeviceId device, const struct CGPUSa
 void cgpu_free_sampler_d3d12(CGPUSamplerId sampler)
 {
     CGPUSampler_D3D12* pSampler = (CGPUSampler_D3D12*)sampler;
-    CGPUDevice_D3D12*  D        = (CGPUDevice_D3D12*)sampler->device;
+    CGPUDevice_D3D12* D = (CGPUDevice_D3D12*)sampler->device;
 
-    D3D12Util_ReturnDescriptorHandles(
-    D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER],
-    pSampler->mDxHandle, 1);
+    D3D12Util_ReturnDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER], pSampler->mDxHandle, 1);
     cgpu_delete(pSampler);
 }
 
@@ -717,28 +875,28 @@ inline CGPUTexture_D3D12* D3D12Util_AllocateTiled(CGPUAdapter_D3D12* A, CGPUDevi
     uint32_t layers = resDesc.DepthOrArraySize;
 
     // query page informations
-    UINT                  numTiles = 0;
+    UINT numTiles = 0;
     D3D12_PACKED_MIP_INFO packedMipInfo;
-    D3D12_TILE_SHAPE      tileShape        = {};
-    UINT                  subresourceCount = resDesc.MipLevels;
-    auto                  tilings          = (D3D12_SUBRESOURCE_TILING*)cgpu_calloc(subresourceCount, sizeof(D3D12_SUBRESOURCE_TILING));
+    D3D12_TILE_SHAPE tileShape        = {};
+    UINT subresourceCount = resDesc.MipLevels;
+    auto tilings = (D3D12_SUBRESOURCE_TILING*)cgpu_calloc(subresourceCount, sizeof(D3D12_SUBRESOURCE_TILING));
     SKR_DEFER({ cgpu_free(tilings); });
     D->pDxDevice->GetResourceTiling(pDxResource, &numTiles,
                                     &packedMipInfo, &tileShape,
                                     &subresourceCount, 0,
                                     tilings);
 
-    const auto objSize            = sizeof(CGPUTiledTexture_D3D12) + sizeof(CGPUTextureInfo) + sizeof(CGPUTiledTextureInfo);
-    const auto subresSize         = (sizeof(CGPUTiledSubresourceInfo) + sizeof(SubresTileMappings_D3D12)) * subresourceCount;
-    const auto packedMipSize      = sizeof(PackedMipMapping_D3D12);
+    const auto objSize = sizeof(CGPUTiledTexture_D3D12) + sizeof(CGPUTextureInfo) + sizeof(CGPUTiledTextureInfo);
+    const auto subresSize = (sizeof(CGPUTiledSubresourceInfo) + sizeof(SubresTileMappings_D3D12)) * subresourceCount;
+    const auto packedMipSize = sizeof(PackedMipMapping_D3D12);
     const auto totalPackedMipSize = layers * packedMipSize;
-    const auto totalSize          = objSize + subresSize + totalPackedMipSize;
-    auto       T                  = (CGPUTiledTexture_D3D12*)cgpu_calloc(1, totalSize);
-    auto       pInfo              = (CGPUTextureInfo*)(T + 1);
-    auto       pTiledInfo         = (CGPUTiledTextureInfo*)(pInfo + 1);
-    auto       pSubresInfo        = (CGPUTiledSubresourceInfo*)(pTiledInfo + 1);
-    auto       pSubresMapping     = (SubresTileMappings_D3D12*)(pSubresInfo + subresourceCount);
-    auto       pPackedMipsMapping = (PackedMipMapping_D3D12*)(pSubresMapping + subresourceCount);
+    const auto totalSize = objSize + subresSize + totalPackedMipSize;
+    auto T = (CGPUTiledTexture_D3D12*)cgpu_calloc(1, totalSize);
+    auto pInfo = (CGPUTextureInfo*)(T + 1);
+    auto pTiledInfo = (CGPUTiledTextureInfo*)(pInfo + 1);
+    auto pSubresInfo = (CGPUTiledSubresourceInfo*)(pTiledInfo + 1);
+    auto pSubresMapping = (SubresTileMappings_D3D12*)(pSubresInfo + subresourceCount);
+    auto pPackedMipsMapping = (PackedMipMapping_D3D12*)(pSubresMapping + subresourceCount);
     for (uint32_t i = 0; i < layers; i++)
     {
         new (pPackedMipsMapping + i) PackedMipMapping_D3D12(T, packedMipInfo.NumTilesForPackedMips);
@@ -747,12 +905,12 @@ inline CGPUTexture_D3D12* D3D12Util_AllocateTiled(CGPUAdapter_D3D12* A, CGPUDevi
 
     pTiledInfo->total_tiles_count = numTiles;
     pTiledInfo->alive_tiles_count = 0;
-    pTiledInfo->tile_size         = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+    pTiledInfo->tile_size = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
 
-    pTiledInfo->tile_width_in_texels  = tileShape.WidthInTexels;
+    pTiledInfo->tile_width_in_texels = tileShape.WidthInTexels;
     pTiledInfo->tile_height_in_texels = tileShape.HeightInTexels;
-    pTiledInfo->tile_depth_in_texels  = tileShape.DepthInTexels;
-    pTiledInfo->subresources          = pSubresInfo;
+    pTiledInfo->tile_depth_in_texels = tileShape.DepthInTexels;
+    pTiledInfo->subresources = pSubresInfo;
 
     if (A->mTiledResourceTier <= D3D12_TILED_RESOURCES_TIER_1)
         pTiledInfo->pack_unaligned = true;
@@ -764,17 +922,17 @@ inline CGPUTexture_D3D12* D3D12Util_AllocateTiled(CGPUAdapter_D3D12* A, CGPUDevi
 
     for (uint32_t i = 0; i < subresourceCount; i++)
     {
-        auto& SubresInfo           = pSubresInfo[i];
-        SubresInfo.width_in_tiles  = tilings[i].WidthInTiles;
+        auto& SubresInfo = pSubresInfo[i];
+        SubresInfo.width_in_tiles = tilings[i].WidthInTiles;
         SubresInfo.height_in_tiles = tilings[i].HeightInTiles;
-        SubresInfo.depth_in_tiles  = tilings[i].DepthInTiles;
-        SubresInfo.layer           = 0;
-        SubresInfo.mip_level       = i;
+        SubresInfo.depth_in_tiles = tilings[i].DepthInTiles;
+        SubresInfo.layer = 0;
+        SubresInfo.mip_level = i;
         new (&pSubresMapping[i]) SubresTileMappings_D3D12(T, SubresInfo.width_in_tiles, SubresInfo.height_in_tiles, SubresInfo.depth_in_tiles);
     }
-    T->super.info           = pInfo;
+    T->super.info = pInfo;
     T->super.tiled_resource = pTiledInfo;
-    T->pDxResource          = pDxResource;
+    T->pDxResource = pDxResource;
     // GPU reads or writes to NULL mappings are undefined under Tier1.
     if (desc->owner_queue && A->mTiledResourceTier <= D3D12_TILED_RESOURCES_TIER_1)
     {
@@ -1359,6 +1517,7 @@ CGPUTextureViewId cgpu_create_texture_view_d3d12(CGPUDeviceId device, const stru
     if (handleCount > 0)
     {
         D3D12Util_DescriptorHeap* pHeap = D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV];
+        const size_t kDescriptorSize = D3D12Util_GetDescriptorSize(pHeap);
         TV->mDxDescriptorHandles        = D3D12Util_ConsumeDescriptorHandles(pHeap, handleCount).mCpu;
         TV->mDxSrvOffset                = 0;
         uint64_t CurrentOffsetCursor    = TV->mDxSrvOffset;
@@ -1368,6 +1527,7 @@ CGPUTextureViewId cgpu_create_texture_view_d3d12(CGPUDeviceId device, const stru
             D3D12_CPU_DESCRIPTOR_HANDLE     srv     = { TV->mDxDescriptorHandles.ptr + TV->mDxSrvOffset };
             D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
             srvDesc.Format                          = (DXGI_FORMAT)DXGIUtil_TranslatePixelFormat(desc->format, true);
+            // TODO: SUPPORT RGBA COMPONENT VIEW MAPPING SWIZZLE
             srvDesc.Shader4ComponentMapping         = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
             switch (desc->dims)
             {
@@ -1436,13 +1596,13 @@ CGPUTextureViewId cgpu_create_texture_view_d3d12(CGPUDeviceId device, const stru
                     break;
             }
             D3D12Util_CreateSRV(D, T->pDxResource, &srvDesc, &srv);
-            CurrentOffsetCursor += pHeap->mDescriptorSize * 1;
+            CurrentOffsetCursor += kDescriptorSize * 1;
         }
         // Create UAV
         if (usages & CGPU_TVU_UAV)
         {
             TV->mDxUavOffset = CurrentOffsetCursor;
-            CurrentOffsetCursor += pHeap->mDescriptorSize * 1;
+            CurrentOffsetCursor += kDescriptorSize * 1;
             D3D12_CPU_DESCRIPTOR_HANDLE      uav     = { TV->mDxDescriptorHandles.ptr + TV->mDxUavOffset };
             D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
             uavDesc.Format                           = (DXGI_FORMAT)DXGIUtil_TranslatePixelFormat(desc->format, true);
@@ -1742,154 +1902,4 @@ inline D3D12MA::ALLOCATION_DESC D3D12Util_CreateAllocationDesc(const struct CGPU
     if (desc->flags & CGPU_BCF_DEDICATED_BIT)
         alloc_desc.Flags |= D3D12MA::ALLOCATION_FLAG_COMMITTED;
     return alloc_desc;
-}
-
-// Descriptor Heap
-D3D12Util_DescriptorHandle D3D12Util_ConsumeDescriptorHandles(D3D12Util_DescriptorHeap* pHeap, uint32_t descriptorCount)
-{
-    if (pHeap->mUsedDescriptors + descriptorCount > pHeap->mDesc.NumDescriptors)
-    {
-#ifdef CGPU_THREAD_SAFETY
-        SMutexLock lock(*pHeap->pMutex);
-#endif
-        if ((pHeap->mDesc.Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE))
-        {
-            uint32_t currentOffset = pHeap->mUsedDescriptors;
-            (void)currentOffset;
-            D3D12_DESCRIPTOR_HEAP_DESC desc = pHeap->mDesc;
-            while (pHeap->mUsedDescriptors + descriptorCount > desc.NumDescriptors)
-            {
-                desc.NumDescriptors <<= 1;
-            }
-            ID3D12Device* pDevice = pHeap->pDevice;
-            SAFE_RELEASE(pHeap->pCurrentHeap);
-            pDevice->CreateDescriptorHeap(&desc, IID_ARGS(&pHeap->pCurrentHeap));
-            pHeap->mDesc             = desc;
-            pHeap->mStartHandle.mCpu = pHeap->pCurrentHeap->GetCPUDescriptorHandleForHeapStart();
-            pHeap->mStartHandle.mGpu = pHeap->pCurrentHeap->GetGPUDescriptorHandleForHeapStart();
-
-            uint32_t* rangeSizes = (uint32_t*)alloca(pHeap->mUsedDescriptors * sizeof(uint32_t));
-#ifdef CGPU_THREAD_SAFETY
-            uint32_t usedDescriptors = skr_atomic_load_relaxed(&pHeap->mUsedDescriptors);
-#else
-            uint32_t usedDescriptors = pHeap->mUsedDescriptors;
-#endif
-            for (uint32_t i = 0; i < pHeap->mUsedDescriptors; ++i)
-                rangeSizes[i] = 1;
-            pDevice->CopyDescriptors(
-            1, &pHeap->mStartHandle.mCpu, &usedDescriptors, pHeap->mUsedDescriptors, pHeap->pHandles, rangeSizes, pHeap->mDesc.Type);
-            D3D12_CPU_DESCRIPTOR_HANDLE* pNewHandles =
-            (D3D12_CPU_DESCRIPTOR_HANDLE*)cgpu_calloc(pHeap->mDesc.NumDescriptors, sizeof(D3D12_CPU_DESCRIPTOR_HANDLE));
-            memcpy(pNewHandles, pHeap->pHandles, pHeap->mUsedDescriptors * sizeof(D3D12_CPU_DESCRIPTOR_HANDLE));
-            cgpu_free(pHeap->pHandles);
-            pHeap->pHandles = pNewHandles;
-        }
-        else if (pHeap->mFreeList.size() >= descriptorCount)
-        {
-            if (descriptorCount == 1)
-            {
-                return pHeap->mFreeList.stack_pop_get();
-            }
-
-            // search for continuous free items in the list
-            uint32_t freeCount = 1;
-            for (size_t i = pHeap->mFreeList.size() - 1; i > 0; --i)
-            {
-                size_t                     index       = i - 1;
-                D3D12Util_DescriptorHandle mDescHandle = pHeap->mFreeList[index];
-                if (mDescHandle.mCpu.ptr + pHeap->mDescriptorSize == pHeap->mFreeList[i].mCpu.ptr)
-                    ++freeCount;
-                else
-                    freeCount = 1;
-
-                if (freeCount == descriptorCount)
-                {
-                    pHeap->mFreeList.remove_at(index, descriptorCount);
-                    return mDescHandle;
-                }
-            }
-        }
-    }
-#ifdef CGPU_THREAD_SAFETY
-    uint32_t usedDescriptors = skr_atomic_fetch_add_relaxed(&pHeap->mUsedDescriptors, descriptorCount);
-#else
-    uint32_t usedDescriptors = pHeap->mUsedDescriptors = pHeap->mUsedDescriptors + descriptorCount;
-#endif
-    cgpu_assert(usedDescriptors + descriptorCount <= pHeap->mDesc.NumDescriptors);
-    D3D12Util_DescriptorHandle ret = {
-        { pHeap->mStartHandle.mCpu.ptr + usedDescriptors * pHeap->mDescriptorSize },
-        { pHeap->mStartHandle.mGpu.ptr + usedDescriptors * pHeap->mDescriptorSize },
-    };
-    return ret;
-}
-
-void D3D12Util_CreateDescriptorHeap(ID3D12Device*                     pDevice,
-                                    const D3D12_DESCRIPTOR_HEAP_DESC* pDesc, struct D3D12Util_DescriptorHeap** ppDescHeap)
-{
-    uint32_t                  numDescriptors = pDesc->NumDescriptors;
-    D3D12Util_DescriptorHeap* pHeap          = (D3D12Util_DescriptorHeap*)cgpu_calloc(1, sizeof(*pHeap));
-#ifdef CGPU_THREAD_SAFETY
-    pHeap->pMutex = (SMutex*)cgpu_calloc(1, sizeof(SMutex));
-    skr_init_mutex(pHeap->pMutex);
-#endif
-    pHeap->pDevice = pDevice;
-
-    // Keep 32 aligned for easy remove
-    numDescriptors = cgpu_round_up(numDescriptors, 32);
-
-    D3D12_DESCRIPTOR_HEAP_DESC Desc = *pDesc;
-    Desc.NumDescriptors             = numDescriptors;
-    pHeap->mDesc                    = Desc;
-
-    CHECK_HRESULT(pDevice->CreateDescriptorHeap(&Desc, IID_ARGS(&pHeap->pCurrentHeap)));
-
-    pHeap->mStartHandle.mCpu = pHeap->pCurrentHeap->GetCPUDescriptorHandleForHeapStart();
-    if (pHeap->mDesc.Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)
-    {
-        pHeap->mStartHandle.mGpu = pHeap->pCurrentHeap->GetGPUDescriptorHandleForHeapStart();
-    }
-    pHeap->mDescriptorSize = pDevice->GetDescriptorHandleIncrementSize(pHeap->mDesc.Type);
-    if (Desc.Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)
-        pHeap->pHandles = (D3D12_CPU_DESCRIPTOR_HANDLE*)cgpu_calloc(Desc.NumDescriptors, sizeof(D3D12_CPU_DESCRIPTOR_HANDLE));
-
-    *ppDescHeap = pHeap;
-}
-
-void D3D12Util_ReturnDescriptorHandles(
-struct D3D12Util_DescriptorHeap* pHeap, D3D12_CPU_DESCRIPTOR_HANDLE handle, uint32_t count)
-{
-    cgpu_assert((pHeap->mDesc.Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE) == 0);
-#ifdef CGPU_THREAD_SAFETY
-    SMutexLock lock(*pHeap->pMutex);
-#endif
-    for (uint32_t i = 0; i < count; ++i)
-    {
-        SKR_DECLARE_ZERO(D3D12Util_DescriptorHandle, Free)
-        Free.mCpu = { handle.ptr + pHeap->mDescriptorSize * i };
-        Free.mGpu = { D3D12_GPU_VIRTUAL_ADDRESS_NULL };
-        pHeap->mFreeList.add(Free);
-    }
-}
-
-void D3D12Util_ResetDescriptorHeap(struct D3D12Util_DescriptorHeap* pHeap)
-{
-    pHeap->mUsedDescriptors = 0;
-    pHeap->mFreeList.clear();
-}
-
-static void D3D12Util_FreeDescriptorHeap(D3D12Util_DescriptorHeap* pHeap)
-{
-    if (pHeap == nullptr) return;
-    SAFE_RELEASE(pHeap->pCurrentHeap);
-
-// Need delete since object frees allocated memory in destructor
-#ifdef CGPU_THREAD_SAFETY
-    skr_destroy_mutex(pHeap->pMutex);
-    cgpu_free(pHeap->pMutex);
-#endif
-
-    std::destroy_at(&pHeap->mFreeList);
-
-    cgpu_free(pHeap->pHandles);
-    cgpu_free(pHeap);
 }
