@@ -479,122 +479,6 @@ void cgpu_unmap_buffer_d3d12(CGPUBufferId buffer)
     pInfo->cpu_mapped_address = NULL;
 }
 
-void cgpu_cmd_transfer_buffer_to_buffer_d3d12(CGPUCommandBufferId cmd, const struct CGPUBufferToBufferTransfer* desc)
-{
-    CGPUCommandBuffer_D3D12* Cmd = (CGPUCommandBuffer_D3D12*)cmd;
-    CGPUBuffer_D3D12* Src = (CGPUBuffer_D3D12*)desc->src;
-    CGPUBuffer_D3D12* Dst = (CGPUBuffer_D3D12*)desc->dst;
-#if defined(XBOX)
-    Cmd->mDma.pDxCmdList->CopyBufferRegion(Dst->pDxResource, desc->dst_offset, Src->pDxResource, desc->src_offset, desc->size);
-#else
-    Cmd->pDxCmdList->CopyBufferRegion(Dst->pDxResource, desc->dst_offset, Src->pDxResource, desc->src_offset, desc->size);
-#endif
-}
-
-void cgpu_cmd_transfer_texture_to_texture_d3d12(CGPUCommandBufferId cmd, const struct CGPUTextureToTextureTransfer* desc)
-{
-    CGPUDevice_D3D12* D = (CGPUDevice_D3D12*)cmd->device;
-    CGPUCommandBuffer_D3D12* Cmd = (CGPUCommandBuffer_D3D12*)cmd;
-    CGPUTexture_D3D12* Src = (CGPUTexture_D3D12*)desc->src;
-    CGPUTexture_D3D12* Dst = (CGPUTexture_D3D12*)desc->dst;
-
-    uint32_t src_subresource = CALC_SUBRESOURCE_INDEX(
-        desc->src_subresource.mip_level, desc->src_subresource.base_array_layer,
-        0, 1,
-        desc->src_subresource.layer_count
-    );
-    uint32_t dst_subresource = CALC_SUBRESOURCE_INDEX(
-        desc->dst_subresource.mip_level, desc->dst_subresource.base_array_layer,
-        0, 1,
-        desc->dst_subresource.layer_count
-    );
-    D3D12_RESOURCE_DESC src_resourceDesc = Src->pDxResource->GetDesc();
-    D3D12_RESOURCE_DESC dst_resourceDesc = Dst->pDxResource->GetDesc();
-
-    D3D12_TEXTURE_COPY_LOCATION src = {};
-    D3D12_TEXTURE_COPY_LOCATION dst = {};
-    D->pDxDevice->GetCopyableFootprints(
-    &src_resourceDesc, src_subresource, 1,
-    0, &src.PlacedFootprint,
-    NULL, NULL, NULL);
-    D->pDxDevice->GetCopyableFootprints(
-    &dst_resourceDesc, dst_subresource, 1,
-    0, &dst.PlacedFootprint,
-    NULL, NULL, NULL);
-    src.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-    src.pResource = Src->pDxResource;
-    src.SubresourceIndex = src_subresource;
-    dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-    dst.pResource = Dst->pDxResource;
-    dst.SubresourceIndex = dst_subresource;
-
-#if defined(XBOX)
-    Cmd->mDma.pDxCmdList->CopyTextureRegion(&dst, 0, 0, 0, &src, NULL);
-#else
-    Cmd->pDxCmdList->CopyTextureRegion(&dst, 0, 0, 0, &src, NULL);
-#endif
-}
-
-void cgpu_cmd_transfer_buffer_to_texture_d3d12(CGPUCommandBufferId cmd, const struct CGPUBufferToTextureTransfer* desc)
-{
-    CGPUDevice_D3D12* D = (CGPUDevice_D3D12*)cmd->device;
-    CGPUCommandBuffer_D3D12* Cmd = (CGPUCommandBuffer_D3D12*)cmd;
-    CGPUBuffer_D3D12* Src = (CGPUBuffer_D3D12*)desc->src;
-    CGPUTexture_D3D12* Dst = (CGPUTexture_D3D12*)desc->dst;
-
-    uint32_t subresource = CALC_SUBRESOURCE_INDEX(
-        desc->dst_subresource.mip_level,
-        desc->dst_subresource.base_array_layer,
-        0, 1,
-        desc->dst_subresource.layer_count);
-    D3D12_RESOURCE_DESC resourceDesc = Dst->pDxResource->GetDesc();
-
-    D3D12_TEXTURE_COPY_LOCATION src = {};
-    D3D12_TEXTURE_COPY_LOCATION dst = {};
-    src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-    src.pResource = Src->pDxResource;
-    D->pDxDevice->GetCopyableFootprints(
-    &resourceDesc, subresource, 1,
-    desc->src_offset, &src.PlacedFootprint,
-    NULL, NULL, NULL);
-    src.PlacedFootprint.Offset = desc->src_offset;
-    dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-    dst.pResource = Dst->pDxResource;
-    dst.SubresourceIndex = subresource;
-#if defined(XBOX)
-    Cmd->mDma.pDxCmdList->CopyTextureRegion(&dst, 0, 0, 0, &src, NULL);
-#else
-    Cmd->pDxCmdList->CopyTextureRegion(&dst, 0, 0, 0, &src, NULL);
-#endif
-}
-
-void cgpu_cmd_transfer_buffer_to_tiles_d3d12(CGPUCommandBufferId cmd, const struct CGPUBufferToTilesTransfer* desc)
-{
-    CGPUCommandBuffer_D3D12* Cmd = (CGPUCommandBuffer_D3D12*)cmd;
-    CGPUBuffer_D3D12* Src = (CGPUBuffer_D3D12*)desc->src;
-    CGPUTexture_D3D12* Dst = (CGPUTexture_D3D12*)desc->dst;
-
-    uint32_t subresource = CALC_SUBRESOURCE_INDEX(
-        desc->region.mip_level,
-        desc->region.layer,
-        0, 1, 1
-    );
-    D3D12_TILED_RESOURCE_COORDINATE DstCoord = {
-        desc->region.start.x, desc->region.start.y, desc->region.start.z, subresource
-    };
-    const auto Width = desc->region.end.x - desc->region.start.x;
-    const auto Height = desc->region.end.y - desc->region.start.y;
-    const auto Depth = desc->region.end.z - desc->region.start.z;
-    const auto N = Width * Height * Depth;
-    D3D12_TILE_REGION_SIZE CoordSize = {
-        N, TRUE, Width, (UINT16)Height, (UINT16)Depth
-    };
-
-    Cmd->pDxCmdList->CopyTiles(Dst->pDxResource, &DstCoord,
-                               &CoordSize, Src->pDxResource, desc->src_offset,
-                               D3D12_TILE_COPY_FLAG_LINEAR_BUFFER_TO_SWIZZLED_TILED_RESOURCE);
-}
-
 void cgpu_free_buffer_d3d12(CGPUBufferId buffer)
 {
     CGPUBuffer_D3D12* B = (CGPUBuffer_D3D12*)buffer;
@@ -609,49 +493,9 @@ void cgpu_free_buffer_d3d12(CGPUBufferId buffer)
         D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], B->mDxDescriptorHandles,
         handleCount);
     }
-    SAFE_RELEASE(B->pDxAllocation)
-    SAFE_RELEASE(B->pDxResource)
+    SAFE_RELEASE(B->pDxAllocation);
+    SAFE_RELEASE(B->pDxResource);
     cgpu_delete(B);
-}
-
-// Sampler APIs
-CGPUSamplerId cgpu_create_sampler_d3d12(CGPUDeviceId device, const struct CGPUSamplerDescriptor* desc)
-{
-    // initialize to zero
-    CGPUDevice_D3D12* D = (CGPUDevice_D3D12*)device;
-    CGPUSampler_D3D12* pSampler = cgpu_new<CGPUSampler_D3D12>();
-
-    D3D12_SAMPLER_DESC add_desc = {};
-    // add sampler to gpu
-    add_desc.Filter = D3D12Util_TranslateFilter(
-    desc->min_filter, desc->mag_filter,
-    desc->mipmap_mode, desc->max_anisotropy > 0.0f,
-    (desc->compare_func != CGPU_CMP_NEVER ? true : false));
-    add_desc.AddressU = D3D12Util_TranslateAddressMode(desc->address_u);
-    add_desc.AddressV = D3D12Util_TranslateAddressMode(desc->address_v);
-    add_desc.AddressW = D3D12Util_TranslateAddressMode(desc->address_w);
-    add_desc.MipLODBias = desc->mip_lod_bias;
-    add_desc.MaxAnisotropy = cgpu_max((UINT)desc->max_anisotropy, 1U);
-    add_desc.ComparisonFunc = gDx12ComparisonFuncTranslator[desc->compare_func];
-    add_desc.BorderColor[0] = 0.0f;
-    add_desc.BorderColor[1] = 0.0f;
-    add_desc.BorderColor[2] = 0.0f;
-    add_desc.BorderColor[3] = 0.0f;
-    add_desc.MinLOD = 0.0f;
-    add_desc.MaxLOD = (desc->mipmap_mode == CGPU_MIPMAP_MODE_LINEAR) ? D3D12_FLOAT32_MAX : 0.0f;
-    pSampler->mDxDesc = add_desc;
-    pSampler->mDxHandle = D3D12Util_ConsumeDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER], 1).mCpu;
-    D->pDxDevice->CreateSampler(&pSampler->mDxDesc, pSampler->mDxHandle);
-    return &pSampler->super;
-}
-
-void cgpu_free_sampler_d3d12(CGPUSamplerId sampler)
-{
-    CGPUSampler_D3D12* pSampler = (CGPUSampler_D3D12*)sampler;
-    CGPUDevice_D3D12* D = (CGPUDevice_D3D12*)sampler->device;
-
-    D3D12Util_ReturnDescriptorHandles(D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER], pSampler->mDxHandle, 1);
-    cgpu_delete(pSampler);
 }
 
 CGPUTexture_D3D12::CGPUTexture_D3D12()
@@ -1356,25 +1200,25 @@ bool cgpu_try_bind_aliasing_texture_d3d12(CGPUDeviceId device, const struct CGPU
 }
 
 const cgpu::stl_wstring shared_texture_name_format = L"cgpu-shared-texture-";
-uint64_t                cgpu_export_shared_texture_handle_d3d12(CGPUDeviceId device, const struct CGPUExportTextureDescriptor* desc)
+uint64_t cgpu_export_shared_texture_handle_d3d12(CGPUDeviceId device, const struct CGPUExportTextureDescriptor* desc)
 {
-    HRESULT            result = S_OK;
-    HANDLE             winHdl = INVALID_HANDLE_VALUE;
-    CGPUDevice_D3D12*  D      = (CGPUDevice_D3D12*)device;
-    CGPUTexture_D3D12* T      = (CGPUTexture_D3D12*)desc->texture;
+    HRESULT result = S_OK;
+    HANDLE winHdl = INVALID_HANDLE_VALUE;
+    CGPUDevice_D3D12* D = (CGPUDevice_D3D12*)device;
+    CGPUTexture_D3D12* T = (CGPUTexture_D3D12*)desc->texture;
 
     // encode process id & shared_id into handle
-    auto     pid       = (uint64_t)GetCurrentProcessId();
+    auto pid = (uint64_t)GetCurrentProcessId();
     uint64_t shared_id = D->next_shared_id++;
-    uint64_t hdl       = (pid << 32) | shared_id;
+    uint64_t hdl = (pid << 32) | shared_id;
 
     // calculate name
     cgpu::stl_wstring name = shared_texture_name_format;
     name += std::to_wstring(hdl);
 
     // create shared resource handle
-    result          = D->pDxDevice->CreateSharedHandle(T->pDxResource,
-                                                       CGPU_NULLPTR, GENERIC_ALL, name.c_str(), &winHdl);
+    result = D->pDxDevice->CreateSharedHandle(T->pDxResource,
+                                               CGPU_NULLPTR, GENERIC_ALL, name.c_str(), &winHdl);
     auto winHdlLong = HandleToLong(winHdl);
 
     // deal with info & error
@@ -1394,10 +1238,10 @@ uint64_t                cgpu_export_shared_texture_handle_d3d12(CGPUDeviceId dev
 
 CGPUTextureId cgpu_import_shared_texture_handle_d3d12(CGPUDeviceId device, const struct CGPUImportTextureDescriptor* desc)
 {
-    HRESULT           result              = S_OK;
-    ID3D12Resource*   imported            = CGPU_NULLPTR;
-    HANDLE            namedResourceHandle = (HANDLE)LongToHandle((long)desc->shared_handle);
-    CGPUDevice_D3D12* D                   = (CGPUDevice_D3D12*)device;
+    HRESULT result = S_OK;
+    ID3D12Resource* imported = CGPU_NULLPTR;
+    HANDLE namedResourceHandle = (HANDLE)LongToHandle((long)desc->shared_handle);
+    CGPUDevice_D3D12* D = (CGPUDevice_D3D12*)device;
 
     cgpu::stl_wstring name = shared_texture_name_format;
     name += std::to_wstring(desc->shared_handle);
@@ -1445,15 +1289,15 @@ CGPUTextureId cgpu_import_shared_texture_handle_d3d12(CGPUDeviceId device, const
     }
     CloseHandle(namedResourceHandle);
 
-    auto                           imported_desc = imported->GetDesc();
-    D3D12_RESOURCE_ALLOCATION_INFO alloc_info    = D->pDxDevice->GetResourceAllocationInfo(CGPU_SINGLE_GPU_NODE_MASK, 1, &imported_desc);
-    auto                           T             = cgpu_new_sized<CGPUTexture_D3D12>(sizeof(CGPUTexture_D3D12) + sizeof(CGPUTextureInfo));
-    auto                           pInfo         = (CGPUTextureInfo*)(T + 1);
-    T->super.info                                = pInfo;
-    T->pDxResource                               = imported;
-    T->pDxAllocation                             = CGPU_NULLPTR;
-    pInfo->format                                = DXGIUtil_FormatToCGPU(imported_desc.Format);
-    pInfo->width                                 = imported_desc.Width;
+    auto imported_desc = imported->GetDesc();
+    D3D12_RESOURCE_ALLOCATION_INFO alloc_info = D->pDxDevice->GetResourceAllocationInfo(CGPU_SINGLE_GPU_NODE_MASK, 1, &imported_desc);
+    auto T = cgpu_new_sized<CGPUTexture_D3D12>(sizeof(CGPUTexture_D3D12) + sizeof(CGPUTextureInfo));
+    auto pInfo = (CGPUTextureInfo*)(T + 1);
+    T->super.info = pInfo;
+    T->pDxResource = imported;
+    T->pDxAllocation = CGPU_NULLPTR;
+    pInfo->format = DXGIUtil_FormatToCGPU(imported_desc.Format);
+    pInfo->width = imported_desc.Width;
     cgpu_assert(imported_desc.Width == desc->width);
     pInfo->height = imported_desc.Height;
     cgpu_assert(imported_desc.Height == desc->height);
@@ -1461,24 +1305,24 @@ CGPUTextureId cgpu_import_shared_texture_handle_d3d12(CGPUDeviceId device, const
     cgpu_assert(imported_desc.DepthOrArraySize == desc->depth);
     pInfo->mip_levels = imported_desc.MipLevels;
     cgpu_assert(imported_desc.MipLevels == desc->mip_levels);
-    pInfo->array_size_minus_one  = imported_desc.DepthOrArraySize - 1;
-    pInfo->can_alias             = false;
-    pInfo->is_aliasing           = false;
+    pInfo->array_size_minus_one = imported_desc.DepthOrArraySize - 1;
+    pInfo->can_alias = false;
+    pInfo->is_aliasing = false;
     pInfo->is_restrict_dedicated = false;
-    pInfo->owns_image            = false;
-    pInfo->unique_id             = D->super.next_texture_id++;
-    pInfo->is_cube               = (imported_desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D && imported_desc.DepthOrArraySize > 6);
-    pInfo->is_imported           = true;
+    pInfo->owns_image = false;
+    pInfo->unique_id = D->super.next_texture_id++;
+    pInfo->is_cube = (imported_desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D && imported_desc.DepthOrArraySize > 6);
+    pInfo->is_imported = true;
     // TODO: mGPU
-    pInfo->node_index    = CGPU_SINGLE_GPU_NODE_INDEX;
+    pInfo->node_index = CGPU_SINGLE_GPU_NODE_INDEX;
     pInfo->size_in_bytes = alloc_info.SizeInBytes;
     return &T->super;
 }
 
 void cgpu_free_texture_d3d12(CGPUTextureId texture)
 {
-    CGPUTexture_D3D12* T     = (CGPUTexture_D3D12*)texture;
-    const auto         pInfo = texture->info;
+    CGPUTexture_D3D12* T = (CGPUTexture_D3D12*)texture;
+    const auto pInfo = texture->info;
     if (pInfo->is_aliasing)
     {
         CGPUTextureAliasing_D3D12* AT = (CGPUTextureAliasing_D3D12*)T;
@@ -1487,8 +1331,8 @@ void cgpu_free_texture_d3d12(CGPUTextureId texture)
     }
     else if (pInfo->is_tiled)
     {
-        CGPUTiledTexture_D3D12* TT        = (CGPUTiledTexture_D3D12*)T;
-        auto                    pResource = TT->pDxResource;
+        CGPUTiledTexture_D3D12* TT = (CGPUTiledTexture_D3D12*)T;
+        auto pResource = TT->pDxResource;
         cgpu_delete(TT);
         SAFE_RELEASE(pResource);
     }
@@ -1503,286 +1347,6 @@ void cgpu_free_texture_d3d12(CGPUTextureId texture)
         SAFE_RELEASE(T->pDxResource);
         cgpu_delete(T);
     }
-}
-
-CGPUTextureViewId cgpu_create_texture_view_d3d12(CGPUDeviceId device, const struct CGPUTextureViewDescriptor* desc)
-{
-    CGPUTextureView_D3D12* TV = cgpu_new<CGPUTextureView_D3D12>();
-    CGPUTexture_D3D12*     T  = (CGPUTexture_D3D12*)desc->texture;
-    CGPUDevice_D3D12*      D  = (CGPUDevice_D3D12*)device;
-    // Consume handles
-    const auto usages      = desc->usages;
-    uint32_t   handleCount = ((usages & CGPU_TVU_SRV) ? 1 : 0) +
-                           ((usages & CGPU_TVU_UAV) ? 1 : 0);
-    if (handleCount > 0)
-    {
-        D3D12Util_DescriptorHeap* pHeap = D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV];
-        const size_t kDescriptorSize = D3D12Util_GetDescriptorSize(pHeap);
-        TV->mDxDescriptorHandles        = D3D12Util_ConsumeDescriptorHandles(pHeap, handleCount).mCpu;
-        TV->mDxSrvOffset                = 0;
-        uint64_t CurrentOffsetCursor    = TV->mDxSrvOffset;
-        // Create SRV
-        if (usages & CGPU_TVU_SRV)
-        {
-            D3D12_CPU_DESCRIPTOR_HANDLE     srv     = { TV->mDxDescriptorHandles.ptr + TV->mDxSrvOffset };
-            D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-            srvDesc.Format                          = (DXGI_FORMAT)DXGIUtil_TranslatePixelFormat(desc->format, true);
-            // TODO: SUPPORT RGBA COMPONENT VIEW MAPPING SWIZZLE
-            srvDesc.Shader4ComponentMapping         = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-            switch (desc->dims)
-            {
-                case CGPU_TEX_DIMENSION_1D: {
-                    srvDesc.ViewDimension             = D3D12_SRV_DIMENSION_TEXTURE1D;
-                    srvDesc.Texture1D.MipLevels       = desc->mip_level_count;
-                    srvDesc.Texture1D.MostDetailedMip = desc->base_mip_level;
-                }
-                break;
-                case CGPU_TEX_DIMENSION_1D_ARRAY: {
-                    srvDesc.ViewDimension                  = D3D12_SRV_DIMENSION_TEXTURE1DARRAY;
-                    srvDesc.Texture1DArray.MipLevels       = desc->mip_level_count;
-                    srvDesc.Texture1DArray.MostDetailedMip = desc->base_mip_level;
-                    srvDesc.Texture1DArray.FirstArraySlice = desc->base_array_layer;
-                    srvDesc.Texture1DArray.ArraySize       = desc->array_layer_count;
-                }
-                break;
-                case CGPU_TEX_DIMENSION_2DMS: {
-                    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
-                }
-                break;
-                case CGPU_TEX_DIMENSION_2D: {
-                    srvDesc.ViewDimension             = D3D12_SRV_DIMENSION_TEXTURE2D;
-                    srvDesc.Texture2D.MipLevels       = desc->mip_level_count;
-                    srvDesc.Texture2D.MostDetailedMip = desc->base_mip_level;
-                    srvDesc.Texture2D.PlaneSlice      = 0;
-                }
-                break;
-                case CGPU_TEX_DIMENSION_2DMS_ARRAY: {
-                    srvDesc.ViewDimension                    = D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY;
-                    srvDesc.Texture2DMSArray.ArraySize       = desc->array_layer_count;
-                    srvDesc.Texture2DMSArray.FirstArraySlice = desc->base_array_layer;
-                }
-                break;
-                case CGPU_TEX_DIMENSION_2D_ARRAY: {
-                    srvDesc.ViewDimension                  = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
-                    srvDesc.Texture2DArray.MipLevels       = desc->mip_level_count;
-                    srvDesc.Texture2DArray.MostDetailedMip = desc->base_mip_level;
-                    srvDesc.Texture2DArray.PlaneSlice      = 0;
-                    srvDesc.Texture2DArray.FirstArraySlice = desc->base_array_layer;
-                    srvDesc.Texture2DArray.ArraySize       = desc->array_layer_count;
-                }
-                break;
-                case CGPU_TEX_DIMENSION_3D: {
-                    srvDesc.ViewDimension             = D3D12_SRV_DIMENSION_TEXTURE3D;
-                    srvDesc.Texture3D.MipLevels       = desc->mip_level_count;
-                    srvDesc.Texture3D.MostDetailedMip = desc->base_mip_level;
-                }
-                break;
-                case CGPU_TEX_DIMENSION_CUBE: {
-                    srvDesc.ViewDimension               = D3D12_SRV_DIMENSION_TEXTURECUBE;
-                    srvDesc.TextureCube.MipLevels       = desc->mip_level_count;
-                    srvDesc.TextureCube.MostDetailedMip = desc->base_mip_level;
-                }
-                break;
-                case CGPU_TEX_DIMENSION_CUBE_ARRAY: {
-                    srvDesc.ViewDimension                     = D3D12_SRV_DIMENSION_TEXTURECUBEARRAY;
-                    srvDesc.TextureCubeArray.MipLevels        = desc->mip_level_count;
-                    srvDesc.TextureCubeArray.MostDetailedMip  = desc->base_mip_level;
-                    srvDesc.TextureCubeArray.NumCubes         = desc->array_layer_count;
-                    srvDesc.TextureCubeArray.First2DArrayFace = desc->base_array_layer;
-                }
-                break;
-                default:
-                    cgpu_assert(0 && "Unsupported texture dimension!");
-                    break;
-            }
-            D3D12Util_CreateSRV(D, T->pDxResource, &srvDesc, &srv);
-            CurrentOffsetCursor += kDescriptorSize * 1;
-        }
-        // Create UAV
-        if (usages & CGPU_TVU_UAV)
-        {
-            TV->mDxUavOffset = CurrentOffsetCursor;
-            CurrentOffsetCursor += kDescriptorSize * 1;
-            D3D12_CPU_DESCRIPTOR_HANDLE      uav     = { TV->mDxDescriptorHandles.ptr + TV->mDxUavOffset };
-            D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-            uavDesc.Format                           = (DXGI_FORMAT)DXGIUtil_TranslatePixelFormat(desc->format, true);
-            cgpu_assert(desc->mip_level_count <= 1 && "UAV must be created with non-multi mip slices!");
-            switch (desc->dims)
-            {
-                case CGPU_TEX_DIMENSION_1D: {
-                    uavDesc.ViewDimension      = D3D12_UAV_DIMENSION_TEXTURE1D;
-                    uavDesc.Texture1D.MipSlice = desc->base_mip_level;
-                }
-                break;
-                case CGPU_TEX_DIMENSION_1D_ARRAY: {
-                    uavDesc.ViewDimension                  = D3D12_UAV_DIMENSION_TEXTURE1DARRAY;
-                    uavDesc.Texture1DArray.MipSlice        = desc->base_mip_level;
-                    uavDesc.Texture1DArray.FirstArraySlice = desc->base_array_layer;
-                    uavDesc.Texture1DArray.ArraySize       = desc->array_layer_count;
-                }
-                break;
-                case CGPU_TEX_DIMENSION_2D: {
-                    uavDesc.ViewDimension        = D3D12_UAV_DIMENSION_TEXTURE2D;
-                    uavDesc.Texture2D.MipSlice   = desc->base_mip_level;
-                    uavDesc.Texture2D.PlaneSlice = 0;
-                }
-                break;
-                case CGPU_TEX_DIMENSION_2D_ARRAY: {
-                    uavDesc.ViewDimension                  = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
-                    uavDesc.Texture2DArray.MipSlice        = desc->base_mip_level;
-                    uavDesc.Texture2DArray.PlaneSlice      = 0;
-                    uavDesc.Texture2DArray.FirstArraySlice = desc->base_array_layer;
-                    uavDesc.Texture2DArray.ArraySize       = desc->array_layer_count;
-                }
-                break;
-                case CGPU_TEX_DIMENSION_3D: {
-                    uavDesc.ViewDimension         = D3D12_UAV_DIMENSION_TEXTURE3D;
-                    uavDesc.Texture3D.MipSlice    = desc->base_mip_level;
-                    uavDesc.Texture3D.FirstWSlice = desc->base_array_layer;
-                    uavDesc.Texture3D.WSize       = desc->array_layer_count;
-                }
-                break;
-                default:
-                    cgpu_assert(0 && "Unsupported texture dimension!");
-                    break;
-            }
-            D3D12Util_CreateUAV(D, T->pDxResource, CGPU_NULLPTR, &uavDesc, &uav);
-        }
-    }
-    // Create RTV
-    if (usages & CGPU_TVU_RTV_DSV)
-    {
-        const bool isDSV = FormatUtil_IsDepthStencilFormat(desc->format);
-        if (isDSV)
-        {
-            D3D12Util_DescriptorHeap* pDsvHeap    = D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_DSV];
-            TV->mDxRtvDsvDescriptorHandle         = D3D12Util_ConsumeDescriptorHandles(pDsvHeap, 1).mCpu;
-            D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
-            dsvDesc.Format                        = (DXGI_FORMAT)DXGIUtil_TranslatePixelFormat(desc->format, false);
-            switch (desc->dims)
-            {
-                case CGPU_TEX_DIMENSION_1D: {
-                    dsvDesc.ViewDimension      = D3D12_DSV_DIMENSION_TEXTURE1D;
-                    dsvDesc.Texture1D.MipSlice = desc->base_mip_level;
-                }
-                break;
-                case CGPU_TEX_DIMENSION_1D_ARRAY: {
-                    dsvDesc.ViewDimension                  = D3D12_DSV_DIMENSION_TEXTURE1DARRAY;
-                    dsvDesc.Texture1DArray.MipSlice        = desc->base_mip_level;
-                    dsvDesc.Texture1DArray.FirstArraySlice = desc->base_array_layer;
-                    dsvDesc.Texture1DArray.ArraySize       = desc->array_layer_count;
-                }
-                break;
-                case CGPU_TEX_DIMENSION_2DMS: {
-                    dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMS;
-                }
-                break;
-                case CGPU_TEX_DIMENSION_2D: {
-                    dsvDesc.ViewDimension      = D3D12_DSV_DIMENSION_TEXTURE2D;
-                    dsvDesc.Texture2D.MipSlice = desc->base_mip_level;
-                }
-                break;
-                case CGPU_TEX_DIMENSION_2DMS_ARRAY: {
-                    dsvDesc.ViewDimension                    = D3D12_DSV_DIMENSION_TEXTURE2DMSARRAY;
-                    dsvDesc.Texture2DMSArray.FirstArraySlice = desc->base_array_layer;
-                    dsvDesc.Texture2DMSArray.ArraySize       = desc->array_layer_count;
-                }
-                case CGPU_TEX_DIMENSION_2D_ARRAY: {
-                    dsvDesc.ViewDimension                  = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
-                    dsvDesc.Texture2DArray.MipSlice        = desc->base_mip_level;
-                    dsvDesc.Texture2DArray.FirstArraySlice = desc->base_array_layer;
-                    dsvDesc.Texture2DArray.ArraySize       = desc->array_layer_count;
-                }
-                break;
-                default:
-                    cgpu_assert(0 && "Unsupported texture dimension!");
-                    break;
-            }
-            D3D12Util_CreateDSV(D, T->pDxResource, &dsvDesc, &TV->mDxRtvDsvDescriptorHandle);
-        }
-        else
-        {
-            D3D12Util_DescriptorHeap* pRtvHeap    = D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_RTV];
-            TV->mDxRtvDsvDescriptorHandle         = D3D12Util_ConsumeDescriptorHandles(pRtvHeap, 1).mCpu;
-            D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
-            rtvDesc.Format                        = (DXGI_FORMAT)DXGIUtil_TranslatePixelFormat(desc->format, false);
-            switch (desc->dims)
-            {
-                case CGPU_TEX_DIMENSION_1D: {
-                    rtvDesc.ViewDimension      = D3D12_RTV_DIMENSION_TEXTURE1D;
-                    rtvDesc.Texture1D.MipSlice = desc->base_mip_level;
-                }
-                break;
-                case CGPU_TEX_DIMENSION_1D_ARRAY: {
-                    rtvDesc.ViewDimension                  = D3D12_RTV_DIMENSION_TEXTURE1DARRAY;
-                    rtvDesc.Texture1DArray.MipSlice        = desc->base_mip_level;
-                    rtvDesc.Texture1DArray.FirstArraySlice = desc->base_array_layer;
-                    rtvDesc.Texture1DArray.ArraySize       = desc->array_layer_count;
-                }
-                break;
-                case CGPU_TEX_DIMENSION_2DMS: {
-                    rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMS;
-                }
-                break;
-                case CGPU_TEX_DIMENSION_2D: {
-                    rtvDesc.ViewDimension        = D3D12_RTV_DIMENSION_TEXTURE2D;
-                    rtvDesc.Texture2D.MipSlice   = desc->base_mip_level;
-                    rtvDesc.Texture2D.PlaneSlice = 0;
-                }
-                break;
-                case CGPU_TEX_DIMENSION_2DMS_ARRAY: {
-                    rtvDesc.ViewDimension                    = D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY;
-                    rtvDesc.Texture2DMSArray.FirstArraySlice = desc->base_array_layer;
-                    rtvDesc.Texture2DMSArray.ArraySize       = desc->array_layer_count;
-                }
-                case CGPU_TEX_DIMENSION_2D_ARRAY: {
-                    rtvDesc.ViewDimension                  = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
-                    rtvDesc.Texture2DArray.MipSlice        = desc->base_mip_level;
-                    rtvDesc.Texture2DArray.PlaneSlice      = 0;
-                    rtvDesc.Texture2DArray.FirstArraySlice = desc->base_array_layer;
-                    rtvDesc.Texture2DArray.ArraySize       = desc->array_layer_count;
-                }
-                break;
-                case CGPU_TEX_DIMENSION_3D: {
-                    rtvDesc.ViewDimension         = D3D12_RTV_DIMENSION_TEXTURE3D;
-                    rtvDesc.Texture3D.MipSlice    = desc->base_mip_level;
-                    rtvDesc.Texture3D.FirstWSlice = desc->base_array_layer;
-                    rtvDesc.Texture3D.WSize       = desc->array_layer_count;
-                }
-                break;
-                default:
-                    cgpu_assert(0 && "Unsupported texture dimension!");
-                    break;
-            }
-            D3D12Util_CreateRTV(D, T->pDxResource, &rtvDesc, &TV->mDxRtvDsvDescriptorHandle);
-        }
-    }
-    return &TV->super;
-}
-
-void cgpu_free_texture_view_d3d12(CGPUTextureViewId view)
-{
-    CGPUTextureView_D3D12* TV     = (CGPUTextureView_D3D12*)view;
-    CGPUDevice_D3D12*      D      = (CGPUDevice_D3D12*)view->device;
-    const auto             usages = TV->super.info.usages;
-    const bool             isDSV  = FormatUtil_IsDepthStencilFormat(view->info.format);
-    if (TV->mDxDescriptorHandles.ptr != D3D12_GPU_VIRTUAL_ADDRESS_NULL)
-    {
-        uint32_t handleCount = ((usages & CGPU_TVU_SRV) ? 1 : 0) +
-                               ((usages & CGPU_TVU_UAV) ? 1 : 0);
-        D3D12Util_ReturnDescriptorHandles(
-        D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV], TV->mDxDescriptorHandles,
-        handleCount);
-    }
-    if (TV->mDxRtvDsvDescriptorHandle.ptr != D3D12_GPU_VIRTUAL_ADDRESS_NULL)
-    {
-        if (usages & CGPU_TVU_RTV_DSV)
-            D3D12Util_ReturnDescriptorHandles(
-            isDSV ? D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_DSV] : D->pCPUDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_RTV],
-            TV->mDxRtvDsvDescriptorHandle,
-            1);
-    }
-    cgpu_delete(TV);
 }
 
 // Shader APIs
@@ -1848,7 +1412,7 @@ void cgpu_free_shader_library_d3d12(CGPUShaderLibraryId shader_library)
 }
 
 // Util Implementations
-inline D3D12_RESOURCE_DESC D3D12Util_CreateBufferDesc(CGPUAdapter_D3D12* A, CGPUDevice_D3D12* D, const struct CGPUBufferDescriptor* desc)
+inline static D3D12_RESOURCE_DESC D3D12Util_CreateBufferDesc(CGPUAdapter_D3D12* A, CGPUDevice_D3D12* D, const struct CGPUBufferDescriptor* desc)
 {
     SKR_DECLARE_ZERO(D3D12_RESOURCE_DESC, bufDesc);
     uint64_t allocationSize = desc->size;
@@ -1893,7 +1457,7 @@ inline D3D12_RESOURCE_DESC D3D12Util_CreateBufferDesc(CGPUAdapter_D3D12* A, CGPU
     return bufDesc;
 }
 
-inline D3D12MA::ALLOCATION_DESC D3D12Util_CreateAllocationDesc(const struct CGPUBufferDescriptor* desc)
+inline static D3D12MA::ALLOCATION_DESC D3D12Util_CreateAllocationDesc(const struct CGPUBufferDescriptor* desc)
 {
     // Alloc Info
     SKR_DECLARE_ZERO(D3D12MA::ALLOCATION_DESC, alloc_desc)

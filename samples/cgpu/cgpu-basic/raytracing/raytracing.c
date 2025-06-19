@@ -1,10 +1,8 @@
-#include "SkrGraphics/config.h"
-#include "math.h"
-#include "lodepng.h"
+#include "SkrOS/thread.h"
 #include "SkrGraphics/api.h"
 #include "SkrGraphics/raytracing.h"
-#include "stdio.h"
-#include <stdint.h>
+#include "lodepng.h"
+#include "math.h"
 
 inline static void read_bytes(const char* file_name, char8_t** bytes, uint32_t* length)
 {
@@ -27,9 +25,7 @@ typedef struct SKR_ALIGNAS(16) skr_float4_tt {
     };
 } skr_float4_tt;
 
-inline static void read_shader_bytes(
-const char* virtual_path, uint32_t** bytes, uint32_t* length,
-ECGPUBackend backend)
+inline static void read_shader_bytes(const char* virtual_path, uint32_t** bytes, uint32_t* length, ECGPUBackend backend)
 {
     char shader_file[256];
     const char* shader_path = "./../resources/shaders/";
@@ -68,7 +64,6 @@ typedef struct Pixel {
     float r, g, b, a;
 } Pixel;
 
-#include "SkrOS/thread.h"
 
 void ComputeFunc(void* usrdata)
 {
