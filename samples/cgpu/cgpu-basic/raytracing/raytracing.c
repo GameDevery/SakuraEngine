@@ -247,7 +247,7 @@ void ComputeFunc(void* usrdata)
         },
         {
             .name = "AS",
-            .binding_type = CGPU_RESOURCE_TYPE_RAY_TRACING,
+            .binding_type = CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE,
             .acceleration_structures = &tlas,
             .count = 1
         }

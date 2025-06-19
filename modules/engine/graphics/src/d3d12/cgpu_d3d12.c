@@ -877,7 +877,7 @@ void cgpu_update_descriptor_set_d3d12(CGPUDescriptorSetId set, const struct CGPU
                 }
             }
             break;
-            case CGPU_RESOURCE_TYPE_RAY_TRACING: {
+            case CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE: {
                 cgpu_assert(pParam->acceleration_structures && "NULL Acceleration Structure(s)");
                 CGPUAccelerationStructure_D3D12* pAccel = (CGPUAccelerationStructure_D3D12*)pParam->acceleration_structures[0];
                 const CGPUBuffer_D3D12* pASBuffer = (const CGPUBuffer_D3D12*)pAccel->pASBuffer;

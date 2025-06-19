@@ -476,7 +476,7 @@ void cgpu_update_descriptor_set_metal(CGPUDescriptorSetId set, const struct CGPU
                     SKR_UNIMPLEMENTED_FUNCTION();
                 }
                 break;
-                case CGPU_RESOURCE_TYPE_RAY_TRACING:
+                case CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE:
                 {
                     SKR_ASSERT(resource->size == 1 && "TLAS must have size 1");
                     TLAS* pTLAS = (TLAS*)pArg;
