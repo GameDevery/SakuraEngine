@@ -933,35 +933,55 @@ void GenericSparseVector::remove_at_unsafe(void* dst, uint64_t idx, uint64_t n) 
 }
 bool GenericSparseVector::remove(void* dst, const void* v) const
 {
-    SKR_ASSERT(is_valid());
-    SKR_ASSERT(dst);
-    SKR_ASSERT(v);
-
-    if (auto ref = find(dst, v))
-    {
-        remove_at(dst, ref.index);
-        return true;
-    }
-    return false;
+    return remove_if(dst, [this, v](const void* data) {
+        return _inner->equal(data, v, 1);
+    });
 }
 bool GenericSparseVector::remove_last(void* dst, const void* v) const
 {
+    return remove_last_if(dst, [this, v](const void* data) {
+        return _inner->equal(data, v, 1);
+    });
+}
+uint64_t GenericSparseVector::remove_all(void* dst, const void* v) const
+{
+    return remove_all_if(dst, [this, v](const void* data) {
+        return _inner->equal(data, v, 1);
+    });
+}
+
+// remove if
+bool GenericSparseVector::remove_if(void* dst, PredType pred) const
+{
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
-    SKR_ASSERT(v);
+    SKR_ASSERT(pred);
 
-    if (auto ref = find_last(dst, v))
+    if (auto ref = find_if(dst, pred))
     {
         remove_at(dst, ref.index);
         return true;
     }
     return false;
 }
-uint64_t GenericSparseVector::remove_all(void* dst, const void* v) const
+bool GenericSparseVector::remove_last_if(void* dst, PredType pred) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
-    SKR_ASSERT(v);
+    SKR_ASSERT(pred);
+
+    if (auto ref = find_last_if(dst, pred))
+    {
+        remove_at(dst, ref.index);
+        return true;
+    }
+    return false;
+}
+uint64_t GenericSparseVector::remove_all_if(void* dst, PredType pred) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(pred);
     auto* dst_mem = reinterpret_cast<SparseVectorMemoryBase*>(dst);
 
     uint64_t count      = 0;
@@ -972,11 +992,10 @@ uint64_t GenericSparseVector::remove_all(void* dst, const void* v) const
 
     while (!bit_cursor.reach_end())
     {
-        if (_inner->equal(
-                dst_mem->_storage_at(bit_cursor.index(), _inner_size),
-                v,
-                1
-            ))
+        if (pred(dst_mem->_storage_at(
+                bit_cursor.index(),
+                _inner_size
+            )))
         {
             // remove at
             remove_at(dst, bit_cursor.index(), 1);
@@ -1022,61 +1041,15 @@ const void* GenericSparseVector::at_last(const void* dst, uint64_t idx) const
 // find
 GenericSparseVectorDataRef GenericSparseVector::find(void* dst, const void* v) const
 {
-    SKR_ASSERT(is_valid());
-    SKR_ASSERT(dst);
-    SKR_ASSERT(v);
-    auto* dst_mem = reinterpret_cast<SparseVectorMemoryBase*>(dst);
-
-    auto bit_cursor = CTrueBitCursor::Begin(
-        dst_mem->_typed_bit_data(),
-        dst_mem->_sparse_size
-    );
-
-    while (!bit_cursor.reach_end())
-    {
-        if (_inner->equal(
-                dst_mem->_storage_at(bit_cursor.index(), _inner_size),
-                v,
-                1
-            ))
-        {
-            return {
-                dst_mem->_storage_at(bit_cursor.index(), _inner_size),
-                bit_cursor.index()
-            };
-        }
-        bit_cursor.move_next();
-    }
-    return {};
+    return find_if(dst, [this, v](const void* data) {
+        return _inner->equal(data, v, 1);
+    });
 }
 GenericSparseVectorDataRef GenericSparseVector::find_last(void* dst, const void* v) const
 {
-    SKR_ASSERT(is_valid());
-    SKR_ASSERT(dst);
-    SKR_ASSERT(v);
-    auto* dst_mem = reinterpret_cast<SparseVectorMemoryBase*>(dst);
-
-    auto bit_cursor = CTrueBitCursor::End(
-        dst_mem->_typed_bit_data(),
-        dst_mem->_sparse_size
-    );
-
-    while (!bit_cursor.reach_begin())
-    {
-        if (_inner->equal(
-                dst_mem->_storage_at(bit_cursor.index(), _inner_size),
-                v,
-                1
-            ))
-        {
-            return {
-                dst_mem->_storage_at(bit_cursor.index(), _inner_size),
-                bit_cursor.index()
-            };
-        }
-        bit_cursor.move_prev();
-    }
-    return {};
+    return find_last_if(dst, [this, v](const void* data) {
+        return _inner->equal(data, v, 1);
+    });
 }
 CGenericSparseVectorDataRef GenericSparseVector::find(const void* dst, const void* v) const
 {
@@ -1087,20 +1060,94 @@ CGenericSparseVectorDataRef GenericSparseVector::find_last(const void* dst, cons
     return find_last(const_cast<void*>(dst), v);
 }
 
+// find if
+GenericSparseVectorDataRef GenericSparseVector::find_if(void* dst, PredType pred) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(pred);
+    auto* dst_mem = reinterpret_cast<SparseVectorMemoryBase*>(dst);
+
+    auto bit_cursor = CTrueBitCursor::Begin(
+        dst_mem->_typed_bit_data(),
+        dst_mem->_sparse_size
+    );
+
+    while (!bit_cursor.reach_end())
+    {
+        if (pred(dst_mem->_storage_at(bit_cursor.index(), _inner_size)))
+        {
+            return {
+                dst_mem->_storage_at(bit_cursor.index(), _inner_size),
+                bit_cursor.index()
+            };
+        }
+        bit_cursor.move_next();
+    }
+    return {};
+}
+GenericSparseVectorDataRef GenericSparseVector::find_last_if(void* dst, PredType pred) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(pred);
+    auto* dst_mem = reinterpret_cast<SparseVectorMemoryBase*>(dst);
+
+    auto bit_cursor = CTrueBitCursor::End(
+        dst_mem->_typed_bit_data(),
+        dst_mem->_sparse_size
+    );
+
+    while (!bit_cursor.reach_begin())
+    {
+        if (pred(dst_mem->_storage_at(bit_cursor.index(), _inner_size)))
+        {
+            return {
+                dst_mem->_storage_at(bit_cursor.index(), _inner_size),
+                bit_cursor.index()
+            };
+        }
+        bit_cursor.move_prev();
+    }
+    return {};
+}
+CGenericSparseVectorDataRef GenericSparseVector::find_if(const void* dst, PredType pred) const
+{
+    return find_if(const_cast<void*>(dst), pred);
+}
+CGenericSparseVectorDataRef GenericSparseVector::find_last_if(const void* dst, PredType pred) const
+{
+    return find_last_if(const_cast<void*>(dst), pred);
+}
+
 // contains & count
 bool GenericSparseVector::contains(const void* dst, const void* v) const
 {
-    SKR_ASSERT(is_valid());
-    SKR_ASSERT(dst);
-    SKR_ASSERT(v);
-
-    return (bool)find(dst, v);
+    return contains_if(dst, [this, v](const void* data) {
+        return _inner->equal(data, v, 1);
+    });
 }
 uint64_t GenericSparseVector::count(const void* dst, const void* v) const
 {
+    return count_if(dst, [this, v](const void* data) {
+        return _inner->equal(data, v, 1);
+    });
+}
+
+// contains if & count if
+bool GenericSparseVector::contains_if(const void* dst, PredType pred) const
+{
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
-    SKR_ASSERT(v);
+    SKR_ASSERT(pred);
+
+    return (bool)find_if(dst, pred);
+}
+uint64_t GenericSparseVector::count_if(const void* dst, PredType pred) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(pred);
     auto* dst_mem = reinterpret_cast<const SparseVectorMemoryBase*>(dst);
 
     uint64_t count      = 0;
@@ -1111,11 +1158,7 @@ uint64_t GenericSparseVector::count(const void* dst, const void* v) const
 
     while (!bit_cursor.reach_end())
     {
-        if (_inner->equal(
-                dst_mem->_storage_at(bit_cursor.index(), _inner_size),
-                v,
-                1
-            ))
+        if (pred(dst_mem->_storage_at(bit_cursor.index(), _inner_size)))
         {
             ++count;
         }

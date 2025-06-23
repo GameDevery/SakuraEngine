@@ -48,6 +48,7 @@ struct SKR_CORE_API GenericSparseVector : IGenericBase {
     using BitAlgo        = algo::BitAlgo<uint64_t>;
     using TrueBitCursor  = container::BitCursor<uint64_t, uint64_t, false>;
     using CTrueBitCursor = container::BitCursor<uint64_t, uint64_t, true>;
+    using PredType       = FunctionRef<bool(const void*)>;
 
     inline static constexpr uint64_t npos = npos_of<uint64_t>;
 
@@ -137,6 +138,11 @@ struct SKR_CORE_API GenericSparseVector : IGenericBase {
     bool     remove_last(void* dst, const void* v) const;
     uint64_t remove_all(void* dst, const void* v) const;
 
+    // remove if
+    bool     remove_if(void* dst, PredType pred) const;
+    bool     remove_last_if(void* dst, PredType pred) const;
+    uint64_t remove_all_if(void* dst, PredType pred) const;
+
     // access
     void*       at(void* dst, uint64_t idx) const;
     void*       at_last(void* dst, uint64_t idx) const;
@@ -149,9 +155,19 @@ struct SKR_CORE_API GenericSparseVector : IGenericBase {
     CGenericSparseVectorDataRef find(const void* dst, const void* v) const;
     CGenericSparseVectorDataRef find_last(const void* dst, const void* v) const;
 
+    // find if
+    GenericSparseVectorDataRef  find_if(void* dst, PredType pred) const;
+    GenericSparseVectorDataRef  find_last_if(void* dst, PredType pred) const;
+    CGenericSparseVectorDataRef find_if(const void* dst, PredType pred) const;
+    CGenericSparseVectorDataRef find_last_if(const void* dst, PredType pred) const;
+
     // contains & count
     bool     contains(const void* dst, const void* v) const;
     uint64_t count(const void* dst, const void* v) const;
+
+    // contains if & count if
+    bool     contains_if(const void* dst, PredType pred) const;
+    uint64_t count_if(const void* dst, PredType pred) const;
 
 private:
     // helper
