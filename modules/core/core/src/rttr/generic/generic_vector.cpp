@@ -810,48 +810,93 @@ bool GenericVector::remove(void* dst, const void* v) const
 }
 bool GenericVector::remove_swap(void* dst, const void* v) const
 {
-    SKR_ASSERT(is_valid());
-    SKR_ASSERT(dst);
-    SKR_ASSERT(v);
-
-    if (auto ref = find(dst, v))
-    {
-        remove_at_swap(dst, ref.index);
-        return true;
-    }
-    return false;
+    return remove_swap_if(dst, [this, v](const void* item) {
+        return _inner->equal(item, v);
+    });
 }
 bool GenericVector::remove_last(void* dst, const void* v) const
 {
+    return remove_last_if(dst, [this, v](const void* item) {
+        return _inner->equal(item, v);
+    });
+}
+bool GenericVector::remove_last_swap(void* dst, const void* v) const
+{
+    return remove_last_swap_if(dst, [this, v](const void* item) {
+        return _inner->equal(item, v);
+    });
+}
+uint64_t GenericVector::remove_all(void* dst, const void* v) const
+{
+    return remove_all_if(dst, [this, v](const void* item) {
+        return _inner->equal(item, v);
+    });
+}
+uint64_t GenericVector::remove_all_swap(void* dst, const void* v) const
+{
+    return remove_all_swap_if(dst, [this, v](const void* item) {
+        return _inner->equal(item, v);
+    });
+}
+
+// remove if
+bool GenericVector::remove_if(void* dst, PredType pred) const
+{
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
-    SKR_ASSERT(v);
+    SKR_ASSERT(pred);
 
-    if (auto ref = find_last(dst, v))
+    if (auto ref = find_if(dst, pred))
     {
         remove_at(dst, ref.index);
         return true;
     }
     return false;
 }
-bool GenericVector::remove_last_swap(void* dst, const void* v) const
+bool GenericVector::remove_swap_if(void* dst, PredType pred) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
-    SKR_ASSERT(v);
+    SKR_ASSERT(pred);
 
-    if (auto ref = find_last(dst, v))
+    if (auto ref = find_if(dst, pred))
     {
         remove_at_swap(dst, ref.index);
         return true;
     }
     return false;
 }
-uint64_t GenericVector::remove_all(void* dst, const void* v) const
+bool GenericVector::remove_last_if(void* dst, PredType pred) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
-    SKR_ASSERT(v);
+    SKR_ASSERT(pred);
+
+    if (auto ref = find_last_if(dst, pred))
+    {
+        remove_at(dst, ref.index);
+        return true;
+    }
+    return false;
+}
+bool GenericVector::remove_last_swap_if(void* dst, PredType pred) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(pred);
+
+    if (auto ref = find_last_if(dst, pred))
+    {
+        remove_at_swap(dst, ref.index);
+        return true;
+    }
+    return false;
+}
+uint64_t GenericVector::remove_all_if(void* dst, PredType pred) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(pred);
     auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
 
     if (is_empty(dst))
@@ -864,7 +909,7 @@ uint64_t GenericVector::remove_all(void* dst, const void* v) const
         void* end       = ::skr::memory::offset_item(begin, _inner_size, dst_mem->_size);
         void* write     = begin;
         void* read      = begin;
-        bool  do_remove = _inner->equal(read, v, 1);
+        bool  do_remove = pred(read);
 
         // remove loop
         do
@@ -873,7 +918,7 @@ uint64_t GenericVector::remove_all(void* dst, const void* v) const
             read           = ::skr::memory::offset_item(read, _inner_size, 1);
 
             // collect run scope
-            while (read < end && do_remove == _inner->equal(read, v, 1))
+            while (read < end && do_remove == pred(read))
             {
                 read = ::skr::memory::offset_item(read, _inner_size, 1);
             }
@@ -916,11 +961,11 @@ uint64_t GenericVector::remove_all(void* dst, const void* v) const
         return remove_count;
     }
 }
-uint64_t GenericVector::remove_all_swap(void* dst, const void* v) const
+uint64_t GenericVector::remove_all_swap_if(void* dst, PredType pred) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
-    SKR_ASSERT(v);
+    SKR_ASSERT(pred);
     auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
 
     if (is_empty(dst))
@@ -946,7 +991,7 @@ uint64_t GenericVector::remove_all_swap(void* dst, const void* v) const
                 {
                     goto LoopEnd;
                 }
-                if (_inner->equal(begin, v, 1))
+                if (pred(begin))
                 {
                     break;
                 }
@@ -960,7 +1005,7 @@ uint64_t GenericVector::remove_all_swap(void* dst, const void* v) const
                 {
                     goto LoopEnd;
                 }
-                if (!_inner->equal(end, v, 1))
+                if (!pred(end))
                 {
                     break;
                 }
@@ -1029,9 +1074,31 @@ const void* GenericVector::at_last(const void* dst, uint64_t idx) const
 // find
 GenericVectorDataRef GenericVector::find(void* dst, const void* v) const
 {
+    return find_if(dst, [this, v](const void* item) {
+        return _inner->equal(item, v);
+    });
+}
+GenericVectorDataRef GenericVector::find_last(void* dst, const void* v) const
+{
+    return find_last_if(dst, [this, v](const void* item) {
+        return _inner->equal(item, v);
+    });
+}
+CGenericVectorDataRef GenericVector::find(const void* dst, const void* v) const
+{
+    return find(const_cast<void*>(dst), v);
+}
+CGenericVectorDataRef GenericVector::find_last(const void* dst, const void* v) const
+{
+    return find_last(const_cast<void*>(dst), v);
+}
+
+// find if
+GenericVectorDataRef GenericVector::find_if(void* dst, PredType pred) const
+{
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
-    SKR_ASSERT(v);
+    SKR_ASSERT(pred);
     auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
 
     if (is_empty(dst))
@@ -1045,7 +1112,7 @@ GenericVectorDataRef GenericVector::find(void* dst, const void* v) const
 
         while (begin < end)
         {
-            if (_inner->equal(begin, v, 1))
+            if (pred(begin))
             {
                 return {
                     begin,
@@ -1061,11 +1128,11 @@ GenericVectorDataRef GenericVector::find(void* dst, const void* v) const
         return {};
     }
 }
-GenericVectorDataRef GenericVector::find_last(void* dst, const void* v) const
+GenericVectorDataRef GenericVector::find_last_if(void* dst, PredType pred) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
-    SKR_ASSERT(v);
+    SKR_ASSERT(pred);
     auto* dst_mem = reinterpret_cast<VectorMemoryBase*>(dst);
 
     if (is_empty(dst))
@@ -1081,7 +1148,7 @@ GenericVectorDataRef GenericVector::find_last(void* dst, const void* v) const
 
         while (end >= begin)
         {
-            if (_inner->equal(end, v, 1))
+            if (pred(end))
             {
                 return {
                     end,
@@ -1097,29 +1164,43 @@ GenericVectorDataRef GenericVector::find_last(void* dst, const void* v) const
         return {};
     }
 }
-CGenericVectorDataRef GenericVector::find(const void* dst, const void* v) const
+CGenericVectorDataRef GenericVector::find_if(const void* dst, PredType pred) const
 {
-    return find(const_cast<void*>(dst), v);
+    return find_if(const_cast<void*>(dst), pred);
 }
-CGenericVectorDataRef GenericVector::find_last(const void* dst, const void* v) const
+CGenericVectorDataRef GenericVector::find_last_if(const void* dst, PredType pred) const
 {
-    return find_last(const_cast<void*>(dst), v);
+    return find_last_if(const_cast<void*>(dst), pred);
 }
 
 // contains & count
 bool GenericVector::contains(const void* dst, const void* v) const
 {
-    SKR_ASSERT(is_valid());
-    SKR_ASSERT(dst);
-    SKR_ASSERT(v);
-
-    return (bool)find(dst, v);
+    return contains_if(dst, [this, v](const void* item) {
+        return _inner->equal(item, v);
+    });
 }
 uint64_t GenericVector::count(const void* dst, const void* v) const
 {
+    return count_if(dst, [this, v](const void* item) {
+        return _inner->equal(item, v);
+    });
+}
+
+// contains if & count if
+bool GenericVector::contains_if(const void* dst, PredType pred) const
+{
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
-    SKR_ASSERT(v);
+    SKR_ASSERT(pred);
+
+    return (bool)find_if(dst, pred);
+}
+uint64_t GenericVector::count_if(const void* dst, PredType pred) const
+{
+    SKR_ASSERT(is_valid());
+    SKR_ASSERT(dst);
+    SKR_ASSERT(pred);
     auto* dst_mem = reinterpret_cast<const VectorMemoryBase*>(dst);
 
     if (is_empty(dst))
@@ -1134,7 +1215,7 @@ uint64_t GenericVector::count(const void* dst, const void* v) const
 
         while (begin < end)
         {
-            if (_inner->equal(begin, v, 1))
+            if (pred(begin))
             {
                 ++count;
             }

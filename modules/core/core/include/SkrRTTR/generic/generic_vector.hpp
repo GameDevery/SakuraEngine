@@ -57,6 +57,7 @@ struct CGenericVectorDataRef {
 // generic vector
 struct SKR_CORE_API GenericVector final : IGenericBase {
     SKR_RC_IMPL(override final)
+    using PredType = FunctionRef<bool(const void*)>;
 
     // ctor & dtor
     GenericVector(RC<IGenericBase> inner);
@@ -144,6 +145,14 @@ struct SKR_CORE_API GenericVector final : IGenericBase {
     uint64_t remove_all(void* dst, const void* v) const;
     uint64_t remove_all_swap(void* dst, const void* v) const;
 
+    // remove if
+    bool     remove_if(void* dst, PredType pred) const;
+    bool     remove_swap_if(void* dst, PredType pred) const;
+    bool     remove_last_if(void* dst, PredType pred) const;
+    bool     remove_last_swap_if(void* dst, PredType pred) const;
+    uint64_t remove_all_if(void* dst, PredType pred) const;
+    uint64_t remove_all_swap_if(void* dst, PredType pred) const;
+
     // access
     void*       at(void* dst, uint64_t idx) const;
     void*       at_last(void* dst, uint64_t idx) const;
@@ -156,9 +165,19 @@ struct SKR_CORE_API GenericVector final : IGenericBase {
     CGenericVectorDataRef find(const void* dst, const void* v) const;
     CGenericVectorDataRef find_last(const void* dst, const void* v) const;
 
+    // find if
+    GenericVectorDataRef  find_if(void* dst, PredType pred) const;
+    GenericVectorDataRef  find_last_if(void* dst, PredType pred) const;
+    CGenericVectorDataRef find_if(const void* dst, PredType pred) const;
+    CGenericVectorDataRef find_last_if(const void* dst, PredType pred) const;
+
     // contains & count
     bool     contains(const void* dst, const void* v) const;
     uint64_t count(const void* dst, const void* v) const;
+
+    // contains if & count if
+    bool     contains_if(const void* dst, PredType pred) const;
+    uint64_t count_if(const void* dst, PredType pred) const;
 
     // sort
     // TODO. 需要比较 op，Swapper
