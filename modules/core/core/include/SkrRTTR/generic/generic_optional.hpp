@@ -59,5 +59,7 @@ struct SKR_CORE_API GenericOptional final : IGenericBase {
 private:
     RC<IGenericBase> _inner            = nullptr;
     MemoryTraitsData _inner_mem_traits = {};
+    uint64_t         _inner_size       = 0;
+    uint64_t         _inner_alignment  = 0;
 };
 } // namespace skr

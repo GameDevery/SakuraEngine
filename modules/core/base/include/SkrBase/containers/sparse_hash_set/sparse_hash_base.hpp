@@ -95,7 +95,7 @@ struct SparseHashBase : protected SparseVector<Memory> {
     template <typename Pred>
     SizeType remove_all_if(Pred&& pred);
 
-    // constains
+    // contains
     template <typename Pred>
     bool contains_if(Pred&& pred) const;
     template <typename Pred>
@@ -119,26 +119,6 @@ protected:
     DataRef _find_if(Pred&& pred) const;
     template <typename DataRef, typename Pred>
     DataRef _find_last_if(Pred&& pred) const;
-
-    // contains & count
-    template <typename Pred>
-    bool _contains(HasherType hash, Pred&& pred);
-    template <typename Pred>
-    SizeType _count(HasherType hash, Pred&& pred);
-
-    // sync hash
-    template <bool kKeepUnique>
-    bool _sync_hash();
-    template <bool kKeepUnique>
-    bool _sync_hash_at(SizeType index);
-
-    // modify
-    template <bool kKeepUnique, typename Modifier>
-    bool _modify_at(SizeType index, Modifier&& modifier, bool update_hash = true);
-    template <bool kKeepUnique, typename Modifier>
-    bool _modify_last(SizeType index, Modifier&& modifier, bool update_hash = true);
-    template <bool kKeepUnique, typename Modifier, typename DataRef>
-    bool _modify(DataRef ref, Modifier&& modifier, bool update_hash = true);
 
     // helpers
     SizeType _bucket_index(SizeType hash) const; // get bucket data index by hash

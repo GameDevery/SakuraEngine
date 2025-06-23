@@ -9,6 +9,8 @@ GenericOptional::GenericOptional(RC<IGenericBase> inner)
     if (_inner)
     {
         _inner_mem_traits = _inner->memory_traits_data();
+        _inner_size       = _inner->size();
+        _inner_alignment  = _inner->alignment();
     }
 }
 GenericOptional::~GenericOptional() = default;
@@ -38,14 +40,12 @@ MemoryTraitsData GenericOptional::memory_traits_data() const
 uint64_t GenericOptional::size() const
 {
     SKR_ASSERT(is_valid());
-    auto inner_size      = _inner->size();
-    auto inner_alignment = _inner->alignment();
-    return inner_size + std::max(sizeof(bool), inner_alignment);
+    return _inner_size + std::max(sizeof(bool), _inner_alignment);
 }
 uint64_t GenericOptional::alignment() const
 {
     SKR_ASSERT(is_valid());
-    return std::max(sizeof(bool), _inner->alignment());
+    return std::max(sizeof(bool), _inner_alignment);
 }
 
 // operations, used for generic container algorithms
@@ -323,13 +323,21 @@ void* GenericOptional::value_ptr(void* memory) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(memory);
-    return reinterpret_cast<uint8_t*>(memory) + std::max(sizeof(bool), _inner->alignment());
+    auto padded_bool_size = std::max(sizeof(bool), _inner_alignment);
+    return ::skr::memory::offset_bytes(
+        memory,
+        padded_bool_size
+    );
 }
 const void* GenericOptional::value_ptr(const void* memory) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(memory);
-    return reinterpret_cast<const uint8_t*>(memory) + std::max(sizeof(bool), _inner->alignment());
+    auto padded_bool_size = std::max(sizeof(bool), _inner_alignment);
+    return ::skr::memory::offset_bytes(
+        memory,
+        padded_bool_size
+    );
 }
 
 // reset
