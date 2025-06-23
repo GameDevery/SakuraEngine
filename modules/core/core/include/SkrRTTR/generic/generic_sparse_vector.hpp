@@ -7,7 +7,7 @@ namespace skr
 // data ref
 struct GenericSparseVectorDataRef {
     void*    ptr   = nullptr;
-    uint64_t index = 0;
+    uint64_t index = npos_of<uint64_t>;
 
     inline bool is_valid() const
     {

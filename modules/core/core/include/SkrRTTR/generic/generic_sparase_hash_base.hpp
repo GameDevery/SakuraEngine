@@ -7,6 +7,8 @@ namespace skr
 struct SKR_CORE_API GenericSparseHashSetStorage final : IGenericBase {
     SKR_RC_IMPL(override final)
 
+    inline static constexpr uint64_t npos = skr::npos_of<uint64_t>;
+
     // ctor & dtor
     GenericSparseHashSetStorage(RC<IGenericBase> inner);
     ~GenericSparseHashSetStorage();
@@ -57,19 +59,19 @@ private:
 
 // data def
 struct GenericSparseHashSetDataRef {
-    void*    ptr           = nullptr; // data pointer
-    uint64_t index         = 0;       // index in the sparse hash set
-    size_t   hash          = 0;       // hash value
-    bool     already_exist = false;   // if the data already exist in the sparse hash set
+    void*    ptr           = nullptr;           // data pointer
+    uint64_t index         = npos_of<uint64_t>; // index in the sparse hash set
+    size_t   hash          = 0;                 // hash value
+    bool     already_exist = false;             // if the data already exist in the sparse hash set
 
     inline bool is_valid() const { return ptr != nullptr && index != skr::npos_of<uint64_t>; }
     inline      operator bool() const { return is_valid(); }
 };
 struct CGenericSparseHashSetDataRef {
-    const void* ptr           = nullptr; // data pointer
-    uint64_t    index         = 0;       // index in the sparse hash set
-    size_t      hash          = 0;       // hash value
-    bool        already_exist = false;   // if the data already exist in the sparse hash set
+    const void* ptr           = nullptr;           // data pointer
+    uint64_t    index         = npos_of<uint64_t>; // index in the sparse hash set
+    size_t      hash          = 0;                 // hash value
+    bool        already_exist = false;             // if the data already exist in the sparse hash set
 
     inline CGenericSparseHashSetDataRef(const GenericSparseHashSetDataRef& ref)
         : ptr(ref.ptr)
@@ -128,8 +130,9 @@ struct SKR_CORE_API GenericSparseHashSetBase : protected GenericSparseVector {
     //===> IGenericBase API
 
     // getter
-    bool             is_valid() const;
-    RC<IGenericBase> inner() const;
+    bool                            is_valid() const;
+    RC<IGenericBase>                inner() const;
+    RC<GenericSparseHashSetStorage> inner_storage() const;
 
     // sparse hash set getter
     uint64_t*       bucket(void* dst) const;
@@ -145,38 +148,51 @@ struct SKR_CORE_API GenericSparseHashSetBase : protected GenericSparseVector {
     using Super::is_valid_index;
 
     // memory op
-    void clear(void* dst);
-    void release(void* dst, uint64_t capacity = 0);
-    void reserve(void* dst, uint64_t capacity);
-    void shrink(void* dst);
-    bool compact(void* dst);
-    bool compact_stable(void* dst);
-    bool compact_top(void* dst);
+    void clear(void* dst) const;
+    void release(void* dst, uint64_t capacity = 0) const;
+    void reserve(void* dst, uint64_t capacity) const;
+    void shrink(void* dst) const;
+    bool compact(void* dst) const;
+    bool compact_stable(void* dst) const;
+    bool compact_top(void* dst) const;
 
     // rehash
-    void rehash(void* dst);
-    bool rehash_if_need(void* dst);
+    void rehash(void* dst) const;
+    bool rehash_if_need(void* dst) const;
 
     // visitor
-    void*       at(void* dst, uint64_t idx) const;
-    void*       at_last(void* dst, uint64_t idx) const;
     const void* at(const void* dst, uint64_t idx) const;
     const void* at_last(const void* dst, uint64_t idx) const;
 
     // remove
     void remove_at(void* dst, uint64_t idx) const;
-    void remove_at_last(void* dst, uint64_t idx) const;
+    void remove_at_unsafe(void* dst, uint64_t idx) const;
 
     // basic add/find/remove
     GenericSparseHashSetDataRef add_unsafe(void* dst, size_t hash) const;
-    GenericSparseHashSetDataRef find(void* dst, size_t hash, PredType pred) const;
-    GenericSparseHashSetDataRef find_next(void* dst, GenericSparseVectorDataRef ref, PredType pred) const;
+    GenericSparseHashSetDataRef find(const void* dst, size_t hash, PredType pred) const;
+    GenericSparseHashSetDataRef find_next(const void* dst, GenericSparseHashSetDataRef ref, PredType pred) const;
     bool                        remove(void* dst, size_t hash, PredType pred) const;
     uint64_t                    remove_all(void* dst, size_t hash, PredType pred) const;
 
-    // contains & count
-    bool     contains(const void* dst, size_t hash, PredType pred) const;
-    uint64_t count(const void* dst, size_t hash, PredType pred) const;
+private:
+    // helper
+    void     _free_bucket(void* dst) const;
+    bool     _resize_bucket(void* dst) const;
+    void     _clean_bucket(void* dst) const;
+    void     _build_bucket(void* dst) const;
+    uint64_t _bucket_index(const void* dst, uint64_t hash) const;
+    bool     _is_in_bucket(const void* dst, uint64_t index) const;
+    void     _add_to_bucket(void* dst, void* item_data, uint64_t index) const;
+    void     _remove_from_bucket(void* dst, uint64_t index) const;
+
+private:
+    RC<IGenericBase> _inner            = nullptr;
+    MemoryTraitsData _inner_mem_traits = {};
+    uint64_t         _inner_size       = 0;
+    uint64_t         _inner_alignment  = 0;
+
+    RC<GenericSparseHashSetStorage> _inner_storage = nullptr;
 };
 
 } // namespace skr

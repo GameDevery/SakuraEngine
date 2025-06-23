@@ -99,8 +99,7 @@ struct MultiSparseHashMap : protected SparseHashBase<Memory> {
 
     // add
     template <typename UK = MapKeyType, typename UV = MapValueType>
-    requires(TransparentToOrSameAs<UK, typename Memory::MapKeyType, typename Memory::HasherType> &&
-             std::convertible_to<UV, typename Memory::MapValueType>)
+    requires(TransparentToOrSameAs<UK, typename Memory::MapKeyType, typename Memory::HasherType> && std::convertible_to<UV, typename Memory::MapValueType>)
     DataRef add(UK&& key, UV&& value);
     template <typename ConstructFunc>
     DataRef add_ex(HashType hash, ConstructFunc&& construct);
@@ -305,8 +304,7 @@ SKR_INLINE MultiSparseHashMap<Memory>& MultiSparseHashMap<Memory>::operator=(Mul
 // add
 template <typename Memory>
 template <typename UK, typename UV>
-requires(TransparentToOrSameAs<UK, typename Memory::MapKeyType, typename Memory::HasherType> &&
-         std::convertible_to<UV, typename Memory::MapValueType>)
+requires(TransparentToOrSameAs<UK, typename Memory::MapKeyType, typename Memory::HasherType> && std::convertible_to<UV, typename Memory::MapValueType>)
 SKR_INLINE typename MultiSparseHashMap<Memory>::DataRef MultiSparseHashMap<Memory>::add(UK&& key, UV&& value)
 {
     HashType hash = HasherType()(key);

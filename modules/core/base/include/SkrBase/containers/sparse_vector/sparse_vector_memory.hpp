@@ -12,7 +12,7 @@
 namespace skr
 {
 struct GenericSparseVector;
-}
+} // namespace skr
 
 // sparse vector memory base
 namespace skr::container
@@ -34,7 +34,7 @@ struct SparseVectorMemoryBase {
     inline void set_freelist_head(SizeType value) noexcept { _freelist_head = value; }
     inline void set_hole_size(SizeType value) noexcept { _hole_size = value; }
 
-private:
+protected:
     // helper for generic sparse vector
     inline void _reset()
     {
