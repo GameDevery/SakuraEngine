@@ -96,13 +96,13 @@ struct CGenericSparseHashSetDataRef {
 };
 
 // GenericSparseHashSetBase
-struct SKR_CORE_API GenericSparseHashSetBase : protected GenericSparseVector {
+struct SKR_CORE_API GenericSparseHashBase : protected GenericSparseVector {
     using Super    = GenericSparseVector;
     using PredType = FunctionRef<bool(const void*)>;
 
     // ctor & dtor
-    GenericSparseHashSetBase(RC<IGenericBase> inner);
-    ~GenericSparseHashSetBase();
+    GenericSparseHashBase(RC<IGenericBase> inner);
+    ~GenericSparseHashBase();
 
     //===> IGenericBase API
     // get type info
@@ -135,6 +135,17 @@ struct SKR_CORE_API GenericSparseHashSetBase : protected GenericSparseVector {
     RC<GenericSparseHashSetStorage> inner_storage() const;
 
     // sparse hash set getter
+    using Super::size;
+    using Super::capacity;
+    using Super::slack;
+    using Super::sparse_size;
+    using Super::hole_size;
+    using Super::bit_size;
+    using Super::freelist_head;
+    using Super::is_compact;
+    using Super::is_empty;
+    using Super::storage;
+    using Super::bit_data;
     uint64_t*       bucket(void* dst) const;
     const uint64_t* bucket(const void* dst) const;
     uint64_t        bucket_size(const void* dst) const;
@@ -175,6 +186,10 @@ struct SKR_CORE_API GenericSparseHashSetBase : protected GenericSparseVector {
     bool                        remove(void* dst, size_t hash, PredType pred) const;
     uint64_t                    remove_all(void* dst, size_t hash, PredType pred) const;
 
+    // find if
+    GenericSparseHashSetDataRef find_if(void* dst, PredType pred) const;
+    GenericSparseHashSetDataRef find_last_if(void* dst, PredType pred) const;
+
 private:
     // helper
     void     _free_bucket(void* dst) const;
@@ -186,7 +201,7 @@ private:
     void     _add_to_bucket(void* dst, void* item_data, uint64_t index) const;
     void     _remove_from_bucket(void* dst, uint64_t index) const;
 
-private:
+protected:
     RC<IGenericBase> _inner            = nullptr;
     MemoryTraitsData _inner_mem_traits = {};
     uint64_t         _inner_size       = 0;

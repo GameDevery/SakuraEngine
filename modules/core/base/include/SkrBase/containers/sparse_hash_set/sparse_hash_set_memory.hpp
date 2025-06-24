@@ -9,7 +9,7 @@
 // generic fwd decl
 namespace skr
 {
-struct GenericSparseHashSetBase;
+struct GenericSparseHashBase;
 }
 
 // sparse hash set memory base
@@ -18,7 +18,7 @@ namespace skr::container
 template <typename TSize>
 struct SparseHashSetMemoryBase : public SparseVectorMemoryBase<TSize> {
     using SizeType = TSize;
-    friend struct ::skr::GenericSparseHashSetBase;
+    friend struct ::skr::GenericSparseHashBase;
 
 private:
     using Super = SparseVectorMemoryBase<TSize>;

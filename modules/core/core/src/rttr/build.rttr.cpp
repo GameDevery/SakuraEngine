@@ -16,3 +16,4 @@
 #include "./generic/generic_vector.cpp"
 #include "./generic/generic_sparse_vector.cpp"
 #include "./generic/generic_sparse_hash_base.cpp"
+#include "./generic/generic_sparse_hash_set.cpp"

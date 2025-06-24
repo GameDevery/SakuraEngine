@@ -47,7 +47,7 @@ struct SparseHashBase : protected SparseVector<Memory> {
     SizeType          sparse_size() const;
     SizeType          hole_size() const;
     SizeType          bit_size() const;
-    SizeType          free_list_head() const;
+    SizeType          freelist_head() const;
     bool              is_compact() const;
     bool              is_empty() const;
     DataVector&       data_vector();
@@ -284,9 +284,9 @@ SKR_INLINE typename SparseHashBase<Memory>::SizeType SparseHashBase<Memory>::bit
     return Super::bit_size();
 }
 template <typename Memory>
-SKR_INLINE typename SparseHashBase<Memory>::SizeType SparseHashBase<Memory>::free_list_head() const
+SKR_INLINE typename SparseHashBase<Memory>::SizeType SparseHashBase<Memory>::freelist_head() const
 {
-    return Super::free_list_head();
+    return Super::freelist_head();
 }
 template <typename Memory>
 SKR_INLINE bool SparseHashBase<Memory>::is_compact() const

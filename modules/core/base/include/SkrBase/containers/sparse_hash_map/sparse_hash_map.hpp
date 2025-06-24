@@ -72,7 +72,7 @@ struct SparseHashMap : protected SparseHashBase<Memory> {
     using Super::sparse_size;
     using Super::hole_size;
     using Super::bit_size;
-    using Super::free_list_head;
+    using Super::freelist_head;
     using Super::is_compact;
     using Super::is_empty;
     using Super::data_vector;
