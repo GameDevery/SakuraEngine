@@ -189,9 +189,9 @@ sugoi::archetype_t* sugoi_storage_t::cloneArchetype(archetype_t *src)
     write_const(archetype.storage, this);
     write_const(archetype.type, sugoi::clone(src->type, buffer));
     write_const(archetype.withMask, src->withMask);
-    write_const(archetype.withDirty, src->withMask);
+    write_const(archetype.withDirty, src->withDirty);
     write_const(archetype.sizeToPatch, src->sizeToPatch);
-    write_const(archetype.firstChunkComponent, src->withMask);
+    write_const(archetype.firstChunkComponent, src->firstChunkComponent);
     forloop (i, 0, 3)
     {
         write_const(archetype.offsets[i], archetypeArena.allocate<uint32_t>(archetype.type.length));
@@ -256,8 +256,9 @@ sugoi_group_t* sugoi_storage_t::constructGroup(const sugoi_entity_type_t& inType
     sugoi_type_set_t shared;
     shared.length = 0;
     // todo: is 256 enough?
-    shared.data = localStack.allocate<sugoi_type_index_t>(256);
-    group.get_shared_type(shared, localStack.allocate<sugoi_type_index_t>(256));
+    const SIndex shared_capacity = 256;
+    shared.data = localStack.allocate<sugoi_type_index_t>(shared_capacity);
+    group.get_shared_type(shared, localStack.allocate<sugoi_type_index_t>(shared_capacity), shared_capacity);
     group.sharedType = sugoi::clone(shared, buffer);
 
     auto toClean = localStack.allocate<TIndex>(group.type.type.length + 5);
@@ -599,6 +600,7 @@ sugoi_mask_comp_t sugoi_group_t::get_shared_mask(const sugoi_type_set_t& subtype
 {
     using namespace sugoi;
     sugoi::bitset32 mask;
+    SKR_ASSERT(subtype.length < 32); // bitset32 only supports 32 bits
     for (SIndex i = 0; i < subtype.length; ++i)
     {
         if (share(subtype.data[i]))
@@ -610,8 +612,11 @@ sugoi_mask_comp_t sugoi_group_t::get_shared_mask(const sugoi_type_set_t& subtype
     return mask.to_uint32();
 }
 
-void sugoi_group_t::get_shared_type(sugoi_type_set_t& result, void* buffer) const noexcept
+void sugoi_group_t::get_shared_type(sugoi_type_set_t& result, void* buffer, SIndex capacity) const noexcept
 {
+    SKR_ASSERT(result.data != nullptr);
+    SKR_ASSERT(buffer != nullptr);
+    SKR_ASSERT(capacity >= result.length);
     using namespace sugoi;
     auto storage = archetype->storage;
     for (EIndex i = 0; i < type.meta.length; ++i)
@@ -630,7 +635,7 @@ void sugoi_group_t::get_shared_type(sugoi_type_set_t& result, void* buffer) cons
         }
         buffer = (void*)result.data;
         result = merged;
-        metaGroup->get_shared_type(result, buffer);
+        metaGroup->get_shared_type(result, buffer, capacity);
     }
 }
 
@@ -653,12 +658,13 @@ const sugoi_group_t* sugoi_group_t::get_owner(sugoi_type_index_t t) const noexce
 
 const void* sugoi_group_t::get_shared_ro(sugoi_type_index_t t) const noexcept
 {
+    SKR_ASSERT(archetype != nullptr);
     using namespace sugoi;
     auto storage = archetype->storage;
     for (EIndex i = 0; i < type.meta.length; ++i)
     {
         auto view = storage->entity_view(type.meta.data[i]);
-        if (auto data = sugoiV_get_component_ro(&view, t))
+        if (auto data = sugoiV_get_owned_ro(&view, t))
             return data;
         return view.chunk->group->get_shared_ro(t);
     }
@@ -679,6 +685,7 @@ sugoi_mask_comp_t sugoi_group_t::get_mask(const sugoi_type_set_t& subtype) const
             ++i;
         else
         {
+            SKR_ASSERT(i < 32); // bitset32 only supports 32 bits
             mask.set(i, true);
             ++i;
             ++j;
@@ -715,6 +722,7 @@ uint32_t sugoiG_get_size(const sugoi_group_t* group)
 
 uint32_t sugoiG_get_stable_order(const sugoi_group_t* group, sugoi_type_index_t localType)
 {
+    SKR_ASSERT(localType < group->archetype->type.length); // Check bounds
     return group->archetype->stableOrder[localType];
 }
 

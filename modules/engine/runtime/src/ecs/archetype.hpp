@@ -64,7 +64,7 @@ struct sugoi_group_t {
     bool own(const sugoi_type_set_t& subtype) const noexcept;
     bool share(const sugoi_type_set_t& subtype) const noexcept;
     sugoi_mask_comp_t get_shared_mask(const sugoi_type_set_t& subtype) const noexcept;
-    void get_shared_type(sugoi_type_set_t& result, void* buffer) const noexcept;
+    void get_shared_type(sugoi_type_set_t& result, void* buffer, SIndex capacity) const noexcept;
     const sugoi_group_t* get_owner(sugoi_type_index_t type) const noexcept;
     sugoi_mask_comp_t get_mask(const sugoi_type_set_t& subtype) const noexcept;
     const void* get_shared_ro(sugoi_type_index_t type) const noexcept;

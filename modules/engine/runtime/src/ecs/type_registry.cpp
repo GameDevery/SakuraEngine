@@ -115,6 +115,7 @@ TypeRegistry::Impl::Impl(pool_t& pool)
 
 type_index_t TypeRegistry::Impl::register_type(const type_description_t& inDesc)
 {
+    SKR_ASSERT(inDesc.name != nullptr);
     type_description_t desc = inDesc;
     if (!desc.name)
     {
@@ -131,6 +132,7 @@ type_index_t TypeRegistry::Impl::register_type(const type_description_t& inDesc)
     }
     if (desc.entityFields != 0)
     {
+        SKR_ASSERT(desc.entityFieldsCount > 0);
         intptr_t* efs = desc.entityFields;
         desc.entityFields = (intptr_t*)sakura_malloc(sizeof(intptr_t) * desc.entityFieldsCount);
         for (uint32_t i = 0; i < desc.entityFieldsCount; ++i)
