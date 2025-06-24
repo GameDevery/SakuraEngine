@@ -36,11 +36,12 @@ namespace SB
             {
                 BuildSystem.TargetDefaultSettings += (Target Target) =>
                 {
-                    Target.Link(Visibility.Public, "clang_rt.asan_dynamic-x86_64")
-                        .Link(Visibility.Public, "clang_rt.asan_dynamic_runtime_thunk-x86_64")
-                        .MSVC_CXFlags(Visibility.Public, "/fsanitize=address")
-                        .Defines(Visibility.Public, "_DISABLE_VECTOR_ANNOTATION")
-                        .Defines(Visibility.Public, "_DISABLE_STRING_ANNOTATION");
+                    Target.Link(Visibility.Private, "clang_rt.asan_dynamic-x86_64")
+                        .Link(Visibility.Private, "clang_rt.asan_dynamic_runtime_thunk-x86_64")
+                        .MSVC_CXFlags(Visibility.Private, "/fsanitize=address")
+                        .MSVC_LinkerArgs(Visibility.Private, "/INCREMENTAL:NO")
+                        .Defines(Visibility.Private, "_DISABLE_VECTOR_ANNOTATION")
+                        .Defines(Visibility.Private, "_DISABLE_STRING_ANNOTATION");
                 };
             }
             else
