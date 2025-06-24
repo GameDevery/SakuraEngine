@@ -13,7 +13,7 @@ namespace RAMUtils
 {
 inline static IOReaderId<IIORequestProcessor> CreateReader(RAMService* service, const skr_ram_io_service_desc_t* desc) SKR_NOEXCEPT
 {
-    auto reader = skr::SObjectPtr<VFSRAMReader>::Create(service, desc->io_job_queue);
+    auto reader = skr::RC<VFSRAMReader>::New(service, desc->io_job_queue);
     return std::move(reader);
 }
 
@@ -22,7 +22,7 @@ inline static IOReaderId<IIOBatchProcessor> CreateBatchReader(RAMService* servic
 #ifdef _WIN32
     if (skr_query_dstorage_availability() == SKR_DSTORAGE_AVAILABILITY_HARDWARE)
     {
-        auto reader = skr::SObjectPtr<DStorageRAMReader>::Create(service);
+        auto reader = skr::RC<DStorageRAMReader>::New(service);
         return std::move(reader);
     }
 #endif
@@ -36,9 +36,9 @@ RAMService::RAMService(const skr_ram_io_service_desc_t* desc) SKR_NOEXCEPT
       awake_at_request(desc->awake_at_request),
       runner(this, desc->callback_job_queue)
 {
-    request_pool = SmartPoolPtr<RAMRequestMixin, IBlocksRAMRequest>::Create(kIOPoolObjectsMemoryName);
-    ram_buffer_pool = SmartPoolPtr<RAMIOBuffer, IRAMIOBuffer>::Create(kIOPoolObjectsMemoryName);
-    ram_batch_pool = SmartPoolPtr<RAMIOBatch, IIOBatch>::Create(kIOPoolObjectsMemoryName);
+    request_pool = SmartPoolPtr<RAMRequestMixin, IBlocksRAMRequest>::New(kIOPoolObjectsMemoryName);
+    ram_buffer_pool = SmartPoolPtr<RAMIOBuffer, IRAMIOBuffer>::New(kIOPoolObjectsMemoryName);
+    ram_batch_pool = SmartPoolPtr<RAMIOBatch, IIOBatch>::New(kIOPoolObjectsMemoryName);
 
     if (desc->use_dstorage)
         runner.ds_reader = RAMUtils::CreateBatchReader(this, desc);
@@ -74,13 +74,13 @@ void IRAMService::destroy(skr_io_ram_service_t* service) SKR_NOEXCEPT
 IOBatchId RAMService::open_batch(uint64_t n) SKR_NOEXCEPT
 {
     uint64_t seq = (uint64_t)skr_atomic_fetch_add_relaxed(&batch_sequence, 1);
-    return skr::static_pointer_cast<IIOBatch>(ram_batch_pool->allocate(this, seq, n));
+    return ram_batch_pool->allocate(this, seq, n).cast_static<IIOBatch>();
 }
 
 BlocksRAMRequestId RAMService::open_request() SKR_NOEXCEPT
 {
     uint64_t seq = (uint64_t)skr_atomic_fetch_add_relaxed(&request_sequence, 1);
-    return skr::static_pointer_cast<IBlocksRAMRequest>(request_pool->allocate(this, seq));
+    return request_pool->allocate(this, seq).cast_static<IBlocksRAMRequest>();
 }
 
 void RAMService::request(IOBatchId batch) SKR_NOEXCEPT
@@ -96,7 +96,7 @@ RAMIOBufferId RAMService::request(IORequestId request, skr_io_future_t* future, 
 {
     auto batch = open_batch(1);
     auto result = batch->add_request(request, future);
-    auto buffer = skr::static_pointer_cast<RAMIOBuffer>(result);
+    auto buffer = result.cast_static<RAMIOBuffer>();
     batch->set_priority(priority);
     this->request(batch);
     return buffer;
@@ -173,25 +173,25 @@ void RAMService::Runner::enqueueBatch(const IOBatchId& batch) SKR_NOEXCEPT
 
 void RAMService::Runner::set_resolvers() SKR_NOEXCEPT
 {
-    auto alloc_buffer = SObjectPtr<AllocateIOBufferResolver>::Create();
-    auto chain = skr::static_pointer_cast<IORequestResolverChain>(IIORequestResolverChain::Create());
+    auto alloc_buffer = RC<AllocateIOBufferResolver>::New();
+    auto chain = IIORequestResolverChain::Create().cast_static<IORequestResolverChain>();
     chain->runner = this;
 
     IORequestResolverId open_file = nullptr;
-    open_file = SObjectPtr<VFSFileResolver>::Create();
+    open_file = RC<VFSFileResolver>::New();
 
     IORequestResolverId open_dfile = nullptr;
     const bool dstorage = ds_reader.get();
     if (dstorage) 
     {
-        open_dfile = SObjectPtr<DStorageFileResolver>::Create();
+        open_dfile = RC<DStorageFileResolver>::New();
         chain->then(open_dfile);
     }
 
     chain->then(open_file)
         ->then(alloc_buffer);
         
-    batch_buffer = SObjectPtr<IOBatchBuffer>::Create(); // hold batches
+    batch_buffer = RC<IOBatchBuffer>::New(); // hold batches
 
     batch_processors = { batch_buffer, chain };
     if (dstorage)

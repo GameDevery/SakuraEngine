@@ -1,23 +1,12 @@
 #pragma once
 #include "SkrBase/types.h"
-#include "SkrCore/log/log_base.hpp"
+#include "SkrCore/log.hpp"
 #include "SkrContainersDef/string.hpp"
 
 namespace skr
 {
-namespace log
+namespace logging
 {
-
-struct SKR_CORE_API LogSink {
-    LogSink(skr_guid_t pattern) SKR_NOEXCEPT;
-    virtual ~LogSink() SKR_NOEXCEPT;
-    virtual skr_guid_t get_pattern() const SKR_NOEXCEPT { return pattern_; }
-    virtual void       sink(const LogEvent& event, skr::StringView content) SKR_NOEXCEPT = 0;
-    virtual void       flush() SKR_NOEXCEPT {}
-
-protected:
-    skr_guid_t pattern_ = LogConstants::kDefaultPatternId;
-};
 
 enum class EConsoleColor : uint16_t
 {
@@ -85,5 +74,5 @@ struct SKR_CORE_API LogFileSink : public LogSink {
     struct CFILE* file_ = nullptr;
 };
 
-} // namespace log
+} // namespace logging
 } // namespace skr

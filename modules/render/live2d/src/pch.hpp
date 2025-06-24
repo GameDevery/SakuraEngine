@@ -11,7 +11,7 @@
 #include "SkrCore/platform/vfs.h" // IWYU pragma: export
 #include "SkrCore/time.h" // IWYU pragma: export
 #include "SkrOS/thread.h" // IWYU pragma: export
-#include "SkrBase/math/rtm/rtmx.h" // IWYU pragma: export
+#include "rtm/camera_utilsf.h" // IWYU pragma: export
 #include "SkrBase/misc/make_zeroed.hpp" // IWYU pragma: export
 
 #include "SkrRT/ecs/sugoi.h" // IWYU pragma: export
@@ -21,7 +21,6 @@
 #include "SkrCore/log.hpp" // IWYU pragma: export
 
 #include <SkrContainers/concurrent_queue.hpp> // IWYU pragma: export
-#include <SkrContainers/sptr.hpp> // IWYU pragma: export
 #include <SkrContainers/string.hpp> // IWYU pragma: export
 #include <SkrContainers/vector.hpp> // IWYU pragma: export
 #include <SkrContainers/hashmap.hpp> // IWYU pragma: export

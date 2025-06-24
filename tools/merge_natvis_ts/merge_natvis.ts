@@ -73,14 +73,17 @@ for (const file of input_files) {
     console.log(`found ${type_nodes.length} types`)
     for (const type_node of type_nodes) {
       const type_name = type_node.getAttribute('Name')
-      if (seen_types.has(type_name)) {
-        console.log(LogColor.yellow(`[REPEAT] ${type_name}`))
+      const priority = type_node.getAttribute('Priority')
+      const compare_key = `${type_name}_${priority}`
+
+      if (seen_types.has(compare_key)) {
+        console.log(LogColor.yellow(`[REPEAT] ${type_name} (${priority ?? "DEFAULT"})`))
         continue
       }
       else {
-        seen_types.add(type_name)
+        seen_types.add(compare_key)
         visualizer_node.appendChild(type_node)
-        console.log(LogColor.green(`[DONE] ${type_name}`))
+        console.log(LogColor.green(`[DONE] ${type_name} (${priority ?? "DEFAULT"})`))
       }
 
     }

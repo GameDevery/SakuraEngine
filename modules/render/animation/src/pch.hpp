@@ -3,7 +3,6 @@
 #include "SkrCore/module/module.hpp" // IWYU pragma: export
 #include "SkrRT/ecs/sugoi.h" // IWYU pragma: export
 #include "SkrRT/resource/resource_factory.h" // IWYU pragma: export
-#include "SkrContainers/sptr.hpp" // IWYU pragma: export
 #include <SkrContainers/string.hpp> // IWYU pragma: export
 #include <SkrContainers/vector.hpp> // IWYU pragma: export
 

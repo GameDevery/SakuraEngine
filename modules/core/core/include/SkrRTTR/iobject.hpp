@@ -43,6 +43,19 @@ sreflect_struct(guid = "3740620f-714d-4d78-b47e-095f256ba4a7")
     static void* operator new[](size_t) = delete;
 };
 
+} // namespace skr
+
+// delete traits
+template <std::derived_from<::skr::IObject> T>
+struct SkrDeleteTraits<T> {
+    SKR_FORCEINLINE static void* get_free_ptr(T* p)
+    {
+        return p->iobject_get_head_ptr();
+    }
+};
+
+namespace skr
+{
 // helper api
 template <typename TO>
 inline TO* IObject::type_cast()

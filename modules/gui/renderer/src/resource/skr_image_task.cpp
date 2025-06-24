@@ -144,7 +144,7 @@ void SkrImageDataTask::_async_decode_data()
 {
     if (_need_decode)
     {
-        _decoding_progress = SPtr<DecodingProgress>::Create(this);
+        _decoding_progress = SP<DecodingProgress>::New(this);
         if (auto launcher = _owner->future_launcher())
         {
             _decoding_progress->execute(*launcher);

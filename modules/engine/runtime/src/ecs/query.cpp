@@ -662,13 +662,13 @@ void sugoi_storage_t::query(const sugoi_query_t* q, sugoi_view_callback_t callba
     auto filterChunk = [&](sugoi_group_t* group) {
         if (pimpl->scheduler)
         {
-        for (EIndex i = 0; i < q->pimpl->parameters.length; ++i)
+            for (EIndex i = 0; i < q->pimpl->parameters.length; ++i)
             {
                 int idx = group->index(q->pimpl->parameters.types[i]);
                 if (idx != sugoi::kInvalidTypeIndex)
                     pimpl->scheduler->sync_entry(group->archetype, idx, q->pimpl->parameters.accesses[i].readonly);
-                }
             }
+        }
         filter_in_single_group(&q->pimpl->parameters, group, q->pimpl->filter, q->pimpl->meta, q->pimpl->customFilter, q->pimpl->customFilterUserData, callback, u);
     };
     query_groups(q, SUGOI_LAMBDA(filterChunk));

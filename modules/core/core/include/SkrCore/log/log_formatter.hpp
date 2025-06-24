@@ -6,7 +6,7 @@
 
 namespace skr
 {
-namespace log
+namespace logging
 {
 
 struct LogFormatter;
@@ -35,12 +35,12 @@ SKR_FORCEINLINE void ArgsList::push(Args&&... args) SKR_NOEXCEPT
 {
     format_ = [args = std::make_tuple(std::forward<Args>(args)...)](const skr::String& format, LogFormatter& formatter) mutable {
         return std::apply([&](auto&&... args) {
-            formatter.formatted_string = skr::format(format, skr::forward<Args>(args)...);
+            formatter.formatted_string = skr::format(format, std::forward<Args>(args)...);
             return true;
         },
                           std::move(args));
     };
 }
 
-} // namespace log
+} // namespace logging
 } // namespace skr

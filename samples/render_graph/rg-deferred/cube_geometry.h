@@ -1,12 +1,18 @@
 #pragma once
-#include "SkrBase/math/rtm/rtmx.h"
+#include "rtm/camera_utilsf.h"
 #include "SkrBase/types.h"
+#include "SkrBase/math.h"
 
 struct CubeGeometry {
     struct InstanceData {
         skr_float4x4_t world;
     };
     static InstanceData instance_data;
+
+    inline static uint32_t _vector_to_snorm8(const skr::float4& v)
+    {
+        return skr::pack_snorm8(skr::normalize(v));
+    }
 
     const skr_float3_t g_Positions[24] = {
         { -0.5f, 0.5f, -0.5f }, // front face
@@ -71,66 +77,66 @@ struct CubeGeometry {
         { 0.0f, 1.0f },
     };
     const uint32_t g_Normals[24] = {
-        rtm::vector_to_snorm8({ 0.0f, 0.0f, -1.0f, 0.0f }), // front face
-        rtm::vector_to_snorm8({ 0.0f, 0.0f, -1.0f, 0.0f }),
-        rtm::vector_to_snorm8({ 0.0f, 0.0f, -1.0f, 0.0f }),
-        rtm::vector_to_snorm8({ 0.0f, 0.0f, -1.0f, 0.0f }),
+        _vector_to_snorm8({ 0.0f, 0.0f, -1.0f, 0.0f }), // front face
+        _vector_to_snorm8({ 0.0f, 0.0f, -1.0f, 0.0f }),
+        _vector_to_snorm8({ 0.0f, 0.0f, -1.0f, 0.0f }),
+        _vector_to_snorm8({ 0.0f, 0.0f, -1.0f, 0.0f }),
 
-        rtm::vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 0.0f }), // right side face
-        rtm::vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 0.0f }),
-        rtm::vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 0.0f }),
-        rtm::vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 0.0f }),
+        _vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 0.0f }), // right side face
+        _vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 0.0f }),
+        _vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 0.0f }),
+        _vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 0.0f }),
 
-        rtm::vector_to_snorm8({ -1.0f, 0.0f, 0.0f, 0.0f }), // left side face
-        rtm::vector_to_snorm8({ -1.0f, 0.0f, 0.0f, 0.0f }),
-        rtm::vector_to_snorm8({ -1.0f, 0.0f, 0.0f, 0.0f }),
-        rtm::vector_to_snorm8({ -1.0f, 0.0f, 0.0f, 0.0f }),
+        _vector_to_snorm8({ -1.0f, 0.0f, 0.0f, 0.0f }), // left side face
+        _vector_to_snorm8({ -1.0f, 0.0f, 0.0f, 0.0f }),
+        _vector_to_snorm8({ -1.0f, 0.0f, 0.0f, 0.0f }),
+        _vector_to_snorm8({ -1.0f, 0.0f, 0.0f, 0.0f }),
 
-        rtm::vector_to_snorm8({ 0.0f, 0.0f, 1.0f, 0.0f }), // back face
-        rtm::vector_to_snorm8({ 0.0f, 0.0f, 1.0f, 0.0f }),
-        rtm::vector_to_snorm8({ 0.0f, 0.0f, 1.0f, 0.0f }),
-        rtm::vector_to_snorm8({ 0.0f, 0.0f, 1.0f, 0.0f }),
+        _vector_to_snorm8({ 0.0f, 0.0f, 1.0f, 0.0f }), // back face
+        _vector_to_snorm8({ 0.0f, 0.0f, 1.0f, 0.0f }),
+        _vector_to_snorm8({ 0.0f, 0.0f, 1.0f, 0.0f }),
+        _vector_to_snorm8({ 0.0f, 0.0f, 1.0f, 0.0f }),
 
-        rtm::vector_to_snorm8({ 0.0f, 1.0f, 0.0f, 0.0f }), // top face
-        rtm::vector_to_snorm8({ 0.0f, 1.0f, 0.0f, 0.0f }),
-        rtm::vector_to_snorm8({ 0.0f, 1.0f, 0.0f, 0.0f }),
-        rtm::vector_to_snorm8({ 0.0f, 1.0f, 0.0f, 0.0f }),
+        _vector_to_snorm8({ 0.0f, 1.0f, 0.0f, 0.0f }), // top face
+        _vector_to_snorm8({ 0.0f, 1.0f, 0.0f, 0.0f }),
+        _vector_to_snorm8({ 0.0f, 1.0f, 0.0f, 0.0f }),
+        _vector_to_snorm8({ 0.0f, 1.0f, 0.0f, 0.0f }),
 
-        rtm::vector_to_snorm8({ 0.0f, -1.0f, 0.0f, 0.0f }), // bottom face
-        rtm::vector_to_snorm8({ 0.0f, -1.0f, 0.0f, 0.0f }),
-        rtm::vector_to_snorm8({ 0.0f, -1.0f, 0.0f, 0.0f }),
-        rtm::vector_to_snorm8({ 0.0f, -1.0f, 0.0f, 0.0f }),
+        _vector_to_snorm8({ 0.0f, -1.0f, 0.0f, 0.0f }), // bottom face
+        _vector_to_snorm8({ 0.0f, -1.0f, 0.0f, 0.0f }),
+        _vector_to_snorm8({ 0.0f, -1.0f, 0.0f, 0.0f }),
+        _vector_to_snorm8({ 0.0f, -1.0f, 0.0f, 0.0f }),
     };
     const uint32_t g_Tangents[24] = {
-        rtm::vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 1.0f }), // front face
-        rtm::vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 1.0f }),
-        rtm::vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 1.0f }),
-        rtm::vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 1.0f }),
+        _vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 1.0f }), // front face
+        _vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 1.0f }),
+        _vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 1.0f }),
+        _vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 1.0f }),
 
-        rtm::vector_to_snorm8({ 0.0f, 0.0f, 1.0f, 1.0f }), // right side face
-        rtm::vector_to_snorm8({ 0.0f, 0.0f, 1.0f, 1.0f }),
-        rtm::vector_to_snorm8({ 0.0f, 0.0f, 1.0f, 1.0f }),
-        rtm::vector_to_snorm8({ 0.0f, 0.0f, 1.0f, 1.0f }),
+        _vector_to_snorm8({ 0.0f, 0.0f, 1.0f, 1.0f }), // right side face
+        _vector_to_snorm8({ 0.0f, 0.0f, 1.0f, 1.0f }),
+        _vector_to_snorm8({ 0.0f, 0.0f, 1.0f, 1.0f }),
+        _vector_to_snorm8({ 0.0f, 0.0f, 1.0f, 1.0f }),
 
-        rtm::vector_to_snorm8({ 0.0f, 0.0f, -1.0f, 1.0f }), // left side face
-        rtm::vector_to_snorm8({ 0.0f, 0.0f, -1.0f, 1.0f }),
-        rtm::vector_to_snorm8({ 0.0f, 0.0f, -1.0f, 1.0f }),
-        rtm::vector_to_snorm8({ 0.0f, 0.0f, -1.0f, 1.0f }),
+        _vector_to_snorm8({ 0.0f, 0.0f, -1.0f, 1.0f }), // left side face
+        _vector_to_snorm8({ 0.0f, 0.0f, -1.0f, 1.0f }),
+        _vector_to_snorm8({ 0.0f, 0.0f, -1.0f, 1.0f }),
+        _vector_to_snorm8({ 0.0f, 0.0f, -1.0f, 1.0f }),
 
-        rtm::vector_to_snorm8({ -1.0f, 0.0f, 0.0f, 1.0f }), // back face
-        rtm::vector_to_snorm8({ -1.0f, 0.0f, 0.0f, 1.0f }),
-        rtm::vector_to_snorm8({ -1.0f, 0.0f, 0.0f, 1.0f }),
-        rtm::vector_to_snorm8({ -1.0f, 0.0f, 0.0f, 1.0f }),
+        _vector_to_snorm8({ -1.0f, 0.0f, 0.0f, 1.0f }), // back face
+        _vector_to_snorm8({ -1.0f, 0.0f, 0.0f, 1.0f }),
+        _vector_to_snorm8({ -1.0f, 0.0f, 0.0f, 1.0f }),
+        _vector_to_snorm8({ -1.0f, 0.0f, 0.0f, 1.0f }),
 
-        rtm::vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 1.0f }), // top face
-        rtm::vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 1.0f }),
-        rtm::vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 1.0f }),
-        rtm::vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 1.0f }),
+        _vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 1.0f }), // top face
+        _vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 1.0f }),
+        _vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 1.0f }),
+        _vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 1.0f }),
 
-        rtm::vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 1.0f }), // bottom face
-        rtm::vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 1.0f }),
-        rtm::vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 1.0f }),
-        rtm::vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 1.0f }),
+        _vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 1.0f }), // bottom face
+        _vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 1.0f }),
+        _vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 1.0f }),
+        _vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 1.0f }),
     };
     static constexpr uint32_t g_Indices[] = {
         0, 1, 2, 0, 3, 1,       // front face

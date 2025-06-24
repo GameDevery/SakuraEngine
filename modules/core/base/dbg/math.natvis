@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+    <!--float vec-->
+    <Type Name="skr::math::float2">
+        <DisplayString>({x}, {y})</DisplayString>
+    </Type>
+    <Type Name="skr::math::float3">
+        <DisplayString>({x}, {y}, {z})</DisplayString>
+    </Type>
+    <Type Name="skr::math::float4">
+        <DisplayString>({x}, {y}, {z}, {w})</DisplayString>
+    </Type>
+    <!--double vec-->
+    <Type Name="skr::math::double2">
+        <DisplayString>({x}, {y})</DisplayString>
+    </Type>
+    <Type Name="skr::math::double3">
+        <DisplayString>({x}, {y}, {z})</DisplayString>
+    </Type>
+    <Type Name="skr::math::double4">
+        <DisplayString>({x}, {y}, {z}, {w})</DisplayString>
+    </Type>
+    <!--bool vec-->
+    <Type Name="skr::math::bool2">
+        <DisplayString>({x}, {y})</DisplayString>
+    </Type>
+    <Type Name="skr::math::bool3">
+        <DisplayString>({x}, {y}, {z})</DisplayString>
+    </Type>
+    <Type Name="skr::math::bool4">
+        <DisplayString>({x}, {y}, {z}, {w})</DisplayString>
+    </Type>
+    <!--int vec-->
+    <Type Name="skr::math::int2">
+        <DisplayString>({x}, {y})</DisplayString>
+    </Type>
+    <Type Name="skr::math::int3">
+        <DisplayString>({x}, {y}, {z})</DisplayString>
+    </Type>
+    <Type Name="skr::math::int4">
+        <DisplayString>({x}, {y}, {z}, {w})</DisplayString>
+    </Type>
+    <!--uint vec-->
+    <Type Name="skr::math::uint2">
+        <DisplayString>({x}, {y})</DisplayString>
+    </Type>
+    <Type Name="skr::math::uint3">
+        <DisplayString>({x}, {y}, {z})</DisplayString>
+    </Type>
+    <Type Name="skr::math::uint4">
+        <DisplayString>({x}, {y}, {z}, {w})</DisplayString>
+    </Type>
+    <!--long vec-->
+    <Type Name="skr::math::long2">
+        <DisplayString>({x}, {y})</DisplayString>
+    </Type>
+    <Type Name="skr::math::long3">
+        <DisplayString>({x}, {y}, {z})</DisplayString>
+    </Type>
+    <Type Name="skr::math::long4">
+        <DisplayString>({x}, {y}, {z}, {w})</DisplayString>
+    </Type>
+    <!--ulong vec-->
+    <Type Name="skr::math::ulong2">
+        <DisplayString>({x}, {y})</DisplayString>
+    </Type>
+    <Type Name="skr::math::ulong3">
+        <DisplayString>({x}, {y}, {z})</DisplayString>
+    </Type>
+    <Type Name="skr::math::ulong4">
+        <DisplayString>({x}, {y}, {z}, {w})</DisplayString>
+    </Type>
+
+    <!--float matrix-->
+    <Type Name="skr::math::float3x3">
+        <DisplayString>({axis_x}, {axis_y}, {axis_z})</DisplayString>
+        <Expand>
+            <Item Name="[X]">axis_x</Item>
+            <Item Name="[Y]">axis_y</Item>
+            <Item Name="[Z]">axis_z</Item>
+        </Expand>
+    </Type>
+    <Type Name="skr::math::float4x4">
+        <DisplayString>({axis_x}, {axis_y}, {axis_z}, {axis_w})</DisplayString>
+        <Expand>
+            <Item Name="[X]">axis_x</Item>
+            <Item Name="[Y]">axis_y</Item>
+            <Item Name="[Z]">axis_z</Item>
+            <Item Name="[W]">axis_w</Item>
+        </Expand>
+    </Type>
+    <!--double matrix-->
+    <Type Name="skr::math::double3x3">
+        <DisplayString>({axis_x}, {axis_y}, {axis_z})</DisplayString>
+        <Expand>
+            <Item Name="[X]">axis_x</Item>
+            <Item Name="[Y]">axis_y</Item>
+            <Item Name="[Z]">axis_z</Item>
+        </Expand>
+    </Type>
+    <Type Name="skr::math::double4x4">
+        <DisplayString>({axis_x}, {axis_y}, {axis_z}, {axis_w})</DisplayString>
+        <Expand>
+            <Item Name="[X]">axis_x</Item>
+            <Item Name="[Y]">axis_y</Item>
+            <Item Name="[Z]">axis_z</Item>
+            <Item Name="[W]">axis_w</Item>
+        </Expand>
+    </Type>
+
+    <!--quat-->
+    <Type Name="skr::math::QuatF">
+        <DisplayString>({x}, {y}, {z}, {w})</DisplayString>
+    </Type>
+    <Type Name="skr::math::QuatD">
+        <DisplayString>({x}, {y}, {z}, {w})</DisplayString>
+    </Type>
+    <!--rotator-->
+    <Type Name="skr::math::RotatorF">
+        <DisplayString>({pitch * 180.f / 3.14159265358979323846f}_deg, {yaw * 180.f / 3.14159265358979323846f}_deg, {roll * 180.f / 3.14159265358979323846f}_deg)</DisplayString>
+        <Expand>
+            <Item Name="[DEG] pitch">pitch * 180.f / 3.14159265358979323846f</Item>
+            <Item Name="[DEG] yaw">yaw * 180.f / 3.14159265358979323846f</Item>
+            <Item Name="[DEG] roll">roll * 180.f / 3.14159265358979323846f</Item>
+
+            <Item Name="[RAD] pitch">pitch</Item>
+            <Item Name="[RAD] yaw">yaw</Item>
+            <Item Name="[RAD] roll">roll</Item>
+        </Expand>
+    </Type>
+    <Type Name="skr::math::RotatorD">
+        <DisplayString>({x * 180.f / 3.14159265358979323846f}_deg, {yaw * 180.f / 3.14159265358979323846f}_deg, {roll * 180.f / 3.14159265358979323846f}_deg)</DisplayString>
+        <Expand>
+            <Item Name="[DEG] pitch">pitch * 180.f / 3.14159265358979323846f</Item>
+            <Item Name="[DEG] yaw">yaw * 180.f / 3.14159265358979323846f</Item>
+            <Item Name="[DEG] roll">roll * 180.f / 3.14159265358979323846f</Item>
+
+            <Item Name="[RAD] pitch">pitch</Item>
+            <Item Name="[RAD] yaw">yaw</Item>
+            <Item Name="[RAD] roll">roll</Item>
+        </Expand>
+    </Type>
+</AutoVisualizer>

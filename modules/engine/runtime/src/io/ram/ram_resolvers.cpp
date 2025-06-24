@@ -8,8 +8,8 @@ namespace io {
 void AllocateIOBufferResolver::resolve(SkrAsyncServicePriority priority, IOBatchId batch, IORequestId request) SKR_NOEXCEPT
 {
     SkrZoneScopedNC("IOBuffer::Allocate", tracy::Color::BlueViolet);
-    auto rq = skr::static_pointer_cast<RAMRequestMixin>(request);
-    auto buf = skr::static_pointer_cast<RAMIOBuffer>(rq->destination);
+    auto rq = request.cast_static<RAMRequestMixin>();
+    auto buf = rq->destination.cast_static<RAMIOBuffer>();
     auto pFiles = io_component<FileComponent>(rq.get());
     // deal with 0 block size
     if (auto pBlocks = io_component<BlocksComponent>(rq.get()))

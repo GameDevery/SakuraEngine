@@ -2,12 +2,13 @@
 #include "SkrRT/io/vram_io.hpp"
 #include "../common/pool.hpp"
 
-namespace skr {
-namespace io {
-
-struct SKR_RUNTIME_API VRAMBuffer : public IVRAMIOBuffer
+namespace skr
 {
-    IO_RC_OBJECT_BODY
+namespace io
+{
+
+struct SKR_RUNTIME_API VRAMBuffer : public IVRAMIOBuffer {
+    SKR_RC_IMPL(override)
 public:
     virtual ~VRAMBuffer() SKR_NOEXCEPT;
 
@@ -18,18 +19,15 @@ public:
     CGPUBufferId buffer = nullptr;
 
 public:
-    SInterfaceDeleter custom_deleter() const 
-    { 
-        return +[](SInterface* ptr) 
-        { 
-            auto* p = static_cast<VRAMBuffer*>(ptr);
-            SKR_ASSERT(p->pool && "Invalid pool detected!");
-            p->pool->deallocate(p); 
-        };
+    void skr_rc_delete() override
+    {
+        SKR_ASSERT(pool && "Invalid pool detected!");
+        pool->deallocate(this);
     }
     friend struct SmartPool<VRAMBuffer, IVRAMIOBuffer>;
+
 protected:
-    VRAMBuffer(ISmartPoolPtr<IVRAMIOBuffer> pool) 
+    VRAMBuffer(ISmartPoolPtr<IVRAMIOBuffer> pool)
         : pool(pool)
     {
         SKR_ASSERT(pool && "Invalid pool detected!");
@@ -37,9 +35,8 @@ protected:
     const ISmartPoolPtr<IVRAMIOBuffer> pool = nullptr;
 };
 
-struct SKR_RUNTIME_API VRAMTexture : public IVRAMIOTexture
-{
-    IO_RC_OBJECT_BODY
+struct SKR_RUNTIME_API VRAMTexture : public IVRAMIOTexture {
+    SKR_RC_IMPL(override)
 public:
     virtual ~VRAMTexture() SKR_NOEXCEPT;
 
@@ -48,20 +45,17 @@ public:
         return texture;
     }
     CGPUTextureId texture = nullptr;
-    
+
 public:
-    SInterfaceDeleter custom_deleter() const 
-    { 
-        return +[](SInterface* ptr) 
-        { 
-            auto* p = static_cast<VRAMTexture*>(ptr);
-            SKR_ASSERT(p->pool && "Invalid pool detected!");
-            p->pool->deallocate(p); 
-        };
+    void skr_rc_delete() override
+    {
+        SKR_ASSERT(pool && "Invalid pool detected!");
+        pool->deallocate(this);
     }
     friend struct SmartPool<VRAMTexture, IVRAMIOTexture>;
+
 protected:
-    VRAMTexture(ISmartPoolPtr<IVRAMIOTexture> pool) 
+    VRAMTexture(ISmartPoolPtr<IVRAMIOTexture> pool)
         : pool(pool)
     {
         SKR_ASSERT(pool && "Invalid pool detected!");

@@ -81,9 +81,30 @@ struct FunctorDelegateCore<Ret(Args...)> {
     using InvokeFunc = Ret (*)(ThisType*, Args...);
     using DeleteFunc = void (*)(ThisType*);
 
-    InvokeFunc invoke    = nullptr;
-    DeleteFunc dtor      = nullptr;
-    SizeType   ref_count = 0;
+    InvokeFunc invoke = nullptr;
+    DeleteFunc dtor   = nullptr;
+
+    inline SizeType ref_count() const
+    {
+        return _ref_count.load(std::memory_order_relaxed);
+    }
+    inline void add_ref()
+    {
+        _ref_count.fetch_add(1, std::memory_order_relaxed);
+    }
+    inline void release()
+    {
+        SKR_ASSERT(_ref_count.load(std::memory_order_relaxed) > 0);
+        if (_ref_count.fetch_sub(1, std::memory_order_release) == 1)
+        {
+            std::atomic_thread_fence(std::memory_order_acquire);
+            dtor(this);
+            SkrDelete(this, SkrDeleteFlag_No_Dtor);
+        }
+    }
+
+private:
+    std::atomic<SizeType> _ref_count = 0;
 };
 template <typename Functor, typename Ret, typename... Args>
 struct FunctorDelegateCoreNormal<Ret(Args...), Functor> : public FunctorDelegateCore<Ret(Args...)> {
@@ -117,9 +138,9 @@ struct FunctorDelegateCoreNormal<Ret(Args...), Functor> : public FunctorDelegate
 
 template <typename Ret, typename... Args>
 struct Delegate<Ret(Args...)> {
-    using FuncType    = Ret(Args...);
-    using MemberCore  = MemberFuncDelegateCore<FuncType>;
-    using FunctorCore = FunctorDelegateCore<FuncType>;
+    using FuncType     = Ret(Args...);
+    using MemberCore   = MemberFuncDelegateCore<FuncType>;
+    using FunctorCore  = FunctorDelegateCore<FuncType>;
     using InvokeResult = std::conditional_t<std::is_same_v<Ret, void>, bool, Optional<Ret>>;
 
     // ctor & dtor
@@ -195,18 +216,18 @@ inline Delegate<Ret(Args...)>::Delegate(const Delegate& other)
     _kind = other._kind;
     switch (_kind)
     {
-        case EDelegateKind::Empty:
-            break;
-        case EDelegateKind::Static:
-            _static_delegate = other._static_delegate;
-            break;
-        case EDelegateKind::Member:
-            _member_delegate = other._member_delegate;
-            break;
-        case EDelegateKind::Functor:
-            _functor_delegate = other._functor_delegate;
-            _functor_delegate->ref_count++;
-            break;
+    case EDelegateKind::Empty:
+        break;
+    case EDelegateKind::Static:
+        _static_delegate = other._static_delegate;
+        break;
+    case EDelegateKind::Member:
+        _member_delegate = other._member_delegate;
+        break;
+    case EDelegateKind::Functor:
+        _functor_delegate = other._functor_delegate;
+        _functor_delegate->add_ref();
+        break;
     }
 }
 template <typename Ret, typename... Args>
@@ -215,18 +236,18 @@ inline Delegate<Ret(Args...)>::Delegate(Delegate&& other)
     _kind = other._kind;
     switch (_kind)
     {
-        case EDelegateKind::Empty:
-            break;
-        case EDelegateKind::Static:
-            _static_delegate = other._static_delegate;
-            break;
-        case EDelegateKind::Member:
-            _member_delegate = other._member_delegate;
-            break;
-        case EDelegateKind::Functor:
-            _functor_delegate       = other._functor_delegate;
-            other._functor_delegate = nullptr;
-            break;
+    case EDelegateKind::Empty:
+        break;
+    case EDelegateKind::Static:
+        _static_delegate = other._static_delegate;
+        break;
+    case EDelegateKind::Member:
+        _member_delegate = other._member_delegate;
+        break;
+    case EDelegateKind::Functor:
+        _functor_delegate       = other._functor_delegate;
+        other._functor_delegate = nullptr;
+        break;
     }
     other._kind = EDelegateKind::Empty;
 }
@@ -239,18 +260,18 @@ inline Delegate<Ret(Args...)>& Delegate<Ret(Args...)>::operator=(const Delegate&
     _kind = other._kind;
     switch (_kind)
     {
-        case EDelegateKind::Empty:
-            break;
-        case EDelegateKind::Static:
-            _static_delegate = other._static_delegate;
-            break;
-        case EDelegateKind::Member:
-            _member_delegate = other._member_delegate;
-            break;
-        case EDelegateKind::Functor:
-            _functor_delegate = other._functor_delegate;
-            _functor_delegate->ref_count++;
-            break;
+    case EDelegateKind::Empty:
+        break;
+    case EDelegateKind::Static:
+        _static_delegate = other._static_delegate;
+        break;
+    case EDelegateKind::Member:
+        _member_delegate = other._member_delegate;
+        break;
+    case EDelegateKind::Functor:
+        _functor_delegate = other._functor_delegate;
+        _functor_delegate->add_ref();
+        break;
     }
 
     return *this;
@@ -262,18 +283,18 @@ inline Delegate<Ret(Args...)>& Delegate<Ret(Args...)>::operator=(Delegate&& othe
     _kind = other._kind;
     switch (_kind)
     {
-        case EDelegateKind::Empty:
-            break;
-        case EDelegateKind::Static:
-            _static_delegate = other._static_delegate;
-            break;
-        case EDelegateKind::Member:
-            _member_delegate = other._member_delegate;
-            break;
-        case EDelegateKind::Functor:
-            _functor_delegate       = other._functor_delegate;
-            other._functor_delegate = nullptr;
-            break;
+    case EDelegateKind::Empty:
+        break;
+    case EDelegateKind::Static:
+        _static_delegate = other._static_delegate;
+        break;
+    case EDelegateKind::Member:
+        _member_delegate = other._member_delegate;
+        break;
+    case EDelegateKind::Functor:
+        _functor_delegate       = other._functor_delegate;
+        other._functor_delegate = nullptr;
+        break;
     }
     other._kind = EDelegateKind::Empty;
 
@@ -344,7 +365,7 @@ inline void Delegate<Ret(Args...)>::bind_functor(Func&& functor)
 
     reset();
     auto* core = SkrNew<FunctorCore>(std::forward<Func>(functor));
-    core->ref_count++;
+    core->add_ref();
     _functor_delegate = core;
     _kind             = EDelegateKind::Functor;
 }
@@ -356,7 +377,7 @@ inline void Delegate<Ret(Args...)>::bind_lambda(Func&& lambda)
 
     reset();
     auto* core = SkrNew<FunctorCore>(std::forward<Func>(lambda));
-    core->ref_count++;
+    core->add_ref();
     _functor_delegate = core;
     _kind             = EDelegateKind::Functor;
 }
@@ -365,7 +386,7 @@ inline void Delegate<Ret(Args...)>::bind_custom_functor_core(FunctorCore* core)
 {
     reset();
     _functor_delegate = core;
-    _functor_delegate->ref_count++;
+    _functor_delegate->add_ref();
     _kind = EDelegateKind::Functor;
 }
 
@@ -377,17 +398,17 @@ inline typename Delegate<Ret(Args...)>::InvokeResult Delegate<Ret(Args...)>::inv
     {
         switch (_kind)
         {
-            case EDelegateKind::Empty:
-                return false;
-            case EDelegateKind::Static:
-                _static_delegate(std::forward<Args>(args)...);
-                return true;
-            case EDelegateKind::Member:
-                _member_delegate.invoke(_member_delegate.object, std::forward<Args>(args)...);
-                return true;
-            case EDelegateKind::Functor:
-                _functor_delegate->invoke(_functor_delegate, std::forward<Args>(args)...);
-                return true;
+        case EDelegateKind::Empty:
+            return false;
+        case EDelegateKind::Static:
+            _static_delegate(std::forward<Args>(args)...);
+            return true;
+        case EDelegateKind::Member:
+            _member_delegate.invoke(_member_delegate.object, std::forward<Args>(args)...);
+            return true;
+        case EDelegateKind::Functor:
+            _functor_delegate->invoke(_functor_delegate, std::forward<Args>(args)...);
+            return true;
         };
         return false;
     }
@@ -395,14 +416,14 @@ inline typename Delegate<Ret(Args...)>::InvokeResult Delegate<Ret(Args...)>::inv
     {
         switch (_kind)
         {
-            case EDelegateKind::Empty:
-                return {};
-            case EDelegateKind::Static:
-                return _static_delegate(std::forward<Args>(args)...);
-            case EDelegateKind::Member:
-                return _member_delegate.invoke(_member_delegate.object, std::forward<Args>(args)...);
-            case EDelegateKind::Functor:
-                return _functor_delegate->invoke(_functor_delegate, std::forward<Args>(args)...);
+        case EDelegateKind::Empty:
+            return {};
+        case EDelegateKind::Static:
+            return _static_delegate(std::forward<Args>(args)...);
+        case EDelegateKind::Member:
+            return _member_delegate.invoke(_member_delegate.object, std::forward<Args>(args)...);
+        case EDelegateKind::Functor:
+            return _functor_delegate->invoke(_functor_delegate, std::forward<Args>(args)...);
         };
         return {};
     }
@@ -414,21 +435,13 @@ inline void Delegate<Ret(Args...)>::reset()
 {
     switch (_kind)
     {
-        case EDelegateKind::Empty:
-        case EDelegateKind::Static:
-        case EDelegateKind::Member:
-            break;
-        case EDelegateKind::Functor:
-            if (_functor_delegate->ref_count == 1)
-            {
-                _functor_delegate->dtor(_functor_delegate);
-                SkrDelete(_functor_delegate);
-            }
-            else
-            {
-                _functor_delegate->ref_count--;
-            }
-            break;
+    case EDelegateKind::Empty:
+    case EDelegateKind::Static:
+    case EDelegateKind::Member:
+        break;
+    case EDelegateKind::Functor:
+        _functor_delegate->release();
+        break;
     }
     _kind = EDelegateKind::Empty;
 }

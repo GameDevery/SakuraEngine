@@ -610,12 +610,12 @@ v8::Local<v8::Value> V8Isolate::to_v8(TypeSignatureView sig_view, const void* da
     }
     else if (sig_view.is_generic_type())
     {
-        SKR_LOG_FMT_ERROR(u8"generic type not supported yet");
+        SKR_LOG_ERROR(u8"generic type not supported yet");
         return {};
     }
     else
     {
-        SKR_LOG_FMT_ERROR(u8"unsupported type signature");
+        SKR_LOG_ERROR(u8"unsupported type signature");
         return {};
     }
 }
@@ -637,12 +637,12 @@ bool V8Isolate::to_native(TypeSignatureView sig_view, void* data, v8::Local<v8::
     }
     else if (sig_view.is_generic_type())
     {
-        SKR_LOG_FMT_ERROR(u8"generic type not supported yet");
+        SKR_LOG_ERROR(u8"generic type not supported yet");
         return {};
     }
     else
     {
-        SKR_LOG_FMT_ERROR(u8"unsupported type signature");
+        SKR_LOG_ERROR(u8"unsupported type signature");
         return {};
     }
 }
@@ -2819,7 +2819,7 @@ namespace skr
 {
 static auto& _v8_platform()
 {
-    static auto _platform = ::v8::platform::NewDefaultPlatform();
+    static v8::Platform* _platform = nullptr;
     return _platform;
 }
 
@@ -2830,8 +2830,8 @@ void init_v8()
     ::v8::V8::SetFlagsFromString(Flags, sizeof(Flags));
 
     // init platform
-    _v8_platform() = ::v8::platform::NewDefaultPlatform();
-    ::v8::V8::InitializePlatform(_v8_platform().get());
+    _v8_platform() = ::v8::platform::NewDefaultPlatform_Without_Stl();
+    ::v8::V8::InitializePlatform(_v8_platform());
 
     // init v8
     ::v8::V8::Initialize();
@@ -2843,7 +2843,7 @@ void shutdown_v8()
 
     // shutdown platform
     ::v8::V8::DisposePlatform();
-    _v8_platform().reset();
+    delete _v8_platform();
 }
 v8::Platform& get_v8_platform()
 {

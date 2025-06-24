@@ -15,7 +15,7 @@
 #endif
 
 namespace skr {
-namespace log {
+namespace logging {
 
 struct BufCache
 {
@@ -405,4 +405,4 @@ void LogFileSink::flush() SKR_NOEXCEPT
     file_->flush();
 }
 
-} } // namespace skr::log
+} } // namespace skr::logging

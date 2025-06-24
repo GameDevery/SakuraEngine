@@ -1,3 +1,4 @@
+#include "SkrCore/memory/sp.hpp"
 #include "SkrProfile/profile.h"
 #include "SkrCore/log.h"
 #include "SkrContainers/stl_string.hpp" //sv::starts_with
@@ -482,7 +483,7 @@ void SDXCCompiler::SetIncludeHandler(IDxcIncludeHandler* handler) SKR_NOEXCEPT
 
 SDXCLibrary* SDXCLibrary::Get() SKR_NOEXCEPT
 {
-    static auto _this = skr::SPtr<SDXCLibrary>::Create();
+    static auto _this = skr::SP<SDXCLibrary>::New();
     return _this.get();
 }
 

@@ -5,7 +5,7 @@
 namespace skr
 {
 
-extern SKR_CORE_API const char* kConcurrentQueueMemoryName;
+inline static constexpr const char* kConcurrentQueueMemoryName = "ConcurrentQueues";
 
 // Default traits for the ConcurrentQueue. To change some of the
 // traits without re-implementing all of them, inherit from this

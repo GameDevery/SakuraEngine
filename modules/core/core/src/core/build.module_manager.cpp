@@ -1,5 +1,6 @@
 #include "SkrBase/misc/defer.hpp"
 #include "SkrArchive/json/reader.h"
+#include "SkrCore/memory/sp.hpp"
 #include "SkrOS/shared_library.hpp"
 #include "SkrOS/filesystem.hpp"
 #include "SkrCore/memory/memory.h"
@@ -322,9 +323,9 @@ ModuleInfo ModuleManagerImpl::parseMetaData(const char8_t* metadata)
         reader.ReadString(u8"prettyname", info.prettyname);
         reader.ReadString(u8"version", info.version);
         reader.ReadString(u8"linking", info.linking);
-        reader.ReadString(u8"url", info.url);
-        reader.ReadString(u8"license", info.license);
-        reader.ReadString(u8"copyright", info.copyright);
+        // reader.ReadString(u8"url", info.url);
+        // reader.ReadString(u8"license", info.license);
+        // reader.ReadString(u8"copyright", info.copyright);
 
         size_t dep_count;
         reader.StartArray(u8"dependencies", dep_count);
@@ -587,6 +588,6 @@ skr::StringView ModuleManagerImpl::get_root(void)
 
 SKR_EXTERN_C SKR_CORE_API skr::ModuleManager* skr_get_module_manager()
 {
-    static auto sModuleManager = skr::SPtr<skr::ModuleManagerImpl>::Create();
+    static auto sModuleManager = skr::SP<skr::ModuleManagerImpl>::New();
     return sModuleManager.get();
 }

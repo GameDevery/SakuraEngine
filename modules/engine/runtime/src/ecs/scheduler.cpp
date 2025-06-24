@@ -1,5 +1,5 @@
+#include "SkrCore/memory/sp.hpp"
 #include "SkrProfile/profile.h"
-#include "SkrContainers/sptr.hpp"
 #include "SkrRT/ecs/sugoi.h"
 #include "SkrRT/ecs/array.hpp"
 #include "SkrRT/ecs/type_index.hpp"
@@ -350,7 +350,7 @@ sugoi_system_lifetime_callback_t init, sugoi_system_lifetime_callback_t teardown
         skr::stl_vector<task_t> tasks;
     };
     SharedData* job = nullptr;
-    skr::SPtr<SharedData> sharedData;
+    skr::SP<SharedData> sharedData;
     auto groupCount = (uint32_t)groups.size();
     {
         SkrZoneScopedN("AllocateSharedData");
@@ -374,10 +374,7 @@ sugoi_system_lifetime_callback_t init, sugoi_system_lifetime_callback_t teardown
     job->callback = callback;
     job->userdata = u;
     job->query = q;
-    sharedData.reset(job, [](SharedData* p)
-    {
-        SkrDelete(p);
-    });
+    sharedData.reset(job);
     std::memcpy(job->groups, groups.data(), groupCount * sizeof(sugoi_group_t*));
     int groupIndex = 0;
     for (auto group : groups)

@@ -66,7 +66,7 @@ skr_mesh_buffer_t {
     bool                    used_with_index;
     bool                    used_with_vertex;
     sattr(serde = @disable)
-    struct skr::IBlob* blob SKR_IF_CPP(= nullptr);
+    skr::RC<skr::IBlob> blob = nullptr;
 };
 
 #ifdef __cplusplus

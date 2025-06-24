@@ -1,4 +1,5 @@
 #pragma once
+#include "SkrCore/memory/sp.hpp"
 #include "SkrGraphics/cgpux.h"
 #include "SkrRT/io/ram_io.hpp"
 #include "SkrRT/io/vram_io.hpp"
@@ -105,7 +106,7 @@ private:
     // async
     EState                 _state             = EState::Requested;
     skr_io_future_t        _ram_request       = {};
-    SPtr<DecodingProgress> _decoding_progress = nullptr;
+    SP<DecodingProgress> _decoding_progress = nullptr;
     bool                   _need_decode       = false;
 };
 

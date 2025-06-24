@@ -38,7 +38,7 @@ AnimComponent {
     sattr(serde = @disable)
     skr::Vector<skr::anim::SkinPrimitive> primitives;
     sattr(serde = @disable)
-    skr::Vector<skr::IBlob*>              buffers;
+    skr::Vector<RC<skr::IBlob>>           buffers;
     sattr(serde = @disable)
     skr::Vector<CGPUBufferId>             vbs;
     sattr(serde = @disable)
