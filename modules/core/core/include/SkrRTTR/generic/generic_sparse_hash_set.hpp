@@ -8,7 +8,7 @@ namespace skr
 using GenericSparseHashSetDataRef  = GenericSparseHashSetDataRef;
 using CGenericSparseHashSetDataRef = CGenericSparseHashSetDataRef;
 
-struct SKR_CORE_API GenericSparseHashSet final : protected GenericSparseHashBase {
+struct SKR_CORE_API GenericSparseHashSet final : GenericSparseHashBase {
     using Super    = GenericSparseHashBase;
     using PredType = FunctionRef<bool(const void*)>;
 

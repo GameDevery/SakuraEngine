@@ -6,6 +6,7 @@
 #include <SkrRTTR/generic/generic_vector.hpp>
 #include <SkrRTTR/generic/generic_sparse_vector.hpp>
 #include <SkrRTTR/generic/generic_optional.hpp>
+#include <SkrRTTR/generic/generic_sparse_hash_set.hpp>
 
 // primitive type helper
 namespace skr
@@ -145,6 +146,16 @@ SKR_EXEC_STATIC_CTOR
             kSparseVectorGenericId,
             +[](TypeSignatureView sig) -> RC<IGenericBase> {
                 return RC<GenericSparseVector>::New(
+                    build_generic(sig)
+                );
+            }
+        );
+
+        // sparse hash set
+        register_generic_processor(
+            kSetGenericId,
+            +[](TypeSignatureView sig) -> RC<IGenericBase> {
+                return RC<GenericSparseHashSet>::New(
                     build_generic(sig)
                 );
             }

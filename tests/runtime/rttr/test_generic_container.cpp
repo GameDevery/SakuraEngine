@@ -6,10 +6,12 @@
 #include <SkrContainers/optional.hpp>
 #include <SkrContainers/vector.hpp>
 #include <SkrContainers/sparse_vector.hpp>
+#include <SkrContainers/set.hpp>
 
 #include <SkrRTTR/generic/generic_optional.hpp>
 #include <SkrRTTR/generic/generic_vector.hpp>
 #include <SkrRTTR/generic/generic_sparse_vector.hpp>
+#include <SkrRTTR/generic/generic_sparse_hash_set.hpp>
 
 struct OpTester {
     static int  ctor_count;
@@ -1152,5 +1154,47 @@ TEST_CASE("test generic sparse vector")
         REQUIRE_EQ(generic_vec->count(&vec, &value_to_check), 2);
         value_to_check = 1919810;
         REQUIRE_EQ(generic_vec->count(&vec, &value_to_check), 0);
+    }
+}
+
+TEST_CASE("test generic sparse hash set")
+{
+    using namespace skr;
+
+    RC<GenericSparseHashSet> generic_set = build_generic(type_signature_of<Set<int32_t>>()).cast_static<GenericSparseHashSet>();
+    using SetType                        = Set<int32_t>;
+
+    SUBCASE("data get")
+    {
+        SetType set;
+
+        // check empty data
+        REQUIRE_EQ(generic_set->size(&set), set.size());
+        REQUIRE_EQ(generic_set->capacity(&set), set.capacity());
+        REQUIRE_EQ(generic_set->slack(&set), set.slack());
+        REQUIRE_EQ(generic_set->sparse_size(&set), set.sparse_size());
+        REQUIRE_EQ(generic_set->hole_size(&set), set.hole_size());
+        REQUIRE_EQ(generic_set->bit_size(&set), set.bit_size());
+        REQUIRE_EQ(generic_set->freelist_head(&set), set.freelist_head());
+        REQUIRE_EQ(generic_set->is_compact(&set), set.is_compact());
+        REQUIRE_EQ(generic_set->is_empty(&set), set.is_empty());
+        REQUIRE_EQ(generic_set->storage(&set), set.data_vector().storage());
+        REQUIRE_EQ(generic_set->bit_data(&set), set.data_vector().bit_data());
+        REQUIRE_EQ(generic_set->bucket(&set), set.bucket());
+
+        // check data with content
+        set = { 1, 1, 4, 5, 1, 4 };
+        REQUIRE_EQ(generic_set->size(&set), set.size());
+        REQUIRE_EQ(generic_set->capacity(&set), set.capacity());
+        REQUIRE_EQ(generic_set->slack(&set), set.slack());
+        REQUIRE_EQ(generic_set->sparse_size(&set), set.sparse_size());
+        REQUIRE_EQ(generic_set->hole_size(&set), set.hole_size());
+        REQUIRE_EQ(generic_set->bit_size(&set), set.bit_size());
+        REQUIRE_EQ(generic_set->freelist_head(&set), set.freelist_head());
+        REQUIRE_EQ(generic_set->is_compact(&set), set.is_compact());
+        REQUIRE_EQ(generic_set->is_empty(&set), set.is_empty());
+        REQUIRE_EQ(generic_set->storage(&set), set.data_vector().storage());
+        REQUIRE_EQ(generic_set->bit_data(&set), set.data_vector().bit_data());
+        REQUIRE_EQ(generic_set->bucket(&set), set.bucket());
     }
 }

@@ -96,7 +96,7 @@ struct CGenericSparseHashSetDataRef {
 };
 
 // GenericSparseHashSetBase
-struct SKR_CORE_API GenericSparseHashBase : protected GenericSparseVector {
+struct SKR_CORE_API GenericSparseHashBase : GenericSparseVector {
     using Super    = GenericSparseVector;
     using PredType = FunctionRef<bool(const void*)>;
 
@@ -129,6 +129,7 @@ struct SKR_CORE_API GenericSparseHashBase : protected GenericSparseVector {
     void   swap(void* dst, void* src, uint64_t count = 1) const override;
     //===> IGenericBase API
 
+protected:
     // getter
     bool                            is_valid() const;
     RC<IGenericBase>                inner() const;
