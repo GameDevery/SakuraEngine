@@ -1,6 +1,13 @@
 #pragma once
 #include <SkrBase/misc/swap.hpp>
 #include <SkrBase/memory/memory_traits.hpp>
+#include "SkrBase/types/guid.h"
+
+// generic id for generic system use
+namespace skr
+{
+static constexpr GUID kKVPairGenericId = u8"bcce8d48-15c1-4b52-9c38-5fe7f934d63e"_guid;
+}
 
 namespace skr::container
 {
