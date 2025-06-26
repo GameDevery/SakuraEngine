@@ -40,7 +40,10 @@ MemoryTraitsData GenericOptional::memory_traits_data() const
 uint64_t GenericOptional::size() const
 {
     SKR_ASSERT(is_valid());
-    return _inner_size + std::max(sizeof(bool), _inner_alignment);
+    auto alignment        = std::max(_inner_alignment, alignof(bool));
+    auto padded_bool_size = ::skr::memory::padded_size(sizeof(bool), alignment);
+
+    return padded_bool_size + _inner_size;
 }
 uint64_t GenericOptional::alignment() const
 {
@@ -323,7 +326,8 @@ void* GenericOptional::value_ptr(void* memory) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(memory);
-    auto padded_bool_size = std::max(sizeof(bool), _inner_alignment);
+    auto alignment        = std::max(_inner_alignment, alignof(bool));
+    auto padded_bool_size = ::skr::memory::padded_size(sizeof(bool), alignment);
     return ::skr::memory::offset_bytes(
         memory,
         padded_bool_size
@@ -333,7 +337,8 @@ const void* GenericOptional::value_ptr(const void* memory) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(memory);
-    auto padded_bool_size = std::max(sizeof(bool), _inner_alignment);
+    auto alignment        = std::max(_inner_alignment, alignof(bool));
+    auto padded_bool_size = ::skr::memory::padded_size(sizeof(bool), alignment);
     return ::skr::memory::offset_bytes(
         memory,
         padded_bool_size

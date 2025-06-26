@@ -325,6 +325,12 @@ SKR_INLINE bool compare(const A* a, const B* b, size_t count)
     }
 }
 
+// padded size
+SKR_INLINE uint64_t padded_size(uint64_t size, uint64_t alignment)
+{
+    return (size + alignment - 1) / alignment * alignment;
+}
+
 // offset
 SKR_INLINE void* offset_bytes(void* p, int64_t offset) noexcept
 {
