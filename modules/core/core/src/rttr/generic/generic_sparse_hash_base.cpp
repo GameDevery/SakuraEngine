@@ -865,8 +865,8 @@ bool GenericSparseHashBase::remove(void* dst, size_t hash, PredType pred) const
     while (*p_next_idx != npos)
     {
         auto* next_node      = Super::at(dst, *p_next_idx);
-        auto  next_node_hash = _inner_storage->item_hash(&next_node);
-        auto* next_node_data = _inner_storage->item_data(&next_node);
+        auto  next_node_hash = _inner_storage->item_hash(next_node);
+        auto* next_node_data = _inner_storage->item_data(next_node);
 
         if (next_node_hash == hash && pred(next_node_data))
         {
@@ -1057,7 +1057,7 @@ void GenericSparseHashBase::_build_bucket(void* dst) const
             void*     p_data       = Super::at(dst, bit_cursor.index());
             uint64_t* p_bucket_idx = dst_mem->_bucket +
                                      _bucket_index(
-                                         p_data,
+                                         dst_mem,
                                          _inner_storage->item_hash(p_data)
                                      );
 
@@ -1120,7 +1120,7 @@ void GenericSparseHashBase::_add_to_bucket(void* dst, void* item_data, uint64_t 
     if (!rehash_if_need(dst))
     {
         auto      item_hash             = _inner_storage->item_hash(item_data);
-        uint64_t* p_bucket_idx          = dst_mem->_bucket + _bucket_index(item_data, item_hash);
+        uint64_t* p_bucket_idx          = dst_mem->_bucket + _bucket_index(dst_mem, item_hash);
         _inner_storage->next(item_data) = *p_bucket_idx;
         *p_bucket_idx                   = index; // link bucket node
     }

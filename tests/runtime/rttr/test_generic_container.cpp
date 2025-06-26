@@ -1197,4 +1197,212 @@ TEST_CASE("test generic sparse hash set")
         REQUIRE_EQ(generic_set->bit_data(&set), set.data_vector().bit_data());
         REQUIRE_EQ(generic_set->bucket(&set), set.bucket());
     }
+
+    SUBCASE("memory op")
+    {
+        SetType set = { 1, 1, 4, 5, 1, 4 };
+
+        // clear
+        auto old_capacity = set.capacity();
+        generic_set->clear(&set);
+        REQUIRE_EQ(set.size(), 0);
+        REQUIRE_EQ(set.sparse_size(), 0);
+        REQUIRE_EQ(set.hole_size(), 0);
+        REQUIRE_EQ(set.capacity(), old_capacity);
+        REQUIRE_NE(set.data_vector().storage(), nullptr);
+        REQUIRE_NE(set.data_vector().bit_data(), nullptr);
+        REQUIRE_NE(set.bucket(), nullptr);
+
+        // release
+        generic_set->release(&set);
+        REQUIRE_EQ(set.size(), 0);
+        REQUIRE_EQ(set.sparse_size(), 0);
+        REQUIRE_EQ(set.hole_size(), 0);
+        REQUIRE_EQ(set.capacity(), 0);
+        REQUIRE_EQ(set.data_vector().storage(), nullptr);
+        REQUIRE_EQ(set.data_vector().bit_data(), nullptr);
+        REQUIRE_EQ(set.bucket(), nullptr);
+
+        // release with reserve
+        set = { 1, 1, 4, 5, 1, 4 };
+        generic_set->release(&set, 10);
+        REQUIRE_EQ(set.size(), 0);
+        REQUIRE_EQ(set.sparse_size(), 0);
+        REQUIRE_EQ(set.hole_size(), 0);
+        REQUIRE_GE(set.capacity(), 10);
+        REQUIRE_NE(set.data_vector().storage(), nullptr);
+        REQUIRE_NE(set.data_vector().bit_data(), nullptr);
+        REQUIRE_NE(set.bucket(), nullptr);
+
+        // reserve
+        generic_set->reserve(&set, 114514);
+        REQUIRE_EQ(set.size(), 0);
+        REQUIRE_EQ(set.sparse_size(), 0);
+        REQUIRE_EQ(set.hole_size(), 0);
+        REQUIRE_EQ(set.capacity(), 114514);
+        REQUIRE_NE(set.data_vector().storage(), nullptr);
+        REQUIRE_NE(set.data_vector().bit_data(), nullptr);
+        REQUIRE_NE(set.bucket(), nullptr);
+
+        // reserve with content
+        set.release();
+        set = { 1, 1, 4, 5, 1, 4 };
+        generic_set->reserve(&set, 114);
+        REQUIRE_EQ(set.size(), 3);
+        REQUIRE_GE(set.capacity(), 114);
+        REQUIRE(set.contains(1));
+        REQUIRE(set.contains(4));
+        REQUIRE(set.contains(5));
+
+        // shrink
+        set.clear();
+        generic_set->shrink(&set);
+        REQUIRE_EQ(set.size(), 0);
+        REQUIRE_EQ(set.sparse_size(), 0);
+        REQUIRE_EQ(set.hole_size(), 0);
+        REQUIRE_EQ(set.capacity(), 0);
+        REQUIRE_EQ(set.bucket(), nullptr);
+
+        // shrink with content
+        set = { 1, 1, 4, 5, 1, 4 };
+        set.reserve(10000);
+        generic_set->shrink(&set);
+        REQUIRE_EQ(set.size(), 3);
+        REQUIRE_GE(set.capacity(), 3);
+        REQUIRE(set.contains(1));
+        REQUIRE(set.contains(4));
+        REQUIRE(set.contains(5));
+
+        // compact
+        set = { 1, 2, 3, 4, 5, 6 };
+        set.remove(2);
+        set.remove(3);
+        set.remove(6);
+        REQUIRE_FALSE(generic_set->is_compact(&set));
+        REQUIRE(generic_set->compact(&set));
+        REQUIRE_EQ(set.size(), 3);
+        REQUIRE_EQ(set.sparse_size(), 3);
+        REQUIRE_EQ(set.hole_size(), 0);
+        REQUIRE_GE(set.capacity(), 6);
+        REQUIRE(set.contains(1));
+        REQUIRE(set.contains(4));
+        REQUIRE(set.contains(5));
+
+        // compact stable
+        set = { 1, 2, 3, 4, 5, 6 };
+        set.remove(2);
+        set.remove(3);
+        set.remove(6);
+        REQUIRE_FALSE(generic_set->is_compact(&set));
+        REQUIRE(generic_set->compact_stable(&set));
+        REQUIRE_EQ(set.size(), 3);
+        REQUIRE_EQ(set.sparse_size(), 3);
+        REQUIRE_EQ(set.hole_size(), 0);
+        REQUIRE_GE(set.capacity(), 6);
+        REQUIRE(set.contains(1));
+        REQUIRE(set.contains(4));
+        REQUIRE(set.contains(5));
+
+        // compact top
+        set.clear();
+        for (size_t i = 0; i < 100; ++i)
+        {
+            set.add(i);
+        }
+        for (size_t i = 0; i < 50; ++i)
+        {
+            if (i % 2 == 0)
+            {
+                set.remove_at(i);
+            }
+        }
+        for (size_t i = 50; i < 100; ++i)
+        {
+            set.remove_at(i);
+        }
+        REQUIRE_FALSE(generic_set->is_compact(&set));
+        REQUIRE(generic_set->compact_top(&set));
+        REQUIRE_EQ(set.size(), 25);
+        REQUIRE_EQ(set.sparse_size(), 50);
+        REQUIRE_EQ(set.hole_size(), 25);
+    }
+
+    SUBCASE("add")
+    {
+        SetType set = {};
+
+        // add
+        {
+            int32_t value = 114514;
+            generic_set->add(&set, &value);
+            REQUIRE_EQ(set.size(), 1);
+            REQUIRE_GE(set.capacity(), 1);
+            REQUIRE(set.contains(value));
+        }
+
+        // add move
+        {
+            int32_t value = 123456;
+            generic_set->add_move(&set, &value);
+            REQUIRE_EQ(set.size(), 2);
+            REQUIRE_GE(set.capacity(), 2);
+            REQUIRE(set.contains(114514));
+            REQUIRE(set.contains(value));
+        }
+    }
+
+    SUBCASE("append")
+    {
+        SetType a = { 1, 2, 3, 4, 5 };
+        SetType b = { 1, 2, 3, 6, 7, 8, 9, 10 };
+
+        generic_set->append(&a, &b);
+        REQUIRE_EQ(a.size(), 10);
+        REQUIRE_GE(a.capacity(), 10);
+        for (int32_t i = 1; i <= 10; ++i)
+        {
+            REQUIRE(a.contains(i));
+        }
+    }
+
+    SUBCASE("remove")
+    {
+        SetType set             = { 1, 2, 3, 4, 5, 6 };
+        int32_t value_to_remove = 3;
+        generic_set->remove(&set, &value_to_remove);
+        REQUIRE_EQ(set.size(), 5);
+        REQUIRE_GE(set.capacity(), 5);
+        REQUIRE(set.contains(1));
+        REQUIRE(set.contains(2));
+        REQUIRE_FALSE(set.contains(3));
+        REQUIRE(set.contains(4));
+        REQUIRE(set.contains(5));
+        REQUIRE(set.contains(6));
+    }
+
+    SUBCASE("contains")
+    {
+        SetType set = { 1, 2, 3, 4, 5, 6 };
+
+        // contains
+        int32_t value_to_check = 3;
+        REQUIRE(generic_set->contains(&set, &value_to_check));
+        value_to_check = 7;
+        REQUIRE_FALSE(generic_set->contains(&set, &value_to_check));
+    }
+
+    SUBCASE("set ops")
+    {
+        SetType full = { 1, 2, 3, 4, 5, 6 };
+        SetType a    = { 1, 2, 3 };
+        SetType b    = { 4, 5, 6 };
+        SetType c    = { 1, 2, 3, 4, 5, 6 };
+        SetType d    = { 1, 2, 3, 4, 5, 6, 7, 8 };
+
+        REQUIRE(generic_set->is_sub_set_of(&a, &full));
+        REQUIRE(generic_set->is_sub_set_of(&b, &full));
+        REQUIRE(generic_set->is_sub_set_of(&c, &full));
+        REQUIRE_FALSE(generic_set->is_sub_set_of(&d, &full));
+        REQUIRE_FALSE(generic_set->is_sub_set_of(&a, &b));
+    }
 }
