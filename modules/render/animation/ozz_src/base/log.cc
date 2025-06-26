@@ -31,48 +31,70 @@
 
 #include "SkrAnim/ozz/base/memory/allocator.h"
 
-namespace ozz {
-namespace log {
+namespace ozz
+{
+namespace log
+{
 
 // Default log level initialization.
-namespace {
+namespace
+{
 Level log_level = kStandard;
 }
 
-Level SetLevel(Level _level) {
-  const Level previous_level = log_level;
-  log_level = _level;
-  return previous_level;
+Level SetLevel(Level _level)
+{
+    const Level previous_level = log_level;
+    log_level                  = _level;
+    return previous_level;
 }
 
 Level GetLevel() { return log_level; }
 
-LogV::LogV() : Logger(std::clog, kVerbose) {}
+LogV::LogV()
+    : Logger(std::clog, kVerbose)
+{
+}
 
-Log::Log() : Logger(std::clog, kStandard) {}
+Log::Log()
+    : Logger(std::clog, kStandard)
+{
+}
 
-Out::Out() : Logger(std::cout, kStandard) {}
+Out::Out()
+    : Logger(std::cout, kStandard)
+{
+}
 
-Err::Err() : Logger(std::cerr, kStandard) {}
+Err::Err()
+    : Logger(std::cerr, kStandard)
+{
+}
 
 Logger::Logger(std::ostream& _stream, Level _level)
-    : stream_(_level <= GetLevel() ? _stream : *ozz::New<std::ostringstream>()),
-      local_stream_(&stream_ != &_stream) {}
-Logger::~Logger() {
-  if (local_stream_) {
-      ozz::Delete(&stream_);
-  }
+    : stream_(_level <= GetLevel() ? _stream : *ozz::New<std::ostringstream>())
+    , local_stream_(&stream_ != &_stream)
+{
+}
+Logger::~Logger()
+{
+    if (local_stream_)
+    {
+        ozz::Delete(&stream_);
+    }
 }
 
 FloatPrecision::FloatPrecision(const Logger& _logger, int _precision)
-    : precision_(_logger.stream().precision(_precision)),
-      format_(_logger.stream().setf(std::ios_base::fixed,
-                                    std::ios_base::floatfield)),
-      stream_(_logger.stream()) {}
-FloatPrecision::~FloatPrecision() {
-  stream_.precision(precision_);
-  stream_.setf(format_, std::ios_base::floatfield);
+    : precision_(_logger.stream().precision(_precision))
+    , format_(_logger.stream().setf(std::ios_base::fixed, std::ios_base::floatfield))
+    , stream_(_logger.stream())
+{
+}
+FloatPrecision::~FloatPrecision()
+{
+    stream_.precision(precision_);
+    stream_.setf(format_, std::ios_base::floatfield);
 }
 
-}  // namespace log
-}  // namespace ozz
+} // namespace log
+} // namespace ozz

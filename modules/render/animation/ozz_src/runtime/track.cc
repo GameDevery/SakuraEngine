@@ -34,124 +34,139 @@
 #include "SkrAnim/ozz/base/maths/math_ex.h"
 #include "SkrAnim/ozz/base/memory/allocator.h"
 
-namespace ozz {
-namespace animation {
+namespace ozz
+{
+namespace animation
+{
 
-namespace internal {
+namespace internal
+{
 
 template <typename _ValueType>
-Track<_ValueType>::Track() : name_(nullptr) {}
-
-template <typename _ValueType>
-Track<_ValueType>::Track(Track<_ValueType>&& _other) {
-  *this = std::move(_other);
+Track<_ValueType>::Track()
+    : name_(nullptr)
+{
 }
 
 template <typename _ValueType>
-Track<_ValueType>& Track<_ValueType>::operator=(Track<_ValueType>&& _other) {
-  std::swap(ratios_, _other.ratios_);
-  std::swap(values_, _other.values_);
-  std::swap(steps_, _other.steps_);
-  std::swap(name_, _other.name_);
-  return *this;
+Track<_ValueType>::Track(Track<_ValueType>&& _other)
+{
+    *this = std::move(_other);
 }
 
 template <typename _ValueType>
-Track<_ValueType>::~Track() {
-  Deallocate();
+Track<_ValueType>& Track<_ValueType>::operator=(Track<_ValueType>&& _other)
+{
+    std::swap(ratios_, _other.ratios_);
+    std::swap(values_, _other.values_);
+    std::swap(steps_, _other.steps_);
+    std::swap(name_, _other.name_);
+    return *this;
 }
 
 template <typename _ValueType>
-void Track<_ValueType>::Allocate(size_t _keys_count, size_t _name_len) {
-  assert(ratios_.size() == 0 && values_.size() == 0);
-
-  // Distributes buffer memory while ensuring proper alignment (serves larger
-  // alignment values first).
-  static_assert(alignof(_ValueType) >= alignof(float) &&
-                    alignof(float) >= alignof(uint8_t),
-                "Must serve larger alignment values first)");
-
-  // Compute overall size and allocate a single buffer for all the data.
-  const size_t buffer_size = _keys_count * sizeof(_ValueType) +  // values
-                             _keys_count * sizeof(float) +       // ratios
-                             (_keys_count + 7) * sizeof(uint8_t) / 8 +  // steps
-                             (_name_len > 0 ? _name_len + 1 : 0);
-  span<byte> buffer = {static_cast<byte*>(memory::default_allocator()->Allocate(
-                           buffer_size, alignof(_ValueType))),
-                       buffer_size};
-
-  // Fix up pointers. Serves larger alignment values first.
-  values_ = fill_span<_ValueType>(buffer, _keys_count);
-  ratios_ = fill_span<float>(buffer, _keys_count);
-  steps_ = fill_span<uint8_t>(buffer, (_keys_count + 7) / 8);
-
-  // Let name be nullptr if track has no name. Allows to avoid allocating this
-  // buffer in the constructor of empty animations.
-  name_ =
-      _name_len > 0 ? fill_span<char>(buffer, _name_len + 1).data() : nullptr;
-
-  assert(buffer.empty() && "Whole buffer should be consumned");
+Track<_ValueType>::~Track()
+{
+    Deallocate();
 }
 
 template <typename _ValueType>
-void Track<_ValueType>::Deallocate() {
-  // Deallocate everything at once.
-  memory::default_allocator()->Deallocate(as_writable_bytes(values_).data(), alignof(_ValueType));
+void Track<_ValueType>::Allocate(size_t _keys_count, size_t _name_len)
+{
+    assert(ratios_.size() == 0 && values_.size() == 0);
 
-  values_ = {};
-  ratios_ = {};
-  steps_ = {};
-  name_ = nullptr;
+    // Distributes buffer memory while ensuring proper alignment (serves larger
+    // alignment values first).
+    static_assert(alignof(_ValueType) >= alignof(float) && alignof(float) >= alignof(uint8_t), "Must serve larger alignment values first)");
+
+    // Compute overall size and allocate a single buffer for all the data.
+    const size_t buffer_size = _keys_count * sizeof(_ValueType) +        // values
+                               _keys_count * sizeof(float) +             // ratios
+                               (_keys_count + 7) * sizeof(uint8_t) / 8 + // steps
+                               (_name_len > 0 ? _name_len + 1 : 0);
+    span<byte> buffer = { static_cast<byte*>(memory::default_allocator()->Allocate(
+                              buffer_size, alignof(_ValueType)
+                          )),
+                          buffer_size };
+
+    // Fix up pointers. Serves larger alignment values first.
+    values_ = fill_span<_ValueType>(buffer, _keys_count);
+    ratios_ = fill_span<float>(buffer, _keys_count);
+    steps_  = fill_span<uint8_t>(buffer, (_keys_count + 7) / 8);
+
+    // Let name be nullptr if track has no name. Allows to avoid allocating this
+    // buffer in the constructor of empty animations.
+    name_ =
+        _name_len > 0 ? fill_span<char>(buffer, _name_len + 1).data() : nullptr;
+
+    assert(buffer.empty() && "Whole buffer should be consumned");
 }
 
 template <typename _ValueType>
-size_t Track<_ValueType>::size() const {
-  const size_t size = sizeof(*this) + values_.size_bytes() +
-                      ratios_.size_bytes() + steps_.size_bytes();
-  return size;
+void Track<_ValueType>::Deallocate()
+{
+    // Deallocate everything at once.
+    memory::default_allocator()->Deallocate(as_writable_bytes(values_).data(), alignof(_ValueType));
+
+    values_ = {};
+    ratios_ = {};
+    steps_  = {};
+    name_   = nullptr;
 }
 
 template <typename _ValueType>
-void Track<_ValueType>::Save(ozz::io::OArchive& _archive) const {
-  uint32_t num_keys = static_cast<uint32_t>(ratios_.size());
-  _archive << num_keys;
-
-  const size_t name_len = name_ ? std::strlen(name_) : 0;
-  _archive << static_cast<int32_t>(name_len);
-
-  _archive << ozz::io::MakeArray(ratios_);
-  _archive << ozz::io::MakeArray(values_);
-  _archive << ozz::io::MakeArray(steps_);
-
-  _archive << ozz::io::MakeArray(name_, name_len);
+size_t Track<_ValueType>::size() const
+{
+    const size_t size = sizeof(*this) + values_.size_bytes() +
+                        ratios_.size_bytes() + steps_.size_bytes();
+    return size;
 }
 
 template <typename _ValueType>
-void Track<_ValueType>::Load(ozz::io::IArchive& _archive, uint32_t _version) {
-  // Destroy animation in case it was already used before.
-  Deallocate();
+void Track<_ValueType>::Save(ozz::io::OArchive& _archive) const
+{
+    uint32_t num_keys = static_cast<uint32_t>(ratios_.size());
+    _archive << num_keys;
 
-  if (_version > 1) {
-    log::Err() << "Unsupported Track version " << _version << "." << std::endl;
-    return;
-  }
+    const size_t name_len = name_ ? std::strlen(name_) : 0;
+    _archive << static_cast<int32_t>(name_len);
 
-  uint32_t num_keys;
-  _archive >> num_keys;
+    _archive << ozz::io::MakeArray(ratios_);
+    _archive << ozz::io::MakeArray(values_);
+    _archive << ozz::io::MakeArray(steps_);
 
-  int32_t name_len;
-  _archive >> name_len;
+    _archive << ozz::io::MakeArray(name_, name_len);
+}
 
-  Allocate(num_keys, name_len);
+template <typename _ValueType>
+void Track<_ValueType>::Load(ozz::io::IArchive& _archive, uint32_t _version)
+{
+    // Destroy animation in case it was already used before.
+    Deallocate();
 
-  _archive >> ozz::io::MakeArray(ratios_);
-  _archive >> ozz::io::MakeArray(values_);
-  _archive >> ozz::io::MakeArray(steps_);
+    if (_version > 1)
+    {
+        log::Err() << "Unsupported Track version " << _version << "." << std::endl;
+        return;
+    }
 
-  if (name_) {  // nullptr name_ is supported.
-    _archive >> ozz::io::MakeArray(name_, name_len);
-    name_[name_len] = 0;
-  }
+    uint32_t num_keys;
+    _archive >> num_keys;
+
+    int32_t name_len;
+    _archive >> name_len;
+
+    Allocate(num_keys, name_len);
+
+    _archive >> ozz::io::MakeArray(ratios_);
+    _archive >> ozz::io::MakeArray(values_);
+    _archive >> ozz::io::MakeArray(steps_);
+
+    if (name_)
+    { // nullptr name_ is supported.
+        _archive >> ozz::io::MakeArray(name_, name_len);
+        name_[name_len] = 0;
+    }
 }
 
 // Explicitly instantiate supported tracks.
@@ -161,6 +176,6 @@ template class OZZ_ANIMATION_DLL Track<math::Float3>;
 template class OZZ_ANIMATION_DLL Track<math::Float4>;
 template class OZZ_ANIMATION_DLL Track<math::Quaternion>;
 
-}  // namespace internal
-}  // namespace animation
-}  // namespace ozz
+} // namespace internal
+} // namespace animation
+} // namespace ozz

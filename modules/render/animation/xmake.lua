@@ -7,8 +7,8 @@ shared_module("SkrOzz", "SKR_OZZ")
     add_includedirs("ozz_src", {public=false})
     add_files("ozz_src/**.cc")
         
-private_pch("SkrOzz")
-    add_files("ozz/SkrAnim/ozz/*.h")
+-- private_pch("SkrOzz")
+--     add_files("ozz/SkrAnim/ozz/*.h")
     
 ---------------------------------------------------------------------------------------
 
