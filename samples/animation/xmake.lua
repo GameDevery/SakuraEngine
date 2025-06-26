@@ -1,0 +1,10 @@
+target("SkrAnimTemp") -- template sample for dev, remove later
+    set_group("04.examples/animation")
+    set_kind("binary")
+    set_exceptions("no-cxx")
+    skr_unity_build()
+    public_dependency("SkrRT")
+    public_dependency("SkrAnim")
+    add_deps("AppSampleCommon")
+    add_files("main.cpp")
+    -- add_files("**.hlsl")

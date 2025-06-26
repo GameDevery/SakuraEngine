@@ -20,3 +20,5 @@ end)
 skr_includes_with_cull("openssl", function()
     includes('openssl')
 end)
+
+includes("animation/xmake.lua")
