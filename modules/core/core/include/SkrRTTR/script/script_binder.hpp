@@ -416,6 +416,16 @@ struct ScriptBinderCallScript {
     bool failed = false;
 };
 
+// export case
+enum class EScriptExportCase : uint8_t
+{
+    Basic,       // global variable or create from script
+    Field,       // field value
+    StaticField, // static field value
+    Param,       // param value
+    Return,      // return value
+};
+
 // TODO. Generic type support
 //   ScriptBinderGeneric，存储一个 GenericId，可以通过 GenericId cast 到具体子类
 //   扩展 Generic 类型采用向 ScriptBinderManager 中注册 Plugin 的形式进行，或者所有的 Generic 类型都通过 Plugin 形式插入
