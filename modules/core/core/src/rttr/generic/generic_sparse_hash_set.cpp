@@ -23,18 +23,7 @@ GUID GenericSparseHashSet::id() const
 // get utils
 MemoryTraitsData GenericSparseHashSet::memory_traits_data() const
 {
-    SKR_ASSERT(is_valid());
-
-    MemoryTraitsData data     = _inner_mem_traits;
-    data.use_ctor             = true;
-    data.use_dtor             = true;
-    data.use_move             = true;
-    data.use_assign           = true;
-    data.use_move_assign      = true;
-    data.need_dtor_after_move = false;
-    data.use_realloc          = false;
-    data.use_compare          = true;
-    return data;
+    return Super::memory_traits_data();
 }
 
 // basic info
