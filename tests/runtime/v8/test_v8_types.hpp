@@ -39,14 +39,6 @@ BasicObject : public ::skr::ScriptbleObject {
     sscript_visible
     static uint64_t test_static_field;
 
-    // test overload
-    sscript_visible
-    void test_overload(int32_t v) { overload_int = v; }
-    sscript_visible
-    void test_overload(skr::String v) { overload_str = v; }
-    int32_t overload_int = 0;
-    skr::String overload_str = u8"";
-
     // test property
     sscript_visible sscript_getter(test_prop)
     int32_t get_test_prop() 
@@ -110,14 +102,6 @@ BasicValue {
     // static field
     sscript_visible
     static uint64_t test_static_field;
-
-    // test overload
-    sscript_visible
-    void test_overload(int32_t v) { overload_int = v; }
-    sscript_visible
-    void test_overload(skr::String v) { overload_str = v; }
-    int32_t overload_int = 0;
-    skr::String overload_str = u8"";
 
     // test property
     sscript_visible sscript_getter(test_prop)

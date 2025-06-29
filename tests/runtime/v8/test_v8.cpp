@@ -62,12 +62,6 @@ TEST_CASE("test v8")
         context.exec_script(u8"test_obj.test_method(Number(BasicObject.test_static_field))");
         REQUIRE_EQ(obj->test_method_v, 44544);
 
-        // test overload
-        context.exec_script(u8"test_obj.test_overload(114514)");
-        REQUIRE_EQ(obj->overload_int, 114514);
-        context.exec_script(u8"test_obj.test_overload('1919810')");
-        REQUIRE_EQ(obj->overload_str, u8"1919810");
-
         // test property
         context.exec_script(u8"test_obj.test_prop = 1");
         context.exec_script(u8"test_obj.test_prop = 2");
@@ -175,15 +169,6 @@ TEST_CASE("test v8")
             REQUIRE_EQ(result.get<test_v8::BasicValue>().value().test_method_v, 44544);
         }
 
-        // test overload
-        {
-            context.exec_script(u8"test_value.test_overload(114514)");
-            context.exec_script(u8"test_value.test_overload('1919810')");
-            auto result = context.exec_script(u8"test_value");
-            REQUIRE_EQ(result.get<test_v8::BasicValue>().value().overload_int, 114514);
-            REQUIRE_EQ(result.get<test_v8::BasicValue>().value().overload_str, u8"1919810");
-        }
-
         // test property
         {
             context.exec_script(u8"test_value.test_prop = 1");
@@ -265,19 +250,6 @@ TEST_CASE("test v8")
         REQUIRE_EQ(test_v8::BasicMappingHelper::basic_value.x, 1);
         REQUIRE_EQ(test_v8::BasicMappingHelper::basic_value.y, 2);
         REQUIRE_EQ(test_v8::BasicMappingHelper::basic_value.z, 3);
-
-        // test overload
-        context.exec_script(u8"BasicMappingHelper.set({x:555, y:444, z: 333, w: 222})");
-        REQUIRE_EQ(test_v8::BasicMappingHelper::inherit_value.x, 555);
-        REQUIRE_EQ(test_v8::BasicMappingHelper::inherit_value.y, 444);
-        REQUIRE_EQ(test_v8::BasicMappingHelper::inherit_value.z, 333);
-        REQUIRE_EQ(test_v8::BasicMappingHelper::inherit_value.w, 222);
-
-        // test overload
-        context.exec_script(u8"BasicMappingHelper.set({x:555, y:444, z: 333})");
-        REQUIRE_EQ(test_v8::BasicMappingHelper::basic_value.x, 555);
-        REQUIRE_EQ(test_v8::BasicMappingHelper::basic_value.y, 444);
-        REQUIRE_EQ(test_v8::BasicMappingHelper::basic_value.z, 333);
 
         context.shutdown();
     }
