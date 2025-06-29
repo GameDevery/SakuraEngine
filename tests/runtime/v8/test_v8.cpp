@@ -81,8 +81,6 @@ TEST_CASE("test v8")
         // test new
         context.exec_script(u8"let new_obj_1 = new BasicObject()");
         REQUIRE_EQ(test_v8::BasicObject::test_ctor_value, 114514);
-        context.exec_script(u8"let new_obj_2 = new BasicObject(568798)");
-        REQUIRE_EQ(test_v8::BasicObject::test_ctor_value, 568798);
 
         // test inherit
         context.exec_script(u8"let inherit_obj = new InheritObject()");
@@ -191,8 +189,6 @@ TEST_CASE("test v8")
         {
             context.exec_script(u8"let new_value_1 = new BasicValue()");
             REQUIRE_EQ(test_v8::BasicValue::test_ctor_value, 114514);
-            context.exec_script(u8"let new_value_2 = new BasicValue(568798)");
-            REQUIRE_EQ(test_v8::BasicValue::test_ctor_value, 568798);
         }
 
         // test inherit

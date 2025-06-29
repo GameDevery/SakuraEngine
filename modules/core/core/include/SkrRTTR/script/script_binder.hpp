@@ -309,34 +309,24 @@ struct ScriptBinderReturn {
     bool             is_void     = false;
 };
 struct ScriptBinderMethod {
-    struct Overload {
-        const RTTRType*           owner           = nullptr;
-        const RTTRMethodData*     data            = nullptr;
-        const RTTRMethodData*     mixin_impl_data = nullptr;
-        ScriptBinderReturn        return_binder   = {};
-        Vector<ScriptBinderParam> params_binder   = {};
-        uint32_t                  params_count    = 0;
-        uint32_t                  return_count    = 0;
-        bool                      failed          = false;
-    };
-
-    Vector<Overload> overloads = {};
-    bool             is_mixin  = false;
-    bool             failed    = false;
+    const RTTRType*           owner           = nullptr;
+    const RTTRMethodData*     data            = nullptr;
+    const RTTRMethodData*     mixin_impl_data = nullptr;
+    ScriptBinderReturn        return_binder   = {};
+    Vector<ScriptBinderParam> params_binder   = {};
+    uint32_t                  params_count    = 0;
+    uint32_t                  return_count    = 0;
+    bool                      is_mixin        = false;
+    bool                      failed          = false;
 };
 struct ScriptBinderStaticMethod {
-    struct Overload {
-        const RTTRType*             owner         = nullptr;
-        const RTTRStaticMethodData* data          = nullptr;
-        ScriptBinderReturn          return_binder = {};
-        Vector<ScriptBinderParam>   params_binder = {};
-        uint32_t                    params_count  = 0;
-        uint32_t                    return_count  = 0;
-        bool                        failed        = false;
-    };
-
-    Vector<Overload> overloads = {};
-    bool             failed    = false;
+    const RTTRType*             owner         = nullptr;
+    const RTTRStaticMethodData* data          = nullptr;
+    ScriptBinderReturn          return_binder = {};
+    Vector<ScriptBinderParam>   params_binder = {};
+    uint32_t                    params_count  = 0;
+    uint32_t                    return_count  = 0;
+    bool                        failed        = false;
 };
 
 // nested binder, property
@@ -379,8 +369,8 @@ struct ScriptBinderMapping {
 struct ScriptBinderRecordBase {
     const RTTRType* type = nullptr;
 
-    bool                     is_script_newable = false;
-    Vector<ScriptBinderCtor> ctors             = {};
+    bool             is_script_newable = false;
+    ScriptBinderCtor ctor              = {};
 
     Map<String, ScriptBinderField>          fields            = {};
     Map<String, ScriptBinderStaticField>    static_fields     = {};
@@ -458,9 +448,9 @@ private:
 
     // make nested binder
     void _make_ctor(ScriptBinderCtor& out, const RTTRCtorData* ctor, const RTTRType* owner);
-    void _make_method(ScriptBinderMethod::Overload& out, const RTTRMethodData* method, const RTTRType* owner);
-    void _make_static_method(ScriptBinderStaticMethod::Overload& out, const RTTRStaticMethodData* method, const RTTRType* owner);
-    void _make_mixin_method(ScriptBinderMethod::Overload& out, const RTTRMethodData* method, const RTTRMethodData* impl_method, const RTTRType* owner);
+    void _make_method(ScriptBinderMethod& out, const RTTRMethodData* method, const RTTRType* owner);
+    void _make_static_method(ScriptBinderStaticMethod& out, const RTTRStaticMethodData* method, const RTTRType* owner);
+    void _make_mixin_method(ScriptBinderMethod& out, const RTTRMethodData* method, const RTTRMethodData* impl_method, const RTTRType* owner);
     void _make_prop_getter(ScriptBinderMethod& out, const RTTRMethodData* method, const RTTRType* owner);
     void _make_prop_setter(ScriptBinderMethod& out, const RTTRMethodData* method, const RTTRType* owner);
     void _make_static_prop_getter(ScriptBinderStaticMethod& out, const RTTRStaticMethodData* method, const RTTRType* owner);

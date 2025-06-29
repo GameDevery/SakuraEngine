@@ -113,11 +113,11 @@ SKR_V8_API V8Isolate: IScriptMixinCore {
         StackProxy              return_value
     );
     bool invoke_v8_mixin(
-        v8::Local<v8::Value>                v8_this,
-        v8::Local<v8::Function>             v8_func,
-        const ScriptBinderMethod::Overload& mixin_data,
-        span<const StackProxy>              params,
-        StackProxy                          return_value
+        v8::Local<v8::Value>      v8_this,
+        v8::Local<v8::Function>   v8_func,
+        const ScriptBinderMethod& mixin_data,
+        span<const StackProxy>    params,
+        StackProxy                return_value
     );
 
     // => IScriptMixinCore API

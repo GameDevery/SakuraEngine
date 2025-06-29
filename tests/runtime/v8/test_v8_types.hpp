@@ -14,8 +14,6 @@ BasicObject : public ::skr::ScriptbleObject {
 
     sscript_visible
     BasicObject() { test_ctor_value = 114514; }
-    sscript_visible
-    BasicObject(int32_t v) { test_ctor_value = v; }
 
     static int32_t test_ctor_value;
 
@@ -78,8 +76,6 @@ sscript_visible sscript_newable
 BasicValue {
     sscript_visible
     BasicValue() { test_ctor_value = 114514; }
-    sscript_visible
-    BasicValue(int32_t v) { test_ctor_value = v; }
 
     static int32_t test_ctor_value;
 
@@ -159,11 +155,6 @@ BasicMappingHelper
     static BasicMapping basic_value;
     sscript_visible
     static InheritMapping inherit_value;
-
-    sscript_visible
-    static void set(BasicMapping v) { basic_value = v; }
-    sscript_visible
-    static void set(InheritMapping v) { inherit_value = v; }
 };
 }
 
@@ -275,7 +266,6 @@ namespace test_v8
 sreflect_struct(guid = "fe94dd7f-9c4e-4cb3-a275-0f8f8011145c" rttr = @full)
 sscript_visible sscript_newable
 TestMixinValue {
-    sscript_visible
     TestMixinValue() = default;
     sscript_visible
     TestMixinValue(skr::String v) : name(v) {}
