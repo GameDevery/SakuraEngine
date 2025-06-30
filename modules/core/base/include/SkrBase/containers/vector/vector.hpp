@@ -7,6 +7,7 @@
 #include "SkrBase/containers/vector/vector_iterator.hpp"
 #include "SkrBase/containers/misc/container_traits.hpp"
 #include "SkrBase/containers/misc/span.hpp"
+#include "SkrBase/template/concepts.hpp"
 
 // Vector def
 // TODO. 针对 NoneCopyable 成员 (典型的如 UniquePtr) 的支持，抑制默认实现 copy 的报错
@@ -136,16 +137,22 @@ struct Vector : protected Memory {
     void remove_at(SizeType index, SizeType n = 1);
     void remove_at_swap(SizeType index, SizeType n = 1);
     template <typename U = DataType>
+    requires(concepts::HasEq<typename Memory::DataType, U>)
     bool remove(const U& v);
     template <typename U = DataType>
+    requires(concepts::HasEq<typename Memory::DataType, U>)
     bool remove_swap(const U& v);
     template <typename U = DataType>
+    requires(concepts::HasEq<typename Memory::DataType, U>)
     bool remove_last(const U& v);
     template <typename U = DataType>
+    requires(concepts::HasEq<typename Memory::DataType, U>)
     bool remove_last_swap(const U& v);
     template <typename U = DataType>
+    requires(concepts::HasEq<typename Memory::DataType, U>)
     SizeType remove_all(const U& v);
     template <typename U = DataType>
+    requires(concepts::HasEq<typename Memory::DataType, U>)
     SizeType remove_all_swap(const U& v);
 
     // remove if
@@ -188,12 +195,16 @@ struct Vector : protected Memory {
 
     // find
     template <typename U = DataType>
+    requires(concepts::HasEq<typename Memory::DataType, U>)
     DataRef find(const U& v);
     template <typename U = DataType>
+    requires(concepts::HasEq<typename Memory::DataType, U>)
     DataRef find_last(const U& v);
     template <typename U = DataType>
+    requires(concepts::HasEq<typename Memory::DataType, U>)
     CDataRef find(const U& v) const;
     template <typename U = DataType>
+    requires(concepts::HasEq<typename Memory::DataType, U>)
     CDataRef find_last(const U& v) const;
 
     // find if
@@ -950,6 +961,7 @@ SKR_INLINE void Vector<Memory>::remove_at_swap(SizeType index, SizeType n)
 }
 template <typename Memory>
 template <typename U>
+requires(concepts::HasEq<typename Memory::DataType, U>)
 SKR_INLINE bool Vector<Memory>::remove(const U& v)
 {
     if (DataRef ref = find(v))
@@ -961,6 +973,7 @@ SKR_INLINE bool Vector<Memory>::remove(const U& v)
 }
 template <typename Memory>
 template <typename U>
+requires(concepts::HasEq<typename Memory::DataType, U>)
 SKR_INLINE bool Vector<Memory>::remove_swap(const U& v)
 {
     if (DataRef ref = find(v))
@@ -972,6 +985,7 @@ SKR_INLINE bool Vector<Memory>::remove_swap(const U& v)
 }
 template <typename Memory>
 template <typename U>
+requires(concepts::HasEq<typename Memory::DataType, U>)
 SKR_INLINE bool Vector<Memory>::remove_last(const U& v)
 {
     if (DataRef ref = find_last(v))
@@ -983,6 +997,7 @@ SKR_INLINE bool Vector<Memory>::remove_last(const U& v)
 }
 template <typename Memory>
 template <typename U>
+requires(concepts::HasEq<typename Memory::DataType, U>)
 SKR_INLINE bool Vector<Memory>::remove_last_swap(const U& v)
 {
     if (DataRef ref = find_last(v))
@@ -994,12 +1009,14 @@ SKR_INLINE bool Vector<Memory>::remove_last_swap(const U& v)
 }
 template <typename Memory>
 template <typename U>
+requires(concepts::HasEq<typename Memory::DataType, U>)
 SKR_INLINE typename Vector<Memory>::SizeType Vector<Memory>::remove_all(const U& v)
 {
     return remove_all_if([&v](const DataType& a) { return a == v; });
 }
 template <typename Memory>
 template <typename U>
+requires(concepts::HasEq<typename Memory::DataType, U>)
 SKR_INLINE typename Vector<Memory>::SizeType Vector<Memory>::remove_all_swap(const U& v)
 {
     return remove_all_if_swap([&v](const DataType& a) { return a == v; });
@@ -1164,24 +1181,28 @@ SKR_INLINE typename Vector<Memory>::DataType Vector<Memory>::pop_back_get()
 // find
 template <typename Memory>
 template <typename U>
+requires(concepts::HasEq<typename Memory::DataType, U>)
 SKR_INLINE typename Vector<Memory>::DataRef Vector<Memory>::find(const U& v)
 {
     return find_if([&v](const DataType& a) { return a == v; });
 }
 template <typename Memory>
 template <typename U>
+requires(concepts::HasEq<typename Memory::DataType, U>)
 SKR_INLINE typename Vector<Memory>::DataRef Vector<Memory>::find_last(const U& v)
 {
     return find_last_if([&v](const DataType& a) { return a == v; });
 }
 template <typename Memory>
 template <typename U>
+requires(concepts::HasEq<typename Memory::DataType, U>)
 SKR_INLINE typename Vector<Memory>::CDataRef Vector<Memory>::find(const U& v) const
 {
     return find_if([&v](const DataType& a) { return a == v; });
 }
 template <typename Memory>
 template <typename U>
+requires(concepts::HasEq<typename Memory::DataType, U>)
 SKR_INLINE typename Vector<Memory>::CDataRef Vector<Memory>::find_last(const U& v) const
 {
     return find_last_if([&v](const DataType& a) { return a == v; });

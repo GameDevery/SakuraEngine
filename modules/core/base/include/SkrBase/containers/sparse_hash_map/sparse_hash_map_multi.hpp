@@ -101,7 +101,8 @@ struct MultiSparseHashMap : protected SparseHashBase<Memory> {
     template <typename UK = MapKeyType, typename UV = MapValueType>
     requires(
         TransparentToOrSameAs<UK, typename Memory::MapKeyType, typename Memory::HasherType> &&
-        std::convertible_to<UV, typename Memory::MapValueType>
+        std::convertible_to<UV, typename Memory::MapValueType> &&
+        std::is_constructible_v<typename Memory::MapValueType, UV>
     )
     DataRef add(UK&& key, UV&& value);
     template <typename ConstructFunc>
@@ -150,8 +151,10 @@ struct MultiSparseHashMap : protected SparseHashBase<Memory> {
 
     // remove value
     template <typename UV = MapValueType>
+    requires(concepts::HasEq<typename Memory::MapValueType, UV>)
     bool remove_value(const UV& value);
     template <typename UV = MapValueType>
+    requires(concepts::HasEq<typename Memory::MapValueType, UV>)
     bool remove_all_value(const UV& value);
 
     // remove if
@@ -187,8 +190,10 @@ struct MultiSparseHashMap : protected SparseHashBase<Memory> {
 
     // find value
     template <typename UV = MapValueType>
+    requires(concepts::HasEq<typename Memory::MapValueType, UV>)
     DataRef find_value(const UV& value);
     template <typename UV = MapValueType>
+    requires(concepts::HasEq<typename Memory::MapValueType, UV>)
     CDataRef find_value(const UV& value) const;
 
     // find if
@@ -213,6 +218,7 @@ struct MultiSparseHashMap : protected SparseHashBase<Memory> {
     requires(std::is_invocable_r_v<bool, Pred, const typename Memory::MapKeyType&>)
     bool contains_ex(HashType hash, Pred&& pred) const;
     template <typename UV = MapValueType>
+    requires(concepts::HasEq<typename Memory::MapValueType, UV>)
     bool contains_value(const UV& value) const;
     template <typename UK = MapKeyType>
     requires(TransparentToOrSameAs<UK, typename Memory::MapKeyType, typename Memory::HasherType>)
@@ -221,6 +227,7 @@ struct MultiSparseHashMap : protected SparseHashBase<Memory> {
     requires(std::is_invocable_r_v<bool, Pred, const typename Memory::MapKeyType&>)
     SizeType count_ex(HashType hash, Pred&& pred) const;
     template <typename UV = MapValueType>
+    requires(concepts::HasEq<typename Memory::MapValueType, UV>)
     SizeType count_value(const UV& value) const;
 
     // contains if
@@ -324,7 +331,8 @@ template <typename Memory>
 template <typename UK, typename UV>
 requires(
     TransparentToOrSameAs<UK, typename Memory::MapKeyType, typename Memory::HasherType> &&
-    std::convertible_to<UV, typename Memory::MapValueType>
+    std::convertible_to<UV, typename Memory::MapValueType> &&
+    std::is_constructible_v<typename Memory::MapValueType, UV>
 )
 SKR_INLINE typename MultiSparseHashMap<Memory>::DataRef MultiSparseHashMap<Memory>::add(UK&& key, UV&& value)
 {
@@ -466,12 +474,14 @@ SKR_INLINE typename MultiSparseHashMap<Memory>::SizeType MultiSparseHashMap<Memo
 // remove value
 template <typename Memory>
 template <typename UV>
+requires(concepts::HasEq<typename Memory::MapValueType, UV>)
 SKR_INLINE bool MultiSparseHashMap<Memory>::remove_value(const UV& value)
 {
     return remove_if([&value](const MapDataType& data) { return data.value == value; });
 }
 template <typename Memory>
 template <typename UV>
+requires(concepts::HasEq<typename Memory::MapValueType, UV>)
 SKR_INLINE bool MultiSparseHashMap<Memory>::remove_all_value(const UV& value)
 {
     return remove_all_if([&value](const MapDataType& data) { return data.value == value; });
@@ -540,12 +550,14 @@ SKR_INLINE typename MultiSparseHashMap<Memory>::CDataRef MultiSparseHashMap<Memo
 // find value
 template <typename Memory>
 template <typename UV>
+requires(concepts::HasEq<typename Memory::MapValueType, UV>)
 SKR_INLINE typename MultiSparseHashMap<Memory>::DataRef MultiSparseHashMap<Memory>::find_value(const UV& value)
 {
     return find_if([&value](const MapDataType& data) { return data.value == value; });
 }
 template <typename Memory>
 template <typename UV>
+requires(concepts::HasEq<typename Memory::MapValueType, UV>)
 SKR_INLINE typename MultiSparseHashMap<Memory>::CDataRef MultiSparseHashMap<Memory>::find_value(const UV& value) const
 {
     return find_if([&value](const MapDataType& data) { return data.value == value; });
@@ -598,6 +610,7 @@ SKR_INLINE bool MultiSparseHashMap<Memory>::contains_ex(HashType hash, Pred&& pr
 }
 template <typename Memory>
 template <typename UV>
+requires(concepts::HasEq<typename Memory::MapValueType, UV>)
 SKR_INLINE bool MultiSparseHashMap<Memory>::contains_value(const UV& value) const
 {
     return (bool)find_value(value);
@@ -637,6 +650,7 @@ SKR_INLINE typename MultiSparseHashMap<Memory>::SizeType MultiSparseHashMap<Memo
 }
 template <typename Memory>
 template <typename UV>
+requires(concepts::HasEq<typename Memory::MapValueType, UV>)
 SKR_INLINE typename MultiSparseHashMap<Memory>::SizeType MultiSparseHashMap<Memory>::count_value(const UV& value) const
 {
     return count_if([&value](const MapDataType& data) { return data.value == value; });

@@ -1,6 +1,7 @@
 #pragma once
 #include "SkrBase/config.h"
 #include "SkrBase/memory/memory_ops.hpp"
+#include "SkrBase/template/concepts.hpp"
 #include "sparse_vector_def.hpp"
 #include "sparse_vector_iterator.hpp"
 #include "SkrBase/containers/misc/container_traits.hpp"
@@ -154,12 +155,16 @@ struct SparseVector : protected Memory {
 
     // find
     template <typename U = DataType>
+    requires(concepts::HasEq<typename Memory::DataType, U>)
     DataRef find(const U& v);
     template <typename U = DataType>
+    requires(concepts::HasEq<typename Memory::DataType, U>)
     DataRef find_last(const U& v);
     template <typename U = DataType>
+    requires(concepts::HasEq<typename Memory::DataType, U>)
     CDataRef find(const U& v) const;
     template <typename U = DataType>
+    requires(concepts::HasEq<typename Memory::DataType, U>)
     CDataRef find_last(const U& v) const;
 
     // find if
@@ -178,11 +183,13 @@ struct SparseVector : protected Memory {
 
     // contains
     template <typename U = DataType>
+    requires(concepts::HasEq<typename Memory::DataType, U>)
     bool contains(const U& v) const;
     template <typename Pred>
     requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
     bool contains_if(Pred&& pred) const;
     template <typename U = DataType>
+    requires(concepts::HasEq<typename Memory::DataType, U>)
     SizeType count(const U& v) const;
     template <typename Pred>
     requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
@@ -1188,24 +1195,28 @@ SKR_INLINE const typename SparseVector<Memory>::DataType& SparseVector<Memory>::
 // find
 template <typename Memory>
 template <typename U>
+requires(concepts::HasEq<typename Memory::DataType, U>)
 SKR_INLINE typename SparseVector<Memory>::DataRef SparseVector<Memory>::find(const U& v)
 {
     return find_if([&v](const DataType& a) { return a == v; });
 }
 template <typename Memory>
 template <typename U>
+requires(concepts::HasEq<typename Memory::DataType, U>)
 SKR_INLINE typename SparseVector<Memory>::DataRef SparseVector<Memory>::find_last(const U& v)
 {
     return find_last_if([&v](const DataType& a) { return a == v; });
 }
 template <typename Memory>
 template <typename U>
+requires(concepts::HasEq<typename Memory::DataType, U>)
 SKR_INLINE typename SparseVector<Memory>::CDataRef SparseVector<Memory>::find(const U& v) const
 {
     return find_if([&v](const DataType& a) { return a == v; });
 }
 template <typename Memory>
 template <typename U>
+requires(concepts::HasEq<typename Memory::DataType, U>)
 SKR_INLINE typename SparseVector<Memory>::CDataRef SparseVector<Memory>::find_last(const U& v) const
 {
     return find_last_if([&v](const DataType& a) { return a == v; });
@@ -1258,6 +1269,7 @@ SKR_INLINE typename SparseVector<Memory>::CDataRef SparseVector<Memory>::find_la
 // contains
 template <typename Memory>
 template <typename U>
+requires(concepts::HasEq<typename Memory::DataType, U>)
 SKR_INLINE bool SparseVector<Memory>::contains(const U& v) const
 {
     return (bool)find(v);
@@ -1271,6 +1283,7 @@ SKR_INLINE bool SparseVector<Memory>::contains_if(Pred&& pred) const
 }
 template <typename Memory>
 template <typename U>
+requires(concepts::HasEq<typename Memory::DataType, U>)
 SKR_INLINE typename SparseVector<Memory>::SizeType SparseVector<Memory>::count(const U& v) const
 {
     SizeType count = 0;
