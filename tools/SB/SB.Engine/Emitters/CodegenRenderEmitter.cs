@@ -10,7 +10,7 @@ namespace SB
         public List<string> Scripts { get; } = new();
     }
 
-    [CodegenDoctor]
+    [Doctor<CodegenDoctor>]
     public class CodegenRenderEmitter : TaskEmitter
     {
         public CodegenRenderEmitter(IToolchain Toolchain) => this.Toolchain = Toolchain;
@@ -115,15 +115,15 @@ namespace SB
         public static string GetCodegenDirectory(this Target @this) => Path.Combine(@this.GetStorePath(BuildSystem.GeneratedSourceStore), $"codegen/{@this.Name}");
     }
 
-    public class CodegenDoctor : DoctorAttribute
+    public class CodegenDoctor : IDoctor
     {
-        public override bool Check()
+        public bool Check()
         {
             Installation = Install.Tool("bun_1.2.5");
             Installation.Wait();
             return true;
         }
-        public override bool Fix() 
+        public bool Fix() 
         { 
             Log.Fatal("bun install failed!");
             return true; 

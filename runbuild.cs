@@ -6,8 +6,20 @@ using System.Diagnostics;
 Stopwatch sw = new();
 sw.Start();
 
+TargetCategory Categories = TargetCategory.Runtime;
+string? cmd = args.Length > 0 ? args[1] : null;
+if (cmd == null)
+{
+    cmd = "build";
+}
+if (cmd == "build")
+    Categories = TargetCategory.Runtime | TargetCategory.DevTime;
+else if (cmd == "tools")
+    Categories = TargetCategory.Tool;
+
 Engine.SetEngineDirectory(SourceLocation.Directory());
-var Toolchain = Engine.Bootstrap(SourceLocation.Directory());
+var Toolchain = Engine.Bootstrap(SourceLocation.Directory(), Categories); 
+
 Engine.AddEngineTaskEmitters(Toolchain);
 Engine.AddCompileCommandsEmitter(Toolchain);
 

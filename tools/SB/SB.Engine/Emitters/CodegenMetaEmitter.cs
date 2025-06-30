@@ -12,7 +12,7 @@ namespace SB
         public string[]? AllGeneratedMetaFiles { get; internal set; }
     }
 
-    [MetaDoctor]
+    [Doctor<MetaDoctor>]
     public class CodegenMetaEmitter : TaskEmitter
     {
         public CodegenMetaEmitter(IToolchain Toolchain)
@@ -89,15 +89,15 @@ namespace SB
         public static volatile int Time = 0;
     }
 
-    public class MetaDoctor : DoctorAttribute
+    public class MetaDoctor : IDoctor
     {
-        public override bool Check()
+        public bool Check()
         {
             Installation = Install.Tool("meta_v1.0.3-llvm_19.1.7");
             Installation!.Wait();
             return true;
         }
-        public override bool Fix() 
+        public bool Fix() 
         { 
             Log.Fatal("meta install failed!");
             return true; 

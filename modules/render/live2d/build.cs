@@ -3,11 +3,12 @@ using SB.Core;
 using Serilog;
 
 [TargetScript]
-[SkrLive2DDoctor]
 public static class SkrLive2D
 {
     static SkrLive2D()
     {
+        Engine.AddDoctor<SkrLive2DDoctor>();
+
         var CubismFramework = Engine
             .StaticComponent("CubismFramework", "SkrLive2D")
             .EnableUnityBuild()
@@ -40,15 +41,15 @@ public static class SkrLive2D
     }
 }
 
-public class SkrLive2DDoctor : DoctorAttribute
+public class SkrLive2DDoctor : IDoctor
 {
-    public override bool Check()
+    public bool Check()
     {
         Install.SDK("CubismNativeCore").Wait();
         return true;
     }
 
-    public override bool Fix()
+    public bool Fix()
     {
         Log.Fatal("Cubism SDK install failed!");
         return true;

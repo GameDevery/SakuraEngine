@@ -4,11 +4,12 @@ using SB.Core;
 using Serilog;
 
 [TargetScript]
-[SkrGraphicsDoctor]
 public static class SkrGraphics
 {
     static SkrGraphics()
     {
+        Engine.AddDoctor<SkrGraphicsDoctor>();
+
         var SkrGraphics = Engine
             .Module("SkrGraphics")
             .Depend(Visibility.Public, "SkrCore")
@@ -48,9 +49,9 @@ public static class SkrGraphics
     }
 }
 
-public class SkrGraphicsDoctor : DoctorAttribute
+public class SkrGraphicsDoctor : IDoctor
 {
-    public override bool Check()
+    public bool Check()
     {
         if (BuildSystem.TargetOS == OSPlatform.Windows)
         {
@@ -64,8 +65,8 @@ public class SkrGraphicsDoctor : DoctorAttribute
         }
         return true;
     }
-    public override bool Fix() 
-    { 
+    public bool Fix() 
+    {
         Log.Fatal("graphics sdks install failed!");
         return true; 
     }

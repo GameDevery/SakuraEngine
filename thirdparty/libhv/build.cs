@@ -3,11 +3,12 @@ using SB.Core;
 using Serilog;
 
 [TargetScript]
-[LibHVDoctor]
 public static class LibHV
 {
     static LibHV()
     {
+        Engine.AddDoctor<LibHVDoctor>();
+
         Engine.Target("libhv")
             .TargetType(TargetType.HeaderOnly)
             .Defines(Visibility.Public, "HV_STATICLIB")
@@ -17,14 +18,14 @@ public static class LibHV
     }
 }
 
-public class LibHVDoctor : DoctorAttribute
+public class LibHVDoctor : IDoctor
 {
-    public override bool Check()
+    public bool Check()
     {
         Install.SDK("libhv_1.3.3a").Wait();
         return true;
     }
-    public override bool Fix() 
+    public bool Fix() 
     { 
         Log.Fatal("core sdks install failed!");
         return true; 

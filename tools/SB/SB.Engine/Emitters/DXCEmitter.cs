@@ -3,7 +3,7 @@ using Serilog;
 
 namespace SB
 {
-    [DXCDoctor]
+    [Doctor<DXCDoctor>]
     public class DXCEmitter : TaskEmitter
     {
         public override bool EnableEmitter(Target Target) => Target.HasFilesOf<HLSLFileList>();
@@ -99,9 +99,9 @@ namespace SB
         }
     }
 
-    public class DXCDoctor : DoctorAttribute
+    public class DXCDoctor : IDoctor
     {
-        public override bool Check()
+        public bool Check()
         {
             var Installation = (BuildSystem.TargetOS == OSPlatform.Windows) ? Install.Tool("dxc-2025_02_21") : Install.Tool("dxc");
             Installation.Wait();
@@ -109,8 +109,8 @@ namespace SB
             Directory.CreateDirectory(Path.Combine(Engine.BuildPath, "resources/shaders"));
             return true;
         }
-        public override bool Fix() 
-        { 
+        public bool Fix()
+        {
             Log.Fatal("dxc sdks install failed!");
             return true; 
         }

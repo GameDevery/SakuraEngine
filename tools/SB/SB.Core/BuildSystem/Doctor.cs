@@ -1,26 +1,35 @@
-using System.Text;
-using System.Security.Cryptography;
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.Reflection;
 
 namespace SB
 {
-    [AttributeUsage(AttributeTargets.Class, Inherited = true, AllowMultiple = true)]
-    public abstract class DoctorAttribute : Attribute
+    public interface IDoctor
     {
         public abstract bool Check();
         public abstract bool Fix();
+    }
+
+    public abstract class DoctorAttribute : Attribute {}
+
+    [AttributeUsage(AttributeTargets.Class, Inherited = true, AllowMultiple = true)]
+    public class DoctorAttribute<T> : DoctorAttribute
+        where T : IDoctor, new()
+    {
+        public DoctorAttribute()
+        {
+            BuildSystem.AddDoctor<T>();
+        }
     }
 
     public partial class BuildSystem
     {
         public static Task RunDoctors()
         {
-            var LaunchTask = new Task(() => {
+            var LaunchTask = new Task(() =>
+            {
                 using (Profiler.BeginZone("RunDoctors", color: (uint)Profiler.ColorType.WebMaroon))
                 {
-                    var Doctors = new ConcurrentBag<DoctorAttribute>();
+                    var DoctorAttributes = new ConcurrentBag<DoctorAttribute>();
                     foreach (var Assembly in AppDomain.CurrentDomain.GetAssemblies())
                     {
                         if (!Assembly.GetReferencedAssemblies().Any(A => A.Name == "SB.Core") && Assembly.GetName().Name != "SB.Core")
@@ -31,11 +40,11 @@ namespace SB
                             var DoctorAttrs = Type.GetCustomAttributes<DoctorAttribute>();
                             foreach (var DoctorAttr in DoctorAttrs)
                             {
-                                Doctors.Add(DoctorAttr);
+                                DoctorAttributes.Add(DoctorAttr);
                             }
                         }
                     }
-                    Parallel.ForEach(Doctors, 
+                    Parallel.ForEach(_AllDoctors,
                     new ParallelOptions { TaskScheduler = TQTS },
                     (Doctor) =>
                     {
@@ -55,5 +64,14 @@ namespace SB
             LaunchTask.Start(TQTS);
             return LaunchTask;
         }
+
+        public static void AddDoctor<T>()
+            where T : IDoctor, new()
+        {
+            var Doctor = new T();
+            _AllDoctors.Add(Doctor);
+        }
+
+        private static ConcurrentBag<IDoctor> _AllDoctors = new ConcurrentBag<IDoctor>();
     }
 }

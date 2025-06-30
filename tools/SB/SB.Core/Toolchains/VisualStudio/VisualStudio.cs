@@ -5,7 +5,7 @@ using Serilog;
 
 namespace SB.Core
 {
-    [VisualStudioDoctor]
+    [Doctor<VisualStudioDoctor>]
     public partial class VisualStudio : IToolchain
     {
         // https://blog.pcitron.fr/2022/01/04/dont-use-vcvarsall-vsdevcmd/
@@ -195,9 +195,9 @@ namespace SB.Core
         #endregion
     }
 
-    public class VisualStudioDoctor : DoctorAttribute
+    public class VisualStudioDoctor : IDoctor
     {
-        public override bool Check()
+        public bool Check()
         {
             if (BuildSystem.TargetOS == OSPlatform.Windows && BuildSystem.HostOS == OSPlatform.Windows)
             {
@@ -211,7 +211,7 @@ namespace SB.Core
             return true;
         }
 
-        public override bool Fix()
+        public bool Fix()
         {
             Log.Fatal("VisualStudio discover failed!");
             return true;

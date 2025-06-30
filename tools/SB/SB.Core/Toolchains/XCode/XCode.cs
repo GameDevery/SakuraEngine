@@ -4,7 +4,7 @@ using Serilog;
 
 namespace SB.Core
 {
-    [XCodeDoctor]
+    [Doctor<XCodeDoctor>]
     public partial class XCode : IToolchain
     {
         internal void FastPathFind()
@@ -108,9 +108,9 @@ namespace SB.Core
         internal Version? SDKVersion = null;
     }
 
-    public class XCodeDoctor : DoctorAttribute
+    public class XCodeDoctor : IDoctor
     {
-        public override bool Check()
+        public bool Check()
         {
             if (BuildSystem.HostOS == OSPlatform.OSX)
             {
@@ -120,7 +120,7 @@ namespace SB.Core
             }
             return true;
         }
-        public override bool Fix()
+        public bool Fix()
         {
             Log.Fatal("XCode discover failed!");
             return true;

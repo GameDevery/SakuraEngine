@@ -7,7 +7,8 @@ using SB.Core;
 namespace SB
 {
     using BS = BuildSystem;
-    [TargetDbDoctor]
+    
+    [Doctor<TargetDbDoctor>]
     public class TargetDbContext : DbContext
     {
         static TargetDbContext()
@@ -23,7 +24,7 @@ namespace SB
 
         }
 
-        public static PooledDbContextFactory<TargetDbContext> Factory = new (
+        public static PooledDbContextFactory<TargetDbContext> Factory = new(
             new DbContextOptionsBuilder<TargetDbContext>()
                 .UseSqlite($"Data Source={Path.Join(BS.TempPath, "targets.db")}")
                 .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
@@ -91,9 +92,9 @@ namespace SB
         public required string TargetArguments { get; set; }
     }
 
-    public class TargetDbDoctor : DoctorAttribute
+    public class TargetDbDoctor : IDoctor
     {
-        public override bool Check()
+        public bool Check()
         {
             using (Profiler.BeginZone("WarmUp | EntityFramework", color: (uint)Profiler.ColorType.WebMaroon))
             {
@@ -102,7 +103,7 @@ namespace SB
             }
         }
 
-        public override bool Fix()
+        public bool Fix()
         {
             return true;
         }

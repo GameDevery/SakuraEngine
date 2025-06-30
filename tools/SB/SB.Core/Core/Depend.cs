@@ -7,7 +7,8 @@ using Serilog;
 namespace SB.Core
 {
     using BS = BuildSystem;
-    [DependDbDoctor]
+
+    [Doctor<DependDbDoctor>]
     public class DependDbContext : DbContext
     {
         static DependDbContext()
@@ -25,17 +26,17 @@ namespace SB.Core
 
         }
 
-        public static DependDbContext CreateContext(string TargetName) 
+        public static DependDbContext CreateContext(string TargetName)
             => (BS.GetTarget(TargetName)?.IsFromPackage == true) ? PackagesFactory.CreateDbContext() : ProjectFactory.CreateDbContext();
 
-        public static PooledDbContextFactory<DependDbContext> ProjectFactory = new (
+        public static PooledDbContextFactory<DependDbContext> ProjectFactory = new(
             new DbContextOptionsBuilder<DependDbContext>()
                 .UseSqlite($"Data Source={Path.Join(BS.BuildPath, "depend.db")}")
                 .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
                 .Options
         );
 
-        public static PooledDbContextFactory<DependDbContext> PackagesFactory = new (
+        public static PooledDbContextFactory<DependDbContext> PackagesFactory = new(
             new DbContextOptionsBuilder<DependDbContext>()
                 .UseSqlite($"Data Source={Path.Join(BS.PackageBuildPath, "depend.db")}")
                 .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
@@ -217,9 +218,9 @@ namespace SB.Core
         public List<DateTime> ExternalFileTimes { get; init; } = new();
     }
 
-    public class DependDbDoctor : DoctorAttribute
+    public class DependDbDoctor : IDoctor
     {
-        public override bool Check()
+        public bool Check()
         {
             using (Profiler.BeginZone("WarmUp | EntityFramework", color: (uint)Profiler.ColorType.WebMaroon))
             {
@@ -228,7 +229,7 @@ namespace SB.Core
             }
         }
 
-        public override bool Fix()
+        public bool Fix()
         {
             return true;
         }

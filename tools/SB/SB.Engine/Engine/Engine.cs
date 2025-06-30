@@ -11,7 +11,7 @@ namespace SB
     {
         public static void SetEngineDirectory(string Directory) => EngineDirectory = Directory;
 
-        public static IToolchain Bootstrap(string ProjectRoot)
+        public static IToolchain Bootstrap(string ProjectRoot, TargetCategory Categories)
         {
             using (Profiler.BeginZone("Bootstrap", color: (uint)Profiler.ColorType.WebMaroon))
             {
@@ -38,7 +38,7 @@ namespace SB
                 BS.PackageBuildPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".pkgs/.build", Toolchain.Name)).FullName;
                 BS.LoadConfigurations();
 
-                LoadTargets();
+                LoadTargets(Categories);
                 
                 DoctorsTask = Engine.RunDoctors();
                 return Toolchain!;
@@ -137,7 +137,7 @@ namespace SB
                 .CreateLogger();
         }
 
-        private static void LoadTargets()
+        private static void LoadTargets(TargetCategory Categories)
         {
             BS.TargetDefaultSettings += (Target Target) =>
             {
@@ -153,13 +153,20 @@ namespace SB
 
             var Assemblies = AppDomain.CurrentDomain.GetAssemblies();
             var Types = Assemblies.AsParallel().SelectMany(A => A.GetTypes());
-            var Scripts = Types.Where(Type => Type.GetCustomAttribute<TargetScript>() is not null);
+            var Scripts = Types.Where(Type => IsTargetOfCategory(Type, Categories));
             foreach (var Script in Scripts)
             {
                 System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(Script.TypeHandle);
             }
         }
         
+        private static bool IsTargetOfCategory(Type Type, TargetCategory Category)
+        {
+            var TargetAttr = Type.GetCustomAttribute<TargetScript>();
+            if (TargetAttr == null) return false;
+            return (TargetAttr.Category & Category) != 0;
+        }
+
         public static string EngineDirectory { get; private set; } = Directory.GetCurrentDirectory();
         public static string ToolDirectory => Path.Combine(TempPath, "tools");
         public static string DownloadDirectory => Path.Combine(TempPath, "downloads");

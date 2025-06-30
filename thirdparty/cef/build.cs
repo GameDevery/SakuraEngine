@@ -3,7 +3,6 @@ using SB.Core;
 using Serilog;
 
 [TargetScript]
-[CefDoctor]
 public static class Cef
 {
     static Cef()
@@ -11,6 +10,7 @@ public static class Cef
         if (BuildSystem.TargetOS != OSPlatform.Windows)
             return;
             
+        Engine.AddDoctor<CefDoctor>();
         var @this = Engine.Target("cef")
             .TargetType(TargetType.Static)
             .Defines(Visibility.Public, "WRAPPING_CEF_SHARED", "NOMINMAX", "USING_CEF_SHARED=1")
@@ -24,9 +24,9 @@ public static class Cef
     }
 }
 
-public class CefDoctor : DoctorAttribute
+public class CefDoctor : IDoctor
 {
-    public override bool Check()
+    public bool Check()
     {
         if (BuildSystem.TargetOS != OSPlatform.Windows)
             return true;
@@ -38,7 +38,7 @@ public class CefDoctor : DoctorAttribute
         return true;
     }
 
-    public override bool Fix()
+    public bool Fix()
     {
         Log.Fatal("Cef SDK install failed!");
         return true;
