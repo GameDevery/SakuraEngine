@@ -1630,4 +1630,119 @@ TEST_CASE("test generic sparse hash map")
             REQUIRE_EQ(map.find(1).value(), 100);
         }
     }
+
+    SUBCASE("try add")
+    {
+        MapType map = {};
+
+        // try add new
+        {
+            int32_t key   = 1;
+            int32_t value = 10;
+            auto    ref   = generic_set->try_add_unsafe(&map, &key);
+            generic_set->inner_value()->copy(generic_set->inner_kv_pair()->value(ref.ptr), &value);
+            REQUIRE(ref.is_valid());
+            REQUIRE_EQ(ref.index, 0);
+            REQUIRE_EQ(ref.ptr, &map.at(0));
+            REQUIRE_EQ(map.size(), 1);
+            REQUIRE(map.contains(key));
+            REQUIRE_EQ(map.find(key).value(), value);
+        }
+
+        // try add move new
+        {
+            int32_t key   = 2;
+            int32_t value = 20;
+            auto    ref   = generic_set->try_add_move_unsafe(&map, &key);
+            generic_set->inner_value()->copy(generic_set->inner_kv_pair()->value(ref.ptr), &value);
+            REQUIRE(ref.is_valid());
+            REQUIRE_EQ(ref.index, 1);
+            REQUIRE_EQ(ref.ptr, &map.at(1));
+            REQUIRE_EQ(map.size(), 2);
+            REQUIRE(map.contains(key));
+            REQUIRE_EQ(map.find(key).value(), 20);
+        }
+
+        // try add existing
+        {
+            int32_t key   = 1;
+            int32_t value = 100;
+            auto    ref   = generic_set->try_add_unsafe(&map, &key);
+            generic_set->inner_value()->copy(generic_set->inner_kv_pair()->value(ref.ptr), &value);
+            REQUIRE(ref.is_valid());
+            REQUIRE_EQ(ref.index, 0);
+            REQUIRE_EQ(ref.ptr, &map.at(0));
+            REQUIRE_EQ(map.size(), 2);
+            REQUIRE(map.contains(key));
+            REQUIRE_EQ(map.find(key).value(), 100);
+        }
+
+        // try add move existing
+        {
+            int32_t key   = 2;
+            int32_t value = 200;
+            auto    ref   = generic_set->try_add_move_unsafe(&map, &key);
+            generic_set->inner_value()->copy(generic_set->inner_kv_pair()->value(ref.ptr), &value);
+            REQUIRE(ref.is_valid());
+            REQUIRE_EQ(ref.index, 1);
+            REQUIRE_EQ(ref.ptr, &map.at(1));
+            REQUIRE_EQ(map.size(), 2);
+            REQUIRE(map.contains(key));
+            REQUIRE_EQ(map.find(key).value(), 200);
+        }
+    }
+
+    SUBCASE("append")
+    {
+        MapType a = { { 1, 10 }, { 2, 20 }, { 3, 30 } };
+        MapType b = { { 4, 40 }, { 5, 50 }, { 6, 60 } };
+
+        generic_set->append(&a, &b);
+        REQUIRE_EQ(a.size(), 6);
+        REQUIRE_GE(a.capacity(), 6);
+        REQUIRE(a.contains(1));
+        REQUIRE(a.contains(2));
+        REQUIRE(a.contains(3));
+        REQUIRE(a.contains(4));
+        REQUIRE(a.contains(5));
+        REQUIRE(a.contains(6));
+        REQUIRE_EQ(a.find(1).value(), 10);
+        REQUIRE_EQ(a.find(2).value(), 20);
+        REQUIRE_EQ(a.find(3).value(), 30);
+        REQUIRE_EQ(a.find(4).value(), 40);
+        REQUIRE_EQ(a.find(5).value(), 50);
+        REQUIRE_EQ(a.find(6).value(), 60);
+    }
+
+    SUBCASE("remove")
+    {
+        MapType map           = { { 1, 10 }, { 2, 20 }, { 3, 30 }, { 4, 40 }, { 5, 50 }, { 6, 60 } };
+        int32_t key_to_remove = 3;
+        bool    removed       = generic_set->remove(&map, &key_to_remove);
+        REQUIRE(removed);
+        REQUIRE_EQ(map.size(), 5);
+        REQUIRE_GE(map.capacity(), 5);
+        REQUIRE(map.contains(1));
+        REQUIRE(map.contains(2));
+        REQUIRE_FALSE(map.contains(3));
+        REQUIRE(map.contains(4));
+        REQUIRE(map.contains(5));
+        REQUIRE(map.contains(6));
+        REQUIRE_EQ(map.find(1).value(), 10);
+        REQUIRE_EQ(map.find(2).value(), 20);
+        REQUIRE_EQ(map.find(4).value(), 40);
+        REQUIRE_EQ(map.find(5).value(), 50);
+        REQUIRE_EQ(map.find(6).value(), 60);
+    }
+
+    SUBCASE("contains")
+    {
+        MapType map = { { 1, 10 }, { 2, 20 }, { 3, 30 }, { 4, 40 }, { 5, 50 }, { 6, 60 } };
+
+        // contains
+        int32_t key_to_check = 3;
+        REQUIRE(generic_set->contains(&map, &key_to_check));
+        key_to_check = 7;
+        REQUIRE_FALSE(generic_set->contains(&map, &key_to_check));
+    }
 }
