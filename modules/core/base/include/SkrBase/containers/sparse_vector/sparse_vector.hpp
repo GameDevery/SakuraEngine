@@ -110,8 +110,10 @@ struct SparseVector : protected Memory {
 
     // emplace
     template <typename... Args>
+    requires(std::is_constructible_v<typename Memory::DataType, Args...>)
     DataRef emplace(Args&&... args);
     template <typename... Args>
+    requires(std::is_constructible_v<typename Memory::DataType, Args...>)
     void emplace_at(SizeType index, Args&&... args);
 
     // append
@@ -881,6 +883,7 @@ SKR_INLINE void SparseVector<Memory>::add_at_zeroed(SizeType idx)
 // emplace
 template <typename Memory>
 template <typename... Args>
+requires(std::is_constructible_v<typename Memory::DataType, Args...>)
 SKR_INLINE typename SparseVector<Memory>::DataRef SparseVector<Memory>::emplace(Args&&... args)
 {
     DataRef info = add_unsafe();
@@ -889,6 +892,7 @@ SKR_INLINE typename SparseVector<Memory>::DataRef SparseVector<Memory>::emplace(
 }
 template <typename Memory>
 template <typename... Args>
+requires(std::is_constructible_v<typename Memory::DataType, Args...>)
 SKR_INLINE void SparseVector<Memory>::emplace_at(SizeType index, Args&&... args)
 {
     add_at_unsafe(index);

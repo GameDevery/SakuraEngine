@@ -105,8 +105,10 @@ struct SparseHashSet : protected SparseHashBase<Memory> {
 
     // emplace
     template <typename... Args>
+    requires(std::is_constructible_v<typename Memory::DataType, Args...>)
     DataRef emplace(Args&&... args);
     template <typename... Args>
+    requires(std::is_constructible_v<typename Memory::DataType, Args...>)
     DataRef emplace(DataRef hint, Args&&... args);
 
     // append
@@ -349,6 +351,7 @@ SKR_INLINE typename SparseHashSet<Memory>::DataRef SparseHashSet<Memory>::add_ex
 // emplace
 template <typename Memory>
 template <typename... Args>
+requires(std::is_constructible_v<typename Memory::DataType, Args...>)
 SKR_INLINE typename SparseHashSet<Memory>::DataRef SparseHashSet<Memory>::emplace(Args&&... args)
 {
     // emplace to data vector
@@ -357,10 +360,11 @@ SKR_INLINE typename SparseHashSet<Memory>::DataRef SparseHashSet<Memory>::emplac
     data_arr_ref.ref()._sparse_hash_set_hash = HasherType()(data_arr_ref.ref()._sparse_hash_set_data);
 
     if (DataRef ref = find_ex(
-        data_arr_ref.ref()._sparse_hash_set_hash,
-        [&data_arr_ref](const SetDataType& k) {
-            return k == data_arr_ref.ref()._sparse_hash_set_data;
-        }))
+            data_arr_ref.ref()._sparse_hash_set_hash,
+            [&data_arr_ref](const SetDataType& k) {
+                return k == data_arr_ref.ref()._sparse_hash_set_data;
+            }
+        ))
     {
         // move data
         ::skr::memory::move(ref.ptr(), &data_arr_ref.ref()._sparse_hash_set_data);
@@ -384,6 +388,7 @@ SKR_INLINE typename SparseHashSet<Memory>::DataRef SparseHashSet<Memory>::emplac
 }
 template <typename Memory>
 template <typename... Args>
+requires(std::is_constructible_v<typename Memory::DataType, Args...>)
 SKR_INLINE typename SparseHashSet<Memory>::DataRef SparseHashSet<Memory>::emplace(DataRef hint, Args&&... args)
 {
     if (hint.is_valid())

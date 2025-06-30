@@ -102,8 +102,10 @@ struct Vector : protected Memory {
 
     // emplace
     template <typename... Args>
+    requires(std::is_constructible_v<typename Memory::DataType, Args...>)
     DataRef emplace(Args&&... args);
     template <typename... Args>
+    requires(std::is_constructible_v<typename Memory::DataType, Args...>)
     void emplace_at(SizeType index, Args&&... args);
 
     // append
@@ -708,6 +710,7 @@ SKR_INLINE void Vector<Memory>::add_at_zeroed(SizeType idx, SizeType n)
 // emplace
 template <typename Memory>
 template <typename... Args>
+requires(std::is_constructible_v<typename Memory::DataType, Args...>)
 SKR_INLINE typename Vector<Memory>::DataRef Vector<Memory>::emplace(Args&&... args)
 {
     DataRef ref = add_unsafe();
@@ -716,6 +719,7 @@ SKR_INLINE typename Vector<Memory>::DataRef Vector<Memory>::emplace(Args&&... ar
 }
 template <typename Memory>
 template <typename... Args>
+requires(std::is_constructible_v<typename Memory::DataType, Args...>)
 SKR_INLINE void Vector<Memory>::emplace_at(SizeType index, Args&&... args)
 {
     add_at_unsafe(index);

@@ -99,12 +99,15 @@ struct SparseHashMap : protected SparseHashBase<Memory> {
 
     // add
     template <typename UK = MapKeyType, typename UV = MapValueType>
-    requires(TransparentToOrSameAs<UK, typename Memory::MapKeyType, typename Memory::HasherType> &&
-             std::convertible_to<UV, typename Memory::MapValueType>)
+    requires(
+        TransparentToOrSameAs<UK, typename Memory::MapKeyType, typename Memory::HasherType> &&
+        std::convertible_to<UV, typename Memory::MapValueType>
+    )
     DataRef add(UK&& key, UV&& value);
     template <typename UK = MapKeyType, typename UV = MapValueType>
-    requires(TransparentToOrSameAs<UK, typename Memory::MapKeyType, typename Memory::HasherType> &&
-             std::convertible_to<UV, typename Memory::MapValueType>)
+    requires(
+        TransparentToOrSameAs<UK, typename Memory::MapKeyType, typename Memory::HasherType> && std::convertible_to<UV, typename Memory::MapValueType>
+    )
     DataRef add(UK&& key, UV&& value, DataRef hint);
     template <typename Pred, typename ConstructFunc, typename AssignFunc>
     DataRef add_ex(HashType hash, Pred&& pred, ConstructFunc&& construct, AssignFunc&& assign);
@@ -133,12 +136,18 @@ struct SparseHashMap : protected SparseHashBase<Memory> {
 
     // emplace
     template <typename UK = MapKeyType, typename... Args>
-    requires(TransparentToOrSameAs<UK, typename Memory::MapKeyType, typename Memory::HasherType>)
+    requires(
+        TransparentToOrSameAs<UK, typename Memory::MapKeyType, typename Memory::HasherType> &&
+        std::is_constructible_v<typename Memory::MapValueType, Args...>
+    )
     DataRef emplace(UK&& key, Args&&... args);
 
     // try emplace
     template <typename UK = MapKeyType, typename... Args>
-    requires(TransparentToOrSameAs<UK, typename Memory::MapKeyType, typename Memory::HasherType>)
+    requires(
+        TransparentToOrSameAs<UK, typename Memory::MapKeyType, typename Memory::HasherType> &&
+        std::is_constructible_v<typename Memory::MapValueType, Args...>
+    )
     DataRef try_emplace(UK&& key, Args&&... args);
 
     // append
@@ -306,8 +315,10 @@ SKR_INLINE SparseHashMap<Memory>& SparseHashMap<Memory>::operator=(SparseHashMap
 // add
 template <typename Memory>
 template <typename UK, typename UV>
-requires(TransparentToOrSameAs<UK, typename Memory::MapKeyType, typename Memory::HasherType> &&
-         std::convertible_to<UV, typename Memory::MapValueType>)
+requires(
+    TransparentToOrSameAs<UK, typename Memory::MapKeyType, typename Memory::HasherType> &&
+    std::convertible_to<UV, typename Memory::MapValueType>
+)
 SKR_INLINE typename SparseHashMap<Memory>::DataRef SparseHashMap<Memory>::add(UK&& key, UV&& value)
 {
     HashType hash = HasherType()(key);
@@ -326,8 +337,10 @@ SKR_INLINE typename SparseHashMap<Memory>::DataRef SparseHashMap<Memory>::add(UK
 }
 template <typename Memory>
 template <typename UK, typename UV>
-requires(TransparentToOrSameAs<UK, typename Memory::MapKeyType, typename Memory::HasherType> &&
-         std::convertible_to<UV, typename Memory::MapValueType>)
+requires(
+    TransparentToOrSameAs<UK, typename Memory::MapKeyType, typename Memory::HasherType> &&
+    std::convertible_to<UV, typename Memory::MapValueType>
+)
 SKR_INLINE typename SparseHashMap<Memory>::DataRef SparseHashMap<Memory>::add(UK&& key, UV&& value, DataRef hint)
 {
     if (hint.is_valid())
@@ -506,7 +519,10 @@ SKR_INLINE typename SparseHashMap<Memory>::DataRef SparseHashMap<Memory>::try_ad
 // emplace
 template <typename Memory>
 template <typename UK, typename... Args>
-requires(TransparentToOrSameAs<UK, typename Memory::MapKeyType, typename Memory::HasherType>)
+requires(
+    TransparentToOrSameAs<UK, typename Memory::MapKeyType, typename Memory::HasherType> &&
+    std::is_constructible_v<typename Memory::MapValueType, Args...>
+)
 SKR_INLINE typename SparseHashMap<Memory>::DataRef SparseHashMap<Memory>::emplace(UK&& key, Args&&... args)
 {
     HashType hash = HasherType()(key);
@@ -527,7 +543,10 @@ SKR_INLINE typename SparseHashMap<Memory>::DataRef SparseHashMap<Memory>::emplac
 // try emplace
 template <typename Memory>
 template <typename UK, typename... Args>
-requires(TransparentToOrSameAs<UK, typename Memory::MapKeyType, typename Memory::HasherType>)
+requires(
+    TransparentToOrSameAs<UK, typename Memory::MapKeyType, typename Memory::HasherType> &&
+    std::is_constructible_v<typename Memory::MapValueType, Args...>
+)
 SKR_INLINE typename SparseHashMap<Memory>::DataRef SparseHashMap<Memory>::try_emplace(UK&& key, Args&&... args)
 {
     HashType hash = HasherType()(key);

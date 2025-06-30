@@ -63,6 +63,7 @@ struct Optional {
     // modifier
     void reset();
     template <typename... Args>
+    requires(std::is_constructible_v<T, Args...>)
     void emplace(Args&&... args);
 
 private:
@@ -359,6 +360,7 @@ inline void Optional<T>::reset()
 }
 template <typename T>
 template <typename... Args>
+requires(std::is_constructible_v<T, Args...>)
 inline void Optional<T>::emplace(Args&&... args)
 {
     reset();
