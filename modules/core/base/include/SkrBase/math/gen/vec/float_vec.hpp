@@ -79,7 +79,7 @@ struct float2 {
     inline float2 yy() const { return {y, y}; }
     
     // hash
-    inline static size_t _skr_hash(const float2& v) {
+    inline static skr_hash _skr_hash(const float2& v) {
         auto hasher = ::skr::Hash<float>{};
         auto result = hasher(v.x);
         result = ::skr::hash_combine(result, hasher(v.y));
@@ -205,7 +205,7 @@ struct float3 {
     inline float3 zzz() const { return {z, z, z}; }
     
     // hash
-    inline static size_t _skr_hash(const float3& v) {
+    inline static skr_hash _skr_hash(const float3& v) {
         auto hasher = ::skr::Hash<float>{};
         auto result = hasher(v.x);
         result = ::skr::hash_combine(result, hasher(v.y));
@@ -676,7 +676,7 @@ struct alignas(16) float4 {
     inline float4 wwww() const { return {w, w, w, w}; }
     
     // hash
-    inline static size_t _skr_hash(const float4& v) {
+    inline static skr_hash _skr_hash(const float4& v) {
         auto hasher = ::skr::Hash<float>{};
         auto result = hasher(v.x);
         result = ::skr::hash_combine(result, hasher(v.y));

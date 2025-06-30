@@ -21,7 +21,7 @@ extern "C" {
 
 SKR_EXTERN_C SKR_STATIC_API
 skr_hash
-skr_hash_of(const void* buffer, size_t size, size_t seed SKR_IF_CPP(= SKR_DEFAULT_HASH_SEED));
+skr_hash_of(const void* buffer, uint64_t size, skr_hash seed SKR_IF_CPP(= SKR_DEFAULT_HASH_SEED));
 
 SKR_EXTERN_C SKR_STATIC_API
 uint64_t

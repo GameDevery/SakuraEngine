@@ -254,9 +254,9 @@ uint32_t TextureViewPool::erase(CGPUTextureId texture)
     return prev_size - (uint32_t)views.size();
 }
 
-TextureViewPool::Key::operator size_t() const
+TextureViewPool::Key::operator skr_hash() const
 {
-    return skr_hash_of(this, sizeof(*this), (size_t)device);
+    return skr_hash_of(this, sizeof(*this), (skr_hash)device);
 }
 
 void TextureViewPool::initialize(CGPUDeviceId device_)

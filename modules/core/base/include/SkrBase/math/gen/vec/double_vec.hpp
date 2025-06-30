@@ -79,7 +79,7 @@ struct double2 {
     inline double2 yy() const { return {y, y}; }
     
     // hash
-    inline static size_t _skr_hash(const double2& v) {
+    inline static skr_hash _skr_hash(const double2& v) {
         auto hasher = ::skr::Hash<double>{};
         auto result = hasher(v.x);
         result = ::skr::hash_combine(result, hasher(v.y));
@@ -205,7 +205,7 @@ struct double3 {
     inline double3 zzz() const { return {z, z, z}; }
     
     // hash
-    inline static size_t _skr_hash(const double3& v) {
+    inline static skr_hash _skr_hash(const double3& v) {
         auto hasher = ::skr::Hash<double>{};
         auto result = hasher(v.x);
         result = ::skr::hash_combine(result, hasher(v.y));
@@ -676,7 +676,7 @@ struct alignas(16) double4 {
     inline double4 wwww() const { return {w, w, w, w}; }
     
     // hash
-    inline static size_t _skr_hash(const double4& v) {
+    inline static skr_hash _skr_hash(const double4& v) {
         auto hasher = ::skr::Hash<double>{};
         auto result = hasher(v.x);
         result = ::skr::hash_combine(result, hasher(v.y));

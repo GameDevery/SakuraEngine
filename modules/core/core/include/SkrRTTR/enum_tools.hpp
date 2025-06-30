@@ -308,7 +308,7 @@ struct EnumValue {
     }
 
     // hash
-    SKR_INLINE size_t _skr_hash() const
+    SKR_INLINE skr_hash _skr_hash() const
     {
         auto seed = Hash<EEnumUnderlyingType>()(_underlying_type);
         if (is_signed())

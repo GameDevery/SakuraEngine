@@ -63,8 +63,8 @@ struct UPtr {
     T& operator*() const;
 
     // skr hash
-    static size_t _skr_hash(const UPtr& obj);
-    static size_t _skr_hash(T* ptr);
+    static skr_hash _skr_hash(const UPtr& obj);
+    static skr_hash _skr_hash(T* ptr);
 
 private:
     T* _ptr = nullptr;
@@ -144,8 +144,8 @@ struct SP {
     SP<U> cast_static() const;
 
     // skr hash
-    static size_t _skr_hash(const SP& obj);
-    static size_t _skr_hash(T* ptr);
+    static skr_hash _skr_hash(const SP& obj);
+    static skr_hash _skr_hash(T* ptr);
 
 private:
     // helper
@@ -213,7 +213,7 @@ struct SPWeak {
     SPWeak<U> cast_static() const;
 
     // skr hash
-    static size_t _skr_hash(const SPWeak& obj);
+    static skr_hash _skr_hash(const SPWeak& obj);
 
 private:
     T*            _ptr     = nullptr;
@@ -534,12 +534,12 @@ inline T& UPtr<T>::operator*() const
 
 // skr hash
 template <typename T>
-inline size_t UPtr<T>::_skr_hash(const UPtr& obj)
+inline skr_hash UPtr<T>::_skr_hash(const UPtr& obj)
 {
     return skr::Hash<T*>()(obj._ptr);
 }
 template <typename T>
-inline size_t UPtr<T>::_skr_hash(T* ptr)
+inline skr_hash UPtr<T>::_skr_hash(T* ptr)
 {
     return skr::Hash<T*>()(ptr);
 }
@@ -1039,12 +1039,12 @@ inline SP<U> SP<T>::cast_static() const
 
 // skr hash
 template <typename T>
-inline size_t SP<T>::_skr_hash(const SP& obj)
+inline skr_hash SP<T>::_skr_hash(const SP& obj)
 {
     return ::skr::Hash<T*>()(obj._ptr);
 }
 template <typename T>
-inline size_t SP<T>::_skr_hash(T* ptr)
+inline skr_hash SP<T>::_skr_hash(T* ptr)
 {
     return ::skr::Hash<T*>()(ptr);
 }
@@ -1410,7 +1410,7 @@ inline SPWeak<U> SPWeak<T>::cast_static() const
 
 // skr hash
 template <typename T>
-inline size_t SPWeak<T>::_skr_hash(const SPWeak& obj)
+inline skr_hash SPWeak<T>::_skr_hash(const SPWeak& obj)
 {
     return skr::Hash<T*>()(obj._ptr);
 }

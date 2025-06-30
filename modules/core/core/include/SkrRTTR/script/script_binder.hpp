@@ -202,7 +202,7 @@ struct ScriptBinderRoot {
     }
 
     // hash
-    inline static size_t _skr_hash(const ScriptBinderRoot& self)
+    inline static skr_hash _skr_hash(const ScriptBinderRoot& self)
     {
         return hash_combine(
             Hash<EKind>()(self._kind),

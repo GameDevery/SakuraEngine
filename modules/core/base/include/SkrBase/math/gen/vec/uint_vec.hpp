@@ -78,7 +78,7 @@ struct uint2 {
     inline uint2 yy() const { return {y, y}; }
     
     // hash
-    inline static size_t _skr_hash(const uint2& v) {
+    inline static skr_hash _skr_hash(const uint2& v) {
         auto hasher = ::skr::Hash<uint32_t>{};
         auto result = hasher(v.x);
         result = ::skr::hash_combine(result, hasher(v.y));
@@ -195,7 +195,7 @@ struct uint3 {
     inline uint3 zzz() const { return {z, z, z}; }
     
     // hash
-    inline static size_t _skr_hash(const uint3& v) {
+    inline static skr_hash _skr_hash(const uint3& v) {
         auto hasher = ::skr::Hash<uint32_t>{};
         auto result = hasher(v.x);
         result = ::skr::hash_combine(result, hasher(v.y));
@@ -665,7 +665,7 @@ struct uint4 {
     inline uint4 wwww() const { return {w, w, w, w}; }
     
     // hash
-    inline static size_t _skr_hash(const uint4& v) {
+    inline static skr_hash _skr_hash(const uint4& v) {
         auto hasher = ::skr::Hash<uint32_t>{};
         auto result = hasher(v.x);
         result = ::skr::hash_combine(result, hasher(v.y));

@@ -38,8 +38,8 @@ public:
         uint64_t               tex_height        = 0;
         int64_t                unique_id         = 0;
 
-        operator size_t() const;
-        inline static size_t _skr_hash(const Key& key) { return (size_t)key; }
+        operator skr_hash() const;
+        inline static skr_hash _skr_hash(const Key& key) { return (skr_hash)key; }
 
         friend class TextureViewPool;
 

@@ -63,7 +63,7 @@ struct bool2 {
     inline bool2 yy() const { return {y, y}; }
     
     // hash
-    inline static size_t _skr_hash(const bool2& v) {
+    inline static skr_hash _skr_hash(const bool2& v) {
         auto hasher = ::skr::Hash<bool>{};
         auto result = hasher(v.x);
         result = ::skr::hash_combine(result, hasher(v.y));
@@ -165,7 +165,7 @@ struct bool3 {
     inline bool3 zzz() const { return {z, z, z}; }
     
     // hash
-    inline static size_t _skr_hash(const bool3& v) {
+    inline static skr_hash _skr_hash(const bool3& v) {
         auto hasher = ::skr::Hash<bool>{};
         auto result = hasher(v.x);
         result = ::skr::hash_combine(result, hasher(v.y));
@@ -620,7 +620,7 @@ struct bool4 {
     inline bool4 wwww() const { return {w, w, w, w}; }
     
     // hash
-    inline static size_t _skr_hash(const bool4& v) {
+    inline static skr_hash _skr_hash(const bool4& v) {
         auto hasher = ::skr::Hash<bool>{};
         auto result = hasher(v.x);
         result = ::skr::hash_combine(result, hasher(v.y));

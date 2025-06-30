@@ -78,7 +78,7 @@ struct ulong2 {
     inline ulong2 yy() const { return {y, y}; }
     
     // hash
-    inline static size_t _skr_hash(const ulong2& v) {
+    inline static skr_hash _skr_hash(const ulong2& v) {
         auto hasher = ::skr::Hash<uint64_t>{};
         auto result = hasher(v.x);
         result = ::skr::hash_combine(result, hasher(v.y));
@@ -195,7 +195,7 @@ struct ulong3 {
     inline ulong3 zzz() const { return {z, z, z}; }
     
     // hash
-    inline static size_t _skr_hash(const ulong3& v) {
+    inline static skr_hash _skr_hash(const ulong3& v) {
         auto hasher = ::skr::Hash<uint64_t>{};
         auto result = hasher(v.x);
         result = ::skr::hash_combine(result, hasher(v.y));
@@ -665,7 +665,7 @@ struct ulong4 {
     inline ulong4 wwww() const { return {w, w, w, w}; }
     
     // hash
-    inline static size_t _skr_hash(const ulong4& v) {
+    inline static skr_hash _skr_hash(const ulong4& v) {
         auto hasher = ::skr::Hash<uint64_t>{};
         auto result = hasher(v.x);
         result = ::skr::hash_combine(result, hasher(v.y));

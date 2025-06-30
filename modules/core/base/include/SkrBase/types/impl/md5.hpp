@@ -83,7 +83,7 @@ struct MD5 {
     }
 
     // skr hash
-    inline static size_t _skr_hash(const MD5& md5)
+    inline static skr_hash _skr_hash(const MD5& md5)
     {
         return md5.get_hash();
     }
