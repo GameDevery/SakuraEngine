@@ -10,6 +10,9 @@ namespace SB.Core
         public ClangCLArgumentDriver(CFamily lang, bool isPCH)
             : base(lang, isPCH)
         {
+            RawArguments.Add("-fansi-escape-codes");
+            RawArguments.Add("-fcolor-diagnostics");
+
             RawArguments.Add("-ftime-trace");
 
             // we use clang -xc/c++

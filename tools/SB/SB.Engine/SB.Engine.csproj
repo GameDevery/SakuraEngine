@@ -16,4 +16,8 @@
 		<Compile Remove="./../../../tools/SB/**/build.cs" />
 	</ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="SharpCompress" Version="0.40.0" />
+  </ItemGroup>
+
 </Project>

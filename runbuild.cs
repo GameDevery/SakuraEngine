@@ -7,7 +7,7 @@ Stopwatch sw = new();
 sw.Start();
 
 TargetCategory Categories = TargetCategory.Runtime;
-string? cmd = args.Length > 0 ? args[1] : null;
+string? cmd = args.Length > 1 ? args[1] : null;
 if (cmd == null)
 {
     cmd = "build";

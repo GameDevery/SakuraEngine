@@ -29,16 +29,16 @@ void mandelbrot(skr::SSL::AST& AST)
         // const float x = float(tid.x) / (float)tsize.x;
         auto x = AST.Variable(EVariableQualifier::Const, AST.FloatType, L"x", 
             AST.Div(
-                AST.StaticCast(AST.FloatType, AST.Field(tid->ref(), AST.UInt2Type->get_field(L"x"))), 
-                AST.StaticCast(AST.FloatType, AST.Field(tsize->ref(), AST.UInt2Type->get_field(L"x")))
+                AST.StaticCast(AST.FloatType, AST.Access(tid->ref(), AST.Constant(IntValue(0)))), 
+                AST.StaticCast(AST.FloatType, AST.Access(tsize->ref(), AST.Constant(IntValue(0))))
             ));
         mandelbrot_body->add_statement(x);
         
         // const float y = float(tid.y) / (float)tsize.y;
         auto y = AST.Variable(EVariableQualifier::Const, AST.FloatType, L"y",
             AST.Div(
-                AST.StaticCast(AST.FloatType, AST.Field(tid->ref(), AST.UInt2Type->get_field(L"y"))), 
-                AST.StaticCast(AST.FloatType, AST.Field(tsize->ref(), AST.UInt2Type->get_field(L"y")))
+                AST.StaticCast(AST.FloatType, AST.Access(tid->ref(), AST.Constant(IntValue(1)))),
+                AST.StaticCast(AST.FloatType, AST.Access(tsize->ref(), AST.Constant(IntValue(1))))
             ));
         mandelbrot_body->add_statement(y);
 
@@ -100,12 +100,12 @@ void mandelbrot(skr::SSL::AST& AST)
         
         // z = float2((z.x * z.x) - (z.y * z.y), (2.0f * z.x) * z.y) + c;
         {
-            auto temp_a = AST.Mul(AST.Field(z->ref(), AST.Float2Type->get_field(L"x")), AST.Field(z->ref(), AST.Float2Type->get_field(L"x")));
-            auto temp_b = AST.Mul(AST.Field(z->ref(), AST.Float2Type->get_field(L"y")), AST.Field(z->ref(), AST.Float2Type->get_field(L"y")));
+            auto temp_a = AST.Mul(AST.Access(z->ref(), AST.Constant(IntValue(0))), AST.Access(z->ref(), AST.Constant(IntValue(0))));
+            auto temp_b = AST.Mul(AST.Access(z->ref(), AST.Constant(IntValue(1))), AST.Access(z->ref(), AST.Constant(IntValue(1))));
             auto temp_c = AST.Sub(temp_a, temp_b);
 
-            auto temp_d = AST.Mul(AST.Constant(FloatValue("2.0f")), AST.Field(z->ref(), AST.Float2Type->get_field(L"x")));
-            auto temp_e = AST.Mul(temp_d, AST.Field(z->ref(), AST.Float2Type->get_field(L"y")));
+            auto temp_d = AST.Mul(AST.Constant(FloatValue("2.0f")), AST.Access(z->ref(), AST.Constant(IntValue(0))));
+            auto temp_e = AST.Mul(temp_d, AST.Access(z->ref(), AST.Constant(IntValue(1))));
             std::vector<Expr*> z_inits_for = { temp_c, temp_e };
             auto temp_f = AST.Construct(AST.Float2Type, z_inits_for);
             auto modify_z = AST.Assign(z->ref(), AST.Add(temp_f, c->ref()));
@@ -191,22 +191,24 @@ void mandelbrot(skr::SSL::AST& AST)
         std::vector<Expr*> tsize_inits = { AST.Constant(IntValue(1024)), AST.Constant(IntValue(1024)) };
         auto tsize = AST.Variable(EVariableQualifier::Const, AST.UInt2Type, L"tsize", AST.Construct(AST.UInt2Type, tsize_inits));
         kernel_body->add_statement(tsize);
-        auto row_pitch = AST.Variable(EVariableQualifier::Const, AST.UIntType, L"row_pitch", AST.Field(tsize->ref(), AST.UInt2Type->get_field(L"x")));
+        auto row_pitch = AST.Variable(EVariableQualifier::Const, AST.UIntType, L"row_pitch", AST.Access(tsize->ref(), AST.Constant(IntValue(0))));
         kernel_body->add_statement(row_pitch);
         
         // output.store(tid.x + tid.y * row_pitch, mandelbrot(tid, tsize));
-        auto tid_x = AST.Field(sv_tid->ref(), AST.UInt2Type->get_field(L"x"));
-        auto tid_y = AST.Field(sv_tid->ref(), AST.UInt2Type->get_field(L"y"));
+        auto tid_x = AST.Access(sv_tid->ref(), AST.Constant(IntValue(0)));
+        auto tid_y = AST.Access(sv_tid->ref(), AST.Constant(IntValue(1)));
         auto output_index = AST.Add(tid_x, AST.Mul(tid_y, row_pitch->ref()));
         
         std::vector<Expr*> mandelbrot_args = { sv_tid->ref(), tsize->ref() };
         auto mandelbrot_call = AST.CallFunction(mandelbrot->ref(), mandelbrot_args);
 
-        std::vector<Expr*> store_args = { output_index, mandelbrot_call };
-        auto output_store = AST.CallMethod(
-            AST.Method(output_buf->ref(), output_buf->type().get_method(L"Store")), 
-            store_args
-        );
+        auto StoreIntrin = AST.FindIntrinsic("BUFFER_WRITE");
+        std::vector<const TypeDecl*> arg_types = { &output_buf->type(), AST.UIntType, AST.Float4Type };
+        std::vector<EVariableQualifier> arg_qualifiers = { EVariableQualifier::Inout, EVariableQualifier::None, EVariableQualifier::None };
+        auto StoreFunction = AST.SpecializeTemplateFunction(StoreIntrin, arg_types, arg_qualifiers);
+        std::vector<Expr*> store_args = { output_buf->ref(), output_index, mandelbrot_call };
+        auto output_store = AST.CallFunction(StoreFunction->ref(), std::span<Expr*>(store_args));
+
         kernel_body->add_statement(output_store);
     }
 }
