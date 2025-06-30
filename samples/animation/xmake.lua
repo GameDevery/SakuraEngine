@@ -6,5 +6,8 @@ target("SkrAnimTemp") -- template sample for dev, remove later
     public_dependency("SkrRT")
     public_dependency("SkrAnim")
     add_deps("AppSampleCommon")
-    add_files("main.cpp")
+    add_files("anim_temp.cpp")
     -- add_files("**.hlsl")
+target_end()
+
+includes("debug_runtime")
