@@ -150,16 +150,22 @@ struct Vector : protected Memory {
 
     // remove if
     template <typename Pred>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
     bool remove_if(Pred&& pred);
     template <typename Pred>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
     bool remove_if_swap(Pred&& pred);
     template <typename Pred>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
     bool remove_last_if(Pred&& pred);
     template <typename Pred>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
     bool remove_last_if_swap(Pred&& pred);
     template <typename Pred>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
     SizeType remove_all_if(Pred&& pred);
     template <typename Pred>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
     SizeType remove_all_if_swap(Pred&& pred);
 
     // modify
@@ -192,22 +198,28 @@ struct Vector : protected Memory {
 
     // find if
     template <typename Pred>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
     DataRef find_if(Pred&& pred);
     template <typename Pred>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
     DataRef find_last_if(Pred&& pred);
     template <typename Pred>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
     CDataRef find_if(Pred&& pred) const;
     template <typename Pred>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
     CDataRef find_last_if(Pred&& pred) const;
 
     // contains
     template <typename U = DataType>
     bool contains(const U& v) const;
     template <typename Pred>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
     bool contains_if(Pred&& pred) const;
     template <typename U = DataType>
     SizeType count(const U& v) const;
     template <typename Pred>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
     SizeType count_if(Pred&& pred) const;
 
     // sort
@@ -996,6 +1008,7 @@ SKR_INLINE typename Vector<Memory>::SizeType Vector<Memory>::remove_all_swap(con
 // remove by
 template <typename Memory>
 template <typename Pred>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
 SKR_INLINE bool Vector<Memory>::remove_if(Pred&& pred)
 {
     if (DataRef ref = find_if(std::forward<Pred>(pred)))
@@ -1007,6 +1020,7 @@ SKR_INLINE bool Vector<Memory>::remove_if(Pred&& pred)
 }
 template <typename Memory>
 template <typename Pred>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
 SKR_INLINE bool Vector<Memory>::remove_if_swap(Pred&& pred)
 {
     if (DataRef ref = find_if(std::forward<Pred>(pred)))
@@ -1018,6 +1032,7 @@ SKR_INLINE bool Vector<Memory>::remove_if_swap(Pred&& pred)
 }
 template <typename Memory>
 template <typename Pred>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
 SKR_INLINE bool Vector<Memory>::remove_last_if(Pred&& pred)
 {
     if (DataRef ref = find_last_if(std::forward<Pred>(pred)))
@@ -1029,6 +1044,7 @@ SKR_INLINE bool Vector<Memory>::remove_last_if(Pred&& pred)
 }
 template <typename Memory>
 template <typename Pred>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
 SKR_INLINE bool Vector<Memory>::remove_last_if_swap(Pred&& pred)
 {
     if (DataRef ref = find_last_if(std::forward<Pred>(pred)))
@@ -1040,6 +1056,7 @@ SKR_INLINE bool Vector<Memory>::remove_last_if_swap(Pred&& pred)
 }
 template <typename Memory>
 template <typename Pred>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
 SKR_INLINE typename Vector<Memory>::SizeType Vector<Memory>::remove_all_if(Pred&& pred)
 {
     DataType* pos = algo::remove_all(begin(), end(), std::forward<Pred>(pred));
@@ -1049,6 +1066,7 @@ SKR_INLINE typename Vector<Memory>::SizeType Vector<Memory>::remove_all_if(Pred&
 }
 template <typename Memory>
 template <typename Pred>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
 SKR_INLINE typename Vector<Memory>::SizeType Vector<Memory>::remove_all_if_swap(Pred&& pred)
 {
     DataType* pos = algo::remove_all_swap(begin(), end(), pred);
@@ -1172,6 +1190,7 @@ SKR_INLINE typename Vector<Memory>::CDataRef Vector<Memory>::find_last(const U& 
 // find by
 template <typename Memory>
 template <typename Pred>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
 SKR_INLINE typename Vector<Memory>::DataRef Vector<Memory>::find_if(Pred&& pred)
 {
     if (!is_empty())
@@ -1191,6 +1210,7 @@ SKR_INLINE typename Vector<Memory>::DataRef Vector<Memory>::find_if(Pred&& pred)
 }
 template <typename Memory>
 template <typename Pred>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
 SKR_INLINE typename Vector<Memory>::DataRef Vector<Memory>::find_last_if(Pred&& pred)
 {
     if (!is_empty())
@@ -1210,12 +1230,14 @@ SKR_INLINE typename Vector<Memory>::DataRef Vector<Memory>::find_last_if(Pred&& 
 }
 template <typename Memory>
 template <typename Pred>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
 SKR_INLINE typename Vector<Memory>::CDataRef Vector<Memory>::find_if(Pred&& pred) const
 {
     return const_cast<Vector<Memory>*>(this)->find_if(std::forward<Pred>(pred));
 }
 template <typename Memory>
 template <typename Pred>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
 SKR_INLINE typename Vector<Memory>::CDataRef Vector<Memory>::find_last_if(Pred&& pred) const
 {
     return const_cast<Vector<Memory>*>(this)->find_last_if(std::forward<Pred>(pred));
@@ -1230,6 +1252,7 @@ SKR_INLINE bool Vector<Memory>::contains(const U& v) const
 }
 template <typename Memory>
 template <typename Pred>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
 SKR_INLINE bool Vector<Memory>::contains_if(Pred&& pred) const
 {
     return (bool)find_if(std::forward<Pred>(pred));
@@ -1250,6 +1273,7 @@ SKR_INLINE typename Vector<Memory>::SizeType Vector<Memory>::count(const U& v) c
 }
 template <typename Memory>
 template <typename Pred>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
 SKR_INLINE typename Vector<Memory>::SizeType Vector<Memory>::count_if(Pred&& pred) const
 {
     SizeType count = 0;

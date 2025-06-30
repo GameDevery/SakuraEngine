@@ -110,8 +110,10 @@ struct SparseHashMap : protected SparseHashBase<Memory> {
     )
     DataRef add(UK&& key, UV&& value, DataRef hint);
     template <typename Pred, typename ConstructFunc, typename AssignFunc>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::MapKeyType&>)
     DataRef add_ex(HashType hash, Pred&& pred, ConstructFunc&& construct, AssignFunc&& assign);
     template <typename Pred>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::MapKeyType&>)
     DataRef add_ex_unsafe(HashType hash, Pred&& pred);
 
     // try add (key only add)
@@ -162,6 +164,7 @@ struct SparseHashMap : protected SparseHashBase<Memory> {
     requires(TransparentToOrSameAs<UK, typename Memory::MapKeyType, typename Memory::HasherType>)
     bool remove(const UK& key);
     template <typename Pred>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::MapKeyType&>)
     bool remove_ex(HashType hash, Pred&& pred);
 
     // remove value
@@ -183,8 +186,10 @@ struct SparseHashMap : protected SparseHashBase<Memory> {
     requires(TransparentToOrSameAs<UK, typename Memory::MapKeyType, typename Memory::HasherType>)
     CDataRef find(const UK& key) const;
     template <typename Pred>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::MapKeyType&>)
     DataRef find_ex(HashType hash, Pred&& pred);
     template <typename Pred>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::MapKeyType&>)
     CDataRef find_ex(HashType hash, Pred&& pred) const;
 
     // find value
@@ -195,12 +200,16 @@ struct SparseHashMap : protected SparseHashBase<Memory> {
 
     // find if
     template <typename Pred>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::MapDataType&>)
     DataRef find_if(Pred&& pred);
     template <typename Pred>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::MapDataType&>)
     DataRef find_last_if(Pred&& pred);
     template <typename Pred>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::MapDataType&>)
     CDataRef find_if(Pred&& pred) const;
     template <typename Pred>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::MapDataType&>)
     CDataRef find_last_if(Pred&& pred) const;
 
     // contains
@@ -208,6 +217,7 @@ struct SparseHashMap : protected SparseHashBase<Memory> {
     requires(TransparentToOrSameAs<UK, typename Memory::MapKeyType, typename Memory::HasherType>)
     bool contains(const UK& key) const;
     template <typename Pred>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::MapKeyType&>)
     bool contains_ex(HashType hash, Pred&& pred) const;
 
     // contains value
@@ -368,6 +378,7 @@ SKR_INLINE typename SparseHashMap<Memory>::DataRef SparseHashMap<Memory>::add(UK
 }
 template <typename Memory>
 template <typename Pred, typename ConstructFunc, typename AssignFunc>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::MapKeyType&>)
 SKR_INLINE typename SparseHashMap<Memory>::DataRef SparseHashMap<Memory>::add_ex(HashType hash, Pred&& pred, ConstructFunc&& construct, AssignFunc&& assign)
 {
     DataRef ref = add_ex_unsafe(hash, std::forward<Pred>(pred));
@@ -384,6 +395,7 @@ SKR_INLINE typename SparseHashMap<Memory>::DataRef SparseHashMap<Memory>::add_ex
 }
 template <typename Memory>
 template <typename Pred>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::MapKeyType&>)
 SKR_INLINE typename SparseHashMap<Memory>::DataRef SparseHashMap<Memory>::add_ex_unsafe(HashType hash, Pred&& pred)
 {
     if (DataRef ref = Super::template _find<DataRef>(hash, [&pred](const MapDataType& data) { return pred(data.key); }))
@@ -650,6 +662,7 @@ SKR_INLINE bool SparseHashMap<Memory>::remove(const UK& key)
 }
 template <typename Memory>
 template <typename Pred>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::MapKeyType&>)
 SKR_INLINE bool SparseHashMap<Memory>::remove_ex(HashType hash, Pred&& pred)
 {
     return Super::_remove(hash, [&pred](const MapDataType& data) { return pred(data.key); });
@@ -688,12 +701,14 @@ SKR_INLINE typename SparseHashMap<Memory>::CDataRef SparseHashMap<Memory>::find(
 }
 template <typename Memory>
 template <typename Pred>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::MapKeyType&>)
 SKR_INLINE typename SparseHashMap<Memory>::DataRef SparseHashMap<Memory>::find_ex(HashType hash, Pred&& pred)
 {
     return Super::template _find<DataRef>(hash, [&pred](const MapDataType& data) { return pred(data.key); });
 }
 template <typename Memory>
 template <typename Pred>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::MapKeyType&>)
 SKR_INLINE typename SparseHashMap<Memory>::CDataRef SparseHashMap<Memory>::find_ex(HashType hash, Pred&& pred) const
 {
     return Super::template _find<CDataRef>(hash, [&pred](const MapDataType& data) { return pred(data.key); });
@@ -716,24 +731,28 @@ SKR_INLINE typename SparseHashMap<Memory>::CDataRef SparseHashMap<Memory>::find_
 // find if
 template <typename Memory>
 template <typename Pred>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::MapDataType&>)
 SKR_INLINE typename SparseHashMap<Memory>::DataRef SparseHashMap<Memory>::find_if(Pred&& pred)
 {
     return Super::template _find_if<DataRef>(std::forward<Pred>(pred));
 }
 template <typename Memory>
 template <typename Pred>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::MapDataType&>)
 SKR_INLINE typename SparseHashMap<Memory>::DataRef SparseHashMap<Memory>::find_last_if(Pred&& pred)
 {
     return Super::template _find_last_if<DataRef>(std::forward<Pred>(pred));
 }
 template <typename Memory>
 template <typename Pred>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::MapDataType&>)
 SKR_INLINE typename SparseHashMap<Memory>::CDataRef SparseHashMap<Memory>::find_if(Pred&& pred) const
 {
     return Super::template _find_if<CDataRef>(std::forward<Pred>(pred));
 }
 template <typename Memory>
 template <typename Pred>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::MapDataType&>)
 SKR_INLINE typename SparseHashMap<Memory>::CDataRef SparseHashMap<Memory>::find_last_if(Pred&& pred) const
 {
     return Super::template _find_last_if<CDataRef>(std::forward<Pred>(pred));
@@ -749,6 +768,7 @@ SKR_INLINE bool SparseHashMap<Memory>::contains(const UK& key) const
 }
 template <typename Memory>
 template <typename Pred>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::MapKeyType&>)
 SKR_INLINE bool SparseHashMap<Memory>::contains_ex(HashType hash, Pred&& pred) const
 {
     return (bool)find_ex(hash, std::forward<Pred>(pred));

@@ -135,10 +135,13 @@ struct SparseVector : protected Memory {
 
     // remove if
     template <typename Pred>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
     bool remove_if(Pred&& pred);
     template <typename Pred>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
     bool remove_last_if(Pred&& pred);
     template <typename Pred>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
     SizeType remove_all_if(Pred&& pred);
 
     // modify
@@ -161,22 +164,28 @@ struct SparseVector : protected Memory {
 
     // find if
     template <typename Pred>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
     DataRef find_if(Pred&& pred);
     template <typename Pred>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
     DataRef find_last_if(Pred&& pred);
     template <typename Pred>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
     CDataRef find_if(Pred&& pred) const;
     template <typename Pred>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
     CDataRef find_last_if(Pred&& pred) const;
 
     // contains
     template <typename U = DataType>
     bool contains(const U& v) const;
     template <typename Pred>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
     bool contains_if(Pred&& pred) const;
     template <typename U = DataType>
     SizeType count(const U& v) const;
     template <typename Pred>
+    requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
     SizeType count_if(Pred&& pred) const;
 
     // sort
@@ -1094,6 +1103,7 @@ SKR_INLINE typename SparseVector<Memory>::SizeType SparseVector<Memory>::remove_
 // remove if
 template <typename Memory>
 template <typename Pred>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
 SKR_INLINE bool SparseVector<Memory>::remove_if(Pred&& pred)
 {
     if (DataRef ref = find_if(std::forward<Pred>(pred)))
@@ -1105,6 +1115,7 @@ SKR_INLINE bool SparseVector<Memory>::remove_if(Pred&& pred)
 }
 template <typename Memory>
 template <typename Pred>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
 SKR_INLINE bool SparseVector<Memory>::remove_last_if(Pred&& pred)
 {
     if (DataRef ref = find_last_if(std::forward<Pred>(pred)))
@@ -1116,6 +1127,7 @@ SKR_INLINE bool SparseVector<Memory>::remove_last_if(Pred&& pred)
 }
 template <typename Memory>
 template <typename Pred>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
 SKR_INLINE typename SparseVector<Memory>::SizeType SparseVector<Memory>::remove_all_if(Pred&& pred)
 {
     SizeType count = 0;
@@ -1202,6 +1214,7 @@ SKR_INLINE typename SparseVector<Memory>::CDataRef SparseVector<Memory>::find_la
 // find if
 template <typename Memory>
 template <typename Pred>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
 SKR_INLINE typename SparseVector<Memory>::DataRef SparseVector<Memory>::find_if(Pred&& pred)
 {
     for (auto cursor = cursor_begin(); !cursor.reach_end(); cursor.move_next())
@@ -1215,6 +1228,7 @@ SKR_INLINE typename SparseVector<Memory>::DataRef SparseVector<Memory>::find_if(
 }
 template <typename Memory>
 template <typename Pred>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
 SKR_INLINE typename SparseVector<Memory>::DataRef SparseVector<Memory>::find_last_if(Pred&& pred)
 {
     for (auto cursor = cursor_end(); !cursor.reach_begin(); cursor.move_prev())
@@ -1228,12 +1242,14 @@ SKR_INLINE typename SparseVector<Memory>::DataRef SparseVector<Memory>::find_las
 }
 template <typename Memory>
 template <typename Pred>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
 SKR_INLINE typename SparseVector<Memory>::CDataRef SparseVector<Memory>::find_if(Pred&& pred) const
 {
     return const_cast<SparseVector*>(this)->find_if(std::forward<Pred>(pred));
 }
 template <typename Memory>
 template <typename Pred>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
 SKR_INLINE typename SparseVector<Memory>::CDataRef SparseVector<Memory>::find_last_if(Pred&& pred) const
 {
     return const_cast<SparseVector*>(this)->find_last_if(std::forward<Pred>(pred));
@@ -1248,6 +1264,7 @@ SKR_INLINE bool SparseVector<Memory>::contains(const U& v) const
 }
 template <typename Memory>
 template <typename Pred>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
 SKR_INLINE bool SparseVector<Memory>::contains_if(Pred&& pred) const
 {
     return (bool)find_if(std::forward<Pred>(pred));
@@ -1268,6 +1285,7 @@ SKR_INLINE typename SparseVector<Memory>::SizeType SparseVector<Memory>::count(c
 }
 template <typename Memory>
 template <typename Pred>
+requires(std::is_invocable_r_v<bool, Pred, const typename Memory::DataType&>)
 SKR_INLINE typename SparseVector<Memory>::SizeType SparseVector<Memory>::count_if(Pred&& pred) const
 {
     SizeType count = 0;
