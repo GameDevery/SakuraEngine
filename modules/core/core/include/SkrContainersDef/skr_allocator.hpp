@@ -56,7 +56,7 @@ struct SkrAllocator {
         SkrCZoneNCS(z, "containers::allocate", SKR_ALLOC_TRACY_MARKER_COLOR, 16, 1);
         void* p = sakura_malloc_alignedN(count * item_size, item_align, kContainersDefaultPoolName);
         SkrCZoneEnd(z);
-        return reinterpret_cast<T*>(p);
+        return p;
 #else
         return sakura_malloc_aligned(count * item_size, item_align);
 #endif
