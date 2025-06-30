@@ -334,7 +334,7 @@ bool GenericType::equal(const void* lhs, const void* rhs, uint64_t count) const
         }
     }
 }
-size_t GenericType::hash(const void* src) const
+skr_hash GenericType::hash(const void* src) const
 {
     SKR_ASSERT(src);
 

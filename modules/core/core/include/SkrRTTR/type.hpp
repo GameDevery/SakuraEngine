@@ -60,7 +60,7 @@ using RTTRInvokerMoveCtor    = ExportCtorInvoker<void(void*)>;
 using RTTRInvokerAssign      = ExportExternMethodInvoker<void(void*, const void*)>;
 using RTTRInvokerMoveAssign  = ExportExternMethodInvoker<void(void*, void*)>;
 using RTTRInvokerEqual       = ExportExternMethodInvoker<bool(const void*, const void*)>;
-using RTTRInvokerHash        = ExportExternMethodInvoker<size_t(const void*)>;
+using RTTRInvokerHash        = ExportExternMethodInvoker<skr_hash(const void*)>;
 using RTTRInvokerSwap        = ExportExternMethodInvoker<void(void*, void*)>;
 
 struct SKR_CORE_API RTTRType final {

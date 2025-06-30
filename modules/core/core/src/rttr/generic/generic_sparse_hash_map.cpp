@@ -235,7 +235,7 @@ bool GenericKVPair::equal(const void* lhs, const void* rhs, uint64_t count) cons
         return false;
     }
 }
-size_t GenericKVPair::hash(const void* src) const
+skr_hash GenericKVPair::hash(const void* src) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(src);
@@ -387,7 +387,7 @@ bool GenericSparseHashMap::equal(const void* lhs, const void* rhs, uint64_t coun
     SKR_ASSERT(false && "GenericSparseHashSet not support equal operation, please check feature first");
     return 0;
 }
-size_t GenericSparseHashMap::hash(const void* src) const
+skr_hash GenericSparseHashMap::hash(const void* src) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(src);
@@ -506,7 +506,7 @@ GenericSparseHashMapDataRef GenericSparseHashMap::add(void* dst, const void* key
     SKR_ASSERT(key);
     SKR_ASSERT(value);
 
-    size_t hash = _inner_kv_pair->inner_key()->hash(key);
+    skr_hash hash = _inner_kv_pair->inner_key()->hash(key);
     auto   ref  = add_ex_unsafe(dst, hash, [this, key](const void* k) {
         return _inner_kv_pair->inner_key()->equal(key, k);
     });
@@ -529,7 +529,7 @@ GenericSparseHashMapDataRef GenericSparseHashMap::add_move(void* dst, void* key,
     SKR_ASSERT(key);
     SKR_ASSERT(value);
 
-    size_t hash = _inner_kv_pair->inner_key()->hash(key);
+    skr_hash hash = _inner_kv_pair->inner_key()->hash(key);
     auto   ref  = add_ex_unsafe(dst, hash, [this, key](const void* k) {
         return _inner_kv_pair->inner_key()->equal(key, k);
     });
@@ -545,7 +545,7 @@ GenericSparseHashMapDataRef GenericSparseHashMap::add_move(void* dst, void* key,
     }
     return ref;
 }
-GenericSparseHashMapDataRef GenericSparseHashMap::add_ex_unsafe(void* dst, size_t hash, PredType pred)
+GenericSparseHashMapDataRef GenericSparseHashMap::add_ex_unsafe(void* dst, skr_hash hash, PredType pred)
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
@@ -571,7 +571,7 @@ GenericSparseHashMapDataRef GenericSparseHashMap::GenericSparseHashMap::try_add_
     SKR_ASSERT(dst);
     SKR_ASSERT(key);
 
-    size_t hash = _inner_kv_pair->inner_key()->hash(key);
+    skr_hash hash = _inner_kv_pair->inner_key()->hash(key);
     auto   ref  = add_ex_unsafe(dst, hash, [this, key](const void* k) {
         return _inner_kv_pair->inner_key()->equal(key, k);
     });
@@ -587,7 +587,7 @@ GenericSparseHashMapDataRef GenericSparseHashMap::GenericSparseHashMap::try_add_
     SKR_ASSERT(dst);
     SKR_ASSERT(key);
 
-    size_t hash = _inner_kv_pair->inner_key()->hash(key);
+    skr_hash hash = _inner_kv_pair->inner_key()->hash(key);
     auto   ref  = add_ex_unsafe(dst, hash, [this, key](const void* k) {
         return _inner_kv_pair->inner_key()->equal(key, k);
     });
@@ -646,7 +646,7 @@ bool GenericSparseHashMap::remove(void* dst, const void* v)
     SKR_ASSERT(dst);
     SKR_ASSERT(v);
 
-    size_t hash = _inner_kv_pair->inner_key()->hash(v);
+    skr_hash hash = _inner_kv_pair->inner_key()->hash(v);
     return Super::remove(dst, hash, [this, v](const void* pair) {
         return _inner_kv_pair->inner_key()->equal(v, _inner_kv_pair->key(pair));
     });
@@ -659,7 +659,7 @@ GenericSparseHashMapDataRef GenericSparseHashMap::find(void* dst, const void* ke
     SKR_ASSERT(dst);
     SKR_ASSERT(key);
 
-    size_t hash = _inner_kv_pair->inner_key()->hash(key);
+    skr_hash hash = _inner_kv_pair->inner_key()->hash(key);
     return Super::find(dst, hash, [this, key](const void* pair) {
         return _inner_kv_pair->inner_key()->equal(key, _inner_kv_pair->key(pair));
     });

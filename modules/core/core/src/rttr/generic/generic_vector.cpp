@@ -237,7 +237,7 @@ bool GenericVector::equal(const void* lhs, const void* rhs, uint64_t count) cons
 
     return true;
 }
-size_t GenericVector::hash(const void* src) const
+skr_hash GenericVector::hash(const void* src) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(src);

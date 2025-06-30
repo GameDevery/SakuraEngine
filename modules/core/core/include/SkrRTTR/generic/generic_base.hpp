@@ -42,16 +42,16 @@ struct SKR_CORE_API IGenericBase {
     virtual uint64_t alignment() const = 0;
 
     // operations, used for generic container algorithms
-    virtual bool   support(EGenericFeature feature) const                            = 0;
-    virtual void   default_ctor(void* dst, uint64_t count = 1) const                 = 0;
-    virtual void   dtor(void* dst, uint64_t count = 1) const                         = 0;
-    virtual void   copy(void* dst, const void* src, uint64_t count = 1) const        = 0;
-    virtual void   move(void* dst, void* src, uint64_t count = 1) const              = 0;
-    virtual void   assign(void* dst, const void* src, uint64_t count = 1) const      = 0;
-    virtual void   move_assign(void* dst, void* src, uint64_t count = 1) const       = 0;
-    virtual bool   equal(const void* lhs, const void* rhs, uint64_t count = 1) const = 0;
-    virtual size_t hash(const void* src) const                                       = 0;
-    virtual void   swap(void* dst, void* src, uint64_t count = 1) const              = 0;
+    virtual bool     support(EGenericFeature feature) const                            = 0;
+    virtual void     default_ctor(void* dst, uint64_t count = 1) const                 = 0;
+    virtual void     dtor(void* dst, uint64_t count = 1) const                         = 0;
+    virtual void     copy(void* dst, const void* src, uint64_t count = 1) const        = 0;
+    virtual void     move(void* dst, void* src, uint64_t count = 1) const              = 0;
+    virtual void     assign(void* dst, const void* src, uint64_t count = 1) const      = 0;
+    virtual void     move_assign(void* dst, void* src, uint64_t count = 1) const       = 0;
+    virtual bool     equal(const void* lhs, const void* rhs, uint64_t count = 1) const = 0;
+    virtual skr_hash hash(const void* src) const                                       = 0;
+    virtual void     swap(void* dst, void* src, uint64_t count = 1) const              = 0;
 };
 
 enum class EGenericTypeFlag : uint8_t
@@ -90,16 +90,16 @@ struct SKR_CORE_API GenericType final : IGenericBase {
     uint64_t alignment() const override final;
 
     // operations, used for generic container algorithms
-    bool   support(EGenericFeature feature) const override final;
-    void   default_ctor(void* dst, uint64_t count = 1) const override final;
-    void   dtor(void* dst, uint64_t count = 1) const override final;
-    void   copy(void* dst, const void* src, uint64_t count = 1) const override final;
-    void   move(void* dst, void* src, uint64_t count = 1) const override final;
-    void   assign(void* dst, const void* src, uint64_t count = 1) const override final;
-    void   move_assign(void* dst, void* src, uint64_t count = 1) const override final;
-    bool   equal(const void* lhs, const void* rhs, uint64_t count = 1) const override final;
-    size_t hash(const void* src) const override final;
-    void   swap(void* dst, void* src, uint64_t count = 1) const override final;
+    bool     support(EGenericFeature feature) const override final;
+    void     default_ctor(void* dst, uint64_t count = 1) const override final;
+    void     dtor(void* dst, uint64_t count = 1) const override final;
+    void     copy(void* dst, const void* src, uint64_t count = 1) const override final;
+    void     move(void* dst, void* src, uint64_t count = 1) const override final;
+    void     assign(void* dst, const void* src, uint64_t count = 1) const override final;
+    void     move_assign(void* dst, void* src, uint64_t count = 1) const override final;
+    bool     equal(const void* lhs, const void* rhs, uint64_t count = 1) const override final;
+    skr_hash hash(const void* src) const override final;
+    void     swap(void* dst, void* src, uint64_t count = 1) const override final;
     //===> IGenericBase API
 private:
     RTTRType*        _type = nullptr;

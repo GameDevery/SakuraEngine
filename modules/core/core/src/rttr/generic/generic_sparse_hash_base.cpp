@@ -255,7 +255,7 @@ bool GenericSparseHashSetStorage::equal(const void* lhs, const void* rhs, uint64
     SKR_ASSERT(false && "equal not support for GenericOptional, please check feature before call this function");
     return false;
 }
-size_t GenericSparseHashSetStorage::hash(const void* src) const
+skr_hash GenericSparseHashSetStorage::hash(const void* src) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(false && "hash not support for GenericOptional, please check feature before call this function");
@@ -307,23 +307,23 @@ const void* GenericSparseHashSetStorage::item_data(const void* dst) const
     SKR_ASSERT(dst);
     return dst; // item data is at the beginning of the storage
 }
-size_t GenericSparseHashSetStorage::item_hash(const void* dst) const
+skr_hash GenericSparseHashSetStorage::item_hash(const void* dst) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
     auto alignment         = std::max(_inner_alignment, alignof(uint64_t));
     auto padded_inner_size = ::skr::memory::padded_size(_inner_size, alignment); // align inner size
     auto hash_ptr          = ::skr::memory::offset_bytes(dst, padded_inner_size);
-    return *static_cast<const size_t*>(hash_ptr);
+    return *static_cast<const skr_hash*>(hash_ptr);
 }
-size_t& GenericSparseHashSetStorage::item_hash(void* dst) const
+skr_hash& GenericSparseHashSetStorage::item_hash(void* dst) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
     auto alignment         = std::max(_inner_alignment, alignof(uint64_t));
     auto padded_inner_size = ::skr::memory::padded_size(_inner_size, alignment); // align inner size
     auto hash_ptr          = ::skr::memory::offset_bytes(dst, padded_inner_size);
-    return *static_cast<size_t*>(hash_ptr);
+    return *static_cast<skr_hash*>(hash_ptr);
 }
 uint64_t GenericSparseHashSetStorage::next(const void* dst) const
 {
@@ -331,7 +331,7 @@ uint64_t GenericSparseHashSetStorage::next(const void* dst) const
     SKR_ASSERT(dst);
     auto alignment         = std::max(_inner_alignment, alignof(uint64_t));
     auto padded_inner_size = ::skr::memory::padded_size(_inner_size, alignment); // align inner size
-    auto next_ptr          = ::skr::memory::offset_bytes(dst, padded_inner_size + sizeof(size_t));
+    auto next_ptr          = ::skr::memory::offset_bytes(dst, padded_inner_size + sizeof(skr_hash));
     return *static_cast<const uint64_t*>(next_ptr);
 }
 uint64_t& GenericSparseHashSetStorage::next(void* dst) const
@@ -340,7 +340,7 @@ uint64_t& GenericSparseHashSetStorage::next(void* dst) const
     SKR_ASSERT(dst);
     auto alignment         = std::max(_inner_alignment, alignof(uint64_t));
     auto padded_inner_size = ::skr::memory::padded_size(_inner_size, alignment); // align inner size
-    auto next_ptr          = ::skr::memory::offset_bytes(dst, padded_inner_size + sizeof(size_t));
+    auto next_ptr          = ::skr::memory::offset_bytes(dst, padded_inner_size + sizeof(skr_hash));
     return *static_cast<uint64_t*>(next_ptr);
 }
 
@@ -566,7 +566,7 @@ bool GenericSparseHashBase::equal(const void* lhs, const void* rhs, uint64_t cou
     SKR_UNREACHABLE_CODE(); // should impl by child
     return false;
 }
-size_t GenericSparseHashBase::hash(const void* src) const
+skr_hash GenericSparseHashBase::hash(const void* src) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(src);
@@ -788,7 +788,7 @@ void GenericSparseHashBase::remove_at_unsafe(void* dst, uint64_t idx) const
 }
 
 // basic add/find/remove
-GenericSparseHashSetDataRef GenericSparseHashBase::add_unsafe(void* dst, size_t hash) const
+GenericSparseHashSetDataRef GenericSparseHashBase::add_unsafe(void* dst, skr_hash hash) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
@@ -803,7 +803,7 @@ GenericSparseHashSetDataRef GenericSparseHashBase::add_unsafe(void* dst, size_t 
         false
     };
 }
-GenericSparseHashSetDataRef GenericSparseHashBase::find(const void* dst, size_t hash, PredType pred) const
+GenericSparseHashSetDataRef GenericSparseHashBase::find(const void* dst, skr_hash hash, PredType pred) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
@@ -858,7 +858,7 @@ GenericSparseHashSetDataRef GenericSparseHashBase::find_next(const void* dst, Ge
 
     return {};
 }
-bool GenericSparseHashBase::remove(void* dst, size_t hash, PredType pred) const
+bool GenericSparseHashBase::remove(void* dst, skr_hash hash, PredType pred) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);
@@ -890,7 +890,7 @@ bool GenericSparseHashBase::remove(void* dst, size_t hash, PredType pred) const
     }
     return false;
 }
-uint64_t GenericSparseHashBase::remove_all(void* dst, size_t hash, PredType pred) const
+uint64_t GenericSparseHashBase::remove_all(void* dst, skr_hash hash, PredType pred) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(dst);

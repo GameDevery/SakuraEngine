@@ -252,7 +252,7 @@ bool GenericOptional::equal(const void* lhs, const void* rhs, uint64_t count) co
     SKR_ASSERT(false && "equal not support for GenericOptional, please check feature before call this function");
     return false;
 }
-size_t GenericOptional::hash(const void* src) const
+skr_hash GenericOptional::hash(const void* src) const
 {
     SKR_ASSERT(is_valid());
     SKR_ASSERT(false && "hash not support for GenericOptional, please check feature before call this function");

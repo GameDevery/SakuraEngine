@@ -26,16 +26,16 @@ struct SKR_CORE_API GenericSparseHashSetStorage final : IGenericBase {
     uint64_t alignment() const override;
 
     // operations, used for generic container algorithms
-    bool   support(EGenericFeature feature) const override;
-    void   default_ctor(void* dst, uint64_t count = 1) const override;
-    void   dtor(void* dst, uint64_t count = 1) const override;
-    void   copy(void* dst, const void* src, uint64_t count = 1) const override;
-    void   move(void* dst, void* src, uint64_t count = 1) const override;
-    void   assign(void* dst, const void* src, uint64_t count = 1) const override;
-    void   move_assign(void* dst, void* src, uint64_t count = 1) const override;
-    bool   equal(const void* lhs, const void* rhs, uint64_t count = 1) const override;
-    size_t hash(const void* src) const override;
-    void   swap(void* dst, void* src, uint64_t count = 1) const override;
+    bool     support(EGenericFeature feature) const override;
+    void     default_ctor(void* dst, uint64_t count = 1) const override;
+    void     dtor(void* dst, uint64_t count = 1) const override;
+    void     copy(void* dst, const void* src, uint64_t count = 1) const override;
+    void     move(void* dst, void* src, uint64_t count = 1) const override;
+    void     assign(void* dst, const void* src, uint64_t count = 1) const override;
+    void     move_assign(void* dst, void* src, uint64_t count = 1) const override;
+    bool     equal(const void* lhs, const void* rhs, uint64_t count = 1) const override;
+    skr_hash hash(const void* src) const override;
+    void     swap(void* dst, void* src, uint64_t count = 1) const override;
     //===> IGenericBase API
 
     // getter
@@ -45,8 +45,8 @@ struct SKR_CORE_API GenericSparseHashSetStorage final : IGenericBase {
     // item getter
     void*       item_data(void* dst) const;
     const void* item_data(const void* dst) const;
-    size_t      item_hash(const void* dst) const;
-    size_t&     item_hash(void* dst) const;
+    skr_hash    item_hash(const void* dst) const;
+    skr_hash&   item_hash(void* dst) const;
     uint64_t    next(const void* dst) const;
     uint64_t&   next(void* dst) const;
 
@@ -61,7 +61,7 @@ private:
 struct GenericSparseHashSetDataRef {
     void*    ptr           = nullptr;           // data pointer
     uint64_t index         = npos_of<uint64_t>; // index in the sparse hash set
-    size_t   hash          = 0;                 // hash value
+    skr_hash hash          = 0;                 // hash value
     bool     already_exist = false;             // if the data already exist in the sparse hash set
 
     inline bool is_valid() const { return ptr != nullptr && index != skr::npos_of<uint64_t>; }
@@ -70,7 +70,7 @@ struct GenericSparseHashSetDataRef {
 struct CGenericSparseHashSetDataRef {
     const void* ptr           = nullptr;           // data pointer
     uint64_t    index         = npos_of<uint64_t>; // index in the sparse hash set
-    size_t      hash          = 0;                 // hash value
+    skr_hash    hash          = 0;                 // hash value
     bool        already_exist = false;             // if the data already exist in the sparse hash set
 
     inline CGenericSparseHashSetDataRef(const GenericSparseHashSetDataRef& ref)
@@ -117,16 +117,16 @@ struct SKR_CORE_API GenericSparseHashBase : GenericSparseVector {
     uint64_t alignment() const override;
 
     // operations, used for generic container algorithms
-    bool   support(EGenericFeature feature) const override;
-    void   default_ctor(void* dst, uint64_t count = 1) const override;
-    void   dtor(void* dst, uint64_t count = 1) const override;
-    void   copy(void* dst, const void* src, uint64_t count = 1) const override;
-    void   move(void* dst, void* src, uint64_t count = 1) const override;
-    void   assign(void* dst, const void* src, uint64_t count = 1) const override;
-    void   move_assign(void* dst, void* src, uint64_t count = 1) const override;
-    bool   equal(const void* lhs, const void* rhs, uint64_t count = 1) const override;
-    size_t hash(const void* src) const override;
-    void   swap(void* dst, void* src, uint64_t count = 1) const override;
+    bool     support(EGenericFeature feature) const override;
+    void     default_ctor(void* dst, uint64_t count = 1) const override;
+    void     dtor(void* dst, uint64_t count = 1) const override;
+    void     copy(void* dst, const void* src, uint64_t count = 1) const override;
+    void     move(void* dst, void* src, uint64_t count = 1) const override;
+    void     assign(void* dst, const void* src, uint64_t count = 1) const override;
+    void     move_assign(void* dst, void* src, uint64_t count = 1) const override;
+    bool     equal(const void* lhs, const void* rhs, uint64_t count = 1) const override;
+    skr_hash hash(const void* src) const override;
+    void     swap(void* dst, void* src, uint64_t count = 1) const override;
     //===> IGenericBase API
 
 protected:
@@ -181,11 +181,11 @@ protected:
     void remove_at_unsafe(void* dst, uint64_t idx) const;
 
     // basic add/find/remove
-    GenericSparseHashSetDataRef add_unsafe(void* dst, size_t hash) const;
-    GenericSparseHashSetDataRef find(const void* dst, size_t hash, PredType pred) const;
+    GenericSparseHashSetDataRef add_unsafe(void* dst, skr_hash hash) const;
+    GenericSparseHashSetDataRef find(const void* dst, skr_hash hash, PredType pred) const;
     GenericSparseHashSetDataRef find_next(const void* dst, GenericSparseHashSetDataRef ref, PredType pred) const;
-    bool                        remove(void* dst, size_t hash, PredType pred) const;
-    uint64_t                    remove_all(void* dst, size_t hash, PredType pred) const;
+    bool                        remove(void* dst, skr_hash hash, PredType pred) const;
+    uint64_t                    remove_all(void* dst, skr_hash hash, PredType pred) const;
 
     // find if
     GenericSparseHashSetDataRef find_if(void* dst, PredType pred) const;
