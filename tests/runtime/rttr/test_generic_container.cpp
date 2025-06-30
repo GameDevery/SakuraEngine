@@ -1351,6 +1351,16 @@ TEST_CASE("test generic sparse hash set")
             REQUIRE(set.contains(114514));
             REQUIRE(set.contains(value));
         }
+
+        // add duplicated
+        {
+            int32_t value = 114514;
+            generic_set->add(&set, &value);
+            REQUIRE_EQ(set.size(), 2);
+            REQUIRE_GE(set.capacity(), 2);
+            REQUIRE(set.contains(114514));
+            REQUIRE(set.contains(123456));
+        }
     }
 
     SUBCASE("append")
@@ -1435,7 +1445,7 @@ TEST_CASE("test generic sparse hash map")
         REQUIRE_EQ(generic_set->bucket(&map), map.bucket());
 
         // check data with content
-        map = { {1, 10}, {2, 20}, {3, 30}, {4, 40}, {5, 50} };
+        map = { { 1, 10 }, { 2, 20 }, { 3, 30 }, { 4, 40 }, { 5, 50 } };
         REQUIRE_EQ(generic_set->size(&map), map.size());
         REQUIRE_EQ(generic_set->capacity(&map), map.capacity());
         REQUIRE_EQ(generic_set->slack(&map), map.slack());
@@ -1452,7 +1462,7 @@ TEST_CASE("test generic sparse hash map")
 
     SUBCASE("memory op")
     {
-        MapType map = { {1, 10}, {2, 20}, {3, 30}, {4, 40}, {5, 50} };
+        MapType map = { { 1, 10 }, { 2, 20 }, { 3, 30 }, { 4, 40 }, { 5, 50 } };
 
         // clear
         auto old_capacity = map.capacity();
@@ -1476,7 +1486,7 @@ TEST_CASE("test generic sparse hash map")
         REQUIRE_EQ(map.bucket(), nullptr);
 
         // release with reserve
-        map = { {1, 10}, {2, 20}, {3, 30}, {4, 40}, {5, 50} };
+        map = { { 1, 10 }, { 2, 20 }, { 3, 30 }, { 4, 40 }, { 5, 50 } };
         generic_set->release(&map, 10);
         REQUIRE_EQ(map.size(), 0);
         REQUIRE_EQ(map.sparse_size(), 0);
@@ -1498,7 +1508,7 @@ TEST_CASE("test generic sparse hash map")
 
         // reserve with content
         map.release();
-        map = { {1, 10}, {2, 20}, {3, 30}, {4, 40}, {5, 50} };
+        map = { { 1, 10 }, { 2, 20 }, { 3, 30 }, { 4, 40 }, { 5, 50 } };
         generic_set->reserve(&map, 114);
         REQUIRE_EQ(map.size(), 5);
         REQUIRE_GE(map.capacity(), 114);
@@ -1518,7 +1528,7 @@ TEST_CASE("test generic sparse hash map")
         REQUIRE_EQ(map.bucket(), nullptr);
 
         // shrink with content
-        map = { {1, 10}, {2, 20}, {3, 30}, {4, 40}, {5, 50} };
+        map = { { 1, 10 }, { 2, 20 }, { 3, 30 }, { 4, 40 }, { 5, 50 } };
         map.reserve(10000);
         generic_set->shrink(&map);
         REQUIRE_EQ(map.size(), 5);
@@ -1530,7 +1540,7 @@ TEST_CASE("test generic sparse hash map")
         REQUIRE(map.contains(5));
 
         // compact
-        map = { {1, 10}, {2, 20}, {3, 30}, {4, 40}, {5, 50}, {6, 60} };
+        map = { { 1, 10 }, { 2, 20 }, { 3, 30 }, { 4, 40 }, { 5, 50 }, { 6, 60 } };
         map.remove(2);
         map.remove(3);
         map.remove(6);
@@ -1545,7 +1555,7 @@ TEST_CASE("test generic sparse hash map")
         REQUIRE(map.contains(5));
 
         // compact stable
-        map = { {1, 10}, {2, 20}, {3, 30}, {4, 40}, {5, 50}, {6, 60} };
+        map = { { 1, 10 }, { 2, 20 }, { 3, 30 }, { 4, 40 }, { 5, 50 }, { 6, 60 } };
         map.remove(2);
         map.remove(3);
         map.remove(6);
@@ -1581,5 +1591,43 @@ TEST_CASE("test generic sparse hash map")
         REQUIRE_EQ(map.size(), 25);
         REQUIRE_EQ(map.sparse_size(), 50);
         REQUIRE_EQ(map.hole_size(), 25);
+    }
+
+    SUBCASE("add")
+    {
+        MapType map = {};
+
+        // add
+        {
+            int32_t key   = 1;
+            int32_t value = 10;
+            generic_set->add(&map, &key, &value);
+            REQUIRE_EQ(map.size(), 1);
+            REQUIRE_GE(map.capacity(), 1);
+            REQUIRE(map.contains(key));
+        }
+
+        // add move
+        {
+            int32_t key   = 2;
+            int32_t value = 20;
+            generic_set->add_move(&map, &key, &value);
+            REQUIRE_EQ(map.size(), 2);
+            REQUIRE_GE(map.capacity(), 2);
+            REQUIRE(map.contains(1));
+            REQUIRE(map.contains(key));
+        }
+
+        // add duplicates
+        {
+            int32_t key   = 1;
+            int32_t value = 100;
+            generic_set->add(&map, &key, &value);
+            REQUIRE_EQ(map.size(), 2);
+            REQUIRE_GE(map.capacity(), 2);
+            REQUIRE(map.contains(1));
+            REQUIRE(map.contains(2));
+            REQUIRE_EQ(map.find(1).value(), 100);
+        }
     }
 }

@@ -212,6 +212,7 @@ GenericSparseHashSetDataRef GenericSparseHashSet::add(void* dst, const void* v)
             return _inner->equal(v, set_v);
         }))
     { // assign case
+        ref.already_exist = true;
         _inner->assign(ref.ptr, v, 1);
         return ref;
     }
@@ -233,6 +234,7 @@ GenericSparseHashSetDataRef GenericSparseHashSet::add_move(void* dst, void* v)
             return _inner->equal(v, set_v);
         }))
     { // assign case
+        ref.already_exist = true;
         _inner->move_assign(ref.ptr, v, 1);
         return ref;
     }

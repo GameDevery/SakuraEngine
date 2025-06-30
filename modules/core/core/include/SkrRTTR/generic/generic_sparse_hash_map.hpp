@@ -42,9 +42,9 @@ struct SKR_CORE_API GenericKVPair final : IGenericBase {
     //===> IGenericBase API
 
     // getter
-    bool                            is_valid() const;
-    RC<IGenericBase>                inner_key() const;
-    RC<GenericSparseHashSetStorage> inner_value() const;
+    bool             is_valid() const;
+    RC<IGenericBase> inner_key() const;
+    RC<IGenericBase> inner_value() const;
 
     // get key & value
     void*       key(void* dst) const;

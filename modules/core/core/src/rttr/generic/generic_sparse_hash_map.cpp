@@ -54,7 +54,7 @@ MemoryTraitsData GenericKVPair::memory_traits_data() const
 uint64_t GenericKVPair::size() const
 {
     auto alignment = std::max(_inner_key_alignment, _inner_value_alignment);
-    return (int_div_ceil(_inner_key_size, alignment) + int_div_ceil(_inner_value_size, alignment)) * alignment;
+    return ::skr::memory::padded_size(_inner_key_size, alignment) + ::skr::memory::padded_size(_inner_value_size, alignment);
 }
 uint64_t GenericKVPair::alignment() const
 {
@@ -271,7 +271,7 @@ RC<IGenericBase> GenericKVPair::inner_key() const
     SKR_ASSERT(is_valid());
     return _inner_key;
 }
-RC<GenericSparseHashSetStorage> GenericKVPair::inner_value() const
+RC<IGenericBase> GenericKVPair::inner_value() const
 {
     SKR_ASSERT(is_valid());
     return _inner_value;
@@ -285,7 +285,7 @@ void* GenericKVPair::key(void* dst) const
 void* GenericKVPair::value(void* dst) const
 {
     auto alignment       = std::max(_inner_key_alignment, _inner_value_alignment);
-    auto padded_key_size = int_div_ceil(_inner_key_size, alignment) * alignment;
+    auto padded_key_size = ::skr::memory::padded_size(_inner_key_size, alignment);
     return ::skr::memory::offset_bytes(dst, padded_key_size);
 }
 const void* GenericKVPair::key(const void* dst) const
@@ -555,6 +555,7 @@ GenericSparseHashMapDataRef GenericSparseHashMap::add_ex_unsafe(void* dst, size_
     });
     if (ref)
     {
+        ref.already_exist = true;
         return ref;
     }
     else
