@@ -5,16 +5,16 @@ struct RSCharacteristic
 {
     // table count & hash
     uint32_t table_count;
-    size_t table_hash;
+    skr_hash table_hash;
     uint32_t push_constant_count;
-    size_t push_constant_hash;
+    skr_hash push_constant_hash;
     // static samplers tie with root signature
     uint32_t static_sampler_count;
-    size_t static_samplers_hash;
+    skr_hash static_samplers_hash;
     ECGPUPipelineType pipeline_type;
     operator size_t() const
     {
-        return cgpu_hash(this, sizeof(RSCharacteristic), (size_t)pipeline_type);
+        return skr_hash_of(this, sizeof(RSCharacteristic), (size_t)pipeline_type);
     }
     struct hasher { inline size_t operator()(const RSCharacteristic& val) const { return (size_t)val; } };
     struct RSTResource
@@ -71,7 +71,7 @@ public:
                 r.size = res.size;
                 r.offset = res.offset;
                 r.stages = res.stages;
-                newCharacteristic.table_hash = cgpu_hash(&r, sizeof(r), newCharacteristic.table_hash);
+                newCharacteristic.table_hash = skr_hash_of(&r, sizeof(r), newCharacteristic.table_hash);
             }
         }
         newCharacteristic.push_constant_count = RSTables->push_constant_count;
@@ -84,7 +84,7 @@ public:
             p.size = RSTables->push_constants[i].size;
             p.offset = RSTables->push_constants[i].offset;
             p.stages = RSTables->push_constants[i].stages;
-            newCharacteristic.push_constant_hash = cgpu_hash(&p, sizeof(p), newCharacteristic.push_constant_hash);
+            newCharacteristic.push_constant_hash = skr_hash_of(&p, sizeof(p), newCharacteristic.push_constant_hash);
         }
         newCharacteristic.static_sampler_count = desc->static_sampler_count;
         newCharacteristic.static_samplers_hash = ~0;
@@ -100,7 +100,7 @@ public:
                     s.binding = RSTables->static_samplers[i].binding;
                     s.id = desc->static_samplers[j];
                     newCharacteristic.static_samplers_hash =
-                        cgpu_hash(&s, sizeof(s), newCharacteristic.static_samplers_hash);
+                        skr_hash_of(&s, sizeof(s), newCharacteristic.static_samplers_hash);
                 }
             }
         }

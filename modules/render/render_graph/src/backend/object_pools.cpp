@@ -17,13 +17,13 @@ namespace render_graph
 size_t MergedBindTablePool::Key::hasher::operator()(const MergedBindTablePool::Key& val) const
 {
     const auto size = val.tables.size() * sizeof(CGPUXBindTableId);
-    return skr_hash(val.tables.data(), size, CGPU_NAME_HASH_SEED);
+    return skr_hash_of(val.tables.data(), size);
 }
 
 size_t MergedBindTablePool::Key::hasher::operator()(const MergedBindTablePool::Key::View& val) const
 {
     const auto size = val.count * sizeof(CGPUXBindTableId);
-    return skr_hash(val.tables, size, CGPU_NAME_HASH_SEED);
+    return skr_hash_of(val.tables, size);
 }
 
 size_t MergedBindTablePool::Key::equal_to::operator()(const MergedBindTablePool::Key& lhs, const MergedBindTablePool::Key& rhs) const
@@ -169,7 +169,7 @@ TexturePool::Key::Key(CGPUDeviceId device, const CGPUTextureDescriptor& desc)
 
 TexturePool::Key::operator size_t() const
 {
-    return skr_hash(this, sizeof(*this), (size_t)device);
+    return skr_hash_of(this, sizeof(*this), (size_t)device);
 }
 
 void TexturePool::initialize(CGPUDeviceId device_)
@@ -256,7 +256,7 @@ uint32_t TextureViewPool::erase(CGPUTextureId texture)
 
 TextureViewPool::Key::operator size_t() const
 {
-    return skr_hash(this, sizeof(*this), (size_t)device);
+    return skr_hash_of(this, sizeof(*this), (size_t)device);
 }
 
 void TextureViewPool::initialize(CGPUDeviceId device_)
@@ -310,7 +310,7 @@ BufferPool::Key::Key(CGPUDeviceId device, const CGPUBufferDescriptor& desc)
 
 BufferPool::Key::operator size_t() const
 {
-    return skr_hash(this, sizeof(*this), (size_t)device);
+    return skr_hash_of(this, sizeof(*this), (size_t)device);
 }
 
 void BufferPool::initialize(CGPUDeviceId device_)

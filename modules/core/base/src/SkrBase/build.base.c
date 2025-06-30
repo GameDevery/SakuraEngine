@@ -5,7 +5,7 @@
 #define XXH_INLINE_ALL
 #include "xxhash3/xxhash.h"
 
-size_t skr_hash(const void* buffer, size_t size, size_t seed)
+skr_hash skr_hash_of(const void* buffer, size_t size, size_t seed)
 {
 #if SIZE_MAX == UINT64_MAX
     return XXH64(buffer, size, seed);
@@ -16,12 +16,12 @@ size_t skr_hash(const void* buffer, size_t size, size_t seed)
 #endif
 }
 
-uint64_t skr_hash64(const void* buffer, uint64_t size, uint64_t seed)
+uint64_t skr_hash64_of(const void* buffer, uint64_t size, uint64_t seed)
 {
     return XXH3_64bits_withSeed(buffer, size, seed);
 }
 
-uint32_t skr_hash32(const void* buffer, uint32_t size, uint32_t seed)
+uint32_t skr_hash32_of(const void* buffer, uint32_t size, uint32_t seed)
 {
     return XXH32(buffer, size, seed);
 }

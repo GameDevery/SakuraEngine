@@ -18,7 +18,7 @@ skr_stable_shader_hash_t::skr_stable_shader_hash_t(uint32_t a, uint32_t b, uint3
 
 size_t skr_stable_shader_hash_t::hasher::operator()(const skr_stable_shader_hash_t& hash) const
 {
-    return skr_hash(&hash, sizeof(hash), 114514u);
+    return skr_hash_of(&hash, sizeof(hash), 114514u);
 }
 
 skr_stable_shader_hash_t skr_stable_shader_hash_t::hash_string(const char* str, uint32_t size) SKR_NOEXCEPT
@@ -26,10 +26,10 @@ skr_stable_shader_hash_t skr_stable_shader_hash_t::hash_string(const char* str, 
     if (!size) return skr_stable_shader_hash_t(0, 0, 0, 0);
     auto           result   = make_zeroed<skr_stable_shader_hash_t>();
     const uint32_t seeds[4] = { 114u, 514u, 1919u, 810u };
-    result.valuea           = skr_hash32(str, size, seeds[0]);
-    result.valueb           = skr_hash32(str, size, seeds[1]);
-    result.valuec           = skr_hash32(str, size, seeds[2]);
-    result.valued           = skr_hash32(str, size, seeds[3]);
+    result.valuea           = skr_hash32_of(str, size, seeds[0]);
+    result.valueb           = skr_hash32_of(str, size, seeds[1]);
+    result.valuec           = skr_hash32_of(str, size, seeds[2]);
+    result.valued           = skr_hash32_of(str, size, seeds[3]);
     return result;
 }
 
@@ -50,12 +50,12 @@ skr_stable_shader_hash_t::operator skr::String() const SKR_NOEXCEPT
 
 size_t skr_platform_shader_hash_t::hasher::operator()(const skr_platform_shader_hash_t& hash) const
 {
-    return skr_hash(&hash, sizeof(hash), 114514u);
+    return skr_hash_of(&hash, sizeof(hash));
 }
 
 size_t skr_platform_shader_identifier_t::hasher::operator()(const skr_platform_shader_identifier_t& hash) const
 {
-    return skr_hash(&hash, sizeof(hash), 114514u);
+    return skr_hash_of(&hash, sizeof(hash));
 }
 
 uint32_t skr_shader_option_sequence_t::find_key_index(skr::StringView in_key) const SKR_NOEXCEPT

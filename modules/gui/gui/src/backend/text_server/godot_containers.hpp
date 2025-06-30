@@ -210,8 +210,8 @@ public:
         uint32_t hash = SKR_DEFAULT_HASH_SEED_32;
         for (const auto& e : *this)
         {
-            hash = skr_hash32(&e.first, sizeof(e.first), hash);
-            hash = skr_hash32(&e.second, sizeof(e.second), hash);
+            hash = skr_hash32_of(&e.first, sizeof(e.first), hash);
+            hash = skr_hash32_of(&e.second, sizeof(e.second), hash);
         }
         return hash;
     }

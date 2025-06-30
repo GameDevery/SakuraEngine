@@ -779,7 +779,7 @@ void cgpu_update_descriptor_set_d3d12(CGPUDescriptorSetId set, const struct CGPU
         uint32_t                  HeapOffset = 0;
         if (pParam->name != CGPU_NULLPTR)
         {
-            size_t argNameHash = cgpu_name_hash(pParam->name, strlen((const char*)pParam->name));
+            size_t argNameHash = skr_hash_of(pParam->name, strlen((const char*)pParam->name), SKR_DEFAULT_HASH_SEED);
             for (uint32_t j = 0; j < ParamTable->resources_count; j++)
             {
                 if (ParamTable->resources[j].name_hash == argNameHash &&
@@ -928,9 +928,9 @@ CGPUComputePipelineId cgpu_create_compute_pipeline_d3d12(CGPUDeviceId device, co
     if (D->pPipelineLibrary)
     {
         if (CS.BytecodeLength)
-            psoShaderHash = cgpu_hash(CS.pShaderBytecode, CS.BytecodeLength, psoShaderHash);
-        psoComputeHash = cgpu_hash(&pipeline_state_desc.Flags, sizeof(D3D12_PIPELINE_STATE_FLAGS), psoComputeHash);
-        psoComputeHash = cgpu_hash(&pipeline_state_desc.NodeMask, sizeof(UINT), psoComputeHash);
+            psoShaderHash = skr_hash_of(CS.pShaderBytecode, CS.BytecodeLength, psoShaderHash);
+        psoComputeHash = skr_hash_of(&pipeline_state_desc.Flags, sizeof(D3D12_PIPELINE_STATE_FLAGS), psoComputeHash);
+        psoComputeHash = skr_hash_of(&pipeline_state_desc.NodeMask, sizeof(UINT), psoComputeHash);
         swprintf(pipelineName, PSO_NAME_LENGTH, L"%S_S%zuR%zu", "COMPUTEPSO", psoShaderHash, psoComputeHash);
         result = COM_CALL(LoadComputePipeline, D->pPipelineLibrary, pipelineName, &pipeline_state_desc, IID_ARGS(ID3D12PipelineState, &PPL->pDxPipelineState));
     }
@@ -1161,29 +1161,29 @@ CGPURenderPipelineId cgpu_create_render_pipeline_d3d12(CGPUDeviceId device, cons
     {
         // Calculate graphics pso shader hash
         if (VS.BytecodeLength)
-            psoShaderHash = cgpu_hash(VS.pShaderBytecode, VS.BytecodeLength, psoShaderHash);
+            psoShaderHash = skr_hash_of(VS.pShaderBytecode, VS.BytecodeLength, psoShaderHash);
         if (PS.BytecodeLength)
-            psoShaderHash = cgpu_hash(PS.pShaderBytecode, PS.BytecodeLength, psoShaderHash);
+            psoShaderHash = skr_hash_of(PS.pShaderBytecode, PS.BytecodeLength, psoShaderHash);
         if (DS.BytecodeLength)
-            psoShaderHash = cgpu_hash(DS.pShaderBytecode, DS.BytecodeLength, psoShaderHash);
+            psoShaderHash = skr_hash_of(DS.pShaderBytecode, DS.BytecodeLength, psoShaderHash);
         if (HS.BytecodeLength)
-            psoShaderHash = cgpu_hash(HS.pShaderBytecode, HS.BytecodeLength, psoShaderHash);
+            psoShaderHash = skr_hash_of(HS.pShaderBytecode, HS.BytecodeLength, psoShaderHash);
         if (GS.BytecodeLength)
-            psoShaderHash = cgpu_hash(GS.pShaderBytecode, GS.BytecodeLength, psoShaderHash);
+            psoShaderHash = skr_hash_of(GS.pShaderBytecode, GS.BytecodeLength, psoShaderHash);
 
         // Calculate graphics pso desc hash
-        psoRenderHash = cgpu_hash(&PPL->mDxGfxPipelineStateDesc.BlendState, sizeof(D3D12_BLEND_DESC), psoRenderHash);
-        psoRenderHash = cgpu_hash(&PPL->mDxGfxPipelineStateDesc.RasterizerState, sizeof(D3D12_RASTERIZER_DESC), psoRenderHash);
-        psoRenderHash = cgpu_hash(&PPL->mDxGfxPipelineStateDesc.DepthStencilState, sizeof(D3D12_DEPTH_STENCIL_DESC), psoRenderHash);
-        psoRenderHash = cgpu_hash(&PPL->mDxGfxPipelineStateDesc.IBStripCutValue, sizeof(D3D12_INDEX_BUFFER_STRIP_CUT_VALUE), psoRenderHash);
-        psoRenderHash = cgpu_hash(PPL->mDxGfxPipelineStateDesc.RTVFormats,
+        psoRenderHash = skr_hash_of(&PPL->mDxGfxPipelineStateDesc.BlendState, sizeof(D3D12_BLEND_DESC), psoRenderHash);
+        psoRenderHash = skr_hash_of(&PPL->mDxGfxPipelineStateDesc.RasterizerState, sizeof(D3D12_RASTERIZER_DESC), psoRenderHash);
+        psoRenderHash = skr_hash_of(&PPL->mDxGfxPipelineStateDesc.DepthStencilState, sizeof(D3D12_DEPTH_STENCIL_DESC), psoRenderHash);
+        psoRenderHash = skr_hash_of(&PPL->mDxGfxPipelineStateDesc.IBStripCutValue, sizeof(D3D12_INDEX_BUFFER_STRIP_CUT_VALUE), psoRenderHash);
+        psoRenderHash = skr_hash_of(PPL->mDxGfxPipelineStateDesc.RTVFormats,
                                   PPL->mDxGfxPipelineStateDesc.NumRenderTargets * sizeof(DXGI_FORMAT), psoRenderHash);
-        psoRenderHash = cgpu_hash(&PPL->mDxGfxPipelineStateDesc.DSVFormat, sizeof(DXGI_FORMAT), psoRenderHash);
-        psoRenderHash = cgpu_hash(&PPL->mDxGfxPipelineStateDesc.SampleDesc, sizeof(DXGI_SAMPLE_DESC), psoRenderHash);
-        psoRenderHash = cgpu_hash(&PPL->mDxGfxPipelineStateDesc.Flags, sizeof(D3D12_PIPELINE_STATE_FLAGS), psoRenderHash);
+        psoRenderHash = skr_hash_of(&PPL->mDxGfxPipelineStateDesc.DSVFormat, sizeof(DXGI_FORMAT), psoRenderHash);
+        psoRenderHash = skr_hash_of(&PPL->mDxGfxPipelineStateDesc.SampleDesc, sizeof(DXGI_SAMPLE_DESC), psoRenderHash);
+        psoRenderHash = skr_hash_of(&PPL->mDxGfxPipelineStateDesc.Flags, sizeof(D3D12_PIPELINE_STATE_FLAGS), psoRenderHash);
         for (uint32_t i = 0; i < PPL->mDxGfxPipelineStateDesc.InputLayout.NumElements; i++)
         {
-            psoRenderHash = cgpu_hash(&PPL->mDxGfxPipelineStateDesc.InputLayout.pInputElementDescs[i],
+            psoRenderHash = skr_hash_of(&PPL->mDxGfxPipelineStateDesc.InputLayout.pInputElementDescs[i],
                                       sizeof(D3D12_INPUT_ELEMENT_DESC), psoRenderHash);
         }
         swprintf(pipelineName, PSO_NAME_LENGTH, L"%S_S%zu_R%zu_RS%zu", "GRAPHICSPSO", psoShaderHash, psoRenderHash, rootSignatureNumber);

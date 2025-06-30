@@ -66,7 +66,7 @@ SKR_FORCEINLINE bool VkUtil_TryIgnoreMessage(const char* MessageId, bool Scan)
     }
     else
     {
-        const uint64_t msg_hash = cgpu_hash(MessageId, strlen(MessageId), CGPU_NAME_HASH_SEED);
+        const uint64_t msg_hash = skr_hash_of(MessageId, strlen(MessageId), SKR_DEFAULT_HASH_SEED);
         for (uint32_t i = 0; i < sizeof(kSkippedMessages) / sizeof(VkUtil_MessageToSkip); ++i)
         {
             const uint64_t hash = kSkippedMessages[i].hash;
@@ -84,7 +84,7 @@ SKR_FORCEINLINE void VkUtil_InitializeMessagesToSkip()
     for (uint32_t i = 0; i < sizeof(kSkippedMessages) / sizeof(VkUtil_MessageToSkip); ++i)
     {
         const char* what = kSkippedMessages[i].what;
-        kSkippedMessages[i].hash = cgpu_hash(what, strlen(what), CGPU_NAME_HASH_SEED);
+        kSkippedMessages[i].hash = skr_hash_of(what, strlen(what), SKR_DEFAULT_HASH_SEED);
     }
 }
 
@@ -418,7 +418,7 @@ void VkUtil_InitializeShaderReflection(CGPUDeviceId device, CGPUShaderLibrary_Vu
                     current_res->type = RTLut[current_binding->descriptor_type];
                     current_res->name = current_binding->name;
                     current_res->name_hash =
-                    cgpu_name_hash(current_binding->name, strlen(current_binding->name));
+                    skr_hash_of(current_binding->name, strlen(current_binding->name), SKR_DEFAULT_HASH_SEED);
                     current_res->size = current_binding->count;
                     // Solve Dimension
                     if ((current_binding->type_description->type_flags & SPV_REFLECT_TYPE_FLAG_EXTERNAL_IMAGE) ||
@@ -445,7 +445,7 @@ void VkUtil_InitializeShaderReflection(CGPUDeviceId device, CGPUShaderLibrary_Vu
                 current_res->binding = 0;
                 current_res->name = push_constants_name;
                 current_res->name_hash =
-                cgpu_name_hash(current_res->name, strlen(current_res->name));
+                skr_hash_of(current_res->name, strlen(current_res->name), SKR_DEFAULT_HASH_SEED);
                 current_res->stages = S->pReflect->shader_stage;
                 current_res->size = root_sets[i]->size;
                 current_res->offset = root_sets[i]->offset;
