@@ -27,19 +27,42 @@ float4 mandelbrot(uint2 tid, uint2 tsize){
   return float4(d + (e * cos((((f * t) + g) * 2.000000) * 3.141593)), 1.000000);
 }
 
+template <typename T, access a>
+struct Buffer;
+
 template <typename T>
-struct RWStructuredBuffer
+struct Buffer<T, access::read>
 {
-    device T* data;
-    size_t size;
+  constant T* cgpu_buffer_data;
+  uint32_t cgpu_buffer_size;
 };
+
+template <typename T>
+struct Buffer<T, access::read_write>
+{
+  void Store(uint32_t index, T v) {
+    cgpu_buffer_data[index] = v;
+  }
+
+  device T* cgpu_buffer_data;
+  uint32_t cgpu_buffer_size;
+};
+
+template <typename T>
+using RWBuffer = Buffer<T, access::read_write>;
+
+struct SRT
+{
+  RWBuffer<float4> buf;
+};
+constant SRT& constant srt [[buffer(0)]];
 
 kernel void compute_main(
     uint2 tid [[thread_position_in_grid]],
-    device RWStructuredBuffer<float4>& output [[buffer(0)]]
+    constant SRT& _srt [[buffer(0)]]
 )
 {
-  uint2 tsize = uint2(1024, 1024);
+  uint2 tsize = uint2(3200, 2400);
   uint row_pitch = tsize.x;
-  output.data[tid.x + (tid.y * row_pitch)] = mandelbrot(tid, tsize);
+  ((SRT)srt).buf.Store(tid.x + (tid.y * row_pitch), mandelbrot(tid, tsize));
 }
