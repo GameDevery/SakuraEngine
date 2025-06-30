@@ -7,11 +7,13 @@
 #include <SkrContainers/vector.hpp>
 #include <SkrContainers/sparse_vector.hpp>
 #include <SkrContainers/set.hpp>
+#include <SkrContainers/map.hpp>
 
 #include <SkrRTTR/generic/generic_optional.hpp>
 #include <SkrRTTR/generic/generic_vector.hpp>
 #include <SkrRTTR/generic/generic_sparse_vector.hpp>
 #include <SkrRTTR/generic/generic_sparse_hash_set.hpp>
+#include <SkrRTTR/generic/generic_sparse_hash_map.hpp>
 
 struct OpTester {
     static int  ctor_count;
@@ -1404,5 +1406,180 @@ TEST_CASE("test generic sparse hash set")
         REQUIRE(generic_set->is_sub_set_of(&c, &full));
         REQUIRE_FALSE(generic_set->is_sub_set_of(&d, &full));
         REQUIRE_FALSE(generic_set->is_sub_set_of(&a, &b));
+    }
+}
+
+TEST_CASE("test generic sparse hash map")
+{
+    using namespace skr;
+
+    using MapType                        = Map<int32_t, int32_t>;
+    RC<GenericSparseHashMap> generic_set = build_generic(type_signature_of<MapType>()).cast_static<GenericSparseHashMap>();
+
+    SUBCASE("data get")
+    {
+        MapType map;
+
+        // check empty data
+        REQUIRE_EQ(generic_set->size(&map), map.size());
+        REQUIRE_EQ(generic_set->capacity(&map), map.capacity());
+        REQUIRE_EQ(generic_set->slack(&map), map.slack());
+        REQUIRE_EQ(generic_set->sparse_size(&map), map.sparse_size());
+        REQUIRE_EQ(generic_set->hole_size(&map), map.hole_size());
+        REQUIRE_EQ(generic_set->bit_size(&map), map.bit_size());
+        REQUIRE_EQ(generic_set->freelist_head(&map), map.freelist_head());
+        REQUIRE_EQ(generic_set->is_compact(&map), map.is_compact());
+        REQUIRE_EQ(generic_set->is_empty(&map), map.is_empty());
+        REQUIRE_EQ(generic_set->storage(&map), map.data_vector().storage());
+        REQUIRE_EQ(generic_set->bit_data(&map), map.data_vector().bit_data());
+        REQUIRE_EQ(generic_set->bucket(&map), map.bucket());
+
+        // check data with content
+        map = { {1, 10}, {2, 20}, {3, 30}, {4, 40}, {5, 50} };
+        REQUIRE_EQ(generic_set->size(&map), map.size());
+        REQUIRE_EQ(generic_set->capacity(&map), map.capacity());
+        REQUIRE_EQ(generic_set->slack(&map), map.slack());
+        REQUIRE_EQ(generic_set->sparse_size(&map), map.sparse_size());
+        REQUIRE_EQ(generic_set->hole_size(&map), map.hole_size());
+        REQUIRE_EQ(generic_set->bit_size(&map), map.bit_size());
+        REQUIRE_EQ(generic_set->freelist_head(&map), map.freelist_head());
+        REQUIRE_EQ(generic_set->is_compact(&map), map.is_compact());
+        REQUIRE_EQ(generic_set->is_empty(&map), map.is_empty());
+        REQUIRE_EQ(generic_set->storage(&map), map.data_vector().storage());
+        REQUIRE_EQ(generic_set->bit_data(&map), map.data_vector().bit_data());
+        REQUIRE_EQ(generic_set->bucket(&map), map.bucket());
+    }
+
+    SUBCASE("memory op")
+    {
+        MapType map = { {1, 10}, {2, 20}, {3, 30}, {4, 40}, {5, 50} };
+
+        // clear
+        auto old_capacity = map.capacity();
+        generic_set->clear(&map);
+        REQUIRE_EQ(map.size(), 0);
+        REQUIRE_EQ(map.sparse_size(), 0);
+        REQUIRE_EQ(map.hole_size(), 0);
+        REQUIRE_EQ(map.capacity(), old_capacity);
+        REQUIRE_NE(map.data_vector().storage(), nullptr);
+        REQUIRE_NE(map.data_vector().bit_data(), nullptr);
+        REQUIRE_NE(map.bucket(), nullptr);
+
+        // release
+        generic_set->release(&map);
+        REQUIRE_EQ(map.size(), 0);
+        REQUIRE_EQ(map.sparse_size(), 0);
+        REQUIRE_EQ(map.hole_size(), 0);
+        REQUIRE_EQ(map.capacity(), 0);
+        REQUIRE_EQ(map.data_vector().storage(), nullptr);
+        REQUIRE_EQ(map.data_vector().bit_data(), nullptr);
+        REQUIRE_EQ(map.bucket(), nullptr);
+
+        // release with reserve
+        map = { {1, 10}, {2, 20}, {3, 30}, {4, 40}, {5, 50} };
+        generic_set->release(&map, 10);
+        REQUIRE_EQ(map.size(), 0);
+        REQUIRE_EQ(map.sparse_size(), 0);
+        REQUIRE_EQ(map.hole_size(), 0);
+        REQUIRE_GE(map.capacity(), 10);
+        REQUIRE_NE(map.data_vector().storage(), nullptr);
+        REQUIRE_NE(map.data_vector().bit_data(), nullptr);
+        REQUIRE_NE(map.bucket(), nullptr);
+
+        // reserve
+        generic_set->reserve(&map, 114514);
+        REQUIRE_EQ(map.size(), 0);
+        REQUIRE_EQ(map.sparse_size(), 0);
+        REQUIRE_EQ(map.hole_size(), 0);
+        REQUIRE_EQ(map.capacity(), 114514);
+        REQUIRE_NE(map.data_vector().storage(), nullptr);
+        REQUIRE_NE(map.data_vector().bit_data(), nullptr);
+        REQUIRE_NE(map.bucket(), nullptr);
+
+        // reserve with content
+        map.release();
+        map = { {1, 10}, {2, 20}, {3, 30}, {4, 40}, {5, 50} };
+        generic_set->reserve(&map, 114);
+        REQUIRE_EQ(map.size(), 5);
+        REQUIRE_GE(map.capacity(), 114);
+        REQUIRE(map.contains(1));
+        REQUIRE(map.contains(2));
+        REQUIRE(map.contains(3));
+        REQUIRE(map.contains(4));
+        REQUIRE(map.contains(5));
+
+        // shrink
+        map.clear();
+        generic_set->shrink(&map);
+        REQUIRE_EQ(map.size(), 0);
+        REQUIRE_EQ(map.sparse_size(), 0);
+        REQUIRE_EQ(map.hole_size(), 0);
+        REQUIRE_EQ(map.capacity(), 0);
+        REQUIRE_EQ(map.bucket(), nullptr);
+
+        // shrink with content
+        map = { {1, 10}, {2, 20}, {3, 30}, {4, 40}, {5, 50} };
+        map.reserve(10000);
+        generic_set->shrink(&map);
+        REQUIRE_EQ(map.size(), 5);
+        REQUIRE_GE(map.capacity(), 5);
+        REQUIRE(map.contains(1));
+        REQUIRE(map.contains(2));
+        REQUIRE(map.contains(3));
+        REQUIRE(map.contains(4));
+        REQUIRE(map.contains(5));
+
+        // compact
+        map = { {1, 10}, {2, 20}, {3, 30}, {4, 40}, {5, 50}, {6, 60} };
+        map.remove(2);
+        map.remove(3);
+        map.remove(6);
+        REQUIRE_FALSE(generic_set->is_compact(&map));
+        REQUIRE(generic_set->compact(&map));
+        REQUIRE_EQ(map.size(), 3);
+        REQUIRE_EQ(map.sparse_size(), 3);
+        REQUIRE_EQ(map.hole_size(), 0);
+        REQUIRE_GE(map.capacity(), 6);
+        REQUIRE(map.contains(1));
+        REQUIRE(map.contains(4));
+        REQUIRE(map.contains(5));
+
+        // compact stable
+        map = { {1, 10}, {2, 20}, {3, 30}, {4, 40}, {5, 50}, {6, 60} };
+        map.remove(2);
+        map.remove(3);
+        map.remove(6);
+        REQUIRE_FALSE(generic_set->is_compact(&map));
+        REQUIRE(generic_set->compact_stable(&map));
+        REQUIRE_EQ(map.size(), 3);
+        REQUIRE_EQ(map.sparse_size(), 3);
+        REQUIRE_EQ(map.hole_size(), 0);
+        REQUIRE_GE(map.capacity(), 6);
+        REQUIRE(map.contains(1));
+        REQUIRE(map.contains(4));
+        REQUIRE(map.contains(5));
+
+        // compact top
+        map.clear();
+        for (size_t i = 0; i < 100; ++i)
+        {
+            map.add(i, i * 10);
+        }
+        for (size_t i = 0; i < 50; ++i)
+        {
+            if (i % 2 == 0)
+            {
+                map.remove_at(i);
+            }
+        }
+        for (size_t i = 50; i < 100; ++i)
+        {
+            map.remove_at(i);
+        }
+        REQUIRE_FALSE(generic_set->is_compact(&map));
+        REQUIRE(generic_set->compact_top(&map));
+        REQUIRE_EQ(map.size(), 25);
+        REQUIRE_EQ(map.sparse_size(), 50);
+        REQUIRE_EQ(map.hole_size(), 25);
     }
 }
