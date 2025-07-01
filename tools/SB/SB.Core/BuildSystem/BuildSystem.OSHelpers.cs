@@ -96,7 +96,6 @@ namespace SB
         public static string GeneratedSourceStore = ".gens";
         public static string TempPath { get; set; } = Directory.CreateDirectory(Path.Join(Directory.GetCurrentDirectory(), ".sb")).FullName;
         public static string BuildPath { get; set; } = TempPath!;
-        public static string PackageTempPath { get; set; } = TempPath!;
         public static string PackageBuildPath { get; set; } = TempPath!;
     }
 

@@ -1,0 +1,7 @@
+CompileFlags:
+  Add: [-D__skr_clangd__, -I./tools/shader_compiler/LLVM/test_shaders/, -I./../tools/shader_compiler/LLVM/test_shaders/]
+
+Diagnostics:
+  Suppress:
+    - pragma_attribute_no_pop_eof
+    - pragma_attribute_stack_mismatch

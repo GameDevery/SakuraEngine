@@ -19,8 +19,9 @@ struct FunctionStack
 public:
     const skr::SSL::TypeDecl* methodThisType() const;
 
-    std::map<const clang::Expr*, skr::SSL::Expr*> _lambda_expr_redirects;
-    std::map<const clang::VarDecl*, skr::SSL::ParamVarDecl*> _lambda_value_redirects;
+    std::map<const clang::Expr*, skr::SSL::Expr*> _member_redirects;
+    skr::SSL::Expr* _this_redirect;
+    std::map<const clang::VarDecl*, skr::SSL::ParamVarDecl*> _value_redirects;
     std::vector<skr::SSL::ParamVarDecl*> _captured_params;
     struct CapturedParamInfo
     {
@@ -128,6 +129,7 @@ protected:
     }
 
 protected:
+    void CheckStageInputs(const clang::FunctionDecl* x, skr::SSL::ShaderStage stage);
     void DumpWithLocation(const clang::Stmt *stmt) const;
     void DumpWithLocation(const clang::Decl *decl) const;
     void ReportFatalError(const std::string& message) const;

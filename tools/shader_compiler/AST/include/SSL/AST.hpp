@@ -88,7 +88,9 @@ public:
     const AccelTypeDecl* Accel();
     const RayQueryTypeDecl* RayQuery(RayQueryFlags flags);
     ByteBufferTypeDecl* ByteBuffer(BufferFlags flags);
+    ConstantBufferTypeDecl* ConstantBuffer(const TypeDecl* element);
     StructuredBufferTypeDecl* StructuredBuffer(const TypeDecl* element, BufferFlags flags);
+    SamplerDecl* Sampler();
     Texture2DTypeDecl* Texture2D(const TypeDecl* element, TextureFlags flags);
     Texture3DTypeDecl* Texture3D(const TypeDecl* element, TextureFlags flags);
 
@@ -146,11 +148,13 @@ private:
     std::vector<Decl*> _decls;
     std::vector<Stmt*> _stmts;
     AccelTypeDecl* _accel = nullptr;
+    SamplerDecl* _sampler = nullptr;
     std::map<RayQueryFlags, RayQueryTypeDecl*> _ray_queries;
     std::map<std::pair<const TypeDecl*, uint32_t>, VectorTypeDecl*> _vecs;
     std::map<std::pair<const TypeDecl*, std::array<uint32_t, 2>>, MatrixTypeDecl*> _matrices;
     std::map<std::pair<const TypeDecl*, uint32_t>, ArrayTypeDecl*> _arrs;
     std::map<std::pair<const TypeDecl*, BufferFlags>, BufferTypeDecl*> _buffers;
+    std::map<const TypeDecl*, BufferTypeDecl*> _cbuffers;
     std::map<std::pair<const TypeDecl*, TextureFlags>, Texture2DTypeDecl*> _texture2ds;
     std::map<std::pair<const TypeDecl*, TextureFlags>, Texture3DTypeDecl*> _texture3ds;
     std::vector<TypeDecl*> _types;

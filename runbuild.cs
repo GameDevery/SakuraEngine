@@ -12,10 +12,17 @@ if (cmd == null)
 {
     cmd = "build";
 }
+
 if (cmd == "build")
+{
+    BuildSystem.GlobalConfiguration = "debug";
     Categories = TargetCategory.Runtime | TargetCategory.DevTime;
+}
 else if (cmd == "tools")
+{
+    BuildSystem.GlobalConfiguration = "release";
     Categories = TargetCategory.Tool;
+}
 
 Engine.SetEngineDirectory(SourceLocation.Directory());
 var Toolchain = Engine.Bootstrap(SourceLocation.Directory(), Categories); 
@@ -47,3 +54,18 @@ Log.Information($"Link Total: {CppLinkEmitter.Time / 1000.0f}s");
 Log.CloseAndFlush();
 
 CompileCommandsEmitter.WriteToFile("compile_commands.json");
+
+if (cmd == "tools")
+{
+    BuildSystem.Artifacts.AsParallel().ForAll(artifact =>
+    {
+        if (artifact is LinkResult Program)
+        {
+            if (!Program.IsRestored)
+            {
+                // copy to /.sb/tools
+                File.Copy(Program.TargetFile, Path.Combine(SourceLocation.Directory(), ".sb", "tools", Path.GetFileName(Program.TargetFile)), true);
+            }
+        }
+    });
+}

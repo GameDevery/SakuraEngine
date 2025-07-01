@@ -184,6 +184,12 @@ ResourceTypeDecl::ResourceTypeDecl(AST& ast, const String& name)
 
 }
 
+SamplerDecl::SamplerDecl(AST& ast)
+    : ResourceTypeDecl(ast, L"SamplerState")
+{
+
+}
+
 AccelTypeDecl::AccelTypeDecl(AST& ast)
     : ResourceTypeDecl(ast, L"AccelerationStructure")
 {
@@ -192,6 +198,12 @@ AccelTypeDecl::AccelTypeDecl(AST& ast)
 
 BufferTypeDecl::BufferTypeDecl(AST& ast, const String& name, BufferFlags flags)
     : ResourceTypeDecl(ast, name), _flags(flags)
+{
+
+}
+
+ConstantBufferTypeDecl::ConstantBufferTypeDecl(AST& ast, const TypeDecl* element)
+    : BufferTypeDecl(ast, std::format(L"ConstantBuffer<{}>", element->name()), BufferFlags::None)
 {
 
 }

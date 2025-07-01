@@ -478,6 +478,21 @@ ByteBufferTypeDecl* AST::ByteBuffer(BufferFlags flags)
     return new_type;
 }
 
+ConstantBufferTypeDecl* AST::ConstantBuffer(const TypeDecl* element)
+{
+    if (element == nullptr) ReportFatalError(L"ConstantBuffer: Element type cannot be null");
+
+    auto&& iter = _cbuffers.find(element);
+    if (iter != _cbuffers.end())
+        return dynamic_cast<ConstantBufferTypeDecl*>(iter->second);
+
+    auto new_type = new ConstantBufferTypeDecl(*this, element);
+    _types.emplace_back(new_type);
+    _decls.emplace_back(new_type);
+    _cbuffers[element] = new_type;
+    return new_type;
+}
+
 StructuredBufferTypeDecl* AST::StructuredBuffer(const TypeDecl* element, BufferFlags flags)
 {
     if (element == nullptr) ReportFatalError(L"StructuredBuffer: Element type cannot be null");
@@ -492,6 +507,16 @@ StructuredBufferTypeDecl* AST::StructuredBuffer(const TypeDecl* element, BufferF
     _decls.emplace_back(new_type);
     _buffers[key] = new_type;
     return new_type;
+}
+
+SamplerDecl* AST::Sampler()
+{
+    if (_sampler)
+        return _sampler;
+
+    _sampler = new SamplerDecl(*this);
+    _decls.emplace_back(_sampler);
+    return _sampler;
 }
 
 Texture2DTypeDecl* AST::Texture2D(const TypeDecl* element, TextureFlags flags)
@@ -740,9 +765,17 @@ void AST::DeclareIntrinstics()
             return IntBufferFamily->validate(qualifier, type) || IntSharedArrayFamily->validate(qualifier, type);
         });
 
+    auto SamplerFamily = DeclareVarConcept(L"SamplerFamily", 
+        [this](EVariableQualifier qualifier, const TypeDecl* type) {
+            return (dynamic_cast<const skr::SSL::SamplerDecl*>(type) != nullptr);
+        });
     auto TextureFamily = DeclareVarConcept(L"TextureFamily", 
         [this](EVariableQualifier qualifier, const TypeDecl* type) {
             return (dynamic_cast<const skr::SSL::TextureTypeDecl*>(type) != nullptr);
+        });
+    auto Texture2DFamily = DeclareVarConcept(L"Texture2DFamily", 
+        [this](EVariableQualifier qualifier, const TypeDecl* type) {
+            return (dynamic_cast<const skr::SSL::Texture2DTypeDecl*>(type) != nullptr);
         });
     auto FloatTexture2DFamily = DeclareVarConcept(L"FloatTextureFamily", 
         [this](EVariableQualifier qualifier, const TypeDecl* type) {
@@ -909,6 +942,17 @@ void AST::DeclareIntrinstics()
     _intrinstics["TEXTURE3D_SAMPLE_GRAD"] = DeclareTemplateFunction(L"texture3d_sample_grad", Float4Type, Texture3DSampleGradParams);
     std::array<VarConceptDecl*, 7> Texture3DSampleGradLevelParams = { FloatTexture3DFamily, FloatVector3D, FloatVector3D, FloatVector3D, FloatScalar, IntScalar, IntScalar };
     _intrinstics["TEXTURE3D_SAMPLE_GRAD_LEVEL"] = DeclareTemplateFunction(L"texture3d_sample_grad_level", Float4Type, Texture3DSampleGradLevelParams);
+
+    std::array<VarConceptDecl*, 3> Sample2DParams = { SamplerFamily, Texture2DFamily, IntVector };
+    _intrinstics["SAMPLE2D"] = DeclareTemplateFunction(L"sample2d", [this](auto pts) {
+        auto pt = &dynamic_cast<const Texture2DTypeDecl*>(pts[1])->element();
+        if (pt == FloatType) return Float4Type;
+        if (pt == HalfType) return Half4Type;
+        if (pt == IntType) return Int4Type;
+        if (pt == UIntType) return UInt4Type;
+        if (pt == BoolType) return Bool4Type;
+        return (const TypeDecl*)nullptr;
+    }, Sample2DParams);
 
     _intrinstics["WAVE_IS_FIRST_ACTIVE_LANE"] = DeclareTemplateFunction(L"wave_is_first_active_lane", BoolType, {});
     _intrinstics["WAVE_ACTIVE_ALL_EQUAL"] = DeclareTemplateFunction(L"wave_active_all_equal", ReturnBoolVecWithSameDim, OneArithmeticVec);

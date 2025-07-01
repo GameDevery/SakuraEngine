@@ -32,6 +32,11 @@ ResourceBindAttr::ResourceBindAttr(uint32_t binding, uint32_t group)
 
 }
 
+StageInoutAttr::StageInoutAttr()
+{
+
+}
+
 StageAttr::StageAttr(ShaderStage stage) 
     : _stage(stage)
 {

@@ -60,6 +60,13 @@ private:
     uint32_t _binding = 0;
 };
 
+struct StageInoutAttr : public Attr
+{
+private:
+    friend struct AST;
+    StageInoutAttr();
+};
+
 struct StageAttr : public Attr
 {
 public:

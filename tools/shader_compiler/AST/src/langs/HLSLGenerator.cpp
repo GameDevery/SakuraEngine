@@ -2,6 +2,17 @@
 
 namespace skr::SSL
 {
+template <typename T>
+inline static T* FindAttr(std::span<Attr* const> attrs)
+{
+    for (auto attr : attrs)
+    {
+        if (auto found = dynamic_cast<T*>(attr))
+            return found;
+    }
+    return nullptr;
+}
+
 inline static bool NeedParens(const Stmt* stmt)
 {
     if (auto parent = stmt->parent())
@@ -14,6 +25,22 @@ inline static bool NeedParens(const Stmt* stmt)
         }
     }
     return false;
+}
+
+inline static String GetTypeName(const TypeDecl* type)
+{
+    if (auto asTexture = dynamic_cast<const TextureTypeDecl*>(type))
+    {
+        if (!has_flag(asTexture->flags(), TextureFlags::ReadWrite))
+        {
+            // remove <T> if is not RW
+            const auto& name = type->name();
+            const auto pos = name.find(L'<');
+            if (pos != String::npos) 
+                return name.substr(0, pos);
+        }
+    }
+    return type->name();
 }
 
 static const std::unordered_map<String, String> SystemValueMap = {
@@ -32,7 +59,7 @@ static const std::unordered_map<String, String> SystemValueMap = {
     { L"ThreadIDInGroup", L"SV_GroupIndex" },         // ComputeStage Input
 };
 static const String UnknownSystemValue = L"UnknownSystemValue";
-const String& GetSVForBuiltin(const String& builtin)
+inline static const String& GetSVForBuiltin(const String& builtin)
 {
     auto it = SystemValueMap.find(builtin);
     if (it != SystemValueMap.end())
@@ -162,7 +189,7 @@ void HLSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::SSL::Stmt* stmt)
     else if (auto bitwiseCast = dynamic_cast<const BitwiseCastExpr*>(stmt))
     {
         auto _type = bitwiseCast->type();
-        sb.append(L"bit_cast<" + _type->name() + L">(");
+        sb.append(L"bit_cast<" + GetTypeName(_type) + L">(");
         visitExpr(sb, bitwiseCast->expr());
         sb.append(L")");
     }
@@ -287,7 +314,7 @@ void HLSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::SSL::Stmt* stmt)
             args = constructExpr->args();
         }
 
-        sb.append(constructExpr->type()->name() + L"(");
+        sb.append(GetTypeName(constructExpr->type()) + L"(");
         for (size_t i = 0; i < args.size(); i++)
         {
             auto arg = args[i];
@@ -391,7 +418,7 @@ void HLSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::SSL::Stmt* stmt)
     }
     else if (auto staticCast = dynamic_cast<const StaticCastExpr*>(stmt))
     {
-        sb.append(L"((" + staticCast->type()->name() + L")");
+        sb.append(L"((" + GetTypeName(staticCast->type()) + L")");
         visitExpr(sb, staticCast->expr());
         sb.append(L")");
     }
@@ -535,14 +562,17 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::SSL::TypeDecl* typeDe
 {
     using namespace skr::SSL;
     const bool DUMP_BUILTIN_TYPES = false;
+    const bool IsStageInout = FindAttr<StageInoutAttr>(typeDecl->attrs());
     if (!typeDecl->is_builtin())
     {
-        sb.append(L"struct " + typeDecl->name());
+        sb.append(L"struct " + GetTypeName(typeDecl));
         sb.endline(L'{');
         sb.indent([&] {
             for (auto field : typeDecl->fields())
             {
-                sb.append(field->type().name() + L" " + field->name());
+                sb.append(GetTypeName(&field->type()) + L" " + field->name());
+                if (IsStageInout)
+                    sb.append(L" : " + field->name());
                 sb.endline(L';');
             }
             for (auto method : typeDecl->methods())
@@ -576,13 +606,13 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::SSL::TypeDecl* typeDe
         });
         sb.append(L"}");
         sb.endline(L';');
-        sb.append(L"#define " + typeDecl->name() + L"(__VA_ARGS__) " + typeDecl->name() + L"::__CTOR__(__VA_ARGS__)");
+        sb.append(L"#define " + GetTypeName(typeDecl) + L"(__VA_ARGS__) " + GetTypeName(typeDecl) + L"::__CTOR__(__VA_ARGS__)");
         sb.endline();
     }        
     else if (DUMP_BUILTIN_TYPES)
     {
         sb.append(L"//builtin type: ");
-        sb.append(typeDecl->name());
+        sb.append(GetTypeName(typeDecl));
         sb.append(L", size: " + std::to_wstring(typeDecl->size()));
         sb.append(L", align: " + std::to_wstring(typeDecl->alignment()));
         sb.endline();
@@ -594,13 +624,7 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::SSL::FunctionDecl* fu
     using namespace skr::SSL;
     if (auto body = funcDecl->body())
     {
-        const StageAttr* StageEntry = nullptr;
-        for (auto attr : funcDecl->attrs())
-        {
-            if (auto s = dynamic_cast<const StageAttr*>(attr))
-                StageEntry = s;
-        }
-
+        const StageAttr* StageEntry = FindAttr<StageAttr>(funcDecl->attrs());
         std::vector<const ParamVarDecl*> params;
         params.reserve(funcDecl->parameters().size());
         for (auto param : funcDecl->parameters())
@@ -617,7 +641,7 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::SSL::FunctionDecl* fu
                 bool isResource = dynamic_cast<const ResourceTypeDecl*>(&param->type());
                 if (isResource)
                 {
-                    String content = param->type().name() + L" " + param->name();
+                    String content = GetTypeName(&param->type()) + L" " + param->name();
                     // auto resourceBind = dynamic_cast<const ResourceBindAttr*>(attr);
                     // content += L" : register(" + std::to_wstring(bind_attr->binding()) + L")";
                     sb.append(content);
@@ -627,19 +651,16 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::SSL::FunctionDecl* fu
                 }
             }
             // generate stage entry attributes
-            for (auto&& attr : funcDecl->attrs())
+            if (auto kernelSize = FindAttr<KernelSizeAttr>(funcDecl->attrs()))
             {
-                if (auto kernelSize = dynamic_cast<const KernelSizeAttr*>(attr))
-                {
-                    sb.append(L"[numthreads(" + std::to_wstring(kernelSize->x()) + L", " + std::to_wstring(kernelSize->y()) + L", " + std::to_wstring(kernelSize->z()) + L")]");
-                    sb.endline();
-                }
+                sb.append(L"[numthreads(" + std::to_wstring(kernelSize->x()) + L", " + std::to_wstring(kernelSize->y()) + L", " + std::to_wstring(kernelSize->z()) + L")]");
+                sb.endline();
             }
         }
         
         // generate signature
         {
-            sb.append(funcDecl->return_type()->name() + L" " + funcDecl->name() + L"(");
+            sb.append(GetTypeName(funcDecl->return_type()) + L" " + funcDecl->name() + L"(");
             for (size_t i = 0; i < params.size(); i++)
             {
                 auto param = params[i];
@@ -658,15 +679,12 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::SSL::FunctionDecl* fu
                     prefix = L"";
                     break;
                 }
-                String content = prefix + param->type().name() + L" " + param->name();
+                String content = prefix + GetTypeName(&param->type()) + L" " + param->name();
                 if (StageEntry)
                 {
-                    for (auto attr : param->attrs())
+                    if (auto builtin_attr = FindAttr<BuiltinAttr>(param->attrs()))
                     {
-                        if (auto builtin_attr = dynamic_cast<const BuiltinAttr*>(attr))
-                        {
-                            content += L" : " + GetSVForBuiltin(builtin_attr->name());
-                        }
+                        content += L" : " + GetSVForBuiltin(builtin_attr->name());
                     }
                 }
     
@@ -674,7 +692,13 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::SSL::FunctionDecl* fu
                     content = L", " + content;
                 sb.append(content);
             }
-            sb.endline(L')');
+            sb.append(L")");
+            if (StageEntry && StageEntry->stage() == ShaderStage::Fragment)
+            {
+                // HLSL: SV_Position is the output of vertex shader, so we need to add it to fragment shader
+                sb.append(L" : SV_Target");
+            }
+            sb.endline();
         }
 
         // generate body
@@ -685,12 +709,13 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::SSL::FunctionDecl* fu
 
 void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::SSL::VarDecl* varDecl)
 {
+    const auto isGlobal = dynamic_cast<const skr::SSL::GlobalVarDecl*>(varDecl);
     if (varDecl->qualifier() == EVariableQualifier::Const)
-        sb.append(L"const ");
+        sb.append(isGlobal ? L"static const " : L"const ");
     else if (varDecl->qualifier() == EVariableQualifier::Inout)
         sb.append(L"inout ");
 
-    sb.append(varDecl->type().name() + L" " + varDecl->name());
+    sb.append(GetTypeName(&varDecl->type()) + L" " + varDecl->name());
     if (auto init = varDecl->initializer())
     {
         sb.append(L" = ");
@@ -715,6 +740,8 @@ template <typename _ELEM> uint2 texture_size(RWTexture2D<_ELEM> tex) { uint Widt
 template <typename _ELEM> uint3 texture_size(Texture3D<_ELEM> tex) { uint Width, Height, Depth, Mips; tex.GetDimensions(0, Width, Height, Depth, Mips); return uint3(Width, Height, Depth); }
 template <typename _ELEM> uint3 texture_size(RWTexture3D<_ELEM> tex) { uint Width, Height, Depth; tex.GetDimensions(Width, Height, Depth); return uint3(Width, Height, Depth); }
 
+float4 sample2d(SamplerState s, Texture2D t, uint2 uv) { return t.Sample(s, uv); }
+
 // TODO: DELETE
 uint2 luisa__shader__dispatch_size() { return uint2(0, 0); }
 uint2 luisa__shader__dispatch_id() { return uint2(0, 0); }
@@ -730,18 +757,25 @@ String HLSLGenerator::generate_code(SourceBuilderNew& sb, const AST& ast)
     for (const auto& type : ast.types())
     {
         visit(sb, type);
+        sb.endline();
     }
-    
+    sb.append(L" ");
+    sb.endline();
+
     for (const auto& global : ast.global_vars())
     {
         visit(sb, global);
         sb.endline(L';');
     }
+    sb.append(L" ");
+    sb.endline();
     
     for (const auto& func : ast.funcs())
     {
         visit(sb, func);
     }
+    sb.append(L" ");
+    sb.endline();
 
     return sb.build(SourceBuilderNew::line_builder_code);
 }

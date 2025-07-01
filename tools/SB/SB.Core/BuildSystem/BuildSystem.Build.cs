@@ -1,5 +1,6 @@
 ﻿using SB.Core;
 using Serilog;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
@@ -203,10 +204,15 @@ namespace SB
                                     sw.Stop();
 
                                     Log.Verbose("[{Percentage:00.0}%] {EmitterName} {TargetName}", Percentage, EmitterName, Target.Name);
-                                    if (TargetTaskArtifact is not null && !TargetTaskArtifact.IsRestored)
+                                    if (TargetTaskArtifact is not null)
                                     {
-                                        var CostTime = sw.ElapsedMilliseconds;
-                                        Log.Information("[{Percentage:00.0}%]: {EmitterName} {TargetName}, cost {CostTime:00.00}s", Percentage, EmitterName, Target.Name, CostTime / 1000.0f);
+                                        Artifacts.Add(TargetTaskArtifact);
+                                        if (!TargetTaskArtifact.IsRestored)
+                                        {
+                                            var CostTime = sw.ElapsedMilliseconds;
+                                            Log.Information("[{Percentage:00.0}%]: {EmitterName} {TargetName}, cost {CostTime:00.00}s",
+                                                Percentage, EmitterName, Target.Name, CostTime / 1000.0f);
+                                        }
                                     }
                                 }
                                 return await Task.FromResult(true);
@@ -240,11 +246,15 @@ namespace SB
                                         var FileTaskArtifact = Emitter.PerFileTask(Target, FL, FL.GetFileOptions(File), File);
                                         sw.Stop();
                                         Log.Verbose("[{Percentage:00.0}%][{FileTaskIndex}/{FileTaskCount}]: {EmitterName} {TargetName}: {FileName}", Percentage, FileTaskIndex, FileTaskCount, EmitterName, Target.Name, File);
-                                        if (FileTaskArtifact is not null && !FileTaskArtifact.IsRestored)
+                                        if (FileTaskArtifact is not null)
                                         {
-                                            var CostTime = sw.ElapsedMilliseconds;
-                                            Log.Information("[{Percentage:00.0}%][{FileTaskIndex}/{FileTaskCount}]: {EmitterName} {TargetName}: {FileName}, cost {CostTime:00.00}s", 
-                                                Percentage, FileTaskIndex, FileTaskCount, EmitterName, Target.Name, File, CostTime / 1000.0f);
+                                            Artifacts.Add(FileTaskArtifact);
+                                            if (!FileTaskArtifact.IsRestored)
+                                            {
+                                                var CostTime = sw.ElapsedMilliseconds;
+                                                Log.Information("[{Percentage:00.0}%][{FileTaskIndex}/{FileTaskCount}]: {EmitterName} {TargetName}: {FileName}, cost {CostTime:00.00}s",
+                                                    Percentage, FileTaskIndex, FileTaskCount, EmitterName, Target.Name, File, CostTime / 1000.0f);
+                                            }
                                         }
                                     }
                                     return await Task.FromResult(true);
@@ -263,6 +273,7 @@ namespace SB
             TaskManager.WaitAll();
         }
 
+        public static ConcurrentBag<IArtifact> Artifacts = new();
         private static Dictionary<string, TaskEmitter> TaskEmitters = new();
         public static Dictionary<string, Target> AllTargets { get; } = new();
         protected static Dictionary<string, Package> AllPackages { get; } = new();

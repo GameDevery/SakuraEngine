@@ -19,7 +19,80 @@ private:
     std::function<void()> func;
 };
 
+class MemberExprAnalyzer : public clang::RecursiveASTVisitor<MemberExprAnalyzer> 
+{
+public:
+    bool VisitMemberExpr(clang::MemberExpr* memberExpr) 
+    {
+        // 检查是否是通过 this 访问的成员
+        if (auto base = memberExpr->getBase()) 
+        {
+            if (isThisAccess(base)) 
+            {
+                if (auto fieldDecl = llvm::dyn_cast<clang::FieldDecl>(memberExpr->getMemberDecl())) 
+                    member_redirects[fieldDecl].emplace_back(memberExpr);
+            }
+        }
+        return true;
+    }
+    std::map<const clang::FieldDecl*, std::vector<const clang::MemberExpr*>> member_redirects;
+
+private:
+    bool isThisAccess(const clang::Expr* expr) {
+        if (llvm::isa<clang::CXXThisExpr>(expr))
+            return true;
+        if (auto implicitCast = llvm::dyn_cast<clang::ImplicitCastExpr>(expr))
+            return isThisAccess(implicitCast->getSubExpr());
+        return false;
+    }
+};
+
 inline static std::string OpKindToName(clang::OverloadedOperatorKind kind);
+
+template <typename T>
+inline static T GetArgumentAt(const clang::AnnotateAttr* attr, size_t index)
+{
+    auto args = attr->args_begin() + index;
+    if constexpr (std::is_same_v<T, clang::StringRef>)
+    {
+        auto arg = llvm::dyn_cast<clang::StringLiteral>((*args)->IgnoreParenCasts());
+        return arg->getString();
+    }
+    else if constexpr (std::is_integral_v<T>)
+    {
+        auto arg = llvm::dyn_cast<clang::IntegerLiteral>((*args)->IgnoreParenCasts());
+        return arg->getValue().getLimitedValue();
+    }
+    else
+    {
+        static_assert(std::is_same_v<T, std::nullptr_t>, "Unsupported type for GetArgumentAt");
+    }
+}
+
+inline static clang::AnnotateAttr* ExistShaderAttrWithName(const clang::Decl* decl, const char* name)
+{
+    auto attrs = decl->specific_attrs<clang::AnnotateAttr>();
+    for (auto attr : attrs)
+    {
+        if (attr->getAnnotation() != "skr-shader" && attr->getAnnotation() != "luisa-shader")
+            continue;
+        if (GetArgumentAt<clang::StringRef>(attr, 0) == name)
+            return attr;
+    }
+    return nullptr;
+}
+
+inline static clang::AnnotateAttr* IsIgnore(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "ignore"); }
+inline static clang::AnnotateAttr* IsBuiltin(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "builtin"); }
+inline static clang::AnnotateAttr* IsDump(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "dump"); }
+inline static clang::AnnotateAttr* IsKernel(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "kernel"); }
+inline static clang::AnnotateAttr* IsSwizzle(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "swizzle"); }
+inline static clang::AnnotateAttr* IsUnaOp(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "unaop"); }
+inline static clang::AnnotateAttr* IsBinOp(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "binop"); }
+inline static clang::AnnotateAttr* IsCallOp(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "callop"); }
+inline static clang::AnnotateAttr* IsAccess(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "access"); }
+inline static clang::AnnotateAttr* IsStage(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "stage"); }
+inline static clang::AnnotateAttr* IsStageInout(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "stage_inout"); }
 
 const bool LanguageRule_UseAssignForImplicitCopyOrMove(const clang::Decl* x)
 {
@@ -49,7 +122,14 @@ const bool LanguageRule_UseMethodForOperatorOverload(const clang::Decl* decl, st
     }
     if (auto asConversion = llvm::dyn_cast<clang::CXXConversionDecl>(decl))
     {
-        if (pReplaceName) *pReplaceName = "cast_to_" + asConversion->getType().getAsString();
+        auto tname = asConversion->getReturnType().getAsString();
+        std::replace(tname.begin(), tname.end(), ' ', '_');
+        std::replace(tname.begin(), tname.end(), '<', '_');
+        std::replace(tname.begin(), tname.end(), '>', '_');
+        std::replace(tname.begin(), tname.end(), '(', '_');
+        std::replace(tname.begin(), tname.end(), ')', '_');
+        std::replace(tname.begin(), tname.end(), ',', '_');
+        if (pReplaceName) *pReplaceName = "cast_to_" + tname;
         return true;
     }
     return false;
@@ -65,6 +145,11 @@ bool LanguageRule_BanDoubleFieldsAndVariables(const clang::Decl* decl, const cla
         }
     }
     return true;
+}
+
+bool LanguageRule_UseFunctionInsteadOfMethod(const clang::CXXMethodDecl* Method)
+{
+    return Method->isStatic() || IsBuiltin(Method->getParent());
 }
 
 const skr::SSL::TypeDecl* FunctionStack::methodThisType() const
@@ -178,50 +263,6 @@ inline static SSL::BinaryOp TranslateBinaryOp(clang::BinaryOperatorKind op)
             llvm::report_fatal_error("Unsupported binary operator");
     }
 }
-
-template <typename T>
-inline static T GetArgumentAt(const clang::AnnotateAttr* attr, size_t index)
-{
-    auto args = attr->args_begin() + index;
-    if constexpr (std::is_same_v<T, clang::StringRef>)
-    {
-        auto arg = llvm::dyn_cast<clang::StringLiteral>((*args)->IgnoreParenCasts());
-        return arg->getString();
-    }
-    else if constexpr (std::is_integral_v<T>)
-    {
-        auto arg = llvm::dyn_cast<clang::IntegerLiteral>((*args)->IgnoreParenCasts());
-        return arg->getValue().getLimitedValue();
-    }
-    else
-    {
-        static_assert(std::is_same_v<T, std::nullptr_t>, "Unsupported type for GetArgumentAt");
-    }
-}
-
-inline static clang::AnnotateAttr* ExistShaderAttrWithName(const clang::Decl* decl, const char* name)
-{
-    auto attrs = decl->specific_attrs<clang::AnnotateAttr>();
-    for (auto attr : attrs)
-    {
-        if (attr->getAnnotation() != "skr-shader" && attr->getAnnotation() != "luisa-shader")
-            continue;
-        if (GetArgumentAt<clang::StringRef>(attr, 0) == name)
-            return attr;
-    }
-    return nullptr;
-}
-
-inline static clang::AnnotateAttr* IsIgnore(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "ignore"); }
-inline static clang::AnnotateAttr* IsBuiltin(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "builtin"); }
-inline static clang::AnnotateAttr* IsDump(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "dump"); }
-inline static clang::AnnotateAttr* IsKernel(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "kernel"); }
-inline static clang::AnnotateAttr* IsSwizzle(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "swizzle"); }
-inline static clang::AnnotateAttr* IsUnaOp(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "unaop"); }
-inline static clang::AnnotateAttr* IsBinOp(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "binop"); }
-inline static clang::AnnotateAttr* IsCallOp(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "callop"); }
-inline static clang::AnnotateAttr* IsAccess(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "access"); }
-inline static clang::AnnotateAttr* IsStage(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "stage"); }
 
 CompileFrontendAction::CompileFrontendAction(skr::SSL::AST& AST)
     : clang::ASTFrontendAction(), AST(AST)
@@ -440,6 +481,19 @@ SSL::TypeDecl* ASTConsumer::TranslateRecordDecl(const clang::RecordDecl* recordD
             else
                 addType(ThisQualType, AST.StructuredBuffer(getType(ET), (SSL::BufferFlags)BufferFlag));
         }
+        else if (TSD && What == "constant_buffer")
+        {
+            const auto& Arguments = TSD->getTemplateArgs();
+            const auto ET = Arguments.get(0).getAsType();
+            
+            if (getType(ET) == nullptr)
+                TranslateType(ET->getCanonicalTypeInternal());
+
+            if (ET->isVoidType())
+                ReportFatalError(recordDecl, "Constant buffer cannot be void type!");
+
+            addType(ThisQualType, AST.ConstantBuffer(getType(ET)));
+        }
         else if ((TSD && What == "image") || (TSD && What == "volume"))
         {
             const auto& Arguments = TSD->getTemplateArgs();
@@ -450,6 +504,10 @@ SSL::TypeDecl* ASTConsumer::TranslateRecordDecl(const clang::RecordDecl* recordD
                 addType(ThisQualType, AST.Texture2D(getType(ET), (SSL::TextureFlags)TextureFlag));
             else
                 addType(ThisQualType, AST.Texture3D(getType(ET), (SSL::TextureFlags)TextureFlag));
+        }
+        else if (What == "sampler")
+        {
+            addType(ThisQualType, AST.Sampler());
         }
         else if (What == "accel")
         {
@@ -482,6 +540,11 @@ SSL::TypeDecl* ASTConsumer::TranslateRecordDecl(const clang::RecordDecl* recordD
         auto NewType = AST.DeclareStructure(ToText(TypeName), {});
         if (NewType == nullptr)
             ReportFatalError(recordDecl, "Failed to create type: {}", TypeName);
+
+        if (auto AsStageInout = IsStageInout(recordDecl))
+        {
+            NewType->add_attr(AST.DeclareAttr<SSL::StageInoutAttr>());
+        }
 
         for (auto field : recordDecl->fields())
         {
@@ -543,34 +606,6 @@ const SSL::TypeDecl* ASTConsumer::TranslateLambda(const clang::LambdaExpr* x)
     return lambdaWrapper;
 }
 
-class LambdaThisAnalyzer : public clang::RecursiveASTVisitor<LambdaThisAnalyzer> 
-{
-public:
-    bool VisitMemberExpr(clang::MemberExpr* memberExpr) 
-    {
-        // 检查是否是通过 this 访问的成员
-        if (auto base = memberExpr->getBase()) 
-        {
-            if (isThisAccess(base)) 
-            {
-                if (auto fieldDecl = llvm::dyn_cast<clang::FieldDecl>(memberExpr->getMemberDecl())) 
-                    member_redirects[fieldDecl].emplace_back(memberExpr);
-            }
-        }
-        return true;
-    }
-    std::map<const clang::FieldDecl*, std::vector<const clang::MemberExpr*>> member_redirects;
-
-private:
-    bool isThisAccess(const clang::Expr* expr) {
-        if (llvm::isa<clang::CXXThisExpr>(expr))
-            return true;
-        if (auto implicitCast = llvm::dyn_cast<clang::ImplicitCastExpr>(expr))
-            return isThisAccess(implicitCast->getSubExpr());
-        return false;
-    }
-};
-
 void ASTConsumer::TranslateLambdaCapturesToParams(const clang::LambdaExpr* x)
 {
     auto translateCaptureToParam = [&](SSL::TypeDecl* _type, const SSL::String& name, bool byref) 
@@ -597,12 +632,12 @@ void ASTConsumer::TranslateLambdaCapturesToParams(const clang::LambdaExpr* x)
             };
             current_stack->_captured_infos.emplace(newParam, info);
             current_stack->_captured_maps.emplace(info, newParam);
-            current_stack->_lambda_value_redirects[clang::dyn_cast<clang::VarDecl>(capture.getCapturedVar())] = newParam;
+            current_stack->_value_redirects[clang::dyn_cast<clang::VarDecl>(capture.getCapturedVar())] = newParam;
         }
         else
         {
             // 1.2 this 需要把内部访问到的变量拆解开，再按 1.1 传入
-            LambdaThisAnalyzer analyzer;
+            MemberExprAnalyzer analyzer;
             analyzer.TraverseStmt(x->getBody());
             for (auto&& [field, exprs] : analyzer.member_redirects)
             {
@@ -620,7 +655,7 @@ void ASTConsumer::TranslateLambdaCapturesToParams(const clang::LambdaExpr* x)
                 current_stack->_captured_maps.emplace(info, newParam);
                 for (auto expr : exprs)
                 {
-                    current_stack->_lambda_expr_redirects[expr] = newParam->ref();
+                    current_stack->_member_redirects[expr] = newParam->ref();
                 }
             }
         }  
@@ -633,6 +668,7 @@ SSL::Stmt* ASTConsumer::TranslateCall(const clang::Decl* _funcDecl, const clang:
     auto methodDecl = llvm::dyn_cast<clang::CXXMethodDecl>(_funcDecl);
     auto AsConstruct = llvm::dyn_cast<clang::CXXConstructExpr>(callExpr);
     auto AsCall = llvm::dyn_cast<clang::CallExpr>(callExpr);
+    auto AsMethodCall = llvm::dyn_cast<clang::CXXMemberCallExpr>(callExpr);
     auto AsCXXOperatorCall = llvm::dyn_cast<clang::CXXOperatorCallExpr>(callExpr);
     auto AsConstructorForBuiltin = AsConstruct && getType(AsConstruct->getType())->is_builtin();
 
@@ -681,7 +717,8 @@ SSL::Stmt* ASTConsumer::TranslateCall(const clang::Decl* _funcDecl, const clang:
         auto SSLType = getType(AsConstruct->getType());
         return AST.Construct(SSLType, _args);
     }
-    else if (auto AsMethod = clang::dyn_cast<clang::CXXMethodDecl>(funcDecl); AsMethod && !AsMethod->isStatic())
+    else if (auto AsMethod = clang::dyn_cast<clang::CXXMethodDecl>(funcDecl); 
+        AsMethod && !LanguageRule_UseFunctionInsteadOfMethod(AsMethod))
     {
         SSL::MemberExpr* _callee = nullptr;
         if (auto cxxMemberCall = llvm::dyn_cast<clang::CXXMemberCallExpr>(callExpr))
@@ -699,8 +736,17 @@ SSL::Stmt* ASTConsumer::TranslateCall(const clang::Decl* _funcDecl, const clang:
     }
     else
     {
-        auto _callee = TranslateStmt<SSL::DeclRefExpr>(AsCall->getCallee());
-        return AST.CallFunction(_callee, _args); 
+        if (AsMethod)
+        {
+            auto _callee = getFunc(AsMethod)->ref();
+            _args.emplace(_args.begin(), (SSL::Expr*)TranslateStmt<SSL::MemberExpr>(AsMethodCall->getCallee())->owner());
+            return AST.CallFunction(_callee, _args);
+        }
+        else
+        {
+            auto _callee = TranslateStmt<SSL::DeclRefExpr>(AsCall->getCallee());
+            return AST.CallFunction(_callee, _args); 
+        }
     }
 }
 
@@ -714,11 +760,12 @@ bool ASTConsumer::VisitFunctionDecl(const clang::FunctionDecl* x)
         auto StageName = GetArgumentAt<clang::StringRef>(StageInfo, 1);
         auto FunctionName = GetArgumentAt<clang::StringRef>(StageInfo, 2);
 
+        auto Kernel = TranslateFunction(x, FunctionName);
         if (StageName == "compute")
         {
             if (auto KernelInfo = IsKernel(x))
             {
-                auto Kernel = TranslateFunction(x, FunctionName);
+                CheckStageInputs(x, ShaderStage::Compute);
                 Kernel->add_attr(AST.DeclareAttr<StageAttr>(ShaderStage::Compute));
 
                 uint32_t KernelX = GetArgumentAt<uint32_t>(KernelInfo, 1);
@@ -731,12 +778,12 @@ bool ASTConsumer::VisitFunctionDecl(const clang::FunctionDecl* x)
         }
         else if (StageName == "vertex")
         {
-            auto Kernel = TranslateFunction(x, FunctionName);
+            CheckStageInputs(x, ShaderStage::Vertex);
             Kernel->add_attr(AST.DeclareAttr<StageAttr>(ShaderStage::Vertex));
         }
         else if (StageName == "fragment")
         {
-            auto Kernel = TranslateFunction(x, FunctionName);
+            CheckStageInputs(x, ShaderStage::Fragment);
             Kernel->add_attr(AST.DeclareAttr<StageAttr>(ShaderStage::Fragment));
         }
         else
@@ -864,8 +911,6 @@ SSL::FunctionDecl* ASTConsumer::TranslateFunction(const clang::FunctionDecl *x, 
     
     if (auto Existed = getFunc(x))
         return Existed;
-    if (IsIgnore(x) || IsBuiltin(x))
-        return nullptr;
     if (LanguageRule_UseAssignForImplicitCopyOrMove(x))
         return nullptr;
 
@@ -885,7 +930,7 @@ SSL::FunctionDecl* ASTConsumer::TranslateFunction(const clang::FunctionDecl *x, 
 
     SSL::FunctionDecl* F = nullptr;
     auto AsMethod = llvm::dyn_cast<clang::CXXMethodDecl>(x);
-    if (AsMethod && !AsMethod->isStatic())
+    if (AsMethod && !LanguageRule_UseFunctionInsteadOfMethod(AsMethod))
     {
         auto parentType = AsMethod->getParent();
         auto _parentType = getType(parentType->getTypeForDecl()->getCanonicalTypeInternal());
@@ -944,6 +989,13 @@ SSL::FunctionDecl* ASTConsumer::TranslateFunction(const clang::FunctionDecl *x, 
     }
     else
     {
+        if (AsMethod)
+        {
+            auto _this = AST.DeclareParam(EVariableQualifier::Inout, getType(AsMethod->getThisType()->getPointeeType()), L"_this");
+            params.emplace(params.begin(), _this);
+            current_stack->_this_redirect = _this->ref();
+        }
+
         auto CxxFunctionName = override_name.empty() ? x->getQualifiedNameAsString() : override_name.str();
         std::replace(CxxFunctionName.begin(), CxxFunctionName.end(), ':', '_');
         F = AST.DeclareFunction(ToText(CxxFunctionName),
@@ -1363,8 +1415,8 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
                 auto memberName = ToText(memberExpr->getMemberNameInfo().getName().getAsString());
                 if (memberName.empty())
                     ReportFatalError(x, "Member name is empty in member expr: {}", memberExpr->getStmtClassName());
-                if (current_stack->_lambda_expr_redirects.contains(memberExpr))
-                    return current_stack->_lambda_expr_redirects[memberExpr]; // lambda expr redirect
+                if (current_stack->_member_redirects.contains(memberExpr))
+                    return current_stack->_member_redirects[memberExpr]; // lambda expr redirect
                 return AST.Field(owner, ownerType->get_field(memberName));
             }
             else
@@ -1383,6 +1435,8 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
     }
     else if (auto THIS = llvm::dyn_cast<clang::CXXThisExpr>(x))
     {
+        if (current_stack->_this_redirect)
+            return current_stack->_this_redirect; 
         return AST.This(getType(THIS->getType().getCanonicalType()));
     }
     else if (auto InitExpr = llvm::dyn_cast<CXXDefaultInitExpr>(x))
@@ -1402,6 +1456,11 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
             default:
                 ReportFatalError(x, "ConstantExpr with struct value is not supported: {}", CONSTANT->getStmtClassName());
         }
+    }
+    else if (auto SCALAR = llvm::dyn_cast<clang::CXXScalarValueInitExpr>(x))
+    {
+        auto astType = getType(SCALAR->getTypeSourceInfo()->getType());
+        return AST.Construct(astType, {}); // scalar value init expr is just a default constructor call
     }
     else if (auto BOOL = llvm::dyn_cast<clang::CXXBoolLiteralExpr>(x))
     {
@@ -1436,8 +1495,8 @@ bool ASTConsumer::addVar(const clang::VarDecl* var, skr::SSL::VarDecl* _var)
 
 skr::SSL::VarDecl* ASTConsumer::getVar(const clang::VarDecl* var) const
 {
-    if (current_stack && current_stack->_lambda_value_redirects.contains(var))
-        return current_stack->_lambda_value_redirects[var];
+    if (current_stack && current_stack->_value_redirects.contains(var))
+        return current_stack->_value_redirects[var];
 
     auto it = _vars.find(var);
     if (it != _vars.end())
@@ -1523,6 +1582,26 @@ skr::SSL::FunctionDecl* ASTConsumer::getFunc(const clang::FunctionDecl* func) co
     if (it != _funcs.end())
         return it->second;
     return nullptr;
+}
+
+void ASTConsumer::CheckStageInputs(const clang::FunctionDecl* x, skr::SSL::ShaderStage stage)
+{
+    auto CheckParamIsBuiltin = [](const clang::ParmVarDecl* p) -> bool { return IsBuiltin(p); };
+    auto CheckParamTypeIsStageInout = [](const clang::ParmVarDecl* p) -> bool 
+    {
+        auto Type = p->getType().getNonReferenceType().getTypePtr()->getAsRecordDecl();
+        return Type ? IsStageInout(Type) : false;
+    };
+
+    for (auto param : x->parameters())
+    {
+        bool IsBuiltin = CheckParamIsBuiltin(param);
+        bool IsStageInout = CheckParamTypeIsStageInout(param);
+        if ((stage == skr::SSL::ShaderStage::Compute) && !IsBuiltin)
+            ReportFatalError(x, "Compute shader function has non-builtin parameter: {}", x->getNameAsString());
+        else if ((stage == skr::SSL::ShaderStage::Vertex || stage == skr::SSL::ShaderStage::Fragment) && !IsBuiltin && !IsStageInout)
+            ReportFatalError(x, "Vertex/Fragment shader function has non-builtin and non-stage-inout parameter: {}", param->getNameAsString());
+    }
 }
 
 inline static std::string OpKindToName(clang::OverloadedOperatorKind op)

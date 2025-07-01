@@ -181,6 +181,13 @@ protected:
     ResourceTypeDecl(AST& ast, const String& name);
 };
 
+struct SamplerDecl : public ResourceTypeDecl
+{
+protected:
+    friend struct AST;
+    SamplerDecl(AST& ast);
+};
+
 struct AccelTypeDecl : public ResourceTypeDecl
 {
 protected:
@@ -196,6 +203,13 @@ public:
 protected:
     BufferTypeDecl(AST& ast, const String& name, BufferFlags flags);
     BufferFlags _flags;
+};
+
+struct ConstantBufferTypeDecl : public BufferTypeDecl
+{
+protected:
+    friend struct AST;
+    ConstantBufferTypeDecl(AST& ast, const TypeDecl* element);
 };
 
 struct ByteBufferTypeDecl : public BufferTypeDecl

@@ -33,10 +33,10 @@ public static class LLVMTools
             .AddCppFiles("shader_compiler/LLVM/src/**.cpp")
             .LinkAgainstLLVM();
 
-        BuildSystem.Target("SSL_LLVMTest")
+        BuildSystem.Target("SSLCompiler")
             .TargetType(TargetType.Executable)
             .Depend(Visibility.Public, "SSLLLVM")
-            .AddCppFiles("shader_compiler/llvm_test.cpp");
+            .AddCppFiles("shader_compiler/shader_compiler.cpp");
 
         BuildSystem.Target("SSL_ManualTest")
             .TargetType(TargetType.Executable)
