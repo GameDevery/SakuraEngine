@@ -7,6 +7,7 @@
 #include <SkrImGui/imgui_backend.hpp>
 #include <SDL3/SDL_video.h>
 #include "common/utils.h"
+#include "imgui_sail.h"
 
 class SAnimDebugModule : public skr::IDynamicModule
 {
@@ -127,11 +128,20 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
         config.render_graph = render_graph;
         config.queue        = gfx_queue;
         render_backend->init(config);
-        imgui_backend.create({}, std::move(render_backend));
+        imgui_backend.create(
+            {
+                .title = skr::format(u8"Anim Debug Runtime Inner [{}]", gCGPUBackendNames[device->adapter->instance->backend]),
+                .size  = { 1500, 1500 },
+            },
+            std::move(render_backend)
+        );
         imgui_backend.main_window().show();
         imgui_backend.enable_docking();
         imgui_backend.enable_high_dpi();
         // imgui_backend.enable_multi_viewport();
+        // Apply Sail Style
+        ImGui::Sail::LoadFont(12.0f);
+        ImGui::Sail::StyleColorsSail();
     }
 
     CGPURootSignatureId  root_sig = nullptr;
@@ -157,81 +167,50 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
     uint64_t frame_index         = 0;
     while (!imgui_backend.want_exit().comsume())
     {
-        imgui_backend.pump_message();
-
+        SkrZoneScopedN("LoopBody");
         {
-            auto viewport = ImGui::GetMainViewport();
-            render_backend_rg->acquire_next_frame(viewport);
-            CGPUTextureId to_import   = render_backend_rg->get_backbuffer(viewport);
-            auto          back_buffer = render_graph->create_texture(
-                [=](skr::render_graph::RenderGraph& g, skr::render_graph::TextureBuilder& builder) {
-                    builder.set_name(SKR_UTF8("backbuffer"))
-                        .import(to_import, CGPU_RESOURCE_STATE_PRESENT)
-                        .allow_render_target();
-                }
-            );
-            render_graph->add_render_pass(
-                [=](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassBuilder& builder) {
-                    builder.set_name(SKR_UTF8("color_pass"))
-                        .set_pipeline(pipeline)
-                        .write(0, back_buffer, CGPU_LOAD_ACTION_CLEAR);
-                },
-                [=](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassContext& stack) {
-                    cgpu_render_encoder_set_viewport(stack.encoder, 0.0f, 0.0f, (float)to_import->info->width / 3, (float)to_import->info->height, 0.f, 1.f);
-                    cgpu_render_encoder_set_scissor(stack.encoder, 0, 0, to_import->info->width, to_import->info->height);
-                    cgpu_render_encoder_draw(stack.encoder, 3, 0);
-                }
-            );
+            SkrZoneScopedN("PumpMessage");
+            // Pump messages
+            imgui_backend.pump_message();
         }
 
-        imgui_backend.begin_frame(); // ImGui::NewFrame();
+        {
+            SkrZoneScopedN("ImGUINewFrame");
+            imgui_backend.begin_frame();
+        }
 
         {
-            ImGuiIO& io = ImGui::GetIO();
-
-            // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-            if (show_demo_window)
-                ImGui::ShowDemoWindow(&show_demo_window);
-
-            // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
-            {
-                static float f       = 0.0f;
-                static int   counter = 0;
-
-                ImGui::Begin("Hello, world!"); // Create a window called "Hello, world!" and append into it.
-
-                ImGui::Text("This is some useful text.");          // Display some text (you can use a format strings too)
-                ImGui::Checkbox("Demo Window", &show_demo_window); // Edit bools storing our window open/close state
-                ImGui::Checkbox("Another Window", &show_another_window);
-
-                ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-                ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
-
-                if (ImGui::Button("Button")) // Buttons return true when clicked (most widgets return true when edited/activated)
-                    counter++;
-                ImGui::SameLine();
-                ImGui::Text("counter = %d", counter);
-
-                ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
-                ImGui::End();
-            }
-
-            // 3. Show another simple window.
-            if (show_another_window)
-            {
-                ImGui::Begin("Another Window", &show_another_window); // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
-                ImGui::Text("Hello from another window!");
-                if (ImGui::Button("Close Me"))
-                    show_another_window = false;
-                ImGui::End();
-            }
+            ImGui::ShowDemoWindow(&show_demo_window);
         }
 
         imgui_backend.end_frame();
 
-        // add render passes
         imgui_backend.render();
+        {
+            auto          viewport          = ImGui::GetMainViewport();
+            CGPUTextureId native_backbuffer = render_backend_rg->get_backbuffer(viewport);
+            auto          back_buffer       = render_graph->create_texture(
+                [=](skr::render_graph::RenderGraph& g, skr::render_graph::TextureBuilder& builder) {
+                    skr::String buf_name = skr::format(u8"backbuffer", viewport->ID);
+                    builder.set_name((const char8_t*)buf_name.c_str())
+                        .import(native_backbuffer, CGPU_RESOURCE_STATE_UNDEFINED)
+                        .allow_render_target();
+                }
+            );
 
+            render_graph->add_render_pass(
+                [=](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassBuilder& builder) {
+                    builder.set_name(SKR_UTF8("color_pass"))
+                        .set_pipeline(pipeline)
+                        .write(0, back_buffer, CGPU_LOAD_ACTION_LOAD);
+                },
+                [=](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassContext& stack) {
+                    cgpu_render_encoder_set_viewport(stack.encoder, 0.0f, 0.0f, (float)native_backbuffer->info->width / 3, (float)native_backbuffer->info->height, 0.f, 1.f);
+                    cgpu_render_encoder_set_scissor(stack.encoder, 0, 0, native_backbuffer->info->width, native_backbuffer->info->height);
+                    cgpu_render_encoder_draw(stack.encoder, 3, 0);
+                }
+            );
+        }
         // draw render graph
         render_graph->compile();
         render_graph->execute();
@@ -239,8 +218,7 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
             render_graph->collect_garbage(frame_index - RG_MAX_FRAME_IN_FLIGHT * 10);
 
         // present
-        render_backend_rg->present_main_viewport();
-        render_backend_rg->present_sub_viewports();
+        render_backend_rg->present_all();
         ++frame_index;
     }
 
