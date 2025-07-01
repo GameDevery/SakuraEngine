@@ -5,26 +5,26 @@
 #include <clang/Tooling/CommonOptionsParser.h>
 #include <clang/Frontend/CompilerInstance.h>
 
-#include "SSL/ShaderCompiler.hpp"
+#include "CppSL/ShaderCompiler.hpp"
 #include "ShaderASTConsumer.hpp"
 
-namespace skr::SSL {
+namespace skr::CppSL {
 
 using namespace clang::tooling;
 static llvm::cl::OptionCategory ToolOptionsCategory = llvm::cl::OptionCategory("SSL compiler options");   
 
 template <typename T>
-std::unique_ptr<FrontendActionFactory> newFrontendActionFactory2(skr::SSL::AST& AST) 
+std::unique_ptr<FrontendActionFactory> newFrontendActionFactory2(skr::CppSL::AST& AST) 
 {
   class SimpleFrontendActionFactory : public FrontendActionFactory 
   {
   public:
-    SimpleFrontendActionFactory(skr::SSL::AST& AST) : AST(AST) {}
+    SimpleFrontendActionFactory(skr::CppSL::AST& AST) : AST(AST) {}
 
     std::unique_ptr<clang::FrontendAction> create() override {
       return std::make_unique<T>(AST);
     }
-    skr::SSL::AST& AST;
+    skr::CppSL::AST& AST;
   };
 
   return std::unique_ptr<FrontendActionFactory>(new SimpleFrontendActionFactory(AST));
@@ -58,7 +58,7 @@ public:
 private:
     std::optional<CommonOptionsParser> OptionsParser;
     std::optional<ClangTool> tool;
-    skr::SSL::AST AST;
+    skr::CppSL::AST AST;
 };
 
 ShaderCompiler* ShaderCompiler::Create(int argc, const char **argv)
@@ -71,4 +71,4 @@ void ShaderCompiler::Destroy(ShaderCompiler* compiler)
     delete compiler;
 }
 
-} // namespace skr::SSL
+} // namespace skr::CppSL

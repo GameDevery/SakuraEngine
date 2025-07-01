@@ -1,8 +1,8 @@
-#include "SSL/AST.hpp"
-#include "SSL/Decl.hpp"
+#include "CppSL/AST.hpp"
+#include "CppSL/Decl.hpp"
 #include <format>
 
-namespace skr::SSL {
+namespace skr::CppSL {
 
 Decl::Decl(AST& ast) 
     : _ast(&ast) 

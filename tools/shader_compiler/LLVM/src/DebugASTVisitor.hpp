@@ -1,7 +1,7 @@
 #pragma once
 #include <clang/AST/RecursiveASTVisitor.h>
 
-namespace skr::SSL {
+namespace skr::CppSL {
 
 struct DebugASTVisitor : public clang::RecursiveASTVisitor<DebugASTVisitor>
 {
@@ -13,4 +13,4 @@ struct DebugASTVisitor : public clang::RecursiveASTVisitor<DebugASTVisitor>
     bool VisitMemberExpr(clang::MemberExpr* x);
 };
 
-} // namespace skr::SSL
+} // namespace skr::CppSL

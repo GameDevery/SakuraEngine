@@ -1,9 +1,9 @@
 #include <vector>
 #include <string>
-#include "SSL/ShaderCompiler.hpp"
+#include "CppSL/ShaderCompiler.hpp"
 
-#include "SSL/langs/HLSLGenerator.hpp"
-#include "SSL/AST.hpp"
+#include "CppSL/langs/HLSLGenerator.hpp"
+#include "CppSL/AST.hpp"
 #include <fstream>
 
 int main(int argc, const char **argv)
@@ -26,7 +26,7 @@ int main(int argc, const char **argv)
         args_ptr[i] = args[i].c_str();
     }
     
-    auto compiler = skr::SSL::ShaderCompiler::Create(args_ptr.size(), args_ptr.data());
+    auto compiler = skr::CppSL::ShaderCompiler::Create(args_ptr.size(), args_ptr.data());
     int exit_code = 0;
     if (compiler)
     {
@@ -36,8 +36,8 @@ int main(int argc, const char **argv)
         auto ast_text = AST.dump();
         // std::wcout << ast_text << std::endl;
 
-        skr::SSL::SourceBuilderNew sb;
-        skr::SSL::HLSLGenerator hlsl_generator;
+        skr::CppSL::SourceBuilderNew sb;
+        skr::CppSL::HLSLGenerator hlsl_generator;
         auto code = hlsl_generator.generate_code(sb, AST);
         // std::wcout << code << std::endl;
 
@@ -50,7 +50,7 @@ int main(int argc, const char **argv)
         ast_file << ast_text;
         ast_file.close();
 
-        skr::SSL::ShaderCompiler::Destroy(compiler);
+        skr::CppSL::ShaderCompiler::Destroy(compiler);
     }
     return exit_code;
 }

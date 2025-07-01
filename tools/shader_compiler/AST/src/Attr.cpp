@@ -1,6 +1,6 @@
-#include "SSL/Attr.hpp"
+#include "CppSL/Attr.hpp"
 
-namespace skr::SSL {
+namespace skr::CppSL {
 
 AlignAttr::AlignAttr(uint32_t alignment) 
     : _alignment(alignment) 
@@ -43,4 +43,4 @@ StageAttr::StageAttr(ShaderStage stage)
 
 }
 
-} // namespace skr::SSL
+} // namespace skr::CppSL

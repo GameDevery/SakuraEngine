@@ -5,7 +5,7 @@
 #include "Decl.hpp"
 #include "Stmt.hpp"
 
-namespace skr::SSL {
+namespace skr::CppSL {
 
 struct BinaryExpr;
 struct ParameterExpr;
@@ -224,4 +224,4 @@ private:
     Expr* _expr = nullptr;
 };
 
-} // namespace skr::SSL
+} // namespace skr::CppSL

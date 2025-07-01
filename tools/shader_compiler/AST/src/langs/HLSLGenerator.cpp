@@ -1,6 +1,6 @@
-#include "SSL/langs/HLSLGenerator.hpp"
+#include "CppSL/langs/HLSLGenerator.hpp"
 
-namespace skr::SSL
+namespace skr::CppSL
 {
 template <typename T>
 inline static T* FindAttr(std::span<Attr* const> attrs)
@@ -69,9 +69,9 @@ inline static const String& GetSVForBuiltin(const String& builtin)
     return UnknownSystemValue; // return the original name if not found
 }
 
-void HLSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::SSL::Stmt* stmt)
+void HLSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt)
 {
-    using namespace skr::SSL;
+    using namespace skr::CppSL;
 
     bool isStatement = false;
     if (auto parent = stmt->parent())
@@ -537,7 +537,7 @@ void HLSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::SSL::Stmt* stmt)
         sb.append(L".");
         for (auto comp : swizzle->seq())
         {
-            skr::SSL::String comps[4] = { L"x", L"y", L"z", L"w" };
+            skr::CppSL::String comps[4] = { L"x", L"y", L"z", L"w" };
             sb.append(comps[comp]);
         }
     }
@@ -558,9 +558,9 @@ void HLSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::SSL::Stmt* stmt)
         sb.endline(L';');
 }
 
-void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::SSL::TypeDecl* typeDecl)
+void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::TypeDecl* typeDecl)
 {
-    using namespace skr::SSL;
+    using namespace skr::CppSL;
     const bool DUMP_BUILTIN_TYPES = false;
     const bool IsStageInout = FindAttr<StageInoutAttr>(typeDecl->attrs());
     if (!typeDecl->is_builtin())
@@ -601,7 +601,7 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::SSL::TypeDecl* typeDe
                 auto WrapperBody = pAST->Block({ _this, _init, _return });
                 sb.append(L"static ");
                 // 只 declare 这些 method，但是不把他们加到类型里面，不然会被生成 method 的逻辑重复生成
-                visit(sb, pAST->DeclareMethod(const_cast<skr::SSL::TypeDecl*>(typeDecl), L"__CTOR__", typeDecl, ctor->parameters(), WrapperBody));
+                visit(sb, pAST->DeclareMethod(const_cast<skr::CppSL::TypeDecl*>(typeDecl), L"__CTOR__", typeDecl, ctor->parameters(), WrapperBody));
             }
         });
         sb.append(L"}");
@@ -619,9 +619,9 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::SSL::TypeDecl* typeDe
     }
 }
 
-void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::SSL::FunctionDecl* funcDecl)
+void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* funcDecl)
 {
-    using namespace skr::SSL;
+    using namespace skr::CppSL;
     if (auto body = funcDecl->body())
     {
         const StageAttr* StageEntry = FindAttr<StageAttr>(funcDecl->attrs());
@@ -707,9 +707,9 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::SSL::FunctionDecl* fu
     }
 }
 
-void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::SSL::VarDecl* varDecl)
+void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::VarDecl* varDecl)
 {
-    const auto isGlobal = dynamic_cast<const skr::SSL::GlobalVarDecl*>(varDecl);
+    const auto isGlobal = dynamic_cast<const skr::CppSL::GlobalVarDecl*>(varDecl);
     if (varDecl->qualifier() == EVariableQualifier::Const)
         sb.append(isGlobal ? L"static const " : L"const ");
     else if (varDecl->qualifier() == EVariableQualifier::Inout)
@@ -723,7 +723,7 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::SSL::VarDecl* varDecl
     }
 }
 
-static const skr::SSL::String kHLSLHeader = LR"(
+static const skr::CppSL::String kHLSLHeader = LR"(
 template <typename _ELEM> void buffer_write(RWStructuredBuffer<_ELEM> buffer, uint index, _ELEM value) { buffer[index] = value; }
 template <typename _ELEM> _ELEM buffer_read(RWStructuredBuffer<_ELEM> buffer, uint index) { return buffer[index]; }
 template <typename _ELEM, uint64_t N> struct array { _ELEM data[N]; };
@@ -749,7 +749,7 @@ uint2 luisa__shader__dispatch_id() { return uint2(0, 0); }
 
 String HLSLGenerator::generate_code(SourceBuilderNew& sb, const AST& ast)
 {
-    using namespace skr::SSL;
+    using namespace skr::CppSL;
 
     sb.append(kHLSLHeader);
     sb.endline();
@@ -780,4 +780,4 @@ String HLSLGenerator::generate_code(SourceBuilderNew& sb, const AST& ast)
     return sb.build(SourceBuilderNew::line_builder_code);
 }
 
-} // namespace skr::SSL
+} // namespace skr::CppSL

@@ -1,11 +1,11 @@
-#include "SSL/ASTDumper.hpp"
+#include "CppSL/ASTDumper.hpp"
 #include <typeinfo>
 
-namespace skr::SSL {
+namespace skr::CppSL {
 
-void ASTDumper::visit(const skr::SSL::Stmt* stmt, SourceBuilderNew& sb)
+void ASTDumper::visit(const skr::CppSL::Stmt* stmt, SourceBuilderNew& sb)
 {
-    using namespace skr::SSL;
+    using namespace skr::CppSL;
     if (auto binary = dynamic_cast<const BinaryExpr*>(stmt))
     {
         auto op = binary->op();
@@ -326,9 +326,9 @@ void ASTDumper::visit(const skr::SSL::Stmt* stmt, SourceBuilderNew& sb)
     });
 }
 
-void ASTDumper::visit(const skr::SSL::TypeDecl* typeDecl, SourceBuilderNew& sb)
+void ASTDumper::visit(const skr::CppSL::TypeDecl* typeDecl, SourceBuilderNew& sb)
 {
-    using namespace skr::SSL;
+    using namespace skr::CppSL;
     if (typeDecl->is_builtin())
     {
         sb.append_decl(L"BuiltinType ");
@@ -354,27 +354,27 @@ void ASTDumper::visit(const skr::SSL::TypeDecl* typeDecl, SourceBuilderNew& sb)
     }
 }
 
-void ASTDumper::visit(const skr::SSL::FieldDecl* fieldDecl, SourceBuilderNew& sb)
+void ASTDumper::visit(const skr::CppSL::FieldDecl* fieldDecl, SourceBuilderNew& sb)
 {
-    using namespace skr::SSL;
+    using namespace skr::CppSL;
     sb.append_decl(L"FieldDecl ");
     sb.append(fieldDecl->name());
     sb.append_type(L" '" + fieldDecl->type().name() + L"'");
     sb.endline();
 }
 
-void ASTDumper::visit(const skr::SSL::ParamVarDecl* paramDecl, SourceBuilderNew& sb)
+void ASTDumper::visit(const skr::CppSL::ParamVarDecl* paramDecl, SourceBuilderNew& sb)
 {
-    using namespace skr::SSL;
+    using namespace skr::CppSL;
     sb.append_decl(L"ParamVarDecl ");
     sb.append_type(paramDecl->type().name() + L" ");
     sb.append(paramDecl->name());
     sb.endline();
 }
 
-void ASTDumper::visit(const skr::SSL::FunctionDecl* funcDecl, SourceBuilderNew& sb)
+void ASTDumper::visit(const skr::CppSL::FunctionDecl* funcDecl, SourceBuilderNew& sb)
 {
-    using namespace skr::SSL;
+    using namespace skr::CppSL;
     auto as_method = dynamic_cast<const MethodDecl*>(funcDecl);
 
     sb.append_decl(as_method ? L"MethodDecl " : L"FunctionDecl ");
@@ -394,10 +394,10 @@ void ASTDumper::visit(const skr::SSL::FunctionDecl* funcDecl, SourceBuilderNew& 
     });
 }
 
-void ASTDumper::visit(const skr::SSL::VarDecl* varDecl, SourceBuilderNew& sb)
+void ASTDumper::visit(const skr::CppSL::VarDecl* varDecl, SourceBuilderNew& sb)
 {
-    using namespace skr::SSL;
-    const bool isGlobalConstant = dynamic_cast<const skr::SSL::GlobalVarDecl*>(varDecl) != nullptr;
+    using namespace skr::CppSL;
+    const bool isGlobalConstant = dynamic_cast<const skr::CppSL::GlobalVarDecl*>(varDecl) != nullptr;
     sb.append_decl(isGlobalConstant ? L"GlobalVarDecl " : L"VarDecl ");
     sb.append(varDecl->name());
     sb.endline();
@@ -408,7 +408,7 @@ void ASTDumper::visit(const skr::SSL::VarDecl* varDecl, SourceBuilderNew& sb)
     }
 }
 
-void ASTDumper::Visit(const skr::SSL::Decl* decl, SourceBuilderNew& sb)
+void ASTDumper::Visit(const skr::CppSL::Decl* decl, SourceBuilderNew& sb)
 {
     if (auto typeDecl = dynamic_cast<const TypeDecl*>(decl))
     {
@@ -436,7 +436,7 @@ void ASTDumper::Visit(const skr::SSL::Decl* decl, SourceBuilderNew& sb)
     }
 }
 
-void ASTDumper::Visit(const skr::SSL::Stmt* stmt, SourceBuilderNew& sb)
+void ASTDumper::Visit(const skr::CppSL::Stmt* stmt, SourceBuilderNew& sb)
 {
     visit(stmt, sb);
 }
@@ -473,4 +473,4 @@ String AST::dump() const
     return content;
 }
 
-} // namespace skr::SSL
+} // namespace skr::CppSL

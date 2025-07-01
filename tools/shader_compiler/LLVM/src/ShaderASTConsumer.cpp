@@ -1,4 +1,4 @@
-#include "SSL/magic_enum/magic_enum.hpp"
+#include "CppSL/magic_enum/magic_enum.hpp"
 #include "DebugASTVisitor.hpp"
 #include "ShaderASTConsumer.hpp"
 #include <clang/Frontend/CompilerInstance.h>
@@ -7,7 +7,7 @@
 #include <clang/AST/DeclTemplate.h>
 #include <format>
 
-namespace skr::SSL {
+namespace skr::CppSL {
 class DeferGuard {
 public:
     template<typename F>
@@ -152,7 +152,7 @@ bool LanguageRule_UseFunctionInsteadOfMethod(const clang::CXXMethodDecl* Method)
     return Method->isStatic() || IsBuiltin(Method->getParent());
 }
 
-const skr::SSL::TypeDecl* FunctionStack::methodThisType() const
+const skr::CppSL::TypeDecl* FunctionStack::methodThisType() const
 {
     if (auto method = llvm::dyn_cast<clang::CXXMethodDecl>(func))
     {
@@ -207,64 +207,64 @@ inline static String ToText(clang::StringRef str)
     return String(str.begin(), str.end());
 }
 
-inline static SSL::UnaryOp TranslateUnaryOp(clang::UnaryOperatorKind op)
+inline static CppSL::UnaryOp TranslateUnaryOp(clang::UnaryOperatorKind op)
 {
     switch (op)
     {
-        case clang::UO_Plus: return SSL::UnaryOp::PLUS;
-        case clang::UO_Minus: return SSL::UnaryOp::MINUS;
-        case clang::UO_LNot: return SSL::UnaryOp::NOT;
-        case clang::UO_Not: return SSL::UnaryOp::BIT_NOT;
+        case clang::UO_Plus: return CppSL::UnaryOp::PLUS;
+        case clang::UO_Minus: return CppSL::UnaryOp::MINUS;
+        case clang::UO_LNot: return CppSL::UnaryOp::NOT;
+        case clang::UO_Not: return CppSL::UnaryOp::BIT_NOT;
 
-        case clang::UO_PreInc: return SSL::UnaryOp::PRE_INC;
-        case clang::UO_PreDec: return SSL::UnaryOp::PRE_DEC;
-        case clang::UO_PostInc: return SSL::UnaryOp::POST_INC;
-        case clang::UO_PostDec: return SSL::UnaryOp::POST_DEC;
+        case clang::UO_PreInc: return CppSL::UnaryOp::PRE_INC;
+        case clang::UO_PreDec: return CppSL::UnaryOp::PRE_DEC;
+        case clang::UO_PostInc: return CppSL::UnaryOp::POST_INC;
+        case clang::UO_PostDec: return CppSL::UnaryOp::POST_DEC;
         default:
             llvm::report_fatal_error("Unsupported unary operator");
     }
 }
 
-inline static SSL::BinaryOp TranslateBinaryOp(clang::BinaryOperatorKind op)
+inline static CppSL::BinaryOp TranslateBinaryOp(clang::BinaryOperatorKind op)
 {
     switch (op)
     {
-        case clang::BO_Add: return SSL::BinaryOp::ADD;
-        case clang::BO_Sub: return SSL::BinaryOp::SUB;
-        case clang::BO_Mul: return SSL::BinaryOp::MUL;
-        case clang::BO_Div: return SSL::BinaryOp::DIV;
-        case clang::BO_Rem: return SSL::BinaryOp::MOD;
-        case clang::BO_Shl: return SSL::BinaryOp::SHL;
-        case clang::BO_Shr: return SSL::BinaryOp::SHR;
-        case clang::BO_And: return SSL::BinaryOp::BIT_AND;
-        case clang::BO_Or: return SSL::BinaryOp::BIT_OR;
-        case clang::BO_Xor: return SSL::BinaryOp::BIT_XOR;
-        case clang::BO_LAnd: return SSL::BinaryOp::AND;
-        case clang::BO_LOr: return SSL::BinaryOp::OR;
+        case clang::BO_Add: return CppSL::BinaryOp::ADD;
+        case clang::BO_Sub: return CppSL::BinaryOp::SUB;
+        case clang::BO_Mul: return CppSL::BinaryOp::MUL;
+        case clang::BO_Div: return CppSL::BinaryOp::DIV;
+        case clang::BO_Rem: return CppSL::BinaryOp::MOD;
+        case clang::BO_Shl: return CppSL::BinaryOp::SHL;
+        case clang::BO_Shr: return CppSL::BinaryOp::SHR;
+        case clang::BO_And: return CppSL::BinaryOp::BIT_AND;
+        case clang::BO_Or: return CppSL::BinaryOp::BIT_OR;
+        case clang::BO_Xor: return CppSL::BinaryOp::BIT_XOR;
+        case clang::BO_LAnd: return CppSL::BinaryOp::AND;
+        case clang::BO_LOr: return CppSL::BinaryOp::OR;
 
-        case clang::BO_LT: return SSL::BinaryOp::LESS; break;
-        case clang::BO_GT: return SSL::BinaryOp::GREATER; break;
-        case clang::BO_LE: return SSL::BinaryOp::LESS_EQUAL; break;
-        case clang::BO_GE: return SSL::BinaryOp::GREATER_EQUAL; break;
-        case clang::BO_EQ: return SSL::BinaryOp::EQUAL; break;
-        case clang::BO_NE: return SSL::BinaryOp::NOT_EQUAL; break;
+        case clang::BO_LT: return CppSL::BinaryOp::LESS; break;
+        case clang::BO_GT: return CppSL::BinaryOp::GREATER; break;
+        case clang::BO_LE: return CppSL::BinaryOp::LESS_EQUAL; break;
+        case clang::BO_GE: return CppSL::BinaryOp::GREATER_EQUAL; break;
+        case clang::BO_EQ: return CppSL::BinaryOp::EQUAL; break;
+        case clang::BO_NE: return CppSL::BinaryOp::NOT_EQUAL; break;
 
-        case clang::BO_Assign: return SSL::BinaryOp::ASSIGN;
-        case clang::BO_AddAssign: return SSL::BinaryOp::ADD_ASSIGN;
-        case clang::BO_SubAssign: return SSL::BinaryOp::SUB_ASSIGN;
-        case clang::BO_MulAssign: return SSL::BinaryOp::MUL_ASSIGN;
-        case clang::BO_DivAssign: return SSL::BinaryOp::DIV_ASSIGN;
-        case clang::BO_RemAssign: return SSL::BinaryOp::MOD_ASSIGN;
-        case clang::BO_OrAssign: return SSL::BinaryOp::BIT_OR_ASSIGN;
-        case clang::BO_XorAssign: return SSL::BinaryOp::BIT_XOR_ASSIGN;
-        case clang::BO_ShlAssign: return SSL::BinaryOp::SHL_ASSIGN;
+        case clang::BO_Assign: return CppSL::BinaryOp::ASSIGN;
+        case clang::BO_AddAssign: return CppSL::BinaryOp::ADD_ASSIGN;
+        case clang::BO_SubAssign: return CppSL::BinaryOp::SUB_ASSIGN;
+        case clang::BO_MulAssign: return CppSL::BinaryOp::MUL_ASSIGN;
+        case clang::BO_DivAssign: return CppSL::BinaryOp::DIV_ASSIGN;
+        case clang::BO_RemAssign: return CppSL::BinaryOp::MOD_ASSIGN;
+        case clang::BO_OrAssign: return CppSL::BinaryOp::BIT_OR_ASSIGN;
+        case clang::BO_XorAssign: return CppSL::BinaryOp::BIT_XOR_ASSIGN;
+        case clang::BO_ShlAssign: return CppSL::BinaryOp::SHL_ASSIGN;
 
         default:
             llvm::report_fatal_error("Unsupported binary operator");
     }
 }
 
-CompileFrontendAction::CompileFrontendAction(skr::SSL::AST& AST)
+CompileFrontendAction::CompileFrontendAction(skr::CppSL::AST& AST)
     : clang::ASTFrontendAction(), AST(AST)
 {
 }
@@ -273,10 +273,10 @@ std::unique_ptr<clang::ASTConsumer> CompileFrontendAction::CreateASTConsumer(cla
 {
     auto &LO = CI.getLangOpts();
     LO.CommentOpts.ParseAllComments = true;
-    return std::make_unique<skr::SSL::ASTConsumer>(AST);
+    return std::make_unique<skr::CppSL::ASTConsumer>(AST);
 }
 
-ASTConsumer::ASTConsumer(skr::SSL::AST& AST)
+ASTConsumer::ASTConsumer(skr::CppSL::AST& AST)
     : clang::ASTConsumer(), AST(AST)
 {
     for (uint32_t i = 0; i < (uint32_t)BinaryOp::COUNT; i++) 
@@ -337,7 +337,7 @@ bool ASTConsumer::VisitRecordDecl(const clang::RecordDecl* recordDecl)
     return true;
 }
 
-SSL::TypeDecl* ASTConsumer::TranslateEnumDecl(const clang::EnumDecl* enumDecl)
+CppSL::TypeDecl* ASTConsumer::TranslateEnumDecl(const clang::EnumDecl* enumDecl)
 {
     using namespace clang;
 
@@ -361,7 +361,7 @@ SSL::TypeDecl* ASTConsumer::TranslateEnumDecl(const clang::EnumDecl* enumDecl)
     return UnderlyingType;
 }
 
-SSL::TypeDecl* ASTConsumer::TranslateRecordDecl(const clang::RecordDecl* recordDecl)
+CppSL::TypeDecl* ASTConsumer::TranslateRecordDecl(const clang::RecordDecl* recordDecl)
 {
     using namespace clang;
 
@@ -410,27 +410,27 @@ SSL::TypeDecl* ASTConsumer::TranslateRecordDecl(const clang::RecordDecl* recordD
 
             if (getType(ET) == AST.FloatType)
             {
-                const skr::SSL::TypeDecl* Types[] = { AST.Float2Type, AST.Float3Type, AST.Float4Type };
+                const skr::CppSL::TypeDecl* Types[] = { AST.Float2Type, AST.Float3Type, AST.Float4Type };
                 addType(ThisQualType, Types[N - 2]);
             }
             else if (getType(ET) == AST.IntType)
             {
-                const skr::SSL::TypeDecl* Types[] = { AST.Int2Type, AST.Int3Type, AST.Int4Type };
+                const skr::CppSL::TypeDecl* Types[] = { AST.Int2Type, AST.Int3Type, AST.Int4Type };
                 addType(ThisQualType, Types[N - 2]);
             }
             else if (getType(ET) == AST.UIntType)
             {
-                const skr::SSL::TypeDecl* Types[] = { AST.UInt2Type, AST.UInt3Type, AST.UInt4Type };
+                const skr::CppSL::TypeDecl* Types[] = { AST.UInt2Type, AST.UInt3Type, AST.UInt4Type };
                 addType(ThisQualType, Types[N - 2]);
             }
             else if (getType(ET) == AST.BoolType)
             {
-                const skr::SSL::TypeDecl* Types[] = { AST.Bool2Type, AST.Bool3Type, AST.Bool4Type };
+                const skr::CppSL::TypeDecl* Types[] = { AST.Bool2Type, AST.Bool3Type, AST.Bool4Type };
                 addType(ThisQualType, Types[N - 2]);
             }
             else if (getType(ET) == AST.HalfType)
             {
-                const skr::SSL::TypeDecl* Types[] = { AST.Half2Type, AST.Half3Type, AST.Half4Type };
+                const skr::CppSL::TypeDecl* Types[] = { AST.Half2Type, AST.Half3Type, AST.Half4Type };
                 addType(ThisQualType, Types[N - 2]);
             }
             else
@@ -450,7 +450,7 @@ SSL::TypeDecl* ASTConsumer::TranslateRecordDecl(const clang::RecordDecl* recordD
             if (getType(ET) == nullptr)
                 TranslateType(ET->getCanonicalTypeInternal());
 
-            auto ArrayType = AST.ArrayType(getType(ET), uint32_t(N), (SSL::ArrayFlags)ArrayFlags);
+            auto ArrayType = AST.ArrayType(getType(ET), uint32_t(N), (CppSL::ArrayFlags)ArrayFlags);
             addType(ThisQualType, ArrayType);
         }
         else if (TSD && What == "matrix")
@@ -459,7 +459,7 @@ SSL::TypeDecl* ASTConsumer::TranslateRecordDecl(const clang::RecordDecl* recordD
 
             const auto& Arguments = TSD->getTemplateArgs();
             const auto N = Arguments.get(0).getAsIntegral().getLimitedValue();
-            const skr::SSL::TypeDecl* Types[] = { AST.Float2x2Type, AST.Float3x3Type, AST.Float4x4Type };
+            const skr::CppSL::TypeDecl* Types[] = { AST.Float2x2Type, AST.Float3x3Type, AST.Float4x4Type };
             addType(ThisQualType, Types[N - 2]);
         }
         else if (What == "half")
@@ -471,15 +471,15 @@ SSL::TypeDecl* ASTConsumer::TranslateRecordDecl(const clang::RecordDecl* recordD
             const auto& Arguments = TSD->getTemplateArgs();
             const auto ET = Arguments.get(0).getAsType();
             const auto CacheFlags = Arguments.get(1).getAsIntegral().getLimitedValue();
-            const auto BufferFlag = (CacheFlags == 2) ? SSL::BufferFlags::Read : SSL::BufferFlags::ReadWrite;
+            const auto BufferFlag = (CacheFlags == 2) ? CppSL::BufferFlags::Read : CppSL::BufferFlags::ReadWrite;
             
             if (getType(ET) == nullptr)
                 TranslateType(ET->getCanonicalTypeInternal());
 
             if (ET->isVoidType())
-                addType(ThisQualType, AST.ByteBuffer((SSL::BufferFlags)BufferFlag));
+                addType(ThisQualType, AST.ByteBuffer((CppSL::BufferFlags)BufferFlag));
             else
-                addType(ThisQualType, AST.StructuredBuffer(getType(ET), (SSL::BufferFlags)BufferFlag));
+                addType(ThisQualType, AST.StructuredBuffer(getType(ET), (CppSL::BufferFlags)BufferFlag));
         }
         else if (TSD && What == "constant_buffer")
         {
@@ -499,11 +499,11 @@ SSL::TypeDecl* ASTConsumer::TranslateRecordDecl(const clang::RecordDecl* recordD
             const auto& Arguments = TSD->getTemplateArgs();
             const auto ET = Arguments.get(0).getAsType();
             const auto CacheFlags = Arguments.get(1).getAsIntegral().getLimitedValue();
-            const auto TextureFlag = (CacheFlags == 2) ? SSL::TextureFlags::Read : SSL::TextureFlags::ReadWrite;
+            const auto TextureFlag = (CacheFlags == 2) ? CppSL::TextureFlags::Read : CppSL::TextureFlags::ReadWrite;
             if (What == "image")
-                addType(ThisQualType, AST.Texture2D(getType(ET), (SSL::TextureFlags)TextureFlag));
+                addType(ThisQualType, AST.Texture2D(getType(ET), (CppSL::TextureFlags)TextureFlag));
             else
-                addType(ThisQualType, AST.Texture3D(getType(ET), (SSL::TextureFlags)TextureFlag));
+                addType(ThisQualType, AST.Texture3D(getType(ET), (CppSL::TextureFlags)TextureFlag));
         }
         else if (What == "sampler")
         {
@@ -517,7 +517,7 @@ SSL::TypeDecl* ASTConsumer::TranslateRecordDecl(const clang::RecordDecl* recordD
         {
             const auto& Arguments = TSD->getTemplateArgs();
             const auto Flags = Arguments.get(0).getAsIntegral().getLimitedValue();
-            auto RayQueryFlags = (SSL::RayQueryFlags)Flags;
+            auto RayQueryFlags = (CppSL::RayQueryFlags)Flags;
             addType(ThisQualType, AST.RayQuery(RayQueryFlags));
         }
         else if (What == "bindless_array")
@@ -543,7 +543,7 @@ SSL::TypeDecl* ASTConsumer::TranslateRecordDecl(const clang::RecordDecl* recordD
 
         if (auto AsStageInout = IsStageInout(recordDecl))
         {
-            NewType->add_attr(AST.DeclareAttr<SSL::StageInoutAttr>());
+            NewType->add_attr(AST.DeclareAttr<CppSL::StageInoutAttr>());
         }
 
         for (auto field : recordDecl->fields())
@@ -575,7 +575,7 @@ SSL::TypeDecl* ASTConsumer::TranslateRecordDecl(const clang::RecordDecl* recordD
     return getType(ThisQualType);
 }
 
-const SSL::TypeDecl* ASTConsumer::TranslateLambda(const clang::LambdaExpr* x)
+const CppSL::TypeDecl* ASTConsumer::TranslateLambda(const clang::LambdaExpr* x)
 {
     if (_lambda_types.contains(x))
         return _lambda_types[x];
@@ -584,7 +584,7 @@ const SSL::TypeDecl* ASTConsumer::TranslateLambda(const clang::LambdaExpr* x)
     appendStack(x->getCallOperator());
     DeferGuard defer([&]() { popStack(); });
 
-    std::vector<SSL::ParamVarDecl*> _params;
+    std::vector<CppSL::ParamVarDecl*> _params;
     TranslateParams(_params, lambdaMethod);
     
     TranslateLambdaCapturesToParams(x);
@@ -592,7 +592,7 @@ const SSL::TypeDecl* ASTConsumer::TranslateLambda(const clang::LambdaExpr* x)
 
     auto returnType = lambdaMethod->getReturnType();
     auto lambdaWrapper = AST.DeclareStructure(std::format(L"lambda_{}", next_lambda_id++), {});
-    auto lambdaBody = TranslateStmt<SSL::CompoundStmt>(x->getBody());
+    auto lambdaBody = TranslateStmt<CppSL::CompoundStmt>(x->getBody());
 
     auto newLambda = AST.DeclareMethod(lambdaWrapper, L"operator_call", getType(returnType), _params, lambdaBody);
     lambdaWrapper->add_method(newLambda);
@@ -608,7 +608,7 @@ const SSL::TypeDecl* ASTConsumer::TranslateLambda(const clang::LambdaExpr* x)
 
 void ASTConsumer::TranslateLambdaCapturesToParams(const clang::LambdaExpr* x)
 {
-    auto translateCaptureToParam = [&](SSL::TypeDecl* _type, const SSL::String& name, bool byref) 
+    auto translateCaptureToParam = [&](CppSL::TypeDecl* _type, const CppSL::String& name, bool byref) 
     {
         return TranslateParam(current_stack->_captured_params, byref ? EVariableQualifier::Inout : EVariableQualifier::None, _type, L"cap_" + name);
     };
@@ -662,7 +662,7 @@ void ASTConsumer::TranslateLambdaCapturesToParams(const clang::LambdaExpr* x)
     }  
 }
 
-SSL::Stmt* ASTConsumer::TranslateCall(const clang::Decl* _funcDecl, const clang::Stmt* callExpr)
+CppSL::Stmt* ASTConsumer::TranslateCall(const clang::Decl* _funcDecl, const clang::Stmt* callExpr)
 {
     auto funcDecl = llvm::dyn_cast<clang::FunctionDecl>(_funcDecl);
     auto methodDecl = llvm::dyn_cast<clang::CXXMethodDecl>(_funcDecl);
@@ -677,10 +677,10 @@ SSL::Stmt* ASTConsumer::TranslateCall(const clang::Decl* _funcDecl, const clang:
     
     // some args carray types that function shall use (like lambdas, etc.)
     // so we translate all args before translate & call the function 
-    std::vector<SSL::Expr*> _args;
+    std::vector<CppSL::Expr*> _args;
     _args.reserve(AsCall ? AsCall->getNumArgs() : AsConstruct->getNumArgs());
     for (auto arg : AsCall ? AsCall->arguments() : AsConstruct->arguments())
-        _args.emplace_back(TranslateStmt<SSL::Expr>(arg));
+        _args.emplace_back(TranslateStmt<CppSL::Expr>(arg));
     if (AsCXXOperatorCall && methodDecl) // op call to methods use first arg as the caller
         _args.erase(_args.begin());
 
@@ -714,37 +714,37 @@ SSL::Stmt* ASTConsumer::TranslateCall(const clang::Decl* _funcDecl, const clang:
 
     if (AsConstruct != nullptr)
     {
-        auto SSLType = getType(AsConstruct->getType());
-        return AST.Construct(SSLType, _args);
+        auto CppSLType = getType(AsConstruct->getType());
+        return AST.Construct(CppSLType, _args);
     }
     else if (auto AsMethod = clang::dyn_cast<clang::CXXMethodDecl>(funcDecl); 
         AsMethod && !LanguageRule_UseFunctionInsteadOfMethod(AsMethod))
     {
-        SSL::MemberExpr* _callee = nullptr;
+        CppSL::MemberExpr* _callee = nullptr;
         if (auto cxxMemberCall = llvm::dyn_cast<clang::CXXMemberCallExpr>(callExpr))
         {
-            _callee = TranslateStmt<SSL::MemberExpr>(cxxMemberCall->getCallee());
+            _callee = TranslateStmt<CppSL::MemberExpr>(cxxMemberCall->getCallee());
         }
         else if (auto cxxOperatorCall = llvm::dyn_cast<clang::CXXOperatorCallExpr>(callExpr))
         {
-            auto _caller = TranslateStmt<SSL::DeclRefExpr>(cxxOperatorCall->getArg(0));
-            _callee = AST.Method(_caller, (SSL::MethodDecl*)getFunc(AsMethod));
+            auto _caller = TranslateStmt<CppSL::DeclRefExpr>(cxxOperatorCall->getArg(0));
+            _callee = AST.Method(_caller, (CppSL::MethodDecl*)getFunc(AsMethod));
         }
         else
             ReportFatalError(callExpr, "Unsupported method call expression: {}", callExpr->getStmtClassName());
-        return AST.CallMethod(_callee, std::span<SSL::Expr*>(_args));
+        return AST.CallMethod(_callee, std::span<CppSL::Expr*>(_args));
     }
     else
     {
         if (AsMethod)
         {
             auto _callee = getFunc(AsMethod)->ref();
-            _args.emplace(_args.begin(), (SSL::Expr*)TranslateStmt<SSL::MemberExpr>(AsMethodCall->getCallee())->owner());
+            _args.emplace(_args.begin(), (CppSL::Expr*)TranslateStmt<CppSL::MemberExpr>(AsMethodCall->getCallee())->owner());
             return AST.CallFunction(_callee, _args);
         }
         else
         {
-            auto _callee = TranslateStmt<SSL::DeclRefExpr>(AsCall->getCallee());
+            auto _callee = TranslateStmt<CppSL::DeclRefExpr>(AsCall->getCallee());
             return AST.CallFunction(_callee, _args); 
         }
     }
@@ -829,7 +829,7 @@ bool ASTConsumer::VisitVarDecl(const clang::VarDecl* x)
     return true;
 }
 
-SSL::TypeDecl* ASTConsumer::TranslateType(clang::QualType type) 
+CppSL::TypeDecl* ASTConsumer::TranslateType(clang::QualType type) 
 {
     type = type.getNonReferenceType().getCanonicalType();
 
@@ -853,7 +853,7 @@ SSL::TypeDecl* ASTConsumer::TranslateType(clang::QualType type)
     return getType(type);
 }
 
-SSL::ParamVarDecl* ASTConsumer::TranslateParam(std::vector<SSL::ParamVarDecl*>& params, skr::SSL::EVariableQualifier qualifier, const skr::SSL::TypeDecl* type, const skr::SSL::Name& name)
+CppSL::ParamVarDecl* ASTConsumer::TranslateParam(std::vector<CppSL::ParamVarDecl*>& params, skr::CppSL::EVariableQualifier qualifier, const skr::CppSL::TypeDecl* type, const skr::CppSL::Name& name)
 {
     auto _param = AST.DeclareParam(qualifier, type, name);
     params.emplace_back(_param);
@@ -864,7 +864,7 @@ SSL::ParamVarDecl* ASTConsumer::TranslateParam(std::vector<SSL::ParamVarDecl*>& 
     return _param;
 }
 
-void ASTConsumer::TranslateParams(std::vector<SSL::ParamVarDecl*>& params, const clang::FunctionDecl* func)
+void ASTConsumer::TranslateParams(std::vector<CppSL::ParamVarDecl*>& params, const clang::FunctionDecl* func)
 {
     params.reserve(params.size() + func->param_size());
 
@@ -879,9 +879,9 @@ void ASTConsumer::TranslateParams(std::vector<SSL::ParamVarDecl*>& params, const
         const bool isConst = ParamQualType.isConstQualified();
         
         const auto qualifier = 
-            (isRef && isConst) ? SSL::EVariableQualifier::Const : 
-            (isRef && !isConst) ? SSL::EVariableQualifier::Inout : 
-            SSL::EVariableQualifier::None;
+            (isRef && isConst) ? CppSL::EVariableQualifier::Const : 
+            (isRef && !isConst) ? CppSL::EVariableQualifier::Inout : 
+            CppSL::EVariableQualifier::None;
 
         if (auto _paramType = getType(ParamQualType))
         {
@@ -904,7 +904,7 @@ void ASTConsumer::TranslateParams(std::vector<SSL::ParamVarDecl*>& params, const
     }
 }
 
-SSL::FunctionDecl* ASTConsumer::TranslateFunction(const clang::FunctionDecl *x, llvm::StringRef override_name) 
+CppSL::FunctionDecl* ASTConsumer::TranslateFunction(const clang::FunctionDecl *x, llvm::StringRef override_name) 
 {
     if (IsDump(x))
         x->dump();
@@ -924,11 +924,11 @@ SSL::FunctionDecl* ASTConsumer::TranslateFunction(const clang::FunctionDecl *x, 
         override_name = OVERRIDE_NAME;
     }
 
-    std::vector<SSL::ParamVarDecl*> params;
+    std::vector<CppSL::ParamVarDecl*> params;
     TranslateParams(params, x);
     params.insert(params.end(), current_stack->_captured_params.begin(), current_stack->_captured_params.end());
 
-    SSL::FunctionDecl* F = nullptr;
+    CppSL::FunctionDecl* F = nullptr;
     auto AsMethod = llvm::dyn_cast<clang::CXXMethodDecl>(x);
     if (AsMethod && !LanguageRule_UseFunctionInsteadOfMethod(AsMethod))
     {
@@ -953,7 +953,7 @@ SSL::FunctionDecl* ASTConsumer::TranslateFunction(const clang::FunctionDecl *x, 
                     body->add_statement(
                         AST.Assign(
                             AST.Field(AST.This(_parentType), _parentType->get_field(N)),
-                            (SSL::Expr*)TranslateStmt(ctor_init->getInit())
+                            (CppSL::Expr*)TranslateStmt(ctor_init->getInit())
                         )
                     );
                 }
@@ -963,7 +963,7 @@ SSL::FunctionDecl* ASTConsumer::TranslateFunction(const clang::FunctionDecl *x, 
                 }
             }
             
-            if (auto func = TranslateStmt<SSL::CompoundStmt>(x->getBody()))
+            if (auto func = TranslateStmt<CppSL::CompoundStmt>(x->getBody()))
                 body->add_statement(func);
 
             F = AST.DeclareConstructor(
@@ -972,7 +972,7 @@ SSL::FunctionDecl* ASTConsumer::TranslateFunction(const clang::FunctionDecl *x, 
                 params,
                 body
             );
-            _parentType->add_ctor((SSL::ConstructorDecl*)F);
+            _parentType->add_ctor((CppSL::ConstructorDecl*)F);
         }
         else
         {
@@ -982,9 +982,9 @@ SSL::FunctionDecl* ASTConsumer::TranslateFunction(const clang::FunctionDecl *x, 
                 ToText(CxxMethodName),
                 getType(x->getReturnType()),
                 params,
-                TranslateStmt<SSL::CompoundStmt>(x->getBody())
+                TranslateStmt<CppSL::CompoundStmt>(x->getBody())
             );
-            _parentType->add_method((SSL::MethodDecl*)F);
+            _parentType->add_method((CppSL::MethodDecl*)F);
         }
     }
     else
@@ -1001,7 +1001,7 @@ SSL::FunctionDecl* ASTConsumer::TranslateFunction(const clang::FunctionDecl *x, 
         F = AST.DeclareFunction(ToText(CxxFunctionName),
             getType(x->getReturnType()),
             params,
-            TranslateStmt<SSL::CompoundStmt>(x->getBody())
+            TranslateStmt<CppSL::CompoundStmt>(x->getBody())
         );
     }
     addFunc(x, F);
@@ -1041,17 +1041,17 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
         } else {
             auto cxxThen = cxxBranch->getThen();
             auto cxxElse = cxxBranch->getElse();
-            auto _cond = TranslateStmt<SSL::Expr>(cxxCond);
+            auto _cond = TranslateStmt<CppSL::Expr>(cxxCond);
             auto _then = TranslateStmt(cxxThen);
             auto _else = TranslateStmt(cxxElse);
-            SSL::CompoundStmt* _then_body = cxxThen ? llvm::dyn_cast<clang::CompoundStmt>(cxxThen) ? (SSL::CompoundStmt*)_then : AST.Block({_then}) : nullptr;
-            SSL::CompoundStmt* _else_body = cxxElse ? llvm::dyn_cast<clang::CompoundStmt>(cxxElse) ? (SSL::CompoundStmt*)_else : AST.Block({_else}) : nullptr;
+            CppSL::CompoundStmt* _then_body = cxxThen ? llvm::dyn_cast<clang::CompoundStmt>(cxxThen) ? (CppSL::CompoundStmt*)_then : AST.Block({_then}) : nullptr;
+            CppSL::CompoundStmt* _else_body = cxxElse ? llvm::dyn_cast<clang::CompoundStmt>(cxxElse) ? (CppSL::CompoundStmt*)_else : AST.Block({_else}) : nullptr;
             return AST.If(_cond, _then_body, _else_body);
         }
     } 
     else if (auto cxxSwitch = llvm::dyn_cast<clang::SwitchStmt>(x)) 
     {
-        std::vector<SSL::CaseStmt*> cases;
+        std::vector<CppSL::CaseStmt*> cases;
         std::vector<const clang::SwitchCase*> cxxCases;
         if (auto caseList = cxxSwitch->getSwitchCaseList()) 
         {
@@ -1062,17 +1062,17 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
             std::reverse(cxxCases.begin(), cxxCases.end());
             cases.reserve(cxxCases.size());
             for (auto cxxCase : cxxCases)
-                cases.emplace_back(TranslateStmt<SSL::CaseStmt>(cxxCase));
+                cases.emplace_back(TranslateStmt<CppSL::CaseStmt>(cxxCase));
         }
-        return AST.Switch(TranslateStmt<SSL::Expr>(cxxSwitch->getCond()), cases);
+        return AST.Switch(TranslateStmt<CppSL::Expr>(cxxSwitch->getCond()), cases);
     } 
     else if (auto cxxCase = llvm::dyn_cast<clang::CaseStmt>(x)) 
     {
-        return AST.Case(TranslateStmt<SSL::Expr>(cxxCase->getLHS()), TranslateStmt<SSL::CompoundStmt>(cxxCase->getSubStmt()));
+        return AST.Case(TranslateStmt<CppSL::Expr>(cxxCase->getLHS()), TranslateStmt<CppSL::CompoundStmt>(cxxCase->getSubStmt()));
     } 
     else if (auto cxxDefault = llvm::dyn_cast<clang::DefaultStmt>(x)) 
     {
-        auto _body = TranslateStmt<SSL::CompoundStmt>(cxxDefault->getSubStmt());
+        auto _body = TranslateStmt<CppSL::CompoundStmt>(cxxDefault->getSubStmt());
         return AST.Default(_body);
     } 
     else if (auto cxxContinue = llvm::dyn_cast<clang::ContinueStmt>(x)) 
@@ -1085,20 +1085,20 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
     } 
     else if (auto cxxWhile = llvm::dyn_cast<clang::WhileStmt>(x)) 
     {
-        auto _cond = TranslateStmt<SSL::Expr>(cxxWhile->getCond());
-        return AST.While(_cond, TranslateStmt<SSL::CompoundStmt>(cxxWhile->getBody()));
+        auto _cond = TranslateStmt<CppSL::Expr>(cxxWhile->getCond());
+        return AST.While(_cond, TranslateStmt<CppSL::CompoundStmt>(cxxWhile->getBody()));
     } 
     else if (auto cxxFor = llvm::dyn_cast<clang::ForStmt>(x)) 
     {
         auto _init = TranslateStmt(cxxFor->getInit());
-        auto _cond = TranslateStmt<SSL::Expr>(cxxFor->getCond());
+        auto _cond = TranslateStmt<CppSL::Expr>(cxxFor->getCond());
         auto _inc = TranslateStmt(cxxFor->getInc());
-        auto _body = TranslateStmt<SSL::CompoundStmt>(cxxFor->getBody());
+        auto _body = TranslateStmt<CppSL::CompoundStmt>(cxxFor->getBody());
         return AST.For(_init, _cond, _inc, _body);
     } 
     else if (auto cxxCompound = llvm::dyn_cast<clang::CompoundStmt>(x)) 
     {
-        std::vector<SSL::Stmt*> stmts;
+        std::vector<CppSL::Stmt*> stmts;
         stmts.reserve(cxxCompound->size());
         for (auto sub : cxxCompound->body())
             stmts.emplace_back(TranslateStmt(sub));
@@ -1116,8 +1116,8 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
     else if (auto cxxDecl = llvm::dyn_cast<clang::DeclStmt>(x)) 
     {
         const DeclGroupRef declGroup = cxxDecl->getDeclGroup();
-        std::vector<SSL::DeclStmt*> var_decls;
-        std::vector<SSL::CommentStmt*> comments;
+        std::vector<CppSL::DeclStmt*> var_decls;
+        std::vector<CppSL::CommentStmt*> comments;
         for (auto decl : declGroup) 
         {
             if (!decl) continue;
@@ -1137,12 +1137,12 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
                 }
 
                 const bool isConst = varDecl->getType().isConstQualified();
-                if (auto SSLType = getType(Ty.getCanonicalType()))
+                if (auto CppSLType = getType(Ty.getCanonicalType()))
                 {
-                    auto _init = TranslateStmt<SSL::Expr>(varDecl->getInit());
-                    auto _name = SSL::String(varDecl->getName().begin(), varDecl->getName().end());
-                    auto v = AST.Variable(isConst ? SSL::EVariableQualifier::Const : SSL::EVariableQualifier::None, SSLType, _name, _init);
-                    addVar(varDecl, (SSL::VarDecl*)v->decl());
+                    auto _init = TranslateStmt<CppSL::Expr>(varDecl->getInit());
+                    auto _name = CppSL::String(varDecl->getName().begin(), varDecl->getName().end());
+                    auto v = AST.Variable(isConst ? CppSL::EVariableQualifier::Const : CppSL::EVariableQualifier::None, CppSLType, _name, _init);
+                    addVar(varDecl, (CppSL::VarDecl*)v->decl());
                     var_decls.emplace_back(v); 
                 } 
                 else
@@ -1169,7 +1169,7 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
     else if (auto cxxReturn = llvm::dyn_cast<clang::ReturnStmt>(x)) 
     {
         if(auto retExpr = cxxReturn->getRetValue())
-            return AST.Return(TranslateStmt<SSL::Expr>(retExpr));
+            return AST.Return(TranslateStmt<CppSL::Expr>(retExpr));
         return AST.Return(nullptr);
     }
     ///////////////////////////////////// EXPRS ///////////////////////////////////////////
@@ -1218,9 +1218,9 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
     }
     else if (auto cxxConditional = llvm::dyn_cast<clang::ConditionalOperator>(x))
     {
-        return AST.Conditional(TranslateStmt<SSL::Expr>(cxxConditional->getCond()),
-                               TranslateStmt<SSL::Expr>(cxxConditional->getTrueExpr()),
-                               TranslateStmt<SSL::Expr>(cxxConditional->getFalseExpr()));
+        return AST.Conditional(TranslateStmt<CppSL::Expr>(cxxConditional->getCond()),
+                               TranslateStmt<CppSL::Expr>(cxxConditional->getTrueExpr()),
+                               TranslateStmt<CppSL::Expr>(cxxConditional->getFalseExpr()));
     } 
     else if (auto cxxLambda = llvm::dyn_cast<LambdaExpr>(x)) 
     {
@@ -1230,7 +1230,7 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
     }
     else if (auto cxxParenExpr = llvm::dyn_cast<clang::ParenExpr>(x))
     {
-        return TranslateStmt<SSL::Expr>(cxxParenExpr->getSubExpr());
+        return TranslateStmt<CppSL::Expr>(cxxParenExpr->getSubExpr());
     }
     else if (auto cxxDefaultArg = llvm::dyn_cast<clang::CXXDefaultArgExpr>(x))
     {
@@ -1239,21 +1239,21 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
     else if (auto cxxExplicitCast = llvm::dyn_cast<clang::ExplicitCastExpr>(x))
     {
         if (cxxExplicitCast->getType()->isFunctionPointerType())
-            return TranslateStmt<SSL::DeclRefExpr>(cxxExplicitCast->getSubExpr());
-        auto SSLType = getType(cxxExplicitCast->getType());
-        if (!SSLType)
+            return TranslateStmt<CppSL::DeclRefExpr>(cxxExplicitCast->getSubExpr());
+        auto CppSLType = getType(cxxExplicitCast->getType());
+        if (!CppSLType)
             ReportFatalError(cxxExplicitCast, "Explicit cast with unfound type: [{}]", cxxExplicitCast->getType().getAsString());
-        return AST.StaticCast(SSLType, TranslateStmt<SSL::Expr>(cxxExplicitCast->getSubExpr()));
+        return AST.StaticCast(CppSLType, TranslateStmt<CppSL::Expr>(cxxExplicitCast->getSubExpr()));
     }
     else if (auto cxxImplicitCast = llvm::dyn_cast<clang::ImplicitCastExpr>(x))
     {
         if (cxxImplicitCast->getType()->isFunctionPointerType())
-            return TranslateStmt<SSL::DeclRefExpr>(cxxImplicitCast->getSubExpr());
-        auto RHS = TranslateStmt<SSL::Expr>(cxxImplicitCast->getSubExpr());
-        auto SSLType = getType(cxxImplicitCast->getType());
-        if (!SSLType)
+            return TranslateStmt<CppSL::DeclRefExpr>(cxxImplicitCast->getSubExpr());
+        auto RHS = TranslateStmt<CppSL::Expr>(cxxImplicitCast->getSubExpr());
+        auto CppSLType = getType(cxxImplicitCast->getType());
+        if (!CppSLType)
             ReportFatalError(cxxImplicitCast, "Implicit cast with unfound type: [{}]", cxxImplicitCast->getType().getAsString());
-        return AST.ImplicitCast(SSLType, RHS);
+        return AST.ImplicitCast(CppSLType, RHS);
     }
     else if (auto cxxConstructor = llvm::dyn_cast<clang::CXXConstructExpr>(x))
     {
@@ -1264,29 +1264,29 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
         auto funcDecl = cxxCall->getCalleeDecl();
         if (LanguageRule_UseAssignForImplicitCopyOrMove(cxxCall->getCalleeDecl()))
         {
-            auto lhs = TranslateStmt<SSL::Expr>(cxxCall->getArg(0));
-            auto rhs = TranslateStmt<SSL::Expr>(cxxCall->getArg(1));
+            auto lhs = TranslateStmt<CppSL::Expr>(cxxCall->getArg(0));
+            auto rhs = TranslateStmt<CppSL::Expr>(cxxCall->getArg(1));
             return AST.Assign(lhs, rhs);
         }
         else if (auto AsUnaOp = IsUnaOp(funcDecl))
         {
             auto name = GetArgumentAt<clang::StringRef>(AsUnaOp, 1);
             if (name == "PLUS")
-                return AST.Unary(SSL::UnaryOp::PLUS, TranslateStmt<SSL::Expr>(cxxCall->getArg(0)));
+                return AST.Unary(CppSL::UnaryOp::PLUS, TranslateStmt<CppSL::Expr>(cxxCall->getArg(0)));
             else if (name == "MINUS")
-                return AST.Unary(SSL::UnaryOp::MINUS, TranslateStmt<SSL::Expr>(cxxCall->getArg(0)));
+                return AST.Unary(CppSL::UnaryOp::MINUS, TranslateStmt<CppSL::Expr>(cxxCall->getArg(0)));
             else if (name == "NOT")
-                return AST.Unary(SSL::UnaryOp::NOT, TranslateStmt<SSL::Expr>(cxxCall->getArg(0)));
+                return AST.Unary(CppSL::UnaryOp::NOT, TranslateStmt<CppSL::Expr>(cxxCall->getArg(0)));
             else if (name == "BIT_NOT")
-                return AST.Unary(SSL::UnaryOp::BIT_NOT, TranslateStmt<SSL::Expr>(cxxCall->getArg(0)));
+                return AST.Unary(CppSL::UnaryOp::BIT_NOT, TranslateStmt<CppSL::Expr>(cxxCall->getArg(0)));
             else if (name == "PRE_INC")
-                return AST.Unary(SSL::UnaryOp::PRE_INC, TranslateStmt<SSL::Expr>(cxxCall->getArg(0)));
+                return AST.Unary(CppSL::UnaryOp::PRE_INC, TranslateStmt<CppSL::Expr>(cxxCall->getArg(0)));
             else if (name == "PRE_DEC")
-                return AST.Unary(SSL::UnaryOp::PRE_DEC, TranslateStmt<SSL::Expr>(cxxCall->getArg(0)));
+                return AST.Unary(CppSL::UnaryOp::PRE_DEC, TranslateStmt<CppSL::Expr>(cxxCall->getArg(0)));
             else if (name == "POST_INC")
-                return AST.Unary(SSL::UnaryOp::POST_INC, TranslateStmt<SSL::Expr>(cxxCall->getArg(0)));
+                return AST.Unary(CppSL::UnaryOp::POST_INC, TranslateStmt<CppSL::Expr>(cxxCall->getArg(0)));
             else if (name == "POST_DEC")
-                return AST.Unary(SSL::UnaryOp::POST_DEC, TranslateStmt<SSL::Expr>(cxxCall->getArg(0)));
+                return AST.Unary(CppSL::UnaryOp::POST_DEC, TranslateStmt<CppSL::Expr>(cxxCall->getArg(0)));
             ReportFatalError(x, "Unsupported unary operator: {}", name.str());
         }
         else if (auto AsBinOp = IsBinOp(funcDecl))
@@ -1295,9 +1295,9 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
             auto&& iter = _bin_ops.find(name.str());
             if (iter == _bin_ops.end())
                 ReportFatalError(x, "Unsupported binary operator: {}", name.str());
-            SSL::BinaryOp op = iter->second;
-            auto lhs = TranslateStmt<SSL::Expr>(cxxCall->getArg(0));
-            auto rhs = TranslateStmt<SSL::Expr>(cxxCall->getArg(1));
+            CppSL::BinaryOp op = iter->second;
+            auto lhs = TranslateStmt<CppSL::Expr>(cxxCall->getArg(0));
+            auto rhs = TranslateStmt<CppSL::Expr>(cxxCall->getArg(1));
             return AST.Binary(op, lhs, rhs);
         }
         else if (IsAccess(funcDecl))
@@ -1305,11 +1305,11 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
             if (auto AsMethod = llvm::dyn_cast<clang::CXXMemberCallExpr>(cxxCall))
             {
                 auto caller = llvm::dyn_cast<clang::MemberExpr>(AsMethod->getCallee())->getBase();
-                return AST.Access(TranslateStmt<SSL::Expr>(caller), TranslateStmt<SSL::Expr>(AsMethod->getArg(0)));
+                return AST.Access(TranslateStmt<CppSL::Expr>(caller), TranslateStmt<CppSL::Expr>(AsMethod->getArg(0)));
             }
             else if (auto AsOperator = llvm::dyn_cast<clang::CXXOperatorCallExpr>(cxxCall))
             {
-                return AST.Access(TranslateStmt<SSL::Expr>(AsOperator->getArg(0)), TranslateStmt<SSL::Expr>(AsOperator->getArg(1)));
+                return AST.Access(TranslateStmt<CppSL::Expr>(AsOperator->getArg(0)), TranslateStmt<CppSL::Expr>(AsOperator->getArg(1)));
             }
             ReportFatalError(x, "Unsupported access operator on function declaration");
         }
@@ -1321,14 +1321,14 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
                 const bool IsMethod = llvm::dyn_cast<clang::CXXMemberCallExpr>(cxxCall);
                 std::vector<const TypeDecl*> _arg_types;
                 std::vector<EVariableQualifier> _arg_qualifiers;
-                std::vector<SSL::Expr*> _args;
+                std::vector<CppSL::Expr*> _args;
                 _args.reserve(cxxCall->getNumArgs() + (IsMethod ? 1 : 0));
                 _arg_types.reserve(cxxCall->getNumArgs() + (IsMethod ? 1 : 0));
                 _arg_qualifiers.reserve(cxxCall->getNumArgs() + (IsMethod ? 1 : 0));
                 if (IsMethod)
                 {
                     auto _clangMember = llvm::dyn_cast<clang::MemberExpr>(llvm::dyn_cast<clang::CXXMemberCallExpr>(x)->getCallee());
-                    auto _caller = TranslateStmt<SSL::DeclRefExpr>(_clangMember->getBase());
+                    auto _caller = TranslateStmt<CppSL::DeclRefExpr>(_clangMember->getBase());
                     _arg_types.emplace_back(_caller->type());
                     _arg_qualifiers.emplace_back(EVariableQualifier::Inout);
                     _args.emplace_back(_caller);
@@ -1337,7 +1337,7 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
                 {
                     _arg_types.emplace_back(getType(cxxCall->getArg(i)->getType()));
                     _arg_qualifiers.emplace_back(EVariableQualifier::None);
-                    _args.emplace_back(TranslateStmt<SSL::Expr>(cxxCall->getArg(i)));
+                    _args.emplace_back(TranslateStmt<CppSL::Expr>(cxxCall->getArg(i)));
                 }
                 // TODO: CACHE THIS
                 if (auto Spec = AST.SpecializeTemplateFunction(Intrin, _arg_types, _arg_qualifiers))
@@ -1365,24 +1365,24 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
         }
         else
         {
-            SSL::UnaryOp op = TranslateUnaryOp(cxxUnaryOp->getOpcode());
-            return AST.Unary(op, TranslateStmt<SSL::Expr>(cxxUnaryOp->getSubExpr()));
+            CppSL::UnaryOp op = TranslateUnaryOp(cxxUnaryOp->getOpcode());
+            return AST.Unary(op, TranslateStmt<CppSL::Expr>(cxxUnaryOp->getSubExpr()));
         }
     }
     else if (auto cxxBinOp = llvm::dyn_cast<clang::BinaryOperator>(x))
     {
-        SSL::BinaryOp op = TranslateBinaryOp(cxxBinOp->getOpcode());
-        return AST.Binary(op, TranslateStmt<SSL::Expr>(cxxBinOp->getLHS()), TranslateStmt<SSL::Expr>(cxxBinOp->getRHS()));
+        CppSL::BinaryOp op = TranslateBinaryOp(cxxBinOp->getOpcode());
+        return AST.Binary(op, TranslateStmt<CppSL::Expr>(cxxBinOp->getLHS()), TranslateStmt<CppSL::Expr>(cxxBinOp->getRHS()));
     }
     else if (auto memberExpr = llvm::dyn_cast<clang::MemberExpr>(x))
     {
-        auto owner = TranslateStmt<SSL::DeclRefExpr>(memberExpr->getBase());
+        auto owner = TranslateStmt<CppSL::DeclRefExpr>(memberExpr->getBase());
         auto memberDecl = memberExpr->getMemberDecl();
         auto methodDecl = llvm::dyn_cast<clang::CXXMethodDecl>(memberDecl);
         auto fieldDecl = llvm::dyn_cast<clang::FieldDecl>(memberDecl);
         if (methodDecl)
         {
-            return AST.Method(owner, (SSL::MethodDecl*)getFunc(methodDecl));
+            return AST.Method(owner, (CppSL::MethodDecl*)getFunc(methodDecl));
         }
         else if (fieldDecl)
         {
@@ -1449,9 +1449,9 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
         switch (APV.getKind())
         {
             case clang::APValue::ValueKind::Int:
-                return AST.Constant(SSL::IntValue(APV.getInt().getLimitedValue()));
+                return AST.Constant(CppSL::IntValue(APV.getInt().getLimitedValue()));
             case clang::APValue::ValueKind::Float:
-                return AST.Constant(SSL::FloatValue(APV.getFloat().convertToDouble()));
+                return AST.Constant(CppSL::FloatValue(APV.getFloat().convertToDouble()));
             case clang::APValue::ValueKind::Struct:
             default:
                 ReportFatalError(x, "ConstantExpr with struct value is not supported: {}", CONSTANT->getStmtClassName());
@@ -1464,15 +1464,15 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
     }
     else if (auto BOOL = llvm::dyn_cast<clang::CXXBoolLiteralExpr>(x))
     {
-        return AST.Constant(SSL::IntValue(BOOL->getValue()));
+        return AST.Constant(CppSL::IntValue(BOOL->getValue()));
     }
     else if (auto INT = llvm::dyn_cast<clang::IntegerLiteral>(x))
     {
-        return AST.Constant(SSL::IntValue(INT->getValue().getLimitedValue()));
+        return AST.Constant(CppSL::IntValue(INT->getValue().getLimitedValue()));
     }
     else if (auto FLOAT = llvm::dyn_cast<clang::FloatingLiteral>(x))
     {
-        return AST.Constant(SSL::FloatValue(FLOAT->getValue().convertToFloat()));
+        return AST.Constant(CppSL::FloatValue(FLOAT->getValue().convertToFloat()));
     }
     else if (auto cxxNullStmt = llvm::dyn_cast<clang::NullStmt>(x))
     {
@@ -1483,7 +1483,7 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
     return nullptr;
 }
 
-bool ASTConsumer::addVar(const clang::VarDecl* var, skr::SSL::VarDecl* _var)
+bool ASTConsumer::addVar(const clang::VarDecl* var, skr::CppSL::VarDecl* _var)
 {
     if (!_vars.emplace(var, _var).second)
     {
@@ -1493,7 +1493,7 @@ bool ASTConsumer::addVar(const clang::VarDecl* var, skr::SSL::VarDecl* _var)
     return true;
 }
 
-skr::SSL::VarDecl* ASTConsumer::getVar(const clang::VarDecl* var) const
+skr::CppSL::VarDecl* ASTConsumer::getVar(const clang::VarDecl* var) const
 {
     if (current_stack && current_stack->_value_redirects.contains(var))
         return current_stack->_value_redirects[var];
@@ -1506,7 +1506,7 @@ skr::SSL::VarDecl* ASTConsumer::getVar(const clang::VarDecl* var) const
     return nullptr;
 }
 
-bool ASTConsumer::addType(clang::QualType type, skr::SSL::TypeDecl* decl)
+bool ASTConsumer::addType(clang::QualType type, skr::CppSL::TypeDecl* decl)
 {
     type = type.getNonReferenceType()
                .getUnqualifiedType()
@@ -1540,12 +1540,12 @@ bool ASTConsumer::addType(clang::QualType type, skr::SSL::TypeDecl* decl)
     return true;
 }
 
-bool ASTConsumer::addType(clang::QualType type, const skr::SSL::TypeDecl* decl)
+bool ASTConsumer::addType(clang::QualType type, const skr::CppSL::TypeDecl* decl)
 {
-    return addType(type, const_cast<skr::SSL::TypeDecl*>(decl));
+    return addType(type, const_cast<skr::CppSL::TypeDecl*>(decl));
 }
 
-skr::SSL::TypeDecl* ASTConsumer::getType(clang::QualType type) const
+skr::CppSL::TypeDecl* ASTConsumer::getType(clang::QualType type) const
 {
     type = type.getNonReferenceType()
         .getUnqualifiedType()
@@ -1566,7 +1566,7 @@ skr::SSL::TypeDecl* ASTConsumer::getType(clang::QualType type) const
     return nullptr;
 }
 
-bool ASTConsumer::addFunc(const clang::FunctionDecl* func, skr::SSL::FunctionDecl* decl)
+bool ASTConsumer::addFunc(const clang::FunctionDecl* func, skr::CppSL::FunctionDecl* decl)
 {
     if (!_funcs.emplace(func, decl).second)
     {
@@ -1576,7 +1576,7 @@ bool ASTConsumer::addFunc(const clang::FunctionDecl* func, skr::SSL::FunctionDec
     return true;
 }
 
-skr::SSL::FunctionDecl* ASTConsumer::getFunc(const clang::FunctionDecl* func) const
+skr::CppSL::FunctionDecl* ASTConsumer::getFunc(const clang::FunctionDecl* func) const
 {
     auto it = _funcs.find(func);
     if (it != _funcs.end())
@@ -1584,7 +1584,7 @@ skr::SSL::FunctionDecl* ASTConsumer::getFunc(const clang::FunctionDecl* func) co
     return nullptr;
 }
 
-void ASTConsumer::CheckStageInputs(const clang::FunctionDecl* x, skr::SSL::ShaderStage stage)
+void ASTConsumer::CheckStageInputs(const clang::FunctionDecl* x, skr::CppSL::ShaderStage stage)
 {
     auto CheckParamIsBuiltin = [](const clang::ParmVarDecl* p) -> bool { return IsBuiltin(p); };
     auto CheckParamTypeIsStageInout = [](const clang::ParmVarDecl* p) -> bool 
@@ -1597,9 +1597,9 @@ void ASTConsumer::CheckStageInputs(const clang::FunctionDecl* x, skr::SSL::Shade
     {
         bool IsBuiltin = CheckParamIsBuiltin(param);
         bool IsStageInout = CheckParamTypeIsStageInout(param);
-        if ((stage == skr::SSL::ShaderStage::Compute) && !IsBuiltin)
+        if ((stage == skr::CppSL::ShaderStage::Compute) && !IsBuiltin)
             ReportFatalError(x, "Compute shader function has non-builtin parameter: {}", x->getNameAsString());
-        else if ((stage == skr::SSL::ShaderStage::Vertex || stage == skr::SSL::ShaderStage::Fragment) && !IsBuiltin && !IsStageInout)
+        else if ((stage == skr::CppSL::ShaderStage::Vertex || stage == skr::CppSL::ShaderStage::Fragment) && !IsBuiltin && !IsStageInout)
             ReportFatalError(x, "Vertex/Fragment shader function has non-builtin and non-stage-inout parameter: {}", param->getNameAsString());
     }
 }
@@ -1634,4 +1634,4 @@ inline static std::string OpKindToName(clang::OverloadedOperatorKind op)
     }
 }
 
-} // namespace skr::SSL
+} // namespace skr::CppSL

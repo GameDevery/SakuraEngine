@@ -1,7 +1,7 @@
-#include "SSL/Stmt.hpp"
-#include "SSL/AST.hpp"
+#include "CppSL/Stmt.hpp"
+#include "CppSL/AST.hpp"
 
-namespace skr::SSL {
+namespace skr::CppSL {
 
 Stmt::Stmt(AST& ast) : _ast(&ast) {}
 
@@ -125,4 +125,4 @@ ValueStmt::ValueStmt(AST& ast)
 
 }
 
-} // namespace skr::SSL
+} // namespace skr::CppSL

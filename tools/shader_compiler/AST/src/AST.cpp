@@ -1,8 +1,8 @@
-#include "SSL/AST.hpp"
+#include "CppSL/AST.hpp"
 #include <array>
 #include <unordered_set>
 
-namespace skr::SSL 
+namespace skr::CppSL 
 {
 
 struct VarConcept : public VarConceptDecl
@@ -705,11 +705,11 @@ void AST::DeclareIntrinstics()
 
     auto ResourceFamily = DeclareVarConcept(L"ResourceFamily", 
         [this](EVariableQualifier qualifier, const TypeDecl* type) {
-            return dynamic_cast<const skr::SSL::BufferTypeDecl*>(type) != nullptr;
+            return dynamic_cast<const skr::CppSL::BufferTypeDecl*>(type) != nullptr;
         });
     auto ValueFamily = DeclareVarConcept(L"ValueFamily", 
         [this, ResourceFamily](EVariableQualifier qualifier, const TypeDecl* type) {
-            return dynamic_cast<const skr::SSL::ValueTypeDecl*>(type) != nullptr;
+            return dynamic_cast<const skr::CppSL::ValueTypeDecl*>(type) != nullptr;
         });
 
     auto IntFamily = DeclareVarConcept(L"IntFamily", 
@@ -736,26 +736,26 @@ void AST::DeclareIntrinstics()
 
     auto MatrixFamily = DeclareVarConcept(L"MatrixFamily", 
         [this](EVariableQualifier qualifier, const TypeDecl* type) {
-            return (dynamic_cast<const skr::SSL::MatrixTypeDecl*>(type) != nullptr);
+            return (dynamic_cast<const skr::CppSL::MatrixTypeDecl*>(type) != nullptr);
         });
 
     auto BufferFamily = DeclareVarConcept(L"BufferFamily", 
         [this](EVariableQualifier qualifier, const TypeDecl* type)  {
-            return (dynamic_cast<const skr::SSL::BufferTypeDecl*>(type) != nullptr);
+            return (dynamic_cast<const skr::CppSL::BufferTypeDecl*>(type) != nullptr);
         });
     auto StructuredBufferFamily = DeclareVarConcept(L"StructuredBufferFamily",
         [this](EVariableQualifier qualifier, const TypeDecl* type) {
-            return (dynamic_cast<const skr::SSL::StructuredBufferTypeDecl*>(type) != nullptr);
+            return (dynamic_cast<const skr::CppSL::StructuredBufferTypeDecl*>(type) != nullptr);
         });
     auto IntBufferFamily = DeclareVarConcept(L"IntBufferFamily", 
         [this](EVariableQualifier qualifier, const TypeDecl* type) {
-            auto t = dynamic_cast<const skr::SSL::StructuredBufferTypeDecl*>(type);
+            auto t = dynamic_cast<const skr::CppSL::StructuredBufferTypeDecl*>(type);
             return (t != nullptr) && ((&t->element() == IntType) || (&t->element() == UIntType) || 
                                       (&t->element() == I64Type) || (&t->element() == U64Type));
         });
     auto IntSharedArrayFamily = DeclareVarConcept(L"IntSharedArrayFamily", 
         [this](EVariableQualifier qualifier, const TypeDecl* type) {
-            auto t = dynamic_cast<const skr::SSL::ArrayTypeDecl*>(type);
+            auto t = dynamic_cast<const skr::CppSL::ArrayTypeDecl*>(type);
             return (t != nullptr) && (has_flag(t->flags(), ArrayFlags::Shared)) && (
                     (t->element() == IntType) || (t->element() == UIntType) || 
                     (t->element() == I64Type) || (t->element() == U64Type));
@@ -767,24 +767,24 @@ void AST::DeclareIntrinstics()
 
     auto SamplerFamily = DeclareVarConcept(L"SamplerFamily", 
         [this](EVariableQualifier qualifier, const TypeDecl* type) {
-            return (dynamic_cast<const skr::SSL::SamplerDecl*>(type) != nullptr);
+            return (dynamic_cast<const skr::CppSL::SamplerDecl*>(type) != nullptr);
         });
     auto TextureFamily = DeclareVarConcept(L"TextureFamily", 
         [this](EVariableQualifier qualifier, const TypeDecl* type) {
-            return (dynamic_cast<const skr::SSL::TextureTypeDecl*>(type) != nullptr);
+            return (dynamic_cast<const skr::CppSL::TextureTypeDecl*>(type) != nullptr);
         });
     auto Texture2DFamily = DeclareVarConcept(L"Texture2DFamily", 
         [this](EVariableQualifier qualifier, const TypeDecl* type) {
-            return (dynamic_cast<const skr::SSL::Texture2DTypeDecl*>(type) != nullptr);
+            return (dynamic_cast<const skr::CppSL::Texture2DTypeDecl*>(type) != nullptr);
         });
     auto FloatTexture2DFamily = DeclareVarConcept(L"FloatTextureFamily", 
         [this](EVariableQualifier qualifier, const TypeDecl* type) {
-            auto t = dynamic_cast<const skr::SSL::Texture2DTypeDecl*>(type);
+            auto t = dynamic_cast<const skr::CppSL::Texture2DTypeDecl*>(type);
             return (t != nullptr) && (&t->element() == FloatType);
         });
     auto FloatTexture3DFamily = DeclareVarConcept(L"FloatTexture3DFamily",
         [this](EVariableQualifier qualifier, const TypeDecl* type) {
-            auto t = dynamic_cast<const skr::SSL::Texture3DTypeDecl*>(type);
+            auto t = dynamic_cast<const skr::CppSL::Texture3DTypeDecl*>(type);
             return (t != nullptr) && (&t->element() == FloatType);
         });
 
@@ -1023,4 +1023,4 @@ void AST::ReservedWordsCheck(const Name& name) const
     }
 }
 
-} // namespace skr::SSL
+} // namespace skr::CppSL

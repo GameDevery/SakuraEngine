@@ -1,6 +1,6 @@
 #pragma once
 
-namespace skr::SSL {
+namespace skr::CppSL {
 struct AST;
 
 struct ShaderCompiler

@@ -1,7 +1,7 @@
-#include "SSL/Constant.hpp"
+#include "CppSL/Constant.hpp"
 #include "double-conversion/string-to-double.h"
 
-namespace skr::SSL {
+namespace skr::CppSL {
 
 const double_conversion::StringToDoubleConverter gDoubleConverter = double_conversion::StringToDoubleConverter
 (
@@ -44,4 +44,4 @@ FloatValue::FloatValue(std::string_view v)
 
 }
 
-} // namespace skr::SSL
+} // namespace skr::CppSL

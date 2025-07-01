@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <format>
 
-namespace skr::SSL {
+namespace skr::CppSL {
 
 // Forward declarations for template system
 struct TemplateCallableDecl;
@@ -198,4 +198,4 @@ public:
 #undef VEC_TYPES
 #undef MATRIX_TYPES
 
-} // namespace skr::SSL
+} // namespace skr::CppSL

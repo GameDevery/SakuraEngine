@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-namespace skr::SSL {
+namespace skr::CppSL {
 
 enum ESourceBuilderStyle {
   // clear
@@ -371,4 +371,4 @@ private:
   size_t _cur_indent = 0;
   bool _is_line_start = true;
 };
-} // namespace skr::SSL
+} // namespace skr::CppSL

@@ -1,6 +1,6 @@
 #include "DebugASTVisitor.hpp"
 
-namespace skr::SSL
+namespace skr::CppSL
 {
 
 bool DebugASTVisitor::VisitStmt(clang::Stmt* x)

@@ -4,7 +4,7 @@
 #include <string>
 #include "Enums.hpp"
 
-namespace skr::SSL {
+namespace skr::CppSL {
 
 using Size = uint32_t;
 using String = std::wstring;
@@ -184,4 +184,4 @@ protected:
     ValueStmt(AST& ast);
 };
 
-} // namespace skr::SSL
+} // namespace skr::CppSL

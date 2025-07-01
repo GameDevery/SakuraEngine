@@ -1,7 +1,7 @@
 #pragma once
 #include "Stmt.hpp"
 
-namespace skr::SSL {
+namespace skr::CppSL {
 
 struct Attr
 {
@@ -78,4 +78,4 @@ private:
     ShaderStage _stage;
 };
 
-} // namespace skr::SSL
+} // namespace skr::CppSL

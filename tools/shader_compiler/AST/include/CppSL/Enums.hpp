@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <type_traits>
 
-namespace skr::SSL {
+namespace skr::CppSL {
 
 enum struct EVariableQualifier : uint32_t {
     None = 0,
@@ -305,4 +305,4 @@ static_assert(alignof(matrix<float, 4, 4>) == 16, "float4x4 alignment mismatch")
 static_assert(sizeof(matrix<GPUHalf, 4, 4>) == 32, "half4x4 size mismatch");
 static_assert(alignof(matrix<GPUHalf, 4, 4>) == 8, "half4x4 alignment mismatch");
 
-} // namespace skr::SSL
+} // namespace skr::CppSL

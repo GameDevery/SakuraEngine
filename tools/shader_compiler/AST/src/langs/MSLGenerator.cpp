@@ -1,7 +1,7 @@
-#include "SSL/langs/MSLGenerator.hpp"
-#include "SSL/langs/MSLGenerator.hpp"
+#include "CppSL/langs/MSLGenerator.hpp"
+#include "CppSL/langs/MSLGenerator.hpp"
 
-namespace skr::SSL
+namespace skr::CppSL
 {
 inline static bool NeedParens(const Stmt* stmt)
 {
@@ -43,9 +43,9 @@ const String& GetMetalAttrForBuiltin(const String& builtin)
     return UnknownSystemValue; // return the original name if not found
 }
 
-void MSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::SSL::Stmt* stmt)
+void MSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt)
 {
-    using namespace skr::SSL;
+    using namespace skr::CppSL;
 
     bool isStatement = false;
     if (auto parent = stmt->parent())
@@ -433,9 +433,9 @@ void MSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::SSL::Stmt* stmt)
         sb.endline(L';');
 }
 
-void MSLGenerator::visit(SourceBuilderNew& sb, const skr::SSL::TypeDecl* typeDecl)
+void MSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::TypeDecl* typeDecl)
 {
-    using namespace skr::SSL;
+    using namespace skr::CppSL;
     if (typeDecl->is_builtin())
     {
         sb.append(L"//builtin type: ");
@@ -456,9 +456,9 @@ void MSLGenerator::visit(SourceBuilderNew& sb, const skr::SSL::TypeDecl* typeDec
     }        
 }
 
-void MSLGenerator::visit(SourceBuilderNew& sb, const skr::SSL::FunctionDecl* funcDecl)
+void MSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* funcDecl)
 {
-    using namespace skr::SSL;
+    using namespace skr::CppSL;
     if (auto body = funcDecl->body())
     {
         const StageAttr* StageEntry = nullptr;
@@ -543,7 +543,7 @@ void MSLGenerator::visit(SourceBuilderNew& sb, const skr::SSL::FunctionDecl* fun
 
 String MSLGenerator::generate_code(SourceBuilderNew& sb, const AST& ast)
 {
-    using namespace skr::SSL;
+    using namespace skr::CppSL;
 
     for (const auto& type : ast.types())
     {
@@ -558,4 +558,4 @@ String MSLGenerator::generate_code(SourceBuilderNew& sb, const AST& ast)
     return sb.build(SourceBuilderNew::line_builder_code);
 }
 
-} // namespace skr::SSL
+} // namespace skr::CppSL

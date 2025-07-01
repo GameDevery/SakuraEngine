@@ -1,10 +1,10 @@
-#include "SSL/Expr.hpp"
-#include "SSL/AST.hpp"
-#include "SSL/magic_enum/magic_enum.hpp"
+#include "CppSL/Expr.hpp"
+#include "CppSL/AST.hpp"
+#include "CppSL/magic_enum/magic_enum.hpp"
 
-namespace skr::SSL {
+namespace skr::CppSL {
 
-inline static const skr::SSL::TypeDecl* GetElementType(const TypeDecl* type)
+inline static const skr::CppSL::TypeDecl* GetElementType(const TypeDecl* type)
 {
     if (auto array_type = dynamic_cast<const ArrayTypeDecl*>(type))
     {
@@ -181,4 +181,4 @@ UnaryExpr::UnaryExpr(AST& ast, UnaryOp op, Expr* expr)
     add_child(expr);
 }
 
-} // namespace skr::SSL
+} // namespace skr::CppSL

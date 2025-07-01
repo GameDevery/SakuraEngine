@@ -1,14 +1,14 @@
 #include <iostream>
 #include <cassert>
-#include "SSL/Constant.hpp"
-#include "SSL/Decl.hpp"
-#include "SSL/AST.hpp"
-#include "SSL/langs/HLSLGenerator.hpp"
-#include "SSL/langs/MSLGenerator.hpp"
+#include "CppSL/Constant.hpp"
+#include "CppSL/Decl.hpp"
+#include "CppSL/AST.hpp"
+#include "CppSL/langs/HLSLGenerator.hpp"
+#include "CppSL/langs/MSLGenerator.hpp"
 
-void mandelbrot(skr::SSL::AST& AST)
+void mandelbrot(skr::CppSL::AST& AST)
 {
-    using namespace skr::SSL;
+    using namespace skr::CppSL;
     std::vector<ParamVarDecl*> cos_params = { AST.DeclareParam(EVariableQualifier::None, AST.Float3Type, L"v") };
     auto cos_func = AST.DeclareFunction(L"cos", AST.Float3Type, cos_params, nullptr);
     std::vector<ParamVarDecl*> dot_params = { 
@@ -17,7 +17,7 @@ void mandelbrot(skr::SSL::AST& AST)
     };
     auto dot_func = AST.DeclareFunction(L"dot", AST.FloatType, dot_params, nullptr);
 
-    using namespace skr::SSL;
+    using namespace skr::CppSL;
     FunctionDecl* mandelbrot = nullptr;
     {
         auto tid = AST.DeclareParam(EVariableQualifier::None, AST.UInt2Type, L"tid");
@@ -215,7 +215,7 @@ void mandelbrot(skr::SSL::AST& AST)
 
 int main()
 {
-    using namespace skr::SSL;
+    using namespace skr::CppSL;
     AST AST = {};
 
     // some_test(AST);

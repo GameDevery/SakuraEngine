@@ -2,7 +2,7 @@
 #include <functional>
 #include "Stmt.hpp"
 
-namespace skr::SSL {
+namespace skr::CppSL {
 
 struct AST;
 struct Attr;
@@ -400,4 +400,4 @@ protected:
     const TemplateCallableDecl* _template = nullptr;
 };
 
-} // namespace skr::SSL
+} // namespace skr::CppSL

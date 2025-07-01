@@ -1,8 +1,8 @@
 #pragma once
-#include "SSL/Expected.hpp"
+#include "CppSL/Expected.hpp"
 #include "double-conversion/ieee.h"
 
-namespace skr::SSL {
+namespace skr::CppSL {
 
 struct IntValue
 {
@@ -71,4 +71,4 @@ private:
     int32_t _processed_chars_count = 0;
 };
 
-} // namespace skr::SSL
+} // namespace skr::CppSL
