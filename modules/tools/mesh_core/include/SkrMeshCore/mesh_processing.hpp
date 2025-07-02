@@ -18,7 +18,7 @@ sreflect_struct(
     guid = "9A2C9CBF-517D-4197-BDE3-E40D85D88320"
     serde = @json
 )
-MESH_CORE_API SMeshCookConfig {
+    MESH_CORE_API SMeshCookConfig {
     skr_guid_t vertexType;
 };
 
@@ -26,7 +26,7 @@ sreflect_enum_class(
     guid = "d6baca1e-eded-4517-a6ad-7abaac3de27b"
     serde = @json
 )
-ERawPrimitiveType : uint32_t
+    ERawPrimitiveType : uint32_t
 {
     POINTS,
     LINES,
@@ -42,7 +42,7 @@ sreflect_enum_class(
     guid = "04ab3dda-e8a7-4db3-839a-bf48c83dc21f"
     serde = @json
 )
-ERawVertexStreamType : uint32_t
+    ERawVertexStreamType : uint32_t
 {
     POSITION,
     NORMAL,
@@ -59,8 +59,8 @@ sreflect_struct(
     guid = "d0513fc5-e768-4bb6-a5e2-560175a1340d"
     serde = @json
 )
-MESH_CORE_API SRawDataStream {
-    sattr(serde = @disable)
+    MESH_CORE_API SRawDataStream {
+            sattr(serde = @disable)
     skr::span<const uint8_t> buffer_view;
     uint64_t                 count;
     uint64_t                 stride;
@@ -68,20 +68,20 @@ MESH_CORE_API SRawDataStream {
 };
 
 sreflect_struct(guid = "edd7079f-5d5f-4efd-a1f2-d5323c65fd51")
-MESH_CORE_API SRawVertexStream : public SRawDataStream {
+    MESH_CORE_API SRawVertexStream : public SRawDataStream {
     ERawVertexStreamType type;
     uint32_t             index;
 };
 
 sreflect_struct(guid = "e386d7af-6002-460a-9e0c-f2ea4037ea40")
-MESH_CORE_API SRawPrimitive {
+    MESH_CORE_API SRawPrimitive {
     ERawPrimitiveType             type;
     SRawDataStream                index_stream;
     skr::Vector<SRawVertexStream> vertex_streams;
 };
 
 sreflect_struct(guid = "f0955907-fa19-4ae2-9361-db6c72eedcb7")
-MESH_CORE_API SRawMesh {
+    MESH_CORE_API SRawMesh {
     skr::Vector<SRawPrimitive> primitives;
 };
 
@@ -112,12 +112,10 @@ MESH_CORE_API
 void EmplaceAllRawMeshVertices(const SRawMesh* mesh, const CGPUVertexLayout* layout, skr::Vector<uint8_t>& buffer, skr::Vector<skr_mesh_primitive_t>& out_primitives);
 
 MESH_CORE_API
-void EmplaceSkinRawMeshVertices(const SRawMesh* mesh, const CGPUVertexLayout* layout, skr::Vector<uint8_t>& buffer,
-                                uint32_t buffer_idx, skr::Vector<skr_mesh_primitive_t>& out_primitives);
+void EmplaceSkinRawMeshVertices(const SRawMesh* mesh, const CGPUVertexLayout* layout, skr::Vector<uint8_t>& buffer, uint32_t buffer_idx, skr::Vector<skr_mesh_primitive_t>& out_primitives);
 
 MESH_CORE_API
-void EmplaceStaticRawMeshVertices(const SRawMesh* mesh, const CGPUVertexLayout* layout, skr::Vector<uint8_t>& buffer,
-                                  uint32_t buffer_idx, skr::Vector<skr_mesh_primitive_t>& out_primitives);
+void EmplaceStaticRawMeshVertices(const SRawMesh* mesh, const CGPUVertexLayout* layout, skr::Vector<uint8_t>& buffer, uint32_t buffer_idx, skr::Vector<skr_mesh_primitive_t>& out_primitives);
 
 // LUT for raw attributes to semantic names
 static const char* kRawAttributeTypeNameLUT[9] = {

@@ -17,9 +17,10 @@ SProject* SProject::OpenProject(const skr::filesystem::path& projectFilePath) no
 {
     std::error_code ec          = {};
     auto            resolvePath = [&](skr::String& path) {
-        auto view = path.view();
+        auto view  = path.view();
         auto found = view.find(u8"${");
-        if (!found) {
+        if (!found)
+        {
             return path;
         }
         skr::String resolved;
@@ -43,8 +44,8 @@ SProject* SProject::OpenProject(const skr::filesystem::path& projectFilePath) no
             {
                 resolved.append(SKR_RESOURCE_PLATFORM);
             }
-            view = view.subview(found_end.index() + 1, view.size() - 1);
-            found    = view.find(u8"${");
+            view  = view.subview(found_end.index() + 1, view.size() - 1);
+            found = view.find(u8"${");
             if (!found)
             {
                 resolved.append(view);
