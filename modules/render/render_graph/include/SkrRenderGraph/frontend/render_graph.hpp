@@ -244,11 +244,6 @@ public:
             + collect_buffer_garbage(critical_frame, buf_with_tags, buf_without_flags);
     }
 
-    inline bool enable_memory_aliasing(bool enabled) SKR_NOEXCEPT
-    {
-        aliasing_enabled = enabled;
-        return aliasing_enabled;
-    }
     RenderGraph(const RenderGraphBuilder& builder) SKR_NOEXCEPT;
     virtual ~RenderGraph() SKR_NOEXCEPT = default;
 
@@ -272,7 +267,7 @@ protected:
     uint32_t foreach_passes(BufferHandle buffer,
         skr::stl_function<void(PassNode* reader, BufferNode* buf, RenderGraphEdge* edge)>) const SKR_NOEXCEPT;
 
-    bool aliasing_enabled;
+    bool aliasing_enabled = false;
     uint64_t frame_index = 0;
 
     struct NodeAndEdgeFactory* node_factory = nullptr;
