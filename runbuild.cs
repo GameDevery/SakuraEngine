@@ -20,7 +20,7 @@ if (cmd == "build")
 }
 else if (cmd == "tools")
 {
-    BuildSystem.GlobalConfiguration = "release";
+    BuildSystem.GlobalConfiguration = "debug";
     Categories = TargetCategory.Tool;
 }
 
@@ -57,6 +57,7 @@ CompileCommandsEmitter.WriteToFile("compile_commands.json");
 
 if (cmd == "tools")
 {
+    string ToolsDirectory = Path.Combine(SourceLocation.Directory(), ".sb", "tools");
     BuildSystem.Artifacts.AsParallel().ForAll(artifact =>
     {
         if (artifact is LinkResult Program)
@@ -64,7 +65,10 @@ if (cmd == "tools")
             if (!Program.IsRestored)
             {
                 // copy to /.sb/tools
-                File.Copy(Program.TargetFile, Path.Combine(SourceLocation.Directory(), ".sb", "tools", Path.GetFileName(Program.TargetFile)), true);
+                if (File.Exists(Program.PDBFile))
+                    File.Copy(Program.PDBFile, Path.Combine(ToolsDirectory, Path.GetFileName(Program.PDBFile)), true);
+                if (File.Exists(Program.TargetFile))
+                    File.Copy(Program.TargetFile, Path.Combine(ToolsDirectory, Path.GetFileName(Program.TargetFile)), true);
             }
         }
     });

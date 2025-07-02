@@ -43,6 +43,22 @@ inline static String GetTypeName(const TypeDecl* type)
     return type->name();
 }
 
+inline static String GetStageName(ShaderStage stage)
+{
+    switch (stage)
+    {
+    case ShaderStage::Vertex:
+        return L"vertex";
+    case ShaderStage::Fragment:
+        return L"pixel";
+    case ShaderStage::Compute:
+        return L"compute";
+    default:
+        assert(false && "Unknown shader stage");
+        return L"unknown_stage";
+    }
+}
+
 static const std::unordered_map<String, String> SystemValueMap = {
     { L"VertexID", L"SV_VertexID" },     // VertexStage Input
     { L"InstanceID", L"SV_InstanceID" }, // VertexStage Input
@@ -651,6 +667,8 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* 
                 }
             }
             // generate stage entry attributes
+            sb.append(L"[shader(\"" + GetStageName(StageEntry->stage()) + L"\")]\n");
+            // generate kernel size
             if (auto kernelSize = FindAttr<KernelSizeAttr>(funcDecl->attrs()))
             {
                 sb.append(L"[numthreads(" + std::to_wstring(kernelSize->x()) + L", " + std::to_wstring(kernelSize->y()) + L", " + std::to_wstring(kernelSize->z()) + L")]");
