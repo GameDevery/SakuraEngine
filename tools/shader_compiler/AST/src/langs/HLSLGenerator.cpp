@@ -2,6 +2,19 @@
 
 namespace skr::CppSL
 {
+inline wchar_t GetResourceRegisterCharacter(const ResourceTypeDecl* type)
+{
+    if (auto asCBV = dynamic_cast<const ConstantBufferTypeDecl*>(type))
+        return L'b';
+    else if (auto asSRV = dynamic_cast<const BufferTypeDecl*>(type))
+        return has_flag(asSRV->flags(), BufferFlags::ReadWrite) ? L'u' : L't';
+    else if (auto asTexture = dynamic_cast<const TextureTypeDecl*>(type))
+        return has_flag(asTexture->flags(), TextureFlags::ReadWrite) ? L'u' : L't';
+    else if (auto asSampler = dynamic_cast<const SamplerDecl*>(type))
+        return L's';
+    return L'0';
+}
+
 template <typename T>
 inline static T* FindAttr(std::span<Attr* const> attrs)
 {
@@ -83,6 +96,54 @@ inline static const String& GetSVForBuiltin(const String& builtin)
         return it->second;
     }
     return UnknownSystemValue; // return the original name if not found
+}
+
+inline static bool RecordGlobalResource(SourceBuilderNew& sb, const skr::CppSL::VarDecl* var)
+{
+    if (auto asResource = dynamic_cast<const ResourceTypeDecl*>(&var->type()))
+    {
+        String content = GetTypeName(&var->type()) + L" " + var->name();
+        if (const auto pushConstant = FindAttr<PushConstantAttr>(var->attrs()))
+        {
+            sb.append(L"[[vk::push_constant]]");
+            sb.endline();
+        }
+
+        String vk_binding = L"";
+        String reg_info = L"";
+        if (const auto resourceBind = FindAttr<ResourceBindAttr>(var->attrs()))
+        {
+            const auto R = GetResourceRegisterCharacter(asResource);
+            const auto binding = resourceBind->binding();
+            const auto group = resourceBind->group();
+            if (binding != ~0)
+            {
+                if (group != ~0)
+                {
+                    vk_binding = std::format(L"[[vk::binding({}, {})]]", binding, group);
+                    reg_info = std::format(L"register({}{}, space{})", R, binding, group);
+                }
+                else
+                {
+                    vk_binding = std::format(L"[[vk::binding({}, {})]]", binding, 0);
+                    reg_info = std::format(L"register({}{})", R, binding);
+                }
+            }
+        }
+
+        if (!vk_binding.empty())
+        {
+            sb.append(vk_binding);
+            sb.endline();
+        }
+        sb.append(content);
+        if(!reg_info.empty())
+        {
+            sb.append(L": " + reg_info);
+        }
+        return true;
+    }
+    return false;
 }
 
 void HLSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt)
@@ -699,15 +760,10 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* 
             for (size_t i = 0; i < funcDecl->parameters().size(); i++)
             {
                 auto param = funcDecl->parameters()[i];
-                bool isResource = dynamic_cast<const ResourceTypeDecl*>(&param->type());
-                if (isResource)
+                if (auto asResource = dynamic_cast<const ResourceTypeDecl*>(&param->type()))
                 {
-                    String content = GetTypeName(&param->type()) + L" " + param->name();
-                    // auto resourceBind = dynamic_cast<const ResourceBindAttr*>(attr);
-                    // content += L" : register(" + std::to_wstring(bind_attr->binding()) + L")";
-                    sb.append(content);
+                    RecordGlobalResource(sb, param);
                     sb.endline(L';');
-
                     params.erase(std::find(params.begin(), params.end(), param));
                 }
             }
@@ -773,16 +829,23 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* 
 void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::VarDecl* varDecl)
 {
     const auto isGlobal = dynamic_cast<const skr::CppSL::GlobalVarDecl*>(varDecl);
-    if (varDecl->qualifier() == EVariableQualifier::Const)
-        sb.append(isGlobal ? L"static const " : L"const ");
-    else if (varDecl->qualifier() == EVariableQualifier::Inout)
-        sb.append(L"inout ");
-
-    sb.append(GetTypeName(&varDecl->type()) + L" " + varDecl->name());
-    if (auto init = varDecl->initializer())
+    if (auto RecordAsResource = RecordGlobalResource(sb, varDecl))
     {
-        sb.append(L" = ");
-        visitExpr(sb, init);
+
+    }
+    else
+    {
+        if (varDecl->qualifier() == EVariableQualifier::Const)
+            sb.append(isGlobal ? L"static const " : L"const ");
+        else if (varDecl->qualifier() == EVariableQualifier::Inout)
+            sb.append(L"inout ");
+    
+        sb.append(GetTypeName(&varDecl->type()) + L" " + varDecl->name());
+        if (auto init = varDecl->initializer())
+        {
+            sb.append(L" = ");
+            visitExpr(sb, init);
+        }
     }
 }
 

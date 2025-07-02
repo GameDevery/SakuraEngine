@@ -93,6 +93,8 @@ inline static clang::AnnotateAttr* IsCallOp(const clang::Decl* decl) { return Ex
 inline static clang::AnnotateAttr* IsAccess(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "access"); }
 inline static clang::AnnotateAttr* IsStage(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "stage"); }
 inline static clang::AnnotateAttr* IsStageInout(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "stage_inout"); }
+inline static clang::AnnotateAttr* IsResourceBind(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "binding"); }
+inline static clang::AnnotateAttr* IsPushConstant(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "push_constant"); }
 
 const bool LanguageRule_UseAssignForImplicitCopyOrMove(const clang::Decl* x)
 {
@@ -824,6 +826,20 @@ bool ASTConsumer::VisitVarDecl(const clang::VarDecl* x)
     if (x->hasExternalStorage())
     {
         auto ShaderResource = AST.DeclareGlobalResource(getType(x->getType()), ToText(x->getName()));
+        
+        uint32_t group = ~0, binding = ~0;
+        if (auto ResourceBind = IsResourceBind(x))
+        {
+            binding = GetArgumentAt<uint32_t>(ResourceBind, 1);
+            group = GetArgumentAt<uint32_t>(ResourceBind, 2);
+        }
+        ShaderResource->add_attr(AST.DeclareAttr<ResourceBindAttr>(group, binding));
+
+        if (auto PushConstant = IsPushConstant(x))
+        {
+            ShaderResource->add_attr(AST.DeclareAttr<PushConstantAttr>());
+        }
+
         addVar(x, ShaderResource);
     }
     return true;

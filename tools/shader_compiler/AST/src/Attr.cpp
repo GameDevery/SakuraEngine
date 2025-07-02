@@ -26,8 +26,13 @@ ResourceBindAttr::ResourceBindAttr()
 
 }
 
-ResourceBindAttr::ResourceBindAttr(uint32_t binding, uint32_t group)
+ResourceBindAttr::ResourceBindAttr(uint32_t group, uint32_t binding)
     : _group(group), _binding(binding) 
+{
+
+}
+
+PushConstantAttr::PushConstantAttr()
 {
 
 }

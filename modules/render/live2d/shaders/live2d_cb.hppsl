@@ -18,4 +18,5 @@ struct Constants
     float pad2;
 };
 
+[[push_constant]]
 extern ConstantBuffer<Constants>& push_constants;

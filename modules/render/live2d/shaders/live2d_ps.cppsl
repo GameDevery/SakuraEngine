@@ -7,8 +7,11 @@ struct [[stage_inout]] VSOut
     float2 uv;
 };
 
+[[binding(0, 0)]]
 extern SampleImage color_texture;
+[[binding(1, 0)]]
 extern SampleImage mask_texture;
+[[binding(0, 1)]]
 extern Sampler color_sampler;
 
 [[fragment_shader("fragment_shader")]]

@@ -48,16 +48,22 @@ private:
 struct ResourceBindAttr : public Attr
 {
 public:
-    // TODO: use group and binding
-    // uint32_t group() const { return _group; }
-    // uint32_t binding() const { return _binding; }
+    uint32_t group() const { return _group; }
+    uint32_t binding() const { return _binding; }
 
 private:
     friend struct AST;
     ResourceBindAttr();
-    ResourceBindAttr(uint32_t binding, uint32_t group = 0);
-    uint32_t _group = 0;
-    uint32_t _binding = 0;
+    ResourceBindAttr(uint32_t group, uint32_t binding);
+    uint32_t _group = ~0;
+    uint32_t _binding = ~0;
+};
+
+struct PushConstantAttr : public Attr
+{
+private:
+    friend struct AST;
+    PushConstantAttr();
 };
 
 struct StageInoutAttr : public Attr
