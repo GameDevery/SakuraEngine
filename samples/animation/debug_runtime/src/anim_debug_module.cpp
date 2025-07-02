@@ -5,6 +5,7 @@
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrImGui/imgui_render_backend.hpp"
 #include <SkrImGui/imgui_backend.hpp>
+#include "AnimDebugRuntime/renderer.h"
 #include <SDL3/SDL_video.h>
 #include "common/utils.h"
 #include "imgui_sail.h"
@@ -34,84 +35,18 @@ void SAnimDebugModule::on_unload()
     SKR_LOG_INFO(u8"anim debug runtime unloaded!");
 }
 
-void create_dummy_render_pipeline(CGPUDeviceId device, CGPURootSignatureId& root_sig, CGPUSwapChainId swapchain, CGPURenderPipelineId& pipeline)
-{
-    uint32_t *vs_bytes, vs_length;
-    uint32_t *fs_bytes, fs_length;
-    read_shader_bytes(SKR_UTF8("AnimDebug/vertex_shader"), &vs_bytes, &vs_length, CGPU_BACKEND_D3D12);
-    read_shader_bytes(SKR_UTF8("AnimDebug/fragment_shader"), &fs_bytes, &fs_length, CGPU_BACKEND_D3D12);
-    CGPUShaderLibraryDescriptor vs_desc = {};
-    vs_desc.stage                       = CGPU_SHADER_STAGE_VERT;
-    vs_desc.name                        = SKR_UTF8("VertexShaderLibrary");
-    vs_desc.code                        = vs_bytes;
-    vs_desc.code_size                   = vs_length;
-    CGPUShaderLibraryDescriptor ps_desc = {};
-    ps_desc.name                        = SKR_UTF8("FragmentShaderLibrary");
-    ps_desc.stage                       = CGPU_SHADER_STAGE_FRAG;
-    ps_desc.code                        = fs_bytes;
-    ps_desc.code_size                   = fs_length;
-    CGPUShaderLibraryId vertex_shader   = cgpu_create_shader_library(device, &vs_desc);
-    CGPUShaderLibraryId fragment_shader = cgpu_create_shader_library(device, &ps_desc);
-    free(vs_bytes);
-    free(fs_bytes);
-    CGPUShaderEntryDescriptor ppl_shaders[2];
-    ppl_shaders[0].stage                 = CGPU_SHADER_STAGE_VERT;
-    ppl_shaders[0].entry                 = SKR_UTF8("main");
-    ppl_shaders[0].library               = vertex_shader;
-    ppl_shaders[1].stage                 = CGPU_SHADER_STAGE_FRAG;
-    ppl_shaders[1].entry                 = SKR_UTF8("main");
-    ppl_shaders[1].library               = fragment_shader;
-    CGPURootSignatureDescriptor rs_desc  = {};
-    rs_desc.shaders                      = ppl_shaders;
-    rs_desc.shader_count                 = 2;
-    root_sig                             = cgpu_create_root_signature(device, &rs_desc);
-    CGPUVertexLayout vertex_layout       = {};
-    vertex_layout.attribute_count        = 0;
-    CGPURenderPipelineDescriptor rp_desc = {};
-    rp_desc.root_signature               = root_sig;
-    rp_desc.prim_topology                = CGPU_PRIM_TOPO_TRI_LIST;
-    rp_desc.vertex_layout                = &vertex_layout;
-    rp_desc.vertex_shader                = &ppl_shaders[0];
-    rp_desc.fragment_shader              = &ppl_shaders[1];
-    rp_desc.render_target_count          = 1;
-    auto backend_format                  = (ECGPUFormat)swapchain->back_buffers[0]->info->format;
-    rp_desc.color_formats                = &backend_format;
-    pipeline                             = cgpu_create_render_pipeline(device, &rp_desc);
-    cgpu_free_shader_library(vertex_shader);
-    cgpu_free_shader_library(fragment_shader);
-}
-
 int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
 {
     SkrZoneScopedN("AnimDebugExecution");
     SKR_LOG_INFO(u8"anim debug runtime executed as main module!");
-
-    // Create instance
-    CGPUInstanceDescriptor instance_desc{};
-    instance_desc.backend                     = CGPU_BACKEND_D3D12;
-    instance_desc.enable_debug_layer          = true;
-    instance_desc.enable_gpu_based_validation = false;
-    instance_desc.enable_set_name             = true;
-    CGPUInstanceId instance                   = cgpu_create_instance(&instance_desc);
-    // Filter adapters
-    uint32_t adapters_count = 0;
-    cgpu_enum_adapters(instance, CGPU_NULLPTR, &adapters_count);
-    CGPUAdapterId adapters[64];
-    cgpu_enum_adapters(instance, adapters, &adapters_count);
-    auto adapter = adapters[0];
-
-    // Create device
-    CGPUQueueGroupDescriptor queue_group_desc = {};
-    queue_group_desc.queue_type               = CGPU_QUEUE_TYPE_GRAPHICS;
-    queue_group_desc.queue_count              = 1;
-    CGPUDeviceDescriptor device_desc          = {};
-    device_desc.queue_groups                  = &queue_group_desc;
-    device_desc.queue_group_count             = 1;
-    auto device                               = cgpu_create_device(adapter, &device_desc);
-    auto gfx_queue                            = cgpu_get_queue(device, CGPU_QUEUE_TYPE_GRAPHICS, 0);
+    animd::Renderer renderer;
+    SKR_LOG_INFO(u8"anim debug renderer created with backend: %s", gCGPUBackendNames[renderer.get_backend()]);
+    renderer.create_api_objects();
     // create render graph
+    auto device       = renderer.get_device();
+    auto gfx_queue    = renderer.get_gfx_queue();
     auto render_graph = skr::render_graph::RenderGraph::create(
-        [=](skr::render_graph::RenderGraphBuilder& builder) {
+        [&device, &gfx_queue](skr::render_graph::RenderGraphBuilder& builder) {
             builder.with_device(device)
                 .with_gfx_queue(gfx_queue)
                 .enable_memory_aliasing();
@@ -126,11 +61,11 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
         render_backend_rg   = render_backend.get();
         skr::ImGuiRendererBackendRGConfig config{};
         config.render_graph = render_graph;
-        config.queue        = gfx_queue;
+        config.queue        = renderer.get_gfx_queue();
         render_backend->init(config);
         imgui_backend.create(
             {
-                .title = skr::format(u8"Anim Debug Runtime Inner [{}]", gCGPUBackendNames[device->adapter->instance->backend]),
+                .title = skr::format(u8"Anim Debug Runtime Inner [{}]", gCGPUBackendNames[renderer.get_backend()]),
                 .size  = { 1500, 1500 },
             },
             std::move(render_backend)
@@ -144,27 +79,16 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
         ImGui::Sail::StyleColorsSail();
     }
 
-    CGPURootSignatureId  root_sig = nullptr;
-    CGPURenderPipelineId pipeline = nullptr;
     {
         // Init Your Scene Here
         auto viewport = ImGui::GetMainViewport();
-        auto wnd_id   = (SDL_WindowID) reinterpret_cast<size_t>(viewport->PlatformHandle);
-        auto wnd      = SDL_GetWindowFromID(wnd_id);
-        SKR_ASSERT(wnd);
-
-        create_dummy_render_pipeline(
-            device,
-            root_sig,
-            render_backend_rg->get_swapchain(viewport),
-            pipeline
-        );
+        renderer.set_swapchain(render_backend_rg->get_swapchain(viewport));
+        renderer.create_render_pipeline();
     }
+    auto pipeline = renderer.get_pipeline();
     // draw loop
-    bool     show_demo_window    = true;
-    bool     show_another_window = true;
-    ImVec4   clear_color         = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-    uint64_t frame_index         = 0;
+    bool     show_demo_window = true;
+    uint64_t frame_index      = 0;
     while (!imgui_backend.want_exit().comsume())
     {
         SkrZoneScopedN("LoopBody");
@@ -182,11 +106,17 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
         {
             ImGui::ShowDemoWindow(&show_demo_window);
         }
-
-        imgui_backend.end_frame();
-
-        imgui_backend.render();
         {
+            SkrZoneScopedN("ImGuiEndFrame");
+            imgui_backend.end_frame();
+        }
+        {
+            SkrZoneScopedN("ImGuiRender");
+            imgui_backend.render();
+        }
+
+        {
+            SkrZoneScopedN("Viewport Render");
             auto          viewport          = ImGui::GetMainViewport();
             CGPUTextureId native_backbuffer = render_backend_rg->get_backbuffer(viewport);
             auto          back_buffer       = render_graph->create_texture(
@@ -223,17 +153,14 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
     }
 
     // wait for rendering done
-    cgpu_wait_queue_idle(gfx_queue);
+    cgpu_wait_queue_idle(renderer.get_gfx_queue());
 
     // destroy render graph
     skr::render_graph::RenderGraph::destroy(render_graph);
 
     // destroy imgui
     imgui_backend.destroy();
+    renderer.destroy();
 
-    // shutdown cgpu
-    cgpu_free_queue(gfx_queue);
-    cgpu_free_device(device);
-    cgpu_free_instance(instance);
     return 0; // Return 0 to indicate success
 }
