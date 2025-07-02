@@ -16,6 +16,10 @@ namespace SB
             var OutputDirectory = Path.Combine(Engine.BuildPath, ShaderOutputDirectories[Target.Name]);
             Directory.CreateDirectory(OutputDirectory);
 
+            string Executable = CppSLCompiler;
+            if (BuildSystem.TargetOS == OSPlatform.Windows)
+                Executable += ".exe";
+
             bool Changed = Depend.OnChanged(Target.Name, SourceFile, "CPPSL", (Depend depend) =>
             {
                 var Arguments = new string[]
@@ -24,21 +28,28 @@ namespace SB
                     SourceFile
                 };
 
-                string Executable = CppSLCompiler;
-                if (BuildSystem.TargetOS == OSPlatform.Windows)
-                    Executable += ".exe";
-
                 int ExitCode = BuildSystem.RunProcess(Executable, string.Join(" ", Arguments), out var Output, out var Error,
                     WorkingDirectory: OutputDirectory);
                 if (ExitCode != 0)
                 {
                     throw new TaskFatalError($"Compile CppSL for {SourceFile} failed with fatal error!", $"CppSLCompiler.exe: {Error}");
                 }
+                else
+                {
+                    var DepFilePath = Path.Combine(OutputDirectory, $"{SourceName}.d");
+                    // line0: {target}.o: {target}.cpp \
+                    // line1~n: {include_file} \
+                    var AllLines = File.ReadAllLines(DepFilePath!).Select(
+                        x => x.Replace("\\ ", " ").Replace(" \\", "").Trim()
+                    ).ToArray();
+                    var DepIncludes = new Span<string>(AllLines, 1, AllLines.Length - 1);
+                    depend.ExternalFiles.AddRange(DepIncludes);
+                }
 
                 // Get all files under output directory that matches '{SourceName}.*.*.hlsl'
                 var OutputFiles = Directory.GetFiles(OutputDirectory, $"{SourceName}.*.*.hlsl");
                 depend.ExternalFiles.AddRange(OutputFiles);
-            }, new string[] { SourceFile }, null);
+            }, new string[] { Executable, SourceFile }, null);
 
             var CMD = new CompileCommand
             {

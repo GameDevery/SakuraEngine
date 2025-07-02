@@ -6,6 +6,7 @@
 #include <clang/AST/Expr.h>
 #include <clang/AST/DeclTemplate.h>
 #include <format>
+#include <filesystem>
 
 namespace skr::CppSL {
 class DeferGuard {
@@ -271,9 +272,20 @@ CompileFrontendAction::CompileFrontendAction(skr::CppSL::AST& AST)
 {
 }
 
-bool CompileFrontendAction::BeginSourceFileAction(clang::CompilerInstance& CI)
+bool CompileFrontendAction::BeginInvocation(clang::CompilerInstance& CI)
 {
-    return clang::ASTFrontendAction::BeginSourceFileAction(CI);
+    clang::DependencyOutputOptions &DepOpts = CI.getInvocation().getDependencyOutputOpts();
+        
+    const auto& Input = CI.getFrontendOpts().Inputs[0];
+    
+    std::filesystem::path P = Input.getFile().str();
+    auto N = P.filename().replace_extension("").string();
+    DepOpts.OutputFile = N + ".d";
+    DepOpts.Targets.push_back(N + ".o");
+    DepOpts.UsePhonyTargets = false;
+    DepOpts.IncludeSystemHeaders = true;
+    
+    return clang::ASTFrontendAction::BeginInvocation(CI);
 }
 
 std::unique_ptr<clang::ASTConsumer> CompileFrontendAction::CreateASTConsumer(clang::CompilerInstance &CI, llvm::StringRef InFile)
