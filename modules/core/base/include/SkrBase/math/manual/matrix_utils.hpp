@@ -63,50 +63,50 @@ inline double4x4 double4x4::from_translation(const double3& translation)
 }
 
 // for camera
-inline float4x4 float4x4::look_to(const float4& from, const float4& dir, const float4& up)
+inline float4x4 float4x4::look_to(const float3& from, const float3& dir, const float3& up)
 {
     return RtmConvert<float4x4>::from_rtm(
         rtm::matrix_cast(
             rtm::matrix_look_to(
-                RtmConvert<float4>::to_rtm(from),
-                RtmConvert<float4>::to_rtm(dir),
-                RtmConvert<float4>::to_rtm(up)
+                RtmConvert<float3>::to_rtm(from),
+                RtmConvert<float3>::to_rtm(dir),
+                RtmConvert<float3>::to_rtm(up)
             )
         )
     );
 }
-inline float4x4 float4x4::look_at(const float4& from, const float4& to, const float4& up)
+inline float4x4 float4x4::look_at(const float3& from, const float3& to, const float3& up)
 {
     return RtmConvert<float4x4>::from_rtm(
         rtm::matrix_cast(
             rtm::matrix_look_at(
-                RtmConvert<float4>::to_rtm(from),
-                RtmConvert<float4>::to_rtm(to),
-                RtmConvert<float4>::to_rtm(up)
+                RtmConvert<float3>::to_rtm(from),
+                RtmConvert<float3>::to_rtm(to),
+                RtmConvert<float3>::to_rtm(up)
             )
         )
     );
 }
-inline float4x4 float4x4::view_to(const float4& from, const float4& dir, const float4& up)
+inline float4x4 float4x4::view_to(const float3& from, const float3& dir, const float3& up)
 {
     return RtmConvert<float4x4>::from_rtm(
         rtm::matrix_cast(
             rtm::view_look_to(
-                RtmConvert<float4>::to_rtm(from),
-                RtmConvert<float4>::to_rtm(dir),
-                RtmConvert<float4>::to_rtm(up)
+                RtmConvert<float3>::to_rtm(from),
+                RtmConvert<float3>::to_rtm(dir),
+                RtmConvert<float3>::to_rtm(up)
             )
         )
     );
 }
-inline float4x4 float4x4::view_at(const float4& from, const float4& to, const float4& up)
+inline float4x4 float4x4::view_at(const float3& from, const float3& to, const float3& up)
 {
     return RtmConvert<float4x4>::from_rtm(
         rtm::matrix_cast(
             rtm::view_look_at(
-                RtmConvert<float4>::to_rtm(from),
-                RtmConvert<float4>::to_rtm(to),
-                RtmConvert<float4>::to_rtm(up)
+                RtmConvert<float3>::to_rtm(from),
+                RtmConvert<float3>::to_rtm(to),
+                RtmConvert<float3>::to_rtm(up)
             )
         )
     );
@@ -150,50 +150,50 @@ inline float4x4 float4x4::orthographic(float width, float height, float near_dis
         )
     );
 }
-inline double4x4 double4x4::look_to(const double4& from, const double4& dir, const double4& up)
+inline double4x4 double4x4::look_to(const double3& from, const double3& dir, const double3& up)
 {
     return RtmConvert<double4x4>::from_rtm(
         rtm::matrix_cast(
             rtm::matrix_look_to(
-                RtmConvert<double4>::to_rtm(from),
-                RtmConvert<double4>::to_rtm(dir),
-                RtmConvert<double4>::to_rtm(up)
+                RtmConvert<double3>::to_rtm(from),
+                RtmConvert<double3>::to_rtm(dir),
+                RtmConvert<double3>::to_rtm(up)
             )
         )
     );
 }
-inline double4x4 double4x4::look_at(const double4& from, const double4& to, const double4& up)
+inline double4x4 double4x4::look_at(const double3& from, const double3& to, const double3& up)
 {
     return RtmConvert<double4x4>::from_rtm(
         rtm::matrix_cast(
             rtm::matrix_look_at(
-                RtmConvert<double4>::to_rtm(from),
-                RtmConvert<double4>::to_rtm(to),
-                RtmConvert<double4>::to_rtm(up)
+                RtmConvert<double3>::to_rtm(from),
+                RtmConvert<double3>::to_rtm(to),
+                RtmConvert<double3>::to_rtm(up)
             )
         )
     );
 }
-inline double4x4 double4x4::view_to(const double4& from, const double4& dir, const double4& up)
+inline double4x4 double4x4::view_to(const double3& from, const double3& dir, const double3& up)
 {
     return RtmConvert<double4x4>::from_rtm(
         rtm::matrix_cast(
             rtm::view_look_to(
-                RtmConvert<double4>::to_rtm(from),
-                RtmConvert<double4>::to_rtm(dir),
-                RtmConvert<double4>::to_rtm(up)
+                RtmConvert<double3>::to_rtm(from),
+                RtmConvert<double3>::to_rtm(dir),
+                RtmConvert<double3>::to_rtm(up)
             )
         )
     );
 }
-inline double4x4 double4x4::view_at(const double4& from, const double4& to, const double4& up)
+inline double4x4 double4x4::view_at(const double3& from, const double3& to, const double3& up)
 {
     return RtmConvert<double4x4>::from_rtm(
         rtm::matrix_cast(
             rtm::view_look_at(
-                RtmConvert<double4>::to_rtm(from),
-                RtmConvert<double4>::to_rtm(to),
-                RtmConvert<double4>::to_rtm(up)
+                RtmConvert<double3>::to_rtm(from),
+                RtmConvert<double3>::to_rtm(to),
+                RtmConvert<double3>::to_rtm(up)
             )
         )
     );
