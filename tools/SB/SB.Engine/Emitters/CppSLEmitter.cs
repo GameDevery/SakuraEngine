@@ -15,7 +15,7 @@ namespace SB
             var OutputDirectory = Path.Combine(Engine.BuildPath, ShaderOutputDirectories[Target.Name]);
             Directory.CreateDirectory(OutputDirectory);
 
-            bool Changed = Depend.OnChanged(Target.Name, SourceFile, "DXC.SPV", (Depend depend) =>
+            bool Changed = Depend.OnChanged(Target.Name, SourceFile, "CPPSL", (Depend depend) =>
             {
                 var Arguments = new string[]
                 {
@@ -31,7 +31,7 @@ namespace SB
                     WorkingDirectory: OutputDirectory);
                 if (ExitCode != 0)
                 {
-                    throw new TaskFatalError($"Compile SPV for {SourceFile} failed with fatal error!", $"DXC.exe: {Error}");
+                    throw new TaskFatalError($"Compile CppSL for {SourceFile} failed with fatal error!", $"CppSLCompiler.exe: {Error}");
                 }
 
                 // Get all files under output directory that matches '{SourceName}.*.*.hlsl'

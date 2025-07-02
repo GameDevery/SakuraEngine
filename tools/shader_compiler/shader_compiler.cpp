@@ -10,6 +10,8 @@ int main(int argc, const char **argv)
         args.emplace_back(argv[i]);
     }
     args.emplace_back("--");
+    args.emplace_back("-x");
+    args.emplace_back("c++");
     args.emplace_back("-std=c++23");
     args.emplace_back("-fsyntax-only");
     // swizzle uses reference member in union

@@ -25,4 +25,11 @@ CompileFlags:
 If:
   PathMatch: .*/.*.cppsl
 CompileFlags:
-  Add: [ -Itools/shader_compiler/LLVM/test_shaders/ ]
+  Add: [ -I./../../../tools/shader_compiler/LLVM/test_shaders/ ]
+
+---
+
+If:
+  PathMatch: .*/.*.hppsl
+CompileFlags:
+  Add: [ -I./../../../tools/shader_compiler/LLVM/test_shaders/ ]

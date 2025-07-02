@@ -1,4 +1,4 @@
-#include "live2d_cb.hpp"
+#include "live2d_cb.hppsl"
 
 struct [[stage_inout]] VSIn
 {

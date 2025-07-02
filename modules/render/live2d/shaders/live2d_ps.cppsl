@@ -1,4 +1,4 @@
-#include "live2d_cb.hpp"
+#include "live2d_cb.hppsl"
 #include <std2/sampler.hpp>
 
 struct [[stage_inout]] VSOut
