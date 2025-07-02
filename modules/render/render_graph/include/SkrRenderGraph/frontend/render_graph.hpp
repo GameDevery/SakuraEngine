@@ -267,13 +267,9 @@ protected:
 
 protected:
     uint32_t foreach_textures(skr::stl_function<void(TextureNode*)> texture) SKR_NOEXCEPT;
-    uint32_t foreach_writer_passes(TextureHandle texture,
+    uint32_t foreach_passes(TextureHandle texture,
         skr::stl_function<void(PassNode* writer, TextureNode* tex, RenderGraphEdge* edge)>) const SKR_NOEXCEPT;
-    uint32_t foreach_reader_passes(TextureHandle texture,
-        skr::stl_function<void(PassNode* reader, TextureNode* tex, RenderGraphEdge* edge)>) const SKR_NOEXCEPT;
-    uint32_t foreach_writer_passes(BufferHandle buffer,
-        skr::stl_function<void(PassNode* writer, BufferNode* buf, RenderGraphEdge* edge)>) const SKR_NOEXCEPT;
-    uint32_t foreach_reader_passes(BufferHandle buffer,
+    uint32_t foreach_passes(BufferHandle buffer,
         skr::stl_function<void(PassNode* reader, BufferNode* buf, RenderGraphEdge* edge)>) const SKR_NOEXCEPT;
 
     bool aliasing_enabled;
