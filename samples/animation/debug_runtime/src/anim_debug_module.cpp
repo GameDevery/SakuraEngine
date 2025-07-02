@@ -9,6 +9,7 @@
 #include <SDL3/SDL_video.h>
 #include "common/utils.h"
 #include "imgui_sail.h"
+#include "SkrRT/runtime_module.h" // for dpi_aware
 
 class SAnimDebugModule : public skr::IDynamicModule
 {
@@ -37,11 +38,15 @@ void SAnimDebugModule::on_unload()
 
 int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
 {
+    namespace rg = skr::render_graph;
     SkrZoneScopedN("AnimDebugExecution");
     SKR_LOG_INFO(u8"anim debug runtime executed as main module!");
     animd::Renderer renderer;
     SKR_LOG_INFO(u8"anim debug renderer created with backend: %s", gCGPUBackendNames[renderer.get_backend()]);
+    renderer.set_aware_DPI(skr_runtime_is_dpi_aware());
     renderer.create_api_objects();
+    // TODO: customize scene and resources
+    renderer.create_resources();
     // create render graph
     auto device       = renderer.get_device();
     auto gfx_queue    = renderer.get_gfx_queue();
@@ -52,8 +57,9 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
                 .enable_memory_aliasing();
         }
     );
+    // TODO: init profiler
 
-    // init imgui
+    // init imgui backend
     skr::ImGuiBackend            imgui_backend;
     skr::ImGuiRendererBackendRG* render_backend_rg = nullptr;
     {
@@ -74,6 +80,7 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
         imgui_backend.enable_docking();
         imgui_backend.enable_high_dpi();
         // imgui_backend.enable_multi_viewport();
+
         // Apply Sail Style
         ImGui::Sail::LoadFont(12.0f);
         ImGui::Sail::StyleColorsSail();
@@ -85,7 +92,7 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
         renderer.set_swapchain(render_backend_rg->get_swapchain(viewport));
         renderer.create_render_pipeline();
     }
-    auto pipeline = renderer.get_pipeline();
+
     // draw loop
     bool     show_demo_window = true;
     uint64_t frame_index      = 0;
@@ -110,37 +117,19 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
             SkrZoneScopedN("ImGuiEndFrame");
             imgui_backend.end_frame();
         }
-        {
-            SkrZoneScopedN("ImGuiRender");
-            imgui_backend.render();
-        }
 
         {
             SkrZoneScopedN("Viewport Render");
             auto          viewport          = ImGui::GetMainViewport();
             CGPUTextureId native_backbuffer = render_backend_rg->get_backbuffer(viewport);
-            auto          back_buffer       = render_graph->create_texture(
-                [=](skr::render_graph::RenderGraph& g, skr::render_graph::TextureBuilder& builder) {
-                    skr::String buf_name = skr::format(u8"backbuffer", viewport->ID);
-                    builder.set_name((const char8_t*)buf_name.c_str())
-                        .import(native_backbuffer, CGPU_RESOURCE_STATE_UNDEFINED)
-                        .allow_render_target();
-                }
-            );
-
-            render_graph->add_render_pass(
-                [=](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassBuilder& builder) {
-                    builder.set_name(SKR_UTF8("color_pass"))
-                        .set_pipeline(pipeline)
-                        .write(0, back_buffer, CGPU_LOAD_ACTION_LOAD);
-                },
-                [=](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassContext& stack) {
-                    cgpu_render_encoder_set_viewport(stack.encoder, 0.0f, 0.0f, (float)native_backbuffer->info->width / 3, (float)native_backbuffer->info->height, 0.f, 1.f);
-                    cgpu_render_encoder_set_scissor(stack.encoder, 0, 0, native_backbuffer->info->width, native_backbuffer->info->height);
-                    cgpu_render_encoder_draw(stack.encoder, 3, 0);
-                }
-            );
+            render_backend_rg->set_load_action(viewport, CGPU_LOAD_ACTION_LOAD); // append not clear
+            renderer.build_render_graph(render_graph, native_backbuffer);
         }
+        {
+            SkrZoneScopedN("ImGuiRender");
+            imgui_backend.render();
+        }
+
         // draw render graph
         render_graph->compile();
         render_graph->execute();
@@ -160,7 +149,7 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
 
     // destroy imgui
     imgui_backend.destroy();
-    renderer.destroy();
+    renderer.finalize();
 
     return 0; // Return 0 to indicate success
 }

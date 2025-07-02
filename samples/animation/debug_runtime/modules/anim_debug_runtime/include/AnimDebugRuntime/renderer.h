@@ -3,6 +3,7 @@
 #include "SkrGraphics/api.h"
 #include "SkrBase/math.h"
 #include "SkrRT/resource/config_resource.h"
+#include "SkrRenderGraph/frontend/render_graph.hpp"
 
 #ifndef __meta__
     #include "AnimDebugRuntime/renderer.generated.h" // IWYU pragma: export
@@ -28,6 +29,7 @@ sreflect_struct(
     skr_float2_t viewportSize;
     skr_float2_t viewportOrigin;
 };
+
 // a dummy renderer for animation debug
 class ANIM_DEBUG_RUNTIME_API Renderer
 {
@@ -36,39 +38,42 @@ public:
     static LightingCSPushConstants lighting_cs_data;
 
 public:
-    // no-copy ctor
     Renderer()                           = default;
     Renderer(const Renderer&)            = delete;
     Renderer& operator=(const Renderer&) = delete;
-    // move ctor
-    Renderer(Renderer&&)            = default;
-    Renderer& operator=(Renderer&&) = default;
+    Renderer(Renderer&&)                 = delete;
+    Renderer& operator=(Renderer&&)      = delete;
     // destructor
     ~Renderer() = default;
 
 public:
     void create_api_objects();
     void create_resources();
+    void create_gbuffer_pipeline();
+    void create_lighting_pipeline();
+    void create_blit_pipeline();
     void create_render_pipeline();
-    void finalize(); // get ready for loop
-    void destroy();
+    void build_render_graph(skr::render_graph::RenderGraph* graph, CGPUTextureId native_backbuffer);
+    void finalize();
 
 public:
     // getters
-    CGPUDeviceId         get_device() const { return _device; }
-    ECGPUBackend         get_backend() const { return _backend; }
-    CGPUInstanceId       get_instance() const { return _instance; }
-    CGPUAdapterId        get_adapter() const { return _adapter; }
-    CGPUQueueId          get_gfx_queue() const { return _gfx_queue; }
-    CGPUSamplerId        get_static_sampler() const { return _static_sampler; }
-    CGPUBufferId         get_index_buffer() const { return _index_buffer; }
-    CGPUBufferId         get_vertex_buffer() const { return _vertex_buffer; }
-    CGPUBufferId         get_instance_buffer() const { return _instance_buffer; }
-    CGPURenderPipelineId get_pipeline() const { return _pipeline; }
-    CGPURootSignatureId  get_root_signature() const { return _root_sig; }
-    CGPUSwapChainId      get_swapchain() const { return _swapchain; }
-    bool                 is_lock_FPS() const { return _lock_FPS; }
-    bool                 is_aware_DPI() const { return _aware_DPI; }
+    CGPUDeviceId
+    get_device() const
+    {
+        return _device;
+    }
+    ECGPUBackend    get_backend() const { return _backend; }
+    CGPUInstanceId  get_instance() const { return _instance; }
+    CGPUAdapterId   get_adapter() const { return _adapter; }
+    CGPUQueueId     get_gfx_queue() const { return _gfx_queue; }
+    CGPUSamplerId   get_static_sampler() const { return _static_sampler; }
+    CGPUBufferId    get_index_buffer() const { return _index_buffer; }
+    CGPUBufferId    get_vertex_buffer() const { return _vertex_buffer; }
+    CGPUBufferId    get_instance_buffer() const { return _instance_buffer; }
+    CGPUSwapChainId get_swapchain() const { return _swapchain; }
+    bool            is_lock_FPS() const { return _lock_FPS; }
+    bool            is_aware_DPI() const { return _aware_DPI; }
 
     // setters
     void set_lock_FPS(bool lock) { _lock_FPS = lock; }
@@ -82,24 +87,29 @@ public:
     void set_index_buffer(CGPUBufferId index_buffer) { _index_buffer = index_buffer; }
     void set_vertex_buffer(CGPUBufferId vertex_buffer) { _vertex_buffer = vertex_buffer; }
     void set_instance_buffer(CGPUBufferId instance_buffer) { _instance_buffer = instance_buffer; }
-    void set_pipeline(CGPURenderPipelineId gbuffer_pipeline) { _pipeline = gbuffer_pipeline; }
-    void set_root_signature(CGPURootSignatureId root_sig) { _root_sig = root_sig; }
     void set_swapchain(CGPUSwapChainId swapchain) { _swapchain = swapchain; }
 
 private:
-    // API Instance
-    ECGPUBackend         _backend = CGPU_BACKEND_D3D12;
-    CGPUDeviceId         _device;
-    CGPUInstanceId       _instance;
-    CGPUAdapterId        _adapter;
-    CGPUQueueId          _gfx_queue;
-    CGPUSamplerId        _static_sampler;
-    CGPUBufferId         _index_buffer;
-    CGPUBufferId         _vertex_buffer;
-    CGPUBufferId         _instance_buffer;
-    CGPURenderPipelineId _pipeline;
-    CGPURootSignatureId  _root_sig;
-    CGPUSwapChainId      _swapchain;
+    ECGPUBackend   _backend = CGPU_BACKEND_D3D12;
+    CGPUDeviceId   _device;
+    CGPUInstanceId _instance;
+    CGPUAdapterId  _adapter;
+    CGPUQueueId    _gfx_queue;
+    CGPUSamplerId  _static_sampler;
+    CGPUBufferId   _index_buffer;
+    CGPUBufferId   _vertex_buffer;
+    CGPUBufferId   _instance_buffer;
+
+    CGPURenderPipelineId _gbuffer_pipeline;
+    CGPURenderPipelineId _lighting_pipeline;
+    CGPURenderPipelineId _blit_pipeline;
+
+    CGPUSwapChainId _swapchain;
+
+    const ECGPUFormat gbuffer_formats[2] = {
+        CGPU_FORMAT_R8G8B8A8_UNORM, CGPU_FORMAT_R16G16B16A16_SNORM
+    };
+    const ECGPUFormat gbuffer_depth_format = CGPU_FORMAT_D32_SFLOAT;
 
 private:
     // state
