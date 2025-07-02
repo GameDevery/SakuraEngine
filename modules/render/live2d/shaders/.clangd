@@ -1,5 +1,5 @@
 CompileFlags:
-  Add: [-D__skr_clangd__, -I./tools/shader_compiler/LLVM/test_shaders/, -I./../tools/shader_compiler/LLVM/test_shaders/]
+  Add: [-D__skr_clangd__, -I./../../../tools/shader_compiler/LLVM/test_shaders/]
 
 Diagnostics:
   Suppress:

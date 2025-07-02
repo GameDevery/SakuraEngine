@@ -53,10 +53,12 @@ Log.Information($"Compile Total: {CppCompileEmitter.Time / 1000.0f}s");
 Log.Information($"Link Total: {CppLinkEmitter.Time / 1000.0f}s");
 Log.CloseAndFlush();
 
-CompileCommandsEmitter.WriteToFile("compile_commands.json");
 
 if (cmd == "tools")
 {
+    Directory.CreateDirectory(".sb/compile_commands/tools");
+    CompileCommandsEmitter.WriteToFile(".sb/compile_commands/tools/compile_commands.json");
+
     string ToolsDirectory = Path.Combine(SourceLocation.Directory(), ".sb", "tools");
     BuildSystem.Artifacts.AsParallel().ForAll(artifact =>
     {
@@ -72,4 +74,9 @@ if (cmd == "tools")
             }
         }
     });
+}
+else
+{
+    Directory.CreateDirectory(".sb/compile_commands/modules");
+    CompileCommandsEmitter.WriteToFile(".sb/compile_commands/modules/compile_commands.json");
 }

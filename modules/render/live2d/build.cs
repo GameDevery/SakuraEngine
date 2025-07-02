@@ -35,8 +35,7 @@ public static class SkrLive2D
             .IncludeDirs(Visibility.Public, "include")
             .IncludeDirs(Visibility.Private, "CubismNativeCore/include", "CubismFramework", "CubismFramework/Framework")
             .AddCppFiles("src/*.cpp")
-            .AddCppSLFiles("shaders/*.cpp")
-            .AddHLSLFiles("shaders/*.hlsl");
+            .AddCppSLFiles("shaders/*.cpp");
 
         SkrLive2D.UsePrivatePCH("src/pch.hpp");
     }

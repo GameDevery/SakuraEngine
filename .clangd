@@ -5,3 +5,24 @@ Diagnostics:
   Suppress:
     - pragma_attribute_no_pop_eof
     - pragma_attribute_stack_mismatch
+
+---
+
+If:
+  PathMatch: tools/.*/.*
+CompileFlags:
+  CompilationDatabase: .sb/compile_commands/tools/
+
+---
+
+If:
+  PathMatch: modules/.*/.*
+CompileFlags:
+  CompilationDatabase: .sb/compile_commands/modules/
+
+---
+
+If:
+  PathMatch: .*/.*.cppsl
+CompileFlags:
+  Add: [ -Itools/shader_compiler/LLVM/test_shaders/ ]
