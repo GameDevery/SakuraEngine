@@ -9,6 +9,8 @@ namespace skr::CppSL {
 struct CompileFrontendAction : public clang::ASTFrontendAction 
 {
 public:
+    bool BeginSourceFileAction(clang::CompilerInstance& CI) override;
+
     CompileFrontendAction(skr::CppSL::AST& AST);
     std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(clang::CompilerInstance &CI, llvm::StringRef InFile) final;
     skr::CppSL::AST& AST;

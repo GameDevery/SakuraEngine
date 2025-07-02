@@ -79,4 +79,7 @@ else
 {
     Directory.CreateDirectory(".sb/compile_commands/modules");
     CompileCommandsEmitter.WriteToFile(".sb/compile_commands/modules/compile_commands.json");
+ 
+    Directory.CreateDirectory(".sb/compile_commands/shaders");
+    CppSLEmitter.WriteCompileCommandsToFile(".sb/compile_commands/shaders/compile_commands.json");
 }

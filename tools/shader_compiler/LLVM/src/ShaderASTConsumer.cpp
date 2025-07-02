@@ -271,10 +271,15 @@ CompileFrontendAction::CompileFrontendAction(skr::CppSL::AST& AST)
 {
 }
 
+bool CompileFrontendAction::BeginSourceFileAction(clang::CompilerInstance& CI)
+{
+    return clang::ASTFrontendAction::BeginSourceFileAction(CI);
+}
+
 std::unique_ptr<clang::ASTConsumer> CompileFrontendAction::CreateASTConsumer(clang::CompilerInstance &CI, llvm::StringRef InFile)
 {
     auto &LO = CI.getLangOpts();
-    LO.CommentOpts.ParseAllComments = true;
+    LO.CommentOpts.ParseAllComments = false;
     return std::make_unique<skr::CppSL::ASTConsumer>(AST);
 }
 

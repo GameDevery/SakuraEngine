@@ -23,13 +23,34 @@ CompileFlags:
 ---
 
 If:
+  PathMatch: samples/.*/.*
+CompileFlags:
+  CompilationDatabase: .sb/compile_commands/modules/
+
+---
+
+If:
+  PathMatch: tests/.*/.*
+CompileFlags:
+  CompilationDatabase: .sb/compile_commands/modules/
+
+---
+
+If:
+  PathMatch: thirdparty/.*/.*
+CompileFlags:
+  CompilationDatabase: .sb/compile_commands/modules/
+
+---
+
+If:
   PathMatch: .*/.*.cppsl
 CompileFlags:
-  Add: [ -I./../../../tools/shader_compiler/LLVM/test_shaders/ ]
+  CompilationDatabase: .sb/compile_commands/shaders/
 
 ---
 
 If:
   PathMatch: .*/.*.hppsl
 CompileFlags:
-  Add: [ -I./../../../tools/shader_compiler/LLVM/test_shaders/ ]
+  CompilationDatabase: .sb/compile_commands/shaders/

@@ -11,8 +11,10 @@ public static class CGPUSamples
             .Depend(Visibility.Private, "AppSampleCommon", "lodepng")
             .IncludeDirs(Visibility.Private, "./../../common")
             .AddCFiles("mandelbrot/mandelbrot.c")
-            .AddHLSLFilesWithEntry("compute_main", "mandelbrot/**.hlsl")
-            .DXCOutputDirectory("resources/shaders/cgpu-mandelbrot");
+            .AddCppSLFiles("mandelbrot/**.cppsl")
+            .CppSLOutputDirectory("resources/shaders/cgpu-mandelbrot");
+            //.AddHLSLFilesWithEntry("compute_main", "mandelbrot/**.hlsl")
+            //.DXCOutputDirectory("resources/shaders/cgpu-mandelbrot");
 
         Engine.Program("CGPURayTracing")
             .Depend(Visibility.Public, "SkrRT")

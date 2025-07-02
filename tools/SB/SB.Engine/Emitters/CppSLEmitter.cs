@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using SB.Core;
 using Serilog;
 
@@ -39,6 +40,24 @@ namespace SB
                 depend.ExternalFiles.AddRange(OutputFiles);
             }, new string[] { SourceFile }, null);
 
+            var CMD = new CompileCommand
+            {
+                directory = OutputDirectory,
+                file = SourceFile,
+                arguments = new List<string>
+                {
+                    "clang++",
+                    "-std=c++23", 
+                    "-x", "c++", 
+                    "-fsyntax-only", 
+                    "-fms-extensions", 
+                    "-Wno-microsoft-union-member-reference",
+                    $"-I{Engine.EngineDirectory}/tools/shader_compiler/LLVM/test_shaders",
+                    SourceFile
+                }
+            };
+            CompileCommands.Add(SB.Core.Json.Serialize(CMD));
+
             var OutputFiles = Directory.GetFiles(OutputDirectory, $"{SourceName}.*.*.hlsl");
             foreach (var HLSL in OutputFiles)
             {
@@ -46,7 +65,13 @@ namespace SB
             }
             return new PlainArtifact { IsRestored = !Changed };
         }
-        
+
+        public static void WriteCompileCommandsToFile(string Path)
+        {
+            File.WriteAllText(Path, "[" + String.Join(",", CompileCommands) + "]");
+        }
+
+        public static ConcurrentBag<string> CompileCommands = new();
         public static string CppSLCompiler = Path.Combine(Engine.TempPath, "tools", "SSLCompiler");
         public static Dictionary<string, string> ShaderOutputDirectories = new();
     }

@@ -41,9 +41,7 @@ public:
     {
         auto ExpectedParser = CommonOptionsParser::create(argc, argv, ToolOptionsCategory);
         if (!ExpectedParser)
-        {
             llvm::errs() << ExpectedParser.takeError();
-        }
         OptionsParser = std::move(ExpectedParser.get());
         tool.emplace(ClangTool(OptionsParser->getCompilations(), OptionsParser->getSourcePathList()));
     }

@@ -20,5 +20,6 @@ float4 fragment(VSOut input)
         * step(base_color.y, input.clip_pos.y / input.clip_pos.w)
         * step(input.clip_pos.x / input.clip_pos.w, base_color.z)
         * step(input.clip_pos.y / input.clip_pos.w, base_color.w);
+
     return push_constants.channel_flag * color_sampler.Sample(color_texture, input.uv).a * isInside;
 }
