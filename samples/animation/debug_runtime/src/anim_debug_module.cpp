@@ -87,13 +87,9 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
     }
 
     {
-        // Init Your Scene Here
-        auto viewport = ImGui::GetMainViewport();
-        renderer.set_swapchain(render_backend_rg->get_swapchain(viewport));
         renderer.create_render_pipeline();
     }
 
-    // draw loop
     bool     show_demo_window = true;
     uint64_t frame_index      = 0;
     while (!imgui_backend.want_exit().comsume())
@@ -103,6 +99,10 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
             SkrZoneScopedN("PumpMessage");
             // Pump messages
             imgui_backend.pump_message();
+        }
+        {
+            // if swapchain resized, rebind new swapchain
+            SkrZoneScopedN("ResizeSwapchain");
         }
 
         {
@@ -122,14 +122,24 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
             SkrZoneScopedN("Viewport Render");
             auto          viewport          = ImGui::GetMainViewport();
             CGPUTextureId native_backbuffer = render_backend_rg->get_backbuffer(viewport);
+            // acquire next frame buffer
             render_backend_rg->set_load_action(viewport, CGPU_LOAD_ACTION_LOAD); // append not clear
-            renderer.build_render_graph(render_graph, native_backbuffer);
+            auto back_buffer = render_graph->create_texture(
+                [=](rg::RenderGraph& g, skr::render_graph::TextureBuilder& builder) {
+                    skr::String buf_name = skr::format(u8"backbuffer");
+                    builder.set_name((const char8_t*)buf_name.c_str())
+                        .import(native_backbuffer, CGPU_RESOURCE_STATE_UNDEFINED)
+                        .allow_render_target();
+                }
+            );
+            renderer.set_width(native_backbuffer->info->width);
+            renderer.set_height(native_backbuffer->info->height);
+            renderer.build_render_graph(render_graph, back_buffer);
         }
         {
             SkrZoneScopedN("ImGuiRender");
-            imgui_backend.render();
+            imgui_backend.render(); // maybe rebuild swapchain // add present pass
         }
-
         // draw render graph
         render_graph->compile();
         render_graph->execute();

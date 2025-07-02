@@ -53,7 +53,7 @@ public:
     void create_lighting_pipeline();
     void create_blit_pipeline();
     void create_render_pipeline();
-    void build_render_graph(skr::render_graph::RenderGraph* graph, CGPUTextureId native_backbuffer);
+    void build_render_graph(skr::render_graph::RenderGraph* graph, skr::render_graph::TextureHandle back_buffer);
     void finalize();
 
 public:
@@ -63,17 +63,16 @@ public:
     {
         return _device;
     }
-    ECGPUBackend    get_backend() const { return _backend; }
-    CGPUInstanceId  get_instance() const { return _instance; }
-    CGPUAdapterId   get_adapter() const { return _adapter; }
-    CGPUQueueId     get_gfx_queue() const { return _gfx_queue; }
-    CGPUSamplerId   get_static_sampler() const { return _static_sampler; }
-    CGPUBufferId    get_index_buffer() const { return _index_buffer; }
-    CGPUBufferId    get_vertex_buffer() const { return _vertex_buffer; }
-    CGPUBufferId    get_instance_buffer() const { return _instance_buffer; }
-    CGPUSwapChainId get_swapchain() const { return _swapchain; }
-    bool            is_lock_FPS() const { return _lock_FPS; }
-    bool            is_aware_DPI() const { return _aware_DPI; }
+    ECGPUBackend   get_backend() const { return _backend; }
+    CGPUInstanceId get_instance() const { return _instance; }
+    CGPUAdapterId  get_adapter() const { return _adapter; }
+    CGPUQueueId    get_gfx_queue() const { return _gfx_queue; }
+    CGPUSamplerId  get_static_sampler() const { return _static_sampler; }
+    CGPUBufferId   get_index_buffer() const { return _index_buffer; }
+    CGPUBufferId   get_vertex_buffer() const { return _vertex_buffer; }
+    CGPUBufferId   get_instance_buffer() const { return _instance_buffer; }
+    bool           is_lock_FPS() const { return _lock_FPS; }
+    bool           is_aware_DPI() const { return _aware_DPI; }
 
     // setters
     void set_lock_FPS(bool lock) { _lock_FPS = lock; }
@@ -87,7 +86,8 @@ public:
     void set_index_buffer(CGPUBufferId index_buffer) { _index_buffer = index_buffer; }
     void set_vertex_buffer(CGPUBufferId vertex_buffer) { _vertex_buffer = vertex_buffer; }
     void set_instance_buffer(CGPUBufferId instance_buffer) { _instance_buffer = instance_buffer; }
-    void set_swapchain(CGPUSwapChainId swapchain) { _swapchain = swapchain; }
+    void set_width(uint32_t width) { _width = width; }
+    void set_height(uint32_t height) { _height = height; }
 
 private:
     ECGPUBackend   _backend = CGPU_BACKEND_D3D12;
@@ -104,8 +104,6 @@ private:
     CGPURenderPipelineId _lighting_pipeline;
     CGPURenderPipelineId _blit_pipeline;
 
-    CGPUSwapChainId _swapchain;
-
     const ECGPUFormat gbuffer_formats[2] = {
         CGPU_FORMAT_R8G8B8A8_UNORM, CGPU_FORMAT_R16G16B16A16_SNORM
     };
@@ -113,8 +111,10 @@ private:
 
 private:
     // state
-    bool _lock_FPS  = true;
-    bool _aware_DPI = false;
+    bool     _lock_FPS  = true;
+    bool     _aware_DPI = false;
+    uint32_t _width     = 1280;
+    uint32_t _height    = 720;
 };
 
 } // namespace animd

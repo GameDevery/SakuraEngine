@@ -64,32 +64,36 @@ void Renderer::create_resources()
     upload_buffer_desc.descriptors          = CGPU_RESOURCE_TYPE_NONE;
     upload_buffer_desc.memory_usage         = CGPU_MEM_USAGE_CPU_ONLY;
     upload_buffer_desc.size                 = sizeof(CubeGeometry) + sizeof(CubeGeometry::g_Indices) + sizeof(CubeGeometry::InstanceData);
-    auto                 upload_buffer      = cgpu_create_buffer(_device, &upload_buffer_desc);
-    CGPUBufferDescriptor vb_desc            = {};
-    vb_desc.name                            = u8"VertexBuffer";
-    vb_desc.flags                           = CGPU_BCF_NONE;
-    vb_desc.descriptors                     = CGPU_RESOURCE_TYPE_VERTEX_BUFFER;
-    vb_desc.memory_usage                    = CGPU_MEM_USAGE_GPU_ONLY;
-    vb_desc.size                            = sizeof(CubeGeometry);
-    _vertex_buffer                          = cgpu_create_buffer(_device, &vb_desc);
-    CGPUBufferDescriptor ib_desc            = {};
-    ib_desc.name                            = u8"IndexBuffer";
-    ib_desc.flags                           = CGPU_BCF_NONE;
-    ib_desc.descriptors                     = CGPU_RESOURCE_TYPE_INDEX_BUFFER;
-    ib_desc.memory_usage                    = CGPU_MEM_USAGE_GPU_ONLY;
-    ib_desc.size                            = sizeof(CubeGeometry::g_Indices);
-    _index_buffer                           = cgpu_create_buffer(_device, &ib_desc);
-    CGPUBufferDescriptor inb_desc           = {};
-    inb_desc.name                           = u8"InstanceBuffer";
-    inb_desc.flags                          = CGPU_BCF_NONE;
-    inb_desc.descriptors                    = CGPU_RESOURCE_TYPE_VERTEX_BUFFER;
-    inb_desc.memory_usage                   = CGPU_MEM_USAGE_GPU_ONLY;
-    inb_desc.size                           = sizeof(CubeGeometry::InstanceData);
-    _instance_buffer                        = cgpu_create_buffer(_device, &inb_desc);
-    auto pool_desc                          = CGPUCommandPoolDescriptor();
-    auto cmd_pool                           = cgpu_create_command_pool(_gfx_queue, &pool_desc);
-    auto cmd_desc                           = CGPUCommandBufferDescriptor();
-    auto cpy_cmd                            = cgpu_create_command_buffer(cmd_pool, &cmd_desc);
+    auto upload_buffer                      = cgpu_create_buffer(_device, &upload_buffer_desc);
+
+    CGPUBufferDescriptor vb_desc = {};
+    vb_desc.name                 = u8"VertexBuffer";
+    vb_desc.flags                = CGPU_BCF_NONE;
+    vb_desc.descriptors          = CGPU_RESOURCE_TYPE_VERTEX_BUFFER;
+    vb_desc.memory_usage         = CGPU_MEM_USAGE_GPU_ONLY;
+    vb_desc.size                 = sizeof(CubeGeometry);
+    _vertex_buffer               = cgpu_create_buffer(_device, &vb_desc);
+
+    CGPUBufferDescriptor ib_desc = {};
+    ib_desc.name                 = u8"IndexBuffer";
+    ib_desc.flags                = CGPU_BCF_NONE;
+    ib_desc.descriptors          = CGPU_RESOURCE_TYPE_INDEX_BUFFER;
+    ib_desc.memory_usage         = CGPU_MEM_USAGE_GPU_ONLY;
+    ib_desc.size                 = sizeof(CubeGeometry::g_Indices);
+    _index_buffer                = cgpu_create_buffer(_device, &ib_desc);
+
+    CGPUBufferDescriptor inb_desc = {};
+    inb_desc.name                 = u8"InstanceBuffer";
+    inb_desc.flags                = CGPU_BCF_NONE;
+    inb_desc.descriptors          = CGPU_RESOURCE_TYPE_VERTEX_BUFFER;
+    inb_desc.memory_usage         = CGPU_MEM_USAGE_GPU_ONLY;
+    inb_desc.size                 = sizeof(CubeGeometry::InstanceData);
+    _instance_buffer              = cgpu_create_buffer(_device, &inb_desc);
+
+    auto pool_desc = CGPUCommandPoolDescriptor();
+    auto cmd_pool  = cgpu_create_command_pool(_gfx_queue, &pool_desc);
+    auto cmd_desc  = CGPUCommandBufferDescriptor();
+    auto cpy_cmd   = cgpu_create_command_buffer(cmd_pool, &cmd_desc);
     {
         auto geom = CubeGeometry();
         memcpy(upload_buffer->info->cpu_mapped_address, &geom, upload_buffer_desc.size);
@@ -102,9 +106,13 @@ void Renderer::create_resources()
     vb_cpy.src_offset                 = 0;
     vb_cpy.size                       = sizeof(CubeGeometry);
     cgpu_cmd_transfer_buffer_to_buffer(cpy_cmd, &vb_cpy);
+
+    // copy geometry data to upload buffer
     {
         memcpy((char8_t*)upload_buffer->info->cpu_mapped_address + sizeof(CubeGeometry), CubeGeometry::g_Indices, sizeof(CubeGeometry::g_Indices));
     }
+
+    // data[offset:offset+size] to _index_buffer
     CGPUBufferToBufferTransfer ib_cpy = {};
     ib_cpy.dst                        = _index_buffer;
     ib_cpy.dst_offset                 = 0;
@@ -126,6 +134,7 @@ void Renderer::create_resources()
     {
         memcpy((char8_t*)upload_buffer->info->cpu_mapped_address + sizeof(CubeGeometry) + sizeof(CubeGeometry::g_Indices), &CubeGeometry::instance_data, sizeof(CubeGeometry::InstanceData));
     }
+
     CGPUBufferToBufferTransfer istb_cpy = {};
     istb_cpy.dst                        = _instance_buffer;
     istb_cpy.dst_offset                 = 0;
@@ -133,6 +142,8 @@ void Renderer::create_resources()
     istb_cpy.src_offset                 = sizeof(CubeGeometry) + sizeof(CubeGeometry::g_Indices);
     istb_cpy.size                       = sizeof(CubeGeometry::instance_data);
     cgpu_cmd_transfer_buffer_to_buffer(cpy_cmd, &istb_cpy);
+
+    // barriers
     CGPUBufferBarrier  barriers[3]             = {};
     CGPUBufferBarrier& vb_barrier              = barriers[0];
     vb_barrier.buffer                          = _vertex_buffer;
@@ -151,6 +162,8 @@ void Renderer::create_resources()
     barrier_desc.buffer_barriers_count         = 3;
     cgpu_cmd_resource_barrier(cpy_cmd, &barrier_desc);
     cgpu_cmd_end(cpy_cmd);
+
+    // submit command to queue
     CGPUQueueSubmitDescriptor cpy_submit = {};
     cpy_submit.cmds                      = &cpy_cmd;
     cpy_submit.cmds_count                = 1;
@@ -340,22 +353,14 @@ void Renderer::create_gbuffer_pipeline()
     cgpu_free_shader_library(gbuffer_fs);
 }
 
-void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, CGPUTextureId native_backbuffer)
+void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, skr::render_graph::TextureHandle back_buffer)
 {
     namespace rg = skr::render_graph;
 
-    auto back_buffer = graph->create_texture(
-        [=](rg::RenderGraph& g, skr::render_graph::TextureBuilder& builder) {
-            skr::String buf_name = skr::format(u8"backbuffer");
-            builder.set_name((const char8_t*)buf_name.c_str())
-                .import(native_backbuffer, CGPU_RESOURCE_STATE_UNDEFINED)
-                .allow_render_target();
-        }
-    );
     rg::TextureHandle composite_buffer = graph->create_texture(
         [=](rg::RenderGraph& g, rg::TextureBuilder& builder) {
             builder.set_name(u8"composite_buffer")
-                .extent(native_backbuffer->info->width, native_backbuffer->info->height)
+                .extent(_width, _height)
                 .format(CGPU_FORMAT_R8G8B8A8_UNORM)
                 .allocate_dedicated()
                 .allow_render_target();
@@ -364,7 +369,7 @@ void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, CGPUTex
     auto gbuffer_color = graph->create_texture(
         [=](rg::RenderGraph& g, rg::TextureBuilder& builder) {
             builder.set_name(u8"gbuffer_color")
-                .extent(native_backbuffer->info->width, native_backbuffer->info->height)
+                .extent(_width, _height)
                 .format(CGPU_FORMAT_R8G8B8A8_UNORM)
                 .allocate_dedicated()
                 .allow_render_target();
@@ -373,7 +378,7 @@ void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, CGPUTex
     auto gbuffer_depth = graph->create_texture(
         [=](rg::RenderGraph& g, rg::TextureBuilder& builder) {
             builder.set_name(u8"gbuffer_depth")
-                .extent(native_backbuffer->info->width, native_backbuffer->info->height)
+                .extent(_width, _height)
                 .format(CGPU_FORMAT_D32_SFLOAT)
                 .allocate_dedicated()
                 .allow_depth_stencil();
@@ -382,7 +387,7 @@ void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, CGPUTex
     auto gbuffer_normal = graph->create_texture(
         [=](rg::RenderGraph& g, rg::TextureBuilder& builder) {
             builder.set_name(u8"gbuffer_normal")
-                .extent(native_backbuffer->info->width, native_backbuffer->info->height)
+                .extent(_width, _height)
                 .format(CGPU_FORMAT_R16G16B16A16_SNORM)
                 .allocate_dedicated()
                 .allow_render_target();
@@ -411,8 +416,9 @@ void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, CGPUTex
                 .set_depth_stencil(gbuffer_depth.clear_depth(1.f));
         },
         [=](rg::RenderGraph& g, rg::RenderPassContext& stack) {
-            cgpu_render_encoder_set_viewport(stack.encoder, 0.0f, 0.0f, (float)native_backbuffer->info->width, (float)native_backbuffer->info->height, 0.f, 1.f);
-            cgpu_render_encoder_set_scissor(stack.encoder, 0, 0, native_backbuffer->info->width, native_backbuffer->info->height);
+            cgpu_render_encoder_set_viewport(stack.encoder, 0.0f, 0.0f, (float)_width, (float)_height, 0.f, 1.f);
+            cgpu_render_encoder_set_scissor(stack.encoder, 0, 0, _width, _height);
+
             CGPUBufferId vertex_buffers[5] = {
                 _vertex_buffer, _vertex_buffer, _vertex_buffer,
                 _vertex_buffer, _instance_buffer
@@ -447,8 +453,8 @@ void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, CGPUTex
                 .write(0, composite_buffer, CGPU_LOAD_ACTION_CLEAR);
         },
         [=](rg::RenderGraph& g, rg::RenderPassContext& stack) {
-            cgpu_render_encoder_set_viewport(stack.encoder, 0.0f, 0.0f, (float)native_backbuffer->info->width, (float)native_backbuffer->info->height, 0.f, 1.f);
-            cgpu_render_encoder_set_scissor(stack.encoder, 0, 0, native_backbuffer->info->width, native_backbuffer->info->height);
+            cgpu_render_encoder_set_viewport(stack.encoder, 0.0f, 0.0f, (float)_width, (float)_height, 0.f, 1.f);
+            cgpu_render_encoder_set_scissor(stack.encoder, 0, 0, _width, _height);
             cgpu_render_encoder_push_constants(stack.encoder, _lighting_pipeline->root_signature, u8"push_constants", &lighting_data);
             cgpu_render_encoder_draw(stack.encoder, 3, 0);
         }
@@ -462,8 +468,8 @@ void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, CGPUTex
                 .write(0, back_buffer, CGPU_LOAD_ACTION_CLEAR);
         },
         [=](rg::RenderGraph& g, rg::RenderPassContext& stack) {
-            cgpu_render_encoder_set_viewport(stack.encoder, 0.0f, 0.0f, (float)native_backbuffer->info->width, (float)native_backbuffer->info->height, 0.f, 1.f);
-            cgpu_render_encoder_set_scissor(stack.encoder, 0, 0, native_backbuffer->info->width, native_backbuffer->info->height);
+            cgpu_render_encoder_set_viewport(stack.encoder, 0.0f, 0.0f, (float)_width, (float)_height, 0.f, 1.f);
+            cgpu_render_encoder_set_scissor(stack.encoder, 0, 0, _width, _height);
             cgpu_render_encoder_draw(stack.encoder, 3, 0);
         }
     );
