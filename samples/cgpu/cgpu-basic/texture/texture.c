@@ -115,13 +115,11 @@ void create_render_pipeline()
     read_shader_bytes("cgpu-texture/fragment_shader", &fs_bytes, &fs_length, backend);
     CGPUShaderLibraryDescriptor vs_desc = {
         .name      = "VertexShaderLibrary",
-        .stage     = CGPU_SHADER_STAGE_VERT,
         .code      = vs_bytes,
         .code_size = vs_length
     };
     CGPUShaderLibraryDescriptor ps_desc = {
         .name      = "FragmentShaderLibrary",
-        .stage     = CGPU_SHADER_STAGE_FRAG,
         .code      = fs_bytes,
         .code_size = fs_length
     };

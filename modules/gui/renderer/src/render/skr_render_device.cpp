@@ -189,13 +189,11 @@ CGPURenderPipelineId SkrRenderDevice::create_pipeline(ESkrPipelineFlag flags, EC
         read_shader_bytes(SKR_UTF8("GUI/pixel"), &fs_bytes, &fs_length, _cgpu_device->adapter->instance->backend);
     }
     CGPUShaderLibraryDescriptor vs_desc = {};
-    vs_desc.stage                       = CGPU_SHADER_STAGE_VERT;
     vs_desc.name                        = SKR_UTF8("VertexShaderLibrary");
     vs_desc.code                        = vs_bytes;
     vs_desc.code_size                   = vs_length;
     CGPUShaderLibraryDescriptor ps_desc = {};
     ps_desc.name                        = SKR_UTF8("FragmentShaderLibrary");
-    ps_desc.stage                       = CGPU_SHADER_STAGE_FRAG;
     ps_desc.code                        = fs_bytes;
     ps_desc.code_size                   = fs_length;
     CGPUShaderLibraryId vertex_shader   = cgpu_create_shader_library(_cgpu_device, &vs_desc);

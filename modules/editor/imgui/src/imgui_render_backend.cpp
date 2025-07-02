@@ -499,12 +499,10 @@ void ImGuiRendererBackendRG::init(const ImGuiRendererBackendRGConfig& config)
         // create lib
         CGPUShaderLibraryDescriptor vs_desc{};
         vs_desc.name      = SKR_UTF8("imgui_vertex_shader");
-        vs_desc.stage     = CGPU_SHADER_STAGE_VERT;
         vs_desc.code      = reinterpret_cast<uint32_t*>(vs_bytes.data());
         vs_desc.code_size = vs_bytes.size();
         CGPUShaderLibraryDescriptor ps_desc{};
         ps_desc.name      = SKR_UTF8("imgui_fragment_shader");
-        ps_desc.stage     = CGPU_SHADER_STAGE_FRAG;
         ps_desc.code      = reinterpret_cast<uint32_t*>(ps_bytes.data());
         ps_desc.code_size = ps_bytes.size();
         auto vs_lib       = cgpu_create_shader_library(

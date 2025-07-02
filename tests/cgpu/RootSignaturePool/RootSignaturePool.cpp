@@ -112,13 +112,11 @@ CGPURootSignatureId create_root_sig_with_shaders(CGPUDeviceId device,
     read_shader_bytes(vs, &vs_bytes, &vs_length, backend);
     read_shader_bytes(ps, &fs_bytes, &fs_length, backend);
     auto vs_desc = make_zeroed<CGPUShaderLibraryDescriptor>();
-    vs_desc.stage = CGPU_SHADER_STAGE_VERT;
     vs_desc.name = u8"VertexShaderLibrary";
     vs_desc.code = vs_bytes;
     vs_desc.code_size = vs_length;
     auto ps_desc = make_zeroed<CGPUShaderLibraryDescriptor>();
     ps_desc.name = u8"FragmentShaderLibrary";
-    ps_desc.stage = CGPU_SHADER_STAGE_FRAG;
     ps_desc.code = fs_bytes;
     ps_desc.code_size = fs_length;
     CGPUShaderLibraryId vertex_shader = cgpu_create_shader_library(device, &vs_desc);

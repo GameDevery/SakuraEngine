@@ -246,14 +246,12 @@ void ResourceCreation<backend>::test_all()
         vdesc.code = vertex_shaders[backend];
         vdesc.code_size = vertex_shader_sizes[backend];
         vdesc.name = u8"VertexShaderLibrary";
-        vdesc.stage = ECGPUShaderStage::CGPU_SHADER_STAGE_VERT;
         auto vertex_shader = cgpu_create_shader_library(device, &vdesc);
 
         SKR_DECLARE_ZERO(CGPUShaderLibraryDescriptor, fdesc)
         fdesc.code = frag_shaders[backend];
         fdesc.code_size = frag_shader_sizes[backend];
         fdesc.name = u8"FragmentShaderLibrary";
-        fdesc.stage = ECGPUShaderStage::CGPU_SHADER_STAGE_FRAG;
         auto fragment_shader = cgpu_create_shader_library(device, &fdesc);
 
         EXPECT_NE(vertex_shader, CGPU_NULLPTR);
@@ -269,14 +267,12 @@ void ResourceCreation<backend>::test_all()
         vdesc.code = vertex_shaders[backend];
         vdesc.code_size = vertex_shader_sizes[backend];
         vdesc.name = u8"VertexShaderLibrary";
-        vdesc.stage = ECGPUShaderStage::CGPU_SHADER_STAGE_VERT;
         auto vertex_shader = cgpu_create_shader_library(device, &vdesc);
 
         SKR_DECLARE_ZERO(CGPUShaderLibraryDescriptor, fdesc)
         fdesc.code = frag_shaders[backend];
         fdesc.code_size = frag_shader_sizes[backend];
         fdesc.name = u8"FragmentShaderLibrary";
-        fdesc.stage = ECGPUShaderStage::CGPU_SHADER_STAGE_FRAG;
         auto fragment_shader = cgpu_create_shader_library(device, &fdesc);
 
         CGPUShaderEntryDescriptor vertex_shader_entry = {};
@@ -306,7 +302,6 @@ void ResourceCreation<backend>::test_all()
         csdesc.code = compute_shaders[backend];
         csdesc.code_size = compute_shader_sizes[backend];
         csdesc.name = u8"ComputeShaderLibrary";
-        csdesc.stage = ECGPUShaderStage::CGPU_SHADER_STAGE_COMPUTE;
         auto compute_shader = cgpu_create_shader_library(device, &csdesc);
         EXPECT_NE(compute_shader, CGPU_NULLPTR);
 

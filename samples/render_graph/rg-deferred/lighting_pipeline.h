@@ -10,7 +10,6 @@ CGPUComputePipelineId create_lighting_compute_pipeline(CGPUDeviceId device)
     device->adapter->instance->backend);
     CGPUShaderLibraryDescriptor cs_desc = {};
     cs_desc.name = SKR_UTF8("LightingComputeShader");
-    cs_desc.stage = CGPU_SHADER_STAGE_COMPUTE;
     cs_desc.code = cs_bytes;
     cs_desc.code_size = cs_length;
     CGPUShaderLibraryId lighting_cs = cgpu_create_shader_library(device, &cs_desc);
@@ -45,13 +44,11 @@ CGPURenderPipelineId create_lighting_render_pipeline(CGPUDeviceId device, CGPUSa
     read_shader_bytes(SKR_UTF8("rg-deferred/lighting_fs"), &fs_bytes, &fs_length,
     device->adapter->instance->backend);
     CGPUShaderLibraryDescriptor vs_desc = {};
-    vs_desc.stage = CGPU_SHADER_STAGE_VERT;
     vs_desc.name = SKR_UTF8("ScreenVertexShader");
     vs_desc.code = vs_bytes;
     vs_desc.code_size = vs_length;
     CGPUShaderLibraryDescriptor ps_desc = {};
     ps_desc.name = SKR_UTF8("LightingFragmentShader");
-    ps_desc.stage = CGPU_SHADER_STAGE_FRAG;
     ps_desc.code = fs_bytes;
     ps_desc.code_size = fs_length;
     auto screen_vs = cgpu_create_shader_library(device, &vs_desc);

@@ -15,13 +15,11 @@ inline CGPURenderPipelineId create_gbuffer_render_pipeline(CGPUDeviceId device)
     read_shader_bytes(SKR_UTF8("rg-deferred/gbuffer_fs"), &fs_bytes, &fs_length,
                       device->adapter->instance->backend);
     CGPUShaderLibraryDescriptor vs_desc = {};
-    vs_desc.stage                       = CGPU_SHADER_STAGE_VERT;
     vs_desc.name                        = SKR_UTF8("GBufferVertexShader");
     vs_desc.code                        = vs_bytes;
     vs_desc.code_size                   = vs_length;
     CGPUShaderLibraryDescriptor ps_desc = {};
     ps_desc.name                        = SKR_UTF8("GBufferFragmentShader");
-    ps_desc.stage                       = CGPU_SHADER_STAGE_FRAG;
     ps_desc.code                        = fs_bytes;
     ps_desc.code_size                   = fs_length;
     CGPUShaderLibraryId gbuffer_vs      = cgpu_create_shader_library(device, &vs_desc);

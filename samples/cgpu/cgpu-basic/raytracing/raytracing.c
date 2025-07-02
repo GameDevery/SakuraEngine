@@ -103,8 +103,7 @@ void ComputeFunc(void* usrdata)
     CGPUShaderLibraryDescriptor shader_desc = {
         .code = shader_bytes,
         .code_size = shader_length,
-        .name = "ComputeShaderLibrary",
-        .stage = CGPU_SHADER_STAGE_COMPUTE
+        .name = "ComputeShaderLibrary"
     };
     CGPUShaderLibraryId compute_shader = cgpu_create_shader_library(device, &shader_desc);
     free(shader_bytes);

@@ -22,9 +22,8 @@ namespace SB
                 var SpvFile = Path.Combine(OutputDirectory, $"{HLSLBaseName}.spv");
                 var Arguments = new string[] {
                     "-Wno-ignored-attributes",
-                    "-all_resources_bound",
                     "-spirv",
-                    $"-E {HLSLFileList!.Entry}",
+                    TargetProfile.StartsWith("lib") ? "-Vd" : $"-E {HLSLFileList!.Entry}",
                     "-fspv-target-env=vulkan1.1",
                     $"-Fo{SpvFile}",
                     $"-T{TargetProfile}",
@@ -44,7 +43,7 @@ namespace SB
                 var Arguments = new string[] {
                     "-Wno-ignored-attributes",
                     "-all_resources_bound",
-                    $"-E {HLSLFileList!.Entry}",
+                    TargetProfile.StartsWith("lib") ? "-Vd" : $"-E {HLSLFileList!.Entry}",
                     $"-Fo{DxilFile}",
                     $"-T{TargetProfile}",
                     SourceFile

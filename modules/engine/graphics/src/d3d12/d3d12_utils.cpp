@@ -370,6 +370,30 @@ void D3D12Util_SignalFence(CGPUQueue_D3D12* Q, ID3D12Fence* DxF, uint64_t fenceV
 }
 
 // Shader Reflection
+#define DXIL_FOURCC(ch0, ch1, ch2, ch3) ((uint32_t)(uint8_t)(ch0) | (uint32_t)(uint8_t)(ch1) << 8 | (uint32_t)(uint8_t)(ch2) << 16 | (uint32_t)(uint8_t)(ch3) << 24)
+enum DxilFourCC
+{
+    DFCC_Container = DXIL_FOURCC('D', 'X', 'B', 'C'), // for back-compat with tools that look for DXBC containers
+    DFCC_ResourceDef = DXIL_FOURCC('R', 'D', 'E', 'F'),
+    DFCC_InputSignature = DXIL_FOURCC('I', 'S', 'G', '1'),
+    DFCC_OutputSignature = DXIL_FOURCC('O', 'S', 'G', '1'),
+    DFCC_PatchConstantSignature = DXIL_FOURCC('P', 'S', 'G', '1'),
+    DFCC_ShaderStatistics = DXIL_FOURCC('S', 'T', 'A', 'T'),
+    DFCC_ShaderDebugInfoDXIL = DXIL_FOURCC('I', 'L', 'D', 'B'),
+    DFCC_ShaderDebugName = DXIL_FOURCC('I', 'L', 'D', 'N'),
+    DFCC_FeatureInfo = DXIL_FOURCC('S', 'F', 'I', '0'),
+    DFCC_PrivateData = DXIL_FOURCC('P', 'R', 'I', 'V'),
+    DFCC_RootSignature = DXIL_FOURCC('R', 'T', 'S', '0'),
+    DFCC_DXIL = DXIL_FOURCC('D', 'X', 'I', 'L'),
+    DFCC_PipelineStateValidation = DXIL_FOURCC('P', 'S', 'V', '0'),
+    DFCC_RuntimeData = DXIL_FOURCC('R', 'D', 'A', 'T'),
+    DFCC_ShaderHash = DXIL_FOURCC('H', 'A', 'S', 'H'),
+    DFCC_ShaderSourceInfo = DXIL_FOURCC('S', 'R', 'C', 'I'),
+    DFCC_ShaderPDBInfo = DXIL_FOURCC('P', 'D', 'B', 'I'),
+    DFCC_CompilerVersion = DXIL_FOURCC('V', 'E', 'R', 'S'),
+};
+#undef DXIL_FOURCC
+
 const char8_t* D3DShaderEntryName = CGPU_NULLPTR;
 static ECGPUResourceType gD3D12_TO_DESCRIPTOR[] = {
     CGPU_RESOURCE_TYPE_UNIFORM_BUFFER, // D3D_SIT_CBUFFER
@@ -421,13 +445,54 @@ static ECGPUFormat gD3D12_TO_VERTEX_FORMAT[] = {
     CGPU_FORMAT_R32G32B32A32_SFLOAT // 3 * 3 * 3
 };
 
+template <typename D3D12_SHADER_DESC_T>
+inline static ECGPUShaderStage D3D12Util_GetShaderStageFromDesc(const D3D12_SHADER_DESC_T& shaderDesc)
+{
+    UINT shaderType = D3D12_SHVER_GET_TYPE(shaderDesc.Version);
+    switch (shaderType)
+    {
+        case D3D12_SHVER_VERTEX_SHADER:
+            return CGPU_SHADER_STAGE_VERT;
+        case D3D12_SHVER_PIXEL_SHADER:
+            return CGPU_SHADER_STAGE_FRAG;
+        case D3D12_SHVER_GEOMETRY_SHADER:
+            return CGPU_SHADER_STAGE_GEOM;
+        case D3D12_SHVER_HULL_SHADER:
+            return CGPU_SHADER_STAGE_TESC;
+        case D3D12_SHVER_DOMAIN_SHADER:
+            return CGPU_SHADER_STAGE_TESE;
+        case D3D12_SHVER_COMPUTE_SHADER:
+            return CGPU_SHADER_STAGE_COMPUTE;
+        /*
+        case D3D12_SHVER_LIBRARY:
+            return CGPU_SHADER_STAGE_LIBRARY;
+        case D3D12_SHVER_RAY_GENERATION_SHADER:
+            return CGPU_SHADER_STAGE_RAYGENERATION;
+        case D3D12_SHVER_INTERSECTION_SHADER:
+            return CGPU_SHADER_STAGE_INTERSECTION;
+        case D3D12_SHVER_ANY_HIT_SHADER:
+            return CGPU_SHADER_STAGE_ANY_HIT;
+        case D3D12_SHVER_CLOSEST_HIT_SHADER:
+            return CGPU_SHADER_STAGE_CLOSEST_HIT;
+        case D3D12_SHVER_MISS_SHADER:
+            return CGPU_SHADER_STAGE_MISS;
+        case D3D12_SHVER_CALLABLE_SHADER:
+            return CGPU_SHADER_STAGE_CALLABLE;
+        case D3D12_SHVER_MESH_SHADER:
+            return CGPU_SHADER_STAGE_MESH;
+        case D3D12_SHVER_AMPLIFICATION_SHADER:
+            return CGPU_SHADER_STAGE_AMPLIFICATION;
+        */
+        default:
+            return CGPU_SHADER_STAGE_NONE;
+    }
+}
+
 template <typename ID3D12ReflectionT, typename D3D12_SHADER_DESC_T>
-void reflectionRecordShaderResources(ID3D12ReflectionT* d3d12reflection, ECGPUShaderStage stage, const D3D12_SHADER_DESC_T& shaderDesc, CGPUShaderLibrary_D3D12* S)
+void reflectionRecordShaderResources(ID3D12ReflectionT* d3d12reflection, ECGPUShaderStage stage, const D3D12_SHADER_DESC_T& shaderDesc, CGPUShaderLibrary_D3D12* S, uint32_t entryIndex)
 {
     // Get the number of bound resources
-    S->super.entrys_count = 1;
-    S->super.entry_reflections = (CGPUShaderReflection*)cgpu_calloc(S->super.entrys_count, sizeof(CGPUShaderReflection));
-    CGPUShaderReflection* Reflection = S->super.entry_reflections;
+    CGPUShaderReflection* Reflection = S->super.entry_reflections + entryIndex;
     Reflection->entry_name = D3DShaderEntryName;
     Reflection->shader_resources_count = shaderDesc.BoundResources;
     Reflection->shader_resources = (CGPUShaderResource*)cgpu_calloc(shaderDesc.BoundResources, sizeof(CGPUShaderResource));
@@ -469,68 +534,123 @@ void reflectionRecordShaderResources(ID3D12ReflectionT* d3d12reflection, ECGPUSh
     }
 }
 
-SKR_FORCEINLINE void D3D12Util_CollectShaderReflectionData(ID3D12ShaderReflection* d3d12reflection, ECGPUShaderStage stage, CGPUShaderLibrary_D3D12* S)
+template <typename ID3D12ReflectionT, typename D3D12_SHADER_DESC_T>
+inline static void D3D12Util_CollectShaderReflectionData(ID3D12ReflectionT* pReflection, CGPUShaderLibrary_D3D12* S, uint32_t entryIndex)
 {
     // Get a description of this shader
-    D3D12_SHADER_DESC shaderDesc;
-    d3d12reflection->GetDesc(&shaderDesc);
-    reflectionRecordShaderResources(d3d12reflection, stage, shaderDesc, S);
-    CGPUShaderReflection* Reflection = S->super.entry_reflections;
+    D3D12_SHADER_DESC_T _shaderDesc;
+    pReflection->GetDesc(&_shaderDesc);
+    ECGPUShaderStage stage = D3D12Util_GetShaderStageFromDesc(_shaderDesc);
+    reflectionRecordShaderResources(pReflection, stage, _shaderDesc, S, entryIndex);
+    CGPUShaderReflection* Reflection = S->super.entry_reflections + entryIndex;
     Reflection->stage = stage;
     // Collect vertex inputs
     if (stage == CGPU_SHADER_STAGE_VERT)
     {
-        Reflection->vertex_inputs_count = shaderDesc.InputParameters;
-        Reflection->vertex_inputs = (CGPUVertexInput*)cgpu_calloc(Reflection->vertex_inputs_count, sizeof(CGPUVertexInput));
-        // Count the string sizes of the vertex inputs for the name pool
-        for (UINT i = 0; i < shaderDesc.InputParameters; ++i)
+        if constexpr (std::is_same_v<D3D12_SHADER_DESC_T, D3D12_SHADER_DESC>)
         {
-            D3D12_SIGNATURE_PARAMETER_DESC paramDesc;
-            d3d12reflection->GetInputParameterDesc(i, &paramDesc);
-            // Get the length of the semantic name
-            bool hasParamIndex = paramDesc.SemanticIndex > 0 || !strcmp(paramDesc.SemanticName, "TEXCOORD");
-            uint32_t source_len = (uint32_t)strlen(paramDesc.SemanticName) + (hasParamIndex ? 1 : 0);
+            ID3D12ShaderReflection* pShaderReflection = (ID3D12ShaderReflection*)pReflection;
+            const D3D12_SHADER_DESC& shaderDesc = _shaderDesc;
+            Reflection->vertex_inputs_count = shaderDesc.InputParameters;
+            Reflection->vertex_inputs = (CGPUVertexInput*)cgpu_calloc(Reflection->vertex_inputs_count, sizeof(CGPUVertexInput));
+            // Count the string sizes of the vertex inputs for the name pool
+            for (UINT i = 0; i < shaderDesc.InputParameters; ++i)
+            {
+                D3D12_SIGNATURE_PARAMETER_DESC paramDesc;
+                pShaderReflection->GetInputParameterDesc(i, &paramDesc);
+                // Get the length of the semantic name
+                bool hasParamIndex = paramDesc.SemanticIndex > 0 || !strcmp(paramDesc.SemanticName, "TEXCOORD");
+                uint32_t source_len = (uint32_t)strlen(paramDesc.SemanticName) + (hasParamIndex ? 1 : 0);
 
-            Reflection->vertex_inputs[i].name = (char8_t*)cgpu_malloc(sizeof(char8_t) * (source_len + 1));
-            if (hasParamIndex)
-                sprintf((char*)Reflection->vertex_inputs[i].name, "%s%u", paramDesc.SemanticName, paramDesc.SemanticIndex);
-            else
-                sprintf((char*)Reflection->vertex_inputs[i].name, "%s", paramDesc.SemanticName);
-            const uint32_t Comps = (uint32_t)log2(paramDesc.Mask);
-            Reflection->vertex_inputs[i].format = gD3D12_TO_VERTEX_FORMAT[paramDesc.ComponentType + 3 * Comps];
+                Reflection->vertex_inputs[i].name = (char8_t*)cgpu_malloc(sizeof(char8_t) * (source_len + 1));
+                if (hasParamIndex)
+                    sprintf((char*)Reflection->vertex_inputs[i].name, "%s%u", paramDesc.SemanticName, paramDesc.SemanticIndex);
+                else
+                    sprintf((char*)Reflection->vertex_inputs[i].name, "%s", paramDesc.SemanticName);
+                const uint32_t Comps = (uint32_t)log2(paramDesc.Mask);
+                Reflection->vertex_inputs[i].format = gD3D12_TO_VERTEX_FORMAT[paramDesc.ComponentType + 3 * Comps];
+            }
+        }
+        else if constexpr (std::is_same_v<D3D12_SHADER_DESC_T, D3D12_FUNCTION_DESC>)
+        {
+
+        }
+        else
+        {
+            cgpu_assert(false && "D3D12 reflection fatal: Unknown shader desc type!");
         }
     }
     else if (stage == CGPU_SHADER_STAGE_COMPUTE)
     {
-        d3d12reflection->GetThreadGroupSize(
-        &Reflection->thread_group_sizes[0],
-        &Reflection->thread_group_sizes[1],
-        &Reflection->thread_group_sizes[2]);
+        if constexpr (std::is_same_v<D3D12_SHADER_DESC_T, D3D12_SHADER_DESC>)
+        {
+            pReflection->GetThreadGroupSize(
+                &Reflection->thread_group_sizes[0],
+                &Reflection->thread_group_sizes[1],
+                &Reflection->thread_group_sizes[2]
+            );
+        }
+        else if constexpr (std::is_same_v<D3D12_SHADER_DESC_T, D3D12_FUNCTION_DESC>)
+        {
+            
+        }
+        else
+        {
+            cgpu_assert(false && "D3D12 reflection fatal: Unknown shader desc type!");
+        }
     }
 }
 
 void D3D12Util_InitializeShaderReflection(CGPUDevice_D3D12* D, CGPUShaderLibrary_D3D12* S, const struct CGPUShaderLibraryDescriptor* desc)
 {
     S->super.device = &D->super;
-    ID3D12ShaderReflection* d3d12reflection = nullptr;
-#define DXIL_FOURCC(ch0, ch1, ch2, ch3) \
-    ((uint32_t)(uint8_t)(ch0) | (uint32_t)(uint8_t)(ch1) << 8 | (uint32_t)(uint8_t)(ch2) << 16 | (uint32_t)(uint8_t)(ch3) << 24)
 
     IDxcContainerReflection* pReflection;
-    UINT32 shaderIdx;
     auto procDxcCreateInstnace = D3D12Util_GetDxcCreateInstanceProc();
     SKR_ASSERT(procDxcCreateInstnace && "Failed to get dxc proc!");
     procDxcCreateInstnace(CLSID_DxcContainerReflection, IID_PPV_ARGS(&pReflection));
     pReflection->Load(S->pShaderBlob);
-    (pReflection->FindFirstPartKind(DXIL_FOURCC('D', 'X', 'I', 'L'), &shaderIdx));
 
-    // TODO: Support RTX Shaders
-    CHECK_HRESULT(pReflection->GetPartReflection(shaderIdx, IID_PPV_ARGS(&d3d12reflection)));
-    if (d3d12reflection)
-        D3D12Util_CollectShaderReflectionData(d3d12reflection, desc->stage, S);
+    UINT32 rdatIdx = 0;
+    bool isLibrary = SUCCEEDED(pReflection->FindFirstPartKind(DFCC_RuntimeData, &rdatIdx));
+
+    if (isLibrary)
+    {
+        UINT32 shaderIdx;
+        bool hasDXIL = SUCCEEDED(pReflection->FindFirstPartKind(DFCC_ShaderStatistics, &shaderIdx));
+
+        ID3D12LibraryReflection* pLibReflection = nullptr;
+        CHECK_HRESULT(pReflection->GetPartReflection(shaderIdx, IID_PPV_ARGS(&pLibReflection)));
+
+        D3D12_LIBRARY_DESC libDesc;
+        CHECK_HRESULT(pLibReflection->GetDesc(&libDesc));
+
+        S->super.entrys_count = libDesc.FunctionCount;
+        S->super.entry_reflections = (CGPUShaderReflection*)cgpu_calloc(S->super.entrys_count, sizeof(CGPUShaderReflection));
+        for (uint32_t i = 0; i < libDesc.FunctionCount; i++)
+        {
+            auto Entry = pLibReflection->GetFunctionByIndex(i);
+            D3D12Util_CollectShaderReflectionData<ID3D12FunctionReflection, D3D12_FUNCTION_DESC>(Entry, S, i);
+        }
+
+        pLibReflection->Release();
+    }
+    else
+    {
+        UINT32 shaderIdx;
+        bool hasDXIL = SUCCEEDED(pReflection->FindFirstPartKind(DFCC_ShaderStatistics, &shaderIdx));
+
+        ID3D12ShaderReflection* pShaderReflection = nullptr;
+        CHECK_HRESULT(pReflection->GetPartReflection(shaderIdx, IID_PPV_ARGS(&pShaderReflection)));
+        
+        S->super.entrys_count = 1;
+        S->super.entry_reflections = (CGPUShaderReflection*)cgpu_calloc(S->super.entrys_count, sizeof(CGPUShaderReflection));
+        D3D12Util_CollectShaderReflectionData<ID3D12ShaderReflection, D3D12_SHADER_DESC>(pShaderReflection, S, 0);
+
+        pShaderReflection->Release();
+    }
 
     pReflection->Release();
-    d3d12reflection->Release();
 }
 
 void D3D12Util_FreeShaderReflection(CGPUShaderLibrary_D3D12* S)

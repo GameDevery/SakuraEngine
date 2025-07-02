@@ -127,13 +127,11 @@ void ReceiverRenderer::create_blit_pipeline()
     read_shader_bytes(u8"cross-process/screen_vs", &vs_bytes, &vs_length, device->adapter->instance->backend);
     read_shader_bytes(u8"cross-process/blit_fs", &fs_bytes, &fs_length, device->adapter->instance->backend);
     CGPUShaderLibraryDescriptor vs_desc = {};
-    vs_desc.stage                       = CGPU_SHADER_STAGE_VERT;
     vs_desc.name                        = u8"ScreenVertexShader";
     vs_desc.code                        = vs_bytes;
     vs_desc.code_size                   = vs_length;
     CGPUShaderLibraryDescriptor ps_desc = {};
     ps_desc.name                        = u8"BlitFragmentShader";
-    ps_desc.stage                       = CGPU_SHADER_STAGE_FRAG;
     ps_desc.code                        = fs_bytes;
     ps_desc.code_size                   = fs_length;
     auto screen_vs                      = cgpu_create_shader_library(device, &vs_desc);

@@ -27,16 +27,18 @@ void create_shaders()
     read_shader_bytes("statebuffer-triangle/vertex_shader", &vs_bytes, &vs_length, backend);
     read_shader_bytes("statebuffer-triangle/fragment_shader", &fs_bytes, &fs_length, backend);
     CGPUShaderLibraryDescriptor shader_libs[2] = {
-        { .stage           = CGPU_SHADER_STAGE_VERT,
-          .name            = "VertexShaderLibrary",
-          .code            = vs_bytes,
-          .code_size       = vs_length,
-          .reflection_only = true },
-        { .name            = "FragmentShaderLibrary",
-          .stage           = CGPU_SHADER_STAGE_FRAG,
-          .code            = fs_bytes,
-          .code_size       = fs_length,
-          .reflection_only = true }
+        { 
+            .name            = "VertexShaderLibrary",
+            .code            = vs_bytes,
+            .code_size       = vs_length,
+            .reflection_only = true 
+        },
+        { 
+            .name            = "FragmentShaderLibrary",
+            .code            = fs_bytes,
+            .code_size       = fs_length,
+            .reflection_only = true 
+        }
     };
     CGPUShaderLibraryId       vertex_shader   = cgpu_create_shader_library(device, &shader_libs[0]);
     CGPUShaderLibraryId       fragment_shader = cgpu_create_shader_library(device, &shader_libs[1]);
