@@ -29,17 +29,20 @@
 #define OZZ_ANIMATION_OFFLINE_DECIMATE_H_
 
 #ifndef OZZ_INCLUDE_PRIVATE_HEADER
-#error "This header is private, it cannot be included from public headers."
-#endif  // OZZ_INCLUDE_PRIVATE_HEADER
+    #error "This header is private, it cannot be included from public headers."
+#endif // OZZ_INCLUDE_PRIVATE_HEADER
 
 #include "SkrAnim/ozz/base/containers/stack.h"
 #include "SkrAnim/ozz/base/containers/vector.h"
 
 #include <cassert>
 
-namespace ozz {
-namespace animation {
-namespace offline {
+namespace ozz
+{
+namespace animation
+{
+namespace offline
+{
 
 // Decimation algorithm based on Ramer–Douglas–Peucker.
 // https://en.wikipedia.org/wiki/Ramer%E2%80%93Douglas%E2%80%93Peucker_algorithm
@@ -51,86 +54,100 @@ namespace offline {
 //  float Distance(const Key& _a, const Key& _b) const;
 // };
 template <typename _Track, typename _Adapter>
-void Decimate(const _Track& _src, const _Adapter& _adapter, float _tolerance,
-              _Track* _dest) {
-  // Early out if not enough data.
-  if (_src.size() < 2) {
-    *_dest = _src;
-    return;
-  }
+void Decimate(const _Track& _src, const _Adapter& _adapter, float _tolerance, _Track* _dest)
+{
+    // Early out if not enough data.
+    if (_src.size() < 2)
+    {
+        *_dest = _src;
+        return;
+    }
 
-  // Stack of segments to process.
-  typedef std::pair<size_t, size_t> Segment;
-  ozz::stack<Segment> segments;
+    // Stack of segments to process.
+    typedef std::pair<size_t, size_t> Segment;
+    ozz::stack<Segment>               segments;
 
-  // Bit vector of all points to included.
-  ozz::vector<bool> included(_src.size(), false);
+    // Bit vector of all points to included.
+    ozz::vector<bool> included(_src.size(), false);
 
-  // Pushes segment made from first and last points.
-  segments.push(Segment(0, _src.size() - 1));
-  included[0] = true;
-  included[_src.size() - 1] = true;
+    // Pushes segment made from first and last points.
+    segments.push(Segment(0, _src.size() - 1));
+    included[0]               = true;
+    included[_src.size() - 1] = true;
 
-  // Empties segments stack.
-  while (!segments.empty()) {
-    // Pops next segment to process.
-    const Segment segment = segments.top();
-    segments.pop();
+    // Empties segments stack.
+    while (!segments.empty())
+    {
+        // Pops next segment to process.
+        const Segment segment = segments.top();
+        segments.pop();
 
-    // Looks for the furthest point from the segment.
-    float max = -1.f;
-    size_t candidate = segment.first;
-    typename _Track::const_reference left = _src[segment.first];
-    typename _Track::const_reference right = _src[segment.second];
-    for (size_t i = segment.first + 1; i < segment.second; ++i) {
-      SKR_ASSERT(!included[i] && "Included points should be processed once only.");
-      typename _Track::const_reference test = _src[i];
-      if (!_adapter.Decimable(test)) {
-        candidate = i;
-        break;
-      } else {
-        const float distance =
-            _adapter.Distance(_adapter.Lerp(left, right, test), test);
-        if (distance > _tolerance && distance > max) {
-          max = distance;
-          candidate = i;
+        // Looks for the furthest point from the segment.
+        float                            max       = -1.f;
+        size_t                           candidate = segment.first;
+        typename _Track::const_reference left      = _src[segment.first];
+        typename _Track::const_reference right     = _src[segment.second];
+        for (size_t i = segment.first + 1; i < segment.second; ++i)
+        {
+            SKR_ASSERT(!included[i] && "Included points should be processed once only.");
+            typename _Track::const_reference test = _src[i];
+            if (!_adapter.Decimable(test))
+            {
+                candidate = i;
+                break;
+            }
+            else
+            {
+                const float distance =
+                    _adapter.Distance(_adapter.Lerp(left, right, test), test);
+                if (distance > _tolerance && distance > max)
+                {
+                    max       = distance;
+                    candidate = i;
+                }
+            }
         }
-      }
+
+        // If found, include the point and pushes the 2 new segments (before and
+        // after the new point).
+        if (candidate != segment.first)
+        {
+            included[candidate] = true;
+            if (candidate - segment.first > 1)
+            {
+                segments.push(Segment(segment.first, candidate));
+            }
+            if (segment.second - candidate > 1)
+            {
+                segments.push(Segment(candidate, segment.second));
+            }
+        }
     }
 
-    // If found, include the point and pushes the 2 new segments (before and
-    // after the new point).
-    if (candidate != segment.first) {
-      included[candidate] = true;
-      if (candidate - segment.first > 1) {
-        segments.push(Segment(segment.first, candidate));
-      }
-      if (segment.second - candidate > 1) {
-        segments.push(Segment(candidate, segment.second));
-      }
+    // Copy all included points.
+    _dest->clear();
+    for (size_t i = 0; i < _src.size(); ++i)
+    {
+        if (included[i])
+        {
+            _dest->push_back(_src[i]);
+        }
     }
-  }
 
-  // Copy all included points.
-  _dest->clear();
-  for (size_t i = 0; i < _src.size(); ++i) {
-    if (included[i]) {
-      _dest->push_back(_src[i]);
+    // Removes last key if constant.
+    if (_dest->size() > 1)
+    {
+        typename _Track::const_iterator  end         = _dest->end();
+        typename _Track::const_reference last        = *(--end);
+        typename _Track::const_reference penultimate = *(--end);
+        const float                      distance    = _adapter.Distance(penultimate, last);
+        if (_adapter.Decimable(last) && distance <= _tolerance)
+        {
+            _dest->pop_back();
+        }
     }
-  }
-
-  // Removes last key if constant.
-  if (_dest->size() > 1) {
-    typename _Track::const_iterator end = _dest->end();
-    typename _Track::const_reference last = *(--end);
-    typename _Track::const_reference penultimate = *(--end);
-    const float distance = _adapter.Distance(penultimate, last);
-    if (_adapter.Decimable(last) && distance <= _tolerance) {
-      _dest->pop_back();
-    }
-  }
 }
-}  // namespace offline
-}  // namespace animation
-}  // namespace ozz
-#endif  // OZZ_ANIMATION_OFFLINE_DECIMATE_H_
+} // namespace offline
+} // namespace animation
+} // namespace ozz
+#endif // OZZ_ANIMATION_OFFLINE_DECIMATE_H_

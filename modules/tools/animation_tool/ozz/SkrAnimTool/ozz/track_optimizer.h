@@ -31,9 +31,12 @@
 #include "SkrAnimTool/ozz/export.h"
 #include "SkrAnim/ozz/base/platform.h"
 
-namespace ozz {
-namespace animation {
-namespace offline {
+namespace ozz
+{
+namespace animation
+{
+namespace offline
+{
 
 // Forward declare offline track types.
 struct RawFloatTrack;
@@ -47,28 +50,28 @@ struct RawQuaternionTrack;
 // keyframes (within a tolerance value) are removed from the track. Default
 // optimization tolerances are set in order to favor quality over runtime
 // performances and memory footprint.
-class OZZ_ANIMOFFLINE_DLL TrackOptimizer {
- public:
-  // Initializes the optimizer with default tolerances (favoring quality).
-  TrackOptimizer();
+class OZZ_ANIMOFFLINE_DLL TrackOptimizer
+{
+public:
+    // Initializes the optimizer with default tolerances (favoring quality).
+    TrackOptimizer();
 
-  // Optimizes _input using *this parameters.
-  // Returns true on success and fills _output track with the optimized
-  // version of _input track.
-  // *_output must be a valid Raw*Track instance.
-  // Returns false on failure and resets _output to an empty track.
-  // See Raw*Track::Validate() for more details about failure reasons.
-  bool operator()(const RawFloatTrack& _input, RawFloatTrack* _output) const;
-  bool operator()(const RawFloat2Track& _input, RawFloat2Track* _output) const;
-  bool operator()(const RawFloat3Track& _input, RawFloat3Track* _output) const;
-  bool operator()(const RawFloat4Track& _input, RawFloat4Track* _output) const;
-  bool operator()(const RawQuaternionTrack& _input,
-                  RawQuaternionTrack* _output) const;
+    // Optimizes _input using *this parameters.
+    // Returns true on success and fills _output track with the optimized
+    // version of _input track.
+    // *_output must be a valid Raw*Track instance.
+    // Returns false on failure and resets _output to an empty track.
+    // See Raw*Track::Validate() for more details about failure reasons.
+    bool operator()(const RawFloatTrack& _input, RawFloatTrack* _output) const;
+    bool operator()(const RawFloat2Track& _input, RawFloat2Track* _output) const;
+    bool operator()(const RawFloat3Track& _input, RawFloat3Track* _output) const;
+    bool operator()(const RawFloat4Track& _input, RawFloat4Track* _output) const;
+    bool operator()(const RawQuaternionTrack& _input, RawQuaternionTrack* _output) const;
 
-  // Optimization tolerance.
-  float tolerance;
+    // Optimization tolerance.
+    float tolerance;
 };
-}  // namespace offline
-}  // namespace animation
-}  // namespace ozz
-#endif  // OZZ_OZZ_ANIMATION_OFFLINE_TRACK_OPTIMIZER_H_
+} // namespace offline
+} // namespace animation
+} // namespace ozz
+#endif // OZZ_OZZ_ANIMATION_OFFLINE_TRACK_OPTIMIZER_H_

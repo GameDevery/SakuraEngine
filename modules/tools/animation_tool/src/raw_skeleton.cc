@@ -29,35 +29,46 @@
 
 #include "SkrAnim/ozz/skeleton.h"
 
-namespace ozz {
-namespace animation {
-namespace offline {
+namespace ozz
+{
+namespace animation
+{
+namespace offline
+{
 
 RawSkeleton::RawSkeleton() {}
 
 RawSkeleton::~RawSkeleton() {}
 
-bool RawSkeleton::Validate() const {
-  if (num_joints() > Skeleton::kMaxJoints) {
-    return false;
-  }
-  return true;
+bool RawSkeleton::Validate() const
+{
+    if (num_joints() > Skeleton::kMaxJoints)
+    {
+        return false;
+    }
+    return true;
 }
 
-namespace {
+namespace
+{
 struct JointCounter {
-  JointCounter() : num_joints(0) {}
-  void operator()(const RawSkeleton::Joint&, const RawSkeleton::Joint*) {
-    ++num_joints;
-  }
-  int num_joints;
+    JointCounter()
+        : num_joints(0)
+    {
+    }
+    void operator()(const RawSkeleton::Joint&, const RawSkeleton::Joint*)
+    {
+        ++num_joints;
+    }
+    int num_joints;
 };
-}  // namespace
+} // namespace
 
 // Iterates through all the root children and count them.
-int RawSkeleton::num_joints() const {
-  return IterateJointsDF(*this, JointCounter()).num_joints;
+int RawSkeleton::num_joints() const
+{
+    return IterateJointsDF(*this, JointCounter()).num_joints;
 }
-}  // namespace offline
-}  // namespace animation
-}  // namespace ozz
+} // namespace offline
+} // namespace animation
+} // namespace ozz

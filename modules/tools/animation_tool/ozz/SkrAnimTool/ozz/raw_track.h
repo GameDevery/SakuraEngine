@@ -35,29 +35,34 @@
 #include "SkrAnim/ozz/base/maths/quaternion.h"
 #include "SkrAnim/ozz/base/maths/vec_float.h"
 
-namespace ozz {
-namespace animation {
-namespace offline {
+namespace ozz
+{
+namespace animation
+{
+namespace offline
+{
 
 // Interpolation mode.
 struct RawTrackInterpolation {
-  enum Value {
-    kStep,    // All values following this key, up to the next key, are equal.
-    kLinear,  // All value between this key and the next are linearly
-              // interpolated.
-  };
+    enum Value
+    {
+        kStep,   // All values following this key, up to the next key, are equal.
+        kLinear, // All value between this key and the next are linearly
+                 // interpolated.
+    };
 };
 
 // Keyframe data structure.
 template <typename _ValueType>
 struct RawTrackKeyframe {
-  typedef _ValueType ValueType;
-  RawTrackInterpolation::Value interpolation;
-  float ratio;
-  ValueType value;
+    typedef _ValueType           ValueType;
+    RawTrackInterpolation::Value interpolation;
+    float                        ratio;
+    ValueType                    value;
 };
 
-namespace internal {
+namespace internal
+{
 
 // Offline user-channel animation track type implementation.
 // This offline track data structure is meant to be used for user-channel
@@ -85,42 +90,48 @@ namespace internal {
 // the RawTrackBuilder.
 template <typename _ValueType>
 struct OZZ_ANIMOFFLINE_DLL RawTrack {
-  typedef _ValueType ValueType;
-  typedef RawTrackKeyframe<ValueType> Keyframe;
+    typedef _ValueType                  ValueType;
+    typedef RawTrackKeyframe<ValueType> Keyframe;
 
-  // Validates that all the following rules are respected:
-  //  1. Keyframes' ratios are sorted in a strict ascending order.
-  //  2. Keyframes' ratios are all within [0,1] range.
-  bool Validate() const;
+    // Validates that all the following rules are respected:
+    //  1. Keyframes' ratios are sorted in a strict ascending order.
+    //  2. Keyframes' ratios are all within [0,1] range.
+    bool Validate() const;
 
-  // Uses intrusive serialization option, as a way to factorize code.
-  // Version and Tag should still be defined for each specialization.
-  void Save(io::OArchive& _archive) const;
-  void Load(io::IArchive& _archive, uint32_t _version);
+    // Uses intrusive serialization option, as a way to factorize code.
+    // Version and Tag should still be defined for each specialization.
+    void Save(io::OArchive& _archive) const;
+    void Load(io::IArchive& _archive, uint32_t _version);
 
-  // Sequence of keyframes, expected to be sorted.
-  typedef typename ozz::vector<Keyframe> Keyframes;
-  Keyframes keyframes;
+    // Sequence of keyframes, expected to be sorted.
+    typedef typename ozz::vector<Keyframe> Keyframes;
+    Keyframes                              keyframes;
 
-  // Name of the track.
-  string name;
+    // Name of the track.
+    string name;
 };
-}  // namespace internal
+} // namespace internal
 
 // Offline user-channel animation track type instantiation.
-struct OZZ_ANIMOFFLINE_DLL RawFloatTrack : public internal::RawTrack<float> {};
+struct OZZ_ANIMOFFLINE_DLL RawFloatTrack : public internal::RawTrack<float> {
+};
 struct OZZ_ANIMOFFLINE_DLL RawFloat2Track
-    : public internal::RawTrack<math::Float2> {};
+    : public internal::RawTrack<math::Float2> {
+};
 struct OZZ_ANIMOFFLINE_DLL RawFloat3Track
-    : public internal::RawTrack<math::Float3> {};
+    : public internal::RawTrack<math::Float3> {
+};
 struct OZZ_ANIMOFFLINE_DLL RawFloat4Track
-    : public internal::RawTrack<math::Float4> {};
+    : public internal::RawTrack<math::Float4> {
+};
 struct OZZ_ANIMOFFLINE_DLL RawQuaternionTrack
-    : public internal::RawTrack<math::Quaternion> {};
-}  // namespace offline
-}  // namespace animation
+    : public internal::RawTrack<math::Quaternion> {
+};
+} // namespace offline
+} // namespace animation
 
-namespace io {
+namespace io
+{
 OZZ_IO_TYPE_VERSION(1, animation::offline::RawFloatTrack)
 OZZ_IO_TYPE_TAG("ozz-raw_float_track", animation::offline::RawFloatTrack)
 OZZ_IO_TYPE_VERSION(1, animation::offline::RawFloat2Track)
@@ -131,6 +142,6 @@ OZZ_IO_TYPE_VERSION(1, animation::offline::RawFloat4Track)
 OZZ_IO_TYPE_TAG("ozz-raw_float4_track", animation::offline::RawFloat4Track)
 OZZ_IO_TYPE_VERSION(1, animation::offline::RawQuaternionTrack)
 OZZ_IO_TYPE_TAG("ozz-raw_quat_track", animation::offline::RawQuaternionTrack)
-}  // namespace io
-}  // namespace ozz
-#endif  // OZZ_OZZ_ANIMATION_OFFLINE_RAW_TRACK_H_
+} // namespace io
+} // namespace ozz
+#endif // OZZ_OZZ_ANIMATION_OFFLINE_RAW_TRACK_H_

@@ -31,13 +31,16 @@
 #include "SkrAnimTool/ozz/export.h"
 #include "SkrAnim/ozz/base/memory/unique_ptr.h"
 
-namespace ozz {
-namespace animation {
+namespace ozz
+{
+namespace animation
+{
 
 // Forward declares the runtime animation type.
 class Animation;
 
-namespace offline {
+namespace offline
+{
 
 // Forward declares the offline animation type.
 struct RawAnimation;
@@ -45,16 +48,17 @@ struct RawAnimation;
 // Defines the class responsible of building runtime animation instances from
 // offline raw animations.
 // No optimization at all is performed on the raw animation.
-class OZZ_ANIMOFFLINE_DLL AnimationBuilder {
- public:
-  // Creates an Animation based on _raw_animation and *this builder parameters.
-  // Returns a valid Animation on success.
-  // See RawAnimation::Validate() for more details about failure reasons.
-  // The animation is returned as an unique_ptr as ownership is given back to
-  // the caller.
-  unique_ptr<Animation> operator()(const RawAnimation& _raw_animation) const;
+class OZZ_ANIMOFFLINE_DLL AnimationBuilder
+{
+public:
+    // Creates an Animation based on _raw_animation and *this builder parameters.
+    // Returns a valid Animation on success.
+    // See RawAnimation::Validate() for more details about failure reasons.
+    // The animation is returned as an unique_ptr as ownership is given back to
+    // the caller.
+    unique_ptr<Animation> operator()(const RawAnimation& _raw_animation) const;
 };
-}  // namespace offline
-}  // namespace animation
-}  // namespace ozz
-#endif  // OZZ_OZZ_ANIMATION_OFFLINE_ANIMATION_BUILDER_H_
+} // namespace offline
+} // namespace animation
+} // namespace ozz
+#endif // OZZ_OZZ_ANIMATION_OFFLINE_ANIMATION_BUILDER_H_

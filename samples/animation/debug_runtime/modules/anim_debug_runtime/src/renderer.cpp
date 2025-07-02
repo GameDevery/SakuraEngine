@@ -358,7 +358,7 @@ void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, skr::re
     namespace rg = skr::render_graph;
 
     rg::TextureHandle composite_buffer = graph->create_texture(
-        [=](rg::RenderGraph& g, rg::TextureBuilder& builder) {
+        [this](rg::RenderGraph& g, rg::TextureBuilder& builder) {
             builder.set_name(u8"composite_buffer")
                 .extent(_width, _height)
                 .format(CGPU_FORMAT_R8G8B8A8_UNORM)
@@ -367,7 +367,7 @@ void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, skr::re
         }
     );
     auto gbuffer_color = graph->create_texture(
-        [=](rg::RenderGraph& g, rg::TextureBuilder& builder) {
+        [this](rg::RenderGraph& g, rg::TextureBuilder& builder) {
             builder.set_name(u8"gbuffer_color")
                 .extent(_width, _height)
                 .format(CGPU_FORMAT_R8G8B8A8_UNORM)
@@ -376,7 +376,7 @@ void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, skr::re
         }
     );
     auto gbuffer_depth = graph->create_texture(
-        [=](rg::RenderGraph& g, rg::TextureBuilder& builder) {
+        [this](rg::RenderGraph& g, rg::TextureBuilder& builder) {
             builder.set_name(u8"gbuffer_depth")
                 .extent(_width, _height)
                 .format(CGPU_FORMAT_D32_SFLOAT)
@@ -385,7 +385,7 @@ void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, skr::re
         }
     );
     auto gbuffer_normal = graph->create_texture(
-        [=](rg::RenderGraph& g, rg::TextureBuilder& builder) {
+        [this](rg::RenderGraph& g, rg::TextureBuilder& builder) {
             builder.set_name(u8"gbuffer_normal")
                 .extent(_width, _height)
                 .format(CGPU_FORMAT_R16G16B16A16_SNORM)
@@ -408,14 +408,14 @@ void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, skr::re
 
     // render to g-buffer
     graph->add_render_pass(
-        [=](rg::RenderGraph& g, rg::RenderPassBuilder& builder) {
+        [this, gbuffer_color, gbuffer_normal, gbuffer_depth](rg::RenderGraph& g, rg::RenderPassBuilder& builder) {
             builder.set_name(u8"gbuffer_pass")
                 .set_pipeline(_gbuffer_pipeline)
                 .write(0, gbuffer_color, CGPU_LOAD_ACTION_CLEAR)
                 .write(1, gbuffer_normal, CGPU_LOAD_ACTION_CLEAR)
                 .set_depth_stencil(gbuffer_depth.clear_depth(1.f));
         },
-        [=](rg::RenderGraph& g, rg::RenderPassContext& stack) {
+        [this, view_proj](rg::RenderGraph& g, rg::RenderPassContext& stack) {
             cgpu_render_encoder_set_viewport(stack.encoder, 0.0f, 0.0f, (float)_width, (float)_height, 0.f, 1.f);
             cgpu_render_encoder_set_scissor(stack.encoder, 0, 0, _width, _height);
 
@@ -444,7 +444,7 @@ void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, skr::re
 
     // pass by value, so that we can use when graph executing
     graph->add_render_pass(
-        [=](rg::RenderGraph& g, rg::RenderPassBuilder& builder) {
+        [this, gbuffer_color, gbuffer_normal, gbuffer_depth, composite_buffer](rg::RenderGraph& g, rg::RenderPassBuilder& builder) {
             builder.set_name(u8"light_pass_fs")
                 .set_pipeline(_lighting_pipeline)
                 .read(u8"gbuffer_color", gbuffer_color.read_mip(0, 1))
@@ -452,7 +452,7 @@ void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, skr::re
                 .read(u8"gbuffer_depth", gbuffer_depth)
                 .write(0, composite_buffer, CGPU_LOAD_ACTION_CLEAR);
         },
-        [=](rg::RenderGraph& g, rg::RenderPassContext& stack) {
+        [this](rg::RenderGraph& g, rg::RenderPassContext& stack) {
             cgpu_render_encoder_set_viewport(stack.encoder, 0.0f, 0.0f, (float)_width, (float)_height, 0.f, 1.f);
             cgpu_render_encoder_set_scissor(stack.encoder, 0, 0, _width, _height);
             cgpu_render_encoder_push_constants(stack.encoder, _lighting_pipeline->root_signature, u8"push_constants", &lighting_data);
@@ -461,13 +461,13 @@ void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, skr::re
     );
 
     graph->add_render_pass(
-        [=](rg::RenderGraph& g, rg::RenderPassBuilder& builder) {
+        [back_buffer, composite_buffer, this](rg::RenderGraph& g, rg::RenderPassBuilder& builder) {
             builder.set_name(u8"final_blit")
-                .set_pipeline(_blit_pipeline)
+                .set_pipeline(this->_blit_pipeline)
                 .read(u8"input_color", composite_buffer)
                 .write(0, back_buffer, CGPU_LOAD_ACTION_CLEAR);
         },
-        [=](rg::RenderGraph& g, rg::RenderPassContext& stack) {
+        [this](rg::RenderGraph& g, rg::RenderPassContext& stack) {
             cgpu_render_encoder_set_viewport(stack.encoder, 0.0f, 0.0f, (float)_width, (float)_height, 0.f, 1.f);
             cgpu_render_encoder_set_scissor(stack.encoder, 0, 0, _width, _height);
             cgpu_render_encoder_draw(stack.encoder, 3, 0);

@@ -32,29 +32,36 @@
 #include "SkrAnim/ozz/base/platform.h"
 #include "SkrAnimTool/ozz/tools/import2ozz.h"
 
-namespace Json {
+namespace Json
+{
 class Value;
 }
 
-namespace ozz {
-namespace animation {
-namespace offline {
+namespace ozz
+{
+namespace animation
+{
+namespace offline
+{
 
 class OzzImporter;
 struct RawSkeleton;
 
-OZZ_ANIMTOOLS_DLL void DisplaysOptimizationstatistics(const RawAnimation& _non_optimized,
-                                    const RawAnimation& _optimized);
+OZZ_ANIMTOOLS_DLL void DisplaysOptimizationstatistics(const RawAnimation& _non_optimized, const RawAnimation& _optimized);
 
 OZZ_ANIMTOOLS_DLL vector<math::Transform> SkeletonRestPoseSoAToAoS(const Skeleton& _skeleton);
 
 // Additive reference enum to config string conversions.
 struct AdditiveReferenceEnum {
-  enum Value { kAnimation, kSkeleton };
+    enum Value
+    {
+        kAnimation,
+        kSkeleton
+    };
 };
 OZZ_ANIMTOOLS_DLL bool ValidateJointNamesUniqueness(const RawSkeleton& _skeleton);
 
-}  // namespace offline
-}  // namespace animation
-}  // namespace ozz
-#endif  // OZZ_ANIMATION_OFFLINE_TOOLS_IMPORT2OZZ_SKEL_H_
+} // namespace offline
+} // namespace animation
+} // namespace ozz
+#endif // OZZ_ANIMATION_OFFLINE_TOOLS_IMPORT2OZZ_SKEL_H_
