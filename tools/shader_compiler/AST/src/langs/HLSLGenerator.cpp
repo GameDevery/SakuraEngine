@@ -104,100 +104,123 @@ void HLSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt
         if (needParens)
             sb.append(L"(");
 
-        visitExpr(sb, binary->left());
-        auto op = binary->op();
-        String op_name = L"";
-        switch (op)
+        auto ltype = binary->left()->type();
+        auto rtype = binary->right()->type();
+        bool is_vec_mat_op = (ltype->is_vector() && rtype->is_matrix()) || (ltype->is_matrix() && rtype->is_vector());
+        if (is_vec_mat_op && (binary->op() == BinaryOp::MUL))
         {
-        case BinaryOp::ADD:
-            op_name = L" + ";
-            break;
-        case BinaryOp::SUB:
-            op_name = L" - ";
-            break;
-        case BinaryOp::MUL:
-            op_name = L" * ";
-            break;
-        case BinaryOp::DIV:
-            op_name = L" / ";
-            break;
-        case BinaryOp::MOD:
-            op_name = L" % ";
-            break;
-
-        case BinaryOp::BIT_AND:
-            op_name = L" & ";
-            break;
-        case BinaryOp::BIT_OR:
-            op_name = L" | ";
-            break;
-        case BinaryOp::BIT_XOR:
-            op_name = L" ^ ";
-            break;
-        case BinaryOp::SHL:
-            op_name = L" << ";
-            break;
-        case BinaryOp::SHR:
-            op_name = L" >> ";
-            break;
-        case BinaryOp::AND:
-            op_name = L" && ";
-            break;
-        case BinaryOp::OR:
-            op_name = L" || ";
-            break;
-
-        case BinaryOp::LESS:
-            op_name = L" < ";
-            break;
-        case BinaryOp::GREATER:
-            op_name = L" > ";
-            break;
-        case BinaryOp::LESS_EQUAL:
-            op_name = L" <= ";
-            break;
-        case BinaryOp::GREATER_EQUAL:
-            op_name = L" >= ";
-            break;
-        case BinaryOp::EQUAL:
-            op_name = L" == ";
-            break;
-        case BinaryOp::NOT_EQUAL:
-            op_name = L" != ";
-            break;
-
-        case BinaryOp::ASSIGN:
-            op_name = L" = ";
-            break;
-        case BinaryOp::ADD_ASSIGN:
-            op_name = L" += ";
-            break;
-        case BinaryOp::SUB_ASSIGN:
-            op_name = L" -= ";
-            break;
-        case BinaryOp::MUL_ASSIGN:
-            op_name = L" *= ";
-            break;
-        case BinaryOp::DIV_ASSIGN:
-            op_name = L" /= ";
-            break;
-        case BinaryOp::MOD_ASSIGN:
-            op_name = L" %= ";
-            break;
-        case BinaryOp::BIT_OR_ASSIGN:
-            op_name = L" |= ";
-            break;
-        case BinaryOp::BIT_XOR_ASSIGN:
-            op_name = L" ^= ";
-            break;
-        case BinaryOp::SHL_ASSIGN:
-            op_name = L" <<= ";
-            break;
-        default:
-            assert(false && "Unsupported binary operation");
+            sb.append(L"mul(");
+            visitExpr(sb, binary->left());
+            sb.append(L", ");
+            visitExpr(sb, binary->right());
+            sb.append(L")");
         }
-        sb.append(op_name);
-        visitExpr(sb, binary->right());
+        else if (is_vec_mat_op && (binary->op() == BinaryOp::MUL_ASSIGN))
+        {
+            visitExpr(sb, binary->left());
+            sb.append(L" = mul(");
+            visitExpr(sb, binary->left());
+            sb.append(L", ");
+            visitExpr(sb, binary->right());
+            sb.append(L")");
+        }
+        else
+        {
+            visitExpr(sb, binary->left());
+            auto op = binary->op();
+            String op_name = L"";
+            switch (op)
+            {
+            case BinaryOp::ADD:
+                op_name = L" + ";
+                break;
+            case BinaryOp::SUB:
+                op_name = L" - ";
+                break;
+            case BinaryOp::MUL:
+                op_name = L" * ";
+                break;
+            case BinaryOp::DIV:
+                op_name = L" / ";
+                break;
+            case BinaryOp::MOD:
+                op_name = L" % ";
+                break;
+
+            case BinaryOp::BIT_AND:
+                op_name = L" & ";
+                break;
+            case BinaryOp::BIT_OR:
+                op_name = L" | ";
+                break;
+            case BinaryOp::BIT_XOR:
+                op_name = L" ^ ";
+                break;
+            case BinaryOp::SHL:
+                op_name = L" << ";
+                break;
+            case BinaryOp::SHR:
+                op_name = L" >> ";
+                break;
+            case BinaryOp::AND:
+                op_name = L" && ";
+                break;
+            case BinaryOp::OR:
+                op_name = L" || ";
+                break;
+
+            case BinaryOp::LESS:
+                op_name = L" < ";
+                break;
+            case BinaryOp::GREATER:
+                op_name = L" > ";
+                break;
+            case BinaryOp::LESS_EQUAL:
+                op_name = L" <= ";
+                break;
+            case BinaryOp::GREATER_EQUAL:
+                op_name = L" >= ";
+                break;
+            case BinaryOp::EQUAL:
+                op_name = L" == ";
+                break;
+            case BinaryOp::NOT_EQUAL:
+                op_name = L" != ";
+                break;
+
+            case BinaryOp::ASSIGN:
+                op_name = L" = ";
+                break;
+            case BinaryOp::ADD_ASSIGN:
+                op_name = L" += ";
+                break;
+            case BinaryOp::SUB_ASSIGN:
+                op_name = L" -= ";
+                break;
+            case BinaryOp::MUL_ASSIGN:
+                op_name = L" *= ";
+                break;
+            case BinaryOp::DIV_ASSIGN:
+                op_name = L" /= ";
+                break;
+            case BinaryOp::MOD_ASSIGN:
+                op_name = L" %= ";
+                break;
+            case BinaryOp::BIT_OR_ASSIGN:
+                op_name = L" |= ";
+                break;
+            case BinaryOp::BIT_XOR_ASSIGN:
+                op_name = L" ^= ";
+                break;
+            case BinaryOp::SHL_ASSIGN:
+                op_name = L" <<= ";
+                break;
+            default:
+                assert(false && "Unsupported binary operation");
+            }
+            sb.append(op_name);
+            visitExpr(sb, binary->right());
+        }
 
         if (needParens)
             sb.append(L")");
@@ -313,30 +336,52 @@ void HLSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt
             sb.append(L"UnknownConstant: ");
         }
     }
-    else if (auto constructExpr = dynamic_cast<const ConstructExpr*>(stmt))
+    else if (auto ctorExpr = dynamic_cast<const ConstructExpr*>(stmt))
     {
         std::span<Expr* const> args;
         std::vector<Expr*> modified_args;
-        if (auto AsVector = dynamic_cast<const VectorTypeDecl*>(constructExpr->type()); 
-            AsVector && (constructExpr->args().size() == 1) && dynamic_cast<const ScalarTypeDecl*>(constructExpr->args()[0]->type())
+        int32_t fillVectorArgsWithZero = 0;
+        if (auto AsVector = dynamic_cast<const VectorTypeDecl*>(ctorExpr->type());
+            AsVector && ((ctorExpr->args().size() == 0) || (ctorExpr->args().size() == 1))
         )
         {
-            for (uint32_t i = 0; i < AsVector->count(); i++)
-                modified_args.emplace_back(constructExpr->args()[0]);
-            args = modified_args;
+            if (ctorExpr->args().size() == 0)
+            {
+                fillVectorArgsWithZero = AsVector->count();
+            }   
+            else if (dynamic_cast<const ScalarTypeDecl*>(ctorExpr->args()[0]->type()))
+            {
+                for (uint32_t i = 0; i < AsVector->count(); i++)
+                    modified_args.emplace_back(ctorExpr->args()[0]);
+                args = modified_args;
+            }
         }
         else
         {
-            args = constructExpr->args();
+            args = ctorExpr->args();
         }
 
-        sb.append(GetTypeName(constructExpr->type()) + L"(");
-        for (size_t i = 0; i < args.size(); i++)
+        sb.append(GetTypeName(ctorExpr->type()) + L"(");
+        if (fillVectorArgsWithZero > 0)
         {
-            auto arg = args[i];
-            if (i > 0)
-                sb.append(L", ");
-            visitExpr(sb, arg);
+            for (int32_t j = 0; j < fillVectorArgsWithZero; j++)
+            {
+                if (j > 0)
+                    sb.append(L", ");
+                sb.append(L"0");
+            }
+        }
+        else
+        {
+            for (size_t i = 0; i < args.size(); i++)
+            {
+                auto arg = args[i];
+                if (i > 0)
+                {
+                    sb.append(L", ");
+                }
+                visitExpr(sb, arg);
+            }
         }
         sb.append(L")");
     }
@@ -758,7 +803,7 @@ template <typename _ELEM> uint2 texture_size(RWTexture2D<_ELEM> tex) { uint Widt
 template <typename _ELEM> uint3 texture_size(Texture3D<_ELEM> tex) { uint Width, Height, Depth, Mips; tex.GetDimensions(0, Width, Height, Depth, Mips); return uint3(Width, Height, Depth); }
 template <typename _ELEM> uint3 texture_size(RWTexture3D<_ELEM> tex) { uint Width, Height, Depth; tex.GetDimensions(Width, Height, Depth); return uint3(Width, Height, Depth); }
 
-float4 sample2d(SamplerState s, Texture2D t, uint2 uv) { return t.Sample(s, uv); }
+float4 sample2d(SamplerState s, Texture2D t, float2 uv) { return t.Sample(s, uv); }
 
 // TODO: DELETE
 uint2 luisa__shader__dispatch_size() { return uint2(0, 0); }

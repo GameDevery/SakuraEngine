@@ -573,7 +573,7 @@ inline static void D3D12Util_CollectShaderReflectionData(ID3D12ReflectionT* pRef
         }
         else if constexpr (std::is_same_v<D3D12_SHADER_DESC_T, D3D12_FUNCTION_DESC>)
         {
-
+            cgpu_assert(false && "D3D12 reflection fatal: Lib shader is not supported now!");
         }
         else
         {
@@ -592,7 +592,7 @@ inline static void D3D12Util_CollectShaderReflectionData(ID3D12ReflectionT* pRef
         }
         else if constexpr (std::is_same_v<D3D12_SHADER_DESC_T, D3D12_FUNCTION_DESC>)
         {
-            
+            cgpu_assert(false && "D3D12 reflection fatal: Lib shader is not supported now!");
         }
         else
         {

@@ -84,6 +84,16 @@ const Stmt* TypeDecl::body() const
     return nullptr;
 }
 
+bool TypeDecl::is_vector() const
+{
+    return dynamic_cast<const VectorTypeDecl*>(this) != nullptr;
+}
+
+bool TypeDecl::is_matrix() const
+{
+    return dynamic_cast<const MatrixTypeDecl*>(this) != nullptr;
+}
+
 void TypeDecl::add_field(FieldDecl* field)
 {
     _fields.emplace_back(field);
@@ -268,6 +278,18 @@ const TypeDecl* FunctionDecl::return_type() const
 const std::span<const ParamVarDecl* const> FunctionDecl::parameters() const
 {
     return std::span<const ParamVarDecl* const>(_parameters);
+}
+
+CppSL::ShaderStage FunctionDecl::stage() const
+{
+    for (auto attr : attrs())
+    {
+        if (auto asStage = dynamic_cast<CppSL::StageAttr*>(attr))
+        {
+            return asStage->stage();
+        }
+    }
+    return CppSL::ShaderStage::None; 
 }
 
 MethodDecl::MethodDecl(AST& ast, TypeDecl* owner, const Name& name, const TypeDecl* return_type, std::span<const ParamVarDecl* const> params, const CompoundStmt* body)

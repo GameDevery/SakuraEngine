@@ -3,8 +3,8 @@
 
 struct [[stage_inout]] VSOut
 {
-    float4 clip_pos;
-    float2 uv;
+    float4 TEXCOORD0;
+    float2 TEXCOORD1;
 };
 
 extern SampleImage color_texture;
@@ -14,7 +14,7 @@ extern Sampler color_sampler;
 [[fragment_shader("fragment_shader")]]
 float4 fragment(VSOut input)
 {
-    float4 tex_color = color_sampler.Sample(color_texture, input.uv);
+    float4 tex_color = color_sampler.Sample(color_texture, input.TEXCOORD1);
     tex_color.rgb = tex_color.rgb * push_constants.multiply_color.rgb;
     const float3 _a = tex_color.rgb + push_constants.screen_color.rgb; 
     const float3 _m = tex_color.rgb * push_constants.screen_color.rgb; 
@@ -24,7 +24,7 @@ float4 fragment(VSOut input)
 
     if (push_constants.use_mask)
     {
-        float2 mask_uv = input.clip_pos.xy / input.clip_pos.w;
+        float2 mask_uv = input.TEXCOORD0.xy / input.TEXCOORD0.w;
         
         float4 clip_mask = (float4(1.f, 1.f, 1.f, 1.f) - color_sampler.Sample(mask_texture, mask_uv)) * push_constants.channel_flag;
         float mask_value = clip_mask.r + clip_mask.g + clip_mask.b + clip_mask.a;

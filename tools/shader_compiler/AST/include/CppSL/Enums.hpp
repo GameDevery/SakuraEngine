@@ -59,6 +59,7 @@ enum struct BinaryOp : uint32_t {
 
 enum struct ShaderStage : uint32_t
 {
+    None,
     Vertex,
     Fragment,
     Compute

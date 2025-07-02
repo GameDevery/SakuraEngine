@@ -75,6 +75,9 @@ struct TypeDecl : public NamedDecl
 {
 public:
     bool is_builtin() const { return _is_builtin; }
+    bool is_vector() const;
+    bool is_matrix() const;
+
     const Size size() const  { return _size; }
     const Size alignment() const { return _alignment; }
     const auto& fields() const { return _fields; }
@@ -295,6 +298,7 @@ public:
     const TypeDecl* return_type() const;
     const std::span<const ParamVarDecl* const> parameters() const;
     const Stmt* body() const override { return _body; }
+    CppSL::ShaderStage stage() const;
 
 protected:
     friend struct AST;

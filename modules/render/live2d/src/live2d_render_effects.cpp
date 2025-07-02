@@ -699,11 +699,11 @@ void RenderEffectLive2D::prepare_pipeline(SRendererId renderer)
     CGPUShaderEntryDescriptor& ppl_vs = ppl_shaders[0];
     ppl_vs.library                    = vs;
     ppl_vs.stage                      = CGPU_SHADER_STAGE_VERT;
-    ppl_vs.entry                      = u8"main";
+    ppl_vs.entry                      = u8"vertex_shader";
     CGPUShaderEntryDescriptor& ppl_ps = ppl_shaders[1];
     ppl_ps.library                    = ps;
     ppl_ps.stage                      = CGPU_SHADER_STAGE_FRAG;
-    ppl_ps.entry                      = u8"main";
+    ppl_ps.entry                      = u8"fragment_shader";
 
     const char8_t* static_sampler_name = u8"color_sampler";
     auto           static_sampler      = render_device->get_linear_sampler();

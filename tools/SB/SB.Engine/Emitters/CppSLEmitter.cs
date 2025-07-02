@@ -1,0 +1,76 @@
+using SB.Core;
+using Serilog;
+
+namespace SB
+{
+    public class CppSLEmitter : TaskEmitter
+    {
+        public override bool EnableEmitter(Target Target) => Target.HasFilesOf<CppSLFileList>();
+        public override bool EmitFileTask(Target Target, FileList FileList) => FileList.Is<CppSLFileList>();
+
+        public override IArtifact? PerFileTask(Target Target, FileList FileList, FileOptions? Options, string SourceFile)
+        {
+            var CppSLFileList = FileList as CppSLFileList;
+            string SourceName = Path.GetFileNameWithoutExtension(SourceFile);
+            var OutputDirectory = Path.Combine(Engine.BuildPath, ShaderOutputDirectories[Target.Name]);
+            Directory.CreateDirectory(OutputDirectory);
+
+            bool Changed = Depend.OnChanged(Target.Name, SourceFile, "DXC.SPV", (Depend depend) =>
+            {
+                var Arguments = new string[]
+                {
+                    $"--extra-arg=-I{Engine.EngineDirectory}/tools/shader_compiler/LLVM/test_shaders",
+                    SourceFile
+                };
+
+                string Executable = CppSLCompiler;
+                if (BuildSystem.TargetOS == OSPlatform.Windows)
+                    Executable += ".exe";
+
+                int ExitCode = BuildSystem.RunProcess(Executable, string.Join(" ", Arguments), out var Output, out var Error,
+                    WorkingDirectory: OutputDirectory);
+                if (ExitCode != 0)
+                {
+                    throw new TaskFatalError($"Compile SPV for {SourceFile} failed with fatal error!", $"DXC.exe: {Error}");
+                }
+
+                // Get all files under output directory that matches '{SourceName}.*.*.hlsl'
+                var OutputFiles = Directory.GetFiles(OutputDirectory, $"{SourceName}.*.*.hlsl");
+                depend.ExternalFiles.AddRange(OutputFiles);
+            }, new string[] { SourceFile }, null);
+
+            var OutputFiles = Directory.GetFiles(OutputDirectory, $"{SourceName}.*.*.hlsl");
+            foreach (var HLSL in OutputFiles)
+            {
+                Changed |= !DXCEmitter.CompileHLSL(Target, HLSL, "", OutputDirectory)!.IsRestored;
+            }
+            return new PlainArtifact { IsRestored = !Changed };
+        }
+        
+        public static string CppSLCompiler = Path.Combine(Engine.TempPath, "tools", "SSLCompiler");
+        public static Dictionary<string, string> ShaderOutputDirectories = new();
+    }
+
+    public class CppSLFileList : FileList
+    {
+
+    }
+
+    public static partial class TargetExtensions
+    {
+        public static Target AddCppSLFiles(this Target @this, params string[] Files)
+        {
+            @this.FileList<CppSLFileList>().AddFiles(Files);
+            if (!CppSLEmitter.ShaderOutputDirectories.ContainsKey(@this.Name))
+                CppSLEmitter.ShaderOutputDirectories.Add(@this.Name, "resources/shaders");
+            return @this;
+        }
+
+        public static Target CppSLOutputDirectory(this Target @this, string Directory)
+        {
+            CppSLEmitter.ShaderOutputDirectories[@this.Name] = Directory;
+            return @this;
+        }
+    }
+
+}

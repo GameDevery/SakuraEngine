@@ -1,4 +1,5 @@
 #pragma once
+#include <filesystem>
 
 namespace skr::CppSL {
 struct AST;
@@ -10,8 +11,9 @@ struct ShaderCompiler
 
     virtual int Run() = 0;
     virtual const AST& GetAST() const = 0;
+    virtual std::filesystem::path GetSourceFile() const = 0;
 
     virtual ~ShaderCompiler() = default;
 };
 
-}
+} // namespace skr::CppSL

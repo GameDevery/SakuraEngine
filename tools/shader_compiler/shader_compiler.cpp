@@ -2,10 +2,6 @@
 #include <string>
 #include "CppSL/ShaderCompiler.hpp"
 
-#include "CppSL/langs/HLSLGenerator.hpp"
-#include "CppSL/AST.hpp"
-#include <fstream>
-
 int main(int argc, const char **argv)
 {
     std::vector<std::string> args;
@@ -32,24 +28,6 @@ int main(int argc, const char **argv)
     {
         exit_code = compiler->Run();
         const auto& AST = compiler->GetAST();
-
-        auto ast_text = AST.dump();
-        // std::wcout << ast_text << std::endl;
-
-        skr::CppSL::SourceBuilderNew sb;
-        skr::CppSL::HLSLGenerator hlsl_generator;
-        auto code = hlsl_generator.generate_code(sb, AST);
-        // std::wcout << code << std::endl;
-
-        // write hlsl to compiled.hlsl
-        std::wofstream hlsl_file("./compiled.hlsl");
-        hlsl_file << code;
-        hlsl_file.close();
-
-        std::wofstream ast_file("./compiled.ast");
-        ast_file << ast_text;
-        ast_file.close();
-
         skr::CppSL::ShaderCompiler::Destroy(compiler);
     }
     return exit_code;

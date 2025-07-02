@@ -51,8 +51,8 @@ namespace SB
             Engine.AddTaskEmitter("Module.Info", new ModuleInfoEmitter());
 
             Engine.AddTaskEmitter("ISPC.Compile", new ISPCEmitter());
-
             Engine.AddTaskEmitter("DXC.Compile", new DXCEmitter());
+            Engine.AddTaskEmitter("CppSL.Compile", new CppSLEmitter());
 
             Engine.AddTaskEmitter("Cpp.UnityBuild", new UnityBuildEmitter())
                 .AddDependency("Module.Info", DependencyModel.PerTarget);

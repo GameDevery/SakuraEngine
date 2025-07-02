@@ -943,7 +943,7 @@ void AST::DeclareIntrinstics()
     std::array<VarConceptDecl*, 7> Texture3DSampleGradLevelParams = { FloatTexture3DFamily, FloatVector3D, FloatVector3D, FloatVector3D, FloatScalar, IntScalar, IntScalar };
     _intrinstics["TEXTURE3D_SAMPLE_GRAD_LEVEL"] = DeclareTemplateFunction(L"texture3d_sample_grad_level", Float4Type, Texture3DSampleGradLevelParams);
 
-    std::array<VarConceptDecl*, 3> Sample2DParams = { SamplerFamily, Texture2DFamily, IntVector };
+    std::array<VarConceptDecl*, 3> Sample2DParams = { SamplerFamily, Texture2DFamily, FloatVector };
     _intrinstics["SAMPLE2D"] = DeclareTemplateFunction(L"sample2d", [this](auto pts) {
         auto pt = &dynamic_cast<const Texture2DTypeDecl*>(pts[1])->element();
         if (pt == FloatType) return Float4Type;

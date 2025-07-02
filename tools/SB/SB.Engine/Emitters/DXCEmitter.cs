@@ -11,19 +11,30 @@ namespace SB
         public override IArtifact? PerFileTask(Target Target, FileList FileList, FileOptions? Options, string SourceFile)
         {
             var HLSLFileList = FileList as HLSLFileList;
+            var OutputDirectory = Path.Combine(Engine.BuildPath, ShaderOutputDirectories[Target.Name]);
+            return CompileHLSL(Target, SourceFile, HLSLFileList!.Entry, OutputDirectory);
+        }
+
+        public static IArtifact? CompileHLSL(Target Target, string SourceFile, string Entry, string OutputDirectory)
+        {
             var Parts = Path.GetFileName(SourceFile).Split('.');
             var HLSLBaseName = Parts[0];
             var TargetProfile = Parts[1];
-            var OutputDirectory = Path.Combine(Engine.BuildPath, ShaderOutputDirectories[Target.Name]);
+            if (Parts.Length > 3)
+            {
+                Entry = Parts[1];
+                TargetProfile = Parts[2];
+            }
             Directory.CreateDirectory(OutputDirectory);
 
             // SPV
-            bool Changed = Depend.OnChanged(Target.Name, SourceFile, Name + ".SPV", (Depend depend) => {
+            bool Changed = Depend.OnChanged(Target.Name, SourceFile, "DXC.SPV", (Depend depend) => {
                 var SpvFile = Path.Combine(OutputDirectory, $"{HLSLBaseName}.spv");
                 var Arguments = new string[] {
+                    "-HV 2021",
                     "-Wno-ignored-attributes",
                     "-spirv",
-                    TargetProfile.StartsWith("lib") ? "-Vd" : $"-E {HLSLFileList!.Entry}",
+                    TargetProfile.StartsWith("lib") ? "-Vd" : $"-E {Entry}",
                     "-fspv-target-env=vulkan1.1",
                     $"-Fo{SpvFile}",
                     $"-T{TargetProfile}",
@@ -38,12 +49,13 @@ namespace SB
             }, new string [] { SourceFile }, null);
 
             // DXIL
-            Changed |= Depend.OnChanged(Target.Name, SourceFile, Name + ".DXIL", (Depend depend) => {
+            Changed |= Depend.OnChanged(Target.Name, SourceFile, "DXC.DXIL", (Depend depend) => {
                 var DxilFile = Path.Combine(OutputDirectory, $"{HLSLBaseName}.dxil");
                 var Arguments = new string[] {
+                    "-HV 2021",
                     "-Wno-ignored-attributes",
                     "-all_resources_bound",
-                    TargetProfile.StartsWith("lib") ? "-Vd" : $"-E {HLSLFileList!.Entry}",
+                    TargetProfile.StartsWith("lib") ? "-Vd" : $"-E {Entry}",
                     $"-Fo{DxilFile}",
                     $"-T{TargetProfile}",
                     SourceFile
@@ -87,7 +99,8 @@ namespace SB
             var FL = @this.FileList<HLSLFileList>();
             FL.Entry = Entry;
             FL.AddFiles(Files);
-            DXCEmitter.ShaderOutputDirectories.Add(@this.Name, "resources/shaders");
+            if (!DXCEmitter.ShaderOutputDirectories.ContainsKey(@this.Name))
+                DXCEmitter.ShaderOutputDirectories.Add(@this.Name, "resources/shaders");
             return @this;
         }
 
