@@ -1,5 +1,6 @@
 #pragma once
 #include "./../std/std.hpp"
+#include "attributes.hpp"
 
 namespace skr::shader {
 
