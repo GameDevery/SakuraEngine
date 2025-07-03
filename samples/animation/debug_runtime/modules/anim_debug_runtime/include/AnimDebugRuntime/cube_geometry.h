@@ -4,6 +4,7 @@
 #include "SkrBase/math.h"
 namespace animd
 {
+
 struct CubeGeometry {
     struct InstanceData {
         skr_float4x4_t world;
@@ -139,6 +140,7 @@ struct CubeGeometry {
         _vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 1.0f }),
         _vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 1.0f }),
     };
+    // clang-format off
     static constexpr uint32_t g_Indices[] = {
         0, 1, 2, 0, 3, 1,       // front face
         4, 5, 6, 4, 7, 5,       // left face

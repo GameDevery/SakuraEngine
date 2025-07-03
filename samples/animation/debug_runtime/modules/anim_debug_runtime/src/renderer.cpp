@@ -1,6 +1,7 @@
 #include "AnimDebugRuntime/renderer.h"
 #include "common/utils.h"
-#include "AnimDebugRuntime/cube_geometry.h"
+// #include "AnimDebugRuntime/cube_geometry.h"
+#include "AnimDebugRuntime/bone_geometry.h"
 
 namespace animd
 {
@@ -8,7 +9,7 @@ namespace animd
 LightingPushConstants   Renderer::lighting_data    = { 0, 0 };
 LightingCSPushConstants Renderer::lighting_cs_data = { { 0, 0 }, { 0, 0 } };
 
-CubeGeometry::InstanceData CubeGeometry::instance_data;
+BoneGeometry::InstanceData BoneGeometry::instance_data = { skr_float4x4_t::identity() };
 
 void Renderer::create_api_objects()
 {
@@ -63,39 +64,43 @@ void Renderer::create_resources()
     upload_buffer_desc.flags                = CGPU_BCF_PERSISTENT_MAP_BIT;
     upload_buffer_desc.descriptors          = CGPU_RESOURCE_TYPE_NONE;
     upload_buffer_desc.memory_usage         = CGPU_MEM_USAGE_CPU_ONLY;
-    upload_buffer_desc.size                 = sizeof(CubeGeometry) + sizeof(CubeGeometry::g_Indices) + sizeof(CubeGeometry::InstanceData);
-    auto upload_buffer                      = cgpu_create_buffer(_device, &upload_buffer_desc);
+    // upload_buffer_desc.size                 = sizeof(CubeGeometry) + sizeof(CubeGeometry::g_Indices) + sizeof(CubeGeometry::InstanceData);
+    upload_buffer_desc.size = sizeof(BoneGeometry) + sizeof(BoneGeometry::g_Indices) + sizeof(BoneGeometry::instance_data);
+    auto upload_buffer      = cgpu_create_buffer(_device, &upload_buffer_desc);
 
     CGPUBufferDescriptor vb_desc = {};
     vb_desc.name                 = u8"VertexBuffer";
     vb_desc.flags                = CGPU_BCF_NONE;
     vb_desc.descriptors          = CGPU_RESOURCE_TYPE_VERTEX_BUFFER;
     vb_desc.memory_usage         = CGPU_MEM_USAGE_GPU_ONLY;
-    vb_desc.size                 = sizeof(CubeGeometry);
-    _vertex_buffer               = cgpu_create_buffer(_device, &vb_desc);
+    vb_desc.size                 = sizeof(BoneGeometry);
+
+    _vertex_buffer = cgpu_create_buffer(_device, &vb_desc);
 
     CGPUBufferDescriptor ib_desc = {};
     ib_desc.name                 = u8"IndexBuffer";
     ib_desc.flags                = CGPU_BCF_NONE;
     ib_desc.descriptors          = CGPU_RESOURCE_TYPE_INDEX_BUFFER;
     ib_desc.memory_usage         = CGPU_MEM_USAGE_GPU_ONLY;
-    ib_desc.size                 = sizeof(CubeGeometry::g_Indices);
-    _index_buffer                = cgpu_create_buffer(_device, &ib_desc);
+    ib_desc.size                 = sizeof(BoneGeometry::g_Indices);
+
+    _index_buffer = cgpu_create_buffer(_device, &ib_desc);
 
     CGPUBufferDescriptor inb_desc = {};
     inb_desc.name                 = u8"InstanceBuffer";
     inb_desc.flags                = CGPU_BCF_NONE;
     inb_desc.descriptors          = CGPU_RESOURCE_TYPE_VERTEX_BUFFER;
     inb_desc.memory_usage         = CGPU_MEM_USAGE_GPU_ONLY;
-    inb_desc.size                 = sizeof(CubeGeometry::InstanceData);
-    _instance_buffer              = cgpu_create_buffer(_device, &inb_desc);
+    inb_desc.size                 = sizeof(BoneGeometry::instance_data);
+
+    _instance_buffer = cgpu_create_buffer(_device, &inb_desc);
 
     auto pool_desc = CGPUCommandPoolDescriptor();
     auto cmd_pool  = cgpu_create_command_pool(_gfx_queue, &pool_desc);
     auto cmd_desc  = CGPUCommandBufferDescriptor();
     auto cpy_cmd   = cgpu_create_command_buffer(cmd_pool, &cmd_desc);
     {
-        auto geom = CubeGeometry();
+        auto geom = BoneGeometry();
         memcpy(upload_buffer->info->cpu_mapped_address, &geom, upload_buffer_desc.size);
     }
     cgpu_cmd_begin(cpy_cmd);
@@ -104,12 +109,13 @@ void Renderer::create_resources()
     vb_cpy.dst_offset                 = 0;
     vb_cpy.src                        = upload_buffer;
     vb_cpy.src_offset                 = 0;
-    vb_cpy.size                       = sizeof(CubeGeometry);
+    // vb_cpy.size                       = sizeof(CubeGeometry);
+    vb_cpy.size = sizeof(BoneGeometry);
     cgpu_cmd_transfer_buffer_to_buffer(cpy_cmd, &vb_cpy);
 
     // copy geometry data to upload buffer
     {
-        memcpy((char8_t*)upload_buffer->info->cpu_mapped_address + sizeof(CubeGeometry), CubeGeometry::g_Indices, sizeof(CubeGeometry::g_Indices));
+        memcpy((char8_t*)upload_buffer->info->cpu_mapped_address + sizeof(BoneGeometry), BoneGeometry::g_Indices, sizeof(BoneGeometry::g_Indices));
     }
 
     // data[offset:offset+size] to _index_buffer
@@ -117,40 +123,55 @@ void Renderer::create_resources()
     ib_cpy.dst                        = _index_buffer;
     ib_cpy.dst_offset                 = 0;
     ib_cpy.src                        = upload_buffer;
-    ib_cpy.src_offset                 = sizeof(CubeGeometry);
-    ib_cpy.size                       = sizeof(CubeGeometry::g_Indices);
+    // ib_cpy.src_offset                 = sizeof(CubeGeometry);
+    // ib_cpy.size                       = sizeof(CubeGeometry::g_Indices);
+    ib_cpy.src_offset = sizeof(BoneGeometry);
+    ib_cpy.size       = sizeof(BoneGeometry::g_Indices);
     cgpu_cmd_transfer_buffer_to_buffer(cpy_cmd, &ib_cpy);
     // wvp
-    const auto transform = skr::TransformF(skr::QuatF(skr::RotatorF()), skr::float3(0), skr::float3(2));
-    const auto matrix    = skr::transpose(transform.to_matrix());
+    const auto transform = skr::TransformF(
+        skr::QuatF(skr::RotatorF()), skr::float3(0), skr::float3(1)
+    );
+    const auto matrix0 = skr::transpose(transform.to_matrix());
+    const auto matrix1 = skr::transpose(
+        skr::TransformF(
+            skr::QuatF(skr::RotatorF(30, 90, 0)), skr::float3(0), skr::float3(1)
+        )
+            .to_matrix()
+    );
 
-    CubeGeometry::instance_data.world = *(skr_float4x4_t*)&matrix;
+    BoneGeometry::instance_data.world[0] = *(skr_float4x4_t*)&matrix0;
+    BoneGeometry::instance_data.world[1] = *(skr_float4x4_t*)&matrix1;
     {
-        memcpy((char8_t*)upload_buffer->info->cpu_mapped_address + sizeof(CubeGeometry) + sizeof(CubeGeometry::g_Indices), &CubeGeometry::instance_data, sizeof(CubeGeometry::InstanceData));
+        memcpy((char8_t*)upload_buffer->info->cpu_mapped_address + sizeof(BoneGeometry) + sizeof(BoneGeometry::g_Indices), &BoneGeometry::instance_data, sizeof(BoneGeometry::instance_data));
     }
 
     CGPUBufferToBufferTransfer istb_cpy = {};
     istb_cpy.dst                        = _instance_buffer;
     istb_cpy.dst_offset                 = 0;
     istb_cpy.src                        = upload_buffer;
-    istb_cpy.src_offset                 = sizeof(CubeGeometry) + sizeof(CubeGeometry::g_Indices);
-    istb_cpy.size                       = sizeof(CubeGeometry::instance_data);
+    istb_cpy.src_offset                 = sizeof(BoneGeometry) + sizeof(BoneGeometry::g_Indices);
+    istb_cpy.size                       = sizeof(BoneGeometry::instance_data);
     cgpu_cmd_transfer_buffer_to_buffer(cpy_cmd, &istb_cpy);
 
     // barriers
-    CGPUBufferBarrier  barriers[3]             = {};
-    CGPUBufferBarrier& vb_barrier              = barriers[0];
-    vb_barrier.buffer                          = _vertex_buffer;
-    vb_barrier.src_state                       = CGPU_RESOURCE_STATE_COPY_DEST;
-    vb_barrier.dst_state                       = CGPU_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
-    CGPUBufferBarrier& ib_barrier              = barriers[1];
-    ib_barrier.buffer                          = _index_buffer;
-    ib_barrier.src_state                       = CGPU_RESOURCE_STATE_COPY_DEST;
-    ib_barrier.dst_state                       = CGPU_RESOURCE_STATE_INDEX_BUFFER;
-    CGPUBufferBarrier& ist_barrier             = barriers[2];
-    ist_barrier.buffer                         = _instance_buffer;
-    ist_barrier.src_state                      = CGPU_RESOURCE_STATE_COPY_DEST;
-    ist_barrier.dst_state                      = CGPU_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+    CGPUBufferBarrier barriers[3] = {};
+
+    CGPUBufferBarrier& vb_barrier = barriers[0];
+    vb_barrier.buffer             = _vertex_buffer;
+    vb_barrier.src_state          = CGPU_RESOURCE_STATE_COPY_DEST;
+    vb_barrier.dst_state          = CGPU_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+
+    CGPUBufferBarrier& ib_barrier = barriers[1];
+    ib_barrier.buffer             = _index_buffer;
+    ib_barrier.src_state          = CGPU_RESOURCE_STATE_COPY_DEST;
+    ib_barrier.dst_state          = CGPU_RESOURCE_STATE_INDEX_BUFFER;
+
+    CGPUBufferBarrier& ist_barrier = barriers[2];
+    ist_barrier.buffer             = _instance_buffer;
+    ist_barrier.src_state          = CGPU_RESOURCE_STATE_COPY_DEST;
+    ist_barrier.dst_state          = CGPU_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+
     CGPUResourceBarrierDescriptor barrier_desc = {};
     barrier_desc.buffer_barriers               = barriers;
     barrier_desc.buffer_barriers_count         = 3;
@@ -390,7 +411,7 @@ void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, skr::re
         }
     );
     // camera
-    auto       eye          = skr::float4(0.f, 2.1f, -2.1f, 0.0f) /*eye*/;
+    auto       eye          = skr::float4(0.f, 0.1f, -8.1f, 0.0f) /*eye*/;
     auto       view         = skr::float4x4::view_at(eye, skr::float4(0.f), skr::float4(skr::float3::up(), 0.f));
     const auto aspect_ratio = (float)BACK_BUFFER_WIDTH / (float)BACK_BUFFER_HEIGHT;
     auto       proj         = skr::float4x4::perspective_fov(
@@ -417,20 +438,22 @@ void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, skr::re
                 _vertex_buffer, _vertex_buffer, _vertex_buffer,
                 _vertex_buffer, _instance_buffer
             };
+
             const uint32_t strides[5] = {
                 sizeof(skr_float3_t), sizeof(skr_float2_t),
                 sizeof(uint32_t), sizeof(uint32_t),
-                sizeof(animd::CubeGeometry::InstanceData::world)
+                sizeof(skr_float4x4_t)
             };
             const uint32_t offsets[5] = {
-                offsetof(CubeGeometry, g_Positions), offsetof(CubeGeometry, g_TexCoords),
-                offsetof(CubeGeometry, g_Normals), offsetof(CubeGeometry, g_Tangents),
-                offsetof(CubeGeometry::InstanceData, world)
+                offsetof(BoneGeometry, g_Positions), offsetof(BoneGeometry, g_TexCoords),
+                offsetof(BoneGeometry, g_Normals), offsetof(BoneGeometry, g_Tangents),
+                offsetof(animd::BoneGeometry::InstanceData, world)
             };
             cgpu_render_encoder_bind_index_buffer(stack.encoder, _index_buffer, sizeof(uint32_t), 0);
             cgpu_render_encoder_bind_vertex_buffers(stack.encoder, 5, vertex_buffers, strides, offsets);
             cgpu_render_encoder_push_constants(stack.encoder, _gbuffer_pipeline->root_signature, u8"push_constants", &view_proj);
-            cgpu_render_encoder_draw_indexed_instanced(stack.encoder, 36, 0, 1, 0, 0);
+
+            cgpu_render_encoder_draw_indexed_instanced(stack.encoder, 24, 0, 2, 0, 0);
         }
 
     );
