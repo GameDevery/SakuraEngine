@@ -44,14 +44,15 @@ inline static String GetTypeName(const TypeDecl* type)
 {
     if (auto asTexture = dynamic_cast<const TextureTypeDecl*>(type))
     {
-        if (!has_flag(asTexture->flags(), TextureFlags::ReadWrite))
-        {
-            // remove <T> if is not RW
+            // cast <{T}> to <{T}4>
             const auto& name = type->name();
-            const auto pos = name.find(L'<');
-            if (pos != String::npos) 
-                return name.substr(0, pos);
-        }
+            const auto pos = name.find(L'>');
+            if (pos != String::npos)
+            {
+                String result = name;
+                result.insert(pos, L"4");
+                return result;
+            }
     }
     return type->name();
 }
@@ -448,8 +449,7 @@ void HLSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt
         std::vector<Expr*> modified_args;
         int32_t fillVectorArgsWithZero = 0;
         if (auto AsVector = dynamic_cast<const VectorTypeDecl*>(ctorExpr->type());
-            AsVector && ((ctorExpr->args().size() == 0) || (ctorExpr->args().size() == 1))
-        )
+            AsVector && ((ctorExpr->args().size() == 0) || (ctorExpr->args().size() == 1)))
         {
             if (ctorExpr->args().size() == 0)
             {
@@ -462,7 +462,8 @@ void HLSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt
                 args = modified_args;
             }
         }
-        else
+        
+        if (args.empty())
         {
             args = ctorExpr->args();
         }
@@ -945,8 +946,10 @@ template <typename _ELEM, uint64_t N> struct array { _ELEM data[N]; };
 template <typename _TEX> float4 texture2d_sample(_TEX tex, uint2 uv, uint filter, uint address) { return float4(1, 1, 1, 1); }
 template <typename _TEX> float4 texture3d_sample(_TEX tex, uint3 uv, uint filter, uint address) { return float4(1, 1, 1, 1); }
 
-template <typename _ELEM> _ELEM texture_read(Texture2D<_ELEM> tex, uint2 uv) { return tex.Load(uv); }
-template <typename _ELEM> _ELEM texture_read(RWTexture2D<_ELEM> tex, uint2 uv) { return tex.Load(uv); }
+template <typename _ELEM> _ELEM texture_read(Texture2D<_ELEM> tex, uint2 loc) { return tex.Load(uint3(loc, 0)); }
+template <typename _ELEM> _ELEM texture_read(RWTexture2D<_ELEM> tex, uint2 loc) { return tex.Load(uint3(loc, 0)); }
+template <typename _ELEM> _ELEM texture_read(Texture2D<_ELEM> tex, uint3 loc_and_mip) { return tex.Load(loc_and_mip); }
+template <typename _ELEM> _ELEM texture_read(RWTexture2D<_ELEM> tex, uint3 loc_and_mip) { return tex.Load(loc_and_mip); }
 template <typename _ELEM> _ELEM texture_write(RWTexture2D<_ELEM> tex, uint2 uv, _ELEM v) { return tex[uv] = v; }
 
 template <typename _ELEM> uint2 texture_size(Texture2D<_ELEM> tex) { uint Width, Height, Mips; tex.GetDimensions(0, Width, Height, Mips); return uint2(Width, Height); }

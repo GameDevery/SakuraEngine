@@ -10,9 +10,9 @@ inline CGPURenderPipelineId create_gbuffer_render_pipeline(CGPUDeviceId device)
 {
     uint32_t *vs_bytes, vs_length;
     uint32_t *fs_bytes, fs_length;
-    read_shader_bytes(SKR_UTF8("rg-deferred/gbuffer_vs"), &vs_bytes, &vs_length,
+    read_shader_bytes(SKR_UTF8("rg-deferred/gbuffer.vs"), &vs_bytes, &vs_length,
                       device->adapter->instance->backend);
-    read_shader_bytes(SKR_UTF8("rg-deferred/gbuffer_fs"), &fs_bytes, &fs_length,
+    read_shader_bytes(SKR_UTF8("rg-deferred/gbuffer.fs"), &fs_bytes, &fs_length,
                       device->adapter->instance->backend);
     CGPUShaderLibraryDescriptor vs_desc = {};
     vs_desc.name                        = SKR_UTF8("GBufferVertexShader");
@@ -28,10 +28,10 @@ inline CGPURenderPipelineId create_gbuffer_render_pipeline(CGPUDeviceId device)
     free(fs_bytes);
     CGPUShaderEntryDescriptor ppl_shaders[2];
     ppl_shaders[0].stage                      = CGPU_SHADER_STAGE_VERT;
-    ppl_shaders[0].entry                      = SKR_UTF8("main");
+    ppl_shaders[0].entry                      = SKR_UTF8("vs");
     ppl_shaders[0].library                    = gbuffer_vs;
     ppl_shaders[1].stage                      = CGPU_SHADER_STAGE_FRAG;
-    ppl_shaders[1].entry                      = SKR_UTF8("main");
+    ppl_shaders[1].entry                      = SKR_UTF8("fs");
     ppl_shaders[1].library                    = gbuffer_fs;
     CGPURootSignatureDescriptor rs_desc       = {};
     rs_desc.shaders                           = ppl_shaders;
@@ -41,11 +41,11 @@ inline CGPURenderPipelineId create_gbuffer_render_pipeline(CGPUDeviceId device)
     rs_desc.push_constant_names               = &root_const_name;
     auto             gbuffer_root_sig         = cgpu_create_root_signature(device, &rs_desc);
     CGPUVertexLayout vertex_layout            = {};
-    vertex_layout.attributes[0]               = { SKR_UTF8("POSITION"), 1, CGPU_FORMAT_R32G32B32_SFLOAT, 0, 0, sizeof(skr_float3_t), CGPU_INPUT_RATE_VERTEX };
-    vertex_layout.attributes[1]               = { SKR_UTF8("TEXCOORD"), 1, CGPU_FORMAT_R32G32_SFLOAT, 1, 0, sizeof(skr_float2_t), CGPU_INPUT_RATE_VERTEX };
-    vertex_layout.attributes[2]               = { SKR_UTF8("NORMAL"), 1, CGPU_FORMAT_R8G8B8A8_SNORM, 2, 0, sizeof(uint32_t), CGPU_INPUT_RATE_VERTEX };
-    vertex_layout.attributes[3]               = { SKR_UTF8("TANGENT"), 1, CGPU_FORMAT_R8G8B8A8_SNORM, 3, 0, sizeof(uint32_t), CGPU_INPUT_RATE_VERTEX };
-    vertex_layout.attributes[4]               = { SKR_UTF8("MODEL"), 4, CGPU_FORMAT_R32G32B32A32_SFLOAT, 4, 0, sizeof(skr_float4x4_t), CGPU_INPUT_RATE_INSTANCE };
+    vertex_layout.attributes[0]               = { SKR_UTF8("position"), 1, CGPU_FORMAT_R32G32B32_SFLOAT, 0, 0, sizeof(skr_float3_t), CGPU_INPUT_RATE_VERTEX };
+    vertex_layout.attributes[1]               = { SKR_UTF8("uv"), 1, CGPU_FORMAT_R32G32_SFLOAT, 1, 0, sizeof(skr_float2_t), CGPU_INPUT_RATE_VERTEX };
+    vertex_layout.attributes[2]               = { SKR_UTF8("normal"), 1, CGPU_FORMAT_R8G8B8A8_SNORM, 2, 0, sizeof(uint32_t), CGPU_INPUT_RATE_VERTEX };
+    vertex_layout.attributes[3]               = { SKR_UTF8("tangent"), 1, CGPU_FORMAT_R8G8B8A8_SNORM, 3, 0, sizeof(uint32_t), CGPU_INPUT_RATE_VERTEX };
+    vertex_layout.attributes[4]               = { SKR_UTF8("model"), 4, CGPU_FORMAT_R32G32B32A32_SFLOAT, 4, 0, sizeof(skr_float4x4_t), CGPU_INPUT_RATE_INSTANCE };
     vertex_layout.attribute_count             = 5;
     CGPURenderPipelineDescriptor rp_desc      = {};
     rp_desc.root_signature                    = gbuffer_root_sig;

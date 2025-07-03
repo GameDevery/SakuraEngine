@@ -20,8 +20,8 @@ public static class RenderGraphSamples
             .Depend(Visibility.Private, "AppSampleCommon")
             .IncludeDirs(Visibility.Private, "./../common")
             .AddCppFiles("rg-deferred/*.cpp")
-            .AddHLSLFiles("rg-deferred/**.hlsl")
-            .DXCOutputDirectory("resources/shaders/rg-deferred");
+            .AddCppSLFiles("rg-deferred/**.cppsl")
+            .CppSLOutputDirectory("resources/shaders/rg-deferred");
 
         Engine.Program("RenderGraphCrossProcess")
             .Require("lmdb", new PackageConfig { Version = new(0, 9, 29) })
