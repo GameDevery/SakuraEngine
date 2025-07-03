@@ -927,7 +927,8 @@ void ASTConsumer::TranslateParams(std::vector<CppSL::ParamVarDecl*>& params, con
             if (auto BuiltinInfo = IsBuiltin(param))
             {
                 auto BuiltinName = GetArgumentAt<clang::StringRef>(BuiltinInfo, 1);
-                _param->add_attr(AST.DeclareAttr<BuiltinAttr>(ToText(BuiltinName)));
+                auto SemanticType = AST.GetSemanticTypeFromString(BuiltinName.str().c_str());
+                _param->add_attr(AST.DeclareAttr<SemanticAttr>(SemanticType));
             }
         }
         else

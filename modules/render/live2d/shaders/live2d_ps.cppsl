@@ -15,14 +15,14 @@ extern SampleImage& mask_texture;
 extern Sampler& color_sampler;
 
 [[fragment_shader("fragment_shader")]]
-float4 fragment(VSOut input)
+void fragment(VSOut input, [[render_target(0)]] float4& output_color)
 {
     float4 tex_color = color_sampler.Sample(color_texture, input.uv);
     tex_color.rgb = tex_color.rgb * push_constants.multiply_color.rgb;
     const float3 _a = tex_color.rgb + push_constants.screen_color.rgb; 
     const float3 _m = tex_color.rgb * push_constants.screen_color.rgb; 
     tex_color.rgb = _a - _m;
-    float4 output_color = tex_color * push_constants.base_color;
+    output_color = tex_color * push_constants.base_color;
     output_color.xyz *= output_color.w;
 
     if (push_constants.use_mask)
@@ -33,6 +33,4 @@ float4 fragment(VSOut input)
         float mask_value = clip_mask.r + clip_mask.g + clip_mask.b + clip_mask.a;
         output_color = output_color * mask_value;
     }
-
-    return output_color;
 }

@@ -57,7 +57,7 @@ namespace SB
                 file = SourceFile,
                 arguments = new List<string>
                 {
-                    "clang++",
+                    "clangd",
                     "-std=c++23", 
                     "-x", "c++", 
                     "-fsyntax-only", 

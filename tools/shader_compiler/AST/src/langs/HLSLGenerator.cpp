@@ -72,30 +72,57 @@ inline static String GetStageName(ShaderStage stage)
     }
 }
 
-static const std::unordered_map<String, String> SystemValueMap = {
-    { L"VertexID", L"SV_VertexID" },     // VertexStage Input
-    { L"InstanceID", L"SV_InstanceID" }, // VertexStage Input
-    { L"Position", L"SV_Position" },     // VertexStage Output / FragmentStage Input
-
-    { L"IsFrontFace", L"SV_IsFrontFace" }, // FragmentStage Input
-    { L"FragmentDepth", L"SV_Depth"},      // FragmentStage Output
-    { L"SampleIndex", L"SV_SampleIndex" }, // FragmentStage Input
-    { L"SampleMask", L"SV_Coverage" },     // FragmentStage Input/Output
-
-    { L"ThreadID", L"SV_DispatchThreadID" },           // ComputeStage Input
-    { L"GroupID", L"SV_GroupID" },                     // ComputeStage Input
-    { L"ThreadPositionInGroup", L"SV_GroupThreadID" }, // ComputeStage Input
-    { L"ThreadIDInGroup", L"SV_GroupIndex" },         // ComputeStage Input
+static const std::unordered_map<SemanticType, String> SystemValueMap = {
+    { SemanticType::Invalid, L"" },
+    { SemanticType::Position, L"SV_Position" },
+    { SemanticType::ClipDistance, L"SV_ClipDistance" },
+    { SemanticType::CullDistance, L"SV_CullDistance" },
+    
+    { SemanticType::RenderTarget0, L"SV_Target0" },
+    { SemanticType::RenderTarget1, L"SV_Target1" },
+    { SemanticType::RenderTarget2, L"SV_Target2" },
+    { SemanticType::RenderTarget3, L"SV_Target3" },
+    { SemanticType::RenderTarget4, L"SV_Target4" },
+    { SemanticType::RenderTarget5, L"SV_Target5" },
+    { SemanticType::RenderTarget6, L"SV_Target6" },
+    { SemanticType::RenderTarget7, L"SV_Target7" },
+    
+    { SemanticType::Depth, L"SV_Depth" },
+    { SemanticType::DepthGreaterEqual, L"SV_DepthGreaterEqual" },
+    { SemanticType::DepthLessEqual, L"SV_DepthLessEqual" },
+    { SemanticType::StencilRef, L"SV_StencilRef" },
+    
+    { SemanticType::VertexID, L"SV_VertexID" },
+    { SemanticType::InstanceID, L"SV_InstanceID" },
+    
+    { SemanticType::GSInstanceID, L"SV_GSInstanceID" },
+    { SemanticType::TessFactor, L"SV_TessFactor" },
+    { SemanticType::InsideTessFactor, L"SV_InsideTessFactor" },
+    { SemanticType::DomainLocation, L"SV_DomainLocation" },
+    { SemanticType::ControlPointID, L"SV_ControlPointID" },
+    
+    { SemanticType::PrimitiveID, L"SV_PrimitiveID" },
+    { SemanticType::IsFrontFace, L"SV_IsFrontFace" },
+    { SemanticType::SampleIndex, L"SV_SampleIndex" },
+    { SemanticType::SampleMask, L"SV_Coverage" },
+    { SemanticType::Barycentrics, L"SV_Barycentrics" },
+    
+    { SemanticType::ThreadID, L"SV_DispatchThreadID" },
+    { SemanticType::GroupID, L"SV_GroupID" },
+    { SemanticType::ThreadPositionInGroup, L"SV_GroupThreadID" },
+    { SemanticType::ThreadIndexInGroup, L"SV_GroupIndex" },
+    
+    { SemanticType::ViewID, L"SV_ViewID" }
 };
 static const String UnknownSystemValue = L"UnknownSystemValue";
-inline static const String& GetSVForBuiltin(const String& builtin)
+inline static const String& GetSystemValueString(SemanticType Semantic)
 {
-    auto it = SystemValueMap.find(builtin);
+    auto it = SystemValueMap.find(Semantic);
     if (it != SystemValueMap.end())
     {
         return it->second;
     }
-    return UnknownSystemValue; // return the original name if not found
+    return UnknownSystemValue;
 }
 
 inline static bool RecordGlobalResource(SourceBuilderNew& sb, const skr::CppSL::VarDecl* var)
@@ -784,12 +811,33 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* 
             {
                 auto param = params[i];
                 auto qualifier = param->qualifier();
+                
+                String semantic_string = L"";
+                if (StageEntry)
+                {
+                    if (auto AsSemantic = FindAttr<SemanticAttr>(param->attrs()))
+                    {
+                        if (SemanticAttr::GetSemanticQualifier(AsSemantic->semantic(), StageEntry->stage(), qualifier))
+                        {
+                            semantic_string = L" : " + GetSystemValueString(AsSemantic->semantic());
+                        }
+                        else
+                        {
+                            param->ast().ReportFatalError(std::format(L"Invalid semantic {} for param {} within stage {}", 
+                                GetSystemValueString(AsSemantic->semantic()), param->name(), GetStageName(StageEntry->stage()))
+                            );
+                        }
+                    }
+                }
 
                 String prefix = L"";
                 switch (qualifier) 
                 {
                 case EVariableQualifier::Const:
                     prefix = L"const ";
+                    break;
+                case EVariableQualifier::Out:
+                    prefix = L"out ";
                     break;
                 case EVariableQualifier::Inout:
                     prefix = L"inout ";
@@ -799,17 +847,11 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* 
                     break;
                 }
                 String content = prefix + GetTypeName(&param->type()) + L" " + param->name();
-                if (StageEntry)
-                {
-                    if (auto builtin_attr = FindAttr<BuiltinAttr>(param->attrs()))
-                    {
-                        content += L" : " + GetSVForBuiltin(builtin_attr->name());
-                    }
-                }
     
                 if (i > 0)
                     content = L", " + content;
                 sb.append(content);
+                sb.append(semantic_string);
             }
             sb.append(L")");
             if (StageEntry && StageEntry->stage() == ShaderStage::Fragment)

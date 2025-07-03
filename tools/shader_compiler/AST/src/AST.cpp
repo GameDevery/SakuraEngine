@@ -1,4 +1,5 @@
 #include "CppSL/AST.hpp"
+#include "CppSL/magic_enum/magic_enum.hpp"
 #include <array>
 #include <unordered_set>
 
@@ -996,6 +997,40 @@ AST::~AST()
         delete attr;
     }
     _attrs.clear();
+}
+
+SemanticType AST::GetSemanticTypeFromString(const char* str)
+{
+    if (_semantic_map.empty())
+    {
+        for (uint32_t i = 0; i < (uint32_t)SemanticType::Count; ++i)
+        {
+            std::string_view nv = magic_enum::enum_name((SemanticType)i);
+            std::string n(nv.data(), nv.size());
+            _semantic_map[n] = (SemanticType)i;
+        }
+    }
+
+    if (_semantic_map.contains(str))
+        return _semantic_map[str];
+    return SemanticType::Invalid;
+}
+
+InterpolationMode AST::GetInterpolationModeFromString(const char* str)
+{
+    if (_interpolation_map.empty())
+    {
+        for (uint32_t i = 0; i < (uint32_t)InterpolationMode::Count; ++i)
+        {
+            std::string_view nv = magic_enum::enum_name((InterpolationMode)i);
+            std::string n(nv.data(), nv.size());
+            _interpolation_map[n] = (InterpolationMode)i;
+        }
+    }
+
+    if (_interpolation_map.contains(str))
+        return _interpolation_map[str];
+    return InterpolationMode::invalid;
 }
 
 template <typename... Args>

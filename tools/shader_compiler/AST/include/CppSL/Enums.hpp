@@ -7,7 +7,8 @@ namespace skr::CppSL {
 enum struct EVariableQualifier : uint32_t {
     None = 0,
     Const = 1,
-    Inout = 2
+    Inout = 2,
+    Out = 3
 };
 
 enum struct UnaryOp : uint32_t {
@@ -61,8 +62,67 @@ enum struct ShaderStage : uint32_t
 {
     None,
     Vertex,
+    Hull,
+    Domain,
+    Geometry,
     Fragment,
     Compute
+};
+
+enum struct SemanticType : uint32_t
+{
+    Invalid,
+    Position,         // SV_Position / [[position]]
+    ClipDistance,     // SV_ClipDistance / [[clip_distance]]
+    CullDistance,     // SV_CullDistance / [[cull_distance]]
+
+    RenderTarget0,    // SV_Target0 / [[color(0)]]
+    RenderTarget1,    // SV_Target1 / [[color(1)]]
+    RenderTarget2,    // SV_Target2 / [[color(2)]]
+    RenderTarget3,    // SV_Target3 / [[color(3)]]
+    RenderTarget4,    // SV_Target4 / [[color(4)]]
+    RenderTarget5,    // SV_Target5 / [[color(5)]]
+    RenderTarget6,    // SV_Target6 / [[color(6)]]
+    RenderTarget7,    // SV_Target7 / [[color(7)]]
+
+    Depth,       // SV_Depth / [[depth(any)]]
+    DepthGreaterEqual, // SV_DepthGreaterEqual / [[depth(greater_equal)]]
+    DepthLessEqual,    // SV_DepthLessEqual / [[depth(less_equal)]]
+    StencilRef,        // SV_StencilRef / [[stencil]]
+    
+    VertexID,          // SV_VertexID / [[vertex_id]]
+    InstanceID,        // SV_InstanceID / [[instance_id]]
+
+    GSInstanceID,      // SV_GSInstanceID / !
+    TessFactor,        // SV_TessFactor / !
+    InsideTessFactor,  // SV_InsideTessFactor / !
+    DomainLocation,    // SV_DomainLocation / !
+    ControlPointID,    // SV_ControlPointID / !
+
+    PrimitiveID,       // SV_PrimitiveID / [[primitive_id]]
+    IsFrontFace,       // SV_IsFrontFace / [[front_facing]]
+    SampleIndex,       // SV_SampleIndex / [[sample_id]]
+    SampleMask,        // SV_Coverage / [[sample_mask]]
+    Barycentrics,      // SV_Barycentrics / [[barycentric_coord]]
+
+    ThreadID,           // SV_DispatchThreadID / [[thread_position_in_grid]]
+    GroupID,            // SV_GroupID / [[threadgroup_position_in_grid]]
+    ThreadPositionInGroup, // SV_GroupThreadID / [[thread_position_in_threadgroup]]
+    ThreadIndexInGroup, // SV_GroupIndex / [[thread_index_in_threadgroup]]
+
+    ViewID,            // SV_ViewID / [[render_target_array_index]]
+    Count
+};
+
+enum struct InterpolationMode : uint32_t
+{
+    invalid,
+    linear,            // HLSL: linear / Metal: [[perspective]]
+    nointerpolation,   // HLSL: nointerpolation / Metal: [[flat]]
+    centroid,          // HLSL: centroid / Metal: [[centroid]]
+    sample,            // HLSL: sample / Metal: [[sample]]
+    noperspective,      // HLSL: noperspective / Metal: 不支持
+    Count
 };
 
 enum struct BufferFlags : uint32_t

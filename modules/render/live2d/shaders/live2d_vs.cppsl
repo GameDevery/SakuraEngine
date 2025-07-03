@@ -10,14 +10,13 @@ struct [[stage_inout]] VSOut
 {
     float4 clip_pos;
     float2 uv;
-    float4 SV_Position;
 };
 
 [[vertex_shader("vertex_shader")]]
-VSOut vertex(VSIn input)
+VSOut vertex(VSIn input, [[position]] float4& sv_pos)
 {
     VSOut output;
-    output.SV_Position = float4(input.pos, 0.f, 1.f) * push_constants.projection_matrix;
+    sv_pos = float4(input.pos, 0.f, 1.f) * push_constants.projection_matrix;
     output.clip_pos = float4(input.pos, 0.f, 1.f) * push_constants.clip_matrix;
     output.uv.x = input.uv.x;
     output.uv.y = 1.f - input.uv.y;

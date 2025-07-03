@@ -134,12 +134,15 @@ public:
     std::span<GlobalVarDecl* const> global_vars() const { return _globals; }
     std::span<FunctionDecl* const> funcs() const { return _funcs; }
 
+    SemanticType GetSemanticTypeFromString(const char* str);
+    InterpolationMode GetInterpolationModeFromString(const char* str);
+    
     String dump() const;
 
+    [[noreturn]] void ReportFatalError(const String& message) const;
 private:
     template <typename... Args>
     [[noreturn]] void ReportFatalError(std::wformat_string<Args...> fmt, Args&&... args) const;
-    [[noreturn]] void ReportFatalError(const String& message) const;
     void ReservedWordsCheck(const Name& name) const;
 
     const VectorTypeDecl* DeclareVectorType(const TypeDecl* element, uint32_t count, uint32_t alignment);
@@ -163,6 +166,8 @@ private:
     std::vector<MethodDecl*> _methods;
     std::vector<ConstructorDecl*> _ctors;
     std::vector<Attr*> _attrs;
+    std::map<std::string, SemanticType> _semantic_map;
+    std::map<std::string, InterpolationMode> _interpolation_map;
     
     // Template and specialized declarations
     std::map<std::string, TemplateCallableDecl*> _intrinstics;

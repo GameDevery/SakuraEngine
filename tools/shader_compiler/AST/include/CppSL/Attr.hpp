@@ -30,6 +30,18 @@ private:
     String _name;
 };
 
+struct SemanticAttr : public Attr
+{
+public:
+    SemanticType semantic() const { return _semantic; }
+    static bool GetSemanticQualifier(SemanticType semantic, ShaderStage stage, EVariableQualifier& out);
+
+protected:
+    friend struct AST;
+    SemanticAttr(SemanticType semantic);
+    SemanticType _semantic;
+};
+
 struct KernelSizeAttr : public Attr
 {
 public:
