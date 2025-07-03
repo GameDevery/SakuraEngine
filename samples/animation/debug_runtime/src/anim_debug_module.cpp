@@ -117,7 +117,7 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
             SkrZoneScopedN("ImGuiEndFrame");
             imgui_backend.end_frame();
         }
-
+        imgui_backend.collect(); // contact @zihuang.zhu for any issue
         {
             SkrZoneScopedN("Viewport Render");
             auto          viewport          = ImGui::GetMainViewport();
@@ -138,7 +138,7 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
         }
         {
             SkrZoneScopedN("ImGuiRender");
-            imgui_backend.render(); // maybe rebuild swapchain // add present pass
+            imgui_backend.render(); // add present pass
         }
         render_graph->compile();
         render_graph->execute();

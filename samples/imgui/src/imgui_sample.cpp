@@ -111,6 +111,7 @@ int main()
         imgui_backend.end_frame();
 
         // add render passes
+        imgui_backend.collect(); // contact @zihuang.zhu for any issue
         imgui_backend.render();
 
         // draw render graph
