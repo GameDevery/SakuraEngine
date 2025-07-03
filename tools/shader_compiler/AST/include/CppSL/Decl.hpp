@@ -268,7 +268,7 @@ public:
     
 protected:
     friend struct AST;
-    GlobalVarDecl(AST& ast, EVariableQualifier qualifier, const TypeDecl* type, const Name& _name, ConstantExpr* initializer);
+    GlobalVarDecl(AST& ast, EVariableQualifier qualifier, const TypeDecl* type, const Name& _name, Expr* initializer);
 };
 
 struct ParamVarDecl : public VarDecl

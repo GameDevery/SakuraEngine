@@ -692,8 +692,8 @@ void RenderEffectLive2D::prepare_pipeline(SRendererId renderer)
     const auto render_device = renderer->get_render_device();
     const auto cgpu_device   = render_device->get_cgpu_device();
 
-    CGPUShaderLibraryId vs = create_shader_library(renderer, u8"shaders/live2d_vs", CGPU_SHADER_STAGE_VERT);
-    CGPUShaderLibraryId ps = create_shader_library(renderer, u8"shaders/live2d_ps", CGPU_SHADER_STAGE_FRAG);
+    CGPUShaderLibraryId vs = create_shader_library(renderer, u8"shaders/live2d.vertex_shader", CGPU_SHADER_STAGE_VERT);
+    CGPUShaderLibraryId ps = create_shader_library(renderer, u8"shaders/live2d.model_fs", CGPU_SHADER_STAGE_FRAG);
 
     CGPUShaderEntryDescriptor  ppl_shaders[2];
     CGPUShaderEntryDescriptor& ppl_vs = ppl_shaders[0];
@@ -703,7 +703,7 @@ void RenderEffectLive2D::prepare_pipeline(SRendererId renderer)
     CGPUShaderEntryDescriptor& ppl_ps = ppl_shaders[1];
     ppl_ps.library                    = ps;
     ppl_ps.stage                      = CGPU_SHADER_STAGE_FRAG;
-    ppl_ps.entry                      = u8"fragment_shader";
+    ppl_ps.entry                      = u8"model_fs";
 
     const char8_t* static_sampler_name = u8"color_sampler";
     auto           static_sampler      = render_device->get_linear_sampler();
@@ -776,8 +776,8 @@ void RenderEffectLive2D::prepare_mask_pipeline(SRendererId renderer)
     const auto render_device = renderer->get_render_device();
     const auto cgpu_device   = render_device->get_cgpu_device();
 
-    CGPUShaderLibraryId vs = create_shader_library(renderer, u8"shaders/live2d_vs", CGPU_SHADER_STAGE_VERT);
-    CGPUShaderLibraryId ps = create_shader_library(renderer, u8"shaders/live2d_mask_ps", CGPU_SHADER_STAGE_FRAG);
+    CGPUShaderLibraryId vs = create_shader_library(renderer, u8"shaders/live2d.vertex_shader", CGPU_SHADER_STAGE_VERT);
+    CGPUShaderLibraryId ps = create_shader_library(renderer, u8"shaders/live2d.mask_fs", CGPU_SHADER_STAGE_FRAG);
 
     CGPUShaderEntryDescriptor  ppl_shaders[2];
     CGPUShaderEntryDescriptor& ppl_vs = ppl_shaders[0];
@@ -787,7 +787,7 @@ void RenderEffectLive2D::prepare_mask_pipeline(SRendererId renderer)
     CGPUShaderEntryDescriptor& ppl_ps = ppl_shaders[1];
     ppl_ps.library                    = ps;
     ppl_ps.stage                      = CGPU_SHADER_STAGE_FRAG;
-    ppl_ps.entry                      = u8"fragment_shader";
+    ppl_ps.entry                      = u8"mask_fs";
 
     const char8_t* static_sampler_name = u8"color_sampler";
     auto           static_sampler      = render_device->get_linear_sampler();

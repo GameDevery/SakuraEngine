@@ -248,7 +248,7 @@ Texture3DTypeDecl::Texture3DTypeDecl(AST& ast, const TypeDecl* element, TextureF
 
 }
 
-GlobalVarDecl::GlobalVarDecl(AST& ast, EVariableQualifier qualifier, const TypeDecl* type, const Name& _name, ConstantExpr* initializer)
+GlobalVarDecl::GlobalVarDecl(AST& ast, EVariableQualifier qualifier, const TypeDecl* type, const Name& _name, Expr* initializer)
     : VarDecl(ast, qualifier, type, _name, initializer)
 {
 

@@ -111,8 +111,8 @@ void create_render_pipeline()
     // Shaders
     uint32_t *vs_bytes, vs_length;
     uint32_t *fs_bytes, fs_length;
-    read_shader_bytes("cgpu-texture/vertex_shader", &vs_bytes, &vs_length, backend);
-    read_shader_bytes("cgpu-texture/fragment_shader", &fs_bytes, &fs_length, backend);
+    read_shader_bytes("cgpu-texture/texture_card.vs", &vs_bytes, &vs_length, backend);
+    read_shader_bytes("cgpu-texture/texture_card.fs", &fs_bytes, &fs_length, backend);
     CGPUShaderLibraryDescriptor vs_desc = {
         .name      = "VertexShaderLibrary",
         .code      = vs_bytes,
@@ -130,10 +130,10 @@ void create_render_pipeline()
     // Create RS
     CGPUShaderEntryDescriptor ppl_shaders[2];
     ppl_shaders[0].stage                           = CGPU_SHADER_STAGE_VERT;
-    ppl_shaders[0].entry                           = "main";
+    ppl_shaders[0].entry                           = "vs";
     ppl_shaders[0].library                         = vertex_shader;
     ppl_shaders[1].stage                           = CGPU_SHADER_STAGE_FRAG;
-    ppl_shaders[1].entry                           = "main";
+    ppl_shaders[1].entry                           = "fs";
     ppl_shaders[1].library                         = fragment_shader;
     const char8_t*              sampler_name       = "texture_sampler";
     const char8_t*              push_constant_name = "push_constants";
@@ -199,7 +199,7 @@ void initialize(void* usrdata)
         gCGPUBackendNames[backend],
         BACK_BUFFER_WIDTH,
         BACK_BUFFER_HEIGHT,
-        SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE
+        SDL_WINDOW_VULKAN
     );
 
     // Create instance

@@ -362,11 +362,11 @@ const ArrayTypeDecl* AST::ArrayType(const TypeDecl* element, uint32_t count, Arr
     return new_type;
 }
 
-GlobalVarDecl* AST::DeclareGlobalConstant(const TypeDecl* type, const Name& name, ConstantExpr* initializer)
+GlobalVarDecl* AST::DeclareGlobalConstant(const TypeDecl* type, const Name& name, Expr* initializer)
 {
     // TODO: CHECK THIS IS NOT RESOURCE TYPE
     if (type == nullptr) 
-        ReportFatalError(L"GlobalConstant {}: Type cannot be null for parameter declaration", name);
+        ReportFatalError(L"GlobalConstant {}: Type cannot be null for global constant declaration", name);
     
     ReservedWordsCheck(name);
     auto decl = new GlobalVarDecl(*this, EVariableQualifier::Const, type, name, initializer);
@@ -379,7 +379,7 @@ GlobalVarDecl* AST::DeclareGlobalResource(const TypeDecl* type, const Name& name
 {
     // TODO: CHECK THIS IS RESOURCE TYPE
     if (type == nullptr) 
-        ReportFatalError(L"GlobalResource {}: Type cannot be null for parameter declaration", name);
+        ReportFatalError(L"GlobalResource {}: Type cannot be null for global resource declaration", name);
 
     ReservedWordsCheck(name);
     auto decl = new GlobalVarDecl(*this, EVariableQualifier::None, type, name, nullptr);

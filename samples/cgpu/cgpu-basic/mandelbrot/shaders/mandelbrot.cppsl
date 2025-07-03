@@ -6,7 +6,7 @@ using namespace skr::shader;
 extern Buffer<float4>& buf;
 
 [[compute_shader("compute_main"), kernel_2d(32, 32)]]
-void kernel([[thread_id]] uint2 tid)
+void kernel([[sv_thread_id]] uint2 tid)
 {
     const uint2 tsize = uint2(3200, 2400);
     const uint32 row_pitch = tsize.x;

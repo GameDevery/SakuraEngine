@@ -37,8 +37,8 @@ public static class CGPUSamples
             .Depend(Visibility.Private, "AppSampleCommon")
             .IncludeDirs(Visibility.Private, "./../../common")
             .AddCFiles("texture/texture.c")
-            .AddHLSLFiles("texture/**.hlsl")
-            .DXCOutputDirectory("resources/shaders/cgpu-texture");
+            .AddCppSLFiles("texture/**.cppsl")
+            .CppSLOutputDirectory("resources/shaders/cgpu-texture");
 
         Engine.Program("CGPUTiledTexture")
             .Depend(Visibility.Public, "SkrRT")

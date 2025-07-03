@@ -17,6 +17,7 @@ namespace SB
 
         public static IArtifact? CompileHLSL(Target Target, string SourceFile, string Entry, string OutputDirectory)
         {
+            bool AppendEntryInArtifactPath = false;
             var Parts = Path.GetFileName(SourceFile).Split('.');
             var HLSLBaseName = Parts[0];
             var TargetProfile = Parts[1];
@@ -24,12 +25,13 @@ namespace SB
             {
                 Entry = Parts[1];
                 TargetProfile = Parts[2];
+                AppendEntryInArtifactPath = true;
             }
             Directory.CreateDirectory(OutputDirectory);
 
             // SPV
             bool Changed = Depend.OnChanged(Target.Name, SourceFile, "DXC.SPV", (Depend depend) => {
-                var SpvFile = Path.Combine(OutputDirectory, $"{HLSLBaseName}.spv");
+                var SpvFile = Path.Combine(OutputDirectory, AppendEntryInArtifactPath ? $"{HLSLBaseName}.{Entry}.spv" : $"{HLSLBaseName}.spv");
                 var Arguments = new string[] {
                     "-HV 2021",
                     "-Wno-ignored-attributes",
@@ -50,7 +52,7 @@ namespace SB
 
             // DXIL
             Changed |= Depend.OnChanged(Target.Name, SourceFile, "DXC.DXIL", (Depend depend) => {
-                var DxilFile = Path.Combine(OutputDirectory, $"{HLSLBaseName}.dxil");
+                var DxilFile = Path.Combine(OutputDirectory, AppendEntryInArtifactPath? $"{HLSLBaseName}.{Entry}.dxil" : $"{HLSLBaseName}.dxil");
                 var Arguments = new string[] {
                     "-HV 2021",
                     "-Wno-ignored-attributes",

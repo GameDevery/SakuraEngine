@@ -871,12 +871,17 @@ bool ASTConsumer::VisitVarDecl(const clang::VarDecl* x)
 
         addVar(x, ShaderResource);
     }
+
     return true;
 }
 
 CppSL::TypeDecl* ASTConsumer::TranslateType(clang::QualType type) 
 {
-    type = type.getNonReferenceType().getCanonicalType();
+    // type = type.getNonReferenceType().getCanonicalType();
+    type = type.getNonReferenceType()
+        .getUnqualifiedType()
+        .getDesugaredType(*pASTContext)
+        .getCanonicalType();
 
     if (auto Existed = getType(type)) 
         return Existed; // already processed
@@ -888,6 +893,10 @@ CppSL::TypeDecl* ASTConsumer::TranslateType(clang::QualType type)
     else if (auto EnumType = type->getAs<clang::EnumType>())
     {
         TranslateEnumDecl(EnumType->getDecl());
+    }
+    else if (auto isConstantArrayType = type->isConstantArrayType())
+    {
+        return getType(type);
     }
     else
     {
@@ -1254,6 +1263,17 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
             }
             else
             {
+                if (!_vars.contains(Var))
+                {
+                    if (cxxDeclRef->isNonOdrUse() != NonOdrUseReason::NOUR_Unevaluated || cxxDeclRef->isNonOdrUse() != NonOdrUseReason::NOUR_Discarded)
+                    {
+                        auto _init = TranslateStmt<CppSL::Expr>(Var->getInit());
+                        if (!getType(Var->getType()))
+                            TranslateType(Var->getType());
+                        auto _const = AST.DeclareGlobalConstant(getType(Var->getType()), ToText(Var->getName()), _init);
+                        addVar(Var, _const);
+                    }
+                }
                 return AST.Ref(getVar(Var));
             }
         }
@@ -1293,6 +1313,8 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
     }
     else if (auto cxxImplicitCast = llvm::dyn_cast<clang::ImplicitCastExpr>(x))
     {
+        if (cxxImplicitCast->getCastKind() == clang::CK_ArrayToPointerDecay)
+            return TranslateStmt<CppSL::Expr>(cxxImplicitCast->getSubExpr());
         if (cxxImplicitCast->getType()->isFunctionPointerType())
             return TranslateStmt<CppSL::DeclRefExpr>(cxxImplicitCast->getSubExpr());
         auto RHS = TranslateStmt<CppSL::Expr>(cxxImplicitCast->getSubExpr());
@@ -1304,6 +1326,15 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
     else if (auto cxxConstructor = llvm::dyn_cast<clang::CXXConstructExpr>(x))
     {
         return TranslateCall(cxxConstructor->getConstructor(), x);
+    }
+    else if (auto InitList = llvm::dyn_cast<clang::InitListExpr>(x))
+    {
+        std::vector<CppSL::Expr*> exprs;
+        for (auto init : InitList->inits())
+        {
+            exprs.emplace_back(TranslateStmt<CppSL::Expr>(init));
+        }
+        return AST.InitList(exprs);
     }
     else if (auto cxxCall = llvm::dyn_cast<clang::CallExpr>(x))
     {
@@ -1419,6 +1450,12 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
     {
         CppSL::BinaryOp op = TranslateBinaryOp(cxxBinOp->getOpcode());
         return AST.Binary(op, TranslateStmt<CppSL::Expr>(cxxBinOp->getLHS()), TranslateStmt<CppSL::Expr>(cxxBinOp->getRHS()));
+    }
+    else if (auto arrayAccess = llvm::dyn_cast<clang::ArraySubscriptExpr>(x))
+    {
+        auto _array = TranslateStmt<CppSL::Expr>(arrayAccess->getBase());
+        auto index = TranslateStmt<CppSL::Expr>(arrayAccess->getIdx());
+        return AST.Access(_array, index);
     }
     else if (auto memberExpr = llvm::dyn_cast<clang::MemberExpr>(x))
     {
@@ -1548,7 +1585,7 @@ skr::CppSL::VarDecl* ASTConsumer::getVar(const clang::VarDecl* var) const
     if (it != _vars.end())
         return it->second;
 
-    ReportFatalError(var, "DeclRefExpr with unfound variable: [{}]", var->getNameAsString());
+    ReportFatalError(var, "getVar with unfound variable: [{}]", var->getNameAsString());
     return nullptr;
 }
 
@@ -1608,6 +1645,15 @@ skr::CppSL::TypeDecl* ASTConsumer::getType(clang::QualType type) const
     {
         if (_tag_types.find(tag) != _tag_types.end())
             return _tag_types.at(tag);
+    }
+    else if (auto _array = pASTContext->getAsConstantArrayType(type))
+    {
+        auto ConstantArrayType = pASTContext->getAsConstantArrayType(type);
+        return (CppSL::TypeDecl*)AST.ArrayType(
+            getType(ConstantArrayType->getElementType()), 
+            ConstantArrayType->getSize().getLimitedValue(), 
+            ArrayFlags::None
+        );
     }
     return nullptr;
 }

@@ -65,7 +65,7 @@ public:
     TypeDecl* DeclareStructure(const Name& name, std::span<FieldDecl*> members);
     const TypeDecl* DeclareBuiltinType(const Name& name, uint32_t size, uint32_t alignment = 4, std::vector<FieldDecl*> fields = {});
     const ScalarTypeDecl* DeclareScalarType(const Name& name, uint32_t size, uint32_t alignment = 4);
-    GlobalVarDecl* DeclareGlobalConstant(const TypeDecl* type, const Name& name, ConstantExpr* initializer = nullptr);
+    GlobalVarDecl* DeclareGlobalConstant(const TypeDecl* type, const Name& name, Expr* initializer = nullptr);
     GlobalVarDecl* DeclareGlobalResource(const TypeDecl* type, const Name& name);
     FieldDecl* DeclareField(const Name& name, const TypeDecl* type);
     FunctionDecl* DeclareFunction(const Name& name, const TypeDecl* return_type, std::span<const ParamVarDecl* const> params, CompoundStmt* body);
