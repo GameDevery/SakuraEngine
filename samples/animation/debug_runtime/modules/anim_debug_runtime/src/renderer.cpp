@@ -121,15 +121,9 @@ void Renderer::create_resources()
     ib_cpy.size                       = sizeof(CubeGeometry::g_Indices);
     cgpu_cmd_transfer_buffer_to_buffer(cpy_cmd, &ib_cpy);
     // wvp
-    const auto quat = rtm::quat_from_euler(
-        rtm::scalar_deg_to_rad(0.f),
-        rtm::scalar_deg_to_rad(0.f),
-        rtm::scalar_deg_to_rad(0.f)
-    );
-    const rtm::vector4f   translation = rtm::vector_set(0.f, 0.f, 0.f, 0.f);
-    const rtm::vector4f   scale       = rtm::vector_set(2.f, 2.f, 2.f, 0.f);
-    const rtm::qvvf       transform   = rtm::qvv_set(quat, translation, scale);
-    const rtm::matrix4x4f matrix      = rtm::matrix_cast(rtm::matrix_from_qvv(transform));
+    const auto transform = skr::TransformF(skr::QuatF(skr::RotatorF()), skr::float3(0), skr::float3(2));
+    const auto matrix    = skr::transpose(transform.to_matrix());
+
     CubeGeometry::instance_data.world = *(skr_float4x4_t*)&matrix;
     {
         memcpy((char8_t*)upload_buffer->info->cpu_mapped_address + sizeof(CubeGeometry) + sizeof(CubeGeometry::g_Indices), &CubeGeometry::instance_data, sizeof(CubeGeometry::InstanceData));
@@ -328,27 +322,29 @@ void Renderer::create_gbuffer_pipeline()
     vertex_layout.attributes[4]    = { SKR_UTF8("MODEL"), 4, CGPU_FORMAT_R32G32B32A32_SFLOAT, 4, 0, sizeof(skr_float4x4_t), CGPU_INPUT_RATE_INSTANCE };
     vertex_layout.attribute_count  = 5;
 
-    CGPURenderPipelineDescriptor rp_desc      = {};
-    rp_desc.root_signature                    = gbuffer_root_sig;
-    rp_desc.prim_topology                     = CGPU_PRIM_TOPO_TRI_LIST;
-    rp_desc.vertex_layout                     = &vertex_layout;
-    rp_desc.vertex_shader                     = &ppl_shaders[0];
-    rp_desc.fragment_shader                   = &ppl_shaders[1];
-    rp_desc.render_target_count               = sizeof(gbuffer_formats) / sizeof(ECGPUFormat);
-    rp_desc.color_formats                     = gbuffer_formats;
-    rp_desc.depth_stencil_format              = gbuffer_depth_format;
+    CGPURenderPipelineDescriptor rp_desc = {};
+    rp_desc.root_signature               = gbuffer_root_sig;
+    rp_desc.prim_topology                = CGPU_PRIM_TOPO_TRI_LIST;
+    rp_desc.vertex_layout                = &vertex_layout;
+    rp_desc.vertex_shader                = &ppl_shaders[0];
+    rp_desc.fragment_shader              = &ppl_shaders[1];
+    rp_desc.render_target_count          = sizeof(gbuffer_formats) / sizeof(ECGPUFormat);
+    rp_desc.color_formats                = gbuffer_formats;
+    rp_desc.depth_stencil_format         = gbuffer_depth_format;
+
     CGPURasterizerStateDescriptor raster_desc = {};
     raster_desc.cull_mode                     = ECGPUCullMode::CGPU_CULL_MODE_BACK;
     raster_desc.depth_bias                    = 0;
     raster_desc.fill_mode                     = CGPU_FILL_MODE_SOLID;
-    raster_desc.front_face                    = CGPU_FRONT_FACE_CCW;
+    raster_desc.front_face                    = CGPU_FRONT_FACE_CW;
     rp_desc.rasterizer_state                  = &raster_desc;
-    CGPUDepthStateDescriptor ds_desc          = {};
-    ds_desc.depth_func                        = CGPU_CMP_LEQUAL;
-    ds_desc.depth_write                       = true;
-    ds_desc.depth_test                        = true;
-    rp_desc.depth_state                       = &ds_desc;
-    _gbuffer_pipeline                         = cgpu_create_render_pipeline(_device, &rp_desc);
+
+    CGPUDepthStateDescriptor ds_desc = {};
+    ds_desc.depth_func               = CGPU_CMP_LEQUAL;
+    ds_desc.depth_write              = true;
+    ds_desc.depth_test               = true;
+    rp_desc.depth_state              = &ds_desc;
+    _gbuffer_pipeline                = cgpu_create_render_pipeline(_device, &rp_desc);
     cgpu_free_shader_library(gbuffer_vs);
     cgpu_free_shader_library(gbuffer_fs);
 }
@@ -360,7 +356,7 @@ void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, skr::re
     rg::TextureHandle composite_buffer = graph->create_texture(
         [this](rg::RenderGraph& g, rg::TextureBuilder& builder) {
             builder.set_name(u8"composite_buffer")
-                .extent(_width, _height)
+                .extent(this->_width, this->_height)
                 .format(CGPU_FORMAT_R8G8B8A8_UNORM)
                 .allocate_dedicated()
                 .allow_render_target();
@@ -369,7 +365,7 @@ void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, skr::re
     auto gbuffer_color = graph->create_texture(
         [this](rg::RenderGraph& g, rg::TextureBuilder& builder) {
             builder.set_name(u8"gbuffer_color")
-                .extent(_width, _height)
+                .extent(this->_width, this->_height)
                 .format(CGPU_FORMAT_R8G8B8A8_UNORM)
                 .allocate_dedicated()
                 .allow_render_target();
@@ -378,7 +374,7 @@ void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, skr::re
     auto gbuffer_depth = graph->create_texture(
         [this](rg::RenderGraph& g, rg::TextureBuilder& builder) {
             builder.set_name(u8"gbuffer_depth")
-                .extent(_width, _height)
+                .extent(this->_width, this->_height)
                 .format(CGPU_FORMAT_D32_SFLOAT)
                 .allocate_dedicated()
                 .allow_depth_stencil();
@@ -387,25 +383,23 @@ void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, skr::re
     auto gbuffer_normal = graph->create_texture(
         [this](rg::RenderGraph& g, rg::TextureBuilder& builder) {
             builder.set_name(u8"gbuffer_normal")
-                .extent(_width, _height)
+                .extent(this->_width, this->_height)
                 .format(CGPU_FORMAT_R16G16B16A16_SNORM)
                 .allocate_dedicated()
                 .allow_render_target();
         }
     );
     // camera
-    auto view = rtm::view_look_at(
-        rtm::vector_set(0.f, 2.5f, 2.5f, 0.0f) /*eye*/,
-        rtm::vector_set(0.f, 0.f, 0.f, 0.f) /*at*/,
-        rtm::vector_set(0.f, 1.f, 0.f, 0.f) /*up*/
-    );
-    auto proj = rtm::proj_perspective_fov(
-        3.1415926f / 2.f,
-        (float)BACK_BUFFER_WIDTH / (float)BACK_BUFFER_HEIGHT,
+    auto       eye          = skr::float4(0.f, 2.1f, -2.1f, 0.0f) /*eye*/;
+    auto       view         = skr::float4x4::view_at(eye, skr::float4(0.f), skr::float4(skr::float3::up(), 0.f));
+    const auto aspect_ratio = (float)BACK_BUFFER_WIDTH / (float)BACK_BUFFER_HEIGHT;
+    auto       proj         = skr::float4x4::perspective_fov(
+        skr::camera_fov_y_from_x(3.1415926f / 2.f, aspect_ratio),
+        aspect_ratio,
         1.f, 1000.f
     );
-    auto view_proj = rtm::matrix_mul(rtm::matrix_cast(view), proj);
-
+    auto _view_proj = skr::mul(view, proj);
+    auto view_proj  = skr::transpose(_view_proj);
     // render to g-buffer
     graph->add_render_pass(
         [this, gbuffer_color, gbuffer_normal, gbuffer_depth](rg::RenderGraph& g, rg::RenderPassBuilder& builder) {
@@ -416,8 +410,8 @@ void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, skr::re
                 .set_depth_stencil(gbuffer_depth.clear_depth(1.f));
         },
         [this, view_proj](rg::RenderGraph& g, rg::RenderPassContext& stack) {
-            cgpu_render_encoder_set_viewport(stack.encoder, 0.0f, 0.0f, (float)_width, (float)_height, 0.f, 1.f);
-            cgpu_render_encoder_set_scissor(stack.encoder, 0, 0, _width, _height);
+            cgpu_render_encoder_set_viewport(stack.encoder, 0.0f, 0.0f, (float)this->_width, (float)this->_height, 0.f, 1.f);
+            cgpu_render_encoder_set_scissor(stack.encoder, 0, 0, this->_width, this->_height);
 
             CGPUBufferId vertex_buffers[5] = {
                 _vertex_buffer, _vertex_buffer, _vertex_buffer,
@@ -453,8 +447,8 @@ void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, skr::re
                 .write(0, composite_buffer, CGPU_LOAD_ACTION_CLEAR);
         },
         [this](rg::RenderGraph& g, rg::RenderPassContext& stack) {
-            cgpu_render_encoder_set_viewport(stack.encoder, 0.0f, 0.0f, (float)_width, (float)_height, 0.f, 1.f);
-            cgpu_render_encoder_set_scissor(stack.encoder, 0, 0, _width, _height);
+            cgpu_render_encoder_set_viewport(stack.encoder, 0.0f, 0.0f, (float)this->_width, (float)this->_height, 0.f, 1.f);
+            cgpu_render_encoder_set_scissor(stack.encoder, 0, 0, this->_width, this->_height);
             cgpu_render_encoder_push_constants(stack.encoder, _lighting_pipeline->root_signature, u8"push_constants", &lighting_data);
             cgpu_render_encoder_draw(stack.encoder, 3, 0);
         }
@@ -468,8 +462,8 @@ void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, skr::re
                 .write(0, back_buffer, CGPU_LOAD_ACTION_CLEAR);
         },
         [this](rg::RenderGraph& g, rg::RenderPassContext& stack) {
-            cgpu_render_encoder_set_viewport(stack.encoder, 0.0f, 0.0f, (float)_width, (float)_height, 0.f, 1.f);
-            cgpu_render_encoder_set_scissor(stack.encoder, 0, 0, _width, _height);
+            cgpu_render_encoder_set_viewport(stack.encoder, 0.0f, 0.0f, (float)this->_width, (float)this->_height, 0.f, 1.f);
+            cgpu_render_encoder_set_scissor(stack.encoder, 0, 0, this->_width, this->_height);
             cgpu_render_encoder_draw(stack.encoder, 3, 0);
         }
     );

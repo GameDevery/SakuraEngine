@@ -140,7 +140,6 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
             SkrZoneScopedN("ImGuiRender");
             imgui_backend.render(); // maybe rebuild swapchain // add present pass
         }
-        // draw render graph
         render_graph->compile();
         render_graph->execute();
         if (frame_index >= RG_MAX_FRAME_IN_FLIGHT * 10)

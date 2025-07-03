@@ -1,4 +1,4 @@
-#pragma pack_matrix(row_major)
+
 
 Texture2D<float4> gbuffer_color : register(t0, space0);
 Texture2D<float4> gbuffer_normal : register(t1, space0);

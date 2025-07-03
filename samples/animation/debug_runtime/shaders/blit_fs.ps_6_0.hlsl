@@ -1,5 +1,3 @@
-#pragma pack_matrix(row_major)
-
 [[vk::binding(0, 0)]]
 Texture2D input_color : register(t0, space0);
 [[vk::binding(0, 1)]]
