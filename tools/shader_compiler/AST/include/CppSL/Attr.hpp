@@ -42,6 +42,17 @@ protected:
     SemanticType _semantic;
 };
 
+struct InterpolationAttr : public Attr
+{
+public:
+    InterpolationMode mode() const { return _mode; }
+
+protected:
+    friend struct AST;
+    InterpolationAttr(InterpolationMode mode);
+    InterpolationMode _mode;
+};
+
 struct KernelSizeAttr : public Attr
 {
 public:

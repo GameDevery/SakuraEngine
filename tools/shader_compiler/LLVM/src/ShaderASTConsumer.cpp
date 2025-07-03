@@ -92,6 +92,7 @@ inline static clang::AnnotateAttr* IsUnaOp(const clang::Decl* decl) { return Exi
 inline static clang::AnnotateAttr* IsBinOp(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "binop"); }
 inline static clang::AnnotateAttr* IsCallOp(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "callop"); }
 inline static clang::AnnotateAttr* IsAccess(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "access"); }
+inline static clang::AnnotateAttr* IsInterpolation(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "interpolation"); }
 inline static clang::AnnotateAttr* IsStage(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "stage"); }
 inline static clang::AnnotateAttr* IsStageInout(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "stage_inout"); }
 inline static clang::AnnotateAttr* IsResourceBind(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "binding"); }
@@ -560,7 +561,8 @@ CppSL::TypeDecl* ASTConsumer::TranslateRecordDecl(const clang::RecordDecl* recor
         if (NewType == nullptr)
             ReportFatalError(recordDecl, "Failed to create type: {}", TypeName);
 
-        if (auto AsStageInout = IsStageInout(recordDecl))
+        auto AsStageInout = IsStageInout(recordDecl);
+        if (AsStageInout != nullptr)
         {
             NewType->add_attr(AST.DeclareAttr<CppSL::StageInoutAttr>());
         }
@@ -586,7 +588,17 @@ CppSL::TypeDecl* ASTConsumer::TranslateRecordDecl(const clang::RecordDecl* recor
             if (!_fieldType)
                 ReportFatalError(recordDecl, "Unknown field type: {} for field: {}", std::string(fieldType->getTypeClassName()), field->getName().str());
 
-            NewType->add_field(AST.DeclareField(ToText(field->getName()), _fieldType));
+            auto _f = AST.DeclareField(ToText(field->getName()), _fieldType);
+            if (auto AsInterpolation = IsInterpolation(field))
+            {
+                auto InterpolationModeString = GetArgumentAt<clang::StringRef>(AsInterpolation, 1);
+                auto InterpolationMode = AST.GetInterpolationModeFromString(InterpolationModeString.str().c_str()); 
+                if (AsStageInout != nullptr)
+                    _f->add_attr(AST.DeclareAttr<CppSL::InterpolationAttr>(InterpolationMode));
+                else
+                    ReportFatalError(field, "Interpolation attribute can only be used in stage inout types!");
+            }
+            NewType->add_field(_f);
         }
 
         addType(ThisQualType, NewType);

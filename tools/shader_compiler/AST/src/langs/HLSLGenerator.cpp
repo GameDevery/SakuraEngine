@@ -125,6 +125,24 @@ inline static const String& GetSystemValueString(SemanticType Semantic)
     return UnknownSystemValue;
 }
 
+static const std::unordered_map<InterpolationMode, String> InterpolationMap = {
+    { InterpolationMode::linear, L"linear" },
+    { InterpolationMode::nointerpolation, L"nointerpolation" },
+    { InterpolationMode::centroid, L"centroid" },
+    { InterpolationMode::sample, L"sample" },
+    { InterpolationMode::noperspective, L"noperspective" }
+};
+static const String UnknownInterpolation = L"UnknownInterpolation";
+inline static const String& GetInterpolationString(InterpolationMode Interpolation)
+{
+    auto it = InterpolationMap.find(Interpolation);
+    if (it != InterpolationMap.end())
+    {
+        return it->second;
+    }
+    return UnknownInterpolation;
+}
+
 inline static bool RecordGlobalResource(SourceBuilderNew& sb, const skr::CppSL::VarDecl* var)
 {
     if (auto asResource = dynamic_cast<const ResourceTypeDecl*>(&var->type()))
@@ -719,6 +737,11 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::TypeDecl* type
         sb.indent([&] {
             for (auto field : typeDecl->fields())
             {
+                if (auto interpolation = FindAttr<InterpolationAttr>(field->attrs()))
+                {
+                    sb.append(GetInterpolationString(interpolation->mode()) + L" ");
+                }
+
                 sb.append(GetTypeName(&field->type()) + L" " + field->name());
                 if (IsStageInout)
                     sb.append(L" : " + field->name());

@@ -120,6 +120,12 @@ bool SemanticAttr::GetSemanticQualifier(SemanticType semantic, ShaderStage stage
     return false;
 }
 
+InterpolationAttr::InterpolationAttr(InterpolationMode mode)
+    : _mode(mode) 
+{
+
+}
+
 BuiltinAttr::BuiltinAttr(const String& name) 
     : _name(name) 
 {

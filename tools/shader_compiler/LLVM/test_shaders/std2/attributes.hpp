@@ -36,3 +36,10 @@
 #define thread_position_in_group builtin("ThreadPositionInGroup")
 #define thread_index_in_group builtin("ThreadIndexInGroup")
 #define view_id builtin("ViewID")
+
+#define interpolation(x) clang::annotate("skr-shader", "interpolation", (x))
+#define linear interpolation("linear")
+#define nointerpolation interpolation("nointerpolation")
+#define centroid interpolation("centroid")
+#define sample interpolation("sample")
+#define noperspective interpolation("noperspective")
