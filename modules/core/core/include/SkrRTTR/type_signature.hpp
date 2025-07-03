@@ -1362,6 +1362,34 @@ struct TypeSignature : private SkrAllocator {
         return *this;
     }
 
+    // compare
+    inline bool operator==(const TypeSignature& rhs) const
+    {
+        return view().equal(rhs.view(), ETypeSignatureCompareFlag::Strict);
+    }
+    inline bool operator==(const TypeSignatureView& rhs) const
+    {
+        return view().equal(rhs, ETypeSignatureCompareFlag::Strict);
+    }
+    inline bool operator!=(const TypeSignature& rhs) const
+    {
+        return !(*this == rhs);
+    }
+    inline bool operator!=(const TypeSignatureView& rhs) const
+    {
+        return !(*this == rhs);
+    }
+
+    // hash
+    inline static skr_hash _skr_hash(const TypeSignature& signature)
+    {
+        return skr_hash_of(signature._data, signature._size);
+    }
+    inline static skr_hash _skr_hash(const TypeSignatureView& signature)
+    {
+        return skr_hash_of(signature.data(), signature.size());
+    }
+
     // to view
     inline                   operator TypeSignatureView() const { return { _data, _size }; }
     inline TypeSignatureView view() const { return { _data, _size }; }

@@ -123,6 +123,45 @@ ScriptBinderRoot ScriptBinderManager::get_or_build(GUID type_id)
     _cached_root_binders.add(type_id, {});
     return {};
 }
+ScriptBinderRoot ScriptBinderManager::get_or_build(TypeSignatureView signature)
+{
+    // ignore modifier
+    auto view = signature.jump_modifier();
+    if (!view.is_empty())
+    {
+        SKR_LOG_FMT_WARN(u8"any modifier will be ignored, to disable this warning, use sig.jump_modifier() before call this function");
+    }
+
+    if (signature.is_type())
+    {
+        GUID type_id;
+        signature.read_type_id(type_id);
+        return get_or_build(type_id);
+    }
+    else if (signature.is_generic_type())
+    {
+        // find cache
+        if (auto result = _cached_generic_binders.find(signature))
+        {
+            return result.value();
+        }
+
+        // make generic binder
+        auto generic_binder     = SkrNew<ScriptBinderGeneric>();
+        generic_binder->generic = build_generic(signature);
+        _cached_generic_binders.add(signature, generic_binder);
+
+        // TODO. check generic
+
+        return generic_binder;
+    }
+    else
+    {
+        SKR_LOG_FMT_ERROR(u8"unsupported type signature '{}'", signature.to_string());
+        return {};
+    }
+}
+
 ScriptBinderCallScript ScriptBinderManager::build_call_script_binder(span<const StackProxy> params, StackProxy ret)
 {
     auto _log_stack = _logger.stack(u8"export call script binder");
@@ -192,6 +231,12 @@ void ScriptBinderManager::clear()
         }
     }
     _cached_root_binders.clear();
+
+    // delete generic binder cache
+    for (auto& [signature, binder] : _cached_generic_binders)
+    {
+        SkrDelete(binder);
+    }
 }
 
 // make root binder
