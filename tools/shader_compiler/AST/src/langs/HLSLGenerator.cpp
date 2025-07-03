@@ -780,6 +780,7 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::TypeDecl* type
         sb.endline(L';');
         sb.append(L"#define " + GetTypeName(typeDecl) + L"(__VA_ARGS__) " + GetTypeName(typeDecl) + L"::__CTOR__(__VA_ARGS__)");
         sb.endline();
+        sb.append_line();
     }        
     else if (DUMP_BUILTIN_TYPES)
     {
@@ -914,6 +915,28 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::VarDecl* varDe
     }
 }
 
+void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::Decl* decl)
+{
+    if (auto asType = dynamic_cast<const TypeDecl*>(decl))
+    {
+        visit(sb, asType);
+        sb.endline();
+    }
+    else if (auto asFunc = dynamic_cast<const FunctionDecl*>(decl))
+    {
+        if (auto asMethod = dynamic_cast<const MethodDecl*>(asFunc))
+        {
+            return;
+        }
+        visit(sb, asFunc);
+    }
+    else if (auto asGlobalVar = dynamic_cast<const GlobalVarDecl*>(decl))
+    {
+        visit(sb, asGlobalVar);
+        sb.endline(L';');
+    }
+}
+
 static const skr::CppSL::String kHLSLHeader = LR"(
 template <typename _ELEM> void buffer_write(RWStructuredBuffer<_ELEM> buffer, uint index, _ELEM value) { buffer[index] = value; }
 template <typename _ELEM> _ELEM buffer_read(RWStructuredBuffer<_ELEM> buffer, uint index) { return buffer[index]; }
@@ -945,28 +968,10 @@ String HLSLGenerator::generate_code(SourceBuilderNew& sb, const AST& ast)
     sb.append(kHLSLHeader);
     sb.endline();
     
-    for (const auto& type : ast.types())
+    for (const auto& decl: ast.decls())
     {
-        visit(sb, type);
-        sb.endline();
+        visit(sb, decl);
     }
-    sb.append(L" ");
-    sb.endline();
-
-    for (const auto& global : ast.global_vars())
-    {
-        visit(sb, global);
-        sb.endline(L';');
-    }
-    sb.append(L" ");
-    sb.endline();
-    
-    for (const auto& func : ast.funcs())
-    {
-        visit(sb, func);
-    }
-    sb.append(L" ");
-    sb.endline();
 
     return sb.build(SourceBuilderNew::line_builder_code);
 }

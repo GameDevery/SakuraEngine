@@ -79,6 +79,7 @@ protected:
     CppSL::FunctionDecl* TranslateFunction(const clang::FunctionDecl* x, llvm::StringRef override_name = {});
     const CppSL::TypeDecl* TranslateLambda(const clang::LambdaExpr* x);
     void TranslateLambdaCapturesToParams(const clang::LambdaExpr* x);
+    CppSL::GlobalVarDecl* TranslateGlobalVariable(const clang::VarDecl* x);
     CppSL::Stmt* TranslateCall(const clang::Decl* toCall, const clang::Stmt* callExpr);
 
     Stmt* TranslateStmt(const clang::Stmt *x);
@@ -131,6 +132,7 @@ protected:
     }
 
 protected:
+    clang::QualType Decay(clang::QualType type) const;
     void CheckStageInputs(const clang::FunctionDecl* x, skr::CppSL::ShaderStage stage);
     void DumpWithLocation(const clang::Stmt *stmt) const;
     void DumpWithLocation(const clang::Decl *decl) const;

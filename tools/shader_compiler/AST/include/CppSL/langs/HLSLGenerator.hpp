@@ -14,5 +14,6 @@ private:
     void visit(SourceBuilderNew& sb, const skr::CppSL::TypeDecl* typeDecl);
     void visit(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* funcDecl);
     void visit(SourceBuilderNew& sb, const skr::CppSL::VarDecl* varDecl);
+    void visit(SourceBuilderNew& sb, const skr::CppSL::Decl* decl);
 };
 } // namespace skr::CppSL

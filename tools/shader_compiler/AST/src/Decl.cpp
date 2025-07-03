@@ -94,6 +94,11 @@ bool TypeDecl::is_matrix() const
     return dynamic_cast<const MatrixTypeDecl*>(this) != nullptr;
 }
 
+bool TypeDecl::is_resource() const
+{
+    return dynamic_cast<const ResourceTypeDecl*>(this) != nullptr;
+}
+
 void TypeDecl::add_field(FieldDecl* field)
 {
     _fields.emplace_back(field);

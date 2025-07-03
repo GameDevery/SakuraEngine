@@ -98,6 +98,11 @@ struct SourceBuilderNew {
 
     return *this;
   }
+  SourceBuilderNew &append_line() {
+    append(L"");
+    endline();
+    return *this;
+  }
   SourceBuilderNew &endline() {
     _is_line_start = true;
     return *this;

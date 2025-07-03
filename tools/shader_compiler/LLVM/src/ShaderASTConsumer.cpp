@@ -9,7 +9,8 @@
 #include <filesystem>
 
 namespace skr::CppSL {
-class DeferGuard {
+class DeferGuard 
+{
 public:
     template<typename F>
     DeferGuard(F&& f) : func(std::forward<F>(f)) {}
@@ -313,10 +314,6 @@ ASTConsumer::~ASTConsumer()
         delete stack;
     }
 }
-
-// clang::DeclRefExpr* cap;
-// cap->refersToEnclosingVariableOrCapture();
-
 
 FunctionStack* ASTConsumer::zzNewStack(const clang::FunctionDecl* func)
 {
@@ -622,8 +619,9 @@ const CppSL::TypeDecl* ASTConsumer::TranslateLambda(const clang::LambdaExpr* x)
     _params.insert(_params.end(), current_stack->_captured_params.begin(), current_stack->_captured_params.end());
 
     auto returnType = lambdaMethod->getReturnType();
-    auto lambdaWrapper = AST.DeclareStructure(std::format(L"lambda_{}", next_lambda_id++), {});
+    // 需要先翻译 body，因为会展开出潜在的全局变量，如果先翻译类型，可能会导致生成的方法函数体排序在全局变量之前，产生未定义变量错误
     auto lambdaBody = TranslateStmt<CppSL::CompoundStmt>(x->getBody());
+    auto lambdaWrapper = AST.DeclareStructure(std::format(L"lambda_{}", next_lambda_id++), {});
 
     auto newLambda = AST.DeclareMethod(lambdaWrapper, L"operator_call", getType(returnType), _params, lambdaBody);
     lambdaWrapper->add_method(newLambda);
@@ -691,6 +689,38 @@ void ASTConsumer::TranslateLambdaCapturesToParams(const clang::LambdaExpr* x)
             }
         }  
     }  
+}
+
+CppSL::GlobalVarDecl* ASTConsumer::TranslateGlobalVariable(const clang::VarDecl* Var)
+{
+    auto _type = getType(Var->getType());
+    if (_type->is_resource())
+    {
+        auto ShaderResource = AST.DeclareGlobalResource(getType(Var->getType()), ToText(Var->getName()));
+        uint32_t group = ~0, binding = ~0;
+        if (auto ResourceBind = IsResourceBind(Var))
+        {
+            binding = GetArgumentAt<uint32_t>(ResourceBind, 1);
+            group = GetArgumentAt<uint32_t>(ResourceBind, 2);
+        }
+        ShaderResource->add_attr(AST.DeclareAttr<ResourceBindAttr>(group, binding));
+        if (auto PushConstant = IsPushConstant(Var))
+        {
+            ShaderResource->add_attr(AST.DeclareAttr<PushConstantAttr>());
+        }
+        addVar(Var, ShaderResource);
+        return ShaderResource;
+    }
+    else if (!_vars.contains(Var))
+    {
+        auto _init = TranslateStmt<CppSL::Expr>(Var->getInit());
+        if (!getType(Var->getType()))
+            TranslateType(Var->getType());
+        auto _const = AST.DeclareGlobalConstant(getType(Var->getType()), ToText(Var->getName()), _init);
+        addVar(Var, _const);
+        return _const;
+    }
+    return nullptr;
 }
 
 CppSL::Stmt* ASTConsumer::TranslateCall(const clang::Decl* _funcDecl, const clang::Stmt* callExpr)
@@ -840,49 +870,12 @@ bool ASTConsumer::VisitVarDecl(const clang::VarDecl* x)
 {
     if (IsDump(x))
         x->dump();
-
-    // if (!LanguageRule_BanDoubleFieldsAndVariables(x, x->getType()))
-    //    ReportFatalError(x, "Double variables are not allowed");
-    if (x->getType()->isReferenceType() && !x->hasExternalStorage())
-    {
-        auto AsParam = llvm::dyn_cast<clang::ParmVarDecl>(x);
-        if (!AsParam)
-        {
-            ReportFatalError(x, "Reference type variables are not allowed");
-        }
-    }
-    
-    if (x->hasExternalStorage())
-    {
-        auto ShaderResource = AST.DeclareGlobalResource(getType(x->getType()), ToText(x->getName()));
-        
-        uint32_t group = ~0, binding = ~0;
-        if (auto ResourceBind = IsResourceBind(x))
-        {
-            binding = GetArgumentAt<uint32_t>(ResourceBind, 1);
-            group = GetArgumentAt<uint32_t>(ResourceBind, 2);
-        }
-        ShaderResource->add_attr(AST.DeclareAttr<ResourceBindAttr>(group, binding));
-
-        if (auto PushConstant = IsPushConstant(x))
-        {
-            ShaderResource->add_attr(AST.DeclareAttr<PushConstantAttr>());
-        }
-
-        addVar(x, ShaderResource);
-    }
-
     return true;
 }
 
 CppSL::TypeDecl* ASTConsumer::TranslateType(clang::QualType type) 
 {
-    // type = type.getNonReferenceType().getCanonicalType();
-    type = type.getNonReferenceType()
-        .getUnqualifiedType()
-        .getDesugaredType(*pASTContext)
-        .getCanonicalType();
-
+    type = Decay(type);
     if (auto Existed = getType(type)) 
         return Existed; // already processed
 
@@ -1183,13 +1176,9 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
 
                 if (Ty->isReferenceType())
                     ReportFatalError(x, "VarDecl as reference type is not supported: [{}]", Ty.getAsString());
-                if (Ty->getAsArrayTypeUnsafe())
-                    ReportFatalError(x, "VarDecl as C-style array type is not supported: [{}]", Ty.getAsString());
 
                 if (auto AsLambda = Ty->getAsRecordDecl(); AsLambda && AsLambda->isLambda())
-                {
                     TranslateLambda(clang::dyn_cast<clang::LambdaExpr>(varDecl->getInit()));
-                }
 
                 const bool isConst = varDecl->getType().isConstQualified();
                 if (auto CppSLType = getType(Ty.getCanonicalType()))
@@ -1237,45 +1226,44 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
         }
         else if (auto Var = llvm::dyn_cast<clang::VarDecl>(_cxxDecl))
         {
-            if (Var->isConstexpr())
-            {
-                if (cxxDeclRef->isNonOdrUse() != NonOdrUseReason::NOUR_Unevaluated || cxxDeclRef->isNonOdrUse() != NonOdrUseReason::NOUR_Discarded) 
-                {
-                    if (auto Decompressed = Var->getPotentiallyDecomposedVarDecl())
-                    {
-                        if (auto Evaluated = Decompressed->getEvaluatedValue()) 
-                        {
-                            if (Evaluated->isInt())
-                            {
-                                return AST.Constant(IntValue(Evaluated->getInt().getLimitedValue()));
-                            }
-                            else if (Evaluated->isFloat())
-                            {
-                                return AST.Constant(FloatValue(Evaluated->getFloat().convertToDouble()));
-                            }
-                            else 
-                            {
-                                ReportFatalError(x, "!!!!");
-                            }
-                        }
-                    }
-                }
-            }
-            else
+            const bool NonOdrUse = cxxDeclRef->isNonOdrUse() != NonOdrUseReason::NOUR_Unevaluated || cxxDeclRef->isNonOdrUse() != NonOdrUseReason::NOUR_Discarded;
+            if (NonOdrUse)
             {
                 if (!_vars.contains(Var))
                 {
-                    if (cxxDeclRef->isNonOdrUse() != NonOdrUseReason::NOUR_Unevaluated || cxxDeclRef->isNonOdrUse() != NonOdrUseReason::NOUR_Discarded)
+                    if (auto NewGlobal = TranslateGlobalVariable(Var))
                     {
-                        auto _init = TranslateStmt<CppSL::Expr>(Var->getInit());
-                        if (!getType(Var->getType()))
-                            TranslateType(Var->getType());
-                        auto _const = AST.DeclareGlobalConstant(getType(Var->getType()), ToText(Var->getName()), _init);
-                        addVar(Var, _const);
+                        return AST.Ref(NewGlobal);
                     }
+                    else if (Var->isConstexpr())
+                    {
+                        if (auto Decompressed = Var->getPotentiallyDecomposedVarDecl())
+                        {
+                            if (auto existed = getVar(Decompressed))
+                            {
+                                return AST.Ref(existed);
+                            }
+                            else if (auto Evaluated = Decompressed->getEvaluatedValue()) 
+                            {
+                                if (Evaluated->isInt())
+                                {
+                                    return AST.Constant(IntValue(Evaluated->getInt().getLimitedValue()));
+                                }
+                                else if (Evaluated->isFloat())
+                                {
+                                    return AST.Constant(FloatValue(Evaluated->getFloat().convertToDouble()));
+                                }  
+                            }
+                        }
+                    }
+                    ReportFatalError(cxxDeclRef, "Variable {} failed to instantiate", Var->getNameAsString());
                 }
-                return AST.Ref(getVar(Var));
+                else 
+                {
+                    return AST.Ref(getVar(Var));
+                }
             }
+
         }
         else if (auto EnumConstant = llvm::dyn_cast<clang::EnumConstantDecl>(_cxxDecl))
         {
@@ -1591,11 +1579,7 @@ skr::CppSL::VarDecl* ASTConsumer::getVar(const clang::VarDecl* var) const
 
 bool ASTConsumer::addType(clang::QualType type, skr::CppSL::TypeDecl* decl)
 {
-    type = type.getNonReferenceType()
-               .getUnqualifiedType()
-               .getDesugaredType(*pASTContext)
-               .getCanonicalType();
-
+    type = Decay(type);
     if (auto bt = type->getAs<clang::BuiltinType>())
     {
         auto kind = bt->getKind();
@@ -1630,11 +1614,7 @@ bool ASTConsumer::addType(clang::QualType type, const skr::CppSL::TypeDecl* decl
 
 skr::CppSL::TypeDecl* ASTConsumer::getType(clang::QualType type) const
 {
-    type = type.getNonReferenceType()
-        .getUnqualifiedType()
-        .getDesugaredType(*pASTContext)
-        .getCanonicalType();
-
+    type = Decay(type);
     if (auto bt = type->getAs<clang::BuiltinType>())
     {
         auto kind = bt->getKind();
@@ -1676,12 +1656,21 @@ skr::CppSL::FunctionDecl* ASTConsumer::getFunc(const clang::FunctionDecl* func) 
     return nullptr;
 }
 
+clang::QualType ASTConsumer::Decay(clang::QualType type) const
+{
+    auto _type = type.getNonReferenceType()
+        .getUnqualifiedType()
+        .getDesugaredType(*pASTContext)
+        .getCanonicalType();
+    return _type;
+}
+
 void ASTConsumer::CheckStageInputs(const clang::FunctionDecl* x, skr::CppSL::ShaderStage stage)
 {
     auto CheckParamIsBuiltin = [](const clang::ParmVarDecl* p) -> bool { return IsBuiltin(p); };
-    auto CheckParamTypeIsStageInout = [](const clang::ParmVarDecl* p) -> bool 
+    auto CheckParamTypeIsStageInout = [this](const clang::ParmVarDecl* p) -> bool 
     {
-        auto Type = p->getType().getNonReferenceType().getTypePtr()->getAsRecordDecl();
+        auto Type = Decay(p->getType()).getTypePtr()->getAsRecordDecl();
         return Type ? IsStageInout(Type) : false;
     };
 

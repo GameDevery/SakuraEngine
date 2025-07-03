@@ -77,6 +77,7 @@ public:
     bool is_builtin() const { return _is_builtin; }
     bool is_vector() const;
     bool is_matrix() const;
+    bool is_resource() const;
 
     const Size size() const  { return _size; }
     const Size alignment() const { return _alignment; }
