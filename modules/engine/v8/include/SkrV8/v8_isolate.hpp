@@ -19,15 +19,6 @@ namespace skr
 struct V8Context;
 struct V8Module;
 
-enum class EV8ConvertCase
-{
-    Create,      // create from script/ set/get global value
-    Field,       // set/get field value
-    StaticField, // set/get static field value
-    Param,       // set/get param value
-    Return,      // set/get return value
-};
-
 // clang-format off
 sreflect_struct(guid = "8aea5942-6e5c-4711-9502-83f252faa231")
 SKR_V8_API V8Isolate: IScriptMixinCore {

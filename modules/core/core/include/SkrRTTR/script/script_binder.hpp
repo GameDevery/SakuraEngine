@@ -1,4 +1,5 @@
 #pragma once
+#include "SkrRTTR/generic/generic_base.hpp"
 #include "SkrRTTR/script/stack_proxy.hpp"
 #include <SkrRTTR/type.hpp>
 #include <SkrCore/log.hpp>
@@ -139,11 +140,13 @@ struct StringViewStackProxy {
 //   - value
 //   - mapping
 //   - object
+//   - generic
 struct ScriptBinderPrimitive;
 struct ScriptBinderMapping;
 struct ScriptBinderObject;
 struct ScriptBinderEnum;
 struct ScriptBinderValue;
+struct ScriptBinderGeneric;
 struct ScriptBinderRoot {
     enum class EKind
     {
@@ -153,6 +156,7 @@ struct ScriptBinderRoot {
         Mapping,
         Object,
         Enum,
+        Generic,
     };
 
     // ctor
@@ -180,6 +184,11 @@ struct ScriptBinderRoot {
     inline ScriptBinderRoot(ScriptBinderValue* value)
         : _kind(EKind::Value)
         , _binder(value)
+    {
+    }
+    inline ScriptBinderRoot(ScriptBinderGeneric* generic)
+        : _kind(EKind::Generic)
+        , _binder(generic)
     {
     }
 
@@ -218,6 +227,7 @@ struct ScriptBinderRoot {
     inline bool  is_object() const { return _kind == EKind::Object; }
     inline bool  is_enum() const { return _kind == EKind::Enum; }
     inline bool  is_value() const { return _kind == EKind::Value; }
+    inline bool  is_generic() const { return _kind == EKind::Generic; }
 
     // binder getter
     inline ScriptBinderPrimitive* primitive() const
@@ -244,6 +254,11 @@ struct ScriptBinderRoot {
     {
         SKR_ASSERT(_kind == EKind::Value);
         return static_cast<ScriptBinderValue*>(_binder);
+    }
+    inline ScriptBinderGeneric* generic() const
+    {
+        SKR_ASSERT(_kind == EKind::Generic);
+        return static_cast<ScriptBinderGeneric*>(_binder);
     }
 
     // ops
@@ -277,7 +292,6 @@ struct ScriptBinderProperty;
 struct ScriptBinderStaticProperty;
 struct ScriptBinderParam;
 struct ScriptBinderReturn;
-// TODO. ScriptBinderNested，用于在实际类型转换时传递全量的信息
 
 //==================nested binders==================
 // nested binder, field & static field
@@ -394,6 +408,10 @@ struct ScriptBinderEnum {
 
     bool is_signed = false;
 };
+struct ScriptBinderGeneric {
+    RC<IGenericBase> generic = nullptr;
+    bool             failed  = false;
+};
 //==================root binders==================
 
 // function binder, used for call script function
@@ -414,6 +432,7 @@ enum class EScriptExportCase : uint8_t
     StaticField, // static field value
     Param,       // param value
     Return,      // return value
+    Iterator,    // generic iterator
 };
 
 // TODO. Generic type support
