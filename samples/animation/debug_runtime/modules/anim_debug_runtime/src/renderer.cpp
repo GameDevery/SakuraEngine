@@ -3,12 +3,90 @@
 // #include "AnimDebugRuntime/cube_geometry.h"
 #include "AnimDebugRuntime/bone_geometry.h"
 #include "SkrCore/memory/memory.h"
+#include <SkrAnim/ozz/skeleton.h>
+#include <SkrAnim/ozz/base/io/archive.h>
+#include <SkrAnim/ozz/skeleton_utils.h>
+#include <SkrAnim/ozz/local_to_model_job.h>
+#include <AnimDebugRuntime/util.h>
+#include <SkrAnim/ozz/base/containers/vector.h>
 
 namespace animd
 {
 
 LightingPushConstants   Renderer::lighting_data    = { 0, 0 };
 LightingCSPushConstants Renderer::lighting_cs_data = { { 0, 0 }, { 0, 0 } };
+
+void Renderer::read_anim()
+{
+
+    ozz::animation::Skeleton skeleton;
+
+    auto          filename = "D:/ws/data/assets/media/bin/ruby_skeleton.ozz";
+    ozz::io::File file(filename, "rb");
+    if (!file.opened())
+    {
+        SKR_LOG_ERROR(u8"Cannot open file %s.", filename);
+        return;
+    }
+
+    // deserialize
+    ozz::io::IArchive archive(&file);
+    // test archive
+    if (!archive.TestTag<ozz::animation::Skeleton>())
+    {
+        SKR_LOG_ERROR(u8"Archive doesn't contain the expected object type.");
+        return;
+    }
+    // Create Runtime Skeleton
+    archive >> skeleton;
+
+    SKR_LOG_INFO(u8"Skeleton loaded with %d joints.", skeleton.num_joints());
+
+    ozz::vector<ozz::math::Float4x4> prealloc_models_;
+    prealloc_models_.resize(skeleton.num_joints());
+    ozz::animation::LocalToModelJob job;
+    job.input    = skeleton.joint_rest_poses();
+    job.output   = ozz::make_span(prealloc_models_);
+    job.skeleton = &skeleton;
+    if (!job.Run())
+    {
+        SKR_LOG_ERROR(u8"Failed to run LocalToModelJob.");
+    }
+    _instance_count = skeleton.num_joints();
+    // _instance_count = 2;
+    _instance_data.resize(_instance_count, skr::float4x4::identity());
+
+    const auto resize_transform = skr::TransformF(skr::QuatF(skr::RotatorF()), skr::float3(1), skr::float3(0.1f));
+    const auto resize_matrix    = skr::transpose(resize_transform.to_matrix());
+    // _instance_data[1]    = *(skr_float4x4_t*)&matrix;
+
+    for (int i = 0; i < _instance_count; ++i)
+    {
+        // ozz::math::Float4x4 model_matrix = prealloc_models_[i];
+        // auto                mat          = animd::ozz2skr_float4x4(model_matrix);
+        auto mat       = skr::float4x4::identity();
+        auto parent_id = skeleton.joint_parents()[i];
+        if (parent_id < 0)
+        {
+            continue; // skip root joint
+        }
+
+        auto rest_pose        = ozz::animation::GetJointLocalRestPose(skeleton, i);
+        auto parent_rest_pose = ozz::animation::GetJointLocalRestPose(skeleton, parent_id);
+        auto transform        = skr::TransformF(
+            skr::QuatF(skr::RotatorF()),
+            skr::float3(parent_rest_pose.translation.x, parent_rest_pose.translation.y, parent_rest_pose.translation.z),
+            // skr::float3(rest_pose.scale.x, rest_pose.scale.y, rest_pose.scale.z)
+            skr::float3(1.0f)
+        );
+        auto matrix = skr::transpose(transform.to_matrix());
+
+        mat = skr::mul(mat, matrix);
+
+        _instance_data[i] = *(skr_float4x4_t*)&mat;
+        // _instance_data[i] = *(skr_float4x4_t*)&matrix;
+    }
+}
 
 void Renderer::create_api_objects()
 {
@@ -57,9 +135,6 @@ void Renderer::create_api_objects()
 }
 void Renderer::create_resources()
 {
-    // prerequist
-    // _instance_data data size done
-    // upload
     CGPUBufferDescriptor upload_buffer_desc = {};
     upload_buffer_desc.name                 = u8"UploadBuffer";
     upload_buffer_desc.flags                = CGPU_BCF_PERSISTENT_MAP_BIT;
@@ -102,7 +177,7 @@ void Renderer::create_resources()
     auto cpy_cmd   = cgpu_create_command_buffer(cmd_pool, &cmd_desc);
     {
         auto geom = BoneGeometry();
-        memcpy(upload_buffer->info->cpu_mapped_address, &geom, upload_buffer_desc.size);
+        memcpy(upload_buffer->info->cpu_mapped_address, &geom, sizeof(BoneGeometry));
     }
     cgpu_cmd_begin(cpy_cmd);
     CGPUBufferToBufferTransfer vb_cpy = {};
@@ -130,22 +205,8 @@ void Renderer::create_resources()
     ib_cpy.size       = sizeof(BoneGeometry::g_Indices);
     cgpu_cmd_transfer_buffer_to_buffer(cpy_cmd, &ib_cpy);
     // wvp
-    const auto transform = skr::TransformF(
-        skr::QuatF(skr::RotatorF()), skr::float3(0), skr::float3(1)
-    );
-    const auto matrix0 = skr::transpose(transform.to_matrix());
-    const auto matrix1 = skr::transpose(
-        skr::TransformF(
-            skr::QuatF(skr::RotatorF(30, 90, 0)), skr::float3(0), skr::float3(1)
-        )
-            .to_matrix()
-    );
-
-    _instance_data.world    = (skr_float4x4_t*)sakura_malloc(_instance_count * sizeof(skr_float4x4_t));
-    _instance_data.world[0] = *(skr_float4x4_t*)&matrix0;
-    _instance_data.world[1] = *(skr_float4x4_t*)&matrix1;
     {
-        memcpy((char8_t*)upload_buffer->info->cpu_mapped_address + sizeof(BoneGeometry) + sizeof(BoneGeometry::g_Indices), _instance_data.world, sizeof(skr_float4x4_t) * _instance_count);
+        memcpy((char8_t*)upload_buffer->info->cpu_mapped_address + sizeof(BoneGeometry) + sizeof(BoneGeometry::g_Indices), _instance_data.data(), sizeof(skr_float4x4_t) * _instance_count);
     }
 
     CGPUBufferToBufferTransfer istb_cpy = {};
@@ -413,7 +474,7 @@ void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, skr::re
         }
     );
     // camera
-    auto       eye          = skr::float4(0.f, 0.1f, -8.1f, 0.0f) /*eye*/;
+    auto       eye          = skr::float4(1.1f, 5.1f, -2.1f, 0.0f) /*eye*/;
     auto       view         = skr::float4x4::view_at(eye, skr::float4(0.f), skr::float4(skr::float3::up(), 0.f));
     const auto aspect_ratio = (float)BACK_BUFFER_WIDTH / (float)BACK_BUFFER_HEIGHT;
     auto       proj         = skr::float4x4::perspective_fov(
@@ -449,7 +510,6 @@ void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, skr::re
             const uint32_t offsets[5] = {
                 offsetof(BoneGeometry, g_Positions), offsetof(BoneGeometry, g_TexCoords),
                 offsetof(BoneGeometry, g_Normals), offsetof(BoneGeometry, g_Tangents),
-                // offsetof(animd::BoneGeometry::InstanceData, world)
                 0
             };
             cgpu_render_encoder_bind_index_buffer(stack.encoder, _index_buffer, sizeof(uint32_t), 0);
@@ -498,8 +558,6 @@ void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, skr::re
 
 void Renderer::finalize()
 {
-    // free instance data
-    sakura_free(_instance_data.world);
     // Free cgpu objects
     cgpu_free_buffer(_index_buffer);
     cgpu_free_buffer(_vertex_buffer);

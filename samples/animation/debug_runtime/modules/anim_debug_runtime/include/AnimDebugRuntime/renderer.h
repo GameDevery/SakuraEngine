@@ -48,6 +48,7 @@ public:
     ~Renderer() = default;
 
 public:
+    void read_anim();
     void create_api_objects();
     void create_resources();
     void create_gbuffer_pipeline();
@@ -113,8 +114,9 @@ private:
     uint32_t _width     = 1280;
     uint32_t _height    = 720;
 
-    size_t                     _instance_count = 2;
-    BoneGeometry::InstanceData _instance_data;
+    size_t _instance_count = 0;
+    // skr_float4x4_t* _instance_data  = nullptr; // instance data for each bone
+    skr::Vector<skr_float4x4_t> _instance_data; // instance data for each bone
 };
 
 } // namespace animd

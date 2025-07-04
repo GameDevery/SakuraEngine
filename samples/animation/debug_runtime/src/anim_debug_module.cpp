@@ -44,8 +44,13 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
     animd::Renderer renderer;
     SKR_LOG_INFO(u8"anim debug renderer created with backend: %s", gCGPUBackendNames[renderer.get_backend()]);
     renderer.set_aware_DPI(skr_runtime_is_dpi_aware());
+
+    // geometry
+    renderer.read_anim();
+
     renderer.create_api_objects();
     renderer.create_render_pipeline();
+    renderer.create_resources();
 
     auto device    = renderer.get_device();
     auto gfx_queue = renderer.get_gfx_queue();
@@ -84,7 +89,7 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
         ImGui::Sail::StyleColorsSail();
     }
 
-    renderer.create_resources();
+
     bool     show_demo_window = true;
     uint64_t frame_index      = 0;
     while (!imgui_backend.want_exit().comsume())

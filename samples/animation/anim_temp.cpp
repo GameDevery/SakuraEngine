@@ -8,11 +8,11 @@
 #include "SkrAnim/ozz/base/maths/simd_math.h"
 #include <iostream>
 #include <SkrAnim/ozz/skeleton.h>
-#include <string>
 #include <SkrAnim/ozz/base/io/archive.h>
 #include <SkrAnim/ozz/skeleton_utils.h>
 #include <SkrAnim/ozz/local_to_model_job.h>
 #include <SkrAnim/ozz/base/containers/vector.h>
+#include "SkrContainersDef/vector.hpp"
 #include <AnimDebugRuntime/util.h>
 
 int main(int argc, char** argv)
@@ -57,6 +57,7 @@ int main(int argc, char** argv)
     {
         return -1;
     }
+
     for (int i = 0; i < skeleton.num_joints(); ++i)
     {
         std::cout << "Joint " << i << ": " << skeleton.joint_names()[i] << std::endl;

@@ -15,6 +15,7 @@ skr_float4x4_t ozz2skr_float4x4(ozz::math::Float4x4 ozz_mat)
         model_data[2], model_data[6], model_data[10], model_data[14],
         model_data[3], model_data[7], model_data[11], model_data[15]
     };
+
     return skr_mat;
 }
 } // namespace animd
