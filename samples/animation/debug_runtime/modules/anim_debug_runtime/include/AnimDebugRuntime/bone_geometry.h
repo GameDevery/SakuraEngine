@@ -10,10 +10,8 @@ namespace animd
 
 struct BoneGeometry {
     struct InstanceData {
-        skr_float4x4_t world[2];
+        skr_float4x4_t* world;
     };
-    static InstanceData instance_data;
-
     inline static uint32_t _vector_to_snorm8(const skr::float4& v)
     {
         return skr::pack_snorm8(skr::normalize(v));

@@ -4,6 +4,7 @@
 #include "SkrBase/math.h"
 #include "SkrRT/resource/config_resource.h"
 #include "SkrRenderGraph/frontend/render_graph.hpp"
+#include "AnimDebugRuntime/bone_geometry.h"
 
 #ifndef __meta__
     #include "AnimDebugRuntime/renderer.generated.h" // IWYU pragma: export
@@ -58,11 +59,7 @@ public:
 
 public:
     // getters
-    CGPUDeviceId
-    get_device() const
-    {
-        return _device;
-    }
+    CGPUDeviceId   get_device() const { return _device; }
     ECGPUBackend   get_backend() const { return _backend; }
     CGPUInstanceId get_instance() const { return _instance; }
     CGPUAdapterId  get_adapter() const { return _adapter; }
@@ -115,6 +112,9 @@ private:
     bool     _aware_DPI = false;
     uint32_t _width     = 1280;
     uint32_t _height    = 720;
+
+    size_t                     _instance_count = 2;
+    BoneGeometry::InstanceData _instance_data;
 };
 
 } // namespace animd

@@ -2,14 +2,13 @@
 #include "common/utils.h"
 // #include "AnimDebugRuntime/cube_geometry.h"
 #include "AnimDebugRuntime/bone_geometry.h"
+#include "SkrCore/memory/memory.h"
 
 namespace animd
 {
 
 LightingPushConstants   Renderer::lighting_data    = { 0, 0 };
 LightingCSPushConstants Renderer::lighting_cs_data = { { 0, 0 }, { 0, 0 } };
-
-BoneGeometry::InstanceData BoneGeometry::instance_data = { skr_float4x4_t::identity() };
 
 void Renderer::create_api_objects()
 {
@@ -58,14 +57,16 @@ void Renderer::create_api_objects()
 }
 void Renderer::create_resources()
 {
+    // prerequist
+    // _instance_data data size done
     // upload
     CGPUBufferDescriptor upload_buffer_desc = {};
     upload_buffer_desc.name                 = u8"UploadBuffer";
     upload_buffer_desc.flags                = CGPU_BCF_PERSISTENT_MAP_BIT;
     upload_buffer_desc.descriptors          = CGPU_RESOURCE_TYPE_NONE;
     upload_buffer_desc.memory_usage         = CGPU_MEM_USAGE_CPU_ONLY;
-    // upload_buffer_desc.size                 = sizeof(CubeGeometry) + sizeof(CubeGeometry::g_Indices) + sizeof(CubeGeometry::InstanceData);
-    upload_buffer_desc.size = sizeof(BoneGeometry) + sizeof(BoneGeometry::g_Indices) + sizeof(BoneGeometry::instance_data);
+
+    upload_buffer_desc.size = sizeof(BoneGeometry) + sizeof(BoneGeometry::g_Indices) + _instance_count * sizeof(skr_float4x4_t);
     auto upload_buffer      = cgpu_create_buffer(_device, &upload_buffer_desc);
 
     CGPUBufferDescriptor vb_desc = {};
@@ -91,7 +92,7 @@ void Renderer::create_resources()
     inb_desc.flags                = CGPU_BCF_NONE;
     inb_desc.descriptors          = CGPU_RESOURCE_TYPE_VERTEX_BUFFER;
     inb_desc.memory_usage         = CGPU_MEM_USAGE_GPU_ONLY;
-    inb_desc.size                 = sizeof(BoneGeometry::instance_data);
+    inb_desc.size                 = _instance_count * sizeof(skr_float4x4_t);
 
     _instance_buffer = cgpu_create_buffer(_device, &inb_desc);
 
@@ -140,10 +141,11 @@ void Renderer::create_resources()
             .to_matrix()
     );
 
-    BoneGeometry::instance_data.world[0] = *(skr_float4x4_t*)&matrix0;
-    BoneGeometry::instance_data.world[1] = *(skr_float4x4_t*)&matrix1;
+    _instance_data.world    = (skr_float4x4_t*)sakura_malloc(_instance_count * sizeof(skr_float4x4_t));
+    _instance_data.world[0] = *(skr_float4x4_t*)&matrix0;
+    _instance_data.world[1] = *(skr_float4x4_t*)&matrix1;
     {
-        memcpy((char8_t*)upload_buffer->info->cpu_mapped_address + sizeof(BoneGeometry) + sizeof(BoneGeometry::g_Indices), &BoneGeometry::instance_data, sizeof(BoneGeometry::instance_data));
+        memcpy((char8_t*)upload_buffer->info->cpu_mapped_address + sizeof(BoneGeometry) + sizeof(BoneGeometry::g_Indices), _instance_data.world, sizeof(skr_float4x4_t) * _instance_count);
     }
 
     CGPUBufferToBufferTransfer istb_cpy = {};
@@ -151,7 +153,7 @@ void Renderer::create_resources()
     istb_cpy.dst_offset                 = 0;
     istb_cpy.src                        = upload_buffer;
     istb_cpy.src_offset                 = sizeof(BoneGeometry) + sizeof(BoneGeometry::g_Indices);
-    istb_cpy.size                       = sizeof(BoneGeometry::instance_data);
+    istb_cpy.size                       = _instance_count * sizeof(skr_float4x4_t);
     cgpu_cmd_transfer_buffer_to_buffer(cpy_cmd, &istb_cpy);
 
     // barriers
@@ -447,13 +449,14 @@ void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, skr::re
             const uint32_t offsets[5] = {
                 offsetof(BoneGeometry, g_Positions), offsetof(BoneGeometry, g_TexCoords),
                 offsetof(BoneGeometry, g_Normals), offsetof(BoneGeometry, g_Tangents),
-                offsetof(animd::BoneGeometry::InstanceData, world)
+                // offsetof(animd::BoneGeometry::InstanceData, world)
+                0
             };
             cgpu_render_encoder_bind_index_buffer(stack.encoder, _index_buffer, sizeof(uint32_t), 0);
             cgpu_render_encoder_bind_vertex_buffers(stack.encoder, 5, vertex_buffers, strides, offsets);
             cgpu_render_encoder_push_constants(stack.encoder, _gbuffer_pipeline->root_signature, u8"push_constants", &view_proj);
 
-            cgpu_render_encoder_draw_indexed_instanced(stack.encoder, 24, 0, 2, 0, 0);
+            cgpu_render_encoder_draw_indexed_instanced(stack.encoder, 24, 0, _instance_count, 0, 0);
         }
 
     );
@@ -495,6 +498,8 @@ void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, skr::re
 
 void Renderer::finalize()
 {
+    // free instance data
+    sakura_free(_instance_data.world);
     // Free cgpu objects
     cgpu_free_buffer(_index_buffer);
     cgpu_free_buffer(_vertex_buffer);

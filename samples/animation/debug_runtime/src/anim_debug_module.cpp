@@ -45,11 +45,11 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
     SKR_LOG_INFO(u8"anim debug renderer created with backend: %s", gCGPUBackendNames[renderer.get_backend()]);
     renderer.set_aware_DPI(skr_runtime_is_dpi_aware());
     renderer.create_api_objects();
-    // TODO: customize scene and resources
-    renderer.create_resources();
-    // create render graph
-    auto device       = renderer.get_device();
-    auto gfx_queue    = renderer.get_gfx_queue();
+    renderer.create_render_pipeline();
+
+    auto device    = renderer.get_device();
+    auto gfx_queue = renderer.get_gfx_queue();
+
     auto render_graph = skr::render_graph::RenderGraph::create(
         [&device, &gfx_queue](skr::render_graph::RenderGraphBuilder& builder) {
             builder.with_device(device)
@@ -58,8 +58,6 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
         }
     );
     // TODO: init profiler
-
-    // init imgui backend
     skr::ImGuiBackend            imgui_backend;
     skr::ImGuiRendererBackendRG* render_backend_rg = nullptr;
     {
@@ -86,10 +84,7 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
         ImGui::Sail::StyleColorsSail();
     }
 
-    {
-        renderer.create_render_pipeline();
-    }
-
+    renderer.create_resources();
     bool     show_demo_window = true;
     uint64_t frame_index      = 0;
     while (!imgui_backend.want_exit().comsume())
