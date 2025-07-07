@@ -62,6 +62,9 @@ namespace SB
 
             // Extract compile arguments using ArgumentDriver
             ExtractCompileArguments(Target, projectInfo);
+            
+            // Scan include directories for header files
+            ScanIncludeDirectories(Target, projectInfo);
 
             // Store project info for solution generation (must be done before generating project files)
             ProjectInfos.TryAdd(Target.Name, projectInfo);
@@ -94,6 +97,58 @@ namespace SB
             }
         }
 
+        private void ScanIncludeDirectories(Target Target, VSProjectInfo projectInfo)
+        {
+            // Get relative include paths that are within or below the target directory
+            var targetDir = Target.Directory;
+            var relevantIncludes = new List<string>();
+            
+            foreach (var includePath in projectInfo.IncludePaths)
+            {
+                var absolutePath = Path.IsPathFullyQualified(includePath) 
+                    ? includePath 
+                    : Path.GetFullPath(Path.Combine(targetDir, includePath));
+                
+                // Check if this include path is within or below the target directory
+                try
+                {
+                    var relativePath = Path.GetRelativePath(targetDir, absolutePath);
+                    if (!relativePath.StartsWith(".."))
+                    {
+                        relevantIncludes.Add(absolutePath);
+                    }
+                }
+                catch
+                {
+                    // Ignore paths that can't be made relative
+                }
+            }
+            
+            // Scan each relevant include directory for header files
+            var headerExtensions = new[] { ".h", ".hpp", ".hxx", ".inl", ".inc" };
+            foreach (var includeDir in relevantIncludes)
+            {
+                if (Directory.Exists(includeDir))
+                {
+                    try
+                    {
+                        var headers = Directory.GetFiles(includeDir, "*.*", SearchOption.AllDirectories)
+                            .Where(file => headerExtensions.Contains(Path.GetExtension(file).ToLower()))
+                            .Where(file => !projectInfo.HeaderFiles.Contains(file)); // Don't add duplicates
+                        
+                        foreach (var header in headers)
+                        {
+                            projectInfo.HeaderFiles.Add(header);
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        // Ignore directories that can't be accessed
+                    }
+                }
+            }
+        }
+        
         private void ExtractCompileArguments(Target Target, VSProjectInfo projectInfo)
         {
             // Create ArgumentDriver to extract compile settings
