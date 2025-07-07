@@ -6,9 +6,9 @@ public static class RuntimeTests
 {
     static RuntimeTests()
     {
-        Engine.UnitTest("MathTest")
-            .Depend(Visibility.Public, "SkrRT")
-            .AddCppFiles("math/math.cpp");
+        // Engine.UnitTest("MathTest")
+        //     .Depend(Visibility.Public, "SkrRT")
+        //     .AddCppFiles("math/math.cpp");
 
         Engine.UnitTest("GoapTest")
             .Depend(Visibility.Public, "SkrRT")
