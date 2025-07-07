@@ -85,10 +85,9 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
         // imgui_backend.enable_multi_viewport();
 
         // Apply Sail Style
-        ImGui::Sail::LoadFont(12.0f);
+        // ImGui::Sail::LoadFont(12.0f);
         ImGui::Sail::StyleColorsSail();
     }
-
 
     bool     show_demo_window = true;
     uint64_t frame_index      = 0;

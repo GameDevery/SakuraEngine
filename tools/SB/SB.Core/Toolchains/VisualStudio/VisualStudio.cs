@@ -149,16 +149,16 @@ namespace SB.Core
             var oldEnv = EnvReader.Load(oldEnvPath)!;
             VCEnvVariables = EnvReader.Load(newEnvPath)!;
             // Preprocess: cull old env variables
-            foreach (var oldVar in oldEnv)
-            {
-                if (VCEnvVariables.ContainsKey(oldVar.Key) && VCEnvVariables[oldVar.Key] == oldEnv[oldVar.Key])
-                    VCEnvVariables.Remove(oldVar.Key);
-            }
+            // foreach (var oldVar in oldEnv)
+            // {
+            //     if (VCEnvVariables.ContainsKey(oldVar.Key) && VCEnvVariables[oldVar.Key] == oldEnv[oldVar.Key])
+            //         VCEnvVariables.Remove(oldVar.Key);
+            // }
             // Preprocess: cull user env variables
             var vcPaths = VCEnvVariables["Path"]!.Split(';').ToHashSet();
             var oldPaths = oldEnv["Path"].Split(';').ToHashSet();
-            vcPaths.ExceptWith(oldPaths);
-            VCEnvVariables["Path"] = string.Join(";", vcPaths);
+            // vcPaths.ExceptWith(oldPaths);
+            // VCEnvVariables["Path"] = string.Join(";", vcPaths);
             // Preprocess: calculate include dir
             var OriginalIncludes = VCEnvVariables.TryGetValue("INCLUDE", out var V0) ? V0 : "";
             var VCVarsIncludes = VCEnvVariables.TryGetValue("__VSCMD_VCVARS_INCLUDE", out var V1) ? V1 : "";

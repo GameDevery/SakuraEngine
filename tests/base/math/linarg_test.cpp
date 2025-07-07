@@ -59,7 +59,7 @@ TEST_CASE("VectorOps")
         float3 v2{ 4.0f, 5.0f, 6.0f };
         float  dot_product = skr::math::dot(v1, v2);
         // expected result: 32.0f (1*4 + 2*5 + 3*6)
-        REQUIRE(dot_product == APPROX(32.0f));
+        REQUIRE(dot_product == approx(32.0f));
     }
 }
 
