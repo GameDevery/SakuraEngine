@@ -42,7 +42,7 @@ namespace SB
                 // Use dependency system to track changes
                 Engine.ConfigureNotAwareDepend.OnChanged(Target.Name, sourceFile, Name, (depend) =>
                 {
-                    Log.Information("Copying file {SourceFile} to {DestinationFile}", sourceFile, destinationFile);
+                    Log.Verbose("Copying file {SourceFile} to {DestinationFile}", sourceFile, destinationFile);
                     File.Copy(sourceFile, destinationFile, overwrite: true);
                     depend.ExternalFiles.Add(destinationFile);
                 }, new string[] { sourceFile }, new[] { destinationFile });
