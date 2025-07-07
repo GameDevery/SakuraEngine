@@ -2,6 +2,7 @@
 using System.Security.Cryptography;
 using System.Diagnostics;
 using SB.Core;
+using Serilog;
 
 namespace SB
 {
@@ -92,14 +93,13 @@ namespace SB
                             catch { }
                             Output = localOutput;
                             Error = "TimeOut";
+                            Log.Error("Process {ExecutablePath} with arguments {Arguments} timed out after {TimeoutMilliseconds} milliseconds.", ExecutablePath, Arguments, options.TimeoutMilliseconds);
                             return -1;
                         }
                     }
-                    else
-                    {
-                        P.WaitForExit();
-                    }
-
+                    // 在 .NET 中，当使用 BeginOutputReadLine() 和 BeginErrorReadLine() 时，输出是异步读取的。进程可能已经退出了，但异步读取线程可能还在处理缓冲区中的数据。
+                    // 需要在 WaitForExit(timeout) 返回 true 后，再调用无参数的 WaitForExit() 来确保所有异步读取操作完成：
+                    P.WaitForExit();
                     Output = localOutput;
                     Error = localError;
                     return P.ExitCode;
