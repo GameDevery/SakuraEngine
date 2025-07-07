@@ -27,6 +27,26 @@ namespace SB
 
     public class VSEmitter : TaskEmitter
     {
+        #region Constants
+        
+        // XML Namespaces and GUIDs
+        private const string VS_NAMESPACE = "http://schemas.microsoft.com/developer/msbuild/2003";
+        private const string CPP_PROJECT_GUID = "{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}";
+        private const string SOLUTION_FOLDER_GUID = "{2150E333-8FDC-42A3-9474-1A3956D46DE8}";
+        
+        // Build Configurations
+        private static readonly string[] Configurations = { "Debug", "Release" };
+        private static readonly string[] Platforms = { "x64", "Win32" };
+        
+        // File Extensions
+        private static readonly string[] SourceExtensions = { ".cpp", ".cc", ".c", ".m", ".mm" };
+        private static readonly string[] HeaderExtensions = { ".h", ".hpp", ".hxx", ".inl", ".inc" };
+        
+        // Compiler Settings
+        private static readonly string[] CompilerSettingKeys = { "CppVersion", "WarningLevel", "OptimizationLevel", "RTTI", "Exception" };
+        
+        #endregion
+
         public VSEmitter(IToolchain Toolchain) => this.Toolchain = Toolchain;
 
         public static string OutputDirectory { get; set; } = ".sb/VisualStudio";
@@ -83,53 +103,27 @@ namespace SB
             where T : FileList, new()
         {
             var fileList = Target.FileList<T>();
-            if (fileList != null)
+            if (fileList == null) return;
+            
+            foreach (var file in fileList.Files)
             {
-                foreach (var file in fileList.Files)
-                {
-                    var ext = Path.GetExtension(file).ToLower();
-                    var fullPath = Path.IsPathFullyQualified(file) 
-                        ? file 
-                        : Path.GetFullPath(Path.Combine(Target.Directory, file));
-                    
-                    if (ext == ".cpp" || ext == ".cc" || ext == ".c" || ext == ".m" || ext == ".mm")
-                    {
-                        projectInfo.SourceFiles.Add(fullPath);
-                    }
-                    else if (ext == ".h" || ext == ".hpp" || ext == ".hxx" || ext == ".inl")
-                    {
-                        projectInfo.HeaderFiles.Add(fullPath);
-                    }
-                }
+                var ext = Path.GetExtension(file).ToLower();
+                var fullPath = GetAbsolutePath(file, Target.Directory);
+                
+                if (SourceExtensions.Contains(ext))
+                    projectInfo.SourceFiles.Add(fullPath);
+                else if (HeaderExtensions.Contains(ext))
+                    projectInfo.HeaderFiles.Add(fullPath);
             }
         }
 
         private void ScanIncludeDirectories(Target Target, VSProjectInfo projectInfo)
         {
-            // Get relative include paths that are within or below the target directory
             var targetDir = Target.Directory;
-            var relevantIncludes = new List<string>();
-            
-            foreach (var includePath in projectInfo.IncludePaths)
-            {
-                var absolutePath = Path.IsPathFullyQualified(includePath) 
-                    ? includePath 
-                    : Path.GetFullPath(Path.Combine(targetDir, includePath));
-                
-                // Check if this include path is within or below the target directory
-                try
-                {
-                    var relativePath = Path.GetRelativePath(targetDir, absolutePath);
-                    if (!relativePath.StartsWith(".."))
-                    {
-                        relevantIncludes.Add(absolutePath);
-                    }
-                }
-                catch
-                {
-                    // Ignore paths that can't be made relative
-                }
-            }
+            var relevantIncludes = projectInfo.IncludePaths
+                .Select(path => Path.IsPathFullyQualified(path) ? path : Path.GetFullPath(Path.Combine(targetDir, path)))
+                .Where(path => IsSubdirectory(targetDir, path))
+                .ToList();
             
             // Create a normalized set of existing headers to avoid duplicates
             var normalizedExistingHeaders = new HashSet<string>(
@@ -137,7 +131,6 @@ namespace SB
                 StringComparer.OrdinalIgnoreCase);
             
             // Scan each relevant include directory for header files
-            var headerExtensions = new[] { ".h", ".hpp", ".hxx", ".inl", ".inc" };
             foreach (var includeDir in relevantIncludes)
             {
                 if (Directory.Exists(includeDir))
@@ -145,7 +138,7 @@ namespace SB
                     try
                     {
                         var headers = Directory.GetFiles(includeDir, "*.*", SearchOption.AllDirectories)
-                            .Where(file => headerExtensions.Contains(Path.GetExtension(file).ToLower()));
+                            .Where(file => HeaderExtensions.Contains(Path.GetExtension(file).ToLower()));
                         
                         foreach (var header in headers)
                         {
@@ -180,86 +173,26 @@ namespace SB
                 projectInfo.CompileArguments[kvp.Key] = kvp.Value;
             }
 
-            // Extract include directories from calculated arguments
-            if (calculatedArgs.TryGetValue("IncludeDirs", out var includeArgs) && includeArgs is string[] includes)
-            {
-                // Convert compiler flags back to paths (remove /I or -I prefix)
-                foreach (var inc in includes)
-                {
-                    var path = inc.StartsWith("/I") ? inc.Substring(2) : 
-                              inc.StartsWith("-I") ? inc.Substring(2) : inc;
-                    if (!string.IsNullOrWhiteSpace(path))
-                    {
-                        projectInfo.IncludePaths.Add(path.Trim('"'));
-                    }
-                }
-            }
-
-            // Extract preprocessor definitions from calculated arguments
-            if (calculatedArgs.TryGetValue("Defines", out var defineArgs) && defineArgs is string[] defines)
-            {
-                // Convert compiler flags back to defines (remove /D or -D prefix)
-                foreach (var def in defines)
-                {
-                    var define = def.StartsWith("/D") ? def.Substring(2) :
-                                def.StartsWith("-D") ? def.Substring(2) : def;
-                    if (!string.IsNullOrWhiteSpace(define))
-                    {
-                        projectInfo.Defines.Add(define);
-                    }
-                }
-            }
+            // Extract include directories and defines
+            ExtractFromArgs(calculatedArgs, "IncludeDirs", projectInfo.IncludePaths, "/I", "-I");
+            ExtractFromArgs(calculatedArgs, "Defines", projectInfo.Defines, "/D", "-D");
 
             // Extract compiler flags
-            var allFlags = new List<string>();
-            
-            // Add C++ specific flags
-            if (calculatedArgs.TryGetValue("CppFlags", out var cppFlags) && cppFlags is string[] cppFlagArray)
-            {
-                allFlags.AddRange(cppFlagArray);
-            }
-
-            // Add common C/C++ flags
-            if (calculatedArgs.TryGetValue("CXFlags", out var cxFlags) && cxFlags is string[] cxFlagArray)
-            {
-                allFlags.AddRange(cxFlagArray);
-            }
-
-            // Add other important compiler settings
-            foreach (var key in new[] { "CppVersion", "WarningLevel", "OptimizationLevel", "RTTI", "Exception" })
-            {
-                if (calculatedArgs.TryGetValue(key, out var value) && value is string[] valueArray)
-                {
-                    allFlags.AddRange(valueArray);
-                }
-            }
+            var allFlags = ExtractCompilerFlags(calculatedArgs);
 
             projectInfo.CompilerFlags.AddRange(allFlags);
         }
 
         private void GenerateVcxproj(Target Target, VSProjectInfo projectInfo)
         {
-            var ns = XNamespace.Get("http://schemas.microsoft.com/developer/msbuild/2003");
+            var ns = XNamespace.Get(VS_NAMESPACE);
             
             var project = new XElement(ns + "Project",
                 new XAttribute("DefaultTargets", "Build"),
                 new XAttribute("ToolsVersion", "15.0"));
 
             // Project configurations
-            var itemGroup = new XElement(ns + "ItemGroup",
-                new XAttribute("Label", "ProjectConfigurations"));
-
-            foreach (var config in new[] { "Debug", "Release" })
-            {
-                foreach (var platform in new[] { "x64", "Win32" })
-                {
-                    itemGroup.Add(new XElement(ns + "ProjectConfiguration",
-                        new XAttribute("Include", $"{config}|{platform}"),
-                        new XElement(ns + "Configuration", config),
-                        new XElement(ns + "Platform", platform)));
-                }
-            }
-            project.Add(itemGroup);
+            project.Add(CreateProjectConfigurations(ns));
 
             // Globals
             project.Add(new XElement(ns + "PropertyGroup",
@@ -269,24 +202,21 @@ namespace SB
                 new XElement(ns + "WindowsTargetPlatformVersion", "10.0")));
 
             // Import default props
-            project.Add(new XElement(ns + "Import",
-                new XAttribute("Project", @"$(VCTargetsPath)\Microsoft.Cpp.Default.props")));
+            project.Add(CreateImport(ns, @"$(VCTargetsPath)\Microsoft.Cpp.Default.props"));
 
             // Configuration properties
             ForEachConfiguration((config, platform) =>
             {
                 project.Add(CreatePropertyGroup(ns, config, platform, new[]
                 {
-                    ("ConfigurationType", GetConfigurationType(Target)),
+                    ("ConfigurationType", "Makefile"),
                     ("UseDebugLibraries", config == "Debug" ? "true" : "false"),
                     ("PlatformToolset", "v143"),
                     ("CharacterSet", "Unicode")
                 }, "Configuration"));
             });
 
-            // Import C++ props
-            project.Add(new XElement(ns + "Import",
-                new XAttribute("Project", @"$(VCTargetsPath)\Microsoft.Cpp.props")));
+            project.Add(CreateImport(ns, @"$(VCTargetsPath)\Microsoft.Cpp.props"));
 
             // Build customizations
             AddBuildCustomizations(project, ns, Target);
@@ -312,21 +242,13 @@ namespace SB
                             new XAttribute("Include", GetFileProjectPath(file, projectInfo))))));
             }
 
-            // Import targets
-            project.Add(new XElement(ns + "Import",
-                new XAttribute("Project", @"$(VCTargetsPath)\Microsoft.Cpp.targets")));
-
-            // Save project file
-            var doc = new XDocument(
-                new XDeclaration("1.0", "utf-8", null),
-                project);
-
-            doc.Save(projectInfo.ProjectPath);
+            project.Add(CreateImport(ns, @"$(VCTargetsPath)\Microsoft.Cpp.targets"));
+            SaveXmlDocument(project, projectInfo.ProjectPath);
         }
 
         private void GenerateVcxprojFilters(Target Target, VSProjectInfo projectInfo)
         {
-            var ns = XNamespace.Get("http://schemas.microsoft.com/developer/msbuild/2003");
+            var ns = XNamespace.Get(VS_NAMESPACE);
             var project = new XElement(ns + "Project", new XAttribute("ToolsVersion", "4.0"));
 
             // Create filter structure based on target directory hierarchy
@@ -351,29 +273,9 @@ namespace SB
                 }
             }
 
-            // Process source files
-            foreach (var file in projectInfo.SourceFiles)
-            {
-                var displayPath = GetFileDisplayPath(file, projectInfo);
-                var dir = Path.GetDirectoryName(displayPath)?.Replace('/', '\\') ?? "";
-                if (!string.IsNullOrEmpty(dir))
-                {
-                    CollectAllPaths(dir);
-                    sourceFilters[file] = dir;
-                }
-            }
-
-            // Process header files
-            foreach (var file in projectInfo.HeaderFiles)
-            {
-                var displayPath = GetFileDisplayPath(file, projectInfo);
-                var dir = Path.GetDirectoryName(displayPath)?.Replace('/', '\\') ?? "";
-                if (!string.IsNullOrEmpty(dir))
-                {
-                    CollectAllPaths(dir);
-                    headerFilters[file] = dir;
-                }
-            }
+            // Process source and header files
+            ProcessFiles(projectInfo.SourceFiles, projectInfo, sourceFilters, CollectAllPaths);
+            ProcessFiles(projectInfo.HeaderFiles, projectInfo, headerFilters, CollectAllPaths);
 
             // Create filters sorted by depth to ensure parents are created first
             if (filters.Any())
@@ -410,9 +312,7 @@ namespace SB
                             new XElement(ns + "Filter", kvp.Value)))));
             }
 
-            // Save filters file
-            var doc = new XDocument(project);
-            doc.Save(projectInfo.ProjectPath + ".filters");
+            SaveXmlDocument(project, projectInfo.ProjectPath + ".filters");
         }
 
         private void AddBuildCustomizations(XElement project, XNamespace ns, Target Target)
@@ -423,17 +323,7 @@ namespace SB
             var outDir = Path.GetDirectoryName(GetTargetOutputPath(Target));
             ForEachConfiguration((config, platform) =>
             {
-                project.Add(CreatePropertyGroup(ns, config, platform, new[]
-                {
-                    ("NMakeBuildCommandLine", $"cd \"{RootDirectory}\" && dotnet run SB build --target={Target.Name} --mode={config.ToLower()}"),
-                    ("NMakeReBuildCommandLine", $"cd \"{RootDirectory}\" && dotnet run SB clean && dotnet run SB build --target={Target.Name} --mode={config.ToLower()}"),
-                    ("NMakeCleanCommandLine", $"cd \"{RootDirectory}\" && dotnet run SB clean"),
-                    ("NMakeOutput", GetTargetOutputPath(Target)),
-                    ("OutDir", outDir + "\\"),
-                    ("IntDir", $"temp\\{Target.Name}\\{config}\\{platform}\\"),
-                    ("LocalDebuggerWorkingDirectory", outDir + "\\"),
-                    ("DebuggerFlavor", "WindowsLocalDebugger")
-                }));
+                project.Add(CreatePropertyGroup(ns, config, platform, GetNMakeProperties(Target, config, platform, outDir)));
             });
         }
 
@@ -506,7 +396,7 @@ namespace SB
             if (projectInfo.Defines.Any())
                 clCompile.Add(new XElement(ns + "PreprocessorDefinitions", string.Join(";", projectInfo.Defines) + ";%(PreprocessorDefinitions)"));
             if (projectInfo.CompileArguments.TryGetValue("CppVersion", out var cppVersion) && cppVersion != null)
-                clCompile.Add(new XElement(ns + "LanguageStandard", MapCppStandard(cppVersion.ToString())));
+                clCompile.Add(new XElement(ns + "LanguageStandard", MapCppStandard(cppVersion.ToString() ?? "")));
             if (forcedIncludes.Any())
             {
                 var relativeForced = forcedIncludes.Select(inc => Path.IsPathFullyQualified(inc) ? GetRelativePath(projectDir, inc) : inc);
@@ -560,12 +450,6 @@ namespace SB
             return clCompile;
         }
 
-        private string GetConfigurationType(Target Target)
-        {
-            // Always use Makefile to prevent VS from running native compilation
-            // All actual compilation is handled by SB build system
-            return "Makefile";
-        }
 
         private string GetTargetOutputPath(Target Target)
         {
@@ -597,23 +481,18 @@ namespace SB
         // Helper methods
         private void ForEachConfiguration(Action<string, string> action)
         {
-            foreach (var config in new[] { "Debug", "Release" })
-                foreach (var platform in new[] { "x64", "Win32" })
+            foreach (var config in Configurations)
+                foreach (var platform in Platforms)
                     action(config, platform);
         }
         
-        private XElement CreatePropertyGroup(XNamespace ns, string config, string platform, IEnumerable<(string key, string value)> properties)
+        private XElement CreatePropertyGroup(XNamespace ns, string config, string platform, IEnumerable<(string key, string value)> properties, string? label = null)
         {
             var group = new XElement(ns + "PropertyGroup", new XAttribute("Condition", $"'$(Configuration)|$(Platform)'=='{config}|{platform}'"));
+            if (label != null)
+                group.SetAttributeValue("Label", label);
             foreach (var (key, value) in properties)
                 group.Add(new XElement(ns + key, value));
-            return group;
-        }
-        
-        private XElement CreatePropertyGroup(XNamespace ns, string config, string platform, IEnumerable<(string key, string value)> properties, string label)
-        {
-            var group = CreatePropertyGroup(ns, config, platform, properties);
-            group.SetAttributeValue("Label", label);
             return group;
         }
         
@@ -675,36 +554,19 @@ namespace SB
 
         private string GetRelativePath(string basePath, string fullPath)
         {
-            // Validate inputs
-            if (string.IsNullOrEmpty(basePath) || string.IsNullOrEmpty(fullPath))
-            {
-                return fullPath ?? "";
-            }
-
-            // Normalize paths
-            basePath = Path.GetFullPath(basePath);
-            fullPath = Path.GetFullPath(fullPath);
-
+            var relativePath = GetSafeRelativePath(basePath, fullPath);
+            
             // Handle case where paths are on different drives (Windows)
-            if (Path.GetPathRoot(basePath) != Path.GetPathRoot(fullPath))
+            if (!string.IsNullOrEmpty(basePath) && !string.IsNullOrEmpty(fullPath))
             {
-                return fullPath;
+                basePath = Path.GetFullPath(basePath);
+                fullPath = Path.GetFullPath(fullPath);
+                if (Path.GetPathRoot(basePath) != Path.GetPathRoot(fullPath))
+                    return fullPath;
             }
-
-            try
-            {
-                var baseUri = new Uri(basePath.EndsWith(Path.DirectorySeparatorChar.ToString()) 
-                    ? basePath 
-                    : basePath + Path.DirectorySeparatorChar);
-                var fullUri = new Uri(fullPath);
-                var relativeUri = baseUri.MakeRelativeUri(fullUri);
-                return Uri.UnescapeDataString(relativeUri.ToString()).Replace('/', Path.DirectorySeparatorChar);
-            }
-            catch (Exception)
-            {
-                // If URI creation fails, fall back to returning the full path
-                return fullPath;
-            }
+            
+            // Convert forward slashes to backslashes for consistency
+            return relativePath.Replace('/', Path.DirectorySeparatorChar);
         }
 
         public static void GenerateSolution(string solutionPath, string solutionName)
@@ -719,28 +581,14 @@ namespace SB
             var sb = new StringBuilder();
             
             // Solution header
-            sb.AppendLine("Microsoft Visual Studio Solution File, Format Version 12.00");
-            sb.AppendLine("# Visual Studio Version 17");
-            sb.AppendLine("VisualStudioVersion = 17.0.31903.59");
-            sb.AppendLine("MinimumVisualStudioVersion = 10.0.40219.1");
+            WriteSolutionHeader(sb);
 
             // Group projects by folder path and create nested folder structure
             var folderGuids = new Dictionary<string, string>();
             var allFolderPaths = new HashSet<string>();
             
             // Collect all folder paths and their parent paths
-            foreach (var projectInfo in ProjectInfos.Values)
-            {
-                if (!string.IsNullOrEmpty(projectInfo.FolderPath))
-                {
-                    var parts = projectInfo.FolderPath.Split('\\');
-                    for (int i = 1; i <= parts.Length; i++)
-                    {
-                        var path = string.Join("\\", parts.Take(i));
-                        allFolderPaths.Add(path);
-                    }
-                }
-            }
+            CollectFolderPaths(allFolderPaths);
             
             // Sort paths by depth to ensure parents are created before children
             var sortedPaths = allFolderPaths.OrderBy(p => p.Count(c => c == '\\')).ThenBy(p => p);
@@ -753,8 +601,7 @@ namespace SB
                 
                 var folderName = folderPath.Split('\\').Last();
                 
-                // Solution folder project type GUID is {2150E333-8FDC-42A3-9474-1A3956D46DE8}
-                sb.AppendLine($"Project(\"{{2150E333-8FDC-42A3-9474-1A3956D46DE8}}\") = \"{folderName}\", \"{folderName}\", \"{folderGuid}\"");
+                sb.AppendLine($"Project(\"{SOLUTION_FOLDER_GUID}\") = \"{folderName}\", \"{folderName}\", \"{folderGuid}\"");
                 sb.AppendLine("EndProject");
             }
 
@@ -764,42 +611,16 @@ namespace SB
                 var name = kvp.Key;
                 var info = kvp.Value;
                 
-                // Calculate relative path safely
-                string relativePath;
-                try
-                {
-                    if (string.IsNullOrEmpty(solutionDir) || string.IsNullOrEmpty(info.ProjectPath))
-                    {
-                        relativePath = info.ProjectPath;
-                    }
-                    else
-                    {
-                        solutionDir = Path.GetFullPath(solutionDir);
-                        var projectPath = Path.GetFullPath(info.ProjectPath);
-                        relativePath = Path.GetRelativePath(solutionDir, projectPath);
-                    }
-                }
-                catch (Exception)
-                {
-                    relativePath = info.ProjectPath;
-                }
+                var relativePath = GetSafeRelativePath(solutionDir, info.ProjectPath);
                 
-                sb.AppendLine($"Project(\"{{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}}\") = \"{name}\", \"{relativePath}\", \"{info.ProjectGuid}\"");
+                sb.AppendLine($"Project(\"{CPP_PROJECT_GUID}\") = \"{name}\", \"{relativePath}\", \"{info.ProjectGuid}\"");
                 sb.AppendLine("EndProject");
             }
 
             sb.AppendLine("Global");
             
             // Solution configurations
-            sb.AppendLine("\tGlobalSection(SolutionConfigurationPlatforms) = preSolution");
-            foreach (var config in new[] { "Debug", "Release" })
-            {
-                foreach (var platform in new[] { "x64", "Win32" })
-                {
-                    sb.AppendLine($"\t\t{config}|{platform} = {config}|{platform}");
-                }
-            }
-            sb.AppendLine("\tEndGlobalSection");
+            WriteSolutionConfigurations(sb);
 
             // Project configurations
             sb.AppendLine("\tGlobalSection(ProjectConfigurationPlatforms) = postSolution");
@@ -853,5 +674,173 @@ namespace SB
 
         private IToolchain Toolchain { get; }
         private static ConcurrentDictionary<string, VSProjectInfo> ProjectInfos = new();
+
+        // Additional helper methods
+        private void ExtractFromArgs(Dictionary<string, string[]> args, string key, List<string> destination, params string[] prefixes)
+        {
+            if (args.TryGetValue(key, out var items))
+            {
+                destination.AddRange(
+                    items.Select(item => StripPrefixes(item, prefixes))
+                         .Where(processed => !string.IsNullOrWhiteSpace(processed))
+                         .Select(processed => processed.Trim('"'))
+                );
+            }
+        }
+
+        private string StripPrefixes(string value, params string[] prefixes)
+        {
+            foreach (var prefix in prefixes)
+            {
+                if (value.StartsWith(prefix))
+                    return value.Substring(prefix.Length);
+            }
+            return value;
+        }
+
+        private XElement CreateImport(XNamespace ns, string project)
+        {
+            return new XElement(ns + "Import", new XAttribute("Project", project));
+        }
+
+        private void SaveXmlDocument(XElement root, string path)
+        {
+            var doc = new XDocument(new XDeclaration("1.0", "utf-8", null), root);
+            doc.Save(path);
+        }
+
+        private static string GetSafeRelativePath(string? basePath, string? fullPath)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(basePath) || string.IsNullOrEmpty(fullPath))
+                    return fullPath ?? "";
+                    
+                basePath = Path.GetFullPath(basePath);
+                fullPath = Path.GetFullPath(fullPath);
+                return Path.GetRelativePath(basePath, fullPath);
+            }
+            catch (Exception)
+            {
+                return fullPath ?? "";
+            }
+        }
+
+        private void ProcessFiles(HashSet<string> files, VSProjectInfo projectInfo, Dictionary<string, string> filters, Action<string> collectAction)
+        {
+            foreach (var file in files)
+            {
+                var displayPath = GetFileDisplayPath(file, projectInfo);
+                var dir = Path.GetDirectoryName(displayPath)?.Replace('/', '\\') ?? "";
+                if (!string.IsNullOrEmpty(dir))
+                {
+                    collectAction(dir);
+                    filters[file] = dir;
+                }
+            }
+        }
+
+        private List<string> ExtractCompilerFlags(Dictionary<string, string[]> calculatedArgs)
+        {
+            var allFlags = new List<string>();
+            var flagKeys = new[] { "CppFlags", "CXFlags" }.Concat(CompilerSettingKeys);
+            
+            foreach (var key in flagKeys)
+            {
+                if (calculatedArgs.TryGetValue(key, out var flags))
+                {
+                    allFlags.AddRange(flags);
+                }
+            }
+            
+            return allFlags;
+        }
+
+        private bool IsSubdirectory(string baseDir, string potentialSubDir)
+        {
+            try
+            {
+                var relativePath = Path.GetRelativePath(baseDir, potentialSubDir);
+                return !relativePath.StartsWith("..");
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static void WriteSolutionHeader(StringBuilder sb)
+        {
+            sb.AppendLine("Microsoft Visual Studio Solution File, Format Version 12.00");
+            sb.AppendLine("# Visual Studio Version 17");
+            sb.AppendLine("VisualStudioVersion = 17.0.31903.59");
+            sb.AppendLine("MinimumVisualStudioVersion = 10.0.40219.1");
+        }
+
+        private static void WriteSolutionConfigurations(StringBuilder sb)
+        {
+            sb.AppendLine("\tGlobalSection(SolutionConfigurationPlatforms) = preSolution");
+            foreach (var config in Configurations)
+            {
+                foreach (var platform in Platforms)
+                {
+                    sb.AppendLine($"\t\t{config}|{platform} = {config}|{platform}");
+                }
+            }
+            sb.AppendLine("\tEndGlobalSection");
+        }
+
+        private static void CollectFolderPaths(HashSet<string> allFolderPaths)
+        {
+            foreach (var projectInfo in ProjectInfos.Values)
+            {
+                if (!string.IsNullOrEmpty(projectInfo.FolderPath))
+                {
+                    var parts = projectInfo.FolderPath.Split('\\');
+                    for (int i = 1; i <= parts.Length; i++)
+                    {
+                        allFolderPaths.Add(string.Join("\\", parts.Take(i)));
+                    }
+                }
+            }
+        }
+
+        private (string, string)[] GetNMakeProperties(Target target, string config, string platform, string outDir)
+        {
+            return new[]
+            {
+                ("NMakeBuildCommandLine", $"cd \"{RootDirectory}\" && dotnet run SB build --target={target.Name} --mode={config.ToLower()}"),
+                ("NMakeReBuildCommandLine", $"cd \"{RootDirectory}\" && dotnet run SB clean && dotnet run SB build --target={target.Name} --mode={config.ToLower()}"),
+                ("NMakeCleanCommandLine", $"cd \"{RootDirectory}\" && dotnet run SB clean"),
+                ("NMakeOutput", GetTargetOutputPath(target)),
+                ("OutDir", outDir + "\\"),
+                ("IntDir", $"temp\\{target.Name}\\{config}\\{platform}\\"),
+                ("LocalDebuggerWorkingDirectory", outDir + "\\"),
+                ("DebuggerFlavor", "WindowsLocalDebugger")
+            };
+        }
+
+        private XElement CreateProjectConfigurations(XNamespace ns)
+        {
+            var itemGroup = new XElement(ns + "ItemGroup",
+                new XAttribute("Label", "ProjectConfigurations"));
+
+            foreach (var config in Configurations)
+            {
+                foreach (var platform in Platforms)
+                {
+                    itemGroup.Add(new XElement(ns + "ProjectConfiguration",
+                        new XAttribute("Include", $"{config}|{platform}"),
+                        new XElement(ns + "Configuration", config),
+                        new XElement(ns + "Platform", platform)));
+                }
+            }
+            return itemGroup;
+        }
+
+        private string GetAbsolutePath(string path, string baseDir)
+        {
+            return Path.IsPathFullyQualified(path) ? path : Path.GetFullPath(Path.Combine(baseDir, path));
+        }
     }
 }
