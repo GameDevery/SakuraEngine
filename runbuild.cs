@@ -201,7 +201,11 @@ public class TestCommand : CommandBase
         {
             Stopwatch sw = Stopwatch.StartNew();
             Log.Information("Running test target {TargetName}", program.Target.Name);
-            var result = BuildSystem.RunProcess(program.TargetFile, "", out var output, out var error, null, Path.GetDirectoryName(program.TargetFile));
+            ProcessOptions Options = new ProcessOptions
+            {
+                WorkingDirectory = Path.GetDirectoryName(program.TargetFile)
+            };
+            var result = BuildSystem.RunProcess(program.TargetFile, "", out var output, out var error, Options);
             sw.Stop();
             float Seconds = sw.ElapsedMilliseconds / 1000.0f;
             if (result != 0)

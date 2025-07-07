@@ -1,4 +1,5 @@
 using Serilog;
+using System.Diagnostics;
 using System.Text.RegularExpressions;
 
 namespace SB.Core
@@ -15,7 +16,14 @@ namespace SB.Core
             if (!File.Exists(ExePath))
                 throw new ArgumentException($"ClangCLCompiler: ExePath: {ExePath} is not an existed absolute path!");
 
-            int ExitCode = BuildSystem.RunProcess(ExePath, "--version", out var Output, out var Error, VCEnvVariables);
+           ProcessOptions Options = new ProcessOptions
+            {
+                Environment = VCEnvVariables,
+                WorkingDirectory = null,
+                EnableTimeout = true,
+                TimeoutMilliseconds = 20 * 60 * 1000 // 20 minutes
+            };
+            int ExitCode = BuildSystem.RunProcess(ExePath, "--version", out var Output, out var Error, Options);
             if (ExitCode == 0)
             {
                 Regex pattern = new Regex(@"\d+(\.\d+)+");
@@ -49,7 +57,12 @@ namespace SB.Core
             var ObjectFile = TryGet(Driver.Arguments, "Object") ?? TryGet(Driver.Arguments, "PCHObject");
             var Changed = BS.CppCompileDepends(Target).OnChanged(Target.Name, FileToCompile!, Emitter.Name, (Depend depend) =>
             {
-                int ExitCode = BuildSystem.RunProcess(ExecutablePath, String.Join(" ", CompilerArgsList), out var OutputInfo, out var ErrorInfo, VCEnvVariables, WorkDirectory);
+                ProcessOptions Options = new ProcessOptions
+                {
+                    Environment = VCEnvVariables,
+                    WorkingDirectory = WorkDirectory
+                };
+                int ExitCode = BuildSystem.RunProcess(ExecutablePath, String.Join(" ", CompilerArgsList), out var OutputInfo, out var ErrorInfo, Options);
                 if (ExitCode != 0)
                 {
                     throw new TaskFatalError($"Compile {FileToCompile} failed with fatal error!", $"clang-cl.exe: {ErrorInfo}");

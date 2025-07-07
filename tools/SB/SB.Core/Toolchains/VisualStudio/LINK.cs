@@ -56,7 +56,14 @@ namespace SB.Core
                 {
                     Arguments = $"{TargetTypeArg} {String.Join(" ", LinkerArgsList)}";
                 }
-                int ExitCode = BuildSystem.RunProcess(ExePath, Arguments, out var OutputInfo, out var ErrorInfo, VCEnvVariables);
+                ProcessOptions Options = new ProcessOptions
+                {
+                    Environment = VCEnvVariables,
+                    WorkingDirectory = null,
+                    EnableTimeout = true,
+                    TimeoutMilliseconds = 20 * 60 * 1000 // 20 minutes
+                };
+                int ExitCode = BuildSystem.RunProcess(ExePath, Arguments, out var OutputInfo, out var ErrorInfo, Options);
                 if (ResponseFile != "")
                 {
                     File.Delete(ResponseFile);

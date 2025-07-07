@@ -40,7 +40,14 @@ namespace SB.Core
             var ObjectFile = Driver.Arguments["Object"] as string;
             var Changed = BS.CppCompileDepends(Target).OnChanged(Target.Name, SourceFile!, Emitter.Name, (Depend depend) =>
             {
-                int ExitCode = BuildSystem.RunProcess(ExecutablePath, String.Join(" ", CompilerArgsList), out var OutputInfo, out var ErrorInfo, null, WorkDirectory);
+                ProcessOptions Options = new ProcessOptions
+                {
+                    Environment = null,
+                    WorkingDirectory = WorkDirectory,
+                    EnableTimeout = true,
+                    TimeoutMilliseconds = 20 * 60 * 1000 // 20 minutes
+                };
+                int ExitCode = BuildSystem.RunProcess(ExecutablePath, String.Join(" ", CompilerArgsList), out var OutputInfo, out var ErrorInfo, Options);
                 if (ExitCode != 0)
                 {
                     throw new TaskFatalError($"Compile {SourceFile} failed with fatal error!", $"apple-clang: {ErrorInfo}");

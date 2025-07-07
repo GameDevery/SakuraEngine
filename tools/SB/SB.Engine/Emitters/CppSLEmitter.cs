@@ -28,8 +28,11 @@ namespace SB
                     SourceFile
                 };
 
-                int ExitCode = BuildSystem.RunProcess(Executable, string.Join(" ", Arguments), out var Output, out var Error,
-                    WorkingDirectory: OutputDirectory);
+                ProcessOptions Options = new ProcessOptions
+                {
+                    WorkingDirectory = OutputDirectory
+                };
+                int ExitCode = BuildSystem.RunProcess(Executable, string.Join(" ", Arguments), out var Output, out var Error, Options);
                 if (ExitCode != 0)
                 {
                     throw new TaskFatalError($"Compile CppSL for {SourceFile} failed with fatal error!", $"CppSLCompiler.exe: {Error}");
