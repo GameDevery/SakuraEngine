@@ -32,7 +32,15 @@ namespace SB.Core
             if (!File.Exists(ExePath))
                 throw new ArgumentException($"CLCompiler: ExePath: {ExePath} is not an existed absolute path!");
 
-            BuildSystem.RunProcess(ExePath, "", out var Output, out var Error, VCEnvVariables);
+            ProcessOptions Options = new ProcessOptions
+            {
+                Environment = VCEnvVariables,
+                WorkingDirectory = null,
+                EnableTimeout = true,
+                TimeoutMilliseconds = 20 * 60 * 1000 // 20 minutes
+            };
+            BuildSystem.RunProcess(ExePath, "", out var Output, out var Error, Options);
+            Log.Verbose("cl.exe output: {Error}", Error);
             Regex pattern = new Regex(@"\d+(\.\d+)+");
             // FUCK YOU MICROSOFT THIS IS WEIRD, WHY YOU DUMP VERSION THROUGH STDERR
             CLVersion = Version.Parse(pattern.Match(Error).Value);
@@ -58,7 +66,14 @@ namespace SB.Core
             var Changed = BS.CppCompileDepends(Target).OnChanged(Target.Name, SourceFile!, Emitter.Name, (Depend depend) =>
             {
                 var Args = String.Join(" ", CompilerArgsList);
-                int ExitCode = BuildSystem.RunProcess(ExecutablePath, Args, out var OutputInfo, out var ErrorInfo, VCEnvVariables, WorkDirectory);
+                ProcessOptions Options = new ProcessOptions
+                {
+                    Environment = VCEnvVariables,
+                    WorkingDirectory = WorkDirectory,
+                    EnableTimeout = true,
+                    TimeoutMilliseconds = 20 * 60 * 1000 // 20 minutes
+                };
+                int ExitCode = BuildSystem.RunProcess(ExecutablePath, Args, out var OutputInfo, out var ErrorInfo, Options);
 
                 var BYTES = Encoding.Default.GetBytes(OutputInfo);
                 OutputInfo = Encoding.UTF8.GetString(BYTES);

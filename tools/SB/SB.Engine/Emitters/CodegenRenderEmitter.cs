@@ -64,7 +64,7 @@ namespace SB
 
                 var EXE = Path.Combine(CodegenDoctor.Installation!.Result, BS.HostOS == OSPlatform.Windows ? "bun.exe" : "bun");
                 
-                var ExitCode = BS.RunProcess(EXE, $"{GenerateScript} {ParamFile}", out var OutputInfo, out var ErrorInfo, null);
+                var ExitCode = BS.RunProcess(EXE, $"{GenerateScript} {ParamFile}", out var OutputInfo, out var ErrorInfo);
                 if (ExitCode != 0)
                 {
                     throw new TaskFatalError($"Codegen render {Target.Name} failed with fatal error!", $"bun.exe: {ErrorInfo}");
@@ -122,16 +122,26 @@ namespace SB
             Installation = Install.Tool("bun_1.2.5");
             Installation.Wait();
             var EXE = Path.Combine(Installation!.Result, BS.HostOS == OSPlatform.Windows ? "bun.exe" : "bun");
-            if (BuildSystem.RunProcess(EXE, $"install", out var Output, out var Error, null, Path.Combine(Engine.EngineDirectory, "tools/meta_codegen_ts")) != 0)
+
+            ProcessOptions Options = new ProcessOptions
+            {
+                WorkingDirectory = Path.Combine(Engine.EngineDirectory, "tools/meta_codegen_ts"),
+                EnableTimeout = true,
+                TimeoutMilliseconds = 30 * 60 * 1000 // 30 minutes
+            };
+            if (BuildSystem.RunProcess(EXE, $"install", out var Output, out var Error, Options) != 0)
             {
                 Log.Fatal("bun install failed!\n{Output}\n{Error}", Output, Error);
                 return false;
             }
-            if (BuildSystem.RunProcess(EXE, $"install", out var Output2, out var Error2, null, Path.Combine(Engine.EngineDirectory, "tools/merge_natvis_ts")) != 0)
+
+            Options.WorkingDirectory = Path.Combine(Engine.EngineDirectory, "tools/merge_natvis_ts");
+            if (BuildSystem.RunProcess(EXE, $"install", out var Output2, out var Error2, Options) != 0)
             {
                 Log.Fatal("bun install failed!\n{Output2}\n{Error2}", Output2, Error2);
                 return false;
             }
+
             return true;
         }
         public bool Fix() 

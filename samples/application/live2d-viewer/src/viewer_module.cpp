@@ -301,7 +301,7 @@ int SLive2DViewerModule::main_module_exec(int argc, char8_t** argv)
         {
             SkrZoneScopedN("ImGUIUpdate");
             ImGui::Begin("Live2DViewer");
-#ifdef _DEBUG
+#if !SKR_SHIPPING
             ImGui::Text("Debug Build");
 #else
             ImGui::Text("Shipping Build");

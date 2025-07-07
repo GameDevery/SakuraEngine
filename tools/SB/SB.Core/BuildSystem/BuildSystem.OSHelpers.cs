@@ -2,10 +2,22 @@
 using System.Security.Cryptography;
 using System.Diagnostics;
 using SB.Core;
+using Serilog;
 
 namespace SB
 {
     using BS = BuildSystem;
+
+    public struct ProcessOptions
+    {
+        public Dictionary<string, string?>? Environment { get; set; } = null;
+        public string? WorkingDirectory { get; set; } = null;
+        public bool EnableTimeout { get; set; } = false;
+        public int TimeoutMilliseconds { get; set; } = 20 * 60 * 1000; // Default to 20 minutes
+        public static Lazy<ProcessOptions> Default => new(() => new ProcessOptions());
+        public ProcessOptions() { }
+    }
+    
     public partial class BuildSystem
     {
         public static string GetUniqueTempFileName(string File, string Hint, string Extension, IEnumerable<string>? Args = null)
@@ -18,7 +30,12 @@ namespace SB
         public static bool CheckPath(string P, bool MustExist) => Path.IsPathFullyQualified(P) && (!MustExist || Directory.Exists(P));
         public static bool CheckFile(string P, bool MustExist) => Path.IsPathFullyQualified(P) && (!MustExist || File.Exists(P));
 
-        public static int RunProcess(string ExecutablePath, string Arguments, out string Output, out string Error, Dictionary<string, string?>? Env = null, string? WorkingDirectory = null)
+        public static int RunProcess(string ExecutablePath, string Arguments, out string Output, out string Error)
+        {
+            return RunProcess(ExecutablePath, Arguments, out Output, out Error, ProcessOptions.Default.Value);
+        }
+
+        public static int RunProcess(string ExecutablePath, string Arguments, out string Output, out string Error, ProcessOptions options)
         {
             using (Profiler.BeginZone($"RunProcess", color: (uint)Profiler.ColorType.Yellow1))
             {
@@ -42,18 +59,18 @@ namespace SB
                             CreateNoWindow = false,
                             UseShellExecute = false,
                             Arguments = Arguments,
-                            WorkingDirectory = Directory.GetParent(ExecutablePath)!.FullName
+                            WorkingDirectory = options.WorkingDirectory ?? Directory.GetParent(ExecutablePath)!.FullName
                         }
                     };
-                    if (WorkingDirectory is not null)
-                        P.StartInfo.WorkingDirectory = WorkingDirectory;
-                    if (Env is not null)
+
+                    if (options.Environment is not null)
                     {
-                        foreach (var kvp in Env)
+                        foreach (var kvp in options.Environment)
                         {
                             P.StartInfo.Environment.Add(kvp.Key, kvp.Value);
                         }
                     }
+
                     string localOutput = string.Empty;
                     string localError = string.Empty;
                     P.OutputDataReceived += (sender, e) => { if (e.Data is not null) localOutput += e.Data + "\n"; };
@@ -61,6 +78,27 @@ namespace SB
                     P.Start();
                     P.BeginOutputReadLine();
                     P.BeginErrorReadLine();
+
+                    bool exited;
+                    if (options.EnableTimeout)
+                    {
+                        exited = P.WaitForExit(options.TimeoutMilliseconds);
+                        if (!exited)
+                        {
+                            // 超时处理
+                            try
+                            {
+                                P.Kill(true); // Kill process and all child processes
+                            }
+                            catch { }
+                            Output = localOutput;
+                            Error = "TimeOut";
+                            Log.Error("Process {ExecutablePath} with arguments {Arguments} timed out after {TimeoutMilliseconds} milliseconds.", ExecutablePath, Arguments, options.TimeoutMilliseconds);
+                            return -1;
+                        }
+                    }
+                    // 在 .NET 中，当使用 BeginOutputReadLine() 和 BeginErrorReadLine() 时，输出是异步读取的。进程可能已经退出了，但异步读取线程可能还在处理缓冲区中的数据。
+                    // 需要在 WaitForExit(timeout) 返回 true 后，再调用无参数的 WaitForExit() 来确保所有异步读取操作完成：
                     P.WaitForExit();
                     Output = localOutput;
                     Error = localError;
