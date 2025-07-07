@@ -15,6 +15,7 @@ namespace SB
     {
         public string ProjectPath { get; set; } = "";
         public string ProjectGuid { get; set; } = "";
+        public string TargetDirectory { get; set; } = "";
         public HashSet<string> SourceFiles { get; } = new();
         public HashSet<string> HeaderFiles { get; } = new();
         public Dictionary<string, object?> CompileArguments { get; } = new();
@@ -49,7 +50,8 @@ namespace SB
             var projectInfo = new VSProjectInfo
             {
                 ProjectPath = Path.Combine(projectOutputDir, $"{Target.Name}.vcxproj"),
-                ProjectGuid = GenerateGuid(Target.Name)
+                ProjectGuid = GenerateGuid(Target.Name),
+                TargetDirectory = Target.Directory
             };
 
             // Process all file lists
@@ -94,9 +96,12 @@ namespace SB
 
         private void ExtractCompileArguments(Target Target, VSProjectInfo projectInfo)
         {
-            // Create a dummy ArgumentDriver to extract compile settings
+            // Create ArgumentDriver to extract compile settings
             var driver = Toolchain.Compiler.CreateArgumentDriver(CFamily.Cpp, false)
                 .AddArguments(Target.Arguments);
+
+            // Calculate all arguments from the driver
+            var calculatedArgs = driver.CalculateArguments();
 
             // Store raw arguments for later use
             foreach (var kvp in Target.Arguments)
@@ -104,21 +109,61 @@ namespace SB
                 projectInfo.CompileArguments[kvp.Key] = kvp.Value;
             }
 
-            // Extract common settings
-            if (Target.Arguments.TryGetValue("IncludeDirs", out var includeDirs) && includeDirs is ArgumentList<string> includes)
+            // Extract include directories from calculated arguments
+            if (calculatedArgs.TryGetValue("IncludeDirs", out var includeArgs) && includeArgs is string[] includes)
             {
-                projectInfo.IncludePaths.AddRange(includes);
+                // Convert compiler flags back to paths (remove /I or -I prefix)
+                foreach (var inc in includes)
+                {
+                    var path = inc.StartsWith("/I") ? inc.Substring(2) : 
+                              inc.StartsWith("-I") ? inc.Substring(2) : inc;
+                    if (!string.IsNullOrWhiteSpace(path))
+                    {
+                        projectInfo.IncludePaths.Add(path.Trim('"'));
+                    }
+                }
             }
 
-            if (Target.Arguments.TryGetValue("Defines", out var defines) && defines is ArgumentList<string> defs)
+            // Extract preprocessor definitions from calculated arguments
+            if (calculatedArgs.TryGetValue("Defines", out var defineArgs) && defineArgs is string[] defines)
             {
-                projectInfo.Defines.AddRange(defs);
+                // Convert compiler flags back to defines (remove /D or -D prefix)
+                foreach (var def in defines)
+                {
+                    var define = def.StartsWith("/D") ? def.Substring(2) :
+                                def.StartsWith("-D") ? def.Substring(2) : def;
+                    if (!string.IsNullOrWhiteSpace(define))
+                    {
+                        projectInfo.Defines.Add(define);
+                    }
+                }
             }
 
-            if (Target.Arguments.TryGetValue("CppFlags", out var cppFlags) && cppFlags is ArgumentList<string> flags)
+            // Extract compiler flags
+            var allFlags = new List<string>();
+            
+            // Add C++ specific flags
+            if (calculatedArgs.TryGetValue("CppFlags", out var cppFlags) && cppFlags is string[] cppFlagArray)
             {
-                projectInfo.CompilerFlags.AddRange(flags);
+                allFlags.AddRange(cppFlagArray);
             }
+
+            // Add common C/C++ flags
+            if (calculatedArgs.TryGetValue("CXFlags", out var cxFlags) && cxFlags is string[] cxFlagArray)
+            {
+                allFlags.AddRange(cxFlagArray);
+            }
+
+            // Add other important compiler settings
+            foreach (var key in new[] { "CppVersion", "WarningLevel", "OptimizationLevel", "RTTI", "Exception" })
+            {
+                if (calculatedArgs.TryGetValue(key, out var value) && value is string[] valueArray)
+                {
+                    allFlags.AddRange(valueArray);
+                }
+            }
+
+            projectInfo.CompilerFlags.AddRange(allFlags);
         }
 
         private void GenerateVcxproj(Target Target, VSProjectInfo projectInfo)
@@ -157,20 +202,16 @@ namespace SB
                 new XAttribute("Project", @"$(VCTargetsPath)\Microsoft.Cpp.Default.props")));
 
             // Configuration properties
-            foreach (var config in new[] { "Debug", "Release" })
+            ForEachConfiguration((config, platform) =>
             {
-                foreach (var platform in new[] { "x64", "Win32" })
+                project.Add(CreatePropertyGroup(ns, config, platform, new[]
                 {
-                    var condition = $"'$(Configuration)|$(Platform)'=='{config}|{platform}'";
-                    project.Add(new XElement(ns + "PropertyGroup",
-                        new XAttribute("Condition", condition),
-                        new XAttribute("Label", "Configuration"),
-                        new XElement(ns + "ConfigurationType", GetConfigurationType(Target)),
-                        new XElement(ns + "UseDebugLibraries", config == "Debug" ? "true" : "false"),
-                        new XElement(ns + "PlatformToolset", "v143"),
-                        new XElement(ns + "CharacterSet", "Unicode")));
-                }
-            }
+                    ("ConfigurationType", GetConfigurationType(Target)),
+                    ("UseDebugLibraries", config == "Debug" ? "true" : "false"),
+                    ("PlatformToolset", "v143"),
+                    ("CharacterSet", "Unicode")
+                }, "Configuration"));
+            });
 
             // Import C++ props
             project.Add(new XElement(ns + "Import",
@@ -186,22 +227,18 @@ namespace SB
             // This provides better IntelliSense while preventing actual compilation
             if (projectInfo.SourceFiles.Any())
             {
-                var projectDir = Path.GetDirectoryName(projectInfo.ProjectPath) ?? "";
                 project.Add(new XElement(ns + "ItemGroup",
                     projectInfo.SourceFiles.Select(file =>
-                        new XElement(ns + "ClCompile",
-                            new XAttribute("Include", GetRelativePath(projectDir, file)),
-                            new XElement(ns + "ExcludedFromBuild", "true")))));
+                        CreateClCompileElement(ns, file, projectInfo))));
             }
 
             // Header files
             if (projectInfo.HeaderFiles.Any())
             {
-                var projectDir = Path.GetDirectoryName(projectInfo.ProjectPath) ?? "";
                 project.Add(new XElement(ns + "ItemGroup",
                     projectInfo.HeaderFiles.Select(file =>
                         new XElement(ns + "ClInclude",
-                            new XAttribute("Include", GetRelativePath(projectDir, file))))));
+                            new XAttribute("Include", GetFileProjectPath(file, projectInfo))))));
             }
 
             // Import targets
@@ -219,21 +256,18 @@ namespace SB
         private void GenerateVcxprojFilters(Target Target, VSProjectInfo projectInfo)
         {
             var ns = XNamespace.Get("http://schemas.microsoft.com/developer/msbuild/2003");
-            var project = new XElement(ns + "Project",
-                new XAttribute("ToolsVersion", "4.0"));
+            var project = new XElement(ns + "Project", new XAttribute("ToolsVersion", "4.0"));
 
-            // Create filter structure based on directory hierarchy
+            // Create filter structure based on target directory hierarchy
             var filters = new HashSet<string>();
             var sourceFilters = new Dictionary<string, string>();
             var headerFilters = new Dictionary<string, string>();
 
-            var projectDir = Path.GetDirectoryName(projectInfo.ProjectPath) ?? "";
-
-            // Process source files
+            // Process source files - use target directory as base for cleaner display
             foreach (var file in projectInfo.SourceFiles)
             {
-                var relativePath = GetRelativePath(projectDir, file);
-                var dir = Path.GetDirectoryName(relativePath)?.Replace('\\', '/') ?? "";
+                var displayPath = GetFileDisplayPath(file, projectInfo);
+                var dir = Path.GetDirectoryName(displayPath)?.Replace('\\', '/') ?? "";
                 if (!string.IsNullOrEmpty(dir))
                 {
                     filters.Add(dir);
@@ -241,11 +275,11 @@ namespace SB
                 }
             }
 
-            // Process header files
+            // Process header files - use target directory as base for cleaner display
             foreach (var file in projectInfo.HeaderFiles)
             {
-                var relativePath = GetRelativePath(projectDir, file);
-                var dir = Path.GetDirectoryName(relativePath)?.Replace('\\', '/') ?? "";
+                var displayPath = GetFileDisplayPath(file, projectInfo);
+                var dir = Path.GetDirectoryName(displayPath)?.Replace('\\', '/') ?? "";
                 if (!string.IsNullOrEmpty(dir))
                 {
                     filters.Add(dir);
@@ -264,13 +298,13 @@ namespace SB
                         ))));
             }
 
-            // Add source files with filters - Use ClCompile for better IntelliSense
+            // Add source files with filters
             if (sourceFilters.Any())
             {
                 project.Add(new XElement(ns + "ItemGroup",
                     sourceFilters.Select(kvp =>
                         new XElement(ns + "ClCompile",
-                            new XAttribute("Include", GetRelativePath(projectDir, kvp.Key)),
+                            new XAttribute("Include", GetFileProjectPath(kvp.Key, projectInfo)),
                             new XElement(ns + "Filter", kvp.Value)))));
             }
 
@@ -280,7 +314,7 @@ namespace SB
                 project.Add(new XElement(ns + "ItemGroup",
                     headerFilters.Select(kvp =>
                         new XElement(ns + "ClInclude",
-                            new XAttribute("Include", GetRelativePath(projectDir, kvp.Key)),
+                            new XAttribute("Include", GetFileProjectPath(kvp.Key, projectInfo)),
                             new XElement(ns + "Filter", kvp.Value)))));
             }
 
@@ -291,83 +325,147 @@ namespace SB
 
         private void AddBuildCustomizations(XElement project, XNamespace ns, Target Target)
         {
-            // Override MSBuild targets to use SB for actual building
-            // Calculate relative path from project to engine root
             if (!ProjectInfos.TryGetValue(Target.Name, out var projectInfo))
-            {
-                throw new InvalidOperationException($"Project info for target '{Target.Name}' not found. Make sure to add project info before generating project files.");
-            }
+                throw new InvalidOperationException($"Project info for target '{Target.Name}' not found.");
             
-            // Add NMake settings for each configuration
-            foreach (var config in new[] { "Debug", "Release" })
+            var outDir = Path.GetDirectoryName(GetTargetOutputPath(Target));
+            ForEachConfiguration((config, platform) =>
             {
-                foreach (var platform in new[] { "x64", "Win32" })
+                project.Add(CreatePropertyGroup(ns, config, platform, new[]
                 {
-                    var condition = $"'$(Configuration)|$(Platform)'=='{config}|{platform}'";
-                    var OutDir = Path.GetDirectoryName(GetTargetOutputPath(Target));
-                    var customBuildGroup = new XElement(ns + "PropertyGroup",
-                        new XAttribute("Condition", condition),
-                        new XElement(ns + "NMakeBuildCommandLine", $"cd \"{RootDirectory}\" && dotnet run SB build --target={Target.Name} --mode={config.ToLower()}"),
-                        new XElement(ns + "NMakeReBuildCommandLine", $"cd \"{RootDirectory}\" && dotnet run SB clean && dotnet run SB build --target={Target.Name} --mode={config.ToLower()}"),
-                        new XElement(ns + "NMakeCleanCommandLine", $"cd \"{RootDirectory}\" && dotnet run SB clean"),
-                        new XElement(ns + "NMakeOutput", GetTargetOutputPath(Target)),
-                        new XElement(ns + "OutDir", OutDir + "\\"),
-                        new XElement(ns + "IntDir", $"temp\\{Target.Name}\\{config}\\{platform}\\"),
-                        new XElement(ns + "LocalDebuggerWorkingDirectory", OutDir + "\\"),
-                        new XElement(ns + "DebuggerFlavor", "WindowsLocalDebugger"));
-
-                    project.Add(customBuildGroup);
-                }
-            }
+                    ("NMakeBuildCommandLine", $"cd \"{RootDirectory}\" && dotnet run SB build --target={Target.Name} --mode={config.ToLower()}"),
+                    ("NMakeReBuildCommandLine", $"cd \"{RootDirectory}\" && dotnet run SB clean && dotnet run SB build --target={Target.Name} --mode={config.ToLower()}"),
+                    ("NMakeCleanCommandLine", $"cd \"{RootDirectory}\" && dotnet run SB clean"),
+                    ("NMakeOutput", GetTargetOutputPath(Target)),
+                    ("OutDir", outDir + "\\"),
+                    ("IntDir", $"temp\\{Target.Name}\\{config}\\{platform}\\"),
+                    ("LocalDebuggerWorkingDirectory", outDir + "\\"),
+                    ("DebuggerFlavor", "WindowsLocalDebugger")
+                }));
+            });
         }
 
         private void AddCompilerSettings(XElement project, XNamespace ns, Target Target, VSProjectInfo projectInfo)
         {
-            foreach (var config in new[] { "Debug", "Release" })
+            var projectDir = Path.GetDirectoryName(projectInfo.ProjectPath) ?? "";
+            var relativeIncludes = GetRelativeIncludes(projectInfo.IncludePaths, projectDir);
+            var forcedIncludes = ExtractForcedIncludes(projectInfo.CompilerFlags);
+            
+            ForEachConfiguration((config, platform) =>
             {
-                foreach (var platform in new[] { "x64", "Win32" })
+                // IntelliSense configuration
+                var intelliSenseProps = new List<(string, string)>();
+                if (relativeIncludes.Any())
+                    intelliSenseProps.Add(("IncludePath", string.Join(";", relativeIncludes) + ";$(IncludePath)"));
+                if (projectInfo.Defines.Any())
+                    intelliSenseProps.Add(("NMakePreprocessorDefinitions", string.Join(";", projectInfo.Defines) + ";$(NMakePreprocessorDefinitions)"));
+                if (forcedIncludes.Any())
+                    intelliSenseProps.Add(("NMakeForcedIncludes", string.Join(";", forcedIncludes)));
+                
+                project.Add(CreatePropertyGroup(ns, config, platform, intelliSenseProps));
+                
+                // ClCompile settings
+                var itemDefGroup = new XElement(ns + "ItemDefinitionGroup", new XAttribute("Condition", $"'$(Configuration)|$(Platform)'=='{config}|{platform}'"));
+                itemDefGroup.Add(CreateClCompileSettings(ns, projectInfo, config, projectDir));
+                project.Add(itemDefGroup);
+            });
+        }
+
+        private List<string> ExtractForcedIncludes(List<string> compilerFlags)
+        {
+            var forcedIncludes = new List<string>();
+            
+            for (int i = 0; i < compilerFlags.Count; i++)
+            {
+                var flag = compilerFlags[i];
+                if (flag == "/FI" || flag == "-include")
                 {
-                    var condition = $"'$(Configuration)|$(Platform)'=='{config}|{platform}'";
-                    
-                    // Add IntelliSense configuration for better IDE support
-                    var intelliSenseGroup = new XElement(ns + "PropertyGroup",
-                        new XAttribute("Condition", condition));
-
-                    // Add include directories for IntelliSense
-                    if (projectInfo.IncludePaths.Any())
+                    // Next argument is the include file
+                    if (i + 1 < compilerFlags.Count)
                     {
-                        var projectDir = Path.GetDirectoryName(projectInfo.ProjectPath) ?? "";
-                        var relativeIncludes = projectInfo.IncludePaths.Select(inc => 
-                            Path.IsPathFullyQualified(inc) ? GetRelativePath(projectDir, inc) : inc);
-                        intelliSenseGroup.Add(new XElement(ns + "IncludePath",
-                            string.Join(";", relativeIncludes) + ";$(IncludePath)"));
+                        forcedIncludes.Add(compilerFlags[i + 1].Trim('"'));
+                        i++; // Skip the include file argument
                     }
-
-                    // Add preprocessor definitions for IntelliSense
-                    if (projectInfo.Defines.Any())
-                    {
-                        intelliSenseGroup.Add(new XElement(ns + "NMakePreprocessorDefinitions",
-                            string.Join(";", projectInfo.Defines) + ";$(NMakePreprocessorDefinitions)"));
-                    }
-
-                    // Add forced includes if any
-                    if (projectInfo.CompilerFlags.Any(f => f.StartsWith("/FI") || f.StartsWith("-include")))
-                    {
-                        var forcedIncludes = projectInfo.CompilerFlags
-                            .Where(f => f.StartsWith("/FI") || f.StartsWith("-include"))
-                            .Select(f => f.StartsWith("/FI") ? f.Substring(3) : f.Substring(8))
-                            .Where(f => !string.IsNullOrWhiteSpace(f));
-                        
-                        if (forcedIncludes.Any())
-                        {
-                            intelliSenseGroup.Add(new XElement(ns + "NMakeForcedIncludes",
-                                string.Join(";", forcedIncludes)));
-                        }
-                    }
-
-                    project.Add(intelliSenseGroup);
+                }
+                else if (flag.StartsWith("/FI") && flag.Length > 3)
+                {
+                    // Include file is in the same argument
+                    forcedIncludes.Add(flag.Substring(3).Trim('"'));
+                }
+                else if (flag.StartsWith("-include="))
+                {
+                    // Include file is in the same argument with equals
+                    forcedIncludes.Add(flag.Substring(9).Trim('"'));
                 }
             }
+            
+            return forcedIncludes;
+        }
+
+
+        private XElement CreateClCompileSettings(XNamespace ns, VSProjectInfo projectInfo, string config, string projectDir)
+        {
+            var clCompile = new XElement(ns + "ClCompile");
+            var relativeIncludes = GetRelativeIncludes(projectInfo.IncludePaths, projectDir);
+            var forcedIncludes = ExtractForcedIncludes(projectInfo.CompilerFlags);
+            
+            if (relativeIncludes.Any())
+                clCompile.Add(new XElement(ns + "AdditionalIncludeDirectories", string.Join(";", relativeIncludes) + ";%(AdditionalIncludeDirectories)"));
+            if (projectInfo.Defines.Any())
+                clCompile.Add(new XElement(ns + "PreprocessorDefinitions", string.Join(";", projectInfo.Defines) + ";%(PreprocessorDefinitions)"));
+            if (projectInfo.CompileArguments.TryGetValue("CppVersion", out var cppVersion) && cppVersion != null)
+                clCompile.Add(new XElement(ns + "LanguageStandard", MapCppStandard(cppVersion.ToString())));
+            if (forcedIncludes.Any())
+            {
+                var relativeForced = forcedIncludes.Select(inc => Path.IsPathFullyQualified(inc) ? GetRelativePath(projectDir, inc) : inc);
+                clCompile.Add(new XElement(ns + "ForcedIncludeFiles", string.Join(";", relativeForced) + ";%(ForcedIncludeFiles)"));
+            }
+            
+            AddCompilerFlagSettings(clCompile, ns, projectInfo.CompilerFlags, config);
+            return clCompile;
+        }
+
+        private void AddCompilerFlagSettings(XElement clCompile, XNamespace ns, List<string> compilerFlags, string config)
+        {
+            var settings = new Dictionary<string, string>
+            {
+                ["WarningLevel"] = "Level3",
+                ["Optimization"] = config == "Debug" ? "Disabled" : "MaxSpeed",
+                ["RuntimeLibrary"] = config == "Debug" ? "MultiThreadedDebugDLL" : "MultiThreadedDLL"
+            };
+
+            foreach (var flag in compilerFlags)
+            {
+                switch (flag)
+                {
+                    case "/GR-" or "-fno-rtti": settings["RuntimeTypeInfo"] = "false"; break;
+                    case "/GR" or "-frtti": settings["RuntimeTypeInfo"] = "true"; break;
+                    case "/EHsc" or "-fexceptions": settings["ExceptionHandling"] = "Sync"; break;
+                    case "/EHa": settings["ExceptionHandling"] = "Async"; break;
+                    case "/EH-" or "-fno-exceptions": settings["ExceptionHandling"] = "false"; break;
+                    case var f when f.StartsWith("/W") && f.Length == 3 && char.IsDigit(f[2]):
+                        settings["WarningLevel"] = $"Level{f[2]}"; break;
+                    case "/O1": settings["Optimization"] = "MinSpace"; break;
+                    case "/O2": settings["Optimization"] = "MaxSpeed"; break;
+                }
+            }
+
+            foreach (var (key, value) in settings)
+                clCompile.Add(new XElement(ns + key, value));
+        }
+
+        private XElement CreateClCompileElement(XNamespace ns, string file, VSProjectInfo projectInfo)
+        {
+            var projectDir = Path.GetDirectoryName(projectInfo.ProjectPath) ?? "";
+            var clCompile = CreateClCompileSettings(ns, projectInfo, "Debug", projectDir);
+            clCompile.SetAttributeValue("Include", GetFileProjectPath(file, projectInfo));
+            clCompile.Add(new XElement(ns + "ExcludedFromBuild", "true"));
+            
+            var compileAs = GetCompileAsType(Path.GetExtension(file));
+            if (compileAs != null)
+                clCompile.Add(new XElement(ns + "CompileAs", compileAs));
+                
+            return clCompile;
         }
 
         private string GetConfigurationType(Target Target)
@@ -404,9 +502,65 @@ namespace SB
             };
         }
 
+        // Helper methods
+        private void ForEachConfiguration(Action<string, string> action)
+        {
+            foreach (var config in new[] { "Debug", "Release" })
+                foreach (var platform in new[] { "x64", "Win32" })
+                    action(config, platform);
+        }
+        
+        private XElement CreatePropertyGroup(XNamespace ns, string config, string platform, IEnumerable<(string key, string value)> properties)
+        {
+            var group = new XElement(ns + "PropertyGroup", new XAttribute("Condition", $"'$(Configuration)|$(Platform)'=='{config}|{platform}'"));
+            foreach (var (key, value) in properties)
+                group.Add(new XElement(ns + key, value));
+            return group;
+        }
+        
+        private XElement CreatePropertyGroup(XNamespace ns, string config, string platform, IEnumerable<(string key, string value)> properties, string label)
+        {
+            var group = CreatePropertyGroup(ns, config, platform, properties);
+            group.SetAttributeValue("Label", label);
+            return group;
+        }
+        
+        private IEnumerable<string> GetRelativeIncludes(List<string> includePaths, string projectDir)
+        {
+            return includePaths.Select(inc => Path.IsPathFullyQualified(inc) ? GetRelativePath(projectDir, inc) : inc);
+        }
+        
+        private string GetFileDisplayPath(string filePath, VSProjectInfo projectInfo)
+        {
+            // Calculate path relative to target directory for display in VS
+            return Path.IsPathFullyQualified(filePath) 
+                ? Path.GetRelativePath(projectInfo.TargetDirectory, filePath)
+                : filePath;
+        }
+        
+        private string GetFileProjectPath(string filePath, VSProjectInfo projectInfo)
+        {
+            // Calculate path relative to project file for VS project references
+            var projectDir = Path.GetDirectoryName(projectInfo.ProjectPath) ?? "";
+            return Path.IsPathFullyQualified(filePath) 
+                ? GetRelativePath(projectDir, filePath)
+                : filePath;
+        }
+        
+        private string? GetCompileAsType(string extension)
+        {
+            return extension.ToLower() switch
+            {
+                ".c" => "CompileAsC",
+                ".cpp" or ".cc" or ".cxx" => "CompileAsCpp",
+                ".mm" => "CompileAsObjCpp",
+                ".m" => "CompileAsObjC",
+                _ => null
+            };
+        }
+        
         private string GenerateGuid(string name)
         {
-            // Generate deterministic GUID based on project name
             using var md5 = System.Security.Cryptography.MD5.Create();
             var hash = md5.ComputeHash(Encoding.UTF8.GetBytes(name));
             return "{" + new Guid(hash).ToString().ToUpper() + "}";
