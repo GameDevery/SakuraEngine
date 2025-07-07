@@ -297,10 +297,11 @@ namespace SB.Core
         public DependDatabase(string Location, string Name)
         {
             this.Name = Name;
+            this.DatabasePath = Path.Join(Location, Name + ".db");
 
             Factory = new(
                 new DbContextOptionsBuilder<DependContext>()
-                    .UseSqlite($"Data Source={Path.Join(Location, Name + ".db")}")
+                    .UseSqlite($"Data Source={DatabasePath}")
                     .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
                     .Options
             );
@@ -310,8 +311,26 @@ namespace SB.Core
             WarmUpContext!.FindAsync<DependEntity>("");
         }
 
+        public void ClearDatabase()
+        {
+            using (var context = CreateContext(Name))
+            {
+                // Remove all dependency entries
+                context.Depends.RemoveRange(context.Depends);
+                context.SaveChanges();
+                
+                // Clear the caches
+                cachedFileExists.Clear();
+                cachedFileDateTimes.Clear();
+                cachedFileSHAs.Clear();
+                
+                Log.Information("Cleared dependency database: {Name}", Name);
+            }
+        }
+
         private DependContext CreateContext(string TargetName) => Factory.CreateDbContext();
         private string Name { get; init; } = "depend";
+        private string DatabasePath { get; init; }
         private PooledDbContextFactory<DependContext> Factory;
         private DbContext? WarmUpContext;
     }

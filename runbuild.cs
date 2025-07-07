@@ -7,22 +7,6 @@ using System.Diagnostics;
 // Main entry point
 var parser = new CommandParser();
 var mainCmd = new MainCommand();
-// Check if arguments look like they're for the default build command
-// This allows "SB --mode=release" to work as "SB build --mode=release"
-if (args.Length > 0 && !args[0].Equals("build", StringComparison.OrdinalIgnoreCase) && 
-    !args[0].Equals("test", StringComparison.OrdinalIgnoreCase) &&
-    (args[0].StartsWith("-") || args[0].StartsWith("--")))
-{
-    // Insert "build" at the beginning
-    var newArgs = new List<string> { "build" };
-    newArgs.AddRange(args);
-    args = newArgs.ToArray();
-}
-else if (args.Length == 0)
-{
-    // No arguments means default to build
-    args = new[] { "build" };
-}
 // Configure the parser
 parser.MainCmd(mainCmd, "SB", "Sakura Build System", "SB [options] <command> [command-options]");
 return parser.ParseSync(args);
@@ -35,6 +19,9 @@ public class MainCommand
 
     [CmdSub(Name = "test", ShortName = 't', Help = "Run tests")]
     public TestCommand Test { get; set; } = new TestCommand();
+
+    [CmdSub(Name = "clean", ShortName = 'c', Help = "Clean build cache and dependency databases")]
+    public CleanCommand Clean { get; set; } = new CleanCommand();
 }
 
 public abstract class CommandBase
@@ -54,6 +41,9 @@ public abstract class CommandBase
     [CmdOption(Name = "toolchain", Help = "Toolchain to use", IsRequired = false)]
     public string ToolchainName { get; set; } = OperatingSystem.IsWindows() ? "clang-cl" : "clang";
 
+    [CmdOption(Name = "proxy", Help = "Set HTTP proxy for downloads")]
+    public string Proxy { get; set; } = "";
+
     [CmdExec]
     public void Exec()
     {
@@ -67,6 +57,13 @@ public abstract class CommandBase
         }
         Engine.InitializeLogger(LogLevel);
         Engine.SetEngineDirectory(SourceLocation.Directory());
+
+        // set proxy
+        if (!string.IsNullOrEmpty(Proxy))
+        {
+            Log.Information("Setting HTTP proxy to {Proxy}", Proxy);
+            Download.HttpProxy = Proxy;
+        }
 
         // use sha to check file dependency instead of using last write time 
         if (UseShaDepend)
@@ -216,5 +213,38 @@ public class TestCommand : CommandBase
                 Log.Information("Test target {TargetName} passed, cost {Seconds}s", program.Target.Name, Seconds);
             }
         });
+    }
+}
+
+// Clean subcommand
+public class CleanCommand : CommandBase
+{
+    [CmdOption(Name = "database", ShortName = 'd', Help = "Database to clean, 'all | packages' | 'targets' | 'shaders' | 'sdks'", IsRequired = false)]
+    public string Database { get; set; } = "compile";
+
+    public override void OnExecute()
+    {
+        Log.Information("Cleaning build cache dependency databases for {Database}...", Database);
+
+        // Clean dependency databases using API
+        try
+        {
+            bool all = (Database == "all");
+            if (all || Database == "targets")
+                BuildSystem.CppCompileDepends(false).ClearDatabase();
+            if (all || Database == "packages")
+                BuildSystem.CppCompileDepends(true).ClearDatabase();
+            if (all || Database == "shaders")
+                Engine.ShaderCompileDepend.ClearDatabase();
+            if (all || Database == "sdks")
+            {
+                Engine.ConfigureAwareDepend.ClearDatabase();
+                Engine.ConfigureNotAwareDepend.ClearDatabase();
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Failed to clear databases: {Error}", ex.Message);
+        }
     }
 }
