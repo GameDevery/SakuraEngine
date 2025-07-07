@@ -1,3 +1,4 @@
+using System.Net;
 using SB;
 using SB.Core;
 using Serilog;
@@ -98,7 +99,7 @@ public class LLVMDownloader
     {
         string URL = "";
         Directory.CreateDirectory(Engine.DownloadDirectory);
-        string Destination = Path.Combine(Engine.DownloadDirectory, "llvm-" + Version + ".zip");
+        string Destination = Path.Combine(Engine.DownloadDirectory, "llvm-" + Version + ".7z");
         if (BuildSystem.HostOS == OSPlatform.OSX)
         {
             URL = "https://github.com/SakuraEngine/llvm-build/releases/download/llvm-darwin-" + Version + "/llvm-darwin-" + Version + "-clang-arm64-release.7z";
@@ -109,7 +110,7 @@ public class LLVMDownloader
         }
         Engine.ConfigureNotAwareDepend.OnChanged("Download-LLVM", "LLVM-" + Version, "LLVMDoctor", (Depend depend) =>
         {
-            using (var Http = new HttpClient())
+            using (var Http = new HttpClient(new HttpClientHandler { Proxy = SB.Download.HttpProxyObject.Value }))
             {
                 Log.Information("downloading ... from {URL} to {Destination}", URL, Destination);
                 var Bytes = Http.GetByteArrayAsync(URL);

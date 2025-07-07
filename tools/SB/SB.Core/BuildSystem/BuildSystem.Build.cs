@@ -496,6 +496,7 @@ namespace SB
             Target.SetAttribute(new CppCompileAttribute());
             Target.SetAttribute(new CppLinkAttribute());
         });
+        public static DependDatabase CppCompileDepends(bool IsPak) => IsPak ? pkgCompileDepends.Value : targetCompileDepends.Value;
         public static DependDatabase CppCompileDepends(Target Target) => Target.IsFromPackage ? pkgCompileDepends.Value : targetCompileDepends.Value;
         public static Lazy<DependDatabase> pkgCompileDepends = new Lazy<DependDatabase>(
             () => new DependDatabase(PackageBuildPath!, "CppCompile.Paks." + BuildSystem.GlobalConfiguration)

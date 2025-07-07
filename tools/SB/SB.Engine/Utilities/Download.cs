@@ -1,5 +1,6 @@
 using Serilog;
 using System.Collections.Concurrent;
+using System.Net;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 
@@ -26,6 +27,13 @@ namespace SB
 
         private static bool FetchOnceFlag = false;
         private static readonly object FetchLock = new object();
+        public static string HttpProxy = "";
+        public static Lazy<IWebProxy> HttpProxyObject = new Lazy<IWebProxy>(() =>
+        {
+            if (string.IsNullOrEmpty(HttpProxy))
+                return HttpClient.DefaultProxy;
+            return new WebProxy(HttpProxy);
+        });
         public static void FetchManifests()
         {
             lock (FetchLock)
@@ -41,7 +49,7 @@ namespace SB
                         try
                         {
                             Log.Information("fetching manifest ... from {URL} to {SourceManifestPath}", URL, Source.ManifestPath);
-                            using (var Http = new HttpClient())
+                            using (var Http = new HttpClient(new HttpClientHandler { Proxy = HttpProxyObject.Value }))
                             {
                                 var Bytes = Http.GetByteArrayAsync(URL);
                                 Bytes.Wait();
@@ -110,7 +118,7 @@ namespace SB
             var Destination = Path.Combine(Engine.DownloadDirectory, FileName);
             var URL = Source.URL + FileName;
             Log.Information("downloading ... from {URL} to {Destination}", URL, Destination);
-            using (var Http = new HttpClient())
+            using (var Http = new HttpClient(new HttpClientHandler { Proxy = HttpProxyObject.Value }))
             {
                 var Bytes = Http.GetByteArrayAsync(URL);
                 await Bytes;

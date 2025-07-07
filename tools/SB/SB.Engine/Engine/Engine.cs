@@ -189,6 +189,7 @@ namespace SB
 
         public static DependDatabase ConfigureAwareDepend = new DependDatabase(Engine.TempPath, "Engine.ConfigureAwareDepends." + Engine.GlobalConfiguration);
         public static DependDatabase ConfigureNotAwareDepend = new DependDatabase(Engine.TempPath, "Engine.ConfigureNotAwareDepends");
+        public static DependDatabase ShaderCompileDepend = new DependDatabase(Engine.TempPath, "Engine.ShaderCompileDepends");
 
         public static string EngineDirectory { get; private set; } = Directory.GetCurrentDirectory();
         public static string ToolDirectory => Path.Combine(TempPath, "tools");
