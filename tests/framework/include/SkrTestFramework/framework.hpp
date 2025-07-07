@@ -33,8 +33,6 @@ DOCTEST_MSVC_SUPPRESS_WARNING(4805)
 #define EXPECT_FALSE(v) REQUIRE(!(v))
 #define EXPECT_NEAR(a, b, c) REQUIRE(std::abs((a) - (b)) <= (c))
 
-#define APPROX(a) doctest::Approx(a)
-
 #define SKR_TEST_INFO(...)                                                     \
     auto SkrTestConcat(scopedTestMsg, SkrTestLine) = skr::format(__VA_ARGS__); \
     INFO(SkrTestConcat(scopedTestMsg, SkrTestLine).c_str());

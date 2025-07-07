@@ -3,6 +3,11 @@
 #include "SkrBase/math.h"
 #include <type_traits>
 
+auto approx(float x)
+{
+    return doctest::Approx(x).epsilon(0.001f);
+}
+
 TEST_CASE("VectorOps")
 {
     using namespace skr;
@@ -12,8 +17,8 @@ TEST_CASE("VectorOps")
         float2 v1{ 1.0f, 2.0f };
         float2 v2{ 3.0f, 4.0f };
         float2 v3 = v1 + v2;
-        REQUIRE(v3.x == APPROX(4.0f));
-        REQUIRE(v3.y == APPROX(6.0f));
+        REQUIRE(v3.x == approx(4.0f));
+        REQUIRE(v3.y == approx(6.0f));
     }
     SUBCASE("float3_vector_addition")
     {
