@@ -16,6 +16,7 @@ namespace SB
         public string ProjectPath { get; set; } = "";
         public string ProjectGuid { get; set; } = "";
         public string TargetDirectory { get; set; } = "";
+        public string FolderPath { get; set; } = "";
         public HashSet<string> SourceFiles { get; } = new();
         public HashSet<string> HeaderFiles { get; } = new();
         public Dictionary<string, object?> CompileArguments { get; } = new();
@@ -30,6 +31,7 @@ namespace SB
 
         public static string OutputDirectory { get; set; } = ".sb/VisualStudio";
         public static string RootDirectory { get; set; } = "./";
+        public static int SolutionFolderDepth { get; set; } = 2;
 
         public override bool EnableEmitter(Target Target) => 
             Target.HasFilesOf<CppFileList>() || 
@@ -51,7 +53,8 @@ namespace SB
             {
                 ProjectPath = Path.Combine(projectOutputDir, $"{Target.Name}.vcxproj"),
                 ProjectGuid = GenerateGuid(Target.Name),
-                TargetDirectory = Target.Directory
+                TargetDirectory = Target.Directory,
+                FolderPath = GetTargetFolderPath(Target)
             };
 
             // Process all file lists
@@ -648,7 +651,22 @@ namespace SB
             };
         }
         
-        private string GenerateGuid(string name)
+        private string GetTargetFolderPath(Target target)
+        {
+            // Get relative path from root to target directory
+            var relativePath = Path.GetRelativePath(RootDirectory, target.Directory);
+            
+            // Split path and take up to SolutionFolderDepth levels
+            var parts = relativePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                .Where(p => !string.IsNullOrEmpty(p) && p != ".")
+                .Take(SolutionFolderDepth)
+                .ToArray();
+            
+            // Return the folder path with backslashes for VS
+            return parts.Length > 0 ? string.Join("\\", parts) : "";
+        }
+        
+        private static string GenerateGuid(string name)
         {
             using var md5 = System.Security.Cryptography.MD5.Create();
             var hash = md5.ComputeHash(Encoding.UTF8.GetBytes(name));
@@ -706,6 +724,40 @@ namespace SB
             sb.AppendLine("VisualStudioVersion = 17.0.31903.59");
             sb.AppendLine("MinimumVisualStudioVersion = 10.0.40219.1");
 
+            // Group projects by folder path and create nested folder structure
+            var folderGuids = new Dictionary<string, string>();
+            var allFolderPaths = new HashSet<string>();
+            
+            // Collect all folder paths and their parent paths
+            foreach (var projectInfo in ProjectInfos.Values)
+            {
+                if (!string.IsNullOrEmpty(projectInfo.FolderPath))
+                {
+                    var parts = projectInfo.FolderPath.Split('\\');
+                    for (int i = 1; i <= parts.Length; i++)
+                    {
+                        var path = string.Join("\\", parts.Take(i));
+                        allFolderPaths.Add(path);
+                    }
+                }
+            }
+            
+            // Sort paths by depth to ensure parents are created before children
+            var sortedPaths = allFolderPaths.OrderBy(p => p.Count(c => c == '\\')).ThenBy(p => p);
+            
+            // Create solution folders
+            foreach (var folderPath in sortedPaths)
+            {
+                var folderGuid = GenerateGuid($"SolutionFolder_{folderPath}");
+                folderGuids[folderPath] = folderGuid;
+                
+                var folderName = folderPath.Split('\\').Last();
+                
+                // Solution folder project type GUID is {2150E333-8FDC-42A3-9474-1A3956D46DE8}
+                sb.AppendLine($"Project(\"{{2150E333-8FDC-42A3-9474-1A3956D46DE8}}\") = \"{folderName}\", \"{folderName}\", \"{folderGuid}\"");
+                sb.AppendLine("EndProject");
+            }
+
             // Add projects
             foreach (var kvp in ProjectInfos)
             {
@@ -716,24 +768,19 @@ namespace SB
                 string relativePath;
                 try
                 {
-                    // Ensure we have valid paths
                     if (string.IsNullOrEmpty(solutionDir) || string.IsNullOrEmpty(info.ProjectPath))
                     {
                         relativePath = info.ProjectPath;
                     }
                     else
                     {
-                        // Normalize paths
                         solutionDir = Path.GetFullPath(solutionDir);
                         var projectPath = Path.GetFullPath(info.ProjectPath);
-                        
-                        // Use Path.GetRelativePath which is safer than URI manipulation
                         relativePath = Path.GetRelativePath(solutionDir, projectPath);
                     }
                 }
                 catch (Exception)
                 {
-                    // Fall back to project path if relative path calculation fails
                     relativePath = info.ProjectPath;
                 }
                 
@@ -771,6 +818,31 @@ namespace SB
 
             sb.AppendLine("\tGlobalSection(SolutionProperties) = preSolution");
             sb.AppendLine("\t\tHideSolutionNode = FALSE");
+            sb.AppendLine("\tEndGlobalSection");
+            
+            // Nested projects section - establish parent-child relationships
+            sb.AppendLine("\tGlobalSection(NestedProjects) = preSolution");
+            
+            // Assign projects to their folders
+            foreach (var kvp in ProjectInfos)
+            {
+                var info = kvp.Value;
+                if (!string.IsNullOrEmpty(info.FolderPath) && folderGuids.TryGetValue(info.FolderPath, out var folderGuid))
+                {
+                    sb.AppendLine($"\t\t{info.ProjectGuid} = {folderGuid}");
+                }
+            }
+            
+            // Assign child folders to parent folders
+            foreach (var folderPath in sortedPaths)
+            {
+                var parentPath = Path.GetDirectoryName(folderPath)?.Replace('/', '\\');
+                if (!string.IsNullOrEmpty(parentPath) && folderGuids.TryGetValue(parentPath, out var parentGuid))
+                {
+                    sb.AppendLine($"\t\t{folderGuids[folderPath]} = {parentGuid}");
+                }
+            }
+            
             sb.AppendLine("\tEndGlobalSection");
             
             sb.AppendLine("EndGlobal");
