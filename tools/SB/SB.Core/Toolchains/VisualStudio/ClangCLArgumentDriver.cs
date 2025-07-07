@@ -44,7 +44,7 @@ namespace SB.Core
             CFamily.Cpp => isPCH ? "-xc++-header" : "-xc++",
             CFamily.ObjC => isPCH ? "-xobjective-c-header" : "-xobjective-c",
             CFamily.ObjCpp => isPCH ? "-xobjective-c++-header" : "-xobjective-c++",
-            _ => throw new TaskFatalError($"Invalid language \"{Language}\" for Apple clang!")
+            _ => throw new TaskFatalError($"Invalid language \"{Language}\" for clang-cl!")
         };
     }
 }

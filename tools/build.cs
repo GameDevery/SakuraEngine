@@ -2,6 +2,7 @@ using SB;
 using SB.Core;
 using Serilog;
 using SharpCompress.Archives;
+
 [TargetScript(TargetCategory.Tool)]
 public static class LLVMTools
 {
@@ -11,14 +12,14 @@ public static class LLVMTools
         if (UsePrecompiledCompiler)
             return;
 
-        BuildSystem.AddDoctor<LLVMDoctor>();
+        LLVMDownloader.Download();
 
         BuildSystem.Target("meta")
             .TargetType(TargetType.Executable)
             .LinkAgainstLLVM()
             .AddCppFiles("meta/src/**.cpp");
 
-        BuildSystem.Target("SSLAst")
+        BuildSystem.Target("CppSLAst")
             .TargetType(TargetType.Static)
             .RTTI(true)
             .IncludeDirs(Visibility.Public, "shader_compiler/AST/include")
@@ -26,30 +27,30 @@ public static class LLVMTools
             .AddCppFiles("shader_compiler/AST/double-conversion/**.cc")
             .AddCppFiles("shader_compiler/AST/src/**.cpp");
 
-        BuildSystem.Target("SSLLLVM")
+        BuildSystem.Target("CppSLLLVM")
             .TargetType(TargetType.Static)
-            .Depend(Visibility.Public, "SSLAst")
+            .Depend(Visibility.Public, "CppSLAst")
             .IncludeDirs(Visibility.Public, "shader_compiler/LLVM/include")
             .AddCppFiles("shader_compiler/LLVM/src/**.cpp")
             .LinkAgainstLLVM();
 
-        BuildSystem.Target("SSLCompiler")
+        BuildSystem.Target("CppSLCompiler")
             .TargetType(TargetType.Executable)
-            .Depend(Visibility.Public, "SSLLLVM")
+            .Depend(Visibility.Public, "CppSLLLVM")
             .AddCppFiles("shader_compiler/shader_compiler.cpp");
 
-        BuildSystem.Target("SSL_ManualTest")
+        BuildSystem.Target("CppSLManualTest")
             .TargetType(TargetType.Executable)
-            .Depend(Visibility.Public, "SSLAst")
+            .Depend(Visibility.Public, "CppSLAst")
             .AddCppFiles("shader_compiler/ast_test.cpp");
     }
 
     private static Target LinkAgainstLLVM(this Target @this)
     {
-        var LibDir = Path.Combine(Engine.DownloadDirectory, "llvm-" + LLVMDoctor.Version, "lib");
+        var LibDir = Path.Combine(Engine.DownloadDirectory, "llvm-" + LLVMDownloader.Version, "lib");
         @this.RTTI(false)
-            .IncludeDirs(Visibility.Private, Path.Combine(Engine.DownloadDirectory, "llvm-" + LLVMDoctor.Version, "include"))
-            .LinkDirs(Visibility.Private, LibDir);
+            .IncludeDirs(Visibility.Private, Path.Combine(Engine.DownloadDirectory, "llvm-" + LLVMDownloader.Version, "include"))
+            .LinkDirs(Visibility.Public, LibDir);
 
         var libs = new List<string>();
         if (BuildSystem.HostOS == OSPlatform.OSX)
@@ -62,11 +63,11 @@ public static class LLVMTools
                 var libName = match.Success ? match.Groups[1].Value : Path.GetFileNameWithoutExtension(basename);
                 libs.Add(libName);
             }
-            libs.Remove("LLVM-C");
-            libs.Remove("LTO");
-            libs.Remove("libclang");
-            libs.Remove("Remarks");
-            @this.Link(Visibility.Private, libs.ToArray());
+            @this.Link(Visibility.Public, libs.ToArray());
+
+            @this.Require("zlib", new PackageConfig { Version = new Version(1, 2, 8) })
+                .Depend(Visibility.Public, "zlib@zlib")
+                .Link(Visibility.Public, "pthread", "curses");
         }
         else if (Engine.HostOS == OSPlatform.Windows)
         {
@@ -90,12 +91,13 @@ public static class LLVMTools
     }
 }
 
-public class LLVMDoctor : IDoctor
+public class LLVMDownloader
 {
     public static string Version = "18.1.6";
-    public bool Check()
+    public static bool Download()
     {
         string URL = "";
+        Directory.CreateDirectory(Engine.DownloadDirectory);
         string Destination = Path.Combine(Engine.DownloadDirectory, "llvm-" + Version + ".zip");
         if (BuildSystem.HostOS == OSPlatform.OSX)
         {
@@ -105,7 +107,7 @@ public class LLVMDoctor : IDoctor
         {
             URL = "https://github.com/SakuraEngine/llvm-build/releases/download/llvm-windows-" + Version + "/llvm-windows-" + Version + "-msvc-x64-md-release.7z";
         }
-        Depend.OnChanged("Download-LLVM", "LLVM-" + Version, "LLVMDoctor", (Depend depend) =>
+        Engine.ConfigureNotAwareDepend.OnChanged("Download-LLVM", "LLVM-" + Version, "LLVMDoctor", (Depend depend) =>
         {
             using (var Http = new HttpClient())
             {
@@ -117,7 +119,7 @@ public class LLVMDoctor : IDoctor
             depend.ExternalFiles.Add(Destination);
         }, null, null);
 
-        Depend.OnChanged("Install-LLVM", "LLVM-" + Version, "LLVMDoctor", (Depend depend) =>
+        Engine.ConfigureNotAwareDepend.OnChanged("Install-LLVM", "LLVM-" + Version, "LLVMDoctor", (Depend depend) =>
         {
             var IntermediateDirectory = Path.Combine(Engine.DownloadDirectory, "llvm-" + Version);
             Directory.CreateDirectory(IntermediateDirectory);
@@ -132,11 +134,6 @@ public class LLVMDoctor : IDoctor
             }
             depend.ExternalFiles.Add(Destination);
         }, null, null);
-        return true;
-    }
-
-    public bool Fix()
-    {
         return true;
     }
 }

@@ -3,6 +3,8 @@ using System.Text.RegularExpressions;
 
 namespace SB.Core
 {
+    using BS = BuildSystem;
+
     public class ClangCLCompiler : ICompiler
     {
         public ClangCLCompiler(string ExePath, Dictionary<string, string?> Env)
@@ -13,21 +15,17 @@ namespace SB.Core
             if (!File.Exists(ExePath))
                 throw new ArgumentException($"ClangCLCompiler: ExePath: {ExePath} is not an existed absolute path!");
 
-            this.ClangCLVersionTask = Task.Run(() =>
+            int ExitCode = BuildSystem.RunProcess(ExePath, "--version", out var Output, out var Error, VCEnvVariables);
+            if (ExitCode == 0)
             {
-                int ExitCode = BuildSystem.RunProcess(ExePath, "--version", out var Output, out var Error, VCEnvVariables);
-                if (ExitCode == 0)
-                {
-                    Regex pattern = new Regex(@"\d+(\.\d+)+");
-                    var ClangCLVersion = Version.Parse(pattern.Match(Output).Value);
-                    Log.Information("clang-cl.exe version ... {ClangCLVersion}", ClangCLVersion);
-                    return ClangCLVersion;
-                }
-                else
-                {
-                    throw new Exception($"Failed to get clang-cl.exe version! Exit code: {ExitCode}, Error: {Error}");
-                }
-            });
+                Regex pattern = new Regex(@"\d+(\.\d+)+");
+                ClangCLVersion = Version.Parse(pattern.Match(Output).Value);
+                Log.Information("clang-cl.exe version ... {ClangCLVersion}", ClangCLVersion);
+            }
+            else
+            {
+                throw new Exception($"Failed to get clang-cl.exe version! Exit code: {ExitCode}, Error: {Error}");
+            }
         }
 
         public IArgumentDriver CreateArgumentDriver(CFamily Language, bool isPCH)
@@ -49,7 +47,7 @@ namespace SB.Core
 
             var FileToCompile = TryGet(Driver.Arguments, "Source") ?? TryGet(Driver.Arguments, "PCHHeader");
             var ObjectFile = TryGet(Driver.Arguments, "Object") ?? TryGet(Driver.Arguments, "PCHObject");
-            var Changed = Depend.OnChanged(Target.Name, FileToCompile!, Emitter.Name, (Depend depend) =>
+            var Changed = BS.CppCompileDepends(Target).OnChanged(Target.Name, FileToCompile!, Emitter.Name, (Depend depend) =>
             {
                 int ExitCode = BuildSystem.RunProcess(ExecutablePath, String.Join(" ", CompilerArgsList), out var OutputInfo, out var ErrorInfo, VCEnvVariables, WorkDirectory);
                 if (ExitCode != 0)
@@ -68,9 +66,9 @@ namespace SB.Core
                     depend.ExternalFiles.AddRange(DepIncludes);
                 }
 
-                if (OutputInfo != "") 
+                if (OutputInfo != "")
                     Log.Warning("clang-cl.exe: {OutputInfo}", OutputInfo);
-                if (ErrorInfo != "") 
+                if (ErrorInfo != "")
                     Log.Warning("clang-cl.exe: {ErrorInfo}", ErrorInfo);
 
                 depend.ExternalFiles.Add(ObjectFile!);
@@ -84,15 +82,7 @@ namespace SB.Core
             };
         }
 
-        public Version Version
-        {
-            get
-            {
-                if (!ClangCLVersionTask.IsCompleted)
-                    ClangCLVersionTask.Wait();
-                return ClangCLVersionTask.Result;
-            }
-        }
+        public Version Version => ClangCLVersion;
 
         private string? TryGet(Dictionary<string, object?> Dict, string Name)
         {
@@ -100,7 +90,7 @@ namespace SB.Core
         }
 
         public readonly Dictionary<string, string?> VCEnvVariables;
-        private readonly Task<Version> ClangCLVersionTask;
+        private readonly Version ClangCLVersion;
         public string ExecutablePath { get; }
     }
 }

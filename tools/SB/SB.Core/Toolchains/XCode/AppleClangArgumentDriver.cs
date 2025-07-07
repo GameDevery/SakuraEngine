@@ -4,19 +4,19 @@ namespace SB.Core
     using BS = BuildSystem;
     public class AppleClangArgumentDriver : IArgumentDriver
     {
-        public AppleClangArgumentDriver(string SDKDirectory, CFamily Language, bool isPCH)
+        public AppleClangArgumentDriver(string DeveloperDirectory, string SDKDirectory, Version ClangVersion, CFamily Language, bool isPCH)
         {
             this.Language = Language;
             this.isPCH = isPCH;
             RawArguments.Add("-isysroot");
             RawArguments.Add($"{SDKDirectory}");
-            /*
-            RawArguments.Add($"-isystem {SDKDirectory}/System/Library/Frameworks");
-            RawArguments.Add($"-isystem {SDKDirectory}/usr/include/c++/v1");
-            RawArguments.Add($"-isystem {SDKDirectory}/usr/include");
-            RawArguments.Add("-isystem /Library/Developer/CommandLineTools/usr/lib/clang/16/include");
-            RawArguments.Add("-isystem /Library/Developer/CommandLineTools/usr/include");
-            */
+
+            // WE MUST KEEP THIS ORDER OTHER WISE IT WILL BREAK THE BUILD!
+            RawArguments.Add($"-isystem {Path.Combine(SDKDirectory, "usr/include/c++/v1")}");
+            RawArguments.Add($"-isystem {Path.Combine(DeveloperDirectory, $"usr/lib/clang/{ClangVersion.Major}/include")}");
+            RawArguments.Add($"-isystem {Path.Combine(SDKDirectory, "usr/include")}");
+            RawArguments.Add($"-isystem {Path.Combine(DeveloperDirectory, "usr/include")}");
+            RawArguments.Add($"-isystem {Path.Combine(SDKDirectory, "System/Library/Frameworks")}");
         }
 
         [TargetProperty]

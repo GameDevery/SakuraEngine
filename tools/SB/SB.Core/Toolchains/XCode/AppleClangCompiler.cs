@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace SB.Core
 {
+    using BS = BuildSystem;
     public class AppleClangCompiler : ICompiler, ILinker
     {
         public AppleClangCompiler(string ExePath, XCode Toolchain)
@@ -13,21 +14,17 @@ namespace SB.Core
             if (!File.Exists(ExePath))
                 throw new ArgumentException($"ClangCLCompiler: ExePath: {ExePath} is not an existed absolute path!");
 
-            this.ClangVersionTask = Task.Run(() =>
+            int ExitCode = BuildSystem.RunProcess(ExePath, "--version", out var Output, out var Error);
+            if (ExitCode == 0)
             {
-                int ExitCode = BuildSystem.RunProcess(ExePath, "--version", out var Output, out var Error);
-                if (ExitCode == 0)
-                {
-                    Regex pattern = new Regex(@"\d+(\.\d+)+");
-                    var ClangVersion = Version.Parse(pattern.Match(Output).Value);
-                    Log.Information("clang version ... {ClangVersion}", ClangVersion);
-                    return ClangVersion;
-                }
-                else
-                {
-                    throw new Exception($"Failed to get clang version! Exit code: {ExitCode}, Error: {Error}");
-                }
-            });
+                Regex pattern = new Regex(@"\d+(\.\d+)+");
+                ClangVersion = Version.Parse(pattern.Match(Output).Value);
+                Log.Information("clang version ... {ClangVersion}", ClangVersion);
+            }
+            else
+            {
+                throw new Exception($"Failed to get clang version! Exit code: {ExitCode}, Error: {Error}");
+            }
         }
 
         public CompileResult Compile(TaskEmitter Emitter, Target Target, IArgumentDriver Driver, string? WorkDirectory = null)
@@ -41,7 +38,7 @@ namespace SB.Core
 
             var SourceFile = Driver.Arguments["Source"] as string;
             var ObjectFile = Driver.Arguments["Object"] as string;
-            var Changed = Depend.OnChanged(Target.Name, SourceFile!, Emitter.Name, (Depend depend) =>
+            var Changed = BS.CppCompileDepends(Target).OnChanged(Target.Name, SourceFile!, Emitter.Name, (Depend depend) =>
             {
                 int ExitCode = BuildSystem.RunProcess(ExecutablePath, String.Join(" ", CompilerArgsList), out var OutputInfo, out var ErrorInfo, null, WorkDirectory);
                 if (ExitCode != 0)
@@ -74,7 +71,8 @@ namespace SB.Core
             };
         }
 
-        IArgumentDriver ICompiler.CreateArgumentDriver(CFamily Language, bool isPCH) => new AppleClangArgumentDriver(XCodeToolchain.PlatSDKDirectory!, Language, isPCH);
+        IArgumentDriver ICompiler.CreateArgumentDriver(CFamily Language, bool isPCH)
+            => new AppleClangArgumentDriver(XCodeToolchain.DeveloperDirectory!, XCodeToolchain.PlatSDKDirectory!, Version, Language, isPCH);
 
         public LinkResult Link(TaskEmitter Emitter, Target Target, IArgumentDriver Driver)
         {
@@ -87,7 +85,7 @@ namespace SB.Core
 
             var InputFiles = Driver.Arguments["Inputs"] as ArgumentList<string>;
             var OutputFile = Driver.Arguments["Output"] as string;
-            bool Changed = Depend.OnChanged(Target.Name, OutputFile!, Emitter.Name, (Depend depend) =>
+            bool Changed = BS.CppCompileDepends(Target).OnChanged(Target.Name, OutputFile!, Emitter.Name, (Depend depend) =>
             {
                 int ExitCode = BuildSystem.RunProcess(ExecutablePath, String.Join(" ", LinkerArgsList), out var OutputInfo, out var ErrorInfo);
                 if (ExitCode != 0)
@@ -100,7 +98,8 @@ namespace SB.Core
 
             return new LinkResult
             {
-                TargetFile = LinkerArgsDict["Output"][0],
+                Target = Target,
+                TargetFile = (Driver.Arguments["Output"] as string)!,
                 PDBFile = Driver.Arguments.TryGetValue("PDB", out var args) ? (string)args! : "",
                 IsRestored = !Changed
             };
@@ -108,17 +107,8 @@ namespace SB.Core
 
         IArgumentDriver ILinker.CreateArgumentDriver() => new ClangLinkerArgumentDriver(XCodeToolchain.PlatSDKDirectory!);
 
-        public Version Version
-        {
-            get
-            {
-                if (!ClangVersionTask.IsCompleted)
-                    ClangVersionTask.Wait();
-                return ClangVersionTask.Result;
-            }
-        }
-
-        private readonly Task<Version> ClangVersionTask;
+        public Version Version => ClangVersion;
+        private readonly Version ClangVersion;
         public string ExecutablePath { get; }
         private XCode XCodeToolchain { get; init; }
     }

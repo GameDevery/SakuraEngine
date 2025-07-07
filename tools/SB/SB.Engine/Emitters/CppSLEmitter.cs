@@ -20,7 +20,7 @@ namespace SB
             if (BuildSystem.TargetOS == OSPlatform.Windows)
                 Executable += ".exe";
 
-            bool Changed = Depend.OnChanged(Target.Name, SourceFile, "CPPSL", (Depend depend) =>
+            bool Changed = Engine.ConfigureNotAwareDepend.OnChanged(Target.Name, SourceFile, "CPPSL", (Depend depend) =>
             {
                 var Arguments = new string[]
                 {
@@ -69,11 +69,15 @@ namespace SB
             };
             CompileCommands.Add(SB.Core.Json.Serialize(CMD));
 
-            var OutputFiles = Directory.GetFiles(OutputDirectory, $"{SourceName}.*.*.hlsl");
-            foreach (var HLSL in OutputFiles)
+            if (BuildSystem.TargetOS == OSPlatform.Windows)
             {
-                Changed |= !DXCEmitter.CompileHLSL(Target, HLSL, "", OutputDirectory)!.IsRestored;
+                var OutputFiles = Directory.GetFiles(OutputDirectory, $"{SourceName}.*.*.hlsl");
+                foreach (var HLSL in OutputFiles)
+                {
+                    Changed |= !DXCEmitter.CompileHLSL(Target, HLSL, "", OutputDirectory)!.IsRestored;
+                }
             }
+
             return new PlainArtifact { IsRestored = !Changed };
         }
 
@@ -83,7 +87,7 @@ namespace SB
         }
 
         public static ConcurrentBag<string> CompileCommands = new();
-        public static string CppSLCompiler = Path.Combine(Engine.TempPath, "tools", "SSLCompiler");
+        public static string CppSLCompiler = Path.Combine(Engine.TempPath, "tools", "CppSLCompiler");
         public static Dictionary<string, string> ShaderOutputDirectories = new();
     }
 

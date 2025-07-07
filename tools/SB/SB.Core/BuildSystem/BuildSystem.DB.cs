@@ -37,10 +37,14 @@ namespace SB
     
     public partial class BuildSystem
     {
-        public static void UpdateTargetDatabase()
+        public static void UpdateTargetDatabase(ICollection<Target> targetsToBuild)
         {
-            List<TargetEntity> TargetEntities = new (AllTargets.Values.Count);
-            foreach (var Target in AllTargets.Values)
+            var targetsToUpdate = targetsToBuild != null
+                ? AllTargets.Where(t => targetsToBuild.Contains(t.Value)).Select(t => t.Value)
+                : AllTargets.Values;
+                
+            List<TargetEntity> TargetEntities = new (targetsToUpdate.Count());
+            foreach (var Target in targetsToUpdate)
             {
                 var FileLists = Target.FileLists.Select(FL => new KeyValuePair<string, IReadOnlySet<string>>(FL.GetType().Name, FL.Files)).ToDictionary();
                 var Entity = new TargetEntity
@@ -48,7 +52,7 @@ namespace SB
                     TargetName = Target.Name,
                     TargetType = (Target.Arguments["TargetType"] as SB.Core.TargetType?)?.ToString() ?? "null",
                     IsPackage = Target.IsFromPackage ? "true" : "false",
-                    Tag = Target.GetAttribute("TargetTags")?.ToString() ?? "",
+                    Category = Target.GetAttribute("TargetCategory")?.ToString() ?? "",
                     ScriptLocation = Target.Location,
                     LineNumber = Target.LineNumber,
                     FileLists = Json.Serialize(FileLists),
@@ -85,7 +89,7 @@ namespace SB
         public required string TargetName { get; set; }
         public required string TargetType { get; set; }
         public required string IsPackage { get; set; }
-        public required string Tag { get; set; }
+        public required string Category { get; set; }
         public required string ScriptLocation { get; set; }
         public required int LineNumber { get; set; }
         public required string FileLists { get; set; }
