@@ -22,7 +22,7 @@ namespace SB
                         if (!OperatingSystem.IsWindows())
                         {
                             foreach (var F in Directory.GetFiles(ToolDirectory, "*"))
-                                File.SetUnixFileMode(F, UnixFileMode.UserExecute | UnixFileMode.UserRead | UnixFileMode.UserWrite);
+                                System.IO.File.SetUnixFileMode(F, UnixFileMode.UserExecute | UnixFileMode.UserRead | UnixFileMode.UserWrite);
                         }
                         System.IO.Compression.ZipFile.ExtractToDirectory(ZipFile, ToolDirectory, true);
 
@@ -47,7 +47,7 @@ namespace SB
                     if (!OperatingSystem.IsWindows())
                     {
                         foreach (var F in Directory.GetFiles(IntermediateDirectory, "*"))
-                            File.SetUnixFileMode(F, UnixFileMode.UserExecute | UnixFileMode.UserRead | UnixFileMode.UserWrite);
+                            System.IO.File.SetUnixFileMode(F, UnixFileMode.UserExecute | UnixFileMode.UserRead | UnixFileMode.UserWrite);
                     }
                     System.IO.Compression.ZipFile.ExtractToDirectory(ZipFile, IntermediateDirectory, true);
                     depend.ExternalFiles.Add(ZipFile);
@@ -85,6 +85,42 @@ namespace SB
                     }, null, new string[] { BS.GlobalConfiguration });
                 }
             }
+        }
+
+        public static async Task<string> File(string Name, string Destination)
+        {
+            // Download the file
+            var downloadedFile = await Download.DownloadFile(Name);
+
+            // Determine the final destination
+            string finalDestination;
+            finalDestination = Path.IsPathFullyQualified(Destination) ? Destination : Path.Combine(BS.BuildPath, Destination);
+            finalDestination = Path.Combine(finalDestination, Path.GetFileName(downloadedFile));
+            
+            // Use dependency system to track the copy operation
+            Engine.ConfigureAwareDepend.OnChanged("Install.File.Copy", Name, "Install.Files", (Depend depend) =>
+            {
+                // Ensure destination directory exists
+                var destDir = Path.GetDirectoryName(finalDestination);
+                if (!string.IsNullOrEmpty(destDir))
+                {
+                    Directory.CreateDirectory(destDir);
+                }
+                
+                // Copy the file
+                System.IO.File.Copy(downloadedFile, finalDestination, overwrite: true);
+                
+                // Set executable permissions on non-Windows platforms
+                if (!OperatingSystem.IsWindows())
+                {
+                    System.IO.File.SetUnixFileMode(finalDestination, UnixFileMode.UserExecute | UnixFileMode.UserRead | UnixFileMode.UserWrite);
+                }
+                
+                depend.ExternalFiles.Add(downloadedFile);
+                depend.ExternalFiles.Add(finalDestination);
+            }, new[] { downloadedFile }, new[] { BS.GlobalConfiguration });
+            
+            return finalDestination;
         }
 
         private static ConcurrentDictionary<string, System.Threading.Lock> InstallLocks = new();
