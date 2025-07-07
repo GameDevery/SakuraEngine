@@ -5,18 +5,16 @@ CGPURenderPipelineId create_blit_render_pipeline(CGPUDeviceId device, CGPUSample
 {
     uint32_t *vs_bytes, vs_length;
     uint32_t *fs_bytes, fs_length;
-    read_shader_bytes(SKR_UTF8("rg-deferred/screen_vs"), &vs_bytes, &vs_length,
+    read_shader_bytes(SKR_UTF8("rg-deferred/screen_vs.vs"), &vs_bytes, &vs_length,
     device->adapter->instance->backend);
-    read_shader_bytes(SKR_UTF8("rg-deferred/blit_fs"), &fs_bytes, &fs_length,
+    read_shader_bytes(SKR_UTF8("rg-deferred/blit_fs.fs"), &fs_bytes, &fs_length,
     device->adapter->instance->backend);
     CGPUShaderLibraryDescriptor vs_desc = {};
-    vs_desc.stage = CGPU_SHADER_STAGE_VERT;
     vs_desc.name = SKR_UTF8("ScreenVertexShader");
     vs_desc.code = vs_bytes;
     vs_desc.code_size = vs_length;
     CGPUShaderLibraryDescriptor ps_desc = {};
     ps_desc.name = SKR_UTF8("BlitFragmentShader");
-    ps_desc.stage = CGPU_SHADER_STAGE_FRAG;
     ps_desc.code = fs_bytes;
     ps_desc.code_size = fs_length;
     auto screen_vs = cgpu_create_shader_library(device, &vs_desc);

@@ -3,7 +3,7 @@ using Serilog;
 
 namespace SB
 {
-    [DXCDoctor]
+    [Doctor<DXCDoctor>]
     public class DXCEmitter : TaskEmitter
     {
         public override bool EnableEmitter(Target Target) => Target.HasFilesOf<HLSLFileList>();
@@ -11,20 +11,32 @@ namespace SB
         public override IArtifact? PerFileTask(Target Target, FileList FileList, FileOptions? Options, string SourceFile)
         {
             var HLSLFileList = FileList as HLSLFileList;
+            var OutputDirectory = Path.Combine(Engine.BuildPath, ShaderOutputDirectories[Target.Name]);
+            return CompileHLSL(Target, SourceFile, HLSLFileList!.Entry, OutputDirectory);
+        }
+
+        public static IArtifact? CompileHLSL(Target Target, string SourceFile, string Entry, string OutputDirectory)
+        {
+            bool AppendEntryInArtifactPath = false;
             var Parts = Path.GetFileName(SourceFile).Split('.');
             var HLSLBaseName = Parts[0];
             var TargetProfile = Parts[1];
-            var OutputDirectory = Path.Combine(Engine.BuildPath, ShaderOutputDirectories[Target.Name]);
+            if (Parts.Length > 3)
+            {
+                Entry = Parts[1];
+                TargetProfile = Parts[2];
+                AppendEntryInArtifactPath = true;
+            }
             Directory.CreateDirectory(OutputDirectory);
 
             // SPV
-            bool Changed = Depend.OnChanged(Target.Name, SourceFile, Name + ".SPV", (Depend depend) => {
-                var SpvFile = Path.Combine(OutputDirectory, $"{HLSLBaseName}.spv");
+            bool Changed = Engine.ConfigureNotAwareDepend.OnChanged(Target.Name, SourceFile, "DXC.SPV", (Depend depend) => {
+                var SpvFile = Path.Combine(OutputDirectory, AppendEntryInArtifactPath ? $"{HLSLBaseName}.{Entry}.spv" : $"{HLSLBaseName}.spv");
                 var Arguments = new string[] {
+                    "-HV 2021",
                     "-Wno-ignored-attributes",
-                    "-all_resources_bound",
                     "-spirv",
-                    $"-E {HLSLFileList!.Entry}",
+                    TargetProfile.StartsWith("lib") ? "-Vd" : $"-E {Entry}",
                     "-fspv-target-env=vulkan1.1",
                     $"-Fo{SpvFile}",
                     $"-T{TargetProfile}",
@@ -39,12 +51,13 @@ namespace SB
             }, new string [] { SourceFile }, null);
 
             // DXIL
-            Changed |= Depend.OnChanged(Target.Name, SourceFile, Name + ".DXIL", (Depend depend) => {
-                var DxilFile = Path.Combine(OutputDirectory, $"{HLSLBaseName}.dxil");
+            Changed |= Engine.ConfigureNotAwareDepend.OnChanged(Target.Name, SourceFile, "DXC.DXIL", (Depend depend) => {
+                var DxilFile = Path.Combine(OutputDirectory, AppendEntryInArtifactPath? $"{HLSLBaseName}.{Entry}.dxil" : $"{HLSLBaseName}.dxil");
                 var Arguments = new string[] {
+                    "-HV 2021",
                     "-Wno-ignored-attributes",
                     "-all_resources_bound",
-                    $"-E {HLSLFileList!.Entry}",
+                    TargetProfile.StartsWith("lib") ? "-Vd" : $"-E {Entry}",
                     $"-Fo{DxilFile}",
                     $"-T{TargetProfile}",
                     SourceFile
@@ -88,7 +101,8 @@ namespace SB
             var FL = @this.FileList<HLSLFileList>();
             FL.Entry = Entry;
             FL.AddFiles(Files);
-            DXCEmitter.ShaderOutputDirectories.Add(@this.Name, "resources/shaders");
+            if (!DXCEmitter.ShaderOutputDirectories.ContainsKey(@this.Name))
+                DXCEmitter.ShaderOutputDirectories.Add(@this.Name, "resources/shaders");
             return @this;
         }
 
@@ -99,9 +113,9 @@ namespace SB
         }
     }
 
-    public class DXCDoctor : DoctorAttribute
+    public class DXCDoctor : IDoctor
     {
-        public override bool Check()
+        public bool Check()
         {
             var Installation = (BuildSystem.TargetOS == OSPlatform.Windows) ? Install.Tool("dxc-2025_02_21") : Install.Tool("dxc");
             Installation.Wait();
@@ -109,8 +123,8 @@ namespace SB
             Directory.CreateDirectory(Path.Combine(Engine.BuildPath, "resources/shaders"));
             return true;
         }
-        public override bool Fix() 
-        { 
+        public bool Fix()
+        {
             Log.Fatal("dxc sdks install failed!");
             return true; 
         }

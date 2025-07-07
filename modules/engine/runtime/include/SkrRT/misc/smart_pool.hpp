@@ -62,7 +62,7 @@ struct SmartPool : public ISmartPool<I> {
         return RC<T>(ptr).template cast_static<I>();
     }
 
-    void deallocate(I* iptr) SKR_NOEXCEPT
+    void deallocate(I* iptr) SKR_NOEXCEPT override
     {
         if (auto ptr = static_cast<T*>(iptr))
         {

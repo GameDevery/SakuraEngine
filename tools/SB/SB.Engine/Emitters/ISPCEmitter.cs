@@ -4,7 +4,7 @@ using Serilog;
 namespace SB
 {
     using BS = BuildSystem;
-    [ISPCDoctor]
+    [Doctor<ISPCDoctor>]
     public class ISPCEmitter : TaskEmitter
     {
         public override bool EnableEmitter(Target Target) => Target.HasFilesOf<ISPCFileList>();
@@ -22,7 +22,7 @@ namespace SB
                 "--target=host",
                 "--opt=fast-math"
             };
-            bool Changed = Depend.OnChanged(Target.Name, SourceFile, Name, (Depend depend) => {
+            bool Changed = Engine.ConfigureAwareDepend.OnChanged(Target.Name, SourceFile, Name, (Depend depend) => {
                 int ExitCode = BuildSystem.RunProcess(ISPCDoctor.ISPC!, string.Join(" ", Arguments), out var Output, out var Error);
                 if (ExitCode != 0)
                 {
@@ -61,16 +61,16 @@ namespace SB
         }
     }
 
-    public class ISPCDoctor : DoctorAttribute
+    public class ISPCDoctor : IDoctor
     {
-        public override bool Check()
+        public bool Check()
         {
             var Installation = Install.Tool("ispc-1.26.0");
             Installation.Wait();
             ISPC = Path.Combine(Installation.Result, BuildSystem.HostOS == OSPlatform.Windows ? "ispc.exe" : "ispc");
             return true;
         }
-        public override bool Fix() 
+        public bool Fix() 
         { 
             Log.Fatal("ispc sdks install failed!");
             return true; 

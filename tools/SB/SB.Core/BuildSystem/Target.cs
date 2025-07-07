@@ -15,9 +15,9 @@ namespace SB
 
             BuildSystem.TargetDefaultSettings(this);
             if (BuildSystem.Configurations.TryGetValue(BuildSystem.GlobalConfiguration, out var GlobalConfig))
-            {
                 GlobalConfig(this);
-            }
+            else
+                throw new TaskFatalError($"Target {Name}: Global configuration {BuildSystem.GlobalConfiguration} does not exist!");
         }
 
         public T FileList<T>()

@@ -3,11 +3,12 @@ using SB.Core;
 using Serilog;
 
 [TargetScript]
-[ImageCoderDoctor]
 public static class SkrImageCoder
 {
     static SkrImageCoder()
     {
+        Engine.AddDoctor<ImageCoderDoctor>();
+        
         var ImageCoder = Engine.Module("SkrImageCoder")
             .EnableUnityBuild()
             .Require("zlib", new PackageConfig { Version = new Version(1, 2, 8) })
@@ -33,9 +34,9 @@ public static class SkrImageCoder
     }
 }
 
-public class ImageCoderDoctor : DoctorAttribute
+public class ImageCoderDoctor : IDoctor
 {
-    public override bool Check()
+    public bool Check()
     {
         Task.WaitAll(
             Install.SDK("libpng"),
@@ -43,7 +44,7 @@ public class ImageCoderDoctor : DoctorAttribute
         );
         return true;
     }
-    public override bool Fix() 
+    public bool Fix() 
     { 
         Log.Fatal("image coder sdks install failed!");
         return true; 

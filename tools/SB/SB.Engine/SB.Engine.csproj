@@ -13,7 +13,12 @@
 
 	<ItemGroup>
 		<Compile Include="./../../../**/**/build.cs" />
-		<Compile Remove="./../../../build_system/**/build.cs" />
+		<Compile Remove="./../../../tools/SB/**/build.cs" />
 	</ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SharpCompress" Version="0.40.0" />
+    <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
+  </ItemGroup>
 
 </Project>

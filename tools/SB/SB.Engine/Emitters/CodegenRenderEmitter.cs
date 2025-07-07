@@ -10,7 +10,7 @@ namespace SB
         public List<string> Scripts { get; } = new();
     }
 
-    [CodegenDoctor]
+    [Doctor<CodegenDoctor>]
     public class CodegenRenderEmitter : TaskEmitter
     {
         public CodegenRenderEmitter(IToolchain Toolchain) => this.Toolchain = Toolchain;
@@ -58,7 +58,7 @@ namespace SB
             if (MetaAttribute.AllGeneratedMetaFiles is not null)
                 DependFiles.AddRange(MetaAttribute.AllGeneratedMetaFiles);
             // Execute
-            bool Changed = Depend.OnChanged(Target.Name, "", this.Name, (Depend depend) => {
+            bool Changed = BS.CppCompileDepends(Target).OnChanged(Target.Name, "", this.Name, (Depend depend) => {
                 var ParamFile = Path.Combine(CodegenDirectory, $"{Target.Name}_codegen_config.json");
                 File.WriteAllText(ParamFile, Json.Serialize(Config));
 
@@ -115,15 +115,26 @@ namespace SB
         public static string GetCodegenDirectory(this Target @this) => Path.Combine(@this.GetStorePath(BuildSystem.GeneratedSourceStore), $"codegen/{@this.Name}");
     }
 
-    public class CodegenDoctor : DoctorAttribute
+    public class CodegenDoctor : IDoctor
     {
-        public override bool Check()
+        public bool Check()
         {
             Installation = Install.Tool("bun_1.2.5");
             Installation.Wait();
+            var EXE = Path.Combine(Installation!.Result, BS.HostOS == OSPlatform.Windows ? "bun.exe" : "bun");
+            if (BuildSystem.RunProcess(EXE, $"install", out var Output, out var Error, null, Path.Combine(Engine.EngineDirectory, "tools/meta_codegen_ts")) != 0)
+            {
+                Log.Fatal("bun install failed!\n{Output}\n{Error}", Output, Error);
+                return false;
+            }
+            if (BuildSystem.RunProcess(EXE, $"install", out var Output2, out var Error2, null, Path.Combine(Engine.EngineDirectory, "tools/merge_natvis_ts")) != 0)
+            {
+                Log.Fatal("bun install failed!\n{Output2}\n{Error2}", Output2, Error2);
+                return false;
+            }
             return true;
         }
-        public override bool Fix() 
+        public bool Fix() 
         { 
             Log.Fatal("bun install failed!");
             return true; 

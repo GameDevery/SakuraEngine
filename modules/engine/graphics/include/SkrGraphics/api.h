@@ -1521,7 +1521,6 @@ typedef struct CGPUShaderLibraryDescriptor {
     const char8_t* name;
     const uint32_t* code;
     uint32_t code_size;
-    ECGPUShaderStage stage;
     bool reflection_only;
 } CGPUShaderLibraryDescriptor;
 

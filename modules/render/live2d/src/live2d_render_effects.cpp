@@ -661,7 +661,6 @@ CGPUShaderLibraryId RenderEffectLive2D::create_shader_library(SRendererId render
     uint32_t*                   shader_bytes  = read_shader_bytes(renderer, name, &shader_length);
     CGPUShaderLibraryDescriptor shader_desc   = {};
     shader_desc.name                          = name;
-    shader_desc.stage                         = stage;
     shader_desc.code                          = shader_bytes;
     shader_desc.code_size                     = shader_length;
     CGPUShaderLibraryId shader                = cgpu_create_shader_library(cgpu_device, &shader_desc);
@@ -671,8 +670,8 @@ CGPUShaderLibraryId RenderEffectLive2D::create_shader_library(SRendererId render
 
 void RenderEffectLive2D::prepare_pipeline_settings()
 {
-    vertex_layout.attributes[0]   = { u8"POSITION", 1, CGPU_FORMAT_R32G32_SFLOAT, 0, 0, sizeof(skr_float2_t), CGPU_INPUT_RATE_VERTEX };
-    vertex_layout.attributes[1]   = { u8"TEXCOORD", 1, CGPU_FORMAT_R32G32_SFLOAT, 1, 0, sizeof(skr_float2_t), CGPU_INPUT_RATE_VERTEX };
+    vertex_layout.attributes[0]   = { u8"pos", 1, CGPU_FORMAT_R32G32_SFLOAT, 0, 0, sizeof(skr_float2_t), CGPU_INPUT_RATE_VERTEX };
+    vertex_layout.attributes[1]   = { u8"uv", 1, CGPU_FORMAT_R32G32_SFLOAT, 1, 0, sizeof(skr_float2_t), CGPU_INPUT_RATE_VERTEX };
     vertex_layout.attribute_count = 2;
 
     rs_state.cull_mode               = CGPU_CULL_MODE_NONE;
@@ -693,18 +692,18 @@ void RenderEffectLive2D::prepare_pipeline(SRendererId renderer)
     const auto render_device = renderer->get_render_device();
     const auto cgpu_device   = render_device->get_cgpu_device();
 
-    CGPUShaderLibraryId vs = create_shader_library(renderer, u8"shaders/live2d_vs", CGPU_SHADER_STAGE_VERT);
-    CGPUShaderLibraryId ps = create_shader_library(renderer, u8"shaders/live2d_ps", CGPU_SHADER_STAGE_FRAG);
+    CGPUShaderLibraryId vs = create_shader_library(renderer, u8"shaders/live2d.vertex_shader", CGPU_SHADER_STAGE_VERT);
+    CGPUShaderLibraryId ps = create_shader_library(renderer, u8"shaders/live2d.model_fs", CGPU_SHADER_STAGE_FRAG);
 
     CGPUShaderEntryDescriptor  ppl_shaders[2];
     CGPUShaderEntryDescriptor& ppl_vs = ppl_shaders[0];
     ppl_vs.library                    = vs;
     ppl_vs.stage                      = CGPU_SHADER_STAGE_VERT;
-    ppl_vs.entry                      = u8"main";
+    ppl_vs.entry                      = u8"vertex_shader";
     CGPUShaderEntryDescriptor& ppl_ps = ppl_shaders[1];
     ppl_ps.library                    = ps;
     ppl_ps.stage                      = CGPU_SHADER_STAGE_FRAG;
-    ppl_ps.entry                      = u8"main";
+    ppl_ps.entry                      = u8"model_fs";
 
     const char8_t* static_sampler_name = u8"color_sampler";
     auto           static_sampler      = render_device->get_linear_sampler();
@@ -777,18 +776,18 @@ void RenderEffectLive2D::prepare_mask_pipeline(SRendererId renderer)
     const auto render_device = renderer->get_render_device();
     const auto cgpu_device   = render_device->get_cgpu_device();
 
-    CGPUShaderLibraryId vs = create_shader_library(renderer, u8"shaders/live2d_mask_vs", CGPU_SHADER_STAGE_VERT);
-    CGPUShaderLibraryId ps = create_shader_library(renderer, u8"shaders/live2d_mask_ps", CGPU_SHADER_STAGE_FRAG);
+    CGPUShaderLibraryId vs = create_shader_library(renderer, u8"shaders/live2d.vertex_shader", CGPU_SHADER_STAGE_VERT);
+    CGPUShaderLibraryId ps = create_shader_library(renderer, u8"shaders/live2d.mask_fs", CGPU_SHADER_STAGE_FRAG);
 
     CGPUShaderEntryDescriptor  ppl_shaders[2];
     CGPUShaderEntryDescriptor& ppl_vs = ppl_shaders[0];
     ppl_vs.library                    = vs;
     ppl_vs.stage                      = CGPU_SHADER_STAGE_VERT;
-    ppl_vs.entry                      = u8"main";
+    ppl_vs.entry                      = u8"vertex_shader";
     CGPUShaderEntryDescriptor& ppl_ps = ppl_shaders[1];
     ppl_ps.library                    = ps;
     ppl_ps.stage                      = CGPU_SHADER_STAGE_FRAG;
-    ppl_ps.entry                      = u8"main";
+    ppl_ps.entry                      = u8"mask_fs";
 
     const char8_t* static_sampler_name = u8"color_sampler";
     auto           static_sampler      = render_device->get_linear_sampler();

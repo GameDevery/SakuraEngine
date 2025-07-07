@@ -11,8 +11,10 @@ public static class CGPUSamples
             .Depend(Visibility.Private, "AppSampleCommon", "lodepng")
             .IncludeDirs(Visibility.Private, "./../../common")
             .AddCFiles("mandelbrot/mandelbrot.c")
-            .AddHLSLFilesWithEntry("compute_main", "mandelbrot/**.hlsl")
-            .DXCOutputDirectory("resources/shaders/cgpu-mandelbrot");
+            .AddCppSLFiles("mandelbrot/**.cppsl")
+            .CppSLOutputDirectory("resources/shaders/cgpu-mandelbrot");
+            //.AddHLSLFilesWithEntry("compute_main", "mandelbrot/**.hlsl")
+            //.DXCOutputDirectory("resources/shaders/cgpu-mandelbrot");
 
         Engine.Program("CGPURayTracing")
             .Depend(Visibility.Public, "SkrRT")
@@ -35,8 +37,8 @@ public static class CGPUSamples
             .Depend(Visibility.Private, "AppSampleCommon")
             .IncludeDirs(Visibility.Private, "./../../common")
             .AddCFiles("texture/texture.c")
-            .AddHLSLFiles("texture/**.hlsl")
-            .DXCOutputDirectory("resources/shaders/cgpu-texture");
+            .AddCppSLFiles("texture/**.cppsl")
+            .CppSLOutputDirectory("resources/shaders/cgpu-texture");
 
         Engine.Program("CGPUTiledTexture")
             .Depend(Visibility.Public, "SkrRT")

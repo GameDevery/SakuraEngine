@@ -5,3 +5,52 @@ Diagnostics:
   Suppress:
     - pragma_attribute_no_pop_eof
     - pragma_attribute_stack_mismatch
+
+---
+
+If:
+  PathMatch: tools/.*/.*
+CompileFlags:
+  CompilationDatabase: .sb/compile_commands/tools/
+
+---
+
+If:
+  PathMatch: modules/.*/.*
+CompileFlags:
+  CompilationDatabase: .sb/compile_commands/modules/
+
+---
+
+If:
+  PathMatch: samples/.*/.*
+CompileFlags:
+  CompilationDatabase: .sb/compile_commands/modules/
+
+---
+
+If:
+  PathMatch: tests/.*/.*
+CompileFlags:
+  CompilationDatabase: .sb/compile_commands/modules/
+
+---
+
+If:
+  PathMatch: thirdparty/.*/.*
+CompileFlags:
+  CompilationDatabase: .sb/compile_commands/modules/
+
+---
+
+If:
+  PathMatch: .*/.*.cppsl
+CompileFlags:
+  CompilationDatabase: .sb/compile_commands/shaders/
+
+---
+
+If:
+  PathMatch: .*/.*.hppsl
+CompileFlags:
+  CompilationDatabase: .sb/compile_commands/shaders/

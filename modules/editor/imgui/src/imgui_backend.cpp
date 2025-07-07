@@ -211,6 +211,8 @@ void ImGuiBackend::collect()
                 SKR_ASSERT(tex->Status == ImTextureStatus_Destroyed);
             }
             break;
+        default:
+            break;
         }
     }
 

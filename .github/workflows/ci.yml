@@ -1,0 +1,84 @@
+name: ci
+
+on: [push, pull_request]
+
+jobs:
+  ci:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, arch: x64, toolchain: msvc, configure: debug }
+          - { os: windows-latest, arch: x64, toolchain: msvc, configure: release }
+          - { os: windows-latest, arch: x64, toolchain: clang-cl, configure: debug }
+          - { os: windows-latest, arch: x64, toolchain: clang-cl, configure: release }
+          - { os: macos-latest, arch: arm64, toolchain: clang, configure: debug }
+          - { os: macos-latest, arch: arm64, toolchain: clang, configure: release }
+
+    name: ${{ matrix.os }} + ${{ matrix.toolchain }} + ${{ matrix.arch }} + ${{ matrix.configure }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Upgrade LLVM
+        if: runner.os == 'Windows'
+        run: choco upgrade llvm
+
+      - name: Checkout Code
+        uses: nschloe/action-cached-lfs-checkout@v1
+        
+      - name: Restore Artifacts Cache
+        uses: actions/cache/restore@v4
+        id: restore-cache
+        with:
+          path: |
+            .sb/*.db
+            .pkgs
+            .build/${{ matrix.toolchain }}/.deps
+            .build/${{ matrix.toolchain }}/.gens
+            .build/${{ matrix.toolchain }}/.objs
+            .build/${{ matrix.toolchain }}/resources
+            .build/${{ matrix.toolchain }}/CppCompile.Targets.${{ matrix.configure }}.db
+          key: BuildCache-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.toolchain }}-${{ matrix.configure }}
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Build Tools
+        if: success() || failure()
+        run: dotnet run --configuration Release SB build --category=tools   --verbose --toolchain=${{ matrix.toolchain }} --sha-depend --mode=release 
+
+      - name: Build Programs(${{ matrix.configure }})
+        if: success()
+        run: dotnet run --configuration Release SB build --category=modules --verbose --toolchain=${{ matrix.toolchain }} --sha-depend --mode=${{ matrix.configure }} 
+
+      - name: Test(${{ matrix.configure }})
+        if: success()
+        env:
+          TRACY_NO_INVARIANT_CHECK: 1
+        run: dotnet run --configuration Release SB test  --category=modules --verbose --toolchain=${{ matrix.toolchain }} --sha-depend --mode=${{ matrix.configure }} 
+
+      - name: Save Artifacts Cache
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .sb/*.db
+            .pkgs
+            .build/${{ matrix.toolchain }}/.deps
+            .build/${{ matrix.toolchain }}/.gens
+            .build/${{ matrix.toolchain }}/.objs
+            .build/${{ matrix.toolchain }}/resources
+            .build/${{ matrix.toolchain }}/CppCompile.Targets.${{ matrix.configure }}.db
+          key: ${{ steps.restore-cache.outputs.cache-primary-key }}
+
+      - name: Upload Compile Results
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          include-hidden-files: true
+          name: build-binaries-${{ matrix.os }}-${{ matrix.toolchain }}-${{ matrix.configure }}
+          path: .build
+
+      # - name: RemoveBuildDir
+      #   uses: JesseTG/rm@v1.0.3
+      #   with:
+      #     path: build/windows

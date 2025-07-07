@@ -3,6 +3,7 @@ using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.SystemConsole.Themes;
 using System.Reflection;
+using System.Diagnostics;
 
 namespace SB
 {
@@ -11,13 +12,13 @@ namespace SB
     {
         public static void SetEngineDirectory(string Directory) => EngineDirectory = Directory;
 
-        public static IToolchain Bootstrap(string ProjectRoot)
+        public static IToolchain Bootstrap(string ProjectRoot, TargetCategory Categories)
         {
             using (Profiler.BeginZone("Bootstrap", color: (uint)Profiler.ColorType.WebMaroon))
             {
-                SetupLogger();
+                Log.Verbose("Runs on {HostOS} with {ProcessorCount} logical processors", HostOS, Environment.ProcessorCount);
+
                 IToolchain? Toolchain = null;
-                
                 if (BS.HostOS == OSPlatform.Windows)
                     Toolchain = VisualStudioDoctor.VisualStudio;
                 else if (BS.HostOS == OSPlatform.OSX)
@@ -34,26 +35,31 @@ namespace SB
 
                 BS.TempPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".sb")).FullName;
                 BS.BuildPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".build", Toolchain.Name)).FullName;
-                BS.PackageTempPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".pkgs/.sb")).FullName;
                 BS.PackageBuildPath = Directory.CreateDirectory(Path.Combine(ProjectRoot, ".pkgs/.build", Toolchain.Name)).FullName;
                 BS.LoadConfigurations();
 
-                LoadTargets();
+                Log.Verbose("Load Targets... ");
+                LoadTargets(Categories);
                 
-                DoctorsTask = Engine.RunDoctors();
+                Stopwatch sw = new();
+                sw.Start();
+                Log.Verbose("Run Doctors... ");
+                Engine.RunDoctors();
+                sw.Stop();
+                Log.Verbose($"Doctors Finished... cost {sw.ElapsedMilliseconds / 1000.0f}s");
                 return Toolchain!;
             }
         }
 
         public static void AddEngineTaskEmitters(IToolchain Toolchain)
         {
+            Log.Verbose("Add Engine Task Emitters... ");
+
             Engine.AddTaskEmitter("Codgen.Meta", new CodegenMetaEmitter(Toolchain));
 
             Engine.AddTaskEmitter("Module.Info", new ModuleInfoEmitter());
 
             Engine.AddTaskEmitter("ISPC.Compile", new ISPCEmitter());
-
-            Engine.AddTaskEmitter("DXC.Compile", new DXCEmitter());
 
             Engine.AddTaskEmitter("Cpp.UnityBuild", new UnityBuildEmitter())
                 .AddDependency("Module.Info", DependencyModel.PerTarget);
@@ -91,13 +97,57 @@ namespace SB
                 ?.AddDependency("Cpp.CompileCommands", DependencyModel.PerTarget);
         }
 
-        public static new void RunBuild()
+        public static void AddShaderTaskEmitters(IToolchain Toolchain)
         {
-            DoctorsTask!.Wait();
-            BS.RunBuild();
+            if (BuildSystem.TargetOS == OSPlatform.Windows)
+            {
+                Engine.AddTaskEmitter("DXC.Compile", new DXCEmitter());
+            }
+            Engine.AddTaskEmitter("CppSL.Compile", new CppSLEmitter());
         }
 
-        private static void SetupLogger()
+        public static new void RunBuild(string? singleTargetName = null)
+        {
+            BS.RunBuild(singleTargetName);
+        }
+
+        private static void LoadTargets(TargetCategory Categories)
+        {
+            BS.TargetDefaultSettings += (Target Target) =>
+            {
+                Target.CppVersion("20")
+                    .Exception(false)
+                    .RTTI(false)
+                    .LinkDirs(Visibility.Public, Target.GetBinaryPath());
+                if (BS.TargetOS == OSPlatform.Windows)
+                {
+                    Target.RuntimeLibrary("MD");
+                }
+            };
+
+            var Assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            var Types = Assemblies.AsParallel().SelectMany(A => A.GetTypes());
+            var Scripts = Types.Where(Type => IsTargetOfCategory(Type, Categories));
+            foreach (var Script in Scripts)
+            {
+                var PrevTargets = AllTargets.Values.ToHashSet();
+                System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(Script.TypeHandle);
+                var NewTargets = AllTargets.Values.Except(PrevTargets);
+                foreach (var NewTarget in NewTargets)
+                {
+                    NewTarget.SetCategory(Script.GetCustomAttribute<TargetScript>()!.Category);
+                }
+            }
+        }
+        
+        private static bool IsTargetOfCategory(Type Type, TargetCategory Category)
+        {
+            var TargetAttr = Type.GetCustomAttribute<TargetScript>();
+            if (TargetAttr == null) return false;
+            return (TargetAttr.Category & Category) != 0;
+        }
+
+        public static void InitializeLogger(LogEventLevel LogLevel = LogEventLevel.Information)
         {
             Console.OutputEncoding = System.Text.Encoding.UTF8;
             SystemConsoleTheme ConsoleLogTheme = new SystemConsoleTheme(
@@ -123,47 +173,26 @@ namespace SB
                });
 
             Log.Logger = new LoggerConfiguration()
-                .MinimumLevel.Information()
+                .MinimumLevel.Is(LogLevel)
                 // .Enrich.WithThreadId()
-                // .WriteTo.Console(restrictedToMinimumLevel: LogEventLevel.Information, outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.ffff zzz} {Message:lj}{NewLine}{Exception}")
+                // .WriteTo.Console(restrictedToMinimumLevel: LogLevel, outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.ffff zzz} {Message:lj}{NewLine}{Exception}")
                 .WriteTo.Async(a => a.Logger(l => l
-                    .Filter.ByIncludingOnly(e => e.Level == LogEventLevel.Information)
-                    .WriteTo.Console(restrictedToMinimumLevel: LogEventLevel.Information, outputTemplate: "{Message:lj}{NewLine}{Exception}", theme: ConsoleLogTheme)
+                    .Filter.ByIncludingOnly(e => e.Level == LogLevel)
+                    .WriteTo.Console(restrictedToMinimumLevel: LogLevel, outputTemplate: "{Message:lj}{NewLine}{Exception}", theme: ConsoleLogTheme)
                 ))
                 .WriteTo.Async(a => a.Logger(l => l
-                    .Filter.ByExcluding(e => e.Level == LogEventLevel.Information)
-                    .WriteTo.Console(restrictedToMinimumLevel: LogEventLevel.Information, outputTemplate: "{Level:u}: {Message:lj}{NewLine}{Exception}", theme: ConsoleLogTheme)
+                    .Filter.ByExcluding(e => e.Level == LogLevel)
+                    .WriteTo.Console(restrictedToMinimumLevel: LogLevel, outputTemplate: "{Level:u}: {Message:lj}{NewLine}{Exception}", theme: ConsoleLogTheme)
                 ))
                 .CreateLogger();
         }
 
-        private static void LoadTargets()
-        {
-            BS.TargetDefaultSettings += (Target Target) =>
-            {
-                Target.CppVersion("20")
-                    .Exception(false)
-                    .RTTI(false)
-                    .LinkDirs(Visibility.Public, Target.GetBinaryPath());
-                if (BS.TargetOS == OSPlatform.Windows)
-                {
-                    Target.RuntimeLibrary("MD");
-                }
-            };
+        public static DependDatabase ConfigureAwareDepend = new DependDatabase(Engine.TempPath, "Engine.ConfigureAwareDepends." + Engine.GlobalConfiguration);
+        public static DependDatabase ConfigureNotAwareDepend = new DependDatabase(Engine.TempPath, "Engine.ConfigureNotAwareDepends");
 
-            var Assemblies = AppDomain.CurrentDomain.GetAssemblies();
-            var Types = Assemblies.AsParallel().SelectMany(A => A.GetTypes());
-            var Scripts = Types.Where(Type => Type.GetCustomAttribute<TargetScript>() is not null);
-            foreach (var Script in Scripts)
-            {
-                System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(Script.TypeHandle);
-            }
-        }
-        
         public static string EngineDirectory { get; private set; } = Directory.GetCurrentDirectory();
         public static string ToolDirectory => Path.Combine(TempPath, "tools");
         public static string DownloadDirectory => Path.Combine(TempPath, "downloads");
         public static bool EnableDebugInfo = true;
-        private static Task? DoctorsTask = null;
     }
 }

@@ -89,7 +89,6 @@ bool ShaderProgress::do_in_background()
     desc.code = (const uint32_t*)blob->get_data();
     desc.code_size = (uint32_t)blob->get_size();
     desc.name = bytes_uri.c_str();
-    desc.stage = identifier.shader_stage;
     const auto created_shader = cgpu_create_shader_library(device, &desc);
     blob.reset();
     if (!created_shader)

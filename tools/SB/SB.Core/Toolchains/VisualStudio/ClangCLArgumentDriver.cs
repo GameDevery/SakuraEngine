@@ -10,6 +10,9 @@ namespace SB.Core
         public ClangCLArgumentDriver(CFamily lang, bool isPCH)
             : base(lang, isPCH)
         {
+            RawArguments.Add("-fansi-escape-codes");
+            RawArguments.Add("-fcolor-diagnostics");
+
             RawArguments.Add("-ftime-trace");
 
             // we use clang -xc/c++
@@ -41,7 +44,7 @@ namespace SB.Core
             CFamily.Cpp => isPCH ? "-xc++-header" : "-xc++",
             CFamily.ObjC => isPCH ? "-xobjective-c-header" : "-xobjective-c",
             CFamily.ObjCpp => isPCH ? "-xobjective-c++-header" : "-xobjective-c++",
-            _ => throw new TaskFatalError($"Invalid language \"{Language}\" for Apple clang!")
+            _ => throw new TaskFatalError($"Invalid language \"{Language}\" for clang-cl!")
         };
     }
 }

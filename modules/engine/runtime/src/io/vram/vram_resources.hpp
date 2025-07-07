@@ -12,7 +12,7 @@ struct SKR_RUNTIME_API VRAMBuffer : public IVRAMIOBuffer {
 public:
     virtual ~VRAMBuffer() SKR_NOEXCEPT;
 
-    CGPUBufferId get_buffer() const SKR_NOEXCEPT
+    CGPUBufferId get_buffer() const SKR_NOEXCEPT override
     {
         return buffer;
     }
@@ -40,7 +40,7 @@ struct SKR_RUNTIME_API VRAMTexture : public IVRAMIOTexture {
 public:
     virtual ~VRAMTexture() SKR_NOEXCEPT;
 
-    CGPUTextureId get_texture() const SKR_NOEXCEPT
+    CGPUTextureId get_texture() const SKR_NOEXCEPT override
     {
         return texture;
     }

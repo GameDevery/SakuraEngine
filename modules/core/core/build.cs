@@ -3,11 +3,12 @@ using SB.Core;
 using Serilog;
 
 [TargetScript]
-[SkrCoreDoctor]
 public static class SkrCore
 {
     static SkrCore()
     {
+        Engine.AddDoctor<SkrCoreDoctor>();
+        
         var DependencyGraph = Engine.StaticComponent("SkrDependencyGraph", "SkrCore")
             .Exception(true) // DAG uses lemon which uses exceptions
             .OptimizationLevel(OptimizationLevel.Fastest)
@@ -76,14 +77,14 @@ public static class SkrCore
     }
 }
 
-public class SkrCoreDoctor : DoctorAttribute
+public class SkrCoreDoctor : IDoctor
 {
-    public override bool Check()
+    public bool Check()
     {
         Install.SDK("SDL_3.2.12").Wait();
         return true;
     }
-    public override bool Fix() 
+    public bool Fix() 
     { 
         Log.Fatal("core sdks install failed!");
         return true; 
