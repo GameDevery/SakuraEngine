@@ -22,6 +22,9 @@ public class MainCommand
 
     [CmdSub(Name = "clean", ShortName = 'c', Help = "Clean build cache and dependency databases")]
     public CleanCommand Clean { get; set; } = new CleanCommand();
+
+    [CmdSub(Name = "vs", Help = "Generate Visual Studio solution")]
+    public VSCommand VS { get; set; } = new VSCommand();
 }
 
 public abstract class CommandBase
@@ -32,7 +35,7 @@ public abstract class CommandBase
     [CmdOption(Name = "mode", ShortName = 'm', Help = "Build mode (debug/release)", IsRequired = false)]
     public string Mode { get; set; } = "debug";
 
-    [CmdOption(Name = "sha-depend", ShortName = 's', Help = "Use SHA instead of DateTime for dependency checking", IsRequired = false)]
+    [CmdOption(Name = "sha-depend", Help = "Use SHA instead of DateTime for dependency checking", IsRequired = false)]
     public bool UseShaDepend { get; set; } = false;
 
     [CmdOption(Name = "category", ShortName = 'c', Help = "Build tools", IsRequired = false)]
@@ -250,5 +253,36 @@ public class CleanCommand : CommandBase
         {
             Log.Error("Failed to clear databases: {Error}", ex.Message);
         }
+    }
+}
+
+// VS subcommand
+public class VSCommand : CommandBase
+{
+    [CmdOption(Name = "solution-name", Help = "Name of the solution file (without extension)", IsRequired = false)]
+    public string SolutionName { get; set; } = "SakuraEngine";
+
+    [CmdOption(Name = "output", Help = "Output directory for solution files", IsRequired = false)]
+    public string OutputDirectory { get; set; } = ".sb/VisualStudioSolution";
+
+    public override void OnExecute()
+    {
+        Log.Information("Generating Visual Studio solution...");
+
+        // Set output directory for VS emitter
+        VSEmitter.RootDirectory = !string.IsNullOrEmpty(Engine.EngineDirectory) ? Engine.EngineDirectory : Directory.GetCurrentDirectory();
+        VSEmitter.OutputDirectory = OutputDirectory;
+
+        // Add VS emitter to generate project files
+        BuildSystem.AddTaskEmitter("VSEmitter", new VSEmitter(Toolchain));
+
+        // Run the build to process all targets
+        Engine.RunBuild();
+
+        // Generate solution file
+        var solutionPath = Path.Combine(OutputDirectory, $"{SolutionName}.sln");
+        VSEmitter.GenerateSolution(solutionPath, SolutionName);
+
+        Log.Information("Visual Studio solution generated at: {Path}", Path.GetFullPath(solutionPath));
     }
 }
