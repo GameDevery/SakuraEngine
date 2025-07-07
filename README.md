@@ -6,6 +6,8 @@
 
 <h2 align="center"> 为下一代平台的功能性能需求而生 </h2>
 
+[![ci](https://github.com/SakuraEngine/SakuraEngine/actions/workflows/ci.yml/badge.svg)](https://github.com/SakuraEngine/SakuraEngine/actions/workflows/ci.yml)
+
 ## 特性
 
 ### 原生
@@ -66,26 +68,19 @@ https://user-images.githubusercontent.com/39457738/192722537-6ab035a5-2789-43d0-
 
 ## 组件支持矩阵
 
-### [构建](https://github.com/SakuraEngine/Sakura.Runtime/actions)
-
-| Platform                                                                                                                                        | CI(Dev)                                                                                                                                                                               |
-| ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `<img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/Windows.png" height="20" />` windows   | [![windows-build](https://github.com/SakuraEngine/SakuraEngine/actions/workflows/ci-windows.yml/badge.svg)](https://github.com/SakuraEngine/SakuraEngine/actions/workflows/ci-windows.yml) |
-| `<img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/MacOS.png" height="20" />` apple-clang | [![macos-build](https://github.com/SakuraEngine/SakuraEngine/actions/workflows/ci-macos.yml/badge.svg)](https://github.com/SakuraEngine/SakuraEngine/actions/workflows/ci-macos.yml)       |
-
 ### [CGPU](include/cgpu/README.md)
 
-| Platform                                                                                                                                      | `<img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/DirectX12U.png" height="18" />` D3D12 | `<img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/DirectX11.png" height="18" />`D3D11 | `<img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/Vulkan.png" height="18" />`Vulkan | `<img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/Metal.png" height="18" />`Metal |
+| Platform                                                                                                                                      | <img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/DirectX12U.png" height="18" />D3D12 | <img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/DirectX11.png" height="18" />D3D11 | <img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/Vulkan.png" height="18" />Vulkan | <img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/Metal.png" height="18" />Metal |
 | --------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------------------------------------: |
-| `<img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/Windows.png" height="20" />` Windows |                                                                      ✔️                                                                      |                                                                      ❌                                                                      |                                                                    ✔️                                                                    |                                                                   N/A                                                                   |
-| `<img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/MacOS.png" height="20" />` macOS     |                                                                      N/A                                                                      |                                                                     N/A                                                                     |                                                                    ✔️                                                                    |                                                                   ❗️                                                                   |
+| <img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/Windows.png" height="20" /> Windows |                                                                      ✔️                                                                      |                                                                      ❌                                                                      |                                                                    ✔️                                                                    |                                                                   N/A                                                                   |
+| <img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/MacOS.png" height="20" /> macOS     |                                                                      N/A                                                                      |                                                                     N/A                                                                     |                                                                    ✔️                                                                    |                                                                   ❗️                                                                   |
 
 ### [ImageCoder](https://github.com/SakuraEngine/Sakura.Runtime/tree/main/modules/image_coder)
 
 | Platform                                                                                                                                      | PNG             | JPEG          | BMP  | ICO  | EXR  | TGA  |
 | --------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | ------------- | ---- | ---- | ---- | ---- |
-| `<img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/Windows.png" height="20" />` Windows | libpng(v1.5.2)  | libjpeg-turbo | ❗️ | ❗️ | ❗️ | ❗️ |
-| `<img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/MacOS.png" height="20" />` macOS     | libpng(v1.5.27) | libjpeg-turbo | ❗️ | ❗️ | ❗️ | ❗️ |
+| <img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/Windows.png" height="20" /> Windows | libpng(v1.5.2)  | libjpeg-turbo | ✔️ | ❗️ | ❗️ | ❗️ |
+| <img src="https://media.githubusercontent.com/media/SakuraEngine/Sakura.Resources/main/platform-icons/MacOS.png" height="20" /> macOS     | libpng(v1.5.27) | libjpeg-turbo | ✔️ | ❗️ | ❗️ | ❗️ |
 
 ## 示例 (从上到下逐渐贴近底层)
 
