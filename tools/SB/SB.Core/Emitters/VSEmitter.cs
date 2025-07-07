@@ -85,13 +85,17 @@ namespace SB
                 foreach (var file in fileList.Files)
                 {
                     var ext = Path.GetExtension(file).ToLower();
+                    var fullPath = Path.IsPathFullyQualified(file) 
+                        ? file 
+                        : Path.GetFullPath(Path.Combine(Target.Directory, file));
+                    
                     if (ext == ".cpp" || ext == ".cc" || ext == ".c" || ext == ".m" || ext == ".mm")
                     {
-                        projectInfo.SourceFiles.Add(file);
+                        projectInfo.SourceFiles.Add(fullPath);
                     }
                     else if (ext == ".h" || ext == ".hpp" || ext == ".hxx" || ext == ".inl")
                     {
-                        projectInfo.HeaderFiles.Add(file);
+                        projectInfo.HeaderFiles.Add(fullPath);
                     }
                 }
             }
@@ -124,6 +128,11 @@ namespace SB
                 }
             }
             
+            // Create a normalized set of existing headers to avoid duplicates
+            var normalizedExistingHeaders = new HashSet<string>(
+                projectInfo.HeaderFiles.Select(h => Path.GetFullPath(h).ToLowerInvariant()),
+                StringComparer.OrdinalIgnoreCase);
+            
             // Scan each relevant include directory for header files
             var headerExtensions = new[] { ".h", ".hpp", ".hxx", ".inl", ".inc" };
             foreach (var includeDir in relevantIncludes)
@@ -133,12 +142,16 @@ namespace SB
                     try
                     {
                         var headers = Directory.GetFiles(includeDir, "*.*", SearchOption.AllDirectories)
-                            .Where(file => headerExtensions.Contains(Path.GetExtension(file).ToLower()))
-                            .Where(file => !projectInfo.HeaderFiles.Contains(file)); // Don't add duplicates
+                            .Where(file => headerExtensions.Contains(Path.GetExtension(file).ToLower()));
                         
                         foreach (var header in headers)
                         {
-                            projectInfo.HeaderFiles.Add(header);
+                            var normalizedPath = Path.GetFullPath(header).ToLowerInvariant();
+                            if (!normalizedExistingHeaders.Contains(normalizedPath))
+                            {
+                                projectInfo.HeaderFiles.Add(header);
+                                normalizedExistingHeaders.Add(normalizedPath);
+                            }
                         }
                     }
                     catch (Exception)
@@ -318,35 +331,56 @@ namespace SB
             var sourceFilters = new Dictionary<string, string>();
             var headerFilters = new Dictionary<string, string>();
 
-            // Process source files - use target directory as base for cleaner display
+            // Helper to collect all unique directory paths including parents
+            void CollectAllPaths(string path)
+            {
+                if (string.IsNullOrEmpty(path)) return;
+                
+                // Normalize to use backslashes for VS
+                path = path.Replace('/', '\\');
+                filters.Add(path);
+                
+                // Add parent path
+                var parentPath = Path.GetDirectoryName(path);
+                if (!string.IsNullOrEmpty(parentPath))
+                {
+                    CollectAllPaths(parentPath);
+                }
+            }
+
+            // Process source files
             foreach (var file in projectInfo.SourceFiles)
             {
                 var displayPath = GetFileDisplayPath(file, projectInfo);
-                var dir = Path.GetDirectoryName(displayPath)?.Replace('\\', '/') ?? "";
+                var dir = Path.GetDirectoryName(displayPath)?.Replace('/', '\\') ?? "";
                 if (!string.IsNullOrEmpty(dir))
                 {
-                    filters.Add(dir);
+                    CollectAllPaths(dir);
                     sourceFilters[file] = dir;
                 }
             }
 
-            // Process header files - use target directory as base for cleaner display
+            // Process header files
             foreach (var file in projectInfo.HeaderFiles)
             {
                 var displayPath = GetFileDisplayPath(file, projectInfo);
-                var dir = Path.GetDirectoryName(displayPath)?.Replace('\\', '/') ?? "";
+                var dir = Path.GetDirectoryName(displayPath)?.Replace('/', '\\') ?? "";
                 if (!string.IsNullOrEmpty(dir))
                 {
-                    filters.Add(dir);
+                    CollectAllPaths(dir);
                     headerFilters[file] = dir;
                 }
             }
 
-            // Add filters
+            // Create filters sorted by depth to ensure parents are created first
             if (filters.Any())
             {
+                var sortedFilters = filters
+                    .OrderBy(f => f.Count(c => c == '\\'))
+                    .ThenBy(f => f);
+                    
                 project.Add(new XElement(ns + "ItemGroup",
-                    filters.Select(filter =>
+                    sortedFilters.Select(filter =>
                         new XElement(ns + "Filter",
                             new XAttribute("Include", filter),
                             new XElement(ns + "UniqueIdentifier", $"{{{Guid.NewGuid()}}}")
