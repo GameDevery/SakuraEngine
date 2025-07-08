@@ -1,6 +1,8 @@
-#include "SkrSystem/system/event_loop.h"
+#include "sdl3_event_source.h"
+#include "sdl3_system_app.h"
+#include "sdl3_ime.h"
 #include "SkrCore/memory/memory.h"
-#include <SDL3/SDL.h>
+#include "SkrCore/log.h"
 
 namespace skr {
 
@@ -123,42 +125,61 @@ inline static SkrSystemEvent TranslateSDLEvent(const SDL_Event& e)
     return result;
 }
 
-struct SDL3_EventSource : public ISystemEventSource
+SDL3EventSource::SDL3EventSource(SDL3SystemApp* app) SKR_NOEXCEPT
+    : app_(app)
 {
-    SDL3_EventSource() SKR_NOEXCEPT
-    {
-        SDL_Init(SDL_INIT_EVENTS);
-    }
-
-    ~SDL3_EventSource() SKR_NOEXCEPT override
-    {
-        SDL_Quit();
-    }
-
-    bool poll_event(SkrSystemEvent& event) SKR_NOEXCEPT override
-    {
-        SDL_Event sdl_event;
-        if (SDL_PollEvent(&sdl_event))
-        {
-            event = TranslateSDLEvent(sdl_event);
-            return true;
-        }
-        return false;
-    }
-};
-
-// 工厂函数
-ISystemEventSource* CreateSDL3EventSource() SKR_NOEXCEPT
-{
-    return SkrNew<SDL3_EventSource>();
+    // SDL is already initialized by SDL3SystemApp
 }
 
-void DestroySDL3EventSource(ISystemEventSource* source) SKR_NOEXCEPT
+SDL3EventSource::~SDL3EventSource() SKR_NOEXCEPT
 {
-    if (source)
+    // SDL cleanup is handled by SDL3SystemApp
+}
+
+bool SDL3EventSource::poll_event(SkrSystemEvent& event) SKR_NOEXCEPT
+{
+    SDL_Event sdl_event;
+    
+    while (SDL_PollEvent(&sdl_event))
     {
-        SkrDelete(source);
+        // Forward IME-related events to IME system
+        if (should_forward_to_ime(sdl_event))
+        {
+            if (ime_)
+            {
+                ime_->process_event(sdl_event);
+            }
+            // Continue to next event as IME events are handled via callbacks
+            continue;
+        }
+        
+        // Translate other events
+        event = translate_sdl_event(sdl_event);
+        if (event.type != SKR_SYSTEM_EVENT_INVALID)
+        {
+            return true;
+        }
     }
+    
+    return false;
+}
+
+bool SDL3EventSource::should_forward_to_ime(const SDL_Event& sdl_event) const
+{
+    switch (sdl_event.type)
+    {
+        case SDL_EVENT_TEXT_EDITING:
+        case SDL_EVENT_TEXT_INPUT:
+        case SDL_EVENT_TEXT_EDITING_CANDIDATES:
+            return true;
+        default:
+            return false;
+    }
+}
+
+SkrSystemEvent SDL3EventSource::translate_sdl_event(const SDL_Event& e) const
+{
+    return TranslateSDLEvent(e);
 }
 
 EKeyCode TranslateSDLKeyCode(SDL_Scancode keycode)

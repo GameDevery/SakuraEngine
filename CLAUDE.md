@@ -24,6 +24,19 @@
 
 ## 运行时模块
 
+### 容器
+
+项目使用自定义容器库替代 STL，提供更好的序列化和算法支持。容器 API 与 STL 有显著差异。
+
+- **基本原则**：优先使用引擎容器（skr::Vector, skr::Map 等）而非 STL
+- **API 差异**：
+  - `push_back()` → `add()`
+  - `emplace_back()` → `emplace()`
+  - `empty()` → `is_empty()`（检查是否为空）
+  - `clear()` 保持不变
+  - `find()` 返回 DataRef/CDataRef 而非迭代器
+- **详细文档**：@docs/core_systems/container_usage.md
+
 ### Window System
 
 跨平台窗口管理、显示器检测和输入法（IME）支持系统。采用简洁的抽象设计，通过 SystemApp 统一管理窗口、显示器和 IME。当前基于 SDL3 实现，提供了完整的跨平台支持。

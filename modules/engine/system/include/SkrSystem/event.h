@@ -1,5 +1,5 @@
 #pragma once
-#include "SkrSystem/input.h"
+#include "input.h"
 
 SKR_EXTERN_C_BEGIN
 

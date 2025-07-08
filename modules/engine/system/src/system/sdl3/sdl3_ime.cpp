@@ -409,9 +409,7 @@ void SDL3IME::update_candidate_state(const SDL_TextEditingCandidatesEvent& event
     
     for (int32_t i = 0; i < event.num_candidates; ++i)
     {
-        candidate_state_.candidates.emplace_back(
-            (const char8_t*)event.candidates[i]
-        );
+        candidate_state_.candidates.emplace((const char8_t*)event.candidates[i]);
     }
     
     candidate_state_.total_candidates = event.num_candidates;

@@ -1,7 +1,6 @@
 #pragma once
-#include "SkrBase/math.h"
+#include "SkrBase/math/manual/vector.hpp"
 #include "SkrContainersDef/string.hpp"
-#include "SkrSystem/system/event_loop.h"
 
 namespace skr {
 

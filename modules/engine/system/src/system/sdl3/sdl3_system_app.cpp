@@ -2,6 +2,7 @@
 #include "sdl3_monitor.h"
 #include "sdl3_window.h"
 #include "sdl3_ime.h"
+#include "sdl3_event_source.h"
 #include "SkrCore/log.h"
 #include <SDL3/SDL.h>
 
@@ -23,8 +24,24 @@ SDL3SystemApp::SDL3SystemApp() SKR_NOEXCEPT
     // Cache all monitors
     refresh_monitors();
     
+    // Create event system
+    event_queue = SkrNew<SystemEventQueue>();
+    platform_event_source_ = SkrNew<SDL3EventSource>(this);
+    
     // Create IME
     ime = IME::Create(this);
+    
+    // Connect IME to platform event source
+    if (platform_event_source_)
+    {
+        platform_event_source_->set_ime(static_cast<SDL3IME*>(ime));
+    }
+    
+    // Add platform event source to queue
+    if (event_queue && platform_event_source_)
+    {
+        event_queue->add_source(platform_event_source_);
+    }
 }
 
 SDL3SystemApp::~SDL3SystemApp() SKR_NOEXCEPT
@@ -34,6 +51,19 @@ SDL3SystemApp::~SDL3SystemApp() SKR_NOEXCEPT
     {
         IME::Destroy(ime);
         ime = nullptr;
+    }
+    
+    // Clean up event system
+    if (platform_event_source_)
+    {
+        SkrDelete(platform_event_source_);
+        platform_event_source_ = nullptr;
+    }
+    
+    if (event_queue)
+    {
+        SkrDelete(event_queue);
+        event_queue = nullptr;
     }
     
     // Clean up cached windows
@@ -231,13 +261,60 @@ void SDL3SystemApp::refresh_monitors()
         if (monitor)
         {
             monitor_cache.add(displays[i], monitor);
-            monitor_list.push_back(monitor);
+            monitor_list.add(monitor);
         }
     }
     
     SDL_free(displays);
     
     SKR_LOG_INFO(u8"Refreshed monitors: found %d display(s)", count);
+}
+
+bool SDL3SystemApp::add_event_source(ISystemEventSource* source)
+{
+    if (event_queue && source)
+    {
+        return event_queue->add_source(source);
+    }
+    return false;
+}
+
+bool SDL3SystemApp::remove_event_source(ISystemEventSource* source)
+{
+    if (event_queue && source)
+    {
+        return event_queue->remove_source(source);
+    }
+    return false;
+}
+
+bool SDL3SystemApp::wait_events(uint32_t timeout_ms)
+{
+    // SDL3 wait event with timeout
+    SDL_Event sdl_event;
+    int result;
+    
+    if (timeout_ms == 0)
+    {
+        // Infinite wait
+        result = SDL_WaitEvent(&sdl_event);
+    }
+    else
+    {
+        // Wait with timeout
+        result = SDL_WaitEventTimeout(&sdl_event, static_cast<Sint32>(timeout_ms));
+    }
+    
+    if (result)
+    {
+        // Push the event back for processing
+        SDL_PushEvent(&sdl_event);
+        
+        // Now pump all available events
+        return event_queue ? event_queue->pump_messages() : false;
+    }
+    
+    return false;
 }
 
 // Factory methods implementation
