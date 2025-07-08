@@ -323,7 +323,7 @@ namespace SB
             var outDir = Path.GetDirectoryName(GetTargetOutputPath(Target));
             ForEachConfiguration((config, platform) =>
             {
-                project.Add(CreatePropertyGroup(ns, config, platform, GetNMakeProperties(Target, config, platform, outDir)));
+                project.Add(CreatePropertyGroup(ns, config, platform, GetNMakeProperties(Target, config, platform, outDir!)));
             });
         }
 

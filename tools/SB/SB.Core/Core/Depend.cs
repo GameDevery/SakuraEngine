@@ -136,7 +136,7 @@ namespace SB.Core
                     }
                     else
                     {
-                        DateTime LastWriteTime = GetFileLastWriteTime(CacheMode.Cache, InputFile, ctx.opt);
+                        DateTime LastWriteTime = GetFileLastWriteTime(CacheMode.Cache, InputFile!, ctx.opt);
                         if (OldDepend?.InputFileTimes[i] != LastWriteTime) // modified
                         {
                             Log.Verbose("Dependency changed for {TargetName} {FileName} {EmitterName}: Input file {InputFile} modified", ctx.TargetName, ctx.FileName, ctx.EmitterName, InputFile);

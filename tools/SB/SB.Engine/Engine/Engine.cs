@@ -55,10 +55,10 @@ namespace SB
         {
             Log.Verbose("Add Engine Task Emitters... ");
 
+            Engine.AddTaskEmitter("Utils.CopyFiles", new CopyFilesEmitter());
+
             Engine.AddTaskEmitter("Codgen.Meta", new CodegenMetaEmitter(Toolchain));
-
             Engine.AddTaskEmitter("Module.Info", new ModuleInfoEmitter());
-
             Engine.AddTaskEmitter("ISPC.Compile", new ISPCEmitter());
 
             Engine.AddTaskEmitter("Cpp.UnityBuild", new UnityBuildEmitter())
