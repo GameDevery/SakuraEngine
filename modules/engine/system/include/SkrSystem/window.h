@@ -71,6 +71,10 @@ struct SKR_SYSTEM_API SystemWindow
     virtual void set_size(uint32_t width, uint32_t height) = 0;
     virtual uint2 get_size() const = 0;
     
+    // Physical size and DPI
+    virtual uint2 get_physical_size() const = 0;  // Get physical/drawable size in pixels
+    virtual float get_pixel_ratio() const = 0;     // Get DPI scale factor (physical pixels / logical points)
+    
     // Window state
     virtual void show() = 0;
     virtual void hide() = 0;
@@ -83,6 +87,10 @@ struct SKR_SYSTEM_API SystemWindow
     virtual bool is_minimized() const = 0;
     virtual bool is_maximized() const = 0;
     virtual bool is_focused() const = 0;
+    
+    // Opacity
+    virtual void set_opacity(float opacity) = 0;
+    virtual float get_opacity() const = 0;
     
     // Fullscreen
     virtual void set_fullscreen(bool fullscreen, SystemMonitor* monitor = nullptr) = 0;

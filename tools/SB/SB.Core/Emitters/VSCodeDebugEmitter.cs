@@ -246,47 +246,39 @@ namespace SB
             var exeName = target.Name + (BS.TargetOS == OSPlatform.Windows ? ".exe" : "");
             var binaryPath = target.GetBinaryPath();
             var relativeBinaryPath = Path.GetRelativePath(WorkspaceRoot, binaryPath);
-            var outputPath = Path.Combine("${workspaceFolder}", relativeBinaryPath, exeName);
-            var workingDirectory = Path.Combine("${workspaceFolder}", relativeBinaryPath);
 
-            DebugConfigurationBase config;
-            
-            // 如果用户没有指定特定的调试器，根据工具链自动选择
-            if (DefaultDebugger == DebuggerType.CppDbg && Toolchain is VisualStudio && BS.TargetOS == OSPlatform.Windows)
-            {
-                config = new VSDebugConfiguration();
-            }
-            else if (DefaultDebugger == DebuggerType.CppDbg && Toolchain is XCode)
-            {
-                config = new LLDBDebugConfiguration(false);
-            }
-            else
-            {
-                config = DefaultDebugger switch
-                {
-                    DebuggerType.CppVsDbg when BS.TargetOS == OSPlatform.Windows => new VSDebugConfiguration(),
-                    DebuggerType.LLDBDap => new LLDBDebugConfiguration(true),
-                    DebuggerType.CodeLLDB => new LLDBDebugConfiguration(false),
-                    _ => new GDBDebugConfiguration 
-                    { 
-                        MIDebuggerPath = FindDebugger("gdb") ?? "gdb",
-                        SetupCommands = BS.TargetOS == OSPlatform.Linux ? new List<object>
-                        {
-                            new { description = "Enable pretty-printing", text = "-enable-pretty-printing", ignoreFailures = true }
-                        } : null
-                    }
-                };
-            }
-
+            var config = SelectDebugger();
             config.Name = $"{target.Name} ({buildType})";
-            config.Program = outputPath;
-            config.Cwd = workingDirectory; // 设置为可执行文件所在目录
+            config.Program = Path.Combine("${workspaceFolder}", relativeBinaryPath, exeName);
+            config.Cwd = Path.Combine("${workspaceFolder}", relativeBinaryPath);
             config.PreLaunchTask = $"Build {target.Name} ({buildType})";
 
             if (target.Arguments.TryGetValue("RunArgs", out var runArgs) && runArgs is List<string> argsList && argsList.Count > 0)
                 config.Args = argsList;
 
             return config;
+
+            DebugConfigurationBase SelectDebugger() => (DefaultDebugger, Toolchain, BS.TargetOS) switch
+            {
+                // 自动选择最佳调试器
+                (DebuggerType.CppDbg, VisualStudio, OSPlatform.Windows) => new VSDebugConfiguration(),
+                (DebuggerType.CppDbg, XCode, _) => new LLDBDebugConfiguration(false),
+                
+                // 用户指定的调试器
+                (DebuggerType.CppVsDbg, _, OSPlatform.Windows) => new VSDebugConfiguration(),
+                (DebuggerType.LLDBDap, _, _) => new LLDBDebugConfiguration(true),
+                (DebuggerType.CodeLLDB, _, _) => new LLDBDebugConfiguration(false),
+                
+                // 默认 GDB
+                _ => new GDBDebugConfiguration 
+                { 
+                    MIDebuggerPath = FindDebugger("gdb")!,
+                    SetupCommands = BS.TargetOS == OSPlatform.Linux ? new List<object>
+                    {
+                        new { description = "Enable pretty-printing", text = "-enable-pretty-printing", ignoreFailures = true }
+                    } : null
+                }
+            };
         }
 
         private static void GenerateLaunchJson()
@@ -294,13 +286,13 @@ namespace SB
             var path = Path.Combine(WorkspaceRoot, VSCodeDirectory, "launch.json");
             var launchJson = LoadOrCreateLaunchJson(path);
 
-            launchJson.Configurations.RemoveAll(c => c.Name.Contains("[SB Generated]"));
+            launchJson.Configurations.RemoveAll(IsGeneratedConfig);
             
-            foreach (var config in TargetConfigurations.Values.SelectMany(configs => configs))
-            {
-                config.Name = $"[SB Generated] {config.Name}";
-                launchJson.Configurations.Add(config);
-            }
+            var generatedConfigs = TargetConfigurations.Values
+                .SelectMany(configs => configs)
+                .Select(c => { c.Name = $"[SB Generated] {c.Name}"; return c; });
+            
+            launchJson.Configurations.AddRange(generatedConfigs);
 
             WriteJsonFile(path, launchJson);
             Log.Information($"Generated VSCode launch.json with {launchJson.Configurations.Count} configurations");
@@ -311,29 +303,37 @@ namespace SB
             var path = Path.Combine(WorkspaceRoot, VSCodeDirectory, "tasks.json");
             var tasksJson = LoadOrCreateTasksJson(path);
 
-            tasksJson.Tasks.RemoveAll(t => t.Label.StartsWith("Build ") && 
-                TargetConfigurations.Keys.Any(target => t.Label.Contains(target)));
+            tasksJson.Tasks.RemoveAll(IsGeneratedTask);
 
-            foreach (var (targetName, configs) in TargetConfigurations)
-            {
-                foreach (var config in configs)
-                {
-                    var buildType = config.Name.Contains("Debug") ? "Debug" : 
-                                   config.Name.Contains("Release") ? "Release" : "RelWithDebInfo";
-                    
-                    tasksJson.Tasks.Add(new TaskConfiguration
-                    {
-                        Label = config.PreLaunchTask!,
-                        Command = "dotnet",
-                        Args = new List<string> { "run", "SB", "--", "build", "--target", targetName, "--mode", buildType.ToLower() },
-                        Group = new TaskGroup { Kind = "build", IsDefault = buildType == "Debug" }
-                    });
-                }
-            }
+            var tasks = from entry in TargetConfigurations
+                       from config in entry.Value
+                       let buildType = ExtractBuildType(config.Name)
+                       select CreateBuildTask(entry.Key, buildType, config.PreLaunchTask!);
+
+            tasksJson.Tasks.AddRange(tasks);
 
             WriteJsonFile(path, tasksJson);
             Log.Information($"Generated VSCode tasks.json with {tasksJson.Tasks.Count} tasks");
         }
+        
+        private static bool IsGeneratedConfig(DebugConfigurationBase c) => c.Name.Contains("[SB Generated]");
+        private static bool IsGeneratedTask(TaskConfiguration t) => t.Label.StartsWith("Build ") && 
+            TargetConfigurations.Keys.Any(target => t.Label.Contains(target));
+        
+        private static string ExtractBuildType(string configName) => configName switch
+        {
+            var n when n.Contains("Debug") => "Debug",
+            var n when n.Contains("Release") => "Release",
+            _ => "RelWithDebInfo"
+        };
+        
+        private static TaskConfiguration CreateBuildTask(string targetName, string buildType, string label) => new()
+        {
+            Label = label,
+            Command = "dotnet",
+            Args = new List<string> { "run", "SB", "--", "build", "--target", targetName, "--mode", buildType.ToLower() },
+            Group = new TaskGroup { Kind = "build", IsDefault = buildType == "Debug" }
+        };
 
         private static LaunchJson LoadOrCreateLaunchJson(string path) => LoadOrCreateJson<LaunchJson>(path, true);
         private static TasksJson LoadOrCreateTasksJson(string path) => LoadOrCreateJson<TasksJson>(path, false);
@@ -391,13 +391,10 @@ namespace SB
                 using var doc = JsonDocument.ParseValue(ref reader);
                 var root = doc.RootElement;
                 
-                if (!root.TryGetProperty("type", out var typeElement))
-                    return null;
+                if (!root.TryGetProperty("type", out var typeElement)) return null;
                 
-                var type = typeElement.GetString();
                 var json = root.GetRawText();
-                
-                return type switch
+                return typeElement.GetString() switch
                 {
                     "cppvsdbg" => JsonSerializer.Deserialize<VSDebugConfiguration>(json, options),
                     "lldb" or "lldb-dap" => JsonSerializer.Deserialize<LLDBDebugConfiguration>(json, options),
@@ -406,10 +403,8 @@ namespace SB
                 };
             }
             
-            public override void Write(Utf8JsonWriter writer, DebugConfigurationBase value, JsonSerializerOptions options)
-            {
+            public override void Write(Utf8JsonWriter writer, DebugConfigurationBase value, JsonSerializerOptions options) => 
                 JsonSerializer.Serialize(writer, value, value.GetType(), options);
-            }
         }
     }
 }

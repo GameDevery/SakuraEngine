@@ -14,7 +14,7 @@ EKeyCode TranslateSDLKeyCode(SDL_Scancode keycode);
 
 inline static SKeyModifier TranslateSDLModifiers(Uint16 sdl_mod)
 {
-    SKeyModifier mods = KEY_MODIFIER_None;
+    uint16_t mods = KEY_MODIFIER_None;
     
     if (sdl_mod & SDL_KMOD_LSHIFT) mods |= KEY_MODIFIER_LShift;
     if (sdl_mod & SDL_KMOD_RSHIFT) mods |= KEY_MODIFIER_RShift;
@@ -23,7 +23,26 @@ inline static SKeyModifier TranslateSDLModifiers(Uint16 sdl_mod)
     if (sdl_mod & SDL_KMOD_LALT) mods |= KEY_MODIFIER_LAlt;
     if (sdl_mod & SDL_KMOD_RALT) mods |= KEY_MODIFIER_RAlt;
 
-    return mods;
+    return static_cast<SKeyModifier>(mods);
+}
+
+inline static InputMouseButtonFlags TranslateSDLMouseButton(Uint8 button)
+{
+    switch (button)
+    {
+        case SDL_BUTTON_LEFT:
+            return InputMouseLeftButton;
+        case SDL_BUTTON_RIGHT:
+            return InputMouseRightButton;
+        case SDL_BUTTON_MIDDLE:
+            return InputMouseMiddleButton;
+        case SDL_BUTTON_X1:
+            return InputMouseButton4;
+        case SDL_BUTTON_X2:
+            return InputMouseButton5;
+        default:
+            return InputMouseLeftButton;
+    }
 }
 
 inline static ESkrSystemEventType TranslateSDLEventType(SDL_EventType type)
@@ -48,10 +67,6 @@ inline static ESkrSystemEventType TranslateSDLEventType(SDL_EventType type)
             return SKR_SYSTEM_EVENT_WINDOW_MAXIMIZED;
         case SDL_EVENT_WINDOW_RESTORED:
             return SKR_SYSTEM_EVENT_WINDOW_RESTORED;
-        case SDL_EVENT_WINDOW_MOUSE_ENTER:
-            return SKR_SYSTEM_EVENT_WINDOW_MOUSE_ENTER;
-        case SDL_EVENT_WINDOW_MOUSE_LEAVE:
-            return SKR_SYSTEM_EVENT_WINDOW_MOUSE_LEAVE;
         case SDL_EVENT_WINDOW_FOCUS_GAINED:
             return SKR_SYSTEM_EVENT_WINDOW_FOCUS_GAINED;
         case SDL_EVENT_WINDOW_FOCUS_LOST:
@@ -68,6 +83,16 @@ inline static ESkrSystemEventType TranslateSDLEventType(SDL_EventType type)
             return SKR_SYSTEM_EVENT_KEY_DOWN;
         case SDL_EVENT_KEY_UP:
             return SKR_SYSTEM_EVENT_KEY_UP;
+            
+        // Mouse events
+        case SDL_EVENT_MOUSE_MOTION:
+            return SKR_SYSTEM_EVENT_MOUSE_MOVE;
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
+            return SKR_SYSTEM_EVENT_MOUSE_BUTTON_DOWN;
+        case SDL_EVENT_MOUSE_BUTTON_UP:
+            return SKR_SYSTEM_EVENT_MOUSE_BUTTON_UP;
+        case SDL_EVENT_MOUSE_WHEEL:
+            return SKR_SYSTEM_EVENT_MOUSE_WHEEL;
             
         default:
             return SKR_SYSTEM_EVENT_INVALID;
@@ -92,8 +117,6 @@ inline static SkrSystemEvent TranslateSDLEvent(const SDL_Event& e)
         case SDL_EVENT_WINDOW_MINIMIZED:
         case SDL_EVENT_WINDOW_MAXIMIZED:
         case SDL_EVENT_WINDOW_RESTORED:
-        case SDL_EVENT_WINDOW_MOUSE_ENTER:
-        case SDL_EVENT_WINDOW_MOUSE_LEAVE:
         case SDL_EVENT_WINDOW_FOCUS_GAINED:
         case SDL_EVENT_WINDOW_FOCUS_LOST:
         case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
@@ -103,6 +126,32 @@ inline static SkrSystemEvent TranslateSDLEvent(const SDL_Event& e)
             result.window.window_native_handle = e.window.windowID;
             result.window.x = e.window.data1;
             result.window.y = e.window.data2;
+            break;
+            
+        // SDL window mouse enter/leave are translated to mouse events
+        case SDL_EVENT_WINDOW_MOUSE_ENTER:
+            result.mouse.type = SKR_SYSTEM_EVENT_MOUSE_ENTER;
+            result.mouse.window_native_handle = e.window.windowID;
+            // Position will be updated by next mouse move event
+            result.mouse.x = 0;
+            result.mouse.y = 0;
+            result.mouse.button = static_cast<InputMouseButtonFlags>(0);
+            result.mouse.modifiers = TranslateSDLModifiers(SDL_GetModState());
+            result.mouse.clicks = 0;
+            result.mouse.wheel_x = 0.0f;
+            result.mouse.wheel_y = 0.0f;
+            break;
+            
+        case SDL_EVENT_WINDOW_MOUSE_LEAVE:
+            result.mouse.type = SKR_SYSTEM_EVENT_MOUSE_LEAVE;
+            result.mouse.window_native_handle = e.window.windowID;
+            result.mouse.x = 0;
+            result.mouse.y = 0;
+            result.mouse.button = static_cast<InputMouseButtonFlags>(0);
+            result.mouse.modifiers = TranslateSDLModifiers(SDL_GetModState());
+            result.mouse.clicks = 0;
+            result.mouse.wheel_x = 0.0f;
+            result.mouse.wheel_y = 0.0f;
             break;
             
         // Keyboard events
@@ -115,6 +164,45 @@ inline static SkrSystemEvent TranslateSDLEvent(const SDL_Event& e)
             result.key.modifiers = TranslateSDLModifiers(e.key.mod);
             result.key.down = e.key.down;
             result.key.repeat = e.key.repeat;
+            break;
+            
+        // Mouse events
+        case SDL_EVENT_MOUSE_MOTION:
+            result.mouse.type = SKR_SYSTEM_EVENT_MOUSE_MOVE;
+            result.mouse.window_native_handle = e.motion.windowID;
+            result.mouse.x = e.motion.x;  // SDL3 already provides logical coordinates
+            result.mouse.y = e.motion.y;
+            result.mouse.button = static_cast<InputMouseButtonFlags>(0);  // No button for motion
+            result.mouse.modifiers = TranslateSDLModifiers(SDL_GetModState());
+            result.mouse.clicks = 0;
+            result.mouse.wheel_x = 0.0f;
+            result.mouse.wheel_y = 0.0f;
+            break;
+            
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
+        case SDL_EVENT_MOUSE_BUTTON_UP:
+            result.mouse.type = (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN) ? 
+                SKR_SYSTEM_EVENT_MOUSE_BUTTON_DOWN : SKR_SYSTEM_EVENT_MOUSE_BUTTON_UP;
+            result.mouse.window_native_handle = e.button.windowID;
+            result.mouse.x = e.button.x;  // SDL3 already provides logical coordinates
+            result.mouse.y = e.button.y;
+            result.mouse.button = TranslateSDLMouseButton(e.button.button);
+            result.mouse.modifiers = TranslateSDLModifiers(SDL_GetModState());
+            result.mouse.clicks = e.button.clicks;
+            result.mouse.wheel_x = 0.0f;
+            result.mouse.wheel_y = 0.0f;
+            break;
+            
+        case SDL_EVENT_MOUSE_WHEEL:
+            result.mouse.type = SKR_SYSTEM_EVENT_MOUSE_WHEEL;
+            result.mouse.window_native_handle = e.wheel.windowID;
+            result.mouse.x = static_cast<int32_t>(e.wheel.mouse_x);  // Mouse position
+            result.mouse.y = static_cast<int32_t>(e.wheel.mouse_y);
+            result.mouse.button = static_cast<InputMouseButtonFlags>(0);
+            result.mouse.modifiers = TranslateSDLModifiers(SDL_GetModState());
+            result.mouse.clicks = 0;
+            result.mouse.wheel_x = e.wheel.x;  // Horizontal scroll amount
+            result.mouse.wheel_y = e.wheel.y;  // Vertical scroll amount
             break;
             
         default:

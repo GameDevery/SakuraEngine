@@ -56,6 +56,31 @@ uint2 SDL3Window::get_size() const
     return {(uint32_t)w, (uint32_t)h};
 }
 
+uint2 SDL3Window::get_physical_size() const
+{
+    int w, h;
+    SDL_GetWindowSizeInPixels(sdl_window, &w, &h);
+    return {(uint32_t)w, (uint32_t)h};
+}
+
+float SDL3Window::get_pixel_ratio() const
+{
+    int window_w, window_h;
+    int pixel_w, pixel_h;
+    SDL_GetWindowSize(sdl_window, &window_w, &window_h);
+    SDL_GetWindowSizeInPixels(sdl_window, &pixel_w, &pixel_h);
+    
+    // Calculate average pixel ratio (handle non-uniform scaling)
+    if (window_w > 0 && window_h > 0)
+    {
+        float ratio_x = (float)pixel_w / window_w;
+        float ratio_y = (float)pixel_h / window_h;
+        return (ratio_x + ratio_y) / 2.0f;
+    }
+    
+    return 1.0f;
+}
+
 // Window state
 void SDL3Window::show()
 {
@@ -109,6 +134,17 @@ bool SDL3Window::is_focused() const
 {
     Uint32 flags = SDL_GetWindowFlags(sdl_window);
     return (flags & SDL_WINDOW_INPUT_FOCUS) != 0;
+}
+
+// Opacity
+void SDL3Window::set_opacity(float opacity)
+{
+    SDL_SetWindowOpacity(sdl_window, opacity);
+}
+
+float SDL3Window::get_opacity() const
+{
+    return SDL_GetWindowOpacity(sdl_window);
 }
 
 // Fullscreen

@@ -1,16 +1,16 @@
 #pragma once
 #include "SkrSystem/window.h"
-#include <SDL3/SDL_video.h>
+#include <Windows.h>
 
 namespace skr {
 
-class SDL3Window : public SystemWindow
+class Win32Window : public SystemWindow
 {
 public:
-    SDL3Window(SDL_Window* window) SKR_NOEXCEPT;
-    ~SDL3Window() SKR_NOEXCEPT override;
+    Win32Window(HWND hwnd) SKR_NOEXCEPT;
+    ~Win32Window() SKR_NOEXCEPT override;
 
-    // Window properties
+    // SystemWindow interface
     void set_title(const skr::String& title) override;
     skr::String get_title() const override;
     
@@ -24,7 +24,6 @@ public:
     uint2 get_physical_size() const override;
     float get_pixel_ratio() const override;
     
-    // Window state
     void show() override;
     void hide() override;
     void minimize() override;
@@ -37,25 +36,41 @@ public:
     bool is_maximized() const override;
     bool is_focused() const override;
     
-    // Opacity
     void set_opacity(float opacity) override;
     float get_opacity() const override;
     
-    // Fullscreen
     void set_fullscreen(bool fullscreen, SystemMonitor* monitor = nullptr) override;
     bool is_fullscreen() const override;
     
-    // Platform handle
-    void* get_native_handle() const override;
-    void* get_native_display() const override;
+    void* get_native_handle() const override { return hwnd_; }
+    void* get_native_display() const override { return nullptr; }
     
-    // SDL3 specific
-    SDL_Window* get_sdl_window() const { return sdl_window; }
-    SDL_WindowID get_window_id() const { return window_id; }
+    // Win32 specific
+    HWND get_hwnd() const { return hwnd_; }
+    
+    // Window procedure handler
+    LRESULT handle_message(UINT msg, WPARAM wParam, LPARAM lParam);
 
 private:
-    SDL_Window* sdl_window;
-    SDL_WindowID window_id;
+    void cache_window_info();
+    void apply_window_styles(bool fullscreen);
+    HMONITOR get_current_monitor() const;
+    
+private:
+    HWND hwnd_;
+    
+    // Cached window state for fullscreen toggle
+    struct WindowState {
+        LONG style;
+        LONG ex_style;
+        RECT rect;
+        bool maximized;
+    };
+    WindowState saved_state_ = {};
+    bool is_fullscreen_ = false;
+    
+    // Track focus state
+    bool has_focus_ = false;
 };
 
 } // namespace skr

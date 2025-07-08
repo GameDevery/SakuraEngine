@@ -317,25 +317,5 @@ bool SDL3SystemApp::wait_events(uint32_t timeout_ms)
     return false;
 }
 
-// Factory methods implementation
-SystemApp* SystemApp::Create(const char* backend)
-{
-    if (!backend || strcmp(backend, "SDL") == 0 || strcmp(backend, "SDL3") == 0)
-    {
-        SDL3SystemApp* sdl_app = SkrNew<SDL3SystemApp>();
-        return static_cast<SystemApp*>(sdl_app);
-    }
-    
-    // TODO: Add other backends (Win32, Cocoa)
-    return nullptr;
-}
-
-void SystemApp::Destroy(SystemApp* app)
-{
-    if (app)
-    {
-        SkrDelete(app);
-    }
-}
 
 } // namespace skr

@@ -22,7 +22,8 @@ public static class SkrSystem
         {
             SkrSystem
                 .Defines(Visibility.Private, "SKR_INPUT_USE_GAME_INPUT")
-                .AddCppFiles("src/advanced_input/game_input/**.cpp");
+                .AddCppFiles("src/advanced_input/game_input/**.cpp")
+                .AddCppFiles("src/system/win32/**.cpp");
         }
     }
 }

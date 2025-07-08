@@ -26,6 +26,13 @@ typedef enum ESkrSystemEventType
     SKR_SYSTEM_EVENT_KEY_DOWN = 0x300,         /**< Key pressed */
     SKR_SYSTEM_EVENT_KEY_UP,                   /**< Key released */
 
+    SKR_SYSTEM_EVENT_MOUSE_MOVE = 0x400,       /**< Mouse moved */
+    SKR_SYSTEM_EVENT_MOUSE_BUTTON_DOWN,        /**< Mouse button pressed */
+    SKR_SYSTEM_EVENT_MOUSE_BUTTON_UP,          /**< Mouse button released */
+    SKR_SYSTEM_EVENT_MOUSE_WHEEL,              /**< Mouse wheel scrolled */
+    SKR_SYSTEM_EVENT_MOUSE_ENTER,              /**< Mouse entered window */
+    SKR_SYSTEM_EVENT_MOUSE_LEAVE,              /**< Mouse left window */
+
 } ESkrSystemEventType;
 
 typedef struct SkrQuitEvent
@@ -53,14 +60,28 @@ typedef struct SkrWindowEvent
     uint32_t y;
 } SkrWindowEvent;
 
+typedef struct SkrMouseEvent
+{
+    ESkrSystemEventType type;
+    uint64_t window_native_handle;
+    int32_t x;                      // Mouse X position
+    int32_t y;                      // Mouse Y position
+    InputMouseButtonFlags button;   // Which button (for button events)
+    SKeyModifier modifiers;         // Keyboard modifiers (Ctrl, Shift, etc.)
+    uint8_t clicks;                 // Number of clicks (1 for single, 2 for double)
+    float wheel_x;                  // Horizontal scroll amount
+    float wheel_y;                  // Vertical scroll amount
+} SkrMouseEvent;
+
 typedef union SkrSystemEvent
 {
     ESkrSystemEventType type;
     SkrQuitEvent quit;
     SkrKeyboardEvent key;
     SkrWindowEvent window;
+    SkrMouseEvent mouse;
 
-    uint8_t storage[64];
+    uint8_t storage[64];  // Increased to accommodate mouse events
 } SkrSystemEvent;
 
 SKR_STATIC_ASSERT(
@@ -91,5 +112,11 @@ template <> struct EventType<SKR_SYSTEM_EVENT_WINDOW_ENTER_FULLSCREEN> { using T
 template <> struct EventType<SKR_SYSTEM_EVENT_WINDOW_LEAVE_FULLSCREEN> { using Type = SkrWindowEvent; };
 template <> struct EventType<SKR_SYSTEM_EVENT_KEY_DOWN> { using Type = SkrKeyboardEvent; };
 template <> struct EventType<SKR_SYSTEM_EVENT_KEY_UP> { using Type = SkrKeyboardEvent; };
+template <> struct EventType<SKR_SYSTEM_EVENT_MOUSE_MOVE> { using Type = SkrMouseEvent; };
+template <> struct EventType<SKR_SYSTEM_EVENT_MOUSE_BUTTON_DOWN> { using Type = SkrMouseEvent; };
+template <> struct EventType<SKR_SYSTEM_EVENT_MOUSE_BUTTON_UP> { using Type = SkrMouseEvent; };
+template <> struct EventType<SKR_SYSTEM_EVENT_MOUSE_WHEEL> { using Type = SkrMouseEvent; };
+template <> struct EventType<SKR_SYSTEM_EVENT_MOUSE_ENTER> { using Type = SkrMouseEvent; };
+template <> struct EventType<SKR_SYSTEM_EVENT_MOUSE_LEAVE> { using Type = SkrMouseEvent; };
 
 #endif
