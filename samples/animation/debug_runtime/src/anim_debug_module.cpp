@@ -19,7 +19,6 @@ class SAnimDebugModule : public skr::IDynamicModule
 };
 
 static SAnimDebugModule* g_anim_debug_module = nullptr;
-
 ///////
 /// Module entry point
 ///////

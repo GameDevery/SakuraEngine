@@ -11,7 +11,7 @@ public static class Game
             .Depend(Visibility.Private, "GameRuntime")
             .Depend(Visibility.Private, "AppSampleCommon")
             .IncludeDirs(Visibility.Private, "include")
-            .AddCppFiles("src/*.cpp")
+            .AddCppFiles("src/**.cpp")
             .AddHLSLFiles("shaders/*.hlsl")
             .DXCOutputDirectory("resources/shaders/Game")
             .CopyFilesWithRoot(

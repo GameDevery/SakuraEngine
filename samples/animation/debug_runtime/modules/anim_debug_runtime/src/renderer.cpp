@@ -312,6 +312,7 @@ void Renderer::create_lighting_pipeline()
 }
 void Renderer::create_blit_pipeline()
 {
+
     ECGPUFormat output_format = CGPU_FORMAT_R8G8B8A8_UNORM;
     uint32_t *  vs_bytes, vs_length;
     uint32_t *  fs_bytes, fs_length;

@@ -15,7 +15,9 @@ public static class GameRuntime
             .Depend(Visibility.Public, "AppSampleCommon")
             .AddCppFiles("src/**.cpp")
             .AddMetaHeaders(
-                "include/GameRuntime/gamert.h"
+                "include/GameRuntime/gamert.h",
+                "include/GameRuntime/game_animation.h",
+                "include/GameRuntime/backend_config.h"
             );
     }
 }

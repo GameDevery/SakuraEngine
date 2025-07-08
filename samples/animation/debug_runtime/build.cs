@@ -14,4 +14,5 @@ public static class AnimDebug
             .AddHLSLFiles("shaders/*.hlsl")
             .DXCOutputDirectory("resources/shaders/AnimDebug");
     }
+    
 }
