@@ -3,6 +3,7 @@
 #include "SkrRTTR/script/stack_proxy.hpp"
 #include <SkrRTTR/type.hpp>
 #include <SkrCore/log.hpp>
+#include <SkrCore/error_collector.hpp>
 
 // script export concept
 //   - primitive: primitive type, always include [number, boolean, string, real]
@@ -491,72 +492,6 @@ private:
     Map<TypeSignature, ScriptBinderGeneric*> _cached_generic_binders;
 
     // logger
-    struct Logger {
-        struct StackScope {
-            StackScope(Logger* logger, String name)
-                : _logger(logger)
-            {
-                _logger->_stack.push_back({ name, false });
-            }
-            ~StackScope()
-            {
-                bool err = _logger->any_error();
-                _logger->_stack.pop_back();
-                if (!_logger->_stack.is_empty())
-                {
-                    _logger->_stack.back().any_error |= err;
-                }
-            }
-
-        private:
-            Logger* _logger;
-        };
-
-        template <typename... Args>
-        inline StackScope stack(StringView fmt, Args&&... args)
-        {
-            return StackScope{
-                this,
-                format(fmt, std::forward<Args>(args)...)
-            };
-        }
-
-        template <typename... Args>
-        inline void error(StringView fmt, Args&&... args)
-        {
-            // record error
-            if (!_stack.is_empty())
-            {
-                _stack.back().any_error = true;
-            }
-
-            // combine error str
-            String error;
-            format_to(error, fmt, std::forward<Args>(args)...);
-            error.append(u8"\n");
-            for (const auto& stack : _stack.range_inv())
-            {
-                format_to(error, u8"    at: {}\n", stack.name);
-            }
-            error.first(error.length_buffer() - 1);
-
-            // log error
-            SKR_LOG_FMT_ERROR(u8"{}", error.c_str());
-        }
-
-        inline bool any_error() const
-        {
-            if (_stack.is_empty()) { return false; }
-            return _stack.back().any_error;
-        }
-
-    private:
-        struct ErrorStack {
-            String name      = {};
-            bool   any_error = false;
-        };
-        Vector<ErrorStack> _stack;
-    };
-    Logger _logger;
+    ErrorCollector _logger;
 };
 } // namespace skr
