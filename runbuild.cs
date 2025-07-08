@@ -25,6 +25,9 @@ public class MainCommand
 
     [CmdSub(Name = "vs", Help = "Generate Visual Studio solution")]
     public VSCommand VS { get; set; } = new VSCommand();
+
+    [CmdSub(Name = "vscode", Help = "Generate VSCode debug configurations")]
+    public VSCodeCommand VSCode { get; set; } = new VSCodeCommand();
 }
 
 public abstract class CommandBase
@@ -284,5 +287,56 @@ public class VSCommand : CommandBase
         VSEmitter.GenerateSolution(solutionPath, SolutionName);
 
         Log.Information("Visual Studio solution generated at: {Path}", Path.GetFullPath(solutionPath));
+    }
+}
+
+// VSCode subcommand
+public class VSCodeCommand : CommandBase
+{
+    [CmdOption(Name = "debugger", Help = "Default debugger type: cppdbg, lldb-dap, codelldb, cppvsdbg", IsRequired = false)]
+    public string Debugger { get; set; } = "cppdbg";
+
+    [CmdOption(Name = "workspace", Help = "Workspace root directory", IsRequired = false)]
+    public string WorkspaceRoot { get; set; } = ".";
+
+    [CmdOption(Name = "preserve-user", Help = "Preserve user-created debug configurations", IsRequired = false)]
+    public bool PreserveUser { get; set; } = true;
+
+    public override void OnExecute()
+    {
+        Log.Information("Generating VSCode debug configurations...");
+
+        // Set debugger type
+        VSCodeDebugEmitter.DebuggerType debuggerType = VSCodeDebugEmitter.DebuggerType.CppDbg;
+        switch (Debugger.ToLower())
+        {
+            case "lldb-dap":
+                debuggerType = VSCodeDebugEmitter.DebuggerType.LLDBDap;
+                break;
+            case "codelldb":
+                debuggerType = VSCodeDebugEmitter.DebuggerType.CodeLLDB;
+                break;
+            case "cppvsdbg":
+                debuggerType = VSCodeDebugEmitter.DebuggerType.CppVsDbg;
+                break;
+        }
+
+        // Configure VSCode emitter
+        VSCodeDebugEmitter.WorkspaceRoot = !string.IsNullOrEmpty(WorkspaceRoot) ? WorkspaceRoot : 
+                                           (!string.IsNullOrEmpty(Engine.EngineDirectory) ? Engine.EngineDirectory : Directory.GetCurrentDirectory());
+        VSCodeDebugEmitter.DefaultDebugger = debuggerType;
+        VSCodeDebugEmitter.PreserveUserConfigurations = PreserveUser;
+
+        // Add VSCode emitter
+        var emitter = new VSCodeDebugEmitter(Toolchain);
+        BuildSystem.AddTaskEmitter("VSCodeDebugEmitter", emitter);
+
+        // Run the build to process all targets
+        Engine.RunBuild();
+
+        // Generate the debug configurations
+        VSCodeDebugEmitter.GenerateDebugConfigurations();
+        
+        Log.Information("VSCode debug configurations generated in: {Path}", Path.GetFullPath(Path.Combine(VSCodeDebugEmitter.WorkspaceRoot, ".vscode")));
     }
 }

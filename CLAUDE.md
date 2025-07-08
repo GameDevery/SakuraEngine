@@ -9,6 +9,8 @@
 
 - 构建系统的概要文档 @docs/build_system/overview.md
 - VS 工程生成的概要文档 @docs/build_system/vs_solution.md
+- VSCode 调试配置生成 @docs/build_system/vscode_debug.md
+- TaskEmitter 开发指南 @docs/build_system/task_emitter_guide.md
 
 - SB 的代码目录在 tools/SB 下；
 - SB 封装了 EntityFramework ，在 Dependency.cs 的类里操作数据库，提供缓存验证和增量构建等功能。尽量使用 Dependency 而不是直接用 EntityFramework 进行数据库读写。
