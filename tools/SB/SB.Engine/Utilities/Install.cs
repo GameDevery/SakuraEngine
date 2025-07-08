@@ -89,17 +89,17 @@ namespace SB
 
         public static async Task<string> File(string Name, string Destination)
         {
-            // Download the file
-            var downloadedFile = await Download.DownloadFile(Name);
-
             // Determine the final destination
             string finalDestination;
             finalDestination = Path.IsPathFullyQualified(Destination) ? Destination : Path.Combine(BS.BuildPath, Destination);
-            finalDestination = Path.Combine(finalDestination, Path.GetFileName(downloadedFile));
+            finalDestination = Path.Combine(finalDestination, Name);
             
             // Use dependency system to track the copy operation
-            Engine.ConfigureAwareDepend.OnChanged("Install.File.Copy", Name, "Install.Files", (Depend depend) =>
+            await Engine.ConfigureAwareDepend.OnChanged("Install.File.Copy", Name, "Install.Files", async (Depend depend) =>
             {
+                // Download the file
+                var downloadedFile = await Download.DownloadFile(Name);
+
                 // Ensure destination directory exists
                 var destDir = Path.GetDirectoryName(finalDestination);
                 if (!string.IsNullOrEmpty(destDir))
@@ -118,7 +118,7 @@ namespace SB
                 
                 depend.ExternalFiles.Add(downloadedFile);
                 depend.ExternalFiles.Add(finalDestination);
-            }, new[] { downloadedFile }, new[] { BS.GlobalConfiguration });
+            }, null, new[] { BS.GlobalConfiguration });
             
             return finalDestination;
         }
