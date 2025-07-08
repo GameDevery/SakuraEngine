@@ -3,15 +3,143 @@
 #include "win32_monitor.h"
 #include "SkrCore/log.h"
 #include <Dwmapi.h>
+#include <VersionHelpers.h>
 
 #pragma comment(lib, "Dwmapi.lib")
+#pragma comment(lib, "UxTheme.lib")
+
+// DWM window attributes for dark mode
+#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
+#define DWMWA_USE_IMMERSIVE_DARK_MODE 20
+#endif
+
+// Windows 10 1903+ (build 18362)
+#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1
+#define DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 19
+#endif
+
+// Undocumented Windows APIs for dark mode
+typedef enum {
+    UXTHEME_APPMODE_DEFAULT,
+    UXTHEME_APPMODE_ALLOW_DARK,
+    UXTHEME_APPMODE_FORCE_DARK,
+    UXTHEME_APPMODE_FORCE_LIGHT,
+    UXTHEME_APPMODE_MAX
+} UxthemePreferredAppMode;
+
+typedef void (WINAPI *fnSetPreferredAppMode)(UxthemePreferredAppMode appMode);
+typedef bool (WINAPI *fnShouldAppsUseDarkMode)(void);
+typedef bool (WINAPI *fnAllowDarkModeForWindow)(HWND hWnd, bool allow);
+typedef void (WINAPI *fnRefreshImmersiveColorPolicyState)(void);
+typedef bool (WINAPI *fnIsDarkModeAllowedForWindow)(HWND hWnd);
+
+// Ordinals for Windows 10 1809
+#define UXTHEME_SHOULDAPPSUSEDARKMODE_ORDINAL 132
+#define UXTHEME_ALLOWDARKMODE_FORWINDOW_ORDINAL 133
+#define UXTHEME_SETPREFERREDAPPMODE_ORDINAL 135
+#define UXTHEME_ISDARKMODE_ALLOWED_FORWINDOW_ORDINAL 137
+#define UXTHEME_REFRESHIMMERSIVECOLORPOLICYSTATE_ORDINAL 104
 
 namespace skr {
+
+// Static function pointers for dark mode
+static fnSetPreferredAppMode g_SetPreferredAppMode = nullptr;
+static fnShouldAppsUseDarkMode g_ShouldAppsUseDarkMode = nullptr;
+static fnAllowDarkModeForWindow g_AllowDarkModeForWindow = nullptr;
+static fnRefreshImmersiveColorPolicyState g_RefreshImmersiveColorPolicyState = nullptr;
+static fnIsDarkModeAllowedForWindow g_IsDarkModeAllowedForWindow = nullptr;
+static bool g_dark_mode_initialized = false;
+static bool g_dark_mode_supported = false;
+
+static void initialize_dark_mode_support()
+{
+    if (g_dark_mode_initialized)
+        return;
+        
+    g_dark_mode_initialized = true;
+    
+    // Load uxtheme.dll
+    HMODULE uxtheme = LoadLibraryW(L"uxtheme.dll");
+    if (!uxtheme)
+    {
+        SKR_LOG_WARN(u8"Failed to load uxtheme.dll for dark mode support");
+        return;
+    }
+    
+    // Load undocumented functions by ordinal
+    g_SetPreferredAppMode = (fnSetPreferredAppMode)GetProcAddress(uxtheme, MAKEINTRESOURCEA(UXTHEME_SETPREFERREDAPPMODE_ORDINAL));
+    g_ShouldAppsUseDarkMode = (fnShouldAppsUseDarkMode)GetProcAddress(uxtheme, MAKEINTRESOURCEA(UXTHEME_SHOULDAPPSUSEDARKMODE_ORDINAL));
+    g_AllowDarkModeForWindow = (fnAllowDarkModeForWindow)GetProcAddress(uxtheme, MAKEINTRESOURCEA(UXTHEME_ALLOWDARKMODE_FORWINDOW_ORDINAL));
+    g_RefreshImmersiveColorPolicyState = (fnRefreshImmersiveColorPolicyState)GetProcAddress(uxtheme, MAKEINTRESOURCEA(UXTHEME_REFRESHIMMERSIVECOLORPOLICYSTATE_ORDINAL));
+    g_IsDarkModeAllowedForWindow = (fnIsDarkModeAllowedForWindow)GetProcAddress(uxtheme, MAKEINTRESOURCEA(UXTHEME_ISDARKMODE_ALLOWED_FORWINDOW_ORDINAL));
+    
+    // Check if we have the minimum required functions
+    if (g_SetPreferredAppMode && g_AllowDarkModeForWindow && g_RefreshImmersiveColorPolicyState)
+    {
+        // Enable dark mode for the app
+        g_SetPreferredAppMode(UXTHEME_APPMODE_ALLOW_DARK);
+        g_RefreshImmersiveColorPolicyState();
+        g_dark_mode_supported = true;
+        
+        SKR_LOG_INFO(u8"Dark mode support initialized successfully");
+    }
+    else
+    {
+        SKR_LOG_INFO(u8"Dark mode not fully supported on this Windows version");
+    }
+}
+
+static void apply_dark_mode_to_window(HWND hwnd)
+{
+    if (!g_dark_mode_supported || !hwnd)
+        return;
+        
+    // Check if system is in dark mode
+    bool use_dark_mode = false;
+    if (g_ShouldAppsUseDarkMode)
+    {
+        use_dark_mode = g_ShouldAppsUseDarkMode();
+    }
+    
+    if (!use_dark_mode)
+        return;
+        
+    // Apply dark mode to the window
+    if (g_AllowDarkModeForWindow)
+    {
+        g_AllowDarkModeForWindow(hwnd, true);
+    }
+    
+    // Try to set window attribute for Windows 10 1903+
+    BOOL value = TRUE;
+    HRESULT hr = DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(value));
+    
+    if (FAILED(hr))
+    {
+        // Try older attribute for Windows 10 1809-1903
+        hr = DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1, &value, sizeof(value));
+    }
+    
+    if (SUCCEEDED(hr))
+    {
+        SKR_LOG_DEBUG(u8"Applied dark mode to window");
+    }
+}
 
 Win32Window::Win32Window(HWND hwnd) SKR_NOEXCEPT
     : hwnd_(hwnd)
 {
     cache_window_info();
+    
+    // Apply dark mode to the window if supported
+    initialize_dark_mode_support();
+    apply_dark_mode_to_window(hwnd_);
+    
+    // Try to set black background
+    SetClassLongPtrW(hwnd_, GCLP_HBRBACKGROUND, (LONG_PTR)GetStockObject(BLACK_BRUSH));
+    
+    // Force a repaint to apply black background
+    InvalidateRect(hwnd_, nullptr, TRUE);
 }
 
 Win32Window::~Win32Window() SKR_NOEXCEPT
@@ -357,6 +485,10 @@ LRESULT Win32Window::handle_message(UINT msg, WPARAM wParam, LPARAM lParam)
         {
             // Enable non-client DPI scaling for proper title bar scaling
             Win32SystemApp::enable_non_client_dpi_scaling(hwnd_);
+            
+            // Apply dark mode early for proper title bar theming
+            initialize_dark_mode_support();
+            apply_dark_mode_to_window(hwnd_);
             break;
         }
         
@@ -381,6 +513,28 @@ LRESULT Win32Window::handle_message(UINT msg, WPARAM wParam, LPARAM lParam)
         case WM_ERASEBKGND:
             // Prevent flicker
             return 1;
+            
+        case WM_PAINT:
+        {
+            // Handle the first paint to show black background
+            if (first_paint_)
+            {
+                first_paint_ = false;
+                
+                PAINTSTRUCT ps;
+                HDC hdc = BeginPaint(hwnd_, &ps);
+                
+                // Fill with black
+                RECT rect;
+                GetClientRect(hwnd_, &rect);
+                HBRUSH blackBrush = (HBRUSH)GetStockObject(BLACK_BRUSH);
+                FillRect(hdc, &rect, blackBrush);
+                
+                EndPaint(hwnd_, &ps);
+                return 0;
+            }
+            break;
+        }
     }
     
     return -1;  // Use default processing

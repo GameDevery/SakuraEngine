@@ -71,6 +71,9 @@ private:
     
     // Track focus state
     bool has_focus_ = false;
+    
+    // Track first paint for black background
+    bool first_paint_ = true;
 };
 
 } // namespace skr
