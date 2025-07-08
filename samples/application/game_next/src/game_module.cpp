@@ -4,6 +4,7 @@
 #include "SkrCore/memory/sp.hpp"
 #include "SkrCore/async/thread_job.hpp"
 #include "SkrCore/platform/vfs.h"
+#include "SkrCore/time.h"
 
 #include "SkrRT/ecs/type_builder.hpp"
 #include "SkrRT/resource/resource_system.h"
@@ -161,11 +162,40 @@ int SGameModule::main_module_exec(int argc, char8_t** argv)
     game_initialize_render_effects(game_renderer, render_graph, resource_vfs);
     create_test_scene(game_renderer);
 
+    {
+        // TODO: init script context
+    }
+
+    // Time
+    SHiresTimer tick_timer;
+    int64_t     elapsed_us    = 0;
+    int64_t     elapsed_frame = 0;
+    int64_t     fps           = 60;
+    skr_init_hires_timer(&tick_timer);
+
+    // loop
+    bool               quit = false;
+    skr::task::event_t pSkinCounter(nullptr);
+    sugoi_query_t*     initAnimSkinQuery;
+    sugoi_query_t*     skinQuery;
+    sugoi_query_t*     moveQuery;
+    sugoi_query_t*     cameraQuery;
+    sugoi_query_t*     animQuery;
+    moveQuery         = sugoiQ_from_literal(game_world, u8"[has]skr::MovementComponent, [inout]skr::TranslationComponent, [in]skr::ScaleComponent, [in]skr_index_comp_t,!skr::CameraComponent");
+    cameraQuery       = sugoiQ_from_literal(game_world, u8"[has]skr::MovementComponent, [inout]skr::TranslationComponent, [inout]skr::CameraComponent");
+    animQuery         = sugoiQ_from_literal(game_world, u8"[in]skr_render_effect_t, [in]game::anim_state_t, [out]<unseq>skr::anim::AnimComponent, [in]<unseq>skr::anim::SkeletonComponent");
+    initAnimSkinQuery = sugoiQ_from_literal(game_world, u8"[inout]skr::anim::AnimComponent, [inout]skr::anim::SkinComponent, [in]skr::renderer::MeshComponent, [in]skr::anim::SkeletonComponent");
+    skinQuery         = sugoiQ_from_literal(game_world, u8"[in]skr::anim::AnimComponent, [inout]skr::anim::SkinComponent, [in]skr::renderer::MeshComponent, [in]skr::anim::SkeletonComponent");
+
     uint64_t frame_index      = 0;
     bool     show_demo_window = true;
     while (!imgui_backend.want_exit().comsume())
     {
         SkrZoneScopedN("LoopBody");
+        static auto main_thread_id    = skr_current_thread_id();
+        auto        current_thread_id = skr_current_thread_id();
+        SKR_ASSERT(main_thread_id == current_thread_id && "This is not the main thread");
+
         {
             SkrZoneScopedN("PumpMessage");
             // Pump messages
