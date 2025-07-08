@@ -10,16 +10,16 @@ SB 提供了 VSCode 调试配置生成器，可以自动为所有可执行目标
 
 ```bash
 # 生成默认调试配置（使用 cppdbg）
-dotnet run --project tools/SB/SB.csproj -- vscode
+dotnet run SB -- vscode
 
 # 指定调试器类型
-dotnet run --project tools/SB/SB.csproj -- vscode --debugger lldb-dap
+dotnet run SB -- vscode --debugger lldb-dap
 
 # 指定工作区根目录
-dotnet run --project tools/SB/SB.csproj -- vscode --workspace /path/to/workspace
+dotnet run SB -- vscode --workspace /path/to/workspace
 
 # 覆盖所有配置（不保留用户配置）
-dotnet run --project tools/SB/SB.csproj -- vscode --preserve-user false
+dotnet run SB -- vscode --preserve-user false
 ```
 
 ### 命令行选项

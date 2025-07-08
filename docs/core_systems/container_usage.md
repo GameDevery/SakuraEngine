@@ -19,12 +19,59 @@ skr::Vector<MyClass*> pointers;
 
 ### skr::Map
 
-有序映射容器，类似于 `std::map`。
+基于稀疏哈希表的键值映射容器，提供高性能的查找和插入操作。
 
 ```cpp
 #include "SkrContainers/map.hpp"
 
 skr::Map<uint32_t, SystemWindow*> window_cache;
+skr::Map<HWND, bool> tracking_state;
+```
+
+#### Map API 说明
+
+| 操作 | API | 说明 |
+|------|-----|------|
+| 添加/更新 | `add(key, value)` | 插入新键值对或更新已存在的值 |
+| 查找 | `find(key)` | 返回 DataRef，使用 `value()` 方法获取值 |
+| 检查存在 | `contains(key)` | 返回 bool，检查键是否存在 |
+| 删除 | `remove(key)` | 删除指定键的键值对，返回是否成功 |
+| 清空 | `clear()` | 清空所有键值对 |
+| 大小 | `size()` | 返回键值对数量 |
+| 判空 | `is_empty()` | 检查是否为空 |
+
+#### Map 使用示例
+
+```cpp
+// 基本操作
+skr::Map<int, std::string> map;
+
+// 添加或更新
+map.add(1, "one");
+map.add(2, "two");
+map.add(1, "ONE");  // 更新键1的值
+
+// 检查存在
+if (map.contains(1))
+{
+    // 键存在
+}
+
+// 查找并使用值
+if (auto ref = map.find(1))
+{
+    auto& value = ref.value();  // 获取值的引用
+    // 使用 value
+}
+
+// 删除
+bool removed = map.remove(2);  // 返回 true 如果删除成功
+
+// 遍历（使用范围 for）
+for (const auto& [key, value] : map)
+{
+    // 处理键值对
+}
 ```
 
 ## API 差异对照表
@@ -187,6 +234,54 @@ private:
             monitor_cache.add(displays[i], monitor);
             monitor_list.add(monitor);  // 使用 add 而不是 push_back
         }
+    }
+};
+```
+
+### 鼠标跟踪状态管理
+
+```cpp
+class Win32EventSource : public ISystemEventSource
+{
+private:
+    // 使用 Map 跟踪每个窗口的鼠标进入状态
+    skr::Map<HWND, bool> mouse_tracking_;
+    
+    bool poll_event(SkrSystemEvent& event)
+    {
+        MSG msg;
+        if (PeekMessageW(&msg, nullptr, 0, 0, PM_NOREMOVE))
+        {
+            if (msg.message == WM_MOUSEMOVE && msg.hwnd)
+            {
+                // 使用 contains 检查是否已跟踪
+                if (!mouse_tracking_.contains(msg.hwnd))
+                {
+                    // 使用 add 添加跟踪状态
+                    mouse_tracking_.add(msg.hwnd, true);
+                    
+                    // 注册鼠标离开通知
+                    TRACKMOUSEEVENT tme = {};
+                    tme.cbSize = sizeof(tme);
+                    tme.dwFlags = TME_LEAVE;
+                    tme.hwndTrack = msg.hwnd;
+                    TrackMouseEvent(&tme);
+                    
+                    // 生成鼠标进入事件
+                    // ...
+                }
+            }
+        }
+        // ...
+    }
+    
+    void handle_mouse_leave(HWND hwnd)
+    {
+        // 使用 remove 清除跟踪状态
+        mouse_tracking_.remove(hwnd);
+        
+        // 生成鼠标离开事件
+        // ...
     }
 };
 ```
