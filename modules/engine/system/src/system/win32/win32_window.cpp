@@ -362,6 +362,10 @@ LRESULT Win32Window::handle_message(UINT msg, WPARAM wParam, LPARAM lParam)
         
         case WM_CLOSE:
         {
+            // Post a custom message to notify the event source
+            // We use WM_USER + 1 for close request notification
+            PostMessageW(hwnd_, WM_USER + 1, 0, 0);
+            
             // Don't destroy window, let app handle it through event
             return 0;
         }

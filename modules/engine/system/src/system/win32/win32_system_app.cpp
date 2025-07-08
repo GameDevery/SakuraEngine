@@ -3,6 +3,7 @@
 #include "win32_window.h"
 #include "win32_ime.h"
 #include "win32_event_source.h"
+#include "SkrSystem/window_manager.h"
 #include "SkrCore/log.h"
 #include "SkrCore/memory/memory.h"
 #include <VersionHelpers.h>
@@ -86,8 +87,18 @@ Win32SystemApp::Win32SystemApp() SKR_NOEXCEPT
     // Create IME first
     ime = IME::Create(this);
     
+    // Create Window Manager
+    window_manager = SkrNew<WindowManager>(this);
+    
     // Create platform event source after IME
-    platform_event_source_ = SkrNew<Win32EventSource>(this);
+    auto _win_app_src = SkrNew<Win32EventSource>(this);
+    platform_event_source_ = _win_app_src;
+    
+    // Connect IME to platform event source
+    if (_win_app_src && ime)
+    {
+        _win_app_src->set_ime(ime);
+    }
     
     // Add platform event source to queue
     if (event_queue && platform_event_source_)
@@ -99,6 +110,13 @@ Win32SystemApp::Win32SystemApp() SKR_NOEXCEPT
 Win32SystemApp::~Win32SystemApp() SKR_NOEXCEPT
 {
     instance_ = nullptr;
+    
+    // Clean up Window Manager
+    if (window_manager)
+    {
+        SkrDelete(window_manager);
+        window_manager = nullptr;
+    }
     
     // Clean up IME
     if (ime)
@@ -148,7 +166,7 @@ void Win32SystemApp::register_window_class()
     wc.hInstance = GetModuleHandleW(nullptr);
     wc.hIcon = LoadIconW(nullptr, IDI_APPLICATION);
     wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
-    wc.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
+    wc.hbrBackground = nullptr;
     wc.lpszClassName = kWindowClassName;
     wc.hIconSm = wc.hIcon;
     
@@ -169,7 +187,7 @@ void Win32SystemApp::unregister_window_class()
 }
 
 // Window management
-SystemWindow* Win32SystemApp::create_window(const SystemWindowCreateInfo& create_info)
+SystemWindow* Win32SystemApp::create_window_internal(const SystemWindowCreateInfo& create_info)
 {
     // Validate input
     if (create_info.size.x == 0 || create_info.size.y == 0)
@@ -288,7 +306,7 @@ SystemWindow* Win32SystemApp::create_window(const SystemWindowCreateInfo& create
     return window_wrapper;
 }
 
-void Win32SystemApp::destroy_window(SystemWindow* window)
+void Win32SystemApp::destroy_window_internal(SystemWindow* window)
 {
     if (!window)
         return;

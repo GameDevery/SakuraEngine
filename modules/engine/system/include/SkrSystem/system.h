@@ -2,6 +2,7 @@
 #include "SkrSystem/event.h"
 #include "SkrSystem/window.h"
 #include "SkrSystem/IME.h"
+#include "SkrSystem/window_manager.h"
 #include "SkrContainers/function_ref.hpp"
 
 namespace skr {
@@ -57,10 +58,6 @@ struct SKR_SYSTEM_API SystemApp
 public:
     virtual ~SystemApp() = default;
 
-    // Window management
-    virtual SystemWindow* create_window(const SystemWindowCreateInfo& create_info) = 0;
-    virtual void destroy_window(SystemWindow* window) = 0;
-
     // Monitor/Display management
     virtual uint32_t get_monitor_count() const = 0;
     virtual SystemMonitor* get_monitor(uint32_t index) const = 0;
@@ -76,6 +73,9 @@ public:
     
     // Input Method Editor access
     IME* get_ime() const { return ime; }
+    
+    // Window Manager access
+    WindowManager* get_window_manager() const { return window_manager; }
     
     // Event system access
     virtual SystemEventQueue* get_event_queue() const = 0;
@@ -93,8 +93,15 @@ public:
     static void Destroy(SystemApp* app);
 
 protected:
+    // Internal window management - only accessible by WindowManager
+    virtual SystemWindow* create_window_internal(const SystemWindowCreateInfo& create_info) = 0;
+    virtual void destroy_window_internal(SystemWindow* window) = 0;
+    
     IME* ime = nullptr;
+    WindowManager* window_manager = nullptr;
     SystemEventQueue* event_queue = nullptr;
+    
+    friend class WindowManager;
 };
 
 } // namespace skr

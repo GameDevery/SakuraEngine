@@ -3,6 +3,7 @@
 #include "sdl3_window.h"
 #include "sdl3_ime.h"
 #include "sdl3_event_source.h"
+#include "SkrSystem/window_manager.h"
 #include "SkrCore/log.h"
 #include <SDL3/SDL.h>
 
@@ -21,6 +22,10 @@ SDL3SystemApp::SDL3SystemApp() SKR_NOEXCEPT
     SDL_SetHint(SDL_HINT_VIDEO_ALLOW_SCREENSAVER, "1");
     #endif
     
+    // Prevent SDL from generating SDL_QUIT when closing the last window
+    // This allows the application to handle window close events
+    SDL_SetHint(SDL_HINT_QUIT_ON_LAST_WINDOW_CLOSE, "0");
+    
     // Cache all monitors
     refresh_monitors();
     
@@ -30,6 +35,9 @@ SDL3SystemApp::SDL3SystemApp() SKR_NOEXCEPT
     
     // Create IME
     ime = IME::Create(this);
+    
+    // Create Window Manager
+    window_manager = SkrNew<WindowManager>(this);
     
     // Connect IME to platform event source
     if (platform_event_source_)
@@ -46,6 +54,13 @@ SDL3SystemApp::SDL3SystemApp() SKR_NOEXCEPT
 
 SDL3SystemApp::~SDL3SystemApp() SKR_NOEXCEPT
 {
+    // Clean up Window Manager
+    if (window_manager)
+    {
+        SkrDelete(window_manager);
+        window_manager = nullptr;
+    }
+    
     // Clean up IME
     if (ime)
     {
@@ -85,8 +100,8 @@ SDL3SystemApp::~SDL3SystemApp() SKR_NOEXCEPT
     SDL_Quit();
 }
 
-// Window management
-SystemWindow* SDL3SystemApp::create_window(const SystemWindowCreateInfo& create_info)
+// Internal window management
+SystemWindow* SDL3SystemApp::create_window_internal(const SystemWindowCreateInfo& create_info)
 {
     // Validate input
     if (create_info.size.x == 0 || create_info.size.y == 0)
@@ -144,7 +159,7 @@ SystemWindow* SDL3SystemApp::create_window(const SystemWindowCreateInfo& create_
     return window;
 }
 
-void SDL3SystemApp::destroy_window(SystemWindow* window)
+void SDL3SystemApp::destroy_window_internal(SystemWindow* window)
 {
     if (!window)
         return;

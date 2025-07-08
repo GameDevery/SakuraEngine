@@ -15,10 +15,6 @@ public:
     SDL3SystemApp() SKR_NOEXCEPT;
     ~SDL3SystemApp() SKR_NOEXCEPT override;
 
-    // Window management
-    SystemWindow* create_window(const SystemWindowCreateInfo& create_info) override;
-    void destroy_window(SystemWindow* window) override;
-
     // Monitor/Display management
     uint32_t get_monitor_count() const override;
     SystemMonitor* get_monitor(uint32_t index) const override;
@@ -34,6 +30,11 @@ public:
     bool remove_event_source(ISystemEventSource* source) override;
     ISystemEventSource* get_platform_event_source() const override { return platform_event_source_; }
     bool wait_events(uint32_t timeout_ms) override;
+
+protected:
+    // Internal window management
+    SystemWindow* create_window_internal(const SystemWindowCreateInfo& create_info) override;
+    void destroy_window_internal(SystemWindow* window) override;
 
 private:
     skr::Map<SDL_DisplayID, SDL3Monitor*> monitor_cache;

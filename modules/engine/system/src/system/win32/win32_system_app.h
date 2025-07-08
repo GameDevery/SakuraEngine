@@ -16,10 +16,6 @@ public:
     Win32SystemApp() SKR_NOEXCEPT;
     ~Win32SystemApp() SKR_NOEXCEPT override;
 
-    // Window management
-    SystemWindow* create_window(const SystemWindowCreateInfo& create_info) override;
-    void destroy_window(SystemWindow* window) override;
-
     // Monitor/Display management
     uint32_t get_monitor_count() const override;
     SystemMonitor* get_monitor(uint32_t index) const override;
@@ -41,6 +37,11 @@ public:
     
     // Get singleton instance (for window proc)
     static Win32SystemApp* get_instance() { return instance_; }
+
+protected:
+    // Internal window management
+    SystemWindow* create_window_internal(const SystemWindowCreateInfo& create_info) override;
+    void destroy_window_internal(SystemWindow* window) override;
 
 private:
     // Monitor enumeration callback

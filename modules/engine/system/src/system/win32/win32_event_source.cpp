@@ -108,6 +108,7 @@ bool Win32EventSource::process_message(MSG& msg, SkrSystemEvent& out_event)
     {
         // Window events
         case WM_CLOSE:
+        case WM_USER + 1:  // Custom close notification from window proc
             out_event.type = SKR_SYSTEM_EVENT_WINDOW_CLOSE_REQUESTED;
             return true;
             

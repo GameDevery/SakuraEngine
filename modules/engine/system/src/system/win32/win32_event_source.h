@@ -16,7 +16,7 @@ public:
 
     bool poll_event(SkrSystemEvent& event) SKR_NOEXCEPT override;
     
-    void set_ime(ISystemIME* ime) SKR_NOEXCEPT override { ime_ = ime; }
+    void set_ime(IME* ime) SKR_NOEXCEPT { ime_ = ime; }
 
 private:
     // Process a Windows message and convert to system event
@@ -28,7 +28,7 @@ private:
     InputMouseButtonFlags translate_mouse_button(UINT msg, WPARAM wParam) const;
     
     Win32SystemApp* app_ = nullptr;
-    ISystemIME* ime_ = nullptr;
+    IME* ime_ = nullptr;
     
     // Track mouse enter/leave state per window
     skr::Map<HWND, bool> mouse_tracking_;
