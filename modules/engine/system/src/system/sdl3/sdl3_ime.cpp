@@ -157,8 +157,6 @@ IMETextInputArea SDL3IME::get_text_input_area() const
     return input_area_;
 }
 
-
-
 void SDL3IME::set_event_callbacks(const IMEEventCallbacks& callbacks)
 {
     std::lock_guard<std::mutex> lock(state_mutex_);

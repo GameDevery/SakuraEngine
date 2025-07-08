@@ -288,10 +288,13 @@ namespace SB
 
             launchJson.Configurations.RemoveAll(IsGeneratedConfig);
             
-            var generatedConfigs = TargetConfigurations.Values
-                .SelectMany(configs => configs)
-                .Select(c => { c.Name = $"[SB Generated] {c.Name}"; return c; });
-            
+            // Sort by target name first, then flatten the configurations
+            var generatedConfigs = TargetConfigurations
+                .OrderBy(kv => kv.Key)  // Sort by target name
+                .SelectMany(kv => kv.Value)
+                .Select(c => { c.Name = $"[SB Generated] {c.Name}"; return c; })
+                .ToList();
+
             launchJson.Configurations.AddRange(generatedConfigs);
 
             WriteJsonFile(path, launchJson);
@@ -305,10 +308,12 @@ namespace SB
 
             tasksJson.Tasks.RemoveAll(IsGeneratedTask);
 
-            var tasks = from entry in TargetConfigurations
-                       from config in entry.Value
-                       let buildType = ExtractBuildType(config.Name)
-                       select CreateBuildTask(entry.Key, buildType, config.PreLaunchTask!);
+            // Sort by target name first, then create tasks
+            var tasks = (from entry in TargetConfigurations.OrderBy(kv => kv.Key)
+                        from config in entry.Value
+                        let buildType = ExtractBuildType(config.Name)
+                        select CreateBuildTask(entry.Key, buildType, config.PreLaunchTask!))
+                        .ToList();
 
             tasksJson.Tasks.AddRange(tasks);
 

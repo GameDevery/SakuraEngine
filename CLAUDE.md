@@ -39,6 +39,63 @@
   - `find()` 返回 DataRef/CDataRef 而非迭代器
 - **详细文档**：@docs/core_systems/container_usage.md
 
+#### skr::Map
+
+基于稀疏哈希表的键值映射容器，提供高性能的查找和插入操作。
+
+```cpp
+#include "SkrContainers/map.hpp"
+
+skr::Map<uint32_t, SystemWindow*> window_cache;
+skr::Map<HWND, bool> tracking_state;
+```
+
+#### Map API 说明
+
+| 操作 | API | 说明 |
+|------|-----|------|
+| 添加/更新 | `add(key, value)` | 插入新键值对或更新已存在的值 |
+| 查找 | `find(key)` | 返回 DataRef，使用 `value()` 方法获取值 |
+| 检查存在 | `contains(key)` | 返回 bool，检查键是否存在 |
+| 删除 | `remove(key)` | 删除指定键的键值对，返回是否成功 |
+| 清空 | `clear()` | 清空所有键值对 |
+| 大小 | `size()` | 返回键值对数量 |
+| 判空 | `is_empty()` | 检查是否为空 |
+
+#### Map 使用示例
+
+```cpp
+// 基本操作
+skr::Map<int, std::string> map;
+
+// 添加或更新
+map.add(1, "one");
+map.add(2, "two");
+map.add(1, "ONE");  // 更新键1的值
+
+// 检查存在
+if (map.contains(1))
+{
+    // 键存在
+}
+
+// 查找并使用值
+if (auto ref = map.find(1))
+{
+    auto& value = ref.value();  // 获取值的引用
+    // 使用 value
+}
+
+// 删除
+bool removed = map.remove(2);  // 返回 true 如果删除成功
+
+// 遍历（使用范围 for）
+for (const auto& [key, value] : map)
+{
+    // 处理键值对
+}
+```
+
 ### Window System
 
 跨平台窗口管理、显示器检测和输入法（IME）支持系统。采用简洁的抽象设计，通过 SystemApp 统一管理窗口、显示器和 IME。当前基于 SDL3 实现，提供了完整的跨平台支持。
