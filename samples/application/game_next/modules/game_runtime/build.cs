@@ -3,19 +3,19 @@ using SB.Core;
 using Serilog;
 
 [TargetScript]
-public static class AnimDebugRuntime
+public static class GameRuntime
 {
-    static AnimDebugRuntime()
+    static GameRuntime()
     {
         // font is already installed by ImGui module
-        Engine.Module("AnimDebugRuntime", "ANIM_DEBUG_RUNTIME")
-            .Depend(Visibility.Public, "SkrImGui", "SkrAnim")
+        Engine.Module("GameRuntime", "GAME_RUNTIME")
+            .EnableUnityBuild()
+            .Depend(Visibility.Public, "SkrImGui", "SkrAnim", "SkrRenderer")
             .IncludeDirs(Visibility.Public, "include")
             .Depend(Visibility.Public, "AppSampleCommon")
             .AddCppFiles("src/**.cpp")
             .AddMetaHeaders(
-                "include/AnimDebugRuntime/animation.h",
-                "include/AnimDebugRuntime/renderer.h"
+                "include/GameRuntime/gamert.h"
             );
     }
 }

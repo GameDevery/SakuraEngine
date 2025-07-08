@@ -85,7 +85,7 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
         // imgui_backend.enable_multi_viewport();
 
         // Apply Sail Style
-        // ImGui::Sail::LoadFont(12.0f);
+        ImGui::Sail::LoadFont(12.0f);
         ImGui::Sail::StyleColorsSail();
     }
 
@@ -98,10 +98,6 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
             SkrZoneScopedN("PumpMessage");
             // Pump messages
             imgui_backend.pump_message();
-        }
-        {
-            // if swapchain resized, rebind new swapchain
-            SkrZoneScopedN("ResizeSwapchain");
         }
 
         {

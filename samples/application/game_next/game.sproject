@@ -1,0 +1,5 @@
+{
+    "assetDirectory": "assets/",
+    "resourceDirectory": "../resources/game",
+    "artifactsDirectory": "../artifacts/${platform}/game"
+}
