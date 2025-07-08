@@ -389,8 +389,8 @@ int main(int argc, char* argv[])
                 }
             );
             // camera
-            auto eye = skr::float4(0.f, 2.1f, -2.1f, 0.0f) /*eye*/;
-            auto view = skr::float4x4::view_at(eye, skr::float4(0.f), skr::float4(skr::float3::up(), 0.f));
+            auto eye = skr::float3(0.f, 2.1f, -2.1f) /*eye*/;
+            auto view = skr::float4x4::view_at(eye, skr::float3(0.f), skr::float3::up());
             const auto aspect_ratio = (float)BACK_BUFFER_WIDTH / (float)BACK_BUFFER_HEIGHT;
             auto proj = skr::float4x4::perspective_fov(
                 skr::camera_fov_y_from_x(3.1415926f / 2.f, aspect_ratio),
