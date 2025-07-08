@@ -2,7 +2,7 @@
 #include "SkrContainers/vector.hpp"
 #include "SkrCore/memory/rc.hpp"
 #include "SkrContainers/span.hpp"
-#include "SkrInput/input.h"
+#include "SkrSystem/advanced_input.h"
 #include "SkrInputSystem/input_value.hpp"
 #include "SkrContainers/span.hpp"
 

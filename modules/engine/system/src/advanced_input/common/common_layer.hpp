@@ -1,5 +1,5 @@
 #pragma once
-#include "SkrInput/input.h"
+#include "SkrSystem/advanced_input.h"
 #include "SkrCore/memory/memory.h"
 #include "SkrBase/atomic/atomic.h"
 #include "SkrContainers/span.hpp"
@@ -13,7 +13,7 @@ struct CommonInputReadingProxy {
     virtual void release(struct CommonInputReading* ptr) SKR_NOEXCEPT = 0;
 };
 
-struct SKR_INPUT_API CommonInputReading {
+struct SKR_SYSTEM_API CommonInputReading {
     CommonInputReading(CommonInputReadingProxy* pPool, struct CommonInputDevice* pDevice) SKR_NOEXCEPT;
     virtual ~CommonInputReading() SKR_NOEXCEPT;
 
@@ -52,7 +52,7 @@ struct SKR_INPUT_API CommonInputReading {
     struct CommonInputDevice* device    = nullptr;
 };
 
-struct SKR_INPUT_API CommonInputDevice {
+struct SKR_SYSTEM_API CommonInputDevice {
     CommonInputDevice(struct CommonInputLayer* pLayer) SKR_NOEXCEPT;
     virtual ~CommonInputDevice() SKR_NOEXCEPT;
 
@@ -68,7 +68,7 @@ struct SKR_INPUT_API CommonInputDevice {
     CommonInputLayer* layer = nullptr;
 };
 
-struct SKR_INPUT_API CommonInputLayer : public InputLayer {
+struct SKR_SYSTEM_API CommonInputLayer : public InputLayer {
     virtual ~CommonInputLayer() SKR_NOEXCEPT;
 };
 

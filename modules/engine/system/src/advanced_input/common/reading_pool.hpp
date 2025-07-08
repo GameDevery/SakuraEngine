@@ -7,7 +7,7 @@
 namespace skr {
 namespace input {
 
-struct SKR_INPUT_API CommonInputReadingPoolBase : public CommonInputReadingProxy
+struct SKR_SYSTEM_API CommonInputReadingPoolBase : public CommonInputReadingProxy
 {
     static const char* kInputReadingMemoryPoolName;
     CommonInputReadingPoolBase() SKR_NOEXCEPT {}

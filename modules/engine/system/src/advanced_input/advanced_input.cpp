@@ -3,7 +3,7 @@
 #include "SkrCore/memory/memory.h"
 #include <SkrContainers/vector.hpp>
 #include "SkrContainers/span.hpp"
-#include "SkrInput/input.h"
+#include "SkrSystem/advanced_input.h"
 #include "common/reading_pool.hpp"
 
 namespace skr

@@ -1,127 +1,167 @@
-#include "../common/common_device_base.hpp"
-#include <SDL3/SDL_keyboard.h>
-#include "SkrContainers/span.hpp"
-#include <algorithm>
-#include "SkrContainers/span.hpp"
+#include "SkrSystem/system/event_loop.h"
+#include "SkrCore/memory/memory.h"
+#include <SDL3/SDL.h>
 
-namespace skr
-{
-namespace input
-{
-static EKeyCode KeyCodeTranslator(SDL_Scancode keycode);
-
-using ScanCodeBuffer = skr::InlineVector<uint8_t, 16>;
-struct InputReading_SDL3Keyboard : public CommonInputReading {
-    InputReading_SDL3Keyboard(CommonInputReadingProxy* pPool, struct CommonInputDevice* pDevice, ScanCodeBuffer&& InScanCodes, uint64_t Timestamp) SKR_NOEXCEPT
-        : CommonInputReading(pPool, pDevice),
-          ScanCodes(std::move(InScanCodes)),
-          Timestamp(Timestamp)
-    {
-    }
-
-    bool Equal(skr::span<uint8_t> write_span)
-    {
-        if (ScanCodes.size() != write_span.size())
-            return false;
-        for (int i = 0; i < ScanCodes.size(); ++i)
-        {
-            if (ScanCodes[i] != write_span[i])
-                return false;
-        }
-        return true;
-    }
-
-    uint64_t GetTimestamp() const SKR_NOEXCEPT final
-    {
-        return Timestamp;
-    }
-
-    EInputKind GetInputKind() const SKR_NOEXCEPT
-    {
-        return EInputKind::InputKindKeyboard;
-    }
-
-    virtual uint32_t GetKeyState(uint32_t stateArrayCount, InputKeyState* stateArray) SKR_NOEXCEPT
-    {
-        const auto n = std::min(stateArrayCount, (uint32_t)ScanCodes.size());
-        for (uint32_t i = 0; i < n; ++i)
-        {
-            stateArray[i].virtual_key = ScanCodes[i];
-        }
-        return n;
-    }
-
-    bool GetMouseState(InputMouseState* state) SKR_NOEXCEPT final
-    {
-        return 0;
-    }
-
-    ScanCodeBuffer ScanCodes;
-    uint64_t       Timestamp;
-};
-
-struct InputDevice_SDL3Keyboard : public CommonInputDeviceBase<InputReading_SDL3Keyboard> {
-    InputDevice_SDL3Keyboard(CommonInputLayer* Layer) SKR_NOEXCEPT
-        : CommonInputDeviceBase<InputReading_SDL3Keyboard>(Layer)
-    {
-    }
-
-    void Tick() SKR_NOEXCEPT final
-    {
-        skr::InlineVector<uint8_t, 16> ScanCodes;
-        updateScan(ScanCodes, (uint32_t)ScanCodes.capacity());
-        const auto LastReading = ReadingQueue.get();
-        if (!LastReading || !LastReading->Equal({ ScanCodes.data(), ScanCodes.size() }))
-        {
-            if (auto old = ReadingQueue.add(
-                    ReadingPool.acquire(&ReadingPool, this, std::move(ScanCodes), layer->GetCurrentTimestampUSec())
-                ))
-            {
-                old->release();
-            }
-        }
-    }
-
-    const EInputKind       kinds[1] = { EInputKind::InputKindKeyboard };
-    span<const EInputKind> ReportKinds() const SKR_NOEXCEPT final
-    {
-        return { kinds, 1 };
-    }
-
-    bool SupportKind(EInputKind kind) const SKR_NOEXCEPT final
-    {
-        return kind == EInputKind::InputKindKeyboard;
-    }
-
-    static void updateScan(ScanCodeBuffer& write_span, uint32_t max_count);
-};
-
-void InputDevice_SDL3Keyboard::updateScan(ScanCodeBuffer& output, uint32_t max_count)
-{
-    int         numkeys;
-    const bool* state    = SDL_GetKeyboardState(&numkeys);
-    const auto  n        = std::min(max_count, (uint32_t)output.capacity());
-    int         scancode = 0;
-    for (uint32_t i = 0; scancode < numkeys && i < n; ++scancode)
-    {
-        if (state[scancode])
-        {
-            output.emplace(KeyCodeTranslator((SDL_Scancode)scancode));
-        }
-    }
-}
-
-CommonInputDevice* CreateInputDevice_SDL3Keyboard(CommonInputLayer* pLayer) SKR_NOEXCEPT
-{
-    InputDevice_SDL3Keyboard* pDevice = SkrNew<InputDevice_SDL3Keyboard>(pLayer);
-    return pDevice;
-}
+namespace skr {
 
 #define KEY_CODE_TRANS(k, sdlk) \
     case (sdlk):                \
         return (k);
 
-inline static EKeyCode KeyCodeTranslator(SDL_Scancode keycode)
+EKeyCode TranslateSDLKeyCode(SDL_Scancode keycode);
+
+inline static SKeyModifier TranslateSDLModifiers(Uint16 sdl_mod)
+{
+    SKeyModifier mods = KEY_MODIFIER_None;
+    
+    if (sdl_mod & SDL_KMOD_LSHIFT) mods |= KEY_MODIFIER_LShift;
+    if (sdl_mod & SDL_KMOD_RSHIFT) mods |= KEY_MODIFIER_RShift;
+    if (sdl_mod & SDL_KMOD_LCTRL) mods |= KEY_MODIFIER_LCtrl;
+    if (sdl_mod & SDL_KMOD_RCTRL) mods |= KEY_MODIFIER_RCtrl;
+    if (sdl_mod & SDL_KMOD_LALT) mods |= KEY_MODIFIER_LAlt;
+    if (sdl_mod & SDL_KMOD_RALT) mods |= KEY_MODIFIER_RAlt;
+
+    return mods;
+}
+
+inline static ESkrSystemEventType TranslateSDLEventType(SDL_EventType type)
+{
+    switch (type)
+    {
+        case SDL_EVENT_QUIT:
+            return SKR_SYSTEM_EVENT_QUIT;
+            
+        // Window events
+        case SDL_EVENT_WINDOW_SHOWN:
+            return SKR_SYSTEM_EVENT_WINDOW_SHOWN;
+        case SDL_EVENT_WINDOW_HIDDEN:
+            return SKR_SYSTEM_EVENT_WINDOW_HIDDEN;
+        case SDL_EVENT_WINDOW_MOVED:
+            return SKR_SYSTEM_EVENT_WINDOW_MOVED;
+        case SDL_EVENT_WINDOW_RESIZED:
+            return SKR_SYSTEM_EVENT_WINDOW_RESIZED;
+        case SDL_EVENT_WINDOW_MINIMIZED:
+            return SKR_SYSTEM_EVENT_WINDOW_MINIMIZED;
+        case SDL_EVENT_WINDOW_MAXIMIZED:
+            return SKR_SYSTEM_EVENT_WINDOW_MAXIMIZED;
+        case SDL_EVENT_WINDOW_RESTORED:
+            return SKR_SYSTEM_EVENT_WINDOW_RESTORED;
+        case SDL_EVENT_WINDOW_MOUSE_ENTER:
+            return SKR_SYSTEM_EVENT_WINDOW_MOUSE_ENTER;
+        case SDL_EVENT_WINDOW_MOUSE_LEAVE:
+            return SKR_SYSTEM_EVENT_WINDOW_MOUSE_LEAVE;
+        case SDL_EVENT_WINDOW_FOCUS_GAINED:
+            return SKR_SYSTEM_EVENT_WINDOW_FOCUS_GAINED;
+        case SDL_EVENT_WINDOW_FOCUS_LOST:
+            return SKR_SYSTEM_EVENT_WINDOW_FOCUS_LOST;
+        case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+            return SKR_SYSTEM_EVENT_WINDOW_CLOSE_REQUESTED;
+        case SDL_EVENT_WINDOW_ENTER_FULLSCREEN:
+            return SKR_SYSTEM_EVENT_WINDOW_ENTER_FULLSCREEN;
+        case SDL_EVENT_WINDOW_LEAVE_FULLSCREEN:
+            return SKR_SYSTEM_EVENT_WINDOW_LEAVE_FULLSCREEN;
+            
+        // Keyboard events
+        case SDL_EVENT_KEY_DOWN:
+            return SKR_SYSTEM_EVENT_KEY_DOWN;
+        case SDL_EVENT_KEY_UP:
+            return SKR_SYSTEM_EVENT_KEY_UP;
+            
+        default:
+            return SKR_SYSTEM_EVENT_INVALID;
+    }
+}
+
+inline static SkrSystemEvent TranslateSDLEvent(const SDL_Event& e)
+{
+    SkrSystemEvent result = {};
+    const auto type = TranslateSDLEventType((SDL_EventType)e.type);
+    switch (e.type)
+    {
+        case SDL_EVENT_QUIT:
+            result.quit.type = SKR_SYSTEM_EVENT_QUIT;
+            break;
+            
+        // Window events
+        case SDL_EVENT_WINDOW_SHOWN:
+        case SDL_EVENT_WINDOW_HIDDEN:
+        case SDL_EVENT_WINDOW_MOVED:
+        case SDL_EVENT_WINDOW_RESIZED:
+        case SDL_EVENT_WINDOW_MINIMIZED:
+        case SDL_EVENT_WINDOW_MAXIMIZED:
+        case SDL_EVENT_WINDOW_RESTORED:
+        case SDL_EVENT_WINDOW_MOUSE_ENTER:
+        case SDL_EVENT_WINDOW_MOUSE_LEAVE:
+        case SDL_EVENT_WINDOW_FOCUS_GAINED:
+        case SDL_EVENT_WINDOW_FOCUS_LOST:
+        case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+        case SDL_EVENT_WINDOW_ENTER_FULLSCREEN:
+        case SDL_EVENT_WINDOW_LEAVE_FULLSCREEN:
+            result.window.type = type;
+            result.window.window_native_handle = e.window.windowID;
+            result.window.x = e.window.data1;
+            result.window.y = e.window.data2;
+            break;
+            
+        // Keyboard events
+        case SDL_EVENT_KEY_DOWN:
+        case SDL_EVENT_KEY_UP:
+            result.key.type = type;
+            result.key.window_native_handle = e.key.windowID;
+            result.key.keycode = TranslateSDLKeyCode(e.key.scancode);
+            result.key.scancode = e.key.scancode;
+            result.key.modifiers = TranslateSDLModifiers(e.key.mod);
+            result.key.down = e.key.down;
+            result.key.repeat = e.key.repeat;
+            break;
+            
+        default:
+            result.type = SKR_SYSTEM_EVENT_INVALID;
+            break;
+    }
+    
+    return result;
+}
+
+struct SDL3_EventSource : public ISystemEventSource
+{
+    SDL3_EventSource() SKR_NOEXCEPT
+    {
+        SDL_Init(SDL_INIT_EVENTS);
+    }
+
+    ~SDL3_EventSource() SKR_NOEXCEPT override
+    {
+        SDL_Quit();
+    }
+
+    bool poll_event(SkrSystemEvent& event) SKR_NOEXCEPT override
+    {
+        SDL_Event sdl_event;
+        if (SDL_PollEvent(&sdl_event))
+        {
+            event = TranslateSDLEvent(sdl_event);
+            return true;
+        }
+        return false;
+    }
+};
+
+// 工厂函数
+ISystemEventSource* CreateSDL3EventSource() SKR_NOEXCEPT
+{
+    return SkrNew<SDL3_EventSource>();
+}
+
+void DestroySDL3EventSource(ISystemEventSource* source) SKR_NOEXCEPT
+{
+    if (source)
+    {
+        SkrDelete(source);
+    }
+}
+
+EKeyCode TranslateSDLKeyCode(SDL_Scancode keycode)
 {
     switch (keycode)
     {
@@ -254,5 +294,4 @@ inline static EKeyCode KeyCodeTranslator(SDL_Scancode keycode)
     }
 }
 
-} // namespace input
 } // namespace skr

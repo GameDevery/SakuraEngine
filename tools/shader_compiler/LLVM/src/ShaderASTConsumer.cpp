@@ -614,7 +614,7 @@ const CppSL::TypeDecl* ASTConsumer::TranslateLambda(const clang::LambdaExpr* x)
 
     std::vector<CppSL::ParamVarDecl*> _params;
     TranslateParams(_params, lambdaMethod);
-    
+
     TranslateLambdaCapturesToParams(x);
     _params.insert(_params.end(), current_stack->_captured_params.begin(), current_stack->_captured_params.end());
 

@@ -12,7 +12,7 @@
 #include "SkrCore/async/thread_job.hpp"
 #include "SkrCore/module/module_manager.hpp"
 #include "SkrRT/runtime_module.h"
-#include "SkrInput/input.h"
+#include "SkrSystem/advanced_input.h"
 #include <SkrImGui/imgui_backend.hpp>
 #include <SkrImGui/imgui_render_backend.hpp>
 #include "SkrRenderer/skr_renderer.h"

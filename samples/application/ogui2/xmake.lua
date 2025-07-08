@@ -5,7 +5,7 @@ target("OpenGUI_DemoResources")
     add_deps("AppSampleCommon")
     add_includedirs("common", {public = true})
     add_files("common/**.cpp")
-    public_dependency("SkrInput")
+    public_dependency("SkrSystem")
     public_dependency("SkrGui")
     public_dependency("SkrGuiRenderer")
 

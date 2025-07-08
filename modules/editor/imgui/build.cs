@@ -10,7 +10,7 @@ public static class SkrImGui
 
         Engine.Module("SkrImGui", "SKR_IMGUI")
             .Depend(Visibility.Private, "SDL3")
-            .Depend(Visibility.Public, "SkrInput", "SkrRenderGraph")
+            .Depend(Visibility.Public, "SkrSystem", "SkrRenderGraph")
             .IncludeDirs(Visibility.Public, "include")
             .AddCppFiles("src/**.cpp")
             .AddCppSLFiles("shaders/*.cppsl")
