@@ -27,12 +27,15 @@ public:
     // Refresh all monitor information (useful after display changes)
     virtual void refresh_monitors() = 0;
     
+    // Input Method Editor access
+    IME* get_ime() const { return ime; }
+    
     // Factory methods
     static SystemApp* Create(const char* backend = nullptr); // nullptr = auto-detect, "SDL", "Win32", "Cocoa"
     static void Destroy(SystemApp* app);
 
 protected:
-    IME ime;
+    IME* ime = nullptr;
 };
 
 } // namespace skr

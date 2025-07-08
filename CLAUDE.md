@@ -24,6 +24,13 @@
 
 ## 运行时模块
 
+### Window System
+
+跨平台窗口管理、显示器检测和输入法（IME）支持系统。采用简洁的抽象设计，通过 SystemApp 统一管理窗口、显示器和 IME。当前基于 SDL3 实现，提供了完整的跨平台支持。
+
+- @docs/engine_systems/window_system.md - 系统架构和使用指南
+- @docs/engine_systems/window_system_implementation_notes.md - 实现经验和设计决策
+
 ### RTTR
 
 项目使用的记录 C++ 类型信息和注解的库，代码生成工具在上层利用这个库并生成元信息代码。

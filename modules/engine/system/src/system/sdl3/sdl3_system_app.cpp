@@ -1,12 +1,9 @@
 #include "sdl3_system_app.h"
 #include "sdl3_monitor.h"
 #include "sdl3_window.h"
-#include "SkrCore/memory/memory.h"
+#include "sdl3_ime.h"
 #include "SkrCore/log.h"
 #include <SDL3/SDL.h>
-#include <algorithm>
-#include <climits>
-#include <cstring>
 
 namespace skr {
 
@@ -25,10 +22,20 @@ SDL3SystemApp::SDL3SystemApp() SKR_NOEXCEPT
     
     // Cache all monitors
     refresh_monitors();
+    
+    // Create IME
+    ime = IME::Create(this);
 }
 
 SDL3SystemApp::~SDL3SystemApp() SKR_NOEXCEPT
 {
+    // Clean up IME
+    if (ime)
+    {
+        IME::Destroy(ime);
+        ime = nullptr;
+    }
+    
     // Clean up cached windows
     for (auto& pair : window_cache)
     {
@@ -51,6 +58,13 @@ SDL3SystemApp::~SDL3SystemApp() SKR_NOEXCEPT
 // Window management
 SystemWindow* SDL3SystemApp::create_window(const SystemWindowCreateInfo& create_info)
 {
+    // Validate input
+    if (create_info.size.x == 0 || create_info.size.y == 0)
+    {
+        SKR_LOG_ERROR(u8"Invalid window size: %dx%d", create_info.size.x, create_info.size.y);
+        return nullptr;
+    }
+    
     // Convert window flags
     Uint32 flags = SDL_WINDOW_VULKAN; // Default to Vulkan-capable
     
@@ -66,18 +80,10 @@ SystemWindow* SDL3SystemApp::create_window(const SystemWindowCreateInfo& create_
     // Create SDL window
     SDL_Window* sdl_window = SDL_CreateWindow(
         (const char*)create_info.title.c_str(),
-        (int)create_info.size.x,
-        (int)create_info.size.y,
+        static_cast<int>(create_info.size.x),
+        static_cast<int>(create_info.size.y),
         flags
     );
-    
-    if (sdl_window && create_info.pos.has_value())
-    {
-        // Set position after creation
-        SDL_SetWindowPosition(sdl_window, 
-            (int)create_info.pos.value().x, 
-            (int)create_info.pos.value().y);
-    }
     
     if (!sdl_window)
     {
@@ -85,8 +91,23 @@ SystemWindow* SDL3SystemApp::create_window(const SystemWindowCreateInfo& create_
         return nullptr;
     }
     
+    // Set position if specified
+    if (create_info.pos.has_value())
+    {
+        SDL_SetWindowPosition(sdl_window, 
+            static_cast<int>(create_info.pos.value().x), 
+            static_cast<int>(create_info.pos.value().y));
+    }
+    
     // Create wrapper
     SDL3Window* window = SkrNew<SDL3Window>(sdl_window);
+    if (!window)
+    {
+        SDL_DestroyWindow(sdl_window);
+        SKR_LOG_ERROR(u8"Failed to allocate SDL3Window wrapper");
+        return nullptr;
+    }
+    
     SDL_WindowID window_id = SDL_GetWindowID(sdl_window);
     window_cache.add(window_id, window);
     
@@ -155,17 +176,17 @@ SystemMonitor* SDL3SystemApp::get_monitor_from_window(SystemWindow* window) cons
         return nullptr;
         
     // Get SDL window from native handle
-    SDL_Window* sdl_window = (SDL_Window*)window->get_native_handle();
+    auto* sdl_window = static_cast<SDL_Window*>(window->get_native_handle());
     if (!sdl_window)
         return nullptr;
         
     SDL_DisplayID display = SDL_GetDisplayForWindow(sdl_window);
-    if (display != 0)
+    if (display == 0)
+        return nullptr;
+        
+    if (auto found = monitor_cache.find(display))
     {
-        if (auto found = monitor_cache.find(display))
-        {
-            return found.value();
-        }
+        return found.value();
     }
     
     return nullptr;
@@ -196,17 +217,27 @@ void SDL3SystemApp::refresh_monitors()
     int count = 0;
     SDL_DisplayID* displays = SDL_GetDisplays(&count);
     
-    if (displays)
+    if (!displays)
     {
-        for (int i = 0; i < count; ++i)
+        SKR_LOG_ERROR(u8"Failed to get displays: %s", SDL_GetError());
+        return;
+    }
+    
+    monitor_list.reserve(count);
+    
+    for (int i = 0; i < count; ++i)
+    {
+        SDL3Monitor* monitor = SkrNew<SDL3Monitor>(displays[i]);
+        if (monitor)
         {
-            SDL3Monitor* monitor = SkrNew<SDL3Monitor>(displays[i]);
             monitor_cache.add(displays[i], monitor);
             monitor_list.push_back(monitor);
         }
-        
-        SDL_free(displays);
     }
+    
+    SDL_free(displays);
+    
+    SKR_LOG_INFO(u8"Refreshed monitors: found %d display(s)", count);
 }
 
 // Factory methods implementation
@@ -214,7 +245,8 @@ SystemApp* SystemApp::Create(const char* backend)
 {
     if (!backend || strcmp(backend, "SDL") == 0 || strcmp(backend, "SDL3") == 0)
     {
-        return SkrNew<SDL3SystemApp>();
+        SDL3SystemApp* sdl_app = SkrNew<SDL3SystemApp>();
+        return static_cast<SystemApp*>(sdl_app);
     }
     
     // TODO: Add other backends (Win32, Cocoa)

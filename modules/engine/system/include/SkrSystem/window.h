@@ -7,9 +7,9 @@ namespace skr {
 
 struct SystemWindowCreateInfo
 {
-    skr::String title;
-    skr::Optional<uint2> pos;
-    uint2 size;
+    skr::String title = u8"Untitled";
+    skr::Optional<uint2> pos;  // nullopt = system decides
+    uint2 size = {800, 600};   // Default window size
     bool is_topmost = false;
     bool is_tooltip = false;
     bool is_borderless = false;
