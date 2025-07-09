@@ -465,7 +465,11 @@ private:
     ScriptBinderObject*    _make_object(const RTTRType* type);
     ScriptBinderValue*     _make_value(const RTTRType* type);
     ScriptBinderEnum*      _make_enum(const RTTRType* type);
+    ScriptBinderGeneric*   _make_generic(TypeSignatureView signature);
     void                   _fill_record_info(ScriptBinderRecordBase& out, const RTTRType* type);
+
+    // generic checker
+    void _check_optional(TypeSignatureView inner);
 
     // make nested binder
     void _make_ctor(ScriptBinderCtor& out, const RTTRCtorData* ctor, const RTTRType* owner);

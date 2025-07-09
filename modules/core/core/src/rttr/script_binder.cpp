@@ -146,14 +146,8 @@ ScriptBinderRoot ScriptBinderManager::get_or_build(TypeSignatureView signature)
             return result.value();
         }
 
-        // make generic binder
-        auto generic_binder     = SkrNew<ScriptBinderGeneric>();
-        generic_binder->generic = build_generic(signature);
-        _cached_generic_binders.add(signature, generic_binder);
-
-        // TODO. check generic
-
-        return generic_binder;
+        // make generic
+        return _make_generic(signature);
     }
     else
     {
@@ -417,6 +411,37 @@ ScriptBinderEnum* ScriptBinderManager::_make_enum(const RTTRType* type)
     });
 
     return SkrNew<ScriptBinderEnum>(std::move(result));
+}
+ScriptBinderGeneric* ScriptBinderManager::_make_generic(TypeSignatureView signature)
+{
+    SKR_ASSERT(signature.jump_modifier().is_empty());
+
+    auto raw_signature = signature;
+
+    // check generic
+    GUID     generic_id;
+    uint32_t data_count;
+    signature.read_generic_type_id(generic_id, data_count);
+    if (generic_id == kOptionalGenericId)
+    {
+        auto _log_stack = _logger.stack(u8"export optional generic type");
+        _check_optional(signature.jump_next_type_or_data());
+        if (_logger.any_error())
+        {
+            return nullptr;
+        }
+    }
+    else
+    {
+        _logger.error(u8"bad generic type, guid: {}", generic_id);
+    }
+
+    // make generic binder
+    auto generic_binder     = SkrNew<ScriptBinderGeneric>();
+    generic_binder->generic = build_generic(raw_signature);
+    _cached_generic_binders.add(raw_signature, generic_binder);
+
+    return generic_binder;
 }
 void ScriptBinderManager::_fill_record_info(ScriptBinderRecordBase& out, const RTTRType* type)
 {
@@ -732,6 +757,22 @@ void ScriptBinderManager::_fill_record_info(ScriptBinderRecordBase& out, const R
     }
 
     out.failed |= _logger.any_error();
+}
+
+// generic checker
+void ScriptBinderManager::_check_optional(TypeSignatureView inner)
+{
+    auto pointer_level = inner.decayed_pointer_level();
+    if (pointer_level > 0)
+    {
+        _logger.error(u8"optional not support any pointer/reference type");
+    }
+
+    auto inner_binder = get_or_build(inner);
+    if (inner_binder.is_object())
+    {
+        _logger.error(u8"optional not support object type '{}", inner_binder.object()->type->name());
+    }
 }
 
 // make nested binder
