@@ -7,7 +7,7 @@ public static class V8
 {
     static V8()
     {
-        Engine.AddDoctor<V8Doctor>();
+        Engine.AddSetup<V8Setup>();
 
         var V8 = BuildSystem.Target("v8")
             .TargetType(TargetType.HeaderOnly)
@@ -22,17 +22,10 @@ public static class V8
     }
 }
 
-public class V8Doctor : IDoctor
+public class V8Setup : ISetup
 {
-    public bool Check()
+    public void Setup()
     {
         Install.SDK("v8_11.8.172").Wait();
-        return true;
     }
-
-    public bool Fix()
-    {
-        Log.Fatal("Cef SDK install failed!");
-        return true;
-    }   
 }

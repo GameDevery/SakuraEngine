@@ -6,7 +6,7 @@ public static class SkrImGui
 {
     static SkrImGui()
     {
-        Engine.AddDoctor<ImGuiDoctor>();
+        Engine.AddSetup<ImGuiSetup>();
 
         Engine.Module("SkrImGui", "SKR_IMGUI")
             .Depend(Visibility.Private, "SDL3")
@@ -21,16 +21,11 @@ public static class SkrImGui
     }
 }
 
-public class ImGuiDoctor : IDoctor
+public class ImGuiSetup : ISetup
 {
-    public bool Check()
+    public void Setup()
     {
         var Font = Install.File("SourceSansPro-Regular.ttf", "resources/font");
         Font.Wait();
-        return Font.Result != null;
-    }
-    public bool Fix()
-    {
-        return true;
     }
 }

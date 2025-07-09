@@ -7,7 +7,7 @@ public static class LibHV
 {
     static LibHV()
     {
-        Engine.AddDoctor<LibHVDoctor>();
+        Engine.AddSetup<LibHVSetup>();
 
         Engine.Target("libhv")
             .TargetType(TargetType.HeaderOnly)
@@ -18,16 +18,10 @@ public static class LibHV
     }
 }
 
-public class LibHVDoctor : IDoctor
+public class LibHVSetup : ISetup
 {
-    public bool Check()
+    public void Setup()
     {
         Install.SDK("libhv_1.3.3a").Wait();
-        return true;
-    }
-    public bool Fix() 
-    { 
-        Log.Fatal("core sdks install failed!");
-        return true; 
     }
 }

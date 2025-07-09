@@ -7,7 +7,7 @@ public static class SkrCore
 {
     static SkrCore()
     {
-        Engine.AddDoctor<SkrCoreDoctor>();
+        Engine.AddSetup<SkrCoreSetup>();
         
         var DependencyGraph = Engine.StaticComponent("SkrDependencyGraph", "SkrCore")
             .Exception(true) // DAG uses lemon which uses exceptions
@@ -77,16 +77,10 @@ public static class SkrCore
     }
 }
 
-public class SkrCoreDoctor : IDoctor
+public class SkrCoreSetup : ISetup
 {
-    public bool Check()
+    public void Setup()
     {
         Install.SDK("SDL_3.2.12").Wait();
-        return true;
-    }
-    public bool Fix() 
-    { 
-        Log.Fatal("core sdks install failed!");
-        return true; 
     }
 }

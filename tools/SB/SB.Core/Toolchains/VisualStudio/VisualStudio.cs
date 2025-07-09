@@ -5,7 +5,7 @@ using Serilog;
 
 namespace SB.Core
 {
-    [Doctor<VisualStudioDoctor>]
+    [Setup<VisualStudioSetup>]
     public partial class VisualStudio : IToolchain
     {
         // https://blog.pcitron.fr/2022/01/04/dont-use-vcvarsall-vsdevcmd/
@@ -238,9 +238,9 @@ namespace SB.Core
         #endregion
     }
 
-    public class VisualStudioDoctor : IDoctor
+    public class VisualStudioSetup : ISetup
     {
-        public bool Check()
+        public void Setup()
         {
             if (BuildSystem.TargetOS == OSPlatform.Windows && BuildSystem.HostOS == OSPlatform.Windows)
             {
@@ -256,18 +256,10 @@ namespace SB.Core
                     VisualStudio.RunVCVars();
                     sw.Stop();
                     Log.Information("Run VCVars took {ElapsedMilliseconds}s", sw.ElapsedMilliseconds / 1000.0f);
-                    return true;
                 }
             }
-            return true;
         }
 
-        public bool Fix()
-        {
-            Log.Fatal("VisualStudio discover failed!");
-            return true;
-        }
-
-        public static VisualStudio VisualStudio { get; private set; } = new VisualStudio(2022);
+        public static VisualStudio VisualStudio { get; set; } = new VisualStudio(2022);
     }
 }

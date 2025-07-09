@@ -7,7 +7,7 @@ public static class SkrLive2D
 {
     static SkrLive2D()
     {
-        Engine.AddDoctor<SkrLive2DDoctor>();
+        Engine.AddSetup<SkrLive2DSetup>();
 
         var CubismFramework = Engine
             .StaticComponent("CubismFramework", "SkrLive2D")
@@ -41,17 +41,10 @@ public static class SkrLive2D
     }
 }
 
-public class SkrLive2DDoctor : IDoctor
+public class SkrLive2DSetup : ISetup
 {
-    public bool Check()
+    public void Setup()
     {
         Install.SDK("CubismNativeCore").Wait();
-        return true;
-    }
-
-    public bool Fix()
-    {
-        Log.Fatal("Cubism SDK install failed!");
-        return true;
     }
 }

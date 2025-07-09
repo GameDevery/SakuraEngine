@@ -10,7 +10,7 @@ public static class Cef
         if (BuildSystem.TargetOS != OSPlatform.Windows)
             return;
             
-        Engine.AddDoctor<CefDoctor>();
+        Engine.AddSetup<CefSetup>();
         var @this = Engine.Target("cef")
             .TargetType(TargetType.Static)
             .Defines(Visibility.Public, "WRAPPING_CEF_SHARED", "NOMINMAX", "USING_CEF_SHARED=1")
@@ -24,23 +24,16 @@ public static class Cef
     }
 }
 
-public class CefDoctor : IDoctor
+public class CefSetup : ISetup
 {
-    public bool Check()
+    public void Setup()
     {
         if (BuildSystem.TargetOS != OSPlatform.Windows)
-            return true;
+            return;
 
         Install.SDK("cef-no-dxc-6778", new Dictionary<string, string> {
             { "Release", "./" }, 
             { "Resources", "Resources" }
         }).Wait();
-        return true;
-    }
-
-    public bool Fix()
-    {
-        Log.Fatal("Cef SDK install failed!");
-        return true;
     }
 }
