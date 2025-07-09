@@ -77,6 +77,7 @@ struct SKR_CORE_API RTTRType final {
     const skr::String& name() const;
     Vector<String>     name_space() const;
     String             name_space_str() const;
+    String             full_name() const;
     GUID               type_id() const;
     size_t             size() const;
     size_t             alignment() const;
@@ -242,6 +243,16 @@ inline String RTTRType::name_space_str() const
         SKR_UNREACHABLE_CODE()
         return {};
     }
+}
+inline String RTTRType::full_name() const
+{
+    String result = name_space_str();
+    if (!result.is_empty())
+    {
+        result.append(u8"::");
+    }
+    result.append(name());
+    return result;
 }
 inline GUID RTTRType::type_id() const
 {
