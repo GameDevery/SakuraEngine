@@ -4,8 +4,8 @@
 #include <SkrRenderGraph/backend/texture_view_pool.hpp>
 #include <SkrContainers/map.hpp>
 #include <SkrImGui/imgui_render_backend.hpp>
+#include <SkrSystem/window.h>
 #include <filesystem>
-#include <SDL3/SDL.h>
 
 // helpers
 namespace skr
@@ -129,11 +129,10 @@ inline static void _rebuild_swapchain(
     rdata->present_queue               = present_queue;
 }
 
-inline static SDL_Window* _get_sdl_wnd(ImGuiViewport* vp)
+inline static SystemWindow* _get_system_window(ImGuiViewport* vp)
 {
-
-    auto wnd_id = (SDL_WindowID) reinterpret_cast<size_t>(vp->PlatformHandle);
-    auto wnd    = SDL_GetWindowFromID(wnd_id);
+    // In the new system, PlatformHandle should contain SystemWindow*
+    auto wnd = reinterpret_cast<SystemWindow*>(vp->PlatformHandle);
     SKR_ASSERT(wnd);
     return wnd;
 }
@@ -811,9 +810,9 @@ void ImGuiRendererBackendRG::render_main_window(ImGuiViewport* vp)
 void ImGuiRendererBackendRG::create_window(ImGuiViewport* vp)
 {
     SKR_ASSERT(!vp->RendererUserData);
-    auto wnd = _get_sdl_wnd(vp);
-    int  w, h;
-    SDL_GetWindowSize(wnd, &w, &h);
+    auto wnd = _get_system_window(vp);
+    auto size = wnd->get_size();
+    int w = size.x, h = size.y;
 
     vp->RendererUserData = SkrNew<ImGuiRendererBackendRGViewportData>();
     _rebuild_swapchain(

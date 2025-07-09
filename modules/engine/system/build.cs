@@ -9,7 +9,8 @@ public static class SkrSystem
     {
         var SkrSystem = Engine.Module("SkrSystem", "SKR_SYSTEM")
             .EnableUnityBuild()
-            .Depend(Visibility.Public, "SDL3", "SkrRT")
+            .Depend(Visibility.Public, "SkrRT")
+            .Depend(Visibility.Private, "SDL3")
             .IncludeDirs(Visibility.Public, "include")
             .AddCppFiles(
                 "src/advanced_input/*.cpp",

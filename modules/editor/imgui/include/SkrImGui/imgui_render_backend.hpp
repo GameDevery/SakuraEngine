@@ -11,7 +11,6 @@
 
 namespace skr
 {
-struct ImGuiWindowBackend;
 
 struct SKR_IMGUI_API ImGuiRendererBackend {
     SKR_RC_IMPL();

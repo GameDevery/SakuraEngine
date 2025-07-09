@@ -61,9 +61,7 @@ public static class SkrCore
             .AddCodegenScript("meta/rttr.ts")
             .AddCodegenScript("meta/serialize.ts")
             .AddCodegenScript("meta/proxy.ts")
-            .CreateSharedPCH("include/**.h", "include/**.hpp", "../profile/include/SkrProfile/profile.h")
-            // TODO: REMOVE THIS
-            .Depend(Visibility.Public, "SDL3");
+            .CreateSharedPCH("include/**.h", "include/**.hpp", "../profile/include/SkrProfile/profile.h");
 
         if (BuildSystem.TargetOS == OSPlatform.Windows)
             SkrCore.Link(Visibility.Private, "shell32", "Ole32", "Shlwapi");

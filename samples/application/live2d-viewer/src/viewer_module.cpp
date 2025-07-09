@@ -242,7 +242,6 @@ int SLive2DViewerModule::main_module_exec(int argc, char8_t** argv)
             },
             std::move(render_backend)
         );
-        imgui_backend.main_window().show();
         imgui_backend.enable_docking();
     }
 

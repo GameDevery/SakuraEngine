@@ -418,7 +418,7 @@ void SDL3IME::update_candidate_state(const SDL_TextEditingCandidatesEvent& event
 }
 
 // Factory methods
-#ifndef SKR_OS_WINDOWS
+#ifndef SKR_PLAT_WINDOWS
 IME* IME::Create(struct SystemApp* app)
 {
     return SkrNew<SDL3IME>(static_cast<SDL3SystemApp*>(app));

@@ -33,7 +33,7 @@ void Win32IME::start_text_input_ex(SystemWindow* window,
         return;
     }
     
-    std::lock_guard<std::mutex> lock(state_mutex_);
+    std::lock_guard lock(state_mutex_);
     
     // Stop previous session
     if (active_window_)
@@ -64,7 +64,7 @@ void Win32IME::start_text_input_ex(SystemWindow* window,
 
 void Win32IME::stop_text_input()
 {
-    std::lock_guard<std::mutex> lock(state_mutex_);
+    std::lock_guard lock(state_mutex_);
     
     if (!active_window_)
         return;
@@ -89,19 +89,19 @@ void Win32IME::stop_text_input()
 
 bool Win32IME::is_text_input_active() const
 {
-    std::lock_guard<std::mutex> lock(state_mutex_);
+    std::lock_guard lock(state_mutex_);
     return active_window_ != nullptr && ime_enabled_;
 }
 
 SystemWindow* Win32IME::get_text_input_window() const
 {
-    std::lock_guard<std::mutex> lock(state_mutex_);
+    std::lock_guard lock(state_mutex_);
     return active_window_;
 }
 
 void Win32IME::set_text_input_area(const IMETextInputArea& area)
 {
-    std::lock_guard<std::mutex> lock(state_mutex_);
+    std::lock_guard lock(state_mutex_);
     
     input_area_ = area;
     
@@ -118,13 +118,13 @@ void Win32IME::set_text_input_area(const IMETextInputArea& area)
 
 IMETextInputArea Win32IME::get_text_input_area() const
 {
-    std::lock_guard<std::mutex> lock(state_mutex_);
+    std::lock_guard lock(state_mutex_);
     return input_area_;
 }
 
 void Win32IME::set_event_callbacks(const IMEEventCallbacks& callbacks)
 {
-    std::lock_guard<std::mutex> lock(state_mutex_);
+    std::lock_guard lock(state_mutex_);
     callbacks_ = callbacks;
 }
 
@@ -136,7 +136,7 @@ bool Win32IME::is_screen_keyboard_supported() const
 
 IMECompositionInfo Win32IME::get_composition_info() const
 {
-    std::lock_guard<std::mutex> lock(state_mutex_);
+    std::lock_guard lock(state_mutex_);
     
     IMECompositionInfo info;
     info.text = composition_state_.text;
@@ -149,7 +149,7 @@ IMECompositionInfo Win32IME::get_composition_info() const
 
 IMECandidateInfo Win32IME::get_candidates_info() const
 {
-    std::lock_guard<std::mutex> lock(state_mutex_);
+    std::lock_guard lock(state_mutex_);
     
     IMECandidateInfo info;
     info.candidates = candidate_state_.candidates;
@@ -202,68 +202,103 @@ void Win32IME::commit_composition()
 
 bool Win32IME::process_message(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, LRESULT& result)
 {
-    if (!ime_enabled_ || !active_window_ || active_window_->get_hwnd() != hwnd)
-        return false;
-        
-    std::lock_guard<std::mutex> lock(state_mutex_);
-    
-    switch (msg)
+    // Always handle IME messages if we have an active window
+    if (active_window_ && active_window_->get_hwnd() == hwnd)
     {
-        case WM_IME_SETCONTEXT:
-            // Show/hide composition and candidate windows
-            if (wParam)
-            {
-                update_ime_position(hwnd);
-            }
-            return false;  // Let DefWindowProc handle it
-            
-        case WM_IME_STARTCOMPOSITION:
-            composition_state_.active = true;
-            if (callbacks_.on_composition_start)
-            {
-                callbacks_.on_composition_start();
-            }
-            return false;
-            
-        case WM_IME_COMPOSITION:
-            handle_composition_string(hwnd, lParam);
-            return false;  // Let DefWindowProc handle it
-            
-        case WM_IME_ENDCOMPOSITION:
-            handle_composition_end(hwnd);
-            return false;
-            
-        case WM_IME_NOTIFY:
-            if (wParam == IMN_OPENCANDIDATE || wParam == IMN_CHANGECANDIDATE)
-            {
-                handle_candidate_list(hwnd);
-            }
-            else if (wParam == IMN_CLOSECANDIDATE)
-            {
-                candidate_state_.visible = false;
-                candidate_state_.candidates.clear();
-                notify_candidates_update();
-            }
-            return false;
-            
-        case WM_CHAR:
-        case WM_SYSCHAR:
-            // Filter out control characters
-            if (wParam >= 32 && !composition_state_.active)
-            {
-                // Convert UTF-16 to UTF-8
-                wchar_t utf16[2] = { static_cast<wchar_t>(wParam), 0 };
-                char utf8[5] = {};
-                WideCharToMultiByte(CP_UTF8, 0, utf16, 1, utf8, sizeof(utf8), nullptr, nullptr);
-                
-                if (callbacks_.on_text_input)
+        std::lock_guard lock(state_mutex_);
+        
+        switch (msg)
+        {
+            case WM_IME_SETCONTEXT:
+                // Show/hide composition and candidate windows
+                if (wParam)
                 {
-                    callbacks_.on_text_input((const char8_t*)utf8);
+                    update_ime_position(hwnd);
+                }
+                return false;  // Let DefWindowProc handle it
+                
+            case WM_IME_STARTCOMPOSITION:
+                composition_state_.active = true;
+                if (callbacks_.on_composition_start)
+                {
+                    callbacks_.on_composition_start();
+                }
+                return false;
+                
+            case WM_IME_COMPOSITION:
+                handle_composition_string(hwnd, lParam);
+                // Chromium style: prevent DefWindowProc from generating WM_CHAR
+                // Only do this for result string to avoid interfering with composition
+                if (lParam & GCS_RESULTSTR)
+                {
+                    result = 0;
+                    return true;  // Handled, don't call DefWindowProc
+                }
+                return false;  // Let DefWindowProc handle composition display
+                
+            case WM_IME_ENDCOMPOSITION:
+                handle_composition_end(hwnd);
+                return false;
+                
+            case WM_IME_NOTIFY:
+                if (wParam == IMN_OPENCANDIDATE || wParam == IMN_CHANGECANDIDATE)
+                {
+                    handle_candidate_list(hwnd);
+                }
+                else if (wParam == IMN_CLOSECANDIDATE)
+                {
+                    candidate_state_.visible = false;
+                    candidate_state_.candidates.clear();
+                    notify_candidates_update();
+                }
+                return false;
+            
+            case WM_CHAR:
+            case WM_SYSCHAR:
+                // Chromium style: Always process WM_CHAR without special IME checks
+                // The key is that we prevented WM_IME_CHAR from being generated
+                // by handling GCS_RESULTSTR and returning true
+                
+                if (wParam >= 32)  // Filter out control characters
+                {
+                    // Convert UTF-16 to UTF-8
+                    wchar_t utf16[2] = { static_cast<wchar_t>(wParam), 0 };
+                    char utf8[5] = {};
+                    int utf8_len = WideCharToMultiByte(CP_UTF8, 0, utf16, 1, utf8, sizeof(utf8), nullptr, nullptr);
+                    
+                    if (callbacks_.on_text_input && utf8_len > 0)
+                    {
+                        // Create skr::String from UTF-8 data
+                        skr::String text((const char8_t*)utf8, utf8_len);
+                        SKR_LOG_DEBUG(u8"WM_CHAR: Processing character 0x%X", wParam);
+                        callbacks_.on_text_input(text);
+                    }
                 }
                 result = 0;
-                return true;
+                return true;  // Always handle WM_CHAR
+        }
+    }
+    
+    // For windows that aren't active IME windows, still handle WM_CHAR for direct input
+    if (msg == WM_CHAR || msg == WM_SYSCHAR)
+    {
+        // Only process if IME is not globally enabled
+        if (!ime_enabled_ && wParam >= 32)
+        {
+            // Convert UTF-16 to UTF-8
+            wchar_t utf16[2] = { static_cast<wchar_t>(wParam), 0 };
+            char utf8[5] = {};
+            int utf8_len = WideCharToMultiByte(CP_UTF8, 0, utf16, 1, utf8, sizeof(utf8), nullptr, nullptr);
+            
+            if (callbacks_.on_text_input && utf8_len > 0)
+            {
+                // Create skr::String from UTF-8 data
+                skr::String text((const char8_t*)utf8, utf8_len);
+                callbacks_.on_text_input(text);
             }
-            break;
+            result = 0;
+            return true;
+        }
     }
     
     return false;
@@ -297,7 +332,7 @@ void Win32IME::handle_composition_string(HWND hwnd, LPARAM lParam)
     HIMC hIMC = ImmGetContext(hwnd);
     if (!hIMC)
         return;
-        
+ 
     bool updated = false;
     
     // Get composition string
@@ -305,6 +340,7 @@ void Win32IME::handle_composition_string(HWND hwnd, LPARAM lParam)
     {
         retrieve_composition_string(hIMC, GCS_COMPSTR, composition_state_.text);
         updated = true;
+        SKR_LOG_DEBUG(u8"IME composition string: %s", composition_state_.text.c_str());
     }
     
     // Get cursor position
@@ -353,6 +389,7 @@ void Win32IME::handle_composition_string(HWND hwnd, LPARAM lParam)
         
         if (!result_str.is_empty() && callbacks_.on_text_input)
         {
+            SKR_LOG_DEBUG(u8"IME result string: %s (will block DefWindowProc)", result_str.c_str());
             callbacks_.on_text_input(result_str);
         }
     }
@@ -405,13 +442,9 @@ void Win32IME::retrieve_composition_string(HIMC hIMC, DWORD type, skr::String& o
     ImmGetCompositionStringW(hIMC, type, buffer.data(), len);
     buffer[len / sizeof(wchar_t)] = 0;
     
-    // Convert to UTF-8
-    int utf8_len = WideCharToMultiByte(CP_UTF8, 0, buffer.data(), -1, nullptr, 0, nullptr, nullptr);
-    skr::Vector<char> utf8_buffer;
-    utf8_buffer.resize_default(utf8_len);
-    WideCharToMultiByte(CP_UTF8, 0, buffer.data(), -1, utf8_buffer.data(), utf8_len, nullptr, nullptr);
-    
-    out_str = (const char8_t*)utf8_buffer.data();
+    // Create string without the null terminator
+    // Note: len is the byte count, not character count
+    out_str = skr::String::FromUtf16((const skr_char16*)buffer.data(), len / sizeof(wchar_t));
 }
 
 void Win32IME::retrieve_candidate_list(HIMC hIMC)
@@ -483,7 +516,7 @@ void Win32IME::enable_ime(HWND hwnd, bool enable)
 }
 
 // Factory methods
-#ifdef SKR_OS_WINDOWS
+#ifdef SKR_PLAT_WINDOWS
 IME* IME::Create(SystemApp* app)
 {
     return SkrNew<Win32IME>(static_cast<Win32SystemApp*>(app));

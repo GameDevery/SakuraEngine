@@ -260,7 +260,6 @@ int main(int argc, char* argv[])
                 .is_resizable = false
             };
             imgui_backend.create(window_config, std::move(render_backend));
-            imgui_backend.main_window().show();
             imgui_backend.enable_docking();
 
             // load font

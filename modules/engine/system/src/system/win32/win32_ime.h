@@ -86,7 +86,7 @@ private:
     IMEEventCallbacks callbacks_;
     
     // Current state
-    mutable std::mutex state_mutex_;
+    mutable std::recursive_mutex state_mutex_;
     CompositionState composition_state_;
     CandidateState candidate_state_;
     IMETextInputArea input_area_ = {};
