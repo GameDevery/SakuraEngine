@@ -1541,11 +1541,11 @@ struct TypeSignatureBuilder {
     }
 
     // make
-    inline TypeSignature type_signature()
+    inline TypeSignature build()
     {
         return { TypeSignatureView{ data.data(), data.size() } };
     }
-    inline TypeSignatureView type_signature_view()
+    inline TypeSignatureView view()
     {
         return { data.data(), data.size() };
     }
