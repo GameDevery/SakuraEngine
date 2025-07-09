@@ -88,6 +88,12 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
         ImGui::Sail::StyleColorsSail();
     }
 
+    animd::Camera camera;
+    renderer.set_pcamera(&camera);
+    camera.position = skr::float3(1.1f, 5.1f, -2.1f);        // eye position
+    skr_float3_t target(0.0f, 0.0f, 0.0f);                   // look at position
+    camera.front = skr::normalize(target - camera.position); // look at direction
+
     bool     show_demo_window = true;
     uint64_t frame_index      = 0;
     while (!imgui_backend.want_exit().comsume())
@@ -113,6 +119,7 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
         }
         imgui_backend.collect(); // contact @zihuang.zhu for any issue
         {
+            // update viewport
             SkrZoneScopedN("Viewport Render");
             auto          viewport          = ImGui::GetMainViewport();
             CGPUTextureId native_backbuffer = render_backend_rg->get_backbuffer(viewport);
@@ -128,6 +135,9 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
             );
             renderer.set_width(native_backbuffer->info->width);
             renderer.set_height(native_backbuffer->info->height);
+
+            camera.aspect = (float)native_backbuffer->info->width / (float)native_backbuffer->info->height;
+
             renderer.build_render_graph(render_graph, back_buffer);
         }
         {

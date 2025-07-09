@@ -31,6 +31,31 @@ sreflect_struct(
     skr_float2_t viewportOrigin;
 };
 
+sreflect_struct(
+    guid = "0197ec89-5620-76b9-b08b-14602ca94b24"
+    serde = @bin|@json
+)
+    Camera {
+    skr_float3_t position = {};                      // camera position
+    skr_float3_t front    = skr_float3_t::forward(); // camera front vector
+    skr_float3_t up       = skr_float3_t::up();      // camera up vector
+    skr_float3_t right    = skr_float3_t::right();   // camera right vector
+
+    float fov        = 3.1415926f / 2.f; // fov_x
+    float aspect     = 1.0;              // aspect ratio
+    float near_plane = 0.1;              // near plane distance
+    float far_plane  = 1000.0;           // far plane distance
+};
+
+sreflect_struct(
+    guid = "0197ec8b-f8dc-73ec-8635-e20dac02d900"
+    serde = @bin|@json
+) CameraControlState {
+    float move_speed   = 1.0f; // camera move speed
+    float rotate_speed = 0.1f; // camera rotate speed
+    float zoom_speed   = 0.1f; // camera zoom speed
+};
+
 // a dummy renderer for animation debug
 class ANIM_DEBUG_RUNTIME_API Renderer
 {
@@ -51,6 +76,7 @@ public:
     void read_anim();
     void create_api_objects();
     void create_resources();
+    void create_debug_pipeline(); // debug draw
     void create_gbuffer_pipeline();
     void create_lighting_pipeline();
     void create_blit_pipeline();
@@ -60,6 +86,7 @@ public:
 
 public:
     // getters
+    Camera*        get_pcamera() { return mp_camera; }
     CGPUDeviceId   get_device() const { return _device; }
     ECGPUBackend   get_backend() const { return _backend; }
     CGPUInstanceId get_instance() const { return _instance; }
@@ -73,6 +100,7 @@ public:
     bool           is_aware_DPI() const { return _aware_DPI; }
 
     // setters
+    void set_pcamera(Camera* camera) { mp_camera = camera; }
     void set_lock_FPS(bool lock) { _lock_FPS = lock; }
     void set_aware_DPI(bool aware) { _aware_DPI = aware; }
     void set_device(CGPUDeviceId device) { _device = device; }
@@ -98,6 +126,7 @@ private:
     CGPUBufferId   _vertex_buffer;
     CGPUBufferId   _instance_buffer;
 
+    CGPURenderPipelineId _debug_pipeline; // debug draw pipeline
     CGPURenderPipelineId _gbuffer_pipeline;
     CGPURenderPipelineId _lighting_pipeline;
     CGPURenderPipelineId _blit_pipeline;
@@ -116,7 +145,8 @@ private:
 
     size_t _instance_count = 0;
     // skr_float4x4_t* _instance_data  = nullptr; // instance data for each bone
-    skr::Vector<skr_float4x4_t> _instance_data; // instance data for each bone
+    skr::Vector<skr_float4x4_t> _instance_data;      // instance data for each bone
+    Camera*                     mp_camera = nullptr; // camera for rendering
 };
 
 } // namespace animd

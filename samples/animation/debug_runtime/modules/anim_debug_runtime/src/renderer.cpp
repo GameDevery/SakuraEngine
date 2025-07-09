@@ -75,10 +75,10 @@ void Renderer::read_anim()
 
     _instance_count = 2;
     _instance_data.resize(_instance_count, skr::float4x4::identity());
-    const auto t0     = skr::TransformF(skr::QuatF(skr::RotatorF()), skr::float3(0.5), skr::float3(0.5f));
+    const auto t0     = skr::TransformF(skr::QuatF(skr::RotatorF()), skr::float3(0.5), skr::float3(0.8f));
     const auto m0     = skr::transpose(t0.to_matrix());
     _instance_data[0] = *(skr_float4x4_t*)&m0;
-    const auto t1     = skr::TransformF(skr::QuatF(skr::RotatorF()), skr::float3(1, 0, 0), skr::float3(0.5f));
+    const auto t1     = skr::TransformF(skr::QuatF(skr::RotatorF()), skr::float3(1, 0, 0), skr::float3(0.8f));
     const auto m1     = skr::transpose(t1.to_matrix());
     _instance_data[1] = *(skr_float4x4_t*)&m1;
 }
@@ -249,178 +249,10 @@ void Renderer::create_resources()
 
 void Renderer::create_render_pipeline()
 {
+    create_debug_pipeline();
     create_gbuffer_pipeline();
     create_lighting_pipeline();
     create_blit_pipeline();
-}
-
-void Renderer::create_lighting_pipeline()
-{
-    uint32_t *vs_bytes, vs_length;
-    uint32_t *fs_bytes, fs_length;
-    read_shader_bytes(SKR_UTF8("AnimDebug/screen_vs"), &vs_bytes, &vs_length, _device->adapter->instance->backend);
-    read_shader_bytes(SKR_UTF8("AnimDebug/lighting_fs"), &fs_bytes, &fs_length, _device->adapter->instance->backend);
-    CGPUShaderLibraryDescriptor vs_desc = {};
-    vs_desc.name                        = SKR_UTF8("ScreenVertexShader");
-    vs_desc.code                        = vs_bytes;
-    vs_desc.code_size                   = vs_length;
-    CGPUShaderLibraryDescriptor ps_desc = {};
-    ps_desc.name                        = SKR_UTF8("LightingFragmentShader");
-    ps_desc.code                        = fs_bytes;
-    ps_desc.code_size                   = fs_length;
-    auto screen_vs                      = cgpu_create_shader_library(_device, &vs_desc);
-    auto lighting_fs                    = cgpu_create_shader_library(_device, &ps_desc);
-    free(vs_bytes);
-    free(fs_bytes);
-    CGPUShaderEntryDescriptor ppl_shaders[2];
-    ppl_shaders[0].stage                            = CGPU_SHADER_STAGE_VERT;
-    ppl_shaders[0].entry                            = SKR_UTF8("main");
-    ppl_shaders[0].library                          = screen_vs;
-    ppl_shaders[1].stage                            = CGPU_SHADER_STAGE_FRAG;
-    ppl_shaders[1].entry                            = SKR_UTF8("main");
-    ppl_shaders[1].library                          = lighting_fs;
-    const char8_t*              push_constant_name  = SKR_UTF8("push_constants");
-    const char8_t*              static_sampler_name = SKR_UTF8("texture_sampler");
-    CGPURootSignatureDescriptor rs_desc             = {};
-    rs_desc.shaders                                 = ppl_shaders;
-    rs_desc.shader_count                            = 2;
-    rs_desc.push_constant_count                     = 1;
-    rs_desc.push_constant_names                     = &push_constant_name;
-    rs_desc.static_sampler_count                    = 1;
-    rs_desc.static_sampler_names                    = &static_sampler_name;
-    rs_desc.static_samplers                         = &_static_sampler;
-    auto             lighting_root_sig              = cgpu_create_root_signature(_device, &rs_desc);
-    CGPUVertexLayout vertex_layout                  = {};
-    vertex_layout.attribute_count                   = 0;
-    CGPURenderPipelineDescriptor rp_desc            = {};
-    rp_desc.root_signature                          = lighting_root_sig;
-    rp_desc.prim_topology                           = CGPU_PRIM_TOPO_TRI_LIST;
-    rp_desc.vertex_layout                           = &vertex_layout;
-    rp_desc.vertex_shader                           = &ppl_shaders[0];
-    rp_desc.fragment_shader                         = &ppl_shaders[1];
-    rp_desc.render_target_count                     = 1;
-    auto backbuffer_format                          = CGPU_FORMAT_R8G8B8A8_UNORM;
-    rp_desc.color_formats                           = &backbuffer_format;
-    _lighting_pipeline                              = cgpu_create_render_pipeline(_device, &rp_desc);
-    cgpu_free_shader_library(screen_vs);
-    cgpu_free_shader_library(lighting_fs);
-}
-void Renderer::create_blit_pipeline()
-{
-
-    ECGPUFormat output_format = CGPU_FORMAT_R8G8B8A8_UNORM;
-    uint32_t *  vs_bytes, vs_length;
-    uint32_t *  fs_bytes, fs_length;
-    read_shader_bytes(SKR_UTF8("AnimDebug/screen_vs"), &vs_bytes, &vs_length, _device->adapter->instance->backend);
-    read_shader_bytes(SKR_UTF8("AnimDebug/blit_fs"), &fs_bytes, &fs_length, _device->adapter->instance->backend);
-    CGPUShaderLibraryDescriptor vs_desc = {};
-    vs_desc.name                        = SKR_UTF8("ScreenVertexShader");
-    vs_desc.code                        = vs_bytes;
-    vs_desc.code_size                   = vs_length;
-    CGPUShaderLibraryDescriptor ps_desc = {};
-    ps_desc.name                        = SKR_UTF8("BlitFragmentShader");
-    ps_desc.code                        = fs_bytes;
-    ps_desc.code_size                   = fs_length;
-    auto screen_vs                      = cgpu_create_shader_library(_device, &vs_desc);
-    auto blit_fs                        = cgpu_create_shader_library(_device, &ps_desc);
-    free(vs_bytes);
-    free(fs_bytes);
-    CGPUShaderEntryDescriptor ppl_shaders[2];
-    ppl_shaders[0].stage                            = CGPU_SHADER_STAGE_VERT;
-    ppl_shaders[0].entry                            = SKR_UTF8("main");
-    ppl_shaders[0].library                          = screen_vs;
-    ppl_shaders[1].stage                            = CGPU_SHADER_STAGE_FRAG;
-    ppl_shaders[1].entry                            = SKR_UTF8("main");
-    ppl_shaders[1].library                          = blit_fs;
-    const char8_t*              static_sampler_name = SKR_UTF8("texture_sampler");
-    CGPURootSignatureDescriptor rs_desc             = {};
-    rs_desc.shaders                                 = ppl_shaders;
-    rs_desc.shader_count                            = 2;
-    rs_desc.static_sampler_count                    = 1;
-    rs_desc.static_sampler_names                    = &static_sampler_name;
-    rs_desc.static_samplers                         = &_static_sampler;
-    auto             lighting_root_sig              = cgpu_create_root_signature(_device, &rs_desc);
-    CGPUVertexLayout vertex_layout                  = {};
-    vertex_layout.attribute_count                   = 0;
-    CGPURenderPipelineDescriptor rp_desc            = {};
-    rp_desc.root_signature                          = lighting_root_sig;
-    rp_desc.prim_topology                           = CGPU_PRIM_TOPO_TRI_LIST;
-    rp_desc.vertex_layout                           = &vertex_layout;
-    rp_desc.vertex_shader                           = &ppl_shaders[0];
-    rp_desc.fragment_shader                         = &ppl_shaders[1];
-    rp_desc.render_target_count                     = 1;
-    rp_desc.color_formats                           = &output_format;
-    _blit_pipeline                                  = cgpu_create_render_pipeline(_device, &rp_desc);
-    cgpu_free_shader_library(screen_vs);
-    cgpu_free_shader_library(blit_fs);
-}
-
-void Renderer::create_gbuffer_pipeline()
-{
-    uint32_t *vs_bytes, vs_length;
-    uint32_t *fs_bytes, fs_length;
-    read_shader_bytes(SKR_UTF8("AnimDebug/gbuffer_vs"), &vs_bytes, &vs_length, _device->adapter->instance->backend);
-    read_shader_bytes(SKR_UTF8("AnimDebug/gbuffer_fs"), &fs_bytes, &fs_length, _device->adapter->instance->backend);
-    CGPUShaderLibraryDescriptor vs_desc = {};
-    vs_desc.name                        = SKR_UTF8("GBufferVertexShader");
-    vs_desc.code                        = vs_bytes;
-    vs_desc.code_size                   = vs_length;
-    CGPUShaderLibraryDescriptor ps_desc = {};
-    ps_desc.name                        = SKR_UTF8("GBufferFragmentShader");
-    ps_desc.code                        = fs_bytes;
-    ps_desc.code_size                   = fs_length;
-    CGPUShaderLibraryId gbuffer_vs      = cgpu_create_shader_library(_device, &vs_desc);
-    CGPUShaderLibraryId gbuffer_fs      = cgpu_create_shader_library(_device, &ps_desc);
-    free(vs_bytes);
-    free(fs_bytes);
-    CGPUShaderEntryDescriptor ppl_shaders[2];
-    ppl_shaders[0].stage                = CGPU_SHADER_STAGE_VERT;
-    ppl_shaders[0].entry                = SKR_UTF8("main");
-    ppl_shaders[0].library              = gbuffer_vs;
-    ppl_shaders[1].stage                = CGPU_SHADER_STAGE_FRAG;
-    ppl_shaders[1].entry                = SKR_UTF8("main");
-    ppl_shaders[1].library              = gbuffer_fs;
-    CGPURootSignatureDescriptor rs_desc = {};
-    rs_desc.shaders                     = ppl_shaders;
-    rs_desc.shader_count                = 2;
-    rs_desc.push_constant_count         = 1;
-    const char8_t* root_const_name      = SKR_UTF8("push_constants");
-    rs_desc.push_constant_names         = &root_const_name;
-    auto gbuffer_root_sig               = cgpu_create_root_signature(_device, &rs_desc);
-
-    CGPUVertexLayout vertex_layout = {};
-    vertex_layout.attributes[0]    = { SKR_UTF8("POSITION"), 1, CGPU_FORMAT_R32G32B32_SFLOAT, 0, 0, sizeof(skr_float3_t), CGPU_INPUT_RATE_VERTEX };
-    vertex_layout.attributes[1]    = { SKR_UTF8("TEXCOORD"), 1, CGPU_FORMAT_R32G32_SFLOAT, 1, 0, sizeof(skr_float2_t), CGPU_INPUT_RATE_VERTEX };
-    vertex_layout.attributes[2]    = { SKR_UTF8("NORMAL"), 1, CGPU_FORMAT_R8G8B8A8_SNORM, 2, 0, sizeof(uint32_t), CGPU_INPUT_RATE_VERTEX };
-    vertex_layout.attributes[3]    = { SKR_UTF8("TANGENT"), 1, CGPU_FORMAT_R8G8B8A8_SNORM, 3, 0, sizeof(uint32_t), CGPU_INPUT_RATE_VERTEX };
-    vertex_layout.attributes[4]    = { SKR_UTF8("MODEL"), 4, CGPU_FORMAT_R32G32B32A32_SFLOAT, 4, 0, sizeof(skr_float4x4_t), CGPU_INPUT_RATE_INSTANCE };
-    vertex_layout.attribute_count  = 5;
-
-    CGPURenderPipelineDescriptor rp_desc = {};
-    rp_desc.root_signature               = gbuffer_root_sig;
-    rp_desc.prim_topology                = CGPU_PRIM_TOPO_TRI_LIST;
-    rp_desc.vertex_layout                = &vertex_layout;
-    rp_desc.vertex_shader                = &ppl_shaders[0];
-    rp_desc.fragment_shader              = &ppl_shaders[1];
-    rp_desc.render_target_count          = sizeof(gbuffer_formats) / sizeof(ECGPUFormat);
-    rp_desc.color_formats                = gbuffer_formats;
-    rp_desc.depth_stencil_format         = gbuffer_depth_format;
-
-    CGPURasterizerStateDescriptor raster_desc = {};
-    raster_desc.cull_mode                     = ECGPUCullMode::CGPU_CULL_MODE_BACK;
-    raster_desc.depth_bias                    = 0;
-    raster_desc.fill_mode                     = CGPU_FILL_MODE_SOLID;
-    raster_desc.front_face                    = CGPU_FRONT_FACE_CW;
-    rp_desc.rasterizer_state                  = &raster_desc;
-
-    CGPUDepthStateDescriptor ds_desc = {};
-    ds_desc.depth_func               = CGPU_CMP_LEQUAL;
-    ds_desc.depth_write              = true;
-    ds_desc.depth_test               = true;
-    rp_desc.depth_state              = &ds_desc;
-    _gbuffer_pipeline                = cgpu_create_render_pipeline(_device, &rp_desc);
-    cgpu_free_shader_library(gbuffer_vs);
-    cgpu_free_shader_library(gbuffer_fs);
 }
 
 void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, skr::render_graph::TextureHandle back_buffer)
@@ -463,14 +295,19 @@ void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, skr::re
                 .allow_render_target();
         }
     );
-    // camera
-    auto       eye          = skr::float4(1.1f, 5.1f, -2.1f, 0.0f) /*eye*/;
-    auto       view         = skr::float4x4::view_at(eye, skr::float4(0.f), skr::float4(skr::float3::up(), 0.f));
-    const auto aspect_ratio = (float)BACK_BUFFER_WIDTH / (float)BACK_BUFFER_HEIGHT;
-    auto       proj         = skr::float4x4::perspective_fov(
-        skr::camera_fov_y_from_x(3.1415926f / 2.f, aspect_ratio),
-        aspect_ratio,
-        1.f, 1000.f
+
+    // update camera view and projection matrices
+    if (!mp_camera)
+    {
+        SKR_LOG_ERROR(u8"Camera is not set.");
+        return;
+    }
+    auto view = skr::float4x4::view_at(skr::float4(mp_camera->position, 0.0f), skr::float4(mp_camera->position + mp_camera->front, 0.0f), skr::float4(mp_camera->up, 0.f));
+
+    auto proj = skr::float4x4::perspective_fov(
+        skr::camera_fov_y_from_x(mp_camera->fov, mp_camera->aspect),
+        mp_camera->aspect,
+        mp_camera->near_plane, mp_camera->far_plane
     );
     auto _view_proj = skr::mul(view, proj);
     auto view_proj  = skr::transpose(_view_proj);
