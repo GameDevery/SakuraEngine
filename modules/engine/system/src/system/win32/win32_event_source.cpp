@@ -1,13 +1,14 @@
 #include "win32_event_source.h"
-#include "win32_system_app.h"
 #include "win32_window.h"
+#include "win32_window_manager.h"
 #include "win32_ime.h"
+#include "SkrSystem/system.h"
 #include "SkrCore/log.h"
 #include <windowsx.h>
 
 namespace skr {
 
-Win32EventSource::Win32EventSource(Win32SystemApp* app) SKR_NOEXCEPT
+Win32EventSource::Win32EventSource(SystemApp* app) SKR_NOEXCEPT
     : app_(app)
 {
 }
@@ -37,7 +38,7 @@ bool Win32EventSource::poll_event(SkrSystemEvent& event) SKR_NOEXCEPT
                 TrackMouseEvent(&tme);
                 
                 // Generate mouse enter event
-                uint32_t dpi = Win32SystemApp::get_dpi_for_window(msg.hwnd);
+                uint32_t dpi = Win32WindowManager::get_dpi_for_window(msg.hwnd);
                 float dpi_scale = dpi / 96.0f;
                 
                 event.type = SKR_SYSTEM_EVENT_MOUSE_ENTER;
@@ -99,6 +100,21 @@ bool Win32EventSource::poll_event(SkrSystemEvent& event) SKR_NOEXCEPT
     return false;
 }
 
+bool Win32EventSource::wait_events(uint32_t timeout_ms) SKR_NOEXCEPT
+{
+    // Windows message pump with timeout
+    timeout_ms = (timeout_ms == 0) ? INFINITE : timeout_ms;
+    auto wait_result = MsgWaitForMultipleObjects(0, nullptr, FALSE, timeout_ms, QS_ALLINPUT);
+    
+    if (wait_result == WAIT_OBJECT_0)
+    {
+        // Messages are available, will be processed by poll_event
+        return true;
+    }
+    
+    return false;
+}
+
 bool Win32EventSource::process_message(MSG& msg, SkrSystemEvent& out_event)
 {
     HWND hwnd = msg.hwnd;
@@ -110,7 +126,7 @@ bool Win32EventSource::process_message(MSG& msg, SkrSystemEvent& out_event)
     out_event.window.window_native_handle = reinterpret_cast<uint64_t>(hwnd);
     
     // Get DPI scale for converting mouse coordinates
-    uint32_t dpi = Win32SystemApp::get_dpi_for_window(hwnd);
+    uint32_t dpi = Win32WindowManager::get_dpi_for_window(hwnd);
     float dpi_scale = dpi / 96.0f;
     
     switch (message)

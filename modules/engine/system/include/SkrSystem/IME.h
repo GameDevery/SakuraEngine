@@ -8,9 +8,6 @@
 namespace skr
 {
 
-// Forward declaration
-struct SystemApp;
-
 // IME input types - similar to SDL but more comprehensive
 enum class EIMEInputType : uint8_t
 {
@@ -144,7 +141,7 @@ struct SKR_SYSTEM_API IME
     virtual void commit_composition() = 0;
     
     // Factory method
-    static IME* Create(struct SystemApp* app);
+    static IME* Create(const char* backend = nullptr);
     static void Destroy(IME* ime);
 };
 

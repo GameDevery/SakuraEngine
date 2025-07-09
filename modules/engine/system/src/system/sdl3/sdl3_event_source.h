@@ -4,22 +4,23 @@
 
 namespace skr {
 
-class SDL3SystemApp;
+class SDL3WindowManager;
 class SDL3IME;
 
 class SDL3EventSource : public ISystemEventSource
 {
 public:
-    SDL3EventSource(SDL3SystemApp* app) SKR_NOEXCEPT;
+    SDL3EventSource(SystemApp* app) SKR_NOEXCEPT;
     ~SDL3EventSource() SKR_NOEXCEPT override;
 
     bool poll_event(SkrSystemEvent& event) SKR_NOEXCEPT override;
+    bool wait_events(uint32_t timeout_ms) SKR_NOEXCEPT override;
     
     // Set IME for event forwarding
     void set_ime(SDL3IME* ime) { ime_ = ime; }
 
 private:
-    SDL3SystemApp* app_ = nullptr;
+    SystemApp* app_ = nullptr;
     SDL3IME* ime_ = nullptr;
     
     // Helper functions

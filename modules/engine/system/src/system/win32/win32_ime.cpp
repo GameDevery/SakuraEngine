@@ -1,13 +1,11 @@
 #include "win32_ime.h"
-#include "win32_system_app.h"
 #include "win32_window.h"
 #include "SkrCore/log.h"
 #include "SkrCore/memory/memory.h"
 
 namespace skr {
 
-Win32IME::Win32IME(Win32SystemApp* app) SKR_NOEXCEPT
-    : app_(app)
+Win32IME::Win32IME() SKR_NOEXCEPT
 {
 }
 
@@ -514,21 +512,5 @@ void Win32IME::enable_ime(HWND hwnd, bool enable)
 {
     ImmAssociateContextEx(hwnd, nullptr, enable ? IACE_DEFAULT : 0);
 }
-
-// Factory methods
-#ifdef SKR_PLAT_WINDOWS
-IME* IME::Create(SystemApp* app)
-{
-    return SkrNew<Win32IME>(static_cast<Win32SystemApp*>(app));
-}
-
-void IME::Destroy(IME* ime)
-{
-    if (ime)
-    {
-        SkrDelete(ime);
-    }
-}
-#endif
 
 } // namespace skr

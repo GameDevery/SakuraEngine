@@ -20,7 +20,7 @@
 #include "SkrLive2D/l2d_model_resource.h"
 #include "SkrLive2D/l2d_render_model.h"
 #include "SkrLive2D/l2d_render_effect.h"
-
+#include "imgui_internal.h"
 #include "SkrProfile/profile.h"
 
 #ifdef _WIN32
@@ -243,6 +243,21 @@ int SLive2DViewerModule::main_module_exec(int argc, char8_t** argv)
             std::move(render_backend)
         );
         imgui_backend.enable_docking();
+   
+        const char8_t* font_path = u8"./../resources/font/lolita.ttf";
+        uint32_t *     font_bytes, font_length;
+        read_bytes(font_path, &font_bytes, &font_length);
+        ImFontConfig cfg = {};
+        cfg.SizePixels   = 16.f;
+        cfg.OversampleH = cfg.OversampleV = 1;
+        cfg.PixelSnapH                    = true;
+        ImGui::GetIO().Fonts->AddFontFromMemoryTTF(
+            font_bytes,
+            font_length,
+            cfg.SizePixels,
+            &cfg
+        );
+        ImGui::GetIO().Fonts->Build();
     }
 
     // init live2d
@@ -314,6 +329,12 @@ int SLive2DViewerModule::main_module_exec(int argc, char8_t** argv)
             ImGui::Text("UseCVV");
             ImGui::SameLine();
             ImGui::Checkbox("##UseCVV", &bUseCVV);
+
+            static char buf[1024];
+            ImGui::InputText("INPUT", buf, sizeof(buf));
+
+            bool bShowMetrics = true;
+            ImGui::ShowMetricsWindow(&bShowMetrics);
             /*
             {
                 const char* items[] = { "DirectStorage(File)", "DirectStorage(Memory)", "UploadBuffer" };

@@ -1,6 +1,7 @@
 #include "sdl3_event_source.h"
-#include "sdl3_system_app.h"
 #include "sdl3_ime.h"
+#include "sdl3_window_manager.h"
+#include "SkrSystem/system.h"
 #include "SkrCore/memory/memory.h"
 #include "SkrCore/log.h"
 
@@ -213,15 +214,15 @@ inline static SkrSystemEvent TranslateSDLEvent(const SDL_Event& e)
     return result;
 }
 
-SDL3EventSource::SDL3EventSource(SDL3SystemApp* app) SKR_NOEXCEPT
+SDL3EventSource::SDL3EventSource(SystemApp* app) SKR_NOEXCEPT
     : app_(app)
 {
-    // SDL is already initialized by SDL3SystemApp
+    // SDL is already initialized by SystemApp
 }
 
 SDL3EventSource::~SDL3EventSource() SKR_NOEXCEPT
 {
-    // SDL cleanup is handled by SDL3SystemApp
+    // SDL cleanup is handled by SystemApp
 }
 
 bool SDL3EventSource::poll_event(SkrSystemEvent& event) SKR_NOEXCEPT
@@ -263,6 +264,32 @@ bool SDL3EventSource::should_forward_to_ime(const SDL_Event& sdl_event) const
         default:
             return false;
     }
+}
+
+bool SDL3EventSource::wait_events(uint32_t timeout_ms) SKR_NOEXCEPT
+{
+    SDL_Event sdl_event;
+    
+    // SDL3 uses different wait API
+    bool result = false;
+    if (timeout_ms == 0)
+    {
+        // Infinite wait
+        result = SDL_WaitEvent(&sdl_event) != 0;
+    }
+    else
+    {
+        // Wait with timeout
+        result = SDL_WaitEventTimeout(&sdl_event, static_cast<Sint32>(timeout_ms)) != 0;
+    }
+    
+    if (result)
+    {
+        // Push the event back to be processed by poll_event
+        SDL_PushEvent(&sdl_event);
+    }
+    
+    return result;
 }
 
 SkrSystemEvent SDL3EventSource::translate_sdl_event(const SDL_Event& e) const

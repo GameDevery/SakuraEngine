@@ -192,7 +192,6 @@ int SVMemCCModule::main_module_exec(int argc, char8_t** argv)
         config.queue        = gfx_queue;
         render_backend->init(config);
         imgui_backend.create({}, std::move(render_backend));
-        imgui_backend.main_window().show();
         imgui_backend.enable_docking();
     }
 

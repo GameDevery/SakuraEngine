@@ -1,29 +1,12 @@
 #pragma once
 #include "SkrSystem/event.h"
-#include "SkrSystem/window.h"
 #include "SkrSystem/IME.h"
 #include "SkrSystem/window_manager.h"
-#include "SkrContainers/function_ref.hpp"
 
 namespace skr {
 
 // Forward declarations
 struct IME;
-struct ISystemEventHandler;
-
-// Event source interface
-struct SKR_SYSTEM_API ISystemEventSource
-{
-    virtual ~ISystemEventSource() SKR_NOEXCEPT;
-    virtual bool poll_event(SkrSystemEvent& event) SKR_NOEXCEPT = 0;
-};
-
-// Event handler interface
-struct SKR_SYSTEM_API ISystemEventHandler
-{
-    virtual ~ISystemEventHandler() SKR_NOEXCEPT;
-    virtual void handle_event(const SkrSystemEvent& event) SKR_NOEXCEPT = 0;
-};
 
 // Event queue implementation
 struct SKR_SYSTEM_API SystemEventQueue
@@ -56,52 +39,43 @@ private:
 struct SKR_SYSTEM_API SystemApp
 {
 public:
-    virtual ~SystemApp() = default;
-
-    // Monitor/Display management
-    virtual uint32_t get_monitor_count() const = 0;
-    virtual SystemMonitor* get_monitor(uint32_t index) const = 0;
-    virtual SystemMonitor* get_primary_monitor() const = 0;
-    virtual SystemMonitor* get_monitor_from_point(int32_t x, int32_t y) const = 0;
-    virtual SystemMonitor* get_monitor_from_window(SystemWindow* window) const = 0;
+    SystemApp() SKR_NOEXCEPT;
+    ~SystemApp() SKR_NOEXCEPT;
     
-    // Monitor change notifications
-    virtual void enumerate_monitors(void (*callback)(SystemMonitor* monitor, void* user_data), void* user_data) const = 0;
-    
-    // Refresh all monitor information (useful after display changes)
-    virtual void refresh_monitors() = 0;
+    // Non-copyable
+    SystemApp(const SystemApp&) = delete;
+    SystemApp& operator=(const SystemApp&) = delete;
     
     // Input Method Editor access
     IME* get_ime() const { return ime; }
     
     // Window Manager access
-    WindowManager* get_window_manager() const { return window_manager; }
+    ISystemWindowManager* get_window_manager() const { return window_manager; }
     
     // Event system access
-    virtual SystemEventQueue* get_event_queue() const = 0;
+    SystemEventQueue* get_event_queue() const { return event_queue; }
     
     // Event source management
-    virtual bool add_event_source(ISystemEventSource* source) = 0;
-    virtual bool remove_event_source(ISystemEventSource* source) = 0;
-    virtual ISystemEventSource* get_platform_event_source() const = 0; // Platform-specific source (SDL, Win32, etc)
+    bool add_event_source(ISystemEventSource* source);
+    bool remove_event_source(ISystemEventSource* source);
+    ISystemEventSource* get_platform_event_source() const { return platform_event_source; }
     
-    // Wait for events (blocking)
-    virtual bool wait_events(uint32_t timeout_ms = 0) = 0; // 0 = infinite wait
+    // Wait for events (blocking) - delegates to platform event source
+    bool wait_events(uint32_t timeout_ms = 0);
     
     // Factory methods
     static SystemApp* Create(const char* backend = nullptr); // nullptr = auto-detect, "SDL", "Win32", "Cocoa"
     static void Destroy(SystemApp* app);
 
-protected:
-    // Internal window management - only accessible by WindowManager
-    virtual SystemWindow* create_window_internal(const SystemWindowCreateInfo& create_info) = 0;
-    virtual void destroy_window_internal(SystemWindow* window) = 0;
-    
+private:
+    bool initialize(const char* backend);
+    void shutdown();
+
+private:
     IME* ime = nullptr;
-    WindowManager* window_manager = nullptr;
+    ISystemWindowManager* window_manager = nullptr;
     SystemEventQueue* event_queue = nullptr;
-    
-    friend class WindowManager;
+    ISystemEventSource* platform_event_source = nullptr;
 };
 
 } // namespace skr

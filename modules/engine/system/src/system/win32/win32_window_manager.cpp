@@ -1,11 +1,7 @@
-#include "win32_system_app.h"
+#include "win32_window_manager.h"
 #include "win32_monitor.h"
 #include "win32_window.h"
-#include "win32_ime.h"
-#include "win32_event_source.h"
-#include "SkrSystem/window_manager.h"
 #include "SkrCore/log.h"
-#include "SkrCore/memory/memory.h"
 #include <VersionHelpers.h>
 #include <ShellScalingApi.h>
 
@@ -30,7 +26,7 @@ typedef BOOL (WINAPI *PFN_EnableNonClientDpiScaling)(HWND);
 
 namespace skr {
 
-Win32SystemApp* Win32SystemApp::instance_ = nullptr;
+Win32WindowManager* Win32WindowManager::instance_ = nullptr;
 
 // Window class name
 static const wchar_t* kWindowClassName = L"SakuraEngineWindow";
@@ -41,8 +37,79 @@ static PFN_GetDpiForWindow g_GetDpiForWindow = nullptr;
 static PFN_AdjustWindowRectExForDpi g_AdjustWindowRectExForDpi = nullptr;
 static PFN_EnableNonClientDpiScaling g_EnableNonClientDpiScaling = nullptr;
 
+Win32WindowManager::Win32WindowManager() SKR_NOEXCEPT
+{
+    instance_ = this;
+    
+    // Initialize DPI awareness (following SDL3's approach)
+    initialize_dpi_awareness();
+    
+    // Register window class
+    register_window_class();
+    
+    // Cache all monitors
+    refresh_monitors();
+    
+    SKR_LOG_DEBUG(u8"Win32WindowManager created");
+}
+
+Win32WindowManager::~Win32WindowManager() SKR_NOEXCEPT
+{
+    instance_ = nullptr;
+    
+    // Clean up all windows first
+    destroy_all_windows();
+    
+    // Clean up cached windows
+    for (auto& pair : hwnd_window_cache_) {
+        SkrDelete(pair.value);
+    }
+    hwnd_window_cache_.clear();
+    
+    // Clean up cached monitors
+    for (auto& pair : monitor_cache_) {
+        SkrDelete(pair.value);
+    }
+    monitor_cache_.clear();
+    monitor_list_.clear();
+    
+    // Unregister window class
+    unregister_window_class();
+    
+    SKR_LOG_DEBUG(u8"Win32WindowManager destroyed");
+}
+
+void Win32WindowManager::register_window_class()
+{
+    WNDCLASSEXW wc = {};
+    wc.cbSize = sizeof(wc);
+    wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
+    wc.lpfnWndProc = window_proc;
+    wc.hInstance = GetModuleHandleW(nullptr);
+    wc.hIcon = LoadIconW(nullptr, IDI_APPLICATION);
+    wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+    wc.hbrBackground = nullptr;
+    wc.lpszClassName = kWindowClassName;
+    wc.hIconSm = wc.hIcon;
+    
+    window_class_atom_ = RegisterClassExW(&wc);
+    if (!window_class_atom_)
+    {
+        SKR_LOG_ERROR(u8"Failed to register window class: %d", GetLastError());
+    }
+}
+
+void Win32WindowManager::unregister_window_class()
+{
+    if (window_class_atom_)
+    {
+        UnregisterClassW(kWindowClassName, GetModuleHandleW(nullptr));
+        window_class_atom_ = 0;
+    }
+}
+
 // Window procedure
-static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK Win32WindowManager::window_proc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     // Handle creation
     if (msg == WM_NCCREATE)
@@ -68,125 +135,121 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
 
-Win32SystemApp::Win32SystemApp() SKR_NOEXCEPT
+// Monitor enumeration callback
+BOOL CALLBACK Win32WindowManager::enum_monitors_proc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
 {
-    instance_ = this;
+    Win32WindowManager* manager = reinterpret_cast<Win32WindowManager*>(dwData);
     
-    // Initialize DPI awareness (following SDL3's approach)
-    initialize_dpi_awareness();
-    
-    // Register window class
-    register_window_class();
-    
-    // Cache all monitors
-    refresh_monitors();
-    
-    // Create event system
-    event_queue = SkrNew<SystemEventQueue>();
-    
-    // Create IME first
-    ime = IME::Create(this);
-    
-    // Create Window Manager
-    window_manager = SkrNew<WindowManager>(this);
-    
-    // Create platform event source after IME
-    win32_event_source_ = SkrNew<Win32EventSource>(this);
-    
-    // Connect IME to platform event source
-    if (win32_event_source_ && ime)
+    Win32Monitor* monitor = SkrNew<Win32Monitor>(hMonitor);
+    if (monitor)
     {
-        win32_event_source_->set_ime(ime);
+        manager->monitor_cache_.add(hMonitor, monitor);
+        manager->monitor_list_.add(monitor);
     }
     
-    // Add platform event source to queue
-    if (event_queue && win32_event_source_)
-    {
-        event_queue->add_source(win32_event_source_);
-    }
+    return TRUE;  // Continue enumeration
 }
 
-Win32SystemApp::~Win32SystemApp() SKR_NOEXCEPT
+// Monitor/Display management
+uint32_t Win32WindowManager::get_monitor_count() const
 {
-    instance_ = nullptr;
-    
-    // Clean up Window Manager
-    if (window_manager)
+    return (uint32_t)monitor_list_.size();
+}
+
+SystemMonitor* Win32WindowManager::get_monitor(uint32_t index) const
+{
+    if (index < monitor_list_.size())
     {
-        SkrDelete(window_manager);
-        window_manager = nullptr;
+        return monitor_list_[index];
+    }
+    return nullptr;
+}
+
+SystemMonitor* Win32WindowManager::get_primary_monitor() const
+{
+    const POINT origin = { 0, 0 };
+    HMONITOR primary = MonitorFromPoint(origin, MONITOR_DEFAULTTOPRIMARY);
+    
+    if (auto found = monitor_cache_.find(primary))
+    {
+        return found.value();
     }
     
-    // Clean up IME
-    if (ime)
+    return monitor_list_.is_empty() ? nullptr : monitor_list_[0];
+}
+
+SystemMonitor* Win32WindowManager::get_monitor_from_point(int32_t x, int32_t y) const
+{
+    POINT pt = { x, y };
+    HMONITOR hMonitor = MonitorFromPoint(pt, MONITOR_DEFAULTTONULL);
+    
+    if (hMonitor && monitor_cache_.find(hMonitor))
     {
-        IME::Destroy(ime);
-        ime = nullptr;
+        return monitor_cache_.find(hMonitor).value();
     }
     
-    // Clean up event system
-    if (win32_event_source_)
+    return nullptr;
+}
+
+SystemMonitor* Win32WindowManager::get_monitor_from_window(SystemWindow* window) const
+{
+    if (!window)
+        return nullptr;
+        
+    HWND hwnd = static_cast<HWND>(window->get_native_handle());
+    if (!hwnd)
+        return nullptr;
+        
+    HMONITOR hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONULL);
+    if (!hMonitor)
+        return nullptr;
+        
+    if (auto found = monitor_cache_.find(hMonitor))
     {
-        SkrDelete(win32_event_source_);
-        win32_event_source_ = nullptr;
+        return found.value();
     }
     
-    if (event_queue)
-    {
-        SkrDelete(event_queue);
-        event_queue = nullptr;
-    }
-    
-    // Clean up cached windows
-    for (auto& pair : window_cache)
+    return nullptr;
+}
+
+void Win32WindowManager::refresh_monitors()
+{
+    // Clear existing monitors
+    for (auto& pair : monitor_cache_)
     {
         SkrDelete(pair.value);
     }
-    window_cache.clear();
+    monitor_cache_.clear();
+    monitor_list_.clear();
     
-    // Clean up cached monitors
-    for (auto& pair : monitor_cache)
-    {
-        SkrDelete(pair.value);
-    }
-    monitor_cache.clear();
-    monitor_list.clear();
+    // Enumerate all monitors
+    EnumDisplayMonitors(nullptr, nullptr, enum_monitors_proc, reinterpret_cast<LPARAM>(this));
     
-    // Unregister window class
-    unregister_window_class();
+    SKR_LOG_INFO(u8"Refreshed monitors: found %d display(s)", monitor_list_.size());
 }
 
-void Win32SystemApp::register_window_class()
+// Win32 specific helpers
+Win32Window* Win32WindowManager::get_window_from_hwnd(HWND hwnd) const
 {
-    WNDCLASSEXW wc = {};
-    wc.cbSize = sizeof(wc);
-    wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
-    wc.lpfnWndProc = WindowProc;
-    wc.hInstance = GetModuleHandleW(nullptr);
-    wc.hIcon = LoadIconW(nullptr, IDI_APPLICATION);
-    wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
-    wc.hbrBackground = nullptr;
-    wc.lpszClassName = kWindowClassName;
-    wc.hIconSm = wc.hIcon;
-    
-    window_class_atom_ = RegisterClassExW(&wc);
-    if (!window_class_atom_)
+    if (auto found = hwnd_window_cache_.find(hwnd))
     {
-        SKR_LOG_ERROR(u8"Failed to register window class: %d", GetLastError());
+        return found.value();
     }
+    return nullptr;
 }
 
-void Win32SystemApp::unregister_window_class()
+void Win32WindowManager::register_hwnd(HWND hwnd, Win32Window* window)
 {
-    if (window_class_atom_)
-    {
-        UnregisterClassW(kWindowClassName, GetModuleHandleW(nullptr));
-        window_class_atom_ = 0;
-    }
+    hwnd_window_cache_.add(hwnd, window);
 }
 
-// Window management
-SystemWindow* Win32SystemApp::create_window_internal(const SystemWindowCreateInfo& create_info)
+void Win32WindowManager::unregister_hwnd(HWND hwnd)
+{
+    hwnd_window_cache_.remove(hwnd);
+}
+
+// Platform implementation
+SystemWindow* Win32WindowManager::create_window_internal(const SystemWindowCreateInfo& create_info)
 {
     // Validate input
     if (create_info.size.x == 0 || create_info.size.y == 0)
@@ -288,8 +351,8 @@ SystemWindow* Win32SystemApp::create_window_internal(const SystemWindowCreateInf
     }
     
     // Create wrapper
-    window_wrapper = SkrNew<Win32Window>(hwnd, win32_event_source_);
-    if (!window_wrapper)
+    Win32Window* window = SkrNew<Win32Window>(hwnd, event_source_);
+    if (!window)
     {
         DestroyWindow(hwnd);
         SKR_LOG_ERROR(u8"Failed to allocate Win32Window wrapper");
@@ -297,15 +360,15 @@ SystemWindow* Win32SystemApp::create_window_internal(const SystemWindowCreateInf
     }
     
     // Update window pointer
-    SetWindowLongPtrW(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(window_wrapper));
+    SetWindowLongPtrW(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(window));
     
     // Cache window
-    window_cache.add(hwnd, window_wrapper);
+    register_hwnd(hwnd, window);
     
-    return window_wrapper;
+    return window;
 }
 
-void Win32SystemApp::destroy_window_internal(SystemWindow* window)
+void Win32WindowManager::destroy_window_internal(SystemWindow* window)
 {
     if (!window)
         return;
@@ -314,165 +377,57 @@ void Win32SystemApp::destroy_window_internal(SystemWindow* window)
     HWND hwnd = win32_window->get_hwnd();
     
     // Remove from cache
-    window_cache.remove(hwnd);
+    unregister_hwnd(hwnd);
     
     // Delete window (destructor handles DestroyWindow)
     SkrDelete(win32_window);
 }
 
-// Monitor enumeration callback
-BOOL CALLBACK Win32SystemApp::enum_monitors_proc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
+void* Win32WindowManager::get_native_handle_from_event(const SkrSystemEvent& event) const
 {
-    Win32SystemApp* app = reinterpret_cast<Win32SystemApp*>(dwData);
+    void* native_handle = nullptr;
     
-    Win32Monitor* monitor = SkrNew<Win32Monitor>(hMonitor);
-    if (monitor)
-    {
-        app->monitor_cache.add(hMonitor, monitor);
-        app->monitor_list.add(monitor);
+    // Extract native handle based on event type
+    switch (event.type) {
+        case SKR_SYSTEM_EVENT_WINDOW_SHOWN:
+        case SKR_SYSTEM_EVENT_WINDOW_HIDDEN:
+        case SKR_SYSTEM_EVENT_WINDOW_MOVED:
+        case SKR_SYSTEM_EVENT_WINDOW_RESIZED:
+        case SKR_SYSTEM_EVENT_WINDOW_MINIMIZED:
+        case SKR_SYSTEM_EVENT_WINDOW_MAXIMIZED:
+        case SKR_SYSTEM_EVENT_WINDOW_RESTORED:
+        case SKR_SYSTEM_EVENT_WINDOW_MOUSE_ENTER:
+        case SKR_SYSTEM_EVENT_WINDOW_MOUSE_LEAVE:
+        case SKR_SYSTEM_EVENT_WINDOW_FOCUS_GAINED:
+        case SKR_SYSTEM_EVENT_WINDOW_FOCUS_LOST:
+        case SKR_SYSTEM_EVENT_WINDOW_CLOSE_REQUESTED:
+        case SKR_SYSTEM_EVENT_WINDOW_ENTER_FULLSCREEN:
+        case SKR_SYSTEM_EVENT_WINDOW_LEAVE_FULLSCREEN:
+            native_handle = reinterpret_cast<void*>(event.window.window_native_handle);
+            break;
+            
+        case SKR_SYSTEM_EVENT_KEY_DOWN:
+        case SKR_SYSTEM_EVENT_KEY_UP:
+            native_handle = reinterpret_cast<void*>(event.key.window_native_handle);
+            break;
+            
+        case SKR_SYSTEM_EVENT_MOUSE_MOVE:
+        case SKR_SYSTEM_EVENT_MOUSE_BUTTON_DOWN:
+        case SKR_SYSTEM_EVENT_MOUSE_BUTTON_UP:
+        case SKR_SYSTEM_EVENT_MOUSE_WHEEL:
+        case SKR_SYSTEM_EVENT_MOUSE_ENTER:
+        case SKR_SYSTEM_EVENT_MOUSE_LEAVE:
+            native_handle = reinterpret_cast<void*>(event.mouse.window_native_handle);
+            break;
+            
+        default:
+            break;
     }
     
-    return TRUE;  // Continue enumeration
+    return native_handle;
 }
 
-// Monitor/Display management
-uint32_t Win32SystemApp::get_monitor_count() const
-{
-    return (uint32_t)monitor_list.size();
-}
-
-SystemMonitor* Win32SystemApp::get_monitor(uint32_t index) const
-{
-    if (index < monitor_list.size())
-    {
-        return monitor_list[index];
-    }
-    return nullptr;
-}
-
-SystemMonitor* Win32SystemApp::get_primary_monitor() const
-{
-    const POINT origin = { 0, 0 };
-    HMONITOR primary = MonitorFromPoint(origin, MONITOR_DEFAULTTOPRIMARY);
-    
-    if (auto found = monitor_cache.find(primary))
-    {
-        return found.value();
-    }
-    
-    return monitor_list.is_empty() ? nullptr : monitor_list[0];
-}
-
-SystemMonitor* Win32SystemApp::get_monitor_from_point(int32_t x, int32_t y) const
-{
-    POINT pt = { x, y };
-    HMONITOR hMonitor = MonitorFromPoint(pt, MONITOR_DEFAULTTONULL);
-    
-    if (hMonitor && monitor_cache.find(hMonitor))
-    {
-        return monitor_cache.find(hMonitor).value();
-    }
-    
-    return nullptr;
-}
-
-SystemMonitor* Win32SystemApp::get_monitor_from_window(SystemWindow* window) const
-{
-    if (!window)
-        return nullptr;
-        
-    HWND hwnd = static_cast<HWND>(window->get_native_handle());
-    if (!hwnd)
-        return nullptr;
-        
-    HMONITOR hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONULL);
-    if (!hMonitor)
-        return nullptr;
-        
-    if (auto found = monitor_cache.find(hMonitor))
-    {
-        return found.value();
-    }
-    
-    return nullptr;
-}
-
-void Win32SystemApp::enumerate_monitors(void (*callback)(SystemMonitor* monitor, void* user_data), void* user_data) const
-{
-    if (!callback)
-        return;
-        
-    for (auto* monitor : monitor_list)
-    {
-        callback(monitor, user_data);
-    }
-}
-
-void Win32SystemApp::refresh_monitors()
-{
-    // Clear existing monitors
-    for (auto& pair : monitor_cache)
-    {
-        SkrDelete(pair.value);
-    }
-    monitor_cache.clear();
-    monitor_list.clear();
-    
-    // Enumerate all monitors
-    EnumDisplayMonitors(nullptr, nullptr, enum_monitors_proc, reinterpret_cast<LPARAM>(this));
-    
-    SKR_LOG_INFO(u8"Refreshed monitors: found %d display(s)", monitor_list.size());
-}
-
-Win32Window* Win32SystemApp::get_window_from_hwnd(HWND hwnd) const
-{
-    if (auto found = window_cache.find(hwnd))
-    {
-        return found.value();
-    }
-    return nullptr;
-}
-
-bool Win32SystemApp::add_event_source(ISystemEventSource* source)
-{
-    if (event_queue && source)
-    {
-        return event_queue->add_source(source);
-    }
-    return false;
-}
-
-bool Win32SystemApp::remove_event_source(ISystemEventSource* source)
-{
-    if (event_queue && source)
-    {
-        return event_queue->remove_source(source);
-    }
-    return false;
-}
-
-ISystemEventSource* Win32SystemApp::get_platform_event_source() const
-{ 
-    return win32_event_source_; 
-}
-
-bool Win32SystemApp::wait_events(uint32_t timeout_ms)
-{
-    // Windows message pump with timeout
-    timeout_ms = (timeout_ms == 0) ? INFINITE : timeout_ms;
-    auto wait_result = MsgWaitForMultipleObjects(0, nullptr, FALSE, timeout_ms, QS_ALLINPUT);
-    
-    if (wait_result == WAIT_OBJECT_0)
-    {
-        // Let the event queue handle the messages
-        // This ensures Win32EventSource can convert them to SKR events
-        return event_queue ? event_queue->pump_messages() : false;
-    }
-    
-    return false;
-}
-
-void Win32SystemApp::initialize_dpi_awareness()
+void Win32WindowManager::initialize_dpi_awareness()
 {
     // Dynamic load DPI functions
     HMODULE user32 = GetModuleHandleW(L"user32.dll");
@@ -543,7 +498,7 @@ void Win32SystemApp::initialize_dpi_awareness()
     }
 }
 
-bool Win32SystemApp::is_dpi_aware()
+bool Win32WindowManager::is_dpi_aware()
 {
     // Check if we have DPI awareness set
     if (g_GetDpiForWindow)
@@ -560,7 +515,7 @@ bool Win32SystemApp::is_dpi_aware()
     return dpi != 96;  // 96 is the default DPI for non-aware apps
 }
 
-uint32_t Win32SystemApp::get_dpi_for_window(HWND hwnd)
+uint32_t Win32WindowManager::get_dpi_for_window(HWND hwnd)
 {
     // Use GetDpiForWindow if available (Windows 10 1607+)
     if (g_GetDpiForWindow && hwnd)
@@ -599,7 +554,7 @@ uint32_t Win32SystemApp::get_dpi_for_window(HWND hwnd)
     return dpi_x;
 }
 
-bool Win32SystemApp::adjust_window_rect_for_dpi(RECT* rect, DWORD style, DWORD ex_style, uint32_t dpi)
+bool Win32WindowManager::adjust_window_rect_for_dpi(RECT* rect, DWORD style, DWORD ex_style, uint32_t dpi)
 {
     // Use AdjustWindowRectExForDpi if available (Windows 10 1607+)
     if (g_AdjustWindowRectExForDpi)
@@ -611,7 +566,7 @@ bool Win32SystemApp::adjust_window_rect_for_dpi(RECT* rect, DWORD style, DWORD e
     return AdjustWindowRectEx(rect, style, FALSE, ex_style) != FALSE;
 }
 
-bool Win32SystemApp::enable_non_client_dpi_scaling(HWND hwnd)
+bool Win32WindowManager::enable_non_client_dpi_scaling(HWND hwnd)
 {
     // Use EnableNonClientDpiScaling if available (Windows 10 1607+)
     if (g_EnableNonClientDpiScaling && hwnd)
@@ -623,5 +578,10 @@ bool Win32SystemApp::enable_non_client_dpi_scaling(HWND hwnd)
     return false;
 }
 
+// Factory function for WindowManager
+ISystemWindowManager* CreateWin32WindowManager()
+{
+    return static_cast<ISystemWindowManager*>(SkrNew<Win32WindowManager>());
+}
 
 } // namespace skr

@@ -5,14 +5,13 @@
 
 namespace skr {
 
-class SDL3SystemApp;
 class SDL3Window;
 
 // SDL3 IME implementation
 class SDL3IME : public IME
 {
 public:
-    SDL3IME(SDL3SystemApp* app) SKR_NOEXCEPT;
+    SDL3IME() SKR_NOEXCEPT;
     ~SDL3IME() SKR_NOEXCEPT override;
 
     // IME interface implementation

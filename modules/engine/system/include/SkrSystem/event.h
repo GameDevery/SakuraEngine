@@ -119,4 +119,21 @@ template <> struct EventType<SKR_SYSTEM_EVENT_MOUSE_WHEEL> { using Type = SkrMou
 template <> struct EventType<SKR_SYSTEM_EVENT_MOUSE_ENTER> { using Type = SkrMouseEvent; };
 template <> struct EventType<SKR_SYSTEM_EVENT_MOUSE_LEAVE> { using Type = SkrMouseEvent; };
 
+namespace skr
+{
+    struct SKR_SYSTEM_API ISystemEventSource
+    {
+        virtual ~ISystemEventSource() SKR_NOEXCEPT;
+        virtual bool poll_event(SkrSystemEvent& event) SKR_NOEXCEPT = 0;
+        virtual bool wait_events(uint32_t timeout_ms = 0) SKR_NOEXCEPT = 0; // 0 = infinite wait
+    };
+
+    // Event handler interface
+    struct SKR_SYSTEM_API ISystemEventHandler
+    {
+        virtual ~ISystemEventHandler() SKR_NOEXCEPT;
+        virtual void handle_event(const SkrSystemEvent& event) SKR_NOEXCEPT = 0;
+    };
+}
+
 #endif

@@ -8,14 +8,13 @@
 
 namespace skr {
 
-class Win32SystemApp;
 class Win32Window;
 
 // Win32 IME implementation using Windows IMM API
 class Win32IME : public IME
 {
 public:
-    Win32IME(Win32SystemApp* app) SKR_NOEXCEPT;
+    Win32IME() SKR_NOEXCEPT;
     ~Win32IME() SKR_NOEXCEPT override;
 
     // IME interface implementation
@@ -81,7 +80,6 @@ private:
     void enable_ime(HWND hwnd, bool enable);
     
 private:
-    Win32SystemApp* app_;
     Win32Window* active_window_ = nullptr;
     IMEEventCallbacks callbacks_;
     

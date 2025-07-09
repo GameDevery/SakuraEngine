@@ -1,25 +1,17 @@
 #pragma once
-#include "SkrSystem/system.h"
 #include "SkrSystem/window.h"
-#include "SkrContainers/map.hpp"
-#include "SkrContainers/vector.hpp"
-#include "SkrBase/memory/memory_ops.hpp"
+#include "SkrSystem/event.h"
+#include "SkrContainersDef/vector.hpp"
+#include "SkrContainersDef/map.hpp"
 
 namespace skr {
 
-// Forward declaration
-class WindowManagerHandler;
-
-// Window manager that provides convenient window creation and tracking
-class SKR_SYSTEM_API WindowManager
+// System window manager base class - provides common window and monitor management
+struct SKR_SYSTEM_API ISystemWindowManager
 {
 public:
-    WindowManager(SystemApp* app) SKR_NOEXCEPT;
-    ~WindowManager() SKR_NOEXCEPT;
-    
-    // Non-copyable
-    WindowManager(const WindowManager&) = delete;
-    WindowManager& operator=(const WindowManager&) = delete;
+    ISystemWindowManager() SKR_NOEXCEPT;
+    virtual ~ISystemWindowManager() SKR_NOEXCEPT;
     
     // Window management
     SystemWindow* create_window(const SystemWindowCreateInfo& info) SKR_NOEXCEPT;
@@ -30,35 +22,40 @@ public:
     SystemWindow* get_window_by_native_handle(void* native_handle) const SKR_NOEXCEPT;
     SystemWindow* get_window_from_event(const SkrSystemEvent& event) const SKR_NOEXCEPT;
     
-    // User data association
-    void set_window_user_data(SystemWindow* window, void* user_data) SKR_NOEXCEPT;
-    void* get_window_user_data(SystemWindow* window) const SKR_NOEXCEPT;
-    
-    // Get all windows
+    // Window enumeration
     void get_all_windows(skr::Vector<SystemWindow*>& out_windows) const SKR_NOEXCEPT;
-    uint32_t get_window_count() const SKR_NOEXCEPT { return windows_.size(); }
+    uint32_t get_window_count() const SKR_NOEXCEPT { return window_data_.size(); }
     
-    // Get the app
-    SystemApp* get_app() const SKR_NOEXCEPT { return app_; }
+    // Monitor/Display management - must be implemented by platform
+    virtual uint32_t get_monitor_count() const = 0;
+    virtual SystemMonitor* get_monitor(uint32_t index) const = 0;
+    virtual SystemMonitor* get_primary_monitor() const = 0;
+    virtual SystemMonitor* get_monitor_from_point(int32_t x, int32_t y) const = 0;
+    virtual SystemMonitor* get_monitor_from_window(SystemWindow* window) const = 0;
+    virtual void refresh_monitors() = 0;
+
+    // Monitor enumeration with default implementation
+    virtual void enumerate_monitors(void (*callback)(SystemMonitor* monitor, void* user_data), void* user_data) const;
     
-    // Focus management
-    SystemWindow* get_focused_window() const SKR_NOEXCEPT { return focused_window_; }
-    void set_focused_window(SystemWindow* window) SKR_NOEXCEPT;
+    // Factory method
+    static ISystemWindowManager* Create(const char* backend = nullptr);
+    static void Destroy(ISystemWindowManager* manager);
     
-    // Window ordering (for future use)
-    void bring_window_to_front(SystemWindow* window) SKR_NOEXCEPT;
-    void send_window_to_back(SystemWindow* window) SKR_NOEXCEPT;
+protected:
+    // Platform implementations must implement these
+    virtual SystemWindow* create_window_internal(const SystemWindowCreateInfo& info) = 0;
+    virtual void destroy_window_internal(SystemWindow* window) = 0;
+    
+    // Platform implementations should implement native handle extraction
+    virtual void* get_native_handle_from_event(const SkrSystemEvent& event) const { return nullptr; }
+    
+    // Window tracking helpers for subclasses
+    void register_window(SystemWindow* window) SKR_NOEXCEPT;
+    void unregister_window(SystemWindow* window) SKR_NOEXCEPT;
     
 private:
-    struct ManagedWindow {
-        SystemWindow* window;
-        void* user_data = nullptr;
-    };
-    
-    SystemApp* app_;
-    skr::Map<void*, ManagedWindow> windows_;  // native_handle -> ManagedWindow
-    SystemWindow* focused_window_ = nullptr;   // Currently focused window
-    WindowManagerHandler* focus_handler_ = nullptr; // Auto focus tracking
+    // Common data management
+    skr::Map<void*, SystemWindow*> window_data_;  // native_handle -> ManagedWindow
 };
 
 } // namespace skr

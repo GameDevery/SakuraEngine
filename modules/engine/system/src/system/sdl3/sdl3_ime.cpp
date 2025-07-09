@@ -1,5 +1,4 @@
 #include "sdl3_ime.h"
-#include "sdl3_system_app.h"
 #include "sdl3_window.h"
 #include "SkrCore/log.h"
 #include "SkrCore/memory/memory.h"
@@ -7,7 +6,7 @@
 
 namespace skr {
 
-SDL3IME::SDL3IME(SDL3SystemApp* app) SKR_NOEXCEPT
+SDL3IME::SDL3IME() SKR_NOEXCEPT
     : text_input_props_(SDL_CreateProperties())
 {
     if (!text_input_props_)
@@ -414,18 +413,5 @@ void SDL3IME::update_candidate_state(const SDL_TextEditingCandidatesEvent& event
         EIMECandidateLayout::Horizontal : EIMECandidateLayout::Vertical;
     candidate_state_.visible = (event.num_candidates > 0);
 }
-
-// Factory methods
-#ifndef SKR_PLAT_WINDOWS
-IME* IME::Create(struct SystemApp* app)
-{
-    return SkrNew<SDL3IME>(static_cast<SDL3SystemApp*>(app));
-}
-
-void IME::Destroy(IME* ime)
-{
-    SkrDelete(ime);
-}
-#endif
 
 } // namespace skr

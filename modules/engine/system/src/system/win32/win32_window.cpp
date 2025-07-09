@@ -1,6 +1,6 @@
 #include "win32_event_source.h"
 #include "win32_window.h"
-#include "win32_system_app.h"
+#include "win32_window_manager.h"
 #include "win32_monitor.h"
 #include "SkrCore/log.h"
 #include <Dwmapi.h>
@@ -203,7 +203,7 @@ void Win32Window::set_size(uint32_t width, uint32_t height)
         return;
         
     // Convert logical size to physical pixels
-    uint32_t dpi = Win32SystemApp::get_dpi_for_window(hwnd_);
+    uint32_t dpi = Win32WindowManager::get_dpi_for_window(hwnd_);
     float scale = dpi / 96.0f;
     
     uint32_t physical_width = static_cast<uint32_t>(width * scale);
@@ -214,7 +214,7 @@ void Win32Window::set_size(uint32_t width, uint32_t height)
     DWORD ex_style = GetWindowLongW(hwnd_, GWL_EXSTYLE);
     
     RECT rect = { 0, 0, static_cast<LONG>(physical_width), static_cast<LONG>(physical_height) };
-    Win32SystemApp::adjust_window_rect_for_dpi(&rect, style, ex_style, dpi);
+    Win32WindowManager::adjust_window_rect_for_dpi(&rect, style, ex_style, dpi);
     
     SetWindowPos(hwnd_, nullptr, 0, 0, 
         rect.right - rect.left, rect.bottom - rect.top,
@@ -241,7 +241,7 @@ uint2 Win32Window::get_size() const
     GetClientRect(hwnd_, &rect);
     
     // Get DPI and calculate logical size
-    uint32_t dpi = Win32SystemApp::get_dpi_for_window(hwnd_);
+    uint32_t dpi = Win32WindowManager::get_dpi_for_window(hwnd_);
     float scale = dpi / 96.0f;
     
     uint32_t logical_width = static_cast<uint32_t>((rect.right - rect.left) / scale);
@@ -267,7 +267,7 @@ float Win32Window::get_pixel_ratio() const
     if (!hwnd_)
         return 1.0f;
         
-    uint32_t dpi = Win32SystemApp::get_dpi_for_window(hwnd_);
+    uint32_t dpi = Win32WindowManager::get_dpi_for_window(hwnd_);
     return dpi / 96.0f;
 }
 
@@ -486,7 +486,7 @@ LRESULT Win32Window::handle_message(UINT msg, WPARAM wParam, LPARAM lParam)
         case WM_NCCREATE:
         {
             // Enable non-client DPI scaling for proper title bar scaling
-            Win32SystemApp::enable_non_client_dpi_scaling(hwnd_);
+            Win32WindowManager::enable_non_client_dpi_scaling(hwnd_);
             
             // Apply dark mode early for proper title bar theming
             initialize_dark_mode_support();
