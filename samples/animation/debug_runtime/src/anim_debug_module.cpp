@@ -90,7 +90,7 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
 
     animd::Camera camera;
     renderer.set_pcamera(&camera);
-    camera.position = skr::float3(1.1f, 5.1f, -2.1f);        // eye position
+    camera.position = skr::float3(0.1f, 2.1f, -2.1f);        // eye position
     skr_float3_t target(0.0f, 0.0f, 0.0f);                   // look at position
     camera.front = skr::normalize(target - camera.position); // look at direction
 

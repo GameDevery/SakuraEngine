@@ -44,9 +44,9 @@ struct BoneGeometry {
         { 0.0, .25, 0.0 },
         { 1.0, 0.0, 0.0 },
 
-        { 0.0, 0.0, -25.0 }, // -zx-y face
+        { 0.0, 0.0, -.25 }, // -zx-y face
         { 1.0, 0.0, 0.0 },
-        { 0.0, -25.0, 0.0 },
+        { 0.0, -.25, 0.0 },
     };
 
     const skr_float2_t g_TexCoords[24] = {
@@ -119,29 +119,37 @@ struct BoneGeometry {
     };
 
     const uint32_t g_Tangents[24] = {
-        _vector_to_snorm8({ 0.0f, 1.0f, 0.0f, 0.0f }), // xyz face
-        _vector_to_snorm8({ 0.0f, 1.0f, 0.0f, 0.0f }),
-        _vector_to_snorm8({ 0.0f, 1.0f, 0.0f, 0.0f }),
+        _vector_to_snorm8({ 1.0f, 0.25f, 1.0f, 0.0f }),
+        _vector_to_snorm8({ 1.0f, 0.25f, 1.0f, 0.0f }),
+        _vector_to_snorm8({ 1.0f, 0.25f, 1.0f, 0.0f }),
 
-        _vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 0.0f }), // xz-y face
-        _vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 0.0f }),
-        _vector_to_snorm8({ 1.0f, 0.0f, 0.0f, 0.0f }),
+        _vector_to_snorm8({ 1.0f, -0.25f, 1.0f, 0.0f }),
+        _vector_to_snorm8({ 1.0f, -0.25f, 1.0f, 0.0f }),
+        _vector_to_snorm8({ 1.0f, -0.25f, 1.0f, 0.0f }),
 
-        _vector_to_snorm8({ -1.0f, 1.0f, -1.0f, 0.0f }), // zy-x face
-        _vector_to_snorm8({ -1.0f, -1.0f, -1.0f, 0.0f }),
-        _vector_to_snorm8({ -1.0f, -1.0f, -1.0f, 0.0f }),
+        _vector_to_snorm8({ -1.0f, 0.25f, 1.0f, 0.0f }),
+        _vector_to_snorm8({ -1.0f, 0.25f, 1.0f, 0.0f }),
+        _vector_to_snorm8({ -1.0f, 0.25f, 1.0f, 0.0f }),
 
-        _vector_to_snorm8({ -1.5f, -1.f, -1.f, 2.f }), // z-x-y face
-        _vector_to_snorm8({ -1.f, -1.f, -1.f, 2.f }),
-        _vector_to_snorm8({ -1.f, -1.f, -1.f, 2.f }),
+        _vector_to_snorm8({ -1.0f, -0.25f, 1.0f, 0.0f }),
+        _vector_to_snorm8({ -1.0f, -0.25f, 1.0f, 0.0f }),
+        _vector_to_snorm8({ -1.0f, -0.25f, 1.0f, 0.0f }),
 
-        _vector_to_snorm8({ -2.f, -2.f, -2.f, 3.f }), // -xy-z face
-        _vector_to_snorm8({ -2.f, -2.f, -2.f, 3.f }),
-        _vector_to_snorm8({ -2.f, -2.f, -2.f, 3.f }),
+        _vector_to_snorm8({ -1.0f, 0.25f, -1.0f, 0.0f }),
+        _vector_to_snorm8({ -1.0f, 0.25f, -1.0f, 0.0f }),
+        _vector_to_snorm8({ -1.0f, 0.25f, -1.0f, 0.0f }),
 
-        _vector_to_snorm8({ -3.f, -3.f, -3.f, 4.f }), //- xz-y face
-        _vector_to_snorm8({ -3.f, -3.f, -3.f, 4.f }),
-        _vector_to_snorm8({ -3.f, -3.f, -3.f, 4.f })
+        _vector_to_snorm8({ -1.0f, -0.25f, -1.0f, 0.0f }),
+        _vector_to_snorm8({ -1.0f, -0.25f, -1.0f, 0.0f }),
+        _vector_to_snorm8({ -1.0f, -0.25f, -1.0f, 0.0f }),
+
+        _vector_to_snorm8({ 1.0f, 0.25f, -1.0f, 0.0f }),
+        _vector_to_snorm8({ 1.0f, 0.25f, -1.0f, 0.0f }),
+        _vector_to_snorm8({ 1.0f, 0.25f, -1.0f, 0.0f }),
+
+        _vector_to_snorm8({ 1.0f, -0.25f, -1.0f, 0.0f }),
+        _vector_to_snorm8({ 1.0f, -0.25f, -1.0f, 0.0f }),
+        _vector_to_snorm8({ 1.0f, -0.25f, -1.0f, 0.0f }),
     };
 
     // clang-format off

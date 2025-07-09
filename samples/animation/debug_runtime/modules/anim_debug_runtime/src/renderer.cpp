@@ -18,69 +18,80 @@ LightingCSPushConstants Renderer::lighting_cs_data = { { 0, 0 }, { 0, 0 } };
 
 void Renderer::read_anim()
 {
+    ozz::animation::Skeleton skeleton;
+    auto                     filename = "D:/ws/data/assets/media/bin/pab_skeleton.ozz";
+    ozz::io::File            file(filename, "rb");
+    if (!file.opened())
+    {
+        SKR_LOG_ERROR(u8"Cannot open file %s.", filename);
+        return;
+    }
 
-    // ozz::animation::Skeleton skeleton;
+    // deserialize
+    ozz::io::IArchive archive(&file);
+    // test archive
+    if (!archive.TestTag<ozz::animation::Skeleton>())
+    {
+        SKR_LOG_ERROR(u8"Archive doesn't contain the expected object type.");
+        return;
+    }
+    // Create Runtime Skeleton
+    archive >> skeleton;
 
-    // auto          filename = "D:/ws/data/assets/media/bin/pab_skeleton.ozz";
-    // ozz::io::File file(filename, "rb");
-    // if (!file.opened())
-    // {
-    //     SKR_LOG_ERROR(u8"Cannot open file %s.", filename);
-    //     return;
-    // }
+    SKR_LOG_INFO(u8"Skeleton loaded with %d joints.", skeleton.num_joints());
 
-    // // deserialize
-    // ozz::io::IArchive archive(&file);
-    // // test archive
-    // if (!archive.TestTag<ozz::animation::Skeleton>())
-    // {
-    //     SKR_LOG_ERROR(u8"Archive doesn't contain the expected object type.");
-    //     return;
-    // }
-    // // Create Runtime Skeleton
-    // archive >> skeleton;
-
-    // SKR_LOG_INFO(u8"Skeleton loaded with %d joints.", skeleton.num_joints());
-
-    // ozz::vector<ozz::math::Float4x4> prealloc_models_;
-    // prealloc_models_.resize(skeleton.num_joints());
-    // ozz::animation::LocalToModelJob job;
-    // job.input    = skeleton.joint_rest_poses();
-    // job.output   = ozz::make_span(prealloc_models_);
-    // job.skeleton = &skeleton;
-    // if (!job.Run())
-    // {
-    //     SKR_LOG_ERROR(u8"Failed to run LocalToModelJob.");
-    // }
-    // _instance_count = skeleton.num_joints();
-    // // _instance_count = 2;
-    // _instance_data.resize(_instance_count, skr::float4x4::identity());
-
-    // const auto resize_transform = skr::TransformF(skr::QuatF(skr::RotatorF()), skr::float3(1), skr::float3(0.1f));
-    // const auto resize_matrix    = skr::transpose(resize_transform.to_matrix());
-    // // _instance_data[1]    = *(skr_float4x4_t*)&matrix;
-
-    // for (int i = 0; i < _instance_count; ++i)
-    // {
-    //     ozz::math::Float4x4 model_matrix = prealloc_models_[i];
-    //     auto                mat          = animd::ozz2skr_float4x4(model_matrix);
-    //     // auto                mat          = skr::float4x4::identity();
-    //     auto parent_id = skeleton.joint_parents()[i];
-    //     if (parent_id < 0)
-    //     {
-    //         continue; // skip root joint
-    //     }
-    //     _instance_data[i] = *(skr_float4x4_t*)&mat;
-    // }
-
-    _instance_count = 2;
+    ozz::vector<ozz::math::Float4x4> prealloc_models_;
+    prealloc_models_.resize(skeleton.num_joints());
+    ozz::animation::LocalToModelJob job;
+    job.input    = skeleton.joint_rest_poses();
+    job.output   = ozz::make_span(prealloc_models_);
+    job.skeleton = &skeleton;
+    if (!job.Run())
+    {
+        SKR_LOG_ERROR(u8"Failed to run LocalToModelJob.");
+    }
+    _instance_count = skeleton.num_joints();
     _instance_data.resize(_instance_count, skr::float4x4::identity());
-    const auto t0     = skr::TransformF(skr::QuatF(skr::RotatorF()), skr::float3(0.5), skr::float3(0.8f));
-    const auto m0     = skr::transpose(t0.to_matrix());
-    _instance_data[0] = *(skr_float4x4_t*)&m0;
-    const auto t1     = skr::TransformF(skr::QuatF(skr::RotatorF()), skr::float3(1, 0, 0), skr::float3(0.8f));
-    const auto m1     = skr::transpose(t1.to_matrix());
-    _instance_data[1] = *(skr_float4x4_t*)&m1;
+
+    const auto t0 = skr::TransformF(skr::QuatF(skr::RotatorF()), skr::float3(0.0), skr::float3(0.001f));
+    const auto m0 = skr::transpose(t0.to_matrix());
+
+    for (int i = 0; i < _instance_count; ++i)
+    {
+        ozz::math::Float4x4 model_matrix = prealloc_models_[i];
+
+        auto mat       = animd::ozz2skr_float4x4(model_matrix);
+        auto parent_id = skeleton.joint_parents()[i];
+        if (parent_id < 0)
+        {
+            mat               = mat * m0; // apply scale to the matrix
+            _instance_data[i] = *(skr_float4x4_t*)&mat;
+            continue; // skip root joint
+        }
+        auto parent_mat  = animd::ozz2skr_float4x4(prealloc_models_[parent_id]);
+        auto bone_dir    = skr::float3(parent_mat.rows[0][3] - mat.rows[0][3], parent_mat.rows[1][3] - mat.rows[1][3], parent_mat.rows[2][3] - mat.rows[2][3]);
+        auto bone_length = skr::length(bone_dir);
+        // auto bone_scale  = skr::abs(bone_dir);
+        if (bone_length < 0.01f)
+        {
+            continue; // skip joints with very small bone length
+        }
+        // resize according to bone length
+        auto t            = skr::TransformF(skr::QuatF(skr::RotatorF()), skr::float3(0.0f), skr_float3_t(bone_length));
+        auto m            = skr::transpose(t.to_matrix());
+        mat               = mat * m; // apply scale to the matrix
+        _instance_data[i] = *(skr_float4x4_t*)&mat;
+    }
+
+    // _instance_count = 2;
+    // _instance_data.resize(_instance_count, skr::float4x4::identity());
+    // const auto t0 = skr::TransformF(skr::QuatF(skr::RotatorF()), skr::float3(-0.5), skr::float3(0.1f));
+    // const auto m0 = skr::transpose(t0.to_matrix());
+    // _instance_data[0] = *(skr_float4x4_t*)&m0;
+    // const auto t1     = skr::TransformF(skr::QuatF(skr::RotatorF()), skr::float3(1, 0, 0), skr::float3(0.8f));
+
+    // const auto m1     = skr::transpose(t1.to_matrix());
+    // _instance_data[1] = *(skr_float4x4_t*)&m1;
 }
 
 void Renderer::create_api_objects()
@@ -172,6 +183,7 @@ void Renderer::create_resources()
     auto cpy_cmd   = cgpu_create_command_buffer(cmd_pool, &cmd_desc);
     {
         auto geom = BoneGeometry();
+        SKR_LOG_INFO(u8"BoneGeometry size is %zu", sizeof(BoneGeometry));
         memcpy(upload_buffer->info->cpu_mapped_address, &geom, sizeof(BoneGeometry));
     }
     cgpu_cmd_begin(cpy_cmd);
