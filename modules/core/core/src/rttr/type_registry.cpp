@@ -109,8 +109,6 @@ void unload_all_types()
 
     // clear loaded types
     loaded_types().clear();
-
-    loaded_types().clear();
 }
 
 // each types

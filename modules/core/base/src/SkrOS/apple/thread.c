@@ -149,7 +149,7 @@ ThreadResult skr_wait_condition_vars(SConditionVariable* pCv, const SMutex* mute
 {
     pthread_mutex_t* mutexHandle = (pthread_mutex_t*)&mutex->pHandle;
     int ret = 0;
-    if (ms == TIMEOUT_INFINITE)
+    if (ms == SKR_TIMEOUT_INFINITE)
     {
         ret = pthread_cond_wait(&pCv->pHandle, mutexHandle);
     }

@@ -66,18 +66,36 @@ struct SKR_CORE_API Logger
         bool sucess = false;
         // va_list can only be formatted inplace
         skr::String fmt(format);
-        char8_t buffer[1024];
-        vsnprintf((char* const)buffer, sizeof(buffer), fmt.c_str_raw(), va_args);
+        char8_t _stack_buffer[256];
+        constexpr auto _stack_buffer_size = sizeof(_stack_buffer);
+        char8_t* pTempBuffer = nullptr;
+        char8_t* pBuffer = nullptr;
+        auto required_size = vsnprintf((char* const)_stack_buffer, _stack_buffer_size, fmt.c_str_raw(), va_args);
+        if (required_size > _stack_buffer_size)
+        {
+            pTempBuffer = (char8_t*)sakura_calloc(required_size, 1);
+            vsnprintf((char* const)pTempBuffer, required_size, fmt.c_str_raw(), va_args);
+            pBuffer = pTempBuffer;
+        }
+        else
+        {
+            pBuffer = _stack_buffer;
+        }
 
         if (canPushToQueue())
         {
-            sucess = tryPushToQueue(ev, skr::String(buffer));
+            sucess = tryPushToQueue(ev, skr::String(pBuffer));
         }
         if (!sucess && !(ev.get_level() == LogLevel::kBackTrace)) // sink immediate
         {
-            sinkDefaultImmediate(ev, skr::StringView(buffer));
+            sinkDefaultImmediate(ev, skr::StringView(pBuffer));
         }
         onLog(ev);
+
+        if (pTempBuffer != nullptr)
+        {
+            sakura_free(pTempBuffer);
+        }
     }
 
     skr::StringView get_name() const SKR_NOEXCEPT { return name.view(); }

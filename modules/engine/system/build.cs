@@ -7,7 +7,7 @@ public static class SkrSystem
 {
     static SkrSystem()
     {
-        var SkrSystem = Engine.Module("SkrSystem")
+        var SkrSystem = Engine.Module("SkrSystem", "SKR_SYSTEM")
             .EnableUnityBuild()
             .Depend(Visibility.Public, "SDL3", "SkrRT")
             .IncludeDirs(Visibility.Public, "include")

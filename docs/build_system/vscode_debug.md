@@ -132,26 +132,6 @@ dotnet run SB -- vscode --preserve-user false
 - macOS: 配置源代码映射，LLDB 特定设置
 - Linux: GDB pretty-printing，调试符号设置
 
-## 配置目标
-
-在 `build.cs` 中可以为目标添加调试配置：
-
-```csharp
-public static class MyApp
-{
-    static MyApp()
-    {
-        Engine.Module("MyApp", "MY_APP_API")
-            .TargetType(TargetType.Executable)
-            // 添加运行参数
-            .RunArgs("--config", "debug.ini")
-            // 添加环境变量
-            .RunEnv("MY_APP_DEBUG", "1")
-            .RunEnv("LOG_LEVEL", "debug");
-    }
-}
-```
-
 ## 注意事项
 
 1. **调试器安装**
@@ -196,6 +176,26 @@ public class CustomVSCodeEmitter : VSCodeDebugEmitter
         config.CustomProperties["myProperty"] = "value";
         
         return config;
+    }
+}
+```
+
+## TODO
+
+在 `build.cs` 中可以为目标添加调试配置：
+
+```csharp
+public static class MyApp
+{
+    static MyApp()
+    {
+        Engine.Module("MyApp", "MY_APP_API")
+            .TargetType(TargetType.Executable)
+            // 添加运行参数
+            .RunArgs("--config", "debug.ini")
+            // 添加环境变量
+            .RunEnv("MY_APP_DEBUG", "1")
+            .RunEnv("LOG_LEVEL", "debug");
     }
 }
 ```
