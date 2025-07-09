@@ -8,6 +8,8 @@ namespace SB
     {
         public static void LoadConfigurations()
         {
+            EnableAsan();
+
             TargetDelegate Debug = (Target) =>
             {
                 Target.DebugSymbols(true)
@@ -41,6 +43,16 @@ namespace SB
                         .MSVC_CXFlags(Visibility.Private, "/fsanitize=address")
                         .Defines(Visibility.Public, "_DISABLE_VECTOR_ANNOTATION")
                         .Defines(Visibility.Public, "_DISABLE_STRING_ANNOTATION");
+                };
+            }
+            else if (BuildSystem.TargetOS == OSPlatform.OSX)
+            {
+                BuildSystem.TargetDefaultSettings += (Target Target) =>
+                {
+                    Target.CppFlags(Visibility.Private, "-fsanitize=address")
+                        .CppFlags(Visibility.Private, "-fno-omit-frame-pointer")
+                        .CppFlags(Visibility.Private, "-fno-optimize-sibling-calls")
+                        .AppleClang_LinkerArgs(Visibility.Private, "-fsanitize=address");
                 };
             }
             else

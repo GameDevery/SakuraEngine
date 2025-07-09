@@ -217,7 +217,7 @@ inline static SkrSystemEvent TranslateSDLEvent(const SDL_Event& e)
 SDL3EventSource::SDL3EventSource(SystemApp* app) SKR_NOEXCEPT
     : app_(app)
 {
-    // SDL is already initialized by SystemApp
+
 }
 
 SDL3EventSource::~SDL3EventSource() SKR_NOEXCEPT

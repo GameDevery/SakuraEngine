@@ -72,7 +72,7 @@ namespace SB
             };
             CompileCommands.Add(SB.Core.Json.Serialize(CMD));
 
-            if (BuildSystem.TargetOS == OSPlatform.Windows)
+            // if (BuildSystem.TargetOS == OSPlatform.Windows)
             {
                 var OutputFiles = Directory.GetFiles(OutputDirectory, $"{SourceName}.*.*.hlsl");
                 foreach (var HLSL in OutputFiles)

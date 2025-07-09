@@ -282,6 +282,7 @@ SDL3Monitor* SDL3WindowManager::create_monitor(SDL_DisplayID display_id)
 // Factory function for WindowManager
 ISystemWindowManager* CreateSDL3WindowManager()
 {
+    SDL_Init(SDL_INIT_EVENTS | SDL_INIT_VIDEO);
     return SkrNew<SDL3WindowManager>();
 }
 

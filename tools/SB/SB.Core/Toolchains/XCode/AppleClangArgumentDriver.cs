@@ -81,7 +81,7 @@ namespace SB.Core
         public virtual string DebugSymbols(bool Enable) => Enable ? "-g" : "";
 
         [TargetProperty]
-        public string Source(string path) => BS.CheckFile(path, true) ? GetLanguageArgString() + $" \"{path}\"" : throw new TaskFatalError($"Source value {path} is not an existed absolute path!");
+        public string[] Source(string path) => BS.CheckFile(path, true) ? GetLanguageArgString($" \"{path}\"") : throw new TaskFatalError($"Source value {path} is not an existed absolute path!");
 
         public string Arch(Architecture arch) => archMap.TryGetValue(arch, out var r) ? r : throw new TaskFatalError($"Invalid architecture \"{arch}\" for Apple clang!");
         static readonly Dictionary<Architecture, string> archMap = new Dictionary<Architecture, string> { { Architecture.X86, "" }, { Architecture.X64, "" }, { Architecture.ARM64, "" } };
@@ -98,14 +98,28 @@ namespace SB.Core
 
         protected CFamily Language { get; }
         protected bool isPCH = false;
-        protected string GetLanguageArgString() => Language switch
+        protected string[] GetLanguageArgString(string p)
         {
-            CFamily.C => isPCH ? "-xc-header" : "",
-            CFamily.Cpp => isPCH ? "-xc++-header" : "-xc++",
-            CFamily.ObjC => isPCH ? "-xobjective-c-header" : "-xobjective-c",
-            CFamily.ObjCpp => isPCH ? "-xobjective-c++-header" : "-xobjective-c++",
-            _ => throw new TaskFatalError($"Invalid language \"{Language}\" for Apple clang!")
-        };
+            string lang;
+            switch (Language)
+            {
+                case CFamily.C:
+                    lang = isPCH ? "c-header" : "";
+                    break;
+                case CFamily.Cpp:
+                    lang = isPCH ? "c++-header" : "c++";
+                    break;
+                case CFamily.ObjC:
+                    lang = isPCH ? "objectivec-header" : "objective-c";
+                    break;
+                case CFamily.ObjCpp:
+                    lang = isPCH ? "objectivec++-header" : "objective-c++";
+                    break;
+                default:
+                    throw new TaskFatalError($"Invalid language \"{Language}\" for Apple clang!");
+            }
+            return string.IsNullOrEmpty(lang) ? new string[] { p } : new string[] { $"-x", lang, p };
+        }
         public ArgumentDictionary Arguments { get; } = new ArgumentDictionary();
         public HashSet<string> RawArguments { get; } = new HashSet<string> { "-c" };
     }

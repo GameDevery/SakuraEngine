@@ -179,7 +179,7 @@ namespace SB
                     // lldb-dap 使用 stopOnEntry 而不是 stopAtEntry
                     StopOnEntry = StopAtEntry;
                     StopAtEntry = false; // 避免序列化这个属性
-                    RunInTerminal = true; // lldb-dap 默认在终端运行
+                    RunInTerminal = false;
                 }
                 else
                 {

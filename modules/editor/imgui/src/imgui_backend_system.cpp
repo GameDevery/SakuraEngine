@@ -176,7 +176,7 @@ void ImGuiBackend::create(
         // Store window ID as PlatformHandle (similar to SDL3's approach)
         // This allows us to find viewport by window later
         main_viewport->PlatformHandle = _system_window;
-        main_viewport->PlatformHandleRaw = _system_window->get_native_handle();
+        main_viewport->PlatformHandleRaw = _system_window->get_native_view();
     }
     
     // Initialize main window render data

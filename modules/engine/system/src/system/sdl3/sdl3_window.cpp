@@ -2,6 +2,11 @@
 #include "sdl3_monitor.h"
 #include "SkrCore/log.h"
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_metal.h>
+#ifdef __APPLE__
+#include "../cocoa/cocoa_helper.h"
+#include <unordered_map>
+#endif
 
 namespace skr {
 
@@ -13,6 +18,17 @@ SDL3Window::SDL3Window(SDL_Window* window) SKR_NOEXCEPT
 
 SDL3Window::~SDL3Window() SKR_NOEXCEPT
 {
+#ifdef __APPLE__
+    // Clean up Metal view if we created one
+    static thread_local std::unordered_map<SDL_Window*, SDL_MetalView> metal_view_cache;
+    auto it = metal_view_cache.find(sdl_window);
+    if (it != metal_view_cache.end())
+    {
+        SDL_Metal_DestroyView(it->second);
+        metal_view_cache.erase(it);
+    }
+#endif
+    
     if (sdl_window)
     {
         SDL_DestroyWindow(sdl_window);
@@ -240,6 +256,45 @@ void* SDL3Window::get_native_display() const
 #endif
     
     return nullptr;
+}
+
+void* SDL3Window::get_native_view() const
+{
+#ifdef __APPLE__
+    // On macOS, use SDL's Metal support to get a Metal-compatible view
+    // SDL_Metal_CreateView creates a CAMetalLayer-backed NSView
+    
+    // Check if we already have a Metal view cached
+    static thread_local std::unordered_map<SDL_Window*, SDL_MetalView> metal_view_cache;
+    
+    auto it = metal_view_cache.find(sdl_window);
+    if (it != metal_view_cache.end())
+    {
+        return it->second;
+    }
+    
+    // Create a new Metal view for this window
+    SDL_MetalView metal_view = SDL_Metal_CreateView(sdl_window);
+    if (metal_view)
+    {
+        metal_view_cache[sdl_window] = metal_view;
+        return metal_view;
+    }
+    
+    // Fallback: try to get the content view directly
+    SDL_PropertiesID props = SDL_GetWindowProperties(sdl_window);
+    void* nswindow = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, nullptr);
+    
+    if (nswindow)
+    {
+        return skr::cocoa::get_content_view_from_window(nswindow);
+    }
+    
+    return nullptr;
+#else
+    // On other platforms, native view is typically the same as native handle
+    return get_native_handle();
+#endif
 }
 
 } // namespace skr

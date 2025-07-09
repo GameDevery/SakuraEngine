@@ -49,6 +49,9 @@ public:
     void* get_native_handle() const override;
     void* get_native_display() const override;
     
+    // Metal support (macOS)
+    void* get_native_view() const override;
+    
     // SDL3 specific
     SDL_Window* get_sdl_window() const { return sdl_window; }
     SDL_WindowID get_window_id() const { return window_id; }

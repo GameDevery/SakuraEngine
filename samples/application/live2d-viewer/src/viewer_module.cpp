@@ -243,21 +243,6 @@ int SLive2DViewerModule::main_module_exec(int argc, char8_t** argv)
             std::move(render_backend)
         );
         imgui_backend.enable_docking();
-   
-        const char8_t* font_path = u8"./../resources/font/lolita.ttf";
-        uint32_t *     font_bytes, font_length;
-        read_bytes(font_path, &font_bytes, &font_length);
-        ImFontConfig cfg = {};
-        cfg.SizePixels   = 16.f;
-        cfg.OversampleH = cfg.OversampleV = 1;
-        cfg.PixelSnapH                    = true;
-        ImGui::GetIO().Fonts->AddFontFromMemoryTTF(
-            font_bytes,
-            font_length,
-            cfg.SizePixels,
-            &cfg
-        );
-        ImGui::GetIO().Fonts->Build();
     }
 
     // init live2d

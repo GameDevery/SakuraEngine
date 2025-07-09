@@ -145,7 +145,7 @@ bool skr_init_condition_var(SConditionVariable* pCv)
 
 void skr_destroy_condition_var(SConditionVariable* pCv) { pthread_cond_destroy(&pCv->pHandle); }
 
-ThreadResult skr_wait_condition_vars(SConditionVariable* pCv, const SMutex* mutex, uint32_t ms)
+ThreadResult skr_wait_condition_vars(SConditionVariable* pCv, SMutex* mutex, uint32_t ms)
 {
     pthread_mutex_t* mutexHandle = (pthread_mutex_t*)&mutex->pHandle;
     int ret = 0;
