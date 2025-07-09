@@ -328,6 +328,7 @@ int main(int argc, char* argv[])
             ImGui::End();
             imgui_backend.end_frame();
         }
+        imgui_backend.collect();
 
         // rendering
         auto native_backbuffer = imgui_render_backend_rg->get_backbuffer(ImGui::GetMainViewport());

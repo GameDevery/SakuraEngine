@@ -355,7 +355,7 @@ void ImGuiBackend::end_frame()
     _renderer_backend->end_frame();
 }
 
-void ImGuiBackend::render()
+void ImGuiBackend::collect()
 {
     SKR_ASSERT(is_created() && "please create context before render");
     SKR_ASSERT(ImGui::GetCurrentContext() == _context && "context mismatch");
@@ -397,6 +397,10 @@ void ImGuiBackend::render()
 
     // Render main window
     ImGui::Render();
+}
+
+void ImGuiBackend::render()
+{
     _renderer_backend->render_main_window(_context->Viewports[0]);
 
     // Render other viewports

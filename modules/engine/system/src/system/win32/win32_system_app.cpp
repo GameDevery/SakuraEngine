@@ -91,19 +91,18 @@ Win32SystemApp::Win32SystemApp() SKR_NOEXCEPT
     window_manager = SkrNew<WindowManager>(this);
     
     // Create platform event source after IME
-    auto _win_app_src = SkrNew<Win32EventSource>(this);
-    platform_event_source_ = _win_app_src;
+    win32_event_source_ = SkrNew<Win32EventSource>(this);
     
     // Connect IME to platform event source
-    if (_win_app_src && ime)
+    if (win32_event_source_ && ime)
     {
-        _win_app_src->set_ime(ime);
+        win32_event_source_->set_ime(ime);
     }
     
     // Add platform event source to queue
-    if (event_queue && platform_event_source_)
+    if (event_queue && win32_event_source_)
     {
-        event_queue->add_source(platform_event_source_);
+        event_queue->add_source(win32_event_source_);
     }
 }
 
@@ -126,10 +125,10 @@ Win32SystemApp::~Win32SystemApp() SKR_NOEXCEPT
     }
     
     // Clean up event system
-    if (platform_event_source_)
+    if (win32_event_source_)
     {
-        SkrDelete(platform_event_source_);
-        platform_event_source_ = nullptr;
+        SkrDelete(win32_event_source_);
+        win32_event_source_ = nullptr;
     }
     
     if (event_queue)
@@ -289,7 +288,7 @@ SystemWindow* Win32SystemApp::create_window_internal(const SystemWindowCreateInf
     }
     
     // Create wrapper
-    window_wrapper = SkrNew<Win32Window>(hwnd);
+    window_wrapper = SkrNew<Win32Window>(hwnd, win32_event_source_);
     if (!window_wrapper)
     {
         DestroyWindow(hwnd);
@@ -452,33 +451,21 @@ bool Win32SystemApp::remove_event_source(ISystemEventSource* source)
     return false;
 }
 
+ISystemEventSource* Win32SystemApp::get_platform_event_source() const
+{ 
+    return win32_event_source_; 
+}
+
 bool Win32SystemApp::wait_events(uint32_t timeout_ms)
 {
     // Windows message pump with timeout
-    MSG msg;
-    DWORD wait_result;
-    
-    if (timeout_ms == 0)
-    {
-        // Infinite wait
-        wait_result = MsgWaitForMultipleObjects(0, nullptr, FALSE, INFINITE, QS_ALLINPUT);
-    }
-    else
-    {
-        // Wait with timeout
-        wait_result = MsgWaitForMultipleObjects(0, nullptr, FALSE, timeout_ms, QS_ALLINPUT);
-    }
+    timeout_ms = (timeout_ms == 0) ? INFINITE : timeout_ms;
+    auto wait_result = MsgWaitForMultipleObjects(0, nullptr, FALSE, timeout_ms, QS_ALLINPUT);
     
     if (wait_result == WAIT_OBJECT_0)
     {
-        // Process all available messages
-        while (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE))
-        {
-            TranslateMessage(&msg);
-            DispatchMessageW(&msg);
-        }
-        
-        // Now pump all available events
+        // Let the event queue handle the messages
+        // This ensures Win32EventSource can convert them to SKR events
         return event_queue ? event_queue->pump_messages() : false;
     }
     

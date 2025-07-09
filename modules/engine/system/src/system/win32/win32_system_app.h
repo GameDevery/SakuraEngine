@@ -29,7 +29,7 @@ public:
     SystemEventQueue* get_event_queue() const override { return event_queue; }
     bool add_event_source(ISystemEventSource* source) override;
     bool remove_event_source(ISystemEventSource* source) override;
-    ISystemEventSource* get_platform_event_source() const override { return platform_event_source_; }
+    ISystemEventSource* get_platform_event_source() const override;
     bool wait_events(uint32_t timeout_ms) override;
 
     // Win32 specific - get window from HWND
@@ -67,7 +67,7 @@ private:
     skr::Map<HWND, Win32Window*> window_cache;
     
     // Event system (use base type to avoid forward declaration issues)
-    ISystemEventSource* platform_event_source_ = nullptr;
+    Win32EventSource* win32_event_source_ = nullptr;
     
     // Window class atom
     ATOM window_class_atom_ = 0;

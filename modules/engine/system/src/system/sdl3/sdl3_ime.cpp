@@ -359,7 +359,6 @@ SDL_Capitalization SDL3IME::convert_capitalization(EIMECapitalization cap) const
     }
 }
 
-
 void SDL3IME::reset_composition_state()
 {
     composition_state_.text.clear();
@@ -380,7 +379,6 @@ void SDL3IME::commit_current_text()
         callbacks_.on_text_input(composition_state_.text);
     }
 }
-
 
 SDL_Window* SDL3IME::get_sdl_window(SystemWindow* window) const
 {

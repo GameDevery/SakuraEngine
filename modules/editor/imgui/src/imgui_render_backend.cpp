@@ -861,14 +861,7 @@ void ImGuiRendererBackendRG::render_window(ImGuiViewport* vp, void*)
     CGPUTextureId native_backbuffer = get_backbuffer(vp);
 
     // import rtv
-    render_graph::TextureRTVHandle back_buffer = _render_graph->create_texture(
-        [=](render_graph::RenderGraph& g, render_graph::TextureBuilder& builder) {
-            skr::String buf_name = skr::format(u8"imgui-window-{}", vp->ID);
-            builder.set_name((const char8_t*)buf_name.c_str())
-                .import(native_backbuffer, CGPU_RESOURCE_STATE_UNDEFINED)
-                .allow_render_target();
-        }
-    );
+    render_graph::TextureRTVHandle back_buffer = _render_graph->get_texture(u8"backbuffer");
 
     // draw
     _draw_viewport(

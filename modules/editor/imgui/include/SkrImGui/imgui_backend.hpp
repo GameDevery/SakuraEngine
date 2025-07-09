@@ -52,6 +52,7 @@ struct SKR_IMGUI_API ImGuiBackend {
     void begin_frame();
     void end_frame();
     void acquire_next_frame();
+    void collect();
     void render();
 
     // imgui functional

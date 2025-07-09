@@ -87,6 +87,15 @@ bool Win32EventSource::poll_event(SkrSystemEvent& event) SKR_NOEXCEPT
         DispatchMessageW(&msg);
     }
     
+    // Process Window Messages
+    WindowMSG window_msg;
+    if (window_messages_.try_dequeue(window_msg))
+    {
+        MSG _win_msg = { window_msg.hwnd, window_msg.message, window_msg.wParam, window_msg.lParam };
+        process_message(_win_msg, event);
+        return true;
+    }
+
     return false;
 }
 
@@ -108,7 +117,6 @@ bool Win32EventSource::process_message(MSG& msg, SkrSystemEvent& out_event)
     {
         // Window events
         case WM_CLOSE:
-        case WM_USER + 1:  // Custom close notification from window proc
             out_event.type = SKR_SYSTEM_EVENT_WINDOW_CLOSE_REQUESTED;
             return true;
             
@@ -125,7 +133,9 @@ bool Win32EventSource::process_message(MSG& msg, SkrSystemEvent& out_event)
             {
                 out_event.type = SKR_SYSTEM_EVENT_WINDOW_RESTORED;
             }
-            else
+            return true;
+            
+        case WM_SIZING:
             {
                 out_event.type = SKR_SYSTEM_EVENT_WINDOW_RESIZED;
                 out_event.window.x = LOWORD(lParam);  // width

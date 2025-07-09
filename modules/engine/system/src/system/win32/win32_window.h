@@ -4,10 +4,12 @@
 
 namespace skr {
 
+struct Win32EventSource;
+
 class Win32Window : public SystemWindow
 {
 public:
-    Win32Window(HWND hwnd) SKR_NOEXCEPT;
+    Win32Window(HWND hwnd, Win32EventSource* src) SKR_NOEXCEPT;
     ~Win32Window() SKR_NOEXCEPT override;
 
     // SystemWindow interface
@@ -58,6 +60,7 @@ private:
     
 private:
     HWND hwnd_;
+    Win32EventSource* win32_event_source_ = nullptr;
     
     // Cached window state for fullscreen toggle
     struct WindowState {

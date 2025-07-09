@@ -1,3 +1,4 @@
+#include "win32_event_source.h"
 #include "win32_window.h"
 #include "win32_system_app.h"
 #include "win32_monitor.h"
@@ -126,8 +127,8 @@ static void apply_dark_mode_to_window(HWND hwnd)
     }
 }
 
-Win32Window::Win32Window(HWND hwnd) SKR_NOEXCEPT
-    : hwnd_(hwnd)
+Win32Window::Win32Window(HWND hwnd, Win32EventSource* src) SKR_NOEXCEPT
+    : hwnd_(hwnd), win32_event_source_(src)
 {
     cache_window_info();
     
@@ -479,6 +480,7 @@ HMONITOR Win32Window::get_current_monitor() const
 LRESULT Win32Window::handle_message(UINT msg, WPARAM wParam, LPARAM lParam)
 {
     // Handle specific messages that need special processing
+    win32_event_source_->window_messages_.enqueue({hwnd_, msg, wParam, lParam});
     switch (msg)
     {
         case WM_NCCREATE:
@@ -494,10 +496,6 @@ LRESULT Win32Window::handle_message(UINT msg, WPARAM wParam, LPARAM lParam)
         
         case WM_CLOSE:
         {
-            // Post a custom message to notify the event source
-            // We use WM_USER + 1 for close request notification
-            PostMessageW(hwnd_, WM_USER + 1, 0, 0);
-            
             // Don't destroy window, let app handle it through event
             return 0;
         }
@@ -511,10 +509,6 @@ LRESULT Win32Window::handle_message(UINT msg, WPARAM wParam, LPARAM lParam)
             break;
             
         case WM_ERASEBKGND:
-            // Prevent flicker
-            return 1;
-            
-        case WM_PAINT:
         {
             // Handle the first paint to show black background
             if (first_paint_)

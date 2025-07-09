@@ -2,6 +2,7 @@
 #include "SkrSystem/system.h"
 #include "SkrSystem/input.h"
 #include "SkrContainers/map.hpp"
+#include "SkrContainers/concurrent_queue.hpp"
 #include <Windows.h>
 
 namespace skr {
@@ -19,6 +20,16 @@ public:
     void set_ime(IME* ime) SKR_NOEXCEPT { ime_ = ime; }
 
 private:
+    friend struct Win32Window;
+    struct WindowMSG
+    {
+        HWND hwnd;
+        UINT message;
+        WPARAM wParam;
+        LPARAM lParam;
+    };
+    skr::ConcurrentQueue<WindowMSG> window_messages_;
+
     // Process a Windows message and convert to system event
     bool process_message(MSG& msg, SkrSystemEvent& out_event);
     

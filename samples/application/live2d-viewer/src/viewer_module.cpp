@@ -366,6 +366,7 @@ int SLive2DViewerModule::main_module_exec(int argc, char8_t** argv)
             SkrZoneScopedN("ImGUIEndFrame");
             imgui_backend.end_frame();
         }
+        imgui_backend.collect();
 
         // restart test scene
         if (bPrevUseCVV != bUseCVV)
