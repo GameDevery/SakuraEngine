@@ -1,10 +1,12 @@
 #include "cocoa_window.h"
 #include "cocoa_event_source.h"
 #include "cocoa_window_manager.h"
+#include "cocoa_monitor.h"
 #include "SkrCore/log.h"
 #include "SkrCore/memory/memory.h"
 #include <Metal/Metal.h>
 #include <QuartzCore/CAMetalLayer.h>
+#include <ApplicationServices/ApplicationServices.h>  // For CGDisplay APIs
 
 // Metal view similar to SDL's implementation
 @interface CocoaMetalView : NSView
@@ -271,9 +273,10 @@ CocoaWindow::CocoaWindow(const skr::SystemWindowCreateInfo& info) SKR_NOEXCEPT
         }
         
         // Calculate content rect - note that size is in logical points
+        // Create window at default position first, then move it
+        // This approach is similar to SDL3 and avoids some macOS positioning constraints
         NSRect contentRect = NSMakeRect(
-            info.pos.has_value() ? info.pos->x : 100,
-            info.pos.has_value() ? info.pos->y : 100,
+            0, 0,  // Default position, will be set later
             info.size.x, info.size.y
         );
         
@@ -321,6 +324,18 @@ CocoaWindow::CocoaWindow(const skr::SystemWindowCreateInfo& info) SKR_NOEXCEPT
         // macOS windows are high-DPI aware by default
         // The rendering backend will handle layer configuration
         
+        // Set window position after creation (like SDL3 does)
+        if (info.pos.has_value()) {
+            set_position(info.pos->x, info.pos->y);
+        } else {
+            // Center window on screen if no position specified
+            NSRect screenFrame = [targetScreen frame];
+            NSRect windowFrame = [window_ frame];
+            CGFloat x = screenFrame.origin.x + (screenFrame.size.width - windowFrame.size.width) / 2;
+            CGFloat y = screenFrame.origin.y + (screenFrame.size.height - windowFrame.size.height) / 2;
+            [window_ setFrameOrigin:NSMakePoint(x, y)];
+        }
+        
         SKR_LOG_INFO(u8"[CocoaWindow] Created window: %s", info.title.c_str());
     }
 }
@@ -367,29 +382,24 @@ skr::String CocoaWindow::get_title() const SKR_NOEXCEPT
 void CocoaWindow::set_position(int32_t x, int32_t y) SKR_NOEXCEPT
 {
     @autoreleasepool {
-        // Convert from top-left to bottom-left origin
-        // Note: macOS uses logical points, same as our API
-        NSScreen* screen = [window_ screen] ?: [NSScreen mainScreen];
+        // Use CGDisplay API for more consistent coordinate handling (like SDL3)
+        CGFloat mainDisplayHeight = CGDisplayPixelsHigh(kCGDirectMainDisplay);
         
-        // Get all screens to find the primary screen (for coordinate conversion)
-        NSArray<NSScreen*>* screens = [NSScreen screens];
-        if (screens.count == 0) {
-            return;
-        }
-        
-        // The primary screen defines the global coordinate system
-        NSScreen* primaryScreen = screens[0];
-        NSRect primaryFrame = [primaryScreen frame];
+        // Convert to points (macOS uses points, not pixels for window positioning)
+        NSScreen* mainScreen = [NSScreen mainScreen];
+        CGFloat scaleFactor = [mainScreen backingScaleFactor];
+        CGFloat heightInPoints = mainDisplayHeight / scaleFactor;
         
         // Get window frame to preserve size
         NSRect frame = [window_ frame];
         
         // Set position in logical points
         frame.origin.x = x;
-        // Convert Y from top-left origin to bottom-left origin using primary screen height
-        frame.origin.y = primaryFrame.size.height - y - frame.size.height;
+        // Convert Y from top-left origin to bottom-left origin
+        frame.origin.y = heightInPoints - y - frame.size.height;
         
-        [window_ setFrameOrigin:frame.origin];
+        // Use setFrame instead of setFrameOrigin for more complete update
+        [window_ setFrame:frame display:YES animate:NO];
     }
 }
 
@@ -398,20 +408,21 @@ skr::math::int2 CocoaWindow::get_position() const SKR_NOEXCEPT
     @autoreleasepool {
         NSRect frame = [window_ frame];
         
-        // Get all screens to find the primary screen (for coordinate conversion)
-        NSArray<NSScreen*>* screens = [NSScreen screens];
-        if (screens.count == 0) {
+        // Use CGDisplay API for consistent coordinate handling
+        CGFloat mainDisplayHeight = CGDisplayPixelsHigh(kCGDirectMainDisplay);
+        
+        // Convert to points
+        NSScreen* mainScreen = [NSScreen mainScreen];
+        if (!mainScreen) {
             return {0, 0};
         }
+        CGFloat scaleFactor = [mainScreen backingScaleFactor];
+        CGFloat heightInPoints = mainDisplayHeight / scaleFactor;
         
-        // The primary screen defines the global coordinate system
-        NSScreen* primaryScreen = screens[0];
-        NSRect primaryFrame = [primaryScreen frame];
-        
-        // Convert from bottom-left to top-left origin using primary screen height
+        // Convert from bottom-left to top-left origin
         return {
             (int32_t)frame.origin.x,
-            (int32_t)(primaryFrame.size.height - frame.origin.y - frame.size.height)
+            (int32_t)(heightInPoints - frame.origin.y - frame.size.height)
         };
     }
 }

@@ -811,7 +811,7 @@ void ImGuiRendererBackendRG::create_window(ImGuiViewport* vp)
 {
     SKR_ASSERT(!vp->RendererUserData);
     auto wnd = _get_system_window(vp);
-    auto size = wnd->get_size();
+    auto size = wnd->get_physical_size();
     int w = size.x, h = size.y;
 
     vp->RendererUserData = SkrNew<ImGuiRendererBackendRGViewportData>();
