@@ -1556,6 +1556,8 @@ typedef struct CGPUBufferDescriptor {
     /// Preferred actual location
     /// Only available when memory_usage is CPU_TO_GPU or GPU_TO_CPU
     bool prefer_on_host;
+    /// Memory pool to allocate from (optional)
+    CGPUMemoryPoolId memory_pool;
 } CGPUBufferDescriptor;
 
 typedef struct CGPUBufferInfo {
@@ -1602,6 +1604,8 @@ typedef struct CGPUTextureDescriptor {
     CGPUResourceTypes descriptors;
     /// Memory Aliasing
     uint32_t is_restrict_dedicated;
+    /// Memory pool to allocate from (optional)
+    CGPUMemoryPoolId memory_pool;
 } CGPUTextureDescriptor;
 
 typedef struct CGPUExportTextureDescriptor {

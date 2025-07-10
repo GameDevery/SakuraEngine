@@ -39,6 +39,8 @@ const CGPUProcTable tbl_vk = {
     .free_render_pipeline = &cgpu_free_render_pipeline_vulkan,
     .create_query_pool = &cgpu_create_query_pool_vulkan,
     .free_query_pool = &cgpu_free_query_pool_vulkan,
+    .create_memory_pool = &cgpu_create_memory_pool_vulkan,
+    .free_memory_pool = &cgpu_free_memory_pool_vulkan,
 
     // Queue APIs
     .get_queue = &cgpu_get_queue_vulkan,

@@ -9,6 +9,16 @@
 
 #include "SkrProfile/profile.h"
 
+struct CGPUMemoryPool_D3D12 : public CGPUMemoryPool
+{
+    D3D12MA::Pool* pDxPool;
+    
+    virtual ~CGPUMemoryPool_D3D12() SKR_NOEXCEPT
+    {
+        SAFE_RELEASE(pDxPool);
+    }
+};
+
 // Inline Utils
 D3D12_RESOURCE_DESC      D3D12Util_CreateBufferDesc(CGPUAdapter_D3D12* A, CGPUDevice_D3D12* D, const struct CGPUBufferDescriptor* desc);
 D3D12MA::ALLOCATION_DESC D3D12Util_CreateAllocationDesc(const struct CGPUBufferDescriptor* desc);
@@ -23,10 +33,11 @@ inline D3D12_HEAP_TYPE D3D12Util_TranslateHeapType(ECGPUMemoryUsage usage)
         return D3D12_HEAP_TYPE_DEFAULT;
 }
 
-struct CGPUTiledMemoryPool_D3D12 : public CGPUMemoryPool_D3D12 {
+struct CGPUTiledMemoryPool_D3D12 : public CGPUMemoryPool_D3D12 
+{
     void AllocateTiles(uint32_t N, D3D12MA::Allocation** ppAllocation, uint32_t Scale = 1) SKR_NOEXCEPT
     {
-        CGPUDevice_D3D12* D = (CGPUDevice_D3D12*)super.device;
+        CGPUDevice_D3D12* D = (CGPUDevice_D3D12*)device;
         const auto kPageSize = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
         D3D12MA::ALLOCATION_DESC allocDesc = {};
         allocDesc.CustomPool = pDxPool;
@@ -37,11 +48,6 @@ struct CGPUTiledMemoryPool_D3D12 : public CGPUMemoryPool_D3D12 {
         {
             D->pResourceAllocator->AllocateMemory(&allocDesc, &allocInfo, &ppAllocation[i]);
         }
-    }
-
-    ~CGPUTiledMemoryPool_D3D12() SKR_NOEXCEPT
-    {
-        SAFE_RELEASE(pDxPool);
     }
 };
 
@@ -196,12 +202,27 @@ CGPUMemoryPoolId cgpu_create_memory_pool_d3d12(CGPUDeviceId device, const struct
             poolDesc.HeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
             pool = cgpu_new<CGPUTiledMemoryPool_D3D12>();
             break;
+        case CGPU_MEM_POOL_TYPE_LINEAR:
+            if (desc->memory_usage == CGPU_MEM_USAGE_GPU_ONLY)
+            {
+                poolDesc.HeapFlags = D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES;
+            }
+            else
+            {
+                poolDesc.HeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
+            }
+            poolDesc.Flags = D3D12MA::POOL_FLAG_ALGORITHM_LINEAR;
+            pool = cgpu_new<CGPUMemoryPool_D3D12>();
+            break;
         default:
+            poolDesc.Flags = D3D12MA::POOL_FLAG_NONE;
             poolDesc.HeapFlags = D3D12_HEAP_FLAG_NONE;
             pool = cgpu_new<CGPUMemoryPool_D3D12>();
             break;
     }
     poolDesc.HeapProperties.Type = D3D12Util_TranslateHeapType(desc->memory_usage);
+    poolDesc.HeapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+    poolDesc.HeapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
     poolDesc.MinAllocationAlignment = desc->min_alloc_alignment;
     poolDesc.BlockSize = desc->block_size;
     poolDesc.MinBlockCount = desc->min_block_count;
@@ -209,9 +230,9 @@ CGPUMemoryPoolId cgpu_create_memory_pool_d3d12(CGPUDeviceId device, const struct
     auto hres = D->pResourceAllocator->CreatePool(&poolDesc, &pool->pDxPool);
     CHECK_HRESULT(hres);
 
-    pool->super.device = device;
-    pool->super.type   = desc->type;
-    return &pool->super;
+    pool->device = device;
+    pool->type   = desc->type;
+    return pool;
 }
 
 void cgpu_free_memory_pool_d3d12(CGPUMemoryPoolId pool)
@@ -251,6 +272,14 @@ CGPUBufferId cgpu_create_buffer_d3d12(CGPUDeviceId device, const struct CGPUBuff
     // Do Allocation
     const bool               log_allocation = false;
     D3D12MA::ALLOCATION_DESC alloc_desc     = D3D12Util_CreateAllocationDesc(desc);
+    
+    // 如果指定了内存池，使用内存池分配
+    if (desc->memory_pool)
+    {
+        CGPUMemoryPool_D3D12* pool = (CGPUMemoryPool_D3D12*)desc->memory_pool;
+        alloc_desc.CustomPool = pool->pDxPool;
+        alloc_desc.Flags &= ~D3D12MA::ALLOCATION_FLAG_COMMITTED; // 不能使用 COMMITTED 标志与自定义池
+    }
 #ifdef CGPU_USE_NVAPI
     if ((desc->memory_usage == CGPU_MEM_USAGE_GPU_ONLY && desc->flags & CGPU_BCF_HOST_VISIBLE) ||
         (desc->memory_usage & CGPU_MEM_USAGE_GPU_ONLY && desc->flags == CGPU_BCF_PERSISTENT_MAP_BIT))
@@ -305,6 +334,7 @@ CGPUBufferId cgpu_create_buffer_d3d12(CGPUDeviceId device, const struct CGPUBuff
         {
             {
                 SkrZoneScopedN("Allocation(Buffer)");
+                // 如果使用了自定义内存池，D3D12MA 会从池中分配
                 CHECK_HRESULT(D->pResourceAllocator->CreateResource(&alloc_desc, &bufDesc, InitialState,
                                                                     NULL, &B->pDxAllocation, IID_ARGS(&B->pDxResource)));
             }
@@ -586,10 +616,21 @@ inline CGPUTexture_D3D12* D3D12Util_AllocateFromAllocator(CGPUAdapter_D3D12* A, 
     D3D12MA::ALLOCATION_DESC allocDesc     = {};
     // Do allocation (TODO: mGPU)
     allocDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+    
+    // 如果指定了内存池，使用内存池分配
+    if (desc->memory_pool)
+    {
+        CGPUMemoryPool_D3D12* pool = (CGPUMemoryPool_D3D12*)desc->memory_pool;
+        allocDesc.CustomPool = pool->pDxPool;
+    }
     // for smaller alignment that not suitable for MSAA
     if (desc->is_restrict_dedicated || desc->flags & CGPU_TCF_DEDICATED_BIT || desc->sample_count != CGPU_SAMPLE_COUNT_1)
     {
-        allocDesc.Flags |= D3D12MA::ALLOCATION_FLAG_COMMITTED;
+        // 使用自定义内存池时不能使用 COMMITTED 标志
+        if (!desc->memory_pool)
+        {
+            allocDesc.Flags |= D3D12MA::ALLOCATION_FLAG_COMMITTED;
+        }
     }
     bool is_allocation_dedicated = allocDesc.Flags & D3D12MA::ALLOCATION_FLAG_COMMITTED;
     bool is_restrict_dedicated   = is_allocation_dedicated;

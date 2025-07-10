@@ -1157,22 +1157,119 @@ void cgpu_free_query_pool_vulkan(CGPUQueryPoolId pool)
 
 CGPUMemoryPoolId cgpu_create_memory_pool_vulkan(CGPUDeviceId device, const struct CGPUMemoryPoolDescriptor* desc)
 {
-    VmaPool vmaPool;
     CGPUDevice_Vulkan* D = (CGPUDevice_Vulkan*)device;
+    CGPUAdapter_Vulkan* A = (CGPUAdapter_Vulkan*)device->adapter;
+    
+    // Allocate memory pool structure
+    CGPUMemoryPool_Vulkan* pool = (CGPUMemoryPool_Vulkan*)cgpu_calloc(1, sizeof(CGPUMemoryPool_Vulkan));
+    pool->super.device = device;
+    pool->super.type = desc->type;
+    
+    // Find appropriate memory type index
+    VkMemoryPropertyFlags required_flags = 0;
+    VkMemoryPropertyFlags preferred_flags = 0;
+    
+    // Map CGPU memory usage to Vulkan memory property flags
+    switch (desc->memory_usage)
+    {
+        case CGPU_MEM_USAGE_GPU_ONLY:
+            required_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+            break;
+        case CGPU_MEM_USAGE_CPU_ONLY:
+            required_flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+            preferred_flags = VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+            break;
+        case CGPU_MEM_USAGE_CPU_TO_GPU:
+            required_flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+            preferred_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+            break;
+        case CGPU_MEM_USAGE_GPU_TO_CPU:
+            required_flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+            preferred_flags = VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+            break;
+        default:
+            break;
+    }
+    
+    // Find memory type index
+    VkPhysicalDeviceMemoryProperties mem_props;
+    vkGetPhysicalDeviceMemoryProperties(A->pPhysicalDevice, &mem_props);
+    
+    uint32_t memory_type_index = UINT32_MAX;
+    for (uint32_t i = 0; i < mem_props.memoryTypeCount; i++)
+    {
+        if ((mem_props.memoryTypes[i].propertyFlags & required_flags) == required_flags)
+        {
+            if (preferred_flags == 0 || (mem_props.memoryTypes[i].propertyFlags & preferred_flags) != 0)
+            {
+                memory_type_index = i;
+                break;
+            }
+        }
+    }
+    
+    // Fallback if no memory type with preferred flags found
+    if (memory_type_index == UINT32_MAX)
+    {
+        for (uint32_t i = 0; i < mem_props.memoryTypeCount; i++)
+        {
+            if ((mem_props.memoryTypes[i].propertyFlags & required_flags) == required_flags)
+            {
+                memory_type_index = i;
+                break;
+            }
+        }
+    }
+    
+    if (memory_type_index == UINT32_MAX)
+    {
+        cgpu_error("Failed to find suitable memory type for memory pool");
+        cgpu_free(pool);
+        return NULL;
+    }
+    
+    // Create VMA pool
     VmaPoolCreateInfo poolInfo = {
+        .memoryTypeIndex = memory_type_index,
+        .blockSize = desc->block_size,
         .minBlockCount = desc->min_block_count,
         .maxBlockCount = desc->max_block_count,
         .minAllocationAlignment = desc->min_alloc_alignment,
-        .blockSize = desc->block_size,
-        .memoryTypeIndex = 0,
         .flags = 0
     };
-    vmaCreatePool(D->pVmaAllocator, &poolInfo, &vmaPool);
-    return NULL;
+    
+    // Set flags based on pool type
+    if (desc->type == CGPU_MEM_POOL_TYPE_LINEAR)
+    {
+        poolInfo.flags |= VMA_POOL_CREATE_LINEAR_ALGORITHM_BIT;
+    }
+    
+    // Create the VMA pool
+    VkResult result = vmaCreatePool(D->pVmaAllocator, &poolInfo, &pool->pVmaPool);
+    if (result != VK_SUCCESS)
+    {
+        cgpu_error("Failed to create VMA pool: %d", result);
+        cgpu_free(pool);
+        return NULL;
+    }
+    
+    return &pool->super;
 }
 
 void cgpu_free_memory_pool_vulkan(CGPUMemoryPoolId pool)
 {
+    if (pool)
+    {
+        CGPUMemoryPool_Vulkan* vk_pool = (CGPUMemoryPool_Vulkan*)pool;
+        CGPUDevice_Vulkan* D = (CGPUDevice_Vulkan*)pool->device;
+        
+        if (vk_pool->pVmaPool)
+        {
+            vmaDestroyPool(D->pVmaAllocator, vk_pool->pVmaPool);
+        }
+        
+        cgpu_free(vk_pool);
+    }
 }
 
 // Queue APIs
