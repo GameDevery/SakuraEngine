@@ -19,8 +19,9 @@ LightingCSPushConstants Renderer::lighting_cs_data = { { 0, 0 }, { 0, 0 } };
 void Renderer::read_anim()
 {
     ozz::animation::Skeleton skeleton;
-    auto                     filename = "D:/ws/data/assets/media/bin/pab_skeleton.ozz";
-    ozz::io::File            file(filename, "rb");
+    // auto                     filename = "D:/ws/data/assets/media/bin/pab_skeleton.ozz";
+    auto          filename = "D:/ws/data/assets/media/bin/ruby_skeleton.ozz";
+    ozz::io::File file(filename, "rb");
     if (!file.opened())
     {
         SKR_LOG_ERROR(u8"Cannot open file %s.", filename);
@@ -64,16 +65,15 @@ void Renderer::read_anim()
         auto parent_id = skeleton.joint_parents()[i];
         if (parent_id < 0)
         {
-            mat               = mat * m0; // apply scale to the matrix
-            _instance_data[i] = *(skr_float4x4_t*)&mat;
-            continue; // skip root joint
+            _instance_data[i] = *(skr_float4x4_t*)&m0;
+            continue; // skip joints with very small bone length
         }
         auto parent_mat  = animd::ozz2skr_float4x4(prealloc_models_[parent_id]);
         auto bone_dir    = skr::float3(parent_mat.rows[0][3] - mat.rows[0][3], parent_mat.rows[1][3] - mat.rows[1][3], parent_mat.rows[2][3] - mat.rows[2][3]);
         auto bone_length = skr::length(bone_dir);
-        // auto bone_scale  = skr::abs(bone_dir);
         if (bone_length < 0.01f)
         {
+            _instance_data[i] = *(skr_float4x4_t*)&m0;
             continue; // skip joints with very small bone length
         }
         // resize according to bone length

@@ -74,7 +74,7 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
         imgui_backend.create(
             {
                 .title = skr::format(u8"Anim Debug Runtime Inner [{}]", gCGPUBackendNames[renderer.get_backend()]),
-                .size  = { 1500, 1500 },
+                .size  = { 1024, 768 },
             },
             std::move(render_backend)
         );
@@ -90,8 +90,8 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
 
     animd::Camera camera;
     renderer.set_pcamera(&camera);
-    camera.position = skr::float3(0.1f, 2.1f, -2.1f);        // eye position
-    skr_float3_t target(0.0f, 0.0f, 0.0f);                   // look at position
+    camera.position = skr::float3(0.1f, 2.1f, 3.1f);         // eye position
+    skr_float3_t target(0.0f, 1.0f, 0.0f);                   // look at position
     camera.front = skr::normalize(target - camera.position); // look at direction
 
     bool     show_demo_window = true;
