@@ -19,6 +19,43 @@
 #include <AnimDebugRuntime/util.h>
 #include <SkrAnim/ozz/base/containers/vector.h>
 
+void DisplayBoneHierarchy(const ozz::animation::Skeleton& skeleton, int bone_index)
+{
+    const char* bone_name = skeleton.joint_names()[bone_index];
+
+    // Check if this bone has children to determine if it's a leaf or a node
+    bool has_children = false;
+    for (int i = 0; i < skeleton.num_joints(); ++i)
+    {
+        if (skeleton.joint_parents()[i] == bone_index)
+        {
+            has_children = true;
+            break;
+        }
+    }
+
+    ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
+    if (!has_children)
+    {
+        node_flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_Bullet;
+    }
+
+    bool node_open = ImGui::TreeNodeEx((void*)(intptr_t)bone_index, node_flags, "%s", bone_name);
+
+    if (node_open)
+    {
+        // If the node is open, recurse for all children
+        for (int i = 0; i < skeleton.num_joints(); ++i)
+        {
+            if (skeleton.joint_parents()[i] == bone_index)
+            {
+                DisplayBoneHierarchy(skeleton, i);
+            }
+        }
+        ImGui::TreePop();
+    }
+}
+
 class SAnimDebugModule : public skr::IDynamicModule
 {
     virtual void on_load(int argc, char8_t** argv) override;
@@ -66,7 +103,8 @@ void SAnimDebugModule::on_unload()
 
 int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
 {
-    namespace rg = skr::render_graph;
+    constexpr float M_PI = 3.14159265358979323846f;
+    namespace rg         = skr::render_graph;
     SkrZoneScopedN("AnimDebugExecution");
     SKR_LOG_INFO(u8"anim debug runtime executed as main module!");
     animd::Renderer renderer;
@@ -170,8 +208,73 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
             imgui_backend.begin_frame();
         }
 
+        // Camera control
         {
-            ImGui::ShowDemoWindow(&show_demo_window);
+            ImGuiIO&    io                 = ImGui::GetIO();
+            const float camera_speed       = 2.5f * io.DeltaTime;
+            const float camera_pan_speed   = 0.5f * io.DeltaTime;
+            const float camera_sensitivity = 0.1f;
+
+            skr_float3_t world_up     = { 0.0f, 1.0f, 0.0f };
+            skr_float3_t camera_right = skr::normalize(skr::cross(camera.front, world_up));
+            skr_float3_t camera_up    = skr::normalize(skr::cross(camera_right, camera.front));
+
+            // Movement
+            if (ImGui::IsKeyDown(ImGuiKey_W)) camera.position += camera.front * camera_speed;
+            if (ImGui::IsKeyDown(ImGuiKey_S)) camera.position -= camera.front * camera_speed;
+            if (ImGui::IsKeyDown(ImGuiKey_A)) camera.position -= camera_right * camera_speed;
+            if (ImGui::IsKeyDown(ImGuiKey_D)) camera.position += camera_right * camera_speed;
+
+            // Rotation
+            if (ImGui::IsMouseDown(ImGuiMouseButton_Right))
+            {
+                static float yaw   = -90.0f;
+                static float pitch = 0.0f;
+                yaw += io.MouseDelta.x * camera_sensitivity;
+                pitch -= io.MouseDelta.y * camera_sensitivity;
+                if (pitch > 89.0f) pitch = 89.0f;
+                if (pitch < -89.0f) pitch = -89.0f;
+
+                skr_float3_t direction;
+                direction.x  = cosf(yaw * (float)M_PI / 180.f) * cosf(pitch * (float)M_PI / 180.f);
+                direction.y  = sinf(pitch * (float)M_PI / 180.f);
+                direction.z  = sinf(yaw * (float)M_PI / 180.f) * cosf(pitch * (float)M_PI / 180.f);
+                camera.front = skr::normalize(direction);
+            }
+
+            // Panning
+            if (ImGui::IsMouseDown(ImGuiMouseButton_Middle))
+            {
+                camera.position -= camera_right * io.MouseDelta.x * camera_pan_speed;
+                camera.position += camera_up * io.MouseDelta.y * camera_pan_speed;
+            }
+        }
+
+        {
+            // ImGui::ShowDemoWindow(&show_demo_window);
+            ImGui::Begin("Skeleton Hierarchy");
+            if (skeleton.num_joints() > 0)
+            {
+                // Find and display root bones (those with no parent)
+                for (int i = 0; i < skeleton.num_joints(); ++i)
+                {
+                    if (skeleton.joint_parents()[i] == ozz::animation::Skeleton::kNoParent)
+                    {
+                        DisplayBoneHierarchy(skeleton, i);
+                    }
+                }
+            }
+            else
+            {
+                ImGui::Text("No skeleton loaded.");
+            }
+            ImGui::End();
+        }
+        {
+            ImGui::Begin("Camera Info");
+            ImGui::Text("Position: (%.2f, %.2f, %.2f)", camera.position.x, camera.position.y, camera.position.z);
+            ImGui::Text("Front:    (%.2f, %.2f, %.2f)", camera.front.x, camera.front.y, camera.front.z);
+            ImGui::End();
         }
         {
             SkrZoneScopedN("ImGuiEndFrame");
