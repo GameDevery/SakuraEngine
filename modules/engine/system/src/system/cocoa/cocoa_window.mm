@@ -456,6 +456,18 @@ skr::math::uint2 CocoaWindow::get_size() const SKR_NOEXCEPT
 skr::math::uint2 CocoaWindow::get_physical_size() const SKR_NOEXCEPT
 {
     @autoreleasepool {
+        // If we have a Metal view, return its drawable size
+        // This is what rendering backends actually need
+        if (metal_view_) {
+            CAMetalLayer* metalLayer = (CAMetalLayer*)[metal_view_ layer];
+            CGSize drawableSize = metalLayer.drawableSize;
+            return {
+                (uint32_t)drawableSize.width,
+                (uint32_t)drawableSize.height
+            };
+        }
+        
+        // Otherwise calculate from window content rect
         NSRect contentRect = [window_ contentRectForFrameRect:[window_ frame]];
         CGFloat backingScale = [window_ backingScaleFactor];
         
