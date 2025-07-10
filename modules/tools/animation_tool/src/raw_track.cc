@@ -31,7 +31,6 @@
 
 #include "SkrAnim/ozz/base/io/archive.h"
 #include "SkrAnim/ozz/base/maths/math_archive.h"
-
 #include "SkrAnim/ozz/base/containers/string_archive.h"
 #include "SkrAnim/ozz/base/containers/vector_archive.h"
 
@@ -118,7 +117,7 @@ template <typename _ValueType>
 void RawTrack<_ValueType>::Load(io::IArchive& _archive, uint32_t _version)
 {
     (void)_version;
-    SKR_ASSERT(_version == 1);
+    assert(_version == 1);
     _archive >> keyframes;
     _archive >> name;
 }

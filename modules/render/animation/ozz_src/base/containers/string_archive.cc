@@ -24,8 +24,8 @@
 // DEALINGS IN THE SOFTWARE.                                                  //
 //                                                                            //
 //----------------------------------------------------------------------------//
-#include "SkrAnim/ozz/base/containers/string_archive.h"
 
+#include "SkrAnim/ozz/base/containers/string_archive.h"
 #include "SkrAnim/ozz/base/io/archive.h"
 #include "SkrAnim/ozz/base/maths/math_ex.h"
 

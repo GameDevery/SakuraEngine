@@ -24,6 +24,7 @@
 // DEALINGS IN THE SOFTWARE.                                                  //
 //                                                                            //
 //----------------------------------------------------------------------------//
+
 #include "SkrAnim/ozz/local_to_model_job.h"
 
 #include <cassert>
@@ -33,21 +34,10 @@
 #include "SkrAnim/ozz/base/maths/soa_float4x4.h"
 #include "SkrAnim/ozz/base/maths/soa_transform.h"
 
-#include "SkrAnim/ozz/skeleton.h"
-
 namespace ozz
 {
 namespace animation
 {
-
-LocalToModelJob::LocalToModelJob()
-    : skeleton(nullptr)
-    , root(nullptr)
-    , from(Skeleton::kNoParent)
-    , to(Skeleton::kMaxJoints)
-    , from_excluded(false)
-{
-}
 
 bool LocalToModelJob::Validate() const
 {

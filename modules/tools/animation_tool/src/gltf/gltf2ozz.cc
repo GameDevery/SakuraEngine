@@ -29,6 +29,9 @@
 // Initial gltf2ozz implementation author: Alexander Dzhoganov                //
 // https://github.com/guillaumeblanc/ozz-animation/pull/70                    //
 //----------------------------------------------------------------------------//
+
+/// TODO: NEED UPDATE
+
 #include <cassert>
 #include <cstring>
 

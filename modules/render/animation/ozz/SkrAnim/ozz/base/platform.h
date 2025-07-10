@@ -33,17 +33,18 @@
 // Unfortunately MSVC doesn't update __cplusplus, so test compiler version
 // instead.
 #if !((__cplusplus >= 201103L) || (_MSC_VER >= 1900))
-#error "ozz-animation requires c++11 language standards."
-#endif  // __cplusplus
+    #error "ozz-animation requires c++11 language standards."
+#endif // __cplusplus
 
 #include <stdint.h>
 
-#include "SkrBase/misc/debug.h" 
+#include <cassert>
 #include <cstddef>
 
 #include "SkrAnim/ozz/base/export.h"
 
-namespace ozz {
+namespace ozz
+{
 
 // Defines a byte type, unsigned so right shift  doesn't propagate sign bit.
 typedef uint8_t byte;
@@ -55,17 +56,17 @@ typedef uint8_t byte;
 // compiler analysis.
 // Syntax is: "OZZ_INLINE void function();"
 #if defined(_MSC_VER)
-#define OZZ_INLINE __forceinline
+    #define OZZ_INLINE __forceinline
 #else
-#define OZZ_INLINE inline __attribute__((always_inline))
+    #define OZZ_INLINE inline __attribute__((always_inline))
 #endif
 
 // Tells the compiler to never inline a function.
 // Syntax is: "OZZ_NO_INLINE void function();"
 #if defined(_MSC_VER)
-#define OZZ_NOINLINE __declspec(noinline)
+    #define OZZ_NOINLINE __declspec(noinline)
 #else
-#define OZZ_NOINLINE __attribute__((noinline))
+    #define OZZ_NOINLINE __attribute__((noinline))
 #endif
 
 // Tells the compiler that the memory addressed by the restrict -qualified
@@ -74,13 +75,13 @@ typedef uint8_t byte;
 #define OZZ_RESTRICT __restrict
 
 // Defines macro to help with DEBUG/NDEBUG syntax.
-#if SKR_SHIPPING
-#define OZZ_IF_DEBUG(...)
-#define OZZ_IF_NDEBUG(...) __VA_ARGS__
-#else  // NDEBUG
-#define OZZ_IF_DEBUG(...) __VA_ARGS__
-#define OZZ_IF_NDEBUG(...)
-#endif  // NDEBUG
+#if defined(NDEBUG)
+    #define OZZ_IF_DEBUG(...)
+    #define OZZ_IF_NDEBUG(...) __VA_ARGS__
+#else // NDEBUG
+    #define OZZ_IF_DEBUG(...) __VA_ARGS__
+    #define OZZ_IF_NDEBUG(...)
+#endif // NDEBUG
 
 // Case sensitive wildcard string matching:
 // - a ? sign matches any character, except an empty string.
@@ -89,31 +90,37 @@ OZZ_BASE_DLL bool strmatch(const char* _str, const char* _pattern);
 
 // Tests whether _block is aligned to _alignment boundary.
 template <typename _Ty>
-OZZ_INLINE bool IsAligned(_Ty _value, size_t _alignment) {
-  return (_value & (_alignment - 1)) == 0;
+OZZ_INLINE bool IsAligned(_Ty _value, size_t _alignment)
+{
+    return (_value & (_alignment - 1)) == 0;
 }
 template <typename _Ty>
-OZZ_INLINE bool IsAligned(_Ty* _address, size_t _alignment) {
-  return (reinterpret_cast<uintptr_t>(_address) & (_alignment - 1)) == 0;
+OZZ_INLINE bool IsAligned(_Ty* _address, size_t _alignment)
+{
+    return (reinterpret_cast<uintptr_t>(_address) & (_alignment - 1)) == 0;
 }
 
 // Aligns _block address to the first greater address that is aligned to
 // _alignment boundaries.
 template <typename _Ty>
-OZZ_INLINE _Ty Align(_Ty _value, size_t _alignment) {
-  return static_cast<_Ty>(_value + (_alignment - 1)) & (0 - _alignment);
+OZZ_INLINE _Ty Align(_Ty _value, size_t _alignment)
+{
+    return static_cast<_Ty>(_value + (_alignment - 1)) & (0 - _alignment);
 }
 template <typename _Ty>
-OZZ_INLINE _Ty* Align(_Ty* _address, size_t _alignment) {
-  return reinterpret_cast<_Ty*>(
-      (reinterpret_cast<uintptr_t>(_address) + (_alignment - 1)) &
-      (0 - _alignment));
+OZZ_INLINE _Ty* Align(_Ty* _address, size_t _alignment)
+{
+    return reinterpret_cast<_Ty*>(
+        (reinterpret_cast<uintptr_t>(_address) + (_alignment - 1)) &
+        (0 - _alignment)
+    );
 }
 
 // Offset a pointer from a given number of bytes.
 template <typename _Ty>
-_Ty* PointerStride(_Ty* _ty, size_t _stride) {
-  return reinterpret_cast<_Ty*>(reinterpret_cast<uintptr_t>(_ty) + _stride);
+_Ty* PointerStride(_Ty* _ty, size_t _stride)
+{
+    return reinterpret_cast<_Ty*>(reinterpret_cast<uintptr_t>(_ty) + _stride);
 }
-}  // namespace ozz
-#endif  // OZZ_OZZ_BASE_PLATFORM_H_
+} // namespace ozz
+#endif // OZZ_OZZ_BASE_PLATFORM_H_

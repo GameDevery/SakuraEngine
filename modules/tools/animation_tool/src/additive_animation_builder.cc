@@ -70,7 +70,7 @@ math::Float3 MakeDeltaTranslation(const math::Float3& _reference, const math::Fl
 
 math::Quaternion MakeDeltaRotation(const math::Quaternion& _reference, const math::Quaternion& _value)
 {
-    return _value * Conjugate(_reference);
+    return Conjugate(_reference) * _value;
 }
 
 math::Float3 MakeDeltaScale(const math::Float3& _reference, const math::Float3& _value)
@@ -78,9 +78,6 @@ math::Float3 MakeDeltaScale(const math::Float3& _reference, const math::Float3& 
     return _value / _reference;
 }
 } // namespace
-
-// Setup default values (favoring quality).
-AdditiveAnimationBuilder::AdditiveAnimationBuilder() {}
 
 bool AdditiveAnimationBuilder::operator()(const RawAnimation& _input, RawAnimation* _output) const
 {

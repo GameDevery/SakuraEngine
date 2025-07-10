@@ -32,11 +32,9 @@
 #include <cstring>
 #include <limits>
 
-#include "SkrAnim/ozz/base/memory/allocator.h"
-
 #include "SkrAnimTool/ozz/raw_track.h"
-
 #include "SkrAnim/ozz/track.h"
+#include "SkrAnim/ozz/base/memory/allocator.h"
 
 namespace ozz
 {
@@ -53,26 +51,14 @@ void PatchBeginEndKeys(const _RawTrack& _input, typename _RawTrack::Keyframes* k
 {
     if (_input.keyframes.empty())
     {
-        const typename _RawTrack::ValueType default_value =
-            animation::internal::TrackPolicy<
-                typename _RawTrack::ValueType>::identity();
-
-        const typename _RawTrack::Keyframe begin = { RawTrackInterpolation::kLinear,
-                                                     0.f, default_value };
-        keyframes->push_back(begin);
-        const typename _RawTrack::Keyframe end = { RawTrackInterpolation::kLinear,
-                                                   1.f, default_value };
-        keyframes->push_back(end);
+        // Empty (identity) is supported during sampling.
     }
-    else if (_input.keyframes.size() == 1)
-    {
+    else if (_input.keyframes.size() < 2)
+    { // Constant
         const typename _RawTrack::Keyframe& src_key = _input.keyframes.front();
         const typename _RawTrack::Keyframe  begin   = { RawTrackInterpolation::kLinear,
                                                         0.f, src_key.value };
         keyframes->push_back(begin);
-        const typename _RawTrack::Keyframe end = { RawTrackInterpolation::kLinear,
-                                                   1.f, src_key.value };
-        keyframes->push_back(end);
     }
     else
     {
@@ -146,7 +132,7 @@ unique_ptr<_Track> TrackBuilder::Build(const _RawTrack& _input) const
     track->Allocate(keyframes.size(), _input.name.size());
 
     // Copy all keys to output.
-    SKR_ASSERT(keyframes.size() == track->ratios_.size() && keyframes.size() == track->values_.size() && keyframes.size() <= track->steps_.size() * 8);
+    assert(keyframes.size() == track->ratios_.size() && keyframes.size() == track->values_.size() && keyframes.size() <= track->steps_.size() * 8);
     memset(track->steps_.data(), 0, track->steps_.size_bytes());
     for (size_t i = 0; i < keyframes.size(); ++i)
     {
@@ -200,8 +186,6 @@ void Fixup<RawQuaternionTrack::Keyframes>(
     RawQuaternionTrack::Keyframes* _keyframes
 )
 {
-    SKR_ASSERT(_keyframes->size() >= 2);
-
     const math::Quaternion identity = math::Quaternion::identity();
     for (size_t i = 0; i < _keyframes->size(); ++i)
     {
@@ -215,7 +199,7 @@ void Fixup<RawQuaternionTrack::Keyframes>(
         {
             if (src_key.w < 0.f)
             {
-                src_key = -src_key; // Q an -Q are the same rotation.
+                src_key = -src_key; // Q and -Q are the same rotation.
             }
         }
         else

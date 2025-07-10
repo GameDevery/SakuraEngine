@@ -29,7 +29,6 @@
 
 #include "SkrAnim/ozz/base/io/archive.h"
 #include "SkrAnim/ozz/base/maths/math_archive.h"
-
 #include "SkrAnim/ozz/base/containers/string_archive.h"
 #include "SkrAnim/ozz/base/containers/vector_archive.h"
 

@@ -6,8 +6,12 @@ using Serilog;
 public static class AnimTemp {
     static AnimTemp()
     {
-        Engine.Program("AnimTemp", "ANIM_TEMP")
+        Engine.Program("AnimReadSkeleton", "ANIM_TEMP")
             .Depend(Visibility.Private, "AnimDebugRuntime")
-            .AddCppFiles("anim_temp.cpp");
+            .AddCppFiles("read_skeleton.cpp");
+
+        Engine.Program("AnimReadAnimation", "ANIM_TEMP")
+            .Depend(Visibility.Private, "AnimDebugRuntime")
+            .AddCppFiles("read_animation.cpp");
     }
 }

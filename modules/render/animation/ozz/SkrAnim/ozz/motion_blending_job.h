@@ -25,16 +25,16 @@
 //                                                                            //
 //----------------------------------------------------------------------------//
 
-#ifndef OZZ_OZZ_ANIMATION_OFFLINE_ADDITIVE_ANIMATION_BUILDER_H_
-#define OZZ_OZZ_ANIMATION_OFFLINE_ADDITIVE_ANIMATION_BUILDER_H_
+#ifndef OZZ_OZZ_ANIMATION_RUNTIME_MOTION_BLENDING_JOB_H_
+#define OZZ_OZZ_ANIMATION_RUNTIME_MOTION_BLENDING_JOB_H_
 
-#include "SkrAnimTool/ozz/export.h"
-#include "SkrAnim/ozz/base/platform.h"
-#include "SkrAnim/ozz/base/span.h"
+#include "SKrAnim/ozz/export.h"
+#include "SKrAnim/ozz/base/span.h"
 
 namespace ozz
 {
 
+// Forward declaration of math structures.
 namespace math
 {
 struct Transform;
@@ -42,36 +42,42 @@ struct Transform;
 
 namespace animation
 {
-namespace offline
-{
 
-// Forward declare offline animation type.
-struct RawAnimation;
+// ozz::animation::MotionBlendingJob is in charge of blending delta motions
+// according to their respective weight. MotionBlendingJob is usually done to
+// blend the motion resulting from the motion extraction process, in parallel to
+// blending animations.
+struct OZZ_ANIMATION_DLL MotionBlendingJob {
+    // Validates job parameters.
+    // Returns true for a valid job, false otherwise:
+    // -if a layer transform pointer is null.
+    // -if output transform pointer is null.
+    bool Validate() const;
 
-// Defines the class responsible for building a delta animation from an offline
-// raw animation. This is used to create animations compatible with additive
-// blending.
-class OZZ_ANIMOFFLINE_DLL AdditiveAnimationBuilder
-{
-public:
-    // Builds delta animation from _input..
-    // Returns true on success and fills _output_animation with the delta
-    // version of _input animation.
-    // *_output must be a valid RawAnimation instance. Uses first frame as
-    // reference pose Returns false on failure and resets _output to an empty
-    // animation. See RawAnimation::Validate() for more details about failure
-    // reasons.
-    bool operator()(const RawAnimation& _input, RawAnimation* _output) const;
+    // Runs job's blending task.
+    // The job is validated before any operation is performed, see Validate() for
+    // more details.
+    // Returns false if *this job is not valid.
+    bool Run() const;
 
-    // Builds delta animation from _input..
-    // Returns true on success and fills _output_animation with the delta
-    // *_output must be a valid RawAnimation instance.
-    // version of _input animation.
-    // *_reference_pose used as the base pose to calculate deltas from
-    // Returns false on failure and resets _output to an empty animation.
-    bool operator()(const RawAnimation& _input, const span<const math::Transform>& _reference_pose, RawAnimation* _output) const;
+    // Defines a layer of blending input data and its weight.
+    struct OZZ_ANIMATION_DLL Layer {
+        // Blending weight of this layer. Negative values are considered as 0.
+        // Normalization is performed at the end of the blending stage, so weight
+        // can be in any range, even though range [0:1] is optimal.
+        float weight = 0.f;
+
+        // The motion delta transform to be blended.
+        const math::Transform* delta = nullptr;
+    };
+
+    // Job input layers, can be empty or nullptr.
+    // The range of layers that must be blended.
+    span<const Layer> layers;
+
+    // Job output.
+    ozz::math::Transform* output = nullptr;
 };
-} // namespace offline
 } // namespace animation
 } // namespace ozz
-#endif // OZZ_OZZ_ANIMATION_OFFLINE_ADDITIVE_ANIMATION_BUILDER_H_
+#endif // OZZ_OZZ_ANIMATION_RUNTIME_MOTION_BLENDING_JOB_H_

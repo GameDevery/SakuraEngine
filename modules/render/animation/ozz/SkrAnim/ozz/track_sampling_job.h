@@ -31,52 +31,58 @@
 #include "SkrAnim/ozz/export.h"
 #include "SkrAnim/ozz/track.h"
 
-namespace ozz {
-namespace animation {
+namespace ozz
+{
+namespace animation
+{
 
-namespace internal {
+namespace internal
+{
 
 // TrackSamplingJob internal implementation. See *TrackSamplingJob for more
 // details.
 template <typename _Track>
 struct TrackSamplingJob {
-  typedef typename _Track::ValueType ValueType;
+    typedef typename _Track::ValueType ValueType;
 
-  TrackSamplingJob();
+    // Validates all parameters.
+    bool Validate() const;
 
-  // Validates all parameters.
-  bool Validate() const;
+    // Validates and executes sampling.
+    bool Run() const;
 
-  // Validates and executes sampling.
-  bool Run() const;
+    // Ratio used to sample track, clamped in range [0,1] before job execution. 0
+    // is the beginning of the track, 1 is the end. This is a ratio rather than a
+    // ratio because tracks have no duration.
+    float ratio = 0.f;
 
-  // Ratio used to sample track, clamped in range [0,1] before job execution. 0
-  // is the beginning of the track, 1 is the end. This is a ratio rather than a
-  // ratio because tracks have no duration.
-  float ratio;
+    // Track to sample.
+    const _Track* track = nullptr;
 
-  // Track to sample.
-  const _Track* track;
-
-  // Job output.
-  typename _Track::ValueType* result;
+    // Job output.
+    typename _Track::ValueType* result = nullptr;
 };
-}  // namespace internal
+} // namespace internal
 
 // Track sampling job implementation. Track sampling allows to query a track
 // value for a specified ratio. This is a ratio rather than a time because
 // tracks have no duration.
 struct OZZ_ANIMATION_DLL FloatTrackSamplingJob
-    : public internal::TrackSamplingJob<FloatTrack> {};
+    : public internal::TrackSamplingJob<FloatTrack> {
+};
 struct OZZ_ANIMATION_DLL Float2TrackSamplingJob
-    : public internal::TrackSamplingJob<Float2Track> {};
+    : public internal::TrackSamplingJob<Float2Track> {
+};
 struct OZZ_ANIMATION_DLL Float3TrackSamplingJob
-    : public internal::TrackSamplingJob<Float3Track> {};
+    : public internal::TrackSamplingJob<Float3Track> {
+};
 struct OZZ_ANIMATION_DLL Float4TrackSamplingJob
-    : public internal::TrackSamplingJob<Float4Track> {};
+    : public internal::TrackSamplingJob<Float4Track> {
+};
 struct OZZ_ANIMATION_DLL QuaternionTrackSamplingJob
-    : public internal::TrackSamplingJob<QuaternionTrack> {};
+    : public internal::TrackSamplingJob<QuaternionTrack> {
+};
 
-}  // namespace animation
-}  // namespace ozz
-#endif  // OZZ_OZZ_ANIMATION_RUNTIME_TRACK_SAMPLING_JOB_H_
+} // namespace animation
+} // namespace ozz
+#endif // OZZ_OZZ_ANIMATION_RUNTIME_TRACK_SAMPLING_JOB_H_

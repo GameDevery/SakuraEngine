@@ -53,9 +53,6 @@ struct RawQuaternionTrack;
 class OZZ_ANIMOFFLINE_DLL TrackOptimizer
 {
 public:
-    // Initializes the optimizer with default tolerances (favoring quality).
-    TrackOptimizer();
-
     // Optimizes _input using *this parameters.
     // Returns true on success and fills _output track with the optimized
     // version of _input track.
@@ -68,8 +65,8 @@ public:
     bool operator()(const RawFloat4Track& _input, RawFloat4Track* _output) const;
     bool operator()(const RawQuaternionTrack& _input, RawQuaternionTrack* _output) const;
 
-    // Optimization tolerance.
-    float tolerance;
+    // Optimization tolerance. Default tolerance favors quality.
+    float tolerance = 1e-3f; // 1mm
 };
 } // namespace offline
 } // namespace animation

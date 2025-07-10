@@ -1,9 +1,4 @@
-/**
- * @file main.cpp
- * @brief Temp Sample for SkrAnim Development
- * @author sailing-innocent
- * @date 2025-06-26
- */
+// sample to read an ozz skeleton file and print its details
 
 #include "SkrAnim/ozz/base/maths/simd_math.h"
 #include <iostream>

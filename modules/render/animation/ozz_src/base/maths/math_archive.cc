@@ -24,16 +24,16 @@
 // DEALINGS IN THE SOFTWARE.                                                  //
 //                                                                            //
 //----------------------------------------------------------------------------//
+
 #include "SkrAnim/ozz/base/maths/math_archive.h"
-
-#include <cassert>
-
 #include "SkrAnim/ozz/base/io/archive.h"
 #include "SkrAnim/ozz/base/maths/box.h"
 #include "SkrAnim/ozz/base/maths/quaternion.h"
 #include "SkrAnim/ozz/base/maths/rect.h"
 #include "SkrAnim/ozz/base/maths/transform.h"
 #include "SkrAnim/ozz/base/maths/vec_float.h"
+
+#include <cassert>
 
 namespace ozz
 {

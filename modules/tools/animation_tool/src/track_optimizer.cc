@@ -33,11 +33,8 @@
 // Internal include file
 #define OZZ_INCLUDE_PRIVATE_HEADER // Allows to include private headers.
 #include "decimate.h"
-
-#include "SkrAnim/ozz/base/maths/math_ex.h"
-
 #include "SkrAnimTool/ozz/raw_track.h"
-
+#include "SkrAnim/ozz/base/maths/math_ex.h"
 // Needs runtime track to access TrackPolicy.
 #include "SkrAnim/ozz/track.h"
 
@@ -48,12 +45,6 @@ namespace animation
 namespace offline
 {
 
-// Setup default values (favoring quality).
-TrackOptimizer::TrackOptimizer()
-    : tolerance(1e-3f)
-{ // 1 mm.
-}
-
 namespace
 {
 
@@ -61,8 +52,6 @@ template <typename _KeyFrame>
 struct Adapter {
     typedef typename _KeyFrame::ValueType                        ValueType;
     typedef typename animation::internal::TrackPolicy<ValueType> Policy;
-
-    Adapter() {}
 
     bool Decimable(const _KeyFrame& _key) const
     {
@@ -73,19 +62,21 @@ struct Adapter {
 
     _KeyFrame Lerp(const _KeyFrame& _left, const _KeyFrame& _right, const _KeyFrame& _ref) const
     {
-        SKR_ASSERT(Decimable(_ref));
+        assert(Decimable(_ref));
         const float alpha =
             (_ref.ratio - _left.ratio) / (_right.ratio - _left.ratio);
-        SKR_ASSERT(alpha >= 0.f && alpha <= 1.f);
+        assert(alpha >= 0.f && alpha <= 1.f);
         const _KeyFrame key = { _ref.interpolation, _ref.ratio,
                                 Policy::Lerp(_left.value, _right.value, alpha) };
         return key;
     }
 
-    float Distance(const _KeyFrame& _a, const _KeyFrame& _b) const
+    float Distance(const ValueType& _a, const ValueType& _b) const
     {
-        return Policy::Distance(_a.value, _b.value);
+        return Policy::Distance(_a, _b);
     }
+
+    inline static ValueType identity() { return Policy::identity(); }
 };
 
 template <typename _Track>
@@ -95,6 +86,12 @@ inline bool Optimize(float _tolerance, const _Track& _input, _Track* _output)
     {
         return false;
     }
+
+    if (&_input == _output)
+    {
+        return false;
+    }
+
     // Reset output animation to default.
     *_output = _Track();
 
@@ -109,7 +106,7 @@ inline bool Optimize(float _tolerance, const _Track& _input, _Track* _output)
 
     // Optimizes.
     const Adapter<typename _Track::Keyframe> adapter;
-    Decimate(_input.keyframes, adapter, _tolerance, &_output->keyframes);
+    _output->keyframes = Decimate(_input.keyframes, adapter, _tolerance);
 
     // Output animation is always valid though.
     return _output->Validate();

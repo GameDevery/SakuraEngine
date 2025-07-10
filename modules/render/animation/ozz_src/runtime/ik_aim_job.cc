@@ -24,12 +24,12 @@
 // DEALINGS IN THE SOFTWARE.                                                  //
 //                                                                            //
 //----------------------------------------------------------------------------//
+
 #include "SkrAnim/ozz/ik_aim_job.h"
-
-#include <cassert>
-
 #include "SkrAnim/ozz/base/maths/math_ex.h"
 #include "SkrAnim/ozz/base/maths/simd_quaternion.h"
+
+#include <cassert>
 
 using namespace ozz::math;
 
@@ -37,19 +37,6 @@ namespace ozz
 {
 namespace animation
 {
-IKAimJob::IKAimJob()
-    : target(simd_float4::zero())
-    , forward(simd_float4::x_axis())
-    , offset(simd_float4::zero())
-    , up(simd_float4::y_axis())
-    , pole_vector(simd_float4::y_axis())
-    , twist_angle(0.f)
-    , weight(1.f)
-    , joint(nullptr)
-    , joint_correction(nullptr)
-    , reached(nullptr)
-{
-}
 
 bool IKAimJob::Validate() const
 {

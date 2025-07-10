@@ -30,7 +30,7 @@
 
 #include "SkrAnimTool/ozz/export.h"
 #include "SkrAnimTool/ozz/raw_animation.h"
-
+#include "SkrAnim/ozz/base/containers/vector.h"
 #include "SkrAnim/ozz/base/maths/transform.h"
 #include "SkrAnim/ozz/base/span.h"
 
@@ -66,6 +66,11 @@ OZZ_ANIMOFFLINE_DLL bool SampleAnimation(
     const span<ozz::math::Transform>& _transforms
 );
 
+// Get the union of all keyframe times from a valid RawAnimation.
+OZZ_ANIMOFFLINE_DLL ozz::vector<float> ExtractTimePoints(
+    const RawAnimation& _animation
+);
+
 // Implement fixed rate keyframe time iteration. This utility purpose is to
 // ensure that sampling goes strictly from 0 to duration, and that period
 // between consecutive time samples have a fixed period.
@@ -78,7 +83,7 @@ public:
 
     float time(size_t _key) const
     {
-        SKR_ASSERT(_key < num_keys_);
+        assert(_key < num_keys_);
         return ozz::math::Min(_key * period_, duration_);
     }
 

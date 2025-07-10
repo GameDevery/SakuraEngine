@@ -24,8 +24,8 @@
 // DEALINGS IN THE SOFTWARE.                                                  //
 //                                                                            //
 //----------------------------------------------------------------------------//
-#include "SkrAnim/ozz/base/maths/soa_math_archive.h"
 
+#include "SkrAnim/ozz/base/maths/soa_math_archive.h"
 #include "SkrAnim/ozz/base/io/archive.h"
 #include "SkrAnim/ozz/base/maths/soa_float.h"
 #include "SkrAnim/ozz/base/maths/soa_float4x4.h"

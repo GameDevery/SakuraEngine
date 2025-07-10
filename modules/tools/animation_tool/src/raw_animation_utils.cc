@@ -102,13 +102,13 @@ typename _Track::value_type::Value SampleComponent(const _Track& _track, const _
     else
     {
         // Needs to interpolate the 2 keyframes before and after _time.
-        SKR_ASSERT(_track.size() >= 2);
+        assert(_track.size() >= 2);
         // First find the 2 keys.
         const typename _Track::value_type cmp = { _time,
                                                   _Track::value_type::identity() };
         typename _Track::const_pointer    it =
             std::lower_bound(array_begin(_track), array_end(_track), cmp, Less<typename _Track::value_type>);
-        SKR_ASSERT(it > array_begin(_track) && it < array_end(_track));
+        assert(it > array_begin(_track) && it < array_end(_track));
 
         // Then interpolate them at t = _time.
         const typename _Track::const_reference right = it[0];
@@ -154,6 +154,42 @@ bool SampleAnimation(const RawAnimation& _animation, float _time, const span<ozz
         SampleTrack_NoValidate(_animation.tracks[i], _time, _transforms.begin() + i);
     }
     return true;
+}
+
+namespace
+{
+template <typename _Track, typename _Times>
+inline void CopyKeyTimes(const _Track& _track, _Times* _key_times)
+{
+    for (size_t i = 0; i < _track.size(); ++i)
+    {
+        _key_times->push_back(_track[i].time);
+    }
+}
+} // namespace
+
+ozz::vector<float> ExtractTimePoints(const RawAnimation& _animation)
+{
+    ozz::vector<float> times;
+
+    if (!_animation.Validate())
+    {
+        return times;
+    }
+
+    // Gets union of all possible keyframe times.
+    for (int i = 0; i < _animation.num_tracks(); ++i)
+    {
+        const RawAnimation::JointTrack& track = _animation.tracks[i];
+        CopyKeyTimes(track.translations, &times);
+        CopyKeyTimes(track.rotations, &times);
+        CopyKeyTimes(track.scales, &times);
+
+        std::sort(times.begin(), times.end());
+        times.erase(std::unique(times.begin(), times.end()), times.end());
+    }
+
+    return times;
 }
 
 FixedRateSamplingTime::FixedRateSamplingTime(float _duration, float _frequency)

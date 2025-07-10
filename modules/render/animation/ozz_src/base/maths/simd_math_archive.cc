@@ -24,6 +24,7 @@
 // DEALINGS IN THE SOFTWARE.                                                  //
 //                                                                            //
 //----------------------------------------------------------------------------//
+
 #include "SkrAnim/ozz/base/maths/simd_math_archive.h"
 
 #include <cassert>

@@ -24,12 +24,12 @@
 // DEALINGS IN THE SOFTWARE.                                                  //
 //                                                                            //
 //----------------------------------------------------------------------------//
+
 #include "SkrAnim/ozz/base/maths/box.h"
-
-#include <limits>
-
 #include "SkrAnim/ozz/base/maths/math_ex.h"
 #include "SkrAnim/ozz/base/maths/simd_math.h"
+
+#include <limits>
 
 namespace ozz
 {

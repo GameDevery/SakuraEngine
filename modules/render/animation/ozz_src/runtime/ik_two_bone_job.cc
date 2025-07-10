@@ -24,6 +24,7 @@
 // DEALINGS IN THE SOFTWARE.                                                  //
 //                                                                            //
 //----------------------------------------------------------------------------//
+
 #include "SkrAnim/ozz/ik_two_bone_job.h"
 
 #include <cassert>
@@ -38,21 +39,6 @@ namespace ozz
 {
 namespace animation
 {
-IKTwoBoneJob::IKTwoBoneJob()
-    : target(math::simd_float4::zero())
-    , mid_axis(math::simd_float4::z_axis())
-    , pole_vector(math::simd_float4::y_axis())
-    , twist_angle(0.f)
-    , soften(1.f)
-    , weight(1.f)
-    , start_joint(nullptr)
-    , mid_joint(nullptr)
-    , end_joint(nullptr)
-    , start_joint_correction(nullptr)
-    , mid_joint_correction(nullptr)
-    , reached(nullptr)
-{
-}
 
 bool IKTwoBoneJob::Validate() const
 {
@@ -191,7 +177,7 @@ bool SoftenTarget(const IKTwoBoneJob& _job, const IKConstantSetup& _setup, SimdF
 
     // The maximum distance we can reach is the soften bone chain length: da
     // (stored in !x). The minimum distance we can reach is the absolute value of
-    // the difference of the 2 bone lengths, |d1−d2| (stored in z). x is 0 and z
+    // the difference of the 2 bone lengths, |d1-d2| (stored in z). x is 0 and z
     // is 1, yw are untested.
     return (comp_mask & 0x5) == 0x4;
 }
