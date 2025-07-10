@@ -115,54 +115,77 @@ if (TSD && What == "vec") {
 
 ### 属性系统
 
-使用 C++ 的 `[[clang::annotate]]` 属性标记着色器特性：
+SakuraEngine 着色器系统使用 Clang 注解属性进行元数据标记：
 
-#### 着色器入口点
+#### 1. 预定义属性宏（推荐使用）
+
+使用 `attributes.hpp` 中定义的宏：
 
 ```cpp
-// 计算着色器
-[[clang::annotate("skr-shader", "kernel", 16, 16)]]
-void compute_main();
+#include "std/attributes.hpp"
+#include "std2/attributes.hpp"
+
+// 计算着色器入口点
+[[compute_shader("compute_main")]]
+[[kernel_3d(32, 32, 1)]]
+void compute_main([[sv_thread_id]] uint3 tid);
 
 // 顶点着色器
-[[clang::annotate("skr-shader", "vertex")]]
+[[vertex_shader("vs_main")]]
 PSOutput vs_main(VSInput input);
 
-// 像素着色器
-[[clang::annotate("skr-shader", "fragment")]]
+// 片段着色器
+[[fragment_shader("ps_main")]]
 float4 ps_main(PSInput input);
+
+// 内置变量
+[[sv_thread_id]] uint3 tid;
+[[sv_position]] float4 position;
+[[sv_vertex_id]] uint vid;
 ```
 
-#### 内置变量
+#### 2. 资源绑定属性
+
+使用 `std2/attributes.hpp` 中的绑定宏：
 
 ```cpp
-// 线程 ID
-[[clang::annotate("skr-shader", "builtin", "ThreadID")]]
-uint2 tid;
+#include "std2/attributes.hpp"
 
-// 顶点 ID
-[[clang::annotate("skr-shader", "builtin", "VertexID")]]
-uint vid;
+// 资源绑定：binding(register, space)
+[[binding(0, 0)]]
+extern rw_structured_buffer<float4> output_buffer;
 
-// 位置输出
-[[clang::annotate("skr-shader", "builtin", "Position")]]
-float4 position;
+[[binding(0, 1)]]
+extern acceleration_structure AS;
 ```
 
-#### 资源绑定
+#### 3. callop 属性（内置函数映射）
+
+用于将 C++ 方法映射到着色器内置函数：
 
 ```cpp
-// Buffer 绑定
+template <uint32 flags>
+struct ray_query {
+    [[callop("RAY_QUERY_PROCEED")]] bool proceed();
+    [[callop("RAY_QUERY_COMMITTED_STATUS")]] uint32 committed_status();
+    [[callop("RAY_QUERY_WORLD_RAY_ORIGIN")]] float3 world_ray_origin();
+    // ... 更多方法
+};
+```
+
+#### 4. 原始 clang::annotate 属性
+
+```cpp
+// 完整的 clang::annotate 语法
+[[clang::annotate("skr-shader", "stage", "compute", "compute_main")]]
+[[clang::annotate("skr-shader", "kernel", 16, 16, 1)]]
+void compute_main([[clang::annotate("skr-shader", "builtin", "ThreadID")]] uint3 tid);
+
+[[clang::annotate("skr-shader", "stage", "vertex", "vs_main")]]
+PSOutput vs_main(VSInput input);
+
 [[clang::annotate("skr-shader", "binding", 0, 0)]]
 Buffer<float4>& buffer;
-
-// 纹理绑定
-[[clang::annotate("skr-shader", "binding", 1, 0)]]
-Texture2D<float4>& texture;
-
-// 采样器绑定
-[[clang::annotate("skr-shader", "binding", 2, 0)]]
-Sampler& sampler;
 ```
 
 ### 语句和表达式转换
@@ -254,15 +277,69 @@ if (isSampleCall(call)) {
 
 ## 使用示例
 
+### RayQuery 光线追踪示例
+
+基于实际项目的光线追踪计算着色器：
+
+```cpp
+#include "std/std.hpp"
+#include "std2/attributes.hpp"
+using namespace skr::shader;
+
+#define WIDTH 3200
+#define HEIGHT 2400
+
+// 外部资源声明
+[[binding(0, 0)]]
+extern rw_structured_buffer<float4> buf;
+
+[[binding(0, 1)]] 
+extern acceleration_structure AS;
+
+// 光线追踪函数
+float4 trace(uint2 tid, uint2 tsize) {
+    ray_desc ray;
+    ray.origin = float3(float(tid.x) / float(tsize.x), float(tid.y) / float(tsize.y), 100.0f);
+    ray.direction = float3(0, 0, -1.0f);
+    ray.t_min = 0.01f;
+    ray.t_max = 9999.0f;
+    
+    // 创建 RayQuery 对象并执行光线追踪
+    ray_query<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> q;
+    q.trace_ray_inline(AS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xFF, ray);
+    q.proceed();
+    
+    // 检查击中状态并返回结果
+    if (q.committed_status() == COMMITTED_TRIANGLE_HIT) {
+        return float4(q.committed_triangle_barycentrics(), 1, 1);
+    } else {
+        return float4(0.0f, 0.0f, 0.0f, 1.0f);
+    }
+}
+
+// 计算着色器入口点
+[[compute_shader("compute_main")]]
+[[kernel_3d(32, 32, 1)]]
+void compute_main([[sv_thread_id]] uint3 tid) {
+    uint2 tsize = uint2(WIDTH, HEIGHT);
+    uint row_pitch = tsize.x;
+    buf[tid.x + (tid.y * row_pitch)] = trace(tid.xy, tsize);
+}
+```
+
 ### 计算着色器示例
 
 ```cpp
 #include "std/std.hpp"
+#include "std2/attributes.hpp"
 using namespace skr::shader;
 
 // 声明外部资源
-extern Buffer<float4>& output_buffer;
-extern Texture2D<float4>& input_texture;
+[[binding(0, 0)]]
+extern rw_structured_buffer<float4> output_buffer;
+
+[[binding(1, 0)]]
+extern texture_2d<float4> input_texture;
 
 // 辅助函数
 float4 process_pixel(uint2 coord, uint2 size) {
@@ -271,13 +348,14 @@ float4 process_pixel(uint2 coord, uint2 size) {
 }
 
 // 计算着色器入口点
-[[clang::annotate("skr-shader", "kernel", 8, 8)]]
-void compute_main([[clang::annotate("skr-shader", "builtin", "ThreadID")]] uint2 tid) {
+[[compute_shader("compute_main")]]
+[[kernel_3d(8, 8, 1)]]
+void compute_main([[sv_thread_id]] uint3 tid) {
     const uint2 size = uint2(1920, 1080);
     
     if (tid.x < size.x && tid.y < size.y) {
         uint index = tid.x + tid.y * size.x;
-        output_buffer.store(index, process_pixel(tid, size));
+        output_buffer[index] = process_pixel(tid.xy, size);
     }
 }
 ```
@@ -285,6 +363,8 @@ void compute_main([[clang::annotate("skr-shader", "builtin", "ThreadID")]] uint2
 ### 顶点/像素着色器示例
 
 ```cpp
+#include "std2/attributes.hpp"
+
 // 输入输出结构
 struct VSInput {
     [[clang::annotate("skr-shader", "semantic", "POSITION")]]
@@ -295,15 +375,15 @@ struct VSInput {
 };
 
 struct PSInput {
-    [[clang::annotate("skr-shader", "stage_inout")]]
-    [[clang::annotate("skr-shader", "builtin", "Position")]]
+    [[stage_inout]]
+    [[sv_position]]
     float4 position;
     
     float2 uv;
 };
 
 // 顶点着色器
-[[clang::annotate("skr-shader", "vertex")]]
+[[vertex_shader("vs_main")]]
 PSInput vs_main(VSInput input) {
     PSInput output;
     output.position = float4(input.position, 1.0f);
@@ -312,7 +392,7 @@ PSInput vs_main(VSInput input) {
 }
 
 // 像素着色器
-[[clang::annotate("skr-shader", "fragment")]]
+[[fragment_shader("ps_main")]]
 float4 ps_main(PSInput input) {
     return float4(input.uv.x, input.uv.y, 0.0f, 1.0f);
 }
@@ -335,4 +415,23 @@ float4 ps_main(PSInput input) {
 
 ## 总结
 
-SakuraEngine 的 Clang AST 着色器系统展示了如何利用现有的编译器基础设施来构建领域特定语言。通过将 C++ 作为着色器语言，不仅提供了类型安全和代码复用的优势，还大大简化了跨平台着色器开发的复杂性。这是一个优雅且实用的工程解决方案。
+SakuraEngine 的 Clang AST 着色器系统展示了如何利用现有的编译器基础设施来构建领域特定语言。通过将 C++ 作为着色器语言，不仅提供了类型安全和代码复用的优势，还大大简化了跨平台着色器开发的复杂性。
+
+### 实际工程验证
+
+通过 RayQuery 功能的完整实现，系统经受了实际工程的检验：
+
+1. **属性系统的实用性**：`sattr` 和 `callop` 属性提供了简洁而强大的元数据标记机制
+2. **类型映射的准确性**：从 C++ 类型到 GPU 类型的映射保持了语义一致性
+3. **代码生成的灵活性**：能够处理复杂的方法映射和特殊表达式生成
+4. **扩展性的验证**：新增 25+ 个 RayQuery 内置函数没有对现有架构造成冲击
+
+### 核心价值
+
+- **开发体验**：开发者可以使用熟悉的 C++ 语法和 IDE 进行着色器开发
+- **类型安全**：编译期类型检查大大减少了运行时错误
+- **维护性**：清晰的代码结构和映射关系便于长期维护
+- **性能**：生成的着色器代码与手写 HLSL 性能相当
+- **跨平台**：单一代码库支持多种着色器语言输出
+
+这是一个优雅且实用的工程解决方案，为现代游戏引擎的着色器开发提供了新的可能性。
