@@ -1,5 +1,8 @@
+#include "SkrAnim/ozz/base/maths/soa_transform.h"
 #include "SkrCore/module/module.hpp"
 #include "SkrCore/log.h"
+#include "SkrCore/time.h"
+
 #include "SkrRenderer/skr_renderer.h"
 // #include "SkrGraphics/api.h"
 #include "SkrRenderGraph/frontend/render_graph.hpp"
@@ -13,9 +16,11 @@
 #include "SkrRT/misc/cmd_parser.hpp"
 
 #include <SkrAnim/ozz/skeleton.h>
+#include <SkrAnim/ozz/animation.h>
 #include <SkrAnim/ozz/base/io/archive.h>
 #include <SkrAnim/ozz/skeleton_utils.h>
 #include <SkrAnim/ozz/local_to_model_job.h>
+#include <SkrAnim/ozz/sampling_job.h>
 #include <AnimDebugRuntime/util.h>
 #include <SkrAnim/ozz/base/containers/vector.h>
 
@@ -63,7 +68,12 @@ class SAnimDebugModule : public skr::IDynamicModule
     virtual void on_unload() override;
 
 private:
-    skr::String m_anim_file = u8"D:/ws/data/assets/media/bin/ruby_skeleton.ozz"; // default anim file
+    skr::String               m_skel_file = u8"D:/ws/data/assets/media/bin/ruby_skeleton.ozz";
+    skr::String               m_anim_file = u8"D:/ws/data/assets/media/bin/ruby_animation.ozz";
+    ozz::animation::Animation m_animation;
+    float                     current_time = 0.0f;
+    bool                      is_playing   = false;
+    void                      DisplayAnimationInfo(const ozz::animation::Animation& animation);
 };
 
 static SAnimDebugModule* g_anim_debug_module = nullptr;
@@ -78,6 +88,7 @@ void SAnimDebugModule::on_load(int argc, char8_t** argv)
     // parse command line arguments
     skr::cmd::parser parser(argc, (char**)argv);
     parser.add(u8"skeleton", u8"ozz skeleton file path", u8"-s", false);
+    parser.add(u8"animation", u8"ozz animation file path", u8"-a", false);
     if (!parser.parse())
     {
         SKR_LOG_ERROR(u8"Failed to parse command line arguments.");
@@ -86,12 +97,23 @@ void SAnimDebugModule::on_load(int argc, char8_t** argv)
     auto skel_path = parser.get_optional<skr::String>(u8"skeleton");
     if (skel_path)
     {
-        m_anim_file = *skel_path;
-        SKR_LOG_INFO(u8"ozz skeleton set to: %s", m_anim_file.c_str());
+        m_skel_file = *skel_path;
+        SKR_LOG_INFO(u8"ozz skeleton set to: %s", m_skel_file.c_str());
     }
     else
     {
-        SKR_LOG_INFO(u8"No skeleton file specified, using default: %s", m_anim_file.c_str());
+        SKR_LOG_INFO(u8"No skeleton file specified, using default: %s", m_skel_file.c_str());
+    }
+
+    auto anim_path = parser.get_optional<skr::String>(u8"animation");
+    if (anim_path)
+    {
+        m_anim_file = *anim_path;
+        SKR_LOG_INFO(u8"ozz animation set to: %s", m_anim_file.c_str());
+    }
+    else
+    {
+        SKR_LOG_INFO(u8"No animation file specified.");
     }
 }
 
@@ -99,6 +121,13 @@ void SAnimDebugModule::on_unload()
 {
     g_anim_debug_module = nullptr;
     SKR_LOG_INFO(u8"anim debug runtime unloaded!");
+}
+
+void SAnimDebugModule::DisplayAnimationInfo(const ozz::animation::Animation& animation)
+{
+    ImGui::Text("Animation Name: %s", animation.name());
+    ImGui::Text("Duration: %.2f", animation.duration());
+    ImGui::Text("Number of Tracks: %d", animation.num_tracks());
 }
 
 int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
@@ -114,10 +143,10 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
     // geometry
     ozz::animation::Skeleton skeleton;
 
-    ozz::io::File file(m_anim_file.data_raw(), "rb");
+    ozz::io::File file(m_skel_file.data_raw(), "rb");
     if (!file.opened())
     {
-        SKR_LOG_ERROR(u8"Cannot open file %s.", m_anim_file.c_str());
+        SKR_LOG_ERROR(u8"Cannot open file %s.", m_skel_file.c_str());
     }
 
     // deserialize
@@ -144,6 +173,28 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
     // renderer.read_anim(skeleton);
     renderer.create_skeleton(skeleton);
     renderer.update_anim(skeleton, ozz::make_span(prealloc_models_));
+
+    // Load animation
+    if (!m_anim_file.is_empty())
+    {
+        ozz::io::File anim_file(m_anim_file.data_raw(), "rb");
+        if (!anim_file.opened())
+        {
+            SKR_LOG_ERROR(u8"Cannot open animation file %s.", m_anim_file.c_str());
+        }
+        ozz::io::IArchive anim_archive(&anim_file);
+        if (!anim_archive.TestTag<ozz::animation::Animation>())
+        {
+            SKR_LOG_ERROR(u8"Archive doesn't contain the expected animation object type.");
+        }
+        anim_archive >> m_animation;
+        SKR_LOG_INFO(u8"Animation loaded with %d tracks.", m_animation.num_tracks());
+    }
+
+    ozz::animation::SamplingJob::Context context_;
+    context_.Resize(skeleton.num_joints());
+    ozz::vector<ozz::math::SoaTransform> locals_;
+    locals_.resize(skeleton.num_soa_joints());
 
     renderer.create_api_objects();
     renderer.create_render_pipeline();
@@ -194,6 +245,14 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
 
     bool     show_demo_window = true;
     uint64_t frame_index      = 0;
+
+    // Time
+    SHiresTimer tick_timer;
+    int64_t     elapsed_us    = 0;
+    int64_t     elapsed_frame = 0;
+    int64_t     fps           = 60;
+    skr_init_hires_timer(&tick_timer);
+
     while (!imgui_backend.want_exit().comsume())
     {
         SkrZoneScopedN("LoopBody");
@@ -277,6 +336,29 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
             ImGui::End();
         }
         {
+            ImGui::Begin("Animation Control");
+            if (!m_anim_file.is_empty())
+            {
+                DisplayAnimationInfo(m_animation);
+
+                if (ImGui::Button(is_playing ? "Stop" : "Play"))
+                {
+                    is_playing = !is_playing;
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Resume"))
+                {
+                    current_time = 0.0f;
+                    is_playing   = true;
+                }
+            }
+            else
+            {
+                ImGui::Text("No animation loaded.");
+            }
+            ImGui::End();
+        }
+        {
             SkrZoneScopedN("ImGuiEndFrame");
             imgui_backend.end_frame();
         }
@@ -314,6 +396,46 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
 
         // present
         render_backend_rg->present_all();
+
+        // Update animation
+        if (!m_anim_file.is_empty() && is_playing)
+        {
+            /// TODO: sample animation
+            int64_t us        = skr_hires_timer_get_usec(&tick_timer, true);
+            double  deltaTime = (double)us / 1000 / 1000; // in seconds
+            current_time += deltaTime;
+            if (current_time > m_animation.duration())
+            {
+                current_time = 0.0f;
+            }
+            float ratio = current_time / m_animation.duration();
+
+            ozz::animation::SamplingJob sampling_job;
+            sampling_job.animation = &m_animation;
+            sampling_job.context   = &context_;
+            sampling_job.ratio     = ratio;
+            sampling_job.output    = ozz::make_span(locals_);
+
+            if (sampling_job.Run())
+            {
+                ozz::animation::LocalToModelJob local_to_model_job;
+                local_to_model_job.input    = ozz::make_span(locals_);
+                local_to_model_job.output   = ozz::make_span(prealloc_models_);
+                local_to_model_job.skeleton = &skeleton;
+                if (!local_to_model_job.Run())
+                {
+                    SKR_LOG_ERROR(u8"Failed to run local to model job.");
+                }
+
+                renderer.update_anim(skeleton, ozz::make_span(prealloc_models_));
+                renderer.create_resources(); // update resource buffer and upload
+            }
+            else
+            {
+                SKR_LOG_ERROR(u8"Failed to run sampling job.");
+            }
+        }
+
         ++frame_index;
     }
 
