@@ -45,7 +45,6 @@ public:
     bool is_fullscreen() const override;
     
     void* get_native_handle() const override { return hwnd_; }
-    void* get_native_display() const override { return nullptr; }
     void* get_native_view() const override { return hwnd_; } // On Windows, HWND is the view
     
     // Win32 specific

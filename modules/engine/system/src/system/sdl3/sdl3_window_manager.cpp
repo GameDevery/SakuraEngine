@@ -224,50 +224,6 @@ void SDL3WindowManager::destroy_window_internal(SystemWindow* window)
     SkrDelete(sdl3_window);
 }
 
-void* SDL3WindowManager::get_native_handle_from_event(const SkrSystemEvent& event) const
-{
-    void* native_handle = nullptr;
-    
-    // Extract native handle based on event type
-    switch (event.type) {
-        case SKR_SYSTEM_EVENT_WINDOW_SHOWN:
-        case SKR_SYSTEM_EVENT_WINDOW_HIDDEN:
-        case SKR_SYSTEM_EVENT_WINDOW_MOVED:
-        case SKR_SYSTEM_EVENT_WINDOW_RESIZED:
-        case SKR_SYSTEM_EVENT_WINDOW_MINIMIZED:
-        case SKR_SYSTEM_EVENT_WINDOW_MAXIMIZED:
-        case SKR_SYSTEM_EVENT_WINDOW_RESTORED:
-        case SKR_SYSTEM_EVENT_WINDOW_MOUSE_ENTER:
-        case SKR_SYSTEM_EVENT_WINDOW_MOUSE_LEAVE:
-        case SKR_SYSTEM_EVENT_WINDOW_FOCUS_GAINED:
-        case SKR_SYSTEM_EVENT_WINDOW_FOCUS_LOST:
-        case SKR_SYSTEM_EVENT_WINDOW_CLOSE_REQUESTED:
-        case SKR_SYSTEM_EVENT_WINDOW_ENTER_FULLSCREEN:
-        case SKR_SYSTEM_EVENT_WINDOW_LEAVE_FULLSCREEN:
-            native_handle = reinterpret_cast<void*>(event.window.window_native_handle);
-            break;
-            
-        case SKR_SYSTEM_EVENT_KEY_DOWN:
-        case SKR_SYSTEM_EVENT_KEY_UP:
-            native_handle = reinterpret_cast<void*>(event.key.window_native_handle);
-            break;
-            
-        case SKR_SYSTEM_EVENT_MOUSE_MOVE:
-        case SKR_SYSTEM_EVENT_MOUSE_BUTTON_DOWN:
-        case SKR_SYSTEM_EVENT_MOUSE_BUTTON_UP:
-        case SKR_SYSTEM_EVENT_MOUSE_WHEEL:
-        case SKR_SYSTEM_EVENT_MOUSE_ENTER:
-        case SKR_SYSTEM_EVENT_MOUSE_LEAVE:
-            native_handle = reinterpret_cast<void*>(event.mouse.window_native_handle);
-            break;
-            
-        default:
-            break;
-    }
-    
-    return native_handle;
-}
-
 // Helper methods
 void SDL3WindowManager::update_monitor_cache()
 {

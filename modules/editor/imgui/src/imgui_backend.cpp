@@ -6,10 +6,37 @@
 #include <SkrSystem/window_manager.h>
 #include <SkrSystem/IME.h>
 #include <SkrCore/log.hpp>
+#include <SkrCore/memory/memory.h>
 #include <chrono>
+#include <cstring>
 
 namespace skr
 {
+
+// Clipboard functions
+static const char* ImGui_ImplSkrSystem_GetClipboardText(ImGuiContext* ctx)
+{
+    ImGuiIO& io = ctx->IO;
+    ImGuiBackend* backend = static_cast<ImGuiBackend*>(io.BackendPlatformUserData);
+    if (backend && backend->system_app())
+    {
+        auto ime = backend->system_app()->get_ime();
+        backend->_clipboard = ime->get_clipboard_text();
+        return backend->_clipboard.c_str_raw();
+    }
+    return nullptr;
+}
+
+static void ImGui_ImplSkrSystem_SetClipboardText(ImGuiContext* ctx, const char* text)
+{
+    ImGuiIO& io = ctx->IO;
+    ImGuiBackend* backend = static_cast<ImGuiBackend*>(io.BackendPlatformUserData);
+    if (backend && backend->system_app())
+    {
+        auto ime = backend->system_app()->get_ime();
+        ime->set_clipboard_text(skr::String((const char8_t*)text));
+    }
+}
 
 // ctor & dtor
 ImGuiBackend::ImGuiBackend()
@@ -61,7 +88,6 @@ void ImGuiBackend::create(
         sys_create_info.is_tooltip = main_wnd_create_info.is_tooltip;
         sys_create_info.is_borderless = main_wnd_create_info.is_borderless;
         sys_create_info.is_resizable = main_wnd_create_info.is_resizable;
-
         _system_window = window_manager->create_window(sys_create_info);
     }
     
@@ -93,8 +119,8 @@ void ImGuiBackend::create(
         
         // Setup platform functions
         ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
-        // platform_io.Platform_SetClipboardTextFn = ImGui_ImplSkrSystem_SetClipboardText;
-        // platform_io.Platform_GetClipboardTextFn = ImGui_ImplSkrSystem_GetClipboardText;
+        platform_io.Platform_SetClipboardTextFn = ImGui_ImplSkrSystem_SetClipboardText;
+        platform_io.Platform_GetClipboardTextFn = ImGui_ImplSkrSystem_GetClipboardText;
         platform_io.Platform_SetImeDataFn = [](ImGuiContext* ctx, ImGuiViewport* viewport, ImGuiPlatformImeData* data) {
             ImGuiIO& io = ctx->IO;
             ImGuiBackend* backend = static_cast<ImGuiBackend*>(io.BackendPlatformUserData);
@@ -141,31 +167,6 @@ void ImGuiBackend::create(
         _context->IO.BackendRendererName     = "Sakura ImGui Renderer";
         _context->IO.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
         _renderer_backend->setup_io(_context->IO);
-
-        _context->PlatformIO.Renderer_CreateWindow = +[](ImGuiViewport* vp) {
-            auto backend = static_cast<ImGuiRendererBackend*>(
-                ImGui::GetCurrentContext()->IO.BackendRendererUserData
-            );
-            backend->create_window(vp);
-        };
-        _context->PlatformIO.Renderer_DestroyWindow = +[](ImGuiViewport* vp) {
-            auto backend = static_cast<ImGuiRendererBackend*>(
-                ImGui::GetCurrentContext()->IO.BackendRendererUserData
-            );
-            backend->destroy_window(vp);
-        };
-        _context->PlatformIO.Renderer_SetWindowSize = +[](ImGuiViewport* vp, ImVec2 size) {
-            auto backend = static_cast<ImGuiRendererBackend*>(
-                ImGui::GetCurrentContext()->IO.BackendRendererUserData
-            );
-            backend->resize_window(vp, size);
-        };
-        _context->PlatformIO.Renderer_RenderWindow = +[](ImGuiViewport* vp, void*) {
-            auto backend = static_cast<ImGuiRendererBackend*>(
-                ImGui::GetCurrentContext()->IO.BackendRendererUserData
-            );
-            backend->render_window(vp, nullptr);
-        };
     }
 
     // Setup main viewport platform handles
@@ -296,21 +297,12 @@ void ImGuiBackend::destroy()
     {
         _context->IO.BackendPlatformUserData = nullptr;
         _context->IO.BackendPlatformName = nullptr;
-        
-        _context->PlatformIO.Platform_SetClipboardTextFn = nullptr;
-        _context->PlatformIO.Platform_GetClipboardTextFn = nullptr;
-        _context->PlatformIO.Platform_SetImeDataFn = nullptr;
     }
     
     // Reset render backend callbacks and user data
     {
         _context->IO.BackendRendererUserData = nullptr;
         _context->IO.BackendRendererName     = nullptr;
-
-        _context->PlatformIO.Renderer_CreateWindow  = nullptr;
-        _context->PlatformIO.Renderer_DestroyWindow = nullptr;
-        _context->PlatformIO.Renderer_SetWindowSize = nullptr;
-        _context->PlatformIO.Renderer_RenderWindow  = nullptr;
     }
 
     // Destroy render backend

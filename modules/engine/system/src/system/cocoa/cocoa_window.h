@@ -59,7 +59,6 @@ public:
     
     // Platform handles
     void* get_native_handle() const SKR_NOEXCEPT override;
-    void* get_native_display() const SKR_NOEXCEPT override;
     void* get_native_view() const SKR_NOEXCEPT override;
     
     // Cocoa specific

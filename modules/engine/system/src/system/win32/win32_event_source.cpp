@@ -43,7 +43,7 @@ bool Win32EventSource::poll_event(SkrSystemEvent& event) SKR_NOEXCEPT
                 
                 event.type = SKR_SYSTEM_EVENT_MOUSE_ENTER;
                 event.mouse.type = SKR_SYSTEM_EVENT_MOUSE_ENTER;
-                event.mouse.window_native_handle = (uint64_t)msg.hwnd;
+                event.mouse.window_native_handle = msg.hwnd;
                 event.mouse.x = static_cast<int32_t>(GET_X_LPARAM(msg.lParam) / dpi_scale);
                 event.mouse.y = static_cast<int32_t>(GET_Y_LPARAM(msg.lParam) / dpi_scale);
                 event.mouse.button = static_cast<InputMouseButtonFlags>(0);
@@ -123,7 +123,7 @@ bool Win32EventSource::process_message(MSG& msg, SkrSystemEvent& out_event)
     LPARAM lParam = msg.lParam;
     
     out_event = {};
-    out_event.window.window_native_handle = reinterpret_cast<uint64_t>(hwnd);
+    out_event.window.window_native_handle = hwnd;
     
     // Get DPI scale for converting mouse coordinates
     uint32_t dpi = Win32WindowManager::get_dpi_for_window(hwnd);
@@ -185,7 +185,7 @@ bool Win32EventSource::process_message(MSG& msg, SkrSystemEvent& out_event)
             
             out_event.type = SKR_SYSTEM_EVENT_KEY_DOWN;
             out_event.key.type = SKR_SYSTEM_EVENT_KEY_DOWN;
-            out_event.key.window_native_handle = (uint64_t)hwnd;
+            out_event.key.window_native_handle = hwnd;
             out_event.key.keycode = translate_vk_to_keycode(wParam);
             out_event.key.scancode = (lParam >> 16) & 0xFF;
             out_event.key.modifiers = get_modifier_flags();
@@ -199,7 +199,7 @@ bool Win32EventSource::process_message(MSG& msg, SkrSystemEvent& out_event)
         {
             out_event.type = SKR_SYSTEM_EVENT_KEY_UP;
             out_event.key.type = SKR_SYSTEM_EVENT_KEY_UP;
-            out_event.key.window_native_handle = (uint64_t)hwnd;
+            out_event.key.window_native_handle = hwnd;
             out_event.key.keycode = translate_vk_to_keycode(wParam);
             out_event.key.scancode = (lParam >> 16) & 0xFF;
             out_event.key.modifiers = get_modifier_flags();
@@ -214,7 +214,7 @@ bool Win32EventSource::process_message(MSG& msg, SkrSystemEvent& out_event)
             // Simply generate the move event
             out_event.type = SKR_SYSTEM_EVENT_MOUSE_MOVE;
             out_event.mouse.type = SKR_SYSTEM_EVENT_MOUSE_MOVE;
-            out_event.mouse.window_native_handle = (uint64_t)hwnd;
+            out_event.mouse.window_native_handle = hwnd;
             out_event.mouse.x = static_cast<int32_t>(GET_X_LPARAM(lParam) / dpi_scale);
             out_event.mouse.y = static_cast<int32_t>(GET_Y_LPARAM(lParam) / dpi_scale);
             out_event.mouse.button = static_cast<InputMouseButtonFlags>(0);
@@ -233,7 +233,7 @@ bool Win32EventSource::process_message(MSG& msg, SkrSystemEvent& out_event)
             SetCapture(hwnd);
             out_event.type = SKR_SYSTEM_EVENT_MOUSE_BUTTON_DOWN;
             out_event.mouse.type = SKR_SYSTEM_EVENT_MOUSE_BUTTON_DOWN;
-            out_event.mouse.window_native_handle = (uint64_t)hwnd;
+            out_event.mouse.window_native_handle = hwnd;
             out_event.mouse.x = static_cast<int32_t>(GET_X_LPARAM(lParam) / dpi_scale);
             out_event.mouse.y = static_cast<int32_t>(GET_Y_LPARAM(lParam) / dpi_scale);
             out_event.mouse.button = translate_mouse_button(message, wParam);
@@ -252,7 +252,7 @@ bool Win32EventSource::process_message(MSG& msg, SkrSystemEvent& out_event)
             ReleaseCapture();
             out_event.type = SKR_SYSTEM_EVENT_MOUSE_BUTTON_UP;
             out_event.mouse.type = SKR_SYSTEM_EVENT_MOUSE_BUTTON_UP;
-            out_event.mouse.window_native_handle = (uint64_t)hwnd;
+            out_event.mouse.window_native_handle = hwnd;
             out_event.mouse.x = static_cast<int32_t>(GET_X_LPARAM(lParam) / dpi_scale);
             out_event.mouse.y = static_cast<int32_t>(GET_Y_LPARAM(lParam) / dpi_scale);
             out_event.mouse.button = translate_mouse_button(message, wParam);
@@ -270,7 +270,7 @@ bool Win32EventSource::process_message(MSG& msg, SkrSystemEvent& out_event)
         {
             out_event.type = SKR_SYSTEM_EVENT_MOUSE_BUTTON_DOWN;
             out_event.mouse.type = SKR_SYSTEM_EVENT_MOUSE_BUTTON_DOWN;
-            out_event.mouse.window_native_handle = (uint64_t)hwnd;
+            out_event.mouse.window_native_handle = hwnd;
             out_event.mouse.x = static_cast<int32_t>(GET_X_LPARAM(lParam) / dpi_scale);
             out_event.mouse.y = static_cast<int32_t>(GET_Y_LPARAM(lParam) / dpi_scale);
             out_event.mouse.button = translate_mouse_button(message, wParam);
@@ -285,7 +285,7 @@ bool Win32EventSource::process_message(MSG& msg, SkrSystemEvent& out_event)
         {
             out_event.type = SKR_SYSTEM_EVENT_MOUSE_WHEEL;
             out_event.mouse.type = SKR_SYSTEM_EVENT_MOUSE_WHEEL;
-            out_event.mouse.window_native_handle = (uint64_t)hwnd;
+            out_event.mouse.window_native_handle = hwnd;
             
             // For wheel events, the position is in screen coordinates
             POINT pt;
@@ -308,7 +308,7 @@ bool Win32EventSource::process_message(MSG& msg, SkrSystemEvent& out_event)
         {
             out_event.type = SKR_SYSTEM_EVENT_MOUSE_WHEEL;
             out_event.mouse.type = SKR_SYSTEM_EVENT_MOUSE_WHEEL;
-            out_event.mouse.window_native_handle = (uint64_t)hwnd;
+            out_event.mouse.window_native_handle = hwnd;
             
             // For wheel events, the position is in screen coordinates
             POINT pt;
@@ -335,7 +335,7 @@ bool Win32EventSource::process_message(MSG& msg, SkrSystemEvent& out_event)
             
             out_event.type = SKR_SYSTEM_EVENT_MOUSE_LEAVE;
             out_event.mouse.type = SKR_SYSTEM_EVENT_MOUSE_LEAVE;
-            out_event.mouse.window_native_handle = (uint64_t)hwnd;
+            out_event.mouse.window_native_handle = hwnd;
             out_event.mouse.x = -1;  // Position not available on leave
             out_event.mouse.y = -1;
             out_event.mouse.button = static_cast<InputMouseButtonFlags>(0);

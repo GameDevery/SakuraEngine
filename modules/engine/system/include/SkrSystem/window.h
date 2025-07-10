@@ -98,7 +98,6 @@ struct SKR_SYSTEM_API SystemWindow
     
     // Platform handle
     virtual void* get_native_handle() const = 0;
-    virtual void* get_native_display() const = 0; // For X11, Wayland etc.
     virtual void* get_native_view() const = 0;    // For Metal (NSView on macOS)
 };
 

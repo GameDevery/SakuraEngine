@@ -43,7 +43,7 @@ typedef struct SkrQuitEvent
 typedef struct SkrKeyboardEvent
 {
     ESkrSystemEventType type;
-    uint64_t window_native_handle;
+    void* window_native_handle;
     SInputKeyCode keycode;      // Virtual key code 
     uint32_t scancode;          // Hardware scancode
     SKeyModifier modifiers;     // Ctrl, Shift, Alt modifiers
@@ -55,7 +55,7 @@ typedef struct SkrKeyboardEvent
 typedef struct SkrWindowEvent
 {
     ESkrSystemEventType type;
-    uint64_t window_native_handle;
+    void* window_native_handle;
     uint32_t x;
     uint32_t y;
 } SkrWindowEvent;
@@ -63,7 +63,7 @@ typedef struct SkrWindowEvent
 typedef struct SkrMouseEvent
 {
     ESkrSystemEventType type;
-    uint64_t window_native_handle;
+    void* window_native_handle;
     int32_t x;                      // Mouse X position
     int32_t y;                      // Mouse Y position
     InputMouseButtonFlags button;   // Which button (for button events)

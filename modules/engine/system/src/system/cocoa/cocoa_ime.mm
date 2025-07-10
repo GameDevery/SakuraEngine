@@ -395,3 +395,36 @@ void CocoaIME::process_text_event(NSEvent* event) SKR_NOEXCEPT
         [[ime_view_ inputContext] handleEvent:event];
     }
 }
+
+bool CocoaIME::has_clipboard_text() const SKR_NOEXCEPT
+{
+    @autoreleasepool {
+        NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
+        return [pasteboard canReadItemWithDataConformingToTypes:@[NSPasteboardTypeString]] == YES;
+    }
+}
+
+skr::String CocoaIME::get_clipboard_text() const SKR_NOEXCEPT
+{
+    @autoreleasepool {
+        NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
+        NSString* text = [pasteboard stringForType:NSPasteboardTypeString];
+        
+        if (text) {
+            return skr::String((const char8_t*)[text UTF8String]);
+        }
+        
+        return skr::String();
+    }
+}
+
+void CocoaIME::set_clipboard_text(const skr::String& text) SKR_NOEXCEPT
+{
+    @autoreleasepool {
+        NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
+        [pasteboard clearContents];
+        
+        NSString* nsText = [NSString stringWithUTF8String:text.c_str()];
+        [pasteboard setString:nsText forType:NSPasteboardTypeString];
+    }
+}

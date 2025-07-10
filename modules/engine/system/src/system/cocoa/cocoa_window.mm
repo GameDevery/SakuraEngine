@@ -148,7 +148,7 @@
     if (event_source_) {
         SkrSystemEvent event;
         event.type = SKR_SYSTEM_EVENT_WINDOW_RESIZED;
-        event.window.window_native_handle = (uint64_t)(__bridge void*)window_->get_nswindow();
+        event.window.window_native_handle = (__bridge void*)window_->get_nswindow();
         
         NSRect contentRect = [window_->get_nswindow() contentRectForFrameRect:window_->get_nswindow().frame];
         event.window.x = (uint32_t)contentRect.size.width;
@@ -163,7 +163,7 @@
     if (event_source_) {
         SkrSystemEvent event;
         event.type = SKR_SYSTEM_EVENT_WINDOW_MOVED;
-        event.window.window_native_handle = (uint64_t)(__bridge void*)window_->get_nswindow();
+        event.window.window_native_handle = (__bridge void*)window_->get_nswindow();
         
         NSRect frame = window_->get_nswindow().frame;
         event.window.x = (uint32_t)frame.origin.x;
@@ -178,7 +178,7 @@
     if (event_source_) {
         SkrSystemEvent event;
         event.type = SKR_SYSTEM_EVENT_WINDOW_FOCUS_GAINED;
-        event.window.window_native_handle = (uint64_t)(__bridge void*)window_->get_nswindow();
+        event.window.window_native_handle = (__bridge void*)window_->get_nswindow();
         
         event_source_->push_event(event);
     }
@@ -189,7 +189,7 @@
     if (event_source_) {
         SkrSystemEvent event;
         event.type = SKR_SYSTEM_EVENT_WINDOW_FOCUS_LOST;
-        event.window.window_native_handle = (uint64_t)(__bridge void*)window_->get_nswindow();
+        event.window.window_native_handle = (__bridge void*)window_->get_nswindow();
         
         event_source_->push_event(event);
     }
@@ -200,7 +200,7 @@
     if (event_source_) {
         SkrSystemEvent event;
         event.type = SKR_SYSTEM_EVENT_WINDOW_MINIMIZED;
-        event.window.window_native_handle = (uint64_t)(__bridge void*)window_->get_nswindow();
+        event.window.window_native_handle = (__bridge void*)window_->get_nswindow();
         
         event_source_->push_event(event);
     }
@@ -211,7 +211,7 @@
     if (event_source_) {
         SkrSystemEvent event;
         event.type = SKR_SYSTEM_EVENT_WINDOW_RESTORED;
-        event.window.window_native_handle = (uint64_t)(__bridge void*)window_->get_nswindow();
+        event.window.window_native_handle = (__bridge void*)window_->get_nswindow();
         
         event_source_->push_event(event);
     }
@@ -222,7 +222,7 @@
     if (event_source_) {
         SkrSystemEvent event;
         event.type = SKR_SYSTEM_EVENT_WINDOW_CLOSE_REQUESTED;
-        event.window.window_native_handle = (uint64_t)(__bridge void*)window_->get_nswindow();
+        event.window.window_native_handle = (__bridge void*)window_->get_nswindow();
         
         event_source_->push_event(event);
     }
@@ -627,12 +627,6 @@ bool CocoaWindow::is_fullscreen() const SKR_NOEXCEPT
 void* CocoaWindow::get_native_handle() const SKR_NOEXCEPT
 {
     return (__bridge void*)window_;
-}
-
-void* CocoaWindow::get_native_display() const SKR_NOEXCEPT
-{
-    // Not applicable for macOS
-    return nullptr;
 }
 
 void* CocoaWindow::get_native_view() const SKR_NOEXCEPT

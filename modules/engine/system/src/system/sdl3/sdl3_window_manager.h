@@ -30,7 +30,6 @@ protected:
     // Platform implementation
     SystemWindow* create_window_internal(const SystemWindowCreateInfo& info) override;
     void destroy_window_internal(SystemWindow* window) override;
-    void* get_native_handle_from_event(const SkrSystemEvent& event) const override;
     
 private:
     // SDL specific window tracking

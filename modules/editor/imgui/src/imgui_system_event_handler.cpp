@@ -25,7 +25,7 @@ void ImGuiSystemEventHandler::handle_event(const SkrSystemEvent& event) SKR_NOEX
     // Set main window handle if not set
     if (_main_window_handle == 0 && _backend->system_window())
     {
-        _main_window_handle = (uint64_t)_backend->system_window()->get_native_handle();
+        _main_window_handle = _backend->system_window()->get_native_handle();
     }
 
     switch (event.type)

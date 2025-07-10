@@ -40,6 +40,11 @@ public:
     
     void clear_composition() override;
     void commit_composition() override;
+    
+    // Clipboard operations
+    bool has_clipboard_text() const override;
+    skr::String get_clipboard_text() const override;
+    void set_clipboard_text(const skr::String& text) override;
 
     // Win32 specific - process window messages
     bool process_message(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, LRESULT& result);

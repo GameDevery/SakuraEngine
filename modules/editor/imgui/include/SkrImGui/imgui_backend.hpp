@@ -73,6 +73,8 @@ struct SKR_IMGUI_API ImGuiBackend {
     inline SystemApp*                system_app() const { return _system_app; }
     inline SystemWindow*             system_window() const { return _system_window; }
 
+    mutable skr::String _clipboard;
+    
 private:
     // context
     ImGuiContext*      _context     = nullptr;

@@ -234,30 +234,6 @@ void* SDL3Window::get_native_handle() const
     return sdl_window;
 }
 
-void* SDL3Window::get_native_display() const
-{
-    // SDL3 uses properties system for native handles
-    SDL_PropertiesID props = SDL_GetWindowProperties(sdl_window);
-    
-#ifdef _WIN32
-    void* hdc = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HDC_POINTER, nullptr);
-    if (hdc)
-        return hdc;
-#elif defined(__linux__)
-    // Try X11 display
-    void* x11_display = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_X11_DISPLAY_POINTER, nullptr);
-    if (x11_display)
-        return x11_display;
-        
-    // Try Wayland display
-    void* wl_display = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, nullptr);
-    if (wl_display)
-        return wl_display;
-#endif
-    
-    return nullptr;
-}
-
 void* SDL3Window::get_native_view() const
 {
 #ifdef __APPLE__

@@ -46,9 +46,6 @@ protected:
     virtual SystemWindow* create_window_internal(const SystemWindowCreateInfo& info) = 0;
     virtual void destroy_window_internal(SystemWindow* window) = 0;
     
-    // Platform implementations should implement native handle extraction
-    virtual void* get_native_handle_from_event(const SkrSystemEvent& event) const { return nullptr; }
-    
     // Window tracking helpers for subclasses
     void register_window(SystemWindow* window) SKR_NOEXCEPT;
     void unregister_window(SystemWindow* window) SKR_NOEXCEPT;

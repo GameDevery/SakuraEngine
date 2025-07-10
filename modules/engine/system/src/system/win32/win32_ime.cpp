@@ -2,6 +2,7 @@
 #include "win32_window.h"
 #include "SkrCore/log.h"
 #include "SkrCore/memory/memory.h"
+#include "SkrContainers/vector.hpp"
 
 namespace skr {
 
@@ -511,6 +512,99 @@ HWND Win32IME::get_hwnd(SystemWindow* window) const
 void Win32IME::enable_ime(HWND hwnd, bool enable)
 {
     ImmAssociateContextEx(hwnd, nullptr, enable ? IACE_DEFAULT : 0);
+}
+
+bool Win32IME::has_clipboard_text() const
+{
+    if (!OpenClipboard(nullptr))
+        return false;
+    
+    bool has_text = IsClipboardFormatAvailable(CF_UNICODETEXT) || IsClipboardFormatAvailable(CF_TEXT);
+    CloseClipboard();
+    
+    return has_text;
+}
+
+skr::String Win32IME::get_clipboard_text() const
+{
+    skr::String result;
+    
+    if (!OpenClipboard(nullptr))
+        return result;
+    
+    // Try Unicode first
+    HANDLE hData = GetClipboardData(CF_UNICODETEXT);
+    if (hData)
+    {
+        wchar_t* pszText = static_cast<wchar_t*>(GlobalLock(hData));
+        if (pszText)
+        {
+            // Convert from UTF-16 to UTF-8
+            int len = WideCharToMultiByte(CP_UTF8, 0, pszText, -1, nullptr, 0, nullptr, nullptr);
+            if (len > 0)
+            {
+                // Create temporary buffer for conversion
+                skr::Vector<char> buffer;
+                buffer.resize_unsafe(len);
+                WideCharToMultiByte(CP_UTF8, 0, pszText, -1, buffer.data(), len, nullptr, nullptr);
+                
+                // Construct string from char buffer (exclude null terminator)
+                result = skr::String(reinterpret_cast<const char8_t*>(buffer.data()), len - 1);
+            }
+            GlobalUnlock(hData);
+        }
+    }
+    else
+    {
+        // Fallback to ANSI text
+        hData = GetClipboardData(CF_TEXT);
+        if (hData)
+        {
+            char* pszText = static_cast<char*>(GlobalLock(hData));
+            if (pszText)
+            {
+                // Convert from char* to char8_t*
+                result = skr::String(reinterpret_cast<const char8_t*>(pszText));
+            }
+            GlobalUnlock(hData);
+        }
+    }
+    
+    CloseClipboard();
+    return result;
+}
+
+void Win32IME::set_clipboard_text(const skr::String& text)
+{
+    if (!OpenClipboard(nullptr))
+        return;
+    
+    EmptyClipboard();
+    
+    // Convert UTF-8 to UTF-16
+    const char* char_str = reinterpret_cast<const char*>(text.c_str());
+    int wlen = MultiByteToWideChar(CP_UTF8, 0, char_str, -1, nullptr, 0);
+    if (wlen > 0)
+    {
+        HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, wlen * sizeof(wchar_t));
+        if (hMem)
+        {
+            wchar_t* pMem = static_cast<wchar_t*>(GlobalLock(hMem));
+            if (pMem)
+            {
+                MultiByteToWideChar(CP_UTF8, 0, char_str, -1, pMem, wlen);
+                GlobalUnlock(hMem);
+                
+                SetClipboardData(CF_UNICODETEXT, hMem);
+            }
+            else
+            {
+                GlobalFree(hMem);
+            }
+        }
+    }
+    
+    CloseClipboard();
 }
 
 } // namespace skr

@@ -414,4 +414,26 @@ void SDL3IME::update_candidate_state(const SDL_TextEditingCandidatesEvent& event
     candidate_state_.visible = (event.num_candidates > 0);
 }
 
+bool SDL3IME::has_clipboard_text() const
+{
+    return SDL_HasClipboardText() == true;
+}
+
+skr::String SDL3IME::get_clipboard_text() const
+{
+    char* text = SDL_GetClipboardText();
+    if (text)
+    {
+        skr::String result((const char8_t*)text);
+        SDL_free(text);
+        return result;
+    }
+    return skr::String();
+}
+
+void SDL3IME::set_clipboard_text(const skr::String& text)
+{
+    SDL_SetClipboardText(text.c_str_raw());
+}
+
 } // namespace skr

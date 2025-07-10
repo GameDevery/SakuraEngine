@@ -315,7 +315,7 @@ void CocoaEventSource::translate_key_event(NSEvent* ns_event, SkrSystemEvent& ev
     if (nsWindow) {
         auto* window_manager = app_->get_window_manager();
         if (window_manager) {
-            event.key.window_native_handle = (uint64_t)(__bridge void*)nsWindow;
+            event.key.window_native_handle = (__bridge void*)nsWindow;
         }
     }
     
@@ -354,7 +354,7 @@ void CocoaEventSource::translate_mouse_event(NSEvent* ns_event, SkrSystemEvent& 
             event.mouse.x = (int32_t)location.x;
             event.mouse.y = (int32_t)location.y;
             event.mouse.modifiers = TranslateCocoaModifiers(ns_event.modifierFlags);
-            event.mouse.window_native_handle = window ? (uint64_t)window->get_native_handle() : 0;
+            event.mouse.window_native_handle = window ? window->get_native_handle() : 0;
             break;
             
         case NSEventTypeLeftMouseUp:
@@ -365,7 +365,7 @@ void CocoaEventSource::translate_mouse_event(NSEvent* ns_event, SkrSystemEvent& 
             event.mouse.x = (int32_t)location.x;
             event.mouse.y = (int32_t)location.y;
             event.mouse.modifiers = TranslateCocoaModifiers(ns_event.modifierFlags);
-            event.mouse.window_native_handle = window ? (uint64_t)window->get_native_handle() : 0;
+            event.mouse.window_native_handle = window ? window->get_native_handle() : 0;
             break;
             
         case NSEventTypeMouseMoved:
@@ -376,7 +376,7 @@ void CocoaEventSource::translate_mouse_event(NSEvent* ns_event, SkrSystemEvent& 
             event.mouse.x = (int32_t)location.x;
             event.mouse.y = (int32_t)location.y;
             event.mouse.modifiers = TranslateCocoaModifiers(ns_event.modifierFlags);
-            event.mouse.window_native_handle = window ? (uint64_t)window->get_native_handle() : 0;
+            event.mouse.window_native_handle = window ? window->get_native_handle() : 0;
             break;
             
         case NSEventTypeScrollWheel:
@@ -384,17 +384,17 @@ void CocoaEventSource::translate_mouse_event(NSEvent* ns_event, SkrSystemEvent& 
             event.mouse.wheel_x = (float)ns_event.scrollingDeltaX;
             event.mouse.wheel_y = (float)ns_event.scrollingDeltaY;
             event.mouse.modifiers = TranslateCocoaModifiers(ns_event.modifierFlags);
-            event.mouse.window_native_handle = window ? (uint64_t)window->get_native_handle() : 0;
+            event.mouse.window_native_handle = window ? window->get_native_handle() : 0;
             break;
             
         case NSEventTypeMouseEntered:
             event.type = SKR_SYSTEM_EVENT_MOUSE_ENTER;
-            event.mouse.window_native_handle = window ? (uint64_t)window->get_native_handle() : 0;
+            event.mouse.window_native_handle = window ? window->get_native_handle() : 0;
             break;
             
         case NSEventTypeMouseExited:
             event.type = SKR_SYSTEM_EVENT_MOUSE_LEAVE;
-            event.mouse.window_native_handle = window ? (uint64_t)window->get_native_handle() : 0;
+            event.mouse.window_native_handle = window ? window->get_native_handle() : 0;
             break;
     }
 }

@@ -75,13 +75,7 @@ SystemWindow* ISystemWindowManager::get_window_by_native_handle(void* native_han
 
 SystemWindow* ISystemWindowManager::get_window_from_event(const SkrSystemEvent& event) const SKR_NOEXCEPT
 {
-    // Try to get native handle from event
-    void* native_handle = get_native_handle_from_event(event);
-    if (!native_handle) {
-        return nullptr;
-    }
-    
-    return get_window_by_native_handle(native_handle);
+    return get_window_by_native_handle(reinterpret_cast<void*>(event.window.window_native_handle));
 }
 
 void ISystemWindowManager::get_all_windows(skr::Vector<SystemWindow*>& out_windows) const SKR_NOEXCEPT

@@ -140,6 +140,11 @@ struct SKR_SYSTEM_API IME
     // Commit current composition
     virtual void commit_composition() = 0;
     
+    // Clipboard operations
+    virtual bool has_clipboard_text() const = 0;
+    virtual skr::String get_clipboard_text() const = 0;
+    virtual void set_clipboard_text(const skr::String& text) = 0;
+    
     // Factory method
     static IME* Create(const char* backend = nullptr);
     static void Destroy(IME* ime);

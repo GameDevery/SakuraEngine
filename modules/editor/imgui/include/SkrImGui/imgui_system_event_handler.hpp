@@ -43,7 +43,7 @@ private:
     Trigger _content_scale_changed = {};
     
     // Track window handle for main window
-    uint64_t _main_window_handle = 0;
+    void* _main_window_handle = nullptr;
 };
 
 } // namespace skr

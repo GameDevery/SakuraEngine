@@ -37,6 +37,11 @@ public:
     
     void clear_composition() override;
     void commit_composition() override;
+    
+    // Clipboard operations
+    bool has_clipboard_text() const override;
+    skr::String get_clipboard_text() const override;
+    void set_clipboard_text(const skr::String& text) override;
 
     // SDL3 specific - process SDL events
     void process_event(const SDL_Event& event);

@@ -67,6 +67,11 @@ public:
     void clear_composition() SKR_NOEXCEPT override;
     void commit_composition() SKR_NOEXCEPT override;
     bool is_screen_keyboard_supported() const SKR_NOEXCEPT override;
+    
+    // Clipboard operations
+    bool has_clipboard_text() const SKR_NOEXCEPT override;
+    skr::String get_clipboard_text() const SKR_NOEXCEPT override;
+    void set_clipboard_text(const skr::String& text) SKR_NOEXCEPT override;
 
     // Cocoa specific
     void set_event_source(CocoaEventSource* source) SKR_NOEXCEPT { event_source_ = source; }

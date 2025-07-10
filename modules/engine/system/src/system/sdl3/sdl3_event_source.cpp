@@ -1,6 +1,7 @@
 #include "sdl3_event_source.h"
 #include "sdl3_ime.h"
 #include "sdl3_window_manager.h"
+#include "sdl3_window.h"
 #include "SkrSystem/system.h"
 #include "SkrCore/memory/memory.h"
 #include "SkrCore/log.h"
@@ -100,7 +101,20 @@ inline static ESkrSystemEventType TranslateSDLEventType(SDL_EventType type)
     }
 }
 
-inline static SkrSystemEvent TranslateSDLEvent(const SDL_Event& e)
+// Helper function to get native handle from SDL window ID
+inline static void* GetNativeHandleFromWindowID(SDL_WindowID window_id, const SDL3WindowManager* window_manager)
+{
+    if (!window_manager)
+        return nullptr;
+        
+    auto* sdl3_window = window_manager->get_sdl3_window(window_id);
+    if (!sdl3_window)
+        return nullptr;
+        
+    return sdl3_window->get_native_handle();
+}
+
+inline static SkrSystemEvent TranslateSDLEvent(const SDL_Event& e, const SDL3WindowManager* window_manager)
 {
     SkrSystemEvent result = {};
     const auto type = TranslateSDLEventType((SDL_EventType)e.type);
@@ -124,7 +138,7 @@ inline static SkrSystemEvent TranslateSDLEvent(const SDL_Event& e)
         case SDL_EVENT_WINDOW_ENTER_FULLSCREEN:
         case SDL_EVENT_WINDOW_LEAVE_FULLSCREEN:
             result.window.type = type;
-            result.window.window_native_handle = e.window.windowID;
+            result.window.window_native_handle = GetNativeHandleFromWindowID(e.window.windowID, window_manager);
             result.window.x = e.window.data1;
             result.window.y = e.window.data2;
             break;
@@ -132,7 +146,7 @@ inline static SkrSystemEvent TranslateSDLEvent(const SDL_Event& e)
         // SDL window mouse enter/leave are translated to mouse events
         case SDL_EVENT_WINDOW_MOUSE_ENTER:
             result.mouse.type = SKR_SYSTEM_EVENT_MOUSE_ENTER;
-            result.mouse.window_native_handle = e.window.windowID;
+            result.mouse.window_native_handle = GetNativeHandleFromWindowID(e.window.windowID, window_manager);
             // Position will be updated by next mouse move event
             result.mouse.x = 0;
             result.mouse.y = 0;
@@ -145,7 +159,7 @@ inline static SkrSystemEvent TranslateSDLEvent(const SDL_Event& e)
             
         case SDL_EVENT_WINDOW_MOUSE_LEAVE:
             result.mouse.type = SKR_SYSTEM_EVENT_MOUSE_LEAVE;
-            result.mouse.window_native_handle = e.window.windowID;
+            result.mouse.window_native_handle = GetNativeHandleFromWindowID(e.window.windowID, window_manager);
             result.mouse.x = 0;
             result.mouse.y = 0;
             result.mouse.button = static_cast<InputMouseButtonFlags>(0);
@@ -159,7 +173,7 @@ inline static SkrSystemEvent TranslateSDLEvent(const SDL_Event& e)
         case SDL_EVENT_KEY_DOWN:
         case SDL_EVENT_KEY_UP:
             result.key.type = type;
-            result.key.window_native_handle = e.key.windowID;
+            result.key.window_native_handle = GetNativeHandleFromWindowID(e.key.windowID, window_manager);
             result.key.keycode = TranslateSDLKeyCode(e.key.scancode);
             result.key.scancode = e.key.scancode;
             result.key.modifiers = TranslateSDLModifiers(e.key.mod);
@@ -170,7 +184,7 @@ inline static SkrSystemEvent TranslateSDLEvent(const SDL_Event& e)
         // Mouse events
         case SDL_EVENT_MOUSE_MOTION:
             result.mouse.type = SKR_SYSTEM_EVENT_MOUSE_MOVE;
-            result.mouse.window_native_handle = e.motion.windowID;
+            result.mouse.window_native_handle = GetNativeHandleFromWindowID(e.motion.windowID, window_manager);
             result.mouse.x = e.motion.x;  // SDL3 already provides logical coordinates
             result.mouse.y = e.motion.y;
             result.mouse.button = static_cast<InputMouseButtonFlags>(0);  // No button for motion
@@ -184,7 +198,7 @@ inline static SkrSystemEvent TranslateSDLEvent(const SDL_Event& e)
         case SDL_EVENT_MOUSE_BUTTON_UP:
             result.mouse.type = (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN) ? 
                 SKR_SYSTEM_EVENT_MOUSE_BUTTON_DOWN : SKR_SYSTEM_EVENT_MOUSE_BUTTON_UP;
-            result.mouse.window_native_handle = e.button.windowID;
+            result.mouse.window_native_handle = GetNativeHandleFromWindowID(e.button.windowID, window_manager);
             result.mouse.x = e.button.x;  // SDL3 already provides logical coordinates
             result.mouse.y = e.button.y;
             result.mouse.button = TranslateSDLMouseButton(e.button.button);
@@ -196,7 +210,7 @@ inline static SkrSystemEvent TranslateSDLEvent(const SDL_Event& e)
             
         case SDL_EVENT_MOUSE_WHEEL:
             result.mouse.type = SKR_SYSTEM_EVENT_MOUSE_WHEEL;
-            result.mouse.window_native_handle = e.wheel.windowID;
+            result.mouse.window_native_handle = GetNativeHandleFromWindowID(e.wheel.windowID, window_manager);
             result.mouse.x = static_cast<int32_t>(e.wheel.mouse_x);  // Mouse position
             result.mouse.y = static_cast<int32_t>(e.wheel.mouse_y);
             result.mouse.button = static_cast<InputMouseButtonFlags>(0);
@@ -294,7 +308,8 @@ bool SDL3EventSource::wait_events(uint32_t timeout_ms) SKR_NOEXCEPT
 
 SkrSystemEvent SDL3EventSource::translate_sdl_event(const SDL_Event& e) const
 {
-    return TranslateSDLEvent(e);
+    auto* window_manager = static_cast<SDL3WindowManager*>(app_->get_window_manager());
+    return TranslateSDLEvent(e, window_manager);
 }
 
 EKeyCode TranslateSDLKeyCode(SDL_Scancode keycode)
