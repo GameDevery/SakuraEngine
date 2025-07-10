@@ -46,32 +46,22 @@ public:
     SystemApp(const SystemApp&) = delete;
     SystemApp& operator=(const SystemApp&) = delete;
     
-    // Input Method Editor access
+    // Lifecycle management
+    virtual bool initialize(const char* backend);
+    virtual void shutdown();
+
+    // System components
+    SystemEventQueue* get_event_queue() const { return event_queue; }
+    ISystemWindowManager* get_window_manager() const { return window_manager; }
     IME* get_ime() const { return ime; }
     
-    // Window Manager access
-    ISystemWindowManager* get_window_manager() const { return window_manager; }
-    
-    // Event system access
-    SystemEventQueue* get_event_queue() const { return event_queue; }
-    
     // Event source management
-    bool add_event_source(ISystemEventSource* source);
-    bool remove_event_source(ISystemEventSource* source);
     ISystemEventSource* get_platform_event_source() const { return platform_event_source; }
     
     // Wait for events (blocking) - delegates to platform event source
     bool wait_events(uint32_t timeout_ms = 0);
-    
-    // Factory methods
-    static SystemApp* Create(const char* backend = nullptr); // nullptr = auto-detect, "SDL", "Win32", "Cocoa"
-    static void Destroy(SystemApp* app);
 
-private:
-    bool initialize(const char* backend);
-    void shutdown();
-
-private:
+protected:
     IME* ime = nullptr;
     ISystemWindowManager* window_manager = nullptr;
     SystemEventQueue* event_queue = nullptr;

@@ -8,7 +8,6 @@
 #include <SkrCore/log.hpp>
 #include <SkrCore/memory/memory.h>
 #include <chrono>
-#include <cstring>
 
 namespace skr
 {
@@ -17,10 +16,10 @@ namespace skr
 static const char* ImGui_ImplSkrSystem_GetClipboardText(ImGuiContext* ctx)
 {
     ImGuiIO& io = ctx->IO;
-    ImGuiBackend* backend = static_cast<ImGuiBackend*>(io.BackendPlatformUserData);
-    if (backend && backend->system_app())
+    ImGuiApp* backend = static_cast<ImGuiApp*>(io.BackendPlatformUserData);
+    if (backend)
     {
-        auto ime = backend->system_app()->get_ime();
+        auto ime = backend->get_ime();
         backend->_clipboard = ime->get_clipboard_text();
         return backend->_clipboard.c_str_raw();
     }
@@ -30,74 +29,42 @@ static const char* ImGui_ImplSkrSystem_GetClipboardText(ImGuiContext* ctx)
 static void ImGui_ImplSkrSystem_SetClipboardText(ImGuiContext* ctx, const char* text)
 {
     ImGuiIO& io = ctx->IO;
-    ImGuiBackend* backend = static_cast<ImGuiBackend*>(io.BackendPlatformUserData);
-    if (backend && backend->system_app())
+    ImGuiApp* backend = static_cast<ImGuiApp*>(io.BackendPlatformUserData);
+    if (backend)
     {
-        auto ime = backend->system_app()->get_ime();
+        auto ime = backend->get_ime();
         ime->set_clipboard_text(skr::String((const char8_t*)text));
     }
 }
 
 // ctor & dtor
-ImGuiBackend::ImGuiBackend()
+ImGuiApp::ImGuiApp(const SystemWindowCreateInfo& main_wnd_create_info, RCUnique<ImGuiRendererBackend> backend)
+    : SystemApp(), _renderer_backend(std::move(backend)), _main_window_info(main_wnd_create_info)
 {
+
 }
 
-ImGuiBackend::~ImGuiBackend()
+ImGuiApp::~ImGuiApp()
 {
-    if (is_created())
-    {
-        destroy();
-    }
+
 }
 
-// imgui context
-void ImGuiBackend::apply_context()
+bool ImGuiApp::initialize(const char* backend)
 {
-    SKR_ASSERT(is_created() && "please call create() before apply");
-    SKR_ASSERT(!_renderer_backend.is_empty() && "please set render backend before apply");
+    if (!SystemApp::initialize(backend))
+        return false;
 
-    ImGui::SetCurrentContext(_context);
-}
-
-// Create overload with SystemApp integration
-void ImGuiBackend::create(
-    SystemApp*                     system_app,
-    const ImGuiWindowCreateInfo&   main_wnd_create_info,
-    RCUnique<ImGuiRendererBackend> backend)
-{
     SKR_ASSERT(!is_created() && "multi create context");
-    // SystemApp can be null in legacy mode
-
-    _system_app = system_app;
-    _renderer_backend = std::move(backend);
 
     // Create context
     _context = ImGui::CreateContext();
 
-    // Create main window through WindowManager (if not in legacy mode)
-    if (_system_app && !_system_window)
-    {
-        auto* window_manager = _system_app->get_window_manager();
-        
-        SystemWindowCreateInfo sys_create_info;
-        sys_create_info.title = main_wnd_create_info.title;
-        sys_create_info.size = main_wnd_create_info.size;
-        sys_create_info.pos = main_wnd_create_info.pos; // Both use Optional<uint2>
-        sys_create_info.is_topmost = main_wnd_create_info.is_topmost;
-        sys_create_info.is_tooltip = main_wnd_create_info.is_tooltip;
-        sys_create_info.is_borderless = main_wnd_create_info.is_borderless;
-        sys_create_info.is_resizable = main_wnd_create_info.is_resizable;
-        _system_window = window_manager->create_window(sys_create_info);
-    }
-    
+    // create main window
+    _main_window = window_manager->create_window(_main_window_info);
+
     // Create event handler and register with event queue (if we have SystemApp)
-    if (_system_app)
-    {
-        _event_handler = SkrNew<ImGuiSystemEventHandler>(this);
-        auto* event_queue = _system_app->get_event_queue();
-        event_queue->add_handler(_event_handler);
-    }
+    _event_handler = SkrNew<ImGuiSystemEventHandler>(this);
+    event_queue->add_handler(_event_handler);
 
     // Setup ImGui platform backend
     {
@@ -110,12 +77,7 @@ void ImGuiBackend::create(
         io.BackendPlatformName = "imgui_impl_skr_system";
         io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;           // We can honor GetMouseCursor() values (optional)
         io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;            // We can honor io.WantSetMousePos requests (optional, rarely used)
-        
-        // Enable multi-viewport support if we have event system support
-        if (_system_app)
-        {
-            io.BackendFlags |= ImGuiBackendFlags_PlatformHasViewports;  // We can create multi-viewports on the Platform side (optional)
-        }
+        io.BackendFlags |= ImGuiBackendFlags_PlatformHasViewports;  // We can create multi-viewports on the Platform side (optional)
         
         // Setup platform functions
         ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
@@ -123,8 +85,8 @@ void ImGuiBackend::create(
         platform_io.Platform_GetClipboardTextFn = ImGui_ImplSkrSystem_GetClipboardText;
         platform_io.Platform_SetImeDataFn = [](ImGuiContext* ctx, ImGuiViewport* viewport, ImGuiPlatformImeData* data) {
             ImGuiIO& io = ctx->IO;
-            ImGuiBackend* backend = static_cast<ImGuiBackend*>(io.BackendPlatformUserData);
-            if (backend && backend->_ime && backend->_system_window)
+            ImGuiApp* backend = static_cast<ImGuiApp*>(io.BackendPlatformUserData);
+            if (backend)
             {
                 if (data->WantVisible)
                 {
@@ -140,7 +102,7 @@ void ImGuiBackend::create(
                     };
                     area.cursor_height = static_cast<uint32_t>(data->InputLineHeight);
                     
-                    backend->_ime->set_text_input_area(area);
+                    backend->get_ime()->set_text_input_area(area);
                 }
                 
                 // Note: We don't start/stop IME here because UpdateIMEState() already handles it
@@ -152,13 +114,9 @@ void ImGuiBackend::create(
     }
     
     // Setup IME if available
-    if (_system_app)
+    if (get_ime())
     {
-        _ime = _system_app->get_ime();
-        if (_ime)
-        {
-            SetupIMECallbacks();
-        }
+        SetupIMECallbacks();
     }
 
     // Initialize render backend
@@ -172,68 +130,35 @@ void ImGuiBackend::create(
     // Setup main viewport platform handles
     // Our mouse update function expect PlatformHandle to be filled for the main viewport
     auto* main_viewport = _context->Viewports[0];
-    if (_system_window)
+    if (_main_window)
     {
         // Store window ID as PlatformHandle (similar to SDL3's approach)
         // This allows us to find viewport by window later
-        main_viewport->PlatformHandle = _system_window;
-        main_viewport->PlatformHandleRaw = _system_window->get_native_view();
+        main_viewport->PlatformHandle = _main_window;
+        main_viewport->PlatformHandleRaw = _main_window->get_native_view();
     }
     
     // Initialize main window render data
     _renderer_backend->create_main_window(main_viewport);
     
     // Show the window
-    if (_system_window)
+    if (_main_window)
     {
-        _system_window->show();
+        _main_window->show();
     }
     
     // Initialize time tracking
     last_frame_time_ = std::chrono::steady_clock::now();
+
+    return true;
 }
 
-// New process_events method using SystemEventQueue
-void ImGuiBackend::process_events()
-{
-    SKR_ASSERT(is_created() && "please create context before processing events");
-    
-    if (_system_app)
-    {
-        // Events are automatically dispatched to our handler through the event queue
-        // We just need to pump the event queue
-        auto* event_queue = _system_app->get_event_queue();
-        event_queue->pump_messages();
-    }
-    
-    // Update ImGui display size (every frame to accommodate for window resizing)
-    if (_system_window)
-    {
-        auto window_size = _system_window->get_size();
-        
-        // Handle minimized window
-        int w = window_size.x;
-        int h = window_size.y;
-        if (_system_window->is_minimized())
-            w = h = 0;
-        
-        _context->IO.DisplaySize = ImVec2((float)w, (float)h);
-        
-        // Update framebuffer scale
-        if (w > 0 && h > 0)
-        {
-            auto pixel_ratio = _system_window->get_pixel_ratio();
-            _context->IO.DisplayFramebufferScale = ImVec2(pixel_ratio, pixel_ratio);
-        }
-    }
-}
-
-void ImGuiBackend::begin_frame()
+void ImGuiApp::begin_frame()
 {
     SKR_ASSERT(is_created() && "please create context before begin frame");
     SKR_ASSERT(ImGui::GetCurrentContext() == _context && "context mismatch");
 
-    apply_context();
+    ImGui::SetCurrentContext(_context);
     
     // Update delta time (use member variable instead of static)
     auto current_time = std::chrono::steady_clock::now();
@@ -252,7 +177,7 @@ void ImGuiBackend::begin_frame()
 }
 
 // Destroy with SystemApp cleanup
-void ImGuiBackend::destroy()
+void ImGuiApp::shutdown()
 {
     SKR_ASSERT(is_created() && "try destroy context before create");
 
@@ -260,15 +185,14 @@ void ImGuiBackend::destroy()
     _renderer_backend->wait_rendering_done();
     
     // Stop IME if active
-    if (_ime && _ime->is_text_input_active())
+    if (ime && ime->is_text_input_active())
     {
-        _ime->stop_text_input();
+        ime->stop_text_input();
     }
 
     // Unregister event handler
-    if (_event_handler && _system_app)
+    if (_event_handler)
     {
-        auto* event_queue = _system_app->get_event_queue();
         event_queue->remove_handler(_event_handler);
         SkrDelete(_event_handler);
         _event_handler = nullptr;
@@ -309,32 +233,20 @@ void ImGuiBackend::destroy()
     _renderer_backend.reset();
 
     // Destroy main window through WindowManager
-    if (_system_window && _system_app)
+    if (_main_window)
     {
-        auto* window_manager = _system_app->get_window_manager();
-        window_manager->destroy_window(_system_window);
-        _system_window = nullptr;
+        window_manager->destroy_window(_main_window);
+        _main_window = nullptr;
     }
 
     // Destroy context
     ImGui::DestroyContext(_context);
     _context = nullptr;
     
-    // Clean up owned SystemApp (legacy mode)
-    if (_owns_system_app && _system_app)
-    {
-        SystemApp::Destroy(_system_app);
-        _owns_system_app = false;
-    }
-    _system_app = nullptr;
-    
-    // Clear IME references
-    _ime = nullptr;
-    _ime_callbacks_set = false;
-    _ime_active_state = false;
+    SystemApp::shutdown();
 }
 
-void ImGuiBackend::end_frame()
+void ImGuiApp::end_frame()
 {
     SKR_ASSERT(is_created() && "please create context before end frame");
     SKR_ASSERT(ImGui::GetCurrentContext() == _context && "context mismatch");
@@ -345,9 +257,10 @@ void ImGuiBackend::end_frame()
         ImGui::UpdatePlatformWindows();
     }
     _renderer_backend->end_frame();
+    _collect();
 }
 
-void ImGuiBackend::collect()
+void ImGuiApp::_collect()
 {
     SKR_ASSERT(is_created() && "please create context before render");
     SKR_ASSERT(ImGui::GetCurrentContext() == _context && "context mismatch");
@@ -380,7 +293,7 @@ void ImGuiBackend::collect()
     // Handle resize if triggered by event handler
     if (_event_handler && _event_handler->want_resize().comsume())
     {
-        auto size = _system_window->get_size();
+        auto size = _main_window->get_size();
         _renderer_backend->resize_main_window(
             _context->Viewports[0],
             { (float)size.x, (float)size.y }
@@ -391,7 +304,7 @@ void ImGuiBackend::collect()
     ImGui::Render();
 }
 
-void ImGuiBackend::render()
+void ImGuiApp::render()
 {
     _renderer_backend->render_main_window(_context->Viewports[0]);
 
@@ -402,45 +315,44 @@ void ImGuiBackend::render()
     }
 }
 
-void ImGuiBackend::acquire_next_frame()
+void ImGuiApp::acquire_next_frame()
 {
     SKR_ASSERT(is_created() && "please create context before acquire next frame");
     // Pass the main viewport to acquire_next_frame
     _renderer_backend->acquire_next_frame(_context->Viewports[0]);
 }
 
-// Legacy compatibility - create without SystemApp
-void ImGuiBackend::create(const ImGuiWindowCreateInfo& main_wnd_create_info, RCUnique<ImGuiRendererBackend> backend)
-{
-    // For backward compatibility, create a default SystemApp
-    auto* default_app = SystemApp::Create();
-    if (!default_app)
-    {
-        SKR_LOG_ERROR(u8"Failed to create default SystemApp for legacy ImGui mode");
-        return;
-    }
-    
-    _owns_system_app = true;
-    
-    // Call the new create method
-    create(default_app, main_wnd_create_info, std::move(backend));
-}
-
 // Legacy compatibility - pump_message delegates to process_events
-void ImGuiBackend::pump_message()
+void ImGuiApp::pump_message()
 {
-    if (_system_app)
+    SKR_ASSERT(is_created() && "please create context before processing events");
+    
+    event_queue->pump_messages();
+    
+    // Update ImGui display size (every frame to accommodate for window resizing)
+    if (_main_window)
     {
-        process_events();
-    }
-    else
-    {
-        SKR_LOG_WARN(u8"pump_message called without SystemApp - no events processed");
+        auto window_size = _main_window->get_size();
+        
+        // Handle minimized window
+        int w = window_size.x;
+        int h = window_size.y;
+        if (_main_window->is_minimized())
+            w = h = 0;
+        
+        _context->IO.DisplaySize = ImVec2((float)w, (float)h);
+        
+        // Update framebuffer scale
+        if (w > 0 && h > 0)
+        {
+            auto pixel_ratio = _main_window->get_pixel_ratio();
+            _context->IO.DisplayFramebufferScale = ImVec2(pixel_ratio, pixel_ratio);
+        }
     }
 }
 
 // Helper to update mouse cursor
-void ImGuiBackend::UpdateMouseCursor()
+void ImGuiApp::UpdateMouseCursor()
 {
     ImGuiIO& io = ImGui::GetIO();
     if (io.ConfigFlags & ImGuiConfigFlags_NoMouseCursorChange)
@@ -472,7 +384,7 @@ void ImGuiBackend::UpdateMouseCursor()
 }
 
 // imgui functional
-void ImGuiBackend::enable_nav(bool enable)
+void ImGuiApp::enable_nav(bool enable)
 {
     SKR_ASSERT(is_created() && "please create context before set feature");
     if (enable)
@@ -487,7 +399,7 @@ void ImGuiBackend::enable_nav(bool enable)
     }
 }
 
-void ImGuiBackend::enable_docking(bool enable)
+void ImGuiApp::enable_docking(bool enable)
 {
     SKR_ASSERT(is_created() && "please create context before set feature");
     if (enable)
@@ -500,7 +412,7 @@ void ImGuiBackend::enable_docking(bool enable)
     }
 }
 
-void ImGuiBackend::enable_multi_viewport(bool enable)
+void ImGuiApp::enable_multi_viewport(bool enable)
 {
     SKR_ASSERT(is_created() && "please create context before set feature");
     if (enable)
@@ -513,7 +425,7 @@ void ImGuiBackend::enable_multi_viewport(bool enable)
     }
 }
 
-void ImGuiBackend::enable_ini_file(bool enable)
+void ImGuiApp::enable_ini_file(bool enable)
 {
     SKR_ASSERT(is_created() && "please create context before set feature");
     if (enable)
@@ -526,7 +438,7 @@ void ImGuiBackend::enable_ini_file(bool enable)
     }
 }
 
-void ImGuiBackend::enable_log_file(bool enable)
+void ImGuiApp::enable_log_file(bool enable)
 {
     SKR_ASSERT(is_created() && "please create context before set feature");
     if (enable)
@@ -539,25 +451,25 @@ void ImGuiBackend::enable_log_file(bool enable)
     }
 }
 
-void ImGuiBackend::enable_transparent_docking(bool enable)
+void ImGuiApp::enable_transparent_docking(bool enable)
 {
     SKR_ASSERT(is_created() && "please create context before set feature");
     _context->IO.ConfigDockingTransparentPayload = enable;
 }
 
-void ImGuiBackend::enable_always_tab_bar(bool enable)
+void ImGuiApp::enable_always_tab_bar(bool enable)
 {
     SKR_ASSERT(is_created() && "please create context before set feature");
     _context->IO.ConfigDockingAlwaysTabBar = enable;
 }
 
-void ImGuiBackend::enable_move_window_by_blank_area(bool enable)
+void ImGuiApp::enable_move_window_by_blank_area(bool enable)
 {
     SKR_ASSERT(is_created() && "please create context before set feature");
     _context->IO.ConfigWindowsMoveFromTitleBarOnly = !enable;
 }
 
-void ImGuiBackend::enable_high_dpi(bool enable)
+void ImGuiApp::enable_high_dpi(bool enable)
 {
     SKR_ASSERT(is_created() && "please create context before set feature");
     if (enable)
@@ -572,11 +484,8 @@ void ImGuiBackend::enable_high_dpi(bool enable)
     }
 }
 
-void ImGuiBackend::SetupIMECallbacks()
+void ImGuiApp::SetupIMECallbacks()
 {
-    if (!_ime || _ime_callbacks_set)
-        return;
-    
     SKR_LOG_DEBUG(u8"Setting up IME callbacks");
         
     IMEEventCallbacks callbacks;
@@ -618,15 +527,14 @@ void ImGuiBackend::SetupIMECallbacks()
         SKR_LOG_TRACE(u8"IME candidates updated: %d candidates", info.total_candidates);
     };
     
-    _ime->set_event_callbacks(callbacks);
-    _ime_callbacks_set = true;
+    ime->set_event_callbacks(callbacks);
     
     SKR_LOG_DEBUG(u8"IME callbacks set successfully");
 }
 
-void ImGuiBackend::UpdateIMEState()
+void ImGuiApp::UpdateIMEState()
 {
-    if (!_ime || !_system_window)
+    if (!ime || !_main_window)
         return;
         
     // Simple state sync: automatically manage IME based on WantTextInput
@@ -636,21 +544,15 @@ void ImGuiBackend::UpdateIMEState()
     if (imgui_wants_text && !_ime_active_state)
     {
         // ImGui wants text input but we haven't activated IME yet
-        _ime->start_text_input(_system_window);
+        ime->start_text_input(_main_window);
         _ime_active_state = true;
-        
-        // Re-setup callbacks after starting IME (some implementations may require this)
-        if (!_ime_callbacks_set)
-        {
-            SetupIMECallbacks();
-        }
         
         SKR_LOG_DEBUG(u8"Starting IME text input (WantTextInput=true)");
     }
     else if (!imgui_wants_text && _ime_active_state)
     {
         // ImGui doesn't want text input but we have IME active
-        _ime->stop_text_input();
+        ime->stop_text_input();
         _ime_active_state = false;
         SKR_LOG_DEBUG(u8"Stopping IME text input (WantTextInput=false)");
     }

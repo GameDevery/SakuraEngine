@@ -15,44 +15,22 @@ struct ImGuiRendererBackend;
 struct SystemApp;
 struct SystemWindow;
 
-// Window creation info directly in ImGui namespace
-struct ImGuiWindowCreateInfo {
-    String              title         = {};
-    Optional<uint2>     pos           = {}; // default means centered
-    uint2               size          = { 1280, 720 };
-    SystemWindow*       popup_parent  = nullptr; // if set, means create a popup window
-    bool                is_topmost    = false;
-    bool                is_tooltip    = false;
-    bool                is_borderless = false;
-    bool                is_resizable  = true;
-};
-
-struct SKR_IMGUI_API ImGuiBackend {
+struct SKR_IMGUI_API ImGuiApp : public SystemApp {
     // ctor & dtor
-    ImGuiBackend();
-    ~ImGuiBackend();
+    ImGuiApp(const SystemWindowCreateInfo& main_wnd_create_info, RCUnique<ImGuiRendererBackend> backend);
+    ~ImGuiApp();
 
     // imgui context
     void apply_context();
-    void create(
-        SystemApp*                     system_app,
-        const ImGuiWindowCreateInfo&   main_wnd_create_info,
-        RCUnique<ImGuiRendererBackend> backend
-    );
-    // Legacy overload for backward compatibility
-    void create(
-        const ImGuiWindowCreateInfo&   main_wnd_create_info,
-        RCUnique<ImGuiRendererBackend> backend
-    );
-    void destroy();
+
+    virtual bool initialize(const char* backend = nullptr) override;
+    virtual void shutdown() override;
 
     // frame
-    void pump_message();  // Legacy method for compatibility
-    void process_events(); // New method using SystemEventQueue
+    void pump_message(); // Legacy method for compatibility
     void begin_frame();
     void end_frame();
     void acquire_next_frame();
-    void collect();
     void render();
 
     // imgui functional
@@ -67,22 +45,22 @@ struct SKR_IMGUI_API ImGuiBackend {
     void enable_high_dpi(bool enable = true);
 
     // getter
-    inline bool                      is_created() const { return _context != nullptr; }
-    inline const Trigger&            want_exit() const { return _event_handler ? _event_handler->want_exit() : _want_exit; }
-    inline ImGuiContext*             context() const { return _context; }
-    inline SystemApp*                system_app() const { return _system_app; }
-    inline SystemWindow*             system_window() const { return _system_window; }
+    inline bool           is_created() const { return _context != nullptr; }
+    inline const Trigger& want_exit() const { return _event_handler ? _event_handler->want_exit() : _want_exit; }
+    inline ImGuiContext*  context() const { return _context; }
+    inline SystemWindow*  main_window() const { return _main_window; }
 
     mutable skr::String _clipboard;
-    
+
 private:
+    void _collect();
     // context
-    ImGuiContext*      _context     = nullptr;
+    ImGuiContext* _context = nullptr;
 
     // system integration
-    SystemApp*                     _system_app     = nullptr;
-    SystemWindow*                  _system_window  = nullptr;
-    ImGuiSystemEventHandler*       _event_handler  = nullptr;
+    SystemWindowCreateInfo   _main_window_info;
+    SystemWindow*            _main_window   = nullptr;
+    ImGuiSystemEventHandler* _event_handler = nullptr;
 
     // render backend
     RCUnique<ImGuiRendererBackend> _renderer_backend = nullptr;
@@ -92,21 +70,14 @@ private:
     Trigger _content_scale_changed = {};
     Trigger _want_resize           = {};
     Trigger _want_exit             = {};
-    
+
     // Helper methods
     void UpdateMouseCursor();
     void SetupIMECallbacks();
     void UpdateIMEState();
-    
+    bool _ime_active_state = false;
+
     // Time tracking
     std::chrono::steady_clock::time_point last_frame_time_;
-    
-    // Track if we own the SystemApp (for legacy mode)
-    bool _owns_system_app = false;
-    
-    // IME integration
-    IME* _ime = nullptr;  // Cached IME pointer
-    bool _ime_callbacks_set = false;  // Avoid duplicate callback setup
-    bool _ime_active_state = false;  // Track our IME activation state
 };
 } // namespace skr

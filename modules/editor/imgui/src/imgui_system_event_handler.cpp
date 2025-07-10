@@ -6,7 +6,7 @@
 namespace skr
 {
 
-ImGuiSystemEventHandler::ImGuiSystemEventHandler(ImGuiBackend* backend)
+ImGuiSystemEventHandler::ImGuiSystemEventHandler(ImGuiApp* backend)
     : _backend(backend)
 {
     SKR_ASSERT(backend && "ImGuiSystemEventHandler requires valid backend");
@@ -23,9 +23,9 @@ void ImGuiSystemEventHandler::handle_event(const SkrSystemEvent& event) SKR_NOEX
         return;
 
     // Set main window handle if not set
-    if (_main_window_handle == 0 && _backend->system_window())
+    if (_main_window_handle == 0 && _backend->main_window())
     {
-        _main_window_handle = _backend->system_window()->get_native_handle();
+        _main_window_handle = _backend->main_window()->get_native_handle();
     }
 
     switch (event.type)

@@ -6,12 +6,12 @@
 namespace skr
 {
 // Forward declarations
-struct ImGuiBackend;
+struct ImGuiApp;
 
 // ImGui event handler that integrates with SkrSystem event system
 struct SKR_IMGUI_API ImGuiSystemEventHandler : public ISystemEventHandler
 {
-    ImGuiSystemEventHandler(ImGuiBackend* backend);
+    ImGuiSystemEventHandler(ImGuiApp* backend);
     ~ImGuiSystemEventHandler() override;
 
     // ISystemEventHandler interface
@@ -33,7 +33,7 @@ struct SKR_IMGUI_API ImGuiSystemEventHandler : public ISystemEventHandler
     const Trigger& content_scale_changed() const { return _content_scale_changed; }
 
 private:
-    ImGuiBackend* _backend = nullptr;
+    ImGuiApp* _backend = nullptr;
     ImGuiContext* _context = nullptr;
     
     // Event triggers

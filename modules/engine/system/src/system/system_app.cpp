@@ -156,24 +156,6 @@ void SystemApp::shutdown()
     }
 }
 
-bool SystemApp::add_event_source(ISystemEventSource* source)
-{
-    if (event_queue && source)
-    {
-        return event_queue->add_source(source);
-    }
-    return false;
-}
-
-bool SystemApp::remove_event_source(ISystemEventSource* source)
-{
-    if (event_queue && source)
-    {
-        return event_queue->remove_source(source);
-    }
-    return false;
-}
-
 bool SystemApp::wait_events(uint32_t timeout_ms)
 {
     if (platform_event_source)
@@ -181,31 +163,6 @@ bool SystemApp::wait_events(uint32_t timeout_ms)
         return platform_event_source->wait_events(timeout_ms);
     }
     return false;
-}
-
-SystemApp* SystemApp::Create(const char* backend)
-{
-    auto* app = SkrNew<SystemApp>();
-    if (!app)
-    {
-        return nullptr;
-    }
-    
-    if (!app->initialize(backend))
-    {
-        SkrDelete(app);
-        return nullptr;
-    }
-    
-    return app;
-}
-
-void SystemApp::Destroy(SystemApp* app)
-{
-    if (app)
-    {
-        SkrDelete(app);
-    }
 }
 
 } // namespace skr
