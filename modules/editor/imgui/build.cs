@@ -9,7 +9,7 @@ public static class SkrImGui
         Engine.AddSetup<ImGuiSetup>();
 
         Engine.Module("SkrImGui", "SKR_IMGUI")
-            .Depend(Visibility.Public, "SkrSystem", "SkrRenderGraph")
+            .Depend(Visibility.Public, "SkrSystem", "SkrRenderer")
             .IncludeDirs(Visibility.Public, "include")
             .AddCppFiles("src/**.cpp")
             .AddCppSLFiles("shaders/*.cppsl")

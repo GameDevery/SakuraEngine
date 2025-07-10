@@ -8,7 +8,6 @@ namespace SB
     {
         public override bool EnableEmitter(Target Target) => Target.HasFilesOf<CppSLFileList>();
         public override bool EmitFileTask(Target Target, FileList FileList) => FileList.Is<CppSLFileList>();
-
         public override IArtifact? PerFileTask(Target Target, FileList FileList, FileOptions? Options, string SourceFile)
         {
             var CppSLFileList = FileList as CppSLFileList;
@@ -54,23 +53,7 @@ namespace SB
                 depend.ExternalFiles.AddRange(OutputFiles);
             }, new string[] { Executable, SourceFile }, null);
 
-            var CMD = new CompileCommand
-            {
-                directory = OutputDirectory,
-                file = SourceFile,
-                arguments = new List<string>
-                {
-                    "clangd",
-                    "-std=c++23", 
-                    "-x", "c++", 
-                    "-fsyntax-only", 
-                    "-fms-extensions", 
-                    "-Wno-microsoft-union-member-reference",
-                    $"-I{Engine.EngineDirectory}/tools/shader_compiler/LLVM/test_shaders",
-                    SourceFile
-                }
-            };
-            CompileCommands.Add(SB.Core.Json.Serialize(CMD));
+
 
             // if (BuildSystem.TargetOS == OSPlatform.Windows)
             {
@@ -83,15 +66,44 @@ namespace SB
 
             return new PlainArtifact { IsRestored = !Changed };
         }
+        public static string CppSLCompiler = Path.Combine(Engine.TempPath, "tools", "CppSLCompiler");
+        public static Dictionary<string, string> ShaderOutputDirectories = new();
+    }
 
+    public class CppSLCompileCommandsEmitter : TaskEmitter
+    {
+        public override bool EnableEmitter(Target Target) => Target.HasFilesOf<CppSLFileList>();
+        public override bool EmitFileTask(Target Target, FileList FileList) => FileList.Is<CppSLFileList>();
+        public override IArtifact? PerFileTask(Target Target, FileList FileList, FileOptions? Options, string SourceFile)
+        {
+            var OutputDirectory = Path.Combine(Engine.BuildPath, CppSLEmitter.ShaderOutputDirectories[Target.Name]);
+            Directory.CreateDirectory(OutputDirectory);
+
+            var CMD = new CompileCommand
+            {
+                directory = OutputDirectory,
+                file = SourceFile,
+                arguments = new List<string>
+                {
+                    "clangd",
+                    "-std=c++23",
+                    "-x", "c++",
+                    "-fsyntax-only",
+                    "-fms-extensions",
+                    "-Wno-microsoft-union-member-reference",
+                    $"-I{Engine.EngineDirectory}/tools/shader_compiler/LLVM/test_shaders",
+                    SourceFile
+                }
+            };
+            CompileCommands.Add(SB.Core.Json.Serialize(CMD));
+
+            return new PlainArtifact { IsRestored = false };
+        }
         public static void WriteCompileCommandsToFile(string Path)
         {
             File.WriteAllText(Path, "[" + String.Join(",", CompileCommands) + "]");
         }
-
         public static ConcurrentBag<string> CompileCommands = new();
-        public static string CppSLCompiler = Path.Combine(Engine.TempPath, "tools", "CppSLCompiler");
-        public static Dictionary<string, string> ShaderOutputDirectories = new();
     }
 
     public class CppSLFileList : FileList

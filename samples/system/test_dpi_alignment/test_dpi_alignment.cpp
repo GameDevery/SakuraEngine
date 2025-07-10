@@ -26,7 +26,7 @@
 int main()
 {
     // Create system app
-    auto* app = skr::SystemApp::Create();
+    auto* app = SkrNew<skr::SystemApp>();
     if (!app) {
         SKR_LOG_ERROR(u8"Failed to create SystemApp");
         return -1;
@@ -36,7 +36,7 @@ int main()
     auto* window_manager = app->get_window_manager();
     if (!window_manager) {
         SKR_LOG_ERROR(u8"Failed to get window manager");
-        skr::SystemApp::Destroy(app);
+        SkrDelete(app);
         return -1;
     }
     
@@ -105,7 +105,7 @@ int main()
     auto* window = window_manager->create_window(create_info);
     if (!window) {
         SKR_LOG_ERROR(u8"Failed to create window");
-        skr::SystemApp::Destroy(app);
+        SkrDelete(app);
         return -1;
     }
     
@@ -555,7 +555,6 @@ int main()
     
     // Cleanup
     window_manager->destroy_window(window);
-    skr::SystemApp::Destroy(app);
-    
+    SkrDelete(app);
     return 0;
 }

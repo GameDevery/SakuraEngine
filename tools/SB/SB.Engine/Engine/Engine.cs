@@ -95,6 +95,8 @@ namespace SB
 
             Engine.GetTaskEmitter("Cpp.UnityBuild")
                 ?.AddDependency("Cpp.CompileCommands", DependencyModel.PerTarget);
+
+            Engine.AddTaskEmitter("CppSL.CompileCommands", new CppSLCompileCommandsEmitter());
         }
 
         public static void AddShaderTaskEmitters(IToolchain Toolchain)

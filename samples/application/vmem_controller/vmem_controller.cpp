@@ -1,16 +1,16 @@
 #include "common/utils.h"
+#include "SkrProfile/profile.h"
+#include "SkrBase/misc/make_zeroed.hpp"
 #include "SkrOS/thread.h"
 #include "SkrCore/log.h"
-#include "SkrBase/misc/make_zeroed.hpp"
 #include "SkrCore/module/module.hpp"
+#include "SkrCore/memory/sp.hpp"
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrImGui/imgui_backend.hpp"
 #include "SkrImGui/imgui_render_backend.hpp"
 #if SKR_PLAT_WINDOWS
     #include <shellscalingapi.h>
 #endif
-
-#include "SkrProfile/profile.h"
 
 class SVMemCCModule : public skr::IDynamicModule
 {
@@ -38,8 +38,8 @@ class SVMemCCModule : public skr::IDynamicModule
     skr::Vector<CGPUBufferId> buffers;
 
     // imgui
-    skr::ImGuiBackend            imgui_backend;
-    skr::ImGuiRendererBackendRG* imgui_render_backend = nullptr;
+    skr::UPtr<skr::ImGuiApp> imgui_app = nullptr;
+    skr::ImGuiRendererBackendRG* imgui_render = nullptr;
 
     skr::render_graph::RenderGraph* graph = nullptr;
 };
@@ -186,34 +186,54 @@ int SVMemCCModule::main_module_exec(int argc, char8_t** argv)
         using namespace skr;
 
         auto render_backend  = RCUnique<ImGuiRendererBackendRG>::New();
-        imgui_render_backend = render_backend.get();
+        imgui_render = render_backend.get();
         ImGuiRendererBackendRGConfig config{};
         config.render_graph = graph;
         config.queue        = gfx_queue;
         render_backend->init(config);
-        imgui_backend.create({}, std::move(render_backend));
-        imgui_backend.enable_docking();
+
+        imgui_app = UPtr<ImGuiApp>::New(
+            SystemWindowCreateInfo{
+                .title = u8"Video Memory Controller",
+                .size = { 1280, 720 }
+            },
+            std::move(render_backend)
+        );
+        imgui_app->initialize();
+        imgui_app->enable_docking();
     }
 
     // loop
-    while (!imgui_backend.want_exit().comsume())
+    while (!imgui_app->want_exit().comsume())
     {
         FrameMark;
         static uint64_t frame_index = 0; // FIXME. bad usage
 
         // pump message
-        imgui_backend.pump_message();
+        imgui_app->pump_message();
 
         // imgui UI
-        imgui_backend.begin_frame();
+        imgui_app->begin_frame();
         imgui_ui();
-        imgui_backend.end_frame();
+        imgui_app->end_frame();
 
         // prepare rendering
         buffers.remove_all(nullptr);
 
+        auto native_backbuffer = imgui_render->get_backbuffer(ImGui::GetMainViewport());
+        imgui_render->set_load_action(ImGui::GetMainViewport(), CGPU_LOAD_ACTION_LOAD);
+        SkrZoneScopedN("GraphSetup");
+        // render graph setup & compile & exec
+        auto back_buffer = graph->create_texture(
+            [=](render_graph::RenderGraph& g, render_graph::TextureBuilder& builder) {
+                builder.set_name(u8"backbuffer")
+                    .import(native_backbuffer, CGPU_RESOURCE_STATE_UNDEFINED)
+                    .allow_render_target();
+            }
+        );
+
         // draw imgui
-        imgui_backend.render();
+        imgui_app->render();
 
         // run rg
         graph->compile();
@@ -224,7 +244,7 @@ int SVMemCCModule::main_module_exec(int argc, char8_t** argv)
         }
 
         // present
-        imgui_render_backend->present_all();
+        imgui_render->present_all();
 
         // Avoid too much CPU Usage
         skr_thread_sleep(16);
@@ -237,7 +257,7 @@ void SVMemCCModule::on_unload()
     SKR_LOG_INFO(u8"vmem controller unloaded!");
     cgpu_wait_queue_idle(gfx_queue);
     skr::render_graph::RenderGraph::destroy(graph);
-    imgui_backend.destroy();
+    imgui_app->shutdown();
 
     // clean up
     finalize();

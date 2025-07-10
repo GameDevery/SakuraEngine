@@ -23,6 +23,9 @@ public class MainCommand
     [CmdSub(Name = "clean", ShortName = 'c', Help = "Clean build cache and dependency databases")]
     public CleanCommand Clean { get; set; } = new CleanCommand();
 
+    [CmdSub(Name = "compile_commands", Help = "Generate Compile Commands for IDEs")]
+    public CompileCommandsCommand CompileCommands { get; set; } = new CompileCommandsCommand();
+
     [CmdSub(Name = "vs", Help = "Generate Visual Studio solution")]
     public VSCommand VS { get; set; } = new VSCommand();
 
@@ -45,7 +48,7 @@ public abstract class CommandBase
     public bool UseShaDepend { get; set; } = false;
 
     [CmdOption(Name = "category", ShortName = 'c', Help = "Build tools", IsRequired = false)]
-    public string Category { get; set; } = "modules";
+    public string CategoryString { get; set; } = "modules";
 
     [CmdOption(Name = "toolchain", Help = "Toolchain to use", IsRequired = false)]
     public string ToolchainName { get; set; } = OperatingSystem.IsWindows() ? "clang-cl" : "clang";
@@ -98,10 +101,12 @@ public abstract class CommandBase
         Log.Information("Build start with configuration: {Configuration}", BuildSystem.GlobalConfiguration);
 
         // Set categories
-        if (Category == "modules")
+        if (CategoryString == "modules")
             Categories |= TargetCategory.Runtime | TargetCategory.DevTime;
-        if (Category == "tools")
+        if (CategoryString == "tools")
             Categories |= TargetCategory.Tool;
+        if (CategoryString == "all")
+            Categories |= TargetCategory.Tool | TargetCategory.Runtime | TargetCategory.DevTime;
         Log.Information("Build start with categories: {Categories}", Categories);
 
         // Bootstrap engine
@@ -141,17 +146,11 @@ public class BuildCommand : CommandBase
         if (!ShaderOnly)
         {
             Engine.AddEngineTaskEmitters(Toolchain);
-            Engine.AddCompileCommandsEmitter(Toolchain);
         }
-
         Engine.RunBuild(SingleTarget);
 
-        // Handle post-build tasks
         if (Categories.HasFlag(TargetCategory.Tool))
         {
-            Directory.CreateDirectory(".sb/compile_commands/tools");
-            CompileCommandsEmitter.WriteToFile(".sb/compile_commands/tools/compile_commands.json");
-
             string ToolsDirectory = Path.Combine(SourceLocation.Directory(), ".sb", "tools");
             BuildSystem.Artifacts.AsParallel().ForAll(artifact =>
             {
@@ -173,14 +172,6 @@ public class BuildCommand : CommandBase
                     }
                 }
             });
-        }
-        else
-        {
-            Directory.CreateDirectory(".sb/compile_commands/modules");
-            CompileCommandsEmitter.WriteToFile(".sb/compile_commands/modules/compile_commands.json");
-
-            Directory.CreateDirectory(".sb/compile_commands/shaders");
-            CppSLEmitter.WriteCompileCommandsToFile(".sb/compile_commands/shaders/compile_commands.json");
         }
     }
 }
@@ -259,6 +250,26 @@ public class CleanCommand : CommandBase
         {
             Log.Error("Failed to clear databases: {Error}", ex.Message);
         }
+    }
+}
+
+public class CompileCommandsCommand : CommandBase
+{
+    public CompileCommandsCommand()
+    {
+        CategoryString = "all";
+    }
+
+    public override void OnExecute()
+    {
+        Engine.AddCompileCommandsEmitter(Toolchain);
+        Engine.RunBuild();
+
+        Directory.CreateDirectory(".sb/compile_commands/cpp");
+        CompileCommandsEmitter.WriteToFile(".sb/compile_commands/cpp/compile_commands.json");
+
+        Directory.CreateDirectory(".sb/compile_commands/shaders");
+        CppSLCompileCommandsEmitter.WriteCompileCommandsToFile(".sb/compile_commands/shaders/compile_commands.json");
     }
 }
 

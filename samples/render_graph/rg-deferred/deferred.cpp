@@ -3,12 +3,16 @@
 #include "gbuffer_pipeline.h"
 #include "lighting_pipeline.h"
 #include "blit_pipeline.h"
-#include "SkrRenderGraph/frontend/render_graph.hpp"
-#include "SkrImGui/imgui_backend.hpp"
-#include "SkrImGui/imgui_render_backend.hpp"
+
 #include "SkrProfile/profile.h"
-#include "pass_profiler.h"
 #include "SkrOS/thread.h"
+#include "SkrOS/filesystem.hpp"
+#include "SkrCore/module/module_manager.hpp"
+#include "SkrRenderGraph/frontend/render_graph.hpp"
+#include "SkrRenderer/skr_renderer.h"
+#include "SkrImGui/imgui_render_backend.hpp"
+#include "SkrImGui/imgui_backend.hpp"
+#include "pass_profiler.h"
 
 CubeGeometry::InstanceData CubeGeometry::instance_data;
 
@@ -18,11 +22,8 @@ thread_local ECGPUBackend backend = CGPU_BACKEND_D3D12;
 thread_local ECGPUBackend backend = CGPU_BACKEND_VULKAN;
 #endif
 
-thread_local CGPUInstanceId instance;
-thread_local CGPUAdapterId  adapter;
-thread_local CGPUDeviceId   device;
-thread_local CGPUQueueId    gfx_queue;
-thread_local CGPUSamplerId  static_sampler;
+thread_local SRenderDeviceId render_device;
+thread_local CGPUSamplerId static_sampler;
 
 thread_local CGPUBufferId index_buffer;
 thread_local CGPUBufferId vertex_buffer;
@@ -33,32 +34,11 @@ thread_local CGPURenderPipelineId  gbuffer_pipeline;
 thread_local CGPURenderPipelineId  lighting_pipeline;
 thread_local CGPUComputePipelineId lighting_cs_pipeline;
 
-void create_api_objects()
+void create_render_pipeline()
 {
-    // Create instance
-    CGPUInstanceDescriptor instance_desc      = {};
-    instance_desc.backend                     = backend;
-    instance_desc.enable_debug_layer          = true;
-    instance_desc.enable_gpu_based_validation = false;
-    instance_desc.enable_set_name             = true;
-    instance                                  = cgpu_create_instance(&instance_desc);
-
-    // Filter adapters
-    uint32_t adapters_count = 0;
-    cgpu_enum_adapters(instance, CGPU_NULLPTR, &adapters_count);
-    CGPUAdapterId adapters[64];
-    cgpu_enum_adapters(instance, adapters, &adapters_count);
-    adapter = adapters[0];
-
-    // Create device
-    CGPUQueueGroupDescriptor queue_group_desc = {};
-    queue_group_desc.queue_type               = CGPU_QUEUE_TYPE_GRAPHICS;
-    queue_group_desc.queue_count              = 1;
-    CGPUDeviceDescriptor device_desc          = {};
-    device_desc.queue_groups                  = &queue_group_desc;
-    device_desc.queue_group_count             = 1;
-    device                                    = cgpu_create_device(adapter, &device_desc);
-    gfx_queue                                 = cgpu_get_queue(device, CGPU_QUEUE_TYPE_GRAPHICS, 0);
+    render_device = skr_get_default_render_device();
+    auto device = render_device->get_cgpu_device();
+    auto gfx_queue = render_device->get_gfx_queue();
 
     // Sampler
     CGPUSamplerDescriptor sampler_desc = {};
@@ -70,10 +50,7 @@ void create_api_objects()
     sampler_desc.mag_filter            = CGPU_FILTER_TYPE_LINEAR;
     sampler_desc.compare_func          = CGPU_CMP_NEVER;
     static_sampler                     = cgpu_create_sampler(device, &sampler_desc);
-}
 
-void create_resources()
-{
     // upload
     CGPUBufferDescriptor upload_buffer_desc = {};
     upload_buffer_desc.name                 = u8"UploadBuffer";
@@ -169,10 +146,7 @@ void create_resources()
     cgpu_free_buffer(upload_buffer);
     cgpu_free_command_buffer(cpy_cmd);
     cgpu_free_command_pool(cmd_pool);
-}
 
-void create_render_pipeline()
-{
     gbuffer_pipeline     = create_gbuffer_render_pipeline(device);
     lighting_pipeline    = create_lighting_render_pipeline(device, static_sampler, CGPU_FORMAT_R8G8B8A8_UNORM);
     lighting_cs_pipeline = create_lighting_compute_pipeline(device);
@@ -190,9 +164,6 @@ void finalize()
     free_pipeline_and_signature(lighting_cs_pipeline);
     free_pipeline_and_signature(blit_pipeline);
     cgpu_free_sampler(static_sampler);
-    cgpu_free_queue(gfx_queue);
-    cgpu_free_device(device);
-    cgpu_free_instance(instance);
 }
 
 struct LightingPushConstants {
@@ -211,23 +182,32 @@ bool                           DPIAware             = false;
 
 #include "SkrRT/runtime_module.h"
 
-int main(int argc, char* argv[])
+struct RenderGraphDeferredModule : public skr::IDynamicModule
+{
+    virtual void on_load(int argc, char8_t** argv) override;
+    virtual int main_module_exec(int argc, char8_t** argv) override;
+    virtual void on_unload() override;
+};
+IMPLEMENT_DYNAMIC_MODULE(RenderGraphDeferredModule, RenderGraphDeferred);
+
+void RenderGraphDeferredModule::on_load(int argc, char8_t** argv)
 {
     DPIAware = skr_runtime_is_dpi_aware();
+    create_render_pipeline();
+}
 
+int RenderGraphDeferredModule::main_module_exec(int argc, char8_t** argv)
+{
     // init rendering
     namespace render_graph = skr::render_graph;
     render_graph::RenderGraph*   graph;
     PassProfiler                 profilers[RG_MAX_FRAME_IN_FLIGHT];
-    skr::ImGuiBackend            imgui_backend           = {};
-    skr::ImGuiRendererBackendRG* imgui_render_backend_rg = nullptr;
+    skr::UPtr<skr::ImGuiApp> imgui_app = nullptr;
+    skr::ImGuiRendererBackendRG* imgui_render = nullptr;
     {
-        // init rendering data
-        create_api_objects();
-        create_resources();
-        create_render_pipeline();
-
         // init render graph
+        auto device = render_device->get_cgpu_device();
+        auto gfx_queue = render_device->get_gfx_queue();
         graph = render_graph::RenderGraph::create(
             [=](skr::render_graph::RenderGraphBuilder& builder) {
                 builder.with_device(device)
@@ -248,19 +228,20 @@ int main(int argc, char* argv[])
 
             // init imgui backend
             auto render_backend     = RCUnique<ImGuiRendererBackendRG>::New();
-            imgui_render_backend_rg = render_backend.get();
+            imgui_render = render_backend.get();
             ImGuiRendererBackendRGConfig config{};
             config.render_graph   = graph;
             config.queue          = gfx_queue;
             config.static_sampler = static_sampler;
             render_backend->init(config);
 
-            ImGuiWindowCreateInfo window_config = {
+            skr::SystemWindowCreateInfo window_config = {
                 .size = { BACK_BUFFER_WIDTH, BACK_BUFFER_HEIGHT },
                 .is_resizable = false
             };
-            imgui_backend.create(window_config, std::move(render_backend));
-            imgui_backend.enable_docking();
+            imgui_app = UPtr<ImGuiApp>::New(window_config, std::move(render_backend));
+            imgui_app->initialize();
+            imgui_app->enable_docking();
 
             // load font
             const char8_t* font_path = u8"./../resources/font/SourceSansPro-Regular.ttf";
@@ -281,16 +262,16 @@ int main(int argc, char* argv[])
     }
 
     // loop
-    while (!imgui_backend.want_exit().comsume())
+    while (!imgui_app->want_exit().comsume())
     {
-        imgui_backend.pump_message();
+        imgui_app->pump_message();
 
         // draw imgui
         SkrZoneScopedN("FrameTime");
         static uint64_t frame_index = 0;
         {
             SkrZoneScopedN("ImGui");
-            imgui_backend.begin_frame();
+            imgui_app->begin_frame();
             ImGui::Begin("RenderGraphProfile");
             if (ImGui::Button(fragmentLightingPass ? "SwitchToComputeLightingPass" : "SwitchToFragmentLightingPass"))
             {
@@ -326,13 +307,12 @@ int main(int argc, char* argv[])
                 }
             }
             ImGui::End();
-            imgui_backend.end_frame();
+            imgui_app->end_frame();
         }
-        imgui_backend.collect();
 
         // rendering
-        auto native_backbuffer = imgui_render_backend_rg->get_backbuffer(ImGui::GetMainViewport());
-        imgui_render_backend_rg->set_load_action(ImGui::GetMainViewport(), CGPU_LOAD_ACTION_LOAD);
+        auto native_backbuffer = imgui_render->get_backbuffer(ImGui::GetMainViewport());
+        imgui_render->set_load_action(ImGui::GetMainViewport(), CGPU_LOAD_ACTION_LOAD);
         {
             SkrZoneScopedN("GraphSetup");
             // render graph setup & compile & exec
@@ -492,7 +472,7 @@ int main(int argc, char* argv[])
                     cgpu_render_encoder_draw(stack.encoder, 3, 0);
                 }
             );
-            imgui_backend.render();
+            imgui_app->render();
         }
 
         // compile and draw rg
@@ -518,13 +498,13 @@ int main(int argc, char* argv[])
         // present
         {
             SkrZoneScopedN("Present");
-            imgui_render_backend_rg->present_all();
+            imgui_render->present_all();
             if (lockFPS) skr_thread_sleep(16);
         }
     }
 
     // wait rendering done
-    cgpu_wait_queue_idle(gfx_queue);
+    cgpu_wait_queue_idle(render_device->get_gfx_queue());
 
     // clean up
     for (uint32_t i = 0; i < RG_MAX_FRAME_IN_FLIGHT; i++)
@@ -532,7 +512,27 @@ int main(int argc, char* argv[])
         profilers[i].finalize();
     }
     render_graph::RenderGraph::destroy(graph);
-    imgui_backend.destroy();
+    imgui_app->shutdown();
+    return 0;
+}
+
+void RenderGraphDeferredModule::on_unload()
+{
     finalize();
+}
+
+int main(int argc, char* argv[])
+{
+    auto moduleManager = skr_get_module_manager();
+    std::error_code ec = {};
+    auto root = skr::filesystem::current_path(ec);
+    {
+        FrameMark;
+        SkrZoneScopedN("Initialize");
+        moduleManager->mount(root.u8string().c_str());
+        moduleManager->make_module_graph(u8"RenderGraphDeferred", true);
+        moduleManager->init_module_graph(argc, argv);
+        moduleManager->destroy_module_graph();
+    }
     return 0;
 }
