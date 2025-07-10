@@ -77,21 +77,21 @@ void SAnimDebugModule::on_load(int argc, char8_t** argv)
     SKR_LOG_INFO(u8"anim debug runtime loaded!");
     // parse command line arguments
     skr::cmd::parser parser(argc, (char**)argv);
-    parser.add(u8"anim", u8"animation file path", u8"-a", true);
+    parser.add(u8"skeleton", u8"ozz skeleton file path", u8"-s", false);
     if (!parser.parse())
     {
         SKR_LOG_ERROR(u8"Failed to parse command line arguments.");
         return;
     }
-    auto anim_path = parser.get_optional<skr::String>(u8"anim");
-    if (anim_path)
+    auto skel_path = parser.get_optional<skr::String>(u8"skeleton");
+    if (skel_path)
     {
-        m_anim_file = *anim_path;
-        SKR_LOG_INFO(u8"Animation file set to: %s", m_anim_file.c_str());
+        m_anim_file = *skel_path;
+        SKR_LOG_INFO(u8"ozz skeleton set to: %s", m_anim_file.c_str());
     }
     else
     {
-        SKR_LOG_INFO(u8"No animation file specified, using default: %s", m_anim_file.c_str());
+        SKR_LOG_INFO(u8"No skeleton file specified, using default: %s", m_anim_file.c_str());
     }
 }
 
