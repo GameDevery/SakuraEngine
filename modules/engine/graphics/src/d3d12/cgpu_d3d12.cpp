@@ -193,33 +193,95 @@ private:
 CGPUMemoryPoolId cgpu_create_memory_pool_d3d12(CGPUDeviceId device, const struct CGPUMemoryPoolDescriptor* desc)
 {
     CGPUDevice_D3D12*     D    = (CGPUDevice_D3D12*)device;
+    CGPUAdapter_D3D12*    A    = (CGPUAdapter_D3D12*)device->adapter;
     CGPUMemoryPool_D3D12* pool = CGPU_NULLPTR;
 
     D3D12MA::POOL_DESC poolDesc = {};
-    switch (desc->type)
+    poolDesc.HeapFlags |= D3D12_HEAP_FLAG_CREATE_NOT_ZEROED;
+    
+    // 特殊处理 Tiled 类型
+    if (desc->type == CGPU_MEM_POOL_TYPE_TILED)
     {
-        case CGPU_MEM_POOL_TYPE_TILED:
-            poolDesc.HeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
-            pool = cgpu_new<CGPUTiledMemoryPool_D3D12>();
-            break;
-        case CGPU_MEM_POOL_TYPE_LINEAR:
-            if (desc->memory_usage == CGPU_MEM_USAGE_GPU_ONLY)
+        poolDesc.HeapFlags |= D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
+        pool = cgpu_new<CGPUTiledMemoryPool_D3D12>();
+    }
+    else
+    {
+        // 根据 flags 组合确定 HeapFlags
+        const bool allowBuffers = desc->flags & CGPU_MEM_POOL_FLAG_ALLOW_BUFFERS;
+        const bool allowTextures = desc->flags & CGPU_MEM_POOL_FLAG_ALLOW_TEXTURES;
+        const bool allowRW = desc->flags & CGPU_MEM_POOL_FLAG_ALLOW_RW;
+        const bool allowRTDS = desc->flags & CGPU_MEM_POOL_FLAG_ALLOW_RT_DS;
+        
+        // 如果没有指定任何 flags，默认允许所有
+        if (desc->flags == CGPU_MEM_POOL_FLAG_NONE)
+        {
+            if (A->mResourceHeapTier >= D3D12_RESOURCE_HEAP_TIER_2)
             {
-                poolDesc.HeapFlags = D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES;
+                poolDesc.HeapFlags |= D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES;
             }
             else
             {
-                poolDesc.HeapFlags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
+                // Tier 1 默认只允许 Buffer
+                poolDesc.HeapFlags |= D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
             }
+        }
+        else
+        {
+            // 根据标志组合确定 HeapFlags
+            if (allowRTDS && !allowBuffers && !allowTextures)
+            {
+                // 只允许 RT/DS
+                poolDesc.HeapFlags |= D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES;
+            }
+            else if (allowTextures && !allowBuffers && !allowRTDS)
+            {
+                // 只允许普通纹理
+                poolDesc.HeapFlags |= D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
+            }
+            else if (allowBuffers && !allowTextures && !allowRTDS)
+            {
+                // 只允许 Buffer
+                poolDesc.HeapFlags |= D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
+            }
+            else if (A->mResourceHeapTier >= D3D12_RESOURCE_HEAP_TIER_2)
+            {
+                // Tier 2+：混合资源类型
+                poolDesc.HeapFlags |= D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES;
+            }
+            else
+            {
+                // Tier 1：需要根据主要用途选择
+                if (allowBuffers)
+                {
+                    poolDesc.HeapFlags |= D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
+                }
+                else if (allowRTDS)
+                {
+                    poolDesc.HeapFlags |= D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES;
+                }
+                else if (allowTextures)
+                {
+                    poolDesc.HeapFlags |= D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
+                }
+            }
+            
+            // RW 资源需要原子操作支持
+            if (allowRW && A->mShaderModel >= D3D_SHADER_MODEL_6_6)
+            {
+                poolDesc.HeapFlags |= D3D12_HEAP_FLAG_ALLOW_SHADER_ATOMICS;
+            }
+        }
+        
+        // 线性分配算法
+        if (desc->type == CGPU_MEM_POOL_TYPE_LINEAR)
+        {
             poolDesc.Flags = D3D12MA::POOL_FLAG_ALGORITHM_LINEAR;
-            pool = cgpu_new<CGPUMemoryPool_D3D12>();
-            break;
-        default:
-            poolDesc.Flags = D3D12MA::POOL_FLAG_NONE;
-            poolDesc.HeapFlags = D3D12_HEAP_FLAG_NONE;
-            pool = cgpu_new<CGPUMemoryPool_D3D12>();
-            break;
+        }
+        
+        pool = cgpu_new<CGPUMemoryPool_D3D12>();
     }
+    
     poolDesc.HeapProperties.Type = D3D12Util_TranslateHeapType(desc->memory_usage);
     poolDesc.HeapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
     poolDesc.HeapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;

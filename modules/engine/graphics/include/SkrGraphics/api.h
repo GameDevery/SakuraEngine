@@ -1427,6 +1427,7 @@ typedef struct CGPURenderPipelineDescriptor {
 typedef struct CGPUMemoryPoolDescriptor {
     ECGPUMemoryPoolType type;
     ECGPUMemoryUsage memory_usage;
+    CGPUMemoryPoolFlags flags;
     uint64_t block_size;
     uint32_t min_block_count;
     uint32_t max_block_count;

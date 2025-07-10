@@ -1191,6 +1191,14 @@ CGPUMemoryPoolId cgpu_create_memory_pool_vulkan(CGPUDeviceId device, const struc
             break;
     }
     
+    // 根据 flags 组合调整内存属性
+    const bool allowRTDS = desc->flags & CGPU_MEM_POOL_FLAG_ALLOW_RT_DS;
+    if (allowRTDS)
+    {
+        // 瞬态附件可以使用 LAZILY_ALLOCATED
+        preferred_flags |= VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT;
+    }
+    
     // Find memory type index
     VkPhysicalDeviceMemoryProperties mem_props;
     vkGetPhysicalDeviceMemoryProperties(A->pPhysicalDevice, &mem_props);
@@ -1242,6 +1250,13 @@ CGPUMemoryPoolId cgpu_create_memory_pool_vulkan(CGPUDeviceId device, const struc
     if (desc->type == CGPU_MEM_POOL_TYPE_LINEAR)
     {
         poolInfo.flags |= VMA_POOL_CREATE_LINEAR_ALGORITHM_BIT;
+    }
+    
+    // 根据资源类型优化 VMA pool
+    if (allowBuffers && !allowTextures && !allowRTDS)
+    {
+        // 纯 Buffer 池可以忽略 buffer/image granularity
+        poolInfo.flags |= VMA_POOL_CREATE_IGNORE_BUFFER_IMAGE_GRANULARITY_BIT;
     }
     
     // Create the VMA pool

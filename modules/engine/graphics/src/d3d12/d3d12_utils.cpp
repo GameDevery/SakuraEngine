@@ -266,10 +266,16 @@ void D3D12Util_RecordAdapterDetail(struct CGPUAdapter_D3D12* D3D12Adapter)
     adapter_detail.upload_buffer_texture_row_alignment = D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
     // Check Format Capacities
     D3D12Util_EnumFormatSupports(D3D12Adapter, pCheckDevice);
+    D3D12_FEATURE_DATA_SHADER_MODEL SM = make_zeroed<D3D12_FEATURE_DATA_SHADER_MODEL>();
+    if (SUCCEEDED(pCheckDevice->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &SM, sizeof(SM))))
+    {
+        adapter.mShaderModel = SM.HighestShaderModel;
+    }
     D3D12_FEATURE_DATA_D3D12_OPTIONS options = make_zeroed<D3D12_FEATURE_DATA_D3D12_OPTIONS>();
     if (SUCCEEDED(pCheckDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options))))
     {
         adapter.mTiledResourceTier = options.TiledResourcesTier;
+        adapter.mResourceHeapTier = options.ResourceHeapTier;
         adapter.mStandardSwizzle64KBSupported = options.StandardSwizzle64KBSupported;
         adapter_detail.support_tiled_volume = (options.TiledResourcesTier >= D3D12_TILED_RESOURCES_TIER_3);
         adapter_detail.support_tiled_texture = (options.TiledResourcesTier >= D3D12_TILED_RESOURCES_TIER_1);
@@ -290,6 +296,7 @@ void D3D12Util_RecordAdapterDetail(struct CGPUAdapter_D3D12* D3D12Adapter)
     D3D12_FEATURE_DATA_D3D12_OPTIONS6 options6 = make_zeroed<D3D12_FEATURE_DATA_D3D12_OPTIONS6>();
 	if (SUCCEEDED(pCheckDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6, &options6, sizeof(options6))))
     {
+
         if (options6.VariableShadingRateTier == D3D12_VARIABLE_SHADING_RATE_TIER_1)
         {
             adapter_detail.support_shading_rate = true;

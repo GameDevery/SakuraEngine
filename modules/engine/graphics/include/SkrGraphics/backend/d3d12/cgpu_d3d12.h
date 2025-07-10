@@ -207,6 +207,8 @@ typedef struct CGPUAdapter_D3D12 {
     bool mStandardSwizzle64KBSupported : 1;
     bool mEnhancedBarriersSupported : 1;
     uint8_t mTiledResourceTier;
+    uint8_t mResourceHeapTier;
+    uint8_t mShaderModel;
     uint8_t mRayTracingTier;
 } CGPUAdapter_D3D12;
 

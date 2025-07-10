@@ -599,6 +599,17 @@ typedef enum ECGPUMemoryPoolType
     CGPU_MEM_POOL_TYPE_MAX_ENUM = 0x7FFFFFFF
 } ECGPUMemoryPoolType;
 
+typedef enum ECGPUMemoryPoolFlag
+{
+    CGPU_MEM_POOL_FLAG_NONE = 0,
+    CGPU_MEM_POOL_FLAG_ALLOW_BUFFERS = 0x01,     // 允许 Buffer
+    CGPU_MEM_POOL_FLAG_ALLOW_TEXTURES = 0x02,    // 允许 Texture（非 RT/DS）
+    CGPU_MEM_POOL_FLAG_ALLOW_RW = 0x04,          // 允许 RW（UAV）资源
+    CGPU_MEM_POOL_FLAG_ALLOW_RT_DS = 0x08,       // 允许 RenderTarget/DepthStencil
+    CGPU_MEM_POOL_FLAG_MAX_ENUM = 0x7FFFFFFF
+} ECGPUMemoryPoolFlag;
+typedef uint32_t CGPUMemoryPoolFlags;
+
 typedef enum ECGPUBufferCreationFlag
 {
     /// Default flag (Buffer will use aliased memory, buffer will not be cpu accessible until mapBuffer is called)
