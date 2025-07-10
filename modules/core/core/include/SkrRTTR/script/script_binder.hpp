@@ -124,17 +124,6 @@
 
 namespace skr
 {
-// StringView export helper
-struct StringViewStackProxy {
-    StringView view;
-    String     holder;
-
-    static void* custom_mapping(void* obj)
-    {
-        return &reinterpret_cast<StringViewStackProxy*>(obj)->view;
-    }
-};
-
 // root binder, means script visible types
 //   - primitive
 //   - enum

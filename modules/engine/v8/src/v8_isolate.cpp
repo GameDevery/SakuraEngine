@@ -2393,7 +2393,7 @@ void V8Isolate::_push_param(
             V8StringViewStackProxy* proxy = stack.alloc_param<V8StringViewStackProxy>(
                 EDynamicStackParamKind::Direct,
                 nullptr,
-                StringViewStackProxy::custom_mapping
+                V8StringViewStackProxy::custom_mapping
             );
             new (proxy) V8StringViewStackProxy();
             new (proxy->v.data_typed()) v8::String::Utf8Value(v8::Isolate::GetCurrent(), v8_value);
