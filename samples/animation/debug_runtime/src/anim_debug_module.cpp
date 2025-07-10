@@ -10,12 +10,23 @@
 #include "common/utils.h"
 #include "imgui_sail.h"
 #include "SkrRT/runtime_module.h" // for dpi_aware
+#include "SkrRT/misc/cmd_parser.hpp"
+
+#include <SkrAnim/ozz/skeleton.h>
+#include <SkrAnim/ozz/base/io/archive.h>
+#include <SkrAnim/ozz/skeleton_utils.h>
+#include <SkrAnim/ozz/local_to_model_job.h>
+#include <AnimDebugRuntime/util.h>
+#include <SkrAnim/ozz/base/containers/vector.h>
 
 class SAnimDebugModule : public skr::IDynamicModule
 {
     virtual void on_load(int argc, char8_t** argv) override;
     virtual int  main_module_exec(int argc, char8_t** argv) override;
     virtual void on_unload() override;
+
+private:
+    skr::String m_anim_file = u8"D:/ws/data/assets/media/bin/ruby_skeleton.ozz"; // default anim file
 };
 
 static SAnimDebugModule* g_anim_debug_module = nullptr;
@@ -27,6 +38,24 @@ IMPLEMENT_DYNAMIC_MODULE(SAnimDebugModule, AnimDebug);
 void SAnimDebugModule::on_load(int argc, char8_t** argv)
 {
     SKR_LOG_INFO(u8"anim debug runtime loaded!");
+    // parse command line arguments
+    skr::cmd::parser parser(argc, (char**)argv);
+    parser.add(u8"anim", u8"animation file path", u8"-a", true);
+    if (!parser.parse())
+    {
+        SKR_LOG_ERROR(u8"Failed to parse command line arguments.");
+        return;
+    }
+    auto anim_path = parser.get_optional<skr::String>(u8"anim");
+    if (anim_path)
+    {
+        m_anim_file = *anim_path;
+        SKR_LOG_INFO(u8"Animation file set to: %s", m_anim_file.c_str());
+    }
+    else
+    {
+        SKR_LOG_INFO(u8"No animation file specified, using default: %s", m_anim_file.c_str());
+    }
 }
 
 void SAnimDebugModule::on_unload()
@@ -45,7 +74,38 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
     renderer.set_aware_DPI(skr_runtime_is_dpi_aware());
 
     // geometry
-    renderer.read_anim();
+    ozz::animation::Skeleton skeleton;
+
+    ozz::io::File file(m_anim_file.data_raw(), "rb");
+    if (!file.opened())
+    {
+        SKR_LOG_ERROR(u8"Cannot open file %s.", m_anim_file.c_str());
+    }
+
+    // deserialize
+    ozz::io::IArchive archive(&file);
+    // test archive
+    if (!archive.TestTag<ozz::animation::Skeleton>())
+    {
+        SKR_LOG_ERROR(u8"Archive doesn't contain the expected object type.");
+    }
+    // Create Runtime Skeleton
+    archive >> skeleton;
+    SKR_LOG_INFO(u8"Skeleton loaded with %d joints.", skeleton.num_joints());
+
+    ozz::vector<ozz::math::Float4x4> prealloc_models_;
+    prealloc_models_.resize(skeleton.num_joints());
+    ozz::animation::LocalToModelJob job;
+    job.input    = skeleton.joint_rest_poses();
+    job.output   = ozz::make_span(prealloc_models_);
+    job.skeleton = &skeleton;
+    if (!job.Run())
+    {
+        SKR_LOG_ERROR(u8"Failed to run LocalToModelJob.");
+    }
+    // renderer.read_anim(skeleton);
+    renderer.create_skeleton(skeleton);
+    renderer.update_anim(skeleton, ozz::make_span(prealloc_models_));
 
     renderer.create_api_objects();
     renderer.create_render_pipeline();

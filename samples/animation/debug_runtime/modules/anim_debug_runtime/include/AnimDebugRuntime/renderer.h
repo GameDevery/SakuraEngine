@@ -5,6 +5,8 @@
 #include "SkrRT/resource/config_resource.h"
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "AnimDebugRuntime/bone_geometry.h"
+#include <SkrAnim/ozz/skeleton_utils.h>
+#include <SkrAnim/ozz/local_to_model_job.h>
 
 #ifndef __meta__
     #include "AnimDebugRuntime/renderer.generated.h" // IWYU pragma: export
@@ -73,7 +75,9 @@ public:
     ~Renderer() = default;
 
 public:
-    void read_anim();
+    void create_skeleton(ozz::animation::Skeleton& skeleton);
+    void update_anim(ozz::animation::Skeleton& skeleton, ozz::span<ozz::math::Float4x4> prealloc_models);
+
     void create_api_objects();
     void create_resources();
     void create_debug_pipeline(); // debug draw

@@ -16,44 +16,13 @@ namespace animd
 LightingPushConstants   Renderer::lighting_data    = { 0, 0 };
 LightingCSPushConstants Renderer::lighting_cs_data = { { 0, 0 }, { 0, 0 } };
 
-void Renderer::read_anim()
+void Renderer::create_skeleton(ozz::animation::Skeleton& skeleton)
 {
-    ozz::animation::Skeleton skeleton;
-    // auto                     filename = "D:/ws/data/assets/media/bin/pab_skeleton.ozz";
-    auto          filename = "D:/ws/data/assets/media/bin/ruby_skeleton.ozz";
-    ozz::io::File file(filename, "rb");
-    if (!file.opened())
-    {
-        SKR_LOG_ERROR(u8"Cannot open file %s.", filename);
-        return;
-    }
-
-    // deserialize
-    ozz::io::IArchive archive(&file);
-    // test archive
-    if (!archive.TestTag<ozz::animation::Skeleton>())
-    {
-        SKR_LOG_ERROR(u8"Archive doesn't contain the expected object type.");
-        return;
-    }
-    // Create Runtime Skeleton
-    archive >> skeleton;
-
-    SKR_LOG_INFO(u8"Skeleton loaded with %d joints.", skeleton.num_joints());
-
-    ozz::vector<ozz::math::Float4x4> prealloc_models_;
-    prealloc_models_.resize(skeleton.num_joints());
-    ozz::animation::LocalToModelJob job;
-    job.input    = skeleton.joint_rest_poses();
-    job.output   = ozz::make_span(prealloc_models_);
-    job.skeleton = &skeleton;
-    if (!job.Run())
-    {
-        SKR_LOG_ERROR(u8"Failed to run LocalToModelJob.");
-    }
     _instance_count = skeleton.num_joints();
     _instance_data.resize(_instance_count, skr::float4x4::identity());
-
+}
+void Renderer::update_anim(ozz::animation::Skeleton& skeleton, ozz::span<ozz::math::Float4x4> prealloc_models_)
+{
     const auto t0 = skr::TransformF(skr::QuatF(skr::RotatorF()), skr::float3(0.0), skr::float3(0.001f));
     const auto m0 = skr::transpose(t0.to_matrix());
 
@@ -82,16 +51,6 @@ void Renderer::read_anim()
         mat               = mat * m; // apply scale to the matrix
         _instance_data[i] = *(skr_float4x4_t*)&mat;
     }
-
-    // _instance_count = 2;
-    // _instance_data.resize(_instance_count, skr::float4x4::identity());
-    // const auto t0 = skr::TransformF(skr::QuatF(skr::RotatorF()), skr::float3(-0.5), skr::float3(0.1f));
-    // const auto m0 = skr::transpose(t0.to_matrix());
-    // _instance_data[0] = *(skr_float4x4_t*)&m0;
-    // const auto t1     = skr::TransformF(skr::QuatF(skr::RotatorF()), skr::float3(1, 0, 0), skr::float3(0.8f));
-
-    // const auto m1     = skr::transpose(t1.to_matrix());
-    // _instance_data[1] = *(skr_float4x4_t*)&m1;
 }
 
 void Renderer::create_api_objects()
