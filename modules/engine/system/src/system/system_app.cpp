@@ -11,6 +11,10 @@ namespace skr {
 extern ISystemEventSource* CreateWin32EventSource(SystemApp* app);
 extern void ConnectWin32Components(ISystemWindowManager* window_manager, ISystemEventSource* event_source, IME* ime);
 #endif
+#ifdef __APPLE__
+extern ISystemEventSource* CreateCocoaEventSource(SystemApp* app);
+extern void ConnectCocoaComponents(ISystemWindowManager* window_manager, ISystemEventSource* event_source, IME* ime);
+#endif
 extern ISystemEventSource* CreateSDL3EventSource(SystemApp* app);
 extern void ConnectSDL3Components(ISystemWindowManager* window_manager, ISystemEventSource* event_source, IME* ime);
 }
@@ -78,6 +82,16 @@ bool SystemApp::initialize(const char* backend)
         }
     }
 #endif
+#ifdef __APPLE__
+    if (strcmp(backend, "Cocoa") == 0)
+    {
+        platform_event_source = CreateCocoaEventSource(this);
+        if (platform_event_source)
+        {
+            ConnectCocoaComponents(window_manager, platform_event_source, ime);
+        }
+    }
+#endif
     if (strcmp(backend, "SDL3") == 0 || strcmp(backend, "SDL") == 0)
     {
         // Try to create SDL3 event source
@@ -88,7 +102,8 @@ bool SystemApp::initialize(const char* backend)
             ConnectSDL3Components(window_manager, platform_event_source, ime);
         }
     }
-    else
+    
+    if (platform_event_source == nullptr)
     {
         SKR_LOG_ERROR(u8"Unknown backend: %s", backend);
         shutdown();

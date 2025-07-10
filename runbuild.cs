@@ -233,7 +233,7 @@ public class TestCommand : CommandBase
 public class CleanCommand : CommandBase
 {
     [CmdOption(Name = "database", ShortName = 'd', Help = "Database to clean, 'all | packages' | 'targets' | 'shaders' | 'sdks'", IsRequired = false)]
-    public string Database { get; set; } = "compile";
+    public string Database { get; set; } = "targets";
 
     public override void OnExecute()
     {

@@ -8,8 +8,6 @@ namespace SB
     {
         public static void LoadConfigurations()
         {
-            EnableAsan();
-
             TargetDelegate Debug = (Target) =>
             {
                 Target.DebugSymbols(true)

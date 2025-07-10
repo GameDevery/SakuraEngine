@@ -6,6 +6,9 @@
 #ifdef _WIN32
 #include "win32/win32_ime.h"
 #endif
+#ifdef __APPLE__
+#include "cocoa/cocoa_ime.h"
+#endif
 #include "sdl3/sdl3_ime.h"
 
 namespace skr {
@@ -28,6 +31,13 @@ IME* IME::Create(const char* backend)
     if (strcmp(backend, "Win32") == 0)
     {
         return SkrNew<Win32IME>();
+    }
+#endif
+    
+#ifdef __APPLE__
+    if (strcmp(backend, "Cocoa") == 0)
+    {
+        return SkrNew<CocoaIME>();
     }
 #endif
     

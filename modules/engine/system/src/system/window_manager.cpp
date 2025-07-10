@@ -160,6 +160,12 @@ ISystemWindowManager* ISystemWindowManager::Create(const char* backend)
         return CreateWin32WindowManager();
     }
 #endif
+#ifdef __APPLE__
+    else if (strcmp(backend, "Cocoa") == 0) {
+        extern ISystemWindowManager* CreateCocoaWindowManager();
+        return CreateCocoaWindowManager();
+    }
+#endif
     
     SKR_LOG_ERROR(u8"Unknown window manager backend: %s", backend);
     return nullptr;

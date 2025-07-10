@@ -32,7 +32,8 @@ public static class SkrSystem
         else if (BuildSystem.TargetOS == OSPlatform.OSX)
         {
             SkrSystem.AddCppFiles("src/system/cocoa/**.cpp")
-                     .AddObjCppFiles("src/system/cocoa/**.mm");
+                     .AddObjCppFiles("src/system/cocoa/**.mm")
+                     .AppleFramework(Visibility.Private, "Cocoa", "Metal", "QuartzCore");
         }
     }
 }

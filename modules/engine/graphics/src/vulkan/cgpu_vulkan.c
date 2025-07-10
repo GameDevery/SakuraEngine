@@ -589,7 +589,17 @@ CGPUDescriptorSetId cgpu_create_descriptor_set_vulkan(CGPUDeviceId device, const
     }
     SetLayout_Vulkan* SetLayout = &RS->pSetLayouts[desc->set_index];
     const CGPUDevice_Vulkan* D = (CGPUDevice_Vulkan*)device;
-    const size_t UpdateTemplateSize = RS->super.tables[table_index].resources_count * sizeof(VkDescriptorUpdateData);
+    
+    // Calculate the maximum binding index to handle sparse bindings
+    uint32_t max_binding = 0;
+    const CGPUParameterTable* table = &RS->super.tables[table_index];
+    for (uint32_t i = 0; i < table->resources_count; i++)
+    {
+        uint32_t binding_end = table->resources[i].binding + cgpu_max(1U, table->resources[i].size);
+        max_binding = cgpu_max(max_binding, binding_end);
+    }
+    
+    const size_t UpdateTemplateSize = max_binding * sizeof(VkDescriptorUpdateData);
     totalSize += UpdateTemplateSize;
     CGPUDescriptorSet_Vulkan* Set = cgpu_calloc_aligned(1, totalSize, _Alignof(CGPUDescriptorSet_Vulkan));
     char8_t* pMem = (char8_t*)(Set + 1);
@@ -617,7 +627,15 @@ void cgpu_update_descriptor_set_vulkan(CGPUDescriptorSetId set, const struct CGP
     SetLayout_Vulkan* SetLayout = &RS->pSetLayouts[set->index];
     const CGPUParameterTable* ParamTable = &RS->super.tables[table_index];
     VkDescriptorUpdateData* pUpdateData = Set->pUpdateData;
-    memset(pUpdateData, 0, count * sizeof(VkDescriptorUpdateData));
+    
+    // Calculate the actual buffer size based on max binding
+    uint32_t max_binding = 0;
+    for (uint32_t i = 0; i < ParamTable->resources_count; i++)
+    {
+        uint32_t binding_end = ParamTable->resources[i].binding + cgpu_max(1U, ParamTable->resources[i].size);
+        max_binding = cgpu_max(max_binding, binding_end);
+    }
+    memset(pUpdateData, 0, max_binding * sizeof(VkDescriptorUpdateData));
     bool dirty = false;
     for (uint32_t i = 0; i < count; i++)
     {
@@ -658,7 +676,9 @@ void cgpu_update_descriptor_set_vulkan(CGPUDescriptorSetId set, const struct CGP
                 {
                     // TODO: Stencil support
                     cgpu_assert(pParam->textures[arr] && "cgpu_assert: Binding NULL texture!");
-                    VkDescriptorUpdateData* Data = &pUpdateData[ResData->binding + arr];
+                    uint32_t index = ResData->binding + arr;
+                    cgpu_assert(index < max_binding && "cgpu_assert: Binding index out of bounds!");
+                    VkDescriptorUpdateData* Data = &pUpdateData[index];
                     Data->mImageInfo.imageView =
                         ResData->type == CGPU_RESOURCE_TYPE_RW_TEXTURE ?
                         TextureViews[arr]->pVkUAVDescriptor :
@@ -678,7 +698,9 @@ void cgpu_update_descriptor_set_vulkan(CGPUDescriptorSetId set, const struct CGP
                 for (uint32_t arr = 0; arr < arrayCount; ++arr)
                 {
                     cgpu_assert(pParam->samplers[arr] && "cgpu_assert: Binding NULL Sampler!");
-                    VkDescriptorUpdateData* Data = &pUpdateData[ResData->binding + arr];
+                    uint32_t index = ResData->binding + arr;
+                    cgpu_assert(index < max_binding && "cgpu_assert: Binding index out of bounds!");
+                    VkDescriptorUpdateData* Data = &pUpdateData[index];
                     Data->mImageInfo.sampler = Samplers[arr]->pVkSampler;
                     dirty = true;
                 }
@@ -694,7 +716,9 @@ void cgpu_update_descriptor_set_vulkan(CGPUDescriptorSetId set, const struct CGP
                 for (uint32_t arr = 0; arr < arrayCount; ++arr)
                 {
                     cgpu_assert(pParam->buffers[arr] && "cgpu_assert: Binding NULL Buffer!");
-                    VkDescriptorUpdateData* Data = &pUpdateData[ResData->binding + arr];
+                    uint32_t index = ResData->binding + arr;
+                    cgpu_assert(index < max_binding && "cgpu_assert: Binding index out of bounds!");
+                    VkDescriptorUpdateData* Data = &pUpdateData[index];
                     Data->mBufferInfo.buffer = Buffers[arr]->pVkBuffer;
                     Data->mBufferInfo.offset = Buffers[arr]->mOffset;
                     Data->mBufferInfo.range = VK_WHOLE_SIZE;
