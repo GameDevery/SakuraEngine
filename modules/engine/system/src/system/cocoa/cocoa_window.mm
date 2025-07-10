@@ -345,14 +345,19 @@ void CocoaWindow::set_position(int32_t x, int32_t y) SKR_NOEXCEPT
 {
     @autoreleasepool {
         // Convert from top-left to bottom-left origin
+        // Note: macOS uses logical points, same as our API
         NSScreen* screen = [window_ screen] ?: [NSScreen mainScreen];
         NSRect screenFrame = [screen frame];
         
+        // Get window frame to preserve size
         NSRect frame = [window_ frame];
+        
+        // Set position in logical points
         frame.origin.x = x;
+        // Convert Y from top-left origin to bottom-left origin
         frame.origin.y = screenFrame.size.height - y - frame.size.height;
         
-        [window_ setFrame:frame display:YES];
+        [window_ setFrameOrigin:frame.origin];
     }
 }
 
@@ -375,10 +380,15 @@ skr::math::int2 CocoaWindow::get_position() const SKR_NOEXCEPT
 void CocoaWindow::set_size(uint32_t width, uint32_t height) SKR_NOEXCEPT
 {
     @autoreleasepool {
-        NSRect frame = [window_ frame];
-        frame.size.width = width;
-        frame.size.height = height;
-        [window_ setFrame:frame display:YES];
+        // Set content size, not frame size
+        // This ensures the client area matches the requested size
+        NSRect contentRect = [window_ contentRectForFrameRect:[window_ frame]];
+        contentRect.size.width = width;
+        contentRect.size.height = height;
+        
+        // Convert to frame rect
+        NSRect frameRect = [window_ frameRectForContentRect:contentRect];
+        [window_ setFrame:frameRect display:YES];
     }
 }
 
