@@ -1,6 +1,7 @@
 #include "cocoa_monitor.h"
 #include "SkrCore/log.h"
 #include <CoreGraphics/CoreGraphics.h>
+#include <CoreVideo/CoreVideo.h>
 #include <string>
 
 CocoaMonitor::CocoaMonitor(NSScreen* screen) SKR_NOEXCEPT
@@ -67,8 +68,16 @@ skr::SystemMonitorInfo CocoaMonitor::get_info() const SKR_NOEXCEPT
             info.name = skr::format(u8"Display {}", displayID);
         }
         
-        // Orientation (macOS doesn't expose rotation in public API)
-        info.orientation = skr::ESystemMonitorOrientation::Unknown;
+        // Determine orientation based on dimensions
+        // While macOS doesn't expose rotation in public API, we can infer from dimensions
+        if (info.size.x > info.size.y) {
+            info.orientation = skr::ESystemMonitorOrientation::Landscape;
+        } else if (info.size.y > info.size.x) {
+            info.orientation = skr::ESystemMonitorOrientation::Portrait;
+        } else {
+            // Square display
+            info.orientation = skr::ESystemMonitorOrientation::Landscape;
+        }
         
         // Check if this is the primary monitor
         info.is_primary = (screen_ == [NSScreen mainScreen]);
@@ -141,8 +150,22 @@ skr::SystemMonitorDisplayMode CocoaMonitor::get_display_mode(uint32_t index) con
         // Get refresh rate
         double refreshRate = CGDisplayModeGetRefreshRate(displayMode);
         if (refreshRate == 0) {
-            // Some displays don't report refresh rate, assume 60Hz
-            refreshRate = 60.0;
+            // Some displays (especially external displays) don't report refresh rate through CGDisplayModeGetRefreshRate
+            // Try to get it through CVDisplayLink
+            CVDisplayLinkRef displayLink;
+            if (CVDisplayLinkCreateWithCGDisplay(displayID, &displayLink) == kCVReturnSuccess) {
+                const CVTime time = CVDisplayLinkGetNominalOutputVideoRefreshPeriod(displayLink);
+                if (time.timeValue != 0 && time.timeScale != 0) {
+                    refreshRate = (double)time.timeScale / (double)time.timeValue;
+                } else {
+                    // Fallback to common refresh rate
+                    refreshRate = 60.0;
+                }
+                CVDisplayLinkRelease(displayLink);
+            } else {
+                // Fallback to common refresh rate
+                refreshRate = 60.0;
+            }
         }
         mode.refresh_rate = (uint32_t)refreshRate;
         
@@ -196,8 +219,22 @@ skr::SystemMonitorDisplayMode CocoaMonitor::get_current_display_mode() const SKR
         // Get refresh rate
         double refreshRate = CGDisplayModeGetRefreshRate(currentMode);
         if (refreshRate == 0) {
-            // Some displays don't report refresh rate, assume 60Hz
-            refreshRate = 60.0;
+            // Some displays (especially external displays) don't report refresh rate through CGDisplayModeGetRefreshRate
+            // Try to get it through CVDisplayLink
+            CVDisplayLinkRef displayLink;
+            if (CVDisplayLinkCreateWithCGDisplay(displayID, &displayLink) == kCVReturnSuccess) {
+                const CVTime time = CVDisplayLinkGetNominalOutputVideoRefreshPeriod(displayLink);
+                if (time.timeValue != 0 && time.timeScale != 0) {
+                    refreshRate = (double)time.timeScale / (double)time.timeValue;
+                } else {
+                    // Fallback to common refresh rate
+                    refreshRate = 60.0;
+                }
+                CVDisplayLinkRelease(displayLink);
+            } else {
+                // Fallback to common refresh rate
+                refreshRate = 60.0;
+            }
         }
         mode.refresh_rate = (uint32_t)refreshRate;
         

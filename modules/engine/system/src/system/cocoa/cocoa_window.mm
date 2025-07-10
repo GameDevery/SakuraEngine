@@ -253,7 +253,24 @@ CocoaWindow::CocoaWindow(const skr::SystemWindowCreateInfo& info) SKR_NOEXCEPT
             styleMask = NSWindowStyleMaskBorderless;
         }
         
-        // Calculate content rect
+        // Get the target screen for DPI-aware positioning
+        NSScreen* targetScreen = nil;
+        if (info.pos.has_value()) {
+            // Find screen containing the specified position
+            NSPoint point = NSMakePoint(info.pos->x, info.pos->y);
+            for (NSScreen* screen in [NSScreen screens]) {
+                NSRect frame = [screen frame];
+                if (NSPointInRect(point, frame)) {
+                    targetScreen = screen;
+                    break;
+                }
+            }
+        }
+        if (!targetScreen) {
+            targetScreen = [NSScreen mainScreen];
+        }
+        
+        // Calculate content rect - note that size is in logical points
         NSRect contentRect = NSMakeRect(
             info.pos.has_value() ? info.pos->x : 100,
             info.pos.has_value() ? info.pos->y : 100,
@@ -264,7 +281,8 @@ CocoaWindow::CocoaWindow(const skr::SystemWindowCreateInfo& info) SKR_NOEXCEPT
         window_ = [[NSWindow alloc] initWithContentRect:contentRect
                                               styleMask:styleMask
                                                 backing:NSBackingStoreBuffered
-                                                  defer:NO];
+                                                  defer:NO
+                                                 screen:targetScreen];
         
         if (!window_) {
             SKR_LOG_ERROR(u8"[CocoaWindow] Failed to create NSWindow");
@@ -275,6 +293,11 @@ CocoaWindow::CocoaWindow(const skr::SystemWindowCreateInfo& info) SKR_NOEXCEPT
         [window_ setTitle:[NSString stringWithUTF8String:(const char*)info.title.c_str()]];
         [window_ setAcceptsMouseMovedEvents:YES];
         [window_ setReleasedWhenClosed:NO]; // We manage the lifetime
+        
+        // Configure DPI awareness - macOS windows are automatically DPI-aware
+        // The backing scale factor will be determined by the screen
+        CGFloat backingScaleFactor = [window_ backingScaleFactor];
+        SKR_LOG_DEBUG(u8"[CocoaWindow] Created window with backing scale factor: %.1f", backingScaleFactor);
         
         // Create and set Metal view
         view_ = [[CocoaView alloc] initWithFrame:contentRect];
@@ -347,15 +370,24 @@ void CocoaWindow::set_position(int32_t x, int32_t y) SKR_NOEXCEPT
         // Convert from top-left to bottom-left origin
         // Note: macOS uses logical points, same as our API
         NSScreen* screen = [window_ screen] ?: [NSScreen mainScreen];
-        NSRect screenFrame = [screen frame];
+        
+        // Get all screens to find the primary screen (for coordinate conversion)
+        NSArray<NSScreen*>* screens = [NSScreen screens];
+        if (screens.count == 0) {
+            return;
+        }
+        
+        // The primary screen defines the global coordinate system
+        NSScreen* primaryScreen = screens[0];
+        NSRect primaryFrame = [primaryScreen frame];
         
         // Get window frame to preserve size
         NSRect frame = [window_ frame];
         
         // Set position in logical points
         frame.origin.x = x;
-        // Convert Y from top-left origin to bottom-left origin
-        frame.origin.y = screenFrame.size.height - y - frame.size.height;
+        // Convert Y from top-left origin to bottom-left origin using primary screen height
+        frame.origin.y = primaryFrame.size.height - y - frame.size.height;
         
         [window_ setFrameOrigin:frame.origin];
     }
@@ -366,13 +398,20 @@ skr::math::int2 CocoaWindow::get_position() const SKR_NOEXCEPT
     @autoreleasepool {
         NSRect frame = [window_ frame];
         
-        // Convert from bottom-left to top-left origin
-        NSScreen* screen = [window_ screen] ?: [NSScreen mainScreen];
-        NSRect screenFrame = [screen frame];
+        // Get all screens to find the primary screen (for coordinate conversion)
+        NSArray<NSScreen*>* screens = [NSScreen screens];
+        if (screens.count == 0) {
+            return {0, 0};
+        }
         
+        // The primary screen defines the global coordinate system
+        NSScreen* primaryScreen = screens[0];
+        NSRect primaryFrame = [primaryScreen frame];
+        
+        // Convert from bottom-left to top-left origin using primary screen height
         return {
             (int32_t)frame.origin.x,
-            (int32_t)(screenFrame.size.height - frame.origin.y - frame.size.height)
+            (int32_t)(primaryFrame.size.height - frame.origin.y - frame.size.height)
         };
     }
 }
@@ -524,8 +563,32 @@ void CocoaWindow::set_fullscreen(bool fullscreen, skr::SystemMonitor* monitor) S
                 // Save state before fullscreen
                 was_maximized_before_fullscreen_ = is_maximized();
                 restore_frame_ = [window_ frame];
+                
+                // If a specific monitor is requested, move window to that monitor first
+                if (monitor) {
+                    CocoaMonitor* cocoa_monitor = static_cast<CocoaMonitor*>(monitor);
+                    NSScreen* targetScreen = cocoa_monitor->get_nsscreen();
+                    
+                    if (targetScreen && targetScreen != [window_ screen]) {
+                        // Get the target screen's frame
+                        NSRect screenFrame = [targetScreen frame];
+                        
+                        // Calculate window position to center it on the target screen
+                        NSRect windowFrame = [window_ frame];
+                        NSPoint newOrigin;
+                        newOrigin.x = screenFrame.origin.x + (screenFrame.size.width - windowFrame.size.width) / 2;
+                        newOrigin.y = screenFrame.origin.y + (screenFrame.size.height - windowFrame.size.height) / 2;
+                        
+                        // Move window to target screen
+                        [window_ setFrameOrigin:newOrigin];
+                        
+                        // Ensure the window updates its screen property
+                        [window_ orderFront:nil];
+                    }
+                }
             }
             
+            // Toggle fullscreen - window will go fullscreen on its current screen
             [window_ toggleFullScreen:nil];
         }
     }
