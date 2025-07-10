@@ -857,11 +857,8 @@ void ImGuiRendererBackendRG::render_window(ImGuiViewport* vp, void*)
     SKR_ASSERT(vp->RendererUserData);
     auto rdata = (ImGuiRendererBackendRGViewportData*)vp->RendererUserData;
 
-    // wait fence
-    CGPUTextureId native_backbuffer = get_backbuffer(vp);
-
-    // import rtv
-    render_graph::TextureRTVHandle back_buffer = _render_graph->get_texture(u8"backbuffer");
+    CGPUTextureId cgpu_backbuffer = get_backbuffer(vp);
+    const auto back_buffer = _render_graph->get_imported(cgpu_backbuffer);
 
     // draw
     _draw_viewport(

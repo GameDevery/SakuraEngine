@@ -1018,6 +1018,8 @@ uint64_t RenderGraphBackend::execute(RenderGraphProfiler* profiler) SKR_NOEXCEPT
             node_factory->Dealloc(resource);
         }
         resources.clear();
+        imported_buffers.clear();
+        imported_textures.clear();
 
         graph->clear();
         blackboard->clear();

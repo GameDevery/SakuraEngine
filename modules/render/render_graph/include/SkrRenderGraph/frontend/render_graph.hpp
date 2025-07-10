@@ -1,8 +1,7 @@
 #pragma once
 #include "SkrRenderGraph/frontend/base_types.hpp"
 #include "SkrRenderGraph/frontend/blackboard.hpp"
-#include "SkrContainers/stl_function.hpp"
-#include "SkrContainers/vector.hpp"
+#include "SkrContainersDef/hashmap.hpp"
 
 #ifndef RG_MAX_FRAME_IN_FLIGHT
 #define RG_MAX_FRAME_IN_FLIGHT 3
@@ -190,7 +189,8 @@ public:
     };
     using BufferSetupFunction = skr::stl_function<void(RenderGraph&, class RenderGraph::BufferBuilder&)>;
     BufferHandle create_buffer(const BufferSetupFunction& setup) SKR_NOEXCEPT;
-    inline BufferHandle get_buffer(const char8_t* name) SKR_NOEXCEPT;
+    BufferHandle get_buffer(const char8_t* name) SKR_NOEXCEPT;
+    BufferHandle get_imported(CGPUBufferId buffer) SKR_NOEXCEPT;
     const ECGPUResourceState get_lastest_state(const BufferNode* buffer, const PassNode* pending_pass) const SKR_NOEXCEPT;
 
     class SKR_RENDER_GRAPH_API TextureBuilder
@@ -220,6 +220,7 @@ public:
     using TextureSetupFunction = skr::stl_function<void(RenderGraph&, class RenderGraph::TextureBuilder&)>;
     TextureHandle create_texture(const TextureSetupFunction& setup) SKR_NOEXCEPT;
     TextureHandle get_texture(const char8_t* name) SKR_NOEXCEPT;
+    TextureHandle get_imported(CGPUTextureId texture) SKR_NOEXCEPT;
     const ECGPUResourceState get_lastest_state(const TextureNode* texture, const PassNode* pending_pass) const SKR_NOEXCEPT;
 
     BufferNode* resolve(BufferHandle hdl) SKR_NOEXCEPT; 
@@ -276,6 +277,11 @@ protected:
 
     skr::Vector<PassNode*> passes;
     skr::Vector<ResourceNode*> resources;
+
+    friend struct TextureBuilder;
+    friend struct BufferBuilder;
+    skr::ParallelFlatHashMap<CGPUBufferId, BufferHandle> imported_buffers;
+    skr::ParallelFlatHashMap<CGPUTextureId, TextureHandle> imported_textures;
 };
 using RenderGraphSetupFunction = RenderGraph::RenderGraphSetupFunction;
 using RenderGraphBuilder = RenderGraph::RenderGraphBuilder;

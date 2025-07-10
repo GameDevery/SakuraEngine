@@ -401,6 +401,7 @@ RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::import(CGPUBufferId buff
     node.descriptor.descriptors = buffer->info->descriptors;
     node.descriptor.size = buffer->info->size;
     node.descriptor.memory_usage = (ECGPUMemoryUsage)buffer->info->memory_usage;
+    graph.imported_buffers[buffer] = node.get_handle();
     return *this;
 }
 
@@ -514,6 +515,15 @@ BufferHandle RenderGraph::get_buffer(const char8_t* name) SKR_NOEXCEPT
     return UINT64_MAX;
 }
 
+BufferHandle RenderGraph::get_imported(CGPUBufferId buffer) SKR_NOEXCEPT
+{
+    if (auto it = imported_buffers.find(buffer); it != imported_buffers.end())
+    {
+        return it->second;
+    }
+    return UINT64_MAX;
+}
+
 // texture builder
 RenderGraph::TextureBuilder::TextureBuilder(RenderGraph& graph, TextureNode& node) SKR_NOEXCEPT
     : graph(graph),
@@ -557,6 +567,7 @@ RenderGraph::TextureBuilder& RenderGraph::TextureBuilder::import(CGPUTextureId t
     node.descriptor.format = (ECGPUFormat)texInfo->format;
     node.descriptor.array_size = texInfo->array_size_minus_one + 1;
     node.descriptor.sample_count = texInfo->sample_count;
+    graph.imported_textures[texture] = node.get_handle();
     return *this;
 }
 
@@ -641,5 +652,15 @@ TextureHandle RenderGraph::get_texture(const char8_t* name) SKR_NOEXCEPT
     }
     return UINT64_MAX;
 }
+
+TextureHandle RenderGraph::get_imported(CGPUTextureId texture) SKR_NOEXCEPT
+{
+    if (auto it = imported_textures.find(texture); it != imported_textures.end())
+    {
+        return it->second;
+    }
+    return UINT64_MAX;
+}
+
 } // namespace render_graph
 } // namespace skr
