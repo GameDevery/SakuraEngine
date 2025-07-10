@@ -2,7 +2,7 @@
 #include "cocoa_event_source.h"
 #include "cocoa_window_manager.h"
 #include "cocoa_ime.h"
-#include "SkrSystem/system.h"
+#include "SkrSystem/system_app.h"
 #include "SkrCore/memory/memory.h"
 
 namespace skr {

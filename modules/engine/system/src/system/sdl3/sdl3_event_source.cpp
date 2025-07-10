@@ -2,7 +2,7 @@
 #include "sdl3_ime.h"
 #include "sdl3_window_manager.h"
 #include "sdl3_window.h"
-#include "SkrSystem/system.h"
+#include "SkrSystem/system_app.h"
 #include "SkrCore/memory/memory.h"
 #include "SkrCore/log.h"
 

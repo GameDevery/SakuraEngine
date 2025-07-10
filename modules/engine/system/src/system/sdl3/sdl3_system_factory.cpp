@@ -1,4 +1,4 @@
-#include "SkrSystem/system.h"
+#include "SkrSystem/system_app.h"
 #include "sdl3_event_source.h"
 #include "sdl3_ime.h"
 #include "SkrCore/memory/memory.h"

@@ -2,7 +2,7 @@
 #include "cocoa_ime.h"
 #include "cocoa_window.h"
 #include "cocoa_window_manager.h"
-#include "SkrSystem/system.h"
+#include "SkrSystem/system_app.h"
 #include "SkrSystem/event.h"
 #include "SkrCore/log.h"
 #include "SkrCore/memory/memory.h"

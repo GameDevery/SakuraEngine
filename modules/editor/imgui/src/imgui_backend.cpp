@@ -1,7 +1,7 @@
 #include <SkrImGui/imgui_backend.hpp>
 #include <SkrImGui/imgui_render_backend.hpp>
 #include <SkrImGui/imgui_system_event_handler.hpp>
-#include <SkrSystem/system.h>
+#include <SkrSystem/system_app.h>
 #include <SkrSystem/window.h>
 #include <SkrSystem/window_manager.h>
 #include <SkrSystem/IME.h>
