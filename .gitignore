@@ -38,6 +38,7 @@ scenes
 /vsxmake*
 xmake.log
 
+temp_docs
 project.lua
 
 .claude

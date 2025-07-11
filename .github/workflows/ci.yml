@@ -37,9 +37,9 @@ jobs:
             .build/${{ matrix.toolchain }}/.objs
             .build/${{ matrix.toolchain }}/resources
             .build/${{ matrix.toolchain }}/CppCompile.Targets.${{ matrix.configure }}.db
-          key: Build-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.toolchain }}-${{ matrix.configure }}-${{ github.run_id }}
+          key: Cache0-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.toolchain }}-${{ matrix.configure }}-${{ github.run_id }}
           restore-keys: 
-            Build-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.toolchain }}-${{ matrix.configure }}-
+            Cache0-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.toolchain }}-${{ matrix.configure }}-
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -70,7 +70,7 @@ jobs:
             .build/${{ matrix.toolchain }}/.objs
             .build/${{ matrix.toolchain }}/resources
             .build/${{ matrix.toolchain }}/CppCompile.Targets.${{ matrix.configure }}.db
-          key: Build-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.toolchain }}-${{ matrix.configure }}-${{ github.run_id }}
+          key: Cache0-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.toolchain }}-${{ matrix.configure }}-${{ github.run_id }}
 
       - name: Upload Compile Results
         if: success() || failure()

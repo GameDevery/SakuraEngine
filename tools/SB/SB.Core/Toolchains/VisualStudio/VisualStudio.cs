@@ -146,8 +146,8 @@ namespace SB.Core
             cmd.Start();
             cmd.WaitForExit();
 
-            VCEnvVariables = EnvReader.Load(newEnvPath)!;
             var oldEnv = EnvReader.Load(oldEnvPath)!;
+            VCEnvVariables = EnvReader.Load(newEnvPath)!;
             bool isInDevEnv = oldEnv.ContainsKey("VSCMD_ARG_TGT_ARCH") || 
                               oldEnv.ContainsKey("VSINSTALLDIR") ||
                               oldEnv.ContainsKey("VCINSTALLDIR");
@@ -165,7 +165,6 @@ namespace SB.Core
                 // Preprocess: cull user env variables
                 vcPaths = VCEnvVariables["Path"]!.Split(';').ToHashSet();
                 vcPaths.ExceptWith(oldPaths);
-                VCEnvVariables["Path"] = string.Join(";", vcPaths);
             }
             else
             {
@@ -179,6 +178,7 @@ namespace SB.Core
             var WindowsSDKIncludes = VCEnvVariables.TryGetValue("__VSCMD_WINSDK_INCLUDE", out var V2) ? V2 : "";
             var NetFXIncludes = VCEnvVariables.TryGetValue("__VSCMD_NETFX_INCLUDE", out var V3) ? V3 : "";
             VCEnvVariables["INCLUDE"] = VCVarsIncludes + WindowsSDKIncludes + NetFXIncludes + OriginalIncludes;
+            VCEnvVariables["Path"] = string.Join(";", vcPaths);
 
             // Enum all files and pick usable tools
             foreach (var path in vcPaths)
