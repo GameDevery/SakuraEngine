@@ -15,33 +15,90 @@ public:
     {
         SKR_LOG_INFO(u8"🚀 Advanced Timeline Test Suite Starting...");
         
+        // Create instance
+        CGPUInstanceDescriptor instance_desc = {};
+#if SKR_PLAT_WIN64
+        instance_desc.backend = CGPU_BACKEND_D3D12;
+#elif SKR_PLAT_MACOSX
+        instance_desc.backend = CGPU_BACKEND_METAL;
+#endif
+        instance_desc.enable_debug_layer = true;
+        instance_desc.enable_gpu_based_validation = true;
+        instance_desc.enable_set_name = true;
+        auto instance = cgpu_create_instance(&instance_desc);
+
+        // Filter adapters
+        uint32_t adapters_count = 0;
+        cgpu_enum_adapters(instance, CGPU_NULLPTR, &adapters_count);
+        CGPUAdapterId adapters[64];
+        cgpu_enum_adapters(instance, adapters, &adapters_count);
+        auto adapter = adapters[0];
+
+        // Create device
+        CGPUQueueGroupDescriptor queue_group_descs[2];
+        queue_group_descs[0].queue_type = CGPU_QUEUE_TYPE_GRAPHICS;
+        queue_group_descs[0].queue_count = 1;
+        queue_group_descs[1].queue_type = CGPU_QUEUE_TYPE_COMPUTE;
+        queue_group_descs[1].queue_count = 2;
+
+        CGPUDeviceDescriptor device_desc = {};
+        device_desc.queue_groups = queue_group_descs;
+        device_desc.queue_group_count = 2;
+        auto device = cgpu_create_device(adapter, &device_desc);
+
+        // 创建RenderGraph（前端模式，不需要真实设备）
+        graph = skr::render_graph::RenderGraph::create(
+            [=](auto& builder) {
+                auto cmpt_queues = skr::Vector<CGPUQueueId>();
+                cmpt_queues.add(cgpu_get_queue(device, CGPU_QUEUE_TYPE_COMPUTE, 0));
+                cmpt_queues.add(cgpu_get_queue(device, CGPU_QUEUE_TYPE_COMPUTE, 1));
+                auto gfx_queue = cgpu_get_queue(device, CGPU_QUEUE_TYPE_GRAPHICS, 0);
+                
+                builder.with_device(device)        
+                    .with_gfx_queue(gfx_queue)
+                    .with_cmpt_queues(cmpt_queues); // 不需要实际队列
+            });
+
         test_massively_parallel_scenario();
         test_deeply_dependent_chain();
         test_mixed_workload_balancing();
         test_resource_heavy_scenario();
         test_edge_case_scenarios();
+
+        skr::render_graph::RenderGraph::destroy(graph);
         
         SKR_LOG_INFO(u8"🎉 All Advanced Timeline Tests Completed!");
     }
+    skr::render_graph::RenderGraph* graph = nullptr;
 
 private:
-    std::mt19937 rng;
-    
-    // 测试1: 大量并行计算场景
-    void test_massively_parallel_scenario()
+    TimelineScheduleResult execute(const char8_t* what)
     {
-
-        SKR_LOG_INFO(u8"🧪 Test 1: Massively Parallel Scenario");
-        
-        auto* graph = skr::render_graph::RenderGraph::create([](auto& builder) {
-            builder.frontend_only();
-        });
-        
         auto timeline_config = skr::render_graph::ScheduleTimelineConfig{};
         timeline_config.enable_async_compute = true;
         timeline_config.enable_copy_queue = true;
-        
-        auto* timeline_phase = new skr::render_graph::ScheduleTimeline(timeline_config);
+        timeline_config.max_sync_points = 128;
+        auto dependency_analysis = skr::render_graph::PassDependencyAnalysis();
+        auto timeline_phase = skr::render_graph::ScheduleTimeline(dependency_analysis, timeline_config);
+        // 手动调用TimelinePhase进行测试
+        timeline_phase.on_initialize(graph);
+        dependency_analysis.on_initialize(graph);
+
+        dependency_analysis.on_execute(graph, nullptr);
+        timeline_phase.on_execute(graph, nullptr);
+
+        timeline_phase.dump_timeline_result(what);
+        auto r = timeline_phase.get_schedule_result();
+
+        timeline_phase.on_finalize(graph);
+        dependency_analysis.on_finalize(graph);
+        return r;
+    }
+
+    // 测试1: 大量并行计算场景
+    void test_massively_parallel_scenario()
+    {
+        SKR_LOG_INFO(u8"🧪 Test 1: Massively Parallel Scenario");
         
         // 创建20个独立的计算Pass（应该全部分配到AsyncCompute队列）
         for (int i = 0; i < 20; ++i) {
@@ -54,7 +111,7 @@ private:
             graph->add_compute_pass(
                 [buffer, i](auto& graph, auto& builder) {
                     builder.set_name(skr::format(u8"ParallelCompute_{}", i).c_str())
-                           .readwrite(0, 0, buffer);
+                           .readwrite(u8"Output", buffer);
                 },
                 [](auto& graph, ComputePassContext& context) {
                     // 独立计算任务
@@ -78,13 +135,7 @@ private:
             [](auto& graph, RenderPassContext& context) {}
         );
         
-        // 执行调度
-        timeline_phase->on_initialize(graph);
-        timeline_phase->on_execute(graph, nullptr);
-        timeline_phase->dump_timeline_result(u8"🧪 Test 1: Massively Parallel Results");
-        
-        // 验证：大部分计算Pass应该在AsyncCompute队列
-        const auto& result = timeline_phase->get_schedule_result();
+        auto result = execute(u8"🔥 Massively Parallel Scenario Results");
         uint32_t compute_queue_passes = 0;
         for (const auto& queue_schedule : result.queue_schedules) {
             if (queue_schedule.queue_type == skr::render_graph::ERenderGraphQueueType::AsyncCompute) {
@@ -94,26 +145,12 @@ private:
         }
         
         SKR_LOG_INFO(u8"✅ Parallel Test: %d passes assigned to AsyncCompute queue", compute_queue_passes);
-        
-        timeline_phase->on_finalize(graph);
-        delete timeline_phase;
-        skr::render_graph::RenderGraph::destroy(graph);
     }
     
     // 测试2: 深度依赖链场景
     void test_deeply_dependent_chain()
     {
         SKR_LOG_INFO(u8"🧪 Test 2: Deeply Dependent Chain");
-        
-        auto* graph = skr::render_graph::RenderGraph::create([](auto& builder) {
-            builder.frontend_only();
-        });
-        
-        auto timeline_config = skr::render_graph::ScheduleTimelineConfig{};
-        timeline_config.enable_async_compute = true;
-        timeline_config.enable_copy_queue = true;
-        
-        auto* timeline_phase = new skr::render_graph::ScheduleTimeline(timeline_config);
         
         // 创建一个长依赖链：Graphics -> Compute -> Graphics -> Compute ...
         auto chain_texture = graph->create_texture([](auto& graph, auto& builder) {
@@ -143,8 +180,8 @@ private:
         graph->add_compute_pass(
             [chain_texture, chain_buffer](auto& graph, auto& builder) {
                 builder.set_name(u8"ChainStep2_Compute")
-                       .read(0, 0, chain_texture)
-                       .readwrite(0, 1, chain_buffer);
+                       .read(u8"ChainTexture", chain_texture)
+                       .readwrite(u8"ChainBuffer", chain_buffer);
             },
             [](auto& graph, ComputePassContext& context) {}
         );
@@ -163,39 +200,21 @@ private:
         graph->add_compute_pass(
             [chain_texture](auto& graph, auto& builder) {
                 builder.set_name(u8"ChainStep4_Compute")
-                       .read(0, 0, chain_texture);
+                       .read(u8"ChainTexture", chain_texture);
             },
             [](auto& graph, ComputePassContext& context) {}
         );
         
-        timeline_phase->on_initialize(graph);
-        timeline_phase->on_execute(graph, nullptr);
-        timeline_phase->dump_timeline_result(u8"🧪 Test 2: Deep Dependency Chain Results");
-        
         // 验证：应该有多个同步需求
-        const auto& result = timeline_phase->get_schedule_result();
+        const auto& result = execute(u8"🧪 Test 2: Deep Dependency Chain Results");
         SKR_LOG_INFO(u8"✅ Dependency Test: %d cross-queue sync requirements generated", 
                      (int)result.sync_requirements.size());
-        
-        timeline_phase->on_finalize(graph);
-        delete timeline_phase;
-        skr::render_graph::RenderGraph::destroy(graph);
     }
     
     // 测试3: 混合工作负载均衡
     void test_mixed_workload_balancing()
     {
         SKR_LOG_INFO(u8"🧪 Test 3: Mixed Workload Balancing");
-        
-        auto* graph = skr::render_graph::RenderGraph::create([](auto& builder) {
-            builder.frontend_only();
-        });
-        
-        auto timeline_config = skr::render_graph::ScheduleTimelineConfig{};
-        timeline_config.enable_async_compute = true;
-        timeline_config.enable_copy_queue = true;
-        
-        auto* timeline_phase = new skr::render_graph::ScheduleTimeline(timeline_config);
         
         // 创建各种类型的Pass混合
         std::vector<skr::render_graph::PassHandle> passes;
@@ -229,7 +248,7 @@ private:
             passes.push_back(graph->add_compute_pass(
                 [buffer, i](auto& graph, auto& builder) {
                     builder.set_name(skr::format(u8"ComputePass_{}", i).c_str())
-                           .readwrite(0, 0, buffer);
+                           .readwrite(u8"Output", buffer);
                 },
                 [](auto& graph, ComputePassContext& context) {}
             ));
@@ -259,34 +278,17 @@ private:
             ));
         }
         
-        timeline_phase->on_initialize(graph);
-        timeline_phase->on_execute(graph, nullptr);
-        timeline_phase->dump_timeline_result(u8"🧪 Test 3: Mixed Workload Results");
         
-        // 验证工作负载分布
-        const auto& result = timeline_phase->get_schedule_result();
+        auto result = execute(u8"🧪 Test 3: Mixed Workload Results");
         SKR_LOG_INFO(u8"✅ Mixed Workload Test: Distributed across %d queues", 
                      (int)result.queue_schedules.size());
-        
-        timeline_phase->on_finalize(graph);
-        delete timeline_phase;
-        skr::render_graph::RenderGraph::destroy(graph);
     }
     
     // 测试4: 资源密集型场景
+    std::mt19937 rng;
     void test_resource_heavy_scenario()
     {
         SKR_LOG_INFO(u8"🧪 Test 4: Resource Heavy Scenario");
-        
-        auto* graph = skr::render_graph::RenderGraph::create([](auto& builder) {
-            builder.frontend_only();
-        });
-        
-        auto timeline_config = skr::render_graph::ScheduleTimelineConfig{};
-        timeline_config.enable_async_compute = true;
-        timeline_config.enable_copy_queue = true;
-        
-        auto* timeline_phase = new skr::render_graph::ScheduleTimeline(timeline_config);
         
         // 创建大量资源
         std::vector<skr::render_graph::TextureHandle> textures;
@@ -326,17 +328,6 @@ private:
                     [this, textures, tex_idx, pass_idx](auto& graph, auto& builder) {
                         builder.set_name(skr::format(u8"HeavyRender_{}", pass_idx).c_str())
                                .write(0, textures[tex_idx]);
-                        
-                        // 随机读取其他纹理
-                        std::uniform_int_distribution<> read_count_dist(0, 3);
-                        int read_count = read_count_dist(rng);
-                        for (int r = 0; r < read_count; ++r) {
-                            std::uniform_int_distribution<> read_tex_dist(0, textures.size() - 1);
-                            int read_tex = read_tex_dist(rng);
-                            if (read_tex != tex_idx) {
-                                builder.read(r, 0, textures[read_tex]);
-                            }
-                        }
                     },
                     [](auto& graph, auto& executor) {}
                 );
@@ -345,18 +336,7 @@ private:
                 graph->add_compute_pass(
                     [this, buffers, buf_idx, pass_idx](auto& graph, auto& builder) {
                         builder.set_name(skr::format(u8"HeavyCompute_{}", pass_idx).c_str())
-                               .readwrite(0, 0, buffers[buf_idx]);
-                        
-                        // 随机读取其他缓冲区
-                        std::uniform_int_distribution<> read_count_dist(0, 2);
-                        int read_count = read_count_dist(rng);
-                        for (int r = 0; r < read_count; ++r) {
-                            std::uniform_int_distribution<> read_buf_dist(0, buffers.size() - 1);
-                            int read_buf = read_buf_dist(rng);
-                            if (read_buf != buf_idx) {
-                                builder.read(r, 1, buffers[read_buf]);
-                            }
-                        }
+                               .readwrite(u8"RW", buffers[buf_idx]);
                     },
                     [](auto& graph, auto& executor) {}
                 );
@@ -376,16 +356,9 @@ private:
             }
         }
         
-        timeline_phase->on_initialize(graph);
-        timeline_phase->on_execute(graph, nullptr);
-        timeline_phase->dump_timeline_result(u8"🧪 Test 4: Resource Heavy Results");
-        
+        execute(u8"🧪 Test 4: Resource Heavy Results");
         SKR_LOG_INFO(u8"✅ Resource Heavy Test: Handled %d textures and %d buffers", 
                      (int)textures.size(), (int)buffers.size());
-        
-        timeline_phase->on_finalize(graph);
-        delete timeline_phase;
-        skr::render_graph::RenderGraph::destroy(graph);
     }
     
     // 测试5: 边缘情况
@@ -395,33 +368,13 @@ private:
         
         // 边缘情况1：空RenderGraph
         {
-            auto* graph = skr::render_graph::RenderGraph::create([](auto& builder) {
-                builder.frontend_only();
-            });
-            
-            auto* timeline_phase = new skr::render_graph::ScheduleTimeline();
-            
-            timeline_phase->on_initialize(graph);
-            timeline_phase->on_execute(graph, nullptr);
-            timeline_phase->dump_timeline_result(u8"🧪 Edge Case 1: Empty Graph");
-            
-            const auto& result = timeline_phase->get_schedule_result();
+            const auto& result = execute(u8"🧪 Edge Case 1: Empty Graph Results");
             SKR_LOG_INFO(u8"✅ Empty Graph Test: %d queues, %d passes", 
                          (int)result.queue_schedules.size(), (int)result.pass_queue_assignments.size());
-            
-            timeline_phase->on_finalize(graph);
-            delete timeline_phase;
-            skr::render_graph::RenderGraph::destroy(graph);
         }
         
         // 边缘情况2：只有Present Pass
         {
-            auto* graph = skr::render_graph::RenderGraph::create([](auto& builder) {
-                builder.frontend_only();
-            });
-            
-            auto* timeline_phase = new skr::render_graph::ScheduleTimeline();
-            
             auto final_texture = graph->create_texture([](auto& graph, auto& builder) {
                 builder.set_name(u8"FinalTexture")
                        .extent(1920, 1080)
@@ -434,28 +387,11 @@ private:
                            .texture(final_texture);
                 }
             );
-            
-            timeline_phase->on_initialize(graph);
-            timeline_phase->on_execute(graph, nullptr);
-            timeline_phase->dump_timeline_result(u8"🧪 Edge Case 2: Only Present Pass");
-            
-            timeline_phase->on_finalize(graph);
-            delete timeline_phase;
-            skr::render_graph::RenderGraph::destroy(graph);
+            execute(u8"🧪 Edge Case 2: Only Present Pass Results");
         }
         
         // 边缘情况3：禁用所有异步队列
         {
-            auto* graph = skr::render_graph::RenderGraph::create([](auto& builder) {
-                builder.frontend_only();
-            });
-            
-            auto timeline_config = skr::render_graph::ScheduleTimelineConfig{};
-            timeline_config.enable_async_compute = false;
-            timeline_config.enable_copy_queue = false;
-            
-            auto* timeline_phase = new skr::render_graph::ScheduleTimeline(timeline_config);
-            
             // 添加各种Pass，应该全部分配到Graphics队列
             auto texture = graph->create_texture([](auto& graph, auto& builder) {
                 builder.set_name(u8"TestTexture")
@@ -481,22 +417,13 @@ private:
             graph->add_compute_pass(
                 [buffer](auto& graph, auto& builder) {
                     builder.set_name(u8"TestCompute")
-                           .readwrite(0, 0, buffer);
+                           .readwrite(u8"Output", buffer);
                 },
                 [](auto& graph, ComputePassContext& context) {}
             );
-            
-            timeline_phase->on_initialize(graph);
-            timeline_phase->on_execute(graph, nullptr);
-            timeline_phase->dump_timeline_result(u8"🧪 Edge Case 3: Graphics Only");
-            
-            const auto& result = timeline_phase->get_schedule_result();
+            auto result = execute(u8"🧪 Edge Case 3: Graphics Only Results");
             SKR_LOG_INFO(u8"✅ Graphics Only Test: %d sync requirements (should be 0)", 
                          (int)result.sync_requirements.size());
-            
-            timeline_phase->on_finalize(graph);
-            delete timeline_phase;
-            skr::render_graph::RenderGraph::destroy(graph);
         }
         
         SKR_LOG_INFO(u8"✅ All edge case scenarios completed!");

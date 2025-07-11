@@ -159,38 +159,19 @@ void Blackboard::Destroy(Blackboard* blackboard) SKR_NOEXCEPT
 namespace skr {
 namespace render_graph {
 
+EObjectType TextureNode::get_type() const SKR_NOEXCEPT
+{
+    return EObjectType::Texture;
+}
+
+EObjectType BufferNode::get_type() const SKR_NOEXCEPT
+{
+    return EObjectType::Buffer;
+}
+
 RenderGraph::RenderGraph(const RenderGraphBuilder& builder) SKR_NOEXCEPT
     : aliasing_enabled(builder.memory_aliasing)
 {
-}
-
-const ResourceNode::LifeSpan ResourceNode::lifespan() const SKR_NOEXCEPT
-{
-    if (frame_lifespan.from != UINT32_MAX && frame_lifespan.to != UINT32_MAX)
-    {
-        return frame_lifespan;
-    }
-    uint32_t from = UINT32_MAX, to = 0;
-    foreach_neighbors([&](const DependencyGraphNode* node) {
-        auto rg_node = static_cast<const RenderGraphNode*>(node);
-        if (rg_node->type == EObjectType::Pass)
-        {
-            auto pass_node = static_cast<const RenderPassNode*>(node);
-            from = (from <= pass_node->order) ? from : pass_node->order;
-            to = (to >= pass_node->order) ? to : pass_node->order;
-        }
-    });
-    foreach_inv_neighbors([&](const DependencyGraphNode* node) {
-        auto rg_node = static_cast<const RenderGraphNode*>(node);
-        if (rg_node->type == EObjectType::Pass)
-        {
-            auto pass_node = static_cast<const RenderPassNode*>(node);
-            from = (from <= pass_node->order) ? from : pass_node->order;
-            to = (to >= pass_node->order) ? to : pass_node->order;
-        }
-    });
-    frame_lifespan = { from, to };
-    return frame_lifespan;
 }
 
 BufferNode* RenderGraph::resolve(BufferHandle hdl) SKR_NOEXCEPT { return static_cast<BufferNode*>(graph->access_node(hdl)); }

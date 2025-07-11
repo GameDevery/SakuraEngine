@@ -74,7 +74,6 @@ public:
         friend class RenderGraph;
         RenderPassBuilder& set_name(const char8_t* name) SKR_NOEXCEPT;
         // textures
-        RenderPassBuilder& read(uint32_t set, uint32_t binding, TextureSRVHandle handle) SKR_NOEXCEPT;
         RenderPassBuilder& read(const char8_t* name, TextureSRVHandle handle) SKR_NOEXCEPT;
         RenderPassBuilder& write(uint32_t mrt_index, TextureRTVHandle handle,
             ECGPULoadAction load_action = CGPU_LOAD_ACTION_CLEAR,
@@ -90,8 +89,6 @@ public:
 
         // buffers
         RenderPassBuilder& read(const char8_t* name, BufferRangeHandle handle) SKR_NOEXCEPT;
-        RenderPassBuilder& read(uint32_t set, uint32_t binding, BufferRangeHandle handle) SKR_NOEXCEPT;
-        RenderPassBuilder& write(uint32_t set, uint32_t binding, BufferRangeHandle handle) SKR_NOEXCEPT;
         RenderPassBuilder& write(const char8_t* name, BufferRangeHandle handle) SKR_NOEXCEPT;
         RenderPassBuilder& use_buffer(PipelineBufferHandle buffer, ECGPUResourceState requested_state) SKR_NOEXCEPT;
 
@@ -110,18 +107,16 @@ public:
     public:
         friend class RenderGraph;
         ComputePassBuilder& set_name(const char8_t* name) SKR_NOEXCEPT;
-        ComputePassBuilder& read(uint32_t set, uint32_t binding, TextureSRVHandle handle) SKR_NOEXCEPT;
         ComputePassBuilder& read(const char8_t* name, TextureSRVHandle handle) SKR_NOEXCEPT;
-        ComputePassBuilder& readwrite(uint32_t set, uint32_t binding, TextureUAVHandle handle) SKR_NOEXCEPT;
+
         ComputePassBuilder& readwrite(const char8_t* name, TextureUAVHandle handle) SKR_NOEXCEPT;
+        
         ComputePassBuilder& read(const char8_t* name, BufferRangeHandle handle) SKR_NOEXCEPT;
-        ComputePassBuilder& read(uint32_t set, uint32_t binding, BufferRangeHandle handle) SKR_NOEXCEPT;
         ComputePassBuilder& read(const char8_t* name, BufferHandle handle) SKR_NOEXCEPT;
-        ComputePassBuilder& read(uint32_t set, uint32_t binding, BufferHandle handle) SKR_NOEXCEPT;
-        ComputePassBuilder& readwrite(uint32_t set, uint32_t binding, BufferRangeHandle handle) SKR_NOEXCEPT;
+
         ComputePassBuilder& readwrite(const char8_t* name, BufferRangeHandle handle) SKR_NOEXCEPT;
         ComputePassBuilder& readwrite(const char8_t* name, BufferHandle handle) SKR_NOEXCEPT;
-        ComputePassBuilder& readwrite(uint32_t set, uint32_t binding, BufferHandle handle) SKR_NOEXCEPT;
+
         ComputePassBuilder& set_pipeline(CGPUComputePipelineId pipeline) SKR_NOEXCEPT;
         ComputePassBuilder& set_root_signature(CGPURootSignatureId signature) SKR_NOEXCEPT;
 
@@ -271,6 +266,7 @@ public:
         skr::stl_function<void(PassNode* writer, TextureNode* tex, RenderGraphEdge* edge)>) const SKR_NOEXCEPT;
     uint32_t foreach_passes(BufferHandle buffer,
         skr::stl_function<void(PassNode* reader, BufferNode* buf, RenderGraphEdge* edge)>) const SKR_NOEXCEPT;
+    const skr::Vector<PassNode*>& get_passes() const SKR_NOEXCEPT { return passes; }
 
 protected:
     virtual void initialize() SKR_NOEXCEPT;

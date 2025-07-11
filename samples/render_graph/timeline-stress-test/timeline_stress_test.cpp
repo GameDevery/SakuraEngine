@@ -35,20 +35,24 @@ public:
         auto adapter = adapters[0];
 
         // Create device
-        CGPUQueueGroupDescriptor queue_group_descs[2];
+        CGPUQueueGroupDescriptor queue_group_descs[3];
         queue_group_descs[0].queue_type = CGPU_QUEUE_TYPE_GRAPHICS;
         queue_group_descs[0].queue_count = 1;
         queue_group_descs[1].queue_type = CGPU_QUEUE_TYPE_COMPUTE;
         queue_group_descs[1].queue_count = 2;
+        queue_group_descs[2].queue_type = CGPU_QUEUE_TYPE_TRANSFER;
+        queue_group_descs[2].queue_count = 1;
 
         CGPUDeviceDescriptor device_desc = {};
         device_desc.queue_groups = queue_group_descs;
-        device_desc.queue_group_count = 2;
+        device_desc.queue_group_count = 3;
         auto device = cgpu_create_device(adapter, &device_desc);
 
         // 创建RenderGraph（前端模式，不需要真实设备）
         auto* graph = skr::render_graph::RenderGraph::create(
             [=](auto& builder) {
+                auto cpy_queues = skr::Vector<CGPUQueueId>();
+                cpy_queues.add(cgpu_get_queue(device, CGPU_QUEUE_TYPE_TRANSFER, 0));
                 auto cmpt_queues = skr::Vector<CGPUQueueId>();
                 cmpt_queues.add(cgpu_get_queue(device, CGPU_QUEUE_TYPE_COMPUTE, 0));
                 cmpt_queues.add(cgpu_get_queue(device, CGPU_QUEUE_TYPE_COMPUTE, 1));
@@ -56,6 +60,7 @@ public:
                 
                 builder.with_device(device)        
                     .with_gfx_queue(gfx_queue)
+                    .with_cpy_queues(cpy_queues)
                     .with_cmpt_queues(cmpt_queues); // 不需要实际队列
             });
 
@@ -65,24 +70,31 @@ public:
         timeline_config.enable_copy_queue = true;
         timeline_config.max_sync_points = 128;
 
-        auto* timeline_phase = new skr::render_graph::ScheduleTimeline(timeline_config);
+        {
+            auto dependency_analysis = skr::render_graph::PassDependencyAnalysis();
+            auto timeline_phase = skr::render_graph::ScheduleTimeline(dependency_analysis, timeline_config);
 
-        // 构建复杂的渲染管线
-        build_complex_pipeline(graph);
+            // 构建复杂的渲染管线
+            build_complex_pipeline(graph);
 
-        // 手动调用TimelinePhase进行测试
-        timeline_phase->on_initialize(graph);
-        timeline_phase->on_execute(graph, nullptr);
+            // 手动调用TimelinePhase进行测试
+            timeline_phase.on_initialize(graph);
+            dependency_analysis.on_initialize(graph);
 
-        // 打印调度结果
-        timeline_phase->dump_timeline_result(u8"🔥 Timeline Stress Test Results");
 
-        // 验证调度结果
-        validate_schedule_result(timeline_phase->get_schedule_result());
+            dependency_analysis.on_execute(graph, nullptr);
+            timeline_phase.on_execute(graph, nullptr);
 
-        // 清理
-        timeline_phase->on_finalize(graph);
-        delete timeline_phase;
+            // 打印调度结果
+            timeline_phase.dump_timeline_result(u8"🔥 Timeline Stress Test Results");
+
+            // 验证调度结果
+            validate_schedule_result(timeline_phase.get_schedule_result());
+
+            // 清理
+            timeline_phase.on_finalize(graph);
+            dependency_analysis.on_finalize(graph);
+        }
         skr::render_graph::RenderGraph::destroy(graph);
 
         SKR_LOG_INFO(u8"✅ Timeline Stress Test Completed Successfully!");
@@ -177,7 +189,7 @@ private:
         });
 
         auto particle_pass = graph->add_compute_pass(
-            [particle_buffer](RenderGraph& graph, RenderGraph::ComputePassBuilder& builder) {
+            [particle_buffer, culling_buffer](RenderGraph& graph, RenderGraph::ComputePassBuilder& builder) {
                 builder.set_name(u8"ParticleSimulationPass")
                     .readwrite(u8"Output", particle_buffer.range(0, ~0));
             },
@@ -256,7 +268,7 @@ private:
         auto bloom_pass = graph->add_compute_pass(
             [lighting_buffer](RenderGraph& graph, RenderGraph::ComputePassBuilder& builder) {
                 builder.set_name(u8"BloomComputePass")
-                    .read(0, 0, lighting_buffer.range(0, ~0));
+                    .read(u8"BloomCompute", lighting_buffer.range(0, ~0));
             },
             [](RenderGraph& graph, ComputePassContext& context) {
                 // 模拟Bloom效果计算（无Graphics资源依赖，可以异步）
@@ -366,14 +378,6 @@ private:
         // 验证同步需求
         SKR_LOG_INFO(u8"✅ Sync requirements: %d cross-queue dependencies detected",
             (int)result.sync_requirements.size());
-
-        for (const auto& sync_req : result.sync_requirements)
-        {
-            if (!sync_req.fence)
-            {
-                SKR_LOG_ERROR(u8"❌ Sync requirement without allocated fence!");
-            }
-        }
 
         SKR_LOG_INFO(u8"✅ Schedule validation completed successfully!");
     }

@@ -1,10 +1,13 @@
 #pragma once
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrRenderGraph/frontend/base_types.hpp"
-#include "SkrContainersDef/array.hpp"
+#include "pass_dependency_analysis.hpp"
 #include "SkrContainersDef/vector.hpp"
 #include "SkrContainersDef/hashmap.hpp"
 #include "SkrContainersDef/bitset.hpp"
+
+// Forward declarations
+namespace skr { namespace render_graph { class PassDependencyAnalysis; } }
 
 namespace skr {
 namespace render_graph {
@@ -36,7 +39,6 @@ struct SyncRequirement
     uint32_t wait_queue_index;      // 等待信号的队列
     PassNode* signal_after_pass;    // 在哪个Pass执行后发信号
     PassNode* wait_before_pass;     // 在哪个Pass执行前等待
-    CGPUFenceId fence;              // 预分配的Fence对象
 };
 
 // 队列调度信息
@@ -60,8 +62,9 @@ struct PassDependencyInfo
 {
     skr::Vector<PassNode*> dependencies;            // 依赖的Pass列表
     skr::Vector<PassNode*> dependents;              // 被依赖的Pass列表
-    skr::Bitset<64> queue_affinities;               // 可运行的队列（动态大小，最大64个队列）
+    skr::Bitset<32> queue_affinities;               // 可运行的队列（动态大小，最大32个队列）
     bool has_cross_queue_dependency = false;        // 是否有跨队列依赖
+    bool has_graphics_resource_dependency = false;  // 是否有图形资源依赖（缓存以避免重复遍历）
 };
 
 // 跨队列依赖
@@ -87,7 +90,7 @@ struct ScheduleTimelineConfig
 class SKR_RENDER_GRAPH_API ScheduleTimeline : public IRenderGraphPhase 
 {
 public:
-    ScheduleTimeline(const ScheduleTimelineConfig& config = {});
+    ScheduleTimeline(const PassDependencyAnalysis& dependency_analysis, const ScheduleTimelineConfig& config = {});
     ~ScheduleTimeline() override;
 
     // IRenderGraphPhase 接口
@@ -108,42 +111,45 @@ private:
 
     // 编译阶段
     void analyze_dependencies(RenderGraph* graph) SKR_NOEXCEPT;
-    void classify_passes(RenderGraph* graph) SKR_NOEXCEPT;
     void assign_passes_to_queues(RenderGraph* graph) SKR_NOEXCEPT;
     void calculate_sync_requirements(RenderGraph* graph) SKR_NOEXCEPT;
-    void allocate_fences(RenderGraph* graph) SKR_NOEXCEPT;
 
     // Pass分类和调度
     ERenderGraphQueueType classify_pass(PassNode* pass) SKR_NOEXCEPT;
     bool can_run_on_queue(PassNode* pass, ERenderGraphQueueType queue) SKR_NOEXCEPT;
     bool has_graphics_resource_dependency(PassNode* pass) SKR_NOEXCEPT;
 
-
 private:
     ScheduleTimelineConfig config;
     
-    // 动态队列信息 - 支持多计算队列
-    skr::Vector<QueueCapabilities> available_queues;  // 所有可用队列
-    uint32_t graphics_queue_index = UINT32_MAX;       // Graphics队列索引
-    skr::Vector<uint32_t> compute_queue_indices;      // 计算队列索引列表
-    skr::Vector<uint32_t> copy_queue_indices;         // 拷贝队列索引列表
+    // 统一的队列信息 - 简化管理，减少复杂度
+    struct QueueInfo {
+        ERenderGraphQueueType type;
+        uint32_t index;
+        CGPUQueueId handle;
+        bool supports_graphics = false;
+        bool supports_compute = false;
+        bool supports_copy = false;
+        bool supports_present = false;
+    };
+    skr::Vector<QueueInfo> all_queues;  // 统一管理所有队列，按类型分组
     
-    // Pass调度信息 - 每帧重建
-    skr::FlatHashMap<PassNode*, uint32_t> pass_to_queue;
+    // Pass调度信息 - 每帧重建（简化，删除冗余存储）
     skr::FlatHashMap<PassNode*, PassDependencyInfo> dependency_info;
-    skr::FlatHashMap<PassNode*, ERenderGraphQueueType> pass_preferred_queue;
+    
+    // 引用传入的依赖分析器
+    const PassDependencyAnalysis& dependency_analysis;
     
     // 调度结果输出
     TimelineScheduleResult schedule_result;
     
-    // 调度子功能
-    skr::Vector<PassNode*> topological_sort_passes(const skr::Vector<PassNode*>& passes) SKR_NOEXCEPT;
-    uint32_t select_best_queue_for_pass(PassNode* pass) SKR_NOEXCEPT;
+    // 调度子功能（简化后的队列管理）
+    uint32_t find_graphics_queue() const SKR_NOEXCEPT;
+    uint32_t find_least_loaded_compute_queue() const SKR_NOEXCEPT;
+    uint32_t find_copy_queue() const SKR_NOEXCEPT;
     
     // 辅助方法
-    uint32_t find_least_loaded_compute_queue() SKR_NOEXCEPT;
-    bool is_compute_queue(uint32_t queue_index) const SKR_NOEXCEPT;
-    bool can_run_on_queue_index(PassNode* pass, uint32_t queue_index) SKR_NOEXCEPT;
+    bool can_run_on_queue_index(PassNode* pass, uint32_t queue_index) const SKR_NOEXCEPT;
 };
 
 // 辅助函数

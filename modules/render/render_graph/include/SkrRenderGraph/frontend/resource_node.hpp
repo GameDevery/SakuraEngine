@@ -17,7 +17,8 @@ public:
     };
     inline const bool is_imported() const SKR_NOEXCEPT { return imported; }
     inline const bool allow_lone() const SKR_NOEXCEPT { return canbe_lone; }
-    SKR_RENDER_GRAPH_API const LifeSpan lifespan() const SKR_NOEXCEPT;
+    virtual EObjectType get_type() const SKR_NOEXCEPT = 0;
+
 protected:
     bool imported = false;
     bool canbe_lone = false;
@@ -51,6 +52,7 @@ public:
     }
     inline const ECGPUSampleCount get_sample_count() const SKR_NOEXCEPT { return descriptor.sample_count; }
     inline const TextureNode* get_aliasing_parent() const SKR_NOEXCEPT { return frame_aliasing_source; }
+    EObjectType get_type() const SKR_NOEXCEPT override;
 
 protected:
     CGPUTextureDescriptor descriptor = {};
@@ -77,6 +79,7 @@ public:
     }
     inline const BufferHandle get_handle() const SKR_NOEXCEPT { return BufferHandle(get_id()); }
     inline const CGPUBufferDescriptor& get_desc() const SKR_NOEXCEPT { return descriptor; }
+    EObjectType get_type() const SKR_NOEXCEPT override;
 
 protected:
     CGPUBufferDescriptor descriptor = {};

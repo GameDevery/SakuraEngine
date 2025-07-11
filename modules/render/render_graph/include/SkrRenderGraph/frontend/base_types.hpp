@@ -309,6 +309,7 @@ protected:
 
 struct RenderGraphEdge : public DependencyGraphEdge {
     RenderGraphEdge(ERelationshipType type);
+    inline ERelationshipType get_type() const SKR_NOEXCEPT { return type; }
     const ERelationshipType type;
     const uint32_t pooled_size = 0;
 };
