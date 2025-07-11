@@ -1191,8 +1191,10 @@ CGPUMemoryPoolId cgpu_create_memory_pool_vulkan(CGPUDeviceId device, const struc
             break;
     }
     
-    // 根据 flags 组合调整内存属性
     const bool allowRTDS = desc->flags & CGPU_MEM_POOL_FLAG_ALLOW_RT_DS;
+    const bool allowBuffers = desc->flags & CGPU_MEM_POOL_FLAG_ALLOW_BUFFERS;
+    const bool allowTextures = desc->flags & CGPU_MEM_POOL_FLAG_ALLOW_TEXTURES;
+    // 根据资源类型优化 memory flags
     if (allowRTDS)
     {
         // 瞬态附件可以使用 LAZILY_ALLOCATED
@@ -1258,7 +1260,7 @@ CGPUMemoryPoolId cgpu_create_memory_pool_vulkan(CGPUDeviceId device, const struc
         // 纯 Buffer 池可以忽略 buffer/image granularity
         poolInfo.flags |= VMA_POOL_CREATE_IGNORE_BUFFER_IMAGE_GRANULARITY_BIT;
     }
-    
+
     // Create the VMA pool
     VkResult result = vmaCreatePool(D->pVmaAllocator, &poolInfo, &pool->pVmaPool);
     if (result != VK_SUCCESS)

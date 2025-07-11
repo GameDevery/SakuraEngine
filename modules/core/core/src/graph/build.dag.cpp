@@ -119,9 +119,9 @@ public:
     {
         const auto node = graph.nodeFromId((int)id);
         uint32_t count = 0;
-        for (ListDigraph::InArcIt arcIt(graph, node); arcIt != INVALID; ++arcIt) 
+        for (ListDigraph::OutArcIt arcIt(graph, node); arcIt != INVALID; ++arcIt) 
         {
-            auto nid = graph.source(arcIt);
+            auto nid = graph.target(arcIt);
             auto node = vert_map[nid];
             f(node);
             count++;
@@ -133,9 +133,9 @@ public:
     {
         const auto node = graph.nodeFromId((int)id);
         uint32_t count = 0;
-        for (ListDigraph::InArcIt arcIt(graph, node); arcIt != INVALID; ++arcIt) 
+        for (ListDigraph::OutArcIt arcIt(graph, node); arcIt != INVALID; ++arcIt) 
         {
-            auto nid = graph.source(arcIt);
+            auto nid = graph.target(arcIt);
             auto node = vert_map[nid];
             f(node);
             count++;
@@ -157,9 +157,9 @@ public:
     {
         const auto node = graph.nodeFromId((int)id);
         uint32_t count = 0;
-        for (ListDigraph::OutArcIt arcIt(graph, node); arcIt != INVALID; ++arcIt) 
+        for (ListDigraph::InArcIt arcIt(graph, node); arcIt != INVALID; ++arcIt) 
         {
-            auto nid = graph.target(arcIt);
+            auto nid = graph.source(arcIt);
             auto node = vert_map[nid];
             f(node);
             count++;
@@ -171,9 +171,9 @@ public:
     {
         const auto node = graph.nodeFromId((int)id);
         uint32_t count = 0;
-        for (ListDigraph::OutArcIt arcIt(graph, node); arcIt != INVALID; ++arcIt) 
+        for (ListDigraph::InArcIt arcIt(graph, node); arcIt != INVALID; ++arcIt) 
         {
-            auto nid = graph.target(arcIt);
+            auto nid = graph.source(arcIt);
             auto node = vert_map[nid];
             f(node);
             count++;
