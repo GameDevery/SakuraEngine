@@ -23,7 +23,8 @@ void CullPhase::on_compile(RenderGraph* graph) SKR_NOEXCEPT
         const bool lone = !(resource->incoming_edges() + resource->outgoing_edges());
         {
             SkrZoneScopedN("RecordDealloc");
-            if (lone) culled_resources.add(resource);
+            if (lone) 
+                culled_resources.add(resource);
         }
         return lone;
     });
@@ -39,7 +40,8 @@ void CullPhase::on_compile(RenderGraph* graph) SKR_NOEXCEPT
         const bool culled = lone && !can_be_lone;
         {
             SkrZoneScopedN("RecordDealloc");
-            if (culled) culled_passes.add(pass);
+            if (culled)
+                culled_passes.add(pass);
         }
         return culled;
     });
