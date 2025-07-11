@@ -166,12 +166,6 @@ namespace SB.Core
                 vcPaths = VCEnvVariables["Path"]!.Split(';').ToHashSet();
                 vcPaths.ExceptWith(oldPaths);
                 VCEnvVariables["Path"] = string.Join(";", vcPaths);
-                // Preprocess: calculate include dir
-                var OriginalIncludes = VCEnvVariables.TryGetValue("INCLUDE", out var V0) ? V0 : "";
-                var VCVarsIncludes = VCEnvVariables.TryGetValue("__VSCMD_VCVARS_INCLUDE", out var V1) ? V1 : "";
-                var WindowsSDKIncludes = VCEnvVariables.TryGetValue("__VSCMD_WINSDK_INCLUDE", out var V2) ? V2 : "";
-                var NetFXIncludes = VCEnvVariables.TryGetValue("__VSCMD_NETFX_INCLUDE", out var V3) ? V3 : "";
-                VCEnvVariables["INCLUDE"] = VCVarsIncludes + WindowsSDKIncludes + NetFXIncludes + OriginalIncludes;
             }
             else
             {
@@ -179,25 +173,33 @@ namespace SB.Core
                 vcPaths = VCEnvVariables["Path"]!.Split(';').ToHashSet();
             }
 
-            // Enum all files and pick usable tools
-                foreach (var path in vcPaths)
-                {
-                    if (!Directory.Exists(path))
-                        continue;
+            // Preprocess: calculate include dir
+            var OriginalIncludes = VCEnvVariables.TryGetValue("INCLUDE", out var V0) ? V0 : "";
+            var VCVarsIncludes = VCEnvVariables.TryGetValue("__VSCMD_VCVARS_INCLUDE", out var V1) ? V1 : "";
+            var WindowsSDKIncludes = VCEnvVariables.TryGetValue("__VSCMD_WINSDK_INCLUDE", out var V2) ? V2 : "";
+            var NetFXIncludes = VCEnvVariables.TryGetValue("__VSCMD_NETFX_INCLUDE", out var V3) ? V3 : "";
+            VCEnvVariables["INCLUDE"] = VCVarsIncludes + WindowsSDKIncludes + NetFXIncludes + OriginalIncludes;
 
-                    foreach (var file in Directory.EnumerateFiles(path))
-                    {
-                        if (Path.GetFileName(file) == "cl.exe")
-                            CLCCPath = file;
-                        if (Path.GetFileName(file) == "link.exe")
-                            LINKPath = file;
-                        if (Path.GetFileName(file) == "clang-cl.exe")
-                            ClangCLPath = file;
-                    }
+            // Enum all files and pick usable tools
+            foreach (var path in vcPaths)
+            {
+                if (!Directory.Exists(path))
+                    continue;
+
+                foreach (var file in Directory.EnumerateFiles(path))
+                {
+                    if (Path.GetFileName(file) == "cl.exe")
+                        CLCCPath = file;
+                    if (Path.GetFileName(file) == "link.exe")
+                        LINKPath = file;
+                    if (Path.GetFileName(file) == "clang-cl.exe")
+                        ClangCLPath = file;
                 }
+            }
+            
             // clang-cl may be installed in a different user path
             if (!File.Exists(ClangCLPath))
-            {   
+            {
                 foreach (var path in oldPaths)
                 {
                     if (!Directory.Exists(path))
