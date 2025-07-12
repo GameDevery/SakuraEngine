@@ -94,6 +94,9 @@ public:
 
         RenderPassBuilder& set_pipeline(CGPURenderPipelineId pipeline) SKR_NOEXCEPT;
         RenderPassBuilder& set_root_signature(CGPURootSignatureId signature) SKR_NOEXCEPT;
+        
+        // Performance hints
+        RenderPassBuilder& with_flags(EPassFlags flags) SKR_NOEXCEPT;
     protected:
         RenderPassBuilder(RenderGraph& graph, RenderPassNode& pass) SKR_NOEXCEPT;
         RenderGraph& graph;
@@ -119,6 +122,9 @@ public:
 
         ComputePassBuilder& set_pipeline(CGPUComputePipelineId pipeline) SKR_NOEXCEPT;
         ComputePassBuilder& set_root_signature(CGPURootSignatureId signature) SKR_NOEXCEPT;
+        
+        // Performance hints
+        ComputePassBuilder& with_flags(EPassFlags flags) SKR_NOEXCEPT;
 
     protected:
         ComputePassBuilder(RenderGraph& graph, ComputePassNode& pass) SKR_NOEXCEPT;
@@ -138,6 +144,9 @@ public:
         CopyPassBuilder& buffer_to_buffer(BufferRangeHandle src, BufferRangeHandle dst, ECGPUResourceState out_state = CGPU_RESOURCE_STATE_COPY_DEST) SKR_NOEXCEPT;
         CopyPassBuilder& buffer_to_texture(BufferRangeHandle src, TextureSubresourceHandle dst, ECGPUResourceState out_state = CGPU_RESOURCE_STATE_COPY_DEST) SKR_NOEXCEPT;
         CopyPassBuilder& from_buffer(BufferRangeHandle src) SKR_NOEXCEPT;
+        
+        // Performance hints
+        CopyPassBuilder& with_flags(EPassFlags flags) SKR_NOEXCEPT;
 
     protected:
         CopyPassBuilder(RenderGraph& graph, CopyPassNode& pass) noexcept;

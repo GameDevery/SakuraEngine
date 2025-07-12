@@ -62,9 +62,7 @@ struct PassDependencyInfo
 {
     skr::Vector<PassNode*> dependencies;            // 依赖的Pass列表
     skr::Vector<PassNode*> dependents;              // 被依赖的Pass列表
-    skr::Bitset<32> queue_affinities;               // 可运行的队列（动态大小，最大32个队列）
-    bool has_cross_queue_dependency = false;        // 是否有跨队列依赖
-    bool has_graphics_resource_dependency = false;  // 是否有图形资源依赖（缓存以避免重复遍历）
+    // 注意：队列分配现在完全基于手动标记，移除了自动推断逻辑
 };
 
 // 跨队列依赖
@@ -102,7 +100,7 @@ public:
     const TimelineScheduleResult& get_schedule_result() const { return schedule_result; }
     
     // 调试接口
-    void dump_timeline_result(const char8_t* title = u8"Timeline Schedule Result") const SKR_NOEXCEPT;
+    void dump_timeline_result(const char8_t* title, const TimelineScheduleResult& R) const SKR_NOEXCEPT;
 
 private:
     // 初始化阶段
@@ -116,8 +114,6 @@ private:
 
     // Pass分类和调度
     ERenderGraphQueueType classify_pass(PassNode* pass) SKR_NOEXCEPT;
-    bool can_run_on_queue(PassNode* pass, ERenderGraphQueueType queue) SKR_NOEXCEPT;
-    bool has_graphics_resource_dependency(PassNode* pass) SKR_NOEXCEPT;
 
 private:
     ScheduleTimelineConfig config;
@@ -148,8 +144,8 @@ private:
     uint32_t find_least_loaded_compute_queue() const SKR_NOEXCEPT;
     uint32_t find_copy_queue() const SKR_NOEXCEPT;
     
-    // 辅助方法
-    bool can_run_on_queue_index(PassNode* pass, uint32_t queue_index) const SKR_NOEXCEPT;
+    // 辅助方法  
+    // 注意：移除了基于Pass类型的队列能力推断，现在完全基于手动标记
 };
 
 // 辅助函数

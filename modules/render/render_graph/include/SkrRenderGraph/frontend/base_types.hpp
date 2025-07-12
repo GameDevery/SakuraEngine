@@ -73,6 +73,23 @@ enum class EPassType : uint8_t
     Count
 };
 
+enum class EPassFlags : uint32_t
+{
+    None = 0x0,
+    SeperateFromCommandBuffer = 0x1,  // Pass 会从主命令缓冲区提取命令
+    PreferAsyncCompute = 0x2,         // Pass 倾向于在异步计算队列运行
+ 
+    ComputeIntensive = 0x10,          // 长时间运行的计算，需要特殊调度
+    VertexBoundIntensive = 0x20,      // VS/图元装配瓶颈（仅渲染 Pass）
+    PixelBoundIntensive = 0x40,       // 片元/ROP 瓶颈（仅渲染 Pass）
+    BandwidthIntensive = 0x80,        // 内存带宽密集型 Pass
+
+    SmallWorkingSet = 0x100,          // 小 working set
+    LargeWorkingSet = 0x200,          // 大 working set
+    RandomAccess = 0x400,             // 随机内存访问（缓存不友好）
+    StreamingAccess = 0x800,          // 流式访问（绕过缓存）
+};
+
 template <EObjectType type>
 struct SKR_RENDER_GRAPH_API ObjectHandle {
     ObjectHandle(handle_t hdl)

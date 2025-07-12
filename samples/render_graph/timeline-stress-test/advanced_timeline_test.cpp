@@ -77,13 +77,16 @@ private:
         auto timeline_config = skr::render_graph::ScheduleTimelineConfig{};
         timeline_config.enable_async_compute = true;
         timeline_config.enable_copy_queue = true;
-        timeline_config.max_sync_points = 128;
-        auto dependency_analysis = skr::render_graph::PassDependencyAnalysis();
+        auto info_analysis = skr::render_graph::PassInfoAnalysis();
+        auto dependency_analysis = skr::render_graph::PassDependencyAnalysis(info_analysis);
         auto timeline_phase = skr::render_graph::ScheduleTimeline(dependency_analysis, timeline_config);
+        
         // 手动调用TimelinePhase进行测试
-        timeline_phase.on_initialize(graph);
+        info_analysis.on_initialize(graph);
         dependency_analysis.on_initialize(graph);
+        timeline_phase.on_initialize(graph);
 
+        info_analysis.on_execute(graph, nullptr);
         dependency_analysis.on_execute(graph, nullptr);
         timeline_phase.on_execute(graph, nullptr);
 
@@ -92,6 +95,7 @@ private:
 
         timeline_phase.on_finalize(graph);
         dependency_analysis.on_finalize(graph);
+        info_analysis.on_finalize(graph);
         return r;
     }
 

@@ -49,11 +49,20 @@ public:
         return (uint32_t)(in_buffer_edges.size() + out_buffer_edges.size() + ppl_buffer_edges.size());
     }
     const bool get_can_be_lone() const { return can_be_lone; }
+    
+    // Performance hint flags access
+    void set_flags(EPassFlags flags) { hint_flags = flags; }
+    void add_flags(EPassFlags flags) { hint_flags = static_cast<EPassFlags>(static_cast<uint32_t>(hint_flags) | static_cast<uint32_t>(flags)); }
+    void remove_flags(EPassFlags flags) { hint_flags = static_cast<EPassFlags>(static_cast<uint32_t>(hint_flags) & ~static_cast<uint32_t>(flags)); }
+    bool has_flags(EPassFlags flags) const { return (static_cast<uint32_t>(hint_flags) & static_cast<uint32_t>(flags)) != 0; }
+    EPassFlags get_flags() const { return hint_flags; }
 
     const EPassType pass_type = EPassType::None;
     const uint32_t order;
+
 protected:
     bool can_be_lone = false;
+    EPassFlags hint_flags = EPassFlags::None;
     PassNode(EPassType pass_type, uint32_t order);
     graph_edges_vector<TextureReadEdge*> in_texture_edges;
     graph_edges_vector<TextureRenderEdge*> out_texture_edges;

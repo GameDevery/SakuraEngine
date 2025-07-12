@@ -166,6 +166,12 @@ RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::set_root_signatu
     return *this;
 }
 
+RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::with_flags(EPassFlags flags) SKR_NOEXCEPT
+{
+    node.add_flags(flags);
+    return *this;
+}
+
 // compute pass builder
 RenderGraph::ComputePassBuilder::ComputePassBuilder(RenderGraph& graph, ComputePassNode& pass) SKR_NOEXCEPT
     : graph(graph), node(pass)
@@ -240,6 +246,12 @@ RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::set_pipeline(C
 RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::set_root_signature(CGPURootSignatureId signature) SKR_NOEXCEPT
 {
     node.root_signature = signature;
+    return *this;
+}
+
+RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::with_flags(EPassFlags flags) SKR_NOEXCEPT
+{
+    node.add_flags(flags);
     return *this;
 }
 
@@ -340,6 +352,12 @@ RenderGraph::CopyPassBuilder& RenderGraph::CopyPassBuilder::from_buffer(BufferRa
     auto allocated_in = graph.node_factory->Allocate<BufferReadEdge>(u8"CopySrc", src, CGPU_RESOURCE_STATE_COPY_SOURCE);
     auto&& in_edge = node.in_buffer_edges.emplace(allocated_in).ref();
     graph.graph->link(graph.graph->access_node(src._this), &node, in_edge);
+    return *this;
+}
+
+RenderGraph::CopyPassBuilder& RenderGraph::CopyPassBuilder::with_flags(EPassFlags flags) SKR_NOEXCEPT
+{
+    node.add_flags(flags);
     return *this;
 }
 

@@ -1,4 +1,9 @@
-查看 @README 了解项目概述。
+** memory bank 的路径在 ./memory_bank 而不是 ./.memory_bank 或是其他的路径。**
+
+使用 UTF-8 编码进行编程。在根目录下构建：
+dotnet run SB build --category=tools # 一般不需要，构建着色器编译器和反射工具开发用
+dotnet run SB build # 构建引擎
+dotnet run SB build --target= # 构建引擎模块
 
 工程比较大，在读取引用语料时要注意引用的 markdown 是否会和业务有关，如果无关的话不要干扰思考。
 

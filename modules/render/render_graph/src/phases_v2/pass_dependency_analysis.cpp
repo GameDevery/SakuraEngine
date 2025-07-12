@@ -1,10 +1,17 @@
+#include "SkrContainersDef/set.hpp"
 #include "SkrRenderGraph/phases_v2/pass_dependency_analysis.hpp"
+#include "SkrRenderGraph/phases_v2/pass_info_analysis.hpp"
 #include "SkrRenderGraph/frontend/pass_node.hpp"
 #include "SkrRenderGraph/frontend/resource_node.hpp"
 #include "SkrCore/log.hpp"
 
 namespace skr {
 namespace render_graph {
+
+PassDependencyAnalysis::PassDependencyAnalysis(const PassInfoAnalysis& pass_info_analysis)
+    : pass_info_analysis(pass_info_analysis)
+{
+}
 
 bool PassDependencies::has_dependency_on(PassNode* pass) const
 {
@@ -52,6 +59,9 @@ void PassDependencyAnalysis::on_execute(RenderGraph* graph, RenderGraphProfiler*
         // Analyze current pass dependencies on previous passes
         analyze_pass_dependencies(current_pass, previous_passes);
     }
+    
+    // Build pass-level dependencies after all resource dependencies are analyzed
+    build_pass_level_dependencies();
 }
 
 void PassDependencyAnalysis::on_initialize(RenderGraph* graph) SKR_NOEXCEPT
@@ -70,34 +80,19 @@ void PassDependencyAnalysis::analyze_pass_dependencies(PassNode* current_pass, c
 {
     PassDependencies& current_deps = pass_dependencies_[current_pass];
     
-    // Collect all resources accessed by current pass
+    // Get pre-computed resource access info from PassInfoAnalysis
+    const auto* current_resource_info = pass_info_analysis.get_resource_info(current_pass);
+    if (!current_resource_info) return;
+    
+    // Build lookup map from pre-computed access info
     skr::FlatHashMap<ResourceNode*, EResourceAccessType> current_resources;
     skr::FlatHashMap<ResourceNode*, ECGPUResourceState> current_states;
     
-    // Analyze texture access
-    current_pass->foreach_textures([&](TextureNode* texture, TextureEdge* edge) {
-        EResourceAccessType access_type = get_resource_access_type(current_pass, texture);
-        ECGPUResourceState state = get_resource_state(current_pass, texture);
-        current_resources[texture] = access_type;
-        current_states[texture] = state;
-        
-        // Check for graphics resource dependency while we're already iterating
-        if (texture && (texture->get_desc().descriptors & CGPU_RESOURCE_TYPE_RENDER_TARGET ||
-                       texture->get_desc().descriptors & CGPU_RESOURCE_TYPE_DEPTH_STENCIL)) {
-            current_deps.has_graphics_resource_dependency = true;
-        }
-        
-        return true;
-    });
-    
-    // Analyze buffer access
-    current_pass->foreach_buffers([&](BufferNode* buffer, BufferEdge* edge) {
-        EResourceAccessType access_type = get_resource_access_type(current_pass, buffer);
-        ECGPUResourceState state = get_resource_state(current_pass, buffer);
-        current_resources[buffer] = access_type;
-        current_states[buffer] = state;
-        return true;
-    });
+    for (const auto& access : current_resource_info->all_resource_accesses)
+    {
+        current_resources[access.resource] = access.access_type;
+        current_states[access.resource] = access.resource_state;
+    }
     
     // For each resource, find the nearest conflicting previous pass
     for (const auto& [resource, current_access] : current_resources)
@@ -112,39 +107,12 @@ void PassDependencyAnalysis::analyze_pass_dependencies(PassNode* current_pass, c
         {
             PassNode* prev_pass = previous_passes[i];
             
-            // Check if this previous pass accesses the same resource
-            bool prev_accesses_resource = false;
-            EResourceAccessType prev_access_type = EResourceAccessType::Read;
-            ECGPUResourceState prev_state = CGPU_RESOURCE_STATE_UNDEFINED;
+            // Use PassInfoAnalysis to get access type (much faster)
+            EResourceAccessType prev_access_type = pass_info_analysis.get_resource_access_type(prev_pass, resource);
+            ECGPUResourceState prev_state = pass_info_analysis.get_resource_state(prev_pass, resource);
             
-            // Check texture access
-            if (resource->get_type() == EObjectType::Texture)
-            {
-                prev_pass->foreach_textures([&](TextureNode* texture, TextureEdge* edge) {
-                    if (texture == resource)
-                    {
-                        prev_accesses_resource = true;
-                        prev_access_type = get_resource_access_type(prev_pass, texture);
-                        prev_state = get_resource_state(prev_pass, texture);
-                        return false; // Found it, stop iteration
-                    }
-                    return true;
-                });
-            }
-            // Check buffer access
-            else if (resource->get_type() == EObjectType::Buffer)
-            {
-                prev_pass->foreach_buffers([&](BufferNode* buffer, BufferEdge* edge) {
-                    if (buffer == resource)
-                    {
-                        prev_accesses_resource = true;
-                        prev_access_type = get_resource_access_type(prev_pass, buffer);
-                        prev_state = get_resource_state(prev_pass, buffer);
-                        return false; // Found it, stop iteration
-                    }
-                    return true;
-                });
-            }
+            // Check if previous pass actually accesses this resource
+            bool prev_accesses_resource = (prev_state != CGPU_RESOURCE_STATE_UNDEFINED);
             
             // If found a previous pass accessing the same resource, check for conflicts
             if (prev_accesses_resource)
@@ -176,111 +144,37 @@ void PassDependencyAnalysis::analyze_pass_dependencies(PassNode* current_pass, c
     }
 }
 
-EResourceAccessType PassDependencyAnalysis::get_resource_access_type(PassNode* pass, ResourceNode* resource)
+void PassDependencyAnalysis::build_pass_level_dependencies()
 {
-    bool has_read = false;
-    bool has_write = false;
-    
-    if (resource->get_type() == EObjectType::Texture)
+    // Build pass-level dependency info from resource dependencies
+    for (auto& [pass, deps] : pass_dependencies_)
     {
-        TextureNode* texture = static_cast<TextureNode*>(resource);
-        pass->foreach_textures([&](TextureNode* tex, TextureEdge* edge) {
-            if (tex == texture)
-            {
-                // Determine access mode based on edge type
-                if (edge->type == ERelationshipType::TextureRead)
-                {
-                    has_read = true;
-                }
-                else if (edge->type == ERelationshipType::TextureWrite)
-                {
-                    has_write = true;
-                }
-                else if (edge->type == ERelationshipType::TextureReadWrite)
-                {
-                    has_read = true;
-                    has_write = true;
-                }
-            }
-            return true;
-        });
-    }
-    else if (resource->get_type() == EObjectType::Buffer)
-    {
-        BufferNode* buffer = static_cast<BufferNode*>(resource);
-        pass->foreach_buffers([&](BufferNode* buf, BufferEdge* edge) {
-            if (buf == buffer)
-            {
-                // Determine access mode based on edge type
-                if (edge->type == ERelationshipType::BufferRead)
-                {
-                    has_read = true;
-                }
-                else if (edge->type == ERelationshipType::BufferReadWrite)
-                {
-                    has_read = true;
-                    has_write = true;
-                }
-            }
-            return true;
-        });
+        skr::InlineSet<PassNode*, 8> unique_dependencies;
+        skr::InlineSet<PassNode*, 8> unique_dependents;
+        
+        // Extract unique passes from resource dependencies
+        for (const auto& resource_dep : deps.resource_dependencies)
+        {
+            unique_dependencies.add(resource_dep.dependent_pass);
+        }
+        
+        // Convert to vectors
+        deps.dependent_passes.clear();
+        deps.dependent_passes.reserve(unique_dependencies.size());
+        for (PassNode* dep_pass : unique_dependencies)
+        {
+            deps.dependent_passes.add(dep_pass);
+        }
     }
     
-    if (has_read && has_write)
-        return EResourceAccessType::ReadWrite;
-    else if (has_write)
-        return EResourceAccessType::Write;
-    else
-        return EResourceAccessType::Read;
-}
-
-ECGPUResourceState PassDependencyAnalysis::get_resource_state(PassNode* pass, ResourceNode* resource)
-{
-    ECGPUResourceState state = CGPU_RESOURCE_STATE_UNDEFINED;
-    
-    if (resource->get_type() == EObjectType::Texture)
+    // Build dependent_by_passes (reverse dependencies)
+    for (auto& [pass, deps] : pass_dependencies_)
     {
-        TextureNode* texture = static_cast<TextureNode*>(resource);
-        pass->foreach_textures([&](TextureNode* tex, TextureEdge* edge) {
-            if (tex == texture)
-            {
-                // Get requested state from edge
-                if (edge->get_type() == ERelationshipType::TextureRead)
-                {
-                    auto rw_edge = static_cast<TextureReadEdge*>(edge);
-                    state = rw_edge->requested_state;;
-                }
-                else if (edge->get_type() == ERelationshipType::TextureWrite)
-                {
-                    auto write_edge = static_cast<TextureRenderEdge*>(edge);
-                    state = write_edge->requested_state;
-                }
-                else if (edge->get_type() == ERelationshipType::TextureReadWrite)
-                {
-                    auto rw_edge = static_cast<TextureReadWriteEdge*>(edge);
-                    state = rw_edge->requested_state;
-                }
-                return false; // Found it, stop iteration
-            }
-            return true;
-        });
+        for (PassNode* dep_pass : deps.dependent_passes)
+        {
+            pass_dependencies_[dep_pass].dependent_by_passes.add(pass);
+        }
     }
-    else if (resource->get_type() == EObjectType::Buffer)
-    {
-        BufferNode* buffer = static_cast<BufferNode*>(resource);
-        pass->foreach_buffers([&](BufferNode* buf, BufferEdge* edge) {
-            if (buf == buffer)
-            {
-                // Get requested state from edge
-                auto* buffer_edge = static_cast<BufferEdge*>(edge);
-                state = buffer_edge->requested_state;
-                return false; // Found it, stop iteration
-            }
-            return true;
-        });
-    }
-    
-    return state;
 }
 
 bool PassDependencyAnalysis::has_resource_conflict(EResourceAccessType current, EResourceAccessType previous, 
@@ -342,6 +236,21 @@ bool PassDependencyAnalysis::has_dependencies(PassNode* pass) const
 {
     const auto* deps = get_pass_dependencies(pass);
     return deps != nullptr && !deps->resource_dependencies.is_empty();
+}
+
+// For ScheduleTimeline - get pass-level dependencies directly
+const skr::Vector<PassNode*>& PassDependencyAnalysis::get_dependent_passes(PassNode* pass) const
+{
+    static const skr::Vector<PassNode*> empty_vector;
+    const auto* deps = get_pass_dependencies(pass);
+    return deps ? deps->dependent_passes : empty_vector;
+}
+
+const skr::Vector<PassNode*>& PassDependencyAnalysis::get_dependent_by_passes(PassNode* pass) const
+{
+    static const skr::Vector<PassNode*> empty_vector;
+    const auto* deps = get_pass_dependencies(pass);
+    return deps ? deps->dependent_by_passes : empty_vector;
 }
 
 void PassDependencyAnalysis::dump_dependencies() const
