@@ -8,7 +8,8 @@
 namespace skr {
 namespace render_graph {
 
-ScheduleTimeline::ScheduleTimeline(const PassDependencyAnalysis& dependency_analysis, const ScheduleTimelineConfig& cfg)
+ScheduleTimeline::ScheduleTimeline(const PassDependencyAnalysis& dependency_analysis, 
+                                  const ScheduleTimelineConfig& cfg)
     : config(cfg), dependency_analysis(dependency_analysis)
 {
 }
@@ -58,6 +59,11 @@ void ScheduleTimeline::on_execute(RenderGraph* graph, RenderGraphProfiler* profi
     
     // 4. 计算同步需求
     calculate_sync_requirements(graph);
+    
+    // 可选：输出调试信息
+    if (config.enable_debug_output) {
+        dump_timeline_result(u8"Timeline Schedule", schedule_result);
+    }
     
     SKR_LOG_DEBUG(u8"ScheduleTimeline: Scheduling completed. Queues: %d, SyncRequirements: %d", 
                   (int)schedule_result.queue_schedules.size(), (int)schedule_result.sync_requirements.size());
@@ -433,6 +439,7 @@ void ScheduleTimeline::dump_timeline_result(const char8_t* title, const Timeline
     
     SKR_LOG_INFO(u8"═══════════════════════════════════════");
 }
+
 
 } // namespace render_graph
 } // namespace skr

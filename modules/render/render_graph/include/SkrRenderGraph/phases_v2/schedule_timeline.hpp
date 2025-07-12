@@ -82,13 +82,15 @@ struct ScheduleTimelineConfig
     uint32_t max_async_compute_queues = 4;  // 最大异步计算队列数量
     uint32_t max_copy_queues = 2;           // 最大拷贝队列数量
     uint32_t max_sync_points = 64;          // 最大同步点数量
+    bool enable_debug_output = false;       // 启用调试输出
 };
 
 // Timeline Phase - 负责多队列调度
 class SKR_RENDER_GRAPH_API ScheduleTimeline : public IRenderGraphPhase 
 {
 public:
-    ScheduleTimeline(const PassDependencyAnalysis& dependency_analysis, const ScheduleTimelineConfig& config = {});
+    ScheduleTimeline(const PassDependencyAnalysis& dependency_analysis, 
+                    const ScheduleTimelineConfig& config = {});
     ~ScheduleTimeline() override;
 
     // IRenderGraphPhase 接口
@@ -114,6 +116,7 @@ private:
 
     // Pass分类和调度
     ERenderGraphQueueType classify_pass(PassNode* pass) SKR_NOEXCEPT;
+    
 
 private:
     ScheduleTimelineConfig config;

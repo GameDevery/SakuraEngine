@@ -2,6 +2,7 @@
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrRenderGraph/phases_v2/schedule_timeline.hpp"
 #include "SkrRenderGraph/phases_v2/schedule_reorder.hpp"
+#include "SkrRenderGraph/phases_v2/routine_segmentation.hpp"
 #include "SkrCore/log.hpp"
 #include "SkrCore/memory/memory.h"
 
@@ -75,33 +76,43 @@ public:
             auto timeline_phase = skr::render_graph::ScheduleTimeline(dependency_analysis, timeline_config);
             auto reorder_phase = skr::render_graph::ExecutionReorderPhase(
                 info_analysis, dependency_analysis, timeline_phase, {});
+            auto routine_phase = skr::render_graph::RoutineSegmentationPhase(timeline_phase, reorder_phase);
 
             // 构建复杂的渲染管线
             build_complex_pipeline(graph);
 
+            // info -> dependency -> timeline -> reorder -> segmentation ->
+            // virtual-allocation -> commit(commit alloc + bindgroups + barrier) -> execute
             // 手动调用TimelinePhase进行测试
             info_analysis.on_initialize(graph);
             dependency_analysis.on_initialize(graph);
             timeline_phase.on_initialize(graph);
             reorder_phase.on_initialize(graph);
+            routine_phase.on_initialize(graph);
 
             info_analysis.on_execute(graph, nullptr);
             dependency_analysis.on_execute(graph, nullptr);
             timeline_phase.on_execute(graph, nullptr);
             reorder_phase.on_execute(graph, nullptr);
+            routine_phase.on_execute(graph, nullptr);
 
             // 打印调度结果
             auto non_reorder = timeline_phase.get_schedule_result();
             timeline_phase.dump_timeline_result(u8"🔥 Timeline Stress Test Results", non_reorder);
-
+            
+            // 打印 reordered 结果
             auto reorder_result = non_reorder;
             reorder_result.queue_schedules = reorder_phase.get_optimized_timeline();
             timeline_phase.dump_timeline_result(u8"🔥 Timeline Stress Test Reordered Results", reorder_result);
+
+            // 打印切分例程表
+            routine_phase.dump_routine_segmentation();
 
             // 验证调度结果
             validate_schedule_result(timeline_phase.get_schedule_result());
 
             // 清理
+            routine_phase.on_finalize(graph);
             reorder_phase.on_finalize(graph);
             timeline_phase.on_finalize(graph);
             dependency_analysis.on_finalize(graph);
