@@ -1,6 +1,7 @@
 #include "SkrRenderGraph/phases_v2/barrier_generation_phase.hpp"
 #include "SkrRenderGraph/phases_v2/cross_queue_sync_analysis.hpp"
 #include "SkrRenderGraph/phases_v2/memory_aliasing_phase.hpp"
+#include "SkrRenderGraph/phases_v2/detail/hardware_constriants.hpp"
 #include "SkrRenderGraph/frontend/pass_node.hpp"
 #include "SkrRenderGraph/frontend/resource_node.hpp"
 #include "SkrCore/log.hpp"
@@ -13,27 +14,23 @@ namespace render_graph {
 BarrierGenerationPhase::BarrierGenerationPhase(
     const CrossQueueSyncAnalysis& sync_analysis,
     const MemoryAliasingPhase& aliasing_phase,
+    const PassInfoAnalysis& pass_info_analysis,
     const BarrierGenerationConfig& config)
     : config_(config)
     , sync_analysis_(sync_analysis)
     , aliasing_phase_(aliasing_phase)
+    , pass_info_analysis_(pass_info_analysis)
 {
 }
 
 void BarrierGenerationPhase::on_initialize(RenderGraph* graph) SKR_NOEXCEPT
 {
-    barrier_result_.all_barriers.reserve(256);
-    barrier_result_.pass_barriers.reserve(64);
-    barrier_result_.queue_barriers.reserve(8);
     temp_barriers_.reserve(256);
     processed_resources_.reserve(128);
 }
 
 void BarrierGenerationPhase::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
 {
-    barrier_result_.all_barriers.clear();
-    barrier_result_.pass_barriers.clear();
-    barrier_result_.queue_barriers.clear();
     temp_barriers_.clear();
     processed_resources_.clear();
 }
@@ -43,9 +40,7 @@ void BarrierGenerationPhase::on_execute(RenderGraph* graph, RenderGraphProfiler*
     SKR_LOG_INFO(u8"BarrierGenerationPhase: Starting barrier generation");
     
     // 清理之前的结果
-    barrier_result_.all_barriers.clear();
-    barrier_result_.pass_barriers.clear();
-    barrier_result_.queue_barriers.clear();
+    barrier_result_.pass_barrier_batches.clear();
     temp_barriers_.clear();
     processed_resources_.clear();
     
@@ -65,8 +60,6 @@ void BarrierGenerationPhase::on_execute(RenderGraph* graph, RenderGraphProfiler*
         optimize_barriers();
     }
     
-    determine_barrier_insertion_points();
-    assign_barriers_to_queues();
     calculate_barrier_statistics();
     
     if (config_.validate_barrier_correctness)
@@ -77,11 +70,10 @@ void BarrierGenerationPhase::on_execute(RenderGraph* graph, RenderGraphProfiler*
     if (config_.enable_debug_output)
     {
         dump_barrier_analysis();
-        dump_barrier_insertion_points();
     }
     
     SKR_LOG_INFO(u8"BarrierGenerationPhase: Generated {} barriers ({} sync, {} aliasing, {} transition, {} execution)",
-                barrier_result_.all_barriers.size(),
+                get_total_barriers(),
                 barrier_result_.total_sync_barriers,
                 barrier_result_.total_aliasing_barriers,
                 barrier_result_.total_resource_barriers,
@@ -173,50 +165,30 @@ void BarrierGenerationPhase::generate_resource_transition_barriers(RenderGraph* 
     const auto& all_passes = get_passes(graph);
     const auto& all_resources = get_resources(graph);
     
-    // 为每个资源分析状态转换
+    // 资源状态跟踪映射: resource -> (pass -> state)
+    skr::FlatHashMap<ResourceNode*, skr::FlatHashMap<PassNode*, ECGPUResourceState>> resource_states;
+    
+    // 跨队列读取检测映射: resource -> set<queue_indices>
+    skr::FlatHashMap<ResourceNode*, skr::FlatHashSet<uint32_t>> cross_queue_accesses;
+    
+    // 步骤1：构建资源状态使用图
+    analyze_resource_usage_patterns(graph, resource_states, cross_queue_accesses);
+    
+    // 步骤2：检测需要转换重路由的资源集合
+    skr::FlatHashSet<ResourceNode*> resources_requiring_rerouting;
+    identify_transition_rerouting_requirements(graph, cross_queue_accesses, resources_requiring_rerouting);
+    
+    // 步骤3：为每个资源生成状态转换屏障
     for (auto* resource : all_resources)
     {
         if (processed_resources_.contains(resource)) continue;
         
-        PassNode* previous_pass = nullptr;
-        ECGPUResourceState previous_state = CGPU_RESOURCE_STATE_UNDEFINED;
-        
-        for (auto* pass : all_passes)
-        {
-            bool uses_resource = false;
-            pass->foreach_textures([&](TextureNode* tex, TextureEdge*) {
-                if (tex == resource) uses_resource = true;
-            });
-            pass->foreach_buffers([&](BufferNode* buf, BufferEdge*) {
-                if (buf == resource) uses_resource = true;
-            });
-            
-            if (uses_resource)
-            {
-                // 这里需要实际的资源状态信息，简化处理
-                ECGPUResourceState current_state = CGPU_RESOURCE_STATE_SHADER_RESOURCE; // 简化
-                
-                if (previous_pass && previous_state != current_state)
-                {
-                    GPUBarrier barrier = create_resource_transition_barrier(resource, previous_pass, pass);
-                    temp_barriers_.add(barrier);
-                    
-                    if (config_.enable_debug_output)
-                    {
-                        SKR_LOG_TRACE(u8"Generated resource transition barrier: %s (%s -> %s)",
-                                     resource->get_name(),
-                                     previous_pass->get_name(),
-                                     pass->get_name());
-                    }
-                }
-                
-                previous_pass = pass;
-                previous_state = current_state;
-            }
-        }
-        
+        generate_transitions_for_resource(graph, resource, resource_states[resource], resources_requiring_rerouting);
         processed_resources_.insert(resource);
     }
+    
+    SKR_LOG_INFO(u8"BarrierGenerationPhase: Generated resource transitions for %zu resources, %zu resources require rerouting",
+                all_resources.size(), resources_requiring_rerouting.size());
 }
 
 void BarrierGenerationPhase::generate_execution_dependency_barriers(RenderGraph* graph) SKR_NOEXCEPT
@@ -244,18 +216,11 @@ void BarrierGenerationPhase::optimize_barriers() SKR_NOEXCEPT
         eliminate_redundant_barriers();
     }
     
-    if (config_.merge_compatible_barriers)
-    {
-        merge_compatible_barriers();
-    }
-    
     if (config_.enable_barrier_batching)
     {
         batch_barriers();
     }
-    
-    barrier_result_.optimized_away_barriers = static_cast<uint32_t>(original_count - temp_barriers_.size());
-    
+        
     SKR_LOG_INFO(u8"BarrierGenerationPhase: Optimized {} barriers away ({} -> {})",
                 barrier_result_.optimized_away_barriers,
                 original_count,
@@ -264,111 +229,105 @@ void BarrierGenerationPhase::optimize_barriers() SKR_NOEXCEPT
 
 void BarrierGenerationPhase::eliminate_redundant_barriers() SKR_NOEXCEPT
 {
+    const auto old_size = temp_barriers_.size();
     auto end_it = std::remove_if(temp_barriers_.begin(), temp_barriers_.end(),
         [this](const GPUBarrier& barrier) {
             return is_barrier_redundant(barrier);
         });
     
     temp_barriers_.resize_default(end_it - temp_barriers_.begin());
-}
-
-void BarrierGenerationPhase::merge_compatible_barriers() SKR_NOEXCEPT
-{
-    skr::Vector<GPUBarrier> merged_barriers;
-    merged_barriers.reserve(temp_barriers_.size());
-    
-    for (const auto& barrier : temp_barriers_)
-    {
-        bool merged = false;
-        
-        // 尝试与已有屏障合并
-        for (auto& existing_barrier : merged_barriers)
-        {
-            if (are_barriers_compatible(barrier, existing_barrier))
-            {
-                // 合并屏障（具体逻辑依赖于屏障类型）
-                merged = true;
-                break;
-            }
-        }
-        
-        if (!merged)
-        {
-            merged_barriers.add(barrier);
-        }
-    }
-    
-    temp_barriers_ = std::move(merged_barriers);
+    barrier_result_.optimized_away_barriers = static_cast<uint32_t>(old_size - temp_barriers_.size());
 }
 
 void BarrierGenerationPhase::batch_barriers() SKR_NOEXCEPT
 {
-    // 将兼容的屏障组织成批次
-    // 这里的实现依赖于具体的GPU API需求
-    // 为简化，暂时保持原有结构
-}
-
-void BarrierGenerationPhase::determine_barrier_insertion_points() SKR_NOEXCEPT
-{
+    // 将屏障按Pass组织成批次，生成 Map<PassNode*, Vector<BarrierBatch>>
+    // 这是实际执行时需要的数据结构
+    
+    if (temp_barriers_.is_empty()) return;
+    
+    // 清理之前的批次结果
+    barrier_result_.pass_barrier_batches.clear();
+    
+    // 按目标Pass分组屏障
+    skr::FlatHashMap<PassNode*, skr::Vector<GPUBarrier>> barriers_by_pass;
+    
     for (const auto& barrier : temp_barriers_)
     {
-        // 确定屏障的插入点
-        PassNode* insertion_pass = nullptr;
-        bool insert_before = true;
+        if (barrier.target_pass)
+        {
+            barriers_by_pass[barrier.target_pass].add(barrier);
+        }
+    }
+    
+    // 为每个Pass生成屏障批次
+    for (auto& [pass, pass_barriers] : barriers_by_pass)
+    {
+        skr::Vector<BarrierBatch>& pass_batches = barrier_result_.pass_barrier_batches[pass];
         
-        if (barrier.type == EBarrierType::CrossQueueSync)
-        {
-            // 跨队列同步屏障通常在消费者Pass之前插入
-            insertion_pass = barrier.target_pass;
-            insert_before = true;
-        }
-        else if (barrier.type == EBarrierType::MemoryAliasing)
-        {
-            // 内存别名屏障在Pass开始前插入
-            insertion_pass = barrier.target_pass;
-            insert_before = true;
-        }
-        else if (barrier.type == EBarrierType::ResourceTransition)
-        {
-            // 资源转换屏障在目标Pass之前插入
-            insertion_pass = barrier.target_pass;
-            insert_before = true;
-        }
+        if (pass_barriers.is_empty()) continue;
         
-        if (insertion_pass)
+        // 按屏障类型和队列分组，然后批处理
+        skr::FlatHashMap<uint64_t, skr::Vector<GPUBarrier>> grouped_barriers;
+        
+        for (const auto& barrier : pass_barriers)
         {
-            BarrierInsertionPoint insertion_point;
-            insertion_point.pass = insertion_pass;
-            insertion_point.insert_before = insert_before;
-            insertion_point.barriers.add(barrier);
-            insertion_point.can_be_batched = true;
-            insertion_point.priority = static_cast<uint32_t>(barrier.type);
+            // 生成分组键：类型 + 源队列 + 目标队列
+            uint64_t group_key = (static_cast<uint64_t>(barrier.type) << 32) |
+                                (static_cast<uint64_t>(barrier.source_queue) << 16) |
+                                static_cast<uint64_t>(barrier.target_queue);
             
-            barrier_result_.pass_barriers[insertion_pass].add(insertion_point);
+            grouped_barriers[group_key].add(barrier);
         }
         
-        // 添加到总列表
-        barrier_result_.all_barriers.add(barrier);
+        // 为每个分组创建批次
+        uint32_t batch_index = 0;
+        for (auto& [group_key, group_barriers] : grouped_barriers)
+        {
+            // 如果分组太大，分成多个批次
+            for (size_t i = 0; i < group_barriers.size(); i += config_.max_barriers_per_batch)
+            {
+                BarrierBatch batch;
+                batch.batch_index = batch_index++;
+                
+                // 复制批次中的屏障
+                size_t batch_size = std::min(static_cast<size_t>(config_.max_barriers_per_batch), 
+                                           group_barriers.size() - i);
+                batch.barriers.reserve(batch_size);
+                
+                for (size_t j = 0; j < batch_size; ++j)
+                {
+                    const auto& barrier = group_barriers[i + j];
+                    batch.barriers.add(barrier);
+                    
+                    // 设置批次属性（使用第一个屏障的属性）
+                    if (j == 0)
+                    {
+                        batch.batch_type = barrier.type;
+                        batch.source_queue = barrier.source_queue;
+                        batch.target_queue = barrier.target_queue;
+                    }
+                }
+                
+                pass_batches.add(std::move(batch));
+                
+                if (config_.enable_debug_output)
+                {
+                    SKR_LOG_TRACE(u8"Created batch %u for pass %s with %zu barriers (type: %u)",
+                                 batch.batch_index, pass->get_name(), batch_size, static_cast<uint32_t>(batch.batch_type));
+                }
+            }
+        }
+        
+        if (config_.enable_debug_output)
+        {
+            SKR_LOG_TRACE(u8"Pass %s: %zu barriers -> %zu batches",
+                         pass->get_name(), pass_barriers.size(), pass_batches.size());
+        }
     }
 }
 
-void BarrierGenerationPhase::assign_barriers_to_queues() SKR_NOEXCEPT
-{
-    for (const auto& barrier : barrier_result_.all_barriers)
-    {
-        // 根据屏障类型分配到相应队列
-        if (barrier.is_cross_queue())
-        {
-            // 跨队列屏障需要在两个队列上都有操作
-            barrier_result_.queue_barriers[barrier.source_queue].add(barrier);
-            barrier_result_.queue_barriers[barrier.target_queue].add(barrier);
-        }
-        else if (barrier.target_queue != UINT32_MAX)
-        {
-            barrier_result_.queue_barriers[barrier.target_queue].add(barrier);
-        }
-    }
-}
+
 
 GPUBarrier BarrierGenerationPhase::create_cross_queue_barrier(const CrossQueueSyncPoint& sync_point) const SKR_NOEXCEPT
 {
@@ -379,7 +338,6 @@ GPUBarrier BarrierGenerationPhase::create_cross_queue_barrier(const CrossQueueSy
     barrier.resource = sync_point.resource;
     barrier.source_queue = sync_point.producer_queue_index;
     barrier.target_queue = sync_point.consumer_queue_index;
-    barrier.debug_name = u8"CrossQueueSync";
     
     return barrier;
 }
@@ -397,7 +355,6 @@ GPUBarrier BarrierGenerationPhase::create_aliasing_barrier(ResourceNode* resourc
     // 这里需要从lifetime analysis获取内存大小，简化处理
     barrier.memory_size = 1024; // 简化
     
-    barrier.debug_name = u8"MemoryAliasing";
     
     return barrier;
 }
@@ -414,7 +371,6 @@ GPUBarrier BarrierGenerationPhase::create_resource_transition_barrier(ResourceNo
     barrier.before_state = CGPU_RESOURCE_STATE_SHADER_RESOURCE;
     barrier.after_state = CGPU_RESOURCE_STATE_RENDER_TARGET;
     
-    barrier.debug_name = u8"ResourceTransition";
     
     return barrier;
 }
@@ -422,6 +378,18 @@ GPUBarrier BarrierGenerationPhase::create_resource_transition_barrier(ResourceNo
 bool BarrierGenerationPhase::are_barriers_compatible(const GPUBarrier& barrier1, const GPUBarrier& barrier2) const SKR_NOEXCEPT
 {
     // 检查屏障是否可以合并
+    // 资源转换屏障必须是相同资源才能合并
+    if (barrier1.type == EBarrierType::ResourceTransition)
+    {
+        return barrier1.type == barrier2.type &&
+               barrier1.resource == barrier2.resource &&  // 必须是同一资源
+               barrier1.source_queue == barrier2.source_queue &&
+               barrier1.target_queue == barrier2.target_queue &&
+               barrier1.source_pass == barrier2.source_pass &&
+               barrier1.target_pass == barrier2.target_pass;
+    }
+    
+    // 其他类型的屏障
     return barrier1.type == barrier2.type &&
            barrier1.source_queue == barrier2.source_queue &&
            barrier1.target_queue == barrier2.target_queue &&
@@ -442,19 +410,37 @@ bool BarrierGenerationPhase::is_barrier_redundant(const GPUBarrier& barrier) con
 
 float BarrierGenerationPhase::estimate_barrier_cost(const GPUBarrier& barrier) const SKR_NOEXCEPT
 {
-    // 估算屏障的性能成本
+    using namespace HardwareConstraints;
+    using namespace BarrierCosts;
+    
+    // 使用硬件约束常量估算屏障成本
     switch (barrier.type)
     {
         case EBarrierType::CrossQueueSync:
-            return 10.0f; // 跨队列同步成本较高
+            return CROSS_QUEUE_SYNC; // 35.0μs - 跨队列同步成本最高
+            
         case EBarrierType::MemoryAliasing:
-            return 5.0f;  // 内存别名成本中等
+            return L2_CACHE_FLUSH;   // 15.0μs - 内存别名需要缓存刷新
+            
         case EBarrierType::ResourceTransition:
-            return 2.0f;  // 资源转换成本较低
+        {
+            // 根据状态转换类型估算成本
+            bool is_format_change = (barrier.before_state & CGPU_RESOURCE_STATE_RENDER_TARGET) &&
+                                   (barrier.after_state & CGPU_RESOURCE_STATE_SHADER_RESOURCE);
+            
+            if (is_format_change)
+                return FORMAT_CONVERSION; // 100.0μs - 格式转换
+            else if (barrier.is_cross_queue())
+                return L1_CACHE_FLUSH;     // 7.5μs - 跨队列资源转换
+            else
+                return SIMPLE_BARRIER;     // 2.5μs - 简单资源屏障
+        }
+        
         case EBarrierType::ExecutionDependency:
-            return 1.0f;  // 执行依赖成本最低
+            return SIMPLE_BARRIER;         // 2.5μs - 执行依赖
+            
         default:
-            return 1.0f;
+            return SIMPLE_BARRIER;
     }
 }
 
@@ -466,107 +452,93 @@ void BarrierGenerationPhase::calculate_barrier_statistics() SKR_NOEXCEPT
     barrier_result_.total_execution_barriers = 0;
     barrier_result_.estimated_barrier_cost = 0.0f;
     
-    for (const auto& barrier : barrier_result_.all_barriers)
+    // 从 pass_barrier_batches 计算统计信息
+    for (const auto& [pass, batches] : barrier_result_.pass_barrier_batches)
     {
-        switch (barrier.type)
+        for (const auto& batch : batches)
         {
-            case EBarrierType::ResourceTransition:
-                barrier_result_.total_resource_barriers++;
-                break;
-            case EBarrierType::CrossQueueSync:
-                barrier_result_.total_sync_barriers++;
-                break;
-            case EBarrierType::MemoryAliasing:
-                barrier_result_.total_aliasing_barriers++;
-                break;
-            case EBarrierType::ExecutionDependency:
-                barrier_result_.total_execution_barriers++;
-                break;
-        }
-        
-        barrier_result_.estimated_barrier_cost += estimate_barrier_cost(barrier);
-    }
-}
-
-const skr::Vector<GPUBarrier>& BarrierGenerationPhase::get_pass_barriers(PassNode* pass, bool before_pass) const
-{
-    static const skr::Vector<GPUBarrier> empty_barriers;
-    
-    auto it = barrier_result_.pass_barriers.find(pass);
-    if (it != barrier_result_.pass_barriers.end())
-    {
-        for (const auto& insertion_point : it->second)
-        {
-            if (insertion_point.insert_before == before_pass)
+            for (const auto& barrier : batch.barriers)
             {
-                return insertion_point.barriers;
+                switch (barrier.type)
+                {
+                    case EBarrierType::ResourceTransition:
+                        barrier_result_.total_resource_barriers++;
+                        break;
+                    case EBarrierType::CrossQueueSync:
+                        barrier_result_.total_sync_barriers++;
+                        break;
+                    case EBarrierType::MemoryAliasing:
+                        barrier_result_.total_aliasing_barriers++;
+                        break;
+                    case EBarrierType::ExecutionDependency:
+                        barrier_result_.total_execution_barriers++;
+                        break;
+                }
+                
+                barrier_result_.estimated_barrier_cost += estimate_barrier_cost(barrier);
             }
         }
     }
-    
-    return empty_barriers;
 }
 
-const skr::Vector<GPUBarrier>& BarrierGenerationPhase::get_queue_barriers(uint32_t queue_index) const
+const skr::Vector<BarrierBatch>& BarrierGenerationPhase::get_pass_barrier_batches(PassNode* pass) const
 {
-    static const skr::Vector<GPUBarrier> empty_barriers;
+    static const skr::Vector<BarrierBatch> empty_batches;
     
-    auto it = barrier_result_.queue_barriers.find(queue_index);
-    return (it != barrier_result_.queue_barriers.end()) ? it->second : empty_barriers;
+    auto it = barrier_result_.pass_barrier_batches.find(pass);
+    return (it != barrier_result_.pass_barrier_batches.end()) ? it->second : empty_batches;
+}
+
+uint32_t BarrierGenerationPhase::get_total_barriers() const
+{
+    uint32_t total = 0;
+    for (const auto& [pass, batches] : barrier_result_.pass_barrier_batches)
+    {
+        for (const auto& batch : batches)
+        {
+            total += static_cast<uint32_t>(batch.barriers.size());
+        }
+    }
+    return total;
+}
+
+uint32_t BarrierGenerationPhase::get_total_batches() const
+{
+    uint32_t total = 0;
+    for (const auto& [pass, batches] : barrier_result_.pass_barrier_batches)
+    {
+        total += static_cast<uint32_t>(batches.size());
+    }
+    return total;
 }
 
 void BarrierGenerationPhase::dump_barrier_analysis() const SKR_NOEXCEPT
 {
     SKR_LOG_INFO(u8"========== Barrier Generation Analysis ==========");
     SKR_LOG_INFO(u8"Total barriers: %u", get_total_barriers());
+    SKR_LOG_INFO(u8"Total batches: %u", get_total_batches());
     SKR_LOG_INFO(u8"  - Resource transition barriers: %u", barrier_result_.total_resource_barriers);
     SKR_LOG_INFO(u8"  - Cross-queue sync barriers: %u", barrier_result_.total_sync_barriers);
     SKR_LOG_INFO(u8"  - Memory aliasing barriers: %u", barrier_result_.total_aliasing_barriers);
     SKR_LOG_INFO(u8"  - Execution dependency barriers: %u", barrier_result_.total_execution_barriers);
     SKR_LOG_INFO(u8"Optimized away barriers: %u", barrier_result_.optimized_away_barriers);
     SKR_LOG_INFO(u8"Estimated barrier cost: {:.2f}", barrier_result_.estimated_barrier_cost);
-    SKR_LOG_INFO(u8"Queue barrier distribution:");
     
-    for (const auto& [queue_index, barriers] : barrier_result_.queue_barriers)
+    SKR_LOG_INFO(u8"Pass barrier batch distribution:");
+    for (const auto& [pass, batches] : barrier_result_.pass_barrier_batches)
     {
-        SKR_LOG_INFO(u8"  Queue %u: %zu barriers", queue_index, barriers.size());
+        uint32_t total_barriers_in_pass = 0;
+        for (const auto& batch : batches)
+        {
+            total_barriers_in_pass += static_cast<uint32_t>(batch.barriers.size());
+        }
+        SKR_LOG_INFO(u8"  Pass %s: %zu batches, %u barriers", 
+                    pass->get_name(), batches.size(), total_barriers_in_pass);
     }
     
     SKR_LOG_INFO(u8"===============================================");
 }
 
-void BarrierGenerationPhase::dump_barrier_insertion_points() const SKR_NOEXCEPT
-{
-    SKR_LOG_INFO(u8"========== Barrier Insertion Points ==========");
-    
-    for (const auto& [pass, insertion_points] : barrier_result_.pass_barriers)
-    {
-        SKR_LOG_INFO(u8"Pass: %s", pass->get_name());
-        
-        for (const auto& insertion_point : insertion_points)
-        {
-            const char8_t* timing = insertion_point.insert_before ? u8"before" : u8"after";
-            SKR_LOG_INFO(u8"  %s pass: %zu barriers (priority %u)",
-                        timing, insertion_point.barriers.size(), insertion_point.priority);
-            
-            for (const auto& barrier : insertion_point.barriers)
-            {
-                const char8_t* type_name = u8"Unknown";
-                switch (barrier.type)
-                {
-                    case EBarrierType::ResourceTransition: type_name = u8"ResourceTransition"; break;
-                    case EBarrierType::CrossQueueSync: type_name = u8"CrossQueueSync"; break;
-                    case EBarrierType::MemoryAliasing: type_name = u8"MemoryAliasing"; break;
-                    case EBarrierType::ExecutionDependency: type_name = u8"ExecutionDependency"; break;
-                }
-                
-                SKR_LOG_INFO(u8"    - BarrierType: %s, %s", type_name, barrier.debug_name ? barrier.debug_name : u8"unnamed");
-            }
-        }
-    }
-    
-    SKR_LOG_INFO(u8"=============================================");
-}
 
 void BarrierGenerationPhase::validate_barrier_correctness() const SKR_NOEXCEPT
 {
@@ -574,20 +546,26 @@ void BarrierGenerationPhase::validate_barrier_correctness() const SKR_NOEXCEPT
     bool has_errors = false;
     
     // 检查跨队列屏障的完整性
-    for (const auto& barrier : barrier_result_.all_barriers)
+    for (const auto& [pass, batches] : barrier_result_.pass_barrier_batches)
     {
-        if (barrier.type == EBarrierType::CrossQueueSync)
+        for (const auto& batch : batches)
         {
-            if (barrier.source_queue == barrier.target_queue)
+            for (const auto& barrier : batch.barriers)
             {
-                SKR_LOG_ERROR(u8"Invalid cross-queue barrier: source and target queues are the same");
-                has_errors = true;
-            }
-            
-            if (!barrier.source_pass || !barrier.target_pass)
-            {
-                SKR_LOG_ERROR(u8"Invalid cross-queue barrier: missing source or target pass");
-                has_errors = true;
+                if (barrier.type == EBarrierType::CrossQueueSync)
+                {
+                    if (barrier.source_queue == barrier.target_queue)
+                    {
+                        SKR_LOG_ERROR(u8"Invalid cross-queue barrier: source and target queues are the same");
+                        has_errors = true;
+                    }
+                    
+                    if (!barrier.source_pass || !barrier.target_pass)
+                    {
+                        SKR_LOG_ERROR(u8"Invalid cross-queue barrier: missing source or target pass");
+                        has_errors = true;
+                    }
+                }
             }
         }
     }
@@ -599,6 +577,381 @@ void BarrierGenerationPhase::validate_barrier_correctness() const SKR_NOEXCEPT
     else
     {
         SKR_LOG_ERROR(u8"BarrierGenerationPhase: Barrier correctness validation failed");
+    }
+}
+
+// ========== 新增实现：基于博客算法的资源状态转换分析 ==========
+
+void BarrierGenerationPhase::analyze_resource_usage_patterns(RenderGraph* graph, 
+                                   skr::FlatHashMap<ResourceNode*, skr::FlatHashMap<PassNode*, ECGPUResourceState>>& resource_states,
+                                   skr::FlatHashMap<ResourceNode*, skr::FlatHashSet<uint32_t>>& cross_queue_accesses) SKR_NOEXCEPT
+{
+    const auto& all_passes = get_passes(graph);
+    
+    for (auto* pass : all_passes)
+    {
+        const auto* pass_info = pass_info_analysis_.get_pass_info(pass);
+        if (!pass_info) continue;
+        
+        const auto& resource_info = pass_info->resource_info;
+        
+        // 处理所有资源访问
+        for (const auto& access : resource_info.all_resource_accesses)
+        {
+            auto* resource = access.resource;
+            uint32_t queue_index = sync_analysis_.get_pass_queue_index(pass);
+            
+            // 记录资源状态
+            resource_states[resource][pass] = access.resource_state;
+            cross_queue_accesses[resource].insert(queue_index);
+        }
+    }
+    
+    SKR_LOG_INFO(u8"BarrierGenerationPhase: Analyzed usage patterns for %zu resources across %zu passes",
+                resource_states.size(), all_passes.size());
+}
+
+void BarrierGenerationPhase::identify_transition_rerouting_requirements(RenderGraph* graph,
+                                              const skr::FlatHashMap<ResourceNode*, skr::FlatHashSet<uint32_t>>& cross_queue_accesses,
+                                              skr::FlatHashSet<ResourceNode*>& resources_requiring_rerouting) SKR_NOEXCEPT
+{
+    for (const auto& [resource, acess_queues] : cross_queue_accesses)
+    {
+        bool resource_needs_rerouting = false;
+        
+        if (acess_queues.size() > 1)
+        {
+            for (uint32_t queue_index : acess_queues)
+            {
+                if (queue_index > 0) // 非图形队列
+                {
+                    // 检查资源是否涉及图形专用状态
+                    bool has_graphics_states = check_resource_has_graphics_states(resource);
+                    if (has_graphics_states)
+                    {
+                        resource_needs_rerouting = true;
+                        
+                        if (config_.enable_debug_output)
+                        {
+                            SKR_LOG_TRACE(u8"Resource %s requires rerouting: queue %u cannot handle graphics states",
+                                         resource->get_name(), queue_index);
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // 如果资源需要重路由，将该资源标记为需要重路由
+        if (resource_needs_rerouting)
+        {
+            resources_requiring_rerouting.insert(resource);
+        }
+    }
+    
+    SKR_LOG_INFO(u8"BarrierGenerationPhase: %zu resources require transition rerouting", resources_requiring_rerouting.size());
+}
+
+void BarrierGenerationPhase::generate_transitions_for_resource(RenderGraph* graph, ResourceNode* resource,
+                                         const skr::FlatHashMap<PassNode*, ECGPUResourceState>& pass_states,
+                                         const skr::FlatHashSet<ResourceNode*>& resources_requiring_rerouting) SKR_NOEXCEPT
+{
+    const auto& all_passes = get_passes(graph);
+    
+    // 按Pass执行顺序排序状态访问
+    skr::Vector<std::pair<PassNode*, ECGPUResourceState>> ordered_accesses;
+    for (const auto& [pass, state] : pass_states)
+    {
+        ordered_accesses.add({pass, state});
+    }
+    
+    // 简化排序：按Pass ID排序（实际应该按依赖级别排序）
+    std::sort(ordered_accesses.begin(), ordered_accesses.end(),
+        [](const auto& a, const auto& b) {
+            return a.first->get_id() < b.first->get_id();
+        });
+    
+    // 生成状态转换
+    ECGPUResourceState previous_state = CGPU_RESOURCE_STATE_UNDEFINED;
+    PassNode* previous_pass = nullptr;
+    
+    for (const auto& [pass, current_state] : ordered_accesses)
+    {
+        if (previous_pass && previous_state != current_state)
+        {
+            uint32_t current_queue = sync_analysis_.get_pass_queue_index(pass);
+            uint32_t previous_queue = sync_analysis_.get_pass_queue_index(previous_pass);
+            
+            // 检查该资源是否需要重路由
+            bool needs_rerouting = resources_requiring_rerouting.contains(resource);
+            
+            if (needs_rerouting)
+            {
+                // 重路由到最有能力的队列
+                skr::FlatHashSet<uint32_t> involved_queues = {current_queue, previous_queue};
+                uint32_t competent_queue = find_most_competent_queue(involved_queues);
+                
+                generate_rerouted_transition(resource, previous_state, current_state, competent_queue, previous_pass, pass);
+            }
+            else
+            {
+                // 正常转换
+                generate_normal_transition(resource, previous_state, current_state, previous_pass, pass);
+            }
+        }
+        
+        previous_state = current_state;
+        previous_pass = pass;
+    }
+}
+
+uint32_t BarrierGenerationPhase::find_most_competent_queue(const skr::FlatHashSet<uint32_t>& queue_set) const SKR_NOEXCEPT
+{
+    // 根据博客：图形队列通常是最有能力的
+    // 顺序：Graphics > Compute > Transfer
+    
+    for (uint32_t queue_index : queue_set)
+    {
+        if (queue_index == 0) // 图形队列
+            return queue_index;
+    }
+    
+    for (uint32_t queue_index : queue_set)
+    {
+        if (queue_index < 4) // 计算队列（假设前4个是计算）
+            return queue_index;
+    }
+    
+    // 返回第一个可用队列作为后备
+    return queue_set.empty() ? 0 : *queue_set.begin();
+}
+
+bool BarrierGenerationPhase::is_state_transition_supported_on_queue(uint32_t queue_index, ECGPUResourceState before_state, ECGPUResourceState after_state) const SKR_NOEXCEPT
+{
+    // 简化的队列能力检查
+    if (queue_index == 0) // 图形队列支持所有状态
+        return true;
+    
+    // 计算队列不支持图形专用状态
+    bool has_graphics_before = (before_state & (CGPU_RESOURCE_STATE_RENDER_TARGET | CGPU_RESOURCE_STATE_DEPTH_WRITE)) != 0;
+    bool has_graphics_after = (after_state & (CGPU_RESOURCE_STATE_RENDER_TARGET | CGPU_RESOURCE_STATE_DEPTH_WRITE)) != 0;
+    
+    return !(has_graphics_before || has_graphics_after);
+}
+
+bool BarrierGenerationPhase::can_use_split_barriers(uint32_t transmitting_queue, uint32_t receiving_queue, ECGPUResourceState before_state, ECGPUResourceState after_state) const SKR_NOEXCEPT
+{
+    // 分离屏障要求两个队列都支持相关状态转换
+    if (!is_state_transition_supported_on_queue(transmitting_queue, before_state, after_state) ||
+        !is_state_transition_supported_on_queue(receiving_queue, before_state, after_state))
+    {
+        return false;
+    }
+    
+    // 只有重量级的屏障才值得使用分离屏障优化
+    // 创建临时屏障对象来估算成本
+    GPUBarrier temp_barrier;
+    temp_barrier.type = EBarrierType::ResourceTransition;
+    temp_barrier.before_state = before_state;
+    temp_barrier.after_state = after_state;
+    temp_barrier.source_queue = transmitting_queue;
+    temp_barrier.target_queue = receiving_queue;
+    
+    float barrier_cost = estimate_barrier_cost(temp_barrier);
+    
+    // 只有成本超过阈值的屏障才考虑分离优化
+    // 使用配置中的成本阈值，默认为轻量级屏障成本的4倍以上
+    const float split_barrier_threshold = config_.barrier_cost_threshold * 4.0f;
+    
+    bool cost_justified = barrier_cost >= split_barrier_threshold;
+    
+    if (config_.enable_debug_output && !cost_justified)
+    {
+        SKR_LOG_TRACE(u8"Barrier cost %.2fμs below split threshold %.2fμs, using normal barrier",
+                     barrier_cost, split_barrier_threshold);
+    }
+    
+    return cost_justified;
+}
+
+ECGPUResourceState BarrierGenerationPhase::calculate_combined_read_state(const skr::Vector<ECGPUResourceState>& read_states) const SKR_NOEXCEPT
+{
+    // 合并多个读取状态
+    ECGPUResourceState combined = CGPU_RESOURCE_STATE_UNDEFINED;
+    
+    for (auto state : read_states)
+    {
+        combined = static_cast<ECGPUResourceState>(combined | state);
+    }
+    
+    return combined;
+}
+
+ECGPUResourceState BarrierGenerationPhase::get_resource_state_for_usage(ResourceNode* resource, PassNode* pass, bool is_write) const SKR_NOEXCEPT
+{
+    // 使用PassInfoAnalysis的状态信息
+    return pass_info_analysis_.get_resource_state(pass, resource);
+}
+
+bool BarrierGenerationPhase::check_resource_has_graphics_states(ResourceNode* resource) const SKR_NOEXCEPT
+{
+    // 使用PassInfoAnalysis的预计算结果检查资源是否需要图形队列
+    return pass_info_analysis_.resource_requires_graphics_queue(resource);
+}
+
+bool BarrierGenerationPhase::are_passes_adjacent_or_synchronized(PassNode* source_pass, PassNode* target_pass) const SKR_NOEXCEPT
+{
+    // 检查两个Pass是否紧挨着或者已经有同步屏障
+    
+    // 1. 检查是否在同一队列上紧挨着执行
+    uint32_t source_queue = sync_analysis_.get_pass_queue_index(source_pass);
+    uint32_t target_queue = sync_analysis_.get_pass_queue_index(target_pass);
+    auto source_pass_index = sync_analysis_.get_local_pass_index(source_pass);
+    auto target_pass_index = sync_analysis_.get_local_pass_index(target_pass);
+
+    if (source_queue == target_queue && 
+        (target_pass_index == source_pass_index + 1 || target_pass_index == source_pass_index - 1))
+    {
+        // 同队列上的Pass天然串行，不需要分离屏障
+        return true;
+    }
+    
+    // 2. 检查是否已经有跨队列同步屏障
+    const auto& ssis_result = sync_analysis_.get_ssis_result();
+    for (const auto& sync_point : ssis_result.optimized_sync_points)
+    {
+        if (sync_point.producer_pass == source_pass && sync_point.consumer_pass == target_pass)
+        {
+            // 已经有专门的同步点，不需要分离屏障
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+void BarrierGenerationPhase::generate_rerouted_transition(ResourceNode* resource, ECGPUResourceState before_state, ECGPUResourceState after_state, uint32_t competent_queue, PassNode* source_pass, PassNode* target_pass) SKR_NOEXCEPT
+{
+    GPUBarrier barrier;
+    barrier.type = EBarrierType::ResourceTransition;
+    barrier.resource = resource;
+    barrier.before_state = before_state;
+    barrier.after_state = after_state;
+    barrier.source_pass = source_pass;
+    barrier.target_pass = target_pass;
+    barrier.source_queue = sync_analysis_.get_pass_queue_index(source_pass);
+    barrier.target_queue = competent_queue;
+    
+    temp_barriers_.add(barrier);
+    
+    if (config_.enable_debug_output)
+    {
+        SKR_LOG_TRACE(u8"Generated rerouted transition for %s: %u -> %u (queue %u, %s -> %s)",
+                     resource->get_name(), before_state, after_state, competent_queue,
+                     source_pass->get_name(), target_pass->get_name());
+    }
+}
+
+void BarrierGenerationPhase::generate_normal_transition(ResourceNode* resource, ECGPUResourceState before_state, ECGPUResourceState after_state, PassNode* source_pass, PassNode* target_pass) SKR_NOEXCEPT
+{
+    uint32_t source_queue = sync_analysis_.get_pass_queue_index(source_pass);
+    uint32_t target_queue = sync_analysis_.get_pass_queue_index(target_pass);
+    
+    // 检查是否可以使用分离屏障优化
+    bool should_use_split_barrier = false;
+    
+    if (config_.enable_split_barriers && 
+        can_use_split_barriers(source_queue, target_queue, before_state, after_state))
+    {
+        // 进一步检查是否值得使用分离屏障
+        if (!are_passes_adjacent_or_synchronized(source_pass, target_pass))
+        {
+            should_use_split_barrier = true;
+        }
+        else
+        {
+            if (config_.enable_debug_output)
+            {
+                SKR_LOG_TRACE(u8"Skipping split barrier for %s: passes are adjacent or synchronized (%s -> %s)",
+                             resource->get_name(), source_pass->get_name(), target_pass->get_name());
+            }
+        }
+    }
+    
+    if (should_use_split_barrier)
+    {
+        // 生成分离屏障
+        generate_split_barrier(resource, before_state, after_state, source_pass, target_pass);
+    }
+    else
+    {
+        // 生成普通屏障
+        GPUBarrier barrier;
+        barrier.type = EBarrierType::ResourceTransition;
+        barrier.resource = resource;
+        barrier.before_state = before_state;
+        barrier.after_state = after_state;
+        barrier.source_pass = source_pass;
+        barrier.target_pass = target_pass;
+        barrier.source_queue = source_queue;
+        barrier.target_queue = target_queue;
+        
+        temp_barriers_.add(barrier);
+        
+        if (config_.enable_debug_output)
+        {
+            SKR_LOG_TRACE(u8"Generated normal transition for %s: %u -> %u (%s -> %s)",
+                         resource->get_name(), before_state, after_state,
+                         source_pass->get_name(), target_pass->get_name());
+        }
+    }
+}
+
+void BarrierGenerationPhase::generate_split_barrier(ResourceNode* resource, ECGPUResourceState before_state, ECGPUResourceState after_state, PassNode* source_pass, PassNode* target_pass) SKR_NOEXCEPT
+{
+    // 分离屏障优化：将重量级状态转换分为Begin/End两部分
+    // Begin在生产者方发起，End在消费者方等待，允许中间的其他工作并行执行
+    
+    // 生成Begin屏障（在源Pass后插入，启动状态转换）
+    GPUBarrier begin_barrier;
+    begin_barrier.type = EBarrierType::ResourceTransition;
+    begin_barrier.resource = resource;
+    begin_barrier.before_state = before_state;
+    begin_barrier.after_state = after_state;
+    begin_barrier.source_pass = source_pass;
+    begin_barrier.target_pass = source_pass; // Begin屏障在源Pass后插入
+    begin_barrier.source_queue = sync_analysis_.get_pass_queue_index(source_pass);
+    begin_barrier.target_queue = sync_analysis_.get_pass_queue_index(source_pass);
+    
+    // 生成End屏障（在目标Pass前插入，等待状态转换完成）
+    GPUBarrier end_barrier;
+    end_barrier.type = EBarrierType::ResourceTransition;
+    end_barrier.resource = resource;
+    end_barrier.before_state = before_state;
+    end_barrier.after_state = after_state;
+    end_barrier.source_pass = target_pass;
+    end_barrier.target_pass = target_pass; // End屏障在目标Pass前插入
+    end_barrier.source_queue = sync_analysis_.get_pass_queue_index(target_pass);
+    end_barrier.target_queue = sync_analysis_.get_pass_queue_index(target_pass);
+    
+    temp_barriers_.add(begin_barrier);
+    temp_barriers_.add(end_barrier);
+    
+    if (config_.enable_debug_output)
+    {
+        // 估算节省的成本
+        GPUBarrier temp_normal_barrier;
+        temp_normal_barrier.type = EBarrierType::ResourceTransition;
+        temp_normal_barrier.before_state = before_state;
+        temp_normal_barrier.after_state = after_state;
+        temp_normal_barrier.source_queue = sync_analysis_.get_pass_queue_index(source_pass);
+        temp_normal_barrier.target_queue = sync_analysis_.get_pass_queue_index(target_pass);
+        float normal_cost = estimate_barrier_cost(temp_normal_barrier);
+        
+        SKR_LOG_TRACE(u8"Generated split barriers for %s: %u -> %u (%s -> %s), estimated cost savings: %.2fμs",
+                     resource->get_name(), before_state, after_state,
+                     source_pass->get_name(), target_pass->get_name(),
+                     normal_cost * 0.3f); // 估算30%的性能提升
     }
 }
 

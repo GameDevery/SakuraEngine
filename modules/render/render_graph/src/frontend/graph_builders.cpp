@@ -85,7 +85,7 @@ RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::set_name(const c
 
 RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::read(const char8_t* name, TextureSRVHandle handle) SKR_NOEXCEPT
 {
-    auto allocated = graph.node_factory->Allocate<TextureReadEdge>(name, handle);
+    auto allocated = graph.node_factory->Allocate<TextureReadEdge>(name, handle, CGPU_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     auto&& edge = node.in_texture_edges.emplace(allocated).ref();
     graph.graph->link(graph.graph->access_node(handle._this), &node, edge);
     return *this;
@@ -190,7 +190,7 @@ RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::set_name(const
 
 RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::read(const char8_t* name, TextureSRVHandle handle) SKR_NOEXCEPT
 {
-    auto allocated = graph.node_factory->Allocate<TextureReadEdge>(name, handle);
+    auto allocated = graph.node_factory->Allocate<TextureReadEdge>(name, handle, CGPU_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     auto&& edge = node.in_texture_edges.emplace(allocated).ref();
     graph.graph->link(graph.graph->access_node(handle._this), &node, edge);
     return *this;

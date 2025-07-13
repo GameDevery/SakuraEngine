@@ -49,6 +49,29 @@ struct PassPerformanceInfo {
     bool separate_command_buffer = false; // SeperateFromCommandBuffer flag
 };
 
+// 资源状态重路由信息 - 精简内存使用
+// 按用户要求简化：只存储状态和计算 bool 标志，避免过度细致的存储
+struct ResourceReroutingInfo {
+    ResourceNode* resource = nullptr;
+    
+    // 简洁的状态存储 - 只存储所有使用过的状态
+    skr::FlatHashSet<ECGPUResourceState> all_used_states;
+    
+    // 预计算的 bool 标志 - 在使用现场判断具体需求
+    bool requires_graphics_queue = false;      // 需要图形队列处理
+    bool requires_compute_queue = false;       // 需要计算队列处理  
+    bool needs_rerouting = false;               // 预计算的重路由需求
+};
+
+// 全局资源状态分析结果
+struct GlobalResourceStateAnalysis {
+    // 每个资源的重路由信息
+    skr::FlatHashMap<ResourceNode*, ResourceReroutingInfo> resource_rerouting_info;
+    
+    // 统计信息
+    uint32_t total_rerouting_required = 0;
+};
+
 // Pass info container
 struct PassInfo {
     PassNode* pass = nullptr;
@@ -77,6 +100,13 @@ public:
     // For dependency analysis - avoid recomputation
     EResourceAccessType get_resource_access_type(PassNode* pass, ResourceNode* resource) const;
     ECGPUResourceState get_resource_state(PassNode* pass, ResourceNode* resource) const;
+    
+    // 资源状态重路由查询接口
+    const GlobalResourceStateAnalysis& get_global_state_analysis() const { return global_state_analysis_; }
+    const ResourceReroutingInfo* get_resource_rerouting_info(ResourceNode* resource) const;
+    bool resource_needs_rerouting(ResourceNode* resource) const;
+    bool resource_requires_graphics_queue(ResourceNode* resource) const;
+    bool resource_requires_compute_queue(ResourceNode* resource) const;
 
 private:
     void extract_pass_info(PassNode* pass);
@@ -84,7 +114,11 @@ private:
     void extract_performance_info(PassNode* pass, PassPerformanceInfo& info);
 
 private:
+    void analyze_resource_state_usage(RenderGraph* graph);
+    
+private:
     skr::FlatHashMap<PassNode*, PassInfo> pass_infos;
+    GlobalResourceStateAnalysis global_state_analysis_;
 };
 
 } // namespace render_graph

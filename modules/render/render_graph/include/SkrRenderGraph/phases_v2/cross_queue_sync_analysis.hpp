@@ -72,6 +72,11 @@ public:
     void on_finalize(RenderGraph* graph) SKR_NOEXCEPT override;
 
     // 获取分析结果
+    uint32_t get_pass_queue_index(PassNode* pass) const SKR_NOEXCEPT;
+    uint32_t get_local_pass_index(PassNode* pass) const SKR_NOEXCEPT
+    {
+        return queue_schedule_.get_schedule_result().pass_queue_assignments.at(pass);
+    }
     const SSISAnalysisResult& get_ssis_result() const { return ssis_result_; }
     const skr::Vector<CrossQueueSyncPoint>& get_optimized_sync_points() const { return ssis_result_.optimized_sync_points; }
 
@@ -88,9 +93,6 @@ private:
     void optimize_sync_points_per_pass() SKR_NOEXCEPT;
     void calculate_optimization_statistics() SKR_NOEXCEPT;
 
-    // 队列查询辅助方法
-    uint32_t get_pass_queue_index(PassNode* pass) const SKR_NOEXCEPT;
-
 private:
     // 配置
     CrossQueueSyncConfig config_;
@@ -103,7 +105,6 @@ private:
     SSISAnalysisResult ssis_result_;
 
     // 工作数据
-    skr::FlatHashMap<PassNode*, uint32_t> pass_to_queue_mapping_;  // Pass到队列的映射缓存
     skr::FlatHashSet<std::pair<PassNode*, PassNode*>> cross_queue_dependencies_; // 跨队列依赖缓存
     
     // SSIS算法数据

@@ -25,7 +25,6 @@ void CrossQueueSyncAnalysis::on_initialize(RenderGraph* graph) SKR_NOEXCEPT
     // 预分配容量
     ssis_result_.raw_sync_points.reserve(64);
     ssis_result_.optimized_sync_points.reserve(32);
-    pass_to_queue_mapping_.reserve(128);
     cross_queue_dependencies_.reserve(64);
 }
 
@@ -34,7 +33,6 @@ void CrossQueueSyncAnalysis::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
     // 清理分析结果
     ssis_result_.raw_sync_points.clear();
     ssis_result_.optimized_sync_points.clear();
-    pass_to_queue_mapping_.clear();
     cross_queue_dependencies_.clear();
 }
 
@@ -45,15 +43,10 @@ void CrossQueueSyncAnalysis::on_execute(RenderGraph* graph, RenderGraphProfiler*
     // 清理上一帧数据
     ssis_result_.raw_sync_points.clear();
     ssis_result_.optimized_sync_points.clear();
-    pass_to_queue_mapping_.clear();
     cross_queue_dependencies_.clear();
     
     // 构建Pass到队列的映射缓存
     const auto& queue_result = queue_schedule_.get_schedule_result();
-    for (const auto& [pass, queue_index] : queue_result.pass_queue_assignments)
-    {
-        pass_to_queue_mapping_[pass] = queue_index;
-    }
     
     // Step 1: 分析跨队列依赖关系
     analyze_cross_queue_dependencies();
@@ -399,10 +392,8 @@ void CrossQueueSyncAnalysis::calculate_optimization_statistics() SKR_NOEXCEPT
 
 uint32_t CrossQueueSyncAnalysis::get_pass_queue_index(PassNode* pass) const SKR_NOEXCEPT
 {
-    auto it = pass_to_queue_mapping_.find(pass);
-    return (it != pass_to_queue_mapping_.end()) ? it->second : 0; // 默认Graphics队列
+    return queue_schedule_.get_schedule_result().pass_queue_assignments.at(pass);
 }
-
 
 void CrossQueueSyncAnalysis::dump_ssis_analysis() const SKR_NOEXCEPT
 {
