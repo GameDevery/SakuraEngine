@@ -44,35 +44,31 @@ void MemoryAliasingPhase::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
 
 void MemoryAliasingPhase::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
-    SKR_LOG_INFO(u8"MemoryAliasingPhase: Starting memory aliasing analysis");
-    
-    // 清理之前的结果
-    aliasing_result_.memory_buckets.clear();
-    aliasing_result_.resource_to_bucket.clear();
-    aliasing_result_.resource_to_offset.clear();
-    aliasing_result_.resources_need_aliasing_barrier.clear();
-    aliasing_result_.alias_transitions.clear();
-    
+    SKR_LOG_INFO(u8"MemoryAliasingPhase: Starting memory aliasing analysis");    
     // 执行核心内存管理分析（统一的别名/资源池实现）
     analyze_resources();
-    calculate_aliasing_statistics();
-    identify_aliasing_barriers();
-    
-    // 计算别名转换点（新架构）
-    compute_alias_transitions();
-    
-    if (config_.enable_debug_output)
+
+    if (config_.aliasing_tier != EAliasingTier::Tier0)
     {
-        dump_aliasing_result();
-        dump_memory_buckets();
+        calculate_aliasing_statistics();
+        identify_aliasing_barriers();
+        
+        // 计算别名转换点（新架构）
+        compute_alias_transitions();
+        
+        if (config_.enable_debug_output)
+        {
+            dump_aliasing_result();
+            dump_memory_buckets();
+        }
+        
+        const char8_t* mode_str = (config_.aliasing_tier == EAliasingTier::Tier0) ? u8"Resource Pool" : u8"Memory Aliasing";
+        SKR_LOG_INFO(u8"MemoryAliasingPhase: Completed (%s mode). Memory reduction: {:.1f}% ({} MB -> {} MB)",
+                    mode_str,
+                    aliasing_result_.total_compression_ratio * 100.0f,
+                    aliasing_result_.total_original_memory / (1024 * 1024),
+                    aliasing_result_.total_aliased_memory / (1024 * 1024));
     }
-    
-    const char8_t* mode_str = (config_.aliasing_tier == EAliasingTier::Tier0) ? u8"Resource Pool" : u8"Memory Aliasing";
-    SKR_LOG_INFO(u8"MemoryAliasingPhase: Completed (%s mode). Memory reduction: {:.1f}% ({} MB -> {} MB)",
-                mode_str,
-                aliasing_result_.total_compression_ratio * 100.0f,
-                aliasing_result_.total_original_memory / (1024 * 1024),
-                aliasing_result_.total_aliased_memory / (1024 * 1024));
 }
 
 void MemoryAliasingPhase::analyze_resources() SKR_NOEXCEPT
@@ -146,6 +142,10 @@ void MemoryAliasingPhase::analyze_resources() SKR_NOEXCEPT
 void MemoryAliasingPhase::perform_memory_aliasing(const skr::Vector<ResourceNode*>& sorted_resources) SKR_NOEXCEPT
 {
     const auto& lifetime_result = lifetime_analysis_.get_result();
+    aliasing_result_.resource_to_bucket.clear();
+    aliasing_result_.resource_to_offset.clear();
+    aliasing_result_.resources_need_aliasing_barrier.clear();
+    aliasing_result_.alias_transitions.clear();
     aliasing_result_.memory_buckets.clear();
     aliasing_result_.memory_buckets.reserve(config_.max_buckets);
     for (auto* resource : sorted_resources)
