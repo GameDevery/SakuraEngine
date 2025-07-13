@@ -1,3 +1,4 @@
+#include "SkrRenderGraph/frontend/pass_node.hpp"
 #include "SkrRenderGraph/phases_v2/memory_aliasing_phase.hpp"
 #include "SkrRenderGraph/phases_v2/resource_lifetime_analysis.hpp"
 #include "SkrRenderGraph/phases_v2/cross_queue_sync_analysis.hpp"
@@ -45,12 +46,6 @@ void MemoryAliasingPhase::on_execute(RenderGraph* graph, RenderGraphProfiler* pr
 {
     SKR_LOG_INFO(u8"MemoryAliasingPhase: Starting memory aliasing analysis");
     
-    if (!config_.enable_aliasing)
-    {
-        SKR_LOG_INFO(u8"MemoryAliasingPhase: Memory aliasing disabled");
-        return;
-    }
-    
     // 清理之前的结果
     aliasing_result_.memory_buckets.clear();
     aliasing_result_.resource_to_bucket.clear();
@@ -58,8 +53,8 @@ void MemoryAliasingPhase::on_execute(RenderGraph* graph, RenderGraphProfiler* pr
     aliasing_result_.resources_need_aliasing_barrier.clear();
     aliasing_result_.alias_transitions.clear();
     
-    // 执行核心别名分析（博客算法实现）
-    perform_memory_aliasing();
+    // 执行核心内存管理分析（统一的别名/资源池实现）
+    analyze_resources();
     calculate_aliasing_statistics();
     identify_aliasing_barriers();
     
@@ -72,25 +67,60 @@ void MemoryAliasingPhase::on_execute(RenderGraph* graph, RenderGraphProfiler* pr
         dump_memory_buckets();
     }
     
-    SKR_LOG_INFO(u8"MemoryAliasingPhase: Completed. Memory reduction: {:.1f}% ({} MB -> {} MB)",
+    const char8_t* mode_str = (config_.aliasing_tier == EAliasingTier::Tier0) ? u8"Resource Pool" : u8"Memory Aliasing";
+    SKR_LOG_INFO(u8"MemoryAliasingPhase: Completed (%s mode). Memory reduction: {:.1f}% ({} MB -> {} MB)",
+                mode_str,
                 aliasing_result_.total_compression_ratio * 100.0f,
                 aliasing_result_.total_original_memory / (1024 * 1024),
                 aliasing_result_.total_aliased_memory / (1024 * 1024));
 }
 
-void MemoryAliasingPhase::perform_memory_aliasing() SKR_NOEXCEPT
+void MemoryAliasingPhase::analyze_resources() SKR_NOEXCEPT
 {
     const auto& lifetime_result = lifetime_analysis_.get_result();
     
-    // 博客算法步骤1：按大小降序排序资源
+    // SSIS算法步骤1：按大小降序排序资源
     skr::Vector<ResourceNode*> sorted_resources = lifetime_result.resources_by_size_desc;
     
-    // 过滤掉太小的资源
+    // 过滤掉不需要内存管理的资源
     auto filtered_end = std::remove_if(sorted_resources.begin(), sorted_resources.end(),
         [this, &lifetime_result](ResourceNode* resource) {
+            // 1. 跳过导入资源（外部管理内存）
+            if (resource->is_imported())
+            {
+                if (config_.enable_debug_output)
+                {
+                    SKR_LOG_TRACE(u8"Skipping imported resource for aliasing: %s", resource->get_name());
+                }
+                return true;
+            }
+            
+            // 2. 跳过独立执行的资源（特殊内存管理）
+            if (resource->allow_lone())
+            {
+                if (config_.enable_debug_output)
+                {
+                    SKR_LOG_TRACE(u8"Skipping lone pass resource for aliasing: %s", resource->get_name());
+                }
+                return true;
+            }
+            
+            // 3. 跳过太小的资源
             auto lifetime_it = lifetime_result.resource_lifetimes.find(resource);
-            return lifetime_it == lifetime_result.resource_lifetimes.end() || 
-                   lifetime_it->second.memory_size < config_.min_resource_size;
+            if (lifetime_it == lifetime_result.resource_lifetimes.end() || 
+                lifetime_it->second.memory_size < config_.min_resource_size)
+            {
+                if (config_.enable_debug_output && lifetime_it != lifetime_result.resource_lifetimes.end())
+                {
+                    SKR_LOG_TRACE(u8"Skipping small resource for aliasing: %s (size: %llu bytes < %llu bytes)", 
+                                 resource->get_name(), 
+                                 lifetime_it->second.memory_size, 
+                                 config_.min_resource_size);
+                }
+                return true;
+            }
+            
+            return false;
         });
     sorted_resources.resize_default(filtered_end - sorted_resources.begin());
     
@@ -102,21 +132,63 @@ void MemoryAliasingPhase::perform_memory_aliasing() SKR_NOEXCEPT
     
     SKR_LOG_INFO(u8"MemoryAliasingPhase: Processing {} resources for aliasing", sorted_resources.size());
     
-    // 博客算法步骤2：创建内存桶并尝试别名化
-    create_memory_buckets();
-    
-    // 处理每个资源
+    // SSIS算法步骤2：创建内存桶并尝试别名化
+    if (config_.aliasing_tier == EAliasingTier::Tier0)
+    {
+        perform_resource_pooling(sorted_resources);
+    }
+    else
+    {
+        perform_memory_aliasing(sorted_resources);
+    }
+}
+
+void MemoryAliasingPhase::perform_memory_aliasing(const skr::Vector<ResourceNode*>& sorted_resources) SKR_NOEXCEPT
+{
+    const auto& lifetime_result = lifetime_analysis_.get_result();
+    aliasing_result_.memory_buckets.clear();
+    aliasing_result_.memory_buckets.reserve(config_.max_buckets);
     for (auto* resource : sorted_resources)
     {
         bool aliased = false;
         
         // 尝试放入现有桶中
-        for (auto& bucket : aliasing_result_.memory_buckets)
+        if (config_.use_greedy_fit)
         {
-            if (try_alias_resource_in_bucket(resource, bucket))
+            // 贪心算法：Best-Fit策略，选择浪费空间最少的桶
+            MemoryBucket* best_bucket = nullptr;
+            uint64_t best_bucket_waste = UINT64_MAX;
+            
+            for (auto& bucket : aliasing_result_.memory_buckets)
+            {
+                // 检查能否放入这个桶，并计算浪费的空间
+                if (can_fit_in_bucket(resource, bucket))
+                {
+                    uint64_t waste = calculate_bucket_waste(resource, bucket);
+                    if (waste < best_bucket_waste)
+                    {
+                        best_bucket_waste = waste;
+                        best_bucket = &bucket;
+                    }
+                }
+            }
+            
+            // 使用最优桶
+            if (best_bucket && try_alias_resource_in_bucket(resource, *best_bucket))
             {
                 aliased = true;
-                break;
+            }
+        }
+        else
+        {
+            // First-Fit算法：使用第一个合适的桶
+            for (auto& bucket : aliasing_result_.memory_buckets)
+            {
+                if (try_alias_resource_in_bucket(resource, bucket))
+                {
+                    aliased = true;
+                    break;
+                }
             }
         }
         
@@ -157,11 +229,13 @@ void MemoryAliasingPhase::perform_memory_aliasing() SKR_NOEXCEPT
     }
 }
 
-void MemoryAliasingPhase::create_memory_buckets() SKR_NOEXCEPT
+void MemoryAliasingPhase::perform_resource_pooling(const skr::Vector<ResourceNode*>& sorted_resources) SKR_NOEXCEPT
 {
-    // 初始化时创建空桶列表，实际桶将在处理资源时动态创建
-    aliasing_result_.memory_buckets.clear();
-    aliasing_result_.memory_buckets.reserve(config_.max_buckets);
+    aliasing_result_.pool_resources = sorted_resources;
+    for (uint32_t i = 0; i < sorted_resources.size(); i++)
+    {
+        aliasing_result_.resource_to_pool_index[sorted_resources[i]] = i;
+    }
 }
 
 bool MemoryAliasingPhase::try_alias_resource_in_bucket(ResourceNode* resource, MemoryBucket& bucket) SKR_NOEXCEPT
@@ -182,7 +256,7 @@ bool MemoryAliasingPhase::try_alias_resource_in_bucket(ResourceNode* resource, M
         }
     }
     
-    // 博客算法核心：找到最优内存区域
+    // SSIS算法核心：找到最优内存区域
     MemoryRegion optimal_region = find_optimal_memory_region(resource, bucket);
     
     if (!optimal_region.is_valid())
@@ -210,7 +284,7 @@ bool MemoryAliasingPhase::try_alias_resource_in_bucket(ResourceNode* resource, M
     return true;
 }
 
-MemoryRegion MemoryAliasingPhase::find_optimal_memory_region(ResourceNode* resource, const MemoryBucket& bucket) SKR_NOEXCEPT
+MemoryRegion MemoryAliasingPhase::find_optimal_memory_region(ResourceNode* resource, const MemoryBucket& bucket) const SKR_NOEXCEPT
 {
     const auto& lifetime_result = lifetime_analysis_.get_result();
     auto resource_lifetime_it = lifetime_result.resource_lifetimes.find(resource);
@@ -227,12 +301,12 @@ MemoryRegion MemoryAliasingPhase::find_optimal_memory_region(ResourceNode* resou
         return MemoryRegion{ 0, resource_size };
     }
     
-    // 博客算法：找到所有可别名的内存区域
+    // SSIS算法：找到所有可别名的内存区域
     skr::Vector<MemoryRegion> aliasable_regions = find_aliasable_regions(resource, bucket);
     
     MemoryRegion optimal_region{};
     
-    // 选择最小适配的区域（博客建议）
+    // 选择最小适配的区域（SSIS建议）
     for (const auto& region : aliasable_regions)
     {
         if (region.size >= resource_size)
@@ -247,11 +321,11 @@ MemoryRegion MemoryAliasingPhase::find_optimal_memory_region(ResourceNode* resou
     return optimal_region;
 }
 
-skr::Vector<MemoryRegion> MemoryAliasingPhase::find_aliasable_regions(ResourceNode* resource, const MemoryBucket& bucket) SKR_NOEXCEPT
+skr::Vector<MemoryRegion> MemoryAliasingPhase::find_aliasable_regions(ResourceNode* resource, const MemoryBucket& bucket) const SKR_NOEXCEPT
 {
     skr::Vector<MemoryRegion> aliasable_regions;
     
-    // 博客算法核心：收集非别名化的内存偏移
+    // SSIS算法核心：收集非别名化的内存偏移
     skr::Vector<MemoryOffset> offsets;
     collect_non_aliasable_offsets(resource, bucket, offsets);
     
@@ -265,7 +339,7 @@ skr::Vector<MemoryRegion> MemoryAliasingPhase::find_aliasable_regions(ResourceNo
     // 排序偏移点
     std::sort(offsets.begin(), offsets.end());
     
-    // 博客算法：使用重叠计数器找到自由区域
+    // SSIS算法：使用重叠计数器找到自由区域
     int64_t overlap_counter = 0;
     
     for (size_t i = 0; i < offsets.size() - 1; ++i)
@@ -299,7 +373,7 @@ skr::Vector<MemoryRegion> MemoryAliasingPhase::find_aliasable_regions(ResourceNo
 }
 
 void MemoryAliasingPhase::collect_non_aliasable_offsets(ResourceNode* resource, const MemoryBucket& bucket, 
-                                                       skr::Vector<MemoryOffset>& offsets) SKR_NOEXCEPT
+                                                       skr::Vector<MemoryOffset>& offsets) const SKR_NOEXCEPT
 {
     offsets.clear();
     
@@ -341,7 +415,7 @@ bool MemoryAliasingPhase::resources_conflict_in_time(ResourceNode* res1, Resourc
     if (lifetime1_it == lifetime_result.resource_lifetimes.end() || 
         lifetime2_it == lifetime_result.resource_lifetimes.end()) return true; // 保守处理
     
-    // 使用博客建议：dependency level indices进行冲突检测
+    // 使用SSIS建议：dependency level indices进行冲突检测
     return lifetime1_it->second.conflicts_with(lifetime2_it->second);
 }
 
@@ -349,36 +423,6 @@ bool MemoryAliasingPhase::can_resources_alias(ResourceNode* res1, ResourceNode* 
 {
     // 基本检查
     if (res1 == res2) return false;
-    
-    // 检查特殊资源类型（这些资源永远不能被别名）
-    // 1. imported资源：从外部导入的资源
-    if (res1->is_imported() || res2->is_imported())
-    {
-        if (config_.enable_debug_output)
-        {
-            SKR_LOG_TRACE(u8"Cannot alias imported resources: %s (imported=%d) vs %s (imported=%d)",
-                         res1->get_name(), res1->is_imported(),
-                         res2->get_name(), res2->is_imported());
-        }
-        return false;
-    }
-    
-    // 2. lone pass资源：独立执行的Pass使用的资源
-    if (res1->allow_lone() || res2->allow_lone())
-    {
-        if (config_.enable_debug_output)
-        {
-            SKR_LOG_TRACE(u8"Cannot alias lone pass resources: %s (lone=%d) vs %s (lone=%d)",
-                         res1->get_name(), res1->allow_lone(),
-                         res2->get_name(), res2->allow_lone());
-        }
-        return false;
-    }
-    
-    // TODO: 后续可以添加更多检查
-    // 3. committed资源：特殊提交的资源
-    // 4. persistent资源：跨帧持久化的资源
-    // 5. pinned资源：固定内存位置的资源
     
     // 检查生命周期冲突
     if (!resources_conflict_in_time(res1, res2))
@@ -654,6 +698,60 @@ PassNode* MemoryAliasingPhase::find_transition_pass(ResourceNode* from, Resource
     }
     
     return nullptr;
+}
+
+bool MemoryAliasingPhase::can_fit_in_bucket(ResourceNode* resource, const MemoryBucket& bucket) const SKR_NOEXCEPT
+{
+    const auto& lifetime_result = lifetime_analysis_.get_result();
+    auto resource_lifetime_it = lifetime_result.resource_lifetimes.find(resource);
+    if (resource_lifetime_it == lifetime_result.resource_lifetimes.end())
+    {
+        return false;
+    }
+    
+    // 检查是否与桶中现有资源有时间冲突
+    for (auto* existing_resource : bucket.aliased_resources)
+    {
+        if (!can_resources_alias(resource, existing_resource))
+        {
+            return false;
+        }
+    }
+    
+    // 检查是否能找到合适的内存区域
+    MemoryRegion test_region = find_optimal_memory_region(resource, bucket);
+    return test_region.is_valid();
+}
+
+uint64_t MemoryAliasingPhase::calculate_bucket_waste(ResourceNode* resource, const MemoryBucket& bucket) const SKR_NOEXCEPT
+{
+    const auto& lifetime_result = lifetime_analysis_.get_result();
+    auto resource_lifetime_it = lifetime_result.resource_lifetimes.find(resource);
+    if (resource_lifetime_it == lifetime_result.resource_lifetimes.end())
+    {
+        return UINT64_MAX; // 无法计算，返回最大值避免选择
+    }
+    
+    // 找到最优放置位置
+    MemoryRegion optimal_region = find_optimal_memory_region(resource, bucket);
+    if (!optimal_region.is_valid())
+    {
+        return UINT64_MAX; // 无法放置，返回最大值
+    }
+    
+    uint64_t resource_size = resource_lifetime_it->second.memory_size;
+    
+    // 计算放入后桶的新大小
+    uint64_t new_bucket_size = std::max(bucket.total_size, optimal_region.offset + resource_size);
+    
+    // 计算总的已使用内存（所有资源的原始大小）
+    uint64_t total_used_memory = bucket.original_total_size + resource_size;
+    
+    // 浪费的内存 = 桶的总大小 - 实际使用的内存
+    uint64_t waste = (new_bucket_size >= total_used_memory) ? 
+                     (new_bucket_size - total_used_memory) : 0;
+    
+    return waste;
 }
 
 } // namespace render_graph

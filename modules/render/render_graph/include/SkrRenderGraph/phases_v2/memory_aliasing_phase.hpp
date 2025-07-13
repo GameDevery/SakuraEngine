@@ -9,7 +9,7 @@
 namespace skr {
 namespace render_graph {
 
-// 内存区域描述（基于博客算法）
+// 内存区域描述（基于SSIS算法）
 struct MemoryRegion
 {
     uint64_t offset = 0;        // 内存偏移
@@ -20,14 +20,14 @@ struct MemoryRegion
     bool overlaps_with(const MemoryRegion& other) const;
 };
 
-// 内存偏移类型（博客算法核心）
+// 内存偏移类型（SSIS算法核心）
 enum class EMemoryOffsetType : uint8_t
 {
     Start,  // 资源开始位置
     End     // 资源结束位置
 };
 
-// 内存偏移点（用于博客的重叠计数算法）
+// 内存偏移点（用于SSIS的重叠计数算法）
 struct MemoryOffset
 {
     uint64_t offset;
@@ -37,7 +37,7 @@ struct MemoryOffset
     bool operator<(const MemoryOffset& other) const { return offset < other.offset; }
 };
 
-// 内存桶（Memory Bucket）- 博客算法的核心概念
+// 内存桶（Memory Bucket）- SSIS算法的核心概念
 struct MemoryBucket
 {
     uint64_t total_size = 0;                        // 桶的总大小
@@ -68,6 +68,10 @@ struct MemoryAliasTransition
 // 内存别名分析结果
 struct MemoryAliasingResult
 {
+    // 池对象列表
+    skr::Vector<ResourceNode*> pool_resources;
+    skr::FlatHashMap<ResourceNode*, uint32_t> resource_to_pool_index;
+
     // 内存桶列表
     skr::Vector<MemoryBucket> memory_buckets;
     
@@ -75,10 +79,10 @@ struct MemoryAliasingResult
     skr::FlatHashMap<ResourceNode*, uint32_t> resource_to_bucket;
     skr::FlatHashMap<ResourceNode*, uint64_t> resource_to_offset;
     
-    // 内存别名转换点列表（按执行顺序排序）
+    // 内存别名转换点列表
     skr::Vector<MemoryAliasTransition> alias_transitions;
     
-    // 需要别名屏障的资源（保留用于兼容性）
+    // 需要别名屏障的资源
     skr::FlatHashSet<ResourceNode*> resources_need_aliasing_barrier;
     
     // 统计信息
@@ -90,21 +94,24 @@ struct MemoryAliasingResult
     uint32_t total_alias_transitions = 0;   // 别名转换次数
 };
 
+enum class EAliasingTier
+{
+    Tier0, // 无别名化, 资源池
+    Tier1  // 有线性堆别名
+};
+
 // 内存别名配置
 struct MemoryAliasingConfig
 {
-    bool enable_aliasing = true;              // 启用内存别名
+    EAliasingTier aliasing_tier = EAliasingTier::Tier0; // 别名化级别，默认使用真正的别名
     bool enable_cross_queue_aliasing = true;  // 允许跨队列资源别名
     uint64_t min_resource_size = 1024;        // 最小别名资源大小
     uint32_t max_buckets = 32;                // 最大桶数量
     bool enable_debug_output = false;         // 启用调试输出
-    
-    // 高级选项
     bool use_greedy_fit = true;               // 使用贪婪适配算法
-    bool prefer_smallest_fit = true;          // 优先选择最小适配区域
 };
 
-// 内存别名Phase（实现博客中的37%内存优化算法）
+// 内存别名Phase
 class SKR_RENDER_GRAPH_API MemoryAliasingPhase : public IRenderGraphPhase
 {
 public:
@@ -134,16 +141,19 @@ public:
     void dump_memory_buckets() const SKR_NOEXCEPT;
 
 private:
-    // 核心算法（基于博客实现）
-    void perform_memory_aliasing() SKR_NOEXCEPT;
+    // 核心算法（基于SSIS实现）
+    void analyze_resources() SKR_NOEXCEPT;
     void create_memory_buckets() SKR_NOEXCEPT;
+    void perform_memory_aliasing(const skr::Vector<ResourceNode*>&) SKR_NOEXCEPT;
+    void perform_resource_pooling(const skr::Vector<ResourceNode*>&) SKR_NOEXCEPT;
+
     bool try_alias_resource_in_bucket(ResourceNode* resource, MemoryBucket& bucket) SKR_NOEXCEPT;
-    MemoryRegion find_optimal_memory_region(ResourceNode* resource, const MemoryBucket& bucket) SKR_NOEXCEPT;
+    MemoryRegion find_optimal_memory_region(ResourceNode* resource, const MemoryBucket& bucket) const SKR_NOEXCEPT;
     
-    // 博客算法核心：找到可别名的内存区域
-    skr::Vector<MemoryRegion> find_aliasable_regions(ResourceNode* resource, const MemoryBucket& bucket) SKR_NOEXCEPT;
+    // SSIS算法核心：找到可别名的内存区域
+    skr::Vector<MemoryRegion> find_aliasable_regions(ResourceNode* resource, const MemoryBucket& bucket) const SKR_NOEXCEPT;
     void collect_non_aliasable_offsets(ResourceNode* resource, const MemoryBucket& bucket, 
-                                     skr::Vector<MemoryOffset>& offsets) SKR_NOEXCEPT;
+                                     skr::Vector<MemoryOffset>& offsets) const SKR_NOEXCEPT;
     
     // 别名转换点计算
     void compute_alias_transitions() SKR_NOEXCEPT;
@@ -155,6 +165,10 @@ private:
     bool can_resources_alias(ResourceNode* res1, ResourceNode* res2) const SKR_NOEXCEPT;
     void calculate_aliasing_statistics() SKR_NOEXCEPT;
     void identify_aliasing_barriers() SKR_NOEXCEPT;
+    
+    // 贪心算法辅助方法
+    bool can_fit_in_bucket(ResourceNode* resource, const MemoryBucket& bucket) const SKR_NOEXCEPT;
+    uint64_t calculate_bucket_waste(ResourceNode* resource, const MemoryBucket& bucket) const SKR_NOEXCEPT;
 
 private:
     // 配置

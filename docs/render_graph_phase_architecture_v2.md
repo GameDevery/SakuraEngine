@@ -2,7 +2,7 @@
 
 ## 概述
 
-基于[GPU Memory Aliasing](../资料/gpu-memory-aliasing.md)和[Organizing GPU Work with DAG](../资料/organizing-gpu-work-with-dag.md)博客的最佳实践，我们设计了完整的RenderGraph Phase架构，实现了37%的内存优化和高效的跨队列同步。
+基于[GPU Memory Aliasing](../资料/gpu-memory-aliasing.md)和[Organizing GPU Work with DAG](../资料/organizing-gpu-work-with-dag.md)SSIS的最佳实践，我们设计了完整的RenderGraph Phase架构，实现了37%的内存优化和高效的跨队列同步。
 
 ## 完整Phase执行顺序
 
@@ -30,7 +30,7 @@ BarrierGenerationPhase (整合屏障生成)
 - **逻辑依赖**：PassDependencyAnalysis计算永不变的依赖关系和拓扑排序
 - **执行调度**：QueueSchedule和ExecutionReorderPhase处理具体的队列分配和优化
 
-### 2. 使用Dependency Level Indices（博客核心）
+### 2. 使用Dependency Level Indices（SSIS核心）
 - **关键创新**：使用依赖级别而非执行索引来支持并行执行
 - **应用场景**：ResourceLifetimeAnalysis和MemoryAliasingPhase都基于此原理
 - **优势**：正确处理跨队列资源的生命周期冲突检测
@@ -78,7 +78,7 @@ BarrierGenerationPhase (整合屏障生成)
 - **目标**：减少空泡、提高并行度
 
 ### ResourceLifetimeAnalysis ⭐ 新设计
-- **博客核心**：使用dependency level indices而非execution indices
+- **SSIS核心**：使用dependency level indices而非execution indices
 - **功能**：
   ```cpp
   struct ResourceLifetime {
@@ -109,14 +109,14 @@ BarrierGenerationPhase (整合屏障生成)
   ```
 
 ### MemoryAliasingPhase ⭐ 新设计
-- **博客算法**：实现37%内存减少
+- **SSIS算法**：实现37%内存减少
 - **核心思想**：
   1. 按大小降序排序资源
   2. 使用重叠计数器算法找到可别名区域
   3. 优先选择最小适配区域
 - **关键代码**：
   ```cpp
-  // 博客算法核心：使用重叠计数器找到自由区域
+  // SSIS算法核心：使用重叠计数器找到自由区域
   int64_t overlap_counter = 0;
   for (auto& offset : sorted_offsets) {
       overlap_counter += (offset.type == Start) ? 1 : -1;
@@ -139,12 +139,12 @@ BarrierGenerationPhase (整合屏障生成)
 ## 性能优化成果
 
 ### 内存优化
-- **算法来源**：GPU Memory Aliasing博客
+- **算法来源**：GPU Memory AliasingSSIS
 - **优化效果**：37%内存减少
 - **关键技术**：Dependency level based lifetime analysis
 
 ### 同步优化
-- **算法来源**：Organizing GPU Work with DAG博客
+- **算法来源**：Organizing GPU Work with DAGSSIS
 - **优化效果**：25%同步点减少
 - **关键技术**：SSIS (Sufficient Synchronization Index Set)
 

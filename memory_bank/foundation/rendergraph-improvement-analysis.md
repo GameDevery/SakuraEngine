@@ -1,12 +1,12 @@
 # RenderGraph改进分析：向DAG组织方法趋近
 
-基于对"Organizing GPU Work with Directed Acyclic Graphs"博客的深入研究和SakuraEngine RenderGraph实现的分析，本文档综合对比两种方法，并提出具体的改进建议。
+基于对"Organizing GPU Work with Directed Acyclic Graphs"SSIS的深入研究和SakuraEngine RenderGraph实现的分析，本文档综合对比两种方法，并提出具体的改进建议。
 
 ## 一、核心差异对比
 
 ### 1. 依赖级别（Dependency Level）分析
 
-**博客方法**：
+**SSIS方法**：
 - 使用拓扑排序确定Pass执行顺序
 - 计算最长路径识别依赖级别
 - 同一依赖级别内的Pass可以任意顺序执行
@@ -40,7 +40,7 @@ class DependencyLevelAnalysisPhase : public IRenderGraphPhase {
 
 ### 2. 同步点优化（SSIS算法）
 
-**博客方法**：
+**SSIS方法**：
 - Sufficient Synchronization Index Set (SSIS)算法
 - 两轮遍历最小化同步点
 - 识别间接同步，消除冗余
@@ -70,7 +70,7 @@ class OptimizedSyncCalculation {
 
 ### 3. 资源状态转换优化
 
-**博客方法**：
+**SSIS方法**：
 - 识别"最有能力的队列"（most competent queue）
 - 路由不兼容的状态转换到合适队列
 - 批量处理状态转换以减少同步
@@ -254,7 +254,7 @@ class SmartBarrierRouter {
 
 ## 六、总结
 
-SakuraEngine的RenderGraph已经具备了坚实的基础，通过引入博客中的先进概念（依赖级别、SSIS、智能路由），可以显著提升其性能和灵活性。建议采用渐进式改进策略，优先实现影响大、风险小的改进，逐步向理论最优的方案趋近。
+SakuraEngine的RenderGraph已经具备了坚实的基础，通过引入SSIS中的先进概念（依赖级别、SSIS、智能路由），可以显著提升其性能和灵活性。建议采用渐进式改进策略，优先实现影响大、风险小的改进，逐步向理论最优的方案趋近。
 
 关键改进方向：
 1. **引入依赖级别概念** - 为并行优化奠定基础

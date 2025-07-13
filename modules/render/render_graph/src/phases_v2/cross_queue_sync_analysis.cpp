@@ -178,7 +178,7 @@ void CrossQueueSyncAnalysis::apply_ssis_optimization() SKR_NOEXCEPT
 {
     SSIS_LOG(u8"CrossQueueSyncAnalysis: Applying correct SSIS optimization algorithm");
     
-    // 按照博客算法：为每个Pass分别优化同步点
+    // 按照SSIS算法：为每个Pass分别优化同步点
     // 第一步：构建SSIS (Sufficient Synchronization Index Set)
     build_ssis_for_all_passes();
     
@@ -299,7 +299,7 @@ void CrossQueueSyncAnalysis::optimize_sync_points_per_pass() SKR_NOEXCEPT
                     uint32_t current_desired_index = pass_ssis[queue_to_sync];
                     uint32_t dep_sync_index = dep_ssis[queue_to_sync];
                     
-                    // 对于同队列，减1处理（博客算法）
+                    // 对于同队列，减1处理（SSIS算法）
                     if (queue_to_sync == queue_index)
                     {
                         if (current_desired_index > 0) current_desired_index -= 1;
@@ -330,7 +330,7 @@ void CrossQueueSyncAnalysis::optimize_sync_points_per_pass() SKR_NOEXCEPT
                     optimal_dependencies.add(best_dependency);
                 }
                 
-                // CRITICAL: 更新Pass的SSIS值为所选依赖的SSIS值（博客算法关键步骤）
+                // CRITICAL: 更新Pass的SSIS值为所选依赖的SSIS值（SSIS算法关键步骤）
                 const auto& best_dep_ssis = pass_ssis_[best_dependency];
                 for (uint32_t covered_queue : best_covered_queues)
                 {

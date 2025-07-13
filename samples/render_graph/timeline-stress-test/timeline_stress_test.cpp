@@ -70,6 +70,7 @@ public:
                 
                 builder.with_device(device)        
                     .with_gfx_queue(gfx_queue)
+                    .with_cmpt_queues(cmpt_queues)
                     .with_cpy_queues(cpy_queues);
             });
 

@@ -16,7 +16,7 @@ bool ResourceLifetime::conflicts_with(const ResourceLifetime& other) const
     if (resource == other.resource) return false;
     
     // 使用依赖级别进行冲突检测（支持并行执行）
-    // 博客核心：使用dependency level indices而不是execution indices
+    // SSIS核心：使用dependency level indices而不是execution indices
     bool level_conflict = !(end_dependency_level < other.start_dependency_level || 
                            start_dependency_level > other.end_dependency_level);
     
@@ -145,7 +145,7 @@ void ResourceLifetimeAnalysis::analyze_resource_lifetimes(RenderGraph* graph) SK
 
 void ResourceLifetimeAnalysis::calculate_dependency_level_lifetimes() SKR_NOEXCEPT
 {
-    // 基于博客建议：使用dependency level indices支持并行执行
+    // 基于SSIS建议：使用dependency level indices支持并行执行
     // 这是算法的核心创新点
     
     for (auto& [resource, lifetime] : lifetime_result_.resource_lifetimes)
@@ -245,7 +245,7 @@ void ResourceLifetimeAnalysis::calculate_memory_requirements() SKR_NOEXCEPT
 
 void ResourceLifetimeAnalysis::sort_resources_by_size() SKR_NOEXCEPT
 {
-    // 博客算法核心：按大小降序排列资源，用于内存别名化
+    // SSIS算法核心：按大小降序排列资源，用于内存别名化
     lifetime_result_.resources_by_size_desc.clear();
     lifetime_result_.resources_by_size_desc.reserve(lifetime_result_.resource_lifetimes.size());
     
