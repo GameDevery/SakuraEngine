@@ -70,7 +70,6 @@ public:
                 
                 builder.with_device(device)        
                     .with_gfx_queue(gfx_queue)
-                    .with_cmpt_queues(cmpt_queues)
                     .with_cpy_queues(cpy_queues);
             });
 
@@ -132,11 +131,15 @@ public:
 
             SKR_LOG_INFO(u8"Complete Phase Chain Analysis Times: "
                 u8"Info: %llfms, Dependency: %llfms, Queue: %llfms, Reorder: %llfms, "
-                u8"Lifetime: %llfms, SSIS: %llfms, Aliasing: %llfms, Barrier: %llfms",
+                u8"Lifetime: %llfms, SSIS: %llfms, Aliasing: %llfms, Barrier: %llfms"
+                u8" (Total: %llfms)",
                 (double)infoAnalysisTime / 1000, (double)dependencyAnalysisTime / 1000, 
                 (double)queueAnalysisTime / 1000, (double)reorderAnalysisTime / 1000,
                 (double)lifetimeAnalysisTime / 1000, (double)ssisAnalysisTime / 1000,
-                (double)aliasingAnalysisTime / 1000, (double)barrierAnalysisTime / 1000
+                (double)aliasingAnalysisTime / 1000, (double)barrierAnalysisTime / 1000,
+                (double)(infoAnalysisTime + dependencyAnalysisTime + queueAnalysisTime +
+                         reorderAnalysisTime + lifetimeAnalysisTime + ssisAnalysisTime +
+                         aliasingAnalysisTime + barrierAnalysisTime) / 1000
             );
 
             // 打印依赖分析结果

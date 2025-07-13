@@ -72,12 +72,6 @@ void CrossQueueSyncAnalysis::on_execute(RenderGraph* graph, RenderGraphProfiler*
         ssis_result_.optimized_sync_points = ssis_result_.raw_sync_points;
     }
     
-    // Step 4: 合并冗余屏障
-    if (config_.enable_barrier_merging)
-    {
-        merge_redundant_barriers();
-    }
-    
     // Step 5: 计算优化统计信息
     calculate_optimization_statistics();
     
@@ -182,118 +176,210 @@ void CrossQueueSyncAnalysis::build_raw_sync_points() SKR_NOEXCEPT
 
 void CrossQueueSyncAnalysis::apply_ssis_optimization() SKR_NOEXCEPT
 {
-    SSIS_LOG(u8"CrossQueueSyncAnalysis: Applying SSIS optimization");
+    SSIS_LOG(u8"CrossQueueSyncAnalysis: Applying correct SSIS optimization algorithm");
     
-    // SSIS算法：对于每个同步点，检查是否被其他同步点"支配"
-    // 如果存在支配关系，则可以移除被支配的同步点
+    // 按照博客算法：为每个Pass分别优化同步点
+    // 第一步：构建SSIS (Sufficient Synchronization Index Set)
+    build_ssis_for_all_passes();
     
-    skr::FlatHashSet<size_t> redundant_indices;
+    // 第二步：为每个Pass找到最小同步点集合
+    optimize_sync_points_per_pass();
     
-    for (size_t i = 0; i < ssis_result_.raw_sync_points.size(); ++i)
+    SSIS_LOG(u8"CrossQueueSyncAnalysis: SSIS optimization completed");
+}
+
+void CrossQueueSyncAnalysis::build_ssis_for_all_passes() SKR_NOEXCEPT
+{
+    SSIS_LOG(u8"CrossQueueSyncAnalysis: Building SSIS for all passes");
+    
+    // 获取队列调度结果
+    const auto& queue_result = queue_schedule_.get_schedule_result();
+    total_queue_count_ = static_cast<uint32_t>(queue_result.queue_schedules.size());
+    
+    // 为每个Pass计算队列内本地执行索引
+    for (uint32_t queue_idx = 0; queue_idx < queue_result.queue_schedules.size(); ++queue_idx)
     {
-        const auto& sync_point = ssis_result_.raw_sync_points[i];
-        
-        // 检查这个同步点是否被其他同步点支配
-        if (is_sync_point_redundant(sync_point))
+        const auto& queue_schedule = queue_result.queue_schedules[queue_idx];
+        for (uint32_t local_idx = 0; local_idx < queue_schedule.size(); ++local_idx)
         {
-            redundant_indices.insert(i);
+            PassNode* pass = queue_schedule[local_idx];
+            pass_queue_local_indices_[pass] = local_idx;
+        }
+    }
+    
+    // 第一步：为每个Pass找到每个队列上最近的依赖节点
+    for (const auto& [pass, queue_index] : queue_result.pass_queue_assignments)
+    {
+        // 初始化SSIS数组
+        auto& ssis = pass_ssis_[pass];
+        ssis.resize(total_queue_count_, InvalidSyncIndex);
+        
+        // 设置本队列的SSIS值为自己的索引
+        ssis[queue_index] = pass_queue_local_indices_[pass];
+        
+        auto& dependencies_to_sync = pass_dependencies_to_sync_with_[pass];
+        dependencies_to_sync.clear();
+        
+        // 查找来自其他队列的依赖
+        const auto* pass_deps = dependency_analysis_.get_pass_dependencies(pass);
+        if (!pass_deps) continue;
+        
+        // 记录每个队列上最近的依赖节点
+        skr::FlatHashMap<uint32_t, PassNode*> closest_dependency_per_queue;
+        
+        for (const auto& resource_dep : pass_deps->resource_dependencies)
+        {
+            PassNode* dep_pass = resource_dep.dependent_pass;
+            uint32_t dep_queue = get_pass_queue_index(dep_pass);
             
-            SSIS_LOG(u8"    Marking sync point as redundant: %s -> %s (resource: %s)",
-                          sync_point.producer_pass->get_name(),
-                          sync_point.consumer_pass->get_name(),
-                          sync_point.resource->get_name());
+            // 只考虑跨队列依赖
+            if (dep_queue == queue_index) continue;
+            
+            auto& closest = closest_dependency_per_queue[dep_queue];
+            if (!closest || pass_queue_local_indices_[dep_pass] > pass_queue_local_indices_[closest])
+            {
+                closest = dep_pass;
+            }
         }
-    }
-    
-    // 复制非冗余的同步点到优化结果
-    for (size_t i = 0; i < ssis_result_.raw_sync_points.size(); ++i)
-    {
-        if (!redundant_indices.contains(i))
+        
+        // 更新SSIS和依赖列表
+        for (const auto& [dep_queue, closest_dep] : closest_dependency_per_queue)
         {
-            ssis_result_.optimized_sync_points.add(ssis_result_.raw_sync_points[i]);
+            ssis[dep_queue] = pass_queue_local_indices_[closest_dep];
+            dependencies_to_sync.add(closest_dep);
         }
+        
+        SSIS_LOG(u8"    Pass %s: found %u cross-queue dependencies",
+                pass->get_name(), static_cast<uint32_t>(dependencies_to_sync.size()));
     }
-    
-    SSIS_LOG(u8"CrossQueueSyncAnalysis: SSIS removed %u redundant sync points",
-                  static_cast<uint32_t>(redundant_indices.size()));
 }
 
-bool CrossQueueSyncAnalysis::is_sync_point_redundant(const CrossQueueSyncPoint& sync_point) const SKR_NOEXCEPT
+void CrossQueueSyncAnalysis::optimize_sync_points_per_pass() SKR_NOEXCEPT
 {
-    // SSIS算法核心：检查是否存在"支配"这个同步点的其他同步点
-    // 支配条件：存在另一个同步点，其同步路径包含当前同步点的因果关系
+    SSIS_LOG(u8"CrossQueueSyncAnalysis: Optimizing sync points per pass");
     
-    for (const auto& other_sync : ssis_result_.raw_sync_points)
+    const auto& queue_result = queue_schedule_.get_schedule_result();
+    
+    // 为每个Pass优化同步点
+    for (const auto& [pass, queue_index] : queue_result.pass_queue_assignments)
     {
-        if (&other_sync == &sync_point) continue;
-        
-        // 检查other_sync是否支配sync_point
-        // 条件1：other_sync的producer必须在sync_point的producer之前或同时执行
-        // 条件2：other_sync的consumer必须在sync_point的consumer之后或同时执行
-        // 条件3：必须存在从other_sync到sync_point的同步路径
-        
-        bool producer_dominates = false;
-        bool consumer_dominates = false;
-        
-        // 使用逻辑拓扑顺序比较执行顺序
-        uint32_t other_producer_order = dependency_analysis_.get_logical_topological_order(other_sync.producer_pass);
-        uint32_t sync_producer_order = dependency_analysis_.get_logical_topological_order(sync_point.producer_pass);
-        uint32_t other_consumer_order = dependency_analysis_.get_logical_topological_order(other_sync.consumer_pass);
-        uint32_t sync_consumer_order = dependency_analysis_.get_logical_topological_order(sync_point.consumer_pass);
-        
-        producer_dominates = (other_producer_order <= sync_producer_order);
-        consumer_dominates = (other_consumer_order >= sync_consumer_order);
-        
-        if (producer_dominates && consumer_dominates)
+        auto deps_it = pass_dependencies_to_sync_with_.find(pass);
+        if (deps_it == pass_dependencies_to_sync_with_.end() || deps_it->second.is_empty())
         {
-            // 检查是否存在同步路径（简化版本：假设同队列内Pass有隐式同步）
-            if (has_sync_path_between_passes(other_sync.producer_pass, sync_point.consumer_pass, sync_point))
+            continue; // 没有跨队列依赖
+        }
+        
+        auto remaining_dependencies = deps_it->second; // Copy so we can modify
+        auto& pass_ssis = pass_ssis_[pass]; // Reference so we can update
+        
+        // 构建需要同步的队列集合
+        skr::FlatHashSet<uint32_t> queues_to_sync_with;
+        for (PassNode* dep : remaining_dependencies)
+        {
+            queues_to_sync_with.insert(get_pass_queue_index(dep));
+        }
+        
+        // 迭代找到最小同步点集合（贪心集合覆盖算法）
+        skr::Vector<PassNode*> optimal_dependencies;
+        
+        while (!queues_to_sync_with.empty() && !remaining_dependencies.is_empty())
+        {
+            uint32_t max_covered_queues = 0;
+            PassNode* best_dependency = nullptr;
+            skr::Vector<uint32_t> best_covered_queues;
+            
+            // 对每个剩余依赖节点，检查它能覆盖多少队列的同步需求
+            for (PassNode* dep : remaining_dependencies)
             {
-                return true; // 被支配，是冗余的
+                const auto& dep_ssis = pass_ssis_[dep];
+                skr::Vector<uint32_t> covered_queues;
+                
+                for (uint32_t queue_to_sync : queues_to_sync_with)
+                {
+                    uint32_t current_desired_index = pass_ssis[queue_to_sync];
+                    uint32_t dep_sync_index = dep_ssis[queue_to_sync];
+                    
+                    // 对于同队列，减1处理（博客算法）
+                    if (queue_to_sync == queue_index)
+                    {
+                        if (current_desired_index > 0) current_desired_index -= 1;
+                    }
+                    
+                    // 检查依赖节点是否能覆盖这个队列的同步需求
+                    if (dep_sync_index != InvalidSyncIndex && dep_sync_index >= current_desired_index)
+                    {
+                        covered_queues.add(queue_to_sync);
+                    }
+                }
+                
+                // 更新最佳选择
+                if (covered_queues.size() > max_covered_queues)
+                {
+                    max_covered_queues = static_cast<uint32_t>(covered_queues.size());
+                    best_dependency = dep;
+                    best_covered_queues = covered_queues;
+                }
+            }
+            
+            // 如果找到了能覆盖队列的依赖，选择它
+            if (best_dependency && max_covered_queues > 0)
+            {
+                // 只添加跨队列的同步（同队列的同步是隐式的）
+                if (get_pass_queue_index(best_dependency) != queue_index)
+                {
+                    optimal_dependencies.add(best_dependency);
+                }
+                
+                // CRITICAL: 更新Pass的SSIS值为所选依赖的SSIS值（博客算法关键步骤）
+                const auto& best_dep_ssis = pass_ssis_[best_dependency];
+                for (uint32_t covered_queue : best_covered_queues)
+                {
+                    pass_ssis[covered_queue] = best_dep_ssis[covered_queue];
+                    queues_to_sync_with.erase(covered_queue);
+                }
+                
+                // 从剩余依赖中移除已选择的依赖（避免重复选择）
+                for (auto it = remaining_dependencies.begin(); it != remaining_dependencies.end(); ++it)
+                {
+                    if (*it == best_dependency)
+                    {
+                        remaining_dependencies.erase(it);
+                        break;
+                    }
+                }
+                
+                SSIS_LOG(u8"    Pass %s: selected dependency %s (covers %u queues)",
+                        pass->get_name(), best_dependency->get_name(), max_covered_queues);
+            }
+            else
+            {
+                // 无法找到覆盖剩余队列的依赖，强制退出避免死循环
+                SSIS_LOG(u8"    Warning: Pass %s cannot cover remaining %u queues",
+                        pass->get_name(), static_cast<uint32_t>(queues_to_sync_with.size()));
+                break;
+            }
+        }
+        
+        // 基于优化后的依赖生成最终同步点
+        for (PassNode* optimal_dep : optimal_dependencies)
+        {
+            // 在原始同步点中找到对应的同步点并添加到优化结果
+            for (const auto& raw_sync : ssis_result_.raw_sync_points)
+            {
+                if (raw_sync.producer_pass == optimal_dep && raw_sync.consumer_pass == pass)
+                {
+                    ssis_result_.optimized_sync_points.add(raw_sync);
+                    SSIS_LOG(u8"    Added optimized sync: %s -> %s (resource: %s)",
+                            optimal_dep->get_name(), pass->get_name(), raw_sync.resource->get_name());
+                    break;
+                }
             }
         }
     }
     
-    return false; // 不冗余
-}
-
-bool CrossQueueSyncAnalysis::has_sync_path_between_passes(PassNode* from_pass, PassNode* to_pass, const CrossQueueSyncPoint& excluding_sync) const SKR_NOEXCEPT
-{
-    // 简化实现：如果两个Pass在同一队列或有直接依赖关系，认为存在同步路径
-    uint32_t from_queue = get_pass_queue_index(from_pass);
-    uint32_t to_queue = get_pass_queue_index(to_pass);
-    
-    // 同队列内Pass有隐式同步
-    if (from_queue == to_queue)
-    {
-        return true;
-    }
-    
-    // 检查是否有直接的依赖关系
-    const auto* to_deps = dependency_analysis_.get_pass_dependencies(to_pass);
-    if (to_deps)
-    {
-        for (auto* dep_pass : to_deps->dependent_passes)
-        {
-            if (dep_pass == from_pass)
-            {
-                return true;
-            }
-        }
-    }
-    
-    return false;
-}
-
-void CrossQueueSyncAnalysis::merge_redundant_barriers() SKR_NOEXCEPT
-{
-    // 简化实现：合并相邻的、作用于相同资源的屏障
-    // 这里可以添加更复杂的屏障合并逻辑
-    
-    SSIS_LOG(u8"CrossQueueSyncAnalysis: Merging redundant barriers (simplified implementation)");
-    
-    // TODO: 实现更精细的屏障合并算法
-    // 目前保持所有屏障不变
+    // 计算优化统计
+    uint32_t removed_count = ssis_result_.total_raw_syncs - static_cast<uint32_t>(ssis_result_.optimized_sync_points.size());
+    SSIS_LOG(u8"CrossQueueSyncAnalysis: SSIS removed %u redundant sync points", removed_count);
 }
 
 void CrossQueueSyncAnalysis::calculate_optimization_statistics() SKR_NOEXCEPT
@@ -317,10 +403,6 @@ uint32_t CrossQueueSyncAnalysis::get_pass_queue_index(PassNode* pass) const SKR_
     return (it != pass_to_queue_mapping_.end()) ? it->second : 0; // 默认Graphics队列
 }
 
-bool CrossQueueSyncAnalysis::are_passes_on_different_queues(PassNode* pass1, PassNode* pass2) const SKR_NOEXCEPT
-{
-    return get_pass_queue_index(pass1) != get_pass_queue_index(pass2);
-}
 
 void CrossQueueSyncAnalysis::dump_ssis_analysis() const SKR_NOEXCEPT
 {

@@ -96,7 +96,7 @@ struct MemoryAliasingConfig
     bool enable_aliasing = true;              // 启用内存别名
     bool enable_cross_queue_aliasing = true;  // 允许跨队列资源别名
     uint64_t min_resource_size = 1024;        // 最小别名资源大小
-    uint32_t max_buckets = 16;                // 最大桶数量
+    uint32_t max_buckets = 32;                // 最大桶数量
     bool enable_debug_output = false;         // 启用调试输出
     
     // 高级选项

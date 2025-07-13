@@ -52,7 +52,6 @@ struct SSISAnalysisResult
 struct CrossQueueSyncConfig
 {
     bool enable_ssis_optimization = true;    // 启用SSIS优化
-    bool enable_barrier_merging = true;      // 启用屏障合并
     uint32_t max_sync_distance = 16;         // 最大同步距离（Pass数量）
     bool enable_debug_output = false;        // 启用调试输出
 };
@@ -85,22 +84,12 @@ private:
     void analyze_cross_queue_dependencies() SKR_NOEXCEPT;
     void build_raw_sync_points() SKR_NOEXCEPT;
     void apply_ssis_optimization() SKR_NOEXCEPT;
-    void merge_redundant_barriers() SKR_NOEXCEPT;
+    void build_ssis_for_all_passes() SKR_NOEXCEPT;
+    void optimize_sync_points_per_pass() SKR_NOEXCEPT;
     void calculate_optimization_statistics() SKR_NOEXCEPT;
 
-    // SSIS算法辅助方法
-    bool is_sync_point_redundant(const CrossQueueSyncPoint& sync_point) const SKR_NOEXCEPT;
-    bool can_sync_points_be_merged(const CrossQueueSyncPoint& a, const CrossQueueSyncPoint& b) const SKR_NOEXCEPT;
-    skr::Vector<CrossQueueSyncPoint> find_dominating_sync_points(const CrossQueueSyncPoint& target) const SKR_NOEXCEPT;
-    
-    // 队列和资源状态查询
-    bool are_passes_on_different_queues(PassNode* pass1, PassNode* pass2) const SKR_NOEXCEPT;
+    // 队列查询辅助方法
     uint32_t get_pass_queue_index(PassNode* pass) const SKR_NOEXCEPT;
-    bool has_resource_state_transition(PassNode* producer, PassNode* consumer, ResourceNode* resource) const SKR_NOEXCEPT;
-
-    // 依赖路径分析
-    bool has_sync_path_between_passes(PassNode* from_pass, PassNode* to_pass, const CrossQueueSyncPoint& excluding_sync) const SKR_NOEXCEPT;
-    skr::Vector<PassNode*> find_sync_path(PassNode* from_pass, PassNode* to_pass) const SKR_NOEXCEPT;
 
 private:
     // 配置
@@ -116,6 +105,13 @@ private:
     // 工作数据
     skr::FlatHashMap<PassNode*, uint32_t> pass_to_queue_mapping_;  // Pass到队列的映射缓存
     skr::FlatHashSet<std::pair<PassNode*, PassNode*>> cross_queue_dependencies_; // 跨队列依赖缓存
+    
+    // SSIS算法数据
+    static constexpr uint32_t InvalidSyncIndex = UINT32_MAX;
+    skr::FlatHashMap<PassNode*, skr::Vector<uint32_t>> pass_ssis_;  // 每个Pass的SSIS数组
+    skr::FlatHashMap<PassNode*, uint32_t> pass_queue_local_indices_; // Pass在队列内的本地执行索引
+    skr::FlatHashMap<PassNode*, skr::Vector<PassNode*>> pass_dependencies_to_sync_with_; // 每个Pass需要同步的依赖节点
+    uint32_t total_queue_count_ = 0;
 };
 
 } // namespace render_graph
