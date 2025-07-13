@@ -108,8 +108,7 @@ public:
             );
 
             // 打印依赖分析结果
-            dependency_analysis.dump_dependency_levels();
-            dependency_analysis.dump_critical_path();
+            dependency_analysis.dump_dependencies();
 
             // 打印队列分配
             auto non_reorder = timeline_phase.get_schedule_result();
