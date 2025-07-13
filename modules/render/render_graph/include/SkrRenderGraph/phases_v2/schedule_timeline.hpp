@@ -85,7 +85,6 @@ private:
     void clear_frame_data() SKR_NOEXCEPT;
 
     // 编译阶段
-    void analyze_dependencies(RenderGraph* graph) SKR_NOEXCEPT;
     void assign_passes_to_queues(RenderGraph* graph) SKR_NOEXCEPT;
 
     // Pass分类和调度

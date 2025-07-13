@@ -2,8 +2,7 @@
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrRenderGraph/phases_v2/schedule_timeline.hpp"
 #include "SkrRenderGraph/phases_v2/schedule_reorder.hpp"
-#include "SkrCore/log.hpp"
-#include "SkrCore/memory/memory.h"
+#include "SkrCore/time.h"
 
 // 模拟复杂的图形 + 异步计算工作负载
 class TimelineStressTest
@@ -87,12 +86,32 @@ public:
             timeline_phase.on_initialize(graph);
             reorder_phase.on_initialize(graph);
 
+            SHiresTimer timer;
+            skr_init_hires_timer(&timer);
             info_analysis.on_execute(graph, nullptr);
+            auto infoAnalysisTime = skr_hires_timer_get_usec(&timer, true);
+            
             dependency_analysis.on_execute(graph, nullptr);
-            timeline_phase.on_execute(graph, nullptr);
-            reorder_phase.on_execute(graph, nullptr);
+            auto dependencyAnalysisTime = skr_hires_timer_get_usec(&timer, true);
 
-            // 打印调度结果
+            timeline_phase.on_execute(graph, nullptr);
+            auto queueAnalysisTime = skr_hires_timer_get_usec(&timer, true);
+            
+            reorder_phase.on_execute(graph, nullptr);
+            auto reorderAnalysisTime = skr_hires_timer_get_usec(&timer, true);
+
+            SKR_LOG_INFO(u8"Timeline Stress Test Analysis Times: "
+                u8"Info Analysis: %llfms, Dependency Analysis: %llfms, "
+                u8"Queue Analysis: %llfms, Reorder Analysis: %llfms",
+                (double)infoAnalysisTime / 1000, (double)dependencyAnalysisTime / 1000, 
+                (double)queueAnalysisTime / 1000, (double)reorderAnalysisTime / 1000
+            );
+
+            // 打印依赖分析结果
+            dependency_analysis.dump_dependency_levels();
+            dependency_analysis.dump_critical_path();
+
+            // 打印队列分配
             auto non_reorder = timeline_phase.get_schedule_result();
             timeline_phase.dump_timeline_result(u8"🔥 Timeline Stress Test Results", non_reorder);
             
@@ -100,7 +119,6 @@ public:
             auto reorder_result = non_reorder;
             reorder_result.queue_schedules = reorder_phase.get_optimized_timeline();
             timeline_phase.dump_timeline_result(u8"🔥 Timeline Stress Test Reordered Results", reorder_result);
-
 
             // 验证调度结果
             validate_schedule_result(timeline_phase.get_schedule_result());

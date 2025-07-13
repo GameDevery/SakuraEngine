@@ -46,10 +46,7 @@ void ScheduleTimeline::on_execute(RenderGraph* graph, RenderGraphProfiler* profi
     // 0. 清空上一帧的数据 - RG中的资源和Pass每帧都不稳定
     clear_frame_data();
     
-    // 1. 分析Pass依赖关系
-    analyze_dependencies(graph);
-    
-    // 2. 分类并分配Pass到队列
+    // 1. 分类并分配Pass到队列
     assign_passes_to_queues(graph);
     
     // 可选：输出调试信息
