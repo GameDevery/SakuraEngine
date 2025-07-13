@@ -487,15 +487,49 @@ private:
                         label += " → ";
                         label += format_state(barrier.after_state);
 
-                        // Choose color based on whether it's cross-queue
+                        // Choose color and style based on barrier type and Begin/End
                         const char* color = (src_q == tgt_q) ? "blue" : "orange";
                         const char* style = (src_q == tgt_q) ? "dotted" : "dashed";
-
-                        dot << "  pass_q" << src_q << "_" << src_i
-                            << " -> pass_q" << tgt_q << "_" << tgt_i
-                            << " [style=" << style << ", color=" << color
-                            << ", penwidth=1.5, label=\"" << label
-                            << "\", fontcolor=" << color << ", fontsize=9];\n";
+                        
+                        // Special handling for Begin/End barriers - create portal nodes
+                        if (barrier.is_begin || barrier.is_end)
+                        {
+                            std::string portal_id = "portal_" + transition_key + (barrier.is_begin ? "_begin" : "_end");
+                            std::string portal_label = barrier.is_begin ? "BEGIN" : "END";
+                            const char* portal_color = barrier.is_begin ? "#FFE4B5" : "#E0E4CC"; // Moccasin for begin, light gray for end
+                            const char* portal_shape = "diamond";
+                            
+                            // Create portal node
+                            dot << "  " << portal_id 
+                                << " [label=\"" << portal_label << "\\n" << (const char*)barrier.resource->get_name()
+                                << "\", shape=" << portal_shape 
+                                << ", style=\"filled,dashed\", fillcolor=\"" << portal_color 
+                                << "\", fontsize=8, width=0.5, height=0.5];\n";
+                            
+                            if (barrier.is_begin)
+                            {
+                                // Begin: Source Pass -> Portal
+                                dot << "  pass_q" << src_q << "_" << src_i
+                                    << " -> " << portal_id
+                                    << " [style=dashed, color=green, penwidth=2, label=\"BEGIN\", fontcolor=green, fontsize=8];\n";
+                            }
+                            else
+                            {
+                                // End: Portal -> Target Pass
+                                dot << "  " << portal_id
+                                    << " -> pass_q" << tgt_q << "_" << tgt_i
+                                    << " [style=dashed, color=red, penwidth=2, label=\"END\", fontcolor=red, fontsize=8];\n";
+                            }
+                        }
+                        else
+                        {
+                            // Normal resource transition
+                            dot << "  pass_q" << src_q << "_" << src_i
+                                << " -> pass_q" << tgt_q << "_" << tgt_i
+                                << " [style=" << style << ", color=" << color
+                                << ", penwidth=1.5, label=\"" << label
+                                << "\", fontcolor=" << color << ", fontsize=9];\n";
+                        }
                     }
                 }
             }
@@ -589,6 +623,8 @@ private:
         dot << "        <TR><TD>Dashed Purple</TD><TD>Memory Alias</TD></TR>\n";
         dot << "        <TR><TD>Dotted Blue</TD><TD>Resource Transition (Same Queue)</TD></TR>\n";
         dot << "        <TR><TD>Dashed Orange</TD><TD>Resource Transition (Cross Queue)</TD></TR>\n";
+        dot << "        <TR><TD>Green Diamond (BEGIN)</TD><TD>Split Barrier Begin Portal</TD></TR>\n";
+        dot << "        <TR><TD>Red Diamond (END)</TD><TD>Split Barrier End Portal</TD></TR>\n";
         dot << "        <TR><TD COLSPAN=\"2\"><B>Pass Types</B></TD></TR>\n";
         dot << "        <TR><TD>Box</TD><TD>Render Pass</TD></TR>\n";
         dot << "        <TR><TD>Ellipse</TD><TD>Compute Pass</TD></TR>\n";
@@ -676,6 +712,11 @@ private:
                             break;
                         }
                         barrier_label << "Type: " << type_name;
+
+                        if (barrier.is_begin)
+                            barrier_label << "|🚪 BEGIN Portal";
+                        else if (barrier.is_end)
+                            barrier_label << "|🚪 END Portal";
 
                         // Resource info
                         if (barrier.resource)

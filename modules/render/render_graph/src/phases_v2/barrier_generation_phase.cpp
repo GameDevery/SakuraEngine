@@ -375,27 +375,6 @@ GPUBarrier BarrierGenerationPhase::create_resource_transition_barrier(ResourceNo
     return barrier;
 }
 
-bool BarrierGenerationPhase::are_barriers_compatible(const GPUBarrier& barrier1, const GPUBarrier& barrier2) const SKR_NOEXCEPT
-{
-    // 检查屏障是否可以合并
-    // 资源转换屏障必须是相同资源才能合并
-    if (barrier1.type == EBarrierType::ResourceTransition)
-    {
-        return barrier1.type == barrier2.type &&
-               barrier1.resource == barrier2.resource &&  // 必须是同一资源
-               barrier1.source_queue == barrier2.source_queue &&
-               barrier1.target_queue == barrier2.target_queue &&
-               barrier1.source_pass == barrier2.source_pass &&
-               barrier1.target_pass == barrier2.target_pass;
-    }
-    
-    // 其他类型的屏障
-    return barrier1.type == barrier2.type &&
-           barrier1.source_queue == barrier2.source_queue &&
-           barrier1.target_queue == barrier2.target_queue &&
-           barrier1.target_pass == barrier2.target_pass;
-}
-
 bool BarrierGenerationPhase::is_barrier_redundant(const GPUBarrier& barrier) const SKR_NOEXCEPT
 {
     // 检查屏障是否冗余
@@ -914,24 +893,26 @@ void BarrierGenerationPhase::generate_split_barrier(ResourceNode* resource, ECGP
     
     // 生成Begin屏障（在源Pass后插入，启动状态转换）
     GPUBarrier begin_barrier;
+    begin_barrier.is_begin = true; // 标记为Begin屏障
     begin_barrier.type = EBarrierType::ResourceTransition;
     begin_barrier.resource = resource;
     begin_barrier.before_state = before_state;
     begin_barrier.after_state = after_state;
     begin_barrier.source_pass = source_pass;
-    begin_barrier.target_pass = source_pass; // Begin屏障在源Pass后插入
+    begin_barrier.target_pass = target_pass; // Begin屏障在源Pass后插入，所以target_pass是source_pass
     begin_barrier.source_queue = sync_analysis_.get_pass_queue_index(source_pass);
-    begin_barrier.target_queue = sync_analysis_.get_pass_queue_index(source_pass);
+    begin_barrier.target_queue = sync_analysis_.get_pass_queue_index(target_pass);
     
     // 生成End屏障（在目标Pass前插入，等待状态转换完成）
     GPUBarrier end_barrier;
+    end_barrier.is_end = true;    // 标记为End屏障
     end_barrier.type = EBarrierType::ResourceTransition;
     end_barrier.resource = resource;
     end_barrier.before_state = before_state;
     end_barrier.after_state = after_state;
-    end_barrier.source_pass = target_pass;
+    end_barrier.source_pass = source_pass;
     end_barrier.target_pass = target_pass; // End屏障在目标Pass前插入
-    end_barrier.source_queue = sync_analysis_.get_pass_queue_index(target_pass);
+    end_barrier.source_queue = sync_analysis_.get_pass_queue_index(source_pass);
     end_barrier.target_queue = sync_analysis_.get_pass_queue_index(target_pass);
     
     temp_barriers_.add(begin_barrier);

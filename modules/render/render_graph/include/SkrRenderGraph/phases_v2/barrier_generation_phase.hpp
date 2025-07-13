@@ -41,6 +41,9 @@ struct GPUBarrier
     ResourceNode* previous_resource = nullptr;  // 内存别名：前一个使用该内存的资源
     uint32_t memory_bucket_index = UINT32_MAX;  // 内存桶索引
     
+    // begin/end
+    bool is_begin = false;  // 是否是Begin屏障
+    bool is_end = false;    // 是否是End屏障
     
     bool is_cross_queue() const { return source_queue != target_queue && source_queue != UINT32_MAX && target_queue != UINT32_MAX; }
     bool involves_memory_aliasing() const { return type == EBarrierType::MemoryAliasing; }
@@ -137,7 +140,6 @@ private:
     
     
     // 辅助方法
-    bool are_barriers_compatible(const GPUBarrier& barrier1, const GPUBarrier& barrier2) const SKR_NOEXCEPT;
     bool is_barrier_redundant(const GPUBarrier& barrier) const SKR_NOEXCEPT;
     float estimate_barrier_cost(const GPUBarrier& barrier) const SKR_NOEXCEPT;
     void calculate_barrier_statistics() SKR_NOEXCEPT;
