@@ -405,10 +405,16 @@ private:
                         continue;
                     }
 
-                    // Create unique key for this transition
+                    // Create unique key for this transition, include Begin/End suffix for split barriers
                     std::string transition_key = std::to_string(reinterpret_cast<uintptr_t>(barrier.source_pass)) + "_" +
                         std::to_string(reinterpret_cast<uintptr_t>(barrier.target_pass)) + "_" +
                         std::to_string(reinterpret_cast<uintptr_t>(barrier.resource));
+                    
+                    // Add suffix for Begin/End barriers to avoid duplicate key conflicts
+                    if (barrier.is_begin)
+                        transition_key += "_begin";
+                    else if (barrier.is_end)
+                        transition_key += "_end";
 
                     if (processed_transitions.contains(transition_key))
                     {

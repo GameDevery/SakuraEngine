@@ -249,14 +249,27 @@ void BarrierGenerationPhase::batch_barriers() SKR_NOEXCEPT
     // 清理之前的批次结果
     barrier_result_.pass_barrier_batches.clear();
     
-    // 按目标Pass分组屏障
+    // 按执行Pass分组屏障（Begin barriers按source_pass，其他按target_pass）
     skr::FlatHashMap<PassNode*, skr::Vector<GPUBarrier>> barriers_by_pass;
     
     for (const auto& barrier : temp_barriers_)
     {
-        if (barrier.target_pass)
+        PassNode* execution_pass = nullptr;
+        
+        if (barrier.is_begin)
         {
-            barriers_by_pass[barrier.target_pass].add(barrier);
+            // Begin barriers在source_pass后执行
+            execution_pass = barrier.source_pass;
+        }
+        else
+        {
+            // End barriers和其他barriers在target_pass前执行
+            execution_pass = barrier.target_pass;
+        }
+        
+        if (execution_pass)
+        {
+            barriers_by_pass[execution_pass].add(barrier);
         }
     }
     
