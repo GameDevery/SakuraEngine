@@ -37,6 +37,8 @@ struct GPUBarrier
     // 内存别名信息
     uint64_t memory_offset = 0;
     uint64_t memory_size = 0;
+    ResourceNode* previous_resource = nullptr;  // 内存别名：前一个使用该内存的资源
+    uint32_t memory_bucket_index = UINT32_MAX;  // 内存桶索引
     
     // 调试信息
     const char8_t* debug_name = nullptr;

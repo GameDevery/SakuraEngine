@@ -38,6 +38,7 @@ void MemoryAliasingPhase::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
     aliasing_result_.resource_to_bucket.clear();
     aliasing_result_.resource_to_offset.clear();
     aliasing_result_.resources_need_aliasing_barrier.clear();
+    aliasing_result_.alias_transitions.clear();
 }
 
 void MemoryAliasingPhase::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
@@ -55,11 +56,15 @@ void MemoryAliasingPhase::on_execute(RenderGraph* graph, RenderGraphProfiler* pr
     aliasing_result_.resource_to_bucket.clear();
     aliasing_result_.resource_to_offset.clear();
     aliasing_result_.resources_need_aliasing_barrier.clear();
+    aliasing_result_.alias_transitions.clear();
     
     // 执行核心别名分析（博客算法实现）
     perform_memory_aliasing();
     calculate_aliasing_statistics();
     identify_aliasing_barriers();
+    
+    // 计算别名转换点（新架构）
+    compute_alias_transitions();
     
     if (config_.enable_debug_output)
     {
@@ -343,6 +348,39 @@ bool MemoryAliasingPhase::resources_conflict_in_time(ResourceNode* res1, Resourc
 bool MemoryAliasingPhase::can_resources_alias(ResourceNode* res1, ResourceNode* res2) const SKR_NOEXCEPT
 {
     // 基本检查
+    if (res1 == res2) return false;
+    
+    // 检查特殊资源类型（这些资源永远不能被别名）
+    // 1. imported资源：从外部导入的资源
+    if (res1->is_imported() || res2->is_imported())
+    {
+        if (config_.enable_debug_output)
+        {
+            SKR_LOG_TRACE(u8"Cannot alias imported resources: %s (imported=%d) vs %s (imported=%d)",
+                         res1->get_name(), res1->is_imported(),
+                         res2->get_name(), res2->is_imported());
+        }
+        return false;
+    }
+    
+    // 2. lone pass资源：独立执行的Pass使用的资源
+    if (res1->allow_lone() || res2->allow_lone())
+    {
+        if (config_.enable_debug_output)
+        {
+            SKR_LOG_TRACE(u8"Cannot alias lone pass resources: %s (lone=%d) vs %s (lone=%d)",
+                         res1->get_name(), res1->allow_lone(),
+                         res2->get_name(), res2->allow_lone());
+        }
+        return false;
+    }
+    
+    // TODO: 后续可以添加更多检查
+    // 3. committed资源：特殊提交的资源
+    // 4. persistent资源：跨帧持久化的资源
+    // 5. pinned资源：固定内存位置的资源
+    
+    // 检查生命周期冲突
     if (!resources_conflict_in_time(res1, res2))
     {
         // 如果不支持跨队列别名，检查队列兼容性
@@ -358,6 +396,12 @@ bool MemoryAliasingPhase::can_resources_alias(ResourceNode* res1, ResourceNode* 
                 // 如果资源在不同队列使用，不允许别名
                 if (lifetime1_it->second.primary_queue != lifetime2_it->second.primary_queue)
                 {
+                    if (config_.enable_debug_output)
+                    {
+                        SKR_LOG_TRACE(u8"Cannot alias cross-queue resources: %s (queue=%u) vs %s (queue=%u)",
+                                     res1->get_name(), lifetime1_it->second.primary_queue,
+                                     res2->get_name(), lifetime2_it->second.primary_queue);
+                    }
                     return false;
                 }
             }
@@ -481,6 +525,135 @@ void MemoryAliasingPhase::dump_memory_buckets() const SKR_NOEXCEPT
     }
     
     SKR_LOG_INFO(u8"==========================================");
+}
+
+void MemoryAliasingPhase::compute_alias_transitions() SKR_NOEXCEPT
+{
+    aliasing_result_.alias_transitions.clear();
+    
+    // 对每个内存桶，计算资源之间的转换点
+    for (uint32_t bucket_idx = 0; bucket_idx < aliasing_result_.memory_buckets.size(); ++bucket_idx)
+    {
+        const auto& bucket = aliasing_result_.memory_buckets[bucket_idx];
+        
+        // 如果桶中只有一个资源，不需要转换
+        if (bucket.aliased_resources.size() <= 1)
+            continue;
+            
+        // 按资源的生命周期排序（开始时间）
+        skr::Vector<ResourceNode*> sorted_resources = bucket.aliased_resources;
+        std::sort(sorted_resources.begin(), sorted_resources.end(), 
+            [this](ResourceNode* a, ResourceNode* b) {
+                const auto& lifetime_result = lifetime_analysis_.get_result();
+                auto a_lifetime = lifetime_result.resource_lifetimes.find(a);
+                auto b_lifetime = lifetime_result.resource_lifetimes.find(b);
+                
+                if (a_lifetime != lifetime_result.resource_lifetimes.end() &&
+                    b_lifetime != lifetime_result.resource_lifetimes.end())
+                {
+                    return a_lifetime->second.start_dependency_level < b_lifetime->second.start_dependency_level;
+                }
+                return false;
+            });
+        
+        // 计算资源之间的转换
+        ResourceNode* current_resource = nullptr;
+        
+        for (auto* resource : sorted_resources)
+        {
+            if (current_resource && current_resource != resource)
+            {
+                // 记录从 current_resource 到 resource 的转换
+                record_alias_transition(current_resource, resource, bucket_idx);
+            }
+            else if (!current_resource)
+            {
+                // 第一个资源，记录初始分配
+                record_alias_transition(nullptr, resource, bucket_idx);
+            }
+            
+            current_resource = resource;
+        }
+    }
+    
+    // 按执行顺序排序转换点
+    std::sort(aliasing_result_.alias_transitions.begin(), aliasing_result_.alias_transitions.end(),
+        [](const MemoryAliasTransition& a, const MemoryAliasTransition& b) {
+            // 优先按目标资源的开始级别排序
+            if (a.to_start_level != b.to_start_level)
+                return a.to_start_level < b.to_start_level;
+            // 如果相同，按源资源的结束级别排序
+            return a.from_end_level < b.from_end_level;
+        });
+    
+    aliasing_result_.total_alias_transitions = static_cast<uint32_t>(aliasing_result_.alias_transitions.size());
+    
+    SKR_LOG_INFO(u8"MemoryAliasingPhase: Computed %u alias transition points", 
+                aliasing_result_.total_alias_transitions);
+}
+
+void MemoryAliasingPhase::record_alias_transition(ResourceNode* from, ResourceNode* to, uint32_t bucket_index) SKR_NOEXCEPT
+{
+    MemoryAliasTransition transition;
+    transition.from_resource = from;
+    transition.to_resource = to;
+    transition.bucket_index = bucket_index;
+    
+    // 获取资源的生命周期信息
+    const auto& lifetime_result = lifetime_analysis_.get_result();
+    
+    if (from)
+    {
+        auto from_lifetime = lifetime_result.resource_lifetimes.find(from);
+        if (from_lifetime != lifetime_result.resource_lifetimes.end())
+        {
+            transition.from_end_level = from_lifetime->second.end_dependency_level;
+        }
+    }
+    
+    if (to)
+    {
+        auto to_lifetime = lifetime_result.resource_lifetimes.find(to);
+        if (to_lifetime != lifetime_result.resource_lifetimes.end())
+        {
+            transition.to_start_level = to_lifetime->second.start_dependency_level;
+            transition.memory_size = to_lifetime->second.memory_size;
+            transition.memory_offset = aliasing_result_.resource_to_offset[to];
+        }
+    }
+    
+    // 找到转换发生的Pass
+    transition.transition_pass = find_transition_pass(from, to);
+    
+    aliasing_result_.alias_transitions.add(transition);
+    
+    if (config_.enable_debug_output)
+    {
+        SKR_LOG_TRACE(u8"Alias transition: %s -> %s at pass %s (bucket %u)",
+                     from ? from->get_name() : u8"<initial>",
+                     to ? to->get_name() : u8"<none>",
+                     transition.transition_pass ? transition.transition_pass->get_name() : u8"<unknown>",
+                     bucket_index);
+    }
+}
+
+PassNode* MemoryAliasingPhase::find_transition_pass(ResourceNode* from, ResourceNode* to) SKR_NOEXCEPT
+{
+    if (!to) return nullptr;
+    
+    // 转换发生在 'to' 资源的第一次使用时
+    const auto& lifetime_result = lifetime_analysis_.get_result();
+    auto to_lifetime = lifetime_result.resource_lifetimes.find(to);
+    
+    if (to_lifetime != lifetime_result.resource_lifetimes.end() && 
+        !to_lifetime->second.using_passes.is_empty())
+    {
+        // 返回第一个使用该资源的Pass
+        // ResourceLifetimeAnalysis 应该已经按执行顺序填充了 using_passes
+        return to_lifetime->second.using_passes[0];
+    }
+    
+    return nullptr;
 }
 
 } // namespace render_graph

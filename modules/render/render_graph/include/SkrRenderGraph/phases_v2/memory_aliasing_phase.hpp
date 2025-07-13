@@ -50,6 +50,21 @@ struct MemoryBucket
     float compression_ratio = 0.0f;                 // 压缩比
 };
 
+// 内存别名转换点 - 记录内存从一个资源切换到另一个资源的时刻
+struct MemoryAliasTransition
+{
+    PassNode* transition_pass = nullptr;        // 发生转换的Pass
+    ResourceNode* from_resource = nullptr;      // 前一个资源（可能为空，表示首次使用）
+    ResourceNode* to_resource = nullptr;        // 新资源
+    uint32_t bucket_index = UINT32_MAX;        // 内存桶索引
+    uint64_t memory_offset = 0;                // 在桶中的偏移
+    uint64_t memory_size = 0;                  // 资源大小
+    
+    // 依赖级别信息（用于排序）
+    uint32_t from_end_level = 0;               // from_resource的结束依赖级别
+    uint32_t to_start_level = 0;               // to_resource的开始依赖级别
+};
+
 // 内存别名分析结果
 struct MemoryAliasingResult
 {
@@ -60,7 +75,10 @@ struct MemoryAliasingResult
     skr::FlatHashMap<ResourceNode*, uint32_t> resource_to_bucket;
     skr::FlatHashMap<ResourceNode*, uint64_t> resource_to_offset;
     
-    // 需要别名屏障的资源
+    // 内存别名转换点列表（按执行顺序排序）
+    skr::Vector<MemoryAliasTransition> alias_transitions;
+    
+    // 需要别名屏障的资源（保留用于兼容性）
     skr::FlatHashSet<ResourceNode*> resources_need_aliasing_barrier;
     
     // 统计信息
@@ -69,6 +87,7 @@ struct MemoryAliasingResult
     float total_compression_ratio = 0.0f;   // 总体压缩比
     uint32_t total_aliased_resources = 0;   // 成功别名化的资源数
     uint32_t failed_to_alias_resources = 0; // 失败的资源数
+    uint32_t total_alias_transitions = 0;   // 别名转换次数
 };
 
 // 内存别名配置
@@ -125,6 +144,11 @@ private:
     skr::Vector<MemoryRegion> find_aliasable_regions(ResourceNode* resource, const MemoryBucket& bucket) SKR_NOEXCEPT;
     void collect_non_aliasable_offsets(ResourceNode* resource, const MemoryBucket& bucket, 
                                      skr::Vector<MemoryOffset>& offsets) SKR_NOEXCEPT;
+    
+    // 别名转换点计算
+    void compute_alias_transitions() SKR_NOEXCEPT;
+    void record_alias_transition(ResourceNode* from, ResourceNode* to, uint32_t bucket_index) SKR_NOEXCEPT;
+    PassNode* find_transition_pass(ResourceNode* from, ResourceNode* to) SKR_NOEXCEPT;
     
     // 辅助方法
     bool resources_conflict_in_time(ResourceNode* res1, ResourceNode* res2) const SKR_NOEXCEPT;

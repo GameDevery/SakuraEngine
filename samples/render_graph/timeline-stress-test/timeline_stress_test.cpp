@@ -1,5 +1,6 @@
 #include "SkrBase/config/platform.h"
 #include "SkrRenderGraph/frontend/render_graph.hpp"
+#include "SkrRenderGraph/frontend/pass_node.hpp"
 #include "SkrRenderGraph/phases_v2/queue_schedule.hpp"
 #include "SkrRenderGraph/phases_v2/schedule_reorder.hpp"
 #include "SkrRenderGraph/phases_v2/cross_queue_sync_analysis.hpp"
@@ -7,6 +8,10 @@
 #include "SkrRenderGraph/phases_v2/memory_aliasing_phase.hpp"
 #include "SkrRenderGraph/phases_v2/barrier_generation_phase.hpp"
 #include "SkrCore/time.h"
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <algorithm>
 
 // 模拟复杂的图形 + 异步计算工作负载
 class TimelineStressTest
@@ -45,7 +50,7 @@ public:
         queue_group_descs[0].queue_type = CGPU_QUEUE_TYPE_GRAPHICS;
         queue_group_descs[0].queue_count = 1;
         queue_group_descs[1].queue_type = CGPU_QUEUE_TYPE_COMPUTE;
-        queue_group_descs[1].queue_count = 2;
+        queue_group_descs[1].queue_count = 1;
         queue_group_descs[2].queue_type = CGPU_QUEUE_TYPE_TRANSFER;
         queue_group_descs[2].queue_count = 1;
 
@@ -61,7 +66,6 @@ public:
                 cpy_queues.add(cgpu_get_queue(device, CGPU_QUEUE_TYPE_TRANSFER, 0));
                 auto cmpt_queues = skr::Vector<CGPUQueueId>();
                 cmpt_queues.add(cgpu_get_queue(device, CGPU_QUEUE_TYPE_COMPUTE, 0));
-                cmpt_queues.add(cgpu_get_queue(device, CGPU_QUEUE_TYPE_COMPUTE, 1));
                 auto gfx_queue = cgpu_get_queue(device, CGPU_QUEUE_TYPE_GRAPHICS, 0);
                 
                 builder.with_device(device)        
@@ -169,6 +173,10 @@ public:
             SKR_LOG_INFO(u8"  Estimated cost: %f", barrier_phase.get_estimated_barrier_cost());
             SKR_LOG_INFO(u8"  Optimized barriers: %u", barrier_phase.get_optimized_barriers_count());
             
+            // 生成 Graphviz 可视化
+            generate_graphviz_visualization(graph, timeline_phase, ssis_phase, barrier_phase, 
+                                          aliasing_phase, lifetime_analysis);
+            
             // 清理
             barrier_phase.on_finalize(graph);
             aliasing_phase.on_finalize(graph);
@@ -185,6 +193,230 @@ public:
     }
 
 private:
+    void generate_graphviz_visualization(
+        skr::render_graph::RenderGraph* graph,
+        const skr::render_graph::QueueSchedule& timeline_phase,
+        const skr::render_graph::CrossQueueSyncAnalysis& ssis_phase,
+        const skr::render_graph::BarrierGenerationPhase& barrier_phase,
+        const skr::render_graph::MemoryAliasingPhase& aliasing_phase,
+        const skr::render_graph::ResourceLifetimeAnalysis& lifetime_analysis)
+    {
+        using namespace skr::render_graph;
+        
+        std::stringstream dot;
+        
+        // Graphviz 头部
+        dot << "digraph RenderGraphExecution {\n";
+        dot << "  rankdir=TB;\n";
+        dot << "  compound=true;\n";
+        dot << "  fontname=\"Arial\";\n";
+        dot << "  node [shape=box, style=\"rounded,filled\", fontname=\"Arial\"];\n";
+        dot << "  edge [fontname=\"Arial\", fontsize=10];\n\n";
+        
+        const auto& schedule_result = timeline_phase.get_schedule_result();
+        const auto& aliasing_result = aliasing_phase.get_result();
+        const auto& lifetime_result = lifetime_analysis.get_result();
+        
+        // 队列颜色定义
+        const char* queue_colors[] = { "#FFE6E6", "#E6F3FF", "#E6FFE6" };
+        const char* queue_names[] = { "Graphics Queue", "Compute Queue", "Copy Queue" };
+        
+        // 1. 生成队列和Pass节点
+        for (uint32_t q = 0; q < schedule_result.queue_schedules.size(); ++q)
+        {
+            const auto& queue_schedule = schedule_result.queue_schedules[q];
+            if (queue_schedule.is_empty()) continue;
+            
+            // 队列子图
+            dot << "  subgraph cluster_queue_" << q << " {\n";
+            dot << "    label=\"" << queue_names[std::min(q, 2u)] << "\";\n";
+            dot << "    style=filled;\n";
+            dot << "    fillcolor=\"" << queue_colors[std::min(q, 2u)] << "\";\n";
+            dot << "    node [fillcolor=white];\n\n";
+            
+            // Pass节点
+            for (uint32_t i = 0; i < queue_schedule.size(); ++i)
+            {
+                auto* pass = queue_schedule[i];
+                dot << "    pass_q" << q << "_" << i 
+                    << " [label=\"" << (const char*)pass->get_name() 
+                    << "\\nOrder: " << i << "\"];\n";
+            }
+            
+            // 队列内执行顺序边
+            for (uint32_t i = 1; i < queue_schedule.size(); ++i)
+            {
+                dot << "    pass_q" << q << "_" << (i-1) 
+                    << " -> pass_q" << q << "_" << i 
+                    << " [style=solid, color=gray];\n";
+            }
+            
+            dot << "  }\n\n";
+        }
+        
+        // 2. 生成内存别名转换边
+        dot << "  // Memory aliasing transitions\n";
+        for (const auto& transition : aliasing_result.alias_transitions)
+        {
+            if (!transition.to_resource || !transition.transition_pass)
+                continue;
+                
+            // 找到Pass在队列中的位置
+            auto find_pass_position = [&](PassNode* pass) -> std::pair<uint32_t, uint32_t> {
+                for (uint32_t q = 0; q < schedule_result.queue_schedules.size(); ++q)
+                {
+                    const auto& queue = schedule_result.queue_schedules[q];
+                    for (uint32_t i = 0; i < queue.size(); ++i)
+                    {
+                        if (queue[i] == pass)
+                            return {q, i};
+                    }
+                }
+                return {UINT32_MAX, UINT32_MAX};
+            };
+            
+            // 找到旧资源的最后使用Pass
+            PassNode* from_pass = nullptr;
+            if (transition.from_resource)
+            {
+                auto from_lifetime = lifetime_result.resource_lifetimes.find(transition.from_resource);
+                if (from_lifetime != lifetime_result.resource_lifetimes.end() && 
+                    !from_lifetime->second.using_passes.is_empty())
+                {
+                    // 找到最后一个使用
+                    from_pass = from_lifetime->second.using_passes.back();
+                }
+            }
+            
+            auto [to_q, to_i] = find_pass_position(transition.transition_pass);
+            
+            if (from_pass && to_q != UINT32_MAX)
+            {
+                auto [from_q, from_i] = find_pass_position(from_pass);
+                if (from_q != UINT32_MAX)
+                {
+                    std::string label = "Alias: ";
+                    label += (const char*)transition.from_resource->get_name();
+                    label += " → ";
+                    label += (const char*)transition.to_resource->get_name();
+                    label += "\\nBucket " + std::to_string(transition.bucket_index);
+                    
+                    dot << "  pass_q" << from_q << "_" << from_i
+                        << " -> pass_q" << to_q << "_" << to_i
+                        << " [style=dashed, color=purple, penwidth=2, label=\"" << label
+                        << "\", fontcolor=purple];\n";
+                }
+            }
+        }
+        
+        // 3. 生成跨队列同步边
+        dot << "\n  // Cross-queue synchronization\n";
+        const auto& ssis_result = ssis_phase.get_ssis_result();
+        for (const auto& sync : ssis_result.optimized_sync_points)
+        {
+            if (!sync.producer_pass || !sync.consumer_pass)
+                continue;
+                
+            auto find_pass_position = [&](PassNode* pass) -> std::pair<uint32_t, uint32_t> {
+                for (uint32_t q = 0; q < schedule_result.queue_schedules.size(); ++q)
+                {
+                    const auto& queue = schedule_result.queue_schedules[q];
+                    for (uint32_t i = 0; i < queue.size(); ++i)
+                    {
+                        if (queue[i] == pass)
+                            return {q, i};
+                    }
+                }
+                return {UINT32_MAX, UINT32_MAX};
+            };
+            
+            auto [prod_q, prod_i] = find_pass_position(sync.producer_pass);
+            auto [cons_q, cons_i] = find_pass_position(sync.consumer_pass);
+            
+            if (prod_q != UINT32_MAX && cons_q != UINT32_MAX)
+            {
+                std::string label = "Sync";
+                if (sync.resource)
+                {
+                    label += ": ";
+                    label += (const char*)sync.resource->get_name();
+                }
+                
+                dot << "  pass_q" << prod_q << "_" << prod_i
+                    << " -> pass_q" << cons_q << "_" << cons_i
+                    << " [style=dashed, color=red, penwidth=2, label=\"" << label
+                    << "\", fontcolor=red];\n";
+            }
+        }
+        
+        // 4. 生成内存桶信息
+        dot << "\n  // Memory buckets\n";
+        dot << "  subgraph cluster_memory {\n";
+        dot << "    label=\"Memory Aliasing Buckets\";\n";
+        dot << "    style=filled;\n";
+        dot << "    fillcolor=\"#FFFACD\";\n";
+        dot << "    node [shape=record, fillcolor=white];\n\n";
+        
+        for (uint32_t i = 0; i < aliasing_result.memory_buckets.size(); ++i)
+        {
+            const auto& bucket = aliasing_result.memory_buckets[i];
+            
+            std::stringstream label;
+            label << "{Bucket " << i;
+            label << "|Size: " << (bucket.total_size / 1024) << " KB";
+            label << "|Compression: " << int(bucket.compression_ratio * 100) << "%";
+            label << "|Resources:";
+            
+            for (auto* resource : bucket.aliased_resources)
+            {
+                label << "\\n• " << (const char*)resource->get_name();
+                
+                auto lifetime_it = lifetime_result.resource_lifetimes.find(resource);
+                if (lifetime_it != lifetime_result.resource_lifetimes.end())
+                {
+                    label << " [L" << lifetime_it->second.start_dependency_level 
+                          << "-" << lifetime_it->second.end_dependency_level << "]";
+                }
+            }
+            
+            if (bucket.aliased_resources.size() > 1)
+            {
+                label << "\\n\\n→ Memory reused";
+            }
+            label << "}";
+            
+            dot << "    bucket_" << i << " [label=\"" << label.str() << "\"];\n";
+        }
+        
+        dot << "  }\n\n";
+        
+        // 5. 生成图例
+        dot << "  // Legend\n";
+        dot << "  subgraph cluster_legend {\n";
+        dot << "    label=\"Legend\";\n";
+        dot << "    style=filled;\n";
+        dot << "    fillcolor=lightgray;\n";
+        dot << "    node [shape=plaintext];\n";
+        dot << "    legend [label=<\n";
+        dot << "      <TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">\n";
+        dot << "        <TR><TD COLSPAN=\"2\"><B>Edge Types</B></TD></TR>\n";
+        dot << "        <TR><TD>Solid Gray</TD><TD>Execution Order</TD></TR>\n";
+        dot << "        <TR><TD>Dashed Red</TD><TD>Cross-Queue Sync</TD></TR>\n";
+        dot << "        <TR><TD>Dashed Purple</TD><TD>Memory Alias</TD></TR>\n";
+        dot << "      </TABLE>\n";
+        dot << "    >];\n";
+        dot << "  }\n";
+        
+        dot << "}\n";
+        
+        // 保存到文件
+        std::ofstream file("render_graph_execution.dot");
+        file << dot.str();
+        file.close();
+        
+        SKR_LOG_INFO(u8"📊 Graphviz visualization saved to render_graph_execution.dot");
+        SKR_LOG_INFO(u8"   Run: dot -Tpng render_graph_execution.dot -o render_graph_execution.png");
+    }
     void build_complex_pipeline(skr::render_graph::RenderGraph* graph)
     {
         using namespace skr::render_graph;
@@ -323,6 +555,7 @@ private:
         auto particle_pass = graph->add_compute_pass(
             [particle_buffer, culling_buffer](RenderGraph& graph, RenderGraph::ComputePassBuilder& builder) {
                 builder.set_name(u8"ParticleSimulationPass")
+                    .with_flags(EPassFlags::PreferAsyncCompute)
                     .read(u8"CullingInput", culling_buffer.range(0, ~0)) // 使用剔除信息优化粒子计算
                     .readwrite(u8"ParticleData", particle_buffer.range(0, ~0));
             },
@@ -366,7 +599,7 @@ private:
             });
 
         // ===== 阶段6: 拷贝和资源传输 =====
-
+        /*
         // 模拟大量纹理拷贝操作
         auto temp_texture1 = graph->create_texture([](RenderGraph& graph, RenderGraph::TextureBuilder& builder) {
             builder.set_name(u8"TempTexture1")
@@ -400,6 +633,7 @@ private:
             [](RenderGraph& graph, CopyPassContext& context) {
                 // 模拟另一个纹理拷贝
             });
+        */
 
         // ===== 阶段7: 后处理链（混合Graphics和Compute）=====
 
@@ -417,8 +651,7 @@ private:
         // Tone Mapping (Graphics渲染)
         auto final_texture = graph->create_texture([](RenderGraph& graph, RenderGraph::TextureBuilder& builder) {
             builder.set_name(u8"FinalTexture")
-                .extent(1920, 1080)
-                .format(CGPU_FORMAT_R8G8B8A8_UNORM)
+                .import(nullptr, ECGPUResourceState::CGPU_RESOURCE_STATE_UNDEFINED)
                 .allow_render_target();
         });
 

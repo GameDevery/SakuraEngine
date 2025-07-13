@@ -130,39 +130,42 @@ void BarrierGenerationPhase::generate_cross_queue_sync_barriers(RenderGraph* gra
 void BarrierGenerationPhase::generate_memory_aliasing_barriers(RenderGraph* graph) SKR_NOEXCEPT
 {
     const auto& aliasing_result = aliasing_phase_.get_result();
-    auto& all_passes = get_passes(graph);
     
-    // 为需要别名屏障的资源生成屏障
-    for (auto* resource : aliasing_result.resources_need_aliasing_barrier)
+    // 新架构：直接使用 MemoryAliasingPhase 预计算的转换点
+    // 这些转换点已经包含了所有必要的信息：
+    // - 在哪个Pass发生转换
+    // - 从哪个资源到哪个资源
+    // - 内存桶信息
+    
+    for (const auto& transition : aliasing_result.alias_transitions)
     {
-        // 找到使用该资源的Pass
-        for (auto* pass : all_passes)
-        {
-            bool uses_resource = false;
-            pass->foreach_textures([&](TextureNode* tex, TextureEdge*) {
-                if (tex == resource) uses_resource = true;
-            });
-            pass->foreach_buffers([&](BufferNode* buf, BufferEdge*) {
-                if (buf == resource) uses_resource = true;
-            });
+        if (!transition.transition_pass || !transition.to_resource)
+            continue;
             
-            if (uses_resource)
-            {
-                GPUBarrier barrier = create_aliasing_barrier(resource, pass);
-                temp_barriers_.add(barrier);
-                
-                if (config_.enable_debug_output)
-                {
-                    SKR_LOG_TRACE(u8"Generated aliasing barrier for resource %s at pass %s",
-                                 resource->get_name(),
-                                 pass->get_name());
-                }
-            }
+        // 创建别名屏障
+        GPUBarrier barrier = create_aliasing_barrier(transition.to_resource, transition.transition_pass);
+        
+        // 设置转换特定信息
+        barrier.previous_resource = transition.from_resource;
+        barrier.memory_bucket_index = transition.bucket_index;
+        barrier.memory_offset = transition.memory_offset;
+        barrier.memory_size = transition.memory_size;
+        
+        temp_barriers_.add(barrier);
+        
+        if (config_.enable_debug_output)
+        {
+            SKR_LOG_TRACE(u8"Generated aliasing barrier at pass %s: %s -> %s (bucket %u, offset %llu)",
+                         transition.transition_pass->get_name(),
+                         transition.from_resource ? transition.from_resource->get_name() : u8"<initial>",
+                         transition.to_resource->get_name(),
+                         transition.bucket_index,
+                         transition.memory_offset);
         }
     }
     
-    SKR_LOG_INFO(u8"BarrierGenerationPhase: Generated aliasing barriers for {} resources", 
-                aliasing_result.resources_need_aliasing_barrier.size());
+    SKR_LOG_INFO(u8"BarrierGenerationPhase: Generated %u aliasing barriers from pre-computed transitions", 
+                static_cast<uint32_t>(aliasing_result.alias_transitions.size()));
 }
 
 void BarrierGenerationPhase::generate_resource_transition_barriers(RenderGraph* graph) SKR_NOEXCEPT
