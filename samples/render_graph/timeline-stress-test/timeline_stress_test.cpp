@@ -3,6 +3,9 @@
 #include "SkrRenderGraph/phases_v2/queue_schedule.hpp"
 #include "SkrRenderGraph/phases_v2/schedule_reorder.hpp"
 #include "SkrRenderGraph/phases_v2/cross_queue_sync_analysis.hpp"
+#include "SkrRenderGraph/phases_v2/resource_lifetime_analysis.hpp"
+#include "SkrRenderGraph/phases_v2/memory_aliasing_phase.hpp"
+#include "SkrRenderGraph/phases_v2/barrier_generation_phase.hpp"
 #include "SkrCore/time.h"
 
 // 模拟复杂的图形 + 异步计算工作负载
@@ -76,26 +79,30 @@ public:
             auto info_analysis = skr::render_graph::PassInfoAnalysis();
             auto dependency_analysis = skr::render_graph::PassDependencyAnalysis(info_analysis);
             auto timeline_phase = skr::render_graph::QueueSchedule(dependency_analysis, timeline_config);
-            auto reorder_phase = skr::render_graph::ExecutionReorderPhase(
-                info_analysis, dependency_analysis, timeline_phase, {});
+            auto reorder_phase = skr::render_graph::ExecutionReorderPhase(info_analysis, dependency_analysis, timeline_phase, {});
+            auto lifetime_analysis = skr::render_graph::ResourceLifetimeAnalysis(dependency_analysis, timeline_phase, {});
             auto ssis_phase = skr::render_graph::CrossQueueSyncAnalysis(dependency_analysis, timeline_phase, {});
+            auto aliasing_phase = skr::render_graph::MemoryAliasingPhase(lifetime_analysis, ssis_phase, {});
+            auto barrier_phase = skr::render_graph::BarrierGenerationPhase(ssis_phase, aliasing_phase, {});
 
             // 构建复杂的渲染管线
             build_complex_pipeline(graph);
 
             // info -> dependency -> timeline -> reorder -> segmentation ->
             // virtual-allocation -> commit(commit alloc + bindgroups + barrier) -> execute
-            // 手动调用TimelinePhase进行测试
+            // 手动调用完整的Phase链进行测试
             info_analysis.on_initialize(graph);
             dependency_analysis.on_initialize(graph);
             timeline_phase.on_initialize(graph);
             reorder_phase.on_initialize(graph);
+            lifetime_analysis.on_initialize(graph);
             ssis_phase.on_initialize(graph);
+            aliasing_phase.on_initialize(graph);
+            barrier_phase.on_initialize(graph);
 
             SHiresTimer timer;
             skr_init_hires_timer(&timer);
             info_analysis.on_execute(graph, nullptr);
-            dependency_analysis.on_execute(graph, nullptr);
             auto infoAnalysisTime = skr_hires_timer_get_usec(&timer, true);
             
             dependency_analysis.on_execute(graph, nullptr);
@@ -107,16 +114,25 @@ public:
             reorder_phase.on_execute(graph, nullptr);
             auto reorderAnalysisTime = skr_hires_timer_get_usec(&timer, true);
             
+            lifetime_analysis.on_execute(graph, nullptr);
+            auto lifetimeAnalysisTime = skr_hires_timer_get_usec(&timer, true);
+            
             ssis_phase.on_execute(graph, nullptr);
             auto ssisAnalysisTime = skr_hires_timer_get_usec(&timer, true);
+            
+            aliasing_phase.on_execute(graph, nullptr);
+            auto aliasingAnalysisTime = skr_hires_timer_get_usec(&timer, true);
+            
+            barrier_phase.on_execute(graph, nullptr);
+            auto barrierAnalysisTime = skr_hires_timer_get_usec(&timer, true);
 
-            SKR_LOG_INFO(u8"Timeline Stress Test Analysis Times: "
-                u8"Info Analysis: %llfms, Dependency Analysis: %llfms, "
-                u8"Queue Analysis: %llfms, Reorder Analysis: %llfms, "
-                u8"SSIS Analysis: %llfms",
+            SKR_LOG_INFO(u8"Complete Phase Chain Analysis Times: "
+                u8"Info: %llfms, Dependency: %llfms, Queue: %llfms, Reorder: %llfms, "
+                u8"Lifetime: %llfms, SSIS: %llfms, Aliasing: %llfms, Barrier: %llfms",
                 (double)infoAnalysisTime / 1000, (double)dependencyAnalysisTime / 1000, 
                 (double)queueAnalysisTime / 1000, (double)reorderAnalysisTime / 1000,
-                (double)ssisAnalysisTime / 1000
+                (double)lifetimeAnalysisTime / 1000, (double)ssisAnalysisTime / 1000,
+                (double)aliasingAnalysisTime / 1000, (double)barrierAnalysisTime / 1000
             );
 
             // 打印依赖分析结果
@@ -134,11 +150,30 @@ public:
             // 验证调度结果
             validate_schedule_result(timeline_phase.get_schedule_result());
 
-            // 输出SSIS分析结果
+            // 输出分析结果
+            dependency_analysis.dump_logical_topology();
             ssis_phase.dump_ssis_analysis();
             
+            // 输出内存优化结果
+            aliasing_phase.dump_aliasing_result();
+            aliasing_phase.dump_memory_buckets();
+            SKR_LOG_INFO(u8"🔧 Memory Optimization Results:");
+            SKR_LOG_INFO(u8"  Memory reduction: %f%", aliasing_phase.get_compression_ratio() * 100.0f);
+            SKR_LOG_INFO(u8"  Memory savings: %lld MB", aliasing_phase.get_memory_savings() / (1024 * 1024));
+            
+            // 输出屏障分析结果
+            barrier_phase.dump_barrier_analysis();
+            barrier_phase.dump_barrier_insertion_points();
+            SKR_LOG_INFO(u8"🛡️ Barrier Analysis Results:");
+            SKR_LOG_INFO(u8"  Total barriers: %u", barrier_phase.get_total_barriers());
+            SKR_LOG_INFO(u8"  Estimated cost: %f", barrier_phase.get_estimated_barrier_cost());
+            SKR_LOG_INFO(u8"  Optimized barriers: %u", barrier_phase.get_optimized_barriers_count());
+            
             // 清理
+            barrier_phase.on_finalize(graph);
+            aliasing_phase.on_finalize(graph);
             ssis_phase.on_finalize(graph);
+            lifetime_analysis.on_finalize(graph);
             reorder_phase.on_finalize(graph);
             timeline_phase.on_finalize(graph);
             dependency_analysis.on_finalize(graph);
@@ -286,7 +321,7 @@ private:
         });
 
         auto particle_pass = graph->add_compute_pass(
-            [particle_buffer, culling_buffer, ddgi_irradiance_atlas](RenderGraph& graph, RenderGraph::ComputePassBuilder& builder) {
+            [particle_buffer, culling_buffer](RenderGraph& graph, RenderGraph::ComputePassBuilder& builder) {
                 builder.set_name(u8"ParticleSimulationPass")
                     .read(u8"CullingInput", culling_buffer.range(0, ~0)) // 使用剔除信息优化粒子计算
                     .readwrite(u8"ParticleData", particle_buffer.range(0, ~0));

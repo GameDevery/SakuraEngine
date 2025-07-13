@@ -276,6 +276,7 @@ public:
     uint32_t foreach_passes(BufferHandle buffer,
         skr::stl_function<void(PassNode* reader, BufferNode* buf, RenderGraphEdge* edge)>) const SKR_NOEXCEPT;
     const skr::Vector<PassNode*>& get_passes() const SKR_NOEXCEPT { return passes; }
+    const skr::Vector<ResourceNode*>& get_resources() const SKR_NOEXCEPT { return resources; }
 
 protected:
     virtual void initialize() SKR_NOEXCEPT;
