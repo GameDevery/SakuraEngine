@@ -11,7 +11,7 @@ namespace render_graph {
 ExecutionReorderPhase::ExecutionReorderPhase(
     const PassInfoAnalysis& pass_info,
     const PassDependencyAnalysis& dependency_analysis,
-    const ScheduleTimeline& timeline,
+    const QueueSchedule& timeline,
     const ExecutionReorderConfig& config)
     : config(config)
     , pass_info_analysis(pass_info)

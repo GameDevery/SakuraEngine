@@ -62,6 +62,9 @@ void PassDependencyAnalysis::on_execute(RenderGraph* graph, RenderGraphProfiler*
     
     // Build pass-level dependencies after all resource dependencies are analyzed
     build_pass_level_dependencies();
+    
+    // NEW: 委托给LogicalTopologyAnalyzer进行拓扑分析
+    topology_analyzer_.analyze_topology(pass_dependencies_);
 }
 
 void PassDependencyAnalysis::on_initialize(RenderGraph* graph) SKR_NOEXCEPT

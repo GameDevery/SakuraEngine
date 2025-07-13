@@ -41,7 +41,7 @@ struct QueueInfo {
     bool supports_present = false;
 };
 
-// ScheduleTimeline的输出结果
+// QueueSchedule的输出结果
 struct TimelineScheduleResult 
 {
     skr::span<QueueInfo> all_queues;
@@ -50,7 +50,7 @@ struct TimelineScheduleResult
 };
 
 // Timeline Phase 配置
-struct ScheduleTimelineConfig 
+struct QueueScheduleConfig 
 {
     bool enable_async_compute = true;       // 启用异步计算
     bool enable_copy_queue = true;          // 启用拷贝队列
@@ -61,12 +61,12 @@ struct ScheduleTimelineConfig
 };
 
 // Timeline Phase - 负责多队列调度
-class SKR_RENDER_GRAPH_API ScheduleTimeline : public IRenderGraphPhase 
+class SKR_RENDER_GRAPH_API QueueSchedule : public IRenderGraphPhase 
 {
 public:
-    ScheduleTimeline(const PassDependencyAnalysis& dependency_analysis, 
-                    const ScheduleTimelineConfig& config = {});
-    ~ScheduleTimeline() override;
+    QueueSchedule(const PassDependencyAnalysis& dependency_analysis, 
+                    const QueueScheduleConfig& config = {});
+    ~QueueSchedule() override;
 
     // IRenderGraphPhase 接口
     void on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT override;
@@ -86,13 +86,14 @@ private:
 
     // 编译阶段
     void assign_passes_to_queues(RenderGraph* graph) SKR_NOEXCEPT;
+    void assign_passes_using_topology() SKR_NOEXCEPT;
 
     // Pass分类和调度
     ERenderGraphQueueType classify_pass(PassNode* pass) SKR_NOEXCEPT;
     
 
 private:
-    ScheduleTimelineConfig config;
+    QueueScheduleConfig config;
 
     skr::Vector<QueueInfo> all_queues;  // 统一管理所有队列，按类型分组
     

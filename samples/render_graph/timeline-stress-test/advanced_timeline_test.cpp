@@ -1,5 +1,5 @@
 #include "SkrRenderGraph/frontend/render_graph.hpp"
-#include "SkrRenderGraph/phases_v2/schedule_timeline.hpp"
+#include "SkrRenderGraph/phases_v2/queue_schedule.hpp"
 #include "SkrCore/log.hpp"
 #include <random>
 
@@ -74,12 +74,12 @@ public:
 private:
     TimelineScheduleResult execute(const char8_t* what)
     {
-        auto timeline_config = skr::render_graph::ScheduleTimelineConfig{};
+        auto timeline_config = skr::render_graph::QueueScheduleConfig{};
         timeline_config.enable_async_compute = true;
         timeline_config.enable_copy_queue = true;
         auto info_analysis = skr::render_graph::PassInfoAnalysis();
         auto dependency_analysis = skr::render_graph::PassDependencyAnalysis(info_analysis);
-        auto timeline_phase = skr::render_graph::ScheduleTimeline(dependency_analysis, timeline_config);
+        auto timeline_phase = skr::render_graph::QueueSchedule(dependency_analysis, timeline_config);
         
         // 手动调用TimelinePhase进行测试
         info_analysis.on_initialize(graph);

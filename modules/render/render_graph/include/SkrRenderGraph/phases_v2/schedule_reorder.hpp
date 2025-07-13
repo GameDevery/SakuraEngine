@@ -3,7 +3,7 @@
 #include "SkrRenderGraph/frontend/base_types.hpp"
 #include "pass_info_analysis.hpp"
 #include "pass_dependency_analysis.hpp"
-#include "schedule_timeline.hpp"
+#include "queue_schedule.hpp"
 #include "SkrContainersDef/vector.hpp"
 #include "SkrContainersDef/hashmap.hpp"
 
@@ -35,7 +35,7 @@ public:
     ExecutionReorderPhase(
         const PassInfoAnalysis& pass_info,
         const PassDependencyAnalysis& dependency_analysis,
-        const ScheduleTimeline& timeline,
+        const QueueSchedule& timeline,
         const ExecutionReorderConfig& config = {});
     ~ExecutionReorderPhase() override = default;
     
@@ -75,7 +75,7 @@ private:
     // Input phase references
     const PassInfoAnalysis& pass_info_analysis;
     const PassDependencyAnalysis& dependency_analysis;
-    const ScheduleTimeline& timeline_schedule;
+    const QueueSchedule& timeline_schedule;
     
     // Working data - timeline copy
     skr::Vector<skr::Vector<PassNode*>> working_timeline;

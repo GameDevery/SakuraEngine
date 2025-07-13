@@ -1,7 +1,8 @@
 #include "SkrBase/config/platform.h"
 #include "SkrRenderGraph/frontend/render_graph.hpp"
-#include "SkrRenderGraph/phases_v2/schedule_timeline.hpp"
+#include "SkrRenderGraph/phases_v2/queue_schedule.hpp"
 #include "SkrRenderGraph/phases_v2/schedule_reorder.hpp"
+#include "SkrRenderGraph/phases_v2/cross_queue_sync_analysis.hpp"
 #include "SkrCore/time.h"
 
 // 模拟复杂的图形 + 异步计算工作负载
@@ -13,6 +14,8 @@ public:
 
     void run_stress_test()
     {
+        skr_log_set_level(SKR_LOG_LEVEL_INFO);
+
         SKR_LOG_INFO(u8"🔥 Timeline Stress Test Starting...");
 
         // Create instance
@@ -39,7 +42,7 @@ public:
         queue_group_descs[0].queue_type = CGPU_QUEUE_TYPE_GRAPHICS;
         queue_group_descs[0].queue_count = 1;
         queue_group_descs[1].queue_type = CGPU_QUEUE_TYPE_COMPUTE;
-        queue_group_descs[1].queue_count = 1;
+        queue_group_descs[1].queue_count = 2;
         queue_group_descs[2].queue_type = CGPU_QUEUE_TYPE_TRANSFER;
         queue_group_descs[2].queue_count = 1;
 
@@ -55,6 +58,7 @@ public:
                 cpy_queues.add(cgpu_get_queue(device, CGPU_QUEUE_TYPE_TRANSFER, 0));
                 auto cmpt_queues = skr::Vector<CGPUQueueId>();
                 cmpt_queues.add(cgpu_get_queue(device, CGPU_QUEUE_TYPE_COMPUTE, 0));
+                cmpt_queues.add(cgpu_get_queue(device, CGPU_QUEUE_TYPE_COMPUTE, 1));
                 auto gfx_queue = cgpu_get_queue(device, CGPU_QUEUE_TYPE_GRAPHICS, 0);
                 
                 builder.with_device(device)        
@@ -64,16 +68,17 @@ public:
             });
 
         // 添加TimelinePhase
-        auto timeline_config = skr::render_graph::ScheduleTimelineConfig{};
+        auto timeline_config = skr::render_graph::QueueScheduleConfig{};
         timeline_config.enable_async_compute = true;
         timeline_config.enable_copy_queue = true;
 
         {
             auto info_analysis = skr::render_graph::PassInfoAnalysis();
             auto dependency_analysis = skr::render_graph::PassDependencyAnalysis(info_analysis);
-            auto timeline_phase = skr::render_graph::ScheduleTimeline(dependency_analysis, timeline_config);
+            auto timeline_phase = skr::render_graph::QueueSchedule(dependency_analysis, timeline_config);
             auto reorder_phase = skr::render_graph::ExecutionReorderPhase(
                 info_analysis, dependency_analysis, timeline_phase, {});
+            auto ssis_phase = skr::render_graph::CrossQueueSyncAnalysis(dependency_analysis, timeline_phase, {});
 
             // 构建复杂的渲染管线
             build_complex_pipeline(graph);
@@ -85,6 +90,7 @@ public:
             dependency_analysis.on_initialize(graph);
             timeline_phase.on_initialize(graph);
             reorder_phase.on_initialize(graph);
+            ssis_phase.on_initialize(graph);
 
             SHiresTimer timer;
             skr_init_hires_timer(&timer);
@@ -99,12 +105,17 @@ public:
             
             reorder_phase.on_execute(graph, nullptr);
             auto reorderAnalysisTime = skr_hires_timer_get_usec(&timer, true);
+            
+            ssis_phase.on_execute(graph, nullptr);
+            auto ssisAnalysisTime = skr_hires_timer_get_usec(&timer, true);
 
             SKR_LOG_INFO(u8"Timeline Stress Test Analysis Times: "
                 u8"Info Analysis: %llfms, Dependency Analysis: %llfms, "
-                u8"Queue Analysis: %llfms, Reorder Analysis: %llfms",
+                u8"Queue Analysis: %llfms, Reorder Analysis: %llfms, "
+                u8"SSIS Analysis: %llfms",
                 (double)infoAnalysisTime / 1000, (double)dependencyAnalysisTime / 1000, 
-                (double)queueAnalysisTime / 1000, (double)reorderAnalysisTime / 1000
+                (double)queueAnalysisTime / 1000, (double)reorderAnalysisTime / 1000,
+                (double)ssisAnalysisTime / 1000
             );
 
             // 打印依赖分析结果
@@ -122,7 +133,11 @@ public:
             // 验证调度结果
             validate_schedule_result(timeline_phase.get_schedule_result());
 
+            // 输出SSIS分析结果
+            ssis_phase.dump_ssis_analysis();
+            
             // 清理
+            ssis_phase.on_finalize(graph);
             reorder_phase.on_finalize(graph);
             timeline_phase.on_finalize(graph);
             dependency_analysis.on_finalize(graph);

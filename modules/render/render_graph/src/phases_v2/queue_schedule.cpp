@@ -1,22 +1,24 @@
 #include "SkrContainersDef/set.hpp"
 #include "SkrGraphics/api.h"
-#include "SkrRenderGraph/phases_v2/schedule_timeline.hpp"
+#include "SkrRenderGraph/phases_v2/queue_schedule.hpp"
 #include "SkrRenderGraph/phases_v2/pass_dependency_analysis.hpp"
 #include "SkrRenderGraph/frontend/pass_node.hpp"
 #include "SkrRenderGraph/frontend/resource_node.hpp"
 
+#define QUEUE_SCHEDULE_LOG SKR_LOG_DEBUG
+
 namespace skr {
 namespace render_graph {
 
-ScheduleTimeline::ScheduleTimeline(const PassDependencyAnalysis& dependency_analysis, 
-                                  const ScheduleTimelineConfig& cfg)
+QueueSchedule::QueueSchedule(const PassDependencyAnalysis& dependency_analysis, 
+                                  const QueueScheduleConfig& cfg)
     : config(cfg), dependency_analysis(dependency_analysis)
 {
 }
 
-ScheduleTimeline::~ScheduleTimeline() = default;
+QueueSchedule::~QueueSchedule() = default;
 
-void ScheduleTimeline::on_initialize(RenderGraph* graph) SKR_NOEXCEPT
+void QueueSchedule::on_initialize(RenderGraph* graph) SKR_NOEXCEPT
 {
     // 查询队列能力
     query_queue_capabilities(graph);
@@ -26,22 +28,22 @@ void ScheduleTimeline::on_initialize(RenderGraph* graph) SKR_NOEXCEPT
     schedule_result.pass_queue_assignments.clear();
 }
 
-void ScheduleTimeline::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
+void QueueSchedule::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
 {
     // 清理所有状态
     clear_frame_data();
 }
 
-void ScheduleTimeline::clear_frame_data() SKR_NOEXCEPT
+void QueueSchedule::clear_frame_data() SKR_NOEXCEPT
 {
     // 清理调度结果
     schedule_result.queue_schedules.clear();
     schedule_result.pass_queue_assignments.clear();
 }
 
-void ScheduleTimeline::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
+void QueueSchedule::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
-    SKR_LOG_DEBUG(u8"ScheduleTimeline: Starting timeline scheduling and fence allocation");
+    QUEUE_SCHEDULE_LOG(u8"QueueSchedule: Starting timeline scheduling and fence allocation");
     
     // 0. 清空上一帧的数据 - RG中的资源和Pass每帧都不稳定
     clear_frame_data();
@@ -55,7 +57,7 @@ void ScheduleTimeline::on_execute(RenderGraph* graph, RenderGraphProfiler* profi
     }
 }
 
-void ScheduleTimeline::query_queue_capabilities(RenderGraph* graph) SKR_NOEXCEPT
+void QueueSchedule::query_queue_capabilities(RenderGraph* graph) SKR_NOEXCEPT
 {
     // 清空队列信息（简化为单一数组）
     all_queues.clear();
@@ -115,11 +117,11 @@ void ScheduleTimeline::query_queue_capabilities(RenderGraph* graph) SKR_NOEXCEPT
         }
     }
     
-    SKR_LOG_DEBUG(u8"ScheduleTimeline: Queue setup - Graphics: %d, AsyncCompute: %d, Copy: %d",
+    QUEUE_SCHEDULE_LOG(u8"QueueSchedule: Queue setup - Graphics: %d, AsyncCompute: %d, Copy: %d",
                   graphics_count, compute_count, copy_count);
 }
 
-ERenderGraphQueueType ScheduleTimeline::classify_pass(PassNode* pass) SKR_NOEXCEPT
+ERenderGraphQueueType QueueSchedule::classify_pass(PassNode* pass) SKR_NOEXCEPT
 {
     // 1. Present Pass必须在Graphics队列
     if (pass->pass_type == EPassType::Present) {
@@ -151,15 +153,9 @@ ERenderGraphQueueType ScheduleTimeline::classify_pass(PassNode* pass) SKR_NOEXCE
     return ERenderGraphQueueType::Graphics;
 }
 
-// 注意：移除了基于Pass类型的队列能力推断方法
-// 现在队列分配完全基于手动标记：
-// - Present/Render Pass -> Graphics队列
-// - Copy Pass with can_be_lone() -> Copy队列  
-// - Compute Pass with PreferAsyncCompute flag -> AsyncCompute队列
-// - 其他 -> Graphics队列
-void ScheduleTimeline::assign_passes_to_queues(RenderGraph* graph) SKR_NOEXCEPT
+void QueueSchedule::assign_passes_to_queues(RenderGraph* graph) SKR_NOEXCEPT
 {
-    // 初始化队列调度结果（简化）
+    // 初始化队列调度结果
     schedule_result.all_queues = all_queues;
     schedule_result.queue_schedules.resize_default(all_queues.size());
     for (auto& schedule : schedule_result.queue_schedules)
@@ -167,34 +163,74 @@ void ScheduleTimeline::assign_passes_to_queues(RenderGraph* graph) SKR_NOEXCEPT
         schedule.clear();
     }
 
-    
-    // 直接遍历Pass进行分类和分配（简化的队列选择）
-    auto& passes = get_passes(graph);
-    for (auto* pass : passes) {
-        // 直接分类并选择队列（使用简化的队列查找）
-        auto preferred_type = classify_pass(pass);
-        uint32_t queue_idx = find_graphics_queue(); // 默认回退
-        
-        // 根据偏好类型选择队列（简化逻辑）
-        switch (preferred_type) {
-            case ERenderGraphQueueType::AsyncCompute:
-                queue_idx = find_least_loaded_compute_queue();
-                break;
-            case ERenderGraphQueueType::Copy:
-                queue_idx = find_copy_queue();
-                break;
-            case ERenderGraphQueueType::Graphics:
-            default:
-                queue_idx = find_graphics_queue();
-                break;
-        }
-        
-        schedule_result.queue_schedules[queue_idx].add(pass);
-        schedule_result.pass_queue_assignments[pass] = queue_idx;
-    }
+    // ✅ 新方法：基于拓扑排序结果进行调度
+    assign_passes_using_topology();
 }
 
-uint32_t ScheduleTimeline::find_graphics_queue() const SKR_NOEXCEPT
+void QueueSchedule::assign_passes_using_topology() SKR_NOEXCEPT
+{
+    // 获取逻辑拓扑排序结果
+    const auto& topology_result = dependency_analysis.get_logical_topology_result();
+    
+    QUEUE_SCHEDULE_LOG(u8"QueueSchedule: Using topology-based scheduling with %u dependency levels", 
+                  topology_result.max_logical_dependency_depth + 1);
+    
+    // 按依赖级别顺序调度Pass，确保依赖正确性
+    for (const auto& level : topology_result.logical_levels)
+    {
+        QUEUE_SCHEDULE_LOG(u8"  Processing dependency level %u with %u passes", 
+                      level.level, static_cast<uint32_t>(level.passes.size()));
+        
+        // 在同一依赖级别内，按照拓扑顺序分配Pass到队列
+        for (auto* pass : level.passes)
+        {
+            // 分类Pass并找到合适的队列
+            ERenderGraphQueueType preferred_queue_type = classify_pass(pass);
+            uint32_t target_queue_index;
+            
+            // 根据队列类型找到实际的队列索引
+            switch (preferred_queue_type)
+            {
+                case ERenderGraphQueueType::Graphics:
+                    target_queue_index = find_graphics_queue();
+                    break;
+                    
+                case ERenderGraphQueueType::AsyncCompute:
+                    target_queue_index = find_least_loaded_compute_queue();
+                    break;
+                    
+                case ERenderGraphQueueType::Copy:
+                    target_queue_index = find_copy_queue();
+                    break;
+                    
+                default:
+                    target_queue_index = find_graphics_queue();
+                    break;
+            }
+            
+            // 将Pass添加到选定的队列
+            if (target_queue_index < schedule_result.queue_schedules.size())
+            {
+                schedule_result.queue_schedules[target_queue_index].add(pass);
+                schedule_result.pass_queue_assignments[pass] = target_queue_index;
+                
+                QUEUE_SCHEDULE_LOG(u8"    Assigned pass '%s' to %s queue (index %u)", 
+                              pass->get_name(),
+                              get_queue_type_name(all_queues[target_queue_index].type),
+                              target_queue_index);
+            }
+            else
+            {
+                SKR_LOG_ERROR(u8"QueueSchedule: Invalid queue index %u for pass '%s'", 
+                              target_queue_index, pass->get_name());
+            }
+        }
+    }
+    
+    QUEUE_SCHEDULE_LOG(u8"QueueSchedule: Topology-based scheduling completed");
+}
+
+uint32_t QueueSchedule::find_graphics_queue() const SKR_NOEXCEPT
 {
     for (uint32_t i = 0; i < all_queues.size(); ++i) {
         if (all_queues[i].type == ERenderGraphQueueType::Graphics) {
@@ -204,7 +240,7 @@ uint32_t ScheduleTimeline::find_graphics_queue() const SKR_NOEXCEPT
     return 0; // 应该总是有Graphics队列
 }
 
-uint32_t ScheduleTimeline::find_least_loaded_compute_queue() const SKR_NOEXCEPT
+uint32_t QueueSchedule::find_least_loaded_compute_queue() const SKR_NOEXCEPT
 {
     // 简化轮询：找到第一个计算队列即可，避免复杂的负载计算
     static uint32_t next_compute_index = 0;
@@ -225,7 +261,7 @@ uint32_t ScheduleTimeline::find_least_loaded_compute_queue() const SKR_NOEXCEPT
     return queue_idx;
 }
 
-uint32_t ScheduleTimeline::find_copy_queue() const SKR_NOEXCEPT
+uint32_t QueueSchedule::find_copy_queue() const SKR_NOEXCEPT
 {
     for (uint32_t i = 0; i < all_queues.size(); ++i) {
         if (all_queues[i].type == ERenderGraphQueueType::Copy) {
@@ -235,7 +271,7 @@ uint32_t ScheduleTimeline::find_copy_queue() const SKR_NOEXCEPT
     return find_graphics_queue(); // 回退
 }
 
-void ScheduleTimeline::dump_timeline_result(const char8_t* title, const TimelineScheduleResult& R) const SKR_NOEXCEPT
+void QueueSchedule::dump_timeline_result(const char8_t* title, const TimelineScheduleResult& R) const SKR_NOEXCEPT
 {
     SKR_LOG_INFO(u8"═══════════════════════════════════════");
     SKR_LOG_INFO(u8"%s", title);

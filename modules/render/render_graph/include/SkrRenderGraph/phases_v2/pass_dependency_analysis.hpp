@@ -31,24 +31,87 @@ struct ResourceDependency {
     ECGPUResourceState previous_state;       // Previous pass resource state
 };
 
-// Pass dependencies result (extended with scheduling info)
-struct PassDependencies {
-    skr::Vector<ResourceDependency> resource_dependencies; // All resource dependencies of this pass
+// 逻辑拓扑分析结果
+struct LogicalTopologyResult
+{
+    struct DependencyLevel
+    {
+        uint32_t level = 0;
+        skr::Vector<PassNode*> passes;  // 该级别中的所有Pass
+        
+        // 统计信息
+        uint32_t total_resources_accessed = 0;  // 该级别访问的资源总数
+        uint32_t cross_level_dependencies = 0;  // 跨级别依赖数
+    };
+    
+    // === 逻辑拓扑信息（基于依赖关系，永不变） ===
+    skr::Vector<DependencyLevel> logical_levels;         // 按逻辑依赖级别分组的Pass
+    skr::Vector<PassNode*> logical_topological_order;    // 逻辑拓扑排序后的Pass列表
+    skr::Vector<PassNode*> logical_critical_path;        // 逻辑关键路径（基于依赖关系）
+    
+    // 统计信息
+    uint32_t max_logical_dependency_depth = 0;           // 最大逻辑依赖深度
+    uint32_t total_parallel_opportunities = 0;           // 可并行执行的Pass对数
+};
 
-    // For scheduling (extracted from timeline logic)
+// Pass dependencies result (逻辑依赖信息)
+struct PassDependencies {
+    // === 逻辑依赖信息（永不变，不受重排序影响） ===
+    skr::Vector<ResourceDependency> resource_dependencies; // All resource dependencies of this pass
     skr::Vector<PassNode*> dependent_passes;    // Pass-level dependencies (extracted from resource dependencies)
     skr::Vector<PassNode*> dependent_by_passes; // Pass-level dependents
-    // 注意：队列调度现在完全基于手动标记，移除了自动推断字段
+    
+    // 注意：逻辑拓扑信息已移至LogicalTopologyAnalyzer
 
     // Query interface
     bool has_dependency_on(PassNode* pass) const;
     skr::Vector<ResourceDependency> get_dependencies_on(PassNode* pass) const;
 };
 
+// 逻辑拓扑分析器 - 专门处理拓扑排序、依赖级别、关键路径等
+class SKR_RENDER_GRAPH_API LogicalTopologyAnalyzer
+{
+public:
+    LogicalTopologyAnalyzer() = default;
+    ~LogicalTopologyAnalyzer() = default;
+
+    // 主要分析接口
+    void analyze_topology(const skr::FlatHashMap<PassNode*, PassDependencies>& pass_dependencies);
+    
+    // 查询接口
+    const LogicalTopologyResult& get_result() const { return topology_result_; }
+    uint32_t get_topological_order(PassNode* pass) const;
+    uint32_t get_dependency_level(PassNode* pass) const;
+    uint32_t get_critical_path_length(PassNode* pass) const;
+    bool can_execute_in_parallel_logically(PassNode* pass1, PassNode* pass2) const;
+    
+    // 调试接口
+    void dump_topology() const;
+    void dump_critical_path() const;
+
+private:
+    LogicalTopologyResult topology_result_;
+    skr::FlatHashMap<PassNode*, uint32_t> pass_to_order_;  // 快速查询缓存
+    
+    // 核心算法
+    void perform_topological_sort(const skr::FlatHashMap<PassNode*, PassDependencies>& dependencies);
+    void calculate_dependency_levels(const skr::FlatHashMap<PassNode*, PassDependencies>& dependencies);
+    void identify_critical_path(const skr::FlatHashMap<PassNode*, PassDependencies>& dependencies);
+    void collect_statistics();
+    
+    // DFS辅助方法
+    void topological_sort_dfs(PassNode* node, 
+                              const skr::FlatHashMap<PassNode*, PassDependencies>& dependencies,
+                              skr::FlatHashSet<PassNode*>& visited,
+                              skr::FlatHashSet<PassNode*>& on_stack,
+                              skr::Vector<PassNode*>& sorted_passes,
+                              bool& has_cycle);
+};
+
 // Forward declaration
 class PassInfoAnalysis;
 
-// Pass dependency analysis phase - 独立的RenderGraph阶段
+// Pass dependency analysis phase - 逻辑依赖分析+拓扑排序
 class SKR_RENDER_GRAPH_API PassDependencyAnalysis : public IRenderGraphPhase
 {
 public:
@@ -64,21 +127,37 @@ public:
     const PassDependencies* get_pass_dependencies(PassNode* pass) const;
     bool has_dependencies(PassNode* pass) const;
 
-    // For ScheduleTimeline - get pass-level dependencies directly
+    // For QueueSchedule - get pass-level dependencies directly
     const skr::Vector<PassNode*>& get_dependent_passes(PassNode* pass) const;
     const skr::Vector<PassNode*>& get_dependent_by_passes(PassNode* pass) const;
+    
+    // 逻辑拓扑查询 - 委托给LogicalTopologyAnalyzer
+    uint32_t get_logical_dependency_level(PassNode* pass) const { return topology_analyzer_.get_dependency_level(pass); }
+    uint32_t get_logical_topological_order(PassNode* pass) const { return topology_analyzer_.get_topological_order(pass); }
+    uint32_t get_logical_critical_path_length(PassNode* pass) const { return topology_analyzer_.get_critical_path_length(pass); }
+    const LogicalTopologyResult& get_logical_topology_result() const { return topology_analyzer_.get_result(); }
+    const skr::Vector<PassNode*>& get_logical_topological_order() const { return topology_analyzer_.get_result().logical_topological_order; }
+    const skr::Vector<PassNode*>& get_logical_critical_path() const { return topology_analyzer_.get_result().logical_critical_path; }
+    
+    // 逻辑并行性查询
+    bool can_execute_in_parallel_logically(PassNode* pass1, PassNode* pass2) const { return topology_analyzer_.can_execute_in_parallel_logically(pass1, pass2); }
 
     // Debug output
     void dump_dependencies() const;
+    void dump_logical_topology() const { topology_analyzer_.dump_topology(); }
+    void dump_logical_critical_path() const { topology_analyzer_.dump_critical_path(); }
 
 private:
     // Analysis result: Pass -> its dependency info
     skr::FlatHashMap<PassNode*, PassDependencies> pass_dependencies_;
+    
+    // 逻辑拓扑分析器 - 专门处理拓扑相关算法
+    LogicalTopologyAnalyzer topology_analyzer_;
 
     // Reference to pass info analysis (to avoid recomputation)
     const PassInfoAnalysis& pass_info_analysis;
 
-    // Helper methods
+    // 依赖分析方法
     void analyze_pass_dependencies(PassNode* current_pass, const skr::Vector<PassNode*>& previous_passes);
     void build_pass_level_dependencies(); // Extract pass-level dependency info from resource dependencies
     bool has_resource_conflict(EResourceAccessType current, EResourceAccessType previous, EResourceDependencyType& out_dependency_type);
