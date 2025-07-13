@@ -95,6 +95,7 @@ public:
             SHiresTimer timer;
             skr_init_hires_timer(&timer);
             info_analysis.on_execute(graph, nullptr);
+            dependency_analysis.on_execute(graph, nullptr);
             auto infoAnalysisTime = skr_hires_timer_get_usec(&timer, true);
             
             dependency_analysis.on_execute(graph, nullptr);

@@ -61,52 +61,16 @@ struct PassDependencies {
     skr::Vector<PassNode*> dependent_passes;    // Pass-level dependencies (extracted from resource dependencies)
     skr::Vector<PassNode*> dependent_by_passes; // Pass-level dependents
     
-    // 注意：逻辑拓扑信息已移至LogicalTopologyAnalyzer
+    // === 逻辑拓扑信息（基于依赖关系，一次计算永不变） ===
+    uint32_t logical_dependency_level = 0;       // 逻辑依赖级别（最长路径深度）
+    uint32_t logical_topological_order = 0;      // 逻辑拓扑排序索引
+    uint32_t logical_critical_path_length = 0;   // 逻辑关键路径长度（依赖链深度）
 
     // Query interface
     bool has_dependency_on(PassNode* pass) const;
     skr::Vector<ResourceDependency> get_dependencies_on(PassNode* pass) const;
 };
 
-// 逻辑拓扑分析器 - 专门处理拓扑排序、依赖级别、关键路径等
-class SKR_RENDER_GRAPH_API LogicalTopologyAnalyzer
-{
-public:
-    LogicalTopologyAnalyzer() = default;
-    ~LogicalTopologyAnalyzer() = default;
-
-    // 主要分析接口
-    void analyze_topology(const skr::FlatHashMap<PassNode*, PassDependencies>& pass_dependencies);
-    
-    // 查询接口
-    const LogicalTopologyResult& get_result() const { return topology_result_; }
-    uint32_t get_topological_order(PassNode* pass) const;
-    uint32_t get_dependency_level(PassNode* pass) const;
-    uint32_t get_critical_path_length(PassNode* pass) const;
-    bool can_execute_in_parallel_logically(PassNode* pass1, PassNode* pass2) const;
-    
-    // 调试接口
-    void dump_topology() const;
-    void dump_critical_path() const;
-
-private:
-    LogicalTopologyResult topology_result_;
-    skr::FlatHashMap<PassNode*, uint32_t> pass_to_order_;  // 快速查询缓存
-    
-    // 核心算法
-    void perform_topological_sort(const skr::FlatHashMap<PassNode*, PassDependencies>& dependencies);
-    void calculate_dependency_levels(const skr::FlatHashMap<PassNode*, PassDependencies>& dependencies);
-    void identify_critical_path(const skr::FlatHashMap<PassNode*, PassDependencies>& dependencies);
-    void collect_statistics();
-    
-    // DFS辅助方法
-    void topological_sort_dfs(PassNode* node, 
-                              const skr::FlatHashMap<PassNode*, PassDependencies>& dependencies,
-                              skr::FlatHashSet<PassNode*>& visited,
-                              skr::FlatHashSet<PassNode*>& on_stack,
-                              skr::Vector<PassNode*>& sorted_passes,
-                              bool& has_cycle);
-};
 
 // Forward declaration
 class PassInfoAnalysis;
@@ -131,28 +95,28 @@ public:
     const skr::Vector<PassNode*>& get_dependent_passes(PassNode* pass) const;
     const skr::Vector<PassNode*>& get_dependent_by_passes(PassNode* pass) const;
     
-    // 逻辑拓扑查询 - 委托给LogicalTopologyAnalyzer
-    uint32_t get_logical_dependency_level(PassNode* pass) const { return topology_analyzer_.get_dependency_level(pass); }
-    uint32_t get_logical_topological_order(PassNode* pass) const { return topology_analyzer_.get_topological_order(pass); }
-    uint32_t get_logical_critical_path_length(PassNode* pass) const { return topology_analyzer_.get_critical_path_length(pass); }
-    const LogicalTopologyResult& get_logical_topology_result() const { return topology_analyzer_.get_result(); }
-    const skr::Vector<PassNode*>& get_logical_topological_order() const { return topology_analyzer_.get_result().logical_topological_order; }
-    const skr::Vector<PassNode*>& get_logical_critical_path() const { return topology_analyzer_.get_result().logical_critical_path; }
+    // 逻辑拓扑查询 (NEW)
+    uint32_t get_logical_dependency_level(PassNode* pass) const;
+    uint32_t get_logical_topological_order(PassNode* pass) const;
+    uint32_t get_logical_critical_path_length(PassNode* pass) const;
+    const LogicalTopologyResult& get_logical_topology_result() const { return logical_topology_; }
+    const skr::Vector<PassNode*>& get_logical_topological_order() const { return logical_topology_.logical_topological_order; }
+    const skr::Vector<PassNode*>& get_logical_critical_path() const { return logical_topology_.logical_critical_path; }
     
     // 逻辑并行性查询
-    bool can_execute_in_parallel_logically(PassNode* pass1, PassNode* pass2) const { return topology_analyzer_.can_execute_in_parallel_logically(pass1, pass2); }
+    bool can_execute_in_parallel_logically(PassNode* pass1, PassNode* pass2) const;
 
     // Debug output
     void dump_dependencies() const;
-    void dump_logical_topology() const { topology_analyzer_.dump_topology(); }
-    void dump_logical_critical_path() const { topology_analyzer_.dump_critical_path(); }
+    void dump_logical_topology() const;
+    void dump_logical_critical_path() const;
 
 private:
     // Analysis result: Pass -> its dependency info
     skr::FlatHashMap<PassNode*, PassDependencies> pass_dependencies_;
     
-    // 逻辑拓扑分析器 - 专门处理拓扑相关算法
-    LogicalTopologyAnalyzer topology_analyzer_;
+    // 逻辑拓扑分析结果 (NEW)
+    LogicalTopologyResult logical_topology_;
 
     // Reference to pass info analysis (to avoid recomputation)
     const PassInfoAnalysis& pass_info_analysis;
@@ -161,6 +125,19 @@ private:
     void analyze_pass_dependencies(PassNode* current_pass, const skr::Vector<PassNode*>& previous_passes);
     void build_pass_level_dependencies(); // Extract pass-level dependency info from resource dependencies
     bool has_resource_conflict(EResourceAccessType current, EResourceAccessType previous, EResourceDependencyType& out_dependency_type);
+    
+    // 逻辑拓扑分析方法 (NEW)
+    void perform_logical_topological_sort();
+    void calculate_logical_dependency_levels();
+    void identify_logical_critical_path();
+    void collect_logical_topology_statistics();
+    
+    // 逻辑拓扑排序的DFS辅助方法
+    void logical_topological_sort_dfs(PassNode* node, 
+                                     skr::FlatHashSet<PassNode*>& visited,
+                                     skr::FlatHashSet<PassNode*>& on_stack,
+                                     skr::Vector<PassNode*>& sorted_passes,
+                                     bool& has_cycle);
 };
 
 } // namespace render_graph
