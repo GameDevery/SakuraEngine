@@ -180,7 +180,6 @@ void PassDependencyAnalysis::build_pass_level_dependencies()
 bool PassDependencyAnalysis::has_resource_conflict(EResourceAccessType current, EResourceAccessType previous, 
                                                    EResourceDependencyType& out_dependency_type)
 {
-    // RAR: Read After Read - usually no sync needed, but record dependency
     if (current == EResourceAccessType::Read && previous == EResourceAccessType::Read)
     {
         out_dependency_type = EResourceDependencyType::RAR;

@@ -4,6 +4,10 @@
 
 SakuraEngine 使用自研的构建系统 **SB** (Sakura Build)，这是一个基于 C# 开发的高性能构建系统，专门为大型游戏引擎项目设计。
 
+- VS 工程生成的概要文档 @docs/build_system/vs_solution.md
+- VSCode 调试配置生成 @docs/build_system/vscode_debug.md
+- TaskEmitter 开发指南 @docs/build_system/task_emitter_guide.md
+
 ## 核心特性
 
 ### 目标导向架构

@@ -3,8 +3,7 @@
 #include "SkrRenderGraph/frontend/base_types.hpp"
 #include "pass_dependency_analysis.hpp"
 #include "SkrContainersDef/vector.hpp"
-#include "SkrContainersDef/hashmap.hpp"
-#include "SkrContainersDef/bitset.hpp"
+#include "SkrContainersDef/map.hpp"
 
 // Forward declarations
 namespace skr { namespace render_graph { class PassDependencyAnalysis; } }
@@ -32,46 +31,22 @@ struct QueueCapabilities
     CGPUQueueId queue_handle = nullptr;  // 队列句柄
 };
 
-// 同步需求 - ScheduleTimeline的调度输出
-struct SyncRequirement 
-{
-    uint32_t signal_queue_index;    // 发信号的队列
-    uint32_t wait_queue_index;      // 等待信号的队列
-    PassNode* signal_after_pass;    // 在哪个Pass执行后发信号
-    PassNode* wait_before_pass;     // 在哪个Pass执行前等待
-};
-
-// 队列调度信息
-struct QueueScheduleInfo 
-{
-    ERenderGraphQueueType queue_type;
-    uint32_t queue_index;
-    skr::Vector<PassNode*> scheduled_passes;    // 调度的Pass序列
+struct QueueInfo {
+    ERenderGraphQueueType type;
+    uint32_t index;
+    CGPUQueueId handle;
+    bool supports_graphics = false;
+    bool supports_compute = false;
+    bool supports_copy = false;
+    bool supports_present = false;
 };
 
 // ScheduleTimeline的输出结果
 struct TimelineScheduleResult 
 {
-    skr::Vector<QueueScheduleInfo> queue_schedules;    // 各队列的调度信息
-    skr::Vector<SyncRequirement> sync_requirements;    // 同步需求
+    skr::span<QueueInfo> all_queues;
+    skr::Vector<skr::Vector<PassNode*>> queue_schedules;    // 各队列的调度信息
     skr::FlatHashMap<PassNode*, uint32_t> pass_queue_assignments; // Pass到队列的映射
-};
-
-// Pass依赖信息
-struct PassDependencyInfo 
-{
-    skr::Vector<PassNode*> dependencies;            // 依赖的Pass列表
-    skr::Vector<PassNode*> dependents;              // 被依赖的Pass列表
-    // 注意：队列分配现在完全基于手动标记，移除了自动推断逻辑
-};
-
-// 跨队列依赖
-struct CrossQueueDependency 
-{
-    PassNode* from_pass;
-    uint32_t from_queue;
-    PassNode* to_pass;
-    uint32_t to_queue;
 };
 
 // Timeline Phase 配置
@@ -112,7 +87,6 @@ private:
     // 编译阶段
     void analyze_dependencies(RenderGraph* graph) SKR_NOEXCEPT;
     void assign_passes_to_queues(RenderGraph* graph) SKR_NOEXCEPT;
-    void calculate_sync_requirements(RenderGraph* graph) SKR_NOEXCEPT;
 
     // Pass分类和调度
     ERenderGraphQueueType classify_pass(PassNode* pass) SKR_NOEXCEPT;
@@ -120,21 +94,8 @@ private:
 
 private:
     ScheduleTimelineConfig config;
-    
-    // 统一的队列信息 - 简化管理，减少复杂度
-    struct QueueInfo {
-        ERenderGraphQueueType type;
-        uint32_t index;
-        CGPUQueueId handle;
-        bool supports_graphics = false;
-        bool supports_compute = false;
-        bool supports_copy = false;
-        bool supports_present = false;
-    };
+
     skr::Vector<QueueInfo> all_queues;  // 统一管理所有队列，按类型分组
-    
-    // Pass调度信息 - 每帧重建（简化，删除冗余存储）
-    skr::FlatHashMap<PassNode*, PassDependencyInfo> dependency_info;
     
     // 引用传入的依赖分析器
     const PassDependencyAnalysis& dependency_analysis;

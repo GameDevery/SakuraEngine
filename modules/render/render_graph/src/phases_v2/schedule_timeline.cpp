@@ -23,7 +23,6 @@ void ScheduleTimeline::on_initialize(RenderGraph* graph) SKR_NOEXCEPT
     
     // 初始化调度结果
     schedule_result.queue_schedules.clear();
-    schedule_result.sync_requirements.clear(); 
     schedule_result.pass_queue_assignments.clear();
 }
 
@@ -37,11 +36,7 @@ void ScheduleTimeline::clear_frame_data() SKR_NOEXCEPT
 {
     // 清理调度结果
     schedule_result.queue_schedules.clear();
-    schedule_result.sync_requirements.clear();
     schedule_result.pass_queue_assignments.clear();
-    
-    // 清理每帧重建的数据（简化）
-    dependency_info.clear();
 }
 
 void ScheduleTimeline::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
@@ -57,16 +52,10 @@ void ScheduleTimeline::on_execute(RenderGraph* graph, RenderGraphProfiler* profi
     // 2. 分类并分配Pass到队列
     assign_passes_to_queues(graph);
     
-    // 4. 计算同步需求
-    calculate_sync_requirements(graph);
-    
     // 可选：输出调试信息
     if (config.enable_debug_output) {
         dump_timeline_result(u8"Timeline Schedule", schedule_result);
     }
-    
-    SKR_LOG_DEBUG(u8"ScheduleTimeline: Scheduling completed. Queues: %d, SyncRequirements: %d", 
-                  (int)schedule_result.queue_schedules.size(), (int)schedule_result.sync_requirements.size());
 }
 
 void ScheduleTimeline::query_queue_capabilities(RenderGraph* graph) SKR_NOEXCEPT
@@ -133,47 +122,6 @@ void ScheduleTimeline::query_queue_capabilities(RenderGraph* graph) SKR_NOEXCEPT
                   graphics_count, compute_count, copy_count);
 }
 
-void ScheduleTimeline::analyze_dependencies(RenderGraph* graph) SKR_NOEXCEPT
-{
-    dependency_info.clear();
-    
-    auto& passes = get_passes(graph);
-    
-    // 使用传入的 PassDependencyAnalysis 的分析结果
-    SKR_LOG_INFO(u8"ScheduleTimeline: using real dependency analysis results");
-    
-    // 构建Pass级别的依赖图
-    for (auto* pass : passes) {
-        auto& info = dependency_info[pass];
-        
-        // 从 PassDependencyAnalysis 结果提取依赖关系
-        const PassDependencies* pass_deps = dependency_analysis.get_pass_dependencies(pass);
-        if (pass_deps != nullptr)
-        {
-            // 收集此 Pass 依赖的所有前置 Pass
-            skr::InlineSet<PassNode*, 4> unique_dependencies;
-            
-            for (const auto& resource_dep : pass_deps->resource_dependencies)
-            {
-                unique_dependencies.add(resource_dep.dependent_pass);
-            }
-            
-            // 添加到依赖信息中
-            for (PassNode* dep_pass : unique_dependencies)
-            {
-                info.dependencies.add(dep_pass);
-                dependency_info[dep_pass].dependents.add(pass);
-            }
-        }
-    }
-    
-    // 输出调试信息
-    dependency_analysis.dump_dependencies();
-    
-    SKR_LOG_INFO(u8"ScheduleTimeline: dependency analysis completed for {} passes", passes.size());
-}
-
-
 ERenderGraphQueueType ScheduleTimeline::classify_pass(PassNode* pass) SKR_NOEXCEPT
 {
     // 1. Present Pass必须在Graphics队列
@@ -212,16 +160,16 @@ ERenderGraphQueueType ScheduleTimeline::classify_pass(PassNode* pass) SKR_NOEXCE
 // - Copy Pass with can_be_lone() -> Copy队列  
 // - Compute Pass with PreferAsyncCompute flag -> AsyncCompute队列
 // - 其他 -> Graphics队列
-
 void ScheduleTimeline::assign_passes_to_queues(RenderGraph* graph) SKR_NOEXCEPT
 {
     // 初始化队列调度结果（简化）
-    schedule_result.queue_schedules.clear();
-    schedule_result.queue_schedules.reserve(all_queues.size());
-    for (uint32_t i = 0; i < all_queues.size(); ++i) {
-        const auto& queue = all_queues[i];
-        schedule_result.queue_schedules.add(QueueScheduleInfo{queue.type, i});
+    schedule_result.all_queues = all_queues;
+    schedule_result.queue_schedules.resize_default(all_queues.size());
+    for (auto& schedule : schedule_result.queue_schedules)
+    {
+        schedule.clear();
     }
+
     
     // 直接遍历Pass进行分类和分配（简化的队列选择）
     auto& passes = get_passes(graph);
@@ -244,8 +192,7 @@ void ScheduleTimeline::assign_passes_to_queues(RenderGraph* graph) SKR_NOEXCEPT
                 break;
         }
         
-        // 分配到队列（简化，只保留一个映射）
-        schedule_result.queue_schedules[queue_idx].scheduled_passes.add(pass);
+        schedule_result.queue_schedules[queue_idx].add(pass);
         schedule_result.pass_queue_assignments[pass] = queue_idx;
     }
 }
@@ -291,61 +238,6 @@ uint32_t ScheduleTimeline::find_copy_queue() const SKR_NOEXCEPT
     return find_graphics_queue(); // 回退
 }
 
-void ScheduleTimeline::calculate_sync_requirements(RenderGraph* graph) SKR_NOEXCEPT
-{
-    schedule_result.sync_requirements.clear();
-    
-    // 为每个跨队列依赖关系生成独立的同步需求，跳过RAR依赖
-    skr::Vector<SyncRequirement> sync_requirements;
-    
-    for (auto& [pass, queue] : schedule_result.pass_queue_assignments) {
-        // 从PassDependencyAnalysis获取详细的资源依赖信息
-        const PassDependencies* pass_deps = dependency_analysis.get_pass_dependencies(pass);
-        if (!pass_deps) continue;
-        
-        for (const auto& resource_dep : pass_deps->resource_dependencies) {
-            // 跳过RAR依赖 - 多个队列可以并行读取同一资源
-            if (resource_dep.dependency_type == EResourceDependencyType::RAR) {
-                continue;
-            }
-            
-            auto* dep_pass = resource_dep.dependent_pass;
-            auto dep_queue_iter = schedule_result.pass_queue_assignments.find(dep_pass);
-            if (dep_queue_iter != schedule_result.pass_queue_assignments.end()) {
-                auto dep_queue = dep_queue_iter->second;
-                if (dep_queue != queue) {
-                    // 为每个跨队列依赖创建独立的同步需求
-                    SyncRequirement requirement;
-                    requirement.signal_queue_index = dep_queue;
-                    requirement.wait_queue_index = queue;
-                    requirement.signal_after_pass = dep_pass;
-                    requirement.wait_before_pass = pass;
-                    
-                    // 检查是否已存在相同的同步需求(避免重复)
-                    bool duplicate = false;
-                    for (const auto& existing : sync_requirements) {
-                        if (existing.signal_queue_index == requirement.signal_queue_index &&
-                            existing.wait_queue_index == requirement.wait_queue_index &&
-                            existing.signal_after_pass == requirement.signal_after_pass &&
-                            existing.wait_before_pass == requirement.wait_before_pass) {
-                            duplicate = true;
-                            break;
-                        }
-                    }
-                    
-                    if (!duplicate) {
-                        sync_requirements.add(requirement);
-                    }
-                }
-            }
-        }
-    }
-    
-    // 移动到最终结果
-    schedule_result.sync_requirements = std::move(sync_requirements);
-}
-
-
 void ScheduleTimeline::dump_timeline_result(const char8_t* title, const TimelineScheduleResult& R) const SKR_NOEXCEPT
 {
     SKR_LOG_INFO(u8"═══════════════════════════════════════");
@@ -356,11 +248,12 @@ void ScheduleTimeline::dump_timeline_result(const char8_t* title, const Timeline
     SKR_LOG_INFO(u8"📅 Queue Schedules (%d queues):", (int)R.queue_schedules.size());
     for (size_t i = 0; i < R.queue_schedules.size(); ++i) {
         const auto& queue_schedule = R.queue_schedules[i];
-        const char8_t* queue_name = get_queue_type_name(queue_schedule.queue_type);
+        const auto& queue_info = R.all_queues[i];
+        const char8_t* queue_name = get_queue_type_name(queue_info.type);
         
         // 为多队列类型添加索引标识
         skr::String queue_display_name;
-        if (queue_schedule.queue_type == ERenderGraphQueueType::AsyncCompute && all_queues.size() > 1) {
+        if (queue_info.type == ERenderGraphQueueType::AsyncCompute && all_queues.size() > 1) {
             uint32_t index = all_queues.find_if([i](auto q) { return q.index == i; }).index();
             queue_display_name = skr::format(u8"{}#{}", queue_name, index);
         } else {
@@ -368,11 +261,10 @@ void ScheduleTimeline::dump_timeline_result(const char8_t* title, const Timeline
         }
         
         SKR_LOG_INFO(u8"  [%zu] %s Queue (index=%d, %d passes):", 
-                     i, queue_display_name.c_str(), queue_schedule.queue_index, 
-                     (int)queue_schedule.scheduled_passes.size());
+                     i, queue_display_name.c_str(), queue_info.index, (int)queue_schedule.size());
         
-        for (size_t j = 0; j < queue_schedule.scheduled_passes.size(); ++j) {
-            auto* pass = queue_schedule.scheduled_passes[j];
+        for (size_t j = 0; j < queue_schedule.size(); ++j) {
+            auto* pass = queue_schedule[j];
             const char8_t* pass_type_name = u8"Unknown";
             
             switch (pass->pass_type) {
@@ -387,42 +279,15 @@ void ScheduleTimeline::dump_timeline_result(const char8_t* title, const Timeline
         }
     }
     
-    // 打印同步需求
-    SKR_LOG_INFO(u8"");
-    SKR_LOG_INFO(u8"🔄 Sync Requirements (%d requirements):", (int)R.sync_requirements.size());
-    
-    if (R.sync_requirements.is_empty()) {
-        SKR_LOG_INFO(u8"  ✅ No cross-queue synchronization needed");
-    } else {
-        for (size_t i = 0; i < R.sync_requirements.size(); ++i) {
-            const auto& requirement = R.sync_requirements[i];
-            
-            const char8_t* signal_queue_name = u8"Unknown";
-            const char8_t* wait_queue_name = u8"Unknown";
-            
-            if (requirement.signal_queue_index < R.queue_schedules.size()) {
-                signal_queue_name = get_queue_type_name(R.queue_schedules[requirement.signal_queue_index].queue_type);
-            }
-            if (requirement.wait_queue_index < R.queue_schedules.size()) {
-                wait_queue_name = get_queue_type_name(R.queue_schedules[requirement.wait_queue_index].queue_type);
-            }
-            
-            SKR_LOG_INFO(u8"  [%zu] %s[%d] --signal--> %s[%d]", 
-                         i, signal_queue_name, requirement.signal_queue_index,
-                         wait_queue_name, requirement.wait_queue_index);
-            SKR_LOG_INFO(u8"       Signal after: %s, Wait before: %s",
-                         requirement.signal_after_pass->get_name(), requirement.wait_before_pass->get_name());
-        }
-    }
-    
     // 打印Pass映射统计
     SKR_LOG_INFO(u8"");
     SKR_LOG_INFO(u8"📊 Pass Assignment Summary:");
     
     uint32_t graphics_count = 0, compute_count = 0, copy_count = 0;
-    for (const auto& [pass, queue_idx] : R.pass_queue_assignments) {
+    for (const auto& [pass, queue_idx] : R.pass_queue_assignments) 
+    {
         if (queue_idx < R.queue_schedules.size()) {
-            auto queue_type = R.queue_schedules[queue_idx].queue_type;
+            auto queue_type = R.all_queues[queue_idx].type;
             switch (queue_type) {
                 case ERenderGraphQueueType::Graphics: graphics_count++; break;
                 case ERenderGraphQueueType::AsyncCompute: compute_count++; break;

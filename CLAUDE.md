@@ -17,10 +17,6 @@ dotnet run SB build --target= # 构建引擎模块
 目前项目使用的构建系统是采用 C# 自研的 SB，而不是 xmake。xmake 脚本虽然存在，但是已经要被弃用。
 
 - 构建系统的概要文档 @docs/build_system/overview.md
-- VS 工程生成的概要文档 @docs/build_system/vs_solution.md
-- VSCode 调试配置生成 @docs/build_system/vscode_debug.md
-- TaskEmitter 开发指南 @docs/build_system/task_emitter_guide.md
-
 - SB 的代码目录在 tools/SB 下；
 - SB 封装了 EntityFramework ，在 Dependency.cs 的类里操作数据库，提供缓存验证和增量构建等功能。尽量使用 Dependency 而不是直接用 EntityFramework 进行数据库读写。
 - SB 使用 TaskEmitter 来承托面向目标的功能，例如代码编译，程序链接，等等。实现业务功能时要尽量基于 TaskEmitter；

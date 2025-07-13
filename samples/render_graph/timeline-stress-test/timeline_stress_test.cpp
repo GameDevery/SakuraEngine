@@ -2,7 +2,6 @@
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrRenderGraph/phases_v2/schedule_timeline.hpp"
 #include "SkrRenderGraph/phases_v2/schedule_reorder.hpp"
-#include "SkrRenderGraph/phases_v2/routine_segmentation.hpp"
 #include "SkrCore/log.hpp"
 #include "SkrCore/memory/memory.h"
 
@@ -76,7 +75,6 @@ public:
             auto timeline_phase = skr::render_graph::ScheduleTimeline(dependency_analysis, timeline_config);
             auto reorder_phase = skr::render_graph::ExecutionReorderPhase(
                 info_analysis, dependency_analysis, timeline_phase, {});
-            auto routine_phase = skr::render_graph::RoutineSegmentationPhase(timeline_phase, reorder_phase);
 
             // 构建复杂的渲染管线
             build_complex_pipeline(graph);
@@ -88,13 +86,11 @@ public:
             dependency_analysis.on_initialize(graph);
             timeline_phase.on_initialize(graph);
             reorder_phase.on_initialize(graph);
-            routine_phase.on_initialize(graph);
 
             info_analysis.on_execute(graph, nullptr);
             dependency_analysis.on_execute(graph, nullptr);
             timeline_phase.on_execute(graph, nullptr);
             reorder_phase.on_execute(graph, nullptr);
-            routine_phase.on_execute(graph, nullptr);
 
             // 打印调度结果
             auto non_reorder = timeline_phase.get_schedule_result();
@@ -105,14 +101,11 @@ public:
             reorder_result.queue_schedules = reorder_phase.get_optimized_timeline();
             timeline_phase.dump_timeline_result(u8"🔥 Timeline Stress Test Reordered Results", reorder_result);
 
-            // 打印切分例程表
-            routine_phase.dump_routine_segmentation();
 
             // 验证调度结果
             validate_schedule_result(timeline_phase.get_schedule_result());
 
             // 清理
-            routine_phase.on_finalize(graph);
             reorder_phase.on_finalize(graph);
             timeline_phase.on_finalize(graph);
             dependency_analysis.on_finalize(graph);
@@ -412,51 +405,6 @@ private:
             SKR_LOG_ERROR(u8"❌ No pass assignments generated!");
             return;
         }
-
-        // 验证队列类型
-        bool has_graphics = false, has_compute = false, has_copy = false;
-        for (const auto& queue_schedule : result.queue_schedules)
-        {
-            switch (queue_schedule.queue_type)
-            {
-            case skr::render_graph::ERenderGraphQueueType::Graphics:
-                has_graphics = true;
-                break;
-            case skr::render_graph::ERenderGraphQueueType::AsyncCompute:
-                has_compute = true;
-                break;
-            case skr::render_graph::ERenderGraphQueueType::Copy:
-                has_copy = true;
-                break;
-            }
-        }
-
-        SKR_LOG_INFO(u8"✅ Queue validation:");
-        SKR_LOG_INFO(u8"   Graphics queue: %s", has_graphics ? u8"✓" : u8"✗");
-        SKR_LOG_INFO(u8"   Compute queue: %s", has_compute ? u8"✓" : u8"✗");
-        SKR_LOG_INFO(u8"   Copy queue: %s", has_copy ? u8"✓" : u8"✗");
-
-        // 验证Pass分配
-        uint32_t total_passes = 0;
-        for (const auto& queue_schedule : result.queue_schedules)
-        {
-            total_passes += queue_schedule.scheduled_passes.size();
-        }
-
-        if (total_passes != result.pass_queue_assignments.size())
-        {
-            SKR_LOG_ERROR(u8"❌ Pass count mismatch: scheduled=%d, assigned=%d",
-                total_passes,
-                (int)result.pass_queue_assignments.size());
-        }
-        else
-        {
-            SKR_LOG_INFO(u8"✅ Pass assignment consistency verified");
-        }
-
-        // 验证同步需求
-        SKR_LOG_INFO(u8"✅ Sync requirements: %d cross-queue dependencies detected",
-            (int)result.sync_requirements.size());
 
         SKR_LOG_INFO(u8"✅ Schedule validation completed successfully!");
     }

@@ -33,7 +33,7 @@ void ExecutionReorderPhase::on_execute(RenderGraph* graph, RenderGraphProfiler* 
     render_graph = graph;
     
     // Step 1: Create a copy of the timeline
-    create_timeline_copy();
+    working_timeline = timeline_schedule.get_schedule_result().queue_schedules;
     
     // Step 2: Run graph-based optimization (no need to rebuild resource chains!)
     run_graph_based_optimization();
@@ -49,24 +49,6 @@ void ExecutionReorderPhase::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
     render_graph = nullptr;
 }
 
-// Create a copy of the timeline for optimization
-void ExecutionReorderPhase::create_timeline_copy() SKR_NOEXCEPT
-{
-    const auto& original_result = timeline_schedule.get_schedule_result();
-    
-    working_timeline.clear();
-    working_timeline.reserve(original_result.queue_schedules.size());
-    
-    for (const auto& queue_schedule : original_result.queue_schedules)
-    {
-        QueueScheduleInfo copy;
-        copy.queue_index = queue_schedule.queue_index;
-        copy.queue_type = queue_schedule.queue_type;
-        copy.scheduled_passes = queue_schedule.scheduled_passes; // Vector copy
-        working_timeline.add(copy);
-    }
-}
-
 // Run graph-based optimization - much simpler!
 void ExecutionReorderPhase::run_graph_based_optimization() SKR_NOEXCEPT
 {
@@ -75,18 +57,17 @@ void ExecutionReorderPhase::run_graph_based_optimization() SKR_NOEXCEPT
     // Optimize each queue independently
     for (size_t i = 0; i < working_timeline.size(); ++i)
     {
-        optimize_queue_with_graph(working_timeline[i].queue_index);
+        optimize_queue_with_graph(i);
     }
 }
 
 // Optimize a single queue using RenderGraph DAG - simplified single-pass algorithm
 void ExecutionReorderPhase::optimize_queue_with_graph(uint32_t queue_idx) SKR_NOEXCEPT
 {
-    auto* queue_schedule = find_queue_schedule(queue_idx);
-    if (!queue_schedule || queue_schedule->scheduled_passes.size() < 2) 
+    if (working_timeline[queue_idx].size() < 2) 
         return;
     
-    auto& passes = queue_schedule->scheduled_passes;
+    auto& passes = working_timeline[queue_idx];
     
     // Single forward pass: for each position, find the best candidate to move there
     // This avoids complex multi-iteration logic and index invalidation issues
@@ -136,11 +117,10 @@ void ExecutionReorderPhase::optimize_queue_with_graph(uint32_t queue_idx) SKR_NO
 // Graph-based safety check - much simpler than resource chain analysis!
 bool ExecutionReorderPhase::can_attract_pass_safely(uint32_t queue_idx, size_t current_pos, size_t target_pos) SKR_NOEXCEPT
 {
-    auto* queue_schedule = find_queue_schedule(queue_idx);
-    if (!queue_schedule || current_pos >= target_pos) 
+    if (current_pos >= target_pos) 
         return false;
     
-    const auto& passes = queue_schedule->scheduled_passes;
+    const auto& passes = working_timeline[queue_idx];
     PassNode* target_pass = passes[target_pos];
     
     // Check if moving target_pass to position current_pos+1 would violate dependencies
@@ -284,10 +264,7 @@ skr::Vector<ResourceNode*> ExecutionReorderPhase::get_shared_resources(PassNode*
 // Perform the attraction (move pass from from_pos to to_pos)
 void ExecutionReorderPhase::attract_pass(uint32_t queue_idx, size_t from_pos, size_t to_pos) SKR_NOEXCEPT
 {
-    auto* queue_schedule = find_queue_schedule(queue_idx);
-    if (!queue_schedule) return;
-    
-    auto& passes = queue_schedule->scheduled_passes;
+    auto& passes = working_timeline[queue_idx];
     
     // Validate indices
     if (from_pos >= passes.size() || to_pos >= passes.size() || from_pos == to_pos) 
@@ -302,17 +279,6 @@ void ExecutionReorderPhase::attract_pass(uint32_t queue_idx, size_t from_pos, si
     passes.add_at(to_pos, pass_to_move);
     
     // No need to update complex data structures - we use the graph directly!
-}
-
-// Helper functions
-QueueScheduleInfo* ExecutionReorderPhase::find_queue_schedule(uint32_t queue_idx) SKR_NOEXCEPT
-{
-    for (size_t i = 0; i < working_timeline.size(); ++i)
-    {
-        if (working_timeline[i].queue_index == queue_idx)
-            return &working_timeline[i];
-    }
-    return nullptr;
 }
 
 float ExecutionReorderPhase::calculate_resource_affinity(PassNode* pass1, PassNode* pass2) const SKR_NOEXCEPT

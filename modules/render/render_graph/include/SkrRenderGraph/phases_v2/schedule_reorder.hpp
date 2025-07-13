@@ -24,7 +24,7 @@ struct ExecutionReorderConfig {
 // Result of execution reordering
 struct ExecutionReorderResult {
     // Optimized timeline - modified copy of original QueueScheduleInfo
-    skr::Vector<QueueScheduleInfo> optimized_timeline;
+    skr::Vector<skr::Vector<PassNode*>> optimized_timeline;
 };
 
 // Simplified - use RenderGraph DAG directly instead of rebuilding resource chains
@@ -46,11 +46,10 @@ public:
     
     // Results access
     const ExecutionReorderResult& get_result() const { return result; }
-    const skr::Vector<QueueScheduleInfo>& get_optimized_timeline() const { return result.optimized_timeline; }
+    const skr::Vector<skr::Vector<PassNode*>>& get_optimized_timeline() const { return result.optimized_timeline; }
     
 private:
     // Core optimization flow
-    void create_timeline_copy() SKR_NOEXCEPT;
     void run_graph_based_optimization() SKR_NOEXCEPT;
     
     // Graph-based optimization
@@ -66,7 +65,6 @@ private:
     skr::Vector<ResourceNode*> get_shared_resources(PassNode* pass1, PassNode* pass2) const SKR_NOEXCEPT;
     
     // Helper functions
-    QueueScheduleInfo* find_queue_schedule(uint32_t queue_idx) SKR_NOEXCEPT;
     float calculate_resource_affinity(PassNode* pass1, PassNode* pass2) const SKR_NOEXCEPT;
     float calculate_resource_affinity_from_shared(PassNode* pass1, PassNode* pass2, const skr::Vector<ResourceNode*>& shared_resources) const SKR_NOEXCEPT;
     
@@ -80,7 +78,7 @@ private:
     const ScheduleTimeline& timeline_schedule;
     
     // Working data - timeline copy
-    skr::Vector<QueueScheduleInfo> working_timeline;
+    skr::Vector<skr::Vector<PassNode*>> working_timeline;
     
     // Working data - direct access to RenderGraph for DAG queries
     RenderGraph* render_graph = nullptr;
