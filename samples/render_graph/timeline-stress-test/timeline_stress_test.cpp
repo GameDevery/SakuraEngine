@@ -698,7 +698,7 @@ private:
                     for (const auto& barrier : batch.barriers)
                     {
                         std::stringstream barrier_label;
-                        barrier_label << "{Barrier Batch " << batch.batch_index << "|";
+                        barrier_label << "{Barrier Batch |";
 
                         // Barrier type
                         const char* type_name = "Unknown";

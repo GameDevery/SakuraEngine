@@ -54,9 +54,6 @@ struct BarrierBatch
 {
     skr::Vector<GPUBarrier> barriers;       // 批次中的屏障列表
     EBarrierType batch_type;                // 批次类型（批次中所有屏障应该是同一类型）
-    uint32_t source_queue = UINT32_MAX;     // 源队列
-    uint32_t target_queue = UINT32_MAX;     // 目标队列
-    uint32_t batch_index = 0;               // 在该Pass中的批次索引
 };
 
 // 屏障生成结果
@@ -79,10 +76,7 @@ struct BarrierGenerationResult
 // 屏障生成配置
 struct BarrierGenerationConfig
 {
-    bool enable_barrier_optimization = true;    // 启用屏障优化
-    bool enable_barrier_batching = true;        // 启用屏障批处理
-    bool eliminate_redundant_barriers = true;   // 消除冗余屏障
-    
+    bool enable_barrier_batch_ = false;           // 启用调试输出
     // 调试选项
     bool enable_debug_output = false;           // 启用调试输出
     bool validate_barrier_correctness = true;   // 验证屏障正确性
@@ -131,16 +125,9 @@ private:
     void generate_cross_queue_sync_barriers(RenderGraph* graph) SKR_NOEXCEPT;
     void generate_memory_aliasing_barriers(RenderGraph* graph) SKR_NOEXCEPT;
     void generate_resource_transition_barriers(RenderGraph* graph) SKR_NOEXCEPT;
-    void generate_execution_dependency_barriers(RenderGraph* graph) SKR_NOEXCEPT;
-    
-    // 屏障优化
-    void optimize_barriers() SKR_NOEXCEPT;
-    void eliminate_redundant_barriers() SKR_NOEXCEPT;
     void batch_barriers() SKR_NOEXCEPT;
     
-    
     // 辅助方法
-    bool is_barrier_redundant(const GPUBarrier& barrier) const SKR_NOEXCEPT;
     float estimate_barrier_cost(const GPUBarrier& barrier) const SKR_NOEXCEPT;
     void calculate_barrier_statistics() SKR_NOEXCEPT;
     
@@ -149,7 +136,7 @@ private:
     GPUBarrier create_aliasing_barrier(ResourceNode* resource, PassNode* pass) const SKR_NOEXCEPT;
     GPUBarrier create_resource_transition_barrier(ResourceNode* resource, PassNode* from_pass, PassNode* to_pass) const SKR_NOEXCEPT;
     
-    // 资源状态转换分析（基于博客算法）
+    // TODO: RMEOVE THESE
     void analyze_resource_usage_patterns(RenderGraph* graph, 
                                        skr::FlatHashMap<ResourceNode*, skr::FlatHashMap<PassNode*, ECGPUResourceState>>& resource_states,
                                        skr::FlatHashMap<ResourceNode*, skr::FlatHashSet<uint32_t>>& cross_queue_reads) SKR_NOEXCEPT;
@@ -179,6 +166,9 @@ private:
     void generate_rerouted_transition(ResourceNode* resource, ECGPUResourceState before_state, ECGPUResourceState after_state, uint32_t competent_queue, PassNode* source_pass, PassNode* target_pass) SKR_NOEXCEPT;
     void generate_normal_transition(ResourceNode* resource, ECGPUResourceState before_state, ECGPUResourceState after_state, PassNode* source_pass, PassNode* target_pass) SKR_NOEXCEPT;
     void generate_split_barrier(ResourceNode* resource, ECGPUResourceState before_state, ECGPUResourceState after_state, PassNode* source_pass, PassNode* target_pass) SKR_NOEXCEPT;
+    
+    // 辅助函数
+    BarrierBatch& get_or_create_barrier_batch(PassNode* pass, EBarrierType batch_type) SKR_NOEXCEPT;
 
 private:
     // 配置
@@ -193,8 +183,7 @@ private:
     BarrierGenerationResult barrier_result_;
     
     // 工作数据
-    skr::Vector<GPUBarrier> temp_barriers_;
-    skr::FlatHashSet<ResourceNode*> processed_resources_;
+    skr::FlatHashMap<PassNode*, skr::Vector<BarrierBatch>> pass_barriers_;
 };
 
 } // namespace render_graph
