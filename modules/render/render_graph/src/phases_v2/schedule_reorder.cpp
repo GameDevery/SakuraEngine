@@ -45,6 +45,13 @@ void ExecutionReorderPhase::on_execute(RenderGraph* graph, RenderGraphProfiler* 
 void ExecutionReorderPhase::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
 {
     working_timeline.clear();
+    
+    // 清理临时容器
+    path_check_visited_.clear();
+    path_check_queue_.clear();
+    shared_resource_set_.clear();
+    shared_resources_.clear();
+    
     // Keep result.optimized_timeline for access after phase completion
     render_graph = nullptr;
 }
@@ -193,9 +200,11 @@ bool ExecutionReorderPhase::has_path_between_passes(PassNode* from_pass, PassNod
     if (deps->has_dependency_on(from_pass)) return true;
     
     // Check transitive dependencies using BFS to avoid deep recursion
-    skr::Set<PassNode*> visited;
-    skr::Vector<PassNode*> queue;
-    
+    skr::Set<PassNode*>& visited = path_check_visited_;
+    skr::Vector<PassNode*>& queue = path_check_queue_;
+    visited.clear();
+    queue.clear();
+
     // Start with direct dependencies of to_pass
     for (auto* dep_pass : deps->dependent_passes)
     {
@@ -231,7 +240,8 @@ bool ExecutionReorderPhase::has_path_between_passes(PassNode* from_pass, PassNod
 // Get resources shared between two passes using graph
 skr::Vector<ResourceNode*> ExecutionReorderPhase::get_shared_resources(PassNode* pass1, PassNode* pass2) const SKR_NOEXCEPT
 {
-    skr::Vector<ResourceNode*> shared;
+    skr::Vector<ResourceNode*>& shared = shared_resources_;
+    shared.clear();
     
     if (!pass1 || !pass2) return shared;
     
@@ -242,7 +252,8 @@ skr::Vector<ResourceNode*> ExecutionReorderPhase::get_shared_resources(PassNode*
     if (!info1 || !info2) return shared;
     
     // Use set-based intersection for better performance
-    skr::Set<ResourceNode*> resources1;
+    skr::Set<ResourceNode*>& resources1 = shared_resource_set_;
+    resources1.clear();
     for (const auto& access : info1->resource_info.all_resource_accesses)
     {
         resources1.add(access.resource);

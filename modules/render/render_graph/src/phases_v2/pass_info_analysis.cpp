@@ -75,6 +75,7 @@ void PassInfoAnalysis::extract_pass_info(PassNode* pass)
 void PassInfoAnalysis::extract_resource_info(PassNode* pass, PassResourceInfo& info)
 {
     info.all_resource_accesses.clear();
+    info.all_resource_accesses.reserve(pass->buffers_count() + pass->textures_count());
     
     // Extract textures with detailed access info
     pass->foreach_textures([&](TextureNode* texture, TextureEdge* edge) {

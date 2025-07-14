@@ -80,6 +80,14 @@ private:
     // Working data - timeline copy
     skr::Vector<skr::Vector<PassNode*>> working_timeline;
     
+    // internal state for path checks
+    mutable skr::Set<PassNode*> path_check_visited_ = skr::Set<PassNode*>(64);
+    mutable skr::Vector<PassNode*> path_check_queue_ = skr::Vector<PassNode*>(64);
+    
+    // internal state for shared resource checks
+    mutable skr::Set<ResourceNode*> shared_resource_set_ = skr::Set<ResourceNode*>(64);
+    mutable skr::Vector<ResourceNode*> shared_resources_ = skr::Vector<ResourceNode*>(64);
+
     // Working data - direct access to RenderGraph for DAG queries
     RenderGraph* render_graph = nullptr;
     

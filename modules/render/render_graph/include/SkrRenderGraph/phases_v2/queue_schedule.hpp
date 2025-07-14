@@ -102,13 +102,9 @@ private:
     // 调度结果输出
     TimelineScheduleResult schedule_result;
     
-    // 调度子功能（简化后的队列管理）
     uint32_t find_graphics_queue() const SKR_NOEXCEPT;
     uint32_t find_least_loaded_compute_queue() const SKR_NOEXCEPT;
     uint32_t find_copy_queue() const SKR_NOEXCEPT;
-    
-    // 辅助方法  
-    // 注意：移除了基于Pass类型的队列能力推断，现在完全基于手动标记
 };
 
 // 辅助函数

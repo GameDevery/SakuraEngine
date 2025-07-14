@@ -88,10 +88,10 @@ public:
         {
             auto info_analysis = skr::render_graph::PassInfoAnalysis();
             auto dependency_analysis = skr::render_graph::PassDependencyAnalysis(info_analysis);
-            auto timeline_phase = skr::render_graph::QueueSchedule(dependency_analysis, timeline_config);
-            auto reorder_phase = skr::render_graph::ExecutionReorderPhase(info_analysis, dependency_analysis, timeline_phase, {});
-            auto lifetime_analysis = skr::render_graph::ResourceLifetimeAnalysis(dependency_analysis, timeline_phase, {});
-            auto ssis_phase = skr::render_graph::CrossQueueSyncAnalysis(dependency_analysis, timeline_phase, {});
+            auto queue_schedule = skr::render_graph::QueueSchedule(dependency_analysis, timeline_config);
+            auto reorder_phase = skr::render_graph::ExecutionReorderPhase(info_analysis, dependency_analysis, queue_schedule, {});
+            auto lifetime_analysis = skr::render_graph::ResourceLifetimeAnalysis(dependency_analysis, queue_schedule, {});
+            auto ssis_phase = skr::render_graph::CrossQueueSyncAnalysis(dependency_analysis, queue_schedule, {});
             auto aliasing_phase = skr::render_graph::MemoryAliasingPhase(
                 lifetime_analysis, ssis_phase, { .aliasing_tier = skr::render_graph::EAliasingTier::Tier1 });
             skr::render_graph::BarrierGenerationConfig barrier_config = {};
@@ -102,7 +102,7 @@ public:
             // 手动调用完整的Phase链进行测试
             info_analysis.on_initialize(graph);
             dependency_analysis.on_initialize(graph);
-            timeline_phase.on_initialize(graph);
+            queue_schedule.on_initialize(graph);
             reorder_phase.on_initialize(graph);
             lifetime_analysis.on_initialize(graph);
             ssis_phase.on_initialize(graph);
@@ -120,7 +120,7 @@ public:
                 dependency_analysis.on_execute(graph, nullptr);
                 auto dependencyAnalysisTime = skr_hires_timer_get_usec(&timer, true);
 
-                timeline_phase.on_execute(graph, nullptr);
+                queue_schedule.on_execute(graph, nullptr);
                 auto queueAnalysisTime = skr_hires_timer_get_usec(&timer, true);
 
                 reorder_phase.on_execute(graph, nullptr);
@@ -164,16 +164,16 @@ public:
             dependency_analysis.dump_dependencies();
 
             // 打印队列分配
-            auto non_reorder = timeline_phase.get_schedule_result();
-            timeline_phase.dump_timeline_result(u8"🔥 Timeline Stress Test Results", non_reorder);
+            auto non_reorder = queue_schedule.get_schedule_result();
+            queue_schedule.dump_timeline_result(u8"🔥 Timeline Stress Test Results", non_reorder);
 
             // 打印 reordered 结果
             auto reorder_result = non_reorder;
             reorder_result.queue_schedules = reorder_phase.get_optimized_timeline();
-            timeline_phase.dump_timeline_result(u8"🔥 Timeline Stress Test Reordered Results", reorder_result);
+            queue_schedule.dump_timeline_result(u8"🔥 Timeline Stress Test Reordered Results", reorder_result);
 
             // 验证调度结果
-            validate_schedule_result(timeline_phase.get_schedule_result());
+            validate_schedule_result(queue_schedule.get_schedule_result());
 
             // 输出分析结果
             dependency_analysis.dump_logical_topology();
@@ -194,10 +194,10 @@ public:
             SKR_LOG_INFO(u8"  Optimized barriers: %u", barrier_phase.get_optimized_barriers_count());
 
             // 生成 Graphviz 可视化
-            generate_graphviz_visualization(graph, timeline_phase, ssis_phase, barrier_phase, aliasing_phase, lifetime_analysis);
+            generate_graphviz_visualization(graph, queue_schedule, ssis_phase, barrier_phase, aliasing_phase, lifetime_analysis);
 
             // 生成额外的可视化文件显示每个Pass的屏障详情
-            generate_barrier_details_visualization(graph, timeline_phase, barrier_phase);
+            generate_barrier_details_visualization(graph, queue_schedule, barrier_phase);
 
             // 清理
             barrier_phase.on_finalize(graph);
@@ -205,7 +205,7 @@ public:
             ssis_phase.on_finalize(graph);
             lifetime_analysis.on_finalize(graph);
             reorder_phase.on_finalize(graph);
-            timeline_phase.on_finalize(graph);
+            queue_schedule.on_finalize(graph);
             dependency_analysis.on_finalize(graph);
             info_analysis.on_finalize(graph);
         }
@@ -217,7 +217,7 @@ public:
 private:
     void generate_graphviz_visualization(
         skr::render_graph::RenderGraph* graph,
-        const skr::render_graph::QueueSchedule& timeline_phase,
+        const skr::render_graph::QueueSchedule& queue_schedule,
         const skr::render_graph::CrossQueueSyncAnalysis& ssis_phase,
         const skr::render_graph::BarrierGenerationPhase& barrier_phase,
         const skr::render_graph::MemoryAliasingPhase& aliasing_phase,
@@ -235,7 +235,7 @@ private:
         dot << "  node [shape=box, style=\"rounded,filled\", fontname=\"Arial\"];\n";
         dot << "  edge [fontname=\"Arial\", fontsize=10];\n\n";
 
-        const auto& schedule_result = timeline_phase.get_schedule_result();
+        const auto& schedule_result = queue_schedule.get_schedule_result();
         const auto& aliasing_result = aliasing_phase.get_result();
         const auto& lifetime_result = lifetime_analysis.get_result();
 
@@ -665,7 +665,7 @@ private:
 
     void generate_barrier_details_visualization(
         skr::render_graph::RenderGraph* graph,
-        const skr::render_graph::QueueSchedule& timeline_phase,
+        const skr::render_graph::QueueSchedule& queue_schedule,
         const skr::render_graph::BarrierGenerationPhase& barrier_phase)
     {
         using namespace skr::render_graph;
@@ -680,7 +680,7 @@ private:
         dot << "  node [shape=record, style=\"rounded,filled\", fontname=\"Arial\", fillcolor=white];\n";
         dot << "  edge [fontname=\"Arial\", fontsize=10];\n\n";
 
-        const auto& schedule_result = timeline_phase.get_schedule_result();
+        const auto& schedule_result = queue_schedule.get_schedule_result();
         const auto& barrier_result = barrier_phase.get_result();
 
         // For each pass, show its barriers
