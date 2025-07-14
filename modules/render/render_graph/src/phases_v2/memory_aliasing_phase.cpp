@@ -44,7 +44,8 @@ void MemoryAliasingPhase::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
 
 void MemoryAliasingPhase::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
-    SKR_LOG_INFO(u8"MemoryAliasingPhase: Starting memory aliasing analysis");    
+    SkrZoneScopedN("MemoryAliasingPhase");
+
     // 执行核心内存管理分析（统一的别名/资源池实现）
     analyze_resources();
 
@@ -63,7 +64,7 @@ void MemoryAliasingPhase::on_execute(RenderGraph* graph, RenderGraphProfiler* pr
         }
         
         const char8_t* mode_str = (config_.aliasing_tier == EAliasingTier::Tier0) ? u8"Resource Pool" : u8"Memory Aliasing";
-        SKR_LOG_INFO(u8"MemoryAliasingPhase: Completed (%s mode). Memory reduction: {:.1f}% ({} MB -> {} MB)",
+        SKR_LOG_TRACE(u8"MemoryAliasingPhase: Completed (%s mode). Memory reduction: {:.1f}% ({} MB -> {} MB)",
                     mode_str,
                     aliasing_result_.total_compression_ratio * 100.0f,
                     aliasing_result_.total_original_memory / (1024 * 1024),
@@ -126,7 +127,7 @@ void MemoryAliasingPhase::analyze_resources() SKR_NOEXCEPT
         return;
     }
     
-    SKR_LOG_INFO(u8"MemoryAliasingPhase: Processing {} resources for aliasing", sorted_resources.size());
+    SKR_LOG_TRACE(u8"MemoryAliasingPhase: Processing {} resources for aliasing", sorted_resources.size());
     
     // SSIS算法步骤2：创建内存桶并尝试别名化
     if (config_.aliasing_tier == EAliasingTier::Tier0)
@@ -632,7 +633,7 @@ void MemoryAliasingPhase::compute_alias_transitions() SKR_NOEXCEPT
     
     aliasing_result_.total_alias_transitions = static_cast<uint32_t>(aliasing_result_.alias_transitions.size());
     
-    SKR_LOG_INFO(u8"MemoryAliasingPhase: Computed %u alias transition points", 
+    SKR_LOG_TRACE(u8"MemoryAliasingPhase: Computed %u alias transition points", 
                 aliasing_result_.total_alias_transitions);
 }
 

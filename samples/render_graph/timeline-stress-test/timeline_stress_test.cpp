@@ -8,7 +8,8 @@
 #include "SkrRenderGraph/phases_v2/memory_aliasing_phase.hpp"
 #include "SkrRenderGraph/phases_v2/barrier_generation_phase.hpp"
 #include "SkrCore/time.h"
-#include "SkrContainersDef/set.hpp"
+#include "SkrOS/thread.h"
+
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -72,7 +73,7 @@ public:
 
                 builder.with_device(device)
                     .with_gfx_queue(gfx_queue)
-                    .with_cmpt_queues(cmpt_queues)
+                    // .with_cmpt_queues(cmpt_queues)
                     .with_cpy_queues(cpy_queues);
             });
 
@@ -107,49 +108,57 @@ public:
             ssis_phase.on_initialize(graph);
             aliasing_phase.on_initialize(graph);
             barrier_phase.on_initialize(graph);
+            
+            {
+                SkrZoneScopedN("RenderGraphExecute");
+                
+                SHiresTimer timer;
+                skr_init_hires_timer(&timer);
+                info_analysis.on_execute(graph, nullptr);
+                auto infoAnalysisTime = skr_hires_timer_get_usec(&timer, true);
 
-            SHiresTimer timer;
-            skr_init_hires_timer(&timer);
-            info_analysis.on_execute(graph, nullptr);
-            auto infoAnalysisTime = skr_hires_timer_get_usec(&timer, true);
+                dependency_analysis.on_execute(graph, nullptr);
+                auto dependencyAnalysisTime = skr_hires_timer_get_usec(&timer, true);
 
-            dependency_analysis.on_execute(graph, nullptr);
-            auto dependencyAnalysisTime = skr_hires_timer_get_usec(&timer, true);
+                timeline_phase.on_execute(graph, nullptr);
+                auto queueAnalysisTime = skr_hires_timer_get_usec(&timer, true);
 
-            timeline_phase.on_execute(graph, nullptr);
-            auto queueAnalysisTime = skr_hires_timer_get_usec(&timer, true);
+                reorder_phase.on_execute(graph, nullptr);
+                auto reorderAnalysisTime = skr_hires_timer_get_usec(&timer, true);
 
-            reorder_phase.on_execute(graph, nullptr);
-            auto reorderAnalysisTime = skr_hires_timer_get_usec(&timer, true);
+                lifetime_analysis.on_execute(graph, nullptr);
+                auto lifetimeAnalysisTime = skr_hires_timer_get_usec(&timer, true);
 
-            lifetime_analysis.on_execute(graph, nullptr);
-            auto lifetimeAnalysisTime = skr_hires_timer_get_usec(&timer, true);
+                ssis_phase.on_execute(graph, nullptr);
+                auto ssisAnalysisTime = skr_hires_timer_get_usec(&timer, true);
 
-            ssis_phase.on_execute(graph, nullptr);
-            auto ssisAnalysisTime = skr_hires_timer_get_usec(&timer, true);
+                aliasing_phase.on_execute(graph, nullptr);
+                auto aliasingAnalysisTime = skr_hires_timer_get_usec(&timer, true);
 
-            aliasing_phase.on_execute(graph, nullptr);
-            auto aliasingAnalysisTime = skr_hires_timer_get_usec(&timer, true);
+                barrier_phase.on_execute(graph, nullptr);
+                auto barrierAnalysisTime = skr_hires_timer_get_usec(&timer, true);
 
-            barrier_phase.on_execute(graph, nullptr);
-            auto barrierAnalysisTime = skr_hires_timer_get_usec(&timer, true);
+                SKR_LOG_INFO(u8"Complete Phase Chain Analysis Times: "
+                            u8"Info: %llfms, Dependency: %llfms, Queue: %llfms, Reorder: %llfms, "
+                            u8"Lifetime: %llfms, SSIS: %llfms, Aliasing: %llfms, Barrier: %llfms"
+                            u8" (Total: %llfms)",
+                    (double)infoAnalysisTime / 1000,
+                    (double)dependencyAnalysisTime / 1000,
+                    (double)queueAnalysisTime / 1000,
+                    (double)reorderAnalysisTime / 1000,
+                    (double)lifetimeAnalysisTime / 1000,
+                    (double)ssisAnalysisTime / 1000,
+                    (double)aliasingAnalysisTime / 1000,
+                    (double)barrierAnalysisTime / 1000,
+                    (double)(infoAnalysisTime + dependencyAnalysisTime + queueAnalysisTime +
+                        reorderAnalysisTime + lifetimeAnalysisTime + ssisAnalysisTime +
+                        aliasingAnalysisTime + barrierAnalysisTime) /
+                        1000);
 
-            SKR_LOG_INFO(u8"Complete Phase Chain Analysis Times: "
-                         u8"Info: %llfms, Dependency: %llfms, Queue: %llfms, Reorder: %llfms, "
-                         u8"Lifetime: %llfms, SSIS: %llfms, Aliasing: %llfms, Barrier: %llfms"
-                         u8" (Total: %llfms)",
-                (double)infoAnalysisTime / 1000,
-                (double)dependencyAnalysisTime / 1000,
-                (double)queueAnalysisTime / 1000,
-                (double)reorderAnalysisTime / 1000,
-                (double)lifetimeAnalysisTime / 1000,
-                (double)ssisAnalysisTime / 1000,
-                (double)aliasingAnalysisTime / 1000,
-                (double)barrierAnalysisTime / 1000,
-                (double)(infoAnalysisTime + dependencyAnalysisTime + queueAnalysisTime +
-                    reorderAnalysisTime + lifetimeAnalysisTime + ssisAnalysisTime +
-                    aliasingAnalysisTime + barrierAnalysisTime) /
-                    1000);
+            }
+
+            // Wait profiler to get all data
+            skr_thread_sleep(1000);
 
             // 打印依赖分析结果
             dependency_analysis.dump_dependencies();

@@ -28,7 +28,7 @@ void ExecutionReorderPhase::on_initialize(RenderGraph* graph) SKR_NOEXCEPT
 
 void ExecutionReorderPhase::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
-    SkrZoneScopedN("ExecutionReorderPhase::Execute");
+    SkrZoneScopedN("ExecutionReorderPhase");
     
     render_graph = graph;
     
@@ -52,8 +52,6 @@ void ExecutionReorderPhase::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
 // Run graph-based optimization - much simpler!
 void ExecutionReorderPhase::run_graph_based_optimization() SKR_NOEXCEPT
 {
-    SkrZoneScopedN("GraphBasedOptimization");
-    
     // Optimize each queue independently
     for (size_t i = 0; i < working_timeline.size(); ++i)
     {

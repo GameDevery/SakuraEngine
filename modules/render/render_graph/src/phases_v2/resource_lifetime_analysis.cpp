@@ -56,7 +56,7 @@ void ResourceLifetimeAnalysis::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
 
 void ResourceLifetimeAnalysis::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
-    SKR_LOG_INFO(u8"ResourceLifetimeAnalysis: Starting resource lifetime analysis");
+    SkrZoneScopedN("ResourceLifetimeAnalysis");
     
     // 清理之前的结果
     lifetime_result_.resource_lifetimes.clear();
@@ -91,7 +91,7 @@ void ResourceLifetimeAnalysis::on_execute(RenderGraph* graph, RenderGraphProfile
         dump_aliasing_candidates();
     }
     
-    SKR_LOG_INFO(u8"ResourceLifetimeAnalysis: Analyzed {} resources, {} cross-queue", 
+    SKR_LOG_TRACE(u8"ResourceLifetimeAnalysis: Analyzed {} resources, {} cross-queue", 
                 lifetime_result_.resource_lifetimes.size(),
                 lifetime_result_.cross_queue_resources.size());
 }
@@ -225,9 +225,6 @@ void ResourceLifetimeAnalysis::identify_cross_queue_resources() SKR_NOEXCEPT
             lifetime_result_.cross_queue_resources.add(resource);
         }
     }
-    
-    SKR_LOG_INFO(u8"ResourceLifetimeAnalysis: Found {} cross-queue resources",
-                lifetime_result_.cross_queue_resources.size());
 }
 
 void ResourceLifetimeAnalysis::calculate_memory_requirements() SKR_NOEXCEPT
@@ -265,12 +262,12 @@ void ResourceLifetimeAnalysis::sort_resources_by_size() SKR_NOEXCEPT
     
     if (config_.enable_debug_output)
     {
-        SKR_LOG_INFO(u8"ResourceLifetimeAnalysis: Resources sorted by size (top 5):");
+        SKR_LOG_DEBUG(u8"ResourceLifetimeAnalysis: Resources sorted by size (top 5):");
         for (size_t i = 0; i < std::min(size_t(5), lifetime_result_.resources_by_size_desc.size()); ++i)
         {
             auto* resource = lifetime_result_.resources_by_size_desc[i];
             const auto& lifetime = lifetime_result_.resource_lifetimes[resource];
-            SKR_LOG_INFO(u8"  %zu. %s: %llu bytes", i + 1, resource->get_name(), lifetime.memory_size);
+            SKR_LOG_DEBUG(u8"  %zu. %s: %llu bytes", i + 1, resource->get_name(), lifetime.memory_size);
         }
     }
 }

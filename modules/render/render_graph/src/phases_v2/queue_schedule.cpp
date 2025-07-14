@@ -43,6 +43,7 @@ void QueueSchedule::clear_frame_data() SKR_NOEXCEPT
 
 void QueueSchedule::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
+    SkrZoneScopedN("QueueSchedule");
     QUEUE_SCHEDULE_LOG(u8"QueueSchedule: Starting timeline scheduling and fence allocation");
     
     // 0. 清空上一帧的数据 - RG中的资源和Pass每帧都不稳定

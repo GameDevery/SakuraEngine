@@ -37,6 +37,7 @@ void BarrierGenerationPhase::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
 
 void BarrierGenerationPhase::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
+    SkrZoneScopedN("BarrierGenerationPhase");
     BARRIER_GENERATION_LOG(u8"BarrierGenerationPhase: Starting barrier generation");
     
     // 清理之前的结果
@@ -713,7 +714,7 @@ void BarrierGenerationPhase::validate_barrier_correctness() const SKR_NOEXCEPT
     
     if (!has_errors)
     {
-        SKR_LOG_INFO(u8"BarrierGenerationPhase: Barrier correctness validation passed");
+        BARRIER_GENERATION_LOG(u8"BarrierGenerationPhase: Barrier correctness validation passed");
     }
     else
     {

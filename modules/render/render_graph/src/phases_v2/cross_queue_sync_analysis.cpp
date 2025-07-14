@@ -38,6 +38,7 @@ void CrossQueueSyncAnalysis::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
 
 void CrossQueueSyncAnalysis::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
+    SkrZoneScopedN("CrossQueueSyncAnalysis");
     SSIS_LOG(u8"CrossQueueSyncAnalysis: Starting SSIS analysis");
     
     // 清理上一帧数据

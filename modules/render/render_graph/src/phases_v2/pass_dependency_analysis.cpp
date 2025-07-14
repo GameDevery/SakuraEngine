@@ -29,6 +29,15 @@ bool PassDependencies::has_dependency_on(PassNode* pass) const
 // IRenderGraphPhase 接口实现
 void PassDependencyAnalysis::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
+    SkrZoneScopedN("PassDependencyAnalysis");
+    
+    pass_dependencies_.clear();
+    resource_last_access_.clear();
+    
+    logical_topology_.logical_levels.clear();
+    logical_topology_.logical_topological_order.clear();
+    logical_topology_.logical_critical_path.clear();
+
     analyze_pass_dependencies(graph);
     perform_logical_topological_sort_optimized();
     identify_logical_critical_path();
@@ -58,6 +67,8 @@ void PassDependencyAnalysis::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
 {
     // 清理分析结果
     pass_dependencies_.clear();
+    resource_last_access_.clear();
+
     logical_topology_.logical_levels.clear();
     logical_topology_.logical_topological_order.clear();
     logical_topology_.logical_critical_path.clear();
@@ -68,7 +79,6 @@ void PassDependencyAnalysis::analyze_pass_dependencies(RenderGraph* graph)
     // 优化版本：O(n) 复杂度，为每个资源维护最后访问者索引
     auto& all_passes = get_passes(graph);
     pass_dependencies_.clear();
-    SKR_LOG_INFO(u8"PassDependencyAnalysis: analyzing %llu passes", all_passes.size());
     
     // 为每个资源维护最后访问的Pass和访问信息
     resource_last_access_.reserve(graph->get_resources().size()); // 预分配避免rehash
@@ -129,12 +139,13 @@ void PassDependencyAnalysis::perform_logical_topological_sort_optimized()
     in_degrees_.clear();
     topo_queue_.clear();
     topo_levels_.clear();
-    logical_topology_.logical_topological_order.clear();
 
     in_degrees_.reserve(num_passes);
     topo_queue_.reserve(num_passes);
     topo_levels_.reserve(num_passes);
+
     logical_topology_.logical_topological_order.reserve(num_passes);
+    logical_topology_.logical_levels.reserve(num_passes);
 
     // 第一步：计算所有节点的入度，同时初始化依赖级别为0
     for (auto& [pass, deps] : pass_dependencies_)
@@ -205,7 +216,8 @@ void PassDependencyAnalysis::perform_logical_topological_sort_optimized()
     }
 
     // 第四步：检查循环依赖
-    if (logical_topology_.logical_topological_order.size() != num_passes)
+    const auto Topos = logical_topology_.logical_topological_order.size();
+    if (Topos != num_passes)
     {
         SKR_LOG_ERROR(u8"PassDependencyAnalysis: 检测到循环依赖！拓扑排序节点数 %llu != 总节点数 %llu", 
                      logical_topology_.logical_topological_order.size(), num_passes);
@@ -222,7 +234,6 @@ void PassDependencyAnalysis::perform_logical_topological_sort_optimized()
     }
 
     // 构建级别分组
-    logical_topology_.logical_levels.clear();
     logical_topology_.logical_levels.resize_default(logical_topology_.max_logical_dependency_depth + 1);
     
     for (uint32_t i = 0; i <= logical_topology_.max_logical_dependency_depth; ++i)

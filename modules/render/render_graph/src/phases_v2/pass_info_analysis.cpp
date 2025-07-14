@@ -16,6 +16,8 @@ void PassInfoAnalysis::on_initialize(RenderGraph* graph) SKR_NOEXCEPT
 
 void PassInfoAnalysis::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
+    SkrZoneScopedN("PassInfoAnalysis");
+    
     pass_infos.clear();
     resource_infos.clear();
     
@@ -76,8 +78,6 @@ void PassInfoAnalysis::extract_resource_info(PassNode* pass, PassResourceInfo& i
     
     // Extract textures with detailed access info
     pass->foreach_textures([&](TextureNode* texture, TextureEdge* edge) {
-        if (!texture) return true;
-        
         ResourceAccessInfo access_info;
         access_info.resource = texture;
         
@@ -119,8 +119,6 @@ void PassInfoAnalysis::extract_resource_info(PassNode* pass, PassResourceInfo& i
     
     // Extract buffers with detailed access info
     pass->foreach_buffers([&](BufferNode* buffer, BufferEdge* edge) {
-        if (!buffer) return true;
-        
         ResourceAccessInfo access_info;
         access_info.resource = buffer;
         access_info.resource_state = static_cast<BufferEdge*>(edge)->requested_state;
