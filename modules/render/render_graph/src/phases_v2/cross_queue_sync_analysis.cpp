@@ -85,7 +85,7 @@ void CrossQueueSyncAnalysis::analyze_cross_queue_dependencies() SKR_NOEXCEPT
 {
     // 遍历所有Pass的依赖关系，找出跨队列的依赖
     const auto& queue_result = queue_schedule_.get_schedule_result();
-    skr::Vector<PassNode*> all_passes;
+    PooledVector<PassNode*> all_passes;
     
     // 从队列调度结果中收集所有Pass
     for (const auto& queue_schedule : queue_result.queue_schedules)
@@ -111,7 +111,7 @@ void CrossQueueSyncAnalysis::analyze_cross_queue_dependencies() SKR_NOEXCEPT
             // 如果依赖的Pass在不同队列上，记录跨队列依赖
             if (current_queue != dep_queue)
             {
-                cross_queue_dependencies_.insert({dep_pass, pass});
+                cross_queue_dependencies_.add(dep_pass, pass);
                 
                 SSIS_LOG(u8"  Cross-queue dependency: %s (queue %u) -> %s (queue %u)",
                               dep_pass->get_name(), dep_queue,
@@ -197,7 +197,7 @@ void CrossQueueSyncAnalysis::build_ssis_for_all_passes() SKR_NOEXCEPT
         for (uint32_t local_idx = 0; local_idx < queue_schedule.size(); ++local_idx)
         {
             PassNode* pass = queue_schedule[local_idx];
-            pass_queue_local_indices_[pass] = local_idx;
+            pass_queue_local_indices_.add(pass, local_idx);
         }
     }
     
@@ -205,13 +205,13 @@ void CrossQueueSyncAnalysis::build_ssis_for_all_passes() SKR_NOEXCEPT
     for (const auto& [pass, queue_index] : queue_result.pass_queue_assignments)
     {
         // 初始化SSIS数组
-        auto& ssis = pass_ssis_[pass];
+        auto& ssis = pass_ssis_.try_add_default(pass).value();
         ssis.resize(total_queue_count_, InvalidSyncIndex);
         
         // 设置本队列的SSIS值为自己的索引
-        ssis[queue_index] = pass_queue_local_indices_[pass];
+        ssis[queue_index] = pass_queue_local_indices_.try_add_default(pass).value();
         
-        auto& dependencies_to_sync = pass_dependencies_to_sync_with_[pass];
+        auto& dependencies_to_sync = pass_dependencies_to_sync_with_.try_add_default(pass).value();
         dependencies_to_sync.clear();
         
         // 查找来自其他队列的依赖
@@ -219,7 +219,7 @@ void CrossQueueSyncAnalysis::build_ssis_for_all_passes() SKR_NOEXCEPT
         if (!pass_deps) continue;
         
         // 记录每个队列上最近的依赖节点
-        skr::FlatHashMap<uint32_t, PassNode*> closest_dependency_per_queue;
+        PooledMap<uint32_t, PassNode*> closest_dependency_per_queue;
         
         for (const auto& resource_dep : pass_deps->resource_dependencies)
         {
@@ -229,8 +229,8 @@ void CrossQueueSyncAnalysis::build_ssis_for_all_passes() SKR_NOEXCEPT
             // 只考虑跨队列依赖
             if (dep_queue == queue_index) continue;
             
-            auto& closest = closest_dependency_per_queue[dep_queue];
-            if (!closest || pass_queue_local_indices_[dep_pass] > pass_queue_local_indices_[closest])
+            auto& closest = closest_dependency_per_queue.try_add_default(dep_queue).value();
+            if (!closest || pass_queue_local_indices_.find(dep_pass).value() > pass_queue_local_indices_.find(closest).value())
             {
                 closest = dep_pass;
             }
@@ -239,7 +239,7 @@ void CrossQueueSyncAnalysis::build_ssis_for_all_passes() SKR_NOEXCEPT
         // 更新SSIS和依赖列表
         for (const auto& [dep_queue, closest_dep] : closest_dependency_per_queue)
         {
-            ssis[dep_queue] = pass_queue_local_indices_[closest_dep];
+            ssis[dep_queue] = pass_queue_local_indices_.find(closest_dep).value();
             dependencies_to_sync.add(closest_dep);
         }
         
@@ -258,35 +258,35 @@ void CrossQueueSyncAnalysis::optimize_sync_points_per_pass() SKR_NOEXCEPT
     for (const auto& [pass, queue_index] : queue_result.pass_queue_assignments)
     {
         auto deps_it = pass_dependencies_to_sync_with_.find(pass);
-        if (deps_it == pass_dependencies_to_sync_with_.end() || deps_it->second.is_empty())
+        if (!deps_it.already_exist() || deps_it.value().is_empty())
         {
             continue; // 没有跨队列依赖
         }
         
-        auto remaining_dependencies = deps_it->second; // Copy so we can modify
-        auto& pass_ssis = pass_ssis_[pass]; // Reference so we can update
+        auto& remaining_dependencies = deps_it.value(); // Copy so we can modify
+        auto& pass_ssis = pass_ssis_.try_add_default(pass).value();
         
         // 构建需要同步的队列集合
-        skr::FlatHashSet<uint32_t> queues_to_sync_with;
+        PooledSet<uint32_t> queues_to_sync_with;
         for (PassNode* dep : remaining_dependencies)
         {
-            queues_to_sync_with.insert(get_pass_queue_index(dep));
+            queues_to_sync_with.add(get_pass_queue_index(dep));
         }
         
         // 迭代找到最小同步点集合（贪心集合覆盖算法）
-        skr::Vector<PassNode*> optimal_dependencies;
+        PooledVector<PassNode*> optimal_dependencies;
         
-        while (!queues_to_sync_with.empty() && !remaining_dependencies.is_empty())
+        while (!queues_to_sync_with.is_empty() && !remaining_dependencies.is_empty())
         {
             uint32_t max_covered_queues = 0;
             PassNode* best_dependency = nullptr;
-            skr::Vector<uint32_t> best_covered_queues;
+            PooledVector<uint32_t> best_covered_queues;
             
             // 对每个剩余依赖节点，检查它能覆盖多少队列的同步需求
             for (PassNode* dep : remaining_dependencies)
             {
-                const auto& dep_ssis = pass_ssis_[dep];
-                skr::Vector<uint32_t> covered_queues;
+                const auto& dep_ssis = pass_ssis_.try_add_default(dep).value();
+                PooledVector<uint32_t> covered_queues;
                 
                 for (uint32_t queue_to_sync : queues_to_sync_with)
                 {
@@ -325,11 +325,11 @@ void CrossQueueSyncAnalysis::optimize_sync_points_per_pass() SKR_NOEXCEPT
                 }
                 
                 // CRITICAL: 更新Pass的SSIS值为所选依赖的SSIS值（SSIS算法关键步骤）
-                const auto& best_dep_ssis = pass_ssis_[best_dependency];
+                const auto& best_dep_ssis = pass_ssis_.find(best_dependency).value();
                 for (uint32_t covered_queue : best_covered_queues)
                 {
                     pass_ssis[covered_queue] = best_dep_ssis[covered_queue];
-                    queues_to_sync_with.erase(covered_queue);
+                    queues_to_sync_with.remove(covered_queue);
                 }
                 
                 // 从剩余依赖中移除已选择的依赖（避免重复选择）
@@ -393,7 +393,7 @@ void CrossQueueSyncAnalysis::calculate_optimization_statistics() SKR_NOEXCEPT
 
 uint32_t CrossQueueSyncAnalysis::get_pass_queue_index(PassNode* pass) const SKR_NOEXCEPT
 {
-    return queue_schedule_.get_schedule_result().pass_queue_assignments.at(pass);
+    return queue_schedule_.get_schedule_result().pass_queue_assignments.find(pass).value();
 }
 
 void CrossQueueSyncAnalysis::dump_ssis_analysis() const SKR_NOEXCEPT

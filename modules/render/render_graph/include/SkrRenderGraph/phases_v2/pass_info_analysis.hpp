@@ -1,10 +1,7 @@
 #pragma once
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrRenderGraph/frontend/base_types.hpp"
-#include "SkrContainersDef/vector.hpp"
-#include "SkrContainersDef/hashmap.hpp"
-#include "SkrContainersDef/map.hpp"
-#include "SkrContainersDef/set.hpp"
+#include "SkrRenderGraph/pool_allocator.hpp"
 
 // Forward declare types from dependency analysis
 namespace skr
@@ -29,7 +26,7 @@ struct ResourceAccessInfo {
 
 // Resource info - direct extraction with detailed access info
 struct PassResourceInfo {
-    skr::Vector<ResourceAccessInfo> all_resource_accesses; // For dependency analysis
+    PooledVector<ResourceAccessInfo> all_resource_accesses; // For dependency analysis
     uint32_t total_resource_count = 0;
 };
 
@@ -59,7 +56,7 @@ struct ResourceInfo {
     ResourceNode* resource = nullptr;
     uint64_t memory_size = 0;
     skr::InlineSet<ECGPUQueueType, 3> access_queues;
-    skr::Map<PassNode*, ECGPUResourceState> used_states;
+    PooledMap<PassNode*, ECGPUResourceState> used_states;
 };
 
 // Analysis phase - runs before DependencyAnalysis
@@ -93,8 +90,8 @@ private:
     void extract_performance_info(PassNode* pass, PassPerformanceInfo& info);
 
 private:
-    skr::FlatHashMap<PassNode*, PassInfo> pass_infos;
-    skr::FlatHashMap<ResourceNode*, ResourceInfo> resource_infos; // For dependency analysis
+    PooledMap<PassNode*, PassInfo> pass_infos;
+    PooledMap<ResourceNode*, ResourceInfo> resource_infos; // For dependency analysis
 };
 
 } // namespace render_graph

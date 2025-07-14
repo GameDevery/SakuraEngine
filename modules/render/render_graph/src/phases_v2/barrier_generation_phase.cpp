@@ -184,7 +184,7 @@ void BarrierGenerationPhase::generate_resource_transition_barriers(RenderGraph* 
         ECGPUResourceState last_state = CGPU_RESOURCE_STATE_UNDEFINED;
         uint32_t last_level = UINT32_MAX;
     };
-    skr::FlatHashMap<ResourceNode*, ResourceLastAccess> resource_last_access;
+    PooledMap<ResourceNode*, ResourceLastAccess> resource_last_access;
     
     // 重要修复：按照实际的拓扑顺序处理Pass，而不是按依赖级别分组
     // 这样可以保持Pass的正确执行顺序
@@ -206,7 +206,7 @@ void BarrierGenerationPhase::generate_resource_transition_barriers(RenderGraph* 
             ECGPUResourceState current_state = access.resource_state;
             
             // 获取资源的上一次访问信息
-            auto& last_access = resource_last_access[resource];
+            auto& last_access = resource_last_access.try_add_default(resource).value();
             
             // 如果这是资源的第一次访问，记录并继续
             if (last_access.last_pass == nullptr)
@@ -357,12 +357,12 @@ void BarrierGenerationPhase::calculate_barrier_statistics() SKR_NOEXCEPT
     }
 }
 
-const skr::Vector<BarrierBatch>& BarrierGenerationPhase::get_pass_barrier_batches(PassNode* pass) const
+const PooledVector<BarrierBatch>& BarrierGenerationPhase::get_pass_barrier_batches(PassNode* pass) const
 {
-    static const skr::Vector<BarrierBatch> empty_batches;
+    static const PooledVector<BarrierBatch> empty_batches;
     
     auto it = barrier_result_.pass_barrier_batches.find(pass);
-    return (it != barrier_result_.pass_barrier_batches.end()) ? it->second : empty_batches;
+    return it ? it.value() : empty_batches;
 }
 
 uint32_t BarrierGenerationPhase::get_total_barriers() const
@@ -386,27 +386,6 @@ uint32_t BarrierGenerationPhase::get_total_batches() const
         total += static_cast<uint32_t>(batches.size());
     }
     return total;
-}
-
-uint32_t BarrierGenerationPhase::find_most_competent_queue(const skr::FlatHashSet<uint32_t>& queue_set) const SKR_NOEXCEPT
-{
-    // 根据博客：图形队列通常是最有能力的
-    // 顺序：Graphics > Compute > Transfer
-    
-    for (uint32_t queue_index : queue_set)
-    {
-        if (queue_index == 0) // 图形队列
-            return queue_index;
-    }
-    
-    for (uint32_t queue_index : queue_set)
-    {
-        if (queue_index < 4) // 计算队列（假设前4个是计算）
-            return queue_index;
-    }
-    
-    // 返回第一个可用队列作为后备
-    return queue_set.empty() ? 0 : *queue_set.begin();
 }
 
 bool BarrierGenerationPhase::is_state_transition_supported_on_queue(uint32_t queue_index, ECGPUResourceState before_state, ECGPUResourceState after_state) const SKR_NOEXCEPT
@@ -457,7 +436,7 @@ bool BarrierGenerationPhase::can_use_split_barriers(uint32_t transmitting_queue,
     return cost_justified;
 }
 
-ECGPUResourceState BarrierGenerationPhase::calculate_combined_read_state(const skr::Vector<ECGPUResourceState>& read_states) const SKR_NOEXCEPT
+ECGPUResourceState BarrierGenerationPhase::calculate_combined_read_state(const PooledVector<ECGPUResourceState>& read_states) const SKR_NOEXCEPT
 {
     // 合并多个读取状态
     ECGPUResourceState combined = CGPU_RESOURCE_STATE_UNDEFINED;
@@ -635,7 +614,7 @@ void BarrierGenerationPhase::generate_split_barrier(ResourceNode* resource, ECGP
 BarrierBatch& BarrierGenerationPhase::get_or_create_barrier_batch(PassNode* pass, EBarrierType batch_type) SKR_NOEXCEPT
 {
     // Get or create the vector of batches for this pass
-    auto& pass_batches = pass_barriers_[pass];
+    auto& pass_batches = pass_barriers_.try_add_default(pass).value();
     
     // Find existing batch of the same type
     for (auto& batch : pass_batches)

@@ -36,15 +36,15 @@ void PassInfoAnalysis::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
 
 const PassInfo* PassInfoAnalysis::get_pass_info(PassNode* pass) const
 {
-    if (auto found = pass_infos.find(pass); found != pass_infos.end())
-        return &found->second;
+    if (auto found = pass_infos.find(pass))
+        return &found.value();
     return nullptr;
 }
 
 const ResourceInfo* PassInfoAnalysis::get_resource_info(ResourceNode* resource) const
 {
-    if (auto found = resource_infos.find(resource); found != resource_infos.end())
-        return &found->second;
+    if (auto found = resource_infos.find(resource))
+        return &found.value();
     return nullptr;
 }
 
@@ -69,7 +69,7 @@ void PassInfoAnalysis::extract_pass_info(PassNode* pass)
     extract_resource_info(pass, info.resource_info);
     extract_performance_info(pass, info.performance_info);
     
-    pass_infos[pass] = info;
+    pass_infos.add(pass, info);
 }
 
 void PassInfoAnalysis::extract_resource_info(PassNode* pass, PassResourceInfo& info)
@@ -103,7 +103,7 @@ void PassInfoAnalysis::extract_resource_info(PassNode* pass, PassResourceInfo& i
         info.all_resource_accesses.add(access_info);
         
         // 更新全局资源信息
-        auto& global_resource_info = resource_infos[texture];
+        auto& global_resource_info = resource_infos.try_add_default(texture).value();
         global_resource_info.used_states.add(pass, access_info.resource_state);
         global_resource_info.memory_size = texture->get_size();
         
@@ -140,7 +140,7 @@ void PassInfoAnalysis::extract_resource_info(PassNode* pass, PassResourceInfo& i
         info.all_resource_accesses.add(access_info);
         
         // 更新全局资源信息
-        auto& global_resource_info = resource_infos[buffer];
+        auto& global_resource_info = resource_infos.try_add_default(buffer).value();
         global_resource_info.resource = buffer;
         global_resource_info.used_states.add(pass, access_info.resource_state);
         global_resource_info.memory_size = buffer->get_desc().size;
@@ -193,9 +193,9 @@ EResourceAccessType PassInfoAnalysis::get_resource_access_type(PassNode* pass, R
 
 ECGPUResourceState PassInfoAnalysis::get_resource_state(PassNode* pass, ResourceNode* resource) const
 {
-    if (auto resource_info = resource_infos.find(resource);resource_info != resource_infos.end())
+    if (auto resource_info = resource_infos.find(resource))
     {
-        if (auto access = resource_info->second.used_states.find(pass))
+        if (auto access = resource_info.value().used_states.find(pass))
         {
             return access.value();
         }

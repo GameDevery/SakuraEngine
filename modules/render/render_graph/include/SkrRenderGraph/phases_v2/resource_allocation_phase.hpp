@@ -22,8 +22,8 @@ struct AllocatedReosurce
 struct ResourceAllocationResult
 {
     // ResourceNode到实际GPU资源的映射
-    skr::FlatHashMap<uint32_t, AllocatedReosurce<CGPUTextureId>> bucket_id_to_textures;
-    skr::FlatHashMap<uint32_t, AllocatedReosurce<CGPUBufferId>> bucket_id_to_buffers;
+    PooledMap<uint32_t, AllocatedReosurce<CGPUTextureId>> bucket_id_to_textures;
+    PooledMap<uint32_t, AllocatedReosurce<CGPUBufferId>> bucket_id_to_buffers;
     
     // 统计信息
     uint64_t total_allocated_memory = 0;

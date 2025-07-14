@@ -1,5 +1,4 @@
 #pragma once
-#include "SkrContainers/stl_vector.hpp"
 #include "SkrRenderGraph/frontend/base_types.hpp"
 #include "SkrRenderGraph/frontend/resource_node.hpp"
 #include "SkrRenderGraph/frontend/resource_edge.hpp"
@@ -7,13 +6,8 @@
 namespace skr {
 namespace render_graph
 {
-#ifdef RG_USE_FIXED_VECTOR
     template<typename T, uint32_t N = 4>
     using graph_edges_vector = skr::InlineVector<T, N>;  
-#else
-    template<typename T, uint32_t N = 4>
-    using graph_edges_vector = skr::stl_vector<T>;
-#endif
 }
 }
 

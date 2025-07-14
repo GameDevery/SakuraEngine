@@ -31,7 +31,6 @@ void ExecutionReorderPhase::on_execute(RenderGraph* graph, RenderGraphProfiler* 
     SkrZoneScopedN("ExecutionReorderPhase");
     
     render_graph = graph;
-    
     if (false)
     {
         // Step 1: Create a copy of the timeline
@@ -207,8 +206,8 @@ bool ExecutionReorderPhase::has_path_between_passes(PassNode* from_pass, PassNod
     if (deps->has_dependency_on(from_pass)) return true;
     
     // Check transitive dependencies using BFS to avoid deep recursion
-    skr::Set<PassNode*>& visited = path_check_visited_;
-    skr::Vector<PassNode*>& queue = path_check_queue_;
+    PooledSet<PassNode*>& visited = path_check_visited_;
+    PooledVector<PassNode*>& queue = path_check_queue_;
     visited.clear();
     queue.clear();
 
@@ -245,10 +244,10 @@ bool ExecutionReorderPhase::has_path_between_passes(PassNode* from_pass, PassNod
 }
 
 // Get resources shared between two passes using graph
-skr::Vector<ResourceNode*> ExecutionReorderPhase::get_shared_resources(PassNode* pass1, PassNode* pass2) const SKR_NOEXCEPT
+PooledVector<ResourceNode*> ExecutionReorderPhase::get_shared_resources(PassNode* pass1, PassNode* pass2) const SKR_NOEXCEPT
 {
-    skr::Vector<ResourceNode*>& shared = shared_resources_;
-    skr::Set<ResourceNode*>& resources1 = shared_resource_set_;
+    PooledVector<ResourceNode*>& shared = shared_resources_;
+    PooledSet<ResourceNode*>& resources1 = shared_resource_set_;
     shared.clear();
     resources1.clear();
 
@@ -299,7 +298,7 @@ float ExecutionReorderPhase::calculate_resource_affinity(PassNode* pass1, PassNo
     return calculate_resource_affinity_from_shared(pass1, pass2, shared_resources);
 }
 
-float ExecutionReorderPhase::calculate_resource_affinity_from_shared(PassNode* pass1, PassNode* pass2, const skr::Vector<ResourceNode*>& shared_resources) const SKR_NOEXCEPT
+float ExecutionReorderPhase::calculate_resource_affinity_from_shared(PassNode* pass1, PassNode* pass2, const PooledVector<ResourceNode*>& shared_resources) const SKR_NOEXCEPT
 {
     const auto* info1 = pass_info_analysis.get_pass_info(pass1);
     const auto* info2 = pass_info_analysis.get_pass_info(pass2);

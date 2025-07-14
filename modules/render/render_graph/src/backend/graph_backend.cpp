@@ -1,5 +1,5 @@
-﻿#include "SkrRenderGraph/backend/graph_backend.hpp"
-#include "SkrCore/memory/sp.hpp"
+﻿#include "SkrRenderGraph/pool_allocator.hpp"
+#include "SkrRenderGraph/backend/graph_backend.hpp"
 #include "SkrOS/thread.h"
 #include "SkrCore/log.h"
 #include "SkrGraphics/cgpux.hpp"
@@ -175,9 +175,15 @@ RenderGraphBackend::RenderGraphBackend(const RenderGraphBuilder& builder)
 
 }
 
-
+static std::atomic_uint64_t rg_count = 0;
 RenderGraph* RenderGraph::create(const RenderGraphSetupFunction& setup) SKR_NOEXCEPT
 {
+    if (rg_count == 0)
+    {
+        rg_count += 1;
+        RenderGraphPoolAllocator::Initialize();
+    }
+
     RenderGraphBuilder builder = {};
     RenderGraph*       graph   = nullptr;
     setup(builder);
@@ -196,6 +202,11 @@ void RenderGraph::destroy(RenderGraph* g) SKR_NOEXCEPT
 {
     g->finalize();
     SkrDelete(g);
+
+    if (--rg_count == 0)
+    {
+        RenderGraphPoolAllocator::Finalize();
+    }
 }
 
 void RenderGraphBackend::initialize() SKR_NOEXCEPT

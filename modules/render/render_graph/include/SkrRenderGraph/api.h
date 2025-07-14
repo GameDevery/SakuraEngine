@@ -1,6 +1,5 @@
 #pragma once
 #ifdef __cplusplus
-    #include "rg_config.h"
     #include "SkrRenderGraph/frontend/render_graph.hpp"
     #include "SkrCore/module/module.hpp"
 

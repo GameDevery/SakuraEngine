@@ -1,7 +1,5 @@
 #pragma once
 #include "SkrCore/memory/memory.h"
-#include "SkrRenderGraph/rg_config.h"
-
 #include "SkrProfile/profile.h"
 
 namespace skr

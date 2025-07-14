@@ -45,8 +45,8 @@ struct QueueInfo {
 struct TimelineScheduleResult 
 {
     skr::span<QueueInfo> all_queues;
-    skr::Vector<skr::Vector<PassNode*>> queue_schedules;    // 各队列的调度信息
-    skr::FlatHashMap<PassNode*, uint32_t> pass_queue_assignments; // Pass到队列的映射
+    PooledVector<PooledVector<PassNode*>> queue_schedules;    // 各队列的调度信息
+    PooledMap<PassNode*, uint32_t> pass_queue_assignments; // Pass到队列的映射
 };
 
 // Timeline Phase 配置
@@ -94,7 +94,7 @@ private:
 private:
     QueueScheduleConfig config;
 
-    skr::Vector<QueueInfo> all_queues;  // 统一管理所有队列，按类型分组
+    PooledVector<QueueInfo> all_queues;  // 统一管理所有队列，按类型分组
     
     // 引用传入的依赖分析器
     const PassDependencyAnalysis& dependency_analysis;

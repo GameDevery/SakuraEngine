@@ -579,11 +579,10 @@ private:
             {
                 label << "\\n• " << (const char*)resource->get_name();
 
-                auto lifetime_it = lifetime_result.resource_lifetimes.find(resource);
-                if (lifetime_it != lifetime_result.resource_lifetimes.end())
+                if (auto lifetime_it = lifetime_result.resource_lifetimes.find(resource))
                 {
-                    label << " [L" << lifetime_it->second.start_dependency_level
-                          << "-" << lifetime_it->second.end_dependency_level << "]";
+                    label << " [L" << lifetime_it.value().start_dependency_level
+                          << "-" << lifetime_it.value().end_dependency_level << "]";
                 }
             }
 
@@ -1113,7 +1112,7 @@ private:
             return;
         }
 
-        if (result.pass_queue_assignments.empty())
+        if (result.pass_queue_assignments.is_empty())
         {
             SKR_LOG_ERROR(u8"❌ No pass assignments generated!");
             return;

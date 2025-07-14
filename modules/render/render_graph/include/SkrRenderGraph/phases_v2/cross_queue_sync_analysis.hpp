@@ -36,10 +36,10 @@ struct CrossQueueSyncPoint
 struct SSISAnalysisResult
 {
     // 原始同步需求（所有资源冲突点）
-    skr::Vector<CrossQueueSyncPoint> raw_sync_points;
+    PooledVector<CrossQueueSyncPoint> raw_sync_points;
     
     // 优化后的同步点集合（SSIS算法结果）
-    skr::Vector<CrossQueueSyncPoint> optimized_sync_points;
+    PooledVector<CrossQueueSyncPoint> optimized_sync_points;
     
     // 统计信息
     uint32_t total_raw_syncs = 0;
@@ -75,10 +75,10 @@ public:
     uint32_t get_pass_queue_index(PassNode* pass) const SKR_NOEXCEPT;
     uint32_t get_local_pass_index(PassNode* pass) const SKR_NOEXCEPT
     {
-        return queue_schedule_.get_schedule_result().pass_queue_assignments.at(pass);
+        return queue_schedule_.get_schedule_result().pass_queue_assignments.find(pass).value();
     }
     const SSISAnalysisResult& get_ssis_result() const { return ssis_result_; }
-    const skr::Vector<CrossQueueSyncPoint>& get_optimized_sync_points() const { return ssis_result_.optimized_sync_points; }
+    const PooledVector<CrossQueueSyncPoint>& get_optimized_sync_points() const { return ssis_result_.optimized_sync_points; }
     const PassDependencyAnalysis& get_dependency_analysis() const { return dependency_analysis_; }
 
     // 调试接口
@@ -106,13 +106,13 @@ private:
     SSISAnalysisResult ssis_result_;
 
     // 工作数据
-    skr::FlatHashSet<std::pair<PassNode*, PassNode*>> cross_queue_dependencies_; // 跨队列依赖缓存
+    PooledMap<PassNode*, PassNode*> cross_queue_dependencies_; // 跨队列依赖缓存
     
     // SSIS算法数据
     static constexpr uint32_t InvalidSyncIndex = UINT32_MAX;
-    skr::FlatHashMap<PassNode*, skr::Vector<uint32_t>> pass_ssis_;  // 每个Pass的SSIS数组
-    skr::FlatHashMap<PassNode*, uint32_t> pass_queue_local_indices_; // Pass在队列内的本地执行索引
-    skr::FlatHashMap<PassNode*, skr::Vector<PassNode*>> pass_dependencies_to_sync_with_; // 每个Pass需要同步的依赖节点
+    PooledMap<PassNode*, PooledVector<uint32_t>> pass_ssis_;  // 每个Pass的SSIS数组
+    PooledMap<PassNode*, uint32_t> pass_queue_local_indices_; // Pass在队列内的本地执行索引
+    PooledMap<PassNode*, PooledVector<PassNode*>> pass_dependencies_to_sync_with_; // 每个Pass需要同步的依赖节点
     uint32_t total_queue_count_ = 0;
 };
 

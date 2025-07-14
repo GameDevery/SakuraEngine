@@ -101,7 +101,7 @@ void ResourceAllocationPhase::create_texture_from_pool(uint64_t bucket_id, Textu
     }
 
     // 存储映射关系
-    allocation_result_.bucket_id_to_textures[bucket_id] = { gpu_texture, init_state };
+    allocation_result_.bucket_id_to_textures.add(bucket_id, { gpu_texture, init_state });
 
     // 更新统计信息
     allocation_result_.total_textures_created++;
@@ -132,7 +132,7 @@ void ResourceAllocationPhase::create_buffer_from_pool(uint64_t bucket_id, Buffer
     }
 
     // 存储映射关系
-    allocation_result_.bucket_id_to_buffers[bucket_id] = { gpu_buffer, init_state };
+    allocation_result_.bucket_id_to_buffers.add(bucket_id, { gpu_buffer, init_state });
 
     // 更新统计信息
     allocation_result_.total_buffers_created++;
@@ -188,11 +188,10 @@ void ResourceAllocationPhase::release_resources_to_pool() SKR_NOEXCEPT
 CGPUTextureId ResourceAllocationPhase::get_resource(TextureNode* texture) const
 {
     const auto& aliasing_result = aliasing_phase_.get_result();
-    auto redirect_it = aliasing_result.resource_to_bucket.find(texture);
-    if (redirect_it != aliasing_result.resource_to_bucket.end())
+    if (auto redirect_it = aliasing_result.resource_to_bucket.find(texture))
     {
-        const auto bucket_id = redirect_it->second;
-        return allocation_result_.bucket_id_to_textures.find(bucket_id)->second.v;
+        const auto bucket_id = redirect_it.value();
+        return allocation_result_.bucket_id_to_textures.find(bucket_id).value().v;
     }
     return nullptr;
 }
@@ -202,11 +201,10 @@ CGPUBufferId ResourceAllocationPhase::get_resource(BufferNode* buffer) const
     const auto& aliasing_result = aliasing_phase_.get_result();
 
     // 通过resource_redirects查找重定向的资源
-    auto redirect_it = aliasing_result.resource_to_bucket.find(buffer);
-    if (redirect_it != aliasing_result.resource_to_bucket.end())
+    if (auto redirect_it = aliasing_result.resource_to_bucket.find(buffer))
     {
-        const auto bucket_id = redirect_it->second;
-        return allocation_result_.bucket_id_to_buffers.find(bucket_id)->second.v;
+        const auto bucket_id = redirect_it.value();
+        return allocation_result_.bucket_id_to_buffers.find(bucket_id).value().v;
     }
     return nullptr;
 }

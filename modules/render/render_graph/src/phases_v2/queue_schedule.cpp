@@ -195,15 +195,12 @@ void QueueSchedule::assign_passes_using_topology() SKR_NOEXCEPT
                 case ERenderGraphQueueType::Graphics:
                     target_queue_index = find_graphics_queue();
                     break;
-                    
                 case ERenderGraphQueueType::AsyncCompute:
                     target_queue_index = find_least_loaded_compute_queue();
                     break;
-                    
                 case ERenderGraphQueueType::Copy:
                     target_queue_index = find_copy_queue();
                     break;
-                    
                 default:
                     target_queue_index = find_graphics_queue();
                     break;
@@ -213,7 +210,7 @@ void QueueSchedule::assign_passes_using_topology() SKR_NOEXCEPT
             if (target_queue_index < schedule_result.queue_schedules.size())
             {
                 schedule_result.queue_schedules[target_queue_index].add(pass);
-                schedule_result.pass_queue_assignments[pass] = target_queue_index;
+                schedule_result.pass_queue_assignments.add(pass, target_queue_index);
                 
                 QUEUE_SCHEDULE_LOG(u8"    Assigned pass '%s' to %s queue (index %u)", 
                               pass->get_name(),

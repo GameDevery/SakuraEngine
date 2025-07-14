@@ -46,7 +46,7 @@ void ResourceLifetimeAnalysis::analyze_resource_lifetimes(RenderGraph* graph) SK
     
     for (ResourceNode* resource : resources)
     {
-        ResourceLifetime& lifetime = lifetime_result_.resource_lifetimes[resource];
+        ResourceLifetime& lifetime = lifetime_result_.resource_lifetimes.try_add_default(resource).value();
         lifetime.resource = resource;
         lifetime.start_dependency_level = UINT32_MAX;
         lifetime.end_dependency_level = 0;
@@ -93,10 +93,9 @@ void ResourceLifetimeAnalysis::analyze_resource_lifetimes(RenderGraph* graph) SK
         // 计算主要队列（第一次使用该资源的Pass所在的队列）
         if (first_using_pass)
         {
-            auto queue_it = schedule_result.pass_queue_assignments.find(first_using_pass);
-            if (queue_it != schedule_result.pass_queue_assignments.end())
+            if (auto queue_it = schedule_result.pass_queue_assignments.find(first_using_pass))
             {
-                lifetime.primary_queue = queue_it->second;
+                lifetime.primary_queue = queue_it.value();
             }
         }
         
@@ -132,8 +131,9 @@ void ResourceLifetimeAnalysis::analyze_resource_lifetimes(RenderGraph* graph) SK
 
 const ResourceLifetime* ResourceLifetimeAnalysis::get_resource_lifetime(ResourceNode* resource) const
 {
-    auto it = lifetime_result_.resource_lifetimes.find(resource);
-    return (it != lifetime_result_.resource_lifetimes.end()) ? &it->second : nullptr;
+    if (auto it = lifetime_result_.resource_lifetimes.find(resource))
+        return &it.value();
+    return nullptr;
 }
 
 bool ResourceLifetime::conflicts_with(const ResourceLifetime& other) const

@@ -27,7 +27,7 @@ struct LogicalTopologyResult
     struct DependencyLevel
     {
         uint32_t level = 0;
-        skr::Vector<PassNode*> passes;  // 该级别中的所有Pass
+        PooledVector<PassNode*> passes;  // 该级别中的所有Pass
         
         // 统计信息
         uint32_t total_resources_accessed = 0;  // 该级别访问的资源总数
@@ -35,9 +35,9 @@ struct LogicalTopologyResult
     };
     
     // === 逻辑拓扑信息（基于依赖关系，永不变） ===
-    skr::Vector<DependencyLevel> logical_levels;         // 按逻辑依赖级别分组的Pass
-    skr::Vector<PassNode*> logical_topological_order;    // 逻辑拓扑排序后的Pass列表
-    skr::Vector<PassNode*> logical_critical_path;        // 逻辑关键路径（基于依赖关系）
+    PooledVector<DependencyLevel> logical_levels;         // 按逻辑依赖级别分组的Pass
+    PooledVector<PassNode*> logical_topological_order;    // 逻辑拓扑排序后的Pass列表
+    PooledVector<PassNode*> logical_critical_path;        // 逻辑关键路径（基于依赖关系）
     
     // 统计信息
     uint32_t max_logical_dependency_depth = 0;           // 最大逻辑依赖深度
@@ -46,9 +46,9 @@ struct LogicalTopologyResult
 // Pass dependencies result (逻辑依赖信息)
 struct PassDependencies {
     // === 逻辑依赖信息（永不变，不受重排序影响） ===
-    skr::Vector<ResourceDependency> resource_dependencies; // All resource dependencies of this pass
-    skr::Vector<PassNode*> dependent_passes;    // Pass-level dependencies (extracted from resource dependencies)
-    skr::Vector<PassNode*> dependent_by_passes; // Pass-level dependents
+    PooledVector<ResourceDependency> resource_dependencies; // All resource dependencies of this pass
+    PooledVector<PassNode*> dependent_passes;    // Pass-level dependencies (extracted from resource dependencies)
+    PooledVector<PassNode*> dependent_by_passes; // Pass-level dependents
     
     // === 逻辑拓扑信息（基于依赖关系，一次计算永不变） ===
     uint32_t logical_dependency_level = 0;       // 逻辑依赖级别（最长路径深度）
@@ -79,16 +79,16 @@ public:
     bool has_dependencies(PassNode* pass) const;
 
     // For QueueSchedule - get pass-level dependencies directly
-    const skr::Vector<PassNode*>& get_dependent_passes(PassNode* pass) const;
-    const skr::Vector<PassNode*>& get_dependent_by_passes(PassNode* pass) const;
+    const PooledVector<PassNode*>& get_dependent_passes(PassNode* pass) const;
+    const PooledVector<PassNode*>& get_dependent_by_passes(PassNode* pass) const;
     
     // 逻辑拓扑查询 (NEW)
     uint32_t get_logical_dependency_level(PassNode* pass) const;
     uint32_t get_logical_topological_order(PassNode* pass) const;
     uint32_t get_logical_critical_path_length(PassNode* pass) const;
     const LogicalTopologyResult& get_logical_topology_result() const { return logical_topology_; }
-    const skr::Vector<PassNode*>& get_logical_topological_order() const { return logical_topology_.logical_topological_order; }
-    const skr::Vector<PassNode*>& get_logical_critical_path() const { return logical_topology_.logical_critical_path; }
+    const PooledVector<PassNode*>& get_logical_topological_order() const { return logical_topology_.logical_topological_order; }
+    const PooledVector<PassNode*>& get_logical_critical_path() const { return logical_topology_.logical_critical_path; }
     
     // 逻辑并行性查询
     bool can_execute_in_parallel_logically(PassNode* pass1, PassNode* pass2) const;
@@ -100,7 +100,7 @@ public:
 
 private:
     // Analysis result: Pass -> its dependency info
-    skr::FlatHashMap<PassNode*, PassDependencies> pass_dependencies_;
+    PooledMap<PassNode*, PassDependencies> pass_dependencies_;
 
     // Working data for pass dependencies
     struct LastResourceAccess {
@@ -108,12 +108,12 @@ private:
         EResourceAccessType last_access_type = EResourceAccessType::Read;
         ECGPUResourceState last_state = CGPU_RESOURCE_STATE_UNDEFINED;
     };
-    skr::FlatHashMap<ResourceNode*, LastResourceAccess> resource_last_access_;
+    PooledMap<ResourceNode*, LastResourceAccess> resource_last_access_;
 
     // Logical topology cache
-    skr::FlatHashMap<PassNode*, uint32_t> in_degrees_;
-    skr::Vector<PassNode*> topo_queue_;
-    skr::Vector<uint32_t> topo_levels_;
+    PooledMap<PassNode*, uint32_t> in_degrees_;
+    PooledVector<PassNode*> topo_queue_;
+    PooledVector<uint32_t> topo_levels_;
     
     // 逻辑拓扑分析结果 (NEW)
     LogicalTopologyResult logical_topology_;

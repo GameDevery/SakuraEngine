@@ -42,8 +42,8 @@ struct MemoryBucket
 {
     uint64_t total_size = 0;                        // 桶的总大小
     uint64_t used_size = 0;                         // 已使用大小
-    skr::Vector<ResourceNode*> aliased_resources;   // 别名化的资源列表
-    skr::FlatHashMap<ResourceNode*, uint64_t> resource_offsets; // 资源在桶中的偏移
+    PooledVector<ResourceNode*> aliased_resources;   // 别名化的资源列表
+    PooledMap<ResourceNode*, uint64_t> resource_offsets; // 资源在桶中的偏移
     
     // 统计信息
     uint64_t original_total_size = 0;               // 不别名化时的总大小
@@ -69,14 +69,14 @@ struct MemoryAliasTransition
 struct MemoryAliasingResult
 {
     // 内存桶列表
-    skr::Vector<MemoryBucket> memory_buckets;
+    PooledVector<MemoryBucket> memory_buckets;
     
     // 资源到桶的映射
-    skr::FlatHashMap<ResourceNode*, uint32_t> resource_to_bucket;
-    skr::FlatHashMap<ResourceNode*, uint64_t> resource_to_offset;
+    PooledMap<ResourceNode*, uint32_t> resource_to_bucket;
+    PooledMap<ResourceNode*, uint64_t> resource_to_offset;
     
     // 内存别名转换点列表
-    skr::Vector<MemoryAliasTransition> alias_transitions;
+    PooledVector<MemoryAliasTransition> alias_transitions;
     
     // 需要别名屏障的资源
     skr::FlatHashSet<ResourceNode*> resources_need_aliasing_barrier;
@@ -141,15 +141,15 @@ private:
     // 核心算法（基于SSIS实现）
     void analyze_resources() SKR_NOEXCEPT;
     void create_memory_buckets() SKR_NOEXCEPT;
-    void perform_memory_aliasing(const skr::Vector<ResourceNode*>&) SKR_NOEXCEPT;
+    void perform_memory_aliasing(const PooledVector<ResourceNode*>&) SKR_NOEXCEPT;
 
     bool try_alias_resource_in_bucket(ResourceNode* resource, MemoryBucket& bucket) SKR_NOEXCEPT;
     MemoryRegion find_optimal_memory_region(ResourceNode* resource, const MemoryBucket& bucket) const SKR_NOEXCEPT;
     
     // SSIS算法核心：找到可别名的内存区域
-    skr::Vector<MemoryRegion> find_aliasable_regions(ResourceNode* resource, const MemoryBucket& bucket) const SKR_NOEXCEPT;
+    PooledVector<MemoryRegion> find_aliasable_regions(ResourceNode* resource, const MemoryBucket& bucket) const SKR_NOEXCEPT;
     void collect_non_aliasable_offsets(ResourceNode* resource, const MemoryBucket& bucket, 
-                                     skr::Vector<MemoryOffset>& offsets) const SKR_NOEXCEPT;
+                                     PooledVector<MemoryOffset>& offsets) const SKR_NOEXCEPT;
     
     // 别名转换点计算
     void compute_alias_transitions() SKR_NOEXCEPT;

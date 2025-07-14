@@ -72,7 +72,7 @@ void MemoryAliasingPhase::analyze_resources() SKR_NOEXCEPT
     const auto& lifetime_result = lifetime_analysis_.get_result();
     
     // SSIS算法步骤1：按大小降序排序资源
-    skr::Vector<ResourceNode*> sorted_resources = lifetime_result.resources_by_size_desc;
+    PooledVector<ResourceNode*> sorted_resources = lifetime_result.resources_by_size_desc;
     
     // 过滤掉不需要内存管理的资源
     auto filtered_end = std::remove_if(sorted_resources.begin(), sorted_resources.end(),
@@ -100,10 +100,9 @@ void MemoryAliasingPhase::analyze_resources() SKR_NOEXCEPT
             // 3. 跳过太小的资源
             auto lifetime_it = lifetime_result.resource_lifetimes.find(resource);
             auto resource_info = pass_info_analysis_.get_resource_info(resource);
-            if (lifetime_it == lifetime_result.resource_lifetimes.end() || 
-                resource_info->memory_size < config_.min_resource_size)
+            if (!lifetime_it || resource_info->memory_size < config_.min_resource_size)
             {
-                if (config_.enable_debug_output && lifetime_it != lifetime_result.resource_lifetimes.end())
+                if (config_.enable_debug_output && lifetime_it)
                 {
                     SKR_LOG_TRACE(u8"Skipping small resource for aliasing: %s (size: %llu bytes < %llu bytes)", 
                                  resource->get_name(), 
@@ -129,7 +128,7 @@ void MemoryAliasingPhase::analyze_resources() SKR_NOEXCEPT
     perform_memory_aliasing(sorted_resources);
 }
 
-void MemoryAliasingPhase::perform_memory_aliasing(const skr::Vector<ResourceNode*>& sorted_resources) SKR_NOEXCEPT
+void MemoryAliasingPhase::perform_memory_aliasing(const PooledVector<ResourceNode*>& sorted_resources) SKR_NOEXCEPT
 {
     const bool useResourcePooling = config_.aliasing_tier == EAliasingTier::Tier0;
     const auto& lifetime_result = lifetime_analysis_.get_result();
@@ -189,18 +188,18 @@ void MemoryAliasingPhase::perform_memory_aliasing(const skr::Vector<ResourceNode
             MemoryBucket new_bucket;
             auto lifetime_it = lifetime_result.resource_lifetimes.find(resource);
             auto resource_info = pass_info_analysis_.get_resource_info(resource);
-            if (lifetime_it != lifetime_result.resource_lifetimes.end())
+            if (lifetime_it)
             {
                 new_bucket.total_size = resource_info->memory_size;
                 new_bucket.used_size = resource_info->memory_size;
                 new_bucket.aliased_resources.add(resource);
-                new_bucket.resource_offsets[resource] = 0;
+                new_bucket.resource_offsets.add(resource, 0);
                 new_bucket.original_total_size = resource_info->memory_size;
                 
                 uint32_t bucket_index = static_cast<uint32_t>(aliasing_result_.memory_buckets.size());
                 aliasing_result_.memory_buckets.add(std::move(new_bucket));
-                aliasing_result_.resource_to_bucket[resource] = bucket_index;
-                aliasing_result_.resource_to_offset[resource] = 0;
+                aliasing_result_.resource_to_bucket.add(resource, bucket_index);
+                aliasing_result_.resource_to_offset.add(resource, 0);
                 
                 aliased = true;
             }
@@ -226,7 +225,7 @@ bool MemoryAliasingPhase::try_alias_resource_in_bucket(ResourceNode* resource, M
     const auto& lifetime_result = lifetime_analysis_.get_result();
     auto resource_info = pass_info_analysis_.get_resource_info(resource);
     auto resource_lifetime_it = lifetime_result.resource_lifetimes.find(resource);
-    if (resource_lifetime_it == lifetime_result.resource_lifetimes.end())
+    if (!resource_lifetime_it)
     {
         return false;
     }
@@ -250,7 +249,7 @@ bool MemoryAliasingPhase::try_alias_resource_in_bucket(ResourceNode* resource, M
     
     // 成功找到区域，更新桶信息
     bucket.aliased_resources.add(resource);
-    bucket.resource_offsets[resource] = optimal_region.offset;
+    bucket.resource_offsets.add(resource, optimal_region.offset);
     bucket.original_total_size += resource_info->memory_size;
     
     // 更新桶的总大小（如果新资源超出了当前范围）
@@ -262,8 +261,8 @@ bool MemoryAliasingPhase::try_alias_resource_in_bucket(ResourceNode* resource, M
     
     // 更新全局映射
     uint32_t bucket_index = static_cast<uint32_t>(&bucket - &aliasing_result_.memory_buckets[0]);
-    aliasing_result_.resource_to_bucket[resource] = bucket_index;
-    aliasing_result_.resource_to_offset[resource] = optimal_region.offset;
+    aliasing_result_.resource_to_bucket.add(resource, bucket_index);
+    aliasing_result_.resource_to_offset.add(resource, optimal_region.offset);
     
     return true;
 }
@@ -273,7 +272,7 @@ MemoryRegion MemoryAliasingPhase::find_optimal_memory_region(ResourceNode* resou
     const auto& lifetime_result = lifetime_analysis_.get_result();
     auto resource_info = pass_info_analysis_.get_resource_info(resource);
     auto resource_lifetime_it = lifetime_result.resource_lifetimes.find(resource);
-    if (resource_lifetime_it == lifetime_result.resource_lifetimes.end())
+    if (!resource_lifetime_it)
     {
         return MemoryRegion{};
     }
@@ -295,7 +294,7 @@ MemoryRegion MemoryAliasingPhase::find_optimal_memory_region(ResourceNode* resou
     else
     {
         // SSIS算法：找到所有可别名的内存区域
-        skr::Vector<MemoryRegion> aliasable_regions = find_aliasable_regions(resource, bucket);
+        PooledVector<MemoryRegion> aliasable_regions = find_aliasable_regions(resource, bucket);
         MemoryRegion optimal_region{};
         // 选择最小适配的区域（SSIS建议）
         for (const auto& region : aliasable_regions)
@@ -312,12 +311,12 @@ MemoryRegion MemoryAliasingPhase::find_optimal_memory_region(ResourceNode* resou
     }
 }
 
-skr::Vector<MemoryRegion> MemoryAliasingPhase::find_aliasable_regions(ResourceNode* resource, const MemoryBucket& bucket) const SKR_NOEXCEPT
+PooledVector<MemoryRegion> MemoryAliasingPhase::find_aliasable_regions(ResourceNode* resource, const MemoryBucket& bucket) const SKR_NOEXCEPT
 {
-    skr::Vector<MemoryRegion> aliasable_regions;
+    PooledVector<MemoryRegion> aliasable_regions;
     
     // SSIS算法核心：收集非别名化的内存偏移
-    skr::Vector<MemoryOffset> offsets;
+    PooledVector<MemoryOffset> offsets;
     collect_non_aliasable_offsets(resource, bucket, offsets);
     
     if (offsets.is_empty())
@@ -364,7 +363,7 @@ skr::Vector<MemoryRegion> MemoryAliasingPhase::find_aliasable_regions(ResourceNo
 }
 
 void MemoryAliasingPhase::collect_non_aliasable_offsets(ResourceNode* resource, const MemoryBucket& bucket, 
-                                                       skr::Vector<MemoryOffset>& offsets) const SKR_NOEXCEPT
+                                                       PooledVector<MemoryOffset>& offsets) const SKR_NOEXCEPT
 {
     offsets.clear();
     
@@ -377,15 +376,13 @@ void MemoryAliasingPhase::collect_non_aliasable_offsets(ResourceNode* resource, 
     {
         if (resources_conflict_in_time(resource, existing_resource))
         {
-            auto offset_it = bucket.resource_offsets.find(existing_resource);
-            if (offset_it != bucket.resource_offsets.end())
+            if (auto offset_it = bucket.resource_offsets.find(existing_resource))
             {
                 const auto& lifetime_result = lifetime_analysis_.get_result();
                 auto resource_info = pass_info_analysis_.get_resource_info(existing_resource);
-                auto existing_lifetime_it = lifetime_result.resource_lifetimes.find(existing_resource);
-                if (existing_lifetime_it != lifetime_result.resource_lifetimes.end())
+                if (auto existing_lifetime_it = lifetime_result.resource_lifetimes.find(existing_resource))
                 {
-                    uint64_t start_offset = offset_it->second;
+                    uint64_t start_offset = offset_it.value();
                     uint64_t end_offset = start_offset + resource_info->memory_size;
                     
                     offsets.add(MemoryOffset{ start_offset, EMemoryOffsetType::Start, existing_resource });
@@ -404,11 +401,11 @@ bool MemoryAliasingPhase::resources_conflict_in_time(ResourceNode* res1, Resourc
     auto lifetime1_it = lifetime_result.resource_lifetimes.find(res1);
     auto lifetime2_it = lifetime_result.resource_lifetimes.find(res2);
     
-    if (lifetime1_it == lifetime_result.resource_lifetimes.end() || 
-        lifetime2_it == lifetime_result.resource_lifetimes.end()) return true; // 保守处理
+    if (!lifetime1_it || !lifetime2_it)
+        return true;
     
     // 使用SSIS建议：dependency level indices进行冲突检测
-    return lifetime1_it->second.conflicts_with(lifetime2_it->second);
+    return lifetime1_it.value().conflicts_with(lifetime2_it.value());
 }
 
 bool MemoryAliasingPhase::can_resources_alias(ResourceNode* res1, ResourceNode* res2) const SKR_NOEXCEPT
@@ -423,17 +420,16 @@ bool MemoryAliasingPhase::can_resources_alias(ResourceNode* res1, ResourceNode* 
             auto lifetime1_it = lifetime_result.resource_lifetimes.find(res1);
             auto lifetime2_it = lifetime_result.resource_lifetimes.find(res2);
             
-            if (lifetime1_it != lifetime_result.resource_lifetimes.end() && 
-                lifetime2_it != lifetime_result.resource_lifetimes.end())
+            if (lifetime1_it && lifetime2_it)
             {
                 // 如果资源在不同队列使用，不允许别名
-                if (lifetime1_it->second.primary_queue != lifetime2_it->second.primary_queue)
+                if (lifetime1_it.value().primary_queue != lifetime2_it.value().primary_queue)
                 {
                     if (config_.enable_debug_output)
                     {
                         SKR_LOG_TRACE(u8"Cannot alias cross-queue resources: %s (queue=%u) vs %s (queue=%u)",
-                                     res1->get_name(), lifetime1_it->second.primary_queue,
-                                     res2->get_name(), lifetime2_it->second.primary_queue);
+                                     res1->get_name(), lifetime1_it.value().primary_queue,
+                                     res2->get_name(), lifetime2_it.value().primary_queue);
                     }
                     return false;
                 }
@@ -487,13 +483,13 @@ void MemoryAliasingPhase::identify_aliasing_barriers() SKR_NOEXCEPT
 uint32_t MemoryAliasingPhase::get_resource_bucket(ResourceNode* resource) const
 {
     auto it = aliasing_result_.resource_to_bucket.find(resource);
-    return (it != aliasing_result_.resource_to_bucket.end()) ? it->second : UINT32_MAX;
+    return it ? it.value() : UINT32_MAX;
 }
 
 uint64_t MemoryAliasingPhase::get_resource_offset(ResourceNode* resource) const
 {
     auto it = aliasing_result_.resource_to_offset.find(resource);
-    return (it != aliasing_result_.resource_to_offset.end()) ? it->second : 0;
+    return it ? it.value() : 0;
 }
 
 bool MemoryAliasingPhase::needs_aliasing_barrier(ResourceNode* resource) const
@@ -537,20 +533,18 @@ void MemoryAliasingPhase::dump_memory_buckets() const SKR_NOEXCEPT
         
         for (auto* resource : bucket.aliased_resources)
         {
-            auto offset_it = bucket.resource_offsets.find(resource);
-            if (offset_it != bucket.resource_offsets.end())
+            if (auto offset_it = bucket.resource_offsets.find(resource))
             {
                 const auto& lifetime_result = lifetime_analysis_.get_result();
                 auto resource_info = pass_info_analysis_.get_resource_info(resource);
-                auto lifetime_it = lifetime_result.resource_lifetimes.find(resource);
-                if (lifetime_it != lifetime_result.resource_lifetimes.end())
+                if (auto lifetime_it = lifetime_result.resource_lifetimes.find(resource))
                 {
                     SKR_LOG_INFO(u8"    - %s: offset %llu, size %llu KB, levels [%u-%u]",
                                 resource->get_name(),
-                                offset_it->second,
+                                offset_it.value(),
                                 resource_info->memory_size / 1024,
-                                lifetime_it->second.start_dependency_level,
-                                lifetime_it->second.end_dependency_level);
+                                lifetime_it.value().start_dependency_level,
+                                lifetime_it.value().end_dependency_level);
                 }
             }
         }
@@ -573,17 +567,15 @@ void MemoryAliasingPhase::compute_alias_transitions() SKR_NOEXCEPT
             continue;
             
         // 按资源的生命周期排序（开始时间）
-        skr::Vector<ResourceNode*> sorted_resources = bucket.aliased_resources;
-        std::sort(sorted_resources.begin(), sorted_resources.end(), 
-            [this](ResourceNode* a, ResourceNode* b) {
+        PooledVector<ResourceNode*> sorted_resources = bucket.aliased_resources;
+        sorted_resources.sort([this](ResourceNode* a, ResourceNode* b) {
                 const auto& lifetime_result = lifetime_analysis_.get_result();
                 auto a_lifetime = lifetime_result.resource_lifetimes.find(a);
                 auto b_lifetime = lifetime_result.resource_lifetimes.find(b);
                 
-                if (a_lifetime != lifetime_result.resource_lifetimes.end() &&
-                    b_lifetime != lifetime_result.resource_lifetimes.end())
+                if (a_lifetime && b_lifetime)
                 {
-                    return a_lifetime->second.start_dependency_level < b_lifetime->second.start_dependency_level;
+                    return a_lifetime.value().start_dependency_level < b_lifetime.value().start_dependency_level;
                 }
                 return false;
             });
@@ -636,22 +628,20 @@ void MemoryAliasingPhase::record_alias_transition(ResourceNode* from, ResourceNo
     
     if (from)
     {
-        auto from_lifetime = lifetime_result.resource_lifetimes.find(from);
-        if (from_lifetime != lifetime_result.resource_lifetimes.end())
+        if (auto from_lifetime = lifetime_result.resource_lifetimes.find(from))
         {
-            transition.from_end_level = from_lifetime->second.end_dependency_level;
+            transition.from_end_level = from_lifetime.value().end_dependency_level;
         }
     }
     
     if (to)
     {
-        auto to_lifetime = lifetime_result.resource_lifetimes.find(to);
         auto resource_info = pass_info_analysis_.get_resource_info(to);
-        if (to_lifetime != lifetime_result.resource_lifetimes.end())
+        if (auto to_lifetime = lifetime_result.resource_lifetimes.find(to))
         {
-            transition.to_start_level = to_lifetime->second.start_dependency_level;
+            transition.to_start_level = to_lifetime.value().start_dependency_level;
             transition.memory_size = resource_info->memory_size;
-            transition.memory_offset = aliasing_result_.resource_to_offset[to];
+            transition.memory_offset = aliasing_result_.resource_to_offset.find(to).value();
         }
     }
     
@@ -679,7 +669,7 @@ PassNode* MemoryAliasingPhase::find_transition_pass(ResourceNode* from, Resource
     auto resource_info = pass_info_analysis_.get_resource_info(to);
     auto to_lifetime = lifetime_result.resource_lifetimes.find(to);
     
-    if (to_lifetime != lifetime_result.resource_lifetimes.end() && !resource_info->used_states.is_empty())
+    if (to_lifetime && !resource_info->used_states.is_empty())
     {
         return resource_info->used_states.at(0).key;
     }
@@ -691,7 +681,7 @@ bool MemoryAliasingPhase::can_fit_in_bucket(ResourceNode* resource, const Memory
 {
     const auto& lifetime_result = lifetime_analysis_.get_result();
     auto resource_lifetime_it = lifetime_result.resource_lifetimes.find(resource);
-    if (resource_lifetime_it == lifetime_result.resource_lifetimes.end())
+    if (!resource_lifetime_it)
     {
         return false;
     }
@@ -715,7 +705,7 @@ uint64_t MemoryAliasingPhase::calculate_bucket_waste(ResourceNode* resource, con
     const auto& lifetime_result = lifetime_analysis_.get_result();
     auto resource_info = pass_info_analysis_.get_resource_info(resource);
     auto resource_lifetime_it = lifetime_result.resource_lifetimes.find(resource);
-    if (resource_lifetime_it == lifetime_result.resource_lifetimes.end())
+    if (!resource_lifetime_it)
     {
         return UINT64_MAX; // 无法计算，返回最大值避免选择
     }

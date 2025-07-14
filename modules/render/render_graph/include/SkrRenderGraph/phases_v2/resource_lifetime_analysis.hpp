@@ -29,10 +29,10 @@ struct ResourceLifetime
 struct ResourceLifetimeResult
 {
     // 按资源分组的生命周期信息
-    skr::FlatHashMap<ResourceNode*, ResourceLifetime> resource_lifetimes;
+    PooledMap<ResourceNode*, ResourceLifetime> resource_lifetimes;
     
     // 按大小降序排列的资源（用于内存别名化）
-    skr::Vector<ResourceNode*> resources_by_size_desc;
+    PooledVector<ResourceNode*> resources_by_size_desc;
     
     // 统计信息
     uint64_t total_memory_requirement;
