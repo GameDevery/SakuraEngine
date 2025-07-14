@@ -11,6 +11,9 @@ namespace render_graph {
 PassDependencyAnalysis::PassDependencyAnalysis(const PassInfoAnalysis& pass_info_analysis)
     : pass_info_analysis(pass_info_analysis)
 {
+    in_degrees_.reserve(64);
+    topo_queue_.reserve(64);
+    topo_levels_.reserve(64);
 }
 
 bool PassDependencies::has_dependency_on(PassNode* pass) const
@@ -26,14 +29,12 @@ bool PassDependencies::has_dependency_on(PassNode* pass) const
 // IRenderGraphPhase 接口实现
 void PassDependencyAnalysis::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
-    
     analyze_pass_dependencies(graph);
     
     // NEW: 进行逻辑拓扑分析（基于依赖关系，一次计算永不变）
-    perform_logical_topological_sort();
-    calculate_logical_dependency_levels();
+    // 优化：合并拓扑排序和依赖级别计算，减少一次遍历
+    perform_logical_topological_sort_optimized();
     identify_logical_critical_path();
-    collect_logical_topology_statistics();
 }
 
 void PassDependencyAnalysis::on_initialize(RenderGraph* graph) SKR_NOEXCEPT
@@ -231,116 +232,114 @@ void PassDependencyAnalysis::dump_dependencies() const
 
 // ===== 逻辑拓扑分析实现 =====
 
-void PassDependencyAnalysis::perform_logical_topological_sort()
+void PassDependencyAnalysis::perform_logical_topological_sort_optimized()
 {
-    skr::FlatHashSet<PassNode*> visited;
-    skr::FlatHashSet<PassNode*> on_stack;
-    bool has_cycle = false;
+    const size_t num_passes = pass_dependencies_.size();
+    if (num_passes == 0) return;
 
+    // 预分配容器，避免动态扩容
+    in_degrees_.clear();
+    topo_queue_.clear();
+    topo_levels_.clear();
     logical_topology_.logical_topological_order.clear();
-    logical_topology_.logical_topological_order.reserve(pass_dependencies_.size());
 
-    // DFS from each unvisited node
-    for (const auto& [pass, deps] : pass_dependencies_)
-    {
-        if (!visited.contains(pass))
-        {
-            logical_topological_sort_dfs(pass, visited, on_stack, logical_topology_.logical_topological_order, has_cycle);
-        }
-    }
+    in_degrees_.reserve(num_passes);
+    topo_queue_.reserve(num_passes);
+    topo_levels_.reserve(num_passes);
+    logical_topology_.logical_topological_order.reserve(num_passes);
 
-    // Reverse the order (DFS produces reverse topological order)
-    std::reverse(logical_topology_.logical_topological_order.begin(), logical_topology_.logical_topological_order.end());
-
-    // Assign logical topological order indices
-    for (size_t i = 0; i < logical_topology_.logical_topological_order.size(); ++i)
-    {
-        auto* pass = logical_topology_.logical_topological_order[i];
-        auto it = pass_dependencies_.find(pass);
-        if (it != pass_dependencies_.end())
-        {
-            it->second.logical_topological_order = static_cast<uint32_t>(i);
-        }
-    }
-
-    if (has_cycle)
-    {
-        SKR_LOG_ERROR(u8"PassDependencyAnalysis: Circular dependency detected in logical dependency graph!");
-    }
-}
-
-void PassDependencyAnalysis::logical_topological_sort_dfs(
-    PassNode* node, skr::FlatHashSet<PassNode*>& visited, skr::FlatHashSet<PassNode*>& on_stack, 
-    skr::Vector<PassNode*>& sorted_passes, bool& has_cycle)
-{
-    visited.insert(node);
-    on_stack.insert(node);
-
-    // Visit all nodes that depend on this node (forward edges)
-    auto deps_it = pass_dependencies_.find(node);
-    if (deps_it != pass_dependencies_.end())
-    {
-        for (auto* dependent : deps_it->second.dependent_by_passes)
-        {
-            if (!visited.contains(dependent))
-            {
-                logical_topological_sort_dfs(dependent, visited, on_stack, sorted_passes, has_cycle);
-            }
-            else if (on_stack.contains(dependent))
-            {
-                has_cycle = true;
-                SKR_LOG_ERROR(u8"Circular dependency: %s -> %s", node->get_name(), dependent->get_name());
-            }
-        }
-    }
-
-    on_stack.erase(node);
-    sorted_passes.add(node);
-}
-
-void PassDependencyAnalysis::calculate_logical_dependency_levels()
-{
-    // Initialize all levels to 0
+    // 第一步：计算所有节点的入度，同时初始化依赖级别为0
     for (auto& [pass, deps] : pass_dependencies_)
     {
-        deps.logical_dependency_level = 0;
+        in_degrees_[pass] = static_cast<uint32_t>(deps.dependent_passes.size());
+        deps.logical_dependency_level = 0; // 初始化级别
+        deps.logical_topological_order = UINT32_MAX; // 临时标记为未处理
     }
 
-    // Calculate levels using longest path algorithm on logical topological order
-    for (auto* pass : logical_topology_.logical_topological_order)
+    // 第二步：找到所有入度为0的节点（没有依赖的节点）
+    for (const auto& [pass, degree] : in_degrees_)
     {
-        auto pass_it = pass_dependencies_.find(pass);
-        if (pass_it == pass_dependencies_.end()) continue;
-
-        uint32_t current_level = pass_it->second.logical_dependency_level;
-
-        // Update the level of all passes that depend on this one
-        for (auto* dependent : pass_it->second.dependent_by_passes)
+        if (degree == 0)
         {
-            auto dep_it = pass_dependencies_.find(dependent);
-            if (dep_it != pass_dependencies_.end())
+            topo_queue_.add(pass);
+            topo_levels_.add(0); // 起始节点的级别为0
+        }
+    }
+
+    // 第三步：Kahn算法 + 同时计算依赖级别
+    size_t queue_idx = 0;
+    while (queue_idx < topo_queue_.size())
+    {
+        PassNode* current = topo_queue_[queue_idx];
+        uint32_t current_level = topo_levels_[queue_idx];
+        ++queue_idx;
+
+        // 添加到拓扑排序结果
+        logical_topology_.logical_topological_order.add(current);
+        
+        // 设置当前节点的拓扑索引和依赖级别
+        auto current_it = pass_dependencies_.find(current);
+        if (current_it != pass_dependencies_.end())
+        {
+            current_it->second.logical_topological_order = static_cast<uint32_t>(logical_topology_.logical_topological_order.size() - 1);
+            current_it->second.logical_dependency_level = current_level;
+            
+            // 处理所有依赖于当前节点的节点
+            for (auto* dependent : current_it->second.dependent_by_passes)
             {
-                dep_it->second.logical_dependency_level = std::max(dep_it->second.logical_dependency_level, current_level + 1);
+                // 减少入度
+                --in_degrees_[dependent];
+                
+                // 更新依赖节点的级别（取所有前驱的最大级别+1）
+                auto dep_it = pass_dependencies_.find(dependent);
+                if (dep_it != pass_dependencies_.end())
+                {
+                    dep_it->second.logical_dependency_level = std::max(
+                        dep_it->second.logical_dependency_level, 
+                        current_level + 1
+                    );
+                }
+                
+                // 如果入度变为0，加入队列
+                if (in_degrees_[dependent] == 0)
+                {
+                    topo_queue_.add(dependent);
+                    auto dep_it = pass_dependencies_.find(dependent);
+                    uint32_t dep_level = (dep_it != pass_dependencies_.end()) ? dep_it->second.logical_dependency_level : 0;
+                    topo_levels_.add(dep_level);
+                }
             }
         }
     }
 
-    // Find max level
+    // 第四步：检查循环依赖
+    if (logical_topology_.logical_topological_order.size() != num_passes)
+    {
+        SKR_LOG_ERROR(u8"PassDependencyAnalysis: 检测到循环依赖！拓扑排序节点数 {} != 总节点数 {}", 
+                     logical_topology_.logical_topological_order.size(), num_passes);
+    }
+
+    // 第五步：计算最大依赖深度并构建级别分组
     logical_topology_.max_logical_dependency_depth = 0;
     for (const auto& [pass, deps] : pass_dependencies_)
     {
-        logical_topology_.max_logical_dependency_depth = std::max(logical_topology_.max_logical_dependency_depth, deps.logical_dependency_level);
+        logical_topology_.max_logical_dependency_depth = std::max(
+            logical_topology_.max_logical_dependency_depth, 
+            deps.logical_dependency_level
+        );
     }
 
-    // Create level groups
+    // 构建级别分组
+    logical_topology_.logical_levels.clear();
     logical_topology_.logical_levels.resize_default(logical_topology_.max_logical_dependency_depth + 1);
+    
     for (uint32_t i = 0; i <= logical_topology_.max_logical_dependency_depth; ++i)
     {
         logical_topology_.logical_levels[i].level = i;
         logical_topology_.logical_levels[i].passes.clear();
     }
 
-    // Assign passes to levels
+    // 将节点分配到对应级别
     for (const auto& [pass, deps] : pass_dependencies_)
     {
         logical_topology_.logical_levels[deps.logical_dependency_level].passes.add(pass);
@@ -431,29 +430,6 @@ void PassDependencyAnalysis::identify_logical_critical_path()
     }
 }
 
-void PassDependencyAnalysis::collect_logical_topology_statistics()
-{
-    logical_topology_.total_parallel_opportunities = 0;
-
-    // Count parallel opportunities within each logical level
-    for (auto& level : logical_topology_.logical_levels)
-    {
-        size_t pass_count = level.passes.size();
-        if (pass_count > 1)
-        {
-            // Number of parallel pairs in this level
-            logical_topology_.total_parallel_opportunities += static_cast<uint32_t>((pass_count * (pass_count - 1)) / 2);
-        }
-
-        // TODO: 这些统计信息需要访问PassInfoAnalysis，暂时先设为0
-        // 如果需要详细统计，可以在这里添加对PassInfoAnalysis的调用
-        level.total_resources_accessed = 0;
-        level.cross_level_dependencies = 0;
-    }
-}
-
-// ===== 逻辑拓扑查询接口实现 =====
-
 uint32_t PassDependencyAnalysis::get_logical_dependency_level(PassNode* pass) const
 {
     auto it = pass_dependencies_.find(pass);
@@ -506,7 +482,6 @@ void PassDependencyAnalysis::dump_logical_topology() const
 {
     SKR_LOG_INFO(u8"========== Logical Topology Analysis ==========");
     SKR_LOG_INFO(u8"Max logical dependency depth: %u", logical_topology_.max_logical_dependency_depth);
-    SKR_LOG_INFO(u8"Total parallel opportunities: %u", logical_topology_.total_parallel_opportunities);
     SKR_LOG_INFO(u8"Logical topological order:");
     
     for (size_t i = 0; i < logical_topology_.logical_topological_order.size(); ++i)

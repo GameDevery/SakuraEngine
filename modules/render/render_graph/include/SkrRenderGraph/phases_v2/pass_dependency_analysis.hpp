@@ -51,7 +51,6 @@ struct LogicalTopologyResult
     
     // 统计信息
     uint32_t max_logical_dependency_depth = 0;           // 最大逻辑依赖深度
-    uint32_t total_parallel_opportunities = 0;           // 可并行执行的Pass对数
 };
 
 // Pass dependencies result (逻辑依赖信息)
@@ -112,6 +111,11 @@ public:
 private:
     // Analysis result: Pass -> its dependency info
     skr::FlatHashMap<PassNode*, PassDependencies> pass_dependencies_;
+
+    // Logical topology cache
+    skr::FlatHashMap<PassNode*, uint32_t> in_degrees_;
+    skr::Vector<PassNode*> topo_queue_;
+    skr::Vector<uint32_t> topo_levels_;
     
     // 逻辑拓扑分析结果 (NEW)
     LogicalTopologyResult logical_topology_;
@@ -124,17 +128,12 @@ private:
     EResourceDependencyType get_confict_type(EResourceAccessType current, EResourceAccessType previous);
     
     // 逻辑拓扑分析方法 (NEW)
+    void perform_logical_topological_sort_optimized(); // 优化版本：合并拓扑排序和级别计算
+    void identify_logical_critical_path();
+    
+    // 旧版本方法（保留以备需要）
     void perform_logical_topological_sort();
     void calculate_logical_dependency_levels();
-    void identify_logical_critical_path();
-    void collect_logical_topology_statistics();
-    
-    // 逻辑拓扑排序的DFS辅助方法
-    void logical_topological_sort_dfs(PassNode* node, 
-                                     skr::FlatHashSet<PassNode*>& visited,
-                                     skr::FlatHashSet<PassNode*>& on_stack,
-                                     skr::Vector<PassNode*>& sorted_passes,
-                                     bool& has_cycle);
 };
 
 } // namespace render_graph
