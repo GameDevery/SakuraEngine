@@ -21,8 +21,7 @@
 
 namespace sugoi
 {
-TypeRegistry::Impl::Impl(pool_t& pool)
-    : nameArena(pool)
+TypeRegistry::Impl::Impl()
 {
     using namespace skr::literals;
     {
@@ -126,7 +125,7 @@ type_index_t TypeRegistry::Impl::register_type(const type_description_t& inDesc)
         if (name2type.count(desc.name))
             return kInvalidTypeIndex;
         auto len = strlen((const char*)desc.name);
-        auto name = (char8_t*)nameArena.allocate(len + 1, 1);
+        auto name = (char8_t*)sakura_malloc(len + 1);
         memcpy(name, desc.name, len + 1);
         desc.name = name;
     }

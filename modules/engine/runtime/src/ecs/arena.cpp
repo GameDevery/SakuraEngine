@@ -4,6 +4,8 @@
 #include "./arena.hpp"
 #include "./pool.hpp"
 
+#include <cstdint>
+
 namespace sugoi
 {
 fixed_arena_t::fixed_arena_t(size_t capacity)
@@ -28,17 +30,55 @@ void fixed_arena_t::forget()
 
 void* fixed_arena_t::allocate(size_t s, size_t a)
 {
-    //TODO: waste memory
-    size_t offset = size.fetch_add(s + a - 1);
-    offset = ((offset + a - 1) / a) * a;
-    SKR_ASSERT(offset < capacity);
-    return (char*)buffer + offset;
+    // 检查对齐参数是否有效
+    if (a == 0 || (a & (a - 1)) != 0)
+        return nullptr;
+    
+    // 检查分配大小是否合理
+    if (s == 0 || s > capacity)
+        return nullptr;
+    
+    // 安全的对齐计算，防止溢出
+    size_t current_size = size.load();
+    size_t aligned_offset;
+    
+    do {
+        // 检查溢出
+        if (current_size > SIZE_MAX - (a - 1))
+            return nullptr;
+        
+        aligned_offset = ((current_size + a - 1) / a) * a;
+        
+        // 检查是否超出容量
+        if (aligned_offset > capacity - s)
+            return nullptr;
+        
+        // 尝试原子性地更新大小
+    } while (!size.compare_exchange_weak(current_size, aligned_offset + s));
+    
+    return (char*)buffer + aligned_offset;
 }
 
 void* struct_arena_base_t::allocate(size_t s, size_t a)
 {
+    // 检查对齐参数是否有效
+    if (a == 0 || (a & (a - 1)) != 0)
+        return nullptr;
+    
+    // 检查分配大小是否合理
+    if (s == 0)
+        return nullptr;
+    
+    // 安全的对齐计算，防止溢出
+    if (size > SIZE_MAX - (a - 1))
+        return nullptr;
+    
     size = ((size + a - 1) / a) * a;
-    SKR_ASSERT(size + s <= capacity);
+    
+    // 检查是否超出容量
+    if (size > capacity - s)
+        return nullptr;
+    
     size += s;
     return (char*)buffer + size - s;
 }
@@ -84,21 +124,46 @@ void block_arena_t::reset()
 
 void* block_arena_t::allocate(size_t s, size_t a)
 {
-    if (s > pool.blockSize)
+    // 检查分配大小是否超出块大小（需要减去块头大小）
+    constexpr size_t block_header_size = sizeof(block_t);
+    if (pool.blockSize < block_header_size || s > pool.blockSize - block_header_size)
         return nullptr;
-    curr = ((curr + a - 1) / a) * a;
+    
+    // 检查对齐参数是否有效
+    if (a == 0 || (a & (a - 1)) != 0)
+        return nullptr;
+    
+    // 安全的对齐计算，防止溢出
+    size_t aligned_curr;
+    if (curr > SIZE_MAX - (a - 1))
+        return nullptr; // 溢出检查
+    
+    aligned_curr = ((curr + a - 1) / a) * a;
+    
     if (first == nullptr)
     {
         first = last = (block_t*)pool.allocate();
+        if (first == nullptr)
+            return nullptr; // 处理分配失败
         first->next = nullptr;
+        aligned_curr = 0; // 新块从0开始
     }
-    if (curr + s > pool.blockSize)
+    
+    // 检查当前块是否有足够空间（考虑块头大小）
+    if (aligned_curr + s > pool.blockSize - block_header_size)
     {
-        last->next = (block_t*)pool.allocate();
-        last = last->next;
+        // 分配新块
+        block_t* new_block = (block_t*)pool.allocate();
+        if (new_block == nullptr)
+            return nullptr; // 处理分配失败
+            
+        last->next = new_block;
+        last = new_block;
         last->next = nullptr;
-        curr = 0;
+        aligned_curr = 0; // 新块从0开始
     }
+    
+    curr = aligned_curr;
     void* result = (char*)last->data() + curr;
     curr += s;
     return result;
