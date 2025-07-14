@@ -241,19 +241,14 @@ bool ExecutionReorderPhase::has_path_between_passes(PassNode* from_pass, PassNod
 skr::Vector<ResourceNode*> ExecutionReorderPhase::get_shared_resources(PassNode* pass1, PassNode* pass2) const SKR_NOEXCEPT
 {
     skr::Vector<ResourceNode*>& shared = shared_resources_;
+    skr::Set<ResourceNode*>& resources1 = shared_resource_set_;
     shared.clear();
-    
-    if (!pass1 || !pass2) return shared;
-    
+    resources1.clear();
+
     // Use pass info analysis to get resource accesses efficiently
     const auto* info1 = pass_info_analysis.get_pass_info(pass1);
     const auto* info2 = pass_info_analysis.get_pass_info(pass2);
-    
-    if (!info1 || !info2) return shared;
-    
-    // Use set-based intersection for better performance
-    skr::Set<ResourceNode*>& resources1 = shared_resource_set_;
-    resources1.clear();
+
     for (const auto& access : info1->resource_info.all_resource_accesses)
     {
         resources1.add(access.resource);

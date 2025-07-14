@@ -90,10 +90,10 @@ public:
             auto dependency_analysis = skr::render_graph::PassDependencyAnalysis(info_analysis);
             auto queue_schedule = skr::render_graph::QueueSchedule(dependency_analysis, timeline_config);
             auto reorder_phase = skr::render_graph::ExecutionReorderPhase(info_analysis, dependency_analysis, queue_schedule, {});
-            auto lifetime_analysis = skr::render_graph::ResourceLifetimeAnalysis(dependency_analysis, queue_schedule, {});
+            auto lifetime_analysis = skr::render_graph::ResourceLifetimeAnalysis(info_analysis, dependency_analysis, queue_schedule);
             auto ssis_phase = skr::render_graph::CrossQueueSyncAnalysis(dependency_analysis, queue_schedule, {});
             auto aliasing_phase = skr::render_graph::MemoryAliasingPhase(
-                lifetime_analysis, ssis_phase, { .aliasing_tier = skr::render_graph::EAliasingTier::Tier1 });
+                info_analysis, lifetime_analysis, ssis_phase, { .aliasing_tier = skr::render_graph::EAliasingTier::Tier1 });
             skr::render_graph::BarrierGenerationConfig barrier_config = {};
             auto barrier_phase = skr::render_graph::BarrierGenerationPhase(ssis_phase, aliasing_phase, info_analysis, barrier_config);
 
@@ -194,7 +194,7 @@ public:
             SKR_LOG_INFO(u8"  Optimized barriers: %u", barrier_phase.get_optimized_barriers_count());
 
             // 生成 Graphviz 可视化
-            generate_graphviz_visualization(graph, queue_schedule, ssis_phase, barrier_phase, aliasing_phase, lifetime_analysis);
+            generate_graphviz_visualization(graph, info_analysis, queue_schedule, ssis_phase, barrier_phase, aliasing_phase, lifetime_analysis);
 
             // 生成额外的可视化文件显示每个Pass的屏障详情
             generate_barrier_details_visualization(graph, queue_schedule, barrier_phase);
@@ -217,6 +217,7 @@ public:
 private:
     void generate_graphviz_visualization(
         skr::render_graph::RenderGraph* graph,
+        const skr::render_graph::PassInfoAnalysis& info_analysis,
         const skr::render_graph::QueueSchedule& queue_schedule,
         const skr::render_graph::CrossQueueSyncAnalysis& ssis_phase,
         const skr::render_graph::BarrierGenerationPhase& barrier_phase,
@@ -323,13 +324,8 @@ private:
             PassNode* from_pass = nullptr;
             if (transition.from_resource)
             {
-                auto from_lifetime = lifetime_result.resource_lifetimes.find(transition.from_resource);
-                if (from_lifetime != lifetime_result.resource_lifetimes.end() &&
-                    !from_lifetime->second.using_passes.is_empty())
-                {
-                    // 找到最后一个使用
-                    from_pass = from_lifetime->second.using_passes.back();
-                }
+                auto resource_info = info_analysis.get_resource_info(transition.from_resource);
+                from_pass = resource_info->used_states.at_last().key;
             }
 
             auto [to_q, to_i] = find_pass_position(transition.transition_pass);

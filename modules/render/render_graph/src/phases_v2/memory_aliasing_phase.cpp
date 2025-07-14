@@ -17,10 +17,12 @@ bool MemoryRegion::overlaps_with(const MemoryRegion& other) const
 }
 
 MemoryAliasingPhase::MemoryAliasingPhase(
+    const PassInfoAnalysis& pass_info_analysis,
     const ResourceLifetimeAnalysis& lifetime_analysis,
     const CrossQueueSyncAnalysis& sync_analysis,
     const MemoryAliasingConfig& config)
     : config_(config)
+    , pass_info_analysis_(pass_info_analysis)
     , lifetime_analysis_(lifetime_analysis)
     , sync_analysis_(sync_analysis)
 {
@@ -104,14 +106,15 @@ void MemoryAliasingPhase::analyze_resources() SKR_NOEXCEPT
             
             // 3. 跳过太小的资源
             auto lifetime_it = lifetime_result.resource_lifetimes.find(resource);
+            auto resource_info = pass_info_analysis_.get_resource_info(resource);
             if (lifetime_it == lifetime_result.resource_lifetimes.end() || 
-                lifetime_it->second.memory_size < config_.min_resource_size)
+                resource_info->memory_size < config_.min_resource_size)
             {
                 if (config_.enable_debug_output && lifetime_it != lifetime_result.resource_lifetimes.end())
                 {
                     SKR_LOG_TRACE(u8"Skipping small resource for aliasing: %s (size: %llu bytes < %llu bytes)", 
                                  resource->get_name(), 
-                                 lifetime_it->second.memory_size, 
+                                 resource_info->memory_size, 
                                  config_.min_resource_size);
                 }
                 return true;
@@ -198,13 +201,14 @@ void MemoryAliasingPhase::perform_memory_aliasing(const skr::Vector<ResourceNode
         {
             MemoryBucket new_bucket;
             auto lifetime_it = lifetime_result.resource_lifetimes.find(resource);
+            auto resource_info = pass_info_analysis_.get_resource_info(resource);
             if (lifetime_it != lifetime_result.resource_lifetimes.end())
             {
-                new_bucket.total_size = lifetime_it->second.memory_size;
-                new_bucket.used_size = lifetime_it->second.memory_size;
+                new_bucket.total_size = resource_info->memory_size;
+                new_bucket.used_size = resource_info->memory_size;
                 new_bucket.aliased_resources.add(resource);
                 new_bucket.resource_offsets[resource] = 0;
-                new_bucket.original_total_size = lifetime_it->second.memory_size;
+                new_bucket.original_total_size = resource_info->memory_size;
                 
                 uint32_t bucket_index = static_cast<uint32_t>(aliasing_result_.memory_buckets.size());
                 aliasing_result_.memory_buckets.add(std::move(new_bucket));
@@ -242,6 +246,7 @@ void MemoryAliasingPhase::perform_resource_pooling(const skr::Vector<ResourceNod
 bool MemoryAliasingPhase::try_alias_resource_in_bucket(ResourceNode* resource, MemoryBucket& bucket) SKR_NOEXCEPT
 {
     const auto& lifetime_result = lifetime_analysis_.get_result();
+    auto resource_info = pass_info_analysis_.get_resource_info(resource);
     auto resource_lifetime_it = lifetime_result.resource_lifetimes.find(resource);
     if (resource_lifetime_it == lifetime_result.resource_lifetimes.end())
     {
@@ -268,10 +273,10 @@ bool MemoryAliasingPhase::try_alias_resource_in_bucket(ResourceNode* resource, M
     // 成功找到区域，更新桶信息
     bucket.aliased_resources.add(resource);
     bucket.resource_offsets[resource] = optimal_region.offset;
-    bucket.original_total_size += resource_lifetime_it->second.memory_size;
+    bucket.original_total_size += resource_info->memory_size;
     
     // 更新桶的总大小（如果新资源超出了当前范围）
-    uint64_t resource_end = optimal_region.offset + resource_lifetime_it->second.memory_size;
+    uint64_t resource_end = optimal_region.offset + resource_info->memory_size;
     if (resource_end > bucket.total_size)
     {
         bucket.total_size = resource_end;
@@ -288,13 +293,14 @@ bool MemoryAliasingPhase::try_alias_resource_in_bucket(ResourceNode* resource, M
 MemoryRegion MemoryAliasingPhase::find_optimal_memory_region(ResourceNode* resource, const MemoryBucket& bucket) const SKR_NOEXCEPT
 {
     const auto& lifetime_result = lifetime_analysis_.get_result();
+    auto resource_info = pass_info_analysis_.get_resource_info(resource);
     auto resource_lifetime_it = lifetime_result.resource_lifetimes.find(resource);
     if (resource_lifetime_it == lifetime_result.resource_lifetimes.end())
     {
         return MemoryRegion{};
     }
     
-    uint64_t resource_size = resource_lifetime_it->second.memory_size;
+    uint64_t resource_size = resource_info->memory_size;
     
     // 如果桶为空，直接返回起始位置
     if (bucket.aliased_resources.is_empty())
@@ -391,11 +397,12 @@ void MemoryAliasingPhase::collect_non_aliasable_offsets(ResourceNode* resource, 
             if (offset_it != bucket.resource_offsets.end())
             {
                 const auto& lifetime_result = lifetime_analysis_.get_result();
+                auto resource_info = pass_info_analysis_.get_resource_info(existing_resource);
                 auto existing_lifetime_it = lifetime_result.resource_lifetimes.find(existing_resource);
                 if (existing_lifetime_it != lifetime_result.resource_lifetimes.end())
                 {
                     uint64_t start_offset = offset_it->second;
-                    uint64_t end_offset = start_offset + existing_lifetime_it->second.memory_size;
+                    uint64_t end_offset = start_offset + resource_info->memory_size;
                     
                     offsets.add(MemoryOffset{ start_offset, EMemoryOffsetType::Start, existing_resource });
                     offsets.add(MemoryOffset{ end_offset, EMemoryOffsetType::End, existing_resource });
@@ -555,13 +562,14 @@ void MemoryAliasingPhase::dump_memory_buckets() const SKR_NOEXCEPT
             if (offset_it != bucket.resource_offsets.end())
             {
                 const auto& lifetime_result = lifetime_analysis_.get_result();
+                auto resource_info = pass_info_analysis_.get_resource_info(resource);
                 auto lifetime_it = lifetime_result.resource_lifetimes.find(resource);
                 if (lifetime_it != lifetime_result.resource_lifetimes.end())
                 {
                     SKR_LOG_INFO(u8"    - %s: offset %llu, size %llu KB, levels [%u-%u]",
                                 resource->get_name(),
                                 offset_it->second,
-                                lifetime_it->second.memory_size / 1024,
+                                resource_info->memory_size / 1024,
                                 lifetime_it->second.start_dependency_level,
                                 lifetime_it->second.end_dependency_level);
                 }
@@ -659,10 +667,11 @@ void MemoryAliasingPhase::record_alias_transition(ResourceNode* from, ResourceNo
     if (to)
     {
         auto to_lifetime = lifetime_result.resource_lifetimes.find(to);
+        auto resource_info = pass_info_analysis_.get_resource_info(to);
         if (to_lifetime != lifetime_result.resource_lifetimes.end())
         {
             transition.to_start_level = to_lifetime->second.start_dependency_level;
-            transition.memory_size = to_lifetime->second.memory_size;
+            transition.memory_size = resource_info->memory_size;
             transition.memory_offset = aliasing_result_.resource_to_offset[to];
         }
     }
@@ -688,14 +697,12 @@ PassNode* MemoryAliasingPhase::find_transition_pass(ResourceNode* from, Resource
     
     // 转换发生在 'to' 资源的第一次使用时
     const auto& lifetime_result = lifetime_analysis_.get_result();
+    auto resource_info = pass_info_analysis_.get_resource_info(to);
     auto to_lifetime = lifetime_result.resource_lifetimes.find(to);
     
-    if (to_lifetime != lifetime_result.resource_lifetimes.end() && 
-        !to_lifetime->second.using_passes.is_empty())
+    if (to_lifetime != lifetime_result.resource_lifetimes.end() && !resource_info->used_states.is_empty())
     {
-        // 返回第一个使用该资源的Pass
-        // ResourceLifetimeAnalysis 应该已经按执行顺序填充了 using_passes
-        return to_lifetime->second.using_passes[0];
+        return resource_info->used_states.at(0).key;
     }
     
     return nullptr;
@@ -727,6 +734,7 @@ bool MemoryAliasingPhase::can_fit_in_bucket(ResourceNode* resource, const Memory
 uint64_t MemoryAliasingPhase::calculate_bucket_waste(ResourceNode* resource, const MemoryBucket& bucket) const SKR_NOEXCEPT
 {
     const auto& lifetime_result = lifetime_analysis_.get_result();
+    auto resource_info = pass_info_analysis_.get_resource_info(resource);
     auto resource_lifetime_it = lifetime_result.resource_lifetimes.find(resource);
     if (resource_lifetime_it == lifetime_result.resource_lifetimes.end())
     {
@@ -740,7 +748,7 @@ uint64_t MemoryAliasingPhase::calculate_bucket_waste(ResourceNode* resource, con
         return UINT64_MAX; // 无法放置，返回最大值
     }
     
-    uint64_t resource_size = resource_lifetime_it->second.memory_size;
+    uint64_t resource_size = resource_info->memory_size;
     
     // 计算放入后桶的新大小
     uint64_t new_bucket_size = std::max(bucket.total_size, optimal_region.offset + resource_size);

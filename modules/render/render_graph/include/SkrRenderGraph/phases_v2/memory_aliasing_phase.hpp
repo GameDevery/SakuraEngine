@@ -116,6 +116,7 @@ class SKR_RENDER_GRAPH_API MemoryAliasingPhase : public IRenderGraphPhase
 {
 public:
     MemoryAliasingPhase(
+        const PassInfoAnalysis& pass_info_analysis,
         const ResourceLifetimeAnalysis& lifetime_analysis,
         const CrossQueueSyncAnalysis& sync_analysis,
         const MemoryAliasingConfig& config = {});
@@ -175,6 +176,7 @@ private:
     MemoryAliasingConfig config_;
 
     // 输入Phase引用
+    const PassInfoAnalysis& pass_info_analysis_;
     const ResourceLifetimeAnalysis& lifetime_analysis_;
     const CrossQueueSyncAnalysis& sync_analysis_;
 

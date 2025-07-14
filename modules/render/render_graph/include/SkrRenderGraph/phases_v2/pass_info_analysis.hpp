@@ -57,6 +57,7 @@ struct PassInfo {
 
 struct ResourceInfo {
     ResourceNode* resource = nullptr;
+    uint64_t memory_size = 0;
     skr::InlineSet<ECGPUQueueType, 3> access_queues;
     skr::Map<PassNode*, ECGPUResourceState> used_states;
 };

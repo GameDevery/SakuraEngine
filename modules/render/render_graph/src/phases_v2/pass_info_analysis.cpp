@@ -105,6 +105,7 @@ void PassInfoAnalysis::extract_resource_info(PassNode* pass, PassResourceInfo& i
         // 更新全局资源信息
         auto& global_resource_info = resource_infos[texture];
         global_resource_info.used_states.add(pass, access_info.resource_state);
+        global_resource_info.memory_size = 2048 * 2048;
         
         // 根据 Pass 类型推断队列类型
         ECGPUQueueType queue_type = CGPU_QUEUE_TYPE_GRAPHICS;
@@ -142,6 +143,7 @@ void PassInfoAnalysis::extract_resource_info(PassNode* pass, PassResourceInfo& i
         auto& global_resource_info = resource_infos[buffer];
         global_resource_info.resource = buffer;
         global_resource_info.used_states.add(pass, access_info.resource_state);
+        global_resource_info.memory_size = 2048;
         
         // 根据 Pass 类型推断队列类型
         ECGPUQueueType queue_type = CGPU_QUEUE_TYPE_GRAPHICS;
