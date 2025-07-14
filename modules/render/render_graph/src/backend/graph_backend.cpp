@@ -5,8 +5,18 @@
 #include "SkrGraphics/cgpux.hpp"
 #include "SkrRenderGraph/frontend/pass_node.hpp"
 #include "SkrRenderGraph/frontend/node_and_edge_factory.hpp"
-
 #include "SkrProfile/profile.h"
+
+#include "SkrRenderGraph/phases_v2/pass_info_analysis.hpp"
+#include "SkrRenderGraph/phases_v2/pass_dependency_analysis.hpp"
+#include "SkrRenderGraph/phases_v2/queue_schedule.hpp"
+#include "SkrRenderGraph/phases_v2/schedule_reorder.hpp"
+#include "SkrRenderGraph/phases_v2/resource_lifetime_analysis.hpp"
+#include "SkrRenderGraph/phases_v2/cross_queue_sync_analysis.hpp"
+#include "SkrRenderGraph/phases_v2/memory_aliasing_phase.hpp"
+#include "SkrRenderGraph/phases_v2/barrier_generation_phase.hpp"
+#include "SkrRenderGraph/phases_v2/resource_allocation_phase.hpp"
+
 
 namespace skr
 {
@@ -191,6 +201,27 @@ void RenderGraph::destroy(RenderGraph* g) SKR_NOEXCEPT
 void RenderGraphBackend::initialize() SKR_NOEXCEPT
 {
     RenderGraph::initialize();
+
+    auto info_analysis = SkrNew<PassInfoAnalysis>();
+    auto dependency_analysis = SkrNew<PassDependencyAnalysis>(*info_analysis);
+    auto queue_schedule = SkrNew<QueueSchedule>(*dependency_analysis);
+    auto reorder_phase = SkrNew<ExecutionReorderPhase>(*info_analysis, *dependency_analysis, *queue_schedule);
+    auto lifetime_analysis = SkrNew<ResourceLifetimeAnalysis>(*info_analysis, *dependency_analysis, *queue_schedule);
+    auto ssis_phase = SkrNew<CrossQueueSyncAnalysis>(*dependency_analysis, *queue_schedule);
+    auto aliasing_phase = SkrNew<MemoryAliasingPhase>(*info_analysis, *lifetime_analysis, *ssis_phase, MemoryAliasingConfig{ .aliasing_tier = EAliasingTier::Tier0 });
+    auto barrier_phase = SkrNew<BarrierGenerationPhase>(*ssis_phase, *aliasing_phase, *info_analysis);
+    auto resource_allocation_phase = SkrNew<ResourceAllocationPhase>(*aliasing_phase, *info_analysis);
+
+    phases.add(info_analysis);
+    phases.add(dependency_analysis);
+    phases.add(queue_schedule);
+    phases.add(reorder_phase);
+    phases.add(lifetime_analysis);
+    phases.add(ssis_phase);
+    phases.add(aliasing_phase);
+    phases.add(barrier_phase);
+    phases.add(resource_allocation_phase);
+
     backend = device->adapter->instance->backend;
     for (uint32_t i = 0; i < RG_MAX_FRAME_IN_FLIGHT; i++)
     {
@@ -215,8 +246,14 @@ void RenderGraphBackend::finalize() SKR_NOEXCEPT
     texture_pool.finalize();
     texture_view_pool.finalize();
 
-    for (auto& phase : phases)
+    for (auto& phase : phases.range_inv())
+    {
         phase->on_finalize(this);
+    }
+    for (auto& phase : phases.range_inv())
+    {
+        SkrDelete(phase);
+    }
 }
 
 uint64_t RenderGraphBackend::get_latest_finished_frame() SKR_NOEXCEPT
@@ -259,6 +296,34 @@ uint64_t RenderGraphBackend::execute(RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     for (auto& phase : phases)
         phase->on_execute(this, profiler);
+
+    {
+        SkrZoneScopedN("GraphCleanup");
+
+        // 3.dealloc passes & connected edges
+        for (auto pass : passes)
+        {
+            pass->foreach_textures(
+            [this](TextureNode* t, TextureEdge* e) {
+                node_factory->Dealloc(e);
+            });
+            pass->foreach_buffers(
+            [this](BufferNode* t, BufferEdge* e) {
+                node_factory->Dealloc(e);
+            });
+            node_factory->Dealloc(pass);
+        }
+        passes.clear();
+        // 4.dealloc resource nodes
+        for (auto resource : resources)
+        {
+            node_factory->Dealloc(resource);
+        }
+        resources.clear();
+
+        graph->clear();
+        blackboard->clear();
+    }
 
     return frame_index++;
 }

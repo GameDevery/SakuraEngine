@@ -85,7 +85,7 @@ protected:
     virtual void initialize() SKR_NOEXCEPT final;
     virtual void finalize() SKR_NOEXCEPT final;
 
-    skr::Vector<skr::SP<IRenderGraphPhase>> phases;
+    skr::Vector<IRenderGraphPhase*> phases;
 
     ECGPUBackend backend;
     CGPUDeviceId device;

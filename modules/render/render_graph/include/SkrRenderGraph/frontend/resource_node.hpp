@@ -18,6 +18,7 @@ public:
     inline const bool is_imported() const SKR_NOEXCEPT { return imported; }
     inline const bool allow_lone() const SKR_NOEXCEPT { return canbe_lone; }
     virtual EObjectType get_type() const SKR_NOEXCEPT = 0;
+    uint32_t get_tags() const SKR_NOEXCEPT { return tags; }
 
 protected:
     bool imported = false;

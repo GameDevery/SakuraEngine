@@ -65,6 +65,9 @@ SLive2DViewerModule* SLive2DViewerModule::Get()
 
 void SLive2DViewerModule::on_load(int argc, char8_t** argv)
 {
+    skr_log_set_level(SKR_LOG_LEVEL_INFO);
+    skr_log_initialize_async_worker();
+
     SKR_LOG_INFO(u8"live2d viewer loaded!");
 
     std::error_code ec = {};
@@ -125,6 +128,8 @@ void SLive2DViewerModule::on_unload()
     sugoiS_release(l2d_world);
 
     SkrDelete(io_job_queue);
+
+    skr_log_finalize_async_worker();
 }
 
 #include "SkrRT/ecs/sugoi.h"
@@ -426,11 +431,7 @@ int SLive2DViewerModule::main_module_exec(int argc, char8_t** argv)
             imgui_app->render();
         }
 
-        // compile and execute render graph
-        {
-            SkrZoneScopedN("CompileRenderGraph");
-            renderGraph->compile();
-        }
+        // execute render graph
         {
             SkrZoneScopedN("ExecuteRenderGraph");
             if (frame_index == 1000)

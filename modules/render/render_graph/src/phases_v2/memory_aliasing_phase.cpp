@@ -48,30 +48,23 @@ void MemoryAliasingPhase::on_execute(RenderGraph* graph, RenderGraphProfiler* pr
 {
     SkrZoneScopedN("MemoryAliasingPhase");
 
-    // 执行核心内存管理分析（统一的别名/资源池实现）
     analyze_resources();
-
-    if (config_.aliasing_tier != EAliasingTier::Tier0)
+    calculate_aliasing_statistics();
+    identify_aliasing_barriers();
+    compute_alias_transitions();
+    
+    if (config_.enable_debug_output)
     {
-        calculate_aliasing_statistics();
-        identify_aliasing_barriers();
-        
-        // 计算别名转换点（新架构）
-        compute_alias_transitions();
-        
-        if (config_.enable_debug_output)
-        {
-            dump_aliasing_result();
-            dump_memory_buckets();
-        }
-        
-        const char8_t* mode_str = (config_.aliasing_tier == EAliasingTier::Tier0) ? u8"Resource Pool" : u8"Memory Aliasing";
-        SKR_LOG_TRACE(u8"MemoryAliasingPhase: Completed (%s mode). Memory reduction: {:.1f}% ({} MB -> {} MB)",
-                    mode_str,
-                    aliasing_result_.total_compression_ratio * 100.0f,
-                    aliasing_result_.total_original_memory / (1024 * 1024),
-                    aliasing_result_.total_aliased_memory / (1024 * 1024));
+        dump_aliasing_result();
+        dump_memory_buckets();
     }
+    
+    const char8_t* mode_str = (config_.aliasing_tier == EAliasingTier::Tier0) ? u8"Resource Pool" : u8"Memory Aliasing";
+    SKR_LOG_TRACE(u8"MemoryAliasingPhase: Completed (%s mode). Memory reduction: {:.1f}% ({} MB -> {} MB)",
+                mode_str,
+                aliasing_result_.total_compression_ratio * 100.0f,
+                aliasing_result_.total_original_memory / (1024 * 1024),
+                aliasing_result_.total_aliased_memory / (1024 * 1024));
 }
 
 void MemoryAliasingPhase::analyze_resources() SKR_NOEXCEPT
@@ -133,18 +126,12 @@ void MemoryAliasingPhase::analyze_resources() SKR_NOEXCEPT
     SKR_LOG_TRACE(u8"MemoryAliasingPhase: Processing {} resources for aliasing", sorted_resources.size());
     
     // SSIS算法步骤2：创建内存桶并尝试别名化
-    if (config_.aliasing_tier == EAliasingTier::Tier0)
-    {
-        perform_resource_pooling(sorted_resources);
-    }
-    else
-    {
-        perform_memory_aliasing(sorted_resources);
-    }
+    perform_memory_aliasing(sorted_resources);
 }
 
 void MemoryAliasingPhase::perform_memory_aliasing(const skr::Vector<ResourceNode*>& sorted_resources) SKR_NOEXCEPT
 {
+    const bool useResourcePooling = config_.aliasing_tier == EAliasingTier::Tier0;
     const auto& lifetime_result = lifetime_analysis_.get_result();
     aliasing_result_.resource_to_bucket.clear();
     aliasing_result_.resource_to_offset.clear();
@@ -157,7 +144,19 @@ void MemoryAliasingPhase::perform_memory_aliasing(const skr::Vector<ResourceNode
         bool aliased = false;
         
         // 尝试放入现有桶中
-        if (config_.use_greedy_fit)
+        if (!config_.use_greedy_fit || useResourcePooling)
+        {
+            // First-Fit算法：使用第一个合适的桶
+            for (auto& bucket : aliasing_result_.memory_buckets)
+            {
+                if (try_alias_resource_in_bucket(resource, bucket))
+                {
+                    aliased = true;
+                    break;
+                }
+            }
+        }
+        else
         {
             // 贪心算法：Best-Fit策略，选择浪费空间最少的桶
             MemoryBucket* best_bucket = nullptr;
@@ -181,18 +180,6 @@ void MemoryAliasingPhase::perform_memory_aliasing(const skr::Vector<ResourceNode
             if (best_bucket && try_alias_resource_in_bucket(resource, *best_bucket))
             {
                 aliased = true;
-            }
-        }
-        else
-        {
-            // First-Fit算法：使用第一个合适的桶
-            for (auto& bucket : aliasing_result_.memory_buckets)
-            {
-                if (try_alias_resource_in_bucket(resource, bucket))
-                {
-                    aliased = true;
-                    break;
-                }
             }
         }
         
@@ -234,15 +221,6 @@ void MemoryAliasingPhase::perform_memory_aliasing(const skr::Vector<ResourceNode
     }
 }
 
-void MemoryAliasingPhase::perform_resource_pooling(const skr::Vector<ResourceNode*>& sorted_resources) SKR_NOEXCEPT
-{
-    aliasing_result_.pool_resources = sorted_resources;
-    for (uint32_t i = 0; i < sorted_resources.size(); i++)
-    {
-        aliasing_result_.resource_to_pool_index[sorted_resources[i]] = i;
-    }
-}
-
 bool MemoryAliasingPhase::try_alias_resource_in_bucket(ResourceNode* resource, MemoryBucket& bucket) SKR_NOEXCEPT
 {
     const auto& lifetime_result = lifetime_analysis_.get_result();
@@ -261,7 +239,7 @@ bool MemoryAliasingPhase::try_alias_resource_in_bucket(ResourceNode* resource, M
             return false;
         }
     }
-    
+
     // SSIS算法核心：找到最优内存区域
     MemoryRegion optimal_region = find_optimal_memory_region(resource, bucket);
     
@@ -300,32 +278,38 @@ MemoryRegion MemoryAliasingPhase::find_optimal_memory_region(ResourceNode* resou
         return MemoryRegion{};
     }
     
-    uint64_t resource_size = resource_info->memory_size;
-    
+    uint64_t resource_size = resource_info->memory_size;   
     // 如果桶为空，直接返回起始位置
     if (bucket.aliased_resources.is_empty())
     {
         return MemoryRegion{ 0, resource_size };
     }
     
-    // SSIS算法：找到所有可别名的内存区域
-    skr::Vector<MemoryRegion> aliasable_regions = find_aliasable_regions(resource, bucket);
-    
-    MemoryRegion optimal_region{};
-    
-    // 选择最小适配的区域（SSIS建议）
-    for (const auto& region : aliasable_regions)
+    // 桶里有资源的情况
+    const bool useResourcePooling = config_.aliasing_tier == EAliasingTier::Tier0;
+    if (useResourcePooling)
     {
-        if (region.size >= resource_size)
+        // TODO：判断这个桶里的第一个资源是否与当前资源完全兼容
+        return MemoryRegion();
+    }
+    else
+    {
+        // SSIS算法：找到所有可别名的内存区域
+        skr::Vector<MemoryRegion> aliasable_regions = find_aliasable_regions(resource, bucket);
+        MemoryRegion optimal_region{};
+        // 选择最小适配的区域（SSIS建议）
+        for (const auto& region : aliasable_regions)
         {
-            if (!optimal_region.is_valid() || region.size < optimal_region.size)
+            if (region.size >= resource_size)
             {
-                optimal_region = MemoryRegion{ region.offset, resource_size };
+                if (!optimal_region.is_valid() || region.size < optimal_region.size)
+                {
+                    optimal_region = MemoryRegion{ region.offset, resource_size };
+                }
             }
         }
+        return optimal_region;
     }
-    
-    return optimal_region;
 }
 
 skr::Vector<MemoryRegion> MemoryAliasingPhase::find_aliasable_regions(ResourceNode* resource, const MemoryBucket& bucket) const SKR_NOEXCEPT
@@ -428,10 +412,7 @@ bool MemoryAliasingPhase::resources_conflict_in_time(ResourceNode* res1, Resourc
 }
 
 bool MemoryAliasingPhase::can_resources_alias(ResourceNode* res1, ResourceNode* res2) const SKR_NOEXCEPT
-{
-    // 基本检查
-    if (res1 == res2) return false;
-    
+{    
     // 检查生命周期冲突
     if (!resources_conflict_in_time(res1, res2))
     {
@@ -458,10 +439,8 @@ bool MemoryAliasingPhase::can_resources_alias(ResourceNode* res1, ResourceNode* 
                 }
             }
         }
-        
         return true;
     }
-    
     return false;
 }
 

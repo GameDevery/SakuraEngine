@@ -28,12 +28,15 @@ void ResourceLifetimeAnalysis::on_execute(RenderGraph* graph, RenderGraphProfile
     SkrZoneScopedN("ResourceLifetimeAnalysis");
     
     lifetime_result_.resource_lifetimes.clear();
+    lifetime_result_.resources_by_size_desc.clear();
+
     analyze_resource_lifetimes(graph);
 }
 
 void ResourceLifetimeAnalysis::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
 {
     lifetime_result_.resource_lifetimes.clear();
+    lifetime_result_.resources_by_size_desc.clear();
 }
 
 void ResourceLifetimeAnalysis::analyze_resource_lifetimes(RenderGraph* graph) SKR_NOEXCEPT

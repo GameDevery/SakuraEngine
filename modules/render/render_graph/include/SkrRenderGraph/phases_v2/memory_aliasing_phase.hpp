@@ -68,10 +68,6 @@ struct MemoryAliasTransition
 // 内存别名分析结果
 struct MemoryAliasingResult
 {
-    // 池对象列表
-    skr::Vector<ResourceNode*> pool_resources;
-    skr::FlatHashMap<ResourceNode*, uint32_t> resource_to_pool_index;
-
     // 内存桶列表
     skr::Vector<MemoryBucket> memory_buckets;
     
@@ -146,7 +142,6 @@ private:
     void analyze_resources() SKR_NOEXCEPT;
     void create_memory_buckets() SKR_NOEXCEPT;
     void perform_memory_aliasing(const skr::Vector<ResourceNode*>&) SKR_NOEXCEPT;
-    void perform_resource_pooling(const skr::Vector<ResourceNode*>&) SKR_NOEXCEPT;
 
     bool try_alias_resource_in_bucket(ResourceNode* resource, MemoryBucket& bucket) SKR_NOEXCEPT;
     MemoryRegion find_optimal_memory_region(ResourceNode* resource, const MemoryBucket& bucket) const SKR_NOEXCEPT;

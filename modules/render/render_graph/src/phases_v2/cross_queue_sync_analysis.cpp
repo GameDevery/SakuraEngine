@@ -5,7 +5,7 @@
 #include "SkrCore/log.hpp"
 #include <algorithm>
 
-#define SSIS_LOG SKR_LOG_DEBUG
+#define SSIS_LOG SKR_LOG_TRACE
 
 namespace skr {
 namespace render_graph {

@@ -32,14 +32,21 @@ void ExecutionReorderPhase::on_execute(RenderGraph* graph, RenderGraphProfiler* 
     
     render_graph = graph;
     
-    // Step 1: Create a copy of the timeline
-    working_timeline = timeline_schedule.get_schedule_result().queue_schedules;
-    
-    // Step 2: Run graph-based optimization (no need to rebuild resource chains!)
-    run_graph_based_optimization();
-    
-    // Step 3: Store optimized results
-    result.optimized_timeline = std::move(working_timeline);
+    if (false)
+    {
+        // Step 1: Create a copy of the timeline
+        working_timeline = timeline_schedule.get_schedule_result().queue_schedules;
+        
+        // Step 2: Run graph-based optimization (no need to rebuild resource chains!)
+        run_graph_based_optimization();
+        
+        // Step 3: Store optimized results
+        result.optimized_timeline = std::move(working_timeline);
+    }
+    else
+    {
+        result.optimized_timeline = timeline_schedule.get_schedule_result().queue_schedules;
+    }
 }
 
 void ExecutionReorderPhase::on_finalize(RenderGraph* graph) SKR_NOEXCEPT

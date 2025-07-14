@@ -391,7 +391,7 @@ bool ModuleManagerImpl::__internal_DestroyModuleGraph(const skr::String& nodenam
     if (!get_module_property(nodename).bActive)
         return true;
     auto node = nodeMap.find(nodename)->second;
-    dependency_graph->foreach_neighbors(node,
+    dependency_graph->foreach_inv_neighbors(node,
                                         [this](DependencyGraphNode* node) {
                                             ModuleProperty* property = static_cast<ModuleProperty*>(node);
                                             __internal_DestroyModuleGraph(property->name);
