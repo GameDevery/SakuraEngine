@@ -26,7 +26,6 @@ bool PassDependencies::has_dependency_on(PassNode* pass) const
 // IRenderGraphPhase 接口实现
 void PassDependencyAnalysis::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
-    SKR_LOG_INFO(u8"PassDependencyAnalysis: analyzing {} passes", all_passes.size());
     
     analyze_pass_dependencies(graph);
     
@@ -54,10 +53,10 @@ void PassDependencyAnalysis::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
 
 void PassDependencyAnalysis::analyze_pass_dependencies(RenderGraph* graph)
 {
-    pass_dependencies_.clear();
-
     // Analyze dependencies for each pass
     auto& all_passes = get_passes(graph);
+    pass_dependencies_.clear();
+    SKR_LOG_INFO(u8"PassDependencyAnalysis: analyzing {} passes", all_passes.size());
     for (size_t i = 0; i < all_passes.size(); ++i)
     {
         PassNode* current_pass = all_passes[i];
@@ -163,9 +162,9 @@ bool PassDependencyAnalysis::has_dependencies(PassNode* pass) const
 }
 
 // For ScheduleTimeline - get pass-level dependencies directly
-const skr::Set<PassNode*>& PassDependencyAnalysis::get_dependent_passes(PassNode* pass) const
+const skr::Vector<PassNode*>& PassDependencyAnalysis::get_dependent_passes(PassNode* pass) const
 {
-    static const skr::Set<PassNode*> empty_vector;
+    static const skr::Vector<PassNode*> empty_vector;
     const auto* deps = get_pass_dependencies(pass);
     return deps ? deps->dependent_passes : empty_vector;
 }
