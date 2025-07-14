@@ -30,17 +30,28 @@ bool PassDependencies::has_dependency_on(PassNode* pass) const
 void PassDependencyAnalysis::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     analyze_pass_dependencies(graph);
-    
-    // NEW: 进行逻辑拓扑分析（基于依赖关系，一次计算永不变）
-    // 优化：合并拓扑排序和依赖级别计算，减少一次遍历
     perform_logical_topological_sort_optimized();
     identify_logical_critical_path();
 }
 
 void PassDependencyAnalysis::on_initialize(RenderGraph* graph) SKR_NOEXCEPT
 {
-    // 预分配容量，避免后续扩容
-    pass_dependencies_.reserve(64);
+    // 基于Pass数量的智能预分配
+    const size_t pass_count = 64;
+    const size_t resource_count = 128;
+    
+    // 预分配主容器，避免rehash
+    pass_dependencies_.reserve(pass_count);
+    in_degrees_.reserve(pass_count);
+    topo_queue_.reserve(pass_count);
+    topo_levels_.reserve(pass_count);
+    
+    // 预分配资源最后访问信息
+    resource_last_access_.reserve(resource_count);
+
+    // 预分配逻辑拓扑结果容器
+    logical_topology_.logical_topological_order.reserve(pass_count);
+    logical_topology_.logical_levels.reserve(pass_count / 4); // 估算平均层级数
 }
 
 void PassDependencyAnalysis::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
@@ -54,63 +65,48 @@ void PassDependencyAnalysis::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
 
 void PassDependencyAnalysis::analyze_pass_dependencies(RenderGraph* graph)
 {
-    // Analyze dependencies for each pass
+    // 优化版本：O(n) 复杂度，为每个资源维护最后访问者索引
     auto& all_passes = get_passes(graph);
     pass_dependencies_.clear();
-    SKR_LOG_INFO(u8"PassDependencyAnalysis: analyzing {} passes", all_passes.size());
-    for (size_t i = 0; i < all_passes.size(); ++i)
+    SKR_LOG_INFO(u8"PassDependencyAnalysis: analyzing %llu passes", all_passes.size());
+    
+    // 为每个资源维护最后访问的Pass和访问信息
+    resource_last_access_.reserve(graph->get_resources().size()); // 预分配避免rehash
+
+    for (PassNode* current_pass : all_passes)
     {
-        PassNode* current_pass = all_passes[i];
-        skr::span<PassNode*> previous_passes = skr::span<PassNode*>(all_passes.data(), i);
         PassDependencies& current_deps = pass_dependencies_[current_pass];
         
         // Get pre-computed resource access info from PassInfoAnalysis
         const auto* current_resource_info = pass_info_analysis.get_resource_info(current_pass);
         if (!current_resource_info) 
-            return;
+            continue;
 
-        // For each resource, find the nearest conflicting previous pass
+        // For each resource, check last accessor directly
         for (const auto& current_access : current_resource_info->all_resource_accesses)
         {
             auto resource = current_access.resource;
-            PassNode* nearest_conflicting_pass = nullptr;
-            EResourceAccessType previous_access = EResourceAccessType::Read;
-            ECGPUResourceState previous_state = CGPU_RESOURCE_STATE_UNDEFINED;
-            EResourceDependencyType dependency_type = EResourceDependencyType::RAR;
+            auto& last_access = resource_last_access_[resource];
             
-            // Search backwards to find the nearest conflicting pass
-            for (int i = previous_passes.size() - 1; i >= 0; --i)
-            {
-                PassNode* prev_pass = previous_passes[i];
-                EResourceAccessType prev_access_type = pass_info_analysis.get_resource_access_type(prev_pass, resource);
-                ECGPUResourceState prev_state = pass_info_analysis.get_resource_state(prev_pass, resource);
-                
-                // If found a previous pass accessing the same resource, check for conflicts
-                if (bool prev_accesses_resource = (prev_state != CGPU_RESOURCE_STATE_UNDEFINED))
-                {
-                    dependency_type = get_confict_type(current_access.access_type, prev_access_type);
-                    nearest_conflicting_pass = prev_pass;
-                    previous_access = prev_access_type;
-                    previous_state = prev_state;
-                    break; // Found the nearest conflict, stop searching
-                }
-            }
-            
-            // If found a dependency, record it
-            if (nearest_conflicting_pass != nullptr)
+            // If this resource was accessed before, create dependency
+            if (last_access.last_pass != nullptr)
             {
                 ResourceDependency dep;
-                dep.dependent_pass = nearest_conflicting_pass;
+                dep.dependent_pass = last_access.last_pass;
                 dep.resource = resource;
-                dep.dependency_type = dependency_type;
                 dep.current_access = current_access.access_type;
-                dep.previous_access = previous_access;
+                dep.previous_access = last_access.last_access_type;
                 dep.current_state = current_access.resource_state;
-                dep.previous_state = previous_state;
+                dep.previous_state = last_access.last_state;
                 current_deps.resource_dependencies.add(dep);
 
                 current_deps.dependent_passes.add_unique(dep.dependent_pass);
             }
+            
+            // Update last access info for this resource
+            last_access.last_pass = current_pass;
+            last_access.last_access_type = current_access.access_type;
+            last_access.last_state = current_access.resource_state;
         }
     }
     
@@ -123,114 +119,6 @@ void PassDependencyAnalysis::analyze_pass_dependencies(RenderGraph* graph)
         }
     }
 }
-
-EResourceDependencyType PassDependencyAnalysis::get_confict_type(EResourceAccessType current, EResourceAccessType previous)
-{
-    const bool prev_is_read = (previous == EResourceAccessType::Read);
-    const bool prev_is_write = !prev_is_read;
-    const bool current_is_read = (current == EResourceAccessType::Read);
-    const bool current_is_write = !current_is_read;
-
-    if (prev_is_read && current_is_read)
-    {
-        return EResourceDependencyType::RAR; // Read After Read
-    }
-    else if (prev_is_read && current_is_write)
-    {
-        return EResourceDependencyType::RAW; // Read After Write
-    }
-    else if (prev_is_write && prev_is_read)
-    {
-        return EResourceDependencyType::WAR; // Write After Read
-    }
-    else if (prev_is_write && current_is_write)
-    {
-        return EResourceDependencyType::WAW; // Write After Write
-    }
-    return EResourceDependencyType::RAR; // Default case, should not happen
-}
-
-const PassDependencies* PassDependencyAnalysis::get_pass_dependencies(PassNode* pass) const
-{
-    auto it = pass_dependencies_.find(pass);
-    return (it != pass_dependencies_.end()) ? &it->second : nullptr;
-}
-
-bool PassDependencyAnalysis::has_dependencies(PassNode* pass) const
-{
-    const auto* deps = get_pass_dependencies(pass);
-    return deps != nullptr && !deps->resource_dependencies.is_empty();
-}
-
-// For ScheduleTimeline - get pass-level dependencies directly
-const skr::Vector<PassNode*>& PassDependencyAnalysis::get_dependent_passes(PassNode* pass) const
-{
-    static const skr::Vector<PassNode*> empty_vector;
-    const auto* deps = get_pass_dependencies(pass);
-    return deps ? deps->dependent_passes : empty_vector;
-}
-
-const skr::Vector<PassNode*>& PassDependencyAnalysis::get_dependent_by_passes(PassNode* pass) const
-{
-    static const skr::Vector<PassNode*> empty_vector;
-    const auto* deps = get_pass_dependencies(pass);
-    return deps ? deps->dependent_by_passes : empty_vector;
-}
-
-void PassDependencyAnalysis::dump_dependencies() const
-{
-    SKR_LOG_INFO(u8"========== Pass Dependency Analysis Results ==========");
-    
-    for (const auto& [pass, deps] : pass_dependencies_)
-    {
-        if (deps.resource_dependencies.is_empty())
-            continue;
-            
-        SKR_LOG_INFO(u8"Pass: %s depends on:", pass->get_name());
-        
-        for (const auto& dep : deps.resource_dependencies)
-        {
-            const char8_t* dep_type_str = u8"Unknown";
-            switch (dep.dependency_type)
-            {
-                case EResourceDependencyType::RAR: dep_type_str = u8"RAR"; break;
-                case EResourceDependencyType::RAW: dep_type_str = u8"RAW"; break;
-                case EResourceDependencyType::WAR: dep_type_str = u8"WAR"; break;
-                case EResourceDependencyType::WAW: dep_type_str = u8"WAW"; break;
-            }
-            
-            const char8_t* current_access_str = u8"Unknown";
-            const char8_t* previous_access_str = u8"Unknown";
-            
-            switch (dep.current_access)
-            {
-                case EResourceAccessType::Read: current_access_str = u8"Read"; break;
-                case EResourceAccessType::Write: current_access_str = u8"Write"; break;
-                case EResourceAccessType::ReadWrite: current_access_str = u8"ReadWrite"; break;
-            }
-            
-            switch (dep.previous_access)
-            {
-                case EResourceAccessType::Read: previous_access_str = u8"Read"; break;
-                case EResourceAccessType::Write: previous_access_str = u8"Write"; break;
-                case EResourceAccessType::ReadWrite: previous_access_str = u8"ReadWrite"; break;
-            }
-            
-            SKR_LOG_INFO(u8"  -> Pass: %s, Resource: %s, Type: %s (%s->%s), State: %d->%d", 
-                        dep.dependent_pass->get_name(),
-                        dep.resource->get_name(),
-                        dep_type_str,
-                        previous_access_str,
-                        current_access_str,
-                        (int)dep.previous_state,
-                        (int)dep.current_state);
-        }
-    }
-    
-    SKR_LOG_INFO(u8"==========================================");
-}
-
-// ===== 逻辑拓扑分析实现 =====
 
 void PassDependencyAnalysis::perform_logical_topological_sort_optimized()
 {
@@ -298,15 +186,19 @@ void PassDependencyAnalysis::perform_logical_topological_sort_optimized()
                         dep_it->second.logical_dependency_level, 
                         current_level + 1
                     );
+                    
+                    // 如果入度变为0，加入队列（复用已找到的iterator）
+                    if (in_degrees_[dependent] == 0)
+                    {
+                        topo_queue_.add(dependent);
+                        topo_levels_.add(dep_it->second.logical_dependency_level);
+                    }
                 }
-                
-                // 如果入度变为0，加入队列
-                if (in_degrees_[dependent] == 0)
+                else if (in_degrees_[dependent] == 0)
                 {
+                    // 备用路径，正常情况下不应该执行到这里
                     topo_queue_.add(dependent);
-                    auto dep_it = pass_dependencies_.find(dependent);
-                    uint32_t dep_level = (dep_it != pass_dependencies_.end()) ? dep_it->second.logical_dependency_level : 0;
-                    topo_levels_.add(dep_level);
+                    topo_levels_.add(0);
                 }
             }
         }
@@ -315,7 +207,7 @@ void PassDependencyAnalysis::perform_logical_topological_sort_optimized()
     // 第四步：检查循环依赖
     if (logical_topology_.logical_topological_order.size() != num_passes)
     {
-        SKR_LOG_ERROR(u8"PassDependencyAnalysis: 检测到循环依赖！拓扑排序节点数 {} != 总节点数 {}", 
+        SKR_LOG_ERROR(u8"PassDependencyAnalysis: 检测到循环依赖！拓扑排序节点数 %llu != 总节点数 %llu", 
                      logical_topology_.logical_topological_order.size(), num_passes);
     }
 
@@ -476,7 +368,76 @@ bool PassDependencyAnalysis::can_execute_in_parallel_logically(PassNode* pass1, 
     return true;
 }
 
-// ===== 逻辑拓扑调试输出 =====
+const PassDependencies* PassDependencyAnalysis::get_pass_dependencies(PassNode* pass) const
+{
+    auto it = pass_dependencies_.find(pass);
+    return (it != pass_dependencies_.end()) ? &it->second : nullptr;
+}
+
+bool PassDependencyAnalysis::has_dependencies(PassNode* pass) const
+{
+    const auto* deps = get_pass_dependencies(pass);
+    return deps != nullptr && !deps->resource_dependencies.is_empty();
+}
+
+// For ScheduleTimeline - get pass-level dependencies directly
+const skr::Vector<PassNode*>& PassDependencyAnalysis::get_dependent_passes(PassNode* pass) const
+{
+    static const skr::Vector<PassNode*> empty_vector;
+    const auto* deps = get_pass_dependencies(pass);
+    return deps ? deps->dependent_passes : empty_vector;
+}
+
+const skr::Vector<PassNode*>& PassDependencyAnalysis::get_dependent_by_passes(PassNode* pass) const
+{
+    static const skr::Vector<PassNode*> empty_vector;
+    const auto* deps = get_pass_dependencies(pass);
+    return deps ? deps->dependent_by_passes : empty_vector;
+}
+
+void PassDependencyAnalysis::dump_dependencies() const
+{
+    SKR_LOG_INFO(u8"========== Pass Dependency Analysis Results ==========");
+    
+    for (const auto& [pass, deps] : pass_dependencies_)
+    {
+        if (deps.resource_dependencies.is_empty())
+            continue;
+            
+        SKR_LOG_INFO(u8"Pass: %s depends on:", pass->get_name());
+        
+        for (const auto& dep : deps.resource_dependencies)
+        {
+            const char8_t* dep_type_str = u8"Unknown";
+            const char8_t* current_access_str = u8"Unknown";
+            const char8_t* previous_access_str = u8"Unknown";
+            
+            switch (dep.current_access)
+            {
+                case EResourceAccessType::Read: current_access_str = u8"Read"; break;
+                case EResourceAccessType::Write: current_access_str = u8"Write"; break;
+                case EResourceAccessType::ReadWrite: current_access_str = u8"ReadWrite"; break;
+            }
+            
+            switch (dep.previous_access)
+            {
+                case EResourceAccessType::Read: previous_access_str = u8"Read"; break;
+                case EResourceAccessType::Write: previous_access_str = u8"Write"; break;
+                case EResourceAccessType::ReadWrite: previous_access_str = u8"ReadWrite"; break;
+            }
+            
+            SKR_LOG_INFO(u8"  -> Pass: %s, Resource: %s, %s->%s, State: %d->%d", 
+                        dep.dependent_pass->get_name(),
+                        dep.resource->get_name(),
+                        previous_access_str,
+                        current_access_str,
+                        (int)dep.previous_state,
+                        (int)dep.current_state);
+        }
+    }
+    
+    SKR_LOG_INFO(u8"==========================================");
+}
 
 void PassDependencyAnalysis::dump_logical_topology() const
 {

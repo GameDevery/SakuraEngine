@@ -11,20 +11,10 @@ namespace render_graph
 class PassNode;
 class ResourceNode;
 
-// Resource dependency type
-enum class EResourceDependencyType : uint32_t
-{
-    RAR, // Read After Read
-    RAW, // Read After Write (true dependency)
-    WAR, // Write After Read (anti dependency)
-    WAW  // Write After Write (output dependency)
-};
-
 // Single resource dependency info
 struct ResourceDependency {
     PassNode* dependent_pass;                // The depended pass
     ResourceNode* resource;                  // The involved resource
-    EResourceDependencyType dependency_type; // Dependency type
     EResourceAccessType current_access;      // Current pass access type
     EResourceAccessType previous_access;     // Previous pass access type
     ECGPUResourceState current_state;        // Current pass expected resource state
@@ -112,6 +102,14 @@ private:
     // Analysis result: Pass -> its dependency info
     skr::FlatHashMap<PassNode*, PassDependencies> pass_dependencies_;
 
+    // Working data for pass dependencies
+    struct LastResourceAccess {
+        PassNode* last_pass = nullptr;
+        EResourceAccessType last_access_type = EResourceAccessType::Read;
+        ECGPUResourceState last_state = CGPU_RESOURCE_STATE_UNDEFINED;
+    };
+    skr::FlatHashMap<ResourceNode*, LastResourceAccess> resource_last_access_;
+
     // Logical topology cache
     skr::FlatHashMap<PassNode*, uint32_t> in_degrees_;
     skr::Vector<PassNode*> topo_queue_;
@@ -125,7 +123,6 @@ private:
 
     // 依赖分析方法
     void analyze_pass_dependencies(RenderGraph* graph);
-    EResourceDependencyType get_confict_type(EResourceAccessType current, EResourceAccessType previous);
     
     // 逻辑拓扑分析方法 (NEW)
     void perform_logical_topological_sort_optimized(); // 优化版本：合并拓扑排序和级别计算

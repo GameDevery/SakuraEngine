@@ -283,6 +283,16 @@ uint32_t DependencyGraphNode::incoming_edges() SKR_NOEXCEPT
     return graph->incoming_edges(this);
 }
 
+uint32_t DependencyGraphNode::foreach_incoming_edges(skr::stl_function<void(DependencyGraphNode* from, DependencyGraphNode* to, DependencyGraphEdge* edge)> f) SKR_NOEXCEPT
+{
+    return graph->foreach_incoming_edges(this, f);
+}
+
+uint32_t DependencyGraphNode::foreach_outgoing_edges(skr::stl_function<void(DependencyGraphNode* from, DependencyGraphNode* another, DependencyGraphEdge* edge)> f) SKR_NOEXCEPT
+{   
+    return graph->foreach_outgoing_edges(this, f);
+}
+
 uint32_t DependencyGraphNode::foreach_neighbors(skr::stl_function<void(DependencyGraphNode* neig)> f) SKR_NOEXCEPT
 {
     return graph->foreach_neighbors(this, f);
