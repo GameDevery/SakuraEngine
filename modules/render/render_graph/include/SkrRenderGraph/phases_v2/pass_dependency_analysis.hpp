@@ -68,9 +68,7 @@ struct PassDependencies {
 
     // Query interface
     bool has_dependency_on(PassNode* pass) const;
-    skr::Vector<ResourceDependency> get_dependencies_on(PassNode* pass) const;
 };
-
 
 // Forward declaration
 class PassInfoAnalysis;
@@ -122,9 +120,8 @@ private:
     const PassInfoAnalysis& pass_info_analysis;
 
     // 依赖分析方法
-    void analyze_pass_dependencies(PassNode* current_pass, const skr::Vector<PassNode*>& previous_passes);
-    void build_pass_level_dependencies(); // Extract pass-level dependency info from resource dependencies
-    bool has_resource_conflict(EResourceAccessType current, EResourceAccessType previous, EResourceDependencyType& out_dependency_type);
+    void analyze_pass_dependencies(RenderGraph* graph);
+    EResourceDependencyType get_confict_type(EResourceAccessType current, EResourceAccessType previous);
     
     // 逻辑拓扑分析方法 (NEW)
     void perform_logical_topological_sort();
