@@ -64,31 +64,31 @@ typedef uint32_t SugoiCallbackFlags;
  */
 typedef struct sugoi_type_description_t {
     sugoi_guid_t   guid;
-    const char8_t* name;
-    const char8_t* guidStr;
+    const char8_t* name SKR_IF_CPP(= nullptr);
+    const char8_t* guidStr SKR_IF_CPP(= nullptr);
     /**
      * a pinned component will not removed when destroying or copy when instantiating, and user should remove them manually
      * destroyed entity with pinned component will be marked by a dead component and will be erased when all pinned component is removed
      */
-    SugoiTypeFlags flags;
+    SugoiTypeFlags flags SKR_IF_CPP(= 0);
     /**
      * the storage size in chunk of this component, generally it is sizeof(T)
      * when this is a array component, it could be sizeof(T) * I + sizeof(sugoi_array_comp_t) where I means the inline element count of the array
      * @see sugoi_array_comp_t
      */
-    uint16_t size;
+    uint16_t size SKR_IF_CPP(= 0);
     /**
      * element size of this component, when this is a array component it would be equal to sizeof(T), otherwise it should be set to zero
      *
      */
-    uint16_t elementSize;
-    uint16_t alignment;
+    uint16_t elementSize SKR_IF_CPP(= 0);
+    uint16_t alignment SKR_IF_CPP(= 0);
     // entity field is used to guarantee references between entities are keeping valid after operations like instantiate, merge world, deserialize etc.
-    intptr_t* entityFields;
-    uint32_t entityFieldsCount;
+    intptr_t* entityFields SKR_IF_CPP(= nullptr);
+    uint32_t entityFieldsCount SKR_IF_CPP(= 0);
     // resource field is used to track resource lifetime
-    intptr_t* resourceFields;
-    uint32_t resourceFieldsCount;
+    intptr_t* resourceFields SKR_IF_CPP(= nullptr);
+    uint32_t resourceFieldsCount SKR_IF_CPP(= 0);
     // lifetime callbacks of this component
     sugoi_callback_v callback;
 } sugoi_type_description_t;

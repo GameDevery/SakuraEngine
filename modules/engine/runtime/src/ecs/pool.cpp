@@ -28,7 +28,7 @@ void* pool_t::allocate()
         return block;
     {
         SkrZoneScopedN("DualPoolAllocation");
-        return sugoi_calloc(1, blockSize);
+        return sugoi_malloc(blockSize);
     }
 }
 
@@ -44,7 +44,7 @@ fixed_pool_t::fixed_pool_t(size_t blockSize, size_t blockCount)
     , blockCount(blockCount)
     , blocks(blockCount)
 {
-    buffer = new char[blockSize * blockCount];
+    buffer = (char*)sugoi_malloc(blockSize * blockCount);
     skr::Vector<size_t> indicies;
     indicies.resize_default(blockCount);
     std::iota(indicies.begin(), indicies.end(), 0);
@@ -54,7 +54,7 @@ fixed_pool_t::fixed_pool_t(size_t blockSize, size_t blockCount)
 
 fixed_pool_t::~fixed_pool_t()
 {
-    delete buffer;
+    sugoi_free(buffer);
 }
 
 void* fixed_pool_t::allocate()

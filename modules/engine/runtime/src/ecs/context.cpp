@@ -59,6 +59,9 @@ sugoi_context_t* sugoi_initialize()
 void sugoi_shutdown()
 {
     if (auto ctx = g_sugoi_ctx)
+    {
         delete ctx;
+        g_sugoi_ctx = nullptr;
+    }
 }
 }

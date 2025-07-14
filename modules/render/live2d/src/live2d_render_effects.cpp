@@ -29,7 +29,7 @@ static struct RegisterComponentskr_live2d_render_model_comp_tHelper {
         desc.size                      = sizeof(skr_live2d_render_model_comp_t);
         desc.entityFieldsCount         = 1;
         static intptr_t entityFields[] = { 0 };
-        desc.entityFields              = (intptr_t)entityFields;
+        desc.entityFields              = entityFields;
         desc.guid                      = u8"63524b75-b86d-4b34-ba59-b600eb4b415b"_guid;
         desc.callback                  = {};
         desc.flags                     = 0;
