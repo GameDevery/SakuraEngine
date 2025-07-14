@@ -8,6 +8,8 @@
 #include "SkrContainersDef/set.hpp"
 #include <algorithm>
 
+#define BARRIER_GENERATION_LOG SKR_LOG_DEBUG
+
 namespace skr {
 namespace render_graph {
 
@@ -35,7 +37,7 @@ void BarrierGenerationPhase::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
 
 void BarrierGenerationPhase::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
-    SKR_LOG_INFO(u8"BarrierGenerationPhase: Starting barrier generation");
+    BARRIER_GENERATION_LOG(u8"BarrierGenerationPhase: Starting barrier generation");
     
     // 清理之前的结果
     barrier_result_.pass_barrier_batches.clear();
@@ -68,7 +70,7 @@ void BarrierGenerationPhase::on_execute(RenderGraph* graph, RenderGraphProfiler*
         validate_barrier_correctness();
     }
     
-    SKR_LOG_INFO(u8"BarrierGenerationPhase: Generated {} barriers ({} sync, {} aliasing, {} transition, {} execution)",
+    BARRIER_GENERATION_LOG(u8"BarrierGenerationPhase: Generated {} barriers ({} sync, {} aliasing, {} transition, {} execution)",
                 get_total_barriers(),
                 barrier_result_.total_sync_barriers,
                 barrier_result_.total_aliasing_barriers,
@@ -96,7 +98,7 @@ void BarrierGenerationPhase::generate_barriers(RenderGraph* graph) SKR_NOEXCEPT
             total_barriers += static_cast<uint32_t>(batch.barriers.size());
         }
     }
-    SKR_LOG_INFO(u8"BarrierGenerationPhase: Generated {} preliminary barriers", total_barriers);
+    BARRIER_GENERATION_LOG(u8"BarrierGenerationPhase: Generated {} preliminary barriers", total_barriers);
 }
 
 void BarrierGenerationPhase::generate_cross_queue_sync_barriers(RenderGraph* graph) SKR_NOEXCEPT
@@ -116,7 +118,7 @@ void BarrierGenerationPhase::generate_cross_queue_sync_barriers(RenderGraph* gra
         
         if (config_.enable_debug_output)
         {
-            SKR_LOG_TRACE(u8"Generated cross-queue sync barrier: %s -> %s (queue %u -> %u)",
+            BARRIER_GENERATION_LOG(u8"Generated cross-queue sync barrier: %s -> %s (queue %u -> %u)",
                          sync_point.producer_pass ? sync_point.producer_pass->get_name() : u8"unknown",
                          sync_point.consumer_pass ? sync_point.consumer_pass->get_name() : u8"unknown",
                          sync_point.producer_queue_index,
@@ -124,19 +126,12 @@ void BarrierGenerationPhase::generate_cross_queue_sync_barriers(RenderGraph* gra
         }
     }
     
-    SKR_LOG_INFO(u8"BarrierGenerationPhase: Generated {} cross-queue sync barriers", ssis_result.optimized_sync_points.size());
+    BARRIER_GENERATION_LOG(u8"BarrierGenerationPhase: Generated {} cross-queue sync barriers", ssis_result.optimized_sync_points.size());
 }
 
 void BarrierGenerationPhase::generate_memory_aliasing_barriers(RenderGraph* graph) SKR_NOEXCEPT
 {
     const auto& aliasing_result = aliasing_phase_.get_result();
-    
-    // 新架构：直接使用 MemoryAliasingPhase 预计算的转换点
-    // 这些转换点已经包含了所有必要的信息：
-    // - 在哪个Pass发生转换
-    // - 从哪个资源到哪个资源
-    // - 内存桶信息
-    
     for (const auto& transition : aliasing_result.alias_transitions)
     {
         if (!transition.transition_pass || !transition.to_resource)
@@ -161,7 +156,7 @@ void BarrierGenerationPhase::generate_memory_aliasing_barriers(RenderGraph* grap
         
         if (config_.enable_debug_output)
         {
-            SKR_LOG_TRACE(u8"Generated aliasing barrier at pass %s: %s -> %s (bucket %u, offset %llu)",
+            BARRIER_GENERATION_LOG(u8"Generated aliasing barrier at pass %s: %s -> %s (bucket %u, offset %llu)",
                          transition.transition_pass->get_name(),
                          transition.from_resource ? transition.from_resource->get_name() : u8"<initial>",
                          transition.to_resource->get_name(),
@@ -170,36 +165,74 @@ void BarrierGenerationPhase::generate_memory_aliasing_barriers(RenderGraph* grap
         }
     }
     
-    SKR_LOG_INFO(u8"BarrierGenerationPhase: Generated %u aliasing barriers from pre-computed transitions", 
+    BARRIER_GENERATION_LOG(u8"BarrierGenerationPhase: Generated %u aliasing barriers from pre-computed transitions", 
                 static_cast<uint32_t>(aliasing_result.alias_transitions.size()));
 }
 
 void BarrierGenerationPhase::generate_resource_transition_barriers(RenderGraph* graph) SKR_NOEXCEPT
 {
-    const auto& all_passes = get_passes(graph);
     const auto& all_resources = get_resources(graph);
+    const auto& all_passes = get_passes(graph);
     
-    // 资源状态跟踪映射: resource -> (pass -> state)
-    skr::FlatHashMap<ResourceNode*, skr::FlatHashMap<PassNode*, ECGPUResourceState>> resource_states;
+    // 获取依赖分析结果
+    const auto& pass_dependency_analysis = sync_analysis_.get_dependency_analysis();
     
-    // 跨队列读取检测映射: resource -> set<queue_indices>
-    skr::FlatHashMap<ResourceNode*, skr::FlatHashSet<uint32_t>> cross_queue_accesses;
+    // 为每个资源跟踪上一次访问的状态和Pass
+    struct ResourceLastAccess {
+        PassNode* last_pass = nullptr;
+        ECGPUResourceState last_state = CGPU_RESOURCE_STATE_UNDEFINED;
+        uint32_t last_level = UINT32_MAX;
+    };
+    skr::FlatHashMap<ResourceNode*, ResourceLastAccess> resource_last_access;
     
-    // 步骤1：构建资源状态使用图
-    analyze_resource_usage_patterns(graph, resource_states, cross_queue_accesses);
+    // 重要修复：按照实际的拓扑顺序处理Pass，而不是按依赖级别分组
+    // 这样可以保持Pass的正确执行顺序
+    const auto& logical_topological_order = pass_dependency_analysis.get_logical_topological_order();
     
-    // 步骤2：检测需要转换重路由的资源集合
-    skr::FlatHashSet<ResourceNode*> resources_requiring_rerouting;
-    identify_transition_rerouting_requirements(graph, cross_queue_accesses, resources_requiring_rerouting);
-    
-    // 步骤3：为每个资源生成状态转换屏障
-    for (auto* resource : all_resources)
+    // 按拓扑顺序遍历所有Pass
+    for (auto* pass : logical_topological_order)
     {
-        generate_transitions_for_resource(graph, resource, resource_states[resource], resources_requiring_rerouting);
+        const auto* pass_info = pass_info_analysis_.get_pass_info(pass);
+        if (!pass_info)
+            continue;
+            
+        uint32_t current_level = pass_dependency_analysis.get_logical_dependency_level(pass);
+        
+        // 处理这个Pass访问的所有资源
+        for (const auto& access : pass_info->resource_info.all_resource_accesses)
+        {
+            ResourceNode* resource = access.resource;
+            ECGPUResourceState current_state = access.resource_state;
+            
+            // 获取资源的上一次访问信息
+            auto& last_access = resource_last_access[resource];
+            
+            // 如果这是资源的第一次访问，记录并继续
+            if (last_access.last_pass == nullptr)
+            {
+                last_access.last_pass = pass;
+                last_access.last_state = current_state;
+                last_access.last_level = current_level;
+                continue;
+            }
+            
+            // 如果状态发生变化，生成转换屏障
+            uint32_t source_queue = sync_analysis_.get_pass_queue_index(last_access.last_pass);
+            uint32_t target_queue = sync_analysis_.get_pass_queue_index(pass);
+            if ((last_access.last_state != current_state) || (source_queue != target_queue))
+            {
+                generate_normal_transition(resource, 
+                    last_access.last_state, current_state, last_access.last_pass, pass);
+            }
+            
+            // 更新最后访问信息
+            last_access.last_pass = pass;
+            last_access.last_state = current_state;
+            last_access.last_level = current_level;
+        }
     }
     
-    SKR_LOG_INFO(u8"BarrierGenerationPhase: Generated resource transitions for %zu resources, %zu resources require rerouting",
-                all_resources.size(), resources_requiring_rerouting.size());
+    BARRIER_GENERATION_LOG(u8"BarrierGenerationPhase: Generated resource transitions for %zu resources", all_resources.size());
 }
 
 void BarrierGenerationPhase::batch_barriers() SKR_NOEXCEPT
@@ -354,131 +387,6 @@ uint32_t BarrierGenerationPhase::get_total_batches() const
     return total;
 }
 
-// ========== 新增实现：基于博客算法的资源状态转换分析 ==========
-
-void BarrierGenerationPhase::analyze_resource_usage_patterns(RenderGraph* graph, 
-                                   skr::FlatHashMap<ResourceNode*, skr::FlatHashMap<PassNode*, ECGPUResourceState>>& resource_states,
-                                   skr::FlatHashMap<ResourceNode*, skr::FlatHashSet<uint32_t>>& cross_queue_accesses) SKR_NOEXCEPT
-{
-    const auto& all_passes = get_passes(graph);
-    
-    for (auto* pass : all_passes)
-    {
-        const auto* pass_info = pass_info_analysis_.get_pass_info(pass);
-        if (!pass_info) continue;
-        
-        const auto& resource_info = pass_info->resource_info;
-        
-        // 处理所有资源访问
-        for (const auto& access : resource_info.all_resource_accesses)
-        {
-            auto* resource = access.resource;
-            uint32_t queue_index = sync_analysis_.get_pass_queue_index(pass);
-            
-            // 记录资源状态
-            resource_states[resource][pass] = access.resource_state;
-            cross_queue_accesses[resource].insert(queue_index);
-        }
-    }
-    
-    SKR_LOG_INFO(u8"BarrierGenerationPhase: Analyzed usage patterns for %zu resources across %zu passes",
-                resource_states.size(), all_passes.size());
-}
-
-void BarrierGenerationPhase::identify_transition_rerouting_requirements(RenderGraph* graph,
-                                              const skr::FlatHashMap<ResourceNode*, skr::FlatHashSet<uint32_t>>& cross_queue_accesses,
-                                              skr::FlatHashSet<ResourceNode*>& resources_requiring_rerouting) SKR_NOEXCEPT
-{
-    for (const auto& [resource, acess_queues] : cross_queue_accesses)
-    {
-        bool resource_needs_rerouting = false;
-        
-        if (acess_queues.size() > 1)
-        {
-            for (uint32_t queue_index : acess_queues)
-            {
-                if (queue_index > 0) // 非图形队列
-                {
-                    // 检查资源是否涉及图形专用状态
-                    bool has_graphics_states = check_resource_has_graphics_states(resource);
-                    if (has_graphics_states)
-                    {
-                        resource_needs_rerouting = true;
-                        
-                        if (config_.enable_debug_output)
-                        {
-                            SKR_LOG_TRACE(u8"Resource %s requires rerouting: queue %u cannot handle graphics states",
-                                         resource->get_name(), queue_index);
-                        }
-                        break;
-                    }
-                }
-            }
-        }
-        
-        // 如果资源需要重路由，将该资源标记为需要重路由
-        if (resource_needs_rerouting)
-        {
-            resources_requiring_rerouting.insert(resource);
-        }
-    }
-    
-    SKR_LOG_INFO(u8"BarrierGenerationPhase: %zu resources require transition rerouting", resources_requiring_rerouting.size());
-}
-
-void BarrierGenerationPhase::generate_transitions_for_resource(RenderGraph* graph, ResourceNode* resource,
-                                         const skr::FlatHashMap<PassNode*, ECGPUResourceState>& pass_states,
-                                         const skr::FlatHashSet<ResourceNode*>& resources_requiring_rerouting) SKR_NOEXCEPT
-{
-    const auto& all_passes = get_passes(graph);
-    
-    // 按Pass执行顺序排序状态访问
-    skr::Vector<std::pair<PassNode*, ECGPUResourceState>> ordered_accesses;
-    for (const auto& [pass, state] : pass_states)
-    {
-        ordered_accesses.add({pass, state});
-    }
-    
-    // 简化排序：按Pass ID排序（实际应该按依赖级别排序）
-    std::sort(ordered_accesses.begin(), ordered_accesses.end(),
-        [](const auto& a, const auto& b) {
-            return a.first->get_id() < b.first->get_id();
-        });
-    
-    // 生成状态转换
-    ECGPUResourceState previous_state = CGPU_RESOURCE_STATE_UNDEFINED;
-    PassNode* previous_pass = nullptr;
-    
-    for (const auto& [pass, current_state] : ordered_accesses)
-    {
-        if (previous_pass && previous_state != current_state)
-        {
-            uint32_t current_queue = sync_analysis_.get_pass_queue_index(pass);
-            uint32_t previous_queue = sync_analysis_.get_pass_queue_index(previous_pass);
-            
-            // 检查该资源是否需要重路由
-            bool needs_rerouting = resources_requiring_rerouting.contains(resource);
-            
-            if (needs_rerouting)
-            {
-                // 重路由到最有能力的队列
-                skr::FlatHashSet<uint32_t> involved_queues = {current_queue, previous_queue};
-                uint32_t competent_queue = find_most_competent_queue(involved_queues);
-                
-                generate_rerouted_transition(resource, previous_state, current_state, competent_queue, previous_pass, pass);
-            }
-            else
-            {
-                // 正常转换
-                generate_normal_transition(resource, previous_state, current_state, previous_pass, pass);
-            }
-        }
-        
-        previous_state = current_state;
-        previous_pass = pass;
-    }
-}
-
 uint32_t BarrierGenerationPhase::find_most_competent_queue(const skr::FlatHashSet<uint32_t>& queue_set) const SKR_NOEXCEPT
 {
     // 根据博客：图形队列通常是最有能力的
@@ -541,7 +449,7 @@ bool BarrierGenerationPhase::can_use_split_barriers(uint32_t transmitting_queue,
     
     if (config_.enable_debug_output && !cost_justified)
     {
-        SKR_LOG_TRACE(u8"Barrier cost %.2fμs below split threshold %.2fμs, using normal barrier",
+        BARRIER_GENERATION_LOG(u8"Barrier cost %.2fμs below split threshold %.2fμs, using normal barrier",
                      barrier_cost, split_barrier_threshold);
     }
     
@@ -565,12 +473,6 @@ ECGPUResourceState BarrierGenerationPhase::get_resource_state_for_usage(Resource
 {
     // 使用PassInfoAnalysis的状态信息
     return pass_info_analysis_.get_resource_state(pass, resource);
-}
-
-bool BarrierGenerationPhase::check_resource_has_graphics_states(ResourceNode* resource) const SKR_NOEXCEPT
-{
-    // 使用PassInfoAnalysis的预计算结果检查资源是否需要图形队列
-    return pass_info_analysis_.resource_requires_graphics_queue(resource);
 }
 
 bool BarrierGenerationPhase::are_passes_adjacent_or_synchronized(PassNode* source_pass, PassNode* target_pass) const SKR_NOEXCEPT
@@ -601,34 +503,6 @@ bool BarrierGenerationPhase::are_passes_adjacent_or_synchronized(PassNode* sourc
     return false;
 }
 
-void BarrierGenerationPhase::generate_rerouted_transition(ResourceNode* resource, ECGPUResourceState before_state, ECGPUResourceState after_state, uint32_t competent_queue, PassNode* source_pass, PassNode* target_pass) SKR_NOEXCEPT
-{
-    GPUBarrier barrier;
-    barrier.type = EBarrierType::ResourceTransition;
-    barrier.resource = resource;
-    barrier.before_state = before_state;
-    barrier.after_state = after_state;
-    barrier.source_pass = source_pass;
-    barrier.target_pass = target_pass;
-    barrier.source_queue = sync_analysis_.get_pass_queue_index(source_pass);
-    barrier.target_queue = competent_queue;
-    
-    // Add barrier directly to pass_barriers_
-    auto* execution_pass = target_pass; // Rerouted barriers execute at target pass
-    if (execution_pass)
-    {
-        auto& batch = get_or_create_barrier_batch(execution_pass, EBarrierType::ResourceTransition);
-        batch.barriers.add(barrier);
-    }
-    
-    if (config_.enable_debug_output)
-    {
-        SKR_LOG_TRACE(u8"Generated rerouted transition for %s: %u -> %u (queue %u, %s -> %s)",
-                     resource->get_name(), before_state, after_state, competent_queue,
-                     source_pass->get_name(), target_pass->get_name());
-    }
-}
-
 void BarrierGenerationPhase::generate_normal_transition(ResourceNode* resource, ECGPUResourceState before_state, ECGPUResourceState after_state, PassNode* source_pass, PassNode* target_pass) SKR_NOEXCEPT
 {
     uint32_t source_queue = sync_analysis_.get_pass_queue_index(source_pass);
@@ -649,7 +523,7 @@ void BarrierGenerationPhase::generate_normal_transition(ResourceNode* resource, 
         {
             if (config_.enable_debug_output)
             {
-                SKR_LOG_TRACE(u8"Skipping split barrier for %s: passes are adjacent or synchronized (%s -> %s)",
+                BARRIER_GENERATION_LOG(u8"Skipping split barrier for %s: passes are adjacent or synchronized (%s -> %s)",
                              resource->get_name(), source_pass->get_name(), target_pass->get_name());
             }
         }
@@ -683,7 +557,7 @@ void BarrierGenerationPhase::generate_normal_transition(ResourceNode* resource, 
         
         if (config_.enable_debug_output)
         {
-            SKR_LOG_TRACE(u8"Generated normal transition for %s: %u -> %u (%s -> %s)",
+            BARRIER_GENERATION_LOG(u8"Generated normal transition for %s: %u -> %u (%s -> %s)",
                          resource->get_name(), before_state, after_state,
                          source_pass->get_name(), target_pass->get_name());
         }
@@ -750,7 +624,7 @@ void BarrierGenerationPhase::generate_split_barrier(ResourceNode* resource, ECGP
         temp_normal_barrier.target_queue = sync_analysis_.get_pass_queue_index(target_pass);
         float normal_cost = estimate_barrier_cost(temp_normal_barrier);
         
-        SKR_LOG_TRACE(u8"Generated split barriers for %s: %u -> %u (%s -> %s), estimated cost savings: %.2fμs",
+        BARRIER_GENERATION_LOG(u8"Generated split barriers for %s: %u -> %u (%s -> %s), estimated cost savings: %.2fμs",
                      resource->get_name(), before_state, after_state,
                      source_pass->get_name(), target_pass->get_name(),
                      normal_cost * 0.3f); // 估算30%的性能提升

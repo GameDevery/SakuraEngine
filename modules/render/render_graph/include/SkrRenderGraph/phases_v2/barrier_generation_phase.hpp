@@ -136,19 +136,6 @@ private:
     GPUBarrier create_aliasing_barrier(ResourceNode* resource, PassNode* pass) const SKR_NOEXCEPT;
     GPUBarrier create_resource_transition_barrier(ResourceNode* resource, PassNode* from_pass, PassNode* to_pass) const SKR_NOEXCEPT;
     
-    // TODO: RMEOVE THESE
-    void analyze_resource_usage_patterns(RenderGraph* graph, 
-                                       skr::FlatHashMap<ResourceNode*, skr::FlatHashMap<PassNode*, ECGPUResourceState>>& resource_states,
-                                       skr::FlatHashMap<ResourceNode*, skr::FlatHashSet<uint32_t>>& cross_queue_reads) SKR_NOEXCEPT;
-    
-    void identify_transition_rerouting_requirements(RenderGraph* graph,
-                                                  const skr::FlatHashMap<ResourceNode*, skr::FlatHashSet<uint32_t>>& cross_queue_reads,
-                                                  skr::FlatHashSet<ResourceNode*>& resources_requiring_rerouting) SKR_NOEXCEPT;
-    
-    void generate_transitions_for_resource(RenderGraph* graph, ResourceNode* resource,
-                                         const skr::FlatHashMap<PassNode*, ECGPUResourceState>& pass_states,
-                                         const skr::FlatHashSet<ResourceNode*>& resources_requiring_rerouting) SKR_NOEXCEPT;
-    
     // 队列能力检测
     uint32_t find_most_competent_queue(const skr::FlatHashSet<uint32_t>& queue_set) const SKR_NOEXCEPT;
     bool is_state_transition_supported_on_queue(uint32_t queue_index, ECGPUResourceState before_state, ECGPUResourceState after_state) const SKR_NOEXCEPT;
@@ -159,11 +146,9 @@ private:
     ECGPUResourceState get_resource_state_for_usage(ResourceNode* resource, PassNode* pass, bool is_write) const SKR_NOEXCEPT;
     
     // 辅助方法
-    bool check_resource_has_graphics_states(ResourceNode* resource) const SKR_NOEXCEPT;
     bool are_passes_adjacent_or_synchronized(PassNode* source_pass, PassNode* target_pass) const SKR_NOEXCEPT;
     
     // 屏障生成方法
-    void generate_rerouted_transition(ResourceNode* resource, ECGPUResourceState before_state, ECGPUResourceState after_state, uint32_t competent_queue, PassNode* source_pass, PassNode* target_pass) SKR_NOEXCEPT;
     void generate_normal_transition(ResourceNode* resource, ECGPUResourceState before_state, ECGPUResourceState after_state, PassNode* source_pass, PassNode* target_pass) SKR_NOEXCEPT;
     void generate_split_barrier(ResourceNode* resource, ECGPUResourceState before_state, ECGPUResourceState after_state, PassNode* source_pass, PassNode* target_pass) SKR_NOEXCEPT;
     

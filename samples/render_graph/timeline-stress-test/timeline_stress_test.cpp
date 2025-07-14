@@ -72,6 +72,7 @@ public:
 
                 builder.with_device(device)
                     .with_gfx_queue(gfx_queue)
+                    .with_cmpt_queues(cmpt_queues)
                     .with_cpy_queues(cpy_queues);
             });
 
@@ -90,7 +91,8 @@ public:
             auto reorder_phase = skr::render_graph::ExecutionReorderPhase(info_analysis, dependency_analysis, timeline_phase, {});
             auto lifetime_analysis = skr::render_graph::ResourceLifetimeAnalysis(dependency_analysis, timeline_phase, {});
             auto ssis_phase = skr::render_graph::CrossQueueSyncAnalysis(dependency_analysis, timeline_phase, {});
-            auto aliasing_phase = skr::render_graph::MemoryAliasingPhase(lifetime_analysis, ssis_phase, {});
+            auto aliasing_phase = skr::render_graph::MemoryAliasingPhase(
+                lifetime_analysis, ssis_phase, { .aliasing_tier = skr::render_graph::EAliasingTier::Tier1 });
             skr::render_graph::BarrierGenerationConfig barrier_config = {};
             auto barrier_phase = skr::render_graph::BarrierGenerationPhase(ssis_phase, aliasing_phase, info_analysis, barrier_config);
 
@@ -409,7 +411,7 @@ private:
                     std::string transition_key = std::to_string(reinterpret_cast<uintptr_t>(barrier.source_pass)) + "_" +
                         std::to_string(reinterpret_cast<uintptr_t>(barrier.target_pass)) + "_" +
                         std::to_string(reinterpret_cast<uintptr_t>(barrier.resource));
-                    
+
                     // Add suffix for Begin/End barriers to avoid duplicate key conflicts
                     if (barrier.is_begin)
                         transition_key += "_begin";
@@ -496,7 +498,7 @@ private:
                         // Choose color and style based on barrier type and Begin/End
                         const char* color = (src_q == tgt_q) ? "blue" : "orange";
                         const char* style = (src_q == tgt_q) ? "dotted" : "dashed";
-                        
+
                         // Special handling for Begin/End barriers - create portal nodes
                         if (barrier.is_begin || barrier.is_end)
                         {
@@ -504,14 +506,15 @@ private:
                             std::string portal_label = barrier.is_begin ? "BEGIN" : "END";
                             const char* portal_color = barrier.is_begin ? "#FFE4B5" : "#E0E4CC"; // Moccasin for begin, light gray for end
                             const char* portal_shape = "diamond";
-                            
+
                             // Create portal node
-                            dot << "  " << portal_id 
-                                << " [label=\"" << portal_label << "\\n" << (const char*)barrier.resource->get_name()
-                                << "\", shape=" << portal_shape 
-                                << ", style=\"filled,dashed\", fillcolor=\"" << portal_color 
+                            dot << "  " << portal_id
+                                << " [label=\"" << portal_label << "\\n"
+                                << (const char*)barrier.resource->get_name()
+                                << "\", shape=" << portal_shape
+                                << ", style=\"filled,dashed\", fillcolor=\"" << portal_color
                                 << "\", fontsize=8, width=0.5, height=0.5];\n";
-                            
+
                             if (barrier.is_begin)
                             {
                                 // Begin: Source Pass -> Portal

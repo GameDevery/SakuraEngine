@@ -79,6 +79,7 @@ public:
     }
     const SSISAnalysisResult& get_ssis_result() const { return ssis_result_; }
     const skr::Vector<CrossQueueSyncPoint>& get_optimized_sync_points() const { return ssis_result_.optimized_sync_points; }
+    const PassDependencyAnalysis& get_dependency_analysis() const { return dependency_analysis_; }
 
     // 调试接口
     void dump_ssis_analysis() const SKR_NOEXCEPT;
