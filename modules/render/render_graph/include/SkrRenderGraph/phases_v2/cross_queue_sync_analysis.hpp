@@ -3,9 +3,7 @@
 #include "SkrRenderGraph/frontend/base_types.hpp"
 #include "pass_dependency_analysis.hpp"
 #include "queue_schedule.hpp"
-#include "SkrContainersDef/vector.hpp"
-#include "SkrContainersDef/set.hpp"
-#include "SkrContainersDef/map.hpp"
+#include "schedule_reorder.hpp"
 
 namespace skr {
 namespace render_graph {
@@ -82,14 +80,17 @@ public:
     void dump_sync_points() const SKR_NOEXCEPT;
 
 private:
-    // SSIS算法核心实现
-    void analyze_cross_queue_dependencies() SKR_NOEXCEPT;
-    void build_raw_sync_points() SKR_NOEXCEPT;
-    void apply_ssis_optimization() SKR_NOEXCEPT;
-    void build_ssis_for_all_passes() SKR_NOEXCEPT;
-    void optimize_sync_points_per_pass() SKR_NOEXCEPT;
+    void apply_ssis_optimization(RenderGraph* graph) SKR_NOEXCEPT;
     void calculate_optimization_statistics() SKR_NOEXCEPT;
-
+    
+    // SSIS算法辅助结构
+    struct SyncCoverage
+    {
+        PassNode* node_to_sync_with;
+        uint32_t node_index;
+        PooledVector<uint32_t> synced_queue_indices;
+    };
+    
 private:
     // 配置
     CrossQueueSyncConfig config_;
@@ -101,14 +102,13 @@ private:
     // 分析结果
     SSISAnalysisResult ssis_result_;
 
-    // 工作数据
-    PooledMap<PassNode*, PassNode*> cross_queue_dependencies_; // 跨队列依赖缓存
+    // 工作数据（移除了 cross_queue_dependencies_，现在由 PassDependencyAnalysis 生成同步点）
     
     // SSIS算法数据
     static constexpr uint32_t InvalidSyncIndex = UINT32_MAX;
     PooledMap<PassNode*, PooledVector<uint32_t>> pass_ssis_;  // 每个Pass的SSIS数组
-    PooledMap<PassNode*, uint32_t> pass_queue_local_indices_; // Pass在队列内的本地执行索引
-    PooledMap<PassNode*, PooledVector<PassNode*>> pass_dependencies_to_sync_with_; // 每个Pass需要同步的依赖节点
+    PooledMap<PassNode*, uint32_t> pass_local_to_queue_indices_; // Pass在队列内的本地执行索引
+    PooledMap<PassNode*, PooledVector<PassNode*>> pass_nodes_to_sync_with_; // 每个Pass需要同步的节点（会被优化）
     uint32_t total_queue_count_ = 0;
 };
 

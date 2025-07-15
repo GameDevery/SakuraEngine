@@ -10,6 +10,8 @@ namespace render_graph
 
 class PassNode;
 class ResourceNode;
+struct CrossQueueSyncPoint;
+class QueueSchedule;
 
 // Single resource dependency info
 struct ResourceDependency {
@@ -92,6 +94,9 @@ public:
     
     // 逻辑并行性查询
     bool can_execute_in_parallel_logically(PassNode* pass1, PassNode* pass2) const;
+    
+    // 跨队列同步点生成 (NEW)
+    void generate_cross_queue_sync_points(const QueueSchedule& queue_schedule, PooledVector<CrossQueueSyncPoint>& sync_points) const;
 
     // Debug output
     void dump_dependencies() const;
