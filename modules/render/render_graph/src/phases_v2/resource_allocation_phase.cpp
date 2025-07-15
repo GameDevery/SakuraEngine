@@ -188,7 +188,8 @@ CGPUTextureId ResourceAllocationPhase::get_resource(TextureNode* texture) const
     if (auto redirect_it = aliasing_result.resource_to_bucket.find(texture))
     {
         const auto bucket_id = redirect_it.value();
-        return allocation_result_.bucket_id_to_textures.find(bucket_id).value().v;
+        auto it = allocation_result_.bucket_id_to_textures.find(bucket_id);
+        return it.value().v;
     }
     return texture->get_imported();
 }
@@ -196,12 +197,23 @@ CGPUTextureId ResourceAllocationPhase::get_resource(TextureNode* texture) const
 CGPUBufferId ResourceAllocationPhase::get_resource(BufferNode* buffer) const
 {
     const auto& aliasing_result = aliasing_phase_.get_result();
-
-    // 通过resource_redirects查找重定向的资源
     if (auto redirect_it = aliasing_result.resource_to_bucket.find(buffer))
     {
         const auto bucket_id = redirect_it.value();
-        return allocation_result_.bucket_id_to_buffers.find(bucket_id).value().v;
+        auto it = allocation_result_.bucket_id_to_buffers.find(bucket_id);
+        if (!it)
+        {
+            auto bucket = aliasing_result.memory_buckets[bucket_id];
+            for (auto r : bucket.aliased_resources)
+            {
+                SKR_LOG_DEBUG(u8"! %s", r->get_name());
+            }
+            for (auto [id, buf] : allocation_result_.bucket_id_to_textures)
+            {
+                SKR_LOG_DEBUG(u8"!");
+            }
+        }
+        return it.value().v;
     }
     return buffer->get_imported();
 }

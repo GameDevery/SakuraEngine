@@ -73,6 +73,7 @@ public:
     inline uint32_t get_array_base() const { return handle.array_base; }
     inline uint32_t get_array_count() const { return handle.array_count; }
     inline uint32_t get_mip_level() const { return handle.mip_level; }
+    CGPUClearValue get_clear_value() const { return clear_value; }
 
     TextureRenderEdge(uint32_t mrt_index, TextureRTVHandle handle, CGPUClearValue clear_value, ECGPUResourceState state = CGPU_RESOURCE_STATE_RENDER_TARGET);
 protected:

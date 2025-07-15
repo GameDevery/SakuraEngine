@@ -20,6 +20,7 @@ class PassNode : public RenderGraphNode
 public:
     friend class RenderGraph;
     friend class RenderGraphBackend;
+    friend class PassExecutionPhase;
 
     SKR_RENDER_GRAPH_API const bool before(const PassNode* other) const;
     SKR_RENDER_GRAPH_API const bool after(const PassNode* other) const;
@@ -72,6 +73,7 @@ class RenderPassNode : public PassNode
 public:
     friend class RenderGraph;
     friend class RenderGraphBackend;
+    friend class PassExecutionPhase;
 
     RenderPassNode(uint32_t order);
     CGPURootSignatureId get_root_signature() const { return root_signature; }
@@ -94,6 +96,7 @@ class ComputePassNode : public PassNode
 public:
     friend class RenderGraph;
     friend class RenderGraphBackend;
+    friend class PassExecutionPhase;
 
     ComputePassNode(uint32_t order);
     CGPURootSignatureId get_root_signature() const { return root_signature; }
@@ -109,6 +112,7 @@ class CopyPassNode : public PassNode
 public:
     friend class RenderGraph;
     friend class RenderGraphBackend;
+    friend class PassExecutionPhase;
 
     CopyPassNode(uint32_t order);
 protected:
@@ -125,6 +129,7 @@ class PresentPassNode : public PassNode
 public:
     friend class RenderGraph;
     friend class RenderGraphBackend;
+    friend class PassExecutionPhase;
 
     inline bool reimport(CGPUSwapChainId swapchain, uint32_t index)
     {

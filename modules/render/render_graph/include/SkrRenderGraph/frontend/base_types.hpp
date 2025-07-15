@@ -197,6 +197,12 @@ struct SKR_RENDER_GRAPH_API ObjectHandle<EObjectType::Texture> {
         inline operator ObjectHandle<EObjectType::Texture>() const { return ObjectHandle<EObjectType::Texture>(_this); }
 
         SubresourceHandle(const handle_t _this);
+
+        uint32_t get_mip_level() const { return mip_level; }
+        uint32_t get_array_base() const { return array_base; }
+        uint32_t get_array_count() const { return array_count; }
+        CGPUTextureViewAspects get_aspects() const { return aspects; }
+
     protected:
         handle_t _this;
         uint32_t mip_level = 0;
@@ -343,6 +349,7 @@ struct SKR_RENDER_GRAPH_API PassContext {
 
 struct SKR_RENDER_GRAPH_API BindablePassContext : public PassContext {
     friend class RenderGraphBackend;
+    friend struct PassExecutionPhase;
 
     const struct CGPUXMergedBindTable* merge_tables(const struct CGPUXBindTable** tables, uint32_t count) SKR_NOEXCEPT;
 
@@ -353,6 +360,7 @@ protected:
 
 struct SKR_RENDER_GRAPH_API RenderPassContext : public BindablePassContext {
     friend class RenderGraphBackend;
+    friend struct PassExecutionPhase;
 
     void merge_and_bind_tables(const struct CGPUXBindTable** tables, uint32_t count) SKR_NOEXCEPT;
 
@@ -361,6 +369,7 @@ struct SKR_RENDER_GRAPH_API RenderPassContext : public BindablePassContext {
 
 struct SKR_RENDER_GRAPH_API ComputePassContext : public BindablePassContext {
     friend class RenderGraphBackend;
+    friend struct PassExecutionPhase;
 
     void merge_and_bind_tables(const struct CGPUXBindTable** tables, uint32_t count) SKR_NOEXCEPT;
 
@@ -368,6 +377,7 @@ struct SKR_RENDER_GRAPH_API ComputePassContext : public BindablePassContext {
 };
 
 struct SKR_RENDER_GRAPH_API CopyPassContext : public PassContext {
+    friend struct PassExecutionPhase;
     CGPUCommandBufferId cmd;
 };
 } // namespace render_graph

@@ -291,7 +291,7 @@ MemoryRegion MemoryAliasingPhase::find_optimal_memory_region(ResourceNode* resou
     if (useResourcePooling)
     {
         // TODO：判断这个桶里的第一个资源是否与当前资源完全兼容
-        return MemoryRegion( 0, resource_size );
+        return MemoryRegion( 0, 0 );
     }
     else
     {

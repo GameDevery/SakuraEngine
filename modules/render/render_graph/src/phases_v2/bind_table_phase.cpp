@@ -79,11 +79,20 @@ void BindTablePhase::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* ex
         }
         
         // Skip passes without root signature
-        if (!root_sig) continue;
+        if (!root_sig) 
+            continue;
         
         // Create bind table for this pass
         CGPUXBindTableId bind_table = create_bind_table_for_pass(graph, *executor, pass, root_sig);
-        if (!bind_table) continue;
+        if (!bind_table)
+        {
+            if ((pass->pass_type == EPassType::Render) || (pass->pass_type == EPassType::Compute))
+            {
+                SKR_LOG_ERROR(u8"Failed to create bind table for pass: %s", pass->get_name());
+                SKR_BREAK();
+            }
+            continue;
+        }
         
         // Store result
         PassBindTableInfo bind_info;
@@ -231,9 +240,6 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
         texture_count++;
         bind_table_result_.total_texture_views_created++;
     }
-    
-    // Early exit if no resources to bind
-    if (bindTableValueNames.is_empty()) return nullptr;
     
     // Get bind table from executor's pool (similar to old implementation)
     auto&& table_pool_iter = executor.bind_table_pools.find(root_sig);

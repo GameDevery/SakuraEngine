@@ -54,6 +54,7 @@ using stack_set = skr::InlineSet<T, stack_vector_fixed_count>;
 class RenderGraphBackend : public RenderGraph
 {
     friend struct BindablePassContext;
+    friend struct PassExecutionPhase;
 
 public:
     virtual uint64_t execute(RenderGraphProfiler* profiler = nullptr) SKR_NOEXCEPT final;

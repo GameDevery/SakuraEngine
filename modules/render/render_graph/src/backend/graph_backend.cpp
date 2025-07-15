@@ -18,6 +18,7 @@
 #include "SkrRenderGraph/phases_v2/barrier_generation_phase.hpp"
 #include "SkrRenderGraph/phases_v2/resource_allocation_phase.hpp"
 #include "SkrRenderGraph/phases_v2/bind_table_phase.hpp"
+#include "SkrRenderGraph/phases_v2/pass_execution_phase.hpp"
 
 namespace skr
 {
@@ -225,6 +226,7 @@ void RenderGraphBackend::initialize() SKR_NOEXCEPT
     auto barrier_phase = SkrNew<BarrierGenerationPhase>(*ssis_phase, *aliasing_phase, *info_analysis);
     auto resource_allocation_phase = SkrNew<ResourceAllocationPhase>(*aliasing_phase, *info_analysis);
     auto bindtable_phase = SkrNew<BindTablePhase>(*info_analysis, *resource_allocation_phase);
+    auto execution_phase = SkrNew<PassExecutionPhase>(*queue_schedule, *ssis_phase, *barrier_phase, *resource_allocation_phase, *bindtable_phase);
 
     phases.add(culling);
     phases.add(info_analysis);
@@ -237,6 +239,7 @@ void RenderGraphBackend::initialize() SKR_NOEXCEPT
     phases.add(barrier_phase);
     phases.add(resource_allocation_phase);
     phases.add(bindtable_phase);
+    phases.add(execution_phase);
 
     backend = device->adapter->instance->backend;
     for (uint32_t i = 0; i < RG_MAX_FRAME_IN_FLIGHT; i++)

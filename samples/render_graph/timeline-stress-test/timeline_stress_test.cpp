@@ -114,28 +114,28 @@ public:
                 
                 SHiresTimer timer;
                 skr_init_hires_timer(&timer);
-                info_analysis.on_execute(graph, nullptr);
+                info_analysis.on_execute(graph, nullptr, nullptr);
                 auto infoAnalysisTime = skr_hires_timer_get_usec(&timer, true);
 
-                dependency_analysis.on_execute(graph, nullptr);
+                dependency_analysis.on_execute(graph, nullptr, nullptr);
                 auto dependencyAnalysisTime = skr_hires_timer_get_usec(&timer, true);
 
-                queue_schedule.on_execute(graph, nullptr);
+                queue_schedule.on_execute(graph, nullptr, nullptr);
                 auto queueAnalysisTime = skr_hires_timer_get_usec(&timer, true);
 
-                reorder_phase.on_execute(graph, nullptr);
+                reorder_phase.on_execute(graph, nullptr, nullptr);
                 auto reorderAnalysisTime = skr_hires_timer_get_usec(&timer, true);
 
-                lifetime_analysis.on_execute(graph, nullptr);
+                lifetime_analysis.on_execute(graph, nullptr, nullptr);
                 auto lifetimeAnalysisTime = skr_hires_timer_get_usec(&timer, true);
 
-                ssis_phase.on_execute(graph, nullptr);
+                ssis_phase.on_execute(graph, nullptr, nullptr);
                 auto ssisAnalysisTime = skr_hires_timer_get_usec(&timer, true);
 
-                aliasing_phase.on_execute(graph, nullptr);
+                aliasing_phase.on_execute(graph, nullptr, nullptr);
                 auto aliasingAnalysisTime = skr_hires_timer_get_usec(&timer, true);
 
-                barrier_phase.on_execute(graph, nullptr);
+                barrier_phase.on_execute(graph, nullptr, nullptr);
                 auto barrierAnalysisTime = skr_hires_timer_get_usec(&timer, true);
 
                 SKR_LOG_INFO(u8"Complete Phase Chain Analysis Times: "
@@ -959,7 +959,7 @@ private:
         // Particle Simulation (使用剔除结果，为后续渲染提供粒子数据)
         auto particle_buffer = graph->create_buffer([](RenderGraph& graph, RenderGraph::BufferBuilder& builder) {
             builder.set_name(u8"ParticleBuffer")
-                .size(100000 * 16 * sizeof(float))
+                .size(200000 * 16 * sizeof(float))
                 .allow_shader_readwrite();
         });
 
