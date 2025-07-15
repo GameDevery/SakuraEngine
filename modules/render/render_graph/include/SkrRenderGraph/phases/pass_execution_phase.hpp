@@ -11,7 +11,7 @@ class BindTablePhase;
 struct SKR_RENDER_GRAPH_API PassExecutionPhase : public IRenderGraphPhase
 {
     void on_compile(RenderGraph* graph) SKR_NOEXCEPT final;
-    void on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT final;
+    void on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT final;
 
 private:
     void execute_compute_pass(RenderGraph* graph, RenderGraphFrameExecutor& executor, ComputePassNode* pass) SKR_NOEXCEPT;

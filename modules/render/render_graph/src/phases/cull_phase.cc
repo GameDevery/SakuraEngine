@@ -47,7 +47,7 @@ void CullPhase::on_compile(RenderGraph* graph) SKR_NOEXCEPT
     });
 }
 
-void CullPhase::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
+void CullPhase::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     auto node_factory = graph->get_node_factory();
     // 1.dealloc culled resources

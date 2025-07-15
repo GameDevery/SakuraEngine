@@ -10,7 +10,7 @@ class RenderGraphFrameExecutor;
 struct SKR_RENDER_GRAPH_API ResourceAllocationPhase : public IRenderGraphPhase
 {
     void on_compile(RenderGraph* graph) SKR_NOEXCEPT final;
-    void on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT final;
+    void on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT final;
 
     // Resource resolution methods
     CGPUTextureId resolve_texture(RenderGraph* graph, RenderGraphFrameExecutor& executor, const TextureNode& node) SKR_NOEXCEPT;

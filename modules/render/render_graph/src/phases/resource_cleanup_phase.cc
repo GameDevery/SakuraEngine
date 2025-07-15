@@ -13,7 +13,7 @@ void ResourceCleanupPhase::on_compile(RenderGraph* graph) SKR_NOEXCEPT
     // 清理操作在执行阶段进行
 }
 
-void ResourceCleanupPhase::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
+void ResourceCleanupPhase::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     SkrZoneScopedN("ResourceCleanupPhase::execute");
     

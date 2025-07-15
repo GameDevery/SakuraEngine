@@ -14,7 +14,7 @@ void PassInfoAnalysis::on_initialize(RenderGraph* graph) SKR_NOEXCEPT
 
 }
 
-void PassInfoAnalysis::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
+void PassInfoAnalysis::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     SkrZoneScopedN("PassInfoAnalysis");
     

@@ -22,7 +22,7 @@ struct SKR_RENDER_GRAPH_API BarrierCalculationPhase : public IRenderGraphPhase
     BarrierCalculationPhase(ResourceAllocationPhase* allocation_phase);
 
     void on_compile(RenderGraph* graph) SKR_NOEXCEPT final;
-    void on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT final;
+    void on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT final;
 
     // Barrier calculation for a specific pass
     void calculate_barriers(RenderGraph* graph, RenderGraphFrameExecutor& executor, PassNode* pass,

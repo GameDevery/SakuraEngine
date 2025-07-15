@@ -14,7 +14,7 @@ void PassExecutionPhase::on_compile(RenderGraph* graph) SKR_NOEXCEPT
     find_dependent_phases(graph);
 }
 
-void PassExecutionPhase::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
+void PassExecutionPhase::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     SkrZoneScopedN("PassExecutionPhase::execute");
     

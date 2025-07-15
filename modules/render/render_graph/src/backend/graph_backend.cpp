@@ -305,8 +305,9 @@ const CGPUShaderResource* find_shader_resource(uint64_t name_hash, CGPURootSigna
 
 uint64_t RenderGraphBackend::execute(RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
+    const auto executor_index = frame_index % RG_MAX_FRAME_IN_FLIGHT;
     for (auto& phase : phases)
-        phase->on_execute(this, profiler);
+        phase->on_execute(this, executors + executor_index, profiler);
 
     {
         SkrZoneScopedN("GraphCleanup");

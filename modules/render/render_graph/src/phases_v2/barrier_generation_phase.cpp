@@ -35,7 +35,7 @@ void BarrierGenerationPhase::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
 
 }
 
-void BarrierGenerationPhase::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
+void BarrierGenerationPhase::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     SkrZoneScopedN("BarrierGenerationPhase");
     BARRIER_GENERATION_LOG(u8"BarrierGenerationPhase: Starting barrier generation");

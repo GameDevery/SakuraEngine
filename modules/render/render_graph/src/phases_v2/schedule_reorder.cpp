@@ -26,7 +26,7 @@ void ExecutionReorderPhase::on_initialize(RenderGraph* graph) SKR_NOEXCEPT
     render_graph = graph; // Store reference to RenderGraph for DAG access
 }
 
-void ExecutionReorderPhase::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
+void ExecutionReorderPhase::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     SkrZoneScopedN("ExecutionReorderPhase");
     

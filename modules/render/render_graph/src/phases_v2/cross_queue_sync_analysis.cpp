@@ -36,7 +36,7 @@ void CrossQueueSyncAnalysis::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
     cross_queue_dependencies_.clear();
 }
 
-void CrossQueueSyncAnalysis::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
+void CrossQueueSyncAnalysis::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     SkrZoneScopedN("CrossQueueSyncAnalysis");
     SSIS_LOG(u8"CrossQueueSyncAnalysis: Starting SSIS analysis");

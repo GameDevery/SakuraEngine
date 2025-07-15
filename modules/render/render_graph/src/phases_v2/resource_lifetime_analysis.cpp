@@ -23,7 +23,7 @@ void ResourceLifetimeAnalysis::on_initialize(RenderGraph* graph) SKR_NOEXCEPT
     lifetime_result_.resource_lifetimes.reserve(128);
 }
 
-void ResourceLifetimeAnalysis::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
+void ResourceLifetimeAnalysis::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     SkrZoneScopedN("ResourceLifetimeAnalysis");
     

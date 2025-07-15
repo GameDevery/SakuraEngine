@@ -13,7 +13,7 @@ void IRenderGraphPhase::on_compile(RenderGraph* graph) SKR_NOEXCEPT
 
 }
 
-void IRenderGraphPhase::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
+void IRenderGraphPhase::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
 
 }

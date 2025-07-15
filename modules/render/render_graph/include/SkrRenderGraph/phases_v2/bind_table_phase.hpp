@@ -1,0 +1,54 @@
+#pragma once
+#include "SkrRenderGraph/frontend/render_graph.hpp"
+#include "SkrRenderGraph/backend/graph_backend.hpp"
+#include "pass_info_analysis.hpp"
+#include "resource_allocation_phase.hpp"
+
+namespace skr {
+namespace render_graph {
+
+// Bind table information for a single pass
+struct PassBindTableInfo {
+    PassNode* pass = nullptr;
+    CGPURootSignatureId root_signature = nullptr;
+    CGPUXBindTableId bind_table = nullptr;
+    uint32_t bound_texture_count = 0;
+    uint32_t bound_buffer_count = 0;
+};
+
+// Bind table phase result
+struct BindTableResult {
+    PooledMap<PassNode*, PassBindTableInfo> pass_bind_tables;
+    uint32_t total_bind_tables_created = 0;
+    uint32_t total_texture_views_created = 0;
+};
+
+// Bind table phase for managing bind tables for each Pass
+class SKR_RENDER_GRAPH_API BindTablePhase : public IRenderGraphPhase {
+public:
+    BindTablePhase(
+        const PassInfoAnalysis& pass_info_analysis,
+        const ResourceAllocationPhase& resource_allocation_phase);
+    ~BindTablePhase() override = default;
+    
+    // IRenderGraphPhase interface
+    void on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT override;
+    void on_initialize(RenderGraph* graph) SKR_NOEXCEPT override;
+    void on_finalize(RenderGraph* graph) SKR_NOEXCEPT override;
+    
+    // Results access
+    const BindTableResult& get_result() const { return bind_table_result_; }
+    const PassBindTableInfo* get_pass_bind_table_info(PassNode* pass) const;
+    CGPUXBindTableId get_pass_bind_table(PassNode* pass) const;
+    
+private:
+    // Input phase references
+    const PassInfoAnalysis& pass_info_analysis_;
+    const ResourceAllocationPhase& resource_allocation_phase_;
+    
+    TextureViewPool texture_view_pool;
+    BindTableResult bind_table_result_;
+};
+
+} // namespace render_graph
+} // namespace skr

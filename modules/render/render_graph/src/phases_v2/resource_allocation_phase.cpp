@@ -35,7 +35,7 @@ void ResourceAllocationPhase::on_initialize(RenderGraph* graph) SKR_NOEXCEPT
     allocation_result_.bucket_id_to_buffers.reserve(estimated_resource_count);
 }
 
-void ResourceAllocationPhase::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
+void ResourceAllocationPhase::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     SkrZoneScopedN("ResourceAllocationPhase");
 

@@ -29,7 +29,7 @@ bool PassDependencies::has_dependency_on(PassNode* pass) const
 }
 
 // IRenderGraphPhase 接口实现
-void PassDependencyAnalysis::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
+void PassDependencyAnalysis::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     SkrZoneScopedN("PassDependencyAnalysis");
 

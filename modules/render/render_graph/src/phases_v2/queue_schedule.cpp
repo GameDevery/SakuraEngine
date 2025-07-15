@@ -41,7 +41,7 @@ void QueueSchedule::clear_frame_data() SKR_NOEXCEPT
     schedule_result.pass_queue_assignments.clear();
 }
 
-void QueueSchedule::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
+void QueueSchedule::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     SkrZoneScopedN("QueueSchedule");
     QUEUE_SCHEDULE_LOG(u8"QueueSchedule: Starting timeline scheduling and fence allocation");

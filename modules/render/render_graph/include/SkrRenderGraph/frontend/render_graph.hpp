@@ -28,7 +28,7 @@ struct SKR_RENDER_GRAPH_API IRenderGraphPhase
 {
     virtual ~IRenderGraphPhase() SKR_NOEXCEPT;
     [[deprecated("don't use this!")]] virtual void on_compile(RenderGraph* graph) SKR_NOEXCEPT;
-    virtual void on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT;
+    virtual void on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT;
     virtual uint32_t on_collect_texture_garbage(RenderGraph* graph, uint64_t critical_frame, uint32_t with_tags, uint32_t without_flags) SKR_NOEXCEPT;
     virtual uint32_t on_collect_buffer_garbage(RenderGraph* graph, uint64_t critical_frame, uint32_t with_tags, uint32_t without_flags) SKR_NOEXCEPT;
     virtual void on_initialize(RenderGraph* graph) SKR_NOEXCEPT;

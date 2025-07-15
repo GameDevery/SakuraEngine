@@ -44,7 +44,7 @@ void MemoryAliasingPhase::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
     aliasing_result_.alias_transitions.clear();
 }
 
-void MemoryAliasingPhase::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
+void MemoryAliasingPhase::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     SkrZoneScopedN("MemoryAliasingPhase");
 

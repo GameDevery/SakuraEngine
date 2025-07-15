@@ -69,7 +69,7 @@ public:
     ~QueueSchedule() override;
 
     // IRenderGraphPhase 接口
-    void on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT override;
+    void on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT override;
     void on_initialize(RenderGraph* graph) SKR_NOEXCEPT override;
     void on_finalize(RenderGraph* graph) SKR_NOEXCEPT override;
 

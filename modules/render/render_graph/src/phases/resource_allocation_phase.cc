@@ -11,7 +11,7 @@ void ResourceAllocationPhase::on_compile(RenderGraph* graph) SKR_NOEXCEPT
     // 资源分配在执行时进行，编译时不需要做任何事
 }
 
-void ResourceAllocationPhase::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
+void ResourceAllocationPhase::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     SkrZoneScopedN("ResourceAllocationPhase::execute");
     

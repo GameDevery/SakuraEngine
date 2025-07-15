@@ -32,7 +32,7 @@ void BindTablePhase::on_compile(RenderGraph* graph) SKR_NOEXCEPT
     find_resource_allocation_phase(graph);
 }
 
-void BindTablePhase::on_execute(RenderGraph* graph, RenderGraphProfiler* profiler) SKR_NOEXCEPT
+void BindTablePhase::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     // Bind table 操作在 Pass 执行时按需进行
 }
