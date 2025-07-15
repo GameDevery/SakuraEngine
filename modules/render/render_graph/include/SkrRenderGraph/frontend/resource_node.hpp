@@ -54,6 +54,14 @@ public:
     inline const ECGPUSampleCount get_sample_count() const SKR_NOEXCEPT { return descriptor.sample_count; }
     inline const TextureNode* get_aliasing_parent() const SKR_NOEXCEPT { return frame_aliasing_source; }
     EObjectType get_type() const SKR_NOEXCEPT override;
+    CGPUTextureId get_imported() const SKR_NOEXCEPT
+    {
+        if (imported)
+        {
+            return frame_texture;
+        }
+        return nullptr;
+    }
 
 protected:
     CGPUTextureDescriptor descriptor = {};
@@ -81,6 +89,14 @@ public:
     inline const BufferHandle get_handle() const SKR_NOEXCEPT { return BufferHandle(get_id()); }
     inline const CGPUBufferDescriptor& get_desc() const SKR_NOEXCEPT { return descriptor; }
     EObjectType get_type() const SKR_NOEXCEPT override;
+    CGPUBufferId get_imported() const SKR_NOEXCEPT
+    {
+        if (imported)
+        {
+            return frame_buffer;
+        }
+        return nullptr;
+    }
 
 protected:
     CGPUBufferDescriptor descriptor = {};

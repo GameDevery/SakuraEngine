@@ -26,21 +26,19 @@ void ResourceAllocationPhase::on_initialize(RenderGraph* graph) SKR_NOEXCEPT
     this->graph = (RenderGraphBackend*)graph;
     device_ = graph->get_backend_device();
 
-    buffer_pool_.initialize(device_);
-    texture_pool_.initialize(device_);
-
     // 预分配容器
     const size_t estimated_resource_count = 128;
     allocation_result_.bucket_id_to_textures.reserve(estimated_resource_count);
     allocation_result_.bucket_id_to_buffers.reserve(estimated_resource_count);
 }
 
-void ResourceAllocationPhase::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT
+void ResourceAllocationPhase::on_execute(RenderGraph* graph_, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     SkrZoneScopedN("ResourceAllocationPhase");
+    auto graph = static_cast<RenderGraphBackend*>(graph_);
 
     // 步骤1: 清理上一帧的资源状态
-    release_resources_to_pool();
+    release_resources_to_pool(graph->get_texture_pool(), graph->get_buffer_pool());
 
     // 步骤2: 为池化资源创建实际的GPU资源
     allocate_pooled_resources(graph);
@@ -54,18 +52,17 @@ void ResourceAllocationPhase::on_execute(RenderGraph* graph, RenderGraphFrameExe
     }
 }
 
-void ResourceAllocationPhase::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
+void ResourceAllocationPhase::on_finalize(RenderGraph* graph_) SKR_NOEXCEPT
 {
-    release_resources_to_pool();
-
-    buffer_pool_.finalize();
-    texture_pool_.finalize();
+    auto graph = static_cast<RenderGraphBackend*>(graph_);
+    release_resources_to_pool(graph->get_texture_pool(), graph->get_buffer_pool());
 
     allocation_result_ = ResourceAllocationResult{};
 }
 
-void ResourceAllocationPhase::allocate_pooled_resources(RenderGraph* graph) SKR_NOEXCEPT
+void ResourceAllocationPhase::allocate_pooled_resources(RenderGraph* graph_) SKR_NOEXCEPT
 {
+    auto graph = static_cast<RenderGraphBackend*>(graph_);
     const auto& aliasing_result = aliasing_phase_.get_result();
 
     // 为每个池化资源创建实际的GPU资源
@@ -78,21 +75,21 @@ void ResourceAllocationPhase::allocate_pooled_resources(RenderGraph* graph) SKR_
         if (resource->type == EObjectType::Texture)
         {
             TextureNode* texture = static_cast<TextureNode*>(resource);
-            create_texture_from_pool(i, texture);
+            create_texture_from_pool(graph->get_texture_pool(), i, texture);
         }
         else if (resource->type == EObjectType::Buffer)
         {
             BufferNode* buffer = static_cast<BufferNode*>(resource);
-            create_buffer_from_pool(i, buffer);
+            create_buffer_from_pool(graph->get_buffer_pool(), i, buffer);
         }
     }
 }
 
-void ResourceAllocationPhase::create_texture_from_pool(uint64_t bucket_id, TextureNode* texture) SKR_NOEXCEPT
+void ResourceAllocationPhase::create_texture_from_pool(TexturePool& tpool, uint64_t bucket_id, TextureNode* texture) SKR_NOEXCEPT
 {
     // 从纹理池获取GPU纹理
     // uint64_t latest_frame = (texture->get_tags() & kRenderGraphDynamicResourceTag) ?  graph->get_latest_finished_frame() : UINT64_MAX;
-    auto [gpu_texture, init_state] = texture_pool_.allocate(
+    auto [gpu_texture, init_state] = tpool.allocate(
         texture->get_desc(), { graph->get_frame_index(), texture->get_tags() });
     if (!gpu_texture)
     {
@@ -118,11 +115,11 @@ void ResourceAllocationPhase::create_texture_from_pool(uint64_t bucket_id, Textu
     }
 }
 
-void ResourceAllocationPhase::create_buffer_from_pool(uint64_t bucket_id, BufferNode* buffer) SKR_NOEXCEPT
+void ResourceAllocationPhase::create_buffer_from_pool(BufferPool& bpool, uint64_t bucket_id, BufferNode* buffer) SKR_NOEXCEPT
 {
     // 从缓冲区池获取GPU缓冲区
     uint64_t latest_frame = (buffer->get_tags() & kRenderGraphDynamicResourceTag) ? graph->get_latest_finished_frame() : UINT64_MAX;
-    auto [gpu_buffer, init_state] = buffer_pool_.allocate(
+    auto [gpu_buffer, init_state] = bpool.allocate(
         buffer->get_desc(), { graph->get_frame_index(), buffer->get_tags() }, latest_frame);
 
     if (!gpu_buffer)
@@ -148,7 +145,7 @@ void ResourceAllocationPhase::create_buffer_from_pool(uint64_t bucket_id, Buffer
     }
 }
 
-void ResourceAllocationPhase::release_resources_to_pool() SKR_NOEXCEPT
+void ResourceAllocationPhase::release_resources_to_pool(TexturePool& tpool, BufferPool& bpool) SKR_NOEXCEPT
 {
     // 步骤1: 将上一帧的所有资源归还给资源池
     // 因为这些资源已经退出了生命周期
@@ -158,7 +155,7 @@ void ResourceAllocationPhase::release_resources_to_pool() SKR_NOEXCEPT
         auto node = (TextureNode*)bucket.aliased_resources.at_last();
         auto resource_info = pass_info_analysis_.get_resource_info(node);
         auto last_state = resource_info->used_states.at_last().value;
-        texture_pool_.deallocate(node->get_desc(), gpu_texture.v, last_state, { graph->get_frame_index(), node->get_tags() });
+        tpool.deallocate(node->get_desc(), gpu_texture.v, last_state, { graph->get_frame_index(), node->get_tags() });
     }
 
     for (const auto& [bucket_id, gpu_buffer] : allocation_result_.bucket_id_to_buffers)
@@ -167,7 +164,7 @@ void ResourceAllocationPhase::release_resources_to_pool() SKR_NOEXCEPT
         auto node = (BufferNode*)bucket.aliased_resources.at_last();
         auto resource_info = pass_info_analysis_.get_resource_info(node);
         auto last_state = resource_info->used_states.at_last().value;
-        buffer_pool_.deallocate(node->get_desc(), gpu_buffer.v, last_state, { graph->get_frame_index(), node->get_tags() });
+        bpool.deallocate(node->get_desc(), gpu_buffer.v, last_state, { graph->get_frame_index(), node->get_tags() });
     }
 
     // 清理映射表
@@ -193,7 +190,7 @@ CGPUTextureId ResourceAllocationPhase::get_resource(TextureNode* texture) const
         const auto bucket_id = redirect_it.value();
         return allocation_result_.bucket_id_to_textures.find(bucket_id).value().v;
     }
-    return nullptr;
+    return texture->get_imported();
 }
 
 CGPUBufferId ResourceAllocationPhase::get_resource(BufferNode* buffer) const
@@ -206,7 +203,7 @@ CGPUBufferId ResourceAllocationPhase::get_resource(BufferNode* buffer) const
         const auto bucket_id = redirect_it.value();
         return allocation_result_.bucket_id_to_buffers.find(bucket_id).value().v;
     }
-    return nullptr;
+    return buffer->get_imported();
 }
 
 } // namespace render_graph

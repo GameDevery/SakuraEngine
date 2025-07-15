@@ -872,7 +872,7 @@ void ImGuiRendererBackendRG::render_window(ImGuiViewport* vp, void*)
     // present
     _render_graph->add_present_pass(
         [=](render_graph::RenderGraph& g, render_graph::PresentPassBuilder& builder) {
-            skr::String pass_name = skr::format(u8"imgui-present-{}", vp->ID);
+            skr::String pass_name = skr::format(u8"imgui_present-{}", vp->ID);
             builder.set_name((const char8_t*)pass_name.c_str())
                 .swapchain(rdata->swapchain, rdata->backbuffer_index)
                 .texture(back_buffer, true);

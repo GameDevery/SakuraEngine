@@ -7,6 +7,7 @@
 #include "SkrRenderGraph/frontend/node_and_edge_factory.hpp"
 #include "SkrProfile/profile.h"
 
+#include "SkrRenderGraph/phases_v2/cull_phase.hpp"
 #include "SkrRenderGraph/phases_v2/pass_info_analysis.hpp"
 #include "SkrRenderGraph/phases_v2/pass_dependency_analysis.hpp"
 #include "SkrRenderGraph/phases_v2/queue_schedule.hpp"
@@ -16,7 +17,7 @@
 #include "SkrRenderGraph/phases_v2/memory_aliasing_phase.hpp"
 #include "SkrRenderGraph/phases_v2/barrier_generation_phase.hpp"
 #include "SkrRenderGraph/phases_v2/resource_allocation_phase.hpp"
-
+#include "SkrRenderGraph/phases_v2/bind_table_phase.hpp"
 
 namespace skr
 {
@@ -213,6 +214,7 @@ void RenderGraphBackend::initialize() SKR_NOEXCEPT
 {
     RenderGraph::initialize();
 
+    auto culling = SkrNew<CullPhase>();
     auto info_analysis = SkrNew<PassInfoAnalysis>();
     auto dependency_analysis = SkrNew<PassDependencyAnalysis>(*info_analysis);
     auto queue_schedule = SkrNew<QueueSchedule>(*dependency_analysis);
@@ -222,7 +224,9 @@ void RenderGraphBackend::initialize() SKR_NOEXCEPT
     auto aliasing_phase = SkrNew<MemoryAliasingPhase>(*info_analysis, *lifetime_analysis, *ssis_phase, MemoryAliasingConfig{ .aliasing_tier = EAliasingTier::Tier0 });
     auto barrier_phase = SkrNew<BarrierGenerationPhase>(*ssis_phase, *aliasing_phase, *info_analysis);
     auto resource_allocation_phase = SkrNew<ResourceAllocationPhase>(*aliasing_phase, *info_analysis);
+    auto bindtable_phase = SkrNew<BindTablePhase>(*info_analysis, *resource_allocation_phase);
 
+    phases.add(culling);
     phases.add(info_analysis);
     phases.add(dependency_analysis);
     phases.add(queue_schedule);
@@ -232,6 +236,7 @@ void RenderGraphBackend::initialize() SKR_NOEXCEPT
     phases.add(aliasing_phase);
     phases.add(barrier_phase);
     phases.add(resource_allocation_phase);
+    phases.add(bindtable_phase);
 
     backend = device->adapter->instance->backend;
     for (uint32_t i = 0; i < RG_MAX_FRAME_IN_FLIGHT; i++)
@@ -253,10 +258,6 @@ void RenderGraphBackend::finalize() SKR_NOEXCEPT
     {
         executors[i].finalize();
     }
-    buffer_pool.finalize();
-    texture_pool.finalize();
-    texture_view_pool.finalize();
-
     for (auto& phase : phases.range_inv())
     {
         phase->on_finalize(this);
@@ -265,6 +266,10 @@ void RenderGraphBackend::finalize() SKR_NOEXCEPT
     {
         SkrDelete(phase);
     }
+
+    buffer_pool.finalize();
+    texture_pool.finalize();
+    texture_view_pool.finalize();
 }
 
 uint64_t RenderGraphBackend::get_latest_finished_frame() SKR_NOEXCEPT
@@ -281,26 +286,6 @@ uint64_t RenderGraphBackend::get_latest_finished_frame() SKR_NOEXCEPT
         }
     }
     return result;
-}
-
-
-const CGPUShaderResource* find_shader_resource(uint64_t name_hash, CGPURootSignatureId root_sig, ECGPUResourceType* type = nullptr)
-{
-    for (uint32_t i = 0; i < root_sig->table_count; i++)
-    {
-        for (uint32_t j = 0; j < root_sig->tables[i].resources_count; j++)
-        {
-            const auto& resource = root_sig->tables[i].resources[j];
-            if (resource.name_hash == name_hash && 
-                strcmp((const char*)resource.name, (const char*)root_sig->tables[i].resources[j].name) == 0)
-            {
-                if (type)
-                    *type = resource.type;
-                return &root_sig->tables[i].resources[j];
-            }
-        }
-    }
-    return nullptr;
 }
 
 uint64_t RenderGraphBackend::execute(RenderGraphProfiler* profiler) SKR_NOEXCEPT

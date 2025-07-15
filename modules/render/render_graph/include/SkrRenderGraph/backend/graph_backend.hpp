@@ -80,6 +80,10 @@ public:
 
     // Public interface for phases
     uint64_t get_latest_finished_frame() SKR_NOEXCEPT;
+    
+    BufferPool& get_buffer_pool() SKR_NOEXCEPT { return buffer_pool; }
+    TexturePool& get_texture_pool() SKR_NOEXCEPT { return texture_pool; }
+    TextureViewPool& get_texture_view_pool() SKR_NOEXCEPT { return texture_view_pool; }
 
 protected:
     virtual void initialize() SKR_NOEXCEPT final;

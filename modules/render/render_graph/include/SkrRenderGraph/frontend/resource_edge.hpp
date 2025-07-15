@@ -102,7 +102,7 @@ public:
     friend class RenderGraph;
     friend class RenderGraphBackend;
 
-    inline const char* get_name() const { return name.c_str_raw(); }
+    inline const char8_t* get_name() const { return name.c_str(); }
     const uint64_t name_hash = 0;
 
     BufferNode* get_buffer_node() final;

@@ -6,7 +6,6 @@ namespace render_graph {
 
 struct SKR_RENDER_GRAPH_API CullPhase : public IRenderGraphPhase
 {
-    void on_compile(RenderGraph* graph) SKR_NOEXCEPT final;
     void on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT final;
 
     skr::Vector<PassNode*> culled_passes;

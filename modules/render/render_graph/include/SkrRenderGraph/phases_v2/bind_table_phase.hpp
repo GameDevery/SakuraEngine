@@ -42,11 +42,12 @@ public:
     CGPUXBindTableId get_pass_bind_table(PassNode* pass) const;
     
 private:
+    CGPUXBindTableId create_bind_table_for_pass(RenderGraph* graph, RenderGraphFrameExecutor& executor, PassNode* pass, CGPURootSignatureId root_sig) SKR_NOEXCEPT;
+    
     // Input phase references
     const PassInfoAnalysis& pass_info_analysis_;
     const ResourceAllocationPhase& resource_allocation_phase_;
     
-    TextureViewPool texture_view_pool;
     BindTableResult bind_table_result_;
 };
 

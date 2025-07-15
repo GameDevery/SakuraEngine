@@ -98,6 +98,7 @@ void MemoryAliasingPhase::analyze_resources() SKR_NOEXCEPT
             }
             
             // 3. 跳过太小的资源
+            /*
             auto lifetime_it = lifetime_result.resource_lifetimes.find(resource);
             auto resource_info = pass_info_analysis_.get_resource_info(resource);
             if (!lifetime_it || resource_info->memory_size < config_.min_resource_size)
@@ -111,6 +112,7 @@ void MemoryAliasingPhase::analyze_resources() SKR_NOEXCEPT
                 }
                 return true;
             }
+            */
             
             return false;
         });
@@ -289,7 +291,7 @@ MemoryRegion MemoryAliasingPhase::find_optimal_memory_region(ResourceNode* resou
     if (useResourcePooling)
     {
         // TODO：判断这个桶里的第一个资源是否与当前资源完全兼容
-        return MemoryRegion();
+        return MemoryRegion( 0, resource_size );
     }
     else
     {

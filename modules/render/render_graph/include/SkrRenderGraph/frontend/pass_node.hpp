@@ -74,6 +74,8 @@ public:
     friend class RenderGraphBackend;
 
     RenderPassNode(uint32_t order);
+    CGPURootSignatureId get_root_signature() const { return root_signature; }
+    
 protected:
     RenderPassExecuteFunction executor;
     CGPURenderPipelineId pipeline = nullptr;
@@ -94,6 +96,8 @@ public:
     friend class RenderGraphBackend;
 
     ComputePassNode(uint32_t order);
+    CGPURootSignatureId get_root_signature() const { return root_signature; }
+
 protected:
     ComputePassExecuteFunction executor;
     CGPUComputePipelineId pipeline;

@@ -67,10 +67,10 @@ public:
 
 private:
     // 核心分配方法
-    void release_resources_to_pool() SKR_NOEXCEPT;
+    void release_resources_to_pool(TexturePool& tpool, BufferPool& bpool) SKR_NOEXCEPT;
     void allocate_pooled_resources(RenderGraph* graph) SKR_NOEXCEPT;
-    void create_texture_from_pool(uint64_t bucket_id, TextureNode* texture) SKR_NOEXCEPT;
-    void create_buffer_from_pool(uint64_t bucket_id, BufferNode* buffer) SKR_NOEXCEPT;
+    void create_texture_from_pool(TexturePool& tpool, uint64_t bucket_id, TextureNode* texture) SKR_NOEXCEPT;
+    void create_buffer_from_pool(BufferPool& bpool, uint64_t bucket_id, BufferNode* buffer) SKR_NOEXCEPT;
 
 private:
     // 配置
@@ -82,8 +82,6 @@ private:
     
     // 分配结果
     ResourceAllocationResult allocation_result_;
-    BufferPool buffer_pool_;
-    TexturePool texture_pool_;
     
     // 渲染设备
     CGPUDeviceId device_ = nullptr;

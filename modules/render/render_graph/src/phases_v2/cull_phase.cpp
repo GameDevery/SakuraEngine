@@ -1,4 +1,4 @@
-#include "SkrRenderGraph/phases/cull_phase.hpp"
+#include "SkrRenderGraph/phases_v2/cull_phase.hpp"
 #include "SkrRenderGraph/frontend/resource_node.hpp"
 #include "SkrRenderGraph/frontend/pass_node.hpp"
 #include "SkrRenderGraph/frontend/node_and_edge_factory.hpp"
@@ -8,7 +8,7 @@
 namespace skr {
 namespace render_graph {
 
-void CullPhase::on_compile(RenderGraph* graph) SKR_NOEXCEPT
+void CullPhase::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     SkrZoneScopedN("RenderGraphCull");
     auto& resources = get_resources(graph);
@@ -45,10 +45,7 @@ void CullPhase::on_compile(RenderGraph* graph) SKR_NOEXCEPT
         }
         return culled;
     });
-}
 
-void CullPhase::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT
-{
     auto node_factory = graph->get_node_factory();
     // 1.dealloc culled resources
     for (auto culled_resource : culled_resources)
