@@ -216,14 +216,14 @@ void RenderGraphBackend::initialize() SKR_NOEXCEPT
     RenderGraph::initialize();
 
     auto culling = SkrNew<CullPhase>();
-    auto info_analysis = SkrNew<PassInfoAnalysis>();
+    info_analysis = SkrNew<PassInfoAnalysis>();
     auto dependency_analysis = SkrNew<PassDependencyAnalysis>(*info_analysis);
-    auto queue_schedule = SkrNew<QueueSchedule>(*dependency_analysis);
+    queue_schedule = SkrNew<QueueSchedule>(*dependency_analysis);
     auto reorder_phase = SkrNew<ExecutionReorderPhase>(*info_analysis, *dependency_analysis, *queue_schedule);
-    auto lifetime_analysis = SkrNew<ResourceLifetimeAnalysis>(*info_analysis, *dependency_analysis, *queue_schedule);
-    auto ssis_phase = SkrNew<CrossQueueSyncAnalysis>(*dependency_analysis, *queue_schedule);
-    auto aliasing_phase = SkrNew<MemoryAliasingPhase>(*info_analysis, *lifetime_analysis, *ssis_phase, MemoryAliasingConfig{ .aliasing_tier = EAliasingTier::Tier0 });
-    auto barrier_phase = SkrNew<BarrierGenerationPhase>(*ssis_phase, *aliasing_phase, *info_analysis);
+    lifetime_analysis = SkrNew<ResourceLifetimeAnalysis>(*info_analysis, *dependency_analysis, *queue_schedule);
+    ssis_phase = SkrNew<CrossQueueSyncAnalysis>(*dependency_analysis, *queue_schedule);
+    aliasing_phase = SkrNew<MemoryAliasingPhase>(*info_analysis, *lifetime_analysis, *ssis_phase, MemoryAliasingConfig{ .aliasing_tier = EAliasingTier::Tier0 });
+    barrier_phase = SkrNew<BarrierGenerationPhase>(*ssis_phase, *aliasing_phase, *info_analysis, *reorder_phase);
     auto resource_allocation_phase = SkrNew<ResourceAllocationPhase>(*aliasing_phase, *info_analysis);
     auto bindtable_phase = SkrNew<BindTablePhase>(*info_analysis, *resource_allocation_phase);
     auto execution_phase = SkrNew<PassExecutionPhase>(*queue_schedule, *ssis_phase, *barrier_phase, *resource_allocation_phase, *bindtable_phase);
@@ -295,7 +295,16 @@ uint64_t RenderGraphBackend::execute(RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     const auto executor_index = frame_index % RG_MAX_FRAME_IN_FLIGHT;
     for (auto& phase : phases)
+    {
         phase->on_execute(this, executors + executor_index, profiler);
+    }
+
+#if !SKR_SHIPPING
+    if (frame_index == 1000)
+    {
+        generate_graphviz_visualization();
+    }
+#endif
 
     {
         SkrZoneScopedN("GraphCleanup");
@@ -324,7 +333,6 @@ uint64_t RenderGraphBackend::execute(RenderGraphProfiler* profiler) SKR_NOEXCEPT
         graph->clear();
         blackboard->clear();
     }
-
     return frame_index++;
 }
 

@@ -73,10 +73,6 @@ public:
 
     // 获取分析结果
     uint32_t get_pass_queue_index(PassNode* pass) const SKR_NOEXCEPT;
-    uint32_t get_local_pass_index(PassNode* pass) const SKR_NOEXCEPT
-    {
-        return queue_schedule_.get_schedule_result().pass_queue_assignments.find(pass).value();
-    }
     const SSISAnalysisResult& get_ssis_result() const { return ssis_result_; }
     const PooledVector<CrossQueueSyncPoint>& get_optimized_sync_points() const { return ssis_result_.optimized_sync_points; }
     const PassDependencyAnalysis& get_dependency_analysis() const { return dependency_analysis_; }

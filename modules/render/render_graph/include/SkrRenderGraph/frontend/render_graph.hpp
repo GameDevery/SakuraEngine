@@ -262,7 +262,7 @@ public:
     RenderGraph(const RenderGraphBuilder& builder) SKR_NOEXCEPT;
     virtual ~RenderGraph() SKR_NOEXCEPT = default;
 
-// interfaces
+    // interfaces
     friend struct IRenderGraphPhase;
     virtual uint64_t execute(RenderGraphProfiler* profiler = nullptr) SKR_NOEXCEPT;
     virtual uint32_t collect_texture_garbage(uint64_t critical_frame,
@@ -311,10 +311,5 @@ using TextureBuilder = RenderGraph::TextureBuilder;
 using BufferSetupFunction = RenderGraph::BufferSetupFunction;
 using BufferBuilder = RenderGraph::BufferBuilder;
 
-class SKR_RENDER_GRAPH_API RenderGraphViz
-{
-public:
-    static void write_graphviz(RenderGraph& graph, const char* outf) SKR_NOEXCEPT;
-};
 } // namespace render_graph
 } // namespace skr

@@ -17,11 +17,13 @@ BarrierGenerationPhase::BarrierGenerationPhase(
     const CrossQueueSyncAnalysis& sync_analysis,
     const MemoryAliasingPhase& aliasing_phase,
     const PassInfoAnalysis& pass_info_analysis,
+    const ExecutionReorderPhase& reorder_phase,
     const BarrierGenerationConfig& config)
     : config_(config)
     , sync_analysis_(sync_analysis)
     , aliasing_phase_(aliasing_phase)
     , pass_info_analysis_(pass_info_analysis)
+    , reorder_phase_(reorder_phase)
 {
 }
 
@@ -461,13 +463,18 @@ bool BarrierGenerationPhase::are_passes_adjacent_or_synchronized(PassNode* sourc
     const uint32_t source_queue = sync_analysis_.get_pass_queue_index(source_pass);
     const uint32_t target_queue = sync_analysis_.get_pass_queue_index(target_pass);
     const auto same_queue = (source_queue == target_queue);
-    const auto source_pass_index = sync_analysis_.get_local_pass_index(source_pass);
-    const auto target_pass_index = sync_analysis_.get_local_pass_index(target_pass);
-    const auto is_adjacent = (target_pass_index == source_pass_index + 1 || target_pass_index == source_pass_index - 1);
 
     // 1. 检查是否在同一队列上紧挨着执行
-    if (same_queue && is_adjacent)
-        return true;
+    if (same_queue)
+    {
+        const auto& timeline = reorder_phase_.get_optimized_timeline()[source_queue];
+        const auto source_pass_index = timeline.find(source_pass).index();
+        const auto target_pass_index = timeline.find(target_pass).index();
+        if (source_pass_index == target_pass_index + 1 || source_pass_index == target_pass_index - 1)
+        {
+            return true;
+        }
+    }
     
     // 2. 检查是否已经有跨队列同步屏障
     const auto& ssis_result = sync_analysis_.get_ssis_result();

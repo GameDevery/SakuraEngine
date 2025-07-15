@@ -434,8 +434,6 @@ int SLive2DViewerModule::main_module_exec(int argc, char8_t** argv)
         // execute render graph
         {
             SkrZoneScopedN("ExecuteRenderGraph");
-            if (frame_index == 1000)
-                render_graph::RenderGraphViz::write_graphviz(*renderGraph, "render_graph_L2D.gv");
             frame_index = renderGraph->execute();
             {
                 SkrZoneScopedN("CollectGarbage");

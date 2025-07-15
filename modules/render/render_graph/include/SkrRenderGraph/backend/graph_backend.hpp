@@ -7,10 +7,15 @@
 #include "SkrRenderGraph/backend/texture_view_pool.hpp"
 #include "SkrRenderGraph/backend/bind_table_pool.hpp"
 
-namespace skr
+namespace skr::render_graph
 {
-namespace render_graph
-{
+struct PassInfoAnalysis;
+struct QueueSchedule;
+struct CrossQueueSyncAnalysis;
+struct BarrierGenerationPhase;
+struct MemoryAliasingPhase;
+struct ResourceLifetimeAnalysis;
+
 class RenderGraphFrameExecutor
 {
 public:
@@ -87,10 +92,17 @@ public:
     TextureViewPool& get_texture_view_pool() SKR_NOEXCEPT { return texture_view_pool; }
 
 protected:
+    void generate_graphviz_visualization() SKR_NOEXCEPT;
     virtual void initialize() SKR_NOEXCEPT final;
     virtual void finalize() SKR_NOEXCEPT final;
 
     skr::Vector<IRenderGraphPhase*> phases;
+    PassInfoAnalysis* info_analysis = nullptr;
+    QueueSchedule* queue_schedule = nullptr;
+    CrossQueueSyncAnalysis* ssis_phase = nullptr;
+    BarrierGenerationPhase* barrier_phase = nullptr;
+    MemoryAliasingPhase* aliasing_phase = nullptr;
+    ResourceLifetimeAnalysis* lifetime_analysis = nullptr;
 
     ECGPUBackend backend;
     CGPUDeviceId device;
@@ -102,5 +114,4 @@ protected:
     BufferPool buffer_pool;
     TextureViewPool texture_view_pool;
 };
-} // namespace render_graph
-} // namespace skr
+} // namespace skr::render_graph

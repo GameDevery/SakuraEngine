@@ -4,6 +4,7 @@
 #include "cross_queue_sync_analysis.hpp"
 #include "memory_aliasing_phase.hpp"
 #include "pass_info_analysis.hpp"
+#include "schedule_reorder.hpp"
 
 namespace skr {
 namespace render_graph {
@@ -93,6 +94,7 @@ public:
         const CrossQueueSyncAnalysis& sync_analysis,
         const MemoryAliasingPhase& aliasing_phase,
         const PassInfoAnalysis& pass_info_analysis,
+        const ExecutionReorderPhase& reorder_phase,
         const BarrierGenerationConfig& config = {});
     ~BarrierGenerationPhase() override = default;
 
@@ -160,6 +162,7 @@ private:
     const CrossQueueSyncAnalysis& sync_analysis_;
     const MemoryAliasingPhase& aliasing_phase_;
     const PassInfoAnalysis& pass_info_analysis_;
+    const ExecutionReorderPhase& reorder_phase_;
 
     // 分析结果
     BarrierGenerationResult barrier_result_;
