@@ -29,8 +29,8 @@ void SkrRendererModule::on_load(int argc, char8_t** argv)
     render_device = skr::RendererDevice::Create();
     // initailize render device
     auto builder = make_zeroed<skr::RendererDevice::Builder>();
-    builder.enable_debug_layer = false;
-    builder.enable_gpu_based_validation = false;
+    builder.enable_debug_layer = true;
+    builder.enable_gpu_based_validation = true;
     builder.enable_set_name = true;
     builder.aux_thread_count = 1;
 #ifdef _WIN32

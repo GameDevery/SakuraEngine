@@ -31,11 +31,11 @@ void RenderGraphFrameExecutor::initialize(CGPUQueueId gfx_queue, CGPUDeviceId de
     CGPUCommandPoolDescriptor pool_desc = {
         u8"RenderGraphCmdPool"
     };
-    gfx_cmd_pool                         = cgpu_create_command_pool(gfx_queue, &pool_desc);
+    gfx_cmd_pool = cgpu_create_command_pool(gfx_queue, &pool_desc);
     CGPUCommandBufferDescriptor cmd_desc = {};
-    cmd_desc.is_secondary                = false;
-    gfx_cmd_buf                          = cgpu_create_command_buffer(gfx_cmd_pool, &cmd_desc);
-    exec_fence                           = cgpu_create_fence(device);
+    cmd_desc.is_secondary = false;
+    gfx_cmd_buf = cgpu_create_command_buffer(gfx_cmd_pool, &cmd_desc);
+    exec_fence = cgpu_create_fence(device);
 
     CGPUBufferDescriptor marker_buffer_desc = {};
     marker_buffer_desc.name = u8"MarkerBuffer";
@@ -48,9 +48,9 @@ void RenderGraphFrameExecutor::initialize(CGPUQueueId gfx_queue, CGPUDeviceId de
 void RenderGraphFrameExecutor::commit(CGPUQueueId gfx_queue, uint64_t frame_index)
 {
     CGPUQueueSubmitDescriptor submit_desc = {};
-    submit_desc.cmds                      = &gfx_cmd_buf;
-    submit_desc.cmds_count                = 1;
-    submit_desc.signal_fence              = exec_fence;
+    submit_desc.cmds = &gfx_cmd_buf;
+    submit_desc.cmds_count = 1;
+    submit_desc.signal_fence = exec_fence;
     cgpu_submit_queue(gfx_queue, &submit_desc);
     exec_frame = frame_index;
 }
@@ -144,9 +144,9 @@ void RenderGraphFrameExecutor::finalize()
     if (gfx_cmd_buf) cgpu_free_command_buffer(gfx_cmd_buf);
     if (gfx_cmd_pool) cgpu_free_command_pool(gfx_cmd_pool);
     if (exec_fence) cgpu_free_fence(exec_fence);
-    gfx_cmd_buf  = nullptr;
+    gfx_cmd_buf = nullptr;
     gfx_cmd_pool = nullptr;
-    exec_fence   = nullptr;
+    exec_fence = nullptr;
     for (auto [rs, pool] : bind_table_pools)
     {
         pool->destroy();
@@ -161,7 +161,7 @@ void RenderGraphFrameExecutor::finalize()
     {
         cgpu_free_texture(aliasing_tex);
     }
-    if (marker_buffer) 
+    if (marker_buffer)
         cgpu_free_buffer(marker_buffer);
 }
 
@@ -174,7 +174,6 @@ RenderGraphBackend::RenderGraphBackend(const RenderGraphBuilder& builder)
     , cmpt_queues(builder.cmpt_queues)
     , cpy_queues(builder.cpy_queues)
 {
-
 }
 
 static std::atomic_uint64_t rg_count = 0;
@@ -187,7 +186,7 @@ RenderGraph* RenderGraph::create(const RenderGraphSetupFunction& setup) SKR_NOEX
     }
 
     RenderGraphBuilder builder = {};
-    RenderGraph*       graph   = nullptr;
+    RenderGraph* graph = nullptr;
     setup(builder);
     if (builder.no_backend)
         graph = SkrNew<RenderGraph>(builder);
@@ -287,7 +286,7 @@ uint64_t RenderGraphBackend::execute(RenderGraphProfiler* profiler) SKR_NOEXCEPT
 
         auto resource_allocation_phase = ResourceAllocationPhase(aliasing_phase, info_analysis);
         resource_allocation_phase.on_execute(this, &executors[executor_index], profiler);
-        
+
         auto bindtable_phase = BindTablePhase(info_analysis, resource_allocation_phase);
         bindtable_phase.on_execute(this, &executors[executor_index], profiler);
 
@@ -309,13 +308,13 @@ uint64_t RenderGraphBackend::execute(RenderGraphProfiler* profiler) SKR_NOEXCEPT
         for (auto pass : passes)
         {
             pass->foreach_textures(
-            [this](TextureNode* t, TextureEdge* e) {
-                node_factory->Dealloc(e);
-            });
+                [this](TextureNode* t, TextureEdge* e) {
+                    node_factory->Dealloc(e);
+                });
             pass->foreach_buffers(
-            [this](BufferNode* t, BufferEdge* e) {
-                node_factory->Dealloc(e);
-            });
+                [this](BufferNode* t, BufferEdge* e) {
+                    node_factory->Dealloc(e);
+                });
             node_factory->Dealloc(pass);
         }
         passes.clear();
@@ -335,8 +334,10 @@ uint64_t RenderGraphBackend::execute(RenderGraphProfiler* profiler) SKR_NOEXCEPT
 CGPUDeviceId RenderGraphBackend::get_backend_device() SKR_NOEXCEPT { return device; }
 
 uint32_t RenderGraphBackend::collect_garbage(uint64_t critical_frame,
-                                             uint32_t tex_with_tags, uint32_t tex_without_tags,
-                                             uint32_t buf_with_tags, uint32_t buf_without_tags) SKR_NOEXCEPT
+    uint32_t tex_with_tags,
+    uint32_t tex_without_tags,
+    uint32_t buf_with_tags,
+    uint32_t buf_without_tags) SKR_NOEXCEPT
 {
     return collect_texture_garbage(critical_frame, tex_with_tags, tex_without_tags) + collect_buffer_garbage(critical_frame, buf_with_tags, buf_without_tags);
 }
@@ -347,7 +348,8 @@ uint32_t RenderGraphBackend::collect_texture_garbage(uint64_t critical_frame, ui
     {
         SKR_LOG_ERROR(u8"undone frame on GPU detected, collect texture garbage may cause GPU Crash!!"
                       "\n\tcurrent: %d, latest finished: %d",
-                      critical_frame, get_latest_finished_frame());
+            critical_frame,
+            get_latest_finished_frame());
     }
     uint32_t total_count = 0;
     for (auto&& [key, queue] : texture_pool.textures)
@@ -363,11 +365,10 @@ uint32_t RenderGraphBackend::collect_texture_garbage(uint64_t critical_frame, ui
         }
         uint32_t prev_count = (uint32_t)queue.size();
         queue.erase(
-        std::remove_if(queue.begin(), queue.end(),
-                         [&](auto& element) {
-                             return element.texture == nullptr;
-                         }),
-        queue.end());
+            std::remove_if(queue.begin(), queue.end(), [&](auto& element) {
+                return element.texture == nullptr;
+            }),
+            queue.end());
         total_count += prev_count - (uint32_t)queue.size();
     }
     return total_count;
@@ -379,7 +380,8 @@ uint32_t RenderGraphBackend::collect_buffer_garbage(uint64_t critical_frame, uin
     {
         SKR_LOG_ERROR(u8"undone frame on GPU detected, collect buffer garbage may cause GPU Crash!!"
                       "\n\tcurrent: %d, latest finished: %d",
-                      critical_frame, get_latest_finished_frame());
+            critical_frame,
+            get_latest_finished_frame());
     }
     uint32_t total_count = 0;
     for (auto&& [key, queue] : buffer_pool.buffers)
@@ -394,11 +396,10 @@ uint32_t RenderGraphBackend::collect_buffer_garbage(uint64_t critical_frame, uin
         }
         uint32_t prev_count = (uint32_t)queue.size();
         queue.erase(
-        std::remove_if(queue.begin(), queue.end(),
-                         [&](auto& element) {
-                             return element.buffer == nullptr;
-                         }),
-        queue.end());
+            std::remove_if(queue.begin(), queue.end(), [&](auto& element) {
+                return element.buffer == nullptr;
+            }),
+            queue.end());
         total_count += prev_count - (uint32_t)queue.size();
     }
     return total_count;

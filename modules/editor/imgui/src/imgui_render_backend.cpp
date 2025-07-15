@@ -677,7 +677,7 @@ void ImGuiRendererBackendRG::shutdown()
     _gfx_queue         = nullptr;
     _render_graph      = nullptr;
     _backbuffer_count  = 1;
-    _backbuffer_format = CGPU_FORMAT_R8G8B8A8_UNORM;
+    _backbuffer_format = CGPU_FORMAT_B8G8R8A8_UNORM;
 }
 
 // real present

@@ -1,8 +1,8 @@
 #pragma once
+#include "SkrContainersDef/set.hpp"
 #include "SkrRenderGraph/api.h"
 #include "SkrRenderer/primitive_pass.h"
 #include "live2d_helpers.hpp"
-
 #include "SkrProfile/profile.h"
 
 const skr_render_pass_name_t live2d_mask_pass_name = u8"Live2DMaskPass";
@@ -86,18 +86,8 @@ struct MaskPassLive2D : public IPrimitiveRenderPass {
             }
         },
         [=](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassContext& pass_context) {
-            for (uint32_t i = 0; i < drawcalls.size(); i++)
-                for (uint32_t j = 0; j < drawcalls[i].count; j++)
-                    for (uint32_t k = 0; k < drawcalls[i].lists[j].count; k++)
-                    {
-                        SkrZoneScopedN("UpdateBindTables");
-                        auto&& dc = drawcalls[i].lists[j].drawcalls[k];
-                        if (!dc.bind_table || dc.desperated || (dc.index_buffer.buffer == nullptr) || (dc.vertex_buffer_count == 0)) continue;
-                        
-                        CGPUXBindTableId tables[2] = { dc.bind_table, pass_context.bind_table };
-                        pass_context.merge_tables(tables, 2);
-                    }
-
+            SkrZoneScopedN("DrawLive2DMasks");
+            skr::InlineMap<CGPUXBindTableId, CGPUXMergedBindTableId, 8> merged_tables;
             cgpu_render_encoder_set_viewport(pass_context.encoder,
                 0.0f, 0.0f,
                 (float)Csm::kMaskResolution, (float)Csm::kMaskResolution,
@@ -107,18 +97,23 @@ struct MaskPassLive2D : public IPrimitiveRenderPass {
             for (uint32_t j = 0; j < drawcalls[i].count; j++)
             for (uint32_t k = 0; k < drawcalls[i].lists[j].count; k++)
             {
-                SkrZoneScopedN("DrawCall");
-
                 auto&& dc = drawcalls[i].lists[j].drawcalls[k];
-                if (dc.desperated || (dc.index_buffer.buffer == nullptr) || (dc.vertex_buffer_count == 0)) continue;
-                {
-                    SkrZoneScopedN("BindTextures");
+                if (dc.desperated || (dc.index_buffer.buffer == nullptr) || (dc.vertex_buffer_count == 0)) 
+                    continue;
 
-                    CGPUXBindTableId tables[2] = { dc.bind_table, pass_context.bind_table };
-                    pass_context.merge_and_bind_tables(tables, 2);
-                }
+                if (auto bd = merged_tables.find(dc.bind_table))
                 {
-                    SkrZoneScopedN("BindGeometry");
+                    pass_context.bind(bd.value());
+                }
+                else
+                {
+                    CGPUXBindTableId tables[2] = { dc.bind_table, pass_context.bind_table };
+                    auto merged = pass_context.merge_tables(tables, 2);
+                    merged_tables.add(dc.bind_table, merged);
+                    pass_context.bind(merged);
+                }
+
+                {
                     cgpu_render_encoder_bind_index_buffer(pass_context.encoder, dc.index_buffer.buffer, dc.index_buffer.stride, dc.index_buffer.offset);
                     CGPUBufferId vertex_buffers[2] = {
                         dc.vertex_buffers[0].buffer, dc.vertex_buffers[1].buffer
@@ -132,11 +127,9 @@ struct MaskPassLive2D : public IPrimitiveRenderPass {
                     cgpu_render_encoder_bind_vertex_buffers(pass_context.encoder, 2, vertex_buffers, strides, offsets);
                 }
                 {
-                    SkrZoneScopedN("PushConstants");
                     cgpu_render_encoder_push_constants(pass_context.encoder, dc.pipeline->root_signature, dc.push_const_name, dc.push_const);
                 }
                 {
-                    SkrZoneScopedN("DrawIndexed");
                     cgpu_render_encoder_draw_indexed_instanced(pass_context.encoder, dc.index_buffer.index_count, dc.index_buffer.first_index, 1, 0, 0);
                 }
             }

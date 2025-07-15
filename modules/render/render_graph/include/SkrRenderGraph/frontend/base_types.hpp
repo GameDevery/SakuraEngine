@@ -359,7 +359,8 @@ struct SKR_RENDER_GRAPH_API RenderPassContext : public BindablePassContext {
     friend class RenderGraphBackend;
     friend struct PassExecutionPhase;
 
-    void merge_and_bind_tables(const struct CGPUXBindTable** tables, uint32_t count) SKR_NOEXCEPT;
+    const CGPUXMergedBindTable* merge_and_bind_tables(const struct CGPUXBindTable** tables, uint32_t count) SKR_NOEXCEPT;
+    void bind(const CGPUXMergedBindTable* tbl);
 
     CGPURenderPassEncoderId encoder;
 };
@@ -368,7 +369,8 @@ struct SKR_RENDER_GRAPH_API ComputePassContext : public BindablePassContext {
     friend class RenderGraphBackend;
     friend struct PassExecutionPhase;
 
-    void merge_and_bind_tables(const struct CGPUXBindTable** tables, uint32_t count) SKR_NOEXCEPT;
+    const CGPUXMergedBindTable* merge_and_bind_tables(const struct CGPUXBindTable** tables, uint32_t count) SKR_NOEXCEPT;
+    void bind(const CGPUXMergedBindTable* tbl);
 
     CGPUComputePassEncoderId encoder;
 };
