@@ -42,8 +42,8 @@ struct MemoryBucket
 {
     uint64_t total_size = 0;                        // 桶的总大小
     uint64_t used_size = 0;                         // 已使用大小
-    PooledVector<ResourceNode*> aliased_resources;   // 别名化的资源列表
-    PooledMap<ResourceNode*, uint64_t> resource_offsets; // 资源在桶中的偏移
+    StackVector<ResourceNode*> aliased_resources;   // 别名化的资源列表
+    StackMap<ResourceNode*, uint64_t> resource_offsets; // 资源在桶中的偏移
     
     // 统计信息
     uint64_t original_total_size = 0;               // 不别名化时的总大小
@@ -69,14 +69,14 @@ struct MemoryAliasTransition
 struct MemoryAliasingResult
 {
     // 内存桶列表
-    PooledVector<MemoryBucket> memory_buckets;
+    StackVector<MemoryBucket> memory_buckets;
     
     // 资源到桶的映射
-    PooledMap<ResourceNode*, uint32_t> resource_to_bucket;
-    PooledMap<ResourceNode*, uint64_t> resource_to_offset;
+    StackMap<ResourceNode*, uint32_t> resource_to_bucket;
+    StackMap<ResourceNode*, uint64_t> resource_to_offset;
     
     // 内存别名转换点列表
-    PooledVector<MemoryAliasTransition> alias_transitions;
+    StackVector<MemoryAliasTransition> alias_transitions;
     
     // 需要别名屏障的资源
     skr::FlatHashSet<ResourceNode*> resources_need_aliasing_barrier;
@@ -120,8 +120,6 @@ public:
 
     // IRenderGraphPhase 接口
     void on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT override;
-    void on_initialize(RenderGraph* graph) SKR_NOEXCEPT override;
-    void on_finalize(RenderGraph* graph) SKR_NOEXCEPT override;
 
     // 查询接口
     const MemoryAliasingResult& get_result() const { return aliasing_result_; }
@@ -141,15 +139,15 @@ private:
     // 核心算法（基于SSIS实现）
     void analyze_resources() SKR_NOEXCEPT;
     void create_memory_buckets() SKR_NOEXCEPT;
-    void perform_memory_aliasing(const PooledVector<ResourceNode*>&) SKR_NOEXCEPT;
+    void perform_memory_aliasing(const StackVector<ResourceNode*>&) SKR_NOEXCEPT;
 
     bool try_alias_resource_in_bucket(ResourceNode* resource, MemoryBucket& bucket) SKR_NOEXCEPT;
     MemoryRegion find_optimal_memory_region(ResourceNode* resource, const MemoryBucket& bucket) const SKR_NOEXCEPT;
     
     // SSIS算法核心：找到可别名的内存区域
-    PooledVector<MemoryRegion> find_aliasable_regions(ResourceNode* resource, const MemoryBucket& bucket) const SKR_NOEXCEPT;
+    StackVector<MemoryRegion> find_aliasable_regions(ResourceNode* resource, const MemoryBucket& bucket) const SKR_NOEXCEPT;
     void collect_non_aliasable_offsets(ResourceNode* resource, const MemoryBucket& bucket, 
-                                     PooledVector<MemoryOffset>& offsets) const SKR_NOEXCEPT;
+                                     StackVector<MemoryOffset>& offsets) const SKR_NOEXCEPT;
     
     // 别名转换点计算
     void compute_alias_transitions() SKR_NOEXCEPT;

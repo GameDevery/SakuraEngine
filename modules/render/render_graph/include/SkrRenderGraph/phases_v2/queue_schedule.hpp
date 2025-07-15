@@ -45,8 +45,8 @@ struct QueueInfo {
 struct TimelineScheduleResult 
 {
     skr::span<QueueInfo> all_queues;
-    PooledVector<PooledVector<PassNode*>> queue_schedules;    // 各队列的调度信息
-    PooledMap<PassNode*, uint32_t> pass_queue_assignments; // Pass到队列的映射
+    StackVector<StackVector<PassNode*>> queue_schedules;    // 各队列的调度信息
+    StackMap<PassNode*, uint32_t> pass_queue_assignments; // Pass到队列的映射
 };
 
 // Timeline Phase 配置
@@ -70,8 +70,6 @@ public:
 
     // IRenderGraphPhase 接口
     void on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT override;
-    void on_initialize(RenderGraph* graph) SKR_NOEXCEPT override;
-    void on_finalize(RenderGraph* graph) SKR_NOEXCEPT override;
 
     // 获取调度结果
     const TimelineScheduleResult& get_schedule_result() const { return schedule_result; }
@@ -82,7 +80,6 @@ public:
 private:
     // 初始化阶段
     void query_queue_capabilities(RenderGraph* graph) SKR_NOEXCEPT;
-    void clear_frame_data() SKR_NOEXCEPT;
 
     // 编译阶段
     void assign_passes_to_queues(RenderGraph* graph) SKR_NOEXCEPT;
@@ -94,7 +91,7 @@ private:
 private:
     QueueScheduleConfig config;
 
-    PooledVector<QueueInfo> all_queues;  // 统一管理所有队列，按类型分组
+    StackVector<QueueInfo> all_queues;  // 统一管理所有队列，按类型分组
     
     // 引用传入的依赖分析器
     const PassDependencyAnalysis& dependency_analysis;

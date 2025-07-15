@@ -51,7 +51,7 @@ struct GPUBarrier
 // 屏障批次
 struct BarrierBatch
 {
-    PooledVector<GPUBarrier> barriers;       // 批次中的屏障列表
+    StackVector<GPUBarrier> barriers;       // 批次中的屏障列表
     EBarrierType batch_type;                // 批次类型（批次中所有屏障应该是同一类型）
 };
 
@@ -59,7 +59,7 @@ struct BarrierBatch
 struct BarrierGenerationResult
 {
     // 按Pass组织的屏障批次 - 主要的使用接口
-    PooledMap<PassNode*, PooledVector<BarrierBatch>> pass_barrier_batches;
+    StackMap<PassNode*, StackVector<BarrierBatch>> pass_barrier_batches;
     
     // 统计信息
     uint32_t total_resource_barriers = 0;
@@ -100,14 +100,12 @@ public:
 
     // IRenderGraphPhase 接口
     void on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT override;
-    void on_initialize(RenderGraph* graph) SKR_NOEXCEPT override;
-    void on_finalize(RenderGraph* graph) SKR_NOEXCEPT override;
 
     // 查询接口
     const BarrierGenerationResult& get_result() const { return barrier_result_; }
     
     // 主要查询接口
-    const PooledVector<BarrierBatch>& get_pass_barrier_batches(PassNode* pass) const;
+    const StackVector<BarrierBatch>& get_pass_barrier_batches(PassNode* pass) const;
     
     // 屏障统计
     uint32_t get_total_barriers() const;
@@ -141,7 +139,7 @@ private:
     bool can_use_split_barriers(uint32_t transmitting_queue, uint32_t receiving_queue, ECGPUResourceState before_state, ECGPUResourceState after_state) const SKR_NOEXCEPT;
     
     // 状态转换计算
-    ECGPUResourceState calculate_combined_read_state(const PooledVector<ECGPUResourceState>& read_states) const SKR_NOEXCEPT;
+    ECGPUResourceState calculate_combined_read_state(const StackVector<ECGPUResourceState>& read_states) const SKR_NOEXCEPT;
     ECGPUResourceState get_resource_state_for_usage(ResourceNode* resource, PassNode* pass, bool is_write) const SKR_NOEXCEPT;
     
     // 辅助方法
@@ -168,7 +166,7 @@ private:
     BarrierGenerationResult barrier_result_;
     
     // 工作数据
-    PooledMap<PassNode*, PooledVector<BarrierBatch>> pass_barriers_;
+    StackMap<PassNode*, StackVector<BarrierBatch>> pass_barriers_;
 };
 
 } // namespace render_graph

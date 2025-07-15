@@ -24,7 +24,7 @@ struct ExecutionReorderConfig {
 // Result of execution reordering
 struct ExecutionReorderResult {
     // Optimized timeline - modified copy of original QueueScheduleInfo
-    PooledVector<PooledVector<PassNode*>> optimized_timeline;
+    StackVector<StackVector<PassNode*>> optimized_timeline;
 };
 
 // Simplified - use RenderGraph DAG directly instead of rebuilding resource chains
@@ -41,12 +41,10 @@ public:
     
     // IRenderGraphPhase interface
     void on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT override;
-    void on_initialize(RenderGraph* graph) SKR_NOEXCEPT override;
-    void on_finalize(RenderGraph* graph) SKR_NOEXCEPT override;
     
     // Results access
     const ExecutionReorderResult& get_result() const { return result; }
-    const PooledVector<PooledVector<PassNode*>>& get_optimized_timeline() const { return result.optimized_timeline; }
+    const StackVector<StackVector<PassNode*>>& get_optimized_timeline() const { return result.optimized_timeline; }
     
 private:
     // Core optimization flow
@@ -62,11 +60,11 @@ private:
     
     // Graph-based safety checks
     bool has_path_between_passes(PassNode* from_pass, PassNode* to_pass) const SKR_NOEXCEPT;
-    PooledVector<ResourceNode*> get_shared_resources(PassNode* pass1, PassNode* pass2) const SKR_NOEXCEPT;
+    StackVector<ResourceNode*> get_shared_resources(PassNode* pass1, PassNode* pass2) const SKR_NOEXCEPT;
     
     // Helper functions
     float calculate_resource_affinity(PassNode* pass1, PassNode* pass2) const SKR_NOEXCEPT;
-    float calculate_resource_affinity_from_shared(PassNode* pass1, PassNode* pass2, const PooledVector<ResourceNode*>& shared_resources) const SKR_NOEXCEPT;
+    float calculate_resource_affinity_from_shared(PassNode* pass1, PassNode* pass2, const StackVector<ResourceNode*>& shared_resources) const SKR_NOEXCEPT;
     
 private:
     // Configuration
@@ -78,15 +76,7 @@ private:
     const QueueSchedule& timeline_schedule;
     
     // Working data - timeline copy
-    PooledVector<PooledVector<PassNode*>> working_timeline;
-    
-    // internal state for path checks
-    mutable PooledSet<PassNode*> path_check_visited_ = PooledSet<PassNode*>(64);
-    mutable PooledVector<PassNode*> path_check_queue_ = PooledVector<PassNode*>(64);
-    
-    // internal state for shared resource checks
-    mutable PooledSet<ResourceNode*> shared_resource_set_ = PooledSet<ResourceNode*>(64);
-    mutable PooledVector<ResourceNode*> shared_resources_ = PooledVector<ResourceNode*>(64);
+    StackVector<StackVector<PassNode*>> working_timeline;
 
     // Working data - direct access to RenderGraph for DAG queries
     RenderGraph* render_graph = nullptr;

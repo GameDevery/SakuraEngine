@@ -36,7 +36,7 @@ public:
 
     TextureReadEdge(const skr::StringView name, TextureSRVHandle handle, ECGPUResourceState state = CGPU_RESOURCE_STATE_SHADER_RESOURCE);
 protected:
-    const graph_object_string name = u8"";
+    const skr::String name = u8"";
     const TextureSRVHandle handle;
 };
 
@@ -55,7 +55,7 @@ public:
 
     TextureReadWriteEdge(const skr::StringView name, TextureUAVHandle handle, ECGPUResourceState state = CGPU_RESOURCE_STATE_UNORDERED_ACCESS);
 protected:
-    const graph_object_string name = u8"";
+    const skr::String name = u8"";
     const TextureUAVHandle handle;
 };
 
@@ -111,7 +111,7 @@ public:
 
     BufferReadEdge(const skr::StringView name, BufferRangeHandle handle, ECGPUResourceState state);
 protected:
-    const graph_object_string name = u8"";
+    const skr::String name = u8"";
     BufferRangeHandle handle;
 };
 

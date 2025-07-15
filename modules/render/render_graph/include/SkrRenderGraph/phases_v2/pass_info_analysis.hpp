@@ -1,7 +1,7 @@
 #pragma once
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrRenderGraph/frontend/base_types.hpp"
-#include "SkrRenderGraph/pool_allocator.hpp"
+#include "SkrRenderGraph/stack_allocator.hpp"
 
 // Forward declare types from dependency analysis
 namespace skr
@@ -26,7 +26,7 @@ struct ResourceAccessInfo {
 
 // Resource info - direct extraction with detailed access info
 struct PassResourceInfo {
-    PooledVector<ResourceAccessInfo> all_resource_accesses; // For dependency analysis
+    StackVector<ResourceAccessInfo> all_resource_accesses; // For dependency analysis
     uint32_t total_resource_count = 0;
 };
 
@@ -56,7 +56,7 @@ struct ResourceInfo {
     ResourceNode* resource = nullptr;
     uint64_t memory_size = 0;
     skr::InlineSet<ECGPUQueueType, 3> access_queues;
-    PooledMap<PassNode*, ECGPUResourceState> used_states;
+    StackMap<PassNode*, ECGPUResourceState> used_states;
 };
 
 // Analysis phase - runs before DependencyAnalysis
@@ -68,8 +68,6 @@ public:
 
     // IRenderGraphPhase interface
     void on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT override;
-    void on_initialize(RenderGraph* graph) SKR_NOEXCEPT override;
-    void on_finalize(RenderGraph* graph) SKR_NOEXCEPT override;
 
     // Query interface
     const PassInfo* get_pass_info(PassNode* pass) const;
@@ -90,8 +88,8 @@ private:
     void extract_performance_info(PassNode* pass, PassPerformanceInfo& info);
 
 private:
-    PooledMap<PassNode*, PassInfo> pass_infos;
-    PooledMap<ResourceNode*, ResourceInfo> resource_infos; // For dependency analysis
+    StackMap<PassNode*, PassInfo> pass_infos;
+    StackMap<ResourceNode*, ResourceInfo> resource_infos; // For dependency analysis
 };
 
 } // namespace render_graph

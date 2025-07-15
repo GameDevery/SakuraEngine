@@ -27,12 +27,7 @@ public:
 struct SKR_RENDER_GRAPH_API IRenderGraphPhase
 {
     virtual ~IRenderGraphPhase() SKR_NOEXCEPT;
-    [[deprecated("don't use this!")]] virtual void on_compile(RenderGraph* graph) SKR_NOEXCEPT;
     virtual void on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT;
-    virtual uint32_t on_collect_texture_garbage(RenderGraph* graph, uint64_t critical_frame, uint32_t with_tags, uint32_t without_flags) SKR_NOEXCEPT;
-    virtual uint32_t on_collect_buffer_garbage(RenderGraph* graph, uint64_t critical_frame, uint32_t with_tags, uint32_t without_flags) SKR_NOEXCEPT;
-    virtual void on_initialize(RenderGraph* graph) SKR_NOEXCEPT;
-    virtual void on_finalize(RenderGraph* graph) SKR_NOEXCEPT;
 
     skr::Vector<ResourceNode*>& get_resources(RenderGraph* graph) SKR_NOEXCEPT;
     skr::Vector<PassNode*>& get_passes(RenderGraph* graph) SKR_NOEXCEPT;
@@ -310,6 +305,25 @@ using TextureSetupFunction = RenderGraph::TextureSetupFunction;
 using TextureBuilder = RenderGraph::TextureBuilder;
 using BufferSetupFunction = RenderGraph::BufferSetupFunction;
 using BufferBuilder = RenderGraph::BufferBuilder;
+
+struct PassInfoAnalysis;
+struct QueueSchedule;
+struct CrossQueueSyncAnalysis;
+struct BarrierGenerationPhase;
+struct MemoryAliasingPhase;
+struct ResourceLifetimeAnalysis;
+struct GraphViz
+{
+    static SKR_RENDER_GRAPH_API void generate_graphviz_visualization(
+        skr::render_graph::RenderGraph* graph,
+        const skr::render_graph::PassInfoAnalysis& info_analysis,
+        const skr::render_graph::QueueSchedule& queue_schedule,
+        const skr::render_graph::CrossQueueSyncAnalysis& ssis_phase,
+        const skr::render_graph::BarrierGenerationPhase& barrier_phase,
+        const skr::render_graph::MemoryAliasingPhase& aliasing_phase,
+        const skr::render_graph::ResourceLifetimeAnalysis& lifetime_analysis
+    );
+};
 
 } // namespace render_graph
 } // namespace skr

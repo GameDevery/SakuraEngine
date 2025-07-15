@@ -29,10 +29,10 @@ struct ResourceLifetime
 struct ResourceLifetimeResult
 {
     // 按资源分组的生命周期信息
-    PooledMap<ResourceNode*, ResourceLifetime> resource_lifetimes;
+    StackMap<ResourceNode*, ResourceLifetime> resource_lifetimes;
     
     // 按大小降序排列的资源（用于内存别名化）
-    PooledVector<ResourceNode*> resources_by_size_desc;
+    StackVector<ResourceNode*> resources_by_size_desc;
     
     // 统计信息
     uint64_t total_memory_requirement;
@@ -52,8 +52,6 @@ public:
 
     // IRenderGraphPhase 接口
     void on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT override;
-    void on_initialize(RenderGraph* graph) SKR_NOEXCEPT override;
-    void on_finalize(RenderGraph* graph) SKR_NOEXCEPT override;
 
     // 查询接口
     const ResourceLifetimeResult& get_result() const { return lifetime_result_; }

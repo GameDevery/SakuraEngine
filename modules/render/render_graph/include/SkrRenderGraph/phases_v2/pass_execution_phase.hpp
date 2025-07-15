@@ -39,8 +39,6 @@ public:
     
     // IRenderGraphPhase interface
     void on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT override;
-    void on_initialize(RenderGraph* graph) SKR_NOEXCEPT override;
-    void on_finalize(RenderGraph* graph) SKR_NOEXCEPT override;
     
     // Results access
     const CommandRecordingResult& get_result() const { return recording_result_; }
@@ -77,10 +75,6 @@ private:
     
     // Results
     CommandRecordingResult recording_result_;
-    TextureViewPool texture_view_pool; // Texture view pool for RTV/DSVs 
-    
-    // Profiler reference (set during execution)
-    RenderGraphProfiler* current_profiler_ = nullptr;
 };
 
 } // namespace render_graph

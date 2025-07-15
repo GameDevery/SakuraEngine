@@ -20,32 +20,11 @@ CrossQueueSyncAnalysis::CrossQueueSyncAnalysis(
 {
 }
 
-void CrossQueueSyncAnalysis::on_initialize(RenderGraph* graph) SKR_NOEXCEPT
-{
-    // 预分配容量
-    ssis_result_.raw_sync_points.reserve(64);
-    ssis_result_.optimized_sync_points.reserve(32);
-}
-
-void CrossQueueSyncAnalysis::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
-{
-    // 清理分析结果
-    ssis_result_.raw_sync_points.clear();
-    ssis_result_.optimized_sync_points.clear();
-}
-
 void CrossQueueSyncAnalysis::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     SkrZoneScopedN("CrossQueueSyncAnalysis");
     SSIS_LOG(u8"CrossQueueSyncAnalysis: Starting SSIS analysis");
-    
-    // 清理上一帧数据
-    ssis_result_.raw_sync_points.clear();
-    ssis_result_.optimized_sync_points.clear();
-    pass_ssis_.clear();
-    pass_local_to_queue_indices_.clear();
-    pass_nodes_to_sync_with_.clear();
-    
+
     // 构建Pass到队列的映射缓存
     const auto& queue_result = queue_schedule_.get_schedule_result();
     
@@ -144,7 +123,7 @@ void CrossQueueSyncAnalysis::apply_ssis_optimization(RenderGraph* graph) SKR_NOE
         auto& nodes_to_sync = pass_nodes_to_sync_with_.try_add_default(pass).value();
         
         // 找到每个队列上最近的依赖节点
-        PooledVector<PassNode*> closest_nodes_per_queue;
+        StackVector<PassNode*> closest_nodes_per_queue;
         closest_nodes_per_queue.resize(total_queue_count_, nullptr);
         
         for (PassNode* dep_node : nodes_to_sync)
@@ -194,7 +173,7 @@ void CrossQueueSyncAnalysis::apply_ssis_optimization(RenderGraph* graph) SKR_NOE
             continue;
         
         // 构建需要同步的队列集合
-        PooledSet<uint32_t> queues_to_sync_with;
+        StackSet<uint32_t> queues_to_sync_with;
         for (PassNode* node : nodes_to_sync)
         {
             uint32_t node_queue = get_pass_queue_index(node);
@@ -202,12 +181,12 @@ void CrossQueueSyncAnalysis::apply_ssis_optimization(RenderGraph* graph) SKR_NOE
         }
         
         // 优化后的节点列表
-        PooledVector<PassNode*> optimal_nodes_to_sync;
+        StackVector<PassNode*> optimal_nodes_to_sync;
         
         // 迭代直到所有队列都被覆盖
         while (!queues_to_sync_with.is_empty())
         {
-            PooledVector<SyncCoverage> sync_coverage_array;
+            StackVector<SyncCoverage> sync_coverage_array;
             uint32_t max_syncs_covered = 0;
             
             // 计算每个依赖节点的覆盖情况

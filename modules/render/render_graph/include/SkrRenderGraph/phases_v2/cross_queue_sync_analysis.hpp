@@ -34,10 +34,10 @@ struct CrossQueueSyncPoint
 struct SSISAnalysisResult
 {
     // 原始同步需求（所有资源冲突点）
-    PooledVector<CrossQueueSyncPoint> raw_sync_points;
+    StackVector<CrossQueueSyncPoint> raw_sync_points;
     
     // 优化后的同步点集合（SSIS算法结果）
-    PooledVector<CrossQueueSyncPoint> optimized_sync_points;
+    StackVector<CrossQueueSyncPoint> optimized_sync_points;
     
     // 统计信息
     uint32_t total_raw_syncs = 0;
@@ -66,13 +66,11 @@ public:
 
     // IRenderGraphPhase 接口
     void on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT override;
-    void on_initialize(RenderGraph* graph) SKR_NOEXCEPT override;
-    void on_finalize(RenderGraph* graph) SKR_NOEXCEPT override;
 
     // 获取分析结果
     uint32_t get_pass_queue_index(PassNode* pass) const SKR_NOEXCEPT;
     const SSISAnalysisResult& get_ssis_result() const { return ssis_result_; }
-    const PooledVector<CrossQueueSyncPoint>& get_optimized_sync_points() const { return ssis_result_.optimized_sync_points; }
+    const StackVector<CrossQueueSyncPoint>& get_optimized_sync_points() const { return ssis_result_.optimized_sync_points; }
     const PassDependencyAnalysis& get_dependency_analysis() const { return dependency_analysis_; }
 
     // 调试接口
@@ -88,7 +86,7 @@ private:
     {
         PassNode* node_to_sync_with;
         uint32_t node_index;
-        PooledVector<uint32_t> synced_queue_indices;
+        StackVector<uint32_t> synced_queue_indices;
     };
     
 private:
@@ -106,9 +104,9 @@ private:
     
     // SSIS算法数据
     static constexpr uint32_t InvalidSyncIndex = UINT32_MAX;
-    PooledMap<PassNode*, PooledVector<uint32_t>> pass_ssis_;  // 每个Pass的SSIS数组
-    PooledMap<PassNode*, uint32_t> pass_local_to_queue_indices_; // Pass在队列内的本地执行索引
-    PooledMap<PassNode*, PooledVector<PassNode*>> pass_nodes_to_sync_with_; // 每个Pass需要同步的节点（会被优化）
+    StackMap<PassNode*, StackVector<uint32_t>> pass_ssis_;  // 每个Pass的SSIS数组
+    StackMap<PassNode*, uint32_t> pass_local_to_queue_indices_; // Pass在队列内的本地执行索引
+    StackMap<PassNode*, StackVector<PassNode*>> pass_nodes_to_sync_with_; // 每个Pass需要同步的节点（会被优化）
     uint32_t total_queue_count_ = 0;
 };
 

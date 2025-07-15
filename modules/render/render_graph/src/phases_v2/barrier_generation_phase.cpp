@@ -27,24 +27,10 @@ BarrierGenerationPhase::BarrierGenerationPhase(
 {
 }
 
-void BarrierGenerationPhase::on_initialize(RenderGraph* graph) SKR_NOEXCEPT
-{
-
-}
-
-void BarrierGenerationPhase::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
-{
-
-}
-
 void BarrierGenerationPhase::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     SkrZoneScopedN("BarrierGenerationPhase");
     BARRIER_GENERATION_LOG(u8"BarrierGenerationPhase: Starting barrier generation");
-    
-    // 清理之前的结果
-    barrier_result_.pass_barrier_batches.clear();
-    pass_barriers_.clear();
     
     // 重置统计信息
     barrier_result_.total_resource_barriers = 0;
@@ -186,7 +172,7 @@ void BarrierGenerationPhase::generate_resource_transition_barriers(RenderGraph* 
         ECGPUResourceState last_state = CGPU_RESOURCE_STATE_UNDEFINED;
         uint32_t last_level = UINT32_MAX;
     };
-    PooledMap<ResourceNode*, ResourceLastAccess> resource_last_access;
+    StackMap<ResourceNode*, ResourceLastAccess> resource_last_access;
     
     // 重要修复：按照实际的拓扑顺序处理Pass，而不是按依赖级别分组
     // 这样可以保持Pass的正确执行顺序
@@ -359,9 +345,9 @@ void BarrierGenerationPhase::calculate_barrier_statistics() SKR_NOEXCEPT
     }
 }
 
-const PooledVector<BarrierBatch>& BarrierGenerationPhase::get_pass_barrier_batches(PassNode* pass) const
+const StackVector<BarrierBatch>& BarrierGenerationPhase::get_pass_barrier_batches(PassNode* pass) const
 {
-    static const PooledVector<BarrierBatch> empty_batches;
+    static const StackVector<BarrierBatch> empty_batches;
     
     auto it = barrier_result_.pass_barrier_batches.find(pass);
     return it ? it.value() : empty_batches;
@@ -438,7 +424,7 @@ bool BarrierGenerationPhase::can_use_split_barriers(uint32_t transmitting_queue,
     return cost_justified;
 }
 
-ECGPUResourceState BarrierGenerationPhase::calculate_combined_read_state(const PooledVector<ECGPUResourceState>& read_states) const SKR_NOEXCEPT
+ECGPUResourceState BarrierGenerationPhase::calculate_combined_read_state(const StackVector<ECGPUResourceState>& read_states) const SKR_NOEXCEPT
 {
     // 合并多个读取状态
     ECGPUResourceState combined = CGPU_RESOURCE_STATE_UNDEFINED;

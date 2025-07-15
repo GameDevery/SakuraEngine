@@ -18,7 +18,7 @@ struct PassBindTableInfo {
 
 // Bind table phase result
 struct BindTableResult {
-    PooledMap<PassNode*, PassBindTableInfo> pass_bind_tables;
+    StackMap<PassNode*, PassBindTableInfo> pass_bind_tables;
     uint32_t total_bind_tables_created = 0;
     uint32_t total_texture_views_created = 0;
 };
@@ -33,8 +33,6 @@ public:
     
     // IRenderGraphPhase interface
     void on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT override;
-    void on_initialize(RenderGraph* graph) SKR_NOEXCEPT override;
-    void on_finalize(RenderGraph* graph) SKR_NOEXCEPT override;
     
     // Results access
     const BindTableResult& get_result() const { return bind_table_result_; }

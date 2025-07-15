@@ -39,26 +39,10 @@ BindTablePhase::BindTablePhase(
 {
 }
 
-void BindTablePhase::on_initialize(RenderGraph* graph) SKR_NOEXCEPT
-{
-    auto backend = static_cast<RenderGraphBackend*>(graph);
-    bind_table_result_.pass_bind_tables.reserve(256);
-}
-
-void BindTablePhase::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
-{
-    bind_table_result_.pass_bind_tables.clear();
-}
-
 void BindTablePhase::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     SkrZoneScopedN("BindTablePhase");
     BIND_TABLE_LOG(u8"BindTablePhase: Starting bind table creation");
-    
-    // Clear previous results
-    bind_table_result_.pass_bind_tables.clear();
-    bind_table_result_.total_bind_tables_created = 0;
-    bind_table_result_.total_texture_views_created = 0;
     
     // Get all passes from graph
     const auto& all_passes = get_passes(graph);

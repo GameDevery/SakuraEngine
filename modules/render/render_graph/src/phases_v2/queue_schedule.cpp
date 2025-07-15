@@ -18,38 +18,13 @@ QueueSchedule::QueueSchedule(const PassDependencyAnalysis& dependency_analysis,
 
 QueueSchedule::~QueueSchedule() = default;
 
-void QueueSchedule::on_initialize(RenderGraph* graph) SKR_NOEXCEPT
-{
-    // 查询队列能力
-    query_queue_capabilities(graph);
-    
-    // 初始化调度结果
-    schedule_result.queue_schedules.clear();
-    schedule_result.pass_queue_assignments.clear();
-}
-
-void QueueSchedule::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
-{
-    // 清理所有状态
-    clear_frame_data();
-}
-
-void QueueSchedule::clear_frame_data() SKR_NOEXCEPT
-{
-    // 清理调度结果
-    schedule_result.queue_schedules.clear();
-    schedule_result.pass_queue_assignments.clear();
-}
-
 void QueueSchedule::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     SkrZoneScopedN("QueueSchedule");
     QUEUE_SCHEDULE_LOG(u8"QueueSchedule: Starting timeline scheduling and fence allocation");
     
-    // 0. 清空上一帧的数据 - RG中的资源和Pass每帧都不稳定
-    clear_frame_data();
+    query_queue_capabilities(graph);
     
-    // 1. 分类并分配Pass到队列
     assign_passes_to_queues(graph);
     
     // 可选：输出调试信息
@@ -61,8 +36,6 @@ void QueueSchedule::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* exe
 void QueueSchedule::query_queue_capabilities(RenderGraph* graph) SKR_NOEXCEPT
 {
     // 清空队列信息（简化为单一数组）
-    all_queues.clear();
-    
     uint32_t queue_index = 0;
     
     // 添加Graphics队列（总是存在）
@@ -156,15 +129,9 @@ ERenderGraphQueueType QueueSchedule::classify_pass(PassNode* pass) SKR_NOEXCEPT
 
 void QueueSchedule::assign_passes_to_queues(RenderGraph* graph) SKR_NOEXCEPT
 {
-    // 初始化队列调度结果
     schedule_result.all_queues = all_queues;
     schedule_result.queue_schedules.resize_default(all_queues.size());
-    for (auto& schedule : schedule_result.queue_schedules)
-    {
-        schedule.clear();
-    }
 
-    // ✅ 新方法：基于拓扑排序结果进行调度
     assign_passes_using_topology();
 }
 

@@ -3,7 +3,7 @@
 #include <iomanip>
 
 #include "SkrRenderGraph/frontend/pass_node.hpp"
-#include "SkrRenderGraph/backend/graph_backend.hpp" 
+#include "SkrRenderGraph/backend/graph_backend.hpp"
 #include "SkrRenderGraph/phases_v2/pass_info_analysis.hpp"
 #include "SkrRenderGraph/phases_v2/pass_dependency_analysis.hpp"
 #include "SkrRenderGraph/phases_v2/queue_schedule.hpp"
@@ -12,12 +12,17 @@
 #include "SkrRenderGraph/phases_v2/memory_aliasing_phase.hpp"
 #include "SkrRenderGraph/phases_v2/barrier_generation_phase.hpp"
 
-namespace skr
-{
-namespace render_graph
+namespace skr::render_graph
 {
 
-void RenderGraphBackend::generate_graphviz_visualization() SKR_NOEXCEPT
+void GraphViz::generate_graphviz_visualization(
+    skr::render_graph::RenderGraph* graph,
+    const skr::render_graph::PassInfoAnalysis& info_analysis,
+    const skr::render_graph::QueueSchedule& queue_schedule,
+    const skr::render_graph::CrossQueueSyncAnalysis& ssis_phase,
+    const skr::render_graph::BarrierGenerationPhase& barrier_phase,
+    const skr::render_graph::MemoryAliasingPhase& aliasing_phase,
+    const skr::render_graph::ResourceLifetimeAnalysis& lifetime_analysis)
 {
     using namespace skr::render_graph;
 
@@ -31,9 +36,9 @@ void RenderGraphBackend::generate_graphviz_visualization() SKR_NOEXCEPT
     dot << "  node [shape=box, style=\"rounded,filled\", fontname=\"Arial\"];\n";
     dot << "  edge [fontname=\"Arial\", fontsize=10];\n\n";
 
-    const auto& schedule_result = queue_schedule->get_schedule_result();
-    const auto& aliasing_result = aliasing_phase->get_result();
-    const auto& lifetime_result = lifetime_analysis->get_result();
+    const auto& schedule_result = queue_schedule.get_schedule_result();
+    const auto& aliasing_result = aliasing_phase.get_result();
+    const auto& lifetime_result = lifetime_analysis.get_result();
 
     // 定义通用的 find_pass_position lambda
     auto find_pass_position = [&](PassNode* pass) -> std::pair<uint32_t, uint32_t> {
@@ -90,9 +95,8 @@ void RenderGraphBackend::generate_graphviz_visualization() SKR_NOEXCEPT
                 color = "#F3E5F5"; // Light purple for present
             }
 
-            auto name = pass->get_name();
             dot << "    pass_q" << q << "_" << i
-                << " [label=\"" << (const char*)name
+                << " [label=\"" << (const char*)pass->get_name()
                 << "\\nOrder: " << i
                 << "\", shape=" << shape
                 << ", fillcolor=\"" << color << "\"];\n";
@@ -120,7 +124,7 @@ void RenderGraphBackend::generate_graphviz_visualization() SKR_NOEXCEPT
         PassNode* from_pass = nullptr;
         if (transition.from_resource)
         {
-            auto resource_info = info_analysis->get_resource_info(transition.from_resource);
+            auto resource_info = info_analysis.get_resource_info(transition.from_resource);
             from_pass = resource_info->used_states.at_last().key;
         }
 
@@ -147,7 +151,7 @@ void RenderGraphBackend::generate_graphviz_visualization() SKR_NOEXCEPT
 
     // 3. 生成跨队列同步边
     dot << "\n  // Cross-queue synchronization\n";
-    const auto& ssis_result = ssis_phase->get_ssis_result();
+    const auto& ssis_result = ssis_phase.get_ssis_result();
     for (const auto& sync : ssis_result.optimized_sync_points)
     {
         if (!sync.producer_pass || !sync.consumer_pass)
@@ -174,7 +178,7 @@ void RenderGraphBackend::generate_graphviz_visualization() SKR_NOEXCEPT
 
     // 4. 生成资源状态转换边 (ResourceTransition barriers)
     dot << "\n  // Resource state transitions\n";
-    const auto& barrier_result = barrier_phase->get_result();
+    const auto& barrier_result = barrier_phase.get_result();
 
     // Track processed transitions to avoid duplicates
     skr::FlatHashSet<std::string> processed_transitions;
@@ -378,7 +382,7 @@ void RenderGraphBackend::generate_graphviz_visualization() SKR_NOEXCEPT
             if (auto lifetime_it = lifetime_result.resource_lifetimes.find(resource))
             {
                 label << " [L" << lifetime_it.value().start_dependency_level
-                        << "-" << lifetime_it.value().end_dependency_level << "]";
+                      << "-" << lifetime_it.value().end_dependency_level << "]";
             }
         }
 
@@ -401,11 +405,11 @@ void RenderGraphBackend::generate_graphviz_visualization() SKR_NOEXCEPT
     dot << "    fillcolor=\"#E8EAF6\";\n";
     dot << "    node [shape=record, fillcolor=white];\n\n";
 
-    const auto& barrier_stats = barrier_phase->get_result();
+    const auto& barrier_stats = barrier_phase.get_result();
 
     std::stringstream stats_label;
     stats_label << "{Statistics";
-    stats_label << "|Total Barriers: " << barrier_phase->get_total_barriers();
+    stats_label << "|Total Barriers: " << barrier_phase.get_total_barriers();
     stats_label << "|Resource Transitions: " << barrier_stats.total_resource_barriers;
     stats_label << "|Cross-Queue Syncs: " << barrier_stats.total_sync_barriers;
     stats_label << "|Memory Aliasing: " << barrier_stats.total_aliasing_barriers;
@@ -454,5 +458,4 @@ void RenderGraphBackend::generate_graphviz_visualization() SKR_NOEXCEPT
     SKR_LOG_INFO(u8"   Run: dot -Tpng render_graph_execution.dot -o render_graph_execution.png");
 }
 
-} // namespace render_graph
-} // namespace skr
+} // namespace skr::render_graph

@@ -20,22 +20,15 @@ ResourceAllocationPhase::ResourceAllocationPhase(
 {
 }
 
-void ResourceAllocationPhase::on_initialize(RenderGraph* graph) SKR_NOEXCEPT
+ResourceAllocationPhase::~ResourceAllocationPhase()
 {
-    // 获取渲染设备
-    this->graph = (RenderGraphBackend*)graph;
-    device_ = graph->get_backend_device();
-
-    // 预分配容器
-    const size_t estimated_resource_count = 128;
-    allocation_result_.bucket_id_to_textures.reserve(estimated_resource_count);
-    allocation_result_.bucket_id_to_buffers.reserve(estimated_resource_count);
+    release_resources_to_pool(graph->get_texture_pool(), graph->get_buffer_pool());
 }
 
 void ResourceAllocationPhase::on_execute(RenderGraph* graph_, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     SkrZoneScopedN("ResourceAllocationPhase");
-    auto graph = static_cast<RenderGraphBackend*>(graph_);
+    graph = static_cast<RenderGraphBackend*>(graph_);
 
     // 步骤1: 清理上一帧的资源状态
     release_resources_to_pool(graph->get_texture_pool(), graph->get_buffer_pool());
@@ -50,14 +43,6 @@ void ResourceAllocationPhase::on_execute(RenderGraph* graph_, RenderGraphFrameEx
             allocation_result_.total_buffers_created,
             allocation_result_.total_allocated_memory / (1024.0f * 1024.0f));
     }
-}
-
-void ResourceAllocationPhase::on_finalize(RenderGraph* graph_) SKR_NOEXCEPT
-{
-    auto graph = static_cast<RenderGraphBackend*>(graph_);
-    release_resources_to_pool(graph->get_texture_pool(), graph->get_buffer_pool());
-
-    allocation_result_ = ResourceAllocationResult{};
 }
 
 void ResourceAllocationPhase::allocate_pooled_resources(RenderGraph* graph_) SKR_NOEXCEPT
@@ -166,15 +151,6 @@ void ResourceAllocationPhase::release_resources_to_pool(TexturePool& tpool, Buff
         auto last_state = resource_info->used_states.at_last().value;
         bpool.deallocate(node->get_desc(), gpu_buffer.v, last_state, { graph->get_frame_index(), node->get_tags() });
     }
-
-    // 清理映射表
-    allocation_result_.bucket_id_to_buffers.clear();
-    allocation_result_.bucket_id_to_textures.clear();
-
-    // 重置统计信息
-    allocation_result_.total_textures_created = 0;
-    allocation_result_.total_buffers_created = 0;
-    allocation_result_.total_allocated_memory = 0;
 
     if (config_.enable_debug_output)
     {

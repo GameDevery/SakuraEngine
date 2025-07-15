@@ -31,29 +31,12 @@ PassExecutionPhase::PassExecutionPhase(
 {
 }
 
-void PassExecutionPhase::on_initialize(RenderGraph* graph) SKR_NOEXCEPT
-{
-    // No initialization needed - all data comes from other phases
-    texture_view_pool.initialize(graph->get_backend_device());
-}
-
-void PassExecutionPhase::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
-{
-    texture_view_pool.finalize();
-    recording_result_ = {};
-    current_profiler_ = nullptr;
-}
-
 void PassExecutionPhase::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     SkrZoneScopedN("PassExecutionPhase");
     COMMAND_RECORDING_LOG(u8"PassExecutionPhase: Starting command recording");
 
     auto backend = static_cast<RenderGraphBackend*>(graph);
-    current_profiler_ = profiler;
-
-    // Reset statistics
-    recording_result_ = {};
 
     // Check for device lost
     if (backend->get_backend_device()->is_lost)
@@ -194,8 +177,8 @@ void PassExecutionPhase::execute_render_pass(RenderGraph* graph_, RenderGraphFra
     SkrZoneScopedC(tracy::Color::LightPink);
     ZoneName(pass->name.c_str_raw(), pass->name.size());
 
-    PooledVector<std::pair<BufferHandle, CGPUBufferId>> resolved_buffers;
-    PooledVector<std::pair<TextureHandle, CGPUTextureId>> resolved_textures;
+    StackVector<std::pair<BufferHandle, CGPUBufferId>> resolved_buffers;
+    StackVector<std::pair<TextureHandle, CGPUTextureId>> resolved_textures;
 
     pass->foreach_textures([&](TextureNode* texture, TextureEdge* edge) {
         resolved_textures.emplace(texture->get_handle(), resource_allocation_phase_.get_resource(texture));
@@ -214,13 +197,13 @@ void PassExecutionPhase::execute_render_pass(RenderGraph* graph_, RenderGraphFra
     pass_context.executor = &executor;
     {
         SkrZoneScopedN("WriteBarrierMarker");
-        graph_big_object_string message = u8"Pass-";
+        skr::String message = u8"Pass-";
         message.append(pass->get_name());
         message.append(u8"-BeginBarrier");
         executor.write_marker(message.c_str());
     }
     // color attachments
-    PooledVector<CGPUColorAttachment> color_attachments = {};
+    StackVector<CGPUColorAttachment> color_attachments = {};
     CGPUDepthStencilAttachment ds_attachment = {};
     auto write_edges = pass->tex_write_edges();
     auto pass_sample_count = CGPU_SAMPLE_COUNT_1;
@@ -269,7 +252,7 @@ void PassExecutionPhase::execute_render_pass(RenderGraph* graph_, RenderGraphFra
             {
                 view_desc.dims = CGPU_TEX_DIMENSION_2DMS;
             }
-            ds_attachment.view = texture_view_pool.allocate(view_desc, frame_index);
+            ds_attachment.view = graph->texture_view_pool.allocate(view_desc, frame_index);
             ds_attachment.depth_load_action = pass->depth_load_action;
             ds_attachment.depth_store_action = pass->depth_store_action;
             ds_attachment.stencil_load_action = pass->stencil_load_action;
@@ -293,7 +276,7 @@ void PassExecutionPhase::execute_render_pass(RenderGraph* graph_, RenderGraphFra
                 view_desc.aspects = CGPU_TVA_COLOR;
                 view_desc.usages = CGPU_TVU_RTV_DSV;
                 view_desc.dims = CGPU_TEX_DIMENSION_2D;
-                attachment.resolve_view = texture_view_pool.allocate(view_desc, frame_index);
+                attachment.resolve_view = graph->texture_view_pool.allocate(view_desc, frame_index);
             }
             // allocate target view
             {
@@ -314,7 +297,7 @@ void PassExecutionPhase::execute_render_pass(RenderGraph* graph_, RenderGraphFra
                 {
                     view_desc.dims = CGPU_TEX_DIMENSION_2DMS;
                 }
-                attachment.view = texture_view_pool.allocate(view_desc, frame_index);
+                attachment.view = graph->texture_view_pool.allocate(view_desc, frame_index);
             }
             attachment.load_action = pass->load_actions[write_edge->mrt_index];
             attachment.store_action = pass->store_actions[write_edge->mrt_index];
@@ -331,7 +314,7 @@ void PassExecutionPhase::execute_render_pass(RenderGraph* graph_, RenderGraphFra
     pass_context.cmd = executor.gfx_cmd_buf;
     {
         SkrZoneScopedN("WriteBeginPassMarker");
-        graph_big_object_string message = u8"Pass-";
+        skr::String message = u8"Pass-";
         message.append(pass->get_name());
         message.append(u8"-BeginPass");
         executor.write_marker(message.c_str());
@@ -355,7 +338,7 @@ void PassExecutionPhase::execute_render_pass(RenderGraph* graph_, RenderGraphFra
     cgpu_cmd_end_render_pass(executor.gfx_cmd_buf, pass_context.encoder);
     {
         SkrZoneScopedN("WriteEndPassMarker");
-        graph_big_object_string message = u8"Pass-";
+        skr::String message = u8"Pass-";
         message.append(pass->get_name());
         message.append(u8"-EndRenderPass");
         executor.write_marker(message.c_str());
@@ -369,8 +352,8 @@ void PassExecutionPhase::execute_compute_pass(RenderGraph* graph_, RenderGraphFr
     SkrZoneScopedC(tracy::Color::LightBlue);
     ZoneName(pass->name.c_str_raw(), pass->name.size());
 
-    PooledVector<std::pair<BufferHandle, CGPUBufferId>> resolved_buffers;
-    PooledVector<std::pair<TextureHandle, CGPUTextureId>> resolved_textures;
+    StackVector<std::pair<BufferHandle, CGPUBufferId>> resolved_buffers;
+    StackVector<std::pair<TextureHandle, CGPUTextureId>> resolved_textures;
 
     pass->foreach_textures([&](TextureNode* texture, TextureEdge* edge) {
         resolved_textures.emplace(texture->get_handle(), resource_allocation_phase_.get_resource(texture));
@@ -412,8 +395,8 @@ void PassExecutionPhase::execute_copy_pass(RenderGraph* graph_, RenderGraphFrame
     SkrZoneScopedC(tracy::Color::LightYellow);
     ZoneName(pass->name.c_str_raw(), pass->name.size());
     // resource de-virtualize
-    PooledVector<std::pair<BufferHandle, CGPUBufferId>> resolved_buffers;
-    PooledVector<std::pair<TextureHandle, CGPUTextureId>> resolved_textures;
+    StackVector<std::pair<BufferHandle, CGPUBufferId>> resolved_buffers;
+    StackVector<std::pair<TextureHandle, CGPUTextureId>> resolved_textures;
 
     pass->foreach_textures([&](TextureNode* texture, TextureEdge* edge) {
         resolved_textures.emplace(texture->get_handle(), resource_allocation_phase_.get_resource(texture));

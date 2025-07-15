@@ -4,9 +4,6 @@
 #include "SkrContainersDef/string.hpp"
 #include "SkrContainersDef/span.hpp"
 
-using graph_object_string = skr::String;
-using graph_big_object_string = skr::String;
-
 enum
 {
     kRenderGraphInvalidResourceTag = 0x00,
@@ -326,7 +323,7 @@ struct RenderGraphNode : public DependencyGraphNode {
     const EObjectType type;
     const uint32_t pooled_size = 0;
 protected:
-    graph_object_string name = u8"";
+    skr::String name = u8"";
 };
 
 struct RenderGraphEdge : public DependencyGraphEdge {

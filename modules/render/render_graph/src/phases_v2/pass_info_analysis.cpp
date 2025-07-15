@@ -9,29 +9,15 @@
 namespace skr {
 namespace render_graph {
 
-void PassInfoAnalysis::on_initialize(RenderGraph* graph) SKR_NOEXCEPT
-{
-
-}
-
 void PassInfoAnalysis::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     SkrZoneScopedN("PassInfoAnalysis");
-    
-    pass_infos.clear();
-    resource_infos.clear();
     
     auto& passes = get_passes(graph);
     for (PassNode* pass : passes)
     {
         extract_pass_info(pass);
     }
-}
-
-void PassInfoAnalysis::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
-{
-    pass_infos.clear();
-    resource_infos.clear();
 }
 
 const PassInfo* PassInfoAnalysis::get_pass_info(PassNode* pass) const
@@ -74,7 +60,6 @@ void PassInfoAnalysis::extract_pass_info(PassNode* pass)
 
 void PassInfoAnalysis::extract_resource_info(PassNode* pass, PassResourceInfo& info)
 {
-    info.all_resource_accesses.clear();
     info.all_resource_accesses.reserve(pass->buffers_count() + pass->textures_count());
     
     // Extract textures with detailed access info

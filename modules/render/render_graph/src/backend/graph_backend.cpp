@@ -1,4 +1,4 @@
-﻿#include "SkrRenderGraph/pool_allocator.hpp"
+﻿#include "SkrRenderGraph/stack_allocator.hpp"
 #include "SkrRenderGraph/backend/graph_backend.hpp"
 #include "SkrOS/thread.h"
 #include "SkrCore/log.h"
@@ -183,7 +183,7 @@ RenderGraph* RenderGraph::create(const RenderGraphSetupFunction& setup) SKR_NOEX
     if (rg_count == 0)
     {
         rg_count += 1;
-        RenderGraphPoolAllocator::Initialize();
+        RenderGraphStackAllocator::Initialize();
     }
 
     RenderGraphBuilder builder = {};
@@ -207,39 +207,13 @@ void RenderGraph::destroy(RenderGraph* g) SKR_NOEXCEPT
 
     if (--rg_count == 0)
     {
-        RenderGraphPoolAllocator::Finalize();
+        RenderGraphStackAllocator::Finalize();
     }
 }
 
 void RenderGraphBackend::initialize() SKR_NOEXCEPT
 {
     RenderGraph::initialize();
-
-    auto culling = SkrNew<CullPhase>();
-    info_analysis = SkrNew<PassInfoAnalysis>();
-    auto dependency_analysis = SkrNew<PassDependencyAnalysis>(*info_analysis);
-    queue_schedule = SkrNew<QueueSchedule>(*dependency_analysis);
-    auto reorder_phase = SkrNew<ExecutionReorderPhase>(*info_analysis, *dependency_analysis, *queue_schedule);
-    lifetime_analysis = SkrNew<ResourceLifetimeAnalysis>(*info_analysis, *dependency_analysis, *queue_schedule);
-    ssis_phase = SkrNew<CrossQueueSyncAnalysis>(*dependency_analysis, *queue_schedule);
-    aliasing_phase = SkrNew<MemoryAliasingPhase>(*info_analysis, *lifetime_analysis, *ssis_phase, MemoryAliasingConfig{ .aliasing_tier = EAliasingTier::Tier0 });
-    barrier_phase = SkrNew<BarrierGenerationPhase>(*ssis_phase, *aliasing_phase, *info_analysis, *reorder_phase);
-    auto resource_allocation_phase = SkrNew<ResourceAllocationPhase>(*aliasing_phase, *info_analysis);
-    auto bindtable_phase = SkrNew<BindTablePhase>(*info_analysis, *resource_allocation_phase);
-    auto execution_phase = SkrNew<PassExecutionPhase>(*queue_schedule, *reorder_phase, *ssis_phase, *barrier_phase, *resource_allocation_phase, *bindtable_phase);
-
-    phases.add(culling);
-    phases.add(info_analysis);
-    phases.add(dependency_analysis);
-    phases.add(queue_schedule);
-    phases.add(reorder_phase);
-    phases.add(lifetime_analysis);
-    phases.add(ssis_phase);
-    phases.add(aliasing_phase);
-    phases.add(barrier_phase);
-    phases.add(resource_allocation_phase);
-    phases.add(bindtable_phase);
-    phases.add(execution_phase);
 
     backend = device->adapter->instance->backend;
     for (uint32_t i = 0; i < RG_MAX_FRAME_IN_FLIGHT; i++)
@@ -249,9 +223,6 @@ void RenderGraphBackend::initialize() SKR_NOEXCEPT
     buffer_pool.initialize(device);
     texture_pool.initialize(device);
     texture_view_pool.initialize(device);
-
-    for (auto& phase : phases)
-        phase->on_initialize(this);
 }
 
 void RenderGraphBackend::finalize() SKR_NOEXCEPT
@@ -261,15 +232,6 @@ void RenderGraphBackend::finalize() SKR_NOEXCEPT
     {
         executors[i].finalize();
     }
-    for (auto& phase : phases.range_inv())
-    {
-        phase->on_finalize(this);
-    }
-    for (auto& phase : phases.range_inv())
-    {
-        SkrDelete(phase);
-    }
-
     buffer_pool.finalize();
     texture_pool.finalize();
     texture_view_pool.finalize();
@@ -294,17 +256,51 @@ uint64_t RenderGraphBackend::get_latest_finished_frame() SKR_NOEXCEPT
 uint64_t RenderGraphBackend::execute(RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     const auto executor_index = frame_index % RG_MAX_FRAME_IN_FLIGHT;
-    for (auto& phase : phases)
+    RenderGraphStackAllocator::Reset();
     {
-        phase->on_execute(this, executors + executor_index, profiler);
-    }
+        auto culling = CullPhase();
+        culling.on_execute(this, &executors[executor_index], profiler);
+
+        auto info_analysis = PassInfoAnalysis();
+        info_analysis.on_execute(this, &executors[executor_index], profiler);
+
+        auto dependency_analysis = PassDependencyAnalysis(info_analysis);
+        dependency_analysis.on_execute(this, &executors[executor_index], profiler);
+
+        auto queue_schedule = QueueSchedule(dependency_analysis);
+        queue_schedule.on_execute(this, &executors[executor_index], profiler);
+
+        auto reorder_phase = ExecutionReorderPhase(info_analysis, dependency_analysis, queue_schedule);
+        reorder_phase.on_execute(this, &executors[executor_index], profiler);
+
+        auto lifetime_analysis = ResourceLifetimeAnalysis(info_analysis, dependency_analysis, queue_schedule);
+        lifetime_analysis.on_execute(this, &executors[executor_index], profiler);
+
+        auto ssis_phase = CrossQueueSyncAnalysis(dependency_analysis, queue_schedule);
+        ssis_phase.on_execute(this, &executors[executor_index], profiler);
+
+        auto aliasing_phase = MemoryAliasingPhase(info_analysis, lifetime_analysis, ssis_phase, MemoryAliasingConfig{ .aliasing_tier = EAliasingTier::Tier0 });
+        aliasing_phase.on_execute(this, &executors[executor_index], profiler);
+
+        auto barrier_phase = BarrierGenerationPhase(ssis_phase, aliasing_phase, info_analysis, reorder_phase);
+        barrier_phase.on_execute(this, &executors[executor_index], profiler);
+
+        auto resource_allocation_phase = ResourceAllocationPhase(aliasing_phase, info_analysis);
+        resource_allocation_phase.on_execute(this, &executors[executor_index], profiler);
+        
+        auto bindtable_phase = BindTablePhase(info_analysis, resource_allocation_phase);
+        bindtable_phase.on_execute(this, &executors[executor_index], profiler);
+
+        auto execution_phase = PassExecutionPhase(queue_schedule, reorder_phase, ssis_phase, barrier_phase, resource_allocation_phase, bindtable_phase);
+        execution_phase.on_execute(this, &executors[executor_index], profiler);
 
 #if !SKR_SHIPPING
-    if (frame_index == 1000)
-    {
-        generate_graphviz_visualization();
-    }
+        if (frame_index == 1000)
+        {
+            GraphViz::generate_graphviz_visualization(this, info_analysis, queue_schedule, ssis_phase, barrier_phase, aliasing_phase, lifetime_analysis);
+        }
 #endif
+    }
 
     {
         SkrZoneScopedN("GraphCleanup");
@@ -347,9 +343,6 @@ uint32_t RenderGraphBackend::collect_garbage(uint64_t critical_frame,
 
 uint32_t RenderGraphBackend::collect_texture_garbage(uint64_t critical_frame, uint32_t with_tags, uint32_t without_tags) SKR_NOEXCEPT
 {
-    for (auto& phase : phases)
-        phase->on_collect_texture_garbage(this, critical_frame, with_tags, without_tags);
-
     if (critical_frame > get_latest_finished_frame())
     {
         SKR_LOG_ERROR(u8"undone frame on GPU detected, collect texture garbage may cause GPU Crash!!"
@@ -382,9 +375,6 @@ uint32_t RenderGraphBackend::collect_texture_garbage(uint64_t critical_frame, ui
 
 uint32_t RenderGraphBackend::collect_buffer_garbage(uint64_t critical_frame, uint32_t with_tags, uint32_t without_tags) SKR_NOEXCEPT
 {
-    for (auto& phase : phases)
-        phase->on_collect_buffer_garbage(this, critical_frame, with_tags, without_tags);
-
     if (critical_frame > get_latest_finished_frame())
     {
         SKR_LOG_ERROR(u8"undone frame on GPU detected, collect buffer garbage may cause GPU Crash!!"

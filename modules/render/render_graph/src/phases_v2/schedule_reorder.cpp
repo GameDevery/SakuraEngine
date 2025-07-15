@@ -20,12 +20,6 @@ ExecutionReorderPhase::ExecutionReorderPhase(
 {
 }
 
-// IRenderGraphPhase interface implementation
-void ExecutionReorderPhase::on_initialize(RenderGraph* graph) SKR_NOEXCEPT
-{
-    render_graph = graph; // Store reference to RenderGraph for DAG access
-}
-
 void ExecutionReorderPhase::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     SkrZoneScopedN("ExecutionReorderPhase");
@@ -46,20 +40,6 @@ void ExecutionReorderPhase::on_execute(RenderGraph* graph, RenderGraphFrameExecu
     {
         result.optimized_timeline = timeline_schedule.get_schedule_result().queue_schedules;
     }
-}
-
-void ExecutionReorderPhase::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
-{
-    working_timeline.clear();
-    
-    // 清理临时容器
-    path_check_visited_.clear();
-    path_check_queue_.clear();
-    shared_resource_set_.clear();
-    shared_resources_.clear();
-    
-    // Keep result.optimized_timeline for access after phase completion
-    render_graph = nullptr;
 }
 
 // Run graph-based optimization - much simpler!
@@ -206,10 +186,8 @@ bool ExecutionReorderPhase::has_path_between_passes(PassNode* from_pass, PassNod
     if (deps->has_dependency_on(from_pass)) return true;
     
     // Check transitive dependencies using BFS to avoid deep recursion
-    PooledSet<PassNode*>& visited = path_check_visited_;
-    PooledVector<PassNode*>& queue = path_check_queue_;
-    visited.clear();
-    queue.clear();
+    StackSet<PassNode*> visited;
+    StackVector<PassNode*> queue;
 
     // Start with direct dependencies of to_pass
     for (auto* dep_pass : deps->dependent_passes)
@@ -244,12 +222,10 @@ bool ExecutionReorderPhase::has_path_between_passes(PassNode* from_pass, PassNod
 }
 
 // Get resources shared between two passes using graph
-PooledVector<ResourceNode*> ExecutionReorderPhase::get_shared_resources(PassNode* pass1, PassNode* pass2) const SKR_NOEXCEPT
+StackVector<ResourceNode*> ExecutionReorderPhase::get_shared_resources(PassNode* pass1, PassNode* pass2) const SKR_NOEXCEPT
 {
-    PooledVector<ResourceNode*>& shared = shared_resources_;
-    PooledSet<ResourceNode*>& resources1 = shared_resource_set_;
-    shared.clear();
-    resources1.clear();
+    StackVector<ResourceNode*> shared;
+    StackSet<ResourceNode*> resources1;
 
     // Use pass info analysis to get resource accesses efficiently
     const auto* info1 = pass_info_analysis.get_pass_info(pass1);
@@ -298,7 +274,7 @@ float ExecutionReorderPhase::calculate_resource_affinity(PassNode* pass1, PassNo
     return calculate_resource_affinity_from_shared(pass1, pass2, shared_resources);
 }
 
-float ExecutionReorderPhase::calculate_resource_affinity_from_shared(PassNode* pass1, PassNode* pass2, const PooledVector<ResourceNode*>& shared_resources) const SKR_NOEXCEPT
+float ExecutionReorderPhase::calculate_resource_affinity_from_shared(PassNode* pass1, PassNode* pass2, const StackVector<ResourceNode*>& shared_resources) const SKR_NOEXCEPT
 {
     const auto* info1 = pass_info_analysis.get_pass_info(pass1);
     const auto* info2 = pass_info_analysis.get_pass_info(pass2);

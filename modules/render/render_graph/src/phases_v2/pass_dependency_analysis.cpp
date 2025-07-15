@@ -35,54 +35,15 @@ void PassDependencyAnalysis::on_execute(RenderGraph* graph, RenderGraphFrameExec
 {
     SkrZoneScopedN("PassDependencyAnalysis");
 
-    pass_dependencies_.clear();
-    resource_last_access_.clear();
-
-    logical_topology_.logical_levels.clear();
-    logical_topology_.logical_topological_order.clear();
-    logical_topology_.logical_critical_path.clear();
-
     analyze_pass_dependencies(graph);
     perform_logical_topological_sort_optimized();
     identify_logical_critical_path();
-}
-
-void PassDependencyAnalysis::on_initialize(RenderGraph* graph) SKR_NOEXCEPT
-{
-    // 基于Pass数量的智能预分配
-    const size_t pass_count = 64;
-    const size_t resource_count = 128;
-
-    // 预分配主容器，避免rehash
-    pass_dependencies_.reserve(pass_count);
-    in_degrees_.reserve(pass_count);
-    topo_queue_.reserve(pass_count);
-    topo_levels_.reserve(pass_count);
-
-    // 预分配资源最后访问信息
-    resource_last_access_.reserve(resource_count);
-
-    // 预分配逻辑拓扑结果容器
-    logical_topology_.logical_topological_order.reserve(pass_count);
-    logical_topology_.logical_levels.reserve(pass_count / 4); // 估算平均层级数
-}
-
-void PassDependencyAnalysis::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
-{
-    // 清理分析结果
-    pass_dependencies_.clear();
-    resource_last_access_.clear();
-
-    logical_topology_.logical_levels.clear();
-    logical_topology_.logical_topological_order.clear();
-    logical_topology_.logical_critical_path.clear();
 }
 
 void PassDependencyAnalysis::analyze_pass_dependencies(RenderGraph* graph)
 {
     // 优化版本：O(n) 复杂度，为每个资源维护最后访问者索引
     auto& all_passes = get_passes(graph);
-    pass_dependencies_.clear();
 
     // 为每个资源维护最后访问的Pass和访问信息
     resource_last_access_.reserve(graph->get_resources().size()); // 预分配避免rehash
@@ -140,14 +101,9 @@ void PassDependencyAnalysis::perform_logical_topological_sort_optimized()
     if (num_passes == 0) return;
 
     // 预分配容器，避免动态扩容
-    in_degrees_.clear();
-    topo_queue_.clear();
-    topo_levels_.clear();
-
     in_degrees_.reserve(num_passes);
     topo_queue_.reserve(num_passes);
     topo_levels_.reserve(num_passes);
-
     logical_topology_.logical_topological_order.reserve(num_passes);
     logical_topology_.logical_levels.reserve(num_passes);
 
@@ -252,8 +208,6 @@ void PassDependencyAnalysis::perform_logical_topological_sort_optimized()
 
 void PassDependencyAnalysis::identify_logical_critical_path()
 {
-    logical_topology_.logical_critical_path.clear();
-
     // Step 1: 计算每个节点的高度（到DAG末尾的最长距离）
     // 按逆拓扑序处理，确保处理节点时其所有后继都已处理
     for (int i = logical_topology_.logical_topological_order.size() - 1; i >= 0; --i)
@@ -391,16 +345,16 @@ bool PassDependencyAnalysis::has_dependencies(PassNode* pass) const
 }
 
 // For ScheduleTimeline - get pass-level dependencies directly
-const PooledVector<PassNode*>& PassDependencyAnalysis::get_dependent_passes(PassNode* pass) const
+const StackVector<PassNode*>& PassDependencyAnalysis::get_dependent_passes(PassNode* pass) const
 {
-    static const PooledVector<PassNode*> empty_vector;
+    static const StackVector<PassNode*> empty_vector;
     const auto* deps = get_pass_dependencies(pass);
     return deps ? deps->dependent_passes : empty_vector;
 }
 
-const PooledVector<PassNode*>& PassDependencyAnalysis::get_dependent_by_passes(PassNode* pass) const
+const StackVector<PassNode*>& PassDependencyAnalysis::get_dependent_by_passes(PassNode* pass) const
 {
-    static const PooledVector<PassNode*> empty_vector;
+    static const StackVector<PassNode*> empty_vector;
     const auto* deps = get_pass_dependencies(pass);
     return deps ? deps->dependent_by_passes : empty_vector;
 }
@@ -514,7 +468,7 @@ void PassDependencyAnalysis::dump_logical_critical_path() const
 }
 
 // 跨队列同步点生成方法
-void PassDependencyAnalysis::generate_cross_queue_sync_points(const QueueSchedule& queue_schedule, PooledVector<CrossQueueSyncPoint>& sync_points) const
+void PassDependencyAnalysis::generate_cross_queue_sync_points(const QueueSchedule& queue_schedule, StackVector<CrossQueueSyncPoint>& sync_points) const
 {
     const auto& queue_result = queue_schedule.get_schedule_result();
     sync_points.clear();

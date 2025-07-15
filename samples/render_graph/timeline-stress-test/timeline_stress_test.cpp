@@ -97,18 +97,6 @@ public:
             skr::render_graph::BarrierGenerationConfig barrier_config = {};
             auto barrier_phase = skr::render_graph::BarrierGenerationPhase(ssis_phase, aliasing_phase, info_analysis, reorder_phase, barrier_config);
 
-            // info -> dependency -> timeline -> reorder -> segmentation ->
-            // virtual-allocation -> commit(commit alloc + bindgroups + barrier) -> execute
-            // 手动调用完整的Phase链进行测试
-            info_analysis.on_initialize(graph);
-            dependency_analysis.on_initialize(graph);
-            queue_schedule.on_initialize(graph);
-            reorder_phase.on_initialize(graph);
-            lifetime_analysis.on_initialize(graph);
-            ssis_phase.on_initialize(graph);
-            aliasing_phase.on_initialize(graph);
-            barrier_phase.on_initialize(graph);
-            
             {
                 SkrZoneScopedN("RenderGraphExecute");
                 
@@ -198,16 +186,6 @@ public:
 
             // 生成额外的可视化文件显示每个Pass的屏障详情
             generate_barrier_details_visualization(graph, queue_schedule, barrier_phase);
-
-            // 清理
-            barrier_phase.on_finalize(graph);
-            aliasing_phase.on_finalize(graph);
-            ssis_phase.on_finalize(graph);
-            lifetime_analysis.on_finalize(graph);
-            reorder_phase.on_finalize(graph);
-            queue_schedule.on_finalize(graph);
-            dependency_analysis.on_finalize(graph);
-            info_analysis.on_finalize(graph);
         }
         skr::render_graph::RenderGraph::destroy(graph);
 

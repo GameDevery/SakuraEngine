@@ -22,8 +22,8 @@ struct AllocatedReosurce
 struct ResourceAllocationResult
 {
     // ResourceNode到实际GPU资源的映射
-    PooledMap<uint32_t, AllocatedReosurce<CGPUTextureId>> bucket_id_to_textures;
-    PooledMap<uint32_t, AllocatedReosurce<CGPUBufferId>> bucket_id_to_buffers;
+    StackMap<uint32_t, AllocatedReosurce<CGPUTextureId>> bucket_id_to_textures;
+    StackMap<uint32_t, AllocatedReosurce<CGPUBufferId>> bucket_id_to_buffers;
     
     // 统计信息
     uint64_t total_allocated_memory = 0;
@@ -46,12 +46,10 @@ public:
         const MemoryAliasingPhase& aliasing_phase,
         const PassInfoAnalysis& pass_info_analysis,
         const ResourceAllocationConfig& config = {});
-    ~ResourceAllocationPhase() override = default;
+    ~ResourceAllocationPhase() override;
 
     // IRenderGraphPhase 接口
     void on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT override;
-    void on_initialize(RenderGraph* graph) SKR_NOEXCEPT override;
-    void on_finalize(RenderGraph* graph) SKR_NOEXCEPT override;
 
     // 查询接口
     const ResourceAllocationResult& get_result() const { return allocation_result_; }

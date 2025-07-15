@@ -43,7 +43,7 @@ public:
     CGPUBufferId marker_buffer = nullptr;
     uint32_t marker_idx = 0;
     uint32_t valid_marker_val = 1;
-    skr::Vector<graph_big_object_string> marker_messages;
+    skr::Vector<skr::String> marker_messages;
 
 protected:
     skr::FlatHashMap<CGPURootSignatureId, MergedBindTablePool*> merged_table_pools;
@@ -92,17 +92,8 @@ public:
     TextureViewPool& get_texture_view_pool() SKR_NOEXCEPT { return texture_view_pool; }
 
 protected:
-    void generate_graphviz_visualization() SKR_NOEXCEPT;
     virtual void initialize() SKR_NOEXCEPT final;
     virtual void finalize() SKR_NOEXCEPT final;
-
-    skr::Vector<IRenderGraphPhase*> phases;
-    PassInfoAnalysis* info_analysis = nullptr;
-    QueueSchedule* queue_schedule = nullptr;
-    CrossQueueSyncAnalysis* ssis_phase = nullptr;
-    BarrierGenerationPhase* barrier_phase = nullptr;
-    MemoryAliasingPhase* aliasing_phase = nullptr;
-    ResourceLifetimeAnalysis* lifetime_analysis = nullptr;
 
     ECGPUBackend backend;
     CGPUDeviceId device;

@@ -17,26 +17,11 @@ ResourceLifetimeAnalysis::ResourceLifetimeAnalysis(
 {
 }
 
-void ResourceLifetimeAnalysis::on_initialize(RenderGraph* graph) SKR_NOEXCEPT
-{
-    // 预分配容器
-    lifetime_result_.resource_lifetimes.reserve(128);
-}
-
 void ResourceLifetimeAnalysis::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     SkrZoneScopedN("ResourceLifetimeAnalysis");
     
-    lifetime_result_.resource_lifetimes.clear();
-    lifetime_result_.resources_by_size_desc.clear();
-
     analyze_resource_lifetimes(graph);
-}
-
-void ResourceLifetimeAnalysis::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
-{
-    lifetime_result_.resource_lifetimes.clear();
-    lifetime_result_.resources_by_size_desc.clear();
 }
 
 void ResourceLifetimeAnalysis::analyze_resource_lifetimes(RenderGraph* graph) SKR_NOEXCEPT
@@ -107,8 +92,6 @@ void ResourceLifetimeAnalysis::analyze_resource_lifetimes(RenderGraph* graph) SK
     }
     
     // 为MemoryAliasingPhase构建按大小降序排列的资源列表
-    lifetime_result_.resources_by_size_desc.clear();
-    
     // 收集所有有生命周期信息的资源
     for (const auto& [resource, lifetime] : lifetime_result_.resource_lifetimes)
     {

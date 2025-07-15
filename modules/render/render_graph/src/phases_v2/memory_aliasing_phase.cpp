@@ -28,22 +28,6 @@ MemoryAliasingPhase::MemoryAliasingPhase(
 {
 }
 
-void MemoryAliasingPhase::on_initialize(RenderGraph* graph) SKR_NOEXCEPT
-{
-    aliasing_result_.memory_buckets.reserve(config_.max_buckets);
-    aliasing_result_.resource_to_bucket.reserve(128);
-    aliasing_result_.resource_to_offset.reserve(128);
-}
-
-void MemoryAliasingPhase::on_finalize(RenderGraph* graph) SKR_NOEXCEPT
-{
-    aliasing_result_.memory_buckets.clear();
-    aliasing_result_.resource_to_bucket.clear();
-    aliasing_result_.resource_to_offset.clear();
-    aliasing_result_.resources_need_aliasing_barrier.clear();
-    aliasing_result_.alias_transitions.clear();
-}
-
 void MemoryAliasingPhase::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     SkrZoneScopedN("MemoryAliasingPhase");
@@ -72,7 +56,7 @@ void MemoryAliasingPhase::analyze_resources() SKR_NOEXCEPT
     const auto& lifetime_result = lifetime_analysis_.get_result();
     
     // SSIS算法步骤1：按大小降序排序资源
-    PooledVector<ResourceNode*> sorted_resources = lifetime_result.resources_by_size_desc;
+    StackVector<ResourceNode*> sorted_resources = lifetime_result.resources_by_size_desc;
     
     // 过滤掉不需要内存管理的资源
     auto filtered_end = std::remove_if(sorted_resources.begin(), sorted_resources.end(),
@@ -130,15 +114,10 @@ void MemoryAliasingPhase::analyze_resources() SKR_NOEXCEPT
     perform_memory_aliasing(sorted_resources);
 }
 
-void MemoryAliasingPhase::perform_memory_aliasing(const PooledVector<ResourceNode*>& sorted_resources) SKR_NOEXCEPT
+void MemoryAliasingPhase::perform_memory_aliasing(const StackVector<ResourceNode*>& sorted_resources) SKR_NOEXCEPT
 {
     const bool useResourcePooling = config_.aliasing_tier == EAliasingTier::Tier0;
     const auto& lifetime_result = lifetime_analysis_.get_result();
-    aliasing_result_.resource_to_bucket.clear();
-    aliasing_result_.resource_to_offset.clear();
-    aliasing_result_.resources_need_aliasing_barrier.clear();
-    aliasing_result_.alias_transitions.clear();
-    aliasing_result_.memory_buckets.clear();
     aliasing_result_.memory_buckets.reserve(config_.max_buckets);
     for (auto* resource : sorted_resources)
     {
@@ -296,7 +275,7 @@ MemoryRegion MemoryAliasingPhase::find_optimal_memory_region(ResourceNode* resou
     else
     {
         // SSIS算法：找到所有可别名的内存区域
-        PooledVector<MemoryRegion> aliasable_regions = find_aliasable_regions(resource, bucket);
+        StackVector<MemoryRegion> aliasable_regions = find_aliasable_regions(resource, bucket);
         MemoryRegion optimal_region{};
         // 选择最小适配的区域（SSIS建议）
         for (const auto& region : aliasable_regions)
@@ -313,12 +292,12 @@ MemoryRegion MemoryAliasingPhase::find_optimal_memory_region(ResourceNode* resou
     }
 }
 
-PooledVector<MemoryRegion> MemoryAliasingPhase::find_aliasable_regions(ResourceNode* resource, const MemoryBucket& bucket) const SKR_NOEXCEPT
+StackVector<MemoryRegion> MemoryAliasingPhase::find_aliasable_regions(ResourceNode* resource, const MemoryBucket& bucket) const SKR_NOEXCEPT
 {
-    PooledVector<MemoryRegion> aliasable_regions;
+    StackVector<MemoryRegion> aliasable_regions;
     
     // SSIS算法核心：收集非别名化的内存偏移
-    PooledVector<MemoryOffset> offsets;
+    StackVector<MemoryOffset> offsets;
     collect_non_aliasable_offsets(resource, bucket, offsets);
     
     if (offsets.is_empty())
@@ -365,10 +344,8 @@ PooledVector<MemoryRegion> MemoryAliasingPhase::find_aliasable_regions(ResourceN
 }
 
 void MemoryAliasingPhase::collect_non_aliasable_offsets(ResourceNode* resource, const MemoryBucket& bucket, 
-                                                       PooledVector<MemoryOffset>& offsets) const SKR_NOEXCEPT
+                                                       StackVector<MemoryOffset>& offsets) const SKR_NOEXCEPT
 {
-    offsets.clear();
-    
     // 添加桶边界
     offsets.add(MemoryOffset{ 0, EMemoryOffsetType::End, nullptr });
     offsets.add(MemoryOffset{ bucket.total_size, EMemoryOffsetType::Start, nullptr });
@@ -557,8 +534,6 @@ void MemoryAliasingPhase::dump_memory_buckets() const SKR_NOEXCEPT
 
 void MemoryAliasingPhase::compute_alias_transitions() SKR_NOEXCEPT
 {
-    aliasing_result_.alias_transitions.clear();
-    
     // 对每个内存桶，计算资源之间的转换点
     for (uint32_t bucket_idx = 0; bucket_idx < aliasing_result_.memory_buckets.size(); ++bucket_idx)
     {
@@ -569,7 +544,7 @@ void MemoryAliasingPhase::compute_alias_transitions() SKR_NOEXCEPT
             continue;
             
         // 按资源的生命周期排序（开始时间）
-        PooledVector<ResourceNode*> sorted_resources = bucket.aliased_resources;
+        StackVector<ResourceNode*> sorted_resources = bucket.aliased_resources;
         sorted_resources.sort([this](ResourceNode* a, ResourceNode* b) {
                 const auto& lifetime_result = lifetime_analysis_.get_result();
                 auto a_lifetime = lifetime_result.resource_lifetimes.find(a);

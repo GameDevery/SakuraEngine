@@ -52,13 +52,11 @@ void CullPhase::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executo
     {
         node_factory->Dealloc(culled_resource);
     }
-    culled_resources.clear();
     // 2.dealloc culled passes 
     for (auto culled_pass : culled_passes)
     {
         node_factory->Dealloc(culled_pass);
     }
-    culled_passes.clear();
 }
 
 } // namespace render_graph
