@@ -29,6 +29,7 @@ class SKR_RENDER_GRAPH_API PassExecutionPhase : public IRenderGraphPhase {
 public:
     PassExecutionPhase(
         const QueueSchedule& queue_schedule,
+        const ExecutionReorderPhase& reorder_phase,
         const CrossQueueSyncAnalysis& sync_analysis,
         const BarrierGenerationPhase& barrier_generation_phase,
         const ResourceAllocationPhase& resource_allocation_phase,
@@ -68,6 +69,7 @@ private:
     
     // Input phase references
     const QueueSchedule& queue_schedule_;
+    const ExecutionReorderPhase& reorder_phase_;
     const CrossQueueSyncAnalysis& sync_analysis_;
     const BarrierGenerationPhase& barrier_generation_phase_;
     const ResourceAllocationPhase& resource_allocation_phase_;

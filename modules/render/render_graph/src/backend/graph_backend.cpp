@@ -226,7 +226,7 @@ void RenderGraphBackend::initialize() SKR_NOEXCEPT
     barrier_phase = SkrNew<BarrierGenerationPhase>(*ssis_phase, *aliasing_phase, *info_analysis, *reorder_phase);
     auto resource_allocation_phase = SkrNew<ResourceAllocationPhase>(*aliasing_phase, *info_analysis);
     auto bindtable_phase = SkrNew<BindTablePhase>(*info_analysis, *resource_allocation_phase);
-    auto execution_phase = SkrNew<PassExecutionPhase>(*queue_schedule, *ssis_phase, *barrier_phase, *resource_allocation_phase, *bindtable_phase);
+    auto execution_phase = SkrNew<PassExecutionPhase>(*queue_schedule, *reorder_phase, *ssis_phase, *barrier_phase, *resource_allocation_phase, *bindtable_phase);
 
     phases.add(culling);
     phases.add(info_analysis);

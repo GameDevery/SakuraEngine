@@ -15,6 +15,7 @@ namespace render_graph
 
 PassExecutionPhase::PassExecutionPhase(
     const QueueSchedule& queue_schedule,
+    const ExecutionReorderPhase& reorder_phase,
     const CrossQueueSyncAnalysis& sync_analysis,
     const BarrierGenerationPhase& barrier_generation_phase,
     const ResourceAllocationPhase& resource_allocation_phase,
@@ -22,6 +23,7 @@ PassExecutionPhase::PassExecutionPhase(
     const CommandRecordingConfig& config)
     : config_(config)
     , queue_schedule_(queue_schedule)
+    , reorder_phase_(reorder_phase)
     , sync_analysis_(sync_analysis)
     , barrier_generation_phase_(barrier_generation_phase)
     , resource_allocation_phase_(resource_allocation_phase)
@@ -119,63 +121,67 @@ void PassExecutionPhase::execute_scheduled_passes(RenderGraph* graph, RenderGrap
     // Get the scheduled order from QueueSchedule
     const auto& schedule_result = queue_schedule_.get_schedule_result();
 
-    // Execute passes in scheduled order across all queues
-    // For now, we assume single queue execution (graphics queue)
-    // TODO: Multi-queue support would require more complex synchronization
-
-    const auto& all_passes = get_passes(graph);
-
-    for (auto* pass : all_passes)
+    if (reorder_phase_.get_optimized_timeline().size() > 1)
     {
-        if (config_.enable_profiler_events && profiler)
+        SKR_UNIMPLEMENTED_FUNCTION();
+    }
+
+    for (uint32_t queue_index = 0; queue_index < schedule_result.all_queues.size(); queue_index++)
+    {
+        const auto& queue_info = schedule_result.all_queues[queue_index];
+        const auto& timeline = reorder_phase_.get_optimized_timeline()[queue_index];
+        for (const auto pass : timeline)
         {
-            profiler->on_pass_begin(*static_cast<RenderGraphBackend*>(graph), *executor, *pass);
+            if (config_.enable_profiler_events && profiler)
+            {
+                profiler->on_pass_begin(*static_cast<RenderGraphBackend*>(graph), *executor, *pass);
+            }
+
+            // Process sync points for this pass
+            process_sync_points(executor, pass);
+
+            // Insert barriers before pass execution
+            insert_pass_barriers(executor, pass);
+
+            // Begin debug marker
+            if (config_.enable_debug_markers)
+            {
+                begin_debug_marker(executor, pass);
+            }
+
+            // Execute pass based on type
+            switch (pass->pass_type)
+            {
+            case EPassType::Render:
+                execute_render_pass(graph, executor, static_cast<RenderPassNode*>(pass));
+                break;
+            case EPassType::Compute:
+                execute_compute_pass(graph, executor, static_cast<ComputePassNode*>(pass));
+                break;
+            case EPassType::Copy:
+                execute_copy_pass(graph, executor, static_cast<CopyPassNode*>(pass));
+                break;
+            case EPassType::Present:
+                execute_present_pass(graph, executor, static_cast<PresentPassNode*>(pass));
+                break;
+            default:
+                COMMAND_RECORDING_LOG(u8"Unknown pass type for pass: %s", pass->get_name());
+                break;
+            }
+
+            // End debug marker
+            if (config_.enable_debug_markers)
+            {
+                end_debug_marker(executor);
+            }
+
+            if (config_.enable_profiler_events && profiler)
+            {
+                profiler->on_pass_end(*static_cast<RenderGraphBackend*>(graph), *executor, *pass);
+            }
+
+            recording_result_.total_passes_executed++;
         }
-
-        // Process sync points for this pass
-        process_sync_points(executor, pass);
-
-        // Insert barriers before pass execution
-        insert_pass_barriers(executor, pass);
-
-        // Begin debug marker
-        if (config_.enable_debug_markers)
-        {
-            begin_debug_marker(executor, pass);
-        }
-
-        // Execute pass based on type
-        switch (pass->pass_type)
-        {
-        case EPassType::Render:
-            execute_render_pass(graph, executor, static_cast<RenderPassNode*>(pass));
-            break;
-        case EPassType::Compute:
-            execute_compute_pass(graph, executor, static_cast<ComputePassNode*>(pass));
-            break;
-        case EPassType::Copy:
-            execute_copy_pass(graph, executor, static_cast<CopyPassNode*>(pass));
-            break;
-        case EPassType::Present:
-            execute_present_pass(graph, executor, static_cast<PresentPassNode*>(pass));
-            break;
-        default:
-            COMMAND_RECORDING_LOG(u8"Unknown pass type for pass: %s", pass->get_name());
-            break;
-        }
-
-        // End debug marker
-        if (config_.enable_debug_markers)
-        {
-            end_debug_marker(executor);
-        }
-
-        if (config_.enable_profiler_events && profiler)
-        {
-            profiler->on_pass_end(*static_cast<RenderGraphBackend*>(graph), *executor, *pass);
-        }
-
-        recording_result_.total_passes_executed++;
     }
 }
 
