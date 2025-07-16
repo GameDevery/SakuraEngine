@@ -15,5 +15,11 @@ public static class BaseTests
 
         Engine.UnitTest("ContainersTest")
             .AddCppFiles("containers/*.cpp");
+
+        Engine.UnitTest("MathTest")
+            .AddCppFiles("math/*.cpp");
+
+        Engine.UnitTest("TypeTest")
+            .AddCppFiles("type/*.cpp");
     }
 }

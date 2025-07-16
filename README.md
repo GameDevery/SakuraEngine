@@ -225,6 +225,7 @@ Shipping Build 的最终呈现帧数可以轻松地突破数千帧，这是 Cubi
 - FiberTaskingLib 9d7b27d (Apache-2.0)
 - parallel-hashmap 1.3.11 (Apache-2.0)
 - [TSCNS](https://github.com/MengRao/tscns) v2.0 (MIT)
+- ozz-animation 0.16.0 release (MIT)
 
 ## 在自定义包管理引入的开源库和版本
 

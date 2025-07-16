@@ -9,7 +9,7 @@
 #endif
 
 sreflect_struct(guid = "EFBA637E-E7E5-4B64-BA26-90AEEE9E3E1A")
-skr_scene_resource_t {
+    skr_scene_resource_t {
     sugoi_storage_t* storage;
 };
 

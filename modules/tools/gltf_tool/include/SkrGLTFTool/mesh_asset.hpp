@@ -15,7 +15,7 @@ sreflect_struct(
     guid = "D72E2056-3C12-402A-A8B8-148CB8EAB922"
     serde = @json
 )
-GLTFTOOL_API SGltfMeshImporter final : public SImporter {
+    GLTFTOOL_API SGltfMeshImporter final : public SImporter {
     skr::String assetPath;
 
     skr::Vector<skr_guid_t> materials;
@@ -29,7 +29,7 @@ GLTFTOOL_API SGltfMeshImporter final : public SImporter {
 };
 
 sreflect_struct(guid = "5a378356-7bfa-461a-9f96-4bbbd2e95368")
-GLTFTOOL_API SMeshCooker final : public SCooker {
+    GLTFTOOL_API SMeshCooker final : public SCooker {
     bool     Cook(SCookContext* ctx) override;
     uint32_t Version() override;
 };

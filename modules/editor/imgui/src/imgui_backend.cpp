@@ -39,14 +39,14 @@ static void ImGui_ImplSkrSystem_SetClipboardText(ImGuiContext* ctx, const char* 
 
 // ctor & dtor
 ImGuiApp::ImGuiApp(const SystemWindowCreateInfo& main_wnd_create_info, RCUnique<ImGuiRendererBackend> backend)
-    : SystemApp(), _renderer_backend(std::move(backend)), _main_window_info(main_wnd_create_info)
+    : SystemApp()
+    , _renderer_backend(std::move(backend))
+    , _main_window_info(main_wnd_create_info)
 {
-
 }
 
 ImGuiApp::~ImGuiApp()
 {
-
 }
 
 bool ImGuiApp::initialize(const char* backend)
@@ -70,15 +70,15 @@ bool ImGuiApp::initialize(const char* backend)
     {
         ImGuiContext* cache = ImGui::GetCurrentContext();
         ImGui::SetCurrentContext(_context);
-        
+
         // Initialize ImGui IO for SkrSystem
         ImGuiIO& io = _context->IO;
-        io.BackendPlatformUserData = this;  // Store backend pointer for callbacks
+        io.BackendPlatformUserData = this; // Store backend pointer for callbacks
         io.BackendPlatformName = "imgui_impl_skr_system";
-        io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;           // We can honor GetMouseCursor() values (optional)
-        io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;            // We can honor io.WantSetMousePos requests (optional, rarely used)
-        io.BackendFlags |= ImGuiBackendFlags_PlatformHasViewports;  // We can create multi-viewports on the Platform side (optional)
-        
+        io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;      // We can honor GetMouseCursor() values (optional)
+        io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;       // We can honor io.WantSetMousePos requests (optional, rarely used)
+        io.BackendFlags |= ImGuiBackendFlags_PlatformHasViewports; // We can create multi-viewports on the Platform side (optional)
+
         // Setup platform functions
         ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
         platform_io.Platform_SetClipboardTextFn = ImGui_ImplSkrSystem_SetClipboardText;
@@ -97,14 +97,14 @@ bool ImGuiApp::initialize(const char* backend)
                         static_cast<int32_t>(data->InputPos.y - viewport->Pos.y)
                     };
                     area.size = {
-                        200,  // Default width
+                        200, // Default width
                         static_cast<uint32_t>(data->InputLineHeight)
                     };
                     area.cursor_height = static_cast<uint32_t>(data->InputLineHeight);
-                    
+
                     backend->get_ime()->set_text_input_area(area);
                 }
-                
+
                 // Note: We don't start/stop IME here because UpdateIMEState() already handles it
                 // based on WantTextInput. This callback is mainly for positioning the IME window.
             }
@@ -112,7 +112,7 @@ bool ImGuiApp::initialize(const char* backend)
 
         ImGui::SetCurrentContext(cache);
     }
-    
+
     // Setup IME if available
     if (get_ime())
     {
@@ -122,7 +122,7 @@ bool ImGuiApp::initialize(const char* backend)
     // Initialize render backend
     {
         _context->IO.BackendRendererUserData = _renderer_backend.get();
-        _context->IO.BackendRendererName     = "Sakura ImGui Renderer";
+        _context->IO.BackendRendererName = "Sakura ImGui Renderer";
         _context->IO.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
         _renderer_backend->setup_io(_context->IO);
     }
@@ -137,16 +137,16 @@ bool ImGuiApp::initialize(const char* backend)
         main_viewport->PlatformHandle = _main_window;
         main_viewport->PlatformHandleRaw = _main_window->get_native_view();
     }
-    
+
     // Initialize main window render data
     _renderer_backend->create_main_window(main_viewport);
-    
+
     // Show the window
     if (_main_window)
     {
         _main_window->show();
     }
-    
+
     // Initialize time tracking
     last_frame_time_ = std::chrono::steady_clock::now();
 
@@ -159,19 +159,19 @@ void ImGuiApp::begin_frame()
     SKR_ASSERT(ImGui::GetCurrentContext() == _context && "context mismatch");
 
     ImGui::SetCurrentContext(_context);
-    
+
     // Update delta time (use member variable instead of static)
     auto current_time = std::chrono::steady_clock::now();
     float delta_time = std::chrono::duration<float>(current_time - last_frame_time_).count();
     _context->IO.DeltaTime = delta_time > 0.0f ? delta_time : (1.0f / 60.0f);
     last_frame_time_ = current_time;
-    
+
     // Update IME state based on ImGui needs
     UpdateIMEState();
-    
+
     // Update mouse cursor
     UpdateMouseCursor();
-    
+
     ImGui::NewFrame();
     _renderer_backend->begin_frame();
 }
@@ -183,7 +183,7 @@ void ImGuiApp::shutdown()
 
     // Wait rendering done
     _renderer_backend->wait_rendering_done();
-    
+
     // Stop IME if active
     if (ime && ime->is_text_input_active())
     {
@@ -205,7 +205,7 @@ void ImGuiApp::shutdown()
             if (tex->RefCount == 1)
             {
                 _renderer_backend->destroy_texture(tex);
-                tex->TexID  = 0;
+                tex->TexID = 0;
                 tex->Status = ImTextureStatus_Destroyed;
             }
         }
@@ -222,11 +222,11 @@ void ImGuiApp::shutdown()
         _context->IO.BackendPlatformUserData = nullptr;
         _context->IO.BackendPlatformName = nullptr;
     }
-    
+
     // Reset render backend callbacks and user data
     {
         _context->IO.BackendRendererUserData = nullptr;
-        _context->IO.BackendRendererName     = nullptr;
+        _context->IO.BackendRendererName = nullptr;
     }
 
     // Destroy render backend
@@ -242,7 +242,7 @@ void ImGuiApp::shutdown()
     // Destroy context
     ImGui::DestroyContext(_context);
     _context = nullptr;
-    
+
     SystemApp::shutdown();
 }
 
@@ -289,15 +289,14 @@ void ImGuiApp::_collect()
             break;
         }
     }
-    
+
     // Handle resize if triggered by event handler
     if (_event_handler && _event_handler->want_resize().comsume())
     {
         auto size = _main_window->get_size();
         _renderer_backend->resize_main_window(
             _context->Viewports[0],
-            { (float)size.x, (float)size.y }
-        );
+            { (float)size.x, (float)size.y });
     }
 
     // Render main window
@@ -326,22 +325,22 @@ void ImGuiApp::acquire_next_frame()
 void ImGuiApp::pump_message()
 {
     SKR_ASSERT(is_created() && "please create context before processing events");
-    
+
     event_queue->pump_messages();
-    
+
     // Update ImGui display size (every frame to accommodate for window resizing)
     if (_main_window)
     {
         auto window_size = _main_window->get_size();
-        
+
         // Handle minimized window
         int w = window_size.x;
         int h = window_size.y;
         if (_main_window->is_minimized())
             w = h = 0;
-        
+
         _context->IO.DisplaySize = ImVec2((float)w, (float)h);
-        
+
         // Update framebuffer scale
         if (w > 0 && h > 0)
         {
@@ -487,28 +486,28 @@ void ImGuiApp::enable_high_dpi(bool enable)
 void ImGuiApp::SetupIMECallbacks()
 {
     SKR_LOG_DEBUG(u8"Setting up IME callbacks");
-        
+
     IMEEventCallbacks callbacks;
-    
+
     // Most important callback: receive committed text
     callbacks.on_text_input = [this](const skr::String& text) {
         SKR_LOG_DEBUG(u8"IME text input received: %s (length: %d)", text.c_str(), text.size());
-        
+
         if (_context && !text.is_empty())
         {
             // Ensure we're in the correct ImGui context
             ImGuiContext* prev_ctx = ImGui::GetCurrentContext();
             ImGui::SetCurrentContext(_context);
-            
+
             // Add text to ImGui - convert from char8_t* to char*
             _context->IO.AddInputCharactersUTF8(reinterpret_cast<const char*>(text.c_str()));
-            
+
             SKR_LOG_DEBUG(u8"Added text to ImGui IO");
-            
+
             ImGui::SetCurrentContext(prev_ctx);
         }
     };
-    
+
     // Composition text callback (optional, for showing text being typed)
     callbacks.on_composition_update = [this](const IMECompositionInfo& info) {
         // ImGui doesn't currently support showing composition text directly
@@ -519,16 +518,16 @@ void ImGuiApp::SetupIMECallbacks()
             SKR_LOG_TRACE(u8"IME composition: %s (cursor: %d)", info.text.c_str(), info.cursor_pos);
         }
     };
-    
+
     // Candidates update callback (optional)
     callbacks.on_candidates_update = [this](const IMECandidateInfo& info) {
         // Could create custom candidate window
         // For now, let system IME show default candidate window
         SKR_LOG_TRACE(u8"IME candidates updated: %d candidates", info.total_candidates);
     };
-    
+
     ime->set_event_callbacks(callbacks);
-    
+
     SKR_LOG_DEBUG(u8"IME callbacks set successfully");
 }
 
@@ -536,17 +535,17 @@ void ImGuiApp::UpdateIMEState()
 {
     if (!ime || !_main_window)
         return;
-        
+
     // Simple state sync: automatically manage IME based on WantTextInput
     bool imgui_wants_text = _context->IO.WantTextInput;
-    
+
     // Use our own state tracking instead of querying IME every frame
     if (imgui_wants_text && !_ime_active_state)
     {
         // ImGui wants text input but we haven't activated IME yet
         ime->start_text_input(_main_window);
         _ime_active_state = true;
-        
+
         SKR_LOG_DEBUG(u8"Starting IME text input (WantTextInput=true)");
     }
     else if (!imgui_wants_text && _ime_active_state)

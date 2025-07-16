@@ -192,6 +192,7 @@ int main(int argc, char* argv[])
                     .allow_render_target();
             }
         );
+        // draw triangle in left side and take up 1/3 of the screen
         graph->add_render_pass(
             [=](render_graph::RenderGraph& g, render_graph::RenderPassBuilder& builder) {
                 builder.set_name(SKR_UTF8("color_pass"))
@@ -204,6 +205,8 @@ int main(int argc, char* argv[])
                 cgpu_render_encoder_draw(stack.encoder, 3, 0);
             }
         );
+        // draw triangle in the 2/3 from left side and take up 1/3 of the screen
+        // attach to the same backbuffer
         graph->add_render_pass(
             [=](render_graph::RenderGraph& g, render_graph::RenderPassBuilder& builder) {
                 builder.set_name(SKR_UTF8("color_pass2"))

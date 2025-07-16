@@ -30,152 +30,215 @@
 
 #include "SkrAnim/ozz/base/platform.h"
 
-namespace ozz {
+namespace ozz
+{
 
 // Defines a range [begin,end[ of objects ot type _Ty.
 template <typename _Ty>
 struct span {
-  // Constants and types
-  using element_type = _Ty;
-  using value_type = _Ty;
-  using index_type = size_t;
-  using difference_type = ptrdiff_t;
-  using pointer = _Ty*;
-  using const_pointer = const _Ty*;
-  using reference = _Ty&;
-  using const_reference = const _Ty&;
-  // Iterators
-  using iterator = pointer;
-  using const_iterator = const_pointer;
+    // Constants and types
+    using element_type    = _Ty;
+    using value_type      = _Ty;
+    using index_type      = size_t;
+    using difference_type = ptrdiff_t;
+    using pointer         = _Ty*;
+    using const_pointer   = const _Ty*;
+    using reference       = _Ty&;
+    using const_reference = const _Ty&;
+    // Iterators
+    using iterator       = pointer;
+    using const_iterator = const_pointer;
 
-  // Default constructor initializes range to empty.
-  span() : data_(nullptr), size_(0) {}
+    // Default constructor initializes range to empty.
+    span()
+        : data_(nullptr)
+        , size_(0)
+    {
+    }
 
-  // Constructs a range from its extreme values.
-  span(_Ty* _begin, _Ty* _end)
-      : data_(_begin), size_(static_cast<size_t>(_end - _begin)) {
-    SKR_ASSERT(_begin <= _end && "Invalid range.");
-  }
+    // Constructs a range from its extreme values.
+    span(_Ty* _begin, _Ty* _end)
+        : data_(_begin)
+        , size_(static_cast<size_t>(_end - _begin))
+    {
+        assert(_begin <= _end && "Invalid range.");
+    }
 
-  // Construct a range from a pointer to a buffer and its size, ie its number of
-  // elements.
-  span(_Ty* _begin, size_t _size) : data_(_begin), size_(_size) {}
+    // Construct a range from a pointer to a buffer and its size, ie its number of
+    // elements.
+    span(_Ty* _begin, size_t _size)
+        : data_(_begin)
+        , size_(_size)
+    {
+    }
 
-  // Copy operator.
-  void operator=(const span& _other) {
-    data_ = _other.data_;
-    size_ = _other.size_;
-  }
+    // Copy constructor.
+    span(const span& _other) = default;
 
-  // Construct a range from a single element.
-  explicit span(_Ty& _element) : data_(&_element), size_(1) {}
+    // Copy operator.
+    void operator=(const span& _other)
+    {
+        data_ = _other.data_;
+        size_ = _other.size_;
+    }
 
-  // Construct a range from an array, its size is automatically deduced.
-  // It isn't declared explicit as conversion is free and safe.
-  template <size_t _size>
-  span(_Ty (&_array)[_size]) : data_(_array), size_(_size) {}
+    // Construct a range from a single element.
+    explicit span(_Ty& _element)
+        : data_(&_element)
+        , size_(1)
+    {
+    }
 
-  // Reinitialized from an array, its size is automatically deduced.
-  template <size_t _size>
-  void operator=(_Ty (&_array)[_size]) {
-    data_ = _array;
-    size_ = _size;
-  }
+    // Construct a range from an array, its size is automatically deduced.
+    // It isn't declared explicit as conversion is free and safe.
+    template <size_t _size>
+    span(_Ty (&_array)[_size])
+        : data_(_array)
+        , size_(_size)
+    {
+    }
 
-  // Implement cast operator to allow conversions to span<const _Ty>.
-  operator span<const _Ty>() const { return span<const _Ty>(data_, size_); }
+    // Reinitialized from an array, its size is automatically deduced.
+    template <size_t _size>
+    void operator=(_Ty (&_array)[_size])
+    {
+        data_ = _array;
+        size_ = _size;
+    }
 
-  // Subspan
+    // Implement cast operator to allow conversions to span<const _Ty>.
+    operator span<const _Ty>() const { return { data_, size_ }; }
 
-  span<element_type> first(index_type _count) const {
-    SKR_ASSERT(_count <= size_ && "Count out of range");
-    return {data(), _count};
-  }
+    // Subspan
 
-  span<element_type> last(index_type _count) const {
-    SKR_ASSERT(_count <= size_ && "Count out of range");
-    return {data() + size_ - _count, _count};
-  }
+    span<element_type> first(index_type _count) const
+    {
+        assert(_count <= size_ && "Count out of range");
+        return { data(), _count };
+    }
 
-  span<element_type> subspan(index_type _offset, index_type _count) const {
-    SKR_ASSERT(_offset <= size_ && "Offset out of range");
-    SKR_ASSERT(_count <= size_ && "Count out of range");
-    SKR_ASSERT(_offset <= size_ - _count && "Offset + count out of range");
-    return {data_ + _offset, _count};
-  }
+    span<element_type> last(index_type _count) const
+    {
+        assert(_count <= size_ && "Count out of range");
+        return { data() + size_ - _count, _count };
+    }
 
-  // Returns a const reference to element _i of range [begin,end[.
-  _Ty& operator[](size_t _i) const {
-    SKR_ASSERT(_i < size_ && "Index out of range.");
-    return data_[_i];
-  }
+    span<element_type> subspan(index_type _offset, index_type _count) const
+    {
+        assert(_offset <= size_ && "Offset out of range");
+        assert(_count <= size_ && "Count out of range");
+        assert(_offset <= size_ - _count && "Offset + count out of range");
+        return { data_ + _offset, _count };
+    }
 
-  bool empty() const { return size_ == 0; }
+    // Returns a const reference to element _i of range [begin,end[.
+    _Ty& operator[](size_t _i) const
+    {
+        assert(_i < size_ && "Index out of range.");
+        return data_[_i];
+    }
 
-  // Complies with other contiguous containers.
-  _Ty* data() const { return data_; }
+    bool empty() const { return size_ == 0; }
 
-  // Gets the number of elements of the range.
-  // This size isn't stored but computed from begin and end pointers.
-  size_t size() const { return size_; }
+    // Complies with other contiguous containers.
+    _Ty* data() const { return data_; }
 
-  // Gets the size in byte of the range.
-  size_t size_bytes() const { return size_ * sizeof(element_type); }
+    // Gets the number of elements of the range.
+    // This size isn't stored but computed from begin and end pointers.
+    size_t size() const { return size_; }
 
-  // Iterator support
-  iterator begin() const { return data_; }
-  iterator end() const { return data_ + size_; }
+    // Gets the size in byte of the range.
+    size_t size_bytes() const { return size_ * sizeof(element_type); }
 
- private:
-  // span begin pointer.
-  _Ty* data_;
+    // Iterator support
+    iterator begin() const { return data_; }
+    iterator end() const { return data_ + size_; }
 
-  // span end pointer, should never be dereferenced.
-  size_t size_;
+    // Front and back accessors
+    reference front() const
+    {
+        assert(size_ > 0 && "Empty span.");
+        return *data_;
+    }
+    reference back() const
+    {
+        assert(size_ > 0 && "Empty span.");
+        return *(data_ + size_ - 1);
+    }
+
+private:
+    // span begin pointer.
+    _Ty* data_;
+
+    // span end pointer, should never be dereferenced.
+    size_t size_;
 };
 
 // Returns a span from an array.
 template <typename _Ty, size_t _Size>
-inline span<_Ty> make_span(_Ty (&_arr)[_Size]) {
-  return {_arr};
+inline span<_Ty> make_span(_Ty (&_arr)[_Size])
+{
+    return { _arr, _Size };
 }
 
 // Returns a mutable span from a container.
 template <typename _Container>
-inline span<typename _Container::value_type> make_span(_Container& _container) {
-  return {_container.data(), _container.size()};
+inline span<typename _Container::value_type> make_span(_Container& _container)
+{
+    return { _container.data(), _container.size() };
 }
 
 // Returns a non mutable span from a container.
 template <typename _Container>
 inline span<const typename _Container::value_type> make_span(
-    const _Container& _container) {
-  return {_container.data(), _container.size()};
+    const _Container& _container
+)
+{
+    return { _container.data(), _container.size() };
 }
 
 // As bytes
 template <typename _Ty>
-inline span<const byte> as_bytes(const span<_Ty>& _span) {
-  return {reinterpret_cast<const byte*>(_span.data()), _span.size_bytes()};
+inline span<const byte> as_bytes(const span<_Ty>& _span)
+{
+    return { reinterpret_cast<const byte*>(_span.data()), _span.size_bytes() };
 }
 
 template <typename _Ty>
-inline span<byte> as_writable_bytes(const span<_Ty>& _span) {
-  // Compilation will fail here if _Ty is const. This prevents from writing to
-  // const data.
-  return {reinterpret_cast<byte*>(_span.data()), _span.size_bytes()};
+inline span<byte> as_writable_bytes(const span<_Ty>& _span)
+{
+    // Compilation will fail here if _Ty is const. This prevents from writing to
+    // const data.
+    return { reinterpret_cast<byte*>(_span.data()), _span.size_bytes() };
 }
 
 // Fills a typed span from a byte source span. Source byte span is modified to
 // reflect remain size.
 template <typename _Ty>
-inline span<_Ty> fill_span(span<byte>& _src, size_t _count) {
-  SKR_ASSERT(ozz::IsAligned(_src.data(), alignof(_Ty)) && "Invalid alignment.");
-  const span<_Ty> ret = {reinterpret_cast<_Ty*>(_src.data()), _count};
-  // Validity assertion is done by span constructor.
-  _src = {reinterpret_cast<byte*>(ret.end()), _src.end()};
-  return ret;
+inline span<_Ty> fill_span(span<byte>& _src, size_t _count)
+{
+    assert(ozz::IsAligned(_src.data(), alignof(_Ty)) && "Invalid alignment.");
+    if (!_count)
+    {
+        return {};
+    }
+    const span<_Ty> ret = { reinterpret_cast<_Ty*>(_src.data()), _count };
+    // Validity assertion is done by span constructor.
+    _src = { reinterpret_cast<byte*>(ret.end()), _src.end() };
+    return ret;
 }
 
-}  // namespace ozz
-#endif  // OZZ_OZZ_BASE_SPAN_H_
+// Fills a typed span from a byte source span. Source byte span is modified to
+// reflect remain size.
+template <typename _Ret, typename _Ty>
+inline span<_Ret> reinterpret_span(const span<_Ty>& _src)
+{
+    assert(ozz::IsAligned(_src.data(), alignof(_Ret)) && "Invalid alignment.");
+    assert((_src.size_bytes() % sizeof(_Ret)) == 0 && "Invalid size.");
+
+    return { reinterpret_cast<_Ret*>(_src.begin()),
+             reinterpret_cast<_Ret*>(_src.end()) };
+}
+
+} // namespace ozz
+#endif // OZZ_OZZ_BASE_SPAN_H_

@@ -7,9 +7,9 @@
 struct cgltf_data;
 struct cgltf_node;
 
-namespace skd 
+namespace skd
 {
-namespace asset 
+namespace asset
 {
 // returned cgltf_data* needs to be freed by cgltf_free
 GLTFTOOL_API
@@ -23,5 +23,5 @@ void CookGLTFMeshData(const cgltf_data* data, SMeshCookConfig* config, skr_mesh_
 
 GLTFTOOL_API
 void CookGLTFMeshData_SplitSkin(const cgltf_data* data, SMeshCookConfig* config, skr_mesh_resource_t& out_resource, skr::Vector<skr::Vector<uint8_t>>& out_bins);
-}
-}
+} // namespace asset
+} // namespace skd

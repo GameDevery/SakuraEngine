@@ -31,8 +31,10 @@
 #include "SkrAnimTool/ozz/export.h"
 #include "SkrAnim/ozz/base/memory/unique_ptr.h"
 
-namespace ozz {
-namespace animation {
+namespace ozz
+{
+namespace animation
+{
 
 // Forward declares the runtime tracks type.
 class FloatTrack;
@@ -41,7 +43,8 @@ class Float3Track;
 class Float4Track;
 class QuaternionTrack;
 
-namespace offline {
+namespace offline
+{
 
 // Forward declares the offline tracks type.
 struct RawFloatTrack;
@@ -54,25 +57,27 @@ struct RawQuaternionTrack;
 // offline tracks.The input raw track is first validated. Runtime conversion of
 // a validated raw track cannot fail. Note that no optimization is performed on
 // the data at all.
-class OZZ_ANIMOFFLINE_DLL TrackBuilder {
- public:
-  // Creates a Track based on _raw_track and *this builder parameters.
-  // Returns a track instance on success, an empty unique_ptr on failure. See
-  // Raw*Track::Validate() for more details about failure reasons.
-  // The track is returned as an unique_ptr as ownership is given back to the
-  // caller.
-  ozz::unique_ptr<FloatTrack> operator()(const RawFloatTrack& _input) const;
-  ozz::unique_ptr<Float2Track> operator()(const RawFloat2Track& _input) const;
-  ozz::unique_ptr<Float3Track> operator()(const RawFloat3Track& _input) const;
-  ozz::unique_ptr<Float4Track> operator()(const RawFloat4Track& _input) const;
-  ozz::unique_ptr<QuaternionTrack> operator()(
-      const RawQuaternionTrack& _input) const;
+class OZZ_ANIMOFFLINE_DLL TrackBuilder
+{
+public:
+    // Creates a Track based on _raw_track and *this builder parameters.
+    // Returns a track instance on success, an empty unique_ptr on failure. See
+    // Raw*Track::Validate() for more details about failure reasons.
+    // The track is returned as an unique_ptr as ownership is given back to the
+    // caller.
+    ozz::unique_ptr<FloatTrack>      operator()(const RawFloatTrack& _input) const;
+    ozz::unique_ptr<Float2Track>     operator()(const RawFloat2Track& _input) const;
+    ozz::unique_ptr<Float3Track>     operator()(const RawFloat3Track& _input) const;
+    ozz::unique_ptr<Float4Track>     operator()(const RawFloat4Track& _input) const;
+    ozz::unique_ptr<QuaternionTrack> operator()(
+        const RawQuaternionTrack& _input
+    ) const;
 
- private:
-  template <typename _RawTrack, typename _Track>
-  ozz::unique_ptr<_Track> Build(const _RawTrack& _input) const;
+private:
+    template <typename _RawTrack, typename _Track>
+    ozz::unique_ptr<_Track> Build(const _RawTrack& _input) const;
 };
-}  // namespace offline
-}  // namespace animation
-}  // namespace ozz
-#endif  // OZZ_OZZ_ANIMATION_OFFLINE_TRACK_BUILDER_H_
+} // namespace offline
+} // namespace animation
+} // namespace ozz
+#endif // OZZ_OZZ_ANIMATION_OFFLINE_TRACK_BUILDER_H_

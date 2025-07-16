@@ -24,37 +24,42 @@
 // DEALINGS IN THE SOFTWARE.                                                  //
 //                                                                            //
 //----------------------------------------------------------------------------//
+
 #include "SkrAnim/ozz/base/maths/simd_math.h"
 
-namespace ozz {
-namespace math {
+namespace ozz
+{
+namespace math
+{
 
 // Select compile time name of the simd implementation
 #if defined(OZZ_SIMD_AVX2) && defined(OZZ_SIMD_FMA)
-#define _OZZ_SIMD_IMPLEMENTATION "AVX2-FMA"
+    #define _OZZ_SIMD_IMPLEMENTATION "AVX2-FMA"
 #elif defined(OZZ_SIMD_AVX2)
-#define _OZZ_SIMD_IMPLEMENTATION "AVX2"
+    #define _OZZ_SIMD_IMPLEMENTATION "AVX2"
 #elif defined(OZZ_SIMD_AVX)
-#define _OZZ_SIMD_IMPLEMENTATION "AVX"
+    #define _OZZ_SIMD_IMPLEMENTATION "AVX"
 #elif defined(OZZ_SIMD_SSE4_2)
-#define _OZZ_SIMD_IMPLEMENTATION "SSE4.2"
+    #define _OZZ_SIMD_IMPLEMENTATION "SSE4.2"
 #elif defined(OZZ_SIMD_SSE4_1)
-#define _OZZ_SIMD_IMPLEMENTATION "SSE4.1"
+    #define _OZZ_SIMD_IMPLEMENTATION "SSE4.1"
 #elif defined(OZZ_SIMD_SSSE3)
-#define _OZZ_SIMD_IMPLEMENTATION "SSSE3"
+    #define _OZZ_SIMD_IMPLEMENTATION "SSSE3"
 #elif defined(OZZ_SIMD_SSE3)
-#define _OZZ_SIMD_IMPLEMENTATION "SSE3"
+    #define _OZZ_SIMD_IMPLEMENTATION "SSE3"
 #elif defined(OZZ_SIMD_SSEx)
-#define _OZZ_SIMD_IMPLEMENTATION "SSE2"
+    #define _OZZ_SIMD_IMPLEMENTATION "SSE2"
+#elif defined(OZZ_SIMD_ARM_NEON)
+    #define _OZZ_SIMD_IMPLEMENTATION "ARM NEON"
 #elif defined(OZZ_SIMD_REF)
-#define _OZZ_SIMD_IMPLEMENTATION "Reference"
+    #define _OZZ_SIMD_IMPLEMENTATION "Reference (scalar)"
 #else
 // Not defined
 #endif
 
-// #pragma message("Ozz libraries were built with " _OZZ_SIMD_IMPLEMENTATION \
-//                 " SIMD math implementation")
+#pragma message("Ozz libraries were built with " _OZZ_SIMD_IMPLEMENTATION \
+                " math implementation")
 
 const char* SimdImplementationName() { return _OZZ_SIMD_IMPLEMENTATION; }
-}  // namespace math
-}  // namespace ozz
+} // namespace math
+} // namespace ozz

@@ -15,7 +15,7 @@ sreflect_struct(
     guid = "d2fc798b-af43-4865-b953-abba2b6d524a"
     serde = @json
 )
-SKR_TEXTURE_COMPILER_API STextureSamplerImporter final : public SImporter {
+    SKR_TEXTURE_COMPILER_API STextureSamplerImporter final : public SImporter {
     skr::String jsonPath;
 
     void* Import(skr_io_ram_service_t*, SCookContext* context) override;
@@ -23,7 +23,7 @@ SKR_TEXTURE_COMPILER_API STextureSamplerImporter final : public SImporter {
 };
 
 sreflect_struct(guid = "f06d5542-4c20-48e4-819a-16a6ae13b295")
-SKR_TEXTURE_COMPILER_API STextureSamplerCooker final : public SCooker {
+    SKR_TEXTURE_COMPILER_API STextureSamplerCooker final : public SCooker {
     bool     Cook(SCookContext* ctx) override;
     uint32_t Version() override { return 1u; }
 };

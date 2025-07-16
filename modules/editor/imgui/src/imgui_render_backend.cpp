@@ -11,13 +11,13 @@
 namespace skr
 {
 struct ImGuiRendererBackendRGViewportData {
-    CGPUSurfaceId   surface                 = nullptr;
-    CGPUSwapChainId swapchain               = nullptr;
-    CGPUFenceId     fence                   = nullptr;
-    CGPUQueueId     present_queue           = nullptr;
-    uint32_t        backbuffer_index        = 0;
-    ECGPULoadAction load_action             = CGPU_LOAD_ACTION_CLEAR;
-    Trigger         need_acquire_next_frame = {};
+    CGPUSurfaceId surface = nullptr;
+    CGPUSwapChainId swapchain = nullptr;
+    CGPUFenceId fence = nullptr;
+    CGPUQueueId present_queue = nullptr;
+    uint32_t backbuffer_index = 0;
+    ECGPULoadAction load_action = CGPU_LOAD_ACTION_CLEAR;
+    Trigger need_acquire_next_frame = {};
 
     inline void destroy()
     {
@@ -33,15 +33,14 @@ struct ImGuiRendererBackendRGViewportData {
     }
 };
 struct ImGuiRendererBackendRGTextureData {
-    CGPUTextureId     texture      = nullptr;
-    CGPUTextureViewId srv          = nullptr;
-    bool              first_update = true;
+    CGPUTextureId texture = nullptr;
+    CGPUTextureViewId srv = nullptr;
+    bool first_update = true;
 };
 
 inline static Vector<uint8_t> _read_shader_bytes(
-    String       virtual_path,
-    ECGPUBackend backend
-)
+    String virtual_path,
+    ECGPUBackend backend)
 {
     Vector<uint8_t> result;
 
@@ -81,15 +80,14 @@ inline static Vector<uint8_t> _read_shader_bytes(
 
 inline static void _rebuild_swapchain(
     ImGuiViewport* vp,
-    CGPUDeviceId   device,
-    CGPUQueueId    present_queue,
-    ImVec2         size,
-    ECGPUFormat    backbuffer_format,
-    uint32_t       backbuffer_count,
-    bool           enable_vsync
-)
+    CGPUDeviceId device,
+    CGPUQueueId present_queue,
+    ImVec2 size,
+    ECGPUFormat backbuffer_format,
+    uint32_t backbuffer_count,
+    bool enable_vsync)
 {
-    auto       rdata      = (ImGuiRendererBackendRGViewportData*)vp->RendererUserData;
+    auto rdata = (ImGuiRendererBackendRGViewportData*)vp->RendererUserData;
     const auto wnd_native = vp->PlatformHandleRaw;
 
     // create fence & surface
@@ -101,8 +99,7 @@ inline static void _rebuild_swapchain(
     {
         rdata->surface = cgpu_surface_from_native_view(
             device,
-            wnd_native
-        );
+            wnd_native);
     }
 
     // wait fence
@@ -117,16 +114,16 @@ inline static void _rebuild_swapchain(
 
     // create swapchain
     CGPUSwapChainDescriptor chain_desc = {};
-    chain_desc.surface                 = rdata->surface;
-    chain_desc.present_queues          = &present_queue;
-    chain_desc.present_queues_count    = 1;
-    chain_desc.width                   = size.x;
-    chain_desc.height                  = size.y;
-    chain_desc.image_count             = backbuffer_count;
-    chain_desc.format                  = backbuffer_format;
-    chain_desc.enable_vsync            = enable_vsync;
-    rdata->swapchain                   = cgpu_create_swapchain(device, &chain_desc);
-    rdata->present_queue               = present_queue;
+    chain_desc.surface = rdata->surface;
+    chain_desc.present_queues = &present_queue;
+    chain_desc.present_queues_count = 1;
+    chain_desc.width = size.x;
+    chain_desc.height = size.y;
+    chain_desc.image_count = backbuffer_count;
+    chain_desc.format = backbuffer_format;
+    chain_desc.enable_vsync = enable_vsync;
+    rdata->swapchain = cgpu_create_swapchain(device, &chain_desc);
+    rdata->present_queue = present_queue;
 }
 
 inline static SystemWindow* _get_system_window(ImGuiViewport* vp)
@@ -138,12 +135,11 @@ inline static SystemWindow* _get_system_window(ImGuiViewport* vp)
 }
 
 inline static void _draw_viewport(
-    ImGuiViewport*                 vp,
-    render_graph::RenderGraph*     render_graph,
-    CGPURootSignatureId            root_sig,
-    CGPURenderPipelineId           render_pipeline,
-    render_graph::TextureRTVHandle back_buffer
-)
+    ImGuiViewport* vp,
+    render_graph::RenderGraph* render_graph,
+    CGPURootSignatureId root_sig,
+    CGPURenderPipelineId render_pipeline,
+    render_graph::TextureRTVHandle back_buffer)
 {
     namespace rg = skr::render_graph;
 
@@ -152,11 +148,11 @@ inline static void _draw_viewport(
     SKR_ASSERT(rdata != nullptr);
 
     // get data
-    auto draw_data   = vp->DrawData;
+    auto draw_data = vp->DrawData;
     auto load_action = rdata->load_action;
     if (draw_data->TotalVtxCount == 0) { return; }
     uint32_t vertex_size = draw_data->TotalVtxCount * (uint32_t)sizeof(ImDrawVert);
-    uint32_t index_size  = draw_data->TotalIdxCount * (uint32_t)sizeof(ImDrawIdx);
+    uint32_t index_size = draw_data->TotalIdxCount * (uint32_t)sizeof(ImDrawIdx);
 
     // use CVV
     bool useCVV = true;
@@ -177,8 +173,7 @@ inline static void _draw_viewport(
                 .with_tags(useCVV ? kRenderGraphDynamicResourceTag : kRenderGraphDefaultResourceTag)
                 .prefer_on_device()
                 .as_vertex_buffer();
-        }
-    );
+        });
     auto index_buffer_handle = render_graph->create_buffer(
         [=](rg::RenderGraph& g, rg::BufferBuilder& builder) {
             SkrZoneScopedN("ConstructIBHandle");
@@ -191,8 +186,7 @@ inline static void _draw_viewport(
                 .with_tags(useCVV ? kRenderGraphDynamicResourceTag : kRenderGraphDefaultResourceTag)
                 .prefer_on_device()
                 .as_index_buffer();
-        }
-    );
+        });
 
     // upload vb/ib
     if (!useCVV)
@@ -206,8 +200,7 @@ inline static void _draw_viewport(
                     .size(index_size + vertex_size)
                     .with_tags(kRenderGraphDefaultResourceTag)
                     .as_upload_buffer();
-            }
-        );
+            });
         render_graph->add_copy_pass(
             [=](rg::RenderGraph& g, rg::CopyPassBuilder& builder) {
                 SkrZoneScopedN("ConstructCopyPass");
@@ -218,9 +211,9 @@ inline static void _draw_viewport(
                     .buffer_to_buffer(upload_buffer_handle.range(vertex_size, vertex_size + index_size), index_buffer_handle.range(0, index_size));
             },
             [upload_buffer_handle, draw_data](rg::RenderGraph& g, rg::CopyPassContext& context) {
-                auto        upload_buffer = context.resolve(upload_buffer_handle);
-                ImDrawVert* vtx_dst       = (ImDrawVert*)upload_buffer->info->cpu_mapped_address;
-                ImDrawIdx*  idx_dst       = (ImDrawIdx*)(vtx_dst + draw_data->TotalVtxCount);
+                auto upload_buffer = context.resolve(upload_buffer_handle);
+                ImDrawVert* vtx_dst = (ImDrawVert*)upload_buffer->info->cpu_mapped_address;
+                ImDrawIdx* idx_dst = (ImDrawIdx*)(vtx_dst + draw_data->TotalVtxCount);
                 for (int n = 0; n < draw_data->CmdListsCount; n++)
                 {
                     const ImDrawList* cmd_list = draw_data->CmdLists[n];
@@ -229,8 +222,7 @@ inline static void _draw_viewport(
                     vtx_dst += cmd_list->VtxBuffer.Size;
                     idx_dst += cmd_list->IdxBuffer.Size;
                 }
-            }
-        );
+            });
     }
 
     // cbuffer
@@ -245,8 +237,7 @@ inline static void _draw_viewport(
                 .with_flags(CGPU_BCF_PERSISTENT_MAP_BIT)
                 .prefer_on_device()
                 .as_uniform_buffer();
-        }
-    );
+        });
 
     // import textures
     rg::TextureHandle dummy_tex_handle;
@@ -263,8 +254,7 @@ inline static void _draw_viewport(
                     String name = skr::format(u8"imgui_font-{}", tex->UniqueID);
                     builder.set_name((const char8_t*)name.c_str())
                         .import(tex_data->texture, CGPU_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                }
-            );
+                });
             break;
         }
     }
@@ -292,10 +282,10 @@ inline static void _draw_viewport(
 
             // upload cbuffer
             {
-                float L         = draw_data->DisplayPos.x;
-                float R         = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
-                float T         = draw_data->DisplayPos.y;
-                float B         = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
+                float L = draw_data->DisplayPos.x;
+                float R = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
+                float T = draw_data->DisplayPos.y;
+                float B = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
                 float mvp[4][4] = {
                     { 2.0f / (R - L), 0.0f, 0.0f, 0.0f },
                     { 0.0f, 2.0f / (T - B), 0.0f, 0.0f },
@@ -316,30 +306,28 @@ inline static void _draw_viewport(
             {
                 // upload
                 ImDrawVert* vtx_dst = (ImDrawVert*)resolved_vb->info->cpu_mapped_address;
-                ImDrawIdx*  idx_dst = (ImDrawIdx*)resolved_ib->info->cpu_mapped_address;
+                ImDrawIdx* idx_dst = (ImDrawIdx*)resolved_ib->info->cpu_mapped_address;
                 for (int n = 0; n < draw_data->CmdListsCount; n++)
                 {
                     const ImDrawList* cmd_list = draw_data->CmdLists[n];
                     memcpy(
                         vtx_dst,
                         cmd_list->VtxBuffer.Data,
-                        cmd_list->VtxBuffer.Size * sizeof(ImDrawVert)
-                    );
+                        cmd_list->VtxBuffer.Size * sizeof(ImDrawVert));
                     memcpy(
                         idx_dst,
                         cmd_list->IdxBuffer.Data,
-                        cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx)
-                    );
+                        cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx));
                     vtx_dst += cmd_list->VtxBuffer.Size;
                     idx_dst += cmd_list->IdxBuffer.Size;
                 }
             }
 
             // draw commands
-            int          global_vtx_offset = 0;
-            int          global_idx_offset = 0;
-            const ImVec2 clip_off          = draw_data->DisplayPos;       // (0,0) unless using multi-viewports
-            const ImVec2 clip_scale        = draw_data->FramebufferScale; // (1,1) unless using retina display which are often (2,2)
+            int global_vtx_offset = 0;
+            int global_idx_offset = 0;
+            const ImVec2 clip_off = draw_data->DisplayPos;         // (0,0) unless using multi-viewports
+            const ImVec2 clip_scale = draw_data->FramebufferScale; // (1,1) unless using retina display which are often (2,2)
             for (int n = 0; n < draw_data->CmdListsCount; n++)
             {
                 const ImDrawList* cmd_list = draw_data->CmdLists[n];
@@ -412,36 +400,31 @@ inline static void _draw_viewport(
                             (uint32_t)clip_rect.x,
                             (uint32_t)clip_rect.y,
                             (uint32_t)(clip_rect.z - clip_rect.x),
-                            (uint32_t)(clip_rect.w - clip_rect.y)
-                        );
+                            (uint32_t)(clip_rect.w - clip_rect.y));
 
                         cgpu_render_encoder_bind_index_buffer(
                             context.encoder,
                             resolved_ib,
                             sizeof(uint16_t),
-                            0
-                        );
+                            0);
                         const uint32_t vert_stride = sizeof(ImDrawVert);
                         cgpu_render_encoder_bind_vertex_buffers(
                             context.encoder,
                             1,
                             &resolved_vb,
                             &vert_stride,
-                            NULL
-                        );
+                            NULL);
                         cgpu_render_encoder_draw_indexed(
                             context.encoder,
                             pcmd->ElemCount,
                             pcmd->IdxOffset + global_idx_offset,
-                            pcmd->VtxOffset + global_vtx_offset
-                        );
+                            pcmd->VtxOffset + global_vtx_offset);
                     }
                 }
                 global_idx_offset += cmd_list->IdxBuffer.Size;
                 global_vtx_offset += cmd_list->VtxBuffer.Size;
             }
-        }
-    );
+        });
 }
 
 } // namespace skr
@@ -472,9 +455,9 @@ void ImGuiRendererBackendRG::init(const ImGuiRendererBackendRGConfig& config)
     SKR_ASSERT(config.ps.has_value() == config.vs.has_value() && "only one shader is setted");
 
     // setup draw data
-    _gfx_queue         = config.queue;
-    _render_graph      = config.render_graph;
-    _backbuffer_count  = config.backbuffer_count;
+    _gfx_queue = config.queue;
+    _render_graph = config.render_graph;
+    _backbuffer_count = config.backbuffer_count;
     _backbuffer_format = config.format;
 
     // load shaders
@@ -488,38 +471,34 @@ void ImGuiRendererBackendRG::init(const ImGuiRendererBackendRGConfig& config)
     {
         auto vs_bytes = _read_shader_bytes(
             u8"imgui.vs",
-            _gfx_queue->device->adapter->instance->backend
-        );
+            _gfx_queue->device->adapter->instance->backend);
         auto ps_bytes = _read_shader_bytes(
             u8"imgui.fs",
-            _gfx_queue->device->adapter->instance->backend
-        );
+            _gfx_queue->device->adapter->instance->backend);
 
         // create lib
         CGPUShaderLibraryDescriptor vs_desc{};
-        vs_desc.name      = SKR_UTF8("imgui_vertex_shader");
-        vs_desc.code      = reinterpret_cast<uint32_t*>(vs_bytes.data());
+        vs_desc.name = SKR_UTF8("imgui_vertex_shader");
+        vs_desc.code = reinterpret_cast<uint32_t*>(vs_bytes.data());
         vs_desc.code_size = vs_bytes.size();
         CGPUShaderLibraryDescriptor ps_desc{};
-        ps_desc.name      = SKR_UTF8("imgui_fragment_shader");
-        ps_desc.code      = reinterpret_cast<uint32_t*>(ps_bytes.data());
+        ps_desc.name = SKR_UTF8("imgui_fragment_shader");
+        ps_desc.code = reinterpret_cast<uint32_t*>(ps_bytes.data());
         ps_desc.code_size = ps_bytes.size();
-        auto vs_lib       = cgpu_create_shader_library(
+        auto vs_lib = cgpu_create_shader_library(
             _gfx_queue->device,
-            &vs_desc
-        );
+            &vs_desc);
         auto fs_lib = cgpu_create_shader_library(
             _gfx_queue->device,
-            &ps_desc
-        );
+            &ps_desc);
 
         // fill desc
         ppl_shaders[0].library = vs_lib;
-        ppl_shaders[0].stage   = CGPU_SHADER_STAGE_VERT;
-        ppl_shaders[0].entry   = SKR_UTF8("vs");
+        ppl_shaders[0].stage = CGPU_SHADER_STAGE_VERT;
+        ppl_shaders[0].entry = SKR_UTF8("vs");
         ppl_shaders[1].library = fs_lib;
-        ppl_shaders[1].stage   = CGPU_SHADER_STAGE_FRAG;
-        ppl_shaders[1].entry   = SKR_UTF8("fs");
+        ppl_shaders[1].stage = CGPU_SHADER_STAGE_FRAG;
+        ppl_shaders[1].entry = SKR_UTF8("fs");
     }
 
     // load static sampler
@@ -531,43 +510,41 @@ void ImGuiRendererBackendRG::init(const ImGuiRendererBackendRGConfig& config)
     else
     {
         CGPUSamplerDescriptor sampler_desc{};
-        sampler_desc.address_u    = CGPU_ADDRESS_MODE_REPEAT;
-        sampler_desc.address_v    = CGPU_ADDRESS_MODE_REPEAT;
-        sampler_desc.address_w    = CGPU_ADDRESS_MODE_REPEAT;
-        sampler_desc.mipmap_mode  = CGPU_MIPMAP_MODE_LINEAR;
-        sampler_desc.min_filter   = CGPU_FILTER_TYPE_LINEAR;
-        sampler_desc.mag_filter   = CGPU_FILTER_TYPE_LINEAR;
+        sampler_desc.address_u = CGPU_ADDRESS_MODE_REPEAT;
+        sampler_desc.address_v = CGPU_ADDRESS_MODE_REPEAT;
+        sampler_desc.address_w = CGPU_ADDRESS_MODE_REPEAT;
+        sampler_desc.mipmap_mode = CGPU_MIPMAP_MODE_LINEAR;
+        sampler_desc.min_filter = CGPU_FILTER_TYPE_LINEAR;
+        sampler_desc.mag_filter = CGPU_FILTER_TYPE_LINEAR;
         sampler_desc.compare_func = CGPU_CMP_NEVER;
-        static_sampler            = cgpu_create_sampler(
+        static_sampler = cgpu_create_sampler(
             _gfx_queue->device,
-            &sampler_desc
-        );
+            &sampler_desc);
         _static_sampler = static_sampler;
     }
 
     // create root signature
     {
-        const char8_t*              push_constant_name = u8"push_constants";
-        const char8_t*              sampler_name       = u8"sampler0";
+        const char8_t* push_constant_name = u8"push_constants";
+        const char8_t* sampler_name = u8"sampler0";
         CGPURootSignatureDescriptor rs_desc{};
-        rs_desc.shaders              = ppl_shaders;
-        rs_desc.shader_count         = 2;
-        rs_desc.push_constant_names  = &push_constant_name;
-        rs_desc.push_constant_count  = 1;
+        rs_desc.shaders = ppl_shaders;
+        rs_desc.shader_count = 2;
+        rs_desc.push_constant_names = &push_constant_name;
+        rs_desc.push_constant_count = 1;
         rs_desc.static_sampler_names = &sampler_name;
         rs_desc.static_sampler_count = 1;
-        rs_desc.static_samplers      = &static_sampler;
-        _root_sig                    = cgpu_create_root_signature(
+        rs_desc.static_samplers = &static_sampler;
+        _root_sig = cgpu_create_root_signature(
             _gfx_queue->device,
-            &rs_desc
-        );
+            &rs_desc);
     }
 
     // create pipeline
     {
         CGPUVertexLayout vertex_layout{};
         vertex_layout.attribute_count = 3;
-        vertex_layout.attributes[0]   = {
+        vertex_layout.attributes[0] = {
             u8"pos",
             1,
             CGPU_FORMAT_R32G32_SFLOAT,
@@ -589,46 +566,46 @@ void ImGuiRendererBackendRG::init(const ImGuiRendererBackendRGConfig& config)
             u8"color",
             1,
             CGPU_FORMAT_R8G8B8A8_UNORM,
-            0, sizeof(float) * 4,
+            0,
+            sizeof(float) * 4,
             sizeof(uint32_t),
             CGPU_INPUT_RATE_VERTEX
         };
 
         CGPURasterizerStateDescriptor rs_state{};
-        rs_state.cull_mode               = CGPU_CULL_MODE_NONE;
-        rs_state.fill_mode               = CGPU_FILL_MODE_SOLID;
-        rs_state.front_face              = CGPU_FRONT_FACE_CW;
+        rs_state.cull_mode = CGPU_CULL_MODE_NONE;
+        rs_state.fill_mode = CGPU_FILL_MODE_SOLID;
+        rs_state.front_face = CGPU_FRONT_FACE_CW;
         rs_state.slope_scaled_depth_bias = 0.f;
-        rs_state.enable_depth_clamp      = false;
-        rs_state.enable_scissor          = true;
-        rs_state.enable_multi_sample     = false;
-        rs_state.depth_bias              = 0;
+        rs_state.enable_depth_clamp = false;
+        rs_state.enable_scissor = true;
+        rs_state.enable_multi_sample = false;
+        rs_state.depth_bias = 0;
 
         CGPUBlendStateDescriptor blend_state{};
-        blend_state.blend_modes[0]       = CGPU_BLEND_MODE_ADD;
-        blend_state.src_factors[0]       = CGPU_BLEND_CONST_SRC_ALPHA;
-        blend_state.dst_factors[0]       = CGPU_BLEND_CONST_ONE_MINUS_SRC_ALPHA;
+        blend_state.blend_modes[0] = CGPU_BLEND_MODE_ADD;
+        blend_state.src_factors[0] = CGPU_BLEND_CONST_SRC_ALPHA;
+        blend_state.dst_factors[0] = CGPU_BLEND_CONST_ONE_MINUS_SRC_ALPHA;
         blend_state.blend_alpha_modes[0] = CGPU_BLEND_MODE_ADD;
         blend_state.src_alpha_factors[0] = CGPU_BLEND_CONST_ONE;
         blend_state.dst_alpha_factors[0] = CGPU_BLEND_CONST_ONE_MINUS_SRC_ALPHA;
-        blend_state.masks[0]             = CGPU_COLOR_MASK_ALL;
-        blend_state.independent_blend    = false;
+        blend_state.masks[0] = CGPU_COLOR_MASK_ALL;
+        blend_state.independent_blend = false;
 
         CGPURenderPipelineDescriptor rp_desc{};
-        rp_desc.root_signature      = _root_sig;
-        rp_desc.prim_topology       = CGPU_PRIM_TOPO_TRI_LIST;
-        rp_desc.vertex_layout       = &vertex_layout;
-        rp_desc.vertex_shader       = &ppl_shaders[0];
-        rp_desc.fragment_shader     = &ppl_shaders[1];
+        rp_desc.root_signature = _root_sig;
+        rp_desc.prim_topology = CGPU_PRIM_TOPO_TRI_LIST;
+        rp_desc.vertex_layout = &vertex_layout;
+        rp_desc.vertex_shader = &ppl_shaders[0];
+        rp_desc.fragment_shader = &ppl_shaders[1];
         rp_desc.render_target_count = 1;
-        rp_desc.rasterizer_state    = &rs_state;
-        rp_desc.blend_state         = &blend_state;
-        rp_desc.color_formats       = &_backbuffer_format;
+        rp_desc.rasterizer_state = &rs_state;
+        rp_desc.blend_state = &blend_state;
+        rp_desc.color_formats = &_backbuffer_format;
 
         _render_pipeline = cgpu_create_render_pipeline(
             _gfx_queue->device,
-            &rp_desc
-        );
+            &rp_desc);
     }
 
     // cleanup shader library
@@ -639,15 +616,14 @@ void ImGuiRendererBackendRG::init(const ImGuiRendererBackendRGConfig& config)
     }
 
     // create bind table
-    const char8_t*           bind_table_names[1] = { u8"texture0" };
-    CGPUXBindTableDescriptor bind_table_desc     = {};
-    bind_table_desc.root_signature               = _root_sig;
-    bind_table_desc.names                        = bind_table_names;
-    bind_table_desc.names_count                  = 1;
-    _bind_table                                  = cgpux_create_bind_table(
+    const char8_t* bind_table_names[1] = { u8"texture0" };
+    CGPUXBindTableDescriptor bind_table_desc = {};
+    bind_table_desc.root_signature = _root_sig;
+    bind_table_desc.names = bind_table_names;
+    bind_table_desc.names_count = 1;
+    _bind_table = cgpux_create_bind_table(
         _render_graph->get_backend_device(),
-        &bind_table_desc
-    );
+        &bind_table_desc);
 }
 void ImGuiRendererBackendRG::shutdown()
 {
@@ -664,7 +640,7 @@ void ImGuiRendererBackendRG::shutdown()
     cgpu_free_render_pipeline(_render_pipeline);
     cgpu_free_root_signature(_root_sig);
     _render_pipeline = nullptr;
-    _root_sig        = nullptr;
+    _root_sig = nullptr;
 
     // destroy sampler
     if (_static_sampler)
@@ -674,9 +650,9 @@ void ImGuiRendererBackendRG::shutdown()
     }
 
     // reset config
-    _gfx_queue         = nullptr;
-    _render_graph      = nullptr;
-    _backbuffer_count  = 1;
+    _gfx_queue = nullptr;
+    _render_graph = nullptr;
+    _backbuffer_count = 1;
     _backbuffer_format = CGPU_FORMAT_B8G8R8A8_UNORM;
 }
 
@@ -696,7 +672,7 @@ void ImGuiRendererBackendRG::present_main_viewport()
 
     // do present
     CGPUQueuePresentDescriptor present_desc{};
-    present_desc.index     = rdata->backbuffer_index;
+    present_desc.index = rdata->backbuffer_index;
     present_desc.swapchain = rdata->swapchain;
     cgpu_queue_present(rdata->present_queue, &present_desc);
 }
@@ -715,7 +691,7 @@ void ImGuiRendererBackendRG::present_sub_viewports()
 
         // do present
         CGPUQueuePresentDescriptor present_desc{};
-        present_desc.index     = rdata->backbuffer_index;
+        present_desc.index = rdata->backbuffer_index;
         present_desc.swapchain = rdata->swapchain;
         cgpu_queue_present(rdata->present_queue, &present_desc);
     }
@@ -768,9 +744,9 @@ void ImGuiRendererBackendRG::acquire_next_frame(ImGuiViewport* vp)
     {
         cgpu_wait_fences(&rdata->fence, 1);
         CGPUAcquireNextDescriptor acquire{};
-        acquire.fence            = rdata->fence;
+        acquire.fence = rdata->fence;
         acquire.signal_semaphore = nullptr;
-        rdata->backbuffer_index  = cgpu_acquire_next_image(rdata->swapchain, &acquire);
+        rdata->backbuffer_index = cgpu_acquire_next_image(rdata->swapchain, &acquire);
     }
 }
 void ImGuiRendererBackendRG::begin_frame()
@@ -822,8 +798,7 @@ void ImGuiRendererBackendRG::create_window(ImGuiViewport* vp)
         { (float)w, (float)h },
         _backbuffer_format,
         _backbuffer_count,
-        false
-    );
+        false);
 }
 void ImGuiRendererBackendRG::destroy_window(ImGuiViewport* vp)
 {
@@ -849,8 +824,7 @@ void ImGuiRendererBackendRG::resize_window(ImGuiViewport* vp, ImVec2 size)
         size,
         _backbuffer_format,
         _backbuffer_count,
-        false
-    );
+        false);
 }
 void ImGuiRendererBackendRG::render_window(ImGuiViewport* vp, void*)
 {
@@ -866,8 +840,7 @@ void ImGuiRendererBackendRG::render_window(ImGuiViewport* vp, void*)
         _render_graph,
         _root_sig,
         _render_pipeline,
-        back_buffer
-    );
+        back_buffer);
 
     // present
     _render_graph->add_present_pass(
@@ -876,8 +849,7 @@ void ImGuiRendererBackendRG::render_window(ImGuiViewport* vp, void*)
             builder.set_name((const char8_t*)pass_name.c_str())
                 .swapchain(rdata->swapchain, rdata->backbuffer_index)
                 .texture(back_buffer, true);
-        }
-    );
+        });
 }
 
 // texture api
@@ -888,36 +860,36 @@ uint32_t ImGuiRendererBackendRG::backbuffer_count() const
 void ImGuiRendererBackendRG::create_texture(ImTextureData* tex_data)
 {
     // create user data
-    auto user_data            = SkrNew<ImGuiRendererBackendRGTextureData>();
+    auto user_data = SkrNew<ImGuiRendererBackendRGTextureData>();
     tex_data->BackendUserData = user_data;
 
     // create texture
     CGPUTextureDescriptor tex_desc = {};
-    tex_desc.name                  = u8"imgui_font";
-    tex_desc.width                 = static_cast<uint32_t>(tex_data->Width);
-    tex_desc.height                = static_cast<uint32_t>(tex_data->Height);
-    tex_desc.depth                 = 1;
-    tex_desc.descriptors           = CGPU_RESOURCE_TYPE_TEXTURE;
-    tex_desc.array_size            = 1;
-    tex_desc.flags                 = CGPU_TCF_NONE;
-    tex_desc.mip_levels            = 1;
-    tex_desc.format                = CGPU_FORMAT_R8G8B8A8_UNORM;
-    tex_desc.start_state           = CGPU_RESOURCE_STATE_COPY_DEST;
-    tex_desc.owner_queue           = _gfx_queue;
-    user_data->texture             = cgpu_create_texture(_gfx_queue->device, &tex_desc);
+    tex_desc.name = u8"imgui_font";
+    tex_desc.width = static_cast<uint32_t>(tex_data->Width);
+    tex_desc.height = static_cast<uint32_t>(tex_data->Height);
+    tex_desc.depth = 1;
+    tex_desc.descriptors = CGPU_RESOURCE_TYPE_TEXTURE;
+    tex_desc.array_size = 1;
+    tex_desc.flags = CGPU_TCF_NONE;
+    tex_desc.mip_levels = 1;
+    tex_desc.format = CGPU_FORMAT_R8G8B8A8_UNORM;
+    tex_desc.start_state = CGPU_RESOURCE_STATE_COPY_DEST;
+    tex_desc.owner_queue = _gfx_queue;
+    user_data->texture = cgpu_create_texture(_gfx_queue->device, &tex_desc);
 
     // create texture view
     CGPUTextureViewDescriptor view_desc{};
-    view_desc.texture           = user_data->texture;
-    view_desc.base_array_layer  = 0;
+    view_desc.texture = user_data->texture;
+    view_desc.base_array_layer = 0;
     view_desc.array_layer_count = 1;
-    view_desc.base_mip_level    = 0;
-    view_desc.mip_level_count   = 1;
-    view_desc.format            = user_data->texture->info->format;
-    view_desc.aspects           = CGPU_TVA_COLOR;
-    view_desc.usages            = CGPU_TVU_SRV;
-    view_desc.dims              = CGPU_TEX_DIMENSION_2D;
-    user_data->srv              = cgpu_create_texture_view(_gfx_queue->device, &view_desc);
+    view_desc.base_mip_level = 0;
+    view_desc.mip_level_count = 1;
+    view_desc.format = user_data->texture->info->format;
+    view_desc.aspects = CGPU_TVA_COLOR;
+    view_desc.usages = CGPU_TVU_SRV;
+    view_desc.dims = CGPU_TEX_DIMENSION_2D;
+    user_data->srv = cgpu_create_texture_view(_gfx_queue->device, &view_desc);
 
     tex_data->TexID = reinterpret_cast<ImTextureID>(user_data->srv);
 
@@ -934,9 +906,9 @@ void ImGuiRendererBackendRG::destroy_texture(ImTextureData* tex_data)
     SkrDelete(user_data);
 
     // reset data
-    tex_data->TexID           = 0;
+    tex_data->TexID = 0;
     tex_data->BackendUserData = nullptr;
-    tex_data->Status          = ImTextureStatus_Destroyed;
+    tex_data->Status = ImTextureStatus_Destroyed;
 }
 void ImGuiRendererBackendRG::update_texture(ImTextureData* tex_data)
 {
@@ -944,33 +916,30 @@ void ImGuiRendererBackendRG::update_texture(ImTextureData* tex_data)
     auto user_data = (ImGuiRendererBackendRGTextureData*)tex_data->BackendUserData;
 
     // create command buffer
-    CGPUCommandPoolDescriptor   cmd_pool_desc = {};
-    CGPUCommandBufferDescriptor cmd_desc      = {};
-    auto                        cpy_cmd_pool  = cgpu_create_command_pool(
+    CGPUCommandPoolDescriptor cmd_pool_desc = {};
+    CGPUCommandBufferDescriptor cmd_desc = {};
+    auto cpy_cmd_pool = cgpu_create_command_pool(
         _gfx_queue,
-        &cmd_pool_desc
-    );
+        &cmd_pool_desc);
     auto cpy_cmd = cgpu_create_command_buffer(
         cpy_cmd_pool,
-        &cmd_desc
-    );
+        &cmd_desc);
 
     // create upload buffer
     // TODO. use updata rect
     CGPUBufferDescriptor upload_buffer_desc{};
-    upload_buffer_desc.name         = u8"IMGUI_FontUploadBuffer";
-    upload_buffer_desc.flags        = CGPU_BCF_PERSISTENT_MAP_BIT;
-    upload_buffer_desc.descriptors  = CGPU_RESOURCE_TYPE_NONE;
+    upload_buffer_desc.name = u8"IMGUI_FontUploadBuffer";
+    upload_buffer_desc.flags = CGPU_BCF_PERSISTENT_MAP_BIT;
+    upload_buffer_desc.descriptors = CGPU_RESOURCE_TYPE_NONE;
     upload_buffer_desc.memory_usage = CGPU_MEM_USAGE_CPU_ONLY;
-    upload_buffer_desc.size         = tex_data->GetSizeInBytes();
-    CGPUBufferId tex_upload_buffer  = cgpu_create_buffer(_gfx_queue->device, &upload_buffer_desc);
+    upload_buffer_desc.size = tex_data->GetSizeInBytes();
+    CGPUBufferId tex_upload_buffer = cgpu_create_buffer(_gfx_queue->device, &upload_buffer_desc);
 
     // copy data
     memcpy(
         tex_upload_buffer->info->cpu_mapped_address,
         tex_data->Pixels,
-        tex_data->GetSizeInBytes()
-    );
+        tex_data->GetSizeInBytes());
 
     // combine commands
     cgpu_cmd_begin(cpy_cmd);
@@ -979,36 +948,36 @@ void ImGuiRendererBackendRG::update_texture(ImTextureData* tex_data)
         {
             // srv -> copy_dst
             CGPUTextureBarrier cpy_dst_barrier{};
-            cpy_dst_barrier.texture   = user_data->texture;
+            cpy_dst_barrier.texture = user_data->texture;
             cpy_dst_barrier.src_state = CGPU_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
             cpy_dst_barrier.dst_state = CGPU_RESOURCE_STATE_COPY_DEST;
             {
                 CGPUResourceBarrierDescriptor barrier_desc = {};
-                barrier_desc.texture_barriers              = &cpy_dst_barrier;
-                barrier_desc.texture_barriers_count        = 1;
+                barrier_desc.texture_barriers = &cpy_dst_barrier;
+                barrier_desc.texture_barriers_count = 1;
                 cgpu_cmd_resource_barrier(cpy_cmd, &barrier_desc);
             }
         }
 
         // copy
         CGPUBufferToTextureTransfer b2t{};
-        b2t.src                              = tex_upload_buffer;
-        b2t.src_offset                       = 0;
-        b2t.dst                              = user_data->texture;
-        b2t.dst_subresource.mip_level        = 0;
+        b2t.src = tex_upload_buffer;
+        b2t.src_offset = 0;
+        b2t.dst = user_data->texture;
+        b2t.dst_subresource.mip_level = 0;
         b2t.dst_subresource.base_array_layer = 0;
-        b2t.dst_subresource.layer_count      = 1;
+        b2t.dst_subresource.layer_count = 1;
         cgpu_cmd_transfer_buffer_to_texture(cpy_cmd, &b2t);
 
         // copy_dst -> srv
         CGPUTextureBarrier srv_barrier{};
-        srv_barrier.texture   = user_data->texture;
+        srv_barrier.texture = user_data->texture;
         srv_barrier.src_state = CGPU_RESOURCE_STATE_COPY_DEST;
         srv_barrier.dst_state = CGPU_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
         {
             CGPUResourceBarrierDescriptor barrier_desc = {};
-            barrier_desc.texture_barriers              = &srv_barrier;
-            barrier_desc.texture_barriers_count        = 1;
+            barrier_desc.texture_barriers = &srv_barrier;
+            barrier_desc.texture_barriers_count = 1;
             cgpu_cmd_resource_barrier(cpy_cmd, &barrier_desc);
         }
         user_data->first_update = false;
@@ -1017,7 +986,7 @@ void ImGuiRendererBackendRG::update_texture(ImTextureData* tex_data)
 
     // submit commands
     CGPUQueueSubmitDescriptor cpy_submit{};
-    cpy_submit.cmds       = &cpy_cmd;
+    cpy_submit.cmds = &cpy_cmd;
     cpy_submit.cmds_count = 1;
     cgpu_submit_queue(_gfx_queue, &cpy_submit);
 

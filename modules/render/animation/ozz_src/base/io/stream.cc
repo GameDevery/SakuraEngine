@@ -199,17 +199,17 @@ int MemoryStream::Seek(int _offset, Origin _origin)
     int origin;
     switch (_origin)
     {
-        case kCurrent:
-            origin = tell_;
-            break;
-        case kEnd:
-            origin = end_;
-            break;
-        case kSet:
-            origin = 0;
-            break;
-        default:
-            return -1;
+    case kCurrent:
+        origin = tell_;
+        break;
+    case kEnd:
+        origin = end_;
+        break;
+    case kSet:
+        origin = 0;
+        break;
+    default:
+        return -1;
     }
 
     // Exit if seeking before file begin or beyond max file size.
@@ -236,11 +236,13 @@ bool MemoryStream::Resize(size_t _size)
         // Resize to the next multiple of kBufferSizeIncrement, requires
         // kBufferSizeIncrement to be a power of 2.
         static_assert(
-        (MemoryStream::kBufferSizeIncrement & (kBufferSizeIncrement - 1)) == 0,
-        "kBufferSizeIncrement must be a power of 2");
+            (MemoryStream::kBufferSizeIncrement & (kBufferSizeIncrement - 1)) == 0,
+            "kBufferSizeIncrement must be a power of 2"
+        );
         const size_t new_size   = ozz::Align(_size, kBufferSizeIncrement);
         byte*        new_buffer = reinterpret_cast<byte*>(
-        ozz::memory::default_allocator()->Allocate(new_size, 16));
+            ozz::memory::default_allocator()->Allocate(new_size, 16)
+        );
         if (buffer_ != nullptr)
         {
             std::memcpy(new_buffer, buffer_, alloc_size_);

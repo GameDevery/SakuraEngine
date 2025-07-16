@@ -33,18 +33,23 @@
 #include "SkrAnim/ozz/base/platform.h"
 #include "SkrAnim/ozz/base/span.h"
 
-namespace ozz {
-namespace io {
+namespace ozz
+{
+namespace io
+{
 class IArchive;
 class OArchive;
-}  // namespace io
-namespace math {
+} // namespace io
+namespace math
+{
 struct SoaTransform;
 }
-namespace animation {
+namespace animation
+{
 
 // Forward declaration of SkeletonBuilder, used to instantiate a skeleton.
-namespace offline {
+namespace offline
+{
 class SkeletonBuilder;
 }
 
@@ -58,92 +63,100 @@ class SkeletonBuilder;
 // order. This is enough to traverse the whole joint hierarchy. See
 // IterateJointsDF() from skeleton_utils.h that implements a depth-first
 // traversal utility.
-class OZZ_ANIMATION_DLL Skeleton {
- public:
-  // Defines Skeleton constant values.
-  enum Constants {
+class OZZ_ANIMATION_DLL Skeleton
+{
+public:
+    // Defines Skeleton constant values.
+    enum Constants
+    {
 
-    // Defines the maximum number of joints.
-    // This is limited in order to control the number of bits required to store
-    // a joint index. Limiting the number of joints also helps handling worst
-    // size cases, like when it is required to allocate an array of joints on
-    // the stack.
-    kMaxJoints = 1024,
+        // Defines the maximum number of joints.
+        // This is limited in order to control the number of bits required to store
+        // a joint index. Limiting the number of joints also helps handling worst
+        // size cases, like when it is required to allocate an array of joints on
+        // the stack.
+        kMaxJoints = 1024,
 
-    // Defines the maximum number of SoA elements required to store the maximum
-    // number of joints.
-    kMaxSoAJoints = (kMaxJoints + 3) / 4,
+        // Defines the maximum number of SoA elements required to store the maximum
+        // number of joints.
+        kMaxSoAJoints = (kMaxJoints + 3) / 4,
 
-    // Defines the index of the parent of the root joint (which has no parent in
-    // fact).
-    kNoParent = -1,
-  };
+        // Defines the index of the parent of the root joint (which has no parent in
+        // fact).
+        kNoParent = -1,
+    };
 
-  // Builds a default skeleton.
-  Skeleton();
+    // Builds a default skeleton.
+    Skeleton() = default;
 
-  // Allow move.
-  Skeleton(Skeleton&&);
-  Skeleton& operator=(Skeleton&&);
+    // Allow move.
+    Skeleton(Skeleton&&);
+    Skeleton& operator=(Skeleton&&);
 
-  // Disables copy and assignation.
-  Skeleton(Skeleton const&) = delete;
-  Skeleton& operator=(Skeleton const&) = delete;
+    // Disables copy and assignation.
+    Skeleton(Skeleton const&)            = delete;
+    Skeleton& operator=(Skeleton const&) = delete;
 
-  // Declares the public non-virtual destructor.
-  ~Skeleton();
+    // Declares the public non-virtual destructor.
+    ~Skeleton();
 
-  // Returns the number of joints of *this skeleton.
-  int num_joints() const { return static_cast<int>(joint_parents_.size()); }
+    // Returns the number of joints of *this skeleton.
+    int num_joints() const { return static_cast<int>(joint_parents_.size()); }
 
-  // Returns the number of soa elements matching the number of joints of *this
-  // skeleton. This value is useful to allocate SoA runtime data structures.
-  int num_soa_joints() const { return (num_joints() + 3) / 4; }
+    // Returns the number of soa elements matching the number of joints of *this
+    // skeleton. This value is useful to allocate SoA runtime data structures.
+    int num_soa_joints() const { return (num_joints() + 3) / 4; }
 
-  // Returns joint's rest poses. Rest poses are stored in soa format.
-  span<const math::SoaTransform> joint_rest_poses() const {
-    return joint_rest_poses_;
-  }
+    // Returns joint's rest poses. Rest poses are stored in soa format.
+    span<const math::SoaTransform> joint_rest_poses() const
+    {
+        return joint_rest_poses_;
+    }
 
-  // Returns joint's parent indices range.
-  span<const int16_t> joint_parents() const { return joint_parents_; }
+    // Returns joint's parent indices range.
+    span<const int16_t> joint_parents() const { return joint_parents_; }
 
-  // Returns joint's name collection.
-  span<const char* const> joint_names() const {
-    return span<const char* const>(joint_names_.begin(), joint_names_.end());
-  }
+    // Returns joint's name collection.
+    span<const char* const> joint_names() const
+    {
+        return span<const char* const>(joint_names_.begin(), joint_names_.end());
+    }
 
-  // Serialization functions.
-  // Should not be called directly but through io::Archive << and >> operators.
-  void Save(ozz::io::OArchive& _archive) const;
-  void Load(ozz::io::IArchive& _archive, uint32_t _version);
+    // Serialization functions.
+    // Should not be called directly but through io::Archive << and >> operators.
+    void Save(ozz::io::OArchive& _archive) const;
+    void Load(ozz::io::IArchive& _archive, uint32_t _version);
 
- private:
-  // Internal allocation/deallocation function.
-  // Allocate returns the beginning of the contiguous buffer of names.
-  char* Allocate(size_t _char_count, size_t _num_joints);
-  void Deallocate();
+private:
+    // Internal allocation/deallocation function.
+    // Allocate returns the beginning of the contiguous buffer of names.
+    char* Allocate(size_t _char_count, size_t _num_joints);
+    void  Deallocate();
 
-  // SkeletonBuilder class is allowed to instantiate an Skeleton.
-  friend class offline::SkeletonBuilder;
+    // SkeletonBuilder class is allowed to instantiate an Skeleton.
+    friend class offline::SkeletonBuilder;
 
-  // Buffers below store joint informations in joing depth first order. Their
-  // size is equal to the number of joints of the skeleton.
+    // Allocation for the whole skeleton.
+    void* allocation_ = nullptr;
 
-  // Rest pose of every joint in local space.
-  span<math::SoaTransform> joint_rest_poses_;
+    // Buffers below store joint informations in joing depth first order. Their
+    // size is equal to the number of joints of the skeleton.
 
-  // Array of joint parent indexes.
-  span<int16_t> joint_parents_;
+    // Rest pose of every joint in local space.
+    span<math::SoaTransform> joint_rest_poses_;
 
-  // Stores the name of every joint in an array of c-strings.
-  span<char*> joint_names_;
+    // Array of joint parent indexes.
+    span<int16_t> joint_parents_;
+
+    // Stores the name of every joint in an array of c-strings.
+    span<char*> joint_names_;
 };
-}  // namespace animation
+} // namespace animation
 
-namespace io {
+namespace io
+{
 OZZ_IO_TYPE_VERSION(2, animation::Skeleton)
 OZZ_IO_TYPE_TAG("ozz-skeleton", animation::Skeleton)
-}  // namespace io
-}  // namespace ozz
-#endif  // OZZ_OZZ_ANIMATION_RUNTIME_SKELETON_H_
+} // namespace io
+} // namespace ozz
+#endif // OZZ_OZZ_ANIMATION_RUNTIME_SKELETON_H_

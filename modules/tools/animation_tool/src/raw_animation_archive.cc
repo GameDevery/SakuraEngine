@@ -29,39 +29,47 @@
 
 #include "SkrAnim/ozz/base/io/archive.h"
 #include "SkrAnim/ozz/base/maths/math_archive.h"
-
 #include "SkrAnim/ozz/base/containers/string_archive.h"
 #include "SkrAnim/ozz/base/containers/vector_archive.h"
 #include "SkrAnim/ozz/base/log.h"
 
-namespace ozz {
-namespace io {
+namespace ozz
+{
+namespace io
+{
 
 void Extern<animation::offline::RawAnimation>::Save(
     OArchive& _archive, const animation::offline::RawAnimation* _animations,
-    size_t _count) {
-  for (size_t i = 0; i < _count; ++i) {
-    const animation::offline::RawAnimation& animation = _animations[i];
-    _archive << animation.duration;
-    _archive << animation.tracks;
-    _archive << animation.name;
-  }
+    size_t _count
+)
+{
+    for (size_t i = 0; i < _count; ++i)
+    {
+        const animation::offline::RawAnimation& animation = _animations[i];
+        _archive << animation.duration;
+        _archive << animation.tracks;
+        _archive << animation.name;
+    }
 }
 
 void Extern<animation::offline::RawAnimation>::Load(
     IArchive& _archive, animation::offline::RawAnimation* _animations,
-    size_t _count, uint32_t _version) {
-  if (_version < 3) {
-    log::Err() << "Unsupported RawAnimation version " << _version << "."
-               << std::endl;
-    return;
-  }
-  for (size_t i = 0; i < _count; ++i) {
-    animation::offline::RawAnimation& animation = _animations[i];
-    _archive >> animation.duration;
-    _archive >> animation.tracks;
-    _archive >> animation.name;
-  }
+    size_t _count, uint32_t _version
+)
+{
+    if (_version < 3)
+    {
+        log::Err() << "Unsupported RawAnimation version " << _version << "."
+                   << std::endl;
+        return;
+    }
+    for (size_t i = 0; i < _count; ++i)
+    {
+        animation::offline::RawAnimation& animation = _animations[i];
+        _archive >> animation.duration;
+        _archive >> animation.tracks;
+        _archive >> animation.name;
+    }
 }
 
 // RawAnimation::*Keys' version can be declared locally as it will be saved from
@@ -71,103 +79,106 @@ OZZ_IO_TYPE_VERSION(1, animation::offline::RawAnimation::JointTrack)
 
 template <>
 struct Extern<animation::offline::RawAnimation::JointTrack> {
-  static void Save(OArchive& _archive,
-                   const animation::offline::RawAnimation::JointTrack* _tracks,
-                   size_t _count) {
-    for (size_t i = 0; i < _count; ++i) {
-      const animation::offline::RawAnimation::JointTrack& track = _tracks[i];
-      _archive << track.translations;
-      _archive << track.rotations;
-      _archive << track.scales;
+    static void Save(OArchive& _archive, const animation::offline::RawAnimation::JointTrack* _tracks, size_t _count)
+    {
+        for (size_t i = 0; i < _count; ++i)
+        {
+            const animation::offline::RawAnimation::JointTrack& track = _tracks[i];
+            _archive << track.translations;
+            _archive << track.rotations;
+            _archive << track.scales;
+        }
     }
-  }
-  static void Load(IArchive& _archive,
-                   animation::offline::RawAnimation::JointTrack* _tracks,
-                   size_t _count, uint32_t _version) {
-    (void)_version;
-    for (size_t i = 0; i < _count; ++i) {
-      animation::offline::RawAnimation::JointTrack& track = _tracks[i];
-      _archive >> track.translations;
-      _archive >> track.rotations;
-      _archive >> track.scales;
+    static void Load(IArchive& _archive, animation::offline::RawAnimation::JointTrack* _tracks, size_t _count, uint32_t _version)
+    {
+        (void)_version;
+        for (size_t i = 0; i < _count; ++i)
+        {
+            animation::offline::RawAnimation::JointTrack& track = _tracks[i];
+            _archive >> track.translations;
+            _archive >> track.rotations;
+            _archive >> track.scales;
+        }
     }
-  }
 };
 
 OZZ_IO_TYPE_VERSION(1, animation::offline::RawAnimation::TranslationKey)
 
 template <>
 struct Extern<animation::offline::RawAnimation::TranslationKey> {
-  static void Save(
-      OArchive& _archive,
-      const animation::offline::RawAnimation::TranslationKey* _keys,
-      size_t _count) {
-    for (size_t i = 0; i < _count; ++i) {
-      const animation::offline::RawAnimation::TranslationKey& key = _keys[i];
-      _archive << key.time;
-      _archive << key.value;
+    static void Save(
+        OArchive&                                               _archive,
+        const animation::offline::RawAnimation::TranslationKey* _keys,
+        size_t                                                  _count
+    )
+    {
+        for (size_t i = 0; i < _count; ++i)
+        {
+            const animation::offline::RawAnimation::TranslationKey& key = _keys[i];
+            _archive << key.time;
+            _archive << key.value;
+        }
     }
-  }
-  static void Load(IArchive& _archive,
-                   animation::offline::RawAnimation::TranslationKey* _keys,
-                   size_t _count, uint32_t _version) {
-    (void)_version;
-    for (size_t i = 0; i < _count; ++i) {
-      animation::offline::RawAnimation::TranslationKey& key = _keys[i];
-      _archive >> key.time;
-      _archive >> key.value;
+    static void Load(IArchive& _archive, animation::offline::RawAnimation::TranslationKey* _keys, size_t _count, uint32_t _version)
+    {
+        (void)_version;
+        for (size_t i = 0; i < _count; ++i)
+        {
+            animation::offline::RawAnimation::TranslationKey& key = _keys[i];
+            _archive >> key.time;
+            _archive >> key.value;
+        }
     }
-  }
 };
 
 OZZ_IO_TYPE_VERSION(1, animation::offline::RawAnimation::RotationKey)
 
 template <>
 struct Extern<animation::offline::RawAnimation::RotationKey> {
-  static void Save(OArchive& _archive,
-                   const animation::offline::RawAnimation::RotationKey* _keys,
-                   size_t _count) {
-    for (size_t i = 0; i < _count; ++i) {
-      const animation::offline::RawAnimation::RotationKey& key = _keys[i];
-      _archive << key.time;
-      _archive << key.value;
+    static void Save(OArchive& _archive, const animation::offline::RawAnimation::RotationKey* _keys, size_t _count)
+    {
+        for (size_t i = 0; i < _count; ++i)
+        {
+            const animation::offline::RawAnimation::RotationKey& key = _keys[i];
+            _archive << key.time;
+            _archive << key.value;
+        }
     }
-  }
-  static void Load(IArchive& _archive,
-                   animation::offline::RawAnimation::RotationKey* _keys,
-                   size_t _count, uint32_t _version) {
-    (void)_version;
-    for (size_t i = 0; i < _count; ++i) {
-      animation::offline::RawAnimation::RotationKey& key = _keys[i];
-      _archive >> key.time;
-      _archive >> key.value;
+    static void Load(IArchive& _archive, animation::offline::RawAnimation::RotationKey* _keys, size_t _count, uint32_t _version)
+    {
+        (void)_version;
+        for (size_t i = 0; i < _count; ++i)
+        {
+            animation::offline::RawAnimation::RotationKey& key = _keys[i];
+            _archive >> key.time;
+            _archive >> key.value;
+        }
     }
-  }
 };
 
 OZZ_IO_TYPE_VERSION(1, animation::offline::RawAnimation::ScaleKey)
 
 template <>
 struct Extern<animation::offline::RawAnimation::ScaleKey> {
-  static void Save(OArchive& _archive,
-                   const animation::offline::RawAnimation::ScaleKey* _keys,
-                   size_t _count) {
-    for (size_t i = 0; i < _count; ++i) {
-      const animation::offline::RawAnimation::ScaleKey& key = _keys[i];
-      _archive << key.time;
-      _archive << key.value;
+    static void Save(OArchive& _archive, const animation::offline::RawAnimation::ScaleKey* _keys, size_t _count)
+    {
+        for (size_t i = 0; i < _count; ++i)
+        {
+            const animation::offline::RawAnimation::ScaleKey& key = _keys[i];
+            _archive << key.time;
+            _archive << key.value;
+        }
     }
-  }
-  static void Load(IArchive& _archive,
-                   animation::offline::RawAnimation::ScaleKey* _keys,
-                   size_t _count, uint32_t _version) {
-    (void)_version;
-    for (size_t i = 0; i < _count; ++i) {
-      animation::offline::RawAnimation::ScaleKey& key = _keys[i];
-      _archive >> key.time;
-      _archive >> key.value;
+    static void Load(IArchive& _archive, animation::offline::RawAnimation::ScaleKey* _keys, size_t _count, uint32_t _version)
+    {
+        (void)_version;
+        for (size_t i = 0; i < _count; ++i)
+        {
+            animation::offline::RawAnimation::ScaleKey& key = _keys[i];
+            _archive >> key.time;
+            _archive >> key.value;
+        }
     }
-  }
 };
-}  // namespace io
-}  // namespace ozz
+} // namespace io
+} // namespace ozz

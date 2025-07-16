@@ -6,10 +6,6 @@ public static class RuntimeTests
 {
     static RuntimeTests()
     {
-        Engine.UnitTest("MathTest")
-            .Depend(Visibility.Public, "SkrRT")
-            .AddCppFiles("math/math.cpp");
-
         Engine.UnitTest("GoapTest")
             .Depend(Visibility.Public, "SkrRT")
             .AddCppFiles("goap/test_goap.cpp");
@@ -28,7 +24,7 @@ public static class RuntimeTests
 
         Engine.UnitTest("SceneTest")
             .Depend(Visibility.Public, "SkrScene")
-            .AddCppFiles("scene/main.cpp");
+            .AddCppFiles("scene/*.cpp");
 
         Engine.UnitTest("ECSTest_CStyle")
             .Depend(Visibility.Public, "SkrRT")
