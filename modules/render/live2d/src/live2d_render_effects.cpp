@@ -1,22 +1,19 @@
 #include "SkrProfile/profile.h"
-#include "rtm/matrix4x4f.h"
 #include "SkrBase/misc/make_zeroed.hpp"
 #include "SkrCore/time.h"
-#include "SkrCore/memory/memory.h"
 #include "SkrCore/platform/vfs.h"
 #include "SkrRT/ecs/type_builder.hpp"
-#include "SkrRT/ecs/storage.hpp"
-#include "SkrContainers/map.hpp"
-#include "SkrRenderer/primitive_draw.h"
-#include "SkrRenderer/skr_renderer.h"
-#include "SkrRenderer/render_effect.h"
-#include "SkrLive2D/l2d_render_effect.h"
+#include "SkrRenderer/render_device.h"
+#include "SkrLive2D/l2d_renderer.hpp"
 #include "SkrLive2D/l2d_render_model.h"
+#include "SkrLive2D/skr_live2d.h"
 
-#include "Framework/Math/CubismMatrix44.hpp"
 #include "live2d_model_pass.hpp"
 #include "live2d_mask_pass.hpp"
+
+#include "Framework/Math/CubismMatrix44.hpp"
 #include "live2d_clipping.hpp"
+#include "live2d_helpers.hpp"
 
 static struct RegisterComponentskr_live2d_render_model_comp_tHelper {
     RegisterComponentskr_live2d_render_model_comp_tHelper()
@@ -45,49 +42,45 @@ SKR_LIVE2D_API sugoi_type_index_t sugoi_id_of<skr_live2d_render_model_comp_t>::g
     return _RegisterComponentskr_live2d_render_model_comp_tHelper.type;
 }
 
-typedef struct live2d_effect_identity_t {
-    sugoi_entity_t game_entity;
-} live2d_effect_identity_t;
-skr_render_effect_name_t live2d_effect_name = u8"Live2DEffect";
-struct RenderEffectLive2D : public IRenderEffectProcessor {
+void skr_live2d_render_view_reset(live2d_render_view_t* view);
+void skr_live2d_render_view_set_screen(live2d_render_view_t* view, uint32_t width, uint32_t height);
+void skr_live2d_render_view_transform_screen(live2d_render_view_t* view, float deviceX, float deviceY);
+void skr_live2d_render_view_transform_view(live2d_render_view_t* view, float deviceX, float deviceY);
+
+struct Live2DRendererImpl : public skr::Live2DRenderer
+{
+    uint32_t last_ms = 0;
+    const float kMotionFramesPerSecond = 240.0f;
+    const bool kUseHighPrecisionMask = false;
+
+    skr::Map<skr_live2d_render_model_id, skr::span<const uint32_t>> sorted_drawable_list;
+    skr::Map<skr_live2d_render_model_id, skr::InlineVector<uint32_t, 4>> sorted_mask_drawable_lists;
+    skr::Map<skr_live2d_render_model_id, STimer> motion_timers;
+    skr::Vector<skr_primitive_draw_t> model_drawcalls;
+    skr::Vector<skr_primitive_draw_t> mask_drawcalls;
+
     skr_vfs_t* resource_vfs = nullptr;
     const char8_t* push_constants_name = u8"push_constants";
-    // this is a view object, later we will expose it to the world
     live2d_render_view_t view_;
 
     sugoi_query_t* effect_query = nullptr;
     sugoi::TypeSetBuilder type_builder;
     sugoi_type_index_t identity_type = {};
+    double sample_count = 1.0;
+    uint64_t frame_count = 0;
+    uint64_t async_slot_index = 0;
 
-    void initialize(SRendererId renderer, sugoi_storage_t* storage)
+    void initialize(skr::RendererDevice* render_device, sugoi_storage_t* storage)
     {
-        // make identity component type
-        {
-            auto guid = make_zeroed<skr_guid_t>();
-            sugoi_make_guid(&guid);
-            auto desc = make_zeroed<sugoi_type_description_t>();
-            desc.name = u8"live2d_identity";
-            desc.size = sizeof(live2d_effect_identity_t);
-            desc.guid = guid;
-            desc.alignment = alignof(live2d_effect_identity_t);
-            identity_type = sugoiT_register_type(&desc);
-        }
-        type_builder
-            .with(identity_type)
-            .with<skr_live2d_render_model_comp_t>();
-        effect_query = storage->new_query()
-                           .ReadAll(identity_type)
-                           .commit()
-                           .value();
         // prepare render resources
         prepare_pipeline_settings();
-        prepare_pipeline(renderer);
-        prepare_mask_pipeline(renderer);
+        prepare_pipeline(render_device);
+        prepare_mask_pipeline(render_device);
         // prepare_geometry_resources(renderer);
         skr_live2d_render_view_reset(&view_);
     }
 
-    void finalize(SRendererId renderer)
+    void finalize(skr::RendererDevice* renderer)
     {
         auto sweepFunction = [&](sugoi_chunk_view_t* r_cv) {
             auto meshes = sugoi::get_owned_rw<skr_live2d_render_model_comp_t>(r_cv);
@@ -110,79 +103,36 @@ struct RenderEffectLive2D : public IRenderEffectProcessor {
         free_mask_pipeline(renderer);
     }
 
-    void on_register(SRendererId, sugoi_storage_t*) override
+    void draw(skr::render_graph::RenderGraph* render_graph) override
     {
+        Live2DRenderPass::create_frame_resources(render_graph);
+        Live2DMaskPass::create_frame_resources(render_graph);
+
+        Live2DRenderPass::execute(render_graph, model_drawcalls);
+        Live2DMaskPass::execute(render_graph, mask_drawcalls);
     }
 
-    void on_unregister(SRendererId, sugoi_storage_t*) override
+    void produce_drawcalls(sugoi_storage_t* storage, skr::render_graph::RenderGraph* render_graph) override
     {
-    }
-
-    void get_type_set(const sugoi_chunk_view_t* cv, sugoi_type_set_t* set) override
-    {
-        *set = type_builder.build();
-    }
-
-    sugoi_type_index_t get_identity_type() override
-    {
-        return identity_type;
-    }
-
-    void initialize_data(SRendererId renderer, sugoi_storage_t* storage, sugoi_chunk_view_t* game_cv, sugoi_chunk_view_t* render_cv) override
-    {
-    }
-
-    skr::Map<skr_live2d_render_model_id, skr::span<const uint32_t>> sorted_drawable_list;
-    skr::Map<skr_live2d_render_model_id, skr::InlineVector<uint32_t, 4>> sorted_mask_drawable_lists;
-    const float kMotionFramesPerSecond = 240.0f;
-    skr::Map<skr_live2d_render_model_id, STimer> motion_timers;
-    uint32_t last_ms = 0;
-    const bool use_high_precision_mask = false;
-
-    skr::stl_vector<skr_primitive_draw_t> model_drawcalls;
-    skr_primitive_draw_list_view_t model_draw_list;
-    inline CGPURenderPipelineId get_pipeline() const
-    {
-        switch ((uint32_t)sample_count)
+        frame_count++;
+        async_slot_index = frame_count % RG_MAX_FRAME_IN_FLIGHT;
         {
-        case 1:
-            return pipeline;
-        case 2:
-            return msaa2_pipeline;
-        case 4:
-            return msaa4_pipeline;
-        case 8:
-            return msaa8_pipeline;
-        default:
-            return pipeline;
+            SkrZoneScopedN("ProduceMaskDrawPackets");
+            produce_mask_drawcall(storage, render_graph);
         }
-        return pipeline;
-    }
-    inline CGPURenderPipelineId get_mask_pipeline() const
-    {
-        switch ((uint32_t)sample_count)
         {
-        case 1:
-            return mask_pipeline;
-        case 2:
-            return msaa2_mask_pipeline;
-        case 4:
-            return msaa4_mask_pipeline;
-        case 8:
-            return msaa8_mask_pipeline;
-        default:
-            return mask_pipeline;
+            SkrZoneScopedN("ProduceModelDrawPackets");
+            produce_model_drawcall(storage, render_graph);
         }
-        return mask_pipeline;
     }
 
-    void produce_model_drawcall(const skr_primitive_draw_context_t* context, sugoi_storage_t* storage)
+    void produce_model_drawcall(sugoi_storage_t* storage, skr::render_graph::RenderGraph* render_graph)
     {
         CubismMatrix44 projection;
         // TODO: Correct Projection
         projection.Scale(static_cast<float>(100.f) / static_cast<float>(100.f), 1.0f);
         // TODO: View Matrix
-        model_drawcalls.resize(0);
+        model_drawcalls.resize_zeroed(0);
         auto counterF = [&](sugoi_chunk_view_t* r_cv) {
             auto models = sugoi::get_owned_rw<skr_live2d_render_model_comp_t>(r_cv);
             const auto proper_pipeline = get_pipeline();
@@ -232,10 +182,10 @@ struct RenderEffectLive2D : public IRenderEffectProcessor {
                             push_const.base_color = { 1.f, 1.f, 1.f, push_const.multiply_color.w };
 
                             auto visibility = skr_live2d_model_get_drawable_is_visible(render_model->model_resource_id, drawable);
-                            auto& drawcall = model_drawcalls.emplace_back();
+                            auto& drawcall = model_drawcalls.emplace().ref();
                             if (!visibility)
                             {
-                                drawcall.desperated = true;
+                                drawcall.deprecated = true;
                                 drawcall.pipeline = proper_pipeline;
                             }
                             else
@@ -259,14 +209,12 @@ struct RenderEffectLive2D : public IRenderEffectProcessor {
         sugoiQ_get_views(effect_query, SUGOI_LAMBDA(counterF));
     }
 
-    skr::stl_vector<skr_primitive_draw_t> mask_drawcalls;
-    skr_primitive_draw_list_view_t mask_draw_list;
-    void produce_mask_drawcall(const skr_primitive_draw_context_t* context, sugoi_storage_t* storage)
+    void produce_mask_drawcall(sugoi_storage_t* storage, skr::render_graph::RenderGraph* render_graph)
     {
         {
             SkrZoneScopedN("FrameCleanUp");
 
-            mask_drawcalls.resize(0);
+            mask_drawcalls.resize_zeroed(0);
             sorted_mask_drawable_lists.clear();
         }
         auto updateMaskF = [&](sugoi_chunk_view_t* r_cv) {
@@ -285,7 +233,7 @@ struct RenderEffectLive2D : public IRenderEffectProcessor {
                     mask_push_constants.find(render_model).value().resize(0);
 
                     // TODO: move this to (some manager?) other than update morph/phys in a render pass
-                    updateModelMotion(context->render_graph, render_model);
+                    updateModelMotion(render_graph, render_model);
                     updateTexture(render_model);
                     // record constant parameters
                     if (auto clipping_manager = render_model->clipping_manager)
@@ -296,7 +244,7 @@ struct RenderEffectLive2D : public IRenderEffectProcessor {
                         for (uint32_t j = 0; j < mask_list->GetSize(); j++)
                         {
                             CubismClippingContext* clipping_context = (clipping_manager != NULL) ? (*mask_list)[j] : NULL;
-                            if (clipping_context && !use_high_precision_mask && clipping_context->_isUsing)
+                            if (clipping_context && !kUseHighPrecisionMask && clipping_context->_isUsing)
                             {
                                 const csmInt32 clipDrawCount = clipping_context->_clippingIdCount;
                                 for (csmInt32 ctx = 0; ctx < clipDrawCount; ctx++)
@@ -316,7 +264,7 @@ struct RenderEffectLive2D : public IRenderEffectProcessor {
                         for (uint32_t j = 0; j < mask_list->GetSize(); j++)
                         {
                             CubismClippingContext* clipping_context = (clipping_manager != NULL) ? (*mask_list)[j] : NULL;
-                            if (clipping_context && !use_high_precision_mask && clipping_context->_isUsing)
+                            if (clipping_context && !kUseHighPrecisionMask && clipping_context->_isUsing)
                             {
                                 const csmInt32 clipDrawCount = clipping_context->_clippingIdCount;
                                 for (csmInt32 ctx = 0; ctx < clipDrawCount; ctx++)
@@ -347,10 +295,10 @@ struct RenderEffectLive2D : public IRenderEffectProcessor {
                                     const auto& cmds = render_model->primitive_commands;
                                     const auto& cmd = cmds[clipDrawIndex];
                                     auto visibility = skr_live2d_model_get_drawable_is_visible(render_model->model_resource_id, clipDrawIndex);
-                                    auto& drawcall = mask_drawcalls.emplace_back();
+                                    auto& drawcall = mask_drawcalls.emplace().ref();
                                     if (!visibility)
                                     {
-                                        drawcall.desperated = true;
+                                        drawcall.deprecated = true;
                                         drawcall.pipeline = proper_pipeline;
                                     }
                                     else
@@ -376,39 +324,39 @@ struct RenderEffectLive2D : public IRenderEffectProcessor {
         sugoiQ_get_views(effect_query, SUGOI_LAMBDA(updateMaskF));
     }
 
-    double sample_count = 1.0;
-    uint64_t frame_count = 0;
-    uint64_t async_slot_index = 0;
-    skr_primitive_draw_packet_t produce_draw_packets(const skr_primitive_draw_context_t* context) override
+    inline CGPURenderPipelineId get_pipeline() const
     {
-        auto pass = context->pass;
-        auto storage = context->storage;
-
-        frame_count++;
-        async_slot_index = frame_count % RG_MAX_FRAME_IN_FLIGHT;
-
-        skr_primitive_draw_packet_t packet = {};
-        if (strcmp((const char*)pass->identity(), (const char*)live2d_mask_pass_name) == 0)
+        switch ((uint32_t)sample_count)
         {
-            SkrZoneScopedN("ProduceMaskDrawPackets");
-
-            produce_mask_drawcall(context, storage);
-            mask_draw_list.drawcalls = mask_drawcalls.data();
-            mask_draw_list.count = (uint32_t)mask_drawcalls.size();
-            packet.count = 1;
-            packet.lists = &mask_draw_list;
+        case 1:
+            return pipeline;
+        case 2:
+            return msaa2_pipeline;
+        case 4:
+            return msaa4_pipeline;
+        case 8:
+            return msaa8_pipeline;
+        default:
+            return pipeline;
         }
-        if (strcmp((const char*)pass->identity(), (const char*)live2d_pass_name) == 0)
+        return pipeline;
+    }
+    inline CGPURenderPipelineId get_mask_pipeline() const
+    {
+        switch ((uint32_t)sample_count)
         {
-            SkrZoneScopedN("ProduceModelDrawPackets");
-
-            produce_model_drawcall(context, storage);
-            model_draw_list.drawcalls = model_drawcalls.data();
-            model_draw_list.count = (uint32_t)model_drawcalls.size();
-            packet.count = 1;
-            packet.lists = &model_draw_list;
+        case 1:
+            return mask_pipeline;
+        case 2:
+            return msaa2_mask_pipeline;
+        case 4:
+            return msaa4_mask_pipeline;
+        case 8:
+            return msaa8_mask_pipeline;
+        default:
+            return mask_pipeline;
         }
-        return packet;
+        return mask_pipeline;
     }
 
 protected:
@@ -588,18 +536,18 @@ protected:
             }
             if (auto clipping_manager = render_model->clipping_manager)
             {
-                clipping_manager->SetupClippingContext(*model_resource->model->GetModel(), use_high_precision_mask);
+                clipping_manager->SetupClippingContext(*model_resource->model->GetModel(), kUseHighPrecisionMask);
             }
         }
     }
 
     void prepare_pipeline_settings();
-    void prepare_pipeline(SRendererId renderer);
-    void prepare_mask_pipeline(SRendererId renderer);
-    void free_pipeline(SRendererId renderer);
-    void free_mask_pipeline(SRendererId renderer);
-    uint32_t* read_shader_bytes(SRendererId renderer, const char8_t* name, uint32_t* out_length);
-    CGPUShaderLibraryId create_shader_library(SRendererId renderer, const char8_t* name, ECGPUShaderStage stage);
+    void prepare_pipeline(skr::RendererDevice* renderer);
+    void prepare_mask_pipeline(skr::RendererDevice* renderer);
+    void free_pipeline(skr::RendererDevice* renderer);
+    void free_mask_pipeline(skr::RendererDevice* renderer);
+    uint32_t* read_shader_bytes(skr::RendererDevice* renderer, const char8_t* name, uint32_t* out_length);
+    CGPUShaderLibraryId create_shader_library(skr::RendererDevice* renderer, const char8_t* name, ECGPUShaderStage stage);
 
     struct PushConstants {
         rtm::matrix4x4f projection_matrix;
@@ -629,13 +577,10 @@ protected:
     CGPURenderPipelineId msaa4_mask_pipeline = nullptr;
     CGPURenderPipelineId msaa8_mask_pipeline = nullptr;
 };
-MaskPassLive2D* live2d_mask_pass = SkrNew<MaskPassLive2D>();
-RenderPassLive2D* live2d_pass = SkrNew<RenderPassLive2D>();
-RenderEffectLive2D* live2d_effect = SkrNew<RenderEffectLive2D>();
+Live2DRendererImpl* live2d_effect = SkrNew<Live2DRendererImpl>();
 
-uint32_t* RenderEffectLive2D::read_shader_bytes(SRendererId renderer, const char8_t* name, uint32_t* out_length)
+uint32_t* Live2DRendererImpl::read_shader_bytes(skr::RendererDevice* render_device, const char8_t* name, uint32_t* out_length)
 {
-    const auto render_device = renderer->get_render_device();
     const auto cgpu_device = render_device->get_cgpu_device();
     const auto backend = cgpu_device->adapter->instance->backend;
     skr::String shader_name = name;
@@ -649,12 +594,11 @@ uint32_t* RenderEffectLive2D::read_shader_bytes(SRendererId renderer, const char
     return shader_bytes;
 }
 
-CGPUShaderLibraryId RenderEffectLive2D::create_shader_library(SRendererId renderer, const char8_t* name, ECGPUShaderStage stage)
+CGPUShaderLibraryId Live2DRendererImpl::create_shader_library(skr::RendererDevice* render_device, const char8_t* name, ECGPUShaderStage stage)
 {
-    const auto render_device = renderer->get_render_device();
     const auto cgpu_device = render_device->get_cgpu_device();
     uint32_t shader_length = 0;
-    uint32_t* shader_bytes = read_shader_bytes(renderer, name, &shader_length);
+    uint32_t* shader_bytes = read_shader_bytes(render_device, name, &shader_length);
     CGPUShaderLibraryDescriptor shader_desc = {};
     shader_desc.name = name;
     shader_desc.code = shader_bytes;
@@ -664,7 +608,7 @@ CGPUShaderLibraryId RenderEffectLive2D::create_shader_library(SRendererId render
     return shader;
 }
 
-void RenderEffectLive2D::prepare_pipeline_settings()
+void Live2DRendererImpl::prepare_pipeline_settings()
 {
     vertex_layout.attributes[0] = { u8"pos", 1, CGPU_FORMAT_R32G32_SFLOAT, 0, 0, sizeof(skr_float2_t), CGPU_INPUT_RATE_VERTEX };
     vertex_layout.attributes[1] = { u8"uv", 1, CGPU_FORMAT_R32G32_SFLOAT, 1, 0, sizeof(skr_float2_t), CGPU_INPUT_RATE_VERTEX };
@@ -683,13 +627,12 @@ void RenderEffectLive2D::prepare_pipeline_settings()
     depth_state.depth_test = false;
 }
 
-void RenderEffectLive2D::prepare_pipeline(SRendererId renderer)
+void Live2DRendererImpl::prepare_pipeline(skr::RendererDevice* render_device)
 {
-    const auto render_device = renderer->get_render_device();
     const auto cgpu_device = render_device->get_cgpu_device();
 
-    CGPUShaderLibraryId vs = create_shader_library(renderer, u8"shaders/live2d.vertex_shader", CGPU_SHADER_STAGE_VERT);
-    CGPUShaderLibraryId ps = create_shader_library(renderer, u8"shaders/live2d.model_fs", CGPU_SHADER_STAGE_FRAG);
+    CGPUShaderLibraryId vs = create_shader_library(render_device, u8"shaders/live2d.vertex_shader", CGPU_SHADER_STAGE_VERT);
+    CGPUShaderLibraryId ps = create_shader_library(render_device, u8"shaders/live2d.model_fs", CGPU_SHADER_STAGE_FRAG);
 
     CGPUShaderEntryDescriptor ppl_shaders[2];
     CGPUShaderEntryDescriptor& ppl_vs = ppl_shaders[0];
@@ -757,7 +700,7 @@ void RenderEffectLive2D::prepare_pipeline(SRendererId renderer)
     cgpu_free_shader_library(ps);
 }
 
-void RenderEffectLive2D::free_pipeline(SRendererId renderer)
+void Live2DRendererImpl::free_pipeline(skr::RendererDevice* renderer)
 {
     auto sig_to_free = pipeline->root_signature;
     cgpu_free_render_pipeline(pipeline);
@@ -767,13 +710,12 @@ void RenderEffectLive2D::free_pipeline(SRendererId renderer)
     cgpu_free_root_signature(sig_to_free);
 }
 
-void RenderEffectLive2D::prepare_mask_pipeline(SRendererId renderer)
+void Live2DRendererImpl::prepare_mask_pipeline(skr::RendererDevice* render_device)
 {
-    const auto render_device = renderer->get_render_device();
     const auto cgpu_device = render_device->get_cgpu_device();
 
-    CGPUShaderLibraryId vs = create_shader_library(renderer, u8"shaders/live2d.vertex_shader", CGPU_SHADER_STAGE_VERT);
-    CGPUShaderLibraryId ps = create_shader_library(renderer, u8"shaders/live2d.mask_fs", CGPU_SHADER_STAGE_FRAG);
+    CGPUShaderLibraryId vs = create_shader_library(render_device, u8"shaders/live2d.vertex_shader", CGPU_SHADER_STAGE_VERT);
+    CGPUShaderLibraryId ps = create_shader_library(render_device, u8"shaders/live2d.mask_fs", CGPU_SHADER_STAGE_FRAG);
 
     CGPUShaderEntryDescriptor ppl_shaders[2];
     CGPUShaderEntryDescriptor& ppl_vs = ppl_shaders[0];
@@ -841,7 +783,7 @@ void RenderEffectLive2D::prepare_mask_pipeline(SRendererId renderer)
     cgpu_free_shader_library(ps);
 }
 
-void RenderEffectLive2D::free_mask_pipeline(SRendererId renderer)
+void Live2DRendererImpl::free_mask_pipeline(skr::RendererDevice* renderer)
 {
     auto sig_to_free = mask_pipeline->root_signature;
     cgpu_free_render_pipeline(mask_pipeline);
@@ -851,27 +793,61 @@ void RenderEffectLive2D::free_mask_pipeline(SRendererId renderer)
     cgpu_free_root_signature(sig_to_free);
 }
 
-void skr_live2d_initialize_render_effects(live2d_renderer_t* renderer, live2d_render_graph_t* render_graph, struct skr_vfs_t* resource_vfs)
+void skr_live2d_render_view_reset(live2d_render_view_t* view)
 {
-    live2d_effect->resource_vfs = resource_vfs;
-    auto storage = renderer->get_sugoi_storage();
-    live2d_effect->initialize(renderer, storage);
-    skr_renderer_register_render_effect(renderer, live2d_effect_name, live2d_effect);
+    view->clear_color = { 1.f, 1.f, 1.f, 0.f };
+    new (&view->view_matrix) Csm::CubismViewMatrix();
+    view->device_to_screen.LoadIdentity();
 }
 
-void skr_live2d_register_render_effects(live2d_renderer_t* renderer, live2d_render_graph_t* render_graph, uint32_t sample_count)
+void skr_live2d_render_view_set_screen(live2d_render_view_t* view, uint32_t width, uint32_t height)
 {
-    live2d_effect->sample_count = (double)sample_count;
-    auto& blackboard = render_graph->get_blackboard();
-    blackboard.set_value(u8"l2d_msaa", live2d_effect->sample_count);
-    skr_renderer_register_render_pass(renderer, live2d_mask_pass_name, live2d_mask_pass);
-    skr_renderer_register_render_pass(renderer, live2d_pass_name, live2d_pass);
+    float ratio = static_cast<float>(width) / static_cast<float>(height);
+    float left = -ratio;
+    float right = ratio;
+    float bottom = kLive2DViewLogicalLeft;
+    float top = kLive2DViewLogicalRight;
+
+    view->view_matrix.SetScreenRect(left, right, bottom, top);
+    view->view_matrix.Scale(kLive2DViewScale, kLive2DViewScale);
+
+    view->device_to_screen.LoadIdentity();
+    if (width > height)
+    {
+        float screen_w = fabsf(right - left);
+        view->device_to_screen.ScaleRelative(screen_w / width, -screen_w / width);
+    }
+    else
+    {
+        float screen_w = fabsf(top - bottom);
+        view->device_to_screen.ScaleRelative(screen_w / height, -screen_w / height);
+    }
+    view->device_to_screen.TranslateRelative(width * -0.5f, height * -0.5f);
+
+    // 表示範囲の設定
+    view->view_matrix.SetMaxScale(kLive2DViewMaxScale); // 限界拡大率
+    view->view_matrix.SetMinScale(kLive2DViewMinScale); // 限界縮小率
+
+    // 表示できる最大範囲
+    view->view_matrix.SetMaxScreenRect(
+        kLive2DViewLogicalMaxLeft,
+        kLive2DViewLogicalMaxRight,
+        kLive2DViewLogicalMaxBottom,
+        kLive2DViewLogicalMaxTop
+    );
 }
 
-void skr_live2d_finalize_render_effects(live2d_renderer_t* renderer, live2d_render_graph_t* render_graph, struct skr_vfs_t* resource_vfs)
+void skr_live2d_render_view_transform_screen(live2d_render_view_t* view, float deviceX, float deviceY)
 {
-    live2d_effect->finalize(renderer);
-    SkrDelete(live2d_effect);
-    SkrDelete(live2d_pass);
-    SkrDelete(live2d_mask_pass);
+    view->device_to_screen.TransformX(deviceX);
+    view->device_to_screen.TransformY(deviceY);
+}
+
+void skr_live2d_render_view_transform_view(live2d_render_view_t* view, float deviceX, float deviceY)
+{
+    float screenX = view->device_to_screen.TransformX(deviceX); // 論理座標変換した座標を取得。
+    view->view_matrix.InvertTransformX(screenX); // 拡大、縮小、移動後の値。
+
+    float screenY = view->device_to_screen.TransformY(deviceY); // 論理座標変換した座標を取得。
+    view->view_matrix.InvertTransformY(screenY); // 拡大、縮小、移動後の値。
 }

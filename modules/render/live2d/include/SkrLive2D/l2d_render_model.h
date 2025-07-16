@@ -45,8 +45,8 @@ skr_live2d_render_model_free(skr_live2d_render_model_id render_model);
 
 #ifdef __cplusplus
     #include "SkrRT/io/vram_io.hpp"
-    #include "SkrContainers/map.hpp"
-    #include "SkrContainers/vector.hpp"
+    #include "SkrContainersDef/map.hpp"
+    #include "SkrContainersDef/vector.hpp"
 
 struct skr_live2d_render_model_t {
     virtual ~skr_live2d_render_model_t() = default;

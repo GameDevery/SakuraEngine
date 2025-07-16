@@ -242,6 +242,8 @@ public class CleanCommand : CommandBase
                 Engine.ShaderCompileDepend.ClearDatabase();
             if (all || Database == "misc")
                 Engine.MiscDepend.ClearDatabase();
+            if (all || Database == "codegen")
+                Engine.CodegenDepend.ClearDatabase();
             if (all || Database == "sdks")
             {
                 Install.DownloadDepend.ClearDatabase();

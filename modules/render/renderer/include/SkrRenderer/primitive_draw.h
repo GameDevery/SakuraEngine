@@ -9,9 +9,6 @@
 extern "C" {
 #endif
 
-typedef struct SRenderer SRenderer;
-typedef struct SRenderer* SRendererId;
-
 typedef struct skr_vertex_buffer_view_t {
     CGPUBufferId buffer;
     // in bytes
@@ -38,20 +35,8 @@ typedef struct skr_primitive_draw_t {
     const skr_vertex_buffer_view_t* vertex_buffers;
     uint32_t vertex_buffer_count;
     skr_index_buffer_view_t index_buffer;
-    bool desperated;
+    bool deprecated;
 } skr_primitive_draw_t;
-
-typedef struct skr_primitive_draw_list_view_t {
-    skr_primitive_draw_t* drawcalls;
-    uint32_t count;
-    void* user_data;
-} skr_primitive_draw_list_view_t;
-
-typedef struct skr_primitive_draw_packet_t {
-    skr_primitive_draw_list_view_t* lists;
-    uint32_t count;
-    void* user_data;
-} skr_primitive_draw_packet_t;
 
 #ifdef __cplusplus
 } // extern "C"

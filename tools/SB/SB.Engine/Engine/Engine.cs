@@ -189,6 +189,7 @@ namespace SB
                 .CreateLogger();
         }
 
+        public static DependDatabase CodegenDepend = new DependDatabase(Engine.TempPath, "Engine.Codegen." + Engine.GlobalConfiguration);
         public static DependDatabase MiscDepend = new DependDatabase(Engine.TempPath, "Engine.Misc");
         public static DependDatabase ShaderCompileDepend = new DependDatabase(Engine.TempPath, "Engine.ShaderCompileDepends");
 

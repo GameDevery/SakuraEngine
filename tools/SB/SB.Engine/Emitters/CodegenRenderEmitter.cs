@@ -58,7 +58,7 @@ namespace SB
             if (MetaAttribute.AllGeneratedMetaFiles is not null)
                 DependFiles.AddRange(MetaAttribute.AllGeneratedMetaFiles);
             // Execute
-            bool Changed = BS.CppCompileDepends(Target).OnChanged(Target.Name, "", this.Name, (Depend depend) => {
+            bool Changed = Engine.CodegenDepend.OnChanged(Target.Name, "", this.Name, (Depend depend) => {
                 Directory.Delete(CodegenDirectory, true);
                 Directory.CreateDirectory(CodegenDirectory);
 

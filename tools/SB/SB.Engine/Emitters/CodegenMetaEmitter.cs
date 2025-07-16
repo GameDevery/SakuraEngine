@@ -64,8 +64,11 @@ namespace SB
             MetaArgs.AddRange(CompilerArgs);
 
             // Run meta.exe
-            bool Changed = BS.CppCompileDepends(Target).OnChanged(Target.Name, MetaAttribute.MetaDirectory, Name, (Depend depend) =>
+            bool Changed = Engine.CodegenDepend.OnChanged(Target.Name, MetaAttribute.MetaDirectory, Name, (Depend depend) =>
             {
+                Directory.Delete(MetaAttribute.MetaDirectory, true);
+                Directory.CreateDirectory(MetaAttribute.MetaDirectory);
+
                 var EXE = Path.Combine(MetaSetup.Installation!.Result, BS.HostOS == OSPlatform.Windows ? "meta.exe" : "meta");
 
                 int ExitCode = BS.RunProcess(EXE, string.Join(" ", MetaArgs), out var OutputInfo, out var ErrorInfo);

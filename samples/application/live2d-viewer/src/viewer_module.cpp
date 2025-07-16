@@ -16,10 +16,9 @@
 #include <SkrImGui/imgui_backend.hpp>
 #include <SkrImGui/imgui_render_backend.hpp>
 #include "SkrRenderer/skr_renderer.h"
-#include "SkrRenderer/render_effect.h"
 #include "SkrLive2D/l2d_model_resource.h"
 #include "SkrLive2D/l2d_render_model.h"
-#include "SkrLive2D/l2d_render_effect.h"
+#include "SkrLive2D/l2d_renderer.hpp"
 #include "SkrProfile/profile.h"
 
 #ifdef _WIN32
@@ -43,7 +42,6 @@ public:
     bool bUseCVV = false;
 
     struct sugoi_storage_t* l2d_world = nullptr;
-    SRendererId l2d_renderer = nullptr;
     skr_vfs_t* resource_vfs = nullptr;
     skr_io_ram_service_t* ram_service = nullptr;
     skr_io_vram_service_t* vram_service = nullptr;
@@ -80,7 +78,6 @@ void SLive2DViewerModule::on_load(int argc, char8_t** argv)
     l2d_world = sugoiS_create();
 
     auto render_device = skr_get_default_render_device();
-    l2d_renderer = skr_create_renderer(render_device, l2d_world);
 
     auto jobQueueDesc = make_zeroed<skr::JobQueueDesc>();
     jobQueueDesc.thread_count = 2;
@@ -136,9 +133,9 @@ void SLive2DViewerModule::on_unload()
 
 #include "SkrRT/ecs/type_builder.hpp"
 
-void create_test_scene(SRendererId renderer, skr_vfs_t* resource_vfs, skr_io_ram_service_t* ram_service, bool bUseCVV)
+void create_test_scene(skr_vfs_t* resource_vfs, skr_io_ram_service_t* ram_service, bool bUseCVV)
 {
-    auto storage = renderer->get_sugoi_storage();
+    auto storage = SLive2DViewerModule::Get()->l2d_world;
     auto renderableT_builder = make_zeroed<sugoi::TypeSetBuilder>();
     renderableT_builder
         .with<skr_render_effect_t>();

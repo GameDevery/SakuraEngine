@@ -133,8 +133,7 @@ void skr_resolve_cameras_to_viewport(struct SViewportManager* viewport_manager, 
         {
             const auto viewport_index  = cameras[i].viewport_id;
             auto       renderer        = cameras[i].renderer;
-            auto       viewportManager = renderer->get_viewport_manager();
-            skr_resolve_camera_to_viewport(cameras + i, camera_transforms + i, viewportManager->find_viewport(viewport_index));
+            skr_resolve_camera_to_viewport(cameras + i, camera_transforms + i, viewport_manager->find_viewport(viewport_index));
         }
     };
     sugoiQ_sync(camera_query);
