@@ -17,6 +17,10 @@ struct ResourceLifetime
     uint32_t start_dependency_level;    // 首次使用的依赖级别
     uint32_t end_dependency_level;      // 最后使用的依赖级别
     uint32_t primary_queue;             // 主要使用的队列
+    PassNode* first_using_pass;         // 首次使用该资源的Pass
+    PassNode* last_using_pass;          // 最后使用该资源的Pass
+    ECGPUResourceState first_using_state = CGPU_RESOURCE_STATE_UNDEFINED; // 首次使用时的状态
+    ECGPUResourceState last_using_state = CGPU_RESOURCE_STATE_UNDEFINED;  // 最后使用时的状态
     
     // 判断两个资源生命周期是否冲突（用于别名化）
     bool conflicts_with(const ResourceLifetime& other) const;

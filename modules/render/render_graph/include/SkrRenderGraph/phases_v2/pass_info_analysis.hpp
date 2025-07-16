@@ -88,8 +88,8 @@ private:
     void extract_performance_info(PassNode* pass, PassPerformanceInfo& info);
 
 private:
-    StackMap<PassNode*, PassInfo> pass_infos;
-    StackMap<ResourceNode*, ResourceInfo> resource_infos; // For dependency analysis
+    skr::FlatHashMap<PassNode*, PassInfo> pass_infos;
+    skr::FlatHashMap<ResourceNode*, ResourceInfo> resource_infos; // For dependency analysis
 };
 
 } // namespace render_graph

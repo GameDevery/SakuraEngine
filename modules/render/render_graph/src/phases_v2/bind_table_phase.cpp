@@ -6,7 +6,7 @@
 #include "SkrProfile/profile.h"
 #include "SkrGraphics/flags.h"
 
-#define BIND_TABLE_LOG SKR_LOG_DEBUG
+#define BIND_TABLE_LOG(...)
 
 namespace skr {
 namespace render_graph {
@@ -37,6 +37,11 @@ BindTablePhase::BindTablePhase(
     : pass_info_analysis_(pass_info_analysis)
     , resource_allocation_phase_(resource_allocation_phase)
 {
+}
+
+BindTablePhase::~BindTablePhase()
+{
+
 }
 
 void BindTablePhase::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT

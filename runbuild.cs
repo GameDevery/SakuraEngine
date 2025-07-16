@@ -240,10 +240,12 @@ public class CleanCommand : CommandBase
                 BuildSystem.CppCompileDepends(true).ClearDatabase();
             if (all || Database == "shaders")
                 Engine.ShaderCompileDepend.ClearDatabase();
+            if (all || Database == "misc")
+                Engine.MiscDepend.ClearDatabase();
             if (all || Database == "sdks")
             {
-                Engine.ConfigureAwareDepend.ClearDatabase();
-                Engine.ConfigureNotAwareDepend.ClearDatabase();
+                Install.DownloadDepend.ClearDatabase();
+                Install.SDKDepend.ClearDatabase();
             }
         }
         catch (Exception ex)

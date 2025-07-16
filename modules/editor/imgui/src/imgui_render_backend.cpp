@@ -262,7 +262,7 @@ inline static void _draw_viewport(
 
                     String name = skr::format(u8"imgui_font-{}", tex->UniqueID);
                     builder.set_name((const char8_t*)name.c_str())
-                        .import(tex_data->texture, CGPU_RESOURCE_STATE_SHADER_RESOURCE);
+                        .import(tex_data->texture, CGPU_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
                 }
             );
             break;
@@ -980,7 +980,7 @@ void ImGuiRendererBackendRG::update_texture(ImTextureData* tex_data)
             // srv -> copy_dst
             CGPUTextureBarrier cpy_dst_barrier{};
             cpy_dst_barrier.texture   = user_data->texture;
-            cpy_dst_barrier.src_state = CGPU_RESOURCE_STATE_SHADER_RESOURCE;
+            cpy_dst_barrier.src_state = CGPU_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
             cpy_dst_barrier.dst_state = CGPU_RESOURCE_STATE_COPY_DEST;
             {
                 CGPUResourceBarrierDescriptor barrier_desc = {};
@@ -1004,7 +1004,7 @@ void ImGuiRendererBackendRG::update_texture(ImTextureData* tex_data)
         CGPUTextureBarrier srv_barrier{};
         srv_barrier.texture   = user_data->texture;
         srv_barrier.src_state = CGPU_RESOURCE_STATE_COPY_DEST;
-        srv_barrier.dst_state = CGPU_RESOURCE_STATE_SHADER_RESOURCE;
+        srv_barrier.dst_state = CGPU_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
         {
             CGPUResourceBarrierDescriptor barrier_desc = {};
             barrier_desc.texture_barriers              = &srv_barrier;

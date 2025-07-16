@@ -123,6 +123,7 @@ namespace SB
     {
         public static string GetStorePath(this Target Target, string StoreName) => Directory.CreateDirectory(Path.Combine(Target.GetBuildPath(), StoreName, $"{BS.TargetOS}-{BS.TargetArch}-{BS.GlobalConfiguration}", Target.Name)).FullName;
         public static string GetBinaryPath(this Target Target) => Directory.CreateDirectory(Path.Combine(Target.GetBuildPath(), $"{BS.TargetOS}-{BS.TargetArch}-{BS.GlobalConfiguration}")).FullName;
+        public static string GetBinaryPath(this Target Target, string Configure) => Directory.CreateDirectory(Path.Combine(Target.GetBuildPath(), $"{BS.TargetOS}-{BS.TargetArch}-{Configure}")).FullName;
         public static string GetBuildPath(this Target Target) => Target.IsFromPackage ? BS.PackageBuildPath : BS.BuildPath;
     }
 

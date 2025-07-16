@@ -244,7 +244,7 @@ namespace SB
         private DebugConfigurationBase CreateDebugConfiguration(Target target, string buildType)
         {
             var exeName = target.Name + (BS.TargetOS == OSPlatform.Windows ? ".exe" : "");
-            var binaryPath = target.GetBinaryPath();
+            var binaryPath = target.GetBinaryPath(buildType).ToLowerInvariant();
             var relativeBinaryPath = Path.GetRelativePath(WorkspaceRoot, binaryPath);
 
             var config = SelectDebugger();

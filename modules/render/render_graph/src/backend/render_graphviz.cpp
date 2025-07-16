@@ -218,9 +218,9 @@ void GraphViz::generate_graphviz_visualization(
                     std::to_string(reinterpret_cast<uintptr_t>(barrier.resource));
 
                 // Add suffix for Begin/End barriers to avoid duplicate key conflicts
-                if (barrier.is_begin)
+                if (barrier.transition.is_begin)
                     transition_key += "_begin";
-                else if (barrier.is_end)
+                else if (barrier.transition.is_end)
                     transition_key += "_end";
 
                 if (processed_transitions.contains(transition_key))
@@ -269,8 +269,6 @@ void GraphViz::generate_graphviz_visualization(
                             return "DepthR";
                         case CGPU_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE:
                             return "SRV(VS)";
-                        case CGPU_RESOURCE_STATE_PIXEL_SHADER_RESOURCE:
-                            return "SRV(PS)";
                         case CGPU_RESOURCE_STATE_SHADER_RESOURCE:
                             return "SRV";
                         case CGPU_RESOURCE_STATE_STREAM_OUT:
@@ -296,20 +294,20 @@ void GraphViz::generate_graphviz_visualization(
 
                     std::string label = (const char*)barrier.resource->get_name();
                     label += "\\n";
-                    label += format_state(barrier.before_state);
+                    label += format_state(barrier.transition.before_state);
                     label += " → ";
-                    label += format_state(barrier.after_state);
+                    label += format_state(barrier.transition.after_state);
 
                     // Choose color and style based on barrier type and Begin/End
                     const char* color = (src_q == tgt_q) ? "blue" : "orange";
                     const char* style = (src_q == tgt_q) ? "dotted" : "dashed";
 
                     // Special handling for Begin/End barriers - create portal nodes
-                    if (barrier.is_begin || barrier.is_end)
+                    if (barrier.transition.is_begin || barrier.transition.is_end)
                     {
-                        std::string portal_id = "portal_" + transition_key + (barrier.is_begin ? "_begin" : "_end");
-                        std::string portal_label = barrier.is_begin ? "BEGIN" : "END";
-                        const char* portal_color = barrier.is_begin ? "#FFE4B5" : "#E0E4CC"; // Moccasin for begin, light gray for end
+                        std::string portal_id = "portal_" + transition_key + (barrier.transition.is_begin ? "_begin" : "_end");
+                        std::string portal_label = barrier.transition.is_begin ? "BEGIN" : "END";
+                        const char* portal_color = barrier.transition.is_begin ? "#FFE4B5" : "#E0E4CC"; // Moccasin for begin, light gray for end
                         const char* portal_shape = "diamond";
 
                         // Create portal node
@@ -320,7 +318,7 @@ void GraphViz::generate_graphviz_visualization(
                             << ", style=\"filled,dashed\", fillcolor=\"" << portal_color
                             << "\", fontsize=8, width=0.5, height=0.5];\n";
 
-                        if (barrier.is_begin)
+                        if (barrier.transition.is_begin)
                         {
                             // Begin: Source Pass -> Portal
                             dot << "  pass_q" << src_q << "_" << src_i

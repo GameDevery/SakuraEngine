@@ -539,10 +539,6 @@ void MemoryAliasingPhase::compute_alias_transitions() SKR_NOEXCEPT
     {
         const auto& bucket = aliasing_result_.memory_buckets[bucket_idx];
         
-        // 如果桶中只有一个资源，不需要转换
-        if (bucket.aliased_resources.size() <= 1)
-            continue;
-            
         // 按资源的生命周期排序（开始时间）
         StackVector<ResourceNode*> sorted_resources = bucket.aliased_resources;
         sorted_resources.sort([this](ResourceNode* a, ResourceNode* b) {
@@ -559,20 +555,9 @@ void MemoryAliasingPhase::compute_alias_transitions() SKR_NOEXCEPT
         
         // 计算资源之间的转换
         ResourceNode* current_resource = nullptr;
-        
         for (auto* resource : sorted_resources)
         {
-            if (current_resource && current_resource != resource)
-            {
-                // 记录从 current_resource 到 resource 的转换
-                record_alias_transition(current_resource, resource, bucket_idx);
-            }
-            else if (!current_resource)
-            {
-                // 第一个资源，记录初始分配
-                record_alias_transition(nullptr, resource, bucket_idx);
-            }
-            
+            record_alias_transition(nullptr, resource, bucket_idx);
             current_resource = resource;
         }
     }
@@ -596,6 +581,7 @@ void MemoryAliasingPhase::compute_alias_transitions() SKR_NOEXCEPT
 void MemoryAliasingPhase::record_alias_transition(ResourceNode* from, ResourceNode* to, uint32_t bucket_index) SKR_NOEXCEPT
 {
     MemoryAliasTransition transition;
+    transition.transition_pass = find_transition_pass(from, to);
     transition.from_resource = from;
     transition.to_resource = to;
     transition.bucket_index = bucket_index;
@@ -607,7 +593,9 @@ void MemoryAliasingPhase::record_alias_transition(ResourceNode* from, ResourceNo
     {
         if (auto from_lifetime = lifetime_result.resource_lifetimes.find(from))
         {
+            transition.source_pass = from_lifetime.value().last_using_pass;
             transition.from_end_level = from_lifetime.value().end_dependency_level;
+            transition.before_state = from_lifetime.value().last_using_state;
         }
     }
     
@@ -617,13 +605,12 @@ void MemoryAliasingPhase::record_alias_transition(ResourceNode* from, ResourceNo
         if (auto to_lifetime = lifetime_result.resource_lifetimes.find(to))
         {
             transition.to_start_level = to_lifetime.value().start_dependency_level;
+            transition.after_state = to_lifetime.value().first_using_state;
+
             transition.memory_size = resource_info->memory_size;
             transition.memory_offset = aliasing_result_.resource_to_offset.find(to).value();
         }
     }
-    
-    // 找到转换发生的Pass
-    transition.transition_pass = find_transition_pass(from, to);
     
     aliasing_result_.alias_transitions.add(transition);
     

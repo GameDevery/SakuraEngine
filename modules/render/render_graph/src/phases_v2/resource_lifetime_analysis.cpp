@@ -31,13 +31,14 @@ void ResourceLifetimeAnalysis::analyze_resource_lifetimes(RenderGraph* graph) SK
     
     for (ResourceNode* resource : resources)
     {
+        if (resource->is_imported())
+            continue;
+        
         ResourceLifetime& lifetime = lifetime_result_.resource_lifetimes.try_add_default(resource).value();
         lifetime.resource = resource;
         lifetime.start_dependency_level = UINT32_MAX;
         lifetime.end_dependency_level = 0;
         lifetime.primary_queue = 0;
-        
-        PassNode* first_using_pass = nullptr;
         
         // 找到所有使用该资源的Pass
         const auto& passes = get_passes(graph);
@@ -59,26 +60,37 @@ void ResourceLifetimeAnalysis::analyze_resource_lifetimes(RenderGraph* graph) SK
             
             if (uses_resource)
             {
-                // 获取Pass的依赖级别
                 uint32_t dependency_level = dependency_analysis_.get_logical_dependency_level(pass);
-                
                 // 更新生命周期范围
                 if (dependency_level < lifetime.start_dependency_level)
                 {
                     lifetime.start_dependency_level = dependency_level;
-                    first_using_pass = pass; // 记录第一个使用该资源的Pass
+                    lifetime.first_using_pass = pass; // 记录第一个使用该资源的Pass
+                    lifetime.first_using_state = pass_info->resource_info.all_resource_accesses.find_if(
+                        [resource](auto info) { return info.resource == resource; }
+                    ).ref().resource_state;
+                    
+                    if (lifetime.last_using_pass == nullptr)
+                    {
+                        lifetime.last_using_pass = lifetime.first_using_pass;
+                        lifetime.last_using_state = lifetime.first_using_state;
+                    }
                 }
                 if (dependency_level > lifetime.end_dependency_level)
                 {
                     lifetime.end_dependency_level = dependency_level;
+                    lifetime.last_using_pass = pass; // 记录最后一个使用该资源的Pass
+                    lifetime.last_using_state = pass_info->resource_info.all_resource_accesses.find_if(
+                        [resource](auto info) { return info.resource == resource; }
+                    ).ref().resource_state;
                 }
             }
         }
         
         // 计算主要队列（第一次使用该资源的Pass所在的队列）
-        if (first_using_pass)
+        if (lifetime.first_using_pass)
         {
-            if (auto queue_it = schedule_result.pass_queue_assignments.find(first_using_pass))
+            if (auto queue_it = schedule_result.pass_queue_assignments.find(lifetime.first_using_pass))
             {
                 lifetime.primary_queue = queue_it.value();
             }

@@ -5,9 +5,7 @@
 #include "SkrCore/log.hpp"
 #include "SkrProfile/profile.h"
 
-namespace skr
-{
-namespace render_graph
+namespace skr::render_graph
 {
 
 ResourceAllocationPhase::ResourceAllocationPhase(
@@ -30,10 +28,6 @@ void ResourceAllocationPhase::on_execute(RenderGraph* graph_, RenderGraphFrameEx
     SkrZoneScopedN("ResourceAllocationPhase");
     graph = static_cast<RenderGraphBackend*>(graph_);
 
-    // 步骤1: 清理上一帧的资源状态
-    release_resources_to_pool(graph->get_texture_pool(), graph->get_buffer_pool());
-
-    // 步骤2: 为池化资源创建实际的GPU资源
     allocate_pooled_resources(graph);
 
     if (config_.enable_debug_output)
@@ -132,14 +126,12 @@ void ResourceAllocationPhase::create_buffer_from_pool(BufferPool& bpool, uint64_
 
 void ResourceAllocationPhase::release_resources_to_pool(TexturePool& tpool, BufferPool& bpool) SKR_NOEXCEPT
 {
-    // 步骤1: 将上一帧的所有资源归还给资源池
-    // 因为这些资源已经退出了生命周期
     for (const auto& [bucket_id, gpu_texture] : allocation_result_.bucket_id_to_textures)
     {
         const auto& bucket = aliasing_phase_.get_result().memory_buckets[bucket_id];
         auto node = (TextureNode*)bucket.aliased_resources.at_last();
-        auto resource_info = pass_info_analysis_.get_resource_info(node);
-        auto last_state = resource_info->used_states.at_last().value;
+        auto lifetime = aliasing_phase_.get_lifetime_analysis().get_resource_lifetime(node);
+        auto last_state = lifetime->last_using_state;
         tpool.deallocate(node->get_desc(), gpu_texture.v, last_state, { graph->get_frame_index(), node->get_tags() });
     }
 
@@ -147,8 +139,8 @@ void ResourceAllocationPhase::release_resources_to_pool(TexturePool& tpool, Buff
     {
         const auto& bucket = aliasing_phase_.get_result().memory_buckets[bucket_id];
         auto node = (BufferNode*)bucket.aliased_resources.at_last();
-        auto resource_info = pass_info_analysis_.get_resource_info(node);
-        auto last_state = resource_info->used_states.at_last().value;
+        auto lifetime = aliasing_phase_.get_lifetime_analysis().get_resource_lifetime(node);
+        auto last_state = lifetime->last_using_state;
         bpool.deallocate(node->get_desc(), gpu_buffer.v, last_state, { graph->get_frame_index(), node->get_tags() });
     }
 
@@ -158,19 +150,21 @@ void ResourceAllocationPhase::release_resources_to_pool(TexturePool& tpool, Buff
     }
 }
 
-CGPUTextureId ResourceAllocationPhase::get_resource(TextureNode* texture) const
+CGPUTextureId ResourceAllocationPhase::get_resource(TextureNode* texture, ECGPUResourceState* pOutState) const
 {
     const auto& aliasing_result = aliasing_phase_.get_result();
     if (auto redirect_it = aliasing_result.resource_to_bucket.find(texture))
     {
         const auto bucket_id = redirect_it.value();
         auto it = allocation_result_.bucket_id_to_textures.find(bucket_id);
+        if (pOutState)
+            *pOutState = it.value().init_state;
         return it.value().v;
     }
     return texture->get_imported();
 }
 
-CGPUBufferId ResourceAllocationPhase::get_resource(BufferNode* buffer) const
+CGPUBufferId ResourceAllocationPhase::get_resource(BufferNode* buffer, ECGPUResourceState* pOutState) const
 {
     const auto& aliasing_result = aliasing_phase_.get_result();
     if (auto redirect_it = aliasing_result.resource_to_bucket.find(buffer))
@@ -189,10 +183,11 @@ CGPUBufferId ResourceAllocationPhase::get_resource(BufferNode* buffer) const
                 SKR_LOG_DEBUG(u8"!");
             }
         }
+        if (pOutState)
+            *pOutState = it.value().init_state;
         return it.value().v;
     }
     return buffer->get_imported();
 }
 
-} // namespace render_graph
-} // namespace skr
+} // namespace skr::render_graph

@@ -29,7 +29,7 @@ public:
     BindTablePhase(
         const PassInfoAnalysis& pass_info_analysis,
         const ResourceAllocationPhase& resource_allocation_phase);
-    ~BindTablePhase() override = default;
+    ~BindTablePhase() override;
     
     // IRenderGraphPhase interface
     void on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT override;

@@ -53,14 +53,17 @@ struct MemoryBucket
 // 内存别名转换点 - 记录内存从一个资源切换到另一个资源的时刻
 struct MemoryAliasTransition
 {
-    PassNode* transition_pass = nullptr;        // 发生转换的Pass
-    ResourceNode* from_resource = nullptr;      // 前一个资源（可能为空，表示首次使用）
-    ResourceNode* to_resource = nullptr;        // 新资源
+    PassNode* source_pass = nullptr;           // 源Pass
+    PassNode* transition_pass = nullptr;       // 发生转换的Pass
+    ResourceNode* from_resource = nullptr;     // 前一个资源（可能为空，表示首次使用）
+    ResourceNode* to_resource = nullptr;       // 新资源
+    ECGPUResourceState before_state = CGPU_RESOURCE_STATE_UNDEFINED; // 前一个资源的状态
+    ECGPUResourceState after_state = CGPU_RESOURCE_STATE_UNDEFINED;   // 新资源
+
     uint32_t bucket_index = UINT32_MAX;        // 内存桶索引
     uint64_t memory_offset = 0;                // 在桶中的偏移
     uint64_t memory_size = 0;                  // 资源大小
     
-    // 依赖级别信息（用于排序）
     uint32_t from_end_level = 0;               // from_resource的结束依赖级别
     uint32_t to_start_level = 0;               // to_resource的开始依赖级别
 };
@@ -126,7 +129,9 @@ public:
     uint32_t get_resource_bucket(ResourceNode* resource) const;
     uint64_t get_resource_offset(ResourceNode* resource) const;
     bool needs_aliasing_barrier(ResourceNode* resource) const;
-    
+    const ResourceLifetimeAnalysis& get_lifetime_analysis() const { return lifetime_analysis_; }
+    EAliasingTier get_aliasing_tier() const { return config_.aliasing_tier; }
+
     // 内存优化查询
     float get_compression_ratio() const { return aliasing_result_.total_compression_ratio; }
     uint64_t get_memory_savings() const;

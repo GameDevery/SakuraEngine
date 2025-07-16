@@ -6,14 +6,15 @@
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrGraphics/flags.h"
 
-namespace skr {
-namespace render_graph {
+namespace skr::render_graph {
 
 void PassInfoAnalysis::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* executor, RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
     SkrZoneScopedN("PassInfoAnalysis");
     
     auto& passes = get_passes(graph);
+    pass_infos.reserve(passes.size());
+    resource_infos.reserve(graph->get_resources().size());
     for (PassNode* pass : passes)
     {
         extract_pass_info(pass);
@@ -22,15 +23,15 @@ void PassInfoAnalysis::on_execute(RenderGraph* graph, RenderGraphFrameExecutor* 
 
 const PassInfo* PassInfoAnalysis::get_pass_info(PassNode* pass) const
 {
-    if (auto found = pass_infos.find(pass))
-        return &found.value();
+    if (auto found = pass_infos.find(pass); found != pass_infos.end())
+        return &found->second;
     return nullptr;
 }
 
 const ResourceInfo* PassInfoAnalysis::get_resource_info(ResourceNode* resource) const
 {
-    if (auto found = resource_infos.find(resource))
-        return &found.value();
+    if (auto found = resource_infos.find(resource); found != resource_infos.end())
+        return &found->second;
     return nullptr;
 }
 
@@ -55,11 +56,13 @@ void PassInfoAnalysis::extract_pass_info(PassNode* pass)
     extract_resource_info(pass, info.resource_info);
     extract_performance_info(pass, info.performance_info);
     
-    pass_infos.add(pass, info);
+    pass_infos[pass] = info;
 }
 
 void PassInfoAnalysis::extract_resource_info(PassNode* pass, PassResourceInfo& info)
 {
+    SkrZoneScopedN("ExtractResourceInfo");
+    
     info.all_resource_accesses.reserve(pass->buffers_count() + pass->textures_count());
     
     // Extract textures with detailed access info
@@ -88,7 +91,7 @@ void PassInfoAnalysis::extract_resource_info(PassNode* pass, PassResourceInfo& i
         info.all_resource_accesses.add(access_info);
         
         // 更新全局资源信息
-        auto& global_resource_info = resource_infos.try_add_default(texture).value();
+        auto& global_resource_info = resource_infos[texture];
         global_resource_info.used_states.add(pass, access_info.resource_state);
         global_resource_info.memory_size = texture->get_size();
         
@@ -125,7 +128,7 @@ void PassInfoAnalysis::extract_resource_info(PassNode* pass, PassResourceInfo& i
         info.all_resource_accesses.add(access_info);
         
         // 更新全局资源信息
-        auto& global_resource_info = resource_infos.try_add_default(buffer).value();
+        auto& global_resource_info = resource_infos[buffer];
         global_resource_info.resource = buffer;
         global_resource_info.used_states.add(pass, access_info.resource_state);
         global_resource_info.memory_size = buffer->get_desc().size;
@@ -136,6 +139,7 @@ void PassInfoAnalysis::extract_resource_info(PassNode* pass, PassResourceInfo& i
             queue_type = CGPU_QUEUE_TYPE_COMPUTE;
         else if (pass->pass_type == EPassType::Copy)
             queue_type = CGPU_QUEUE_TYPE_TRANSFER;
+
         global_resource_info.access_queues.add(queue_type);
         info.total_resource_count += 1;
         
@@ -178,9 +182,9 @@ EResourceAccessType PassInfoAnalysis::get_resource_access_type(PassNode* pass, R
 
 ECGPUResourceState PassInfoAnalysis::get_resource_state(PassNode* pass, ResourceNode* resource) const
 {
-    if (auto resource_info = resource_infos.find(resource))
+    if (auto it = resource_infos.find(resource); it != resource_infos.end())
     {
-        if (auto access = resource_info.value().used_states.find(pass))
+        if (auto access = it->second.used_states.find(pass))
         {
             return access.value();
         }
@@ -188,5 +192,4 @@ ECGPUResourceState PassInfoAnalysis::get_resource_state(PassNode* pass, Resource
     return CGPU_RESOURCE_STATE_UNDEFINED; // Default fallback
 }
 
-} // namespace render_graph
-} // namespace skr
+} // namespace skr::render_graph

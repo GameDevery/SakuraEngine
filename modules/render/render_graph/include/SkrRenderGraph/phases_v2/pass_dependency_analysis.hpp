@@ -111,7 +111,6 @@ private:
         EResourceAccessType last_access_type = EResourceAccessType::Read;
         ECGPUResourceState last_state = CGPU_RESOURCE_STATE_UNDEFINED;
     };
-    StackMap<ResourceNode*, LastResourceAccess> resource_last_access_;
 
     // Logical topology cache
     StackMap<PassNode*, uint32_t> in_degrees_;

@@ -2011,10 +2011,8 @@ void cgpu_cmd_resource_barrier_d3d12(CGPUCommandBufferId cmd, const struct CGPUR
                 pBarrier->UAV.pResource = pBuffer->pDxResource;
                 ++transitionCount;
             }
-            else
+            else if (pTransBarrier->src_state != pTransBarrier->dst_state)
             {
-                cgpu_assert((pTransBarrier->src_state != pTransBarrier->dst_state) && "D3D12 ERROR: Buffer Barrier with same src and dst state!");
-
                 pBarrier->Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
                 if (pTransBarrier->d3d12_begin_only)
                 {
@@ -2038,9 +2036,8 @@ void cgpu_cmd_resource_barrier_d3d12(CGPUCommandBufferId cmd, const struct CGPUR
                 else
                     pBarrier->Transition.StateAfter = D3D12Util_TranslateResourceState(pTransBarrier->dst_state);
 
-                cgpu_assert((pBarrier->Transition.StateBefore != pBarrier->Transition.StateAfter) && "D3D12 ERROR: Buffer Barrier with same src and dst state!");
-
-                ++transitionCount;
+                if (pBarrier->Transition.StateBefore != pBarrier->Transition.StateAfter)
+                    ++transitionCount;
             }
         }
     }
@@ -2058,10 +2055,8 @@ void cgpu_cmd_resource_barrier_d3d12(CGPUCommandBufferId cmd, const struct CGPUR
             pBarrier->UAV.pResource = pTexture->pDxResource;
             ++transitionCount;
         }
-        else
+        else if (pTransBarrier->src_state != pTransBarrier->dst_state)
         {
-            cgpu_assert((pTransBarrier->src_state != pTransBarrier->dst_state) && "D3D12 ERROR: Texture Barrier with same src and dst state!");
-
             pBarrier->Type  = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
             pBarrier->Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
             if (pTransBarrier->d3d12_begin_only)
@@ -2094,8 +2089,8 @@ void cgpu_cmd_resource_barrier_d3d12(CGPUCommandBufferId cmd, const struct CGPUR
                     continue;
                 }
             }
-            cgpu_assert((pBarrier->Transition.StateBefore != pBarrier->Transition.StateAfter) && "D3D12 ERROR: Texture Barrier with same src and dst state!");
-            ++transitionCount;
+            if (pBarrier->Transition.StateBefore != pBarrier->Transition.StateAfter)
+                ++transitionCount;
         }
     }
     if (transitionCount)

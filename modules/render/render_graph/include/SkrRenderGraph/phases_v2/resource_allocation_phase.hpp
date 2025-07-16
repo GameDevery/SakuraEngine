@@ -55,9 +55,10 @@ public:
     const ResourceAllocationResult& get_result() const { return allocation_result_; }
     
     // 通用资源获取接口（通过resource_redirects查找）
-    CGPUTextureId get_resource(TextureNode* texture) const;
-    CGPUBufferId get_resource(BufferNode* buffer) const;
-    
+    CGPUTextureId get_resource(TextureNode* texture, ECGPUResourceState* pOutState = nullptr) const;
+    CGPUBufferId get_resource(BufferNode* buffer, ECGPUResourceState* pOutState = nullptr) const;
+    const MemoryAliasingPhase& get_aliasing_phase() const { return aliasing_phase_; }
+
     // 统计查询
     uint64_t get_allocated_memory_size() const { return allocation_result_.total_allocated_memory; }
     uint32_t get_texture_count() const { return allocation_result_.total_textures_created; }

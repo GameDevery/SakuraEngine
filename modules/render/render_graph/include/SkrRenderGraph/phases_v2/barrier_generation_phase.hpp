@@ -21,28 +21,23 @@ enum class EBarrierType : uint8_t
 // GPU屏障描述
 struct GPUBarrier
 {
+    ResourceNode* resource = nullptr;       // 相关资源
     EBarrierType type;
     PassNode* source_pass = nullptr;        // 源Pass
     PassNode* target_pass = nullptr;        // 目标Pass
-    ResourceNode* resource = nullptr;       // 相关资源
-    
-    // 状态转换信息
-    ECGPUResourceState before_state = CGPU_RESOURCE_STATE_UNDEFINED;
-    ECGPUResourceState after_state = CGPU_RESOURCE_STATE_UNDEFINED;
-    
-    // 队列信息
     uint32_t source_queue = UINT32_MAX;
     uint32_t target_queue = UINT32_MAX;
     
-    // 内存别名信息
-    uint64_t memory_offset = 0;
-    uint64_t memory_size = 0;
-    ResourceNode* previous_resource = nullptr;  // 内存别名：前一个使用该内存的资源
-    uint32_t memory_bucket_index = UINT32_MAX;  // 内存桶索引
-    
-    // begin/end
-    bool is_begin = false;  // 是否是Begin屏障
-    bool is_end = false;    // 是否是End屏障
+    union
+    {
+        struct {
+            ECGPUResourceState before_state = CGPU_RESOURCE_STATE_UNDEFINED;
+            ECGPUResourceState after_state = CGPU_RESOURCE_STATE_UNDEFINED;
+            bool is_begin = false;
+            bool is_end = false;
+        } transition;
+        MemoryAliasTransition aliasing;
+    };
     
     bool is_cross_queue() const { return source_queue != target_queue && source_queue != UINT32_MAX && target_queue != UINT32_MAX; }
     bool involves_memory_aliasing() const { return type == EBarrierType::MemoryAliasing; }
@@ -131,8 +126,7 @@ private:
     
     // 屏障创建辅助
     GPUBarrier create_cross_queue_barrier(const CrossQueueSyncPoint& sync_point) const SKR_NOEXCEPT;
-    GPUBarrier create_aliasing_barrier(ResourceNode* resource, PassNode* pass) const SKR_NOEXCEPT;
-    GPUBarrier create_resource_transition_barrier(ResourceNode* resource, PassNode* from_pass, PassNode* to_pass) const SKR_NOEXCEPT;
+    GPUBarrier create_aliasing_barrier(const MemoryAliasTransition& transition) const SKR_NOEXCEPT;
     
     // 队列能力检测
     bool is_state_transition_supported_on_queue(uint32_t queue_index, ECGPUResourceState before_state, ECGPUResourceState after_state) const SKR_NOEXCEPT;

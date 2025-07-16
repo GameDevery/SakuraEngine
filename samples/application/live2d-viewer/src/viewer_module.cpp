@@ -40,7 +40,7 @@ class SLive2DViewerModule : public skr::IDynamicModule
 public:
     static SLive2DViewerModule* Get();
 
-    bool bUseCVV = true;
+    bool bUseCVV = false;
 
     struct sugoi_storage_t* l2d_world = nullptr;
     SRendererId l2d_renderer = nullptr;

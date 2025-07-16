@@ -5,7 +5,7 @@
 #include "SkrRenderGraph/frontend/pass_node.hpp"
 #include "SkrRenderGraph/frontend/resource_node.hpp"
 
-#define QUEUE_SCHEDULE_LOG SKR_LOG_TRACE
+#define QUEUE_SCHEDULE_LOG(...)
 
 namespace skr {
 namespace render_graph {

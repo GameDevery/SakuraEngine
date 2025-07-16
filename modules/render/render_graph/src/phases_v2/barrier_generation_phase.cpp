@@ -8,7 +8,7 @@
 #include "SkrContainersDef/set.hpp"
 #include <algorithm>
 
-#define BARRIER_GENERATION_LOG SKR_LOG_DEBUG
+#define BARRIER_GENERATION_LOG(...)
 
 namespace skr {
 namespace render_graph {
@@ -127,13 +127,7 @@ void BarrierGenerationPhase::generate_memory_aliasing_barriers(RenderGraph* grap
             continue;
             
         // 创建别名屏障
-        GPUBarrier barrier = create_aliasing_barrier(transition.to_resource, transition.transition_pass);
-        
-        // 设置转换特定信息
-        barrier.previous_resource = transition.from_resource;
-        barrier.memory_bucket_index = transition.bucket_index;
-        barrier.memory_offset = transition.memory_offset;
-        barrier.memory_size = transition.memory_size;
+        GPUBarrier barrier = create_aliasing_barrier(transition);
         
         // Add barrier directly to pass_barriers_
         auto* execution_pass = transition.transition_pass;
@@ -202,7 +196,12 @@ void BarrierGenerationPhase::generate_resource_transition_barriers(RenderGraph* 
                 last_access.last_pass = pass;
                 last_access.last_state = current_state;
                 last_access.last_level = current_level;
-                continue;
+                
+                // 导入资源会携带一个初始状态，所以必须继续处理
+                if (!resource->is_imported())
+                    continue;
+                else
+                    last_access.last_state = resource->get_init_state();
             }
             
             // 如果状态发生变化，生成转换屏障
@@ -210,8 +209,7 @@ void BarrierGenerationPhase::generate_resource_transition_barriers(RenderGraph* 
             uint32_t target_queue = sync_analysis_.get_pass_queue_index(pass);
             if ((last_access.last_state != current_state) || (source_queue != target_queue))
             {
-                generate_normal_transition(resource, 
-                    last_access.last_state, current_state, last_access.last_pass, pass);
+                generate_normal_transition(resource, last_access.last_state, current_state, last_access.last_pass, pass);
             }
             
             // 更新最后访问信息
@@ -231,43 +229,25 @@ void BarrierGenerationPhase::batch_barriers() SKR_NOEXCEPT
 
 GPUBarrier BarrierGenerationPhase::create_cross_queue_barrier(const CrossQueueSyncPoint& sync_point) const SKR_NOEXCEPT
 {
-    GPUBarrier barrier;
+    GPUBarrier barrier = {};
+    barrier.resource = sync_point.resource;
     barrier.type = EBarrierType::CrossQueueSync;
     barrier.source_pass = sync_point.producer_pass;
     barrier.target_pass = sync_point.consumer_pass;
-    barrier.resource = sync_point.resource;
     barrier.source_queue = sync_point.producer_queue_index;
     barrier.target_queue = sync_point.consumer_queue_index;
     return barrier;
 }
 
-GPUBarrier BarrierGenerationPhase::create_aliasing_barrier(ResourceNode* resource, PassNode* pass) const SKR_NOEXCEPT
+GPUBarrier BarrierGenerationPhase::create_aliasing_barrier(const MemoryAliasTransition& transition) const SKR_NOEXCEPT
 {
-    GPUBarrier barrier;
+    GPUBarrier barrier = {};
+    barrier.resource = transition.to_resource;
     barrier.type = EBarrierType::MemoryAliasing;
-    barrier.target_pass = pass;
-    barrier.resource = resource;
-    barrier.memory_offset = aliasing_phase_.get_resource_offset(resource);
-    
-    // 从资源获取大小信息
-    const auto& lifetime_result = aliasing_phase_.get_result();
-    // 这里需要从lifetime analysis获取内存大小，简化处理
-    barrier.memory_size = 1024; // 简化
-    return barrier;
-}
+    barrier.source_pass = transition.source_pass;
+    barrier.target_pass = transition.transition_pass;
 
-GPUBarrier BarrierGenerationPhase::create_resource_transition_barrier(ResourceNode* resource, PassNode* from_pass, PassNode* to_pass) const SKR_NOEXCEPT
-{
-    GPUBarrier barrier;
-    barrier.type = EBarrierType::ResourceTransition;
-    barrier.source_pass = from_pass;
-    barrier.target_pass = to_pass;
-    barrier.resource = resource;
-    
-    // 这里需要实际的状态查询，简化处理
-    barrier.before_state = CGPU_RESOURCE_STATE_SHADER_RESOURCE;
-    barrier.after_state = CGPU_RESOURCE_STATE_RENDER_TARGET;
-    
+    barrier.aliasing = transition;
     
     return barrier;
 }
@@ -289,8 +269,8 @@ float BarrierGenerationPhase::estimate_barrier_cost(const GPUBarrier& barrier) c
         case EBarrierType::ResourceTransition:
         {
             // 根据状态转换类型估算成本
-            bool is_format_change = (barrier.before_state & CGPU_RESOURCE_STATE_RENDER_TARGET) &&
-                                   (barrier.after_state & CGPU_RESOURCE_STATE_SHADER_RESOURCE);
+            bool is_format_change = (barrier.transition.before_state & CGPU_RESOURCE_STATE_RENDER_TARGET) &&
+                                   (barrier.transition.after_state & CGPU_RESOURCE_STATE_SHADER_RESOURCE);
             
             if (is_format_change)
                 return FORMAT_CONVERSION; // 100.0μs - 格式转换
@@ -400,10 +380,10 @@ bool BarrierGenerationPhase::can_use_split_barriers(uint32_t transmitting_queue,
     
     // 只有重量级的屏障才值得使用分离屏障优化
     // 创建临时屏障对象来估算成本
-    GPUBarrier temp_barrier;
+    GPUBarrier temp_barrier = {};
     temp_barrier.type = EBarrierType::ResourceTransition;
-    temp_barrier.before_state = before_state;
-    temp_barrier.after_state = after_state;
+    temp_barrier.transition.before_state = before_state;
+    temp_barrier.transition.after_state = after_state;
     temp_barrier.source_queue = transmitting_queue;
     temp_barrier.target_queue = receiving_queue;
     
@@ -510,15 +490,16 @@ void BarrierGenerationPhase::generate_normal_transition(ResourceNode* resource, 
     else
     {
         // 生成普通屏障
-        GPUBarrier barrier;
-        barrier.type = EBarrierType::ResourceTransition;
+        GPUBarrier barrier = {};
         barrier.resource = resource;
-        barrier.before_state = before_state;
-        barrier.after_state = after_state;
+        barrier.type = EBarrierType::ResourceTransition;
         barrier.source_pass = source_pass;
         barrier.target_pass = target_pass;
         barrier.source_queue = source_queue;
         barrier.target_queue = target_queue;
+
+        barrier.transition.before_state = before_state;
+        barrier.transition.after_state = after_state;
         
         // Add barrier directly to pass_barriers_
         auto* execution_pass = barrier.target_pass; // Normal barriers execute at target pass
@@ -543,28 +524,30 @@ void BarrierGenerationPhase::generate_split_barrier(ResourceNode* resource, ECGP
     // Begin在生产者方发起，End在消费者方等待，允许中间的其他工作并行执行
     
     // 生成Begin屏障（在源Pass后插入，启动状态转换）
-    GPUBarrier begin_barrier;
-    begin_barrier.is_begin = true; // 标记为Begin屏障
-    begin_barrier.type = EBarrierType::ResourceTransition;
+    GPUBarrier begin_barrier = {};
     begin_barrier.resource = resource;
-    begin_barrier.before_state = before_state;
-    begin_barrier.after_state = after_state;
+    begin_barrier.type = EBarrierType::ResourceTransition;
     begin_barrier.source_pass = source_pass;
     begin_barrier.target_pass = target_pass; // Begin屏障在源Pass后插入，所以target_pass是source_pass
     begin_barrier.source_queue = sync_analysis_.get_pass_queue_index(source_pass);
     begin_barrier.target_queue = sync_analysis_.get_pass_queue_index(target_pass);
+
+    begin_barrier.transition.is_begin = true; // 标记为Begin屏障
+    begin_barrier.transition.before_state = before_state;
+    begin_barrier.transition.after_state = after_state;
     
     // 生成End屏障（在目标Pass前插入，等待状态转换完成）
-    GPUBarrier end_barrier;
-    end_barrier.is_end = true;    // 标记为End屏障
-    end_barrier.type = EBarrierType::ResourceTransition;
+    GPUBarrier end_barrier = {};
     end_barrier.resource = resource;
-    end_barrier.before_state = before_state;
-    end_barrier.after_state = after_state;
+    end_barrier.type = EBarrierType::ResourceTransition;
     end_barrier.source_pass = source_pass;
     end_barrier.target_pass = target_pass; // End屏障在目标Pass前插入
     end_barrier.source_queue = sync_analysis_.get_pass_queue_index(source_pass);
     end_barrier.target_queue = sync_analysis_.get_pass_queue_index(target_pass);
+
+    end_barrier.transition.is_end = true;    // 标记为End屏障
+    end_barrier.transition.before_state = before_state;
+    end_barrier.transition.after_state = after_state;
     
     // Add Begin barrier to source pass
     {
@@ -589,10 +572,10 @@ void BarrierGenerationPhase::generate_split_barrier(ResourceNode* resource, ECGP
     if (config_.enable_debug_output)
     {
         // 估算节省的成本
-        GPUBarrier temp_normal_barrier;
+        GPUBarrier temp_normal_barrier = {};
         temp_normal_barrier.type = EBarrierType::ResourceTransition;
-        temp_normal_barrier.before_state = before_state;
-        temp_normal_barrier.after_state = after_state;
+        temp_normal_barrier.transition.before_state = before_state;
+        temp_normal_barrier.transition.after_state = after_state;
         temp_normal_barrier.source_queue = sync_analysis_.get_pass_queue_index(source_pass);
         temp_normal_barrier.target_queue = sync_analysis_.get_pass_queue_index(target_pass);
         float normal_cost = estimate_barrier_cost(temp_normal_barrier);

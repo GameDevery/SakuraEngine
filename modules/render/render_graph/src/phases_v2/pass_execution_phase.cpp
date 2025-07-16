@@ -6,7 +6,7 @@
 #include "SkrProfile/profile.h"
 #include "SkrContainers/string.hpp"
 
-#define COMMAND_RECORDING_LOG SKR_LOG_DEBUG
+#define COMMAND_RECORDING_LOG(...)
 
 namespace skr
 {
@@ -495,19 +495,17 @@ void PassExecutionPhase::execute_present_pass(RenderGraph* graph, RenderGraphFra
 
 void PassExecutionPhase::insert_pass_barriers(RenderGraphFrameExecutor* executor, PassNode* pass) SKR_NOEXCEPT
 {
-    // Get barrier batches for this pass from BarrierGenerationPhase
     const auto& barrier_batches = barrier_generation_phase_.get_pass_barrier_batches(pass);
+    if (barrier_batches.is_empty()) 
+        return;
 
-    if (barrier_batches.is_empty()) return;
+    skr::InlineVector<CGPUTextureBarrier, 8> texture_barriers;
+    skr::InlineVector<CGPUBufferBarrier, 8> buffer_barriers;
 
-    // Convert barrier batches to CGPU barriers and insert them
+    const bool useRealAliasing = resource_allocation_phase_.get_aliasing_phase().get_aliasing_tier() != EAliasingTier::Tier0;
     for (const auto& batch : barrier_batches)
     {
         if (batch.barriers.is_empty()) continue;
-
-        // Prepare barrier descriptor
-        skr::InlineVector<CGPUTextureBarrier, 8> texture_barriers;
-        skr::InlineVector<CGPUBufferBarrier, 8> buffer_barriers;
 
         if (batch.batch_type == EBarrierType::ResourceTransition)
         {
@@ -518,43 +516,79 @@ void PassExecutionPhase::insert_pass_barriers(RenderGraphFrameExecutor* executor
                 {
                     CGPUTextureBarrier tex_barrier = {};
                     tex_barrier.texture = resource_allocation_phase_.get_resource((TextureNode*)barrier.resource);
-                    tex_barrier.src_state = barrier.before_state;
-                    tex_barrier.dst_state = barrier.after_state;
+                    tex_barrier.src_state = barrier.transition.before_state;
+                    tex_barrier.dst_state = barrier.transition.after_state;
                     tex_barrier.queue_acquire = barrier.source_queue;
                     tex_barrier.queue_release = barrier.target_queue;
+                    tex_barrier.d3d12_begin_only = barrier.transition.is_begin;
+                    tex_barrier.d3d12_end_only = barrier.transition.is_end;
                     texture_barriers.add(tex_barrier);
                 }
                 else if (resource_type == EObjectType::Buffer)
                 {
                     CGPUBufferBarrier buf_barrier = {};
                     buf_barrier.buffer = resource_allocation_phase_.get_resource((BufferNode*)barrier.resource);
-                    buf_barrier.src_state = barrier.before_state;
-                    buf_barrier.dst_state = barrier.after_state;
+                    buf_barrier.src_state = barrier.transition.before_state;
+                    buf_barrier.dst_state = barrier.transition.after_state;
                     buf_barrier.queue_acquire = barrier.source_queue;
                     buf_barrier.queue_release = barrier.target_queue;
+                    buf_barrier.d3d12_begin_only = barrier.transition.is_begin;
+                    buf_barrier.d3d12_end_only = barrier.transition.is_end;
                     buffer_barriers.add(buf_barrier);
                 }
             }
         }
-
-        // Insert barriers if any
-        if (!texture_barriers.is_empty() || !buffer_barriers.is_empty())
+        else if ((batch.batch_type == EBarrierType::MemoryAliasing) && !useRealAliasing)
         {
-            CGPUResourceBarrierDescriptor barriers = {};
-            if (!texture_barriers.is_empty())
+            for (const auto& barrier : batch.barriers)
             {
-                barriers.texture_barriers = texture_barriers.data();
-                barriers.texture_barriers_count = static_cast<uint32_t>(texture_barriers.size());
+                const auto resource_type = barrier.resource->get_type();
+                ECGPUResourceState state_from_pool = ECGPUResourceState::CGPU_RESOURCE_STATE_UNDEFINED;
+                if (resource_type == EObjectType::Texture)
+                {
+                    CGPUTextureBarrier tex_barrier = {};
+                    tex_barrier.texture = resource_allocation_phase_.get_resource((TextureNode*)barrier.resource, &state_from_pool);
+                    tex_barrier.src_state = state_from_pool;
+                    tex_barrier.dst_state = barrier.aliasing.after_state;
+                    tex_barrier.queue_acquire = false;
+                    tex_barrier.queue_release = false;
+                    texture_barriers.add(tex_barrier);
+                }
+                else if (resource_type == EObjectType::Buffer)
+                {
+                    CGPUBufferBarrier buf_barrier = {};
+                    buf_barrier.buffer = resource_allocation_phase_.get_resource((BufferNode*)barrier.resource, &state_from_pool);
+                    buf_barrier.src_state = state_from_pool;
+                    buf_barrier.dst_state = barrier.aliasing.after_state;
+                    buf_barrier.queue_acquire = false;
+                    buf_barrier.queue_release = false;
+                    buffer_barriers.add(buf_barrier);
+                }
             }
-            if (!buffer_barriers.is_empty())
-            {
-                barriers.buffer_barriers = buffer_barriers.data();
-                barriers.buffer_barriers_count = static_cast<uint32_t>(buffer_barriers.size());
-            }
-
-            cgpu_cmd_resource_barrier(executor->gfx_cmd_buf, &barriers);
-            recording_result_.total_barriers_inserted += static_cast<uint32_t>(texture_barriers.size() + buffer_barriers.size());
         }
+        else if ((batch.batch_type == EBarrierType::MemoryAliasing) && useRealAliasing)
+        {
+            SKR_UNIMPLEMENTED_FUNCTION();
+        }
+    }
+
+    // Insert barriers if any
+    if (!texture_barriers.is_empty() || !buffer_barriers.is_empty())
+    {
+        CGPUResourceBarrierDescriptor barriers = {};
+        if (!texture_barriers.is_empty())
+        {
+            barriers.texture_barriers = texture_barriers.data();
+            barriers.texture_barriers_count = static_cast<uint32_t>(texture_barriers.size());
+        }
+        if (!buffer_barriers.is_empty())
+        {
+            barriers.buffer_barriers = buffer_barriers.data();
+            barriers.buffer_barriers_count = static_cast<uint32_t>(buffer_barriers.size());
+        }
+
+        cgpu_cmd_resource_barrier(executor->gfx_cmd_buf, &barriers);
+        recording_result_.total_barriers_inserted += static_cast<uint32_t>(texture_barriers.size() + buffer_barriers.size());
     }
 }
 
