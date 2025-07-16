@@ -3,6 +3,7 @@
 #include "SkrCore/time.h"
 #include "SkrCore/platform/vfs.h"
 #include "SkrRT/ecs/type_builder.hpp"
+#include "SkrRT/ecs/storage.hpp"
 #include "SkrRenderer/render_device.h"
 #include "SkrLive2D/l2d_renderer.hpp"
 #include "SkrLive2D/l2d_render_model.h"
@@ -47,8 +48,7 @@ void skr_live2d_render_view_set_screen(live2d_render_view_t* view, uint32_t widt
 void skr_live2d_render_view_transform_screen(live2d_render_view_t* view, float deviceX, float deviceY);
 void skr_live2d_render_view_transform_view(live2d_render_view_t* view, float deviceX, float deviceY);
 
-struct Live2DRendererImpl : public skr::Live2DRenderer
-{
+struct Live2DRendererImpl : public skr::Live2DRenderer {
     uint32_t last_ms = 0;
     const float kMotionFramesPerSecond = 240.0f;
     const bool kUseHighPrecisionMask = false;
@@ -65,13 +65,18 @@ struct Live2DRendererImpl : public skr::Live2DRenderer
 
     sugoi_query_t* effect_query = nullptr;
     sugoi::TypeSetBuilder type_builder;
-    sugoi_type_index_t identity_type = {};
     double sample_count = 1.0;
     uint64_t frame_count = 0;
     uint64_t async_slot_index = 0;
 
-    void initialize(skr::RendererDevice* render_device, sugoi_storage_t* storage)
+    void initialize(skr::RendererDevice* render_device, sugoi_storage_t* storage, struct skr_vfs_t* resource_vfs) override
     {
+        this->resource_vfs = resource_vfs;
+        effect_query = storage->new_query()
+                           .ReadAll<skr_live2d_render_model_comp_t>()
+                           .commit()
+                           .value();
+
         // prepare render resources
         prepare_pipeline_settings();
         prepare_pipeline(render_device);
@@ -80,10 +85,10 @@ struct Live2DRendererImpl : public skr::Live2DRenderer
         skr_live2d_render_view_reset(&view_);
     }
 
-    void finalize(skr::RendererDevice* renderer)
+    void finalize(skr::RendererDevice* renderer) override
     {
         auto sweepFunction = [&](sugoi_chunk_view_t* r_cv) {
-            auto meshes = sugoi::get_owned_rw<skr_live2d_render_model_comp_t>(r_cv);
+            auto meshes = sugoi::get_owned_ro<skr_live2d_render_model_comp_t>(r_cv);
             for (uint32_t i = 0; i < r_cv->count; i++)
             {
                 while (!meshes[i].vram_future.is_ready()) {}
@@ -134,7 +139,7 @@ struct Live2DRendererImpl : public skr::Live2DRenderer
         // TODO: View Matrix
         model_drawcalls.resize_zeroed(0);
         auto counterF = [&](sugoi_chunk_view_t* r_cv) {
-            auto models = sugoi::get_owned_rw<skr_live2d_render_model_comp_t>(r_cv);
+            auto models = sugoi::get_owned_ro<skr_live2d_render_model_comp_t>(r_cv);
             const auto proper_pipeline = get_pipeline();
             for (uint32_t i = 0; i < r_cv->count; i++)
             {
@@ -221,7 +226,7 @@ struct Live2DRendererImpl : public skr::Live2DRenderer
             SkrZoneScopedN("UpdateMaskF");
 
             const auto proper_pipeline = get_mask_pipeline();
-            auto models = sugoi::get_owned_rw<skr_live2d_render_model_comp_t>(r_cv);
+            auto models = sugoi::get_owned_ro<skr_live2d_render_model_comp_t>(r_cv);
             for (uint32_t i = 0; i < r_cv->count; i++)
             {
                 if (models[i].vram_future.is_ready())
@@ -793,6 +798,20 @@ void Live2DRendererImpl::free_mask_pipeline(skr::RendererDevice* renderer)
     cgpu_free_root_signature(sig_to_free);
 }
 
+skr::Live2DRenderer* skr::Live2DRenderer::Create()
+{
+    return SkrNew<Live2DRendererImpl>();
+}
+
+void skr::Live2DRenderer::Destroy(Live2DRenderer* renderer)
+{
+    SkrDelete(renderer);
+}
+
+skr::Live2DRenderer::~Live2DRenderer()
+{
+}
+
 void skr_live2d_render_view_reset(live2d_render_view_t* view)
 {
     view->clear_color = { 1.f, 1.f, 1.f, 0.f };
@@ -833,8 +852,7 @@ void skr_live2d_render_view_set_screen(live2d_render_view_t* view, uint32_t widt
         kLive2DViewLogicalMaxLeft,
         kLive2DViewLogicalMaxRight,
         kLive2DViewLogicalMaxBottom,
-        kLive2DViewLogicalMaxTop
-    );
+        kLive2DViewLogicalMaxTop);
 }
 
 void skr_live2d_render_view_transform_screen(live2d_render_view_t* view, float deviceX, float deviceY)
@@ -846,8 +864,8 @@ void skr_live2d_render_view_transform_screen(live2d_render_view_t* view, float d
 void skr_live2d_render_view_transform_view(live2d_render_view_t* view, float deviceX, float deviceY)
 {
     float screenX = view->device_to_screen.TransformX(deviceX); // 論理座標変換した座標を取得。
-    view->view_matrix.InvertTransformX(screenX); // 拡大、縮小、移動後の値。
+    view->view_matrix.InvertTransformX(screenX);                // 拡大、縮小、移動後の値。
 
     float screenY = view->device_to_screen.TransformY(deviceY); // 論理座標変換した座標を取得。
-    view->view_matrix.InvertTransformY(screenY); // 拡大、縮小、移動後の値。
+    view->view_matrix.InvertTransformY(screenY);                // 拡大、縮小、移動後の値。
 }
