@@ -589,7 +589,17 @@ CGPUDescriptorSetId cgpu_create_descriptor_set_vulkan(CGPUDeviceId device, const
     }
     SetLayout_Vulkan* SetLayout = &RS->pSetLayouts[desc->set_index];
     const CGPUDevice_Vulkan* D = (CGPUDevice_Vulkan*)device;
-    const size_t UpdateTemplateSize = RS->super.tables[table_index].resources_count * sizeof(VkDescriptorUpdateData);
+    
+    // Calculate the maximum binding index to handle sparse bindings
+    uint32_t max_binding = 0;
+    const CGPUParameterTable* table = &RS->super.tables[table_index];
+    for (uint32_t i = 0; i < table->resources_count; i++)
+    {
+        uint32_t binding_end = table->resources[i].binding + cgpu_max(1U, table->resources[i].size);
+        max_binding = cgpu_max(max_binding, binding_end);
+    }
+    
+    const size_t UpdateTemplateSize = max_binding * sizeof(VkDescriptorUpdateData);
     totalSize += UpdateTemplateSize;
     CGPUDescriptorSet_Vulkan* Set = cgpu_calloc_aligned(1, totalSize, _Alignof(CGPUDescriptorSet_Vulkan));
     char8_t* pMem = (char8_t*)(Set + 1);
@@ -617,7 +627,15 @@ void cgpu_update_descriptor_set_vulkan(CGPUDescriptorSetId set, const struct CGP
     SetLayout_Vulkan* SetLayout = &RS->pSetLayouts[set->index];
     const CGPUParameterTable* ParamTable = &RS->super.tables[table_index];
     VkDescriptorUpdateData* pUpdateData = Set->pUpdateData;
-    memset(pUpdateData, 0, count * sizeof(VkDescriptorUpdateData));
+    
+    // Calculate the actual buffer size based on max binding
+    uint32_t max_binding = 0;
+    for (uint32_t i = 0; i < ParamTable->resources_count; i++)
+    {
+        uint32_t binding_end = ParamTable->resources[i].binding + cgpu_max(1U, ParamTable->resources[i].size);
+        max_binding = cgpu_max(max_binding, binding_end);
+    }
+    memset(pUpdateData, 0, max_binding * sizeof(VkDescriptorUpdateData));
     bool dirty = false;
     for (uint32_t i = 0; i < count; i++)
     {
@@ -658,7 +676,9 @@ void cgpu_update_descriptor_set_vulkan(CGPUDescriptorSetId set, const struct CGP
                 {
                     // TODO: Stencil support
                     cgpu_assert(pParam->textures[arr] && "cgpu_assert: Binding NULL texture!");
-                    VkDescriptorUpdateData* Data = &pUpdateData[ResData->binding + arr];
+                    uint32_t index = ResData->binding + arr;
+                    cgpu_assert(index < max_binding && "cgpu_assert: Binding index out of bounds!");
+                    VkDescriptorUpdateData* Data = &pUpdateData[index];
                     Data->mImageInfo.imageView =
                         ResData->type == CGPU_RESOURCE_TYPE_RW_TEXTURE ?
                         TextureViews[arr]->pVkUAVDescriptor :
@@ -678,7 +698,9 @@ void cgpu_update_descriptor_set_vulkan(CGPUDescriptorSetId set, const struct CGP
                 for (uint32_t arr = 0; arr < arrayCount; ++arr)
                 {
                     cgpu_assert(pParam->samplers[arr] && "cgpu_assert: Binding NULL Sampler!");
-                    VkDescriptorUpdateData* Data = &pUpdateData[ResData->binding + arr];
+                    uint32_t index = ResData->binding + arr;
+                    cgpu_assert(index < max_binding && "cgpu_assert: Binding index out of bounds!");
+                    VkDescriptorUpdateData* Data = &pUpdateData[index];
                     Data->mImageInfo.sampler = Samplers[arr]->pVkSampler;
                     dirty = true;
                 }
@@ -694,7 +716,9 @@ void cgpu_update_descriptor_set_vulkan(CGPUDescriptorSetId set, const struct CGP
                 for (uint32_t arr = 0; arr < arrayCount; ++arr)
                 {
                     cgpu_assert(pParam->buffers[arr] && "cgpu_assert: Binding NULL Buffer!");
-                    VkDescriptorUpdateData* Data = &pUpdateData[ResData->binding + arr];
+                    uint32_t index = ResData->binding + arr;
+                    cgpu_assert(index < max_binding && "cgpu_assert: Binding index out of bounds!");
+                    VkDescriptorUpdateData* Data = &pUpdateData[index];
                     Data->mBufferInfo.buffer = Buffers[arr]->pVkBuffer;
                     Data->mBufferInfo.offset = Buffers[arr]->mOffset;
                     Data->mBufferInfo.range = VK_WHOLE_SIZE;
@@ -1133,22 +1157,136 @@ void cgpu_free_query_pool_vulkan(CGPUQueryPoolId pool)
 
 CGPUMemoryPoolId cgpu_create_memory_pool_vulkan(CGPUDeviceId device, const struct CGPUMemoryPoolDescriptor* desc)
 {
-    VmaPool vmaPool;
     CGPUDevice_Vulkan* D = (CGPUDevice_Vulkan*)device;
+    CGPUAdapter_Vulkan* A = (CGPUAdapter_Vulkan*)device->adapter;
+    
+    // Allocate memory pool structure
+    CGPUMemoryPool_Vulkan* pool = (CGPUMemoryPool_Vulkan*)cgpu_calloc(1, sizeof(CGPUMemoryPool_Vulkan));
+    pool->super.device = device;
+    pool->super.type = desc->type;
+    
+    // Find appropriate memory type index
+    VkMemoryPropertyFlags required_flags = 0;
+    VkMemoryPropertyFlags preferred_flags = 0;
+    
+    // Map CGPU memory usage to Vulkan memory property flags
+    switch (desc->memory_usage)
+    {
+        case CGPU_MEM_USAGE_GPU_ONLY:
+            required_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+            break;
+        case CGPU_MEM_USAGE_CPU_ONLY:
+            required_flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+            preferred_flags = VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+            break;
+        case CGPU_MEM_USAGE_CPU_TO_GPU:
+            required_flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+            preferred_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+            break;
+        case CGPU_MEM_USAGE_GPU_TO_CPU:
+            required_flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+            preferred_flags = VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+            break;
+        default:
+            break;
+    }
+    
+    const bool allowRTDS = desc->flags & CGPU_MEM_POOL_FLAG_ALLOW_RT_DS;
+    const bool allowBuffers = desc->flags & CGPU_MEM_POOL_FLAG_ALLOW_BUFFERS;
+    const bool allowTextures = desc->flags & CGPU_MEM_POOL_FLAG_ALLOW_TEXTURES;
+    // 根据资源类型优化 memory flags
+    if (allowRTDS)
+    {
+        // 瞬态附件可以使用 LAZILY_ALLOCATED
+        preferred_flags |= VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT;
+    }
+    
+    // Find memory type index
+    VkPhysicalDeviceMemoryProperties mem_props;
+    vkGetPhysicalDeviceMemoryProperties(A->pPhysicalDevice, &mem_props);
+    
+    uint32_t memory_type_index = UINT32_MAX;
+    for (uint32_t i = 0; i < mem_props.memoryTypeCount; i++)
+    {
+        if ((mem_props.memoryTypes[i].propertyFlags & required_flags) == required_flags)
+        {
+            if (preferred_flags == 0 || (mem_props.memoryTypes[i].propertyFlags & preferred_flags) != 0)
+            {
+                memory_type_index = i;
+                break;
+            }
+        }
+    }
+    
+    // Fallback if no memory type with preferred flags found
+    if (memory_type_index == UINT32_MAX)
+    {
+        for (uint32_t i = 0; i < mem_props.memoryTypeCount; i++)
+        {
+            if ((mem_props.memoryTypes[i].propertyFlags & required_flags) == required_flags)
+            {
+                memory_type_index = i;
+                break;
+            }
+        }
+    }
+    
+    if (memory_type_index == UINT32_MAX)
+    {
+        cgpu_error("Failed to find suitable memory type for memory pool");
+        cgpu_free(pool);
+        return NULL;
+    }
+    
+    // Create VMA pool
     VmaPoolCreateInfo poolInfo = {
+        .memoryTypeIndex = memory_type_index,
+        .blockSize = desc->block_size,
         .minBlockCount = desc->min_block_count,
         .maxBlockCount = desc->max_block_count,
         .minAllocationAlignment = desc->min_alloc_alignment,
-        .blockSize = desc->block_size,
-        .memoryTypeIndex = 0,
         .flags = 0
     };
-    vmaCreatePool(D->pVmaAllocator, &poolInfo, &vmaPool);
-    return NULL;
+    
+    // Set flags based on pool type
+    if (desc->type == CGPU_MEM_POOL_TYPE_LINEAR)
+    {
+        poolInfo.flags |= VMA_POOL_CREATE_LINEAR_ALGORITHM_BIT;
+    }
+    
+    // 根据资源类型优化 VMA pool
+    if (allowBuffers && !allowTextures && !allowRTDS)
+    {
+        // 纯 Buffer 池可以忽略 buffer/image granularity
+        poolInfo.flags |= VMA_POOL_CREATE_IGNORE_BUFFER_IMAGE_GRANULARITY_BIT;
+    }
+
+    // Create the VMA pool
+    VkResult result = vmaCreatePool(D->pVmaAllocator, &poolInfo, &pool->pVmaPool);
+    if (result != VK_SUCCESS)
+    {
+        cgpu_error("Failed to create VMA pool: %d", result);
+        cgpu_free(pool);
+        return NULL;
+    }
+    
+    return &pool->super;
 }
 
 void cgpu_free_memory_pool_vulkan(CGPUMemoryPoolId pool)
 {
+    if (pool)
+    {
+        CGPUMemoryPool_Vulkan* vk_pool = (CGPUMemoryPool_Vulkan*)pool;
+        CGPUDevice_Vulkan* D = (CGPUDevice_Vulkan*)pool->device;
+        
+        if (vk_pool->pVmaPool)
+        {
+            vmaDestroyPool(D->pVmaAllocator, vk_pool->pVmaPool);
+        }
+        
+        cgpu_free(vk_pool);
+    }
 }
 
 // Queue APIs

@@ -23,8 +23,17 @@ public class MainCommand
     [CmdSub(Name = "clean", ShortName = 'c', Help = "Clean build cache and dependency databases")]
     public CleanCommand Clean { get; set; } = new CleanCommand();
 
+    [CmdSub(Name = "compile_commands", Help = "Generate Compile Commands for IDEs")]
+    public CompileCommandsCommand CompileCommands { get; set; } = new CompileCommandsCommand();
+
     [CmdSub(Name = "vs", Help = "Generate Visual Studio solution")]
     public VSCommand VS { get; set; } = new VSCommand();
+
+    [CmdSub(Name = "vscode", Help = "Generate VSCode debug configurations")]
+    public VSCodeCommand VSCode { get; set; } = new VSCodeCommand();
+
+    [CmdSub(Name = "graph", Help = "Generate dependency graph visualization")]
+    public GraphCommand Graph { get; set; } = new GraphCommand();
 }
 
 public abstract class CommandBase
@@ -39,7 +48,7 @@ public abstract class CommandBase
     public bool UseShaDepend { get; set; } = false;
 
     [CmdOption(Name = "category", ShortName = 'c', Help = "Build tools", IsRequired = false)]
-    public string Category { get; set; } = "modules";
+    public string CategoryString { get; set; } = "modules";
 
     [CmdOption(Name = "toolchain", Help = "Toolchain to use", IsRequired = false)]
     public string ToolchainName { get; set; } = OperatingSystem.IsWindows() ? "clang-cl" : "clang";
@@ -92,10 +101,12 @@ public abstract class CommandBase
         Log.Information("Build start with configuration: {Configuration}", BuildSystem.GlobalConfiguration);
 
         // Set categories
-        if (Category == "modules")
+        if (CategoryString == "modules")
             Categories |= TargetCategory.Runtime | TargetCategory.DevTime;
-        if (Category == "tools")
+        if (CategoryString == "tools")
             Categories |= TargetCategory.Tool;
+        if (CategoryString == "all")
+            Categories |= TargetCategory.Tool | TargetCategory.Runtime | TargetCategory.DevTime;
         Log.Information("Build start with categories: {Categories}", Categories);
 
         // Bootstrap engine
@@ -135,17 +146,11 @@ public class BuildCommand : CommandBase
         if (!ShaderOnly)
         {
             Engine.AddEngineTaskEmitters(Toolchain);
-            Engine.AddCompileCommandsEmitter(Toolchain);
         }
-
         Engine.RunBuild(SingleTarget);
 
-        // Handle post-build tasks
         if (Categories.HasFlag(TargetCategory.Tool))
         {
-            Directory.CreateDirectory(".sb/compile_commands/tools");
-            CompileCommandsEmitter.WriteToFile(".sb/compile_commands/tools/compile_commands.json");
-
             string ToolsDirectory = Path.Combine(SourceLocation.Directory(), ".sb", "tools");
             BuildSystem.Artifacts.AsParallel().ForAll(artifact =>
             {
@@ -167,14 +172,6 @@ public class BuildCommand : CommandBase
                     }
                 }
             });
-        }
-        else
-        {
-            Directory.CreateDirectory(".sb/compile_commands/modules");
-            CompileCommandsEmitter.WriteToFile(".sb/compile_commands/modules/compile_commands.json");
-
-            Directory.CreateDirectory(".sb/compile_commands/shaders");
-            CppSLEmitter.WriteCompileCommandsToFile(".sb/compile_commands/shaders/compile_commands.json");
         }
     }
 }
@@ -227,7 +224,7 @@ public class TestCommand : CommandBase
 public class CleanCommand : CommandBase
 {
     [CmdOption(Name = "database", ShortName = 'd', Help = "Database to clean, 'all | packages' | 'targets' | 'shaders' | 'sdks'", IsRequired = false)]
-    public string Database { get; set; } = "compile";
+    public string Database { get; set; } = "targets";
 
     public override void OnExecute()
     {
@@ -243,16 +240,38 @@ public class CleanCommand : CommandBase
                 BuildSystem.CppCompileDepends(true).ClearDatabase();
             if (all || Database == "shaders")
                 Engine.ShaderCompileDepend.ClearDatabase();
+            if (all || Database == "misc")
+                Engine.MiscDepend.ClearDatabase();
             if (all || Database == "sdks")
             {
-                Engine.ConfigureAwareDepend.ClearDatabase();
-                Engine.ConfigureNotAwareDepend.ClearDatabase();
+                Install.DownloadDepend.ClearDatabase();
+                Install.SDKDepend.ClearDatabase();
             }
         }
         catch (Exception ex)
         {
             Log.Error("Failed to clear databases: {Error}", ex.Message);
         }
+    }
+}
+
+public class CompileCommandsCommand : CommandBase
+{
+    public CompileCommandsCommand()
+    {
+        CategoryString = "all";
+    }
+
+    public override void OnExecute()
+    {
+        Engine.AddCompileCommandsEmitter(Toolchain);
+        Engine.RunBuild();
+
+        Directory.CreateDirectory(".sb/compile_commands/cpp");
+        CompileCommandsEmitter.WriteToFile(".sb/compile_commands/cpp/compile_commands.json");
+
+        Directory.CreateDirectory(".sb/compile_commands/shaders");
+        CppSLCompileCommandsEmitter.WriteCompileCommandsToFile(".sb/compile_commands/shaders/compile_commands.json");
     }
 }
 
@@ -284,5 +303,194 @@ public class VSCommand : CommandBase
         VSEmitter.GenerateSolution(solutionPath, SolutionName);
 
         Log.Information("Visual Studio solution generated at: {Path}", Path.GetFullPath(solutionPath));
+    }
+}
+
+// VSCode subcommand
+public class VSCodeCommand : CommandBase
+{
+    [CmdOption(Name = "debugger", Help = "Default debugger type: cppdbg, lldb-dap, codelldb, cppvsdbg", IsRequired = false)]
+    public string Debugger { get; set; } = "cppdbg";
+
+    [CmdOption(Name = "workspace", Help = "Workspace root directory", IsRequired = false)]
+    public string WorkspaceRoot { get; set; } = ".";
+
+    [CmdOption(Name = "preserve-user", Help = "Preserve user-created debug configurations", IsRequired = false)]
+    public bool PreserveUser { get; set; } = true;
+
+    public override void OnExecute()
+    {
+        Log.Information("Generating VSCode debug configurations...");
+
+        // Set debugger type
+        VSCodeDebugEmitter.DebuggerType debuggerType = VSCodeDebugEmitter.DebuggerType.CppDbg;
+        switch (Debugger.ToLower())
+        {
+            case "lldb-dap":
+                debuggerType = VSCodeDebugEmitter.DebuggerType.LLDBDap;
+                break;
+            case "codelldb":
+                debuggerType = VSCodeDebugEmitter.DebuggerType.CodeLLDB;
+                break;
+            case "cppvsdbg":
+                debuggerType = VSCodeDebugEmitter.DebuggerType.CppVsDbg;
+                break;
+        }
+
+        // Configure VSCode emitter
+        VSCodeDebugEmitter.WorkspaceRoot = !string.IsNullOrEmpty(WorkspaceRoot) ? WorkspaceRoot : 
+                                           (!string.IsNullOrEmpty(Engine.EngineDirectory) ? Engine.EngineDirectory : Directory.GetCurrentDirectory());
+        VSCodeDebugEmitter.DefaultDebugger = debuggerType;
+        VSCodeDebugEmitter.PreserveUserConfigurations = PreserveUser;
+
+        // Add VSCode emitter
+        var emitter = new VSCodeDebugEmitter(Toolchain);
+        BuildSystem.AddTaskEmitter("VSCodeDebugEmitter", emitter);
+
+        // Run the build to process all targets
+        Engine.RunBuild();
+
+        // Generate the debug configurations
+        VSCodeDebugEmitter.GenerateDebugConfigurations();
+        
+        Log.Information("VSCode debug configurations generated in: {Path}", Path.GetFullPath(Path.Combine(VSCodeDebugEmitter.WorkspaceRoot, ".vscode")));
+    }
+}
+
+// Graph subcommand
+public class GraphCommand : CommandBase
+{
+    [CmdOption(Name = "format", ShortName = 'f', Help = "Output format: dot, mermaid, plantuml", IsRequired = false)]
+    public string Format { get; set; } = "dot";
+
+    [CmdOption(Name = "color", ShortName = 's', Help = "Color scheme: type, module, size, deps", IsRequired = false)]
+    public string ColorScheme { get; set; } = "type";
+
+    [CmdOption(Name = "output", ShortName = 'o', Help = "Output directory for graph files", IsRequired = false)]
+    public string OutputDirectory { get; set; } = ".sb/graphs";
+
+    [CmdOption(Name = "external", ShortName = 'e', Help = "Include external dependencies", IsRequired = false)]
+    public bool IncludeExternalDeps { get; set; } = false;
+
+    [CmdOption(Name = "transitive", ShortName = 't', Help = "Show transitive dependencies (default: false, only direct deps)", IsRequired = false)]
+    public bool ShowTransitiveDeps { get; set; } = false;
+
+    [CmdOption(Name = "depth", ShortName = 'd', Help = "Maximum dependency depth (-1 for unlimited)", IsRequired = false)]
+    public int MaxDepth { get; set; } = -1;
+
+    [CmdOption(Name = "open", Help = "Open generated graph file after creation", IsRequired = false)]
+    public bool OpenAfterGeneration { get; set; } = false;
+
+    public override void OnExecute()
+    {
+        Log.Information("Generating dependency graph...");
+
+        // Clear any previous data
+        DependencyGraphEmitter.Clear();
+        
+        // Configure the emitter
+        DependencyGraphEmitter.Format = ParseFormat(Format);
+        DependencyGraphEmitter.ColorScheme = ParseColorScheme(ColorScheme);
+        DependencyGraphEmitter.OutputDirectory = OutputDirectory;
+        DependencyGraphEmitter.IncludeExternalDeps = IncludeExternalDeps;
+        DependencyGraphEmitter.ShowTransitiveDeps = ShowTransitiveDeps;
+        DependencyGraphEmitter.MaxDepth = MaxDepth;
+
+        // Add the emitter to the build system
+        var emitter = new DependencyGraphEmitter();
+        BuildSystem.AddTaskEmitter("DependencyGraph", emitter);
+
+        // Run the build to collect dependency information
+        Engine.RunBuild();
+
+        // Generate the dependency graph after build
+        DependencyGraphEmitter.GenerateDependencyGraph();
+
+        Log.Information("Dependency graph generated in: {Path}", Path.GetFullPath(OutputDirectory));
+
+        // List generated files
+        var graphFiles = Directory.GetFiles(OutputDirectory, "dependency_graph_*.*", SearchOption.TopDirectoryOnly)
+            .OrderByDescending(f => File.GetCreationTime(f))
+            .Take(2)  // Get the latest graph and stats file
+            .ToList();
+
+        foreach (var file in graphFiles)
+        {
+            Log.Information("  - {File}", Path.GetFileName(file));
+        }
+
+        // Optionally open the generated file
+        if (OpenAfterGeneration && graphFiles.Any())
+        {
+            var latestGraph = graphFiles.FirstOrDefault(f => !f.EndsWith("_stats.txt"));
+            if (latestGraph != null)
+            {
+                try
+                {
+                    if (OperatingSystem.IsWindows())
+                    {
+                        Process.Start(new ProcessStartInfo
+                        {
+                            FileName = latestGraph,
+                            UseShellExecute = true
+                        });
+                    }
+                    else if (OperatingSystem.IsMacOS())
+                    {
+                        Process.Start("open", latestGraph);
+                    }
+                    else if (OperatingSystem.IsLinux())
+                    {
+                        Process.Start("xdg-open", latestGraph);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning("Failed to open graph file: {Error}", ex.Message);
+                }
+            }
+        }
+
+        // Provide rendering hints based on format
+        if (Format.ToLower() == "dot")
+        {
+            Log.Information("To render the graph, you can use:");
+            Log.Information("  dot -Tpng {OutputDirectory}/dependency_graph_*.dot -o graph.png", OutputDirectory);
+            Log.Information("  dot -Tsvg {OutputDirectory}/dependency_graph_*.dot -o graph.svg", OutputDirectory);
+        }
+        else if (Format.ToLower() == "mermaid")
+        {
+            Log.Information("To view the Mermaid graph:");
+            Log.Information("  - Copy the content to https://mermaid.live/");
+            Log.Information("  - Or include in a Markdown file with Mermaid support");
+        }
+        else if (Format.ToLower() == "plantuml")
+        {
+            Log.Information("To render the PlantUML graph:");
+            Log.Information("  java -jar plantuml.jar {OutputDirectory}/dependency_graph_*.puml", OutputDirectory);
+        }
+    }
+
+    private DependencyGraphEmitter.GraphFormat ParseFormat(string format)
+    {
+        return format.ToLower() switch
+        {
+            "dot" => DependencyGraphEmitter.GraphFormat.DOT,
+            "mermaid" => DependencyGraphEmitter.GraphFormat.Mermaid,
+            "plantuml" => DependencyGraphEmitter.GraphFormat.PlantUML,
+            _ => DependencyGraphEmitter.GraphFormat.DOT
+        };
+    }
+
+    private DependencyGraphEmitter.NodeColorScheme ParseColorScheme(string scheme)
+    {
+        return scheme.ToLower() switch
+        {
+            "type" => DependencyGraphEmitter.NodeColorScheme.ByType,
+            "module" => DependencyGraphEmitter.NodeColorScheme.ByModule,
+            "size" => DependencyGraphEmitter.NodeColorScheme.BySize,
+            "deps" => DependencyGraphEmitter.NodeColorScheme.ByDependencyCount,
+            _ => DependencyGraphEmitter.NodeColorScheme.ByType
+        };
     }
 }

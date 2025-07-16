@@ -26,20 +26,6 @@ inline static T* FindAttr(std::span<Attr* const> attrs)
     return nullptr;
 }
 
-inline static bool NeedParens(const Stmt* stmt)
-{
-    if (auto parent = stmt->parent())
-    {
-        if (dynamic_cast<const BinaryExpr*>(parent) || 
-            dynamic_cast<const UnaryExpr*>(parent) || 
-            dynamic_cast<const CastExpr*>(parent))
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
 inline static String GetTypeName(const TypeDecl* type)
 {
     if (auto asTexture = dynamic_cast<const TextureTypeDecl*>(type))
@@ -207,9 +193,7 @@ void HLSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt
 
     if (auto binary = dynamic_cast<const BinaryExpr*>(stmt))
     {
-        const bool needParens = NeedParens(stmt);
-        if (needParens)
-            sb.append(L"(");
+        sb.append(L"(");
 
         auto ltype = binary->left()->type();
         auto rtype = binary->right()->type();
@@ -329,8 +313,7 @@ void HLSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt
             visitExpr(sb, binary->right());
         }
 
-        if (needParens)
-            sb.append(L")");
+        sb.append(L")");
     }
     else if (auto bitwiseCast = dynamic_cast<const BitwiseCastExpr*>(stmt))
     {
@@ -606,9 +589,7 @@ void HLSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt
     }
     else if (auto unary = dynamic_cast<const UnaryExpr*>(stmt))
     {
-        const bool needParens = NeedParens(stmt);
-        if (needParens)
-            sb.append(L"(");
+        sb.append(L"(");
 
         {
             String op_name = L"";
@@ -653,8 +634,7 @@ void HLSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt
                 sb.append(op_name);
         }
 
-        if (needParens)
-            sb.append(L")");
+        sb.append(L")");
     }
     else if (auto declStmt = dynamic_cast<const DeclStmt*>(stmt))
     {

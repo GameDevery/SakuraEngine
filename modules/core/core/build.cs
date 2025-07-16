@@ -7,7 +7,7 @@ public static class SkrCore
 {
     static SkrCore()
     {
-        Engine.AddDoctor<SkrCoreDoctor>();
+        Engine.AddSetup<SkrCoreSetup>();
         
         var DependencyGraph = Engine.StaticComponent("SkrDependencyGraph", "SkrCore")
             .Exception(true) // DAG uses lemon which uses exceptions
@@ -61,9 +61,7 @@ public static class SkrCore
             .AddCodegenScript("meta/rttr.ts")
             .AddCodegenScript("meta/serialize.ts")
             .AddCodegenScript("meta/proxy.ts")
-            .CreateSharedPCH("include/**.h", "include/**.hpp", "../profile/include/SkrProfile/profile.h")
-            // TODO: REMOVE THIS
-            .Depend(Visibility.Public, "SDL3");
+            .CreateSharedPCH("include/**.h", "include/**.hpp", "../profile/include/SkrProfile/profile.h");
 
         if (BuildSystem.TargetOS == OSPlatform.Windows)
             SkrCore.Link(Visibility.Private, "shell32", "Ole32", "Shlwapi");
@@ -77,16 +75,10 @@ public static class SkrCore
     }
 }
 
-public class SkrCoreDoctor : IDoctor
+public class SkrCoreSetup : ISetup
 {
-    public bool Check()
+    public void Setup()
     {
         Install.SDK("SDL_3.2.12").Wait();
-        return true;
-    }
-    public bool Fix() 
-    { 
-        Log.Fatal("core sdks install failed!");
-        return true; 
     }
 }

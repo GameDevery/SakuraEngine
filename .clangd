@@ -9,37 +9,9 @@ Diagnostics:
 ---
 
 If:
-  PathMatch: tools/.*/.*
+  PathMatch: .*/.*
 CompileFlags:
-  CompilationDatabase: .sb/compile_commands/tools/
-
----
-
-If:
-  PathMatch: modules/.*/.*
-CompileFlags:
-  CompilationDatabase: .sb/compile_commands/modules/
-
----
-
-If:
-  PathMatch: samples/.*/.*
-CompileFlags:
-  CompilationDatabase: .sb/compile_commands/modules/
-
----
-
-If:
-  PathMatch: tests/.*/.*
-CompileFlags:
-  CompilationDatabase: .sb/compile_commands/modules/
-
----
-
-If:
-  PathMatch: thirdparty/.*/.*
-CompileFlags:
-  CompilationDatabase: .sb/compile_commands/modules/
+  CompilationDatabase: .sb/compile_commands/cpp/
 
 ---
 

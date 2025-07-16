@@ -8,7 +8,7 @@ namespace SB
 {
     using BS = BuildSystem;
     
-    [Doctor<TargetDbDoctor>]
+    [Setup<TargetDbSetup>]
     public class TargetDbContext : DbContext
     {
         static TargetDbContext()
@@ -96,20 +96,14 @@ namespace SB
         public required string TargetArguments { get; set; }
     }
 
-    public class TargetDbDoctor : IDoctor
+    public class TargetDbSetup : ISetup
     {
-        public bool Check()
+        public void Setup()
         {
             using (Profiler.BeginZone("WarmUp | EntityFramework", color: (uint)Profiler.ColorType.WebMaroon))
             {
                 TargetDbContext.UpdateContext!.FindAsync<TargetEntity>("");
-                return true;
             }
-        }
-
-        public bool Fix()
-        {
-            return true;
         }
     }
 }

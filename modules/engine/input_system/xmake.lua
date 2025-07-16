@@ -1,6 +1,6 @@
 shared_module("SkrInputSystem", "SKR_INPUT_SYSTEM")
     skr_unity_build()
     public_dependency("SkrRT")
-    public_dependency("SkrInput")
+    public_dependency("SkrSystem")
     add_includedirs("include", {public=true})
     add_files("src/*.cpp")

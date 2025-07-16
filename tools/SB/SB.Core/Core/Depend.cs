@@ -14,7 +14,7 @@ namespace SB.Core
         public bool Force { get; init; }
     }
 
-    public class DependDatabase
+    public class DependDatabase : IDisposable
     {
         public bool OnChanged(string TargetName, string FileName, string EmitterName, Action<Depend> func, IEnumerable<string>? Files, IEnumerable<string>? Args, DependOptions? opt = null)
         {
@@ -194,7 +194,7 @@ namespace SB.Core
             {
                 using (Profiler.BeginZone($"WriteToDB", color: (uint)Profiler.ColorType.Gray))
                 {
-                    var DB = CreateContext(TargetName);
+                    using (var DB = CreateContext(TargetName))
                     {
                         if (OldDepend is not null)
                             DB.Depends.Update(ToEntity(NewDepend));
@@ -338,6 +338,13 @@ namespace SB.Core
         private string DatabasePath { get; init; }
         private PooledDbContextFactory<DependContext> Factory;
         private DbContext? WarmUpContext;
+
+        public void Dispose()
+        {
+            WarmUpContext?.Dispose();
+            // PooledDbContextFactory doesn't implement IDisposable
+            // The factory itself doesn't need to be disposed
+        }
     }
 
     public struct Depend

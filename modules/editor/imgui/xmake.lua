@@ -4,12 +4,13 @@ shared_module("SkrImGui", "SKR_IMGUI")
 
     -- deps
     add_deps("SDL3", {private=true})
-    public_dependency("SkrInput")
+    public_dependency("SkrSystem")
     public_dependency("SkrRenderGraph")
 
     -- includes
     add_includedirs("include", {public=true})
     add_files("src/**.cpp")
+    add_files("src/system/**.cpp")
 
     -- font files
     skr_install_rule()

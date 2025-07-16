@@ -455,6 +455,25 @@ void cgpu_free_query_pool(CGPUQueryPoolId pool)
     fn_free_query_pool(pool);
 }
 
+CGPUMemoryPoolId cgpu_create_memory_pool(CGPUDeviceId device, const struct CGPUMemoryPoolDescriptor* desc)
+{
+    cgpu_assert(device != CGPU_NULLPTR && "fatal: call on NULL device!");
+    cgpu_assert(device->proc_table_cache->create_memory_pool && "create_memory_pool Proc Missing!");
+    CGPUProcCreateMemoryPool fn_create_memory_pool = device->proc_table_cache->create_memory_pool;
+    CGPUMemoryPool* memory_pool = (CGPUMemoryPool*)fn_create_memory_pool(device, desc);
+    memory_pool->device = device;
+    return memory_pool;
+}
+
+void cgpu_free_memory_pool(CGPUMemoryPoolId pool)
+{
+    cgpu_assert(pool != CGPU_NULLPTR && "fatal: call on NULL pool!");
+    cgpu_assert(pool->device != CGPU_NULLPTR && "fatal: call on NULL device!");
+    CGPUProcFreeMemoryPool fn_free_memory_pool = pool->device->proc_table_cache->free_memory_pool;
+    cgpu_assert(fn_free_memory_pool && "free_memory_pool Proc Missing!");
+    fn_free_memory_pool(pool);
+}
+
 void cgpu_free_device(CGPUDeviceId device)
 {
     cgpu_assert(device != CGPU_NULLPTR && "fatal: call on NULL device!");

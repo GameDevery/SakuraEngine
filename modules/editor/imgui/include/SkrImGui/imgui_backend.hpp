@@ -1,5 +1,5 @@
 #pragma once
-#include <SkrImGui/imgui_window_backend.hpp>
+#include <SkrImGui/imgui_system_event_handler.hpp>
 #include <SkrContainers/string.hpp>
 #include <SkrContainers/optional.hpp>
 #include <SkrBase/math.h>
@@ -7,26 +7,27 @@
 #include <SkrCore/memory/rc.hpp>
 #include <imgui.h>
 #include <imgui_internal.h>
+#include <chrono>
 
 namespace skr
 {
 struct ImGuiRendererBackend;
+struct SystemApp;
+struct SystemWindow;
 
-struct SKR_IMGUI_API ImGuiBackend {
+struct SKR_IMGUI_API ImGuiApp : public SystemApp {
     // ctor & dtor
-    ImGuiBackend();
-    ~ImGuiBackend();
+    ImGuiApp(const SystemWindowCreateInfo& main_wnd_create_info, RCUnique<ImGuiRendererBackend> backend);
+    ~ImGuiApp();
 
     // imgui context
     void apply_context();
-    void create(
-        const ImGuiWindowCreateInfo&   main_wnd_create_info,
-        RCUnique<ImGuiRendererBackend> backend
-    );
-    void destroy();
+
+    virtual bool initialize(const char* backend = nullptr) override;
+    virtual void shutdown() override;
 
     // frame
-    void pump_message();
+    void pump_message(); // Legacy method for compatibility
     void begin_frame();
     void end_frame();
     void acquire_next_frame();
@@ -49,24 +50,39 @@ struct SKR_IMGUI_API ImGuiBackend {
     void enable_high_dpi(bool enable = true);
 
     // getter
-    inline bool                      is_created() const { return _context != nullptr; }
-    inline const Trigger&            want_exit() const { return _want_exit; }
-    inline ImGuiContext*             context() const { return _context; }
-    inline const ImGuiWindowBackend& main_window() const { return _main_window; }
-    inline ImGuiWindowBackend&       main_window() { return _main_window; }
+    inline bool           is_created() const { return _context != nullptr; }
+    inline const Trigger& want_exit() const { return _event_handler ? _event_handler->want_exit() : _want_exit; }
+    inline ImGuiContext*  context() const { return _context; }
+    inline SystemWindow*  main_window() const { return _main_window; }
+
+    mutable skr::String _clipboard;
 
 private:
-    // context & main window
-    ImGuiContext*      _context     = nullptr;
-    ImGuiWindowBackend _main_window = {};
+    void _collect();
+    // context
+    ImGuiContext* _context = nullptr;
+
+    // system integration
+    SystemWindowCreateInfo   _main_window_info;
+    SystemWindow*            _main_window   = nullptr;
+    ImGuiSystemEventHandler* _event_handler = nullptr;
 
     // render backend
     RCUnique<ImGuiRendererBackend> _renderer_backend = nullptr;
 
-    // dirty & trigger
+    // dirty & trigger (for legacy mode)
     Trigger _pixel_size_changed    = {};
     Trigger _content_scale_changed = {};
     Trigger _want_resize           = {};
     Trigger _want_exit             = {};
+
+    // Helper methods
+    void UpdateMouseCursor();
+    void SetupIMECallbacks();
+    void UpdateIMEState();
+    bool _ime_active_state = false;
+
+    // Time tracking
+    std::chrono::steady_clock::time_point last_frame_time_;
 };
 } // namespace skr

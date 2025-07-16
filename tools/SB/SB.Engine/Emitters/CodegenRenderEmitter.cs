@@ -10,7 +10,7 @@ namespace SB
         public List<string> Scripts { get; } = new();
     }
 
-    [Doctor<CodegenDoctor>]
+    [Setup<CodegenSetup>]
     public class CodegenRenderEmitter : TaskEmitter
     {
         public CodegenRenderEmitter(IToolchain Toolchain) => this.Toolchain = Toolchain;
@@ -65,7 +65,7 @@ namespace SB
                 var ParamFile = Path.Combine(CodegenDirectory, $"{Target.Name}_codegen_config.json");
                 File.WriteAllText(ParamFile, Json.Serialize(Config));
 
-                var EXE = Path.Combine(CodegenDoctor.Installation!.Result, BS.HostOS == OSPlatform.Windows ? "bun.exe" : "bun");
+                var EXE = Path.Combine(CodegenSetup.Installation!.Result, BS.HostOS == OSPlatform.Windows ? "bun.exe" : "bun");
                 
                 var ExitCode = BS.RunProcess(EXE, $"{GenerateScript} {ParamFile}", out var OutputInfo, out var ErrorInfo);
                 if (ExitCode != 0)
@@ -118,9 +118,9 @@ namespace SB
         public static string GetCodegenDirectory(this Target @this) => Path.Combine(@this.GetStorePath(BuildSystem.GeneratedSourceStore), $"codegen/{@this.Name}");
     }
 
-    public class CodegenDoctor : IDoctor
+    public class CodegenSetup : ISetup
     {
-        public bool Check()
+        public void Setup()
         {
             Installation = Install.Tool("bun_1.2.5");
             Installation.Wait();
@@ -135,23 +135,16 @@ namespace SB
             if (BuildSystem.RunProcess(EXE, $"install", out var Output, out var Error, Options) != 0)
             {
                 Log.Fatal("bun install failed!\n{Output}\n{Error}", Output, Error);
-                return false;
+                throw new Exception($"bun install failed in meta_codegen_ts: {Error}");
             }
 
             Options.WorkingDirectory = Path.Combine(Engine.EngineDirectory, "tools/merge_natvis_ts");
             if (BuildSystem.RunProcess(EXE, $"install", out var Output2, out var Error2, Options) != 0)
             {
                 Log.Fatal("bun install failed!\n{Output2}\n{Error2}", Output2, Error2);
-                return false;
-            }
-
-            return true;
+                throw new Exception($"bun install failed in merge_natvis_ts: {Error2}");
+            } 
         }
-        public bool Fix() 
-        { 
-            Log.Fatal("bun install failed!");
-            return true; 
-        }
-        public static Task<string>? Installation;
+        public static Task<string>? Installation { get; set; }
     }
 }

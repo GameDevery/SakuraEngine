@@ -1,11 +1,12 @@
 using Microsoft.Extensions.FileSystemGlobbing;
 using System.Text;
 using System.Diagnostics;
+using System.Collections;
 using Serilog;
 
 namespace SB.Core
 {
-    [Doctor<VisualStudioDoctor>]
+    [Setup<VisualStudioSetup>]
     public partial class VisualStudio : IToolchain
     {
         // https://blog.pcitron.fr/2022/01/04/dont-use-vcvarsall-vsdevcmd/
@@ -113,49 +114,122 @@ namespace SB.Core
         }
 
         static readonly Dictionary<Architecture, string> archStringMap = new Dictionary<Architecture, string> { { Architecture.X86, "x86" }, { Architecture.X64, "x64" }, { Architecture.ARM64, "arm64" } };
+        
+        private bool IsInDeveloperPrompt()
+        {
+            // 检查关键的 VS Developer Prompt 环境变量
+            // 这些变量只有在真正的 Developer Prompt 中才会同时存在
+            var devPromptArch = Environment.GetEnvironmentVariable("VSCMD_ARG_TGT_ARCH");
+            var vsInstallDir = Environment.GetEnvironmentVariable("VSINSTALLDIR");
+            var vcInstallDir = Environment.GetEnvironmentVariable("VCINSTALLDIR");
+            var vscmdVer = Environment.GetEnvironmentVariable("VSCMD_VER");
+            
+            // 确保是真正的 Developer Prompt，而不仅仅是安装了 VS
+            return !string.IsNullOrEmpty(devPromptArch) && 
+                   !string.IsNullOrEmpty(vsInstallDir) && 
+                   !string.IsNullOrEmpty(vcInstallDir) &&
+                   !string.IsNullOrEmpty(vscmdVer);
+        }
+        
+        private void FindToolsInCurrentEnvironment()
+        {
+            var pathEnv = Environment.GetEnvironmentVariable("Path") ?? "";
+            var paths = pathEnv.Split(';', StringSplitOptions.RemoveEmptyEntries);
+            
+            foreach (var path in paths)
+            {
+                if (!Directory.Exists(path))
+                    continue;
+                
+                try
+                {
+                    foreach (var file in Directory.EnumerateFiles(path))
+                    {
+                        var fileName = Path.GetFileName(file);
+                        switch (fileName.ToLowerInvariant())
+                        {
+                            case "cl.exe":
+                                CLCCPath = file;
+                                break;
+                            case "link.exe":
+                                LINKPath = file;
+                                break;
+                            case "clang-cl.exe":
+                                ClangCLPath = file;
+                                break;
+                        }
+                    }
+                }
+                catch
+                {
+                    // 忽略无法访问的目录
+                }
+            }
+        }
+
         internal void RunVCVars()
         {
-            var oldEnvPath = Path.Combine(Path.GetTempPath(), $"vcvars_{VSVersion}_prev_{HostArch}_{TargetArch}.txt");
-            var newEnvPath = Path.Combine(Path.GetTempPath(), $"vcvars_{VSVersion}_post_{HostArch}_{TargetArch}.txt");
+            // 检测是否已在 Developer Prompt 中
+            if (IsInDeveloperPrompt())
+            {
+                Log.Information("Already in Visual Studio Developer Command Prompt, using existing environment");
 
-            Process cmd = new Process
-            {
-                StartInfo = new ProcessStartInfo
+                // 直接使用当前环境变量
+                VCEnvVariables = new Dictionary<string, string?>();
+                foreach (DictionaryEntry entry in Environment.GetEnvironmentVariables())
                 {
-                    FileName = "cmd.exe",
-                    RedirectStandardInput = false,
-                    RedirectStandardOutput = false,
-                    RedirectStandardError = false,
-                    CreateNoWindow = true,
-                    UseShellExecute = false
+                    VCEnvVariables[entry.Key.ToString()!] = entry.Value?.ToString();
                 }
-            };
-            if (FastFind)
-            {
-                cmd.StartInfo.Environment.Add("VSCMD_ARG_HOST_ARCH", archStringMap[HostArch]);
-                cmd.StartInfo.Environment.Add("VSCMD_ARG_TGT_ARCH", archStringMap[TargetArch]);
-                cmd.StartInfo.Environment.Add("VSCMD_ARG_APP_PLAT", "Desktop");
-                cmd.StartInfo.Environment.Add("VSINSTALLDIR", VSInstallDir!.Replace("/", "\\"));
-                cmd.StartInfo.Arguments = $"/c set > \"{oldEnvPath}\" && \"{VCVarsBat}\" && \"{WindowsSDKBat}\" && set > \"{newEnvPath}\"";
+
+                // 从当前环境中查找工具
+                FindToolsInCurrentEnvironment();
+
+                // 验证是否找到必要的工具
+                if (string.IsNullOrEmpty(CLCCPath) || !File.Exists(CLCCPath))
+                {
+                    Log.Warning("cl.exe not found in Developer Prompt environment");
+                }
+                if (string.IsNullOrEmpty(LINKPath) || !File.Exists(LINKPath))
+                {
+                    Log.Warning("link.exe not found in Developer Prompt environment");
+                }
             }
             else
             {
-                string ArchString = (TargetArch == HostArch) ? archStringMap[TargetArch] : $"{archStringMap[HostArch]}_{archStringMap[TargetArch]}";
-                cmd.StartInfo.Arguments = $"/c set > \"{oldEnvPath}\" && \"{VCVarsAllBat}\" {ArchString} && set > \"{newEnvPath}\"";
-            }
-            cmd.Start();
-            cmd.WaitForExit();
+                // 不在 Developer Prompt 中，执行原有的初始化逻辑
+                var oldEnvPath = Path.Combine(Path.GetTempPath(), $"vcvars_{VSVersion}_prev_{HostArch}_{TargetArch}.txt");
+                var newEnvPath = Path.Combine(Path.GetTempPath(), $"vcvars_{VSVersion}_post_{HostArch}_{TargetArch}.txt");
 
-            VCEnvVariables = EnvReader.Load(newEnvPath)!;
-            var oldEnv = EnvReader.Load(oldEnvPath)!;
-            bool isInDevEnv = oldEnv.ContainsKey("VSCMD_ARG_TGT_ARCH") || 
-                              oldEnv.ContainsKey("VSINSTALLDIR") ||
-                              oldEnv.ContainsKey("VCINSTALLDIR");
+                Process cmd = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = "cmd.exe",
+                        RedirectStandardInput = false,
+                        RedirectStandardOutput = false,
+                        RedirectStandardError = false,
+                        CreateNoWindow = true,
+                        UseShellExecute = false
+                    }
+                };
+                if (FastFind)
+                {
+                    cmd.StartInfo.Environment.Add("VSCMD_ARG_HOST_ARCH", archStringMap[HostArch]);
+                    cmd.StartInfo.Environment.Add("VSCMD_ARG_TGT_ARCH", archStringMap[TargetArch]);
+                    cmd.StartInfo.Environment.Add("VSCMD_ARG_APP_PLAT", "Desktop");
+                    cmd.StartInfo.Environment.Add("VSINSTALLDIR", VSInstallDir!.Replace("/", "\\"));
+                    cmd.StartInfo.Arguments = $"/c set > \"{oldEnvPath}\" && \"{VCVarsBat}\" && \"{WindowsSDKBat}\" && set > \"{newEnvPath}\"";
+                }
+                else
+                {
+                    string ArchString = (TargetArch == HostArch) ? archStringMap[TargetArch] : $"{archStringMap[HostArch]}_{archStringMap[TargetArch]}";
+                    cmd.StartInfo.Arguments = $"/c set > \"{oldEnvPath}\" && \"{VCVarsAllBat}\" {ArchString} && set > \"{newEnvPath}\"";
+                }
+                cmd.Start();
+                cmd.WaitForExit();
 
-            HashSet<string> vcPaths;
-            var oldPaths = oldEnv["Path"].Split(';').ToHashSet();
-            if (!isInDevEnv)
-            {
+                var oldEnv = EnvReader.Load(oldEnvPath)!;
+                VCEnvVariables = EnvReader.Load(newEnvPath)!;
                 // Preprocess: cull old env variables
                 foreach (var oldVar in oldEnv)
                 {
@@ -163,7 +237,8 @@ namespace SB.Core
                         VCEnvVariables.Remove(oldVar.Key);
                 }
                 // Preprocess: cull user env variables
-                vcPaths = VCEnvVariables["Path"]!.Split(';').ToHashSet();
+                var vcPaths = VCEnvVariables["Path"]!.Split(';').ToHashSet();
+                var oldPaths = oldEnv["Path"].Split(';').ToHashSet();
                 vcPaths.ExceptWith(oldPaths);
                 VCEnvVariables["Path"] = string.Join(";", vcPaths);
                 // Preprocess: calculate include dir
@@ -172,14 +247,7 @@ namespace SB.Core
                 var WindowsSDKIncludes = VCEnvVariables.TryGetValue("__VSCMD_WINSDK_INCLUDE", out var V2) ? V2 : "";
                 var NetFXIncludes = VCEnvVariables.TryGetValue("__VSCMD_NETFX_INCLUDE", out var V3) ? V3 : "";
                 VCEnvVariables["INCLUDE"] = VCVarsIncludes + WindowsSDKIncludes + NetFXIncludes + OriginalIncludes;
-            }
-            else
-            {
-                Log.Information("Visual Studio {VSVersion} is in dev environment, disable dirty env vars culling", VSVersion);
-                vcPaths = VCEnvVariables["Path"]!.Split(';').ToHashSet();
-            }
-
-            // Enum all files and pick usable tools
+                // Enum all files and pick usable tools
                 foreach (var path in vcPaths)
                 {
                     if (!Directory.Exists(path))
@@ -195,24 +263,28 @@ namespace SB.Core
                             ClangCLPath = file;
                     }
                 }
-            // clang-cl may be installed in a different user path
-            if (!File.Exists(ClangCLPath))
-            {   
-                foreach (var path in oldPaths)
+                // clang-cl may be installed in a different user path
+                if (!File.Exists(ClangCLPath))
                 {
-                    if (!Directory.Exists(path))
-                        continue;
-
-                    foreach (var file in Directory.EnumerateFiles(path))
+                    foreach (var path in oldPaths)
                     {
-                        if (Path.GetFileName(file) == "clang-cl.exe")
-                            ClangCLPath = file;
+                        if (!Directory.Exists(path))
+                            continue;
+
+                        foreach (var file in Directory.EnumerateFiles(path))
+                        {
+                            if (Path.GetFileName(file) == "clang-cl.exe")
+                                ClangCLPath = file;
+                        }
                     }
                 }
             }
-            CLCC = new CLCompiler(CLCCPath!, VCEnvVariables);
-            LINK = new LINK(LINKPath!, VCEnvVariables);
-            ClangCLCC = new ClangCLCompiler(ClangCLPath!, VCEnvVariables);
+            if (!string.IsNullOrEmpty(CLCCPath))            
+                CLCC = new CLCompiler(CLCCPath!, VCEnvVariables);
+            if (!string.IsNullOrEmpty(LINKPath))            
+                LINK = new LINK(LINKPath!, VCEnvVariables);
+            if (!string.IsNullOrEmpty(ClangCLPath))            
+                ClangCLCC = new ClangCLCompiler(ClangCLPath!, VCEnvVariables);
         }
         
         public readonly int VSVersion;
@@ -238,9 +310,9 @@ namespace SB.Core
         #endregion
     }
 
-    public class VisualStudioDoctor : IDoctor
+    public class VisualStudioSetup : ISetup
     {
-        public bool Check()
+        public void Setup()
         {
             if (BuildSystem.TargetOS == OSPlatform.Windows && BuildSystem.HostOS == OSPlatform.Windows)
             {
@@ -256,18 +328,10 @@ namespace SB.Core
                     VisualStudio.RunVCVars();
                     sw.Stop();
                     Log.Information("Run VCVars took {ElapsedMilliseconds}s", sw.ElapsedMilliseconds / 1000.0f);
-                    return true;
                 }
             }
-            return true;
         }
 
-        public bool Fix()
-        {
-            Log.Fatal("VisualStudio discover failed!");
-            return true;
-        }
-
-        public static VisualStudio VisualStudio { get; private set; } = new VisualStudio(2022);
+        public static VisualStudio VisualStudio { get; set; } = new VisualStudio(2022);
     }
 }

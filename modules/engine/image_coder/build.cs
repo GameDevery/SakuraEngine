@@ -7,7 +7,7 @@ public static class SkrImageCoder
 {
     static SkrImageCoder()
     {
-        Engine.AddDoctor<ImageCoderDoctor>();
+        Engine.AddSetup<ImageCoderSetup>();
         
         var ImageCoder = Engine.Module("SkrImageCoder")
             .EnableUnityBuild()
@@ -34,20 +34,14 @@ public static class SkrImageCoder
     }
 }
 
-public class ImageCoderDoctor : IDoctor
+public class ImageCoderSetup : ISetup
 {
-    public bool Check()
+    public void Setup()
     {
         Task.WaitAll(
             Install.SDK("libpng"),
             Install.SDK("turbojpeg")
         );
-        return true;
-    }
-    public bool Fix() 
-    { 
-        Log.Fatal("image coder sdks install failed!");
-        return true; 
     }
     public static Task? Installation;
 }

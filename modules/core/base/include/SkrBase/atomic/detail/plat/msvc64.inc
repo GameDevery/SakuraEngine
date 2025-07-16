@@ -92,7 +92,7 @@ inline static int64_t _plat64_atomic_loadi64_explicit(_SAtomic(int64_t)*p, skr_m
 
 inline static void _plat64_atomic_storei64_explicit(_SAtomic(int64_t)*p, int64_t x, skr_memory_order mo) {
   (void)(mo);
-#if defined(x_M_IX86) || defined(_M_X64)
+#if defined(_M_IX86) || defined(_M_X64)
   *p = x;
 #else
   InterlockedExchange64(p, x);

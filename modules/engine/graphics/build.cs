@@ -8,7 +8,7 @@ public static class SkrGraphics
 {
     static SkrGraphics()
     {
-        Engine.AddDoctor<SkrGraphicsDoctor>();
+        Engine.AddSetup<SkrGraphicsSetup>();
 
         var SkrGraphics = Engine
             .Module("SkrGraphics")
@@ -49,9 +49,9 @@ public static class SkrGraphics
     }
 }
 
-public class SkrGraphicsDoctor : IDoctor
+public class SkrGraphicsSetup : ISetup
 {
-    public bool Check()
+    public void Setup()
     {
         if (BuildSystem.TargetOS == OSPlatform.Windows)
         {
@@ -63,11 +63,5 @@ public class SkrGraphicsDoctor : IDoctor
                 Install.SDK("WinPixEventRuntime")
             );
         }
-        return true;
-    }
-    public bool Fix() 
-    {
-        Log.Fatal("graphics sdks install failed!");
-        return true; 
     }
 }

@@ -3,7 +3,7 @@ using Serilog;
 
 namespace SB
 {
-    [Doctor<DXCDoctor>]
+    [Setup<DXCSetup>]
     public class DXCEmitter : TaskEmitter
     {
         public override bool EnableEmitter(Target Target) => Target.HasFilesOf<HLSLFileList>();
@@ -42,7 +42,7 @@ namespace SB
                     $"-T{TargetProfile}",
                     SourceFile
                 };
-                int ExitCode = BuildSystem.RunProcess(DXCDoctor.DXC!, string.Join(" ", Arguments), out var Output, out var Error);
+                int ExitCode = BuildSystem.RunProcess(DXCSetup.DXC!, string.Join(" ", Arguments), out var Output, out var Error);
                 if (ExitCode != 0)
                 {
                     throw new TaskFatalError($"Compile SPV for {SourceFile} failed with fatal error!", $"DXC.exe: {Error}");
@@ -62,7 +62,7 @@ namespace SB
                     $"-T{TargetProfile}",
                     SourceFile
                 };
-                int ExitCode = BuildSystem.RunProcess(DXCDoctor.DXC!, string.Join(" ", Arguments), out var Output, out var Error);
+                int ExitCode = BuildSystem.RunProcess(DXCSetup.DXC!, string.Join(" ", Arguments), out var Output, out var Error);
                 if (ExitCode != 0)
                 {
                     throw new TaskFatalError($"Compile DXIL for {SourceFile} failed with fatal error!", $"DXC.exe: {Error}");
@@ -113,20 +113,14 @@ namespace SB
         }
     }
 
-    public class DXCDoctor : IDoctor
+    public class DXCSetup : ISetup
     {
-        public bool Check()
+        public void Setup()
         {
-            var Installation = (BuildSystem.TargetOS == OSPlatform.Windows) ? Install.Tool("dxc-2025_02_21") : Install.Tool("dxc");
+            var Installation = Install.Tool("dxc-2025_02_21");
             Installation.Wait();
             DXC = Path.Combine(Installation.Result, BuildSystem.HostOS == OSPlatform.Windows ? "dxc.exe" : "dxc");
             Directory.CreateDirectory(Path.Combine(Engine.BuildPath, "resources/shaders"));
-            return true;
-        }
-        public bool Fix()
-        {
-            Log.Fatal("dxc sdks install failed!");
-            return true; 
         }
         public static string? DXC { get; private set; }
     }

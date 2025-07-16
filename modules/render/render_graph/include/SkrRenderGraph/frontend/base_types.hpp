@@ -1,12 +1,8 @@
 #pragma once
-#include "SkrRenderGraph/rg_config.h"
+#include "SkrGraphics/api.h"
 #include "SkrDependencyGraph/dependency_graph.hpp"
-#include "SkrContainers/span.hpp"
-#include "SkrContainers/stl_function.hpp"
-#include "SkrContainers/string.hpp"
-
-using graph_object_string = skr::String;
-using graph_big_object_string = skr::String;
+#include "SkrContainersDef/string.hpp"
+#include "SkrContainersDef/span.hpp"
 
 enum
 {
@@ -71,6 +67,23 @@ enum class EPassType : uint8_t
     Copy,
     Present,
     Count
+};
+
+enum class EPassFlags : uint32_t
+{
+    None = 0x0,
+    SeperateFromCommandBuffer = 0x1,  // Pass 会从主命令缓冲区提取命令
+    PreferAsyncCompute = 0x2,         // Pass 倾向于在异步计算队列运行
+ 
+    ComputeIntensive = 0x10,          // 长时间运行的计算，需要特殊调度
+    VertexBoundIntensive = 0x20,      // VS/图元装配瓶颈（仅渲染 Pass）
+    PixelBoundIntensive = 0x40,       // 片元/ROP 瓶颈（仅渲染 Pass）
+    BandwidthIntensive = 0x80,        // 内存带宽密集型 Pass
+
+    SmallWorkingSet = 0x100,          // 小 working set
+    LargeWorkingSet = 0x200,          // 大 working set
+    RandomAccess = 0x400,             // 随机内存访问（缓存不友好）
+    StreamingAccess = 0x800,          // 流式访问（绕过缓存）
 };
 
 template <EObjectType type>
@@ -181,6 +194,12 @@ struct SKR_RENDER_GRAPH_API ObjectHandle<EObjectType::Texture> {
         inline operator ObjectHandle<EObjectType::Texture>() const { return ObjectHandle<EObjectType::Texture>(_this); }
 
         SubresourceHandle(const handle_t _this);
+
+        uint32_t get_mip_level() const { return mip_level; }
+        uint32_t get_array_base() const { return array_base; }
+        uint32_t get_array_count() const { return array_count; }
+        CGPUTextureViewAspects get_aspects() const { return aspects; }
+
     protected:
         handle_t _this;
         uint32_t mip_level = 0;
@@ -304,11 +323,12 @@ struct RenderGraphNode : public DependencyGraphNode {
     const EObjectType type;
     const uint32_t pooled_size = 0;
 protected:
-    graph_object_string name = u8"";
+    skr::String name = u8"";
 };
 
 struct RenderGraphEdge : public DependencyGraphEdge {
     RenderGraphEdge(ERelationshipType type);
+    inline ERelationshipType get_type() const SKR_NOEXCEPT { return type; }
     const ERelationshipType type;
     const uint32_t pooled_size = 0;
 };
@@ -326,8 +346,8 @@ struct SKR_RENDER_GRAPH_API PassContext {
 
 struct SKR_RENDER_GRAPH_API BindablePassContext : public PassContext {
     friend class RenderGraphBackend;
+    friend struct PassExecutionPhase;
 
-    const struct CGPUXBindTable* create_and_update_bind_table(CGPURootSignatureId root_sig) SKR_NOEXCEPT;
     const struct CGPUXMergedBindTable* merge_tables(const struct CGPUXBindTable** tables, uint32_t count) SKR_NOEXCEPT;
 
     const struct CGPUXBindTable* bind_table;
@@ -337,21 +357,26 @@ protected:
 
 struct SKR_RENDER_GRAPH_API RenderPassContext : public BindablePassContext {
     friend class RenderGraphBackend;
+    friend struct PassExecutionPhase;
 
-    void merge_and_bind_tables(const struct CGPUXBindTable** tables, uint32_t count) SKR_NOEXCEPT;
+    const CGPUXMergedBindTable* merge_and_bind_tables(const struct CGPUXBindTable** tables, uint32_t count) SKR_NOEXCEPT;
+    void bind(const CGPUXMergedBindTable* tbl);
 
     CGPURenderPassEncoderId encoder;
 };
 
 struct SKR_RENDER_GRAPH_API ComputePassContext : public BindablePassContext {
     friend class RenderGraphBackend;
+    friend struct PassExecutionPhase;
 
-    void merge_and_bind_tables(const struct CGPUXBindTable** tables, uint32_t count) SKR_NOEXCEPT;
+    const CGPUXMergedBindTable* merge_and_bind_tables(const struct CGPUXBindTable** tables, uint32_t count) SKR_NOEXCEPT;
+    void bind(const CGPUXMergedBindTable* tbl);
 
     CGPUComputePassEncoderId encoder;
 };
 
 struct SKR_RENDER_GRAPH_API CopyPassContext : public PassContext {
+    friend struct PassExecutionPhase;
     CGPUCommandBufferId cmd;
 };
 } // namespace render_graph

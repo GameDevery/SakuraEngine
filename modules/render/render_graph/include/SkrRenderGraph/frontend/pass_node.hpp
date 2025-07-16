@@ -1,5 +1,4 @@
 #pragma once
-#include "SkrContainers/stl_vector.hpp"
 #include "SkrRenderGraph/frontend/base_types.hpp"
 #include "SkrRenderGraph/frontend/resource_node.hpp"
 #include "SkrRenderGraph/frontend/resource_edge.hpp"
@@ -7,13 +6,8 @@
 namespace skr {
 namespace render_graph
 {
-#ifdef RG_USE_FIXED_VECTOR
     template<typename T, uint32_t N = 4>
     using graph_edges_vector = skr::InlineVector<T, N>;  
-#else
-    template<typename T, uint32_t N = 4>
-    using graph_edges_vector = skr::stl_vector<T>;
-#endif
 }
 }
 
@@ -26,6 +20,7 @@ class PassNode : public RenderGraphNode
 public:
     friend class RenderGraph;
     friend class RenderGraphBackend;
+    friend class PassExecutionPhase;
 
     SKR_RENDER_GRAPH_API const bool before(const PassNode* other) const;
     SKR_RENDER_GRAPH_API const bool after(const PassNode* other) const;
@@ -49,11 +44,20 @@ public:
         return (uint32_t)(in_buffer_edges.size() + out_buffer_edges.size() + ppl_buffer_edges.size());
     }
     const bool get_can_be_lone() const { return can_be_lone; }
+    
+    // Performance hint flags access
+    void set_flags(EPassFlags flags) { hint_flags = flags; }
+    void add_flags(EPassFlags flags) { hint_flags = static_cast<EPassFlags>(static_cast<uint32_t>(hint_flags) | static_cast<uint32_t>(flags)); }
+    void remove_flags(EPassFlags flags) { hint_flags = static_cast<EPassFlags>(static_cast<uint32_t>(hint_flags) & ~static_cast<uint32_t>(flags)); }
+    bool has_flags(EPassFlags flags) const { return (static_cast<uint32_t>(hint_flags) & static_cast<uint32_t>(flags)) != 0; }
+    EPassFlags get_flags() const { return hint_flags; }
 
     const EPassType pass_type = EPassType::None;
     const uint32_t order;
+
 protected:
     bool can_be_lone = false;
+    EPassFlags hint_flags = EPassFlags::None;
     PassNode(EPassType pass_type, uint32_t order);
     graph_edges_vector<TextureReadEdge*> in_texture_edges;
     graph_edges_vector<TextureRenderEdge*> out_texture_edges;
@@ -69,8 +73,11 @@ class RenderPassNode : public PassNode
 public:
     friend class RenderGraph;
     friend class RenderGraphBackend;
+    friend class PassExecutionPhase;
 
     RenderPassNode(uint32_t order);
+    CGPURootSignatureId get_root_signature() const { return root_signature; }
+    
 protected:
     RenderPassExecuteFunction executor;
     CGPURenderPipelineId pipeline = nullptr;
@@ -89,8 +96,11 @@ class ComputePassNode : public PassNode
 public:
     friend class RenderGraph;
     friend class RenderGraphBackend;
+    friend class PassExecutionPhase;
 
     ComputePassNode(uint32_t order);
+    CGPURootSignatureId get_root_signature() const { return root_signature; }
+
 protected:
     ComputePassExecuteFunction executor;
     CGPUComputePipelineId pipeline;
@@ -102,6 +112,7 @@ class CopyPassNode : public PassNode
 public:
     friend class RenderGraph;
     friend class RenderGraphBackend;
+    friend class PassExecutionPhase;
 
     CopyPassNode(uint32_t order);
 protected:
@@ -118,6 +129,7 @@ class PresentPassNode : public PassNode
 public:
     friend class RenderGraph;
     friend class RenderGraphBackend;
+    friend class PassExecutionPhase;
 
     inline bool reimport(CGPUSwapChainId swapchain, uint32_t index)
     {

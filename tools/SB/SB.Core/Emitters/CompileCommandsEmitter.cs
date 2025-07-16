@@ -30,7 +30,7 @@ namespace SB
 
             sw.Stop();
             Time += (int)sw.ElapsedMilliseconds;
-            return null;
+            return new PlainArtifact { IsRestored = false };
         }
 
         public static void WriteToFile(string Path)

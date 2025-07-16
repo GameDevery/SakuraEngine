@@ -66,6 +66,8 @@ CGPU_API CGPURenderPipelineId cgpu_create_render_pipeline_vulkan(CGPUDeviceId de
 CGPU_API void cgpu_free_render_pipeline_vulkan(CGPURenderPipelineId pipeline);
 CGPU_API CGPUQueryPoolId cgpu_create_query_pool_vulkan(CGPUDeviceId device, const struct CGPUQueryPoolDescriptor* desc);
 CGPU_API void cgpu_free_query_pool_vulkan(CGPUQueryPoolId pool);
+CGPU_API CGPUMemoryPoolId cgpu_create_memory_pool_vulkan(CGPUDeviceId device, const struct CGPUMemoryPoolDescriptor* desc);
+CGPU_API void cgpu_free_memory_pool_vulkan(CGPUMemoryPoolId pool);
 
 // Queue APIs
 CGPU_API CGPUQueueId cgpu_get_queue_vulkan(CGPUDeviceId device, ECGPUQueueType type, uint32_t index);
@@ -321,6 +323,11 @@ typedef struct CGPUQueryPool_Vulkan {
     VkQueryPool pVkQueryPool;
     VkQueryType mType;
 } CGPUQueryPool_Vulkan;
+
+typedef struct CGPUMemoryPool_Vulkan {
+    CGPUMemoryPool super;
+    struct VmaPool_T* pVmaPool;
+} CGPUMemoryPool_Vulkan;
 
 typedef struct CGPUCommandBuffer_Vulkan {
     CGPUCommandBuffer super;

@@ -7,7 +7,7 @@ public static class SkrSketchUp
 {
     static SkrSketchUp()
     {
-        Engine.AddDoctor<SkecthUpDoctor>();
+        Engine.AddSetup<SketchUpSetup>();
         
         SketchUpAPI();
         SketchUpLive();
@@ -64,18 +64,12 @@ public static class SkrSketchUp
     }
 }
 
-public class SkecthUpDoctor : IDoctor
+public class SketchUpSetup : ISetup
 {
-    public bool Check()
+    public void Setup()
     {
         Task.WaitAll(
             Install.SDK("sketchup-sdk-v2023.1.315")
         );
-        return true;
-    }
-    public bool Fix()
-    {
-        Log.Fatal("sketchup sdks install failed!");
-        return true;
     }
 }

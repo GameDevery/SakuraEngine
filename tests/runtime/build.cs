@@ -20,7 +20,7 @@ public static class RuntimeTests
 
         Engine.UnitTest("IOServiceTest")
             .Depend(Visibility.Public, "SkrRT")
-            .AddCppFiles("io_service/main.cpp");
+            .AddCppFiles("io_service/*.cpp");
 
         Engine.UnitTest("SceneTest")
             .Depend(Visibility.Public, "SkrScene")

@@ -43,6 +43,16 @@ namespace SB
                         .Defines(Visibility.Public, "_DISABLE_STRING_ANNOTATION");
                 };
             }
+            else if (BuildSystem.TargetOS == OSPlatform.OSX)
+            {
+                BuildSystem.TargetDefaultSettings += (Target Target) =>
+                {
+                    Target.CppFlags(Visibility.Private, "-fsanitize=address")
+                        .CppFlags(Visibility.Private, "-fno-omit-frame-pointer")
+                        .CppFlags(Visibility.Private, "-fno-optimize-sibling-calls")
+                        .AppleClang_LinkerArgs(Visibility.Private, "-fsanitize=address");
+                };
+            }
             else
             {
                 Log.Warning("AddressSanitizer is not supported on this platform yet! Please use Clang on Linux or macOS to enable ASan.");

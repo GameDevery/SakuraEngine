@@ -253,7 +253,7 @@ void skr_destroy_condition_var(SConditionVariable* cv)
 {
 }
 
-ThreadResult skr_wait_condition_vars(SConditionVariable* cv, const SMutex* pMutex, uint32_t ms)
+ThreadResult skr_wait_condition_vars(SConditionVariable* cv, SMutex* pMutex, uint32_t ms)
 {
     CONDITION_VARIABLE* cv_ = (CONDITION_VARIABLE*)(cv->cvStorage_);
     BOOL R = FALSE;

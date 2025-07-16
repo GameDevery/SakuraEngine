@@ -1,5 +1,5 @@
 #include "./input_action_impl.hpp"
-#include "SkrInput/input.h"
+#include "SkrSystem/advanced_input.h"
 
 namespace skr {
 namespace input {

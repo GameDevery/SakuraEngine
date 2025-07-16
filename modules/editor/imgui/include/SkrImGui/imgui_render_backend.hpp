@@ -11,7 +11,6 @@
 
 namespace skr
 {
-struct ImGuiWindowBackend;
 
 struct SKR_IMGUI_API ImGuiRendererBackend {
     SKR_RC_IMPL();
@@ -51,7 +50,7 @@ struct SKR_IMGUI_API ImGuiRendererBackend {
 struct ImGuiRendererBackendRGConfig {
     skr::render_graph::RenderGraph* render_graph     = nullptr;
     CGPUQueueId                     queue            = nullptr;
-    ECGPUFormat                     format           = CGPU_FORMAT_R8G8B8A8_UNORM;
+    ECGPUFormat                     format           = CGPU_FORMAT_B8G8R8A8_UNORM;
     uint32_t                        backbuffer_count = 2;
 
     Optional<CGPUSamplerId>             static_sampler = {}; // default: linear

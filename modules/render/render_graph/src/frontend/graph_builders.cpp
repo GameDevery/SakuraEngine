@@ -2,6 +2,7 @@
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrRenderGraph/frontend/pass_node.hpp"
 #include "SkrRenderGraph/frontend/node_and_edge_factory.hpp"
+#include "SkrContainers/string.hpp"
 
 namespace skr
 {
@@ -29,6 +30,18 @@ RenderGraph::RenderGraphBuilder& RenderGraph::RenderGraphBuilder::enable_memory_
 RenderGraph::RenderGraphBuilder& RenderGraph::RenderGraphBuilder::with_gfx_queue(CGPUQueueId queue) SKR_NOEXCEPT
 {
     gfx_queue = queue;
+    return *this;
+}
+
+RenderGraph::RenderGraphBuilder& RenderGraph::RenderGraphBuilder::with_cmpt_queues(const skr::Vector<CGPUQueueId>& queues) SKR_NOEXCEPT
+{
+    cmpt_queues = queues;
+    return *this;
+}
+
+RenderGraph::RenderGraphBuilder& RenderGraph::RenderGraphBuilder::with_cpy_queues(const skr::Vector<CGPUQueueId>& queues) SKR_NOEXCEPT
+{
+    cpy_queues = queues;
     return *this;
 }
 
@@ -72,7 +85,7 @@ RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::set_name(const c
 
 RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::read(const char8_t* name, TextureSRVHandle handle) SKR_NOEXCEPT
 {
-    auto allocated = graph.node_factory->Allocate<TextureReadEdge>(name, handle);
+    auto allocated = graph.node_factory->Allocate<TextureReadEdge>(name, handle, CGPU_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     auto&& edge = node.in_texture_edges.emplace(allocated).ref();
     graph.graph->link(graph.graph->access_node(handle._this), &node, edge);
     return *this;
@@ -126,7 +139,7 @@ RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::read(const char8
     return *this;
 }
 
-RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::write(const char8_t* name, BufferHandle handle) SKR_NOEXCEPT
+RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::write(const char8_t* name, BufferRangeHandle handle) SKR_NOEXCEPT
 {
     SKR_UNIMPLEMENTED_FUNCTION();
     return *this;
@@ -153,6 +166,12 @@ RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::set_root_signatu
     return *this;
 }
 
+RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::with_flags(EPassFlags flags) SKR_NOEXCEPT
+{
+    node.add_flags(flags);
+    return *this;
+}
+
 // compute pass builder
 RenderGraph::ComputePassBuilder::ComputePassBuilder(RenderGraph& graph, ComputePassNode& pass) SKR_NOEXCEPT
     : graph(graph), node(pass)
@@ -171,7 +190,7 @@ RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::set_name(const
 
 RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::read(const char8_t* name, TextureSRVHandle handle) SKR_NOEXCEPT
 {
-    auto allocated = graph.node_factory->Allocate<TextureReadEdge>(name, handle);
+    auto allocated = graph.node_factory->Allocate<TextureReadEdge>(name, handle, CGPU_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     auto&& edge = node.in_texture_edges.emplace(allocated).ref();
     graph.graph->link(graph.graph->access_node(handle._this), &node, edge);
     return *this;
@@ -185,15 +204,35 @@ RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::readwrite(cons
     return *this;
 }
 
+RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::read(const char8_t* name, BufferRangeHandle handle) SKR_NOEXCEPT
+{
+    auto allocated = graph.node_factory->Allocate<BufferReadEdge>(name, handle, CGPU_RESOURCE_STATE_SHADER_RESOURCE);
+    auto&& edge = node.in_buffer_edges.emplace(allocated).ref();
+    graph.graph->link(graph.graph->access_node(handle._this), &node, edge);
+    return *this;
+}
+
 RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::read(const char8_t* name, BufferHandle handle) SKR_NOEXCEPT
 {
-    SKR_UNIMPLEMENTED_FUNCTION();
+    auto allocated = graph.node_factory->Allocate<BufferReadEdge>(name, handle.range(0, ~0), CGPU_RESOURCE_STATE_SHADER_RESOURCE);
+    auto&& edge = node.in_buffer_edges.emplace(allocated).ref();
+    graph.graph->link(graph.graph->access_node(handle), &node, edge);
     return *this;
 }
 
 RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::readwrite(const char8_t* name, BufferHandle handle) SKR_NOEXCEPT
 {
-    SKR_UNIMPLEMENTED_FUNCTION();
+    auto allocated = graph.node_factory->Allocate<BufferReadWriteEdge>(handle.range(0, ~0), CGPU_RESOURCE_STATE_UNORDERED_ACCESS);
+    auto&& edge = node.out_buffer_edges.emplace(allocated).ref();
+    graph.graph->link(&node, graph.graph->access_node(handle), edge);
+    return *this;
+}
+
+RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::readwrite(const char8_t* name, BufferRangeHandle handle) SKR_NOEXCEPT
+{
+    auto allocated = graph.node_factory->Allocate<BufferReadWriteEdge>(handle, CGPU_RESOURCE_STATE_UNORDERED_ACCESS);
+    auto&& edge = node.out_buffer_edges.emplace(allocated).ref();
+    graph.graph->link(&node, graph.graph->access_node(handle._this), edge);
     return *this;
 }
 
@@ -207,6 +246,12 @@ RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::set_pipeline(C
 RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::set_root_signature(CGPURootSignatureId signature) SKR_NOEXCEPT
 {
     node.root_signature = signature;
+    return *this;
+}
+
+RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::with_flags(EPassFlags flags) SKR_NOEXCEPT
+{
+    node.add_flags(flags);
     return *this;
 }
 
@@ -310,6 +355,12 @@ RenderGraph::CopyPassBuilder& RenderGraph::CopyPassBuilder::from_buffer(BufferRa
     return *this;
 }
 
+RenderGraph::CopyPassBuilder& RenderGraph::CopyPassBuilder::with_flags(EPassFlags flags) SKR_NOEXCEPT
+{
+    node.add_flags(flags);
+    return *this;
+}
+
 PassHandle RenderGraph::add_copy_pass(const CopyPassSetupFunction& setup, const CopyPassExecuteFunction& executor) SKR_NOEXCEPT
 {
     const uint32_t passes_size = static_cast<uint32_t>(passes.size());
@@ -401,6 +452,7 @@ RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::import(CGPUBufferId buff
     node.descriptor.descriptors = buffer->info->descriptors;
     node.descriptor.size = buffer->info->size;
     node.descriptor.memory_usage = (ECGPUMemoryUsage)buffer->info->memory_usage;
+    graph.imported_buffers[buffer] = node.get_handle();
     return *this;
 }
 
@@ -514,6 +566,15 @@ BufferHandle RenderGraph::get_buffer(const char8_t* name) SKR_NOEXCEPT
     return UINT64_MAX;
 }
 
+BufferHandle RenderGraph::get_imported(CGPUBufferId buffer) SKR_NOEXCEPT
+{
+    if (auto it = imported_buffers.find(buffer); it != imported_buffers.end())
+    {
+        return it->second;
+    }
+    return UINT64_MAX;
+}
+
 // texture builder
 RenderGraph::TextureBuilder::TextureBuilder(RenderGraph& graph, TextureNode& node) SKR_NOEXCEPT
     : graph(graph),
@@ -547,16 +608,20 @@ RenderGraph::TextureBuilder& RenderGraph::TextureBuilder::with_tags(uint32_t tag
 
 RenderGraph::TextureBuilder& RenderGraph::TextureBuilder::import(CGPUTextureId texture, ECGPUResourceState init_state) SKR_NOEXCEPT
 {
-    const auto texInfo = texture->info;
-    node.imported = texture;
-    node.frame_texture = texture;
+    if (texture)
+    {
+        const auto texInfo = texture->info;
+        node.descriptor.width = texInfo->width;
+        node.descriptor.height = texInfo->height;
+        node.descriptor.depth = texInfo->depth;
+        node.descriptor.format = (ECGPUFormat)texInfo->format;
+        node.descriptor.array_size = texInfo->array_size_minus_one + 1;
+        node.descriptor.sample_count = texInfo->sample_count;
+    }
     node.init_state = init_state;
-    node.descriptor.width = texInfo->width;
-    node.descriptor.height = texInfo->height;
-    node.descriptor.depth = texInfo->depth;
-    node.descriptor.format = (ECGPUFormat)texInfo->format;
-    node.descriptor.array_size = texInfo->array_size_minus_one + 1;
-    node.descriptor.sample_count = texInfo->sample_count;
+    node.imported = true;
+    node.frame_texture = texture;
+    graph.imported_textures[texture] = node.get_handle();
     return *this;
 }
 
@@ -641,5 +706,15 @@ TextureHandle RenderGraph::get_texture(const char8_t* name) SKR_NOEXCEPT
     }
     return UINT64_MAX;
 }
+
+TextureHandle RenderGraph::get_imported(CGPUTextureId texture) SKR_NOEXCEPT
+{
+    if (auto it = imported_textures.find(texture); it != imported_textures.end())
+    {
+        return it->second;
+    }
+    return UINT64_MAX;
+}
+
 } // namespace render_graph
 } // namespace skr

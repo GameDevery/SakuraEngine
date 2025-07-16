@@ -226,7 +226,6 @@ int main(int argc, char* argv[])
                     .texture(back_buffer, true);
             }
         );
-        graph->compile();
         const auto frame_index = graph->execute();
         // present
         cgpu_wait_queue_idle(gfx_queue);
@@ -234,8 +233,6 @@ int main(int argc, char* argv[])
         present_desc.index                      = backbuffer_index;
         present_desc.swapchain                  = swapchain;
         cgpu_queue_present(gfx_queue, &present_desc);
-        if (frame_index == 0)
-            render_graph::RenderGraphViz::write_graphviz(*graph, "render_graph_demo.gv");
     }
     render_graph::RenderGraph::destroy(graph);
     // clean up

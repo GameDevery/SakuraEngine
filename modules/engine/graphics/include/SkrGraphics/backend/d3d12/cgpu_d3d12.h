@@ -207,6 +207,8 @@ typedef struct CGPUAdapter_D3D12 {
     bool mStandardSwizzle64KBSupported : 1;
     bool mEnhancedBarriersSupported : 1;
     uint8_t mTiledResourceTier;
+    uint8_t mResourceHeapTier;
+    uint8_t mShaderModel;
     uint8_t mRayTracingTier;
 } CGPUAdapter_D3D12;
 
@@ -327,15 +329,6 @@ typedef struct CGPURenderPipeline_D3D12 {
     D3D_PRIMITIVE_TOPOLOGY mDxPrimitiveTopology;
     D3D12_GRAPHICS_PIPELINE_STATE_DESC mDxGfxPipelineStateDesc SKR_IF_CPP(= {});
 } CGPURenderPipeline_D3D12;
-
-typedef struct CGPUMemoryPool_D3D12 {
-    CGPUMemoryPool super;
-#ifdef __cplusplus
-    D3D12MA::Pool* pDxPool;
-#else
-    struct DMA_Pool* pDxPool;
-#endif
-} CGPUMemoryPool_D3D12;
 
 typedef struct CGPUBuffer_D3D12 {
     CGPUBuffer super;

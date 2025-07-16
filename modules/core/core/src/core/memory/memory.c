@@ -3,38 +3,6 @@
 
 #ifdef SKR_RUNTIME_USE_MIMALLOC
     #include "mimalloc.h"
-#else
-#include <malloc.h>
-#include <string.h>
-    inline static void* mi_malloc(size_t size)
-    {
-        return malloc(size);
-    }
-    inline static void* mi_calloc(size_t count, size_t size)
-    {
-        void* ptr = calloc(count, size);
-        return ptr;
-    }
-    inline static void* mi_calloc_aligned(size_t count, size_t size, size_t alignment)
-    {
-        void* ptr = _aligned_malloc(count * size, alignment);
-        size_t msize = _aligned_msize(ptr, alignment, 0);
-        memset(ptr, 0, msize);
-        return ptr;
-    }
-    inline static void mi_free(void* ptr)
-    {
-        free(ptr);
-    }
-    inline static void* mi_new_n(size_t count, size_t size)
-    {
-        return mi_malloc(count * size);
-    }
-    #define mi_malloc_aligned _aligned_malloc
-    #define mi_new_aligned _aligned_malloc
-    #define mi_free_aligned(p, alignment) _aligned_free((p))
-    #define mi_realloc(p, newsize) realloc((p), (newsize))
-    #define mi_realloc_aligned(p, newsize, alignment) realloc((p), (newsize))
 #endif
 
 // traced_os_alooc

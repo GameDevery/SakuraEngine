@@ -20,9 +20,9 @@ namespace SB
 
                 IToolchain? Toolchain = null;
                 if (BS.HostOS == OSPlatform.Windows)
-                    Toolchain = VisualStudioDoctor.VisualStudio;
+                    Toolchain = VisualStudioSetup.VisualStudio;
                 else if (BS.HostOS == OSPlatform.OSX)
-                    Toolchain = XCodeDoctor.XCode;
+                    Toolchain = XCodeSetup.XCode;
                 else
                     throw new Exception("Unsupported Platform!");
                 
@@ -43,10 +43,10 @@ namespace SB
                 
                 Stopwatch sw = new();
                 sw.Start();
-                Log.Verbose("Run Doctors... ");
-                Engine.RunDoctors();
+                Log.Verbose("Run Setups... ");
+                Engine.RunSetups();
                 sw.Stop();
-                Log.Verbose($"Doctors Finished... cost {sw.ElapsedMilliseconds / 1000.0f}s");
+                Log.Verbose($"Setups Finished... cost {sw.ElapsedMilliseconds / 1000.0f}s");
                 return Toolchain!;
             }
         }
@@ -95,6 +95,8 @@ namespace SB
 
             Engine.GetTaskEmitter("Cpp.UnityBuild")
                 ?.AddDependency("Cpp.CompileCommands", DependencyModel.PerTarget);
+
+            Engine.AddTaskEmitter("CppSL.CompileCommands", new CppSLCompileCommandsEmitter());
         }
 
         public static void AddShaderTaskEmitters(IToolchain Toolchain)
@@ -187,8 +189,7 @@ namespace SB
                 .CreateLogger();
         }
 
-        public static DependDatabase ConfigureAwareDepend = new DependDatabase(Engine.TempPath, "Engine.ConfigureAwareDepends." + Engine.GlobalConfiguration);
-        public static DependDatabase ConfigureNotAwareDepend = new DependDatabase(Engine.TempPath, "Engine.ConfigureNotAwareDepends");
+        public static DependDatabase MiscDepend = new DependDatabase(Engine.TempPath, "Engine.Misc");
         public static DependDatabase ShaderCompileDepend = new DependDatabase(Engine.TempPath, "Engine.ShaderCompileDepends");
 
         public static string EngineDirectory { get; private set; } = Directory.GetCurrentDirectory();

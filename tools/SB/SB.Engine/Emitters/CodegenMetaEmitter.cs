@@ -12,7 +12,7 @@ namespace SB
         public string[]? AllGeneratedMetaFiles { get; internal set; }
     }
 
-    [Doctor<MetaDoctor>]
+    [Setup<MetaSetup>]
     public class CodegenMetaEmitter : TaskEmitter
     {
         public CodegenMetaEmitter(IToolchain Toolchain)
@@ -66,7 +66,7 @@ namespace SB
             // Run meta.exe
             bool Changed = BS.CppCompileDepends(Target).OnChanged(Target.Name, MetaAttribute.MetaDirectory, Name, (Depend depend) =>
             {
-                var EXE = Path.Combine(MetaDoctor.Installation!.Result, BS.HostOS == OSPlatform.Windows ? "meta.exe" : "meta");
+                var EXE = Path.Combine(MetaSetup.Installation!.Result, BS.HostOS == OSPlatform.Windows ? "meta.exe" : "meta");
 
                 int ExitCode = BS.RunProcess(EXE, string.Join(" ", MetaArgs), out var OutputInfo, out var ErrorInfo);
                 if (ExitCode != 0)
@@ -87,18 +87,12 @@ namespace SB
         public static volatile int Time = 0;
     }
 
-    public class MetaDoctor : IDoctor
+    public class MetaSetup : ISetup
     {
-        public bool Check()
+        public void Setup()
         {
             Installation = Install.Tool("meta_v1.0.3-llvm_19.1.7");
             Installation!.Wait();
-            return true;
-        }
-        public bool Fix() 
-        { 
-            Log.Fatal("meta install failed!");
-            return true; 
         }
         public static Task<string>? Installation;
     }

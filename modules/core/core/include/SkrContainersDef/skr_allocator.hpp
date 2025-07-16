@@ -48,13 +48,11 @@ struct SkrAllocator {
     }
 
     //===>raw alloc api
-    inline static constexpr const char* kContainersDefaultPoolName = "sakura::containers";
-
     inline static void* alloc_raw(size_t count, size_t item_size, size_t item_align)
     {
 #if defined(TRACY_TRACE_ALLOCATION)
         SkrCZoneNCS(z, "containers::allocate", SKR_ALLOC_TRACY_MARKER_COLOR, 16, 1);
-        void* p = sakura_malloc_alignedN(count * item_size, item_align, kContainersDefaultPoolName);
+        void* p = sakura_malloc_aligned(count * item_size, item_align);
         SkrCZoneEnd(z);
         return p;
 #else
@@ -67,7 +65,7 @@ struct SkrAllocator {
         {
 #if defined(TRACY_TRACE_ALLOCATION)
             SkrCZoneNCS(z, "containers::free", SKR_DEALLOC_TRACY_MARKER_COLOR, 16, 1);
-            sakura_free_alignedN(p, item_align, kContainersDefaultPoolName);
+            sakura_free_aligned(p, item_align);
             SkrCZoneEnd(z);
 #else
             sakura_free_aligned(p, item_align);
@@ -77,7 +75,7 @@ struct SkrAllocator {
     inline static void* realloc_raw(void* p, size_t count, size_t item_size, size_t item_align)
     {
         SkrCZoneNCS(z, "containers::realloc", SKR_DEALLOC_TRACY_MARKER_COLOR, 16, 1);
-        void* new_mem = sakura_realloc_alignedN(p, count * item_size, item_align, kContainersDefaultPoolName);
+        void* new_mem = sakura_realloc_aligned(p, count * item_size, item_align);
         SkrCZoneEnd(z);
         return new_mem;
     }

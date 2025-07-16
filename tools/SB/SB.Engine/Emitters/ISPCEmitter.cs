@@ -4,7 +4,7 @@ using Serilog;
 namespace SB
 {
     using BS = BuildSystem;
-    [Doctor<ISPCDoctor>]
+    [Setup<ISPCSetup>]
     public class ISPCEmitter : TaskEmitter
     {
         public override bool EnableEmitter(Target Target) => Target.HasFilesOf<ISPCFileList>();
@@ -22,8 +22,8 @@ namespace SB
                 "--target=host",
                 "--opt=fast-math"
             };
-            bool Changed = Engine.ConfigureAwareDepend.OnChanged(Target.Name, SourceFile, Name, (Depend depend) => {
-                int ExitCode = BuildSystem.RunProcess(ISPCDoctor.ISPC!, string.Join(" ", Arguments), out var Output, out var Error);
+            bool Changed = Engine.CppCompileDepends(false).OnChanged(Target.Name, SourceFile, Name, (Depend depend) => {
+                int ExitCode = BuildSystem.RunProcess(ISPCSetup.ISPC!, string.Join(" ", Arguments), out var Output, out var Error);
                 if (ExitCode != 0)
                 {
                     throw new TaskFatalError($"Compile ISPC for {SourceFile} failed with fatal error!", $"ISPC.exe: {Error}");
@@ -61,19 +61,13 @@ namespace SB
         }
     }
 
-    public class ISPCDoctor : IDoctor
+    public class ISPCSetup : ISetup
     {
-        public bool Check()
+        public void Setup()
         {
             var Installation = Install.Tool("ispc-1.26.0");
             Installation.Wait();
             ISPC = Path.Combine(Installation.Result, BuildSystem.HostOS == OSPlatform.Windows ? "ispc.exe" : "ispc");
-            return true;
-        }
-        public bool Fix() 
-        { 
-            Log.Fatal("ispc sdks install failed!");
-            return true; 
         }
         public static string? ISPC { get; private set; }
     }
