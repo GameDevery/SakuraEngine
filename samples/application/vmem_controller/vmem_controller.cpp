@@ -236,7 +236,6 @@ int SVMemCCModule::main_module_exec(int argc, char8_t** argv)
         imgui_app->render();
 
         // run rg
-        graph->compile();
         frame_index = graph->execute();
         {
             if (frame_index >= RG_MAX_FRAME_IN_FLIGHT * 10)

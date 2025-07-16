@@ -48,7 +48,7 @@ void PassDependencyAnalysis::analyze_pass_dependencies(RenderGraph* graph)
     auto& all_passes = get_passes(graph);
 
     // 为每个资源维护最后访问的Pass和访问信息
-    skr::FlatHashMap<ResourceNode*, LastResourceAccess> resource_last_access_;
+    StackHashMap<ResourceNode*, LastResourceAccess> resource_last_access_;
     resource_last_access_.reserve(graph->get_resources().size()); // 预分配避免rehash
     for (PassNode* current_pass : all_passes)
     {

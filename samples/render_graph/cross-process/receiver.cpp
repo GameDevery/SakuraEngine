@@ -354,7 +354,6 @@ int receiver_main(int argc, char* argv[])
                     .texture(back_buffer, true);
             }
         );
-        graph->compile();
         graph->execute();
         // present
         cgpu_wait_queue_idle(renderer->gfx_queue);
