@@ -8,9 +8,9 @@
 int main(int argc, char** argv)
 {
     SkrZoneScopedN("Main");
-    auto            moduleManager = skr_get_module_manager();
-    std::error_code ec            = {};
-    auto            root          = skr::filesystem::current_path(ec);
+    auto moduleManager = skr_get_module_manager();
+    std::error_code ec = {};
+    auto root = skr::filesystem::current_path(ec);
     moduleManager->mount(root.u8string().c_str());
     moduleManager->make_module_graph(u8"Game", true);
     auto result = moduleManager->init_module_graph(argc, argv);

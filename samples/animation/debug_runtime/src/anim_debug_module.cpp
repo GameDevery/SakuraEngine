@@ -2,6 +2,9 @@
 #include "SkrCore/module/module.hpp"
 #include "SkrCore/log.h"
 #include "SkrCore/time.h"
+#include "SkrCore/memory/sp.hpp"
+
+#include "SkrSystem/advanced_input.h"
 
 #include "SkrRenderer/skr_renderer.h"
 // #include "SkrGraphics/api.h"
@@ -65,16 +68,16 @@ void DisplayBoneHierarchy(const ozz::animation::Skeleton& skeleton, int bone_ind
 class SAnimDebugModule : public skr::IDynamicModule
 {
     virtual void on_load(int argc, char8_t** argv) override;
-    virtual int  main_module_exec(int argc, char8_t** argv) override;
+    virtual int main_module_exec(int argc, char8_t** argv) override;
     virtual void on_unload() override;
 
 private:
-    skr::String               m_skel_file = u8"D:/ws/data/assets/media/bin/ruby_skeleton.ozz";
-    skr::String               m_anim_file = u8"D:/ws/data/assets/media/bin/ruby_animation.ozz";
+    skr::String m_skel_file = u8"D:/ws/data/assets/media/bin/ruby_skeleton.ozz";
+    skr::String m_anim_file = u8"D:/ws/data/assets/media/bin/ruby_animation.ozz";
     ozz::animation::Animation m_animation;
-    float                     current_time = 0.0f;
-    bool                      is_playing   = false;
-    void                      DisplayAnimationInfo(const ozz::animation::Animation& animation);
+    float current_time = 0.0f;
+    bool is_playing = false;
+    void DisplayAnimationInfo(const ozz::animation::Animation& animation);
 };
 
 static SAnimDebugModule* g_anim_debug_module = nullptr;
@@ -134,7 +137,7 @@ void SAnimDebugModule::DisplayAnimationInfo(const ozz::animation::Animation& ani
 int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
 {
     constexpr float M_PI = 3.14159265358979323846f;
-    namespace rg         = skr::render_graph;
+    namespace rg = skr::render_graph;
     SkrZoneScopedN("AnimDebugExecution");
     SKR_LOG_INFO(u8"anim debug runtime executed as main module!");
     animd::Renderer renderer;
@@ -164,8 +167,8 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
     ozz::vector<ozz::math::Float4x4> prealloc_models_;
     prealloc_models_.resize(skeleton.num_joints());
     ozz::animation::LocalToModelJob job;
-    job.input    = skeleton.joint_rest_poses();
-    job.output   = ozz::make_span(prealloc_models_);
+    job.input = skeleton.joint_rest_poses();
+    job.output = ozz::make_span(prealloc_models_);
     job.skeleton = &skeleton;
     if (!job.Run())
     {
@@ -201,7 +204,7 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
     renderer.create_render_pipeline();
     renderer.create_resources();
 
-    auto device    = renderer.get_device();
+    auto device = renderer.get_device();
     auto gfx_queue = renderer.get_gfx_queue();
 
     auto render_graph = skr::render_graph::RenderGraph::create(
@@ -209,30 +212,27 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
             builder.with_device(device)
                 .with_gfx_queue(gfx_queue)
                 .enable_memory_aliasing();
-        }
-    );
+        });
     // TODO: init profiler
-    skr::ImGuiBackend            imgui_backend;
+    // skr::ImGuiBackend            imgui_backend;
+    skr::UPtr<skr::ImGuiApp> imgui_app = nullptr;
     skr::ImGuiRendererBackendRG* render_backend_rg = nullptr;
     {
         auto render_backend = skr::RCUnique<skr::ImGuiRendererBackendRG>::New();
-        render_backend_rg   = render_backend.get();
+        render_backend_rg = render_backend.get();
         skr::ImGuiRendererBackendRGConfig config{};
         config.render_graph = render_graph;
-        config.queue        = renderer.get_gfx_queue();
+        config.queue = renderer.get_gfx_queue();
         render_backend->init(config);
-        imgui_backend.create(
-            {
-                .title = skr::format(u8"Anim Debug Runtime Inner [{}]", gCGPUBackendNames[renderer.get_backend()]),
-                .size  = { 1024, 768 },
-            },
-            std::move(render_backend)
-        );
-        imgui_backend.main_window().show();
-        imgui_backend.enable_docking();
-        imgui_backend.enable_high_dpi();
-        // imgui_backend.enable_multi_viewport();
 
+        skr::SystemWindowCreateInfo main_window_info = {
+            .title = skr::format(u8"Live2D Viewer Inner [{}]", gCGPUBackendNames[device->adapter->instance->backend]),
+            .size = { 1500, 1500 },
+        };
+
+        imgui_app = skr::UPtr<skr::ImGuiApp>::New(main_window_info, std::move(render_backend));
+        imgui_app->initialize();
+        imgui_app->enable_docking();
         // Apply Sail Style
         ImGui::Sail::LoadFont(12.0f);
         ImGui::Sail::StyleColorsSail();
@@ -244,40 +244,42 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
     skr_float3_t target(0.0f, 1.0f, 0.0f);                   // look at position
     camera.front = skr::normalize(target - camera.position); // look at direction
 
-    bool     show_demo_window = true;
-    uint64_t frame_index      = 0;
+    bool show_demo_window = true;
+    uint64_t frame_index = 0;
 
     // Time
     SHiresTimer tick_timer;
-    int64_t     elapsed_us    = 0;
-    int64_t     elapsed_frame = 0;
-    int64_t     fps           = 60;
+    int64_t elapsed_us = 0;
+    int64_t elapsed_frame = 0;
+    int64_t fps = 60;
     skr_init_hires_timer(&tick_timer);
 
-    while (!imgui_backend.want_exit().comsume())
+    skr::input::Input::Initialize();
+
+    while (!imgui_app->want_exit().comsume())
     {
         SkrZoneScopedN("LoopBody");
         {
             SkrZoneScopedN("PumpMessage");
             // Pump messages
-            imgui_backend.pump_message();
+            imgui_app->pump_message();
         }
 
         {
             SkrZoneScopedN("ImGUINewFrame");
-            imgui_backend.begin_frame();
+            imgui_app->begin_frame();
         }
 
         // Camera control
         {
-            ImGuiIO&    io                 = ImGui::GetIO();
-            const float camera_speed       = 2.5f * io.DeltaTime;
-            const float camera_pan_speed   = 0.5f * io.DeltaTime;
+            ImGuiIO& io = ImGui::GetIO();
+            const float camera_speed = 2.5f * io.DeltaTime;
+            const float camera_pan_speed = 0.5f * io.DeltaTime;
             const float camera_sensitivity = 0.1f;
 
-            skr_float3_t world_up     = { 0.0f, 1.0f, 0.0f };
+            skr_float3_t world_up = { 0.0f, 1.0f, 0.0f };
             skr_float3_t camera_right = skr::normalize(skr::cross(camera.front, world_up));
-            skr_float3_t camera_up    = skr::normalize(skr::cross(camera_right, camera.front));
+            skr_float3_t camera_up = skr::normalize(skr::cross(camera_right, camera.front));
 
             // Movement
             if (ImGui::IsKeyDown(ImGuiKey_W)) camera.position += camera.front * camera_speed;
@@ -288,7 +290,7 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
             // Rotation
             if (ImGui::IsMouseDown(ImGuiMouseButton_Right))
             {
-                static float yaw   = -90.0f;
+                static float yaw = -90.0f;
                 static float pitch = 0.0f;
                 yaw += io.MouseDelta.x * camera_sensitivity;
                 pitch -= io.MouseDelta.y * camera_sensitivity;
@@ -296,9 +298,9 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
                 if (pitch < -89.0f) pitch = -89.0f;
 
                 skr_float3_t direction;
-                direction.x  = cosf(yaw * (float)M_PI / 180.f) * cosf(pitch * (float)M_PI / 180.f);
-                direction.y  = sinf(pitch * (float)M_PI / 180.f);
-                direction.z  = sinf(yaw * (float)M_PI / 180.f) * cosf(pitch * (float)M_PI / 180.f);
+                direction.x = cosf(yaw * (float)M_PI / 180.f) * cosf(pitch * (float)M_PI / 180.f);
+                direction.y = sinf(pitch * (float)M_PI / 180.f);
+                direction.z = sinf(yaw * (float)M_PI / 180.f) * cosf(pitch * (float)M_PI / 180.f);
                 camera.front = skr::normalize(direction);
             }
 
@@ -350,7 +352,7 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
                 if (ImGui::Button("Resume"))
                 {
                     current_time = 0.0f;
-                    is_playing   = true;
+                    is_playing = true;
                 }
             }
             else
@@ -361,24 +363,21 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
         }
         {
             SkrZoneScopedN("ImGuiEndFrame");
-            imgui_backend.end_frame();
+            imgui_app->end_frame();
         }
-        imgui_backend.collect(); // contact @zihuang.zhu for any issue
         {
             // update viewport
             SkrZoneScopedN("Viewport Render");
-            auto          viewport          = ImGui::GetMainViewport();
+            auto viewport = ImGui::GetMainViewport();
             CGPUTextureId native_backbuffer = render_backend_rg->get_backbuffer(viewport);
-            // acquire next frame buffer
-            render_backend_rg->set_load_action(viewport, CGPU_LOAD_ACTION_LOAD); // append not clear
+            // register backbuffer
             auto back_buffer = render_graph->create_texture(
                 [=](rg::RenderGraph& g, skr::render_graph::TextureBuilder& builder) {
                     skr::String buf_name = skr::format(u8"backbuffer");
                     builder.set_name((const char8_t*)buf_name.c_str())
                         .import(native_backbuffer, CGPU_RESOURCE_STATE_UNDEFINED)
                         .allow_render_target();
-                }
-            );
+                });
             renderer.set_width(native_backbuffer->info->width);
             renderer.set_height(native_backbuffer->info->height);
 
@@ -388,13 +387,16 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
         }
         {
             SkrZoneScopedN("ImGuiRender");
-            imgui_backend.render(); // add present pass
+            render_backend_rg->set_load_action(
+                ImGui::GetMainViewport(),
+                CGPU_LOAD_ACTION_LOAD);
+            imgui_app->render();
         }
-        render_graph->compile();
-        render_graph->execute();
-        if (frame_index >= RG_MAX_FRAME_IN_FLIGHT * 10)
-            render_graph->collect_garbage(frame_index - RG_MAX_FRAME_IN_FLIGHT * 10);
-
+        {
+            frame_index = render_graph->execute();
+            if (frame_index >= RG_MAX_FRAME_IN_FLIGHT * 10)
+                render_graph->collect_garbage(frame_index - RG_MAX_FRAME_IN_FLIGHT * 10);
+        }
         // present
         render_backend_rg->present_all();
 
@@ -402,8 +404,8 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
         if (!m_anim_file.is_empty() && is_playing)
         {
             /// TODO: sample animation
-            int64_t us        = skr_hires_timer_get_usec(&tick_timer, true);
-            double  deltaTime = (double)us / 1000 / 1000; // in seconds
+            int64_t us = skr_hires_timer_get_usec(&tick_timer, true);
+            double deltaTime = (double)us / 1000 / 1000; // in seconds
             current_time += deltaTime;
             if (current_time > m_animation.duration())
             {
@@ -413,15 +415,15 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
 
             ozz::animation::SamplingJob sampling_job;
             sampling_job.animation = &m_animation;
-            sampling_job.context   = &context_;
-            sampling_job.ratio     = ratio;
-            sampling_job.output    = ozz::make_span(locals_);
+            sampling_job.context = &context_;
+            sampling_job.ratio = ratio;
+            sampling_job.output = ozz::make_span(locals_);
 
             if (sampling_job.Run())
             {
                 ozz::animation::LocalToModelJob local_to_model_job;
-                local_to_model_job.input    = ozz::make_span(locals_);
-                local_to_model_job.output   = ozz::make_span(prealloc_models_);
+                local_to_model_job.input = ozz::make_span(locals_);
+                local_to_model_job.output = ozz::make_span(prealloc_models_);
                 local_to_model_job.skeleton = &skeleton;
                 if (!local_to_model_job.Run())
                 {
@@ -436,8 +438,6 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
                 SKR_LOG_ERROR(u8"Failed to run sampling job.");
             }
         }
-
-        ++frame_index;
     }
 
     // wait for rendering done
@@ -447,8 +447,10 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
     skr::render_graph::RenderGraph::destroy(render_graph);
 
     // destroy imgui
-    imgui_backend.destroy();
+    imgui_app->shutdown();
     renderer.finalize();
+
+    skr::input::Input::Finalize();
 
     return 0; // Return 0 to indicate success
 }
