@@ -120,10 +120,10 @@ sreflect_struct(
 } // namespace skr::scene
 
 #ifndef SKR_SCENE_COMPONENTS
-    #define SKR_SCENE_COMPONENTS                      \
-        skr::ParentComponent, skr::ChildrenComponent, \
-            skr::TransformComponent,                  \
-            skr::TranslationComponent, skr::RotationComponent, skr::ScaleComponent
+    #define SKR_SCENE_COMPONENTS                                    \
+        skr::scene::ParentComponent, skr::scene::ChildrenComponent, \
+            skr::scene::TransformComponent,                         \
+            skr::scene::TranslationComponent, skr::scene::RotationComponent, skr::scene::ScaleComponent
 #endif
 
 // ------------------------------------------------------

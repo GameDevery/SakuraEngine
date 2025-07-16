@@ -3,11 +3,6 @@
 #include "SkrBase/math.h"
 #include <type_traits>
 
-auto approx(float x)
-{
-    return doctest::Approx(x).epsilon(0.001f);
-}
-
 TEST_CASE("VectorOps")
 {
     using namespace skr;

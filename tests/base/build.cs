@@ -18,5 +18,8 @@ public static class BaseTests
 
         Engine.UnitTest("MathTest")
             .AddCppFiles("math/*.cpp");
+
+        Engine.UnitTest("TypeTest")
+            .AddCppFiles("type/*.cpp");
     }
 }

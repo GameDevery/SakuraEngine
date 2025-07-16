@@ -49,3 +49,8 @@ test_almost_equal(T x, T y, int ulp = 4)
            // unless the result is subnormal
            || std::fabs(x - y) < std::numeric_limits<T>::min();
 }
+
+inline auto approx(float x)
+{
+    return doctest::Approx(x).epsilon(0.001f);
+}
