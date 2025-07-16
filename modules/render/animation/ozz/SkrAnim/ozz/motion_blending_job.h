@@ -28,8 +28,8 @@
 #ifndef OZZ_OZZ_ANIMATION_RUNTIME_MOTION_BLENDING_JOB_H_
 #define OZZ_OZZ_ANIMATION_RUNTIME_MOTION_BLENDING_JOB_H_
 
-#include "SKrAnim/ozz/export.h"
-#include "SKrAnim/ozz/base/span.h"
+#include "SkrAnim/ozz/export.h"
+#include "SkrAnim/ozz/base/span.h"
 
 namespace ozz
 {

@@ -10,14 +10,12 @@
 
 namespace skr
 {
-struct skr::TransformSystem::Impl
-{
-    struct ParallelEntry
-    {
-        uint32_t threshold = 0;
+struct skr::TransformSystem::Impl {
+    struct ParallelEntry {
+        uint32_t threshold  = 0;
         uint32_t batch_size = 128;
     };
-    sugoi_query_t* calculateTransformTree;
+    sugoi_query_t*                                  calculateTransformTree;
     skr::FlatHashMap<sugoi_entity_t, ParallelEntry> parallel_nodes;
 };
 
@@ -26,7 +24,7 @@ struct skr::TransformSystem::Impl
 //     const auto default_translation = rtm::vector_set(0.f, 0.f, 0.f);
 //     const auto default_scale       = rtm::vector_set(1.f, 1.f, 1.f);
 //     const auto default_quat        = rtm::quat_set(0.f, 0.f, 0.f, 1.f);
-    
+
 //     const auto translation = t ? skr::math::load(*t) : default_translation;
 //     const auto scale       = s ? skr::math::load(*s) : default_scale;
 //     const auto quat           = r ? skr::math::load(*r) : default_quat;
@@ -34,7 +32,7 @@ struct skr::TransformSystem::Impl
 //     return rtm::qvv_set(quat, translation, scale);
 // }
 
-static void skr_relative_to_world_children(const skr::ChildrenArray* children, rtm::qvvf parent, sugoi_storage_t* storage)
+static void skr_relative_to_world_children(const skr::scene::ChildrenArray* children, rtm::qvvf parent, sugoi_storage_t* storage)
 {
     // auto task = [&](sugoi_chunk_view_t* view) {
     //     SkrZoneScopedN("CalcTransform(Children)");
@@ -47,15 +45,15 @@ static void skr_relative_to_world_children(const skr::ChildrenArray* children, r
     //         for (EIndex i = 0; i < view->count; ++i)
     //         {
     //             auto relative  = make_qvv(
-    //                 rotations ? &rotations[i] : nullptr, 
-    //                 translations ? &translations[i] : nullptr, 
+    //                 rotations ? &rotations[i] : nullptr,
+    //                 translations ? &translations[i] : nullptr,
     //                 scales ? &scales[i] : nullptr
     //             );
     //             auto transform = rtm::qvv_mul(relative, parent);
     //             skr::math::store(transform.translation, transforms[i].translation);
     //             skr::math::store(transform.rotation, transforms[i].rotation);
     //             skr::math::store(transform.scale, transforms[i].scale);
-                
+
     //             if (childrens && childrens->size())
     //             {
     //                 skr_relative_to_world_children(&childrens[i], transform, storage);
@@ -96,8 +94,8 @@ static void skr_relative_to_world_root(void* u, sugoi_query_t* query, sugoi_chun
     // forloop (i, 0, view->count)
     // {
     //     const auto transform = rtm::qvv_set(
-    //         skr::math::load(transforms[i].rotation), 
-    //         skr::math::load(transforms[i].translation), 
+    //         skr::math::load(transforms[i].rotation),
+    //         skr::math::load(transforms[i].translation),
     //         skr::math::load(transforms[i].scale)
     //     );
     //     skr_relative_to_world_children(&children[i], transform, storage);
@@ -107,19 +105,20 @@ static void skr_relative_to_world_root(void* u, sugoi_query_t* query, sugoi_chun
 TransformSystem* TransformSystem::Create(sugoi_storage_t* world) SKR_NOEXCEPT
 {
     SkrZoneScopedN("CreateTransformSystem");
-    auto memory = (uint8_t*)sakura_calloc(1, sizeof(TransformSystem) + sizeof(TransformSystem::Impl));
-    auto system = new(memory) TransformSystem();
-    system->impl = new(memory + sizeof(TransformSystem)) TransformSystem::Impl();
+    auto memory                          = (uint8_t*)sakura_calloc(1, sizeof(TransformSystem) + sizeof(TransformSystem::Impl));
+    auto system                          = new (memory) TransformSystem();
+    system->impl                         = new (memory + sizeof(TransformSystem)) TransformSystem::Impl();
     system->impl->calculateTransformTree = world->new_query()
-        .ReadWriteAll<skr::TransformComponent>()
-        .ReadAny<skr::ChildrenComponent>()
-        .ReadAny<skr::TranslationComponent, skr::RotationComponent, skr::ScaleComponent>()
-        .ReadAll<skr::RootComponent>()
-        .commit().value();
+                                               .ReadWriteAll<skr::scene::TransformComponent>()
+                                               .ReadAny<skr::scene::ChildrenComponent>()
+                                               .ReadAny<skr::scene::TranslationComponent, skr::scene::RotationComponent, skr::scene::ScaleComponent>()
+                                               .ReadAll<skr::scene::RootComponent>()
+                                               .commit()
+                                               .value();
     return system;
 }
 
-void TransformSystem::Destroy(TransformSystem *system) SKR_NOEXCEPT
+void TransformSystem::Destroy(TransformSystem* system) SKR_NOEXCEPT
 {
     SkrZoneScopedN("FinalizeTransformSystem");
     system->impl->~Impl();

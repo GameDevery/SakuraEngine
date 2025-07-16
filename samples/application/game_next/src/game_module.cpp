@@ -350,8 +350,8 @@ void SGameModule::create_test_scene(SRendererId renderer)
 {
     auto renderableT_builder = make_zeroed<sugoi::TypeSetBuilder>();
     renderableT_builder
-        .with<skr::TranslationComponent, skr::RotationComponent, skr::ScaleComponent>()
-        .with<skr::IndexComponent, skr::MovementComponent>()
+        .with<skr::scene::TranslationComponent, skr::scene::RotationComponent, skr::scene::ScaleComponent>()
+        .with<skr::scene::IndexComponent, skr::scene::MovementComponent>()
         .with<skr_render_effect_t>()
         .with(SUGOI_COMPONENT_GUID);
     auto renderableT  = make_zeroed<sugoi_entity_type_t>();
@@ -359,11 +359,11 @@ void SGameModule::create_test_scene(SRendererId renderer)
     uint32_t init_idx = 0;
 
     auto primSetup = [&](sugoi_chunk_view_t* view) {
-        auto translations = sugoi::get_owned_rw<skr::TranslationComponent>(view);
-        auto rotations    = sugoi::get_owned_rw<skr::RotationComponent>(view);
-        auto scales       = sugoi::get_owned_rw<skr::ScaleComponent>(view);
-        auto indices      = sugoi::get_owned_rw<skr::IndexComponent>(view);
-        auto movements    = sugoi::get_owned_rw<skr::MovementComponent>(view);
+        auto translations = sugoi::get_owned_rw<skr::scene::TranslationComponent>(view);
+        auto rotations    = sugoi::get_owned_rw<skr::scene::RotationComponent>(view);
+        auto scales       = sugoi::get_owned_rw<skr::scene::ScaleComponent>(view);
+        auto indices      = sugoi::get_owned_rw<skr::scene::IndexComponent>(view);
+        auto movements    = sugoi::get_owned_rw<skr::scene::MovementComponent>(view);
         auto states       = sugoi::get_owned_rw<game::anim_state_t>(view);
         auto guids        = (skr_guid_t*)sugoiV_get_owned_ro(view, SUGOI_COMPONENT_GUID);
         for (uint32_t i = 0; i < view->count; i++)
@@ -404,9 +404,9 @@ void SGameModule::create_test_scene(SRendererId renderer)
     SKR_LOG_DEBUG(u8"Create Scene 0!");
     auto playerT_builder = make_zeroed<sugoi::TypeSetBuilder>();
     playerT_builder
-        .with<skr::TranslationComponent, skr::RotationComponent, skr::ScaleComponent>()
-        .with<skr::MovementComponent>()
-        .with<skr::CameraComponent>();
+        .with<skr::scene::TranslationComponent, skr::scene::RotationComponent, skr::scene::ScaleComponent>()
+        .with<skr::scene::MovementComponent>()
+        .with<skr::scene::CameraComponent>();
     auto playerT = make_zeroed<sugoi_entity_type_t>();
     playerT.type = playerT_builder.build();
     sugoiS_allocate_type(renderer->get_sugoi_storage(), &playerT, 1, SUGOI_LAMBDA(primSetup));
@@ -415,7 +415,7 @@ void SGameModule::create_test_scene(SRendererId renderer)
 
     auto static_renderableT_builderT = make_zeroed<sugoi::TypeSetBuilder>();
     static_renderableT_builderT
-        .with<skr::TranslationComponent, skr::RotationComponent, skr::ScaleComponent>()
+        .with<skr::scene::TranslationComponent, skr::scene::RotationComponent, skr::scene::ScaleComponent>()
         .with<skr_render_effect_t, game::anim_state_t>();
     auto static_renderableT = make_zeroed<sugoi_entity_type_t>();
     static_renderableT.type = static_renderableT_builderT.build();

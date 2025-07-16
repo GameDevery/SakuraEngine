@@ -59,6 +59,9 @@ namespace SB
                 DependFiles.AddRange(MetaAttribute.AllGeneratedMetaFiles);
             // Execute
             bool Changed = BS.CppCompileDepends(Target).OnChanged(Target.Name, "", this.Name, (Depend depend) => {
+                Directory.Delete(CodegenDirectory, true);
+                Directory.CreateDirectory(CodegenDirectory);
+
                 var ParamFile = Path.Combine(CodegenDirectory, $"{Target.Name}_codegen_config.json");
                 File.WriteAllText(ParamFile, Json.Serialize(Config));
 
