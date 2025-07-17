@@ -41,7 +41,6 @@
 #include "SkrAnim/ozz/base/containers/set.h"
 #include "SkrAnim/ozz/base/containers/vector.h"
 #include "SkrAnim/ozz/base/log.h"
-#include "SkrAnim/ozz/base/maths/math_ex.h"
 #include "SkrAnim/ozz/base/maths/simd_math.h"
 
 namespace
@@ -53,8 +52,8 @@ bool FixupNames(_VectorType& _data, const char* _pretty_name, const char* _prefi
     ozz::set<std::string> names;
     for (size_t i = 0; i < _data.size(); ++i)
     {
-        bool                                  renamed = false;
-        typename _VectorType::const_reference data    = _data[i];
+        bool renamed = false;
+        typename _VectorType::const_reference data = _data[i];
 
         std::string name(data.name.c_str());
 
@@ -62,7 +61,7 @@ bool FixupNames(_VectorType& _data, const char* _pretty_name, const char* _prefi
         if (name.length() == 0)
         {
             renamed = true;
-            name    = _prefix_name;
+            name = _prefix_name;
             name += std::to_string(i);
         }
 
@@ -114,9 +113,8 @@ ozz::span<const T> BufferView(const tinygltf::Model& _model, const tinygltf::Acc
     const tinygltf::BufferView& bufferView =
         _model.bufferViews[_accessor.bufferView];
     const tinygltf::Buffer& buffer = _model.buffers[bufferView.buffer];
-    const T*                begin  = reinterpret_cast<const T*>(
-        buffer.data.data() + bufferView.byteOffset + _accessor.byteOffset
-    );
+    const T* begin = reinterpret_cast<const T*>(
+        buffer.data.data() + bufferView.byteOffset + _accessor.byteOffset);
     return ozz::span<const T>(begin, _accessor.count);
 }
 
@@ -135,7 +133,7 @@ bool SampleLinearChannel(const tinygltf::Model& _model, const tinygltf::Accessor
     }
 
     typedef typename _KeyframesType::value_type::Value ValueType;
-    const ozz::span<const ValueType>                   values =
+    const ozz::span<const ValueType> values =
         BufferView<ValueType>(_model, _output);
     if (values.size_bytes() / sizeof(ValueType) != gltf_keys_count ||
         _timestamps.size() != gltf_keys_count)
@@ -169,7 +167,7 @@ bool SampleStepChannel(const tinygltf::Model& _model, const tinygltf::Accessor& 
     }
 
     typedef typename _KeyframesType::value_type::Value ValueType;
-    const ozz::span<const ValueType>                   values =
+    const ozz::span<const ValueType> values =
         BufferView<ValueType>(_model, _output);
     if (values.size_bytes() / sizeof(ValueType) != gltf_keys_count ||
         _timestamps.size() != gltf_keys_count)
@@ -186,14 +184,14 @@ bool SampleStepChannel(const tinygltf::Model& _model, const tinygltf::Accessor& 
     for (size_t i = 0; i < _output.count; i++)
     {
         typename _KeyframesType::reference key = _keyframes->at(i * 2);
-        key.time                               = _timestamps[i];
-        key.value                              = values[i];
+        key.time = _timestamps[i];
+        key.value = values[i];
 
         if (i < _output.count - 1)
         {
             typename _KeyframesType::reference next_key = _keyframes->at(i * 2 + 1);
-            next_key.time                               = nexttowardf(_timestamps[i + 1], 0.f);
-            next_key.value                              = values[i];
+            next_key.time = nexttowardf(_timestamps[i + 1], 0.f);
+            next_key.value = values[i];
         }
     }
 
@@ -248,7 +246,7 @@ bool SampleCubicSplineChannel(const tinygltf::Model& _model, const tinygltf::Acc
     }
 
     typedef typename _KeyframesType::value_type::Value ValueType;
-    const ozz::span<const ValueType>                   values =
+    const ozz::span<const ValueType> values =
         BufferView<ValueType>(_model, _output);
     if (values.size_bytes() / (sizeof(ValueType) * 3) != gltf_keys_count ||
         _timestamps.size() != gltf_keys_count)
@@ -261,8 +259,7 @@ bool SampleCubicSplineChannel(const tinygltf::Model& _model, const tinygltf::Acc
     // Iterate keyframes at _sampling_rate steps, between first and last time
     // stamps.
     ozz::animation::offline::FixedRateSamplingTime fixed_it(
-        _timestamps[gltf_keys_count - 1] - _timestamps[0], _sampling_rate
-    );
+        _timestamps[gltf_keys_count - 1] - _timestamps[0], _sampling_rate);
     _keyframes->resize(fixed_it.num_keys());
     size_t cubic_key0 = 0;
     for (size_t k = 0; k < fixed_it.num_keys(); ++k)
@@ -281,14 +278,14 @@ bool SampleCubicSplineChannel(const tinygltf::Model& _model, const tinygltf::Acc
         SKR_ASSERT(_timestamps[cubic_key0] <= time && time <= _timestamps[cubic_key0 + 1]);
 
         // Interpolate cubic key
-        const float      t0    = _timestamps[cubic_key0];     // keyframe before time
-        const float      t1    = _timestamps[cubic_key0 + 1]; // keyframe after time
-        const float      alpha = (time - t0) / (t1 - t0);
-        const ValueType& p0    = values[cubic_key0 * 3 + 1];
-        const ValueType  m0    = values[cubic_key0 * 3 + 2] * (t1 - t0);
-        const ValueType& p1    = values[(cubic_key0 + 1) * 3 + 1];
-        const ValueType  m1    = values[(cubic_key0 + 1) * 3] * (t1 - t0);
-        key.value              = SampleHermiteSpline(alpha, p0, m0, p1, m1);
+        const float t0 = _timestamps[cubic_key0];     // keyframe before time
+        const float t1 = _timestamps[cubic_key0 + 1]; // keyframe after time
+        const float alpha = (time - t0) / (t1 - t0);
+        const ValueType& p0 = values[cubic_key0 * 3 + 1];
+        const ValueType m0 = values[cubic_key0 * 3 + 2] * (t1 - t0);
+        const ValueType& p1 = values[(cubic_key0 + 1) * 3 + 1];
+        const ValueType m1 = values[(cubic_key0 + 1) * 3] * (t1 - t0);
+        key.value = SampleHermiteSpline(alpha, p0, m0, p1, m1);
 
         // Pushes interpolated key.
         _keyframes->at(k) = key;
@@ -372,8 +369,7 @@ CreateTranslationRestPoseKey(const tinygltf::Node& _node)
 }
 
 ozz::animation::offline::RawAnimation::RotationKey CreateRotationRestPoseKey(
-    const tinygltf::Node& _node
-)
+    const tinygltf::Node& _node)
 {
     ozz::animation::offline::RawAnimation::RotationKey key;
     key.time = 0.0f;
@@ -390,8 +386,7 @@ ozz::animation::offline::RawAnimation::RotationKey CreateRotationRestPoseKey(
 }
 
 ozz::animation::offline::RawAnimation::ScaleKey CreateScaleRestPoseKey(
-    const tinygltf::Node& _node
-)
+    const tinygltf::Node& _node)
 {
     ozz::animation::offline::RawAnimation::ScaleKey key;
     key.time = 0.0f;
@@ -416,9 +411,9 @@ bool CreateNodeTransform(const tinygltf::Node& _node, ozz::math::Transform* _tra
     {
         const ozz::math::Float4x4 matrix = {
             { ozz::math::simd_float4::Load(static_cast<float>(_node.matrix[0]), static_cast<float>(_node.matrix[1]), static_cast<float>(_node.matrix[2]), static_cast<float>(_node.matrix[3])),
-              ozz::math::simd_float4::Load(static_cast<float>(_node.matrix[4]), static_cast<float>(_node.matrix[5]), static_cast<float>(_node.matrix[6]), static_cast<float>(_node.matrix[7])),
-              ozz::math::simd_float4::Load(static_cast<float>(_node.matrix[8]), static_cast<float>(_node.matrix[9]), static_cast<float>(_node.matrix[10]), static_cast<float>(_node.matrix[11])),
-              ozz::math::simd_float4::Load(static_cast<float>(_node.matrix[12]), static_cast<float>(_node.matrix[13]), static_cast<float>(_node.matrix[14]), static_cast<float>(_node.matrix[15])) }
+                ozz::math::simd_float4::Load(static_cast<float>(_node.matrix[4]), static_cast<float>(_node.matrix[5]), static_cast<float>(_node.matrix[6]), static_cast<float>(_node.matrix[7])),
+                ozz::math::simd_float4::Load(static_cast<float>(_node.matrix[8]), static_cast<float>(_node.matrix[9]), static_cast<float>(_node.matrix[10]), static_cast<float>(_node.matrix[11])),
+                ozz::math::simd_float4::Load(static_cast<float>(_node.matrix[12]), static_cast<float>(_node.matrix[13]), static_cast<float>(_node.matrix[14]), static_cast<float>(_node.matrix[15])) }
         };
         ozz::math::SimdFloat4 translation, rotation, scale;
         if (ToAffine(matrix, &translation, &rotation, &scale))
@@ -457,21 +452,19 @@ GltfImporter::GltfImporter()
 {
     // We don't care about image data but we have to provide this callback
     // because we're not loading the stb library
-    auto image_loader = [](tinygltf::Image*, const int, std::string*,
-                           std::string*, int, int, const unsigned char*, int,
-                           void*) { return true; };
+    auto image_loader = [](tinygltf::Image*, const int, std::string*, std::string*, int, int, const unsigned char*, int, void*) { return true; };
     m_loader.SetImageLoader(image_loader, NULL);
 }
 
 bool GltfImporter::Load(const char* _filename)
 {
-    bool        success = false;
+    bool success = false;
     std::string errors;
     std::string warnings;
 
     // Finds file extension.
     const char* separator = std::strrchr(_filename, '.');
-    const char* ext       = separator != NULL ? separator + 1 : "";
+    const char* ext = separator != NULL ? separator + 1 : "";
 
     // Tries to guess whether the input is a gltf json or a glb binary based on
     // the file extension
@@ -523,8 +516,8 @@ bool GltfImporter::Load(const char* _filename)
 void GltfImporter::FindSkinRootJointIndices(const ozz::vector<tinygltf::Skin>& skins, ozz::vector<int>& roots)
 {
     static constexpr int no_parent = -1;
-    static constexpr int visited   = -2;
-    ozz::vector<int>     parents(m_model.nodes.size(), no_parent);
+    static constexpr int visited = -2;
+    ozz::vector<int> parents(m_model.nodes.size(), no_parent);
     for (int node = 0; node < static_cast<int>(m_model.nodes.size()); node++)
     {
         for (int child : m_model.nodes[node].children)
@@ -589,7 +582,7 @@ bool GltfImporter::Import(ozz::animation::offline::RawSkeleton* _skeleton, const
     }
 
     // Get all the skins belonging to this scene
-    ozz::vector<int>            roots;
+    ozz::vector<int> roots;
     ozz::vector<tinygltf::Skin> skins = GetSkinsForScene(scene);
     if (skins.empty())
     {
@@ -623,7 +616,7 @@ bool GltfImporter::Import(ozz::animation::offline::RawSkeleton* _skeleton, const
     _skeleton->roots.resize(roots.size());
     for (size_t i = 0; i < roots.size(); ++i)
     {
-        const tinygltf::Node&                        root_node = m_model.nodes[roots[i]];
+        const tinygltf::Node& root_node = m_model.nodes[roots[i]];
         ozz::animation::offline::RawSkeleton::Joint& root_joint =
             _skeleton->roots[i];
         if (!ImportNode(root_node, &root_joint))
@@ -661,7 +654,7 @@ bool GltfImporter::ImportNode(const tinygltf::Node& _node, ozz::animation::offli
     // Fills each child information.
     for (size_t i = 0; i < _node.children.size(); ++i)
     {
-        const tinygltf::Node&                        child_node = m_model.nodes[_node.children[i]];
+        const tinygltf::Node& child_node = m_model.nodes[_node.children[i]];
         ozz::animation::offline::RawSkeleton::Joint& child_joint =
             _joint->children[i];
 
@@ -758,7 +751,7 @@ bool GltfImporter::Import(const char* _animation_name, const ozz::animation::Ske
     for (int i = 0; i < num_joints; i++)
     {
         auto& channels = channels_per_joint[joint_names[i]];
-        auto& track    = _animation->tracks[i];
+        auto& track = _animation->tracks[i];
 
         for (auto& channel : channels)
         {
@@ -804,10 +797,7 @@ bool GltfImporter::Import(const char* _animation_name, const ozz::animation::Ske
 }
 
 bool GltfImporter::SampleAnimationChannel(
-    const tinygltf::Model& _model, const tinygltf::AnimationSampler& _sampler,
-    const std::string& _target_path, float _sampling_rate, float* _duration,
-    ozz::animation::offline::RawAnimation::JointTrack* _track
-)
+    const tinygltf::Model& _model, const tinygltf::AnimationSampler& _sampler, const std::string& _target_path, float _sampling_rate, float* _duration, ozz::animation::offline::RawAnimation::JointTrack* _track)
 {
     // Validate interpolation type.
     if (_sampler.interpolation.empty())
@@ -877,8 +867,7 @@ bool GltfImporter::SampleAnimationChannel(
 
 // Returns all skins belonging to a given gltf scene
 ozz::vector<tinygltf::Skin> GltfImporter::GetSkinsForScene(
-    const tinygltf::Scene& _scene
-) const
+    const tinygltf::Scene& _scene) const
 {
     ozz::set<int> open;
     ozz::set<int> found;

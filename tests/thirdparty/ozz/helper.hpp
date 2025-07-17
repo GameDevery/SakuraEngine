@@ -17,13 +17,13 @@ inline bool check_eq(const ozz::math::SimdFloat4& u, const float u0, const float
     } c = { u };
     auto res = true;
     res &= (c.values[0] == doctest::Approx(u0).epsilon(epsilon));
-    CHECK(res);
+    CHECK_MESSAGE(res, "Expected: ", u0, ", Actual: ", c.values[0]);
     res &= (c.values[1] == doctest::Approx(u1).epsilon(epsilon));
-    CHECK(res);
+    CHECK_MESSAGE(res, "Expected: ", u1, ", Actual: ", c.values[1]);
     res &= (c.values[2] == doctest::Approx(u2).epsilon(epsilon));
-    CHECK(res);
+    CHECK_MESSAGE(res, "Expected: ", u2, ", Actual: ", c.values[2]);
     res &= (c.values[3] == doctest::Approx(u3).epsilon(epsilon));
-    CHECK(res);
+    CHECK_MESSAGE(res, "Expected: ", u3, ", Actual: ", c.values[3]);
     return res;
 }
 
