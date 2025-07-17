@@ -9,7 +9,6 @@ public static class AnimDebug
     {
         Engine.Program("AnimDebug", "ANIM_DEBUG")
             .Depend(Visibility.Private, "AnimDebugRuntime")
-            .IncludeDirs(Visibility.Private, "include")
             .AddCppFiles("src/*.cpp")
             .AddHLSLFiles("shaders/*.hlsl")
             .DXCOutputDirectory("resources/shaders/AnimDebug");
