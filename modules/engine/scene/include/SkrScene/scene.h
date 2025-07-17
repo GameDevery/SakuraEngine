@@ -8,13 +8,12 @@ namespace skr
 struct SKR_SCENE_API TransformSystem {
 public:
     static TransformSystem* Create(sugoi_storage_t* world) SKR_NOEXCEPT;
-    static void             Destroy(TransformSystem* system) SKR_NOEXCEPT;
+    static void Destroy(TransformSystem* system) SKR_NOEXCEPT;
 
     void update() SKR_NOEXCEPT;
-    void set_parallel_entry(sugoi_entity_t entity) SKR_NOEXCEPT;
 
 private:
-    TransformSystem() SKR_NOEXCEPT  = default;
+    TransformSystem() SKR_NOEXCEPT = default;
     ~TransformSystem() SKR_NOEXCEPT = default;
     struct Impl;
     Impl* impl;
@@ -22,9 +21,7 @@ private:
 } // namespace skr
 
 SKR_EXTERN_C SKR_SCENE_API skr::TransformSystem* skr_transform_system_create(sugoi_storage_t* world);
-SKR_EXTERN_C SKR_SCENE_API void                  skr_transform_system_destroy(skr::TransformSystem* system);
-
-SKR_EXTERN_C SKR_SCENE_API void skr_transform_system_set_parallel_entry(skr::TransformSystem* system, sugoi_entity_t entity);
+SKR_EXTERN_C SKR_SCENE_API void skr_transform_system_destroy(skr::TransformSystem* system);
 SKR_EXTERN_C SKR_SCENE_API void skr_transform_system_update(skr::TransformSystem* system);
 
 SKR_EXTERN_C SKR_SCENE_API void skr_propagate_transform(sugoi_storage_t* world, sugoi_entity_t* entities, uint32_t count);

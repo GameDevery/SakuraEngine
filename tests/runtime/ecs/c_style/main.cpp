@@ -65,12 +65,12 @@ public:
     {
         storage = sugoiS_create();
         {
-            sugoi_chunk_view_t  view;
+            sugoi_chunk_view_t view;
             sugoi_entity_type_t entityType;
             entityType.type = { &type_test, 1 };
             entityType.meta = { nullptr, 0 };
-            auto callback   = [&](sugoi_chunk_view_t* inView) {
-                view                                              = *inView;
+            auto callback = [&](sugoi_chunk_view_t* inView) {
+                view = *inView;
                 *(TestComp*)sugoiV_get_owned_rw(&view, type_test) = 123;
             };
             sugoiS_allocate_type(storage, &entityType, 1, SUGOI_LAMBDA(callback));
@@ -85,7 +85,7 @@ public:
     }
 
     sugoi_storage_t* storage;
-    sugoi_entity_t   e1;
+    sugoi_entity_t e1;
 };
 
 template <class T>
@@ -101,12 +101,12 @@ TEST_CASE_METHOD(ECSTest, "allocate_one")
 
 TEST_CASE_METHOD(ECSTest, "allocate_100000")
 {
-    sugoi_chunk_view_t  view;
+    sugoi_chunk_view_t view;
     sugoi_entity_type_t entityType;
     entityType.type = { &type_test, 1 };
     entityType.meta = { nullptr, 0 };
-    auto callback   = [&](sugoi_chunk_view_t* inView) {
-        view   = *inView;
+    auto callback = [&](sugoi_chunk_view_t* inView) {
+        view = *inView;
         auto t = (TestComp*)sugoiV_get_owned_rw(&view, type_test);
         std::fill(t, t + inView->count, 123);
     };
@@ -122,7 +122,7 @@ TEST_CASE_METHOD(ECSTest, "allocate_100000")
 TEST_CASE_METHOD(ECSTest, "instantiate_single")
 {
     sugoi_chunk_view_t view;
-    auto               callback = [&](sugoi_chunk_view_t* inView) { view = *inView; };
+    auto callback = [&](sugoi_chunk_view_t* inView) { view = *inView; };
     sugoiS_instantiate(storage, e1, 10, SUGOI_LAMBDA(callback));
 
     auto data = (const TestComp*)sugoiV_get_owned_ro(&view, type_test);
@@ -135,20 +135,20 @@ TEST_CASE_METHOD(ECSTest, "instantiate_group")
 {
     sugoi_entity_t e2;
     {
-        sugoi_chunk_view_t  view;
+        sugoi_chunk_view_t view;
         sugoi_entity_type_t entityType;
         entityType.type = { &type_ref, 1 };
         entityType.meta = { nullptr, 0 };
-        auto callback   = [&](sugoi_chunk_view_t* inView) { view = *inView; };
+        auto callback = [&](sugoi_chunk_view_t* inView) { view = *inView; };
         sugoiS_allocate_type(storage, &entityType, 1, SUGOI_LAMBDA(callback));
         *(ref*)sugoiV_get_owned_rw(&view, type_ref) = e1;
-        e2                                          = sugoiV_get_entities(&view)[0];
+        e2 = sugoiV_get_entities(&view)[0];
     }
     {
         sugoi_chunk_view_t view[2];
-        int                n        = 0;
-        auto               callback = [&](sugoi_chunk_view_t* inView) { view[n++] = *inView; };
-        sugoi_entity_t     group[]  = { e1, e2 };
+        int n = 0;
+        auto callback = [&](sugoi_chunk_view_t* inView) { view[n++] = *inView; };
+        sugoi_entity_t group[] = { e1, e2 };
         sugoiS_instantiate_entities(storage, group, 2, 10, SUGOI_LAMBDA(callback));
         auto ents = sugoiV_get_entities(&view[0]);
         auto refs = (const ref*)sugoiV_get_owned_ro(&view[1], type_ref);
@@ -167,7 +167,7 @@ TEST_CASE_METHOD(ECSTest, "destroy_entity")
         sugoi_entity_type_t entityType;
         entityType.type = { &type_test, 1 };
         entityType.meta = { nullptr, 0 };
-        auto callback   = [&](sugoi_chunk_view_t* inView) { view = *inView; };
+        auto callback = [&](sugoi_chunk_view_t* inView) { view = *inView; };
         sugoiS_allocate_type(storage, &entityType, 1, SUGOI_LAMBDA(callback));
         auto e2 = sugoiV_get_entities(&view)[0];
         REQUIRE(sugoiS_exist(storage, e2));
@@ -177,21 +177,21 @@ TEST_CASE_METHOD(ECSTest, "destroy_entity")
 
 TEST_CASE_METHOD(ECSTest, "destroy_by_predicate")
 {
-    auto                query = sugoiQ_from_literal(storage, u8"[in]test");
-    sugoi_chunk_view_t  view;
+    auto query = sugoiQ_from_literal(storage, u8"[in]test");
+    sugoi_chunk_view_t view;
     sugoi_entity_type_t entityType;
     entityType.type = { &type_test, 1 };
     entityType.meta = { nullptr, 0 };
-    int  counter    = 0;
-    auto callback   = [&](sugoi_chunk_view_t* inView) {
+    int counter = 0;
+    auto callback = [&](sugoi_chunk_view_t* inView) {
         auto comps = (TestComp*)sugoiV_get_owned_ro(inView, type_test);
         for (EIndex i = 0; i < inView->count; ++i)
             comps[i] = counter++;
         view = *inView;
     };
     sugoiS_allocate_type(storage, &entityType, 10, SUGOI_LAMBDA(callback));
-    auto e2        = sugoiV_get_entities(&view)[1];
-    auto e3        = sugoiV_get_entities(&view)[4];
+    auto e2 = sugoiV_get_entities(&view)[1];
+    auto e3 = sugoiV_get_entities(&view)[4];
     auto callback2 = [&](sugoi_chunk_view_t* inView, sugoi_view_callback_t destroy, void* u) {
         auto comps = (TestComp*)sugoiV_get_owned_ro(inView, type_test);
         for (int i = 0; i < inView->count; ++i)
@@ -237,13 +237,13 @@ TEST_CASE_METHOD(ECSTest, "remove_component")
 
 TEST_CASE_METHOD(ECSTest, "pin")
 {
-    sugoi_entity_t     e2;
+    sugoi_entity_t e2;
     {
         sugoi_entity_type_t entityType;
-        sugoi_type_index_t  types[] = { type_test, type_pinned };
-        entityType.type             = { types, 2 };
-        entityType.meta             = { nullptr, 0 };
-        auto callback               = [&](sugoi_chunk_view_t* inView) {
+        sugoi_type_index_t types[] = { type_test, type_pinned };
+        entityType.type = { types, 2 };
+        entityType.meta = { nullptr, 0 };
+        auto callback = [&](sugoi_chunk_view_t* inView) {
             e2 = sugoiV_get_entities(inView)[0];
             *(TestComp*)sugoiV_get_owned_rw(inView, type_test) = 123;
         };
@@ -258,18 +258,18 @@ TEST_CASE_METHOD(ECSTest, "pin")
         EXPECT_EQ(*(TestComp*)sugoiV_get_owned_ro(&view2, type_test), 123);
         // only explicit query can access dead entity
         {
-            auto               query = sugoiQ_from_literal(storage, u8"[in]pinned, [has]dead");
+            auto query = sugoiQ_from_literal(storage, u8"[in]pinned, [has]dead");
             sugoi_chunk_view_t view3;
-            auto               callback = [&](sugoi_chunk_view_t* inView) {
+            auto callback = [&](sugoi_chunk_view_t* inView) {
                 view3 = *inView;
             };
             sugoiQ_get_views(query, SUGOI_LAMBDA(callback));
             EXPECT_EQ(*sugoiV_get_entities(&view3), e2);
         }
         {
-            auto               query2   = sugoiQ_from_literal(storage, u8"[in]pinned");
-            sugoi_chunk_view_t view4    = {};
-            auto               callback = [&](sugoi_chunk_view_t* inView) {
+            auto query2 = sugoiQ_from_literal(storage, u8"[in]pinned");
+            sugoi_chunk_view_t view4 = {};
+            auto callback = [&](sugoi_chunk_view_t* inView) {
                 view4 = *inView;
             };
             sugoiQ_get_views(query2, SUGOI_LAMBDA(callback));
@@ -287,12 +287,12 @@ TEST_CASE_METHOD(ECSTest, "pin")
 TEST_CASE_METHOD(ECSTest, "manage")
 {
     std::weak_ptr<int> observer;
-    sugoi_entity_t     e2;
+    sugoi_entity_t e2;
     {
         sugoi_entity_type_t entityType;
         entityType.type = { &type_managed, 1 };
         entityType.meta = { nullptr, 0 };
-        auto callback   = [&](sugoi_chunk_view_t* inView) {
+        auto callback = [&](sugoi_chunk_view_t* inView) {
             e2 = sugoiV_get_entities(inView)[0];
             auto& d = *(std::shared_ptr<int>*)sugoiV_get_owned_rw(inView, type_managed);
             d.reset(new int(1));
@@ -314,19 +314,19 @@ TEST_CASE_METHOD(ECSTest, "ref")
 {
     sugoi_entity_t e2, e3, e4;
     {
-        sugoi_chunk_view_t  view;
+        sugoi_chunk_view_t view;
         sugoi_entity_type_t entityType;
         entityType.type = { &type_ref, 1 };
         entityType.meta = { nullptr, 0 };
-        auto callback   = [&](sugoi_chunk_view_t* inView) {
-            view    = *inView;
+        auto callback = [&](sugoi_chunk_view_t* inView) {
+            view = *inView;
             auto& d = *(sugoi_entity_t*)sugoiV_get_owned_rw(&view, type_ref);
-            d       = e1;
+            d = e1;
         };
         sugoiS_allocate_type(storage, &entityType, 1, SUGOI_LAMBDA(callback));
-        e2             = sugoiV_get_entities(&view)[0];
+        e2 = sugoiV_get_entities(&view)[0];
         auto callback2 = [&](sugoi_chunk_view_t* inView) {
-            view   = *inView;
+            view = *inView;
             auto d = (sugoi_entity_t*)sugoiV_get_owned_rw(&view, type_ref);
             if (d)
             {
@@ -352,7 +352,7 @@ TEST_CASE_METHOD(ECSTest, "batch")
         sugoi_entity_type_t entityType;
         entityType.type = { &type_test, 1 };
         entityType.meta = { nullptr, 0 };
-        auto callback   = [&](sugoi_chunk_view_t* inView) {
+        auto callback = [&](sugoi_chunk_view_t* inView) {
             view[0] = *inView;
         };
         sugoiS_allocate_type(storage, &entityType, 10, SUGOI_LAMBDA(callback));
@@ -361,7 +361,7 @@ TEST_CASE_METHOD(ECSTest, "batch")
         sugoi_entity_type_t entityType;
         entityType.type = { &type_test2, 1 };
         entityType.meta = { nullptr, 0 };
-        auto callback   = [&](sugoi_chunk_view_t* inView) {
+        auto callback = [&](sugoi_chunk_view_t* inView) {
             view[1] = *inView;
         };
         sugoiS_allocate_type(storage, &entityType, 10, SUGOI_LAMBDA(callback));
@@ -370,7 +370,7 @@ TEST_CASE_METHOD(ECSTest, "batch")
     es.resize(20);
     std::memcpy(es.data(), sugoiV_get_entities(&view[0]), 10 * sizeof(sugoi_entity_t));
     std::memcpy(es.data() + 10, sugoiV_get_entities(&view[1]), 10 * sizeof(sugoi_entity_t));
-    int  i         = 0;
+    int i = 0;
     auto callback2 = [&](sugoi_chunk_view_t* inView) {
         EXPECT_EQ(view[i].chunk, inView->chunk);
         EXPECT_EQ(view[i].start, inView->start);
@@ -387,7 +387,7 @@ TEST_CASE_METHOD(ECSTest, "filter")
     sugoi_meta_filter_t meta;
     zero(meta);
     sugoi_chunk_view_t view;
-    auto               callback = [&](sugoi_chunk_view_t* inView) {
+    auto callback = [&](sugoi_chunk_view_t* inView) {
         view = *inView;
     };
     sugoiS_filter(storage, &filter, &meta, SUGOI_LAMBDA(callback));
@@ -397,14 +397,13 @@ TEST_CASE_METHOD(ECSTest, "filter")
 TEST_CASE_METHOD(ECSTest, "lock")
 {
     sugoi_chunk_view_t view;
-    auto               callback = [&](sugoi_chunk_view_t* inView) { view = *inView; };
+    auto callback = [&](sugoi_chunk_view_t* inView) { view = *inView; };
     sugoiS_instantiate(storage, e1, 10, SUGOI_LAMBDA(callback));
 
     auto data = (TestComp*)sugoiV_get_owned_rw(&view, type_test);
     _SAtomic(int32_t) counter = 0;
     _SAtomic(int32_t) jid = 123;
-    skr::parallel_for(data, data + view.count, 1, 
-        [&view, &counter, &jid, data](TestComp* begin, TestComp* end){
+    skr::parallel_for(data, data + view.count, 1, [&view, &counter, &jid, data](TestComp* begin, TestComp* end) {
         sugoiC_x_lock(view.chunk, type_test);
         const int32_t idx = begin - data;
 
@@ -425,8 +424,7 @@ TEST_CASE_METHOD(ECSTest, "lock")
         EXPECT_EQ(skr_atomic_load(&counter), 1);
         skr_atomic_fetch_add(&counter, -1);
 
-        sugoiC_x_unlock(view.chunk, type_test);
-    }, 1);
+        sugoiC_x_unlock(view.chunk, type_test); }, 1);
 }
 
 TEST_CASE_METHOD(ECSTest, "query")
@@ -434,7 +432,7 @@ TEST_CASE_METHOD(ECSTest, "query")
     auto query = sugoiQ_from_literal(storage, u8"[in]test");
 
     sugoi_chunk_view_t view;
-    auto               callback = [&](sugoi_chunk_view_t* inView) {
+    auto callback = [&](sugoi_chunk_view_t* inView) {
         view = *inView;
     };
     sugoiQ_get_views(query, SUGOI_LAMBDA(callback));
@@ -445,14 +443,14 @@ TEST_CASE_METHOD(ECSTest, "query_overload")
 {
     [[maybe_unused]] sugoi_entity_t e2, e3;
     {
-        sugoi_chunk_view_t  view;
+        sugoi_chunk_view_t view;
         sugoi_entity_type_t entityType;
-        sugoi_type_index_t  type[2] = { type_test, type_test2 };
+        sugoi_type_index_t type[2] = { type_test, type_test2 };
         std::sort(type, type + 2);
         entityType.type = { type, 2 };
         entityType.meta = { nullptr, 0 };
-        auto callback   = [&](sugoi_chunk_view_t* inView) {
-            view                                              = *inView;
+        auto callback = [&](sugoi_chunk_view_t* inView) {
+            view = *inView;
             *(TestComp*)sugoiV_get_owned_rw(&view, type_test) = 123;
         };
         sugoiS_allocate_type(storage, &entityType, 1, SUGOI_LAMBDA(callback));
@@ -460,14 +458,14 @@ TEST_CASE_METHOD(ECSTest, "query_overload")
         e2 = sugoiV_get_entities(&view)[0];
     }
     {
-        sugoi_chunk_view_t  view;
+        sugoi_chunk_view_t view;
         sugoi_entity_type_t entityType;
-        sugoi_type_index_t  type[3] = { type_test, type_test2, type_test3 };
+        sugoi_type_index_t type[3] = { type_test, type_test2, type_test3 };
         std::sort(type, type + 3);
         entityType.type = { type, 3 };
         entityType.meta = { nullptr, 0 };
-        auto callback   = [&](sugoi_chunk_view_t* inView) {
-            view                                              = *inView;
+        auto callback = [&](sugoi_chunk_view_t* inView) {
+            view = *inView;
             *(TestComp*)sugoiV_get_owned_rw(&view, type_test) = 123;
         };
         sugoiS_allocate_type(storage, &entityType, 1, SUGOI_LAMBDA(callback));
@@ -475,12 +473,12 @@ TEST_CASE_METHOD(ECSTest, "query_overload")
         e3 = sugoiV_get_entities(&view)[0];
     }
     sugoiQ_make_alias(storage, u8"test", u8"test:a");
-    auto            query1 = sugoiQ_from_literal(storage, u8"[inout]test:a");
-    auto            query2 = sugoiQ_from_literal(storage, u8"[inout]test:a, [in]test2");
+    auto query1 = sugoiQ_from_literal(storage, u8"[inout]test:a");
+    auto query2 = sugoiQ_from_literal(storage, u8"[inout]test:a, [in]test2");
     SKR_UNUSED auto query3 = sugoiQ_from_literal(storage, u8"[inout]test:a, [in]test3");
     {
         sugoi_chunk_view_t view;
-        auto               callback = [&](sugoi_chunk_view_t* inView) {
+        auto callback = [&](sugoi_chunk_view_t* inView) {
             EXPECT_EQ(inView->count, 1);
             view = *inView;
         };
@@ -489,7 +487,7 @@ TEST_CASE_METHOD(ECSTest, "query_overload")
     }
     {
         sugoi_chunk_view_t view;
-        auto               callback = [&](sugoi_chunk_view_t* inView) {
+        auto callback = [&](sugoi_chunk_view_t* inView) {
             EXPECT_EQ(inView->count, 1);
             view = *inView;
         };
@@ -503,56 +501,56 @@ void register_test_component()
     using namespace skr::literals;
     {
         sugoi_type_description_t desc = make_zeroed<sugoi_type_description_t>();
-        desc.name                     = u8"test";
-        desc.size                     = sizeof(TestComp);
-        desc.entityFieldsCount        = 0;
-        desc.entityFields             = 0;
-        desc.guid                     = u8"{3A44728E-66C2-40F9-A3C1-0920A727A94A}"_guid;
-        desc.callback                 = {};
-        desc.flags                    = 0;
-        desc.elementSize              = 0;
-        desc.alignment                = alignof(TestComp);
-        type_test                     = sugoiT_register_type(&desc);
-        desc.elementSize              = desc.size;
-        desc.size                     = sizeof(sugoi::ArrayComponent<TestComp, 10>);
-        desc.guid                     = u8"{82D170AE-6D06-406C-A451-F670103D7894}"_guid;
-        desc.name                     = u8"test_arr";
-        type_test_arr                 = sugoiT_register_type(&desc);
+        desc.name = u8"test";
+        desc.size = sizeof(TestComp);
+        desc.entityFieldsCount = 0;
+        desc.entityFields = 0;
+        desc.guid = u8"{3A44728E-66C2-40F9-A3C1-0920A727A94A}"_guid;
+        desc.callback = {};
+        desc.flags = 0;
+        desc.elementSize = 0;
+        desc.alignment = alignof(TestComp);
+        type_test = sugoiT_register_type(&desc);
+        desc.elementSize = desc.size;
+        desc.size = sizeof(sugoi::ArrayComponent<TestComp, 10>);
+        desc.guid = u8"{82D170AE-6D06-406C-A451-F670103D7894}"_guid;
+        desc.name = u8"test_arr";
+        type_test_arr = sugoiT_register_type(&desc);
     }
 
     {
 
         sugoi_type_description_t desc = make_zeroed<sugoi_type_description_t>();
-        desc.name                     = u8"test2";
-        desc.size                     = sizeof(TestComp);
-        desc.entityFieldsCount        = 0;
-        desc.entityFields             = 0;
-        desc.guid                     = u8"{36B139D5-0492-4EC7-AF72-B440665F2307}"_guid;
-        desc.callback                 = {};
-        desc.flags                    = 0;
-        desc.elementSize              = 0;
-        desc.alignment                = alignof(TestComp);
-        type_test2                    = sugoiT_register_type(&desc);
-        desc.guid                     = u8"{FD70F4BD-52FB-4911-8930-41A80C482DBF}"_guid;
-        desc.elementSize              = desc.size;
-        desc.size                     = sizeof(sugoi::ArrayComponent<TestComp, 10>);
-        desc.name                     = u8"test_arr";
-        type_test2_arr                = sugoiT_register_type(&desc);
+        desc.name = u8"test2";
+        desc.size = sizeof(TestComp);
+        desc.entityFieldsCount = 0;
+        desc.entityFields = 0;
+        desc.guid = u8"{36B139D5-0492-4EC7-AF72-B440665F2307}"_guid;
+        desc.callback = {};
+        desc.flags = 0;
+        desc.elementSize = 0;
+        desc.alignment = alignof(TestComp);
+        type_test2 = sugoiT_register_type(&desc);
+        desc.guid = u8"{FD70F4BD-52FB-4911-8930-41A80C482DBF}"_guid;
+        desc.elementSize = desc.size;
+        desc.size = sizeof(sugoi::ArrayComponent<TestComp, 10>);
+        desc.name = u8"test_arr";
+        type_test2_arr = sugoiT_register_type(&desc);
     }
 
     {
 
         sugoi_type_description_t desc = make_zeroed<sugoi_type_description_t>();
-        desc.name                     = u8"test3";
-        desc.size                     = sizeof(TestComp);
-        desc.entityFieldsCount        = 0;
-        desc.entityFields             = 0;
-        desc.guid                     = u8"{3E5A2C5F-7FBE-486C-BCCE-8E6D8933B2C5}"_guid;
-        desc.callback                 = {};
-        desc.flags                    = 0;
-        desc.elementSize              = 0;
-        desc.alignment                = alignof(TestComp);
-        type_test3                    = sugoiT_register_type(&desc);
+        desc.name = u8"test3";
+        desc.size = sizeof(TestComp);
+        desc.entityFieldsCount = 0;
+        desc.entityFields = 0;
+        desc.guid = u8"{3E5A2C5F-7FBE-486C-BCCE-8E6D8933B2C5}"_guid;
+        desc.callback = {};
+        desc.flags = 0;
+        desc.elementSize = 0;
+        desc.alignment = alignof(TestComp);
+        type_test3 = sugoiT_register_type(&desc);
     }
 }
 
@@ -560,37 +558,37 @@ void register_ref_component()
 {
     using namespace skr::literals;
     sugoi_type_description_t desc = make_zeroed<sugoi_type_description_t>();
-    desc.name                     = u8"ref";
-    desc.size                     = sizeof(ref);
-    desc.entityFieldsCount        = 1;
-    intptr_t fields[1]            = { 0 };
-    desc.entityFields             = (intptr_t)fields;
-    desc.guid                     = u8"{4BEC235F-63DF-4A49-8F5E-5431890F61DD}"_guid;
-    desc.callback                 = {};
-    desc.flags                    = 0;
-    desc.elementSize              = 0;
-    desc.alignment                = alignof(ref);
-    type_ref                      = sugoiT_register_type(&desc);
-    desc.guid                     = u8"{F84BB5DE-DB21-4CEF-8DF1-8CD7AEEE766F}"_guid;
-    desc.elementSize              = desc.size;
-    desc.size                     = sizeof(sugoi::ArrayComponent<ref, 10>);
-    desc.name                     = u8"ref_arr";
-    type_ref_arr                  = sugoiT_register_type(&desc);
+    desc.name = u8"ref";
+    desc.size = sizeof(ref);
+    desc.entityFieldsCount = 1;
+    intptr_t fields[1] = { 0 };
+    desc.entityFields = (intptr_t)fields;
+    desc.guid = u8"{4BEC235F-63DF-4A49-8F5E-5431890F61DD}"_guid;
+    desc.callback = {};
+    desc.flags = 0;
+    desc.elementSize = 0;
+    desc.alignment = alignof(ref);
+    type_ref = sugoiT_register_type(&desc);
+    desc.guid = u8"{F84BB5DE-DB21-4CEF-8DF1-8CD7AEEE766F}"_guid;
+    desc.elementSize = desc.size;
+    desc.size = sizeof(sugoi::ArrayComponent<ref, 10>);
+    desc.name = u8"ref_arr";
+    type_ref_arr = sugoiT_register_type(&desc);
 }
 
 void register_managed_component()
 {
     using namespace skr::literals;
     sugoi_type_description_t desc = make_zeroed<sugoi_type_description_t>();
-    desc.name                     = u8"managed";
-    desc.size                     = sizeof(managed);
-    desc.entityFieldsCount        = 0;
-    desc.entityFields             = 0;
-    desc.guid                     = u8"{BA2D8E6A-9841-474F-9A6D-3E43BF0A7A9C}"_guid;
-    desc.flags                    = 0;
-    desc.elementSize              = 0;
-    desc.alignment                = alignof(managed);
-    desc.callback                 = {
+    desc.name = u8"managed";
+    desc.size = sizeof(managed);
+    desc.entityFieldsCount = 0;
+    desc.entityFields = 0;
+    desc.guid = u8"{BA2D8E6A-9841-474F-9A6D-3E43BF0A7A9C}"_guid;
+    desc.flags = 0;
+    desc.elementSize = 0;
+    desc.alignment = alignof(managed);
+    desc.callback = {
         +[](sugoi_type_index_t, sugoi_chunk_t* chunk, EIndex index, char* data) { new (data) managed; },
         +[](sugoi_type_index_t, sugoi_chunk_t* chunk, EIndex index, char* dst, sugoi_chunk_t* schunk, EIndex sindex, const char* src) { new (dst) managed(*(managed*)src); },
         +[](sugoi_type_index_t, sugoi_chunk_t* chunk, EIndex index, char* data) { ((managed*)data)->~managed(); },
@@ -601,11 +599,11 @@ void register_managed_component()
         },
         nullptr
     };
-    type_managed     = sugoiT_register_type(&desc);
-    desc.guid        = u8"{BCF22A9B-908C-4F84-89B4-C7BD803FC6C2}"_guid;
+    type_managed = sugoiT_register_type(&desc);
+    desc.guid = u8"{BCF22A9B-908C-4F84-89B4-C7BD803FC6C2}"_guid;
     desc.elementSize = desc.size;
-    desc.size        = sizeof(sugoi::ArrayComponent<managed, 10>);
-    desc.name        = u8"managed_arr";
+    desc.size = sizeof(sugoi::ArrayComponent<managed, 10>);
+    desc.name = u8"managed_arr";
     type_managed_arr = sugoiT_register_type(&desc);
 }
 
@@ -613,26 +611,27 @@ void register_pinned_component()
 {
     using namespace skr::literals;
     sugoi_type_description_t desc = make_zeroed<sugoi_type_description_t>();
-    desc.name                     = u8"pinned";
-    desc.size                     = sizeof(pinned);
-    desc.entityFieldsCount        = 0;
-    desc.entityFields             = 0;
-    desc.guid                     = u8"{E6127548-981D-46F5-BF33-8EC31CACACFD}"_guid;
-    desc.callback                 = {};
-    desc.flags                    = SUGOI_TYPE_FLAG_PIN;
-    desc.elementSize              = 0;
-    desc.alignment                = alignof(pinned);
-    type_pinned                   = sugoiT_register_type(&desc);
-    desc.guid                     = u8"{673605E0-C52C-40F5-A3F0-736409617D15}"_guid;
-    desc.elementSize              = desc.size;
-    desc.size                     = sizeof(sugoi::ArrayComponent<pinned, 10>);
-    desc.name                     = u8"pinned_arr";
-    type_pinned_arr               = sugoiT_register_type(&desc);
+    desc.name = u8"pinned";
+    desc.size = sizeof(pinned);
+    desc.entityFieldsCount = 0;
+    desc.entityFields = 0;
+    desc.guid = u8"{E6127548-981D-46F5-BF33-8EC31CACACFD}"_guid;
+    desc.callback = {};
+    desc.flags = SUGOI_TYPE_FLAG_PIN;
+    desc.elementSize = 0;
+    desc.alignment = alignof(pinned);
+    type_pinned = sugoiT_register_type(&desc);
+    desc.guid = u8"{673605E0-C52C-40F5-A3F0-736409617D15}"_guid;
+    desc.elementSize = desc.size;
+    desc.size = sizeof(sugoi::ArrayComponent<pinned, 10>);
+    desc.name = u8"pinned_arr";
+    type_pinned_arr = sugoiT_register_type(&desc);
 }
 
 class SpinLock
 {
     std::atomic_flag locked = ATOMIC_FLAG_INIT;
+
 public:
     void lock()
     {
