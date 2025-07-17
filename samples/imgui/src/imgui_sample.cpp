@@ -1,4 +1,6 @@
 #include "SkrGraphics/api.h"
+#include "SkrCore/memory/sp.hpp"
+#include "SkrSystem/advanced_input.h"
 #include "SkrImGui/imgui_render_backend.hpp"
 #include <SkrImGui/imgui_backend.hpp>
 
@@ -8,11 +10,11 @@ int main()
 
     // Create instance
     CGPUInstanceDescriptor instance_desc{};
-    instance_desc.backend                     = CGPU_BACKEND_D3D12;
-    instance_desc.enable_debug_layer          = true;
+    instance_desc.backend = CGPU_BACKEND_D3D12;
+    instance_desc.enable_debug_layer = true;
     instance_desc.enable_gpu_based_validation = false;
-    instance_desc.enable_set_name             = true;
-    auto instance                             = cgpu_create_instance(&instance_desc);
+    instance_desc.enable_set_name = true;
+    auto instance = cgpu_create_instance(&instance_desc);
 
     // Filter adapters
     uint32_t adapters_count = 0;
@@ -23,13 +25,13 @@ int main()
 
     // Create device
     CGPUQueueGroupDescriptor queue_group_desc = {};
-    queue_group_desc.queue_type               = CGPU_QUEUE_TYPE_GRAPHICS;
-    queue_group_desc.queue_count              = 1;
-    CGPUDeviceDescriptor device_desc          = {};
-    device_desc.queue_groups                  = &queue_group_desc;
-    device_desc.queue_group_count             = 1;
-    auto device                               = cgpu_create_device(adapter, &device_desc);
-    auto gfx_queue                            = cgpu_get_queue(device, CGPU_QUEUE_TYPE_GRAPHICS, 0);
+    queue_group_desc.queue_type = CGPU_QUEUE_TYPE_GRAPHICS;
+    queue_group_desc.queue_count = 1;
+    CGPUDeviceDescriptor device_desc = {};
+    device_desc.queue_groups = &queue_group_desc;
+    device_desc.queue_group_count = 1;
+    auto device = cgpu_create_device(adapter, &device_desc);
+    auto gfx_queue = cgpu_get_queue(device, CGPU_QUEUE_TYPE_GRAPHICS, 0);
 
     // create render graph
     auto render_graph = render_graph::RenderGraph::create(
@@ -37,36 +39,40 @@ int main()
             builder.with_device(device)
                 .with_gfx_queue(gfx_queue)
                 .enable_memory_aliasing();
-        }
-    );
+        });
 
     // init imgui
-    ImGuiBackend            imgui_backend;
+    skr::UPtr<skr::ImGuiApp> imgui_app = nullptr;
     ImGuiRendererBackendRG* render_backend_rg = nullptr;
     {
         auto render_backend = RCUnique<ImGuiRendererBackendRG>::New();
-        render_backend_rg   = render_backend.get();
+        render_backend_rg = render_backend.get();
         ImGuiRendererBackendRGConfig config{};
         config.render_graph = render_graph;
-        config.queue        = gfx_queue;
+        config.queue = gfx_queue;
         render_backend->init(config);
-        imgui_backend.create({}, std::move(render_backend));
-        imgui_backend.main_window().show();
-        imgui_backend.enable_docking();
-        imgui_backend.enable_high_dpi();
+        skr::SystemWindowCreateInfo main_window_info = {
+            .title = skr::format(u8"Live2D Viewer Inner [{}]", gCGPUBackendNames[device->adapter->instance->backend]),
+            .size = { 1500, 1500 },
+        };
+
+        imgui_app = skr::UPtr<skr::ImGuiApp>::New(main_window_info, std::move(render_backend));
+        imgui_app->initialize();
+        imgui_app->enable_docking();
         // imgui_backend.enable_multi_viewport();
     }
 
     // draw loop
-    bool     show_demo_window    = true;
-    bool     show_another_window = true;
-    ImVec4   clear_color         = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-    uint64_t frame_index         = 0;
-    while (!imgui_backend.want_exit().comsume())
-    {
-        imgui_backend.pump_message();
-        imgui_backend.begin_frame();
+    bool show_demo_window = true;
+    bool show_another_window = true;
+    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+    uint64_t frame_index = 0;
+    skr::input::Input::Initialize();
 
+    while (!imgui_app->want_exit().comsume())
+    {
+        imgui_app->pump_message();
+        imgui_app->begin_frame();
         {
             ImGuiIO& io = ImGui::GetIO();
 
@@ -76,8 +82,8 @@ int main()
 
             // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
             {
-                static float f       = 0.0f;
-                static int   counter = 0;
+                static float f = 0.0f;
+                static int counter = 0;
 
                 ImGui::Begin("Hello, world!"); // Create a window called "Hello, world!" and append into it.
 
@@ -108,22 +114,28 @@ int main()
             }
         }
 
-        imgui_backend.end_frame();
+        {
+            // create backbuffer
+            auto viewport = ImGui::GetMainViewport();
+            CGPUTextureId native_backbuffer = render_backend_rg->get_backbuffer(viewport);
+            render_graph->create_texture(
+                [=](skr::render_graph::RenderGraph& g, skr::render_graph::TextureBuilder& builder) {
+                    skr::String buf_name = skr::format(u8"backbuffer");
+                    builder.set_name((const char8_t*)buf_name.c_str())
+                        .import(native_backbuffer, CGPU_RESOURCE_STATE_UNDEFINED)
+                        .allow_render_target();
+                });
+        }
 
-        // add render passes
-        imgui_backend.collect(); // contact @zihuang.zhu for any issue
-        imgui_backend.render();
+        imgui_app->end_frame();
+        imgui_app->render();
 
-        // draw render graph
-        render_graph->compile();
-        render_graph->execute();
+        frame_index = render_graph->execute();
         if (frame_index >= RG_MAX_FRAME_IN_FLIGHT * 10)
             render_graph->collect_garbage(frame_index - RG_MAX_FRAME_IN_FLIGHT * 10);
 
         // present
-        render_backend_rg->present_main_viewport();
-        render_backend_rg->present_sub_viewports();
-        ++frame_index;
+        render_backend_rg->present_all();
     }
 
     // wait for rendering done
@@ -133,7 +145,7 @@ int main()
     render_graph::RenderGraph::destroy(render_graph);
 
     // destroy imgui
-    imgui_backend.destroy();
+    imgui_app->shutdown();
 
     // shutdown cgpu
     cgpu_free_queue(gfx_queue);

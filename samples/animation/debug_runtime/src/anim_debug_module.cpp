@@ -214,7 +214,6 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
                 .enable_memory_aliasing();
         });
     // TODO: init profiler
-    // skr::ImGuiBackend            imgui_backend;
     skr::UPtr<skr::ImGuiApp> imgui_app = nullptr;
     skr::ImGuiRendererBackendRG* render_backend_rg = nullptr;
     {
@@ -370,7 +369,6 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
             SkrZoneScopedN("Viewport Render");
             auto viewport = ImGui::GetMainViewport();
             CGPUTextureId native_backbuffer = render_backend_rg->get_backbuffer(viewport);
-            // register backbuffer
             auto back_buffer = render_graph->create_texture(
                 [=](rg::RenderGraph& g, skr::render_graph::TextureBuilder& builder) {
                     skr::String buf_name = skr::format(u8"backbuffer");
