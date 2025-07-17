@@ -21,14 +21,14 @@ TEST_CASE("SoaFloat")
         union
         {
             ozz::math::SimdFloat4 simd;
-            float                 values[4];
+            float values[4];
         } u = { c };
         CHECK(u.values[0] == 6.0f);
         CHECK(u.values[1] == 8.0f);
         CHECK(u.values[2] == 10.0f);
         CHECK(u.values[3] == 12.0f);
         // alternatively, use helper function
-        ozz::check_eq(c, 6.0f, 8.0f, 10.0f, 12.0f);
+        CHECK(ozz::check_eq(c, 6.0f, 8.0f, 10.0f, 12.0f));
     }
     SUBCASE("SoaFloat3")
     {
@@ -58,8 +58,7 @@ TEST_CASE("SoaFloat4")
             simd_float4::Load(1.0f, 2.0f, 3.0f, 4.0f),
             simd_float4::Load(5.0f, 6.0f, 7.0f, 8.0f),
             simd_float4::Load(9.0f, 10.0f, 11.0f, 12.0f),
-            simd_float4::Load(13.0f, 14.0f, 15.0f, 16.0f)
-        );
+            simd_float4::Load(13.0f, 14.0f, 15.0f, 16.0f));
 
         // and 4 more vectors
         // [17, 21, 25, 29]
@@ -70,8 +69,7 @@ TEST_CASE("SoaFloat4")
             simd_float4::Load(17.0f, 18.0f, 19.0f, 20.0f),
             simd_float4::Load(21.0f, 22.0f, 23.0f, 24.0f),
             simd_float4::Load(25.0f, 26.0f, 27.0f, 28.0f),
-            simd_float4::Load(29.0f, 30.0f, 31.0f, 32.0f)
-        );
+            simd_float4::Load(29.0f, 30.0f, 31.0f, 32.0f));
         // we can add them together
         SoaFloat4 result = v1 + v2;
         // the result should be
@@ -79,7 +77,7 @@ TEST_CASE("SoaFloat4")
         // [23, 28, 33, 38]
         // [28, 33, 38, 43]
         // [33, 38, 43, 48]
-        ozz::check_eq(result, 18.0f, 23.0f, 28.0f, 33.0f, 23.0f, 28.0f, 33.0f, 38.0f, 28.0f, 33.0f, 38.0f, 43.0f, 33.0f, 38.0f, 43.0f, 48.0f);
+        CHECK(ozz::check_eq(result, 18.0f, 23.0f, 28.0f, 33.0f, 23.0f, 28.0f, 33.0f, 38.0f, 28.0f, 33.0f, 38.0f, 43.0f, 33.0f, 38.0f, 43.0f, 48.0f));
     }
 }
 
