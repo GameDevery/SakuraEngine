@@ -24,7 +24,7 @@ static sugoi_array_comp_t* new_array(void* ptr, size_t cap, size_t elemSize, siz
 
 bool is_array_small(sugoi_array_comp_t* ptr)
 {
-    return ptr->BeginX < ((char*)(ptr + 1) + alignof(std::max_align_t));
+    return ptr->BeginX < ((char*)(ptr + 1) + sugoi::kSmallBinSize);
 }
 
 #define for_buffer(i, array, size) \
@@ -62,7 +62,7 @@ static void destruct_impl(sugoi_chunk_view_t view, type_index_t type, EIndex off
     {
         forloop(k, 0, resourceFields.count)
         {
-            auto field = ((intptr_t*)resourceFields.offsets)[k];
+            auto field = resourceFields.offsets[k];
             auto* resource = (skr_resource_handle_t*)(data + field);
             if(resource->is_resolved())
                 resource->reset();
@@ -159,7 +159,7 @@ static void clone_impl(sugoi_chunk_view_t dstV, const sugoi_chunk_t* srcC, uint3
     {
         forloop(k, 0, resourceFields.count)
         {
-            auto field = ((intptr_t*)resourceFields.offsets)[k];
+            auto field = resourceFields.offsets[k];
             auto* resource = (skr_resource_handle_t*)(data + field);
             if(resource->is_resolved())
             {
@@ -271,7 +271,7 @@ static void duplicate_impl(sugoi_chunk_view_t dstV, const sugoi_chunk_t* srcC, u
     {
         forloop(k, 0, resourceFields.count)
         {
-            auto field = ((intptr_t*)resourceFields.offsets)[k];
+            auto field = resourceFields.offsets[k];
             auto* resource = (skr_resource_handle_t*)(data + field);
             if(resource->is_resolved())
             {

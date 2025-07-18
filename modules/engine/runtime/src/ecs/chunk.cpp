@@ -32,6 +32,15 @@ void sugoi_chunk_t::destroy(sugoi_chunk_t* chunk)
     };
 }
 
+void sugoi_chunk_t::init(sugoi::archetype_t* structure)
+{
+    auto pData = (sugoi::slice_data_t*)(data() + structure->sliceDataOffsets[pt]);
+    for (EIndex i = 0; i < structure->type.length; ++i)
+    {
+        new (pData + i) sugoi::slice_data_t{};
+    }
+}
+
 EIndex sugoi_chunk_t::get_capacity()
 {
     return structure->chunkCapacity[pt];

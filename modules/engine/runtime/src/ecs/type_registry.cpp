@@ -58,12 +58,12 @@ TypeRegistry::Impl::Impl(pool_t& pool)
         auto desc = make_zeroed<type_description_t>();
         desc.guid = u8"{54BD68D5-FD66-4DBE-85CF-70F535C27389}"_guid;
         desc.name = u8"sugoi::link_comp_t";
-        desc.size = sizeof(sugoi_entity_t) * kLinkComponentSize;
+        desc.size = sizeof(ArrayComponent<sugoi_entity_t, kLinkComponentSize>);
         desc.elementSize = sizeof(sugoi_entity_t);
         desc.alignment = alignof(sugoi_entity_t);
         desc.entityFieldsCount = 1;
-        entityFields.add(0);
-        desc.entityFields = 0;
+        intptr_t EntityFields[] = {0};
+        desc.entityFields = EntityFields;
         desc.flags = 0;
         descriptions.add(desc);
         guid2type.emplace(desc.guid, kLinkComponent);
@@ -131,10 +131,10 @@ type_index_t TypeRegistry::Impl::register_type(const type_description_t& inDesc)
     }
     if (desc.entityFields != 0)
     {
-        intptr_t* efs = (intptr_t*)desc.entityFields;
-        desc.entityFields = entityFields.size();
+        intptr_t* efs = desc.entityFields;
+        desc.entityFields = (intptr_t*)sakura_malloc(sizeof(intptr_t) * desc.entityFieldsCount);
         for (uint32_t i = 0; i < desc.entityFieldsCount; ++i)
-            entityFields.add(efs[i]);
+            desc.entityFields[i] = efs[i];
     }
     bool tag = false;
     bool pin = false;
@@ -210,11 +210,6 @@ void TypeRegistry::Impl::foreach_types(sugoi_type_callback_t callback, void* u)
         callback(u, pair.second);
 }
 
-intptr_t TypeRegistry::Impl::map_entity_field(intptr_t p)
-{
-    return entityFields[p];
-}
-
 guid_t TypeRegistry::Impl::make_guid()
 {
     guid_t guid;
@@ -251,11 +246,6 @@ const sugoi_type_description_t* TypeRegistry::get_type_desc(sugoi_type_index_t i
 void TypeRegistry::foreach_types(sugoi_type_callback_t callback, void* u)
 {
     impl.foreach_types(callback, u);
-}
-
-intptr_t TypeRegistry::map_entity_field(intptr_t p)
-{
-    return impl.map_entity_field(p);
 }
 
 guid_t TypeRegistry::make_guid()

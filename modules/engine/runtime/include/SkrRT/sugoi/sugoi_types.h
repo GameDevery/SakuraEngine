@@ -41,7 +41,7 @@ namespace skr::archive
 namespace sugoi
 {
 [[maybe_unused]] static constexpr size_t kFastBinSize       = 64 * 1024;
-[[maybe_unused]] static constexpr size_t kSmallBinThreshold = 8;
+[[maybe_unused]] static constexpr size_t kSmallBinThreshold = 1;
 [[maybe_unused]] static constexpr size_t kSmallBinSize      = 1024;
 [[maybe_unused]] static constexpr size_t kLargeBinSize      = 1024 * 1024;
 
@@ -52,7 +52,7 @@ namespace sugoi
 [[maybe_unused]] static constexpr TIndex kInvalidTypeIndex = std::numeric_limits<TIndex>::max();
 
 [[maybe_unused]] static constexpr size_t kGroupBlockSize    = 128 * 4;
-[[maybe_unused]] static constexpr size_t kGroupBlockCount   = 256;
+[[maybe_unused]] static constexpr size_t kGroupBlockCount   = 1024;
 [[maybe_unused]] static constexpr size_t kStorageArenaSize  = 128 * 128;
 [[maybe_unused]] static constexpr size_t kLinkComponentSize = 8;
 

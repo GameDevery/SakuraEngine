@@ -84,10 +84,10 @@ typedef struct sugoi_type_description_t {
     uint16_t elementSize;
     uint16_t alignment;
     // entity field is used to guarantee references between entities are keeping valid after operations like instantiate, merge world, deserialize etc.
-    intptr_t entityFields;
+    intptr_t* entityFields;
     uint32_t entityFieldsCount;
     // resource field is used to track resource lifetime
-    intptr_t resourceFields;
+    intptr_t* resourceFields;
     uint32_t resourceFieldsCount;
     // lifetime callbacks of this component
     sugoi_callback_v callback;
@@ -510,12 +510,13 @@ SKR_RUNTIME_API void sugoiS_serialize(sugoi_storage_t* storage, SBinaryWriter* v
 SKR_RUNTIME_API void sugoiS_deserialize(sugoi_storage_t* storage, SBinaryReader* v);
 /**
  * @brief test if given entity exist in storage
- * entity can be invalid(id not exist) or be dead(version not match)
+ * entity can be invalid(id not exist) or be dead(version mismatch)
  * @param storage
  * @param ent
  * @return bool
  */
 SKR_RUNTIME_API int sugoiS_exist(sugoi_storage_t* storage, sugoi_entity_t ent);
+SKR_RUNTIME_API int sugoiS_alive(sugoi_storage_t* storage, sugoi_entity_t ent);
 /**
  * @brief test if given components is enabled on given ent
  * if there's no mask component on given ent, all components consider enabled
@@ -649,8 +650,10 @@ SKR_RUNTIME_API void sugoiQ_set_custom_filter(sugoi_query_t* query, sugoi_custom
  * @param callback callback for each filtered chunk view
  */
 SKR_RUNTIME_API void             sugoiQ_get_views(sugoi_query_t* query, sugoi_view_callback_t callback, void* u);
+SKR_RUNTIME_API void             sugoiQ_get_views_unsafe(sugoi_query_t* query, sugoi_view_callback_t callback, void* u);
 SKR_RUNTIME_API void             sugoiQ_get_groups(sugoi_query_t* query, sugoi_group_callback_t callback, void* u);
 SKR_RUNTIME_API void             sugoiQ_in_group(sugoi_query_t* query, sugoi_group_t* group, sugoi_view_callback_t callback, void* u);
+SKR_RUNTIME_API int              sugoiQ_match_entity(sugoi_query_t* query, sugoi_entity_t entity);
 SKR_RUNTIME_API sugoi_storage_t* sugoiQ_get_storage(sugoi_query_t* query);
 
 /**

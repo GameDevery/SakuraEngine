@@ -18,6 +18,22 @@
 #if __SSE2__
     #include <emmintrin.h>
 #endif
+#if __SSE4_1__
+    #include <smmintrin.h>
+#endif
+#if __AVX__
+    #include <immintrin.h>
+#endif
+#if __AVX2__
+    #include <immintrin.h>
+#endif
+#if __AVX512F__
+    #include <immintrin.h>
+#endif
+#if defined(__ARM_NEON) || defined(__aarch64__)
+    #include <arm_neon.h>
+#endif
+#include <bit>
 
 namespace skr
 {
@@ -687,21 +703,9 @@ void sugoi_storage_t::query_groups(const sugoi_query_t* q, sugoi_group_callback_
     
     buildQueryCache(const_cast<sugoi_query_t*>(q));
     
-    fixed_stack_scope_t  _(localStack);
     bool                 filterShared  = (q->pimpl->filter.all_shared.length + q->pimpl->filter.none_shared.length) != 0;
-    sugoi_meta_filter_t* validatedMeta = nullptr;
-    if (q->pimpl->meta.all_meta.length > 0 || q->pimpl->meta.none_meta.length > 0)
-    {
-        validatedMeta  = localStack.allocate<sugoi_meta_filter_t>();
-        auto data      = (char*)localStack.allocate(data_size(q->pimpl->meta));
-        *validatedMeta = sugoi::clone(q->pimpl->meta, data);
-        validate(validatedMeta->all_meta);
-        validate(validatedMeta->none_meta);
-    }
-    else
-    {
-        validatedMeta = (sugoi_meta_filter_t*)&q->pimpl->meta;
-    }
+    auto& meta = q->pimpl->meta;
+    bool filterMeta = (meta.all_meta.length + meta.none_meta.length) != 0;
 
     sugoi_query_t::Impl::GroupsCache::GroupsCacheVector groups_cache;
     q->pimpl->groups_cache.read([&](auto& val){ groups_cache = val; });
@@ -709,44 +713,55 @@ void sugoi_storage_t::query_groups(const sugoi_query_t* q, sugoi_group_callback_
     {
         if (filterShared)
         {
-            fixed_stack_scope_t _(localStack);
-            sugoi_type_set_t    shared;
-            shared.length = 0;
-            // todo: is 256 enough?
-            shared.data = localStack.allocate<sugoi_type_index_t>(256);
-            group->get_shared_type(shared, localStack.allocate<sugoi_type_index_t>(256));
             // check(shared.length < 256);
-            if (!match_group_shared(shared, q->pimpl->filter))
+            if (!match_group_shared(group->sharedType, q->pimpl->filter))
                 continue;
         }
-        if (bool filterMeta = ((validatedMeta->all_meta.length + validatedMeta->none_meta.length) != 0))
+        if (filterMeta)
         {
-            if (!match_group_meta(group->type, *validatedMeta))
+            if (!match_group_meta(group->type, meta))
                 continue;
         }
         callback(u, group);
     }
 }
 
+bool sugoi_storage_t::match_entity(const sugoi_query_t* q, sugoi_entity_t entity)
+{
+    using namespace sugoi;
+    sugoi_chunk_view_t view = entity_view(entity);
+    if (!view.chunk)
+        return false;
+    auto group = view.chunk->group;
+    bool found = false;
+    q->pimpl->groups_cache.read([&](auto& cache){
+        auto iter = std::find(cache.begin(), cache.end(), group);
+        if (iter != cache.end())
+            found = true;
+    });
+    if (!found)
+        return false;
+    bool filterShared  = (q->pimpl->filter.all_shared.length + q->pimpl->filter.none_shared.length) != 0;
+    auto& meta = q->pimpl->meta;
+    bool filterMeta = (meta.all_meta.length + meta.none_meta.length) != 0;
+    if (filterShared)
+    {
+        if (!match_group_shared(group->sharedType, q->pimpl->filter))
+            return false;
+    }
+    if (filterMeta)
+    {
+        if (!match_group_meta(group->type, meta))
+            return false;
+    }
+    return true;
+}
+
 void sugoi_storage_t::filter_groups(const sugoi_filter_t& filter, const sugoi_meta_filter_t& meta, sugoi_group_callback_t callback, void* u)
 {
     using namespace sugoi;
-    fixed_stack_scope_t  _(localStack);
     bool                 filterShared  = (filter.all_shared.length + filter.none_shared.length) != 0;
-    sugoi_meta_filter_t* validatedMeta = nullptr;
-    if (meta.all_meta.length > 0 || meta.none_meta.length > 0)
-    {
-        validatedMeta  = localStack.allocate<sugoi_meta_filter_t>();
-        auto data      = (char*)localStack.allocate(data_size(meta));
-        *validatedMeta = sugoi::clone(meta, data);
-        validate(validatedMeta->all_meta);
-        validate(validatedMeta->none_meta);
-    }
-    else
-    {
-        validatedMeta = (sugoi_meta_filter_t*)&meta;
-    }
-    bool filterMeta      = (validatedMeta->all_meta.length + validatedMeta->none_meta.length) != 0;
+    bool filterMeta      = (meta.all_meta.length + meta.none_meta.length) != 0;
     bool includeDead     = false;
     bool includeDisabled = false;
     {
@@ -775,19 +790,12 @@ void sugoi_storage_t::filter_groups(const sugoi_filter_t& filter, const sugoi_me
                 continue;
             if (filterShared)
             {
-                fixed_stack_scope_t _(localStack);
-                sugoi_type_set_t    shared;
-                shared.length = 0;
-                // todo: is 256 enough?
-                shared.data = localStack.allocate<sugoi_type_index_t>(256);
-                group->get_shared_type(shared, localStack.allocate<sugoi_type_index_t>(256));
-                // check(shared.length < 256);
-                if (!match_group_shared(shared, filter))
+                if (!match_group_shared(group->sharedType, filter))
                     continue;
             }
             if (filterMeta)
             {
-                if (!match_group_meta(group->type, *validatedMeta))
+                if (!match_group_meta(group->type, meta))
                     continue;
             }
             callback(u, group);
@@ -801,37 +809,16 @@ void sugoi_storage_t::filter_groups(const sugoi_filter_t& filter, const sugoi_me
 bool sugoi_storage_t::match_group(const sugoi_filter_t& filter, const sugoi_meta_filter_t& meta, const sugoi_group_t* group)
 {
     using namespace sugoi;
-    fixed_stack_scope_t  _(localStack);
     bool                 filterShared  = (filter.all_shared.length + filter.none_shared.length) != 0;
-    sugoi_meta_filter_t* validatedMeta = nullptr;
-    if (meta.all_meta.length > 0 || meta.none_meta.length > 0)
-    {
-        validatedMeta  = localStack.allocate<sugoi_meta_filter_t>();
-        auto data      = (char*)localStack.allocate(data_size(meta));
-        *validatedMeta = sugoi::clone(meta, data);
-        validate(validatedMeta->all_meta);
-        validate(validatedMeta->none_meta);
-    }
-    else
-    {
-        validatedMeta = (sugoi_meta_filter_t*)&meta;
-    }
-    bool filterMeta = (validatedMeta->all_meta.length + validatedMeta->none_meta.length) != 0;
+    bool filterMeta = (meta.all_meta.length + meta.none_meta.length) != 0;
     if (filterShared)
     {
-        fixed_stack_scope_t _(localStack);
-        sugoi_type_set_t    shared;
-        shared.length = 0;
-        // todo: is 256 enough?
-        shared.data = localStack.allocate<sugoi_type_index_t>(256);
-        group->get_shared_type(shared, localStack.allocate<sugoi_type_index_t>(256));
-        // check(shared.length < 256);
-        if (!match_group_shared(shared, filter))
+        if (!match_group_shared(group->sharedType, filter))
             return false;
     }
     if (filterMeta)
     {
-        if (!match_group_meta(group->type, *validatedMeta))
+        if (!match_group_meta(group->type, meta))
             return false;
     }
     return match_group_type(group->type, filter, group->archetype->withMask);
@@ -858,112 +845,271 @@ void sugoi_storage_t::filter_in_single_group(const sugoi_parameters_t* params, c
 
         auto allmask  = group->get_mask(filter.all);
         auto nonemask = group->get_mask(filter.none);
-        // todo:benchmark this
-#if __SSE2__
-        if (nonemask == 0) // fastpath
-        {
-            __m128i allmask_128 = _mm_set1_epi32(allmask);
-            for (auto c : group->chunks)
-            {
-                if (!match_chunk_changed(*c, meta))
-                {
-                    continue;
-                }
-                auto               count = c->count;
-                sugoi_chunk_view_t view  = { c, 0, c->count, params };
-                auto               masks = (sugoi_mask_comp_t*)sugoiV_get_owned_ro(&view, kMaskComponent);
-                EIndex             i     = 0;
-                while (i < count)
-                {
-                    while (i < count && !((masks[i] & allmask) == allmask) && i % 4 != 0)
-                        ++i;
-                    if (i % 4 == 0)
-                    {
-                        while (i < count - 4)
-                        {
-                            __m128i m    = _mm_load_si128((__m128i*)(masks + i));
-                            m            = _mm_and_si128(allmask_128, m);
-                            uint16_t cmp = _mm_movemask_epi8(_mm_cmpeq_epi32(m, allmask_128));
-                            if (cmp == 0)
-                            {
-                                i += 4;
-                                continue;
-                            }
-                            else
-                            {
-                                unsigned long index = skr::countl_zero<uint64_t>(cmp);
-                                i += index / 4;
-                                break;
-                            }
-                        }
-                        if (i >= count - 4)
-                            while (i < count && !((masks[i] & allmask) == allmask))
-                                ++i;
-                    }
-                    view.start = i;
+        // SIMD optimized version for mask matching - choose best available instruction set
+#if __AVX512F__
+        // AVX-512 optimized version - process 16 masks at once
+        const int simd_width = 16;
+        // Load allmask and nonemask into AVX-512 registers
+        __m512i allmask_vec = _mm512_set1_epi32(allmask);
+        __m512i nonemask_vec = _mm512_set1_epi32(nonemask);
+        auto match_simd = [&](const sugoi_mask_comp_t* masks) -> __mmask16 {
+            
+            // Load 16 uint32 masks (512 bits total)
+            __m512i mask_vec = _mm512_loadu_si512(reinterpret_cast<const __m512i*>(masks));
+            
+            // Check (mask & allmask) == allmask
+            __m512i and_allmask = _mm512_and_si512(mask_vec, allmask_vec);
+            __mmask16 allmask_match = _mm512_cmpeq_epi32_mask(and_allmask, allmask_vec);
+            
+            // Check (mask & nonemask) == 0
+            __m512i and_nonemask = _mm512_and_si512(mask_vec, nonemask_vec);
+            __m512i zero_vec = _mm512_setzero_si512();
+            __mmask16 nonemask_match = _mm512_cmpeq_epi32_mask(and_nonemask, zero_vec);
+            
+            // Combine conditions: allmask match AND nonemask match
+            return allmask_match & nonemask_match;
+        };
+        auto check_simd_result = [](auto result) -> bool {
+            return result != 0;
+        };
+        auto check_simd_all_match = [](auto result) -> bool {
+            return result == 0xFFFF;
+        };
+#elif __AVX2__
+        // AVX2 optimized version - process 8 masks at once
+        const int simd_width = 8;
+        // Load allmask and nonemask into AVX2 registers
+        __m256i allmask_vec = _mm256_set1_epi32(allmask);
+        __m256i nonemask_vec = _mm256_set1_epi32(nonemask);
+        auto match_simd = [&](const sugoi_mask_comp_t* masks) -> __m256i {
+            
+            // Load 8 uint32 masks (256 bits total)
+            __m256i mask_vec = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(masks));
+            
+            // Check (mask & allmask) == allmask
+            __m256i and_allmask = _mm256_and_si256(mask_vec, allmask_vec);
+            __m256i eq_allmask = _mm256_cmpeq_epi32(and_allmask, allmask_vec);
+            
+            // Check (mask & nonemask) == 0
+            __m256i and_nonemask = _mm256_and_si256(mask_vec, nonemask_vec);
+            __m256i zero_vec = _mm256_setzero_si256();
+            __m256i eq_zero = _mm256_cmpeq_epi32(and_nonemask, zero_vec);
+            
+            // Combine conditions: allmask match AND nonemask match
+            return _mm256_and_si256(eq_allmask, eq_zero);
+        };
+        auto check_simd_result = [](auto result) -> bool {
+            return _mm256_movemask_epi8(result) != 0;
+        };
+        auto check_simd_all_match = [](auto result) -> bool {
+            return _mm256_movemask_epi8(result) == (int)0xFFFFFFFF;
+        };
+#elif __AVX__
+        // AVX doesn't have integer comparison, fall back to scalar processing
+        const int simd_width = 1;
+        auto match_simd = [&](const sugoi_mask_comp_t* masks) -> bool {
+            return (masks[0] & allmask) == allmask && (masks[0] & nonemask) == 0;
+        };
+        auto check_simd_result = [](auto result) -> bool {
+            return result;
+        };
+        auto check_simd_all_match = [](auto result) -> bool {
+            return result;
+        };
+#elif defined(__ARM_NEON) || defined(__aarch64__)
+        // ARM NEON optimized version - process 4 masks at once
+        const int simd_width = 4;
+        // Load allmask and nonemask into NEON registers
+        uint32x4_t allmask_vec = vdupq_n_u32(allmask);
+        uint32x4_t nonemask_vec = vdupq_n_u32(nonemask);
+        auto match_simd = [&](const sugoi_mask_comp_t* masks) -> uint32x4_t {
+            
+            // Load 4 uint32 masks
+            uint32x4_t mask_vec = vld1q_u32(masks);
+            
+            // Check (mask & allmask) == allmask
+            uint32x4_t and_allmask = vandq_u32(mask_vec, allmask_vec);
+            uint32x4_t eq_allmask = vceqq_u32(and_allmask, allmask_vec);
+            
+            // Check (mask & nonemask) == 0
+            uint32x4_t and_nonemask = vandq_u32(mask_vec, nonemask_vec);
+            uint32x4_t zero_vec = vdupq_n_u32(0);
+            uint32x4_t eq_zero = vceqq_u32(and_nonemask, zero_vec);
+            
+            // Combine conditions: allmask match AND nonemask match
+            return vandq_u32(eq_allmask, eq_zero);
+        };
+        auto check_simd_result = [](auto result) -> bool {
+            // Check if any lane is true
+            uint32x2_t tmp = vorr_u32(vget_low_u32(result), vget_high_u32(result));
+            tmp = vpmax_u32(tmp, tmp);
+            return vget_lane_u32(tmp, 0) != 0;
+        };
+        auto check_simd_all_match = [](auto result) -> bool {
+            // Check if all lanes are true
+            uint32x2_t tmp = vand_u32(vget_low_u32(result), vget_high_u32(result));
+            tmp = vpmin_u32(tmp, tmp);
+            return vget_lane_u32(tmp, 0) == 0xFFFFFFFF;
+        };
+#elif __SSE2__
+        // SSE2 optimized version - process 4 masks at once
+        const int simd_width = 4;
+        // Load allmask and nonemask into SSE registers
+        __m128i allmask_vec = _mm_set1_epi32(std::bit_cast<int32_t>(allmask));
+        __m128i nonemask_vec = _mm_set1_epi32(std::bit_cast<int32_t>(nonemask));
+        auto match_simd = [&](const sugoi_mask_comp_t* masks) -> __m128i {
+            
+            // Load 4 uint32 masks (128 bits total)
+            __m128i mask_vec = _mm_loadu_si128(reinterpret_cast<const __m128i*>(masks));
+            
+            // Check (mask & allmask) == allmask
+            __m128i and_allmask = _mm_and_si128(mask_vec, allmask_vec);
+            __m128i eq_allmask = _mm_cmpeq_epi32(and_allmask, allmask_vec);
 
-                    while (i < count && (masks[i] & allmask) == allmask && i % 4 != 0)
-                        ++i;
-                    if (i % 4 == 0)
-                    {
-                        while (i < count - 4)
-                        {
-                            __m128i m    = _mm_load_si128((__m128i*)(masks + i));
-                            m            = _mm_and_si128(allmask_128, m);
-                            uint16_t cmp = _mm_movemask_epi8(_mm_cmpeq_epi32(m, allmask_128));
-                            if (cmp == 0xFFFF)
-                            {
-                                i += 4;
-                                continue;
-                            }
-                            else
-                            {
-                                unsigned long index = skr::countl_zero<uint64_t>((~cmp) & 0xFFFF);
-                                i += index / 4;
-                                break;
-                            }
-                        }
-                        if (i >= count - 4)
-                            while (i < count && ((masks[i] & allmask) == allmask))
-                                ++i;
-                    }
-                    view.count = i - view.start;
-                    if (view.count > 0)
-                        if (!withCustomFilter || customFilter(u1, &view))
-                            callback(u, &view);
-                }
-            }
-        }
-        else
+            // Check (mask & nonemask) == 0
+            __m128i and_nonemask = _mm_and_si128(mask_vec, nonemask_vec);
+            __m128i zero_vec = _mm_setzero_si128();
+            __m128i eq_zero = _mm_cmpeq_epi32(and_nonemask, zero_vec);
+            
+            // Combine conditions: allmask match AND nonemask match
+            return _mm_and_si128(eq_allmask, eq_zero);
+        };
+        auto check_simd_result = [](auto result) -> bool {
+            return _mm_movemask_epi8(result) != 0;
+        };
+        auto check_simd_all_match = [](auto result) -> bool {
+            return _mm_movemask_epi8(result) == 0xFFFF;
+        };
 #endif
-        { // todo: should we simd this snipest too
-            auto match = [&](sugoi_mask_comp_t mask) {
-                return (mask & allmask) == allmask && (mask & nonemask) == 0;
-            };
-            for (auto c : group->chunks)
+
+#if defined(__AVX512F__) || defined(__AVX2__) || defined(__AVX__) || defined(__ARM_NEON) || defined(__aarch64__) || defined(__SSE2__)
+        
+        auto match_single = [&](sugoi_mask_comp_t mask) {
+            return (mask & allmask) == allmask && (mask & nonemask) == 0;
+        };
+        
+        for (auto c : group->chunks)
+        {
+            if (!match_chunk_changed(*c, meta))
             {
-                if (!match_chunk_changed(*c, meta))
-                {
-                    continue;
-                }
-                auto               count = c->count;
-                sugoi_chunk_view_t view  = { c, 0, c->count, params };
-                auto               masks = (sugoi_mask_comp_t*)sugoiV_get_owned_ro(&view, kMaskComponent);
-                EIndex             i     = 0;
+                continue;
+            }
+            auto count = c->count;
+            sugoi_chunk_view_t view = { c, 0, c->count, params };
+            auto masks = (sugoi_mask_comp_t*)sugoiV_get_owned_ro(&view, kMaskComponent);
+            EIndex i = 0;
+            
+            while (i < count)
+            {
+                // Skip non-matching entities using SIMD when possible
                 while (i < count)
                 {
-                    while (i < count && !match(masks[i]))
-                        ++i;
-                    view.start = i;
-                    while (i < count && match(masks[i]))
-                        ++i;
-                    view.count = i - view.start;
-                    if (view.count > 0)
-                        if (!withCustomFilter || customFilter(u1, &view))
-                            callback(u, &view);
+                    // Use SIMD for bulk processing when we have enough elements
+                    if (i + simd_width <= count)
+                    {
+                        auto result = match_simd(&masks[i]);
+                        
+                        // If no matches in this SIMD chunk, skip all
+                        if (!check_simd_result(result))
+                        {
+                            i += simd_width;
+                            continue;
+                        }
+                        
+                        // Check individual elements in this SIMD chunk
+                        bool found_match = false;
+                        for (int j = 0; j < simd_width;)
+                        {
+                            if (match_single(masks[i]))
+                            {
+                                found_match = true;
+                                break;
+                            }
+                            i++;
+                        }
+                        if (found_match) break;
+                    }
+                    else
+                    {
+                        // Handle remaining elements one by one
+                        if (match_single(masks[i]))
+                            break;
+                        i++;
+                    }
                 }
+                
+                view.start = i;
+                
+                // Find end of matching sequence using SIMD when possible
+                while (i < count)
+                {
+                    if (i + simd_width <= count)
+                    {
+                        auto result = match_simd(&masks[i]);
+                        
+                        // If all match in this SIMD chunk, advance by simd_width
+                        if (check_simd_all_match(result))
+                        {
+                            i += simd_width;
+                            continue;
+                        }
+                        
+                        // Check individual elements in this SIMD chunk
+                        bool found_mismatch = false;
+                        for (int j = 0; j < simd_width;)
+                        {
+                            if (!match_single(masks[i]))
+                            {
+                                found_mismatch = true;
+                                break;
+                            }
+                            i++;
+                        }
+                        if (found_mismatch) break;
+                    }
+                    else
+                    {
+                        // Handle remaining elements one by one
+                        if (!match_single(masks[i]))
+                            break;
+                        i++;
+                    }
+                }
+                
+                view.count = i - view.start;
+                if (view.count > 0)
+                    if (!withCustomFilter || customFilter(u1, &view))
+                        callback(u, &view);
             }
         }
+#else
+        auto match = [&](sugoi_mask_comp_t mask) {
+            return (mask & allmask) == allmask && (mask & nonemask) == 0;
+        };
+        for (auto c : group->chunks)
+        {
+            if (!match_chunk_changed(*c, meta))
+            {
+                continue;
+            }
+            auto               count = c->count;
+            sugoi_chunk_view_t view  = { c, 0, c->count, params };
+            auto               masks = (sugoi_mask_comp_t*)sugoiV_get_owned_ro(&view, kMaskComponent);
+            EIndex             i     = 0;
+            while (i < count)
+            {
+                while (i < count && !match(masks[i]))
+                    ++i;
+                view.start = i;
+                while (i < count && match(masks[i]))
+                    ++i;
+                view.count = i - view.start;
+                if (view.count > 0)
+                    if (!withCustomFilter || customFilter(u1, &view))
+                        callback(u, &view);
+            }
+        }
+#endif
     }
 }
 

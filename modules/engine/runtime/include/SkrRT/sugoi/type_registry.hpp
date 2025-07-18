@@ -28,9 +28,6 @@ struct SKR_RUNTIME_API TypeRegistry {
     const sugoi_type_description_t* get_type_desc(sugoi_type_index_t idx);
     void foreach_types(sugoi_type_callback_t callback, void* u);
 
-    // TODO: remove this
-    intptr_t map_entity_field(intptr_t p);
-
     guid_t make_guid();
 
     enum class BuilderType

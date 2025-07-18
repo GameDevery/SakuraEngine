@@ -62,6 +62,7 @@ struct SKR_RUNTIME_API sugoi_storage_t {
 
     bool components_enabled(const sugoi_entity_t src, const sugoi_type_set_t& type);
     bool exist(sugoi_entity_t e) const noexcept;
+    bool alive(sugoi_entity_t e) const noexcept;
 
     void destroy_entities(const sugoi_chunk_view_t& view);
     void destroy_entities(const sugoi_query_t* view);
@@ -87,6 +88,7 @@ struct SKR_RUNTIME_API sugoi_storage_t {
     void query_unsafe(const sugoi_query_t* query, sugoi_view_callback_t callback, void* u);
     void query(const sugoi_query_t* query, sugoi_view_callback_t callback, void* u);
     void query_groups(const sugoi_query_t* query, sugoi_group_callback_t callback, void* u);
+    bool match_entity(const sugoi_query_t* query, sugoi_entity_t entity);
     
     sugoi_query_t* make_query(const sugoi_filter_t& filter, const sugoi_parameters_t& parameters);
     sugoi_query_t* make_query(const char8_t* desc);
