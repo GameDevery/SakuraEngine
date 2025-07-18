@@ -118,14 +118,81 @@ ParentComponent
     sugoi_entity_t entity;
 };
 
-} // namespace skr::scene
+sreflect_enum_class(
+    guid = "c8df77f2-9830-4004-84e6-1d55e0f9a83f"
+    serde = @bin|@json
+)
+ETransformDirtyState : uint32_t 
+{
+    NotDirty = 0,
+    Location = 0x1,
+    Rotation = 0x2,
+    Scale = 0x4,
+    Transform = Location | Rotation | Scale,
 
-#ifndef SKR_SCENE_COMPONENTS
-    #define SKR_SCENE_COMPONENTS                                    \
-        skr::scene::ParentComponent, skr::scene::ChildrenComponent, \
-            skr::scene::TransformComponent,                         \
-            skr::scene::TranslationComponent, skr::scene::RotationComponent, skr::scene::ScaleComponent
-#endif
+    Relative = 0x100,
+    Absolite = 0x200
+};
+
+sreflect_struct(
+    guid = "0f3ca51a-3d6d-4614-97dc-a388969301a9";
+    ecs.comp = @enable;)
+TransformDirtyComponent
+{
+    ETransformDirtyState this_state = ETransformDirtyState::NotDirty;
+};
+
+// ------------------------------------------------------
+// ETransformDirtyState flag operators
+// ------------------------------------------------------
+
+inline static ETransformDirtyState operator|(ETransformDirtyState l, ETransformDirtyState r)
+{
+    return static_cast<ETransformDirtyState>(static_cast<uint32_t>(l) | static_cast<uint32_t>(r));
+}
+
+inline static ETransformDirtyState operator&(ETransformDirtyState l, ETransformDirtyState r)
+{
+    return static_cast<ETransformDirtyState>(static_cast<uint32_t>(l) & static_cast<uint32_t>(r));
+}
+
+inline static ETransformDirtyState operator^(ETransformDirtyState l, ETransformDirtyState r)
+{
+    return static_cast<ETransformDirtyState>(static_cast<uint32_t>(l) ^ static_cast<uint32_t>(r));
+}
+
+inline static ETransformDirtyState operator~(ETransformDirtyState v)
+{
+    return static_cast<ETransformDirtyState>(~static_cast<uint32_t>(v));
+}
+
+inline static ETransformDirtyState& operator|=(ETransformDirtyState& l, ETransformDirtyState r)
+{
+    l = l | r;
+    return l;
+}
+
+inline static ETransformDirtyState& operator&=(ETransformDirtyState& l, ETransformDirtyState r)
+{
+    l = l & r;
+    return l;
+}
+
+inline static ETransformDirtyState& operator^=(ETransformDirtyState& l, ETransformDirtyState r)
+{
+    l = l ^ r;
+    return l;
+}
+
+inline static bool operator!(ETransformDirtyState v)
+{
+    return static_cast<uint32_t>(v) == 0;
+}
+
+inline static bool HasFlag(ETransformDirtyState value, ETransformDirtyState flag)
+{
+    return (value & flag) == flag;
+}
 
 // ------------------------------------------------------
 // Component operators
@@ -157,3 +224,13 @@ inline static bool operator!=(skr::scene::RotationComponent l, skr::scene::Rotat
 {
     return any(l.euler != r.euler);
 }
+
+} // namespace skr::scene
+
+#ifndef SKR_SCENE_COMPONENTS
+    #define SKR_SCENE_COMPONENTS                                    \
+        skr::scene::ParentComponent, skr::scene::ChildrenComponent, \
+            skr::scene::TransformComponent,                         \
+            skr::scene::TranslationComponent, skr::scene::RotationComponent, skr::scene::ScaleComponent, \
+            skr::scene::TransformDirtyComponent
+#endif

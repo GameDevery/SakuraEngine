@@ -7,16 +7,16 @@
 #include "SkrRT/ecs/type_builder.hpp"
 #include "SkrRT/ecs/storage.hpp"
 #include "SkrRT/ecs/job.hpp"
-#include "SkrScene/scene.h"
+#include "SkrScene/transform_system.h"
 #include "SkrSerde/json_serde.hpp"
 
 #include "SkrTestFramework/framework.hpp"
 
 // Test configuration - complex tree structure
 constexpr int ROOT_COUNT = 3;           // 3 root entities
-constexpr int LEVEL_1_PER_ROOT = 4;     // 4 children per root
-constexpr int LEVEL_2_PER_LEVEL1 = 3;   // 3 children per level-1 entity
-constexpr int LEVEL_3_PER_LEVEL2 = 2;   // 2 children per level-2 entity
+constexpr int LEVEL_1_PER_ROOT = 256;     // 4 children per root
+constexpr int LEVEL_2_PER_LEVEL1 = 8;   // 3 children per level-1 entity
+constexpr int LEVEL_3_PER_LEVEL2 = 256;   // 2 children per level-2 entity
 
 // Define expected transforms for each level
 static const auto rootTranslation1 = skr_float3_t{ 10.0f, 5.0f, 0.0f };
