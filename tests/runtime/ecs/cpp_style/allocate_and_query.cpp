@@ -1,7 +1,6 @@
 #include "cpp_style.hpp"
 #include "SkrTask/parallel_for.hpp"
-#include "SkrRT/ecs/type_builder.hpp"
-#include "SkrRT/ecs/storage.hpp"
+#include "SkrRT/sugoi/storage.hpp"
 
 struct AllocateEntites {
     AllocateEntites() SKR_NOEXCEPT

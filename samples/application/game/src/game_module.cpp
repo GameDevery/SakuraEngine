@@ -7,8 +7,6 @@
 #include "SkrCore/memory/memory.h"
 #include "SkrCore/time.h"
 
-#include "SkrRT/ecs/type_builder.hpp"
-
 #include "SkrRenderGraph/frontend/pass_node.hpp"
 #include "SkrRenderGraph/frontend/resource_node.hpp"
 #include "SkrRenderGraph/frontend/render_graph.hpp"

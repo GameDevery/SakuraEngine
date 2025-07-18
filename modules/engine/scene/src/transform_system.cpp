@@ -1,10 +1,9 @@
 #include "SkrBase/math.h"
 #include "rtm/qvvf.h"
 #include "SkrContainers/hashmap.hpp"
-#include "SkrRT/ecs/sugoi.h"
-#include "SkrRT/ecs/array.hpp"
-#include "SkrRT/ecs/storage.hpp"
-#include "SkrRT/ecs/type_builder.hpp"
+#include "SkrRT/sugoi/sugoi.h"
+#include "SkrRT/sugoi/array.hpp"
+#include "SkrRT/sugoi/storage.hpp"
 #include "SkrTask/parallel_for.hpp"
 #include "SkrScene/transform_system.h"
 

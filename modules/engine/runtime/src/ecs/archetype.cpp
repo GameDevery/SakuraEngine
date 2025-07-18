@@ -1,8 +1,8 @@
 #include "SkrBase/misc/make_zeroed.hpp"
-#include "SkrRT/ecs/sugoi.h"
-#include "SkrRT/ecs/set.hpp"
-#include "SkrRT/ecs/type_index.hpp"
-#include "SkrRT/ecs/type_registry.hpp"
+#include "SkrRT/sugoi/sugoi.h"
+#include "SkrRT/sugoi/set.hpp"
+#include "SkrRT/sugoi/type_index.hpp"
+#include "SkrRT/sugoi/type_registry.hpp"
 
 #include "./stack.hpp"
 #include "./chunk.hpp"

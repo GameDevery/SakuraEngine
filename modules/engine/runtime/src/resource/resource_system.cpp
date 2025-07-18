@@ -7,7 +7,7 @@
 #include "SkrRT/resource/resource_factory.h"
 #include "SkrContainers/concurrent_queue.hpp"
 
-#include "SkrRT/ecs/entity_registry.hpp"
+#include "SkrRT/sugoi/entity_registry.hpp"
 
 namespace skr::resource
 {

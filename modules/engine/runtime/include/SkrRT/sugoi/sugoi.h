@@ -848,6 +848,12 @@ struct sugoi_id_of {
     }
 };
 
+template <typename C>
+inline constexpr uint64_t sugoi_array_count = 0;
+
+template <typename C>
+inline constexpr bool sugoi_is_tag = false;
+
 namespace sugoi
 {
 struct storage_scope_t {

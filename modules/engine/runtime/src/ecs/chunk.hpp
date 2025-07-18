@@ -1,6 +1,6 @@
 #pragma once
 #include "SkrBase/atomic/atomic_mutex.hpp"
-#include "SkrRT/ecs/sugoi_types.h" // IWYU pragma: keep
+#include "SkrRT/sugoi/sugoi_types.h" // IWYU pragma: keep
 #include "SkrContainers/vector.hpp"
 
 struct sugoi_chunk_t;

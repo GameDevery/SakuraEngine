@@ -1,8 +1,8 @@
 #pragma once
 #include "SkrBase/types/expected.hpp"
-#include "SkrRT/ecs/sugoi.h"
-#include "SkrRT/ecs/array.hpp"
-#include "SkrRT/ecs/type_index.hpp"
+#include "SkrRT/sugoi/sugoi.h"
+#include "SkrRT/sugoi/array.hpp"
+#include "SkrRT/sugoi/type_index.hpp"
 
 namespace sugoi
 {

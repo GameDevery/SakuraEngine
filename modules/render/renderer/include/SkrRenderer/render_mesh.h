@@ -1,6 +1,6 @@
 #pragma once
 #include "resources/mesh_resource.h"
-#include "SkrRT/ecs/sugoi_meta.hpp"
+#include "SkrRT/sugoi/sugoi_meta.hpp"
 #include "SkrRenderer/primitive_draw.h"
 #include "SkrGraphics/api.h"
 #ifndef __meta__

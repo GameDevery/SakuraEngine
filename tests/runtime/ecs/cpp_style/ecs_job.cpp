@@ -1,8 +1,7 @@
 // #include "cpp_style.hpp"
 // #include "SkrTask/parallel_for.hpp"
-// #include "SkrRT/ecs/type_builder.hpp"
-// #include "SkrRT/ecs/storage.hpp"
-// #include "SkrRT/ecs/job.hpp"
+// #include "SkrRT/sugoi/storage.hpp"
+// #include "SkrRT/sugoi/job.hpp"
 // #include "SkrCore/log.h"
 
 

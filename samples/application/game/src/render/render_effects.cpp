@@ -7,7 +7,7 @@
 #include "SkrGraphics/cgpux.h"
 
 
-#include "SkrRT/ecs/sugoi.h"
+#include "SkrRT/sugoi/sugoi.h"
 
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrScene/transform_system.h"

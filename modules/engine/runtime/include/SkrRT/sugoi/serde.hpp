@@ -1,5 +1,5 @@
 #pragma once
-#include "SkrRT/ecs/sugoi.h"
+#include "SkrRT/sugoi/sugoi.h"
 #include "SkrSerde/bin_serde.hpp"
 #include "SkrSerde/json_serde.hpp"
 

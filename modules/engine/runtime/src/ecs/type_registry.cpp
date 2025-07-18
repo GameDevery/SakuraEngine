@@ -1,6 +1,6 @@
 #include "SkrBase/misc/make_zeroed.hpp"
-#include "SkrRT/ecs/sugoi.h"
-#include "SkrRT/ecs/type_index.hpp"
+#include "SkrRT/sugoi/sugoi.h"
+#include "SkrRT/sugoi/type_index.hpp"
 
 #include "./pool.hpp"
 #include "./impl/type_registry.hpp"

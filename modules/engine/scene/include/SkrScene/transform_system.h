@@ -1,6 +1,6 @@
 #pragma once
 #include "SkrBase/config.h"
-#include "SkrRT/ecs/sugoi_types.h"
+#include "SkrRT/sugoi/sugoi_types.h"
 #include "SkrScene/scene_components.h"
 
 namespace skr

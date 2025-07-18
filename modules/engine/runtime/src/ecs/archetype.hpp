@@ -1,5 +1,5 @@
 #pragma once
-#include "SkrRT/ecs/sugoi.h"
+#include "SkrRT/sugoi/sugoi.h"
 #include "SkrContainers/stl_vector.hpp"
 
 namespace sugoi

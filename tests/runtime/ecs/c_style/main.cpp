@@ -2,8 +2,8 @@
 #include "SkrBase/atomic/atomic.h"
 #include "SkrCore/log.h"
 #include "SkrTask/parallel_for.hpp"
-#include "SkrRT/ecs/sugoi.h"
-#include "SkrRT/ecs/array.hpp"
+#include "SkrRT/sugoi/sugoi.h"
+#include "SkrRT/sugoi/array.hpp"
 #include "SkrTestFramework/framework.hpp"
 #include <memory>
 #include <algorithm>

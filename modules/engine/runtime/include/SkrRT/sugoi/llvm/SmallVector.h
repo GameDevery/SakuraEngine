@@ -20,7 +20,7 @@
 #include <cstring>
 #include <initializer_list>
 #include <iterator>
-#include "SkrRT/ecs/sugoi_config.h"
+#include "SkrRT/sugoi/sugoi_config.h"
 
 // LLVM Macros
 #define LLVM_VECSMALL_NODISCARD

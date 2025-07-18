@@ -1,7 +1,7 @@
 #include <type_traits>
-#include "SkrRT/ecs/sugoi.h"
-#include "SkrRT/ecs/array.hpp"
-#include "SkrRT/ecs/type_registry.hpp"
+#include "SkrRT/sugoi/sugoi.h"
+#include "SkrRT/sugoi/array.hpp"
+#include "SkrRT/sugoi/type_registry.hpp"
 #ifdef SUGOI_RESOURCE_SUPPORT
 #include "SkrRT/resource/resource_handle.h"
 #endif

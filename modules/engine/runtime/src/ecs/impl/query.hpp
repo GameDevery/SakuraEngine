@@ -1,6 +1,6 @@
 #pragma once
 #include "SkrBase/atomic/atomic_mutex.hpp"
-#include "SkrRT/ecs/query.hpp"
+#include "SkrRT/sugoi/query.hpp"
 #include "SkrContainers/string.hpp"
 #include "SkrContainers/span.hpp"
 #include "SkrContainers/hashmap.hpp"

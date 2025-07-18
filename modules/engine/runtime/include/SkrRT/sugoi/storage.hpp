@@ -1,7 +1,7 @@
 #pragma once
 #include "SkrContainers/vector.hpp"
-#include "SkrRT/ecs/sugoi.h"
-#include "SkrRT/ecs/set.hpp"
+#include "SkrRT/sugoi/sugoi.h"
+#include "SkrRT/sugoi/set.hpp"
 
 struct sugoi_storage_t;
 namespace sugoi

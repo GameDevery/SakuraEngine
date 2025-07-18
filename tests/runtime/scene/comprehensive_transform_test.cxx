@@ -4,9 +4,8 @@
 #include "SkrOS/thread.h"
 #include "SkrCore/log.h"
 #include "SkrContainers/vector.hpp"
-#include "SkrRT/ecs/type_builder.hpp"
-#include "SkrRT/ecs/storage.hpp"
-#include "SkrRT/ecs/job.hpp"
+#include "SkrRT/sugoi/storage.hpp"
+#include "SkrRT/sugoi/job.hpp"
 #include "SkrScene/transform_system.h"
 #include "SkrSerde/json_serde.hpp"
 

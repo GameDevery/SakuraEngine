@@ -1,5 +1,5 @@
 #pragma once
-#include "SkrRT/ecs/sugoi_meta.hpp"
+#include "SkrRT/sugoi/sugoi_meta.hpp"
 #include "SkrRenderer/primitive_draw.h"
 #include "SkrAnim/resources/skin_resource.hpp"
 #include "SkrAnim/ozz/base/maths/simd_math.h"

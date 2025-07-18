@@ -1,4 +1,4 @@
-#include "SkrRT/ecs/array.hpp"
+#include "SkrRT/sugoi/array.hpp"
 
 extern "C" {
 void* sugoiA_begin(sugoi_array_comp_t* array)

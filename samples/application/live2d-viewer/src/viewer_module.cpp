@@ -136,9 +136,7 @@ void SLive2DViewerModule::on_unload()
     skr_log_finalize_async_worker();
 }
 
-#include "SkrRT/ecs/sugoi.h"
-
-#include "SkrRT/ecs/type_builder.hpp"
+#include "SkrRT/sugoi/sugoi.h"
 
 void create_test_scene(skr_vfs_t* resource_vfs, skr_io_ram_service_t* ram_service, bool bUseCVV)
 {

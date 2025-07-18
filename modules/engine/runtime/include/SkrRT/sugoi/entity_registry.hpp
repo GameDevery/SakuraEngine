@@ -4,7 +4,7 @@
 #include "SkrContainers/vector.hpp"
 #include "SkrContainers/span.hpp"
 #include "SkrContainers/optional.hpp"
-#include "SkrRT/ecs/sugoi.h"
+#include "SkrRT/sugoi/sugoi.h"
 
 namespace sugoi
 {

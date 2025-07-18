@@ -24,14 +24,19 @@ class _Gen {
     const _gen_api = `${header.parent.config.api}_API`;
 
     b.$line(`// BEGIN ECS GENERATED`)
-    b.$line(`#include "SkrRT/ecs/sugoi.h"`)
+    b.$line(`#include "SkrRT/sugoi/sugoi.h"`)
     _gen_records.forEach(record => {
+      const record_config = record.ml_configs.ecs as RecordConfig;
       b.$line(`template<>`)
       b.$line(`struct sugoi_id_of<::${record.name}> {`)
       b.$indent(_b => {
         b.$line(`${_gen_api} static sugoi_type_index_t get();`)
       })
       b.$line(`};`)
+
+      if (record_config.comp.array > 0) {
+        b.$line(`template<> inline constexpr uint64_t sugoi_array_count<::${record.name}> = ${record_config.comp.array};`)
+      }
     })
     b.$line(`// END ECS GENERATED`)
   }
@@ -43,9 +48,9 @@ class _Gen {
 
     // title
     b.$line(`// BEGIN ECS GENERATED`)
-    b.$line(`#include "SkrRT/ecs/sugoi.h"`)
-    b.$line(`#include "SkrRT/ecs/array.hpp"`)
-    b.$line(`#include "SkrRT/ecs/serde.hpp"`)
+    b.$line(`#include "SkrRT/sugoi/sugoi.h"`)
+    b.$line(`#include "SkrRT/sugoi/array.hpp"`)
+    b.$line(`#include "SkrRT/sugoi/serde.hpp"`)
     b.$line(`#include "SkrCore/exec_static.hpp"`)
 
     // sugoi id of

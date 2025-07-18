@@ -1,4 +1,4 @@
-#include "SkrRT/ecs/type_index.hpp"
+#include "SkrRT/sugoi/type_index.hpp"
 #include "./chunk.hpp"
 #include "./pool.hpp"
 #include "./archetype.hpp"

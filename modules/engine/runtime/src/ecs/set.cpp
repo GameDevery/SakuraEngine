@@ -1,6 +1,6 @@
-#include "SkrRT/ecs/sugoi.h"
-#include "SkrRT/ecs/hash.hpp"
-#include "SkrRT/ecs/set.hpp"
+#include "SkrRT/sugoi/sugoi.h"
+#include "SkrRT/sugoi/hash.hpp"
+#include "SkrRT/sugoi/set.hpp"
 #include <algorithm>
 
 namespace sugoi

@@ -1,6 +1,6 @@
 #pragma once
-#include "SkrRT/ecs/array.hpp"
-#include "SkrRT/ecs/type_registry.hpp"
+#include "SkrRT/sugoi/array.hpp"
+#include "SkrRT/sugoi/type_registry.hpp"
 
 #include "archetype.hpp"
 #include "chunk.hpp"

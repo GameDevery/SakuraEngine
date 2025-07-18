@@ -66,7 +66,7 @@ struct skr_live2d_render_model_t {
     skr::Map<CGPUTextureViewId, CGPUXBindTableId> mask_bind_tables;
 };
 
-    #include "SkrRT/ecs/sugoi.h"
+    #include "SkrRT/sugoi/sugoi.h"
 template <>
 struct SKR_LIVE2D_API sugoi_id_of<skr_live2d_render_model_comp_t> {
     static sugoi_type_index_t get();

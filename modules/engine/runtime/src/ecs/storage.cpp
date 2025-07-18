@@ -1,8 +1,8 @@
 #include "SkrBase/atomic/atomic.h"
 #include "SkrTask/parallel_for.hpp"
-#include "SkrRT/ecs/sugoi.h"
-#include "SkrRT/ecs/set.hpp"
-#include "SkrRT/ecs/type_registry.hpp"
+#include "SkrRT/sugoi/sugoi.h"
+#include "SkrRT/sugoi/set.hpp"
+#include "SkrRT/sugoi/type_registry.hpp"
 
 #include "./impl/query.hpp"
 #include "./impl/storage.hpp"
