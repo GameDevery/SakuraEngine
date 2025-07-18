@@ -12,7 +12,6 @@ public static class SkrScene
             .Depend(Visibility.Public, "SkrRT")
             .IncludeDirs(Visibility.Public, "include")
             .AddCppFiles("src/*.cpp")
-            .AddMetaHeaders("include/SkrScene/scene_components.h")
-            .AddMetaHeaders("include/SkrScene/resources/*.h");
+            .AddMetaHeaders("include/SkrScene/**.h");
     }
 }
