@@ -4,16 +4,16 @@
 #include "rtm/matrix4x4f.h"
 #include "SkrContainers/hashmap.hpp"
 #include "SkrContainers/vector.hpp"
-#include "SkrRT/sugoi/storage.hpp"
+#include "SkrRT/ecs/query.hpp"
 #include "SkrRenderer/render_viewport.h"
 #include "SkrRenderer/skr_renderer.h"
 
 #include "SkrProfile/profile.h"
 
 struct SViewportManagerImpl : public SViewportManager {
-    SViewportManagerImpl(sugoi_storage_t* storage)
+    SViewportManagerImpl(skr::ecs::World* world)
     {
-        camera_query = storage->new_query()
+        camera_query = skr::ecs::QueryBuilder(world)
                            .ReadAll<skr::scene::CameraComponent, skr::scene::TranslationComponent>()
                            .commit()
                            .value();
@@ -83,9 +83,9 @@ struct SViewportManagerImpl : public SViewportManager {
     skr::Vector<uint32_t>                                                   free_list;
 };
 
-SViewportManager* SViewportManager::Create(sugoi_storage_t* storage)
+SViewportManager* SViewportManager::Create(skr::ecs::World* world)
 {
-    return SkrNew<SViewportManagerImpl>(storage);
+    return SkrNew<SViewportManagerImpl>(world);
 }
 
 void SViewportManager::Free(SViewportManager* viewport_manager)
@@ -121,7 +121,7 @@ void skr_resolve_camera_to_viewport(const skr::scene::CameraComponent* camera, c
     viewport->viewport_height = camera->viewport_height;
 }
 
-void skr_resolve_cameras_to_viewport(struct SViewportManager* viewport_manager, sugoi_storage_t* storage)
+void skr_resolve_cameras_to_viewport(struct SViewportManager* viewport_manager, skr::ecs::World* storage)
 {
     sugoi_query_t* camera_query = static_cast<SViewportManagerImpl*>(viewport_manager)->camera_query;
     auto           cameraSetup  = [&](sugoi_chunk_view_t* g_cv) {

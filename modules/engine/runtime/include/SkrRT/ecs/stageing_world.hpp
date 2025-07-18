@@ -1,8 +1,13 @@
 #pragma once
 #include "SkrRT/ecs/world.hpp"
+#include "SkrBase/atomic/atomic_mutex.hpp"
 
 namespace skr::ecs
 {
+
+using SpinLock = skr::shared_atomic_mutex;
+inline static constexpr auto kSugoiStagingBufferSize = 4096;
+
 struct SKR_RUNTIME_API StagingWorld 
 {
 public:

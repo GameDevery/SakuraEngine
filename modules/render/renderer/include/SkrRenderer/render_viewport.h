@@ -26,7 +26,7 @@ struct SKR_RENDERER_API SViewportManager {
     virtual void                   remove_viewport(const char8_t* viewport_name) SKR_NOEXCEPT   = 0;
     virtual void                   remove_viewport(uint32_t idx) SKR_NOEXCEPT                   = 0;
 
-    static SViewportManager* Create(sugoi_storage_t* storage);
+    static SViewportManager* Create(skr::ecs::World* storage);
     static void              Free(SViewportManager* viewport_manager);
     virtual ~SViewportManager() SKR_NOEXCEPT;
 #endif

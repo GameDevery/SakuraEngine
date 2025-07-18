@@ -1,13 +1,14 @@
 #pragma once
 #include "SkrBase/config.h"
-#include "SkrRT/sugoi/sugoi_types.h"
 #include "SkrScene/scene_components.h"
+
+namespace skr::ecs { struct World; }
 
 namespace skr
 {
 struct SKR_SCENE_API TransformSystem {
 public:
-    static TransformSystem* Create(sugoi_storage_t* world) SKR_NOEXCEPT;
+    static TransformSystem* Create(skr::ecs::World* world) SKR_NOEXCEPT;
     static void Destroy(TransformSystem* system) SKR_NOEXCEPT;
     void update() SKR_NOEXCEPT;
 
@@ -27,9 +28,9 @@ private:
 };
 } // namespace skr
 
-SKR_EXTERN_C SKR_SCENE_API skr::TransformSystem* skr_transform_system_create(sugoi_storage_t* world);
+SKR_EXTERN_C SKR_SCENE_API skr::TransformSystem* skr_transform_system_create(skr::ecs::World* world);
 SKR_EXTERN_C SKR_SCENE_API void skr_transform_system_destroy(skr::TransformSystem* system);
 SKR_EXTERN_C SKR_SCENE_API void skr_transform_system_update(skr::TransformSystem* system);
 
-SKR_EXTERN_C SKR_SCENE_API void skr_save_scene(sugoi_storage_t* world, struct skr::archive::JsonWriter* writer);
-SKR_EXTERN_C SKR_SCENE_API void skr_load_scene(sugoi_storage_t* world, struct skr::archive::JsonReader* reader);
+SKR_EXTERN_C SKR_SCENE_API void skr_save_scene(skr::ecs::World* world, struct skr::archive::JsonWriter* writer);
+SKR_EXTERN_C SKR_SCENE_API void skr_load_scene(skr::ecs::World* world, struct skr::archive::JsonReader* reader);

@@ -1,72 +1,89 @@
 #include "cpp_style.hpp"
-#include "SkrRT/ecs/type_builder.hpp"
 #include "SkrCore/log.h"
+#include "SkrRT/ecs/world.hpp"
 #include <chrono>
 
 class MaskComponentTest 
 {
 public:
-    sugoi_storage_t* storage;
+    skr::ecs::World world;
+    sugoi_storage_t* storage = nullptr;
     
     MaskComponentTest() SKR_NOEXCEPT
     {
-        storage = sugoiS_create();
+        world.initialize();
+        storage = world.get_storage();
     }
     
     ~MaskComponentTest() SKR_NOEXCEPT
     {
-        sugoiS_release(storage);
+        world.finalize();
     }
     
     sugoi_entity_t create_test_entity()
     {
-        sugoi_entity_t result = SUGOI_NULL_ENTITY;
-        
-        // Use EntitySpawner with mask component
-        sugoi::EntitySpawner<IntComponent, FloatComponent, sugoi::mask_comp_t> spawner;
-        spawner(storage, 1, [&](auto& view) {
-            auto entities = sugoiV_get_entities(view.view);
-            result = entities[0];
-            
-            // Initialize component data using readwrite access
-            auto* compInt = (IntComponent*)sugoiV_get_owned_rw(view.view, sugoi_id_of<IntComponent>::get());
-            auto* compFloat = (FloatComponent*)sugoiV_get_owned_rw(view.view, sugoi_id_of<FloatComponent>::get());
-            auto* masks = (sugoi::mask_comp_t*)sugoiV_get_owned_rw(view.view, sugoi_id_of<sugoi::mask_comp_t>::get());
-            
-            compInt[0].v = 42;
-            compFloat[0].v = 3.14f;
-            
-            // Initialize mask to enable all components
-            masks[0].value = 0xFFFFFFFF; // All components enabled initially
-        });
-        
-        return result;
+        struct Spawner
+        {
+            void build(skr::ecs::CreationBuilder& builder)
+            {
+                builder.add_component<IntComponent>()
+                    .add_component<FloatComponent>()
+                    .add_component<sugoi::mask_comp_t>();
+            }
+            void run(skr::ecs::CreationContext& ctx)
+            {
+                auto entities = ctx.entities();
+                result = entities[0];
+                
+                // Initialize component data using readwrite access
+                auto compInt = ctx.components<IntComponent>();
+                auto compFloat = ctx.components<FloatComponent>();
+                auto masks = ctx.components<sugoi::mask_comp_t>();
+
+                compInt[0].v = 42;
+                compFloat[0].v = 3.14f;
+                
+                // Initialize mask to enable all components
+                masks[0].value = 0xFFFFFFFF; // All components enabled initially
+            }
+            uint32_t result = SUGOI_NULL_ENTITY;
+        } spawner;
+        world.create_entites(spawner, 1);
+        return spawner.result;
     }
     
     std::vector<sugoi_entity_t> create_multiple_entities(uint32_t count)
     {
-        std::vector<sugoi_entity_t> entities;
-        
-        sugoi::EntitySpawner<IntComponent, FloatComponent, sugoi::mask_comp_t> spawner;
-        spawner(storage, count, [&](auto& view) {
-            auto entity_list = sugoiV_get_entities(view.view);
-            for (uint32_t i = 0; i < view.count(); ++i) {
-                entities.push_back(entity_list[i]);
+        struct Spawner
+        {
+            void build(skr::ecs::CreationBuilder& builder)
+            {
+                builder.add_component<IntComponent>()
+                    .add_component<FloatComponent>()
+                    .add_component<sugoi::mask_comp_t>();
             }
-            
-            // Initialize all entities with components enabled using readwrite access
-            auto* compInt = (IntComponent*)sugoiV_get_owned_rw(view.view, sugoi_id_of<IntComponent>::get());
-            auto* compFloat = (FloatComponent*)sugoiV_get_owned_rw(view.view, sugoi_id_of<FloatComponent>::get());
-            auto* masks = (sugoi::mask_comp_t*)sugoiV_get_owned_rw(view.view, sugoi_id_of<sugoi::mask_comp_t>::get());
-            
-            for (uint32_t i = 0; i < view.count(); ++i) {
-                compInt[i].v = static_cast<int>(i);
-                compFloat[i].v = static_cast<float>(i * 2);
-                masks[i].value = 0xFFFFFFFF; // All enabled
+            void run(skr::ecs::CreationContext& ctx)
+            {
+                auto entity_list = ctx.entities();
+                for (uint32_t i = 0; i < ctx.size(); ++i) {
+                    entities.push_back(entity_list[i]);
+                }
+                
+                // Initialize component data using readwrite access
+                auto compInt = ctx.components<IntComponent>();
+                auto compFloat = ctx.components<FloatComponent>();
+                auto masks = ctx.components<sugoi::mask_comp_t>();
+
+                
+                for (uint32_t i = 0; i < ctx.size(); ++i) {
+                    compInt[i].v = static_cast<int>(i);
+                    compFloat[i].v = static_cast<float>(i * 2);
+                    masks[i].value = 0xFFFFFFFF; // All enabled
+                }
             }
-        });
-        
-        return entities;
+            std::vector<sugoi_entity_t> entities;
+        } spawner;
+        return spawner.entities;
     }
 };
 

@@ -2,7 +2,7 @@
 #include "SkrBase/misc/make_zeroed.hpp"
 #include "SkrCore/time.h"
 #include "SkrCore/platform/vfs.h"
-#include "SkrRT/sugoi/storage.hpp"
+#include "SkrRT/ecs/query.hpp"
 #include "SkrRenderer/render_device.h"
 #include "SkrLive2D/l2d_renderer.hpp"
 #include "SkrLive2D/l2d_render_model.h"
@@ -26,7 +26,7 @@ static struct RegisterComponentskr_live2d_render_model_comp_tHelper {
         desc.size = sizeof(skr_live2d_render_model_comp_t);
         desc.entityFieldsCount = 1;
         static intptr_t entityFields[] = { 0 };
-        desc.entityFields = (intptr_t)entityFields;
+        desc.entityFields = entityFields;
         desc.guid = u8"63524b75-b86d-4b34-ba59-b600eb4b415b"_guid;
         desc.callback = {};
         desc.flags = 0;
@@ -62,16 +62,15 @@ struct Live2DRendererImpl : public skr::Live2DRenderer {
     const char8_t* push_constants_name = u8"push_constants";
     live2d_render_view_t view_;
 
-    sugoi_query_t* effect_query = nullptr;
-    sugoi::TypeSetBuilder type_builder;
+    skr::ecs::EntityQuery* effect_query = nullptr;
     double sample_count = 1.0;
     uint64_t frame_count = 0;
     uint64_t async_slot_index = 0;
 
-    void initialize(skr::RendererDevice* render_device, sugoi_storage_t* storage, struct skr_vfs_t* resource_vfs) override
+    void initialize(skr::RendererDevice* render_device, skr::ecs::World* world, struct skr_vfs_t* resource_vfs) override
     {
         this->resource_vfs = resource_vfs;
-        effect_query = storage->new_query()
+        effect_query = skr::ecs::QueryBuilder(world)
                            .ReadAll<skr_live2d_render_model_comp_t>()
                            .commit()
                            .value();

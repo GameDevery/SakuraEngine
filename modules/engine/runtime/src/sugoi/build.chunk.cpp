@@ -3,7 +3,6 @@
 #include "set.cpp"
 #include "stack.cpp"
 #include "type_registry.cpp"
-#include "type_builder.cpp"
 // chunk archetecture
 #include "archetype.cpp"
 #include "arena.cpp"

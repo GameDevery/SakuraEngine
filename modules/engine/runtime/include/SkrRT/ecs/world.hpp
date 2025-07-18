@@ -1,58 +1,15 @@
 #pragma once
-#include "SkrRT/sugoi/sugoi.h"
-#include "SkrRT/sugoi/array.hpp"
+#include "SkrRT/ecs/component.hpp"
 #include "SkrContainersDef/vector.hpp"
 #include "SkrContainersDef/bitset.hpp"
 #include "SkrContainersDef/map.hpp"
-#include "SkrBase/atomic/atomic_mutex.hpp"
 
 namespace skr::ecs
 {
-inline static constexpr auto kSugoiStagingBufferSize = 4096;
-using SpinLock = skr::shared_atomic_mutex;
-
-template <typename T, typename = void>
-struct ComponentStorage
-{
-    using Type = T;
-};
-
-template <typename T>
-struct ComponentStorage<T, std::enable_if_t<(sugoi_array_count<std::decay_t<T>> > 0)>>
-{
-    using Type = sugoi::ArrayComponent<std::decay<T>, sugoi_array_count<std::decay_t<T>>>;
-};
-struct ComponentViewBase
-{
-    void* Ptr;
-    uint32_t LocalType;
-};
-
-// Task parameter for array-like component access
-template <class T>
-struct ComponentView : public ComponentViewBase
-{
-    using Storage = typename ComponentStorage<T>::Type;
-    Storage& operator[](int32_t Index)
-    {
-        return ((Storage*)Ptr)[Index];
-    }
-
-    explicit operator bool() const
-    {
-        return Ptr != nullptr;
-    }
-};
 
 struct SKR_RUNTIME_API CreationBuilder
 {
-    // Component type registry
-    skr::Vector<sugoi_type_index_t> Components;
-    // Meta entity links
-    skr::Vector<sugoi_entity_t> MetaEntities;
-    // Component field offsets
-    skr::Vector<intptr_t> Fields;
-
+public:
     CreationBuilder& add_component(sugoi_type_index_t Component);
 
     template <class... Components>
@@ -62,7 +19,7 @@ struct SKR_RUNTIME_API CreationBuilder
         return *this;
     }
 
-    CreationBuilder& add_meta_entity(sugoi_entity_t Entity);
+    CreationBuilder& add_meta_entity(Entity Entity);
 
     CreationBuilder& add_component(sugoi_type_index_t Component, intptr_t Field);
 
@@ -72,62 +29,87 @@ struct SKR_RUNTIME_API CreationBuilder
         return add_component(sugoi_id_of<T>::get(), (intptr_t)&(((T*)nullptr)->*Member));
     }
 
-    CreationBuilder& commit();
+    void commit() SKR_NOEXCEPT;
+
+protected:
+    friend struct World;
+    // Component type registry
+    skr::Vector<sugoi_type_index_t> Components;
+    // Meta entity links
+    skr::Vector<Entity> MetaEntities;
+    // Component field offsets
+    skr::Vector<intptr_t> Fields;
 };
 
 struct CreationContext
 {
-    sugoi_chunk_view_t view;
-    EIndex EntityIndex;
-
-    uint32_t Num()
+public:
+    uint32_t size()
     {
         return view.count;
     }
 
-    const sugoi_entity_t* Entities()
+    const Entity* entities()
     {
-        return sugoiV_get_entities(&view);
+        return (Entity*)sugoiV_get_entities(&view);
     }
+
+    template <typename T>
+    ComponentView<T> components()
+    {
+        auto cspan = sugoi::get_components<T>(&view);
+        auto localType = sugoiV_get_local_type(&view, sugoi_id_of<T>::get());
+        return ComponentView<T>(cspan.data(), localType);
+    }
+
+private:
+    friend struct World;
+    CreationContext(sugoi_chunk_view_t& InView, EIndex EntityIndex)
+        : view(InView), EntityIndex(EntityIndex)
+    {
+    }
+    sugoi_chunk_view_t view;
+    EIndex EntityIndex;
 };
 
 struct SKR_RUNTIME_API World
 {
 public:
-    void initialize();
-    void finalize();
+    World() SKR_NOEXCEPT = default;
+    void initialize() SKR_NOEXCEPT;
+    void finalize() SKR_NOEXCEPT;
 
     template <class T>
-    void create_entites(T& Creation, uint32_t Count, sugoi_entity_t* Reserved = nullptr)
+    void create_entites(T& Creation, uint32_t Count, Entity* Reserved = nullptr)
     {
-        Sugoi::CreationBuilder Builder;
-        Creation.Build(Builder);
-        Builder.Commit();
+        CreationBuilder Builder;
+        Creation.build(Builder);
+        Builder.commit();
         sugoi_entity_type_t entityType;
         skr::Vector<sugoi_type_index_t> components = Builder.Components;
-        skr::Vector<sugoi_entity_t> metaEntities = Builder.MetaEntities;
-        entityType.type = { components.GetData(), (uint8_t)components.Num() };
-        entityType.meta = { metaEntities.GetData(), (uint8_t)metaEntities.Num() };
-        uint32 EntityIndex = 0;
+        skr::Vector<Entity> metaEntities = Builder.MetaEntities;
+        entityType.type = { components.data(), (uint8_t)components.size() };
+        entityType.meta = { (sugoi_entity_t*)metaEntities.data(), (uint8_t)metaEntities.size() };
+        uint32_t EntityIndex = 0;
         auto callback = [&](sugoi_chunk_view_t* view) {
-            for (int i = 0; i < Builder.Fields.Num(); ++i)
+            for (int i = 0; i < Builder.Fields.size(); ++i)
             {
                 auto field = Builder.Fields[i];
                 if (field == -1)
                     continue;
                 auto component = components[i];
-                Sugoi::FComponentView* fieldPtr = (Sugoi::FComponentView*)((uint8*)&Creation + field);
+                ComponentViewBase* fieldPtr = (ComponentViewBase*)((uint8_t*)&Creation + field);
                 auto localType = sugoiV_get_local_type(view, component);
-                fieldPtr->LocalType = localType;
-                fieldPtr->Ptr = (void*)sugoiV_get_owned_ro_local(view, localType);
+                fieldPtr->_local_type = localType;
+                fieldPtr->_ptr = (void*)sugoiV_get_owned_ro_local(view, localType);
             }
-            Sugoi::FCreationContext CreationContext = { *view, EntityIndex };
-            Creation.Run(CreationContext);
+            CreationContext ctx = CreationContext(*view, EntityIndex);
+            Creation.run(ctx);
             EntityIndex += view->count;
         };
         if (Reserved)
         {
-            sugoiS_allocate_reserved_type(storage, &entityType, Reserved, Count, SUGOI_LAMBDA(callback));
+            sugoiS_allocate_reserved_type(storage, &entityType, (sugoi_entity_t*)Reserved, Count, SUGOI_LAMBDA(callback));
         }
         else
         {
@@ -135,7 +117,16 @@ public:
         }
     }
 
+	void destroy_entities(skr::span<Entity> ToDestroy)
+	{
+		sugoiS_destroy_entities(storage, (sugoi_entity_t*)ToDestroy.data(), ToDestroy.size());
+	}
+
+    sugoi_storage_t* get_storage() SKR_NOEXCEPT;
+
 protected:
+    World(const World&) = delete;
+    World& operator=(const World&) = delete;
     sugoi_storage_t* storage = nullptr;
 };
 
