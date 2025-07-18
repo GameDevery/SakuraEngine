@@ -7,7 +7,7 @@
 #include "SkrRT/ecs/type_builder.hpp"
 #include "SkrRT/ecs/storage.hpp"
 #include "SkrRT/ecs/job.hpp"
-#include "SkrScene/scene.h"
+#include "SkrScene/transform_system.h"
 #include "SkrSerde/json_serde.hpp"
 
 #include "SkrTestFramework/framework.hpp"

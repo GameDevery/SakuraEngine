@@ -6,7 +6,7 @@
 #include "SkrRT/ecs/storage.hpp"
 #include "SkrRT/ecs/type_builder.hpp"
 #include "SkrTask/parallel_for.hpp"
-#include "SkrScene/scene.h"
+#include "SkrScene/transform_system.h"
 
 namespace skr
 {
@@ -56,9 +56,10 @@ static void skr_relative_to_world_children(const skr::scene::ChildrenArray* chil
         }
     };
     const auto childrenSize = children->size();
-    if (childrenSize > 256) // dispatch recursively
+    if (childrenSize > 128) // dispatch recursively
     {
-        skr::parallel_for(children->begin(), children->end(), 128, [&](const auto begin, const auto end) {
+        skr::parallel_for(children->begin(), children->end(), 64, 
+        [&](const auto begin, const auto end) {
             sugoiS_batch(storage, (sugoi_entity_t*)&*begin, (EIndex)(end - begin), SUGOI_LAMBDA(task));
         });
     }
@@ -145,9 +146,4 @@ void skr_transform_system_destroy(skr::TransformSystem* system)
 void skr_transform_system_update(skr::TransformSystem* system)
 {
     system->update();
-}
-
-void skr_propagate_transform(sugoi_storage_t* world, sugoi_entity_t* entities, uint32_t count)
-{
-    SKR_UNIMPLEMENTED_FUNCTION();
 }
