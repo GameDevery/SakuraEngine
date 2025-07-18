@@ -14,7 +14,6 @@
 #include "./chunk.hpp"
 #include "./stack.hpp"
 #include "./impl/storage.hpp"
-#include "./impl/job.hpp"
 
 #if __SSE2__
     #include <emmintrin.h>
@@ -644,15 +643,6 @@ void sugoi_storage_t::query_unsafe(const sugoi_query_t* q, sugoi_view_callback_t
 void sugoi_storage_t::query(const sugoi_query_t* q, sugoi_view_callback_t callback, void* u)
 {
     auto filterChunk = [&](sugoi_group_t* group) {
-        if (pimpl->scheduler)
-        {
-            for (EIndex i = 0; i < q->pimpl->parameters.length; ++i)
-            {
-                int idx = group->index(q->pimpl->parameters.types[i]);
-                if (idx != sugoi::kInvalidTypeIndex)
-                    pimpl->scheduler->sync_entry(group->archetype, idx, q->pimpl->parameters.accesses[i].readonly);
-            }
-        }
         filter_in_single_group(&q->pimpl->parameters, group, q->pimpl->filter, q->pimpl->meta, q->pimpl->customFilter, q->pimpl->customFilterUserData, callback, u);
     };
     query_groups(q, SUGOI_LAMBDA(filterChunk));
@@ -991,25 +981,8 @@ void sugoi_storage_t::filter_safe(const sugoi_filter_t& filter, const sugoi_meta
     SKR_ASSERT(sugoi::ordered(filter));
     SKR_ASSERT(sugoi::ordered(meta));
 
-    if (pimpl->scheduler)
-    {
-        auto filterChunk = [&](sugoi_group_t* group) {
-            for (EIndex i = 0; i < filter.all.length; ++i)
-            {
-                int idx = group->index(filter.all.data[i]);
-                if (idx != sugoi::kInvalidTypeIndex)
-                    pimpl->scheduler->sync_entry(group->archetype, idx, false);
-            }
-            if (callback)
-                filter_in_single_group(nullptr, group, filter, meta, nullptr, nullptr, callback, u);
-        };
-        filter_groups(filter, meta, SUGOI_LAMBDA(filterChunk));
-    }
-    else
-    {
-        if (callback)
-            filter_unsafe(filter, meta, callback, u);
-    }
+    if (callback)
+        filter_unsafe(filter, meta, callback, u);
 }
 
 void sugoi_storage_t::destroy_entities(const sugoi_meta_filter_t& meta)

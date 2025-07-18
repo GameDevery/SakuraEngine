@@ -128,7 +128,7 @@ void TransformSystem::Destroy(TransformSystem* system) SKR_NOEXCEPT
 void TransformSystem::update() SKR_NOEXCEPT
 {
     SkrZoneScopedN("CalcTransform");
-    sugoiJ_schedule_ecs(impl->calculateTransformTree, 0, &skr_relative_to_world_root, nullptr, nullptr, nullptr, nullptr, nullptr);
+    // sugoiJ_schedule_ecs(impl->calculateTransformTree, 0, &skr_relative_to_world_root, nullptr, nullptr, nullptr, nullptr, nullptr);
 }
 
 } // namespace skr

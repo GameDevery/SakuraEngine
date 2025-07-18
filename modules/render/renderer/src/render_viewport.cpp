@@ -136,6 +136,5 @@ void skr_resolve_cameras_to_viewport(struct SViewportManager* viewport_manager, 
             skr_resolve_camera_to_viewport(cameras + i, camera_transforms + i, viewport_manager->find_viewport(viewport_index));
         }
     };
-    sugoiQ_sync(camera_query);
     sugoiQ_get_views(camera_query, SUGOI_LAMBDA(cameraSetup));
 }

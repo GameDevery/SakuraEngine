@@ -12,7 +12,6 @@ struct cache_t;
 struct archetype_t;
 struct fixed_stack_t;
 struct block_arena_t;
-struct JobScheduler;
 struct EntityRegistry;
 using Storage = sugoi_storage_t;
 
@@ -121,10 +120,6 @@ struct SKR_RUNTIME_API sugoi_storage_t {
     EIndex count(bool includeDisabled, bool includeDead);
     sugoi_timestamp_t timestamp() const;
     sugoi::EntityRegistry& getEntityRegistry();
-
-    // TODO: REMOVE THESE
-    friend struct sugoi::JobScheduler;
-    sugoi::JobScheduler* getScheduler();
     void buildQueryOverloads();
 
 protected:

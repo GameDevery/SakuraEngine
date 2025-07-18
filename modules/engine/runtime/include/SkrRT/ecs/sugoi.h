@@ -622,8 +622,6 @@ SKR_RUNTIME_API void sugoiQ_add_child(sugoi_query_t* query, sugoi_query_t* child
 
 SKR_RUNTIME_API const char8_t* sugoiQ_get_error();
 
-SKR_RUNTIME_API void sugoiQ_sync(sugoi_query_t* query);
-
 SKR_RUNTIME_API EIndex sugoiQ_get_count(sugoi_query_t* query);
 
 SKR_RUNTIME_API void sugoiQ_get(sugoi_query_t* query, sugoi_filter_t* filter, sugoi_parameters_t* params);
@@ -842,78 +840,6 @@ SKR_RUNTIME_API void sugoi_set_bit(uint32_t* mask, int32_t bit);
 
 #if defined(__cplusplus)
 
-/**
- * @brief register a resource to scheduler
- *
- */
-SKR_RUNTIME_API sugoi_entity_t sugoiJ_add_resource();
-/**
- * @brief remove a resource from scheduler
- *
- */
-SKR_RUNTIME_API void sugoiJ_remove_resource(sugoi_entity_t id);
-typedef uint32_t     sugoi_thread_index_t;
-typedef void (*sugoi_system_callback_t)(void* u, sugoi_query_t* query, sugoi_chunk_view_t* view, sugoi_type_index_t* localTypes, EIndex entityIndex);
-typedef void (*sugoi_system_lifetime_callback_t)(void* u, EIndex entityCount);
-typedef struct sugoi_resource_operation_t {
-    sugoi_entity_t* resources;
-    int*            readonly;
-    int*            atomic;
-    uint32_t        count;
-} sugoi_resource_operation_t;
-/**
- * @brief schedule an ecs job with a query, filter runs in parallel, dependencies between ecs jobs are automatically resolved
- *
- * @param query
- * @param batchSize max entity count processed by a task, be aware of false sharing when batchSize is small
- * @param callback processor function, called multiple times in parallel
- * @param u
- * @param init initializer function, called at the beginning of job
- * @param resources
- * @param counter counter used to sync jobs, if *counter is null, a new counter will be created
- * @return false if job is skipped
- */
-SKR_RUNTIME_API bool sugoiJ_schedule_ecs(sugoi_query_t* query, EIndex batchSize, sugoi_system_callback_t callback, void* u,
-                                         sugoi_system_lifetime_callback_t init, sugoi_system_lifetime_callback_t teardown, sugoi_resource_operation_t* resources, skr::task::event_t* counter);
-
-typedef void (*sugoi_schedule_callback_t)(void* u, sugoi_query_t* query);
-/**
- * @brief schedule custom job and sync with ecs context
- *
- * @param query
- * @param counter
- * @param callback
- * @param u
- * @param resources
- */
-SKR_RUNTIME_API void sugoiJ_schedule_custom(sugoi_query_t* query, sugoi_schedule_callback_t callback, void* u,
-                                            sugoi_system_lifetime_callback_t init, sugoi_system_lifetime_callback_t teardown, sugoi_resource_operation_t* resources, skr::task::event_t* counter);
-/**
- * @brief wait for all jobs are done
- *
- */
-SKR_RUNTIME_API void sugoiJ_wait_all_jobs();
-/**
- * @brief clear all expired entry handles
- *
- */
-SKR_RUNTIME_API void sugoiJ_gc();
-/**
- * @brief wait for all ecs jobs are done
- *
- */
-SKR_RUNTIME_API void sugoiJ_wait_storage(sugoi_storage_t* storage);
-/**
- * @brief enable job for storage
- *
- */
-SKR_RUNTIME_API void sugoiJ_bind_storage(sugoi_storage_t* storage);
-/**
- * @brief disable job for storage
- *
- */
-SKR_RUNTIME_API void sugoiJ_unbind_storage(sugoi_storage_t* storage);
-
 template <class C>
 struct sugoi_id_of {
     static sugoi_type_index_t get()
@@ -929,11 +855,11 @@ struct storage_scope_t {
     storage_scope_t(sugoi_storage_t* storage)
         : storage(storage)
     {
-        sugoiJ_bind_storage(storage);
+
     }
     ~storage_scope_t()
     {
-        sugoiJ_unbind_storage(storage);
+
     }
 };
 

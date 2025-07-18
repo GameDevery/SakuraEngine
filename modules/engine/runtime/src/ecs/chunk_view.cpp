@@ -11,7 +11,6 @@
 #include "./chunk_view.hpp"
 #include "./archetype.hpp"
 #include "./impl/storage.hpp"
-#include "./impl/job.hpp"
 
 namespace sugoi
 {
@@ -800,13 +799,6 @@ auto sugoiV_get_owned(const sugoi_chunk_view_t* view, sugoi_type_index_t type)
 
     if constexpr (!readonly)
         chunk->set_timestamp_at(slot, structure->storage->timestamp());
-
-    auto scheduler = structure->storage->getScheduler();
-    if (scheduler && scheduler->is_main_thread(structure->storage))
-    {
-        SkrZoneScopedN("CheckEntrySync");
-        SKR_ASSERT(!scheduler->sync_entry(structure, slot, readonly));
-    }
 
     return (return_type)chunk->get_unsafe(tid, *view).start;
 }

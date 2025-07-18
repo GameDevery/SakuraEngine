@@ -836,7 +836,6 @@ int              SGameModule::main_module_exec(int argc, char8_t** argv)
             };
             {
                 // prepare skin mesh resources for rendering
-                sugoiQ_sync(initAnimSkinQuery);
                 sugoiQ_get_views(initAnimSkinQuery, SUGOI_LAMBDA(initAnimSkinComps));
             }
 

@@ -84,7 +84,6 @@ public:
 
 private:
     friend struct sugoi_storage_t;
-    friend struct sugoi::JobScheduler;
     sugoi_timestamp_t groups_timestamp = 0;
     sugoi_timestamp_t archetype_timestamp = 0;
     sugoi_timestamp_t queries_timestamp = 0;
@@ -93,11 +92,6 @@ public:
     sugoi::EntityRegistry entity_registry;
     sugoi_timestamp_t storage_timestamp;
     
-    // job system
-    mutable sugoi::JobScheduler* scheduler;
-    mutable void* currentFiber;
-    skr::task::counter_t storage_counter;
-
     // overload
     sugoi::OverloadData overload_data;
 };

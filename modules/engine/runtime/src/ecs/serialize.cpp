@@ -8,7 +8,6 @@
 #include "./impl/storage.hpp"
 #include "./stack.hpp"
 #include "./archetype.hpp"
-#include "./impl/job.hpp"
 
 #ifndef forloop
     #define forloop(i, z, n) for (auto i = std::decay_t<decltype(n)>(z); i < (n); ++i)
@@ -187,8 +186,6 @@ sugoi_entity_t sugoi_storage_t::deserialize_single(SBinaryReader* s)
     fixed_stack_scope_t _(localStack);
     auto                type  = deserialize_type(localStack, s, false);
     auto                group = get_group(type);
-    if (pimpl->scheduler)
-        pimpl->scheduler->sync_archetype(group->archetype);
     sugoi_chunk_view_t view;
     serialize_view(group, view, nullptr, s, false);
     pimpl->entity_registry.fill_entities(view);
@@ -201,10 +198,6 @@ void sugoi_storage_t::serialize_prefab(sugoi_entity_t e, SBinaryWriter* s)
     using namespace sugoi;
 
     skr::bin_write(s, (EIndex)1);
-    if (pimpl->scheduler)
-    {
-        pimpl->scheduler->sync_archetype(entity_view(e).chunk->structure);
-    }
     serialize_single(e, s);
 }
 
@@ -213,11 +206,6 @@ void sugoi_storage_t::serialize_prefab(sugoi_entity_t* es, EIndex n, SBinaryWrit
     using namespace sugoi;
 
     skr::bin_write(s, n);
-    if (pimpl->scheduler)
-    {
-        forloop (i, 0, n)
-            pimpl->scheduler->sync_archetype(entity_view(es[i]).chunk->structure);
-    }
     linked_to_prefab(es, n);
     forloop (i, 0, n)
         serialize_single(es[i], s);
@@ -228,8 +216,6 @@ sugoi_entity_t sugoi_storage_t::deserialize_prefab(SBinaryReader* s)
 {
     using namespace sugoi;
 
-    if (pimpl->scheduler)
-        SKR_ASSERT(pimpl->scheduler->is_main_thread(this));
     EIndex count = 0;
     skr::bin_read(s, count);
     // todo: assert(count > 0)
@@ -255,10 +241,6 @@ void sugoi_storage_t::serialize(SBinaryWriter* s)
     SkrZoneScopedN("sugoi_storage_t::serialize");
     using namespace sugoi;
 
-    if (pimpl->scheduler)
-    {
-        pimpl->scheduler->sync_storage(this);
-    }
     {
         SkrZoneScopedN("serialize entities");
         pimpl->entity_registry.serialize(s);
@@ -288,10 +270,6 @@ void sugoi_storage_t::deserialize(SBinaryReader* s)
     using namespace sugoi;
     SkrZoneScopedN("sugoi_storage_t::deserialize");
 
-    if (pimpl->scheduler)
-    {
-        pimpl->scheduler->sync_storage(this);
-    }
     {
         SkrZoneScopedN("deserialize entities");
         pimpl->entity_registry.deserialize(s);
