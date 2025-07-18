@@ -112,7 +112,7 @@ class _Gen {
           if (entity_fields_offset.length > 0) {
             b.$line(`desc.entityFieldsCount = ${entity_fields_offset.length};`)
             b.$line(`static intptr_t entityFields[] = {${entity_fields_offset.join(", ")}};`)
-            b.$line(`desc.entityFields = (intptr_t)entityFields;`)
+            b.$line(`desc.entityFields = entityFields;`)
           } else {
             b.$line(`desc.entityFieldsCount = 0;`)
             b.$line(`desc.entityFields = 0;`)
@@ -124,7 +124,7 @@ class _Gen {
           if (resource_fields_offset.length > 0) {
             b.$line(`desc.resourceFieldsCount = ${resource_fields_offset.length};`)
             b.$line(`static intptr_t resourceFields[] = {${resource_fields_offset.join(", ")}};`)
-            b.$line(`desc.resourceFields = (intptr_t)resourceFields;`)
+            b.$line(`desc.resourceFields = resourceFields;`)
           } else {
             b.$line(`desc.resourceFieldsCount = 0;`)
             b.$line(`desc.resourceFields = 0;`)

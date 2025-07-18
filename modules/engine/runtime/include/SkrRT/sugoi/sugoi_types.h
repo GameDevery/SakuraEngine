@@ -51,7 +51,7 @@ namespace sugoi
 [[maybe_unused]] static constexpr SIndex kInvalidSIndex    = std::numeric_limits<SIndex>::max();
 [[maybe_unused]] static constexpr TIndex kInvalidTypeIndex = std::numeric_limits<TIndex>::max();
 
-[[maybe_unused]] static constexpr size_t kGroupBlockSize    = 128 * 4;
+[[maybe_unused]] static constexpr size_t kGroupBlockSize    = 1024;
 [[maybe_unused]] static constexpr size_t kGroupBlockCount   = 1024;
 [[maybe_unused]] static constexpr size_t kStorageArenaSize  = 128 * 128;
 [[maybe_unused]] static constexpr size_t kLinkComponentSize = 8;

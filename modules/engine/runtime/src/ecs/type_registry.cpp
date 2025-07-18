@@ -21,8 +21,7 @@
 
 namespace sugoi
 {
-TypeRegistry::Impl::Impl(pool_t& pool)
-    : nameArena(pool)
+TypeRegistry::Impl::Impl()
 {
     using namespace skr::literals;
     {
@@ -115,6 +114,7 @@ TypeRegistry::Impl::Impl(pool_t& pool)
 
 type_index_t TypeRegistry::Impl::register_type(const type_description_t& inDesc)
 {
+    SKR_ASSERT(inDesc.name != nullptr);
     type_description_t desc = inDesc;
     if (!desc.name)
     {
@@ -125,12 +125,13 @@ type_index_t TypeRegistry::Impl::register_type(const type_description_t& inDesc)
         if (name2type.count(desc.name))
             return kInvalidTypeIndex;
         auto len = strlen((const char*)desc.name);
-        auto name = (char8_t*)nameArena.allocate(len + 1, 1);
+        auto name = (char8_t*)sakura_malloc(len + 1);
         memcpy(name, desc.name, len + 1);
         desc.name = name;
     }
     if (desc.entityFields != 0)
     {
+        SKR_ASSERT(desc.entityFieldsCount > 0);
         intptr_t* efs = desc.entityFields;
         desc.entityFields = (intptr_t*)sakura_malloc(sizeof(intptr_t) * desc.entityFieldsCount);
         for (uint32_t i = 0; i < desc.entityFieldsCount; ++i)

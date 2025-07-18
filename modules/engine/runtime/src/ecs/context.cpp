@@ -37,7 +37,7 @@ sugoi_context_t::sugoi_context_t()
     : normalPool(sugoi::kFastBinSize, sugoi::kFastBinCapacity)
     , largePool(sugoi::kLargeBinSize, sugoi::kLargeBinCapacity)
     , smallPool(sugoi::kSmallBinSize, sugoi::kSmallBinCapacity)
-    , typeRegistryImpl(smallPool)
+    , typeRegistryImpl()
     , typeRegistry(typeRegistryImpl)
 {
 }
@@ -53,6 +53,9 @@ sugoi_context_t* sugoi_initialize()
 void sugoi_shutdown()
 {
     if (auto ctx = g_sugoi_ctx)
+    {
         delete ctx;
+        g_sugoi_ctx = nullptr;
+    }
 }
 }
