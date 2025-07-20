@@ -1,9 +1,8 @@
 #pragma once
 #include "SkrContainersDef/concurrent_queue.hpp"
 #include "SkrContainersDef/stl_function.hpp"
-#include "SkrCore/async/condlock.hpp"
 #include "SkrCore/memory/rc.hpp"
-#include "SkrCore/memory/sp.hpp"
+#include "SkrCore/async/async_service.h"
 #include "SkrRT/ecs/query.hpp"
 
 namespace skr::ecs
@@ -95,26 +94,35 @@ struct SKR_RUNTIME_API WorkUnitGenerator
     void process(skr::RC<TaskSignature> task);
 };
 
-struct SKR_RUNTIME_API TaskScheduler
+struct SKR_RUNTIME_API TaskScheduler : protected AsyncService
 {
 public:
+    TaskScheduler(const ServiceThreadDesc& desc, skr::task::scheduler_t& scheduler) SKR_NOEXCEPT;
+    
     void add_task(sugoi_query_t* query, skr::stl_function<void(sugoi_chunk_view_t)>&& func, uint32_t batch_size);
-
-    void run();
+    void run() SKR_NOEXCEPT;
+    void flush_all();
     void sync_all();
+    void stop_and_exit();
 
 protected:
+    AsyncResult serve() SKR_NOEXCEPT override;
+    void on_run() SKR_NOEXCEPT override;
+    void on_exit() SKR_NOEXCEPT override;
+    
     void dispatch(skr::RC<TaskSignature> task);
     void add_task(skr::RC<TaskSignature> task);
     skr::task::counter_t running;
 
     friend struct StaticDependencyAnalyzer;
     friend struct WorkUnitGenerator;
-    skr::ConcurrentQueue<skr::RC<TaskSignature>> _raw_tasks;
+    SAtomicU32 _enqueued_tasks = 0;
     skr::ConcurrentQueue<skr::RC<TaskSignature>> _tasks;
+    skr::ConcurrentQueue<skr::RC<TaskSignature>> _dispatched_tasks;
 
     StaticDependencyAnalyzer _analyzer;
     WorkUnitGenerator _generator;
+    skr::task::scheduler_t& _scheduler;
 };
 
 } // namespace skr::ecs

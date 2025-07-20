@@ -1,4 +1,5 @@
 #include "SkrRT/ecs/scheduler.hpp"
+#include "SkrCore/async/wait_timeout.hpp"
 #include "./../sugoi/impl/query.hpp"
 
 namespace skr::ecs
@@ -59,7 +60,7 @@ void WorkUnitGenerator::process(skr::RC<TaskSignature> new_task)
 
         CollectContext* ctx = (CollectContext*)usr_data;
         auto& unit = ctx->work_group->units.try_add_default(view->chunk).value();
-        unit.chunk_view = *view; 
+        unit.chunk_view = *view;
         unit.finish.add(1);
         for (auto dependency : ctx->work_group->dependencies)
         {
@@ -81,12 +82,18 @@ void WorkUnitGenerator::process(skr::RC<TaskSignature> new_task)
         {
             if (bool confict = sugoiQ_match_group(static_dependency->query, group))
             {
-                ctx.work_group->dependencies.add(static_dependency);            
+                ctx.work_group->dependencies.add(static_dependency);
             }
         }
         sugoiQ_in_group(ctx.query, group, collect_units, &ctx);
     };
     sugoiQ_get_groups(ctx.query, filter_group, &ctx);
+}
+
+TaskScheduler::TaskScheduler(const ServiceThreadDesc& desc, skr::task::scheduler_t& scheduler) SKR_NOEXCEPT
+    : AsyncService(desc),
+      _scheduler(scheduler)
+{
 }
 
 void TaskScheduler::add_task(sugoi_query_t* query, skr::stl_function<void(sugoi_chunk_view_t)>&& func, uint32_t batch_size)
@@ -117,7 +124,9 @@ void TaskScheduler::add_task(sugoi_query_t* query, skr::stl_function<void(sugoi_
 
 void TaskScheduler::add_task(skr::RC<TaskSignature> task)
 {
-    _raw_tasks.enqueue(task);
+    _tasks.enqueue(task);
+    skr_atomic_fetch_add(&_enqueued_tasks, 1);
+    awake();
 }
 
 // clang-format off
@@ -182,25 +191,71 @@ void TaskScheduler::dispatch(skr::RC<TaskSignature> signature)
 }
 // clang-format on
 
-void TaskScheduler::run()
+void TaskScheduler::on_run() SKR_NOEXCEPT
+{
+    _scheduler.bind();
+}
+
+void TaskScheduler::on_exit() SKR_NOEXCEPT
+{
+    _scheduler.unbind();
+}
+
+void TaskScheduler::run() SKR_NOEXCEPT
+{
+    AsyncService::run();
+}
+
+AsyncResult TaskScheduler::serve() SKR_NOEXCEPT
 {
     skr::RC<TaskSignature> task;
-    while (_raw_tasks.try_dequeue(task))
+    if (_tasks.try_dequeue(task))
     {
         _analyzer.process(task);
         _generator.process(task);
-        _tasks.enqueue(task);
-    }
 
-    while (_tasks.try_dequeue(task))
-    {
         dispatch(task);
+        skr_atomic_fetch_add(&_enqueued_tasks, -1);
+
+        _dispatched_tasks.enqueue(task);
     }
+    else
+    {
+        sleep();
+    }
+    return ASYNC_RESULT_OK;
+}
+
+void TaskScheduler::flush_all()
+{
+    while (skr_atomic_load(&_enqueued_tasks) != 0)
+        ;
 }
 
 void TaskScheduler::sync_all()
 {
+    flush_all();
     running.wait(true);
+}
+
+void TaskScheduler::stop_and_exit()
+{
+    flush_all();
+    sync_all();
+    
+    if (get_status() == skr::ServiceThread::Status::kStatusRunning)
+    {
+        SKR_LOG_BACKTRACE(u8"runner: request to stop.");
+        setServiceStatus(SKR_ASYNC_SERVICE_STATUS_QUITING);
+        stop();
+    }
+    else
+    {
+        SKR_LOG_BACKTRACE(u8"runner: stop already requested.");
+    }
+
+    wait_timeout<u8"WaitTaskScheduler">([&] { return get_status() == skr::ServiceThread::kStatusStopped; });
+    exit();
 }
 
 } // namespace skr::ecs

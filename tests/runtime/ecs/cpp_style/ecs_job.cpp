@@ -6,7 +6,7 @@
 struct ECSJobs {
     ECSJobs() SKR_NOEXCEPT
     {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1200));
+        // std::this_thread::sleep_for(std::chrono::milliseconds(1200));
         world.initialize();
 
         spawnIntEntities();
@@ -19,8 +19,7 @@ struct ECSJobs {
     {
         world.finalize();
         scheduler.unbind();
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+        // std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     }
 
     void spawnIntEntities()
@@ -66,7 +65,13 @@ TEST_CASE_METHOD(ECSJobs, "WRW")
         world.destroy_query(RWQuery);
     });
 
-    skr::ecs::TaskScheduler TS;
+    skr::ServiceThreadDesc desc = {
+        .name = u8"ECSJob-TaskScheduler",
+        .priority = SKR_THREAD_ABOVE_NORMAL
+    };
+    skr::ecs::TaskScheduler TS(desc, scheduler);
+    TS.run();
+
     auto WJob0 = [=](sugoi_chunk_view_t view) {
         SkrZoneScopedN("WJob0");
         auto ints = sugoi::get_owned<IntComponent>(&view);
@@ -96,8 +101,7 @@ TEST_CASE_METHOD(ECSJobs, "WRW")
     TS.add_task(RWQuery, std::move(WJob0), 1'280);
     TS.add_task(ROQuery, std::move(RJob), 1'280);
     TS.add_task(RWQuery, std::move(WJob1), 1'280);
-    TS.run();
-    TS.sync_all();
+    TS.stop_and_exit();
 }
 
 TEST_CASE_METHOD(ECSJobs, "WRW-Complex")
@@ -119,7 +123,13 @@ TEST_CASE_METHOD(ECSJobs, "WRW-Complex")
         world.destroy_query(RWFloatQuery);
     });
 
-    skr::ecs::TaskScheduler TS;
+    skr::ServiceThreadDesc desc = {
+        .name = u8"ECSJob-TaskScheduler",
+        .priority = SKR_THREAD_ABOVE_NORMAL
+    };
+    skr::ecs::TaskScheduler TS(desc, scheduler);
+    TS.run();
+
     auto WriteInts = [=](sugoi_chunk_view_t view) {
         SkrZoneScopedN("WriteInts");
         auto ints = sugoi::get_owned<IntComponent>(&view);
@@ -159,6 +169,5 @@ TEST_CASE_METHOD(ECSJobs, "WRW-Complex")
     TS.add_task(RWIntQuery, std::move(WriteInts), 12'80);
     TS.add_task(RWFloatQuery, std::move(WriteFloats), 12'800);
     TS.add_task(ROQuery, std::move(ReadJob), 1'280);
-    TS.run();
-    TS.sync_all();
+    TS.stop_and_exit();
 }
