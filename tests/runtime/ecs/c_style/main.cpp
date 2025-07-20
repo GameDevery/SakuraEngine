@@ -2,8 +2,8 @@
 #include "SkrBase/atomic/atomic.h"
 #include "SkrCore/log.h"
 #include "SkrTask/parallel_for.hpp"
-#include "SkrRT/ecs/sugoi.h"
-#include "SkrRT/ecs/array.hpp"
+#include "SkrRT/sugoi/sugoi.h"
+#include "SkrRT/sugoi/array.hpp"
 #include "SkrTestFramework/framework.hpp"
 #include <memory>
 #include <algorithm>
@@ -562,7 +562,7 @@ void register_ref_component()
     desc.size = sizeof(ref);
     desc.entityFieldsCount = 1;
     intptr_t fields[1] = { 0 };
-    desc.entityFields = (intptr_t)fields;
+    desc.entityFields = fields;
     desc.guid = u8"{4BEC235F-63DF-4A49-8F5E-5431890F61DD}"_guid;
     desc.callback = {};
     desc.flags = 0;

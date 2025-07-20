@@ -1,8 +1,7 @@
 #pragma once
-#include "SkrRT/ecs/sugoi.h"
+#include "SkrRT/sugoi/sugoi.h"
 #include "SkrRenderer/skr_renderer.h"
 #include "SkrRenderer/render_effect.h"
-#include "SkrRT/ecs/type_builder.hpp"
 #include "SkrContainers/vector.hpp"
 
 namespace game {

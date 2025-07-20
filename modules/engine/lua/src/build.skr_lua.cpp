@@ -5,7 +5,7 @@
 
 #include "SkrCore/log.h"
 #include "SkrCore/platform/vfs.h"
-#include "SkrRT/ecs/sugoi.h"
+#include "SkrRT/sugoi/sugoi.h"
 
 #include "SkrLua/skr_lua.h"
 #include "SkrLua/bind.hpp"

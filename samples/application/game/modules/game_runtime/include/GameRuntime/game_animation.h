@@ -5,7 +5,7 @@
 #include "SkrAnim/resources/skin_resource.hpp"
 #include "SkrAnim/ozz/base/maths/soa_transform.h"
 #include "SkrAnim/ozz/sampling_job.h"
-#include "SkrRT/ecs/sugoi_meta.hpp"
+#include "SkrRT/sugoi/sugoi_meta.hpp"
 #ifndef __meta__
     #include "GameRuntime/game_animation.generated.h" // IWYU pragma: export
 #endif

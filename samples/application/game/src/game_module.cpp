@@ -7,8 +7,6 @@
 #include "SkrCore/memory/memory.h"
 #include "SkrCore/time.h"
 
-#include "SkrRT/ecs/type_builder.hpp"
-
 #include "SkrRenderGraph/frontend/pass_node.hpp"
 #include "SkrRenderGraph/frontend/resource_node.hpp"
 #include "SkrRenderGraph/frontend/render_graph.hpp"
@@ -836,7 +834,6 @@ int              SGameModule::main_module_exec(int argc, char8_t** argv)
             };
             {
                 // prepare skin mesh resources for rendering
-                sugoiQ_sync(initAnimSkinQuery);
                 sugoiQ_get_views(initAnimSkinQuery, SUGOI_LAMBDA(initAnimSkinComps));
             }
 

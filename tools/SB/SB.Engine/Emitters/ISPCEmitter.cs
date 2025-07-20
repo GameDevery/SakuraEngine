@@ -35,7 +35,7 @@ namespace SB
         }
         public static string GetObjectDirectory(Target Target) => Path.Combine(Target.GetStorePath(BS.ObjsStore));
         public static string GetObjectFile(string SourceFile) => Path.GetFileNameWithoutExtension(SourceFile) + ".o";
-        public static string GetGeneratedHeadersDir(Target Target) => Path.Combine(Target.GetCodegenDirectory(), "ispc-includes");
+        public static string GetGeneratedHeadersDir(Target Target) => Path.Combine(Target.GetStorePath(BuildSystem.GeneratedSourceStore), "ispc-includes");
         public static string GetGeneratedHeaderFile(Target Target, string SourceFile) => Path.Combine(GetGeneratedHeadersDir(Target), Path.GetFileName(SourceFile) + ".h");
     }
 

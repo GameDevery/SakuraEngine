@@ -1,6 +1,6 @@
 #pragma once
 #include "SkrBase/config.h"
-#include "SkrRT/ecs/sugoi.h"
+#include "SkrRT/sugoi/sugoi.h"
 #include "SkrRT/resource/resource_factory.h"
 #include "SkrBase/types.h"
 #include "SkrRT/config.h"

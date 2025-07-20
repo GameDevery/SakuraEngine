@@ -1,10 +1,7 @@
 #include "SkrBase/math.h"
 #include "rtm/qvvf.h"
 #include "SkrContainers/hashmap.hpp"
-#include "SkrRT/ecs/sugoi.h"
-#include "SkrRT/ecs/array.hpp"
-#include "SkrRT/ecs/storage.hpp"
-#include "SkrRT/ecs/type_builder.hpp"
+#include "SkrRT/ecs/query.hpp"
 #include "SkrTask/parallel_for.hpp"
 #include "SkrScene/transform_system.h"
 
@@ -100,16 +97,16 @@ static void skr_relative_to_world_root(void* u, sugoi_query_t* query, sugoi_chun
     }
 }
 
-TransformSystem* TransformSystem::Create(sugoi_storage_t* world) SKR_NOEXCEPT
+TransformSystem* TransformSystem::Create(skr::ecs::World* world) SKR_NOEXCEPT
 {
     SkrZoneScopedN("CreateTransformSystem");
     auto memory = (uint8_t*)sakura_calloc(1, sizeof(TransformSystem) + sizeof(TransformSystem::Impl));
     auto system = new (memory) TransformSystem();
     system->impl = new (memory + sizeof(TransformSystem)) TransformSystem::Impl();
-    auto q = world->new_query()
+    auto q = skr::ecs::QueryBuilder(world)
                  .ReadWriteAll<skr::scene::TransformComponent>()
-                 .ReadAny<skr::scene::ChildrenComponent>()
-                 .ReadAny<skr::scene::TranslationComponent, skr::scene::RotationComponent, skr::scene::ScaleComponent>()
+                 .ReadOptional<skr::scene::ChildrenComponent>()
+                 .ReadOptional<skr::scene::TranslationComponent, skr::scene::RotationComponent, skr::scene::ScaleComponent>()
                  .ReadAll<skr::scene::RootComponent>()
                  .commit()
                  .value();
@@ -128,12 +125,12 @@ void TransformSystem::Destroy(TransformSystem* system) SKR_NOEXCEPT
 void TransformSystem::update() SKR_NOEXCEPT
 {
     SkrZoneScopedN("CalcTransform");
-    sugoiJ_schedule_ecs(impl->calculateTransformTree, 0, &skr_relative_to_world_root, nullptr, nullptr, nullptr, nullptr, nullptr);
+    // sugoiJ_schedule_ecs(impl->calculateTransformTree, 0, &skr_relative_to_world_root, nullptr, nullptr, nullptr, nullptr, nullptr);
 }
 
 } // namespace skr
 
-skr::TransformSystem* skr_transform_system_create(sugoi_storage_t* world)
+skr::TransformSystem* skr_transform_system_create(skr::ecs::World* world)
 {
     return skr::TransformSystem::Create(world);
 }

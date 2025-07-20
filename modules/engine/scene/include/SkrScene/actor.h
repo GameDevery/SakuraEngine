@@ -1,7 +1,7 @@
 #pragma once
 #include "SkrCore/memory/rc.hpp"
 #include "SkrContainersDef/vector.hpp"
-#include "SkrRT/ecs/sugoi.h"
+#include "SkrRT/sugoi/sugoi.h"
 #if !defined(__meta__)
     #include "SkrScene/actor.generated.h"
 #endif

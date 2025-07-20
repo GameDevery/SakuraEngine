@@ -4,7 +4,7 @@
 #include "SkrOS/filesystem.hpp"
 #include "SkrCore/memory/memory.h"
 #include "SkrRT/resource/resource_system.h"
-#include "SkrRT/ecs/sugoi.h"
+#include "SkrRT/sugoi/sugoi.h"
 #include "SkrRT/runtime_module.h"
 
 IMPLEMENT_DYNAMIC_MODULE(SGameRTModule, GameRuntime);
