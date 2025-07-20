@@ -48,7 +48,7 @@ void cgpu_create_shader_objs_vulkan_impl(CGPURootSignatureId signature,
                 // D->mVkDeviceTable.vkGetShaderBinaryDataEXT(D->pVkDevice, outShaders[i], &size, ISA);
                 if ((res == VK_SUCCESS) && (size > 0))
                 {
-                    SkrCAllocN(outShaders[i], size, kVkShaderISAMemoryPoolName)
+                    SkrCAllocN(outShaders[i], size, kVkShaderISAMemoryPoolName);
                 }
             }
         }
@@ -115,7 +115,7 @@ void cgpu_free_compiled_shader_vulkan(CGPUCompiledShaderId shader)
         {
             void* data; size_t size;
             D->mVkDeviceTable.vkGetShaderBinaryDataEXT(D->pVkDevice, S->pVkShader, &size, &data);
-            SkrCFreeN(data, kVkShaderISAMemoryPoolName)
+            SkrCFreeN(data, kVkShaderISAMemoryPoolName);
         }
 #endif
         if (D->mVkDeviceTable.vkDestroyShaderEXT)
@@ -139,7 +139,7 @@ void cgpu_free_linked_shader_vulkan(CGPULinkedShaderId shader)
             {
                 void* data; size_t size;
                 D->mVkDeviceTable.vkGetShaderBinaryDataEXT(D->pVkDevice, S->pVkShaders[i], &size, &data);
-                SkrCFreeN(data, kVkShaderISAMemoryPoolName)
+                SkrCFreeN(data, kVkShaderISAMemoryPoolName);
             }
 #endif
             if (D->mVkDeviceTable.vkDestroyShaderEXT)
