@@ -23,10 +23,10 @@ public:
 
     CreationBuilder& add_component(sugoi_type_index_t Component, intptr_t Field);
 
-    template <class T, class F>
-    CreationBuilder& add_component(ComponentView<F> T::* Member)
+    template <class T, class C>
+    CreationBuilder& add_component(ComponentView<C> T::* Member)
     {
-        return add_component(sugoi_id_of<T>::get(), (intptr_t)&(((T*)nullptr)->*Member));
+        return add_component(sugoi_id_of<C>::get(), (intptr_t)&(((T*)nullptr)->*Member));
     }
 
     void commit() SKR_NOEXCEPT;
@@ -121,6 +121,11 @@ public:
 	{
 		sugoiS_destroy_entities(storage, (sugoi_entity_t*)ToDestroy.data(), ToDestroy.size());
 	}
+
+    void destroy_query(sugoi_query_t* q)
+    {
+        sugoiQ_release(q);
+    }
 
     sugoi_storage_t* get_storage() SKR_NOEXCEPT;
 

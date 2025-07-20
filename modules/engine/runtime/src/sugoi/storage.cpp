@@ -1197,17 +1197,12 @@ sugoi_query_t* sugoiQ_from_literal(sugoi_storage_t* storage, const char8_t* desc
     return storage->make_query(desc);
 }
 
-void sugoiQ_get_views(sugoi_query_t* q, sugoi_view_callback_t callback, void* u)
+void sugoiQ_get_views(const sugoi_query_t* q, sugoi_view_callback_t callback, void* u)
 {
     return q->pimpl->storage->query(q, callback, u);
 }
 
-void sugoiQ_get_views_unsafe(sugoi_query_t* q, sugoi_view_callback_t callback, void* u)
-{
-    return q->pimpl->storage->query_unsafe(q, callback, u);
-}
-
-void sugoiQ_get_groups(sugoi_query_t* q, sugoi_group_callback_t callback, void* u)
+void sugoiQ_get_groups(const sugoi_query_t* q, sugoi_group_callback_t callback, void* u)
 {
     skr::Vector<sugoi_group_t*> groups;
     groups.reserve(32);
@@ -1221,7 +1216,7 @@ void sugoiQ_get_groups(sugoi_query_t* q, sugoi_group_callback_t callback, void* 
     }
 }
 
-void sugoiQ_in_group(sugoi_query_t* q, sugoi_group_t* group, sugoi_view_callback_t callback, void* u)
+void sugoiQ_in_group(const sugoi_query_t* q, sugoi_group_t* group, sugoi_view_callback_t callback, void* u)
 {
     if (!q->pimpl->storage->match_group(q->pimpl->filter, q->pimpl->meta, group))
         return;
@@ -1229,9 +1224,14 @@ void sugoiQ_in_group(sugoi_query_t* q, sugoi_group_t* group, sugoi_view_callback
         &q->pimpl->parameters, group, q->pimpl->filter, q->pimpl->meta, q->pimpl->customFilter, q->pimpl->customFilterUserData, callback, u);
 }
 
-int sugoiQ_match_entity(sugoi_query_t* query, sugoi_entity_t ent)
+int sugoiQ_match_entity(const sugoi_query_t* query, sugoi_entity_t ent)
 {
     return query->pimpl->storage->match_entity(query, ent);
+}
+
+int sugoiQ_match_group(const sugoi_query_t* query, const sugoi_group_t* group)
+{
+    return query->pimpl->storage->match_group(query, group);
 }
 
 const char8_t* sugoiQ_get_error()
@@ -1263,7 +1263,7 @@ void sugoiQ_get(sugoi_query_t* q, sugoi_filter_t* filter, sugoi_parameters_t* pa
         *params = q->pimpl->parameters;
 }
 
-sugoi_storage_t* sugoiQ_get_storage(sugoi_query_t* q)
+sugoi_storage_t* sugoiQ_get_storage(const sugoi_query_t* q)
 {
     return q->pimpl->storage;
 }

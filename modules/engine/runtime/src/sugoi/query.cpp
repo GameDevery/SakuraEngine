@@ -648,14 +648,6 @@ void sugoi_storage_t::buildQueryOverloads()
     }
 }
 
-void sugoi_storage_t::query_unsafe(const sugoi_query_t* q, sugoi_view_callback_t callback, void* u)
-{
-    auto filterChunk = [&](sugoi_group_t* group) {
-        filter_in_single_group(&q->pimpl->parameters, group, q->pimpl->filter, q->pimpl->meta, q->pimpl->customFilter, q->pimpl->customFilterUserData, callback, u);
-    };
-    query_groups(q, SUGOI_LAMBDA(filterChunk));
-}
-
 void sugoi_storage_t::query(const sugoi_query_t* q, sugoi_view_callback_t callback, void* u)
 {
     auto filterChunk = [&](sugoi_group_t* group) {
@@ -733,6 +725,12 @@ bool sugoi_storage_t::match_entity(const sugoi_query_t* q, sugoi_entity_t entity
     if (!view.chunk)
         return false;
     auto group = view.chunk->group;
+    return match_group(q, group);
+}
+
+bool sugoi_storage_t::match_group(const sugoi_query_t* q, const sugoi_group_t* group)
+{
+    using namespace sugoi;
     bool found = false;
     q->pimpl->groups_cache.read([&](auto& cache){
         auto iter = std::find(cache.begin(), cache.end(), group);

@@ -43,7 +43,7 @@ namespace sugoi
 [[maybe_unused]] static constexpr size_t kFastBinSize       = 64 * 1024;
 [[maybe_unused]] static constexpr size_t kSmallBinThreshold = 1;
 [[maybe_unused]] static constexpr size_t kSmallBinSize      = 1024;
-[[maybe_unused]] static constexpr size_t kLargeBinSize      = 1024 * 1024;
+[[maybe_unused]] static constexpr size_t kLargeBinSize      = 512 * 1024;
 
 [[maybe_unused]] static constexpr size_t kFastBinCapacity  = 800;
 [[maybe_unused]] static constexpr size_t kSmallBinCapacity = 200;

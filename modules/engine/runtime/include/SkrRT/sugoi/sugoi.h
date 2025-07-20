@@ -649,12 +649,12 @@ SKR_RUNTIME_API void sugoiQ_set_custom_filter(sugoi_query_t* query, sugoi_custom
  * @param query
  * @param callback callback for each filtered chunk view
  */
-SKR_RUNTIME_API void             sugoiQ_get_views(sugoi_query_t* query, sugoi_view_callback_t callback, void* u);
-SKR_RUNTIME_API void             sugoiQ_get_views_unsafe(sugoi_query_t* query, sugoi_view_callback_t callback, void* u);
-SKR_RUNTIME_API void             sugoiQ_get_groups(sugoi_query_t* query, sugoi_group_callback_t callback, void* u);
-SKR_RUNTIME_API void             sugoiQ_in_group(sugoi_query_t* query, sugoi_group_t* group, sugoi_view_callback_t callback, void* u);
-SKR_RUNTIME_API int              sugoiQ_match_entity(sugoi_query_t* query, sugoi_entity_t entity);
-SKR_RUNTIME_API sugoi_storage_t* sugoiQ_get_storage(sugoi_query_t* query);
+SKR_RUNTIME_API void             sugoiQ_get_views(const sugoi_query_t* query, sugoi_view_callback_t callback, void* u);
+SKR_RUNTIME_API void             sugoiQ_get_groups(const sugoi_query_t* query, sugoi_group_callback_t callback, void* u);
+SKR_RUNTIME_API void             sugoiQ_in_group(const sugoi_query_t* query, sugoi_group_t* group, sugoi_view_callback_t callback, void* u);
+SKR_RUNTIME_API int              sugoiQ_match_entity(const sugoi_query_t* query, sugoi_entity_t entity);
+SKR_RUNTIME_API int              sugoiQ_match_group(const sugoi_query_t* query, const sugoi_group_t* group);
+SKR_RUNTIME_API sugoi_storage_t* sugoiQ_get_storage(const sugoi_query_t* query);
 
 /**
  * @brief test if group contains components, whether owned or shared

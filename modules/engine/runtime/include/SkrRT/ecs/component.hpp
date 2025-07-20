@@ -52,6 +52,7 @@ protected:
 template <typename T>
 struct ComponentView : public ComponentViewBase
 {
+public:
     using Storage = typename ComponentStorage<T>::Type;
     Storage& operator[](int32_t Index)
     {
@@ -62,10 +63,13 @@ struct ComponentView : public ComponentViewBase
     {
         return _ptr != nullptr;
     }
+    ComponentView()
+        : ComponentViewBase(nullptr, 0) {}
+
 protected:
     friend struct World;
     friend struct CreationContext;
-    ComponentView(T* ptr = nullptr, uint32_t local_type = 0)
+    ComponentView(T* ptr, uint32_t local_type)
         : ComponentViewBase(ptr, local_type) {}
 };
 
