@@ -24,13 +24,13 @@ public:
     {
         struct Spawner
         {
-            void build(skr::ecs::CreationBuilder& builder)
+            void build(skr::ecs::ArchetypeBuilder& builder)
             {
                 builder.add_component<IntComponent>()
                     .add_component<FloatComponent>()
                     .add_component<sugoi::mask_comp_t>();
             }
-            void run(skr::ecs::CreationContext& ctx)
+            void run(skr::ecs::TaskContext& ctx)
             {
                 auto entities = ctx.entities();
                 result = entities[0];
@@ -56,13 +56,13 @@ public:
     {
         struct Spawner
         {
-            void build(skr::ecs::CreationBuilder& builder)
+            void build(skr::ecs::ArchetypeBuilder& builder)
             {
                 builder.add_component<IntComponent>()
                     .add_component<FloatComponent>()
                     .add_component<sugoi::mask_comp_t>();
             }
-            void run(skr::ecs::CreationContext& ctx)
+            void run(skr::ecs::TaskContext& ctx)
             {
                 auto entity_list = ctx.entities();
                 for (uint32_t i = 0; i < ctx.size(); ++i) {

@@ -136,11 +136,11 @@ CollationLoader::loadRules(const char *localeID, const char *collationType,
 
 template<> U_I18N_API
 const CollationCacheEntry *
-LocaleCacheKey<CollationCacheEntry>::createObject(const void *creationContext,
+LocaleCacheKey<CollationCacheEntry>::createObject(const void *TaskContext,
                                                   UErrorCode &errorCode) const {
     CollationLoader *loader =
             reinterpret_cast<CollationLoader *>(
-                    const_cast<void *>(creationContext));
+                    const_cast<void *>(TaskContext));
     return loader->createCacheEntry(errorCode);
 }
 

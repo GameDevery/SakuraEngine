@@ -3,48 +3,137 @@
 namespace skr::ecs
 {
 
-CreationBuilder& CreationBuilder::add_component(sugoi_type_index_t type)
+ArchetypeBuilder& ArchetypeBuilder::add_component(sugoi_type_index_t type)
 {
-	if(Components.contains(type))
+	if(types.contains(type))
 	{
 		return *this;
 	}
-	Components.add(type);
-	Fields.add(-1);
+	types.add(type);
+	fields.add(-1);
 	return *this;
 }
 
-CreationBuilder& CreationBuilder::add_meta_entity(Entity Entity)
+ArchetypeBuilder& ArchetypeBuilder::add_meta_entity(Entity Entity)
 {
-	if (MetaEntities.contains(Entity))
+	if (meta_entities.contains(Entity))
 	{
 		return *this;
 	}
-	MetaEntities.add(Entity);
+	meta_entities.add(Entity);
 	return *this;
 }
 
-CreationBuilder& CreationBuilder::add_component(sugoi_type_index_t type, intptr_t Field)
+ArchetypeBuilder& ArchetypeBuilder::add_component(sugoi_type_index_t type, intptr_t Field)
 {
-	if (auto index = Components.find(type))
+	if (auto index = types.find(type))
 	{
-		Fields[index.index()] = Field;
+		fields[index.index()] = Field;
 		return *this;
 	}
-	Components.add(type);
-	Fields.add(Field);
+	types.add(type);
+	fields.add(Field);
 	return *this;
 }
 
-void CreationBuilder::commit() SKR_NOEXCEPT
+void ArchetypeBuilder::commit() SKR_NOEXCEPT
 {
-    Components.sort();
-    MetaEntities.sort();
+    types.sort();
+    meta_entities.sort();
+}
+
+void AccessBuilder::commit() SKR_NOEXCEPT
+{
+	all.sort([](auto a, auto b) { return a < b; });
+	none.sort([](auto a, auto b) { return a < b; });
+}
+
+sugoi_query_t* AccessBuilder::create_query(sugoi_storage_t* storage) SKR_NOEXCEPT
+{
+	sugoi_parameters_t parameters;
+	parameters.types = types.data();
+	parameters.accesses = ops.data();
+	parameters.length = types.size();    
+
+	SKR_DECLARE_ZERO(sugoi_filter_t, filter);
+	filter.all.data = all.data();
+	filter.all.length = all.size();
+
+	/*
+	none.sort([](auto a, auto b) { return a < b; });
+	filter.none.data = none.data();
+	filter.none.length = none.size();
+	*/
+	auto q = sugoiQ_create(storage, &filter, &parameters);
+	if (q)
+	{
+		SKR_DECLARE_ZERO(sugoi_meta_filter_t, meta_filter);
+		if (meta_entities.size())
+		{
+			meta_filter.all_meta.data = (const sugoi_entity_t*)meta_entities.data();
+			meta_filter.all_meta.length = meta_entities.size();
+		}
+		/*
+		if (none_meta.size())
+		{
+			meta_filter.none_meta.data = none_meta.data();
+			meta_filter.none_meta.length = none_meta.size();
+		}
+		*/
+		sugoiQ_set_meta(q, &meta_filter);
+	}
+	return q;
+}
+
+AccessBuilder& AccessBuilder::_access(TypeIndex type, bool write, EAccessMode mode, intptr_t field)
+{
+	// fill: base type accessors
+	if (write)
+		writes.add({type, mode});
+	else
+		reads.add({type, mode});
+
+	// fill: access builder args
+	if (field != kInvalidFieldPtr)
+	{
+		fields.add(field);
+	}
+
+	all.add(type);
+	// share
+	// exclude
+	types.add(type);
+	ops.add({ 
+		.phase = 0, 
+		.readonly = !write,
+		.atomic = (mode == EAccessMode::Atomic),
+		.randomAccess = SOS_SEQ
+	});
+	return *this;
+}
+
+static const auto kTSServiceDesc = ServiceThreadDesc {
+	.name = u8"ECSTaskScheduler",
+	.priority = SKR_THREAD_ABOVE_NORMAL,
+};
+World::World(skr::task::scheduler_t& scheduler) SKR_NOEXCEPT
+	: TS(skr::UPtr<TaskScheduler>::New(kTSServiceDesc, scheduler))
+{
+	storage = sugoiS_create();
+}
+
+World::World() SKR_NOEXCEPT
+{
+	storage = sugoiS_create();
 }
 
 void World::initialize() SKR_NOEXCEPT
 {
     storage = sugoiS_create();
+	if (TS.get())
+	{
+		TS->run();
+	}
 }
 
 void World::finalize() SKR_NOEXCEPT
@@ -53,9 +142,55 @@ void World::finalize() SKR_NOEXCEPT
     storage = nullptr;
 }
 
+TaskScheduler* World::get_scheduler() SKR_NOEXCEPT
+{
+	return TS.get() ? TS.get() : nullptr;
+}
+
 sugoi_storage_t* World::get_storage() SKR_NOEXCEPT
 {
     return storage;
+}
+
+QueryBuilder::QueryBuilder(World* world) SKR_NOEXCEPT
+	: world(world)
+{
+
+}
+
+QueryBuilderResult QueryBuilder::commit() SKR_NOEXCEPT
+{
+	sugoi_parameters_t parameters;
+	parameters.types = types.data();
+	parameters.accesses = ops.data();
+	parameters.length = types.size();    
+
+	SKR_DECLARE_ZERO(sugoi_filter_t, filter);
+	all.sort([](auto a, auto b) { return a < b; });
+	filter.all.data = all.data();
+	filter.all.length = all.size();
+
+	none.sort([](auto a, auto b) { return a < b; });
+	filter.none.data = none.data();
+	filter.none.length = none.size();
+
+	auto q = sugoiQ_create(world->get_storage(), &filter, &parameters);
+	if (q)
+	{
+		SKR_DECLARE_ZERO(sugoi_meta_filter_t, meta_filter);
+		if (all_meta.size())
+		{
+			meta_filter.all_meta.data = all_meta.data();
+			meta_filter.all_meta.length = all_meta.size();
+		}
+		if (none_meta.size())
+		{
+			meta_filter.none_meta.data = none_meta.data();
+			meta_filter.none_meta.length = none_meta.size();
+		}
+		sugoiQ_set_meta(q, &meta_filter);
+	}
+	return (EntityQuery*)q;
 }
 
 } // namespace skr::ecs

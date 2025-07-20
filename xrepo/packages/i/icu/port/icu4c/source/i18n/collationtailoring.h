@@ -109,7 +109,7 @@ struct U_I18N_API CollationCacheEntry : public SharedObject {
 
 template<> U_I18N_API
 const CollationCacheEntry *
-LocaleCacheKey<CollationCacheEntry>::createObject(const void *creationContext,
+LocaleCacheKey<CollationCacheEntry>::createObject(const void *TaskContext,
                                                   UErrorCode &errorCode) const;
 U_NAMESPACE_END
 

@@ -605,31 +605,31 @@ class V8_EXPORT Object : public Value {
   /**
    * Returns the context in which the object was created.
    */
-  MaybeLocal<Context> GetCreationContext();
+  MaybeLocal<Context> GetTaskContext();
 
   /**
-   * Shortcut for GetCreationContext().ToLocalChecked().
+   * Shortcut for GetTaskContext().ToLocalChecked().
    **/
-  Local<Context> GetCreationContextChecked();
+  Local<Context> GetTaskContextChecked();
 
   /** Same as above, but works for Persistents */
-  V8_INLINE static MaybeLocal<Context> GetCreationContext(
+  V8_INLINE static MaybeLocal<Context> GetTaskContext(
       const PersistentBase<Object>& object) {
-    return object.template value<Object>()->GetCreationContext();
+    return object.template value<Object>()->GetTaskContext();
   }
 
   /**
-   * Gets the context in which the object was created (see GetCreationContext())
+   * Gets the context in which the object was created (see GetTaskContext())
    * and if it's available reads respective embedder field value.
    * If the context can't be obtained nullptr is returned.
    * Basically it's a shortcut for
-   *   obj->GetCreationContext().GetAlignedPointerFromEmbedderData(index)
+   *   obj->GetTaskContext().GetAlignedPointerFromEmbedderData(index)
    * which doesn't create a handle for Context object on the way and doesn't
    * try to expand the embedder data attached to the context.
    * In case the Local<Context> is already available because of other reasons,
    * it's fine to keep using Context::GetAlignedPointerFromEmbedderData().
    */
-  void* GetAlignedPointerFromEmbedderDataInCreationContext(int index);
+  void* GetAlignedPointerFromEmbedderDataInTaskContext(int index);
 
   /**
    * Checks whether a callback is set by the

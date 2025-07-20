@@ -1,14 +1,14 @@
 #pragma once
 #include "SkrContainersDef/concurrent_queue.hpp"
 #include "SkrContainersDef/stl_function.hpp"
+#include "SkrContainersDef/map.hpp"
 #include "SkrCore/memory/rc.hpp"
 #include "SkrCore/async/async_service.h"
-#include "SkrRT/ecs/query.hpp"
+#include "SkrRT/ecs/component.hpp"
 
 namespace skr::ecs
 {
 
-using TypeIndex = sugoi_type_index_t;
 struct Task;
 struct TaskSignature;
 struct StaticDependencyAnalyzer;
@@ -31,8 +31,9 @@ struct WorkGroup
 struct Task
 {
     SKR_RC_IMPL();
+    using Type = skr::stl_function<void(sugoi_chunk_view_t, uint32_t count, uint32_t offset)>;
 
-    skr::stl_function<void(sugoi_chunk_view_t)> func;
+    Task::Type func;
     uint32_t batch_size = 0;
 };
 
@@ -56,7 +57,9 @@ struct ComponentAccess
 
 struct TaskSignature
 {
+public:
     SKR_RC_IMPL();
+    virtual ~TaskSignature() = default;
 
     skr::RC<Task> task;
     skr::Vector<ComponentAccess> reads;
@@ -99,18 +102,20 @@ struct SKR_RUNTIME_API TaskScheduler : protected AsyncService
 public:
     TaskScheduler(const ServiceThreadDesc& desc, skr::task::scheduler_t& scheduler) SKR_NOEXCEPT;
     
-    void add_task(sugoi_query_t* query, skr::stl_function<void(sugoi_chunk_view_t)>&& func, uint32_t batch_size);
     void run() SKR_NOEXCEPT;
     void flush_all();
     void sync_all();
     void stop_and_exit();
 
+    void add_task(sugoi_query_t* query, Task::Type&& func, uint32_t batch_size);
+
 protected:
     AsyncResult serve() SKR_NOEXCEPT override;
     void on_run() SKR_NOEXCEPT override;
     void on_exit() SKR_NOEXCEPT override;
-    
     void dispatch(skr::RC<TaskSignature> task);
+    
+    friend struct World;
     void add_task(skr::RC<TaskSignature> task);
     skr::task::counter_t running;
 

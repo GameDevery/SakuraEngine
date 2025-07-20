@@ -96,7 +96,7 @@ TaskScheduler::TaskScheduler(const ServiceThreadDesc& desc, skr::task::scheduler
 {
 }
 
-void TaskScheduler::add_task(sugoi_query_t* query, skr::stl_function<void(sugoi_chunk_view_t)>&& func, uint32_t batch_size)
+void TaskScheduler::add_task(sugoi_query_t* query, Task::Type&& func, uint32_t batch_size)
 {
     auto new_task = skr::RC<TaskSignature>::New();
     new_task->query = query;
@@ -161,7 +161,7 @@ void TaskScheduler::dispatch(skr::RC<TaskSignature> signature)
                 SKR_DEFER({ running.decrement(); unit.finish.decrement(); });
                 if (batch_count == 1)
                 {
-                    task->func(unit.chunk_view);
+                    task->func(unit.chunk_view, unit.chunk_view.count, 0);
                 }
                 else
                 {
@@ -172,10 +172,11 @@ void TaskScheduler::dispatch(skr::RC<TaskSignature> signature)
                     {
                         const auto remain = unit.chunk_view.count - i * batch_size;
                         auto view = unit.chunk_view;
-                        view.count = std::min(remain, batch_size);
-                        view.start = unit.chunk_view.start + i * batch_size;
-                        skr::task::schedule([task, view, batch_counter]() mutable {
-                            task->func(view);
+                        const auto count = std::min(remain, batch_size);
+                        const auto offset = i * batch_size;
+                        skr::task::schedule(
+                        [task, view, batch_counter, count, offset]() mutable {
+                            task->func(view, count, offset);
                             batch_counter.decrement();
                         }, nullptr);
                     }
@@ -242,7 +243,7 @@ void TaskScheduler::stop_and_exit()
 {
     flush_all();
     sync_all();
-    
+
     if (get_status() == skr::ServiceThread::Status::kStatusRunning)
     {
         SKR_LOG_BACKTRACE(u8"runner: request to stop.");

@@ -60,7 +60,7 @@ DateFmtBestPattern::~DateFmtBestPattern() {
 
 template<> 
 const DateFmtBestPattern *LocaleCacheKey<DateFmtBestPattern>::createObject(
-        const void * /*creationContext*/, UErrorCode &status) const {
+        const void * /*TaskContext*/, UErrorCode &status) const {
     status = U_UNSUPPORTED_ERROR;
     return NULL;
 }

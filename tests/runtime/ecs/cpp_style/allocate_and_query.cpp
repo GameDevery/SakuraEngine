@@ -27,20 +27,20 @@ skr::ecs::Entity shared_entity = SUGOI_NULL_ENTITY;
 template <typename... Ts>
 struct EntitySpawner
 {
-    using F = std::function<void(skr::ecs::CreationContext&)>;
+    using F = std::function<void(skr::ecs::TaskContext&)>;
     EntitySpawner(F func, sugoi_entity_t shared = SUGOI_NULL_ENTITY)
         : f(func), meta_ent(shared)
     {
     }
 
-    void build(skr::ecs::CreationBuilder& Builder)
+    void build(skr::ecs::ArchetypeBuilder& Builder)
     {
         (Builder.add_component<Ts>(), ...);
         if (meta_ent != SUGOI_NULL_ENTITY)
             Builder.add_meta_entity(meta_ent);
     }
 
-    void run(skr::ecs::CreationContext& Context)
+    void run(skr::ecs::TaskContext& Context)
     {
         f(Context);
     }
@@ -55,7 +55,7 @@ TEST_CASE_METHOD(AllocateEntites, "AllocateAndQuery")
 
     {
         auto spawner = EntitySpawner<SharedComponent>(
-            [&](skr::ecs::CreationContext& ctx) {
+            [&](skr::ecs::TaskContext& ctx) {
                 auto pcomp = ctx.components<SharedComponent>();
                 pcomp[0].i = 114;
                 pcomp[0].f = 514.f;
@@ -66,7 +66,7 @@ TEST_CASE_METHOD(AllocateEntites, "AllocateAndQuery")
     }
     {
         auto spawner = EntitySpawner<IntComponent>(
-            [&](skr::ecs::CreationContext& ctx) {
+            [&](skr::ecs::TaskContext& ctx) {
                 auto ints = ctx.components<IntComponent>();
                 for (auto i = 0; i < ctx.size(); i++)
                 {
@@ -78,7 +78,7 @@ TEST_CASE_METHOD(AllocateEntites, "AllocateAndQuery")
     }
     {
         auto spawner = EntitySpawner<FloatComponent>(
-            [&](skr::ecs::CreationContext& ctx) {
+            [&](skr::ecs::TaskContext& ctx) {
                 auto floats = ctx.components<FloatComponent>();
                 for (auto i = 0; i < ctx.size(); i++)
                 {
@@ -90,7 +90,7 @@ TEST_CASE_METHOD(AllocateEntites, "AllocateAndQuery")
     }
     {
         auto spawner = EntitySpawner<IntComponent, FloatComponent>
-        ([&](skr::ecs::CreationContext& ctx) {
+        ([&](skr::ecs::TaskContext& ctx) {
             auto ints = ctx.components<IntComponent>();
             auto floats = ctx.components<FloatComponent>();
             for (auto i = 0; i < ctx.size(); i++)
