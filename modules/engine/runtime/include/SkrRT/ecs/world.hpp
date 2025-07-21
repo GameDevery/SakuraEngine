@@ -187,7 +187,7 @@ public:
     }
 
     template <class T>
-    void create_entites(T& Creation, uint32_t Count, Entity* Reserved = nullptr)
+    void create_entities(T& Creation, uint32_t Count, Entity* Reserved = nullptr)
     {
         ArchetypeBuilder Builder;
         Creation.build(Builder);

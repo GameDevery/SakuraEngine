@@ -62,7 +62,7 @@ TEST_CASE_METHOD(AllocateEntites, "AllocateAndQuery")
                 EXPECT_EQ(ctx.size(), 1);
                 shared_entity = ctx.entities()[0];
             });
-        world.create_entites(spawner, 1);
+        world.create_entities(spawner, 1);
     }
     {
         auto spawner = EntitySpawner<IntComponent>(
@@ -74,7 +74,7 @@ TEST_CASE_METHOD(AllocateEntites, "AllocateAndQuery")
                 }
                 EXPECT_EQ(ctx.size(), kIntEntityCount);
             });
-        world.create_entites(spawner, kIntEntityCount);
+        world.create_entities(spawner, kIntEntityCount);
     }
     {
         auto spawner = EntitySpawner<FloatComponent>(
@@ -86,7 +86,7 @@ TEST_CASE_METHOD(AllocateEntites, "AllocateAndQuery")
                 }
                 EXPECT_EQ(ctx.size(), kFloatEntityCount);
             });
-        world.create_entites(spawner, kFloatEntityCount);
+        world.create_entities(spawner, kFloatEntityCount);
     }
     {
         auto spawner = EntitySpawner<IntComponent, FloatComponent>
@@ -100,7 +100,7 @@ TEST_CASE_METHOD(AllocateEntites, "AllocateAndQuery")
             }
             EXPECT_EQ(ctx.size(), kBothEntityCount);
         }, shared_entity);
-        world.create_entites(spawner, kBothEntityCount);
+        world.create_entities(spawner, kBothEntityCount);
     }
     // ReadAll
     {
