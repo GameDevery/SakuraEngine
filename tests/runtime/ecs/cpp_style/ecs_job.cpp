@@ -43,7 +43,7 @@ struct ECSJobs {
             skr::ecs::ComponentView<IntComponent> ints;
             skr::ecs::ComponentView<FloatComponent> floats;
         } spawner;
-        world.create_entites(spawner, 2'000'000);
+        world.create_entities(spawner, 2'000'000);
     }
 
 protected:

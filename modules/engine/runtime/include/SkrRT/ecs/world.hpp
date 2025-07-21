@@ -80,7 +80,7 @@ public:
     void finalize() SKR_NOEXCEPT;
 
     template <class T>
-    void create_entites(T& Creation, uint32_t Count, Entity* Reserved = nullptr)
+    void create_entities(T& Creation, uint32_t Count, Entity* Reserved = nullptr)
     {
         CreationBuilder Builder;
         Creation.build(Builder);
