@@ -40,6 +40,11 @@ VarDecl::VarDecl(AST& ast, EVariableQualifier qualifier, const TypeDecl* type, c
 
 }
 
+bool VarDecl::is_global() const
+{
+    return false; // Default implementation, can be overridden
+}
+
 FieldDecl::FieldDecl(AST& ast, const Name& name, const TypeDecl* type)
     : NamedDecl(ast, name), _type(type)
 {
@@ -264,6 +269,11 @@ GlobalVarDecl::GlobalVarDecl(AST& ast, EVariableQualifier qualifier, const TypeD
 
 }
 
+bool GlobalVarDecl::is_global() const
+{
+    return true; // Global variables are always global
+}
+
 ParamVarDecl::ParamVarDecl(AST& ast, EVariableQualifier qualifier, const TypeDecl* type, const Name& name)
     : VarDecl(ast, qualifier, type, name)
 {
@@ -411,6 +421,102 @@ SpecializedMethodDecl::SpecializedMethodDecl(AST& ast, const TemplateCallableDec
         auto param = ast.DeclareParam(arg_qualifiers[i], arg_types[i], param_name);
         _parameters.push_back(param);
     }
+}
+
+NamespaceDecl::NamespaceDecl(AST& ast, const Name& name, NamespaceDecl* parent)
+    : NamedDecl(ast, name), _parent(parent)
+{
+}
+
+const Stmt* NamespaceDecl::body() const
+{
+    return nullptr; // Namespaces have no body in shader context
+}
+
+void NamespaceDecl::add_nested(NamespaceDecl* nested)
+{
+    if (nested)
+    {
+        // Check if already added to avoid duplicates
+        auto it = std::find(_nested.begin(), _nested.end(), nested);
+        if (it == _nested.end())
+        {
+            _nested.emplace_back(nested);
+            nested->_parent = this;
+        }
+    }
+}
+
+void NamespaceDecl::add_type(TypeDecl* type)
+{
+    if (type)
+    {
+        // Check if already added to avoid duplicates
+        auto it = std::find(_types.begin(), _types.end(), type);
+        if (it == _types.end())
+        {
+            _types.emplace_back(type);
+        }
+    }
+}
+
+void NamespaceDecl::add_function(FunctionDecl* function)
+{
+    if (function)
+    {
+        // Check if already added to avoid duplicates
+        auto it = std::find(_functions.begin(), _functions.end(), function);
+        if (it == _functions.end())
+        {
+            _functions.emplace_back(function);
+        }
+    }
+}
+
+void NamespaceDecl::add_global_var(GlobalVarDecl* var)
+{
+    if (var)
+    {
+        // Check if already added to avoid duplicates
+        auto it = std::find(_global_vars.begin(), _global_vars.end(), var);
+        if (it == _global_vars.end())
+        {
+            _global_vars.emplace_back(var);
+        }
+    }
+}
+
+bool NamespaceDecl::has_content() const
+{
+    // Check if has any non-builtin types
+    for (const auto& type : _types)
+    {
+        if (!type->is_builtin())
+            return true;
+    }
+    
+    // Check if has any functions
+    if (!_functions.empty())
+        return true;
+    
+    // Check if has any global variables
+    if (!_global_vars.empty())
+        return true;
+    
+    // Check if any nested namespace has content
+    for (const auto& nested : _nested)
+    {
+        if (nested->has_content())
+            return true;
+    }
+    
+    return false;
+}
+
+String NamespaceDecl::dump() const
+{
+    return std::format(L"namespace {} {{ {} nested, {} types, {} functions, {} globals }}",
+                       name(), _nested.size(), _types.size(), _functions.size(), _global_vars.size());
 }
 
 }

@@ -1,4 +1,5 @@
 #include "CppSL/langs/HLSLGenerator.hpp"
+#include <functional>
 
 namespace skr::CppSL
 {
@@ -65,6 +66,19 @@ inline static String GetTypeName(const TypeDecl* type)
         return L"RayQuery<" + FlagText + L">";
     }
     return type->name();
+}
+
+// Forward declaration for HLSLGenerator member function
+String HLSLGenerator::GetQualifiedTypeName(const TypeDecl* type)
+{
+    // Check if this type has a namespace mapping
+    auto NonQualified = GetTypeName(type);
+    auto it = type_namespace_map_.find(type);
+    if (it != type_namespace_map_.end() && !it->second.empty())
+    {
+        return it->second + L"::" + NonQualified;
+    }
+    return NonQualified;
 }
 
 inline static String GetStageName(ShaderStage stage)
@@ -342,7 +356,7 @@ void HLSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt
     else if (auto bitwiseCast = dynamic_cast<const BitwiseCastExpr*>(stmt))
     {
         auto _type = bitwiseCast->type();
-        sb.append(L"bit_cast<" + GetTypeName(_type) + L">(");
+        sb.append(L"bit_cast<" + GetQualifiedTypeName(_type) + L">(");;
         visitExpr(sb, bitwiseCast->expr());
         sb.append(L")");
     }
@@ -459,7 +473,7 @@ void HLSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt
         else if (auto AsArray = dynamic_cast<const ArrayTypeDecl*>(ctorExpr->type()))
         {
             const auto N = AsArray->size() / AsArray->element()->size();
-            sb.append(L"make_array" + std::to_wstring(N) + L"<" + GetTypeName(AsArray->element()) + L", " + std::to_wstring(N) + L">(");
+            sb.append(L"make_array" + std::to_wstring(N) + L"<" + GetQualifiedTypeName(AsArray->element()) + L", " + std::to_wstring(N) + L">(");;
             for (size_t i = 0; i < ctorExpr->args().size(); i++)
             {
                 auto arg = ctorExpr->args()[i];
@@ -494,7 +508,11 @@ void HLSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt
             if (args.empty())
                 args = ctorExpr->args();
 
-            sb.append(GetTypeName(ctorExpr->type()) + L"(");
+            if (ctorExpr->type()->is_builtin())
+                sb.append(GetQualifiedTypeName(ctorExpr->type()) + L"(");
+            else
+                sb.append(GetQualifiedTypeName(ctorExpr->type()) + L"::New(");;
+            
             if (fillVectorArgsWithZero > 0)
             {
                 for (int32_t j = 0; j < fillVectorArgsWithZero; j++)
@@ -613,7 +631,7 @@ void HLSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt
     }
     else if (auto staticCast = dynamic_cast<const StaticCastExpr*>(stmt))
     {
-        sb.append(L"((" + GetTypeName(staticCast->type()) + L")");
+        sb.append(L"((" + GetQualifiedTypeName(staticCast->type()) + L")");;
         visitExpr(sb, staticCast->expr());
         sb.append(L")");
     }
@@ -747,7 +765,7 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::TypeDecl* type
     const bool IsStageInout = FindAttr<StageInoutAttr>(typeDecl->attrs());
     if (!typeDecl->is_builtin())
     {
-        sb.append(L"struct " + GetTypeName(typeDecl));
+        sb.append(L"struct " + GetQualifiedTypeName(typeDecl));
         sb.endline(L'{');
         sb.indent([&] {
             for (auto field : typeDecl->fields())
@@ -757,7 +775,7 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::TypeDecl* type
                     sb.append(GetInterpolationString(interpolation->mode()) + L" ");
                 }
 
-                sb.append(GetTypeName(&field->type()) + L" " + field->name());
+                sb.append(GetQualifiedTypeName(&field->type()) + L" " + field->name());
                 if (IsStageInout)
                     sb.append(L" : " + field->name());
                 sb.endline(L';');
@@ -788,12 +806,11 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::TypeDecl* type
                 auto WrapperBody = pAST->Block({ _this, _init, _return });
                 sb.append(L"static ");
                 // 只 declare 这些 method，但是不把他们加到类型里面，不然会被生成 method 的逻辑重复生成
-                visit(sb, pAST->DeclareMethod(const_cast<skr::CppSL::TypeDecl*>(typeDecl), L"__CTOR__", typeDecl, ctor->parameters(), WrapperBody), FunctionStyle::Normal);
+                visit(sb, pAST->DeclareMethod(const_cast<skr::CppSL::TypeDecl*>(typeDecl), L"New", typeDecl, ctor->parameters(), WrapperBody), FunctionStyle::Normal);
             }
         });
         sb.append(L"}");
         sb.endline(L';');
-        sb.append(L"#define " + GetTypeName(typeDecl) + L"(...) " + GetTypeName(typeDecl) + L"::__CTOR__(__VA_ARGS__)");
         sb.endline();
         sb.append_line();
     }        
@@ -850,10 +867,10 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* 
             if ((style == FunctionStyle::OutterImplmentation) && AsMethod)
             {
                 // HLSL: Type::MethodName
-                functionName = GetTypeName(AsMethod->owner_type()) + L"::" + functionName;
+                functionName = GetQualifiedTypeName(AsMethod->owner_type()) + L"::" + functionName;
             }
 
-            sb.append(GetTypeName(funcDecl->return_type()) + L" " + functionName + L"(");
+            sb.append(GetQualifiedTypeName(funcDecl->return_type()) + L" " + functionName + L"(");
             for (size_t i = 0; i < params.size(); i++)
             {
                 auto param = params[i];
@@ -893,7 +910,7 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* 
                     prefix = L"";
                     break;
                 }
-                String content = prefix + GetTypeName(&param->type()) + L" " + param->name();
+                String content = prefix + GetQualifiedTypeName(&param->type()) + L" " + param->name();
     
                 if (i > 0)
                     content = L", " + content;
@@ -937,7 +954,7 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::VarDecl* varDe
         else if (varDecl->qualifier() == EVariableQualifier::Inout)
             sb.append(L"inout ");
     
-        sb.append(GetTypeName(&varDecl->type()) + L" " + varDecl->name());
+        sb.append(GetQualifiedTypeName(&varDecl->type()) + L" " + varDecl->name());
         if (auto init = varDecl->initializer())
         {
             if (auto asRayQuery = dynamic_cast<const RayQueryTypeDecl*>(init->type()))
@@ -1005,10 +1022,29 @@ String HLSLGenerator::generate_code(SourceBuilderNew& sb, const AST& ast)
 {
     using namespace skr::CppSL;
 
+    // Build the type-to-namespace mapping
+    build_type_namespace_map(ast);
+
     sb.append(kHLSLHeader);
     sb.endline();
     
     // generate make_array helpers
+    generate_array_helpers(sb, ast);
+
+    // generate namespace forward declarations
+    generate_namespace_declarations(sb, ast);
+
+    // generate declares
+    for (const auto& decl: ast.decls())
+    {
+        visit_decl(sb, decl);
+    }
+
+    return sb.build(SourceBuilderNew::line_builder_code);
+}
+
+void HLSLGenerator::generate_array_helpers(SourceBuilderNew& sb, const AST& ast)
+{
     std::set<uint32_t > array_dims;
     for (auto&& [element, array] : ast.array_types())
     {
@@ -1035,14 +1071,111 @@ String HLSLGenerator::generate_code(SourceBuilderNew& sb, const AST& ast)
     }
     if (array_dims.size() > 0)
         sb.append_line();
+}
 
-    // generate declares
-    for (const auto& decl: ast.decls())
+void HLSLGenerator::generate_namespace_declarations(SourceBuilderNew& sb, const AST& ast)
+{
+    // Generate namespace forward declarations for HLSL
+    // Only generate root namespaces (those without parents) to avoid duplicates
+    bool has_output = false;
+    for (const auto& ns : ast.namespaces())
     {
-        visit_decl(sb, decl);
+        if (ns->parent() == nullptr) // Only process root namespaces
+        {
+            generate_namespace_recursive(sb, ns, 0);
+            has_output = true;
+        }
     }
+    
+    if (has_output)
+        sb.append_line();
+}
 
-    return sb.build(SourceBuilderNew::line_builder_code);
+void HLSLGenerator::generate_namespace_recursive(SourceBuilderNew& sb, const NamespaceDecl* ns, int indent_level)
+{
+    // Skip empty namespaces
+    if (!ns->has_content())
+        return;
+    
+    // Generate namespace opening (compact style)
+    sb.append(L"namespace " + ns->name() + L" { ");
+    
+    // Generate forward declarations for types in this namespace
+    bool has_declarations = false;
+    for (const auto& type : ns->types())
+    {
+        if (!type->is_builtin())
+        {
+            sb.append(L"struct " + type->name() + L"; ");
+            has_declarations = true;
+        }
+    }
+    
+    // Generate forward declarations for functions in this namespace
+    for (const auto& func : ns->functions())
+    {
+        visit(sb, func, FunctionStyle::SignatureOnly);
+        sb.append(L"; ");
+        has_declarations = true;
+    }
+    
+    // Recursively generate nested namespaces
+    for (const auto& nested : ns->nested())
+    {
+        generate_namespace_recursive(sb, nested, indent_level + 1);
+    }
+    
+    // Generate namespace closing
+    sb.append(L"}");
+    if (indent_level == 0) // Only add newline for root namespaces
+        sb.endline();
+    else
+        sb.append(L" ");
+}
+
+void HLSLGenerator::build_type_namespace_map(const AST& ast)
+{
+    // Clear the map first
+    type_namespace_map_.clear();
+    
+    // Helper function to build namespace path
+    std::function<String(const NamespaceDecl*)> build_namespace_path = [&](const NamespaceDecl* ns) -> String {
+        if (!ns || !ns->parent())
+        {
+            return ns ? ns->name() : L"";
+        }
+        String parent_path = build_namespace_path(ns->parent());
+        return parent_path.empty() ? ns->name() : parent_path + L"::" + ns->name();
+    };
+    
+    // Recursively map all types in namespaces
+    std::function<void(const NamespaceDecl*)> map_namespace_types = [&](const NamespaceDecl* ns) {
+        String namespace_path = build_namespace_path(ns);
+        
+        // Map all types in this namespace
+        for (const auto& type : ns->types())
+        {
+            if (!type->is_builtin())
+            {
+                type_namespace_map_[type] = namespace_path;
+            }
+        }
+        
+        // Recursively process nested namespaces
+        for (const auto& nested : ns->nested())
+        {
+            map_namespace_types(nested);
+        }
+    };
+    
+    // Process all root namespaces
+    for (const auto& ns : ast.namespaces())
+    {
+        if (ns->parent() == nullptr) // Only process root namespaces
+        {
+            map_namespace_types(ns);
+        }
+    }
 }
 
 } // namespace skr::CppSL

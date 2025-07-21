@@ -346,6 +346,9 @@ void ASTConsumer::HandleTranslationUnit(clang::ASTContext& Context)
     // translate from stage entries
     for (auto stage : _stages)
         TranslateStageEntry(stage);
+    
+    // Assign translated types/functions/variables to their namespaces
+    AssignDeclsToNamespaces();
 }
 
 bool ASTConsumer::VisitEnumDecl(const clang::EnumDecl* enumDecl)
@@ -356,6 +359,12 @@ bool ASTConsumer::VisitEnumDecl(const clang::EnumDecl* enumDecl)
 bool ASTConsumer::VisitRecordDecl(const clang::RecordDecl* recordDecl)
 {    
     TranslateRecordDecl(recordDecl);
+    return true;
+}
+
+bool ASTConsumer::VisitNamespaceDecl(const clang::NamespaceDecl* namespaceDecl)
+{
+    TranslateNamespaceDecl(namespaceDecl);
     return true;
 }
 
@@ -371,8 +380,7 @@ CppSL::TypeDecl* ASTConsumer::TranslateEnumDecl(const clang::EnumDecl* enumDecl)
     auto UnderlyingType = getType(enumDecl->getIntegerType());
     addType(enumDecl->getTypeForDecl()->getCanonicalTypeInternal(), UnderlyingType);
 
-    auto EnumName = enumDecl->getQualifiedNameAsString();
-    std::replace(EnumName.begin(), EnumName.end(), ':', '_');
+    auto EnumName = enumDecl->getName().str(); // Use short name instead of qualified
     for (auto E : enumDecl->enumerators())
     {
         const auto I = E->getInitVal().getLimitedValue();
@@ -553,12 +561,11 @@ CppSL::TypeDecl* ASTConsumer::TranslateRecordDecl(const clang::RecordDecl* recor
         if (TSD && !TSD->isCompleteDefinition()) return nullptr; // skip no-def template specs
         if (!TSD && TemplateItSelf) return nullptr; // skip template definitions
 
-        auto TypeName = TSD ? std::format("{}_{}", TSD->getQualifiedNameAsString(), next_template_spec_id++) :
-                                recordDecl->getQualifiedNameAsString();
+        auto TypeName = TSD ? std::format("{}_{}", TSD->getName().str(), next_template_spec_id++) :
+                                recordDecl->getName().str(); // Use short name instead of qualified
         if (getType(ThisQualType))
             ReportFatalError(recordDecl, "Duplicate type declaration: {}", TypeName);
 
-        std::replace(TypeName.begin(), TypeName.end(), ':', '_');
         auto NewType = AST.DeclareStructure(ToText(TypeName), {});
         if (NewType == nullptr)
             ReportFatalError(recordDecl, "Failed to create type: {}", TypeName);
@@ -606,6 +613,52 @@ CppSL::TypeDecl* ASTConsumer::TranslateRecordDecl(const clang::RecordDecl* recor
         addType(ThisQualType, NewType);
     }
     return getType(ThisQualType);
+}
+
+CppSL::NamespaceDecl* ASTConsumer::TranslateNamespaceDecl(const clang::NamespaceDecl* namespaceDecl)
+{
+    using namespace clang;
+    
+    if (IsDump(namespaceDecl))
+        namespaceDecl->dump();
+    
+    // Use canonical declaration to handle namespace redeclarations
+    const auto* CanonicalNS = namespaceDecl->getCanonicalDecl();
+    
+    // Check if already processed using canonical declaration
+    if (auto Existed = _namespaces.find(CanonicalNS); Existed != _namespaces.end())
+        return Existed->second;
+    
+    if (IsIgnore(namespaceDecl)) return nullptr; // skip ignored namespaces
+    
+    // Get namespace name and parent
+    auto NamespaceName = CanonicalNS->getName().str();
+    CppSL::NamespaceDecl* ParentNamespace = nullptr;
+    
+    // Handle nested namespaces using canonical declarations
+    if (auto ParentNS = llvm::dyn_cast<clang::NamespaceDecl>(CanonicalNS->getParent()))
+    {
+        ParentNamespace = TranslateNamespaceDecl(ParentNS);
+    }
+    
+    // Create new namespace declaration (structure only, content will be assigned later)
+    auto NewNamespace = AST.DeclareNamespace(ToText(NamespaceName), ParentNamespace);
+    _namespaces[CanonicalNS] = NewNamespace;
+    
+    // Process all redeclarations to collect nested namespace structures
+    for (auto redecl : CanonicalNS->redecls())
+    {
+        for (auto subDecl : redecl->decls())
+        {
+            if (auto SubNamespaceDecl = llvm::dyn_cast<clang::NamespaceDecl>(subDecl))
+            {
+                auto NestedNS = TranslateNamespaceDecl(SubNamespaceDecl);
+                if (NestedNS) NewNamespace->add_nested(NestedNS);
+            }
+        }
+    }
+    
+    return NewNamespace;
 }
 
 const CppSL::TypeDecl* ASTConsumer::TranslateLambda(const clang::LambdaExpr* x)
@@ -1078,8 +1131,8 @@ CppSL::FunctionDecl* ASTConsumer::TranslateFunction(const clang::FunctionDecl *x
             current_stack->_this_redirect = _this->ref();
         }
 
-        auto CxxFunctionName = override_name.empty() ? x->getQualifiedNameAsString() : override_name.str();
-        std::replace(CxxFunctionName.begin(), CxxFunctionName.end(), ':', '_');
+        auto CxxFunctionName = override_name.empty() ? x->getName().str() : override_name.str(); // Use short name
+        // Still need some character replacements for templates
         std::replace(CxxFunctionName.begin(), CxxFunctionName.end(), '<', '_');
         std::replace(CxxFunctionName.begin(), CxxFunctionName.end(), '>', '_');
         std::replace(CxxFunctionName.begin(), CxxFunctionName.end(), ',', '_');
@@ -1752,6 +1805,88 @@ inline static std::string OpKindToName(clang::OverloadedOperatorKind op)
             auto message = std::string("Unsupported operator kind: ") + std::to_string(op);
             llvm::report_fatal_error(message.c_str());
             return "operator_unknown";
+    }
+}
+
+const clang::NamespaceDecl* ASTConsumer::GetDeclNamespace(const clang::Decl* decl) const
+{
+    using namespace clang;
+    
+    if (!decl) 
+        return nullptr;
+    
+    // Walk up the declaration context chain to find the namespace
+    const DeclContext* ctx = decl->getDeclContext();
+    while (ctx && !ctx->isTranslationUnit())
+    {
+        if (auto nsDecl = dyn_cast<clang::NamespaceDecl>(ctx))
+            return nsDecl->getCanonicalDecl(); // Return canonical declaration
+        ctx = ctx->getParent();
+    }
+    
+    return nullptr; // Global scope
+}
+
+void ASTConsumer::AssignDeclsToNamespaces()
+{
+    using namespace clang;
+    
+    // Assign types to namespaces
+    for (const auto& [clangDecl, cppslType] : _tag_types)
+    {
+        if (auto nsDecl = GetDeclNamespace(clangDecl))
+        {
+            if (auto cppslNS = _namespaces.find(nsDecl); cppslNS != _namespaces.end())
+            {
+                cppslNS->second->add_type(cppslType);
+            }
+        }
+    }
+    
+    // Assign functions to namespaces (but exclude methods)
+    for (const auto& [clangFunc, cppslFunc] : _funcs)
+    {
+        // Only assign non-member functions to namespaces
+        // Methods belong to their types, not namespaces
+        if (!llvm::isa<clang::CXXMethodDecl>(clangFunc))
+        {
+            if (auto nsDecl = GetDeclNamespace(clangFunc))
+            {
+                if (auto cppslNS = _namespaces.find(nsDecl); cppslNS != _namespaces.end())
+                {
+                    cppslNS->second->add_function(cppslFunc);
+                }
+            }
+        }
+    }
+    
+    // Assign global variables to namespaces
+    for (const auto& [clangVar, cppslVar] : _vars)
+    {
+        // Only process global variables (not local/parameter variables)
+        if (cppslVar->is_global())
+        {
+            auto globalVar = static_cast<CppSL::GlobalVarDecl*>(cppslVar);
+            if (auto nsDecl = GetDeclNamespace(clangVar))
+            {
+                if (auto cppslNS = _namespaces.find(nsDecl); cppslNS != _namespaces.end())
+                {
+                    cppslNS->second->add_global_var(globalVar);
+                }
+            }
+        }
+    }
+    
+    // Assign enum constants to namespaces
+    for (const auto& [clangEnumConst, cppslGlobalVar] : _enum_constants)
+    {
+        if (auto nsDecl = GetDeclNamespace(clangEnumConst))
+        {
+            if (auto cppslNS = _namespaces.find(nsDecl); cppslNS != _namespaces.end())
+            {
+                cppslNS->second->add_global_var(cppslGlobalVar);
+            }
+        }
     }
 }
 

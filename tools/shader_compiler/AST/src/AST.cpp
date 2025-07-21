@@ -426,6 +426,19 @@ FunctionDecl* AST::DeclareFunction(const Name& name, const TypeDecl* return_type
     return decl;
 }
 
+NamespaceDecl* AST::DeclareNamespace(const Name& name, NamespaceDecl* parent)
+{
+    ReservedWordsCheck(name);
+    auto decl = new NamespaceDecl(*this, name, parent);
+    _decls.emplace_back(decl);
+    _namespaces.emplace_back(decl);
+    if (parent)
+    {
+        parent->add_nested(decl);
+    }
+    return decl;
+}
+
 ParamVarDecl* AST::DeclareParam(EVariableQualifier qualifier, const TypeDecl* type, const Name& name)
 {
     if (type == nullptr) ReportFatalError(L"Param {}: Type cannot be null for parameter declaration", name);
@@ -954,12 +967,6 @@ void AST::DeclareIntrinstics()
         if (pt == BoolType) return Bool4Type;
         return (const TypeDecl*)nullptr;
     }, Sample2DParams);
-
-    // Declare Ray tracing related types
-    auto RayType = DeclareBuiltinType(L"Ray", 32, 16);
-    auto CommittedHitType = DeclareBuiltinType(L"CommittedHit", 24, 4);
-    auto TriangleHitType = DeclareBuiltinType(L"TriangleHit", 20, 4);
-    auto ProceduralHitType = DeclareBuiltinType(L"ProceduralHit", 8, 4);
 
     // RayQuery family concept
     auto RayQueryFamily = DeclareVarConcept(L"RayQueryFamily", 
