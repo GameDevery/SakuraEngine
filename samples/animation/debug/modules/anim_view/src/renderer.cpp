@@ -1,15 +1,56 @@
 #include "AnimView/renderer.hpp"
+#include "SkrRT/ecs/query.hpp"
+#include "AnimView/render_model.h"
 
-skr::AnimViewRenderer* skr::AnimViewRenderer::Create()
+namespace animd
 {
-    return SkrNew<skr::AnimViewRenderer>();
+
+struct AnimViewRendererImpl : public animd::AnimViewRenderer
+{
+    skr::Vector<skr_primitive_draw_t> model_drawcalls;
+    skr_vfs_t* resource_vfs = nullptr;
+    skr::ecs::EntityQuery* effect_query = nullptr;
+
+    AnimViewRendererImpl() {}
+    ~AnimViewRendererImpl() override {}
+    void initialize(skr::RendererDevice* render_device, skr::ecs::World* storage, struct skr_vfs_t* resource_vfs) override
+    {
+        this->resource_vfs = resource_vfs;
+        effect_query = skr::ecs::QueryBuilder(storage)
+                           .ReadAll<anim_debug_render_model_comp_t>()
+                           .commit()
+                           .value();
+
+        // prepare pipeline settings
+        // prepare pipeline
+        // reset render view
+    }
+    void finalize(skr::RendererDevice* renderer) override
+    {
+        auto sweepFunction = [&](sugoi_chunk_view_t* r_cv) {};
+        sugoiQ_get_views(effect_query, SUGOI_LAMBDA(sweepFunction));
+        // free pipeline
+    }
+    void produce_drawcalls(sugoi_storage_t* storage, skr::render_graph::RenderGraph* render_graph) override {}
+    void draw(skr::render_graph::RenderGraph* render_graph) override
+    {
+        // pass -> create frame resources
+        // pass -> execute
+    }
+};
+
+AnimViewRenderer* AnimViewRenderer::Create()
+{
+    return SkrNew<AnimViewRendererImpl>();
 }
 
-void skr::AnimViewRenderer::Destory(AnimViewRenderer* renderer)
+void AnimViewRenderer::Destory(AnimViewRenderer* renderer)
 {
     SkrDelete(renderer);
 }
 
-skr::AnimViewRenderer::~AnimViewRenderer()
+AnimViewRenderer::~AnimViewRenderer()
 {
 }
+
+} // namespace animd

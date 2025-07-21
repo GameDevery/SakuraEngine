@@ -26,7 +26,7 @@ class World;
 } // namespace ecs
 } // namespace skr
 
-namespace skr
+namespace animd
 {
 
 struct ANIM_VIEW_API AnimViewRenderer
@@ -41,4 +41,4 @@ struct ANIM_VIEW_API AnimViewRenderer
     virtual void draw(skr::render_graph::RenderGraph* render_graph) = 0;
 };
 
-} // namespace skr
+} // namespace animd

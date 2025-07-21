@@ -23,7 +23,7 @@ typedef struct animd_ram_io_future_t
     animd_async_io_callback_t callback;
     void* callback_data;
 
-    bool get_status() const SKR_NOEXCEPT
+    ESkrIOStage get_status() const SKR_NOEXCEPT
     {
         return (ESkrIOStage)skr_atomic_load_acquire(&io_status);
     }
