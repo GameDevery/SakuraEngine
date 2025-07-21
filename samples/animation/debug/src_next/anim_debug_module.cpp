@@ -62,7 +62,7 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
         skr::ecs::ComponentView<animd::DummyComponent> dummy;
         uint32_t result = SUGOI_NULL_ENTITY;
     } spawner;
-    world.create_entites(spawner, 1);
+    world.create_entities(spawner, 1);
 
     // query
     struct ReadJob 
