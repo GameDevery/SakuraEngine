@@ -33,5 +33,5 @@ VSOut vertex(VSIn input, [[sv_position]] float4& sv_pos)
 [[fragment_shader("debug_fs")]]
 void model_fs(VSOut input, [[sv_render_target(0)]] float4& sv_color)
 {
-    sv_color = float4(1.0f, 0.0f, 0.0f, 1.0f); // Red color for debugging
+    sv_color = float4(0.3f, 0.2f, 0.1f, 1.0f); // Red color for debugging
 }
