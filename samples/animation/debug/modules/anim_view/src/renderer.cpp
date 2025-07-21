@@ -16,10 +16,6 @@ struct AnimViewRendererImpl : public animd::AnimViewRenderer
     void initialize(skr::RendererDevice* render_device, skr::ecs::World* storage, struct skr_vfs_t* resource_vfs) override
     {
         this->resource_vfs = resource_vfs;
-        effect_query = skr::ecs::QueryBuilder(storage)
-                           .ReadAll<anim_debug_render_model_comp_t>()
-                           .commit()
-                           .value();
 
         // prepare pipeline settings
         // prepare pipeline
@@ -27,8 +23,6 @@ struct AnimViewRendererImpl : public animd::AnimViewRenderer
     }
     void finalize(skr::RendererDevice* renderer) override
     {
-        auto sweepFunction = [&](sugoi_chunk_view_t* r_cv) {};
-        sugoiQ_get_views(effect_query, SUGOI_LAMBDA(sweepFunction));
         // free pipeline
     }
     void produce_drawcalls(sugoi_storage_t* storage, skr::render_graph::RenderGraph* render_graph) override {}

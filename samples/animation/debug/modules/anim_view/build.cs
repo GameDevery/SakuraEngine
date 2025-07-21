@@ -12,10 +12,9 @@ public static class AnimViewModule
             .Depend(Visibility.Public, "SkrImGui", "SkrAnim")
             .IncludeDirs(Visibility.Public, "include")
             .Depend(Visibility.Public, "AppSampleCommon")
-            .AddCppFiles("src/**.cpp");
-            // .AddMetaHeaders(
-            //     "include/AnimView/animation.h",
-            //     "include/AnimView/renderer.h"
-            // );
+            .AddCppFiles("src/**.cpp")
+            .AddMetaHeaders(
+                "include/AnimView/components.h"
+            );
     }
 }
