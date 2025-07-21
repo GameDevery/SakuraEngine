@@ -48,7 +48,7 @@ public:
             }
             uint32_t result = SUGOI_NULL_ENTITY;
         } spawner;
-        world.create_entites(spawner, 1);
+        world.create_entities(spawner, 1);
         return spawner.result;
     }
     
@@ -83,7 +83,7 @@ public:
             }
             std::vector<sugoi_entity_t> entities;
         } spawner;
-        world.create_entites(spawner, count);
+        world.create_entities(spawner, count);
         return spawner.entities;
     }
 };
