@@ -131,6 +131,7 @@ public:
     std::span<Decl* const> decls() const { return _decls; }
     std::span<Stmt* const> stmts() const { return _stmts; }
     std::span<TypeDecl* const> types() const { return _types; }
+    const auto& array_types() const { return _arrs; }
     std::span<GlobalVarDecl* const> global_vars() const { return _globals; }
     std::span<FunctionDecl* const> funcs() const { return _funcs; }
 

@@ -75,6 +75,7 @@ struct TypeDecl : public NamedDecl
 {
 public:
     bool is_builtin() const { return _is_builtin; }
+    bool is_array() const;
     bool is_vector() const;
     bool is_matrix() const;
     bool is_resource() const;

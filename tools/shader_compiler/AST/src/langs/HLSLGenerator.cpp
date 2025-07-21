@@ -458,19 +458,24 @@ void HLSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt
         }
         else if (auto AsArray = dynamic_cast<const ArrayTypeDecl*>(ctorExpr->type()))
         {
-            if (ctorExpr->args().size() != 0)
-                sb.append(L"[NOT SUPPORTED ARRAY CONSTRUCTOR]");
-            else
-                sb.append(L"(" + GetTypeName(ctorExpr->type()) + L")0");
+            const auto N = AsArray->size() / AsArray->element()->size();
+            sb.append(L"make_array" + std::to_wstring(N) + L"<" + GetTypeName(AsArray->element()) + L", " + std::to_wstring(N) + L">(");
+            for (size_t i = 0; i < ctorExpr->args().size(); i++)
+            {
+                auto arg = ctorExpr->args()[i];
+                if (i > 0)
+                {
+                    sb.append(L", ");
+                }
+                visitExpr(sb, arg);
+            }
+            sb.append(L")");
         }
         else
         {
             std::span<Expr* const> args;
             std::vector<Expr*> modified_args;
             int32_t fillVectorArgsWithZero = 0;
-            auto ctorLeft = GetTypeName(ctorExpr->type()) + L"(";
-            auto ctorRight = L")";
-
             if (auto AsVector = dynamic_cast<const VectorTypeDecl*>(ctorExpr->type());
                 AsVector && ((ctorExpr->args().size() == 0) || (ctorExpr->args().size() == 1)))
             {
@@ -487,11 +492,9 @@ void HLSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt
             }
             
             if (args.empty())
-            {
                 args = ctorExpr->args();
-            }
 
-            sb.append(ctorLeft);
+            sb.append(GetTypeName(ctorExpr->type()) + L"(");
             if (fillVectorArgsWithZero > 0)
             {
                 for (int32_t j = 0; j < fillVectorArgsWithZero; j++)
@@ -513,7 +516,7 @@ void HLSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt
                     visitExpr(sb, arg);
                 }
             }
-            sb.append(ctorRight);
+            sb.append(L")");
         }
     }
     else if (auto continueStmt = dynamic_cast<const ContinueStmt*>(stmt))
@@ -704,6 +707,8 @@ void HLSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt
         auto to_access = dynamic_cast<const Expr*>(access->children()[0]);
         auto index = dynamic_cast<const Expr*>(access->children()[1]);
         visitExpr(sb, to_access);
+        if (to_access->type()->is_array())
+            sb.append(L".data");
         sb.append(L"[");
         visitExpr(sb, index);
         sb.append(L"]");
@@ -901,16 +906,17 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* 
                 // HLSL: SV_Position is the output of vertex shader, so we need to add it to fragment shader
                 sb.append(L" : SV_Target");
             }
-            sb.endline();
         }
 
         // generate body
         if (style == FunctionStyle::SignatureOnly)
         {
             sb.append(L";");
+            sb.endline();
         }
         else
         {
+            sb.endline();
             visitExpr(sb, funcDecl->body());
             sb.endline();
         }
@@ -966,8 +972,7 @@ void HLSLGenerator::visit_decl(SourceBuilderNew& sb, const skr::CppSL::Decl* dec
 }
 
 static const skr::CppSL::String kHLSLHeader = LR"(
-template <typename _ELEM, uint64_t N> 
-using array = _ELEM[N];
+template <typename _ELEM, uint64_t N> struct array { _ELEM data[N]; };
 
 template <typename _ELEM> void buffer_write(RWStructuredBuffer<_ELEM> buffer, uint index, _ELEM value) { buffer[index] = value; }
 template <typename _ELEM> _ELEM buffer_read(RWStructuredBuffer<_ELEM> buffer, uint index) { return buffer[index]; }
@@ -994,7 +999,6 @@ RayDesc create_ray(float3 origin, float3 dir, float tmin, float tmax) { RayDesc 
 #define ray_query_proceed(q) (q).Proceed()
 #define ray_query_committed_triangle_bary(q) (q).CommittedTriangleBarycentrics()
 #define ray_query_committed_status(q) (q).CommittedStatus()
-
 )";
 
 String HLSLGenerator::generate_code(SourceBuilderNew& sb, const AST& ast)
@@ -1004,6 +1008,35 @@ String HLSLGenerator::generate_code(SourceBuilderNew& sb, const AST& ast)
     sb.append(kHLSLHeader);
     sb.endline();
     
+    // generate make_array helpers
+    std::set<uint32_t > array_dims;
+    for (auto&& [element, array] : ast.array_types())
+    {
+        const auto N = array->size() / element.first->size();
+        if (!array_dims.contains(N))
+        {
+            String args = L"";
+            String exprs = L"";
+            for (uint32_t i = 0; i < N; i++)
+            {
+                if (i > 0)
+                    args += L", ";
+                args += L"T a" + std::to_wstring(i) + L" = (T)0";
+                exprs += L"a.data[" + std::to_wstring(i) + L"] = a" + std::to_wstring(i) + L";";
+            }
+            String _template = L"template <typename T, uint64_t N> array<T, N>";
+            auto _signature = L"make_array" + std::to_wstring(N)+ L"(" + args + L")";
+            auto impl = L"{ array<T, N> a; " + exprs + L"; return a; }";
+            sb.append(_template + L" " + _signature + L" " + impl);
+            sb.endline();
+
+            array_dims.insert(N);
+        }
+    }
+    if (array_dims.size() > 0)
+        sb.append_line();
+
+    // generate declares
     for (const auto& decl: ast.decls())
     {
         visit_decl(sb, decl);

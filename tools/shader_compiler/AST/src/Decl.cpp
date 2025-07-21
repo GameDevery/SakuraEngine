@@ -84,6 +84,11 @@ const Stmt* TypeDecl::body() const
     return nullptr;
 }
 
+bool TypeDecl::is_array() const
+{
+    return dynamic_cast<const ArrayTypeDecl*>(this) != nullptr;
+}
+
 bool TypeDecl::is_vector() const
 {
     return dynamic_cast<const VectorTypeDecl*>(this) != nullptr;
