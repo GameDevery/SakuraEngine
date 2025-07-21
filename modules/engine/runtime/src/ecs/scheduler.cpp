@@ -1,4 +1,5 @@
 #include "SkrRT/ecs/scheduler.hpp"
+#include "SkrCore/async/wait_timeout.hpp"
 #include "./../sugoi/impl/query.hpp"
 
 namespace skr::ecs
@@ -59,7 +60,7 @@ void WorkUnitGenerator::process(skr::RC<TaskSignature> new_task)
 
         CollectContext* ctx = (CollectContext*)usr_data;
         auto& unit = ctx->work_group->units.try_add_default(view->chunk).value();
-        unit.chunk_view = *view; 
+        unit.chunk_view = *view;
         unit.finish.add(1);
         for (auto dependency : ctx->work_group->dependencies)
         {
@@ -81,7 +82,7 @@ void WorkUnitGenerator::process(skr::RC<TaskSignature> new_task)
         {
             if (bool confict = sugoiQ_match_group(static_dependency->query, group))
             {
-                ctx.work_group->dependencies.add(static_dependency);            
+                ctx.work_group->dependencies.add(static_dependency);
             }
         }
         sugoiQ_in_group(ctx.query, group, collect_units, &ctx);
@@ -89,7 +90,13 @@ void WorkUnitGenerator::process(skr::RC<TaskSignature> new_task)
     sugoiQ_get_groups(ctx.query, filter_group, &ctx);
 }
 
-void TaskScheduler::add_task(sugoi_query_t* query, skr::stl_function<void(sugoi_chunk_view_t)>&& func, uint32_t batch_size)
+TaskScheduler::TaskScheduler(const ServiceThreadDesc& desc, skr::task::scheduler_t& scheduler) SKR_NOEXCEPT
+    : AsyncService(desc),
+      _scheduler(scheduler)
+{
+}
+
+void TaskScheduler::add_task(sugoi_query_t* query, Task::Type&& func, uint32_t batch_size)
 {
     auto new_task = skr::RC<TaskSignature>::New();
     new_task->query = query;
@@ -117,7 +124,9 @@ void TaskScheduler::add_task(sugoi_query_t* query, skr::stl_function<void(sugoi_
 
 void TaskScheduler::add_task(skr::RC<TaskSignature> task)
 {
-    _raw_tasks.enqueue(task);
+    _tasks.enqueue(task);
+    skr_atomic_fetch_add(&_enqueued_tasks, 1);
+    awake();
 }
 
 // clang-format off
@@ -152,7 +161,7 @@ void TaskScheduler::dispatch(skr::RC<TaskSignature> signature)
                 SKR_DEFER({ running.decrement(); unit.finish.decrement(); });
                 if (batch_count == 1)
                 {
-                    task->func(unit.chunk_view);
+                    task->func(unit.chunk_view, unit.chunk_view.count, 0);
                 }
                 else
                 {
@@ -163,10 +172,11 @@ void TaskScheduler::dispatch(skr::RC<TaskSignature> signature)
                     {
                         const auto remain = unit.chunk_view.count - i * batch_size;
                         auto view = unit.chunk_view;
-                        view.count = std::min(remain, batch_size);
-                        view.start = unit.chunk_view.start + i * batch_size;
-                        skr::task::schedule([task, view, batch_counter]() mutable {
-                            task->func(view);
+                        const auto count = std::min(remain, batch_size);
+                        const auto offset = i * batch_size;
+                        skr::task::schedule(
+                        [task, view, batch_counter, count, offset]() mutable {
+                            task->func(view, count, offset);
                             batch_counter.decrement();
                         }, nullptr);
                     }
@@ -182,25 +192,71 @@ void TaskScheduler::dispatch(skr::RC<TaskSignature> signature)
 }
 // clang-format on
 
-void TaskScheduler::run()
+void TaskScheduler::on_run() SKR_NOEXCEPT
+{
+    _scheduler.bind();
+}
+
+void TaskScheduler::on_exit() SKR_NOEXCEPT
+{
+    _scheduler.unbind();
+}
+
+void TaskScheduler::run() SKR_NOEXCEPT
+{
+    AsyncService::run();
+}
+
+AsyncResult TaskScheduler::serve() SKR_NOEXCEPT
 {
     skr::RC<TaskSignature> task;
-    while (_raw_tasks.try_dequeue(task))
+    if (_tasks.try_dequeue(task))
     {
         _analyzer.process(task);
         _generator.process(task);
-        _tasks.enqueue(task);
-    }
 
-    while (_tasks.try_dequeue(task))
-    {
         dispatch(task);
+        skr_atomic_fetch_add(&_enqueued_tasks, -1);
+
+        _dispatched_tasks.enqueue(task);
     }
+    else
+    {
+        sleep();
+    }
+    return ASYNC_RESULT_OK;
+}
+
+void TaskScheduler::flush_all()
+{
+    while (skr_atomic_load(&_enqueued_tasks) != 0)
+        ;
 }
 
 void TaskScheduler::sync_all()
 {
+    flush_all();
     running.wait(true);
+}
+
+void TaskScheduler::stop_and_exit()
+{
+    flush_all();
+    sync_all();
+
+    if (get_status() == skr::ServiceThread::Status::kStatusRunning)
+    {
+        SKR_LOG_BACKTRACE(u8"runner: request to stop.");
+        setServiceStatus(SKR_ASYNC_SERVICE_STATUS_QUITING);
+        stop();
+    }
+    else
+    {
+        SKR_LOG_BACKTRACE(u8"runner: stop already requested.");
+    }
+
+    wait_timeout<u8"WaitTaskScheduler">([&] { return get_status() == skr::ServiceThread::kStatusStopped; });
+    exit();
 }
 
 } // namespace skr::ecs

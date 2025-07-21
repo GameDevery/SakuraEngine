@@ -378,7 +378,7 @@ UBool UnifiedCache::_poll(
 void UnifiedCache::_get(
         const CacheKeyBase &key,
         const SharedObject *&value,
-        const void *creationContext,
+        const void *TaskContext,
         UErrorCode &status) const {
     U_ASSERT(value == NULL);
     U_ASSERT(status == U_ZERO_ERROR);
@@ -391,7 +391,7 @@ void UnifiedCache::_get(
     if (U_FAILURE(status)) {
         return;
     }
-    value = key.createObject(creationContext, status);
+    value = key.createObject(TaskContext, status);
     U_ASSERT(value == NULL || value->hasHardReferences());
     U_ASSERT(value != NULL || status != U_ZERO_ERROR);
     if (value == NULL) {

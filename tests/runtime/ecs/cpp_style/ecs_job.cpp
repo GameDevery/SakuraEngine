@@ -1,26 +1,26 @@
 #include "cpp_style.hpp"
 #include "SkrTask/parallel_for.hpp"
-#include "SkrRT/ecs/scheduler.hpp"
+#include "SkrRT/ecs/world.hpp"
 #include "SkrCore/log.h"
 
 struct ECSJobs {
     ECSJobs() SKR_NOEXCEPT
+        : world(scheduler)
     {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1200));
+        // std::this_thread::sleep_for(std::chrono::milliseconds(1200));
+        scheduler.initialize(skr::task::scheudler_config_t());
+        scheduler.bind();
+     
         world.initialize();
 
         spawnIntEntities();
-
-        scheduler.initialize(skr::task::scheudler_config_t());
-        scheduler.bind();
     }
 
     ~ECSJobs() SKR_NOEXCEPT
     {
         world.finalize();
         scheduler.unbind();
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+        // std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     }
 
     void spawnIntEntities()
@@ -28,13 +28,13 @@ struct ECSJobs {
         SkrZoneScopedN("spawnIntEntities");
         struct Spawner
         {
-            void build(skr::ecs::CreationBuilder& Builder)
+            void build(skr::ecs::ArchetypeBuilder& Builder)
             {
                 Builder.add_component(&Spawner::ints)
                        .add_component(&Spawner::floats);
             }
 
-            void run(skr::ecs::CreationContext& Context)
+            void run(skr::ecs::TaskContext& Context)
             {
                 memset(&ints[0], 0, sizeof(IntComponent) * Context.size());
                 memset(&floats[0], 0, sizeof(FloatComponent) * Context.size());
@@ -55,110 +55,143 @@ TEST_CASE_METHOD(ECSJobs, "WRW")
 {
     SkrZoneScopedN("ECSJobs::WRW");
 
-    auto ROQuery = skr::ecs::QueryBuilder(&world)
-            .ReadAll<IntComponent>()
-            .commit().value();
-    auto RWQuery = skr::ecs::QueryBuilder(&world)
-            .ReadWriteAll<IntComponent>()
-            .commit().value();
-    SKR_DEFER({
-        world.destroy_query(ROQuery);
-        world.destroy_query(RWQuery);
-    });
+    skr::ServiceThreadDesc desc = {
+        .name = u8"ECSJob-TaskScheduler",
+        .priority = SKR_THREAD_ABOVE_NORMAL
+    };
 
-    skr::ecs::TaskScheduler TS;
-    auto WJob0 = [=](sugoi_chunk_view_t view) {
-        SkrZoneScopedN("WJob0");
-        auto ints = sugoi::get_owned<IntComponent>(&view);
-        for (auto i = 0; i < view.count; i++)
+    struct WriteJob0
+    {
+        void build(skr::ecs::AccessBuilder& Builder)
         {
-            EXPECT_EQ(ints[i].v, 0);
-            ints[i].v = ints[i].v + 1;
+            Builder.write(&WriteJob0::ints);
         }
-    };
-    auto RJob = [=](sugoi_chunk_view_t view) {
-        SkrZoneScopedN("RJob");
-        auto ints = sugoi::get_owned<const IntComponent>(&view);
-        for (auto i = 0; i < view.count; i++)
+        void run(skr::ecs::TaskContext& Context)
         {
-            EXPECT_EQ(ints[i].v, 1);
+            SkrZoneScopedN("WriteJob0");
+            for (auto i = 0; i < Context.size(); i++)
+            {
+                EXPECT_EQ(ints[i].v, 0);
+                ints[i].v = ints[i].v + 1;
+            }
         }
-    };
-    auto WJob1 = [=](sugoi_chunk_view_t view) {
-        SkrZoneScopedN("WJob1");
-        auto ints = sugoi::get_owned<IntComponent>(&view);
-        for (auto i = 0; i < view.count; i++)
+        skr::ecs::ComponentView<IntComponent> ints;
+    } wjob0;
+    auto q0 = world.dispatch_task(wjob0, 1'280, nullptr);
+
+    struct ReadJob
+    {
+        void build(skr::ecs::AccessBuilder& Builder)
         {
-            EXPECT_EQ(ints[i].v, 1);
-            ints[i].v = ints[i].v + 1;
+            Builder.read(&ReadJob::ints);
         }
-    };
-    TS.add_task(RWQuery, std::move(WJob0), 1'280);
-    TS.add_task(ROQuery, std::move(RJob), 1'280);
-    TS.add_task(RWQuery, std::move(WJob1), 1'280);
-    TS.run();
-    TS.sync_all();
+        void run(skr::ecs::TaskContext& Context)
+        {
+            SkrZoneScopedN("ReadJob");
+            for (auto i = 0; i < Context.size(); i++)
+            {
+                EXPECT_EQ(ints[i].v, 1);
+            }
+        }
+        skr::ecs::ComponentView<const IntComponent> ints;
+    } rjob;
+    auto q1 = world.dispatch_task(rjob, 1'280, nullptr);
+
+    struct WriteJob1
+    {
+        void build(skr::ecs::AccessBuilder& Builder)
+        {
+            Builder.write(&WriteJob1::ints);
+        }
+        void run(skr::ecs::TaskContext& Context)
+        {
+            SkrZoneScopedN("WriteJob1");
+            for (auto i = 0; i < Context.size(); i++)
+            {
+                EXPECT_EQ(ints[i].v, 1);
+                ints[i].v = ints[i].v + 1;
+            }
+        }
+        skr::ecs::ComponentView<IntComponent> ints;
+    } wjob1;
+    world.dispatch_task(wjob1, 1'280, q0);
+
+    world.get_scheduler()->stop_and_exit();
+
+    world.destroy_query(q0);
+    world.destroy_query(q1);
 }
 
 TEST_CASE_METHOD(ECSJobs, "WRW-Complex")
 {
     SkrZoneScopedN("ECSJobs::WRW-Complex");
 
-    auto ROQuery = skr::ecs::QueryBuilder(&world)
-            .ReadAll<IntComponent>()
-            .commit().value();
-    auto RWIntQuery = skr::ecs::QueryBuilder(&world)
-            .ReadWriteAll<IntComponent>()
-            .commit().value();
-    auto RWFloatQuery = skr::ecs::QueryBuilder(&world)
-            .ReadWriteAll<FloatComponent>()
-            .commit().value();
-    SKR_DEFER({
-        world.destroy_query(ROQuery);
-        world.destroy_query(RWIntQuery);
-        world.destroy_query(RWFloatQuery);
-    });
+    struct WriteInts
+    {
+        void build(skr::ecs::AccessBuilder& Builder)
+        {
+            Builder.write(&WriteInts::ints);
+        }
+        void run(skr::ecs::TaskContext& Context)
+        {
+            SkrZoneScopedN("WriteInts");
+            for (auto i = 0; i < Context.size(); i++)
+            {
+                ints[i].v = ints[i].v + 1;
+            }
+        }
+        skr::ecs::ComponentView<IntComponent> ints;
+    } writeInts;
+    auto q0 = world.dispatch_task(writeInts, 12'800, nullptr);
 
-    skr::ecs::TaskScheduler TS;
-    auto WriteInts = [=](sugoi_chunk_view_t view) {
-        SkrZoneScopedN("WriteInts");
-        auto ints = sugoi::get_owned<IntComponent>(&view);
-        for (auto i = 0; i < view.count; i++)
+    struct WriteFloats
+    {
+        void build(skr::ecs::AccessBuilder& Builder)
         {
-            ints[i].v = ints[i].v + 1;
+            Builder.write(&WriteFloats::floats);
         }
-    };
-    auto WriteFloats = [=](sugoi_chunk_view_t view) {
-        SkrZoneScopedN("WriteFloats");
-        auto floats = sugoi::get_owned<FloatComponent>(&view);
-        for (auto i = 0; i < view.count; i++)
+        void run(skr::ecs::TaskContext& Context)
         {
-            floats[i].v = floats[i].v + 1.f;
-            floats[i].v = floats[i].v + 1.f;
+            SkrZoneScopedN("WriteFloats");
+            for (auto i = 0; i < Context.size(); i++)
+            {
+                floats[i].v = floats[i].v + 1.f;
+                floats[i].v = floats[i].v + 1.f;
+            }
         }
-    };
-    auto ReadJob = [=](sugoi_chunk_view_t view) {
-        SkrZoneScopedN("ReadOnlyJob");
-        auto ints = sugoi::get_owned<const IntComponent>(&view);
-        // use an int-only query to schedule a job but reads floats
-        // FloatComponents will not be synchronized but you can still read
-        // which is an unsafe operation
-        auto floats = sugoi::get_owned<const FloatComponent>(&view);
-        for (auto i = 0; i < view.count; i++)
+        skr::ecs::ComponentView<FloatComponent> floats;
+    } writeFloats;
+    auto q1 = world.dispatch_task(writeFloats, 12'800, nullptr);
+
+    struct ReadJob
+    {
+        void build(skr::ecs::AccessBuilder& Builder)
         {
-            EXPECT_EQ(ints[i].v, 1);
-            const auto cond0 = floats[i].v == 0.f;
-            const auto cond1 = floats[i].v == 1.f;
-            const auto cond2 = floats[i].v == 2.f;
-            const auto cond3 = floats[i].v == 3.f;
-            const auto cond4 = floats[i].v == 4.f;
-            const auto cond = cond0 || cond1 || cond2 || cond3 || cond4;
-            EXPECT_TRUE(cond);
+            Builder.read(&ReadJob::ints).read(&ReadJob::floats);
         }
-    };
-    TS.add_task(RWIntQuery, std::move(WriteInts), 12'80);
-    TS.add_task(RWFloatQuery, std::move(WriteFloats), 12'800);
-    TS.add_task(ROQuery, std::move(ReadJob), 1'280);
-    TS.run();
-    TS.sync_all();
+        void run(skr::ecs::TaskContext& Context)
+        {
+            SkrZoneScopedN("ReadOnlyJob");
+            for (auto i = 0; i < Context.size(); i++)
+            {
+                EXPECT_EQ(ints[i].v, 1);
+                const auto cond0 = floats[i].v == 0.f;
+                const auto cond1 = floats[i].v == 1.f;
+                const auto cond2 = floats[i].v == 2.f;
+                const auto cond3 = floats[i].v == 3.f;
+                const auto cond4 = floats[i].v == 4.f;
+                const auto cond = cond0 || cond1 || cond2 || cond3 || cond4;
+                EXPECT_TRUE(cond);
+            }
+        }
+        skr::ecs::ComponentView<const IntComponent> ints;
+        skr::ecs::ComponentView<const FloatComponent> floats;
+    } readJob;
+    auto q2 = world.dispatch_task(readJob, 1'280, nullptr);
+
+    world.get_scheduler()->stop_and_exit();
+
+    world.destroy_query(q0);
+    world.destroy_query(q1);
+    world.destroy_query(q2);
 }

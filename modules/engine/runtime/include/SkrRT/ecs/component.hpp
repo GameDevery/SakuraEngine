@@ -5,6 +5,7 @@
 namespace skr::ecs {
 
 struct World;
+using TypeIndex = sugoi_type_index_t;
 
 template <typename T, typename = void>
 struct ComponentStorage
@@ -41,12 +42,13 @@ concept EntityConcept = std::is_same_v<T, Entity>;
 struct ComponentViewBase
 {
 protected:
-    ComponentViewBase(void* ptr = nullptr, uint32_t local_type = 0)
-        : _ptr(ptr), _local_type(local_type) {}
+    ComponentViewBase(void* ptr = nullptr, uint32_t local_type = 0, uint32_t offset = 0)
+        : _ptr(ptr), _local_type(local_type), _offset(offset) {}
     friend struct World;
-    friend struct CreationContext;
+    friend struct TaskContext;
     void* _ptr;
     uint32_t _local_type;
+    uint32_t _offset;
 };
 
 template <typename T>
@@ -56,21 +58,22 @@ public:
     using Storage = typename ComponentStorage<T>::Type;
     Storage& operator[](int32_t Index)
     {
-        return ((Storage*)_ptr)[Index];
+        return ((Storage*)_ptr)[Index + _offset];
     }
 
     explicit operator bool() const
     {
         return _ptr != nullptr;
     }
+    
     ComponentView()
         : ComponentViewBase(nullptr, 0) {}
 
 protected:
     friend struct World;
-    friend struct CreationContext;
-    ComponentView(T* ptr, uint32_t local_type)
-        : ComponentViewBase(ptr, local_type) {}
+    friend struct TaskContext;
+    ComponentView(T* ptr, uint32_t local_type, uint32_t offset)
+        : ComponentViewBase(ptr, local_type, offset) {}
 };
 
 struct SubQuery
@@ -89,7 +92,7 @@ struct ComponentAccessorBase
 {
     sugoi_storage_t* World;
     SubQuery BoundQuery;
-    sugoi_type_index_t Type;
+    TypeIndex Type;
     sugoi_chunk_view_t CachedView;
     void* CachedPtr;
 };

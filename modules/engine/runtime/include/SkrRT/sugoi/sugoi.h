@@ -1131,11 +1131,11 @@ R* get_owned(sugoi_chunk_view_t* view)
     }
 }
 
-template <typename T>
-skr::span<T> get_components(sugoi_chunk_view_t* view)
+template <typename T, typename R = T>
+skr::span<R> get_components(sugoi_chunk_view_t* view)
 {
-    if (auto ptrs = get_owned<T>(view))
-        return skr::span<T>(ptrs, view->count);
+    if (auto ptrs = get_owned<T, R>(view))
+        return skr::span<R>(ptrs, view->count);
     return {};
 }
 

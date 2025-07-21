@@ -1,7 +1,6 @@
 #pragma once
 #include "SkrBase/types/expected.hpp"
-#include "SkrCore/memory/rc.hpp"
-#include "SkrRT/ecs/world.hpp"
+#include "SkrRT/ecs/component.hpp"
 
 namespace skr::ecs {
 
@@ -25,11 +24,7 @@ enum class Presence : uint8_t
 struct QueryBuilder
 {
 public:
-    QueryBuilder(World* world)
-        : world(world)
-    {
-
-    }
+    SKR_RUNTIME_API QueryBuilder(World* world) SKR_NOEXCEPT;
 
     template <typename...Ts, typename...Idxs>
     QueryBuilder& ReadWriteAll(Idxs... idxs) { return All<false, Ts...>(idxs...); }
@@ -54,38 +49,7 @@ public:
         return *this;
     }
 
-    QueryBuilderResult commit() SKR_NOEXCEPT
-    {
-        sugoi_parameters_t parameters;
-        parameters.types = types.data();
-        parameters.accesses = ops.data();
-        parameters.length = types.size();    
-
-        SKR_DECLARE_ZERO(sugoi_filter_t, filter);
-        all.sort([](auto a, auto b) { return a < b; });
-        filter.all.data = all.data();
-        filter.all.length = all.size();
-        filter.none.data = none.data();
-        filter.none.length = none.size();
-
-        auto q = sugoiQ_create(world->get_storage(), &filter, &parameters);
-        if (q)
-        {
-            SKR_DECLARE_ZERO(sugoi_meta_filter_t, meta_filter);
-            if (all_meta.size())
-            {
-                meta_filter.all_meta.data = all_meta.data();
-                meta_filter.all_meta.length = all_meta.size();
-            }
-            if (none_meta.size())
-            {
-                meta_filter.none_meta.data = none_meta.data();
-                meta_filter.none_meta.length = none_meta.size();
-            }
-            sugoiQ_set_meta(q, &meta_filter);
-        }
-        return (EntityQuery*)q;
-    }
+    SKR_RUNTIME_API QueryBuilderResult commit() SKR_NOEXCEPT;
 
     template <typename...Ts, typename...Idxs>
     QueryBuilder& None(Idxs... idxs)
@@ -142,10 +106,10 @@ private:
     skr::InlineVector<sugoi_entity_t, 4> all_meta;
     skr::InlineVector<sugoi_entity_t, 4> none_meta;
 
-    skr::InlineVector<sugoi_type_index_t, 8> all;
-    skr::InlineVector<sugoi_type_index_t, 4> none;
-    skr::InlineVector<sugoi_type_index_t, 1> share;
-    skr::InlineVector<sugoi_type_index_t, 8> types;
+    skr::InlineVector<TypeIndex, 8> all;
+    skr::InlineVector<TypeIndex, 4> none;
+    skr::InlineVector<TypeIndex, 1> share;
+    skr::InlineVector<TypeIndex, 8> types;
     skr::InlineVector<sugoi_operation_t, 8> ops;
 };
 
