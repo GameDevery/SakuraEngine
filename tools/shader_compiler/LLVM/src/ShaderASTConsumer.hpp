@@ -24,7 +24,7 @@ public:
     const skr::CppSL::TypeDecl* methodThisType() const;
 
     std::map<const clang::Expr*, skr::CppSL::Expr*> _member_redirects;
-    skr::CppSL::Expr* _this_redirect;
+    skr::CppSL::Expr* _this_redirect = nullptr;
     std::map<const clang::VarDecl*, skr::CppSL::ParamVarDecl*> _value_redirects;
     std::vector<skr::CppSL::ParamVarDecl*> _captured_params;
     struct CapturedParamInfo

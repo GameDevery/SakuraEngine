@@ -4,7 +4,7 @@
 #include "./../numeric.hpp"
 
 namespace skr::shader {
-struct alignas(16) Ray {
+struct Ray {
 	Ray() = default;
 	Ray(const float3& origin, const float3& dir, float t_min = 0.0f, float t_max = 1e30f)
 		: t_min(t_min), t_max(t_max) {
@@ -24,19 +24,11 @@ struct alignas(16) Ray {
 	float t_max = 1e30f;
 };
 
-/* TODO
-enum struct HitType : uint32 {
+enum struct HitType : uint32
+{
     Miss = 0,
     HitTriangle = 1,
     HitProcedural = 2
-};
-*/
-
-using HitType = uint32;
-trait HitTypes {
-	static constexpr HitType Miss = 0;
-	static constexpr HitType HitTriangle = 1;
-	static constexpr HitType HitProcedural = 2;
 };
 
 struct CommittedHit {
@@ -46,13 +38,13 @@ struct CommittedHit {
 	HitType hit_type;
 	float ray_t;
 	[[nodiscard]] bool miss() const {
-		return hit_type == HitTypes::Miss;
+		return hit_type == HitType::Miss;
 	}
 	[[nodiscard]] bool hit_triangle() const {
-		return hit_type == HitTypes::HitTriangle;
+		return hit_type == HitType::HitTriangle;
 	}
 	[[nodiscard]] bool hit_procedural() const {
-		return hit_type == HitTypes::HitProcedural;
+		return hit_type == HitType::HitProcedural;
 	}
 	template<concepts::float_family T>
 	T interpolate(const T& a, const T& b, const T& c) {

@@ -50,7 +50,7 @@ public:
     IfStmt* If(Expr* cond, CompoundStmt* then_body, CompoundStmt* else_body = nullptr);
     InitListExpr* InitList(std::span<Expr*> exprs);
     ImplicitCastExpr* ImplicitCast(const TypeDecl* type, Expr* expr);
-    MethodExpr* Method(DeclRefExpr* base, const MethodDecl* method);
+    MethodExpr* Method(Expr* base, const MethodDecl* method);
     DeclRefExpr* Ref(const Decl* decl);
     ReturnStmt* Return(Expr* expr);
     StaticCastExpr* StaticCast(const TypeDecl* type, Expr* expr);
