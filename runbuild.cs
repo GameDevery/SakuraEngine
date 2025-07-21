@@ -48,7 +48,7 @@ public abstract class CommandBase
     public bool UseShaDepend { get; set; } = false;
 
     [CmdOption(Name = "category", ShortName = 'c', Help = "Build tools", IsRequired = false)]
-    public string CategoryString { get; set; } = "modules";
+    public string CategoryString { get; set; } = "all";
 
     [CmdOption(Name = "toolchain", Help = "Toolchain to use", IsRequired = false)]
     public string ToolchainName { get; set; } = OperatingSystem.IsWindows() ? "clang-cl" : "clang";

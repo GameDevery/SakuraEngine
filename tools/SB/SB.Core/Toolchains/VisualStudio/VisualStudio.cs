@@ -114,7 +114,14 @@ namespace SB.Core
         }
 
         static readonly Dictionary<Architecture, string> archStringMap = new Dictionary<Architecture, string> { { Architecture.X86, "x86" }, { Architecture.X64, "x64" }, { Architecture.ARM64, "arm64" } };
-        
+
+        private bool IsInVisualStudio()
+        {
+            var vsEdition = Environment.GetEnvironmentVariable("VisualStudioEdition");
+            bool IsVS = !string.IsNullOrEmpty(vsEdition);
+            return IsVS;
+        }
+
         private bool IsInDeveloperPrompt()
         {
             // 检查关键的 VS Developer Prompt 环境变量
@@ -123,24 +130,25 @@ namespace SB.Core
             var vsInstallDir = Environment.GetEnvironmentVariable("VSINSTALLDIR");
             var vcInstallDir = Environment.GetEnvironmentVariable("VCINSTALLDIR");
             var vscmdVer = Environment.GetEnvironmentVariable("VSCMD_VER");
-            
+
             // 确保是真正的 Developer Prompt，而不仅仅是安装了 VS
-            return !string.IsNullOrEmpty(devPromptArch) && 
-                   !string.IsNullOrEmpty(vsInstallDir) && 
+            bool IsPrompt = !string.IsNullOrEmpty(devPromptArch) &&
+                   !string.IsNullOrEmpty(vsInstallDir) &&
                    !string.IsNullOrEmpty(vcInstallDir) &&
                    !string.IsNullOrEmpty(vscmdVer);
+            return IsPrompt;
         }
-        
+
         private void FindToolsInCurrentEnvironment()
         {
             var pathEnv = Environment.GetEnvironmentVariable("Path") ?? "";
             var paths = pathEnv.Split(';', StringSplitOptions.RemoveEmptyEntries);
-            
+
             foreach (var path in paths)
             {
                 if (!Directory.Exists(path))
                     continue;
-                
+
                 try
                 {
                     foreach (var file in Directory.EnumerateFiles(path))
@@ -167,8 +175,42 @@ namespace SB.Core
             }
         }
 
+        internal void RunBat(string oldEnvPath, string newEnvPath)
+        {
+            Process cmd = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    RedirectStandardInput = false,
+                    RedirectStandardOutput = false,
+                    RedirectStandardError = false,
+                    CreateNoWindow = true,
+                    UseShellExecute = false
+                }
+            };
+            if (FastFind)
+            {
+                cmd.StartInfo.Environment.Add("VSCMD_ARG_HOST_ARCH", archStringMap[HostArch]);
+                cmd.StartInfo.Environment.Add("VSCMD_ARG_TGT_ARCH", archStringMap[TargetArch]);
+                cmd.StartInfo.Environment.Add("VSCMD_ARG_APP_PLAT", "Desktop");
+                cmd.StartInfo.Environment.Add("VSINSTALLDIR", VSInstallDir!.Replace("/", "\\"));
+                cmd.StartInfo.Arguments = $"/c set > \"{oldEnvPath}\" && \"{VCVarsBat}\" && \"{WindowsSDKBat}\" && set > \"{newEnvPath}\"";
+            }
+            else
+            {
+                string ArchString = (TargetArch == HostArch) ? archStringMap[TargetArch] : $"{archStringMap[HostArch]}_{archStringMap[TargetArch]}";
+                cmd.StartInfo.Arguments = $"/c set > \"{oldEnvPath}\" && \"{VCVarsAllBat}\" {ArchString} && set > \"{newEnvPath}\"";
+            }
+            cmd.Start();
+            cmd.WaitForExit();
+        }
+
         internal void RunVCVars()
         {
+            var oldEnvPath = Path.Combine(Path.GetTempPath(), $"vcvars_{VSVersion}_prev_{HostArch}_{TargetArch}.txt");
+            var newEnvPath = Path.Combine(Path.GetTempPath(), $"vcvars_{VSVersion}_post_{HostArch}_{TargetArch}.txt");
+
             // 检测是否已在 Developer Prompt 中
             if (IsInDeveloperPrompt())
             {
@@ -196,50 +238,30 @@ namespace SB.Core
             }
             else
             {
-                // 不在 Developer Prompt 中，执行原有的初始化逻辑
-                var oldEnvPath = Path.Combine(Path.GetTempPath(), $"vcvars_{VSVersion}_prev_{HostArch}_{TargetArch}.txt");
-                var newEnvPath = Path.Combine(Path.GetTempPath(), $"vcvars_{VSVersion}_post_{HostArch}_{TargetArch}.txt");
+                // VS 下配了一部分的环境变量，所以不能乱剔除
+                bool isInVisualStudio = IsInVisualStudio();
 
-                Process cmd = new Process
-                {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = "cmd.exe",
-                        RedirectStandardInput = false,
-                        RedirectStandardOutput = false,
-                        RedirectStandardError = false,
-                        CreateNoWindow = true,
-                        UseShellExecute = false
-                    }
-                };
-                if (FastFind)
-                {
-                    cmd.StartInfo.Environment.Add("VSCMD_ARG_HOST_ARCH", archStringMap[HostArch]);
-                    cmd.StartInfo.Environment.Add("VSCMD_ARG_TGT_ARCH", archStringMap[TargetArch]);
-                    cmd.StartInfo.Environment.Add("VSCMD_ARG_APP_PLAT", "Desktop");
-                    cmd.StartInfo.Environment.Add("VSINSTALLDIR", VSInstallDir!.Replace("/", "\\"));
-                    cmd.StartInfo.Arguments = $"/c set > \"{oldEnvPath}\" && \"{VCVarsBat}\" && \"{WindowsSDKBat}\" && set > \"{newEnvPath}\"";
-                }
-                else
-                {
-                    string ArchString = (TargetArch == HostArch) ? archStringMap[TargetArch] : $"{archStringMap[HostArch]}_{archStringMap[TargetArch]}";
-                    cmd.StartInfo.Arguments = $"/c set > \"{oldEnvPath}\" && \"{VCVarsAllBat}\" {ArchString} && set > \"{newEnvPath}\"";
-                }
-                cmd.Start();
-                cmd.WaitForExit();
+                // 不在 Developer Prompt 中，执行原有的初始化逻辑
+                RunBat(oldEnvPath, newEnvPath);
 
                 var oldEnv = EnvReader.Load(oldEnvPath)!;
                 VCEnvVariables = EnvReader.Load(newEnvPath)!;
                 // Preprocess: cull old env variables
-                foreach (var oldVar in oldEnv)
+                if (!isInVisualStudio)
                 {
-                    if (VCEnvVariables.ContainsKey(oldVar.Key) && VCEnvVariables[oldVar.Key] == oldEnv[oldVar.Key])
-                        VCEnvVariables.Remove(oldVar.Key);
+                    foreach (var oldVar in oldEnv)
+                    {
+                        if (VCEnvVariables.ContainsKey(oldVar.Key) && VCEnvVariables[oldVar.Key] == oldEnv[oldVar.Key])
+                            VCEnvVariables.Remove(oldVar.Key);
+                    }
                 }
                 // Preprocess: cull user env variables
                 var vcPaths = VCEnvVariables["Path"]!.Split(';').ToHashSet();
                 var oldPaths = oldEnv["Path"].Split(';').ToHashSet();
-                vcPaths.ExceptWith(oldPaths);
+                if (!isInVisualStudio)
+                {
+                    vcPaths.ExceptWith(oldPaths);
+                }
                 VCEnvVariables["Path"] = string.Join(";", vcPaths);
                 // Preprocess: calculate include dir
                 var OriginalIncludes = VCEnvVariables.TryGetValue("INCLUDE", out var V0) ? V0 : "";
@@ -279,14 +301,21 @@ namespace SB.Core
                     }
                 }
             }
-            if (!string.IsNullOrEmpty(CLCCPath))            
+            if (!string.IsNullOrEmpty(CLCCPath))
                 CLCC = new CLCompiler(CLCCPath!, VCEnvVariables);
-            if (!string.IsNullOrEmpty(LINKPath))            
+            if (!string.IsNullOrEmpty(LINKPath))
                 LINK = new LINK(LINKPath!, VCEnvVariables);
-            if (!string.IsNullOrEmpty(ClangCLPath))            
+            if (!string.IsNullOrEmpty(ClangCLPath))
                 ClangCLCC = new ClangCLCompiler(ClangCLPath!, VCEnvVariables);
+
+            if (CLCC is null && !UseClangCl)
+                Log.Fatal("CL.exe tool not found, please ensure Visual Studio is installed correctly.");
+            if (ClangCLCC is null && UseClangCl)
+                Log.Fatal("ClangCLCC tool not found, please ensure Clang is installed correctly.");
+            if (LINK is null)
+                Log.Fatal("LINK tool not found, please ensure Visual Studio is installed correctly.");
         }
-        
+
         public readonly int VSVersion;
         public readonly Architecture HostArch;
         public readonly Architecture TargetArch;

@@ -168,7 +168,7 @@ public:
     
 private:
     friend struct AST;
-    MethodExpr(AST& ast, const DeclRefExpr* owner, const FunctionDecl* method);
+    MethodExpr(AST& ast, const Expr* owner, const FunctionDecl* method);
 };
 
 struct MethodCallExpr : public Expr

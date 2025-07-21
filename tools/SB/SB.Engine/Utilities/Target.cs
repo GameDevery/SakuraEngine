@@ -14,7 +14,7 @@ namespace SB
         Runtime = 1 << 1,
         DevTime = 1 << 2,
         Tests = 1 << 3,
-        Tool = 1 << 3
+        Tool = 1 << 4
     };
 
     [AttributeUsage(AttributeTargets.Class)]

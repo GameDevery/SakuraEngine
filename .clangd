@@ -16,6 +16,13 @@ CompileFlags:
 ---
 
 If:
+  PathMatch: tools/shader_compiler/LLVM/test_shaders/.*
+CompileFlags:
+  CompilationDatabase: .sb/compile_commands/shaders/
+
+---
+
+If:
   PathMatch: .*/.*.cppsl
 CompileFlags:
   CompilationDatabase: .sb/compile_commands/shaders/

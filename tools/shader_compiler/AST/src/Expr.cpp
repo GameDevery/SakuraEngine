@@ -136,7 +136,7 @@ const FieldDecl* FieldExpr::field_decl() const
     return dynamic_cast<const FieldDecl*>(_member_decl);
 }
 
-MethodExpr::MethodExpr(AST& ast, const DeclRefExpr* owner, const FunctionDecl* method)
+MethodExpr::MethodExpr(AST& ast, const Expr* owner, const FunctionDecl* method)
     : MemberExpr(ast, owner, method, nullptr)
 {
 

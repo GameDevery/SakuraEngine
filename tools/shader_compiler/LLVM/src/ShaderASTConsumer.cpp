@@ -935,6 +935,9 @@ void ASTConsumer::TranslateParams(std::vector<CppSL::ParamVarDecl*>& params, con
             auto paramName = param->getName().str();
             if (paramName.empty())
                 paramName = std::format("param_{}", param->getFunctionScopeIndex());
+            else
+                paramName = std::format("{}_{}", paramName, param->getFunctionScopeIndex());
+
             auto _param = TranslateParam(params, qualifier, _paramType, ToText(paramName));
             addVar(param, _param);
 
@@ -1046,11 +1049,17 @@ CppSL::FunctionDecl* ASTConsumer::TranslateFunction(const clang::FunctionDecl *x
 
         auto CxxFunctionName = override_name.empty() ? x->getQualifiedNameAsString() : override_name.str();
         std::replace(CxxFunctionName.begin(), CxxFunctionName.end(), ':', '_');
+        std::replace(CxxFunctionName.begin(), CxxFunctionName.end(), '<', '_');
+        std::replace(CxxFunctionName.begin(), CxxFunctionName.end(), '>', '_');
+        std::replace(CxxFunctionName.begin(), CxxFunctionName.end(), ',', '_');
+        std::replace(CxxFunctionName.begin(), CxxFunctionName.end(), ' ', '_');
         F = AST.DeclareFunction(ToText(CxxFunctionName),
             getType(x->getReturnType()),
             params,
             TranslateStmt<CppSL::CompoundStmt>(x->getBody())
         );
+
+        current_stack->_this_redirect = nullptr;
     }
     addFunc(x, F);
     return F;

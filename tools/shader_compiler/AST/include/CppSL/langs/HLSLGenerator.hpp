@@ -4,6 +4,13 @@
 
 namespace skr::CppSL
 {
+enum struct FunctionStyle
+{
+    Normal,
+    SignatureOnly,
+    OutterImplmentation
+};
+
 struct HLSLGenerator
 {
 public:
@@ -12,8 +19,8 @@ public:
 private:
     void visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt);
     void visit(SourceBuilderNew& sb, const skr::CppSL::TypeDecl* typeDecl);
-    void visit(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* funcDecl);
+    void visit(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* funcDecl, FunctionStyle style);
     void visit(SourceBuilderNew& sb, const skr::CppSL::VarDecl* varDecl);
-    void visit(SourceBuilderNew& sb, const skr::CppSL::Decl* decl);
+    void visit_decl(SourceBuilderNew& sb, const skr::CppSL::Decl* decl);
 };
 } // namespace skr::CppSL

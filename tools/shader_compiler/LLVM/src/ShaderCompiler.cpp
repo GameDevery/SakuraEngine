@@ -70,13 +70,13 @@ public:
                 switch (stage)
                 {
                     case skr::CppSL::ShaderStage::Vertex:
-                        target_string = L".vs_6_1.";
+                        target_string = L".vs_6_6.";
                         break;
                     case skr::CppSL::ShaderStage::Fragment:
-                        target_string = L".ps_6_1.";
+                        target_string = L".ps_6_6.";
                         break;
                     case skr::CppSL::ShaderStage::Compute:
-                        target_string = L".cs_6_1.";
+                        target_string = L".cs_6_6.";
                         break;
                     default:
                         continue;
