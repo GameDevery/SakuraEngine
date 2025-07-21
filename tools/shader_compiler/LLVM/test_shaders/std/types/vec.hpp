@@ -26,7 +26,7 @@ struct alignas(8) [[builtin("vec")]] vec<T, 2> {
         : _v(v, v) {}
 
     template<concepts::arithmetic_scalar U>
-    [[nodiscard, noignore]] operator vec<U, 2>() {
+    [[nodiscard,]] operator vec<U, 2>() {
         return vec<U, 2>(static_cast<U>(x), static_cast<U>(y));
     }
 
@@ -58,7 +58,7 @@ struct alignas(16) [[builtin("vec")]] vec<T, 3> {
         : _v(v, v, v) {}
 
     template<concepts::arithmetic_scalar U>
-    [[nodiscard, noignore]] operator vec<U, 3>() {
+    [[nodiscard,]] operator vec<U, 3>() {
         return vec<U, 3>(static_cast<U>(x), static_cast<U>(y), static_cast<U>(z));
     }
 
@@ -90,7 +90,7 @@ struct alignas(16) [[builtin("vec")]] vec<T, 4> {
         : _v(v, v, v, v) {}
 
     template<concepts::arithmetic_scalar U>
-    [[nodiscard, noignore]] operator vec<U, 4>() {
+    [[nodiscard,]] operator vec<U, 4>() {
         return vec<U, 4>(static_cast<U>(x), static_cast<U>(y), static_cast<U>(z), static_cast<U>(w));
     }
 

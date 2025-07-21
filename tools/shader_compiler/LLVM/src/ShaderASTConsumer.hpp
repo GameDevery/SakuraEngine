@@ -78,6 +78,7 @@ protected:
     CppSL::TypeDecl* TranslateEnumDecl(const clang::EnumDecl* x);
     CppSL::ParamVarDecl* TranslateParam(std::vector<CppSL::ParamVarDecl*>& params, skr::CppSL::EVariableQualifier qualifier, const skr::CppSL::TypeDecl* type, const skr::CppSL::Name& name);
     void TranslateParams(std::vector<CppSL::ParamVarDecl*>& params, const clang::FunctionDecl* x);
+    bool TranslateStageEntry(const clang::FunctionDecl* x);
     CppSL::FunctionDecl* TranslateFunction(const clang::FunctionDecl* x, llvm::StringRef override_name = {});
     const CppSL::TypeDecl* TranslateLambda(const clang::LambdaExpr* x);
     void TranslateLambdaCapturesToParams(const clang::LambdaExpr* x);
@@ -97,6 +98,8 @@ protected:
     skr::CppSL::FunctionDecl* getFunc(const clang::FunctionDecl* func) const;
     
     clang::ASTContext* pASTContext = nullptr;
+    std::vector<const clang::FunctionDecl*> _stages;
+    std::vector<const clang::FunctionDecl*> _noignore_funcs;
     std::map<const clang::TagDecl*, skr::CppSL::TypeDecl*> _tag_types;
     std::map<const clang::BuiltinType::Kind, skr::CppSL::TypeDecl*> _builtin_types;
     std::map<const clang::VarDecl*, skr::CppSL::VarDecl*> _vars;

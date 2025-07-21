@@ -978,8 +978,8 @@ void AST::DeclareIntrinstics()
     _intrinstics["RAY_QUERY_COMMITTED_STATUS"] = DeclareTemplateMethod(nullptr, L"ray_query_committed_status", UIntType, RayQueryProceedParams);
     _intrinstics["RAY_QUERY_COMMITTED_TRIANGLE_BARYCENTRICS"] = DeclareTemplateMethod(nullptr, L"ray_query_committed_triangle_bary", Float2Type, RayQueryProceedParams);
     
-    // void trace_ray_inline(Accel& AS, uint32 mask, float3 origin, float3 direction, float t_min = 0.01f, float t_max = 9999.0f);
-    std::array<VarConceptDecl*, 7> TraceRayInlineParams = { RayQueryFamily, AccelFamily, IntScalar, FloatVector, FloatVector, FloatScalar, FloatScalar };
+    // void trace_ray_inline(Accel& AS, uint32 mask, Trait<Ray> ray);
+    std::array<VarConceptDecl*, 4> TraceRayInlineParams = { RayQueryFamily, AccelFamily, IntScalar, ValueFamily };
     _intrinstics["RAY_QUERY_TRACE_RAY_INLINE"] = DeclareTemplateMethod(nullptr, L"ray_query_trace_ray_inline", VoidType, TraceRayInlineParams);
 
     // commit_procedural with float parameter

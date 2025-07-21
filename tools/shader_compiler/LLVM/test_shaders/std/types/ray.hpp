@@ -7,16 +7,18 @@ namespace skr::shader {
 struct Ray {
 	Ray() = default;
 	Ray(const float3& origin, const float3& dir, float t_min = 0.0f, float t_max = 1e30f)
-		: t_min(t_min), t_max(t_max) {
-		_origin.set<0>(origin.x, origin.y, origin.z);
-		_dir.set<0>(dir.x, dir.y, dir.z);
+		: _origin{origin.x, origin.y, origin.z}, t_min(t_min), _dir{dir.x, dir.y, dir.z}, t_max(t_max)
+	{
+
 	}
-	[[nodiscard]] float3 origin() const {
+	[[nodiscard, noignore]] float3 origin() const {
 		return float3(_origin[0], _origin[1], _origin[2]);
 	}
-	[[nodiscard]] float3 dir() const {
+	[[nodiscard, noignore]] float3 dir() const {
 		return float3(_dir[0], _dir[1], _dir[2]);
 	}
+	[[nodiscard, noignore]] float tmin() const { return t_min; }
+	[[nodiscard, noignore]] float tmax() const { return t_max; }
 
 	Array<float, 3> _origin;
 	float t_min = 0.0f;
@@ -37,13 +39,13 @@ struct CommittedHit {
 	float2 bary;
 	HitType hit_type;
 	float ray_t;
-	[[nodiscard]] bool miss() const {
+	[[nodiscard, noignore]] bool miss() const {
 		return hit_type == HitType::Miss;
 	}
-	[[nodiscard]] bool hit_triangle() const {
+	[[nodiscard, noignore]] bool hit_triangle() const {
 		return hit_type == HitType::HitTriangle;
 	}
-	[[nodiscard]] bool hit_procedural() const {
+	[[nodiscard, noignore]] bool hit_procedural() const {
 		return hit_type == HitType::HitProcedural;
 	}
 	template<concepts::float_family T>
@@ -57,10 +59,10 @@ struct TriangleHit {
 	uint32 prim;
 	float2 bary;
 	float ray_t;
-	[[nodiscard]] bool miss() const {
+	[[nodiscard, noignore]] bool miss() const {
 		return inst == max_uint32;
 	}
-	[[nodiscard]] bool hitted() const {
+	[[nodiscard, noignore]] bool hitted() const {
 		return inst != max_uint32;
 	}
 	template<concepts::float_family T>

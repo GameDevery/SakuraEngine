@@ -85,6 +85,7 @@ inline static clang::AnnotateAttr* ExistShaderAttrWithName(const clang::Decl* de
 }
 
 inline static clang::AnnotateAttr* IsIgnore(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "ignore"); }
+inline static clang::AnnotateAttr* IsNoIgnore(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "noignore"); }
 inline static clang::AnnotateAttr* IsBuiltin(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "builtin"); }
 inline static clang::AnnotateAttr* IsDump(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "dump"); }
 inline static clang::AnnotateAttr* IsKernel(const clang::Decl* decl) { return ExistShaderAttrWithName(decl, "kernel"); }
@@ -341,6 +342,10 @@ void ASTConsumer::HandleTranslationUnit(clang::ASTContext& Context)
 
     // add record types
     TraverseDecl(Context.getTranslationUnitDecl());
+
+    // translate from stage entries
+    for (auto stage : _stages)
+        TranslateStageEntry(stage);
 }
 
 bool ASTConsumer::VisitEnumDecl(const clang::EnumDecl* enumDecl)
@@ -811,7 +816,7 @@ CppSL::Stmt* ASTConsumer::TranslateCall(const clang::Decl* _funcDecl, const clan
     }
 }
 
-bool ASTConsumer::VisitFunctionDecl(const clang::FunctionDecl* x)
+bool ASTConsumer::TranslateStageEntry(const clang::FunctionDecl* x)
 {
     if (auto StageInfo = IsStage(x))
     {
@@ -851,6 +856,27 @@ bool ASTConsumer::VisitFunctionDecl(const clang::FunctionDecl* x)
         {
             ReportFatalError(x, "Unsupported stage function: {}", std::string(x->getNameAsString()));
         }
+
+        // translate noignore functions
+        for (auto func : _noignore_funcs)
+        {
+            TranslateFunction(func);
+        }
+        return true;
+    }
+    return false;
+}
+
+bool ASTConsumer::VisitFunctionDecl(const clang::FunctionDecl* x)
+{
+    if (auto StageInfo = IsStage(x))
+    {
+        _stages.emplace_back(x);
+    }
+    // some necessary functions should never be ignored, so we translate then after the kernel
+    if (auto AsNoignore = IsNoIgnore(x))
+    {
+        _noignore_funcs.emplace_back(x);
     }
     return true;
 }
@@ -1042,7 +1068,12 @@ CppSL::FunctionDecl* ASTConsumer::TranslateFunction(const clang::FunctionDecl *x
     {
         if (AsMethod)
         {
-            auto _this = AST.DeclareParam(EVariableQualifier::Inout, getType(AsMethod->getThisType()->getPointeeType()), L"_this");
+            auto _t = getType(AsMethod->getThisType()->getPointeeType());
+            if (_t == nullptr)
+            {
+                ReportFatalError(x, "Method {} has no owner type", AsMethod->getNameAsString());
+            }
+            auto _this = AST.DeclareParam(EVariableQualifier::Inout, _t, L"_this");
             params.emplace(params.begin(), _this);
             current_stack->_this_redirect = _this->ref();
         }

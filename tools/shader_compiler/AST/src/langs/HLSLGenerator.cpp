@@ -972,30 +972,30 @@ void HLSLGenerator::visit_decl(SourceBuilderNew& sb, const skr::CppSL::Decl* dec
 }
 
 static const skr::CppSL::String kHLSLHeader = LR"(
-template <typename _ELEM, uint64_t N> struct array { _ELEM data[N]; };
+template <typename T, uint64_t N> struct array { T data[N]; };
 
-template <typename _ELEM> void buffer_write(RWStructuredBuffer<_ELEM> buffer, uint index, _ELEM value) { buffer[index] = value; }
-template <typename _ELEM> _ELEM buffer_read(RWStructuredBuffer<_ELEM> buffer, uint index) { return buffer[index]; }
+template <typename T> void buffer_write(RWStructuredBuffer<T> buffer, uint index, T value) { buffer[index] = value; }
+template <typename T> T buffer_read(RWStructuredBuffer<T> buffer, uint index) { return buffer[index]; }
 
-template <typename _TEX> float4 texture2d_sample(_TEX tex, uint2 uv, uint filter, uint address) { return float4(1, 1, 1, 1); }
-template <typename _TEX> float4 texture3d_sample(_TEX tex, uint3 uv, uint filter, uint address) { return float4(1, 1, 1, 1); }
+template <typename TEX> float4 texture2d_sample(TEX tex, uint2 uv, uint filter, uint address) { return float4(1, 1, 1, 1); }
+template <typename TEX> float4 texture3d_sample(TEX tex, uint3 uv, uint filter, uint address) { return float4(1, 1, 1, 1); }
 
-template <typename _ELEM> _ELEM texture_read(Texture2D<_ELEM> tex, uint2 loc) { return tex.Load(uint3(loc, 0)); }
-template <typename _ELEM> _ELEM texture_read(RWTexture2D<_ELEM> tex, uint2 loc) { return tex.Load(uint3(loc, 0)); }
-template <typename _ELEM> _ELEM texture_read(Texture2D<_ELEM> tex, uint3 loc_and_mip) { return tex.Load(loc_and_mip); }
-template <typename _ELEM> _ELEM texture_read(RWTexture2D<_ELEM> tex, uint3 loc_and_mip) { return tex.Load(loc_and_mip); }
-template <typename _ELEM> _ELEM texture_write(RWTexture2D<_ELEM> tex, uint2 uv, _ELEM v) { return tex[uv] = v; }
+template <typename T> T texture_read(Texture2D<T> tex, uint2 loc) { return tex.Load(uint3(loc, 0)); }
+template <typename T> T texture_read(RWTexture2D<T> tex, uint2 loc) { return tex.Load(uint3(loc, 0)); }
+template <typename T> T texture_read(Texture2D<T> tex, uint3 loc_and_mip) { return tex.Load(loc_and_mip); }
+template <typename T> T texture_read(RWTexture2D<T> tex, uint3 loc_and_mip) { return tex.Load(loc_and_mip); }
+template <typename T> T texture_write(RWTexture2D<T> tex, uint2 uv, T v) { return tex[uv] = v; }
 
-template <typename _ELEM> uint2 texture_size(Texture2D<_ELEM> tex) { uint Width, Height, Mips; tex.GetDimensions(0, Width, Height, Mips); return uint2(Width, Height); }
-template <typename _ELEM> uint2 texture_size(RWTexture2D<_ELEM> tex) { uint Width, Height; tex.GetDimensions(Width, Height); return uint2(Width, Height); }
-template <typename _ELEM> uint3 texture_size(Texture3D<_ELEM> tex) { uint Width, Height, Depth, Mips; tex.GetDimensions(0, Width, Height, Depth, Mips); return uint3(Width, Height, Depth); }
-template <typename _ELEM> uint3 texture_size(RWTexture3D<_ELEM> tex) { uint Width, Height, Depth; tex.GetDimensions(Width, Height, Depth); return uint3(Width, Height, Depth); }
+template <typename T> uint2 texture_size(Texture2D<T> tex) { uint Width, Height, Mips; tex.GetDimensions(0, Width, Height, Mips); return uint2(Width, Height); }
+template <typename T> uint2 texture_size(RWTexture2D<T> tex) { uint Width, Height; tex.GetDimensions(Width, Height); return uint2(Width, Height); }
+template <typename T> uint3 texture_size(Texture3D<T> tex) { uint Width, Height, Depth, Mips; tex.GetDimensions(0, Width, Height, Depth, Mips); return uint3(Width, Height, Depth); }
+template <typename T> uint3 texture_size(RWTexture3D<T> tex) { uint Width, Height, Depth; tex.GetDimensions(Width, Height, Depth); return uint3(Width, Height, Depth); }
 
 float4 sample2d(SamplerState s, Texture2D t, float2 uv) { return t.Sample(s, uv); }
 
 using AccelerationStructure = RaytracingAccelerationStructure;
 RayDesc create_ray(float3 origin, float3 dir, float tmin, float tmax) { RayDesc r; r.Origin = origin; r.Direction = dir; r.TMin = tmin; r.TMax = tmax; return r; }
-#define ray_query_trace_ray_inline(q, as, mask, origin, dir, tmin, tmax) (q).TraceRayInline((as), RAY_FLAG_NONE, (mask), create_ray((origin), (dir), (tmin), (tmax)))
+#define ray_query_trace_ray_inline(q, as, mask, ray) (q).TraceRayInline((as), RAY_FLAG_NONE, (mask), create_ray((ray).origin(), (ray).dir(), (ray).tmin(), (ray).tmax()))
 #define ray_query_proceed(q) (q).Proceed()
 #define ray_query_committed_triangle_bary(q) (q).CommittedTriangleBarycentrics()
 #define ray_query_committed_status(q) (q).CommittedStatus()
