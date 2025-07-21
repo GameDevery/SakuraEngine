@@ -38,6 +38,7 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
 
 
     skr::task::scheduler_t task_scheduler;
+    task_scheduler.initialize({});
     skr::ecs::World world{task_scheduler};
     world.initialize();
     sugoi_storage_t* storage = world.get_storage();
@@ -82,9 +83,8 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
     auto q1 = world.dispatch_task(rjob, 128, nullptr);
     world.get_scheduler()->sync_all();
 
-
-
-
+    // Stop the scheduler and finalize the world
+    world.get_scheduler()->stop_and_exit();
     world.finalize();
 
     return 0;
