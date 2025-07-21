@@ -6,7 +6,6 @@
 #include "SkrCore/platform/vfs.h"
 #include "SkrCore/time.h"
 #include "SkrSystem/advanced_input.h"
-#include "SkrRT/ecs/type_builder.hpp"
 #include "SkrRT/resource/resource_system.h"
 #include "SkrRT/resource/local_resource_registry.hpp"
 

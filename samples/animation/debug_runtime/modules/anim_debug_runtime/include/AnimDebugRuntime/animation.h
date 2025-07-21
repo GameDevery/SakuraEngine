@@ -7,7 +7,7 @@
  */
 #include "SkrBase/config.h"
 #include "SkrAnim/ozz/sampling_job.h"
-#include "SkrRT/ecs/sugoi_meta.hpp"
+#include "SkrRT/sugoi/sugoi_meta.hpp"
 #include "SkrAnim/resources/skeleton_resource.hpp"
 #include "SkrAnim/ozz/base/maths/soa_transform.h"
 

@@ -1,81 +1,112 @@
 #include "cpp_style.hpp"
 #include "SkrTask/parallel_for.hpp"
-#include "SkrRT/ecs/type_builder.hpp"
-#include "SkrRT/ecs/storage.hpp"
+#include "SkrRT/ecs/world.hpp"
+#include "SkrRT/ecs/query.hpp"
+#include "SkrRT/sugoi/storage.hpp"
 
-struct AllocateEntites {
+struct AllocateEntites
+{
     AllocateEntites() SKR_NOEXCEPT
     {
-        storage = sugoiS_create();
+        world.initialize();
+        storage = world.get_storage();
     }
     ~AllocateEntites() SKR_NOEXCEPT
     {
-        ::sugoiS_release(storage);
+        world.finalize();
     }
     sugoi_storage_t* storage = nullptr;
+    skr::ecs::World world;
 };
 
 static constexpr size_t kIntEntityCount = 12;
 static constexpr size_t kFloatEntityCount = 12;
 static constexpr size_t kBothEntityCount = 12;
-sugoi_entity_t shared_entity = ~0;
+skr::ecs::Entity shared_entity = SUGOI_NULL_ENTITY;
+
+template <typename... Ts>
+struct EntitySpawner
+{
+    using F = std::function<void(skr::ecs::TaskContext&)>;
+    EntitySpawner(F func, sugoi_entity_t shared = SUGOI_NULL_ENTITY)
+        : f(func), meta_ent(shared)
+    {
+    }
+
+    void build(skr::ecs::ArchetypeBuilder& Builder)
+    {
+        (Builder.add_component<Ts>(), ...);
+        if (meta_ent != SUGOI_NULL_ENTITY)
+            Builder.add_meta_entity(meta_ent);
+    }
+
+    void run(skr::ecs::TaskContext& Context)
+    {
+        f(Context);
+    }
+    
+    skr::ecs::Entity meta_ent = SUGOI_NULL_ENTITY;
+    F f;
+};
 
 TEST_CASE_METHOD(AllocateEntites, "AllocateAndQuery")
 {
     SkrZoneScopedN("AllocateEntites::AllocateAndQuery");
+
     {
-        sugoi::EntitySpawner<SharedComponent> spawner;
-        spawner(storage, 1, 
-        [&](auto& view){
-            auto pcomp = sugoi::get_owned<SharedComponent>(view.view);
-            pcomp[0].i = 114;
-            pcomp[0].f = 514.f;
-            EXPECT_EQ(view.count(), 1);
-            shared_entity = sugoiV_get_entities(view.view)[0];
-        });
+        auto spawner = EntitySpawner<SharedComponent>(
+            [&](skr::ecs::TaskContext& ctx) {
+                auto pcomp = ctx.components<SharedComponent>();
+                pcomp[0].i = 114;
+                pcomp[0].f = 514.f;
+                EXPECT_EQ(ctx.size(), 1);
+                shared_entity = ctx.entities()[0];
+            });
+        world.create_entites(spawner, 1);
     }
     {
-        sugoi::EntitySpawner<IntComponent> spawner;
-        spawner(storage, kIntEntityCount, 
-            [&](auto& view){
-                auto [ints] = view.unpack();
-                for (auto i = 0; i < view.count(); i++)
+        auto spawner = EntitySpawner<IntComponent>(
+            [&](skr::ecs::TaskContext& ctx) {
+                auto ints = ctx.components<IntComponent>();
+                for (auto i = 0; i < ctx.size(); i++)
                 {
                     ints[i].v = i;
                 }
-                EXPECT_EQ(view.count(), kIntEntityCount);
+                EXPECT_EQ(ctx.size(), kIntEntityCount);
             });
+        world.create_entites(spawner, kIntEntityCount);
     }
     {
-        sugoi::EntitySpawner<FloatComponent> spawner;
-        spawner(storage, kFloatEntityCount, 
-            [&](auto& view){
-                auto [floats] = view.unpack();
-                for (auto i = 0; i < view.count(); i++)
+        auto spawner = EntitySpawner<FloatComponent>(
+            [&](skr::ecs::TaskContext& ctx) {
+                auto floats = ctx.components<FloatComponent>();
+                for (auto i = 0; i < ctx.size(); i++)
                 {
                     floats[i].v = i * 2.f;
                 }
-                EXPECT_EQ(view.count(), kFloatEntityCount);
+                EXPECT_EQ(ctx.size(), kFloatEntityCount);
             });
+        world.create_entites(spawner, kFloatEntityCount);
     }
     {
-        sugoi::EntitySpawner<IntComponent, FloatComponent> spawner(shared_entity);
-        spawner(storage, kBothEntityCount, 
-            [&](auto& view){
-                auto [ints, floats] = view.unpack();
-                for (auto i = 0; i < view.count(); i++)
-                {
-                    ints[i].v = i;
-                    floats[i].v = i * 2.f;
-                }
-                EXPECT_EQ(view.count(), kBothEntityCount);
-            });
+        auto spawner = EntitySpawner<IntComponent, FloatComponent>
+        ([&](skr::ecs::TaskContext& ctx) {
+            auto ints = ctx.components<IntComponent>();
+            auto floats = ctx.components<FloatComponent>();
+            for (auto i = 0; i < ctx.size(); i++)
+            {
+                ints[i].v = i;
+                floats[i].v = i * 2.f;
+            }
+            EXPECT_EQ(ctx.size(), kBothEntityCount);
+        }, shared_entity);
+        world.create_entites(spawner, kBothEntityCount);
     }
     // ReadAll
     {
-        auto q = storage->new_query()
-                    .ReadAll<FloatComponent, IntComponent>()
-                    .commit();
+        auto q = skr::ecs::QueryBuilder(&world)
+                     .ReadAll<FloatComponent, IntComponent>()
+                     .commit();
         SKR_DEFER({ sugoiQ_release(q.value()); });
         EXPECT_OK(q);
         auto callback = [&](sugoi_chunk_view_t* view) {
@@ -85,7 +116,7 @@ TEST_CASE_METHOD(AllocateEntites, "AllocateAndQuery")
             {
                 EXPECT_EQ(ints[i].v, i);
                 EXPECT_EQ(floats[i].v, i * 2.f);
-            }          
+            }
 
             // can't get writable comps with readonly query signature
             EXPECT_EQ(sugoi::get_owned<IntComponent>(view), nullptr);
@@ -95,9 +126,9 @@ TEST_CASE_METHOD(AllocateEntites, "AllocateAndQuery")
     }
     // ReadWriteAll
     {
-        auto q = storage->new_query()
-                .ReadWriteAll<FloatComponent, IntComponent>()
-                .commit();
+        auto q = skr::ecs::QueryBuilder(&world)
+                     .ReadWriteAll<FloatComponent, IntComponent>()
+                     .commit();
         SKR_DEFER({ sugoiQ_release(q.value()); });
         EXPECT_OK(q);
         auto callback = [&](sugoi_chunk_view_t* view) {
@@ -107,7 +138,7 @@ TEST_CASE_METHOD(AllocateEntites, "AllocateAndQuery")
             {
                 EXPECT_EQ(ints[i].v, i);
                 EXPECT_EQ(floats[i].v, i * 2.f);
-            }          
+            }
 
             // can get writable comps with readwrite query signature
             EXPECT_NE(sugoi::get_owned<IntComponent>(view), nullptr);
@@ -117,27 +148,27 @@ TEST_CASE_METHOD(AllocateEntites, "AllocateAndQuery")
     }
     // None
     {
-        auto q = storage->new_query()
-                    .ReadAll<IntComponent>()
-                    .None<FloatComponent>()
-                    .commit();
+        auto q = skr::ecs::QueryBuilder(&world)
+                     .ReadAll<IntComponent>()
+                     .None<FloatComponent>()
+                     .commit();
         SKR_DEFER({ sugoiQ_release(q.value()); });
         EXPECT_OK(q);
         EXPECT_EQ(sugoiQ_get_count(q.value()), kIntEntityCount);
     }
     // WithMeta
     {
-        auto q = storage->new_query()
-                    .ReadAll<IntComponent>()
-                    .WithMetaEntity(shared_entity)
-                    .commit();
+        auto q = skr::ecs::QueryBuilder(&world)
+                     .ReadAll<IntComponent>()
+                     .WithMetaEntity(shared_entity)
+                     .commit();
         SKR_DEFER({ sugoiQ_release(q.value()); });
         EXPECT_OK(q);
         auto callback = [&](sugoi_chunk_view_t* view) {
             auto ints = sugoi::get_owned<const IntComponent>(view);
             auto floats = sugoi::get_owned<const FloatComponent>(view);
-            EXPECT_NE(ints, nullptr);       
-            EXPECT_NE(floats, nullptr);       
+            EXPECT_NE(ints, nullptr);
+            EXPECT_NE(floats, nullptr);
 
             sugoi_chunk_view_t shared_view = {};
             sugoiS_access(storage, shared_entity, &shared_view);
@@ -150,17 +181,17 @@ TEST_CASE_METHOD(AllocateEntites, "AllocateAndQuery")
     }
     // WithoutMeta
     {
-        auto q = storage->new_query()
-                    .ReadAll<IntComponent>()
-                    .WithoutMetaEntity(shared_entity)
-                    .commit();
+        auto q = skr::ecs::QueryBuilder(&world)
+                     .ReadAll<IntComponent>()
+                     .WithoutMetaEntity(shared_entity)
+                     .commit();
         SKR_DEFER({ sugoiQ_release(q.value()); });
         EXPECT_OK(q);
         auto callback = [&](sugoi_chunk_view_t* view) {
             auto ints = sugoi::get_owned<const IntComponent>(view);
             auto floats = sugoi::get_owned<const FloatComponent>(view);
-            EXPECT_NE(ints, nullptr);       
-            EXPECT_EQ(floats, nullptr);     
+            EXPECT_NE(ints, nullptr);
+            EXPECT_EQ(floats, nullptr);
         };
         sugoiQ_get_views(q.value(), SUGOI_LAMBDA(callback));
         EXPECT_EQ(sugoiQ_get_count(q.value()), kBothEntityCount);
@@ -178,20 +209,19 @@ TEST_CASE_METHOD(AllocateEntites, "ParallelQueryCreate")
     for (uint32_t i = 0; i < 128; i++)
     {
         skr::Vector<sugoi_query_t*> quries;
-        quries.add_zeroed(i);  
-        skr::parallel_for(quries.data(), quries.data() + quries.size(), 1, 
-            [&](auto pbegin, auto pend){
-                const auto i = pbegin - quries.data();
-                quries[i] = storage->new_query()
-                                .ReadAll<IntComponent>()
-                                .commit().value();
-                EXPECT_NE(quries[i], nullptr);
-            });
-        skr::parallel_for(quries.data(), quries.data() + quries.size(), 1, 
-            [&](auto pbegin, auto pend){
-                const auto i = pbegin - quries.data();
-                sugoiQ_release(quries[i]);
-            });
+        quries.add_zeroed(i);
+        skr::parallel_for(quries.data(), quries.data() + quries.size(), 1, [&](auto pbegin, auto pend) {
+            const auto i = pbegin - quries.data();
+            quries[i] = skr::ecs::QueryBuilder(&world)
+                            .ReadAll<IntComponent>()
+                            .commit()
+                            .value();
+            EXPECT_NE(quries[i], nullptr);
+        });
+        skr::parallel_for(quries.data(), quries.data() + quries.size(), 1, [&](auto pbegin, auto pend) {
+            const auto i = pbegin - quries.data();
+            sugoiQ_release(quries[i]);
+        });
     }
 
     scheduler.unbind();

@@ -1,7 +1,7 @@
 #pragma once
 #include "SkrBase/misc/make_zeroed.hpp" // IWYU pragma: export
 #include "SkrCore/module/module.hpp" // IWYU pragma: export
-#include "SkrRT/ecs/sugoi.h" // IWYU pragma: export
+#include "SkrRT/sugoi/sugoi.h" // IWYU pragma: export
 #include "SkrRT/resource/resource_factory.h" // IWYU pragma: export
 #include <SkrContainers/string.hpp> // IWYU pragma: export
 #include <SkrContainers/vector.hpp> // IWYU pragma: export

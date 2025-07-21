@@ -209,7 +209,7 @@ SharedCalendar::~SharedCalendar() {
 
 template<> U_I18N_API
 const SharedCalendar *LocaleCacheKey<SharedCalendar>::createObject(
-        const void * /*unusedCreationContext*/, UErrorCode &status) const {
+        const void * /*unusedTaskContext*/, UErrorCode &status) const {
     if (U_FAILURE(status)) {
        return nullptr;
     }

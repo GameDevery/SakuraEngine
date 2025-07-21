@@ -1,6 +1,5 @@
 #include "SkrScene/transform_system.h"
 #include "SkrTask/parallel_for.hpp"
-#include "SkrRT/ecs/type_builder.hpp"
 #include "SkrBase/misc/make_zeroed.hpp"
 
 #include "SkrContainers/vector.hpp"

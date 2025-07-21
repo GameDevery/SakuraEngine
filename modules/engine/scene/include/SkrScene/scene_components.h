@@ -1,6 +1,6 @@
 #pragma once
 // The Scene ECS Components Definitions
-#include "SkrRT/ecs/sugoi_types.h"
+#include "SkrRT/sugoi/sugoi_types.h"
 #include "SkrBase/math.h"
 
 #ifndef __meta__

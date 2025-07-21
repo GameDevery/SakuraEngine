@@ -5,10 +5,20 @@
 #include "../common/TracyForceInline.hpp"
 #include "TracyCallstack.h"
 
+#ifndef TRACY_HAS_CALLSTACK
+
+namespace tracy
+{
+static constexpr bool has_callstack() { return false; }
+static tracy_force_inline void* Callstack( int32_t /*depth*/ ) { return nullptr; }
+}
+
+#else
+
 #if TRACY_HAS_CALLSTACK == 2 || TRACY_HAS_CALLSTACK == 5
 #  include <unwind.h>
 #elif TRACY_HAS_CALLSTACK >= 3
-#  ifdef TRACE_CLIENT_LIBUNWIND_BACKTRACE
+#  ifdef TRACY_LIBUNWIND_BACKTRACE
      // libunwind is, in general, significantly faster than execinfo based backtraces
 #    define UNW_LOCAL_ONLY
 #    include <libunwind.h>
@@ -16,15 +26,6 @@
 #    include <execinfo.h>
 #  endif
 #endif
-
-#ifndef TRACY_HAS_CALLSTACK
-
-namespace tracy
-{
-static tracy_force_inline void* Callstack( int depth ) { return nullptr; }
-}
-
-#else
 
 #ifdef TRACY_DEBUGINFOD
 #  include <elfutils/debuginfod.h>
@@ -37,6 +38,8 @@ static tracy_force_inline void* Callstack( int depth ) { return nullptr; }
 
 namespace tracy
 {
+
+static constexpr bool has_callstack() { return true; }
 
 struct CallstackSymbolData
 {
@@ -79,11 +82,10 @@ debuginfod_client* GetDebuginfodClient();
 
 extern "C"
 {
-    typedef unsigned long (__stdcall *___tracy_t_RtlWalkFrameChain)( void**, unsigned long, unsigned long );
-    TRACY_API extern ___tracy_t_RtlWalkFrameChain ___tracy_RtlWalkFrameChain;
+    TRACY_API unsigned long ___tracy_RtlWalkFrameChain( void**, unsigned long, unsigned long );
 }
 
-static tracy_force_inline void* Callstack( int depth )
+static tracy_force_inline void* Callstack( int32_t depth )
 {
     assert( depth >= 1 && depth < 63 );
     auto trace = (uintptr_t*)tracy_malloc( ( 1 + depth ) * sizeof( uintptr_t ) );
@@ -112,7 +114,7 @@ static _Unwind_Reason_Code tracy_unwind_callback( struct _Unwind_Context* ctx, v
     return _URC_NO_REASON;
 }
 
-static tracy_force_inline void* Callstack( int depth )
+static tracy_force_inline void* Callstack( int32_t depth )
 {
     assert( depth >= 1 && depth < 63 );
 
@@ -127,13 +129,13 @@ static tracy_force_inline void* Callstack( int depth )
 
 #elif TRACY_HAS_CALLSTACK == 3 || TRACY_HAS_CALLSTACK == 4 || TRACY_HAS_CALLSTACK == 6
 
-static tracy_force_inline void* Callstack( int depth )
+static tracy_force_inline void* Callstack( int32_t depth )
 {
     assert( depth >= 1 );
 
     auto trace = (uintptr_t*)tracy_malloc( ( 1 + (size_t)depth ) * sizeof( uintptr_t ) );
 
-#ifdef TRACE_CLIENT_LIBUNWIND_BACKTRACE
+#ifdef TRACY_LIBUNWIND_BACKTRACE
     size_t num =  unw_backtrace( (void**)(trace+1), depth );
 #else
     const auto num = (size_t)backtrace( (void**)(trace+1), depth );

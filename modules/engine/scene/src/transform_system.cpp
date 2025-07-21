@@ -1,10 +1,7 @@
 #include "SkrBase/math.h"
 #include "rtm/qvvf.h"
 #include "SkrContainers/hashmap.hpp"
-#include "SkrRT/ecs/sugoi.h"
-#include "SkrRT/ecs/array.hpp"
-#include "SkrRT/ecs/storage.hpp"
-#include "SkrRT/ecs/type_builder.hpp"
+#include "SkrRT/ecs/query.hpp"
 #include "SkrTask/parallel_for.hpp"
 #include "SkrScene/transform_system.h"
 
@@ -69,20 +66,19 @@ static void skr_relative_to_world_children(const skr::scene::ChildrenArray* chil
     }
 }
 
-static void skr_relative_to_world_root(void* u, sugoi_query_t* query, sugoi_chunk_view_t* view, sugoi_type_index_t* localTypes, EIndex entityIndex)
+static void skr_relative_to_world_root(void* u, sugoi_chunk_view_t* view)
 {
     SkrZoneScopedN("CalcTransform");
-    auto storage = sugoiQ_get_storage(query);
-    auto transforms = sugoi::get_owned_local<skr_transform_f_t>(view, localTypes[0]);
-    auto children = sugoi::get_owned_local<const skr::scene::ChildrenArray>(view, localTypes[1]);
-    auto translations = sugoi::get_owned_local<const skr_float3_t>(view, localTypes[2]);
-    auto rotations = sugoi::get_owned_local<const skr_rotator_f_t>(view, localTypes[3]);
-    auto scales = sugoi::get_owned_local<const skr_float3_t>(view, localTypes[4]);
+    auto transforms = sugoi::get_components<skr::scene::TranslationComponent, skr_transform_f_t>(view);
+    auto children = sugoi::get_components<const skr::scene::ChildrenComponent, const skr::scene::ChildrenArray>(view);
+    auto translations = sugoi::get_components<const scene::TranslationComponent>(view);
+    auto rotations = sugoi::get_components<const scene::RotationComponent>(view);
+    auto scales = sugoi::get_components<const scene::ScaleComponent>(view);
     for (EIndex i = 0; i < view->count; ++i)
     {
-        transforms[i].position = translations ? translations[i] : skr_float3_t{ 0, 0, 0 };
-        transforms[i].rotation = skr::QuatF(rotations ? rotations[i] : skr_rotator_f_t{ 0, 0, 0 });
-        transforms[i].scale = scales ? scales[i] : skr_float3_t{ 1, 1, 1 };
+        transforms[i].position = !translations.is_empty() ? translations[i].value : skr_float3_t{ 0, 0, 0 };
+        transforms[i].rotation = skr::QuatF(!rotations.is_empty() ? rotations[i].euler : skr_rotator_f_t{ 0, 0, 0 });
+        transforms[i].scale = !scales.is_empty() ? scales[i].value : skr_float3_t{ 1, 1, 1 };
     }
     forloop (i, 0, view->count)
     {
@@ -93,23 +89,23 @@ static void skr_relative_to_world_root(void* u, sugoi_query_t* query, sugoi_chun
             transforms[i].scale);
 
         // Recursively process children if they exist
-        if (children && children[i].size() > 0)
+        if (!children.is_empty() && children[i].size() > 0)
         {
-            skr_relative_to_world_children(&children[i], world_transform, storage);
+            skr_relative_to_world_children(&children[i], world_transform, sugoiC_get_storage(view->chunk));
         }
     }
 }
 
-TransformSystem* TransformSystem::Create(sugoi_storage_t* world) SKR_NOEXCEPT
+TransformSystem* TransformSystem::Create(skr::ecs::World* world) SKR_NOEXCEPT
 {
     SkrZoneScopedN("CreateTransformSystem");
     auto memory = (uint8_t*)sakura_calloc(1, sizeof(TransformSystem) + sizeof(TransformSystem::Impl));
     auto system = new (memory) TransformSystem();
     system->impl = new (memory + sizeof(TransformSystem)) TransformSystem::Impl();
-    auto q = world->new_query()
+    auto q = skr::ecs::QueryBuilder(world)
                  .ReadWriteAll<skr::scene::TransformComponent>()
-                 .ReadAny<skr::scene::ChildrenComponent>()
-                 .ReadAny<skr::scene::TranslationComponent, skr::scene::RotationComponent, skr::scene::ScaleComponent>()
+                 .ReadOptional<skr::scene::ChildrenComponent>()
+                 .ReadOptional<skr::scene::TranslationComponent, skr::scene::RotationComponent, skr::scene::ScaleComponent>()
                  .ReadAll<skr::scene::RootComponent>()
                  .commit()
                  .value();
@@ -128,12 +124,12 @@ void TransformSystem::Destroy(TransformSystem* system) SKR_NOEXCEPT
 void TransformSystem::update() SKR_NOEXCEPT
 {
     SkrZoneScopedN("CalcTransform");
-    sugoiJ_schedule_ecs(impl->calculateTransformTree, 0, &skr_relative_to_world_root, nullptr, nullptr, nullptr, nullptr, nullptr);
+    sugoiQ_get_views(impl->calculateTransformTree, &skr_relative_to_world_root, nullptr);
 }
 
 } // namespace skr
 
-skr::TransformSystem* skr_transform_system_create(sugoi_storage_t* world)
+skr::TransformSystem* skr_transform_system_create(skr::ecs::World* world)
 {
     return skr::TransformSystem::Create(world);
 }

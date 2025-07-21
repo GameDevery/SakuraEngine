@@ -60,14 +60,14 @@ class U_COMMON_API CacheKeyBase : public UObject {
     * removeRef on it satisfies this requirement. It can also return NULL
     * and set status to an error.
     *
-    * @param creationContext the context in which the object is being
+    * @param TaskContext the context in which the object is being
     *                        created. May be NULL.
     * @param status          Implementations can return a failure here.
     *                        In addition, implementations may return a
     *                        non NULL object and set a warning status.
     */
    virtual const SharedObject *createObject(
-           const void *creationContext, UErrorCode &status) const = 0;
+           const void *TaskContext, UErrorCode &status) const = 0;
 
    /**
     * Writes a description of this key to buffer and returns buffer. Written
@@ -162,7 +162,7 @@ class LocaleCacheKey : public CacheKey<T> {
        return new LocaleCacheKey<T>(*this);
    }
    virtual const T *createObject(
-           const void *creationContext, UErrorCode &status) const override;
+           const void *TaskContext, UErrorCode &status) const override;
    /**
     * Use the locale id as the description.
     */
@@ -210,7 +210,7 @@ class U_COMMON_API UnifiedCache : public UnifiedCacheBase {
     * Fetches value from the cache by key.
     *
     * @param key             the cache key.
-    * @param creationContext passed verbatim to createObject method of key
+    * @param TaskContext passed verbatim to createObject method of key
     * @param ptr             On entry, ptr must be NULL or be included if
     *                        the reference count of the object it points
     *                        to. On exit, ptr points to the fetched object
@@ -223,7 +223,7 @@ class U_COMMON_API UnifiedCache : public UnifiedCacheBase {
    template<typename T>
    void get(
            const CacheKey<T>& key,
-           const void *creationContext,
+           const void *TaskContext,
            const T *&ptr,
            UErrorCode &status) const {
        if (U_FAILURE(status)) {
@@ -231,7 +231,7 @@ class U_COMMON_API UnifiedCache : public UnifiedCacheBase {
        }
        UErrorCode creationStatus = U_ZERO_ERROR;
        const SharedObject *value = NULL;
-       _get(key, value, creationContext, creationStatus);
+       _get(key, value, TaskContext, creationStatus);
        const T *tvalue = (const T *) value;
        if (U_SUCCESS(creationStatus)) {
            SharedObject::copyPtr(tvalue, ptr);
@@ -254,7 +254,7 @@ class U_COMMON_API UnifiedCache : public UnifiedCacheBase {
 
    /**
     * Convenience method to get a value of type T from cache for a
-    * particular locale with creationContext == NULL.
+    * particular locale with TaskContext == NULL.
     * @param loc    the locale
     * @param ptr    On entry, must be NULL or included in the ref count
     *               of the object to which it points.
@@ -388,7 +388,7 @@ class U_COMMON_API UnifiedCache : public UnifiedCacheBase {
    void _get(
            const CacheKeyBase &key,
            const SharedObject *&value,
-           const void *creationContext,
+           const void *TaskContext,
            UErrorCode &status) const;
 
     /**

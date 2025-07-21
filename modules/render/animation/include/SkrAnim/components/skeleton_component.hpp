@@ -1,6 +1,6 @@
 #pragma once
 #include "SkrAnim/resources/skeleton_resource.hpp"
-#include "SkrRT/ecs/sugoi_meta.hpp"
+#include "SkrRT/sugoi/sugoi_meta.hpp"
 #ifndef __meta__
     #include "SkrAnim/components/skeleton_component.generated.h" // IWYU pragma: export
 #endif

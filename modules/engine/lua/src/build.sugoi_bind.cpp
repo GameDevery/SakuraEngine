@@ -1,5 +1,4 @@
-#include "SkrRT/ecs/array.hpp"
-#include "SkrRT/ecs/type_builder.hpp"
+#include "SkrRT/sugoi/array.hpp"
 
 extern "C" {
 #include "lua.h"
