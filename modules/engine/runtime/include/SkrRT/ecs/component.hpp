@@ -90,29 +90,15 @@ private:
 
 struct ComponentAccessorBase
 {
+public:
     sugoi_storage_t* World;
-    SubQuery BoundQuery;
+    // SubQuery BoundQuery;
     TypeIndex Type;
     sugoi_chunk_view_t CachedView;
     void* CachedPtr;
-};
 
-template <class T>
-struct ComponentAccessor : public ComponentAccessorBase
-{
-    using Storage = typename ComponentStorage<T>::Type;
-    Storage& operator[](Entity entity)
-    {
-        return *get_checked(entity);
-    }
-
-    Storage& get_checked(Entity entity)
-    {
-        Storage* Result = get(entity);
-        check(Result);
-        return *Result;
-    }
-
+protected:
+    template <class Storage>
     Storage* get(Entity entity)
     {
         sugoi_chunk_view_t view;
@@ -125,7 +111,7 @@ struct ComponentAccessor : public ComponentAccessorBase
             return ((Storage*)CachedPtr) + Offset;
         }
         Storage* Result;
-        if constexpr(std::is_const_v<T>)
+        if constexpr(std::is_const_v<Storage>)
         {
             Result = (Storage*)sugoiV_get_owned_ro(&view, Type);
         }
@@ -136,6 +122,51 @@ struct ComponentAccessor : public ComponentAccessorBase
         CachedView = view;
         CachedPtr = (void*)Result;
         return Result;
+    }
+
+    template <class Storage>
+    Storage& get_checked(Entity entity)
+    {
+        Storage* Result = get<Storage>(entity);
+        SKR_ASSERT(Result);
+        return *Result;
+    }
+};
+
+template <class T>
+struct RandomComponentReader : public ComponentAccessorBase
+{
+    using Storage = typename ComponentStorage<T>::Type;
+    const Storage& operator[](Entity entity)
+    {
+        return get_checked<Storage>(entity);
+    }
+};
+
+template <class T>
+struct RandomComponentWriter : public ComponentAccessorBase
+{
+    using Storage = typename ComponentStorage<T>::Type;
+    void write_at(Entity entity, const Storage& value)
+    {
+        auto& v = get_checked<Storage>(entity);
+        v = value;
+    }
+};
+
+template <class T>
+struct RandomComponentReadWrite : public ComponentAccessorBase
+{
+    using Storage = typename ComponentStorage<T>::Type;
+    Storage& operator[](Entity entity)
+    {
+        return get_checked<Storage>(entity);
+    }
+
+    void write_at(Entity entity, const Storage& value)
+    {
+        auto& v = get_checked<Storage>(entity);
+        v = value;
     }
 };
 

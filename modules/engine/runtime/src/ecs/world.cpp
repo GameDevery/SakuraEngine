@@ -89,26 +89,54 @@ AccessBuilder& AccessBuilder::_access(TypeIndex type, bool write, EAccessMode mo
 {
 	// fill: base type accessors
 	if (write)
-		writes.add({type, mode});
-	else
-		reads.add({type, mode});
-
-	// fill: access builder args
-	if (field != kInvalidFieldPtr)
 	{
-		fields.add(field);
+		if (auto existed = writes.find_if([&](auto a) { return a.type == type; }))
+		{
+			existed.ref().mode |= mode;
+		}
+		else
+		{
+			writes.add({type, mode});
+		}
+	}
+	else
+	{
+		if (auto existed = reads.find_if([&](auto a) { return a.type == type; }))
+		{
+			existed.ref().mode |= mode;
+		}
+		else
+		{
+			reads.add({type, mode});
+		}
 	}
 
-	all.add(type);
-	// share
-	// exclude
-	types.add(type);
-	ops.add({ 
-		.phase = 0, 
-		.readonly = !write,
-		.atomic = (mode == EAccessMode::Atomic),
-		.randomAccess = SOS_SEQ
-	});
+	// fill: access builder args
+	if ((field != kInvalidFieldPtr) && !fields.contains(field))
+	{
+		fields.add(field);
+		field_types.add(type);
+		field_modes.add(mode);
+	}
+
+	if (auto existed = types.find(type))
+	{
+		ops[existed.index()].readonly &= !write;
+	}
+	else
+	{
+		// TODO: share
+		// TODO: exclude
+		all.add(type);
+		types.add(type);
+		ops.add({ 
+			.phase = -1, 
+			.readonly = !write
+			// seems these two attributes should be deprecated
+			// .atomic = (mode == EAccessMode::Atomic),
+			// .randomAccess = (mode == EAccessMode::Random) ? SOS_UNSEQ : SOS_SEQ
+		});
+	}
 	return *this;
 }
 

@@ -12,28 +12,49 @@ inline static EDependencySyncMode DeterminSyncMode(EAccessMode current, EAccessM
     return EDependencySyncMode::WholeTask;
 }
 
+inline static bool HasSelfConfictReadWrite(ComponentAccess acess, skr::span<ComponentAccess> to_search)
+{
+    if (acess.mode == EAccessMode::Random)
+    {
+        for (auto other : to_search)
+        {
+            if (other.type == acess.type)
+                return true; // access conflict to self
+        }
+    }
+    return false;
+}
+
 void StaticDependencyAnalyzer::process(skr::RC<TaskSignature> new_task)
 {
     SkrZoneScopedN("StaticDependencyAnalyzer::Process");
     _collector.clear();
 
+    bool HasSelfConflict = false;
     for (auto read : new_task->reads)
     {
+        HasSelfConflict |= HasSelfConfictReadWrite(read, new_task->writes);
+
         auto access = accesses.try_add_default(read.type);
         if (access.already_exist() && access.value().last_writer.first) // RAW
         {
             auto&& [writer, mode] = access.value().last_writer;
             _collector.emplace(writer, DeterminSyncMode(read.mode, mode));
         }
-        access.value().readers.add(new_task, read.mode);;
+        access.value().readers.add(new_task, read.mode);
     }
     for (auto write : new_task->writes)
     {
+        HasSelfConflict |= HasSelfConfictReadWrite(write, new_task->reads);
+        
         auto access = accesses.try_add_default(write.type);
         if (access.already_exist() && access.value().readers.size()) // WAR
         {
             for (auto& [reader, mode] : access.value().readers)
             {
+                if (reader == new_task)
+                    continue; // skip self
+
                 _collector.emplace(reader, DeterminSyncMode(write.mode, mode));
             }
         }
@@ -46,6 +67,7 @@ void StaticDependencyAnalyzer::process(skr::RC<TaskSignature> new_task)
         access.value().readers.clear();
     }
     new_task->_static_dependencies = _collector;
+    new_task->self_confict = HasSelfConflict;
 }
 
 void WorkUnitGenerator::process(skr::RC<TaskSignature> new_task)
@@ -58,6 +80,7 @@ void WorkUnitGenerator::process(skr::RC<TaskSignature> new_task)
         const sugoi_query_t* query;
         WorkUnitGenerator* _this;
         skr::RC<TaskSignature> new_task;
+        skr::task::weak_counter_t last_unit_finish;
         WorkGroup* work_group = nullptr;
         uint64_t total_units = 0;
     } ctx;
@@ -71,9 +94,15 @@ void WorkUnitGenerator::process(skr::RC<TaskSignature> new_task)
 
         CollectContext* ctx = (CollectContext*)usr_data;
         auto& unit = ctx->work_group->units.try_add_default(view->chunk).value();
-        ctx->total_units += 1;
         unit.chunk_view = *view;
         unit.finish.add(1);
+        if (ctx->total_units != 0)
+        {
+            unit.dependencies.add(ctx->last_unit_finish);
+        }
+        ctx->total_units += 1;
+        ctx->last_unit_finish = unit.finish;
+
         for (auto [dependency, mode] : ctx->work_group->dependencies)
         {
             if (mode == EDependencySyncMode::WholeTask)
@@ -114,38 +143,14 @@ void WorkUnitGenerator::process(skr::RC<TaskSignature> new_task)
     };
     sugoiQ_get_groups(ctx.query, filter_group, &ctx);
     new_task->_finish.add(ctx.total_units);
+    ctx.new_task->_work_groups.compact();
 }
 
 TaskScheduler::TaskScheduler(const ServiceThreadDesc& desc, skr::task::scheduler_t& scheduler) SKR_NOEXCEPT
     : AsyncService(desc),
       _scheduler(scheduler)
 {
-}
-
-void TaskScheduler::add_task(sugoi_query_t* query, Task::Type&& func, uint32_t batch_size)
-{
-    auto new_task = skr::RC<TaskSignature>::New();
-    new_task->query = query;
-    auto params = query->pimpl->parameters;
-    for (uint32_t i = 0; i < params.length; i++)
-    {
-        auto type = params.types[i];
-        auto access = params.accesses[i];
-        EAccessMode mode = EAccessMode::Seq;
-        if (access.randomAccess)
-            mode = EAccessMode::Random;
-        if (access.atomic)
-            mode = EAccessMode::Atomic;
-
-        if (access.readonly)
-            new_task->reads.push_back({ type, mode });
-        else
-            new_task->writes.push_back({ type, mode });
-    }
-    new_task->task = skr::RC<Task>::New();
-    new_task->task->func = std::move(func);
-    new_task->task->batch_size = batch_size;
-    add_task(new_task);
+    StackAllocator::Initialize();
 }
 
 void TaskScheduler::add_task(skr::RC<TaskSignature> task)
@@ -162,19 +167,19 @@ void TaskScheduler::dispatch(skr::RC<TaskSignature> signature)
 
     for (const auto& [group, work_group] : wgps)
     {
-        if (work_group.units.is_empty())
-            continue;
-
         SkrZoneScopedN("TaskScheduler::DispatchGroup");
         // create a task for each work unit
-        for (const auto& [chunk, unit] : work_group.units)
+        for (uint32_t i = 0; i < work_group.units.size(); i++)
         {
             SkrZoneScopedN("TaskScheduler::DispatchUnit");
-
+            
+            const auto& [chunk, unit] = work_group.units.at(i);
             auto batch_size = signature->task->batch_size ? signature->task->batch_size : unit.chunk_view.count;
+            batch_size = signature->self_confict ? UINT32_MAX : batch_size; // if self-confict, we can't batch
             batch_size = std::min(batch_size, unit.chunk_view.count);
             const auto batch_count = (unit.chunk_view.count + batch_size - 1) / batch_size;
             running.add(1);
+
             skr::task::schedule([
                 this, &unit, signature, batch_count, batch_size,
                 // capture task lifetime into payload body
@@ -244,7 +249,7 @@ AsyncResult TaskScheduler::serve() SKR_NOEXCEPT
         dispatch(task);
         skr_atomic_fetch_add(&_enqueued_tasks, -1);
 
-        _dispatched_tasks.enqueue(task);
+        _dispatched_tasks.add(task);
     }
     else
     {
@@ -263,6 +268,11 @@ void TaskScheduler::sync_all()
 {
     flush_all();
     running.wait(true);
+
+    _analyzer._collector.clear();
+    _analyzer.accesses.clear();
+    _dispatched_tasks.clear();
+    StackAllocator::Reset();
 }
 
 void TaskScheduler::stop_and_exit()
@@ -283,6 +293,8 @@ void TaskScheduler::stop_and_exit()
 
     wait_timeout<u8"WaitTaskScheduler">([&] { return get_status() == skr::ServiceThread::kStatusStopped; });
     exit();
+
+    StackAllocator::Finalize();
 }
 
 } // namespace skr::ecs

@@ -48,36 +48,61 @@ public:
 
     inline AccessBuilder& write(TypeIndex type, EAccessMode mode = EAccessMode::Seq)
     {
+        _access(type, false, mode, kInvalidFieldPtr);
         return _access(type, true, mode, kInvalidFieldPtr);
     }
 
     template <class... Cs>
-    AccessBuilder& read(EAccessMode mode = EAccessMode::Seq)
+    AccessBuilder& read()
     {
         static_assert((std::is_const_v<Cs> && ...), "ComponentView must be const for read access");
-        (_access(sugoi_id_of<std::remove_const_t<Cs>>::get(), false, mode, kInvalidFieldPtr), ...);
+        (_access(sugoi_id_of<std::remove_const_t<Cs>>::get(), false, EAccessMode::Seq, kInvalidFieldPtr), ...);
         return *this;
     }
 
     template <class... Cs>
-    AccessBuilder& write(EAccessMode mode = EAccessMode::Seq)
+    AccessBuilder& write()
     {
         static_assert((!std::is_const_v<Cs> && ...), "ComponentView must be non-const for read access");
-        return (_access(sugoi_id_of<Cs>::get(), true, mode, kInvalidFieldPtr), ...);
+        (_access(sugoi_id_of<Cs>::get(), false, EAccessMode::Seq, kInvalidFieldPtr), ...);
+        return (_access(sugoi_id_of<Cs>::get(), true, EAccessMode::Seq, kInvalidFieldPtr), ...);
     }
 
     template <class T, class C>
-    AccessBuilder& read(ComponentView<C> T::* Member, EAccessMode mode = EAccessMode::Seq)
+    AccessBuilder& read(ComponentView<C> T::* Member)
     {
         static_assert(std::is_const_v<C>, "ComponentView must be const for read access");
-        return _access(sugoi_id_of<std::remove_const_t<C>>::get(), false, mode, (intptr_t)&(((T*)nullptr)->*Member));
+        return _access(sugoi_id_of<std::remove_const_t<C>>::get(), false, EAccessMode::Seq, (intptr_t)&(((T*)nullptr)->*Member));
     }
 
     template <class T, class C>
-    AccessBuilder& write(ComponentView<C> T::* Member, EAccessMode mode = EAccessMode::Seq)
+    AccessBuilder& write(ComponentView<C> T::* Member)
     {
         static_assert(!std::is_const_v<C>, "ComponentView must be non-const for read access");
-        return _access(sugoi_id_of<C>::get(), true, mode, (intptr_t)&(((T*)nullptr)->*Member));
+        _access(sugoi_id_of<C>::get(), false, EAccessMode::Seq, kInvalidFieldPtr);
+        return _access(sugoi_id_of<C>::get(), true, EAccessMode::Seq, (intptr_t)&(((T*)nullptr)->*Member));
+    }
+
+    template <class T, class C>
+    AccessBuilder& access(RandomComponentReader<C> T::* Member)
+    {
+        static_assert(std::is_const_v<C>, "ComponentView must be const for read access");
+        return _access(sugoi_id_of<std::remove_const_t<C>>::get(), false, EAccessMode::Random, (intptr_t)&(((T*)nullptr)->*Member));
+    }
+
+    template <class T, class C>
+    AccessBuilder& access(RandomComponentWriter<C> T::* Member)
+    {
+        static_assert(!std::is_const_v<C>, "ComponentView must be non-const for read access");
+        return _access(sugoi_id_of<C>::get(), true, EAccessMode::Random, (intptr_t)&(((T*)nullptr)->*Member));
+    }
+
+    template <class T, class C>
+    AccessBuilder& access(RandomComponentReadWrite<C> T::* Member)
+    {
+        static_assert(!std::is_const_v<C>, "ComponentView must be non-const for read access");
+        _access(sugoi_id_of<C>::get(), false, EAccessMode::Random, kInvalidFieldPtr);
+        return _access(sugoi_id_of<C>::get(), true, EAccessMode::Random, (intptr_t)&(((T*)nullptr)->*Member));
     }
 
     void commit() SKR_NOEXCEPT;
@@ -91,6 +116,8 @@ protected:
     skr::Vector<sugoi_operation_t> ops;
     skr::Vector<Entity> meta_entities;
     skr::Vector<intptr_t> fields;
+    skr::Vector<TypeIndex> field_types;
+    skr::Vector<EAccessMode> field_modes;
 
     skr::Vector<TypeIndex> all;
     skr::Vector<TypeIndex> none;
@@ -153,27 +180,35 @@ public:
         }
 
         skr::stl_function<void(sugoi_chunk_view_t, uint32_t, uint32_t)> TASK =
-            [TaskBody, Access](sugoi_chunk_view_t view, uint32_t count, uint32_t offset) mutable
+            [TaskBody, Access, Storage = this->storage](sugoi_chunk_view_t view, uint32_t count, uint32_t offset) mutable
         {
             T TASK = TaskBody;
             for (int i = 0; i < Access->fields.size(); ++i)
             {
-                auto field = Access->fields[i];
+                const auto field = Access->fields[i];
+                const auto mode = Access->field_modes[i];
                 if (field == kInvalidFieldPtr)
                     continue;
-                auto component = Access->types[i];
-                ComponentViewBase* fieldPtr = (ComponentViewBase*)((uint8_t*)&TASK + field);
-                auto localType = sugoiV_get_local_type(&view, component);
-                fieldPtr->_local_type = localType;
-                if (Access->ops[i].readonly)
+                auto component = Access->field_types[i];
+                if (mode == EAccessMode::Random)
                 {
-                    fieldPtr->_ptr = (void*)sugoiV_get_owned_ro_local(&view, localType);
+                    ComponentAccessorBase* fieldPtr = (ComponentAccessorBase*)((uint8_t*)&TASK + field);
+                    fieldPtr->World = Storage;
+                    fieldPtr->Type = component;
+                    fieldPtr->CachedView = view;
+                    fieldPtr->CachedPtr = nullptr;
                 }
-                else
+                else if (mode == EAccessMode::Seq)
                 {
-                    fieldPtr->_ptr = (void*)sugoiV_get_owned_rw_local(&view, localType);
+                    ComponentViewBase* fieldPtr = (ComponentViewBase*)((uint8_t*)&TASK + field);
+                    auto localType = sugoiV_get_local_type(&view, component);
+                    fieldPtr->_local_type = localType;
+                    if (Access->ops[i].readonly)
+                        fieldPtr->_ptr = (void*)sugoiV_get_owned_ro_local(&view, localType);
+                    else
+                        fieldPtr->_ptr = (void*)sugoiV_get_owned_rw_local(&view, localType);
+                    fieldPtr->_offset = offset;
                 }
-                fieldPtr->_offset = offset;
             }
             TaskContext ctx = TaskContext(view, count, offset);
             TASK.run(ctx);

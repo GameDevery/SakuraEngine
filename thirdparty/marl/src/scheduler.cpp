@@ -31,7 +31,7 @@
 #endif
 
 // Enable to trace scheduler events.
-#define ENABLE_TRACE_EVENTS 1
+#define ENABLE_TRACE_EVENTS 0
 
 // Enable to print verbose debug logging.
 #define ENABLE_DEBUG_LOGGING 0

@@ -1096,7 +1096,10 @@ SKR_INLINE typename Vector<Memory>::SizeType Vector<Memory>::remove_all_if_swap(
 template <typename Memory>
 SKR_INLINE typename Vector<Memory>::DataType& Vector<Memory>::operator[](SizeType index)
 {
-    SKR_ASSERT(!is_empty() && is_valid_index(index));
+    if (is_empty() || !is_valid_index(index))
+    {
+        SKR_ASSERT(!is_empty() && is_valid_index(index));
+    }
     return *(data() + index);
 }
 template <typename Memory>

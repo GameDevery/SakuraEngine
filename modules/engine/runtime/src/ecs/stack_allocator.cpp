@@ -1,16 +1,16 @@
-#include "SkrRenderGraph/stack_allocator.hpp"
+#include "SkrRT/ecs/stack_allocator.hpp"
 #include "SkrContainersDef/stack_allocation.hpp"
 #include "SkrOS/thread.h"
 #include "SkrCore/log.hpp"
 #include <memory>
 
-namespace skr::render_graph
+namespace skr::ecs
 {
 
-static const char* kStackAllocatorName = "RenderGraphStackAllocator";
+static const char* kStackAllocatorName = "ECSStackAllocator";
 
 // Implementation details
-struct RenderGraphStackAllocator::Impl : public StackAllocator<RenderGraphStackAllocator::Impl>
+struct StackAllocator::Impl : public skr::StackAllocator<StackAllocator::Impl>
 {
     static constexpr size_t kDefaultChunkSize = 64 * 1024; // 64KB 默认块大小
     static constexpr size_t kAlignment = 16; // 16字节对齐
@@ -18,11 +18,11 @@ struct RenderGraphStackAllocator::Impl : public StackAllocator<RenderGraphStackA
 };
 
 // Global singleton instance
-static std::unique_ptr<RenderGraphStackAllocator::Impl> g_pool_impl = nullptr;
+static std::unique_ptr<StackAllocator::Impl> g_pool_impl = nullptr;
 static SMutex g_instance_mutex = {};
 static bool g_initialized = false;
 
-void RenderGraphStackAllocator::Initialize() {
+void StackAllocator::Initialize() {
     if (g_initialized) return;
     
     skr_init_mutex(&g_instance_mutex);
@@ -32,13 +32,13 @@ void RenderGraphStackAllocator::Initialize() {
         {
             g_pool_impl = std::make_unique<Impl>();
             g_initialized = true;
-            SKR_LOG_INFO(u8"RenderGraphStackAllocator initialized");
+            SKR_LOG_INFO(u8"StackAllocator initialized");
         }
     }
     skr_mutex_release(&g_instance_mutex);
 }
 
-void RenderGraphStackAllocator::Finalize() {
+void StackAllocator::Finalize() {
     if (!g_initialized) return;
     
     skr_mutex_acquire(&g_instance_mutex);
@@ -48,7 +48,7 @@ void RenderGraphStackAllocator::Finalize() {
             g_pool_impl->finalize();
             g_pool_impl.reset();
             g_initialized = false;
-            SKR_LOG_INFO(u8"RenderGraphStackAllocator finalized");
+            SKR_LOG_INFO(u8"StackAllocator finalized");
         }
     }
     skr_mutex_release(&g_instance_mutex);
@@ -56,22 +56,22 @@ void RenderGraphStackAllocator::Finalize() {
     skr_destroy_mutex(&g_instance_mutex);
 }
 
-static RenderGraphStackAllocator::Impl& get_impl() {
-    SKR_ASSERT(g_pool_impl && "RenderGraphStackAllocator not initialized! Call RenderGraphStackAllocator::Initialize() first.");
+static StackAllocator::Impl& get_impl() {
+    SKR_ASSERT(g_pool_impl && "StackAllocator not initialized! Call StackAllocator::Initialize() first.");
     return *g_pool_impl;
 }
 
-RenderGraphStackAllocator::RenderGraphStackAllocator(CtorParam param) noexcept 
+StackAllocator::StackAllocator(CtorParam param) noexcept 
 {
 
 }
 
-RenderGraphStackAllocator::~RenderGraphStackAllocator() noexcept 
+StackAllocator::~StackAllocator() noexcept 
 {
 
 }
 
-void* RenderGraphStackAllocator::alloc_raw(size_t count, size_t item_size, size_t item_align) 
+void* StackAllocator::alloc_raw(size_t count, size_t item_size, size_t item_align) 
 {
     if (count == 0 || item_size == 0) return nullptr;
     
@@ -79,14 +79,14 @@ void* RenderGraphStackAllocator::alloc_raw(size_t count, size_t item_size, size_
     return get_impl().allocate(total_size, item_align);
 }
 
-void RenderGraphStackAllocator::free_raw(void* p, size_t item_align) 
+void StackAllocator::free_raw(void* p, size_t item_align) 
 {
     // Stack allocator忽略free操作
     // 内存将在reset()时被重用，在finalize()时被释放
 }
 
 // 添加reset和finalize的静态接口
-void RenderGraphStackAllocator::Reset()
+void StackAllocator::Reset()
 {
     if (g_initialized && g_pool_impl)
     {
@@ -96,4 +96,4 @@ void RenderGraphStackAllocator::Reset()
     }
 }
 
-} // namespace skr::render_graph
+} // namespace skr::ecs
