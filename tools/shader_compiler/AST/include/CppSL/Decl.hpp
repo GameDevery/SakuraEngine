@@ -8,10 +8,12 @@ struct AST;
 struct Attr;
 struct Expr;
 struct TypeDecl;
+struct FunctionDecl;
 struct FieldDecl;
 struct MethodDecl;
 struct ConstructorDecl;
 struct ConstantExpr;
+struct GlobalVarDecl;
 
 struct Decl
 {
@@ -48,7 +50,8 @@ public:
     Expr* initializer() const { return _initializer; }
     EVariableQualifier qualifier() const { return _qualifier; }
     const Stmt* body() const override;
-    
+    virtual bool is_global() const;
+
 protected:
     friend struct AST;    
     VarDecl(AST& ast, EVariableQualifier qualifier, const TypeDecl* type, const Name& name, Expr* initializer = nullptr);
@@ -75,6 +78,7 @@ struct TypeDecl : public NamedDecl
 {
 public:
     bool is_builtin() const { return _is_builtin; }
+    bool is_array() const;
     bool is_vector() const;
     bool is_matrix() const;
     bool is_resource() const;
@@ -104,6 +108,35 @@ protected:
     std::vector<FieldDecl*> _fields;
     std::vector<MethodDecl*> _methods;
     std::vector<ConstructorDecl*> _ctors;
+};
+
+struct NamespaceDecl : public NamedDecl
+{
+public:
+    const auto& nested() const { return _nested; }
+    const auto& types() const { return _types; }
+    const auto& functions() const { return _functions; }
+    const auto& global_vars() const { return _global_vars; }
+    
+    void add_nested(NamespaceDecl* nested);
+    NamespaceDecl* parent() const { return _parent; }
+
+    void add_type(TypeDecl* type);
+    void add_function(FunctionDecl* function);
+    void add_global_var(GlobalVarDecl* var);
+    
+    bool has_content() const; // Check if namespace has any meaningful content
+    String dump() const override;
+    const Stmt* body() const override;
+
+protected:
+    friend struct AST;
+    NamespaceDecl(AST& ast, const Name& name, NamespaceDecl* parent = nullptr);
+    std::vector<NamespaceDecl*> _nested; // nested namespaces
+    std::vector<TypeDecl*> _types; // types declared in this namespace
+    std::vector<FunctionDecl*> _functions; // functions declared in this namespace
+    std::vector<GlobalVarDecl*> _global_vars; // global variables declared in this namespace
+    NamespaceDecl* _parent = nullptr; // parent namespace
 };
 
 struct ValueTypeDecl : public TypeDecl
@@ -266,6 +299,7 @@ struct GlobalVarDecl : public VarDecl
 {
 public:
     const TypeDecl& type() const { return *_type; }
+    virtual bool is_global() const override;
     
 protected:
     friend struct AST;

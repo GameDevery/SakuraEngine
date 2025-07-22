@@ -98,7 +98,7 @@ void ComputeFunc(void* usrdata)
 
     // Create compute shader
     uint32_t *shader_bytes, shader_length;
-    read_shader_bytes("cgpu-raytracing/raytracing",
+    read_shader_bytes("cgpu-raytracing/raytracing.compute_main",
     &shader_bytes, &shader_length, backend);
     CGPUShaderLibraryDescriptor shader_desc = {
         .code = shader_bytes,

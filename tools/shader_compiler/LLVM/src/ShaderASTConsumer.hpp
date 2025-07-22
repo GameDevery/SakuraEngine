@@ -68,6 +68,7 @@ public:
     bool shouldVisitTemplateInstantiations() const { return true; }
     bool VisitEnumDecl(const clang::EnumDecl* x);
     bool VisitRecordDecl(const clang::RecordDecl* x);
+    bool VisitNamespaceDecl(const clang::NamespaceDecl* x);
     bool VisitFunctionDecl(const clang::FunctionDecl* x);
     bool VisitFieldDecl(const clang::FieldDecl* x);
     bool VisitVarDecl(const clang::VarDecl* x);
@@ -76,8 +77,12 @@ protected:
     CppSL::TypeDecl* TranslateType(clang::QualType type);
     CppSL::TypeDecl* TranslateRecordDecl(const clang::RecordDecl* x);
     CppSL::TypeDecl* TranslateEnumDecl(const clang::EnumDecl* x);
+    CppSL::NamespaceDecl* TranslateNamespaceDecl(const clang::NamespaceDecl* x);
+    void AssignDeclsToNamespaces();
+    const clang::NamespaceDecl* GetDeclNamespace(const clang::Decl* decl) const;
     CppSL::ParamVarDecl* TranslateParam(std::vector<CppSL::ParamVarDecl*>& params, skr::CppSL::EVariableQualifier qualifier, const skr::CppSL::TypeDecl* type, const skr::CppSL::Name& name);
     void TranslateParams(std::vector<CppSL::ParamVarDecl*>& params, const clang::FunctionDecl* x);
+    bool TranslateStageEntry(const clang::FunctionDecl* x);
     CppSL::FunctionDecl* TranslateFunction(const clang::FunctionDecl* x, llvm::StringRef override_name = {});
     const CppSL::TypeDecl* TranslateLambda(const clang::LambdaExpr* x);
     void TranslateLambdaCapturesToParams(const clang::LambdaExpr* x);
@@ -97,11 +102,14 @@ protected:
     skr::CppSL::FunctionDecl* getFunc(const clang::FunctionDecl* func) const;
     
     clang::ASTContext* pASTContext = nullptr;
+    std::vector<const clang::FunctionDecl*> _stages;
+    std::vector<const clang::FunctionDecl*> _noignore_funcs;
     std::map<const clang::TagDecl*, skr::CppSL::TypeDecl*> _tag_types;
     std::map<const clang::BuiltinType::Kind, skr::CppSL::TypeDecl*> _builtin_types;
     std::map<const clang::VarDecl*, skr::CppSL::VarDecl*> _vars;
     std::map<const clang::FunctionDecl*, skr::CppSL::FunctionDecl*> _funcs;
     std::map<const clang::EnumConstantDecl*, skr::CppSL::GlobalVarDecl*> _enum_constants;
+    std::map<const clang::NamespaceDecl*, skr::CppSL::NamespaceDecl*> _namespaces;
 
     std::map<const clang::LambdaExpr*, const skr::CppSL::TypeDecl*> _lambda_types;
     std::map<const clang::CXXMethodDecl*, const clang::LambdaExpr*> _lambda_methods;

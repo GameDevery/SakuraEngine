@@ -426,6 +426,19 @@ FunctionDecl* AST::DeclareFunction(const Name& name, const TypeDecl* return_type
     return decl;
 }
 
+NamespaceDecl* AST::DeclareNamespace(const Name& name, NamespaceDecl* parent)
+{
+    ReservedWordsCheck(name);
+    auto decl = new NamespaceDecl(*this, name, parent);
+    _decls.emplace_back(decl);
+    _namespaces.emplace_back(decl);
+    if (parent)
+    {
+        parent->add_nested(decl);
+    }
+    return decl;
+}
+
 ParamVarDecl* AST::DeclareParam(EVariableQualifier qualifier, const TypeDecl* type, const Name& name)
 {
     if (type == nullptr) ReportFatalError(L"Param {}: Type cannot be null for parameter declaration", name);
@@ -955,12 +968,6 @@ void AST::DeclareIntrinstics()
         return (const TypeDecl*)nullptr;
     }, Sample2DParams);
 
-    // Declare Ray tracing related types
-    auto RayType = DeclareBuiltinType(L"Ray", 32, 16);
-    auto CommittedHitType = DeclareBuiltinType(L"CommittedHit", 24, 4);
-    auto TriangleHitType = DeclareBuiltinType(L"TriangleHit", 20, 4);
-    auto ProceduralHitType = DeclareBuiltinType(L"ProceduralHit", 8, 4);
-
     // RayQuery family concept
     auto RayQueryFamily = DeclareVarConcept(L"RayQueryFamily", 
         [this](EVariableQualifier qualifier, const TypeDecl* type) {
@@ -978,8 +985,8 @@ void AST::DeclareIntrinstics()
     _intrinstics["RAY_QUERY_COMMITTED_STATUS"] = DeclareTemplateMethod(nullptr, L"ray_query_committed_status", UIntType, RayQueryProceedParams);
     _intrinstics["RAY_QUERY_COMMITTED_TRIANGLE_BARYCENTRICS"] = DeclareTemplateMethod(nullptr, L"ray_query_committed_triangle_bary", Float2Type, RayQueryProceedParams);
     
-    // void trace_ray_inline(Accel& AS, uint32 mask, float3 origin, float3 direction, float t_min = 0.01f, float t_max = 9999.0f);
-    std::array<VarConceptDecl*, 7> TraceRayInlineParams = { RayQueryFamily, AccelFamily, IntScalar, FloatVector, FloatVector, FloatScalar, FloatScalar };
+    // void trace_ray_inline(Accel& AS, uint32 mask, Trait<Ray> ray);
+    std::array<VarConceptDecl*, 4> TraceRayInlineParams = { RayQueryFamily, AccelFamily, IntScalar, ValueFamily };
     _intrinstics["RAY_QUERY_TRACE_RAY_INLINE"] = DeclareTemplateMethod(nullptr, L"ray_query_trace_ray_inline", VoidType, TraceRayInlineParams);
 
     // commit_procedural with float parameter

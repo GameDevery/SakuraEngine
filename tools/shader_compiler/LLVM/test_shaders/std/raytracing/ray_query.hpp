@@ -44,12 +44,7 @@ struct [[builtin("ray_query")]] RayQuery {
     float committed_procedural_distance();
     
     [[callop("RAY_QUERY_TRACE_RAY_INLINE")]] 
-    void trace_ray_inline(Accel& AS, uint32 mask, float3 origin, float3 direction, float t_min = 0.01f, float t_max = 9999.0f);
-
-    void trace_ray_inline(Accel& AS, uint32 mask, const Ray& ray) 
-    {
-        trace_ray_inline(AS, mask, ray.origin(), ray.dir(), ray.t_min, ray.t_max);
-    }
+    void trace_ray_inline(Accel& AS, uint32 mask, const Ray& ray);
 
     // [[callop("RAY_QUERY_IS_TRIANGLE_CANDIDATE")]] bool is_triangle_candidate();
     // [[callop("RAY_QUERY_IS_PROCEDURAL_CANDIDATE")]] bool is_procedural_candidate();

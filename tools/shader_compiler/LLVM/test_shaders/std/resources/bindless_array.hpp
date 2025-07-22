@@ -38,7 +38,7 @@ struct [[builtin("bindless_array")]] BindlessArray {
     [[callop("BINDLESS_BYTE_BUFFER_READ")]] T byte_buffer_read(uint32 buffer_index, uint32 byte_offset);
     [[callop("BINDLESS_BUFFER_SIZE")]] uint32 _buffer_size(uint32 buffer_index, uint32 stride);
     template <typename T>
-    [[noignore]] uint32 buffer_size(uint32 buffer_index) {
+    uint32 buffer_size(uint32 buffer_index) {
         return _buffer_size(buffer_index, sizeof(T));
     }
 };

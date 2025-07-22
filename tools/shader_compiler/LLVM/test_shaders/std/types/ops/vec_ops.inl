@@ -86,24 +86,24 @@ template <typename U> requires(operatable<U>)
 [[binop("NOT_EQUAL")]] vec<bool, dim> operator!=(const U&) const;
 
 template <typename U> requires(operatable<U>)
-[[noignore, binop("ADD_ASSIGN")]] ThisType operator+=(const U& rhs) { return *this = *this + rhs; }
+[[binop("ADD_ASSIGN")]] ThisType operator+=(const U& rhs) { return *this = *this + rhs; }
 template <typename U> requires(operatable<U>)
-[[noignore, binop("SUB_ASSIGN")]] ThisType operator-=(const U& rhs) { return *this = *this - rhs; }
+[[binop("SUB_ASSIGN")]] ThisType operator-=(const U& rhs) { return *this = *this - rhs; }
 template <typename U> requires(operatable<U>)
-[[noignore, binop("MUL_ASSIGN")]] ThisType operator*=(const U& rhs) { return *this = *this * rhs; }
+[[binop("MUL_ASSIGN")]] ThisType operator*=(const U& rhs) { return *this = *this * rhs; }
 template <typename U> requires(operatable<U>)
-[[noignore, binop("DIV_ASSIGN")]] ThisType operator/=(const U& rhs) { return *this = *this / rhs; }
+[[binop("DIV_ASSIGN")]] ThisType operator/=(const U& rhs) { return *this = *this / rhs; }
 
 template <typename U> requires(operatable<U>)
-[[noignore, binop("MOD_ASSIGN")]] ThisType operator%=(const U& rhs) requires(is_int_family_v<ThisType>) { return *this = (*this % rhs); }
+[[binop("MOD_ASSIGN")]] ThisType operator%=(const U& rhs) requires(is_int_family_v<ThisType>) { return *this = (*this % rhs); }
 template <typename U> requires(operatable<U>)
-[[noignore, binop("BIT_AND_ASSIGN")]] ThisType operator&=(const U& rhs) requires(is_int_family_v<ThisType>)  { return *this = (*this & rhs); }
+[[binop("BIT_AND_ASSIGN")]] ThisType operator&=(const U& rhs) requires(is_int_family_v<ThisType>)  { return *this = (*this & rhs); }
 template <typename U> requires(operatable<U>)
-[[noignore, binop("BIT_OR_ASSIGN")]] ThisType operator|=(const U& rhs) requires(is_int_family_v<ThisType>) { return *this = (*this | rhs); }
+[[binop("BIT_OR_ASSIGN")]] ThisType operator|=(const U& rhs) requires(is_int_family_v<ThisType>) { return *this = (*this | rhs); }
 template <typename U> requires(operatable<U>)
-[[noignore, binop("BIT_XOR_ASSIGN")]] ThisType operator^=(const U& rhs) requires(is_int_family_v<ThisType>) { return *this = (*this ^ rhs); }
+[[binop("BIT_XOR_ASSIGN")]] ThisType operator^=(const U& rhs) requires(is_int_family_v<ThisType>) { return *this = (*this ^ rhs); }
 template <typename U> requires(operatable<U>)
-[[noignore, binop("SHL_ASSIGN")]] ThisType operator<<=(const U& rhs) requires(is_int_family_v<ThisType>) { return *this = (*this << rhs); }
+[[binop("SHL_ASSIGN")]] ThisType operator<<=(const U& rhs) requires(is_int_family_v<ThisType>) { return *this = (*this << rhs); }
 template <typename U> requires(operatable<U>)
-[[noignore, binop("SHR_ASSIGN")]] ThisType operator>>=(const U& rhs) requires(is_int_family_v<ThisType>) { return *this = (*this >> rhs); }
+[[binop("SHR_ASSIGN")]] ThisType operator>>=(const U& rhs) requires(is_int_family_v<ThisType>) { return *this = (*this >> rhs); }
 // clang-format on

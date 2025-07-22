@@ -71,6 +71,7 @@ public:
     FunctionDecl* DeclareFunction(const Name& name, const TypeDecl* return_type, std::span<const ParamVarDecl* const> params, CompoundStmt* body);
     MethodDecl* DeclareMethod(TypeDecl* owner, const Name& name, const TypeDecl* return_type, std::span<const ParamVarDecl* const> params, CompoundStmt* body);    
     ConstructorDecl* DeclareConstructor(TypeDecl* owner, const Name& name, std::span<const ParamVarDecl* const> params, CompoundStmt* body);
+    NamespaceDecl* DeclareNamespace(const Name& name, NamespaceDecl* parent = nullptr);
     ParamVarDecl* DeclareParam(EVariableQualifier qualifier, const TypeDecl* type, const Name& name);
     VarConceptDecl* DeclareVarConcept(const Name& name, std::function<bool(EVariableQualifier, const TypeDecl*)> validator);    
     TemplateCallableDecl* DeclareTemplateFunction(const Name& name, const TypeDecl* return_type, std::span<const VarConceptDecl* const> param_concepts);
@@ -131,8 +132,10 @@ public:
     std::span<Decl* const> decls() const { return _decls; }
     std::span<Stmt* const> stmts() const { return _stmts; }
     std::span<TypeDecl* const> types() const { return _types; }
+    const auto& array_types() const { return _arrs; }
     std::span<GlobalVarDecl* const> global_vars() const { return _globals; }
     std::span<FunctionDecl* const> funcs() const { return _funcs; }
+    std::span<NamespaceDecl* const> namespaces() const { return _namespaces; }
 
     SemanticType GetSemanticTypeFromString(const char* str);
     InterpolationMode GetInterpolationModeFromString(const char* str);
@@ -165,6 +168,7 @@ private:
     std::vector<FunctionDecl*> _funcs;
     std::vector<MethodDecl*> _methods;
     std::vector<ConstructorDecl*> _ctors;
+    std::vector<NamespaceDecl*> _namespaces;
     std::vector<Attr*> _attrs;
     std::map<std::string, SemanticType> _semantic_map;
     std::map<std::string, InterpolationMode> _interpolation_map;

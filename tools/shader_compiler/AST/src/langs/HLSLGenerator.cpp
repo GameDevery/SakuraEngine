@@ -1,4 +1,5 @@
 #include "CppSL/langs/HLSLGenerator.hpp"
+#include <functional>
 
 namespace skr::CppSL
 {
@@ -65,6 +66,19 @@ inline static String GetTypeName(const TypeDecl* type)
         return L"RayQuery<" + FlagText + L">";
     }
     return type->name();
+}
+
+// Forward declaration for HLSLGenerator member function
+String HLSLGenerator::GetQualifiedTypeName(const TypeDecl* type)
+{
+    // Check if this type has a namespace mapping
+    auto NonQualified = GetTypeName(type);
+    auto it = type_namespace_map_.find(type);
+    if (it != type_namespace_map_.end() && !it->second.empty())
+    {
+        return it->second + L"::" + NonQualified;
+    }
+    return NonQualified;
 }
 
 inline static String GetStageName(ShaderStage stage)
@@ -342,7 +356,7 @@ void HLSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt
     else if (auto bitwiseCast = dynamic_cast<const BitwiseCastExpr*>(stmt))
     {
         auto _type = bitwiseCast->type();
-        sb.append(L"bit_cast<" + GetTypeName(_type) + L">(");
+        sb.append(L"bit_cast<" + GetQualifiedTypeName(_type) + L">(");;
         visitExpr(sb, bitwiseCast->expr());
         sb.append(L")");
     }
@@ -458,19 +472,24 @@ void HLSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt
         }
         else if (auto AsArray = dynamic_cast<const ArrayTypeDecl*>(ctorExpr->type()))
         {
-            if (ctorExpr->args().size() != 0)
-                sb.append(L"[NOT SUPPORTED ARRAY CONSTRUCTOR]");
-            else
-                sb.append(L"(" + GetTypeName(ctorExpr->type()) + L")0");
+            const auto N = AsArray->size() / AsArray->element()->size();
+            sb.append(L"make_array" + std::to_wstring(N) + L"<" + GetQualifiedTypeName(AsArray->element()) + L", " + std::to_wstring(N) + L">(");;
+            for (size_t i = 0; i < ctorExpr->args().size(); i++)
+            {
+                auto arg = ctorExpr->args()[i];
+                if (i > 0)
+                {
+                    sb.append(L", ");
+                }
+                visitExpr(sb, arg);
+            }
+            sb.append(L")");
         }
         else
         {
             std::span<Expr* const> args;
             std::vector<Expr*> modified_args;
             int32_t fillVectorArgsWithZero = 0;
-            auto ctorLeft = GetTypeName(ctorExpr->type()) + L"(";
-            auto ctorRight = L")";
-
             if (auto AsVector = dynamic_cast<const VectorTypeDecl*>(ctorExpr->type());
                 AsVector && ((ctorExpr->args().size() == 0) || (ctorExpr->args().size() == 1)))
             {
@@ -487,11 +506,13 @@ void HLSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt
             }
             
             if (args.empty())
-            {
                 args = ctorExpr->args();
-            }
 
-            sb.append(ctorLeft);
+            if (ctorExpr->type()->is_builtin())
+                sb.append(GetQualifiedTypeName(ctorExpr->type()) + L"(");
+            else
+                sb.append(GetQualifiedTypeName(ctorExpr->type()) + L"::New(");;
+            
             if (fillVectorArgsWithZero > 0)
             {
                 for (int32_t j = 0; j < fillVectorArgsWithZero; j++)
@@ -513,7 +534,7 @@ void HLSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt
                     visitExpr(sb, arg);
                 }
             }
-            sb.append(ctorRight);
+            sb.append(L")");
         }
     }
     else if (auto continueStmt = dynamic_cast<const ContinueStmt*>(stmt))
@@ -610,7 +631,7 @@ void HLSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt
     }
     else if (auto staticCast = dynamic_cast<const StaticCastExpr*>(stmt))
     {
-        sb.append(L"((" + GetTypeName(staticCast->type()) + L")");
+        sb.append(L"((" + GetQualifiedTypeName(staticCast->type()) + L")");;
         visitExpr(sb, staticCast->expr());
         sb.append(L")");
     }
@@ -704,6 +725,8 @@ void HLSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt
         auto to_access = dynamic_cast<const Expr*>(access->children()[0]);
         auto index = dynamic_cast<const Expr*>(access->children()[1]);
         visitExpr(sb, to_access);
+        if (to_access->type()->is_array())
+            sb.append(L".data");
         sb.append(L"[");
         visitExpr(sb, index);
         sb.append(L"]");
@@ -742,7 +765,7 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::TypeDecl* type
     const bool IsStageInout = FindAttr<StageInoutAttr>(typeDecl->attrs());
     if (!typeDecl->is_builtin())
     {
-        sb.append(L"struct " + GetTypeName(typeDecl));
+        sb.append(L"struct " + GetQualifiedTypeName(typeDecl));
         sb.endline(L'{');
         sb.indent([&] {
             for (auto field : typeDecl->fields())
@@ -752,7 +775,7 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::TypeDecl* type
                     sb.append(GetInterpolationString(interpolation->mode()) + L" ");
                 }
 
-                sb.append(GetTypeName(&field->type()) + L" " + field->name());
+                sb.append(GetQualifiedTypeName(&field->type()) + L" " + field->name());
                 if (IsStageInout)
                     sb.append(L" : " + field->name());
                 sb.endline(L';');
@@ -783,12 +806,11 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::TypeDecl* type
                 auto WrapperBody = pAST->Block({ _this, _init, _return });
                 sb.append(L"static ");
                 // 只 declare 这些 method，但是不把他们加到类型里面，不然会被生成 method 的逻辑重复生成
-                visit(sb, pAST->DeclareMethod(const_cast<skr::CppSL::TypeDecl*>(typeDecl), L"__CTOR__", typeDecl, ctor->parameters(), WrapperBody), FunctionStyle::Normal);
+                visit(sb, pAST->DeclareMethod(const_cast<skr::CppSL::TypeDecl*>(typeDecl), L"New", typeDecl, ctor->parameters(), WrapperBody), FunctionStyle::Normal);
             }
         });
         sb.append(L"}");
         sb.endline(L';');
-        sb.append(L"#define " + GetTypeName(typeDecl) + L"(...) " + GetTypeName(typeDecl) + L"::__CTOR__(__VA_ARGS__)");
         sb.endline();
         sb.append_line();
     }        
@@ -845,10 +867,10 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* 
             if ((style == FunctionStyle::OutterImplmentation) && AsMethod)
             {
                 // HLSL: Type::MethodName
-                functionName = GetTypeName(AsMethod->owner_type()) + L"::" + functionName;
+                functionName = GetQualifiedTypeName(AsMethod->owner_type()) + L"::" + functionName;
             }
 
-            sb.append(GetTypeName(funcDecl->return_type()) + L" " + functionName + L"(");
+            sb.append(GetQualifiedTypeName(funcDecl->return_type()) + L" " + functionName + L"(");
             for (size_t i = 0; i < params.size(); i++)
             {
                 auto param = params[i];
@@ -888,7 +910,7 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* 
                     prefix = L"";
                     break;
                 }
-                String content = prefix + GetTypeName(&param->type()) + L" " + param->name();
+                String content = prefix + GetQualifiedTypeName(&param->type()) + L" " + param->name();
     
                 if (i > 0)
                     content = L", " + content;
@@ -901,16 +923,17 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* 
                 // HLSL: SV_Position is the output of vertex shader, so we need to add it to fragment shader
                 sb.append(L" : SV_Target");
             }
-            sb.endline();
         }
 
         // generate body
         if (style == FunctionStyle::SignatureOnly)
         {
             sb.append(L";");
+            sb.endline();
         }
         else
         {
+            sb.endline();
             visitExpr(sb, funcDecl->body());
             sb.endline();
         }
@@ -931,7 +954,7 @@ void HLSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::VarDecl* varDe
         else if (varDecl->qualifier() == EVariableQualifier::Inout)
             sb.append(L"inout ");
     
-        sb.append(GetTypeName(&varDecl->type()) + L" " + varDecl->name());
+        sb.append(GetQualifiedTypeName(&varDecl->type()) + L" " + varDecl->name());
         if (auto init = varDecl->initializer())
         {
             if (auto asRayQuery = dynamic_cast<const RayQueryTypeDecl*>(init->type()))
@@ -966,50 +989,193 @@ void HLSLGenerator::visit_decl(SourceBuilderNew& sb, const skr::CppSL::Decl* dec
 }
 
 static const skr::CppSL::String kHLSLHeader = LR"(
-template <typename _ELEM, uint64_t N> 
-using array = _ELEM[N];
+template <typename T, uint64_t N> struct array { T data[N]; };
 
-template <typename _ELEM> void buffer_write(RWStructuredBuffer<_ELEM> buffer, uint index, _ELEM value) { buffer[index] = value; }
-template <typename _ELEM> _ELEM buffer_read(RWStructuredBuffer<_ELEM> buffer, uint index) { return buffer[index]; }
+template <typename T> void buffer_write(RWStructuredBuffer<T> buffer, uint index, T value) { buffer[index] = value; }
+template <typename T> T buffer_read(RWStructuredBuffer<T> buffer, uint index) { return buffer[index]; }
 
-template <typename _TEX> float4 texture2d_sample(_TEX tex, uint2 uv, uint filter, uint address) { return float4(1, 1, 1, 1); }
-template <typename _TEX> float4 texture3d_sample(_TEX tex, uint3 uv, uint filter, uint address) { return float4(1, 1, 1, 1); }
+template <typename TEX> float4 texture2d_sample(TEX tex, uint2 uv, uint filter, uint address) { return float4(1, 1, 1, 1); }
+template <typename TEX> float4 texture3d_sample(TEX tex, uint3 uv, uint filter, uint address) { return float4(1, 1, 1, 1); }
 
-template <typename _ELEM> _ELEM texture_read(Texture2D<_ELEM> tex, uint2 loc) { return tex.Load(uint3(loc, 0)); }
-template <typename _ELEM> _ELEM texture_read(RWTexture2D<_ELEM> tex, uint2 loc) { return tex.Load(uint3(loc, 0)); }
-template <typename _ELEM> _ELEM texture_read(Texture2D<_ELEM> tex, uint3 loc_and_mip) { return tex.Load(loc_and_mip); }
-template <typename _ELEM> _ELEM texture_read(RWTexture2D<_ELEM> tex, uint3 loc_and_mip) { return tex.Load(loc_and_mip); }
-template <typename _ELEM> _ELEM texture_write(RWTexture2D<_ELEM> tex, uint2 uv, _ELEM v) { return tex[uv] = v; }
+template <typename T> T texture_read(Texture2D<T> tex, uint2 loc) { return tex.Load(uint3(loc, 0)); }
+template <typename T> T texture_read(RWTexture2D<T> tex, uint2 loc) { return tex.Load(uint3(loc, 0)); }
+template <typename T> T texture_read(Texture2D<T> tex, uint3 loc_and_mip) { return tex.Load(loc_and_mip); }
+template <typename T> T texture_read(RWTexture2D<T> tex, uint3 loc_and_mip) { return tex.Load(loc_and_mip); }
+template <typename T> T texture_write(RWTexture2D<T> tex, uint2 uv, T v) { return tex[uv] = v; }
 
-template <typename _ELEM> uint2 texture_size(Texture2D<_ELEM> tex) { uint Width, Height, Mips; tex.GetDimensions(0, Width, Height, Mips); return uint2(Width, Height); }
-template <typename _ELEM> uint2 texture_size(RWTexture2D<_ELEM> tex) { uint Width, Height; tex.GetDimensions(Width, Height); return uint2(Width, Height); }
-template <typename _ELEM> uint3 texture_size(Texture3D<_ELEM> tex) { uint Width, Height, Depth, Mips; tex.GetDimensions(0, Width, Height, Depth, Mips); return uint3(Width, Height, Depth); }
-template <typename _ELEM> uint3 texture_size(RWTexture3D<_ELEM> tex) { uint Width, Height, Depth; tex.GetDimensions(Width, Height, Depth); return uint3(Width, Height, Depth); }
+template <typename T> uint2 texture_size(Texture2D<T> tex) { uint Width, Height, Mips; tex.GetDimensions(0, Width, Height, Mips); return uint2(Width, Height); }
+template <typename T> uint2 texture_size(RWTexture2D<T> tex) { uint Width, Height; tex.GetDimensions(Width, Height); return uint2(Width, Height); }
+template <typename T> uint3 texture_size(Texture3D<T> tex) { uint Width, Height, Depth, Mips; tex.GetDimensions(0, Width, Height, Depth, Mips); return uint3(Width, Height, Depth); }
+template <typename T> uint3 texture_size(RWTexture3D<T> tex) { uint Width, Height, Depth; tex.GetDimensions(Width, Height, Depth); return uint3(Width, Height, Depth); }
 
 float4 sample2d(SamplerState s, Texture2D t, float2 uv) { return t.Sample(s, uv); }
 
 using AccelerationStructure = RaytracingAccelerationStructure;
 RayDesc create_ray(float3 origin, float3 dir, float tmin, float tmax) { RayDesc r; r.Origin = origin; r.Direction = dir; r.TMin = tmin; r.TMax = tmax; return r; }
-#define ray_query_trace_ray_inline(q, as, mask, origin, dir, tmin, tmax) (q).TraceRayInline((as), RAY_FLAG_NONE, (mask), create_ray((origin), (dir), (tmin), (tmax)))
+#define ray_query_trace_ray_inline(q, as, mask, ray) (q).TraceRayInline((as), RAY_FLAG_NONE, (mask), create_ray((ray).origin(), (ray).dir(), (ray).tmin(), (ray).tmax()))
 #define ray_query_proceed(q) (q).Proceed()
 #define ray_query_committed_triangle_bary(q) (q).CommittedTriangleBarycentrics()
 #define ray_query_committed_status(q) (q).CommittedStatus()
-
 )";
 
 String HLSLGenerator::generate_code(SourceBuilderNew& sb, const AST& ast)
 {
     using namespace skr::CppSL;
 
+    // Build the type-to-namespace mapping
+    build_type_namespace_map(ast);
+
     sb.append(kHLSLHeader);
     sb.endline();
     
+    // generate make_array helpers
+    generate_array_helpers(sb, ast);
+
+    // generate namespace forward declarations
+    generate_namespace_declarations(sb, ast);
+
+    // generate declares
     for (const auto& decl: ast.decls())
     {
         visit_decl(sb, decl);
     }
 
     return sb.build(SourceBuilderNew::line_builder_code);
+}
+
+void HLSLGenerator::generate_array_helpers(SourceBuilderNew& sb, const AST& ast)
+{
+    std::set<uint32_t > array_dims;
+    for (auto&& [element, array] : ast.array_types())
+    {
+        const auto N = array->size() / element.first->size();
+        if (!array_dims.contains(N))
+        {
+            String args = L"";
+            String exprs = L"";
+            for (uint32_t i = 0; i < N; i++)
+            {
+                if (i > 0)
+                    args += L", ";
+                args += L"T a" + std::to_wstring(i) + L" = (T)0";
+                exprs += L"a.data[" + std::to_wstring(i) + L"] = a" + std::to_wstring(i) + L";";
+            }
+            String _template = L"template <typename T, uint64_t N> array<T, N>";
+            auto _signature = L"make_array" + std::to_wstring(N)+ L"(" + args + L")";
+            auto impl = L"{ array<T, N> a; " + exprs + L"; return a; }";
+            sb.append(_template + L" " + _signature + L" " + impl);
+            sb.endline();
+
+            array_dims.insert(N);
+        }
+    }
+    if (array_dims.size() > 0)
+        sb.append_line();
+}
+
+void HLSLGenerator::generate_namespace_declarations(SourceBuilderNew& sb, const AST& ast)
+{
+    // Generate namespace forward declarations for HLSL
+    // Only generate root namespaces (those without parents) to avoid duplicates
+    bool has_output = false;
+    for (const auto& ns : ast.namespaces())
+    {
+        if (ns->parent() == nullptr) // Only process root namespaces
+        {
+            generate_namespace_recursive(sb, ns, 0);
+            has_output = true;
+        }
+    }
+    
+    if (has_output)
+        sb.append_line();
+}
+
+void HLSLGenerator::generate_namespace_recursive(SourceBuilderNew& sb, const NamespaceDecl* ns, int indent_level)
+{
+    // Skip empty namespaces
+    if (!ns->has_content())
+        return;
+    
+    // Generate namespace opening (compact style)
+    sb.append(L"namespace " + ns->name() + L" { ");
+    
+    // Generate forward declarations for types in this namespace
+    bool has_declarations = false;
+    for (const auto& type : ns->types())
+    {
+        if (!type->is_builtin())
+        {
+            sb.append(L"struct " + type->name() + L"; ");
+            has_declarations = true;
+        }
+    }
+    
+    // Generate forward declarations for functions in this namespace
+    for (const auto& func : ns->functions())
+    {
+        visit(sb, func, FunctionStyle::SignatureOnly);
+        sb.append(L"; ");
+        has_declarations = true;
+    }
+    
+    // Recursively generate nested namespaces
+    for (const auto& nested : ns->nested())
+    {
+        generate_namespace_recursive(sb, nested, indent_level + 1);
+    }
+    
+    // Generate namespace closing
+    sb.append(L"}");
+    if (indent_level == 0) // Only add newline for root namespaces
+        sb.endline();
+    else
+        sb.append(L" ");
+}
+
+void HLSLGenerator::build_type_namespace_map(const AST& ast)
+{
+    // Clear the map first
+    type_namespace_map_.clear();
+    
+    // Helper function to build namespace path
+    std::function<String(const NamespaceDecl*)> build_namespace_path = [&](const NamespaceDecl* ns) -> String {
+        if (!ns || !ns->parent())
+        {
+            return ns ? ns->name() : L"";
+        }
+        String parent_path = build_namespace_path(ns->parent());
+        return parent_path.empty() ? ns->name() : parent_path + L"::" + ns->name();
+    };
+    
+    // Recursively map all types in namespaces
+    std::function<void(const NamespaceDecl*)> map_namespace_types = [&](const NamespaceDecl* ns) {
+        String namespace_path = build_namespace_path(ns);
+        
+        // Map all types in this namespace
+        for (const auto& type : ns->types())
+        {
+            if (!type->is_builtin())
+            {
+                type_namespace_map_[type] = namespace_path;
+            }
+        }
+        
+        // Recursively process nested namespaces
+        for (const auto& nested : ns->nested())
+        {
+            map_namespace_types(nested);
+        }
+    };
+    
+    // Process all root namespaces
+    for (const auto& ns : ast.namespaces())
+    {
+        if (ns->parent() == nullptr) // Only process root namespaces
+        {
+            map_namespace_types(ns);
+        }
+    }
 }
 
 } // namespace skr::CppSL
