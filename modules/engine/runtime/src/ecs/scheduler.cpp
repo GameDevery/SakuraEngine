@@ -5,6 +5,13 @@
 namespace skr::ecs
 {
 
+inline static EDependencySyncMode DeterminSyncMode(EAccessMode current, EAccessMode last)
+{
+    if (current == EAccessMode::Seq && last == EAccessMode::Seq)
+        return EDependencySyncMode::PerChunk;
+    return EDependencySyncMode::WholeTask;
+}
+
 void StaticDependencyAnalyzer::process(skr::RC<TaskSignature> new_task)
 {
     SkrZoneScopedN("StaticDependencyAnalyzer::Process");
@@ -13,28 +20,31 @@ void StaticDependencyAnalyzer::process(skr::RC<TaskSignature> new_task)
     for (auto read : new_task->reads)
     {
         auto access = accesses.try_add_default(read.type);
-        if (access.already_exist() && access.value().last_writer) // RAW
+        if (access.already_exist() && access.value().last_writer.first) // RAW
         {
-            _collector.add(access.value().last_writer);
+            auto&& [writer, mode] = access.value().last_writer;
+            _collector.emplace(writer, DeterminSyncMode(read.mode, mode));
         }
-        access.value().readers.add(new_task);
+        access.value().readers.add(new_task, read.mode);;
     }
     for (auto write : new_task->writes)
     {
         auto access = accesses.try_add_default(write.type);
         if (access.already_exist() && access.value().readers.size()) // WAR
         {
-            _collector.append(access.value().readers);
+            for (auto& [reader, mode] : access.value().readers)
+            {
+                _collector.emplace(reader, DeterminSyncMode(write.mode, mode));
+            }
         }
-        if (access.already_exist() && access.value().last_writer) // WAW
+        if (access.already_exist() && access.value().last_writer.first) // WAW
         {
-            _collector.add(access.value().last_writer);
+            auto&& [writer, mode] = access.value().last_writer;
+            _collector.emplace(writer, DeterminSyncMode(write.mode, mode));
         }
-        access.value().last_writer = new_task;
+        access.value().last_writer = { new_task, write.mode };
         access.value().readers.clear();
     }
-
-    // now we get the dependency level, update the access info
     new_task->_static_dependencies = _collector;
 }
 
@@ -49,6 +59,7 @@ void WorkUnitGenerator::process(skr::RC<TaskSignature> new_task)
         WorkUnitGenerator* _this;
         skr::RC<TaskSignature> new_task;
         WorkGroup* work_group = nullptr;
+        uint64_t total_units = 0;
     } ctx;
     ctx.query = new_task->query;
     ctx._this = this;
@@ -60,15 +71,23 @@ void WorkUnitGenerator::process(skr::RC<TaskSignature> new_task)
 
         CollectContext* ctx = (CollectContext*)usr_data;
         auto& unit = ctx->work_group->units.try_add_default(view->chunk).value();
+        ctx->total_units += 1;
         unit.chunk_view = *view;
         unit.finish.add(1);
-        for (auto dependency : ctx->work_group->dependencies)
+        for (auto [dependency, mode] : ctx->work_group->dependencies)
         {
-            if (auto depend_group = dependency->_work_groups.find(ctx->work_group->group))
+            if (mode == EDependencySyncMode::WholeTask)
             {
-                if (auto depend_unit = depend_group.value().units.find(view->chunk))
+                unit.dependencies.add(dependency->_finish);
+            }
+            else if (mode == EDependencySyncMode::PerChunk)
+            {
+                if (auto depend_group = dependency->_work_groups.find(ctx->work_group->group))
                 {
-                    unit.dependencies.add(depend_unit.value().finish);
+                    if (auto depend_unit = depend_group.value().units.find(view->chunk))
+                    {
+                        unit.dependencies.add(depend_unit.value().finish);
+                    }
                 }
             }
         }
@@ -78,16 +97,23 @@ void WorkUnitGenerator::process(skr::RC<TaskSignature> new_task)
         auto& ctx = *(CollectContext*)u;
         ctx.work_group = &ctx.new_task->_work_groups.try_add_default(group).value();
         ctx.work_group->group = group;
-        for (auto static_dependency : ctx.new_task->_static_dependencies)
+        for (auto dependency : ctx.new_task->_static_dependencies)
         {
-            if (bool confict = sugoiQ_match_group(static_dependency->query, group))
+            // can't be optimized, usually because of random accesses
+            if (dependency.mode == EDependencySyncMode::WholeTask)
             {
-                ctx.work_group->dependencies.add(static_dependency);
+                ctx.work_group->dependencies.add(dependency);
+            }
+            // if two systems never operate on a same group. we can skip the denepdnecy
+            if (bool confict = sugoiQ_match_group(dependency.task->query, group))
+            {
+                ctx.work_group->dependencies.add(dependency);
             }
         }
         sugoiQ_in_group(ctx.query, group, collect_units, &ctx);
     };
     sugoiQ_get_groups(ctx.query, filter_group, &ctx);
+    new_task->_finish.add(ctx.total_units);
 }
 
 TaskScheduler::TaskScheduler(const ServiceThreadDesc& desc, skr::task::scheduler_t& scheduler) SKR_NOEXCEPT
@@ -158,7 +184,7 @@ void TaskScheduler::dispatch(skr::RC<TaskSignature> signature)
                     for (auto dep : unit.dependencies)
                         dep.lock().wait(false);
                 }
-                SKR_DEFER({ running.decrement(); unit.finish.decrement(); });
+                SKR_DEFER({ running.decrement(); unit.finish.decrement(); signature->_finish.decrement(); });
                 if (batch_count == 1)
                 {
                     task->func(unit.chunk_view, unit.chunk_view.count, 0);

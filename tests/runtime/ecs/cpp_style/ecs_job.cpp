@@ -7,7 +7,7 @@ struct ECSJobs {
     ECSJobs() SKR_NOEXCEPT
         : world(scheduler)
     {
-        // std::this_thread::sleep_for(std::chrono::milliseconds(1200));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1200));
         scheduler.initialize(skr::task::scheudler_config_t());
         scheduler.bind();
      
@@ -20,7 +20,7 @@ struct ECSJobs {
     {
         world.finalize();
         scheduler.unbind();
-        // std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+         std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     }
 
     void spawnIntEntities()
@@ -116,7 +116,8 @@ TEST_CASE_METHOD(ECSJobs, "WRW")
     } wjob1;
     world.dispatch_task(wjob1, 1'280, q0);
 
-    world.get_scheduler()->stop_and_exit();
+    world.get_scheduler()->flush_all();
+    world.get_scheduler()->sync_all();
 
     world.destroy_query(q0);
     world.destroy_query(q1);
@@ -189,7 +190,8 @@ TEST_CASE_METHOD(ECSJobs, "WRW-Complex")
     } readJob;
     auto q2 = world.dispatch_task(readJob, 1'280, nullptr);
 
-    world.get_scheduler()->stop_and_exit();
+    world.get_scheduler()->flush_all();
+    world.get_scheduler()->sync_all();
 
     world.destroy_query(q0);
     world.destroy_query(q1);

@@ -138,6 +138,12 @@ void World::initialize() SKR_NOEXCEPT
 
 void World::finalize() SKR_NOEXCEPT
 {
+	if (TS.get())
+	{
+		TS->sync_all();
+		TS->stop_and_exit();
+	}
+
     sugoiS_release(storage);
     storage = nullptr;
 }

@@ -106,7 +106,7 @@ TransformSystem* TransformSystem::Create(skr::ecs::World* world) SKR_NOEXCEPT
                  .ReadWriteAll<skr::scene::TransformComponent>()
                  .ReadOptional<skr::scene::ChildrenComponent>()
                  .ReadOptional<skr::scene::TranslationComponent, skr::scene::RotationComponent, skr::scene::ScaleComponent>()
-                 .ReadAll<skr::scene::RootComponent>()
+                 .None<skr::scene::ParentComponent>()
                  .commit()
                  .value();
     system->impl->calculateTransformTree = q;
