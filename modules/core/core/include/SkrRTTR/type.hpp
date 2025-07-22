@@ -165,6 +165,10 @@ struct SKR_CORE_API RTTRType final {
     void            each_attribute(FunctionRef<void(const Any&)> each_func) const;
     void            each_attribute(FunctionRef<void(const Any&)> each_func, TypeSignatureView signature) const;
 
+    // alloc
+    void* alloc(uint64_t count = 1) const;
+    void  free(void* p) const;
+
 private:
     // helpers
     bool _build_caster(RTTRTypeCaster& caster, const GUID& type_id) const;

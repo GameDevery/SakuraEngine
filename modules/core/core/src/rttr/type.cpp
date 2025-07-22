@@ -893,6 +893,16 @@ void RTTRType::each_attribute(FunctionRef<void(const Any&)> each_func, TypeSigna
     }
 }
 
+// alloc
+void* RTTRType::alloc(uint64_t count) const
+{
+    return sakura_new_aligned(size() * count, alignment());
+}
+void RTTRType::free(void* p) const
+{
+    sakura_free_aligned(p, alignment());
+}
+
 // helpers
 bool RTTRType::_build_caster(RTTRTypeCaster& caster, const GUID& type_id) const
 {

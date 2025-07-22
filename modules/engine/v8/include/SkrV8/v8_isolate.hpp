@@ -155,7 +155,6 @@ private:
     // bind methods
     static void _gc_callback(const ::v8::WeakCallbackInfo<V8BindCoreRecordBase>& data);
     static void _call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static void _call_mixin(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
     static void _call_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
     static void _call_static_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
     static void _get_field(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
