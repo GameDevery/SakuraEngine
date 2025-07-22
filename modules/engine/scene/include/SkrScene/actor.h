@@ -1,4 +1,5 @@
 #pragma once
+#include "SkrBase/types/impl/guid.hpp"
 #include "SkrCore/memory/rc.hpp"
 #include "SkrContainersDef/vector.hpp"
 #include "SkrRT/sugoi/sugoi.h"
@@ -21,16 +22,20 @@ SKR_SCENE_API Actor
 {
 public:
     SKR_RC_IMPL();
-
+    virtual ~Actor() SKR_NOEXCEPT;
+    static RCWeak<Actor> GetRoot();
     static RCWeak<Actor> CreateActor();
     void AttachTo(RCWeak<Actor> parent, EAttachRule rule = EAttachRule::Default);
     void DetachFromParent();
 
 protected:
     Actor() SKR_NOEXCEPT;
-    virtual ~Actor() SKR_NOEXCEPT;
+    skr::String display_name; // for editor, profiler, and runtime dump
+    skr::GUID guid = skr::GUID::Create(); // guid for each actor, used to identify actors in the scene
     skr::InlineVector<sugoi_entity_t, 1> transform_entities;
     skr::Vector<skr::RC<Actor>> children;
+    skr::RC<Actor> _parent = nullptr;
+    EAttachRule attach_rule = EAttachRule::Default;
 };
 
 class MeshActor : public Actor
