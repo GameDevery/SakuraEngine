@@ -7,6 +7,7 @@ includes("input_system/xmake.lua")
 
 skr_includes_with_cull("v8", function ()
     includes("v8/xmake.lua")
+    includes("v8_new/xmake.lua")
 end)
 
 skr_includes_with_cull("lua", function ()

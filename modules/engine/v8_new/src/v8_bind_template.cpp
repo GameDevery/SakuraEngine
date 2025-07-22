@@ -1,6 +1,6 @@
-#include <SkrV8/new/v8_bind_template.hpp>
+#include <SkrV8/v8_bind_template.hpp>
 #include <SkrV8/v8_bind.hpp>
-#include <SkrV8/new/v8_bind_proxy.hpp>
+#include <SkrV8/v8_bind_proxy.hpp>
 
 // v8 includes
 #include <libplatform/libplatform.h>

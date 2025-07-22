@@ -35,7 +35,7 @@ struct IV8BindManager {
     ) = 0;
 
     // mixin
-    IScriptMixinCore* get_mixin_core() const;
+    virtual IScriptMixinCore* get_mixin_core() const = 0;
 };
 
 //===============================fwd===============================
