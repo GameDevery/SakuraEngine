@@ -31,11 +31,7 @@ struct SKR_IMGUI_API ImGuiApp : public SystemApp {
     void begin_frame();
     void end_frame();
     void acquire_next_frame();
-    // for resize and render issue
-    // render() -> collect() + render()
-    // temp change, should be limited to dev_anim branch only
-    // contact @zihuang.zhu for any issue
-    void collect();
+    void collect(); // Collect ImGui data for rendering
     void render();
 
     // imgui functional
