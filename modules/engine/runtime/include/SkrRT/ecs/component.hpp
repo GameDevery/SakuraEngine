@@ -101,22 +101,22 @@ template <class T>
 struct ComponentAccessor : public ComponentAccessorBase
 {
     using Storage = typename ComponentStorage<T>::Type;
-    Storage& operator[](size_t Index)
+    Storage& operator[](Entity entity)
     {
-        return get_checked(Index);
+        return *get_checked(entity);
     }
 
-    Storage& get_checked(size_t Index)
+    Storage& get_checked(Entity entity)
     {
-        Storage* Result = get(Index);
+        Storage* Result = get(entity);
         check(Result);
         return *Result;
     }
 
-    Storage* get(size_t Index)
+    Storage* get(Entity entity)
     {
         sugoi_chunk_view_t view;
-        sugoiS_access(World, Index, &view);
+        sugoiS_access(World, entity, &view);
         if (view.chunk == nullptr)
             return nullptr;
         if(CachedPtr != nullptr && CachedView.chunk == view.chunk)

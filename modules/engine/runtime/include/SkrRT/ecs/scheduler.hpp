@@ -13,6 +13,18 @@ struct Task;
 struct TaskSignature;
 struct StaticDependencyAnalyzer;
 
+enum class EDependencySyncMode
+{
+    PerChunk,
+    WholeTask
+};
+
+struct TaskDependency
+{
+    skr::RC<TaskSignature> task;
+    EDependencySyncMode mode;
+};
+
 struct WorkUnit
 {
     mutable sugoi_chunk_view_t chunk_view;
@@ -25,7 +37,7 @@ struct WorkGroup
 {
     const sugoi_group_t* group;
     skr::Map<const sugoi_chunk_t*, WorkUnit> units;
-    skr::Vector<skr::RC<TaskSignature>> dependencies;
+    skr::Vector<TaskDependency> dependencies;
 };
 
 struct Task
@@ -70,11 +82,13 @@ public:
     const auto& work_groups() const { return _work_groups; }
 
 protected:
+    friend struct TaskScheduler;
     friend struct StaticDependencyAnalyzer;
-    skr::Vector<skr::RC<TaskSignature>> _static_dependencies;
+    skr::Vector<TaskDependency> _static_dependencies;
 
     friend struct WorkUnitGenerator;
     skr::Map<const sugoi_group_t*, WorkGroup> _work_groups;
+    skr::task::counter_t _finish;
 };
 
 struct SKR_RUNTIME_API StaticDependencyAnalyzer
@@ -83,13 +97,13 @@ struct SKR_RUNTIME_API StaticDependencyAnalyzer
 
     struct AccessInfo
     {
-        skr::RC<TaskSignature> last_writer;
-        skr::Vector<skr::RC<TaskSignature>> readers;
+        std::pair<skr::RC<TaskSignature>, EAccessMode> last_writer;
+        skr::Map<skr::RC<TaskSignature>, EAccessMode> readers;
     };
     skr::Map<TypeIndex, AccessInfo> accesses;
 
     // TODO: WRITE A STACK ALLOCATOR AND REPLACE THIS WITH IT
-    skr::Vector<skr::RC<TaskSignature>> _collector;
+    skr::Vector<TaskDependency> _collector;
 };
 
 struct SKR_RUNTIME_API WorkUnitGenerator

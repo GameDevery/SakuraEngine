@@ -91,14 +91,6 @@ CameraComponent
 };
 
 sreflect_struct(
-    guid = "01981176-e2b1-75b9-ae84-e8edf3eda1a4";
-    ecs.comp = @enable;)
-RootComponent
-{
-    uint32_t _;
-};
-
-sreflect_struct(
     guid = "01981176-f870-738b-8cac-5e3d87ba37b5";
     ecs.comp.array = 4;)
 ChildrenComponent
