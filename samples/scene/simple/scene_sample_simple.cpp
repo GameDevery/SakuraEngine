@@ -27,7 +27,10 @@ int SceneSampleSimpleModule::main_module_exec(int argc, char8_t** argv)
     SkrZoneScopedN("SceneSampleSimpleModule::main_module_exec");
     SKR_LOG_INFO(u8"Running Scene Sample Simple Module");
 
-
+    auto root = skr::Actor::GetRoot();
+    auto actor1 = skr::Actor::CreateActor();
+    auto actor2 = skr::Actor::CreateActor();
+    actor2.lock()->AttachTo(actor1, skr::EAttachRule::KeepWorldTransform);
 
     return 0;
 }

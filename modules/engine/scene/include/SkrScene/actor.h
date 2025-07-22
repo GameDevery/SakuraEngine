@@ -27,7 +27,7 @@ public:
     static RCWeak<Actor> CreateActor();
     void AttachTo(RCWeak<Actor> parent, EAttachRule rule = EAttachRule::Default);
     void DetachFromParent();
-
+    void OnTick(float delta_time) SKR_NOEXCEPT;
 protected:
     Actor() SKR_NOEXCEPT;
     skr::String display_name; // for editor, profiler, and runtime dump

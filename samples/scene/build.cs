@@ -16,5 +16,10 @@ public static class SceneSamples
             .AddCppFiles("simple/*.cpp")
             .Depend(Visibility.Private, "SkrScene")
             .Depend(Visibility.Private, "SkrCore");
+        Engine.Program("SceneSample_Tree")
+            .IncludeDirs(Visibility.Private, ".")
+            .AddCppFiles("tree/*.cpp")
+            .Depend(Visibility.Private, "SkrScene")
+            .Depend(Visibility.Private, "SkrCore");
     }
 }

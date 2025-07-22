@@ -24,7 +24,7 @@ public static class RenderGraphSamples
             .CppSLOutputDirectory("resources/shaders/rg-deferred");
 
         Engine.Program("RenderGraphRaytracingSample")
-            .Depend(Visibility.Public, "SkrRenderGraph", "SkrSystem")
+            .Depend(Visibility.Public, "SkrRenderGraph", "SkrSystem", "SkrScene")
             .AddCppFiles("rg-raytracing/*.cpp")
             .AddCppSLFiles("rg-raytracing/**.cppsl")
             .CppSLOutputDirectory("resources/shaders/rg-raytracing");
