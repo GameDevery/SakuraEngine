@@ -163,13 +163,12 @@ public:
 
     void initialize() SKR_NOEXCEPT;
     void finalize() SKR_NOEXCEPT;
-    TaskScheduler* get_scheduler() SKR_NOEXCEPT;
 
     template <typename T>
     requires std::is_copy_constructible_v<T>
     EntityQuery* dispatch_task(T TaskBody, uint32_t batch_size, sugoi_query_t* reuse_query)
     {
-        SKR_ASSERT(TS.get());
+        SKR_ASSERT(TaskScheduler::Get());
 
         skr::RC<AccessBuilder> Access = skr::RC<AccessBuilder>::New();
         TaskBody.build(*Access);
@@ -217,7 +216,7 @@ public:
         Access->task = skr::RC<Task>::New();
         Access->task->func = std::move(TASK);
         Access->task->batch_size = batch_size;
-        TS->add_task(Access);
+        TaskScheduler::Get()->add_task(Access);
         return reuse_query;
     }
 
@@ -273,7 +272,6 @@ protected:
     World(const World&) = delete;
     World& operator=(const World&) = delete;
     sugoi_storage_t* storage = nullptr;
-    skr::UPtr<TaskScheduler> TS;
 };
 
 } // namespace skr::ecs

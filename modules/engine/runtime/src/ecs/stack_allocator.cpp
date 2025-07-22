@@ -12,7 +12,7 @@ static const char* kStackAllocatorName = "ECSStackAllocator";
 // Implementation details
 struct StackAllocator::Impl : public skr::StackAllocator<StackAllocator::Impl>
 {
-    static constexpr size_t kDefaultChunkSize = 64 * 1024; // 64KB 默认块大小
+    static constexpr size_t kDefaultChunkSize = 256 * 1024; // 256KB 默认块大小
     static constexpr size_t kAlignment = 16; // 16字节对齐
     static const char* GetAllocatorName() { return kStackAllocatorName; }
 };
@@ -32,7 +32,6 @@ void StackAllocator::Initialize() {
         {
             g_pool_impl = std::make_unique<Impl>();
             g_initialized = true;
-            SKR_LOG_INFO(u8"StackAllocator initialized");
         }
     }
     skr_mutex_release(&g_instance_mutex);
@@ -48,7 +47,6 @@ void StackAllocator::Finalize() {
             g_pool_impl->finalize();
             g_pool_impl.reset();
             g_initialized = false;
-            SKR_LOG_INFO(u8"StackAllocator finalized");
         }
     }
     skr_mutex_release(&g_instance_mutex);

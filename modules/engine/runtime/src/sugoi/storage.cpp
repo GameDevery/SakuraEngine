@@ -1204,10 +1204,9 @@ void sugoiQ_get_views(const sugoi_query_t* q, sugoi_view_callback_t callback, vo
 
 void sugoiQ_get_groups(const sugoi_query_t* q, sugoi_group_callback_t callback, void* u)
 {
-    skr::Vector<sugoi_group_t*> groups;
-    groups.reserve(32);
+    skr::InlineVector<sugoi_group_t*, 16> groups;
     auto Callback = [&](sugoi_group_t* g) {
-        groups.push_back(g);
+        groups.add(g);
     };
     q->pimpl->storage->query_groups(q, SUGOI_LAMBDA(Callback));
     for (auto group : groups)

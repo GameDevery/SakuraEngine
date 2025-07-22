@@ -140,13 +140,15 @@ AccessBuilder& AccessBuilder::_access(TypeIndex type, bool write, EAccessMode mo
 	return *this;
 }
 
+static std::atomic_uint32_t kTaskSchedulerRefCount = 0;
 static const auto kTSServiceDesc = ServiceThreadDesc {
 	.name = u8"ECSTaskScheduler",
 	.priority = SKR_THREAD_ABOVE_NORMAL,
 };
 World::World(skr::task::scheduler_t& scheduler) SKR_NOEXCEPT
-	: TS(skr::UPtr<TaskScheduler>::New(kTSServiceDesc, scheduler))
 {
+	kTaskSchedulerRefCount += 1;
+	TaskScheduler::Initialize(kTSServiceDesc, scheduler);
 	storage = sugoiS_create();
 }
 
@@ -158,7 +160,7 @@ World::World() SKR_NOEXCEPT
 void World::initialize() SKR_NOEXCEPT
 {
     storage = sugoiS_create();
-	if (TS.get())
+	if (auto TS = TaskScheduler::Get())
 	{
 		TS->run();
 	}
@@ -166,19 +168,19 @@ void World::initialize() SKR_NOEXCEPT
 
 void World::finalize() SKR_NOEXCEPT
 {
-	if (TS.get())
+	if (auto TS = TaskScheduler::Get())
 	{
-		TS->sync_all();
-		TS->stop_and_exit();
+		kTaskSchedulerRefCount -= 1;
+		if (kTaskSchedulerRefCount == 0)
+		{
+			TS->sync_all();
+			TS->stop_and_exit();
+			TaskScheduler::Finalize();
+		}
 	}
 
     sugoiS_release(storage);
     storage = nullptr;
-}
-
-TaskScheduler* World::get_scheduler() SKR_NOEXCEPT
-{
-	return TS.get() ? TS.get() : nullptr;
 }
 
 sugoi_storage_t* World::get_storage() SKR_NOEXCEPT

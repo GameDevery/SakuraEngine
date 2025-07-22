@@ -116,9 +116,6 @@ struct SKR_RUNTIME_API StaticDependencyAnalyzer
         StackMap<skr::RC<TaskSignature>, EAccessMode> readers;
     };
     StackMap<TypeIndex, AccessInfo> accesses;
-
-    // TODO: WRITE A STACK ALLOCATOR AND REPLACE THIS WITH IT
-    StackVector<TaskDependency> _collector;
 };
 
 struct SKR_RUNTIME_API WorkUnitGenerator
@@ -129,13 +126,16 @@ struct SKR_RUNTIME_API WorkUnitGenerator
 struct SKR_RUNTIME_API TaskScheduler : protected AsyncService
 {
 public:
-    TaskScheduler(const ServiceThreadDesc& desc, skr::task::scheduler_t& scheduler) SKR_NOEXCEPT;
-    
+    static void Initialize(const ServiceThreadDesc& desc, skr::task::scheduler_t& scheduler) SKR_NOEXCEPT;
+    static void Finalize() SKR_NOEXCEPT;
+    static TaskScheduler* Get() SKR_NOEXCEPT;
+
     void run() SKR_NOEXCEPT;
     void flush_all();
     void sync_all();
     void stop_and_exit();
 
+    TaskScheduler(const ServiceThreadDesc& desc, skr::task::scheduler_t& scheduler) SKR_NOEXCEPT;
 protected:
     AsyncResult serve() SKR_NOEXCEPT override;
     void on_run() SKR_NOEXCEPT override;
@@ -149,7 +149,7 @@ protected:
     friend struct StaticDependencyAnalyzer;
     friend struct WorkUnitGenerator;
     SAtomicU32 _enqueued_tasks = 0;
-    skr::ConcurrentQueue<skr::RC<TaskSignature>> _tasks;
+    StackConcurrentQueue<skr::RC<TaskSignature>> _tasks;
     StackVector<skr::RC<TaskSignature>> _dispatched_tasks;
 
     StaticDependencyAnalyzer _analyzer;

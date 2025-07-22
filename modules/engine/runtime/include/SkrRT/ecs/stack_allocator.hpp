@@ -3,6 +3,7 @@
 #include "SkrContainersDef/vector.hpp"
 #include "SkrContainersDef/map.hpp"
 #include "SkrContainersDef/set.hpp"
+#include "SkrContainersDef/concurrent_queue.hpp"
 
 namespace skr::ecs
 {
@@ -54,5 +55,15 @@ using StackMap = skr::Map<K, V, skr::container::HashTraits<K>, StackAllocator>;
 
 template <typename K>
 using StackSet = skr::Set<K, skr::container::HashTraits<K>, StackAllocator>;
+
+struct StackAllocatorConcurrentQueueTraits : public skr::ConcurrentQueueDefaultTraits
+{
+    static const bool RECYCLE_ALLOCATED_BLOCKS = true;
+    static inline void* malloc(size_t size) { return StackAllocator::alloc_raw(1, size, 16); }
+    static inline void free(void* ptr) { return StackAllocator::free_raw(ptr, 16); }
+};
+
+template <typename T>
+using StackConcurrentQueue = skr::ConcurrentQueue<T, StackAllocatorConcurrentQueueTraits>;
 
 } // namespace skr::ecs

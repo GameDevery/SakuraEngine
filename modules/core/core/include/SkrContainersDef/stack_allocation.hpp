@@ -107,11 +107,6 @@ struct StackAllocator
     
     ~StackAllocator()
     {
-        SKR_LOG_TRACE(u8"RenderGraphStackAllocator::Impl destroyed: %s", name_);
-        SKR_LOG_TRACE(u8"  Total allocated: %zu bytes", total_allocated_bytes_);
-        SKR_LOG_TRACE(u8"  Peak used: %zu bytes", peak_used_bytes_);
-        SKR_LOG_TRACE(u8"  Total allocations: %zu", allocation_count_);
-        
         chunks_.clear(); // 这会调用每个chunk的析构函数
     }
     
@@ -145,9 +140,6 @@ struct StackAllocator
         ++allocation_count_;
         update_peak_usage();
         
-        SKR_LOG_TRACE(u8"RenderGraphStackAllocator allocated new chunk: %zu bytes (total: %zu bytes)", 
-                     chunk_size, total_allocated_bytes_);
-        
         return ptr;
     }
     
@@ -158,16 +150,10 @@ struct StackAllocator
         {
             chunk.reset();
         }
-        
-        SKR_LOG_TRACE(u8"RenderGraphStackAllocator reset: %s (kept %zu chunks, %zu bytes)", 
-                     name_, chunks_.size(), total_allocated_bytes_);
     }
     
     void finalize()
     {
-        SKR_LOG_TRACE(u8"RenderGraphStackAllocator finalize: %s (releasing %zu chunks, %zu bytes)", 
-                     name_, chunks_.size(), total_allocated_bytes_);
-        
         chunks_.clear();
         total_allocated_bytes_ = 0;
         allocation_count_ = 0;

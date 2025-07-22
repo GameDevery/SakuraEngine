@@ -118,8 +118,8 @@ TEST_CASE_METHOD(ECSJobs, "WRW")
     } wjob1;
     world.dispatch_task(wjob1, 1'280, q0);
 
-    world.get_scheduler()->flush_all();
-    world.get_scheduler()->sync_all();
+    skr::ecs::TaskScheduler::Get()->flush_all();
+    skr::ecs::TaskScheduler::Get()->sync_all();
 
     world.destroy_query(q0);
     world.destroy_query(q1);
@@ -193,8 +193,8 @@ TEST_CASE_METHOD(ECSJobs, "WRW-Complex")
     } readJob;
     auto q2 = world.dispatch_task(readJob, 1'280, nullptr);
 
-    world.get_scheduler()->flush_all();
-    world.get_scheduler()->sync_all();
+    skr::ecs::TaskScheduler::Get()->flush_all();
+    skr::ecs::TaskScheduler::Get()->sync_all();
 
     world.destroy_query(q0);
     world.destroy_query(q1);
@@ -318,8 +318,8 @@ TEST_CASE_METHOD(ECSJobs, "RandomAccess")
     } randomReadWriteInts;
     auto q3 = world.dispatch_task(randomReadWriteInts, 1'280, nullptr);
 
-    world.get_scheduler()->flush_all();
-    world.get_scheduler()->sync_all();
+    skr::ecs::TaskScheduler::Get()->flush_all();
+    skr::ecs::TaskScheduler::Get()->sync_all();
 
     EXPECT_NE(max_parallel_read_cnt, 1);
     EXPECT_NE(max_parallel_write_cnt, 1);

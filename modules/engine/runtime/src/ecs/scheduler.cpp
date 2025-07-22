@@ -1,5 +1,6 @@
 #include "SkrRT/ecs/scheduler.hpp"
 #include "SkrCore/async/wait_timeout.hpp"
+#include "SkrCore/memory/sp.hpp"
 #include "./../sugoi/impl/query.hpp"
 
 namespace skr::ecs
@@ -28,8 +29,8 @@ inline static bool HasSelfConfictReadWrite(ComponentAccess acess, skr::span<Comp
 void StaticDependencyAnalyzer::process(skr::RC<TaskSignature> new_task)
 {
     SkrZoneScopedN("StaticDependencyAnalyzer::Process");
-    _collector.clear();
 
+    StackVector<TaskDependency> _collector;
     bool HasSelfConflict = false;
     for (auto read : new_task->reads)
     {
@@ -133,7 +134,7 @@ void WorkUnitGenerator::process(skr::RC<TaskSignature> new_task)
             {
                 ctx.work_group->dependencies.add(dependency);
             }
-            // if two systems never operate on a same group. we can skip the denepdnecy
+            // if two systems never operate on a same group. we  can skip the denepdnecy
             if (bool confict = sugoiQ_match_group(dependency.task->query, group))
             {
                 ctx.work_group->dependencies.add(dependency);
@@ -146,11 +147,40 @@ void WorkUnitGenerator::process(skr::RC<TaskSignature> new_task)
     ctx.new_task->_work_groups.compact();
 }
 
-TaskScheduler::TaskScheduler(const ServiceThreadDesc& desc, skr::task::scheduler_t& scheduler) SKR_NOEXCEPT
-    : AsyncService(desc),
-      _scheduler(scheduler)
+static skr::UPtr<TaskScheduler> gInstance = nullptr;
+static std::atomic_bool gInitialized = false;
+static std::mutex gInstanceMutex;
+void TaskScheduler::Initialize(const ServiceThreadDesc& desc, skr::task::scheduler_t& scheduler) SKR_NOEXCEPT
 {
+    std::lock_guard<std::mutex> lock(gInstanceMutex);
+    if (gInitialized.load(std::memory_order_acquire)) 
+        return;
+    
     StackAllocator::Initialize();
+    gInstance = skr::UPtr<TaskScheduler>::New(desc, scheduler);
+    gInitialized.store(true, std::memory_order_release);
+}
+
+void TaskScheduler::Finalize() SKR_NOEXCEPT
+{
+    std::lock_guard<std::mutex> lock(gInstanceMutex);
+    if (!gInitialized.load(std::memory_order_acquire)) 
+        return;
+    gInstance.reset();
+    gInitialized.store(false, std::memory_order_release);
+
+    StackAllocator::Finalize();
+}
+
+TaskScheduler* TaskScheduler::Get() SKR_NOEXCEPT
+{
+    return gInstance.get();
+}
+
+TaskScheduler::TaskScheduler(const ServiceThreadDesc& desc, skr::task::scheduler_t& scheduler) SKR_NOEXCEPT
+    : AsyncService(desc), _scheduler(scheduler)
+{
+
 }
 
 void TaskScheduler::add_task(skr::RC<TaskSignature> task)
@@ -269,7 +299,6 @@ void TaskScheduler::sync_all()
     flush_all();
     running.wait(true);
 
-    _analyzer._collector.clear();
     _analyzer.accesses.clear();
     _dispatched_tasks.clear();
     StackAllocator::Reset();
@@ -293,8 +322,6 @@ void TaskScheduler::stop_and_exit()
 
     wait_timeout<u8"WaitTaskScheduler">([&] { return get_status() == skr::ServiceThread::kStatusStopped; });
     exit();
-
-    StackAllocator::Finalize();
 }
 
 } // namespace skr::ecs
