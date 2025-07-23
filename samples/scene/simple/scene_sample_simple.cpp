@@ -32,5 +32,7 @@ int SceneSampleSimpleModule::main_module_exec(int argc, char8_t** argv)
     auto actor2 = skr::Actor::CreateActor();
     actor2.lock()->AttachTo(actor1, skr::EAttachRule::KeepWorldTransform);
 
+    // cleanup
+    skr::SActorManager::GetInstance().ClearAllActors();
     return 0;
 }

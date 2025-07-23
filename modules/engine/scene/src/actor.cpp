@@ -4,9 +4,10 @@
 namespace skr {
 
 
-Actor::Actor() SKR_NOEXCEPT
+Actor::Actor(EActorType type) SKR_NOEXCEPT
     : _parent(nullptr)
-    , attach_rule(EAttachRule::Default) {
+    , attach_rule(EAttachRule::Default)
+    , actor_type(type) {
 }   
 
 Actor::~Actor() SKR_NOEXCEPT {
@@ -22,15 +23,15 @@ Actor::~Actor() SKR_NOEXCEPT {
 
 skr::RCWeak<Actor> Actor::GetRoot()
 {
-    static Actor root_actor;
-    return RCWeak<Actor>(&root_actor);
+    return SActorManager::GetInstance().GetRoot();
 }
 
-RCWeak<Actor> Actor::CreateActor() {
+RCWeak<Actor> Actor::CreateActor(EActorType type) {
     auto root = GetRoot().lock();
-    auto actor = SActorManager::GetInstance().CreateActor();
+    auto actor = SActorManager::GetInstance().CreateActor(type);
     root->children.push_back(actor.lock());
-    return root->children.back(); // Return the newly created actor reference
+    actor.lock()->_parent = root; // Set the root as parent By Default
+    return actor;
 }
 
 void Actor::AttachTo(RCWeak<Actor> parent, EAttachRule rule) {
@@ -55,16 +56,26 @@ void Actor::DetachFromParent() {
     }
 }
 
+skr::RC<Actor> SActorManager::CreateActorInstance(EActorType type) {
+    switch (type) {
+        case EActorType::Mesh:
+            return skr::RC<Actor>(new MeshActor());
+        case EActorType::SkelMesh:
+            return skr::RC<Actor>(new SkelMeshActor());
+        case EActorType::Default:
+        default:
+            return skr::RC<Actor>(new Actor(type));
+    }
+}
 
-RCWeak<Actor> SActorManager::CreateActor() {
-    auto actor = new Actor(); // TODO: currently we use cpp new/delete for Actor management 
-    actors.add(actor->guid, skr::RC<Actor>(actor));
-    return skr::RC<Actor>(actor);
+RCWeak<Actor> SActorManager::CreateActor(EActorType type) {
+    auto actor = CreateActorInstance(type);
+    actors.add(actor->guid, actor);
+    return actor;
 }
 
 bool SActorManager::DestroyActor(skr::GUID guid) {
     auto it = actors.find(guid).value();
-    delete it.get(); // TODO: currently we use cpp new/delete for Actor management 
     actors.remove(guid);
     return true;
 }
@@ -74,5 +85,16 @@ void SActorManager::ClearAllActors() {
         DestroyActor(actor_item.key);
     }
 }
+
+skr::RCWeak<Actor> SActorManager::GetRoot()
+{
+    static skr::RCWeak<Actor> root = nullptr;
+    if (!root) {
+        root = CreateActor();
+        root.lock()->SetDisplayName(u8"Root Actor");
+    }
+    return root; // Return the root actor reference
+}
+
 
 }// namespace skr
