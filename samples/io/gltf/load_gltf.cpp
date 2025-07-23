@@ -1,3 +1,5 @@
+// use cgltf to load gltf files directly
+
 #define CGLTF_IMPLEMENTATION
 #include "cgltf/cgltf.h"
 #include "SkrRT/misc/cmd_parser.hpp"
@@ -98,7 +100,10 @@ void print_accessor_data(const cgltf_accessor* accessor, const void* buffer_data
                 case cgltf_component_type_r_32f:
                     std::cout << *reinterpret_cast<const float*>(elem_data + j * elem_size) << " ";
                     break;
-            }
+                case cgltf_component_type_invalid:
+                case cgltf_component_type_max_enum:
+                    break;
+                }
         }
         std::cout << std::endl;
     }
