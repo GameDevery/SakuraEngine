@@ -684,6 +684,7 @@ CGPUDescriptorSetId cgpu_create_descriptor_set_d3d12(CGPUDeviceId device, const 
             SamplerCount++;
         }
         else if (param_table->resources[i].type == CGPU_RESOURCE_TYPE_TEXTURE ||
+                 param_table->resources[i].type == CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE ||
                  param_table->resources[i].type == CGPU_RESOURCE_TYPE_RW_TEXTURE ||
                  param_table->resources[i].type == CGPU_RESOURCE_TYPE_BUFFER ||
                  param_table->resources[i].type == CGPU_RESOURCE_TYPE_BUFFER_RAW ||
