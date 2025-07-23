@@ -16,7 +16,7 @@ struct ComponentStorage
 template <typename T>
 struct ComponentStorage<T, std::enable_if_t<(sugoi_array_count<std::decay_t<T>> > 0)>>
 {
-    using Type = sugoi::ArrayComponent<std::decay<T>, sugoi_array_count<std::decay_t<T>>>;
+    using Type = sugoi::ArrayComponent<std::decay_t<T>, sugoi_array_count<std::decay_t<T>>>;
 };
 
 struct Entity

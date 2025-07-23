@@ -69,7 +69,7 @@ static void skr_relative_to_world_children(const skr::scene::ChildrenArray* chil
 static void skr_relative_to_world_root(void* u, sugoi_chunk_view_t* view)
 {
     SkrZoneScopedN("CalcTransform");
-    auto transforms = sugoi::get_components<skr::scene::TranslationComponent, skr_transform_f_t>(view);
+    auto transforms = sugoi::get_components<skr::scene::TransformComponent, skr_transform_f_t>(view);
     auto children = sugoi::get_components<const skr::scene::ChildrenComponent, const skr::scene::ChildrenArray>(view);
     auto translations = sugoi::get_components<const scene::TranslationComponent>(view);
     auto rotations = sugoi::get_components<const scene::RotationComponent>(view);

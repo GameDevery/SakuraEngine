@@ -40,9 +40,21 @@ struct [[builtin("ray_query")]] RayQuery {
     [[callop("RAY_QUERY_COMMITTED_TRIANGLE_BARYCENTRICS")]] 
     float2 committed_triangle_barycentrics();
     
+    [[callop("RAY_QUERY_COMMITTED_INSTANCE_ID")]] 
+    uint committed_instance_id();
+    
     [[callop("RAY_QUERY_COMMITTED_PROCEDURAL_DISTANCE")]] 
     float committed_procedural_distance();
     
+    [[callop("RAY_QUERY_COMMITTED_RAY_T")]] 
+    float committed_ray_t();
+
+    [[callop("RAY_QUERY_WORLD_RAY_ORIGIN")]] 
+    float3 world_ray_origin();
+    
+    [[callop("RAY_QUERY_WORLD_RAY_DIRECTION")]] 
+    float3 world_ray_direction();
+
     [[callop("RAY_QUERY_TRACE_RAY_INLINE")]] 
     void trace_ray_inline(Accel& AS, uint32 mask, const Ray& ray);
 

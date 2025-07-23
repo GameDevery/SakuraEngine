@@ -804,7 +804,10 @@ void cgpu_update_descriptor_set_d3d12(CGPUDescriptorSetId set, const struct CGPU
                 HeapOffset += D3D12Util_ComputeNeededDescriptorCount(&ParamTable->resources[j]);
             }
         }
-        // Update Info
+
+        if (ResData == CGPU_NULLPTR)
+            continue;
+        
         const uint32_t arrayCount = cgpu_max(1U, pParam->count);
         switch (ResData->type)
         {

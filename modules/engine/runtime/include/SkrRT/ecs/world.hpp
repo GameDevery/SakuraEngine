@@ -14,7 +14,6 @@ struct SKR_RUNTIME_API ArchetypeBuilder
 public:
     ArchetypeBuilder& add_meta_entity(Entity Entity);
     ArchetypeBuilder& add_component(TypeIndex Component);
-    ArchetypeBuilder& add_component(TypeIndex Component, intptr_t Field);
 
     template <class... Components>
     ArchetypeBuilder& add_component()
@@ -26,16 +25,39 @@ public:
     template <class T, class C>
     ArchetypeBuilder& add_component(ComponentView<C> T::* Member)
     {
-        return add_component(sugoi_id_of<C>::get(), (intptr_t)&(((T*)nullptr)->*Member));
+        add_component(sugoi_id_of<C>::get());
+        return _access(sugoi_id_of<C>::get(), (intptr_t)&(((T*)nullptr)->*Member), EAccessMode::Seq);
+    }
+
+    template <class T, class C>
+    ArchetypeBuilder& access(RandomComponentReader<C> T::* Member)
+    {
+        return _access(sugoi_id_of<C>::get(), (intptr_t)&(((T*)nullptr)->*Member), EAccessMode::Random);
+    }
+
+    template <class T, class C>
+    ArchetypeBuilder& access(RandomComponentWriter<C> T::* Member)
+    {
+        return _access(sugoi_id_of<C>::get(), (intptr_t)&(((T*)nullptr)->*Member), EAccessMode::Random);
+    }
+
+    template <class T, class C>
+    ArchetypeBuilder& access(RandomComponentReadWrite<C> T::* Member)
+    {
+        return _access(sugoi_id_of<C>::get(), (intptr_t)&(((T*)nullptr)->*Member), EAccessMode::Random);
     }
 
     void commit() SKR_NOEXCEPT;
 
 protected:
+    ArchetypeBuilder& _access(TypeIndex Component, intptr_t Field, EAccessMode FieldMode);
+
     friend struct World;
     skr::Vector<TypeIndex> types;
     skr::Vector<Entity> meta_entities;
     skr::Vector<intptr_t> fields;
+    skr::Vector<TypeIndex> field_types;
+    skr::Vector<EAccessMode> field_modes;
 };
 
 struct SKR_RUNTIME_API AccessBuilder : public TaskSignature
@@ -185,10 +207,10 @@ public:
             for (int i = 0; i < Access->fields.size(); ++i)
             {
                 const auto field = Access->fields[i];
+                const auto component = Access->field_types[i];
                 const auto mode = Access->field_modes[i];
                 if (field == kInvalidFieldPtr)
                     continue;
-                auto component = Access->field_types[i];
                 if (mode == EAccessMode::Random)
                 {
                     ComponentAccessorBase* fieldPtr = (ComponentAccessorBase*)((uint8_t*)&TASK + field);
@@ -227,21 +249,33 @@ public:
         Creation.build(Builder);
         Builder.commit();
         sugoi_entity_type_t entityType;
-        skr::Vector<sugoi_type_index_t> components = Builder.types;
-        skr::Vector<Entity> metaEntities = Builder.meta_entities;
+        const skr::Vector<sugoi_type_index_t>& components = Builder.types;
+        const skr::Vector<Entity>& metaEntities = Builder.meta_entities;
         entityType.type = { components.data(), (uint8_t)components.size() };
         entityType.meta = { (sugoi_entity_t*)metaEntities.data(), (uint8_t)metaEntities.size() };
         auto callback = [&](sugoi_chunk_view_t* view) {
             for (int i = 0; i < Builder.fields.size(); ++i)
             {
-                auto field = Builder.fields[i];
-                if (field == -1)
+                const auto field = Builder.fields[i];
+                const auto component = Builder.field_types[i];
+                const auto mode = Builder.field_modes[i];
+                if (field == kInvalidFieldPtr)
                     continue;
-                auto component = components[i];
-                ComponentViewBase* fieldPtr = (ComponentViewBase*)((uint8_t*)&Creation + field);
-                auto localType = sugoiV_get_local_type(view, component);
-                fieldPtr->_local_type = localType;
-                fieldPtr->_ptr = (void*)sugoiV_get_owned_ro_local(view, localType);
+                if (mode == EAccessMode::Random)
+                {
+                    ComponentAccessorBase* fieldPtr = (ComponentAccessorBase*)((uint8_t*)&Creation + field);
+                    fieldPtr->World = this->storage;
+                    fieldPtr->Type = component;
+                    fieldPtr->CachedView = *view;
+                    fieldPtr->CachedPtr = nullptr;
+                }
+                else if (mode == EAccessMode::Seq)
+                {
+                    ComponentViewBase* fieldPtr = (ComponentViewBase*)((uint8_t*)&Creation + field);
+                    auto localType = sugoiV_get_local_type(view, component);
+                    fieldPtr->_local_type = localType;
+                    fieldPtr->_ptr = (void*)sugoiV_get_owned_ro_local(view, localType);
+                }
             }
             TaskContext ctx = TaskContext(*view, view->count, 0);
             Creation.run(ctx);

@@ -1,6 +1,6 @@
 #pragma once
 // The Scene ECS Components Definitions
-#include "SkrRT/sugoi/sugoi_types.h"
+#include "SkrRT/ecs/component.hpp"
 #include "SkrBase/math.h"
 
 #ifndef __meta__
@@ -95,7 +95,7 @@ sreflect_struct(
     ecs.comp.array = 4;)
 ChildrenComponent
 {
-    sugoi_entity_t entity;
+    skr::ecs::Entity entity;
 };
 
 #ifdef __cplusplus
@@ -107,7 +107,7 @@ sreflect_struct(
     ecs.comp = @enable;)
 ParentComponent
 {
-    sugoi_entity_t entity;
+    skr::ecs::Entity entity;
 };
 
 sreflect_enum_class(

@@ -22,9 +22,6 @@ float4 trace(uint2 tid, uint2 tsize) {
     );
     float3 direction = float3(0.0f, 0.0f, -1.0f);
     
-    Array<float, 4> arr;
-    arr = Array<float, 4>(1.f, 2.f, 3.f);
-    
     Ray ray(origin, direction, 0.01f, 9999.0f);
 
     // 创建 RayQuery（使用接受第一个命中并结束搜索的标志）

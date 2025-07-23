@@ -5,12 +5,10 @@ namespace skr::ecs
 
 ArchetypeBuilder& ArchetypeBuilder::add_component(sugoi_type_index_t type)
 {
-	if(types.contains(type))
+	if (!types.contains(type))
 	{
-		return *this;
+		types.add(type);
 	}
-	types.add(type);
-	fields.add(-1);
 	return *this;
 }
 
@@ -24,15 +22,11 @@ ArchetypeBuilder& ArchetypeBuilder::add_meta_entity(Entity Entity)
 	return *this;
 }
 
-ArchetypeBuilder& ArchetypeBuilder::add_component(sugoi_type_index_t type, intptr_t Field)
+ArchetypeBuilder& ArchetypeBuilder::_access(sugoi_type_index_t type, intptr_t Field, EAccessMode FieldMode)
 {
-	if (auto index = types.find(type))
-	{
-		fields[index.index()] = Field;
-		return *this;
-	}
-	types.add(type);
 	fields.add(Field);
+	field_types.add(type);
+	field_modes.add(FieldMode);
 	return *this;
 }
 

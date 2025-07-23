@@ -989,6 +989,8 @@ void HLSLGenerator::visit_decl(SourceBuilderNew& sb, const skr::CppSL::Decl* dec
 }
 
 static const skr::CppSL::String kHLSLHeader = LR"(
+template<typename T> T fract(T x){return x - floor(x);}
+
 template <typename T, uint64_t N> struct array { T data[N]; };
 
 template <typename T> void buffer_write(RWStructuredBuffer<T> buffer, uint index, T value) { buffer[index] = value; }
@@ -1014,8 +1016,12 @@ using AccelerationStructure = RaytracingAccelerationStructure;
 RayDesc create_ray(float3 origin, float3 dir, float tmin, float tmax) { RayDesc r; r.Origin = origin; r.Direction = dir; r.TMin = tmin; r.TMax = tmax; return r; }
 #define ray_query_trace_ray_inline(q, as, mask, ray) (q).TraceRayInline((as), RAY_FLAG_NONE, (mask), create_ray((ray).origin(), (ray).dir(), (ray).tmin(), (ray).tmax()))
 #define ray_query_proceed(q) (q).Proceed()
-#define ray_query_committed_triangle_bary(q) (q).CommittedTriangleBarycentrics()
 #define ray_query_committed_status(q) (q).CommittedStatus()
+#define ray_query_committed_triangle_bary(q) (q).CommittedTriangleBarycentrics()
+#define ray_query_committed_instance_id(q) (q).CommittedInstanceID()
+#define ray_query_committed_ray_t(q) (q).CommittedRayT()
+#define ray_query_world_ray_origin(q) (q).WorldRayOrigin()
+#define ray_query_world_ray_direction(q) (q).WorldRayDirection()
 )";
 
 String HLSLGenerator::generate_code(SourceBuilderNew& sb, const AST& ast)

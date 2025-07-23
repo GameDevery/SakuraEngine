@@ -981,17 +981,21 @@ void AST::DeclareIntrinstics()
         });
 
     std::array<VarConceptDecl*, 1> RayQueryProceedParams = { RayQueryFamily };
-    _intrinstics["RAY_QUERY_PROCEED"] = DeclareTemplateMethod(nullptr, L"ray_query_proceed", BoolType, RayQueryProceedParams);
-    _intrinstics["RAY_QUERY_COMMITTED_STATUS"] = DeclareTemplateMethod(nullptr, L"ray_query_committed_status", UIntType, RayQueryProceedParams);
-    _intrinstics["RAY_QUERY_COMMITTED_TRIANGLE_BARYCENTRICS"] = DeclareTemplateMethod(nullptr, L"ray_query_committed_triangle_bary", Float2Type, RayQueryProceedParams);
+    _intrinstics["RAY_QUERY_PROCEED"] = DeclareTemplateFunction(L"ray_query_proceed", BoolType, RayQueryProceedParams);
+    _intrinstics["RAY_QUERY_COMMITTED_STATUS"] = DeclareTemplateFunction(L"ray_query_committed_status", UIntType, RayQueryProceedParams);
+    _intrinstics["RAY_QUERY_COMMITTED_TRIANGLE_BARYCENTRICS"] = DeclareTemplateFunction(L"ray_query_committed_triangle_bary", Float2Type, RayQueryProceedParams);
+    _intrinstics["RAY_QUERY_COMMITTED_INSTANCE_ID"] = DeclareTemplateFunction(L"ray_query_committed_instance_id", UIntType, RayQueryProceedParams);
+    _intrinstics["RAY_QUERY_COMMITTED_RAY_T"] = DeclareTemplateFunction(L"ray_query_committed_ray_t", FloatType, RayQueryProceedParams);
+    _intrinstics["RAY_QUERY_WORLD_RAY_ORIGIN"] = DeclareTemplateFunction(L"ray_query_world_ray_origin", Float3Type, RayQueryProceedParams);
+    _intrinstics["RAY_QUERY_WORLD_RAY_DIRECTION"] = DeclareTemplateFunction(L"ray_query_world_ray_direction", Float3Type, RayQueryProceedParams);
     
     // void trace_ray_inline(Accel& AS, uint32 mask, Trait<Ray> ray);
     std::array<VarConceptDecl*, 4> TraceRayInlineParams = { RayQueryFamily, AccelFamily, IntScalar, ValueFamily };
-    _intrinstics["RAY_QUERY_TRACE_RAY_INLINE"] = DeclareTemplateMethod(nullptr, L"ray_query_trace_ray_inline", VoidType, TraceRayInlineParams);
+    _intrinstics["RAY_QUERY_TRACE_RAY_INLINE"] = DeclareTemplateFunction(L"ray_query_trace_ray_inline", VoidType, TraceRayInlineParams);
 
     // commit_procedural with float parameter
     std::array<VarConceptDecl*, 1> CommitProceduralParams = { FloatScalar };
-    _intrinstics["RAY_QUERY_COMMIT_PROCEDURAL"] = DeclareTemplateMethod(nullptr, L"ray_query_commit_procedural", VoidType, CommitProceduralParams);
+    _intrinstics["RAY_QUERY_COMMIT_PROCEDURAL"] = DeclareTemplateFunction(L"ray_query_commit_procedural", VoidType, CommitProceduralParams);
 
     _intrinstics["WAVE_IS_FIRST_ACTIVE_LANE"] = DeclareTemplateFunction(L"wave_is_first_active_lane", BoolType, {});
     _intrinstics["WAVE_ACTIVE_ALL_EQUAL"] = DeclareTemplateFunction(L"wave_active_all_equal", ReturnBoolVecWithSameDim, OneArithmeticVec);
