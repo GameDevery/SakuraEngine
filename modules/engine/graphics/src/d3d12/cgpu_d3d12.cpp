@@ -441,22 +441,28 @@ CGPUBufferId cgpu_create_buffer_d3d12(CGPUDeviceId device, const struct CGPUBuff
             ((desc->descriptors & CGPU_RESOURCE_TYPE_BUFFER) ? 1 : 0) +
             ((desc->descriptors & CGPU_RESOURCE_TYPE_RW_BUFFER) ? 1 : 0);
         B->mDxDescriptorHandles = D3D12Util_ConsumeDescriptorHandles(pHeap, handleCount).mCpu;
+        
+        uint32_t currentOffset = 0;
+        
         // Create CBV
         if (desc->descriptors & CGPU_RESOURCE_TYPE_UNIFORM_BUFFER)
         {
-            D3D12_CPU_DESCRIPTOR_HANDLE cbv = { B->mDxDescriptorHandles.ptr };
-            B->mDxSrvOffset = kDescriptorSize * 1;
+            D3D12_CPU_DESCRIPTOR_HANDLE cbv = { B->mDxDescriptorHandles.ptr + currentOffset };
 
             D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
             cbvDesc.BufferLocation = B->mDxGpuAddress;
             cbvDesc.SizeInBytes = (UINT)allocationSize;
             D3D12Util_CreateCBV(D, &cbvDesc, &cbv);
+            
+            currentOffset += kDescriptorSize;
         }
         // Create SRV
         if (desc->descriptors & CGPU_RESOURCE_TYPE_BUFFER)
         {
+            B->mDxSrvOffset = currentOffset;
             D3D12_CPU_DESCRIPTOR_HANDLE srv = { B->mDxDescriptorHandles.ptr + B->mDxSrvOffset };
-            B->mDxUavOffset = B->mDxSrvOffset + kDescriptorSize * 1;
+            
+            currentOffset += kDescriptorSize;
 
             D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
             srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
@@ -485,6 +491,7 @@ CGPUBufferId cgpu_create_buffer_d3d12(CGPUDeviceId device, const struct CGPUBuff
         // Create UAV
         if (desc->descriptors & CGPU_RESOURCE_TYPE_RW_BUFFER)
         {
+            B->mDxUavOffset = currentOffset;
             D3D12_CPU_DESCRIPTOR_HANDLE uav = { B->mDxDescriptorHandles.ptr + B->mDxUavOffset };
 
             D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};

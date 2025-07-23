@@ -22,6 +22,7 @@ namespace render_graph
 class ResourceNode;
 class TextureNode;
 class BufferNode;
+class AccelerationStructureNode;
 class RenderGraphBackend;
 
 struct PassContext;
@@ -45,17 +46,19 @@ enum class EObjectType : uint8_t
     Pass,
     Texture,
     Buffer,
+    AccelerationStructure,
     Count
 };
 
 enum class ERelationshipType : uint8_t
 {
-    TextureRead,      // SRV
-    TextureWrite,     // RTV/DSV
-    TextureReadWrite, // UAV
-    PipelineBuffer,   // VB/IB...
-    BufferRead,       // CBV
-    BufferReadWrite,  // UAV
+    TextureRead,                // SRV
+    TextureWrite,               // RTV/DSV
+    TextureReadWrite,           // UAV
+    PipelineBuffer,             // VB/IB...
+    BufferRead,                 // CBV
+    BufferReadWrite,            // UAV
+    AccelerationStructureRead,  // For raytracing shaders
     Count
 };
 
@@ -315,6 +318,42 @@ using TextureDSVHandle = TextureHandle::DepthStencilHandle;
 using TextureUAVHandle = TextureHandle::ShaderReadWriteHandle;
 using TextureSubresourceHandle = TextureHandle::SubresourceHandle;
 
+template <>
+struct SKR_RENDER_GRAPH_API ObjectHandle<EObjectType::AccelerationStructure> {
+    struct SKR_RENDER_GRAPH_API ShaderReadHandle {
+        friend struct ObjectHandle<EObjectType::AccelerationStructure>;
+        friend class RenderGraph;
+        friend class AccelerationStructureReadEdge;
+        const handle_t _this;
+        inline operator ObjectHandle<EObjectType::AccelerationStructure>() const { return ObjectHandle<EObjectType::AccelerationStructure>(_this); }
+
+    protected:
+        ShaderReadHandle(const handle_t _this);
+    };
+
+    inline operator handle_t() const { return handle; }
+    // read access for raytracing shaders
+    inline operator ShaderReadHandle() const { return ShaderReadHandle(handle); }
+
+    friend class RenderGraph;
+    friend class RenderGraphBackend;
+    friend class AccelerationStructureNode;
+    friend class AccelerationStructureReadEdge;
+    friend struct ShaderReadHandle;
+    ObjectHandle(){};
+
+protected:
+    ObjectHandle(handle_t hdl)
+        : handle(hdl)
+    {
+    }
+
+private:
+    handle_t handle = UINT64_MAX;
+};
+using AccelerationStructureHandle = ObjectHandle<EObjectType::AccelerationStructure>;
+using AccelerationStructureSRVHandle = AccelerationStructureHandle::ShaderReadHandle;
+
 struct RenderGraphNode : public DependencyGraphNode {
     RenderGraphNode(EObjectType type);
     SKR_RENDER_GRAPH_API void set_name(const char8_t* n);
@@ -339,9 +378,11 @@ struct SKR_RENDER_GRAPH_API PassContext {
     CGPUCommandBufferId cmd;
     skr::span<std::pair<BufferHandle, CGPUBufferId>> resolved_buffers;
     skr::span<std::pair<TextureHandle, CGPUTextureId>> resolved_textures;
+    skr::span<std::pair<AccelerationStructureHandle, CGPUAccelerationStructureId>> resolved_acceleration_structures;
 
     CGPUBufferId resolve(BufferHandle buffer_handle) const;
     CGPUTextureId resolve(TextureHandle tex_handle) const;
+    CGPUAccelerationStructureId resolve(AccelerationStructureHandle as_handle) const;
 };
 
 struct SKR_RENDER_GRAPH_API BindablePassContext : public PassContext {

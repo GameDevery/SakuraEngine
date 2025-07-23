@@ -599,7 +599,7 @@ CGPURootSignatureId cgpu_create_root_signature_d3d12(CGPUDeviceId device, const 
     for (uint32_t i = 0; i < RS->super.push_constant_count; i++)
     {
         rootParams[valid_root_tables + i] = RS->mRootConstantParam;
-        RS->mRootParamIndex               = valid_root_tables + i;
+        RS->mRootParamIndex = valid_root_tables + i;
     }
     // Serialize root signature
     ID3DBlob* error               = NULL;
@@ -725,6 +725,9 @@ CGPUDescriptorSetId cgpu_create_descriptor_set_d3d12(CGPUDeviceId device, const 
                 case CGPU_RESOURCE_TYPE_TEXTURE:
                     srcHandle = D->pNullDescriptors->TextureSRV[dimension];
                     break;
+                case CGPU_RESOURCE_TYPE_RW_TEXTURE:
+                    srcHandle = D->pNullDescriptors->TextureUAV[dimension];
+                    break;
                 case CGPU_RESOURCE_TYPE_BUFFER:
                     srcHandle = D->pNullDescriptors->BufferSRV;
                     break;
@@ -736,6 +739,9 @@ CGPUDescriptorSetId cgpu_create_descriptor_set_d3d12(CGPUDeviceId device, const 
                     break;
                 case CGPU_RESOURCE_TYPE_SAMPLER:
                     srcSamplerHandle = D->pNullDescriptors->Sampler;
+                    break;
+                case CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE:
+                    srcHandle = D->pNullDescriptors->BufferSRV;
                     break;
                 default:
                     break;

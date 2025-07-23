@@ -43,6 +43,13 @@ public:
     {
         return (uint32_t)(in_buffer_edges.size() + out_buffer_edges.size() + ppl_buffer_edges.size());
     }
+
+    SKR_RENDER_GRAPH_API skr::span<AccelerationStructureReadEdge*> acceleration_structure_read_edges();
+    SKR_RENDER_GRAPH_API void foreach_acceleration_structures(skr::stl_function<void(AccelerationStructureNode*, AccelerationStructureEdge*)>);
+    inline uint32_t acceleration_structures_count() const
+    {
+        return (uint32_t)(in_acceleration_structure_edges.size());
+    }
     const bool get_can_be_lone() const { return can_be_lone; }
     
     // Performance hint flags access
@@ -66,6 +73,8 @@ protected:
     graph_edges_vector<BufferReadEdge*> in_buffer_edges;
     graph_edges_vector<BufferReadWriteEdge*> out_buffer_edges;
     graph_edges_vector<PipelineBufferEdge*> ppl_buffer_edges;
+
+    graph_edges_vector<AccelerationStructureReadEdge*> in_acceleration_structure_edges;
 };
 
 class RenderPassNode : public PassNode

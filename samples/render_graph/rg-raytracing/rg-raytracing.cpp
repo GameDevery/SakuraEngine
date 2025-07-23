@@ -7,14 +7,11 @@
 #include "SkrGraphics/api.h"
 #include "SkrCore/log.hpp"
 #include "SkrGraphics/raytracing.h"
+#include "SkrRenderGraph/frontend/render_graph.hpp"
 #include <random>
 #include <cmath>
+#include <chrono>
 
-extern "C"
-{
-#define LODEPNG_NO_COMPILE_CPP
-#include "lodepng.h"
-}
 
 class RGRaytracingSampleModule : public skr::IDynamicModule
 {
@@ -56,16 +53,73 @@ public:
     CGPUShaderLibraryId compute_shader = nullptr;
     CGPURootSignatureId root_signature = nullptr;
     CGPUComputePipelineId compute_pipeline = nullptr;
-    CGPUDescriptorSetId descriptor_set = nullptr;
-    CGPUBufferId output_buffer = nullptr;
-    CGPUBufferId readback_buffer = nullptr;
     
-    // Swapchain resources for profiler hook
+    // Swapchain resources
     CGPUSwapChainId swapchain = nullptr;
     
-    // Render constants
-    static constexpr uint32_t RENDER_WIDTH = 1920;
-    static constexpr uint32_t RENDER_HEIGHT = 1080;
+    // RenderGraph resources
+    skr::render_graph::RenderGraph* render_graph = nullptr;
+    
+    // Camera control state
+    struct CameraController
+    {
+        skr::math::float3 position = {-25000.0f, 15000.0f, -35000.0f};
+        skr::math::float3 target = {0.0f, 2000.0f, 0.0f};
+        skr::math::float3 up = {0.0f, 1.0f, 0.0f};
+        
+        float yaw = 0.0f;   // 水平旋转角度
+        float pitch = 0.0f; // 垂直旋转角度
+        float move_speed = 5000.0f;
+        float mouse_sensitivity = 0.005f;
+        
+        bool right_mouse_pressed = false;
+        float last_mouse_x = 0.0f;
+        float last_mouse_y = 0.0f;
+        
+        // 键盘状态
+        bool keys_pressed[256] = {false};
+        
+        void update_camera(float delta_time)
+        {
+            // 根据yaw和pitch计算前方向量
+            skr::math::float3 forward = {
+                cos(pitch) * cos(yaw),
+                sin(pitch),
+                cos(pitch) * sin(yaw)
+            };
+            forward = skr::math::normalize(forward);
+            
+            // 计算右方向量和上方向量
+            skr::math::float3 right = skr::math::normalize(skr::math::cross(forward, {0.0f, 1.0f, 0.0f}));
+            skr::math::float3 camera_up = skr::math::cross(right, forward);
+            
+            // 移动速度基于帧时间
+            float speed = move_speed * delta_time;
+            
+            // WASD移动
+            if (keys_pressed['w'] || keys_pressed['W']) position += forward * speed;
+            if (keys_pressed['s'] || keys_pressed['S']) position -= forward * speed;
+            if (keys_pressed['a'] || keys_pressed['A']) position -= right * speed;
+            if (keys_pressed['d'] || keys_pressed['D']) position += right * speed;
+            if (keys_pressed['q'] || keys_pressed['Q']) position.y -= speed; // 下降
+            if (keys_pressed['e'] || keys_pressed['E']) position.y += speed; // 上升
+            
+            // 更新target为position + forward
+            target = position + forward;
+            up = camera_up;
+        }
+        
+        void initialize_from_lookat(const skr::math::float3& eye, const skr::math::float3& look_target)
+        {
+            position = eye;
+            target = look_target;
+            
+            // 计算初始的yaw和pitch
+            skr::math::float3 direction = skr::math::normalize(look_target - eye);
+            yaw = atan2(direction.z, direction.x);
+            pitch = asin(direction.y);
+        }
+    } camera_controller;
 };
 
 IMPLEMENT_DYNAMIC_MODULE(RGRaytracingSampleModule, RenderGraphRaytracingSample);
@@ -123,6 +177,13 @@ void RGRaytracingSampleModule::on_load(int argc, char8_t** argv)
 
     spawn_entities();
     create_as();
+
+    render_graph = skr::render_graph::RenderGraph::create(
+        [=, this](skr::render_graph::RenderGraphBuilder& builder) {
+            builder.with_device(device)
+                .with_gfx_queue(gfx_queue);
+        }
+    );
 }
 
 int RGRaytracingSampleModule::main_module_exec(int argc, char8_t** argv) 
@@ -141,25 +202,92 @@ int RGRaytracingSampleModule::main_module_exec(int argc, char8_t** argv)
     // Create swapchain for profiler hook support
     create_swapchain(main_window);
 
+
     static bool want_quit = false;
     struct QuitListener : public skr::ISystemEventHandler
     {
+        RGRaytracingSampleModule* module = nullptr;
+        
         void handle_event(const SkrSystemEvent& event) SKR_NOEXCEPT
         {
             if (event.type == SKR_SYSTEM_EVENT_QUIT)
                 want_quit = true;
             if (event.type == SKR_SYSTEM_EVENT_WINDOW_CLOSE_REQUESTED)
                 want_quit = event.window.window_native_handle == main_window->get_native_handle();
+            
+            // 处理键盘输入
+            if (event.type == SKR_SYSTEM_EVENT_KEY_DOWN)
+            {
+                module->camera_controller.keys_pressed[event.key.keycode] = true;
+            }
+            else if (event.type == SKR_SYSTEM_EVENT_KEY_UP)
+            {
+                module->camera_controller.keys_pressed[event.key.keycode] = false;
+            }
+            
+            // 处理鼠标输入
+            if (event.type == SKR_SYSTEM_EVENT_MOUSE_BUTTON_DOWN)
+            {
+                if (event.mouse.button == InputMouseButtonFlags::InputMouseRightButton)
+                {
+                    module->camera_controller.right_mouse_pressed = true;
+                    module->camera_controller.last_mouse_x = event.mouse.x;
+                    module->camera_controller.last_mouse_y = event.mouse.y;
+                }
+            }
+            else if (event.type == SKR_SYSTEM_EVENT_MOUSE_BUTTON_UP)
+            {
+                if (event.mouse.button == InputMouseButtonFlags::InputMouseRightButton)
+                {
+                    module->camera_controller.right_mouse_pressed = false;
+                }
+            }
+            else if (event.type == SKR_SYSTEM_EVENT_MOUSE_MOVE)
+            {
+                if (module->camera_controller.right_mouse_pressed)
+                {
+                    float dx = event.mouse.x - module->camera_controller.last_mouse_x;
+                    float dy = event.mouse.y - module->camera_controller.last_mouse_y;
+                    
+                    module->camera_controller.yaw += dx * module->camera_controller.mouse_sensitivity;
+                    module->camera_controller.pitch -= dy * module->camera_controller.mouse_sensitivity; // 反向Y轴
+                    
+                    // 限制pitch角度
+                    module->camera_controller.pitch = std::max(-1.5f, std::min(1.5f, module->camera_controller.pitch));
+                    
+                    module->camera_controller.last_mouse_x = event.mouse.x;
+                    module->camera_controller.last_mouse_y = event.mouse.y;
+                }
+            }
         }
         skr::SystemWindow* main_window = nullptr;
     } quitListener;
     quitListener.main_window = main_window;
+    quitListener.module = this;
     eq->add_handler(&quitListener);
     SKR_DEFER({ eq->remove_handler(&quitListener); });
+
+    // 初始化相机控制器
+    this->camera_controller.initialize_from_lookat(
+        {-25000.0f, 15000.0f, -35000.0f}, 
+        {0.0f, 2000.0f, 0.0f}
+    );
+    
+    // 时间管理
+    auto last_time = std::chrono::high_resolution_clock::now();
 
     while (!want_quit)
     {
         eq->pump_messages();
+        
+        // 计算帧时间
+        auto current_time = std::chrono::high_resolution_clock::now();
+        float delta_time = std::chrono::duration<float>(current_time - last_time).count();
+        last_time = current_time;
+        
+        // 更新相机
+        this->camera_controller.update_camera(delta_time);
+        
         render();
     }
 
@@ -497,19 +625,17 @@ void RGRaytracingSampleModule::create_sphere_blas()
     memcpy(sphere_index_buffer->info->cpu_mapped_address, indices.data(), index_buffer_desc.size);
     
     // Create BLAS
-    CGPUAccelerationStructureGeometryDesc blas_geom = { 0 };
+    SKR_DECLARE_ZERO(CGPUAccelerationStructureGeometryDesc, blas_geom);
     blas_geom.flags = CGPU_ACCELERATION_STRUCTURE_GEOMETRY_FLAG_OPAQUE;
     blas_geom.vertex_buffer = sphere_vertex_buffer;
     blas_geom.index_buffer = sphere_index_buffer;
-    blas_geom.vertex_offset = 0;
     blas_geom.vertex_count = vertices.size();
     blas_geom.vertex_stride = sizeof(skr_float3_t);
     blas_geom.vertex_format = CGPU_FORMAT_R32G32B32_SFLOAT;
-    blas_geom.index_offset = 0;
     blas_geom.index_count = indices.size();
     blas_geom.index_stride = sizeof(uint16_t);
     
-    CGPUAccelerationStructureDescriptor blas_desc = { };
+    SKR_DECLARE_ZERO(CGPUAccelerationStructureDescriptor, blas_desc);
     blas_desc.type = CGPU_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
     blas_desc.flags = CGPU_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
     blas_desc.bottom.count = 1;
@@ -668,56 +794,6 @@ void RGRaytracingSampleModule::create_compute_pipeline()
         .compute_shader = &compute_shader_entry,
     };
     compute_pipeline = cgpu_create_compute_pipeline(device, &pipeline_desc);
-
-    // Create descriptor set
-    CGPUDescriptorSetDescriptor set_desc = {
-        .root_signature = root_signature,
-        .set_index = 0
-    };
-    descriptor_set = cgpu_create_descriptor_set(device, &set_desc);
-
-    // Create output buffer
-    CGPUBufferDescriptor buffer_desc = {
-        .size = RENDER_WIDTH * RENDER_HEIGHT * sizeof(float) * 4,
-        .name = u8"RayTracingOutputBuffer",
-        .descriptors = CGPU_RESOURCE_TYPE_RW_BUFFER,
-        .memory_usage = CGPU_MEM_USAGE_GPU_ONLY,
-        .flags = CGPU_BCF_NONE,
-        .element_count = RENDER_WIDTH * RENDER_HEIGHT,
-        .element_stride = sizeof(float) * 4,
-        .start_state = CGPU_RESOURCE_STATE_UNORDERED_ACCESS,
-    };
-    output_buffer = cgpu_create_buffer(device, &buffer_desc);
-
-    // Create readback buffer
-    CGPUBufferDescriptor rb_desc = {
-        .size = buffer_desc.size,
-        .name = u8"ReadbackBuffer",
-        .descriptors = CGPU_RESOURCE_TYPE_NONE,
-        .memory_usage = CGPU_MEM_USAGE_GPU_TO_CPU,
-        .flags = CGPU_BCF_NONE,
-        .element_count = buffer_desc.element_count,
-        .element_stride = buffer_desc.element_stride,
-        .start_state = CGPU_RESOURCE_STATE_COPY_DEST,
-    };
-    readback_buffer = cgpu_create_buffer(device, &rb_desc);
-
-    // Update descriptor set
-    CGPUDescriptorData descriptor_data[2] = {
-        {
-            .name = u8"output_buffer",
-            .binding_type = CGPU_RESOURCE_TYPE_RW_BUFFER,
-            .buffers = &output_buffer,
-            .count = 1
-        },
-        {
-            .name = u8"scene_tlas",
-            .binding_type = CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE,
-            .acceleration_structures = &scene_tlas,
-            .count = 1
-        }
-    };
-    cgpu_update_descriptor_set(descriptor_set, descriptor_data, 2);
 }
 
 void RGRaytracingSampleModule::create_swapchain(skr::SystemWindow* window)
@@ -741,6 +817,8 @@ void RGRaytracingSampleModule::create_swapchain(skr::SystemWindow* window)
 
 void RGRaytracingSampleModule::render()
 {
+    using namespace skr;
+
     // Camera constants structure matching shader
     struct CameraConstants {
         skr::math::float4x4 invViewMatrix;
@@ -752,22 +830,30 @@ void RGRaytracingSampleModule::render()
         skr::math::float2 screenSize;
     };
 
+    if (!swapchain || !render_graph)
+        return;
+    
+    // Acquire next image
+    CGPUAcquireNextDescriptor acquire_desc = {};
+    uint8_t backbuffer_index = cgpu_acquire_next_image(swapchain, &acquire_desc);
+    CGPUTextureId to_import = swapchain->back_buffers[backbuffer_index];
+
     // Setup camera (looking at the scene from a distance)
     CameraConstants camera_constants = {};
     
-    // Camera setup - start with a working position and adjust
+    // Camera setup
     const float nearPlane = 0.1f;
     const float farPlane = 99999999.0f;
     
-    // Position camera much further back to see complete scene
-    // Scene spans: X(-800 to 1600), Y(0 to 4500), Z(-1800 to 800)  
-    skr::math::float3 eye = {-25000.0f, 15000.0f, -35000.0f};   // Much further back and higher
-    skr::math::float3 target = {0.0f, 2000.0f, 0.0f};           // Look towards scene center
-    skr::math::float3 up = {0.0f, 1.0f, 0.0f};             // Y-up
+    // Use camera controller values
+    skr::math::float3 eye = this->camera_controller.position;
+    skr::math::float3 target = this->camera_controller.target;
+    skr::math::float3 up = this->camera_controller.up;
     
     camera_constants.cameraPos = eye;
     camera_constants.cameraDir = skr::math::normalize(target - eye);
-    camera_constants.screenSize = {static_cast<float>(RENDER_WIDTH), static_cast<float>(RENDER_HEIGHT)};
+    camera_constants.screenSize = {static_cast<float>(to_import->info->width), 
+                                   static_cast<float>(to_import->info->height)};
     
     // Create view matrix (lookAt)
     skr::math::float3 f = skr::math::normalize(target - eye);
@@ -783,7 +869,7 @@ void RGRaytracingSampleModule::render()
     
     // Create projection matrix (perspective)
     float fov = 45.0f * skr::kPi / 180.0f;
-    float aspect = static_cast<float>(RENDER_WIDTH) / static_cast<float>(RENDER_HEIGHT);
+    float aspect = camera_constants.screenSize.x / camera_constants.screenSize.y;
     float tan_half_fov = std::tan(fov / 2.0f);
     
     const auto projMatrix = skr::math::float4x4(
@@ -797,119 +883,101 @@ void RGRaytracingSampleModule::render()
     camera_constants.invViewMatrix = skr::math::inverse(viewMatrix);
     camera_constants.invProjMatrix = skr::math::inverse(projMatrix);
 
-    // Create command objects
-    CGPUCommandPoolId pool = cgpu_create_command_pool(gfx_queue, nullptr);
-    CGPUCommandBufferDescriptor cmd_desc = { .is_secondary = false };
-    CGPUCommandBufferId cmd = cgpu_create_command_buffer(pool, &cmd_desc);
+    // Create intermediate render target texture (can create UAV)
+    auto render_target_handle = render_graph->create_texture(
+        [=](render_graph::RenderGraph& g, render_graph::TextureBuilder& builder) {
+            builder.set_name(u8"raytracing_output")
+                .extent(to_import->info->width, to_import->info->height, 1)
+                .format(to_import->info->format)
+                .allow_readwrite();  // Enable UAV creation
+        }
+    );
 
-    // Execute compute shader
-    cgpu_cmd_begin(cmd);
+    // Create backbuffer texture handle for RenderGraph (import only, no UAV)
+    auto backbuffer_handle = render_graph->create_texture(
+        [=](render_graph::RenderGraph& g, render_graph::TextureBuilder& builder) {
+            builder.set_name(u8"backbuffer")
+                .import(to_import, CGPU_RESOURCE_STATE_PRESENT);
+        }
+    );
+
+    // Create acceleration structure handle for RenderGraph
+    auto tlas_handle = render_graph->create_acceleration_structure(
+        [=, this](render_graph::RenderGraph& g, render_graph::AccelerationStructureBuilder& builder) {
+            builder.set_name(u8"scene_tlas")
+                .import(scene_tlas);
+        }
+    );
+
+    // Add raytracing compute pass (write to intermediate texture)
+    render_graph->add_compute_pass(
+        [=, this](render_graph::RenderGraph& g, render_graph::ComputePassBuilder& builder) {
+            builder.set_name(u8"RayTracingPass")
+                .set_pipeline(compute_pipeline)
+                .read(u8"scene_tlas", tlas_handle)
+                .readwrite(u8"output_texture", render_target_handle);
+        },
+        [=, this](render_graph::RenderGraph& g, render_graph::ComputePassContext& ctx) 
+        {
+            // Push constants
+            cgpu_compute_encoder_push_constants(ctx.encoder, root_signature, u8"camera_constants", &camera_constants);
+            
+            // Dispatch compute shader
+            uint32_t group_count_x = (static_cast<uint32_t>(camera_constants.screenSize.x) + 15) / 16;
+            uint32_t group_count_y = (static_cast<uint32_t>(camera_constants.screenSize.y) + 15) / 16;
+            cgpu_compute_encoder_dispatch(ctx.encoder, group_count_x, group_count_y, 1);
+        }
+    );
+
+    // Add copy pass to copy intermediate texture to backbuffer
+    render_graph->add_copy_pass(
+        [=, this](render_graph::RenderGraph& g, render_graph::CopyPassBuilder& builder) {
+            builder.set_name(u8"CopyToBackbuffer")
+                .texture_to_texture(
+                    render_target_handle, 
+                    backbuffer_handle, 
+                    CGPU_RESOURCE_STATE_PRESENT
+                );
+        },
+        [=, this](render_graph::RenderGraph& g, render_graph::CopyPassContext& ctx) 
+        {
+            // Copy pass execution is handled automatically by RenderGraph
+        }
+    );
+
+    // Add present pass
+    render_graph->add_present_pass(
+        [=, this](render_graph::RenderGraph& g, render_graph::PresentPassBuilder& builder) {
+            builder.set_name(u8"present")
+                .swapchain(swapchain, backbuffer_index)
+                .texture(backbuffer_handle, true);
+        }
+    );
+
+    // Execute render graph
+    render_graph->execute();
     
-    // Begin compute pass
-    CGPUComputePassDescriptor pass_desc = { .name = u8"RayTracingComputePass" };
-    CGPUComputePassEncoderId encoder = cgpu_cmd_begin_compute_pass(cmd, &pass_desc);
-    
-    // Bind pipeline and resources
-    cgpu_compute_encoder_bind_pipeline(encoder, compute_pipeline);
-    cgpu_compute_encoder_bind_descriptor_set(encoder, descriptor_set);
-    cgpu_compute_encoder_push_constants(encoder, root_signature, u8"camera_constants", &camera_constants);
-    
-    // Dispatch compute shader
-    uint32_t group_count_x = (RENDER_WIDTH + 15) / 16;
-    uint32_t group_count_y = (RENDER_HEIGHT + 15) / 16;
-    cgpu_compute_encoder_dispatch(encoder, group_count_x, group_count_y, 1);
-    
-    cgpu_cmd_end_compute_pass(cmd, encoder);
-    
-    // Barrier UAV buffer to transfer source
-    CGPUBufferBarrier buffer_barrier = {
-        .buffer = output_buffer,
-        .src_state = CGPU_RESOURCE_STATE_UNORDERED_ACCESS,
-        .dst_state = CGPU_RESOURCE_STATE_COPY_SOURCE
-    };
-    CGPUResourceBarrierDescriptor barriers_desc = {
-        .buffer_barriers = &buffer_barrier,
-        .buffer_barriers_count = 1
-    };
-    cgpu_cmd_resource_barrier(cmd, &barriers_desc);
-    
-    // Copy buffer to readback
-    CGPUBufferToBufferTransfer cpy_desc = {
-        .dst = readback_buffer,
-        .dst_offset = 0,
-        .src = output_buffer,
-        .src_offset = 0,
-        .size = RENDER_WIDTH * RENDER_HEIGHT * sizeof(float) * 4,
-    };
-    cgpu_cmd_transfer_buffer_to_buffer(cmd, &cpy_desc);
-    
-    cgpu_cmd_end(cmd);
-    
-    // Submit and wait
-    CGPUQueueSubmitDescriptor submit_desc = {
-        .cmds = &cmd,
-        .cmds_count = 1
-    };
-    cgpu_submit_queue(gfx_queue, &submit_desc);
+    // Present
     cgpu_wait_queue_idle(gfx_queue);
-
-    // Map buffer and save to PNG
-    {
-        CGPUBufferRange map_range = {
-            .offset = 0,
-            .size = RENDER_WIDTH * RENDER_HEIGHT * sizeof(float) * 4
-        };
-        cgpu_map_buffer(readback_buffer, &map_range);
-        
-        float* mapped_memory = (float*)readback_buffer->info->cpu_mapped_address;
-        unsigned char* image = (unsigned char*)malloc(RENDER_WIDTH * RENDER_HEIGHT * 4);
-        
-        // Convert float4 to RGBA8
-        for (uint32_t i = 0; i < RENDER_WIDTH * RENDER_HEIGHT; i++) {
-            image[i * 4 + 0] = (uint8_t)(255.0f * skr::math::clamp(mapped_memory[i * 4 + 0], 0.0f, 1.0f));
-            image[i * 4 + 1] = (uint8_t)(255.0f * skr::math::clamp(mapped_memory[i * 4 + 1], 0.0f, 1.0f));
-            image[i * 4 + 2] = (uint8_t)(255.0f * skr::math::clamp(mapped_memory[i * 4 + 2], 0.0f, 1.0f));
-            image[i * 4 + 3] = (uint8_t)(255.0f * skr::math::clamp(mapped_memory[i * 4 + 3], 0.0f, 1.0f));
-        }
-        
-        cgpu_unmap_buffer(readback_buffer);
-        
-        // Save to PNG
-        const char* png_filename = "rg-raytracing-output.png";
-        unsigned error = lodepng_encode32_file(png_filename, image, RENDER_WIDTH, RENDER_HEIGHT);
-        if (error) {
-            SKR_LOG_ERROR(u8"PNG encoder error %d: %s", error, lodepng_error_text(error));
-        } else {
-            SKR_LOG_INFO(u8"Ray tracing output saved to: %s", png_filename);
-        }
-        
-        free(image);
-    }
-
-    // Clean up command objects
-    cgpu_free_command_buffer(cmd);
-    cgpu_free_command_pool(pool);
-    
-    // Present swapchain for profiler hook support
-    if (swapchain) {
-        CGPUAcquireNextDescriptor acquire_desc = {};
-        uint8_t backbuffer_index = cgpu_acquire_next_image(swapchain, &acquire_desc);
-        
-        CGPUQueuePresentDescriptor present_desc = {
-            .swapchain = swapchain,
-            .index = backbuffer_index
-        };
-        cgpu_queue_present(gfx_queue, &present_desc);
-    }
+    CGPUQueuePresentDescriptor present_desc = {
+        .swapchain = swapchain,
+        .index = backbuffer_index
+    };
+    cgpu_queue_present(gfx_queue, &present_desc);
 }
 
 void RGRaytracingSampleModule::on_unload()
 {
     cgpu_wait_queue_idle(gfx_queue);
+    
+    // Clean up render graph
+    if (render_graph)
+    {
+        skr::render_graph::RenderGraph::destroy(render_graph);
+        render_graph = nullptr;
+    }
+    
     // Clean up compute pipeline resources
-    if (readback_buffer) cgpu_free_buffer(readback_buffer);
-    if (output_buffer) cgpu_free_buffer(output_buffer);
-    if (descriptor_set) cgpu_free_descriptor_set(descriptor_set);
     if (compute_pipeline) cgpu_free_compute_pipeline(compute_pipeline);
     if (root_signature) cgpu_free_root_signature(root_signature);
     if (compute_shader) cgpu_free_shader_library(compute_shader);

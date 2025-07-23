@@ -144,5 +144,39 @@ public:
 protected:
     PipelineBufferHandle handle;
 };
+
+class AccelerationStructureEdge : public RenderGraphEdge
+{
+public:
+    inline AccelerationStructureEdge(ERelationshipType type, ECGPUResourceState requested_state)
+        : RenderGraphEdge(type)
+        , requested_state(requested_state)
+    {
+    }
+    virtual ~AccelerationStructureEdge() = default;
+
+    virtual AccelerationStructureNode* get_acceleration_structure_node() = 0;
+    virtual PassNode* get_pass_node() = 0;
+    const ECGPUResourceState requested_state;
+};
+
+class AccelerationStructureReadEdge : public AccelerationStructureEdge
+{
+public:
+    friend class PassNode;
+    friend class RenderGraph;
+    friend class RenderGraphBackend;
+
+    inline const char8_t* get_name() const { return name.c_str(); }
+    const uint64_t name_hash = 0;
+
+    AccelerationStructureNode* get_acceleration_structure_node() final;
+    PassNode* get_pass_node() final;
+
+    AccelerationStructureReadEdge(const skr::StringView name, AccelerationStructureSRVHandle handle);
+protected:
+    const skr::String name = u8"";
+    const AccelerationStructureSRVHandle handle;
+};
 } // namespace render_graph
 } // namespace skr

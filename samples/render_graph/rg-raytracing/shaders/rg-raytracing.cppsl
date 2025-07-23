@@ -5,7 +5,7 @@
 using namespace skr::shader;
 
 // External resource bindings
-extern Buffer<float4>& output_buffer;
+extern Image<float>& output_texture;
 extern Accel& scene_tlas;
 
 // Push constants - camera parameters
@@ -130,14 +130,13 @@ void compute_main([[sv_thread_id]] uint3 thread_id)
 {
     uint2 screen_size = uint2(camera_constants.screenSize);
     uint2 pixel_coord = thread_id.xy;
-    uint32 location = pixel_coord.x + pixel_coord.y * screen_size.x;
     
     // Boundary check
     if (any(pixel_coord >= screen_size)) {
         return;
     }
     
-    // Execute ray tracing and write to output image
+    // Execute ray tracing and write directly to output texture
     float4 pixel_color = trace_scene(pixel_coord, screen_size);
-    output_buffer.store(location, pixel_color);
+    output_texture.store(pixel_coord, pixel_color);
 }

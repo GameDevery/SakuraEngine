@@ -236,6 +236,14 @@ RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::readwrite(cons
     return *this;
 }
 
+RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::read(const char8_t* name, AccelerationStructureSRVHandle handle) SKR_NOEXCEPT
+{
+    auto allocated = graph.node_factory->Allocate<AccelerationStructureReadEdge>(name, handle);
+    auto&& edge = node.in_acceleration_structure_edges.emplace(allocated).ref();
+    graph.graph->link(graph.graph->access_node(handle._this), &node, edge);
+    return *this;
+}
+
 RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::set_pipeline(CGPUComputePipelineId pipeline) SKR_NOEXCEPT
 {
     node.pipeline = pipeline;
@@ -447,7 +455,7 @@ RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::with_tags(uint32_t tags)
 RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::import(CGPUBufferId buffer, ECGPUResourceState init_state) SKR_NOEXCEPT
 {
     node.imported = buffer;
-    node.frame_buffer = buffer;
+    node.imported_buffer = buffer;
     node.init_state = init_state;
     node.descriptor.descriptors = buffer->info->descriptors;
     node.descriptor.size = buffer->info->size;
@@ -620,7 +628,7 @@ RenderGraph::TextureBuilder& RenderGraph::TextureBuilder::import(CGPUTextureId t
     }
     node.init_state = init_state;
     node.imported = true;
-    node.frame_texture = texture;
+    node.imported_texture = texture;
     graph.imported_textures[texture] = node.get_handle();
     return *this;
 }
@@ -710,6 +718,63 @@ TextureHandle RenderGraph::get_texture(const char8_t* name) SKR_NOEXCEPT
 TextureHandle RenderGraph::get_imported(CGPUTextureId texture) SKR_NOEXCEPT
 {
     if (auto it = imported_textures.find(texture); it != imported_textures.end())
+    {
+        return it->second;
+    }
+    return UINT64_MAX;
+}
+
+// acceleration structure builder
+RenderGraph::AccelerationStructureBuilder::AccelerationStructureBuilder(RenderGraph& graph, AccelerationStructureNode& node) SKR_NOEXCEPT
+    : graph(graph),
+      node(node)
+{
+}
+
+RenderGraph::AccelerationStructureBuilder& RenderGraph::AccelerationStructureBuilder::set_name(const char8_t* name) SKR_NOEXCEPT
+{
+    // blackboard
+    node.set_name(name);
+    // node.descriptor.name = node.get_name();
+    graph.blackboard->add_acceleration_structure(name, &node);
+    return *this;
+}
+
+RenderGraph::AccelerationStructureBuilder& RenderGraph::AccelerationStructureBuilder::import(CGPUAccelerationStructureId acceleration_structure) SKR_NOEXCEPT
+{
+    node.imported = true;
+    node.imported_as = acceleration_structure;
+    node.init_state = CGPU_RESOURCE_STATE_ACCELERATION_STRUCTURE_READ;
+    graph.imported_acceleration_structures[acceleration_structure] = node.get_handle();
+    return *this;
+}
+
+AccelerationStructureHandle RenderGraph::create_acceleration_structure(const AccelerationStructureSetupFunction& setup) SKR_NOEXCEPT
+{
+    SkrZoneScopedN("RenderGraph::create_acceleration_structure(handle)");
+
+    auto newAS = node_factory->Allocate<AccelerationStructureNode>();
+    resources.add(newAS);
+    graph->insert(newAS);
+    AccelerationStructureBuilder builder(*this, *newAS);
+    setup(*this, builder);
+    // set default gc tag
+    if (newAS->tags == kRenderGraphInvalidResourceTag) newAS->tags |= kRenderGraphDefaultResourceTag;
+    return newAS->get_handle();
+}
+
+AccelerationStructureHandle RenderGraph::get_acceleration_structure(const char8_t* name) SKR_NOEXCEPT
+{
+    if (auto acceleration_structure = blackboard->acceleration_structure(name))
+    {
+        return acceleration_structure->get_handle();
+    }
+    return UINT64_MAX;
+}
+
+AccelerationStructureHandle RenderGraph::get_imported(CGPUAccelerationStructureId acceleration_structure) SKR_NOEXCEPT
+{
+    if (auto it = imported_acceleration_structures.find(acceleration_structure); it != imported_acceleration_structures.end())
     {
         return it->second;
     }

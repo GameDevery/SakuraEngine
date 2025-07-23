@@ -12,7 +12,7 @@ namespace skr {
 namespace render_graph {
 
 // Utility function to find shader resource (from old implementation)
-const CGPUShaderResource* find_shader_resource(uint64_t name_hash, CGPURootSignatureId root_sig, ECGPUResourceType* type = nullptr)
+const CGPUShaderResource* find_shader_resource(const char8_t* name, uint64_t name_hash, CGPURootSignatureId root_sig, ECGPUResourceType* type = nullptr)
 {
     for (uint32_t i = 0; i < root_sig->table_count; i++)
     {
@@ -20,7 +20,7 @@ const CGPUShaderResource* find_shader_resource(uint64_t name_hash, CGPURootSigna
         {
             const auto& resource = root_sig->tables[i].resources[j];
             if (resource.name_hash == name_hash && 
-                strcmp((const char*)resource.name, (const char*)root_sig->tables[i].resources[j].name) == 0)
+                strcmp((const char*)resource.name, (const char*)name) == 0)
             {
                 if (type)
                     *type = resource.type;
@@ -114,9 +114,11 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
     skr::InlineVector<CGPUBufferId, 8> cbvs;
     skr::InlineVector<CGPUTextureViewId, 8> srvs;
     skr::InlineVector<CGPUTextureViewId, 8> uavs;
+    skr::InlineVector<CGPUAccelerationStructureId, 8> acceleration_structures;
     
     uint32_t texture_count = 0;
     uint32_t buffer_count = 0;
+    uint32_t acceleration_structure_count = 0;
     
     // Process buffer resources (CBVs)
     auto buf_read_edges = pass->buf_read_edges();
@@ -126,7 +128,7 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
     {
         auto& read_edge = buf_read_edges[e_idx];
         
-        const auto& resource = *find_shader_resource(read_edge->name_hash, root_sig);
+        const auto& resource = *find_shader_resource(read_edge->get_name(), read_edge->name_hash, root_sig);
         ECGPUResourceType resource_type = resource.type;
         bind_table_keys.append(read_edge->get_name() ? read_edge->get_name() : resource.name);
         bind_table_keys.append(u8";");
@@ -153,7 +155,7 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
     {
         auto& read_edge = tex_read_edges[e_idx];
         
-        const auto& resource = *find_shader_resource(read_edge->name_hash, root_sig);
+        const auto& resource = *find_shader_resource(read_edge->get_name(), read_edge->name_hash, root_sig);
         bind_table_keys.append(read_edge->get_name() ? read_edge->get_name() : resource.name);
         bind_table_keys.append(u8";");
         bindTableValueNames.emplace(resource.name);
@@ -198,7 +200,7 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
     {
         auto& rw_edge = tex_rw_edges[e_idx];
         
-        const auto& resource = *find_shader_resource(rw_edge->name_hash, root_sig);
+        const auto& resource = *find_shader_resource(rw_edge->get_name(), rw_edge->name_hash, root_sig);
         bind_table_keys.append(rw_edge->get_name() ? rw_edge->get_name() : resource.name);
         bind_table_keys.append(u8";");
         bindTableValueNames.emplace(resource.name);
@@ -230,6 +232,32 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
         bind_table_result_.total_texture_views_created++;
     }
     
+    // Process acceleration structure SRV resources
+    auto as_read_edges = pass->acceleration_structure_read_edges();
+    acceleration_structures.resize_zeroed(as_read_edges.size());
+    
+    for (uint32_t e_idx = 0; e_idx < as_read_edges.size(); e_idx++)
+    {
+        auto& read_edge = as_read_edges[e_idx];
+        
+        const auto& resource = *find_shader_resource(read_edge->get_name(), read_edge->name_hash, root_sig);
+        bind_table_keys.append(read_edge->get_name() ? read_edge->get_name() : resource.name);
+        bind_table_keys.append(u8";");
+        bindTableValueNames.emplace(resource.name);
+        
+        auto acceleration_structure_readed = read_edge->get_acceleration_structure_node();
+        CGPUDescriptorData update = {};
+        update.count = 1;
+        update.name = resource.name;
+        update.binding_type = CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE;
+        update.binding = resource.binding;
+        acceleration_structures[e_idx] = acceleration_structure_readed->get_imported();
+        update.acceleration_structures = &acceleration_structures[e_idx];
+        desc_set_updates.emplace(update);
+        
+        acceleration_structure_count++;
+    }
+    
     // Get bind table from executor's pool (similar to old implementation)
     auto&& table_pool_iter = executor.bind_table_pools.find(root_sig);
     if (table_pool_iter == executor.bind_table_pools.end())
@@ -248,6 +276,7 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
     auto& bind_info = bind_table_result_.pass_bind_tables.try_add_default(pass).value();
     bind_info.bound_texture_count = texture_count;
     bind_info.bound_buffer_count = buffer_count;
+    bind_info.bound_acceleration_structure_count = acceleration_structure_count;
     
     return bind_table;
 }

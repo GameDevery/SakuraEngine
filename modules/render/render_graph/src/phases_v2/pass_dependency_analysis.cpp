@@ -499,17 +499,9 @@ void PassDependencyAnalysis::generate_cross_queue_sync_points(const QueueSchedul
                 sync_point.sync_value = 0;
                 
                 sync_points.add(sync_point);
-                
-                SKR_LOG_TRACE(u8"Generated cross-queue sync: %s (queue %u) -> %s (queue %u) for resource %s",
-                    producer_pass->get_name(), producer_queue,
-                    consumer_pass->get_name(), consumer_queue,
-                    resource_dep.resource->get_name());
             }
         }
     }
-    
-    SKR_LOG_TRACE(u8"PassDependencyAnalysis: Generated %u cross-queue sync points", 
-                  static_cast<uint32_t>(sync_points.size()));
 }
 
 } // namespace render_graph

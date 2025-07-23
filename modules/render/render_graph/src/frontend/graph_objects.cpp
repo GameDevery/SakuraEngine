@@ -133,6 +133,11 @@ BufferNode::BufferNode() SKR_NOEXCEPT
 {
 }
 
+AccelerationStructureNode::AccelerationStructureNode() SKR_NOEXCEPT
+    : ResourceNode(EObjectType::AccelerationStructure)
+{
+}
+
 // 2.pass nodes
 
 PassNode::PassNode(EPassType pass_type, uint32_t order)
@@ -209,6 +214,17 @@ void PassNode::foreach_buffers(skr::stl_function<void(BufferNode*, BufferEdge*)>
         f(e->get_buffer_node(), e);
     for (auto&& e : buf_ppl_edges())
         f(e->get_buffer_node(), e);
+}
+
+skr::span<AccelerationStructureReadEdge*> PassNode::acceleration_structure_read_edges()
+{
+    return skr::span<AccelerationStructureReadEdge*>(in_acceleration_structure_edges.data(), in_acceleration_structure_edges.size());
+}
+
+void PassNode::foreach_acceleration_structures(skr::stl_function<void(AccelerationStructureNode*, AccelerationStructureEdge*)> f)
+{
+    for (auto&& e : acceleration_structure_read_edges())
+        f(e->get_acceleration_structure_node(), e);
 }
 
 RenderPassNode::RenderPassNode(uint32_t order)
@@ -355,6 +371,26 @@ BufferNode* BufferReadWriteEdge::get_buffer_node()
 PassNode* BufferReadWriteEdge::get_pass_node()
 {
     return (PassNode*)from();
+}
+
+// 3.7 Acceleration Structure Read Edge
+
+AccelerationStructureReadEdge::AccelerationStructureReadEdge(const skr::StringView name, AccelerationStructureSRVHandle handle)
+    : AccelerationStructureEdge(ERelationshipType::AccelerationStructureRead, CGPU_RESOURCE_STATE_ACCELERATION_STRUCTURE_READ)
+    , name_hash(cgpu_name_hash(name.data(), name.size()))
+    , name(name)
+    , handle(handle)
+{
+}
+
+AccelerationStructureNode* AccelerationStructureReadEdge::get_acceleration_structure_node()
+{
+    return static_cast<AccelerationStructureNode*>(from());
+}
+
+PassNode* AccelerationStructureReadEdge::get_pass_node()
+{
+    return (PassNode*)to();
 }
 
 } // namespace render_graph

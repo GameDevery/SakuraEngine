@@ -21,6 +21,7 @@ public:
         named_passes.clear();
         named_textures.clear();
         named_buffers.clear();
+        named_acceleration_structures.clear();
     }
 
     PassNode* pass(const char8_t* name) SKR_NOEXCEPT final override
@@ -47,6 +48,16 @@ public:
     {
         auto it = named_buffers.find(name);
         if (it != named_buffers.end())
+        {
+            return it->second;
+        }
+        return nullptr;
+    }
+
+    AccelerationStructureNode* acceleration_structure(const char8_t* name) SKR_NOEXCEPT final override
+    {
+        auto it = named_acceleration_structures.find(name);
+        if (it != named_acceleration_structures.end())
         {
             return it->second;
         }
@@ -103,6 +114,17 @@ public:
         return true;
     }
 
+    bool add_acceleration_structure(const char8_t* name, class AccelerationStructureNode* acceleration_structure) SKR_NOEXCEPT final override
+    {
+        auto it = named_acceleration_structures.find(name);
+        if (it != named_acceleration_structures.end())
+        {
+            return false;
+        }
+        named_acceleration_structures.emplace(acceleration_structure->get_name(), acceleration_structure);
+        return true;
+    }
+
     void override_pass(const char8_t* name, class PassNode* pass) SKR_NOEXCEPT final override
     {
         auto it = named_passes.find(name);
@@ -133,6 +155,16 @@ public:
         named_buffers.emplace(name, buffer);
     }
 
+    void override_acceleration_structure(const char8_t* name, class AccelerationStructureNode* acceleration_structure) SKR_NOEXCEPT final override
+    {
+        auto it = named_acceleration_structures.find(name);
+        if (it != named_acceleration_structures.end())
+        {
+            named_acceleration_structures[name] = acceleration_structure;
+        }
+        named_acceleration_structures.emplace(name, acceleration_structure);
+    }
+
 protected:
     template<typename T>
     using FlatStringMap = skr::FlatHashMap<skr::StringView, T, skr::Hash<skr::StringView>>;
@@ -140,6 +172,7 @@ protected:
     FlatStringMap<class PassNode*> named_passes;
     FlatStringMap<class TextureNode*> named_textures;
     FlatStringMap<class BufferNode*> named_buffers;
+    FlatStringMap<class AccelerationStructureNode*> named_acceleration_structures;
     FlatStringMap<double> named_values;
 };
 
@@ -167,6 +200,11 @@ EObjectType TextureNode::get_type() const SKR_NOEXCEPT
 EObjectType BufferNode::get_type() const SKR_NOEXCEPT
 {
     return EObjectType::Buffer;
+}
+
+EObjectType AccelerationStructureNode::get_type() const SKR_NOEXCEPT
+{
+    return EObjectType::AccelerationStructure;
 }
 
 RenderGraph::RenderGraph(const RenderGraphBuilder& builder) SKR_NOEXCEPT
