@@ -7,8 +7,6 @@ namespace skr {
 Actor::Actor() SKR_NOEXCEPT
     : _parent(nullptr)
     , attach_rule(EAttachRule::Default) {
-    // Initialize transform entities if needed
-    // transform_entities.reserve(1);
 }   
 
 Actor::~Actor() SKR_NOEXCEPT {
@@ -29,11 +27,9 @@ skr::RCWeak<Actor> Actor::GetRoot()
 }
 
 RCWeak<Actor> Actor::CreateActor() {
-    // allocate and construct a new Actor instance into root actor's children
     auto root = GetRoot().lock();
-    // Assuming children is a vector-like container of smart pointers (e.g. skr::RC<Actor>)
-    // and emplace_back can create a new Actor and manage its lifetime.
-    root->children.emplace(new Actor());
+    auto actor = SActorManager::GetInstance().CreateActor();
+    root->children.push_back(actor.lock());
     return root->children.back(); // Return the newly created actor reference
 }
 
@@ -57,15 +53,26 @@ void Actor::DetachFromParent() {
         }
         _parent = nullptr; // Clear parent reference
     }
-    // TODO: move the ownership to scheduler to release all components 
-
-
-    // When No RefCounted (Parent/Child) Exists, the actor will be destroyed
 }
 
-void Actor::OnTick(float delta_time) SKR_NOEXCEPT {
 
+RCWeak<Actor> SActorManager::CreateActor() {
+    auto actor = new Actor(); // TODO: currently we use cpp new/delete for Actor management 
+    actors.add(actor->guid, skr::RC<Actor>(actor));
+    return skr::RC<Actor>(actor);
 }
 
+bool SActorManager::DestroyActor(skr::GUID guid) {
+    auto it = actors.find(guid).value();
+    delete it.get(); // TODO: currently we use cpp new/delete for Actor management 
+    actors.remove(guid);
+    return true;
+}
+
+void SActorManager::ClearAllActors() {
+    for (auto& actor_item : actors) {
+        DestroyActor(actor_item.key);
+    }
+}
 
 }// namespace skr

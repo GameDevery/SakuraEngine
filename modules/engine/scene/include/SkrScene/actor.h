@@ -2,6 +2,7 @@
 #include "SkrBase/types/impl/guid.hpp"
 #include "SkrCore/memory/rc.hpp"
 #include "SkrContainersDef/vector.hpp"
+#include "SkrContainersDef/map.hpp"
 #include "SkrRT/sugoi/sugoi.h"
 #if !defined(__meta__)
     #include "SkrScene/actor.generated.h"
@@ -20,6 +21,7 @@ sreflect_struct(
     guid = "4cb20865-0d27-43ee-90b9-7b43ac4c067c")
 SKR_SCENE_API Actor
 {
+    friend class SActorManager;
 public:
     SKR_RC_IMPL();
     virtual ~Actor() SKR_NOEXCEPT;
@@ -27,7 +29,7 @@ public:
     static RCWeak<Actor> CreateActor();
     void AttachTo(RCWeak<Actor> parent, EAttachRule rule = EAttachRule::Default);
     void DetachFromParent();
-    void OnTick(float delta_time) SKR_NOEXCEPT;
+
 protected:
     Actor() SKR_NOEXCEPT;
     skr::String display_name; // for editor, profiler, and runtime dump
@@ -36,6 +38,31 @@ protected:
     skr::Vector<skr::RC<Actor>> children;
     skr::RC<Actor> _parent = nullptr;
     EAttachRule attach_rule = EAttachRule::Default;
+};
+
+
+class SActorManager {
+public:
+    static SActorManager& GetInstance() {
+        static SActorManager instance;
+        return instance;
+    }
+    skr::RCWeak<Actor> CreateActor();
+    bool DestroyActor(skr::GUID guid);
+    void ClearAllActors();
+private:
+    SActorManager() = default;
+    ~SActorManager() = default;
+
+    // Disable copy and move semantics
+    SActorManager(const SActorManager&) = delete;
+    SActorManager& operator=(const SActorManager&) = delete;
+    SActorManager(SActorManager&&) = delete;
+    SActorManager& operator=(SActorManager&&) = delete;
+
+    // Currently, we only use Map<GUID, Actor*> and cpp new/delete for Actor management.
+    // In the future, we can implement a more sophisticated memory management system.
+    skr::Map<skr::GUID, skr::RC<Actor>> actors; // Map to manage actors by their GUIDs
 };
 
 class MeshActor : public Actor
