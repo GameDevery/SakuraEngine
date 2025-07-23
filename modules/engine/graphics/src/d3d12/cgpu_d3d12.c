@@ -695,6 +695,10 @@ CGPUDescriptorSetId cgpu_create_descriptor_set_d3d12(CGPUDeviceId device, const 
         {
             CbvSrvUavCount += D3D12Util_ComputeNeededDescriptorCount(&param_table->resources[i]);
         }
+        else
+        {
+            cgpu_assert(0 && "Unexpected/Unhandled reousrce type!");
+        }
     }
     // CBV/SRV/UAV
     Set->mCbvSrvUavHandle = D3D12_GPU_VIRTUAL_ADDRESS_UNKNOWN;
