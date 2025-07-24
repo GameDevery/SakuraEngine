@@ -104,6 +104,8 @@ protected:
     friend struct WorkUnitGenerator;
     StackMap<const sugoi_group_t*, WorkGroup> _work_groups;
     skr::task::counter_t _finish;
+
+    std::atomic_uint32_t _exec_counter = 0;
 };
 
 struct SKR_RUNTIME_API StaticDependencyAnalyzer

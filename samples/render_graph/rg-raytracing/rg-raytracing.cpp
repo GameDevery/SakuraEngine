@@ -294,6 +294,10 @@ int RGRaytracingSampleModule::main_module_exec(int argc, char8_t** argv)
     return 0;
 }
 
+// Three attachment levels hierarchy
+static constexpr int LEVEL_1_COUNT = 100;    // Root level: 100 entities (cities)
+static constexpr int LEVEL_2_COUNT = 900;    // Mid level: 900 entities (buildings) - 9 per city
+static constexpr int LEVEL_3_COUNT = 45000;  // Leaf level: 45000 entities (objects) - ~50 per building
 void RGRaytracingSampleModule::spawn_entities()
 {
     using namespace skr::ecs;
@@ -302,10 +306,7 @@ void RGRaytracingSampleModule::spawn_entities()
     constexpr float SCENE_SIZE = 2000.0f;
     constexpr int TOTAL_ENTITIES = 50000;
     
-    // Three attachment levels hierarchy
-    constexpr int LEVEL_1_COUNT = 100;    // Root level: 100 entities (cities)
-    constexpr int LEVEL_2_COUNT = 900;    // Mid level: 900 entities (buildings) - 9 per city
-    constexpr int LEVEL_3_COUNT = 45000;  // Leaf level: 45000 entities (objects) - ~50 per building
+
 
     static std::atomic_uint32_t entities_count = 0;
     struct LevelSpawner
@@ -487,11 +488,23 @@ void RGRaytracingSampleModule::spawn_entities()
         RandomComponentReadWrite<skr::scene::ChildrenComponent> children_writer;
     } level3_spawner(level2_spawner);
 
-    world.create_entities(level1_spawner, LEVEL_1_COUNT);
-    world.create_entities(level2_spawner, LEVEL_2_COUNT);
-    world.create_entities(level3_spawner, LEVEL_3_COUNT);
+    {
+        SkrZoneScopedN("SpawnLevel1");
+        world.create_entities(level1_spawner, LEVEL_1_COUNT);
+    }
+    {
+        SkrZoneScopedN("SpawnLevel2");
+        world.create_entities(level2_spawner, LEVEL_2_COUNT);
+    }
+    {
+        SkrZoneScopedN("SpawnLevel3");
+        world.create_entities(level3_spawner, LEVEL_3_COUNT);
+    }
 
-    transform_system->update();
+    {
+        SkrZoneScopedN("UpdateTransformSystem");
+        transform_system->update();
+    }
 
     SKR_LOG_INFO(u8"Spawned hierarchical scene with {} entities:", LEVEL_1_COUNT + LEVEL_2_COUNT + LEVEL_3_COUNT);
     SKR_LOG_INFO(u8"  Level 1 (Cities): {} entities", LEVEL_1_COUNT);
@@ -550,6 +563,8 @@ void RGRaytracingSampleModule::create_as()
 
 void RGRaytracingSampleModule::create_sphere_blas()
 {
+    SkrZoneScopedN("CreateSphereBLAS");
+    
     // Generate sphere vertices and indices (simple icosphere or UV sphere)
     constexpr float radius = 3.0f;
     constexpr int segments = 16;
@@ -649,40 +664,37 @@ void RGRaytracingSampleModule::create_scene_tlas()
 
     // Collect all entities with transform components
     skr::Vector<CGPUAccelerationStructureInstanceDesc> tlas_instances;
-    std::recursive_mutex instance_mutex;
-    
+    {
+        SkrZoneScopedN("ReserveUpdateBuffer");
+        tlas_instances.resize_default(LEVEL_1_COUNT + LEVEL_2_COUNT + LEVEL_3_COUNT);    
+    }
     // Query all entities with translation, rotation, and scale components using a system job
-    struct TransformQueryJob {
-        CGPUAccelerationStructureId sphere_blas;
-
+    struct TransformJob
+    {
         void build(skr::ecs::AccessBuilder& Builder) {
-            Builder.read(&TransformQueryJob::transforms)
-                   .read(&TransformQueryJob::indices);
+            Builder.read(&TransformJob::transforms)
+                   .read(&TransformJob::indices);
         }
-        
+
+        ComponentView<const skr::scene::TransformComponent> transforms;
+        ComponentView<const skr::scene::IndexComponent> indices;
+    };
+    struct GatherTransforms : public TransformJob 
+    {
+        CGPUAccelerationStructureId sphere_blas;
+        skr::Vector<CGPUAccelerationStructureInstanceDesc>* pInstances;
+
         void run(skr::ecs::TaskContext& Context) 
         {
-            task_instances.reserve(Context.size());
+            SkrZoneScopedN("GatherTransforms");
             for (int i = 0; i < Context.size(); ++i) {
                 // Create transform matrix from translation, rotation, scale
-                auto transform = transforms[i].value.to_matrix();
-                auto index = indices[i].value;
+                const auto transform = transforms[i].value.to_matrix();
+                auto instance_id = indices[i].value;
                 
-                // Debug: print first few transforms and extreme positions
-                if (index < 10) {
-                    SKR_LOG_FMT_INFO(u8"Entity {}: transform translation ({}, {}, {}), scale ({}, {}, {})", 
-                                index, transform.m30, transform.m31, transform.m32,
-                                transform.m00, transform.m11, transform.m22);
-                }
-                // Print some extreme entity positions to understand actual coordinate range
-                if (index == 0 || index == 99 || index == 999 || index == 49999) {
-                    SKR_LOG_FMT_INFO(u8"Entity {} final world position: ({}, {}, {})", 
-                                index, transform.m30, transform.m31, transform.m32);
-                }
-                
-                CGPUAccelerationStructureInstanceDesc instance = { 0 };
+                auto& instance = (*pInstances)[instance_id];
                 instance.bottom = sphere_blas;
-                instance.instance_id = index;
+                instance.instance_id = instance_id;
                 instance.instance_mask = 255;
                 
                 // Use computed transform matrix (now that we know the format is correct)
@@ -692,72 +704,67 @@ void RGRaytracingSampleModule::create_scene_tlas()
                     transform.m02, transform.m12, transform.m22, transform.m32   // Row 2: Z axis + Z translation
                 };                
                 memcpy(instance.transform, transform34, sizeof(transform34));
-                task_instances.add(instance);
-            }
-            {
-                std::lock_guard<std::recursive_mutex> lock(*pInstancesMutex);
-                pInstances->append(task_instances.data(), task_instances.size());
             }
         }
-        
-        ComponentView<const skr::scene::TransformComponent> transforms;
-        ComponentView<const skr::scene::IndexComponent> indices;
-
-        skr::Vector<CGPUAccelerationStructureInstanceDesc> task_instances;
-        skr::Vector<CGPUAccelerationStructureInstanceDesc>* pInstances;
-        std::recursive_mutex* pInstancesMutex;
     } transform_job;
     transform_job.sphere_blas = sphere_blas;
     transform_job.pInstances = &tlas_instances;
-    transform_job.pInstancesMutex = &instance_mutex;
     
     // Execute the job to collect transform data
-    auto query = world.dispatch_task(transform_job, 1280, nullptr);
-    TaskScheduler::Get()->sync_all();
-    world.destroy_query(query);
+    {
+        SkrZoneScopedN("QueryTransformsOut");
+        auto query1 = world.dispatch_task(transform_job, UINT32_MAX, nullptr);
+        TaskScheduler::Get()->sync_all();
+        world.destroy_query(query1);
+    }
     
     // Create TLAS
-    CGPUAccelerationStructureDescriptor tlas_desc = { };
-    tlas_desc.type = CGPU_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
-    tlas_desc.flags = CGPU_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
-    tlas_desc.top.count = tlas_instances.size();
-    tlas_desc.top.instances = tlas_instances.data();
-    scene_tlas = cgpu_create_acceleration_structure(device, &tlas_desc);
-    
-    // Build acceleration structures
-    CGPUCommandPoolId pool = cgpu_create_command_pool(gfx_queue, nullptr);
-    CGPUCommandBufferDescriptor cmd_desc = { .is_secondary = false };
-    CGPUCommandBufferId cmd = cgpu_create_command_buffer(pool, &cmd_desc);
-    
-    cgpu_cmd_begin(cmd);
-    
-    // Build BLAS first
-    CGPUAccelerationStructureBuildDescriptor blas_build = { 
-        .type = CGPU_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL, 
-        .as_count = 1,
-        .as = &sphere_blas 
-    };
-    cgpu_cmd_build_acceleration_structures(cmd, &blas_build);
-    
-    // Build TLAS
-    CGPUAccelerationStructureBuildDescriptor tlas_build = { 
-        .type = CGPU_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL, 
-        .as_count = 1,
-        .as = &scene_tlas 
-    };
-    cgpu_cmd_build_acceleration_structures(cmd, &tlas_build);
-    
-    cgpu_cmd_end(cmd);
-    
-    CGPUQueueSubmitDescriptor submit_desc = {
-        .cmds = &cmd,
-        .cmds_count = 1
-    };
-    cgpu_submit_queue(gfx_queue, &submit_desc);
-    cgpu_wait_queue_idle(gfx_queue);
-    
-    cgpu_free_command_buffer(cmd);
-    cgpu_free_command_pool(pool);
+    {
+        SkrZoneScopedN("CreateSceneTLAS");
+        CGPUAccelerationStructureDescriptor tlas_desc = { };
+        tlas_desc.type = CGPU_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
+        tlas_desc.flags = CGPU_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
+        tlas_desc.top.count = tlas_instances.size();
+        tlas_desc.top.instances = tlas_instances.data();
+        scene_tlas = cgpu_create_acceleration_structure(device, &tlas_desc);
+    }
+    {
+        SkrZoneScopedN("BuildSceneTLAS");
+        // Build acceleration structures
+        CGPUCommandPoolId pool = cgpu_create_command_pool(gfx_queue, nullptr);
+        CGPUCommandBufferDescriptor cmd_desc = { .is_secondary = false };
+        CGPUCommandBufferId cmd = cgpu_create_command_buffer(pool, &cmd_desc);
+        
+        cgpu_cmd_begin(cmd);
+        
+        // Build BLAS first
+        CGPUAccelerationStructureBuildDescriptor blas_build = { 
+            .type = CGPU_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL, 
+            .as_count = 1,
+            .as = &sphere_blas 
+        };
+        cgpu_cmd_build_acceleration_structures(cmd, &blas_build);
+        
+        // Build TLAS
+        CGPUAccelerationStructureBuildDescriptor tlas_build = { 
+            .type = CGPU_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL, 
+            .as_count = 1,
+            .as = &scene_tlas 
+        };
+        cgpu_cmd_build_acceleration_structures(cmd, &tlas_build);
+        
+        cgpu_cmd_end(cmd);
+        
+        CGPUQueueSubmitDescriptor submit_desc = {
+            .cmds = &cmd,
+            .cmds_count = 1
+        };
+        cgpu_submit_queue(gfx_queue, &submit_desc);
+        cgpu_wait_queue_idle(gfx_queue);
+        
+        cgpu_free_command_buffer(cmd);
+        cgpu_free_command_pool(pool);
+    }
 }
 
 void RGRaytracingSampleModule::create_compute_pipeline()
@@ -833,9 +840,15 @@ void RGRaytracingSampleModule::render()
     if (!swapchain || !render_graph)
         return;
     
+    SkrZoneScopedN("Render");
+    
     // Acquire next image
     CGPUAcquireNextDescriptor acquire_desc = {};
-    uint8_t backbuffer_index = cgpu_acquire_next_image(swapchain, &acquire_desc);
+    uint8_t backbuffer_index = 0;
+    {
+        SkrZoneScopedN("AcquireBackBuffer");
+        backbuffer_index = cgpu_acquire_next_image(swapchain, &acquire_desc);
+    }
     CGPUTextureId to_import = swapchain->back_buffers[backbuffer_index];
 
     // Setup camera (looking at the scene from a distance)
@@ -955,10 +968,12 @@ void RGRaytracingSampleModule::render()
     );
 
     // Execute render graph
-    render_graph->execute();
+    {
+        SkrZoneScopedN("ExecuteRenderGraph");
+        render_graph->execute();
+    }
     
     // Present
-    cgpu_wait_queue_idle(gfx_queue);
     CGPUQueuePresentDescriptor present_desc = {
         .swapchain = swapchain,
         .index = backbuffer_index

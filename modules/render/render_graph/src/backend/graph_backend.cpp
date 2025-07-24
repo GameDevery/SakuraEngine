@@ -95,12 +95,17 @@ void RenderGraphFrameExecutor::reset_begin(TextureViewPool& texture_view_pool)
         cgpu_reset_command_pool(gfx_cmd_pool);
     }
 
-    cgpu_cmd_begin(gfx_cmd_buf);
+    {
+        SkrZoneScopedN("BeginCommandBuffer");
+        cgpu_cmd_begin(gfx_cmd_buf);
+    }
     write_marker(u8"Frame Begin");
 }
 
 void RenderGraphFrameExecutor::write_marker(const char8_t* message)
 {
+    SkrZoneScopedN("WriteMarker");
+
     CGPUFillBufferDescriptor fill_desc = {
         .offset = marker_idx * sizeof(uint32_t),
         .value = valid_marker_val

@@ -148,15 +148,13 @@ protected:
 struct TaskContext
 {
 public:
-    uint32_t size()
-    {
-        return count;
-    }
-
     const Entity* entities()
     {
         return (Entity*)sugoiV_get_entities(&view);
     }
+
+    uint32_t task_index() const { return _task_index; }
+    uint32_t size() const { return count; }
 
     template <typename T>
     ComponentView<T> components()
@@ -168,13 +166,14 @@ public:
 
 private:
     friend struct World;
-    TaskContext(sugoi_chunk_view_t& InView, uint32_t count, uint32_t offset)
-        : view(InView), count(count), offset(offset)
+    TaskContext(sugoi_chunk_view_t& InView, uint32_t count, uint32_t offset, uint32_t task_index)
+        : view(InView), count(count), offset(offset), _task_index(task_index)
     {
     }
     sugoi_chunk_view_t view;
     uint32_t count;
     uint32_t offset;
+    const uint32_t _task_index;
 };
 
 struct SKR_RUNTIME_API World
@@ -187,7 +186,7 @@ public:
     void finalize() SKR_NOEXCEPT;
 
     template <typename T>
-    requires std::is_copy_constructible_v<T>
+        requires std::is_copy_constructible_v<T>
     EntityQuery* dispatch_task(T TaskBody, uint32_t batch_size, sugoi_query_t* reuse_query)
     {
         SKR_ASSERT(TaskScheduler::Get());
@@ -200,6 +199,9 @@ public:
             reuse_query = Access->create_query(storage);
         }
 
+        Access->query = reuse_query;
+        Access->task = skr::RC<Task>::New();
+        Access->task->batch_size = batch_size;
         skr::stl_function<void(sugoi_chunk_view_t, uint32_t, uint32_t)> TASK =
             [TaskBody, Access, Storage = this->storage](sugoi_chunk_view_t view, uint32_t count, uint32_t offset) mutable
         {
@@ -231,13 +233,10 @@ public:
                     fieldPtr->_offset = offset;
                 }
             }
-            TaskContext ctx = TaskContext(view, count, offset);
+            TaskContext ctx = TaskContext(view, count, offset, Access->_exec_counter++);
             TASK.run(ctx);
         };
-        Access->query = reuse_query;
-        Access->task = skr::RC<Task>::New();
         Access->task->func = std::move(TASK);
-        Access->task->batch_size = batch_size;
         TaskScheduler::Get()->add_task(Access);
         return reuse_query;
     }
@@ -277,7 +276,7 @@ public:
                     fieldPtr->_ptr = (void*)sugoiV_get_owned_ro_local(view, localType);
                 }
             }
-            TaskContext ctx = TaskContext(*view, view->count, 0);
+            TaskContext ctx = TaskContext(*view, view->count, 0, 0);
             Creation.run(ctx);
         };
         if (Reserved)

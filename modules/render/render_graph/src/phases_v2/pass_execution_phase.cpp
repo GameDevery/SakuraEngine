@@ -58,12 +58,16 @@ void PassExecutionPhase::on_execute(RenderGraph* graph, RenderGraphFrameExecutor
     // Begin command recording
     {
         SkrZoneScopedN("GraphExecutePasses");
-        executor->reset_begin(backend->texture_view_pool);
-        if (profiler) profiler->on_cmd_begin(*backend, *executor);
+        {
+            SkrZoneScopedN("ResetCommandBuffer");
+            executor->reset_begin(backend->texture_view_pool);
+            if (profiler) profiler->on_cmd_begin(*backend, *executor);
+        }
 
         // Begin frame event
         if (config_.enable_debug_markers)
         {
+            SkrZoneScopedN("BeginFrameEvent");
             skr::String frameLabel = skr::format(u8"Frame-{}", backend->frame_index);
             CGPUEventInfo event = { (const char8_t*)frameLabel.c_str(), { 0.8f, 0.8f, 0.8f, 1.f } };
             cgpu_cmd_begin_event(executor->gfx_cmd_buf, &event);
@@ -121,10 +125,16 @@ void PassExecutionPhase::execute_scheduled_passes(RenderGraph* graph, RenderGrap
             }
 
             // Process sync points for this pass
-            process_sync_points(executor, pass);
+            {
+                SkrZoneScopedN("ProcessSyncPoints");
+                process_sync_points(executor, pass);
+            }
 
             // Insert barriers before pass execution
-            insert_pass_barriers(executor, pass);
+            {
+                SkrZoneScopedN("InsertPassBarriers");
+                insert_pass_barriers(executor, pass);
+            }
 
             // Begin debug marker
             if (config_.enable_debug_markers)

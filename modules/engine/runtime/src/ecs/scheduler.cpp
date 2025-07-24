@@ -97,7 +97,7 @@ void WorkUnitGenerator::process(skr::RC<TaskSignature> new_task)
         auto& unit = ctx->work_group->units.try_add_default(view->chunk).value();
         unit.chunk_view = *view;
         unit.finish.add(1);
-        if (ctx->total_units != 0)
+        if (ctx->new_task->self_confict && (ctx->total_units != 0))
         {
             unit.dependencies.add(ctx->last_unit_finish);
         }
@@ -210,41 +210,44 @@ void TaskScheduler::dispatch(skr::RC<TaskSignature> signature)
             const auto batch_count = (unit.chunk_view.count + batch_size - 1) / batch_size;
             running.add(1);
 
-            skr::task::schedule([
-                this, &unit, signature, batch_count, batch_size,
-                // capture task lifetime into payload body
-                task = signature->task
-            ](){
-                {
-                    for (auto dep : unit.dependencies)
-                        dep.lock().wait(false);
-                }
-                SKR_DEFER({ running.decrement(); unit.finish.decrement(); signature->_finish.decrement(); });
-                if (batch_count == 1)
-                {
-                    task->func(unit.chunk_view, unit.chunk_view.count, 0);
-                }
-                else
-                {
-                    SkrZoneScopedN("WorkUnit::Batch");
-                    skr::task::counter_t batch_counter;
-                    batch_counter.add(batch_count);
-                    for (uint32_t i = 0; i < batch_count; i += 1)
+            {
+                SkrZoneScopedN("DispatchUnit::ScheduleTask");
+                skr::task::schedule([
+                    this, &unit, signature, batch_count, batch_size,
+                    // capture task lifetime into payload body
+                    task = signature->task
+                ](){
                     {
-                        const auto remain = unit.chunk_view.count - i * batch_size;
-                        auto view = unit.chunk_view;
-                        const auto count = std::min(remain, batch_size);
-                        const auto offset = i * batch_size;
-                        skr::task::schedule(
-                        [task, view, batch_counter, count, offset]() mutable {
-                            task->func(view, count, offset);
-                            batch_counter.decrement();
-                        }, nullptr);
+                        for (auto dep : unit.dependencies)
+                            dep.lock().wait(false);
                     }
-                    batch_counter.wait(true);
-                }
-                unit.chunk_view = {};
-            }, nullptr);
+                    SKR_DEFER({ running.decrement(); unit.finish.decrement(); signature->_finish.decrement(); });
+                    if (batch_count == 1)
+                    {
+                        task->func(unit.chunk_view, unit.chunk_view.count, 0);
+                    }
+                    else
+                    {
+                        SkrZoneScopedN("WorkUnit::Batch");
+                        skr::task::counter_t batch_counter;
+                        batch_counter.add(batch_count);
+                        for (uint32_t i = 0; i < batch_count; i += 1)
+                        {
+                            const auto remain = unit.chunk_view.count - i * batch_size;
+                            auto view = unit.chunk_view;
+                            const auto count = std::min(remain, batch_size);
+                            const auto offset = i * batch_size;
+                            skr::task::schedule(
+                            [task, view, batch_counter, count, offset]() mutable {
+                                task->func(view, count, offset);
+                                batch_counter.decrement();
+                            }, nullptr);
+                        }
+                        batch_counter.wait(true);
+                    }
+                    unit.chunk_view = {};
+                }, nullptr);
+            }
         }
     }
 
