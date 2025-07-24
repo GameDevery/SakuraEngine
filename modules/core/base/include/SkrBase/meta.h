@@ -37,7 +37,6 @@
 #define sscript_visible sattr(rttr.flags += "ScriptVisible")
 #define sscript_newable sattr(rttr.flags += "ScriptNewable")
 #define sscript_mapping sattr(rttr.flags += "ScriptMapping")
-#define sscript_wrap sattr(rttr.flags += "ScriptWrap")
 #define sscript_mixin sattr(rttr.flags += "ScriptMixin" rttr.script_mixin = true)
 #define sscript_getter(__NAME) sattr(rttr.attrs += `ScriptGetter(SKR_UTF8(#__NAME))`)
 #define sscript_setter(__NAME) sattr(rttr.attrs += `ScriptSetter(SKR_UTF8(#__NAME))`)
