@@ -5,14 +5,32 @@
 #include <v8-persistent-handle.h>
 #include <v8-template.h>
 
+// temp include
+// TODO. remove it
+#include "SkrRTTR/script/script_binder.hpp"
+
 namespace skr
 {
+//===============================fwd===============================
+struct V8BindTemplate;
+struct V8BTPrimitive;
+struct V8BTEnum;
+struct V8BTMapping;
+
 struct V8BindProxy;
 struct V8BPValue;
 struct V8BPObject;
 
 struct IV8BindManager {
     virtual ~IV8BindManager() = default;
+
+    // bind proxy management
+    virtual V8BindTemplate* find_or_add_bind_template(
+        TypeSignatureView signature
+    ) = 0;
+    virtual V8BindTemplate* find_or_add_bind_template(
+        const GUID& type_id
+    ) = 0;
 
     // bind proxy management
     virtual void add_bind_proxy(
@@ -38,12 +56,6 @@ struct IV8BindManager {
     virtual IScriptMixinCore* get_mixin_core() const = 0;
 };
 
-//===============================fwd===============================
-struct V8BindTemplate;
-struct V8BTPrimitive;
-struct V8BTEnum;
-struct V8BTMapping;
-
 //===============================field & method data===============================
 struct V8BTDataField {
     const RTTRType*       field_owner = nullptr;
@@ -55,6 +67,13 @@ struct V8BTDataField {
         void* field_owner_address = obj_type->cast_to_base(field_owner->type_id(), obj);
         return rttr_data->get_address(field_owner_address);
     }
+
+    inline void setup(IV8BindManager* manager, const ScriptBinderField& binder)
+    {
+        field_owner = binder.owner;
+        bind_tp     = manager->find_or_add_bind_template(binder.binder.type_id());
+        rttr_data   = binder.data;
+    }
 };
 struct V8BTDataStaticField {
     const RTTRType*            field_owner = nullptr;
@@ -65,6 +84,12 @@ struct V8BTDataStaticField {
     {
         return rttr_data->address;
     }
+    inline void setup(IV8BindManager* manager, const ScriptBinderStaticField& binder)
+    {
+        field_owner = binder.owner;
+        bind_tp     = manager->find_or_add_bind_template(binder.binder.type_id());
+        rttr_data   = binder.data;
+    }
 };
 struct V8BTDataParam {
     const V8BindTemplate* bind_tp          = nullptr;
@@ -73,11 +98,28 @@ struct V8BTDataParam {
     bool                  pass_by_ref      = false;
     bool                  appare_in_return = false;
     ERTTRParamFlag        inout_flag       = ERTTRParamFlag::None;
+
+    inline void setup(IV8BindManager* manager, const ScriptBinderParam& binder)
+    {
+        bind_tp          = manager->find_or_add_bind_template(binder.binder.type_id());
+        rttr_data        = binder.data;
+        index            = binder.index;
+        pass_by_ref      = binder.pass_by_ref;
+        appare_in_return = binder.appare_in_return;
+        inout_flag       = binder.inout_flag;
+    }
 };
 struct V8BTDataReturn {
     const V8BindTemplate* bind_tp     = nullptr;
     bool                  pass_by_ref = false;
     bool                  is_void     = false;
+
+    inline void setup(IV8BindManager* manager, const ScriptBinderReturn& binder)
+    {
+        bind_tp     = manager->find_or_add_bind_template(binder.binder.type_id());
+        pass_by_ref = binder.pass_by_ref;
+        is_void     = binder.is_void;
+    }
 };
 struct V8BTDataMethod {
     const RTTRType*       method_owner         = nullptr;
@@ -96,6 +138,21 @@ struct V8BTDataMethod {
         void*                                          obj,
         const RTTRType*                                obj_type
     ) const;
+
+    inline void setup(IV8BindManager* manager, const ScriptBinderMethod& binder)
+    {
+        method_owner         = binder.owner;
+        rttr_data            = binder.data;
+        rttr_data_mixin_impl = binder.mixin_impl_data;
+        return_data.setup(manager, binder.return_binder);
+        params_data.resize_default(binder.params_count);
+        for (uint32_t i = 0; i < binder.params_count; ++i)
+        {
+            params_data[i].setup(manager, binder.params_binder[i]);
+        }
+        params_count = binder.params_count;
+        return_count = binder.return_count;
+    }
 };
 struct V8BTDataStaticMethod {
     const RTTRType*             method_owner = nullptr;
@@ -111,16 +168,44 @@ struct V8BTDataStaticMethod {
     void call(
         const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack
     ) const;
+
+    inline void setup(IV8BindManager* manager, const ScriptBinderStaticMethod& binder)
+    {
+        method_owner = binder.owner;
+        rttr_data    = binder.data;
+        return_data.setup(manager, binder.return_binder);
+        params_data.resize_default(binder.params_count);
+        for (uint32_t i = 0; i < binder.params_count; ++i)
+        {
+            params_data[i].setup(manager, binder.params_binder[i]);
+        }
+        params_count = binder.params_count;
+        return_count = binder.return_count;
+    }
 };
 struct V8BTDataProperty {
     const V8BindTemplate* proxy_bind_tp = nullptr;
     V8BTDataMethod        getter        = {};
     V8BTDataMethod        setter        = {};
+
+    inline void setup(IV8BindManager* manager, const ScriptBinderProperty& binder)
+    {
+        proxy_bind_tp = manager->find_or_add_bind_template(binder.binder.type_id());
+        getter.setup(manager, binder.setter);
+        setter.setup(manager, binder.getter);
+    }
 };
 struct V8BTDataStaticProperty {
     const V8BindTemplate* proxy_bind_tp = nullptr;
     V8BTDataStaticMethod  getter        = {};
     V8BTDataStaticMethod  setter        = {};
+
+    inline void setup(IV8BindManager* manager, const ScriptBinderStaticProperty& binder)
+    {
+        proxy_bind_tp = manager->find_or_add_bind_template(binder.binder.type_id());
+        getter.setup(manager, binder.setter);
+        setter.setup(manager, binder.getter);
+    }
 };
 struct V8BTDataCtor {
     const RTTRCtorData*   rttr_data   = nullptr;
@@ -133,12 +218,36 @@ struct V8BTDataCtor {
         const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack,
         void*                                          obj
     ) const;
+
+    inline void setup(IV8BindManager* manager, const ScriptBinderCtor& binder)
+    {
+        rttr_data = binder.data;
+        params_data.resize_default(binder.params_binder.size());
+        for (uint32_t i = 0; i < binder.params_binder.size(); ++i)
+        {
+            params_data[i].setup(manager, binder.params_binder[i]);
+        }
+    }
 };
 
 //===============================bind template===============================
+enum class EV8BTKind
+{
+    Primitive,
+    Enum,
+    Mapping,
+    Value,
+    Object,
+    Generic,
+};
+
 struct V8BindTemplate {
-    // getter
+    // getter & setter
     inline IV8BindManager* manager() const { return _manager; }
+    inline void            set_manager(IV8BindManager* manager) { _manager = manager; }
+
+    // kind
+    virtual EV8BTKind kind() const = 0;
 
     // convert api
     virtual v8::Local<v8::Value> to_v8(
@@ -205,6 +314,9 @@ private:
     IV8BindManager* _manager = nullptr;
 };
 struct V8BTPrimitive final : V8BindTemplate {
+    // kind
+    EV8BTKind kind() const override;
+
     // convert helper
     v8::Local<v8::Value> to_v8(
         void* native_data
@@ -265,6 +377,8 @@ struct V8BTPrimitive final : V8BindTemplate {
         v8::Local<v8::Value>       v8_value,
         const V8BTDataStaticField& field_bind_tp
     ) const override final;
+
+    void setup(const ScriptBinderPrimitive& binder);
 
 private:
     uint32_t    _size      = 0;
@@ -273,6 +387,9 @@ private:
     DtorInvoker _dtor      = nullptr;
 };
 struct V8BTEnum : V8BindTemplate {
+    // kind
+    EV8BTKind kind() const override;
+
     // convert helper
     v8::Local<v8::Value> to_v8(
         void* native_data
@@ -333,6 +450,8 @@ struct V8BTEnum : V8BindTemplate {
         v8::Local<v8::Value>       v8_value,
         const V8BTDataStaticField& field_bind_tp
     ) const override final;
+
+    void setup(const ScriptBinderEnum& binder);
 
 private:
     static void _enum_to_string(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
@@ -345,6 +464,9 @@ private:
     bool                                 _is_signed  = false;
 };
 struct V8BTMapping : V8BindTemplate {
+    // kind
+    EV8BTKind kind() const override;
+
     // convert helper
     v8::Local<v8::Value> to_v8(
         void* native_data
@@ -405,6 +527,8 @@ struct V8BTMapping : V8BindTemplate {
         v8::Local<v8::Value>       v8_value,
         const V8BTDataStaticField& field_bind_tp
     ) const override final;
+
+    void setup(const ScriptBinderMapping& binder);
 
 private:
     const RTTRType*            _rttr_type    = nullptr;
@@ -425,21 +549,26 @@ protected:
     static void _get_static_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
     static void _set_static_prop(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
 
+    void _setup(const ScriptBinderRecordBase& binder);
+
 protected:
     const RTTRType*        _rttr_type         = nullptr;
     bool                   _is_script_newable = false;
     RTTRInvokerDefaultCtor _default_ctor      = nullptr;
     DtorInvoker            _dtor              = nullptr;
 
-    V8BTDataCtor                      _ctor              = {};
-    Map<String, V8BTDataField>        _fields            = {};
-    Map<String, V8BTDataStaticField>  _static_fields     = {};
-    Map<String, V8BTDataMethod>       _methods           = {};
-    Map<String, V8BTDataStaticMethod> _static_methods    = {};
-    Map<String, V8BTDataProperty>     _properties        = {};
-    Map<String, V8BTDataStaticField>  _static_properties = {};
+    V8BTDataCtor                        _ctor              = {};
+    Map<String, V8BTDataField>          _fields            = {};
+    Map<String, V8BTDataStaticField>    _static_fields     = {};
+    Map<String, V8BTDataMethod>         _methods           = {};
+    Map<String, V8BTDataStaticMethod>   _static_methods    = {};
+    Map<String, V8BTDataProperty>       _properties        = {};
+    Map<String, V8BTDataStaticProperty> _static_properties = {};
 };
 struct V8BTValue : V8BTRecordBase {
+    // kind
+    EV8BTKind kind() const override;
+
     // convert helper
     v8::Local<v8::Value> to_v8(
         void* native_data
@@ -500,6 +629,8 @@ struct V8BTValue : V8BTRecordBase {
         v8::Local<v8::Value>       v8_value,
         const V8BTDataStaticField& field_bind_tp
     ) const override final;
+
+    void setup(const ScriptBinderValue& binder);
 
 protected:
     // helper
@@ -516,6 +647,9 @@ private:
     v8::Global<::v8::FunctionTemplate> _v8_template = {};
 };
 struct V8BTObject : V8BTRecordBase {
+    // kind
+    EV8BTKind kind() const override;
+
     // convert helper
     v8::Local<v8::Value> to_v8(
         void* native_data
@@ -576,6 +710,8 @@ struct V8BTObject : V8BTRecordBase {
         v8::Local<v8::Value>       v8_value,
         const V8BTDataStaticField& field_bind_tp
     ) const override final;
+
+    void setup(const ScriptBinderObject& binder);
 
 protected:
     // helper

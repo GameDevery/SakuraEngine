@@ -258,6 +258,8 @@ struct ScriptBinderRoot {
         _binder = nullptr;
     }
 
+    inline GUID type_id() const;
+
 private:
     EKind _kind   = EKind::None;
     void* _binder = nullptr;
@@ -403,6 +405,29 @@ struct ScriptBinderGeneric {
     bool             failed  = false;
 };
 //==================root binders==================
+
+inline GUID ScriptBinderRoot::type_id() const
+{
+    switch (_kind)
+    {
+    case EKind::Primitive:
+        return primitive()->type_id;
+    case EKind::Mapping:
+        return mapping()->type->type_id();
+    case EKind::Object:
+        return object()->type->type_id();
+    case EKind::Enum:
+        return enum_()->type->type_id();
+    case EKind::Value:
+        return value()->type->type_id();
+    case EKind::Generic:
+        SKR_UNREACHABLE_CODE();
+        return {};
+    default:
+        SKR_UNREACHABLE_CODE();
+        return {};
+    }
+}
 
 // function binder, used for call script function
 struct ScriptBinderCallScript {

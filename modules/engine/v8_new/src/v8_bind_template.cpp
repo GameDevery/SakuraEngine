@@ -303,6 +303,12 @@ void V8BTDataCtor::call(
 }
 
 //======================primitive======================
+// kind
+EV8BTKind V8BTPrimitive::kind() const
+{
+    return EV8BTKind::Primitive;
+}
+
 v8::Local<v8::Value> V8BTPrimitive::to_v8(
     void* native_data
 ) const
@@ -600,8 +606,21 @@ void V8BTPrimitive::set_static_field(
     void* field_addr = field_bind_tp.solve_address();
     to_native(field_addr, v8_value, false);
 }
+void V8BTPrimitive::setup(const ScriptBinderPrimitive& binder)
+{
+    _size      = binder.size;
+    _alignment = binder.alignment;
+    _type_id   = binder.type_id;
+    _dtor      = binder.dtor;
+}
 
 //======================enum======================
+// kind
+EV8BTKind V8BTEnum::kind() const
+{
+    return EV8BTKind::Enum;
+}
+
 v8::Local<v8::Value> V8BTEnum::to_v8(
     void* native_data
 ) const
@@ -729,6 +748,18 @@ void V8BTEnum::set_static_field(
     );
 }
 
+void V8BTEnum::setup(const ScriptBinderEnum& binder)
+{
+    _underlying = static_cast<V8BTPrimitive*>(
+        manager()->find_or_add_bind_template(
+            binder.underlying_binder->type_id
+        )
+    );
+    _rttr_type = binder.type;
+    _items     = binder.items;
+    _is_signed = binder.is_signed;
+}
+
 void V8BTEnum::_enum_to_string(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 {
     using namespace ::v8;
@@ -828,6 +859,12 @@ void V8BTEnum::_enum_from_string(const ::v8::FunctionCallbackInfo<::v8::Value>& 
 }
 
 //======================mapping======================
+// kind
+EV8BTKind V8BTMapping::kind() const
+{
+    return EV8BTKind::Mapping;
+}
+
 v8::Local<v8::Value> V8BTMapping::to_v8(
     void* native_data
 ) const
@@ -1030,6 +1067,16 @@ void V8BTMapping::set_static_field(
 {
     void* field_addr = field_bind_tp.solve_address();
     to_native(field_addr, v8_value, false);
+}
+
+void V8BTMapping::setup(const ScriptBinderMapping& binder)
+{
+    _rttr_type = binder.type;
+    for (const auto& [field_name, field_binder] : binder.fields)
+    {
+        auto result = _fields.try_add_default(field_name);
+        result.value().setup(manager(), field_binder);
+    }
 }
 
 //======================record base======================
@@ -1294,7 +1341,59 @@ void V8BTRecordBase::_set_static_prop(const ::v8::FunctionCallbackInfo<::v8::Val
     );
 }
 
+void V8BTRecordBase::_setup(const ScriptBinderRecordBase& binder)
+{
+    _rttr_type         = binder.type;
+    _is_script_newable = binder.is_script_newable;
+
+    _ctor.setup(
+        manager(),
+        binder.ctor
+    );
+
+    _fields.reserve(binder.fields.size());
+    for (const auto& [field_name, field_binder] : binder.fields)
+    {
+        auto result = _fields.try_add_default(field_name);
+        result.value().setup(manager(), field_binder);
+    }
+
+    _methods.reserve(binder.methods.size());
+    for (const auto& [method_name, method_binder] : binder.methods)
+    {
+        auto result = _methods.try_add_default(method_name);
+        result.value().setup(manager(), method_binder);
+    }
+
+    _static_methods.reserve(binder.static_methods.size());
+    for (const auto& [method_name, method_binder] : binder.static_methods)
+    {
+        auto result = _static_methods.try_add_default(method_name);
+        result.value().setup(manager(), method_binder);
+    }
+
+    _properties.reserve(binder.properties.size());
+    for (const auto& [prop_name, prop_binder] : binder.properties)
+    {
+        auto result = _properties.try_add_default(prop_name);
+        result.value().setup(manager(), prop_binder);
+    }
+
+    _static_properties.reserve(binder.static_properties.size());
+    for (const auto& [prop_name, prop_binder] : binder.static_properties)
+    {
+        auto result = _static_properties.try_add_default(prop_name);
+        result.value().setup(manager(), prop_binder);
+    }
+}
+
 //======================Value======================
+// kind
+EV8BTKind V8BTValue::kind() const
+{
+    return EV8BTKind::Value;
+}
+
 // convert helper
 v8::Local<v8::Value> V8BTValue::to_v8(
     void* native_data
@@ -1543,6 +1642,11 @@ void V8BTValue::set_static_field(
     );
 }
 
+void V8BTValue::setup(const ScriptBinderValue& binder)
+{
+    V8BTRecordBase::_setup(binder);
+}
+
 // helper
 V8BPValue* V8BTValue::_create_value(void* native_data) const
 {
@@ -1675,6 +1779,12 @@ void V8BTValue::_call_ctor(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 }
 
 //======================Object======================
+// kind
+EV8BTKind V8BTObject::kind() const
+{
+    return EV8BTKind::Object;
+}
+
 // convert helper
 v8::Local<v8::Value> V8BTObject::to_v8(
     void* native_data
@@ -1835,6 +1945,11 @@ void V8BTObject::set_static_field(
 {
     void* field_address = field_bind_tp.solve_address();
     to_native(field_address, v8_value, false);
+}
+
+void V8BTObject::setup(const ScriptBinderObject& binder)
+{
+    V8BTRecordBase::_setup(binder);
 }
 
 // helper

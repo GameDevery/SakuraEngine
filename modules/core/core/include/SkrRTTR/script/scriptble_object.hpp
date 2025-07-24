@@ -27,9 +27,15 @@ SKR_CORE_API IScriptMixinCore : virtual public skr::IObject
     SKR_GENERATE_BODY()
     virtual ~IScriptMixinCore() = default;
 
-    virtual void on_object_destroyed(ScriptbleObject* obj)                                                                     = 0;
-    // TODO. 可以不传递 signature 信息，用缓存的 mixin 签名来做，以加速调用
-    virtual bool try_invoke_mixin(ScriptbleObject* obj, StringView name, const span<const StackProxy> args, StackProxy result) = 0;
+    virtual void on_object_destroyed(
+        ScriptbleObject* obj
+    ) = 0;
+    virtual bool try_invoke_mixin(
+        ScriptbleObject*             obj,
+        StringView                   name,
+        const span<const StackProxy> args,
+        StackProxy                   result
+    ) = 0;
 };
 
 // clang-format off
@@ -73,7 +79,7 @@ SKR_CORE_API ScriptbleObject : virtual public skr::IObject
             return _mixin_core->try_invoke_mixin(
                 this,
                 name,
-                { StackProxyMaker<Args>::Make(args, /*mixin data must exist*/false)... },
+                { StackProxyMaker<Args>::Make(args, /*mixin data must exist*/ false)... },
                 {}
             );
         }
@@ -88,7 +94,7 @@ SKR_CORE_API ScriptbleObject : virtual public skr::IObject
             bool             invoke_success = _mixin_core->try_invoke_mixin(
                 this,
                 name,
-                { StackProxyMaker<Args>::Make(args, /*mixin data must exist*/false)... },
+                { StackProxyMaker<Args>::Make(args, /*mixin data must exist*/ false)... },
                 { .data = ret.data(), .signature = type_signature_of<Ret>() }
             );
 
