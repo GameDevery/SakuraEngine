@@ -63,13 +63,39 @@ protected:
 struct SKR_RUNTIME_API AccessBuilder : public TaskSignature
 {
 public:
+    inline AccessBuilder& has(TypeIndex type)
+    {
+        return _add_has_filter(type, false);
+    }
+
+    template <class... Cs>
+    AccessBuilder& has()
+    {
+        (has(sugoi_id_of<Cs>::get()), ...);
+        return *this;
+    }
+
+    inline AccessBuilder& none(TypeIndex type)
+    {
+        return _add_none_filter(type);
+    }
+
+    template <class... Cs>
+    AccessBuilder& none()
+    {
+        (none(sugoi_id_of<Cs>::get()), ...);
+        return *this;
+    }
+
     inline AccessBuilder& read(TypeIndex type, EAccessMode mode = EAccessMode::Seq)
     {
+        _add_has_filter(type, false);
         return _access(type, false, mode, kInvalidFieldPtr);
     }
 
     inline AccessBuilder& write(TypeIndex type, EAccessMode mode = EAccessMode::Seq)
     {
+        _add_has_filter(type, true);
         _access(type, false, mode, kInvalidFieldPtr);
         return _access(type, true, mode, kInvalidFieldPtr);
     }
@@ -78,6 +104,7 @@ public:
     AccessBuilder& read()
     {
         static_assert((std::is_const_v<Cs> && ...), "ComponentView must be const for read access");
+        (_add_has_filter(sugoi_id_of<std::remove_const_t<Cs>>::get(), false), ...);
         (_access(sugoi_id_of<std::remove_const_t<Cs>>::get(), false, EAccessMode::Seq, kInvalidFieldPtr), ...);
         return *this;
     }
@@ -86,6 +113,7 @@ public:
     AccessBuilder& write()
     {
         static_assert((!std::is_const_v<Cs> && ...), "ComponentView must be non-const for read access");
+        (_add_has_filter(sugoi_id_of<Cs>::get(), true), ...);
         (_access(sugoi_id_of<Cs>::get(), false, EAccessMode::Seq, kInvalidFieldPtr), ...);
         return (_access(sugoi_id_of<Cs>::get(), true, EAccessMode::Seq, kInvalidFieldPtr), ...);
     }
@@ -94,11 +122,55 @@ public:
     AccessBuilder& read(ComponentView<C> T::* Member)
     {
         static_assert(std::is_const_v<C>, "ComponentView must be const for read access");
+        _add_has_filter(sugoi_id_of<std::remove_const_t<C>>::get(), false);
         return _access(sugoi_id_of<std::remove_const_t<C>>::get(), false, EAccessMode::Seq, (intptr_t)&(((T*)nullptr)->*Member));
     }
 
     template <class T, class C>
     AccessBuilder& write(ComponentView<C> T::* Member)
+    {
+        static_assert(!std::is_const_v<C>, "ComponentView must be non-const for read access");
+        _add_has_filter(sugoi_id_of<C>::get(), true);
+        _access(sugoi_id_of<C>::get(), false, EAccessMode::Seq, kInvalidFieldPtr);
+        return _access(sugoi_id_of<C>::get(), true, EAccessMode::Seq, (intptr_t)&(((T*)nullptr)->*Member));
+    }
+
+    inline AccessBuilder& optional_read(TypeIndex type, EAccessMode mode = EAccessMode::Seq)
+    {
+        return _access(type, false, mode, kInvalidFieldPtr);
+    }
+
+    inline AccessBuilder& optional_write(TypeIndex type, EAccessMode mode = EAccessMode::Seq)
+    {
+        _access(type, false, mode, kInvalidFieldPtr);
+        return _access(type, true, mode, kInvalidFieldPtr);
+    }
+
+    template <class... Cs>
+    AccessBuilder& optional_read()
+    {
+        static_assert((std::is_const_v<Cs> && ...), "ComponentView must be const for read access");
+        (_access(sugoi_id_of<std::remove_const_t<Cs>>::get(), false, EAccessMode::Seq, kInvalidFieldPtr), ...);
+        return *this;
+    }
+
+    template <class... Cs>
+    AccessBuilder& optional_write()
+    {
+        static_assert((!std::is_const_v<Cs> && ...), "ComponentView must be non-const for read access");
+        (_access(sugoi_id_of<Cs>::get(), false, EAccessMode::Seq, kInvalidFieldPtr), ...);
+        return (_access(sugoi_id_of<Cs>::get(), true, EAccessMode::Seq, kInvalidFieldPtr), ...);
+    }
+
+    template <class T, class C>
+    AccessBuilder& optional_read(ComponentView<C> T::* Member)
+    {
+        static_assert(std::is_const_v<C>, "ComponentView must be const for read access");
+        return _access(sugoi_id_of<std::remove_const_t<C>>::get(), false, EAccessMode::Seq, (intptr_t)&(((T*)nullptr)->*Member));
+    }
+
+    template <class T, class C>
+    AccessBuilder& optional_write(ComponentView<C> T::* Member)
     {
         static_assert(!std::is_const_v<C>, "ComponentView must be non-const for read access");
         _access(sugoi_id_of<C>::get(), false, EAccessMode::Seq, kInvalidFieldPtr);
@@ -130,6 +202,8 @@ public:
     void commit() SKR_NOEXCEPT;
 
 protected:
+    AccessBuilder& _add_has_filter(TypeIndex type, bool write);
+    AccessBuilder& _add_none_filter(TypeIndex type);
     AccessBuilder& _access(TypeIndex type, bool write, EAccessMode mode, intptr_t field);
     sugoi_query_t* create_query(sugoi_storage_t* storage) SKR_NOEXCEPT;
 
@@ -142,7 +216,7 @@ protected:
     skr::Vector<EAccessMode> field_modes;
 
     skr::Vector<TypeIndex> all;
-    skr::Vector<TypeIndex> none;
+    skr::Vector<TypeIndex> nones;
 };
 
 struct TaskContext

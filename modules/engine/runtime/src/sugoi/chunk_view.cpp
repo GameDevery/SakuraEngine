@@ -7,9 +7,9 @@
 #endif
 
 #include "./mask.hpp"
-#include "./chunk.hpp"
+#include "SkrRT/sugoi/chunk.hpp"
 #include "./chunk_view.hpp"
-#include "./archetype.hpp"
+#include "SkrRT/sugoi/archetype.hpp"
 #include "./impl/storage.hpp"
 
 namespace sugoi

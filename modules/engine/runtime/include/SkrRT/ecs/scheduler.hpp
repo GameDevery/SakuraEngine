@@ -138,6 +138,8 @@ public:
     void stop_and_exit();
 
     TaskScheduler(const ServiceThreadDesc& desc, skr::task::scheduler_t& scheduler) SKR_NOEXCEPT;
+    ~TaskScheduler();
+
 protected:
     AsyncResult serve() SKR_NOEXCEPT override;
     void on_run() SKR_NOEXCEPT override;
@@ -152,6 +154,7 @@ protected:
     friend struct WorkUnitGenerator;
     SAtomicU32 _enqueued_tasks = 0;
     StackConcurrentQueue<skr::RC<TaskSignature>> _tasks;
+    skr::shared_atomic_mutex _clear_mtx;
     StackVector<skr::RC<TaskSignature>> _dispatched_tasks;
 
     StaticDependencyAnalyzer _analyzer;

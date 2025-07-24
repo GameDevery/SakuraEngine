@@ -1,6 +1,6 @@
 #pragma once
 #include "SkrRT/sugoi/sugoi.h"
-#include "SkrContainers/stl_vector.hpp"
+#include "SkrContainersDef/vector.hpp"
 
 namespace sugoi
 {
@@ -36,13 +36,22 @@ struct SKR_RUNTIME_API archetype_t {
         sugoi_callback_v callbacks[firstTag - firstManaged];
     */
     bool with_chunk_component() const noexcept;
-    SIndex index(sugoi_type_index_t type) const noexcept;
+    
+    SUGOI_FORCEINLINE SIndex index(sugoi_type_index_t inType) const noexcept
+    {
+        auto end = type.data + type.length;
+        const sugoi_type_index_t* result = std::lower_bound(type.data, end, inType);
+        if (result != end && *result == inType)
+            return (SIndex)(result - type.data);
+        else
+            return kInvalidSIndex;
+    }
 };
 } // namespace sugoi
 
 // group chunks by archetype and meta
 struct sugoi_group_t {
-    skr::stl_vector<sugoi_chunk_t*> chunks;
+    skr::Vector<sugoi_chunk_t*> chunks;
     uint32_t firstFree;
     uint32_t timestamp;
     uint32_t size;

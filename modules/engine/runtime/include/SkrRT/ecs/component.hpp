@@ -1,6 +1,9 @@
 #pragma once
 #include "SkrRT/sugoi/sugoi.h"
 #include "SkrRT/sugoi/array.hpp"
+#include "SkrRT/sugoi/storage.hpp"
+#include "SkrRT/sugoi/chunk.hpp"
+#include "SkrRT/sugoi/archetype.hpp"
 
 namespace skr::ecs {
 
@@ -22,7 +25,7 @@ struct ComponentStorage<T, std::enable_if_t<(sugoi_array_count<std::decay_t<T>> 
 struct Entity
 {
 public:
-    Entity(sugoi_entity_t InEntityId = sugoi::kEntityNull);
+    explicit Entity(sugoi_entity_t InEntityId = sugoi::kEntityNull);
     bool operator==(Entity Other) const;
     bool operator==(sugoi_entity_t Other) const;
     operator sugoi_entity_t() const;
@@ -46,9 +49,9 @@ protected:
         : _ptr(ptr), _local_type(local_type), _offset(offset) {}
     friend struct World;
     friend struct TaskContext;
-    void* _ptr;
-    uint32_t _local_type;
-    uint32_t _offset;
+    void* _ptr = nullptr;
+    uint32_t _local_type = 0;
+    uint32_t _offset = 0;
 };
 
 template <typename T>
@@ -99,10 +102,9 @@ public:
 
 protected:
     template <class Storage>
-    Storage* get(Entity entity)
+    SKR_FORCEINLINE Storage* get(Entity entity)
     {
-        sugoi_chunk_view_t view;
-        sugoiS_access(World, entity, &view);
+        sugoi_chunk_view_t view = World->entity_view(entity);
         if (view.chunk == nullptr)
             return nullptr;
         if(CachedPtr != nullptr && CachedView.chunk == view.chunk)
@@ -111,14 +113,10 @@ protected:
             return ((Storage*)CachedPtr) + Offset;
         }
         Storage* Result;
-        if constexpr(std::is_const_v<Storage>)
-        {
+        if constexpr (std::is_const_v<Storage>)
             Result = (Storage*)sugoiV_get_owned_ro(&view, Type);
-        }
         else
-        {
-            Result = (Storage*)sugoiV_get_owned_rw(&view, Type);
-        }
+            Result = (Storage*)sugoiV_get_owned_rw<false, false>(&view, Type);
         CachedView = view;
         CachedPtr = (void*)Result;
         return Result;
@@ -141,6 +139,7 @@ struct RandomComponentReader : public ComponentAccessorBase
     {
         return get_checked<Storage>(entity);
     }
+    const Storage* get(Entity entity) { return ComponentAccessorBase::get<Storage>(entity); }
 };
 
 template <class T>
@@ -168,6 +167,8 @@ struct RandomComponentReadWrite : public ComponentAccessorBase
         auto& v = get_checked<Storage>(entity);
         v = value;
     }
+    
+    Storage* get(Entity entity) { return ComponentAccessorBase::get<Storage>(entity); }
 };
 
 } // namespace skr::ecs

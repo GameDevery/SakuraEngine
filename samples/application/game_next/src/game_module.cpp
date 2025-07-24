@@ -171,8 +171,8 @@ int SGameModule::main_module_exec(int argc, char8_t** argv)
     sugoi_query_t* moveQuery;
     sugoi_query_t* cameraQuery;
     sugoi_query_t* animQuery;
-    moveQuery = sugoiQ_from_literal(game_world, u8"[has]skr::MovementComponent, [inout]skr::TranslationComponent, [in]skr::ScaleComponent, [in]skr_index_comp_t,!skr::CameraComponent");
-    cameraQuery = sugoiQ_from_literal(game_world, u8"[has]skr::MovementComponent, [inout]skr::TranslationComponent, [inout]skr::CameraComponent");
+    moveQuery = sugoiQ_from_literal(game_world, u8"[has]skr::MovementComponent, [inout]skr::PositionComponent, [in]skr::ScaleComponent, [in]skr_index_comp_t,!skr::CameraComponent");
+    cameraQuery = sugoiQ_from_literal(game_world, u8"[has]skr::MovementComponent, [inout]skr::PositionComponent, [inout]skr::CameraComponent");
     animQuery = sugoiQ_from_literal(game_world, u8"[in]skr_render_effect_t, [in]game::anim_state_t, [out]<unseq>skr::anim::AnimComponent, [in]<unseq>skr::anim::SkeletonComponent");
     initAnimSkinQuery = sugoiQ_from_literal(game_world, u8"[inout]skr::anim::AnimComponent, [inout]skr::anim::SkinComponent, [in]skr::renderer::MeshComponent, [in]skr::anim::SkeletonComponent");
     skinQuery = sugoiQ_from_literal(game_world, u8"[in]skr::anim::AnimComponent, [inout]skr::anim::SkinComponent, [in]skr::renderer::MeshComponent, [in]skr::anim::SkeletonComponent");
@@ -340,7 +340,7 @@ void SGameModule::create_test_scene(SRendererId renderer)
 {
     auto renderableT_builder = make_zeroed<sugoi::TypeSetBuilder>();
     renderableT_builder
-        .with<skr::scene::TranslationComponent, skr::scene::RotationComponent, skr::scene::ScaleComponent>()
+        .with<skr::scene::PositionComponent, skr::scene::RotationComponent, skr::scene::ScaleComponent>()
         .with<skr::scene::IndexComponent, skr::scene::MovementComponent>()
         .with<skr_render_effect_t>()
         .with(SUGOI_COMPONENT_GUID);
@@ -349,7 +349,7 @@ void SGameModule::create_test_scene(SRendererId renderer)
     uint32_t init_idx = 0;
 
     auto primSetup = [&](sugoi_chunk_view_t* view) {
-        auto translations = sugoi::get_owned_rw<skr::scene::TranslationComponent>(view);
+        auto translations = sugoi::get_owned_rw<skr::scene::PositionComponent>(view);
         auto rotations = sugoi::get_owned_rw<skr::scene::RotationComponent>(view);
         auto scales = sugoi::get_owned_rw<skr::scene::ScaleComponent>(view);
         auto indices = sugoi::get_owned_rw<skr::scene::IndexComponent>(view);
@@ -394,7 +394,7 @@ void SGameModule::create_test_scene(SRendererId renderer)
     SKR_LOG_DEBUG(u8"Create Scene 0!");
     auto playerT_builder = make_zeroed<sugoi::TypeSetBuilder>();
     playerT_builder
-        .with<skr::scene::TranslationComponent, skr::scene::RotationComponent, skr::scene::ScaleComponent>()
+        .with<skr::scene::PositionComponent, skr::scene::RotationComponent, skr::scene::ScaleComponent>()
         .with<skr::scene::MovementComponent>()
         .with<skr::scene::CameraComponent>();
     auto playerT = make_zeroed<sugoi_entity_type_t>();
@@ -405,7 +405,7 @@ void SGameModule::create_test_scene(SRendererId renderer)
 
     auto static_renderableT_builderT = make_zeroed<sugoi::TypeSetBuilder>();
     static_renderableT_builderT
-        .with<skr::scene::TranslationComponent, skr::scene::RotationComponent, skr::scene::ScaleComponent>()
+        .with<skr::scene::PositionComponent, skr::scene::RotationComponent, skr::scene::ScaleComponent>()
         .with<skr_render_effect_t, game::anim_state_t>();
     auto static_renderableT = make_zeroed<sugoi_entity_type_t>();
     static_renderableT.type = static_renderableT_builderT.build();

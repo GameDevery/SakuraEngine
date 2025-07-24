@@ -170,6 +170,8 @@ RGRaytracingSampleModule* RGRaytracingSampleModule::Get()
 
 void RGRaytracingSampleModule::on_load(int argc, char8_t** argv)
 {
+    skr_thread_sleep(1000);
+    
     scheduler.initialize({});
     scheduler.bind();
     world.initialize();
@@ -201,7 +203,6 @@ int RGRaytracingSampleModule::main_module_exec(int argc, char8_t** argv)
 
     // Create swapchain for profiler hook support
     create_swapchain(main_window);
-
 
     static bool want_quit = false;
     struct QuitListener : public skr::ISystemEventHandler
@@ -280,6 +281,8 @@ int RGRaytracingSampleModule::main_module_exec(int argc, char8_t** argv)
     {
         eq->pump_messages();
         
+        transform_system->update();
+        
         // 计算帧时间
         auto current_time = std::chrono::high_resolution_clock::now();
         float delta_time = std::chrono::duration<float>(current_time - last_time).count();
@@ -289,6 +292,11 @@ int RGRaytracingSampleModule::main_module_exec(int argc, char8_t** argv)
         this->camera_controller.update_camera(delta_time);
         
         render();
+
+        {
+            SkrZoneScopedN("Sync");
+            skr::ecs::TaskScheduler::Get()->sync_all();
+        }
     }
 
     return 0;
@@ -306,8 +314,6 @@ void RGRaytracingSampleModule::spawn_entities()
     constexpr float SCENE_SIZE = 2000.0f;
     constexpr int TOTAL_ENTITIES = 50000;
     
-
-
     static std::atomic_uint32_t entities_count = 0;
     struct LevelSpawner
     {
@@ -324,7 +330,7 @@ void RGRaytracingSampleModule::spawn_entities()
         skr::Vector<Entity> ents;
 
         ComponentView<skr::scene::ChildrenComponent> children;
-        ComponentView<skr::scene::TranslationComponent> translations;
+        ComponentView<skr::scene::PositionComponent> translations;
         ComponentView<skr::scene::RotationComponent> rotations;
         ComponentView<skr::scene::ScaleComponent> scales;
         ComponentView<skr::scene::IndexComponent> indices;
@@ -337,7 +343,7 @@ void RGRaytracingSampleModule::spawn_entities()
         {
             std::random_device rd;
             std::mt19937 gen(rd());
-            std::uniform_real_distribution<float> pos_dist(-SCENE_SIZE * 0.5f, SCENE_SIZE * 0.5f);
+            std::uniform_real_distribution<skr::scene::PositionElement> pos_dist(-SCENE_SIZE * 0.5f, SCENE_SIZE * 0.5f);
             std::uniform_real_distribution<float> scale_dist(0.5f, 3.0f);
             std::uniform_real_distribution<float> rotation_dist(0.0f, 2.0f * skr::kPi);
 
@@ -347,26 +353,19 @@ void RGRaytracingSampleModule::spawn_entities()
                 // Position cities in a grid with some randomness
                 int grid_x = i % 10;
                 int grid_z = i / 10;
-                float base_x = (grid_x - 4.5f) * (SCENE_SIZE * 0.9f / 10.0f);
-                float base_z = (grid_z - 4.5f) * (SCENE_SIZE * 0.9f / 10.0f);
+                float base_x = (grid_x - 4.5) * (SCENE_SIZE * 0.9 / 10.0);
+                float base_z = (grid_z - 4.5) * (SCENE_SIZE * 0.9 / 10.0);
+                float city_scale = scale_dist(gen) * 4.0f; // Moderate scale
                 
                 indices[i].value = entities_count++;
-                auto final_pos = skr_float3_t{
+
+                translations[i].set(
                     base_x + pos_dist(gen) * 0.1f,
                     0.0f,
                     base_z + pos_dist(gen) * 0.1f
-                };
-                translations[i].value = final_pos;
-                rotations[i].euler = skr::RotatorF{ 0.0f, rotation_dist(gen), 0.0f };
-                float city_scale = scale_dist(gen) * 4.0f; // Moderate scale
-                scales[i].value = skr_float3_t{ city_scale, city_scale, city_scale };
-            
-                // Debug: print first few city positions
-                if (i < 10) {
-                    SKR_LOG_FMT_INFO(u8"City {}: position ({}, {}, {}), scale ({}, {}, {})", 
-                                i, final_pos.x, final_pos.y, final_pos.z,
-                                city_scale, city_scale, city_scale);
-                }
+                );
+                rotations[i].set(0.0f, rotation_dist(gen), 0.0f);
+                scales[i].set(city_scale, city_scale, city_scale);
             }
         }
     } level1_spawner;
@@ -392,7 +391,7 @@ void RGRaytracingSampleModule::spawn_entities()
         {
             std::random_device rd;
             std::mt19937 gen(rd());
-            std::uniform_real_distribution<float> pos_dist(-SCENE_SIZE * 0.5f, SCENE_SIZE * 0.5f);
+            std::uniform_real_distribution<skr::scene::PositionElement> pos_dist(-SCENE_SIZE * 0.5f, SCENE_SIZE * 0.5f);
             std::uniform_real_distribution<float> scale_dist(0.5f, 3.0f);
             std::uniform_real_distribution<float> rotation_dist(0.0f, 2.0f * skr::kPi);
 
@@ -402,18 +401,17 @@ void RGRaytracingSampleModule::spawn_entities()
                 // Position buildings around city centers
                 float angle = (i % 9) * (2.0f * skr::kPi / 9.0f) + rotation_dist(gen) * 0.1f;
                 float radius = 100.0f + pos_dist(gen) * 0.1f;
+                float building_scale = scale_dist(gen) * 2.0f; // Medium scale for buildings
                 
                 indices[i].value = entities_count++;
-                translations[i].value = skr_float3_t{
+
+                translations[i].set(
                     std::cos(angle) * radius,
                     pos_dist(gen) * 10.0f,
                     std::sin(angle) * radius
-                };
-
-                rotations[i].euler = skr::RotatorF{ 0.0f, rotation_dist(gen), 0.0f };
-
-                float building_scale = scale_dist(gen) * 2.0f; // Medium scale for buildings
-                scales[i].value = skr_float3_t{ building_scale, building_scale, building_scale };
+                );
+                rotations[i].set(0.0f, rotation_dist(gen), 0.0f);
+                scales[i].set(building_scale, building_scale, building_scale);
                 
                 const auto parent = lv1.ents[index_in_level / 9];
                 skr::scene::ChildrenComponent as_child = { .entity = Context.entities()[i] };
@@ -448,7 +446,7 @@ void RGRaytracingSampleModule::spawn_entities()
         {
             std::random_device rd;
             std::mt19937 gen(rd());
-            std::uniform_real_distribution<float> pos_dist(-SCENE_SIZE * 0.5f, SCENE_SIZE * 0.5f);
+            std::uniform_real_distribution<skr::scene::PositionElement> pos_dist(-SCENE_SIZE * 0.5f, SCENE_SIZE * 0.5f);
             std::uniform_real_distribution<float> scale_dist(0.5f, 3.0f);
             std::uniform_real_distribution<float> rotation_dist(0.0f, 2.0f * skr::kPi);
 
@@ -461,20 +459,20 @@ void RGRaytracingSampleModule::spawn_entities()
                 float local_distance = pos_dist(gen) * 0.01f * local_radius;
                 
                 indices[i].value = entities_count++;
-                translations[i].value = skr_float3_t{
+                translations[i].set(
                     std::cos(local_angle) * local_distance,
                     pos_dist(gen) * 5.0f,
                     std::sin(local_angle) * local_distance
-                };
+                );
 
-                rotations[i].euler = skr::RotatorF{
-                    rotation_dist(gen) * 0.2f,  // Small pitch variation
-                    rotation_dist(gen),         // Full yaw rotation
+                rotations[i].set(
+                    rotation_dist(gen) * 0.2f, // Small pitch variation
+                    rotation_dist(gen),          // Full yaw rotation
                     rotation_dist(gen) * 0.1f   // Small roll variation
-                };
+                );
 
                 float object_scale = scale_dist(gen) * 1.0f; // Small scale for objects
-                scales[i].value = skr_float3_t{ object_scale, object_scale, object_scale };
+                scales[i].set(object_scale, object_scale, object_scale);
 
                 const auto parent = lv2.ents[index_in_level / 50];
                 skr::scene::ChildrenComponent as_child = { .entity = Context.entities()[i] };
@@ -689,7 +687,7 @@ void RGRaytracingSampleModule::create_scene_tlas()
             SkrZoneScopedN("GatherTransforms");
             for (int i = 0; i < Context.size(); ++i) {
                 // Create transform matrix from translation, rotation, scale
-                const auto transform = transforms[i].value.to_matrix();
+                const auto transform = transforms[i].get().to_matrix();
                 auto instance_id = indices[i].value;
                 
                 auto& instance = (*pInstances)[instance_id];

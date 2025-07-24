@@ -183,9 +183,20 @@ TaskScheduler::TaskScheduler(const ServiceThreadDesc& desc, skr::task::scheduler
 
 }
 
+TaskScheduler::~TaskScheduler()
+{
+
+}
+
 void TaskScheduler::add_task(skr::RC<TaskSignature> task)
 {
-    _tasks.enqueue(task);
+    {
+        _clear_mtx.lock_shared();
+        SKR_DEFER({ _clear_mtx.unlock_shared(); });
+
+        _tasks.enqueue(task);
+    }
+
     skr_atomic_fetch_add(&_enqueued_tasks, 1);
     awake();
 }
@@ -299,12 +310,18 @@ void TaskScheduler::flush_all()
 
 void TaskScheduler::sync_all()
 {
+    _clear_mtx.lock();
+    SKR_DEFER({ _clear_mtx.unlock(); });
+    
     flush_all();
     running.wait(true);
 
     _analyzer.accesses.clear();
     _dispatched_tasks.clear();
+
+    _tasks.~StackConcurrentQueue<skr::RC<TaskSignature>>();
     StackAllocator::Reset();
+    new (&_tasks) StackConcurrentQueue<skr::RC<TaskSignature>>();
 }
 
 void TaskScheduler::stop_and_exit()

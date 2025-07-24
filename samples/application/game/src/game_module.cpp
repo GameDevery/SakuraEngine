@@ -334,7 +334,7 @@ void create_test_scene(SRendererId renderer)
     // allocate 100 movable cubes
     auto renderableT_builder = make_zeroed<sugoi::TypeSetBuilder>();
     renderableT_builder
-    .with<skr::TranslationComponent, skr::RotationComponent, skr::ScaleComponent>()
+    .with<skr::PositionComponent, skr::RotationComponent, skr::ScaleComponent>()
     .with<skr_index_comp_t, skr_movement_comp_t>()
     .with<skr_render_effect_t>()
     .with(SUGOI_COMPONENT_GUID);
@@ -343,7 +343,7 @@ void create_test_scene(SRendererId renderer)
     renderableT.type   = renderableT_builder.build();
     uint32_t init_idx  = 0;
     auto     primSetup = [&](sugoi_chunk_view_t* view) {
-        auto translations = sugoi::get_owned_rw<skr::TranslationComponent>(view);
+        auto translations = sugoi::get_owned_rw<skr::PositionComponent>(view);
         auto rotations    = sugoi::get_owned_rw<skr::RotationComponent>(view);
         auto scales       = sugoi::get_owned_rw<skr::ScaleComponent>(view);
         auto indices      = sugoi::get_owned_rw<skr_index_comp_t>(view);
@@ -389,7 +389,7 @@ void create_test_scene(SRendererId renderer)
     // allocate 1 player entity
     auto playerT_builder = make_zeroed<sugoi::TypeSetBuilder>();
     playerT_builder
-    .with<skr::TranslationComponent, skr::RotationComponent, skr::ScaleComponent>()
+    .with<skr::PositionComponent, skr::RotationComponent, skr::ScaleComponent>()
     .with<skr_movement_comp_t>()
     .with<skr::CameraComponent>();
     auto playerT = make_zeroed<sugoi_entity_type_t>();
@@ -401,7 +401,7 @@ void create_test_scene(SRendererId renderer)
     // allocate 1 static(unmovable) gltf mesh
     auto static_renderableT_builderT = make_zeroed<sugoi::TypeSetBuilder>();
     static_renderableT_builderT
-    .with<skr::TranslationComponent, skr::RotationComponent, skr::ScaleComponent>()
+    .with<skr::PositionComponent, skr::RotationComponent, skr::ScaleComponent>()
     .with<skr_render_effect_t, game::anim_state_t>();
     auto static_renderableT = make_zeroed<sugoi_entity_type_t>();
     static_renderableT.type = static_renderableT_builderT.build();
@@ -417,7 +417,7 @@ void async_attach_skin_mesh(SRendererId renderer)
     auto filter          = make_zeroed<sugoi_filter_t>();
     auto meta            = make_zeroed<sugoi_meta_filter_t>();
     auto renderable_type = make_zeroed<sugoi::TypeSetBuilder>();
-    renderable_type.with<skr_render_effect_t, skr::TranslationComponent>();
+    renderable_type.with<skr_render_effect_t, skr::PositionComponent>();
     auto static_type = make_zeroed<sugoi::TypeSetBuilder>();
     static_type.with<skr_movement_comp_t>();
     filter.all     = renderable_type.build();
@@ -460,7 +460,7 @@ void async_attach_render_mesh(SRendererId renderer)
     auto filter          = make_zeroed<sugoi_filter_t>();
     auto meta            = make_zeroed<sugoi_meta_filter_t>();
     auto renderable_type = make_zeroed<sugoi::TypeSetBuilder>();
-    renderable_type.with<skr_render_effect_t, skr::TranslationComponent>();
+    renderable_type.with<skr_render_effect_t, skr::PositionComponent>();
     auto static_type = make_zeroed<sugoi::TypeSetBuilder>();
     static_type.with<skr_movement_comp_t>();
     filter.all     = renderable_type.build();
@@ -593,9 +593,9 @@ int              SGameModule::main_module_exec(int argc, char8_t** argv)
     sugoi_query_t*     cameraQuery;
     sugoi_query_t*     animQuery;
     moveQuery         = sugoiQ_from_literal(game_world,
-                                            u8"[has]skr_movement_comp_t, [inout]skr::TranslationComponent, [in]skr::ScaleComponent, [in]skr_index_comp_t,!skr::CameraComponent");
+                                            u8"[has]skr_movement_comp_t, [inout]skr::PositionComponent, [in]skr::ScaleComponent, [in]skr_index_comp_t,!skr::CameraComponent");
     cameraQuery       = sugoiQ_from_literal(game_world,
-                                            u8"[has]skr_movement_comp_t, [inout]skr::TranslationComponent, [inout]skr::CameraComponent");
+                                            u8"[has]skr_movement_comp_t, [inout]skr::PositionComponent, [inout]skr::CameraComponent");
     animQuery         = sugoiQ_from_literal(game_world,
                                             u8"[in]skr_render_effect_t, [in]game::anim_state_t, [out]<unseq>skr::anim::AnimComponent, [in]<unseq>skr::anim::SkeletonComponent");
     initAnimSkinQuery = sugoiQ_from_literal(game_world,
@@ -729,7 +729,7 @@ int              SGameModule::main_module_exec(int argc, char8_t** argv)
         }
 
         // move
-        // [has]skr_movement_comp_t, [inout]skr::TranslationComponent, [in]skr::ScaleComponent, [in]skr_index_comp_t, !skr::CameraComponent
+        // [has]skr_movement_comp_t, [inout]skr::PositionComponent, [in]skr::ScaleComponent, [in]skr_index_comp_t, !skr::CameraComponent
         if (bUseJob)
         {
             SkrZoneScopedN("MoveSystem");
@@ -741,7 +741,7 @@ int              SGameModule::main_module_exec(int argc, char8_t** argv)
                 SkrZoneScopedN("MoveJob");
 
                 float lerps[]      = { 12.5, 20 };
-                auto  translations = (skr::TranslationComponent*)sugoiV_get_owned_rw_local(view, localTypes[0]);
+                auto  translations = (skr::PositionComponent*)sugoiV_get_owned_rw_local(view, localTypes[0]);
                 auto  scales       = (skr::ScaleComponent*)sugoiV_get_owned_ro_local(view, localTypes[1]);
                 (void)scales;
                 auto indices = (skr_index_comp_t*)sugoiV_get_owned_ro_local(view, localTypes[2]);
@@ -863,7 +863,7 @@ int              SGameModule::main_module_exec(int argc, char8_t** argv)
             });
             sugoiJ_schedule_ecs(skinQuery, 4, SUGOI_LAMBDA_POINTER(cpuSkinJob), nullptr, &pSkinCounter);
         }
-        // [has]skr_movement_comp_t, [inout]skr::TranslationComponent, [in]skr::CameraComponent
+        // [has]skr_movement_comp_t, [inout]skr::PositionComponent, [in]skr::CameraComponent
         if (bUseJob)
         {
             SkrZoneScopedN("PlayerSystem");
@@ -871,7 +871,7 @@ int              SGameModule::main_module_exec(int argc, char8_t** argv)
             auto playerJob = SkrNewLambda([=](sugoi_query_t* query, sugoi_chunk_view_t* view, sugoi_type_index_t* localTypes, EIndex entityIndex) {
                 SkrZoneScopedN("PlayerJob");
 
-                auto translations = (skr::TranslationComponent*)sugoiV_get_owned_rw_local(view, localTypes[0]);
+                auto translations = (skr::PositionComponent*)sugoiV_get_owned_rw_local(view, localTypes[0]);
                 auto forward      = skr_float3_t{ 0.f, 1.f, 0.f };
                 auto right        = skr_float3_t{ 1.f, 0.f, 0.f };
                 for (uint32_t i = 0; i < view->count; i++)

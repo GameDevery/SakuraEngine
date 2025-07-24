@@ -39,7 +39,7 @@ void ArchetypeBuilder::commit() SKR_NOEXCEPT
 void AccessBuilder::commit() SKR_NOEXCEPT
 {
 	all.sort([](auto a, auto b) { return a < b; });
-	none.sort([](auto a, auto b) { return a < b; });
+	nones.sort([](auto a, auto b) { return a < b; });
 }
 
 sugoi_query_t* AccessBuilder::create_query(sugoi_storage_t* storage) SKR_NOEXCEPT
@@ -53,11 +53,10 @@ sugoi_query_t* AccessBuilder::create_query(sugoi_storage_t* storage) SKR_NOEXCEP
 	filter.all.data = all.data();
 	filter.all.length = all.size();
 
-	/*
-	none.sort([](auto a, auto b) { return a < b; });
-	filter.none.data = none.data();
-	filter.none.length = none.size();
-	*/
+	nones.sort([](auto a, auto b) { return a < b; });
+	filter.none.data = nones.data();
+	filter.none.length = nones.size();
+
 	auto q = sugoiQ_create(storage, &filter, &parameters);
 	if (q)
 	{
@@ -112,6 +111,13 @@ AccessBuilder& AccessBuilder::_access(TypeIndex type, bool write, EAccessMode mo
 		field_types.add(type);
 		field_modes.add(mode);
 	}
+	return *this;
+}
+
+AccessBuilder& AccessBuilder::_add_has_filter(TypeIndex type, bool write)
+{
+	if (auto no = nones.find(type))
+		SKR_ASSERT(0 && "Type already added as none!");
 
 	if (auto existed = types.find(type))
 	{
@@ -119,10 +125,8 @@ AccessBuilder& AccessBuilder::_access(TypeIndex type, bool write, EAccessMode mo
 	}
 	else
 	{
-		// TODO: share
-		// TODO: exclude
-		all.add(type);
 		types.add(type);
+		all.add(type);
 		ops.add({ 
 			.phase = -1, 
 			.readonly = !write
@@ -130,6 +134,20 @@ AccessBuilder& AccessBuilder::_access(TypeIndex type, bool write, EAccessMode mo
 			// .atomic = (mode == EAccessMode::Atomic),
 			// .randomAccess = (mode == EAccessMode::Random) ? SOS_UNSEQ : SOS_SEQ
 		});
+	}
+	return *this;
+}
+
+AccessBuilder& AccessBuilder::_add_none_filter(TypeIndex type)
+{
+	if (auto has = all.find(type))
+		SKR_ASSERT(0 && "Type already added as all!");
+
+	if (!types.find(type))
+	{
+		types.add(type);
+		nones.add(type);
+		ops.add({ .phase = -1, .readonly = true });
 	}
 	return *this;
 }

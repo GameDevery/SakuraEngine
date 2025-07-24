@@ -134,7 +134,7 @@ struct ComplexTransformTest {
         
         sugoi::EntitySpawner<skr::scene::RootComponent, SKR_SCENE_COMPONENTS> root_spawner;
         root_spawner(storage, ROOT_COUNT, [&](auto& view) {
-            auto translations = sugoi::get_owned<skr::scene::TranslationComponent>(view.view);
+            auto translations = sugoi::get_owned<skr::scene::PositionComponent>(view.view);
             auto rotations = sugoi::get_owned<skr::scene::RotationComponent>(view.view);
             auto scales = sugoi::get_owned<skr::scene::ScaleComponent>(view.view);
             auto entities = sugoiV_get_entities(view.view);
@@ -167,7 +167,7 @@ struct ComplexTransformTest {
         sugoi::EntitySpawner<SKR_SCENE_COMPONENTS> level1_spawner;
         
         level1_spawner(storage, total_level1, [&](auto& view) {
-            auto translations = sugoi::get_owned<skr::scene::TranslationComponent>(view.view);
+            auto translations = sugoi::get_owned<skr::scene::PositionComponent>(view.view);
             auto rotations = sugoi::get_owned<skr::scene::RotationComponent>(view.view);
             auto scales = sugoi::get_owned<skr::scene::ScaleComponent>(view.view);
             auto parents = sugoi::get_owned<skr::scene::ParentComponent>(view.view);
@@ -193,7 +193,7 @@ struct ComplexTransformTest {
         sugoi::EntitySpawner<SKR_SCENE_COMPONENTS> level2_spawner;
         
         level2_spawner(storage, total_level2, [&](auto& view) {
-            auto translations = sugoi::get_owned<skr::scene::TranslationComponent>(view.view);
+            auto translations = sugoi::get_owned<skr::scene::PositionComponent>(view.view);
             auto rotations = sugoi::get_owned<skr::scene::RotationComponent>(view.view);
             auto scales = sugoi::get_owned<skr::scene::ScaleComponent>(view.view);
             auto parents = sugoi::get_owned<skr::scene::ParentComponent>(view.view);
@@ -219,7 +219,7 @@ struct ComplexTransformTest {
         sugoi::EntitySpawner<SKR_SCENE_COMPONENTS> level3_spawner;
         
         level3_spawner(storage, total_level3, [&](auto& view) {
-            auto translations = sugoi::get_owned<skr::scene::TranslationComponent>(view.view);
+            auto translations = sugoi::get_owned<skr::scene::PositionComponent>(view.view);
             auto rotations = sugoi::get_owned<skr::scene::RotationComponent>(view.view);
             auto scales = sugoi::get_owned<skr::scene::ScaleComponent>(view.view);
             auto parents = sugoi::get_owned<skr::scene::ParentComponent>(view.view);
@@ -401,7 +401,7 @@ TEST_CASE_METHOD(ComplexTransformTest, "Complex Transform Hierarchy Update") {
     // Verify results
     auto checkQuery = storage->new_query()
                           .ReadAny<skr::scene::ParentComponent, skr::scene::ChildrenComponent, skr::scene::RootComponent>()
-                          .ReadAll<skr::scene::TranslationComponent, skr::scene::RotationComponent, skr::scene::ScaleComponent>()
+                          .ReadAll<skr::scene::PositionComponent, skr::scene::RotationComponent, skr::scene::ScaleComponent>()
                           .ReadAll<skr::scene::TransformComponent>()
                           .commit()
                           .value();
