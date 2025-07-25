@@ -1,561 +1,370 @@
 #include "CppSL/langs/MSLGenerator.hpp"
-#include "CppSL/langs/MSLGenerator.hpp"
 
-namespace skr::CppSL
+namespace skr::CppSL::MSL
 {
-inline static bool NeedParens(const Stmt* stmt)
+inline static String GetStageName(ShaderStage stage)
 {
-    if (auto parent = stmt->parent())
+    switch (stage)
     {
-        if (dynamic_cast<const BinaryExpr*>(parent) || 
-            dynamic_cast<const UnaryExpr*>(parent) || 
-            dynamic_cast<const CastExpr*>(parent))
-        {
-            return true;
-        }
+    case ShaderStage::Vertex:
+        return L"vertex";
+    case ShaderStage::Fragment:
+        return L"fragment";
+    case ShaderStage::Compute:
+        return L"kernel";
+    default:
+        assert(false && "Unknown shader stage");
+        return L"unknown_stage";
     }
-    return false;
 }
 
-static const std::unordered_map<String, String> MetalAttrMap = {
-    { L"VertexID", L"[[vertex_id]]" },     // VertexStage Input
-    { L"InstanceID", L"[[instance_id]]" }, // VertexStage Input
-    { L"Position", L"[[position]]" },      // VertexStage Output / FragmentStage Input
-
-    { L"IsFrontFace", L"[[front_facing]]" }, // FragmentStage Input
-    { L"FragmentDepth", L"[[depth(any)]]"},  // FragmentStage Output
-    { L"SampleIndex", L"[[sample_id]]" },    // FragmentStage Input
-    { L"SampleMask", L"[[sample_mask]]" },   // FragmentStage Input/Output
-
-    { L"ThreadID", L"[[thread_position_in_grid]]" },           // ComputeStage Input
-    { L"GroupID", L"[[threadgroup_position_in_grid]]" },                     // ComputeStage Input
-    { L"ThreadPositionInGroup", L"[[thread_position_in_threadgroup]]" }, // ComputeStage Input
-    { L"ThreadIDInGroup", L"[[thread_index_in_threadgroup]]" },         // ComputeStage Input
+static const std::unordered_map<InterpolationMode, String> InterpolationMap = {
+    { InterpolationMode::linear, L"[[perspective]]" },
+    { InterpolationMode::nointerpolation, L"[[flat]]" },
+    { InterpolationMode::centroid, L"[[centroid_perspective]]" },
+    { InterpolationMode::sample, L"[[sample_perspective]]" },
+    { InterpolationMode::noperspective, L"[[center_no_perspective]]" }
 };
-static const String UnknownSystemValue = L"UnknownSystemValue";
-const String& GetMetalAttrForBuiltin(const String& builtin)
+static const String UnknownInterpolation = L"[[UnknownInterpolation]]";
+inline static const String& GetInterpolationString(InterpolationMode Interpolation)
 {
-    auto it = MetalAttrMap.find(builtin);
-    if (it != MetalAttrMap.end())
+    auto it = InterpolationMap.find(Interpolation);
+    if (it != InterpolationMap.end())
     {
         return it->second;
     }
-    return UnknownSystemValue; // return the original name if not found
+    return UnknownInterpolation;
 }
 
-void MSLGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt)
+static const std::unordered_map<SemanticType, String> SystemValueMap = {
+    { SemanticType::Invalid, L"" },
+    { SemanticType::Position, L"[[position]]" },
+    { SemanticType::ClipDistance, L"[[clip_distance]]" },
+    { SemanticType::CullDistance, L"[[cull_distance]]" },
+    
+    { SemanticType::RenderTarget0, L"[[color(0)]]" },
+    { SemanticType::RenderTarget1, L"[[color(1)]]" },
+    { SemanticType::RenderTarget2, L"[[color(2)]]" },
+    { SemanticType::RenderTarget3, L"[[color(3)]]" },
+    { SemanticType::RenderTarget4, L"[[color(4)]]" },
+    { SemanticType::RenderTarget5, L"[[color(5)]]" },
+    { SemanticType::RenderTarget6, L"[[color(6)]]" },
+    { SemanticType::RenderTarget7, L"[[color(7)]]" },
+    
+    { SemanticType::Depth, L"[[depth(any)]]" },
+    { SemanticType::DepthGreaterEqual, L"[[depth(greater)]]" },
+    { SemanticType::DepthLessEqual, L"[[depth(less)]]" },
+    { SemanticType::StencilRef, L"[[stencil]]" },
+    
+    { SemanticType::VertexID, L"[[vertex_id]]" },
+    { SemanticType::InstanceID, L"[[instance_id]]" },
+    
+    { SemanticType::GSInstanceID, L"[[render_target_array_index]]" },
+    { SemanticType::TessFactor, L"[[patch_control_point]]" },
+    { SemanticType::InsideTessFactor, L"[[patch_control_point]]" },
+    { SemanticType::DomainLocation, L"[[position_in_patch]]" },
+    { SemanticType::ControlPointID, L"[[patch_id]]" },
+    
+    { SemanticType::PrimitiveID, L"[[primitive_id]]" },
+    { SemanticType::IsFrontFace, L"[[front_facing]]" },
+    { SemanticType::SampleIndex, L"[[sample_id]]" },
+    { SemanticType::SampleMask, L"[[sample_mask]]" },
+    { SemanticType::Barycentrics, L"[[barycentric_coord]]" },
+    
+    { SemanticType::ThreadID, L"[[thread_position_in_grid]]" },
+    { SemanticType::GroupID, L"[[threadgroup_position_in_grid]]" },
+    { SemanticType::ThreadPositionInGroup, L"[[thread_position_in_threadgroup]]" },
+    { SemanticType::ThreadIndexInGroup, L"[[thread_index_in_threadgroup]]" },
+    
+    { SemanticType::ViewID, L"[[render_target_array_index]]" }
+};
+static const String UnknownSystemValue = L"[[UnknownSystemValue]]";
+inline static const String& GetSystemValueString(SemanticType Semantic)
 {
-    using namespace skr::CppSL;
-
-    bool isStatement = false;
-    if (auto parent = stmt->parent())
+    auto it = SystemValueMap.find(Semantic);
+    if (it != SystemValueMap.end())
     {
-        isStatement = dynamic_cast<const CompoundStmt*>(parent);
+        return it->second;
     }
+    return UnknownSystemValue;
+}
 
-    if (auto binary = dynamic_cast<const BinaryExpr*>(stmt))
+String MSLGenerator::GetTypeName(const TypeDecl* type)
+{
+    if (auto asArray = dynamic_cast<const ArrayTypeDecl*>(type))
     {
-        const bool needParens = NeedParens(stmt);
-        if (needParens)
-            sb.append(L"(");
+        return L"metal::" + asArray->name();
+    }
+    else if (auto asMatrix = dynamic_cast<const MatrixTypeDecl*>(type))
+    {
+        return L"metal::" + asMatrix->name();
+    }
+    return type->name();
+}
 
-        visitExpr(sb, binary->left());
-        auto op = binary->op();
-        String op_name = L"";
-        switch (op)
+void MSLGenerator::VisitGlobalResource(SourceBuilderNew& sb, const skr::CppSL::VarDecl* var)
+{
+    // null option
+    // since we have already extract and dumped SRT data as builtin header
+}
+
+void MSLGenerator::VisitVariable(SourceBuilderNew& sb, const skr::CppSL::VarDecl* varDecl) 
+{
+    const auto isGlobal = dynamic_cast<const skr::CppSL::GlobalVarDecl*>(varDecl);
+    auto _typename = GetQualifiedTypeName(&varDecl->type());
+    String prefix = L"", postfix = L"";
+    if (varDecl->qualifier() == EVariableQualifier::Const)
+    {
+        prefix = isGlobal ? L"static constant " : L"const ";
+    }
+    else if ((varDecl->qualifier() == EVariableQualifier::Inout) || (varDecl->qualifier() == EVariableQualifier::Out))
+    {
+        prefix = L"thread ";
+        postfix = L"&";
+    }
+    sb.append( std::format(L"{}{}{} {}", prefix, _typename, postfix, varDecl->name()));
+    if (auto init = varDecl->initializer())
+    {
+        if (auto asRayQuery = dynamic_cast<const RayQueryTypeDecl*>(init->type()))
         {
-        case BinaryOp::ADD:
-            op_name = L" + ";
-            break;
-        case BinaryOp::SUB:
-            op_name = L" - ";
-            break;
-        case BinaryOp::MUL:
-            op_name = L" * ";
-            break;
-        case BinaryOp::DIV:
-            op_name = L" / ";
-            break;
-        case BinaryOp::MOD:
-            op_name = L" % ";
-            break;
 
-        case BinaryOp::BIT_AND:
-            op_name = L" & ";
-            break;
-        case BinaryOp::BIT_OR:
-            op_name = L" | ";
-            break;
-        case BinaryOp::BIT_XOR:
-            op_name = L" ^ ";
-            break;
-        case BinaryOp::SHL:
-            op_name = L" << ";
-            break;
-        case BinaryOp::SHR:
-            op_name = L" >> ";
-            break;
-        case BinaryOp::AND:
-            op_name = L" && ";
-            break;
-        case BinaryOp::OR:
-            op_name = L" || ";
-            break;
-
-        case BinaryOp::LESS:
-            op_name = L" < ";
-            break;
-        case BinaryOp::GREATER:
-            op_name = L" > ";
-            break;
-        case BinaryOp::LESS_EQUAL:
-            op_name = L" <= ";
-            break;
-        case BinaryOp::GREATER_EQUAL:
-            op_name = L" >= ";
-            break;
-        case BinaryOp::EQUAL:
-            op_name = L" == ";
-            break;
-        case BinaryOp::NOT_EQUAL:
-            op_name = L" != ";
-            break;
-
-        case BinaryOp::ASSIGN:
-            op_name = L" = ";
-            break;
-        case BinaryOp::ADD_ASSIGN:
-            op_name = L" += ";
-            break;
-        case BinaryOp::SUB_ASSIGN:
-            op_name = L" -= ";
-            break;
-        case BinaryOp::MUL_ASSIGN:
-            op_name = L" *= ";
-            break;
-        case BinaryOp::DIV_ASSIGN:
-            op_name = L" /= ";
-            break;
-        case BinaryOp::MOD_ASSIGN:
-            op_name = L" %= ";
-            break;
-        default:
-            assert(false && "Unsupported binary operation");
-        }
-        sb.append(op_name);
-        visitExpr(sb, binary->right());
-
-        if (needParens)
-            sb.append(L")");
-    }
-    else if (auto bitwiseCast = dynamic_cast<const BitwiseCastExpr*>(stmt))
-    {
-        auto _type = bitwiseCast->type();
-        sb.append(L"bit_cast<" + _type->name() + L">(");
-        visitExpr(sb, bitwiseCast->expr());
-        sb.append(L")");
-    }
-    else if (auto breakStmt = dynamic_cast<const BreakStmt*>(stmt))
-    {
-        sb.append(L"break");
-    }
-    else if (auto block = dynamic_cast<const CompoundStmt*>(stmt))
-    {
-        sb.endline(L'{');
-        sb.indent([&](){
-            for (auto expr : block->children())
-            {
-                visitExpr(sb, expr);
-            }
-        });
-        sb.append(L"}");
-    }
-    else if (auto callExpr = dynamic_cast<const CallExpr*>(stmt))
-    {
-        auto callee = callExpr->callee();
-        if (auto callee_decl = dynamic_cast<const FunctionDecl*>(callee->decl()))
-        {
-            sb.append(callee_decl->name());
-            sb.append(L"(");
-            for (size_t i = 0; i < callExpr->args().size(); i++)
-            {
-                auto arg = callExpr->args()[i];
-                if (i > 0)
-                    sb.append(L", ");
-                visitExpr(sb, arg);
-            }
-            sb.append(L")");
         }
         else
         {
-            sb.append(L"unknown function call!");
+            sb.append(L" = ");
+            visitExpr(sb, init);
         }
     }
-    else if (auto caseStmt = dynamic_cast<const CaseStmt*>(stmt))
+}
+
+void MSLGenerator::VisitParameter(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* funcDecl, const skr::CppSL::ParamVarDecl* param)
+{
+    const StageAttr* StageEntry = FindAttr<StageAttr>(funcDecl->attrs());
+    auto AsSemantic = FindAttr<SemanticAttr>(param->attrs());
+    auto qualifier = param->qualifier();
+
+    String semantic_string = L"";
+    if (StageEntry && AsSemantic)
     {
-        if (caseStmt->cond())
+        if (SemanticAttr::GetSemanticQualifier(AsSemantic->semantic(), StageEntry->stage(), qualifier))
         {
-            sb.append(L"case ");
-            visitExpr(sb, caseStmt->cond());
-            sb.append(L":");
+            semantic_string = L" " + GetSystemValueString(AsSemantic->semantic());
         }
         else
         {
-            sb.append(L"default:");
-        }
-        visitExpr(sb, caseStmt->body());
-    }
-    else if (auto methodCall = dynamic_cast<const MethodCallExpr*>(stmt))
-    {
-        auto callee = methodCall->callee();
-        auto method = dynamic_cast<const MethodDecl*>(callee->member_decl());
-        auto type = method->owner_type();
-        if (auto as_buffer = dynamic_cast<const BufferTypeDecl*>(type) && method->name() == L"Store")
-        {
-            visitExpr(sb, callee->owner());
-            sb.append(L"[");
-            visitExpr(sb, methodCall->args()[0]);
-            sb.append(L"] = ");
-            visitExpr(sb, methodCall->args()[1]);
-        }
-        else
-        {
-            visitExpr(sb, callee);
-            
-            sb.append(L"(");
-            for (size_t i = 0; i < methodCall->args().size(); i++)
-            {
-                auto arg = methodCall->args()[i];
-                if (i > 0)
-                    sb.append(L", ");
-                visitExpr(sb, arg);
-            }
-            sb.append(L")");
+            param->ast().ReportFatalError(std::format(L"Invalid semantic {} for param {} within stage {}",
+                GetSystemValueString(AsSemantic->semantic()),
+                param->name(),
+                (uint32_t)StageEntry->stage()));
         }
     }
-    else if (auto constant = dynamic_cast<const ConstantExpr*>(stmt))
+
+    String prefix = L"", postfix = L"";
+    switch (qualifier)
     {
-        if (auto i = std::get_if<IntValue>(&constant->value))
+    case EVariableQualifier::Const:
+        prefix = L"const ";
+        break;
+    case EVariableQualifier::Out:
+        prefix = !AsSemantic ? L"thread " : L"";
+        postfix = !AsSemantic ? L"&" : L"";
+        break;
+    case EVariableQualifier::Inout:
+        prefix = !AsSemantic ? L"thread " : L"";
+        postfix = !AsSemantic ? L"&" : L"";
+        break;
+    case EVariableQualifier::None:
+        prefix = L"";
+        break;
+    }
+    String content = prefix + GetQualifiedTypeName(&param->type()) + postfix + L" " + param->name();
+    sb.append(content);
+    sb.append(semantic_string);
+}
+
+void MSLGenerator::VisitField(SourceBuilderNew& sb, const skr::CppSL::TypeDecl* typeDecl, const skr::CppSL::FieldDecl* field)
+{
+    const bool IsStageInout = FindAttr<StageInoutAttr>(typeDecl->attrs());
+    
+    // Normal field handling
+    sb.append(GetQualifiedTypeName(&field->type()) + L" " + field->name());
+
+    if (auto interpolation = FindAttr<InterpolationAttr>(field->attrs()))
+        sb.append(GetInterpolationString(interpolation->mode()));
+
+    if (IsStageInout)
+        sb.append(L"[[user(" + field->name() + L")]]");
+
+    sb.endline(L';');
+}
+
+void MSLGenerator::VisitDeclRef(SourceBuilderNew& sb, const DeclRefExpr* declRef)
+{
+    if (auto var = dynamic_cast<const VarDecl*>(declRef->decl()))
+    {
+        auto set = set_of_vars.find(var);
+        if (set != set_of_vars.end())
         {
-            if (i->is_signed())
-                sb.append(std::to_wstring(i->value<int64_t>().get()));
+            if (auto cbuffer = dynamic_cast<const ConstantBufferTypeDecl*>(&var->type()))
+                sb.append(std::format(L"srt{}.{}.cgpu_buffer_data", set->second, var->name()));
             else
-                sb.append(std::to_wstring(i->value<uint64_t>().get()));
-        }
-        else if (auto f = std::get_if<FloatValue>(&constant->value))
-        {
-            sb.append(std::to_wstring(f->ieee.value()));
+                sb.append(std::format(L"srt{}.{}", set->second, var->name()));
         }
         else
         {
-            sb.append(L"UnknownConstant: ");
+            sb.append(var->name());
         }
     }
-    else if (auto constructExpr = dynamic_cast<const ConstructExpr*>(stmt))
-    {
-        sb.append(constructExpr->type()->name() + L"(");
-        for (size_t i = 0; i < constructExpr->args().size(); i++)
-        {
-            auto arg = constructExpr->args()[i];
-            if (i > 0)
-                sb.append(L", ");
-            visitExpr(sb, arg);
-        }
-        sb.append(L")");
-    }
-    else if (auto continueStmt = dynamic_cast<const ContinueStmt*>(stmt))
-    {
-        sb.append(L"continue;");
-    }
-    else if (auto defaultStmt = dynamic_cast<const DefaultStmt*>(stmt))
-    {
-        sb.append(L"default:");
-    }
-    else if (auto member = dynamic_cast<const MemberExpr*>(stmt))
-    {
-        auto owner = member->owner();
-        auto field = member->member_decl();
-        if (auto _as_field = dynamic_cast<const FieldDecl*>(field))
-        {
-            visitExpr(sb, owner);
-            sb.append(L"." + _as_field->name());
-        }
-        else if (auto _as_method = dynamic_cast<const MethodDecl*>(field))
-        {
-            visitExpr(sb, owner);
-            sb.append(L"." + _as_method->name());
-        }
-        else
-        {
-            sb.append(L"UnknownMember");
-        }
-    }
-    else if (auto forStmt = dynamic_cast<const ForStmt*>(stmt))
-    {
-        sb.append(L"for (");
-        if (forStmt->init())
-            visitExpr(sb, forStmt->init());
-        sb.append(L"; ");
-        
-        if (forStmt->cond())
-            visitExpr(sb, forStmt->cond());
-        sb.append(L"; ");
+}
 
-        if (forStmt->inc())
-            visitExpr(sb, forStmt->inc());
-        sb.append(L") ");
+void MSLGenerator::VisitConstructExpr(SourceBuilderNew& sb, const ConstructExpr* ctorExpr)
+{
+    std::span<Expr* const> args;
 
-        visitExpr(sb, forStmt->body());
-    }
-    else if (auto ifStmt = dynamic_cast<const IfStmt*>(stmt))
+    if (args.empty())
+        args = ctorExpr->args();
+
+    sb.append(GetQualifiedTypeName(ctorExpr->type()) + L"(");
+    for (size_t i = 0; i < args.size(); i++)
     {
-        sb.append(L"if (");
-        visitExpr(sb, ifStmt->cond());
-        sb.append(L") ");
+        auto arg = args[i];
+        if (i > 0)
+        {
+            sb.append(L", ");
+        }
+        visitExpr(sb, arg);
+    }
+    sb.append(L")");
+}
+
+void MSLGenerator::GenerateFunctionAttributes(SourceBuilderNew& sb, const FunctionDecl* funcDecl)
+{
+    if (const StageAttr* StageEntry = FindAttr<StageAttr>(funcDecl->attrs()))
+    {
+        sb.append(GetStageName(StageEntry->stage()));
+        sb.append(L" ");
+    }
+}
+
+static const skr::CppSL::String kMSLHeader = LR"(
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+template <typename T> struct ConstantBuffer { constant T& cgpu_buffer_data; };
+
+template <typename T, metal::access a> struct Buffer;
+template <typename T> struct Buffer<T, metal::access::read> { constant T* cgpu_buffer_data; uint64_t cgpu_buffer_size; };
+template <typename T> struct Buffer<T, metal::access::read_write> { device T* cgpu_buffer_data; uint64_t cgpu_buffer_size; };
+template <typename T> using RWStructuredBuffer = Buffer<T, metal::access::read_write>;
+
+template <typename T> void buffer_write(RWStructuredBuffer<T> buffer, uint index, T value) { buffer.cgpu_buffer_data[index] = value; }
+template <typename T> T buffer_read(RWStructuredBuffer<T> buffer, uint index) { return buffer.cgpu_buffer_data[index]; }
+
+template <typename T, metal::access a = metal::access::read>
+struct Texture2D { metal::texture2d<T, a> cgpu_texture; };
+
+struct SamplerState { metal::sampler cgpu_sampler; };
+
+// Math intrinsics
+using metal::abs; using metal::min; using metal::max; using metal::clamp; using metal::all; using metal::any; using metal::select;
+using metal::sin; using metal::sinh; using metal::cos; using metal::cosh; using metal::atan; using metal::atanh; using metal::tan; using metal::tanh;
+using metal::acos; using metal::acosh; using metal::asin; using metal::asinh; using metal::exp; using metal::exp2; using metal::log; using metal::log2;
+using metal::log10; using metal::exp10; using metal::sqrt; using metal::rsqrt; using metal::ceil; using metal::floor; using metal::fract; using metal::trunc;
+using metal::round; using metal::length; using metal::saturate; using metal::pow;
+using metal::copysign; using metal::atan2; using metal::step; using metal::fma; using metal::smoothstep; using metal::normalize; using metal::dot; using metal::cross;
+using metal::faceforward; using metal::reflect; using metal::transpose; using metal::determinant;
+
+// Integer intrinsics  
+using metal::clz; using metal::ctz; using metal::popcount;
+
+// Function aliases
+template<typename T> T lerp(T a, T b, T t) { return metal::mix(a, b, t); }
+template<typename T> T ddx(T p) { return metal::dfdx(p); }
+template<typename T> T ddy(T p) { return metal::dfdy(p); }
+template<typename T> auto is_inf(T x) { return metal::isinf(x); }
+template<typename T> auto is_nan(T x) { return metal::isnan(x); }
+template<typename T> auto length_squared(T v) { return metal::dot(v, v); }
+
+// Texture sampling functions
+template<typename T, metal::access a>
+metal::vec<T, 4> sample2d(SamplerState sampler, Texture2D<T, a> texture, float2 uv) { return texture.cgpu_texture.sample(sampler.cgpu_sampler, uv); }
+
+)";
+
+void MSLGenerator::RecordBuiltinHeader(SourceBuilderNew& sb, const AST& ast)
+{
+    sb.append(kMSLHeader);
+    sb.endline();
+
+    GenerateSRTs(sb, ast);
+}
+
+void MSLGenerator::GenerateKernelWrapper(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* funcDecl)
+{
+
+}
+
+void MSLGenerator::GenerateSRTs(SourceBuilderNew& sb, const AST& ast)
+{
+    using SRT = std::map<uint32_t, const VarDecl*>;
+    std::map<uint32_t, SRT> srts;
+    SRT anonymous_srt;
+    uint32_t anonymous_srt_bind = 0;
+    for (auto var : ast.global_vars())
+    {
+        if (auto asResource = dynamic_cast<const ResourceTypeDecl*>(&var->type()))
+        {
+            uint32_t set = 0, bind = 0;
+            if (const auto resourceBind = FindAttr<ResourceBindAttr>(var->attrs()))
+            {
+                set = resourceBind->group();
+                bind = resourceBind->binding();
+
+                if ((set == ~0) && (bind == ~0))
+                    anonymous_srt.insert({anonymous_srt_bind++, var});
+                else
+                    srts[set][bind] = var;
+            }
+            else
+            {
+                anonymous_srt.insert({anonymous_srt_bind++, var});
+            }
+        }
+    }
+
+    auto gen_srt = [&](uint32_t set, const SRT& srt){
+        auto SRTTypeName = L"SRT" + std::to_wstring(set);
+        auto SRTVarName = L"srt" + std::to_wstring(set);
+        sb.append(L"struct " + SRTTypeName+ L" {");
+        sb.endline();
         sb.indent([&](){
-            visitExpr(sb, ifStmt->then_body());
-        });
-
-        if (ifStmt->else_body())
-        {
-            sb.append(L" else ");
-            sb.indent([&](){
-                visitExpr(sb, ifStmt->else_body());
-            });
-        }
-    }
-    else if (auto initList = dynamic_cast<const InitListExpr*>(stmt))
-    {
-        sb.append(L"{ ");
-        for (size_t i = 0; i < initList->children().size(); i++)
-        {
-            auto expr = initList->children()[i];
-            if (i > 0)
-                sb.append(L", ");
-            visitExpr(sb, expr);
-        }
-        sb.append(L" }");
-    }
-    else if (auto implicitCast = dynamic_cast<const ImplicitCastExpr*>(stmt))
-    {
-        // do nothing ...
-    }
-    else if (auto declRef = dynamic_cast<const DeclRefExpr*>(stmt))
-    {
-        if (auto decl = dynamic_cast<const VarDecl*>(declRef->decl()))
-            sb.append(decl->name());
-    }
-    else if (auto returnStmt = dynamic_cast<const ReturnStmt*>(stmt))
-    {
-        sb.append(L"return");
-        if (returnStmt->value())
-        {
-            sb.append(L" ");
-            visitExpr(sb, returnStmt->value());
-        }
-    }
-    else if (auto staticCast = dynamic_cast<const StaticCastExpr*>(stmt))
-    {
-        sb.append(L"((" + staticCast->type()->name() + L")");
-        visitExpr(sb, staticCast->expr());
-        sb.append(L")");
-    }
-    else if (auto switchStmt = dynamic_cast<const SwitchStmt*>(stmt))
-    {
-        sb.append(L"switch (");
-        visitExpr(sb, switchStmt->cond());
-        sb.append(L")\n");
-        sb.indent([&](){
-            for (auto case_stmt : switchStmt->cases())
+            for (const auto& [bind, resource] : srt)
             {
-                visitExpr(sb, case_stmt);
+                sb.append(GetTypeName(&resource->type()));
+                sb.append(L" ");
+                sb.append(resource->name());
+                sb.endline(L';');
+
+                set_of_vars[resource] = set;
             }
         });
-    }
-    else if (auto unary = dynamic_cast<const UnaryExpr*>(stmt))
-    {
-        const bool needParens = NeedParens(stmt);
-        if (needParens)
-            sb.append(L"(");
+        sb.append(L"};");
+        sb.endline();
 
-        {
-            String op_name = L"";
-            switch (unary->op())
-            {
-            case UnaryOp::PLUS:
-                op_name = L"+";
-                break;
-            case UnaryOp::MINUS:
-                op_name = L"-";
-                break;
-            case UnaryOp::NOT:
-                op_name = L"!";
-                break;
-            case UnaryOp::BIT_NOT:
-                op_name = L"~";
-                break;
-            default:
-                assert(false && "Unsupported unary operation");
-            }
-            
-            sb.append(op_name);
-            visitExpr(sb, unary->expr());
-        }
-
-        if (needParens)
-            sb.append(L")");
-    }
-    else if (auto declStmt = dynamic_cast<const DeclStmt*>(stmt))
-    {
-        if (auto decl = dynamic_cast<const VarDecl*>(declStmt->decl()))
-        {
-            sb.append(decl->type().name() + L" " + decl->name());
-            if (auto init = decl->initializer())
-            {
-                sb.append(L" = ");
-                visitExpr(sb, init);
-            }
-        }
-    }
-    else if (auto whileStmt = dynamic_cast<const WhileStmt*>(stmt))
-    {
-        sb.append(L"while (");
-        visitExpr(sb, whileStmt->cond());
-        sb.append(L") ");
-        visitExpr(sb, whileStmt->body());
-    }
-    else
-    {
-        sb.append_expr(L"UnknownExpr ");
-    }
-
-    if (isStatement)
+        sb.append(
+            std::format(L"device {}& constant {} [[buffer({})]]", SRTTypeName, SRTVarName, set)
+        );
         sb.endline(L';');
+    };
+
+    uint32_t next_set = 0;
+    for (const auto& [set, srt] : srts)
+    {
+        gen_srt(set, srt);
+        next_set = set + 1;
+    }
+    if (!anonymous_srt.empty())
+        gen_srt(next_set, anonymous_srt);
 }
 
-void MSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::TypeDecl* typeDecl)
-{
-    using namespace skr::CppSL;
-    if (typeDecl->is_builtin())
-    {
-        sb.append(L"//builtin type: ");
-        sb.append(typeDecl->name());
-        sb.append(L", size: " + std::to_wstring(typeDecl->size()));
-        sb.append(L", align: " + std::to_wstring(typeDecl->alignment()));
-        sb.endline();
-    }
-    else
-    {
-        sb.append(L"struct " + typeDecl->name());
-        sb.endline(L'{');
-        for (auto field : typeDecl->fields())
-        {
-            sb.append(L"    " + field->type().name() + L" " + field->name() + L";\n");
-        }
-        sb.append(L"};\n");
-    }        
-}
-
-void MSLGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* funcDecl)
-{
-    using namespace skr::CppSL;
-    if (auto body = funcDecl->body())
-    {
-        const StageAttr* StageEntry = nullptr;
-        for (auto attr : funcDecl->attrs())
-        {
-            if (auto s = dynamic_cast<const StageAttr*>(attr))
-                StageEntry = s;
-        }
-
-        std::vector<const ParamVarDecl*> params;
-        params.reserve(funcDecl->parameters().size());
-        for (auto param : funcDecl->parameters())
-        {
-            params.emplace_back(param);
-        }
-        
-        if (StageEntry)
-        {
-            // extract bindings from signature
-            for (size_t i = 0; i < funcDecl->parameters().size(); i++)
-            {
-                auto param = funcDecl->parameters()[i];
-                for (auto attr : param->attrs())
-                {
-                    if (auto resourceBind = dynamic_cast<const ResourceBindAttr*>(attr))
-                    {
-                        String content = param->type().name() + L" " + param->name();
-                        // content += L" : register(" + std::to_wstring(bind_attr->binding()) + L")";
-                        sb.append(content);
-                        sb.endline(L';');
-
-                        params.erase(std::find(params.begin(), params.end(), param));
-                    }
-                }
-            }
-            // generate stage entry attributes
-            for (auto&& attr : funcDecl->attrs())
-            {
-                if (auto kernelSize = dynamic_cast<const KernelSizeAttr*>(attr))
-                {
-                    sb.append(L"[numthreads(" + std::to_wstring(kernelSize->x()) + L", " + std::to_wstring(kernelSize->y()) + L", " + std::to_wstring(kernelSize->z()) + L")]");
-                    sb.endline();
-                }
-            }
-        }
-        
-        // generate signature
-        {
-            sb.append(funcDecl->return_type()->name() + L" " + funcDecl->name() + L"(");
-            for (size_t i = 0; i < params.size(); i++)
-            {
-                auto param = params[i];
-                String content = param->type().name() + L" " + param->name();
-               
-                if (StageEntry)
-                {
-                    for (auto attr : param->attrs())
-                    {
-                        if (auto builtin_attr = dynamic_cast<const BuiltinAttr*>(attr))
-                        {
-                            content += L" " + GetMetalAttrForBuiltin(builtin_attr->name());
-                        }
-                    }
-                }
-    
-                if (i > 0)
-                    content = L", " + content;
-                sb.append(content);
-            }
-            sb.endline(L')');
-        }
-
-        // generate body
-        visitExpr(sb, funcDecl->body());
-        sb.endline();
-    }
-    else
-    {
-        sb.append(L"// " + funcDecl->return_type()->name() + L" " + funcDecl->name() + L"();\n");
-    }
-}
-
-String MSLGenerator::generate_code(SourceBuilderNew& sb, const AST& ast)
-{
-    using namespace skr::CppSL;
-
-    for (const auto& type : ast.types())
-    {
-        visit(sb, type);
-    }
-    
-    for (const auto& func : ast.funcs())
-    {
-        visit(sb, func);
-    }
-
-    return sb.build(SourceBuilderNew::line_builder_code);
-}
-
-} // namespace skr::CppSL
+} // end namespace skr::CppSL::MSL

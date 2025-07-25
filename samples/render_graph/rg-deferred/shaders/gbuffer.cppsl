@@ -10,7 +10,10 @@ struct [[stage_inout]] VSIn
     float2 uv;
     [[centroid]] float4 normal;
     [[centroid]] float4 tangent;
-    [[nointerpolation]] float4x4 model;
+    [[nointerpolation]] float4 model0;
+    [[nointerpolation]] float4 model1;
+    [[nointerpolation]] float4 model2;
+    [[nointerpolation]] float4 model3;
 };
 
 struct [[stage_inout]] VSOut
@@ -32,7 +35,7 @@ extern ConstantBuffer<RootConstants>& push_constants;
 VSOut vertex(const VSIn input, [[sv_position]] float4& position)
 {
     VSOut output;
-    float4 posW = float4(input.position, 1.0f) * input.model;
+    float4 posW = float4(input.position, 1.0f) * float4x4(input.model0, input.model1,input.model2, input.model3) ;
     float4 posH = posW * push_constants.view_proj;
     output.uv = input.uv;
     output.normal = input.normal;

@@ -105,6 +105,10 @@ namespace SB
             {
                 Engine.AddTaskEmitter("DXC.Compile", new DXCEmitter());
             }
+            if (BuildSystem.TargetOS == OSPlatform.OSX)
+            {
+                Engine.AddTaskEmitter("MSL.Compile", new MSLEmitter());
+            }
             Engine.AddTaskEmitter("CppSL.Compile", new CppSLEmitter());
         }
 

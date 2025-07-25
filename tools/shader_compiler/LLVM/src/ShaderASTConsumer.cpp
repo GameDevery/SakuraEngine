@@ -707,10 +707,12 @@ void ASTConsumer::TranslateLambdaCapturesToParams(const clang::LambdaExpr* x)
         if (!isThis)
         {
             // 1.1  = 生成传值，& 生成 inout
+            auto byRef = capture.getCaptureKind() == clang::LambdaCaptureKind::LCK_ByRef;
+            byRef &= !capture.getCapturedVar()->getType().isConstQualified(); // const&
             auto newParam = translateCaptureToParam(
                 getType(capture.getCapturedVar()->getType()), 
                 ToText(capture.getCapturedVar()->getName()), 
-                capture.getCaptureKind() == clang::LambdaCaptureKind::LCK_ByRef
+                byRef
             );
             FunctionStack::CapturedParamInfo info = {
                 .owner = x,

@@ -48,19 +48,27 @@ namespace SB
                     depend.ExternalFiles.AddRange(DepIncludes);
                 }
 
-                // Get all files under output directory that matches '{SourceName}.*.*.hlsl'
-                var OutputFiles = Directory.GetFiles(OutputDirectory, $"{SourceName}.*.*.hlsl");
+                // Get all files under output directory that matches '{SourceName}.*.*.hlsl' or '{SourceName}.*.*.metal'
+                var OutputFiles = Directory.GetFiles(OutputDirectory, $"{SourceName}.*.*.hlsl")
+                    .Concat(Directory.GetFiles(OutputDirectory, $"{SourceName}.*.*.metal"))
+                    .ToArray();
                 depend.ExternalFiles.AddRange(OutputFiles);
             }, new string[] { Executable, SourceFile }, null);
 
-
-
-            // if (BuildSystem.TargetOS == OSPlatform.Windows)
+            if (BuildSystem.TargetOS == OSPlatform.Windows)
             {
                 var OutputFiles = Directory.GetFiles(OutputDirectory, $"{SourceName}.*.*.hlsl");
                 foreach (var HLSL in OutputFiles)
                 {
                     Changed |= !DXCEmitter.CompileHLSL(Target, HLSL, "", OutputDirectory)!.IsRestored;
+                }
+            }
+            else if (BuildSystem.TargetOS == OSPlatform.OSX)
+            {
+                var OutputFiles = Directory.GetFiles(OutputDirectory, $"{SourceName}.*.*.metal");
+                foreach (var Metal in OutputFiles)
+                {
+                    Changed |= !MSLEmitter.CompileMetal(Target, Metal, "main", OutputDirectory)!.IsRestored;
                 }
             }
 

@@ -519,7 +519,11 @@ void RGRaytracingSampleModule::create_as()
 {
     // Initialize CGPU
     CGPUInstanceDescriptor instance_desc = {
+#if SKR_PLAT_WINDOWS
         .backend = CGPU_BACKEND_D3D12,
+#elif SKR_PLAT_MACOSX
+        .backend = CGPU_BACKEND_METAL,
+#endif
         .enable_debug_layer = true,
         .enable_gpu_based_validation = true,
         .enable_set_name = true

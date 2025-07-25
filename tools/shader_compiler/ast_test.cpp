@@ -216,16 +216,17 @@ void mandelbrot(skr::CppSL::AST& AST)
 int main()
 {
     using namespace skr::CppSL;
-    AST AST = {};
+    ASTDatabase DB;
+    AST AST(DB);
 
     // some_test(AST);
     mandelbrot(AST);
 
-    HLSLGenerator hlsl_generator = {};
+    HLSL::HLSLGenerator hlsl_generator = {};
     SourceBuilderNew hlsl_sb = {};
     std::wcout << hlsl_generator.generate_code(hlsl_sb, AST) << std::endl;
 
-    MSLGenerator msl_generator = {};
+    MSL::MSLGenerator msl_generator = {};
     SourceBuilderNew msl_sb = {};
     std::wcout << msl_generator.generate_code(msl_sb, AST) << std::endl;
 

@@ -24,11 +24,18 @@ struct AnyTypeVarConcept;
 #define VEC_TYPES(N) const TypeDecl* N##2Type = nullptr; const TypeDecl* N##3Type = nullptr; const TypeDecl* N##4Type = nullptr;
 #define MATRIX_TYPES(N) const TypeDecl* N##2x2Type = nullptr; const TypeDecl* N##3x3Type = nullptr; const TypeDecl* N##4x4Type = nullptr; 
 
+struct ASTDatabase
+{
+    ~ASTDatabase();
+    std::vector<Decl*> _decls;
+    std::vector<Stmt*> _stmts;
+    std::vector<Attr*> _attrs;
+};
+
 struct AST
 {
 public:
-    AST();
-    ~AST();
+    AST(ASTDatabase& db);
 
     AccessExpr* Access(Expr* base, Expr* index);
     BinaryExpr* Binary(BinaryOp op, Expr* left, Expr* right);
@@ -98,7 +105,7 @@ public:
     template <typename ATTR, typename... Args>
     inline ATTR* DeclareAttr(Args&&... args) {
         auto attr = new ATTR(std::forward<Args>(args)...);
-        _attrs.emplace_back(attr);
+        db._attrs.emplace_back(attr);
         return attr;
     }
 
@@ -129,8 +136,8 @@ public:
 
     const TypeDecl* GetType(const Name& name) const;
 
-    std::span<Decl* const> decls() const { return _decls; }
-    std::span<Stmt* const> stmts() const { return _stmts; }
+    std::span<Decl* const> decls() const { return db._decls; }
+    std::span<Stmt* const> stmts() const { return db._stmts; }
     std::span<TypeDecl* const> types() const { return _types; }
     const auto& array_types() const { return _arrs; }
     std::span<GlobalVarDecl* const> global_vars() const { return _globals; }
@@ -151,8 +158,7 @@ private:
     const VectorTypeDecl* DeclareVectorType(const TypeDecl* element, uint32_t count, uint32_t alignment);
     const MatrixTypeDecl* DeclareMatrixType(const TypeDecl* element, uint32_t n, uint32_t alignment);
 
-    std::vector<Decl*> _decls;
-    std::vector<Stmt*> _stmts;
+    ASTDatabase& db;
     AccelTypeDecl* _accel = nullptr;
     SamplerDecl* _sampler = nullptr;
     std::map<RayQueryFlags, RayQueryTypeDecl*> _ray_queries;
@@ -169,7 +175,6 @@ private:
     std::vector<MethodDecl*> _methods;
     std::vector<ConstructorDecl*> _ctors;
     std::vector<NamespaceDecl*> _namespaces;
-    std::vector<Attr*> _attrs;
     std::map<std::string, SemanticType> _semantic_map;
     std::map<std::string, InterpolationMode> _interpolation_map;
     
