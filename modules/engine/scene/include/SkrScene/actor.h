@@ -30,6 +30,7 @@ sreflect_struct(
 SKR_SCENE_API Actor
 {
     friend class SActorManager;
+
 public:
     SKR_RC_IMPL();
     virtual ~Actor() SKR_NOEXCEPT;
@@ -38,27 +39,29 @@ public:
     void AttachTo(RCWeak<Actor> parent, EAttachRule rule = EAttachRule::Default);
     void DetachFromParent();
 
-
     // getters & setters
     inline const skr::String& GetDisplayName() const { return display_name; }
     inline void SetDisplayName(const skr::String& name) { display_name = name; }
     inline EActorType GetActorType() const { return actor_type; }
 
-protected:
+    // protected:
     explicit Actor(EActorType type = EActorType::Default) SKR_NOEXCEPT;
-    skr::String display_name; // for editor, profiler, and runtime dump
+    skr::String display_name;             // for editor, profiler, and runtime dump
     skr::GUID guid = skr::GUID::Create(); // guid for each actor, used to identify actors in the scene
+
     skr::InlineVector<sugoi_entity_t, 1> transform_entities;
+
     skr::Vector<skr::RC<Actor>> children;
     skr::RC<Actor> _parent = nullptr;
     EAttachRule attach_rule = EAttachRule::Default;
     EActorType actor_type = EActorType::Default;
 };
 
-
-class SKR_SCENE_API SActorManager {
+class SKR_SCENE_API SActorManager
+{
 public:
-    static SActorManager& GetInstance() {
+    static SActorManager& GetInstance()
+    {
         static SActorManager instance;
         return instance;
     }
@@ -92,12 +95,12 @@ public:
     friend class SActorManager;
     SKR_RC_IMPL();
 
-
 protected:
-    MeshActor() : Actor(EActorType::Mesh) {}
-
+    MeshActor()
+        : Actor(EActorType::Mesh)
+    {
+    }
 };
-
 
 // Actor for Skeletal Meshes
 class SKR_SCENE_API SkelMeshActor : public MeshActor
@@ -105,9 +108,13 @@ class SKR_SCENE_API SkelMeshActor : public MeshActor
 public:
     friend class SActorManager;
     SKR_RC_IMPL();
-    
+
 protected:
-    SkelMeshActor() : MeshActor() {actor_type = EActorType::SkelMesh;}
+    SkelMeshActor()
+        : MeshActor()
+    {
+        actor_type = EActorType::SkelMesh;
+    }
 };
 
 } // namespace skr
