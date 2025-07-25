@@ -260,6 +260,33 @@ public:
     void finalize() SKR_NOEXCEPT;
 
     template <typename T>
+    RandomComponentReader<const T> random_read()
+    {
+        RandomComponentReader<T> reader;
+        reader.Type = sugoi_id_of<std::decay_t<T>>::get();
+        reader.World = this;
+        return reader;
+    }
+
+    template <typename T>
+    RandomComponentWriter<const T> random_write()
+    {
+        RandomComponentWriter<T> writer;
+        writer.Type = sugoi_id_of<std::decay_t<T>>::get();
+        writer.World = this;
+        return writer;
+    }
+
+    template <typename T>
+    RandomComponentReadWrite<const T> random_readwrite()
+    {
+        RandomComponentReadWrite<T> reader;
+        reader.Type = sugoi_id_of<std::decay_t<T>>::get();
+        reader.World = this;
+        return reader;
+    }
+
+    template <typename T>
         requires std::is_copy_constructible_v<T>
     EntityQuery* dispatch_task(T TaskBody, uint32_t batch_size, sugoi_query_t* reuse_query)
     {

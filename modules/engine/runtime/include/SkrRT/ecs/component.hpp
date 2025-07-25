@@ -93,13 +93,6 @@ private:
 
 struct ComponentAccessorBase
 {
-public:
-    sugoi_storage_t* World;
-    // SubQuery BoundQuery;
-    TypeIndex Type;
-    sugoi_chunk_view_t CachedView;
-    void* CachedPtr;
-
 protected:
     template <class Storage>
     SKR_FORCEINLINE Storage* get(Entity entity)
@@ -129,6 +122,13 @@ protected:
         SKR_ASSERT(Result);
         return *Result;
     }
+
+    friend struct World;
+    sugoi_storage_t* World;
+    // SubQuery BoundQuery;
+    TypeIndex Type;
+    sugoi_chunk_view_t CachedView;
+    void* CachedPtr;
 };
 
 template <class T>
