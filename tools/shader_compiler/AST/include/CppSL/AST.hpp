@@ -105,7 +105,7 @@ public:
     template <typename ATTR, typename... Args>
     inline ATTR* DeclareAttr(Args&&... args) {
         auto attr = new ATTR(std::forward<Args>(args)...);
-        db._attrs.emplace_back(attr);
+        emplace_attr(attr);
         return attr;
     }
 
@@ -136,8 +136,8 @@ public:
 
     const TypeDecl* GetType(const Name& name) const;
 
-    std::span<Decl* const> decls() const { return db._decls; }
-    std::span<Stmt* const> stmts() const { return db._stmts; }
+    std::span<Decl* const> decls() const { return _decls; }
+    std::span<Stmt* const> stmts() const { return _stmts; }
     std::span<TypeDecl* const> types() const { return _types; }
     const auto& array_types() const { return _arrs; }
     std::span<GlobalVarDecl* const> global_vars() const { return _globals; }
@@ -157,6 +157,13 @@ private:
 
     const VectorTypeDecl* DeclareVectorType(const TypeDecl* element, uint32_t count, uint32_t alignment);
     const MatrixTypeDecl* DeclareMatrixType(const TypeDecl* element, uint32_t n, uint32_t alignment);
+
+    void emplace_stmt(Stmt* stmt);
+    void emplace_decl(Decl* decl);
+    void emplace_attr(Attr* attr);
+    std::vector<Decl*> _decls;
+    std::vector<Stmt*> _stmts;
+    std::vector<Attr*> _attrs;
 
     ASTDatabase& db;
     AccelTypeDecl* _accel = nullptr;
