@@ -1,6 +1,5 @@
-// The SceneSample_Simple Model
+// The SceneSample_Simple: The Principle for Scene Transform Update task
 #include "SkrBase/math/gen/misc/transform.hpp"
-#
 #include <SkrCore/module/module_manager.hpp>
 #include <SkrCore/log.h>
 #include <SkrScene/actor.h>
