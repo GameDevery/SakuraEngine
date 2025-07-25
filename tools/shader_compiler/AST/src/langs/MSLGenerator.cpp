@@ -102,6 +102,15 @@ String MSLGenerator::GetTypeName(const TypeDecl* type)
     return type->name();
 }
 
+String MSLGenerator::GetFunctionName(const FunctionDecl* funcDecl)
+{
+    if (const StageAttr* StageEntry = FindAttr<StageAttr>(funcDecl->attrs()))
+    {
+        return funcDecl->name() + L"____impl____";
+    }
+    return funcDecl->name();
+}
+
 void MSLGenerator::VisitGlobalResource(SourceBuilderNew& sb, const skr::CppSL::VarDecl* var)
 {
     // null option
@@ -136,29 +145,11 @@ void MSLGenerator::VisitVariable(SourceBuilderNew& sb, const skr::CppSL::VarDecl
         }
     }
 }
-
+ 
+// MSLGenerator generates semantics at wrapper so we need not deal with system value attributes here
 void MSLGenerator::VisitParameter(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* funcDecl, const skr::CppSL::ParamVarDecl* param)
 {
-    const StageAttr* StageEntry = FindAttr<StageAttr>(funcDecl->attrs());
-    auto AsSemantic = FindAttr<SemanticAttr>(param->attrs());
     auto qualifier = param->qualifier();
-
-    String semantic_string = L"";
-    if (StageEntry && AsSemantic)
-    {
-        if (SemanticAttr::GetSemanticQualifier(AsSemantic->semantic(), StageEntry->stage(), qualifier))
-        {
-            semantic_string = L" " + GetSystemValueString(AsSemantic->semantic());
-        }
-        else
-        {
-            param->ast().ReportFatalError(std::format(L"Invalid semantic {} for param {} within stage {}",
-                GetSystemValueString(AsSemantic->semantic()),
-                param->name(),
-                (uint32_t)StageEntry->stage()));
-        }
-    }
-
     String prefix = L"", postfix = L"";
     switch (qualifier)
     {
@@ -166,12 +157,12 @@ void MSLGenerator::VisitParameter(SourceBuilderNew& sb, const skr::CppSL::Functi
         prefix = L"const ";
         break;
     case EVariableQualifier::Out:
-        prefix = !AsSemantic ? L"thread " : L"";
-        postfix = !AsSemantic ? L"&" : L"";
+        prefix = L"thread ";
+        postfix = L"&";
         break;
     case EVariableQualifier::Inout:
-        prefix = !AsSemantic ? L"thread " : L"";
-        postfix = !AsSemantic ? L"&" : L"";
+        prefix = L"thread ";
+        postfix = L"&";
         break;
     case EVariableQualifier::None:
         prefix = L"";
@@ -179,7 +170,6 @@ void MSLGenerator::VisitParameter(SourceBuilderNew& sb, const skr::CppSL::Functi
     }
     String content = prefix + GetQualifiedTypeName(&param->type()) + postfix + L" " + param->name();
     sb.append(content);
-    sb.append(semantic_string);
 }
 
 void MSLGenerator::VisitField(SourceBuilderNew& sb, const skr::CppSL::TypeDecl* typeDecl, const skr::CppSL::FieldDecl* field)
@@ -224,26 +214,42 @@ void MSLGenerator::VisitConstructExpr(SourceBuilderNew& sb, const ConstructExpr*
     if (args.empty())
         args = ctorExpr->args();
 
-    sb.append(GetQualifiedTypeName(ctorExpr->type()) + L"(");
-    for (size_t i = 0; i < args.size(); i++)
+    if (auto AsArray = dynamic_cast<const ArrayTypeDecl*>(ctorExpr->type()))
     {
-        auto arg = args[i];
-        if (i > 0)
+        const auto N = AsArray->size() / AsArray->element()->size();
+        sb.append(GetTypeName(AsArray) + L"{");
+        ;
+        for (size_t i = 0; i < ctorExpr->args().size(); i++)
         {
-            sb.append(L", ");
+            auto arg = ctorExpr->args()[i];
+            if (i > 0)
+            {
+                sb.append(L", ");
+            }
+            visitExpr(sb, arg);
         }
-        visitExpr(sb, arg);
+        sb.append(L"}");
     }
-    sb.append(L")");
+    else
+    {
+        sb.append(GetQualifiedTypeName(ctorExpr->type()) + L"(");
+        for (size_t i = 0; i < args.size(); i++)
+        {
+            auto arg = args[i];
+            if (i > 0)
+            {
+                sb.append(L", ");
+            }
+            visitExpr(sb, arg);
+        }
+        sb.append(L")");
+    }
 }
 
+// MSLGenerator generates stage attribute at wrapper so we need not deal with stage attributes here
 void MSLGenerator::GenerateFunctionAttributes(SourceBuilderNew& sb, const FunctionDecl* funcDecl)
 {
-    if (const StageAttr* StageEntry = FindAttr<StageAttr>(funcDecl->attrs()))
-    {
-        sb.append(GetStageName(StageEntry->stage()));
-        sb.append(L" ");
-    }
+
 }
 
 static const skr::CppSL::String kMSLHeader = LR"(
@@ -260,9 +266,8 @@ template <typename T> using RWStructuredBuffer = Buffer<T, metal::access::read_w
 template <typename T> void buffer_write(RWStructuredBuffer<T> buffer, uint index, T value) { buffer.cgpu_buffer_data[index] = value; }
 template <typename T> T buffer_read(RWStructuredBuffer<T> buffer, uint index) { return buffer.cgpu_buffer_data[index]; }
 
-template <typename T, metal::access a = metal::access::read>
-struct Texture2D { metal::texture2d<T, a> cgpu_texture; };
-
+template <typename T, metal::access a = metal::access::sample> struct Texture2D { metal::texture2d<T, a> cgpu_texture; };
+template <typename T> using RWTexture2D = Texture2D<T, metal::access::write>;
 struct SamplerState { metal::sampler cgpu_sampler; };
 
 // Math intrinsics
@@ -285,10 +290,72 @@ template<typename T> auto is_inf(T x) { return metal::isinf(x); }
 template<typename T> auto is_nan(T x) { return metal::isnan(x); }
 template<typename T> auto length_squared(T v) { return metal::dot(v, v); }
 
-// Texture sampling functions
-template<typename T, metal::access a>
-metal::vec<T, 4> sample2d(SamplerState sampler, Texture2D<T, a> texture, float2 uv) { return texture.cgpu_texture.sample(sampler.cgpu_sampler, uv); }
+// Texture functions
+template<typename T>
+metal::vec<T, 4> sample2d(SamplerState sampler, Texture2D<T, metal::access::sample> texture, float2 uv) { 
+    return texture.cgpu_texture.sample(sampler.cgpu_sampler, uv); 
+}
 
+template<typename T>
+metal::vec<T, 4> texture_read(Texture2D<T, metal::access::read> texture, uint2 coord) {
+    return texture.cgpu_texture.read(coord);
+}
+
+template<typename T>
+metal::vec<T, 4> texture_read(Texture2D<T, metal::access::sample> texture, uint2 coord) {
+    return texture.cgpu_texture.read(coord);
+}
+
+template<typename T>
+void texture_write(Texture2D<T, metal::access::write> texture, uint2 coord, metal::vec<T, 4> value) {
+    texture.cgpu_texture.write(value, coord);
+}
+
+// Ray tracing support
+struct AccelerationStructure { metal::raytracing::instance_acceleration_structure as; };
+using QueryFlags = uint32_t;
+
+template <QueryFlags f>
+struct RayQuery {
+    metal::raytracing::intersector<metal::raytracing::triangle_data, metal::raytracing::instancing> intersector;
+    metal::raytracing::ray current_ray;
+    typename metal::raytracing::intersector<metal::raytracing::triangle_data, metal::raytracing::instancing>::result_type result;
+    bool has_result = false;
+};
+
+// Ray query macros
+#define ray_query_trace_ray_inline(q, _as, mask, r) \
+    do { \
+        float3 origin = float3((r)._origin[0], (r)._origin[1], (r)._origin[2]); \
+        float3 direction = float3((r)._dir[0], (r)._dir[1], (r)._dir[2]); \
+        (q).current_ray = metal::raytracing::ray(origin, direction, (r).t_min, (r).t_max); \
+        (q).result = (q).intersector.intersect((q).current_ray, (_as).as, mask); \
+        (q).has_result = true; \
+    } while(0)
+
+#define ray_query_proceed(q) \
+    ((q).has_result && (q).result.type != metal::raytracing::intersection_type::none)
+
+#define ray_query_committed_status(q) \
+    ((q).result.type == metal::raytracing::intersection_type::triangle ? 1 : 0)
+
+#define ray_query_committed_triangle_bary(q) \
+    float2((q).result.triangle_barycentric_coord.x, (q).result.triangle_barycentric_coord.y)
+
+#define ray_query_committed_instance_id(q) \
+    ((q).result.instance_id)
+
+#define ray_query_committed_primitive_id(q) \
+    ((q).result.primitive_id)
+
+#define ray_query_committed_ray_t(q) \
+    ((q).result.distance)
+
+#define ray_query_world_ray_origin(q) \
+    float3((q).current_ray.origin)
+
+#define ray_query_world_ray_direction(q) \
+    float3((q).current_ray.direction)
 )";
 
 void MSLGenerator::RecordBuiltinHeader(SourceBuilderNew& sb, const AST& ast)
@@ -301,7 +368,592 @@ void MSLGenerator::RecordBuiltinHeader(SourceBuilderNew& sb, const AST& ast)
 
 void MSLGenerator::GenerateKernelWrapper(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* funcDecl)
 {
+    const StageAttr* stageAttr = FindAttr<StageAttr>(funcDecl->attrs());
+    if (!stageAttr)
+        return;
+    
+    // Step 1: Extract all parameters and flatten struct fields
+    struct FieldInfo {
+        const ParamVarDecl* param;
+        const FieldDecl* field;  // null if not from struct
+        String fullName;
+        EVariableQualifier qualifier;
+        const TypeDecl* type;
+        SemanticType semantic;
+        bool hasInterpolation;
+        InterpolationMode interpolation;
+    };
+    
+    std::vector<FieldInfo> allFields;
+    std::vector<const ParamVarDecl*> resourceParams;
+    
+    // Extract fields from all parameters
+    for (auto param : funcDecl->parameters())
+    {
+        if (auto structType = dynamic_cast<const StructureTypeDecl*>(&param->type()))
+        {
+            if (dynamic_cast<const ResourceTypeDecl*>(structType))
+            {
+                // Resource parameters stay as-is
+                resourceParams.push_back(param);
+            }
+            else if (FindAttr<StageInoutAttr>(structType->attrs()))
+            {
+                // Flatten struct fields for stage_inout structs
+                for (auto field : structType->fields())
+                {
+                    FieldInfo info;
+                    info.param = param;
+                    info.field = field;
+                    info.fullName = param->name() + L"_" + field->name();
+                    info.qualifier = param->qualifier();
+                    info.type = &field->type();
+                    
+                    // Get semantic from field
+                    if (auto semantic = FindAttr<SemanticAttr>(field->attrs()))
+                    {
+                        info.semantic = semantic->semantic();
+                    }
+                    else
+                    {
+                        info.semantic = SemanticType::Invalid;
+                    }
+                    
+                    // Get interpolation from field
+                    if (auto interp = FindAttr<InterpolationAttr>(field->attrs()))
+                    {
+                        info.hasInterpolation = true;
+                        info.interpolation = interp->mode();
+                    }
+                    else
+                    {
+                        info.hasInterpolation = false;
+                    }
+                    
+                    allFields.push_back(info);
+                }
+            }
+        }
+        else if (dynamic_cast<const ResourceTypeDecl*>(&param->type()))
+        {
+            // Resource parameters stay as-is
+            resourceParams.push_back(param);
+        }
+        else
+        {
+            // Non-struct parameters
+            FieldInfo info;
+            info.param = param;
+            info.field = nullptr;
+            info.fullName = param->name();
+            info.qualifier = param->qualifier();
+            info.type = &param->type();
+            
+            // Get semantic from parameter
+            if (auto semantic = FindAttr<SemanticAttr>(param->attrs()))
+            {
+                info.semantic = semantic->semantic();
+            }
+            else
+            {
+                info.semantic = SemanticType::Invalid;
+            }
+            
+            info.hasInterpolation = false;
+            
+            allFields.push_back(info);
+        }
+    }
+    
+    // Always generate wrapper for consistency
+    
+    // Step 2: Categorize fields based on semantics and qualifiers
+    std::vector<FieldInfo> inputFields;
+    std::vector<FieldInfo> outputFields;
+    std::vector<FieldInfo> standaloneFields; // Fields that can't be in structs (compute shader attributes)
+    
+    // Check if certain semantics must be standalone (can't be in structs)
+    auto isStandaloneSemantic = [](SemanticType semantic, ShaderStage stage) -> bool {
+        if (stage == ShaderStage::Vertex)
+            return semantic == SemanticType::VertexID;
+        if (stage == ShaderStage::Fragment)
+            return true;
+        if (stage == ShaderStage::Compute)
+        {
+            // Compute shader thread/group attributes must be standalone
+            return semantic == SemanticType::ThreadID ||
+                   semantic == SemanticType::GroupID ||
+                   semantic == SemanticType::ThreadPositionInGroup ||
+                   semantic == SemanticType::ThreadIndexInGroup;
+        }
+        return false;
+    };
+    
+    for (const auto& field : allFields)
+    {
+        // Check if this field must be standalone
+        if (field.semantic != SemanticType::Invalid && 
+            isStandaloneSemantic(field.semantic, stageAttr->stage()))
+        {
+            standaloneFields.push_back(field);
+            continue;
+        }
+        
+        bool isInput = false;
+        bool isOutput = false;
+        
+        // Use SemanticAttr::GetSemanticQualifier to determine direction
+        if (field.semantic != SemanticType::Invalid)
+        {
+            EVariableQualifier semanticQual = field.qualifier;
+            if (SemanticAttr::GetSemanticQualifier(field.semantic, stageAttr->stage(), semanticQual))
+            {
+                if (semanticQual == EVariableQualifier::None || semanticQual == EVariableQualifier::Const)
+                {
+                    isInput = true;
+                }
+                else if (semanticQual == EVariableQualifier::Out || semanticQual == EVariableQualifier::Inout)
+                {
+                    isOutput = true;
+                }
+                if (semanticQual == EVariableQualifier::Inout)
+                {
+                    isInput = true;
+                }
+            }
+        }
+        else
+        {
+            // No semantic, use parameter qualifier
+            if (field.qualifier == EVariableQualifier::None || field.qualifier == EVariableQualifier::Const)
+            {
+                isInput = true;
+            }
+            else if (field.qualifier == EVariableQualifier::Out || field.qualifier == EVariableQualifier::Inout)
+            {
+                isOutput = true;
+            }
+            if (field.qualifier == EVariableQualifier::Inout)
+            {
+                isInput = true;
+            }
+        }
+        
+        if (isInput)
+            inputFields.push_back(field);
+        if (isOutput)
+            outputFields.push_back(field);
+    }
+    
+    // Generate input struct
+    String inputStructName = funcDecl->name() + L"_in";
+    if (!inputFields.empty())
+    {
+        sb.append(L"struct ");
+        sb.append(inputStructName);
+        sb.endline(L" {");
+        sb.indent([&]() {
+            uint32_t attrIndex = 0;
+            for (const auto& field : inputFields)
+            {
+                sb.append(GetQualifiedTypeName(field.type));
+                sb.append(L" ");
+                sb.append(field.fullName);
+                
+                // Add attributes
+                if (field.semantic != SemanticType::Invalid)
+                {
+                    sb.append(L" ");
+                    sb.append(GetSystemValueString(field.semantic));
+                }
+                else if (stageAttr->stage() == ShaderStage::Vertex)
+                {
+                    sb.append(L" [[attribute(");
+                    sb.append(std::to_wstring(attrIndex++));
+                    sb.append(L")]]");
+                }
+                else
+                {
+                    // Fragment/compute inputs need user() attribute
+                    if (field.hasInterpolation)
+                    {
+                        sb.append(L" ");
+                        sb.append(GetInterpolationString(field.interpolation));
+                    }
+                    sb.append(L" [[user(");
+                    sb.append(field.fullName);
+                    sb.append(L")]]");
+                }
+                
+                sb.append(L";");
+                sb.endline();
+            }
+        });
+        sb.append(L"};");
+        sb.endline();
+    }
+    
+    // Generate output struct
+    String outputStructName = funcDecl->name() + L"_out";
+    bool hasOutput = !outputFields.empty() || funcDecl->return_type()->name() != L"void";
+    
+    if (hasOutput)
+    {
+        sb.append(L"struct ");
+        sb.append(outputStructName);
+        sb.endline(L" {");
+        sb.indent([&]() {
+            // Add output fields
+            for (const auto& field : outputFields)
+            {
+                sb.append(GetQualifiedTypeName(field.type));
+                sb.append(L" ");
+                sb.append(field.fullName);
+                
+                // Add attributes
+                if (field.hasInterpolation)
+                {
+                    sb.append(L" ");
+                    sb.append(GetInterpolationString(field.interpolation));
+                }
+                
+                if (field.semantic != SemanticType::Invalid)
+                {
+                    sb.append(L" ");
+                    sb.append(GetSystemValueString(field.semantic));
+                }
+                else
+                {
+                    sb.append(L" [[user(");
+                    sb.append(field.fullName);
+                    sb.append(L")]]");
+                }
+                
+                sb.append(L";");
+                sb.endline();
+            }
+            
+            // Add return value if not void
+            if (funcDecl->return_type()->name() != L"void")
+            {
+                // Check if return type is a struct that needs to be flattened
+                if (auto returnStruct = dynamic_cast<const StructureTypeDecl*>(funcDecl->return_type()))
+                {
+                    // Flatten struct fields from return value
+                    for (auto field : returnStruct->fields())
+                    {
+                        sb.append(GetQualifiedTypeName(&field->type()));
+                        sb.append(L" result_");
+                        sb.append(field->name());
+                        
+                        // Add attributes from field
+                        if (auto interpolation = FindAttr<InterpolationAttr>(field->attrs()))
+                        {
+                            sb.append(L" ");
+                            sb.append(GetInterpolationString(interpolation->mode()));
+                        }
+                        
+                        if (auto semantic = FindAttr<SemanticAttr>(field->attrs()))
+                        {
+                            sb.append(L" ");
+                            sb.append(GetSystemValueString(semantic->semantic()));
+                        }
+                        else
+                        {
+                            sb.append(L" [[user(result_");
+                            sb.append(field->name());
+                            sb.append(L")]]");
+                        }
+                        
+                        sb.append(L";");
+                        sb.endline();
+                    }
+                }
+                else
+                {
+                    // Non-struct return type
+                    sb.append(GetQualifiedTypeName(funcDecl->return_type()));
+                    sb.append(L" result");
+                    
+                    // Add semantic for return value
+                    if (stageAttr->stage() == ShaderStage::Fragment)
+                    {
+                        sb.append(L" [[color(0)]]");
+                    }
+                    else if (stageAttr->stage() == ShaderStage::Vertex)
+                    {
+                        sb.append(L" [[position]]");
+                    }
+                    
+                    sb.append(L";");
+                    sb.endline();
+                }
+            }
+        });
+        sb.append(L"};");
+        sb.endline();
+    }
+    
+    // Generate wrapper function
+    sb.append(GetStageName(stageAttr->stage()));
+    sb.append(L" ");
+    sb.append(hasOutput ? outputStructName : L"void");
+    sb.append(L" ");
+    sb.append(funcDecl->name());
+    sb.append(L"(");
+    
+    bool first = true;
+    
+    // Add input struct parameter
+    if (!inputFields.empty())
+    {
+        sb.append(inputStructName);
+        sb.append(L" in [[stage_in]]");
+        first = false;
+    }
+    
+    // Add standalone parameters (compute shader thread/group attributes)
+    for (const auto& field : standaloneFields)
+    {
+        if (!first) sb.append(L", ");
+        first = false;
+        
+        sb.append(GetQualifiedTypeName(field.type));
+        sb.append(L" ");
+        sb.append(field.fullName);
+        sb.append(L" ");
+        sb.append(GetSystemValueString(field.semantic));
+    }
+    
+    // Add resource parameters
+    for (auto param : resourceParams)
+    {
+        if (!first) sb.append(L", ");
+        first = false;
+        VisitParameter(sb, funcDecl, param);
+    }
+    
+    sb.append(L")");
+    sb.endline();
+    sb.append(L"{");
+    sb.endline();
+    sb.indent([&]() {
+        // Initialize output struct if needed
+        if (hasOutput)
+        {
+            sb.append(outputStructName);
+            sb.append(L" out = {};");
+            sb.endline();
+        }
+        
+        // Prepare struct parameters
+        sb.append(L"// Reconstruct struct parameters");
+        sb.endline();
+        for (auto param : funcDecl->parameters())
+        {
+            if (auto structType = dynamic_cast<const StructureTypeDecl*>(&param->type()))
+            {
+                if (!dynamic_cast<const ResourceTypeDecl*>(structType))
+                {
+                    // Create struct instance
+                    sb.append(GetQualifiedTypeName(&param->type()));
+                    sb.append(L" _");
+                    sb.append(param->name());
+                    sb.append(L";");
+                    sb.endline();
+                    
+                    // Assign each field
+                    for (auto field : structType->fields())
+                    {
+                        String fieldFullName = param->name() + L"_" + field->name();
+                        
+                        // Find this field in our categorized lists
+                        bool isOutput = false;
+                        bool isStandalone = false;
+                        
+                        for (const auto& outField : outputFields)
+                        {
+                            if (outField.fullName == fieldFullName)
+                            {
+                                isOutput = true;
+                                break;
+                            }
+                        }
+                        
+                        for (const auto& standaloneField : standaloneFields)
+                        {
+                            if (standaloneField.fullName == fieldFullName)
+                            {
+                                isStandalone = true;
+                                break;
+                            }
+                        }
+                        
+                        // Skip pure output fields
+                        if (isOutput && param->qualifier() == EVariableQualifier::Out)
+                            continue;
+                        
+                        sb.append(L"_");
+                        sb.append(param->name());
+                        sb.append(L".");
+                        sb.append(field->name());
+                        sb.append(L" = ");
+                        
+                        if (isStandalone)
+                        {
+                            sb.append(fieldFullName);
+                        }
+                        else
+                        {
+                            sb.append(L"in.");
+                            sb.append(fieldFullName);
+                        }
+                        sb.append(L";");
+                        sb.endline();
+                    }
+                }
+            }
+        }
+        
+        // Call original function
+        sb.append(L"// Call original function");
+        sb.endline();
+        
+        // Handle return value
+        bool hasStructReturn = false;
+        if (funcDecl->return_type()->name() != L"void")
+        {
+            if (auto returnStruct = dynamic_cast<const StructureTypeDecl*>(funcDecl->return_type()))
+            {
+                hasStructReturn = true;
+                sb.append(L"auto _result = ");
+            }
+            else
+            {
+                if (hasOutput)
+                    sb.append(L"out.result = ");
+                else
+                    sb.append(L"return ");
+            }
+        }
+        
+        sb.append(funcDecl->name() + L"____impl____(");
+        
+        // Build parameter list for original function call
+        bool firstParam = true;
+        for (auto param : funcDecl->parameters())
+        {
+            if (dynamic_cast<const ResourceTypeDecl*>(&param->type()))
+            {
+                // Pass resource parameters directly
+                if (!firstParam) sb.append(L", ");
+                firstParam = false;
+                sb.append(param->name());
+            }
+            else if (auto structType = dynamic_cast<const StructureTypeDecl*>(&param->type()))
+            {
+                if (!dynamic_cast<const ResourceTypeDecl*>(structType))
+                {
+                    // Pass the prepared struct variable
+                    if (!firstParam) sb.append(L", ");
+                    firstParam = false;
+                    sb.append(L"_");
+                    sb.append(param->name());
+                }
+            }
+            else
+            {
+                // Non-struct parameters
+                if (!firstParam) sb.append(L", ");
+                firstParam = false;
+                
+                // Find this parameter in our lists
+                bool foundInInput = false;
+                bool foundInStandalone = false;
+                
+                // Check input fields
+                for (const auto& field : inputFields)
+                {
+                    if (field.param == param && field.field == nullptr)
+                    {
+                        sb.append(L"in.");
+                        sb.append(param->name());
+                        foundInInput = true;
+                        break;
+                    }
+                }
+                
+                // Check standalone fields
+                if (!foundInInput)
+                {
+                    for (const auto& field : standaloneFields)
+                    {
+                        if (field.param == param && field.field == nullptr)
+                        {
+                            sb.append(field.fullName);
+                            foundInStandalone = true;
+                            break;
+                        }
+                    }
+                }
+                
+                // Check output fields
+                if (!foundInInput && !foundInStandalone)
+                {
+                    // Must be output-only
+                    sb.append(L"out.");
+                    sb.append(param->name());
+                }
+            }
+        }
+        
+        sb.append(L");");
+        sb.endline();
+        
+        // Handle struct return value - copy fields to output
+        if (hasStructReturn)
+        {
+            if (auto returnStruct = dynamic_cast<const StructureTypeDecl*>(funcDecl->return_type()))
+            {
+                sb.append(L"// Copy return struct fields to output");
+                sb.endline();
+                for (auto field : returnStruct->fields())
+                {
+                    sb.append(L"out.result_");
+                    sb.append(field->name());
+                    sb.append(L" = _result.");
+                    sb.append(field->name());
+                    sb.append(L";");
+                    sb.endline();
+                }
+            }
+        }
+        
+        // Copy output values from parameters to output struct
+        for (const auto& field : outputFields)
+        {
+            if (field.param->qualifier() == EVariableQualifier::Out || 
+                field.param->qualifier() == EVariableQualifier::Inout)
+            {
+                // This field needs to be copied to output
+                // (Already handled by struct return for now)
+            }
+        }
+        
+        // Return output struct
+        if (hasOutput)
+        {
+            sb.append(L"return out;");
+            sb.endline();
+        }
+    });
+    sb.append(L"}");
+    sb.endline();
+}
 
+bool MSLGenerator::SupportConstructor() const
+{
+    return true;
 }
 
 void MSLGenerator::GenerateSRTs(SourceBuilderNew& sb, const AST& ast)

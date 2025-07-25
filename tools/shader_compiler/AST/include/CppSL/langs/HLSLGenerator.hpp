@@ -7,6 +7,7 @@ struct HLSLGenerator : public CppLikeShaderGenerator
 {
 public:
     String GetTypeName(const TypeDecl* type) override;
+    void VisitBinaryExpr(SourceBuilderNew& sb, const BinaryExpr* binary) override;
     void VisitConstructExpr(SourceBuilderNew& sb, const ConstructExpr* expr) override;
     void RecordBuiltinHeader(SourceBuilderNew& sb, const AST& ast) override;
     void VisitAccessExpr(SourceBuilderNew& sb, const AccessExpr* expr) override;
@@ -17,7 +18,8 @@ public:
     void VisitConstructor(SourceBuilderNew& sb, const ConstructorDecl* ctor, FunctionStyle style) override;
     void GenerateFunctionAttributes(SourceBuilderNew& sb, const FunctionDecl* func) override;
     void GenerateFunctionSignaturePostfix(SourceBuilderNew& sb, const FunctionDecl* func) override;
-
+    bool SupportConstructor() const override;
+    
 private:
     void GenerateArrayHelpers(SourceBuilderNew& sb, const AST& ast);
 };

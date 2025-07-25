@@ -33,131 +33,14 @@ void CppLikeShaderGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::S
     if (auto binary = dynamic_cast<const BinaryExpr*>(stmt))
     {
         sb.append(L"(");
-
-        auto ltype = binary->left()->type();
-        auto rtype = binary->right()->type();
-        bool is_vec_mat_op = (ltype->is_vector() && rtype->is_matrix()) || (ltype->is_matrix() && rtype->is_vector());
-        if (is_vec_mat_op && (binary->op() == BinaryOp::MUL))
-        {
-            sb.append(L"mul(");
-            visitExpr(sb, binary->left());
-            sb.append(L", ");
-            visitExpr(sb, binary->right());
-            sb.append(L")");
-        }
-        else if (is_vec_mat_op && (binary->op() == BinaryOp::MUL_ASSIGN))
-        {
-            visitExpr(sb, binary->left());
-            sb.append(L" = mul(");
-            visitExpr(sb, binary->left());
-            sb.append(L", ");
-            visitExpr(sb, binary->right());
-            sb.append(L")");
-        }
-        else
-        {
-            visitExpr(sb, binary->left());
-            auto op = binary->op();
-            String op_name = L"";
-            switch (op)
-            {
-            case BinaryOp::ADD:
-                op_name = L" + ";
-                break;
-            case BinaryOp::SUB:
-                op_name = L" - ";
-                break;
-            case BinaryOp::MUL:
-                op_name = L" * ";
-                break;
-            case BinaryOp::DIV:
-                op_name = L" / ";
-                break;
-            case BinaryOp::MOD:
-                op_name = L" % ";
-                break;
-
-            case BinaryOp::BIT_AND:
-                op_name = L" & ";
-                break;
-            case BinaryOp::BIT_OR:
-                op_name = L" | ";
-                break;
-            case BinaryOp::BIT_XOR:
-                op_name = L" ^ ";
-                break;
-            case BinaryOp::SHL:
-                op_name = L" << ";
-                break;
-            case BinaryOp::SHR:
-                op_name = L" >> ";
-                break;
-            case BinaryOp::AND:
-                op_name = L" && ";
-                break;
-            case BinaryOp::OR:
-                op_name = L" || ";
-                break;
-
-            case BinaryOp::LESS:
-                op_name = L" < ";
-                break;
-            case BinaryOp::GREATER:
-                op_name = L" > ";
-                break;
-            case BinaryOp::LESS_EQUAL:
-                op_name = L" <= ";
-                break;
-            case BinaryOp::GREATER_EQUAL:
-                op_name = L" >= ";
-                break;
-            case BinaryOp::EQUAL:
-                op_name = L" == ";
-                break;
-            case BinaryOp::NOT_EQUAL:
-                op_name = L" != ";
-                break;
-
-            case BinaryOp::ASSIGN:
-                op_name = L" = ";
-                break;
-            case BinaryOp::ADD_ASSIGN:
-                op_name = L" += ";
-                break;
-            case BinaryOp::SUB_ASSIGN:
-                op_name = L" -= ";
-                break;
-            case BinaryOp::MUL_ASSIGN:
-                op_name = L" *= ";
-                break;
-            case BinaryOp::DIV_ASSIGN:
-                op_name = L" /= ";
-                break;
-            case BinaryOp::MOD_ASSIGN:
-                op_name = L" %= ";
-                break;
-            case BinaryOp::BIT_OR_ASSIGN:
-                op_name = L" |= ";
-                break;
-            case BinaryOp::BIT_XOR_ASSIGN:
-                op_name = L" ^= ";
-                break;
-            case BinaryOp::SHL_ASSIGN:
-                op_name = L" <<= ";
-                break;
-            default:
-                assert(false && "Unsupported binary operation");
-            }
-            sb.append(op_name);
-            visitExpr(sb, binary->right());
-        }
-
+        VisitBinaryExpr(sb, binary);
         sb.append(L")");
     }
     else if (auto bitwiseCast = dynamic_cast<const BitwiseCastExpr*>(stmt))
     {
         auto _type = bitwiseCast->type();
-        sb.append(L"bit_cast<" + GetQualifiedTypeName(_type) + L">(");;
+        sb.append(L"bit_cast<" + GetQualifiedTypeName(_type) + L">(");
+        ;
         visitExpr(sb, bitwiseCast->expr());
         sb.append(L")");
     }
@@ -168,7 +51,7 @@ void CppLikeShaderGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::S
     else if (auto block = dynamic_cast<const CompoundStmt*>(stmt))
     {
         sb.endline(L'{');
-        sb.indent([&](){
+        sb.indent([&]() {
             for (auto expr : block->children())
             {
                 visitExpr(sb, expr);
@@ -235,7 +118,7 @@ void CppLikeShaderGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::S
         else
         {
             visitExpr(sb, callee);
-            
+
             sb.append(L"(");
             for (size_t i = 0; i < methodCall->args().size(); i++)
             {
@@ -302,7 +185,7 @@ void CppLikeShaderGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::S
         if (forStmt->init())
             visitExpr(sb, forStmt->init());
         sb.append(L"; ");
-        
+
         if (forStmt->cond())
             visitExpr(sb, forStmt->cond());
         sb.append(L"; ");
@@ -362,7 +245,8 @@ void CppLikeShaderGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::S
     }
     else if (auto staticCast = dynamic_cast<const StaticCastExpr*>(stmt))
     {
-        sb.append(L"((" + GetQualifiedTypeName(staticCast->type()) + L")");;
+        sb.append(L"((" + GetQualifiedTypeName(staticCast->type()) + L")");
+        ;
         visitExpr(sb, staticCast->expr());
         sb.append(L")");
     }
@@ -372,7 +256,7 @@ void CppLikeShaderGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::S
         visitExpr(sb, switchStmt->cond());
         sb.append(L")");
         sb.endline();
-        sb.indent([&](){
+        sb.indent([&]() {
             for (auto case_stmt : switchStmt->cases())
             {
                 visitExpr(sb, case_stmt);
@@ -422,7 +306,7 @@ void CppLikeShaderGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::S
                 sb.append(op_name);
 
             visitExpr(sb, unary->expr());
-            
+
             if (post)
                 sb.append(op_name);
         }
@@ -508,7 +392,7 @@ void CppLikeShaderGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::TypeD
         sb.endline(L';');
         sb.endline();
         sb.append_line();
-    }        
+    }
     else if (DUMP_BUILTIN_TYPES)
     {
         sb.append(L"//builtin type: ");
@@ -535,6 +419,108 @@ void CppLikeShaderGenerator::VisitAccessExpr(SourceBuilderNew& sb, const AccessE
     sb.append(L"]");
 }
 
+void CppLikeShaderGenerator::VisitBinaryExpr(SourceBuilderNew& sb, const BinaryExpr* binary)
+{
+    auto ltype = binary->left()->type();
+    auto rtype = binary->right()->type();
+    {
+        visitExpr(sb, binary->left());
+        auto op = binary->op();
+        String op_name = L"";
+        switch (op)
+        {
+        case BinaryOp::ADD:
+            op_name = L" + ";
+            break;
+        case BinaryOp::SUB:
+            op_name = L" - ";
+            break;
+        case BinaryOp::MUL:
+            op_name = L" * ";
+            break;
+        case BinaryOp::DIV:
+            op_name = L" / ";
+            break;
+        case BinaryOp::MOD:
+            op_name = L" % ";
+            break;
+
+        case BinaryOp::BIT_AND:
+            op_name = L" & ";
+            break;
+        case BinaryOp::BIT_OR:
+            op_name = L" | ";
+            break;
+        case BinaryOp::BIT_XOR:
+            op_name = L" ^ ";
+            break;
+        case BinaryOp::SHL:
+            op_name = L" << ";
+            break;
+        case BinaryOp::SHR:
+            op_name = L" >> ";
+            break;
+        case BinaryOp::AND:
+            op_name = L" && ";
+            break;
+        case BinaryOp::OR:
+            op_name = L" || ";
+            break;
+
+        case BinaryOp::LESS:
+            op_name = L" < ";
+            break;
+        case BinaryOp::GREATER:
+            op_name = L" > ";
+            break;
+        case BinaryOp::LESS_EQUAL:
+            op_name = L" <= ";
+            break;
+        case BinaryOp::GREATER_EQUAL:
+            op_name = L" >= ";
+            break;
+        case BinaryOp::EQUAL:
+            op_name = L" == ";
+            break;
+        case BinaryOp::NOT_EQUAL:
+            op_name = L" != ";
+            break;
+
+        case BinaryOp::ASSIGN:
+            op_name = L" = ";
+            break;
+        case BinaryOp::ADD_ASSIGN:
+            op_name = L" += ";
+            break;
+        case BinaryOp::SUB_ASSIGN:
+            op_name = L" -= ";
+            break;
+        case BinaryOp::MUL_ASSIGN:
+            op_name = L" *= ";
+            break;
+        case BinaryOp::DIV_ASSIGN:
+            op_name = L" /= ";
+            break;
+        case BinaryOp::MOD_ASSIGN:
+            op_name = L" %= ";
+            break;
+        case BinaryOp::BIT_OR_ASSIGN:
+            op_name = L" |= ";
+            break;
+        case BinaryOp::BIT_XOR_ASSIGN:
+            op_name = L" ^= ";
+            break;
+        case BinaryOp::SHL_ASSIGN:
+            op_name = L" <<= ";
+            break;
+        default:
+            assert(false && "Unsupported binary operation");
+        }
+        sb.append(op_name);
+        visitExpr(sb, binary->right());
+    }
+}
+
 void CppLikeShaderGenerator::VisitConstructor(SourceBuilderNew& sb, const ConstructorDecl* ctor, FunctionStyle style)
 {
     visit(sb, ctor, style);
@@ -544,6 +530,8 @@ void CppLikeShaderGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::Funct
 {
     using namespace skr::CppSL;
     auto AsMethod = dynamic_cast<const MethodDecl*>(funcDecl);
+    auto AsCtor = dynamic_cast<const ConstructorDecl*>(AsMethod);
+    const auto SupportCtor = SupportConstructor();
     if (auto body = funcDecl->body())
     {
         const StageAttr* StageEntry = FindAttr<StageAttr>(funcDecl->attrs());
@@ -570,14 +558,16 @@ void CppLikeShaderGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::Funct
         GenerateFunctionAttributes(sb, funcDecl);
 
         // generate signature
-        auto functionName = funcDecl->name();
+        auto functionName = GetFunctionName(funcDecl);
+        if (SupportCtor && AsCtor)
+            functionName = GetTypeName(AsMethod->owner_type());
         if ((style == FunctionStyle::OutterImplmentation) && AsMethod)
-        {
-            // HLSL: Type::MethodName
             functionName = GetQualifiedTypeName(AsMethod->owner_type()) + L"::" + functionName;
-        }
 
-        sb.append(GetQualifiedTypeName(funcDecl->return_type()) + L" " + functionName + L"(");
+        if (SupportCtor && AsCtor)
+            sb.append(functionName + L"(");
+        else
+            sb.append(GetQualifiedTypeName(funcDecl->return_type()) + L" " + functionName + L"(");
         for (size_t i = 0; i < params.size(); i++)
         {
             if (i > 0)
@@ -606,14 +596,17 @@ void CppLikeShaderGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::Funct
     }
 }
 
+String CppLikeShaderGenerator::GetFunctionName(const FunctionDecl* func)
+{
+    return func->name();
+}
+
 void CppLikeShaderGenerator::GenerateFunctionSignaturePostfix(SourceBuilderNew& sb, const FunctionDecl* func)
 {
-
 }
 
 void CppLikeShaderGenerator::GenerateKernelWrapper(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* funcDecl)
 {
-
 }
 
 void CppLikeShaderGenerator::visit(SourceBuilderNew& sb, const skr::CppSL::VarDecl* varDecl)
@@ -653,14 +646,13 @@ String CppLikeShaderGenerator::generate_code(SourceBuilderNew& sb, const AST& as
 
     // Build the type-to-namespace mapping
     build_type_namespace_map(ast);
-
     // generate namespace forward declarations
     generate_namespace_declarations(sb, ast);
 
     RecordBuiltinHeader(sb, ast);
 
     // generate declares
-    for (const auto& decl: ast.decls())
+    for (const auto& decl : ast.decls())
     {
         visit_decl(sb, decl);
     }
@@ -692,14 +684,14 @@ void CppLikeShaderGenerator::generate_namespace_declarations(SourceBuilderNew& s
                 }
                 return false;
             };
-            
+
             if (contains_type(ns))
             {
                 is_global = false;
                 break;
             }
         }
-        
+
         // Generate forward declaration for global types
         if (is_global && !type->is_builtin())
         {
@@ -707,7 +699,7 @@ void CppLikeShaderGenerator::generate_namespace_declarations(SourceBuilderNew& s
             has_global_types = true;
         }
     }
-    
+
     if (has_global_types)
         sb.endline();
 
@@ -722,7 +714,7 @@ void CppLikeShaderGenerator::generate_namespace_declarations(SourceBuilderNew& s
             has_output = true;
         }
     }
-    
+
     if (has_output)
         sb.endline();
 }
@@ -732,10 +724,10 @@ void CppLikeShaderGenerator::generate_namespace_recursive(SourceBuilderNew& sb, 
     // Skip empty namespaces
     if (!ns->has_content())
         return;
-    
+
     // Generate namespace opening (compact style)
     sb.append(L"namespace " + ns->name() + L" { ");
-    
+
     // Generate forward declarations for types in this namespace
     bool has_declarations = false;
     for (const auto& type : ns->types())
@@ -746,7 +738,7 @@ void CppLikeShaderGenerator::generate_namespace_recursive(SourceBuilderNew& sb, 
             has_declarations = true;
         }
     }
-    
+
     // Generate forward declarations for functions in this namespace
     for (const auto& func : ns->functions())
     {
@@ -754,13 +746,13 @@ void CppLikeShaderGenerator::generate_namespace_recursive(SourceBuilderNew& sb, 
         sb.append(L"; ");
         has_declarations = true;
     }
-    
+
     // Recursively generate nested namespaces
     for (const auto& nested : ns->nested())
     {
         generate_namespace_recursive(sb, nested, indent_level + 1);
     }
-    
+
     // Generate namespace closing
     sb.append(L"}");
     if (indent_level == 0) // Only add newline for root namespaces
@@ -773,7 +765,7 @@ void CppLikeShaderGenerator::build_type_namespace_map(const AST& ast)
 {
     // Clear the map first
     type_namespace_map_.clear();
-    
+
     // Helper function to build namespace path
     std::function<String(const NamespaceDecl*)> build_namespace_path = [&](const NamespaceDecl* ns) -> String {
         if (!ns || !ns->parent())
@@ -783,11 +775,11 @@ void CppLikeShaderGenerator::build_type_namespace_map(const AST& ast)
         String parent_path = build_namespace_path(ns->parent());
         return parent_path.empty() ? ns->name() : parent_path + L"::" + ns->name();
     };
-    
+
     // Recursively map all types in namespaces
     std::function<void(const NamespaceDecl*)> map_namespace_types = [&](const NamespaceDecl* ns) {
         String namespace_path = build_namespace_path(ns);
-        
+
         // Map all types in this namespace
         for (const auto& type : ns->types())
         {
@@ -796,14 +788,14 @@ void CppLikeShaderGenerator::build_type_namespace_map(const AST& ast)
                 type_namespace_map_[type] = namespace_path;
             }
         }
-        
+
         // Recursively process nested namespaces
         for (const auto& nested : ns->nested())
         {
             map_namespace_types(nested);
         }
     };
-    
+
     // Process all root namespaces
     for (const auto& ns : ast.namespaces())
     {

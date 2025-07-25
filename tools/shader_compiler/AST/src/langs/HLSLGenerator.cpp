@@ -202,6 +202,34 @@ void HLSLGenerator::VisitGlobalResource(SourceBuilderNew& sb, const skr::CppSL::
     }
 }
 
+void HLSLGenerator::VisitBinaryExpr(SourceBuilderNew& sb, const BinaryExpr* binary)
+{
+    auto ltype = binary->left()->type();
+    auto rtype = binary->right()->type();
+    bool is_vec_mat_op = (ltype->is_vector() && rtype->is_matrix()) || (ltype->is_matrix() && rtype->is_vector());
+    if (is_vec_mat_op && (binary->op() == BinaryOp::MUL))
+    {
+        sb.append(L"mul(");
+        visitExpr(sb, binary->left());
+        sb.append(L", ");
+        visitExpr(sb, binary->right());
+        sb.append(L")");
+    }
+    else if (is_vec_mat_op && (binary->op() == BinaryOp::MUL_ASSIGN))
+    {
+        visitExpr(sb, binary->left());
+        sb.append(L" = mul(");
+        visitExpr(sb, binary->left());
+        sb.append(L", ");
+        visitExpr(sb, binary->right());
+        sb.append(L")");
+    }
+    else
+    {
+        CppLikeShaderGenerator::VisitBinaryExpr(sb, binary);
+    }
+}
+
 void HLSLGenerator::VisitConstructExpr(SourceBuilderNew& sb, const ConstructExpr* ctorExpr)
 {
     if (auto AsRayQuery = dynamic_cast<const RayQueryTypeDecl*>(ctorExpr->type()))
@@ -411,6 +439,11 @@ void HLSLGenerator::GenerateFunctionSignaturePostfix(SourceBuilderNew& sb, const
         // HLSL: SV_Position is the output of vertex shader, so we need to add it to fragment shader
         sb.append(L" : SV_Target");
     }
+}
+
+bool HLSLGenerator::SupportConstructor() const
+{
+    return false;
 }
 
 static const skr::CppSL::String kHLSLHeader = LR"(
