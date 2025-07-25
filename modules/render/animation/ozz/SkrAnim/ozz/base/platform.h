@@ -42,6 +42,7 @@
 #include <cstddef>
 
 #include "SkrAnim/ozz/base/export.h"
+#include "SkrBase/misc/debug.h"
 
 namespace ozz
 {

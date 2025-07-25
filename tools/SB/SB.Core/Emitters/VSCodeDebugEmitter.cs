@@ -250,8 +250,18 @@ namespace SB
             var config = SelectDebugger();
             config.Name = $"{target.Name} ({buildType})";
             config.Program = Path.Combine("${workspaceFolder}", relativeBinaryPath, exeName);
-            config.Cwd = Path.Combine("${workspaceFolder}", relativeBinaryPath);
+            config.Cwd = "${workspaceFolder}";
             config.PreLaunchTask = $"Build {target.Name} ({buildType})";
+
+            // Add sourceMap for LLDB configurations to support debugging .mm files
+            if (config is LLDBDebugConfiguration lldbConfig)
+            {
+                lldbConfig.SourceMap = new List<List<string>>
+                {
+                    new List<string> { ".", "${workspaceFolder}" },
+                    new List<string> { Path.GetFullPath(WorkspaceRoot), "${workspaceFolder}" }
+                };
+            }
 
             if (target.Arguments.TryGetValue("RunArgs", out var runArgs) && runArgs is List<string> argsList && argsList.Count > 0)
                 config.Args = argsList;

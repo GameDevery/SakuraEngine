@@ -110,7 +110,7 @@ public:
         void* p = RenderGraphStackAllocator::alloc_raw(n, sizeof(T), alignof(T));
         if (!p)
         {
-            throw std::bad_alloc();
+            return nullptr;
         }
         return static_cast<pointer>(p);
     }

@@ -37,6 +37,13 @@ static void ImGui_ImplSkrSystem_SetClipboardText(ImGuiContext* ctx, const char* 
     }
 }
 
+static float ImGui_ImplSkrSystem_GetWindowDpiScale(ImGuiViewport* viewpoer)
+{
+    const auto window = (SystemWindow*)viewpoer->PlatformHandle;
+    const auto ratio = window->get_pixel_ratio();
+    return ratio;
+}
+
 // ctor & dtor
 ImGuiApp::ImGuiApp(const SystemWindowCreateInfo& main_wnd_create_info, RCUnique<ImGuiRendererBackend> backend)
     : SystemApp()
@@ -81,6 +88,7 @@ bool ImGuiApp::initialize(const char* backend)
 
         // Setup platform functions
         ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
+        platform_io.Platform_GetWindowDpiScale = ImGui_ImplSkrSystem_GetWindowDpiScale;
         platform_io.Platform_SetClipboardTextFn = ImGui_ImplSkrSystem_SetClipboardText;
         platform_io.Platform_GetClipboardTextFn = ImGui_ImplSkrSystem_GetClipboardText;
         platform_io.Platform_SetImeDataFn = [](ImGuiContext* ctx, ImGuiViewport* viewport, ImGuiPlatformImeData* data) {
@@ -164,7 +172,6 @@ void ImGuiApp::begin_frame()
     auto current_time = std::chrono::steady_clock::now();
     float delta_time = std::chrono::duration<float>(current_time - last_frame_time_).count();
     _context->IO.DeltaTime = delta_time > 0.0f ? delta_time : (1.0f / 60.0f);
-    last_frame_time_ = current_time;
 
     // Update IME state based on ImGui needs
     UpdateIMEState();
@@ -293,10 +300,11 @@ void ImGuiApp::_collect()
     // Handle resize if triggered by event handler
     if (_event_handler && _event_handler->want_resize().comsume())
     {
-        auto size = _main_window->get_size();
+        auto size = _main_window->get_physical_size();
         _renderer_backend->resize_main_window(
             _context->Viewports[0],
-            { (float)size.x, (float)size.y });
+            { (float)size.x, (float)size.y 
+        });
     }
 
     // Render main window

@@ -116,7 +116,7 @@ protected:
         if constexpr (std::is_const_v<Storage>)
             Result = (Storage*)sugoiV_get_owned_ro(&view, Type);
         else
-            Result = (Storage*)sugoiV_get_owned_rw<false, false>(&view, Type);
+            Result = (Storage*)sugoiV_get_owned_rw(&view, Type);
         CachedView = view;
         CachedPtr = (void*)Result;
         return Result;

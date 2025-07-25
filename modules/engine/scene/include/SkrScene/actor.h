@@ -11,7 +11,7 @@
 namespace skr
 {
 
-sreflect_enum(guid = "a1ebd9b1-900c-44f4-b381-0dd48014718d")
+sreflect_enum_class(guid = "a1ebd9b1-900c-44f4-b381-0dd48014718d")
 EAttachRule{
     Default = 0,
     KeepWorldTransform = 0x01

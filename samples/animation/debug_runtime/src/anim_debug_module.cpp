@@ -136,7 +136,7 @@ void SAnimDebugModule::DisplayAnimationInfo(const ozz::animation::Animation& ani
 
 int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
 {
-    constexpr float M_PI = 3.14159265358979323846f;
+    static constexpr float kPi = 3.14159265358979323846f;
     namespace rg = skr::render_graph;
     SkrZoneScopedN("AnimDebugExecution");
     SKR_LOG_INFO(u8"anim debug runtime executed as main module!");
@@ -297,9 +297,9 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
                 if (pitch < -89.0f) pitch = -89.0f;
 
                 skr_float3_t direction;
-                direction.x = cosf(yaw * (float)M_PI / 180.f) * cosf(pitch * (float)M_PI / 180.f);
-                direction.y = sinf(pitch * (float)M_PI / 180.f);
-                direction.z = sinf(yaw * (float)M_PI / 180.f) * cosf(pitch * (float)M_PI / 180.f);
+                direction.x = cosf(yaw * (float)kPi / 180.f) * cosf(pitch * (float)kPi / 180.f);
+                direction.y = sinf(pitch * (float)kPi / 180.f);
+                direction.z = sinf(yaw * (float)kPi / 180.f) * cosf(pitch * (float)kPi / 180.f);
                 camera.front = skr::normalize(direction);
             }
 

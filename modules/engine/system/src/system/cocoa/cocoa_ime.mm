@@ -424,7 +424,7 @@ void CocoaIME::set_clipboard_text(const skr::String& text) SKR_NOEXCEPT
         NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
         [pasteboard clearContents];
         
-        NSString* nsText = [NSString stringWithUTF8String:text.c_str()];
+        NSString* nsText = [NSString stringWithUTF8String:text.c_str_raw()];
         [pasteboard setString:nsText forType:NSPasteboardTypeString];
     }
 }
