@@ -354,8 +354,8 @@ CGPURootSignatureId cgpu_create_root_signature_metal(CGPUDeviceId device, const 
                 MetalUtil_GetShaderResourceType(SRT, SRT.index, SRTLayout.members[j], &resource);
                 if (resource.type == CGPU_RESOURCE_TYPE_PUSH_CONSTANT)
                 {
-                    RS->super.push_constants[RS->super.push_constant_count] = resource;
-                    RS->super.push_constant_count += 1;
+                    RS->super.push_constants[0] = resource;
+                    RS->super.push_constant_count = 1;
                 }
                 else
                 {
