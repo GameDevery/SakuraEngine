@@ -36,7 +36,6 @@ int SceneSampleSimpleModule::main_module_exec(int argc, char8_t** argv)
     actor2.lock()->AttachTo(actor1, skr::EAttachRule::KeepWorldTransform);
 
     // random access sample
-    sugoi_storage_t* storage;
     skr::task::scheduler_t scheduler;
     scheduler.initialize(skr::task::scheudler_config_t());
     scheduler.bind();

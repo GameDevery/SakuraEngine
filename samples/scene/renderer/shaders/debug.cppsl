@@ -7,6 +7,7 @@ struct [[stage_inout]] VSIn
 {
     float3 position;
     float3 color;
+    [[nointerpolation]] float4x4 model;
 };
 
 struct [[stage_inout]] VSOut
@@ -16,23 +17,23 @@ struct [[stage_inout]] VSOut
 
 struct RootConstants
 {
-    float4x4 mvp; // model-view-projection matrix
+    float4x4 view_proj; // model-view-projection matrix
 };
 
 [[push_constant]]
 extern ConstantBuffer<RootConstants>& push_constants;
 
 [[vertex_shader("vs")]]
-VSOut vertex(const VSIn input, [[sv_position]] float4& position)
+VSOut vs(const VSIn input, [[sv_position]] float4& position)
 {
     VSOut output;
-    position = float4(input.position, 1.0f) * push_constants.mvp;
+    position = float4(input.position, 1.0f) * input.model * push_constants.view_proj;
     output.color = input.color;
     return output;
 }
 
 [[fragment_shader("fs")]]
-void fragment(const VSOut input, [[sv_render_target(0)]] float4& color)
+void fs(const VSOut input, [[sv_render_target(0)]] float4& color)
 {
     color = float4(input.color, 1.0f);
 }
