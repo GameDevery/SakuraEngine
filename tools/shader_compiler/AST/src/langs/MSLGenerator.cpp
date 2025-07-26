@@ -326,39 +326,44 @@ using QueryFlags = uint32_t;
 
 template <QueryFlags f>
 struct RayQuery {
-    metal::raytracing::intersector<metal::raytracing::triangle_data, metal::raytracing::instancing> intersector;
+    thread metal::raytracing::intersection_query<metal::raytracing::triangle_data, metal::raytracing::instancing>* query;
     metal::raytracing::ray current_ray;
-    typename metal::raytracing::intersector<metal::raytracing::triangle_data, metal::raytracing::instancing>::result_type result;
-    bool has_result = false;
+    bool initialized = false;
 };
 
 // Ray query macros
+// Ray query initialization - creates intersection_query on the stack
 #define ray_query_trace_ray_inline(q, _as, mask, r) \
-    do { \
-        float3 origin = float3((r)._origin[0], (r)._origin[1], (r)._origin[2]); \
-        float3 direction = float3((r)._dir[0], (r)._dir[1], (r)._dir[2]); \
-        (q).current_ray = metal::raytracing::ray(origin, direction, (r).t_min, (r).t_max); \
-        (q).result = (q).intersector.intersect((q).current_ray, (_as).as, mask); \
-        (q).has_result = true; \
-    } while(0)
+    float3 _ray_origin_##__LINE__ = (r).origin(); \
+    float3 _ray_direction_##__LINE__ = (r).dir(); \
+    (q).current_ray = metal::raytracing::ray(_ray_origin_##__LINE__, _ray_direction_##__LINE__, (r).tmin(), (r).tmax()); \
+    metal::raytracing::intersection_query<metal::raytracing::triangle_data, metal::raytracing::instancing> _query_##__LINE__((q).current_ray, (_as).as, mask); \
+    (q).query = &_query_##__LINE__; \
+    (q).initialized = true
 
 #define ray_query_proceed(q) \
-    ((q).has_result && (q).result.type != metal::raytracing::intersection_type::none)
+    ([&]() { \
+        bool has_candidate = (q).query->next(); \
+        if (has_candidate && (q).query->get_candidate_intersection_type() == metal::raytracing::intersection_type::triangle) { \
+            (q).query->commit_triangle_intersection(); \
+        } \
+        return has_candidate; \
+    }())
 
 #define ray_query_committed_status(q) \
-    ((q).result.type == metal::raytracing::intersection_type::triangle ? 1 : 0)
+    ((q).query->get_committed_intersection_type() == metal::raytracing::intersection_type::triangle ? HitType__HitTriangle : HitType__Miss)
 
 #define ray_query_committed_triangle_bary(q) \
-    float2((q).result.triangle_barycentric_coord.x, (q).result.triangle_barycentric_coord.y)
+    float2((q).query->get_committed_triangle_barycentric_coord().x, (q).query->get_committed_triangle_barycentric_coord().y)
 
 #define ray_query_committed_instance_id(q) \
-    ((q).result.instance_id)
+    ((q).query->get_committed_instance_id())
 
 #define ray_query_committed_primitive_id(q) \
-    ((q).result.primitive_id)
+    ((q).query->get_committed_primitive_id())
 
 #define ray_query_committed_ray_t(q) \
-    ((q).result.distance)
+    ((q).query->get_committed_distance())
 
 #define ray_query_world_ray_origin(q) \
     float3((q).current_ray.origin)

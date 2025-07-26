@@ -337,7 +337,7 @@ CGPURootSignatureId cgpu_create_root_signature_metal(CGPUDeviceId device, const 
     RS->super.table_count = reflection.bindings.count;
     RS->super.tables = cgpu_calloc(RS->super.table_count, sizeof(CGPUParameterTable));
     RS->super.push_constants = cgpu_calloc(desc->push_constant_count, sizeof(CGPUShaderResource));
-    for (uint32_t i = 0; i < reflection.bindings.count; i++)
+    for (uint32_t i = 0; i < 1; i++)
     {
         CGPUParameterTable* table = RS->super.tables + i;
         table->metal.arg_buf_size = 0;
@@ -448,7 +448,7 @@ void cgpu_update_descriptor_set_metal(CGPUDescriptorSetId set, const struct CGPU
     if (DS->mtlArgumentBuffer)
     {
         CGPUBuffer_Metal* ArgumentBuffer = (CGPUBuffer_Metal*)DS->mtlArgumentBuffer;
-        uint8_t* pArg = ArgumentBuffer->mtlBuffer.contents + ArgumentBuffer->mOffset;
+        uint8_t* pBuf = ArgumentBuffer->mtlBuffer.contents + ArgumentBuffer->mOffset;
         for (uint32_t i = 0; i < count; i++)
         {
             const CGPUDescriptorData* data = datas + i;
@@ -483,7 +483,6 @@ void cgpu_update_descriptor_set_metal(CGPUDescriptorSetId set, const struct CGPU
                     }
                 }
             }
-            pArg += resource->offset;
 
             // fill argument
             typedef struct BUFFER { uint64_t ptr; uint64_t size; } BUFFER;
@@ -491,6 +490,7 @@ void cgpu_update_descriptor_set_metal(CGPUDescriptorSetId set, const struct CGPU
             typedef struct TEXTURE { MTLResourceID id; } TEXTURE;
             // typedef struct SAMPLER { MTLResourceID id; } SAMPLER;
             typedef struct TLAS { MTLResourceID id; } TLAS;
+            uint8_t* pArg = pBuf + resource->offset;
             switch (data->binding_type)
             {
                 case CGPU_RESOURCE_TYPE_BUFFER:
@@ -541,7 +541,8 @@ void cgpu_update_descriptor_set_metal(CGPUDescriptorSetId set, const struct CGPU
                             TEXTURE* pTextureArg = ((TEXTURE*)pArg) + j;
                             const CGPUTextureView_Metal* T = (const CGPUTextureView_Metal*)data->textures[j];
                             struct TEXTURE ARG = { T->pTextureView.gpuResourceID };
-                            MetalUtil_DSBindResourceAtIndex(DS, binding_index, T->pTextureView, writable ? MTLResourceUsageRead | MTLResourceUsageWrite : MTLResourceUsageRead);
+                            MetalUtil_DSBindResourceAtIndex(DS, binding_index, T->pTextureView, 
+                                writable ? MTLResourceUsageRead | MTLResourceUsageWrite : MTLResourceUsageRead);
                             memcpy(pTextureArg, &ARG, sizeof(ARG));
                         }
                     }
@@ -1077,10 +1078,10 @@ void cgpu_compute_encoder_bind_descriptor_set_metal(CGPUComputePassEncoderId enc
     CGPUComputePassEncoder_Metal* CE = (CGPUComputePassEncoder_Metal*)encoder;
     CGPUDescriptorSet_Metal* DS = (CGPUDescriptorSet_Metal*)set;
     if (DS->mtlArgumentBuffer)
-    {
+    {      
         CGPUBuffer_Metal* B = (CGPUBuffer_Metal*)DS->mtlArgumentBuffer;
         [CE->mtlComputeEncoder setBuffer:B->mtlBuffer offset:B->mOffset atIndex:DS->super.index];
-         
+
         // USE RESOURCE
         uint32_t ReadCount = 0, ReadWriteCount = 0;
         for (uint32_t i = 0; i < DS->mtlBindSlotCount; i++)
@@ -1115,18 +1116,16 @@ void cgpu_compute_encoder_push_constants_metal(CGPUComputePassEncoderId encoder,
     
     // Find the push constant by name
     size_t name_hash = name ? cgpu_name_hash(name, strlen((const char*)name)) : 0;
-    for (uint32_t i = 0; i < RS->super.push_constant_count; i++)
     {
-        CGPUShaderResource* push_const = &RS->super.push_constants[i];
+        CGPUShaderResource* push_const = &RS->super.push_constants[0];
         
         // Match by name hash if name is provided, otherwise use the first push constant
         {
             // In Metal, push constants are set using setBytes at a specific buffer index
             // The buffer index should be stored in the binding field during root signature creation
             [CE->mtlComputeEncoder setBytes:data 
-                                     length:push_const->size 
+                                     length:176
                                     atIndex:1];
-            break;
         }
     }
 }
