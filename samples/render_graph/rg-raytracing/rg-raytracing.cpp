@@ -832,10 +832,8 @@ void RGRaytracingSampleModule::render()
     struct CameraConstants {
         skr::math::float4x4 invViewMatrix;
         skr::math::float4x4 invProjMatrix;
-        skr::math::float3 cameraPos;
-        float _padding0;
-        skr::math::float3 cameraDir;
-        float _padding1;
+        skr::math::float4 cameraPos;
+        skr::math::float4 cameraDir;
         skr::math::float2 screenSize;
     };
 
@@ -865,8 +863,8 @@ void RGRaytracingSampleModule::render()
     skr::math::float3 target = this->camera_controller.target;
     skr::math::float3 up = this->camera_controller.up;
     
-    camera_constants.cameraPos = eye;
-    camera_constants.cameraDir = skr::math::normalize(target - eye);
+    camera_constants.cameraPos = skr::math::float4(eye, 0.f);
+    camera_constants.cameraDir = skr::math::float4(skr::math::normalize(target - eye), 0.f);
     camera_constants.screenSize = {static_cast<float>(to_import->info->width), 
                                    static_cast<float>(to_import->info->height)};
     

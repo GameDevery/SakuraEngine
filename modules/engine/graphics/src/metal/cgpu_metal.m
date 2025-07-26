@@ -227,8 +227,10 @@ void cgpu_free_device_metal(CGPUDeviceId device)
 // API Objects APIs
 CGPUFenceId cgpu_create_fence_metal(CGPUDeviceId device)
 {
+    CGPUDevice_Metal* D = (CGPUDevice_Metal*)device;
     CGPUFence_Metal* F = (CGPUFence_Metal*)cgpu_calloc(1, sizeof(CGPUFence_Metal));
-    F->sysSemaphore = dispatch_semaphore_create(0);
+    F->mtlEvent = [D->pDevice newSharedEvent];
+    F->mValue = 0;
     F->mSubmitted = 0;
     return &F->super;
 }
@@ -241,10 +243,9 @@ ECGPUFenceStatus cgpu_query_fence_status_metal(CGPUFenceId fence)
         // Fence hasn't been submitted yet, consider it complete
         return CGPU_FENCE_STATUS_COMPLETE;
     }
-    long status = dispatch_semaphore_wait(F->sysSemaphore, DISPATCH_TIME_NOW);
-    if (status == 0)
+    // Check if the event has been signaled with the expected value
+    if (((id<MTLSharedEvent>)F->mtlEvent).signaledValue >= F->mValue)
     {
-        F->mSubmitted = 0; // Reset for reuse
         return CGPU_FENCE_STATUS_COMPLETE;
     }
     return CGPU_FENCE_STATUS_INCOMPLETE;
@@ -253,7 +254,7 @@ ECGPUFenceStatus cgpu_query_fence_status_metal(CGPUFenceId fence)
 void cgpu_free_fence_metal(CGPUFenceId fence)
 {
     CGPUFence_Metal* F = (CGPUFence_Metal*)fence;
-    F->sysSemaphore = nil;
+    F->mtlEvent = nil;
     cgpu_free(F);
 }
 
@@ -265,7 +266,13 @@ void cgpu_wait_fences_metal(const CGPUFenceId* fences, uint32_t fence_count)
         // Only wait if fence has been submitted
         if (F->mSubmitted)
         {
-            dispatch_semaphore_wait(F->sysSemaphore, DISPATCH_TIME_FOREVER);
+            // Wait for the event to reach the expected value
+            dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
+            MTLSharedEventListener* listener = [[MTLSharedEventListener alloc] initWithDispatchQueue:dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)];
+            [(id<MTLSharedEvent>)F->mtlEvent notifyListener:listener atValue:F->mValue block:^(id<MTLSharedEvent> event, uint64_t value) {
+                dispatch_semaphore_signal(semaphore);
+            }];
+            dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
             F->mSubmitted = 0; // Reset for reuse
         }
     }
@@ -329,7 +336,8 @@ CGPURootSignatureId cgpu_create_root_signature_metal(CGPUDeviceId device, const 
     // REFLECTION
     RS->super.table_count = reflection.bindings.count;
     RS->super.tables = cgpu_calloc(RS->super.table_count, sizeof(CGPUParameterTable));
-    for (uint32_t i = 0; i < reflection.bindings.count; i++)
+    RS->super.push_constants = cgpu_calloc(desc->push_constant_count, sizeof(CGPUShaderResource));
+    for (uint32_t i = 0; i < 1; i++)
     {
         CGPUParameterTable* table = RS->super.tables + i;
         table->metal.arg_buf_size = 0;
@@ -339,11 +347,21 @@ CGPURootSignatureId cgpu_create_root_signature_metal(CGPUDeviceId device, const 
             MTLStructType* SRTLayout = SRT.bufferStructType;
             table->metal.arg_buf_size = SRT.bufferDataSize;
             table->set_index = SRT.index;
-            table->resources_count = SRTLayout.members.count;
-            table->resources = cgpu_calloc(table->resources_count, sizeof(CGPUShaderResource));
+            table->resources = cgpu_calloc(SRTLayout.members.count, sizeof(CGPUShaderResource));
             for (uint32_t j = 0; j < SRTLayout.members.count; j++)
             {
-                MetalUtil_GetShaderResourceType(SRT.index, SRTLayout.members[j], table->resources + j);
+                CGPUShaderResource resource;
+                MetalUtil_GetShaderResourceType(SRT, SRT.index, SRTLayout.members[j], &resource);
+                if (resource.type == CGPU_RESOURCE_TYPE_PUSH_CONSTANT)
+                {
+                    RS->super.push_constants[RS->super.push_constant_count] = resource;
+                    RS->super.push_constant_count += 1;
+                }
+                else
+                {
+                    *(table->resources + table->resources_count) = resource;
+                    table->resources_count += 1;
+                }
             }
         }
         else
@@ -369,6 +387,13 @@ void cgpu_free_root_signature_metal(CGPURootSignatureId root_signature)
         cgpu_free(table->resources);
     }
     cgpu_free(RS->super.tables);
+
+    for (uint32_t j = 0; j < RS->super.push_constant_count; j++)
+    {
+        CGPUShaderResource* resource = RS->super.push_constants + j;
+        cgpu_free((void*)resource->name);
+    }
+    cgpu_free(RS->super.push_constants);
 
     for (uint32_t i = 0; i < CGPU_SHADER_STAGE_COUNT; i++)
     {
@@ -601,30 +626,41 @@ void cgpu_submit_queue_metal(CGPUQueueId queue, const struct CGPUQueueSubmitDesc
 
     @autoreleasepool
     {
-        // signal semaphores
-        for (uint32_t i = 0; i < desc->signal_semaphore_count; i++)
+        // 首先刷新所有命令缓冲区的编码器
+        for (uint32_t i = 0; i < desc->cmds_count; i++)
         {
-            CGPUCommandBuffer_Metal* CMD = (CGPUCommandBuffer_Metal*)desc->cmds[desc->cmds_count - 1];
-            CGPUSemaphore_Metal* Semaphore = (CGPUSemaphore_Metal*)desc->signal_semaphores[i];
-            [CMD->mtlCommandBuffer encodeSignalEvent:Semaphore->mtlSemaphore value:++Semaphore->value];
+            CGPUCommandBuffer_Metal* CMD = (CGPUCommandBuffer_Metal*)desc->cmds[i];
+            MetalUtil_FlushUtilEncoders(CMD, MTLUtilEncoderTypeAS | MTLUtilEncoderTypeBlit);
+        }
+
+        // signal semaphores
+        if (desc->signal_semaphore_count > 0)
+        {
+            CGPUCommandBuffer_Metal* lastCMD = (CGPUCommandBuffer_Metal*)desc->cmds[desc->cmds_count - 1];
+            for (uint32_t i = 0; i < desc->signal_semaphore_count; i++)
+            {
+                CGPUSemaphore_Metal* Semaphore = (CGPUSemaphore_Metal*)desc->signal_semaphores[i];
+                [lastCMD->mtlCommandBuffer encodeSignalEvent:Semaphore->mtlSemaphore value:++Semaphore->value];
+            }
         }
 
         // signal fence
-        __block SAtomicU32 commandsFinished = 0;
-        __block CGPUFence_Metal* signalFence = (CGPUFence_Metal*)desc->signal_fence;
-        if (signalFence)
+        if (desc->signal_fence)
         {
+            CGPUFence_Metal* signalFence = (CGPUFence_Metal*)desc->signal_fence;
             signalFence->mSubmitted = 1;
+            signalFence->mValue++; // 递增值以表示新的信号
+            
+            // 在最后一个命令缓冲区上信号事件
+            CGPUCommandBuffer_Metal* lastCMD = (CGPUCommandBuffer_Metal*)desc->cmds[desc->cmds_count - 1];
+            [lastCMD->mtlCommandBuffer encodeSignalEvent:signalFence->mtlEvent value:signalFence->mValue];
         }
+        
+        // 为错误处理添加完成处理器
         for (uint32_t i = 0; i < desc->cmds_count; i++)
         {
             CGPUCommandBuffer_Metal* CMD = (CGPUCommandBuffer_Metal*)desc->cmds[i];
             [CMD->mtlCommandBuffer addCompletedHandler:^(id<MTLCommandBuffer> buffer) {
-                uint32_t handlersCalled = 1u + skr_atomic_fetch_add(&commandsFinished, 1);
-                if (signalFence && (handlersCalled == desc->cmds_count))
-                {
-                    dispatch_semaphore_signal(signalFence->sysSemaphore);
-                }
                 if (buffer.error != nil)
                     cgpu_error("Failed to execute commands with error (%s)", [buffer.error.description UTF8String]);
             }];
@@ -648,7 +684,6 @@ void cgpu_submit_queue_metal(CGPUQueueId queue, const struct CGPUQueueSubmitDesc
         for (uint32_t i = 0; i < desc->cmds_count; i++)
         {
             CGPUCommandBuffer_Metal* CMD = (CGPUCommandBuffer_Metal*)desc->cmds[i];
-            MetalUtil_FlushUtilEncoders(CMD, MTLUtilEncoderTypeAS | MTLUtilEncoderTypeBlit);
             [CMD->mtlCommandBuffer commit];
         }
     }
@@ -789,7 +824,23 @@ void cgpu_free_buffer_metal(CGPUBufferId buffer)
 }
 
 // CMDs
-void cgpu_cmd_begin_metal(CGPUCommandBufferId cmd) {  }
+void cgpu_cmd_begin_metal(CGPUCommandBufferId cmd) 
+{
+    CGPUCommandBuffer_Metal* CMD = (CGPUCommandBuffer_Metal*)cmd;
+    CGPUCommandPool_Metal* Pool = (CGPUCommandPool_Metal*)cmd->pool;
+    
+    if (CMD->mtlCommandBuffer)
+        CMD->mtlCommandBuffer = nil;
+    
+    CMD->UtilEncoders.mtlBlitEncoder = nil;
+    CMD->UtilEncoders.mtlASCommandEncoder = nil;
+    CMD->renderEncoder.mtlRenderEncoder = nil;
+    CMD->cmptEncoder.mtlComputeEncoder = nil;
+    
+    CGPUQueue_Metal* Queue = (CGPUQueue_Metal*)Pool->super.queue;
+    CMD->mtlCommandBuffer = [Queue->mtlCommandQueue commandBufferWithUnretainedReferences];
+    CMD->mtlCommandBuffer.label = @"CommandBuffer";
+}
 
 void cgpu_cmd_transfer_buffer_to_buffer_metal(CGPUCommandBufferId cmd, const struct CGPUBufferToBufferTransfer* desc)
 {
@@ -813,6 +864,59 @@ void cgpu_cmd_transfer_texture_to_texture_metal(CGPUCommandBufferId cmd, const s
     CGPUTexture_Metal* srcTexture = (CGPUTexture_Metal*)desc->src;
     CGPUTexture_Metal* dstTexture = (CGPUTexture_Metal*)desc->dst;
     
+    // Check if destination texture is framebufferOnly
+    if (dstTexture->pTexture.framebufferOnly)
+    {
+        // For framebufferOnly textures, we need to use a render pass
+        MetalUtil_FlushUtilEncoders(CMD, MTLUtilEncoderTypeAS | MTLUtilEncoderTypeBlit);
+        
+        // Create render pass descriptor
+        MTLRenderPassDescriptor* renderPassDesc = [MTLRenderPassDescriptor renderPassDescriptor];
+        renderPassDesc.colorAttachments[0].texture = dstTexture->pTexture;
+        renderPassDesc.colorAttachments[0].loadAction = MTLLoadActionDontCare;
+        renderPassDesc.colorAttachments[0].storeAction = MTLStoreActionStore;
+        
+        // Create render encoder
+        id<MTLRenderCommandEncoder> renderEncoder = [CMD->mtlCommandBuffer renderCommandEncoderWithDescriptor:renderPassDesc];
+        renderEncoder.label = @"Blit Texture";
+        
+        // Set viewport to cover the entire texture
+        MTLViewport viewport = {
+            .originX = 0,
+            .originY = 0,
+            .width = (double)dstTexture->super.info->width,
+            .height = (double)dstTexture->super.info->height,
+            .znear = 0.0,
+            .zfar = 1.0
+        };
+        [renderEncoder setViewport:viewport];
+        
+        // Get the blit pipeline from device
+        CGPUDevice_Metal* device = (CGPUDevice_Metal*)CMD->super.device;
+        id<MTLRenderPipelineState> blitPipeline = MetalUtil_GetBlitPipeline(device, dstTexture->pTexture.pixelFormat);
+        if (!blitPipeline) {
+            cgpu_error("Failed to get blit pipeline for texture copy");
+            [renderEncoder endEncoding];
+            return;
+        }
+        [renderEncoder setRenderPipelineState:blitPipeline];
+        
+        // Set source texture at fragment texture binding 0
+        [renderEncoder setFragmentTexture:srcTexture->pTexture atIndex:0];
+        
+        // Get sampler and set at fragment sampler binding 0
+        id<MTLSamplerState> sampler = MetalUtil_GetLinearSampler(device);
+        [renderEncoder setFragmentSamplerState:sampler atIndex:0];
+        
+        // Draw fullscreen triangle (3 vertices, no vertex buffer needed)
+        [renderEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
+        
+        // End encoding
+        [renderEncoder endEncoding];
+        return;
+    }
+    
+    // For non-framebufferOnly textures, use normal blit encoder
     MetalUtil_FlushUtilEncoders(CMD, MTLUtilEncoderTypeAS);
     
     // Ensure we have a blit encoder
@@ -1011,20 +1115,16 @@ void cgpu_compute_encoder_push_constants_metal(CGPUComputePassEncoderId encoder,
     
     // Find the push constant by name
     size_t name_hash = name ? cgpu_name_hash(name, strlen((const char*)name)) : 0;
-    for (uint32_t i = 0; i < RS->super.push_constant_count; i++)
     {
-        CGPUShaderResource* push_const = &RS->super.push_constants[i];
+        CGPUShaderResource* push_const = &RS->super.push_constants[0];
         
         // Match by name hash if name is provided, otherwise use the first push constant
-        if (!name || (push_const->name_hash == name_hash && 
-            strcmp((const char*)push_const->name, (const char*)name) == 0))
         {
             // In Metal, push constants are set using setBytes at a specific buffer index
             // The buffer index should be stored in the binding field during root signature creation
             [CE->mtlComputeEncoder setBytes:data 
-                                     length:push_const->size 
-                                    atIndex:push_const->set];
-            break;
+                                     length:192
+                                    atIndex:1];
         }
     }
 }
@@ -1052,4 +1152,32 @@ void cgpu_cmd_end_compute_pass_metal(CGPUCommandBufferId cmd, CGPUComputePassEnc
     [CE->mtlComputeEncoder endEncoding];
     CE->mtlComputeEncoder = nil;
     MB->cmptEncoder.mtlComputeEncoder = nil;
+}
+
+void cgpu_render_encoder_push_constants_metal(CGPURenderPassEncoderId encoder, CGPURootSignatureId rs, const char8_t* name, const void* data)
+{
+    CGPURenderPassEncoder_Metal* RE = (CGPURenderPassEncoder_Metal*)encoder;
+    CGPURootSignature_Metal* RS = (CGPURootSignature_Metal*)rs;
+    
+    // Find the push constant by name
+    size_t name_hash = name ? cgpu_name_hash(name, strlen((const char*)name)) : 0;
+    for (uint32_t i = 0; i < RS->super.push_constant_count; i++)
+    {
+        CGPUShaderResource* push_const = &RS->super.push_constants[i];
+        
+        // Match by name hash if name is provided, otherwise use the first push constant
+        if (!name || (push_const->name_hash == name_hash && 
+            strcmp((const char*)push_const->name, (const char*)name) == 0))
+        {
+            // In Metal, push constants are set using setBytes at a specific buffer index
+            // The buffer index should be stored in the set field during root signature creation
+            [RE->mtlRenderEncoder setVertexBytes:data 
+                                          length:push_const->size 
+                                         atIndex:push_const->set];
+            [RE->mtlRenderEncoder setFragmentBytes:data 
+                                            length:push_const->size 
+                                           atIndex:push_const->set];
+            break;
+        }
+    }
 }

@@ -27,7 +27,8 @@ typedef struct CGPUInstance_Metal {
 
 typedef struct CGPUFence_Metal {
     CGPUFence super;
-    dispatch_semaphore_t sysSemaphore;
+    id<MTLEvent> mtlEvent;
+    uint64_t mValue;
     uint32_t mSubmitted : 1;
 } CGPUFence_Metal;
 

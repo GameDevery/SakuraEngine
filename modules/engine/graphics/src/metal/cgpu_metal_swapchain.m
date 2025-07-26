@@ -192,7 +192,9 @@ uint32_t cgpu_acquire_next_image_metal(CGPUSwapChainId swapchain, const CGPUAcqu
             
             if (desc->fence) {
                 CGPUFence_Metal* fence = (CGPUFence_Metal*)desc->fence;
-                dispatch_semaphore_signal(fence->sysSemaphore);
+                fence->mSubmitted = 1;
+                fence->mValue++;
+                [(id<MTLSharedEvent>)fence->mtlEvent setSignaledValue:fence->mValue];
             }
         }
         

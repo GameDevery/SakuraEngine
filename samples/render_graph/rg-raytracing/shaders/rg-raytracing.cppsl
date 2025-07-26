@@ -13,10 +13,8 @@ struct CameraConstants
 {
     float4x4 invViewMatrix;
     float4x4 invProjMatrix;
-    float3 cameraPos;
-    float _padding0;
-    float3 cameraDir;
-    float _padding1;
+    float4 cameraPos;
+    float4 cameraDir;
     float2 screenSize;
 };
 
@@ -40,10 +38,10 @@ Ray generate_camera_ray(uint2 pixel_coord, uint2 screen_size)
     );
     
     // Simplified approach: directly compute ray direction from camera
-    float3 ray_origin = camera_constants.cameraPos;
+    float3 ray_origin = camera_constants.cameraPos.xyz;
     
     // Camera setup: eye=(0,500,-200), target=(0,0,-800), up=(0,1,0)
-    float3 camera_forward = normalize(camera_constants.cameraDir);
+    float3 camera_forward = normalize(camera_constants.cameraDir.xyz);
     float3 camera_right = normalize(cross(camera_forward, float3(0, 1, 0)));
     float3 camera_up = cross(camera_right, camera_forward);
     

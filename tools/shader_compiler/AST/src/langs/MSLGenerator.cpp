@@ -740,6 +740,30 @@ void MSLGenerator::GenerateKernelWrapper(SourceBuilderNew& sb, const skr::CppSL:
         VisitParameter(sb, funcDecl, param);
     }
     
+    // Add SRT parameters as placeholders for debugger
+    std::set<uint32_t> used_sets;
+    for (const auto& [var, set] : set_of_vars)
+    {
+        used_sets.insert(set);
+    }
+    
+    for (uint32_t set : used_sets)
+    {
+        if (!first) sb.append(L", ");
+        first = false;
+        
+        auto SRTTypeName = L"SRT" + std::to_wstring(set);
+        auto SRTVarName = L"srt" + std::to_wstring(set);
+        
+        sb.append(L"constant ");
+        sb.append(SRTTypeName);
+        sb.append(L"& ");
+        sb.append(SRTVarName);
+        sb.append(L" [[buffer(");
+        sb.append(std::to_wstring(set));
+        sb.append(L")]]");
+    }
+    
     sb.append(L")");
     sb.endline();
     sb.append(L"{");
@@ -1027,7 +1051,7 @@ void MSLGenerator::GenerateSRTs(SourceBuilderNew& sb, const AST& ast)
         sb.endline();
 
         sb.append(
-            std::format(L"device {}& constant {} [[buffer({})]]", SRTTypeName, SRTVarName, set)
+            std::format(L"constant {}& constant {} [[buffer({})]]", SRTTypeName, SRTVarName, set)
         );
         sb.endline(L';');
     };
