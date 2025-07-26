@@ -94,10 +94,12 @@ CGPU_API void cgpu_free_query_pool_metal(CGPUQueryPoolId pool);
 CGPU_API CGPUQueueId cgpu_get_queue_metal(CGPUDeviceId device, ECGPUQueueType type, uint32_t index);
 CGPU_API void cgpu_submit_queue_metal(CGPUQueueId queue, const struct CGPUQueueSubmitDescriptor* desc);
 CGPU_API void cgpu_wait_queue_idle_metal(CGPUQueueId queue);
+CGPU_API void cgpu_queue_present_metal(CGPUQueueId queue, const struct CGPUQueuePresentDescriptor* desc);
 CGPU_API void cgpu_free_queue_metal(CGPUQueueId queue);
 
 // Command APIs
 CGPU_API CGPUCommandPoolId cgpu_create_command_pool_metal(CGPUQueueId queue, const CGPUCommandPoolDescriptor* desc);
+CGPU_API void cgpu_reset_command_pool_metal(CGPUCommandPoolId pool);
 CGPU_API CGPUCommandBufferId cgpu_create_command_buffer_metal(CGPUCommandPoolId pool, const struct CGPUCommandBufferDescriptor* desc);
 CGPU_API void cgpu_free_command_buffer_metal(CGPUCommandBufferId cmd);
 CGPU_API void cgpu_free_command_pool_metal(CGPUCommandPoolId pool);
@@ -112,14 +114,30 @@ CGPU_API void cgpu_map_buffer_metal(CGPUBufferId buffer, const struct CGPUBuffer
 CGPU_API void cgpu_unmap_buffer_metal(CGPUBufferId buffer);
 CGPU_API void cgpu_free_buffer_metal(CGPUBufferId buffer);
 
+// Texture APIs
+CGPU_API CGPUTextureId cgpu_create_texture_metal(CGPUDeviceId device, const struct CGPUTextureDescriptor* desc);
+CGPU_API void cgpu_free_texture_metal(CGPUTextureId texture);
+CGPU_API CGPUTextureViewId cgpu_create_texture_view_metal(CGPUDeviceId device, const struct CGPUTextureViewDescriptor* desc);
+CGPU_API void cgpu_free_texture_view_metal(CGPUTextureViewId view);
+
+// Swapchain APIs
+CGPU_API CGPUSwapChainId cgpu_create_swapchain_metal(CGPUDeviceId device, const struct CGPUSwapChainDescriptor* desc);
+CGPU_API uint32_t cgpu_acquire_next_image_metal(CGPUSwapChainId swapchain, const struct CGPUAcquireNextDescriptor* desc);
+CGPU_API void cgpu_free_swapchain_metal(CGPUSwapChainId swapchain);
+
 // CMDs
 CGPU_API void cgpu_cmd_begin_metal(CGPUCommandBufferId cmd);
 CGPU_API void cgpu_cmd_transfer_buffer_to_buffer_metal(CGPUCommandBufferId cmd, const struct CGPUBufferToBufferTransfer* desc);
+CGPU_API void cgpu_cmd_transfer_texture_to_texture_metal(CGPUCommandBufferId cmd, const struct CGPUTextureToTextureTransfer* desc);
+CGPU_API void cgpu_cmd_fill_buffer_metal(CGPUCommandBufferId cmd, CGPUBufferId buffer, const struct CGPUFillBufferDescriptor* desc);
+CGPU_API void cgpu_cmd_fill_buffer_n_metal(CGPUCommandBufferId cmd, CGPUBufferId buffer, const struct CGPUFillBufferDescriptor* desc, uint32_t count);
 CGPU_API void cgpu_cmd_resource_barrier_metal(CGPUCommandBufferId cmd, const struct CGPUResourceBarrierDescriptor* desc);
 CGPU_API void cgpu_cmd_begin_query_metal(CGPUCommandBufferId cmd, CGPUQueryPoolId pool, const struct CGPUQueryDescriptor* desc);
 CGPU_API void cgpu_cmd_end_query_metal(CGPUCommandBufferId cmd, CGPUQueryPoolId pool, const struct CGPUQueryDescriptor* desc);
 CGPU_API void cgpu_cmd_reset_query_pool_metal(CGPUCommandBufferId cmd, CGPUQueryPoolId pool, uint32_t start_query, uint32_t query_count);
 CGPU_API void cgpu_cmd_resolve_query_metal(CGPUCommandBufferId cmd, CGPUQueryPoolId pool, CGPUBufferId readback, uint32_t start_query, uint32_t query_count);
+CGPU_API void cgpu_cmd_begin_event_metal(CGPUCommandBufferId cmd, const CGPUEventInfo* event);
+CGPU_API void cgpu_cmd_end_event_metal(CGPUCommandBufferId cmd);
 CGPU_API void cgpu_cmd_end_metal(CGPUCommandBufferId cmd);
 
 // Compute CMDs

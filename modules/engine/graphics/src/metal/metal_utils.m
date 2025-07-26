@@ -155,6 +155,8 @@ ECGPUResourceType MetalUtil_GetResourceType(MTLStructType* structure, ECGPUTextu
             r = CGPU_RESOURCE_TYPE_UNIFORM_BUFFER;
         else if (T == MTLDataTypeInstanceAccelerationStructure)
             r = CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE;
+        else if (T == MTLDataTypeStruct)
+            r = CGPU_RESOURCE_TYPE_PUSH_CONSTANT;
     }
     else if (structure.members.count == 2)
     {

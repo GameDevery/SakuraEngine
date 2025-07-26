@@ -35,7 +35,7 @@ public static class SkrGraphics
             SkrGraphics
                 .AddObjCFiles(OCOptions, "src/build.*.m") 
                 .AddObjCppFiles(OCOptions, "src/build.*.mm") 
-                .AppleFramework(Visibility.Public, "CoreFoundation", "Cocoa", "Metal", "IOKit")
+                .AppleFramework(Visibility.Public, "CoreFoundation", "Cocoa", "Metal", "IOKit", "QuartzCore")
                 .Defines(Visibility.Private, "VK_USE_PLATFORM_MACOS_MVK");
         }
 

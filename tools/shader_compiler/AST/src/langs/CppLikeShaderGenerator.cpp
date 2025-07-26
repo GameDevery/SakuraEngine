@@ -601,8 +601,14 @@ String CppLikeShaderGenerator::GetFunctionName(const FunctionDecl* func)
     return func->name();
 }
 
+void CppLikeShaderGenerator::GenerateFunctionAttributes(SourceBuilderNew& sb, const FunctionDecl* funcDecl)
+{
+
+}
+
 void CppLikeShaderGenerator::GenerateFunctionSignaturePostfix(SourceBuilderNew& sb, const FunctionDecl* func)
 {
+
 }
 
 void CppLikeShaderGenerator::GenerateKernelWrapper(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* funcDecl)
@@ -640,6 +646,16 @@ void CppLikeShaderGenerator::visit_decl(SourceBuilderNew& sb, const skr::CppSL::
     }
 }
 
+void CppLikeShaderGenerator::BeforeGenerateGlobalVariables(SourceBuilderNew& sb, const AST& ast)
+{
+
+}
+
+void CppLikeShaderGenerator::BeforeGenerateFunctionImplementations(SourceBuilderNew& sb, const AST& ast)
+{
+
+}
+
 String CppLikeShaderGenerator::generate_code(SourceBuilderNew& sb, const AST& ast)
 {
     using namespace skr::CppSL;
@@ -651,11 +667,16 @@ String CppLikeShaderGenerator::generate_code(SourceBuilderNew& sb, const AST& as
 
     RecordBuiltinHeader(sb, ast);
 
-    // generate declares
-    for (const auto& decl : ast.decls())
-    {
+    for (const auto& decl : ast.types())
         visit_decl(sb, decl);
-    }
+
+    BeforeGenerateGlobalVariables(sb, ast);
+    for (const auto& decl : ast.global_vars())
+        visit_decl(sb, decl);
+
+    BeforeGenerateFunctionImplementations(sb, ast);
+    for (const auto& decl : ast.funcs())
+        visit_decl(sb, decl);
 
     return sb.build(SourceBuilderNew::line_builder_code);
 }

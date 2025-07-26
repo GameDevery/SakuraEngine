@@ -1,5 +1,6 @@
 #include "std/std.hpp"
 #include "std2/attributes.hpp"
+#include "std2/constant_buffer.hpp"
 
 using namespace skr::shader;
 

@@ -228,7 +228,7 @@ BufferTypeDecl::BufferTypeDecl(AST& ast, const String& name, BufferFlags flags)
 }
 
 ConstantBufferTypeDecl::ConstantBufferTypeDecl(AST& ast, const TypeDecl* element)
-    : BufferTypeDecl(ast, std::format(L"ConstantBuffer<{}>", element->name()), BufferFlags::None)
+    : BufferTypeDecl(ast, std::format(L"ConstantBuffer<{}>", element->name()), BufferFlags::None), _element(element)
 {
 
 }

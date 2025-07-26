@@ -773,7 +773,7 @@ void RGRaytracingSampleModule::create_compute_pipeline()
 {
     // Create compute shader
     uint32_t *shader_bytes, shader_length;
-    read_shader_bytes("rg-raytracing/rg-raytracing.cs_main", &shader_bytes, &shader_length, CGPU_BACKEND_D3D12);
+    read_shader_bytes("rg-raytracing/rg-raytracing.cs_main", &shader_bytes, &shader_length, device->adapter->instance->backend);
     CGPUShaderLibraryDescriptor shader_desc = {
         .name = u8"RayTracingComputeShader",
         .code = shader_bytes,

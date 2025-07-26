@@ -8,7 +8,6 @@
 #include <QuartzCore/CAMetalLayer.h>
 #include <ApplicationServices/ApplicationServices.h>  // For CGDisplay APIs
 
-// Metal view similar to SDL's implementation
 @interface CocoaMetalView : NSView
 {
     BOOL highDPI_;

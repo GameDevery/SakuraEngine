@@ -99,6 +99,10 @@ String MSLGenerator::GetTypeName(const TypeDecl* type)
     {
         return L"metal::" + asMatrix->name();
     }
+    else if (auto asCB = dynamic_cast<const ConstantBufferTypeDecl*>(type))
+    {
+        return type->name();
+    }
     return type->name();
 }
 
@@ -195,10 +199,15 @@ void MSLGenerator::VisitDeclRef(SourceBuilderNew& sb, const DeclRefExpr* declRef
         auto set = set_of_vars.find(var);
         if (set != set_of_vars.end())
         {
+            // Check if this is a push constant
             if (auto cbuffer = dynamic_cast<const ConstantBufferTypeDecl*>(&var->type()))
+            {
                 sb.append(std::format(L"srt{}.{}.cgpu_buffer_data", set->second, var->name()));
+            }
             else
+            {
                 sb.append(std::format(L"srt{}.{}", set->second, var->name()));
+            }
         }
         else
         {
@@ -246,10 +255,9 @@ void MSLGenerator::VisitConstructExpr(SourceBuilderNew& sb, const ConstructExpr*
     }
 }
 
-// MSLGenerator generates stage attribute at wrapper so we need not deal with stage attributes here
-void MSLGenerator::GenerateFunctionAttributes(SourceBuilderNew& sb, const FunctionDecl* funcDecl)
+void MSLGenerator::BeforeGenerateFunctionImplementations(SourceBuilderNew& sb, const AST& ast)
 {
-
+    GenerateSRTs(sb, ast);
 }
 
 static const skr::CppSL::String kMSLHeader = LR"(
@@ -257,6 +265,7 @@ static const skr::CppSL::String kMSLHeader = LR"(
 #include <simd/simd.h>
 
 template <typename T> struct ConstantBuffer { constant T& cgpu_buffer_data; };
+template <typename T> struct PushConstant { T cgpu_buffer_data; };
 
 template <typename T, metal::access a> struct Buffer;
 template <typename T> struct Buffer<T, metal::access::read> { constant T* cgpu_buffer_data; uint64_t cgpu_buffer_size; };
@@ -362,8 +371,6 @@ void MSLGenerator::RecordBuiltinHeader(SourceBuilderNew& sb, const AST& ast)
 {
     sb.append(kMSLHeader);
     sb.endline();
-
-    GenerateSRTs(sb, ast);
 }
 
 void MSLGenerator::GenerateKernelWrapper(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* funcDecl)
@@ -961,10 +968,17 @@ void MSLGenerator::GenerateSRTs(SourceBuilderNew& sb, const AST& ast)
     using SRT = std::map<uint32_t, const VarDecl*>;
     std::map<uint32_t, SRT> srts;
     SRT anonymous_srt;
+    const VarDecl* push_constant = nullptr;
     uint32_t anonymous_srt_bind = 0;
+    
     for (auto var : ast.global_vars())
     {
-        if (auto asResource = dynamic_cast<const ResourceTypeDecl*>(&var->type()))
+        // Check if this is a push constant
+        if (FindAttr<PushConstantAttr>(var->attrs()))
+        {
+            push_constant = var;
+        }
+        else if (auto asResource = dynamic_cast<const ResourceTypeDecl*>(&var->type()))
         {
             uint32_t set = 0, bind = 0;
             if (const auto resourceBind = FindAttr<ResourceBindAttr>(var->attrs()))
@@ -992,7 +1006,16 @@ void MSLGenerator::GenerateSRTs(SourceBuilderNew& sb, const AST& ast)
         sb.indent([&](){
             for (const auto& [bind, resource] : srt)
             {
-                sb.append(GetTypeName(&resource->type()));
+                if (auto asPushConstant = FindAttr<PushConstantAttr>(resource->attrs()))
+                {
+                    auto Type = dynamic_cast<const ConstantBufferTypeDecl*>(&resource->type());
+                    sb.append(L"PushConstant<" + GetTypeName(Type->element_type()) + L">");
+                }
+                else
+                {
+                    sb.append(GetTypeName(&resource->type()));
+                }
+
                 sb.append(L" ");
                 sb.append(resource->name());
                 sb.endline(L';');
@@ -1009,6 +1032,7 @@ void MSLGenerator::GenerateSRTs(SourceBuilderNew& sb, const AST& ast)
         sb.endline(L';');
     };
 
+    // Generate regular SRTs
     uint32_t next_set = 0;
     for (const auto& [set, srt] : srts)
     {
@@ -1016,7 +1040,17 @@ void MSLGenerator::GenerateSRTs(SourceBuilderNew& sb, const AST& ast)
         next_set = set + 1;
     }
     if (!anonymous_srt.empty())
+    {
         gen_srt(next_set, anonymous_srt);
+        next_set++;
+    }
+    if (push_constant != nullptr)
+    {
+        SRT push_constant_srt;
+        push_constant_srt[0] = push_constant;
+        gen_srt(next_set, push_constant_srt);
+        next_set++;
+    }
 }
 
 } // end namespace skr::CppSL::MSL

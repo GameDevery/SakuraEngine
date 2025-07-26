@@ -28,6 +28,7 @@ typedef struct CGPUInstance_Metal {
 typedef struct CGPUFence_Metal {
     CGPUFence super;
     dispatch_semaphore_t sysSemaphore;
+    uint32_t mSubmitted : 1;
 } CGPUFence_Metal;
 
 typedef struct CGPUSemaphore_Metal {
@@ -110,11 +111,32 @@ typedef struct CGPUBuffer_Metal {
 	uint64_t                     mOffset;
 } CGPUBuffer_Metal;
 
+typedef struct CGPUTexture_Metal {
+    CGPUTexture super;
+    id<MTLTexture> pTexture;
+} CGPUTexture_Metal;
+
+typedef struct CGPUTextureView_Metal {
+    CGPUTextureView super;
+    id<MTLTexture> pTextureView;
+} CGPUTextureView_Metal;
+
 typedef struct CGPUQueryPool_Metal {
     CGPUQueryPool super;
     id<MTLCounterSampleBuffer> mtlCounterSampleBuffer;
     ECGPUQueryType queryType;
 } CGPUQueryPool_Metal;
+
+typedef struct CGPUSwapChain_Metal {
+    CGPUSwapChain super;
+	NSView* pView;
+    CAMetalLayer* pLayer;
+    id<CAMetalDrawable> pCurrentDrawable;
+    CGPUTexture_Metal* pBackBufferTextures;
+    dispatch_semaphore_t mImageAcquiredSemaphore;
+    uint32_t mCurrentBackBufferIndex;
+    bool mOwnsView;
+} CGPUSwapChain_Metal;
 
 typedef struct CGPUAccelerationStructure_Metal {
 	CGPUAccelerationStructure super;

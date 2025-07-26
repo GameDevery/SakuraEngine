@@ -244,9 +244,13 @@ protected:
 
 struct ConstantBufferTypeDecl : public BufferTypeDecl
 {
+public:
+    const auto element_type() const { return _element; }
+    
 protected:
     friend struct AST;
     ConstantBufferTypeDecl(AST& ast, const TypeDecl* element);
+    const TypeDecl* _element = nullptr;
 };
 
 struct ByteBufferTypeDecl : public BufferTypeDecl

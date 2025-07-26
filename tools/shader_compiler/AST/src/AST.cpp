@@ -405,6 +405,7 @@ MethodDecl* AST::DeclareMethod(TypeDecl* owner, const Name& name, const TypeDecl
     auto decl = new MethodDecl(*this, owner, name, return_type, params, body);
     emplace_decl(decl);
     _methods.emplace_back(decl);
+    _funcs.emplace_back(decl);
     return decl;
 }
 
@@ -414,6 +415,7 @@ ConstructorDecl* AST::DeclareConstructor(TypeDecl* owner, const Name& name, std:
     auto decl = new ConstructorDecl(*this, owner, name, params, body);
     emplace_decl(decl);
     _ctors.emplace_back(decl);
+    _funcs.emplace_back(decl);
     return decl;
 }
 

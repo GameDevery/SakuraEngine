@@ -30,10 +30,13 @@ public:
     virtual void VisitParameter(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* funcDecl, const skr::CppSL::ParamVarDecl* param) = 0;
     virtual void VisitField(SourceBuilderNew& sb, const skr::CppSL::TypeDecl* type, const skr::CppSL::FieldDecl* field) = 0;
     virtual void VisitConstructor(SourceBuilderNew& sb, const ConstructorDecl* ctor, FunctionStyle style);
-    virtual void GenerateFunctionAttributes(SourceBuilderNew& sb, const FunctionDecl* func) = 0;
+    virtual void GenerateFunctionAttributes(SourceBuilderNew& sb, const FunctionDecl* func);
     virtual void GenerateFunctionSignaturePostfix(SourceBuilderNew& sb, const FunctionDecl* func);
     virtual void GenerateKernelWrapper(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* funcDecl);
     virtual bool SupportConstructor() const = 0;
+    
+    virtual void BeforeGenerateGlobalVariables(SourceBuilderNew& sb, const AST& ast);
+    virtual void BeforeGenerateFunctionImplementations(SourceBuilderNew& sb, const AST& ast);
 
 protected:
     template <typename T>
