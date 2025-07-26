@@ -1,6 +1,6 @@
 #include <SkrCore/module/module_manager.hpp>
 #include <SkrCore/log.h>
-#include "scene_renderer.h"
+#include "scene_renderer.hpp"
 
 // The Three-Triangle Example: simple mesh scene hierarchy
 
@@ -36,7 +36,10 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     SkrZoneScopedN("SceneSampleMeshModule::main_module_exec");
     SKR_LOG_INFO(u8"Running Scene Sample Mesh Module");
 
-    skr::scene::Renderer renderer; // The Scene Debug Renderer
+    auto* renderer = skr::SceneRenderer::Create();
 
+    // TODO: Main Window
+
+    skr::SceneRenderer::Destroy(renderer);
     return 0;
 }

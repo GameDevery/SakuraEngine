@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cassert>
+#include <array> // msvc will complain std::array is uninstantiated if <array> is removed
 #include "CppSL/Constant.hpp"
 #include "CppSL/Decl.hpp"
 #include "CppSL/AST.hpp"
@@ -11,9 +12,9 @@ void mandelbrot(skr::CppSL::AST& AST)
     using namespace skr::CppSL;
     std::vector<ParamVarDecl*> cos_params = { AST.DeclareParam(EVariableQualifier::None, AST.Float3Type, L"v") };
     auto cos_func = AST.DeclareFunction(L"cos", AST.Float3Type, cos_params, nullptr);
-    std::vector<ParamVarDecl*> dot_params = { 
-        AST.DeclareParam(EVariableQualifier::None, AST.Float2Type, L"a"), 
-        AST.DeclareParam(EVariableQualifier::None, AST.Float2Type, L"b") 
+    std::vector<ParamVarDecl*> dot_params = {
+        AST.DeclareParam(EVariableQualifier::None, AST.Float2Type, L"a"),
+        AST.DeclareParam(EVariableQualifier::None, AST.Float2Type, L"b")
     };
     auto dot_func = AST.DeclareFunction(L"dot", AST.FloatType, dot_params, nullptr);
 
@@ -25,25 +26,17 @@ void mandelbrot(skr::CppSL::AST& AST)
         std::vector<ParamVarDecl*> mandelbrot_params = { tid, tsize };
         auto mandelbrot_body = AST.Block({});
         mandelbrot = AST.DeclareFunction(L"mandelbrot", AST.Float4Type, mandelbrot_params, mandelbrot_body);
-        
+
         // const float x = float(tid.x) / (float)tsize.x;
-        auto x = AST.Variable(EVariableQualifier::Const, AST.FloatType, L"x", 
-            AST.Div(
-                AST.StaticCast(AST.FloatType, AST.Access(tid->ref(), AST.Constant(IntValue(0)))), 
-                AST.StaticCast(AST.FloatType, AST.Access(tsize->ref(), AST.Constant(IntValue(0))))
-            ));
+        auto x = AST.Variable(EVariableQualifier::Const, AST.FloatType, L"x", AST.Div(AST.StaticCast(AST.FloatType, AST.Access(tid->ref(), AST.Constant(IntValue(0)))), AST.StaticCast(AST.FloatType, AST.Access(tsize->ref(), AST.Constant(IntValue(0))))));
         mandelbrot_body->add_statement(x);
-        
+
         // const float y = float(tid.y) / (float)tsize.y;
-        auto y = AST.Variable(EVariableQualifier::Const, AST.FloatType, L"y",
-            AST.Div(
-                AST.StaticCast(AST.FloatType, AST.Access(tid->ref(), AST.Constant(IntValue(1)))),
-                AST.StaticCast(AST.FloatType, AST.Access(tsize->ref(), AST.Constant(IntValue(1))))
-            ));
+        auto y = AST.Variable(EVariableQualifier::Const, AST.FloatType, L"y", AST.Div(AST.StaticCast(AST.FloatType, AST.Access(tid->ref(), AST.Constant(IntValue(1)))), AST.StaticCast(AST.FloatType, AST.Access(tsize->ref(), AST.Constant(IntValue(1))))));
         mandelbrot_body->add_statement(y);
 
         // const float2 uv = float2(x, y);
-        std::vector<Expr*> uv_inits = { x->ref(), y->ref() }; 
+        std::vector<Expr*> uv_inits = { x->ref(), y->ref() };
         auto uv = AST.Variable(EVariableQualifier::Const, AST.Float2Type, L"uv", AST.Construct(AST.Float2Type, uv_inits));
         mandelbrot_body->add_statement(uv);
 
@@ -60,15 +53,12 @@ void mandelbrot(skr::CppSL::AST& AST)
         mandelbrot_body->add_statement(c);
 
         // c = c + (uv - float2(0.5f, 0.5f)) * 2.3399999141693115234375f;
-        auto vec_05_05_init = std::vector<Expr*>{ 
-            AST.Constant(FloatValue("0.5f")), 
-            AST.Constant(FloatValue("0.5f")) 
+        auto vec_05_05_init = std::vector<Expr*>{
+            AST.Constant(FloatValue("0.5f")),
+            AST.Constant(FloatValue("0.5f"))
         };
-        auto modify_c = AST.Assign(c->ref(), 
-        AST.Add(c->ref(), AST.Mul(
-            AST.Sub(uv->ref(), AST.Construct(AST.Float2Type, vec_05_05_init)), 
-            AST.Constant(FloatValue("2.3399999141693115234375f"))
-        )));
+        auto modify_c = AST.Assign(c->ref(),
+            AST.Add(c->ref(), AST.Mul(AST.Sub(uv->ref(), AST.Construct(AST.Float2Type, vec_05_05_init)), AST.Constant(FloatValue("2.3399999141693115234375f")))));
         mandelbrot_body->add_statement(modify_c);
 
         // float2 z = float2(0.f, 0.f);
@@ -97,7 +87,7 @@ void mandelbrot(skr::CppSL::AST& AST)
         auto for_cond = AST.Less(for_init->ref(), AST.Unary(UnaryOp::PLUS, M->ref()));
         auto for_inc = AST.AddAssign(for_init->ref(), AST.Constant(IntValue(1)));
         auto for_body = AST.Block({});
-        
+
         // z = float2((z.x * z.x) - (z.y * z.y), (2.0f * z.x) * z.y) + c;
         {
             auto temp_a = AST.Mul(AST.Access(z->ref(), AST.Constant(IntValue(0))), AST.Access(z->ref(), AST.Constant(IntValue(0))));
@@ -138,7 +128,7 @@ void mandelbrot(skr::CppSL::AST& AST)
         };
         auto d = AST.Variable(EVariableQualifier::Const, AST.Float3Type, L"d", AST.Construct(AST.Float3Type, d_inits));
         mandelbrot_body->add_statement(d);
-        
+
         // const float3 e = float3(-0.2f, -0.3f, -0.5f);
         std::vector<Expr*> e_inits = {
             AST.Constant(FloatValue("-0.2f")),
@@ -193,12 +183,12 @@ void mandelbrot(skr::CppSL::AST& AST)
         kernel_body->add_statement(tsize);
         auto row_pitch = AST.Variable(EVariableQualifier::Const, AST.UIntType, L"row_pitch", AST.Access(tsize->ref(), AST.Constant(IntValue(0))));
         kernel_body->add_statement(row_pitch);
-        
+
         // output.store(tid.x + tid.y * row_pitch, mandelbrot(tid, tsize));
         auto tid_x = AST.Access(sv_tid->ref(), AST.Constant(IntValue(0)));
         auto tid_y = AST.Access(sv_tid->ref(), AST.Constant(IntValue(1)));
         auto output_index = AST.Add(tid_x, AST.Mul(tid_y, row_pitch->ref()));
-        
+
         std::vector<Expr*> mandelbrot_args = { sv_tid->ref(), tsize->ref() };
         auto mandelbrot_call = AST.CallFunction(mandelbrot->ref(), mandelbrot_args);
 

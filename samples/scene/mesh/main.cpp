@@ -8,7 +8,7 @@ int main(int argc, char* argv[])
     auto root = skr::filesystem::current_path(ec);
     {
         FrameMark;
-        SkrZoneScopedN("Initialize");
+        SkrZoneScopedN("SceneSampleMesh");
         moduleManager->mount(root.u8string().c_str());
         moduleManager->make_module_graph(u8"SceneSample_Mesh", true);
         moduleManager->init_module_graph(argc, argv);
