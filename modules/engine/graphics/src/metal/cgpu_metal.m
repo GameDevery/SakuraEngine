@@ -337,7 +337,7 @@ CGPURootSignatureId cgpu_create_root_signature_metal(CGPUDeviceId device, const 
     RS->super.table_count = reflection.bindings.count;
     RS->super.tables = cgpu_calloc(RS->super.table_count, sizeof(CGPUParameterTable));
     RS->super.push_constants = cgpu_calloc(desc->push_constant_count, sizeof(CGPUShaderResource));
-    for (uint32_t i = 0; i < 1; i++)
+    for (uint32_t i = 0; i < reflection.bindings.count; i++)
     {
         CGPUParameterTable* table = RS->super.tables + i;
         table->metal.arg_buf_size = 0;
@@ -1115,16 +1115,18 @@ void cgpu_compute_encoder_push_constants_metal(CGPUComputePassEncoderId encoder,
     
     // Find the push constant by name
     size_t name_hash = name ? cgpu_name_hash(name, strlen((const char*)name)) : 0;
+    for (uint32_t i = 0; i < RS->super.push_constant_count; i++)
     {
-        CGPUShaderResource* push_const = &RS->super.push_constants[0];
+        CGPUShaderResource* push_const = &RS->super.push_constants[i];
         
         // Match by name hash if name is provided, otherwise use the first push constant
         {
             // In Metal, push constants are set using setBytes at a specific buffer index
             // The buffer index should be stored in the binding field during root signature creation
             [CE->mtlComputeEncoder setBytes:data 
-                                     length:192
+                                     length:push_const->size 
                                     atIndex:1];
+            break;
         }
     }
 }
