@@ -1,6 +1,7 @@
 #pragma once
 #include "SkrGraphics/api.h"
 #include "SkrGraphics/raytracing.h"
+#include "SkrGraphics/backend/metal/metal_availability.h" // IWYU pragma: export
 
 /* Resouce Binding Schema:
 

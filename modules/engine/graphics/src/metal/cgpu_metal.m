@@ -334,16 +334,28 @@ CGPURootSignatureId cgpu_create_root_signature_metal(CGPUDeviceId device, const 
         return CGPU_NULLPTR;
     }
     // REFLECTION
-    RS->super.table_count = reflection.bindings.count;
-    RS->super.tables = cgpu_calloc(RS->super.table_count, sizeof(CGPUParameterTable));
     RS->super.push_constants = cgpu_calloc(desc->push_constant_count, sizeof(CGPUShaderResource));
-    for (uint32_t i = 0; i < 1; i++)
+    NSMutableArray<id<MTLBinding>>* unique_bindings = [[NSMutableArray<id<MTLBinding>> alloc] init];
+    for (uint32_t i = 0; i < reflection.bindings.count; i++)
+    {
+        id<MTLBinding> pending = reflection.bindings[i];
+        for (id<MTLBinding> exist in unique_bindings)
+        {
+            if (exist.index == pending.index)
+                pending = nil;
+        }
+        if (pending != nil)
+            [unique_bindings addObject:pending];
+    }
+    RS->super.table_count = unique_bindings.count;
+    RS->super.tables = cgpu_calloc(RS->super.table_count, sizeof(CGPUParameterTable));
+    for (uint32_t i = 0; i < unique_bindings.count; i++)
     {
         CGPUParameterTable* table = RS->super.tables + i;
         table->metal.arg_buf_size = 0;
-        if (reflection.bindings[i].type == MTLBindingTypeBuffer)
+        if (unique_bindings[i].type == MTLBindingTypeBuffer)
         {
-            id<MTLBufferBinding> SRT = (id<MTLBufferBinding>)reflection.bindings[i];
+            id<MTLBufferBinding> SRT = (id<MTLBufferBinding>)unique_bindings[i];
             MTLStructType* SRTLayout = SRT.bufferStructType;
             table->metal.arg_buf_size = SRT.bufferDataSize;
             table->set_index = SRT.index;
@@ -1094,7 +1106,7 @@ void cgpu_compute_encoder_bind_descriptor_set_metal(CGPUComputePassEncoderId enc
             }
             else if (slot->mtlUsage == (MTLResourceUsageRead | MTLResourceUsageWrite))
             {
-                DS->mtlReadWriteArgsCache[ReadCount] = slot->mtlResource;
+                DS->mtlReadWriteArgsCache[ReadWriteCount] = slot->mtlResource;
                 ReadWriteCount++;
             }
             else if (slot->mtlUsage == MTLResourceUsageWrite)
@@ -1116,16 +1128,19 @@ void cgpu_compute_encoder_push_constants_metal(CGPUComputePassEncoderId encoder,
     
     // Find the push constant by name
     size_t name_hash = name ? cgpu_name_hash(name, strlen((const char*)name)) : 0;
+    for (uint32_t i = 0; i < RS->super.push_constant_count; i++)
     {
         CGPUShaderResource* push_const = &RS->super.push_constants[0];
         
         // Match by name hash if name is provided, otherwise use the first push constant
+        if (!name || (push_const->name_hash == name_hash && 
+            strcmp((const char*)push_const->name, (const char*)name) == 0))
         {
             // In Metal, push constants are set using setBytes at a specific buffer index
             // The buffer index should be stored in the binding field during root signature creation
             [CE->mtlComputeEncoder setBytes:data 
-                                     length:176
-                                    atIndex:1];
+                                     length:push_const->size 
+                                    atIndex:push_const->set];
         }
     }
 }

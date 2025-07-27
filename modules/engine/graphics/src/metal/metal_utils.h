@@ -4,6 +4,7 @@
 #include <Metal/MTLArgument.h>
 
 #include "SkrGraphics/backend/metal/cgpu_metal_types.h"
+#include "SkrGraphics/backend/metal/metal_availability.h"
 #include "metal_vma.h"
 
 #ifdef __cplusplus
