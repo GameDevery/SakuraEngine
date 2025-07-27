@@ -15,9 +15,7 @@ struct SKR_RENDER_GRAPH_API NodeAndEdgeFactory
     template<typename T, typename... Args>
     T* Allocate(Args&&... args) SKR_NOEXCEPT
     {
-#ifdef SKR_PROFILE_ENABLE
         SkrZoneScopedN("RennderGraph::AllocateObject");
-#endif
         if (auto allocated = InternalAlloc<T>())
         {
             new (allocated) T(std::forward<Args>(args)...);

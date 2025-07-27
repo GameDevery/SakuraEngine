@@ -320,6 +320,10 @@ uint64_t RenderGraphBackend::execute(RenderGraphProfiler* profiler) SKR_NOEXCEPT
                 [this](BufferNode* t, BufferEdge* e) {
                     node_factory->Dealloc(e);
                 });
+            pass->foreach_acceleration_structures(
+                [this](AccelerationStructureNode* as, AccelerationStructureEdge* e) {
+                    node_factory->Dealloc(e);
+                });
             node_factory->Dealloc(pass);
         }
         passes.clear();

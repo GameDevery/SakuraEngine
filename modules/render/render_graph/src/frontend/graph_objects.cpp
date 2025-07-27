@@ -9,6 +9,9 @@ namespace skr
 {
 namespace render_graph
 {
+
+static const char* kMemoryPoolName = "RenderGraphFrontentObjects";
+
 struct SKR_RENDER_GRAPH_API NodeAndEdgeFactoryImpl final : public NodeAndEdgeFactory
 {
     NodeAndEdgeFactoryImpl() SKR_NOEXCEPT
@@ -38,23 +41,22 @@ struct SKR_RENDER_GRAPH_API NodeAndEdgeFactoryImpl final : public NodeAndEdgeFac
         {
             void* block;
             while (blocks.try_dequeue(block))
-                sakura_free(block);
+                sakura_freeN(block, kMemoryPoolName);
         }
         void* allocate()
         {
-            void* block;
+            void* block = nullptr;
             if (blocks.try_dequeue(block))
                 return block;
             {
-                SkrZoneScopedN("DualPoolAllocation");
-                return sakura_calloc(1, blockSize);
+                return sakura_callocN(1, blockSize, kMemoryPoolName);
             }
         }
         void free(void* block)
         {
             if (blocks.try_enqueue(block))
                 return;
-            sakura_free(block);
+            sakura_freeN(block, kMemoryPoolName);
         }
     };
 
