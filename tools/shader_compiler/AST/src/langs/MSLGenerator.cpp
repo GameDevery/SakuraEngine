@@ -276,7 +276,7 @@ template <typename T> void buffer_write(RWStructuredBuffer<T> buffer, uint index
 template <typename T> T buffer_read(RWStructuredBuffer<T> buffer, uint index) { return buffer.cgpu_buffer_data[index]; }
 
 template <typename T, metal::access a = metal::access::sample> struct Texture2D { metal::texture2d<T, a> cgpu_texture; };
-template <typename T> using RWTexture2D = Texture2D<T, metal::access::write>;
+template <typename T> using RWTexture2D = Texture2D<T, metal::access::read_write>;
 struct SamplerState { metal::sampler cgpu_sampler; };
 
 // Math intrinsics
@@ -316,7 +316,7 @@ metal::vec<T, 4> texture_read(Texture2D<T, metal::access::sample> texture, uint2
 }
 
 template<typename T>
-void texture_write(Texture2D<T, metal::access::write> texture, uint2 coord, metal::vec<T, 4> value) {
+void texture_write(Texture2D<T, metal::access::read_write> texture, uint2 coord, metal::vec<T, 4> value) {
     texture.cgpu_texture.write(value, coord);
 }
 

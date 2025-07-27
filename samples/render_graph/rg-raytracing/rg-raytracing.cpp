@@ -281,7 +281,7 @@ int RGRaytracingSampleModule::main_module_exec(int argc, char8_t** argv)
     {
         eq->pump_messages();
         
-        transform_system->update();
+        // transform_system->update();
         
         // 计算帧时间
         auto current_time = std::chrono::high_resolution_clock::now();
@@ -819,7 +819,7 @@ void RGRaytracingSampleModule::create_swapchain(skr::SystemWindow* window)
         .width = 1280,
         .height = 720,
         .enable_vsync = false,
-        .format = CGPU_FORMAT_B8G8R8A8_UNORM,
+        .format = CGPU_FORMAT_R8G8B8A8_UNORM,
     };
     swapchain = cgpu_create_swapchain(device, &swapchain_desc);
 }
