@@ -337,7 +337,6 @@ void MetalUtil_QueryVendorIdAndDeviceId(id<MTLDevice> device, uint32_t* outVende
         // This is an Apple GPU. It won't have a 'device-id' property, so fill it in
         // like on iOS/tvOS.
         vendorID = kAppleVendorId;
-    #ifdef TARGET_MACOS_APPLE_SILICON
         if (supportsMTLGPUFamily(device, Apple7))
         {
             deviceID = 0xa140;
@@ -350,9 +349,6 @@ void MetalUtil_QueryVendorIdAndDeviceId(id<MTLDevice> device, uint32_t* outVende
         {
             deviceID = 0xa120;
         }
-    #else
-        deviceID = 0xa120;
-    #endif
     }
     // If the device has an associated registry ID, we can use that to get the associated IOKit node.
     // The match dictionary is consumed by IOServiceGetMatchingServices and does not need to be released.

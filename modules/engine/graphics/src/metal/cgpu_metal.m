@@ -558,6 +558,7 @@ void cgpu_update_descriptor_set_metal(CGPUDescriptorSetId set, const struct CGPU
                         AS->mtlAS.gpuResourceID
                     };
                     MetalUtil_DSBindResourceAtIndex(DS, binding_index, AS->mtlAS, MTLResourceUsageRead);
+                    DS->pBoundAS = AS;
                     memcpy(pTLAS, &ARG, sizeof(ARG));
                 }
                 break;
@@ -1090,6 +1091,8 @@ void cgpu_compute_encoder_bind_descriptor_set_metal(CGPUComputePassEncoderId enc
                 cgpu_assert(0 && "Unexpected MTLResourceUsageWrite!");
             }
         }
+        if (DS->pBoundAS != nil)
+            [CE->mtlComputeEncoder useResources:DS->pBoundAS->asTop.mtlBottomASRefs count: DS->pBoundAS->asTop.mtlBottomASRefsCount usage:MTLResourceUsageRead];
         if (ReadCount > 0)
             [CE->mtlComputeEncoder useResources:DS->mtlReadArgsCache count: ReadCount usage:MTLResourceUsageRead];
         if (ReadWriteCount > 0)

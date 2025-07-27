@@ -89,8 +89,9 @@ typedef struct CGPUDescriptorSet_Metal {
 	CGPUBufferId mtlArgumentBuffer;
 	BindSlot_Metal* mtlBindSlots;
 	uint32_t mtlBindSlotCount;
-	__strong id* mtlReadArgsCache;
-	__strong id* mtlReadWriteArgsCache;
+	__unsafe_unretained id* mtlReadArgsCache;
+	__unsafe_unretained id* mtlReadWriteArgsCache;
+	const struct CGPUAccelerationStructure_Metal* pBoundAS;
 } CGPUDescriptorSet_Metal;
 
 typedef struct CGPUComputePipeline_Metal {
@@ -126,8 +127,8 @@ typedef struct CGPUSwapChain_Metal {
     CGPUSwapChain super;
 	NSView* pView;
     CAMetalLayer* pLayer;
-    id<CAMetalDrawable> pCurrentDrawable;
     CGPUTexture_Metal* pBackBufferTextures;
+    NSMutableArray<id<CAMetalDrawable>>* pDrawables;  // Array of drawables
     dispatch_semaphore_t mImageAcquiredSemaphore;
     uint32_t mCurrentBackBufferIndex;
     bool mOwnsView;

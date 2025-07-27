@@ -830,8 +830,6 @@ void RGRaytracingSampleModule::render()
 
     // Camera constants structure matching shader
     struct CameraConstants {
-        skr::math::float4x4 invViewMatrix;
-        skr::math::float4x4 invProjMatrix;
         skr::math::float4 cameraPos;
         skr::math::float4 cameraDir;
         skr::math::float2 screenSize;
@@ -868,34 +866,6 @@ void RGRaytracingSampleModule::render()
     camera_constants.screenSize = {static_cast<float>(to_import->info->width), 
                                    static_cast<float>(to_import->info->height)};
     
-    // Create view matrix (lookAt)
-    skr::math::float3 f = skr::math::normalize(target - eye);
-    skr::math::float3 s = skr::math::normalize(skr::math::cross(f, up));
-    skr::math::float3 u = skr::math::cross(s, f);
-    
-    const auto viewMatrix = skr::math::float4x4(
-        s.x, u.x, -f.x, 0.0f,
-        s.y, u.y, -f.y, 0.0f,
-        s.z, u.z, -f.z, 0.0f,
-        -skr::math::dot(s, eye), -skr::math::dot(u, eye), skr::math::dot(f, eye), 1.0f
-    );
-    
-    // Create projection matrix (perspective)
-    float fov = 45.0f * skr::kPi / 180.0f;
-    float aspect = camera_constants.screenSize.x / camera_constants.screenSize.y;
-    float tan_half_fov = std::tan(fov / 2.0f);
-    
-    const auto projMatrix = skr::math::float4x4(
-        1.0f / (aspect * tan_half_fov), 0.0f, 0.0f, 0.0f,
-        0.0f, 1.0f / tan_half_fov, 0.0f, 0.0f,
-        0.0f, 0.0f, -(farPlane + nearPlane) / (farPlane - nearPlane), -1.0f,
-        0.0f, 0.0f, -(2.0f * farPlane * nearPlane) / (farPlane - nearPlane), 0.0f
-    );
-    
-    // Calculate inverse matrices
-    camera_constants.invViewMatrix = skr::math::inverse(viewMatrix);
-    camera_constants.invProjMatrix = skr::math::inverse(projMatrix);
-
     // Create intermediate render target texture (can create UAV)
     auto render_target_handle = render_graph->create_texture(
         [=](render_graph::RenderGraph& g, render_graph::TextureBuilder& builder) {
