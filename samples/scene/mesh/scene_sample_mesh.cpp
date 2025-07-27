@@ -5,10 +5,13 @@
 #include <SkrCore/time.h>
 #include "SkrSystem/advanced_input.h"
 #include <SkrRT/ecs/world.hpp>
+#include <SkrRT/resource/resource_system.h>
+
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrImGui/imgui_backend.hpp"
 #include "SkrImGui/imgui_render_backend.hpp"
 #include "SkrRenderer/skr_renderer.h"
+#include "SkrRenderer/resources/mesh_resource.h"
 #include "SkrTask/fib_task.hpp"
 #include "scene_renderer.hpp"
 
@@ -20,12 +23,17 @@ struct SceneSampleMeshModule : public skr::IDynamicModule
     virtual int main_module_exec(int argc, char8_t** argv) override;
     virtual void on_unload() override;
 
+    void installResourceFactories();
+    void uninstallResourceFactories();
+
     skr::task::scheduler_t scheduler;
     skr::ecs::World world{ scheduler };
     skr_vfs_t* resource_vfs = nullptr;
     skr_io_ram_service_t* ram_service = nullptr;
     skr_io_vram_service_t* vram_service = nullptr;
     skr::JobQueue* io_job_queue = nullptr;
+    skr::renderer::SMeshFactory* mesh_factory = nullptr;
+    SRenderDeviceId render_device = nullptr;
 
     skr::UPtr<skr::ImGuiApp> imgui_app = nullptr;
     skr::ImGuiRendererBackendRG* imgui_render_backend = nullptr;
@@ -50,17 +58,48 @@ void SceneSampleMeshModule::on_load(int argc, char8_t** argv)
     resource_vfs = skr_create_vfs(&vfs_desc);
 
     scene_renderer = skr::SceneRenderer::Create();
-    scene_renderer->initialize(skr_get_default_render_device(), &world, resource_vfs);
+    render_device = skr_get_default_render_device();
+    scene_renderer->initialize(render_device, &world, resource_vfs);
+
+    installResourceFactories();
 }
 
 void SceneSampleMeshModule::on_unload()
 {
+    uninstallResourceFactories();
     scene_renderer->finalize(skr_get_default_render_device());
     skr::SceneRenderer::Destroy(scene_renderer);
     skr_free_vfs(resource_vfs);
     world.finalize();
     scheduler.unbind();
     SKR_LOG_INFO(u8"Scene Sample Mesh Module Unloaded");
+}
+
+void SceneSampleMeshModule::installResourceFactories()
+{
+    std::error_code ec = {};
+    auto resourceRoot = (skr::filesystem::current_path(ec) / "../resources");
+    auto sampleResourceRoot = resourceRoot / "sample_mesh";
+    auto resource_system = skr::resource::GetResourceSystem();
+    // mesh factory
+    {
+        skr::renderer::SMeshFactory::Root factoryRoot = {};
+        auto RootStr = sampleResourceRoot.u8string();
+        factoryRoot.dstorage_root = RootStr.c_str();
+        factoryRoot.vfs = resource_vfs;
+        factoryRoot.ram_service = ram_service;
+        factoryRoot.vram_service = vram_service;
+        factoryRoot.render_device = render_device;
+        mesh_factory = skr::renderer::SMeshFactory::Create(factoryRoot);
+        resource_system->RegisterFactory(mesh_factory);
+    }
+}
+
+void SceneSampleMeshModule::uninstallResourceFactories()
+{
+    auto resource_system = skr::resource::GetResourceSystem();
+    resource_system->Shutdown();
+    skr::renderer::SMeshFactory::Destroy(mesh_factory);
 }
 
 int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
@@ -111,6 +150,11 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
             SkrZoneScopedN("PumpMessage");
             imgui_app->pump_message();
         }
+
+        // Update resources
+        auto resource_system = skr::resource::GetResourceSystem();
+        resource_system->Update();
+
         {
             SkrZoneScopedN("ImGUINewFrame");
             imgui_app->begin_frame();
