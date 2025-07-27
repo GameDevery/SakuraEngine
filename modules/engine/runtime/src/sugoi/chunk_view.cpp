@@ -480,7 +480,7 @@ void cast_view(const sugoi_chunk_view_t& dstV, sugoi_chunk_t* srcC, EIndex srcSt
         SIndex dstMaskId = dstType->index(kMaskComponent);
         dstMasks = (sugoi::bitset32*)(dstV.chunk->data() + (size_t)dstOffsets[dstMaskId] + (size_t)dstSizes[dstMaskId] * dstV.start);
         srcMasks = (sugoi::bitset32*)(srcC->data() + (size_t)srcOffsets[srcMaskId] + (size_t)srcSizes[srcMaskId] * srcStart);
-        std::memset(dstMasks, 0, sizeof(uint32_t) * dstV.count);
+        std::memset((void*)dstMasks, 0, sizeof(uint32_t) * dstV.count);
     }
 
     sugoi::bitset32*srcDirtys = nullptr, *dstDirtys = nullptr;
@@ -490,7 +490,7 @@ void cast_view(const sugoi_chunk_view_t& dstV, sugoi_chunk_t* srcC, EIndex srcSt
         SIndex dstMaskId = dstType->index(kDirtyComponent);
         dstDirtys = (sugoi::bitset32*)(dstV.chunk->data() + (size_t)dstOffsets[dstMaskId] + (size_t)dstSizes[dstMaskId] * dstV.start);
         srcDirtys = (sugoi::bitset32*)(srcC->data() + (size_t)srcOffsets[srcMaskId] + (size_t)srcSizes[srcMaskId] * srcStart);
-        std::memset(dstDirtys, 0, sizeof(uint32_t) * dstV.count);
+        std::memset((void*)dstDirtys, 0, sizeof(uint32_t) * dstV.count);
     }
 
     SIndex srcI = 0, dstI = 0;
@@ -626,7 +626,7 @@ void duplicate_view(const sugoi_chunk_view_t& dstV, const sugoi_chunk_t* srcC, E
         SIndex dstMaskId = dstType->index(kMaskComponent);
         dstMasks = (sugoi::bitset32*)(dstV.chunk->data() + (size_t)dstOffsets[dstMaskId] + (size_t)dstSizes[dstMaskId] * dstV.start);
         srcMasks = (sugoi::bitset32*)(srcC->data() + (size_t)srcOffsets[srcMaskId] + (size_t)srcSizes[srcMaskId] * srcStart);
-        std::memset(dstMasks, 1, sizeof(uint32_t) * dstV.count);
+        std::memset((void*)dstMasks, 1, sizeof(uint32_t) * dstV.count);
     }
 
     sugoi::bitset32* dstDirtys = nullptr;
@@ -634,7 +634,7 @@ void duplicate_view(const sugoi_chunk_view_t& dstV, const sugoi_chunk_t* srcC, E
     {
         SIndex dstMaskId = dstType->index(kDirtyComponent);
         dstDirtys = (sugoi::bitset32*)(dstV.chunk->data() + (size_t)dstOffsets[dstMaskId] + (size_t)dstSizes[dstMaskId] * dstV.start);
-        std::memset(dstDirtys, 1, sizeof(uint32_t) * dstV.count);
+        std::memset((void*)dstDirtys, 1, sizeof(uint32_t) * dstV.count);
     }
 
     SIndex srcI = 0, dstI = 0;

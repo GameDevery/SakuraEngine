@@ -23,7 +23,7 @@ IntValue::IntValue(uint64_t v) : _bitwidth(64), _signed(false) { new (&_storage)
 
 FloatValue::FloatValue(const FloatValue& v)
 {
-    std::memcpy(this, &v, sizeof(FloatValue));
+    std::memcpy((void*)this, &v, sizeof(FloatValue));
 }
 
 FloatValue::FloatValue(float v)

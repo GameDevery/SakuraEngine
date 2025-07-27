@@ -65,8 +65,14 @@ namespace SB.Core
         [TargetProperty]
         public string FpModel(FpModel v) => $"-ffp-model={v}".ToLowerInvariant();
 
-        [TargetProperty(InheritBehavior = true)]
-        public string[] CppFlags(ArgumentList<string> flags) => flags.Select(flag => flag).ToArray();
+        [TargetProperty(InheritBehavior = true)] 
+        public virtual string[] CppFlags(ArgumentList<string> flags) => (Language == CFamily.Cpp) ? CXFlags(flags) : new string[0];
+
+        [TargetProperty(InheritBehavior = true)] 
+        public virtual string[] CFlags(ArgumentList<string> flags) => (Language == CFamily.C) ? CXFlags(flags) : new string[0];
+
+        [TargetProperty(InheritBehavior = true)] 
+        public virtual string[] CXFlags(ArgumentList<string> flags) => flags.Select(flag => flag).ToArray();
 
         [TargetProperty(InheritBehavior = true)]
         public string[] Defines(ArgumentList<string> defines) => defines.Select(define => $"-D{define}").ToArray();
@@ -95,6 +101,24 @@ namespace SB.Core
         public string[] SourceDependencies(string path) => BS.CheckFile(path, false) ? new string[] { "-MD", "-MF", $"\"{path}\"" } : throw new TaskFatalError($"SourceDependencies value {path} is not a valid absolute path!");
 
         public string UsePCHAST(string path) => BS.CheckFile(path, false) ? $"-include-pch \"{path}\"" : throw new TaskFatalError($"PCHObject value {path} is not a valid absolute path!");
+
+        [TargetProperty(InheritBehavior = true)]
+        public virtual string[] AppleClang_CppFlags(ArgumentList<string> flags) => CppFlags(flags);
+
+        [TargetProperty(InheritBehavior = true)]
+        public virtual string[] AppleClang_CFlags(ArgumentList<string> flags) => CFlags(flags);
+
+        [TargetProperty(InheritBehavior = true)]
+        public virtual string[] AppleClang_CXFlags(ArgumentList<string> flags) => CXFlags(flags);
+
+        [TargetProperty(InheritBehavior = true)]
+        public virtual string[] Clang_CppFlags(ArgumentList<string> flags) => CppFlags(flags);
+
+        [TargetProperty(InheritBehavior = true)]
+        public virtual string[] Clang_CFlags(ArgumentList<string> flags) => CFlags(flags);
+
+        [TargetProperty(InheritBehavior = true)]
+        public virtual string[] Clang_CXFlags(ArgumentList<string> flags) => CXFlags(flags);
 
         protected CFamily Language { get; }
         protected bool isPCH = false;
