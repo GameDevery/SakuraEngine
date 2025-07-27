@@ -27,22 +27,17 @@ typedef struct CGPUInstance_Metal {
 
 typedef struct CGPUFence_Metal {
     CGPUFence super;
-    id<MTLEvent> mtlEvent;
-    uint64_t mValue;
-    uint32_t mSubmitted : 1;
+	id<MTLSharedEvent> pMTLEvent; // id<MTLSharedEvent> - renamed to match D3D12 style
+    uint64_t mFenceValue;
 } CGPUFence_Metal;
 
-typedef struct CGPUSemaphore_Metal {
-	CGPUSemaphore super;
-	id<MTLEvent> mtlSemaphore;
-	uint64_t value;
-} CGPUSemaphore_Metal;
+// Semaphores are just fences in Metal, like D3D12
+typedef CGPUFence_Metal CGPUSemaphore_Metal;
 
 typedef struct CGPUQueue_Metal {
     CGPUQueue super;
     id<MTLCommandQueue> mtlCommandQueue;
-    id<MTLFence> mtlQueueFence API_AVAILABLE(macos(10.13), ios(10.0));
-    uint32_t mBarrierFlags;
+    struct CGPUFence_Metal* pFence;
 } CGPUQueue_Metal;
 
 typedef struct CGPUCommandPool_Metal {
@@ -57,7 +52,6 @@ typedef struct CGPURenderPassEncoder_Metal {
 
 typedef struct CGPUComputePassEncoder_Metal {
 	CGPUComputePassEncoder super;
-    struct CGPUCommandBuffer_Metal* cmdBuffer;
     id<MTLComputeCommandEncoder> mtlComputeEncoder;
 } CGPUComputePassEncoder_Metal;
 

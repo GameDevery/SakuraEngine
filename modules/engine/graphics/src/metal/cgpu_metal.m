@@ -229,32 +229,25 @@ CGPUFenceId cgpu_create_fence_metal(CGPUDeviceId device)
 {
     CGPUDevice_Metal* D = (CGPUDevice_Metal*)device;
     CGPUFence_Metal* F = (CGPUFence_Metal*)cgpu_calloc(1, sizeof(CGPUFence_Metal));
-    F->mtlEvent = [D->pDevice newSharedEvent];
-    F->mValue = 0;
-    F->mSubmitted = 0;
+    F->pMTLEvent = [D->pDevice newSharedEvent];
+    F->mFenceValue = 1;  // Start at 1 like D3D12
     return &F->super;
 }
 
 ECGPUFenceStatus cgpu_query_fence_status_metal(CGPUFenceId fence)
 {
     CGPUFence_Metal* F = (CGPUFence_Metal*)fence;
-    if (!F->mSubmitted)
-    {
-        // Fence hasn't been submitted yet, consider it complete
+    const uint64_t completedValue = F->pMTLEvent.signaledValue;
+    if (completedValue < F->mFenceValue - 1)
+        return CGPU_FENCE_STATUS_INCOMPLETE;
+    else
         return CGPU_FENCE_STATUS_COMPLETE;
-    }
-    // Check if the event has been signaled with the expected value
-    if (((id<MTLSharedEvent>)F->mtlEvent).signaledValue >= F->mValue)
-    {
-        return CGPU_FENCE_STATUS_COMPLETE;
-    }
-    return CGPU_FENCE_STATUS_INCOMPLETE;
 }
 
 void cgpu_free_fence_metal(CGPUFenceId fence)
 {
     CGPUFence_Metal* F = (CGPUFence_Metal*)fence;
-    F->mtlEvent = nil;
+    F->pMTLEvent = nil;
     cgpu_free(F);
 }
 
@@ -263,34 +256,25 @@ void cgpu_wait_fences_metal(const CGPUFenceId* fences, uint32_t fence_count)
     for (uint32_t i = 0; i < fence_count; ++i)
     {
         CGPUFence_Metal* F = (CGPUFence_Metal*)fences[i];
-        // Only wait if fence has been submitted
-        if (F->mSubmitted)
+        ECGPUFenceStatus fenceStatus = cgpu_query_fence_status(fences[i]);
+        uint64_t fenceValue = F->mFenceValue - 1;
+        if (fenceStatus == CGPU_FENCE_STATUS_INCOMPLETE)
         {
-            // Wait for the event to reach the expected value
-            dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
-            MTLSharedEventListener* listener = [[MTLSharedEventListener alloc] initWithDispatchQueue:dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)];
-            [(id<MTLSharedEvent>)F->mtlEvent notifyListener:listener atValue:F->mValue block:^(id<MTLSharedEvent> event, uint64_t value) {
-                dispatch_semaphore_signal(semaphore);
-            }];
-            dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
-            F->mSubmitted = 0; // Reset for reuse
+            // Use built-in wait functionality - wait indefinitely (UINT64_MAX timeout)
+            [F->pMTLEvent waitUntilSignaledValue:fenceValue timeoutMS:UINT64_MAX];
         }
     }
 }
 
 CGPUSemaphoreId cgpu_create_semaphore_metal(CGPUDeviceId device)
 {
-    CGPUDevice_Metal* D = (CGPUDevice_Metal*)device;
-    CGPUSemaphore_Metal* MS = (CGPUSemaphore_Metal*)cgpu_calloc(1, sizeof(CGPUSemaphore_Metal));
-    MS->mtlSemaphore = [D->pDevice newEvent];
-    return &MS->super;
+    // Like D3D12, semaphores are just fences
+    return (CGPUSemaphoreId)cgpu_create_fence_metal(device);
 }
 
 void cgpu_free_semaphore_metal(CGPUSemaphoreId semaphore)
 {
-    CGPUSemaphore_Metal* MS = (CGPUSemaphore_Metal*)semaphore;
-    MS->mtlSemaphore = nil;
-    cgpu_free(MS);
+    cgpu_free_fence_metal((CGPUFenceId)semaphore);
 }
 
 CGPURootSignaturePoolId cgpu_create_root_signature_pool_metal(CGPUDeviceId device, const struct CGPURootSignaturePoolDescriptor* desc)
@@ -622,82 +606,76 @@ CGPUQueueId cgpu_get_queue_metal(CGPUDeviceId device, ECGPUQueueType type, uint3
 {
     CGPUQueue_Metal* MQ = (CGPUQueue_Metal*)cgpu_calloc(1, sizeof(CGPUQueue_Metal));
     CGPUDevice_Metal* MD = (CGPUDevice_Metal*)device;
+    MQ->super.device = device;  // Set device reference
+    MQ->super.type = type;      // Set queue type
     MQ->mtlCommandQueue = MD->ppMtlQueues[type][index];
-#if defined(ENABLE_FENCES)
-    if (@available(macOS 10.13, iOS 10.0, *))
-    {
-        MQ->mtlQueueFence = [MD->pDevice newFence];
-    }
-#endif
-    MQ->mBarrierFlags = 0;
+    // Don't create fence here - it's causing issues
+    MQ->pFence = NULL;
     return &MQ->super;
 }
 
 void cgpu_submit_queue_metal(CGPUQueueId queue, const struct CGPUQueueSubmitDescriptor* desc)
 {
+    uint32_t CmdCount = desc->cmds_count;
+    CGPUCommandBuffer_Metal** Cmds = (CGPUCommandBuffer_Metal**)desc->cmds;
     CGPUQueue_Metal* Q = (CGPUQueue_Metal*)queue;
+    CGPUFence_Metal* F = (CGPUFence_Metal*)desc->signal_fence;
+    
+    // Assert that given cmd list and given params are valid
+    cgpu_assert(CmdCount > 0);
+    cgpu_assert(Cmds);
+    cgpu_assert(Q->mtlCommandQueue);
 
     @autoreleasepool
     {
-        // 首先刷新所有命令缓冲区的编码器
-        for (uint32_t i = 0; i < desc->cmds_count; i++)
+        // Flush all command encoders
+        for (uint32_t i = 0; i < CmdCount; ++i)
         {
-            CGPUCommandBuffer_Metal* CMD = (CGPUCommandBuffer_Metal*)desc->cmds[i];
-            MetalUtil_FlushUtilEncoders(CMD, MTLUtilEncoderTypeAS | MTLUtilEncoderTypeBlit);
+            MetalUtil_FlushUtilEncoders(Cmds[i], MTLUtilEncoderTypeAS | MTLUtilEncoderTypeBlit);
         }
 
-        // signal semaphores
-        if (desc->signal_semaphore_count > 0)
+        // Wait semaphores - encode wait on first command buffer
+        if (desc->wait_semaphore_count > 0)
         {
-            CGPUCommandBuffer_Metal* lastCMD = (CGPUCommandBuffer_Metal*)desc->cmds[desc->cmds_count - 1];
-            for (uint32_t i = 0; i < desc->signal_semaphore_count; i++)
+            CGPUFence_Metal** WaitSemaphores = (CGPUFence_Metal**)desc->wait_semaphores;
+            for (uint32_t i = 0; i < desc->wait_semaphore_count; ++i)
             {
-                CGPUSemaphore_Metal* Semaphore = (CGPUSemaphore_Metal*)desc->signal_semaphores[i];
-                [lastCMD->mtlCommandBuffer encodeSignalEvent:Semaphore->mtlSemaphore value:++Semaphore->value];
+                [Cmds[0]->mtlCommandBuffer encodeWaitForEvent:WaitSemaphores[i]->pMTLEvent 
+                                                         value:WaitSemaphores[i]->mFenceValue - 1];
             }
         }
 
-        // signal fence
-        if (desc->signal_fence)
+        // Signal fence on last command buffer
+        if (F)
         {
-            CGPUFence_Metal* signalFence = (CGPUFence_Metal*)desc->signal_fence;
-            signalFence->mSubmitted = 1;
-            signalFence->mValue++; // 递增值以表示新的信号
-            
-            // 在最后一个命令缓冲区上信号事件
-            CGPUCommandBuffer_Metal* lastCMD = (CGPUCommandBuffer_Metal*)desc->cmds[desc->cmds_count - 1];
-            [lastCMD->mtlCommandBuffer encodeSignalEvent:signalFence->mtlEvent value:signalFence->mValue];
+            [Cmds[CmdCount - 1]->mtlCommandBuffer encodeSignalEvent:F->pMTLEvent 
+                                                               value:F->mFenceValue++];
+        }
+
+        // Signal Semaphores on last command buffer
+        if (desc->signal_semaphore_count > 0)
+        {
+            CGPUFence_Metal** SignalSemaphores = (CGPUFence_Metal**)desc->signal_semaphores;
+            for (uint32_t i = 0; i < desc->signal_semaphore_count; i++)
+            {
+                [Cmds[CmdCount - 1]->mtlCommandBuffer encodeSignalEvent:SignalSemaphores[i]->pMTLEvent 
+                                                                   value:SignalSemaphores[i]->mFenceValue++];
+            }
         }
         
-        // 为错误处理添加完成处理器
-        for (uint32_t i = 0; i < desc->cmds_count; i++)
+        // Add error handlers (optional, but useful for debugging)
+        for (uint32_t i = 0; i < CmdCount; ++i)
         {
-            CGPUCommandBuffer_Metal* CMD = (CGPUCommandBuffer_Metal*)desc->cmds[i];
-            [CMD->mtlCommandBuffer addCompletedHandler:^(id<MTLCommandBuffer> buffer) {
+            [Cmds[i]->mtlCommandBuffer addCompletedHandler:^(id<MTLCommandBuffer> buffer) {
                 if (buffer.error != nil)
                     cgpu_error("Failed to execute commands with error (%s)", [buffer.error.description UTF8String]);
             }];
         }
 
-        // wait semaphores
-        if (desc->wait_semaphore_count)
+        // Execute - commit all command buffers
+        for (uint32_t i = 0; i < CmdCount; ++i)
         {
-            id<MTLCommandBuffer> waitCommandBuffer = [Q->mtlCommandQueue commandBufferWithUnretainedReferences];
-            waitCommandBuffer.label = @"WAIT_COMMAND_BUFFER";
-            for (uint32_t i = 0; i < desc->wait_semaphore_count; i++)
-            {
-                CGPUSemaphore_Metal* Semaphore = (CGPUSemaphore_Metal*)desc->wait_semaphores[i];
-                // Wait for the semaphore to be signaled
-                [waitCommandBuffer encodeWaitForEvent:Semaphore->mtlSemaphore value:Semaphore->value];
-            }
-            [waitCommandBuffer commit];
-        }
-
-        // commit
-        for (uint32_t i = 0; i < desc->cmds_count; i++)
-        {
-            CGPUCommandBuffer_Metal* CMD = (CGPUCommandBuffer_Metal*)desc->cmds[i];
-            [CMD->mtlCommandBuffer commit];
+            [Cmds[i]->mtlCommandBuffer commit];
         }
     }
 }
@@ -705,22 +683,22 @@ void cgpu_submit_queue_metal(CGPUQueueId queue, const struct CGPUQueueSubmitDesc
 void cgpu_wait_queue_idle_metal(CGPUQueueId queue)
 {
     CGPUQueue_Metal* Q = (CGPUQueue_Metal*)queue;
-    id<MTLCommandBuffer> waitCmdBuf = [Q->mtlCommandQueue commandBufferWithUnretainedReferences];
-    [waitCmdBuf commit];
-    [waitCmdBuf waitUntilCompleted];
-    waitCmdBuf = nil;
+    
+    // Simple approach: create a command buffer and wait for it to complete
+    id<MTLCommandBuffer> waitCmd = [Q->mtlCommandQueue commandBufferWithUnretainedReferences];
+    [waitCmd commit];
+    [waitCmd waitUntilCompleted];
 }
 
 void cgpu_free_queue_metal(CGPUQueueId queue)
 {
     CGPUQueue_Metal* Q = (CGPUQueue_Metal*)queue;
     Q->mtlCommandQueue = nil;
-#if defined(ENABLE_FENCES)
-    if (@available(macOS 10.13, iOS 10.0, *))
+    if (Q->pFence)
     {
-        Q->mtlQueueFence = nil;
+        cgpu_free_fence_metal(&Q->pFence->super);
     }
-#endif
+    cgpu_free(Q);
 }
 
 // Command APIs
@@ -738,8 +716,6 @@ void cgpu_reset_command_pool_metal(CGPUCommandPoolId pool)
 CGPUCommandBufferId cgpu_create_command_buffer_metal(CGPUCommandPoolId pool, const struct CGPUCommandBufferDescriptor* desc)
 {
     CGPUCommandBuffer_Metal* MB = (CGPUCommandBuffer_Metal*)cgpu_calloc(1, sizeof(CGPUCommandBuffer_Metal));
-    CGPUQueue_Metal* MQ = (CGPUQueue_Metal*)pool->queue;
-    MB->mtlCommandBuffer = [MQ->mtlCommandQueue commandBuffer];
     return &MB->super;
 }
 
@@ -851,7 +827,7 @@ void cgpu_cmd_begin_metal(CGPUCommandBufferId cmd)
     CMD->cmptEncoder.mtlComputeEncoder = nil;
     
     CGPUQueue_Metal* Queue = (CGPUQueue_Metal*)Pool->super.queue;
-    CMD->mtlCommandBuffer = [Queue->mtlCommandQueue commandBufferWithUnretainedReferences];
+    CMD->mtlCommandBuffer = [Queue->mtlCommandQueue commandBuffer];
     CMD->mtlCommandBuffer.label = @"CommandBuffer";
 }
 
@@ -1078,7 +1054,7 @@ CGPUComputePassEncoderId cgpu_cmd_begin_compute_pass_metal(CGPUCommandBufferId c
     MetalUtil_FlushUtilEncoders(CMD, MTLUtilEncoderTypeAS | MTLUtilEncoderTypeBlit);
 
     CGPUComputePassEncoder_Metal* CE = &CMD->cmptEncoder;
-    memset(CE, 0, sizeof(CGPUComputePassEncoder_Metal));
+    CE->mtlComputeEncoder = nil;
     CE->super.device = CMD->super.device;
     CE->mtlComputeEncoder = [CMD->mtlCommandBuffer computeCommandEncoder];
     CMD->cmptEncoder = *CE;

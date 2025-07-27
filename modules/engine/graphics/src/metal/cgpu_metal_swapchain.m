@@ -186,15 +186,14 @@ uint32_t cgpu_acquire_next_image_metal(CGPUSwapChainId swapchain, const CGPUAcqu
         if (desc) {
             if (desc->signal_semaphore) {
                 CGPUSemaphore_Metal* semaphore = (CGPUSemaphore_Metal*)desc->signal_semaphore;
-                // Metal events support signaling in command buffers, not directly
-                // We'll handle semaphore signaling in queue present
+                // Signal immediately since acquire is synchronous
+                [semaphore->pMTLEvent setSignaledValue:semaphore->mFenceValue++];
             }
             
             if (desc->fence) {
                 CGPUFence_Metal* fence = (CGPUFence_Metal*)desc->fence;
-                fence->mSubmitted = 1;
-                fence->mValue++;
-                [(id<MTLSharedEvent>)fence->mtlEvent setSignaledValue:fence->mValue];
+                // Signal immediately since acquire is synchronous
+                [fence->pMTLEvent setSignaledValue:fence->mFenceValue++];
             }
         }
         
@@ -207,42 +206,23 @@ uint32_t cgpu_acquire_next_image_metal(CGPUSwapChainId swapchain, const CGPUAcqu
 
 void cgpu_queue_present_metal(CGPUQueueId queue, const CGPUQueuePresentDescriptor* desc)
 {
-    cgpu_assert(queue && desc && desc->swapchain && "Invalid parameters for present");
-    
-    CGPUSwapChain_Metal* swapchain = (CGPUSwapChain_Metal*)desc->swapchain;
-    CGPUQueue_Metal* mtlQueue = (CGPUQueue_Metal*)queue;
+    CGPUSwapChain_Metal* S = (CGPUSwapChain_Metal*)desc->swapchain;
     
     @autoreleasepool {
-        if (!swapchain->pCurrentDrawable) {
-            cgpu_assert(false && "No drawable to present");
+        if (!S->pCurrentDrawable) {
+            cgpu_error("No drawable to present");
             return;
         }
         
-        // Create command buffer for present
-        id<MTLCommandBuffer> presentCmd = [mtlQueue->mtlCommandQueue commandBuffer];
+        // Wait semaphores are handled by the previous submit_queue call, not here
+        // Just present the drawable immediately
+        [S->pCurrentDrawable present];
         
-        // Wait for semaphores if any
-        if (desc->wait_semaphore_count > 0) {
-            for (uint32_t i = 0; i < desc->wait_semaphore_count; ++i) {
-                CGPUSemaphore_Metal* semaphore = (CGPUSemaphore_Metal*)desc->wait_semaphores[i];
-                if (semaphore->mtlSemaphore) {
-                    [presentCmd encodeWaitForEvent:semaphore->mtlSemaphore value:semaphore->value];
-                }
-            }
-        }
-        
-        // Present drawable
-        [presentCmd presentDrawable:swapchain->pCurrentDrawable];
-        
-        // Add completion handler to signal semaphore
-        [presentCmd addCompletedHandler:^(id<MTLCommandBuffer> _Nonnull buffer) {
-            dispatch_semaphore_signal(swapchain->mImageAcquiredSemaphore);
-        }];
-        
-        [presentCmd commit];
+        // Signal completion
+        dispatch_semaphore_signal(S->mImageAcquiredSemaphore);
         
         // Clear current drawable reference
-        swapchain->pCurrentDrawable = nil;
+        S->pCurrentDrawable = nil;
     }
 }
 
