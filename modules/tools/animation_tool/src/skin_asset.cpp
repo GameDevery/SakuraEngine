@@ -5,7 +5,7 @@
 
 namespace skd::asset
 {
-bool SSkinCooker::Cook(SCookContext* ctx)
+bool SSkinCooker::Cook(CookContext* ctx)
 {
     using namespace skr::anim;
     SkrZoneScopedNS("SSkinCooker::Cook", 4);

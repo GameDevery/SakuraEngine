@@ -30,14 +30,14 @@ SKR_ANIMTOOL_API SSkelGltfImporter : public skd::asset::SImporter {
     // bool any;
     skr::String assetPath;
     virtual ~SSkelGltfImporter() = default;
-    virtual void*   Import(skr_io_ram_service_t*, SCookContext* context) override;
+    virtual void*   Import(skr_io_ram_service_t*, CookContext* context) override;
     virtual void    Destroy(void*) override;
     static uint32_t Version() { return kDevelopmentVersion; }
 };
 
 sreflect_struct(guid = "E3581419-8B44-4EF9-89FA-552DA6FE982A")
-SKR_ANIMTOOL_API SSkelCooker final : public SCooker {
-    bool     Cook(SCookContext* ctx) override;
+SKR_ANIMTOOL_API SSkelCooker final : public Cooker {
+    bool     Cook(CookContext* ctx) override;
     uint32_t Version() override { return kDevelopmentVersion; }
 };
 } // namespace asset

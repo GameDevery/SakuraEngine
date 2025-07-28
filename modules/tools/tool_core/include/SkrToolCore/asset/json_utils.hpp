@@ -5,7 +5,7 @@
 namespace skd::asset
 {
 template <class T>
-T LoadConfig(SCookContext* context)
+T LoadConfig(CookContext* context)
 {
     // TODO: now it parses twice, add cursor to reader to avoid this
     skr::archive::JsonReader reader(context->GetAssetRecord()->meta.view());

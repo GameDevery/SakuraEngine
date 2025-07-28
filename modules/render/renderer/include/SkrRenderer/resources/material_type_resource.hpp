@@ -49,7 +49,7 @@ sreflect_struct(
     serde = @bin|@json;
 )
 MaterialProperty {
-    using resource_handle = skr_resource_handle_t;
+    using resource_handle = SResourceHandle;
 
     MaterialPropertyName  name;
     skr::String           display_name;
@@ -74,7 +74,7 @@ sreflect_struct(
     serde = @bin|@json;
 )
 MaterialValue {
-    using resource_handle = skr_resource_handle_t;
+    using resource_handle = SResourceHandle;
 
     EMaterialPropertyType prop_type;
     MaterialPropertyName  slot_name;

@@ -16,19 +16,19 @@
 
 namespace skd::asset
 {
-struct SCookSystemImpl : public skd::asset::SCookSystem {
+struct SCookSystemImpl : public skd::asset::CookSystem {
     friend struct ::SkrToolCoreModule;
-    using AssetMap   = skr::ParallelFlatHashMap<skr_guid_t, SAssetRecord*, skr::Hash<skr_guid_t>>;
-    using CookingMap = skr::ParallelFlatHashMap<skr_guid_t, SCookContext*, skr::Hash<skr_guid_t>>;
+    using AssetMap   = skr::ParallelFlatHashMap<skr_guid_t, AssetRecord*, skr::Hash<skr_guid_t>>;
+    using CookingMap = skr::ParallelFlatHashMap<skr_guid_t, CookContext*, skr::Hash<skr_guid_t>>;
 
     skr::task::event_t AddCookTask(skr_guid_t resource) override;
     skr::task::event_t EnsureCooked(skr_guid_t resource) override;
     void               WaitForAll() override;
     bool               AllCompleted() const override;
 
-    void     RegisterCooker(bool isDefault, skr_guid_t cooker, skr_guid_t type, SCooker* instance) override;
+    void     RegisterCooker(bool isDefault, skr_guid_t cooker, skr_guid_t type, Cooker* instance) override;
     void     UnregisterCooker(skr_guid_t type) override;
-    SCooker* GetCooker(SAssetRecord* record) const
+    Cooker* GetCooker(AssetRecord* record) const
     {
         if (record->cooker == skr_guid_t{})
         {
@@ -40,14 +40,14 @@ struct SCookSystemImpl : public skd::asset::SCookSystem {
         if (it != cookers.end()) return it->second;
         return nullptr;
     }
-    SAssetRecord* GetAssetRecord(skr_guid_t guid) const override
+    AssetRecord* GetAssetRecord(skr_guid_t guid) const override
     {
         auto it = assets.find(guid);
         if (it != assets.end()) return it->second;
         return nullptr;
     }
 
-    SAssetRecord*         LoadAssetMeta(SProject* project, const skr::String& uri) override;
+    AssetRecord*         LoadAssetMeta(SProject* project, const skr::String& uri) override;
     skr_io_ram_service_t* getIOService() override;
 
     template <class F, class Iter>
@@ -55,11 +55,11 @@ struct SCookSystemImpl : public skd::asset::SCookSystem {
     {
         skr::parallel_for(std::move(begin), std::move(end), batch, std::move(f));
     }
-    void ParallelForEachAsset(uint32_t batch, skr::FunctionRef<void(skr::span<SAssetRecord*>)> f) override
+    void ParallelForEachAsset(uint32_t batch, skr::FunctionRef<void(skr::span<AssetRecord*>)> f) override
     {
         ParallelFor(assets.begin(), assets.end(), batch,
                     [f, batch](auto begin, auto end) {
-                        skr::Vector<SAssetRecord*> records;
+                        skr::Vector<AssetRecord*> records;
                         records.reserve(batch);
                         for (auto it = begin; it != end; ++it)
                         {
@@ -76,21 +76,21 @@ protected:
 
     skr::task::counter_t mainCounter;
 
-    skr::FlatHashMap<skr_guid_t, SCooker*, skr::Hash<skr_guid_t>> defaultCookers;
-    skr::FlatHashMap<skr_guid_t, SCooker*, skr::Hash<skr_guid_t>> cookers;
+    skr::FlatHashMap<skr_guid_t, Cooker*, skr::Hash<skr_guid_t>> defaultCookers;
+    skr::FlatHashMap<skr_guid_t, Cooker*, skr::Hash<skr_guid_t>> cookers;
     skr_io_ram_service_t*                                         ioServices[ioServicesMaxCount];
 };
 } // namespace skd::asset
 
 namespace skd::asset
 {
-SCookSystem* GetCookSystem()
+CookSystem* GetCookSystem()
 {
     static skd::asset::SCookSystemImpl cook_system;
     return &cook_system;
 }
 
-void RegisterCookerToSystem(SCookSystem* system, bool isDefault, skr_guid_t cooker, skr_guid_t type, SCooker* instance)
+void RegisterCookerToSystem(CookSystem* system, bool isDefault, skr_guid_t cooker, skr_guid_t type, Cooker* instance)
 {
     system->RegisterCooker(isDefault, cooker, type, instance);
 }
@@ -115,12 +115,12 @@ skr_io_ram_service_t* SCookSystemImpl::getIOService()
 
 skr::task::event_t SCookSystemImpl::AddCookTask(skr_guid_t guid)
 {
-    SCookContext* cookContext = nullptr;
+    CookContext* cookContext = nullptr;
     // return existed task if it's already cooking
     {
         skr::task::event_t existed_task{ nullptr };
         cooking.lazy_emplace_l(guid, [&](const auto& ctx_kv) { existed_task = ctx_kv.second->GetCounter(); }, [&](const CookingMap::constructor& ctor) {
-            cookContext = SCookContext::Create(getIOService());
+            cookContext = CookContext::Create(getIOService());
             ctor(guid, cookContext); });
         if (existed_task)
             return existed_task;
@@ -153,7 +153,7 @@ skr::task::event_t SCookSystemImpl::AddCookTask(skr_guid_t guid)
         SKR_DEFER({
             auto system = static_cast<SCookSystemImpl*>(GetCookSystem());
             auto guid   = cookContext->record->guid;
-            system->cooking.erase_if(guid, [](const auto& ctx_kv) { SCookContext::Destroy(ctx_kv.second); return true; });
+            system->cooking.erase_if(guid, [](const auto& ctx_kv) { CookContext::Destroy(ctx_kv.second); return true; });
             system->mainCounter.decrement();
         });
 
@@ -206,7 +206,7 @@ skr::task::event_t SCookSystemImpl::AddCookTask(skr_guid_t guid)
                 writer.Key(u8"dependencies");
                 writer.StartArray();
                 for (auto& dep : cookContext->GetStaticDependencies())
-                    skr::json_write<skr_resource_handle_t>(&writer, dep);
+                    skr::json_write<SResourceHandle>(&writer, dep);
                 writer.EndArray();
                 writer.EndObject();
                 auto file = fopen(dependencyPath.string().c_str(), "w");
@@ -225,7 +225,7 @@ skr::task::event_t SCookSystemImpl::AddCookTask(skr_guid_t guid)
     return counter;
 }
 
-void SCookSystemImpl::RegisterCooker(bool isDefault, skr_guid_t cooker, skr_guid_t type, SCooker* instance)
+void SCookSystemImpl::RegisterCooker(bool isDefault, skr_guid_t cooker, skr_guid_t type, Cooker* instance)
 {
     SKR_ASSERT(instance->system == nullptr);
     instance->system = this;
@@ -350,11 +350,11 @@ skr::task::event_t SCookSystemImpl::EnsureCooked(skr_guid_t guid)
             }
             auto resourceFile = fopen(resourcePath.string().c_str(), "rb");
             SKR_DEFER({ fclose(resourceFile); });
-            uint8_t buffer[sizeof(skr_resource_header_t)];
-            fread(buffer, 0, sizeof(skr_resource_header_t), resourceFile);
+            uint8_t buffer[sizeof(SResourceHeader)];
+            fread(buffer, 0, sizeof(SResourceHeader), resourceFile);
             skr::archive::BinSpanReader reader = { buffer };
             SBinaryReader               archive{ reader };
-            skr_resource_header_t       header;
+            SResourceHeader       header;
             if (header.ReadWithoutDeps(&archive) != 0)
             {
                 SKR_LOG_INFO(u8"[SCookSystemImpl::EnsureCooked] resource header read failed! asset path: %s", metaAsset->path.u8string().c_str());
@@ -427,11 +427,11 @@ skr::task::event_t SCookSystemImpl::EnsureCooked(skr_guid_t guid)
     return nullptr;
 }
 
-SAssetRecord* SCookSystemImpl::LoadAssetMeta(SProject* project, const skr::String& uri)
+AssetRecord* SCookSystemImpl::LoadAssetMeta(SProject* project, const skr::String& uri)
 {
     SkrZoneScoped;
     std::error_code ec     = {};
-    auto            record = SkrNew<SAssetRecord>();
+    auto            record = SkrNew<AssetRecord>();
     // TODO: replace file load with skr api
     if (project->LoadAssetText(uri.view(), record->meta))
     {

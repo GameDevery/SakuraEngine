@@ -62,22 +62,22 @@ struct SKR_RENDERER_API SShaderOptionsFactoryImpl : public SShaderOptionsFactory
         return collection_type;
     }
 
-    ESkrInstallStatus Install(skr_resource_record_t* record) override
+    ESkrInstallStatus Install(SResourceRecord* record) override
     {
         return ::SKR_INSTALL_STATUS_SUCCEED; // no need to install
     }
-    ESkrInstallStatus UpdateInstall(skr_resource_record_t* record) override
+    ESkrInstallStatus UpdateInstall(SResourceRecord* record) override
     {
         return ::SKR_INSTALL_STATUS_SUCCEED; // no need to install
     }
 
-    bool Unload(skr_resource_record_t* record) override
+    bool Unload(SResourceRecord* record) override
     {
         auto options = (skr_shader_options_resource_t*)record->resource;
         SkrDelete(options);
         return true;
     }
-    bool Uninstall(skr_resource_record_t* record) override
+    bool Uninstall(SResourceRecord* record) override
     {
         return true;
     }

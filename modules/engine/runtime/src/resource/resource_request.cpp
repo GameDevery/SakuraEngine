@@ -547,7 +547,7 @@ bool SResourceRequestImpl::Yielded()
     }
 }
 
-void SResourceRegistry::FillRequest(SResourceRequest* r, skr_resource_header_t header, skr_vfs_t* vfs, const char8_t* uri)
+void SResourceRegistry::FillRequest(ResourceRequest* r, SResourceHeader header, skr_vfs_t* vfs, const char8_t* uri)
 {
     auto request = static_cast<SResourceRequestImpl*>(r);
     if (request)

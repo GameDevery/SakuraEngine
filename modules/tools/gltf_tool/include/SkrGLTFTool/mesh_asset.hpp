@@ -24,13 +24,13 @@ sreflect_struct(
     bool install_to_ram     = false;
     bool install_to_vram    = true;
 
-    void* Import(skr_io_ram_service_t*, SCookContext* context) override;
+    void* Import(skr_io_ram_service_t*, CookContext* context) override;
     void  Destroy(void* resource) override;
 };
 
 sreflect_struct(guid = "5a378356-7bfa-461a-9f96-4bbbd2e95368")
-    GLTFTOOL_API SMeshCooker final : public SCooker {
-    bool     Cook(SCookContext* ctx) override;
+    GLTFTOOL_API SMeshCooker final : public Cooker {
+    bool     Cook(CookContext* ctx) override;
     uint32_t Version() override;
 };
 } // namespace asset

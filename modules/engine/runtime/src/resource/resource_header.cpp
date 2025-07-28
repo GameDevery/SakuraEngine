@@ -1,6 +1,6 @@
 #include "SkrRT/resource/resource_header.hpp"
 
-bool skr_resource_header_t::ReadWithoutDeps(SBinaryReader* reader)
+bool SResourceHeader::ReadWithoutDeps(SBinaryReader* reader)
 {
     uint32_t function = 1;
     if (!skr::bin_read(reader, function))
@@ -16,7 +16,7 @@ bool skr_resource_header_t::ReadWithoutDeps(SBinaryReader* reader)
 
 namespace skr
 {
-bool BinSerde<skr_resource_header_t>::read(SBinaryReader* r, skr_resource_header_t& v)
+bool BinSerde<SResourceHeader>::read(SBinaryReader* r, SResourceHeader& v)
 {
     if (!v.ReadWithoutDeps(r))
         return false;
@@ -32,7 +32,7 @@ bool BinSerde<skr_resource_header_t>::read(SBinaryReader* r, skr_resource_header
     return true;
 }
 
-bool BinSerde<skr_resource_header_t>::write(SBinaryWriter* w, const skr_resource_header_t& v)
+bool BinSerde<SResourceHeader>::write(SBinaryWriter* w, const SResourceHeader& v)
 {
     uint32_t function = 1;
     if (!bin_write(w, function))
@@ -55,7 +55,7 @@ bool BinSerde<skr_resource_header_t>::write(SBinaryWriter* w, const skr_resource
 }
 } // namespace skr
 
-uint32_t skr_resource_record_t::AddReference(uint64_t requester, ESkrRequesterType requesterType)
+uint32_t SResourceRecord::AddReference(uint64_t requester, ESkrRequesterType requesterType)
 {
 #if TRACK_RESOURCE_REQUESTS
     SMutexLock lock(mutex.mMutex);
@@ -101,7 +101,7 @@ uint32_t skr_resource_record_t::AddReference(uint64_t requester, ESkrRequesterTy
     ++referenceCount;
 #endif
 }
-void skr_resource_record_t::RemoveReference(uint32_t id, ESkrRequesterType requesterType)
+void SResourceRecord::RemoveReference(uint32_t id, ESkrRequesterType requesterType)
 {
 #if TRACK_RESOURCE_REQUESTS
     SMutexLock lock(mutex.mMutex);
@@ -131,7 +131,7 @@ void skr_resource_record_t::RemoveReference(uint32_t id, ESkrRequesterType reque
     --referenceCount;
 #endif
 }
-bool skr_resource_record_t::IsReferenced() const
+bool SResourceRecord::IsReferenced() const
 {
 #if TRACK_RESOURCE_REQUESTS
     return entityRefCount > 0 || objectReferences.size() > 0 || scriptRefCount > 0;
@@ -139,13 +139,13 @@ bool skr_resource_record_t::IsReferenced() const
     return referenceCount > 0;
 #endif
 }
-void skr_resource_record_t::SetStatus(ESkrLoadingStatus newStatus)
+void SResourceRecord::SetStatus(ESkrLoadingStatus newStatus)
 {
     if (newStatus != loadingStatus)
     {
         SMutexLock lock(mutex.mMutex);
         loadingStatus = newStatus;
-        if (!callbacks[newStatus].empty())
+        if (!callbacks[newStatus].is_empty())
         {
             for (auto& callback : callbacks[newStatus])
                 callback();
@@ -153,7 +153,7 @@ void skr_resource_record_t::SetStatus(ESkrLoadingStatus newStatus)
         }
     }
 }
-void skr_resource_record_t::AddCallback(ESkrLoadingStatus status, void (*callback)(void*), void* userData)
+void SResourceRecord::AddCallback(ESkrLoadingStatus status, void (*callback)(void*), void* userData)
 {
     SMutexLock lock(mutex.mMutex);
     callbacks[status].push_back({ userData, callback });

@@ -181,7 +181,7 @@ class _Gen {
     return field.raw_type == "sugoi_entity_t"
   }
   static #filter_resource_handle(field: db.Field): boolean {
-    return field.type == "skr_resource_handle_t" || field.type.startsWith("skr::resource::TResourceHandle")
+    return field.type == "SResourceHandle" || field.type.startsWith("skr::resource::AsyncResource")
   }
 }
 

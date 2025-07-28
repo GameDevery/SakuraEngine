@@ -32,14 +32,14 @@ struct SKR_RUNTIME_API SResourceFactory {
         in between affect the number of jobs per frame, higher value means more jobs per frame
     */
     virtual float AsyncSerdeLoadFactor() { return 1.f; }
-    virtual bool Deserialize(skr_resource_record_t* record, SBinaryReader* reader);
+    virtual bool Deserialize(SResourceRecord* record, SBinaryReader* reader);
 #ifdef SKR_RESOURCE_DEV_MODE
-    virtual bool DerserializeArtifacts(skr_resource_record_t* record, SBinaryReader* reader) { return 0; };
+    virtual bool DerserializeArtifacts(SResourceRecord* record, SBinaryReader* reader) { return 0; };
 #endif
-    virtual bool Unload(skr_resource_record_t* record);
-    virtual ESkrInstallStatus Install(skr_resource_record_t* record) { return ESkrInstallStatus::SKR_INSTALL_STATUS_SUCCEED; }
-    virtual bool Uninstall(skr_resource_record_t* record) { return true; }
-    virtual ESkrInstallStatus UpdateInstall(skr_resource_record_t* record);
+    virtual bool Unload(SResourceRecord* record);
+    virtual ESkrInstallStatus Install(SResourceRecord* record) { return ESkrInstallStatus::SKR_INSTALL_STATUS_SUCCEED; }
+    virtual bool Uninstall(SResourceRecord* record) { return true; }
+    virtual ESkrInstallStatus UpdateInstall(SResourceRecord* record);
 };
 } // namespace resource
 } // namespace skr

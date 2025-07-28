@@ -55,7 +55,7 @@ sreflect_struct(
     serde = @bin|@json
 )
 ShaderOptionsResource {
-    using shader_options_handle_t = skr::resource::TResourceHandle<ShaderOptionsResource>;
+    using shader_options_handle_t = skr::resource::AsyncResource<ShaderOptionsResource>;
 
     SKR_RENDERER_API
     static bool flatten_options(skr::Vector<ShaderOptionTemplate>& dst, skr::span<ShaderOptionsResource*> srcs) SKR_NOEXCEPT;

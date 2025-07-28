@@ -18,13 +18,13 @@ sreflect_struct(
     SKR_TEXTURE_COMPILER_API STextureSamplerImporter final : public SImporter {
     skr::String jsonPath;
 
-    void* Import(skr_io_ram_service_t*, SCookContext* context) override;
+    void* Import(skr_io_ram_service_t*, CookContext* context) override;
     void  Destroy(void* resource) override;
 };
 
 sreflect_struct(guid = "f06d5542-4c20-48e4-819a-16a6ae13b295")
-    SKR_TEXTURE_COMPILER_API STextureSamplerCooker final : public SCooker {
-    bool     Cook(SCookContext* ctx) override;
+    SKR_TEXTURE_COMPILER_API STextureSamplerCooker final : public Cooker {
+    bool     Cook(CookContext* ctx) override;
     uint32_t Version() override { return 1u; }
 };
 } // namespace asset

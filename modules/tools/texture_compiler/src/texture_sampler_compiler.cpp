@@ -10,7 +10,7 @@ namespace skd
 namespace asset
 {
 
-void* STextureSamplerImporter::Import(skr_io_ram_service_t* ioService, SCookContext* context)
+void* STextureSamplerImporter::Import(skr_io_ram_service_t* ioService, CookContext* context)
 {
     skr::BlobId blob = nullptr;
     context->AddSourceFileAndLoad(ioService, jsonPath.c_str(), blob);
@@ -35,7 +35,7 @@ void STextureSamplerImporter::Destroy(void* resource)
     SkrDelete(sampler_resource);
 }
 
-bool STextureSamplerCooker::Cook(SCookContext* ctx)
+bool STextureSamplerCooker::Cook(CookContext* ctx)
 {
     const auto outputPath = ctx->GetOutputPath();
     //-----load config

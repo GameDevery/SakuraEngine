@@ -12,7 +12,7 @@
 
 namespace skd::asset
 {
-bool SSkelCooker::Cook(SCookContext* ctx)
+bool SSkelCooker::Cook(CookContext* ctx)
 {
     SkrZoneScopedNS("SSkelCooker::Cook", 4);
 

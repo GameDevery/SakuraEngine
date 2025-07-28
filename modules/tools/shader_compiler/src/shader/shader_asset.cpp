@@ -22,7 +22,7 @@ ShaderSourceCode::~ShaderSourceCode() SKR_NOEXCEPT
 {
 }
 
-void* SShaderImporter::Import(skr_io_ram_service_t* ioService, SCookContext* context)
+void* SShaderImporter::Import(skr_io_ram_service_t* ioService, CookContext* context)
 {
     skr::BlobId ioBlob = nullptr;
     const auto  path   = context->AddSourceFileAndLoad(ioService, sourcePath.c_str(), ioBlob);
@@ -98,7 +98,7 @@ void cartesian_variants(skr::span<skr_shader_options_resource_t*> options, skr::
 //    same as "key": ["selection0", "selection1", "selection2"]
 // SWITCH["switch"]:
 //    same as "switch": ["on", "off"]
-bool SShaderCooker::Cook(SCookContext* ctx)
+bool SShaderCooker::Cook(CookContext* ctx)
 {
     SkrZoneScopedN("SShaderCooker::Cook");
 

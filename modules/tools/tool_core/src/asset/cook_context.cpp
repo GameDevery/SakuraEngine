@@ -8,7 +8,7 @@
 
 namespace skd::asset
 {
-struct SCookContextImpl : public SCookContext
+struct SCookContextImpl : public CookContext
 {
     skr::filesystem::path GetOutputPath() const override;
     
@@ -16,7 +16,7 @@ struct SCookContextImpl : public SCookContext
     skr_guid_t GetImporterType() const override;
     uint32_t GetImporterVersion() const override;
     uint32_t GetCookerVersion() const override;
-    const SAssetRecord* GetAssetRecord() const override;
+    const AssetRecord* GetAssetRecord() const override;
     skr::String GetAssetPath() const override;
 
     skr::filesystem::path AddSourceFile(const skr::filesystem::path& path) override;
@@ -27,8 +27,8 @@ struct SCookContextImpl : public SCookContext
     void AddSoftRuntimeDependency(skr_guid_t resource) override;
     uint32_t AddStaticDependency(skr_guid_t resource, bool install) override;
     skr::span<const skr_guid_t> GetRuntimeDependencies() const override;
-    skr::span<const skr_resource_handle_t> GetStaticDependencies() const override;
-    const skr_resource_handle_t& GetStaticDependency(uint32_t index) const override;
+    skr::span<const SResourceHandle> GetStaticDependencies() const override;
+    const SResourceHandle& GetStaticDependency(uint32_t index) const override;
 
     const skr::task::event_t& GetCounter() override
     {
@@ -64,7 +64,7 @@ struct SCookContextImpl : public SCookContext
     skr::task::event_t counter;
 
     skr::filesystem::path outputPath;
-    skr::Vector<skr_resource_handle_t> staticDependencies;
+    skr::Vector<SResourceHandle> staticDependencies;
     skr::Vector<skr_guid_t> runtimeDependencies;
     skr::Vector<skr::filesystem::path> fileDependencies;
 
@@ -75,12 +75,12 @@ struct SCookContextImpl : public SCookContext
     }
 };
 
-SCookContext* SCookContext::Create(skr_io_ram_service_t* service)
+CookContext* CookContext::Create(skr_io_ram_service_t* service)
 {
     return SkrNew<SCookContextImpl>(service);
 }
 
-void SCookContext::Destroy(SCookContext* ctx)
+void CookContext::Destroy(CookContext* ctx)
 {
     SkrDelete(ctx);
 }
@@ -89,12 +89,12 @@ void SCookContextImpl::_Destroy(void* resource)
 {
     if(!importer)
     {
-        SKR_LOG_ERROR(u8"[SCookContext::Cook] importer failed to load, asset path path: %s", record->path.u8string().c_str());
+        SKR_LOG_ERROR(u8"[CookContext::Cook] importer failed to load, asset path path: %s", record->path.u8string().c_str());
     }
     SKR_DEFER({ SkrDelete(importer); });
     //-----import raw data
     importer->Destroy(resource);
-    SKR_LOG_INFO(u8"[SCookContext::Cook] asset freed for asset: %s", record->path.u8string().c_str());
+    SKR_LOG_INFO(u8"[CookContext::Cook] asset freed for asset: %s", record->path.u8string().c_str());
 }
 
 void* SCookContextImpl::_Import()
@@ -110,7 +110,7 @@ void* SCookContextImpl::_Import()
         importer = GetImporterRegistry()->LoadImporter(record, &reader, &importerTypeGuid);
         if(!importer)
         {
-            SKR_LOG_ERROR(u8"[SCookContext::Cook] importer failed to load, asset: %s", record->path.u8string().c_str());
+            SKR_LOG_ERROR(u8"[CookContext::Cook] importer failed to load, asset: %s", record->path.u8string().c_str());
             return nullptr;
         }
         importerVersion = importer->Version();
@@ -125,12 +125,12 @@ void* SCookContextImpl::_Import()
         else
         {
             name_holder = skr::format(u8"{}", importerType);
-            SKR_LOG_WARN(u8"[SCookContext::Cook] importer without RTTI INFO detected: %s", name_holder.c_str());
+            SKR_LOG_WARN(u8"[CookContext::Cook] importer without RTTI INFO detected: %s", name_holder.c_str());
         }
         [[maybe_unused]] const char* type_name = name_holder.c_str_raw();
         ZoneName(type_name, strlen(type_name));
         auto rawData = importer->Import(ioService, this);
-        SKR_LOG_INFO(u8"[SCookContext::Cook] asset imported for asset: %s", record->path.u8string().c_str());
+        SKR_LOG_INFO(u8"[CookContext::Cook] asset imported for asset: %s", record->path.u8string().c_str());
         return rawData;
     }
     return nullptr;
@@ -161,7 +161,7 @@ uint32_t SCookContextImpl::GetCookerVersion() const
     return cookerVersion;
 }
 
-const SAssetRecord* SCookContextImpl::GetAssetRecord() const
+const AssetRecord* SCookContextImpl::GetAssetRecord() const
 {
     return record;
 }
@@ -226,12 +226,12 @@ skr::span<const skr_guid_t> SCookContextImpl::GetRuntimeDependencies() const
     return skr::span<const skr_guid_t>(runtimeDependencies.data(), runtimeDependencies.size());
 }
 
-skr::span<const skr_resource_handle_t> SCookContextImpl::GetStaticDependencies() const
+skr::span<const SResourceHandle> SCookContextImpl::GetStaticDependencies() const
 {
-    return skr::span<const skr_resource_handle_t>(staticDependencies.data(), staticDependencies.size());
+    return skr::span<const SResourceHandle>(staticDependencies.data(), staticDependencies.size());
 }
 
-const skr_resource_handle_t& SCookContextImpl::GetStaticDependency(uint32_t index) const
+const SResourceHandle& SCookContextImpl::GetStaticDependency(uint32_t index) const
 {
     return staticDependencies[index];
 }
@@ -243,7 +243,7 @@ uint32_t SCookContextImpl::AddStaticDependency(skr_guid_t resource, bool install
     {
         auto counter = GetCookSystem()->EnsureCooked(resource);
         if (counter) counter.wait(false);
-        skr_resource_handle_t handle{resource};
+        SResourceHandle handle{resource};
         handle.resolve(install, (uint64_t)this, SKR_REQUESTER_SYSTEM);
         if(!handle.get_resolved())
         {

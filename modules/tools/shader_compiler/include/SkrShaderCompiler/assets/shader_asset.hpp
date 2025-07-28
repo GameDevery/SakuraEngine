@@ -16,13 +16,13 @@ sattr(serde = @json)
 SKR_SHADER_COMPILER_API SShaderOptionsImporter final : public SImporter {
     skr::String jsonPath;
 
-    void* Import(skr_io_ram_service_t*, SCookContext* context) override;
+    void* Import(skr_io_ram_service_t*, CookContext* context) override;
     void  Destroy(void* resource) override;
 };
 
 sreflect_struct(guid = "8c54f8b7-0bf6-4415-ab3b-394a90da7d7f")
-SKR_SHADER_COMPILER_API SShaderOptionsCooker final : public SCooker {
-    bool     Cook(SCookContext* ctx) override;
+SKR_SHADER_COMPILER_API SShaderOptionsCooker final : public Cooker {
+    bool     Cook(CookContext* ctx) override;
     uint32_t Version() override;
 };
 
@@ -31,7 +31,7 @@ sreflect_struct(
     serde = @json
 )
 SKR_SHADER_COMPILER_API SShaderImporter final : public SImporter {
-    using shader_options_handle_t = skr::resource::TResourceHandle<skr_shader_options_resource_t>;
+    using shader_options_handle_t = skr::resource::AsyncResource<skr_shader_options_resource_t>;
 
     skr::String sourcePath;
     skr::String entry = u8"main";
@@ -40,13 +40,13 @@ SKR_SHADER_COMPILER_API SShaderImporter final : public SImporter {
     skr::Vector<shader_options_handle_t> switch_assets;
     skr::Vector<shader_options_handle_t> option_assets;
 
-    void* Import(skr_io_ram_service_t*, SCookContext* context) override;
+    void* Import(skr_io_ram_service_t*, CookContext* context) override;
     void  Destroy(void* resource) override;
 };
 
 sreflect_struct(guid = "a5cf3ad7-917c-4662-8de9-cd9adbd5eb2a")
-SKR_SHADER_COMPILER_API SShaderCooker final : public SCooker {
-    bool     Cook(SCookContext* ctx) override;
+SKR_SHADER_COMPILER_API SShaderCooker final : public Cooker {
+    bool     Cook(CookContext* ctx) override;
     uint32_t Version() override;
 };
 } // namespace asset

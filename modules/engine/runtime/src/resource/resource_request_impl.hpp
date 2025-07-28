@@ -9,7 +9,7 @@ namespace skr
 {
 namespace resource
 {
-struct SResourceRequestImpl : public SResourceRequest
+struct SResourceRequestImpl : public ResourceRequest
 {
     friend struct SResourceRegistry;
     friend struct SResourceSystemImpl;
@@ -51,7 +51,7 @@ protected:
     skr_vfs_t* vfs;
 
     skr::InlineVector<skr_guid_t, 4> dependencies;
-    skr_resource_record_t* resourceRecord;
+    SResourceRecord* resourceRecord;
     skr_io_future_t dataFuture;
     skr::BlobId dataBlob;
     skr::String resourceUrl;

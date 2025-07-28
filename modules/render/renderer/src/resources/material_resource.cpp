@@ -83,7 +83,7 @@ struct SMaterialFactoryImpl : public SMaterialFactory {
         return true;
     }
 
-    bool Unload(skr_resource_record_t* record) override
+    bool Unload(SResourceRecord* record) override
     {
         auto material = static_cast<skr_material_resource_t*>(record->resource);
         bool unloaded = true;
@@ -94,7 +94,7 @@ struct SMaterialFactoryImpl : public SMaterialFactory {
         return unloaded;
     }
 
-    ESkrInstallStatus Install(skr_resource_record_t* record) override
+    ESkrInstallStatus Install(SResourceRecord* record) override
     {
         auto material = static_cast<skr_material_resource_t*>(record->resource);
         if (!material->material_type.is_resolved())
@@ -153,7 +153,7 @@ struct SMaterialFactoryImpl : public SMaterialFactory {
         return material ? SKR_INSTALL_STATUS_INPROGRESS : SKR_INSTALL_STATUS_FAILED;
     }
 
-    bool Uninstall(skr_resource_record_t* record) override
+    bool Uninstall(SResourceRecord* record) override
     {
         return true;
     }
@@ -230,7 +230,7 @@ struct SMaterialFactoryImpl : public SMaterialFactory {
         skr::InlineVector<CGPUDescriptorData, 16> updates;
         for (const auto& override : material->overrides.samplers)
         {
-            skr::resource::TResourceHandle<skr_texture_sampler_resource_t> hdl = override.value;
+            skr::resource::AsyncResource<skr_texture_sampler_resource_t> hdl = override.value;
             hdl.resolve(true, nullptr);
 
             auto& update        = updates.emplace().ref();
@@ -241,7 +241,7 @@ struct SMaterialFactoryImpl : public SMaterialFactory {
         }
         for (const auto& override : material->overrides.textures)
         {
-            skr::resource::TResourceHandle<skr_texture_resource_t> hdl = override.value;
+            skr::resource::AsyncResource<skr_texture_resource_t> hdl = override.value;
             hdl.resolve(true, nullptr);
 
             auto& update        = updates.emplace().ref();
@@ -254,7 +254,7 @@ struct SMaterialFactoryImpl : public SMaterialFactory {
         return bind_table;
     }
 
-    CGPURootSignatureId requestRS(skr_resource_record_t* record, skr_material_resource_t::installed_pass& installed_pass, skr::span<CGPUShaderLibraryId> shaders)
+    CGPURootSignatureId requestRS(SResourceRecord* record, skr_material_resource_t::installed_pass& installed_pass, skr::span<CGPUShaderLibraryId> shaders)
     {
         auto material = static_cast<skr_material_resource_t*>(record->resource);
         // 0.return if ready
@@ -404,7 +404,7 @@ struct SMaterialFactoryImpl : public SMaterialFactory {
         return skr_pso_map_create_key(pso_map, &desc);
     }
 
-    CGPURenderPipelineId requestPSO(skr_resource_record_t* record, skr_material_resource_t::installed_pass& installed_pass, skr::span<CGPUShaderLibraryId> shaders, bool& fail)
+    CGPURenderPipelineId requestPSO(SResourceRecord* record, skr_material_resource_t::installed_pass& installed_pass, skr::span<CGPUShaderLibraryId> shaders, bool& fail)
     {
         auto material = static_cast<skr_material_resource_t*>(record->resource);
         if (!installed_pass.key)
@@ -416,7 +416,7 @@ struct SMaterialFactoryImpl : public SMaterialFactory {
         return skr_pso_map_find_pso(pso_map, installed_pass.key);
     }
 
-    ESkrInstallStatus UpdateInstall_Pass(skr_resource_record_t* record, skr_material_resource_t::installed_pass& installed_pass)
+    ESkrInstallStatus UpdateInstall_Pass(SResourceRecord* record, skr_material_resource_t::installed_pass& installed_pass)
     {
         // 1.all shaders are installed ?
         skr::InlineVector<CGPUShaderLibraryId, CGPU_SHADER_STAGE_COUNT> shaders;
@@ -444,7 +444,7 @@ struct SMaterialFactoryImpl : public SMaterialFactory {
         return installed_pass.pso ? SKR_INSTALL_STATUS_SUCCEED : SKR_INSTALL_STATUS_INPROGRESS;
     }
 
-    ESkrInstallStatus UpdateInstall(skr_resource_record_t* record) override
+    ESkrInstallStatus UpdateInstall(SResourceRecord* record) override
     {
         auto material = static_cast<skr_material_resource_t*>(record->resource);
         // foreach pass check if all shaders are installed.

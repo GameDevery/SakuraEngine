@@ -18,18 +18,18 @@ TOOL_CORE_API SImporter {
     static constexpr uint32_t kDevelopmentVersion = UINT32_MAX;
 
     virtual ~SImporter()                                                 = default;
-    virtual void*   Import(skr_io_ram_service_t*, SCookContext* context) = 0;
+    virtual void*   Import(skr_io_ram_service_t*, CookContext* context) = 0;
     virtual void    Destroy(void*)                                       = 0;
     static uint32_t Version() { return kDevelopmentVersion; }
 };
 
 struct TOOL_CORE_API SImporterTypeInfo {
-    SImporter* (*Load)(const SAssetRecord* record, skr::archive::JsonReader* object);
+    SImporter* (*Load)(const AssetRecord* record, skr::archive::JsonReader* object);
     uint32_t (*Version)();
 };
 
 struct SImporterRegistry {
-    virtual SImporter* LoadImporter(const SAssetRecord* record, skr::archive::JsonReader* object, skr_guid_t* pGuid = nullptr) = 0;
+    virtual SImporter* LoadImporter(const AssetRecord* record, skr::archive::JsonReader* object, skr_guid_t* pGuid = nullptr) = 0;
     virtual uint32_t   GetImporterVersion(skr_guid_t type)                                                                     = 0;
     virtual void       RegisterImporter(skr_guid_t type, SImporterTypeInfo info)                                               = 0;
 };
@@ -42,7 +42,7 @@ void skd::asset::RegisterImporter(skr_guid_t guid)
 {
     auto registry = GetImporterRegistry();
     auto loader =
-    +[](const SAssetRecord* record, skr::archive::JsonReader* object) -> SImporter* {
+    +[](const AssetRecord* record, skr::archive::JsonReader* object) -> SImporter* {
         auto importer = SkrNew<T>();
         skr::json_read(object, *importer);
         return importer;

@@ -16,13 +16,13 @@ sreflect_struct(
 TOOL_CORE_API SJsonConfigImporter final : public SImporter {
     skr::String assetPath;
     skr_guid_t  configType;
-    void*       Import(skr_io_ram_service_t*, SCookContext* context) override;
+    void*       Import(skr_io_ram_service_t*, CookContext* context) override;
     void        Destroy(void* resource) override;
 };
 
 sreflect_struct(guid = "EC5275CA-E406-4051-9403-77517C421890")
-TOOL_CORE_API SConfigCooker final : public SCooker {
-    bool     Cook(SCookContext* ctx) override;
+TOOL_CORE_API SConfigCooker final : public Cooker {
+    bool     Cook(CookContext* ctx) override;
     uint32_t Version() override;
 };
 } // namespace asset

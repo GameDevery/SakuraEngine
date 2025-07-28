@@ -11,7 +11,7 @@ namespace skd
 {
 namespace asset
 {
-void* SShaderOptionsImporter::Import(skr_io_ram_service_t* ioService, SCookContext* context)
+void* SShaderOptionsImporter::Import(skr_io_ram_service_t* ioService, CookContext* context)
 {
     skr::BlobId ioBuffer = {};
     context->AddSourceFileAndLoad(ioService, jsonPath.c_str(), ioBuffer);
@@ -36,7 +36,7 @@ void SShaderOptionsImporter::Destroy(void* resource)
     SkrDelete(options);
 }
 
-bool SShaderOptionsCooker::Cook(SCookContext* ctx)
+bool SShaderOptionsCooker::Cook(CookContext* ctx)
 {
     const auto outputPath = ctx->GetOutputPath();
     //-----load config

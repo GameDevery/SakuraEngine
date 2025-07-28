@@ -41,12 +41,12 @@ struct SKR_RENDERER_API STextureFactoryImpl : public STextureFactory {
     ~STextureFactoryImpl() noexcept = default;
     skr_guid_t        GetResourceType() override;
     bool              AsyncIO() override { return true; }
-    bool              Unload(skr_resource_record_t* record) override;
-    ESkrInstallStatus Install(skr_resource_record_t* record) override;
-    bool              Uninstall(skr_resource_record_t* record) override;
-    ESkrInstallStatus UpdateInstall(skr_resource_record_t* record) override;
+    bool              Unload(SResourceRecord* record) override;
+    ESkrInstallStatus Install(SResourceRecord* record) override;
+    bool              Uninstall(SResourceRecord* record) override;
+    ESkrInstallStatus UpdateInstall(SResourceRecord* record) override;
 
-    ESkrInstallStatus InstallImpl(skr_resource_record_t* record);
+    ESkrInstallStatus InstallImpl(SResourceRecord* record);
 
     enum class ECompressMethod : uint32_t
     {
@@ -126,7 +126,7 @@ skr_guid_t STextureFactoryImpl::GetResourceType()
     return resource_type;
 }
 
-bool STextureFactoryImpl::Unload(skr_resource_record_t* record)
+bool STextureFactoryImpl::Unload(SResourceRecord* record)
 {
     auto texture_resource = (skr_texture_resource_t*)record->resource;
     if (texture_resource->texture_view) cgpu_free_texture_view(texture_resource->texture_view);
@@ -135,7 +135,7 @@ bool STextureFactoryImpl::Unload(skr_resource_record_t* record)
     return true;
 }
 
-ESkrInstallStatus STextureFactoryImpl::Install(skr_resource_record_t* record)
+ESkrInstallStatus STextureFactoryImpl::Install(SResourceRecord* record)
 {
     if (auto render_device = root.render_device)
     {
@@ -148,7 +148,7 @@ ESkrInstallStatus STextureFactoryImpl::Install(skr_resource_record_t* record)
     return ESkrInstallStatus::SKR_INSTALL_STATUS_FAILED;
 }
 
-ESkrInstallStatus STextureFactoryImpl::InstallImpl(skr_resource_record_t* record)
+ESkrInstallStatus STextureFactoryImpl::InstallImpl(SResourceRecord* record)
 {
     const auto gpuCompressOnly  = true;
     auto       vram_service     = root.vram_service;
@@ -199,12 +199,12 @@ ESkrInstallStatus STextureFactoryImpl::InstallImpl(skr_resource_record_t* record
     return ESkrInstallStatus::SKR_INSTALL_STATUS_INPROGRESS;
 }
 
-bool STextureFactoryImpl::Uninstall(skr_resource_record_t* record)
+bool STextureFactoryImpl::Uninstall(SResourceRecord* record)
 {
     return true;
 }
 
-ESkrInstallStatus STextureFactoryImpl::UpdateInstall(skr_resource_record_t* record)
+ESkrInstallStatus STextureFactoryImpl::UpdateInstall(SResourceRecord* record)
 {
     auto                  texture_resource = (skr_texture_resource_t*)record->resource;
     [[maybe_unused]] auto installType      = mInstallTypes[texture_resource];

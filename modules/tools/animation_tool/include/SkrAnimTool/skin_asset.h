@@ -11,8 +11,8 @@ namespace asset
 {
 
 sreflect_struct(guid = "B863C921-3451-4024-A525-474D140099DB")
-SKR_ANIMTOOL_API SSkinCooker final : public SCooker {
-    bool     Cook(SCookContext* ctx) override;
+SKR_ANIMTOOL_API SSkinCooker final : public Cooker {
+    bool     Cook(CookContext* ctx) override;
     uint32_t Version() override { return kDevelopmentVersion; }
 };
 } // namespace asset 

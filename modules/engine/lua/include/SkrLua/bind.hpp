@@ -24,9 +24,9 @@ SKR_LUA_API int               push_string(lua_State* L, const skr::String& str);
 SKR_LUA_API int               push_string(lua_State* L, skr::StringView str);
 SKR_LUA_API skr::String check_string(lua_State* L, int index);
 SKR_LUA_API skr::String                  opt_string(lua_State* L, int index, const skr::String& def);
-SKR_LUA_API int                          push_resource(lua_State* L, const skr_resource_handle_t* resource);
-SKR_LUA_API const skr_resource_handle_t* check_resource(lua_State* L, int index);
-SKR_LUA_API const skr_resource_handle_t* opt_resource(lua_State* L, int index, const skr_resource_handle_t* def);
+SKR_LUA_API int                          push_resource(lua_State* L, const SResourceHandle* resource);
+SKR_LUA_API const SResourceHandle* check_resource(lua_State* L, int index);
+SKR_LUA_API const SResourceHandle* opt_resource(lua_State* L, int index, const SResourceHandle* def);
 using copy_constructor_t = void (*)(void* dst, const void* src);
 using constructor_t      = void (*)(void* dst);
 using destructor_t       = void (*)(void* dst);
@@ -261,40 +261,40 @@ struct BindTrait<skr_guid_t> {
 };
 
 template <>
-struct BindTrait<skr_resource_handle_t> {
-    static int push(lua_State* L, const skr_resource_handle_t& resource)
+struct BindTrait<SResourceHandle> {
+    static int push(lua_State* L, const SResourceHandle& resource)
     {
         return push_resource(L, &resource);
     }
 
-    static const skr_resource_handle_t& check(lua_State* L, int index, int& used)
+    static const SResourceHandle& check(lua_State* L, int index, int& used)
     {
         used = 1;
         return *check_resource(L, index);
     }
 
-    static const skr_resource_handle_t& opt(lua_State* L, int index, const skr_resource_handle_t& def)
+    static const SResourceHandle& opt(lua_State* L, int index, const SResourceHandle& def)
     {
         return *opt_resource(L, index, &def);
     }
 };
 
 template <class T>
-struct BindTrait<resource::TResourceHandle<T>> {
-    static int push(lua_State* L, const resource::TResourceHandle<T>& resource)
+struct BindTrait<resource::AsyncResource<T>> {
+    static int push(lua_State* L, const resource::AsyncResource<T>& resource)
     {
-        return push_resource(L, (const skr_resource_handle_t*)&resource);
+        return push_resource(L, (const SResourceHandle*)&resource);
     }
 
-    static const resource::TResourceHandle<T>& check(lua_State* L, int index, int& used)
+    static const resource::AsyncResource<T>& check(lua_State* L, int index, int& used)
     {
         used = 1;
-        return *(resource::TResourceHandle<T>*)check_resource(L, index);
+        return *(resource::AsyncResource<T>*)check_resource(L, index);
     }
 
-    static const resource::TResourceHandle<T>& opt(lua_State* L, int index, const resource::TResourceHandle<T>& def)
+    static const resource::AsyncResource<T>& opt(lua_State* L, int index, const resource::AsyncResource<T>& def)
     {
-        return *(resource::TResourceHandle<T>*)opt_resource(L, index, &def);
+        return *(resource::AsyncResource<T>*)opt_resource(L, index, &def);
     }
 };
 

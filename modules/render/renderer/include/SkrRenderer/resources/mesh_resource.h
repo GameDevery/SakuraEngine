@@ -117,7 +117,7 @@ MeshResource {
     skr::Vector<MeshPrimitive> primitives;
     skr::Vector<MeshBuffer>    bins;
 
-    using material_handle_t = skr::resource::TResourceHandle<skr_material_resource_t>;
+    using material_handle_t = skr::resource::AsyncResource<skr_material_resource_t>;
     skr::Vector<material_handle_t> materials;
 
     bool install_to_vram           SKR_IF_CPP(= true);

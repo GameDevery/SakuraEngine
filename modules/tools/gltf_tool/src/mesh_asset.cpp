@@ -12,7 +12,7 @@
 
 #include "SkrProfile/profile.h"
 
-void* skd::asset::SGltfMeshImporter::Import(skr_io_ram_service_t* ioService, SCookContext* context)
+void* skd::asset::SGltfMeshImporter::Import(skr_io_ram_service_t* ioService, CookContext* context)
 {
     skr::filesystem::path relPath = assetPath.u8_str();
     auto                  ext     = relPath.extension();
@@ -31,7 +31,7 @@ void skd::asset::SGltfMeshImporter::Destroy(void* resource)
     ::cgltf_free((cgltf_data*)resource);
 }
 
-bool skd::asset::SMeshCooker::Cook(SCookContext* ctx)
+bool skd::asset::SMeshCooker::Cook(CookContext* ctx)
 {
     const auto outputPath  = ctx->GetOutputPath();
     const auto assetRecord = ctx->GetAssetRecord();

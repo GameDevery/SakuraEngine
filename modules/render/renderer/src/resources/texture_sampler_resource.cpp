@@ -13,10 +13,10 @@ struct SKR_RENDERER_API STextureSamplerFactoryImpl : public STextureSamplerFacto
     bool AsyncIO() override { return true; }
 
     skr_guid_t        GetResourceType() override;
-    bool              Unload(skr_resource_record_t* record) override;
-    ESkrInstallStatus Install(skr_resource_record_t* record) override;
-    bool              Uninstall(skr_resource_record_t* record) override;
-    ESkrInstallStatus UpdateInstall(skr_resource_record_t* record) override;
+    bool              Unload(SResourceRecord* record) override;
+    ESkrInstallStatus Install(SResourceRecord* record) override;
+    bool              Uninstall(SResourceRecord* record) override;
+    ESkrInstallStatus UpdateInstall(SResourceRecord* record) override;
 
     Root root;
 
@@ -106,7 +106,7 @@ skr_guid_t STextureSamplerFactoryImpl::GetResourceType()
     return resource_type;
 }
 
-bool STextureSamplerFactoryImpl::Unload(skr_resource_record_t* record)
+bool STextureSamplerFactoryImpl::Unload(SResourceRecord* record)
 {
     auto sampler_resource = (skr_texture_sampler_resource_t*)record->resource;
     if (sampler_resource->sampler) cgpu_free_sampler(sampler_resource->sampler);
@@ -114,7 +114,7 @@ bool STextureSamplerFactoryImpl::Unload(skr_resource_record_t* record)
     return true;
 }
 
-ESkrInstallStatus STextureSamplerFactoryImpl::Install(skr_resource_record_t* record)
+ESkrInstallStatus STextureSamplerFactoryImpl::Install(SResourceRecord* record)
 {
     auto                  sampler_resource = (skr_texture_sampler_resource_t*)record->resource;
     CGPUSamplerDescriptor sampler_desc     = {};
@@ -132,12 +132,12 @@ ESkrInstallStatus STextureSamplerFactoryImpl::Install(skr_resource_record_t* rec
     return sampler_resource->sampler ? SKR_INSTALL_STATUS_SUCCEED : SKR_INSTALL_STATUS_FAILED;
 }
 
-bool STextureSamplerFactoryImpl::Uninstall(skr_resource_record_t* record)
+bool STextureSamplerFactoryImpl::Uninstall(SResourceRecord* record)
 {
     return true;
 }
 
-ESkrInstallStatus STextureSamplerFactoryImpl::UpdateInstall(skr_resource_record_t* record)
+ESkrInstallStatus STextureSamplerFactoryImpl::UpdateInstall(SResourceRecord* record)
 {
     auto sampler_resource = (skr_texture_sampler_resource_t*)record->resource;
     return sampler_resource->sampler ? SKR_INSTALL_STATUS_SUCCEED : SKR_INSTALL_STATUS_FAILED;

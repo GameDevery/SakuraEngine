@@ -180,10 +180,10 @@ struct SKR_RENDERER_API SMeshFactoryImpl : public SMeshFactory {
     ~SMeshFactoryImpl() noexcept = default;
     skr_guid_t        GetResourceType() override;
     bool              AsyncIO() override { return true; }
-    bool              Unload(skr_resource_record_t* record) override;
-    ESkrInstallStatus Install(skr_resource_record_t* record) override;
-    bool              Uninstall(skr_resource_record_t* record) override;
-    ESkrInstallStatus UpdateInstall(skr_resource_record_t* record) override;
+    bool              Unload(SResourceRecord* record) override;
+    ESkrInstallStatus Install(SResourceRecord* record) override;
+    bool              Uninstall(SResourceRecord* record) override;
+    ESkrInstallStatus UpdateInstall(SResourceRecord* record) override;
 
     enum class ECompressMethod : uint32_t
     {
@@ -223,7 +223,7 @@ struct SKR_RENDERER_API SMeshFactoryImpl : public SMeshFactory {
         skr::Vector<skr::io::VRAMIOBufferId> uBuffers;
     };
 
-    ESkrInstallStatus InstallImpl(skr_resource_record_t* record);
+    ESkrInstallStatus InstallImpl(SResourceRecord* record);
 
     skr::String                                                 dstorage_root;
     Root                                                        root;
@@ -247,7 +247,7 @@ skr_guid_t SMeshFactoryImpl::GetResourceType()
     return resource_type;
 }
 
-ESkrInstallStatus SMeshFactoryImpl::Install(skr_resource_record_t* record)
+ESkrInstallStatus SMeshFactoryImpl::Install(SResourceRecord* record)
 {
     auto mesh_resource = (skr_mesh_resource_t*)record->resource;
     if (!mesh_resource) return ESkrInstallStatus::SKR_INSTALL_STATUS_FAILED;
@@ -270,7 +270,7 @@ ESkrInstallStatus SMeshFactoryImpl::Install(skr_resource_record_t* record)
     return ESkrInstallStatus::SKR_INSTALL_STATUS_FAILED;
 }
 
-ESkrInstallStatus SMeshFactoryImpl::InstallImpl(skr_resource_record_t* record)
+ESkrInstallStatus SMeshFactoryImpl::InstallImpl(SResourceRecord* record)
 {
     const auto noCompression = true;
     auto       vram_service  = root.vram_service;
@@ -337,7 +337,7 @@ ESkrInstallStatus SMeshFactoryImpl::InstallImpl(skr_resource_record_t* record)
     return ESkrInstallStatus::SKR_INSTALL_STATUS_INPROGRESS;
 }
 
-ESkrInstallStatus SMeshFactoryImpl::UpdateInstall(skr_resource_record_t* record)
+ESkrInstallStatus SMeshFactoryImpl::UpdateInstall(SResourceRecord* record)
 {
     auto mesh_resource = (skr_mesh_resource_t*)record->resource;
     auto dRequest      = mRequests.find(mesh_resource);
@@ -374,14 +374,14 @@ ESkrInstallStatus SMeshFactoryImpl::UpdateInstall(skr_resource_record_t* record)
     return ESkrInstallStatus::SKR_INSTALL_STATUS_INPROGRESS;
 }
 
-bool SMeshFactoryImpl::Unload(skr_resource_record_t* record)
+bool SMeshFactoryImpl::Unload(SResourceRecord* record)
 {
     auto mesh_resource = (skr_mesh_resource_id)record->resource;
     SkrDelete(mesh_resource);
     return true;
 }
 
-bool SMeshFactoryImpl::Uninstall(skr_resource_record_t* record)
+bool SMeshFactoryImpl::Uninstall(SResourceRecord* record)
 {
     auto mesh_resource = (skr_mesh_resource_id)record->resource;
     if (mesh_resource->install_to_ram)

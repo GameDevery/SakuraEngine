@@ -113,10 +113,10 @@ struct SKR_RENDERER_API SShaderResourceFactoryImpl : public SShaderResourceFacto
     ~SShaderResourceFactoryImpl() noexcept = default;
     skr_guid_t        GetResourceType() override;
     bool              AsyncIO() override { return true; }
-    bool              Unload(skr_resource_record_t* record) override;
-    ESkrInstallStatus Install(skr_resource_record_t* record) override;
-    bool              Uninstall(skr_resource_record_t* record) override;
-    ESkrInstallStatus UpdateInstall(skr_resource_record_t* record) override;
+    bool              Unload(SResourceRecord* record) override;
+    ESkrInstallStatus Install(SResourceRecord* record) override;
+    bool              Uninstall(SResourceRecord* record) override;
+    ESkrInstallStatus UpdateInstall(SResourceRecord* record) override;
 
     Root root;
 };
@@ -152,7 +152,7 @@ skr_guid_t SShaderResourceFactoryImpl::GetResourceType()
     return resource_type;
 }
 
-bool SShaderResourceFactoryImpl::Unload(skr_resource_record_t* record)
+bool SShaderResourceFactoryImpl::Unload(SResourceRecord* record)
 {
     auto shader_collection = (skr_shader_collection_resource_t*)record->resource;
     if (!root.dont_create_shader)
@@ -172,7 +172,7 @@ bool SShaderResourceFactoryImpl::Unload(skr_resource_record_t* record)
     return true;
 }
 
-ESkrInstallStatus SShaderResourceFactoryImpl::Install(skr_resource_record_t* record)
+ESkrInstallStatus SShaderResourceFactoryImpl::Install(SResourceRecord* record)
 {
     if (root.dont_create_shader) return SKR_INSTALL_STATUS_SUCCEED;
 
@@ -198,12 +198,12 @@ ESkrInstallStatus SShaderResourceFactoryImpl::Install(skr_resource_record_t* rec
     return launch_success ? SKR_INSTALL_STATUS_SUCCEED : SKR_INSTALL_STATUS_FAILED;
 }
 
-bool SShaderResourceFactoryImpl::Uninstall(skr_resource_record_t* record)
+bool SShaderResourceFactoryImpl::Uninstall(SResourceRecord* record)
 {
     return true;
 }
 
-ESkrInstallStatus SShaderResourceFactoryImpl::UpdateInstall(skr_resource_record_t* record)
+ESkrInstallStatus SShaderResourceFactoryImpl::UpdateInstall(SResourceRecord* record)
 {
     return SKR_INSTALL_STATUS_SUCCEED;
 }

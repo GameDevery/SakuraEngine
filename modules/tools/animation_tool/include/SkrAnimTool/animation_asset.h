@@ -32,7 +32,7 @@ SKR_ANIMTOOL_API SAnimGltfImporter : public skd::asset::SImporter {
     skr::String animationName;
     float       samplingRate     = 30.f;
     virtual ~SAnimGltfImporter() = default;
-    virtual void*   Import(skr_io_ram_service_t*, SCookContext* context) override;
+    virtual void*   Import(skr_io_ram_service_t*, CookContext* context) override;
     virtual void    Destroy(void*) override;
     static uint32_t Version() { return kDevelopmentVersion; }
 };
@@ -86,7 +86,7 @@ SAnimCookSettings {
             }
         ]
     */
-    resource::TResourceHandle<skr::anim::SkeletonResource> skeletonAsset;
+    resource::AsyncResource<skr::anim::SkeletonResource> skeletonAsset;
     bool                                                   additive          = false;                             //  Creates a delta animation that can be used for additive blending.
     SAnimAdditiveReference                                 additiveReference = SAnimAdditiveReference::animation; //  Select reference pose to use to build additive/delta animation. Can be "animation" to use the 1st animation keyframe as reference, or "skeleton" to use skeleton rest pose.
     float                                                  samplingRate      = 0.f;                               //  Selects animation sampling rate in hertz. Set a value <= 0 to use imported scene default frame rate.
@@ -97,8 +97,8 @@ SAnimCookSettings {
 };
 
 sreflect_struct(guid = "81F1C813-1ABA-41BE-8D7A-F6C88E73E891")
-SKR_ANIMTOOL_API SAnimCooker : public skd::asset::SCooker {
-    bool     Cook(SCookContext* ctx) override;
+SKR_ANIMTOOL_API SAnimCooker : public skd::asset::Cooker {
+    bool     Cook(CookContext* ctx) override;
     uint32_t Version() override { return kDevelopmentVersion; }
 };
 } // namespace asset

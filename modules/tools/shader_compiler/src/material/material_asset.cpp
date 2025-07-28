@@ -9,7 +9,7 @@ namespace skd
 namespace asset
 {
 
-void* SMaterialImporter::Import(skr_io_ram_service_t* ioService, SCookContext* context)
+void* SMaterialImporter::Import(skr_io_ram_service_t* ioService, CookContext* context)
 {
     skr::BlobId blob = nullptr;
     context->AddSourceFileAndLoad(ioService, jsonPath.c_str(), blob);
@@ -34,7 +34,7 @@ void SMaterialImporter::Destroy(void* resource)
     SkrDelete(mat_asset);
 }
 
-bool SMaterialCooker::Cook(SCookContext* ctx)
+bool SMaterialCooker::Cook(CookContext* ctx)
 {
     const auto outputPath = ctx->GetOutputPath();
     //-----load config

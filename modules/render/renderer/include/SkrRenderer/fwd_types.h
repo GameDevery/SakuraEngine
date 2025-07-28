@@ -13,7 +13,7 @@ typedef struct skr::RendererDevice SRenderDevice;
 namespace skr::resource
 {
 template <class T>
-struct TResourceHandle;
+struct AsyncResource;
 }
 class SkrRendererModule;
 #else
@@ -71,9 +71,9 @@ typedef struct skr_pso_map_t*     skr_pso_map_id;
 typedef struct skr_pso_map_root_t skr_pso_map_root_t;
 
 #ifdef __cplusplus
-using skr_shader_resource_handle_t   = skr::resource::TResourceHandle<skr_multi_shader_resource_t>;
-using skr_material_type_handle_t     = skr::resource::TResourceHandle<skr_material_type_resource_t>;
-using skr_shader_collection_handle_t = skr::resource::TResourceHandle<skr_shader_collection_resource_t>;
+using skr_shader_resource_handle_t   = skr::resource::AsyncResource<skr_multi_shader_resource_t>;
+using skr_material_type_handle_t     = skr::resource::AsyncResource<skr_material_type_resource_t>;
+using skr_shader_collection_handle_t = skr::resource::AsyncResource<skr_shader_collection_resource_t>;
 namespace skr
 {
 namespace renderer
@@ -82,7 +82,7 @@ enum class EShaderOptionType : uint32_t;
 }
 } // namespace skr
 #else
-typedef struct skr_resource_handle_t skr_shader_resource_handle_t;
-typedef struct skr_resource_handle_t skr_material_type_handle_t;
-typedef struct skr_resource_handle_t skr_shader_collection_handle_t;
+typedef struct SResourceHandle skr_shader_resource_handle_t;
+typedef struct SResourceHandle skr_material_type_handle_t;
+typedef struct SResourceHandle skr_shader_collection_handle_t;
 #endif

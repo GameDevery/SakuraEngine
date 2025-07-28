@@ -12,7 +12,7 @@ namespace skd
 {
 namespace asset
 {
-void* SJsonConfigImporter::Import(skr_io_ram_service_t* ioService, SCookContext* context)
+void* SJsonConfigImporter::Import(skr_io_ram_service_t* ioService, CookContext* context)
 {
     const auto assetRecord = context->GetAssetRecord();
     auto       type        = skr::get_type_from_guid(configType);
@@ -55,7 +55,7 @@ uint32_t SConfigCooker::Version()
     return 0;
 }
 
-bool SConfigCooker::Cook(SCookContext* ctx)
+bool SConfigCooker::Cook(CookContext* ctx)
 {
     const auto outputPath = ctx->GetOutputPath();
     // const auto assetRecord = ctx->GetAssetRecord();
@@ -75,9 +75,9 @@ bool SConfigCooker::Cook(SCookContext* ctx)
     // auto type = (skr::type::RecordType*)skr_get_type(&resource->configType);
     // for (auto& field : type->GetFields())
     // {
-    //     if (field.type->Same(skr::type::type_of<skr_resource_handle_t>::get()))
+    //     if (field.type->Same(skr::type::type_of<SResourceHandle>::get()))
     //     {
-    //         auto handle = (skr_resource_handle_t*)((char*)resource->configData + field.offset);
+    //         auto handle = (SResourceHandle*)((char*)resource->configData + field.offset);
     //         if (handle->is_null())
     //             continue;
     //         ctx->AddRuntimeDependency(handle->get_guid());

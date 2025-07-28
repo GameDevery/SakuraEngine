@@ -241,7 +241,7 @@ void SGameModule::installResourceFactories()
     }
 
     struct GameSceneFactory : public skr::resource::SSceneFactory {
-        virtual ESkrInstallStatus Install(skr_resource_record_t* record) override
+        virtual ESkrInstallStatus Install(SResourceRecord* record) override
         {
             auto renderableT_builder = make_zeroed<sugoi::TypeSetBuilder>();
             renderableT_builder.with<skr_render_effect_t>();
@@ -568,7 +568,7 @@ int              SGameModule::main_module_exec(int argc, char8_t** argv)
     }
     namespace res = skr::resource;
     using namespace skr::literals;
-    res::TResourceHandle<skr_scene_resource_t> scene_handle = u8"FB84A5BD-2FD2-46A2-ABF4-2D2610CFDAD9"_guid;
+    res::AsyncResource<skr_scene_resource_t> scene_handle = u8"FB84A5BD-2FD2-46A2-ABF4-2D2610CFDAD9"_guid;
     scene_handle.resolve(true, 0, SKR_REQUESTER_SYSTEM);
 
     // Viewport

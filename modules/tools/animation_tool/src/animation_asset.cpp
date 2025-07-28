@@ -18,7 +18,7 @@
 
 namespace skd::asset
 {
-bool SAnimCooker::Cook(SCookContext* ctx)
+bool SAnimCooker::Cook(CookContext* ctx)
 {
     using namespace skr::anim;
     using namespace ozz::animation::offline;

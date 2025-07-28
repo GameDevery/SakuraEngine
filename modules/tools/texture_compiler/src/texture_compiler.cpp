@@ -33,7 +33,7 @@ struct skr_uncompressed_render_texture_t {
     skr::BlobId           blob      = nullptr;
 };
 
-void* STextureImporter::Import(skr_io_ram_service_t* ioService, SCookContext* context)
+void* STextureImporter::Import(skr_io_ram_service_t* ioService, CookContext* context)
 {
     skr::BlobId blob = nullptr;
     {
@@ -65,7 +65,7 @@ void STextureImporter::Destroy(void* resource)
     SkrDelete((skr_uncompressed_render_texture_t*)resource);
 }
 
-bool STextureCooker::Cook(SCookContext* ctx)
+bool STextureCooker::Cook(CookContext* ctx)
 {
     const auto outputPath   = ctx->GetOutputPath();
     auto       uncompressed = ctx->Import<skr_uncompressed_render_texture_t>();

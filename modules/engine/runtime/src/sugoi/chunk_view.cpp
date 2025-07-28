@@ -63,7 +63,7 @@ static void destruct_impl(sugoi_chunk_view_t view, type_index_t type, EIndex off
         forloop(k, 0, resourceFields.count)
         {
             auto field = resourceFields.offsets[k];
-            auto* resource = (skr_resource_handle_t*)(data + field);
+            auto* resource = (SResourceHandle*)(data + field);
             if(resource->is_resolved())
                 resource->reset();
         }
@@ -160,10 +160,10 @@ static void clone_impl(sugoi_chunk_view_t dstV, const sugoi_chunk_t* srcC, uint3
         forloop(k, 0, resourceFields.count)
         {
             auto field = resourceFields.offsets[k];
-            auto* resource = (skr_resource_handle_t*)(data + field);
+            auto* resource = (SResourceHandle*)(data + field);
             if(resource->is_resolved())
             {
-                new (resource) skr_resource_handle_t(*resource, (uint64_t)storage, SKR_REQUESTER_ENTITY);
+                new (resource) SResourceHandle(*resource, (uint64_t)storage, SKR_REQUESTER_ENTITY);
             }
         }
     };
@@ -272,10 +272,10 @@ static void duplicate_impl(sugoi_chunk_view_t dstV, const sugoi_chunk_t* srcC, u
         forloop(k, 0, resourceFields.count)
         {
             auto field = resourceFields.offsets[k];
-            auto* resource = (skr_resource_handle_t*)(data + field);
+            auto* resource = (SResourceHandle*)(data + field);
             if(resource->is_resolved())
             {
-                new (resource) skr_resource_handle_t(*resource, (uint64_t)storage, SKR_REQUESTER_ENTITY);
+                new (resource) SResourceHandle(*resource, (uint64_t)storage, SKR_REQUESTER_ENTITY);
             }
         }
     };

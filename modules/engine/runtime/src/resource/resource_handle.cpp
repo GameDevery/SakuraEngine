@@ -4,48 +4,48 @@
 #include "SkrRT/resource/resource_header.hpp"
 #include "SkrRT/resource/resource_system.h"
 
-static constexpr uint64_t kResourceHandleRecordMask        = ~(alignof(skr_resource_record_t) - 1);
-static constexpr uint64_t kResourceHandleRequesterTypeMask = alignof(skr_resource_record_t) - 1;
+static constexpr uint64_t kResourceHandleRecordMask        = ~(alignof(SResourceRecord) - 1);
+static constexpr uint64_t kResourceHandleRequesterTypeMask = alignof(SResourceRecord) - 1;
 
-skr_resource_handle_t::skr_resource_handle_t()
+SResourceHandle::SResourceHandle()
 {
-    std::memset((void*)this, 0, sizeof(skr_resource_handle_t));
+    std::memset((void*)this, 0, sizeof(SResourceHandle));
 }
 
-skr_resource_handle_t::~skr_resource_handle_t()
+SResourceHandle::~SResourceHandle()
 {
     // TODO: is this OK?
     reset();
 }
 
-skr_resource_handle_t::skr_resource_handle_t(const skr_guid_t& other)
+SResourceHandle::SResourceHandle(const skr_guid_t& other)
 {
     guid = other;
     SKR_ASSERT(padding != 0 || is_null());
 }
 
-skr_resource_handle_t::skr_resource_handle_t(const skr_resource_handle_t& other)
+SResourceHandle::SResourceHandle(const SResourceHandle& other)
 {
     guid = other.get_serialized();
     SKR_ASSERT(padding != 0 || is_null());
 }
 
-skr_resource_handle_t::skr_resource_handle_t(skr_resource_handle_t&& other)
+SResourceHandle::SResourceHandle(SResourceHandle&& other)
 {
-    memcpy((void*)this, &other, sizeof(skr_resource_handle_t));
-    memset((void*)&other, 0, sizeof(skr_resource_handle_t));
+    memcpy((void*)this, &other, sizeof(SResourceHandle));
+    memset((void*)&other, 0, sizeof(SResourceHandle));
 }
 
-skr_resource_handle_t& skr_resource_handle_t::operator=(const skr_resource_handle_t& other)
+SResourceHandle& SResourceHandle::operator=(const SResourceHandle& other)
 {
     set_guid(other.get_serialized());
     return *this;
 }
 
-skr_resource_handle_t::skr_resource_handle_t(const skr_resource_handle_t& other, uint64_t inRequester, ESkrRequesterType requesterType)
+SResourceHandle::SResourceHandle(const SResourceHandle& other, uint64_t inRequester, ESkrRequesterType requesterType)
 {
     if (other.is_null())
-        std::memset((void*)this, 0, sizeof(skr_resource_handle_t));
+        std::memset((void*)this, 0, sizeof(SResourceHandle));
     if (other.padding != 0)
         guid = other.guid;
     auto record = other.get_record();
@@ -54,20 +54,20 @@ skr_resource_handle_t::skr_resource_handle_t(const skr_resource_handle_t& other,
     pointer     = (uint64_t)record | (uint64_t(requesterType) & kResourceHandleRequesterTypeMask);
 }
 
-skr_resource_handle_t& skr_resource_handle_t::operator=(const skr_guid_t& other)
+SResourceHandle& SResourceHandle::operator=(const skr_guid_t& other)
 {
     set_guid(other);
     return *this;
 }
 
-skr_resource_handle_t& skr_resource_handle_t::operator=(skr_resource_handle_t&& other)
+SResourceHandle& SResourceHandle::operator=(SResourceHandle&& other)
 {
-    memcpy((void*)this, &other, sizeof(skr_resource_handle_t));
-    memset((void*)&other, 0, sizeof(skr_resource_handle_t));
+    memcpy((void*)this, &other, sizeof(SResourceHandle));
+    memset((void*)&other, 0, sizeof(SResourceHandle));
     return *this;
 }
 
-void skr_resource_handle_t::set_ptr(void* ptr)
+void SResourceHandle::set_ptr(void* ptr)
 {
     reset();
     auto system = skr::resource::GetResourceSystem();
@@ -77,39 +77,39 @@ void skr_resource_handle_t::set_ptr(void* ptr)
     set_record(record);
 }
 
-void skr_resource_handle_t::set_guid(const skr_guid_t& inGUID)
+void SResourceHandle::set_guid(const skr_guid_t& inGUID)
 {
     reset();
     guid = inGUID;
     SKR_ASSERT(padding != 0 || is_null());
 }
 
-bool skr_resource_handle_t::is_resolved() const
+bool SResourceHandle::is_resolved() const
 {
     return padding == 0 && get_record() != nullptr;
 }
 
-void* skr_resource_handle_t::get_ptr() const
+void* SResourceHandle::get_ptr() const
 {
     SKR_ASSERT(padding == 0);
     const auto record = get_record();
     return record != nullptr ? record->resource : nullptr;
 }
 
-skr_guid_t skr_resource_handle_t::get_guid() const
+skr_guid_t SResourceHandle::get_guid() const
 {
     SKR_ASSERT(padding != 0);
     return guid;
 }
 
-skr_guid_t skr_resource_handle_t::get_type() const
+skr_guid_t SResourceHandle::get_type() const
 {
     SKR_ASSERT(padding == 0);
     const auto record = get_record();
     return record != nullptr ? record->header.type : skr_guid_t();
 }
 
-void* skr_resource_handle_t::get_resolved(bool requireInstalled) const
+void* SResourceHandle::get_resolved(bool requireInstalled) const
 {
     if (is_null())
         return nullptr;
@@ -124,7 +124,7 @@ void* skr_resource_handle_t::get_resolved(bool requireInstalled) const
     return nullptr;
 }
 
-skr_guid_t skr_resource_handle_t::get_serialized() const
+skr_guid_t SResourceHandle::get_serialized() const
 {
     if (is_null())
         return guid;
@@ -135,7 +135,7 @@ skr_guid_t skr_resource_handle_t::get_serialized() const
     return record->header.guid;
 }
 
-void skr_resource_handle_t::resolve(bool requireInstalled, uint64_t inRequester, ESkrRequesterType requesterType)
+void SResourceHandle::resolve(bool requireInstalled, uint64_t inRequester, ESkrRequesterType requesterType)
 {
     SKR_ASSERT(!is_null());
     if (padding != 0)
@@ -145,7 +145,7 @@ void skr_resource_handle_t::resolve(bool requireInstalled, uint64_t inRequester,
     }
 }
 
-void skr_resource_handle_t::unload()
+void SResourceHandle::unload()
 {
     SKR_ASSERT(!is_null());
     if (padding != 0)
@@ -154,19 +154,19 @@ void skr_resource_handle_t::unload()
     system->UnloadResource(*this);
 }
 
-bool skr_resource_handle_t::is_null() const
+bool SResourceHandle::is_null() const
 {
     return padding == 0 && get_record() == nullptr;
 }
 
-void skr_resource_handle_t::reset()
+void SResourceHandle::reset()
 {
     if (is_resolved())
         unload();
-    std::memset((void*)this, 0, sizeof(skr_resource_handle_t));
+    std::memset((void*)this, 0, sizeof(SResourceHandle));
 }
 
-ESkrLoadingStatus skr_resource_handle_t::get_status(bool resolve) const
+ESkrLoadingStatus SResourceHandle::get_status(bool resolve) const
 {
     if (is_null())
         return SKR_LOADING_STATUS_UNLOADED;
@@ -183,29 +183,29 @@ ESkrLoadingStatus skr_resource_handle_t::get_status(bool resolve) const
     return record->loadingStatus;
 }
 
-skr_resource_record_t* skr_resource_handle_t::get_record() const
+SResourceRecord* SResourceHandle::get_record() const
 {
-    return (skr_resource_record_t*)(pointer & kResourceHandleRecordMask);
+    return (SResourceRecord*)(pointer & kResourceHandleRecordMask);
 }
 
-uint32_t skr_resource_handle_t::get_requester_id() const
+uint32_t SResourceHandle::get_requester_id() const
 {
     SKR_ASSERT(is_resolved());
     return requesterId;
 }
 
-ESkrRequesterType skr_resource_handle_t::get_requester_type() const
+ESkrRequesterType SResourceHandle::get_requester_type() const
 {
     SKR_ASSERT(is_resolved());
     return (ESkrRequesterType)(pointer & kResourceHandleRequesterTypeMask);
 }
 
-void skr_resource_handle_t::set_record(skr_resource_record_t* record)
+void SResourceHandle::set_record(SResourceRecord* record)
 {
     pointer = (uint64_t)record | (pointer & kResourceHandleRequesterTypeMask);
 }
 
-void skr_resource_handle_t::set_resolved(skr_resource_record_t* record, uint32_t inRequesterId, ESkrRequesterType requesterType)
+void SResourceHandle::set_resolved(SResourceRecord* record, uint32_t inRequesterId, ESkrRequesterType requesterType)
 {
     reset();
     pointer     = (uint64_t)record | (uint64_t(requesterType) & kResourceHandleRequesterTypeMask);

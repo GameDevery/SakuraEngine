@@ -45,11 +45,12 @@ struct SResourceFactory;
 struct SResourceSystem;
 struct SResourceSystemImpl;
 
-struct SKR_RUNTIME_API SResourceRequest {
-    virtual ~SResourceRequest() = default;
+struct SKR_RUNTIME_API ResourceRequest
+{
+    virtual ~ResourceRequest() = default;
 
 public:
-    virtual skr_guid_t               GetGuid() const = 0;
+    virtual skr_guid_t GetGuid() const = 0;
     virtual skr::span<const uint8_t> GetData() const = 0;
     #ifdef SKR_RESOURCE_DEV_MODE
     virtual skr::span<const uint8_t> GetArtifactsData() const = 0;
@@ -57,12 +58,12 @@ public:
     virtual skr::span<const skr_guid_t> GetDependencies() const = 0;
 
     virtual void UpdateLoad(bool requestInstall) = 0;
-    virtual void UpdateUnload()                  = 0;
-    virtual void Update()                        = 0;
+    virtual void UpdateUnload() = 0;
+    virtual void Update() = 0;
 
-    virtual bool Okay()       = 0;
-    virtual bool Yielded()    = 0;
-    virtual bool Failed()     = 0;
+    virtual bool Okay() = 0;
+    virtual bool Yielded() = 0;
+    virtual bool Failed() = 0;
     virtual bool AsyncSerde() = 0;
 
     virtual void OnRequestFileFinished() = 0;
@@ -71,50 +72,52 @@ public:
     virtual void LoadTask() = 0;
 
 protected:
-    virtual void _LoadDependencies()   = 0;
+    virtual void _LoadDependencies() = 0;
     virtual void _UnloadDependencies() = 0;
-    virtual void _LoadFinished()       = 0;
-    virtual void _InstallFinished()    = 0;
-    virtual void _UnloadResource()     = 0;
+    virtual void _LoadFinished() = 0;
+    virtual void _InstallFinished() = 0;
+    virtual void _UnloadResource() = 0;
 };
 
-struct SKR_RUNTIME_API SResourceRegistry {
+struct SKR_RUNTIME_API SResourceRegistry
+{
 public:
-    virtual bool RequestResourceFile(SResourceRequest* request) = 0;
-    virtual void CancelRequestFile(SResourceRequest* requst)    = 0;
+    virtual bool RequestResourceFile(ResourceRequest* request) = 0;
+    virtual void CancelRequestFile(ResourceRequest* requst) = 0;
 
-    void FillRequest(SResourceRequest* request, skr_resource_header_t header, skr_vfs_t* vfs, const char8_t* uri);
+    void FillRequest(ResourceRequest* request, SResourceHeader header, skr_vfs_t* vfs, const char8_t* uri);
 };
 
-struct SKR_RUNTIME_API SResourceSystem {
-    friend struct ::skr_resource_handle_t;
+struct SKR_RUNTIME_API SResourceSystem
+{
+    friend struct ::SResourceHandle;
 
 public:
-    virtual ~SResourceSystem()                                                            = default;
+    virtual ~SResourceSystem() = default;
     virtual void Initialize(SResourceRegistry* provider, skr_io_ram_service_t* ioService) = 0;
-    virtual bool IsInitialized()                                                          = 0;
-    virtual void Shutdown()                                                               = 0;
-    virtual void Update()                                                                 = 0;
-    virtual bool WaitRequest()                                                            = 0;
-    virtual void Quit()                                                                   = 0;
+    virtual bool IsInitialized() = 0;
+    virtual void Shutdown() = 0;
+    virtual void Update() = 0;
+    virtual bool WaitRequest() = 0;
+    virtual void Quit() = 0;
 
-    virtual void              LoadResource(skr_resource_handle_t& handle, bool requireInstalled, uint64_t requester, ESkrRequesterType) = 0;
-    virtual void              UnloadResource(skr_resource_handle_t& handle)                                                             = 0;
-    virtual void              FlushResource(skr_resource_handle_t& handle)                                                              = 0;
-    virtual ESkrLoadingStatus GetResourceStatus(const skr_guid_t& handle)                                                               = 0;
+    virtual void LoadResource(SResourceHandle& handle, bool requireInstalled, uint64_t requester, ESkrRequesterType) = 0;
+    virtual void UnloadResource(SResourceHandle& handle) = 0;
+    virtual void FlushResource(SResourceHandle& handle) = 0;
+    virtual ESkrLoadingStatus GetResourceStatus(const skr_guid_t& handle) = 0;
 
-    virtual SResourceFactory* FindFactory(skr_guid_t type) const         = 0;
-    virtual void              RegisterFactory(SResourceFactory* factory) = 0;
-    virtual void              UnregisterFactory(skr_guid_t type)         = 0;
+    virtual SResourceFactory* FindFactory(skr_guid_t type) const = 0;
+    virtual void RegisterFactory(SResourceFactory* factory) = 0;
+    virtual void UnregisterFactory(skr_guid_t type) = 0;
 
-    virtual SResourceRegistry*    GetRegistry() const   = 0;
+    virtual SResourceRegistry* GetRegistry() const = 0;
     virtual skr_io_ram_service_t* GetRAMService() const = 0;
 
 protected:
-    virtual skr_resource_record_t* _GetOrCreateRecord(const skr_guid_t& guid)    = 0;
-    virtual skr_resource_record_t* _GetRecord(const skr_guid_t& guid)            = 0;
-    virtual skr_resource_record_t* _GetRecord(void* resource)                    = 0;
-    virtual void                   _DestroyRecord(skr_resource_record_t* record) = 0;
+    virtual SResourceRecord* _GetOrCreateRecord(const skr_guid_t& guid) = 0;
+    virtual SResourceRecord* _GetRecord(const skr_guid_t& guid) = 0;
+    virtual SResourceRecord* _GetRecord(void* resource) = 0;
+    virtual void _DestroyRecord(SResourceRecord* record) = 0;
 };
 SKR_RUNTIME_API SResourceSystem* GetResourceSystem();
 } // namespace resource

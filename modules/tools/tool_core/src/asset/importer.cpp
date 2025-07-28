@@ -6,7 +6,7 @@
 namespace skd::asset
 {
 struct SImporterRegistryImpl : public SImporterRegistry {
-    SImporter* LoadImporter(const SAssetRecord* record, skr::archive::JsonReader* object, skr_guid_t* pGuid = nullptr) override;
+    SImporter* LoadImporter(const AssetRecord* record, skr::archive::JsonReader* object, skr_guid_t* pGuid = nullptr) override;
     uint32_t   GetImporterVersion(skr_guid_t type) override;
     void       RegisterImporter(skr_guid_t type, SImporterTypeInfo info) override;
 
@@ -19,7 +19,7 @@ SImporterRegistry* GetImporterRegistry()
     return &registry;
 }
 
-SImporter* SImporterRegistryImpl::LoadImporter(const SAssetRecord* record, skr::archive::JsonReader* object, skr_guid_t* pGuid)
+SImporter* SImporterRegistryImpl::LoadImporter(const AssetRecord* record, skr::archive::JsonReader* object, skr_guid_t* pGuid)
 {
     skr_guid_t type;
     {
