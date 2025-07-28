@@ -18,6 +18,7 @@ public static class SceneSamples
             .AddCppFiles("serde/*.cpp")
             .Depend(Visibility.Private, "SkrScene")
             .Depend(Visibility.Private, "SkrCore");
+
         Engine.Program("SceneSample_Simple")
             .AddCppFiles("simple/*.cpp")
             .Depend(Visibility.Private, "SkrScene")
@@ -25,7 +26,14 @@ public static class SceneSamples
 
         Engine.Program("SceneSample_Mesh")
             .AddCppFiles("mesh/*.cpp")
-            .Depend(Visibility.Private, "SceneRenderer");
+            .Depend(Visibility.Private, "SceneRenderer")
+            .Depend(Visibility.Private, "SkrGLTFTool")
+            .CopyFilesWithRoot(
+                RootDir: "assets",
+                Destination: "resources/scene",
+                "assets/*.gltf",
+                "assets/*.bin"
+            );
 
         Engine.Program("SceneSample_Tree")
             .AddCppFiles("tree/*.cpp")

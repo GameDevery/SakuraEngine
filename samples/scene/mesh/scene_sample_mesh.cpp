@@ -1,11 +1,17 @@
+#include <SkrBase/misc/make_zeroed.hpp>
+#include <SkrCore/memory/sp.hpp>
 #include <SkrCore/module/module_manager.hpp>
-#include <SkrOS/filesystem.hpp>
 #include <SkrCore/log.h>
 #include <SkrCore/platform/vfs.h>
 #include <SkrCore/time.h>
+#include <SkrCore/async/thread_job.hpp>
+
+#include <SkrOS/filesystem.hpp>
+#include "SkrCore/memory/impl/skr_new_delete.hpp"
 #include "SkrSystem/advanced_input.h"
 #include <SkrRT/ecs/world.hpp>
 #include <SkrRT/resource/resource_system.h>
+#include <SkrRT/resource/local_resource_registry.hpp>
 
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrImGui/imgui_backend.hpp"
@@ -13,7 +19,10 @@
 #include "SkrRenderer/skr_renderer.h"
 #include "SkrRenderer/resources/mesh_resource.h"
 #include "SkrTask/fib_task.hpp"
+#include "SkrGLTFTool/mesh_processing.hpp"
 #include "scene_renderer.hpp"
+#include "cgltf/cgltf.h"
+
 
 // The Three-Triangle Example: simple mesh scene hierarchy
 
@@ -31,8 +40,10 @@ struct SceneSampleMeshModule : public skr::IDynamicModule
     skr_vfs_t* resource_vfs = nullptr;
     skr_io_ram_service_t* ram_service = nullptr;
     skr_io_vram_service_t* vram_service = nullptr;
+
     skr::JobQueue* io_job_queue = nullptr;
     skr::renderer::SMeshFactory* mesh_factory = nullptr;
+    skr::resource::SLocalResourceRegistry* registry;
     SRenderDeviceId render_device = nullptr;
 
     skr::UPtr<skr::ImGuiApp> imgui_app = nullptr;
@@ -46,9 +57,17 @@ void SceneSampleMeshModule::on_load(int argc, char8_t** argv)
 {
     skr_log_set_level(SKR_LOG_LEVEL_INFO);
     SKR_LOG_INFO(u8"Scene Sample Mesh Module Loaded");
+
+    render_device = skr_get_default_render_device();
     scheduler.initialize({});
     scheduler.bind();
     world.initialize();
+
+    auto jobQueueDesc = make_zeroed<skr::JobQueueDesc>();
+    jobQueueDesc.thread_count = 2;
+    jobQueueDesc.priority = SKR_THREAD_ABOVE_NORMAL;
+    jobQueueDesc.name = u8"SceneSample-RAMIOJobQueue";
+    io_job_queue = SkrNew<skr::JobQueue>(jobQueueDesc);
 
     std::error_code ec = {};
     auto resourceRoot = (skr::filesystem::current_path(ec) / "../resources").u8string();
@@ -57,16 +76,34 @@ void SceneSampleMeshModule::on_load(int argc, char8_t** argv)
     vfs_desc.override_mount_dir = resourceRoot.c_str();
     resource_vfs = skr_create_vfs(&vfs_desc);
 
+    auto ioServiceDesc       = make_zeroed<skr_ram_io_service_desc_t>();
+    ioServiceDesc.name       = u8"SceneSample-RAMIOService";
+    ioServiceDesc.sleep_time = 1000 / 60;
+    ioServiceDesc.io_job_queue = io_job_queue;
+    ioServiceDesc.callback_job_queue = io_job_queue;
+    ram_service              = skr_io_ram_service_t::create(&ioServiceDesc);
+    ram_service->run();
+
+    auto vramServiceDesc               = make_zeroed<skr_vram_io_service_desc_t>();
+    vramServiceDesc.name               = u8"SceneSample-VRAMIOService";
+    vramServiceDesc.awake_at_request   = true;
+    vramServiceDesc.ram_service        = ram_service;
+    vramServiceDesc.callback_job_queue = io_job_queue;
+    vramServiceDesc.use_dstorage       = true;
+    vramServiceDesc.gpu_device         = render_device->get_cgpu_device();
+    vram_service                       = skr_io_vram_service_t::create(&vramServiceDesc);
+    vram_service->run();
+
     scene_renderer = skr::SceneRenderer::Create();
-    render_device = skr_get_default_render_device();
+
     scene_renderer->initialize(render_device, &world, resource_vfs);
 
-    installResourceFactories();
+    // installResourceFactories();
 }
 
 void SceneSampleMeshModule::on_unload()
 {
-    uninstallResourceFactories();
+    // uninstallResourceFactories();
     scene_renderer->finalize(skr_get_default_render_device());
     skr::SceneRenderer::Destroy(scene_renderer);
     skr_free_vfs(resource_vfs);
@@ -77,10 +114,14 @@ void SceneSampleMeshModule::on_unload()
 
 void SceneSampleMeshModule::installResourceFactories()
 {
+    // TODO: struggling to out how to use the resource system
     std::error_code ec = {};
     auto resourceRoot = (skr::filesystem::current_path(ec) / "../resources");
-    auto sampleResourceRoot = resourceRoot / "sample_mesh";
+    auto sampleResourceRoot = resourceRoot / "scene";
     auto resource_system = skr::resource::GetResourceSystem();
+
+    registry = SkrNew<skr::resource::SLocalResourceRegistry>(resource_vfs);
+    skr::resource::GetResourceSystem()->Initialize(registry, ram_service);
     // mesh factory
     {
         skr::renderer::SMeshFactory::Root factoryRoot = {};
@@ -100,12 +141,45 @@ void SceneSampleMeshModule::uninstallResourceFactories()
     auto resource_system = skr::resource::GetResourceSystem();
     resource_system->Shutdown();
     skr::renderer::SMeshFactory::Destroy(mesh_factory);
+    SkrDelete(registry);
+    skr_io_ram_service_t::destroy(ram_service);
+    skr_io_vram_service_t::destroy(vram_service);
+    SkrDelete(io_job_queue);
 }
 
 int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
 {
     SkrZoneScopedN("SceneSampleMeshModule::main_module_exec");
     SKR_LOG_INFO(u8"Running Scene Sample Mesh Module");
+
+    std::error_code ec = {};
+    // auto gltf_path = (skr::filesystem::current_path(ec) / "../resources/scene/Cube.gltf").u8string();
+    // SKR_LOG_INFO(u8"gltf file path: {%s}", gltf_path.c_str());
+    // auto* gltf_data = skd::asset::ImportGLTFWithData(gltf_path.c_str(), ram_service, resource_vfs);
+    // if (!gltf_data)
+    // {
+    //     SKR_LOG_ERROR(u8"Failed to load glTF data");
+    //     return 1;
+    // }
+    // SKR_LOG_INFO(u8"Successfully loaded glTF data");
+    // SKR_LOG_INFO(u8"Number of Nodes: %d", gltf_data->nodes_count);
+    // SKR_LOG_INFO(u8"Buffer Count: %d", gltf_data->buffers_count);
+    // if (gltf_data->buffers_count > 0)
+    // {
+    //     SKR_LOG_INFO(u8"Buffer 0 Size: %zu bytes", gltf_data->buffers[0].size);
+    //     SKR_LOG_INFO(u8"Buffer 0 Data: %p", gltf_data->buffers[0].data);
+    //     // First 10 bytes of the first buffer
+    //     if (gltf_data->buffers[0].data && gltf_data->buffers[0].size > 10)
+    //     {
+    //         SKR_LOG_INFO(u8"First 10 bytes of Buffer 0: ");
+    //         for (size_t i = 0; i < 10; ++i)
+    //         {
+    //             SKR_LOG_INFO(u8"%02x ", ((uint8_t*)gltf_data->buffers[0].data)[i]);
+    //         }
+    //         SKR_LOG_INFO(u8"");
+    //     }
+    // }
+
 
     auto render_device = skr_get_default_render_device();
     auto cgpu_device = render_device->get_cgpu_device();
@@ -126,7 +200,7 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
         imgui_render_backend = render_backend.get();
 
         skr::SystemWindowCreateInfo main_window_info = {
-            .title = skr::format(u8"Live2D Viewer Inner [{}]", gCGPUBackendNames[cgpu_device->adapter->instance->backend]),
+            .title = skr::format(u8"Scene Viewer [{}]", gCGPUBackendNames[cgpu_device->adapter->instance->backend]),
             .size = { 1500, 1500 },
         };
 
