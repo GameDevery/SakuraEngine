@@ -32,6 +32,7 @@ struct SCENE_RENDERER_API SceneRenderer
     virtual ~SceneRenderer();
     virtual void initialize(skr::RendererDevice* render_device, skr::ecs::World* storage, struct skr_vfs_t* resource_vfs) = 0;
     virtual void finalize(skr::RendererDevice* renderer) = 0;
+    virtual void create_resource(skr::RendererDevice* renderer) = 0;
     virtual void produce_drawcalls(sugoi_storage_t* storage, skr::render_graph::RenderGraph* render_graph) = 0;
     virtual void draw(skr::render_graph::RenderGraph* render_graph) = 0;
 };

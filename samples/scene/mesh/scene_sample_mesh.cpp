@@ -151,6 +151,8 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     // }
 
     auto render_device = skr_get_default_render_device();
+    scene_renderer->create_resource(render_device);
+
     auto cgpu_device = render_device->get_cgpu_device();
     auto gfx_queue = render_device->get_gfx_queue();
     auto render_graph = skr::render_graph::RenderGraph::create(
@@ -170,7 +172,7 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
 
         skr::SystemWindowCreateInfo main_window_info = {
             .title = skr::format(u8"Scene Viewer [{}]", gCGPUBackendNames[cgpu_device->adapter->instance->backend]),
-            .size = { 1500, 1500 },
+            .size = { 1024, 768 },
         };
 
         imgui_app = skr::UPtr<skr::ImGuiApp>::New(main_window_info, std::move(render_backend));
@@ -186,6 +188,7 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     uint64_t frame_index = 0;
 
     skr::input::Input::Initialize();
+
     while (!imgui_app->want_exit().comsume())
     {
         SkrZoneScopedN("LoopBody");
