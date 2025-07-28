@@ -2,7 +2,6 @@
 #include "common/utils.h"
 // #include "AnimDebugRuntime/cube_geometry.h"
 #include "AnimDebugRuntime/bone_geometry.h"
-#include "SkrCore/memory/memory.h"
 #include <SkrAnim/ozz/skeleton.h>
 #include <SkrAnim/ozz/base/io/archive.h>
 #include <SkrAnim/ozz/skeleton_utils.h>
@@ -53,53 +52,11 @@ void Renderer::update_anim(ozz::animation::Skeleton& skeleton, ozz::span<ozz::ma
     }
 }
 
-void Renderer::create_api_objects()
-{
-    {
-        // Create instance
-        CGPUInstanceDescriptor instance_desc{};
-        instance_desc.backend = _backend;
-        instance_desc.enable_debug_layer = true;
-        instance_desc.enable_gpu_based_validation = false;
-        instance_desc.enable_set_name = true;
-
-        _instance = cgpu_create_instance(&instance_desc);
-    }
-    {
-        // Select Adapter
-        uint32_t adapters_count = 0;
-        cgpu_enum_adapters(_instance, CGPU_NULLPTR, &adapters_count);
-        CGPUAdapterId adapters[64];
-        cgpu_enum_adapters(_instance, adapters, &adapters_count);
-        _adapter = adapters[0];
-    }
-
-    {
-        // create device and queue
-        CGPUQueueGroupDescriptor queue_group_desc = {};
-        queue_group_desc.queue_type = CGPU_QUEUE_TYPE_GRAPHICS;
-        queue_group_desc.queue_count = 1;
-        CGPUDeviceDescriptor device_desc = {};
-        device_desc.queue_groups = &queue_group_desc;
-        device_desc.queue_group_count = 1;
-        _device = cgpu_create_device(_adapter, &device_desc);
-        _gfx_queue = cgpu_get_queue(_device, CGPU_QUEUE_TYPE_GRAPHICS, 0);
-    }
-
-    {
-        CGPUSamplerDescriptor sampler_desc = {};
-        sampler_desc.address_u = CGPU_ADDRESS_MODE_REPEAT;
-        sampler_desc.address_v = CGPU_ADDRESS_MODE_REPEAT;
-        sampler_desc.address_w = CGPU_ADDRESS_MODE_REPEAT;
-        sampler_desc.mipmap_mode = CGPU_MIPMAP_MODE_LINEAR;
-        sampler_desc.min_filter = CGPU_FILTER_TYPE_LINEAR;
-        sampler_desc.mag_filter = CGPU_FILTER_TYPE_LINEAR;
-        sampler_desc.compare_func = CGPU_CMP_NEVER;
-        _static_sampler = cgpu_create_sampler(_device, &sampler_desc);
-    }
-}
 void Renderer::create_resources()
 {
+    auto _device = _render_device->get_cgpu_device();
+    auto _gfx_queue = _render_device->get_gfx_queue();
+
     CGPUBufferDescriptor upload_buffer_desc = {};
     upload_buffer_desc.name = u8"UploadBuffer";
     upload_buffer_desc.flags = CGPU_BCF_PERSISTENT_MAP_BIT;
@@ -351,10 +308,6 @@ void Renderer::finalize()
     free_pipeline_and_signature(_gbuffer_pipeline);
     free_pipeline_and_signature(_lighting_pipeline);
     free_pipeline_and_signature(_blit_pipeline);
-    cgpu_free_sampler(_static_sampler);
-    cgpu_free_queue(_gfx_queue);
-    cgpu_free_device(_device);
-    cgpu_free_instance(_instance);
 }
 
 } // namespace animd

@@ -18,7 +18,7 @@ struct SKR_RUNTIME_API ResourceSystemImpl : public ResourceSystem
 public:
     ResourceSystemImpl();
     ~ResourceSystemImpl();
-    void Initialize(ResourceRegistry* provider, skr_io_ram_service_t* ioService) final override;
+    void Initialize(ResourceRegistry* provider, skr::io::IRAMService* ioService) final override;
     bool IsInitialized() final override;
     void Shutdown() final override;
     void Update() final override;
@@ -36,7 +36,7 @@ public:
     void UnregisterFactory(skr_guid_t type) final override;
 
     ResourceRegistry* GetRegistry() const final override;
-    skr_io_ram_service_t* GetRAMService() const final override;
+    skr::io::IRAMService* GetRAMService() const final override;
 
 protected:
     SResourceRecord* _GetOrCreateRecord(const skr_guid_t& guid) final override;
@@ -47,7 +47,7 @@ protected:
     void _ClearFinishedRequests();
 
     ResourceRegistry* resourceRegistry = nullptr;
-    skr_io_ram_service_t* ioService = nullptr;
+    skr::io::IRAMService* ioService = nullptr;
 
     struct ResourceRequestConcurrentQueueTraits : public skr::ConcurrentQueueDefaultTraits
     {
@@ -143,7 +143,7 @@ ResourceRegistry* ResourceSystemImpl::GetRegistry() const
     return resourceRegistry;
 }
 
-skr_io_ram_service_t* ResourceSystemImpl::GetRAMService() const
+skr::io::IRAMService* ResourceSystemImpl::GetRAMService() const
 {
     return ioService;
 }
@@ -197,8 +197,7 @@ void ResourceSystemImpl::UnloadResource(SResourceHandle& handle)
     auto record = handle.get_record();
     SKR_ASSERT(record->loadingStatus != SKR_LOADING_STATUS_UNLOADED);
     record->RemoveReference(handle.get_requester_id(), handle.get_requester_type());
-    auto guid = handle.guid = record->header.guid;
-    (void)guid;                  // force flush handle to guid
+    handle.set_guid(record->header.guid);
     if (!record->IsReferenced()) // unload
     {
         _UnloadResource(record);
@@ -258,7 +257,7 @@ ESkrLoadingStatus ResourceSystemImpl::GetResourceStatus(const skr_guid_t& handle
     return record->loadingStatus;
 }
 
-void ResourceSystemImpl::Initialize(ResourceRegistry* provider, skr_io_ram_service_t* service)
+void ResourceSystemImpl::Initialize(ResourceRegistry* provider, skr::io::IRAMService* service)
 {
     SKR_ASSERT(provider);
     resourceRegistry = provider;

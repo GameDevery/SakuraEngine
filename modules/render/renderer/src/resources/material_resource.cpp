@@ -231,7 +231,7 @@ struct MaterialFactoryImpl : public MaterialFactory
         skr::InlineVector<CGPUDescriptorData, 16> updates;
         for (const auto& override : material->overrides.samplers)
         {
-            skr::resource::AsyncResource<STextureSamplerResource> hdl = override.value;
+            auto hdl = skr::resource::AsyncResource<STextureSamplerResource>(override.value);
             hdl.resolve(true, nullptr);
 
             auto& update = updates.emplace().ref();

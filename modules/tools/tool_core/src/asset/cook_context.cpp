@@ -20,7 +20,7 @@ struct SCookContextImpl : public CookContext
     skr::String GetAssetPath() const override;
 
     skr::filesystem::path AddSourceFile(const skr::filesystem::path& path) override;
-    skr::filesystem::path AddSourceFileAndLoad(skr_io_ram_service_t* ioService, const skr::filesystem::path& path, skr::BlobId& destination) override;
+    skr::filesystem::path AddSourceFileAndLoad(skr::io::IRAMService* ioService, const skr::filesystem::path& path, skr::BlobId& destination) override;
     skr::span<const skr::filesystem::path> GetSourceFiles() const override;
 
     void AddRuntimeDependency(skr_guid_t resource) override;
@@ -58,7 +58,7 @@ struct SCookContextImpl : public CookContext
     uint32_t cookerVersion = 0;
 
     Importer* importer = nullptr;
-    skr_io_ram_service_t* ioService = nullptr;
+    skr::io::IRAMService* ioService = nullptr;
 
     // Job system wait counter
     skr::task::event_t counter;
@@ -68,13 +68,13 @@ struct SCookContextImpl : public CookContext
     skr::Vector<skr_guid_t> runtimeDependencies;
     skr::Vector<skr::filesystem::path> fileDependencies;
 
-    SCookContextImpl(skr_io_ram_service_t* ioService)
+    SCookContextImpl(skr::io::IRAMService* ioService)
         : ioService(ioService)
     {
     }
 };
 
-CookContext* CookContext::Create(skr_io_ram_service_t* service)
+CookContext* CookContext::Create(skr::io::IRAMService* service)
 {
     return SkrNew<SCookContextImpl>(service);
 }
@@ -178,7 +178,7 @@ skr::filesystem::path SCookContextImpl::AddSourceFile(const skr::filesystem::pat
     return record->path.parent_path() / inPath;
 }
 
-skr::filesystem::path SCookContextImpl::AddSourceFileAndLoad(skr_io_ram_service_t* ioService, const skr::filesystem::path& path, skr::BlobId& destination)
+skr::filesystem::path SCookContextImpl::AddSourceFileAndLoad(skr::io::IRAMService* ioService, const skr::filesystem::path& path, skr::BlobId& destination)
 {
     auto outPath = AddSourceFile(path.c_str());
     auto u8Path = outPath.u8string();
@@ -186,7 +186,7 @@ skr::filesystem::path SCookContextImpl::AddSourceFileAndLoad(skr_io_ram_service_
     // load file
     skr::task::event_t counter;
     auto rq = ioService->open_request();
-    rq->set_vfs(assetRecord->project->asset_vfs);
+    rq->set_vfs(assetRecord->project->GetAssetVFS());
     rq->set_path(u8Path.c_str());
     rq->add_block({}); // read all
     rq->add_callback(SKR_IO_STAGE_COMPLETED, +[](skr_io_future_t* future, skr_io_request_t* request, void* data) noexcept {

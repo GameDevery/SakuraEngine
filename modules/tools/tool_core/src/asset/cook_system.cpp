@@ -49,7 +49,7 @@ struct CookSystemImpl : public skd::asset::CookSystem
     }
 
     AssetRecord* LoadAssetMeta(SProject* project, const skr::String& uri) override;
-    skr_io_ram_service_t* getIOService() override;
+    skr::io::IRAMService* getIOService() override;
 
     template <class F, class Iter>
     void ParallelFor(Iter begin, Iter end, size_t batch, F f)
@@ -78,7 +78,7 @@ protected:
 
     skr::FlatHashMap<skr_guid_t, Cooker*, skr::Hash<skr_guid_t>> defaultCookers;
     skr::FlatHashMap<skr_guid_t, Cooker*, skr::Hash<skr_guid_t>> cookers;
-    skr_io_ram_service_t* ioServices[ioServicesMaxCount];
+    skr::io::IRAMService* ioServices[ioServicesMaxCount];
 };
 } // namespace skd::asset
 
@@ -105,7 +105,7 @@ bool CookSystemImpl::AllCompleted() const
     return mainCounter.test();
 }
 
-skr_io_ram_service_t* CookSystemImpl::getIOService()
+skr::io::IRAMService* CookSystemImpl::getIOService()
 {
     SMutexLock lock(ioMutex);
     static std::atomic_uint32_t cursor = 0;
@@ -399,7 +399,7 @@ skr::task::event_t CookSystemImpl::EnsureCooked(skr_guid_t guid)
             depReader.StartArray(depsSize);
             for (size_t i = 0; i < depsSize; i++)
             {
-                skr_guid_t depGuid;
+                skr::GUID depGuid;
                 skr::json_read(&depReader, depGuid);
                 auto record = GetAssetRecord(depGuid);
                 if (!record)
@@ -407,7 +407,7 @@ skr::task::event_t CookSystemImpl::EnsureCooked(skr_guid_t guid)
                     SKR_LOG_INFO(u8"[CookSystemImpl::EnsureCooked] dependency file not exist! asset path: %s", metaAsset->path.u8string().c_str());
                     return false;
                 }
-                if (record->type == skr_guid_t{})
+                if (record->type == skr::GUID())
                 {
                     if (skr::filesystem::last_write_time(record->path, ec) > timestamp)
                     {
@@ -434,7 +434,7 @@ AssetRecord* CookSystemImpl::LoadAssetMeta(SProject* project, const skr::String&
     std::error_code ec = {};
     auto record = SkrNew<AssetRecord>();
     // TODO: replace file load with skr api
-    if (project->LoadAssetText(uri.view(), record->meta))
+    if (project->LoadAssetMeta(uri.view(), record->meta))
     {
         skr::archive::JsonReader reader(record->meta.view());
         reader.StartObject();

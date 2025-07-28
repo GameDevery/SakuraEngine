@@ -37,8 +37,8 @@ void InitializeResourceSystem(skd::SProject& proj)
 {
     using namespace skr::literals;
     auto resource_system = skr::resource::GetResourceSystem();
-    registry = SkrNew<skr::resource::LocalResourceRegistry>(proj.resource_vfs);
-    resource_system->Initialize(registry, proj.ram_service);
+    registry = SkrNew<skr::resource::LocalResourceRegistry>(proj.GetResourceVFS());
+    resource_system->Initialize(registry, proj.GetRamService());
 
     // shader options factory
     {
@@ -183,7 +183,7 @@ int compile_all(int argc, char** argv)
     auto projects = open_projects(argc, argv);
     SKR_DEFER({ 
         for(auto& project : projects)
-            SkrDelete(project); 
+            skd::SProject::CloseProject(project);
     });
     for(auto& project : projects)
         compile_project(project);

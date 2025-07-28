@@ -12,7 +12,7 @@
 
 #include "SkrProfile/profile.h"
 
-void* skd::asset::GltfMeshImporter::Import(skr_io_ram_service_t* ioService, CookContext* context)
+void* skd::asset::GltfMeshImporter::Import(skr::io::IRAMService* ioService, CookContext* context)
 {
     skr::filesystem::path relPath = assetPath.u8_str();
     auto ext = relPath.extension();
@@ -22,7 +22,7 @@ void* skd::asset::GltfMeshImporter::Import(skr_io_ram_service_t* ioService, Cook
     }
     const auto assetRecord = context->GetAssetRecord();
     auto path = context->AddSourceFile(relPath).u8string();
-    auto vfs = assetRecord->project->asset_vfs;
+    auto vfs = assetRecord->project->GetAssetVFS();
     return ImportGLTFWithData(path.c_str(), ioService, vfs);
 }
 

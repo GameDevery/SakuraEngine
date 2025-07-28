@@ -9,29 +9,19 @@ int main()
     using namespace skr;
 
     // Create instance
-    CGPUInstanceDescriptor instance_desc{};
-    instance_desc.backend = CGPU_BACKEND_D3D12;
-    instance_desc.enable_debug_layer = true;
-    instance_desc.enable_gpu_based_validation = false;
-    instance_desc.enable_set_name = true;
-    auto instance = cgpu_create_instance(&instance_desc);
-
-    // Filter adapters
-    uint32_t adapters_count = 0;
-    cgpu_enum_adapters(instance, CGPU_NULLPTR, &adapters_count);
-    CGPUAdapterId adapters[64];
-    cgpu_enum_adapters(instance, adapters, &adapters_count);
-    auto adapter = adapters[0];
-
-    // Create device
-    CGPUQueueGroupDescriptor queue_group_desc = {};
-    queue_group_desc.queue_type = CGPU_QUEUE_TYPE_GRAPHICS;
-    queue_group_desc.queue_count = 1;
-    CGPUDeviceDescriptor device_desc = {};
-    device_desc.queue_groups = &queue_group_desc;
-    device_desc.queue_group_count = 1;
-    auto device = cgpu_create_device(adapter, &device_desc);
-    auto gfx_queue = cgpu_get_queue(device, CGPU_QUEUE_TYPE_GRAPHICS, 0);
+    // initailize render device
+    skr::RendererDevice::Builder builder = {};
+    builder.enable_debug_layer = false;
+    builder.enable_gpu_based_validation = false;
+    builder.enable_set_name = true;
+#ifdef _WIN32
+    builder.backend = CGPU_BACKEND_D3D12;
+#else
+    builder.backend = CGPU_BACKEND_VULKAN;
+#endif
+    auto render_device = skr::RendererDevice::Create(builder);
+    auto device = render_device->get_cgpu_device();
+    auto gfx_queue = render_device->get_gfx_queue();
 
     // create render graph
     auto render_graph = render_graph::RenderGraph::create(
@@ -56,7 +46,7 @@ int main()
             .size = { 1500, 1500 },
         };
 
-        imgui_app = skr::UPtr<skr::ImGuiApp>::New(main_window_info, std::move(render_backend));
+        imgui_app = skr::UPtr<skr::ImGuiApp>::New(main_window_info, render_device, std::move(render_backend));
         imgui_app->initialize();
         imgui_app->enable_docking();
         // imgui_backend.enable_multi_viewport();
@@ -148,8 +138,6 @@ int main()
     imgui_app->shutdown();
 
     // shutdown cgpu
-    cgpu_free_queue(gfx_queue);
-    cgpu_free_device(device);
-    cgpu_free_instance(instance);
+    skr::RendererDevice::Destroy(render_device);
     return 0;
 }

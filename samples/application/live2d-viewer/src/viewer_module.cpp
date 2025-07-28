@@ -79,7 +79,7 @@ void SLive2DViewerModule::on_load(int argc, char8_t** argv)
     vfs_desc.override_mount_dir = resourceRoot.c_str();
     resource_vfs = skr_create_vfs(&vfs_desc);
 
-    auto render_device = skr_get_default_render_device();
+    auto render_device = SkrRendererModule::Get()->get_render_device();
 
     auto jobQueueDesc = make_zeroed<skr::JobQueueDesc>();
     jobQueueDesc.thread_count = 2;
@@ -123,7 +123,7 @@ void SLive2DViewerModule::on_unload()
 {
     SKR_LOG_INFO(u8"live2d viewer unloaded!");
 
-    l2d_renderer->finalize(skr_get_default_render_device());
+    l2d_renderer->finalize(SkrRendererModule::Get()->get_render_device());
     skr::Live2DRenderer::Destroy(l2d_renderer);
 
     skr_io_vram_service_t::destroy(vram_service);
@@ -171,7 +171,7 @@ void create_test_scene(skr_vfs_t* resource_vfs, skr_io_ram_service_t* ram_servic
 
     // allocate new
     auto live2dEntSetup = [&](sugoi_chunk_view_t* view) {
-        auto render_device = skr_get_default_render_device();
+        auto render_device = SkrRendererModule::Get()->get_render_device();
         auto mesh_comps = sugoi::get_owned_rw<skr_live2d_render_model_comp_t>(view);
         for (uint32_t i = 0; i < view->count; i++)
         {
@@ -186,7 +186,7 @@ void create_test_scene(skr_vfs_t* resource_vfs, skr_io_ram_service_t* ram_servic
                 auto pRendermodelFuture = (skr_live2d_render_model_future_t*)data;
                 auto ram_service = SLive2DViewerModule::Get()->ram_service;
                 auto vram_service = SLive2DViewerModule::Get()->vram_service;
-                auto render_device = skr_get_default_render_device();
+                auto render_device = SkrRendererModule::Get()->get_render_device();
                 auto cgpu_device = render_device->get_cgpu_device();
                 skr_live2d_render_model_create_from_raw(ram_service, vram_service, cgpu_device, request->model_resource, pRendermodelFuture);
             };
@@ -204,7 +204,7 @@ int SLive2DViewerModule::main_module_exec(int argc, char8_t** argv)
     SKR_LOG_INFO(u8"live2d viewer executed!");
 
     // get rendering context
-    auto render_device = skr_get_default_render_device();
+    auto render_device = SkrRendererModule::Get()->get_render_device();
     auto cgpu_device = render_device->get_cgpu_device();
     auto gfx_queue = render_device->get_gfx_queue();
     auto adapter_detail = cgpu_query_adapter_detail(cgpu_device->adapter);
@@ -234,7 +234,7 @@ int SLive2DViewerModule::main_module_exec(int argc, char8_t** argv)
         render_backend->init(config);
         imgui_render_backend = render_backend.get();
 
-        imgui_app = UPtr<ImGuiApp>::New(main_window_info, std::move(render_backend));
+        imgui_app = UPtr<ImGuiApp>::New(main_window_info, render_device, std::move(render_backend));
         imgui_app->initialize();
         imgui_app->enable_docking();
     }

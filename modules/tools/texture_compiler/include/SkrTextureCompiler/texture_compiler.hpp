@@ -14,7 +14,7 @@ SKR_TEXTURE_COMPILER_API TextureImporter final : public Importer
 {
     skr::String assetPath;
 
-    void* Import(skr_io_ram_service_t*, CookContext * context) override;
+    void* Import(skr::io::IRAMService*, CookContext * context) override;
     void Destroy(void* resource) override;
 };
 

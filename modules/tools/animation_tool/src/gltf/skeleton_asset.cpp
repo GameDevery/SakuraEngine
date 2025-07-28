@@ -13,7 +13,7 @@ void SkelGltfImporter::Destroy(void* data)
     ozz::memory::default_allocator()->Deallocate(data, alignof(RawSkeleton));
 }
 
-void* SkelGltfImporter::Import(skr_io_ram_service_t*, CookContext* context)
+void* SkelGltfImporter::Import(skr::io::IRAMService*, CookContext* context)
 {
     using namespace ozz::animation::offline;
     GltfImporter                          impl;

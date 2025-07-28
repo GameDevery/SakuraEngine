@@ -1,10 +1,10 @@
-#include "common/utils.h"
 #include "SkrProfile/profile.h"
 #include "SkrBase/misc/make_zeroed.hpp"
 #include "SkrOS/thread.h"
 #include "SkrCore/log.h"
 #include "SkrCore/module/module.hpp"
 #include "SkrCore/memory/sp.hpp"
+#include "SkrRenderer/skr_renderer.h"
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrImGui/imgui_backend.hpp"
 #include "SkrImGui/imgui_render_backend.hpp"
@@ -15,26 +15,18 @@
 class SVMemCCModule : public skr::IDynamicModule
 {
     virtual void on_load(int argc, char8_t** argv) override;
-    virtual int  main_module_exec(int argc, char8_t** argv) override;
+    virtual int main_module_exec(int argc, char8_t** argv) override;
     virtual void on_unload() override;
-
-    void create_api_objects();
     void finalize();
-
     void imgui_ui();
 
     // Vulkan's memory heap is far more accurate than the one provided by D3D12
-    ECGPUBackend backend = CGPU_BACKEND_VULKAN;
+    ECGPUBackend backend = CGPU_BACKEND_D3D12;
     // ECGPUBackend backend = CGPU_BACKEND_D3D12;
+    SRenderDeviceId render_device = nullptr;
 
-    CGPUInstanceId instance       = nullptr;
-    CGPUAdapterId  adapter        = nullptr;
-    CGPUDeviceId   device         = nullptr;
-    CGPUQueueId    gfx_queue      = nullptr;
-    CGPUSamplerId  static_sampler = nullptr;
-
-    float                     vbuffer_size = 0.001f;
-    float                     sbuffer_size = 0.001f;
+    float vbuffer_size = 0.001f;
+    float sbuffer_size = 0.001f;
     skr::Vector<CGPUBufferId> buffers;
 
     // imgui
@@ -65,9 +57,10 @@ void SVMemCCModule::on_load(int argc, char8_t** argv)
 void SVMemCCModule::imgui_ui()
 {
     ImGui::Begin("VideoMemoryController");
-    SKR_UNUSED const float TEXT_BASE_WIDTH  = ImGui::CalcTextSize("A").x;
+    SKR_UNUSED const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
     SKR_UNUSED const float TEXT_BASE_HEIGHT = ImGui::GetTextLineHeightWithSpacing();
-
+    auto adapter = render_device->get_cgpu_device()->adapter;
+    auto device = render_device->get_cgpu_device();
     auto adapter_detail = cgpu_query_adapter_detail(adapter);
     // information
     {
@@ -76,19 +69,19 @@ void SVMemCCModule::imgui_ui()
     }
     // allocation
     uint64_t total_bytes = 0;
-    uint64_t used_bytes  = 0;
+    uint64_t used_bytes = 0;
     cgpu_query_video_memory_info(device, &total_bytes, &used_bytes);
     const auto total_mb = (float)total_bytes / 1024.f / 1024.f;
-    const auto used_mb  = (float)used_bytes / 1024.f / 1024.f;
+    const auto used_mb = (float)used_bytes / 1024.f / 1024.f;
     ImGui::Text("Used VMem: %.3f MB", used_mb);
     ImGui::SameLine();
     ImGui::Text("Usable VMem: %.3f MB", total_mb - used_mb);
 
     uint64_t total_shared_bytes = 0;
-    uint64_t used_shared_bytes  = 0;
+    uint64_t used_shared_bytes = 0;
     cgpu_query_shared_memory_info(device, &total_shared_bytes, &used_shared_bytes);
     const auto total_shared_mb = (float)total_shared_bytes / 1024.f / 1024.f;
-    const auto used_shared_mb  = (float)used_shared_bytes / 1024.f / 1024.f;
+    const auto used_shared_mb = (float)used_shared_bytes / 1024.f / 1024.f;
     ImGui::Text("Used SMem: %.3f MB", used_shared_mb);
     ImGui::SameLine();
     ImGui::Text("Usable SVMem: %.3f MB", total_shared_mb - used_shared_mb);
@@ -97,13 +90,13 @@ void SVMemCCModule::imgui_ui()
     ImGui::SameLine();
     if (ImGui::Button("AllocateVideoMemory"))
     {
-        auto buf_desc         = make_zeroed<CGPUBufferDescriptor>();
-        buf_desc.flags        = CGPU_BCF_NONE;
-        buf_desc.descriptors  = CGPU_RESOURCE_TYPE_VERTEX_BUFFER;
+        auto buf_desc = make_zeroed<CGPUBufferDescriptor>();
+        buf_desc.flags = CGPU_BCF_NONE;
+        buf_desc.descriptors = CGPU_RESOURCE_TYPE_VERTEX_BUFFER;
         buf_desc.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
-        buf_desc.size         = (uint64_t)(vbuffer_size * 1024 * 1024);
-        buf_desc.name         = SKR_UTF8("VideoMemory");
-        auto new_buf          = cgpu_create_buffer(device, &buf_desc);
+        buf_desc.size = (uint64_t)(vbuffer_size * 1024 * 1024);
+        buf_desc.name = SKR_UTF8("VideoMemory");
+        auto new_buf = cgpu_create_buffer(device, &buf_desc);
         buffers.add(new_buf);
     }
 
@@ -111,13 +104,13 @@ void SVMemCCModule::imgui_ui()
     ImGui::SameLine();
     if (ImGui::Button("AllocateSharedMemory"))
     {
-        auto buf_desc         = make_zeroed<CGPUBufferDescriptor>();
-        buf_desc.flags        = CGPU_BCF_NONE;
-        buf_desc.descriptors  = CGPU_RESOURCE_TYPE_NONE;
+        auto buf_desc = make_zeroed<CGPUBufferDescriptor>();
+        buf_desc.flags = CGPU_BCF_NONE;
+        buf_desc.descriptors = CGPU_RESOURCE_TYPE_NONE;
         buf_desc.memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU;
-        buf_desc.size         = (uint64_t)(sbuffer_size * 1024 * 1024);
-        buf_desc.name         = SKR_UTF8("SharedMemory");
-        auto new_buf          = cgpu_create_buffer(device, &buf_desc);
+        buf_desc.size = (uint64_t)(sbuffer_size * 1024 * 1024);
+        buf_desc.name = SKR_UTF8("SharedMemory");
+        auto new_buf = cgpu_create_buffer(device, &buf_desc);
         buffers.add(new_buf);
     }
 
@@ -162,43 +155,46 @@ void SVMemCCModule::imgui_ui()
     ImGui::End();
 }
 
-#include "SkrRT/runtime_module.h"
-
 int SVMemCCModule::main_module_exec(int argc, char8_t** argv)
 {
     namespace render_graph = skr::render_graph;
-
+    SRenderDevice::Builder bd = {
+        .backend = backend,
+        .enable_debug_layer = false,
+        .enable_gpu_based_validation = false,
+        .enable_set_name = true
+    };
+    render_device = SRenderDevice::Create(bd);
+    auto adapter = render_device->get_cgpu_device()->adapter;
+    auto device = render_device->get_cgpu_device();
+    auto gfx_queue = render_device->get_gfx_queue();
     // init rendering
     {
-        create_api_objects();
-
         graph = render_graph::RenderGraph::create(
             [=, this](skr::render_graph::RenderGraphBuilder& builder) {
                 builder.with_device(device)
                     .with_gfx_queue(gfx_queue)
                     .enable_memory_aliasing();
-            }
-        );
+            });
     }
 
     // init imgui
     {
         using namespace skr;
 
-        auto render_backend  = RCUnique<ImGuiRendererBackendRG>::New();
+        auto render_backend = RCUnique<ImGuiRendererBackendRG>::New();
         imgui_render = render_backend.get();
         ImGuiRendererBackendRGConfig config{};
         config.render_graph = graph;
-        config.queue        = gfx_queue;
+        config.queue = gfx_queue;
         render_backend->init(config);
 
         imgui_app = UPtr<ImGuiApp>::New(
             SystemWindowCreateInfo{
                 .title = u8"Video Memory Controller",
-                .size = { 1280, 720 }
-            },
-            std::move(render_backend)
-        );
+                .size = { 1280, 720 } },
+            render_device,
+            std::move(render_backend));
         imgui_app->initialize();
         imgui_app->enable_docking();
     }
@@ -229,8 +225,7 @@ int SVMemCCModule::main_module_exec(int argc, char8_t** argv)
                 builder.set_name(u8"backbuffer")
                     .import(native_backbuffer, CGPU_RESOURCE_STATE_UNDEFINED)
                     .allow_render_target();
-            }
-        );
+            });
 
         // draw imgui
         imgui_app->render();
@@ -254,7 +249,7 @@ int SVMemCCModule::main_module_exec(int argc, char8_t** argv)
 void SVMemCCModule::on_unload()
 {
     SKR_LOG_INFO(u8"vmem controller unloaded!");
-    cgpu_wait_queue_idle(gfx_queue);
+    cgpu_wait_queue_idle(render_device->get_gfx_queue());
     skr::render_graph::RenderGraph::destroy(graph);
     imgui_app->shutdown();
 
@@ -262,55 +257,13 @@ void SVMemCCModule::on_unload()
     finalize();
 }
 
-void SVMemCCModule::create_api_objects()
-{
-    // Create instance
-    CGPUInstanceDescriptor instance_desc      = {};
-    instance_desc.backend                     = backend;
-    instance_desc.enable_debug_layer          = true;
-    instance_desc.enable_gpu_based_validation = false;
-    instance_desc.enable_set_name             = true;
-    instance                                  = cgpu_create_instance(&instance_desc);
-
-    // Filter adapters
-    uint32_t adapters_count = 0;
-    cgpu_enum_adapters(instance, CGPU_NULLPTR, &adapters_count);
-    CGPUAdapterId adapters[64];
-    cgpu_enum_adapters(instance, adapters, &adapters_count);
-    adapter = adapters[0];
-
-    // Create device
-    CGPUQueueGroupDescriptor queue_group_desc = {};
-    queue_group_desc.queue_type               = CGPU_QUEUE_TYPE_GRAPHICS;
-    queue_group_desc.queue_count              = 1;
-    CGPUDeviceDescriptor device_desc          = {};
-    device_desc.queue_groups                  = &queue_group_desc;
-    device_desc.queue_group_count             = 1;
-    device                                    = cgpu_create_device(adapter, &device_desc);
-    gfx_queue                                 = cgpu_get_queue(device, CGPU_QUEUE_TYPE_GRAPHICS, 0);
-
-    // Sampler
-    CGPUSamplerDescriptor sampler_desc = {};
-    sampler_desc.address_u             = CGPU_ADDRESS_MODE_REPEAT;
-    sampler_desc.address_v             = CGPU_ADDRESS_MODE_REPEAT;
-    sampler_desc.address_w             = CGPU_ADDRESS_MODE_REPEAT;
-    sampler_desc.mipmap_mode           = CGPU_MIPMAP_MODE_LINEAR;
-    sampler_desc.min_filter            = CGPU_FILTER_TYPE_LINEAR;
-    sampler_desc.mag_filter            = CGPU_FILTER_TYPE_LINEAR;
-    sampler_desc.compare_func          = CGPU_CMP_NEVER;
-    static_sampler                     = cgpu_create_sampler(device, &sampler_desc);
-}
-
 void SVMemCCModule::finalize()
 {
     // Free cgpu objects
-    cgpu_wait_queue_idle(gfx_queue);
+    cgpu_wait_queue_idle(render_device->get_gfx_queue());
     for (auto buffer : buffers)
     {
         cgpu_free_buffer(buffer);
     }
-    cgpu_free_sampler(static_sampler);
-    cgpu_free_queue(gfx_queue);
-    cgpu_free_device(device);
-    cgpu_free_instance(instance);
+    SRenderDevice::Destroy(render_device);
 }

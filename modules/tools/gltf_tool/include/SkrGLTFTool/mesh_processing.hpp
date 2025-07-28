@@ -11,7 +11,7 @@ namespace skd::asset
 {
 // returned cgltf_data* needs to be freed by cgltf_free
 GLTFTOOL_API
-cgltf_data* ImportGLTFWithData(skr::StringView assetPath, skr_io_ram_service_t* ioService, struct skr_vfs_t* vfs) SKR_NOEXCEPT;
+cgltf_data* ImportGLTFWithData(skr::StringView assetPath, skr::io::IRAMService* ioService, struct skr_vfs_t* vfs) SKR_NOEXCEPT;
 
 GLTFTOOL_API
 void GetGLTFNodeTransform(const cgltf_node* node, skr_float3_t& translation, skr_float3_t& scale, skr_float4_t& rotation);

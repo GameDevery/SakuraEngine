@@ -8,9 +8,9 @@
 
 namespace skd::asset
 {
-struct skr_uncompressed_render_texture_t
+struct RawTextureData
 {
-    skr_uncompressed_render_texture_t(skr::ImageDecoderId decoder, skr_io_ram_service_t* ioService, skr::BlobId blob)
+    RawTextureData(skr::ImageDecoderId decoder, skr::io::IRAMService* ioService, skr::BlobId blob)
         : decoder(decoder)
         , ioService(ioService)
         , blob(blob)
@@ -18,7 +18,7 @@ struct skr_uncompressed_render_texture_t
         decoder->initialize(blob->get_data(), blob->get_size());
     }
 
-    ~skr_uncompressed_render_texture_t()
+    ~RawTextureData()
     {
         if (decoder)
         {
@@ -28,11 +28,11 @@ struct skr_uncompressed_render_texture_t
     }
 
     skr::ImageDecoderId decoder = nullptr;
-    skr_io_ram_service_t* ioService = nullptr;
+    skr::io::IRAMService* ioService = nullptr;
     skr::BlobId blob = nullptr;
 };
 
-void* TextureImporter::Import(skr_io_ram_service_t* ioService, CookContext* context)
+void* TextureImporter::Import(skr::io::IRAMService* ioService, CookContext* context)
 {
     skr::BlobId blob = nullptr;
     {
@@ -48,26 +48,25 @@ void* TextureImporter::Import(skr_io_ram_service_t* ioService, CookContext* cont
         EImageCoderFormat format = skr_image_coder_detect_format((const uint8_t*)uncompressed_data, uncompressed_size);
         if (auto decoder = skr::IImageDecoder::Create(format))
         {
-            return SkrNew<skr_uncompressed_render_texture_t>(decoder, ioService, blob);
+            return SkrNew<RawTextureData>(decoder, ioService, blob);
         }
         else
         {
             SKR_DEFER({ blob.reset(); });
         }
     }
-
     return nullptr;
 }
 
 void TextureImporter::Destroy(void* resource)
 {
-    SkrDelete((skr_uncompressed_render_texture_t*)resource);
+    SkrDelete((RawTextureData*)resource);
 }
 
 bool TextureCooker::Cook(CookContext* ctx)
 {
     const auto outputPath = ctx->GetOutputPath();
-    auto uncompressed = ctx->Import<skr_uncompressed_render_texture_t>();
+    auto uncompressed = ctx->Import<RawTextureData>();
     SKR_DEFER({ ctx->Destroy(uncompressed); });
 
     // try decode texture & calculate compressed format

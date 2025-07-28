@@ -7,7 +7,7 @@
 namespace skd::asset
 {
 
-void* MaterialImporter::Import(skr_io_ram_service_t* ioService, CookContext* context)
+void* MaterialImporter::Import(skr::io::IRAMService* ioService, CookContext* context)
 {
     skr::BlobId blob = nullptr;
     context->AddSourceFileAndLoad(ioService, jsonPath.c_str(), blob);

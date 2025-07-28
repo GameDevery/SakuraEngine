@@ -15,41 +15,30 @@ enum ESkrRequesterType
 struct lua_State;
 typedef struct SResourceHandle
 {
-    union
-    {
-        skr_guid_t guid;
-        struct
-        {
-            uint32_t padding;     // zero, flag for resolved or not
-            uint32_t requesterId; // requester id
-            // since resource record is allocated with alignment 8, the lower 3 bits should always be zero
-            // so we put requester type into it
-            uint64_t pointer; // resource record ptr & requester type
-        };
-    };
 #if defined(__cplusplus)
+public:
     SKR_RUNTIME_API SResourceHandle();
-    SKR_RUNTIME_API ~SResourceHandle();
-    SKR_RUNTIME_API SResourceHandle(const skr_guid_t& other);
+    SKR_RUNTIME_API SResourceHandle(const skr::GUID& other);
     SKR_RUNTIME_API SResourceHandle(const SResourceHandle& other);
     SKR_RUNTIME_API SResourceHandle(const SResourceHandle& other, uint64_t requester, ESkrRequesterType requesterType);
     SKR_RUNTIME_API SResourceHandle(SResourceHandle&& other);
+    SKR_RUNTIME_API ~SResourceHandle();
     SKR_RUNTIME_API SResourceHandle& operator=(const SResourceHandle& other);
-    SKR_RUNTIME_API SResourceHandle& operator=(const skr_guid_t& other);
+    SKR_RUNTIME_API SResourceHandle& operator=(const skr::GUID& other);
     SKR_RUNTIME_API SResourceHandle& operator=(SResourceHandle&& other);
     SKR_RUNTIME_API void set_ptr(void* ptr);
-    SKR_RUNTIME_API void set_guid(const skr_guid_t& guid);
+    SKR_RUNTIME_API void set_guid(const skr::GUID& guid);
     SKR_RUNTIME_API bool is_resolved() const;
     SKR_RUNTIME_API void* get_resolved(bool requireInstalled = true) const;
-    SKR_RUNTIME_API skr_guid_t get_serialized() const;
+    SKR_RUNTIME_API skr::GUID get_serialized() const;
     SKR_RUNTIME_API void resolve(bool requireInstalled, uint64_t requester, ESkrRequesterType requesterType);
     void resolve(bool requireInstalled, struct sugoi_storage_t* requester)
     {
         resolve(requireInstalled, (uint64_t)requester, SKR_REQUESTER_ENTITY);
     }
     SKR_RUNTIME_API void unload();
-    SKR_RUNTIME_API skr_guid_t get_guid() const;
-    SKR_RUNTIME_API skr_guid_t get_type() const;
+    SKR_RUNTIME_API skr::GUID get_guid() const;
+    SKR_RUNTIME_API skr::GUID get_type() const;
     SKR_RUNTIME_API void* get_ptr() const;
     SKR_RUNTIME_API bool is_null() const;
     SKR_RUNTIME_API void reset();
@@ -68,7 +57,20 @@ typedef struct SResourceHandle
     SKR_RUNTIME_API SResourceRecord* get_record() const;
     SKR_RUNTIME_API void set_record(SResourceRecord* record);
     SKR_RUNTIME_API void set_resolved(SResourceRecord* record, uint32_t requesterId, ESkrRequesterType requesterType);
+protected:
 #endif
+    union
+    {
+        skr_guid_t guid;
+        struct
+        {
+            uint32_t padding;     // zero, flag for resolved or not
+            uint32_t requesterId; // requester id
+            // since resource record is allocated with alignment 8, the lower 3 bits should always be zero
+            // so we put requester type into it
+            uint64_t pointer; // resource record ptr & requester type
+        };
+    };
 } SResourceHandle;
 
 SKR_EXTERN_C SKR_RUNTIME_API int skr_is_resource_resolved(SResourceHandle* handle);
@@ -89,9 +91,9 @@ using ResourceHandle = SResourceHandle;
 template <class T>
 struct AsyncResource : ResourceHandle
 {
-    using SResourceHandle::SResourceHandle;
+    AsyncResource() SKR_NOEXCEPT;
+    AsyncResource(const skr::GUID& guid) SKR_NOEXCEPT;
 
-    // TODO: T* resolve
     T* get_resolved(bool requireInstalled = true) const
     {
         return (T*)ResourceHandle::get_resolved(requireInstalled);
@@ -109,6 +111,20 @@ struct AsyncResource : ResourceHandle
         return { *this, (uint64_t)requester, SKR_REQUESTER_ENTITY };
     }
 };
+
+template <class T>
+inline AsyncResource<T>::AsyncResource() SKR_NOEXCEPT
+    : ResourceHandle()
+{
+
+}
+
+template <class T>
+inline AsyncResource<T>::AsyncResource(const skr::GUID& guid) SKR_NOEXCEPT
+    : ResourceHandle(guid)
+{
+
+}
 } // namespace skr::resource
 
 // bin serde
