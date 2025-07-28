@@ -11,8 +11,8 @@ namespace resource
 {
 struct SResourceRequestImpl : public ResourceRequest
 {
-    friend struct SResourceRegistry;
-    friend struct SResourceSystemImpl;
+    friend struct ResourceRegistry;
+    friend struct ResourceSystemImpl;
 public:
     skr_guid_t GetGuid() const override;
     skr::span<const uint8_t> GetData() const override;
@@ -46,8 +46,8 @@ protected:
     std::atomic_bool requireLoading;
     std::atomic_bool requestInstall;
 
-    SResourceSystem* system;
-    SResourceFactory* factory;
+    ResourceSystem* system;
+    ResourceFactory* factory;
     skr_vfs_t* vfs;
 
     skr::InlineVector<skr_guid_t, 4> dependencies;

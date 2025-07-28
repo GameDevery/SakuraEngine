@@ -11,8 +11,8 @@ namespace skd::asset
 struct SCookContextImpl : public CookContext
 {
     skr::filesystem::path GetOutputPath() const override;
-    
-    SImporter* GetImporter() const override;
+
+    Importer* GetImporter() const override;
     skr_guid_t GetImporterType() const override;
     uint32_t GetImporterVersion() const override;
     uint32_t GetCookerVersion() const override;
@@ -34,7 +34,7 @@ struct SCookContextImpl : public CookContext
     {
         return counter;
     }
-    
+
     void SetCounter(skr::task::event_t& ct) override
     {
         counter = ct;
@@ -57,7 +57,7 @@ struct SCookContextImpl : public CookContext
     uint32_t importerVersion = 0;
     uint32_t cookerVersion = 0;
 
-    SImporter* importer = nullptr;
+    Importer* importer = nullptr;
     skr_io_ram_service_t* ioService = nullptr;
 
     // Job system wait counter
@@ -71,7 +71,6 @@ struct SCookContextImpl : public CookContext
     SCookContextImpl(skr_io_ram_service_t* ioService)
         : ioService(ioService)
     {
-
     }
 };
 
@@ -87,7 +86,7 @@ void CookContext::Destroy(CookContext* ctx)
 
 void SCookContextImpl::_Destroy(void* resource)
 {
-    if(!importer)
+    if (!importer)
     {
         SKR_LOG_ERROR(u8"[CookContext::Cook] importer failed to load, asset path path: %s", record->path.u8string().c_str());
     }
@@ -108,7 +107,7 @@ void* SCookContextImpl::_Import()
     {
         skr_guid_t importerTypeGuid = {};
         importer = GetImporterRegistry()->LoadImporter(record, &reader, &importerTypeGuid);
-        if(!importer)
+        if (!importer)
         {
             SKR_LOG_ERROR(u8"[CookContext::Cook] importer failed to load, asset: %s", record->path.u8string().c_str());
             return nullptr;
@@ -117,7 +116,7 @@ void* SCookContextImpl::_Import()
         importerType = importerTypeGuid;
         //-----import raw data
         SkrZoneScopedN("Importer.Import");
-        skr::String name_holder  = u8"unknown";
+        skr::String name_holder = u8"unknown";
         if (auto type = skr::get_type_from_guid(importerType))
         {
             name_holder = type->name().u8_str();
@@ -141,7 +140,7 @@ skr::filesystem::path SCookContextImpl::GetOutputPath() const
     return outputPath;
 }
 
-SImporter* SCookContextImpl::GetImporter() const
+Importer* SCookContextImpl::GetImporter() const
 {
     return importer;
 }
@@ -171,16 +170,15 @@ skr::String SCookContextImpl::GetAssetPath() const
     return record->path.u8string().c_str();
 }
 
-skr::filesystem::path SCookContextImpl::AddSourceFile(const skr::filesystem::path &inPath)
+skr::filesystem::path SCookContextImpl::AddSourceFile(const skr::filesystem::path& inPath)
 {
-    auto iter = std::find_if(fileDependencies.begin(), fileDependencies.end(), [&](const auto &dep) { return dep == inPath; });
+    auto iter = std::find_if(fileDependencies.begin(), fileDependencies.end(), [&](const auto& dep) { return dep == inPath; });
     if (iter == fileDependencies.end())
         fileDependencies.add(inPath);
     return record->path.parent_path() / inPath;
 }
 
-skr::filesystem::path SCookContextImpl::AddSourceFileAndLoad(skr_io_ram_service_t* ioService, const skr::filesystem::path& path,
-    skr::BlobId& destination)
+skr::filesystem::path SCookContextImpl::AddSourceFileAndLoad(skr_io_ram_service_t* ioService, const skr::filesystem::path& path, skr::BlobId& destination)
 {
     auto outPath = AddSourceFile(path.c_str());
     auto u8Path = outPath.u8string();
@@ -191,12 +189,10 @@ skr::filesystem::path SCookContextImpl::AddSourceFileAndLoad(skr_io_ram_service_
     rq->set_vfs(assetRecord->project->asset_vfs);
     rq->set_path(u8Path.c_str());
     rq->add_block({}); // read all
-    rq->add_callback(SKR_IO_STAGE_COMPLETED,
-    +[](skr_io_future_t* future, skr_io_request_t* request, void* data) noexcept {
+    rq->add_callback(SKR_IO_STAGE_COMPLETED, +[](skr_io_future_t* future, skr_io_request_t* request, void* data) noexcept {
         SkrZoneScopedN("SignalCounter");
         auto pCounter = (skr::task::event_t*)data;
-        pCounter->signal();
-    }, &counter);
+        pCounter->signal(); }, &counter);
     skr_io_future_t future = {};
     destination = ioService->request(rq, &future);
     counter.wait(false);
@@ -210,7 +206,7 @@ skr::span<const skr::filesystem::path> SCookContextImpl::GetSourceFiles() const
 
 void SCookContextImpl::AddRuntimeDependency(skr_guid_t resource)
 {
-    auto iter = std::find_if(runtimeDependencies.begin(), runtimeDependencies.end(), [&](const auto &dep) { return dep == resource; });
+    auto iter = std::find_if(runtimeDependencies.begin(), runtimeDependencies.end(), [&](const auto& dep) { return dep == resource; });
     if (iter == runtimeDependencies.end())
         runtimeDependencies.add(resource);
     GetCookSystem()->EnsureCooked(resource); // try launch new cook task, non blocking
@@ -238,24 +234,23 @@ const SResourceHandle& SCookContextImpl::GetStaticDependency(uint32_t index) con
 
 uint32_t SCookContextImpl::AddStaticDependency(skr_guid_t resource, bool install)
 {
-    auto iter = std::find_if(staticDependencies.begin(), staticDependencies.end(), [&](const auto &dep) { return dep.get_serialized() == resource; });
+    auto iter = std::find_if(staticDependencies.begin(), staticDependencies.end(), [&](const auto& dep) { return dep.get_serialized() == resource; });
     if (iter == staticDependencies.end())
     {
         auto counter = GetCookSystem()->EnsureCooked(resource);
         if (counter) counter.wait(false);
-        SResourceHandle handle{resource};
+        SResourceHandle handle{ resource };
         handle.resolve(install, (uint64_t)this, SKR_REQUESTER_SYSTEM);
-        if(!handle.get_resolved())
+        if (!handle.get_resolved())
         {
             auto record = handle.get_record();
             task::event_t event;
-            auto callback = [&]()
-            {
-                event.signal(); 
+            auto callback = [&]() {
+                event.signal();
             };
             record->AddCallback(SKR_LOADING_STATUS_ERROR, callback);
             record->AddCallback(install ? SKR_LOADING_STATUS_INSTALLED : SKR_LOADING_STATUS_LOADED, callback);
-            if(!handle.get_resolved())
+            if (!handle.get_resolved())
             {
                 event.wait(false);
             }
@@ -266,4 +261,4 @@ uint32_t SCookContextImpl::AddStaticDependency(skr_guid_t resource, bool install
     }
     return (uint32_t)(staticDependencies.end() - iter);
 }
-}
+} // namespace skd::asset

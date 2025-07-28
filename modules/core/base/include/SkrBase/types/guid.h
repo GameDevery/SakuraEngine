@@ -1,7 +1,6 @@
 #pragma once
-#include "SkrBase/config.h"
 #ifdef __cplusplus
-    #include "./impl/guid.hpp"
+    #include "./impl/guid.hpp" // IWYU pragma: export
 
 using skr_guid_t = ::skr::GUID;
 

@@ -25,7 +25,7 @@ namespace SB
                     Toolchain = XCodeSetup.XCode;
                 else
                     throw new Exception("Unsupported Platform!");
-                
+
                 if (BS.HostOS == OSPlatform.Windows)
                 {
                     char DriveLetter = SourceLocation.Directory()[0];
@@ -40,7 +40,7 @@ namespace SB
 
                 Log.Verbose("Load Targets... ");
                 LoadTargets(Categories);
-                
+
                 Stopwatch sw = new();
                 sw.Start();
                 Log.Verbose("Run Setups... ");
@@ -82,7 +82,7 @@ namespace SB
                 .AddDependency("Cpp.PCH", DependencyModel.ExternalTarget)
                 .AddDependency("Codgen.Codegen", DependencyModel.ExternalTarget)
                 .AddDependency("Codgen.Codegen", DependencyModel.PerTarget);
-            
+
             Engine.AddTaskEmitter("Cpp.Link", new CppLinkEmitter(Toolchain))
                 .AddDependency("Cpp.Link", DependencyModel.ExternalTarget)
                 .AddDependency("Cpp.Compile", DependencyModel.PerTarget);
@@ -146,7 +146,7 @@ namespace SB
                 }
             }
         }
-        
+
         private static bool IsTargetOfCategory(Type Type, TargetCategory Category)
         {
             var TargetAttr = Type.GetCustomAttribute<TargetScript>();

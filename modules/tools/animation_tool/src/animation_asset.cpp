@@ -18,14 +18,14 @@
 
 namespace skd::asset
 {
-bool SAnimCooker::Cook(CookContext* ctx)
+bool AnimCooker::Cook(CookContext* ctx)
 {
     using namespace skr::anim;
     using namespace ozz::animation::offline;
-    SkrZoneScopedNS("SAnimCooker::Cook", 4);
+    SkrZoneScopedNS("AnimCooker::Cook", 4);
 
     //-----load config
-    auto settings = LoadConfig<SAnimCookSettings>(ctx);
+    auto settings = LoadConfig<AnimCookSettings>(ctx);
     //-----emit static dependencies
     if (settings.skeletonAsset.get_serialized() == skr_guid_t{})
     {

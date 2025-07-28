@@ -1,37 +1,35 @@
 #pragma once
-#include "SkrBase/config.h"
 #include "SkrToolCore/asset/importer.hpp"
-#include "SkrRT/config.h"
+#include "SkrToolCore/asset/cooker.hpp"
 #include "SkrRenderer/resources/shader_meta_resource.hpp"
 #ifndef __meta__
     #include "SkrShaderCompiler/assets/shader_asset.generated.h" // IWYU pragma: export
 #endif
 
-namespace skd
-{
-namespace asset
+namespace skd::asset
 {
 sreflect_struct(guid = "067d4b86-f888-4bd7-841c-bc831043e50c")
 sattr(serde = @json)
-SKR_SHADER_COMPILER_API SShaderOptionsImporter final : public SImporter {
+SKR_SHADER_COMPILER_API ShaderOptionImporter final : public Importer
+{
     skr::String jsonPath;
 
-    void* Import(skr_io_ram_service_t*, CookContext* context) override;
-    void  Destroy(void* resource) override;
+    void* Import(skr_io_ram_service_t*, CookContext * context) override;
+    void Destroy(void* resource) override;
 };
 
 sreflect_struct(guid = "8c54f8b7-0bf6-4415-ab3b-394a90da7d7f")
-SKR_SHADER_COMPILER_API SShaderOptionsCooker final : public Cooker {
-    bool     Cook(CookContext* ctx) override;
+SKR_SHADER_COMPILER_API ShaderOptionsCooker final : public Cooker
+{
+    bool Cook(CookContext * ctx) override;
     uint32_t Version() override;
 };
 
 sreflect_struct(
-    guid = "a897c990-abea-4f48-8880-e1ae9a93d777"
-    serde = @json
-)
-SKR_SHADER_COMPILER_API SShaderImporter final : public SImporter {
-    using shader_options_handle_t = skr::resource::AsyncResource<skr_shader_options_resource_t>;
+    guid = "a897c990-abea-4f48-8880-e1ae9a93d777" serde = @json)
+SKR_SHADER_COMPILER_API ShaderImporter final : public Importer
+{
+    using shader_options_handle_t = skr::resource::AsyncResource<skr::renderer::ShaderOptionsResource>;
 
     skr::String sourcePath;
     skr::String entry = u8"main";
@@ -40,14 +38,14 @@ SKR_SHADER_COMPILER_API SShaderImporter final : public SImporter {
     skr::Vector<shader_options_handle_t> switch_assets;
     skr::Vector<shader_options_handle_t> option_assets;
 
-    void* Import(skr_io_ram_service_t*, CookContext* context) override;
-    void  Destroy(void* resource) override;
+    void* Import(skr_io_ram_service_t*, CookContext * context) override;
+    void Destroy(void* resource) override;
 };
 
 sreflect_struct(guid = "a5cf3ad7-917c-4662-8de9-cd9adbd5eb2a")
-SKR_SHADER_COMPILER_API SShaderCooker final : public Cooker {
-    bool     Cook(CookContext* ctx) override;
+SKR_SHADER_COMPILER_API ShaderCooker final : public Cooker
+{
+    bool Cook(CookContext * ctx) override;
     uint32_t Version() override;
 };
-} // namespace asset
-} // namespace skd
+} // namespace skd::asset

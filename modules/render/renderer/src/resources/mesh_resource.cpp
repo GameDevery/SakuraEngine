@@ -169,15 +169,15 @@ MeshResource::~MeshResource() SKR_NOEXCEPT
 // 1.deserialize mesh resource
 // 2.install indices/vertices to GPU
 // 3?.update LOD information during runtime
-struct SKR_RENDERER_API SMeshFactoryImpl : public SMeshFactory {
-    SMeshFactoryImpl(const SMeshFactory::Root& root)
+struct SKR_RENDERER_API MeshFactoryImpl : public MeshFactory {
+    MeshFactoryImpl(const MeshFactory::Root& root)
         : root(root)
     {
         dstorage_root            = skr::String::From(root.dstorage_root);
         this->root.dstorage_root = dstorage_root.c_str();
     }
 
-    ~SMeshFactoryImpl() noexcept = default;
+    ~MeshFactoryImpl() noexcept = default;
     skr_guid_t        GetResourceType() override;
     bool              AsyncIO() override { return true; }
     bool              Unload(SResourceRecord* record) override;
@@ -207,14 +207,14 @@ struct SKR_RENDERER_API SMeshFactoryImpl : public SMeshFactory {
 
     struct UploadRequest {
         UploadRequest() SKR_NOEXCEPT = default;
-        UploadRequest(SMeshFactoryImpl* factory, skr_mesh_resource_id mesh_resource) SKR_NOEXCEPT
+        UploadRequest(MeshFactoryImpl* factory, skr_mesh_resource_id mesh_resource) SKR_NOEXCEPT
             : factory(factory),
               mesh_resource(mesh_resource)
         {
         }
         ~UploadRequest() SKR_NOEXCEPT = default;
 
-        SMeshFactoryImpl*                    factory       = nullptr;
+        MeshFactoryImpl*                    factory       = nullptr;
         skr_mesh_resource_id                 mesh_resource = nullptr;
         skr::Vector<std::string>             resource_uris;
         skr::Vector<skr_io_future_t>         ram_futures;
@@ -231,23 +231,23 @@ struct SKR_RENDERER_API SMeshFactoryImpl : public SMeshFactory {
     skr::FlatHashMap<skr_mesh_resource_id, SP<BufferRequest>> mRequests;
 };
 
-SMeshFactory* SMeshFactory::Create(const Root& root)
+MeshFactory* MeshFactory::Create(const Root& root)
 {
-    return SkrNew<SMeshFactoryImpl>(root);
+    return SkrNew<MeshFactoryImpl>(root);
 }
 
-void SMeshFactory::Destroy(SMeshFactory* factory)
+void MeshFactory::Destroy(MeshFactory* factory)
 {
     SkrDelete(factory);
 }
 
-skr_guid_t SMeshFactoryImpl::GetResourceType()
+skr_guid_t MeshFactoryImpl::GetResourceType()
 {
     const auto resource_type = ::skr::type_id_of<skr_mesh_resource_t>();
     return resource_type;
 }
 
-ESkrInstallStatus SMeshFactoryImpl::Install(SResourceRecord* record)
+ESkrInstallStatus MeshFactoryImpl::Install(SResourceRecord* record)
 {
     auto mesh_resource = (skr_mesh_resource_t*)record->resource;
     if (!mesh_resource) return ESkrInstallStatus::SKR_INSTALL_STATUS_FAILED;
@@ -270,7 +270,7 @@ ESkrInstallStatus SMeshFactoryImpl::Install(SResourceRecord* record)
     return ESkrInstallStatus::SKR_INSTALL_STATUS_FAILED;
 }
 
-ESkrInstallStatus SMeshFactoryImpl::InstallImpl(SResourceRecord* record)
+ESkrInstallStatus MeshFactoryImpl::InstallImpl(SResourceRecord* record)
 {
     const auto noCompression = true;
     auto       vram_service  = root.vram_service;
@@ -337,7 +337,7 @@ ESkrInstallStatus SMeshFactoryImpl::InstallImpl(SResourceRecord* record)
     return ESkrInstallStatus::SKR_INSTALL_STATUS_INPROGRESS;
 }
 
-ESkrInstallStatus SMeshFactoryImpl::UpdateInstall(SResourceRecord* record)
+ESkrInstallStatus MeshFactoryImpl::UpdateInstall(SResourceRecord* record)
 {
     auto mesh_resource = (skr_mesh_resource_t*)record->resource;
     auto dRequest      = mRequests.find(mesh_resource);
@@ -374,14 +374,14 @@ ESkrInstallStatus SMeshFactoryImpl::UpdateInstall(SResourceRecord* record)
     return ESkrInstallStatus::SKR_INSTALL_STATUS_INPROGRESS;
 }
 
-bool SMeshFactoryImpl::Unload(SResourceRecord* record)
+bool MeshFactoryImpl::Unload(SResourceRecord* record)
 {
     auto mesh_resource = (skr_mesh_resource_id)record->resource;
     SkrDelete(mesh_resource);
     return true;
 }
 
-bool SMeshFactoryImpl::Uninstall(SResourceRecord* record)
+bool MeshFactoryImpl::Uninstall(SResourceRecord* record)
 {
     auto mesh_resource = (skr_mesh_resource_id)record->resource;
     if (mesh_resource->install_to_ram)

@@ -1,5 +1,4 @@
 #include "SkrBase/misc/debug.h"
-#include "SkrCore/log.h"
 #include "SkrRT/resource/resource_handle.h"
 #include "SkrRT/resource/resource_header.hpp"
 #include "SkrRT/resource/resource_system.h"

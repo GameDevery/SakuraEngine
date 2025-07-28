@@ -12,6 +12,8 @@ public static class SkrBase
             // TODO: MIGRATE COMPILE FLAGS FROM XMAKE
             // .Depend(Visibility.Public, "SkrCompileFlags")
             .IncludeDirs(Visibility.Public, "include")
+            .Depend(Visibility.Public, "phmap@phmap")
+            .Require("phmap", new PackageConfig { Version = new Version(1, 3, 11) })
             .AddCFiles("src/**/build.*.c")
             .AddCppFiles("src/**/build.*.cpp");
         

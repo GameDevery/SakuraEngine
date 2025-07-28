@@ -13,10 +13,10 @@
 struct sugoi_storage_t;
 namespace skr::resource
 {
-struct SLocalResourceRegistry;
-struct STextureFactory;
-struct SMeshFactory;
-struct SShaderResourceFactory;
+struct LocalResourceRegistry;
+struct TextureFactory;
+struct MeshFactory;
+struct ShaderResourceFactory;
 }
 class GAME_RUNTIME_API SGameRTModule : public skr::IDynamicModule
 {

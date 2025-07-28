@@ -20,7 +20,8 @@ namespace SB
             var DepArgs = ModuleDependencies.ToList();
             DepArgs.Add(Target.Name);
             DepArgs.Add(Target.GetTargetType()?.ToString() ?? "none");
-            bool Changed = Engine.MiscDepend.OnChanged(Target.Name, "GeneratedModuleInfo", Name, (Depend depend) => {
+            bool Changed = Engine.MiscDepend.OnChanged(Target.Name, "GeneratedModuleInfo", Name, (Depend depend) =>
+            {
                 string DependenciesArray = "[" + String.Join(",", ModuleDependencies.Select(D => FormatDependency(D))) + "]";
                 string JSON = $$"""
                 {

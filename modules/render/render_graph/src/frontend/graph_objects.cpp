@@ -1,9 +1,8 @@
-#include "SkrBase/misc/debug.h" 
+#include "SkrBase/misc/debug.h"
 #include "SkrRenderGraph/frontend/pass_node.hpp"
 #include "SkrRenderGraph/frontend/node_and_edge_factory.hpp"
-#include <SkrContainers/hashmap.hpp>
-#include "SkrBase/misc/hash.h"
-#include "SkrContainers/concurrent_queue.hpp"
+#include "SkrContainersDef/hashmap.hpp"
+#include "SkrContainersDef/concurrent_queue.hpp"
 
 namespace skr
 {
@@ -16,7 +15,6 @@ struct SKR_RENDER_GRAPH_API NodeAndEdgeFactoryImpl final : public NodeAndEdgeFac
 {
     NodeAndEdgeFactoryImpl() SKR_NOEXCEPT
     {
-
     }
     ~NodeAndEdgeFactoryImpl() SKR_NOEXCEPT
     {
@@ -26,16 +24,15 @@ struct SKR_RENDER_GRAPH_API NodeAndEdgeFactoryImpl final : public NodeAndEdgeFac
         }
     }
 
-    struct factory_pool_t 
+    struct factory_pool_t
     {
         size_t blockSize;
         skr::ConcurrentQueue<void*> blocks;
 
         factory_pool_t(size_t blockSize, size_t blockCount) SKR_NOEXCEPT
-            : blockSize(blockSize)
-            , blocks(blockCount)
+            : blockSize(blockSize),
+              blocks(blockCount)
         {
-            
         }
         ~factory_pool_t() SKR_NOEXCEPT
         {
@@ -120,7 +117,7 @@ RenderGraphEdge::RenderGraphEdge(ERelationshipType type)
 
 ResourceNode::ResourceNode(EObjectType type) SKR_NOEXCEPT
     : RenderGraphNode(type),
-        imported(false)
+      imported(false)
 {
 }
 
@@ -252,8 +249,8 @@ PresentPassNode::PresentPassNode(uint32_t order)
 // 3.edges
 
 TextureEdge::TextureEdge(ERelationshipType type, ECGPUResourceState requested_state) SKR_NOEXCEPT
-    : RenderGraphEdge(type)
-    , requested_state(requested_state)
+    : RenderGraphEdge(type),
+      requested_state(requested_state)
 {
 }
 
@@ -324,7 +321,6 @@ PipelineBufferEdge::PipelineBufferEdge(PipelineBufferHandle handle, ECGPUResourc
     : BufferEdge(ERelationshipType::PipelineBuffer, state)
     , handle(handle)
 {
-
 }
 
 BufferNode* PipelineBufferEdge::get_buffer_node()

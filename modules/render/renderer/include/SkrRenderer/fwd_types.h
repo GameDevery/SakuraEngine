@@ -21,11 +21,11 @@ typedef struct SRenderDevice SRenderDevice;
 #endif
 
 typedef SRenderDevice* SRenderDeviceId;
-typedef skr_guid_t     skr_vertex_layout_id;
+typedef skr_guid_t skr_vertex_layout_id;
 
-typedef struct skr_stable_shader_hash_t         skr_stable_shader_hash_t;
-typedef struct skr_platform_shader_hash_t       skr_platform_shader_hash_t;
-typedef struct skr_platform_shader_identifier_t skr_platform_shader_identifier_t;
+typedef struct SStableShaderHash SStableShaderHash;
+typedef struct SPlatformShaderHash SPlatformShaderHash;
+typedef struct SPlatformShaderIdentifier SPlatformShaderIdentifier;
 
 SKR_DECLARE_TYPE_ID_FWD(skr::renderer, ShaderOptionInstance, skr_shader_option_instance);
 SKR_DECLARE_TYPE_ID_FWD(skr::renderer, ShaderOptionTemplate, skr_shader_option_template);
@@ -61,18 +61,18 @@ SKR_DECLARE_TYPE_ID_FWD(skr::renderer, MeshSection, skr_mesh_section);
 SKR_DECLARE_TYPE_ID_FWD(skr::renderer, RenderMesh, skr_render_mesh);
 SKR_DECLARE_TYPE_ID_FWD(skr::renderer, PrimitiveCommand, skr_render_primitive_command);
 
-typedef struct skr_shader_map_t      skr_shader_map_t;
-typedef struct skr_shader_map_t*     skr_shader_map_id;
+typedef struct skr_shader_map_t skr_shader_map_t;
+typedef struct skr_shader_map_t* skr_shader_map_id;
 typedef struct skr_shader_map_root_t skr_shader_map_root_t;
 
 SKR_DECLARE_TYPE_ID_FWD(skr::renderer, PSOMapKey, skr_pso_map_key);
 
-typedef struct skr_pso_map_t*     skr_pso_map_id;
+typedef struct skr_pso_map_t* skr_pso_map_id;
 typedef struct skr_pso_map_root_t skr_pso_map_root_t;
 
 #ifdef __cplusplus
-using skr_shader_resource_handle_t   = skr::resource::AsyncResource<skr_multi_shader_resource_t>;
-using skr_material_type_handle_t     = skr::resource::AsyncResource<skr_material_type_resource_t>;
+using skr_shader_resource_handle_t = skr::resource::AsyncResource<skr_multi_shader_resource_t>;
+using skr_material_type_handle_t = skr::resource::AsyncResource<skr_material_type_resource_t>;
 using skr_shader_collection_handle_t = skr::resource::AsyncResource<skr_shader_collection_resource_t>;
 namespace skr
 {

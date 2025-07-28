@@ -1,4 +1,4 @@
-#include "SkrBase/misc/debug.h" 
+#include "SkrBase/misc/debug.h"
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrRenderGraph/frontend/pass_node.hpp"
 #include "SkrRenderGraph/frontend/node_and_edge_factory.hpp"
@@ -92,8 +92,7 @@ RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::read(const char8
 }
 
 RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::write(
-    uint32_t mrt_index, TextureRTVHandle handle, ECGPULoadAction load_action, CGPUClearValue clear_color,
-    ECGPUStoreAction store_action) SKR_NOEXCEPT
+    uint32_t mrt_index, TextureRTVHandle handle, ECGPULoadAction load_action, CGPUClearValue clear_color, ECGPUStoreAction store_action) SKR_NOEXCEPT
 {
     auto allocated = graph.node_factory->Allocate<TextureRenderEdge>(mrt_index, handle._this, clear_color);
     auto&& edge = node.out_texture_edges.emplace(allocated).ref();
@@ -116,8 +115,10 @@ RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::resolve_msaa(uin
 }
 
 RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::set_depth_stencil(TextureDSVHandle handle,
-    ECGPULoadAction dload_action, ECGPUStoreAction dstore_action,
-    ECGPULoadAction sload_action, ECGPUStoreAction sstore_action) SKR_NOEXCEPT
+    ECGPULoadAction dload_action,
+    ECGPUStoreAction dstore_action,
+    ECGPULoadAction sload_action,
+    ECGPUStoreAction sstore_action) SKR_NOEXCEPT
 {
     auto allocated = graph.node_factory->Allocate<TextureRenderEdge>(
         CGPU_MAX_MRT_COUNT, handle._this, fastclear_0000, CGPU_RESOURCE_STATE_DEPTH_WRITE);
@@ -174,7 +175,8 @@ RenderGraph::RenderPassBuilder& RenderGraph::RenderPassBuilder::with_flags(EPass
 
 // compute pass builder
 RenderGraph::ComputePassBuilder::ComputePassBuilder(RenderGraph& graph, ComputePassNode& pass) SKR_NOEXCEPT
-    : graph(graph), node(pass)
+    : graph(graph),
+      node(pass)
 {
 }
 
@@ -707,7 +709,7 @@ TextureHandle RenderGraph::create_texture(const TextureSetupFunction& setup) SKR
 }
 
 TextureHandle RenderGraph::get_texture(const char8_t* name) SKR_NOEXCEPT
-{    
+{
     if (auto texture = blackboard->texture(name))
     {
         return texture->get_handle();

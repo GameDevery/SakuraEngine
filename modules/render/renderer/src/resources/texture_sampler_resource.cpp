@@ -4,12 +4,12 @@ namespace skr
 {
 namespace resource
 {
-struct SKR_RENDERER_API STextureSamplerFactoryImpl : public STextureSamplerFactory {
-    STextureSamplerFactoryImpl(const STextureSamplerFactory::Root& root)
+struct SKR_RENDERER_API TextureSamplerFactoryImpl : public TextureSamplerFactory {
+    TextureSamplerFactoryImpl(const TextureSamplerFactory::Root& root)
         : root(root)
     {
     }
-    ~STextureSamplerFactoryImpl() noexcept = default;
+    ~TextureSamplerFactoryImpl() noexcept = default;
     bool AsyncIO() override { return true; }
 
     skr_guid_t        GetResourceType() override;
@@ -90,33 +90,33 @@ struct SKR_RENDERER_API STextureSamplerFactoryImpl : public STextureSamplerFacto
     }
 };
 
-STextureSamplerFactory* STextureSamplerFactory::Create(const Root& root)
+TextureSamplerFactory* TextureSamplerFactory::Create(const Root& root)
 {
-    return SkrNew<STextureSamplerFactoryImpl>(root);
+    return SkrNew<TextureSamplerFactoryImpl>(root);
 }
 
-void STextureSamplerFactory::Destroy(STextureSamplerFactory* factory)
+void TextureSamplerFactory::Destroy(TextureSamplerFactory* factory)
 {
     SkrDelete(factory);
 }
 
-skr_guid_t STextureSamplerFactoryImpl::GetResourceType()
+skr_guid_t TextureSamplerFactoryImpl::GetResourceType()
 {
-    const auto resource_type = ::skr::type_id_of<skr_texture_sampler_resource_t>();
+    const auto resource_type = ::skr::type_id_of<STextureSamplerResource>();
     return resource_type;
 }
 
-bool STextureSamplerFactoryImpl::Unload(SResourceRecord* record)
+bool TextureSamplerFactoryImpl::Unload(SResourceRecord* record)
 {
-    auto sampler_resource = (skr_texture_sampler_resource_t*)record->resource;
+    auto sampler_resource = (STextureSamplerResource*)record->resource;
     if (sampler_resource->sampler) cgpu_free_sampler(sampler_resource->sampler);
     SkrDelete(sampler_resource);
     return true;
 }
 
-ESkrInstallStatus STextureSamplerFactoryImpl::Install(SResourceRecord* record)
+ESkrInstallStatus TextureSamplerFactoryImpl::Install(SResourceRecord* record)
 {
-    auto                  sampler_resource = (skr_texture_sampler_resource_t*)record->resource;
+    auto                  sampler_resource = (STextureSamplerResource*)record->resource;
     CGPUSamplerDescriptor sampler_desc     = {};
     sampler_desc.min_filter                = translate(sampler_resource->min_filter);
     sampler_desc.mag_filter                = translate(sampler_resource->mag_filter);
@@ -132,14 +132,14 @@ ESkrInstallStatus STextureSamplerFactoryImpl::Install(SResourceRecord* record)
     return sampler_resource->sampler ? SKR_INSTALL_STATUS_SUCCEED : SKR_INSTALL_STATUS_FAILED;
 }
 
-bool STextureSamplerFactoryImpl::Uninstall(SResourceRecord* record)
+bool TextureSamplerFactoryImpl::Uninstall(SResourceRecord* record)
 {
     return true;
 }
 
-ESkrInstallStatus STextureSamplerFactoryImpl::UpdateInstall(SResourceRecord* record)
+ESkrInstallStatus TextureSamplerFactoryImpl::UpdateInstall(SResourceRecord* record)
 {
-    auto sampler_resource = (skr_texture_sampler_resource_t*)record->resource;
+    auto sampler_resource = (STextureSamplerResource*)record->resource;
     return sampler_resource->sampler ? SKR_INSTALL_STATUS_SUCCEED : SKR_INSTALL_STATUS_FAILED;
 }
 

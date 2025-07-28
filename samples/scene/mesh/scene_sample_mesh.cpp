@@ -32,7 +32,7 @@ struct SceneSampleMeshModule : public skr::IDynamicModule
     skr_io_ram_service_t* ram_service = nullptr;
     skr_io_vram_service_t* vram_service = nullptr;
     skr::JobQueue* io_job_queue = nullptr;
-    skr::renderer::SMeshFactory* mesh_factory = nullptr;
+    skr::renderer::MeshFactory* mesh_factory = nullptr;
     SRenderDeviceId render_device = nullptr;
 
     skr::UPtr<skr::ImGuiApp> imgui_app = nullptr;
@@ -83,14 +83,14 @@ void SceneSampleMeshModule::installResourceFactories()
     auto resource_system = skr::resource::GetResourceSystem();
     // mesh factory
     {
-        skr::renderer::SMeshFactory::Root factoryRoot = {};
+        skr::renderer::MeshFactory::Root factoryRoot = {};
         auto RootStr = sampleResourceRoot.u8string();
         factoryRoot.dstorage_root = RootStr.c_str();
         factoryRoot.vfs = resource_vfs;
         factoryRoot.ram_service = ram_service;
         factoryRoot.vram_service = vram_service;
         factoryRoot.render_device = render_device;
-        mesh_factory = skr::renderer::SMeshFactory::Create(factoryRoot);
+        mesh_factory = skr::renderer::MeshFactory::Create(factoryRoot);
         resource_system->RegisterFactory(mesh_factory);
     }
 }
@@ -99,7 +99,7 @@ void SceneSampleMeshModule::uninstallResourceFactories()
 {
     auto resource_system = skr::resource::GetResourceSystem();
     resource_system->Shutdown();
-    skr::renderer::SMeshFactory::Destroy(mesh_factory);
+    skr::renderer::MeshFactory::Destroy(mesh_factory);
 }
 
 int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)

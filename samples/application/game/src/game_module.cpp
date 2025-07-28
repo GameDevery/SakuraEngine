@@ -64,17 +64,17 @@ class SGameModule : public skr::IDynamicModule
     void installResourceFactories();
     void uninstallResourceFactories();
 
-    skr::resource::STextureFactory*        textureFactory        = nullptr;
-    skr::resource::STextureSamplerFactory* textureSamplerFactory = nullptr;
-    skr::renderer::SMeshFactory*           meshFactory           = nullptr;
-    skr::renderer::SShaderResourceFactory* shaderFactory         = nullptr;
-    skr::renderer::SMaterialTypeFactory*   matTypeFactory        = nullptr;
-    skr::renderer::SMaterialFactory*       matFactory            = nullptr;
+    skr::resource::TextureFactory*        textureFactory        = nullptr;
+    skr::resource::TextureSamplerFactory* textureSamplerFactory = nullptr;
+    skr::renderer::MeshFactory*           meshFactory           = nullptr;
+    skr::renderer::ShaderResourceFactory* shaderFactory         = nullptr;
+    skr::renderer::MaterialTypeFactory*   matTypeFactory        = nullptr;
+    skr::renderer::MaterialFactory*       matFactory            = nullptr;
 
-    skr::resource::SAnimFactory*  animFactory     = nullptr;
+    skr::resource::AnimFactory*  animFactory     = nullptr;
     skr::resource::SSkelFactory*  skeletonFactory = nullptr;
-    skr::resource::SSkinFactory*  skinFactory     = nullptr;
-    skr::resource::SSceneFactory* sceneFactory    = nullptr;
+    skr::resource::SkinFactory*  skinFactory     = nullptr;
+    skr::resource::SceneFactory* sceneFactory    = nullptr;
 
     skr_vfs_t*             resource_vfs     = nullptr;
     skr_vfs_t*             tex_resource_vfs = nullptr;
@@ -83,7 +83,7 @@ class SGameModule : public skr::IDynamicModule
     skr_io_vram_service_t* vram_service     = nullptr;
     skr_shader_map_t*      shadermap        = nullptr;
 
-    skr::resource::SLocalResourceRegistry* registry;
+    skr::resource::LocalResourceRegistry* registry;
 
     struct sugoi_storage_t* game_world         = nullptr;
     SRenderDeviceId         game_render_device = nullptr;
@@ -126,7 +126,7 @@ void SGameModule::installResourceFactories()
     vram_service                       = skr_io_vram_service_t::create(&vramServiceDesc);
     vram_service->run();
 
-    registry = SkrNew<skr::resource::SLocalResourceRegistry>(resource_vfs);
+    registry = SkrNew<skr::resource::LocalResourceRegistry>(resource_vfs);
     skr::resource::GetResourceSystem()->Initialize(registry, ram_service);
     //
 
@@ -137,9 +137,9 @@ void SGameModule::installResourceFactories()
     auto u8TextureRoot    = gameResourceRoot.u8string();
     // texture sampler factory
     {
-        skr::resource::STextureSamplerFactory::Root factoryRoot = {};
+        skr::resource::TextureSamplerFactory::Root factoryRoot = {};
         factoryRoot.device                                      = game_render_device->get_cgpu_device();
-        textureSamplerFactory                                   = skr::resource::STextureSamplerFactory::Create(factoryRoot);
+        textureSamplerFactory                                   = skr::resource::TextureSamplerFactory::Create(factoryRoot);
         resource_system->RegisterFactory(textureSamplerFactory);
     }
     // texture factory
@@ -149,26 +149,26 @@ void SGameModule::installResourceFactories()
         tex_vfs_desc.override_mount_dir = u8TextureRoot.c_str();
         tex_resource_vfs                = skr_create_vfs(&tex_vfs_desc);
 
-        skr::resource::STextureFactory::Root factoryRoot = {};
+        skr::resource::TextureFactory::Root factoryRoot = {};
         auto                                 RootStr     = gameResourceRoot.u8string();
         factoryRoot.dstorage_root                        = RootStr.c_str();
         factoryRoot.vfs                                  = tex_resource_vfs;
         factoryRoot.ram_service                          = ram_service;
         factoryRoot.vram_service                         = vram_service;
         factoryRoot.render_device                        = game_render_device;
-        textureFactory                                   = skr::resource::STextureFactory::Create(factoryRoot);
+        textureFactory                                   = skr::resource::TextureFactory::Create(factoryRoot);
         resource_system->RegisterFactory(textureFactory);
     }
     // mesh factory
     {
-        skr::renderer::SMeshFactory::Root factoryRoot = {};
+        skr::renderer::MeshFactory::Root factoryRoot = {};
         auto                              RootStr     = gameResourceRoot.u8string();
         factoryRoot.dstorage_root                     = RootStr.c_str();
         factoryRoot.vfs                               = tex_resource_vfs;
         factoryRoot.ram_service                       = ram_service;
         factoryRoot.vram_service                      = vram_service;
         factoryRoot.render_device                     = game_render_device;
-        meshFactory                                   = skr::renderer::SMeshFactory::Create(factoryRoot);
+        meshFactory                                   = skr::renderer::MeshFactory::Create(factoryRoot);
         resource_system->RegisterFactory(meshFactory);
     }
     // shader factory
@@ -195,36 +195,36 @@ void SGameModule::installResourceFactories()
         shadermap                           = skr_shader_map_create(&shadermapRoot);
 
         // create shader resource factory
-        skr::renderer::SShaderResourceFactory::Root factoryRoot = {};
+        skr::renderer::ShaderResourceFactory::Root factoryRoot = {};
         factoryRoot.render_device                               = game_render_device;
         factoryRoot.shadermap                                   = shadermap;
-        shaderFactory                                           = skr::renderer::SShaderResourceFactory::Create(factoryRoot);
+        shaderFactory                                           = skr::renderer::ShaderResourceFactory::Create(factoryRoot);
         resource_system->RegisterFactory(shaderFactory);
     }
 
     // material type factory
     {
-        skr::renderer::SMaterialTypeFactory::Root factoryRoot = {};
+        skr::renderer::MaterialTypeFactory::Root factoryRoot = {};
         factoryRoot.render_device                             = game_render_device;
-        matTypeFactory                                        = skr::renderer::SMaterialTypeFactory::Create(factoryRoot);
+        matTypeFactory                                        = skr::renderer::MaterialTypeFactory::Create(factoryRoot);
         resource_system->RegisterFactory(matTypeFactory);
     }
 
     // material factory
     {
-        skr::renderer::SMaterialFactory::Root factoryRoot = {};
+        skr::renderer::MaterialFactory::Root factoryRoot = {};
         factoryRoot.device                                = game_render_device->get_cgpu_device();
         factoryRoot.shader_map                            = shadermap;
         factoryRoot.job_queue                             = job_queue.get();
         factoryRoot.ram_service                           = ram_service;
         factoryRoot.bytecode_vfs                          = shader_bytes_vfs;
-        matFactory                                        = skr::renderer::SMaterialFactory::Create(factoryRoot);
+        matFactory                                        = skr::renderer::MaterialFactory::Create(factoryRoot);
         resource_system->RegisterFactory(matFactory);
     }
 
     // anim factory
     {
-        animFactory = SkrNew<skr::resource::SAnimFactory>();
+        animFactory = SkrNew<skr::resource::AnimFactory>();
         resource_system->RegisterFactory(animFactory);
     }
 
@@ -236,11 +236,11 @@ void SGameModule::installResourceFactories()
 
     // skin factory
     {
-        skinFactory = SkrNew<skr::resource::SSkinFactory>();
+        skinFactory = SkrNew<skr::resource::SkinFactory>();
         resource_system->RegisterFactory(skinFactory);
     }
 
-    struct GameSceneFactory : public skr::resource::SSceneFactory {
+    struct GameSceneFactory : public skr::resource::SceneFactory {
         virtual ESkrInstallStatus Install(SResourceRecord* record) override
         {
             auto renderableT_builder = make_zeroed<sugoi::TypeSetBuilder>();
@@ -263,7 +263,7 @@ void SGameModule::installResourceFactories()
     };
     // scene factory
     {
-        sceneFactory = SkrNew<skr::resource::SSceneFactory>();
+        sceneFactory = SkrNew<skr::resource::SceneFactory>();
         resource_system->RegisterFactory(sceneFactory);
     }
 }
@@ -274,12 +274,12 @@ void SGameModule::uninstallResourceFactories()
     auto resource_system = skr::resource::GetResourceSystem();
     resource_system->Shutdown();
 
-    skr::resource::STextureSamplerFactory::Destroy(textureSamplerFactory);
-    skr::resource::STextureFactory::Destroy(textureFactory);
-    skr::renderer::SMeshFactory::Destroy(meshFactory);
-    skr::renderer::SShaderResourceFactory::Destroy(shaderFactory);
-    skr::renderer::SMaterialTypeFactory::Destroy(matTypeFactory);
-    skr::renderer::SMaterialFactory::Destroy(matFactory);
+    skr::resource::TextureSamplerFactory::Destroy(textureSamplerFactory);
+    skr::resource::TextureFactory::Destroy(textureFactory);
+    skr::renderer::MeshFactory::Destroy(meshFactory);
+    skr::renderer::ShaderResourceFactory::Destroy(shaderFactory);
+    skr::renderer::MaterialTypeFactory::Destroy(matTypeFactory);
+    skr::renderer::MaterialFactory::Destroy(matFactory);
 
     SkrDelete(animFactory);
     SkrDelete(skeletonFactory);

@@ -323,12 +323,12 @@ namespace SB.Core
                 // Remove all dependency entries
                 context.Depends.RemoveRange(context.Depends);
                 context.SaveChanges();
-                
+
                 // Clear the caches
                 cachedFileExists.Clear();
                 cachedFileDateTimes.Clear();
                 cachedFileSHAs.Clear();
-                
+
                 Log.Information("Cleared dependency database: {Name}", Name);
             }
         }

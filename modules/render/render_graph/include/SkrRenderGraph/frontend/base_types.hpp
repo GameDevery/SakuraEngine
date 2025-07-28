@@ -14,9 +14,7 @@ enum
 
 struct CGPUXBindTable;
 struct CGPUXMergedBindTable;
-namespace skr
-{
-namespace render_graph
+namespace skr::render_graph
 {
 // fwd declartions
 class ResourceNode;
@@ -420,8 +418,7 @@ struct SKR_RENDER_GRAPH_API CopyPassContext : public PassContext {
     friend struct PassExecutionPhase;
     CGPUCommandBufferId cmd;
 };
-} // namespace render_graph
-} // namespace skr
+} // namespace skr::render_graph
 
 namespace skr
 {

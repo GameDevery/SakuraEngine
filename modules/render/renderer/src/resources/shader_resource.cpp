@@ -8,7 +8,7 @@
 #include "SkrContainers/hashmap.hpp"
 #include "option_utils.hpp"
 
-skr_stable_shader_hash_t::skr_stable_shader_hash_t(uint32_t a, uint32_t b, uint32_t c, uint32_t d) SKR_NOEXCEPT
+SStableShaderHash::SStableShaderHash(uint32_t a, uint32_t b, uint32_t c, uint32_t d) SKR_NOEXCEPT
     : valuea(a),
       valueb(b),
       valuec(c),
@@ -16,15 +16,15 @@ skr_stable_shader_hash_t::skr_stable_shader_hash_t(uint32_t a, uint32_t b, uint3
 {
 }
 
-size_t skr_stable_shader_hash_t::hasher::operator()(const skr_stable_shader_hash_t& hash) const
+size_t SStableShaderHash::hasher::operator()(const SStableShaderHash& hash) const
 {
     return skr_hash(&hash, sizeof(hash), 114514u);
 }
 
-skr_stable_shader_hash_t skr_stable_shader_hash_t::hash_string(const char* str, uint32_t size) SKR_NOEXCEPT
+SStableShaderHash SStableShaderHash::hash_string(const char* str, uint32_t size) SKR_NOEXCEPT
 {
-    if (!size) return skr_stable_shader_hash_t(0, 0, 0, 0);
-    auto           result   = make_zeroed<skr_stable_shader_hash_t>();
+    if (!size) return SStableShaderHash(0, 0, 0, 0);
+    auto           result   = make_zeroed<SStableShaderHash>();
     const uint32_t seeds[4] = { 114u, 514u, 1919u, 810u };
     result.valuea           = skr_hash32(str, size, seeds[0]);
     result.valueb           = skr_hash32(str, size, seeds[1]);
@@ -33,9 +33,9 @@ skr_stable_shader_hash_t skr_stable_shader_hash_t::hash_string(const char* str, 
     return result;
 }
 
-skr_stable_shader_hash_t skr_stable_shader_hash_t::from_string(const char* str) SKR_NOEXCEPT
+SStableShaderHash SStableShaderHash::from_string(const char* str) SKR_NOEXCEPT
 {
-    skr_stable_shader_hash_t result;
+    SStableShaderHash result;
     result.valuea = std::stoul((const char*)str);
     result.valueb = std::stoul((const char*)str + 8);
     result.valuec = std::stoul((const char*)str + 16);
@@ -43,17 +43,17 @@ skr_stable_shader_hash_t skr_stable_shader_hash_t::from_string(const char* str) 
     return result;
 }
 
-skr_stable_shader_hash_t::operator skr::String() const SKR_NOEXCEPT
+SStableShaderHash::operator skr::String() const SKR_NOEXCEPT
 {
     return skr::format(u8"{}{}{}{}", valuea, valueb, valuec, valued);
 }
 
-size_t skr_platform_shader_hash_t::hasher::operator()(const skr_platform_shader_hash_t& hash) const
+size_t SPlatformShaderHash::hasher::operator()(const SPlatformShaderHash& hash) const
 {
     return skr_hash(&hash, sizeof(hash), 114514u);
 }
 
-size_t skr_platform_shader_identifier_t::hasher::operator()(const skr_platform_shader_identifier_t& hash) const
+size_t SPlatformShaderIdentifier::hasher::operator()(const SPlatformShaderIdentifier& hash) const
 {
     return skr_hash(&hash, sizeof(hash), 114514u);
 }
@@ -87,11 +87,11 @@ uint32_t skr_shader_option_sequence_t::find_value_index(skr::StringView in_key, 
     return find_value_index(key_index, in_value);
 }
 
-skr_stable_shader_hash_t skr_shader_option_sequence_t::calculate_stable_hash(const skr_shader_option_sequence_t& seq, skr::span<uint32_t> indices)
+SStableShaderHash skr_shader_option_sequence_t::calculate_stable_hash(const skr_shader_option_sequence_t& seq, skr::span<uint32_t> indices)
 {
     skr::String signatureString;
     option_utils::stringfy(signatureString, seq, indices);
-    return skr_stable_shader_hash_t::hash_string(signatureString.c_str_raw(), (uint32_t)signatureString.size());
+    return SStableShaderHash::hash_string(signatureString.c_str_raw(), (uint32_t)signatureString.size());
 }
 
 namespace skr
@@ -104,13 +104,13 @@ ShaderCollectionResource::~ShaderCollectionResource() SKR_NOEXCEPT
 {
 }
 
-struct SKR_RENDERER_API SShaderResourceFactoryImpl : public SShaderResourceFactory {
-    SShaderResourceFactoryImpl(const SShaderResourceFactory::Root& root)
+struct SKR_RENDERER_API ShaderResourceFactoryImpl : public ShaderResourceFactory {
+    ShaderResourceFactoryImpl(const ShaderResourceFactory::Root& root)
         : root(root)
     {
     }
 
-    ~SShaderResourceFactoryImpl() noexcept = default;
+    ~ShaderResourceFactoryImpl() noexcept = default;
     skr_guid_t        GetResourceType() override;
     bool              AsyncIO() override { return true; }
     bool              Unload(SResourceRecord* record) override;
@@ -121,17 +121,17 @@ struct SKR_RENDERER_API SShaderResourceFactoryImpl : public SShaderResourceFacto
     Root root;
 };
 
-SShaderResourceFactory* SShaderResourceFactory::Create(const Root& root)
+ShaderResourceFactory* ShaderResourceFactory::Create(const Root& root)
 {
-    return SkrNew<SShaderResourceFactoryImpl>(root);
+    return SkrNew<ShaderResourceFactoryImpl>(root);
 }
 
-void SShaderResourceFactory::Destroy(SShaderResourceFactory* factory)
+void ShaderResourceFactory::Destroy(ShaderResourceFactory* factory)
 {
     return SkrDelete(factory);
 }
 
-ECGPUShaderBytecodeType SShaderResourceFactory::GetRuntimeBytecodeType(ECGPUBackend backend)
+ECGPUShaderBytecodeType ShaderResourceFactory::GetRuntimeBytecodeType(ECGPUBackend backend)
 {
     switch (backend)
     {
@@ -146,13 +146,13 @@ ECGPUShaderBytecodeType SShaderResourceFactory::GetRuntimeBytecodeType(ECGPUBack
     }
 }
 
-skr_guid_t SShaderResourceFactoryImpl::GetResourceType()
+skr_guid_t ShaderResourceFactoryImpl::GetResourceType()
 {
     const auto resource_type = ::skr::type_id_of<skr_shader_collection_resource_t>();
     return resource_type;
 }
 
-bool SShaderResourceFactoryImpl::Unload(SResourceRecord* record)
+bool ShaderResourceFactoryImpl::Unload(SResourceRecord* record)
 {
     auto shader_collection = (skr_shader_collection_resource_t*)record->resource;
     if (!root.dont_create_shader)
@@ -172,7 +172,7 @@ bool SShaderResourceFactoryImpl::Unload(SResourceRecord* record)
     return true;
 }
 
-ESkrInstallStatus SShaderResourceFactoryImpl::Install(SResourceRecord* record)
+ESkrInstallStatus ShaderResourceFactoryImpl::Install(SResourceRecord* record)
 {
     if (root.dont_create_shader) return SKR_INSTALL_STATUS_SUCCEED;
 
@@ -184,7 +184,7 @@ ESkrInstallStatus SShaderResourceFactoryImpl::Install(SResourceRecord* record)
     for (uint32_t i = 0u; i < root_option_variant.size(); i++)
     {
         const auto& identifier            = root_option_variant[i];
-        const auto  runtime_bytecode_type = SShaderResourceFactory::GetRuntimeBytecodeType(root.render_device->get_backend());
+        const auto  runtime_bytecode_type = ShaderResourceFactory::GetRuntimeBytecodeType(root.render_device->get_backend());
         if (identifier.bytecode_type == runtime_bytecode_type)
         {
             const auto status = root.shadermap->install_shader(identifier);
@@ -198,12 +198,12 @@ ESkrInstallStatus SShaderResourceFactoryImpl::Install(SResourceRecord* record)
     return launch_success ? SKR_INSTALL_STATUS_SUCCEED : SKR_INSTALL_STATUS_FAILED;
 }
 
-bool SShaderResourceFactoryImpl::Uninstall(SResourceRecord* record)
+bool ShaderResourceFactoryImpl::Uninstall(SResourceRecord* record)
 {
     return true;
 }
 
-ESkrInstallStatus SShaderResourceFactoryImpl::UpdateInstall(SResourceRecord* record)
+ESkrInstallStatus ShaderResourceFactoryImpl::UpdateInstall(SResourceRecord* record)
 {
     return SKR_INSTALL_STATUS_SUCCEED;
 }

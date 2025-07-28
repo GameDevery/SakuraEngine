@@ -21,8 +21,8 @@ SkinResource {
 
 namespace skr::resource
 {
-struct SKR_ANIM_API SSkinFactory : public SResourceFactory {
-    virtual ~SSkinFactory() = default;
+struct SKR_ANIM_API SkinFactory : public ResourceFactory {
+    virtual ~SkinFactory() = default;
     skr_guid_t GetResourceType() override;
     bool       AsyncIO() override { return true; }
     float      AsyncSerdeLoadFactor() override { return 1.0f; }

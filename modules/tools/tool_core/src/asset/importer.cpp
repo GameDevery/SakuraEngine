@@ -5,21 +5,21 @@
 
 namespace skd::asset
 {
-struct SImporterRegistryImpl : public SImporterRegistry {
-    SImporter* LoadImporter(const AssetRecord* record, skr::archive::JsonReader* object, skr_guid_t* pGuid = nullptr) override;
+struct ImporterRegistryImpl : public ImporterRegistry {
+    Importer* LoadImporter(const AssetRecord* record, skr::archive::JsonReader* object, skr_guid_t* pGuid = nullptr) override;
     uint32_t   GetImporterVersion(skr_guid_t type) override;
-    void       RegisterImporter(skr_guid_t type, SImporterTypeInfo info) override;
+    void       RegisterImporter(skr_guid_t type, ImporterTypeInfo info) override;
 
-    skr::FlatHashMap<skr_guid_t, SImporterTypeInfo, skr::Hash<skr_guid_t>> loaders;
+    skr::FlatHashMap<skr_guid_t, ImporterTypeInfo, skr::Hash<skr_guid_t>> loaders;
 };
 
-SImporterRegistry* GetImporterRegistry()
+ImporterRegistry* GetImporterRegistry()
 {
-    static SImporterRegistryImpl registry;
+    static ImporterRegistryImpl registry;
     return &registry;
 }
 
-SImporter* SImporterRegistryImpl::LoadImporter(const AssetRecord* record, skr::archive::JsonReader* object, skr_guid_t* pGuid)
+Importer* ImporterRegistryImpl::LoadImporter(const AssetRecord* record, skr::archive::JsonReader* object, skr_guid_t* pGuid)
 {
     skr_guid_t type;
     {
@@ -37,7 +37,7 @@ SImporter* SImporterRegistryImpl::LoadImporter(const AssetRecord* record, skr::a
     }
     return nullptr;
 }
-uint32_t SImporterRegistryImpl::GetImporterVersion(skr_guid_t type)
+uint32_t ImporterRegistryImpl::GetImporterVersion(skr_guid_t type)
 {
     auto iter = loaders.find(type);
     if (iter != loaders.end())
@@ -45,7 +45,7 @@ uint32_t SImporterRegistryImpl::GetImporterVersion(skr_guid_t type)
     return UINT32_MAX;
 }
 
-void SImporterRegistryImpl::RegisterImporter(skr_guid_t type, SImporterTypeInfo info)
+void ImporterRegistryImpl::RegisterImporter(skr_guid_t type, ImporterTypeInfo info)
 {
     loaders.insert({ type, info });
 }

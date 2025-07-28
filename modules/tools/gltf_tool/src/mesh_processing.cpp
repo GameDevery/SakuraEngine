@@ -11,9 +11,7 @@
 
 #define MAGIC_SIZE_GLTF_PARSE_READY ~0
 
-namespace skd
-{
-namespace asset
+namespace skd::asset
 {
 static const ERawVertexStreamType kGLTFToRawAttributeTypeLUT[] = {
     ERawVertexStreamType::POSITION,
@@ -125,7 +123,7 @@ void GetGLTFNodeTransform(const cgltf_node* node, skr_float3_t& translation, skr
         rotation = { node->rotation[0], node->rotation[1], node->rotation[2], node->rotation[3] };
 }
 
-void CookGLTFMeshData(const cgltf_data* gltf_data, SMeshCookConfig* cfg, skr_mesh_resource_t& out_resource, skr::Vector<skr::Vector<uint8_t>>& out_bins)
+void CookGLTFMeshData(const cgltf_data* gltf_data, MeshCookConfig* cfg, skr_mesh_resource_t& out_resource, skr::Vector<skr::Vector<uint8_t>>& out_bins)
 {
     skr::Vector<uint8_t> buffer0 = {};
 
@@ -178,7 +176,7 @@ void CookGLTFMeshData(const cgltf_data* gltf_data, SMeshCookConfig* cfg, skr_mes
     out_bins.add(buffer0);
 }
 
-void CookGLTFMeshData_SplitSkin(const cgltf_data* gltf_data, SMeshCookConfig* cfg, skr_mesh_resource_t& out_resource, skr::Vector<skr::Vector<uint8_t>>& out_bins)
+void CookGLTFMeshData_SplitSkin(const cgltf_data* gltf_data, MeshCookConfig* cfg, skr_mesh_resource_t& out_resource, skr::Vector<skr::Vector<uint8_t>>& out_bins)
 {
     skr::Vector<uint8_t> buffer0 = {};
     skr::Vector<uint8_t> buffer1 = {};
@@ -239,5 +237,4 @@ void CookGLTFMeshData_SplitSkin(const cgltf_data* gltf_data, SMeshCookConfig* cf
     out_bins.add(buffer1);
 }
 
-} // namespace asset
-} // namespace skd
+} // namespace skd::asset

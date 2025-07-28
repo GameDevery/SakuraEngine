@@ -9,14 +9,14 @@ struct _AnimationToolRegister {
     _AnimationToolRegister()
     {
 #define _DEFAULT_COOKER(__COOKER_TYPE, __RESOURCE_TYPE) skd::asset::RegisterCooker<__COOKER_TYPE>(true, skr::RTTRTraits<__COOKER_TYPE>::get_guid(), skr::RTTRTraits<__RESOURCE_TYPE>::get_guid());
-        _DEFAULT_COOKER(skd::asset::SAnimCooker, skr::anim::AnimResource)
-        _DEFAULT_COOKER(skd::asset::SSkelCooker, skr::anim::SkeletonResource)
-        _DEFAULT_COOKER(skd::asset::SSkinCooker, skr::anim::SkinResource)
+        _DEFAULT_COOKER(skd::asset::AnimCooker, skr::anim::AnimResource)
+        _DEFAULT_COOKER(skd::asset::SkelCooker, skr::anim::SkeletonResource)
+        _DEFAULT_COOKER(skd::asset::SkinCooker, skr::anim::SkinResource)
 #undef _DEFAULT_COOKER
 
 #define _IMPORTER(__TYPE) skd::asset::RegisterImporter<__TYPE>(skr::RTTRTraits<__TYPE>::get_guid());
         _IMPORTER(skd::asset::SAnimGltfImporter)
-        _IMPORTER(skd::asset::SSkelGltfImporter)
+        _IMPORTER(skd::asset::SkelGltfImporter)
 #undef _IMPORTER
     }
 } _animation_tool_register;

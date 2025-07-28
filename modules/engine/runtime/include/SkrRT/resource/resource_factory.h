@@ -22,7 +22,7 @@ namespace resource
     Unloaded => request -> load binary -> deserialize => Loaded
     Loaded  => [requst & wait dependencies -> install/update install] => Installed
 */
-struct SKR_RUNTIME_API SResourceFactory {
+struct SKR_RUNTIME_API ResourceFactory {
     virtual skr_guid_t GetResourceType() = 0;
     virtual bool AsyncIO() { return true; }
     /*

@@ -2,16 +2,13 @@
 #include "SkrRenderGraph/frontend/resource_node.hpp"
 #include "SkrRenderGraph/frontend/pass_node.hpp"
 #include "SkrRenderGraph/frontend/node_and_edge_factory.hpp"
-#include "SkrCore/memory/memory.h"
 
 #include "SkrProfile/profile.h"
 
 #include <SkrContainers/string.hpp>
 #include <SkrContainers/hashmap.hpp>
 
-namespace skr
-{
-namespace render_graph
+namespace skr::render_graph
 {
 struct BlackboardImpl final : public Blackboard
 {
@@ -185,12 +182,6 @@ void Blackboard::Destroy(Blackboard* blackboard) SKR_NOEXCEPT
 {
     SkrDelete(blackboard);
 }
-
-} // namespace render_graph
-} // namespace skr
-
-namespace skr {
-namespace render_graph {
 
 EObjectType TextureNode::get_type() const SKR_NOEXCEPT
 {
@@ -394,5 +385,4 @@ void RenderGraph::finalize() SKR_NOEXCEPT
     NodeAndEdgeFactory::Destroy(node_factory);
     DependencyGraph::Destroy(graph);
 }
-} // namespace render_graph
-} // namespace skr
+} // namespace skr::render_graph

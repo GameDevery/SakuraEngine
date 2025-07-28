@@ -10,15 +10,13 @@
     #include "SkrMeshCore/mesh_processing.generated.h" // IWYU pragma: export
 #endif
 
-namespace skd
-{
-namespace asset
+namespace skd::asset
 {
 sreflect_struct(
     guid = "9A2C9CBF-517D-4197-BDE3-E40D85D88320"
     serde = @json
 )
-    MESH_CORE_API SMeshCookConfig {
+    MESH_CORE_API MeshCookConfig {
     skr_guid_t vertexType;
 };
 
@@ -157,5 +155,4 @@ static const ESkrVertexAttribute kRawAttributeTypeLUT[9] = {
     SKR_VERT_ATTRIB_CUSTOM
 };
 
-} // namespace asset
-} // namespace skd
+} // namespace skd::asset

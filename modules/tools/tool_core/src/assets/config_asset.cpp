@@ -1,21 +1,15 @@
 #include "SkrBase/misc/defer.hpp"
-#include "SkrCore/log.hpp"
-#include "SkrRTTR/type.hpp"
 #include "SkrRT/io/ram_io.hpp"
 #include "SkrRT/resource/config_resource.h"
 #include "SkrToolCore/assets/config_asset.hpp"
 #include "SkrToolCore/asset/cook_system.hpp"
-#include "SkrToolCore/asset/importer.hpp"
-#include "SkrToolCore/project/project.hpp"
 
-namespace skd
+namespace skd::asset
 {
-namespace asset
-{
-void* SJsonConfigImporter::Import(skr_io_ram_service_t* ioService, CookContext* context)
+void* JsonConfigImporter::Import(skr_io_ram_service_t* ioService, CookContext* context)
 {
     const auto assetRecord = context->GetAssetRecord();
-    auto       type        = skr::get_type_from_guid(configType);
+    auto type = skr::get_type_from_guid(configType);
     if (type == nullptr)
     {
         SKR_LOG_ERROR(u8"import resource %s failed, rtti is not load", assetRecord->path.u8string().c_str());
@@ -32,7 +26,7 @@ void* SJsonConfigImporter::Import(skr_io_ram_service_t* ioService, CookContext* 
         return nullptr;
     }
     '*/
-    skr::String              jString(skr::StringView((const char8_t*)blob->get_data(), blob->get_size()));
+    skr::String jString(skr::StringView((const char8_t*)blob->get_data(), blob->get_size()));
     skr::archive::JsonReader jsonVal(jString.view());
 
     auto resource = SkrNew<skr_config_resource_t>();
@@ -44,18 +38,18 @@ void* SJsonConfigImporter::Import(skr_io_ram_service_t* ioService, CookContext* 
     return resource;
 }
 
-void SJsonConfigImporter::Destroy(void* resource)
+void JsonConfigImporter::Destroy(void* resource)
 {
     SkrDelete((skr_config_resource_t*)resource);
     return;
 }
 
-uint32_t SConfigCooker::Version()
+uint32_t ConfigCooker::Version()
 {
     return 0;
 }
 
-bool SConfigCooker::Cook(CookContext* ctx)
+bool ConfigCooker::Cook(CookContext* ctx)
 {
     const auto outputPath = ctx->GetOutputPath();
     // const auto assetRecord = ctx->GetAssetRecord();
@@ -86,5 +80,4 @@ bool SConfigCooker::Cook(CookContext* ctx)
     ctx->Save(*resource);
     return true;
 }
-} // namespace asset
-} // namespace skd
+} // namespace skd::asset

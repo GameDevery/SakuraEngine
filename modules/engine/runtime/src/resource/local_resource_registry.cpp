@@ -8,12 +8,12 @@
 
 namespace skr::resource
 {
-SLocalResourceRegistry::SLocalResourceRegistry(skr_vfs_t* vfs)
+LocalResourceRegistry::LocalResourceRegistry(skr_vfs_t* vfs)
     : vfs(vfs)
 {
 }
 
-bool SLocalResourceRegistry::RequestResourceFile(ResourceRequest* request)
+bool LocalResourceRegistry::RequestResourceFile(ResourceRequest* request)
 {
     // 简单实现，直接在 resource 路径下按 guid 找到文件读信息，没有单独的数据库
     auto                  guid       = request->GetGuid();
@@ -31,7 +31,7 @@ bool SLocalResourceRegistry::RequestResourceFile(ResourceRequest* request)
         uint8_t buffer[sizeof(SResourceHeader)];
         if (skr_vfs_fread(file, buffer, 0, _fs_length) != _fs_length)
         {
-            SKR_LOG_FMT_ERROR(u8"[SLocalResourceRegistry::RequestResourceFile] failed to read resource header! guid: {}", guid);
+            SKR_LOG_FMT_ERROR(u8"[LocalResourceRegistry::RequestResourceFile] failed to read resource header! guid: {}", guid);
             return false;
         }
         skr::archive::BinSpanReader reader = { buffer, 0 };
@@ -45,7 +45,7 @@ bool SLocalResourceRegistry::RequestResourceFile(ResourceRequest* request)
         SKR_DEFER({ sakura_free(buffer); });
         if (skr_vfs_fread(file, buffer, 0, _fs_length) != _fs_length)
         {
-            SKR_LOG_FMT_ERROR(u8"[SLocalResourceRegistry::RequestResourceFile] failed to read resource header! guid: {}", guid);
+            SKR_LOG_FMT_ERROR(u8"[LocalResourceRegistry::RequestResourceFile] failed to read resource header! guid: {}", guid);
             return false;
         }
         skr::archive::BinSpanReader reader = { { buffer, _fs_length }, 0 };
@@ -62,7 +62,7 @@ bool SLocalResourceRegistry::RequestResourceFile(ResourceRequest* request)
     return true;
 }
 
-void SLocalResourceRegistry::CancelRequestFile(ResourceRequest* requst)
+void LocalResourceRegistry::CancelRequestFile(ResourceRequest* requst)
 {
 }
 } // namespace skr::resource

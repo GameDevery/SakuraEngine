@@ -34,11 +34,11 @@ bool skr_shader_options_resource_t::flatten_options(skr::Vector<skr_shader_optio
     return true;
 }
 
-skr_stable_shader_hash_t skr_shader_option_instance_t::calculate_stable_hash(skr::span<skr_shader_option_instance_t> ordered_options)
+SStableShaderHash skr_shader_option_instance_t::calculate_stable_hash(skr::span<skr_shader_option_instance_t> ordered_options)
 {
     skr::String signatureString;
     option_utils::stringfy(signatureString, ordered_options);
-    return skr_stable_shader_hash_t::hash_string(signatureString.c_str_raw(), (uint32_t)signatureString.size());
+    return SStableShaderHash::hash_string(signatureString.c_str_raw(), (uint32_t)signatureString.size());
 }
 
 namespace skr
@@ -47,13 +47,13 @@ namespace renderer
 {
 using namespace skr::resource;
 
-struct SKR_RENDERER_API SShaderOptionsFactoryImpl : public SShaderOptionsFactory {
-    SShaderOptionsFactoryImpl(const SShaderOptionsFactoryImpl::Root& root)
+struct SKR_RENDERER_API ShaderOptionsFactoryImpl : public ShaderOptionsFactory {
+    ShaderOptionsFactoryImpl(const ShaderOptionsFactoryImpl::Root& root)
         : root(root)
     {
     }
 
-    ~SShaderOptionsFactoryImpl() noexcept = default;
+    ~ShaderOptionsFactoryImpl() noexcept = default;
 
     bool       AsyncIO() override { return false; }
     skr_guid_t GetResourceType() override
@@ -85,12 +85,12 @@ struct SKR_RENDERER_API SShaderOptionsFactoryImpl : public SShaderOptionsFactory
     Root root;
 };
 
-SShaderOptionsFactory* SShaderOptionsFactory::Create(const Root& root)
+ShaderOptionsFactory* ShaderOptionsFactory::Create(const Root& root)
 {
-    return SkrNew<SShaderOptionsFactoryImpl>(root);
+    return SkrNew<ShaderOptionsFactoryImpl>(root);
 }
 
-void SShaderOptionsFactory::Destroy(SShaderOptionsFactory* factory)
+void ShaderOptionsFactory::Destroy(ShaderOptionsFactory* factory)
 {
     return SkrDelete(factory);
 }

@@ -2,7 +2,6 @@
 #include "SkrCore/platform/vfs.h"
 #include "SkrRT/resource/resource_handle.h"
 #include "SkrRT/resource/resource_header.hpp"
-#include "SkrContainers/span.hpp"
 
 SKR_DECLARE_TYPE_ID_FWD(skr::io, IRAMService, skr_io_ram_service)
 
@@ -40,10 +39,10 @@ namespace skr
 {
 namespace resource
 {
-struct SResourceRegistry;
-struct SResourceFactory;
-struct SResourceSystem;
-struct SResourceSystemImpl;
+struct ResourceRegistry;
+struct ResourceFactory;
+struct ResourceSystem;
+struct ResourceSystemImpl;
 
 struct SKR_RUNTIME_API ResourceRequest
 {
@@ -79,7 +78,7 @@ protected:
     virtual void _UnloadResource() = 0;
 };
 
-struct SKR_RUNTIME_API SResourceRegistry
+struct SKR_RUNTIME_API ResourceRegistry
 {
 public:
     virtual bool RequestResourceFile(ResourceRequest* request) = 0;
@@ -88,13 +87,13 @@ public:
     void FillRequest(ResourceRequest* request, SResourceHeader header, skr_vfs_t* vfs, const char8_t* uri);
 };
 
-struct SKR_RUNTIME_API SResourceSystem
+struct SKR_RUNTIME_API ResourceSystem
 {
     friend struct ::SResourceHandle;
 
 public:
-    virtual ~SResourceSystem() = default;
-    virtual void Initialize(SResourceRegistry* provider, skr_io_ram_service_t* ioService) = 0;
+    virtual ~ResourceSystem() = default;
+    virtual void Initialize(ResourceRegistry* provider, skr_io_ram_service_t* ioService) = 0;
     virtual bool IsInitialized() = 0;
     virtual void Shutdown() = 0;
     virtual void Update() = 0;
@@ -106,11 +105,11 @@ public:
     virtual void FlushResource(SResourceHandle& handle) = 0;
     virtual ESkrLoadingStatus GetResourceStatus(const skr_guid_t& handle) = 0;
 
-    virtual SResourceFactory* FindFactory(skr_guid_t type) const = 0;
-    virtual void RegisterFactory(SResourceFactory* factory) = 0;
+    virtual ResourceFactory* FindFactory(skr_guid_t type) const = 0;
+    virtual void RegisterFactory(ResourceFactory* factory) = 0;
     virtual void UnregisterFactory(skr_guid_t type) = 0;
 
-    virtual SResourceRegistry* GetRegistry() const = 0;
+    virtual ResourceRegistry* GetRegistry() const = 0;
     virtual skr_io_ram_service_t* GetRAMService() const = 0;
 
 protected:
@@ -119,7 +118,7 @@ protected:
     virtual SResourceRecord* _GetRecord(void* resource) = 0;
     virtual void _DestroyRecord(SResourceRecord* record) = 0;
 };
-SKR_RUNTIME_API SResourceSystem* GetResourceSystem();
+SKR_RUNTIME_API ResourceSystem* GetResourceSystem();
 } // namespace resource
 } // namespace skr
 #endif

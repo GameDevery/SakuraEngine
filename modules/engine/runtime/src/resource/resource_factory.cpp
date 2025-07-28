@@ -11,7 +11,7 @@ namespace skr
 namespace resource
 {
 
-bool SResourceFactory::Deserialize(SResourceRecord* record, SBinaryReader* reader)
+bool ResourceFactory::Deserialize(SResourceRecord* record, SBinaryReader* reader)
 {
     if (auto type = skr::get_type_from_guid(record->header.type))
     {
@@ -43,7 +43,7 @@ bool SResourceFactory::Deserialize(SResourceRecord* record, SBinaryReader* reade
     return false;
 }
 
-bool SResourceFactory::Unload(SResourceRecord* record)
+bool ResourceFactory::Unload(SResourceRecord* record)
 {
     record->header.dependencies.clear();
     if (record->destructor)
@@ -55,7 +55,7 @@ bool SResourceFactory::Unload(SResourceRecord* record)
     return true;
 }
 
-ESkrInstallStatus SResourceFactory::UpdateInstall(SResourceRecord* record)
+ESkrInstallStatus ResourceFactory::UpdateInstall(SResourceRecord* record)
 {
     SKR_UNREACHABLE_CODE();
     return SKR_INSTALL_STATUS_SUCCEED;

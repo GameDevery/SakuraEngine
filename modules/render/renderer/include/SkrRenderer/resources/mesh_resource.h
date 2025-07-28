@@ -127,8 +127,8 @@ MeshResource {
     skr_render_mesh_id render_mesh SKR_IF_CPP(= nullptr);
 };
 
-struct SKR_RENDERER_API SMeshFactory : public resource::SResourceFactory {
-    virtual ~SMeshFactory() = default;
+struct SKR_RENDERER_API MeshFactory : public resource::ResourceFactory {
+    virtual ~MeshFactory() = default;
 
     struct Root {
         skr_vfs_t*             vfs = nullptr;
@@ -139,8 +139,8 @@ struct SKR_RENDERER_API SMeshFactory : public resource::SResourceFactory {
     };
 
     float                              AsyncSerdeLoadFactor() override { return 2.5f; }
-    [[nodiscard]] static SMeshFactory* Create(const Root& root);
-    static void                        Destroy(SMeshFactory* factory);
+    [[nodiscard]] static MeshFactory* Create(const Root& root);
+    static void                        Destroy(MeshFactory* factory);
 };
 } // namespace renderer
 } // namespace skr

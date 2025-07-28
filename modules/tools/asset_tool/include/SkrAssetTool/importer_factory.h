@@ -4,10 +4,10 @@
 
 namespace skd::asset
 {
-    class SImporterFactory
+    class ImporterFactory
     {
     public:
-        virtual ~SImporterFactory() = default;
+        virtual ~ImporterFactory() = default;
         virtual bool CanImport(const skr::String& path) const = 0;
         virtual int Import(const skr::String& path) = 0;
         virtual int Update() = 0;

@@ -17,10 +17,10 @@ namespace skr::resource
 {
 // scene resource factory, base class
 // derive from this class to implement your own game specific install logic
-class SKR_SCENE_API SSceneFactory : public SResourceFactory
+class SKR_SCENE_API SceneFactory : public ResourceFactory
 {
 public:
-    virtual ~SSceneFactory() noexcept = default;
+    virtual ~SceneFactory() noexcept = default;
     skr_guid_t GetResourceType() override;
     bool       AsyncIO() override { return true; }
     float      AsyncSerdeLoadFactor() override { return 0.5f; }

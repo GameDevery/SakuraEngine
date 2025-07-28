@@ -5,12 +5,10 @@
 #include "SkrTextureCompiler/texture_sampler_asset.hpp"
 #include "SkrSerde/json_serde.hpp"
 
-namespace skd
-{
-namespace asset
+namespace skd::asset
 {
 
-void* STextureSamplerImporter::Import(skr_io_ram_service_t* ioService, CookContext* context)
+void* TextureSamplerImporter::Import(skr_io_ram_service_t* ioService, CookContext* context)
 {
     skr::BlobId blob = nullptr;
     context->AddSourceFileAndLoad(ioService, jsonPath.c_str(), blob);
@@ -22,27 +20,27 @@ void* STextureSamplerImporter::Import(skr_io_ram_service_t* ioService, CookConte
         return nullptr;
     }
     '*/
-    skr::String              jString(skr::StringView((const char8_t*)blob->get_data(), blob->get_size()));
+    skr::String jString(skr::StringView((const char8_t*)blob->get_data(), blob->get_size()));
     skr::archive::JsonReader jsonVal(jString.view());
-    auto                     sampler_resource = SkrNew<skr_texture_sampler_resource_t>();
+    auto sampler_resource = SkrNew<STextureSamplerResource>();
     skr::json_read(&jsonVal, *sampler_resource);
     return sampler_resource;
 }
 
-void STextureSamplerImporter::Destroy(void* resource)
+void TextureSamplerImporter::Destroy(void* resource)
 {
-    auto sampler_resource = (skr_texture_sampler_resource_t*)resource;
+    auto sampler_resource = (STextureSamplerResource*)resource;
     SkrDelete(sampler_resource);
 }
 
-bool STextureSamplerCooker::Cook(CookContext* ctx)
+bool TextureSamplerCooker::Cook(CookContext* ctx)
 {
     const auto outputPath = ctx->GetOutputPath();
     //-----load config
     // no cook config for config, skipping
 
     //-----import resource object
-    auto sampler_resource = ctx->Import<skr_texture_sampler_resource_t>();
+    auto sampler_resource = ctx->Import<STextureSamplerResource>();
     if (!sampler_resource) return false;
     SKR_DEFER({ ctx->Destroy(sampler_resource); });
 
@@ -51,5 +49,4 @@ bool STextureSamplerCooker::Cook(CookContext* ctx)
     return true;
 }
 
-} // namespace asset
-} // namespace skd
+} // namespace skd::asset

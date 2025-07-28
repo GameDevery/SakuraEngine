@@ -17,9 +17,7 @@ struct IDxcBlobUtf8;
 struct IDxcBlobWide;
 struct IDxcBlobEncoding;
 
-namespace skd
-{
-namespace asset
+namespace skd::asset
 {
 struct SKR_SHADER_COMPILER_API SDXCCompiledShader : public ICompiledShader {
     friend struct SDXCCompiler;
@@ -65,10 +63,10 @@ public:
     EShaderSourceType GetSourceType() const SKR_NOEXCEPT override;
     bool              IsSupportedTargetFormat(ECGPUShaderBytecodeType format) const SKR_NOEXCEPT override;
 
-    void SetShaderSwitches(skr::span<skr_shader_option_template_t> opt_defs, skr::span<skr_shader_option_instance_t> options, const skr_stable_shader_hash_t& hash) SKR_NOEXCEPT override;
-    void SetShaderOptions(skr::span<skr_shader_option_template_t> opt_defs, skr::span<skr_shader_option_instance_t> options, const skr_stable_shader_hash_t& hash) SKR_NOEXCEPT override;
+    void SetShaderSwitches(skr::span<skr_shader_option_template_t> opt_defs, skr::span<skr_shader_option_instance_t> options, const SStableShaderHash& hash) SKR_NOEXCEPT override;
+    void SetShaderOptions(skr::span<skr_shader_option_template_t> opt_defs, skr::span<skr_shader_option_instance_t> options, const SStableShaderHash& hash) SKR_NOEXCEPT override;
 
-    ICompiledShader* Compile(ECGPUShaderBytecodeType format, const ShaderSourceCode& source, const SShaderImporter& importer) SKR_NOEXCEPT override;
+    ICompiledShader* Compile(ECGPUShaderBytecodeType format, const ShaderSourceCode& source, const ShaderImporter& importer) SKR_NOEXCEPT override;
     void             FreeCompileResult(ICompiledShader* compiled) SKR_NOEXCEPT override;
 
     void SetIncludeHandler(IDxcIncludeHandler* includeHandler) SKR_NOEXCEPT;
@@ -82,11 +80,11 @@ protected:
 
     skr::Vector<skr_shader_option_template_t> switch_defs;
     skr::Vector<skr_shader_option_instance_t> switches;
-    skr_stable_shader_hash_t                  switches_hash = {};
+    SStableShaderHash                  switches_hash = {};
 
     skr::Vector<skr_shader_option_template_t> option_defs;
     skr::Vector<skr_shader_option_instance_t> options;
-    skr_stable_shader_hash_t                  options_hash = {};
+    SStableShaderHash                  options_hash = {};
 };
 
 sreflect_struct(guid = "ae28a9e5-39cf-4eab-aa27-6103f42cbf2d"; rttr = @minimal;)
@@ -107,5 +105,4 @@ protected:
     skr::SharedLibrary dxil_library;
     void*              pDxcCreateInstance = nullptr;
 };
-} // namespace asset
-} // namespace skd
+} // namespace skd::asset

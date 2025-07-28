@@ -21,7 +21,7 @@ bool BinSerde<anim::AnimResource>::write(SBinaryWriter* w, const anim::AnimResou
 
 namespace skr::resource
 {
-skr_guid_t SAnimFactory::GetResourceType()
+skr_guid_t AnimFactory::GetResourceType()
 {
     return skr::type_id_of<anim::AnimResource>();
 }

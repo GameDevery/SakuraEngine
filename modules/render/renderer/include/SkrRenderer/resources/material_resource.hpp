@@ -97,13 +97,13 @@ MaterialShaderVariant {
     skr_guid_t shader_collection;
 
     // variant hash of static switches -> skr_multi_shader_resource_t
-    skr_stable_shader_hash_t switch_hash;
+    SStableShaderHash switch_hash;
 
     // static switch value selection indices, const during runtime
     skr::SerializeConstVector<uint32_t> switch_indices;
 
-    // variant hash of default options -> skr_platform_shader_identifier_t
-    skr_stable_shader_hash_t option_hash;
+    // variant hash of default options -> SPlatformShaderIdentifier
+    SStableShaderHash option_hash;
 
     // options value selection indices, immutable during runtime
     skr::SerializeConstVector<uint32_t> option_indices;
@@ -136,7 +136,7 @@ MaterialResource {
     MaterialOverrides overrides;
 
     typedef struct installed_shader {
-        skr_platform_shader_identifier_t identifier;
+        SPlatformShaderIdentifier identifier;
         skr::StringView                  entry;
         ECGPUShaderStage                 stage;
     } installed_shader;
@@ -155,8 +155,8 @@ MaterialResource {
     skr::Vector<installed_pass> installed_passes;
 };
 
-struct SKR_RENDERER_API SMaterialFactory : public resource::SResourceFactory {
-    virtual ~SMaterialFactory() = default;
+struct SKR_RENDERER_API MaterialFactory : public resource::ResourceFactory {
+    virtual ~MaterialFactory() = default;
 
     struct Root {
         CGPUDeviceId          device       = nullptr;
@@ -165,8 +165,8 @@ struct SKR_RENDERER_API SMaterialFactory : public resource::SResourceFactory {
         skr_io_ram_service_t* ram_service  = nullptr;
         skr_job_queue_id      job_queue    = nullptr;
     };
-    [[nodiscard]] static SMaterialFactory* Create(const Root& root);
-    static void                            Destroy(SMaterialFactory* factory);
+    [[nodiscard]] static MaterialFactory* Create(const Root& root);
+    static void                            Destroy(MaterialFactory* factory);
 };
 } // namespace renderer
 } // namespace skr

@@ -6,8 +6,8 @@ namespace renderer
 {
 using namespace skr::resource;
 
-struct SMaterialTypeFactoryImpl : public SMaterialTypeFactory {
-    SMaterialTypeFactoryImpl(const SMaterialTypeFactory::Root& root)
+struct MaterialTypeFactoryImpl : public MaterialTypeFactory {
+    MaterialTypeFactoryImpl(const MaterialTypeFactory::Root& root)
         : root(root)
     {
     }
@@ -41,12 +41,12 @@ struct SMaterialTypeFactoryImpl : public SMaterialTypeFactory {
     Root root;
 };
 
-SMaterialTypeFactory* SMaterialTypeFactory::Create(const Root& root)
+MaterialTypeFactory* MaterialTypeFactory::Create(const Root& root)
 {
-    return SkrNew<SMaterialTypeFactoryImpl>(root);
+    return SkrNew<MaterialTypeFactoryImpl>(root);
 }
 
-void SMaterialTypeFactory::Destroy(SMaterialTypeFactory* factory)
+void MaterialTypeFactory::Destroy(MaterialTypeFactory* factory)
 {
     SkrDelete(factory);
 }
