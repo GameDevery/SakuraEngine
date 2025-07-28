@@ -5,6 +5,7 @@ namespace animd
 
 void Renderer::create_gbuffer_pipeline()
 {
+    auto _device = _render_device->get_cgpu_device();
     uint32_t *vs_bytes, vs_length;
     uint32_t *fs_bytes, fs_length;
     read_shader_bytes(SKR_UTF8("AnimDebug/gbuffer_vs"), &vs_bytes, &vs_length, _device->adapter->instance->backend);

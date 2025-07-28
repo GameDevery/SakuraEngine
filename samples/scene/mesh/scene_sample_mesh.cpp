@@ -5,6 +5,7 @@
 #include <SkrCore/platform/vfs.h>
 #include <SkrCore/time.h>
 #include <SkrCore/async/thread_job.hpp>
+#include <SkrRT/io/vram_io.hpp>
 
 #include <SkrOS/filesystem.hpp>
 #include "SkrCore/memory/impl/skr_new_delete.hpp"
@@ -91,7 +92,7 @@ struct SceneSampleMeshModule : public skr::IDynamicModule
     skr::task::scheduler_t scheduler;
     skr::ecs::World world{ scheduler };
     skr_vfs_t* resource_vfs = nullptr;
-    skr_io_ram_service_t* ram_service = nullptr;
+    skr::io::IRAMService* ram_service = nullptr;
     skr_io_vram_service_t* vram_service = nullptr;
 
     skr::JobQueue* io_job_queue = nullptr;
@@ -110,7 +111,7 @@ void SceneSampleMeshModule::on_load(int argc, char8_t** argv)
     skr_log_set_level(SKR_LOG_LEVEL_INFO);
     SKR_LOG_INFO(u8"Scene Sample Mesh Module Loaded");
 
-    render_device = skr_get_default_render_device();
+    render_device = SkrRendererModule::Get()->get_render_device();
     scheduler.initialize({});
     scheduler.bind();
     world.initialize();
@@ -147,6 +148,7 @@ void SceneSampleMeshModule::on_load(int argc, char8_t** argv)
     vram_service->run();
 
     scene_renderer = skr::SceneRenderer::Create();
+    render_device = SkrRendererModule::Get()->get_render_device();
     scene_renderer->initialize(render_device, &world, resource_vfs);
 
     // installResourceFactories();
@@ -154,8 +156,8 @@ void SceneSampleMeshModule::on_load(int argc, char8_t** argv)
 
 void SceneSampleMeshModule::on_unload()
 {
-    // uninstallResourceFactories();
-    scene_renderer->finalize(skr_get_default_render_device());
+    uninstallResourceFactories();
+    scene_renderer->finalize(SkrRendererModule::Get()->get_render_device());
     skr::SceneRenderer::Destroy(scene_renderer);
     skr_free_vfs(resource_vfs);
     world.finalize();
@@ -262,7 +264,7 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     SKR_LOG_INFO(u8"Allocate Buffer 1: %zu bytes", out_buffer1.byte_length);
     // it seems buffer1 is not used in this sample, so we can skip it
 
-    auto render_device = skr_get_default_render_device();
+    auto render_device = SkrRendererModule::Get()->get_render_device();
     scene_renderer->create_resource(render_device);
 
     auto cgpu_device = render_device->get_cgpu_device();
@@ -326,7 +328,7 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
             .size = { 1024, 768 },
         };
 
-        imgui_app = skr::UPtr<skr::ImGuiApp>::New(main_window_info, std::move(render_backend));
+        imgui_app = skr::UPtr<skr::ImGuiApp>::New(main_window_info, render_device, std::move(render_backend));
         imgui_app->initialize();
         imgui_app->enable_docking();
     }

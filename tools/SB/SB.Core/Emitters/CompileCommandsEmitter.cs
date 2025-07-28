@@ -49,7 +49,7 @@ namespace SB
                 }
                 GenerateForFile(Target, CFamily.Cpp, SourceFile, null);
             }
-            return new PlainArtifact { IsRestored = false };
+            return null;
         }
 
 
@@ -64,7 +64,7 @@ namespace SB
 
             sw.Stop();
             Time += (int)sw.ElapsedMilliseconds;
-            return new PlainArtifact { IsRestored = false };
+            return null;
         }
 
         public static void WriteToFile(string Path)

@@ -76,7 +76,7 @@ int SAssetImportModule::main_module_exec(int argc, char8_t** argv)
     skr::Vector<skd::asset::ImporterFactory*> availableFactories;
 
     // get rendering context
-    auto render_device = skr_get_default_render_device();
+    auto render_device = SkrRendererModule::Get()->get_render_device();
     auto cgpu_device   = render_device->get_cgpu_device();
     auto gfx_queue     = render_device->get_gfx_queue();
     auto renderGraph   = render_graph::RenderGraph::create(

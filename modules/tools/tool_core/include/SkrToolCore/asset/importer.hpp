@@ -17,7 +17,7 @@ TOOL_CORE_API Importer
     static constexpr uint32_t kDevelopmentVersion = UINT32_MAX;
 
     virtual ~Importer() = default;
-    virtual void* Import(skr_io_ram_service_t*, CookContext * context) = 0;
+    virtual void* Import(skr::io::IRAMService*, CookContext* context) = 0;
     virtual void Destroy(void*) = 0;
     static uint32_t Version() { return kDevelopmentVersion; }
 };

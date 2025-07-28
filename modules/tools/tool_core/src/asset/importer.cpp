@@ -5,12 +5,13 @@
 
 namespace skd::asset
 {
-struct ImporterRegistryImpl : public ImporterRegistry {
-    Importer* LoadImporter(const AssetRecord* record, skr::archive::JsonReader* object, skr_guid_t* pGuid = nullptr) override;
-    uint32_t   GetImporterVersion(skr_guid_t type) override;
-    void       RegisterImporter(skr_guid_t type, ImporterTypeInfo info) override;
+struct ImporterRegistryImpl : public ImporterRegistry
+{
+    Importer* LoadImporter(const AssetRecord* record, skr::archive::JsonReader* object, skr::GUID* pGuid = nullptr) override;
+    uint32_t GetImporterVersion(skr::GUID type) override;
+    void RegisterImporter(skr::GUID type, ImporterTypeInfo info) override;
 
-    skr::FlatHashMap<skr_guid_t, ImporterTypeInfo, skr::Hash<skr_guid_t>> loaders;
+    skr::FlatHashMap<skr::GUID, ImporterTypeInfo, skr::Hash<skr::GUID>> loaders;
 };
 
 ImporterRegistry* GetImporterRegistry()
@@ -19,9 +20,9 @@ ImporterRegistry* GetImporterRegistry()
     return &registry;
 }
 
-Importer* ImporterRegistryImpl::LoadImporter(const AssetRecord* record, skr::archive::JsonReader* object, skr_guid_t* pGuid)
+Importer* ImporterRegistryImpl::LoadImporter(const AssetRecord* record, skr::archive::JsonReader* object, skr::GUID* pGuid)
 {
-    skr_guid_t type;
+    skr::GUID type;
     {
         object->StartObject(); // start importer object
         object->Key(u8"importerType");
@@ -37,7 +38,8 @@ Importer* ImporterRegistryImpl::LoadImporter(const AssetRecord* record, skr::arc
     }
     return nullptr;
 }
-uint32_t ImporterRegistryImpl::GetImporterVersion(skr_guid_t type)
+
+uint32_t ImporterRegistryImpl::GetImporterVersion(skr::GUID type)
 {
     auto iter = loaders.find(type);
     if (iter != loaders.end())
@@ -45,7 +47,7 @@ uint32_t ImporterRegistryImpl::GetImporterVersion(skr_guid_t type)
     return UINT32_MAX;
 }
 
-void ImporterRegistryImpl::RegisterImporter(skr_guid_t type, ImporterTypeInfo info)
+void ImporterRegistryImpl::RegisterImporter(skr::GUID type, ImporterTypeInfo info)
 {
     loaders.insert({ type, info });
 }

@@ -39,7 +39,7 @@ SKR_SHADER_COMPILER_API MaterialTypeImporter final : public Importer
 {
     String jsonPath;
 
-    void* Import(skr_io_ram_service_t*, CookContext * context) override;
+    void* Import(skr::io::IRAMService*, CookContext * context) override;
     void Destroy(void* resource) override;
 };
 

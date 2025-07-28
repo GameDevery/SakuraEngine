@@ -6,7 +6,7 @@
 
 namespace skd::asset
 {
-void* JsonConfigImporter::Import(skr_io_ram_service_t* ioService, CookContext* context)
+void* JsonConfigImporter::Import(skr::io::IRAMService* ioService, CookContext* context)
 {
     const auto assetRecord = context->GetAssetRecord();
     auto type = skr::get_type_from_guid(configType);

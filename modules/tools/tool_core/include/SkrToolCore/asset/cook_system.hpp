@@ -142,7 +142,7 @@ public:
 
     virtual void ParallelForEachAsset(uint32_t batch, skr::FunctionRef<void(skr::span<AssetRecord*>)> f) = 0;
 
-    virtual skr_io_ram_service_t* getIOService() = 0;
+    virtual skr::io::IRAMService* getIOService() = 0;
 
     static constexpr uint32_t ioServicesMaxCount = 1;
 };

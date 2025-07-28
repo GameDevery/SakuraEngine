@@ -36,7 +36,7 @@ thread_local CGPUComputePipelineId lighting_cs_pipeline;
 
 void create_render_pipeline()
 {
-    render_device = skr_get_default_render_device();
+    render_device = SkrRendererModule::Get()->get_render_device();
     auto device = render_device->get_cgpu_device();
     auto gfx_queue = render_device->get_gfx_queue();
 
@@ -237,7 +237,7 @@ int RenderGraphDeferredModule::main_module_exec(int argc, char8_t** argv)
                 .size = { BACK_BUFFER_WIDTH, BACK_BUFFER_HEIGHT },
                 .is_resizable = false
             };
-            imgui_app = UPtr<ImGuiApp>::New(window_config, std::move(render_backend));
+            imgui_app = UPtr<ImGuiApp>::New(window_config, render_device, std::move(render_backend));
             imgui_app->initialize();
             imgui_app->enable_docking();
 

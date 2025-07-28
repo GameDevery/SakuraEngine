@@ -14,7 +14,7 @@ SKR_SHADER_COMPILER_API ShaderOptionImporter final : public Importer
 {
     skr::String jsonPath;
 
-    void* Import(skr_io_ram_service_t*, CookContext * context) override;
+    void* Import(skr::io::IRAMService*, CookContext * context) override;
     void Destroy(void* resource) override;
 };
 
@@ -38,7 +38,7 @@ SKR_SHADER_COMPILER_API ShaderImporter final : public Importer
     skr::Vector<shader_options_handle_t> switch_assets;
     skr::Vector<shader_options_handle_t> option_assets;
 
-    void* Import(skr_io_ram_service_t*, CookContext * context) override;
+    void* Import(skr::io::IRAMService*, CookContext * context) override;
     void Destroy(void* resource) override;
 };
 

@@ -9,7 +9,7 @@
 
 namespace skd::asset
 {
-void* ShaderOptionImporter::Import(skr_io_ram_service_t* ioService, CookContext* context)
+void* ShaderOptionImporter::Import(skr::io::IRAMService* ioService, CookContext* context)
 {
     skr::BlobId ioBuffer = {};
     context->AddSourceFileAndLoad(ioService, jsonPath.c_str(), ioBuffer);

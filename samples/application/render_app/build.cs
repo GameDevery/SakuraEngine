@@ -2,13 +2,13 @@ using SB;
 using SB.Core;
 
 [TargetScript]
-public static class VMemController
+public static class ModelViewer
 {
-    static VMemController()
+    static ModelViewer()
     {
-        Engine.Program("VMemController", "VMEM_CONTROLLER")
+        Engine.Program("SkrModelViewer", "SKR_MODEL_VIEWER")
             .EnableUnityBuild()
-            .Depend(Visibility.Public, "SkrRenderer", "SkrImGui")
+            .Depend(Visibility.Public, "SkrRenderer", "SkrSystem", "SkrGLTFTool")
             .Depend(Visibility.Private, "AppSampleCommon")
             .IncludeDirs(Visibility.Private, "./../../common")
             .AddCppFiles("*.cpp");

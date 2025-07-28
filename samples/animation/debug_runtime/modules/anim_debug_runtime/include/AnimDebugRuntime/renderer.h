@@ -1,9 +1,7 @@
 #pragma once
-#include "SkrBase/config.h"
 #include "SkrGraphics/api.h"
-#include "SkrBase/math.h"
-#include "SkrRT/resource/config_resource.h"
 #include "SkrRenderGraph/frontend/render_graph.hpp"
+#include "SkrRenderer/render_device.h"
 #include "AnimDebugRuntime/bone_geometry.h"
 #include <SkrAnim/ozz/skeleton_utils.h>
 #include <SkrAnim/ozz/local_to_model_job.h>
@@ -75,7 +73,6 @@ public:
     void create_skeleton(ozz::animation::Skeleton& skeleton);
     void update_anim(ozz::animation::Skeleton& skeleton, ozz::span<ozz::math::Float4x4> prealloc_models);
 
-    void create_api_objects();
     void create_resources();
     void create_gbuffer_pipeline();
     void create_lighting_pipeline();
@@ -87,12 +84,7 @@ public:
 public:
     // getters
     Camera* get_pcamera() { return mp_camera; }
-    CGPUDeviceId get_device() const { return _device; }
-    ECGPUBackend get_backend() const { return _backend; }
-    CGPUInstanceId get_instance() const { return _instance; }
-    CGPUAdapterId get_adapter() const { return _adapter; }
-    CGPUQueueId get_gfx_queue() const { return _gfx_queue; }
-    CGPUSamplerId get_static_sampler() const { return _static_sampler; }
+    SRenderDeviceId get_render_device() const { return _render_device; }
     CGPUBufferId get_index_buffer() const { return _index_buffer; }
     CGPUBufferId get_vertex_buffer() const { return _vertex_buffer; }
     CGPUBufferId get_instance_buffer() const { return _instance_buffer; }
@@ -103,12 +95,6 @@ public:
     void set_pcamera(Camera* camera) { mp_camera = camera; }
     void set_lock_FPS(bool lock) { _lock_FPS = lock; }
     void set_aware_DPI(bool aware) { _aware_DPI = aware; }
-    void set_device(CGPUDeviceId device) { _device = device; }
-    void set_backend(ECGPUBackend backend) { _backend = backend; }
-    void set_instance(CGPUInstanceId instance) { _instance = instance; }
-    void set_adapter(CGPUAdapterId adapter) { _adapter = adapter; }
-    void set_gfx_queue(CGPUQueueId gfx_queue) { _gfx_queue = gfx_queue; }
-    void set_static_sampler(CGPUSamplerId static_sampler) { _static_sampler = static_sampler; }
     void set_index_buffer(CGPUBufferId index_buffer) { _index_buffer = index_buffer; }
     void set_vertex_buffer(CGPUBufferId vertex_buffer) { _vertex_buffer = vertex_buffer; }
     void set_instance_buffer(CGPUBufferId instance_buffer) { _instance_buffer = instance_buffer; }
@@ -116,20 +102,15 @@ public:
     void set_height(uint32_t height) { _height = height; }
 
 private:
-    ECGPUBackend _backend = CGPU_BACKEND_D3D12;
-    CGPUDeviceId _device;
-    CGPUInstanceId _instance;
-    CGPUAdapterId _adapter;
-    CGPUQueueId _gfx_queue;
-    CGPUSamplerId _static_sampler;
-    CGPUBufferId _index_buffer;
-    CGPUBufferId _vertex_buffer;
-    CGPUBufferId _instance_buffer;
+    SRenderDeviceId _render_device = nullptr;
+    CGPUBufferId _index_buffer = nullptr;
+    CGPUBufferId _vertex_buffer = nullptr;
+    CGPUBufferId _instance_buffer = nullptr;
 
-    CGPURenderPipelineId _debug_pipeline; // debug draw pipeline
-    CGPURenderPipelineId _gbuffer_pipeline;
-    CGPURenderPipelineId _lighting_pipeline;
-    CGPURenderPipelineId _blit_pipeline;
+    CGPURenderPipelineId _debug_pipeline = nullptr; // debug draw pipeline
+    CGPURenderPipelineId _gbuffer_pipeline = nullptr;
+    CGPURenderPipelineId _lighting_pipeline = nullptr;
+    CGPURenderPipelineId _blit_pipeline = nullptr;
 
     const ECGPUFormat gbuffer_formats[2] = {
         CGPU_FORMAT_R8G8B8A8_UNORM, CGPU_FORMAT_R16G16B16A16_SNORM

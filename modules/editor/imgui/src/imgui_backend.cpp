@@ -45,8 +45,8 @@ static float ImGui_ImplSkrSystem_GetWindowDpiScale(ImGuiViewport* viewpoer)
 }
 
 // ctor & dtor
-ImGuiApp::ImGuiApp(const SystemWindowCreateInfo& main_wnd_create_info, RCUnique<ImGuiRendererBackend> backend)
-    : SystemApp()
+ImGuiApp::ImGuiApp(const SystemWindowCreateInfo& main_wnd_create_info, SRenderDeviceId render_device, RCUnique<ImGuiRendererBackend> backend)
+    : skr::RenderApp(render_device)
     , _renderer_backend(std::move(backend))
     , _main_window_info(main_wnd_create_info)
 {

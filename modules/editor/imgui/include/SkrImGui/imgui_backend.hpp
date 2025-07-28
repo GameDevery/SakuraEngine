@@ -1,10 +1,9 @@
 #pragma once
-#include <SkrImGui/imgui_system_event_handler.hpp>
-#include <SkrContainers/string.hpp>
-#include <SkrContainers/optional.hpp>
-#include <SkrBase/math.h>
-#include <SkrCore/dirty.hpp>
-#include <SkrCore/memory/rc.hpp>
+#include "SkrImGui/imgui_system_event_handler.hpp"
+#include "SkrCore/dirty.hpp"
+#include "SkrCore/memory/rc.hpp"
+#include "SkrRenderer/render_app.hpp"
+
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <chrono>
@@ -15,9 +14,10 @@ struct ImGuiRendererBackend;
 struct SystemApp;
 struct SystemWindow;
 
-struct SKR_IMGUI_API ImGuiApp : public SystemApp {
+struct SKR_IMGUI_API ImGuiApp : public skr::RenderApp
+{
     // ctor & dtor
-    ImGuiApp(const SystemWindowCreateInfo& main_wnd_create_info, RCUnique<ImGuiRendererBackend> backend);
+    ImGuiApp(const SystemWindowCreateInfo& main_wnd_create_info, SRenderDeviceId render_device, RCUnique<ImGuiRendererBackend> backend);
     ~ImGuiApp();
 
     // imgui context
@@ -50,10 +50,10 @@ struct SKR_IMGUI_API ImGuiApp : public SystemApp {
     void enable_high_dpi(bool enable = true);
 
     // getter
-    inline bool           is_created() const { return _context != nullptr; }
+    inline bool is_created() const { return _context != nullptr; }
     inline const Trigger& want_exit() const { return _event_handler ? _event_handler->want_exit() : _want_exit; }
-    inline ImGuiContext*  context() const { return _context; }
-    inline SystemWindow*  main_window() const { return _main_window; }
+    inline ImGuiContext* context() const { return _context; }
+    inline SystemWindow* main_window() const { return _main_window; }
 
     mutable skr::String _clipboard;
 
@@ -63,18 +63,18 @@ private:
     ImGuiContext* _context = nullptr;
 
     // system integration
-    SystemWindowCreateInfo   _main_window_info;
-    SystemWindow*            _main_window   = nullptr;
+    SystemWindowCreateInfo _main_window_info;
+    SystemWindow* _main_window = nullptr;
     ImGuiSystemEventHandler* _event_handler = nullptr;
 
     // render backend
     RCUnique<ImGuiRendererBackend> _renderer_backend = nullptr;
 
     // dirty & trigger (for legacy mode)
-    Trigger _pixel_size_changed    = {};
+    Trigger _pixel_size_changed = {};
     Trigger _content_scale_changed = {};
-    Trigger _want_resize           = {};
-    Trigger _want_exit             = {};
+    Trigger _want_resize = {};
+    Trigger _want_exit = {};
 
     // Helper methods
     void UpdateMouseCursor();

@@ -13,7 +13,7 @@ void SAnimGltfImporter::Destroy(void* data)
     ozz::memory::default_allocator()->Deallocate(data, alignof(RawAnimation));
 }
 
-void* SAnimGltfImporter::Import(skr_io_ram_service_t*, CookContext* context)
+void* SAnimGltfImporter::Import(skr::io::IRAMService*, CookContext* context)
 {
     GltfImporter                          impl;
     ozz::animation::offline::OzzImporter& impoter          = impl;

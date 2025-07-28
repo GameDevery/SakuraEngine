@@ -20,7 +20,7 @@ ShaderSourceCode::~ShaderSourceCode() SKR_NOEXCEPT
 {
 }
 
-void* ShaderImporter::Import(skr_io_ram_service_t* ioService, CookContext* context)
+void* ShaderImporter::Import(skr::io::IRAMService* ioService, CookContext* context)
 {
     skr::BlobId ioBlob = nullptr;
     const auto path = context->AddSourceFileAndLoad(ioService, sourcePath.c_str(), ioBlob);

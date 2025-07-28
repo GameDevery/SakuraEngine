@@ -187,6 +187,8 @@ struct CGPUNSightSingletonImpl : public CGPUNSightSingleton
     SKR_SHARED_LIB_API_PFN(GFSDK_Aftermath_GpuCrashDump_DestroyDecoder) aftermath_GpuCrashDump_DestroyDecoder = nullptr;
 };
 
+
+static std::uint32_t counter = 0;
 CGPUNSightSingletonImpl::CGPUNSightSingletonImpl() SKR_NOEXCEPT
 {
     bool llvm = llvm_library.load(u8"llvm_7_0_1.dll");
@@ -206,7 +208,7 @@ CGPUNSightSingletonImpl::CGPUNSightSingletonImpl() SKR_NOEXCEPT
     {
         cgpu_trace(u8"NSIGHT dll not found");
     }
-    if (aftermath_EnableGpuCrashDumps)
+    if (aftermath_EnableGpuCrashDumps && (counter == 0))
     {
         AFTERMATH_CHECK_ERROR(aftermath_EnableGpuCrashDumps(
             GFSDK_Aftermath_Version_API,
@@ -218,15 +220,20 @@ CGPUNSightSingletonImpl::CGPUNSightSingletonImpl() SKR_NOEXCEPT
             &ResolveMarkerCallback,                                            // Register callback for resolving application-managed markers.
             this));      
     }
+    counter += 1;
 }
 
 CGPUNSightSingletonImpl::~CGPUNSightSingletonImpl() SKR_NOEXCEPT
 {
-    if (aftermath_DisableGpuCrashDumps) aftermath_DisableGpuCrashDumps();
-    if (nsight_library.isLoaded()) nsight_library.unload();
-    if (llvm_library.isLoaded()) llvm_library.unload();
+    counter -= 1;
 
-    cgpu_trace(u8"NSIGHT aftermath unloaded");
+    if (counter == 0)
+    {
+        if (aftermath_DisableGpuCrashDumps) aftermath_DisableGpuCrashDumps();
+        if (nsight_library.isLoaded()) nsight_library.unload();
+        if (llvm_library.isLoaded()) llvm_library.unload();
+        cgpu_trace(u8"NSIGHT aftermath unloaded");
+    }
 }
 
 CGPUNSightSingleton* CGPUNSightSingleton::Get(CGPUInstanceId instance) SKR_NOEXCEPT

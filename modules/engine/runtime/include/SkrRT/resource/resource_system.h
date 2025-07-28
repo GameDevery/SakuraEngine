@@ -93,7 +93,7 @@ struct SKR_RUNTIME_API ResourceSystem
 
 public:
     virtual ~ResourceSystem() = default;
-    virtual void Initialize(ResourceRegistry* provider, skr_io_ram_service_t* ioService) = 0;
+    virtual void Initialize(ResourceRegistry* provider, skr::io::IRAMService* ioService) = 0;
     virtual bool IsInitialized() = 0;
     virtual void Shutdown() = 0;
     virtual void Update() = 0;
@@ -110,7 +110,7 @@ public:
     virtual void UnregisterFactory(skr_guid_t type) = 0;
 
     virtual ResourceRegistry* GetRegistry() const = 0;
-    virtual skr_io_ram_service_t* GetRAMService() const = 0;
+    virtual skr::io::IRAMService* GetRAMService() const = 0;
 
 protected:
     virtual SResourceRecord* _GetOrCreateRecord(const skr_guid_t& guid) = 0;

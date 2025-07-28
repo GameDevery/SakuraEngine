@@ -10,7 +10,6 @@ public static class SkrToolCore
         Engine.Module("SkrToolCore", "TOOL_CORE")
             .EnableUnityBuild()
             .Depend(Visibility.Public, "SkrRT")
-            .Defines(Visibility.Private, $"SKR_RESOURCE_PLATFORM=u8\\\"{BuildSystem.TargetOS}\\\"")
             .IncludeDirs(Visibility.Public, "include")
             .AddCppFiles("src/**.cpp")
             .UsePrivatePCH("src/pch.hpp")

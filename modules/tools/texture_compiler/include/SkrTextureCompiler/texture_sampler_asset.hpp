@@ -13,7 +13,7 @@ SKR_TEXTURE_COMPILER_API TextureSamplerImporter final : public Importer
 {
     skr::String jsonPath;
 
-    void* Import(skr_io_ram_service_t*, CookContext * context) override;
+    void* Import(skr::io::IRAMService*, CookContext * context) override;
     void Destroy(void* resource) override;
 };
 

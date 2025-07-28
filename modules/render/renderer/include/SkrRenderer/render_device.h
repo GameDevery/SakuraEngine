@@ -1,30 +1,23 @@
 #pragma once
-#include "SkrRT/io/vram_io.hpp"
-#include "SkrBase/config.h"
-#include "fwd_types.h"
+#include "SkrGraphics/api.h" // IWYU pragma: export
+#include "fwd_types.h" // IWYU pragma: export
 #ifdef __cplusplus
 
 namespace skr
 {
 struct SKR_RENDERER_API RendererDevice
 {
+public:
     struct Builder
     {
         ECGPUBackend backend;
         bool enable_debug_layer = false;
         bool enable_gpu_based_validation = false;
         bool enable_set_name = true;
-        uint32_t aux_thread_count = 0;
     };
-    static RendererDevice* Create() SKR_NOEXCEPT;
-    static void Free(RendererDevice* device) SKR_NOEXCEPT;
+    static RendererDevice* Create(const Builder& builder) SKR_NOEXCEPT;
+    static void Destroy(RendererDevice* device) SKR_NOEXCEPT;
     
-    virtual ~RendererDevice() = default;
-    virtual void initialize(const Builder& builder) = 0;
-    virtual void finalize() = 0;
-
-    virtual void create_api_objects(const Builder& builder) = 0;
-
     virtual CGPUDeviceId get_cgpu_device() const = 0;
     virtual ECGPUBackend get_backend() const = 0;
     virtual CGPUQueueId get_gfx_queue() const = 0;
@@ -34,6 +27,11 @@ struct SKR_RENDERER_API RendererDevice
     virtual CGPUDStorageQueueId get_memory_dstorage_queue() const = 0;
     virtual CGPUSamplerId get_linear_sampler() const = 0;
     virtual CGPURootSignaturePoolId get_root_signature_pool() const = 0;
+    virtual ~RendererDevice() = default;
+
+protected:
+    virtual void initialize(const Builder& builder) = 0;
+    virtual void finalize() = 0;
 };
 } // namespace skr
 #endif

@@ -13,7 +13,7 @@ TOOL_CORE_API JsonConfigImporter final : public Importer
 {
     skr::String assetPath;
     skr_guid_t configType;
-    void* Import(skr_io_ram_service_t*, CookContext * context) override;
+    void* Import(skr::io::IRAMService*, CookContext * context) override;
     void Destroy(void* resource) override;
 };
 

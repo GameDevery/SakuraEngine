@@ -21,7 +21,7 @@ GLTFTOOL_API GltfMeshImporter final : public Importer
     bool install_to_ram = false;
     bool install_to_vram = true;
 
-    void* Import(skr_io_ram_service_t*, CookContext * context) override;
+    void* Import(skr::io::IRAMService*, CookContext * context) override;
     void Destroy(void* resource) override;
 };
 

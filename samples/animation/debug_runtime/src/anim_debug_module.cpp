@@ -140,8 +140,9 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
     namespace rg = skr::render_graph;
     SkrZoneScopedN("AnimDebugExecution");
     SKR_LOG_INFO(u8"anim debug runtime executed as main module!");
+    auto render_device = SkrRendererModule::Get()->get_render_device();
     animd::Renderer renderer;
-    SKR_LOG_INFO(u8"anim debug renderer created with backend: %s", gCGPUBackendNames[renderer.get_backend()]);
+    SKR_LOG_INFO(u8"anim debug renderer created with backend: %s", gCGPUBackendNames[render_device->get_backend()]);
     renderer.set_aware_DPI(skr_runtime_is_dpi_aware());
 
     // geometry
@@ -199,13 +200,12 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
     context_.Resize(skeleton.num_joints());
     ozz::vector<ozz::math::SoaTransform> locals_;
     locals_.resize(skeleton.num_soa_joints());
-
-    renderer.create_api_objects();
+    
     renderer.create_render_pipeline();
     renderer.create_resources();
 
-    auto device = renderer.get_device();
-    auto gfx_queue = renderer.get_gfx_queue();
+    auto device = render_device->get_cgpu_device();
+    auto gfx_queue = render_device->get_gfx_queue();
 
     auto render_graph = skr::render_graph::RenderGraph::create(
         [&device, &gfx_queue](skr::render_graph::RenderGraphBuilder& builder) {
@@ -221,7 +221,7 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
         render_backend_rg = render_backend.get();
         skr::ImGuiRendererBackendRGConfig config{};
         config.render_graph = render_graph;
-        config.queue = renderer.get_gfx_queue();
+        config.queue = render_device->get_gfx_queue();
         render_backend->init(config);
 
         skr::SystemWindowCreateInfo main_window_info = {
@@ -229,7 +229,7 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
             .size = { 1500, 1500 },
         };
 
-        imgui_app = skr::UPtr<skr::ImGuiApp>::New(main_window_info, std::move(render_backend));
+        imgui_app = skr::UPtr<skr::ImGuiApp>::New(main_window_info, renderer.get_render_device(), std::move(render_backend));
         imgui_app->initialize();
         imgui_app->enable_docking();
         // Apply Sail Style
@@ -439,7 +439,7 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
     }
 
     // wait for rendering done
-    cgpu_wait_queue_idle(renderer.get_gfx_queue());
+    cgpu_wait_queue_idle(render_device->get_gfx_queue());
 
     // destroy render graph
     skr::render_graph::RenderGraph::destroy(render_graph);

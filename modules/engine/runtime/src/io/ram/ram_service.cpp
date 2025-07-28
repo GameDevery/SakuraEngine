@@ -57,12 +57,12 @@ RAMService::RAMService(const skr_ram_io_service_desc_t* desc) SKR_NOEXCEPT
     runner.set_sleep_time(desc->sleep_time);
 }
 
-skr_io_ram_service_t* IRAMService::create(const skr_ram_io_service_desc_t* desc) SKR_NOEXCEPT
+skr::io::IRAMService* IRAMService::create(const skr_ram_io_service_desc_t* desc) SKR_NOEXCEPT
 {
     return SkrNew<RAMService>(desc);
 }
 
-void IRAMService::destroy(skr_io_ram_service_t* service) SKR_NOEXCEPT
+void IRAMService::destroy(skr::io::IRAMService* service) SKR_NOEXCEPT
 {
     SkrZoneScopedN("RAMService::destroy");
 

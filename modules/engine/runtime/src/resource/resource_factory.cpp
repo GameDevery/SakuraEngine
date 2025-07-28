@@ -25,8 +25,7 @@ bool ResourceFactory::Deserialize(SResourceRecord* record, SBinaryReader* reader
             using ReadBinProc = bool(void* o, void* r);
             auto read_bin_data = type->find_extern_method_t<ReadBinProc>(
                 skr::SkrCoreExternMethods::ReadBin,
-                ETypeSignatureCompareFlag::Strict
-            );
+                ETypeSignatureCompareFlag::Strict);
             if (!read_bin_data.invoke(p_obj, reader))
             {
                 // TODO: CALL DTOR IF FAILED
