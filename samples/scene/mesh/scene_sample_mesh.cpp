@@ -18,10 +18,64 @@
 #include "SkrImGui/imgui_render_backend.hpp"
 #include "SkrRenderer/skr_renderer.h"
 #include "SkrRenderer/resources/mesh_resource.h"
+#include "SkrRenderer/render_mesh.h"
 #include "SkrTask/fib_task.hpp"
 #include "SkrGLTFTool/mesh_processing.hpp"
 #include "scene_renderer.hpp"
 #include "cgltf/cgltf.h"
+
+namespace temp
+{
+static const skd::asset::ERawVertexStreamType kGLTFToRawAttributeTypeLUT[] = {
+    skd::asset::ERawVertexStreamType::POSITION,
+    skd::asset::ERawVertexStreamType::NORMAL,
+    skd::asset::ERawVertexStreamType::TANGENT,
+    skd::asset::ERawVertexStreamType::TEXCOORD,
+    skd::asset::ERawVertexStreamType::COLOR,
+    skd::asset::ERawVertexStreamType::JOINTS,
+    skd::asset::ERawVertexStreamType::WEIGHTS,
+    skd::asset::ERawVertexStreamType::CUSTOM,
+    skd::asset::ERawVertexStreamType::Count,
+};
+skd::asset::SRawMesh GenerateRawMeshForGLTFMesh(cgltf_mesh* mesh)
+{
+    skd::asset::SRawMesh raw_mesh = {};
+    raw_mesh.primitives.reserve(mesh->primitives_count);
+    for (uint32_t pid = 0; pid < mesh->primitives_count; pid++)
+    {
+        const auto gltf_primitive = mesh->primitives + pid;
+        skd::asset::SRawPrimitive& primitive = raw_mesh.primitives.add_default().ref();
+        // fill indices
+        {
+            const auto buffer_view = gltf_primitive->indices->buffer_view;
+            const auto buffer_data = static_cast<const uint8_t*>(buffer_view->data ? buffer_view->data : buffer_view->buffer->data);
+            const auto view_data = buffer_data + buffer_view->offset;
+            const auto indices_count = gltf_primitive->indices->count;
+            primitive.index_stream.buffer_view = skr::span<const uint8_t>(view_data + gltf_primitive->indices->offset, gltf_primitive->indices->stride * indices_count);
+            primitive.index_stream.offset = 0;
+            primitive.index_stream.count = indices_count;
+            primitive.index_stream.stride = gltf_primitive->indices->stride;
+        }
+        // fill vertex streams
+        primitive.vertex_streams.reserve(gltf_primitive->attributes_count);
+        for (uint32_t vid = 0; vid < gltf_primitive->attributes_count; vid++)
+        {
+            const auto& attribute = gltf_primitive->attributes[vid];
+            const auto buffer_view = attribute.data->buffer_view;
+            const auto buffer_data = static_cast<const uint8_t*>(buffer_view->data ? buffer_view->data : buffer_view->buffer->data);
+            const auto view_data = buffer_data + buffer_view->offset;
+            const auto vertex_count = attribute.data->count;
+            skd::asset::SRawVertexStream& vertex_stream = primitive.vertex_streams.add_default().ref();
+            vertex_stream.buffer_view = skr::span<const uint8_t>(view_data + attribute.data->offset, attribute.data->stride * vertex_count);
+            vertex_stream.offset = 0;
+            vertex_stream.count = vertex_count;
+            vertex_stream.stride = attribute.data->stride;
+            vertex_stream.type = kGLTFToRawAttributeTypeLUT[attribute.type];
+        }
+    }
+    return raw_mesh;
+}
+} // namespace temp
 
 // The Three-Triangle Example: simple mesh scene hierarchy
 
@@ -123,38 +177,135 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     SKR_LOG_INFO(u8"Running Scene Sample Mesh Module");
 
     std::error_code ec = {};
-    // auto gltf_path = (skr::filesystem::current_path(ec) / "../resources/scene/Cube.gltf").u8string();
-    // SKR_LOG_INFO(u8"gltf file path: {%s}", gltf_path.c_str());
-    // auto* gltf_data = skd::asset::ImportGLTFWithData(gltf_path.c_str(), ram_service, resource_vfs);
-    // if (!gltf_data)
-    // {
-    //     SKR_LOG_ERROR(u8"Failed to load glTF data");
-    //     return 1;
-    // }
-    // SKR_LOG_INFO(u8"Successfully loaded glTF data");
-    // SKR_LOG_INFO(u8"Number of Nodes: %d", gltf_data->nodes_count);
-    // SKR_LOG_INFO(u8"Buffer Count: %d", gltf_data->buffers_count);
-    // if (gltf_data->buffers_count > 0)
-    // {
-    //     SKR_LOG_INFO(u8"Buffer 0 Size: %zu bytes", gltf_data->buffers[0].size);
-    //     SKR_LOG_INFO(u8"Buffer 0 Data: %p", gltf_data->buffers[0].data);
-    //     // First 10 bytes of the first buffer
-    //     if (gltf_data->buffers[0].data && gltf_data->buffers[0].size > 10)
-    //     {
-    //         SKR_LOG_INFO(u8"First 10 bytes of Buffer 0: ");
-    //         for (size_t i = 0; i < 10; ++i)
-    //         {
-    //             SKR_LOG_INFO(u8"%02x ", ((uint8_t*)gltf_data->buffers[0].data)[i]);
-    //         }
-    //         SKR_LOG_INFO(u8"");
-    //     }
-    // }
+    auto gltf_path = (skr::filesystem::current_path(ec) / "../resources/Game/sketchfab/ruby/scene.gltf").u8string();
+    SKR_LOG_INFO(u8"gltf file path: {%s}", gltf_path.c_str());
+    auto* gltf_data = skd::asset::ImportGLTFWithData(gltf_path.c_str(), ram_service, resource_vfs);
+    if (!gltf_data)
+    {
+        SKR_LOG_ERROR(u8"Failed to load glTF data");
+        return 1;
+    }
+    SKR_LOG_INFO(u8"Successfully loaded glTF data");
+    SKR_LOG_INFO(u8"Number of Nodes: %d", gltf_data->nodes_count);
+    SKR_LOG_INFO(u8"Buffer Count: %d", gltf_data->buffers_count);
+
+    if (gltf_data->buffers_count > 0)
+    {
+        SKR_LOG_INFO(u8"Buffer 0 Size: %zu bytes", gltf_data->buffers[0].size);
+        SKR_LOG_INFO(u8"Buffer 0 Data: %p", gltf_data->buffers[0].data);
+        // First 10 bytes of the first buffer
+        if (gltf_data->buffers[0].data && gltf_data->buffers[0].size > 10)
+        {
+            SKR_LOG_INFO(u8"First 10 bytes of Buffer 0: ");
+            for (size_t i = 0; i < 10; ++i)
+            {
+                SKR_LOG_INFO(u8"%02x ", ((uint8_t*)gltf_data->buffers[0].data)[i]);
+            }
+            SKR_LOG_INFO(u8"");
+        }
+    }
+
+    skr_mesh_resource_t mesh_resource = {};
+    mesh_resource.install_to_ram = true;
+    mesh_resource.install_to_vram = true;
+    skr::Vector<uint8_t> buffer0 = {};
+    skr::Vector<uint8_t> buffer1 = {};
+    mesh_resource.name = gltf_data->meshes[0].name ? (const char8_t*)gltf_data->meshes[0].name : u8"CubeMesh";
+    using namespace skr::literals;
+    auto shuffle_layout_id = u8"1b357a40-83ff-471c-8903-23e99d95b273"_guid; // GLTFVertexLayoutWithoutTangentId
+    CGPUVertexLayout shuffle_layout = {};
+    const char* shuffle_layout_name = nullptr;
+    if (!shuffle_layout_id.is_zero())
+    {
+        shuffle_layout_name = skr_mesh_resource_query_vertex_layout(shuffle_layout_id, &shuffle_layout);
+    }
+
+    for (uint32_t i = 0; i < gltf_data->nodes_count; i++)
+    {
+        const auto node_ = gltf_data->nodes + i;
+        auto& mesh_section = mesh_resource.sections.add_default().ref();
+        mesh_section.parent_index = node_->parent ? (int32_t)(node_->parent - gltf_data->nodes) : -1;
+        skd::asset::GetGLTFNodeTransform(node_, mesh_section.translation, mesh_section.scale, mesh_section.rotation);
+        if (node_->mesh != nullptr)
+        {
+            skd::asset::SRawMesh raw_mesh = temp::GenerateRawMeshForGLTFMesh(node_->mesh);
+            skr::Vector<skr_mesh_primitive_t> new_primitives;
+            // record all indices
+            EmplaceAllRawMeshIndices(&raw_mesh, buffer0, new_primitives);
+            EmplaceAllRawMeshVertices(&raw_mesh, shuffle_layout_name ? &shuffle_layout : nullptr, buffer0, new_primitives);
+            for (uint32_t j = 0; j < node_->mesh->primitives_count; j++)
+            {
+                const auto& gltf_prim = node_->mesh->primitives[j];
+                auto& prim = new_primitives[j];
+                prim.vertex_layout_id = shuffle_layout_id;
+                prim.material_index = static_cast<uint32_t>(gltf_prim.material - gltf_data->materials);
+                mesh_section.primive_indices.add(mesh_resource.primitives.size() + j);
+            }
+            mesh_resource.primitives.reserve(mesh_resource.primitives.size() + new_primitives.size());
+            mesh_resource.primitives += new_primitives;
+        }
+    }
+
+    // record buffer bins
+    auto& out_buffer0 = mesh_resource.bins.add_default().ref();
+    out_buffer0.index = 0;
+    out_buffer0.byte_length = buffer0.size();
+    out_buffer0.used_with_index = true;
+    out_buffer0.used_with_vertex = true;
+    auto& out_buffer1 = mesh_resource.bins.add_default().ref();
+    out_buffer1.index = 1;
+    out_buffer1.byte_length = buffer1.size();
+    out_buffer1.used_with_index = false;
+    out_buffer1.used_with_vertex = true;
+
+    SKR_LOG_INFO(u8"Allocate Buffer 0: %zu bytes", out_buffer0.byte_length);
+    SKR_LOG_INFO(u8"Allocate Buffer 1: %zu bytes", out_buffer1.byte_length);
+    // it seems buffer1 is not used in this sample, so we can skip it
 
     auto render_device = skr_get_default_render_device();
     scene_renderer->create_resource(render_device);
 
     auto cgpu_device = render_device->get_cgpu_device();
     auto gfx_queue = render_device->get_gfx_queue();
+
+    // transform mesh_buffer_t into CGPUBufferId
+    CGPUBufferId buf0 = nullptr;
+    CGPUResourceTypes flags = CGPU_RESOURCE_TYPE_NONE;
+    const auto& thisBin = mesh_resource.bins[0];
+    flags |= thisBin.used_with_index ? CGPU_RESOURCE_TYPE_INDEX_BUFFER : 0;
+    flags |= thisBin.used_with_vertex ? CGPU_RESOURCE_TYPE_VERTEX_BUFFER : 0;
+    CGPUBufferDescriptor bdesc = {};
+    bdesc.descriptors = flags;
+    bdesc.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
+    bdesc.flags = CGPU_BCF_NO_DESCRIPTOR_VIEW_CREATION;
+    bdesc.size = thisBin.byte_length;
+    bdesc.name = nullptr; // TODO: set name
+    buf0 = cgpu_create_buffer(cgpu_device, &bdesc);
+
+    // CGPUBufferId mesh_buffers[2] = { nullptr, nullptr };
+    // for (auto i = 0u; i < mesh_resource.bins.size(); i++)
+    // {
+    //     const auto& thisBin = mesh_resource.bins[i];
+    //     CGPUResourceTypes flags = CGPU_RESOURCE_TYPE_NONE;
+    //     flags |= thisBin.used_with_index ? CGPU_RESOURCE_TYPE_INDEX_BUFFER : 0;
+    //     flags |= thisBin.used_with_vertex ? CGPU_RESOURCE_TYPE_VERTEX_BUFFER : 0;
+
+    //     CGPUBufferDescriptor bdesc = {};
+    //     bdesc.descriptors = flags;
+    //     bdesc.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
+    //     bdesc.flags = CGPU_BCF_NO_DESCRIPTOR_VIEW_CREATION;
+    //     bdesc.size = thisBin.byte_length;
+    //     bdesc.name = nullptr; // TODO: set name
+
+    //     mesh_buffers[i] = cgpu_create_buffer(cgpu_device, &bdesc);
+    // }
+    auto render_mesh = mesh_resource.render_mesh = SkrNew<skr_render_mesh_t>();
+    render_mesh->buffers.resize_default(1);
+    render_mesh->buffers[0] = buf0;
+    skr_render_mesh_initialize(render_mesh, &mesh_resource);
+
+    // TODO: it seems the render_mesh loaded, now it is time to render it
+
     auto render_graph = skr::render_graph::RenderGraph::create(
         [&cgpu_device, &gfx_queue](skr::render_graph::RenderGraphBuilder& builder) {
             builder.with_device(cgpu_device)
@@ -248,5 +399,7 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     skr::render_graph::RenderGraph::destroy(render_graph);
     imgui_app->shutdown();
     skr::input::Input::Finalize();
+    SkrDelete(render_mesh);
+
     return 0;
 }
