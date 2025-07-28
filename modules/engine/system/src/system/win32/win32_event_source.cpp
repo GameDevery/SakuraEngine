@@ -140,24 +140,33 @@ bool Win32EventSource::process_message(MSG& msg, SkrSystemEvent& out_event)
             if (wParam == SIZE_MINIMIZED)
             {
                 out_event.type = SKR_SYSTEM_EVENT_WINDOW_MINIMIZED;
+                return true;
             }
             else if (wParam == SIZE_MAXIMIZED)
             {
                 out_event.type = SKR_SYSTEM_EVENT_WINDOW_MAXIMIZED;
+                return true;
             }
             else if (wParam == SIZE_RESTORED)
             {
                 out_event.type = SKR_SYSTEM_EVENT_WINDOW_RESTORED;
+                return true;
             }
-            return true;
+            else if (!window_resizing_.contains(hwnd))
+            {
+                // Only send resize event if not in resizing mode (e.g. programmatic resize)
+                RECT rect;
+                GetClientRect(hwnd, &rect);
+                out_event.type = SKR_SYSTEM_EVENT_WINDOW_RESIZED;
+                out_event.window.x = rect.right - rect.left;
+                out_event.window.y = rect.bottom - rect.top;
+                return true;
+            }
+            return false;  // No event during resize drag
             
         case WM_SIZING:
-            {
-                out_event.type = SKR_SYSTEM_EVENT_WINDOW_RESIZED;
-                out_event.window.x = LOWORD(lParam);  // width
-                out_event.window.y = HIWORD(lParam);  // height
-            }
-            return true;
+            // Ignore resize events during user drag
+            return false;
             
         case WM_MOVE:
             out_event.type = SKR_SYSTEM_EVENT_WINDOW_MOVED;
@@ -343,6 +352,29 @@ bool Win32EventSource::process_message(MSG& msg, SkrSystemEvent& out_event)
             out_event.mouse.clicks = 0;
             out_event.mouse.wheel_x = 0.0f;
             out_event.mouse.wheel_y = 0.0f;
+            return true;
+        }
+            
+        // Window resize tracking
+        case WM_ENTERSIZEMOVE:
+            // Mark window as being resized
+            window_resizing_.add(hwnd, true);
+            return false;  // No event to generate
+            
+        case WM_EXITSIZEMOVE:
+        {
+            // Mark resize as completed
+            window_resizing_.remove(hwnd);
+            
+            // Get final window size
+            RECT rect;
+            GetClientRect(hwnd, &rect);
+            
+            // Send resize event with final size
+            out_event.type = SKR_SYSTEM_EVENT_WINDOW_RESIZED;
+            out_event.window.window_native_handle = hwnd;
+            out_event.window.x = rect.right - rect.left;
+            out_event.window.y = rect.bottom - rect.top;
             return true;
         }
             
