@@ -70,7 +70,6 @@ struct SceneRendererImpl : public skr::SceneRenderer
 
     void produce_drawcalls(sugoi_storage_t* storage, skr::render_graph::RenderGraph* render_graph) override
     {
-        frame_count++;
         produce_mesh_drawcall(storage, render_graph);
     }
 
@@ -136,15 +135,15 @@ struct SceneRendererImpl : public skr::SceneRenderer
         auto backbuffer = render_graph->get_texture(u8"backbuffer");
         const auto back_desc = render_graph->resolve_descriptor(backbuffer);
         render_graph->add_render_pass(
-            [=](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassBuilder& builder) {
+            [this, vertex_buffer_handle, index_buffer_handle, constant_buffer, backbuffer](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassBuilder& builder) {
                 builder.set_name(u8"scene_render_pass")
                     .set_pipeline(pipeline)
-                    .read(u8"Constants", constant_buffer.range(0, sizeof(skr_float4x4_t)))
                     .use_buffer(vertex_buffer_handle, CGPU_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER)
                     .use_buffer(index_buffer_handle, CGPU_RESOURCE_STATE_INDEX_BUFFER)
+                    .use_buffer(constant_buffer, CGPU_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER)
                     .write(0, backbuffer, CGPU_LOAD_ACTION_CLEAR);
             },
-            [&](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassContext& context) {
+            [=](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassContext& context) {
                 // upload cbuffer
                 {
                     auto buf = context.resolve(constant_buffer);
@@ -162,8 +161,6 @@ struct SceneRendererImpl : public skr::SceneRenderer
                     auto buf = context.resolve(index_buffer_handle);
                     memcpy(buf->info->cpu_mapped_address, g_Indices, sizeof(g_Indices));
                 }
-
-                // draw command
                 {
                     cgpu_render_encoder_set_viewport(context.encoder, 0.0, 0.0, (float)back_desc->width, (float)back_desc->height, 0.0f, 1.0f);
                     cgpu_render_encoder_set_scissor(context.encoder, 0, 0, back_desc->width, back_desc->height);
@@ -184,17 +181,17 @@ struct SceneRendererImpl : public skr::SceneRenderer
 
     void draw(skr::render_graph::RenderGraph* render_graph) override
     {
-        auto backbuffer = render_graph->get_texture(u8"backbuffer");
-        const auto back_desc = render_graph->resolve_descriptor(backbuffer);
-        if (!drawcalls.size()) return;
-        if (drawcalls.size() == 0)
-            return; // no models need to draw
+        // auto backbuffer = render_graph->get_texture(u8"backbuffer");
+        // const auto back_desc = render_graph->resolve_descriptor(backbuffer);
+        // if (!drawcalls.size()) return;
+        // if (drawcalls.size() == 0)
+        //     return; // no models need to draw
 
-        CGPURootSignatureId root_signature = nullptr;
-        root_signature = drawcalls[0].pipeline->root_signature;
-        render_graph->add_render_pass(
-            [=](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassBuilder& builder) {},
-            [=](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassContext& pass_context) {});
+        // CGPURootSignatureId root_signature = nullptr;
+        // root_signature = drawcalls[0].pipeline->root_signature;
+        // render_graph->add_render_pass(
+        //     [=](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassBuilder& builder) {},
+        //     [=](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassContext& pass_context) {});
     }
 
     void prepare_pipeline_settings();
@@ -265,10 +262,10 @@ void SceneRendererImpl::prepare_pipeline(skr::RendererDevice* render_device)
     rp_desc.fragment_shader = &ppl_fs;
     rp_desc.render_target_count = 1;
     rp_desc.color_formats = &color_format;
-    rp_desc.depth_stencil_format = depth_format;
 
     rp_desc.rasterizer_state = &rs_state;
     pipeline = cgpu_create_render_pipeline(cgpu_device, &rp_desc);
+
     cgpu_free_shader_library(fs);
     cgpu_free_shader_library(vs);
 }

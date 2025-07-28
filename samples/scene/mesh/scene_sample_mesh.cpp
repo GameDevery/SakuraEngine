@@ -93,7 +93,6 @@ void SceneSampleMeshModule::on_load(int argc, char8_t** argv)
     vram_service->run();
 
     scene_renderer = skr::SceneRenderer::Create();
-
     scene_renderer->initialize(render_device, &world, resource_vfs);
 
     // installResourceFactories();
@@ -224,6 +223,7 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
                         .import(native_backbuffer, CGPU_RESOURCE_STATE_UNDEFINED)
                         .allow_render_target();
                 });
+            scene_renderer->produce_drawcalls(world.get_storage(), render_graph);
         };
         {
             SkrZoneScopedN("ImGuiRender");
