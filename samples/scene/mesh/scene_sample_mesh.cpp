@@ -16,7 +16,6 @@
 
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrImGui/imgui_backend.hpp"
-#include "SkrImGui/imgui_render_backend.hpp"
 #include "SkrRenderer/skr_renderer.h"
 #include "SkrRenderer/resources/mesh_resource.h"
 #include "SkrRenderer/render_mesh.h"
@@ -100,7 +99,6 @@ struct SceneSampleMeshModule : public skr::IDynamicModule
     SRenderDeviceId render_device = nullptr;
 
     skr::UPtr<skr::ImGuiApp> imgui_app = nullptr;
-    skr::ImGuiRendererBackendRG* imgui_render_backend = nullptr;
     skr::SceneRenderer* scene_renderer = nullptr;
 };
 
@@ -307,31 +305,22 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     skr_render_mesh_initialize(render_mesh, &mesh_resource);
 
     // TODO: it seems the render_mesh loaded, now it is time to render it
-
-    auto render_graph = skr::render_graph::RenderGraph::create(
-        [&cgpu_device, &gfx_queue](skr::render_graph::RenderGraphBuilder& builder) {
-            builder.with_device(cgpu_device)
-                .with_gfx_queue(gfx_queue)
-                .enable_memory_aliasing();
-        });
-
     {
-        auto render_backend = skr::RCUnique<skr::ImGuiRendererBackendRG>::New();
-        skr::ImGuiRendererBackendRGConfig config = {};
-        config.render_graph = render_graph;
-        config.queue = gfx_queue;
-        render_backend->init(config);
-        imgui_render_backend = render_backend.get();
+        skr::render_graph::RenderGraphBuilder graph_builder;
+        graph_builder.with_device(cgpu_device)
+            .with_gfx_queue(gfx_queue)
+            .enable_memory_aliasing();
 
         skr::SystemWindowCreateInfo main_window_info = {
             .title = skr::format(u8"Scene Viewer [{}]", gCGPUBackendNames[cgpu_device->adapter->instance->backend]),
             .size = { 1024, 768 },
         };
 
-        imgui_app = skr::UPtr<skr::ImGuiApp>::New(main_window_info, render_device, std::move(render_backend));
+        imgui_app = skr::UPtr<skr::ImGuiApp>::New(main_window_info, render_device, graph_builder);
         imgui_app->initialize();
         imgui_app->enable_docking();
     }
+    auto render_graph = imgui_app->render_graph();
     // Time
     SHiresTimer tick_timer;
     int64_t elapsed_us = 0;
@@ -353,40 +342,21 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
         // Update resources
         auto resource_system = skr::resource::GetResourceSystem();
         resource_system->Update();
-
-        {
-            SkrZoneScopedN("ImGUINewFrame");
-            imgui_app->begin_frame();
-        }
         {
             ImGui::Begin("Scene Sample Mesh");
             ImGui::Text("Some Text");
             ImGui::End();
         }
         {
-            SkrZoneScopedN("ImGuiEndFrame");
-            imgui_app->end_frame();
-        }
-        {
             // update viewport
             SkrZoneScopedN("Viewport Render");
-            auto viewport = ImGui::GetMainViewport();
-            CGPUTextureId native_backbuffer = imgui_render_backend->get_backbuffer(viewport);
-            auto back_buffer = render_graph->create_texture(
-                [=](skr::render_graph::RenderGraph& g, skr::render_graph::TextureBuilder& builder) {
-                    skr::String buf_name = skr::format(u8"backbuffer");
-                    builder.set_name((const char8_t*)buf_name.c_str())
-                        .import(native_backbuffer, CGPU_RESOURCE_STATE_UNDEFINED)
-                        .allow_render_target();
-                });
+            imgui_app->acquire_frames();
             scene_renderer->produce_drawcalls(world.get_storage(), render_graph);
         };
         {
             SkrZoneScopedN("ImGuiRender");
-            imgui_render_backend->set_load_action(
-                ImGui::GetMainViewport(),
-                CGPU_LOAD_ACTION_LOAD);
-            imgui_app->render();
+            imgui_app->set_load_action(CGPU_LOAD_ACTION_LOAD);
+            imgui_app->render_imgui();
         }
         {
             frame_index = render_graph->execute();
@@ -394,11 +364,10 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
                 render_graph->collect_garbage(frame_index - RG_MAX_FRAME_IN_FLIGHT * 10);
         }
         // present
-        imgui_render_backend->present_all();
+        imgui_app->present_all();
     }
 
     cgpu_wait_queue_idle(gfx_queue);
-    skr::render_graph::RenderGraph::destroy(render_graph);
     imgui_app->shutdown();
     skr::input::Input::Finalize();
     SkrDelete(render_mesh);

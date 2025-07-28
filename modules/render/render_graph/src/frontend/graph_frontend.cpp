@@ -366,8 +366,17 @@ const ECGPUResourceState RenderGraph::get_lastest_state(const BufferNode* buffer
     return result;
 }
 
+void RenderGraph::add_before_execute_callback(const BeforeExecuteCallback& callback)
+{
+    exec_callbacks.add(callback);
+}
+
 uint64_t RenderGraph::execute(RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
+    for (auto callback : exec_callbacks)
+        callback(*this);
+    exec_callbacks.clear();
+    
     graph->clear();
     return frame_index++;
 }

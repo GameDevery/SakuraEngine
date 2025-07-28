@@ -994,7 +994,6 @@ int SGameModule::main_module_exec(int argc, char8_t** argv)
     cgpu_wait_queue_idle(gfx_queue);
     cgpu_wait_fences(&present_fence, 1);
     cgpu_free_fence(present_fence);
-    render_graph::RenderGraph::destroy(renderGraph);
     game_finalize_render_effects(game_renderer, renderGraph);
     // render_graph_imgui_finalize();
     skr_free_window(main_window);

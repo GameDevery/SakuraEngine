@@ -7,7 +7,6 @@
 #include "SkrRenderer/skr_renderer.h"
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrImGui/imgui_backend.hpp"
-#include "SkrImGui/imgui_render_backend.hpp"
 #if SKR_PLAT_WINDOWS
     #include <shellscalingapi.h>
 #endif
@@ -31,7 +30,6 @@ class SVMemCCModule : public skr::IDynamicModule
 
     // imgui
     skr::UPtr<skr::ImGuiApp> imgui_app = nullptr;
-    skr::ImGuiRendererBackendRG* imgui_render = nullptr;
 
     skr::render_graph::RenderGraph* graph = nullptr;
 };
@@ -157,7 +155,6 @@ void SVMemCCModule::imgui_ui()
 
 int SVMemCCModule::main_module_exec(int argc, char8_t** argv)
 {
-    namespace render_graph = skr::render_graph;
     SRenderDevice::Builder bd = {
         .backend = backend,
         .enable_debug_layer = false,
@@ -165,36 +162,23 @@ int SVMemCCModule::main_module_exec(int argc, char8_t** argv)
         .enable_set_name = true
     };
     render_device = SRenderDevice::Create(bd);
-    auto adapter = render_device->get_cgpu_device()->adapter;
     auto device = render_device->get_cgpu_device();
     auto gfx_queue = render_device->get_gfx_queue();
-    // init rendering
-    {
-        graph = render_graph::RenderGraph::create(
-            [=, this](skr::render_graph::RenderGraphBuilder& builder) {
-                builder.with_device(device)
-                    .with_gfx_queue(gfx_queue)
-                    .enable_memory_aliasing();
-            });
-    }
 
     // init imgui
     {
         using namespace skr;
 
-        auto render_backend = RCUnique<ImGuiRendererBackendRG>::New();
-        imgui_render = render_backend.get();
-        ImGuiRendererBackendRGConfig config{};
-        config.render_graph = graph;
-        config.queue = gfx_queue;
-        render_backend->init(config);
+        skr::render_graph::RenderGraphBuilder graph_builder;
+        graph_builder.with_device(device)
+            .with_gfx_queue(gfx_queue)
+            .enable_memory_aliasing();
 
         imgui_app = UPtr<ImGuiApp>::New(
             SystemWindowCreateInfo{
                 .title = u8"Video Memory Controller",
                 .size = { 1280, 720 } },
-            render_device,
-            std::move(render_backend));
+            render_device, graph_builder);
         imgui_app->initialize();
         imgui_app->enable_docking();
     }
@@ -209,26 +193,16 @@ int SVMemCCModule::main_module_exec(int argc, char8_t** argv)
         imgui_app->pump_message();
 
         // imgui UI
-        imgui_app->begin_frame();
         imgui_ui();
-        imgui_app->end_frame();
 
         // prepare rendering
         buffers.remove_all(nullptr);
 
-        auto native_backbuffer = imgui_render->get_backbuffer(ImGui::GetMainViewport());
-        imgui_render->set_load_action(ImGui::GetMainViewport(), CGPU_LOAD_ACTION_LOAD);
-        SkrZoneScopedN("GraphSetup");
-        // render graph setup & compile & exec
-        auto back_buffer = graph->create_texture(
-            [=](render_graph::RenderGraph& g, render_graph::TextureBuilder& builder) {
-                builder.set_name(u8"backbuffer")
-                    .import(native_backbuffer, CGPU_RESOURCE_STATE_UNDEFINED)
-                    .allow_render_target();
-            });
+        imgui_app->acquire_frames();
+        imgui_app->set_load_action(CGPU_LOAD_ACTION_LOAD);
 
         // draw imgui
-        imgui_app->render();
+        imgui_app->render_imgui();
 
         // run rg
         frame_index = graph->execute();
@@ -238,7 +212,7 @@ int SVMemCCModule::main_module_exec(int argc, char8_t** argv)
         }
 
         // present
-        imgui_render->present_all();
+        imgui_app->present_all();
 
         // Avoid too much CPU Usage
         skr_thread_sleep(16);
@@ -250,7 +224,6 @@ void SVMemCCModule::on_unload()
 {
     SKR_LOG_INFO(u8"vmem controller unloaded!");
     cgpu_wait_queue_idle(render_device->get_gfx_queue());
-    skr::render_graph::RenderGraph::destroy(graph);
     imgui_app->shutdown();
 
     // clean up

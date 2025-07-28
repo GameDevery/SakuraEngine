@@ -259,6 +259,10 @@ uint64_t RenderGraphBackend::get_latest_finished_frame() SKR_NOEXCEPT
 
 uint64_t RenderGraphBackend::execute(RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
+    for (auto callback : exec_callbacks)
+        callback(*this);
+    exec_callbacks.clear();
+
     const auto executor_index = frame_index % RG_MAX_FRAME_IN_FLIGHT;
     RenderGraphStackAllocator::Reset();
     {

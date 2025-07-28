@@ -1,7 +1,6 @@
 #include "SkrGraphics/api.h"
 #include "SkrCore/memory/sp.hpp"
 #include "SkrSystem/advanced_input.h"
-#include "SkrImGui/imgui_render_backend.hpp"
 #include <SkrImGui/imgui_backend.hpp>
 
 int main()
@@ -23,34 +22,25 @@ int main()
     auto device = render_device->get_cgpu_device();
     auto gfx_queue = render_device->get_gfx_queue();
 
-    // create render graph
-    auto render_graph = render_graph::RenderGraph::create(
-        [=](render_graph::RenderGraphBuilder& builder) {
-            builder.with_device(device)
-                .with_gfx_queue(gfx_queue)
-                .enable_memory_aliasing();
-        });
-
     // init imgui
     skr::UPtr<skr::ImGuiApp> imgui_app = nullptr;
-    ImGuiRendererBackendRG* render_backend_rg = nullptr;
     {
-        auto render_backend = RCUnique<ImGuiRendererBackendRG>::New();
-        render_backend_rg = render_backend.get();
-        ImGuiRendererBackendRGConfig config{};
-        config.render_graph = render_graph;
-        config.queue = gfx_queue;
-        render_backend->init(config);
+        render_graph::RenderGraphBuilder graph_builder;
+        graph_builder.with_device(device)
+            .with_gfx_queue(gfx_queue)
+            .enable_memory_aliasing();
+
         skr::SystemWindowCreateInfo main_window_info = {
             .title = skr::format(u8"Live2D Viewer Inner [{}]", gCGPUBackendNames[device->adapter->instance->backend]),
             .size = { 1500, 1500 },
         };
 
-        imgui_app = skr::UPtr<skr::ImGuiApp>::New(main_window_info, render_device, std::move(render_backend));
+        imgui_app = skr::UPtr<skr::ImGuiApp>::New(main_window_info, render_device, graph_builder);
         imgui_app->initialize();
         imgui_app->enable_docking();
         // imgui_backend.enable_multi_viewport();
     }
+    auto render_graph = imgui_app->render_graph();
 
     // draw loop
     bool show_demo_window = true;
@@ -62,7 +52,6 @@ int main()
     while (!imgui_app->want_exit().comsume())
     {
         imgui_app->pump_message();
-        imgui_app->begin_frame();
         {
             ImGuiIO& io = ImGui::GetIO();
 
@@ -104,35 +93,19 @@ int main()
             }
         }
 
-        {
-            // create backbuffer
-            auto viewport = ImGui::GetMainViewport();
-            CGPUTextureId native_backbuffer = render_backend_rg->get_backbuffer(viewport);
-            render_graph->create_texture(
-                [=](skr::render_graph::RenderGraph& g, skr::render_graph::TextureBuilder& builder) {
-                    skr::String buf_name = skr::format(u8"backbuffer");
-                    builder.set_name((const char8_t*)buf_name.c_str())
-                        .import(native_backbuffer, CGPU_RESOURCE_STATE_UNDEFINED)
-                        .allow_render_target();
-                });
-        }
-
-        imgui_app->end_frame();
-        imgui_app->render();
+        imgui_app->acquire_frames();
+        imgui_app->render_imgui();
 
         frame_index = render_graph->execute();
         if (frame_index >= RG_MAX_FRAME_IN_FLIGHT * 10)
             render_graph->collect_garbage(frame_index - RG_MAX_FRAME_IN_FLIGHT * 10);
 
         // present
-        render_backend_rg->present_all();
+        imgui_app->present_all();
     }
 
     // wait for rendering done
     cgpu_wait_queue_idle(gfx_queue);
-
-    // destroy render graph
-    render_graph::RenderGraph::destroy(render_graph);
 
     // destroy imgui
     imgui_app->shutdown();

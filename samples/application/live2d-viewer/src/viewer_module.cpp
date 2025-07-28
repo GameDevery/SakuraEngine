@@ -15,7 +15,6 @@
 #include "SkrRT/runtime_module.h"
 #include "SkrSystem/advanced_input.h"
 #include <SkrImGui/imgui_backend.hpp>
-#include <SkrImGui/imgui_render_backend.hpp>
 #include "SkrRenderer/skr_renderer.h"
 #include "SkrLive2D/l2d_model_resource.h"
 #include "SkrLive2D/l2d_render_model.h"
@@ -50,7 +49,6 @@ public:
 
     // imgui
     skr::UPtr<skr::ImGuiApp> imgui_app = nullptr;
-    skr::ImGuiRendererBackendRG* imgui_render_backend = nullptr;
     skr::Live2DRenderer* l2d_renderer = nullptr;
 };
 
@@ -199,6 +197,7 @@ void create_test_scene(skr_vfs_t* resource_vfs, skr_io_ram_service_t* ram_servic
 
 int SLive2DViewerModule::main_module_exec(int argc, char8_t** argv)
 {
+    using namespace skr;
     namespace render_graph = skr::render_graph;
 
     SKR_LOG_INFO(u8"live2d viewer executed!");
@@ -210,34 +209,22 @@ int SLive2DViewerModule::main_module_exec(int argc, char8_t** argv)
     auto adapter_detail = cgpu_query_adapter_detail(cgpu_device->adapter);
     auto ram_service = SLive2DViewerModule::Get()->ram_service;
 
-    // init rendering context
-    auto renderGraph = render_graph::RenderGraph::create(
-        [=](skr::render_graph::RenderGraphBuilder& builder) {
-            builder.with_device(cgpu_device)
-                .with_gfx_queue(gfx_queue)
-                .enable_memory_aliasing();
-        });
-
     // init imgui
     {
-        using namespace skr;
-        
+        skr::render_graph::RenderGraphBuilder graph_builder;
+        graph_builder.with_device(cgpu_device)
+            .with_gfx_queue(gfx_queue)
+            .enable_memory_aliasing();
         SystemWindowCreateInfo main_window_info = 
         {
             .title = skr::format(u8"Live2D Viewer Inner [{}]", gCGPUBackendNames[cgpu_device->adapter->instance->backend]),
             .size = { 1500, 1500 },
         };
-        auto render_backend = skr::RCUnique<skr::ImGuiRendererBackendRG>::New();
-        ImGuiRendererBackendRGConfig config = {};
-        config.render_graph = renderGraph;
-        config.queue = gfx_queue;
-        render_backend->init(config);
-        imgui_render_backend = render_backend.get();
-
-        imgui_app = UPtr<ImGuiApp>::New(main_window_info, render_device, std::move(render_backend));
+        imgui_app = UPtr<ImGuiApp>::New(main_window_info, render_device, graph_builder);
         imgui_app->initialize();
         imgui_app->enable_docking();
     }
+    auto renderGraph = imgui_app->render_graph();
 
     // init live2d
     create_test_scene(resource_vfs, ram_service, bUseCVV);
@@ -275,12 +262,6 @@ int SLive2DViewerModule::main_module_exec(int argc, char8_t** argv)
             skr::input::Input::GetInstance()->Tick();
         }
 
-        // imgui begin frame
-        {
-            SkrZoneScopedN("ImGUINewFrame");
-            imgui_app->begin_frame();
-        }
-
         // config
         static uint32_t sample_count = 0;
         bool bPrevUseCVV = bUseCVV;
@@ -309,28 +290,6 @@ int SLive2DViewerModule::main_module_exec(int argc, char8_t** argv)
 
             bool bShowMetrics = true;
             ImGui::ShowMetricsWindow(&bShowMetrics);
-            /*
-            {
-                const char* items[] = { "DirectStorage(File)", "DirectStorage(Memory)", "UploadBuffer" };
-                ImGui::Text("UploadMethod");
-                ImGui::SameLine();
-                const char* combo_preview_value = items[upload_method];  // Pass in the preview value visible before opening the combo (it could be anything)
-                if (ImGui::BeginCombo("##UploadMethod", combo_preview_value, ImGuiComboFlags_PopupAlignLeft))
-                {
-                    for (int n = 0; n < IM_ARRAYSIZE(items); n++)
-                    {
-                        const bool is_selected = (upload_method == n);
-                        if (ImGui::Selectable(items[n], is_selected))
-                            upload_method = static_cast<DemoUploadMethod>(n);
-
-                        // Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
-                        if (is_selected)
-                            ImGui::SetItemDefaultFocus();
-                    }
-                    ImGui::EndCombo();
-                }
-            }
-            */
             {
                 static int sample_index = 0;
                 const char* items[] = { "1x", "2x", "4x", "8x" };
@@ -356,11 +315,6 @@ int SLive2DViewerModule::main_module_exec(int argc, char8_t** argv)
             ImGui::End();
         }
 
-        // imgui end frame
-        {
-            SkrZoneScopedN("ImGUIEndFrame");
-            imgui_app->end_frame();
-        }
 
         // restart test scene
         if (bPrevUseCVV != bUseCVV)
@@ -376,18 +330,7 @@ int SLive2DViewerModule::main_module_exec(int argc, char8_t** argv)
         CGPUTextureId native_backbuffer;
         {
             SkrZoneScopedN("AcquireFrame");
-
-            // get backbuffer
-            native_backbuffer = imgui_render_backend->get_backbuffer(
-                ImGui::GetMainViewport());
-
-            // register backbuffer
-            renderGraph->create_texture(
-                [=](render_graph::RenderGraph& g, render_graph::TextureBuilder& builder) {
-                    builder.set_name(u8"backbuffer")
-                        .import(native_backbuffer, CGPU_RESOURCE_STATE_UNDEFINED)
-                        .allow_render_target();
-                });
+            imgui_app->acquire_frames();
         }
 
         // render live2d scene
@@ -400,10 +343,8 @@ int SLive2DViewerModule::main_module_exec(int argc, char8_t** argv)
         // render imgui
         {
             SkrZoneScopedN("RenderIMGUI");
-            imgui_render_backend->set_load_action(
-                ImGui::GetMainViewport(),
-                CGPU_LOAD_ACTION_LOAD);
-            imgui_app->render();
+            imgui_app->set_load_action(CGPU_LOAD_ACTION_LOAD);
+            imgui_app->render_imgui();
         }
 
         // execute render graph
@@ -418,10 +359,9 @@ int SLive2DViewerModule::main_module_exec(int argc, char8_t** argv)
         }
 
         // do present
-        imgui_render_backend->present_all();
+        imgui_app->present_all();
     }
     cgpu_wait_queue_idle(gfx_queue);
-    render_graph::RenderGraph::destroy(renderGraph);
     imgui_app->shutdown();
 
     skr::input::Input::Finalize();

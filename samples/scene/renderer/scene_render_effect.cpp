@@ -14,7 +14,7 @@
 struct SceneRendererImpl : public skr::SceneRenderer
 {
     const char8_t* push_constants_name = u8"push_constants";
-    const ECGPUFormat color_format = CGPU_FORMAT_B8G8R8A8_UNORM;
+    const ECGPUFormat color_format = CGPU_FORMAT_R8G8B8A8_UNORM;
     const ECGPUFormat depth_format = CGPU_FORMAT_D32_SFLOAT;
 
     skr_vfs_t* resource_vfs;

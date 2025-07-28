@@ -222,7 +222,6 @@ int SAssetImportModule::main_module_exec(int argc, char8_t** argv)
         }
     }
     cgpu_wait_queue_idle(gfx_queue);
-    render_graph::RenderGraph::destroy(renderGraph);
     imgui_backend.destroy();
     return 0;
 }
