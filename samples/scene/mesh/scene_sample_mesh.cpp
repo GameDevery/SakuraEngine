@@ -5,6 +5,7 @@
 #include <SkrCore/platform/vfs.h>
 #include <SkrCore/time.h>
 #include <SkrCore/async/thread_job.hpp>
+#include <SkrRT/io/vram_io.hpp>
 
 #include <SkrOS/filesystem.hpp>
 #include "SkrCore/memory/impl/skr_new_delete.hpp"
@@ -56,7 +57,7 @@ void SceneSampleMeshModule::on_load(int argc, char8_t** argv)
     skr_log_set_level(SKR_LOG_LEVEL_INFO);
     SKR_LOG_INFO(u8"Scene Sample Mesh Module Loaded");
 
-    render_device = skr_get_default_render_device();
+    render_device = SkrRendererModule::Get()->get_render_device();
     scheduler.initialize({});
     scheduler.bind();
     world.initialize();
