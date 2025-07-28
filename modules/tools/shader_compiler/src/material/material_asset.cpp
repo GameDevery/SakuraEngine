@@ -4,12 +4,10 @@
 #include "SkrShaderCompiler/assets/material_asset.hpp"
 #include "SkrSerde/json_serde.hpp"
 
-namespace skd
-{
-namespace asset
+namespace skd::asset
 {
 
-void* SMaterialImporter::Import(skr_io_ram_service_t* ioService, SCookContext* context)
+void* MaterialImporter::Import(skr_io_ram_service_t* ioService, CookContext* context)
 {
     skr::BlobId blob = nullptr;
     context->AddSourceFileAndLoad(ioService, jsonPath.c_str(), blob);
@@ -28,13 +26,13 @@ void* SMaterialImporter::Import(skr_io_ram_service_t* ioService, SCookContext* c
     return mat_asset;
 }
 
-void SMaterialImporter::Destroy(void* resource)
+void MaterialImporter::Destroy(void* resource)
 {
     auto mat_asset = (skr_material_asset_t*)resource;
     SkrDelete(mat_asset);
 }
 
-bool SMaterialCooker::Cook(SCookContext* ctx)
+bool MaterialCooker::Cook(CookContext* ctx)
 {
     const auto outputPath = ctx->GetOutputPath();
     //-----load config
@@ -205,5 +203,4 @@ bool SMaterialCooker::Cook(SCookContext* ctx)
     }
     return ctx->Save(runtime_material);
 }
-} // namespace asset
-} // namespace skd
+} // namespace skd::asset

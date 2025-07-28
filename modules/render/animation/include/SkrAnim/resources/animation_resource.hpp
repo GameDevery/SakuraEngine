@@ -27,10 +27,10 @@ struct SKR_ANIM_API BinSerde<anim::AnimResource> {
 
 namespace resource
 {
-class SKR_ANIM_API SAnimFactory : public SResourceFactory
+class SKR_ANIM_API AnimFactory : public ResourceFactory
 {
 public:
-    virtual ~SAnimFactory() noexcept = default;
+    virtual ~AnimFactory() noexcept = default;
     skr_guid_t GetResourceType() override;
     bool       AsyncIO() override { return true; }
 };

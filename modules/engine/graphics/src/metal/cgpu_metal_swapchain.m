@@ -117,6 +117,12 @@ CGPUSwapChainId cgpu_create_swapchain_metal(CGPUDeviceId device, const CGPUSwapC
     // Create synchronization semaphore
     swapchain->mImageAcquiredSemaphore = dispatch_semaphore_create(imageCount - 1);
     
+    // Initialize drawable array with NSNull placeholders
+    swapchain->pDrawables = [[NSMutableArray alloc] initWithCapacity:imageCount];
+    for (uint32_t i = 0; i < imageCount; ++i) {
+        [swapchain->pDrawables addObject:[NSNull null]];
+    }
+    
     // Initialize texture structures
     for (uint32_t i = 0; i < imageCount; ++i) {
         CGPUTexture_Metal* texture = &swapchain->pBackBufferTextures[i];
@@ -157,15 +163,11 @@ CGPUSwapChainId cgpu_create_swapchain_metal(CGPUDeviceId device, const CGPUSwapC
 uint32_t cgpu_acquire_next_image_metal(CGPUSwapChainId swapchain, const CGPUAcquireNextDescriptor* desc)
 {
     CGPUSwapChain_Metal* mtlSwapchain = (CGPUSwapChain_Metal*)swapchain;
+    CGPUDevice_Metal* device = (CGPUDevice_Metal*)swapchain->device;
     
     @autoreleasepool {
         // Wait on semaphore to ensure we don't exceed drawable count
         dispatch_semaphore_wait(mtlSwapchain->mImageAcquiredSemaphore, DISPATCH_TIME_FOREVER);
-        
-        // Release previous drawable if exists
-        if (mtlSwapchain->pCurrentDrawable) {
-            mtlSwapchain->pCurrentDrawable = nil;
-        }
         
         // Get next drawable
         id<CAMetalDrawable> drawable = [mtlSwapchain->pLayer nextDrawable];
@@ -176,26 +178,30 @@ uint32_t cgpu_acquire_next_image_metal(CGPUSwapChainId swapchain, const CGPUAcqu
             return UINT32_MAX;
         }
         
-        // Store drawable and update texture
-        mtlSwapchain->pCurrentDrawable = drawable;
+        // Store drawable and texture at current index
         uint32_t index = mtlSwapchain->mCurrentBackBufferIndex;
+        mtlSwapchain->pDrawables[index] = drawable;  // NSMutableArray will retain it
         CGPUTexture_Metal* texture = &mtlSwapchain->pBackBufferTextures[index];
         texture->pTexture = drawable.texture;
         
-        // Signal fence/semaphore if requested
-        if (desc) {
+        // Signal fence/semaphore if requested using command buffer for proper ordering
+        if (desc && (desc->signal_semaphore || desc->fence)) {
+            // Create a lightweight command buffer to signal the fence/semaphore
+            id<MTLCommandQueue> queue = device->ppMtlQueues[CGPU_QUEUE_TYPE_GRAPHICS][0];
+            id<MTLCommandBuffer> signalCmd = [queue commandBufferWithUnretainedReferences];
+            signalCmd.label = @"Acquire Signal";
+            
             if (desc->signal_semaphore) {
                 CGPUSemaphore_Metal* semaphore = (CGPUSemaphore_Metal*)desc->signal_semaphore;
-                // Metal events support signaling in command buffers, not directly
-                // We'll handle semaphore signaling in queue present
+                [signalCmd encodeSignalEvent:semaphore->pMTLEvent value:semaphore->mFenceValue++];
             }
             
             if (desc->fence) {
                 CGPUFence_Metal* fence = (CGPUFence_Metal*)desc->fence;
-                fence->mSubmitted = 1;
-                fence->mValue++;
-                [(id<MTLSharedEvent>)fence->mtlEvent setSignaledValue:fence->mValue];
+                [signalCmd encodeSignalEvent:fence->pMTLEvent value:fence->mFenceValue++];
             }
+            
+            [signalCmd commit];
         }
         
         // Update index for next acquire
@@ -207,42 +213,47 @@ uint32_t cgpu_acquire_next_image_metal(CGPUSwapChainId swapchain, const CGPUAcqu
 
 void cgpu_queue_present_metal(CGPUQueueId queue, const CGPUQueuePresentDescriptor* desc)
 {
-    cgpu_assert(queue && desc && desc->swapchain && "Invalid parameters for present");
-    
-    CGPUSwapChain_Metal* swapchain = (CGPUSwapChain_Metal*)desc->swapchain;
-    CGPUQueue_Metal* mtlQueue = (CGPUQueue_Metal*)queue;
+    CGPUSwapChain_Metal* S = (CGPUSwapChain_Metal*)desc->swapchain;
+    CGPUQueue_Metal* Q = (CGPUQueue_Metal*)queue;
     
     @autoreleasepool {
-        if (!swapchain->pCurrentDrawable) {
-            cgpu_assert(false && "No drawable to present");
+        // Get the drawable for the specified index
+        uint32_t presentIndex = desc->index;
+        if (presentIndex >= S->super.buffer_count) {
+            cgpu_error("Present index %d exceeds buffer count %d", presentIndex, S->super.buffer_count);
+            return;
+        }
+        
+        id<CAMetalDrawable> drawable = S->pDrawables[presentIndex];
+        if (!drawable || drawable == (id)[NSNull null]) {
+            cgpu_error("No drawable at index %d", presentIndex);
             return;
         }
         
         // Create command buffer for present
-        id<MTLCommandBuffer> presentCmd = [mtlQueue->mtlCommandQueue commandBuffer];
+        id<MTLCommandBuffer> presentCmd = [Q->mtlCommandQueue commandBufferWithUnretainedReferences];
+        presentCmd.label = @"Present";
         
         // Wait for semaphores if any
         if (desc->wait_semaphore_count > 0) {
+            CGPUFence_Metal** WaitSemaphores = (CGPUFence_Metal**)desc->wait_semaphores;
             for (uint32_t i = 0; i < desc->wait_semaphore_count; ++i) {
-                CGPUSemaphore_Metal* semaphore = (CGPUSemaphore_Metal*)desc->wait_semaphores[i];
-                if (semaphore->mtlSemaphore) {
-                    [presentCmd encodeWaitForEvent:semaphore->mtlSemaphore value:semaphore->value];
-                }
+                [presentCmd encodeWaitForEvent:WaitSemaphores[i]->pMTLEvent 
+                                         value:WaitSemaphores[i]->mFenceValue - 1];
             }
         }
         
-        // Present drawable
-        [presentCmd presentDrawable:swapchain->pCurrentDrawable];
+        // Present the drawable
+        [presentCmd presentDrawable:drawable];
         
-        // Add completion handler to signal semaphore
+        // Add completion handler to clear drawable and signal semaphore
         [presentCmd addCompletedHandler:^(id<MTLCommandBuffer> _Nonnull buffer) {
-            dispatch_semaphore_signal(swapchain->mImageAcquiredSemaphore);
+            S->pDrawables[presentIndex] = [NSNull null];  // Clear drawable after present
+            dispatch_semaphore_signal(S->mImageAcquiredSemaphore);
         }];
         
+        // Commit the command buffer
         [presentCmd commit];
-        
-        // Clear current drawable reference
-        swapchain->pCurrentDrawable = nil;
     }
 }
 
@@ -253,9 +264,10 @@ void cgpu_free_swapchain_metal(CGPUSwapChainId swapchain)
     CGPUSwapChain_Metal* mtlSwapchain = (CGPUSwapChain_Metal*)swapchain;
     
     @autoreleasepool {
-        // Clear current drawable
-        if (mtlSwapchain->pCurrentDrawable) {
-            mtlSwapchain->pCurrentDrawable = nil;
+        // Release drawable array
+        if (mtlSwapchain->pDrawables) {
+            [mtlSwapchain->pDrawables removeAllObjects];
+            mtlSwapchain->pDrawables = nil;
         }
         
         // Release layer

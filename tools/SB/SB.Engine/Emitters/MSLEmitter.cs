@@ -129,10 +129,7 @@ namespace SB
         {
             // xcrun is part of Xcode command line tools on macOS, no need to download
             if (BuildSystem.HostOS != OSPlatform.OSX)
-            {
-                Log.Warning("MSLEmitter is only supported on macOS with Xcode installed.");
                 return;
-            }
 
             // Check if xcrun is available
             int ExitCode = BuildSystem.RunProcess("xcrun", "--version", out var Output, out var Error);

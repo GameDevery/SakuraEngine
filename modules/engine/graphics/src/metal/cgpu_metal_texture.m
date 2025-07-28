@@ -243,10 +243,6 @@ CGPUTextureViewId cgpu_create_texture_view_metal(CGPUDeviceId device, const stru
         return NULL;
     }
     
-    // Setup view info
-    view->super.device = device;
-    view->super.info = *desc;
-    
     @autoreleasepool {
         // Determine view parameters
         ECGPUFormat viewFormat = desc->format != CGPU_FORMAT_UNDEFINED ? desc->format : texture->super.info->format;

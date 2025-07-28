@@ -12,9 +12,9 @@
 
 namespace skd::asset
 {
-bool SSkelCooker::Cook(SCookContext* ctx)
+bool SkelCooker::Cook(CookContext* ctx)
 {
-    SkrZoneScopedNS("SSkelCooker::Cook", 4);
+    SkrZoneScopedNS("SkelCooker::Cook", 4);
 
     using namespace ozz::animation::offline;
     //-----import resource object

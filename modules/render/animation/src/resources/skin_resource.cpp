@@ -2,7 +2,7 @@
 
 namespace skr::resource
 {
-skr_guid_t SSkinFactory::GetResourceType()
+skr_guid_t SkinFactory::GetResourceType()
 {
     using namespace skr::anim;
     return skr::type_id_of<SkinResource>();

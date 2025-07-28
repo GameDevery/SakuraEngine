@@ -16,43 +16,53 @@ void                         SProject::SetWorkspace(const skr::filesystem::path&
 SProject* SProject::OpenProject(const skr::filesystem::path& projectFilePath) noexcept
 {
     std::error_code ec          = {};
-    auto            resolvePath = [&](skr::String& path) {
-        auto view  = path.view();
-        auto found = view.find(u8"${");
-        if (!found)
-        {
-            return path;
-        }
-        skr::String resolved;
-        resolved.reserve(path.length_buffer());
-        // resolved.append(view);
-        while (true)
-        {
-            resolved.append(view.subview(0, found.index() - 1));
-            auto found_end = view.subview(found.index()).find(u8"}");
-            if (!found_end)
-            {
-                resolved.append(view.subview(found.index(), view.size() - 1));
+    auto            resolvePath = [&](const skr::String& path) -> skr::String {
+        skr::String result;
+        result.reserve(path.size() + 256); // Reserve extra space for expansions
+        
+        auto view = path.view();
+        auto currentView = view;
+        
+        while (!currentView.is_empty()) {
+            // Find next variable marker
+            auto varStart = currentView.find(u8"${");
+            if (!varStart) {
+                // No more variables, append the rest
+                result.append(currentView);
                 break;
             }
-            auto var = view.subview(found.index() + 2, found_end.index() - 1);
-            if (var == u8"workspace")
-            {
-                resolved.append(Workspace.u8string().c_str());
-            }
-            else if (var == u8"platform")
-            {
-                resolved.append(SKR_RESOURCE_PLATFORM);
-            }
-            view  = view.subview(found_end.index() + 1, view.size() - 1);
-            found = view.find(u8"${");
-            if (!found)
-            {
-                resolved.append(view);
+            
+            // Append text before variable
+            result.append(currentView.subview(0, varStart.index()));
+            
+            // Find variable end
+            auto remainingView = currentView.subview(varStart.index() + 2);
+            auto varEnd = remainingView.find(u8"}");
+            if (!varEnd) {
+                // Unclosed variable, treat as literal text
+                SKR_LOG_WARN(u8"Unclosed variable in path: %s", path.c_str());
+                result.append(currentView.subview(varStart.index()));
                 break;
             }
+            
+            // Extract and resolve variable name
+            auto varName = remainingView.subview(0, varEnd.index());
+            if (varName == u8"workspace") {
+                result.append(Workspace.u8string().c_str());
+            } else if (varName == u8"platform") {
+                result.append(SKR_RESOURCE_PLATFORM);
+            } else {
+                // Unknown variable, keep as-is
+                SKR_LOG_WARN(u8"Unknown variable '%s' in path: %s", 
+                    skr::String(varName).c_str(), path.c_str());
+                result.append(currentView.subview(varStart.index(), varEnd.index() + 3));
+            }
+            
+            // Move to next part
+            currentView = currentView.subview(varStart.index() + varEnd.index() + 3);
         }
-        return resolved;
+        
+        return result;
     };
     auto toAbsolutePath = [&](skr::String& path) {
         auto                  resolved = resolvePath(path);

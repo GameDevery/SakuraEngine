@@ -72,8 +72,8 @@ int SAssetImportModule::main_module_exec(int argc, char8_t** argv)
 
     // configs
     skr::String                                filePath;
-    skr::Vector<skd::asset::SImporterFactory*> factories;
-    skr::Vector<skd::asset::SImporterFactory*> availableFactories;
+    skr::Vector<skd::asset::ImporterFactory*> factories;
+    skr::Vector<skd::asset::ImporterFactory*> availableFactories;
 
     // get rendering context
     auto render_device = skr_get_default_render_device();

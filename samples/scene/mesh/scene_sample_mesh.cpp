@@ -23,7 +23,6 @@
 #include "scene_renderer.hpp"
 #include "cgltf/cgltf.h"
 
-
 // The Three-Triangle Example: simple mesh scene hierarchy
 
 struct SceneSampleMeshModule : public skr::IDynamicModule
@@ -42,8 +41,7 @@ struct SceneSampleMeshModule : public skr::IDynamicModule
     skr_io_vram_service_t* vram_service = nullptr;
 
     skr::JobQueue* io_job_queue = nullptr;
-    skr::renderer::SMeshFactory* mesh_factory = nullptr;
-    skr::resource::SLocalResourceRegistry* registry;
+    skr::renderer::MeshFactory* mesh_factory = nullptr;
     SRenderDeviceId render_device = nullptr;
 
     skr::UPtr<skr::ImGuiApp> imgui_app = nullptr;
@@ -76,22 +74,22 @@ void SceneSampleMeshModule::on_load(int argc, char8_t** argv)
     vfs_desc.override_mount_dir = resourceRoot.c_str();
     resource_vfs = skr_create_vfs(&vfs_desc);
 
-    auto ioServiceDesc       = make_zeroed<skr_ram_io_service_desc_t>();
-    ioServiceDesc.name       = u8"SceneSample-RAMIOService";
+    auto ioServiceDesc = make_zeroed<skr_ram_io_service_desc_t>();
+    ioServiceDesc.name = u8"SceneSample-RAMIOService";
     ioServiceDesc.sleep_time = 1000 / 60;
     ioServiceDesc.io_job_queue = io_job_queue;
     ioServiceDesc.callback_job_queue = io_job_queue;
-    ram_service              = skr_io_ram_service_t::create(&ioServiceDesc);
+    ram_service = skr_io_ram_service_t::create(&ioServiceDesc);
     ram_service->run();
 
-    auto vramServiceDesc               = make_zeroed<skr_vram_io_service_desc_t>();
-    vramServiceDesc.name               = u8"SceneSample-VRAMIOService";
-    vramServiceDesc.awake_at_request   = true;
-    vramServiceDesc.ram_service        = ram_service;
+    auto vramServiceDesc = make_zeroed<skr_vram_io_service_desc_t>();
+    vramServiceDesc.name = u8"SceneSample-VRAMIOService";
+    vramServiceDesc.awake_at_request = true;
+    vramServiceDesc.ram_service = ram_service;
     vramServiceDesc.callback_job_queue = io_job_queue;
-    vramServiceDesc.use_dstorage       = true;
-    vramServiceDesc.gpu_device         = render_device->get_cgpu_device();
-    vram_service                       = skr_io_vram_service_t::create(&vramServiceDesc);
+    vramServiceDesc.use_dstorage = true;
+    vramServiceDesc.gpu_device = render_device->get_cgpu_device();
+    vram_service = skr_io_vram_service_t::create(&vramServiceDesc);
     vram_service->run();
 
     scene_renderer = skr::SceneRenderer::Create();
@@ -114,37 +112,10 @@ void SceneSampleMeshModule::on_unload()
 
 void SceneSampleMeshModule::installResourceFactories()
 {
-    // TODO: struggling to out how to use the resource system
-    std::error_code ec = {};
-    auto resourceRoot = (skr::filesystem::current_path(ec) / "../resources");
-    auto sampleResourceRoot = resourceRoot / "scene";
-    auto resource_system = skr::resource::GetResourceSystem();
-
-    registry = SkrNew<skr::resource::SLocalResourceRegistry>(resource_vfs);
-    skr::resource::GetResourceSystem()->Initialize(registry, ram_service);
-    // mesh factory
-    {
-        skr::renderer::SMeshFactory::Root factoryRoot = {};
-        auto RootStr = sampleResourceRoot.u8string();
-        factoryRoot.dstorage_root = RootStr.c_str();
-        factoryRoot.vfs = resource_vfs;
-        factoryRoot.ram_service = ram_service;
-        factoryRoot.vram_service = vram_service;
-        factoryRoot.render_device = render_device;
-        mesh_factory = skr::renderer::SMeshFactory::Create(factoryRoot);
-        resource_system->RegisterFactory(mesh_factory);
-    }
 }
 
 void SceneSampleMeshModule::uninstallResourceFactories()
 {
-    auto resource_system = skr::resource::GetResourceSystem();
-    resource_system->Shutdown();
-    skr::renderer::SMeshFactory::Destroy(mesh_factory);
-    SkrDelete(registry);
-    skr_io_ram_service_t::destroy(ram_service);
-    skr_io_vram_service_t::destroy(vram_service);
-    SkrDelete(io_job_queue);
 }
 
 int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
@@ -179,7 +150,6 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     //         SKR_LOG_INFO(u8"");
     //     }
     // }
-
 
     auto render_device = skr_get_default_render_device();
     auto cgpu_device = render_device->get_cgpu_device();

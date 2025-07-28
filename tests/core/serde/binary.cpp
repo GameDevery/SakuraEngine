@@ -7,13 +7,14 @@
 
 #include "SkrSerde/bin_serde.hpp"
 
-struct BinarySerdeTests {
+struct BinarySerdeTests
+{
 protected:
-    skr::Vector<uint8_t>          buffer;
+    skr::Vector<uint8_t> buffer;
     skr::archive::BinVectorWriter vec_writer_impl;
-    skr::archive::BinSpanReader   vec_reader_impl;
-    SBinaryWriter                 writer{ vec_writer_impl };
-    SBinaryReader                 reader{ vec_reader_impl };
+    skr::archive::BinSpanReader vec_reader_impl;
+    SBinaryWriter writer{ vec_writer_impl };
+    SBinaryReader reader{ vec_reader_impl };
     BinarySerdeTests()
     {
         vec_writer_impl.buffer = &buffer;
@@ -26,14 +27,14 @@ protected:
 
 TEST_CASE_METHOD(BinarySerdeTests, "primitives")
 {
-    uint64_t value  = 0x12345678;
+    uint64_t value = 0x12345678;
     uint64_t value2 = 0x87654321;
     skr::bin_write(&writer, value);
     skr::bin_write(&writer, value2);
 
     vec_reader_impl.data = skr::span<const uint8_t>(buffer.data(), buffer.size());
 
-    uint64_t readValue  = 0;
+    uint64_t readValue = 0;
     uint64_t readValue2 = 0;
     skr::bin_read(&reader, readValue);
     EXPECT_EQ(value, readValue);
@@ -43,8 +44,8 @@ TEST_CASE_METHOD(BinarySerdeTests, "primitives")
 
 TEST_CASE_METHOD(BinarySerdeTests, "vector")
 {
-    uint64_t              value  = 0x12345678;
-    uint64_t              value2 = 0x87654321;
+    uint64_t value = 0x12345678;
+    uint64_t value2 = 0x87654321;
     skr::Vector<uint64_t> arr;
     arr.add(value);
     arr.add(value2);
@@ -61,8 +62,8 @@ TEST_CASE_METHOD(BinarySerdeTests, "vector")
 
 TEST_CASE_METHOD(BinarySerdeTests, "arr")
 {
-    uint64_t              value  = 0x12345678;
-    uint64_t              value2 = 0x87654321;
+    uint64_t value = 0x12345678;
+    uint64_t value2 = 0x87654321;
     skr::Vector<uint64_t> arr;
     arr.add(value);
     arr.add(value2);

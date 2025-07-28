@@ -13605,7 +13605,7 @@ struct NV_D3D11_META_COMMAND_RESOURCE
 {
     union
     {
-         NVDX_ObjectHandle ResourceHandle;    // NVAPI handle of a buffer resource (use NvAPI_D3D11_GetResourceHandle to get this handle)
+         NVDX_ObjectHandle AsyncResource;    // NVAPI handle of a buffer resource (use NvAPI_D3D11_GetResourceHandle to get this handle)
          NvU64             unused;            // to get correct sturcutre size on 32 bit builds
     };
     NvU64 Offset;                             // offset within the resource in bytes

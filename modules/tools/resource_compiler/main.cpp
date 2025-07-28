@@ -27,36 +27,36 @@ bool IsAsset(skr::filesystem::path path)
     return false;
 }
 
-skr::renderer::SShaderResourceFactory* shaderResourceFactory = nullptr;
-skr::renderer::SShaderOptionsFactory* shaderOptionsFactory = nullptr;
-skr::renderer::SMaterialTypeFactory* matTypeFactory = nullptr;
-skr::resource::SLocalResourceRegistry* registry = nullptr;
+skr::renderer::ShaderResourceFactory* shaderResourceFactory = nullptr;
+skr::renderer::ShaderOptionsFactory* shaderOptionsFactory = nullptr;
+skr::renderer::MaterialTypeFactory* matTypeFactory = nullptr;
+skr::resource::LocalResourceRegistry* registry = nullptr;
 skr::resource::SSkelFactory* skelFactory = nullptr;
 
 void InitializeResourceSystem(skd::SProject& proj)
 {
     using namespace skr::literals;
     auto resource_system = skr::resource::GetResourceSystem();
-    registry = SkrNew<skr::resource::SLocalResourceRegistry>(proj.resource_vfs);
+    registry = SkrNew<skr::resource::LocalResourceRegistry>(proj.resource_vfs);
     resource_system->Initialize(registry, proj.ram_service);
 
     // shader options factory
     {
-        skr::renderer::SShaderOptionsFactory::Root factoryRoot = {};
-        shaderOptionsFactory = skr::renderer::SShaderOptionsFactory::Create(factoryRoot);
+        skr::renderer::ShaderOptionsFactory::Root factoryRoot = {};
+        shaderOptionsFactory = skr::renderer::ShaderOptionsFactory::Create(factoryRoot);
         resource_system->RegisterFactory(shaderOptionsFactory);
     }
     // shader resource factory
     {
-        skr::renderer::SShaderResourceFactory::Root factoryRoot = {};
+        skr::renderer::ShaderResourceFactory::Root factoryRoot = {};
         factoryRoot.dont_create_shader = true;
-        shaderResourceFactory = skr::renderer::SShaderResourceFactory::Create(factoryRoot);
+        shaderResourceFactory = skr::renderer::ShaderResourceFactory::Create(factoryRoot);
         resource_system->RegisterFactory(shaderResourceFactory);
     }
     // material type factory
     {
-        skr::renderer::SMaterialTypeFactory::Root factoryRoot = {};
-        matTypeFactory = skr::renderer::SMaterialTypeFactory::Create(factoryRoot);
+        skr::renderer::MaterialTypeFactory::Root factoryRoot = {};
+        matTypeFactory = skr::renderer::MaterialTypeFactory::Create(factoryRoot);
         resource_system->RegisterFactory(matTypeFactory);
     }
     {
@@ -67,9 +67,9 @@ void InitializeResourceSystem(skd::SProject& proj)
 
 void DestroyResourceSystem(skd::SProject& proj)
 {
-    skr::renderer::SMaterialTypeFactory::Destroy(matTypeFactory);
-    skr::renderer::SShaderOptionsFactory::Destroy(shaderOptionsFactory);
-    skr::renderer::SShaderResourceFactory::Destroy(shaderResourceFactory);
+    skr::renderer::MaterialTypeFactory::Destroy(matTypeFactory);
+    skr::renderer::ShaderOptionsFactory::Destroy(shaderOptionsFactory);
+    skr::renderer::ShaderResourceFactory::Destroy(shaderResourceFactory);
 
     skr::resource::GetResourceSystem()->Shutdown();
     SkrDelete(registry);
@@ -145,7 +145,7 @@ int compile_project(skd::SProject* project)
     //----- schedule cook tasks (checking dependencies)
     {
         system.ParallelForEachAsset(1,
-        [&](skr::span<skd::asset::SAssetRecord*> assets) {
+        [&](skr::span<skd::asset::AssetRecord*> assets) {
             SkrZoneScopedN("Cook");
             for (auto asset : assets)
             {

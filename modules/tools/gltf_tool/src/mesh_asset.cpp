@@ -12,30 +12,30 @@
 
 #include "SkrProfile/profile.h"
 
-void* skd::asset::SGltfMeshImporter::Import(skr_io_ram_service_t* ioService, SCookContext* context)
+void* skd::asset::GltfMeshImporter::Import(skr_io_ram_service_t* ioService, CookContext* context)
 {
     skr::filesystem::path relPath = assetPath.u8_str();
-    auto                  ext     = relPath.extension();
+    auto ext = relPath.extension();
     if (ext != ".gltf")
     {
         return nullptr;
     }
     const auto assetRecord = context->GetAssetRecord();
-    auto       path        = context->AddSourceFile(relPath).u8string();
-    auto       vfs         = assetRecord->project->asset_vfs;
+    auto path = context->AddSourceFile(relPath).u8string();
+    auto vfs = assetRecord->project->asset_vfs;
     return ImportGLTFWithData(path.c_str(), ioService, vfs);
 }
 
-void skd::asset::SGltfMeshImporter::Destroy(void* resource)
+void skd::asset::GltfMeshImporter::Destroy(void* resource)
 {
     ::cgltf_free((cgltf_data*)resource);
 }
 
-bool skd::asset::SMeshCooker::Cook(SCookContext* ctx)
+bool skd::asset::MeshCooker::Cook(CookContext* ctx)
 {
-    const auto outputPath  = ctx->GetOutputPath();
+    const auto outputPath = ctx->GetOutputPath();
     const auto assetRecord = ctx->GetAssetRecord();
-    auto       cfg         = LoadConfig<SMeshCookConfig>(ctx);
+    auto cfg = LoadConfig<MeshCookConfig>(ctx);
     if (cfg.vertexType == skr_guid_t{})
     {
         SKR_LOG_ERROR(u8"MeshCooker: VertexType is not specified for asset %s!", ctx->GetAssetPath().c_str());
@@ -47,11 +47,11 @@ bool skd::asset::SMeshCooker::Cook(SCookContext* ctx)
         return false;
     }
     SKR_DEFER({ ctx->Destroy(gltf_data); });
-    skr_mesh_resource_t               mesh;
+    skr_mesh_resource_t mesh;
     skr::Vector<skr::Vector<uint8_t>> blobs;
-    auto                              importer = static_cast<SGltfMeshImporter*>(ctx->GetImporter());
-    mesh.install_to_ram                        = importer->install_to_ram;
-    mesh.install_to_vram                       = importer->install_to_vram;
+    auto importer = static_cast<GltfMeshImporter*>(ctx->GetImporter());
+    mesh.install_to_ram = importer->install_to_ram;
+    mesh.install_to_vram = importer->install_to_vram;
     if (importer->invariant_vertices)
     {
         CookGLTFMeshData(gltf_data, &cfg, mesh, blobs);
@@ -77,13 +77,13 @@ bool skd::asset::SMeshCooker::Cook(SCookContext* ctx)
         skr::parallel_for(mesh.primitives.begin(), mesh.primitives.end(), 1, [&](auto begin, auto end) {
             SkrZoneScopedN("OptimizeMesh");
 
-            const auto&               prim         = *begin;
-            auto&                     indices_blob = blobs[prim.index_buffer.buffer_index];
-            const auto                first_index  = prim.index_buffer.first_index;
-            const auto                index_stride = prim.index_buffer.stride;
-            const auto                index_offset = prim.index_buffer.index_offset;
-            const auto                index_count  = prim.index_buffer.index_count;
-            const auto                vertex_count = prim.vertex_count;
+            const auto& prim = *begin;
+            auto& indices_blob = blobs[prim.index_buffer.buffer_index];
+            const auto first_index = prim.index_buffer.first_index;
+            const auto index_stride = prim.index_buffer.stride;
+            const auto index_offset = prim.index_buffer.index_offset;
+            const auto index_count = prim.index_buffer.index_count;
+            const auto vertex_count = prim.vertex_count;
             skr::stl_vector<uint64_t> optimized_indices;
             optimized_indices.resize(index_count);
             uint64_t* indices_ptr = optimized_indices.data();
@@ -111,16 +111,16 @@ bool skd::asset::SMeshCooker::Cook(SCookContext* ctx)
             {
                 if (vb.attribute == ESkrVertexAttribute::SKR_VERT_ATTRIB_POSITION)
                 {
-                    auto&      vertices_blob = blobs[vb.buffer_index];
+                    auto& vertices_blob = blobs[vb.buffer_index];
                     const auto vertex_stride = vb.stride;
                     (void)vertex_stride;
-                    skr::stl_vector<skr_float3_t> vertices;
+                    skr::stl_vector<float3> vertices;
                     vertices.resize(vertex_count);
                     for (size_t i = 0; i < vertex_count; i++)
                     {
-                        vertices[i] = *(skr_float3_t*)(vertices_blob.data() + vb.offset);
+                        vertices[i] = *(float3*)(vertices_blob.data() + vb.offset);
                     }
-                    meshopt_optimizeOverdraw(indices_ptr, indices_ptr, index_count, (float*)vertices.data(), vertices.size(), sizeof(skr_float3_t), kOverDrawThreshold);
+                    meshopt_optimizeOverdraw(indices_ptr, indices_ptr, index_count, (float*)vertices.data(), vertices.size(), sizeof(float3), kOverDrawThreshold);
 
                     // vertex fetch optimization should go last as it depends on the final index order
                     // TODO: meshopt_optimizeVertexFetch
@@ -162,7 +162,7 @@ bool skd::asset::SMeshCooker::Cook(SCookContext* ctx)
         SKR_DEFER({ fclose(buffer_file); });
         if (!buffer_file)
         {
-            SKR_LOG_FMT_ERROR(u8"[SMeshCooker::Cook] failed to write cooked file for resource {}! path: {}", assetRecord->guid, assetRecord->path.string());
+            SKR_LOG_FMT_ERROR(u8"[MeshCooker::Cook] failed to write cooked file for resource {}! path: {}", assetRecord->guid, assetRecord->path.string());
             return false;
         }
         fwrite(blobs[i].data(), 1, blobs[i].size(), buffer_file);
@@ -170,7 +170,7 @@ bool skd::asset::SMeshCooker::Cook(SCookContext* ctx)
     return true;
 }
 
-uint32_t skd::asset::SMeshCooker::Version()
+uint32_t skd::asset::MeshCooker::Version()
 {
     return kDevelopmentVersion;
 }

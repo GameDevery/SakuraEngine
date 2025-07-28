@@ -7,9 +7,7 @@
 struct cgltf_data;
 struct cgltf_node;
 
-namespace skd
-{
-namespace asset
+namespace skd::asset
 {
 // returned cgltf_data* needs to be freed by cgltf_free
 GLTFTOOL_API
@@ -19,9 +17,8 @@ GLTFTOOL_API
 void GetGLTFNodeTransform(const cgltf_node* node, skr_float3_t& translation, skr_float3_t& scale, skr_float4_t& rotation);
 
 GLTFTOOL_API
-void CookGLTFMeshData(const cgltf_data* data, SMeshCookConfig* config, skr_mesh_resource_t& out_resource, skr::Vector<skr::Vector<uint8_t>>& out_bins);
+void CookGLTFMeshData(const cgltf_data* data, MeshCookConfig* config, skr_mesh_resource_t& out_resource, skr::Vector<skr::Vector<uint8_t>>& out_bins);
 
 GLTFTOOL_API
-void CookGLTFMeshData_SplitSkin(const cgltf_data* data, SMeshCookConfig* config, skr_mesh_resource_t& out_resource, skr::Vector<skr::Vector<uint8_t>>& out_bins);
-} // namespace asset
-} // namespace skd
+void CookGLTFMeshData_SplitSkin(const cgltf_data* data, MeshCookConfig* config, skr_mesh_resource_t& out_resource, skr::Vector<skr::Vector<uint8_t>>& out_bins);
+} // namespace skd::asset

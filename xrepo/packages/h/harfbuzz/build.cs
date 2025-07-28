@@ -81,7 +81,8 @@ public static class Harfbuzz
                     // icu integration
                     .AddCppFiles("port/harfbuzz/src/hb-icu.cc")
                     .Defines(Visibility.Private, "HAVE_ICU", "HAVE_ICU_BUILTIN")
-                    .Defines(Visibility.Private, "HAVE_OT", "HB_NO_MT");
+                    .Defines(Visibility.Private, "HAVE_OT", "HB_NO_MT")
+                    .Clang_CXFlags(Visibility.Public, "-Wno-nontrivial-memcall");
                     // CoreText integration
                     /*
                     if (is_plat("macosx")) then

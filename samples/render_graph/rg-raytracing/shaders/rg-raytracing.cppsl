@@ -11,8 +11,6 @@ extern Accel& scene_tlas;
 // Push constants - camera parameters
 struct CameraConstants 
 {
-    float4x4 invViewMatrix;
-    float4x4 invProjMatrix;
     float4 cameraPos;
     float4 cameraDir;
     float2 screenSize;

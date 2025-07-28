@@ -19,8 +19,10 @@ struct BinSerde<skr::FlatHashMap<K, V, Hash, Eq>> {
         {
             K key;
             V value;
-            if (!bin_read(r, key)) return false;
-            if (!bin_read(r, value)) return false;
+            if (!bin_read(r, key)) 
+                return false;
+            if (!bin_read(r, value)) 
+                return false;
             temp.insert({ std::move(key), std::move(value) });
         }
 
@@ -31,7 +33,8 @@ struct BinSerde<skr::FlatHashMap<K, V, Hash, Eq>> {
     inline static bool write(SBinaryWriter* w, const skr::FlatHashMap<K, V, Hash, Eq>& v)
     {
         // write size
-        if (!bin_write(w, v.size())) return false;
+        uint32_t size = static_cast<uint32_t>(v.size());
+        if (!bin_write(w, size)) return false;
 
         // write content
         for (auto& pair : v)

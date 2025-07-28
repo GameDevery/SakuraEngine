@@ -36,7 +36,7 @@ ShaderOptionInstance {
     skr::String value;
 
     SKR_RENDERER_API
-    static skr_stable_shader_hash_t calculate_stable_hash(skr::span<skr_shader_option_instance_t> ordered_options);
+    static SStableShaderHash calculate_stable_hash(skr::span<skr_shader_option_instance_t> ordered_options);
 };
 
 sreflect_struct(
@@ -55,7 +55,7 @@ sreflect_struct(
     serde = @bin|@json
 )
 ShaderOptionsResource {
-    using shader_options_handle_t = skr::resource::TResourceHandle<ShaderOptionsResource>;
+    using shader_options_handle_t = skr::resource::AsyncResource<ShaderOptionsResource>;
 
     SKR_RENDERER_API
     static bool flatten_options(skr::Vector<ShaderOptionTemplate>& dst, skr::span<ShaderOptionsResource*> srcs) SKR_NOEXCEPT;
@@ -63,16 +63,16 @@ ShaderOptionsResource {
     skr::Vector<ShaderOptionTemplate> options;
 };
 
-struct SKR_RENDERER_API SShaderOptionsFactory : public resource::SResourceFactory {
-    virtual ~SShaderOptionsFactory() = default;
+struct SKR_RENDERER_API ShaderOptionsFactory : public resource::ResourceFactory {
+    virtual ~ShaderOptionsFactory() = default;
 
     struct Root {
         int __nothing__;
     };
 
     float                                       AsyncSerdeLoadFactor() override { return 0.1f; }
-    [[nodiscard]] static SShaderOptionsFactory* Create(const Root& root);
-    static void                                 Destroy(SShaderOptionsFactory* factory);
+    [[nodiscard]] static ShaderOptionsFactory* Create(const Root& root);
+    static void                                 Destroy(ShaderOptionsFactory* factory);
 };
 } // namespace renderer
 } // namespace skr

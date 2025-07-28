@@ -7,11 +7,9 @@
 
 #include "SkrProfile/profile.h"
 
-namespace skd
+namespace skd::asset
 {
-namespace asset
-{
-void* SShaderOptionsImporter::Import(skr_io_ram_service_t* ioService, SCookContext* context)
+void* ShaderOptionImporter::Import(skr_io_ram_service_t* ioService, CookContext* context)
 {
     skr::BlobId ioBuffer = {};
     context->AddSourceFileAndLoad(ioService, jsonPath.c_str(), ioBuffer);
@@ -30,13 +28,13 @@ void* SShaderOptionsImporter::Import(skr_io_ram_service_t* ioService, SCookConte
     return collection;
 }
 
-void SShaderOptionsImporter::Destroy(void* resource)
+void ShaderOptionImporter::Destroy(void* resource)
 {
     auto options = (skr_shader_options_resource_t*)resource;
     SkrDelete(options);
 }
 
-bool SShaderOptionsCooker::Cook(SCookContext* ctx)
+bool ShaderOptionsCooker::Cook(CookContext* ctx)
 {
     const auto outputPath = ctx->GetOutputPath();
     //-----load config
@@ -52,10 +50,9 @@ bool SShaderOptionsCooker::Cook(SCookContext* ctx)
     return true;
 }
 
-uint32_t SShaderOptionsCooker::Version()
+uint32_t ShaderOptionsCooker::Version()
 {
     return kDevelopmentVersion;
 }
 
-} // namespace asset
-} // namespace skd
+} // namespace skd::asset

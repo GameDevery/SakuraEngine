@@ -5,9 +5,7 @@
 #include "SkrBase/config.h"
 #include "SkrShaderCompiler/shader_compiler.hpp"
 
-namespace skd
-{
-namespace asset
+namespace skd::asset
 {
 struct SKR_SHADER_COMPILER_API SShaderCompilerModule : public skr::IDynamicModule
 {
@@ -28,7 +26,7 @@ struct SKR_SHADER_COMPILER_API SShaderCompilerModule : public skr::IDynamicModul
             unload_event();
         }
     }
-    
+
     static skr::FlatHashMap<skd::asset::EShaderSourceType, skr::stl_function<IShaderCompiler*()>> ctors;
     static skr::FlatHashMap<skd::asset::EShaderSourceType, skr::stl_function<void(IShaderCompiler*)>> dtors;
     static skr::Vector<std::pair<skr::String, skr::stl_function<void()>>> on_load_events;
@@ -61,7 +59,7 @@ void SkrShaderCompiler_Destroy(IShaderCompiler* compiler) SKR_NOEXCEPT
     }
 }
 
-void Util_ShaderCompilerRegister(asset::EShaderSourceType type, IShaderCompiler*(*ctor)(), void(*dtor)(IShaderCompiler*)) SKR_NOEXCEPT
+void Util_ShaderCompilerRegister(asset::EShaderSourceType type, IShaderCompiler* (*ctor)(), void (*dtor)(IShaderCompiler*)) SKR_NOEXCEPT
 {
     SShaderCompilerModule::ctors.emplace(type, ctor);
     SShaderCompilerModule::dtors.emplace(type, dtor);
@@ -76,6 +74,5 @@ asset::EShaderSourceType Util_GetShaderSourceTypeWithExtensionString(const char8
     else
         return asset::EShaderSourceType::INVALID;
 }
-    
-} // namespace asset
-} // namespace skd
+
+} // namespace skd::asset

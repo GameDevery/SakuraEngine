@@ -33,7 +33,7 @@ inline void copy_sparse_vector_data(SparseVectorStorage<T, TSize>* dst, const Sp
     }
     else
     {
-        std::memcpy(dst, src, sizeof(StorageType) * size);
+        std::memcpy((void*)dst, src, sizeof(StorageType) * size);
     }
 }
 template <typename T, typename TBitBlock, typename TSize>
@@ -62,7 +62,7 @@ inline void move_sparse_vector_data(SparseVectorStorage<T, TSize>* dst, SparseVe
     }
     else
     {
-        std::memmove(dst, src, sizeof(StorageType) * size);
+        std::memmove((void*)dst, src, sizeof(StorageType) * size);
     }
 }
 template <typename TBitBlock, typename TSize>

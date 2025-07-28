@@ -2,6 +2,7 @@
 
 #include "SkrCore/process.h"
 #include "SkrCore/crash.h"
+#include "SkrCore/log.h"
 
 #include "SkrContainersDef/string.hpp"
 
