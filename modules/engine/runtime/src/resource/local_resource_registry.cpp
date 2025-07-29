@@ -1,9 +1,10 @@
-﻿#include <SkrOS/filesystem.hpp>
-#include "SkrBase/misc/defer.hpp"
+﻿#include "SkrBase/misc/defer.hpp"
+#include "SkrCore/log.hpp"
 #include "SkrCore/platform/vfs.h"
 #include "SkrRT/resource/local_resource_registry.hpp"
 #include "SkrRT/resource/resource_header.hpp"
-#include "SkrCore/log.hpp"
+#include "SkrContainers/span.hpp"
+#include "SkrContainersDef/path.hpp"
 #include "SkrSerde/bin_serde.hpp"
 
 namespace skr::resource
@@ -17,8 +18,8 @@ bool LocalResourceRegistry::RequestResourceFile(ResourceRequest* request)
 {
     // 简单实现，直接在 resource 路径下按 guid 找到文件读信息，没有单独的数据库
     auto                  guid       = request->GetGuid();
-    skr::filesystem::path headerPath = skr::format(u8"{}.rh", guid).c_str();
-    auto                  headerUri  = headerPath.u8string();
+    auto headerPath = skr::format(u8"{}.rh", guid);
+    auto headerUri = headerPath;
     // TODO: 检查文件存在？
     SKR_LOG_BACKTRACE(u8"Failed to find resource file: %s!", headerUri.c_str());
     auto file = skr_vfs_fopen(vfs, headerUri.c_str(), SKR_FM_READ_BINARY, SKR_FILE_CREATION_OPEN_EXISTING);
@@ -54,9 +55,9 @@ bool LocalResourceRegistry::RequestResourceFile(ResourceRequest* request)
             return false;
     }
     SKR_ASSERT(header.guid == guid);
-    auto resourcePath = headerPath;
-    resourcePath.replace_extension(".bin");
-    auto resourceUri = resourcePath.u8string();
+    skr::Path resourcePath{headerPath};
+    resourcePath.replace_extension(u8".bin");
+    auto resourceUri = resourcePath.string();
     FillRequest(request, header, vfs, resourceUri.c_str());
     request->OnRequestFileFinished();
     return true;

@@ -161,8 +161,7 @@ void SceneSampleMeshModule::on_load(int argc, char8_t** argv)
     jobQueueDesc.name = u8"SceneSample-RAMIOJobQueue";
     io_job_queue = SkrNew<skr::JobQueue>(jobQueueDesc);
 
-    std::error_code ec = {};
-    auto resourceRoot = (skr::filesystem::current_path(ec) / "../resources").u8string();
+    auto resourceRoot = (skr::fs::current_directory() / u8"../resources").string();
     skr_vfs_desc_t vfs_desc = {};
     vfs_desc.mount_type = SKR_MOUNT_TYPE_CONTENT;
     vfs_desc.override_mount_dir = resourceRoot.c_str();
@@ -220,6 +219,7 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     constexpr float kPi = rtm::constants::pi();
     SkrZoneScopedN("SceneSampleMeshModule::main_module_exec");
     SKR_LOG_INFO(u8"Running Scene Sample Mesh Module");
+
     SKR_LOG_INFO(u8"gltf file path: {%s}", gltf_path.c_str());
     if (use_gltf && gltf_path.is_empty())
     {
@@ -322,8 +322,7 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     skr_render_mesh_id render_mesh = nullptr;
     utils::DummyScene dummy_scene;
 
-    std::error_code ec = {};
-    auto resourceRoot = (skr::filesystem::current_path(ec) / "../resources");
+    auto resourceRoot = (skr::fs::current_directory() / u8"../resources");
     if (use_gltf)
     {
         // save buffer0 to binPath
@@ -337,13 +336,13 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
         // auto buffer_file = std::fopen((const char*)binPath.c_str(), "wb");
         auto f = (resourceRoot / binPath.c_str()).string();
         // if f exists, don't overwrite it
-        if (skr::filesystem::exists(f, ec))
+        if (skr::fs::File::exists(skr::Path{f}))
         {
             SKR_LOG_INFO(u8"File %s already exists, skipping write.", f.c_str());
         }
         else
         {
-            auto buffer_file = std::fopen(f.c_str(), "wb");
+            auto buffer_file = std::fopen(f.c_str_raw(), "wb");
             if (!buffer_file)
             {
                 SKR_LOG_ERROR(u8"Failed to open file for writing: %s", f.c_str());

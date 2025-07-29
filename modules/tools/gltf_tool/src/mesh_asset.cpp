@@ -151,20 +151,16 @@ bool skd::asset::MeshCooker::Cook(CookContext* ctx)
     //----- write resource object
     if (!ctx->Save(mesh)) return false;
 
-    // write bins
+    // write bins using ResourceVFS
     for (size_t i = 0; i < blobs.size(); i++)
     {
-        auto binOutputPath = outputPath;
-        binOutputPath.replace_extension("buffer" + std::to_string(i));
-        auto buffer_file = fopen(binOutputPath.string().c_str(), "wb");
-        SKR_DEFER({ fclose(buffer_file); });
-        if (!buffer_file)
+        auto filename = skr::format(u8"{}.buffer{}", assetMetaFile->guid, i);
+        if (!ctx->SaveExtra(blobs[i], filename.c_str()))
         {
-            SKR_LOG_FMT_ERROR(u8"[MeshCooker::Cook] failed to write cooked file for resource {}! path: {}", 
-                assetMetaFile->guid, assetMetaFile->uri);
+            SKR_LOG_FMT_ERROR(u8"[MeshCooker::Cook] failed to write buffer {} for resource {}!", 
+                i, assetMetaFile->guid);
             return false;
         }
-        fwrite(blobs[i].data(), 1, blobs[i].size(), buffer_file);
     }
     return true;
 }

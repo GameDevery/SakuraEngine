@@ -165,11 +165,15 @@ bool skr::SharedLibrary::loadImpl(const char8_t* path)
     }
     else
     {
-        auto wpath = skr::filesystem::path(path);
-        _handle = GetModuleHandleW(wpath.c_str());
+        // 将 UTF-8 路径转换为宽字符串
+        int len = MultiByteToWideChar(CP_UTF8, 0, (const char*)path, -1, NULL, 0);
+        wchar_t* wpath = (wchar_t*)alloca(len * sizeof(wchar_t));
+        MultiByteToWideChar(CP_UTF8, 0, (const char*)path, -1, wpath, len);
+        
+        _handle = GetModuleHandleW(wpath);
         if (_handle == NULL)
         {
-            _handle = LoadLibraryW(wpath.c_str());
+            _handle = LoadLibraryW(wpath);
         }
     }
     if (!_handle)

@@ -18,9 +18,10 @@
 namespace skr::container
 {
 template <typename TSize, uint64_t SSOSize = 31>
-struct StringMemoryBase {
+struct StringMemoryBase
+{
     static constexpr uint64_t SSOBufferSize = SSOSize + 1;
-    static constexpr uint64_t SSOCapacity   = SSOSize - 1;
+    static constexpr uint64_t SSOCapacity = SSOSize - 1;
 
     static_assert(SSOBufferSize % 4 == 0, "SSOSize must be 4n - 2");
     static_assert(SSOBufferSize > sizeof(TSize) * 2 + sizeof(void*), "SSOSize must be larger than heap data size");
@@ -34,7 +35,7 @@ struct StringMemoryBase {
     inline SizeType capacity() const noexcept
     {
         return is_literal() ? _size :
-               _is_sso()    ? SSOCapacity :
+            _is_sso()       ? SSOCapacity :
                               _capacity;
     }
 
@@ -45,7 +46,7 @@ struct StringMemoryBase {
 
 protected:
     // data getter
-    inline void*       _raw_data() noexcept { return _is_sso() ? _sso_data : _data; }
+    inline void* _raw_data() noexcept { return _is_sso() ? _sso_data : _data; }
     inline const void* _raw_data() const noexcept { return _is_sso() ? _sso_data : _data; }
 
     // sso
@@ -56,15 +57,15 @@ protected:
     }
     inline void _reset_heap() noexcept
     {
-        _data     = nullptr;
-        _size     = 0;
+        _data = nullptr;
+        _size = 0;
         _capacity = 0;
         _sso_flag = 0;
     }
     inline void _reset_literal(const void* data, SizeType size) noexcept
     {
-        _data     = const_cast<void*>(data);
-        _size     = size;
+        _data = const_cast<void*>(data);
+        _size = size;
         _capacity = 0;
         _sso_flag = 0;
     }
@@ -73,12 +74,14 @@ protected:
 protected:
     union
     {
-        struct {
-            void*    _data;
+        struct
+        {
+            void* _data;
             SizeType _size;
             SizeType _capacity;
         };
-        struct {
+        struct
+        {
             uint8_t _sso_data[SSOSize];
             uint8_t _sso_flag : 1;
             uint8_t _sso_size : 7;
@@ -90,10 +93,11 @@ protected:
 // SSO string memory
 // TODO. copy 考虑 literal
 template <typename T, typename TSize, uint64_t SSOSize, typename Allocator>
-struct StringMemory : public StringMemoryBase<TSize, SSOSize>, public Allocator {
-    using Base               = StringMemoryBase<TSize, SSOSize>;
-    using DataType           = T;
-    using SizeType           = typename Base::SizeType;
+struct StringMemory : public StringMemoryBase<TSize, SSOSize>, public Allocator
+{
+    using Base = StringMemoryBase<TSize, SSOSize>;
+    using DataType = T;
+    using SizeType = typename Base::SizeType;
     using AllocatorCtorParam = typename Allocator::CtorParam;
     using Base::SSOBufferSize;
     using Base::SSOCapacity;
@@ -149,8 +153,8 @@ struct StringMemory : public StringMemoryBase<TSize, SSOSize>, public Allocator 
         else
         {
             Base::_reset_heap();
-            Base::_data     = rhs._data;
-            Base::_size     = rhs._size;
+            Base::_data = rhs._data;
+            Base::_size = rhs._size;
             Base::_capacity = rhs._capacity;
         }
 
@@ -221,8 +225,8 @@ struct StringMemory : public StringMemoryBase<TSize, SSOSize>, public Allocator 
             else
             {
                 Base::_reset_heap();
-                Base::_data     = rhs._data;
-                Base::_size     = rhs._size;
+                Base::_data = rhs._data;
+                Base::_size = rhs._size;
                 Base::_capacity = rhs._capacity;
             }
 
@@ -280,8 +284,8 @@ struct StringMemory : public StringMemoryBase<TSize, SSOSize>, public Allocator 
 
                 // rebuild heap data
                 Base::_reset_heap();
-                Base::_data     = new_memory;
-                Base::_size     = data_size;
+                Base::_data = new_memory;
+                Base::_size = data_size;
                 Base::_capacity = new_capacity;
             }
             else // heap -> heap
@@ -314,7 +318,7 @@ struct StringMemory : public StringMemoryBase<TSize, SSOSize>, public Allocator 
             else // heap -> inline
             {
                 DataType* cached_heap_data = data();
-                SizeType  cached_heap_size = Base::_size;
+                SizeType cached_heap_size = Base::_size;
 
                 // move items
                 Base::_reset_sso();
@@ -407,7 +411,7 @@ struct StringMemory : public StringMemoryBase<TSize, SSOSize>, public Allocator 
         {
             // cache data
             DataType* literal_data = heap_data();
-            SizeType  literal_size = Base::_size;
+            SizeType literal_size = Base::_size;
 
             // reset to empty string
             Base::_reset_sso();
@@ -427,23 +431,25 @@ struct StringMemory : public StringMemoryBase<TSize, SSOSize>, public Allocator 
     }
 
     // getter
-    inline DataType*       data() noexcept { return reinterpret_cast<DataType*>(Base::_raw_data()); }
+    inline DataType* data() noexcept { return reinterpret_cast<DataType*>(Base::_raw_data()); }
     inline const DataType* data() const noexcept { return reinterpret_cast<const DataType*>(Base::_raw_data()); }
 
 private:
     // helper
-    inline DataType*       sso_data() noexcept { return reinterpret_cast<DataType*>(Base::_sso_data); }
+    inline DataType* sso_data() noexcept { return reinterpret_cast<DataType*>(Base::_sso_data); }
     inline const DataType* sso_data() const noexcept { return reinterpret_cast<DataType*>(Base::_sso_data); }
-    inline DataType*       heap_data() noexcept { return reinterpret_cast<DataType*>(Base::_data); }
+    inline DataType* heap_data() noexcept { return reinterpret_cast<DataType*>(Base::_data); }
     inline const DataType* heap_data() const noexcept { return reinterpret_cast<DataType*>(Base::_data); }
 };
 
 // COW string memory
-struct COWStringMemory {
+struct COWStringMemory
+{
 };
 
 // serde string memory
-struct SerdeStringMemory {
+struct SerdeStringMemory
+{
 };
 
 } // namespace skr::container

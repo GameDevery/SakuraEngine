@@ -17,23 +17,28 @@
 struct skr_vfile_stdio_t : public skr_vfile_t {
     FILE* fh;
     uint64_t offset;
-    decltype(skr::filesystem::path().u8string()) filePath;
+    skr::String filePath;
 };
 
 // Helper function to resolve path
-static skr::filesystem::path resolve_path(skr_vfs_t* fs, const char8_t* path)
+static skr::Path resolve_path(skr_vfs_t* fs, const char8_t* path)
 {
-    skr::filesystem::path p;
-    if (auto in_p = skr::filesystem::path(path); in_p.is_absolute())
+    skr::Path p;
+    skr::Path in_p(path);
+    if (in_p.is_absolute())
     {
         p = in_p;
     }
     else
     {
-        p = fs->mount_dir ? fs->mount_dir : path;
         if (fs->mount_dir)
         {
+            p = skr::Path{fs->mount_dir};
             p /= path;
+        }
+        else
+        {
+            p = skr::Path{path};
         }
     }
     return p;
@@ -41,22 +46,22 @@ static skr::filesystem::path resolve_path(skr_vfs_t* fs, const char8_t* path)
 
 skr_vfile_t* skr_stdio_fopen(skr_vfs_t* fs, const char8_t* path, ESkrFileMode mode, ESkrFileCreation creation) SKR_NOEXCEPT
 {
-    skr::filesystem::path p;
+    skr::Path p;
     {
         SkrZoneScopedN("CalculatePath");
         p = resolve_path(fs, path);
     }
-    auto filePath = p.u8string();
-    const auto* filePathStr = filePath.c_str();
+    auto filePath = p.string();
+    const auto* filePathStr = filePath.data();
     const char8_t* modeStr = skr_vfs_filemode_to_string(mode);
     FILE* cfile = nullptr;
     {
         SkrZoneScopedN("stdio::fopen");
-        SkrMessage((const char*)filePath.c_str(), filePath.size());
+        SkrMessage((const char*)filePath.data(), filePath.size());
         cfile = fopen((const char*)filePathStr, (const char*)modeStr);
     }
     std::error_code ec = {};
-    // SKR_LOG_TRACE(u8"CurrentPath: %s", skr::filesystem::current_path(ec).u8string().c_str());
+    // SKR_LOG_TRACE(u8"CurrentPath: %s", skr::fs::current_path(ec).u8string().c_str());
     // Might fail to open the file for read+write if file doesn't exist
     if (!cfile)
     {
@@ -80,7 +85,7 @@ skr_vfile_t* skr_stdio_fopen(skr_vfs_t* fs, const char8_t* path, ESkrFileMode mo
         vfile->fs = fs;
         vfile->fh = cfile;
         vfile->filePath = std::move(filePath);
-        return vfile;
+        return reinterpret_cast<skr_vfile_t*>(vfile);
     }
 }
 
@@ -122,7 +127,7 @@ size_t skr_stdio_fwrite(skr_vfile_t* file, const void* out_buffer, size_t offset
     {
         auto vfile = (skr_vfile_stdio_t*)file;
         fseek(vfile->fh, (long)offset, SEEK_SET); // seek to offset of file
-        auto result = fwrite(out_buffer, byte_count, 1, vfile->fh);
+        auto result = fwrite(out_buffer, 1, byte_count, vfile->fh);
         fseek(vfile->fh, 0, SEEK_SET); // seek back to beginning of file
         return result;
     }
@@ -159,67 +164,61 @@ bool skr_stdio_fclose(skr_vfile_t* file) SKR_NOEXCEPT
 bool skr_stdio_fexists(skr_vfs_t* fs, const char8_t* path) SKR_NOEXCEPT
 {
     auto p = resolve_path(fs, path);
-    std::error_code ec;
-    return skr::filesystem::exists(p, ec);
+    return skr::fs::File::exists(p);
 }
 
 bool skr_stdio_fis_directory(skr_vfs_t* fs, const char8_t* path) SKR_NOEXCEPT
 {
     auto p = resolve_path(fs, path);
-    std::error_code ec;
-    return skr::filesystem::is_directory(p, ec);
+    return skr::fs::Directory::exists(p);
 }
 
 bool skr_stdio_fremove(skr_vfs_t* fs, const char8_t* path) SKR_NOEXCEPT
 {
     auto p = resolve_path(fs, path);
-    std::error_code ec;
-    return skr::filesystem::remove(p, ec);
+    if (skr::fs::Directory::exists(p)) {
+        return skr::fs::Directory::remove(p, false);
+    } else {
+        return skr::fs::File::remove(p);
+    }
 }
 
 bool skr_stdio_frename(skr_vfs_t* fs, const char8_t* from, const char8_t* to) SKR_NOEXCEPT
 {
     auto from_p = resolve_path(fs, from);
     auto to_p = resolve_path(fs, to);
-    std::error_code ec;
-    skr::filesystem::rename(from_p, to_p, ec);
-    return !ec;
+    // TODO: implement move/rename functionality
+    return false;
 }
 
 bool skr_stdio_fcopy(skr_vfs_t* fs, const char8_t* from, const char8_t* to) SKR_NOEXCEPT
 {
     auto from_p = resolve_path(fs, from);
     auto to_p = resolve_path(fs, to);
-    std::error_code ec;
-    skr::filesystem::copy_file(from_p, to_p, skr::filesystem::copy_options::overwrite_existing, ec);
-    return !ec;
+    return skr::fs::File::copy(from_p, to_p, skr::fs::CopyOptions::OverwriteExisting);
 }
 
 int64_t skr_stdio_fmtime(skr_vfs_t* fs, const char8_t* path) SKR_NOEXCEPT
 {
     auto p = resolve_path(fs, path);
-    std::error_code ec;
-    auto ftime = skr::filesystem::last_write_time(p, ec);
-    if (ec) return -1;
+    auto info = skr::fs::File::get_info(p);
+    if (!info.exists()) return -1;
     
-    // Convert to unix timestamp
-    auto duration = ftime.time_since_epoch();
-    return std::chrono::duration_cast<std::chrono::seconds>(duration).count();
+    // Convert FileTime to unix timestamp
+    return skr::fs::filetime_to_unix(info.last_write_time);
 }
 
 // Directory operations implementation
 bool skr_stdio_mkdir(skr_vfs_t* fs, const char8_t* path) SKR_NOEXCEPT
 {
     auto p = resolve_path(fs, path);
-    std::error_code ec;
-    return skr::filesystem::create_directories(p, ec);
+    return skr::fs::Directory::create(p, true);
 }
 
 bool skr_stdio_rmdir(skr_vfs_t* fs, const char8_t* path) SKR_NOEXCEPT
 {
     auto p = resolve_path(fs, path);
-    std::error_code ec;
-    return skr::filesystem::remove_all(p, ec) > 0;
+    return skr::fs::Directory::remove(p, true);
 }
 
 void skr_vfs_get_native_procs(struct skr_vfs_proctable_t* procs) SKR_NOEXCEPT

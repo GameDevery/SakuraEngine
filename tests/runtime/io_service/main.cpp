@@ -48,8 +48,8 @@ struct IOServiceTest
         REQUIRE(abs_fs != nullptr);
 
         std::error_code ec = {};
-        const auto current_path = skr::filesystem::current_path(ec).string();
-        REQUIRE(std::string((const char*)abs_fs->mount_dir) == current_path);
+        const auto current_path = skr::fs::current_directory().string();
+        REQUIRE(skr::String(abs_fs->mount_dir) == current_path);
         SKR_TEST_INFO(u8"Current path: {}", (const char8_t*)current_path.c_str());
     }
 

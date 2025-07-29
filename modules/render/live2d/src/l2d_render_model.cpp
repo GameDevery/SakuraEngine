@@ -196,8 +196,10 @@ void skr_live2d_render_model_create_from_raw(skr_io_ram_service_t* ram_service, 
         SKR_UNUSED auto& texture_future = render_model->texture_futures[i];
         // SKR_UNUSED auto vram_texture_io = make_zeroed<skr_vram_texture_io_t>();
         const auto texture_path = resource->model_setting->GetTextureFileName(i);
-        const auto pngPath = skr::filesystem::path(request->vfs_override->mount_dir) / resource->model->homePath.c_str() / texture_path;
-        const auto pngPathStr = pngPath.u8string();
+        skr::Path pngPath{request->vfs_override->mount_dir};
+        pngPath /= resource->model->homePath.c_str();
+        pngPath /= (const char8_t*)texture_path;
+        const auto pngPathStr = pngPath.string();
         const auto pngPathCStr = pngPathStr.c_str();
 #ifdef _WIN32
         if (dstorage_available)

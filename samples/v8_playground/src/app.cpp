@@ -1,7 +1,7 @@
 #include "SkrV8/ts_define_exporter.hpp"
 #include "v8-exception.h"
 #include <V8Playground/app.hpp>
-#include <filesystem>
+#include "SkrOS/filesystem.hpp"
 
 namespace skr
 {
@@ -139,19 +139,19 @@ bool V8PlaygroundApp::run_script(StringView script_path)
 bool V8PlaygroundApp::dump_types(StringView output_dir)
 {
     // get name
-    std::filesystem::path out_dir_path(output_dir.data_raw());
-    std::filesystem::path out_file_path = out_dir_path / "global.d.ts";
+    skr::Path out_dir_path{output_dir};
+    skr::Path out_file_path = out_dir_path / u8"global.d.ts";
 
     // create dir
-    if (!std::filesystem::exists(out_dir_path))
+    if (!skr::fs::Directory::exists(out_dir_path))
     {
-        if (!std::filesystem::create_directories(out_dir_path))
+        if (!skr::fs::Directory::create(out_dir_path, true))
         {
             SKR_LOG_FMT_ERROR(u8"Failed to create dir: {}", out_dir_path.string());
             return false;
         }
     }
-    else if (!std::filesystem::is_directory(out_dir_path))
+    else if (!skr::fs::Directory::is_directory(out_dir_path))
     {
         SKR_LOG_FMT_ERROR(u8"Path is not a directory: {}", out_dir_path.string());
         return false;
@@ -160,7 +160,7 @@ bool V8PlaygroundApp::dump_types(StringView output_dir)
     // do export
     TSDefineExporter exporter;
     exporter.module = &_isolate->main_context()->global_module();
-    return _save_to_file(String::From(out_file_path.c_str()), exporter.generate_global());
+    return _save_to_file(out_file_path.string(), exporter.generate_global());
 }
 
 // helper

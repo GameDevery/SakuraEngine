@@ -19,14 +19,16 @@ void AllocateVRAMResourceResolver::resolve(SkrAsyncServicePriority priority, IOB
             auto pPath = io_component<PathSrcComponent>(request.get());
             const auto pathStr = pPath->get_path();
             auto instance = skr_get_dstorage_instnace();
-            if (auto isFile = skr::filesystem::is_regular_file(pathStr))
+            const skr::Path path_obj{pathStr};
+            if (skr::fs::File::exists(path_obj))
             {
                 pDS->dfile = skr_dstorage_open_file(instance, pathStr);
             }
             else
             {
-                const auto Path = skr::filesystem::path(pPath->get_vfs()->mount_dir) / pathStr;
-                pDS->dfile = skr_dstorage_open_file(instance, Path.u8string().c_str());
+                const skr::Path mount_path{pPath->get_vfs()->mount_dir};
+                const auto full_path = mount_path / pathStr;
+                pDS->dfile = skr_dstorage_open_file(instance, full_path.string().data());
             }
             SKR_ASSERT(pDS->dfile);
         }

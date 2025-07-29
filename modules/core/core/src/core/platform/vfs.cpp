@@ -4,15 +4,16 @@
 
 void skr_vfs_get_parent_path(const char8_t* path, char8_t* output)
 {
-    const skr::filesystem::path p(path);
-    std::strcpy((char*)output, (const char*)p.parent_path().u8string().c_str());
+    const skr::Path p{skr::String(path)};
+    auto parent = p.parent_directory();
+    std::strcpy((char*)output, (const char*)parent.string().data());
 }
 
 void skr_vfs_append_path_component(const char8_t* path, const char8_t* component, char8_t* output)
 {
-    const skr::filesystem::path p(path);
-    const auto appended = p / component;
-    std::strcpy((char*)output, (const char*)appended.u8string().c_str());
+    const skr::Path p{skr::String(path)};
+    const auto appended = p / skr::String(component);
+    std::strcpy((char*)output, (const char*)appended.string().data());
 }
 
 void skr_vfs_append_path_extension(const char8_t* path, const char8_t* extension, char8_t* output)

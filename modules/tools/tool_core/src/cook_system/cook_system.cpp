@@ -293,10 +293,12 @@ skr::RC<AssetMetaFile> CookSystemImpl::LoadAssetMeta(SProject* project, const sk
             skr::json_read(&reader, guid);
             reader.Key(u8"type");
             skr::json_read(&reader, type);
-            if (reader.HasMember(u8"cooker"))
-            {
+            // Try to read cooker if it exists
+            try {
                 reader.Key(u8"cooker");
                 skr::json_read(&reader, cooker);
+            } catch (...) {
+                // cooker is optional, ignore if not present
             }
             reader.EndObject();
         }

@@ -8,6 +8,7 @@
 #include "SkrContainers/stl_vector.hpp"
 #include "SkrCore/module/module_manager.hpp"
 #include "SkrRT/resource/resource_system.h"
+#include <functional>
 #include "SkrRT/resource/local_resource_registry.hpp"
 
 #include "SkrRenderer/resources/shader_resource.hpp"
@@ -20,9 +21,9 @@
 
 #include "SkrProfile/profile.h"
 
-bool IsAsset(skr::filesystem::path path)
+bool IsAsset(const skr::Path& path)
 {
-    if (path.extension() == ".meta")
+    if (path.extension(true) == u8".meta")
         return true;
     return false;
 }
@@ -86,24 +87,35 @@ skr::Vector<skd::SProject*> open_projects(int argc, char** argv)
         return {};
     }
     auto projectPath = parser.get_optional<skr::String>(u8"project");
-    std::error_code ec = {};
-    skr::filesystem::path workspace{parser.get<skr::String>(u8"workspace").u8_str()};
-    skr::filesystem::recursive_directory_iterator iter(workspace, ec);
-    skr::stl_vector<skr::filesystem::path> projectFiles;
-    while (iter != end(iter))
-    {
-        if(iter->is_regular_file(ec) && iter->path().extension() == ".sproject")
+    skr::Path workspace{parser.get<skr::String>(u8"workspace").u8_str()};
+    skr::stl_vector<skr::Path> projectFiles;
+    
+    // Find all .sproject files in workspace using DirectoryIterator
+    std::function<void(const skr::Path&)> scanDirectory = [&](const skr::Path& dir) {
+        for (skr::fs::DirectoryIterator iter(dir); !iter.at_end(); ++iter)
         {
-            projectFiles.push_back(iter->path());
+            const auto& entry = *iter;
+            if (entry.type == skr::fs::FileType::Directory)
+            {
+                scanDirectory(entry.path);
+            }
+            else if (entry.type == skr::fs::FileType::Regular)
+            {
+                if (entry.path.extension(true) == u8".sproject")
+                {
+                    projectFiles.push_back(entry.path);
+                }
+            }
         }
-        iter.increment(ec);
-    }
+    };
+    scanDirectory(workspace);
+    
     skr::Vector<skd::SProject*> result;
     for (auto& projectFile : projectFiles)
     {
         auto project = SkrNew<skd::SProject>();
-        project->OpenProject(projectFile);
-        project->SetWorkspace(workspace);
+        project->OpenProject(projectFile.string());
+        // TODO: SetWorkspace is removed, need to handle workspace differently
         result.add(project);
     }
     return result;
@@ -113,19 +125,27 @@ int compile_project(skd::SProject* project)
 {
     auto& system = *skd::asset::GetCookSystem();
     InitializeResourceSystem(*project);
-    std::error_code ec = {};
-    skr::filesystem::recursive_directory_iterator iter(project->GetAssetPath(), ec);
     //----- scan project directory
-    skr::stl_vector<skr::filesystem::path> paths;
-    while (iter != end(iter))
-    {
-        if (iter->is_regular_file(ec) && IsAsset(iter->path()))
+    skr::stl_vector<skr::Path> paths;
+    std::function<void(const skr::Path&)> scanAssetDirectory = [&](const skr::Path& dir) {
+        for (skr::fs::DirectoryIterator iter(dir); !iter.at_end(); ++iter)
         {
-            paths.push_back(*iter);
-            SKR_LOG_FMT_DEBUG(u8"{}", iter->path().u8string().c_str());
+            const auto& entry = *iter;
+            if (entry.type == skr::fs::FileType::Directory)
+            {
+                scanAssetDirectory(entry.path);
+            }
+            else if (entry.type == skr::fs::FileType::Regular)
+            {
+                if (IsAsset(entry.path))
+                {
+                    paths.push_back(entry.path);
+                    SKR_LOG_FMT_DEBUG(u8"{}", entry.path.string().c_str());
+                }
+            }
         }
-        iter.increment(ec);
-    }
+    };
+    scanAssetDirectory(skr::Path{project->GetAssetPath()});
     SKR_LOG_INFO(u8"Project dir scan finished.");
     //----- load project asset meta data (guid & type & path)
     {
@@ -135,8 +155,10 @@ int compile_project(skd::SProject* project)
             SkrZoneScopedN("LoadMeta");
             for (auto i = begin; i != end; ++i)
             {
-                const auto relpath = skr::filesystem::relative(*i, project->GetAssetPath());
-                system.LoadAssetMeta(project, skr::String(relpath.u8string().c_str()));
+                // Calculate relative path
+                skr::Path assetPath{project->GetAssetPath()};
+                auto relpath = (*i).relative_to(assetPath);
+                system.LoadAssetMeta(project, relpath.string());
             }
         });
     }
@@ -200,12 +222,11 @@ int compile_all(int argc, char** argv)
 int main(int argc, char** argv)
 {
     auto moduleManager = skr_get_module_manager();
-    std::error_code ec = {};
-    auto root = skr::filesystem::current_path(ec);
+    auto root = skr::fs::current_directory();
     {
         FrameMark;
         SkrZoneScopedN("Initialize");
-        moduleManager->mount(root.u8string().c_str());
+        moduleManager->mount(root.string().c_str());
         moduleManager->make_module_graph(u8"SkrResourceCompiler", true);
         moduleManager->init_module_graph(argc, argv);
     }

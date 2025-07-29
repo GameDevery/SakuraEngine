@@ -102,9 +102,8 @@ IMPLEMENT_DYNAMIC_MODULE(SGameModule, Game);
 
 void SGameModule::installResourceFactories()
 {
-    std::error_code ec = {};
-    auto resourceRoot = (skr::filesystem::current_path(ec) / "../resources");
-    auto u8ResourceRoot = resourceRoot.u8string();
+    auto resourceRoot = (skr::fs::current_directory() / "../resources");
+    auto u8ResourceRoot = resourceRoot.string();
     skr_vfs_desc_t vfs_desc = {};
     vfs_desc.mount_type = SKR_MOUNT_TYPE_CONTENT;
     vfs_desc.override_mount_dir = u8ResourceRoot.c_str();
@@ -134,7 +133,7 @@ void SGameModule::installResourceFactories()
     auto resource_system = skr::resource::GetResourceSystem();
 
     auto gameResourceRoot = resourceRoot / "game";
-    auto u8TextureRoot = gameResourceRoot.u8string();
+    auto u8TextureRoot = gameResourceRoot.string();
     // texture sampler factory
     {
         skr::resource::TextureSamplerFactory::Root factoryRoot = {};

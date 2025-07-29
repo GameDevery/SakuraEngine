@@ -98,7 +98,7 @@ bool SProject::OpenProject(const skr::String& project_name, const skr::String& r
             }
 
             // Move to next part
-            currentView = currentView.subview(varStart.index() + varEnd.index() + 3);
+            currentView = currentView.subview(varStart.index() + 2 + varEnd.index() + 1);
         }
 
         return result;
@@ -106,26 +106,26 @@ bool SProject::OpenProject(const skr::String& project_name, const skr::String& r
 
     auto toAbsolutePath = [&](const skr::String& path) {
         auto resolved = resolvePath(path);
-        skr::filesystem::path result{ resolved.c_str() };
+        skr::Path result{resolved.c_str()};
         if (result.is_relative())
         {
-            result = skr::filesystem::path(root.c_str()) / result;
+            result = skr::Path{root.c_str()} / result;
         }
-        return result.lexically_normal();
+        return result;
     };
 
     name = project_name;
 
-    assetDirectory = toAbsolutePath(cfg.assetDirectory);
-    resourceDirectory = toAbsolutePath(cfg.resourceDirectory);
-    artifactsDirectory = toAbsolutePath(cfg.artifactsDirectory);
-    dependencyDirectory = artifactsDirectory / "deps";
+    assetDirectory = toAbsolutePath(cfg.assetDirectory).string();
+    resourceDirectory = toAbsolutePath(cfg.resourceDirectory).string();
+    artifactsDirectory = toAbsolutePath(cfg.artifactsDirectory).string();
+    dependencyDirectory = (skr::Path{artifactsDirectory} / u8"deps").string();
 
     // create resource VFS
     skr_vfs_desc_t resource_vfs_desc = {};
     resource_vfs_desc.app_name = name.u8_str();
     resource_vfs_desc.mount_type = SKR_MOUNT_TYPE_CONTENT;
-    auto u8outputPath = resourceDirectory.u8string();
+    auto u8outputPath = resourceDirectory;
     resource_vfs_desc.override_mount_dir = u8outputPath.c_str();
     resource_vfs = skr_create_vfs(&resource_vfs_desc);
 
@@ -133,7 +133,7 @@ bool SProject::OpenProject(const skr::String& project_name, const skr::String& r
     skr_vfs_desc_t asset_vfs_desc = {};
     asset_vfs_desc.app_name = name.u8_str();
     asset_vfs_desc.mount_type = SKR_MOUNT_TYPE_CONTENT;
-    auto u8assetPath = assetDirectory.u8string();
+    auto u8assetPath = assetDirectory;
     asset_vfs_desc.override_mount_dir = u8assetPath.c_str();
     asset_vfs = skr_create_vfs(&asset_vfs_desc);
 
@@ -141,7 +141,7 @@ bool SProject::OpenProject(const skr::String& project_name, const skr::String& r
     skr_vfs_desc_t dependency_vfs_desc = {};
     dependency_vfs_desc.app_name = name.u8_str();
     dependency_vfs_desc.mount_type = SKR_MOUNT_TYPE_CONTENT;
-    auto u8dependencyPath = dependencyDirectory.u8string();
+    auto u8dependencyPath = dependencyDirectory;
     dependency_vfs_desc.override_mount_dir = u8dependencyPath.c_str();
     dependency_vfs = skr_create_vfs(&dependency_vfs_desc);
 
@@ -157,9 +157,9 @@ bool SProject::OpenProject(const skr::String& project_name, const skr::String& r
     return true;
 }
 
-bool SProject::OpenProject(const skr::filesystem::path& projectFilePath) noexcept
+bool SProject::OpenProject(const URI& projectFilePath) noexcept
 {
-    auto projectPath = projectFilePath.lexically_normal();
+    auto projectPath = skr::Path{projectFilePath};
     skd::SProjectConfig cfg;
     {
         // Create a temporary VFS for reading the project file
@@ -168,11 +168,11 @@ bool SProject::OpenProject(const skr::filesystem::path& projectFilePath) noexcep
         temp_vfs_desc.mount_type = SKR_MOUNT_TYPE_ABSOLUTE;
         auto temp_vfs = skr_create_vfs(&temp_vfs_desc);
         
-        auto projectFile = skr_vfs_fopen(temp_vfs, (const char8_t*)projectPath.u8string().c_str(), 
+        auto projectFile = skr_vfs_fopen(temp_vfs, (const char8_t*)projectPath.string().c_str(), 
                                          SKR_FM_READ_BINARY, SKR_FILE_CREATION_OPEN_EXISTING);
         if (!projectFile)
         {
-            SKR_LOG_ERROR(u8"Failed to open project file: %s", projectPath.u8string().c_str());
+            SKR_LOG_ERROR(u8"Failed to open project file: %s", projectPath.string().c_str());
             skr_free_vfs(temp_vfs);
             return false;
         }
@@ -188,12 +188,12 @@ bool SProject::OpenProject(const skr::filesystem::path& projectFilePath) noexcep
         skr::archive::JsonReader reader(projectFileContent.view());
         if (!skr::json_read(&reader, cfg))
         {
-            SKR_LOG_ERROR(u8"Failed to parse project file: %s", projectPath.c_str());
+            SKR_LOG_ERROR(u8"Failed to parse project file: %s", projectPath.string().c_str());
             return false;
         }
     }
-    auto root = projectFilePath.parent_path().u8string();
-    auto name = projectFilePath.filename().u8string();
+    auto root = projectPath.parent_directory().string();
+    auto name = projectPath.filename().string();
     return OpenProject(name.c_str(), root.c_str(), cfg);
 }
 

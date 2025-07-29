@@ -21,11 +21,12 @@ bool AnimCooker::Cook(CookContext* ctx)
     SkrZoneScopedNS("AnimCooker::Cook", 4);
 
     //-----load config
-    auto anim_asset = ctx->GetAssetMetadata<AnimAsset>();
+    auto anim_asset_file = ctx->GetAssetMetaFile();
+    auto anim_asset = anim_asset_file->GetAssetMetadata<AnimAsset>();
     //-----emit static dependencies
     if (anim_asset.skeletonAsset.get_serialized() == skr_guid_t{})
     {
-        SKR_LOG_ERROR(u8"Failed to cook animation asset %s. No skeleton asset specified.", ctx->GetAssetMetaFile()->path.c_str());
+        SKR_LOG_ERROR(u8"Failed to cook animation asset %s. No skeleton asset specified.", ctx->GetAssetMetaFile()->uri.c_str());
         return false;
     }
     auto idx = ctx->AddStaticDependency(anim_asset.skeletonAsset.get_serialized(), true);

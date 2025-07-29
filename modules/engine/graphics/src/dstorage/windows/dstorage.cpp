@@ -341,8 +341,11 @@ SkrDStorageFileHandle skr_dstorage_open_file(SkrDStorageInstanceId inst, const c
 {
     IDStorageFile* pFile = nullptr;
     auto I = (SkrWindowsDStorageInstance*)inst;
-    auto absPath = skr::filesystem::path(abs_path);
-    I->pFactory->OpenFile(absPath.c_str(), IID_PPV_ARGS(&pFile));
+    const skr::Path absPath{abs_path};
+    auto path_str = absPath.string();
+    skr_char16 path_buffer[MAX_PATH];
+    path_str.to_u16(path_buffer);
+    I->pFactory->OpenFile(reinterpret_cast<const wchar_t*>(path_buffer), IID_PPV_ARGS(&pFile));
     return (SkrDStorageFileHandle)pFile;
 }
 

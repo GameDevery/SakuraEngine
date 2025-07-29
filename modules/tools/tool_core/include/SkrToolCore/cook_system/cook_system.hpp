@@ -44,7 +44,6 @@ struct TOOL_CORE_API CookContext
 
 public:
     virtual ~CookContext() = default;
-
     virtual Importer* GetImporter() const = 0;
     virtual skr::GUID GetImporterType() const = 0;
     virtual uint32_t GetImporterVersion() const = 0;
@@ -105,11 +104,37 @@ public:
                 (const char*)record->uri.c_str());
             return false;
         }
-        if (skr_vfs_fwrite(file, buffer.data(), 0, buffer.size()) < buffer.size())
+        auto write_size = skr_vfs_fwrite(file, buffer.data(), 0, buffer.size());
+        if (write_size != buffer.size())
         {
             SKR_LOG_FMT_ERROR(u8"[ConfigCooker::Cook] failed to write cooked file for resource {}! path: {}",
                 record->guid,
                 (const char*)record->uri.c_str());
+            return false;
+        }
+        return true;
+    }
+
+    bool SaveExtra(skr::span<const uint8_t> data, const char8_t* filename)
+    {
+        auto record = GetAssetMetaFile();
+        //------save extra file to disk
+        auto resource_vfs = record->project->GetResourceVFS();
+        auto file = skr_vfs_fopen(resource_vfs, filename,
+                                  SKR_FM_WRITE_BINARY, SKR_FILE_CREATION_ALWAYS_NEW);
+        if (!file)
+        {
+            SKR_LOG_FMT_ERROR(u8"[CookContext::SaveExtra] failed to create file: {}",
+                filename);
+            return false;
+        }
+        SKR_DEFER({ skr_vfs_fclose(file); });
+        
+        //------write data
+        if (skr_vfs_fwrite(file, data.data(), 0, data.size()) != data.size())
+        {
+            SKR_LOG_FMT_ERROR(u8"[CookContext::SaveExtra] failed to write data to file: {}",
+                filename);
             return false;
         }
         return true;

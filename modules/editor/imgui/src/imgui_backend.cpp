@@ -6,8 +6,8 @@
 #include <SkrSystem/IME.h>
 #include <SkrCore/log.hpp>
 #include <SkrCore/memory/memory.h>
+#include <SkrOS/filesystem.hpp>
 #include <chrono>
-#include <filesystem>
 
 namespace skr
 {
@@ -539,30 +539,32 @@ inline static Vector<uint8_t> _read_shader_bytes(
     Vector<uint8_t> result;
 
     // combine path
-    std::filesystem::path shader_path = u8"../resources/shaders/";
+    skr::Path shader_path{u8"../resources/shaders/"};
     shader_path /= virtual_path.c_str();
+    skr::String ext;
     switch (backend)
     {
     case CGPU_BACKEND_VULKAN:
-        shader_path += u8".spv";
+        ext = u8".spv";
         break;
     case CGPU_BACKEND_D3D12:
     case CGPU_BACKEND_XBOX_D3D12:
-        shader_path += u8".dxil";
+        ext = u8".dxil";
         break;
     default:
         break;
     }
+    auto path_str = shader_path.string();
+    path_str.append(ext);
+    shader_path = skr::Path{path_str};
 
     // read file
-    if (std::filesystem::exists(shader_path))
+    if (skr::fs::File::exists(shader_path))
     {
-        auto f = fopen(shader_path.string().c_str(), "rb");
-        fseek(f, 0, SEEK_END);
-        result.resize_unsafe(ftell(f));
-        fseek(f, 0, SEEK_SET);
-        fread(result.data(), result.size(), 1, f);
-        fclose(f);
+        if (!skr::fs::File::read_all_bytes(shader_path, result))
+        {
+            SKR_LOG_ERROR(u8"failed to read shader file: %s", shader_path.string().c_str());
+        }
     }
     else
     {

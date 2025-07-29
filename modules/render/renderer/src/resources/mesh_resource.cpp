@@ -280,7 +280,7 @@ ESkrInstallStatus MeshFactoryImpl::InstallImpl(SResourceRecord* record)
             {
                 auto binPath = skr::format(u8"{}.buffer{}", guid, i);
                 // TODO: REFACTOR THIS WITH VFS PATH
-                // auto fullBinPath = skr::filesystem::path(root.dstorage_root) / binPath.c_str();
+                // auto fullBinPath = skr::fs::path(root.dstorage_root) / binPath.c_str();
                 // auto&& thisPath = dRequest->absPaths[i];
                 const auto& thisBin = mesh_resource->bins[i];
                 auto&& thisFuture = dRequest->dFutures[i];

@@ -12,22 +12,25 @@
 #if defined(_MSC_VER)
 bool cr_pdb_replace(const std::string& filename, const std::string& pdbname, std::string& orig_pdb);
 
-static bool ProcessPDB(const skr::filesystem::path& dst)
+static bool ProcessPDB(const skr::Path& dst)
 {
-    auto basePath = dst.lexically_normal();
-    skr::filesystem::path folder, fname, ext;
-    folder = basePath.parent_path();
-    fname = basePath.stem();
-    ext = basePath.extension();
+    auto basePath = dst.normalized();
+    auto folder = basePath.parent_directory();
+    auto fname = basePath.basename();
+    auto ext = basePath.extension();
     // replace ext with .pdb
-    auto pdbDst = folder / (fname.string() + ".pdb");
+    skr::String pdb_name = fname.string();
+    pdb_name.append(u8".pdb");
+    auto pdbDst = folder / pdb_name;
     std::string orig_pdb;
-    bool result = cr_pdb_replace(dst.string(), fname.string() + ".pdb", orig_pdb);
-    std::error_code ec;
-    skr::filesystem::copy(orig_pdb, pdbDst, skr::filesystem::copy_options::overwrite_existing, ec);
-    if (ec)
+    std::string dst_str(reinterpret_cast<const char*>(dst.string().data()));
+    std::string fname_str(reinterpret_cast<const char*>(fname.string().data()));
+    bool result = cr_pdb_replace(dst_str, fname_str + ".pdb", orig_pdb);
+    skr::Path orig_pdb_path(skr::String(reinterpret_cast<const char8_t*>(orig_pdb.c_str())));
+    bool copy_result = skr::fs::File::copy(orig_pdb_path, pdbDst, skr::fs::CopyOptions::OverwriteExisting);
+    if (!copy_result)
     {
-        SKR_LOG_ERROR(u8"copy pdb file failed: %s", ec.message().c_str());
+        SKR_LOG_ERROR(u8"copy pdb file failed");
         result = false;
     }
     return result;
@@ -38,9 +41,9 @@ namespace skr
 {
 struct ModuleContext
 {
-    skr::filesystem::path path = {};
-    skr::filesystem::path temppath = {};
-    skr::filesystem::file_time_type timestamp = {};
+    skr::Path path = {};
+    skr::Path temppath = {};
+    skr::fs::FileTime timestamp = {};
     unsigned int version = 0;
     unsigned int next_version = 1;
     unsigned int last_working_version = 0;
@@ -168,21 +171,23 @@ public:
     skr::String name = u8"";
 };
 
-static skr::filesystem::path GetVersionPath(const skr::filesystem::path& basepath,
+static skr::Path GetVersionPath(const skr::Path& basepath,
     unsigned version,
-    const skr::filesystem::path& temppath)
+    const skr::Path& temppath)
 {
-    auto basePath = basepath.lexically_normal();
-    skr::filesystem::path folder, fname, ext;
-    folder = basePath.parent_path();
-    fname = basePath.stem();
-    ext = basePath.extension();
+    auto basePath = basepath.normalized();
+    auto folder = basePath.parent_directory();
+    auto fname = basePath.basename();
+    auto ext = basePath.extension();
     auto ver = std::to_string(version);
     if (!temppath.empty())
     {
         folder = temppath;
     }
-    return folder / (fname.string() + ver + ext.string());
+    skr::String result_str = fname.string();
+    result_str.append(skr::String(reinterpret_cast<const char8_t*>(ver.c_str())));
+    result_str.append(ext.string());
+    return folder / result_str;
 }
 
 bool ModuleManagerImpl::loadHotfixModule(SharedLibrary& lib, const skr::String& moduleName)
@@ -192,21 +197,20 @@ bool ModuleManagerImpl::loadHotfixModule(SharedLibrary& lib, const skr::String& 
     filename.append(skr::SharedLibrary::GetPlatformFilePrefixName());
     filename.append(moduleName);
     filename.append(skr::SharedLibrary::GetPlatformFileExtensionName());
-    skr::filesystem::path path = filename.c_str();
+    skr::Path path(skr::String(reinterpret_cast<const char8_t*>(filename.c_str())));
     ctx.path = path;
-    std::error_code ec;
-    if (!skr::filesystem::exists(path, ec))
+    if (!skr::fs::File::exists(path))
     {
-        SKR_LOG_ERROR(u8"hotfix module %s not found!", path.c_str());
+        SKR_LOG_ERROR(u8"hotfix module %s not found!", path.string().data());
         return false;
     }
-    skr::filesystem::path new_path = GetVersionPath(path, ctx.version, ctx.temppath);
+    skr::Path new_path = GetVersionPath(path, ctx.version, ctx.temppath);
     {
         ctx.last_working_version = ctx.version;
-        skr::filesystem::copy(path, new_path, skr::filesystem::copy_options::overwrite_existing, ec);
-        if (ec)
+        bool copy_result = skr::fs::File::copy(path, new_path, skr::fs::CopyOptions::OverwriteExisting);
+        if (!copy_result)
         {
-            SKR_LOG_ERROR(u8"hotfix module %s rename failed! reason: %s", path.c_str(), ec.message().c_str());
+            SKR_LOG_ERROR(u8"hotfix module %s rename failed!", path.string().data());
             return false;
         }
         ctx.next_version = ctx.next_version + 1;
@@ -215,18 +219,19 @@ bool ModuleManagerImpl::loadHotfixModule(SharedLibrary& lib, const skr::String& 
         {
             SKR_LOG_ERROR(u8"hotfix module %s pdb process failed, debugging may be "
                           "affected and/or reload may fail",
-                path.c_str());
+                path.string().data());
         }
 #endif
     }
-    if (!lib.load(new_path.u8string().c_str()))
+    if (!lib.load(new_path.string().data()))
     {
-        SKR_LOG_ERROR(u8"hotfix module %s load failed!", new_path.c_str());
+        SKR_LOG_ERROR(u8"hotfix module %s load failed!", new_path.string().data());
         return false;
     }
     // TODO: validate sections
     // TODO: reload sections
-    ctx.timestamp = skr::filesystem::last_write_time(new_path, ec);
+    auto info = skr::fs::File::get_info(new_path);
+    ctx.timestamp = info.last_write_time;
     ctx.version = ctx.next_version - 1;
     return true;
 }
@@ -262,10 +267,12 @@ IModule* ModuleManagerImpl::spawnDynamicModule(const skr::String& name, bool hot
         filename.append(skr::SharedLibrary::GetPlatformFilePrefixName());
         filename.append(name);
         filename.append(skr::SharedLibrary::GetPlatformFileExtensionName());
-        auto finalPath = (skr::filesystem::path(moduleDir.c_str()) / filename.c_str()).u8string();
+        skr::Path moduleDir_path(skr::String(reinterpret_cast<const char8_t*>(moduleDir.c_str())));
+        skr::Path filename_path(skr::String(reinterpret_cast<const char8_t*>(filename.c_str())));
+        auto finalPath = (moduleDir_path / filename_path).string();
         if (!hotfix)
         {
-            if (!sharedLib->load((const char8_t*)finalPath.c_str()))
+            if (!sharedLib->load(finalPath.data()))
             {
                 SKR_LOG_DEBUG(u8"%s\nLoad Shared Lib Error:%s", filename.c_str(), sharedLib->errorString().c_str());
             }
@@ -499,7 +506,8 @@ bool ModuleManagerImpl::__internal_UpdateModuleGraph(const skr::String& entry)
         return true;
     auto& ctx = iter->second;
     // check file timestamp
-    bool changed = std::filesystem::last_write_time(ctx.path) > ctx.timestamp;
+    auto info = skr::fs::File::get_info(ctx.path);
+    bool changed = info.last_write_time > ctx.timestamp;
     if (!changed)
         return true;
     // reload module

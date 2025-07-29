@@ -81,6 +81,7 @@ struct CookContextImpl : public CookContext
 CookContext* CookContext::Create(skr::RC<AssetMetaFile> metafile, skr::io::IRAMService* service)
 {
     auto ctx = SkrNew<CookContextImpl>(service, metafile);
+    ctx->metafile = metafile;
     //-----load importer
     skr::archive::JsonReader reader(ctx->metafile->meta.view());
     reader.StartObject();
@@ -174,24 +175,12 @@ URI CookContextImpl::AddSourceFile(const URI& inPath)
     if (iter == fileDependencies.end())
         fileDependencies.add(inPath);
     
-    // Check if the path exists in asset VFS
-    auto asset_vfs = metafile->project->GetAssetVFS();
-    if (skr_vfs_fexists(asset_vfs, inPath.u8_str()))
-        return inPath;
+    // Construct the full path by combining the asset's parent directory with the input path
+    skr::Path uri_path{metafile->uri};
+    auto parent_dir = uri_path.parent_directory();
+    auto full_path = parent_dir / inPath;
     
-    // Try relative to current asset's directory
-    // Extract directory from URI
-    auto uri_view = metafile->uri.view();
-    auto last_slash = uri_view.find_last_of(u8"/\\");
-    if (last_slash)
-    {
-        auto dir = uri_view.substr(0, last_slash.value());
-        auto relative_path = skr::format(u8"{}/{}", dir, inPath);
-        if (skr_vfs_fexists(asset_vfs, relative_path.u8_str()))
-            return relative_path;
-    }
-    
-    return inPath;
+    return full_path.string();
 }
 
 URI CookContextImpl::AddSourceFileAndLoad(skr::io::IRAMService* ioService, const URI& path, skr::BlobId& destination)

@@ -1,13 +1,13 @@
+#include "SkrProfile/profile.h"
 #include "SkrGraphics/api.h"
-#include "cgltf/cgltf.h"
 #include "SkrCore/platform/vfs.h"
-#include "SkrOS/filesystem.hpp"
+#include "SkrContainersDef/path.hpp"
 #include "SkrTask/fib_task.hpp"
 #include "SkrRenderer/resources/mesh_resource.h"
 #include "SkrMeshCore/mesh_processing.hpp"
 #include "SkrGLTFTool/mesh_processing.hpp"
 
-#include "SkrProfile/profile.h"
+#include "cgltf/cgltf.h"
 
 #define MAGIC_SIZE_GLTF_PARSE_READY ~0
 
@@ -100,8 +100,8 @@ cgltf_data* ImportGLTFWithData(skr::StringView assetPath, skr_io_ram_service_t* 
             else
             {
                 SkrZoneScopedN("LoadGLTFBuffer");
-                auto fullPath = skr::filesystem::path(vfs->mount_dir) / u8Path.u8_str();
-                result = cgltf_load_buffers(&options, gltf_data_, fullPath.string().c_str());
+                const skr::Path fullPath = skr::Path{vfs->mount_dir} / u8Path.u8_str();
+                result = cgltf_load_buffers(&options, gltf_data_, fullPath.string().c_str_raw());
                 result = cgltf_validate(gltf_data_);
                 if (result != cgltf_result_success)
                 {

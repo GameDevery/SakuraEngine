@@ -21,9 +21,9 @@ void* ShaderOptionImporter::Import(skr::io::IRAMService* ioService, CookContext*
         return nullptr;
     }
     '*/
-    skr::String              jString(skr::StringView((const char8_t*)ioBuffer->get_data(), ioBuffer->get_size()));
+    skr::String jString(skr::StringView((const char8_t*)ioBuffer->get_data(), ioBuffer->get_size()));
     skr::archive::JsonReader jsonVal(jString.view());
-    auto                     collection = SkrNew<skr_shader_options_resource_t>();
+    auto collection = SkrNew<skr_shader_options_resource_t>();
     skr::json_read(&jsonVal, *collection);
     return collection;
 }
@@ -41,7 +41,8 @@ bool ShaderOptionsCooker::Cook(CookContext* ctx)
 
     //-----import resource object
     auto options = ctx->Import<skr_shader_options_resource_t>();
-    if (!options) return false;
+    if (!options) 
+        return false;
     SKR_DEFER({ ctx->Destroy(options); });
 
     //------write resource object to disk

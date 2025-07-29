@@ -39,10 +39,10 @@ int main(int argc, char* argv[])
         auto is_receiver = (strcmp(argv[1], "receiver") == 0);
 
         std::error_code ec = {};
-        if (!skr::filesystem::exists("./cross-proc", ec))
+        if (!skr::fs::Directory::exists(u8"./cross-proc"))
         {
             SKR_LOG_INFO(u8"subdir cross-proc not existed, create it");
-            skr::filesystem::create_directories(skr::filesystem::path("./cross-proc"), ec);
+            skr::fs::Directory::create(skr::Path{u8"./cross-proc"}, true);
         }
 
         if (is_receiver) 

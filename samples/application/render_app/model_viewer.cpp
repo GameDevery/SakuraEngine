@@ -81,14 +81,14 @@ void ModelViewerModule::on_load(int argc, char8_t** argv)
 
     render_device = SkrRendererModule::Get()->get_render_device();
 
-    const auto current_path = skr::filesystem::current_path();
+    const auto current_path = skr::fs::current_directory();
     skd::SProjectConfig projectConfig = {
-        .assetDirectory = (current_path / "assets").u8string().c_str(),
-        .resourceDirectory = (current_path / "resources").u8string().c_str(),
-        .artifactsDirectory = (current_path / "artifacts").u8string().c_str()
+        .assetDirectory = (current_path / u8"assets").string().c_str(),
+        .resourceDirectory = (current_path / u8"resources").string().c_str(),
+        .artifactsDirectory = (current_path / u8"artifacts").string().c_str()
     };
     skr::String projectName = u8"ModelViewer";
-    skr::String rootPath = skr::filesystem::current_path().u8string().c_str();
+    skr::String rootPath = skr::fs::current_directory().string().c_str();
     project.OpenProject(u8"ModelViewer", rootPath.c_str(), projectConfig);
 
     InitializeReosurceSystem();

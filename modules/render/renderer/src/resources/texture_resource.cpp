@@ -167,7 +167,7 @@ ESkrInstallStatus TextureFactoryImpl::InstallImpl(SResourceRecord* record)
             SKR_ASSERT(found == mTextureRequests.end());
             mTextureRequests.emplace(texture_resource, dRequest);
             mInstallTypes.emplace(texture_resource, installType);
-            // auto compressedPath = skr::filesystem::path(root.dstorage_root) / compressedBin.c_str();
+            // auto compressedPath = skr::fs::path(root.dstorage_root) / compressedBin.c_str();
             // dRequest->absPath = compressedPath.string();
 
             CGPUTextureDescriptor tdesc = {};

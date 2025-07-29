@@ -2,6 +2,7 @@
 #include "SkrToolCore/fwd_types.hpp"
 #include "SkrOS/filesystem.hpp"
 #include "SkrContainers/string.hpp"
+#include "SkrContainersDef/path.hpp"
 #ifndef __meta__
     #include "SkrToolCore/project/project.generated.h" // IWYU pragma: export
 #endif

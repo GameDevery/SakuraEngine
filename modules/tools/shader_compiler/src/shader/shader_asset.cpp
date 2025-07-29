@@ -26,10 +26,11 @@ void* ShaderImporter::Import(skr::io::IRAMService* ioService, CookContext* conte
     const auto path = context->AddSourceFileAndLoad(ioService, sourcePath.c_str(), ioBlob);
 
     // create source code wrapper
-    const auto extention = path.extension().u8string();
-    const auto source_name = path.filename().replace_extension();
-    const auto sourceType = Util_GetShaderSourceTypeWithExtensionString(extention.c_str());
-    return SkrNew<ShaderSourceCode>(ioBlob, source_name.u8string().c_str(), sourceType);
+    const skr::Path pathObj{path};
+    const auto extention = pathObj.extension(false);
+    const auto source_name = pathObj.basename();
+    const auto sourceType = Util_GetShaderSourceTypeWithExtensionString(extention.string().c_str());
+    return SkrNew<ShaderSourceCode>(ioBlob, source_name.string().c_str(), sourceType);
 }
 
 void ShaderImporter::Destroy(void* resource)
@@ -184,47 +185,33 @@ bool ShaderCooker::Cook(CookContext* ctx)
                         auto hashed = compiled->GetHashCode(&identifier.hash.flags, identifier.hash.encoded_digits);
                         if (hashed && !bytes.is_empty())
                         {
-                            // wirte bytecode to disk
+                            // write bytecode to disk using ResourceVFS
                             const auto subdir = CGPUShaderBytecodeTypeNames[format];
-                            auto basePath = outputPath.parent_path() / subdir;
                             const auto fname = skr::format(u8"{}#{}-{}-{}-{}",
                                 identifier.hash.flags,
                                 identifier.hash.encoded_digits[0],
                                 identifier.hash.encoded_digits[1],
                                 identifier.hash.encoded_digits[2],
                                 identifier.hash.encoded_digits[3]);
-                            // create dir
-                            std::error_code ec = {};
-                            skr::filesystem::create_directories(basePath, ec);
+                            
                             // write bytes to file
                             {
-                                auto bytesPath = basePath / skr::format(u8"{}.bytes", fname).c_str();
+                                auto bytesFilename = skr::format(u8"{}/{}.bytes", subdir, fname);
+                                if (!ctx->SaveExtra(bytes, bytesFilename.c_str()))
                                 {
-                                    auto file = fopen(bytesPath.string().c_str(), "wb");
-                                    SKR_DEFER({ fclose(file); });
-                                    if (!file)
-                                    {
-                                        int err_num = errno;
-                                        SKR_LOG_FATAL(u8"Open Shader Output File errno = %d, reason = %s!", err_num, ::strerror(err_num));
-                                        SKR_UNREACHABLE_CODE();
-                                    }
-                                    fwrite(bytes.data(), bytes.size(), 1, file);
+                                    SKR_LOG_FATAL(u8"Failed to save shader bytecode!");
+                                    SKR_UNREACHABLE_CODE();
                                 }
                             }
+                            
                             // write pdb to file
                             if (auto pdb = compiled->GetPDB(); !pdb.is_empty())
                             {
-                                auto pdbPath = basePath / skr::format(u8"{}.pdb", fname).c_str();
+                                auto pdbFilename = skr::format(u8"{}/{}.pdb", subdir, fname);
+                                if (!ctx->SaveExtra(pdb, pdbFilename.c_str()))
                                 {
-                                    auto pdb_file = fopen(pdbPath.string().c_str(), "wb");
-                                    SKR_DEFER({ fclose(pdb_file); });
-                                    if (!pdb_file)
-                                    {
-                                        int err_num = errno;
-                                        SKR_LOG_FATAL(u8"Open PDB File errno = %d, reason = %s!", err_num, ::strerror(err_num));
-                                        SKR_UNREACHABLE_CODE();
-                                    }
-                                    fwrite(pdb.data(), pdb.size(), 1, pdb_file);
+                                    SKR_LOG_ERROR(u8"Failed to save shader PDB!");
+                                    // PDB save failure is not fatal
                                 }
                             }
                         }
@@ -320,19 +307,17 @@ bool ShaderCooker::Cook(CookContext* ctx)
         // make archive
         skr::archive::JsonWriter writer(2);
         skr::json_write(&writer, json_resource);
-        auto jPath = outputPath.string() + ".json";
-        // write to file
-        auto file = fopen(jPath.c_str(), "wb");
-        if (!file)
+        auto jString = writer.Write();
+        
+        // write to file using ResourceVFS
+        auto jsonFilename = skr::format(u8"{}.json", assetMetaFile->guid);
+        skr::span<const uint8_t> jsonData{reinterpret_cast<const uint8_t*>(jString.c_str_raw()), jString.length_buffer()};
+        if (!ctx->SaveExtra(jsonData, jsonFilename.c_str()))
         {
-            SKR_LOG_FMT_ERROR(u8"[ShaderCooker::Cook] failed to write cooked file for json_resource {}! path: {}",
-                assetMetaFile->guid,
-                assetMetaFile->path.string());
+            SKR_LOG_FMT_ERROR(u8"[ShaderCooker::Cook] failed to write json file for resource {}!",
+                assetMetaFile->guid);
             return false;
         }
-        SKR_DEFER({ fclose(file); });
-        auto jString = writer.Write();
-        fwrite(jString.c_str_raw(), jString.length_buffer(), 1, file);
     }
     return true;
 }
