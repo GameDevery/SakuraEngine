@@ -8,7 +8,7 @@
 
 namespace skd::asset
 {
-struct SCookContextImpl : public CookContext
+struct CookContextImpl : public CookContext
 {
     skr::filesystem::path GetOutputPath() const override;
 
@@ -16,7 +16,7 @@ struct SCookContextImpl : public CookContext
     skr_guid_t GetImporterType() const override;
     uint32_t GetImporterVersion() const override;
     uint32_t GetCookerVersion() const override;
-    const AssetInfo* GetAssetInfo() const override;
+    const AssetMetaFile* GetAssetMetaFile() const override;
     skr::String GetAssetPath() const override;
 
     skr::filesystem::path AddSourceFile(const skr::filesystem::path& path) override;
@@ -68,7 +68,7 @@ struct SCookContextImpl : public CookContext
     skr::Vector<skr_guid_t> runtimeDependencies;
     skr::Vector<skr::filesystem::path> fileDependencies;
 
-    SCookContextImpl(skr::io::IRAMService* ioService)
+    CookContextImpl(skr::io::IRAMService* ioService)
         : ioService(ioService)
     {
     }
@@ -76,7 +76,7 @@ struct SCookContextImpl : public CookContext
 
 CookContext* CookContext::Create(skr::io::IRAMService* service)
 {
-    return SkrNew<SCookContextImpl>(service);
+    return SkrNew<CookContextImpl>(service);
 }
 
 void CookContext::Destroy(CookContext* ctx)
@@ -84,7 +84,7 @@ void CookContext::Destroy(CookContext* ctx)
     SkrDelete(ctx);
 }
 
-void SCookContextImpl::_Destroy(void* resource)
+void CookContextImpl::_Destroy(void* resource)
 {
     if (!importer)
     {
@@ -96,7 +96,7 @@ void SCookContextImpl::_Destroy(void* resource)
     SKR_LOG_INFO(u8"[CookContext::Cook] asset freed for asset: %s", record->path.u8string().c_str());
 }
 
-void* SCookContextImpl::_Import()
+void* CookContextImpl::_Import()
 {
     SkrZoneScoped;
     //-----load importer
@@ -135,42 +135,42 @@ void* SCookContextImpl::_Import()
     return nullptr;
 }
 
-skr::filesystem::path SCookContextImpl::GetOutputPath() const
+skr::filesystem::path CookContextImpl::GetOutputPath() const
 {
     return outputPath;
 }
 
-Importer* SCookContextImpl::GetImporter() const
+Importer* CookContextImpl::GetImporter() const
 {
     return importer;
 }
 
-skr_guid_t SCookContextImpl::GetImporterType() const
+skr_guid_t CookContextImpl::GetImporterType() const
 {
     return importerType;
 }
 
-uint32_t SCookContextImpl::GetImporterVersion() const
+uint32_t CookContextImpl::GetImporterVersion() const
 {
     return importerVersion;
 }
 
-uint32_t SCookContextImpl::GetCookerVersion() const
+uint32_t CookContextImpl::GetCookerVersion() const
 {
     return cookerVersion;
 }
 
-const AssetInfo* SCookContextImpl::GetAssetInfo() const
+const AssetMetaFile* CookContextImpl::GetAssetMetaFile() const
 {
     return record;
 }
 
-skr::String SCookContextImpl::GetAssetPath() const
+skr::String CookContextImpl::GetAssetPath() const
 {
     return record->path.u8string().c_str();
 }
 
-skr::filesystem::path SCookContextImpl::AddSourceFile(const skr::filesystem::path& inPath)
+skr::filesystem::path CookContextImpl::AddSourceFile(const skr::filesystem::path& inPath)
 {
     auto iter = std::find_if(fileDependencies.begin(), fileDependencies.end(), [&](const auto& dep) { return dep == inPath; });
     if (iter == fileDependencies.end())
@@ -178,15 +178,15 @@ skr::filesystem::path SCookContextImpl::AddSourceFile(const skr::filesystem::pat
     return record->path.parent_path() / inPath;
 }
 
-skr::filesystem::path SCookContextImpl::AddSourceFileAndLoad(skr::io::IRAMService* ioService, const skr::filesystem::path& path, skr::BlobId& destination)
+skr::filesystem::path CookContextImpl::AddSourceFileAndLoad(skr::io::IRAMService* ioService, const skr::filesystem::path& path, skr::BlobId& destination)
 {
     auto outPath = AddSourceFile(path.c_str());
     auto u8Path = outPath.u8string();
-    const auto assetInfo = GetAssetInfo();
+    const auto assetMetaFile = GetAssetMetaFile();
     // load file
     skr::task::event_t counter;
     auto rq = ioService->open_request();
-    rq->set_vfs(assetInfo->project->GetAssetVFS());
+    rq->set_vfs(assetMetaFile->project->GetAssetVFS());
     rq->set_path(u8Path.c_str());
     rq->add_block({}); // read all
     rq->add_callback(SKR_IO_STAGE_COMPLETED, +[](skr_io_future_t* future, skr_io_request_t* request, void* data) noexcept {
@@ -199,12 +199,12 @@ skr::filesystem::path SCookContextImpl::AddSourceFileAndLoad(skr::io::IRAMServic
     return outPath;
 }
 
-skr::span<const skr::filesystem::path> SCookContextImpl::GetSourceFiles() const
+skr::span<const skr::filesystem::path> CookContextImpl::GetSourceFiles() const
 {
     return fileDependencies;
 }
 
-void SCookContextImpl::AddRuntimeDependency(skr_guid_t resource)
+void CookContextImpl::AddRuntimeDependency(skr_guid_t resource)
 {
     auto iter = std::find_if(runtimeDependencies.begin(), runtimeDependencies.end(), [&](const auto& dep) { return dep == resource; });
     if (iter == runtimeDependencies.end())
@@ -212,27 +212,27 @@ void SCookContextImpl::AddRuntimeDependency(skr_guid_t resource)
     GetCookSystem()->EnsureCooked(resource); // try launch new cook task, non blocking
 }
 
-void SCookContextImpl::AddSoftRuntimeDependency(skr_guid_t resource)
+void CookContextImpl::AddSoftRuntimeDependency(skr_guid_t resource)
 {
     GetCookSystem()->EnsureCooked(resource); // try launch new cook task, non blocking
 }
 
-skr::span<const skr_guid_t> SCookContextImpl::GetRuntimeDependencies() const
+skr::span<const skr_guid_t> CookContextImpl::GetRuntimeDependencies() const
 {
     return skr::span<const skr_guid_t>(runtimeDependencies.data(), runtimeDependencies.size());
 }
 
-skr::span<const SResourceHandle> SCookContextImpl::GetStaticDependencies() const
+skr::span<const SResourceHandle> CookContextImpl::GetStaticDependencies() const
 {
     return skr::span<const SResourceHandle>(staticDependencies.data(), staticDependencies.size());
 }
 
-const SResourceHandle& SCookContextImpl::GetStaticDependency(uint32_t index) const
+const SResourceHandle& CookContextImpl::GetStaticDependency(uint32_t index) const
 {
     return staticDependencies[index];
 }
 
-uint32_t SCookContextImpl::AddStaticDependency(skr_guid_t resource, bool install)
+uint32_t CookContextImpl::AddStaticDependency(skr_guid_t resource, bool install)
 {
     auto iter = std::find_if(staticDependencies.begin(), staticDependencies.end(), [&](const auto& dep) { return dep.get_serialized() == resource; });
     if (iter == staticDependencies.end())

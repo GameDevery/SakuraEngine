@@ -25,7 +25,7 @@ bool AnimCooker::Cook(CookContext* ctx)
     //-----emit static dependencies
     if (settings.skeletonAsset.get_serialized() == skr_guid_t{})
     {
-        SKR_LOG_ERROR(u8"Failed to cook animation asset %s. No skeleton asset specified.", ctx->GetAssetInfo()->path.c_str());
+        SKR_LOG_ERROR(u8"Failed to cook animation asset %s. No skeleton asset specified.", ctx->GetAssetMetaFile()->path.c_str());
         return false;
     }
     auto idx = ctx->AddStaticDependency(settings.skeletonAsset.get_serialized(), true);

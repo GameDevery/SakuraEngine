@@ -26,7 +26,7 @@ struct SProject;
 namespace asset
 {
 struct Importer;
-struct AssetInfo;
+struct AssetMetaFile;
 struct CookSystem;
 struct Cooker;
 struct CookContext;

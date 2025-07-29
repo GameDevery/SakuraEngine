@@ -20,9 +20,9 @@ void* skd::asset::GltfMeshImporter::Import(skr::io::IRAMService* ioService, Cook
     {
         return nullptr;
     }
-    const auto assetInfo = context->GetAssetInfo();
+    const auto assetMetaFile = context->GetAssetMetaFile();
     auto path = context->AddSourceFile(relPath).u8string();
-    auto vfs = assetInfo->project->GetAssetVFS();
+    auto vfs = assetMetaFile->project->GetAssetVFS();
     return ImportGLTFWithData(path.c_str(), ioService, vfs);
 }
 
@@ -34,37 +34,49 @@ void skd::asset::GltfMeshImporter::Destroy(void* resource)
 bool skd::asset::MeshCooker::Cook(CookContext* ctx)
 {
     const auto outputPath = ctx->GetOutputPath();
-    const auto assetInfo = ctx->GetAssetInfo();
+    const auto assetMetaFile = ctx->GetAssetMetaFile();
     auto cfg = ctx->GetAssetMetadata<MeshAssetMetadata>();
     if (cfg.vertexType == skr_guid_t{})
     {
         SKR_LOG_ERROR(u8"MeshCooker: VertexType is not specified for asset %s!", ctx->GetAssetPath().c_str());
         return false;
     }
-    auto gltf_data = ctx->Import<cgltf_data>();
-    if (!gltf_data)
-    {
-        return false;
-    }
-    SKR_DEFER({ ctx->Destroy(gltf_data); });
+
     skr_mesh_resource_t mesh;
     skr::Vector<skr::Vector<uint8_t>> blobs;
-    auto importer = static_cast<GltfMeshImporter*>(ctx->GetImporter());
-    mesh.install_to_ram = importer->install_to_ram;
-    mesh.install_to_vram = importer->install_to_vram;
-    if (importer->invariant_vertices)
+    if (ctx->GetImporterType() == skr::type_id_of<GltfMeshImporter>())
     {
-        CookGLTFMeshData(gltf_data, &cfg, mesh, blobs);
-        // TODO: support ram-only mode install
-        mesh.install_to_vram = true;
-    }
-    else
-    {
-        CookGLTFMeshData_SplitSkin(gltf_data, &cfg, mesh, blobs);
-        // TODO: install only pos/norm/tangent vertices
-        mesh.install_to_ram = true;
-        // TODO: support ram-only mode install
-        mesh.install_to_vram = true;
+        auto importer = static_cast<GltfMeshImporter*>(ctx->GetImporter());
+        auto gltf_data = ctx->Import<cgltf_data>();
+        if (!gltf_data)
+        {
+            return false;
+        }
+        SKR_DEFER({ ctx->Destroy(gltf_data); });
+        mesh.install_to_ram = importer->install_to_ram;
+        mesh.install_to_vram = importer->install_to_vram;
+        if (importer->invariant_vertices)
+        {
+            CookGLTFMeshData(gltf_data, &cfg, mesh, blobs);
+            // TODO: support ram-only mode install
+            mesh.install_to_vram = true;
+        }
+        else
+        {
+            CookGLTFMeshData_SplitSkin(gltf_data, &cfg, mesh, blobs);
+            // TODO: install only pos/norm/tangent vertices
+            mesh.install_to_ram = true;
+            // TODO: support ram-only mode install
+            mesh.install_to_vram = true;
+        }
+
+        //----- write materials
+        mesh.materials.reserve(importer->materials.size());
+        for (const auto material : importer->materials)
+        {
+            ctx->AddRuntimeDependency(material);
+            mesh.materials.add(material);
+        }
     }
 
     //----- optimize mesh
@@ -142,14 +154,6 @@ bool skd::asset::MeshCooker::Cook(CookContext* ctx)
         });
     }
 
-    //----- write materials
-    mesh.materials.reserve(importer->materials.size());
-    for (const auto material : importer->materials)
-    {
-        ctx->AddRuntimeDependency(material);
-        mesh.materials.add(material);
-    }
-
     //----- write resource object
     if (!ctx->Save(mesh)) return false;
 
@@ -162,7 +166,7 @@ bool skd::asset::MeshCooker::Cook(CookContext* ctx)
         SKR_DEFER({ fclose(buffer_file); });
         if (!buffer_file)
         {
-            SKR_LOG_FMT_ERROR(u8"[MeshCooker::Cook] failed to write cooked file for resource {}! path: {}", assetInfo->guid, assetInfo->path.string());
+            SKR_LOG_FMT_ERROR(u8"[MeshCooker::Cook] failed to write cooked file for resource {}! path: {}", assetMetaFile->guid, assetMetaFile->path.string());
             return false;
         }
         fwrite(blobs[i].data(), 1, blobs[i].size(), buffer_file);

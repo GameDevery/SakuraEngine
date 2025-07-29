@@ -12,9 +12,9 @@ void* MaterialTypeImporter::Import(skr::io::IRAMService* ioService, CookContext*
     context->AddSourceFileAndLoad(ioService, jsonPath.c_str(), blob);
     SKR_DEFER({ blob.reset(); });
     /*
-    const auto assetInfo = context->GetAssetInfo();
+    const auto assetMetaFile = context->GetAssetMetaFile();
     {
-        SKR_LOG_FMT_ERROR(u8"Import shader options asset {} from {} failed, json parse error {}", assetInfo->guid, jsonPath, ::error_message(doc.error()));
+        SKR_LOG_FMT_ERROR(u8"Import shader options asset {} from {} failed, json parse error {}", assetMetaFile->guid, jsonPath, ::error_message(doc.error()));
         return nullptr;
     }
     '*/
