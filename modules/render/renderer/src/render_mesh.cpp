@@ -58,7 +58,7 @@ void skr_render_mesh_initialize(skr_render_mesh_id render_mesh, skr_mesh_resourc
             draw_cmd.primitive_index = prim_idx;
             draw_cmd.material_index = prim.material_index;
         }
-    }
+    }    
 }
 
 void skr_render_mesh_free(skr_render_mesh_id render_mesh)
