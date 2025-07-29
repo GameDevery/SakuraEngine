@@ -6,7 +6,7 @@
 #include "SkrRT/resource/local_resource_registry.hpp"
 #include "SkrSystem/system_app.h"
 
-#include "SkrToolCore/asset/cook_system.hpp"
+#include "SkrToolCore/cook_system/cook_system.hpp"
 #include "SkrToolCore/project/project.hpp"
 #include "SkrRenderer/resources/texture_resource.h"
 #include "SkrRenderer/skr_renderer.h"

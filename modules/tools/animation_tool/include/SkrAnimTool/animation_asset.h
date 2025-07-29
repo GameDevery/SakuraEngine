@@ -1,7 +1,7 @@
 #pragma once
 #include "SkrRT/resource/resource_handle.h"
-#include "SkrToolCore/asset/importer.hpp"
-#include "SkrToolCore/asset/cooker.hpp"
+#include "SkrToolCore/cook_system/importer.hpp"
+#include "SkrToolCore/cook_system/cooker.hpp"
 #ifndef __meta__
     #include "SkrAnimTool/animation_asset.generated.h" // IWYU pragma: export
 #endif

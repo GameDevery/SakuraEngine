@@ -1,5 +1,5 @@
 #include "SkrRenderer/resources/material_resource.hpp"
-#include "SkrToolCore/asset/cook_system.hpp"
+#include "SkrToolCore/cook_system/cook_system.hpp"
 #include "SkrToolCore/project/project.hpp"
 #include "SkrShaderCompiler/assets/material_asset.hpp"
 #include "SkrSerde/json_serde.hpp"

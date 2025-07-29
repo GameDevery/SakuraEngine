@@ -16,7 +16,7 @@
 
 #include "SkrAnim/resources/skeleton_resource.hpp"
 #include "SkrToolCore/project/project.hpp"
-#include "SkrToolCore/asset/cook_system.hpp"
+#include "SkrToolCore/cook_system/cook_system.hpp"
 
 #include "SkrProfile/profile.h"
 

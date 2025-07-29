@@ -1,6 +1,6 @@
 #pragma once
-#include "SkrToolCore/asset/importer.hpp"
-#include "SkrToolCore/asset/cooker.hpp"
+#include "SkrToolCore/cook_system/importer.hpp"
+#include "SkrToolCore/cook_system/cooker.hpp"
 #include "SkrContainersDef/string.hpp"
 #include "SkrContainersDef/vector.hpp"
 #ifndef __meta__

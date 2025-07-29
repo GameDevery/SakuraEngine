@@ -2,7 +2,7 @@
 #include "SkrRT/io/ram_io.hpp"
 #include "SkrRT/resource/config_resource.h"
 #include "SkrToolCore/assets/config_asset.hpp"
-#include "SkrToolCore/asset/cook_system.hpp"
+#include "SkrToolCore/cook_system/cook_system.hpp"
 
 namespace skd::asset
 {

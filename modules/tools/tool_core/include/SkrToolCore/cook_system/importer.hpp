@@ -2,7 +2,7 @@
 #include "SkrBase/types/guid.h"
 #include "SkrToolCore/fwd_types.hpp"
 #ifndef __meta__
-    #include "SkrToolCore/asset/importer.generated.h" // IWYU pragma: export
+    #include "SkrToolCore/cook_system/importer.generated.h" // IWYU pragma: export
 #endif
 
 namespace skd::asset

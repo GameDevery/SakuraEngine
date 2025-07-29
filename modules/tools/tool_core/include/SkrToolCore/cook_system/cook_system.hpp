@@ -4,7 +4,7 @@
 #include "SkrCore/blob.hpp"
 #include "SkrContainers/vector.hpp"
 #include "SkrRT/resource/resource_header.hpp"
-#include "SkrToolCore/asset/cooker.hpp"
+#include "SkrToolCore/cook_system/cooker.hpp"
 
 SKR_DECLARE_TYPE_ID_FWD(skr::io, IRAMService, skr_io_ram_service);
 

@@ -1,7 +1,7 @@
 #include "SkrBase/misc/make_zeroed.hpp"
 #include "SkrTask/parallel_for.hpp"
 #include "SkrRT/misc/cartesian_product.hpp"
-#include "SkrToolCore/asset/cook_system.hpp"
+#include "SkrToolCore/cook_system/cook_system.hpp"
 #include "SkrRenderer/resources/shader_meta_resource.hpp"
 #include "SkrRenderer/resources/shader_resource.hpp"
 #include "SkrShaderCompiler/assets/shader_asset.hpp"

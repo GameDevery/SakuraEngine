@@ -2,9 +2,9 @@
 #include "SkrRTTR/type.hpp"
 #include "SkrTask/fib_task.hpp"
 #include "SkrRT/io/ram_io.hpp"
-#include "SkrToolCore/asset/importer.hpp"
+#include "SkrToolCore/cook_system/importer.hpp"
 #include "SkrToolCore/project/project.hpp"
-#include "SkrToolCore/asset/cook_system.hpp"
+#include "SkrToolCore/cook_system/cook_system.hpp"
 
 namespace skd::asset
 {
