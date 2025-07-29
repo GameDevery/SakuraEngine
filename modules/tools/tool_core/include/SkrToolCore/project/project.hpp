@@ -23,12 +23,13 @@ struct TOOL_CORE_API SProject
 public:
     ~SProject() noexcept;
 
-    skr::filesystem::path GetAssetPath() const noexcept { return assetDirectory; }
-    skr::filesystem::path GetOutputPath() const noexcept { return resourceDirectory; }
-    skr::filesystem::path GetDependencyPath() const noexcept { return dependencyDirectory; }
-    bool LoadAssetData(skr::StringView uri, skr::Vector<uint8_t>& content) noexcept;
-    bool LoadAssetMeta(skr::StringView uri, skr::String& content) noexcept;
-    
+    virtual bool LoadAssetData(skr::StringView uri, skr::Vector<uint8_t>& content) noexcept;
+    virtual bool LoadAssetMeta(skr::StringView uri, skr::String& content) noexcept;
+    virtual bool OpenProject(const skr::filesystem::path& path) noexcept;
+    virtual bool OpenProject(const skr::String& name, const skr::String& root, const SProjectConfig& config) noexcept;
+    virtual bool CloseProject() noexcept;
+    virtual void SetWorkspace(const skr::filesystem::path& path) noexcept;
+
     // void SetAssetVFS(skr_vfs_t* asset_vfs);
     // void SetResourceVFS(skr_vfs_t* resource_vfs);
     // void SetRAMService(skr::io::IRAMService* service);
@@ -36,10 +37,9 @@ public:
     skr_vfs_t* GetResourceVFS() const;
     skr::io::IRAMService* GetRamService() const;
 
-    static SProject* OpenProject(const skr::filesystem::path& path) noexcept;
-    static SProject* OpenProject(const skr::String& name, const skr::String& root, const SProjectConfig& config) noexcept;
-    static void CloseProject(SProject* project) noexcept;
-    static void SetWorkspace(const skr::filesystem::path& path) noexcept;
+    skr::filesystem::path GetAssetPath() const noexcept { return assetDirectory; }
+    skr::filesystem::path GetOutputPath() const noexcept { return resourceDirectory; }
+    skr::filesystem::path GetDependencyPath() const noexcept { return dependencyDirectory; }
 
 private:
     skr_vfs_t* asset_vfs = nullptr;
@@ -51,5 +51,6 @@ private:
     skr::filesystem::path resourceDirectory;
     skr::filesystem::path dependencyDirectory;
     skr::String name;
+    skr::filesystem::path workspace;
 };
 } // namespace skd

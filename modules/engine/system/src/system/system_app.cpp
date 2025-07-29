@@ -126,14 +126,6 @@ bool SystemApp::initialize(const char* backend)
 
 void SystemApp::shutdown()
 {
-    // Clean up event source
-    if (platform_event_source && event_queue)
-    {
-        event_queue->remove_source(platform_event_source);
-        SkrDelete(platform_event_source);
-        platform_event_source = nullptr;
-    }
-    
     // Clean up window manager
     if (window_manager)
     {
@@ -148,7 +140,15 @@ void SystemApp::shutdown()
         ime = nullptr;
     }
     
-    // Clean up event queue
+    // Clean up event source
+    if (platform_event_source && event_queue)
+    {
+        event_queue->remove_source(platform_event_source);
+        SkrDelete(platform_event_source);
+        platform_event_source = nullptr;
+    }
+
+        // Clean up event queue
     if (event_queue)
     {
         SkrDelete(event_queue);

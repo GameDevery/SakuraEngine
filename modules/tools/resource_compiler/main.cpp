@@ -88,7 +88,6 @@ skr::Vector<skd::SProject*> open_projects(int argc, char** argv)
     auto projectPath = parser.get_optional<skr::String>(u8"project");
     std::error_code ec = {};
     skr::filesystem::path workspace{parser.get<skr::String>(u8"workspace").u8_str()};
-    skd::SProject::SetWorkspace(workspace);
     skr::filesystem::recursive_directory_iterator iter(workspace, ec);
     skr::stl_vector<skr::filesystem::path> projectFiles;
     while (iter != end(iter))
@@ -102,8 +101,10 @@ skr::Vector<skd::SProject*> open_projects(int argc, char** argv)
     skr::Vector<skd::SProject*> result;
     for (auto& projectFile : projectFiles)
     {
-        if(auto proj = skd::SProject::OpenProject(projectFile))
-            result.add(proj);
+        auto project = SkrNew<skd::SProject>();
+        project->OpenProject(projectFile);
+        project->SetWorkspace(workspace);
+        result.add(project);
     }
     return result;
 }
@@ -183,7 +184,10 @@ int compile_all(int argc, char** argv)
     auto projects = open_projects(argc, argv);
     SKR_DEFER({ 
         for(auto& project : projects)
-            skd::SProject::CloseProject(project);
+        {
+            project->CloseProject();
+            SkrDelete(project);
+        }
     });
     for(auto& project : projects)
         compile_project(project);

@@ -14,7 +14,7 @@ public:
     RenderApp(SRenderDeviceId render_device, skr::render_graph::RenderGraphBuilder& builder);
     ~RenderApp();
 
-    bool initialize(const char* backend) override;
+    bool initialize(const char* backend = nullptr) override;
     void shutdown() override;
 
     uint32_t open_window(const SystemWindowCreateInfo& create_info);

@@ -7,10 +7,9 @@
 
 namespace skd
 {
-static skr::filesystem::path Workspace;
 void SProject::SetWorkspace(const skr::filesystem::path& path) noexcept
 {
-    Workspace = path;
+    workspace = path;
 }
 
 // void SProject::SetAssetVFS(skr_vfs_t* asset_vfs)
@@ -43,7 +42,7 @@ skr::io::IRAMService* SProject::GetRamService() const
     return ram_service;
 }
 
-SProject* SProject::OpenProject(const skr::String& name, const skr::String& root, const SProjectConfig& cfg) noexcept
+bool SProject::OpenProject(const skr::String& project_name, const skr::String& root, const SProjectConfig& cfg) noexcept
 {
     std::error_code ec = {};
     auto resolvePath = [&](const skr::String& path) -> skr::String {
@@ -82,7 +81,7 @@ SProject* SProject::OpenProject(const skr::String& name, const skr::String& root
             auto varName = remainingView.subview(0, varEnd.index());
             if (varName == u8"workspace")
             {
-                result.append(Workspace.u8string().c_str());
+                result.append(workspace.u8string().c_str());
             }
             else if (varName == u8"platform")
             {
@@ -118,42 +117,41 @@ SProject* SProject::OpenProject(const skr::String& name, const skr::String& root
         return result.lexically_normal();
     };
 
-    auto project = SkrNew<skd::SProject>();
-    project->name = name;
+    name = project_name;
 
-    project->assetDirectory = toAbsolutePath(cfg.assetDirectory);
-    project->resourceDirectory = toAbsolutePath(cfg.resourceDirectory);
-    project->artifactsDirectory = toAbsolutePath(cfg.artifactsDirectory);
-    project->dependencyDirectory = project->artifactsDirectory / "deps";
+    assetDirectory = toAbsolutePath(cfg.assetDirectory);
+    resourceDirectory = toAbsolutePath(cfg.resourceDirectory);
+    artifactsDirectory = toAbsolutePath(cfg.artifactsDirectory);
+    dependencyDirectory = artifactsDirectory / "deps";
 
     // create resource VFS
     skr_vfs_desc_t resource_vfs_desc = {};
-    resource_vfs_desc.app_name = project->name.u8_str();
+    resource_vfs_desc.app_name = name.u8_str();
     resource_vfs_desc.mount_type = SKR_MOUNT_TYPE_CONTENT;
-    auto u8outputPath = project->resourceDirectory.u8string();
+    auto u8outputPath = resourceDirectory.u8string();
     resource_vfs_desc.override_mount_dir = u8outputPath.c_str();
-    project->resource_vfs = skr_create_vfs(&resource_vfs_desc);
+    resource_vfs = skr_create_vfs(&resource_vfs_desc);
 
     // create asset VFS
     skr_vfs_desc_t asset_vfs_desc = {};
-    asset_vfs_desc.app_name = project->name.u8_str();
+    asset_vfs_desc.app_name = name.u8_str();
     asset_vfs_desc.mount_type = SKR_MOUNT_TYPE_CONTENT;
-    auto u8assetPath = project->assetDirectory.u8string();
+    auto u8assetPath = assetDirectory.u8string();
     asset_vfs_desc.override_mount_dir = u8assetPath.c_str();
-    project->asset_vfs = skr_create_vfs(&asset_vfs_desc);
+    asset_vfs = skr_create_vfs(&asset_vfs_desc);
 
     auto ioServiceDesc = make_zeroed<skr_ram_io_service_desc_t>();
     ioServiceDesc.name = u8"CompilerRAMIOService";
     ioServiceDesc.sleep_time = 1000 / 60;
-    project->ram_service = skr_io_ram_service_t::create(&ioServiceDesc);
-    project->ram_service->run();
+    ram_service = skr_io_ram_service_t::create(&ioServiceDesc);
+    ram_service->run();
 
     // Create output dir
-    skr::filesystem::create_directories(project->GetOutputPath(), ec);
-    return project;
+    skr::filesystem::create_directories(GetOutputPath(), ec);
+    return true;
 }
 
-SProject* SProject::OpenProject(const skr::filesystem::path& projectFilePath) noexcept
+bool SProject::OpenProject(const skr::filesystem::path& projectFilePath) noexcept
 {
     auto projectPath = projectFilePath.lexically_normal().string();
     skd::SProjectConfig cfg;
@@ -162,7 +160,7 @@ SProject* SProject::OpenProject(const skr::filesystem::path& projectFilePath) no
         if (!projectFile)
         {
             SKR_LOG_ERROR(u8"Failed to open project file: %s", projectPath.c_str());
-            return nullptr;
+            return false;
         }
         // read string from file with c <file>
         fseek(projectFile, 0, SEEK_END);
@@ -177,7 +175,7 @@ SProject* SProject::OpenProject(const skr::filesystem::path& projectFilePath) no
         if (!skr::json_read(&reader, cfg))
         {
             SKR_LOG_ERROR(u8"Failed to parse project file: %s", projectPath.c_str());
-            return nullptr;
+            return false;
         }
     }
     auto root = projectFilePath.parent_path().u8string();
@@ -185,9 +183,9 @@ SProject* SProject::OpenProject(const skr::filesystem::path& projectFilePath) no
     return OpenProject(name.c_str(), root.c_str(), cfg);
 }
 
-void SProject::CloseProject(SProject* project) noexcept
-{
-    SkrDelete(project);
+bool SProject::CloseProject() noexcept
+{   
+    return true;
 }
 
 bool SProject::LoadAssetData(skr::StringView uri, skr::Vector<uint8_t>& content) noexcept
