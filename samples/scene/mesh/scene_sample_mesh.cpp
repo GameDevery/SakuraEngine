@@ -328,18 +328,31 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     {
         // save buffer0 to binPath
         const auto& thisBin = mesh_resource.bins[0];
-        skr::String binPath = u8"mesh_bin_0.bin";
-        // auto buffer_file = std::fopen((const char*)binPath.c_str(), "wb");
-        auto f = (resourceRoot / "mesh_bin_0.bin").string();
-        auto buffer_file = std::fopen(f.c_str(), "wb");
-        if (!buffer_file)
+        skr::String binPath = u8"mesh_bin_1.bin";
+        // set binPath according to the hash of the gltf file path
+        if (!gltf_path.is_empty())
         {
-            SKR_LOG_ERROR(u8"Failed to open file for writing: %s", f.c_str());
-            return 1;
+            binPath = skr::format(u8"{}.buffer{}", skr::MD5::Make(gltf_path.c_str(), gltf_path.size()), 0);
         }
-        SKR_LOG_INFO(u8"Writing %d bytes to %s", thisBin.byte_length, f.c_str());
-        std::fwrite(buffer0.data(), 1, buffer0.size(), buffer_file);
-        std::fclose(buffer_file);
+        // auto buffer_file = std::fopen((const char*)binPath.c_str(), "wb");
+        auto f = (resourceRoot / binPath.c_str()).string();
+        // if f exists, don't overwrite it
+        if (skr::filesystem::exists(f, ec))
+        {
+            SKR_LOG_INFO(u8"File %s already exists, skipping write.", f.c_str());
+        }
+        else
+        {
+            auto buffer_file = std::fopen(f.c_str(), "wb");
+            if (!buffer_file)
+            {
+                SKR_LOG_ERROR(u8"Failed to open file for writing: %s", f.c_str());
+                return 1;
+            }
+            SKR_LOG_INFO(u8"Writing %d bytes to %s", thisBin.byte_length, f.c_str());
+            std::fwrite(buffer0.data(), 1, buffer0.size(), buffer_file);
+            std::fclose(buffer_file);
+        }
 
         render_mesh = mesh_resource.render_mesh = SkrNew<skr_render_mesh_t>();
 
@@ -362,7 +375,6 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
         auto batch = vram_service->open_batch(1);
         skr_io_future_t future;
         auto result = batch->add_request(request, &future);
-        auto&& buf = result.cast_static<skr::io::IVRAMIOBuffer>();
         vram_service->request(batch);
         // wait until the future is ready
         while (!future.is_ready())
@@ -370,7 +382,7 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
             skr_thread_sleep(10);
         }
         render_mesh->buffers.resize_default(1);
-        render_mesh->buffers[0] = buf->get_buffer();
+        render_mesh->buffers[0] = result.cast_static<skr::io::IVRAMIOBuffer>()->get_buffer();
         skr_render_mesh_initialize(render_mesh, &mesh_resource);
     }
     else
@@ -504,7 +516,9 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     skr::input::Input::Finalize();
     if (use_gltf)
     {
-        SkrDelete(render_mesh);
+        mesh_resource.bins.clear();
+        skr_render_mesh_free(render_mesh);
+        mesh_resource.render_mesh = nullptr;
     }
 
     return 0;
