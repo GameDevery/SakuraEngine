@@ -31,7 +31,8 @@ VSOut vs(const VSIn input, [[sv_position]] float4& position)
     position = float4(input.position, 1.0f) * push_constants.view_proj;
     // position = float4(input.position, 1.0f) * push_constants.view_proj;
     // position = float4(input.position, 1.0f);
-    output.color = float3(input.uv0.x, input.uv0.y, input.uv1.x);
+    // output.color = float3(input.uv0.x, input.uv0.y, input.uv1.x);
+    output.color = float3(1.0f, 0.0f, 0.0f); // red color for debugging
     return output;
 }
 

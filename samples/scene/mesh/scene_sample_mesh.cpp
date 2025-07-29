@@ -177,7 +177,9 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     SKR_LOG_INFO(u8"Running Scene Sample Mesh Module");
 
     std::error_code ec = {};
-    auto gltf_path = (skr::filesystem::current_path(ec) / "../resources/Game/sketchfab/ruby/scene.gltf").u8string();
+    // auto gltf_path = (skr::filesystem::current_path(ec) / "../resources/Game/sketchfab/ruby/scene.gltf").u8string();
+    // auto gltf_path = (skr::filesystem::current_path(ec) / "../resources/scene/Cube.gltf").u8string();
+    auto gltf_path = (skr::filesystem::current_path(ec) / "../resources/scene/triangle.gltf").u8string();
     SKR_LOG_INFO(u8"gltf file path: {%s}", gltf_path.c_str());
     auto* gltf_data = skd::asset::ImportGLTFWithData(gltf_path.c_str(), ram_service, resource_vfs);
     if (!gltf_data)
@@ -263,7 +265,7 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     // it seems buffer1 is not used in this sample, so we can skip it
 
     auto render_device = SkrRendererModule::Get()->get_render_device();
-    scene_renderer->create_resource(render_device);
+    // scene_renderer->create_resource(render_device);
 
     auto cgpu_device = render_device->get_cgpu_device();
     auto gfx_queue = render_device->get_gfx_queue();
@@ -366,8 +368,8 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
             // update viewport
             SkrZoneScopedN("Viewport Render");
             imgui_app->acquire_frames();
-            scene_renderer->produce_drawcalls(world.get_storage(), render_graph);
-            // scene_renderer->render_mesh(render_mesh, render_graph);
+            // scene_renderer->produce_drawcalls(world.get_storage(), render_graph);
+            scene_renderer->render_mesh(render_mesh, render_graph);
         };
         {
             SkrZoneScopedN("ImGuiRender");

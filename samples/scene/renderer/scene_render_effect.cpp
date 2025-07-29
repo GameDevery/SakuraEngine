@@ -7,6 +7,7 @@
 #include "SkrRT/ecs/query.hpp"
 #include "SkrRenderer/primitive_draw.h"
 #include "SkrRenderer/render_device.h"
+#include "SkrRenderer/render_mesh.h"
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "scene_renderer.hpp"
 #include "helper.hpp"
@@ -148,12 +149,63 @@ struct SceneRendererImpl : public skr::SceneRenderer
 
     void render_mesh(skr_render_mesh_id render_mesh, skr::render_graph::RenderGraph* render_graph) override
     {
+        view_proj = skr_float4x4_t(.5f, 0.0f, 0.0f, 0.0f, 0.0f, .5f, 0.0f, 0.0f, 0.0f, 0.0f, .5f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
         SkrZoneScopedN("SceneRenderer::render_mesh");
         if (!render_mesh)
         {
             SKR_LOG_ERROR(u8"Render Mesh is null");
             return;
         }
+
+        skr::Vector<skr_primitive_draw_t> drawcalls;
+        // drawcalls.reserve(render_mesh->primitive_commands.size());
+        for (auto i = 0u; i < render_mesh->primitive_commands.size(); i++)
+        {
+            const auto& cmd = render_mesh->primitive_commands[i];
+            skr_primitive_draw_t& drawcall = drawcalls.emplace().ref();
+            drawcall.pipeline = pipeline;
+            drawcall.push_const_name = push_constants_name;
+            drawcall.push_const = (const uint8_t*)(&view_proj);
+            drawcall.vertex_buffer_count = (uint32_t)cmd.vbvs.size();
+            drawcall.vertex_buffers = cmd.vbvs.data();
+            drawcall.index_buffer = *cmd.ibv;
+        }
+        // SKR_LOG_INFO(u8"Render Mesh has %d drawcalls", drawcalls.size());
+
+        auto backbuffer = render_graph->get_texture(u8"backbuffer");
+        const auto back_desc = render_graph->resolve_descriptor(backbuffer);
+        render_graph->add_render_pass(
+            [this, backbuffer](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassBuilder& builder) {
+                builder.set_name(u8"scene_render_pass")
+                    .set_pipeline(pipeline) // captured this->pipeline
+                    .write(0, backbuffer, CGPU_LOAD_ACTION_CLEAR);
+            },
+            [back_desc, drawcalls](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassContext& context) {
+                {
+                    // do render pass
+                    cgpu_render_encoder_set_viewport(context.encoder, 0.0, 0.0, (float)back_desc->width, (float)back_desc->height, 0.0f, 1.0f);
+                    cgpu_render_encoder_set_scissor(context.encoder, 0, 0, back_desc->width, back_desc->height);
+
+                    for (const auto& drawcall : drawcalls)
+                    {
+                        CGPUBufferId vertex_buffers[16] = { 0 };
+                        uint32_t strides[16] = { 0 };
+                        uint32_t offsets[16] = { 0 };
+                        for (uint32_t i = 0; i < drawcall.vertex_buffer_count; i++)
+                        {
+
+                            vertex_buffers[i] = drawcall.vertex_buffers[i].buffer;
+                            strides[i] = drawcall.vertex_buffers[i].stride;
+                            offsets[i] = drawcall.vertex_buffers[i].offset;
+                        }
+
+                        cgpu_render_encoder_bind_index_buffer(context.encoder, drawcall.index_buffer.buffer, drawcall.index_buffer.stride, drawcall.index_buffer.offset);
+                        cgpu_render_encoder_bind_vertex_buffers(context.encoder, drawcall.vertex_buffer_count, vertex_buffers, strides, offsets);
+                        cgpu_render_encoder_push_constants(context.encoder, drawcall.pipeline->root_signature, drawcall.push_const_name, drawcall.push_const);
+                        cgpu_render_encoder_draw_indexed_instanced(context.encoder, drawcall.index_buffer.index_count, drawcall.index_buffer.first_index, 1, 0, 0); // 3 vertices, 1 instance
+                    }
+                }
+            });
     }
 
     void produce_drawcalls(sugoi_storage_t* storage, skr::render_graph::RenderGraph* render_graph) override
