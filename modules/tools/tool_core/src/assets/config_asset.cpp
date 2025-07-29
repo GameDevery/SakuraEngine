@@ -8,11 +8,11 @@ namespace skd::asset
 {
 void* JsonConfigImporter::Import(skr::io::IRAMService* ioService, CookContext* context)
 {
-    const auto assetRecord = context->GetAssetRecord();
+    const auto assetInfo = context->GetAssetInfo();
     auto type = skr::get_type_from_guid(configType);
     if (type == nullptr)
     {
-        SKR_LOG_ERROR(u8"import resource %s failed, rtti is not load", assetRecord->path.u8string().c_str());
+        SKR_LOG_ERROR(u8"import resource %s failed, rtti is not load", assetInfo->path.u8string().c_str());
         return nullptr;
     }
 
@@ -20,9 +20,9 @@ void* JsonConfigImporter::Import(skr::io::IRAMService* ioService, CookContext* c
     context->AddSourceFileAndLoad(ioService, assetPath.c_str(), blob);
     SKR_DEFER({ blob.reset(); });
     /*
-    const auto assetRecord = context->GetAssetRecord();
+    const auto assetInfo = context->GetAssetInfo();
     {
-        SKR_LOG_FMT_ERROR(u8"Import shader options asset {} from {} failed, json parse error {}", assetRecord->guid, jsonPath, ::error_message(doc.error()));
+        SKR_LOG_FMT_ERROR(u8"Import shader options asset {} from {} failed, json parse error {}", assetInfo->guid, jsonPath, ::error_message(doc.error()));
         return nullptr;
     }
     '*/
@@ -52,7 +52,7 @@ uint32_t ConfigCooker::Version()
 bool ConfigCooker::Cook(CookContext* ctx)
 {
     const auto outputPath = ctx->GetOutputPath();
-    // const auto assetRecord = ctx->GetAssetRecord();
+    // const auto assetInfo = ctx->GetAssetInfo();
     //-----load config
     // no cook config for config, skipping
     //-----import resource object

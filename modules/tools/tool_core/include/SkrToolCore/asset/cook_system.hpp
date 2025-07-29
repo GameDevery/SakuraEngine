@@ -10,7 +10,7 @@ SKR_DECLARE_TYPE_ID_FWD(skr::io, IRAMService, skr_io_ram_service);
 
 namespace skd::asset
 {
-struct AssetRecord
+struct AssetInfo
 {
     SProject* project;
     skr::GUID guid;
@@ -33,7 +33,7 @@ public:
     virtual skr::GUID GetImporterType() const = 0;
     virtual uint32_t GetImporterVersion() const = 0;
     virtual uint32_t GetCookerVersion() const = 0;
-    virtual const AssetRecord* GetAssetRecord() const = 0;
+    virtual const AssetInfo* GetAssetInfo() const = 0;
     virtual skr::String GetAssetPath() const = 0;
 
     virtual skr::filesystem::path AddSourceFile(const skr::filesystem::path& path) = 0;
@@ -49,6 +49,16 @@ public:
     virtual const SResourceHandle& GetStaticDependency(uint32_t index) const = 0;
 
     virtual const skr::task::event_t& GetCounter() = 0;
+
+    template <class T>
+    T GetAssetMetadata()
+    {
+        // TODO: now it parses twice, add cursor to reader to avoid this
+        skr::archive::JsonReader reader(GetAssetInfo()->meta.view());
+        T settings;
+        skr::json_read(&reader, settings);
+        return settings;
+    }
 
     template <class T>
     T* Import() { return (T*)_Import(); }
@@ -117,7 +127,7 @@ protected:
         skr::bin_write(&s, header);
     }
 
-    AssetRecord* record = nullptr;
+    AssetInfo* record = nullptr;
 };
 
 struct TOOL_CORE_API CookSystem
@@ -137,10 +147,10 @@ public:
     virtual void RegisterCooker(bool isDefault, skr_guid_t cooker, skr_guid_t type, Cooker* instance) = 0;
     virtual void UnregisterCooker(skr_guid_t type) = 0;
 
-    virtual AssetRecord* GetAssetRecord(skr_guid_t type) const = 0;
-    virtual AssetRecord* LoadAssetMeta(SProject* project, const skr::String& uri) = 0;
+    virtual AssetInfo* GetAssetInfo(skr_guid_t type) const = 0;
+    virtual AssetInfo* LoadAssetMeta(SProject* project, const skr::String& uri) = 0;
 
-    virtual void ParallelForEachAsset(uint32_t batch, skr::FunctionRef<void(skr::span<AssetRecord*>)> f) = 0;
+    virtual void ParallelForEachAsset(uint32_t batch, skr::FunctionRef<void(skr::span<AssetInfo*>)> f) = 0;
 
     virtual skr::io::IRAMService* getIOService() = 0;
 
