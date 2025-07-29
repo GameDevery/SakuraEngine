@@ -20,9 +20,9 @@ void* skd::asset::GltfMeshImporter::Import(skr::io::IRAMService* ioService, Cook
     {
         return nullptr;
     }
-    const auto assetRecord = context->GetAssetRecord();
+    const auto assetInfo = context->GetAssetInfo();
     auto path = context->AddSourceFile(relPath).u8string();
-    auto vfs = assetRecord->project->GetAssetVFS();
+    auto vfs = assetInfo->project->GetAssetVFS();
     return ImportGLTFWithData(path.c_str(), ioService, vfs);
 }
 
@@ -34,8 +34,8 @@ void skd::asset::GltfMeshImporter::Destroy(void* resource)
 bool skd::asset::MeshCooker::Cook(CookContext* ctx)
 {
     const auto outputPath = ctx->GetOutputPath();
-    const auto assetRecord = ctx->GetAssetRecord();
-    auto cfg = LoadConfig<MeshCookConfig>(ctx);
+    const auto assetInfo = ctx->GetAssetInfo();
+    auto cfg = ctx->GetAssetMetadata<MeshAssetMetadata>();
     if (cfg.vertexType == skr_guid_t{})
     {
         SKR_LOG_ERROR(u8"MeshCooker: VertexType is not specified for asset %s!", ctx->GetAssetPath().c_str());
@@ -162,7 +162,7 @@ bool skd::asset::MeshCooker::Cook(CookContext* ctx)
         SKR_DEFER({ fclose(buffer_file); });
         if (!buffer_file)
         {
-            SKR_LOG_FMT_ERROR(u8"[MeshCooker::Cook] failed to write cooked file for resource {}! path: {}", assetRecord->guid, assetRecord->path.string());
+            SKR_LOG_FMT_ERROR(u8"[MeshCooker::Cook] failed to write cooked file for resource {}! path: {}", assetInfo->guid, assetInfo->path.string());
             return false;
         }
         fwrite(blobs[i].data(), 1, blobs[i].size(), buffer_file);

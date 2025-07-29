@@ -16,7 +16,7 @@ struct SCookContextImpl : public CookContext
     skr_guid_t GetImporterType() const override;
     uint32_t GetImporterVersion() const override;
     uint32_t GetCookerVersion() const override;
-    const AssetRecord* GetAssetRecord() const override;
+    const AssetInfo* GetAssetInfo() const override;
     skr::String GetAssetPath() const override;
 
     skr::filesystem::path AddSourceFile(const skr::filesystem::path& path) override;
@@ -160,7 +160,7 @@ uint32_t SCookContextImpl::GetCookerVersion() const
     return cookerVersion;
 }
 
-const AssetRecord* SCookContextImpl::GetAssetRecord() const
+const AssetInfo* SCookContextImpl::GetAssetInfo() const
 {
     return record;
 }
@@ -182,11 +182,11 @@ skr::filesystem::path SCookContextImpl::AddSourceFileAndLoad(skr::io::IRAMServic
 {
     auto outPath = AddSourceFile(path.c_str());
     auto u8Path = outPath.u8string();
-    const auto assetRecord = GetAssetRecord();
+    const auto assetInfo = GetAssetInfo();
     // load file
     skr::task::event_t counter;
     auto rq = ioService->open_request();
-    rq->set_vfs(assetRecord->project->GetAssetVFS());
+    rq->set_vfs(assetInfo->project->GetAssetVFS());
     rq->set_path(u8Path.c_str());
     rq->add_block({}); // read all
     rq->add_callback(SKR_IO_STAGE_COMPLETED, +[](skr_io_future_t* future, skr_io_request_t* request, void* data) noexcept {

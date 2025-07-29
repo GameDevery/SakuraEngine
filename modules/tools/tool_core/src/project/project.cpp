@@ -185,7 +185,7 @@ SProject* SProject::OpenProject(const skr::filesystem::path& projectFilePath) no
     return OpenProject(name.c_str(), root.c_str(), cfg);
 }
 
-void SProject::CloseProject(SProject *project) noexcept
+void SProject::CloseProject(SProject* project) noexcept
 {
     SkrDelete(project);
 }
@@ -214,8 +214,11 @@ bool SProject::LoadAssetMeta(skr::StringView uri, skr::String& content) noexcept
 
 SProject::~SProject() noexcept
 {
-    if (ram_service) skr_io_ram_service_t::destroy(ram_service);
-    if (resource_vfs) skr_free_vfs(resource_vfs);
-    if (asset_vfs) skr_free_vfs(asset_vfs);
+    if (ram_service)
+        skr_io_ram_service_t::destroy(ram_service);
+    if (resource_vfs)
+        skr_free_vfs(resource_vfs);
+    if (asset_vfs)
+        skr_free_vfs(asset_vfs);
 }
 } // namespace skd

@@ -21,14 +21,14 @@ GLTFTOOL_API GltfMeshImporter final : public Importer
     bool install_to_ram = false;
     bool install_to_vram = true;
 
-    void* Import(skr::io::IRAMService*, CookContext * context) override;
+    void* Import(skr::io::IRAMService*, CookContext* context) override;
     void Destroy(void* resource) override;
 };
 
 sreflect_struct(guid = "5a378356-7bfa-461a-9f96-4bbbd2e95368")
 GLTFTOOL_API MeshCooker final : public Cooker
 {
-    bool Cook(CookContext * ctx) override;
+    bool Cook(CookContext* ctx) override;
     uint32_t Version() override;
 };
 } // namespace skd::asset

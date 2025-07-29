@@ -145,7 +145,7 @@ int compile_project(skd::SProject* project)
     //----- schedule cook tasks (checking dependencies)
     {
         system.ParallelForEachAsset(1,
-        [&](skr::span<skd::asset::AssetRecord*> assets) {
+        [&](skr::span<skd::asset::AssetInfo*> assets) {
             SkrZoneScopedN("Cook");
             for (auto asset : assets)
             {

@@ -24,13 +24,13 @@ TOOL_CORE_API Importer
 
 struct TOOL_CORE_API ImporterTypeInfo
 {
-    Importer* (*Load)(const AssetRecord* record, skr::archive::JsonReader* object);
+    Importer* (*Load)(const AssetInfo* record, skr::archive::JsonReader* object);
     uint32_t (*Version)();
 };
 
 struct ImporterRegistry
 {
-    virtual Importer* LoadImporter(const AssetRecord* record, skr::archive::JsonReader* object, skr::GUID* pGuid = nullptr) = 0;
+    virtual Importer* LoadImporter(const AssetInfo* record, skr::archive::JsonReader* object, skr::GUID* pGuid = nullptr) = 0;
     virtual uint32_t GetImporterVersion(skr::GUID type) = 0;
     virtual void RegisterImporter(skr::GUID type, ImporterTypeInfo info) = 0;
 };
@@ -43,7 +43,7 @@ void skd::asset::RegisterImporter(skr::GUID guid)
 {
     auto registry = GetImporterRegistry();
     auto loader =
-        +[](const AssetRecord* record, skr::archive::JsonReader* object) -> Importer* {
+        +[](const AssetInfo* record, skr::archive::JsonReader* object) -> Importer* {
         auto importer = SkrNew<T>();
         skr::json_read(object, *importer);
         return importer;

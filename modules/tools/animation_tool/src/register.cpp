@@ -15,7 +15,7 @@ struct _AnimationToolRegister {
 #undef _DEFAULT_COOKER
 
 #define _IMPORTER(__TYPE) skd::asset::RegisterImporter<__TYPE>(skr::RTTRTraits<__TYPE>::get_guid());
-        _IMPORTER(skd::asset::SAnimGltfImporter)
+        _IMPORTER(skd::asset::GltfAnimImporter)
         _IMPORTER(skd::asset::SkelGltfImporter)
 #undef _IMPORTER
     }

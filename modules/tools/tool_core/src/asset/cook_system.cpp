@@ -19,7 +19,7 @@ namespace skd::asset
 struct CookSystemImpl : public skd::asset::CookSystem
 {
     friend struct ::SkrToolCoreModule;
-    using AssetMap = skr::ParallelFlatHashMap<skr_guid_t, AssetRecord*, skr::Hash<skr_guid_t>>;
+    using AssetMap = skr::ParallelFlatHashMap<skr_guid_t, AssetInfo*, skr::Hash<skr_guid_t>>;
     using CookingMap = skr::ParallelFlatHashMap<skr_guid_t, CookContext*, skr::Hash<skr_guid_t>>;
 
     skr::task::event_t AddCookTask(skr_guid_t resource) override;
@@ -29,7 +29,7 @@ struct CookSystemImpl : public skd::asset::CookSystem
 
     void RegisterCooker(bool isDefault, skr_guid_t cooker, skr_guid_t type, Cooker* instance) override;
     void UnregisterCooker(skr_guid_t type) override;
-    Cooker* GetCooker(AssetRecord* record) const
+    Cooker* GetCooker(AssetInfo* record) const
     {
         if (record->cooker == skr_guid_t{})
         {
@@ -41,14 +41,14 @@ struct CookSystemImpl : public skd::asset::CookSystem
         if (it != cookers.end()) return it->second;
         return nullptr;
     }
-    AssetRecord* GetAssetRecord(skr_guid_t guid) const override
+    AssetInfo* GetAssetInfo(skr_guid_t guid) const override
     {
         auto it = assets.find(guid);
         if (it != assets.end()) return it->second;
         return nullptr;
     }
 
-    AssetRecord* LoadAssetMeta(SProject* project, const skr::String& uri) override;
+    AssetInfo* LoadAssetMeta(SProject* project, const skr::String& uri) override;
     skr::io::IRAMService* getIOService() override;
 
     template <class F, class Iter>
@@ -56,10 +56,10 @@ struct CookSystemImpl : public skd::asset::CookSystem
     {
         skr::parallel_for(std::move(begin), std::move(end), batch, std::move(f));
     }
-    void ParallelForEachAsset(uint32_t batch, skr::FunctionRef<void(skr::span<AssetRecord*>)> f) override
+    void ParallelForEachAsset(uint32_t batch, skr::FunctionRef<void(skr::span<AssetInfo*>)> f) override
     {
         ParallelFor(assets.begin(), assets.end(), batch, [f, batch](auto begin, auto end) {
-            skr::Vector<AssetRecord*> records;
+            skr::Vector<AssetInfo*> records;
             records.reserve(batch);
             for (auto it = begin; it != end; ++it)
             {
@@ -126,7 +126,7 @@ skr::task::event_t CookSystemImpl::AddCookTask(skr_guid_t guid)
             return existed_task;
     }
     skr::task::event_t counter;
-    cookContext->record = GetAssetRecord(guid);
+    cookContext->record = GetAssetInfo(guid);
     cookContext->SetCounter(counter);
     auto guidName = skr::format(u8"Fiber{}", cookContext->record->guid);
     mainCounter.add(1);
@@ -262,7 +262,7 @@ skr::task::event_t CookSystemImpl::EnsureCooked(skr_guid_t guid)
         if (result)
             return result;
     }
-    auto metaAsset = GetAssetRecord(guid);
+    auto metaAsset = GetAssetInfo(guid);
     if (!metaAsset)
     {
         SKR_LOG_ERROR(u8"[CookSystemImpl::EnsureCooked] resource not exist! asset path: %s", metaAsset->path.u8string().c_str());
@@ -401,7 +401,7 @@ skr::task::event_t CookSystemImpl::EnsureCooked(skr_guid_t guid)
             {
                 skr::GUID depGuid;
                 skr::json_read(&depReader, depGuid);
-                auto record = GetAssetRecord(depGuid);
+                auto record = GetAssetInfo(depGuid);
                 if (!record)
                 {
                     SKR_LOG_INFO(u8"[CookSystemImpl::EnsureCooked] dependency file not exist! asset path: %s", metaAsset->path.u8string().c_str());
@@ -428,12 +428,11 @@ skr::task::event_t CookSystemImpl::EnsureCooked(skr_guid_t guid)
     return nullptr;
 }
 
-AssetRecord* CookSystemImpl::LoadAssetMeta(SProject* project, const skr::String& uri)
+AssetInfo* CookSystemImpl::LoadAssetMeta(SProject* project, const skr::String& uri)
 {
     SkrZoneScoped;
     std::error_code ec = {};
-    auto record = SkrNew<AssetRecord>();
-    // TODO: replace file load with skr api
+    auto record = SkrNew<AssetInfo>();
     if (project->LoadAssetMeta(uri.view(), record->meta))
     {
         skr::archive::JsonReader reader(record->meta.view());
@@ -441,13 +440,13 @@ AssetRecord* CookSystemImpl::LoadAssetMeta(SProject* project, const skr::String&
         SKR_DEFER({ reader.EndObject(); });
         // read guid
         {
-            std::memset(&record->guid, 0, sizeof(skr_guid_t));
+            std::memset(&record->guid, 0, sizeof(skr::GUID));
             reader.Key(u8"guid");
             skr::json_read(&reader, record->guid);
         }
         // read type
         {
-            std::memset(&record->type, 0, sizeof(skr_guid_t));
+            std::memset(&record->type, 0, sizeof(skr::GUID));
             reader.Key(u8"type");
             skr::json_read(&reader, record->type);
         }

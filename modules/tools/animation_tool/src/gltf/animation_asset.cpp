@@ -6,21 +6,21 @@
 
 namespace skd::asset
 {
-void SAnimGltfImporter::Destroy(void* data)
+void GltfAnimImporter::Destroy(void* data)
 {
     RawAnimation* raw = (RawAnimation*)data;
     raw->~RawAnimation();
     ozz::memory::default_allocator()->Deallocate(data, alignof(RawAnimation));
 }
 
-void* SAnimGltfImporter::Import(skr::io::IRAMService*, CookContext* context)
+void* GltfAnimImporter::Import(skr::io::IRAMService*, CookContext* context)
 {
     GltfImporter                          impl;
     ozz::animation::offline::OzzImporter& impoter          = impl;
     auto&                                 skeletonResource = context->GetStaticDependency(0);
     ozz::animation::Skeleton&             skeleton         = *(ozz::animation::Skeleton*)skeletonResource.get_ptr();
     auto                                  path             = context->AddSourceFile(assetPath.c_str());
-    auto                                  fullAssetPath    = context->GetAssetRecord()->project->GetAssetPath() / path;
+    auto                                  fullAssetPath    = context->GetAssetInfo()->project->GetAssetPath() / path;
     if (!impoter.Load(fullAssetPath.string().c_str()))
     {
         SKR_LOG_ERROR(u8"Failed to load gltf file %s for asset %s.", assetPath.c_str(), context->GetAssetPath().c_str());
