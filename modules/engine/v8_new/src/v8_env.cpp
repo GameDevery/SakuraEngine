@@ -133,7 +133,7 @@ void V8Isolate::gc(bool full)
 
 //==> IV8BindManager API
 // bind proxy management
-V8BTGeneric* V8Isolate::solve_bind_tp(
+V8BindTemplate* V8Isolate::solve_bind_tp(
     TypeSignatureView signature
 )
 {

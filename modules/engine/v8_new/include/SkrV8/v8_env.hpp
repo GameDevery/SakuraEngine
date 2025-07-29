@@ -48,7 +48,7 @@ SKR_V8_API V8Isolate : IScriptMixinCore, IV8BindManager {
 
     //==> IV8BindManager API
     // bind proxy management
-    V8BTGeneric* solve_bind_tp(
+    V8BindTemplate* solve_bind_tp(
         TypeSignatureView signature
     ) override;
     V8BindTemplate* solve_bind_tp(
