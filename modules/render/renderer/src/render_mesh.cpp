@@ -1,4 +1,4 @@
-#include "SkrBase/misc/debug.h" 
+#include "SkrBase/misc/debug.h"
 #include "SkrRenderer/render_mesh.h"
 #include <SkrOS/filesystem.hpp>
 
@@ -43,6 +43,7 @@ void skr_render_mesh_initialize(skr_render_mesh_id render_mesh, skr_mesh_resourc
                 mesh_vbv.buffer = render_mesh->buffers[buffer_index];
                 mesh_vbv.offset = prim.vertex_buffers[j].offset;
                 mesh_vbv.stride = prim.vertex_buffers[j].stride;
+                SKR_LOG_INFO(u8"Mesh VBV %d: buffer %p, offset %d, stride %d", j, mesh_vbv.buffer, mesh_vbv.offset, mesh_vbv.stride);
             }
             // 3.2 fill ibv
             const auto buffer_index = prim.index_buffer.buffer_index;

@@ -42,13 +42,18 @@ struct SceneRendererImpl : public skr::SceneRenderer
         { 1.0f, -1.0f, 0.0f },
         { 0.0f, 1.0f, 0.0f },
     };
-    const skr_float3_t g_Colors[3] = {
-        { 1.0f, 0.0f, 0.0f },
-        { 0.0f, 1.0f, 0.0f },
+    const skr_float2_t g_UVs[3] = {
+        { 0.0f, 1.0f },
+        { 1.0f, 1.0f },
+        { 0.5f, 0.0f },
+    };
+    const skr_float3_t g_Normals[3] = {
+        { 0.0f, 0.0f, 1.0f },
+        { 0.0f, 0.0f, 1.0f },
         { 0.0f, 0.0f, 1.0f },
     };
     const uint32_t g_Indices[3] = { 0, 1, 2 };
-    skr_float4x4_t g_ModelMatrix = skr_float4x4_t::identity();
+    // skr_float4x4_t g_ModelMatrix = skr_float4x4_t::identity();
 
     // temp push_constants
     skr_float4x4_t view_proj = skr_float4x4_t::identity();
@@ -74,7 +79,8 @@ struct SceneRendererImpl : public skr::SceneRenderer
     void create_resource(skr::RendererDevice* renderer) override
     {
         auto cgpu_device = renderer->get_cgpu_device();
-        auto vertex_size = sizeof(g_Positions) + sizeof(g_Colors) + sizeof(skr_float4x4_t);
+        auto vertex_size = sizeof(g_Positions) + 2 * sizeof(g_UVs) + sizeof(g_Normals);
+        // auto vertex_size = sizeof(g_Positions);
         auto vb_desc = make_zeroed<CGPUBufferDescriptor>();
         vb_desc.name = u8"scene-renderer-vertices";
         vb_desc.size = vertex_size;
@@ -83,6 +89,12 @@ struct SceneRendererImpl : public skr::SceneRenderer
         vb_desc.flags = CGPU_BCF_PERSISTENT_MAP_BIT;
         vb_desc.prefer_on_device = true;
         vertex_buffer = cgpu_create_buffer(cgpu_device, &vb_desc);
+        {
+            memcpy(vertex_buffer->info->cpu_mapped_address, g_Positions, sizeof(g_Positions));
+            memcpy((uint8_t*)vertex_buffer->info->cpu_mapped_address + sizeof(g_Positions), g_UVs, sizeof(g_UVs));
+            memcpy((uint8_t*)vertex_buffer->info->cpu_mapped_address + sizeof(g_Positions) + sizeof(g_UVs), g_UVs, sizeof(g_UVs));
+            memcpy((uint8_t*)vertex_buffer->info->cpu_mapped_address + sizeof(g_Positions) + 2 * sizeof(g_UVs), g_Normals, sizeof(g_Normals));
+        }
 
         auto index_size = sizeof(g_Indices);
         auto ib_desc = make_zeroed<CGPUBufferDescriptor>();
@@ -94,6 +106,9 @@ struct SceneRendererImpl : public skr::SceneRenderer
         ib_desc.prefer_on_device = true;
         index_buffer = cgpu_create_buffer(cgpu_device, &ib_desc);
 
+        {
+            memcpy(index_buffer->info->cpu_mapped_address, g_Indices, sizeof(g_Indices));
+        }
         // construct triangle vbvs and ibv
         skr_vertex_buffer_view_t vbv = {};
         vbv.buffer = vertex_buffer;
@@ -102,13 +117,18 @@ struct SceneRendererImpl : public skr::SceneRenderer
         vbvs.push_back(vbv);
 
         vbv.buffer = vertex_buffer;
-        vbv.stride = sizeof(skr_float3_t);
+        vbv.stride = sizeof(skr_float2_t);
         vbv.offset = sizeof(g_Positions);
         vbvs.push_back(vbv);
 
         vbv.buffer = vertex_buffer;
-        vbv.stride = sizeof(skr_float4x4_t);
-        vbv.offset = sizeof(g_Positions) + sizeof(g_Colors);
+        vbv.stride = sizeof(skr_float2_t);
+        vbv.offset = sizeof(g_Positions) + sizeof(g_UVs);
+        vbvs.push_back(vbv);
+
+        vbv.buffer = vertex_buffer;
+        vbv.stride = sizeof(skr_float3_t);
+        vbv.offset = sizeof(g_Positions) + 2 * sizeof(g_UVs);
         vbvs.push_back(vbv);
 
         SKR_LOG_INFO(u8"vbvs size: %d", vbvs.size());
@@ -124,6 +144,16 @@ struct SceneRendererImpl : public skr::SceneRenderer
         auto& primitive = primitive_commands[0];
         primitive.vbvs = { vbvs.data(), (uint32_t)vbvs.size() };
         primitive.ibv = &ibv;
+    }
+
+    void render_mesh(skr_render_mesh_id render_mesh, skr::render_graph::RenderGraph* render_graph) override
+    {
+        SkrZoneScopedN("SceneRenderer::render_mesh");
+        if (!render_mesh)
+        {
+            SKR_LOG_ERROR(u8"Render Mesh is null");
+            return;
+        }
     }
 
     void produce_drawcalls(sugoi_storage_t* storage, skr::render_graph::RenderGraph* render_graph) override
@@ -142,25 +172,8 @@ struct SceneRendererImpl : public skr::SceneRenderer
         // TODO: Query Storage to iterate render model and produce drawcalls
         // skr::renderer::PrimitiveCommand cmd;
         // TODO: update model motion
-        g_ModelMatrix = skr_float4x4_t(
-            .5f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
-
-        auto vertex_buffer_handle = render_graph->create_buffer(
-            [this](skr::render_graph::RenderGraph& g, skr::render_graph::BufferBuilder& builder) {
-                builder.import(vertex_buffer, CGPU_RESOURCE_STATE_UNDEFINED)
-                    .set_name(u8"scene-renderer-vertex-buffer")
-                    .with_tags(kRenderGraphDynamicResourceTag)
-                    .as_vertex_buffer();
-            });
-
-        auto index_buffer_handle = render_graph->create_buffer(
-            [this](skr::render_graph::RenderGraph& g, skr::render_graph::BufferBuilder& builder) {
-                builder.import(index_buffer, CGPU_RESOURCE_STATE_UNDEFINED)
-                    .set_name(u8"scene-renderer-index-buffer")
-                    .with_tags(kRenderGraphDynamicResourceTag)
-                    .as_index_buffer();
-            });
-        // drawcalls.resize_zeroed(0);
+        // g_ModelMatrix = skr_float4x4_t(
+        //     .5f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
 
         // primitive_commands -> drawcalls
         auto& cmd = primitive_commands[0];
@@ -175,33 +188,16 @@ struct SceneRendererImpl : public skr::SceneRenderer
         auto backbuffer = render_graph->get_texture(u8"backbuffer");
         const auto back_desc = render_graph->resolve_descriptor(backbuffer);
         render_graph->add_render_pass(
-            [this, vertex_buffer_handle, index_buffer_handle, backbuffer](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassBuilder& builder) {
+            [this, backbuffer](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassBuilder& builder) {
                 builder.set_name(u8"scene_render_pass")
                     .set_pipeline(pipeline)
-                    .use_buffer(vertex_buffer_handle, CGPU_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER)
-                    .use_buffer(index_buffer_handle, CGPU_RESOURCE_STATE_INDEX_BUFFER)
                     .write(0, backbuffer, CGPU_LOAD_ACTION_CLEAR);
             },
-            [this, vertex_buffer_handle, index_buffer_handle, back_desc, drawcall](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassContext& context) {
-                // upload vb
-                {
-                    auto buf = context.resolve(vertex_buffer_handle);
-                    memcpy(buf->info->cpu_mapped_address, g_Positions, sizeof(g_Positions));
-                    memcpy((uint8_t*)buf->info->cpu_mapped_address + sizeof(g_Positions), g_Colors, sizeof(g_Colors));
-                    memcpy((uint8_t*)buf->info->cpu_mapped_address + sizeof(g_Positions) + sizeof(g_Colors), &g_ModelMatrix, sizeof(skr_float4x4_t));
-                }
-                // upload ib
-                {
-                    auto buf = context.resolve(index_buffer_handle);
-                    memcpy(buf->info->cpu_mapped_address, g_Indices, sizeof(g_Indices));
-                }
+            [this, back_desc, drawcall](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassContext& context) {
                 {
                     // do render pass
                     cgpu_render_encoder_set_viewport(context.encoder, 0.0, 0.0, (float)back_desc->width, (float)back_desc->height, 0.0f, 1.0f);
                     cgpu_render_encoder_set_scissor(context.encoder, 0, 0, back_desc->width, back_desc->height);
-
-                    auto vertex_buf = context.resolve(vertex_buffer_handle);
-                    auto index_buf = context.resolve(index_buffer_handle);
 
                     CGPUBufferId vertex_buffers[16] = { 0 };
                     uint32_t strides[16] = { 0 };
@@ -259,9 +255,9 @@ skr::SceneRenderer::~SceneRenderer() {}
 void SceneRendererImpl::prepare_pipeline_settings()
 {
     // max vertex attributes is 15
-    vertex_layout.attributes[0] = { u8"position", 1, CGPU_FORMAT_R32G32B32_SFLOAT, 0, 0, sizeof(skr_float3_t), CGPU_INPUT_RATE_VERTEX };     // per vertex position
-    vertex_layout.attributes[1] = { u8"color", 1, CGPU_FORMAT_R32G32B32_SFLOAT, 1, 0, sizeof(skr_float3_t), CGPU_INPUT_RATE_VERTEX };        // per vertex color
-    vertex_layout.attributes[2] = { u8"model", 4, CGPU_FORMAT_R32G32B32A32_SFLOAT, 2, 0, sizeof(skr_float4x4_t), CGPU_INPUT_RATE_INSTANCE }; // per-instance model matrix
+    vertex_layout.attributes[0] = { u8"position", 1, CGPU_FORMAT_R32G32B32_SFLOAT, 0, 0, sizeof(skr_float3_t), CGPU_INPUT_RATE_VERTEX }; // per vertex position
+    vertex_layout.attributes[1] = { u8"uv", 2, CGPU_FORMAT_R32G32_SFLOAT, 1, 0, sizeof(skr_float2_t), CGPU_INPUT_RATE_VERTEX };
+    vertex_layout.attributes[2] = { u8"normal", 3, CGPU_FORMAT_R32G32B32_SFLOAT, 2, 0, sizeof(skr_float3_t), CGPU_INPUT_RATE_VERTEX }; // per vertex normal
 
     vertex_layout.attribute_count = 3;
 

@@ -6,11 +6,9 @@ using namespace skr::shader;
 struct [[stage_inout]] VSIn
 {
     float3 position;
-    float3 color;
-    [[nointerpolation]] float4 model0;
-    [[nointerpolation]] float4 model1;
-    [[nointerpolation]] float4 model2;
-    [[nointerpolation]] float4 model3;
+    float2 uv0;
+    float2 uv1;
+    float3 normal;
 };
 
 struct [[stage_inout]] VSOut
@@ -30,11 +28,10 @@ extern ConstantBuffer<RootConstants>& push_constants;
 VSOut vs(const VSIn input, [[sv_position]] float4& position)
 {
     VSOut output;
-    auto model = float4x4(input.model0, input.model1, input.model2, input.model3);
-    position = float4(input.position, 1.0f) * model * push_constants.view_proj;
+    position = float4(input.position, 1.0f) * push_constants.view_proj;
     // position = float4(input.position, 1.0f) * push_constants.view_proj;
     // position = float4(input.position, 1.0f);
-    output.color = input.color;
+    output.color = float3(input.uv0.x, input.uv0.y, input.uv1.x);
     return output;
 }
 

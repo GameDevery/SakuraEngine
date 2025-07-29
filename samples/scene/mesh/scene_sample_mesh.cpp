@@ -276,11 +276,20 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     flags |= thisBin.used_with_vertex ? CGPU_RESOURCE_TYPE_VERTEX_BUFFER : 0;
     CGPUBufferDescriptor bdesc = {};
     bdesc.descriptors = flags;
-    bdesc.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
-    bdesc.flags = CGPU_BCF_NO_DESCRIPTOR_VIEW_CREATION;
+    // bdesc.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
+    bdesc.memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU;
+    // bdesc.flags = CGPU_BCF_NO_DESCRIPTOR_VIEW_CREATION;
+    bdesc.flags = CGPU_BCF_PERSISTENT_MAP_BIT;
     bdesc.size = thisBin.byte_length;
-    bdesc.name = nullptr; // TODO: set name
+    bdesc.name = nullptr;          // TODO: set name
+    bdesc.prefer_on_device = true; // prefer on device, so we can use persistent map
     buf0 = cgpu_create_buffer(cgpu_device, &bdesc);
+    {
+        // actual copy
+        auto mapped_address = (uint8_t*)buf0->info->cpu_mapped_address;
+        memcpy(mapped_address, buffer0.data(), buffer0.size());
+        SKR_LOG_INFO(u8"Buffer 0 Mapped Address: %p", mapped_address);
+    }
 
     // CGPUBufferId mesh_buffers[2] = { nullptr, nullptr };
     // for (auto i = 0u; i < mesh_resource.bins.size(); i++)
@@ -303,6 +312,12 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     render_mesh->buffers.resize_default(1);
     render_mesh->buffers[0] = buf0;
     skr_render_mesh_initialize(render_mesh, &mesh_resource);
+
+    SKR_LOG_INFO(u8"Render Mesh Initialized with %d buffer bytes, %d vertex buffers, %d index buffers, %d primitives",
+        render_mesh->buffers[0]->info->size,
+        render_mesh->vertex_buffer_views.size(),
+        render_mesh->index_buffer_views.size(),
+        render_mesh->primitive_commands.size());
 
     // TODO: it seems the render_mesh loaded, now it is time to render it
     {
@@ -352,6 +367,7 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
             SkrZoneScopedN("Viewport Render");
             imgui_app->acquire_frames();
             scene_renderer->produce_drawcalls(world.get_storage(), render_graph);
+            // scene_renderer->render_mesh(render_mesh, render_graph);
         };
         {
             SkrZoneScopedN("ImGuiRender");
