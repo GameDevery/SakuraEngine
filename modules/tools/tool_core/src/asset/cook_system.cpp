@@ -433,7 +433,6 @@ AssetRecord* CookSystemImpl::LoadAssetMeta(SProject* project, const skr::String&
     SkrZoneScoped;
     std::error_code ec = {};
     auto record = SkrNew<AssetRecord>();
-    // TODO: replace file load with skr api
     if (project->LoadAssetMeta(uri.view(), record->meta))
     {
         skr::archive::JsonReader reader(record->meta.view());
@@ -441,13 +440,13 @@ AssetRecord* CookSystemImpl::LoadAssetMeta(SProject* project, const skr::String&
         SKR_DEFER({ reader.EndObject(); });
         // read guid
         {
-            std::memset(&record->guid, 0, sizeof(skr_guid_t));
+            std::memset(&record->guid, 0, sizeof(skr::GUID));
             reader.Key(u8"guid");
             skr::json_read(&reader, record->guid);
         }
         // read type
         {
-            std::memset(&record->type, 0, sizeof(skr_guid_t));
+            std::memset(&record->type, 0, sizeof(skr::GUID));
             reader.Key(u8"type");
             skr::json_read(&reader, record->type);
         }

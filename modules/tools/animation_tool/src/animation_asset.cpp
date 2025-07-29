@@ -25,7 +25,7 @@ bool AnimCooker::Cook(CookContext* ctx)
     SkrZoneScopedNS("AnimCooker::Cook", 4);
 
     //-----load config
-    auto settings = LoadConfig<AnimCookSettings>(ctx);
+    auto settings = ParseMetadata<AnimAssetMetadata>(ctx);
     //-----emit static dependencies
     if (settings.skeletonAsset.get_serialized() == skr_guid_t{})
     {

@@ -6,14 +6,14 @@
 
 namespace skd::asset
 {
-void SAnimGltfImporter::Destroy(void* data)
+void GltfAnimImporter::Destroy(void* data)
 {
     RawAnimation* raw = (RawAnimation*)data;
     raw->~RawAnimation();
     ozz::memory::default_allocator()->Deallocate(data, alignof(RawAnimation));
 }
 
-void* SAnimGltfImporter::Import(skr::io::IRAMService*, CookContext* context)
+void* GltfAnimImporter::Import(skr::io::IRAMService*, CookContext* context)
 {
     GltfImporter                          impl;
     ozz::animation::offline::OzzImporter& impoter          = impl;

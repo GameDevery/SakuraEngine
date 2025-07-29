@@ -35,7 +35,7 @@ bool skd::asset::MeshCooker::Cook(CookContext* ctx)
 {
     const auto outputPath = ctx->GetOutputPath();
     const auto assetRecord = ctx->GetAssetRecord();
-    auto cfg = LoadConfig<MeshCookConfig>(ctx);
+    auto cfg = ParseMetadata<MeshAssetMetadata>(ctx);
     if (cfg.vertexType == skr_guid_t{})
     {
         SKR_LOG_ERROR(u8"MeshCooker: VertexType is not specified for asset %s!", ctx->GetAssetPath().c_str());

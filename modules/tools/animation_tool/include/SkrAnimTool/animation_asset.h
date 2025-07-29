@@ -22,12 +22,12 @@ namespace skd::asset
 using RawAnimation = ozz::animation::offline::RawAnimation;
 
 sreflect_struct(guid = "37d07586-0901-480a-8dcd-1f1f8220569c" serde = @json)
-SKR_ANIMTOOL_API SAnimGltfImporter : public Importer
+SKR_ANIMTOOL_API GltfAnimImporter : public Importer
 {
     skr::String assetPath;
     skr::String animationName;
     float samplingRate = 30.f;
-    virtual ~SAnimGltfImporter() = default;
+    virtual ~GltfAnimImporter() = default;
     virtual void* Import(skr::io::IRAMService*, CookContext * context) override;
     virtual void Destroy(void*) override;
     static uint32_t Version() { return kDevelopmentVersion; }
@@ -55,7 +55,7 @@ SAnimOptimizationOverride
 };
 
 sreflect_struct(guid = "13873706-F7EE-4386-B7F0-B4E313864624" serde = @json)
-AnimCookSettings
+AnimAssetMetadata
 {
     /*
         "additive" : false, //  Creates a delta animation that can be used for additive blending.
