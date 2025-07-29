@@ -15,16 +15,17 @@
 namespace
 {
 static const char8_t* kDebugHelpDLLName = u8"dbghelp.dll";
-struct WinCrashHandler : public SCrashHandler {
+struct WinCrashHandler : public SCrashHandler
+{
     WinCrashHandler() SKR_NOEXCEPT = default;
     virtual ~WinCrashHandler() SKR_NOEXCEPT;
 
-    WinCrashHandler(WinCrashHandler const&)            = delete;
+    WinCrashHandler(WinCrashHandler const&) = delete;
     WinCrashHandler& operator=(WinCrashHandler const&) = delete;
 
     bool Initialize() SKR_NOEXCEPT override;
     bool Finalize() SKR_NOEXCEPT override;
-    void SetDumpFile(const char8_t* dumpFile) SKR_NOEXCEPT { dump_file = dumpFile;}
+    void SetDumpFile(const char8_t* dumpFile) SKR_NOEXCEPT { dump_file = dumpFile; }
     bool SetProcessSignalHandlers() SKR_NOEXCEPT override;
     bool SetThreadSignalHandlers() SKR_NOEXCEPT override;
     bool UnsetProcessSignalHandlers() SKR_NOEXCEPT override;
@@ -34,7 +35,7 @@ struct WinCrashHandler : public SCrashHandler {
         TerminateProcess(GetCurrentProcess(), code);
     }
 
-    SCrashContext  ctx;
+    SCrashContext ctx;
     SCrashContext* getCrashContext(CrashTerminateCode reason) SKR_NOEXCEPT override
     {
         ctx.reason = reason;
@@ -45,31 +46,30 @@ struct WinCrashHandler : public SCrashHandler {
 private:
     skr::String app_name;
     skr::String dump_file;
-    HANDLE      dbghelp_dll = nullptr;
-    bool        initialized = false;
+    HANDLE dbghelp_dll = nullptr;
+    bool initialized = false;
 
 private:
     static DWORD WINAPI StackOverflowThreadFunction(LPVOID lpParameter) SKR_NOEXCEPT;
-    static LONG WINAPI  SehHandler(PEXCEPTION_POINTERS pExceptionPtrs) SKR_NOEXCEPT;
+    static LONG WINAPI SehHandler(PEXCEPTION_POINTERS pExceptionPtrs) SKR_NOEXCEPT;
     // C++ terminate handler
     static void WINAPI TerminateHandler() SKR_NOEXCEPT;
     // C++ unexpected handler
     static void WINAPI UnexpectedHandler() SKR_NOEXCEPT;
 #if _MSC_VER >= 1300
-    static int WINAPI  NewHandler(size_t sz) SKR_NOEXCEPT;
+    static int WINAPI NewHandler(size_t sz) SKR_NOEXCEPT;
     static void WINAPI PureCallHandler() SKR_NOEXCEPT;
 #endif
 #if _MSC_VER >= 1400
-    static void WINAPI InvalidParameterHandler(const wchar_t* expression, const wchar_t* function,
-                                               const wchar_t* file, unsigned int line, uintptr_t pReserved) SKR_NOEXCEPT;
+    static void WINAPI InvalidParameterHandler(const wchar_t* expression, const wchar_t* function, const wchar_t* file, unsigned int line, uintptr_t pReserved) SKR_NOEXCEPT;
 #endif
 
     LPTOP_LEVEL_EXCEPTION_FILTER prevExceptionFilter = nullptr;
-    terminate_handler            prevTerm            = nullptr;
-    unexpected_handler           prevUnexp           = nullptr;
+    terminate_handler prevTerm = nullptr;
+    unexpected_handler prevUnexp = nullptr;
 #if _MSC_VER >= 1300
-    _purecall_handler prevPurec      = nullptr;
-    _PNH              prevNewHandler = nullptr;
+    _purecall_handler prevPurec = nullptr;
+    _PNH prevNewHandler = nullptr;
 #endif
 #if _MSC_VER >= 1400
     _invalid_parameter_handler prevInvpar = nullptr;
@@ -110,9 +110,9 @@ bool WinCrashHandler::Initialize() SKR_NOEXCEPT
     if (hKernel32 != NULL)
     {
         SETPROCESSUSERMODEEXCEPTIONPOLICY pfnSetProcessUserModeExceptionPolicy =
-        (SETPROCESSUSERMODEEXCEPTIONPOLICY)GetProcAddress(hKernel32, "SetProcessUserModeExceptionPolicy");
+            (SETPROCESSUSERMODEEXCEPTIONPOLICY)GetProcAddress(hKernel32, "SetProcessUserModeExceptionPolicy");
         GETPROCESSUSERMODEEXCEPTIONPOLICY pfnGetProcessUserModeExceptionPolicy =
-        (GETPROCESSUSERMODEEXCEPTIONPOLICY)GetProcAddress(hKernel32, "GetProcessUserModeExceptionPolicy");
+            (GETPROCESSUSERMODEEXCEPTIONPOLICY)GetProcAddress(hKernel32, "GetProcessUserModeExceptionPolicy");
         if (pfnSetProcessUserModeExceptionPolicy != NULL &&
             pfnGetProcessUserModeExceptionPolicy != NULL)
         {
@@ -144,36 +144,41 @@ int WinCrashHandler::internalHandler(struct SCrashContext* context) SKR_NOEXCEPT
     if (!context->exception_pointers)
         context->exception_pointers = (PEXCEPTION_POINTERS)_pxcptinfoptrs;
 
-    const auto  type   = MB_ABORTRETRYIGNORE | MB_ICONERROR;
-    const auto  reason = context->reason;
-    skr::String why    = skr::format(
-    u8"Crashed! Reason: {}",
-    skr_crash_code_string(reason));
+    const auto type = MB_ABORTRETRYIGNORE | MB_ICONERROR;
+    const auto reason = context->reason;
+    skr::String why = skr::format(
+        u8"Crashed! Reason: {}",
+        skr_crash_code_string(reason));
 
     SKR_LOG_FATAL(why.c_str());
 
     // save crash minidump
     {
-        char8_t    currentPath[1024];
+        char8_t currentPath[1024];
         SYSTEMTIME localTime;
         ::GetCurrentDirectoryA(MAX_PATH, (char*)currentPath);
         ::GetLocalTime(&localTime);
 
         skr::String dateTime = skr::format(u8"{}-{}-{}-{}-{}-{}-{}",
-                                           localTime.wYear, localTime.wMonth, localTime.wDay, localTime.wHour,
-                                           localTime.wMinute, localTime.wSecond, localTime.wMilliseconds);
+            localTime.wYear,
+            localTime.wMonth,
+            localTime.wDay,
+            localTime.wHour,
+            localTime.wMinute,
+            localTime.wSecond,
+            localTime.wMilliseconds);
 
-        skr::String dumpPath  = !dump_file.is_empty() ? dump_file : skr::format(u8"{}\\{}-minidump-{}.dmp", currentPath, skr_get_current_process_name(), dateTime);
+        skr::String dumpPath = !dump_file.is_empty() ? dump_file : skr::format(u8"{}\\{}-minidump-{}.dmp", currentPath, skr_get_current_process_name(), dateTime);
         auto length = dumpPath.to_u16_length();
-        std::wstring dumpPathW; 
+        std::wstring dumpPathW;
         dumpPathW.resize(length);
         dumpPath.to_u16((skr_char16*)dumpPathW.data());
         HANDLE lhDumpFile = ::CreateFileW(dumpPathW.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 
         MINIDUMP_EXCEPTION_INFORMATION loExceptionInfo;
         loExceptionInfo.ExceptionPointers = context->exception_pointers;
-        loExceptionInfo.ThreadId          = ::GetCurrentThreadId();
-        loExceptionInfo.ClientPointers    = TRUE;
+        loExceptionInfo.ThreadId = ::GetCurrentThreadId();
+        loExceptionInfo.ClientPointers = TRUE;
 
         ::MiniDumpWriteDump(::GetCurrentProcess(), ::GetCurrentProcessId(), lhDumpFile, MiniDumpNormal, &loExceptionInfo, NULL, NULL);
 
@@ -182,9 +187,10 @@ int WinCrashHandler::internalHandler(struct SCrashContext* context) SKR_NOEXCEPT
 
     // show message box
     ::MessageBoxExA(nullptr,
-                    why.c_str_raw(),
-                    "Crash 了！",
-                    type, 0);
+        why.c_str_raw(),
+        "Crash 了！",
+        type,
+        0);
 
     return 0;
 }
@@ -196,23 +202,23 @@ bool WinCrashHandler::Finalize() SKR_NOEXCEPT
 
 DWORD WINAPI WinCrashHandler::StackOverflowThreadFunction(LPVOID lpParameter) SKR_NOEXCEPT
 {
-    auto&               this_          = windows_crash_handler;
+    auto& this_ = windows_crash_handler;
     PEXCEPTION_POINTERS pExceptionPtrs = reinterpret_cast<PEXCEPTION_POINTERS>(lpParameter);
-    const auto          reason         = kCrashCodeStackOverflow;
+    const auto reason = kCrashCodeStackOverflow;
     this_.handleFunction([&]() {
         this_.visit_callbacks([&](const CallbackWrapper& wrapper) {
-            auto ctx                = this_.getCrashContext(reason);
+            auto ctx = this_.getCrashContext(reason);
             ctx->exception_pointers = pExceptionPtrs;
             wrapper.callback(ctx, wrapper.usr_data);
         });
     },
-                         reason);
+        reason);
     return 0;
 }
 
 void WINAPI WinCrashHandler::TerminateHandler() SKR_NOEXCEPT
 {
-    auto&      this_  = windows_crash_handler;
+    auto& this_ = windows_crash_handler;
     const auto reason = kCrashCodeTerminate;
     this_.handleFunction([&]() {
         this_.visit_callbacks([&](const CallbackWrapper& wrapper) {
@@ -220,12 +226,12 @@ void WINAPI WinCrashHandler::TerminateHandler() SKR_NOEXCEPT
             wrapper.callback(ctx, wrapper.usr_data);
         });
     },
-                         reason);
+        reason);
 }
 
 void WINAPI WinCrashHandler::UnexpectedHandler() SKR_NOEXCEPT
 {
-    auto&      this_  = windows_crash_handler;
+    auto& this_ = windows_crash_handler;
     const auto reason = kCrashCodeUnexpected;
     this_.handleFunction([&]() {
         this_.visit_callbacks([&](const CallbackWrapper& wrapper) {
@@ -233,7 +239,7 @@ void WINAPI WinCrashHandler::UnexpectedHandler() SKR_NOEXCEPT
             wrapper.callback(ctx, wrapper.usr_data);
         });
     },
-                         reason);
+        reason);
 }
 
 LONG WINAPI WinCrashHandler::SehHandler(PEXCEPTION_POINTERS pExceptionPtrs) SKR_NOEXCEPT
@@ -248,26 +254,25 @@ LONG WINAPI WinCrashHandler::SehHandler(PEXCEPTION_POINTERS pExceptionPtrs) SKR_
     // Vojtech: Based on martin.bis...@gmail.com comment in
     //	http://groups.google.com/group/crashrpt/browse_thread/thread/a1dbcc56acb58b27/fbd0151dd8e26daf?lnk=gst&q=stack+overflow#fbd0151dd8e26daf
     const auto hasExceptionRecord = pExceptionPtrs && pExceptionPtrs->ExceptionRecord;
-    const auto isStackOverflow    = hasExceptionRecord && pExceptionPtrs->ExceptionRecord->ExceptionCode == EXCEPTION_STACK_OVERFLOW;
+    const auto isStackOverflow = hasExceptionRecord && pExceptionPtrs->ExceptionRecord->ExceptionCode == EXCEPTION_STACK_OVERFLOW;
     if (isStackOverflow)
     {
         // Special case to handle the stack overflow exception.
         // The dump will be realized from another thread.
         // Create another thread that will do the dump.
-        HANDLE thread = ::CreateThread(0, 0,
-                                       &StackOverflowThreadFunction, pExceptionPtrs, 0, 0);
+        HANDLE thread = ::CreateThread(0, 0, &StackOverflowThreadFunction, pExceptionPtrs, 0, 0);
         ::WaitForSingleObject(thread, INFINITE);
         ::CloseHandle(thread);
 
         const auto reason = kCrashCodeUnhandled;
         this_.handleFunction([&]() {
             this_.visit_callbacks([&](const CallbackWrapper& wrapper) {
-                auto ctx                = this_.getCrashContext(reason);
+                auto ctx = this_.getCrashContext(reason);
                 ctx->exception_pointers = pExceptionPtrs;
                 wrapper.callback(ctx, wrapper.usr_data);
             });
         },
-                             reason);
+            reason);
     }
 
     return EXCEPTION_EXECUTE_HANDLER;
@@ -276,43 +281,45 @@ LONG WINAPI WinCrashHandler::SehHandler(PEXCEPTION_POINTERS pExceptionPtrs) SKR_
 #if _MSC_VER >= 1300
 void WINAPI WinCrashHandler::PureCallHandler() SKR_NOEXCEPT
 {
-    auto&      this_  = windows_crash_handler;
+    auto& this_ = windows_crash_handler;
     const auto reason = kCrashCodePureVirtual;
     this_.handleFunction([&]() {
         this_.visit_callbacks([&](const CallbackWrapper& wrapper) {
             auto ctx = this_.getCrashContext(reason);
             wrapper.callback(ctx, wrapper.usr_data);
         });
-    }, reason);
+    },
+        reason);
 }
 
 int WINAPI WinCrashHandler::NewHandler(size_t sz) SKR_NOEXCEPT
 {
-    auto&      this_  = windows_crash_handler;
+    auto& this_ = windows_crash_handler;
     const auto reason = kCrashCodeOpNewError;
     this_.handleFunction([&]() {
         this_.visit_callbacks([&](const CallbackWrapper& wrapper) {
             auto ctx = this_.getCrashContext(reason);
             wrapper.callback(ctx, wrapper.usr_data);
         });
-    }, reason);
+    },
+        reason);
     return 0;
 }
 #endif
 
 #if _MSC_VER >= 1400
-void WINAPI WinCrashHandler::InvalidParameterHandler(const wchar_t* expression, const wchar_t* function,
-                                                     const wchar_t* file, unsigned int line, uintptr_t pReserved) SKR_NOEXCEPT
+void WINAPI WinCrashHandler::InvalidParameterHandler(const wchar_t* expression, const wchar_t* function, const wchar_t* file, unsigned int line, uintptr_t pReserved) SKR_NOEXCEPT
 {
     (void)pReserved;
-    auto&      this_  = windows_crash_handler;
+    auto& this_ = windows_crash_handler;
     const auto reason = kCrashCodeInvalidParam;
     this_.handleFunction([&]() {
         this_.visit_callbacks([&](const CallbackWrapper& wrapper) {
             auto ctx = this_.getCrashContext(reason);
             wrapper.callback(ctx, wrapper.usr_data);
         });
-    }, reason);
+    },
+        reason);
 }
 #endif
 
@@ -346,7 +353,7 @@ bool WinCrashHandler::SetProcessSignalHandlers() SKR_NOEXCEPT
 
 bool WinCrashHandler::SetThreadSignalHandlers() SKR_NOEXCEPT
 {
-    prevTerm  = set_terminate(TerminateHandler);
+    prevTerm = set_terminate(TerminateHandler);
     prevUnexp = set_unexpected(UnexpectedHandler);
     return SCrashHandler::SetThreadSignalHandlers();
 }

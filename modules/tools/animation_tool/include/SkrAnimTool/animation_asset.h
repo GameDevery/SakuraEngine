@@ -34,13 +34,13 @@ SKR_ANIMTOOL_API GltfAnimImporter : public Importer
 };
 
 sreflect_enum_class(guid = "544116F5-EBE9-4837-AB88-4743435F39EF" serde = @json)
-SAnimAdditiveReference : uint32_t{
+AnimAdditiveReference : uint32_t{
     animation,
     skeleton
 };
 
 sreflect_struct(guid = "9B780FFE-FA11-4BA9-B410-B5D5B2849E64" serde = @json)
-SAnimOptimizationOverride
+AnimOptimizationOverride
 {
     /*
     {
@@ -55,7 +55,7 @@ SAnimOptimizationOverride
 };
 
 sreflect_struct(guid = "13873706-F7EE-4386-B7F0-B4E313864624" serde = @json)
-AnimAssetMetadata
+AnimAsset
 {
     /*
         "additive" : false, //  Creates a delta animation that can be used for additive blending.
@@ -75,12 +75,12 @@ AnimAssetMetadata
     */
     skr::resource::AsyncResource<skr::anim::SkeletonResource> skeletonAsset;
     bool additive = false;                                                        //  Creates a delta animation that can be used for additive blending.
-    SAnimAdditiveReference additiveReference = SAnimAdditiveReference::animation; //  Select reference pose to use to build additive/delta animation. Can be "animation" to use the 1st animation keyframe as reference, or "skeleton" to use skeleton rest pose.
+    AnimAdditiveReference additiveReference = AnimAdditiveReference::animation; //  Select reference pose to use to build additive/delta animation. Can be "animation" to use the 1st animation keyframe as reference, or "skeleton" to use skeleton rest pose.
     float samplingRate = 0.f;                                                     //  Selects animation sampling rate in hertz. Set a value <= 0 to use imported scene default frame rate.
     bool optimize = true;                                                         //  Activates keyframes reduction optimization.
     float tolerance = 0.001f;                                                     //  The maximum error that an optimization is allowed to generate on a whole joint hierarchy.
     float distance = 0.1f;                                                        //  The distance (from the joint) at which error is measured. This allows to emulate effect on skinning.
-    skr::Vector<SAnimOptimizationOverride> override;                              //  Per joint optimization setting override
+    skr::Vector<AnimOptimizationOverride> override;                              //  Per joint optimization setting override
 };
 
 sreflect_struct(guid = "81F1C813-1ABA-41BE-8D7A-F6C88E73E891")

@@ -14,12 +14,7 @@ sreflect_struct(
 GLTFTOOL_API GltfMeshImporter final : public Importer
 {
     String assetPath;
-
-    Vector<skr_guid_t> materials;
-
     bool invariant_vertices = false;
-    bool install_to_ram = false;
-    bool install_to_vram = true;
 
     void* Import(skr::io::IRAMService*, CookContext* context) override;
     void Destroy(void* resource) override;

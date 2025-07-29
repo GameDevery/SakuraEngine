@@ -53,7 +53,7 @@ struct CookContextImpl : public CookContext
     void* _Import() override;
     void _Destroy(void*) override;
 
-    skr_guid_t importerType;
+    skr::GUID importerType;
     uint32_t importerVersion = 0;
     uint32_t cookerVersion = 0;
 
@@ -65,7 +65,7 @@ struct CookContextImpl : public CookContext
 
     skr::filesystem::path outputPath;
     skr::Vector<SResourceHandle> staticDependencies;
-    skr::Vector<skr_guid_t> runtimeDependencies;
+    skr::Vector<skr::GUID> runtimeDependencies;
     skr::Vector<skr::filesystem::path> fileDependencies;
 
     CookContextImpl(skr::io::IRAMService* ioService)

@@ -14,10 +14,12 @@ namespace skd::asset
 {
 sreflect_struct(
     guid = "9A2C9CBF-517D-4197-BDE3-E40D85D88320" serde = @json)
-MeshAssetMetadata
+MeshAsset
 {
     skr_guid_t vertexType;
-    skr::String assetPath;
+    skr::Vector<skr_guid_t> materials;
+    bool install_to_ram = false;
+    bool install_to_vram = true;
 };
 
 sreflect_enum_class(

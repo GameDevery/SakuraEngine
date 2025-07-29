@@ -123,7 +123,7 @@ void GetGLTFNodeTransform(const cgltf_node* node, skr_float3_t& translation, skr
         rotation = { node->rotation[0], node->rotation[1], node->rotation[2], node->rotation[3] };
 }
 
-void CookGLTFMeshData(const cgltf_data* gltf_data, MeshAssetMetadata* cfg, skr_mesh_resource_t& out_resource, skr::Vector<skr::Vector<uint8_t>>& out_bins)
+void CookGLTFMeshData(const cgltf_data* gltf_data, MeshAsset* cfg, skr_mesh_resource_t& out_resource, skr::Vector<skr::Vector<uint8_t>>& out_bins)
 {
     skr::Vector<uint8_t> buffer0 = {};
 
@@ -176,7 +176,7 @@ void CookGLTFMeshData(const cgltf_data* gltf_data, MeshAssetMetadata* cfg, skr_m
     out_bins.add(buffer0);
 }
 
-void CookGLTFMeshData_SplitSkin(const cgltf_data* gltf_data, MeshAssetMetadata* cfg, skr_mesh_resource_t& out_resource, skr::Vector<skr::Vector<uint8_t>>& out_bins)
+void CookGLTFMeshData_SplitSkin(const cgltf_data* gltf_data, MeshAsset* cfg, skr_mesh_resource_t& out_resource, skr::Vector<skr::Vector<uint8_t>>& out_bins)
 {
     skr::Vector<uint8_t> buffer0 = {};
     skr::Vector<uint8_t> buffer1 = {};

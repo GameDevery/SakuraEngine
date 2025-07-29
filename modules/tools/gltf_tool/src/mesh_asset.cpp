@@ -34,14 +34,24 @@ bool skd::asset::MeshCooker::Cook(CookContext* ctx)
 {
     const auto outputPath = ctx->GetOutputPath();
     const auto assetMetaFile = ctx->GetAssetMetaFile();
-    auto cfg = ctx->GetAssetMetadata<MeshAssetMetadata>();
-    if (cfg.vertexType == skr_guid_t{})
+    auto mesh_asset = ctx->GetAssetMetadata<MeshAsset>();
+    if (mesh_asset.vertexType == skr_guid_t{})
     {
         SKR_LOG_ERROR(u8"MeshCooker: VertexType is not specified for asset %s!", ctx->GetAssetPath().c_str());
         return false;
     }
 
     skr_mesh_resource_t mesh;
+    mesh.install_to_ram = mesh_asset.install_to_ram;
+    mesh.install_to_vram = mesh_asset.install_to_vram;
+    //----- write materials
+    mesh.materials.reserve(mesh_asset.materials.size());
+    for (const auto material : mesh_asset.materials)
+    {
+        ctx->AddRuntimeDependency(material);
+        mesh.materials.add(material);
+    }
+
     skr::Vector<skr::Vector<uint8_t>> blobs;
     if (ctx->GetImporterType() == skr::type_id_of<GltfMeshImporter>())
     {
@@ -52,29 +62,20 @@ bool skd::asset::MeshCooker::Cook(CookContext* ctx)
             return false;
         }
         SKR_DEFER({ ctx->Destroy(gltf_data); });
-        mesh.install_to_ram = importer->install_to_ram;
-        mesh.install_to_vram = importer->install_to_vram;
+
         if (importer->invariant_vertices)
         {
-            CookGLTFMeshData(gltf_data, &cfg, mesh, blobs);
+            CookGLTFMeshData(gltf_data, &mesh_asset, mesh, blobs);
             // TODO: support ram-only mode install
             mesh.install_to_vram = true;
         }
         else
         {
-            CookGLTFMeshData_SplitSkin(gltf_data, &cfg, mesh, blobs);
+            CookGLTFMeshData_SplitSkin(gltf_data, &mesh_asset, mesh, blobs);
             // TODO: install only pos/norm/tangent vertices
             mesh.install_to_ram = true;
             // TODO: support ram-only mode install
             mesh.install_to_vram = true;
-        }
-
-        //----- write materials
-        mesh.materials.reserve(importer->materials.size());
-        for (const auto material : importer->materials)
-        {
-            ctx->AddRuntimeDependency(material);
-            mesh.materials.add(material);
         }
     }
 
