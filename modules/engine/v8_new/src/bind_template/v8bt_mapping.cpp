@@ -1,0 +1,256 @@
+#include <SkrV8/bind_template/v8bt_mapping.hpp>
+#include <SkrV8/v8_bind.hpp>
+#include <SkrV8/bind_template/v8bt_primitive.hpp>
+
+// v8 includes
+#include <libplatform/libplatform.h>
+#include <v8-initialization.h>
+#include <v8-template.h>
+#include <v8-external.h>
+#include <v8-function.h>
+#include <v8-container.h>
+
+namespace skr
+{
+V8BTMapping* V8BTMapping::TryCreate(IV8BindManager* manager, const RTTRType* type)
+{
+    SKR_ASSERT(type->is_record());
+
+    auto& _logger    = manager->logger();
+    auto  _log_stack = _logger.stack(u8"export mapping type {}", type->name());
+
+    // check flag
+    // clang-format off
+    if (!flag_all(
+        type->record_flag(),
+        ERTTRRecordFlag::ScriptVisible | ERTTRRecordFlag::ScriptMapping
+    ))
+    {
+        return nullptr;
+    }
+    // clang-format on
+
+    auto* result = SkrNew<V8BTMapping>();
+    result->set_manager(manager);
+    result->_rttr_type = type;
+
+    // each field
+    type->each_field([&](const RTTRFieldData* field, const RTTRType* owner_type) {
+        if (!flag_all(field->flag, ERTTRFieldFlag::ScriptVisible)) { return; }
+        auto& field_data = result->_fields.try_add_default(field->name).value();
+        field_data.setup(manager, field, owner_type);
+    });
+    return result;
+}
+
+// kinds
+EV8BTKind V8BTMapping::kind() const
+{
+    return EV8BTKind::Mapping;
+}
+
+v8::Local<v8::Value> V8BTMapping::to_v8(
+    void* native_data
+) const
+{
+    auto isolate = v8::Isolate::GetCurrent();
+    auto context = isolate->GetCurrentContext();
+
+    auto result = v8::Object::New(isolate);
+    for (const auto& [field_name, field_data] : _fields)
+    {
+        // conv field to v8
+        void* field_addr     = field_data.solve_address(native_data, _rttr_type);
+        auto  v8_field_value = field_data.bind_tp->to_v8(field_addr);
+
+        // set object field
+        // clang-format off
+        result->Set(
+            context,
+            V8Bind::to_v8(field_name, true),
+            v8_field_value
+        ).Check();
+        // clang-format on
+    }
+    return result;
+}
+bool V8BTMapping::to_native(
+    void*                native_data,
+    v8::Local<v8::Value> v8_value,
+    bool                 is_init
+) const
+{
+    auto isolate = v8::Isolate::GetCurrent();
+    auto context = isolate->GetCurrentContext();
+
+    auto v8_object = v8_value->ToObject(context).ToLocalChecked();
+
+    // do init
+    if (!is_init)
+    {
+        _init_native(native_data);
+    }
+
+    // build fields
+    for (const auto& [field_name, field_data] : _fields)
+    {
+        // clang-format off
+        // find object field
+        auto v8_field = v8_object->Get(
+            context,
+            V8Bind::to_v8(field_name, true)
+        ).ToLocalChecked();
+        // clang-format on
+
+        // set field
+        void* field_addr = field_data.solve_address(native_data, _rttr_type);
+        field_data.bind_tp->to_native(
+            field_addr,
+            v8_field,
+            true
+        );
+    }
+    return true;
+}
+
+// invoke native api
+bool V8BTMapping::match_param(
+    v8::Local<v8::Value> v8_param
+) const
+{
+    auto isolate = v8::Isolate::GetCurrent();
+    auto context = isolate->GetCurrentContext();
+
+    // conv to object
+    if (!v8_param->IsObject()) { return false; }
+    auto v8_obj = v8_param->ToObject(context).ToLocalChecked();
+
+    // match fields
+    for (const auto& [field_name, field_data] : _fields)
+    {
+        // find object field
+        auto v8_field_value_maybe = v8_obj->Get(
+            context,
+            V8Bind::to_v8(field_name, true)
+        );
+        // clang-format on
+
+        // get field value
+        if (v8_field_value_maybe.IsEmpty()) { return {}; }
+        auto v8_field_value = v8_field_value_maybe.ToLocalChecked();
+
+        // match field
+        auto result = field_data.bind_tp->match_param(v8_field_value);
+        if (!result)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+void V8BTMapping::push_param_native(
+    DynamicStack&        stack,
+    const V8BTDataParam& param_bind_tp,
+    v8::Local<v8::Value> v8_value
+) const
+{
+    DtorInvoker dtor        = _rttr_type->dtor_invoker();
+    void*       native_data = stack.alloc_param_raw(
+        _rttr_type->size(),
+        _rttr_type->alignment(),
+        param_bind_tp.pass_by_ref ? EDynamicStackParamKind::XValue : EDynamicStackParamKind::Direct,
+        dtor
+    );
+    to_native(native_data, v8_value, false);
+}
+void V8BTMapping::push_param_native_pure_out(
+    DynamicStack&        stack,
+    const V8BTDataParam& param_bind_tp
+) const
+{
+    DtorInvoker dtor        = _rttr_type->dtor_invoker();
+    void*       native_data = stack.alloc_param_raw(
+        _rttr_type->size(),
+        _rttr_type->alignment(),
+        EDynamicStackParamKind::XValue,
+        dtor
+    );
+    _init_native(native_data);
+}
+v8::Local<v8::Value> V8BTMapping::read_return_native(
+    DynamicStack&         stack,
+    const V8BTDataReturn& return_bind_tp
+) const
+{
+    if (!stack.is_return_stored()) { return {}; }
+
+    void* native_data = stack.get_return_raw();
+    if (return_bind_tp.pass_by_ref)
+    {
+        native_data = *reinterpret_cast<void**>(native_data);
+    }
+    return to_v8(native_data);
+}
+v8::Local<v8::Value> V8BTMapping::read_return_from_out_param(
+    DynamicStack&        stack,
+    const V8BTDataParam& param_bind_tp
+) const
+{
+    // get out param data (when pass by ref, we always push xvalue into dynamic stack)
+    void* native_data = stack.get_param_raw(param_bind_tp.index);
+    return to_v8(native_data);
+}
+
+// invoke v8 api
+v8::Local<v8::Value> V8BTMapping::make_param_v8(
+    void*                native_data,
+    const V8BTDataParam& param_bind_tp
+) const
+{
+    return to_v8(native_data);
+}
+
+// field api
+v8::Local<v8::Value> V8BTMapping::get_field(
+    void*                obj,
+    const RTTRType*      obj_type,
+    const V8BTDataField& field_bind_tp
+) const
+{
+    void* field_addr = field_bind_tp.solve_address(obj, obj_type);
+    return to_v8(field_addr);
+}
+void V8BTMapping::set_field(
+    v8::Local<v8::Value> v8_value,
+    void*                obj,
+    const RTTRType*      obj_type,
+    const V8BTDataField& field_bind_tp
+) const
+{
+    void* field_addr = field_bind_tp.solve_address(obj, obj_type);
+    to_native(field_addr, v8_value, false);
+}
+v8::Local<v8::Value> V8BTMapping::get_static_field(
+    const V8BTDataStaticField& field_bind_tp
+) const
+{
+    void* field_addr = field_bind_tp.solve_address();
+    return to_v8(field_addr);
+}
+void V8BTMapping::set_static_field(
+    v8::Local<v8::Value>       v8_value,
+    const V8BTDataStaticField& field_bind_tp
+) const
+{
+    void* field_addr = field_bind_tp.solve_address();
+    to_native(field_addr, v8_value, false);
+}
+
+void V8BTMapping::_init_native(
+    void* native_data
+) const
+{
+    _default_ctor.invoke(native_data);
+}
+} // namespace skr

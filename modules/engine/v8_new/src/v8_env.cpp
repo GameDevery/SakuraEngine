@@ -4,7 +4,13 @@
 #include <SkrRTTR/type.hpp>
 #include <SkrV8/v8_bind.hpp>
 #include <SkrV8/v8_bind_proxy.hpp>
-#include <SkrV8/v8_bind_template.hpp>
+#include <SkrV8/bind_template/v8_bind_template.hpp>
+#include <SkrV8/bind_template/v8bt_primitive.hpp>
+#include <SkrV8/bind_template/v8bt_enum.hpp>
+#include <SkrV8/bind_template/v8bt_mapping.hpp>
+#include <SkrV8/bind_template/v8bt_object.hpp>
+#include <SkrV8/bind_template/v8bt_value.hpp>
+
 
 // v8 includes
 #include <libplatform/libplatform.h>
@@ -127,14 +133,14 @@ void V8Isolate::gc(bool full)
 
 //==> IV8BindManager API
 // bind proxy management
-V8BindTemplate* V8Isolate::find_or_add_bind_template(
+V8BTGeneric* V8Isolate::solve_bind_tp(
     TypeSignatureView signature
 )
 {
     SKR_UNIMPLEMENTED_FUNCTION();
     return nullptr;
 }
-V8BindTemplate* V8Isolate::find_or_add_bind_template(
+V8BindTemplate* V8Isolate::solve_bind_tp(
     const GUID& type_id
 )
 {

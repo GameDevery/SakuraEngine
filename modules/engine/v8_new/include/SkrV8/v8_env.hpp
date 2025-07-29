@@ -2,7 +2,7 @@
 #include <SkrCore/memory/rc.hpp>
 #include <SkrRTTR/script/script_binder.hpp>
 #include <SkrRTTR/script/stack_proxy.hpp>
-#include <SkrV8/v8_bind_template.hpp>
+#include <SkrV8/bind_template/v8_bind_template.hpp>
 
 // v8 includes
 #include <v8-isolate.h>
@@ -48,10 +48,10 @@ SKR_V8_API V8Isolate : IScriptMixinCore, IV8BindManager {
 
     //==> IV8BindManager API
     // bind proxy management
-    V8BindTemplate* find_or_add_bind_template(
+    V8BTGeneric* solve_bind_tp(
         TypeSignatureView signature
     ) override;
-    V8BindTemplate* find_or_add_bind_template(
+    V8BindTemplate* solve_bind_tp(
         const GUID& type_id
     ) override;
 
