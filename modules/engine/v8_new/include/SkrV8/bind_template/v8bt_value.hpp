@@ -67,8 +67,6 @@ struct V8BTValue : V8BTRecordBase {
         const V8BTDataStaticField& field_bind_tp
     ) const override final;
 
-    void setup(const ScriptBinderValue& binder);
-
 protected:
     // helper
     V8BPValue* _create_value(void* native_data = nullptr) const;

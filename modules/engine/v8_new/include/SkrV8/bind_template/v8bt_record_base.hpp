@@ -7,6 +7,9 @@ struct V8BTRecordBase : V8BindTemplate {
 
 protected:
     void _setup(IV8BindManager* manager, const RTTRType* type);
+    void _fill_template(
+        v8::Local<v8::FunctionTemplate> ctor_template
+    );
 
     static void _call_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
     static void _call_static_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info);

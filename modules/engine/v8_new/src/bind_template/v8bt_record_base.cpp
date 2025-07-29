@@ -265,6 +265,143 @@ void V8BTRecordBase::_setup(IV8BindManager* manager, const RTTRType* type)
 
     // TODO. check properties conflict
 }
+void V8BTRecordBase::_fill_template(
+    v8::Local<v8::FunctionTemplate> ctor_template
+)
+{
+    using namespace ::v8;
+
+    auto* isolate = Isolate::GetCurrent();
+
+    // setup internal field count
+    ctor_template->InstanceTemplate()->SetInternalFieldCount(1);
+
+    // bind method
+    for (auto& [method_name, method_binder] : _methods)
+    {
+        auto v8_template = FunctionTemplate::New(
+            isolate,
+            _call_method,
+            External::New(isolate, &method_binder)
+        );
+        ctor_template->PrototypeTemplate()->Set(
+            V8Bind::to_v8(method_name, true),
+            v8_template
+        );
+    }
+
+    // bind static method
+    for (auto& [static_method_name, static_method_binder] : _static_methods)
+    {
+        auto v8_template = FunctionTemplate::New(
+            isolate,
+            _call_static_method,
+            External::New(isolate, &static_method_binder)
+        );
+        ctor_template->Set(
+            V8Bind::to_v8(static_method_name, true),
+            v8_template
+        );
+    }
+
+    // bind field
+    for (auto& [field_name, field_binder] : _fields)
+    {
+        auto getter_template = FunctionTemplate::New(
+            isolate,
+            _get_field,
+            External::New(isolate, &field_binder)
+        );
+        auto setter_template = FunctionTemplate::New(
+            isolate,
+            _set_field,
+            External::New(isolate, &field_binder)
+        );
+        ctor_template->PrototypeTemplate()->SetAccessorProperty(
+            V8Bind::to_v8(field_name, true),
+            getter_template,
+            setter_template
+        );
+    }
+
+    // bind static field
+    for (auto& [static_field_name, static_field_binder] : _static_fields)
+    {
+        auto getter_template = FunctionTemplate::New(
+            isolate,
+            _get_static_field,
+            External::New(isolate, &static_field_binder)
+        );
+        auto setter_template = FunctionTemplate::New(
+            isolate,
+            _set_static_field,
+            External::New(isolate, &static_field_binder)
+        );
+        ctor_template->SetAccessorProperty(
+            V8Bind::to_v8(static_field_name, true),
+            getter_template,
+            setter_template
+        );
+    }
+
+    // bind properties
+    for (auto& [property_name, property_binder] : _properties)
+    {
+        Local<FunctionTemplate> getter_template = {};
+        Local<FunctionTemplate> setter_template = {};
+
+        if (property_binder.getter.is_valid())
+        {
+            getter_template = FunctionTemplate::New(
+                isolate,
+                _get_prop,
+                External::New(isolate, &property_binder)
+            );
+        }
+        if (property_binder.setter.is_valid())
+        {
+            setter_template = FunctionTemplate::New(
+                isolate,
+                _set_prop,
+                External::New(isolate, &property_binder)
+            );
+        }
+        ctor_template->PrototypeTemplate()->SetAccessorProperty(
+            V8Bind::to_v8(property_name, true),
+            getter_template,
+            setter_template
+        );
+    }
+
+    // bind static properties
+    for (auto& [static_property_name, static_property_binder] : _static_properties)
+    {
+        Local<FunctionTemplate> getter_template = {};
+        Local<FunctionTemplate> setter_template = {};
+
+        if (static_property_binder.getter.is_valid())
+        {
+            getter_template = FunctionTemplate::New(
+                isolate,
+                _get_static_prop,
+                External::New(isolate, &static_property_binder)
+            );
+        }
+        if (static_property_binder.setter.is_valid())
+        {
+            setter_template = FunctionTemplate::New(
+                isolate,
+                _set_static_prop,
+                External::New(isolate, &static_property_binder)
+            );
+        }
+        ctor_template->SetAccessorProperty(
+            V8Bind::to_v8(static_property_name, true),
+            getter_template,
+            setter_template
+        );
+    }
+}
 
 void V8BTRecordBase::_call_method(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 {

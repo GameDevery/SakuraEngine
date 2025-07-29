@@ -260,11 +260,6 @@ void V8BTValue::set_static_field(
     );
 }
 
-void V8BTValue::setup(const ScriptBinderValue& binder)
-{
-    V8BTRecordBase::_setup(binder);
-}
-
 // helper
 V8BPValue* V8BTValue::_create_value(void* native_data) const
 {

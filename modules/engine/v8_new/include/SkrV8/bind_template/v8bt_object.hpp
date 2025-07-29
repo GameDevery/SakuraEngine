@@ -67,8 +67,6 @@ struct V8BTObject : V8BTRecordBase {
         const V8BTDataStaticField& field_bind_tp
     ) const override final;
 
-    void setup(const ScriptBinderObject& binder);
-
 protected:
     // helper
     V8BPObject* _get_or_make_proxy(void* address) const;

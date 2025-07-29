@@ -174,11 +174,6 @@ void V8BTObject::set_static_field(
     to_native(field_address, v8_value, false);
 }
 
-void V8BTObject::setup(const ScriptBinderObject& binder)
-{
-    V8BTRecordBase::_setup(binder);
-}
-
 // helper
 V8BPObject* V8BTObject::_get_or_make_proxy(void* address) const
 {
