@@ -6,6 +6,7 @@
 #include <SkrCore/time.h>
 #include <SkrCore/async/thread_job.hpp>
 #include <SkrRT/io/vram_io.hpp>
+#include "SkrOS/thread.h"
 #include "SkrRT/misc/cmd_parser.hpp"
 
 #include <SkrOS/filesystem.hpp>
@@ -25,6 +26,7 @@
 #include "scene_renderer.hpp"
 #include "helper.hpp"
 #include "cgltf/cgltf.h"
+#include <cstdio>
 
 namespace temp
 {
@@ -311,7 +313,6 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     auto render_device = SkrRendererModule::Get()->get_render_device();
     temp::Camera camera;
     scene_renderer->temp_set_camera(&camera);
-    // scene_renderer->create_resource(render_device);
 
     auto cgpu_device = render_device->get_cgpu_device();
     auto gfx_queue = render_device->get_gfx_queue();
@@ -319,33 +320,71 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     // transform mesh_buffer_t into CGPUBufferId
     skr_render_mesh_id render_mesh = nullptr;
     utils::DummyScene dummy_scene;
+
+    std::error_code ec = {};
+    auto resourceRoot = (skr::filesystem::current_path(ec) / "../resources");
     if (use_gltf)
     {
-        render_mesh = mesh_resource.render_mesh = SkrNew<skr_render_mesh_t>();
-        CGPUBufferId buf0 = nullptr;
-        CGPUResourceTypes flags = CGPU_RESOURCE_TYPE_NONE;
+        // save buffer0 to binPath
         const auto& thisBin = mesh_resource.bins[0];
+        // auto binPath = skr::format(u8"mesh_bin_{}.bin", thisBin.index);
+        skr::String binPath = u8"D:/ws/repos/SakuraEngine/.build/clang-cl/Windows-X64-debug/../resources/mesh_bin_0.bin";
+        // auto outPath = (const char*)(resourceRoot / binPath.c_str()).c_str();
+        // auto buffer_file = std::fopen((const char*)binPath.c_str(), "wb");
+        auto buffer_file = std::fopen("D:/ws/repos/SakuraEngine/.build/clang-cl/Windows-X64-debug/../resources/mesh_bin_0.bin", "wb");
+        if (!buffer_file)
+        {
+            SKR_LOG_ERROR(u8"Failed to open file for writing: %s", binPath.c_str());
+            return 1;
+        }
+        SKR_LOG_INFO(u8"Writing %d bytes to %s", thisBin.byte_length, binPath.c_str());
+        std::fwrite(buffer0.data(), 1, buffer0.size(), buffer_file);
+        std::fclose(buffer_file);
+
+        render_mesh = mesh_resource.render_mesh = SkrNew<skr_render_mesh_t>();
+
+        CGPUResourceTypes flags = CGPU_RESOURCE_TYPE_NONE;
+
         flags |= thisBin.used_with_index ? CGPU_RESOURCE_TYPE_INDEX_BUFFER : 0;
         flags |= thisBin.used_with_vertex ? CGPU_RESOURCE_TYPE_VERTEX_BUFFER : 0;
         CGPUBufferDescriptor bdesc = {};
         bdesc.descriptors = flags;
-        // bdesc.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
-        bdesc.memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU;
-        // bdesc.flags = CGPU_BCF_NO_DESCRIPTOR_VIEW_CREATION;
-        bdesc.flags = CGPU_BCF_PERSISTENT_MAP_BIT;
+        bdesc.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
+        // bdesc.memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU;
+        bdesc.flags = CGPU_BCF_NO_DESCRIPTOR_VIEW_CREATION;
+        // bdesc.flags = CGPU_BCF_PERSISTENT_MAP_BIT;
         bdesc.size = thisBin.byte_length;
-        bdesc.name = nullptr;          // TODO: set name
+        bdesc.name = nullptr;
         bdesc.prefer_on_device = true; // prefer on device, so we can use persistent map
-        buf0 = cgpu_create_buffer(cgpu_device, &bdesc);
+        auto request = vram_service->open_buffer_request();
+        request->set_vfs(resource_vfs);
+
+        request->set_path(binPath.c_str());
+        request->set_buffer(render_device->get_cgpu_device(), &bdesc);
+        request->set_transfer_queue(render_device->get_cpy_queue());
+        auto batch = vram_service->open_batch(1);
+        skr_io_future_t future;
+        auto result = batch->add_request(request, &future);
+        auto&& buf = result.cast_static<skr::io::IVRAMIOBuffer>();
+
+        vram_service->request(batch);
+
+        // buf0 = cgpu_create_buffer(cgpu_device, &bdesc);
+        // {
+        //     auto mapped_address = (uint8_t*)buf0->info->cpu_mapped_address;
+        //     memcpy(mapped_address, buffer0.data(), buffer0.size());
+        //     SKR_LOG_INFO(u8"Buffer 0 Mapped Address: %p", mapped_address);
+        // }
+
+        // wait until the future is ready
+        while (!future.is_ready())
         {
-            // actual copy
-            auto mapped_address = (uint8_t*)buf0->info->cpu_mapped_address;
-            memcpy(mapped_address, buffer0.data(), buffer0.size());
-            SKR_LOG_INFO(u8"Buffer 0 Mapped Address: %p", mapped_address);
+            skr_thread_sleep(10);
         }
+        // SKR_LOG_INFO(u8"Buffer 0 Created: %p", buf0);
 
         render_mesh->buffers.resize_default(1);
-        render_mesh->buffers[0] = buf0;
+        render_mesh->buffers[0] = buf->get_buffer();
 
         skr_render_mesh_initialize(render_mesh, &mesh_resource);
     }
