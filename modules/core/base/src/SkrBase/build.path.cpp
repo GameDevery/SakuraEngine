@@ -236,7 +236,7 @@ Path& Path::concat(const Path& p)
     return *this;
 }
 
-Path Path::normalized() const
+Path Path::normalize() const
 {
     if (_path.is_empty())
         return Path(_style);
@@ -257,7 +257,10 @@ Path Path::normalized() const
         char8_t drive = _path.at_buffer(0);
         if ((drive >= 'A' && drive <= 'Z') || (drive >= 'a' && drive <= 'z'))
         {
-            root_part = _path.subview(0, 3); // "C:/"
+            // Normalize drive letter to uppercase
+            char8_t normalized_drive[4] = { 0, ':', '/', 0 };
+            normalized_drive[0] = (drive >= 'a' && drive <= 'z') ? (drive - 'a' + 'A') : drive;
+            root_part = skr::String(reinterpret_cast<const char8_t*>(normalized_drive));
             path_start = 3;
         }
     }
@@ -353,8 +356,8 @@ Path Path::relative_to(const Path& base) const
     if (is_absolute() != base.is_absolute())
         return Path(_style);
     
-    auto norm_this = normalized();
-    auto norm_base = base.normalized();
+    auto norm_this = normalize();
+    auto norm_base = base.normalize();
     
     // Special case: identical paths
     if (norm_this._path == norm_base._path)
@@ -415,7 +418,7 @@ Path Path::relative_to(const Path& base) const
 }
 
 // query operations
-bool Path::empty() const
+bool Path::is_empty() const
 {
     return _path.is_empty();
 }

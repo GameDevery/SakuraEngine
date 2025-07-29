@@ -1,9 +1,7 @@
-#include "SkrBase/misc/defer.hpp"
 #include "SkrArchive/json/reader.h"
 #include "SkrCore/memory/sp.hpp"
 #include "SkrOS/shared_library.hpp"
 #include "SkrOS/filesystem.hpp"
-#include "SkrCore/memory/memory.h"
 #include "SkrContainersDef/hashmap.hpp"
 #include "SkrCore/module/module_manager.hpp"
 #include "SkrCore/module/subsystem.hpp"
@@ -14,7 +12,7 @@ bool cr_pdb_replace(const std::string& filename, const std::string& pdbname, std
 
 static bool ProcessPDB(const skr::Path& dst)
 {
-    auto basePath = dst.normalized();
+    auto basePath = dst.normalize();
     auto folder = basePath.parent_directory();
     auto fname = basePath.basename();
     auto ext = basePath.extension();
@@ -39,6 +37,11 @@ static bool ProcessPDB(const skr::Path& dst)
 
 namespace skr
 {
+ModuleSubsystem::~ModuleSubsystem() SKR_NOEXCEPT
+{
+
+}
+
 struct ModuleContext
 {
     skr::Path path = {};
@@ -175,12 +178,12 @@ static skr::Path GetVersionPath(const skr::Path& basepath,
     unsigned version,
     const skr::Path& temppath)
 {
-    auto basePath = basepath.normalized();
+    auto basePath = basepath.normalize();
     auto folder = basePath.parent_directory();
     auto fname = basePath.basename();
     auto ext = basePath.extension();
     auto ver = std::to_string(version);
-    if (!temppath.empty())
+    if (!temppath.is_empty())
     {
         folder = temppath;
     }

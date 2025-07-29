@@ -21,5 +21,8 @@ public static class BaseTests
 
         Engine.UnitTest("TypeTest")
             .AddCppFiles("type/*.cpp");
+
+        Engine.UnitTest("FileSystemTest")
+            .AddCppFiles("filesystem/*.cpp");
     }
 }

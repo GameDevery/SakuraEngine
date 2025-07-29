@@ -1,5 +1,4 @@
 #include "SkrCore/platform/vfs.h"
-#include "SkrCore/crash.h"
 #include "SkrOS/thread.h"
 #include "SkrGraphics/dstorage.h"
 #include <SkrOS/filesystem.hpp>

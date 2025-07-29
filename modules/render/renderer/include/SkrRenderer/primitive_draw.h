@@ -1,11 +1,10 @@
 #pragma once
-#include "fwd_types.h"
-
+#include "fwd_types.h" // IWYU pragma: export
 #include "SkrGraphics/api.h"
 #include "SkrGraphics/cgpux.h"
 
 #ifdef __cplusplus
-    #include "SkrContainers/span.hpp"
+#include "SkrContainersDef/span.hpp"
 extern "C" {
 #endif
 

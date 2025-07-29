@@ -1,6 +1,6 @@
 #pragma once
 #include "SkrCore/memory/memory.h"
-#include <vector>
+#include <vector> // IWYU pragma: export
 
 namespace skr
 {

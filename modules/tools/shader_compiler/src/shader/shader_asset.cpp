@@ -2,13 +2,11 @@
 #include "SkrTask/parallel_for.hpp"
 #include "SkrRT/misc/cartesian_product.hpp"
 #include "SkrToolCore/cook_system/cook_system.hpp"
-#include "SkrRenderer/resources/shader_meta_resource.hpp"
 #include "SkrRenderer/resources/shader_resource.hpp"
 #include "SkrShaderCompiler/assets/shader_asset.hpp"
 #include "SkrShaderCompiler/shader_compiler.hpp"
 #include "SkrSerde/json_serde.hpp"
 
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 

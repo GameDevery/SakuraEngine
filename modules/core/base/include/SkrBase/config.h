@@ -17,12 +17,12 @@
 #endif
 
 // platform & compiler marcos
-#include "SkrBase/config/platform.h"
-#include "SkrBase/config/compiler.h"
+#include "SkrBase/config/platform.h" // IWYU pragma: export
+#include "SkrBase/config/compiler.h" // IWYU pragma: export
 
 // keywords
-#include "SkrBase/config/key_words.h"
-#include "SkrBase/config/values.h"
+#include "SkrBase/config/key_words.h" // IWYU pragma: export
+#include "SkrBase/config/values.h" // IWYU pragma: export
 
 // character
-#include "SkrBase/config/character.h"
+#include "SkrBase/config/character.h" // IWYU pragma: export

@@ -1,7 +1,7 @@
 #pragma once
 #include "SkrBase/config.h"
 #include "SkrBase/memory/memory_traits.hpp"
-#include <memory>
+#include <memory> // IWYU pragma: export
 
 // for single element
 namespace skr::memory

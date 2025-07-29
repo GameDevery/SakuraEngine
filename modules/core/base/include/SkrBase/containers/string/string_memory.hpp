@@ -1,6 +1,4 @@
 #pragma once
-#include "SkrBase/config.h"
-#include "SkrBase/misc/integer_tools.hpp"
 #include "SkrBase/memory.hpp"
 #include "SkrBase/misc/debug.h"
 #include "SkrBase/containers/misc/default_capicity_policy.hpp"

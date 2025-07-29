@@ -94,7 +94,7 @@ bool File::read_all_text(const Path& path, skr::String& out_text)
 bool File::write_all_bytes(const Path& path, skr::span<const uint8_t> data)
 {
     File file;
-    if (!file.open(path, OpenMode::WriteOnly))
+    if (!file.open(path, OpenMode::Write | OpenMode::Create | OpenMode::Truncate))
         return false;
     
     size_t bytes_written = file.write(data.data(), data.size());
@@ -114,6 +114,19 @@ Path PathUtils::absolute(const Path& p)
         return p;
     
     return Directory::current() / p;
+}
+
+Path PathUtils::canonical(const Path& p)
+{
+    // 将路径规范化：解析符号链接，移除 . 和 ..
+    Path abs_path = absolute(p);
+    
+    // 使用 normalized 来处理 . 和 ..
+    Path normalized = abs_path.normalize();
+    
+    // TODO: 在未来可以添加符号链接解析
+    // 目前只返回规范化的绝对路径
+    return normalized;
 }
 
 Path PathUtils::relative(const Path& p, const Path& base)

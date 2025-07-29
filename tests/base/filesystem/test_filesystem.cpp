@@ -5,25 +5,25 @@
 namespace skr::fs::test
 {
 
-TEST_CASE("filesystem basic operations", "[filesystem]")
+TEST_CASE("filesystem basic operations")
 {
     // 测试临时目录操作
     auto temp_dir = Directory::temp();
-    CHECK(!temp_dir.empty());
+    CHECK(!temp_dir.is_empty());
     CHECK(Directory::exists(temp_dir));
     
     // 测试当前目录
     auto current_dir = Directory::current();
-    CHECK(!current_dir.empty());
+    CHECK(!current_dir.is_empty());
     CHECK(Directory::exists(current_dir));
     
     // 测试 home 目录
     auto home_dir = Directory::home();
-    CHECK(!home_dir.empty());
+    CHECK(!home_dir.is_empty());
     CHECK(Directory::exists(home_dir));
 }
 
-TEST_CASE("file operations", "[filesystem]")
+TEST_CASE("file operations")
 {
     auto temp_dir = Directory::temp();
     auto test_file = temp_dir / u8"test_file.txt";
@@ -63,7 +63,7 @@ TEST_CASE("file operations", "[filesystem]")
     CHECK(!File::exists(test_file));
 }
 
-TEST_CASE("file handle operations", "[filesystem]")
+TEST_CASE("file handle operations")
 {
     auto temp_dir = Directory::temp();
     auto test_file = temp_dir / u8"test_handle.txt";
@@ -77,7 +77,7 @@ TEST_CASE("file handle operations", "[filesystem]")
     // 测试文件创建和写入
     {
         File file;
-        CHECK(file.open(test_file, OpenMode::WriteOnly));
+        CHECK(file.open(test_file, OpenMode::Write | OpenMode::Create | OpenMode::Truncate));
         CHECK(file.is_open());
         
         const char8_t* test_data = u8"Test data for file handle";
@@ -109,7 +109,7 @@ TEST_CASE("file handle operations", "[filesystem]")
     CHECK(File::remove(test_file));
 }
 
-TEST_CASE("directory operations", "[filesystem]")
+TEST_CASE("directory operations")
 {
     auto temp_dir = Directory::temp();
     auto test_dir = temp_dir / u8"test_directory";
@@ -144,7 +144,7 @@ TEST_CASE("directory operations", "[filesystem]")
     CHECK(!Directory::exists(test_dir));
 }
 
-TEST_CASE("directory iteration", "[filesystem]")
+TEST_CASE("directory iteration")
 {
     auto temp_dir = Directory::temp();
     
@@ -190,7 +190,7 @@ TEST_CASE("directory iteration", "[filesystem]")
     CHECK(Directory::remove(test_base, false));
 }
 
-TEST_CASE("path utilities", "[filesystem]")
+TEST_CASE("path utilities")
 {
     // 测试绝对路径转换
     Path relative_path = u8"test/path";
@@ -206,7 +206,7 @@ TEST_CASE("path utilities", "[filesystem]")
 }
 
 #ifdef __APPLE__
-TEST_CASE("apple specific directories", "[filesystem][apple]")
+TEST_CASE("apple specific directories")
 {
     auto app_support = Directory::application_support();
     CHECK(!app_support.empty());

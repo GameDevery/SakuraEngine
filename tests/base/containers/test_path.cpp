@@ -6,7 +6,7 @@ TEST_CASE("Path: Basic Construction and Normalization")
     SUBCASE("Default construction")
     {
         skr::Path p;
-        CHECK(p.empty());
+        CHECK(p.is_empty());
         CHECK(p.string().is_empty());
         CHECK(!p.is_absolute());
         CHECK(p.is_relative());
@@ -168,60 +168,60 @@ TEST_CASE("Path: Normalized")
 {
     SUBCASE("Remove single dots")
     {
-        CHECK(skr::Path(u8"./foo/bar").normalized().string() == u8"foo/bar");
-        CHECK(skr::Path(u8"foo/./bar").normalized().string() == u8"foo/bar");
-        CHECK(skr::Path(u8"foo/bar/.").normalized().string() == u8"foo/bar");
-        CHECK(skr::Path(u8"./foo/./bar/.").normalized().string() == u8"foo/bar");
-        CHECK(skr::Path(u8".").normalized().string() == u8".");
-        CHECK(skr::Path(u8"././.").normalized().string() == u8".");
-        CHECK(skr::Path(u8"/./foo").normalized().string() == u8"/foo");
+        CHECK(skr::Path(u8"./foo/bar").normalize().string() == u8"foo/bar");
+        CHECK(skr::Path(u8"foo/./bar").normalize().string() == u8"foo/bar");
+        CHECK(skr::Path(u8"foo/bar/.").normalize().string() == u8"foo/bar");
+        CHECK(skr::Path(u8"./foo/./bar/.").normalize().string() == u8"foo/bar");
+        CHECK(skr::Path(u8".").normalize().string() == u8".");
+        CHECK(skr::Path(u8"././.").normalize().string() == u8".");
+        CHECK(skr::Path(u8"/./foo").normalize().string() == u8"/foo");
     }
     
     SUBCASE("Remove double dots")
     {
-        CHECK(skr::Path(u8"foo/../bar").normalized().string() == u8"bar");
-        CHECK(skr::Path(u8"foo/bar/..").normalized().string() == u8"foo");
-        CHECK(skr::Path(u8"foo/bar/../..").normalized().string() == u8".");
-        CHECK(skr::Path(u8"foo/bar/../../..").normalized().string() == u8"..");
-        CHECK(skr::Path(u8"../foo").normalized().string() == u8"../foo");
-        CHECK(skr::Path(u8"../../foo").normalized().string() == u8"../../foo");
-        CHECK(skr::Path(u8"foo/../..").normalized().string() == u8"..");
-        CHECK(skr::Path(u8"foo/../../bar").normalized().string() == u8"../bar");
+        CHECK(skr::Path(u8"foo/../bar").normalize().string() == u8"bar");
+        CHECK(skr::Path(u8"foo/bar/..").normalize().string() == u8"foo");
+        CHECK(skr::Path(u8"foo/bar/../..").normalize().string() == u8".");
+        CHECK(skr::Path(u8"foo/bar/../../..").normalize().string() == u8"..");
+        CHECK(skr::Path(u8"../foo").normalize().string() == u8"../foo");
+        CHECK(skr::Path(u8"../../foo").normalize().string() == u8"../../foo");
+        CHECK(skr::Path(u8"foo/../..").normalize().string() == u8"..");
+        CHECK(skr::Path(u8"foo/../../bar").normalize().string() == u8"../bar");
     }
     
     SUBCASE("Absolute path normalization")
     {
-        CHECK(skr::Path(u8"/foo/../bar").normalized().string() == u8"/bar");
-        CHECK(skr::Path(u8"/foo/bar/..").normalized().string() == u8"/foo");
-        CHECK(skr::Path(u8"/foo/..").normalized().string() == u8"/");
-        CHECK(skr::Path(u8"/..").normalized().string() == u8"/");
-        CHECK(skr::Path(u8"/../foo").normalized().string() == u8"/foo");
-        CHECK(skr::Path(u8"/foo/bar/../baz").normalized().string() == u8"/foo/baz");
+        CHECK(skr::Path(u8"/foo/../bar").normalize().string() == u8"/bar");
+        CHECK(skr::Path(u8"/foo/bar/..").normalize().string() == u8"/foo");
+        CHECK(skr::Path(u8"/foo/..").normalize().string() == u8"/");
+        CHECK(skr::Path(u8"/..").normalize().string() == u8"/");
+        CHECK(skr::Path(u8"/../foo").normalize().string() == u8"/foo");
+        CHECK(skr::Path(u8"/foo/bar/../baz").normalize().string() == u8"/foo/baz");
         
         // Windows absolute paths
-        CHECK(skr::Path(u8"C:/foo/../bar", skr::Path::Style::Windows).normalized().string() == u8"C:/bar");
-        CHECK(skr::Path(u8"C:/foo/..", skr::Path::Style::Windows).normalized().string() == u8"C:/");
-        CHECK(skr::Path(u8"C:/..", skr::Path::Style::Windows).normalized().string() == u8"C:/");
-        CHECK(skr::Path(u8"C:/../foo", skr::Path::Style::Windows).normalized().string() == u8"C:/foo");
+        CHECK(skr::Path(u8"C:/foo/../bar", skr::Path::Style::Windows).normalize().string() == u8"C:/bar");
+        CHECK(skr::Path(u8"C:/foo/..", skr::Path::Style::Windows).normalize().string() == u8"C:/");
+        CHECK(skr::Path(u8"C:/..", skr::Path::Style::Windows).normalize().string() == u8"C:/");
+        CHECK(skr::Path(u8"C:/../foo", skr::Path::Style::Windows).normalize().string() == u8"C:/foo");
     }
     
     SUBCASE("Complex normalization")
     {
-        CHECK(skr::Path(u8"foo/./bar/../baz").normalized().string() == u8"foo/baz");
-        CHECK(skr::Path(u8"./foo/../bar/./../baz").normalized().string() == u8"baz");
-        CHECK(skr::Path(u8"foo/bar/../../baz/../qux").normalized().string() == u8"qux");
-        CHECK(skr::Path(u8"./foo/./bar/../.././baz").normalized().string() == u8"baz");
-        CHECK(skr::Path(u8"foo/bar/baz/../../..").normalized().string() == u8".");
-        CHECK(skr::Path(u8"foo/bar/baz/../../../..").normalized().string() == u8"..");
+        CHECK(skr::Path(u8"foo/./bar/../baz").normalize().string() == u8"foo/baz");
+        CHECK(skr::Path(u8"./foo/../bar/./../baz").normalize().string() == u8"baz");
+        CHECK(skr::Path(u8"foo/bar/../../baz/../qux").normalize().string() == u8"qux");
+        CHECK(skr::Path(u8"./foo/./bar/../.././baz").normalize().string() == u8"baz");
+        CHECK(skr::Path(u8"foo/bar/baz/../../..").normalize().string() == u8".");
+        CHECK(skr::Path(u8"foo/bar/baz/../../../..").normalize().string() == u8"..");
     }
     
     SUBCASE("Empty and special cases")
     {
-        CHECK(skr::Path(u8"").normalized().string() == u8"");
-        CHECK(skr::Path(u8"//foo").normalized().string() == u8"/foo");
-        CHECK(skr::Path(u8"foo//bar").normalized().string() == u8"foo/bar");
-        CHECK(skr::Path(u8"foo/").normalized().string() == u8"foo");
-        CHECK(skr::Path(u8"foo//").normalized().string() == u8"foo");
+        CHECK(skr::Path(u8"").normalize().string() == u8"");
+        CHECK(skr::Path(u8"//foo").normalize().string() == u8"/foo");
+        CHECK(skr::Path(u8"foo//bar").normalize().string() == u8"foo/bar");
+        CHECK(skr::Path(u8"foo/").normalize().string() == u8"foo");
+        CHECK(skr::Path(u8"foo//").normalize().string() == u8"foo");
     }
 }
 
@@ -489,11 +489,10 @@ TEST_CASE("Path: Query Operations")
 {
     SUBCASE("empty and is_empty")
     {
-        CHECK(skr::Path().empty());
         CHECK(skr::Path().is_empty());
-        CHECK(skr::Path(u8"").empty());
-        CHECK(!skr::Path(u8"foo").empty());
-        CHECK(!skr::Path(u8"/").empty());
+        CHECK(skr::Path(u8"").is_empty());
+        CHECK(!skr::Path(u8"foo").is_empty());
+        CHECK(!skr::Path(u8"/").is_empty());
     }
     
     SUBCASE("has_parent")
@@ -588,10 +587,10 @@ TEST_CASE("Path: Additional Edge Cases from Qt and STL")
 {
     SUBCASE("Multiple consecutive separators")
     {
-        CHECK(skr::Path(u8"/usr//////lib").normalized().string() == u8"/usr/lib");
-        CHECK(skr::Path(u8"foo////bar////baz").normalized().string() == u8"foo/bar/baz");
-        CHECK(skr::Path(u8"C://Windows///System32", skr::Path::Style::Windows).normalized().string() == u8"C:/Windows/System32");
-        CHECK(skr::Path(u8"////foo").normalized().string() == u8"/foo");
+        CHECK(skr::Path(u8"/usr//////lib").normalize().string() == u8"/usr/lib");
+        CHECK(skr::Path(u8"foo////bar////baz").normalize().string() == u8"foo/bar/baz");
+        CHECK(skr::Path(u8"C://Windows///System32", skr::Path::Style::Windows).normalize().string() == u8"C:/Windows/System32");
+        CHECK(skr::Path(u8"////foo").normalize().string() == u8"/foo");
     }
     
     SUBCASE("Trailing dots in filenames")
@@ -624,35 +623,35 @@ TEST_CASE("Path: Additional Edge Cases from Qt and STL")
     
     SUBCASE("Normalized paths with complex dot-dot sequences")
     {
-        CHECK(skr::Path(u8"a/b/c/../../d").normalized().string() == u8"a/d");
-        CHECK(skr::Path(u8"../a/b/../c").normalized().string() == u8"../a/c");
-        CHECK(skr::Path(u8"a/../../b").normalized().string() == u8"../b");
-        CHECK(skr::Path(u8"./a/b/../../c").normalized().string() == u8"c");
-        CHECK(skr::Path(u8"a/./b/../c/./d").normalized().string() == u8"a/c/d");
+        CHECK(skr::Path(u8"a/b/c/../../d").normalize().string() == u8"a/d");
+        CHECK(skr::Path(u8"../a/b/../c").normalize().string() == u8"../a/c");
+        CHECK(skr::Path(u8"a/../../b").normalize().string() == u8"../b");
+        CHECK(skr::Path(u8"./a/b/../../c").normalize().string() == u8"c");
+        CHECK(skr::Path(u8"a/./b/../c/./d").normalize().string() == u8"a/c/d");
     }
     
     SUBCASE("Absolute paths with dot-dot at root")
     {
-        CHECK(skr::Path(u8"/../foo").normalized().string() == u8"/foo");
-        CHECK(skr::Path(u8"/../../foo").normalized().string() == u8"/foo");
-        CHECK(skr::Path(u8"C:/../foo", skr::Path::Style::Windows).normalized().string() == u8"C:/foo");
-        CHECK(skr::Path(u8"C:/../../foo", skr::Path::Style::Windows).normalized().string() == u8"C:/foo");
+        CHECK(skr::Path(u8"/../foo").normalize().string() == u8"/foo");
+        CHECK(skr::Path(u8"/../../foo").normalize().string() == u8"/foo");
+        CHECK(skr::Path(u8"C:/../foo", skr::Path::Style::Windows).normalize().string() == u8"C:/foo");
+        CHECK(skr::Path(u8"C:/../../foo", skr::Path::Style::Windows).normalize().string() == u8"C:/foo");
     }
     
     SUBCASE("Empty components and trailing separators")
     {
-        CHECK(skr::Path(u8"foo//").normalized().string() == u8"foo");
-        CHECK(skr::Path(u8"foo/./").normalized().string() == u8"foo");
-        CHECK(skr::Path(u8"foo/../").normalized().string() == u8".");
+        CHECK(skr::Path(u8"foo//").normalize().string() == u8"foo");
+        CHECK(skr::Path(u8"foo/./").normalize().string() == u8"foo");
+        CHECK(skr::Path(u8"foo/../").normalize().string() == u8".");
         CHECK(skr::Path(u8"/a/b/").parent_directory().string() == u8"/a");
     }
     
     SUBCASE("Relative paths starting with dot-dot")
     {
-        CHECK(skr::Path(u8"../").normalized().string() == u8"..");
-        CHECK(skr::Path(u8"../../").normalized().string() == u8"../..");
-        CHECK(skr::Path(u8"../foo/..").normalized().string() == u8"..");
-        CHECK(skr::Path(u8"../../foo/../bar").normalized().string() == u8"../../bar");
+        CHECK(skr::Path(u8"../").normalize().string() == u8"..");
+        CHECK(skr::Path(u8"../../").normalize().string() == u8"../..");
+        CHECK(skr::Path(u8"../foo/..").normalize().string() == u8"..");
+        CHECK(skr::Path(u8"../../foo/../bar").normalize().string() == u8"../../bar");
     }
     
     SUBCASE("Mixed path styles")
@@ -686,7 +685,7 @@ TEST_CASE("Path: Additional Edge Cases from Qt and STL")
         {
             long_path.append(u8"/..");
         }
-        CHECK(skr::Path(long_path).normalized().string() == u8".");
+        CHECK(skr::Path(long_path).normalize().string() == u8".");
     }
     
     SUBCASE("Special Windows paths")
@@ -794,8 +793,8 @@ TEST_CASE("Path: Style System Comprehensive Tests")
         auto filename = win_path.filename();
         CHECK(filename.style() == skr::Path::Style::Windows);
         
-        auto normalized = win_path.normalized();
-        CHECK(normalized.style() == skr::Path::Style::Windows);
+        auto normalize = win_path.normalize();
+        CHECK(normalize.style() == skr::Path::Style::Windows);
     }
     
     SUBCASE("Cross-style path operations")
@@ -850,15 +849,15 @@ TEST_CASE("Path: Style System Comprehensive Tests")
     SUBCASE("Style with normalization")
     {
         // Windows paths should handle drive letters correctly
-        CHECK(skr::Path(u8"C:/../foo", skr::Path::Style::Windows).normalized().string() == u8"C:/foo");
-        CHECK(skr::Path(u8"D:/a/b/../c", skr::Path::Style::Windows).normalized().string() == u8"D:/a/c");
+        CHECK(skr::Path(u8"C:/../foo", skr::Path::Style::Windows).normalize().string() == u8"C:/foo");
+        CHECK(skr::Path(u8"D:/a/b/../c", skr::Path::Style::Windows).normalize().string() == u8"D:/a/c");
         
         // Unix style shouldn't treat C: as special
-        CHECK(skr::Path(u8"C:/../foo", skr::Path::Style::Unix).normalized().string() == u8"foo");
+        CHECK(skr::Path(u8"C:/../foo", skr::Path::Style::Unix).normalize().string() == u8"foo");
         
         // Universal style should handle both
-        CHECK(skr::Path(u8"C:/../foo", skr::Path::Style::Universal).normalized().string() == u8"C:/foo");
-        CHECK(skr::Path(u8"/../foo", skr::Path::Style::Universal).normalized().string() == u8"/foo");
+        CHECK(skr::Path(u8"C:/../foo", skr::Path::Style::Universal).normalize().string() == u8"C:/foo");
+        CHECK(skr::Path(u8"/../foo", skr::Path::Style::Universal).normalize().string() == u8"/foo");
     }
     
     SUBCASE("Style with case sensitivity")
@@ -878,15 +877,15 @@ TEST_CASE("Path: Edge Cases and Corner Cases")
     SUBCASE("Empty paths")
     {
         skr::Path empty;
-        CHECK(empty.empty());
+        CHECK(empty.is_empty());
         CHECK(!empty.has_filename());
         CHECK(!empty.has_extension());
         CHECK(!empty.has_parent());
-        CHECK(empty.normalized().empty());
-        CHECK(empty.parent_directory().empty());
-        CHECK(empty.filename().empty());
-        CHECK(empty.basename().empty());
-        CHECK(empty.extension().empty());
+        CHECK(empty.normalize().is_empty());
+        CHECK(empty.parent_directory().is_empty());
+        CHECK(empty.filename().is_empty());
+        CHECK(empty.basename().is_empty());
+        CHECK(empty.extension().is_empty());
     }
     
     SUBCASE("Root only paths")
@@ -898,7 +897,7 @@ TEST_CASE("Path: Edge Cases and Corner Cases")
         CHECK(!unix_root.has_extension());
         CHECK(!unix_root.has_parent());
         CHECK(unix_root.parent_directory().string() == u8"/");
-        CHECK(unix_root.normalized().string() == u8"/");
+        CHECK(unix_root.normalize().string() == u8"/");
         
         skr::Path win_root(u8"C:/", skr::Path::Style::Windows);
         CHECK(win_root.is_absolute());
@@ -926,7 +925,7 @@ TEST_CASE("Path: Edge Cases and Corner Cases")
         CHECK(dot.basename().string() == u8".");
         CHECK(!dot.has_extension());
         CHECK(!dot.has_parent());
-        CHECK(dot.normalized().string() == u8".");
+        CHECK(dot.normalize().string() == u8".");
         
         skr::Path dotdot(u8"..");
         CHECK(dotdot.has_filename());
@@ -934,7 +933,7 @@ TEST_CASE("Path: Edge Cases and Corner Cases")
         CHECK(dotdot.basename().string() == u8"..");
         CHECK(!dotdot.has_extension());
         CHECK(!dotdot.has_parent());
-        CHECK(dotdot.normalized().string() == u8"..");
+        CHECK(dotdot.normalize().string() == u8"..");
     }
     
     SUBCASE("Hidden files (starting with dot)")
@@ -957,11 +956,11 @@ TEST_CASE("Path: Edge Cases and Corner Cases")
         skr::Path p1(u8"foo/bar/");
         CHECK(!p1.has_filename());
         CHECK(p1.parent_directory().string() == u8"foo");
-        CHECK(p1.normalized().string() == u8"foo/bar");
+        CHECK(p1.normalize().string() == u8"foo/bar");
         
         skr::Path p2(u8"foo/bar//");
         CHECK(!p2.has_filename());
-        CHECK(p2.normalized().string() == u8"foo/bar");
+        CHECK(p2.normalize().string() == u8"foo/bar");
         
         skr::Path p3(u8"foo/bar///");
         CHECK(p3.string() == u8"foo/bar/");
@@ -1042,13 +1041,13 @@ TEST_CASE("Path: Edge Cases and Corner Cases")
     SUBCASE("Relative path with too many parent references")
     {
         skr::Path p1(u8"foo/../../bar");
-        CHECK(p1.normalized().string() == u8"../bar");
+        CHECK(p1.normalize().string() == u8"../bar");
         
         skr::Path p2(u8"foo/../../../bar");
-        CHECK(p2.normalized().string() == u8"../../bar");
+        CHECK(p2.normalize().string() == u8"../../bar");
         
         skr::Path p3(u8"../../../");
-        CHECK(p3.normalized().string() == u8"../../..");
+        CHECK(p3.normalize().string() == u8"../../..");
     }
     
     SUBCASE("Extension edge cases")

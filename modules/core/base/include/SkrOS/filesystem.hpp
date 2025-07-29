@@ -121,9 +121,7 @@ enum class OpenMode : uint32_t
     
     // Common combinations
     ReadOnly = Read,
-    WriteOnly = Write | Create | Truncate,
-    ReadWrite = Read | Write,
-    AppendOnly = Write | Append | Create
+    ReadWrite = Read | Write
 };
 
 // Seek origin
@@ -290,6 +288,7 @@ public:
     static bool set_current(const Path& path);
     static Path temp();
     static Path home();
+    static Path executable();  // Get path to current executable
     
     // Platform-specific special directories
     static Path app_data();      // User app data directory

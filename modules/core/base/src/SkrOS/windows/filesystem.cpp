@@ -7,6 +7,28 @@
 namespace skr::fs
 {
 
+// UTF-8 到 UTF-16 转换辅助函数
+static skr::Vector<wchar_t> utf8_to_utf16(const skr::String& utf8_str)
+{
+    if (utf8_str.is_empty())
+        return skr::Vector<wchar_t>();
+    
+    // 使用引擎的字符串转换功能
+    auto wide_len = utf8_str.to_wide_length();
+    skr::Vector<wchar_t> result;
+    result.resize_zeroed(wide_len + 1); // +1 for null terminator
+    utf8_str.to_wide(result.data());
+    result[wide_len] = 0; // Null terminate
+    
+    return result;
+}
+
+// UTF-16 到 UTF-8 转换辅助函数
+static skr::String utf16_to_utf8(const wchar_t* wide_str)
+{
+    return skr::String::FromWide(wide_str);
+}
+
 // 声明在 build.filesystem.cpp 中定义的函数
 extern Error get_last_error();
 extern void set_last_error(Error error);
@@ -50,7 +72,14 @@ bool File::exists(const Path& path)
 {
     set_last_error(Error::None);
     
-    DWORD attributes = GetFileAttributesA(reinterpret_cast<const char*>(path.string().data()));
+    auto wide_path = utf8_to_utf16(path.string());
+    if (wide_path.is_empty() && !path.is_empty())
+    {
+        set_last_error(Error::InvalidPath);
+        return false;
+    }
+    
+    DWORD attributes = GetFileAttributesW(wide_path.data());
     if (attributes == INVALID_FILE_ATTRIBUTES)
     {
         set_last_error(win32_error_to_filesystem_error(GetLastError()));
@@ -70,8 +99,15 @@ FileInfo File::get_info(const Path& path)
     info.path = path;
     set_last_error(Error::None);
     
+    auto wide_path = utf8_to_utf16(path.string());
+    if (wide_path.is_empty() && !path.is_empty())
+    {
+        set_last_error(Error::InvalidPath);
+        return info;
+    }
+    
     WIN32_FILE_ATTRIBUTE_DATA fileData;
-    if (!GetFileAttributesExA(reinterpret_cast<const char*>(path.string().data()), 
+    if (!GetFileAttributesExW(wide_path.data(), 
                              GetFileExInfoStandard, &fileData))
     {
         set_last_error(win32_error_to_filesystem_error(GetLastError()));
@@ -104,7 +140,14 @@ bool File::remove(const Path& path)
 {
     set_last_error(Error::None);
     
-    if (!DeleteFileA(reinterpret_cast<const char*>(path.string().data())))
+    auto wide_path = utf8_to_utf16(path.string());
+    if (wide_path.is_empty() && !path.is_empty())
+    {
+        set_last_error(Error::InvalidPath);
+        return false;
+    }
+    
+    if (!DeleteFileW(wide_path.data()))
     {
         set_last_error(win32_error_to_filesystem_error(GetLastError()));
         return false;
@@ -116,12 +159,28 @@ bool File::copy(const Path& from, const Path& to, CopyOptions options)
 {
     set_last_error(Error::None);
     
-    BOOL overwrite = (static_cast<uint32_t>(options) & static_cast<uint32_t>(CopyOptions::OverwriteExisting)) != 0;
-    BOOL fail_if_exists = !overwrite;
+    // Check if we should skip existing files
+    bool skip_existing = (static_cast<uint32_t>(options) & static_cast<uint32_t>(CopyOptions::SkipExisting)) != 0;
+    bool overwrite_existing = (static_cast<uint32_t>(options) & static_cast<uint32_t>(CopyOptions::OverwriteExisting)) != 0;
     
-    if (!CopyFileA(reinterpret_cast<const char*>(from.string().data()),
-                   reinterpret_cast<const char*>(to.string().data()),
-                   fail_if_exists))
+    // If skip_existing is set and destination exists, return success without copying
+    if (skip_existing && exists(to))
+    {
+        return true;
+    }
+    
+    auto wide_from = utf8_to_utf16(from.string());
+    auto wide_to = utf8_to_utf16(to.string());
+    if ((wide_from.is_empty() && !from.is_empty()) || (wide_to.is_empty() && !to.is_empty()))
+    {
+        set_last_error(Error::InvalidPath);
+        return false;
+    }
+    
+    // fail_if_exists should be true only if neither SkipExisting nor OverwriteExisting is set
+    BOOL fail_if_exists = !overwrite_existing && !skip_existing;
+    
+    if (!CopyFileW(wide_from.data(), wide_to.data(), fail_if_exists))
     {
         set_last_error(win32_error_to_filesystem_error(GetLastError()));
         return false;
@@ -133,7 +192,7 @@ bool File::copy(const Path& from, const Path& to, CopyOptions options)
 uint64_t File::size(const Path& path)
 {
     auto info = get_info(path);
-    return info.exists() ? info.size : 0;
+    return info.exists() ? info.size : static_cast<uint64_t>(-1);
 }
 
 // File 实例方法
@@ -149,25 +208,36 @@ bool File::open(const Path& path, OpenMode mode)
     if (static_cast<uint32_t>(mode) & static_cast<uint32_t>(OpenMode::Read)) access |= GENERIC_READ;
     if (static_cast<uint32_t>(mode) & static_cast<uint32_t>(OpenMode::Write)) access |= GENERIC_WRITE;
     
+    // Handle append mode - it should not truncate the file
+    bool is_append = (static_cast<uint32_t>(mode) & static_cast<uint32_t>(OpenMode::Append)) != 0;
+    bool should_truncate = (static_cast<uint32_t>(mode) & static_cast<uint32_t>(OpenMode::Truncate)) != 0 && !is_append;
+    
     if (static_cast<uint32_t>(mode) & static_cast<uint32_t>(OpenMode::Create))
     {
         if (static_cast<uint32_t>(mode) & static_cast<uint32_t>(OpenMode::Exclusive))
             creation = CREATE_NEW;
-        else if (static_cast<uint32_t>(mode) & static_cast<uint32_t>(OpenMode::Truncate))
+        else if (should_truncate)
             creation = CREATE_ALWAYS;
         else
             creation = OPEN_ALWAYS;
     }
     else
     {
-        if (static_cast<uint32_t>(mode) & static_cast<uint32_t>(OpenMode::Truncate))
+        if (should_truncate)
             creation = TRUNCATE_EXISTING;
         else
             creation = OPEN_EXISTING;
     }
     
-    handle_ = CreateFileA(
-        reinterpret_cast<const char*>(path.string().data()),
+    auto wide_path = utf8_to_utf16(path.string());
+    if (wide_path.is_empty() && !path.is_empty())
+    {
+        last_error_ = Error::InvalidPath;
+        return false;
+    }
+    
+    handle_ = CreateFileW(
+        wide_path.data(),
         access,
         FILE_SHARE_READ | FILE_SHARE_WRITE,
         nullptr,
@@ -181,6 +251,20 @@ bool File::open(const Path& path, OpenMode mode)
         last_error_ = win32_error_to_filesystem_error(GetLastError());
         handle_ = nullptr;
         return false;
+    }
+    
+    // If append mode is specified, seek to end of file
+    if (static_cast<uint32_t>(mode) & static_cast<uint32_t>(OpenMode::Append))
+    {
+        LARGE_INTEGER offset;
+        offset.QuadPart = 0;
+        if (!SetFilePointerEx(handle_, offset, nullptr, FILE_END))
+        {
+            last_error_ = win32_error_to_filesystem_error(GetLastError());
+            CloseHandle(handle_);
+            handle_ = nullptr;
+            return false;
+        }
     }
     
     return true;
@@ -254,7 +338,14 @@ bool Directory::exists(const Path& path)
 {
     set_last_error(Error::None);
     
-    DWORD attributes = GetFileAttributesA(reinterpret_cast<const char*>(path.string().data()));
+    auto wide_path = utf8_to_utf16(path.string());
+    if (wide_path.is_empty() && !path.is_empty())
+    {
+        set_last_error(Error::InvalidPath);
+        return false;
+    }
+    
+    DWORD attributes = GetFileAttributesW(wide_path.data());
     if (attributes == INVALID_FILE_ATTRIBUTES)
     {
         set_last_error(win32_error_to_filesystem_error(GetLastError()));
@@ -278,14 +369,21 @@ bool Directory::create(const Path& path, bool recursive)
     if (recursive)
     {
         auto parent = path.parent_directory();
-        if (!parent.empty() && !exists(parent))
+        if (!parent.is_empty() && !exists(parent))
         {
             if (!create(parent, true))
                 return false;
         }
     }
     
-    if (!CreateDirectoryA(reinterpret_cast<const char*>(path.string().data()), nullptr))
+    auto wide_path = utf8_to_utf16(path.string());
+    if (wide_path.is_empty() && !path.is_empty())
+    {
+        set_last_error(Error::InvalidPath);
+        return false;
+    }
+    
+    if (!CreateDirectoryW(wide_path.data(), nullptr))
     {
         set_last_error(win32_error_to_filesystem_error(GetLastError()));
         return false;
@@ -320,7 +418,14 @@ bool Directory::remove(const Path& path, bool recursive)
         }
     }
     
-    if (!RemoveDirectoryA(reinterpret_cast<const char*>(path.string().data())))
+    auto wide_path = utf8_to_utf16(path.string());
+    if (wide_path.is_empty() && !path.is_empty())
+    {
+        set_last_error(Error::InvalidPath);
+        return false;
+    }
+    
+    if (!RemoveDirectoryW(wide_path.data()))
     {
         set_last_error(win32_error_to_filesystem_error(GetLastError()));
         return false;
@@ -331,28 +436,51 @@ bool Directory::remove(const Path& path, bool recursive)
 
 Path Directory::current()
 {
-    char buffer[MAX_PATH];
-    DWORD length = GetCurrentDirectoryA(MAX_PATH, buffer);
+    wchar_t buffer[MAX_PATH];
+    DWORD length = GetCurrentDirectoryW(MAX_PATH, buffer);
     if (length == 0)
         return Path();
-    return Path(skr::String(reinterpret_cast<const char8_t*>(buffer), length));
+    return Path(utf16_to_utf8(buffer));
 }
 
 Path Directory::temp()
 {
-    char buffer[MAX_PATH];
-    DWORD length = GetTempPathA(MAX_PATH, buffer);
+    wchar_t buffer[MAX_PATH];
+    DWORD length = GetTempPathW(MAX_PATH, buffer);
     if (length == 0)
         return Path();
-    return Path(skr::String(reinterpret_cast<const char8_t*>(buffer), length));
+    return Path(utf16_to_utf8(buffer));
 }
 
 Path Directory::home()
 {
-    char buffer[MAX_PATH];
-    if (GetEnvironmentVariableA("USERPROFILE", buffer, MAX_PATH) == 0)
+    wchar_t buffer[MAX_PATH];
+    if (GetEnvironmentVariableW(L"USERPROFILE", buffer, MAX_PATH) == 0)
         return Path();
-    return Path(skr::String(reinterpret_cast<const char8_t*>(buffer)));
+    return Path(utf16_to_utf8(buffer));
+}
+
+Path Directory::executable()
+{
+    wchar_t buffer[MAX_PATH];
+    DWORD size = GetModuleFileNameW(nullptr, buffer, MAX_PATH);
+    if (size == 0)
+        return Path();
+    
+    // Check if path was truncated
+    if (size == MAX_PATH - 1)
+    {
+        // Try with larger buffer
+        skr::Vector<wchar_t> large_buffer;
+        large_buffer.resize_zeroed(32768);
+        size = GetModuleFileNameW(nullptr, large_buffer.data(), static_cast<DWORD>(large_buffer.size()));
+        if (size > 0 && size < large_buffer.size())
+        {
+            return Path(utf16_to_utf8(large_buffer.data()));
+        }
+    }
+    
+    return Path(utf16_to_utf8(buffer));
 }
 
 // ============================================================================
@@ -362,7 +490,7 @@ Path Directory::home()
 struct DirectoryIteratorImpl
 {
     HANDLE handle = INVALID_HANDLE_VALUE;
-    WIN32_FIND_DATAA find_data;
+    WIN32_FIND_DATAW find_data;
     bool first = true;
     Path search_path;
 };
@@ -373,8 +501,18 @@ DirectoryIterator::DirectoryIterator(const Path& path)
     
     auto* win_impl = static_cast<DirectoryIteratorImpl*>(impl_);
     win_impl->search_path = path / u8"*";
-    win_impl->handle = FindFirstFileA(
-        reinterpret_cast<const char*>(win_impl->search_path.string().data()),
+    
+    auto wide_search_path = utf8_to_utf16(win_impl->search_path.string());
+    if (wide_search_path.is_empty())
+    {
+        last_error_ = Error::InvalidPath;
+        delete win_impl;
+        impl_ = nullptr;
+        return;
+    }
+    
+    win_impl->handle = FindFirstFileW(
+        wide_search_path.data(),
         &win_impl->find_data
     );
     
@@ -462,7 +600,7 @@ void DirectoryIterator::advance()
         }
         else
         {
-            if (!FindNextFileA(win_impl->handle, &win_impl->find_data))
+            if (!FindNextFileW(win_impl->handle, &win_impl->find_data))
             {
                 // 到达末尾
                 FindClose(win_impl->handle);
@@ -474,8 +612,8 @@ void DirectoryIterator::advance()
         }
         
         // 跳过 "." 和 ".."
-        if (strcmp(win_impl->find_data.cFileName, ".") == 0 ||
-            strcmp(win_impl->find_data.cFileName, "..") == 0)
+        if (wcscmp(win_impl->find_data.cFileName, L".") == 0 ||
+            wcscmp(win_impl->find_data.cFileName, L"..") == 0)
         {
             found = false;
         }
@@ -483,8 +621,54 @@ void DirectoryIterator::advance()
     
     // 设置当前条目
     Path parent_path = win_impl->search_path.parent_directory();
-    current_.path = parent_path / skr::String(reinterpret_cast<const char8_t*>(win_impl->find_data.cFileName));
+    current_.path = parent_path / utf16_to_utf8(win_impl->find_data.cFileName);
     current_.type = win32_attributes_to_filetype(win_impl->find_data.dwFileAttributes);
+}
+
+// File seek/tell 实现
+bool File::seek(int64_t offset, SeekOrigin origin)
+{
+    if (!handle_)
+    {
+        last_error_ = Error::NotFound;
+        return false;
+    }
+    
+    DWORD move_method;
+    switch (origin)
+    {
+        case SeekOrigin::Begin: move_method = FILE_BEGIN; break;
+        case SeekOrigin::Current: move_method = FILE_CURRENT; break;
+        case SeekOrigin::End: move_method = FILE_END; break;
+        default: last_error_ = Error::InvalidPath; return false;
+    }
+    
+    LARGE_INTEGER li_offset;
+    li_offset.QuadPart = offset;
+    
+    LARGE_INTEGER new_pos;
+    if (!SetFilePointerEx(handle_, li_offset, &new_pos, move_method))
+    {
+        last_error_ = win32_error_to_filesystem_error(GetLastError());
+        return false;
+    }
+    
+    return true;
+}
+
+int64_t File::tell() const
+{
+    if (!handle_)
+        return -1;
+    
+    LARGE_INTEGER offset;
+    offset.QuadPart = 0;
+    
+    LARGE_INTEGER current_pos;
+    if (!SetFilePointerEx(handle_, offset, &current_pos, FILE_CURRENT))
+        return -1;
+    
+    return current_pos.QuadPart;
 }
 
 // ============================================================================
@@ -495,13 +679,95 @@ bool Symlink::exists(const Path& path)
 {
     set_last_error(Error::None);
     
-    DWORD attributes = GetFileAttributesA(reinterpret_cast<const char*>(path.string().data()));
+    auto wide_path = utf8_to_utf16(path.string());
+    if (wide_path.is_empty() && !path.is_empty())
+    {
+        set_last_error(Error::InvalidPath);
+        return false;
+    }
+    
+    DWORD attributes = GetFileAttributesW(wide_path.data());
     if (attributes == INVALID_FILE_ATTRIBUTES)
     {
         set_last_error(win32_error_to_filesystem_error(GetLastError()));
         return false;
     }
     return (attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0;
+}
+
+bool Symlink::create(const Path& link, const Path& target)
+{
+    set_last_error(Error::None);
+    
+    auto wide_link = utf8_to_utf16(link.string());
+    auto wide_target = utf8_to_utf16(target.string());
+    if ((wide_link.is_empty() && !link.is_empty()) || (wide_target.is_empty() && !target.is_empty()))
+    {
+        set_last_error(Error::InvalidPath);
+        return false;
+    }
+    
+    // 检查目标是否为目录
+    DWORD target_attrs = GetFileAttributesW(wide_target.data());
+    DWORD flags = 0;
+    
+    if (target_attrs != INVALID_FILE_ATTRIBUTES && (target_attrs & FILE_ATTRIBUTE_DIRECTORY))
+        flags = SYMBOLIC_LINK_FLAG_DIRECTORY;
+    
+    // Windows Vista 及以上版本支持符号链接
+    if (!CreateSymbolicLinkW(wide_link.data(), wide_target.data(), flags))
+    {
+        set_last_error(win32_error_to_filesystem_error(GetLastError()));
+        return false;
+    }
+    
+    return true;
+}
+
+bool Symlink::remove(const Path& link)
+{
+    set_last_error(Error::None);
+    
+    auto wide_link = utf8_to_utf16(link.string());
+    if (wide_link.is_empty() && !link.is_empty())
+    {
+        set_last_error(Error::InvalidPath);
+        return false;
+    }
+    
+    // 检查是否为符号链接
+    DWORD attrs = GetFileAttributesW(wide_link.data());
+    if (attrs == INVALID_FILE_ATTRIBUTES)
+    {
+        set_last_error(win32_error_to_filesystem_error(GetLastError()));
+        return false;
+    }
+    
+    if (!(attrs & FILE_ATTRIBUTE_REPARSE_POINT))
+    {
+        set_last_error(Error::NotAFile);
+        return false;
+    }
+    
+    // 删除符号链接（目录链接用 RemoveDirectory，文件链接用 DeleteFile）
+    if (attrs & FILE_ATTRIBUTE_DIRECTORY)
+    {
+        if (!RemoveDirectoryW(wide_link.data()))
+        {
+            set_last_error(win32_error_to_filesystem_error(GetLastError()));
+            return false;
+        }
+    }
+    else
+    {
+        if (!DeleteFileW(wide_link.data()))
+        {
+            set_last_error(win32_error_to_filesystem_error(GetLastError()));
+            return false;
+        }
+    }
+    
+    return true;
 }
 
 Path Symlink::read(const Path& link)

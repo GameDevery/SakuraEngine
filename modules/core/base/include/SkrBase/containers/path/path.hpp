@@ -42,12 +42,11 @@ public:
     Path& join(const Path& p);   // alias for append
     
     // path normalization
-    Path normalized() const;     // was lexically_normal
-    Path relative_to(const Path& base) const; // was lexically_relative
-    
+    Path normalize() const;
+    Path relative_to(const Path& base) const;
+
     // query operations
-    bool empty() const;
-    bool is_empty() const { return empty(); }
+    bool is_empty() const;
     bool is_absolute() const;
     bool is_relative() const;
     bool is_root() const;

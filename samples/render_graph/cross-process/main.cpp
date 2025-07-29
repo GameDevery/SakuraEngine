@@ -1,10 +1,7 @@
 #include "SkrCore/process.h"
 #include "SkrCore/log.h"
-#include "lmdb/lmdb.h"
 #include <SkrOS/filesystem.hpp>
 #include <SkrContainers/string.hpp>
-
-#include "SkrProfile/profile.h"
 
 static const char8_t* exec_name;
 

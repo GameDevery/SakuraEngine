@@ -12,7 +12,6 @@
 #include <SkrImGui/imgui_backend.hpp>
 #include "AnimDebugRuntime/renderer.h"
 #include <SDL3/SDL_video.h>
-#include "common/utils.h"
 #include "imgui_sail.h"
 #include "SkrRT/runtime_module.h" // for dpi_aware
 #include "SkrRT/misc/cmd_parser.hpp"

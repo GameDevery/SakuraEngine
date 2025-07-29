@@ -1,8 +1,7 @@
-#include "winheaders.h"
+#include "winheaders.h" // IWYU pragma: export
 #include "SkrCore/platform/vfs.h"
 #include "SkrCore/memory/memory.h"
-#include "SkrCore/log.h"
-#include "SkrOS/filesystem.hpp"
+#include "SkrContainersDef/path.hpp"
 
 inline static char8_t* duplicate_string(const char8_t* src_string) SKR_NOEXCEPT
 {

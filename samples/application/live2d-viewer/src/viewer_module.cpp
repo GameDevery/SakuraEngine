@@ -197,7 +197,6 @@ void create_test_scene(skr_vfs_t* resource_vfs, skr_io_ram_service_t* ram_servic
 int SLive2DViewerModule::main_module_exec(int argc, char8_t** argv)
 {
     using namespace skr;
-    namespace render_graph = skr::render_graph;
 
     SKR_LOG_INFO(u8"live2d viewer executed!");
 
