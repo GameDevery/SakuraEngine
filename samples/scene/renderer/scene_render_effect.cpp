@@ -20,57 +20,18 @@ struct SceneRendererImpl : public skr::SceneRenderer
 
     skr_vfs_t* resource_vfs;
     temp::Camera* mp_camera;
-
-    uint64_t frame_count;
-
     CGPURenderPipelineId pipeline = nullptr;
     CGPUVertexLayout vertex_layout = {};
     CGPURasterizerStateDescriptor rs_state = {};
     CGPUDepthStateDescriptor depth_state = {};
-
-    // resources
-    CGPUBufferId vertex_buffer = nullptr;
-    CGPUBufferId index_buffer = nullptr;
-    CGPUBufferId instance_buffer = nullptr;
-
-    skr::Vector<skr_vertex_buffer_view_t> vbvs;
-    skr_index_buffer_view_t ibv;
-
-    skr::Vector<skr::renderer::PrimitiveCommand> primitive_commands;
-
-    // temp mesh
-    const skr_float3_t g_Positions[3] = {
-        { -1.0f, -1.0f, 0.0f },
-        { 1.0f, -1.0f, 0.0f },
-        { 0.0f, 1.0f, 0.0f },
-    };
-    const skr_float2_t g_UVs[3] = {
-        { 0.0f, 1.0f },
-        { 1.0f, 1.0f },
-        { 0.5f, 0.0f },
-    };
-    const skr_float3_t g_Normals[3] = {
-        { 0.0f, 0.0f, 1.0f },
-        { 0.0f, 0.0f, 1.0f },
-        { 0.0f, 0.0f, 1.0f },
-    };
-    const uint32_t g_Indices[3] = { 0, 1, 2 };
-    // skr_float4x4_t g_ModelMatrix = skr_float4x4_t::identity();
-
     // temp push_constants
     skr_float4x4_t view_proj = skr_float4x4_t::identity();
-
-    skr::Vector<skr_primitive_draw_t> drawcalls;
-    skr_vertex_buffer_view_t vertex_buffer_view = {};
 
     void initialize(skr::RendererDevice* render_device, skr::ecs::World* world, struct skr_vfs_t* resource_vfs) override
     {
         this->resource_vfs = resource_vfs;
-        // TODO: effect_query
-
         prepare_pipeline_settings();
         prepare_pipeline(render_device);
-        // TODO: reset_render_view
     }
 
     void finalize(skr::RendererDevice* renderer) override
@@ -83,77 +44,7 @@ struct SceneRendererImpl : public skr::SceneRenderer
         mp_camera = camera;
     }
 
-    void create_resource(skr::RendererDevice* renderer) override
-    {
-        auto cgpu_device = renderer->get_cgpu_device();
-        auto vertex_size = sizeof(g_Positions) + 2 * sizeof(g_UVs) + sizeof(g_Normals);
-        // auto vertex_size = sizeof(g_Positions);
-        auto vb_desc = make_zeroed<CGPUBufferDescriptor>();
-        vb_desc.name = u8"scene-renderer-vertices";
-        vb_desc.size = vertex_size;
-        vb_desc.memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU;
-        vb_desc.descriptors = CGPU_RESOURCE_TYPE_VERTEX_BUFFER;
-        vb_desc.flags = CGPU_BCF_PERSISTENT_MAP_BIT;
-        vb_desc.prefer_on_device = true;
-        vertex_buffer = cgpu_create_buffer(cgpu_device, &vb_desc);
-        {
-            memcpy(vertex_buffer->info->cpu_mapped_address, g_Positions, sizeof(g_Positions));
-            memcpy((uint8_t*)vertex_buffer->info->cpu_mapped_address + sizeof(g_Positions), g_UVs, sizeof(g_UVs));
-            memcpy((uint8_t*)vertex_buffer->info->cpu_mapped_address + sizeof(g_Positions) + sizeof(g_UVs), g_UVs, sizeof(g_UVs));
-            memcpy((uint8_t*)vertex_buffer->info->cpu_mapped_address + sizeof(g_Positions) + 2 * sizeof(g_UVs), g_Normals, sizeof(g_Normals));
-        }
-
-        auto index_size = sizeof(g_Indices);
-        auto ib_desc = make_zeroed<CGPUBufferDescriptor>();
-        ib_desc.name = u8"scene-renderer-indices";
-        ib_desc.size = index_size;
-        ib_desc.memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU;
-        ib_desc.descriptors = CGPU_RESOURCE_TYPE_INDEX_BUFFER;
-        ib_desc.flags = CGPU_BCF_PERSISTENT_MAP_BIT;
-        ib_desc.prefer_on_device = true;
-        index_buffer = cgpu_create_buffer(cgpu_device, &ib_desc);
-
-        {
-            memcpy(index_buffer->info->cpu_mapped_address, g_Indices, sizeof(g_Indices));
-        }
-        // construct triangle vbvs and ibv
-        skr_vertex_buffer_view_t vbv = {};
-        vbv.buffer = vertex_buffer;
-        vbv.stride = sizeof(skr_float3_t);
-        vbv.offset = 0;
-        vbvs.push_back(vbv);
-
-        vbv.buffer = vertex_buffer;
-        vbv.stride = sizeof(skr_float2_t);
-        vbv.offset = sizeof(g_Positions);
-        vbvs.push_back(vbv);
-
-        vbv.buffer = vertex_buffer;
-        vbv.stride = sizeof(skr_float2_t);
-        vbv.offset = sizeof(g_Positions) + sizeof(g_UVs);
-        vbvs.push_back(vbv);
-
-        vbv.buffer = vertex_buffer;
-        vbv.stride = sizeof(skr_float3_t);
-        vbv.offset = sizeof(g_Positions) + 2 * sizeof(g_UVs);
-        vbvs.push_back(vbv);
-
-        SKR_LOG_INFO(u8"vbvs size: %d", vbvs.size());
-
-        ibv.buffer = index_buffer;
-        ibv.stride = sizeof(uint32_t);
-        ibv.offset = 0;
-        ibv.index_count = 3;
-        ibv.first_index = 0;
-
-        // construct primitive command
-        primitive_commands.resize_zeroed(1);
-        auto& primitive = primitive_commands[0];
-        primitive.vbvs = { vbvs.data(), (uint32_t)vbvs.size() };
-        primitive.ibv = &ibv;
-    }
-
-    void render_mesh(skr_render_mesh_id render_mesh, skr::render_graph::RenderGraph* render_graph) override
+    void draw_primitives(skr::render_graph::RenderGraph* render_graph, const skr::span<skr::renderer::PrimitiveCommand> cmds) override
     {
         if (!mp_camera)
         {
@@ -172,18 +63,10 @@ struct SceneRendererImpl : public skr::SceneRenderer
             view_proj = skr::transpose(_view_proj);
         }
 
-        SkrZoneScopedN("SceneRenderer::render_mesh");
-        if (!render_mesh)
-        {
-            SKR_LOG_ERROR(u8"Render Mesh is null");
-            return;
-        }
-
         skr::Vector<skr_primitive_draw_t> drawcalls;
         // drawcalls.reserve(render_mesh->primitive_commands.size());
-        for (auto i = 0u; i < render_mesh->primitive_commands.size(); i++)
+        for (const auto& cmd : cmds)
         {
-            const auto& cmd = render_mesh->primitive_commands[i];
             skr_primitive_draw_t& drawcall = drawcalls.emplace().ref();
             drawcall.pipeline = pipeline;
             drawcall.push_const_name = push_constants_name;
@@ -228,84 +111,6 @@ struct SceneRendererImpl : public skr::SceneRenderer
                     }
                 }
             });
-    }
-
-    void produce_drawcalls(sugoi_storage_t* storage, skr::render_graph::RenderGraph* render_graph) override
-    {
-        produce_mesh_drawcall(storage, render_graph);
-    }
-
-    void execute(sugoi_storage_t* storage, skr::render_graph::RenderGraph* render_graph)
-    {
-    }
-
-    void produce_mesh_drawcall(sugoi_storage_t* storage, skr::render_graph::RenderGraph* render_graph)
-    {
-        // TODO: Camera -> View Matrix
-        view_proj = skr_float4x4_t(.5f, 0.0f, 0.0f, 0.0f, 0.0f, .5f, 0.0f, 0.0f, 0.0f, 0.0f, .5f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
-        // TODO: Query Storage to iterate render model and produce drawcalls
-        // skr::renderer::PrimitiveCommand cmd;
-        // TODO: update model motion
-        // g_ModelMatrix = skr_float4x4_t(
-        //     .5f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
-
-        // primitive_commands -> drawcalls
-        auto& cmd = primitive_commands[0];
-        skr_primitive_draw_t& drawcall = drawcalls.emplace().ref();
-        drawcall.pipeline = pipeline;
-        drawcall.push_const_name = push_constants_name;
-        drawcall.push_const = (const uint8_t*)(&view_proj);
-        drawcall.vertex_buffer_count = (uint32_t)cmd.vbvs.size();
-        drawcall.vertex_buffers = cmd.vbvs.data();
-        drawcall.index_buffer = *cmd.ibv;
-
-        auto backbuffer = render_graph->get_texture(u8"backbuffer");
-        const auto back_desc = render_graph->resolve_descriptor(backbuffer);
-        render_graph->add_render_pass(
-            [this, backbuffer](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassBuilder& builder) {
-                builder.set_name(u8"scene_render_pass")
-                    .set_pipeline(pipeline)
-                    .write(0, backbuffer, CGPU_LOAD_ACTION_CLEAR);
-            },
-            [this, back_desc, drawcall](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassContext& context) {
-                {
-                    // do render pass
-                    cgpu_render_encoder_set_viewport(context.encoder, 0.0, 0.0, (float)back_desc->width, (float)back_desc->height, 0.0f, 1.0f);
-                    cgpu_render_encoder_set_scissor(context.encoder, 0, 0, back_desc->width, back_desc->height);
-
-                    CGPUBufferId vertex_buffers[16] = { 0 };
-                    uint32_t strides[16] = { 0 };
-                    uint32_t offsets[16] = { 0 };
-
-                    for (uint32_t i = 0; i < drawcall.vertex_buffer_count; i++)
-                    {
-
-                        vertex_buffers[i] = drawcall.vertex_buffers[i].buffer;
-                        strides[i] = drawcall.vertex_buffers[i].stride;
-                        offsets[i] = drawcall.vertex_buffers[i].offset;
-                    }
-
-                    cgpu_render_encoder_bind_index_buffer(context.encoder, drawcall.index_buffer.buffer, drawcall.index_buffer.stride, drawcall.index_buffer.offset);
-                    cgpu_render_encoder_bind_vertex_buffers(context.encoder, drawcall.vertex_buffer_count, vertex_buffers, strides, offsets);
-                    cgpu_render_encoder_push_constants(context.encoder, drawcall.pipeline->root_signature, drawcall.push_const_name, drawcall.push_const);
-                    cgpu_render_encoder_draw_indexed_instanced(context.encoder, drawcall.index_buffer.index_count, drawcall.index_buffer.first_index, 1, 0, 0); // 3 vertices, 1 instance
-                }
-            });
-    }
-
-    void draw(skr::render_graph::RenderGraph* render_graph) override
-    {
-        // auto backbuffer = render_graph->get_texture(u8"backbuffer");
-        // const auto back_desc = render_graph->resolve_descriptor(backbuffer);
-        // if (!drawcalls.size()) return;
-        // if (drawcalls.size() == 0)
-        //     return; // no models need to draw
-
-        // CGPURootSignatureId root_signature = nullptr;
-        // root_signature = drawcalls[0].pipeline->root_signature;
-        // render_graph->add_render_pass(
-        //     [=](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassBuilder& builder) {},
-        //     [=](skr::render_graph::RenderGraph& g, skr::render_graph::RenderPassContext& pass_context) {});
     }
 
     void prepare_pipeline_settings();

@@ -79,7 +79,6 @@ private:
     void DisplayAnimationInfo(const ozz::animation::Animation& animation);
 };
 
-static SAnimDebugModule* g_anim_debug_module = nullptr;
 ///////
 /// Module entry point
 ///////
@@ -122,7 +121,6 @@ void SAnimDebugModule::on_load(int argc, char8_t** argv)
 
 void SAnimDebugModule::on_unload()
 {
-    g_anim_debug_module = nullptr;
     SKR_LOG_INFO(u8"anim debug runtime unloaded!");
 }
 
@@ -136,7 +134,6 @@ void SAnimDebugModule::DisplayAnimationInfo(const ozz::animation::Animation& ani
 int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
 {
     static constexpr float kPi = 3.14159265358979323846f;
-    namespace rg = skr::render_graph;
     SkrZoneScopedN("AnimDebugExecution");
     SKR_LOG_INFO(u8"anim debug runtime executed as main module!");
     auto render_device = SkrRendererModule::Get()->get_render_device();
@@ -199,7 +196,7 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
     context_.Resize(skeleton.num_joints());
     ozz::vector<ozz::math::SoaTransform> locals_;
     locals_.resize(skeleton.num_soa_joints());
-    
+
     renderer.create_render_pipeline();
     renderer.create_resources();
 

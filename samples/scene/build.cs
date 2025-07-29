@@ -35,8 +35,8 @@ public static class SceneSamples
                 "assets/*.bin"
             );
 
-        Engine.Program("SceneSample_Tree")
-            .AddCppFiles("tree/*.cpp")
+        Engine.Program("SceneSample_Project")
+            .AddCppFiles("project/*.cpp")
             .Depend(Visibility.Private, "SkrScene")
             .Depend(Visibility.Private, "SkrSystem");
     }

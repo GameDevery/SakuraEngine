@@ -2,6 +2,8 @@
 #include "SkrGraphics/api.h"
 #include "SkrCore/platform/vfs.h"
 #include "SkrRenderer/render_device.h"
+#include "SkrContainersDef/string.hpp"
+#include "SkrRenderer/primitive_draw.h"
 
 namespace utils
 {
@@ -34,4 +36,33 @@ inline CGPUShaderLibraryId create_shader_library(skr::RendererDevice* render_dev
     sakura_free(shader_bytes);
     return shader;
 }
+
+struct SCENE_RENDERER_API DummyScene
+{
+    DummyScene();
+    void init(skr::RendererDevice* render_device);
+    skr::span<skr::renderer::PrimitiveCommand> get_primitive_commands();
+    const skr_float3_t g_Positions[3] = {
+        { -1.0f, -1.0f, 0.0f },
+        { 1.0f, -1.0f, 0.0f },
+        { 0.0f, 1.0f, 0.0f },
+    };
+    const skr_float2_t g_UVs[3] = {
+        { 0.0f, 1.0f },
+        { 1.0f, 1.0f },
+        { 0.5f, 0.0f },
+    };
+    const skr_float3_t g_Normals[3] = {
+        { 0.0f, 0.0f, 1.0f },
+        { 0.0f, 0.0f, 1.0f },
+        { 0.0f, 0.0f, 1.0f },
+    };
+    const uint32_t g_Indices[3] = { 0, 1, 2 };
+    CGPUBufferId vertex_buffer = nullptr;
+    CGPUBufferId index_buffer = nullptr;
+    skr::Vector<skr_vertex_buffer_view_t> vbvs;
+    skr_index_buffer_view_t ibv;
+    skr::Vector<skr::renderer::PrimitiveCommand> primitive_commands;
+};
+
 } // namespace utils
