@@ -1,5 +1,5 @@
 #pragma once
-#include "SkrToolCore/asset/cooker.hpp"
+#include "SkrToolCore/cook_system/cooker.hpp"
 #ifndef __meta__
     #include "SkrAnimTool/skin_asset.generated.h" // IWYU pragma: export
 #endif

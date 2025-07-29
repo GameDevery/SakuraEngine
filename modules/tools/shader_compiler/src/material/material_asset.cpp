@@ -1,5 +1,5 @@
 #include "SkrRenderer/resources/material_resource.hpp"
-#include "SkrToolCore/asset/cook_system.hpp"
+#include "SkrToolCore/cook_system/cook_system.hpp"
 #include "SkrToolCore/project/project.hpp"
 #include "SkrShaderCompiler/assets/material_asset.hpp"
 #include "SkrSerde/json_serde.hpp"
@@ -13,22 +13,22 @@ void* MaterialImporter::Import(skr::io::IRAMService* ioService, CookContext* con
     context->AddSourceFileAndLoad(ioService, jsonPath.c_str(), blob);
     SKR_DEFER({ blob.reset(); });
     /*
-    const auto assetInfo = context->GetAssetInfo();
+    const auto assetMetaFile = context->GetAssetMetaFile();
     {
-        SKR_LOG_FMT_ERROR(u8"Import shader options asset {} from {} failed, json parse error {}", assetInfo->guid, jsonPath, ::error_message(doc.error()));
+        SKR_LOG_FMT_ERROR(u8"Import shader options asset {} from {} failed, json parse error {}", assetMetaFile->guid, jsonPath, ::error_message(doc.error()));
         return nullptr;
     }
     '*/
     skr::String              jString(skr::StringView((const char8_t*)blob->get_data(), blob->get_size()));
     skr::archive::JsonReader jsonVal(jString.view());
-    auto                     mat_asset = SkrNew<skr_material_asset_t>();
+    auto                     mat_asset = SkrNew<MaterialAsset>();
     skr::json_read(&jsonVal, *mat_asset);
     return mat_asset;
 }
 
 void MaterialImporter::Destroy(void* resource)
 {
-    auto mat_asset = (skr_material_asset_t*)resource;
+    auto mat_asset = (MaterialAsset*)resource;
     SkrDelete(mat_asset);
 }
 
@@ -39,7 +39,7 @@ bool MaterialCooker::Cook(CookContext* ctx)
     // no cook config for config, skipping
 
     //-----import resource object
-    auto material = ctx->Import<skr_material_asset_t>();
+    auto material = ctx->Import<MaterialAsset>();
     if (!material) return false;
     SKR_DEFER({ ctx->Destroy(material); });
 

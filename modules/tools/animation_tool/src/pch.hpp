@@ -38,7 +38,7 @@
 /* TODO: MAYBE THIS IS AN XMAKE PCH BUG
 #include "cgltf/cgltf.h" // IWYU pragma: export
 
-#include "SkrToolCore/asset/cook_system.hpp" // IWYU pragma: export
+#include "SkrToolCore/cook_system/cook_system.hpp" // IWYU pragma: export
 
 #include "SkrAnim/ozz/skeleton.h" // IWYU pragma: export
 #include "SkrAnim/ozz/base/containers/map.h" // IWYU pragma: export

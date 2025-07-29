@@ -2,17 +2,17 @@
 #include "SkrRT/io/ram_io.hpp"
 #include "SkrRT/resource/config_resource.h"
 #include "SkrToolCore/assets/config_asset.hpp"
-#include "SkrToolCore/asset/cook_system.hpp"
+#include "SkrToolCore/cook_system/cook_system.hpp"
 
 namespace skd::asset
 {
 void* JsonConfigImporter::Import(skr::io::IRAMService* ioService, CookContext* context)
 {
-    const auto assetInfo = context->GetAssetInfo();
+    const auto assetMetaFile = context->GetAssetMetaFile();
     auto type = skr::get_type_from_guid(configType);
     if (type == nullptr)
     {
-        SKR_LOG_ERROR(u8"import resource %s failed, rtti is not load", assetInfo->path.u8string().c_str());
+        SKR_LOG_ERROR(u8"import resource %s failed, rtti is not load", assetMetaFile->path.u8string().c_str());
         return nullptr;
     }
 
@@ -20,9 +20,9 @@ void* JsonConfigImporter::Import(skr::io::IRAMService* ioService, CookContext* c
     context->AddSourceFileAndLoad(ioService, assetPath.c_str(), blob);
     SKR_DEFER({ blob.reset(); });
     /*
-    const auto assetInfo = context->GetAssetInfo();
+    const auto assetMetaFile = context->GetAssetMetaFile();
     {
-        SKR_LOG_FMT_ERROR(u8"Import shader options asset {} from {} failed, json parse error {}", assetInfo->guid, jsonPath, ::error_message(doc.error()));
+        SKR_LOG_FMT_ERROR(u8"Import shader options asset {} from {} failed, json parse error {}", assetMetaFile->guid, jsonPath, ::error_message(doc.error()));
         return nullptr;
     }
     '*/
@@ -52,7 +52,7 @@ uint32_t ConfigCooker::Version()
 bool ConfigCooker::Cook(CookContext* ctx)
 {
     const auto outputPath = ctx->GetOutputPath();
-    // const auto assetInfo = ctx->GetAssetInfo();
+    // const auto assetMetaFile = ctx->GetAssetMetaFile();
     //-----load config
     // no cook config for config, skipping
     //-----import resource object

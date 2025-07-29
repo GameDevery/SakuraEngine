@@ -1,7 +1,7 @@
 #include "SkrBase/misc/make_zeroed.hpp"
 #include "SkrTask/parallel_for.hpp"
 #include "SkrRT/misc/cartesian_product.hpp"
-#include "SkrToolCore/asset/cook_system.hpp"
+#include "SkrToolCore/cook_system/cook_system.hpp"
 #include "SkrRenderer/resources/shader_meta_resource.hpp"
 #include "SkrRenderer/resources/shader_resource.hpp"
 #include "SkrShaderCompiler/assets/shader_asset.hpp"
@@ -100,7 +100,7 @@ bool ShaderCooker::Cook(CookContext* ctx)
     SkrZoneScopedN("ShaderCooker::Cook");
 
     const auto outputPath = ctx->GetOutputPath();
-    const auto assetInfo = ctx->GetAssetInfo();
+    const auto assetMetaFile = ctx->GetAssetMetaFile();
     auto source_code = ctx->Import<ShaderSourceCode>();
     SKR_DEFER({ ctx->Destroy(source_code); });
     // Calculate all macro combines (shader variants)
@@ -264,7 +264,7 @@ bool ShaderCooker::Cook(CookContext* ctx)
     skr_shader_option_sequence_t& options = resource.option_sequence;
     // initialize & serialize
     {
-        resource.root_guid = assetInfo->guid;
+        resource.root_guid = assetMetaFile->guid;
         // add root variant, root variant has two entries: md5-stable-hash & 0
         {
             const auto root_hash = make_zeroed<SStableShaderHash>();
@@ -327,8 +327,8 @@ bool ShaderCooker::Cook(CookContext* ctx)
         if (!file)
         {
             SKR_LOG_FMT_ERROR(u8"[ShaderCooker::Cook] failed to write cooked file for json_resource {}! path: {}",
-                assetInfo->guid,
-                assetInfo->path.string());
+                assetMetaFile->guid,
+                assetMetaFile->path.string());
             return false;
         }
         SKR_DEFER({ fclose(file); });

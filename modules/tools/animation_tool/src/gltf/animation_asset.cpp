@@ -1,4 +1,4 @@
-#include "SkrToolCore/asset/cook_system.hpp"
+#include "SkrToolCore/cook_system/cook_system.hpp"
 #include "SkrAnimTool/animation_asset.h"
 #include "SkrToolCore/project/project.hpp"
 #include "gltf2ozz.h"
@@ -20,7 +20,7 @@ void* GltfAnimImporter::Import(skr::io::IRAMService*, CookContext* context)
     auto&                                 skeletonResource = context->GetStaticDependency(0);
     ozz::animation::Skeleton&             skeleton         = *(ozz::animation::Skeleton*)skeletonResource.get_ptr();
     auto                                  path             = context->AddSourceFile(assetPath.c_str());
-    auto                                  fullAssetPath    = context->GetAssetInfo()->project->GetAssetPath() / path;
+    auto                                  fullAssetPath    = context->GetAssetMetaFile()->project->GetAssetPath() / path;
     if (!impoter.Load(fullAssetPath.string().c_str()))
     {
         SKR_LOG_ERROR(u8"Failed to load gltf file %s for asset %s.", assetPath.c_str(), context->GetAssetPath().c_str());

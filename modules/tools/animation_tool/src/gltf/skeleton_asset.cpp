@@ -1,4 +1,4 @@
-#include "SkrToolCore/asset/cook_system.hpp"
+#include "SkrToolCore/cook_system/cook_system.hpp"
 #include "SkrAnimTool/skeleton_asset.h"
 #include "SkrToolCore/project/project.hpp"
 #include "gltf2ozz.h"
@@ -21,7 +21,7 @@ void* SkelGltfImporter::Import(skr::io::IRAMService*, CookContext* context)
     OzzImporter::NodeType                 types   = {};
     types.skeleton                                = true;
     auto path                                     = context->AddSourceFile(assetPath.c_str());
-    auto fullAssetPath                            = context->GetAssetInfo()->project->GetAssetPath() / path;
+    auto fullAssetPath                            = context->GetAssetMetaFile()->project->GetAssetPath() / path;
     if (!impoter.Load(fullAssetPath.string().c_str()))
     {
         SKR_LOG_ERROR(u8"Failed to load gltf file %s for asset %s.", assetPath.c_str(), context->GetAssetPath().c_str());

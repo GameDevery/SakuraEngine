@@ -197,6 +197,8 @@ void ResourceSystemImpl::UnloadResource(SResourceHandle& handle)
     auto record = handle.get_record();
     SKR_ASSERT(record->loadingStatus != SKR_LOADING_STATUS_UNLOADED);
     record->RemoveReference(handle.get_requester_id(), handle.get_requester_type());
+    // reset to zero otherwise set_guid will trigger unload again
+    memset((void*)&handle, 0, sizeof(SResourceHandle));
     handle.set_guid(record->header.guid);
     if (!record->IsReferenced()) // unload
     {

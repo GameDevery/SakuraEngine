@@ -12,8 +12,8 @@ namespace skr
 // setup by isolate
 void V8Context::_init_basic(V8Isolate* isolate, String name)
 {
-    _isolate               = isolate;
-    _name                  = name;
+    _isolate = isolate;
+    _name = name;
     _global_module.manager = &_isolate->script_binder_manger();
 }
 
@@ -30,7 +30,7 @@ void V8Context::init()
 {
     using namespace ::v8;
     Isolate::Scope isolate_scope(_isolate->v8_isolate());
-    HandleScope    handle_scope(_isolate->v8_isolate());
+    HandleScope handle_scope(_isolate->v8_isolate());
 
     // create context
     auto new_context = Context::New(_isolate->v8_isolate());
@@ -53,10 +53,10 @@ bool V8Context::build_global_export(FunctionRef<void(ScriptModule& module)> buil
 
     // finalize
     {
-        auto               isolate = _isolate->v8_isolate();
+        auto isolate = _isolate->v8_isolate();
         v8::Isolate::Scope isolate_scope(isolate);
-        v8::HandleScope    handle_scope(isolate);
-        auto               context = _context.Get(isolate);
+        v8::HandleScope handle_scope(isolate);
+        auto context = _context.Get(isolate);
         v8::Context::Scope context_scope(context);
 
         if (!_global_module.check_full_export())
@@ -69,17 +69,17 @@ bool V8Context::build_global_export(FunctionRef<void(ScriptModule& module)> buil
                 {
                 case ScriptBinderRoot::EKind::Object: {
                     auto* type = lost_item.object()->type;
-                    type_name  = format(u8"{}::{}", type->name_space_str(), type->name());
+                    type_name = format(u8"{}::{}", type->name_space_str(), type->name());
                     break;
                 }
                 case ScriptBinderRoot::EKind::Value: {
                     auto* type = lost_item.value()->type;
-                    type_name  = format(u8"{}::{}", type->name_space_str(), type->name());
+                    type_name = format(u8"{}::{}", type->name_space_str(), type->name());
                     break;
                 }
                 case ScriptBinderRoot::EKind::Enum: {
                     auto* type = lost_item.enum_()->type;
-                    type_name  = format(u8"{}::{}", type->name_space_str(), type->name());
+                    type_name = format(u8"{}::{}", type->name_space_str(), type->name());
                     break;
                 }
                 default:
@@ -119,16 +119,16 @@ bool V8Context::build_global_export(FunctionRef<void(ScriptModule& module)> buil
 V8Value V8Context::get_global(StringView name)
 {
     // scopes
-    auto                   isolate = _isolate->v8_isolate();
-    v8::Isolate::Scope     isolate_scope(isolate);
-    v8::HandleScope        handle_scope(isolate);
+    auto isolate = _isolate->v8_isolate();
+    v8::Isolate::Scope isolate_scope(isolate);
+    v8::HandleScope handle_scope(isolate);
     v8::Local<v8::Context> context = _context.Get(isolate);
-    v8::Context::Scope     context_scope(context);
+    v8::Context::Scope context_scope(context);
 
     // find value
-    auto                  global      = context->Global();
-    v8::Local<v8::String> name_v8     = V8Bind::to_v8(name, true);
-    auto                  maybe_value = global->Get(context, name_v8);
+    auto global = context->Global();
+    v8::Local<v8::String> name_v8 = V8Bind::to_v8(name, true);
+    auto maybe_value = global->Get(context, name_v8);
     if (maybe_value.IsEmpty())
     {
         SKR_LOG_FMT_ERROR(u8"failed to get global value {}", name);
@@ -145,16 +145,16 @@ V8Value V8Context::get_global(StringView name)
 // run as script
 V8Value V8Context::exec_script(StringView script, StringView file_path)
 {
-    auto                   isolate = _isolate->v8_isolate();
-    v8::Isolate::Scope     isolate_scope(isolate);
-    v8::HandleScope        handle_scope(isolate);
+    auto isolate = _isolate->v8_isolate();
+    v8::Isolate::Scope isolate_scope(isolate);
+    v8::HandleScope handle_scope(isolate);
     v8::Local<v8::Context> context = _context.Get(isolate);
-    v8::Context::Scope     context_scope(context);
-    v8::TryCatch           try_catch(isolate);
+    v8::Context::Scope context_scope(context);
+    v8::TryCatch try_catch(isolate);
 
     // compile script
     v8::Local<v8::String> source = V8Bind::to_v8(script, false);
-    v8::ScriptOrigin      origin(
+    v8::ScriptOrigin origin(
         isolate,
         V8Bind::to_v8(file_path.is_empty() ? u8"[CPP]" : file_path),
         0,
@@ -165,12 +165,10 @@ V8Value V8Context::exec_script(StringView script, StringView file_path)
         false,
         false,
         true,
-        {}
-    );
+        {});
     auto may_be_script = ::v8::Script::Compile(
         context,
-        source
-    );
+        source);
     if (may_be_script.IsEmpty())
     {
         SKR_LOG_ERROR(u8"compile script failed");
@@ -179,7 +177,7 @@ V8Value V8Context::exec_script(StringView script, StringView file_path)
 
     // run script
     auto compiled_script = may_be_script.ToLocalChecked();
-    auto exec_result     = compiled_script->Run(context);
+    auto exec_result = compiled_script->Run(context);
 
     // dump exception
     if (try_catch.HasCaught())
@@ -204,12 +202,12 @@ V8Value V8Context::exec_script(StringView script, StringView file_path)
 // run as ES module
 V8Value V8Context::exec_module(StringView script, StringView file_path)
 {
-    auto                   isolate = _isolate->v8_isolate();
-    v8::Isolate::Scope     isolate_scope(isolate);
-    v8::HandleScope        handle_scope(isolate);
+    auto isolate = _isolate->v8_isolate();
+    v8::Isolate::Scope isolate_scope(isolate);
+    v8::HandleScope handle_scope(isolate);
     v8::Local<v8::Context> context = _context.Get(isolate);
-    v8::Context::Scope     context_scope(context);
-    v8::TryCatch           try_catch(isolate);
+    v8::Context::Scope context_scope(context);
+    v8::TryCatch try_catch(isolate);
 
     // compile module
     v8::ScriptOrigin origin(
@@ -223,15 +221,13 @@ V8Value V8Context::exec_module(StringView script, StringView file_path)
         false,
         false,
         true,
-        {}
-    );
-    auto                         source_str = V8Bind::to_v8(script, false);
+        {});
+    auto source_str = V8Bind::to_v8(script, false);
     ::v8::ScriptCompiler::Source source(source_str, origin);
-    auto                         maybe_module = ::v8::ScriptCompiler::CompileModule(
+    auto maybe_module = ::v8::ScriptCompiler::CompileModule(
         isolate,
         &source,
-        v8::ScriptCompiler::kNoCompileOptions
-    );
+        v8::ScriptCompiler::kNoCompileOptions);
     if (maybe_module.IsEmpty())
     {
         SKR_LOG_ERROR(u8"compile module failed");
@@ -239,7 +235,7 @@ V8Value V8Context::exec_module(StringView script, StringView file_path)
     }
 
     // instantiate module
-    auto module             = maybe_module.ToLocalChecked();
+    auto module = maybe_module.ToLocalChecked();
     auto instantiate_result = module->InstantiateModule(context, _resolve_module);
     if (instantiate_result.IsNothing())
     {
@@ -296,13 +292,12 @@ V8Value V8Context::exec_module(StringView script, StringView file_path)
 
 // callback
 v8::MaybeLocal<v8::Module> V8Context::_resolve_module(
-    v8::Local<v8::Context>    context,
-    v8::Local<v8::String>     specifier,
+    v8::Local<v8::Context> context,
+    v8::Local<v8::String> specifier,
     v8::Local<v8::FixedArray> import_assertions,
-    v8::Local<v8::Module>     referrer
-)
+    v8::Local<v8::Module> referrer)
 {
-    auto isolate     = v8::Isolate::GetCurrent();
+    auto isolate = v8::Isolate::GetCurrent();
     auto skr_isolate = reinterpret_cast<V8Isolate*>(isolate->GetData(0));
 
     // get module name

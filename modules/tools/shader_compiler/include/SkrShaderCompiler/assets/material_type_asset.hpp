@@ -2,8 +2,8 @@
 #include "SkrRenderer/fwd_types.h"
 #include "SkrContainersDef/vector.hpp"
 #include "SkrContainersDef/string.hpp"
-#include "SkrToolCore/asset/importer.hpp"
-#include "SkrToolCore/asset/cooker.hpp"
+#include "SkrToolCore/cook_system/importer.hpp"
+#include "SkrToolCore/cook_system/cooker.hpp"
 #ifndef __meta__
     #include "SkrShaderCompiler/assets/material_type_asset.generated.h" // IWYU pragma: export
 #endif

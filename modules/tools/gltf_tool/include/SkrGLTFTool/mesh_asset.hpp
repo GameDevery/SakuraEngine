@@ -1,6 +1,6 @@
 #pragma once
-#include "SkrToolCore/asset/importer.hpp"
-#include "SkrToolCore/asset/cooker.hpp"
+#include "SkrToolCore/cook_system/importer.hpp"
+#include "SkrToolCore/cook_system/cooker.hpp"
 #include "SkrContainersDef/string.hpp"
 #include "SkrContainersDef/vector.hpp"
 #ifndef __meta__
@@ -14,12 +14,7 @@ sreflect_struct(
 GLTFTOOL_API GltfMeshImporter final : public Importer
 {
     String assetPath;
-
-    Vector<skr_guid_t> materials;
-
     bool invariant_vertices = false;
-    bool install_to_ram = false;
-    bool install_to_vram = true;
 
     void* Import(skr::io::IRAMService*, CookContext* context) override;
     void Destroy(void* resource) override;

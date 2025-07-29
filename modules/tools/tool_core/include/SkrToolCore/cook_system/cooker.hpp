@@ -1,7 +1,7 @@
 #pragma once
 #include "SkrToolCore/fwd_types.hpp"
 #ifndef __meta__
-    #include "SkrToolCore/asset/cooker.generated.h"
+    #include "SkrToolCore/cook_system/cooker.generated.h"
 #endif
 
 namespace skd::asset

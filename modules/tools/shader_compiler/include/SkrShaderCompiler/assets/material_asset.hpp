@@ -10,7 +10,7 @@ namespace skd::asset
 
 sreflect_struct(
     guid = "b38147b2-a5af-40c6-b2bd-185d16ca83ac" serde = @bin | @json)
-skr_material_asset_t
+MaterialAsset
 {
     uint32_t material_type_version;
 

@@ -1,5 +1,5 @@
 #include "SkrRenderer/resources/shader_meta_resource.hpp"
-#include "SkrToolCore/asset/cook_system.hpp"
+#include "SkrToolCore/cook_system/cook_system.hpp"
 #include "SkrToolCore/project/project.hpp"
 #include "SkrShaderCompiler/assets/shader_asset.hpp"
 #include "SkrShaderCompiler/shader_compiler.hpp"
@@ -15,9 +15,9 @@ void* ShaderOptionImporter::Import(skr::io::IRAMService* ioService, CookContext*
     context->AddSourceFileAndLoad(ioService, jsonPath.c_str(), ioBuffer);
     SKR_DEFER({ ioBuffer.reset(); });
     /*
-    const auto assetInfo = context->GetAssetInfo();
+    const auto assetMetaFile = context->GetAssetMetaFile();
     {
-        SKR_LOG_FMT_ERROR(u8"Import shader options asset {} from {} failed, json parse error {}", assetInfo->guid, jsonPath, ::error_message(doc.error()));
+        SKR_LOG_FMT_ERROR(u8"Import shader options asset {} from {} failed, json parse error {}", assetMetaFile->guid, jsonPath, ::error_message(doc.error()));
         return nullptr;
     }
     '*/

@@ -1,5 +1,5 @@
-#include "SkrToolCore/asset/cook_system.hpp"
-#include "SkrToolCore/asset/importer.hpp"
+#include "SkrToolCore/cook_system/cook_system.hpp"
+#include "SkrToolCore/cook_system/importer.hpp"
 #include "SkrSerde/json_serde.hpp"
 #include "SkrContainers/hashmap.hpp"
 
@@ -7,7 +7,7 @@ namespace skd::asset
 {
 struct ImporterRegistryImpl : public ImporterRegistry
 {
-    Importer* LoadImporter(const AssetInfo* record, skr::archive::JsonReader* object, skr::GUID* pGuid = nullptr) override;
+    Importer* LoadImporter(const AssetMetaFile* record, skr::archive::JsonReader* object, skr::GUID* pGuid = nullptr) override;
     uint32_t GetImporterVersion(skr::GUID type) override;
     void RegisterImporter(skr::GUID type, ImporterTypeInfo info) override;
 
@@ -20,7 +20,7 @@ ImporterRegistry* GetImporterRegistry()
     return &registry;
 }
 
-Importer* ImporterRegistryImpl::LoadImporter(const AssetInfo* record, skr::archive::JsonReader* object, skr::GUID* pGuid)
+Importer* ImporterRegistryImpl::LoadImporter(const AssetMetaFile* record, skr::archive::JsonReader* object, skr::GUID* pGuid)
 {
     skr::GUID type;
     {

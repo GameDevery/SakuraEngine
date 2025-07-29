@@ -16,7 +16,7 @@
 
 #include "SkrAnim/resources/skeleton_resource.hpp"
 #include "SkrToolCore/project/project.hpp"
-#include "SkrToolCore/asset/cook_system.hpp"
+#include "SkrToolCore/cook_system/cook_system.hpp"
 
 #include "SkrProfile/profile.h"
 
@@ -145,7 +145,7 @@ int compile_project(skd::SProject* project)
     //----- schedule cook tasks (checking dependencies)
     {
         system.ParallelForEachAsset(1,
-        [&](skr::span<skd::asset::AssetInfo*> assets) {
+        [&](skr::span<skd::asset::AssetMetaFile*> assets) {
             SkrZoneScopedN("Cook");
             for (auto asset : assets)
             {

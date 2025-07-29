@@ -1,6 +1,6 @@
 #pragma once
-#include "SkrToolCore/asset/importer.hpp"
-#include "SkrToolCore/asset/cooker.hpp"
+#include "SkrToolCore/cook_system/importer.hpp"
+#include "SkrToolCore/cook_system/cooker.hpp"
 #include "SkrContainersDef/string.hpp"
 #ifndef __meta__
     #include "SkrTextureCompiler/texture_compiler.generated.h" // IWYU pragma: export

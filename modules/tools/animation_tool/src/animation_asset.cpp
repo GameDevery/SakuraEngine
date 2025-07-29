@@ -1,4 +1,4 @@
-#include "SkrToolCore/asset/cook_system.hpp"
+#include "SkrToolCore/cook_system/cook_system.hpp"
 #include "SkrAnimTool/animation_asset.h"
 #include "SkrAnim/ozz/animation.h"
 #include "SkrAnimTool/ozz/animation_optimizer.h"
@@ -21,14 +21,14 @@ bool AnimCooker::Cook(CookContext* ctx)
     SkrZoneScopedNS("AnimCooker::Cook", 4);
 
     //-----load config
-    auto settings = ctx->GetAssetMetadata<AnimAssetMetadata>();
+    auto anim_asset = ctx->GetAssetMetadata<AnimAsset>();
     //-----emit static dependencies
-    if (settings.skeletonAsset.get_serialized() == skr_guid_t{})
+    if (anim_asset.skeletonAsset.get_serialized() == skr_guid_t{})
     {
-        SKR_LOG_ERROR(u8"Failed to cook animation asset %s. No skeleton asset specified.", ctx->GetAssetInfo()->path.c_str());
+        SKR_LOG_ERROR(u8"Failed to cook animation asset %s. No skeleton asset specified.", ctx->GetAssetMetaFile()->path.c_str());
         return false;
     }
-    auto idx = ctx->AddStaticDependency(settings.skeletonAsset.get_serialized(), true);
+    auto idx = ctx->AddStaticDependency(anim_asset.skeletonAsset.get_serialized(), true);
     if (ctx->GetStaticDependency(idx).get_status() == SKR_LOADING_STATUS_ERROR)
         return false;
     SkeletonResource* skeletonResource = (SkeletonResource*)ctx->GetStaticDependency(idx).get_ptr();
@@ -40,17 +40,17 @@ bool AnimCooker::Cook(CookContext* ctx)
     //-----emit dependencies
     // no static dependencies
     //-----cook resource
-    if (settings.optimize)
+    if (anim_asset.optimize)
     {
         AnimationOptimizer optimizer;
-        AnimationOptimizer::Setting optSettings;
-        optSettings.tolerance = settings.tolerance;
-        optSettings.distance = settings.distance;
-        optimizer.setting = optSettings;
-        for (int i = 0; i < settings.override.size(); ++i)
+        AnimationOptimizer::Setting optanim_asset;
+        optanim_asset.tolerance = anim_asset.tolerance;
+        optanim_asset.distance = anim_asset.distance;
+        optimizer.setting = optanim_asset;
+        for (int i = 0; i < anim_asset.override.size(); ++i)
         {
             bool found = false;
-            auto& override = settings.override[i];
+            auto& override = anim_asset.override[i];
             for (int j = 0; j < skeleton.num_joints(); ++j)
             {
                 const char* joint_name = skeleton.joint_names()[j];
@@ -60,7 +60,7 @@ bool AnimCooker::Cook(CookContext* ctx)
 
                     SKR_LOG_TRACE(u8"Found joint \"%s\" matching pattern \"%s\" for joint optimization setting override.", joint_name, override.name.c_str());
 
-                    const AnimationOptimizer::JointsSetting::value_type entry(j, optSettings);
+                    const AnimationOptimizer::JointsSetting::value_type entry(j, optanim_asset);
                     const bool newly =
                         optimizer.joints_setting_override.insert(entry).second;
                     if (!newly)
@@ -70,7 +70,7 @@ bool AnimCooker::Cook(CookContext* ctx)
                 }
             }
 
-            optSettings = optimizer.setting;
+            optanim_asset = optimizer.setting;
 
             if (!found)
             {
@@ -90,13 +90,13 @@ bool AnimCooker::Cook(CookContext* ctx)
         // Brings data back to the raw animation.
         *rawAnimation = std::move(rawOptimizedAnimation);
     }
-    if (settings.additive)
+    if (anim_asset.additive)
     {
         AdditiveAnimationBuilder additiveBuilder;
         RawAnimation rawAdditive;
         bool succeeded = false;
 
-        if (settings.additiveReference == SAnimAdditiveReference::skeleton)
+        if (anim_asset.additiveReference == AnimAdditiveReference::skeleton)
         {
             const ozz::vector<ozz::math::Transform> transforms =
                 SkeletonRestPoseSoAToAoS(skeleton);
