@@ -19,6 +19,7 @@ struct SceneRendererImpl : public skr::SceneRenderer
     const ECGPUFormat depth_format = CGPU_FORMAT_D32_SFLOAT;
 
     skr_vfs_t* resource_vfs;
+    temp::Camera* mp_camera;
 
     uint64_t frame_count;
 
@@ -75,6 +76,11 @@ struct SceneRendererImpl : public skr::SceneRenderer
     void finalize(skr::RendererDevice* renderer) override
     {
         free_pipeline(renderer);
+    }
+
+    void temp_set_camera(temp::Camera* camera) override
+    {
+        mp_camera = camera;
     }
 
     void create_resource(skr::RendererDevice* renderer) override
@@ -149,7 +155,23 @@ struct SceneRendererImpl : public skr::SceneRenderer
 
     void render_mesh(skr_render_mesh_id render_mesh, skr::render_graph::RenderGraph* render_graph) override
     {
-        view_proj = skr_float4x4_t(.5f, 0.0f, 0.0f, 0.0f, 0.0f, .5f, 0.0f, 0.0f, 0.0f, 0.0f, .5f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
+        if (!mp_camera)
+        {
+            view_proj = skr_float4x4_t(.5f, 0.0f, 0.0f, 0.0f, 0.0f, .5f, 0.0f, 0.0f, 0.0f, 0.0f, .5f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
+        }
+        else
+        {
+            auto view = skr::float4x4::view_at(skr::float4(mp_camera->position, 0.0f), skr::float4(mp_camera->position + mp_camera->front, 0.0f), skr::float4(mp_camera->up, 0.f));
+
+            auto proj = skr::float4x4::perspective_fov(
+                skr::camera_fov_y_from_x(mp_camera->fov, mp_camera->aspect),
+                mp_camera->aspect,
+                mp_camera->near_plane,
+                mp_camera->far_plane);
+            auto _view_proj = skr::mul(view, proj);
+            view_proj = skr::transpose(_view_proj);
+        }
+
         SkrZoneScopedN("SceneRenderer::render_mesh");
         if (!render_mesh)
         {

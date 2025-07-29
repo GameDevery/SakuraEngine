@@ -26,6 +26,7 @@
 
 namespace temp
 {
+
 static const skd::asset::ERawVertexStreamType kGLTFToRawAttributeTypeLUT[] = {
     skd::asset::ERawVertexStreamType::POSITION,
     skd::asset::ERawVertexStreamType::NORMAL,
@@ -173,13 +174,15 @@ void SceneSampleMeshModule::uninstallResourceFactories()
 
 int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
 {
+    constexpr float kPi = rtm::constants::pi();
+
     SkrZoneScopedN("SceneSampleMeshModule::main_module_exec");
     SKR_LOG_INFO(u8"Running Scene Sample Mesh Module");
 
     std::error_code ec = {};
-    // auto gltf_path = (skr::filesystem::current_path(ec) / "../resources/Game/sketchfab/ruby/scene.gltf").u8string();
+    auto gltf_path = (skr::filesystem::current_path(ec) / "../resources/Game/sketchfab/ruby/scene.gltf").u8string();
     // auto gltf_path = (skr::filesystem::current_path(ec) / "../resources/scene/Cube.gltf").u8string();
-    auto gltf_path = (skr::filesystem::current_path(ec) / "../resources/scene/triangle.gltf").u8string();
+    // auto gltf_path = (skr::filesystem::current_path(ec) / "../resources/scene/triangle.gltf").u8string();
     SKR_LOG_INFO(u8"gltf file path: {%s}", gltf_path.c_str());
     auto* gltf_data = skd::asset::ImportGLTFWithData(gltf_path.c_str(), ram_service, resource_vfs);
     if (!gltf_data)
@@ -265,6 +268,8 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     // it seems buffer1 is not used in this sample, so we can skip it
 
     auto render_device = SkrRendererModule::Get()->get_render_device();
+    temp::Camera camera;
+    scene_renderer->temp_set_camera(&camera);
     // scene_renderer->create_resource(render_device);
 
     auto cgpu_device = render_device->get_cgpu_device();
@@ -321,7 +326,6 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
         render_mesh->index_buffer_views.size(),
         render_mesh->primitive_commands.size());
 
-    // TODO: it seems the render_mesh loaded, now it is time to render it
     {
         skr::render_graph::RenderGraphBuilder graph_builder;
         graph_builder.with_device(cgpu_device)
@@ -356,6 +360,56 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
             imgui_app->pump_message();
         }
 
+        // Camera control
+        {
+            ImGuiIO& io = ImGui::GetIO();
+
+            const float camera_speed = 0.0025f * io.DeltaTime;
+            const float camera_pan_speed = 0.0025f * io.DeltaTime;
+            const float camera_sensitivity = 0.05f;
+
+            skr_float3_t world_up = { 0.0f, 1.0f, 0.0f };
+            skr_float3_t camera_right = skr::normalize(skr::cross(camera.front, world_up));
+            skr_float3_t camera_up = skr::normalize(skr::cross(camera_right, camera.front));
+
+            // Movement
+            if (ImGui::IsKeyDown(ImGuiKey_W)) camera.position += camera.front * camera_speed;
+            if (ImGui::IsKeyDown(ImGuiKey_S)) camera.position -= camera.front * camera_speed;
+            if (ImGui::IsKeyDown(ImGuiKey_A)) camera.position -= camera_right * camera_speed;
+            if (ImGui::IsKeyDown(ImGuiKey_D)) camera.position += camera_right * camera_speed;
+
+            // Rotation
+            if (ImGui::IsMouseDown(ImGuiMouseButton_Right))
+            {
+                static float yaw = 90.0f;
+                static float pitch = 0.0f;
+                yaw += io.MouseDelta.x * camera_sensitivity;
+                pitch -= io.MouseDelta.y * camera_sensitivity;
+                if (pitch > 89.0f) pitch = 89.0f;
+                if (pitch < -89.0f) pitch = -89.0f;
+
+                skr_float3_t direction;
+                direction.x = cosf(yaw * (float)kPi / 180.f) * cosf(pitch * (float)kPi / 180.f);
+                direction.y = sinf(pitch * (float)kPi / 180.f);
+                direction.z = sinf(yaw * (float)kPi / 180.f) * cosf(pitch * (float)kPi / 180.f);
+                camera.front = skr::normalize(direction);
+            }
+
+            // Panning
+            if (ImGui::IsMouseDown(ImGuiMouseButton_Middle))
+            {
+                camera.position -= camera_right * io.MouseDelta.x * camera_pan_speed;
+                camera.position += camera_up * io.MouseDelta.y * camera_pan_speed;
+            }
+
+            {
+                ImGui::Begin("Camera Info");
+                ImGui::Text("Position: (%.2f, %.2f, %.2f)", camera.position.x, camera.position.y, camera.position.z);
+                ImGui::Text("Front:    (%.2f, %.2f, %.2f)", camera.front.x, camera.front.y, camera.front.z);
+                ImGui::End();
+            }
+        }
+
         // Update resources
         auto resource_system = skr::resource::GetResourceSystem();
         resource_system->Update();
@@ -369,6 +423,10 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
             SkrZoneScopedN("Viewport Render");
             imgui_app->acquire_frames();
             // scene_renderer->produce_drawcalls(world.get_storage(), render_graph);
+            auto main_window = imgui_app->main_window();
+            const auto size = main_window->get_physical_size();
+            camera.aspect = (float)size.x / (float)size.y;
+
             scene_renderer->render_mesh(render_mesh, render_graph);
         };
         {

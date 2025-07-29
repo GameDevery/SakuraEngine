@@ -6,7 +6,8 @@
 #endif
 
 sreflect_struct(guid = "96fd4826-cb03-4286-8d14-8a86c9f96ee4"; ecs.comp = @enable;)
-    skr_render_viewport_t {
+skr_render_viewport_t
+{
     // index registered in renderer
     uint32_t index;
     // derived from camera
@@ -18,16 +19,17 @@ sreflect_struct(guid = "96fd4826-cb03-4286-8d14-8a86c9f96ee4"; ecs.comp = @enabl
 };
 typedef struct skr_render_viewport_t skr_render_viewport_t;
 
-struct SKR_RENDERER_API SViewportManager {
+struct SKR_RENDERER_API SViewportManager
+{
 #ifdef __cplusplus
-    virtual uint32_t               register_viewport(const char8_t* viewport_name) SKR_NOEXCEPT = 0;
-    virtual skr_render_viewport_t* find_viewport(const char8_t* viewport_name) SKR_NOEXCEPT     = 0;
-    virtual skr_render_viewport_t* find_viewport(uint32_t idx) SKR_NOEXCEPT                     = 0;
-    virtual void                   remove_viewport(const char8_t* viewport_name) SKR_NOEXCEPT   = 0;
-    virtual void                   remove_viewport(uint32_t idx) SKR_NOEXCEPT                   = 0;
+    virtual uint32_t register_viewport(const char8_t* viewport_name) SKR_NOEXCEPT = 0;
+    virtual skr_render_viewport_t* find_viewport(const char8_t* viewport_name) SKR_NOEXCEPT = 0;
+    virtual skr_render_viewport_t* find_viewport(uint32_t idx) SKR_NOEXCEPT = 0;
+    virtual void remove_viewport(const char8_t* viewport_name) SKR_NOEXCEPT = 0;
+    virtual void remove_viewport(uint32_t idx) SKR_NOEXCEPT = 0;
 
     static SViewportManager* Create(skr::ecs::World* storage);
-    static void              Free(SViewportManager* viewport_manager);
+    static void Destroy(SViewportManager* viewport_manager);
     virtual ~SViewportManager() SKR_NOEXCEPT;
 #endif
 };

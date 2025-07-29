@@ -10,8 +10,6 @@
     #define SKR_SCENE_MAX_NAME_LENGTH 32
 #endif
 
-struct SRenderer;
-
 namespace skr::scene
 {
 
@@ -48,11 +46,27 @@ public:
     SKR_GENERATE_BODY()
 
     inline RotationComponent() = default;
-    inline RotationComponent(float pitch, float yaw, float roll) : euler(pitch, yaw, roll), dirty(true) {}
-    inline RotationComponent(Rotator v) : euler(v), dirty(true) {}
+    inline RotationComponent(float pitch, float yaw, float roll)
+        : euler(pitch, yaw, roll)
+        , dirty(true)
+    {
+    }
+    inline RotationComponent(Rotator v)
+        : euler(v)
+        , dirty(true)
+    {
+    }
 
-    inline void set(float pitch, float yaw, float roll) { euler = { pitch, yaw, roll }; dirty = true; }
-    inline void set(Rotator v) { euler = v; dirty = true; }
+    inline void set(float pitch, float yaw, float roll)
+    {
+        euler = { pitch, yaw, roll };
+        dirty = true;
+    }
+    inline void set(Rotator v)
+    {
+        euler = v;
+        dirty = true;
+    }
     inline auto get() const { return euler; }
     inline bool get_dirty() const { return dirty; }
 
@@ -73,11 +87,27 @@ public:
     SKR_GENERATE_BODY()
 
     inline PositionComponent() = default;
-    inline PositionComponent(PositionElement x, PositionElement y, PositionElement z) : value(x, y, z), dirty(true) {}
-    inline PositionComponent(Position v) : value(v), dirty(true) {}
+    inline PositionComponent(PositionElement x, PositionElement y, PositionElement z)
+        : value(x, y, z)
+        , dirty(true)
+    {
+    }
+    inline PositionComponent(Position v)
+        : value(v)
+        , dirty(true)
+    {
+    }
 
-    inline void set(PositionElement x, PositionElement y, PositionElement z) { value = { x, y, z }; dirty = true; }
-    inline void set(Position v) { value = v; dirty = true; }
+    inline void set(PositionElement x, PositionElement y, PositionElement z)
+    {
+        value = { x, y, z };
+        dirty = true;
+    }
+    inline void set(Position v)
+    {
+        value = v;
+        dirty = true;
+    }
     inline Position get() const { return value; }
     inline bool get_dirty() const { return dirty; }
 
@@ -98,13 +128,37 @@ public:
     SKR_GENERATE_BODY()
 
     inline ScaleComponent() = default;
-    inline ScaleComponent(float x, float y, float z) : value(x, y, z), dirty(true) {}
-    inline ScaleComponent(float scalar) : value(scalar, scalar, scalar), dirty(true) {}
-    inline ScaleComponent(skr::float3 scale) : value(scale), dirty(true) {}
+    inline ScaleComponent(float x, float y, float z)
+        : value(x, y, z)
+        , dirty(true)
+    {
+    }
+    inline ScaleComponent(float scalar)
+        : value(scalar, scalar, scalar)
+        , dirty(true)
+    {
+    }
+    inline ScaleComponent(skr::float3 scale)
+        : value(scale)
+        , dirty(true)
+    {
+    }
 
-    inline void set(float scale) { value = { scale, scale, scale }; dirty = true; }
-    inline void set(float x, float y, float z) { value = { x, y, z}; dirty = true; }
-    inline void set(skr::float3 scale) { value = scale; dirty = true; }
+    inline void set(float scale)
+    {
+        value = { scale, scale, scale };
+        dirty = true;
+    }
+    inline void set(float x, float y, float z)
+    {
+        value = { x, y, z };
+        dirty = true;
+    }
+    inline void set(skr::float3 scale)
+    {
+        value = scale;
+        dirty = true;
+    }
     inline skr::float3 get() const { return value; }
     inline bool get_dirty() const { return dirty; }
 
@@ -143,7 +197,6 @@ sreflect_struct(
     ecs.comp = @enable;)
 CameraComponent
 {
-    struct SRenderer* renderer;
     uint32_t viewport_id;
     uint32_t viewport_width;
     uint32_t viewport_height;
@@ -170,11 +223,8 @@ using ChildrenArray = sugoi::ArrayComponent<ChildrenComponent, 4>;
 #endif
 
 sreflect_enum_class(
-    guid = "c8df77f2-9830-4004-84e6-1d55e0f9a83f"
-    serde = @bin|@json
-)
-ETransformDirtyState : uint32_t 
-{
+    guid = "c8df77f2-9830-4004-84e6-1d55e0f9a83f" serde = @bin | @json)
+ETransformDirtyState : uint32_t{
     NotDirty = 0,
     Location = 0x1,
     Rotation = 0x2,
@@ -279,9 +329,9 @@ inline static bool operator!=(skr::scene::RotationComponent l, skr::scene::Rotat
 } // namespace skr::scene
 
 #ifndef SKR_SCENE_COMPONENTS
-    #define SKR_SCENE_COMPONENTS                                    \
-        skr::scene::ParentComponent, skr::scene::ChildrenComponent, \
-            skr::scene::TransformComponent,                         \
+    #define SKR_SCENE_COMPONENTS                                                                      \
+        skr::scene::ParentComponent, skr::scene::ChildrenComponent,                                   \
+            skr::scene::TransformComponent,                                                           \
             skr::scene::PositionComponent, skr::scene::RotationComponent, skr::scene::ScaleComponent, \
             skr::scene::TransformDirtyComponent
 #endif
