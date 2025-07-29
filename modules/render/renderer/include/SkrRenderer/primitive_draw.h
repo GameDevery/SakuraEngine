@@ -5,11 +5,12 @@
 #include "SkrGraphics/cgpux.h"
 
 #ifdef __cplusplus
-#include "SkrContainers/span.hpp"
+    #include "SkrContainers/span.hpp"
 extern "C" {
 #endif
 
-typedef struct skr_vertex_buffer_view_t {
+typedef struct skr_vertex_buffer_view_t
+{
     CGPUBufferId buffer;
     // in bytes
     uint32_t offset;
@@ -17,7 +18,8 @@ typedef struct skr_vertex_buffer_view_t {
     uint32_t stride;
 } skr_vertex_buffer_view_t;
 
-typedef struct skr_index_buffer_view_t {
+typedef struct skr_index_buffer_view_t
+{
     CGPUBufferId buffer;
     // in bytes
     uint32_t offset;
@@ -27,7 +29,8 @@ typedef struct skr_index_buffer_view_t {
     uint32_t first_index;
 } skr_index_buffer_view_t;
 
-typedef struct skr_primitive_draw_t {
+typedef struct skr_primitive_draw_t
+{
     CGPURenderPipelineId pipeline;
     CGPUXBindTableId bind_table;
     const char8_t* push_const_name;
@@ -41,12 +44,15 @@ typedef struct skr_primitive_draw_t {
 #ifdef __cplusplus
 } // extern "C"
 
-namespace skr {
-namespace renderer {
+namespace skr
+{
+namespace renderer
+{
 using VertexBufferView = skr_vertex_buffer_view_t;
 using IndexBufferView = skr_index_buffer_view_t;
 
-struct PrimitiveCommand {
+struct PrimitiveCommand
+{
     skr::span<const skr_vertex_buffer_view_t> vbvs;
     const skr_index_buffer_view_t* ibv;
     uint32_t primitive_index;

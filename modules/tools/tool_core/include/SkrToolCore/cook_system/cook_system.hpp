@@ -10,18 +10,34 @@ SKR_DECLARE_TYPE_ID_FWD(skr::io, IRAMService, skr_io_ram_service);
 
 namespace skd::asset
 {
+using URI = skr::String;
+
 struct AssetMetaFile
 {
-    SProject* project;
-    skr::GUID guid;
-    skr::GUID type;
-    skr::GUID cooker;
-    skr::filesystem::path path;
-    skr::String meta;
+    SKR_RC_IMPL();
+public:
+    AssetMetaFile(skr::StringView uri, skr::String&& meta);
+
+    template <class T>
+    T GetAssetMetadata()
+    {
+        // TODO: now it parses twice, add cursor to reader to avoid this
+        skr::archive::JsonReader reader(meta.view());
+        T settings;
+        skr::json_read(&reader, settings);
+        return settings;
+    }
+
+    const SProject* project = nullptr;
+    const skr::GUID guid;
+    const skr::GUID type;
+    const skr::GUID cooker;
+    const URI uri;
+    const skr::String meta;
 };
 
 struct TOOL_CORE_API CookContext
-{ // context per job
+{
     friend struct CookSystem;
     friend struct CookSystemImpl;
 
@@ -33,12 +49,13 @@ public:
     virtual skr::GUID GetImporterType() const = 0;
     virtual uint32_t GetImporterVersion() const = 0;
     virtual uint32_t GetCookerVersion() const = 0;
-    virtual const AssetMetaFile* GetAssetMetaFile() const = 0;
+    virtual skr::RC<AssetMetaFile> GetAssetMetaFile() = 0;
+    virtual skr::RC<const AssetMetaFile> GetAssetMetaFile() const = 0;
     virtual skr::String GetAssetPath() const = 0;
 
-    virtual skr::filesystem::path AddSourceFile(const skr::filesystem::path& path) = 0;
-    virtual skr::filesystem::path AddSourceFileAndLoad(skr::io::IRAMService* ioService, const skr::filesystem::path& path, skr::BlobId& destination) = 0;
-    virtual skr::span<const skr::filesystem::path> GetSourceFiles() const = 0;
+    virtual URI AddSourceFile(const URI& path) = 0;
+    virtual URI AddSourceFileAndLoad(skr::io::IRAMService* ioService, const URI& path, skr::BlobId& destination) = 0;
+    virtual skr::span<const URI> GetSourceFiles() const = 0;
 
     virtual void AddRuntimeDependency(skr::GUID resource) = 0;
     virtual void AddSoftRuntimeDependency(skr::GUID resource) = 0;
@@ -50,15 +67,6 @@ public:
 
     virtual const skr::task::event_t& GetCounter() = 0;
 
-    template <class T>
-    T GetAssetMetadata()
-    {
-        // TODO: now it parses twice, add cursor to reader to avoid this
-        skr::archive::JsonReader reader(GetAssetMetaFile()->meta.view());
-        T settings;
-        skr::json_read(&reader, settings);
-        return settings;
-    }
 
     template <class T>
     T* Import() { return (T*)_Import(); }
@@ -72,6 +80,7 @@ public:
     template <class T>
     bool Save(T& resource)
     {
+        auto record = GetAssetMetaFile();
         //------save resource to disk
         auto outputPath = GetOutputPath().u8string();
         auto file = fopen((const char*)outputPath.c_str(), "wb");
@@ -79,7 +88,7 @@ public:
         {
             SKR_LOG_FMT_ERROR(u8"[ConfigCooker::Cook] failed to write cooked file for resource {}! path: {}",
                 record->guid,
-                (const char*)record->path.u8string().c_str());
+                (const char*)record->uri.c_str());
             return false;
         }
         SKR_DEFER({ fclose(file); });
@@ -91,21 +100,21 @@ public:
         {
             SKR_LOG_FMT_ERROR(u8"[ConfigCooker::Cook] failed to serialize resource {}! path: {}",
                 record->guid,
-                (const char*)record->path.u8string().c_str());
+                (const char*)record->uri.c_str());
             return false;
         }
         if (fwrite(buffer.data(), 1, buffer.size(), file) < buffer.size())
         {
             SKR_LOG_FMT_ERROR(u8"[ConfigCooker::Cook] failed to write cooked file for resource {}! path: {}",
                 record->guid,
-                (const char*)record->path.u8string().c_str());
+                (const char*)record->uri.c_str());
             return false;
         }
         return true;
     }
 
 protected:
-    static CookContext* Create(skr_io_ram_service_t* service);
+    static CookContext* Create(skr::RC<AssetMetaFile> record, skr_io_ram_service_t* service);
     static void Destroy(CookContext* ctx);
 
     virtual void SetCounter(skr::task::event_t&) = 0;
@@ -118,6 +127,7 @@ protected:
     template <class S>
     void WriteHeader(S& s, Cooker* cooker)
     {
+        auto record = GetAssetMetaFile();
         SResourceHeader header;
         header.guid = record->guid;
         header.type = record->type;
@@ -126,8 +136,6 @@ protected:
         header.dependencies.append(runtime_deps.data(), runtime_deps.size());
         skr::bin_write(&s, header);
     }
-
-    AssetMetaFile* record = nullptr;
 };
 
 struct TOOL_CORE_API CookSystem
@@ -147,12 +155,12 @@ public:
     virtual void RegisterCooker(bool isDefault, skr_guid_t cooker, skr_guid_t type, Cooker* instance) = 0;
     virtual void UnregisterCooker(skr_guid_t type) = 0;
 
-    virtual AssetMetaFile* GetAssetMetaFile(skr_guid_t type) const = 0;
-    virtual AssetMetaFile* LoadAssetMeta(SProject* project, const skr::String& uri) = 0;
+    virtual skr::RC<AssetMetaFile> LoadAssetMeta(SProject* project, const skr::String& uri) = 0;
+    virtual skr::RC<AssetMetaFile> GetAssetMetaFile(skr_guid_t type) const = 0;
 
-    virtual void ParallelForEachAsset(uint32_t batch, skr::FunctionRef<void(skr::span<AssetMetaFile*>)> f) = 0;
+    virtual void ParallelForEachAsset(uint32_t batch, skr::FunctionRef<void(skr::span<skr::RC<AssetMetaFile>>)> f) = 0;
 
-    virtual skr::io::IRAMService* getIOService() = 0;
+    virtual skr::io::IRAMService* GetIOService() = 0;
 
     static constexpr uint32_t ioServicesMaxCount = 1;
 };

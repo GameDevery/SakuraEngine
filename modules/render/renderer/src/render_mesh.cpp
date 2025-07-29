@@ -1,8 +1,11 @@
 #include "SkrBase/misc/debug.h"
+#include "SkrGraphics/raytracing.h"
 #include "SkrRenderer/render_mesh.h"
 #include <SkrOS/filesystem.hpp>
 
 #include "SkrProfile/profile.h"
+
+const bool UseRayTracing = true;
 
 void skr_render_mesh_initialize(skr_render_mesh_id render_mesh, skr_mesh_resource_id mesh_resource)
 {
@@ -19,10 +22,12 @@ void skr_render_mesh_initialize(skr_render_mesh_id render_mesh, skr_mesh_resourc
             ibv_c++;
         }
     }
+    
     // 2. do early reserve
     render_mesh->mesh_resource_id = mesh_resource;
     render_mesh->index_buffer_views.reserve(ibv_c);
     render_mesh->vertex_buffer_views.reserve(vbv_c);
+    
     // 3. fill sections
     for (uint32_t i = 0; i < mesh_resource->sections.size(); i++)
     {
@@ -58,11 +63,45 @@ void skr_render_mesh_initialize(skr_render_mesh_id render_mesh, skr_mesh_resourc
             draw_cmd.primitive_index = prim_idx;
             draw_cmd.material_index = prim.material_index;
         }
-    }    
+    }
+    
+    // 4. construct blas
+    if (UseRayTracing && (mesh_resource->primitives.size() > 0))
+    {
+        skr::InlineVector<CGPUAccelerationStructureGeometryDesc, 4> geoms;
+        for (auto primitve : mesh_resource->primitives)
+        {
+            auto pos_vb = primitve.vertex_buffers.find_if(
+                [](auto prim){ return prim.attribute == SKR_VERT_ATTRIB_POSITION; }
+            ).ptr();
+            if (!pos_vb) continue;
+            
+            CGPUAccelerationStructureGeometryDesc geom = {};
+            geom.vertex_buffer = render_mesh->buffers[pos_vb->buffer_index];
+            geom.vertex_offset = pos_vb->offset;
+            geom.vertex_stride = pos_vb->stride;
+            geom.index_buffer = render_mesh->buffers[primitve.index_buffer.buffer_index];
+            geom.index_offset = primitve.index_buffer.index_offset;
+            geom.index_stride = primitve.index_buffer.stride;
+            geom.vertex_format = CGPU_FORMAT_R32G32B32_SFLOAT;
+            geoms.add(geom);
+        }
+
+        CGPUAccelerationStructureDescriptor blas_desc = {};
+        blas_desc.type = CGPU_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
+        blas_desc.bottom.geometries = geoms.data();
+        blas_desc.bottom.count = geoms.size();
+        render_mesh->blas = cgpu_create_acceleration_structure(geoms[0].vertex_buffer->device, &blas_desc);
+    }
 }
 
 void skr_render_mesh_free(skr_render_mesh_id render_mesh)
 {
+    if (UseRayTracing && render_mesh->blas)
+    {
+        cgpu_free_acceleration_structure(render_mesh->blas);
+    }
+
     for (auto&& buffer : render_mesh->buffers)
     {
         cgpu_free_buffer(buffer);

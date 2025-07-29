@@ -12,7 +12,7 @@ void* JsonConfigImporter::Import(skr::io::IRAMService* ioService, CookContext* c
     auto type = skr::get_type_from_guid(configType);
     if (type == nullptr)
     {
-        SKR_LOG_ERROR(u8"import resource %s failed, rtti is not load", assetMetaFile->path.u8string().c_str());
+        SKR_LOG_ERROR(u8"import resource %s failed, rtti is not load", assetMetaFile->uri.c_str());
         return nullptr;
     }
 

@@ -16,12 +16,13 @@ struct CookContextImpl : public CookContext
     skr_guid_t GetImporterType() const override;
     uint32_t GetImporterVersion() const override;
     uint32_t GetCookerVersion() const override;
-    const AssetMetaFile* GetAssetMetaFile() const override;
+
+    // TODO: REMOVE THIS
     skr::String GetAssetPath() const override;
 
-    skr::filesystem::path AddSourceFile(const skr::filesystem::path& path) override;
-    skr::filesystem::path AddSourceFileAndLoad(skr::io::IRAMService* ioService, const skr::filesystem::path& path, skr::BlobId& destination) override;
-    skr::span<const skr::filesystem::path> GetSourceFiles() const override;
+    URI AddSourceFile(const URI& path) override;
+    URI AddSourceFileAndLoad(skr::io::IRAMService* ioService, const URI& path, skr::BlobId& destination) override;
+    skr::span<const URI> GetSourceFiles() const override;
 
     void AddRuntimeDependency(skr_guid_t resource) override;
     void AddSoftRuntimeDependency(skr_guid_t resource) override;
@@ -33,6 +34,16 @@ struct CookContextImpl : public CookContext
     const skr::task::event_t& GetCounter() override
     {
         return counter;
+    }
+
+    skr::RC<AssetMetaFile> GetAssetMetaFile() override
+    {
+        return metafile;
+    }
+
+    skr::RC<const AssetMetaFile> GetAssetMetaFile() const override
+    {
+        return metafile.cast_const<const AssetMetaFile>();
     }
 
     void SetCounter(skr::task::event_t& ct) override
@@ -53,6 +64,7 @@ struct CookContextImpl : public CookContext
     void* _Import() override;
     void _Destroy(void*) override;
 
+    skr::RC<AssetMetaFile> metafile = nullptr;
     skr::GUID importerType;
     uint32_t importerVersion = 0;
     uint32_t cookerVersion = 0;
@@ -66,17 +78,46 @@ struct CookContextImpl : public CookContext
     skr::filesystem::path outputPath;
     skr::Vector<SResourceHandle> staticDependencies;
     skr::Vector<skr::GUID> runtimeDependencies;
-    skr::Vector<skr::filesystem::path> fileDependencies;
+    skr::Vector<URI> fileDependencies;
 
-    CookContextImpl(skr::io::IRAMService* ioService)
+    CookContextImpl(skr::io::IRAMService* ioService, skr::RC<AssetMetaFile> metafile)
         : ioService(ioService)
     {
     }
 };
 
-CookContext* CookContext::Create(skr::io::IRAMService* service)
+CookContext* CookContext::Create(skr::RC<AssetMetaFile> metafile, skr::io::IRAMService* service)
 {
-    return SkrNew<CookContextImpl>(service);
+    auto ctx = SkrNew<CookContextImpl>(service, metafile);
+    //-----load importer
+    skr::archive::JsonReader reader(ctx->metafile->meta.view());
+    reader.StartObject();
+    if (auto jread_result = reader.Key(u8"importer"); jread_result.has_value())
+    {
+        skr_guid_t importerTypeGuid = {};
+        ctx->importer = GetImporterRegistry()->LoadImporter(ctx->metafile.get(), &reader, &importerTypeGuid);
+        if (!ctx->importer)
+        {
+            SKR_LOG_ERROR(u8"[CookContext::Cook] importer failed to load, asset: %s", ctx->metafile->uri.c_str());
+            return nullptr;
+        }
+        ctx->importerVersion = ctx->importer->Version();
+        ctx->importerType = importerTypeGuid;
+        //-----import raw data
+        SkrZoneScopedN("Importer.Import");
+        skr::String name_holder = u8"unknown";
+        if (auto type = skr::get_type_from_guid(ctx->importerType))
+        {
+            name_holder = type->name().u8_str();
+        }
+        else
+        {
+            name_holder = skr::format(u8"{}", ctx->importerType);
+            SKR_LOG_WARN(u8"[CookContext::Cook] importer without RTTI INFO detected: %s", name_holder.c_str());
+        }
+    }
+    reader.EndObject();
+    return ctx;
 }
 
 void CookContext::Destroy(CookContext* ctx)
@@ -88,48 +129,22 @@ void CookContextImpl::_Destroy(void* resource)
 {
     if (!importer)
     {
-        SKR_LOG_ERROR(u8"[CookContext::Cook] importer failed to load, asset path path: %s", record->path.u8string().c_str());
+        SKR_LOG_ERROR(u8"[CookContext::Cook] importer failed to load, asset path path: %s", metafile->uri.c_str());
     }
     SKR_DEFER({ SkrDelete(importer); });
     //-----import raw data
     importer->Destroy(resource);
-    SKR_LOG_INFO(u8"[CookContext::Cook] asset freed for asset: %s", record->path.u8string().c_str());
+    SKR_LOG_INFO(u8"[CookContext::Cook] asset freed for asset: %s", metafile->uri.c_str());
 }
 
 void* CookContextImpl::_Import()
 {
     SkrZoneScoped;
     //-----load importer
-    skr::archive::JsonReader reader(record->meta.view());
-    reader.StartObject();
-    SKR_DEFER({ reader.EndObject(); });
-    if (auto jread_result = reader.Key(u8"importer"); jread_result.has_value())
+    if (importer != nullptr)
     {
-        skr_guid_t importerTypeGuid = {};
-        importer = GetImporterRegistry()->LoadImporter(record, &reader, &importerTypeGuid);
-        if (!importer)
-        {
-            SKR_LOG_ERROR(u8"[CookContext::Cook] importer failed to load, asset: %s", record->path.u8string().c_str());
-            return nullptr;
-        }
-        importerVersion = importer->Version();
-        importerType = importerTypeGuid;
-        //-----import raw data
-        SkrZoneScopedN("Importer.Import");
-        skr::String name_holder = u8"unknown";
-        if (auto type = skr::get_type_from_guid(importerType))
-        {
-            name_holder = type->name().u8_str();
-        }
-        else
-        {
-            name_holder = skr::format(u8"{}", importerType);
-            SKR_LOG_WARN(u8"[CookContext::Cook] importer without RTTI INFO detected: %s", name_holder.c_str());
-        }
-        [[maybe_unused]] const char* type_name = name_holder.c_str_raw();
-        ZoneName(type_name, strlen(type_name));
         auto rawData = importer->Import(ioService, this);
-        SKR_LOG_INFO(u8"[CookContext::Cook] asset imported for asset: %s", record->path.u8string().c_str());
+        SKR_LOG_INFO(u8"[CookContext::Cook] asset imported for asset: %s", metafile->uri.c_str());
         return rawData;
     }
     return nullptr;
@@ -160,34 +175,33 @@ uint32_t CookContextImpl::GetCookerVersion() const
     return cookerVersion;
 }
 
-const AssetMetaFile* CookContextImpl::GetAssetMetaFile() const
-{
-    return record;
-}
-
 skr::String CookContextImpl::GetAssetPath() const
 {
-    return record->path.u8string().c_str();
+    return metafile->uri.c_str();
 }
 
-skr::filesystem::path CookContextImpl::AddSourceFile(const skr::filesystem::path& inPath)
+URI CookContextImpl::AddSourceFile(const URI& inPath)
 {
     auto iter = std::find_if(fileDependencies.begin(), fileDependencies.end(), [&](const auto& dep) { return dep == inPath; });
     if (iter == fileDependencies.end())
         fileDependencies.add(inPath);
-    return record->path.parent_path() / inPath;
+    
+    auto abs = std::filesystem::path(inPath.c_str());
+    if (std::filesystem::exists(abs))
+        return abs.u8string().c_str();
+    else
+        return (std::filesystem::path(metafile->uri.c_str()).parent_path() / inPath.c_str()).u8string().c_str();
 }
 
-skr::filesystem::path CookContextImpl::AddSourceFileAndLoad(skr::io::IRAMService* ioService, const skr::filesystem::path& path, skr::BlobId& destination)
+URI CookContextImpl::AddSourceFileAndLoad(skr::io::IRAMService* ioService, const URI& path, skr::BlobId& destination)
 {
     auto outPath = AddSourceFile(path.c_str());
-    auto u8Path = outPath.u8string();
     const auto assetMetaFile = GetAssetMetaFile();
     // load file
     skr::task::event_t counter;
     auto rq = ioService->open_request();
     rq->set_vfs(assetMetaFile->project->GetAssetVFS());
-    rq->set_path(u8Path.c_str());
+    rq->set_path(outPath.c_str());
     rq->add_block({}); // read all
     rq->add_callback(SKR_IO_STAGE_COMPLETED, +[](skr_io_future_t* future, skr_io_request_t* request, void* data) noexcept {
         SkrZoneScopedN("SignalCounter");
@@ -199,7 +213,7 @@ skr::filesystem::path CookContextImpl::AddSourceFileAndLoad(skr::io::IRAMService
     return outPath;
 }
 
-skr::span<const skr::filesystem::path> CookContextImpl::GetSourceFiles() const
+skr::span<const URI> CookContextImpl::GetSourceFiles() const
 {
     return fileDependencies;
 }

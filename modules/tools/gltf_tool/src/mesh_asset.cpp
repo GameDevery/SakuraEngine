@@ -13,14 +13,8 @@
 
 void* skd::asset::GltfMeshImporter::Import(skr::io::IRAMService* ioService, CookContext* context)
 {
-    skr::filesystem::path relPath = assetPath.u8_str();
-    auto ext = relPath.extension();
-    if (ext != ".gltf")
-    {
-        return nullptr;
-    }
     const auto assetMetaFile = context->GetAssetMetaFile();
-    auto path = context->AddSourceFile(relPath).u8string();
+    auto path = context->AddSourceFile(assetPath);
     auto vfs = assetMetaFile->project->GetAssetVFS();
     return ImportGLTFWithData(path.c_str(), ioService, vfs);
 }
@@ -34,7 +28,7 @@ bool skd::asset::MeshCooker::Cook(CookContext* ctx)
 {
     const auto outputPath = ctx->GetOutputPath();
     const auto assetMetaFile = ctx->GetAssetMetaFile();
-    auto mesh_asset = ctx->GetAssetMetadata<MeshAsset>();
+    auto mesh_asset = assetMetaFile->GetAssetMetadata<MeshAsset>();
     if (mesh_asset.vertexType == skr_guid_t{})
     {
         SKR_LOG_ERROR(u8"MeshCooker: VertexType is not specified for asset %s!", ctx->GetAssetPath().c_str());
@@ -52,8 +46,9 @@ bool skd::asset::MeshCooker::Cook(CookContext* ctx)
         mesh.materials.add(material);
     }
 
+    const auto importerType = ctx->GetImporterType();
     skr::Vector<skr::Vector<uint8_t>> blobs;
-    if (ctx->GetImporterType() == skr::type_id_of<GltfMeshImporter>())
+    if (importerType == skr::type_id_of<GltfMeshImporter>())
     {
         auto importer = static_cast<GltfMeshImporter*>(ctx->GetImporter());
         auto gltf_data = ctx->Import<cgltf_data>();
@@ -166,7 +161,8 @@ bool skd::asset::MeshCooker::Cook(CookContext* ctx)
         SKR_DEFER({ fclose(buffer_file); });
         if (!buffer_file)
         {
-            SKR_LOG_FMT_ERROR(u8"[MeshCooker::Cook] failed to write cooked file for resource {}! path: {}", assetMetaFile->guid, assetMetaFile->path.string());
+            SKR_LOG_FMT_ERROR(u8"[MeshCooker::Cook] failed to write cooked file for resource {}! path: {}", 
+                assetMetaFile->guid, assetMetaFile->uri);
             return false;
         }
         fwrite(blobs[i].data(), 1, blobs[i].size(), buffer_file);

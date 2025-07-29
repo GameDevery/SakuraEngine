@@ -138,9 +138,11 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
         resource_system->Update();
 
         mesh_resource.resolve(true, 0, ESkrRequesterType::SKR_REQUESTER_SYSTEM);
-        while (!mesh_resource.is_resolved());
-        auto MeshResource = mesh_resource.get_resolved(true);
-        MeshResource = mesh_resource.get_resolved(true);
+        if (mesh_resource.is_resolved())
+        {
+            auto MeshResource = mesh_resource.get_resolved(true);
+            MeshResource = mesh_resource.get_resolved(true);
+        }
     }
     render_app->close_all_windows();
     render_app->get_event_queue()->remove_handler(&close_listener);
