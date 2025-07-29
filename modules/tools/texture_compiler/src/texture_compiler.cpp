@@ -65,7 +65,6 @@ void TextureImporter::Destroy(void* resource)
 
 bool TextureCooker::Cook(CookContext* ctx)
 {
-    const auto outputPath = ctx->GetOutputPath();
     auto uncompressed = ctx->Import<RawTextureData>();
     SKR_DEFER({ ctx->Destroy(uncompressed); });
 
@@ -108,13 +107,20 @@ bool TextureCooker::Cook(CookContext* ctx)
     {
         SkrZoneScopedN("SaveToDisk");
 
+        auto record = ctx->GetAssetMetaFile();
+        auto resource_vfs = record->project->GetResourceVFS();
         auto extension = Util_CompressedTypeString(compressed_format);
-        auto compressed_path = outputPath;
-        compressed_path.replace_extension(extension.c_str());
-        auto compressed_pathstr = compressed_path.string();
-        auto compressed_file = fopen(compressed_pathstr.c_str(), "wb");
-        SKR_DEFER({ fclose(compressed_file); });
-        fwrite(compressed_data.data(), compressed_data.size(), 1, compressed_file);
+        auto filename = skr::format(u8"{}.{}", record->guid, extension);
+        
+        auto compressed_file = skr_vfs_fopen(resource_vfs, filename.u8_str(), 
+                                           SKR_FM_WRITE_BINARY, SKR_FILE_CREATION_ALWAYS_NEW);
+        if (!compressed_file)
+        {
+            SKR_LOG_ERROR(u8"[TextureCooker] Failed to open compressed texture file for writing: %s", filename.c_str());
+            return false;
+        }
+        SKR_DEFER({ skr_vfs_fclose(compressed_file); });
+        skr_vfs_fwrite(compressed_file, compressed_data.data(), 0, compressed_data.size());
     }
     return true;
 }

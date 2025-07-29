@@ -1,22 +1,23 @@
 #pragma once
-#include "SkrOS/filesystem.hpp"
 #include "SkrCore/log.hpp"
 #include "SkrCore/blob.hpp"
+#include "SkrCore/platform/vfs.h"
 #include "SkrContainers/vector.hpp"
 #include "SkrRT/resource/resource_header.hpp"
 #include "SkrToolCore/cook_system/cooker.hpp"
+#include "SkrToolCore/project/project.hpp"
 
 SKR_DECLARE_TYPE_ID_FWD(skr::io, IRAMService, skr_io_ram_service);
 
 namespace skd::asset
 {
 using URI = skr::String;
-
 struct AssetMetaFile
 {
     SKR_RC_IMPL();
 public:
-    AssetMetaFile(skr::StringView uri, skr::String&& meta);
+    AssetMetaFile(skr::StringView uri, skr::String&& meta, 
+                  const skr::GUID& guid, const skr::GUID& type, const skr::GUID& cooker);
 
     template <class T>
     T GetAssetMetadata()
@@ -43,7 +44,6 @@ struct TOOL_CORE_API CookContext
 
 public:
     virtual ~CookContext() = default;
-    virtual skr::filesystem::path GetOutputPath() const = 0;
 
     virtual Importer* GetImporter() const = 0;
     virtual skr::GUID GetImporterType() const = 0;
@@ -82,8 +82,10 @@ public:
     {
         auto record = GetAssetMetaFile();
         //------save resource to disk
-        auto outputPath = GetOutputPath().u8string();
-        auto file = fopen((const char*)outputPath.c_str(), "wb");
+        auto resource_vfs = record->project->GetResourceVFS();
+        auto filename = skr::format(u8"{}.bin", record->guid);
+        auto file = skr_vfs_fopen(resource_vfs, filename.u8_str(),
+                                  SKR_FM_WRITE_BINARY, SKR_FILE_CREATION_ALWAYS_NEW);
         if (!file)
         {
             SKR_LOG_FMT_ERROR(u8"[ConfigCooker::Cook] failed to write cooked file for resource {}! path: {}",
@@ -91,7 +93,7 @@ public:
                 (const char*)record->uri.c_str());
             return false;
         }
-        SKR_DEFER({ fclose(file); });
+        SKR_DEFER({ skr_vfs_fclose(file); });
         //------write resource object
         skr::Vector<uint8_t> buffer;
         skr::archive::BinVectorWriter writer{ &buffer };
@@ -103,7 +105,7 @@ public:
                 (const char*)record->uri.c_str());
             return false;
         }
-        if (fwrite(buffer.data(), 1, buffer.size(), file) < buffer.size())
+        if (skr_vfs_fwrite(file, buffer.data(), 0, buffer.size()) < buffer.size())
         {
             SKR_LOG_FMT_ERROR(u8"[ConfigCooker::Cook] failed to write cooked file for resource {}! path: {}",
                 record->guid,
@@ -119,7 +121,6 @@ protected:
 
     virtual void SetCounter(skr::task::event_t&) = 0;
     virtual void SetCookerVersion(uint32_t version) = 0;
-    virtual void SetOutputPath(const skr::filesystem::path& path) = 0;
 
     virtual void* _Import() = 0;
     virtual void _Destroy(void*) = 0;

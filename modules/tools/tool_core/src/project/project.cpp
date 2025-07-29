@@ -7,10 +7,6 @@
 
 namespace skd
 {
-void SProject::SetWorkspace(const skr::filesystem::path& path) noexcept
-{
-    workspace = path;
-}
 
 // void SProject::SetAssetVFS(skr_vfs_t* asset_vfs)
 // {
@@ -35,6 +31,11 @@ skr_vfs_t* SProject::GetAssetVFS() const
 skr_vfs_t* SProject::GetResourceVFS() const
 {
     return resource_vfs;
+}
+
+skr_vfs_t* SProject::GetDependencyVFS() const
+{
+    return dependency_vfs;
 }
 
 skr::io::IRAMService* SProject::GetRamService() const
@@ -79,11 +80,7 @@ bool SProject::OpenProject(const skr::String& project_name, const skr::String& r
 
             // Extract and resolve variable name
             auto varName = remainingView.subview(0, varEnd.index());
-            if (varName == u8"workspace")
-            {
-                result.append(workspace.u8string().c_str());
-            }
-            else if (varName == u8"platform")
+            if (varName == u8"platform")
             {
 #if SKR_PLAT_WINDOWS
                 result.append(u8"windows");
@@ -140,36 +137,53 @@ bool SProject::OpenProject(const skr::String& project_name, const skr::String& r
     asset_vfs_desc.override_mount_dir = u8assetPath.c_str();
     asset_vfs = skr_create_vfs(&asset_vfs_desc);
 
+    // create dependency VFS
+    skr_vfs_desc_t dependency_vfs_desc = {};
+    dependency_vfs_desc.app_name = name.u8_str();
+    dependency_vfs_desc.mount_type = SKR_MOUNT_TYPE_CONTENT;
+    auto u8dependencyPath = dependencyDirectory.u8string();
+    dependency_vfs_desc.override_mount_dir = u8dependencyPath.c_str();
+    dependency_vfs = skr_create_vfs(&dependency_vfs_desc);
+
     auto ioServiceDesc = make_zeroed<skr_ram_io_service_desc_t>();
     ioServiceDesc.name = u8"CompilerRAMIOService";
     ioServiceDesc.sleep_time = 1000 / 60;
     ram_service = skr_io_ram_service_t::create(&ioServiceDesc);
     ram_service->run();
 
-    // Create output dir
-    skr::filesystem::create_directories(GetOutputPath(), ec);
+    // Create output directories
+    skr_vfs_mkdir(resource_vfs, u8".");
+    skr_vfs_mkdir(dependency_vfs, u8".");
     return true;
 }
 
 bool SProject::OpenProject(const skr::filesystem::path& projectFilePath) noexcept
 {
-    auto projectPath = projectFilePath.lexically_normal().string();
+    auto projectPath = projectFilePath.lexically_normal();
     skd::SProjectConfig cfg;
     {
-        auto projectFile = fopen(projectPath.c_str(), "rb");
+        // Create a temporary VFS for reading the project file
+        skr_vfs_desc_t temp_vfs_desc = {};
+        temp_vfs_desc.app_name = u8"TempProjectLoader";
+        temp_vfs_desc.mount_type = SKR_MOUNT_TYPE_ABSOLUTE;
+        auto temp_vfs = skr_create_vfs(&temp_vfs_desc);
+        
+        auto projectFile = skr_vfs_fopen(temp_vfs, (const char8_t*)projectPath.u8string().c_str(), 
+                                         SKR_FM_READ_BINARY, SKR_FILE_CREATION_OPEN_EXISTING);
         if (!projectFile)
         {
-            SKR_LOG_ERROR(u8"Failed to open project file: %s", projectPath.c_str());
+            SKR_LOG_ERROR(u8"Failed to open project file: %s", projectPath.u8string().c_str());
+            skr_free_vfs(temp_vfs);
             return false;
         }
-        // read string from file with c <file>
-        fseek(projectFile, 0, SEEK_END);
-        auto fileSize = ftell(projectFile);
-        fseek(projectFile, 0, SEEK_SET);
+        
+        // read string from file
+        auto fileSize = skr_vfs_fsize(projectFile);
         skr::String projectFileContent;
         projectFileContent.add(u8'0', fileSize);
-        fread(projectFileContent.data_raw_w(), 1, fileSize, projectFile);
-        fclose(projectFile);
+        skr_vfs_fread(projectFile, projectFileContent.data_raw_w(), 0, fileSize);
+        skr_vfs_fclose(projectFile);
+        skr_free_vfs(temp_vfs);
 
         skr::archive::JsonReader reader(projectFileContent.view());
         if (!skr::json_read(&reader, cfg))
@@ -214,6 +228,8 @@ SProject::~SProject() noexcept
 {
     if (ram_service)
         skr_io_ram_service_t::destroy(ram_service);
+    if (dependency_vfs)
+        skr_free_vfs(dependency_vfs);
     if (resource_vfs)
         skr_free_vfs(resource_vfs);
     if (asset_vfs)

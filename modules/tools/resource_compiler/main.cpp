@@ -141,8 +141,7 @@ int compile_project(skd::SProject* project)
         });
     }
     SKR_LOG_INFO(u8"Project asset import finished.");
-    skr::filesystem::create_directories(project->GetOutputPath(), ec);
-    skr::filesystem::create_directories(project->GetDependencyPath(), ec);
+    // Output directories are now managed by the cook system itself
     //----- schedule cook tasks (checking dependencies)
     {
         system.ParallelForEachAsset(1,

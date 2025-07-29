@@ -36,7 +36,6 @@ void ShaderOptionImporter::Destroy(void* resource)
 
 bool ShaderOptionsCooker::Cook(CookContext* ctx)
 {
-    const auto outputPath = ctx->GetOutputPath();
     //-----load config
     // no cook config for config, skipping
 

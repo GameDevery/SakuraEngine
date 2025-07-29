@@ -10,8 +10,6 @@ namespace skd::asset
 {
 struct CookContextImpl : public CookContext
 {
-    skr::filesystem::path GetOutputPath() const override;
-
     Importer* GetImporter() const override;
     skr_guid_t GetImporterType() const override;
     uint32_t GetImporterVersion() const override;
@@ -56,11 +54,6 @@ struct CookContextImpl : public CookContext
         cookerVersion = version;
     }
 
-    void SetOutputPath(const skr::filesystem::path& path) override
-    {
-        outputPath = path;
-    }
-
     void* _Import() override;
     void _Destroy(void*) override;
 
@@ -75,7 +68,6 @@ struct CookContextImpl : public CookContext
     // Job system wait counter
     skr::task::event_t counter;
 
-    skr::filesystem::path outputPath;
     skr::Vector<SResourceHandle> staticDependencies;
     skr::Vector<skr::GUID> runtimeDependencies;
     skr::Vector<URI> fileDependencies;
@@ -150,10 +142,6 @@ void* CookContextImpl::_Import()
     return nullptr;
 }
 
-skr::filesystem::path CookContextImpl::GetOutputPath() const
-{
-    return outputPath;
-}
 
 Importer* CookContextImpl::GetImporter() const
 {
@@ -186,11 +174,24 @@ URI CookContextImpl::AddSourceFile(const URI& inPath)
     if (iter == fileDependencies.end())
         fileDependencies.add(inPath);
     
-    auto abs = std::filesystem::path(inPath.c_str());
-    if (std::filesystem::exists(abs))
-        return abs.u8string().c_str();
-    else
-        return (std::filesystem::path(metafile->uri.c_str()).parent_path() / inPath.c_str()).u8string().c_str();
+    // Check if the path exists in asset VFS
+    auto asset_vfs = metafile->project->GetAssetVFS();
+    if (skr_vfs_fexists(asset_vfs, inPath.u8_str()))
+        return inPath;
+    
+    // Try relative to current asset's directory
+    // Extract directory from URI
+    auto uri_view = metafile->uri.view();
+    auto last_slash = uri_view.find_last_of(u8"/\\");
+    if (last_slash)
+    {
+        auto dir = uri_view.substr(0, last_slash.value());
+        auto relative_path = skr::format(u8"{}/{}", dir, inPath);
+        if (skr_vfs_fexists(asset_vfs, relative_path.u8_str()))
+            return relative_path;
+    }
+    
+    return inPath;
 }
 
 URI CookContextImpl::AddSourceFileAndLoad(skr::io::IRAMService* ioService, const URI& path, skr::BlobId& destination)

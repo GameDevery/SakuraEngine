@@ -35,7 +35,6 @@ void TextureSamplerImporter::Destroy(void* resource)
 
 bool TextureSamplerCooker::Cook(CookContext* ctx)
 {
-    const auto outputPath = ctx->GetOutputPath();
     //-----load config
     // no cook config for config, skipping
 

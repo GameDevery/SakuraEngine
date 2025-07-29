@@ -3,6 +3,14 @@
 #include <string.h>
 #include <SkrOS/filesystem.hpp>
 #include "SkrCore/memory/memory.h"
+#include <sys/stat.h>
+#ifdef _WIN32
+    #include <direct.h>
+    #include <io.h>
+#else
+    #include <dirent.h>
+    #include <unistd.h>
+#endif
 
 #include "SkrProfile/profile.h"
 
@@ -12,23 +20,31 @@ struct skr_vfile_stdio_t : public skr_vfile_t {
     decltype(skr::filesystem::path().u8string()) filePath;
 };
 
+// Helper function to resolve path
+static skr::filesystem::path resolve_path(skr_vfs_t* fs, const char8_t* path)
+{
+    skr::filesystem::path p;
+    if (auto in_p = skr::filesystem::path(path); in_p.is_absolute())
+    {
+        p = in_p;
+    }
+    else
+    {
+        p = fs->mount_dir ? fs->mount_dir : path;
+        if (fs->mount_dir)
+        {
+            p /= path;
+        }
+    }
+    return p;
+}
+
 skr_vfile_t* skr_stdio_fopen(skr_vfs_t* fs, const char8_t* path, ESkrFileMode mode, ESkrFileCreation creation) SKR_NOEXCEPT
 {
     skr::filesystem::path p;
     {
         SkrZoneScopedN("CalculatePath");
-        if(auto in_p = skr::filesystem::path(path); in_p.is_absolute())
-        {
-            p = in_p;
-        } 
-        else
-        {
-            p = fs->mount_dir ? fs->mount_dir : path;
-            if(fs->mount_dir)
-            {
-                p /= path;
-            }
-        }
+        p = resolve_path(fs, path);
     }
     auto filePath = p.u8string();
     const auto* filePathStr = filePath.c_str();
@@ -139,6 +155,73 @@ bool skr_stdio_fclose(skr_vfile_t* file) SKR_NOEXCEPT
     return false;
 }
 
+// File system operations implementation
+bool skr_stdio_fexists(skr_vfs_t* fs, const char8_t* path) SKR_NOEXCEPT
+{
+    auto p = resolve_path(fs, path);
+    std::error_code ec;
+    return skr::filesystem::exists(p, ec);
+}
+
+bool skr_stdio_fis_directory(skr_vfs_t* fs, const char8_t* path) SKR_NOEXCEPT
+{
+    auto p = resolve_path(fs, path);
+    std::error_code ec;
+    return skr::filesystem::is_directory(p, ec);
+}
+
+bool skr_stdio_fremove(skr_vfs_t* fs, const char8_t* path) SKR_NOEXCEPT
+{
+    auto p = resolve_path(fs, path);
+    std::error_code ec;
+    return skr::filesystem::remove(p, ec);
+}
+
+bool skr_stdio_frename(skr_vfs_t* fs, const char8_t* from, const char8_t* to) SKR_NOEXCEPT
+{
+    auto from_p = resolve_path(fs, from);
+    auto to_p = resolve_path(fs, to);
+    std::error_code ec;
+    skr::filesystem::rename(from_p, to_p, ec);
+    return !ec;
+}
+
+bool skr_stdio_fcopy(skr_vfs_t* fs, const char8_t* from, const char8_t* to) SKR_NOEXCEPT
+{
+    auto from_p = resolve_path(fs, from);
+    auto to_p = resolve_path(fs, to);
+    std::error_code ec;
+    skr::filesystem::copy_file(from_p, to_p, skr::filesystem::copy_options::overwrite_existing, ec);
+    return !ec;
+}
+
+int64_t skr_stdio_fmtime(skr_vfs_t* fs, const char8_t* path) SKR_NOEXCEPT
+{
+    auto p = resolve_path(fs, path);
+    std::error_code ec;
+    auto ftime = skr::filesystem::last_write_time(p, ec);
+    if (ec) return -1;
+    
+    // Convert to unix timestamp
+    auto duration = ftime.time_since_epoch();
+    return std::chrono::duration_cast<std::chrono::seconds>(duration).count();
+}
+
+// Directory operations implementation
+bool skr_stdio_mkdir(skr_vfs_t* fs, const char8_t* path) SKR_NOEXCEPT
+{
+    auto p = resolve_path(fs, path);
+    std::error_code ec;
+    return skr::filesystem::create_directories(p, ec);
+}
+
+bool skr_stdio_rmdir(skr_vfs_t* fs, const char8_t* path) SKR_NOEXCEPT
+{
+    auto p = resolve_path(fs, path);
+    std::error_code ec;
+    return skr::filesystem::remove_all(p, ec) > 0;
+}
+
 void skr_vfs_get_native_procs(struct skr_vfs_proctable_t* procs) SKR_NOEXCEPT
 {
     procs->fopen = &skr_stdio_fopen;
@@ -146,4 +229,14 @@ void skr_vfs_get_native_procs(struct skr_vfs_proctable_t* procs) SKR_NOEXCEPT
     procs->fread = &skr_stdio_fread;
     procs->fwrite = &skr_stdio_fwrite;
     procs->fsize = &skr_stdio_fsize;
+    // File system operations
+    procs->fexists = &skr_stdio_fexists;
+    procs->fis_directory = &skr_stdio_fis_directory;
+    procs->fremove = &skr_stdio_fremove;
+    procs->frename = &skr_stdio_frename;
+    procs->fcopy = &skr_stdio_fcopy;
+    procs->fmtime = &skr_stdio_fmtime;
+    // Directory operations
+    procs->mkdir = &skr_stdio_mkdir;
+    procs->rmdir = &skr_stdio_rmdir;
 }

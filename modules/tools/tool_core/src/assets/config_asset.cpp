@@ -51,7 +51,6 @@ uint32_t ConfigCooker::Version()
 
 bool ConfigCooker::Cook(CookContext* ctx)
 {
-    const auto outputPath = ctx->GetOutputPath();
     // const auto assetMetaFile = ctx->GetAssetMetaFile();
     //-----load config
     // no cook config for config, skipping

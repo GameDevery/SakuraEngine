@@ -26,7 +26,6 @@ void skd::asset::GltfMeshImporter::Destroy(void* resource)
 
 bool skd::asset::MeshCooker::Cook(CookContext* ctx)
 {
-    const auto outputPath = ctx->GetOutputPath();
     const auto assetMetaFile = ctx->GetAssetMetaFile();
     auto mesh_asset = assetMetaFile->GetAssetMetadata<MeshAsset>();
     if (mesh_asset.vertexType == skr_guid_t{})

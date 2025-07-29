@@ -34,7 +34,6 @@ void MaterialImporter::Destroy(void* resource)
 
 bool MaterialCooker::Cook(CookContext* ctx)
 {
-    const auto outputPath = ctx->GetOutputPath();
     //-----load config
     // no cook config for config, skipping
 

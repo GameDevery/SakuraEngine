@@ -99,7 +99,6 @@ bool ShaderCooker::Cook(CookContext* ctx)
 {
     SkrZoneScopedN("ShaderCooker::Cook");
 
-    const auto outputPath = ctx->GetOutputPath();
     const auto assetMetaFile = ctx->GetAssetMetaFile();
     auto source_code = ctx->Import<ShaderSourceCode>();
     SKR_DEFER({ ctx->Destroy(source_code); });
