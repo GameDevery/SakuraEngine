@@ -17,8 +17,8 @@ namespace skd::asset
 struct CookSystemImpl : public skd::asset::CookSystem
 {
     friend struct ::SkrToolCoreModule;
-    using AssetMap = skr::ParallelFlatHashMap<skr_guid_t, skr::RC<AssetMetaFile>, skr::Hash<skr_guid_t>>;
-    using CookingMap = skr::ParallelFlatHashMap<skr_guid_t, CookContext*, skr::Hash<skr_guid_t>>;
+    using AssetMap = skr::ParallelFlatHashMap<skr::GUID, skr::RC<AssetMetaFile>, skr::Hash<skr::GUID>>;
+    using CookingMap = skr::ParallelFlatHashMap<skr::GUID, CookContext*, skr::Hash<skr::GUID>>;
 
     ~CookSystemImpl()
     {
@@ -28,22 +28,22 @@ struct CookSystemImpl : public skd::asset::CookSystem
     }
 
     Cooker* GetCooker(AssetMetaFile* info) const;
-    skr::task::event_t AddCookTask(skr_guid_t resource) override;
-    skr::task::event_t EnsureCooked(skr_guid_t resource) override;
+    skr::task::event_t AddCookTask(AssetID asset);
+    skr::task::event_t EnsureCooked(AssetID asset) override;
 
     void WaitForAll() override;
     bool AllCompleted() const override;
 
-    void RegisterCooker(bool isDefault, skr_guid_t cooker, skr_guid_t type, Cooker* instance) override;
-    void UnregisterCooker(skr_guid_t type) override;
-
     skr::RC<AssetMetaFile> LoadAssetMeta(SProject* project, const URI& uri) override;
-    void ImportAsset(SProject* project, skr::RC<AssetMetaFile> asset, skr::RC<Importer> importer, skr::RC<AssetMetadata> meta) override;
-    skr::RC<AssetMetaFile> GetAssetMetaFile(skr_guid_t guid) const override;
-
-    skr::io::IRAMService* GetIOService() override;
+    bool ImportAssetMeta(SProject* project, skr::RC<AssetMetaFile> asset, skr::RC<Importer> importer, skr::RC<AssetMetadata> meta) override;
+    bool SaveAssetMeta(SProject* project, skr::RC<AssetMetaFile> asset) override;
+    skr::RC<AssetMetaFile> GetAssetMetaFile(AssetID guid) const override;
 
     void ParallelForEachAsset(uint32_t batch, skr::FunctionRef<void(skr::span<skr::RC<AssetMetaFile>>)> f) override;
+
+    void RegisterCooker(bool isDefault, skr::GUID cooker, skr::GUID type, Cooker* instance) override;
+    void UnregisterCooker(skr::GUID type) override;
+    skr::io::IRAMService* GetIOService() override;
 
 protected:
     template <class F, class Iter>
@@ -58,8 +58,8 @@ protected:
 
     skr::task::counter_t mainCounter;
 
-    skr::FlatHashMap<skr_guid_t, Cooker*, skr::Hash<skr_guid_t>> defaultCookers;
-    skr::FlatHashMap<skr_guid_t, Cooker*, skr::Hash<skr_guid_t>> cookers;
+    skr::FlatHashMap<skr::GUID, Cooker*, skr::Hash<skr::GUID>> defaultCookers;
+    skr::FlatHashMap<skr::GUID, Cooker*, skr::Hash<skr::GUID>> cookers;
     skr::io::IRAMService* ioServices[ioServicesMaxCount];
 };
 } // namespace skd::asset
@@ -72,7 +72,7 @@ CookSystem* GetCookSystem()
     return &cook_system;
 }
 
-void RegisterCookerToSystem(CookSystem* system, bool isDefault, skr_guid_t cooker, skr_guid_t type, Cooker* instance)
+void RegisterCookerToSystem(CookSystem* system, bool isDefault, skr::GUID cooker, skr::GUID type, Cooker* instance)
 {
     system->RegisterCooker(isDefault, cooker, type, instance);
 }
@@ -114,7 +114,7 @@ skr::io::IRAMService* CookSystemImpl::GetIOService()
     return ioServices[cursor++];
 }
 
-skr::task::event_t CookSystemImpl::AddCookTask(skr::GUID asset)
+skr::task::event_t CookSystemImpl::AddCookTask(AssetID asset)
 {
     CookContext* cookContext = nullptr;
     auto assetfile = GetAssetMetaFile(asset);
@@ -139,7 +139,7 @@ skr::task::event_t CookSystemImpl::AddCookTask(skr::GUID asset)
     }
     skr::task::event_t counter;
     cookContext->SetCounter(counter);
-    auto guidName = skr::format(u8"Fiber{}", assetfile->guid);
+    auto fiberName = skr::format(u8"Fiber{}", assetfile->guid);
     mainCounter.add(1);
     skr::task::schedule([cookContext, ioService = GetIOService()]() {
         auto system = static_cast<CookSystemImpl*>(GetCookSystem());
@@ -151,20 +151,20 @@ skr::task::event_t CookSystemImpl::AddCookTask(skr::GUID asset)
         {
             const auto rtti_type = skr::get_type_from_guid(metaAsset->resource_type);
             const auto cookerTypeName = rtti_type ? rtti_type->name().c_str_raw() : (const char*)u8"UnknownResource";
-            const auto guidString = skr::format(u8"Guid: {}", metaAsset->guid);
-            const auto assetTypeGuidString = skr::format(u8"TypeGuid: {}", metaAsset->resource_type);
+            const auto assetName = skr::format(u8"Asset: {}", metaAsset->guid);
+            const auto assetType = skr::format(u8"TypeGuid: {}", metaAsset->resource_type);
             const auto scopeName = skr::format(u8"Cook.[{}]", (const skr_char8*)cookerTypeName);
-            const auto assetString = skr::format(u8"Asset: {}", metaAsset->uri.c_str());
+            const auto assetURI = skr::format(u8"Asset: {}", metaAsset->uri.c_str());
             ZoneName(scopeName.c_str_raw(), scopeName.size());
-            SkrMessage(guidString.c_str_raw(), guidString.size());
-            SkrMessage(assetTypeGuidString.c_str_raw(), assetTypeGuidString.size());
-            SkrMessage(assetString.c_str_raw(), assetString.size());
+            SkrMessage(assetName.c_str_raw(), assetName.size());
+            SkrMessage(assetType.c_str_raw(), assetType.size());
+            SkrMessage(assetURI.c_str_raw(), assetURI.size());
         }
 
         SKR_DEFER({
             auto system = static_cast<CookSystemImpl*>(GetCookSystem());
-            auto guid = cookContext->GetAssetMetaFile()->guid;
-            system->cooking.erase_if(guid, [](const auto& ctx_kv) { CookContext::Destroy(ctx_kv.second); return true; });
+            auto asset = cookContext->GetAssetMetaFile()->guid;
+            system->cooking.erase_if(asset, [](const auto& ctx_kv) { CookContext::Destroy(ctx_kv.second); return true; });
             system->mainCounter.decrement();
         });
 
@@ -231,13 +231,11 @@ skr::task::event_t CookSystemImpl::AddCookTask(skr::GUID asset)
                 skr_vfs_fwrite(file, jString.c_str_raw(), 0, jString.length_buffer());
             }
         }
-    },
-        &counter,
-        guidName.c_str_raw());
+    }, &counter, fiberName.c_str_raw());
     return counter;
 }
 
-void CookSystemImpl::RegisterCooker(bool isDefault, skr_guid_t cooker, skr_guid_t type, Cooker* instance)
+void CookSystemImpl::RegisterCooker(bool isDefault, skr::GUID cooker, skr::GUID type, Cooker* instance)
 {
     SKR_ASSERT(instance->system == nullptr);
     instance->system = this;
@@ -250,14 +248,14 @@ void CookSystemImpl::RegisterCooker(bool isDefault, skr_guid_t cooker, skr_guid_
     }
 }
 
-void CookSystemImpl::UnregisterCooker(skr_guid_t guid)
+void CookSystemImpl::UnregisterCooker(skr::GUID guid)
 {
     cookers.erase(guid);
 }
 
 Cooker* CookSystemImpl::GetCooker(AssetMetaFile* info) const
 {
-    if (info->cooker == skr_guid_t{})
+    if (info->cooker == skr::GUID{})
     {
         auto it = defaultCookers.find(info->resource_type);
         if (it != defaultCookers.end())
@@ -276,24 +274,24 @@ Cooker* CookSystemImpl::GetCooker(AssetMetaFile* info) const
         return false;                                                                                                           \
     }
 
-skr::task::event_t CookSystemImpl::EnsureCooked(skr_guid_t guid)
+skr::task::event_t CookSystemImpl::EnsureCooked(AssetID asset)
 {
     SkrZoneScoped;
     {
         skr::task::event_t result{ nullptr };
-        cooking.if_contains(guid, [&](const auto& ctx_kv) {
+        cooking.if_contains(asset, [&](const auto& ctx_kv) {
             result = ctx_kv.second->GetCounter();
         });
         if (result)
             return result;
     }
-    auto metaAsset = GetAssetMetaFile(guid);
+    auto metaAsset = GetAssetMetaFile(asset);
     if (!metaAsset)
     {
         SKR_LOG_ERROR(u8"[CookSystemImpl::EnsureCooked] resource not exist! asset path: %s", metaAsset->uri.c_str());
         return nullptr;
     }
-    return AddCookTask(guid);
+    return AddCookTask(asset);
 }
 
 skr::RC<AssetMetaFile> CookSystemImpl::LoadAssetMeta(SProject* project, const URI& uri)
@@ -315,17 +313,26 @@ skr::RC<AssetMetaFile> CookSystemImpl::LoadAssetMeta(SProject* project, const UR
     return nullptr;
 }
 
-void CookSystemImpl::ImportAsset(SProject* project, skr::RC<AssetMetaFile> asset, skr::RC<Importer> importer, skr::RC<AssetMetadata> meta)
+bool CookSystemImpl::ImportAssetMeta(SProject* project, skr::RC<AssetMetaFile> asset, skr::RC<Importer> importer, skr::RC<AssetMetadata> meta)
 {
     asset->importer = importer;
     asset->metadata = meta;
     asset->project = project;
-    assets.insert({asset->GetGUID(), asset});
+    return assets.insert({asset->GetGUID(), asset}).second;
 }
 
-skr::RC<AssetMetaFile> CookSystemImpl::GetAssetMetaFile(skr_guid_t guid) const
+bool CookSystemImpl::SaveAssetMeta(SProject* project, skr::RC<AssetMetaFile> asset) 
 {
-    auto it = assets.find(guid);
+    const auto uri = asset->GetURI();
+    skr::archive::JsonWriter writer(4);
+    skr::json_write(&writer, *asset);
+    auto content = writer.Write();
+    return project->SaveAssetMeta(uri, content);
+}
+
+skr::RC<AssetMetaFile> CookSystemImpl::GetAssetMetaFile(AssetID asset) const
+{
+    auto it = assets.find(asset);
     if (it != assets.end())
         return it->second;
     return nullptr;

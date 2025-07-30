@@ -25,8 +25,10 @@ struct TOOL_CORE_API SProject
 public:
     ~SProject() noexcept;
 
-    virtual bool LoadAssetData(skr::StringView uri, skr::Vector<uint8_t>& content) noexcept;
-    virtual bool LoadAssetMeta(skr::StringView uri, skr::String& content) noexcept;
+    virtual bool LoadAssetMeta(const URI& uri, skr::String& content) noexcept;
+    virtual bool SaveAssetMeta(const URI& uri, const skr::String& content) noexcept;
+    virtual bool LoadAssetSourceFile(const URI& uri, skr::Vector<uint8_t>& content) noexcept;
+
     virtual bool OpenProject(const URI& path) noexcept;
     virtual bool OpenProject(const skr::String& name, const skr::Path& root, const SProjectConfig& config) noexcept;
     virtual bool CloseProject() noexcept;
@@ -34,9 +36,6 @@ public:
     virtual skr::String GetEnv(skr::StringView name);
     virtual void SetEnv(skr::String, skr::String);
 
-    // void SetAssetVFS(skr_vfs_t* asset_vfs);
-    // void SetResourceVFS(skr_vfs_t* resource_vfs);
-    // void SetRAMService(skr::io::IRAMService* service);
     skr_vfs_t* GetAssetVFS() const;
     skr_vfs_t* GetResourceVFS() const;
     skr_vfs_t* GetDependencyVFS() const;

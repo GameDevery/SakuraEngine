@@ -33,7 +33,7 @@ bool SkelCooker::Cook(CookContext* ctx)
     //-----cook resource
     skr::anim::SkeletonResource resource;
     {
-        SkeletonBuilder                           builder;
+        SkeletonBuilder builder;
         ozz::unique_ptr<ozz::animation::Skeleton> skeleton = builder(*rawSkeleton);
         if (!skeleton)
         {

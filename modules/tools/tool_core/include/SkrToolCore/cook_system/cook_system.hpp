@@ -12,6 +12,9 @@ SKR_DECLARE_TYPE_ID_FWD(skr::io, IRAMService, skr_io_ram_service);
 
 namespace skd::asset
 {
+using AssetID = skr::GUID;
+using ResourceID = skr::GUID;
+
 struct TOOL_CORE_API CookContext
 {
     friend struct CookSystem;
@@ -31,11 +34,11 @@ public:
     virtual URI AddSourceFileAndLoad(skr::io::IRAMService* ioService, const URI& path, skr::BlobId& destination) = 0;
     virtual skr::span<const URI> GetSourceFiles() const = 0;
 
-    virtual void AddRuntimeDependency(skr::GUID resource) = 0;
-    virtual void AddSoftRuntimeDependency(skr::GUID resource) = 0;
-    virtual uint32_t AddStaticDependency(skr::GUID resource, bool install) = 0;
+    virtual void AddRuntimeDependency(ResourceID resource) = 0;
+    virtual void AddSoftRuntimeDependency(ResourceID resource) = 0;
+    virtual uint32_t AddStaticDependency(ResourceID resource, bool install) = 0;
 
-    virtual skr::span<const skr::GUID> GetRuntimeDependencies() const = 0;
+    virtual skr::span<const ResourceID> GetRuntimeDependencies() const = 0;
     virtual skr::span<const SResourceHandle> GetStaticDependencies() const = 0;
     virtual const SResourceHandle& GetStaticDependency(uint32_t index) const = 0;
 
@@ -146,20 +149,19 @@ public:
     virtual void Initialize() {}
     virtual void Shutdown() {}
 
-    virtual skr::task::event_t AddCookTask(skr_guid_t asset) = 0;
-    virtual skr::task::event_t EnsureCooked(skr_guid_t asset) = 0;
+    virtual skr::task::event_t EnsureCooked(AssetID asset) = 0;
     virtual void WaitForAll() = 0;
     virtual bool AllCompleted() const = 0;
 
-    virtual void RegisterCooker(bool isDefault, skr_guid_t cooker, skr_guid_t type, Cooker* instance) = 0;
-    virtual void UnregisterCooker(skr_guid_t type) = 0;
-
     virtual skr::RC<AssetMetaFile> LoadAssetMeta(SProject* project, const URI& uri) = 0;
-    virtual void ImportAsset(SProject* project, skr::RC<AssetMetaFile> asset, skr::RC<Importer> importer, skr::RC<AssetMetadata> meta = nullptr) = 0;
-    virtual skr::RC<AssetMetaFile> GetAssetMetaFile(skr_guid_t type) const = 0;
+    virtual bool ImportAssetMeta(SProject* project, skr::RC<AssetMetaFile> asset, skr::RC<Importer> importer, skr::RC<AssetMetadata> meta = nullptr) = 0;
+    virtual bool SaveAssetMeta(SProject* project, skr::RC<AssetMetaFile> asset) = 0;
+    virtual skr::RC<AssetMetaFile> GetAssetMetaFile(AssetID asset) const = 0;
 
     virtual void ParallelForEachAsset(uint32_t batch, skr::FunctionRef<void(skr::span<skr::RC<AssetMetaFile>>)> f) = 0;
 
+    virtual void RegisterCooker(bool isDefault, skr::GUID cooker, skr::GUID type, Cooker* instance) = 0;
+    virtual void UnregisterCooker(skr::GUID type) = 0;
     virtual skr::io::IRAMService* GetIOService() = 0;
 
     static constexpr uint32_t ioServicesMaxCount = 1;

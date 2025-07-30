@@ -171,6 +171,35 @@ bool SProject::OpenProject(const skr::String& project_name, const skr::Path& roo
     return true;
 }
 
+bool SProject::LoadAssetMeta(const URI& uri, skr::String& content) noexcept
+{
+    auto asset_file = skr_vfs_fopen(asset_vfs, uri.c_str(), SKR_FM_READ_BINARY, SKR_FILE_CREATION_OPEN_EXISTING);
+    const auto asset_size = skr_vfs_fsize(asset_file);
+    content.add(u8'0', asset_size);
+    skr_vfs_fread(asset_file, content.data_raw_w(), 0, asset_size);
+    skr_vfs_fclose(asset_file);
+    return true;
+}
+
+bool SProject::SaveAssetMeta(const URI& uri, const skr::String& content) noexcept
+{
+    auto asset_file = skr_vfs_fopen(asset_vfs, uri.c_str(), SKR_FM_READ_BINARY, SKR_FILE_CREATION_ALWAYS_NEW);
+    auto written = skr_vfs_fwrite(asset_file, content.data(), 0, content.size());
+    SKR_ASSERT(written == content.size() && "Failed to write all bytes!");
+    skr_vfs_fclose( asset_file);
+    return true;
+}
+
+bool SProject::LoadAssetSourceFile(const URI& uri, skr::Vector<uint8_t>& content) noexcept
+{
+    auto asset_file = skr_vfs_fopen(asset_vfs, uri.c_str(), SKR_FM_READ_BINARY, SKR_FILE_CREATION_OPEN_EXISTING);
+    const auto asset_size = skr_vfs_fsize(asset_file);
+    content.resize_unsafe(asset_size);
+    skr_vfs_fread(asset_file, content.data(), 0, asset_size);
+    skr_vfs_fclose(asset_file);
+    return true;
+}
+
 bool SProject::OpenProject(const URI& projectFilePath) noexcept
 {
     auto projectPath = skr::Path{projectFilePath};
@@ -213,28 +242,6 @@ bool SProject::OpenProject(const URI& projectFilePath) noexcept
 
 bool SProject::CloseProject() noexcept
 {   
-    return true;
-}
-
-bool SProject::LoadAssetData(skr::StringView uri, skr::Vector<uint8_t>& content) noexcept
-{
-    skr::String path = uri;
-    auto asset_file = skr_vfs_fopen(asset_vfs, path.u8_str(), SKR_FM_READ_BINARY, SKR_FILE_CREATION_OPEN_EXISTING);
-    const auto asset_size = skr_vfs_fsize(asset_file);
-    content.resize_unsafe(asset_size);
-    skr_vfs_fread(asset_file, content.data(), 0, asset_size);
-    skr_vfs_fclose(asset_file);
-    return true;
-}
-
-bool SProject::LoadAssetMeta(skr::StringView uri, skr::String& content) noexcept
-{
-    skr::String path = uri;
-    auto asset_file = skr_vfs_fopen(asset_vfs, path.u8_str(), SKR_FM_READ_BINARY, SKR_FILE_CREATION_OPEN_EXISTING);
-    const auto asset_size = skr_vfs_fsize(asset_file);
-    content.add(u8'0', asset_size);
-    skr_vfs_fread(asset_file, content.data_raw_w(), 0, asset_size);
-    skr_vfs_fclose(asset_file);
     return true;
 }
 

@@ -106,5 +106,6 @@ void skr_render_mesh_free(skr_render_mesh_id render_mesh)
     {
         cgpu_free_buffer(buffer);
     }
+
     SkrDelete(render_mesh);
 }

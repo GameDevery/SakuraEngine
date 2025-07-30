@@ -88,4 +88,30 @@ private:
     uint8_t _style;
 };
 
+
+template <>
+struct Hash<Path>
+{
+    inline size_t operator()(const Path& x) const
+    {
+        return skr_hash(x.c_str(), x.string().size(), 0);
+    }
+    inline size_t operator()(const String& x) const
+    {
+        return skr_hash(x.c_str(), x.size(), 0);
+    }
+    inline size_t operator()(const StringView& x) const
+    {
+        return skr_hash(x.data(), x.size(), 0);
+    }
+    inline size_t operator()(const char* x) const
+    {
+        return skr_hash(x, std::strlen(x), 0);
+    }
+    inline size_t operator()(const char8_t* x) const
+    {
+        return skr_hash(x, std::strlen(reinterpret_cast<const char*>(x)), 0);
+    }
+};
+
 } // namespace skr

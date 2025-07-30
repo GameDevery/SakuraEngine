@@ -1,5 +1,6 @@
 #include "SkrOS/filesystem.hpp"
 #include "SkrBase/misc/make_zeroed.hpp"
+#include "SkrContainers/hashmap.hpp"
 #include "SkrCore/module/module.hpp"
 #include "SkrCore/async/thread_job.hpp"
 #include "SkrTask/fib_task.hpp"
@@ -17,24 +18,12 @@
 #include "SkrMeshCore/mesh_processing.hpp"
 #include "SkrGLTFTool/mesh_asset.hpp"
 
+using namespace skr::literals;
+const auto MeshAssetID = u8"18db1369-ba32-4e91-aa52-b2ed1556f576"_guid;
+
 struct VirtualProject : skd::SProject
 {
-    VirtualProject()
-    {
-        /*
-        auto meta = u8R"_({
-            "guid": "18db1369-ba32-4e91-aa52-b2ed1556f576",
-            "type": "3b8ca511-33d1-4db4-b805-00eea6a8d5e1",
-            "importer": {
-                "importer_type": "D72E2056-3C12-402A-A8B8-148CB8EAB922",
-                "assetPath": "D:/Code/SakuraEngine/samples/application/game/assets/sketchfab/loli/scene.gltf"
-            },
-            "vertexType": "C35BD99A-B0A8-4602-AFCC-6BBEACC90321"
-        })_";
-        MetaDatabase.emplace(u8"girl.gltf", meta);
-        */
-    }
-    bool LoadAssetMeta(skr::StringView uri, skr::String& content) noexcept override
+    bool LoadAssetMeta(const skd::URI& uri, skr::String& content) noexcept override
     {
         if (MetaDatabase.contains(uri))
         {
@@ -43,7 +32,67 @@ struct VirtualProject : skd::SProject
         }
         return false;
     }
-    skr::ParallelFlatHashMap<skr::String, skr::String, skr::Hash<skr::String>> MetaDatabase;  
+
+    bool SaveAssetMeta(const skd::URI& uri, const skr::String& content) noexcept override
+    {
+        MetaDatabase[uri] = content;
+        return true;
+    }
+
+    bool ExistImportedAsset(const skd::URI& uri)
+    {
+        return MetaDatabase.contains(uri);
+    }
+
+    void SaveToDisk()
+    {
+        skr::archive::JsonWriter writer(4);
+        writer.StartObject();
+        writer.Key(u8"assets");
+        skr::json_write(&writer, MetaDatabase);
+        writer.EndObject();
+        
+        // Write to model_viewer.project file
+        const auto project_path = skr::fs::current_directory() / u8"model_viewer.project";
+        auto json_str = writer.Write();
+        
+        if (skr::fs::File::write_all_text(project_path, json_str.view()))
+        {
+            SKR_LOG_INFO(u8"[ModelViewer] Project saved to: %s", project_path.c_str());
+        }
+        else
+        {
+            SKR_LOG_ERROR(u8"[ModelViewer] Failed to save project to: %s", project_path.c_str());
+        }
+    }
+
+    void LoadFromDisk()
+    {
+        const auto project_path = skr::fs::current_directory() / u8"model_viewer.project";
+        
+        skr::String json_content;
+        if (skr::fs::File::read_all_text(project_path, json_content))
+        {
+            // Parse JSON
+            skr::archive::JsonReader reader(json_content.view());
+            reader.StartObject();
+            reader.Key(u8"assets");
+            {
+                skr::json_read(&reader, MetaDatabase);
+                SKR_LOG_INFO(u8"[ModelViewer] Project loaded from: %s, %zu assets", 
+                    project_path.c_str(), MetaDatabase.size());
+            }
+            reader.EndObject();
+        }
+        else
+        {
+            // File doesn't exist, which is fine - just means empty project
+            MetaDatabase.clear();
+            SKR_LOG_INFO(u8"[ModelViewer] No existing project file found at: %s, starting with empty project", project_path.c_str());
+        }
+    }
+
+    skr::ParallelFlatHashMap<skd::URI, skr::String, skr::Hash<skd::URI>> MetaDatabase;  
 };
 
 struct ModelViewerModule : public skr::IDynamicModule
@@ -94,9 +143,25 @@ void ModelViewerModule::on_load(int argc, char8_t** argv)
     skr::String projectName = u8"ModelViewer";
     skr::String rootPath = skr::fs::current_directory().string().c_str();
     project.OpenProject(u8"ModelViewer", rootPath.c_str(), projectConfig);
+    
+    // Load existing project data from disk
+    project.LoadFromDisk();
 
-    InitializeReosurceSystem();
-    InitializeAssetSystem();
+    // initialize resource & asset system
+    // these two systems co-works well like producers & consumers
+    // we can add resources as dependencies for one specific asset, e.g.:
+    // MeshAsset[id0] depends MaterialResource[id1-4] 
+    // then it's output resource:
+    // MeshResource[id0] depends MaterialResource[id1-4]
+    // When we load AsyncResource<MeshResource>[id0] with resource system, the materials will be loaded too!
+    // All these operations are async & paralleled behind background!
+    {
+        // resources are cooked runtime-data, i.e. DXT textures, Optimized meshes, etc.
+        InitializeReosurceSystem();
+
+        // assets are 'raw' source files, i.e. GLTF model, PNG image, etc. 
+        InitializeAssetSystem();
+    }
 
     CookAndLoadGLTF();
 }
@@ -106,6 +171,8 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
     using namespace skr;
     auto device = render_device->get_cgpu_device();
     auto gfx_queue = render_device->get_gfx_queue();
+    auto resource_system = skr::resource::GetResourceSystem();
+
     skr::render_graph::RenderGraphBuilder graph_builder;
     graph_builder.with_device(device)
         .with_gfx_queue(gfx_queue)
@@ -118,35 +185,48 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
     render_app->initialize();
     render_app->open_window(window_config);
     render_app->get_main_window()->show();
+
     struct CloseListener : public skr::ISystemEventHandler
     {
         void handle_event(const SkrSystemEvent& event) SKR_NOEXCEPT 
         {
             if (event.window.type == SKR_SYSTEM_EVENT_WINDOW_CLOSE_REQUESTED)
-            {
                 want_exit = true;
-            }
         }
         bool want_exit = false;
     } close_listener;
     render_app->get_event_queue()->add_handler(&close_listener);
 
+    // AsyncResource<> is a handle can be constructed by any resource type & ids
     skr::resource::AsyncResource<skr::renderer::MeshResource> mesh_resource;
-    mesh_resource = u8"18db1369-ba32-4e91-aa52-b2ed1556f576"_guid;
+    mesh_resource = MeshAssetID;
 
     while (!close_listener.want_exit)
     {
         render_app->get_event_queue()->pump_messages();
 
-        auto resource_system = skr::resource::GetResourceSystem();
+        // 'Update' polls resource requests and handles their loading & installing
+        // 'load': usually means 'fetch data blocks from disk' & 'deserialize object from these data'
+        // 'install': usually means some heavy post-works, like uploading vertices to GPU, build BLAS for meshes, etc.
+        // This 'Update' call is able to and should be called from [MULTIPLE] background thread workers.
+        // In this sample we call 'Update' here in main eventloop just for ease. 
         resource_system->Update();
 
+        // Resolve issues a install 'request' for mesh_resource, ResourceSystem will load & install it automatically behind background during 'Update' 
         mesh_resource.resolve(true, 0, ESkrRequesterType::SKR_REQUESTER_SYSTEM);
+        
+        // Resolving the resource is an async progress, thus 'is_resolved' handle will be like an async flag
+        // Once the resource is ready in some frame, we can fetch and use the object in AsyncResource<>
         if (mesh_resource.is_resolved())
         {
             auto MeshResource = mesh_resource.get_resolved(true);
             MeshResource = mesh_resource.get_resolved(true);
         }
+
+        // Resource handles are all ref-counted proxies! 'unload' or 'dtor' means [refcount -= 1]
+        // So resource will only be actually unloaded if there are no handles still reference to it.
+        auto ownershipCopy = mesh_resource;
+        ownershipCopy.unload(); // The MeshResource would be safe and unloaded because of the outter 'mesh_resource' handle.
     }
     render_app->close_all_windows();
     render_app->get_event_queue()->remove_handler(&close_listener);
@@ -155,13 +235,18 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
 
 void ModelViewerModule::on_unload()
 {
+    // save imported asset meta to disk
+    project.SaveToDisk();
+
+    // shutdown
     DestroyAssetSystem();
     DestroyResourceSystem();
-
     project.CloseProject();
 
+    // shutdown task system
     scheduler.unbind();
 
+    // shutdown logging
     skr_log_flush();
     skr_log_finalize_async_worker();
 }
@@ -169,7 +254,7 @@ void ModelViewerModule::on_unload()
 void ModelViewerModule::CookAndLoadGLTF()
 {
     auto& System = *skd::asset::GetCookSystem();
-    const bool NeedImport = true;
+    const bool NeedImport = !project.ExistImportedAsset(u8"girl.gltf");
     if (NeedImport) // Import from disk!
     {
         using namespace skr::literals;
@@ -183,18 +268,21 @@ void ModelViewerModule::CookAndLoadGLTF()
 
         auto asset = skr::RC<skd::asset::AssetMetaFile>::New(
             u8"girl.gltf",                                 // virtual uri for this asset in the project
-            u8"18db1369-ba32-4e91-aa52-b2ed1556f576"_guid, // guid for this asset
+            MeshAssetID, // guid for this asset
             skr::type_id_of<skr::renderer::MeshResource>(),// output resource is a mesh resource 
             skr::type_id_of<skd::asset::MeshCooker>()      // this cooker cooks the raw mesh data to mesh resource
         );
         // source file
         importer->assetPath = u8"D:/Code/SakuraEngine/samples/application/game/assets/sketchfab/loli/scene.gltf";
-        System.ImportAsset(&project, asset, importer, metadata);
+        System.ImportAssetMeta(&project, asset, importer, metadata);
+        
+        // save
+        System.SaveAssetMeta(&project, asset);
      
         auto event = System.EnsureCooked(asset->GetGUID());
         event.wait(true);
     }
-    else // Load imported asset from asset...
+    else // Load imported asset from project...
     {
         auto asset = System.LoadAssetMeta(&project, u8"girl.gltf");
         auto event = System.EnsureCooked(asset->GetGUID());
