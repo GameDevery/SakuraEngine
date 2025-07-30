@@ -24,12 +24,12 @@ size_t SStableShaderHash::hasher::operator()(const SStableShaderHash& hash) cons
 SStableShaderHash SStableShaderHash::hash_string(const char* str, uint32_t size) SKR_NOEXCEPT
 {
     if (!size) return SStableShaderHash(0, 0, 0, 0);
-    auto           result   = make_zeroed<SStableShaderHash>();
+    auto result = make_zeroed<SStableShaderHash>();
     const uint32_t seeds[4] = { 114u, 514u, 1919u, 810u };
-    result.valuea           = skr_hash32(str, size, seeds[0]);
-    result.valueb           = skr_hash32(str, size, seeds[1]);
-    result.valuec           = skr_hash32(str, size, seeds[2]);
-    result.valued           = skr_hash32(str, size, seeds[3]);
+    result.valuea = skr_hash32(str, size, seeds[0]);
+    result.valueb = skr_hash32(str, size, seeds[1]);
+    result.valuec = skr_hash32(str, size, seeds[2]);
+    result.valued = skr_hash32(str, size, seeds[3]);
     return result;
 }
 
@@ -104,18 +104,19 @@ ShaderCollectionResource::~ShaderCollectionResource() SKR_NOEXCEPT
 {
 }
 
-struct SKR_RENDERER_API ShaderResourceFactoryImpl : public ShaderResourceFactory {
+struct SKR_RENDERER_API ShaderResourceFactoryImpl : public ShaderResourceFactory
+{
     ShaderResourceFactoryImpl(const ShaderResourceFactory::Root& root)
         : root(root)
     {
     }
 
     ~ShaderResourceFactoryImpl() noexcept = default;
-    skr_guid_t        GetResourceType() override;
-    bool              AsyncIO() override { return true; }
-    bool              Unload(SResourceRecord* record) override;
+    skr_guid_t GetResourceType() override;
+    bool AsyncIO() override { return true; }
+    bool Unload(SResourceRecord* record) override;
     ESkrInstallStatus Install(SResourceRecord* record) override;
-    bool              Uninstall(SResourceRecord* record) override;
+    bool Uninstall(SResourceRecord* record) override;
     ESkrInstallStatus UpdateInstall(SResourceRecord* record) override;
 
     Root root;
@@ -135,14 +136,14 @@ ECGPUShaderBytecodeType ShaderResourceFactory::GetRuntimeBytecodeType(ECGPUBacke
 {
     switch (backend)
     {
-        case CGPU_BACKEND_D3D12:
-            return CGPU_SHADER_BYTECODE_TYPE_DXIL;
-        case CGPU_BACKEND_VULKAN:
-            return CGPU_SHADER_BYTECODE_TYPE_SPIRV;
-        case CGPU_BACKEND_METAL:
-            return CGPU_SHADER_BYTECODE_TYPE_MTL;
-        default:
-            return CGPU_SHADER_BYTECODE_TYPE_COUNT;
+    case CGPU_BACKEND_D3D12:
+        return CGPU_SHADER_BYTECODE_TYPE_DXIL;
+    case CGPU_BACKEND_VULKAN:
+        return CGPU_SHADER_BYTECODE_TYPE_SPIRV;
+    case CGPU_BACKEND_METAL:
+        return CGPU_SHADER_BYTECODE_TYPE_MTL;
+    default:
+        return CGPU_SHADER_BYTECODE_TYPE_COUNT;
     }
 }
 
@@ -176,15 +177,15 @@ ESkrInstallStatus ShaderResourceFactoryImpl::Install(SResourceRecord* record)
 {
     if (root.dont_create_shader) return SKR_INSTALL_STATUS_SUCCEED;
 
-    auto   shader_collection   = static_cast<skr_shader_collection_resource_t*>(record->resource);
+    auto shader_collection = static_cast<skr_shader_collection_resource_t*>(record->resource);
     auto&& root_switch_variant = shader_collection->GetRootStaticVariant();
     auto&& root_option_variant = root_switch_variant.GetRootDynamicVariants();
-    bool   launch_success      = false;
+    bool launch_success = false;
     // load bytecode and create CGPU shader
     for (uint32_t i = 0u; i < root_option_variant.size(); i++)
     {
-        const auto& identifier            = root_option_variant[i];
-        const auto  runtime_bytecode_type = ShaderResourceFactory::GetRuntimeBytecodeType(root.render_device->get_backend());
+        const auto& identifier = root_option_variant[i];
+        const auto runtime_bytecode_type = ShaderResourceFactory::GetRuntimeBytecodeType(root.render_device->get_backend());
         if (identifier.bytecode_type == runtime_bytecode_type)
         {
             const auto status = root.shadermap->install_shader(identifier);

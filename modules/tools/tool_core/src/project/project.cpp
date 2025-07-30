@@ -1,5 +1,5 @@
-#include "SkrCore/log.h"
 #include "SkrBase/misc/make_zeroed.hpp"
+#include "SkrCore/log.h"
 #include "SkrCore/platform/vfs.h"
 #include "SkrRT/io/ram_io.hpp"
 #include "SkrToolCore/project/project.hpp"
@@ -23,6 +23,19 @@ namespace skd
 //     this->ram_service = service;
 // }
 
+skr::String SProject::GetEnv(skr::StringView name)
+{
+    auto iter = env.find(name);
+    if (iter != env.end())
+        return iter->second;
+    return skr::String();
+}
+
+void SProject::SetEnv(skr::String k, skr::String v)
+{
+    env[k] = v;
+}
+
 skr_vfs_t* SProject::GetAssetVFS() const
 {
     return asset_vfs;
@@ -43,10 +56,10 @@ skr::io::IRAMService* SProject::GetRamService() const
     return ram_service;
 }
 
-bool SProject::OpenProject(const skr::String& project_name, const skr::String& root, const SProjectConfig& cfg) noexcept
+bool SProject::OpenProject(const skr::String& project_name, const skr::Path& root, const SProjectConfig& cfg) noexcept
 {
     std::error_code ec = {};
-    auto resolvePath = [&](const skr::String& path) -> skr::String {
+    auto resolvePath = [&](const skr::String& path) -> skr::Path {
         skr::String result;
         result.reserve(path.size() + 256); // Reserve extra space for expansions
 
@@ -80,7 +93,12 @@ bool SProject::OpenProject(const skr::String& project_name, const skr::String& r
 
             // Extract and resolve variable name
             auto varName = remainingView.subview(0, varEnd.index());
-            if (varName == u8"platform")
+            if (varName == u8"workspace")
+            {
+                auto workspace = skr::Path(GetEnv(u8"workspace"));
+                result.append(workspace.string());
+            }
+            else if (varName == u8"platform")
             {
 #if SKR_PLAT_WINDOWS
                 result.append(u8"windows");
@@ -101,32 +119,28 @@ bool SProject::OpenProject(const skr::String& project_name, const skr::String& r
             currentView = currentView.subview(varStart.index() + 2 + varEnd.index() + 1);
         }
 
-        return result;
+        auto r = skr::Path(result);
+        if (!r.is_absolute())
+        {
+            r = root / r;
+        }
+        return r;
     };
 
-    auto toAbsolutePath = [&](const skr::String& path) {
-        auto resolved = resolvePath(path);
-        skr::Path result{resolved.c_str()};
-        if (result.is_relative())
-        {
-            result = skr::Path{root.c_str()} / result;
-        }
-        return result;
-    };
 
     name = project_name;
 
-    assetDirectory = toAbsolutePath(cfg.assetDirectory).string();
-    resourceDirectory = toAbsolutePath(cfg.resourceDirectory).string();
-    artifactsDirectory = toAbsolutePath(cfg.artifactsDirectory).string();
-    dependencyDirectory = (skr::Path{artifactsDirectory} / u8"deps").string();
+    assetDirectory = resolvePath(cfg.assetDirectory.string()).string();
+    resourceDirectory = resolvePath(cfg.resourceDirectory.string()).string();
+    artifactsDirectory = resolvePath(cfg.artifactsDirectory.string());
+    dependencyDirectory = artifactsDirectory / u8"deps";
 
     // create resource VFS
     skr_vfs_desc_t resource_vfs_desc = {};
     resource_vfs_desc.app_name = name.u8_str();
     resource_vfs_desc.mount_type = SKR_MOUNT_TYPE_CONTENT;
     auto u8outputPath = resourceDirectory;
-    resource_vfs_desc.override_mount_dir = u8outputPath.c_str();
+    resource_vfs_desc.override_mount_dir = u8outputPath.string().c_str();
     resource_vfs = skr_create_vfs(&resource_vfs_desc);
 
     // create asset VFS
@@ -134,7 +148,7 @@ bool SProject::OpenProject(const skr::String& project_name, const skr::String& r
     asset_vfs_desc.app_name = name.u8_str();
     asset_vfs_desc.mount_type = SKR_MOUNT_TYPE_CONTENT;
     auto u8assetPath = assetDirectory;
-    asset_vfs_desc.override_mount_dir = u8assetPath.c_str();
+    asset_vfs_desc.override_mount_dir = u8assetPath.string().c_str();
     asset_vfs = skr_create_vfs(&asset_vfs_desc);
 
     // create dependency VFS
@@ -142,7 +156,7 @@ bool SProject::OpenProject(const skr::String& project_name, const skr::String& r
     dependency_vfs_desc.app_name = name.u8_str();
     dependency_vfs_desc.mount_type = SKR_MOUNT_TYPE_CONTENT;
     auto u8dependencyPath = dependencyDirectory;
-    dependency_vfs_desc.override_mount_dir = u8dependencyPath.c_str();
+    dependency_vfs_desc.override_mount_dir = u8dependencyPath.string().c_str();
     dependency_vfs = skr_create_vfs(&dependency_vfs_desc);
 
     auto ioServiceDesc = make_zeroed<skr_ram_io_service_desc_t>();
@@ -154,6 +168,35 @@ bool SProject::OpenProject(const skr::String& project_name, const skr::String& r
     // Create output directories
     skr_vfs_mkdir(resource_vfs, u8".");
     skr_vfs_mkdir(dependency_vfs, u8".");
+    return true;
+}
+
+bool SProject::LoadAssetMeta(const URI& uri, skr::String& content) noexcept
+{
+    auto asset_file = skr_vfs_fopen(asset_vfs, uri.c_str(), SKR_FM_READ_BINARY, SKR_FILE_CREATION_OPEN_EXISTING);
+    const auto asset_size = skr_vfs_fsize(asset_file);
+    content.add(u8'0', asset_size);
+    skr_vfs_fread(asset_file, content.data_raw_w(), 0, asset_size);
+    skr_vfs_fclose(asset_file);
+    return true;
+}
+
+bool SProject::SaveAssetMeta(const URI& uri, const skr::String& content) noexcept
+{
+    auto asset_file = skr_vfs_fopen(asset_vfs, uri.c_str(), SKR_FM_READ_BINARY, SKR_FILE_CREATION_ALWAYS_NEW);
+    auto written = skr_vfs_fwrite(asset_file, content.data(), 0, content.size());
+    SKR_ASSERT(written == content.size() && "Failed to write all bytes!");
+    skr_vfs_fclose( asset_file);
+    return true;
+}
+
+bool SProject::LoadAssetSourceFile(const URI& uri, skr::Vector<uint8_t>& content) noexcept
+{
+    auto asset_file = skr_vfs_fopen(asset_vfs, uri.c_str(), SKR_FM_READ_BINARY, SKR_FILE_CREATION_OPEN_EXISTING);
+    const auto asset_size = skr_vfs_fsize(asset_file);
+    content.resize_unsafe(asset_size);
+    skr_vfs_fread(asset_file, content.data(), 0, asset_size);
+    skr_vfs_fclose(asset_file);
     return true;
 }
 
@@ -199,28 +242,6 @@ bool SProject::OpenProject(const URI& projectFilePath) noexcept
 
 bool SProject::CloseProject() noexcept
 {   
-    return true;
-}
-
-bool SProject::LoadAssetData(skr::StringView uri, skr::Vector<uint8_t>& content) noexcept
-{
-    skr::String path = uri;
-    auto asset_file = skr_vfs_fopen(asset_vfs, path.u8_str(), SKR_FM_READ_BINARY, SKR_FILE_CREATION_OPEN_EXISTING);
-    const auto asset_size = skr_vfs_fsize(asset_file);
-    content.resize_unsafe(asset_size);
-    skr_vfs_fread(asset_file, content.data(), 0, asset_size);
-    skr_vfs_fclose(asset_file);
-    return true;
-}
-
-bool SProject::LoadAssetMeta(skr::StringView uri, skr::String& content) noexcept
-{
-    skr::String path = uri;
-    auto asset_file = skr_vfs_fopen(asset_vfs, path.u8_str(), SKR_FM_READ_BINARY, SKR_FILE_CREATION_OPEN_EXISTING);
-    const auto asset_size = skr_vfs_fsize(asset_file);
-    content.add(u8'0', asset_size);
-    skr_vfs_fread(asset_file, content.data_raw_w(), 0, asset_size);
-    skr_vfs_fclose(asset_file);
     return true;
 }
 

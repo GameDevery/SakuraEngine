@@ -16,12 +16,12 @@ void SkelGltfImporter::Destroy(void* data)
 void* SkelGltfImporter::Import(skr::io::IRAMService*, CookContext* context)
 {
     using namespace ozz::animation::offline;
-    GltfImporter                          impl;
+    GltfImporter impl;
     ozz::animation::offline::OzzImporter& impoter = impl;
-    OzzImporter::NodeType                 types   = {};
-    types.skeleton                                = true;
-    auto path                                     = context->AddSourceFile(assetPath.c_str());
-    auto fullAssetPath                            = context->GetAssetMetaFile()->project->GetAssetPath() / path;
+    OzzImporter::NodeType types = {};
+    types.skeleton = true;
+    auto path = context->AddSourceFile(assetPath.c_str());
+    auto fullAssetPath = context->GetAssetMetaFile()->GetProject()->GetAssetPath() / path;
     if (!impoter.Load(reinterpret_cast<const char*>(fullAssetPath.string().c_str())))
     {
         SKR_LOG_ERROR(u8"Failed to load gltf file %s for asset %s.", assetPath.c_str(), context->GetAssetPath().c_str());

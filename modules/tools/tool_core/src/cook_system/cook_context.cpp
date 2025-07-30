@@ -49,6 +49,11 @@ struct CookContextImpl : public CookContext
         counter = ct;
     }
 
+    void SetIOService(skr::io::IRAMService* service) override
+    {
+        ioService = service;
+    }
+
     void SetCookerVersion(uint32_t version) override
     {
         cookerVersion = version;
@@ -58,11 +63,9 @@ struct CookContextImpl : public CookContext
     void _Destroy(void*) override;
 
     skr::RC<AssetMetaFile> metafile = nullptr;
-    skr::GUID importerType;
     uint32_t importerVersion = 0;
     uint32_t cookerVersion = 0;
 
-    Importer* importer = nullptr;
     skr::io::IRAMService* ioService = nullptr;
 
     // Job system wait counter
@@ -72,45 +75,16 @@ struct CookContextImpl : public CookContext
     skr::Vector<skr::GUID> runtimeDependencies;
     skr::Vector<URI> fileDependencies;
 
-    CookContextImpl(skr::io::IRAMService* ioService, skr::RC<AssetMetaFile> metafile)
-        : ioService(ioService)
+    CookContextImpl(skr::RC<AssetMetaFile> metafile)
+        : metafile(metafile)
     {
+        
     }
 };
 
-CookContext* CookContext::Create(skr::RC<AssetMetaFile> metafile, skr::io::IRAMService* service)
+CookContext* CookContext::Create(skr::RC<AssetMetaFile> metafile)
 {
-    auto ctx = SkrNew<CookContextImpl>(service, metafile);
-    ctx->metafile = metafile;
-    //-----load importer
-    skr::archive::JsonReader reader(ctx->metafile->meta.view());
-    reader.StartObject();
-    if (auto jread_result = reader.Key(u8"importer"); jread_result.has_value())
-    {
-        skr_guid_t importerTypeGuid = {};
-        ctx->importer = GetImporterRegistry()->LoadImporter(ctx->metafile.get(), &reader, &importerTypeGuid);
-        if (!ctx->importer)
-        {
-            SKR_LOG_ERROR(u8"[CookContext::Cook] importer failed to load, asset: %s", ctx->metafile->uri.c_str());
-            return nullptr;
-        }
-        ctx->importerVersion = ctx->importer->Version();
-        ctx->importerType = importerTypeGuid;
-        //-----import raw data
-        SkrZoneScopedN("Importer.Import");
-        skr::String name_holder = u8"unknown";
-        if (auto type = skr::get_type_from_guid(ctx->importerType))
-        {
-            name_holder = type->name().u8_str();
-        }
-        else
-        {
-            name_holder = skr::format(u8"{}", ctx->importerType);
-            SKR_LOG_WARN(u8"[CookContext::Cook] importer without RTTI INFO detected: %s", name_holder.c_str());
-        }
-    }
-    reader.EndObject();
-    return ctx;
+    return SkrNew<CookContextImpl>(metafile);
 }
 
 void CookContext::Destroy(CookContext* ctx)
@@ -120,24 +94,23 @@ void CookContext::Destroy(CookContext* ctx)
 
 void CookContextImpl::_Destroy(void* resource)
 {
-    if (!importer)
+    if (!metafile->GetImporter())
     {
-        SKR_LOG_ERROR(u8"[CookContext::Cook] importer failed to load, asset path path: %s", metafile->uri.c_str());
+        SKR_LOG_ERROR(u8"[CookContext::Cook] importer failed to load, asset path path: %s", metafile->GetURI().string().c_str());
     }
-    SKR_DEFER({ SkrDelete(importer); });
     //-----import raw data
-    importer->Destroy(resource);
-    SKR_LOG_INFO(u8"[CookContext::Cook] asset freed for asset: %s", metafile->uri.c_str());
+    metafile->GetImporter()->Destroy(resource);
+    SKR_LOG_INFO(u8"[CookContext::Cook] asset freed for asset: %s", metafile->GetURI().string().c_str());
 }
 
 void* CookContextImpl::_Import()
 {
     SkrZoneScoped;
     //-----load importer
-    if (importer != nullptr)
+    if (metafile->GetImporter() != nullptr)
     {
-        auto rawData = importer->Import(ioService, this);
-        SKR_LOG_INFO(u8"[CookContext::Cook] asset imported for asset: %s", metafile->uri.c_str());
+        auto rawData = metafile->GetImporter()->Import(ioService, this);
+        SKR_LOG_INFO(u8"[CookContext::Cook] asset imported for asset: %s", metafile->GetURI().string().c_str());
         return rawData;
     }
     return nullptr;
@@ -146,12 +119,12 @@ void* CookContextImpl::_Import()
 
 Importer* CookContextImpl::GetImporter() const
 {
-    return importer;
+    return metafile->GetImporter().get();
 }
 
 skr_guid_t CookContextImpl::GetImporterType() const
 {
-    return importerType;
+    return metafile->GetImporter()->GetType();
 }
 
 uint32_t CookContextImpl::GetImporterVersion() const
@@ -166,7 +139,7 @@ uint32_t CookContextImpl::GetCookerVersion() const
 
 skr::String CookContextImpl::GetAssetPath() const
 {
-    return metafile->uri.c_str();
+    return metafile->GetURI().string();
 }
 
 URI CookContextImpl::AddSourceFile(const URI& inPath)
@@ -176,7 +149,7 @@ URI CookContextImpl::AddSourceFile(const URI& inPath)
         fileDependencies.add(inPath);
     
     // Construct the full path by combining the asset's parent directory with the input path
-    skr::Path uri_path{metafile->uri};
+    skr::Path uri_path{metafile->GetURI()};
     auto parent_dir = uri_path.parent_directory();
     auto full_path = parent_dir / inPath;
     
@@ -185,13 +158,13 @@ URI CookContextImpl::AddSourceFile(const URI& inPath)
 
 URI CookContextImpl::AddSourceFileAndLoad(skr::io::IRAMService* ioService, const URI& path, skr::BlobId& destination)
 {
-    auto outPath = AddSourceFile(path.c_str());
+    auto outPath = AddSourceFile(path.string());
     const auto assetMetaFile = GetAssetMetaFile();
     // load file
     skr::task::event_t counter;
     auto rq = ioService->open_request();
-    rq->set_vfs(assetMetaFile->project->GetAssetVFS());
-    rq->set_path(outPath.c_str());
+    rq->set_vfs(assetMetaFile->GetProject()->GetAssetVFS());
+    rq->set_path(outPath.string().c_str());
     rq->add_block({}); // read all
     rq->add_callback(SKR_IO_STAGE_COMPLETED, +[](skr_io_future_t* future, skr_io_request_t* request, void* data) noexcept {
         SkrZoneScopedN("SignalCounter");

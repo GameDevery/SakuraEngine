@@ -53,6 +53,28 @@ skr_vfile_t* skr_stdio_fopen(skr_vfs_t* fs, const char8_t* path, ESkrFileMode mo
     }
     auto filePath = p.string();
     const auto* filePathStr = filePath.data();
+    
+    // Create parent directories if needed when opening file for write/append
+    if ((mode & (SKR_FM_WRITE | SKR_FM_APPEND)) && 
+        (creation == SKR_FILE_CREATION_IF_NEEDED || creation == SKR_FILE_CREATION_ALWAYS_NEW))
+    {
+        auto parent_dir = p.parent_directory();
+        if (!parent_dir.is_empty())
+        {
+            SkrZoneScopedN("CreateParentDirs");
+            // Directory::create already handles the exists check internally and is thread-safe
+            if (!skr::fs::Directory::create(parent_dir, true))
+            {
+                // Only log error if it's not because directory already exists
+                if (!skr::fs::Directory::exists(parent_dir))
+                {
+                    SKR_LOG_ERROR(u8"Failed to create parent directories for file: %s", filePath.c_str());
+                    return nullptr;
+                }
+            }
+        }
+    }
+    
     const char8_t* modeStr = skr_vfs_filemode_to_string(mode);
     FILE* cfile = nullptr;
     {

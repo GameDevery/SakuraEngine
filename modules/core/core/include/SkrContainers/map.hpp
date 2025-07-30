@@ -18,6 +18,52 @@ struct TypeSignatureTraits<::skr::Map<K, V>> {
 };
 } // namespace skr
 
+// bin serde
+#include "SkrSerde/bin_serde.hpp"
+namespace skr
+{
+template <typename K, typename V>
+struct BinSerde<skr::Map<K, V>> {
+    inline static bool read(SBinaryReader* r, skr::Map<K, V>& v)
+    {
+        // read size
+        uint32_t size;
+        if (!bin_read(r, size)) return false;
+
+        // read content
+        skr::Map<K, V> temp;
+        for (uint32_t i = 0; i < size; ++i)
+        {
+            K key;
+            V value;
+            if (!bin_read(r, key))
+                return false;
+            if (!bin_read(r, value))
+                return false;
+            temp.add(std::move(key), std::move(value));
+        }
+
+        // move to target
+        v = std::move(temp);
+        return true;
+    }
+    inline static bool write(SBinaryWriter* w, const skr::Map<K, V>& v)
+    {
+        // write size
+        uint32_t size = static_cast<uint32_t>(v.size());
+        if (!bin_write(w, size)) return false;
+
+        // write content
+        for (const auto& [key, value] : v)
+        {
+            if (!bin_write(w, key)) return false;
+            if (!bin_write(w, value)) return false;
+        }
+        return true;
+    }
+};
+} // namespace skr
+
 // json serde
 #include "SkrSerde/json_serde.hpp"
 namespace skr

@@ -33,11 +33,11 @@ bool SkelCooker::Cook(CookContext* ctx)
     //-----cook resource
     skr::anim::SkeletonResource resource;
     {
-        SkeletonBuilder                           builder;
+        SkeletonBuilder builder;
         ozz::unique_ptr<ozz::animation::Skeleton> skeleton = builder(*rawSkeleton);
         if (!skeleton)
         {
-            SKR_LOG_ERROR(u8"Failed to build skeleton for asset %s.", ctx->GetAssetMetaFile()->uri.c_str());
+            SKR_LOG_ERROR(u8"Failed to build skeleton for asset %s.", ctx->GetAssetMetaFile()->GetURI().string().c_str());
             return false;
         }
         resource.skeleton = std::move(*skeleton);

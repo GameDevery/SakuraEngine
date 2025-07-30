@@ -106,9 +106,9 @@ bool TextureCooker::Cook(CookContext* ctx)
         SkrZoneScopedN("SaveToDisk");
 
         auto record = ctx->GetAssetMetaFile();
-        auto resource_vfs = record->project->GetResourceVFS();
+        auto resource_vfs = record->GetProject()->GetResourceVFS();
         auto extension = Util_CompressedTypeString(compressed_format);
-        auto filename = skr::format(u8"{}.{}", record->guid, extension);
+        auto filename = skr::format(u8"{}.{}", record->GetGUID(), extension);
         
         auto compressed_file = skr_vfs_fopen(resource_vfs, filename.u8_str(), 
                                            SKR_FM_WRITE_BINARY, SKR_FILE_CREATION_ALWAYS_NEW);

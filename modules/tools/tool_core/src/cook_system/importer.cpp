@@ -5,50 +5,61 @@
 
 namespace skd::asset
 {
-struct ImporterRegistryImpl : public ImporterRegistry
+struct ImporterFactoryImpl : public ImporterFactory
 {
-    Importer* LoadImporter(const AssetMetaFile* record, skr::archive::JsonReader* object, skr::GUID* pGuid = nullptr) override;
+    skr::RC<Importer> LoadImporter(skr::archive::JsonReader* object) override;
+    void StoreImporter(skr::archive::JsonWriter* writer, skr::RC<Importer> importer) override;
     uint32_t GetImporterVersion(skr::GUID type) override;
     void RegisterImporter(skr::GUID type, ImporterTypeInfo info) override;
 
-    skr::FlatHashMap<skr::GUID, ImporterTypeInfo, skr::Hash<skr::GUID>> loaders;
+    skr::FlatHashMap<skr::GUID, ImporterTypeInfo, skr::Hash<skr::GUID>> importer_types;
 };
 
-ImporterRegistry* GetImporterRegistry()
+ImporterFactory* GetImporterFactory()
 {
-    static ImporterRegistryImpl registry;
+    static ImporterFactoryImpl registry;
     return &registry;
 }
 
-Importer* ImporterRegistryImpl::LoadImporter(const AssetMetaFile* record, skr::archive::JsonReader* object, skr::GUID* pGuid)
+skr::RC<Importer> ImporterFactoryImpl::LoadImporter(skr::archive::JsonReader* object)
 {
     skr::GUID type;
+    object->StartObject();
     {
-        object->StartObject(); // start importer object
-        object->Key(u8"importerType");
+        object->Key(u8"importer_type");
         skr::json_read(object, type);
-        object->EndObject();
     }
-    if (pGuid) *pGuid = type;
-    auto iter = loaders.find(type);
-    if (iter != loaders.end())
+    object->EndObject();
+
+    auto iter = importer_types.find(type);
+    if (iter != importer_types.end())
     {
         object->Key(u8"importer");
-        return iter->second.Load(record, object);
+        return iter->second.Load(object);
     }
     return nullptr;
 }
 
-uint32_t ImporterRegistryImpl::GetImporterVersion(skr::GUID type)
+void ImporterFactoryImpl::StoreImporter(skr::archive::JsonWriter* writer, skr::RC<Importer> importer) 
 {
-    auto iter = loaders.find(type);
-    if (iter != loaders.end())
+    auto iter = importer_types.find(importer->GetType());
+    if (iter != importer_types.end())
+    {
+        writer->Key(u8"importer");
+        return iter->second.Store(writer, importer);
+    }
+}
+
+uint32_t ImporterFactoryImpl::GetImporterVersion(skr::GUID type)
+{
+    auto iter = importer_types.find(type);
+    if (iter != importer_types.end())
         return iter->second.Version();
     return UINT32_MAX;
 }
 
-void ImporterRegistryImpl::RegisterImporter(skr::GUID type, ImporterTypeInfo info)
+void ImporterFactoryImpl::RegisterImporter(skr::GUID type, ImporterTypeInfo info)
 {
-    loaders.insert({ type, info });
+    importer_types.insert({ type, info });
 }
 } // namespace skd::asset

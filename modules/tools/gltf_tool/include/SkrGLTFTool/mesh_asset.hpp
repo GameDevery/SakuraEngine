@@ -2,7 +2,6 @@
 #include "SkrToolCore/cook_system/importer.hpp"
 #include "SkrToolCore/cook_system/cooker.hpp"
 #include "SkrContainersDef/string.hpp"
-#include "SkrContainersDef/vector.hpp"
 #ifndef __meta__
     #include "SkrGLTFTool/mesh_asset.generated.h" // IWYU pragma: export
 #endif

@@ -1,10 +1,8 @@
 #pragma once
+#include <SkrBase/meta.h>
+#include <SkrBase/types/expected.hpp>
 #include <SkrBase/atomic/atomic_mutex.hpp>
 #include <SkrCore/memory/memory.h>
-#include <SkrBase/config.h>
-#include <atomic>
-#include <SkrBase/types/expected.hpp>
-#include <concepts>
 
 namespace skr
 {
@@ -12,7 +10,7 @@ using RCCounterType = uint64_t;
 
 // constants
 inline static constexpr RCCounterType kRCCounterUniqueFlag = 1 << 31;
-inline static constexpr RCCounterType kRCCounterMax        = kRCCounterUniqueFlag - 1;
+inline static constexpr RCCounterType kRCCounterMax = kRCCounterUniqueFlag - 1;
 
 // operations
 inline static RCCounterType rc_ref_count(const std::atomic<RCCounterType>& counter)
@@ -30,8 +28,7 @@ inline static RCCounterType rc_add_ref(std::atomic<RCCounterType>& counter)
     while (!counter.compare_exchange_weak(
         old,
         old + 1,
-        std::memory_order_relaxed
-    ))
+        std::memory_order_relaxed))
     {
         SKR_ASSERT(!rc_is_unique(old) && "try to add ref on a unique object");
     }
@@ -45,8 +42,7 @@ inline static RCCounterType rc_weak_lock(std::atomic<RCCounterType>& counter)
         if (counter.compare_exchange_weak(
                 old,
                 old + 1,
-                std::memory_order_relaxed
-            ))
+                std::memory_order_relaxed))
         {
             return old;
         }
@@ -60,8 +56,7 @@ inline static RCCounterType rc_add_ref_unique(std::atomic<RCCounterType>& counte
     while (!counter.compare_exchange_weak(
         old,
         kRCCounterUniqueFlag | 1,
-        std::memory_order_relaxed
-    ))
+        std::memory_order_relaxed))
     {
         SKR_ASSERT(old == 0 && "try to add ref on a non-unique object");
     }
@@ -74,8 +69,7 @@ inline static RCCounterType rc_release_unique(std::atomic<RCCounterType>& counte
     while (!counter.compare_exchange_weak(
         old,
         0,
-        std::memory_order_relaxed
-    ))
+        std::memory_order_relaxed))
     {
         SKR_ASSERT(rc_is_unique(old) && "try to release a non-unique object");
     }
@@ -95,7 +89,8 @@ inline static RCCounterType rc_release(std::atomic<RCCounterType>& counter)
 }
 
 // weak block
-struct RCWeakRefCounter {
+struct RCWeakRefCounter
+{
     inline RCCounterType ref_count() const
     {
         return _ref_count.load(std::memory_order_relaxed);
@@ -140,9 +135,9 @@ struct RCWeakRefCounter {
     }
 
 private:
-    std::atomic<RCCounterType> _ref_count    = 0;
-    shared_atomic_mutex        _delete_mutex = {};
-    std::atomic<bool>          _is_alive     = true;
+    std::atomic<RCCounterType> _ref_count = 0;
+    shared_atomic_mutex _delete_mutex = {};
+    std::atomic<bool> _is_alive = true;
 };
 inline static RCWeakRefCounter* rc_get_weak_ref_released()
 {
@@ -153,8 +148,7 @@ inline static bool rc_is_weak_ref_released(RCWeakRefCounter* counter)
     return reinterpret_cast<size_t>(counter) == size_t(-1);
 }
 inline static RCCounterType rc_weak_ref_count(
-    std::atomic<RCWeakRefCounter*>& counter
-)
+    std::atomic<RCWeakRefCounter*>& counter)
 {
     RCWeakRefCounter* weak_counter = counter.load(std::memory_order_relaxed);
     if (!weak_counter || rc_is_weak_ref_released(weak_counter))
@@ -168,8 +162,7 @@ inline static RCCounterType rc_weak_ref_count(
     }
 }
 inline static RCWeakRefCounter* rc_get_or_new_weak_ref_counter(
-    std::atomic<RCWeakRefCounter*>& counter
-)
+    std::atomic<RCWeakRefCounter*>& counter)
 {
     RCWeakRefCounter* weak_counter = counter.load(std::memory_order_relaxed);
     if (weak_counter)
@@ -182,8 +175,7 @@ inline static RCWeakRefCounter* rc_get_or_new_weak_ref_counter(
         if (counter.compare_exchange_weak(
                 weak_counter,
                 new_counter,
-                std::memory_order_release
-            ))
+                std::memory_order_release))
         {
             std::atomic_thread_fence(std::memory_order_acquire);
             // add ref for keep it alive until any weak ref and self released
@@ -209,8 +201,7 @@ inline static RCWeakRefCounter* rc_get_or_new_weak_ref_counter(
     }
 }
 inline static void rc_notify_weak_ref_counter_dead(
-    std::atomic<RCWeakRefCounter*>& counter
-)
+    std::atomic<RCWeakRefCounter*>& counter)
 {
     RCWeakRefCounter* weak_counter = counter.load(std::memory_order_relaxed);
 
@@ -218,8 +209,7 @@ inline static void rc_notify_weak_ref_counter_dead(
     while (!counter.compare_exchange_weak(
         weak_counter,
         rc_get_weak_ref_released(),
-        std::memory_order_release
-    ))
+        std::memory_order_release))
     {
         if (rc_is_weak_ref_released(weak_counter))
         {
@@ -274,14 +264,16 @@ concept RCConvertible = requires(From obj) {
 
 // deleter traits
 template <typename T>
-struct RCDeleterTraits {
+struct RCDeleterTraits
+{
     inline static void do_delete(T* obj)
     {
         SkrDelete(obj);
     }
 };
 template <ObjectWithRCDeleter T>
-struct RCDeleterTraits<T> {
+struct RCDeleterTraits<T>
+{
     inline static void do_delete(T* obj)
     {
         obj->skr_rc_delete();
@@ -303,23 +295,26 @@ inline void rc_release_with_delete(T* p)
 } // namespace skr
 
 // interface macros
-#define SKR_RC_INTEFACE()                                                           \
-    virtual skr::RCCounterType     skr_rc_count() const                        = 0; \
-    virtual skr::RCCounterType     skr_rc_add_ref() const                      = 0; \
-    virtual skr::RCCounterType     skr_rc_add_ref_unique() const               = 0; \
-    virtual skr::RCCounterType     skr_rc_release_unique() const               = 0; \
-    virtual skr::RCCounterType     skr_rc_weak_lock() const                    = 0; \
-    virtual skr::RCCounterType     skr_rc_release() const                      = 0; \
-    virtual skr::RCCounterType     skr_rc_weak_ref_count() const               = 0; \
-    virtual skr::RCWeakRefCounter* skr_rc_weak_ref_counter() const             = 0; \
-    virtual void                   skr_rc_weak_ref_counter_notify_dead() const = 0;
+#define SKR_RC_INTEFACE()                                               \
+    virtual skr::RCCounterType skr_rc_count() const = 0;                \
+    virtual skr::RCCounterType skr_rc_add_ref() const = 0;              \
+    virtual skr::RCCounterType skr_rc_add_ref_unique() const = 0;       \
+    virtual skr::RCCounterType skr_rc_release_unique() const = 0;       \
+    virtual skr::RCCounterType skr_rc_weak_lock() const = 0;            \
+    virtual skr::RCCounterType skr_rc_release() const = 0;              \
+    virtual skr::RCCounterType skr_rc_weak_ref_count() const = 0;       \
+    virtual skr::RCWeakRefCounter* skr_rc_weak_ref_counter() const = 0; \
+    virtual void skr_rc_weak_ref_counter_notify_dead() const = 0;
+
 #define SKR_RC_DELETER_INTERFACE() \
     virtual void skr_rc_delete() = 0;
 
 // impl macros
 #define SKR_RC_IMPL(__SUFFIX)                                                      \
 private:                                                                           \
-    mutable ::std::atomic<::skr::RCCounterType>     zz_skr_rc           = 0;       \
+    sattr(serde = @disable)                                                        \
+    mutable ::std::atomic<::skr::RCCounterType> zz_skr_rc = 0;                     \
+    sattr(serde = @disable)                                                        \
     mutable ::std::atomic<::skr::RCWeakRefCounter*> zz_skr_weak_counter = nullptr; \
                                                                                    \
 public:                                                                            \
@@ -359,6 +354,7 @@ public:                                                                         
     {                                                                              \
         skr::rc_notify_weak_ref_counter_dead(zz_skr_weak_counter);                 \
     }
+
 #define SKR_RC_DELETER_IMPL_DEFAULT(__SUFFIX) \
     inline void skr_rc_delete() __SUFFIX      \
     {                                         \
@@ -368,7 +364,8 @@ public:                                                                         
 // TODO. remove it
 namespace skr
 {
-struct SKR_CORE_API IRCAble {
+struct SKR_CORE_API IRCAble
+{
     virtual ~IRCAble() SKR_NOEXCEPT = default;
     SKR_RC_INTEFACE();
     SKR_RC_DELETER_INTERFACE();
