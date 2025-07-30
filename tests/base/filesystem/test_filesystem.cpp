@@ -1,6 +1,9 @@
 #include "SkrOS/filesystem.hpp"
+#include "SkrOS/datetime.hpp"
 #include "SkrTestFramework/framework.hpp"
 #include <cstring>
+#include <thread>
+#include <chrono>
 
 namespace skr::fs::test
 {
@@ -219,5 +222,93 @@ TEST_CASE("apple specific directories")
     // 只是测试调用不会崩溃
 }
 #endif
+
+TEST_CASE("file timestamp verification")
+{
+    using namespace skr;
+    
+    // Get current time before file creation
+    DateTime before_creation = DateTime::utc_now();
+    
+    // Small delay to ensure time difference
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    
+    auto temp_dir = Directory::temp();
+    auto test_file = temp_dir / u8"timestamp_test.txt";
+    
+    // Clean up any existing test file
+    if (File::exists(test_file))
+    {
+        File::remove(test_file);
+    }
+    
+    // Create a temporary file
+    skr::StringView test_content = u8"Timestamp test content";
+    CHECK(File::write_all_text(test_file, test_content));
+    CHECK(File::exists(test_file));
+    
+    // Small delay to ensure time difference
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    
+    // Get current time after file creation
+    DateTime after_creation = DateTime::utc_now();
+    
+    // Get file information
+    auto file_info = File::get_info(test_file);
+    CHECK(file_info.exists());
+    CHECK(file_info.is_regular_file());
+    
+    // Convert file times to DateTime (FileTime is always UTC)
+    DateTime creation_time = DateTime::from_filetime(file_info.creation_time);
+    DateTime write_time = DateTime::from_filetime(file_info.last_write_time);
+    DateTime access_time = DateTime::from_filetime(file_info.last_access_time);
+    
+    // Verify that file timestamps are within reasonable range
+    // Allow 1 minute tolerance for filesystem/system differences
+    TimeSpan tolerance = TimeSpan::from_minutes(1);
+    
+    // Creation time should be between before_creation and after_creation
+    auto creation_diff_before = creation_time - before_creation;
+    auto creation_diff_after = after_creation - creation_time;
+    
+    CHECK(creation_diff_before >= -tolerance);  // Not too early
+    CHECK(creation_diff_after >= -tolerance);   // Not too late
+    
+    // Write time should be similar to creation time (newly created file)
+    auto write_creation_diff = write_time - creation_time;
+    CHECK(std::abs(write_creation_diff.total_minutes()) <= 1.0);
+    
+    // Access time should be reasonable (some filesystems may not update it immediately)
+    auto access_creation_diff = access_time - creation_time;
+    CHECK(std::abs(access_creation_diff.total_minutes()) <= 1.0);
+    
+    // Test modification by writing to the file again
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    DateTime before_modify = DateTime::utc_now();
+    
+    // Append to the file
+    CHECK(File::write_all_text(test_file, u8"Modified content"));
+    
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    DateTime after_modify = DateTime::utc_now();
+    
+    // Get updated file info
+    auto modified_info = File::get_info(test_file);
+    DateTime new_write_time = DateTime::from_filetime(modified_info.last_write_time);
+    
+    // New write time should be after the old write time
+    CHECK(new_write_time > write_time);
+    
+    // New write time should be within the modification window
+    auto modify_diff_before = new_write_time - before_modify;
+    auto modify_diff_after = after_modify - new_write_time;
+    
+    CHECK(modify_diff_before >= -tolerance);
+    CHECK(modify_diff_after >= -tolerance);
+    
+    // Clean up
+    CHECK(File::remove(test_file));
+    CHECK(!File::exists(test_file));
+}
 
 } // namespace skr::fs::test

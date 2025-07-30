@@ -2,6 +2,9 @@
 #include "SkrBase/misc/debug.h"
 #include <cstdlib>
 
+#include "formatters/float_formatter.cpp"
+#include "formatters/integer_formatter.cpp"
+
 // platform specific imports
 #if SKR_PLAT_WINDOWS
     #include <Windows.h>

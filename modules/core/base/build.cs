@@ -8,6 +8,7 @@ public static class SkrBase
     {
         var Target = Engine.StaticComponent("SkrBase", "SkrCore")
             .EnableUnityBuild()
+            .OptimizationLevel(OptimizationLevel.Fastest)
             .Depend(Visibility.Public, "rtm", "SkrProfile")
             // .Depend(Visibility.Public, "SkrCompileFlags")
             .IncludeDirs(Visibility.Public, "include")

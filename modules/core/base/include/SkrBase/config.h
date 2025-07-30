@@ -1,19 +1,19 @@
 #pragma once
 // platform headers
 #ifndef __cplusplus
-    #include <stdbool.h>
+    #include <stdbool.h>  // IWYU pragma: export
 #endif
 
 #if __has_include("sys/types.h")
-    #include <sys/types.h>
+    #include <sys/types.h>  // IWYU pragma: export
 #endif
 
 #if __has_include("stdint.h")
-    #include <stdint.h>
+    #include <stdint.h>  // IWYU pragma: export
 #endif
 
 #if __has_include("float.h")
-    #include <float.h>
+    #include <float.h>  // IWYU pragma: export
 #endif
 
 // platform & compiler marcos

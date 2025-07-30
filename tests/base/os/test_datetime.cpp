@@ -489,18 +489,63 @@ TEST_CASE("DateTime Current Time Functions")
         REQUIRE(utc.get_ticks() > 0);
     }
 
-    SUBCASE("Today")
+    SUBCASE("Local vs UTC Time")
     {
-        auto now = DateTime::now();
-        auto today = DateTime::today();
+        auto local_time = DateTime::now();
+        auto utc_time = DateTime::utc_now();
+        auto local_time2 = DateTime::local_now();
         
-        REQUIRE_EQ(today.year(), now.year());
-        REQUIRE_EQ(today.month(), now.month());
-        REQUIRE_EQ(today.day(), now.day());
-        REQUIRE_EQ(today.hour(), 0);
-        REQUIRE_EQ(today.minute(), 0);
-        REQUIRE_EQ(today.second(), 0);
-        REQUIRE_EQ(today.millisecond(), 0);
+        // local_now() should be same as now()
+        REQUIRE_EQ(local_time.get_ticks(), local_time2.get_ticks());
+        
+        // Local and UTC should be different (unless you're in UTC timezone)
+        // The difference should be reasonable (within 24 hours)
+        auto time_diff = local_time - utc_time;
+        double hours_diff = time_diff.total_hours();
+        
+        // Time zone difference should be within -12 to +14 hours (extreme time zones)
+        REQUIRE(hours_diff >= -12.0);
+        REQUIRE(hours_diff <= 14.0);
+        
+        // Both times should be reasonable (not zero)
+        REQUIRE(local_time.get_ticks() > 0);
+        REQUIRE(utc_time.get_ticks() > 0);
+    }
+
+    SUBCASE("Timezone Conversion Functions")
+    {
+        // Test with a known local time
+        DateTime local_dt(2024, 3, 15, 14, 30, 45);
+        
+        // Convert to UTC and back
+        DateTime utc_converted = DateTime::to_utc(local_dt);
+        DateTime local_restored = DateTime::to_local(utc_converted);
+        
+        // Round-trip should preserve the original time (allowing for small precision loss)
+        REQUIRE_EQ(local_restored.year(), local_dt.year());
+        REQUIRE_EQ(local_restored.month(), local_dt.month());
+        REQUIRE_EQ(local_restored.day(), local_dt.day());
+        REQUIRE_EQ(local_restored.hour(), local_dt.hour());
+        REQUIRE_EQ(local_restored.minute(), local_dt.minute());
+        REQUIRE_EQ(local_restored.second(), local_dt.second());
+        
+        // Test with current time
+        DateTime current_local = DateTime::now();
+        DateTime current_utc = DateTime::utc_now();
+        
+        // Convert current local to UTC - should be similar to utc_now()
+        DateTime converted_utc = DateTime::to_utc(current_local);
+        auto utc_diff = converted_utc - current_utc;
+        
+        // Should be within a few seconds (accounting for execution time)
+        REQUIRE(std::abs(utc_diff.total_seconds()) < 5.0);
+        
+        // Convert current UTC to local - should be similar to now()
+        DateTime converted_local = DateTime::to_local(current_utc);
+        auto local_diff = converted_local - current_local;
+        
+        // Should be within a few seconds
+        REQUIRE(std::abs(local_diff.total_seconds()) < 5.0);
     }
 }
 
@@ -641,7 +686,17 @@ TEST_CASE("DateTime Performance and Stress Tests")
         
         // Test arithmetic near boundaries
         auto late_plus_one = late.add_days(1);
-        REQUIRE(late_plus_one.year() <= 9999);  // Should handle overflow gracefully
+        REQUIRE(late_plus_one.get_ticks() > 0);  // Should still be valid
+        
+        // Test year overflow
+        DateTime test_overflow(9999, 1, 1);
+        auto overflow_result = test_overflow.add_years(1);
+        REQUIRE_EQ(overflow_result.get_ticks(), 0);  // Should return invalid DateTime
+        
+        // Test year underflow
+        DateTime test_underflow(1, 1, 1);
+        auto underflow_result = test_underflow.add_years(-1);
+        REQUIRE_EQ(underflow_result.get_ticks(), 0);  // Should return invalid DateTime
     }
 }
 

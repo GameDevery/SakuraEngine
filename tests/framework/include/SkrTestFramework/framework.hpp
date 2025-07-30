@@ -54,3 +54,22 @@ inline auto approx(float x)
 {
     return doctest::Approx(x).epsilon(0.001f);
 }
+
+// doctest ToString specializations for SakuraEngine string types
+namespace doctest {
+
+template<>
+struct StringMaker<skr::StringView> {
+    static doctest::String convert(const skr::StringView& value) {
+        return doctest::String(reinterpret_cast<const char*>(value.data()), static_cast<unsigned>(value.size()));
+    }
+};
+
+template<>
+struct StringMaker<skr::String> {
+    static doctest::String convert(const skr::String& value) {
+        return doctest::String(value.c_str_raw(), static_cast<unsigned>(value.size()));
+    }
+};
+
+} // namespace doctest
