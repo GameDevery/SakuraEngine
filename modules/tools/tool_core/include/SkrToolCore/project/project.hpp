@@ -1,8 +1,7 @@
 #pragma once
 #include "SkrToolCore/fwd_types.hpp"
-#include "SkrOS/filesystem.hpp"
-#include "SkrContainers/string.hpp"
-#include "SkrContainersDef/path.hpp"
+#include "SkrContainers/path.hpp"
+#include "SkrContainersDef/hashmap.hpp"
 #ifndef __meta__
     #include "SkrToolCore/project/project.generated.h" // IWYU pragma: export
 #endif
@@ -10,15 +9,15 @@
 namespace skd
 {
 
-using URI = skr::String;
+using URI = skr::Path;
 
 sreflect_struct(
     guid = "D153957A-2272-45F8-92DA-EEEB67821D20" serde = @json)
 SProjectConfig
 {
-    skr::String assetDirectory;
-    skr::String resourceDirectory;
-    skr::String artifactsDirectory;
+    skr::Path assetDirectory;
+    skr::Path resourceDirectory;
+    skr::Path artifactsDirectory;
 };
 
 struct TOOL_CORE_API SProject
@@ -29,8 +28,11 @@ public:
     virtual bool LoadAssetData(skr::StringView uri, skr::Vector<uint8_t>& content) noexcept;
     virtual bool LoadAssetMeta(skr::StringView uri, skr::String& content) noexcept;
     virtual bool OpenProject(const URI& path) noexcept;
-    virtual bool OpenProject(const skr::String& name, const skr::String& root, const SProjectConfig& config) noexcept;
+    virtual bool OpenProject(const skr::String& name, const skr::Path& root, const SProjectConfig& config) noexcept;
     virtual bool CloseProject() noexcept;
+
+    virtual skr::String GetEnv(skr::StringView name);
+    virtual void SetEnv(skr::String, skr::String);
 
     // void SetAssetVFS(skr_vfs_t* asset_vfs);
     // void SetResourceVFS(skr_vfs_t* resource_vfs);
@@ -55,5 +57,6 @@ private:
     URI resourceDirectory;
     URI dependencyDirectory;
     skr::String name;
+    skr::ParallelFlatHashMap<skr::String, skr::String, skr::Hash<skr::String>> env;
 };
 } // namespace skd

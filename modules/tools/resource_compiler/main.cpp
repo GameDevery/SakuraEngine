@@ -84,36 +84,13 @@ skr::Vector<skd::SProject*> open_projects(int argc, char** argv)
         SKR_LOG_ERROR(u8"Failed to parse command line arguments.");
         return {};
     }
+    auto workspace = parser.get<skr::String>(u8"workspace");
     auto projectPath = parser.get_optional<skr::String>(u8"project");
-    skr::Path workspace{parser.get<skr::String>(u8"workspace").u8_str()};
-    skr::stl_vector<skr::Path> projectFiles;
-    
-    // Find all .sproject files in workspace using DirectoryIterator
-    std::function<void(const skr::Path&)> scanDirectory = [&](const skr::Path& dir) {
-        for (skr::fs::DirectoryIterator iter(dir); !iter.at_end(); ++iter)
-        {
-            const auto& entry = *iter;
-            if (entry.type == skr::fs::FileType::Directory)
-            {
-                scanDirectory(entry.path);
-            }
-            else if (entry.type == skr::fs::FileType::Regular)
-            {
-                if (entry.path.extension(true) == u8".sproject")
-                {
-                    projectFiles.push_back(entry.path);
-                }
-            }
-        }
-    };
-    scanDirectory(workspace);
-    
     skr::Vector<skd::SProject*> result;
-    for (auto& projectFile : projectFiles)
     {
         auto project = SkrNew<skd::SProject>();
-        project->OpenProject(projectFile.string());
-        // TODO: SetWorkspace is removed, need to handle workspace differently
+        project->SetEnv(u8"workspace", workspace);
+        project->OpenProject(projectPath->c_str());
         result.add(project);
     }
     return result;

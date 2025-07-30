@@ -66,7 +66,6 @@ public:
 
     virtual const skr::task::event_t& GetCounter() = 0;
 
-
     template <class T>
     T* Import() { return (T*)_Import(); }
 
@@ -124,8 +123,7 @@ public:
                                   SKR_FM_WRITE_BINARY, SKR_FILE_CREATION_ALWAYS_NEW);
         if (!file)
         {
-            SKR_LOG_FMT_ERROR(u8"[CookContext::SaveExtra] failed to create file: {}",
-                filename);
+            SKR_LOG_FMT_ERROR(u8"[CookContext::SaveExtra] failed to create file: {}", filename);
             return false;
         }
         SKR_DEFER({ skr_vfs_fclose(file); });
@@ -133,18 +131,18 @@ public:
         //------write data
         if (skr_vfs_fwrite(file, data.data(), 0, data.size()) != data.size())
         {
-            SKR_LOG_FMT_ERROR(u8"[CookContext::SaveExtra] failed to write data to file: {}",
-                filename);
+            SKR_LOG_FMT_ERROR(u8"[CookContext::SaveExtra] failed to write data to file: {}", filename);
             return false;
         }
         return true;
     }
 
 protected:
-    static CookContext* Create(skr::RC<AssetMetaFile> record, skr_io_ram_service_t* service);
+    static CookContext* Create(skr::RC<AssetMetaFile>, skr::RC<Importer> importer, skr::GUID importerType);
     static void Destroy(CookContext* ctx);
 
     virtual void SetCounter(skr::task::event_t&) = 0;
+    virtual void SetIOService(skr::io::IRAMService*) = 0;
     virtual void SetCookerVersion(uint32_t version) = 0;
 
     virtual void* _Import() = 0;
