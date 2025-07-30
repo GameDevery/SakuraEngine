@@ -42,11 +42,14 @@ inline CGPUShaderLibraryId create_shader_library(skr::RendererDevice* render_dev
 class SCENE_RENDERER_API SimpleMesh
 {
 protected:
+    // for editing mesh data, can be used to generate mesh resource
     skr::Vector<skr_float3_t> c_positions;
     skr::Vector<skr_float2_t> c_uvs;
     skr::Vector<skr_float3_t> c_normals;
     skr::Vector<uint32_t> c_indices;
-
+    // raw data for mesh processing, can be used to generate mesh resource
+    uint8_t* raw_data = nullptr;
+    // GPU resources
     CGPUBufferId vertex_buffer = nullptr;
     CGPUBufferId index_buffer = nullptr;
     skr::Vector<skr_vertex_buffer_view_t> vbvs;
@@ -54,8 +57,9 @@ protected:
     skr::Vector<skr::renderer::PrimitiveCommand> primitive_commands;
 
 public:
-    virtual void init() SKR_NOEXCEPT = 0;                                                                       // init instance, allocate CPU resources
-    virtual void destroy() SKR_NOEXCEPT = 0;                                                                    // destroy all CPU and GPU resources
+    virtual void init() SKR_NOEXCEPT = 0;    // init instance, allocate CPU resources
+    virtual void destroy() SKR_NOEXCEPT = 0; // destroy all CPU and GPU resources
+    // void generate_mesh_resource(skr::RendererDevice* render_device, skr_render_mesh_id render_mesh) SKR_NOEXCEPT; // generate render mesh, allocate GPU resources
     void generate_render_mesh(skr::RendererDevice* render_device, skr_render_mesh_id render_mesh) SKR_NOEXCEPT; // generate render mesh, allocate GPU resources
 };
 
