@@ -99,7 +99,9 @@ namespace SB.Core
             OldDepend = null;
             using (var DB = CreateContext(ctx.TargetName))
             {
-                OldDepend = FromEntity(DB.Depends.Find(ctx.TargetName + ctx.FileName + ctx.EmitterName));
+                var entity = DB.Depends.Find(ctx.TargetName + ctx.FileName + ctx.EmitterName);
+                OldDepend = FromEntity(entity);
+                DB.ChangeTracker.Clear(); // Ensure all tracked entities are detached
             }
             if (OldDepend is not null)
             {

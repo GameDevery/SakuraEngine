@@ -124,6 +124,7 @@ namespace SB
                 Target.CppVersion("20")
                     .Exception(false)
                     .RTTI(false)
+                    .Clang_CppFlags(Visibility.Public, "-Wno-unknown-warning-option")
                     .Clang_CppFlags(Visibility.Public, "-Wno-character-conversion")
                     .LinkDirs(Visibility.Public, Target.GetBinaryPath());
                 if (BS.TargetOS == OSPlatform.Windows)

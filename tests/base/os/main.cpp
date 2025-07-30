@@ -18,3 +18,4 @@ static struct ProcInitializer {
 
 #include "shared_memory.cpp"
 #include "test_datetime.cpp"
+#include "test_datetime_format.cpp"
