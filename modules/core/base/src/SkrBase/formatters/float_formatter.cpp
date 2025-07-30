@@ -1,9 +1,5 @@
 #include <SkrBase/containers/string/format.hpp>
 #include <SkrBase/containers/string/string.hpp>
-#include <cmath>
-#include <cstring>
-#include <algorithm>
-#include <limits>
 
 namespace skr::container
 {
@@ -273,27 +269,9 @@ namespace detail
         
         // 确定使用的精度
         int precision = flags.precision;
-        if (precision < 0)
+        if (precision < 0 && flags.style != FloatFormatFlags::Style::Hex)
         {
-            switch (flags.style)
-            {
-                case FloatFormatFlags::Style::Fixed:
-                case FloatFormatFlags::Style::Percent:
-                    precision = 6;
-                    break;
-                case FloatFormatFlags::Style::Scientific:
-                    precision = 6;
-                    break;
-                case FloatFormatFlags::Style::General:
-                    precision = 6;
-                    break;
-                case FloatFormatFlags::Style::Hex:
-                    precision = -1; // 十六进制浮点数使用默认精度（完整精度）
-                    break;
-                default:
-                    precision = -1;
-                    break;
-            }
+            precision = 6; // 所有非十六进制格式的默认精度都是6
         }
         
         // 转换到字符串
@@ -301,66 +279,34 @@ namespace detail
         {
             case FloatFormatFlags::Style::Fixed:
             case FloatFormatFlags::Style::Percent:
-                if (precision >= 0)
-                {
-                    result = std::to_chars(buffer, buffer + buffer_size, value, 
-                                         std::chars_format::fixed, precision);
-                }
-                else
-                {
-                    result = std::to_chars(buffer, buffer + buffer_size, value, 
-                                         std::chars_format::fixed);
-                }
+                result = (precision >= 0) 
+                    ? std::to_chars(buffer, buffer + buffer_size, value, std::chars_format::fixed, precision)
+                    : std::to_chars(buffer, buffer + buffer_size, value, std::chars_format::fixed);
                 break;
                 
             case FloatFormatFlags::Style::Scientific:
-                if (precision >= 0)
-                {
-                    result = std::to_chars(buffer, buffer + buffer_size, value, 
-                                         std::chars_format::scientific, precision);
-                }
-                else
-                {
-                    result = std::to_chars(buffer, buffer + buffer_size, value, 
-                                         std::chars_format::scientific);
-                }
+                result = (precision >= 0)
+                    ? std::to_chars(buffer, buffer + buffer_size, value, std::chars_format::scientific, precision)
+                    : std::to_chars(buffer, buffer + buffer_size, value, std::chars_format::scientific);
                 break;
                 
             case FloatFormatFlags::Style::General:
-                if (precision > 0)
                 {
-                    result = std::to_chars(buffer, buffer + buffer_size, value, 
-                                         std::chars_format::general, precision);
-                }
-                else if (precision == 0)
-                {
-                    // 精度0被当作精度1处理
-                    result = std::to_chars(buffer, buffer + buffer_size, value, 
-                                         std::chars_format::general, 1);
-                }
-                else
-                {
-                    result = std::to_chars(buffer, buffer + buffer_size, value, 
-                                         std::chars_format::general);
+                    // 处理General格式的精度0特殊情况
+                    int gen_precision = (precision == 0) ? 1 : precision;
+                    result = (gen_precision > 0)
+                        ? std::to_chars(buffer, buffer + buffer_size, value, std::chars_format::general, gen_precision)
+                        : std::to_chars(buffer, buffer + buffer_size, value, std::chars_format::general);
                 }
                 break;
                 
             case FloatFormatFlags::Style::Hex:
-                if (precision >= 0)
-                {
-                    result = std::to_chars(buffer, buffer + buffer_size, value, 
-                                         std::chars_format::hex, precision);
-                }
-                else
-                {
-                    // 使用默认精度（完整精度）
-                    result = std::to_chars(buffer, buffer + buffer_size, value, 
-                                         std::chars_format::hex);
-                }
+                result = (precision >= 0)
+                    ? std::to_chars(buffer, buffer + buffer_size, value, std::chars_format::hex, precision)
+                    : std::to_chars(buffer, buffer + buffer_size, value, std::chars_format::hex);
                 break;
                 
             default:
-                // 默认格式
                 result = std::to_chars(buffer, buffer + buffer_size, value);
                 break;
         }
@@ -369,16 +315,15 @@ namespace detail
         length = result.ptr - buffer;
         
         // 后处理：大小写转换
-        
         if (flags.uppercase)
         {
             for (size_t i = 0; i < length; ++i)
             {
-                if (buffer[i] == 'e') buffer[i] = 'E';
-                else if (buffer[i] == 'x') buffer[i] = 'X';
-                else if (buffer[i] == 'p') buffer[i] = 'P';
-                else if (buffer[i] >= 'a' && buffer[i] <= 'f')
-                    buffer[i] = buffer[i] - 'a' + 'A';
+                char& c = buffer[i];
+                if (c == 'e') c = 'E';
+                else if (c == 'x') c = 'X'; 
+                else if (c == 'p') c = 'P';
+                else if (c >= 'a' && c <= 'f') c += 'A' - 'a';
             }
         }
         
@@ -403,7 +348,30 @@ namespace detail
                 }
             }
             
-            if (!has_point)
+            // 对于 g 格式，# 标志需要特殊处理：保留尾随零
+            if (flags.style == FloatFormatFlags::Style::General && flags.precision >= 1)
+            {
+                // 重新格式化为固定小数位数来保留尾随零
+                std::to_chars_result result;
+                if (has_exponent)
+                {
+                    // 如果有指数，保持科学计数法但保留尾随零
+                    result = std::to_chars(buffer, buffer + buffer_size, value, 
+                                         std::chars_format::scientific, flags.precision - 1);
+                }
+                else
+                {
+                    // 无指数，使用固定格式保留尾随零
+                    result = std::to_chars(buffer, buffer + buffer_size, value, 
+                                         std::chars_format::fixed, flags.precision - 1);
+                }
+                
+                if (result.ec == std::errc())
+                {
+                    length = result.ptr - buffer;
+                }
+            }
+            else if (!has_point)
             {
                 if (has_exponent)
                 {
@@ -412,20 +380,10 @@ namespace detail
                     buffer[exp_pos] = '.';
                     length++;
                 }
-                else if (length < buffer_size - 2)
+                else if (length < buffer_size - 1)
                 {
-                    // 对于 g 格式，# 标志应该保留尾随零
-                    if (flags.style == FloatFormatFlags::Style::General && flags.precision >= 1)
-                    {
-                        // g 格式：添加 ".0" 保留一位小数
-                        buffer[length++] = '.';
-                        buffer[length++] = '0';
-                    }
-                    else if (length < buffer_size - 1)
-                    {
-                        // 其他格式：只添加小数点
-                        buffer[length++] = '.';
-                    }
+                    // 其他格式：只添加小数点
+                    buffer[length++] = '.';
                 }
             }
         }
@@ -473,41 +431,42 @@ namespace detail
         }
         
         // 输出格式化的结果
+        auto append_sign = [&]() {
+            if (has_sign) table.append_u8str(table.string_ptr, sign_str, sign_length);
+        };
+        auto append_content = [&]() {
+            table.append_cstr(table.string_ptr, buffer, length);
+        };
+        
         if (flags.left_align)
         {
-            // 左对齐
-            if (has_sign)
-                table.append_u8str(table.string_ptr, sign_str, sign_length);
-            table.append_cstr(table.string_ptr, buffer, length);
+            // 左对齐：符号+内容+填充
+            append_sign();
+            append_content();
             table.add_chars(table.string_ptr, flags.fill_char, padding);
         }
         else if (flags.center_align)
         {
-            // 居中对齐
+            // 居中对齐：左填充+符号+内容+右填充
             size_t left_padding = padding / 2;
-            size_t right_padding = padding - left_padding;
-            
             table.add_chars(table.string_ptr, flags.fill_char, left_padding);
-            if (has_sign)
-                table.append_u8str(table.string_ptr, sign_str, sign_length);
-            table.append_cstr(table.string_ptr, buffer, length);
-            table.add_chars(table.string_ptr, flags.fill_char, right_padding);
+            append_sign();
+            append_content();
+            table.add_chars(table.string_ptr, flags.fill_char, padding - left_padding);
         }
-        else if (flags.zero_pad && !flags.left_align && !flags.center_align)
+        else if (flags.zero_pad)
         {
-            // 零填充（符号在前）
-            if (has_sign)
-                table.append_u8str(table.string_ptr, sign_str, sign_length);
+            // 零填充：符号+零+内容
+            append_sign();
             table.add_chars(table.string_ptr, u8'0', padding);
-            table.append_cstr(table.string_ptr, buffer, length);
+            append_content();
         }
         else
         {
-            // 右对齐（默认）
+            // 右对齐（默认）：填充+符号+内容
             table.add_chars(table.string_ptr, flags.fill_char, padding);
-            if (has_sign)
-                table.append_u8str(table.string_ptr, sign_str, sign_length);
-            table.append_cstr(table.string_ptr, buffer, length);
+            append_sign();
+            append_content();
         }
     }
 }
