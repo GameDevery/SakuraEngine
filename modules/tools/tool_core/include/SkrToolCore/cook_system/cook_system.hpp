@@ -113,7 +113,7 @@ public:
     }
 
 protected:
-    static CookContext* Create(skr::RC<AssetMetaFile>, skr::GUID importer_type);
+    static CookContext* Create(skr::RC<AssetMetaFile>);
     static void Destroy(CookContext* ctx);
 
     virtual void SetCounter(skr::task::event_t&) = 0;
@@ -154,7 +154,8 @@ public:
     virtual void RegisterCooker(bool isDefault, skr_guid_t cooker, skr_guid_t type, Cooker* instance) = 0;
     virtual void UnregisterCooker(skr_guid_t type) = 0;
 
-    virtual skr::RC<AssetMetaFile> LoadAssetMeta(SProject* project, const skr::String& uri) = 0;
+    virtual skr::RC<AssetMetaFile> LoadAssetMeta(SProject* project, const URI& uri) = 0;
+    virtual void ImportAsset(SProject* project, skr::RC<AssetMetaFile> asset, skr::RC<Importer> importer, skr::RC<AssetMetadata> meta = nullptr) = 0;
     virtual skr::RC<AssetMetaFile> GetAssetMetaFile(skr_guid_t type) const = 0;
 
     virtual void ParallelForEachAsset(uint32_t batch, skr::FunctionRef<void(skr::span<skr::RC<AssetMetaFile>>)> f) = 0;

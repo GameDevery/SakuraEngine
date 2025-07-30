@@ -25,7 +25,6 @@ public:
     virtual void Destroy(void*) = 0;
     inline skr::GUID GetType() const { return importer_type; }
 
-private:
     skr::GUID importer_type;
     SKR_RC_IMPL();
 };

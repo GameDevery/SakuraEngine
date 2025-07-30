@@ -8,7 +8,6 @@
 #include "SkrCore/platform/vfs.h"
 #include "SkrSerde/json_serde.hpp"
 #include "SkrRT/io/ram_io.hpp"
-#include "SkrToolCore/cook_system/importer.hpp"
 #include "SkrToolCore/cook_system/cook_system.hpp"
 #include "SkrToolCore/project/project.hpp"
 #include "SkrContainers/hashmap.hpp"
@@ -38,7 +37,8 @@ struct CookSystemImpl : public skd::asset::CookSystem
     void RegisterCooker(bool isDefault, skr_guid_t cooker, skr_guid_t type, Cooker* instance) override;
     void UnregisterCooker(skr_guid_t type) override;
 
-    skr::RC<AssetMetaFile> LoadAssetMeta(SProject* project, const skr::String& uri) override;
+    skr::RC<AssetMetaFile> LoadAssetMeta(SProject* project, const URI& uri) override;
+    void ImportAsset(SProject* project, skr::RC<AssetMetaFile> asset, skr::RC<Importer> importer, skr::RC<AssetMetadata> meta) override;
     skr::RC<AssetMetaFile> GetAssetMetaFile(skr_guid_t guid) const override;
 
     skr::io::IRAMService* GetIOService() override;
@@ -79,16 +79,16 @@ void RegisterCookerToSystem(CookSystem* system, bool isDefault, skr_guid_t cooke
 
 AssetMetadata::~AssetMetadata()
 {
-    
+
 }
 
-AssetMetaFile::AssetMetaFile(const String& _uri)
+AssetMetaFile::AssetMetaFile(const URI& _uri)
     : uri(_uri)
 {
 
 }
 
-AssetMetaFile::AssetMetaFile(const skr::String& _uri, skr::GUID _guid, skr::GUID _type, skr::GUID _cooker)
+AssetMetaFile::AssetMetaFile(const URI& _uri, skr::GUID _guid, skr::GUID _type, skr::GUID _cooker)
     : uri(_uri)
     , guid(_guid)
     , resource_type(_type)
@@ -129,8 +129,7 @@ skr::task::event_t CookSystemImpl::AddCookTask(skr::GUID asset)
         }, 
         [&](const CookingMap::constructor& ctor) 
         {
-            skr::GUID importer_type;
-            cookContext = CookContext::Create(assetfile, importer_type);
+            cookContext = CookContext::Create(assetfile);
             ctor(asset, cookContext); 
         });
         // clang-format on
@@ -297,24 +296,31 @@ skr::task::event_t CookSystemImpl::EnsureCooked(skr_guid_t guid)
     return AddCookTask(guid);
 }
 
-skr::RC<AssetMetaFile> CookSystemImpl::LoadAssetMeta(SProject* project, const skr::String& uri)
+skr::RC<AssetMetaFile> CookSystemImpl::LoadAssetMeta(SProject* project, const URI& uri)
 {
     SkrZoneScoped;
-    std::error_code ec = {};
     skr::String meta_content;
-    if (project->LoadAssetMeta(uri.view(), meta_content))
+    if (project->LoadAssetMeta(uri.string(), meta_content))
     {
         // Create record with proper constructor
         skr::archive::JsonReader reader(meta_content.view());
         auto metafile = skr::RC<AssetMetaFile>::New(uri);
         skr::json_read(&reader, *metafile);
-        const_cast<SProject*&>(metafile->project) = project;
+        metafile->project = project;
         metafile->SetContent(std::move(meta_content));
         assets.insert(std::make_pair(metafile->guid, metafile));
         return metafile;
     }
     SKR_ASSERT(false);
     return nullptr;
+}
+
+void CookSystemImpl::ImportAsset(SProject* project, skr::RC<AssetMetaFile> asset, skr::RC<Importer> importer, skr::RC<AssetMetadata> meta)
+{
+    asset->importer = importer;
+    asset->metadata = meta;
+    asset->project = project;
+    assets.insert({asset->GetGUID(), asset});
 }
 
 skr::RC<AssetMetaFile> CookSystemImpl::GetAssetMetaFile(skr_guid_t guid) const

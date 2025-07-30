@@ -63,7 +63,6 @@ struct CookContextImpl : public CookContext
     void _Destroy(void*) override;
 
     skr::RC<AssetMetaFile> metafile = nullptr;
-    skr::GUID importer_type;
     uint32_t importerVersion = 0;
     uint32_t cookerVersion = 0;
 
@@ -76,16 +75,16 @@ struct CookContextImpl : public CookContext
     skr::Vector<skr::GUID> runtimeDependencies;
     skr::Vector<URI> fileDependencies;
 
-    CookContextImpl(skr::RC<AssetMetaFile> metafile, skr::GUID importer_type)
-        : metafile(metafile), importer_type(importer_type)
+    CookContextImpl(skr::RC<AssetMetaFile> metafile)
+        : metafile(metafile)
     {
         
     }
 };
 
-CookContext* CookContext::Create(skr::RC<AssetMetaFile> metafile, skr::GUID importer_type)
+CookContext* CookContext::Create(skr::RC<AssetMetaFile> metafile)
 {
-    return SkrNew<CookContextImpl>(metafile, importer_type);
+    return SkrNew<CookContextImpl>(metafile);
 }
 
 void CookContext::Destroy(CookContext* ctx)
@@ -125,7 +124,7 @@ Importer* CookContextImpl::GetImporter() const
 
 skr_guid_t CookContextImpl::GetImporterType() const
 {
-    return importer_type;
+    return metafile->GetImporter()->GetType();
 }
 
 uint32_t CookContextImpl::GetImporterVersion() const

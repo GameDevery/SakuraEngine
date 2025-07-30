@@ -14,12 +14,14 @@
 #include "SkrRenderer/render_app.hpp"
 
 #include "SkrRenderer/resources/mesh_resource.h"
+#include "SkrMeshCore/mesh_processing.hpp"
 #include "SkrGLTFTool/mesh_asset.hpp"
 
 struct VirtualProject : skd::SProject
 {
     VirtualProject()
     {
+        /*
         auto meta = u8R"_({
             "guid": "18db1369-ba32-4e91-aa52-b2ed1556f576",
             "type": "3b8ca511-33d1-4db4-b805-00eea6a8d5e1",
@@ -30,6 +32,7 @@ struct VirtualProject : skd::SProject
             "vertexType": "C35BD99A-B0A8-4602-AFCC-6BBEACC90321"
         })_";
         MetaDatabase.emplace(u8"girl.gltf", meta);
+        */
     }
     bool LoadAssetMeta(skr::StringView uri, skr::String& content) noexcept override
     {
@@ -166,9 +169,37 @@ void ModelViewerModule::on_unload()
 void ModelViewerModule::CookAndLoadGLTF()
 {
     auto& System = *skd::asset::GetCookSystem();
-    auto Asset = System.LoadAssetMeta(&project, u8"girl.gltf");
-    auto event = System.EnsureCooked(Asset->GetGUID());
-    event.wait(true);
+    const bool NeedImport = true;
+    if (NeedImport) // Import from disk!
+    {
+        using namespace skr::literals;
+        // source file is a GLTF so we create a gltf importer, if it is a fbx, then just use a fbx importer
+        auto importer = skr::RC<skd::asset::GltfMeshImporter>::New();
+        importer->importer_type = skr::type_id_of<skd::asset::GltfMeshImporter>();
+
+        // static mesh has some additional meta data to append
+        auto metadata = skr::RC<skd::asset::MeshAsset>::New();
+        metadata->vertexType = u8"C35BD99A-B0A8-4602-AFCC-6BBEACC90321"_guid;
+
+        auto asset = skr::RC<skd::asset::AssetMetaFile>::New(
+            u8"girl.gltf",                                 // virtual uri for this asset in the project
+            u8"18db1369-ba32-4e91-aa52-b2ed1556f576"_guid, // guid for this asset
+            skr::type_id_of<skr::renderer::MeshResource>(),// output resource is a mesh resource 
+            skr::type_id_of<skd::asset::MeshCooker>()      // this cooker cooks the raw mesh data to mesh resource
+        );
+        // source file
+        importer->assetPath = u8"D:/Code/SakuraEngine/samples/application/game/assets/sketchfab/loli/scene.gltf";
+        System.ImportAsset(&project, asset, importer, metadata);
+     
+        auto event = System.EnsureCooked(asset->GetGUID());
+        event.wait(true);
+    }
+    else // Load imported asset from asset...
+    {
+        auto asset = System.LoadAssetMeta(&project, u8"girl.gltf");
+        auto event = System.EnsureCooked(asset->GetGUID());
+        event.wait(true);
+    }
 }
 
 void ModelViewerModule::InitializeAssetSystem()

@@ -20,27 +20,11 @@ sreflect_struct(guid = "6c429147-d680-4345-a4a3-e8aefd671e6a")
 TOOL_CORE_API AssetMetaFile final
 {
 public:
-    AssetMetaFile(const skr::String& uri);
-    AssetMetaFile(const skr::String& uri, skr::GUID guid, skr::GUID resource_type, skr::GUID cooker);
+    AssetMetaFile(const URI& uri);
+    AssetMetaFile(const URI& uri, skr::GUID guid, skr::GUID resource_type, skr::GUID cooker);
 
     template <typename T>
-    inline skr::RC<T> GetMetadata()
-    {
-        if (metadata != nullptr)
-        {
-            return metadata;
-        }
-        else if (!meta_content.is_empty())
-        {
-            auto METADATA = skr::RC<T>::New();
-            skr::archive::JsonReader reader(meta_content.view());
-            skr::json_read(&reader, *METADATA);
-            metadata = METADATA;
-            return METADATA;
-        }
-        return nullptr;
-    }
-
+    inline skr::RC<T> GetMetadata();
     inline auto GetProject() const { return project; }
     inline const auto& GetURI() const { return uri; }
     inline skr::GUID GetGUID() const { return guid; }
@@ -72,10 +56,27 @@ private:
     skr::String meta_content;
 
     friend struct CookSystemImpl;
-    friend struct ::SkrNewWrapper;
     friend struct JsonSerde<skd::asset::AssetMetaFile>;
     SKR_RC_IMPL();
 };
+
+template <typename T>
+inline skr::RC<T> AssetMetaFile::GetMetadata()
+{
+    if (metadata != nullptr)
+    {
+        return metadata;
+    }
+    else if (!meta_content.is_empty())
+    {
+        auto METADATA = skr::RC<T>::New();
+        skr::archive::JsonReader reader(meta_content.view());
+        skr::json_read(&reader, *METADATA);
+        metadata = METADATA;
+        return METADATA;
+    }
+    return nullptr;
+}
 
 } // namespace skd::asset
 
