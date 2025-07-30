@@ -62,7 +62,7 @@ struct TransformTests {
         {
             SkrZoneScopedN("InitializeParentEntities");
             root_spawner(storage, 1, [&](auto& view) {
-                auto translations = sugoi::get_owned<skr::scene::TranslationComponent>(view.view);
+                auto translations = sugoi::get_owned<skr::scene::PositionComponent>(view.view);
                 auto rots = sugoi::get_owned<skr::scene::RotationComponent>(view.view);
                 auto scales = sugoi::get_owned<skr::scene::ScaleComponent>(view.view);
 
@@ -78,7 +78,7 @@ struct TransformTests {
             SkrZoneScopedN("InitializeChildEntities");
             children.reserve(CHILDREN_COUNT);
             children_spawner(storage, CHILDREN_COUNT, [&](auto& view) {
-                auto translations = sugoi::get_owned<skr::scene::TranslationComponent>(view.view);
+                auto translations = sugoi::get_owned<skr::scene::PositionComponent>(view.view);
                 auto rots = sugoi::get_owned<skr::scene::RotationComponent>(view.view);
                 auto scales = sugoi::get_owned<skr::scene::ScaleComponent>(view.view);
                 auto parents = sugoi::get_owned<skr::scene::ParentComponent>(view.view);
@@ -128,7 +128,7 @@ TEST_CASE_METHOD(TransformTests, "TransformUpdate")
 
     auto checkQuery = storage->new_query()
                           .ReadAny<skr::scene::ParentComponent, skr::scene::ChildrenComponent>()
-                          .ReadAll<skr::scene::TranslationComponent, skr::scene::RotationComponent, skr::scene::ScaleComponent>()
+                          .ReadAll<skr::scene::PositionComponent, skr::scene::RotationComponent, skr::scene::ScaleComponent>()
                           .ReadAll<skr::scene::TransformComponent>()
                           .commit()
                           .value();

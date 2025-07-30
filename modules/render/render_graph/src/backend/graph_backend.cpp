@@ -95,12 +95,17 @@ void RenderGraphFrameExecutor::reset_begin(TextureViewPool& texture_view_pool)
         cgpu_reset_command_pool(gfx_cmd_pool);
     }
 
-    cgpu_cmd_begin(gfx_cmd_buf);
+    {
+        SkrZoneScopedN("BeginCommandBuffer");
+        cgpu_cmd_begin(gfx_cmd_buf);
+    }
     write_marker(u8"Frame Begin");
 }
 
 void RenderGraphFrameExecutor::write_marker(const char8_t* message)
 {
+    SkrZoneScopedN("WriteMarker");
+
     CGPUFillBufferDescriptor fill_desc = {
         .offset = marker_idx * sizeof(uint32_t),
         .value = valid_marker_val
@@ -254,6 +259,10 @@ uint64_t RenderGraphBackend::get_latest_finished_frame() SKR_NOEXCEPT
 
 uint64_t RenderGraphBackend::execute(RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
+    for (auto callback : exec_callbacks)
+        callback(*this);
+    exec_callbacks.clear();
+
     const auto executor_index = frame_index % RG_MAX_FRAME_IN_FLIGHT;
     RenderGraphStackAllocator::Reset();
     {
@@ -313,6 +322,10 @@ uint64_t RenderGraphBackend::execute(RenderGraphProfiler* profiler) SKR_NOEXCEPT
                 });
             pass->foreach_buffers(
                 [this](BufferNode* t, BufferEdge* e) {
+                    node_factory->Dealloc(e);
+                });
+            pass->foreach_acceleration_structures(
+                [this](AccelerationStructureNode* as, AccelerationStructureEdge* e) {
                     node_factory->Dealloc(e);
                 });
             node_factory->Dealloc(pass);

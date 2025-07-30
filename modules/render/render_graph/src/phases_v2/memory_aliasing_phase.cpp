@@ -42,13 +42,6 @@ void MemoryAliasingPhase::on_execute(RenderGraph* graph, RenderGraphFrameExecuto
         dump_aliasing_result();
         dump_memory_buckets();
     }
-    
-    const char8_t* mode_str = (config_.aliasing_tier == EAliasingTier::Tier0) ? u8"Resource Pool" : u8"Memory Aliasing";
-    SKR_LOG_TRACE(u8"MemoryAliasingPhase: Completed (%s mode). Memory reduction: {:.1f}% ({} MB -> {} MB)",
-                mode_str,
-                aliasing_result_.total_compression_ratio * 100.0f,
-                aliasing_result_.total_original_memory / (1024 * 1024),
-                aliasing_result_.total_aliased_memory / (1024 * 1024));
 }
 
 void MemoryAliasingPhase::analyze_resources() SKR_NOEXCEPT
@@ -107,8 +100,6 @@ void MemoryAliasingPhase::analyze_resources() SKR_NOEXCEPT
         SKR_LOG_WARN(u8"MemoryAliasingPhase: No resources suitable for aliasing");
         return;
     }
-    
-    SKR_LOG_TRACE(u8"MemoryAliasingPhase: Processing {} resources for aliasing", sorted_resources.size());
     
     // SSIS算法步骤2：创建内存桶并尝试别名化
     perform_memory_aliasing(sorted_resources);
@@ -573,9 +564,6 @@ void MemoryAliasingPhase::compute_alias_transitions() SKR_NOEXCEPT
         });
     
     aliasing_result_.total_alias_transitions = static_cast<uint32_t>(aliasing_result_.alias_transitions.size());
-    
-    SKR_LOG_TRACE(u8"MemoryAliasingPhase: Computed %u alias transition points", 
-                aliasing_result_.total_alias_transitions);
 }
 
 void MemoryAliasingPhase::record_alias_transition(ResourceNode* from, ResourceNode* to, uint32_t bucket_index) SKR_NOEXCEPT

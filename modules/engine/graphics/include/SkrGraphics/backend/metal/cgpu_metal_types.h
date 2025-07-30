@@ -27,20 +27,17 @@ typedef struct CGPUInstance_Metal {
 
 typedef struct CGPUFence_Metal {
     CGPUFence super;
-    dispatch_semaphore_t sysSemaphore;
+	id<MTLSharedEvent> pMTLEvent; // id<MTLSharedEvent> - renamed to match D3D12 style
+    uint64_t mFenceValue;
 } CGPUFence_Metal;
 
-typedef struct CGPUSemaphore_Metal {
-	CGPUSemaphore super;
-	id<MTLEvent> mtlSemaphore;
-	uint64_t value;
-} CGPUSemaphore_Metal;
+// Semaphores are just fences in Metal, like D3D12
+typedef CGPUFence_Metal CGPUSemaphore_Metal;
 
 typedef struct CGPUQueue_Metal {
     CGPUQueue super;
     id<MTLCommandQueue> mtlCommandQueue;
-    id<MTLFence> mtlQueueFence API_AVAILABLE(macos(10.13), ios(10.0));
-    uint32_t mBarrierFlags;
+    struct CGPUFence_Metal* pFence;
 } CGPUQueue_Metal;
 
 typedef struct CGPUCommandPool_Metal {
@@ -55,7 +52,6 @@ typedef struct CGPURenderPassEncoder_Metal {
 
 typedef struct CGPUComputePassEncoder_Metal {
 	CGPUComputePassEncoder super;
-    struct CGPUCommandBuffer_Metal* cmdBuffer;
     id<MTLComputeCommandEncoder> mtlComputeEncoder;
 } CGPUComputePassEncoder_Metal;
 
@@ -93,8 +89,9 @@ typedef struct CGPUDescriptorSet_Metal {
 	CGPUBufferId mtlArgumentBuffer;
 	BindSlot_Metal* mtlBindSlots;
 	uint32_t mtlBindSlotCount;
-	__strong id* mtlReadArgsCache;
-	__strong id* mtlReadWriteArgsCache;
+	__unsafe_unretained id* mtlReadArgsCache;
+	__unsafe_unretained id* mtlReadWriteArgsCache;
+	const struct CGPUAccelerationStructure_Metal* pBoundAS;
 } CGPUDescriptorSet_Metal;
 
 typedef struct CGPUComputePipeline_Metal {
@@ -110,11 +107,32 @@ typedef struct CGPUBuffer_Metal {
 	uint64_t                     mOffset;
 } CGPUBuffer_Metal;
 
+typedef struct CGPUTexture_Metal {
+    CGPUTexture super;
+    id<MTLTexture> pTexture;
+} CGPUTexture_Metal;
+
+typedef struct CGPUTextureView_Metal {
+    CGPUTextureView super;
+    id<MTLTexture> pTextureView;
+} CGPUTextureView_Metal;
+
 typedef struct CGPUQueryPool_Metal {
     CGPUQueryPool super;
     id<MTLCounterSampleBuffer> mtlCounterSampleBuffer;
     ECGPUQueryType queryType;
 } CGPUQueryPool_Metal;
+
+typedef struct CGPUSwapChain_Metal {
+    CGPUSwapChain super;
+	NSView* pView;
+    CAMetalLayer* pLayer;
+    CGPUTexture_Metal* pBackBufferTextures;
+    NSMutableArray<id<CAMetalDrawable>>* pDrawables;  // Array of drawables
+    dispatch_semaphore_t mImageAcquiredSemaphore;
+    uint32_t mCurrentBackBufferIndex;
+    bool mOwnsView;
+} CGPUSwapChain_Metal;
 
 typedef struct CGPUAccelerationStructure_Metal {
 	CGPUAccelerationStructure super;

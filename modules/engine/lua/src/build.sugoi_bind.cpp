@@ -6,8 +6,8 @@ extern "C" {
 }
 #include "./stack.hpp"
 #include "./query.hpp"
-#include "./chunk.hpp"
-#include "./archetype.hpp"
+#include "SkrRT/sugoi/chunk.hpp"
+#include "SkrRT/sugoi/archetype.hpp"
 #include "./type_registry.hpp"
 
 namespace skr::lua

@@ -89,7 +89,6 @@ private:
     sugoi_timestamp_t queries_timestamp = 0;
 
 public:
-    sugoi::EntityRegistry entity_registry;
     sugoi_timestamp_t storage_timestamp;
     
     // overload

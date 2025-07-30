@@ -1,34 +1,34 @@
-#include "SkrBase/misc/defer.hpp"
 #include "SkrArchive/json/reader.h"
 #include "SkrCore/memory/sp.hpp"
 #include "SkrOS/shared_library.hpp"
 #include "SkrOS/filesystem.hpp"
-#include "SkrCore/memory/memory.h"
 #include "SkrContainersDef/hashmap.hpp"
 #include "SkrCore/module/module_manager.hpp"
 #include "SkrCore/module/subsystem.hpp"
 #include "SkrCore/log.h"
 
 #if defined(_MSC_VER)
-bool cr_pdb_replace(const std::string& filename, const std::string& pdbname,
-                    std::string& orig_pdb);
+bool cr_pdb_replace(const std::string& filename, const std::string& pdbname, std::string& orig_pdb);
 
-static bool ProcessPDB(const skr::filesystem::path& dst)
+static bool ProcessPDB(const skr::Path& dst)
 {
-    auto                  basePath = dst.lexically_normal();
-    skr::filesystem::path folder, fname, ext;
-    folder = basePath.parent_path();
-    fname  = basePath.stem();
-    ext    = basePath.extension();
+    auto basePath = dst.normalize();
+    auto folder = basePath.parent_directory();
+    auto fname = basePath.basename();
+    auto ext = basePath.extension();
     // replace ext with .pdb
-    auto            pdbDst = folder / (fname.string() + ".pdb");
-    std::string     orig_pdb;
-    bool            result = cr_pdb_replace(dst.string(), fname.string() + ".pdb", orig_pdb);
-    std::error_code ec;
-    skr::filesystem::copy(orig_pdb, pdbDst, skr::filesystem::copy_options::overwrite_existing, ec);
-    if (ec)
+    skr::String pdb_name = fname.string();
+    pdb_name.append(u8".pdb");
+    auto pdbDst = folder / pdb_name;
+    std::string orig_pdb;
+    std::string dst_str(reinterpret_cast<const char*>(dst.string().data()));
+    std::string fname_str(reinterpret_cast<const char*>(fname.string().data()));
+    bool result = cr_pdb_replace(dst_str, fname_str + ".pdb", orig_pdb);
+    skr::Path orig_pdb_path(skr::String(reinterpret_cast<const char8_t*>(orig_pdb.c_str())));
+    bool copy_result = skr::fs::File::copy(orig_pdb_path, pdbDst, skr::fs::CopyOptions::OverwriteExisting);
+    if (!copy_result)
     {
-        SKR_LOG_ERROR(u8"copy pdb file failed: %s", ec.message().c_str());
+        SKR_LOG_ERROR(u8"copy pdb file failed");
         result = false;
     }
     return result;
@@ -37,13 +37,19 @@ static bool ProcessPDB(const skr::filesystem::path& dst)
 
 namespace skr
 {
-struct ModuleContext {
-    skr::filesystem::path           path                 = {};
-    skr::filesystem::path           temppath             = {};
-    skr::filesystem::file_time_type timestamp            = {};
-    unsigned int                    version              = 0;
-    unsigned int                    next_version         = 1;
-    unsigned int                    last_working_version = 0;
+ModuleSubsystem::~ModuleSubsystem() SKR_NOEXCEPT
+{
+
+}
+
+struct ModuleContext
+{
+    skr::Path path = {};
+    skr::Path temppath = {};
+    skr::fs::FileTime timestamp = {};
+    unsigned int version = 0;
+    unsigned int next_version = 1;
+    unsigned int last_working_version = 0;
 };
 class ModuleManagerImpl : public skr::ModuleManager
 {
@@ -63,16 +69,16 @@ public:
         }
         skr::DependencyGraph::Destroy(dependency_graph);
     }
-    virtual IModule*                  get_module(const skr::String& name) final;
+    virtual IModule* get_module(const skr::String& name) final;
     virtual const struct ModuleGraph* make_module_graph(const skr::String& entry, bool shared = true) final;
-    virtual bool                      patch_module_graph(const skr::String& name, bool shared = true, int argc = 0, char8_t** argv = nullptr) final;
-    virtual int                       init_module_graph(int argc, char8_t** argv) final;
-    virtual bool                      destroy_module_graph(void) final;
-    virtual void                      mount(const char8_t* path) final;
-    virtual skr::StringView           get_root(void) final;
-    virtual ModuleProperty&           get_module_property(const skr::String& name) final;
-    virtual void                      enable_hotfix_for_module(skr::StringView name) override final;
-    virtual bool                      update(void) override final;
+    virtual bool patch_module_graph(const skr::String& name, bool shared = true, int argc = 0, char8_t** argv = nullptr) final;
+    virtual int init_module_graph(int argc, char8_t** argv) final;
+    virtual bool destroy_module_graph(void) final;
+    virtual void mount(const char8_t* path) final;
+    virtual skr::StringView get_root(void) final;
+    virtual ModuleProperty& get_module_property(const skr::String& name) final;
+    virtual void enable_hotfix_for_module(skr::StringView name) override final;
+    virtual bool update(void) override final;
 
     virtual void register_subsystem(const char8_t* moduleName, const char8_t* id, ModuleSubsystemBase::CreatePFN pCreate) final;
 
@@ -81,27 +87,27 @@ public:
 protected:
     virtual IModule* spawnStaticModule(const skr::String& moduleName) final;
     virtual IModule* spawnDynamicModule(const skr::String& moduleName, bool hotfix) final;
-    virtual bool     loadHotfixModule(SharedLibrary& lib, const skr::String& moduleName) final;
+    virtual bool loadHotfixModule(SharedLibrary& lib, const skr::String& moduleName) final;
 
 private:
-    bool       __internal_DestroyModuleGraph(const skr::String& nodename);
-    bool       __internal_UpdateModuleGraph(const skr::String& nodename);
-    void       __internal_MakeModuleGraph(const skr::String& entry, bool shared = false);
-    bool       __internal_InitModuleGraph(const skr::String& nodename, int argc, char8_t** argv);
+    bool __internal_DestroyModuleGraph(const skr::String& nodename);
+    bool __internal_UpdateModuleGraph(const skr::String& nodename);
+    void __internal_MakeModuleGraph(const skr::String& entry, bool shared = false);
+    bool __internal_InitModuleGraph(const skr::String& nodename, int argc, char8_t** argv);
     ModuleInfo parseMetaData(const char8_t* metadata);
 
 private:
-    skr::String              moduleDir;
+    skr::String moduleDir;
     skr::Vector<skr::String> roots;
-    skr::String              mainModuleName;
+    skr::String mainModuleName;
     // ModuleGraphImpl moduleDependecyGraph;
-    skr::DependencyGraph*                                                                              dependency_graph = nullptr;
-    skr::FlatHashSet<skr::String, skr::Hash<skr::String>>                                              hotfixTraversalSet;
-    skr::FlatHashMap<skr::String, ModuleContext, skr::Hash<skr::String>>                               hotfixModules;
-    skr::FlatHashMap<skr::String, ModuleProperty*, skr::Hash<skr::String>>                             nodeMap;
-    skr::FlatHashMap<skr::String, module_registerer, skr::Hash<skr::String>>                           initializeMap;
-    skr::FlatHashMap<skr::String, IModule*, skr::Hash<skr::String>>                                    modulesMap;
-    skr::FlatHashMap<skr::String, skr::Vector<skr::String>, skr::Hash<skr::String>>                    subsystemIdMap;
+    skr::DependencyGraph* dependency_graph = nullptr;
+    skr::FlatHashSet<skr::String, skr::Hash<skr::String>> hotfixTraversalSet;
+    skr::FlatHashMap<skr::String, ModuleContext, skr::Hash<skr::String>> hotfixModules;
+    skr::FlatHashMap<skr::String, ModuleProperty*, skr::Hash<skr::String>> nodeMap;
+    skr::FlatHashMap<skr::String, module_registerer, skr::Hash<skr::String>> initializeMap;
+    skr::FlatHashMap<skr::String, IModule*, skr::Hash<skr::String>> modulesMap;
+    skr::FlatHashMap<skr::String, skr::Vector<skr::String>, skr::Hash<skr::String>> subsystemIdMap;
     skr::FlatHashMap<skr::String, skr::Vector<ModuleSubsystemBase::CreatePFN>, skr::Hash<skr::String>> subsystemCreateMap;
 
     SharedLibrary processSymbolTable;
@@ -136,8 +142,8 @@ IModule* ModuleManagerImpl::spawnStaticModule(const skr::String& name)
         return modulesMap[name];
     if (initializeMap.find(name) == initializeMap.end())
         return nullptr;
-    auto func                     = initializeMap[name];
-    modulesMap[name]              = func();
+    auto func = initializeMap[name];
+    modulesMap[name] = func();
     modulesMap[name]->information = parseMetaData(modulesMap[name]->get_meta_data());
     // Delay onload call to initialize time(with dependency graph)
     // modulesMap[name]->OnLoad();
@@ -168,45 +174,46 @@ public:
     skr::String name = u8"";
 };
 
-static skr::filesystem::path GetVersionPath(const skr::filesystem::path& basepath,
-                                            unsigned                     version,
-                                            const skr::filesystem::path& temppath)
+static skr::Path GetVersionPath(const skr::Path& basepath,
+    unsigned version,
+    const skr::Path& temppath)
 {
-    auto                  basePath = basepath.lexically_normal();
-    skr::filesystem::path folder, fname, ext;
-    folder   = basePath.parent_path();
-    fname    = basePath.stem();
-    ext      = basePath.extension();
+    auto basePath = basepath.normalize();
+    auto folder = basePath.parent_directory();
+    auto fname = basePath.basename();
+    auto ext = basePath.extension();
     auto ver = std::to_string(version);
-    if (!temppath.empty())
+    if (!temppath.is_empty())
     {
         folder = temppath;
     }
-    return folder / (fname.string() + ver + ext.string());
+    skr::String result_str = fname.string();
+    result_str.append(skr::String(reinterpret_cast<const char8_t*>(ver.c_str())));
+    result_str.append(ext.string());
+    return folder / result_str;
 }
 
 bool ModuleManagerImpl::loadHotfixModule(SharedLibrary& lib, const skr::String& moduleName)
 {
-    auto&       ctx = hotfixModules[moduleName];
+    auto& ctx = hotfixModules[moduleName];
     skr::String filename;
     filename.append(skr::SharedLibrary::GetPlatformFilePrefixName());
     filename.append(moduleName);
     filename.append(skr::SharedLibrary::GetPlatformFileExtensionName());
-    skr::filesystem::path path = filename.c_str();
-    ctx.path                   = path;
-    std::error_code ec;
-    if (!skr::filesystem::exists(path, ec))
+    skr::Path path(skr::String(reinterpret_cast<const char8_t*>(filename.c_str())));
+    ctx.path = path;
+    if (!skr::fs::File::exists(path))
     {
-        SKR_LOG_ERROR(u8"hotfix module %s not found!", path.c_str());
+        SKR_LOG_ERROR(u8"hotfix module %s not found!", path.string().data());
         return false;
     }
-    skr::filesystem::path new_path = GetVersionPath(path, ctx.version, ctx.temppath);
+    skr::Path new_path = GetVersionPath(path, ctx.version, ctx.temppath);
     {
         ctx.last_working_version = ctx.version;
-        skr::filesystem::copy(path, new_path, skr::filesystem::copy_options::overwrite_existing, ec);
-        if (ec)
+        bool copy_result = skr::fs::File::copy(path, new_path, skr::fs::CopyOptions::OverwriteExisting);
+        if (!copy_result)
         {
-            SKR_LOG_ERROR(u8"hotfix module %s rename failed! reason: %s", path.c_str(), ec.message().c_str());
+            SKR_LOG_ERROR(u8"hotfix module %s rename failed!", path.string().data());
             return false;
         }
         ctx.next_version = ctx.next_version + 1;
@@ -215,19 +222,20 @@ bool ModuleManagerImpl::loadHotfixModule(SharedLibrary& lib, const skr::String& 
         {
             SKR_LOG_ERROR(u8"hotfix module %s pdb process failed, debugging may be "
                           "affected and/or reload may fail",
-                          path.c_str());
+                path.string().data());
         }
 #endif
     }
-    if (!lib.load(new_path.u8string().c_str()))
+    if (!lib.load(new_path.string().data()))
     {
-        SKR_LOG_ERROR(u8"hotfix module %s load failed!", new_path.c_str());
+        SKR_LOG_ERROR(u8"hotfix module %s load failed!", new_path.string().data());
         return false;
     }
     // TODO: validate sections
     // TODO: reload sections
-    ctx.timestamp = skr::filesystem::last_write_time(new_path, ec);
-    ctx.version   = ctx.next_version - 1;
+    auto info = skr::fs::File::get_info(new_path);
+    ctx.timestamp = info.last_write_time;
+    ctx.version = ctx.next_version - 1;
     return true;
 }
 
@@ -235,7 +243,7 @@ IModule* ModuleManagerImpl::spawnDynamicModule(const skr::String& name, bool hot
 {
     if (modulesMap.find(name) != modulesMap.end())
         return modulesMap[name];
-    auto        sharedLib = new SharedLibrary();
+    auto sharedLib = new SharedLibrary();
     skr::String initName(u8"__initializeModule");
     skr::String mName(name);
     initName.append(mName);
@@ -262,10 +270,12 @@ IModule* ModuleManagerImpl::spawnDynamicModule(const skr::String& name, bool hot
         filename.append(skr::SharedLibrary::GetPlatformFilePrefixName());
         filename.append(name);
         filename.append(skr::SharedLibrary::GetPlatformFileExtensionName());
-        auto finalPath = (skr::filesystem::path(moduleDir.c_str()) / filename.c_str()).u8string();
+        skr::Path moduleDir_path(skr::String(reinterpret_cast<const char8_t*>(moduleDir.c_str())));
+        skr::Path filename_path(skr::String(reinterpret_cast<const char8_t*>(filename.c_str())));
+        auto finalPath = (moduleDir_path / filename_path).string();
         if (!hotfix)
         {
-            if (!sharedLib->load((const char8_t*)finalPath.c_str()))
+            if (!sharedLib->load(finalPath.data()))
             {
                 SKR_LOG_DEBUG(u8"%s\nLoad Shared Lib Error:%s", filename.c_str(), sharedLib->errorString().c_str());
             }
@@ -305,16 +315,16 @@ IModule* ModuleManagerImpl::spawnDynamicModule(const skr::String& name, bool hot
         modulesMap[name] = new SDefaultDynamicModule(name.c_str());
     }
     IDynamicModule* module = (IDynamicModule*)modulesMap[name];
-    module->sharedLib      = sharedLib;
+    module->sharedLib = sharedLib;
     // pre-init name for meta reading
     module->information.name = name;
-    module->information      = parseMetaData(module->get_meta_data());
+    module->information = parseMetaData(module->get_meta_data());
     return module;
 }
 
 ModuleInfo ModuleManagerImpl::parseMetaData(const char8_t* metadata)
 {
-    ModuleInfo                info;
+    ModuleInfo info;
     skr::archive::_JsonReader reader(metadata);
     reader.StartObject(u8"");
     {
@@ -382,7 +392,7 @@ bool ModuleManagerImpl::__internal_InitModuleGraph(const skr::String& nodename, 
         subsystem->Initialize();
     }
     nodeMap[nodename]->bActive = true;
-    nodeMap[nodename]->name    = nodename;
+    nodeMap[nodename]->name = nodename;
     return true;
 }
 
@@ -392,10 +402,10 @@ bool ModuleManagerImpl::__internal_DestroyModuleGraph(const skr::String& nodenam
         return true;
     auto node = nodeMap.find(nodename)->second;
     dependency_graph->foreach_inv_neighbors(node,
-                                        [this](DependencyGraphNode* node) {
-                                            ModuleProperty* property = static_cast<ModuleProperty*>(node);
-                                            __internal_DestroyModuleGraph(property->name);
-                                        });
+        [this](DependencyGraphNode* node) {
+            ModuleProperty* property = static_cast<ModuleProperty*>(node);
+            __internal_DestroyModuleGraph(property->name);
+        });
     auto this_module = get_module(nodename);
     // subsystems
     for (auto&& subsystem : this_module->subsystems)
@@ -413,7 +423,7 @@ bool ModuleManagerImpl::__internal_DestroyModuleGraph(const skr::String& nodenam
         modulesMap[nodename] = nullptr;
     }
     nodeMap[nodename]->bActive = false;
-    nodeMap[nodename]->name    = nodename;
+    nodeMap[nodename]->name = nodename;
     return true;
 }
 
@@ -438,14 +448,14 @@ void ModuleManagerImpl::__internal_MakeModuleGraph(const skr::String& entry, boo
 {
     if (nodeMap.find(entry) != nodeMap.end())
         return;
-    bool     hotfix  = hotfixModules.contains(entry);
+    bool hotfix = hotfixModules.contains(entry);
     IModule* _module = shared ?
-                       spawnDynamicModule(entry, hotfix) :
-                       spawnStaticModule(entry);
-    auto     prop = nodeMap[entry] = SkrNew<ModuleProperty>();
-    prop->name                     = entry;
-    prop->bActive                  = false;
-    prop->bShared                  = shared;
+        spawnDynamicModule(entry, hotfix) :
+        spawnStaticModule(entry);
+    auto prop = nodeMap[entry] = SkrNew<ModuleProperty>();
+    prop->name = entry;
+    prop->bActive = false;
+    prop->bShared = shared;
     SKR_ASSERT(hotfix <= _module->reloadable());
     dependency_graph->insert(prop);
     auto moduleInfo = _module->get_module_info();
@@ -453,13 +463,13 @@ void ModuleManagerImpl::__internal_MakeModuleGraph(const skr::String& entry, boo
         roots.add(entry);
     for (auto i = 0u; i < moduleInfo->dependencies.size(); i++)
     {
-        const auto& depInfo  = moduleInfo->dependencies[i];
-        auto        iterName = depInfo.name.c_str();
-        bool        isShared = depInfo.kind == u8"shared";
+        const auto& depInfo = moduleInfo->dependencies[i];
+        auto iterName = depInfo.name.c_str();
+        bool isShared = depInfo.kind == u8"shared";
         __internal_MakeModuleGraph(iterName, isShared);
 
         auto _this = nodeMap[entry];
-        auto dep   = nodeMap[iterName];
+        auto dep = nodeMap[iterName];
         dependency_graph->link(_this, dep);
     }
 }
@@ -490,16 +500,17 @@ bool ModuleManagerImpl::__internal_UpdateModuleGraph(const skr::String& entry)
         return true;
     auto node = nodeMap.find(entry)->second;
     dependency_graph->foreach_neighbors(node,
-                                        [this](DependencyGraphNode* node) {
-                                            ModuleProperty* property = static_cast<ModuleProperty*>(node);
-                                            __internal_UpdateModuleGraph(property->name);
-                                        });
+        [this](DependencyGraphNode* node) {
+            ModuleProperty* property = static_cast<ModuleProperty*>(node);
+            __internal_UpdateModuleGraph(property->name);
+        });
     auto iter = hotfixModules.find(entry);
     if (iter == hotfixModules.end())
         return true;
     auto& ctx = iter->second;
     // check file timestamp
-    bool changed = std::filesystem::last_write_time(ctx.path) > ctx.timestamp;
+    auto info = skr::fs::File::get_info(ctx.path);
+    bool changed = info.last_write_time > ctx.timestamp;
     if (!changed)
         return true;
     // reload module
@@ -518,8 +529,8 @@ bool ModuleManagerImpl::__internal_UpdateModuleGraph(const skr::String& entry)
         SkrDelete(subsystem);
     }
     this_module->on_reload_begin();
-    auto                  this_state = std::move(this_module->state);
-    [[maybe_unused]] auto old_lib    = std::move(this_module->sharedLib);
+    auto this_state = std::move(this_module->state);
+    [[maybe_unused]] auto old_lib = std::move(this_module->sharedLib);
     if (modulesMap[entry] != nullptr)
     {
         delete modulesMap[entry];
@@ -548,13 +559,13 @@ bool ModuleManagerImpl::__internal_UpdateModuleGraph(const skr::String& entry)
             return false;
         }
     }
-    auto new_module       = (IHotfixModule*)func();
+    auto new_module = (IHotfixModule*)func();
     new_module->sharedLib = std::move(sharedLib);
     // pre-init name for meta reading
     new_module->information.name = entry;
-    new_module->information      = parseMetaData(new_module->get_meta_data());
-    modulesMap[entry]            = new_module;
-    new_module->state            = std::move(this_state);
+    new_module->information = parseMetaData(new_module->get_meta_data());
+    modulesMap[entry] = new_module;
+    new_module->state = std::move(this_state);
     new_module->on_reload_finish();
     auto&& create_funcs = subsystemCreateMap[entry];
     for (auto&& func : create_funcs)

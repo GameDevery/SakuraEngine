@@ -25,13 +25,13 @@
 #endif
 
 #ifdef SKR_PROFILE_ENABLE
-#define USE_FIBER_EVENTS 1
+#define USE_FIBER_EVENTS 0
 #else
 #define USE_FIBER_EVENTS 0
 #endif
 
 // Enable to trace scheduler events.
-#define ENABLE_TRACE_EVENTS 1
+#define ENABLE_TRACE_EVENTS 0
 
 // Enable to print verbose debug logging.
 #define ENABLE_DEBUG_LOGGING 0

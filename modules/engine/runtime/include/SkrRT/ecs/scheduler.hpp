@@ -5,6 +5,7 @@
 #include "SkrCore/memory/rc.hpp"
 #include "SkrCore/async/async_service.h"
 #include "SkrRT/ecs/component.hpp"
+#include "SkrRT/ecs/stack_allocator.hpp"
 
 namespace skr::ecs
 {
@@ -13,19 +14,31 @@ struct Task;
 struct TaskSignature;
 struct StaticDependencyAnalyzer;
 
+enum class EDependencySyncMode
+{
+    PerChunk,
+    WholeTask
+};
+
+struct TaskDependency
+{
+    skr::RC<TaskSignature> task;
+    EDependencySyncMode mode;
+};
+
 struct WorkUnit
 {
     mutable sugoi_chunk_view_t chunk_view;
     mutable skr::task::counter_t finish;
-    skr::Vector<skr::task::weak_counter_t> dependencies;
+    StackVector<skr::task::weak_counter_t> dependencies;
 };
 static_assert(sizeof(WorkUnit) <= sizeof(uint64_t) * 8, "better cacheline for WorkUnit");
 
 struct WorkGroup
 {
     const sugoi_group_t* group;
-    skr::Map<const sugoi_chunk_t*, WorkUnit> units;
-    skr::Vector<skr::RC<TaskSignature>> dependencies;
+    StackMap<const sugoi_chunk_t*, WorkUnit> units;
+    StackVector<TaskDependency> dependencies;
 };
 
 struct Task
@@ -42,9 +55,21 @@ struct Task
 // Environment: 会针对访问的 Env 类型进行 DependencyLevel 计算并禁用去同步优化
 // Message Send/Receive: 待定，因为未知全局消息消费的调度形式 
 enum class EAccessMode : uint8_t {
-    Seq,
-    Random,
-    Atomic,
+    Seq = 0x0,
+    Random = 0x1
+};
+inline constexpr EAccessMode operator|(EAccessMode a, EAccessMode b) {
+    return static_cast<EAccessMode>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b));
+}
+inline constexpr EAccessMode operator&(EAccessMode a, EAccessMode b) {
+    return static_cast<EAccessMode>(static_cast<uint8_t>(a) & static_cast<uint8_t>(b));
+}
+inline constexpr bool has_flag(EAccessMode a, EAccessMode b) {
+    return (a & b) == b;
+}
+
+enum class EAccessType : uint8_t {
+    Component,
     Environment,
     Message
 };
@@ -53,6 +78,7 @@ struct ComponentAccess
 {
     TypeIndex type;
     EAccessMode mode;
+    EAccessType access_type = EAccessType::Component;
 };
 
 struct TaskSignature
@@ -61,20 +87,25 @@ public:
     SKR_RC_IMPL();
     virtual ~TaskSignature() = default;
 
-    skr::RC<Task> task;
-    skr::Vector<ComponentAccess> reads;
-    skr::Vector<ComponentAccess> writes;
-    uint32_t thread_affinity = ~0;
-    const sugoi_query_t* query = nullptr;
-
     const auto& work_groups() const { return _work_groups; }
 
+    skr::RC<Task> task;
+    StackVector<ComponentAccess> reads;
+    StackVector<ComponentAccess> writes;
+    const sugoi_query_t* query = nullptr;
+    uint32_t thread_affinity = ~0;
+    bool self_confict = false;
+
 protected:
+    friend struct TaskScheduler;
     friend struct StaticDependencyAnalyzer;
-    skr::Vector<skr::RC<TaskSignature>> _static_dependencies;
+    StackVector<TaskDependency> _static_dependencies;
 
     friend struct WorkUnitGenerator;
-    skr::Map<const sugoi_group_t*, WorkGroup> _work_groups;
+    StackMap<const sugoi_group_t*, WorkGroup> _work_groups;
+    skr::task::counter_t _finish;
+
+    std::atomic_uint32_t _exec_counter = 0;
 };
 
 struct SKR_RUNTIME_API StaticDependencyAnalyzer
@@ -83,13 +114,10 @@ struct SKR_RUNTIME_API StaticDependencyAnalyzer
 
     struct AccessInfo
     {
-        skr::RC<TaskSignature> last_writer;
-        skr::Vector<skr::RC<TaskSignature>> readers;
+        std::pair<skr::RC<TaskSignature>, EAccessMode> last_writer;
+        StackMap<skr::RC<TaskSignature>, EAccessMode> readers;
     };
-    skr::Map<TypeIndex, AccessInfo> accesses;
-
-    // TODO: WRITE A STACK ALLOCATOR AND REPLACE THIS WITH IT
-    skr::Vector<skr::RC<TaskSignature>> _collector;
+    StackMap<TypeIndex, AccessInfo> accesses;
 };
 
 struct SKR_RUNTIME_API WorkUnitGenerator
@@ -100,14 +128,17 @@ struct SKR_RUNTIME_API WorkUnitGenerator
 struct SKR_RUNTIME_API TaskScheduler : protected AsyncService
 {
 public:
-    TaskScheduler(const ServiceThreadDesc& desc, skr::task::scheduler_t& scheduler) SKR_NOEXCEPT;
-    
+    static void Initialize(const ServiceThreadDesc& desc, skr::task::scheduler_t& scheduler) SKR_NOEXCEPT;
+    static void Finalize() SKR_NOEXCEPT;
+    static TaskScheduler* Get() SKR_NOEXCEPT;
+
     void run() SKR_NOEXCEPT;
     void flush_all();
     void sync_all();
     void stop_and_exit();
 
-    void add_task(sugoi_query_t* query, Task::Type&& func, uint32_t batch_size);
+    TaskScheduler(const ServiceThreadDesc& desc, skr::task::scheduler_t& scheduler) SKR_NOEXCEPT;
+    ~TaskScheduler();
 
 protected:
     AsyncResult serve() SKR_NOEXCEPT override;
@@ -122,8 +153,9 @@ protected:
     friend struct StaticDependencyAnalyzer;
     friend struct WorkUnitGenerator;
     SAtomicU32 _enqueued_tasks = 0;
-    skr::ConcurrentQueue<skr::RC<TaskSignature>> _tasks;
-    skr::ConcurrentQueue<skr::RC<TaskSignature>> _dispatched_tasks;
+    StackConcurrentQueue<skr::RC<TaskSignature>> _tasks;
+    skr::shared_atomic_mutex _clear_mtx;
+    StackVector<skr::RC<TaskSignature>> _dispatched_tasks;
 
     StaticDependencyAnalyzer _analyzer;
     WorkUnitGenerator _generator;

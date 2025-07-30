@@ -707,10 +707,12 @@ void ASTConsumer::TranslateLambdaCapturesToParams(const clang::LambdaExpr* x)
         if (!isThis)
         {
             // 1.1  = 生成传值，& 生成 inout
+            auto byRef = capture.getCaptureKind() == clang::LambdaCaptureKind::LCK_ByRef;
+            byRef &= !capture.getCapturedVar()->getType().isConstQualified(); // const&
             auto newParam = translateCaptureToParam(
                 getType(capture.getCapturedVar()->getType()), 
                 ToText(capture.getCapturedVar()->getName()), 
-                capture.getCaptureKind() == clang::LambdaCaptureKind::LCK_ByRef
+                byRef
             );
             FunctionStack::CapturedParamInfo info = {
                 .owner = x,
@@ -1126,7 +1128,8 @@ CppSL::FunctionDecl* ASTConsumer::TranslateFunction(const clang::FunctionDecl *x
             {
                 ReportFatalError(x, "Method {} has no owner type", AsMethod->getNameAsString());
             }
-            auto _this = AST.DeclareParam(EVariableQualifier::Inout, _t, L"_this");
+            const auto qualifier = AsMethod->isConst() ? EVariableQualifier::Const : EVariableQualifier::Inout;
+            auto _this = AST.DeclareParam(qualifier, _t, L"_this");
             params.emplace(params.begin(), _this);
             current_stack->_this_redirect = _this->ref();
         }

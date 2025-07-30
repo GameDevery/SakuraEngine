@@ -3,12 +3,12 @@
 #include "SkrRT/sugoi/set.hpp"
 #include "SkrRT/sugoi/type_index.hpp"
 #include "SkrRT/sugoi/type_registry.hpp"
+#include "SkrRT/sugoi/chunk.hpp"
+#include "SkrRT/sugoi/archetype.hpp"
 
 #include "./stack.hpp"
-#include "./chunk.hpp"
 #include "./chunk_view.hpp"
 #include "./impl/storage.hpp"
-#include "./archetype.hpp"
 #include <algorithm>
 #include <array>
 
@@ -34,15 +34,6 @@ bool archetype_t::with_chunk_component() const noexcept
     return firstChunkComponent != type.length;
 }
 
-SIndex archetype_t::index(sugoi_type_index_t inType) const noexcept
-{
-    auto end = type.data + type.length;
-    const sugoi_type_index_t* result = std::lower_bound(type.data, end, inType);
-    if (result != end && *result == inType)
-        return (SIndex)(result - type.data);
-    else
-        return kInvalidSIndex;
-}
 } // namespace sugoi
 
 template <typename Field, typename ValueType>
@@ -447,7 +438,7 @@ void sugoi_group_t::add_chunk(sugoi_chunk_t* chunk)
     }
     else
     {
-        chunks.resize(chunks.size() + 1);
+        chunks.resize_zeroed(chunks.size() + 1);
         for (uint32_t i = firstFree; i < (uint32_t)chunks.size() - 1; ++i)
         {
             auto j = (uint32_t)chunks.size() - 1 + firstFree - i;

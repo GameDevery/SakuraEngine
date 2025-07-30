@@ -42,147 +42,147 @@ struct TemplateCallable : public TemplateCallableDecl
 AccessExpr* AST::Access(Expr* base, Expr* index)
 {
     auto expr = new AccessExpr(*this, base, index);
-    _stmts.emplace_back(expr);
+    emplace_stmt(expr);
     return expr;
 }
 
 BinaryExpr* AST::Binary(BinaryOp op, Expr* left, Expr* right)
 {
     auto expr = new BinaryExpr(*this, left, right, op);
-    _stmts.emplace_back(expr);
+    emplace_stmt(expr);
     return expr;
 }
 
 BitwiseCastExpr* AST::BitwiseCast(const TypeDecl* type, Expr* expr)
 {
     auto cast = new BitwiseCastExpr(*this, type, expr);
-    _stmts.emplace_back(cast);
+    emplace_stmt(cast);
     return cast;
 }
 
 BreakStmt* AST::Break()
 {
     auto stmt = new BreakStmt(*this);
-    _stmts.emplace_back(stmt);
+    emplace_stmt(stmt);
     return stmt;
 }
 
 CompoundStmt* AST::Block(const std::vector<Stmt*>& statements)
 {
     auto exp = new CompoundStmt(*this, statements);
-    _stmts.emplace_back(exp);
+    emplace_stmt(exp);
     return exp;
 }
 
 CallExpr* AST::CallFunction(DeclRefExpr* callee, std::span<Expr*> args)
 {
     auto expr = new CallExpr(*this, callee, args);
-    _stmts.emplace_back(expr);
+    emplace_stmt(expr);
     return expr;
 }
 
 CaseStmt* AST::Case(Expr* cond, CompoundStmt* body)
 {
     auto stmt = new CaseStmt(*this, cond, body);
-    _stmts.emplace_back(stmt);
+    emplace_stmt(stmt);
     return stmt;
 }
 
 MethodCallExpr* AST::CallMethod(MemberExpr* callee, std::span<Expr*> args)
 {
     auto expr = new MethodCallExpr(*this, callee, args);
-    _stmts.emplace_back(expr);
+    emplace_stmt(expr);
     return expr;
 }
 
 ConditionalExpr* AST::Conditional(Expr* cond, Expr* _then, Expr* _else)
 {
     auto expr = new ConditionalExpr(*this, cond, _then, _else);
-    _stmts.emplace_back(expr);
+    emplace_stmt(expr);
     return expr;
 }
 
 ConstantExpr* AST::Constant(const IntValue& v) 
 { 
     auto expr = new ConstantExpr(*this, v); 
-    _stmts.emplace_back(expr);
+    emplace_stmt(expr);
     return expr;
 }
 
 ConstantExpr* AST::Constant(const FloatValue& v) 
 { 
     auto expr = new ConstantExpr(*this, v); 
-    _stmts.emplace_back(expr);
+    emplace_stmt(expr);
     return expr;
 }
 
 ConstructExpr* AST::Construct(const TypeDecl* type, std::span<Expr*> args)
 {
     auto expr = new ConstructExpr(*this, type, args);
-    _stmts.emplace_back(expr);
+    emplace_stmt(expr);
     return expr;
 }
 
 ContinueStmt* AST::Continue()
 {
     auto stmt = new ContinueStmt(*this);
-    _stmts.emplace_back(stmt);
+    emplace_stmt(stmt);
     return stmt;
 }
 
 CommentStmt* AST::Comment(const String& text)
 {
     auto stmt = new CommentStmt(*this, text);
-    _stmts.emplace_back(stmt);
+    emplace_stmt(stmt);
     return stmt;
 }
 
 DefaultStmt* AST::Default(CompoundStmt* body)
 {
     auto stmt = new DefaultStmt(*this, body);
-    _stmts.emplace_back(stmt);
+    emplace_stmt(stmt);
     return stmt;
 }
 
 FieldExpr* AST::Field(Expr* base, const FieldDecl* field)
 {
     auto expr = new FieldExpr(*this, base, field);
-    _stmts.emplace_back(expr);
+    emplace_stmt(expr);
     return expr;
 }
 
 ForStmt* AST::For(Stmt* init, Expr* cond, Stmt* inc, CompoundStmt* body)
 {
     auto stmt = new ForStmt(*this, init, cond, inc, body);
-    _stmts.emplace_back(stmt);
+    emplace_stmt(stmt);
     return stmt;
 }
 
 IfStmt* AST::If(Expr* cond, CompoundStmt* then_body, CompoundStmt* else_body)
 {
     auto stmt = new IfStmt(*this, cond, then_body, else_body);
-    _stmts.emplace_back(stmt);
+    emplace_stmt(stmt);
     return stmt;
 }
 
 InitListExpr* AST::InitList(std::span<Expr*> exprs)
 {
     auto expr = new InitListExpr(*this, exprs);
-    _stmts.emplace_back(expr);
+    emplace_stmt(expr);
     return expr;
 }
 
 ImplicitCastExpr* AST::ImplicitCast(const TypeDecl* type, Expr* expr)
 {
     auto cast = new ImplicitCastExpr(*this, type, expr);
-    _stmts.emplace_back(cast);
+    emplace_stmt(cast);
     return cast;
 }
 
 MethodExpr* AST::Method(Expr* base, const MethodDecl* method)
 {
     auto expr = new MethodExpr(*this, base, method);
-    _stmts.emplace_back(expr);
+    emplace_stmt(expr);
     return expr;
 }
 
@@ -190,49 +190,49 @@ DeclRefExpr* AST::Ref(const Decl* decl)
 {
     assert(decl && "DeclRefExpr cannot be created with a null decl");
     auto expr = new DeclRefExpr(*this, *decl);
-    _stmts.emplace_back(expr);
+    emplace_stmt(expr);
     return expr;
 }
 
 ReturnStmt* AST::Return(Expr* expr)
 {
     auto stmt = new ReturnStmt(*this, expr);
-    _stmts.emplace_back(stmt);
+    emplace_stmt(stmt);
     return stmt;
 }
 
 StaticCastExpr* AST::StaticCast(const TypeDecl* type, Expr* expr)
 {
     auto cast = new StaticCastExpr(*this, type, expr);
-    _stmts.emplace_back(cast);
+    emplace_stmt(cast);
     return cast;
 }
 
 SwizzleExpr* AST::Swizzle(Expr* expr, const TypeDecl* type, uint64_t comps, const uint64_t* seq)
 {
     auto swizzle = new SwizzleExpr(*this, expr, type, comps, seq);
-    _stmts.emplace_back(swizzle);
+    emplace_stmt(swizzle);
     return swizzle;
 }
 
 SwitchStmt* AST::Switch(Expr* cond, std::span<CaseStmt*> cases)
 {
     auto stmt = new SwitchStmt(*this, cond, cases);
-    _stmts.emplace_back(stmt);
+    emplace_stmt(stmt);
     return stmt;
 }
 
 ThisExpr* AST::This(const TypeDecl* type)
 {
     auto expr = new ThisExpr(*this, type);
-    _stmts.emplace_back(expr);
+    emplace_stmt(expr);
     return expr;
 }
 
 UnaryExpr* AST::Unary(UnaryOp op, Expr* expr)
 {
     auto unary = new UnaryExpr(*this, op, expr);
-    _stmts.emplace_back(unary);
+    emplace_stmt(unary);
     return unary;
 }
 
@@ -242,10 +242,10 @@ DeclStmt* AST::Variable(EVariableQualifier qualifier, const TypeDecl* type, cons
     assert(qualifier != EVariableQualifier::Inout && "Inout qualifier is not allowed for variable declarations");
 
     auto decl = new VarDecl(*this, qualifier, type, name, initializer);
-    _decls.emplace_back(decl);
+    emplace_decl(decl);
 
     auto stmt = new DeclStmt(*this, decl);
-    _stmts.emplace_back(stmt);
+    emplace_stmt(stmt);
 
     return stmt;
 }
@@ -253,14 +253,14 @@ DeclStmt* AST::Variable(EVariableQualifier qualifier, const TypeDecl* type, cons
 DeclGroupStmt* AST::DeclGroup(std::span<DeclStmt* const> children)
 {
     auto group = new DeclGroupStmt(*this, children);
-    _stmts.emplace_back(group);
+    emplace_stmt(group);
     return group;
 }
 
 WhileStmt* AST::While(Expr* cond, CompoundStmt* body)
 {
     auto stmt = new WhileStmt(*this, cond, body);
-    _stmts.emplace_back(stmt);
+    emplace_stmt(stmt);
     return stmt;
 }
 
@@ -273,7 +273,7 @@ TypeDecl* AST::DeclareStructure(const Name& name, std::span<FieldDecl*> fields)
 
     auto new_type = new StructureTypeDecl(*this, name, fields, false);
     _types.emplace_back(new_type);
-    _decls.emplace_back(new_type);
+    emplace_decl(new_type);
     return new_type;
 }
 
@@ -285,7 +285,7 @@ const TypeDecl* AST::DeclareBuiltinType(const Name& name, uint32_t size, uint32_
 
     auto new_type = new TypeDecl(*this, name, size, alignment, fields, true);
     _types.emplace_back(new_type);
-    _decls.emplace_back(new_type);
+    emplace_decl(new_type);
     return new_type;
 }
 
@@ -297,7 +297,7 @@ const ScalarTypeDecl* AST::DeclareScalarType(const Name& name, uint32_t size, ui
 
     auto new_type = new ScalarTypeDecl(*this, name, size, alignment);
     _types.emplace_back(new_type);
-    _decls.emplace_back(new_type);
+    emplace_decl(new_type);
     return new_type;
 }
 
@@ -310,7 +310,7 @@ const VectorTypeDecl* AST::DeclareVectorType(const TypeDecl* element, uint32_t c
 
     auto new_type = new VectorTypeDecl(*this, element, count, alignment);
     _types.emplace_back(new_type);
-    _decls.emplace_back(new_type);
+    emplace_decl(new_type);
     _vecs.insert({key, new_type});
     return new_type;
 }
@@ -334,7 +334,7 @@ const MatrixTypeDecl* AST::DeclareMatrixType(const TypeDecl* element, uint32_t n
 
     auto new_type = new MatrixTypeDecl(*this, element, n, alignment);
     _types.emplace_back(new_type);
-    _decls.emplace_back(new_type);
+    emplace_decl(new_type);
     _matrices.insert({key, new_type});
     return new_type;
 }
@@ -357,7 +357,7 @@ const ArrayTypeDecl* AST::ArrayType(const TypeDecl* element, uint32_t count, Arr
 
     auto new_type = new ArrayTypeDecl(*this, element, count, flags);
     _types.emplace_back(new_type);
-    _decls.emplace_back(new_type);
+    emplace_decl(new_type);
     _arrs.insert({{element, count}, new_type});
     return new_type;
 }
@@ -370,7 +370,7 @@ GlobalVarDecl* AST::DeclareGlobalConstant(const TypeDecl* type, const Name& name
     
     ReservedWordsCheck(name);
     auto decl = new GlobalVarDecl(*this, EVariableQualifier::Const, type, name, initializer);
-    _decls.emplace_back(decl);
+    emplace_decl(decl);
     _globals.emplace_back(decl);
     return decl;
 }
@@ -383,7 +383,7 @@ GlobalVarDecl* AST::DeclareGlobalResource(const TypeDecl* type, const Name& name
 
     ReservedWordsCheck(name);
     auto decl = new GlobalVarDecl(*this, EVariableQualifier::None, type, name, nullptr);
-    _decls.emplace_back(decl);
+    emplace_decl(decl);
     _globals.emplace_back(decl);
     return decl;
 }
@@ -395,7 +395,7 @@ FieldDecl* AST::DeclareField(const Name& name, const TypeDecl* type)
     
     ReservedWordsCheck(name);
     auto decl = new FieldDecl(*this, name, type);
-    _decls.emplace_back(decl);
+    emplace_decl(decl);
     return decl;
 }
 
@@ -403,8 +403,9 @@ MethodDecl* AST::DeclareMethod(TypeDecl* owner, const Name& name, const TypeDecl
 {
     ReservedWordsCheck(name);
     auto decl = new MethodDecl(*this, owner, name, return_type, params, body);
-    _decls.emplace_back(decl);
+    emplace_decl(decl);
     _methods.emplace_back(decl);
+    _funcs.emplace_back(decl);
     return decl;
 }
 
@@ -412,8 +413,9 @@ ConstructorDecl* AST::DeclareConstructor(TypeDecl* owner, const Name& name, std:
 {
     ReservedWordsCheck(name);
     auto decl = new ConstructorDecl(*this, owner, name, params, body);
-    _decls.emplace_back(decl);
+    emplace_decl(decl);
     _ctors.emplace_back(decl);
+    _funcs.emplace_back(decl);
     return decl;
 }
 
@@ -421,7 +423,7 @@ FunctionDecl* AST::DeclareFunction(const Name& name, const TypeDecl* return_type
 {
     ReservedWordsCheck(name);
     auto decl = new FunctionDecl(*this, name, return_type, params, body);
-    _decls.emplace_back(decl);
+    emplace_decl(decl);
     _funcs.emplace_back(decl);
     return decl;
 }
@@ -430,7 +432,7 @@ NamespaceDecl* AST::DeclareNamespace(const Name& name, NamespaceDecl* parent)
 {
     ReservedWordsCheck(name);
     auto decl = new NamespaceDecl(*this, name, parent);
-    _decls.emplace_back(decl);
+    emplace_decl(decl);
     _namespaces.emplace_back(decl);
     if (parent)
     {
@@ -445,14 +447,14 @@ ParamVarDecl* AST::DeclareParam(EVariableQualifier qualifier, const TypeDecl* ty
 
     ReservedWordsCheck(name);
     auto decl = new ParamVarDecl(*this, qualifier, type, name);
-    _decls.emplace_back(decl);
+    emplace_decl(decl);
     return decl;
 }
 
 VarConceptDecl* AST::DeclareVarConcept(const Name& name, std::function<bool(EVariableQualifier, const TypeDecl*)> validator)
 {
     auto decl = new VarConcept(*this, name, std::move(validator));
-    _decls.emplace_back(decl);
+    emplace_decl(decl);
     return decl;
 }
 
@@ -462,7 +464,7 @@ const AccelTypeDecl* AST::Accel()
         return _accel;
 
     _accel = new AccelTypeDecl(*this);
-    _decls.emplace_back(_accel);
+    emplace_decl(_accel);
     return _accel;
 }
 
@@ -473,7 +475,7 @@ const RayQueryTypeDecl* AST::RayQuery(RayQueryFlags flags)
         return found->second;
 
     auto new_type = new RayQueryTypeDecl(*this, flags);
-    _decls.emplace_back(new_type);
+    emplace_decl(new_type);
     _ray_queries[flags] = new_type;
     return new_type;
 }
@@ -487,7 +489,7 @@ ByteBufferTypeDecl* AST::ByteBuffer(BufferFlags flags)
 
     auto new_type = new ByteBufferTypeDecl(*this, flags);
     _types.emplace_back(new_type);
-    _decls.emplace_back(new_type);
+    emplace_decl(new_type);
     _buffers[key] = new_type;
     return new_type;
 }
@@ -502,7 +504,7 @@ ConstantBufferTypeDecl* AST::ConstantBuffer(const TypeDecl* element)
 
     auto new_type = new ConstantBufferTypeDecl(*this, element);
     _types.emplace_back(new_type);
-    _decls.emplace_back(new_type);
+    emplace_decl(new_type);
     _cbuffers[element] = new_type;
     return new_type;
 }
@@ -518,7 +520,7 @@ StructuredBufferTypeDecl* AST::StructuredBuffer(const TypeDecl* element, BufferF
 
     auto new_type = new StructuredBufferTypeDecl(*this, element, flags);
     _types.emplace_back(new_type);
-    _decls.emplace_back(new_type);
+    emplace_decl(new_type);
     _buffers[key] = new_type;
     return new_type;
 }
@@ -529,7 +531,7 @@ SamplerDecl* AST::Sampler()
         return _sampler;
 
     _sampler = new SamplerDecl(*this);
-    _decls.emplace_back(_sampler);
+    emplace_decl(_sampler);
     return _sampler;
 }
 
@@ -542,7 +544,7 @@ Texture2DTypeDecl* AST::Texture2D(const TypeDecl* element, TextureFlags flags)
 
     auto new_type = new Texture2DTypeDecl(*this, element, flags);
     _types.emplace_back(new_type);
-    _decls.emplace_back(new_type);
+    emplace_decl(new_type);
     _texture2ds[key] = new_type;
     return new_type;
 }
@@ -556,7 +558,7 @@ Texture3DTypeDecl* AST::Texture3D(const TypeDecl* element, TextureFlags flags)
 
     auto new_type = new Texture3DTypeDecl(*this, element, flags);
     _types.emplace_back(new_type);
-    _decls.emplace_back(new_type);
+    emplace_decl(new_type);
     _texture3ds[key] = new_type;
     return new_type;
 }
@@ -582,28 +584,28 @@ std::vector<FieldDecl*> DeclareFields(AST* ast, const TypeDecl* type, Args&&... 
 TemplateCallableDecl* AST::DeclareTemplateFunction(const Name& name, const TypeDecl* return_type, std::span<const VarConceptDecl* const> param_concepts)
 {
     auto decl = new TemplateCallable(*this, name, [=](auto params){ return return_type; }, param_concepts);
-    _decls.emplace_back(decl);
+    emplace_decl(decl);
     return decl;
 }
 
 TemplateCallableDecl* AST::DeclareTemplateFunction(const Name& name, TemplateCallableDecl::ReturnTypeSpecializer ret_spec, std::span<const VarConceptDecl* const> param_concepts)
 {
     auto decl = new TemplateCallable(*this, name, ret_spec, param_concepts);
-    _decls.emplace_back(decl);
+    emplace_decl(decl);
     return decl;
 }
 
 TemplateCallableDecl* AST::DeclareTemplateMethod(TypeDecl* owner, const Name& name, const TypeDecl* return_type, std::span<const VarConceptDecl* const> param_concepts)
 {
     auto decl = new TemplateCallable(*this, owner, name, [=](auto params){ return return_type; }, param_concepts);
-    _decls.emplace_back(decl);
+    emplace_decl(decl);
     return decl;
 }
 
 TemplateCallableDecl* AST::DeclareTemplateMethod(TypeDecl* owner, const Name& name, TemplateCallableDecl::ReturnTypeSpecializer ret_spec, std::span<const VarConceptDecl* const> param_concepts)
 {
     auto decl = new TemplateCallable(*this, owner, name, ret_spec, param_concepts);
-    _decls.emplace_back(decl);
+    emplace_decl(decl);
     return decl;
 }
 
@@ -611,7 +613,7 @@ SpecializedFunctionDecl* AST::SpecializeTemplateFunction(const TemplateCallableD
 {
     // Create new specialization
     auto specialized = (SpecializedFunctionDecl*)template_decl->specialize_for(arg_types, arg_qualifiers);
-    _decls.emplace_back(specialized);
+    emplace_decl(specialized);
     return specialized;
 }
 
@@ -626,7 +628,7 @@ const TemplateCallableDecl* AST::FindIntrinsic(const char* name) const
 SpecializedMethodDecl* AST::SpecializeTemplateMethod(const TemplateCallableDecl* template_decl, std::span<const TypeDecl* const> arg_types, std::span<const EVariableQualifier> arg_qualifiers)
 {
     auto specialized = (SpecializedMethodDecl*)template_decl->specialize_for(arg_types, arg_qualifiers);
-    _decls.emplace_back(specialized);
+    emplace_decl(specialized);
     return specialized;
 }
 
@@ -643,7 +645,8 @@ SpecializedMethodDecl* AST::SpecializeTemplateMethod(const TemplateCallableDecl*
     symbol##3x3Type(DeclareMatrixType(symbol##Type, 3, alignof(matrix<type, 3, 3>))), \
     symbol##4x4Type(DeclareMatrixType(symbol##Type, 4, alignof(matrix<type, 4, 4>))) 
 
-AST::AST() : 
+AST::AST(ASTDatabase& db) :
+    db(db),
     VoidType(DeclareBuiltinType(L"void", 0, 0)),
     
     INIT_BUILTIN_TYPE(Bool, GPUBool, bool),
@@ -981,17 +984,21 @@ void AST::DeclareIntrinstics()
         });
 
     std::array<VarConceptDecl*, 1> RayQueryProceedParams = { RayQueryFamily };
-    _intrinstics["RAY_QUERY_PROCEED"] = DeclareTemplateMethod(nullptr, L"ray_query_proceed", BoolType, RayQueryProceedParams);
-    _intrinstics["RAY_QUERY_COMMITTED_STATUS"] = DeclareTemplateMethod(nullptr, L"ray_query_committed_status", UIntType, RayQueryProceedParams);
-    _intrinstics["RAY_QUERY_COMMITTED_TRIANGLE_BARYCENTRICS"] = DeclareTemplateMethod(nullptr, L"ray_query_committed_triangle_bary", Float2Type, RayQueryProceedParams);
+    _intrinstics["RAY_QUERY_PROCEED"] = DeclareTemplateFunction(L"ray_query_proceed", BoolType, RayQueryProceedParams);
+    _intrinstics["RAY_QUERY_COMMITTED_STATUS"] = DeclareTemplateFunction(L"ray_query_committed_status", UIntType, RayQueryProceedParams);
+    _intrinstics["RAY_QUERY_COMMITTED_TRIANGLE_BARYCENTRICS"] = DeclareTemplateFunction(L"ray_query_committed_triangle_bary", Float2Type, RayQueryProceedParams);
+    _intrinstics["RAY_QUERY_COMMITTED_INSTANCE_ID"] = DeclareTemplateFunction(L"ray_query_committed_instance_id", UIntType, RayQueryProceedParams);
+    _intrinstics["RAY_QUERY_COMMITTED_RAY_T"] = DeclareTemplateFunction(L"ray_query_committed_ray_t", FloatType, RayQueryProceedParams);
+    _intrinstics["RAY_QUERY_WORLD_RAY_ORIGIN"] = DeclareTemplateFunction(L"ray_query_world_ray_origin", Float3Type, RayQueryProceedParams);
+    _intrinstics["RAY_QUERY_WORLD_RAY_DIRECTION"] = DeclareTemplateFunction(L"ray_query_world_ray_direction", Float3Type, RayQueryProceedParams);
     
     // void trace_ray_inline(Accel& AS, uint32 mask, Trait<Ray> ray);
     std::array<VarConceptDecl*, 4> TraceRayInlineParams = { RayQueryFamily, AccelFamily, IntScalar, ValueFamily };
-    _intrinstics["RAY_QUERY_TRACE_RAY_INLINE"] = DeclareTemplateMethod(nullptr, L"ray_query_trace_ray_inline", VoidType, TraceRayInlineParams);
+    _intrinstics["RAY_QUERY_TRACE_RAY_INLINE"] = DeclareTemplateFunction(L"ray_query_trace_ray_inline", VoidType, TraceRayInlineParams);
 
     // commit_procedural with float parameter
     std::array<VarConceptDecl*, 1> CommitProceduralParams = { FloatScalar };
-    _intrinstics["RAY_QUERY_COMMIT_PROCEDURAL"] = DeclareTemplateMethod(nullptr, L"ray_query_commit_procedural", VoidType, CommitProceduralParams);
+    _intrinstics["RAY_QUERY_COMMIT_PROCEDURAL"] = DeclareTemplateFunction(L"ray_query_commit_procedural", VoidType, CommitProceduralParams);
 
     _intrinstics["WAVE_IS_FIRST_ACTIVE_LANE"] = DeclareTemplateFunction(L"wave_is_first_active_lane", BoolType, {});
     _intrinstics["WAVE_ACTIVE_ALL_EQUAL"] = DeclareTemplateFunction(L"wave_active_all_equal", ReturnBoolVecWithSameDim, OneArithmeticVec);
@@ -1016,7 +1023,7 @@ void AST::DeclareIntrinstics()
     _intrinstics["SYNCHRONIZE_BLOCK"] = DeclareTemplateFunction(L"sync_block", VoidType, {});
 }
 
-AST::~AST()
+ASTDatabase::~ASTDatabase()
 {
     for (auto stmt : _stmts)
     {
@@ -1035,6 +1042,24 @@ AST::~AST()
         delete attr;
     }
     _attrs.clear();
+}
+
+void AST::emplace_stmt(Stmt* stmt)
+{
+    db._stmts.emplace_back(stmt);
+    _stmts.emplace_back(stmt);
+}
+
+void AST::emplace_decl(Decl* decl)
+{
+    db._decls.emplace_back(decl);
+    _decls.emplace_back(decl);
+}
+
+void AST::emplace_attr(Attr* attr)
+{
+    db._attrs.emplace_back(attr);
+    _attrs.emplace_back(attr);
 }
 
 SemanticType AST::GetSemanticTypeFromString(const char* str)

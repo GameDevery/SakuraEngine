@@ -1,4 +1,4 @@
-#include "SkrToolCore/asset/cook_system.hpp"
+#include "SkrToolCore/cook_system/cook_system.hpp"
 #include "SkrAnimTool/skeleton_asset.h"
 #include "SkrAnim/ozz/skeleton.h"
 #include "SkrAnimTool/ozz/raw_skeleton.h"
@@ -12,9 +12,9 @@
 
 namespace skd::asset
 {
-bool SSkelCooker::Cook(SCookContext* ctx)
+bool SkelCooker::Cook(CookContext* ctx)
 {
-    SkrZoneScopedNS("SSkelCooker::Cook", 4);
+    SkrZoneScopedNS("SkelCooker::Cook", 4);
 
     using namespace ozz::animation::offline;
     //-----import resource object
@@ -37,7 +37,7 @@ bool SSkelCooker::Cook(SCookContext* ctx)
         ozz::unique_ptr<ozz::animation::Skeleton> skeleton = builder(*rawSkeleton);
         if (!skeleton)
         {
-            SKR_LOG_ERROR(u8"Failed to build skeleton for asset %s.", ctx->GetAssetRecord()->path.c_str());
+            SKR_LOG_ERROR(u8"Failed to build skeleton for asset %s.", ctx->GetAssetMetaFile()->uri.c_str());
             return false;
         }
         resource.skeleton = std::move(*skeleton);

@@ -1,41 +1,74 @@
 #include "SkrRT/ecs/scheduler.hpp"
 #include "SkrCore/async/wait_timeout.hpp"
+#include "SkrCore/memory/sp.hpp"
 #include "./../sugoi/impl/query.hpp"
 
 namespace skr::ecs
 {
 
+inline static EDependencySyncMode DeterminSyncMode(EAccessMode current, EAccessMode last)
+{
+    if (current == EAccessMode::Seq && last == EAccessMode::Seq)
+        return EDependencySyncMode::PerChunk;
+    return EDependencySyncMode::WholeTask;
+}
+
+inline static bool HasSelfConfictReadWrite(ComponentAccess acess, skr::span<ComponentAccess> to_search)
+{
+    if (acess.mode == EAccessMode::Random)
+    {
+        for (auto other : to_search)
+        {
+            if (other.type == acess.type)
+                return true; // access conflict to self
+        }
+    }
+    return false;
+}
+
 void StaticDependencyAnalyzer::process(skr::RC<TaskSignature> new_task)
 {
     SkrZoneScopedN("StaticDependencyAnalyzer::Process");
-    _collector.clear();
 
+    StackVector<TaskDependency> _collector;
+    bool HasSelfConflict = false;
     for (auto read : new_task->reads)
     {
+        HasSelfConflict |= HasSelfConfictReadWrite(read, new_task->writes);
+
         auto access = accesses.try_add_default(read.type);
-        if (access.already_exist() && access.value().last_writer) // RAW
+        if (access.already_exist() && access.value().last_writer.first) // RAW
         {
-            _collector.add(access.value().last_writer);
+            auto&& [writer, mode] = access.value().last_writer;
+            _collector.emplace(writer, DeterminSyncMode(read.mode, mode));
         }
-        access.value().readers.add(new_task);
+        access.value().readers.add(new_task, read.mode);
     }
     for (auto write : new_task->writes)
     {
+        HasSelfConflict |= HasSelfConfictReadWrite(write, new_task->reads);
+        
         auto access = accesses.try_add_default(write.type);
         if (access.already_exist() && access.value().readers.size()) // WAR
         {
-            _collector.append(access.value().readers);
+            for (auto& [reader, mode] : access.value().readers)
+            {
+                if (reader == new_task)
+                    continue; // skip self
+
+                _collector.emplace(reader, DeterminSyncMode(write.mode, mode));
+            }
         }
-        if (access.already_exist() && access.value().last_writer) // WAW
+        if (access.already_exist() && access.value().last_writer.first) // WAW
         {
-            _collector.add(access.value().last_writer);
+            auto&& [writer, mode] = access.value().last_writer;
+            _collector.emplace(writer, DeterminSyncMode(write.mode, mode));
         }
-        access.value().last_writer = new_task;
+        access.value().last_writer = { new_task, write.mode };
         access.value().readers.clear();
     }
-
-    // now we get the dependency level, update the access info
     new_task->_static_dependencies = _collector;
+    new_task->self_confict = HasSelfConflict;
 }
 
 void WorkUnitGenerator::process(skr::RC<TaskSignature> new_task)
@@ -48,7 +81,9 @@ void WorkUnitGenerator::process(skr::RC<TaskSignature> new_task)
         const sugoi_query_t* query;
         WorkUnitGenerator* _this;
         skr::RC<TaskSignature> new_task;
+        skr::task::weak_counter_t last_unit_finish;
         WorkGroup* work_group = nullptr;
+        uint64_t total_units = 0;
     } ctx;
     ctx.query = new_task->query;
     ctx._this = this;
@@ -62,13 +97,27 @@ void WorkUnitGenerator::process(skr::RC<TaskSignature> new_task)
         auto& unit = ctx->work_group->units.try_add_default(view->chunk).value();
         unit.chunk_view = *view;
         unit.finish.add(1);
-        for (auto dependency : ctx->work_group->dependencies)
+        if (ctx->new_task->self_confict && (ctx->total_units != 0))
         {
-            if (auto depend_group = dependency->_work_groups.find(ctx->work_group->group))
+            unit.dependencies.add(ctx->last_unit_finish);
+        }
+        ctx->total_units += 1;
+        ctx->last_unit_finish = unit.finish;
+
+        for (auto [dependency, mode] : ctx->work_group->dependencies)
+        {
+            if (mode == EDependencySyncMode::WholeTask)
             {
-                if (auto depend_unit = depend_group.value().units.find(view->chunk))
+                unit.dependencies.add(dependency->_finish);
+            }
+            else if (mode == EDependencySyncMode::PerChunk)
+            {
+                if (auto depend_group = dependency->_work_groups.find(ctx->work_group->group))
                 {
-                    unit.dependencies.add(depend_unit.value().finish);
+                    if (auto depend_unit = depend_group.value().units.find(view->chunk))
+                    {
+                        unit.dependencies.add(depend_unit.value().finish);
+                    }
                 }
             }
         }
@@ -78,53 +127,76 @@ void WorkUnitGenerator::process(skr::RC<TaskSignature> new_task)
         auto& ctx = *(CollectContext*)u;
         ctx.work_group = &ctx.new_task->_work_groups.try_add_default(group).value();
         ctx.work_group->group = group;
-        for (auto static_dependency : ctx.new_task->_static_dependencies)
+        for (auto dependency : ctx.new_task->_static_dependencies)
         {
-            if (bool confict = sugoiQ_match_group(static_dependency->query, group))
+            // can't be optimized, usually because of random accesses
+            if (dependency.mode == EDependencySyncMode::WholeTask)
             {
-                ctx.work_group->dependencies.add(static_dependency);
+                ctx.work_group->dependencies.add(dependency);
+            }
+            // if two systems never operate on a same group. we  can skip the denepdnecy
+            if (bool confict = sugoiQ_match_group(dependency.task->query, group))
+            {
+                ctx.work_group->dependencies.add(dependency);
             }
         }
         sugoiQ_in_group(ctx.query, group, collect_units, &ctx);
     };
     sugoiQ_get_groups(ctx.query, filter_group, &ctx);
+    new_task->_finish.add(ctx.total_units);
+    ctx.new_task->_work_groups.compact();
+}
+
+static skr::UPtr<TaskScheduler> gInstance = nullptr;
+static std::atomic_bool gInitialized = false;
+static std::mutex gInstanceMutex;
+void TaskScheduler::Initialize(const ServiceThreadDesc& desc, skr::task::scheduler_t& scheduler) SKR_NOEXCEPT
+{
+    std::lock_guard<std::mutex> lock(gInstanceMutex);
+    if (gInitialized.load(std::memory_order_acquire)) 
+        return;
+    
+    StackAllocator::Initialize();
+    gInstance = skr::UPtr<TaskScheduler>::New(desc, scheduler);
+    gInitialized.store(true, std::memory_order_release);
+}
+
+void TaskScheduler::Finalize() SKR_NOEXCEPT
+{
+    std::lock_guard<std::mutex> lock(gInstanceMutex);
+    if (!gInitialized.load(std::memory_order_acquire)) 
+        return;
+    gInstance.reset();
+    gInitialized.store(false, std::memory_order_release);
+
+    StackAllocator::Finalize();
+}
+
+TaskScheduler* TaskScheduler::Get() SKR_NOEXCEPT
+{
+    return gInstance.get();
 }
 
 TaskScheduler::TaskScheduler(const ServiceThreadDesc& desc, skr::task::scheduler_t& scheduler) SKR_NOEXCEPT
-    : AsyncService(desc),
-      _scheduler(scheduler)
+    : AsyncService(desc), _scheduler(scheduler)
 {
+
 }
 
-void TaskScheduler::add_task(sugoi_query_t* query, Task::Type&& func, uint32_t batch_size)
+TaskScheduler::~TaskScheduler()
 {
-    auto new_task = skr::RC<TaskSignature>::New();
-    new_task->query = query;
-    auto params = query->pimpl->parameters;
-    for (uint32_t i = 0; i < params.length; i++)
-    {
-        auto type = params.types[i];
-        auto access = params.accesses[i];
-        EAccessMode mode = EAccessMode::Seq;
-        if (access.randomAccess)
-            mode = EAccessMode::Random;
-        if (access.atomic)
-            mode = EAccessMode::Atomic;
 
-        if (access.readonly)
-            new_task->reads.push_back({ type, mode });
-        else
-            new_task->writes.push_back({ type, mode });
-    }
-    new_task->task = skr::RC<Task>::New();
-    new_task->task->func = std::move(func);
-    new_task->task->batch_size = batch_size;
-    add_task(new_task);
 }
 
 void TaskScheduler::add_task(skr::RC<TaskSignature> task)
 {
-    _tasks.enqueue(task);
+    {
+        _clear_mtx.lock_shared();
+        SKR_DEFER({ _clear_mtx.unlock_shared(); });
+
+        _tasks.enqueue(task);
+    }
+
     skr_atomic_fetch_add(&_enqueued_tasks, 1);
     awake();
 }
@@ -136,54 +208,57 @@ void TaskScheduler::dispatch(skr::RC<TaskSignature> signature)
 
     for (const auto& [group, work_group] : wgps)
     {
-        if (work_group.units.is_empty())
-            continue;
-
         SkrZoneScopedN("TaskScheduler::DispatchGroup");
         // create a task for each work unit
-        for (const auto& [chunk, unit] : work_group.units)
+        for (uint32_t i = 0; i < work_group.units.size(); i++)
         {
             SkrZoneScopedN("TaskScheduler::DispatchUnit");
-
+            
+            const auto& [chunk, unit] = work_group.units.at(i);
             auto batch_size = signature->task->batch_size ? signature->task->batch_size : unit.chunk_view.count;
+            batch_size = signature->self_confict ? UINT32_MAX : batch_size; // if self-confict, we can't batch
             batch_size = std::min(batch_size, unit.chunk_view.count);
             const auto batch_count = (unit.chunk_view.count + batch_size - 1) / batch_size;
             running.add(1);
-            skr::task::schedule([
-                this, &unit, signature, batch_count, batch_size,
-                // capture task lifetime into payload body
-                task = signature->task
-            ](){
-                {
-                    for (auto dep : unit.dependencies)
-                        dep.lock().wait(false);
-                }
-                SKR_DEFER({ running.decrement(); unit.finish.decrement(); });
-                if (batch_count == 1)
-                {
-                    task->func(unit.chunk_view, unit.chunk_view.count, 0);
-                }
-                else
-                {
-                    SkrZoneScopedN("WorkUnit::Batch");
-                    skr::task::counter_t batch_counter;
-                    batch_counter.add(batch_count);
-                    for (uint32_t i = 0; i < batch_count; i += 1)
+
+            {
+                SkrZoneScopedN("DispatchUnit::ScheduleTask");
+                skr::task::schedule([
+                    this, &unit, signature, batch_count, batch_size,
+                    // capture task lifetime into payload body
+                    task = signature->task
+                ](){
                     {
-                        const auto remain = unit.chunk_view.count - i * batch_size;
-                        auto view = unit.chunk_view;
-                        const auto count = std::min(remain, batch_size);
-                        const auto offset = i * batch_size;
-                        skr::task::schedule(
-                        [task, view, batch_counter, count, offset]() mutable {
-                            task->func(view, count, offset);
-                            batch_counter.decrement();
-                        }, nullptr);
+                        for (auto dep : unit.dependencies)
+                            dep.lock().wait(false);
                     }
-                    batch_counter.wait(true);
-                }
-                unit.chunk_view = {};
-            }, nullptr);
+                    SKR_DEFER({ running.decrement(); unit.finish.decrement(); signature->_finish.decrement(); });
+                    if (batch_count == 1)
+                    {
+                        task->func(unit.chunk_view, unit.chunk_view.count, 0);
+                    }
+                    else
+                    {
+                        SkrZoneScopedN("WorkUnit::Batch");
+                        skr::task::counter_t batch_counter;
+                        batch_counter.add(batch_count);
+                        for (uint32_t i = 0; i < batch_count; i += 1)
+                        {
+                            const auto remain = unit.chunk_view.count - i * batch_size;
+                            auto view = unit.chunk_view;
+                            const auto count = std::min(remain, batch_size);
+                            const auto offset = i * batch_size;
+                            skr::task::schedule(
+                            [task, view, batch_counter, count, offset]() mutable {
+                                task->func(view, count, offset);
+                                batch_counter.decrement();
+                            }, nullptr);
+                        }
+                        batch_counter.wait(true);
+                    }
+                    unit.chunk_view = {};
+                }, nullptr);
+            }
         }
     }
 
@@ -218,7 +293,7 @@ AsyncResult TaskScheduler::serve() SKR_NOEXCEPT
         dispatch(task);
         skr_atomic_fetch_add(&_enqueued_tasks, -1);
 
-        _dispatched_tasks.enqueue(task);
+        _dispatched_tasks.add(task);
     }
     else
     {
@@ -235,8 +310,18 @@ void TaskScheduler::flush_all()
 
 void TaskScheduler::sync_all()
 {
+    _clear_mtx.lock();
+    SKR_DEFER({ _clear_mtx.unlock(); });
+    
     flush_all();
     running.wait(true);
+
+    _analyzer.accesses.clear();
+    _dispatched_tasks.clear();
+
+    _tasks.~StackConcurrentQueue<skr::RC<TaskSignature>>();
+    StackAllocator::Reset();
+    new (&_tasks) StackConcurrentQueue<skr::RC<TaskSignature>>();
 }
 
 void TaskScheduler::stop_and_exit()

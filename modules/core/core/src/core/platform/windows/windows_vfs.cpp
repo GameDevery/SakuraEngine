@@ -1,8 +1,7 @@
-#include "winheaders.h"
+#include "winheaders.h" // IWYU pragma: export
 #include "SkrCore/platform/vfs.h"
 #include "SkrCore/memory/memory.h"
-#include "SkrCore/log.h"
-#include "SkrOS/filesystem.hpp"
+#include "SkrContainersDef/path.hpp"
 
 inline static char8_t* duplicate_string(const char8_t* src_string) SKR_NOEXCEPT
 {
@@ -60,9 +59,9 @@ skr_vfs_t* skr_create_vfs(const skr_vfs_desc_t* desc) SKR_NOEXCEPT
         GetModuleFileNameW(0, utf16Path, WIN_FS_MAX_PATH);
         char applicationFilePath[WIN_FS_MAX_PATH] = {};
         WideCharToMultiByte(CP_UTF8, 0, utf16Path, -1, applicationFilePath, WIN_FS_MAX_PATH, NULL, NULL);
-        const skr::filesystem::path p(applicationFilePath);
-        const auto parentPath = p.parent_path().u8string();
-        fs->mount_dir = duplicate_string(parentPath.c_str());
+        const skr::Path p{skr::String(reinterpret_cast<const char8_t*>(applicationFilePath))};
+        const auto parentPath = p.parent_directory();
+        fs->mount_dir = duplicate_string(parentPath.string().c_str());
     }
     return fs;
 }

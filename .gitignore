@@ -41,6 +41,7 @@ xmake.log
 temp_docs
 project.lua
 
+.mcp.json
 .claude
 .vs
 .vscode

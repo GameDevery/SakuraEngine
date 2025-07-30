@@ -149,4 +149,4 @@ struct live2d_render_view_t {
 };
 
 const ECGPUFormat live2d_depth_format = CGPU_FORMAT_D32_SFLOAT;
-const ECGPUFormat live2d_mask_format  = CGPU_FORMAT_B8G8R8A8_UNORM;
+const ECGPUFormat live2d_mask_format  = CGPU_FORMAT_R8G8B8A8_UNORM;

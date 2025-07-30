@@ -7,11 +7,11 @@
 #include "SkrRT/sugoi/array.hpp"
 #include "SkrRT/sugoi/set.hpp"
 #include "SkrRT/sugoi/type_registry.hpp"
+#include "SkrRT/sugoi/archetype.hpp"
+#include "SkrRT/sugoi/chunk.hpp"
 #include "./impl/query.hpp"
 
-#include "./archetype.hpp"
 #include "./arena.hpp"
-#include "./chunk.hpp"
 #include "./stack.hpp"
 #include "./impl/storage.hpp"
 

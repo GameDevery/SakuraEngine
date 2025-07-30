@@ -15,8 +15,9 @@ namespace SB
         public override bool EmitTargetTask(Target Target) => Target.GetTargetType() == TargetType.HeaderOnly || Target.HasFilesOf<CppFileList>();
         public override IArtifact? PerTargetTask(Target Target)
         {
-            bool Found = Target.PublicArguments.TryGetValue("IncludeDirs", out var ArgList);
-            if (!Found)
+            if (Target.GetTargetType() != TargetType.HeaderOnly)
+                return null;
+            if (!Target.PublicArguments.TryGetValue("IncludeDirs", out var ArgList))
                 return null;
 
             if (ArgList is ArgumentList<string> IncludeDirs)
@@ -42,13 +43,13 @@ namespace SB
                             Writer.WriteLine("// It is used to generate compile commands for the project");
                             foreach (var IncludeFile in IncludeFiles)
                             {
-                                Writer.WriteLine($"#include \"{Path.GetRelativePath(Target.Directory, IncludeFile)}\"");
+                                Writer.WriteLine($"#include \"{IncludeFile}\"");
                             }
                         }
                 }
                 GenerateForFile(Target, CFamily.Cpp, SourceFile, null);
             }
-            return new PlainArtifact { IsRestored = false };
+            return null;
         }
 
 
@@ -63,7 +64,7 @@ namespace SB
 
             sw.Stop();
             Time += (int)sw.ElapsedMilliseconds;
-            return new PlainArtifact { IsRestored = false };
+            return null;
         }
 
         public static void WriteToFile(string Path)

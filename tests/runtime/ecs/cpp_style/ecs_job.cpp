@@ -3,11 +3,13 @@
 #include "SkrRT/ecs/world.hpp"
 #include "SkrCore/log.h"
 
+#define TEST_ENTITY_COUNT 2'000'000
+
 struct ECSJobs {
     ECSJobs() SKR_NOEXCEPT
         : world(scheduler)
     {
-        // std::this_thread::sleep_for(std::chrono::milliseconds(1200));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1200));
         scheduler.initialize(skr::task::scheudler_config_t());
         scheduler.bind();
      
@@ -20,7 +22,7 @@ struct ECSJobs {
     {
         world.finalize();
         scheduler.unbind();
-        // std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+         std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     }
 
     void spawnIntEntities()
@@ -43,7 +45,7 @@ struct ECSJobs {
             skr::ecs::ComponentView<IntComponent> ints;
             skr::ecs::ComponentView<FloatComponent> floats;
         } spawner;
-        world.create_entities(spawner, 2'000'000);
+        world.create_entities(spawner, TEST_ENTITY_COUNT);
     }
 
 protected:
@@ -116,7 +118,8 @@ TEST_CASE_METHOD(ECSJobs, "WRW")
     } wjob1;
     world.dispatch_task(wjob1, 1'280, q0);
 
-    world.get_scheduler()->stop_and_exit();
+    skr::ecs::TaskScheduler::Get()->flush_all();
+    skr::ecs::TaskScheduler::Get()->sync_all();
 
     world.destroy_query(q0);
     world.destroy_query(q1);
@@ -142,7 +145,7 @@ TEST_CASE_METHOD(ECSJobs, "WRW-Complex")
         }
         skr::ecs::ComponentView<IntComponent> ints;
     } writeInts;
-    auto q0 = world.dispatch_task(writeInts, 12'800, nullptr);
+    auto q0 = world.dispatch_task(writeInts, 1'280, nullptr);
 
     struct WriteFloats
     {
@@ -161,13 +164,14 @@ TEST_CASE_METHOD(ECSJobs, "WRW-Complex")
         }
         skr::ecs::ComponentView<FloatComponent> floats;
     } writeFloats;
-    auto q1 = world.dispatch_task(writeFloats, 12'800, nullptr);
+    auto q1 = world.dispatch_task(writeFloats, 1'280, nullptr);
 
     struct ReadJob
     {
         void build(skr::ecs::AccessBuilder& Builder)
         {
-            Builder.read(&ReadJob::ints).read(&ReadJob::floats);
+            Builder.read(&ReadJob::ints)
+                .read(&ReadJob::floats);
         }
         void run(skr::ecs::TaskContext& Context)
         {
@@ -189,9 +193,140 @@ TEST_CASE_METHOD(ECSJobs, "WRW-Complex")
     } readJob;
     auto q2 = world.dispatch_task(readJob, 1'280, nullptr);
 
-    world.get_scheduler()->stop_and_exit();
+    skr::ecs::TaskScheduler::Get()->flush_all();
+    skr::ecs::TaskScheduler::Get()->sync_all();
 
     world.destroy_query(q0);
     world.destroy_query(q1);
     world.destroy_query(q2);
+}
+
+TEST_CASE_METHOD(ECSJobs, "RandomAccess")
+{
+    static std::atomic_uint64_t cnt = 0;
+    static std::atomic<skr::ecs::Entity> some_entity;
+    static std::atomic_uint64_t some_value = 0;
+
+    struct WriteInts
+    {
+        void build(skr::ecs::AccessBuilder& Builder)
+        {
+            Builder.write(&WriteInts::ints);
+        }
+        void run(skr::ecs::TaskContext& Context)
+        {
+            SkrZoneScopedN("WriteInts");
+            for (auto i = 0; i < Context.size(); i++)
+            {
+                ints[i].v = ints[i].v + 1;
+                cnt += 1;
+            }
+
+            some_entity = Context.entities()[0];
+            some_value = ints[0].v;
+        }
+        skr::ecs::ComponentView<IntComponent> ints;
+    } writeInts;
+    auto q0 = world.dispatch_task(writeInts, 1'280, nullptr);
+
+    static std::atomic_uint64_t parallel_read_cnt = 0;
+    static std::atomic_uint64_t max_parallel_read_cnt = 0;
+    struct RandomReadInts
+    {
+        void build(skr::ecs::AccessBuilder& Builder)
+        {
+            Builder.read(&RandomReadInts::ints) 
+                .access(&RandomReadInts::int_accessor);
+        }
+        void run(skr::ecs::TaskContext& Context)
+        {
+            SkrZoneScopedN("RandomReadInts");
+            parallel_read_cnt += 1;
+            max_parallel_read_cnt = std::max(max_parallel_read_cnt.load(), parallel_read_cnt.load());
+
+            EXPECT_EQ(cnt, TEST_ENTITY_COUNT);
+            
+            for (auto i = 0; i < Context.size(); i++)
+            {
+                EXPECT_EQ(ints[i].v, 1);
+            }
+
+            IntComponent value = int_accessor[some_entity];
+            EXPECT_EQ(value.v, some_value);
+            
+            parallel_read_cnt -= 1;
+        }
+
+        skr::ecs::ComponentView<const IntComponent> ints;
+        skr::ecs::RandomComponentReader<const IntComponent> int_accessor;
+    } randomReadInts;
+    auto q1 = world.dispatch_task(randomReadInts, 1'280, nullptr);
+
+    static std::atomic_uint64_t parallel_write_cnt = 0;
+    static std::atomic_uint64_t max_parallel_write_cnt = 0;
+    struct RandomWriteInts
+    {
+        void build(skr::ecs::AccessBuilder& Builder)
+        {
+            Builder.write(&RandomWriteInts::floats)
+                .access(&RandomWriteInts::int_accessor);
+        }
+        void run(skr::ecs::TaskContext& Context)
+        {
+            SkrZoneScopedN("RandomWriteInts");
+            parallel_write_cnt += 1;
+            max_parallel_write_cnt = std::max(max_parallel_write_cnt.load(), parallel_write_cnt.load());
+
+            EXPECT_EQ(cnt, TEST_ENTITY_COUNT);
+
+            for (auto i = 0; i < Context.size(); i++)
+            {
+                EXPECT_EQ(floats[i].v, 0);
+            }
+            int_accessor.write_at(some_entity, IntComponent{5});
+
+            parallel_write_cnt -= 1;
+        }
+        skr::ecs::ComponentView<FloatComponent> floats;
+        skr::ecs::RandomComponentWriter<IntComponent> int_accessor;
+    } randomWriteInts;
+    auto q2 = world.dispatch_task(randomWriteInts, 1'280, nullptr);
+
+
+    static std::atomic_uint64_t parallel_rw_cnt = 0;
+    static std::atomic_uint64_t max_parallel_rw_cnt = 0;
+    struct RandomReadWriteInts
+    {
+        void build(skr::ecs::AccessBuilder& Builder)
+        {
+            Builder.access(&RandomReadWriteInts::int_accessor);
+        }
+        void run(skr::ecs::TaskContext& Context)
+        {
+            SkrZoneScopedN("RandomReadWriteInts");
+            parallel_rw_cnt += 1;
+            max_parallel_rw_cnt = std::max(max_parallel_rw_cnt.load(), parallel_rw_cnt.load());
+
+            EXPECT_EQ(cnt, TEST_ENTITY_COUNT);
+
+            IntComponent value = int_accessor[some_entity];
+            int_accessor.write_at(some_entity, IntComponent{10});
+
+            parallel_rw_cnt -= 1;
+        }
+        skr::ecs::RandomComponentReadWrite<IntComponent> int_accessor;
+    } randomReadWriteInts;
+    auto q3 = world.dispatch_task(randomReadWriteInts, 1'280, nullptr);
+
+    skr::ecs::TaskScheduler::Get()->flush_all();
+    skr::ecs::TaskScheduler::Get()->sync_all();
+
+    EXPECT_NE(max_parallel_read_cnt, 1);
+    EXPECT_NE(max_parallel_write_cnt, 1);
+    EXPECT_EQ(max_parallel_rw_cnt, 1);
+
+    world.destroy_query(q0);
+    world.destroy_query(q1);
+    world.destroy_query(q2);
+    world.destroy_query(q3);
 }

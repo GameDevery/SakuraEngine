@@ -36,12 +36,3 @@ void compute_main(uint3 tid : SV_DispatchThreadID)
     uint row_pitch = tsize.x;
     buf[tid.x + (tid.y * row_pitch)] = trace(tid.xy, tsize);
 }
-
-// ANOTHER ENTRY POINT JUST FOR XMAKE OLD SHADER COMPILE
-[numthreads(32, 32, 1)]
-void main(uint3 tid : SV_DispatchThreadID)
-{
-    uint2 tsize = uint2(WIDTH, HEIGHT);
-    uint row_pitch = tsize.x;
-    buf[tid.x + (tid.y * row_pitch)] = trace(tid.xy, tsize);
-}

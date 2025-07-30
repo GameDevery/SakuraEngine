@@ -44,6 +44,9 @@ private:
     
     // Track mouse enter/leave state per window
     skr::Map<HWND, bool> mouse_tracking_;
+    
+    // Track window resize state
+    skr::Map<HWND, bool> window_resizing_;
 };
 
 } // namespace skr

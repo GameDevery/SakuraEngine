@@ -5,12 +5,10 @@ namespace skr::ecs
 
 ArchetypeBuilder& ArchetypeBuilder::add_component(sugoi_type_index_t type)
 {
-	if(types.contains(type))
+	if (!types.contains(type))
 	{
-		return *this;
+		types.add(type);
 	}
-	types.add(type);
-	fields.add(-1);
 	return *this;
 }
 
@@ -24,15 +22,11 @@ ArchetypeBuilder& ArchetypeBuilder::add_meta_entity(Entity Entity)
 	return *this;
 }
 
-ArchetypeBuilder& ArchetypeBuilder::add_component(sugoi_type_index_t type, intptr_t Field)
+ArchetypeBuilder& ArchetypeBuilder::_access(sugoi_type_index_t type, intptr_t Field, EAccessMode FieldMode)
 {
-	if (auto index = types.find(type))
-	{
-		fields[index.index()] = Field;
-		return *this;
-	}
-	types.add(type);
 	fields.add(Field);
+	field_types.add(type);
+	field_modes.add(FieldMode);
 	return *this;
 }
 
@@ -45,7 +39,7 @@ void ArchetypeBuilder::commit() SKR_NOEXCEPT
 void AccessBuilder::commit() SKR_NOEXCEPT
 {
 	all.sort([](auto a, auto b) { return a < b; });
-	none.sort([](auto a, auto b) { return a < b; });
+	nones.sort([](auto a, auto b) { return a < b; });
 }
 
 sugoi_query_t* AccessBuilder::create_query(sugoi_storage_t* storage) SKR_NOEXCEPT
@@ -59,11 +53,10 @@ sugoi_query_t* AccessBuilder::create_query(sugoi_storage_t* storage) SKR_NOEXCEP
 	filter.all.data = all.data();
 	filter.all.length = all.size();
 
-	/*
-	none.sort([](auto a, auto b) { return a < b; });
-	filter.none.data = none.data();
-	filter.none.length = none.size();
-	*/
+	nones.sort([](auto a, auto b) { return a < b; });
+	filter.none.data = nones.data();
+	filter.none.length = nones.size();
+
 	auto q = sugoiQ_create(storage, &filter, &parameters);
 	if (q)
 	{
@@ -89,36 +82,85 @@ AccessBuilder& AccessBuilder::_access(TypeIndex type, bool write, EAccessMode mo
 {
 	// fill: base type accessors
 	if (write)
-		writes.add({type, mode});
-	else
-		reads.add({type, mode});
-
-	// fill: access builder args
-	if (field != kInvalidFieldPtr)
 	{
-		fields.add(field);
+		if (auto existed = writes.find_if([&](auto a) { return a.type == type; }))
+		{
+			existed.ref().mode |= mode;
+		}
+		else
+		{
+			writes.add({type, mode});
+		}
+	}
+	else
+	{
+		if (auto existed = reads.find_if([&](auto a) { return a.type == type; }))
+		{
+			existed.ref().mode |= mode;
+		}
+		else
+		{
+			reads.add({type, mode});
+		}
 	}
 
-	all.add(type);
-	// share
-	// exclude
-	types.add(type);
-	ops.add({ 
-		.phase = 0, 
-		.readonly = !write,
-		.atomic = (mode == EAccessMode::Atomic),
-		.randomAccess = SOS_SEQ
-	});
+	// fill: access builder args
+	if ((field != kInvalidFieldPtr) && !fields.contains(field))
+	{
+		fields.add(field);
+		field_types.add(type);
+		field_modes.add(mode);
+	}
 	return *this;
 }
 
+AccessBuilder& AccessBuilder::_add_has_filter(TypeIndex type, bool write)
+{
+	if (auto no = nones.find(type))
+		SKR_ASSERT(0 && "Type already added as none!");
+
+	if (auto existed = types.find(type))
+	{
+		ops[existed.index()].readonly &= !write;
+	}
+	else
+	{
+		types.add(type);
+		all.add(type);
+		ops.add({ 
+			.phase = -1, 
+			.readonly = !write
+			// seems these two attributes should be deprecated
+			// .atomic = (mode == EAccessMode::Atomic),
+			// .randomAccess = (mode == EAccessMode::Random) ? SOS_UNSEQ : SOS_SEQ
+		});
+	}
+	return *this;
+}
+
+AccessBuilder& AccessBuilder::_add_none_filter(TypeIndex type)
+{
+	if (auto has = all.find(type))
+		SKR_ASSERT(0 && "Type already added as all!");
+
+	if (!types.find(type))
+	{
+		types.add(type);
+		nones.add(type);
+		ops.add({ .phase = -1, .readonly = true });
+	}
+	return *this;
+}
+
+static std::atomic_uint32_t kTaskSchedulerRefCount = 0;
 static const auto kTSServiceDesc = ServiceThreadDesc {
 	.name = u8"ECSTaskScheduler",
 	.priority = SKR_THREAD_ABOVE_NORMAL,
 };
 World::World(skr::task::scheduler_t& scheduler) SKR_NOEXCEPT
-	: TS(skr::UPtr<TaskScheduler>::New(kTSServiceDesc, scheduler))
 {
+	kTaskSchedulerRefCount += 1;
+	TaskScheduler::Initialize(kTSServiceDesc, scheduler);
 	storage = sugoiS_create();
 }
 
@@ -130,7 +172,7 @@ World::World() SKR_NOEXCEPT
 void World::initialize() SKR_NOEXCEPT
 {
     storage = sugoiS_create();
-	if (TS.get())
+	if (auto TS = TaskScheduler::Get())
 	{
 		TS->run();
 	}
@@ -138,13 +180,19 @@ void World::initialize() SKR_NOEXCEPT
 
 void World::finalize() SKR_NOEXCEPT
 {
+	if (auto TS = TaskScheduler::Get())
+	{
+		kTaskSchedulerRefCount -= 1;
+		if (kTaskSchedulerRefCount == 0)
+		{
+			TS->sync_all();
+			TS->stop_and_exit();
+			TaskScheduler::Finalize();
+		}
+	}
+
     sugoiS_release(storage);
     storage = nullptr;
-}
-
-TaskScheduler* World::get_scheduler() SKR_NOEXCEPT
-{
-	return TS.get() ? TS.get() : nullptr;
 }
 
 sugoi_storage_t* World::get_storage() SKR_NOEXCEPT

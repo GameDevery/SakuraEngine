@@ -155,6 +155,8 @@ ECGPUResourceType MetalUtil_GetResourceType(MTLStructType* structure, ECGPUTextu
             r = CGPU_RESOURCE_TYPE_UNIFORM_BUFFER;
         else if (T == MTLDataTypeInstanceAccelerationStructure)
             r = CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE;
+        else if (T == MTLDataTypeStruct)
+            r = CGPU_RESOURCE_TYPE_PUSH_CONSTANT;
     }
     else if (structure.members.count == 2)
     {
@@ -168,7 +170,7 @@ ECGPUResourceType MetalUtil_GetResourceType(MTLStructType* structure, ECGPUTextu
     return r;
 }
 
-void MetalUtil_GetShaderResourceType(uint32_t set, const MTLStructMember* member, CGPUShaderResource* resource)
+ECGPUResourceType MetalUtil_GetShaderResourceType(id<MTLBufferBinding> SRT, uint32_t set, const MTLStructMember* member, CGPUShaderResource* resource)
 {
     MTLStructType* structure = member.structType;
     MTLArrayType* arrayType = member.arrayType;
@@ -185,16 +187,20 @@ void MetalUtil_GetShaderResourceType(uint32_t set, const MTLStructMember* member
     if (!is_array)
     {
         resource_type = MetalUtil_GetResourceType(structure, &resource->dim);
-        resource->size = 1;
+        if (resource_type == CGPU_RESOURCE_TYPE_PUSH_CONSTANT)
+            resource->size = SRT.bufferDataSize;
+        else
+            resource->size = 1;
     }
     else 
     {
         MTLStructType* elementStructType = arrayType ? arrayType.elementStructType : pointerType.elementStructType;
-        resource_type = MetalUtil_GetResourceType(elementStructType, &resource->dim);
         resource->size = arrayType ? arrayType.arrayLength : ~0;
+        resource_type = MetalUtil_GetResourceType(elementStructType, &resource->dim);
     }
     resource->type = resource_type;
     SKR_ASSERT(resource->type != CGPU_RESOURCE_TYPE_NONE);
+    return resource_type;
 }
 
 MemoryType MetalUtil_MemoryUsageToMemoryType(ECGPUMemoryUsage usage)
@@ -331,7 +337,6 @@ void MetalUtil_QueryVendorIdAndDeviceId(id<MTLDevice> device, uint32_t* outVende
         // This is an Apple GPU. It won't have a 'device-id' property, so fill it in
         // like on iOS/tvOS.
         vendorID = kAppleVendorId;
-    #ifdef TARGET_MACOS_APPLE_SILICON
         if (supportsMTLGPUFamily(device, Apple7))
         {
             deviceID = 0xa140;
@@ -344,9 +349,6 @@ void MetalUtil_QueryVendorIdAndDeviceId(id<MTLDevice> device, uint32_t* outVende
         {
             deviceID = 0xa120;
         }
-    #else
-        deviceID = 0xa120;
-    #endif
     }
     // If the device has an associated registry ID, we can use that to get the associated IOKit node.
     // The match dictionary is consumed by IOServiceGetMatchingServices and does not need to be released.
@@ -398,3 +400,122 @@ void MetalUtil_QueryVendorIdAndDeviceId(id<MTLDevice> device, uint32_t* outVende
     *outDeviceId = deviceID;
 }
 #endif
+
+// Blit pipeline and sampler utilities
+static const char* blitVertexShader = 
+"#include <metal_stdlib>\n"
+"using namespace metal;\n"
+"\n"
+"struct VertexOut {\n"
+"    float4 position [[position]];\n"
+"    float2 texCoord;\n"
+"};\n"
+"\n"
+"vertex VertexOut blitVertex(uint vertexID [[vertex_id]]) {\n"
+"    VertexOut out;\n"
+"    \n"
+"    // Generate a fullscreen triangle\n"
+"    float2 pos;\n"
+"    if (vertexID == 0) {\n"
+"        pos = float2(-1.0, -1.0);\n"
+"    } else if (vertexID == 1) {\n"
+"        pos = float2(3.0, -1.0);\n"
+"    } else {\n"
+"        pos = float2(-1.0, 3.0);\n"
+"    }\n"
+"    \n"
+"    out.position = float4(pos, 0.0, 1.0);\n"
+"    out.texCoord = (pos + 1.0) * 0.5;\n"
+"    out.texCoord.y = 1.0 - out.texCoord.y; // Flip Y coordinate\n"
+"    \n"
+"    return out;\n"
+"}\n";
+
+static const char* blitFragmentShader = 
+"#include <metal_stdlib>\n"
+"using namespace metal;\n"
+"\n"
+"struct VertexOut {\n"
+"    float4 position [[position]];\n"
+"    float2 texCoord;\n"
+"};\n"
+"\n"
+"fragment float4 blitFragment(VertexOut in [[stage_in]],\n"
+"                            texture2d<float> sourceTexture [[texture(0)]],\n"
+"                            sampler linearSampler [[sampler(0)]]) {\n"
+"    return sourceTexture.sample(linearSampler, in.texCoord);\n"
+"}\n";
+
+id<MTLRenderPipelineState> MetalUtil_GetBlitPipeline(CGPUDevice_Metal* device, MTLPixelFormat format)
+{
+    static id<MTLRenderPipelineState> blitPipeline = nil;
+    static MTLPixelFormat cachedFormat = MTLPixelFormatInvalid;
+    
+    if (blitPipeline && cachedFormat == format) {
+        return blitPipeline;
+    }
+    
+    @autoreleasepool {
+        NSError* error = nil;
+        
+        // Compile shaders
+        MTLCompileOptions* options = [[MTLCompileOptions alloc] init];
+        id<MTLLibrary> library = [device->pDevice newLibraryWithSource:[NSString stringWithUTF8String:blitVertexShader]
+                                                              options:options
+                                                                error:&error];
+        if (error) {
+            cgpu_error("Failed to compile blit vertex shader: %s", error.localizedDescription.UTF8String);
+            return nil;
+        }
+        
+        id<MTLFunction> vertexFunction = [library newFunctionWithName:@"blitVertex"];
+        
+        library = [device->pDevice newLibraryWithSource:[NSString stringWithUTF8String:blitFragmentShader]
+                                               options:options
+                                                 error:&error];
+        if (error) {
+            cgpu_error("Failed to compile blit fragment shader: %s", error.localizedDescription.UTF8String);
+            return nil;
+        }
+        
+        id<MTLFunction> fragmentFunction = [library newFunctionWithName:@"blitFragment"];
+        
+        // Create pipeline descriptor
+        MTLRenderPipelineDescriptor* pipelineDesc = [[MTLRenderPipelineDescriptor alloc] init];
+        pipelineDesc.vertexFunction = vertexFunction;
+        pipelineDesc.fragmentFunction = fragmentFunction;
+        pipelineDesc.colorAttachments[0].pixelFormat = format;
+        
+        // Create pipeline state
+        blitPipeline = [device->pDevice newRenderPipelineStateWithDescriptor:pipelineDesc error:&error];
+        if (error) {
+            cgpu_error("Failed to create blit pipeline state: %s", error.localizedDescription.UTF8String);
+            return nil;
+        }
+        
+        cachedFormat = format;
+    }
+    
+    return blitPipeline;
+}
+
+id<MTLSamplerState> MetalUtil_GetLinearSampler(CGPUDevice_Metal* device)
+{
+    static id<MTLSamplerState> linearSampler = nil;
+    
+    if (linearSampler) {
+        return linearSampler;
+    }
+    
+    MTLSamplerDescriptor* samplerDesc = [[MTLSamplerDescriptor alloc] init];
+    samplerDesc.minFilter = MTLSamplerMinMagFilterLinear;
+    samplerDesc.magFilter = MTLSamplerMinMagFilterLinear;
+    samplerDesc.mipFilter = MTLSamplerMipFilterLinear;
+    samplerDesc.sAddressMode = MTLSamplerAddressModeClampToEdge;
+    samplerDesc.tAddressMode = MTLSamplerAddressModeClampToEdge;
+    samplerDesc.rAddressMode = MTLSamplerAddressModeClampToEdge;
+    
+    linearSampler = [device->pDevice newSamplerStateWithDescriptor:samplerDesc];
+    
+    return linearSampler;
+}

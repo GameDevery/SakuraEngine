@@ -1,14 +1,14 @@
 #include "SkrAnim/resources/skin_resource.hpp"
-#include "SkrToolCore/asset/cook_system.hpp"
+#include "SkrToolCore/cook_system/cook_system.hpp"
 #include "SkrAnimTool/skin_asset.h"
 #include "cgltf/cgltf.h"
 
 namespace skd::asset
 {
-bool SSkinCooker::Cook(SCookContext* ctx)
+bool SkinCooker::Cook(CookContext* ctx)
 {
     using namespace skr::anim;
-    SkrZoneScopedNS("SSkinCooker::Cook", 4);
+    SkrZoneScopedNS("SkinCooker::Cook", 4);
 
     cgltf_data* rawMesh = ctx->Import<cgltf_data>();
     if (!rawMesh)

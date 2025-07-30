@@ -69,17 +69,17 @@ skr_vfs_t* skr_create_vfs(const skr_vfs_desc_t* desc) SKR_NOEXCEPT
         }
 #else
         const char8_t* path = (const char8_t*)[[[NSBundle mainBundle] bundlePath] UTF8String];
-        const skr::filesystem::path p(path);
-        const auto ppstr = p.parent_path().u8string();
-        fs->mount_dir = duplicate_string((const char8_t*)ppstr.c_str());
+        const skr::Path p{skr::String(path)};
+        const auto ppstr = p.parent_directory();
+        fs->mount_dir = duplicate_string(ppstr.string().data());
 #endif
     }
     else if (desc->mount_type == SKR_MOUNT_TYPE_ABSOLUTE)
     {
         const char8_t* path = (const char8_t*)[[[NSBundle mainBundle] bundlePath] UTF8String];
-        const skr::filesystem::path p(path);
-        const auto pstr = p.u8string();
-        fs->mount_dir = duplicate_string((const char8_t*)pstr.c_str());
+        const skr::Path p{skr::String(path)};
+        const auto pstr = p.string();
+        fs->mount_dir = duplicate_string(pstr.data());
     }
 
     success &= fs->mount_dir or desc->mount_type == SKR_MOUNT_TYPE_ABSOLUTE;

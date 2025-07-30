@@ -9,6 +9,7 @@
 #include "CppSL/ShaderCompiler.hpp"
 #include "CppSL/AST.hpp"
 #include "CppSL/langs/HLSLGenerator.hpp"
+#include "CppSL/langs/MSLGenerator.hpp"
 
 #include "ShaderASTConsumer.hpp"
 
@@ -38,6 +39,7 @@ struct ShaderCompilerImpl : public ShaderCompiler
 {
 public:
     ShaderCompilerImpl(int argc, const char **argv)
+        : AST(ASTDB)
     {
         auto ExpectedParser = CommonOptionsParser::create(argc, argv, ToolOptionsCategory);
         if (!ExpectedParser)
@@ -50,18 +52,58 @@ public:
     {
         auto factory = newFrontendActionFactory2<CompileFrontendAction>(AST);
         auto result = tool->run(factory.get());
+#ifdef __APPLE__
+        GenerateMSLCode();
+#endif
         GenerateHLSLCode();
         return result;
     }
 
-    void GenerateHLSLCode()
+    void GenerateMSLCode()
     {
+        const skr::CppSL::AST MetalUsingAST = AST;
         skr::CppSL::SourceBuilderNew sb;
-        skr::CppSL::HLSLGenerator hlsl_generator;
-        auto hlsl_code = hlsl_generator.generate_code(sb, AST);
+        skr::CppSL::MSL::MSLGenerator msl_generator;
+        auto msl_code = msl_generator.generate_code(sb, MetalUsingAST);
         auto SourceFile = GetSourceFile();
         auto SourceName = SourceFile.filename().replace_extension(".");
-        for (auto func : GetAST().funcs())
+        for (auto func : MetalUsingAST.funcs())
+        {
+            std::wstring target_string = L"";
+            std::wstring output_file = L"";
+            if (auto stage = func->stage(); stage != skr::CppSL::ShaderStage::None)
+            {
+                switch (stage)
+                {
+                    case skr::CppSL::ShaderStage::Vertex:
+                        target_string = L".vs.";
+                        break;
+                    case skr::CppSL::ShaderStage::Fragment:
+                        target_string = L".fs.";
+                        break;
+                    case skr::CppSL::ShaderStage::Compute:
+                        target_string = L".cs.";
+                        break;
+                    default:
+                        continue;
+                }
+                std::filesystem::path output_path = SourceName.wstring() + func->name() + target_string + L"metal";
+                std::wofstream msl_file(output_path);
+                msl_file << msl_code;
+                msl_file.close();
+            }
+        }
+    }
+    
+    void GenerateHLSLCode()
+    {
+        const skr::CppSL::AST HLSLUsingAST = AST;
+        skr::CppSL::SourceBuilderNew sb;
+        skr::CppSL::HLSL::HLSLGenerator hlsl_generator;
+        auto hlsl_code = hlsl_generator.generate_code(sb, HLSLUsingAST);
+        auto SourceFile = GetSourceFile();
+        auto SourceName = SourceFile.filename().replace_extension(".");
+        for (auto func : HLSLUsingAST.funcs())
         {
             std::wstring target_string = L"";
             std::wstring output_file = L"";
@@ -106,6 +148,7 @@ public:
 private:
     std::optional<CommonOptionsParser> OptionsParser;
     std::optional<ClangTool> tool;
+    skr::CppSL::ASTDatabase ASTDB;
     skr::CppSL::AST AST;
 };
 

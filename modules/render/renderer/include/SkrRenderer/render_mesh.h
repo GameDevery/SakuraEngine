@@ -13,16 +13,24 @@ namespace skr
 namespace renderer
 {
 
-struct RenderMesh {
-    skr_mesh_resource_id                  mesh_resource_id;
-    skr::Vector<CGPUBufferId>             buffers;
+struct RenderMesh
+{
+    enum BufferTag
+    {
+        Index,
+        Vertex
+    };
+    skr_mesh_resource_id mesh_resource_id;
+    skr::Vector<CGPUBufferId> buffers;
     skr::Vector<skr_vertex_buffer_view_t> vertex_buffer_views;
-    skr::Vector<skr_index_buffer_view_t>  index_buffer_views;
-    skr::Vector<PrimitiveCommand>         primitive_commands;
+    skr::Vector<skr_index_buffer_view_t> index_buffer_views;
+    skr::Vector<PrimitiveCommand> primitive_commands;
+    CGPUAccelerationStructureId blas = nullptr;
 };
 
 sreflect_managed_component(guid = "c66ab7ef-bde9-4e0f-8023-a2d99ba5134c")
-MeshComponent {
+MeshComponent
+{
     SKR_RESOURCE_FIELD(MeshResource, mesh_resource);
 };
 

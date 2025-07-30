@@ -30,7 +30,7 @@ struct SKR_ANIM_API BinSerde<skr::anim::SkeletonResource> {
 
 namespace resource
 {
-struct SKR_ANIM_API SSkelFactory : public SResourceFactory {
+struct SKR_ANIM_API SSkelFactory : public ResourceFactory {
 public:
     virtual ~SSkelFactory() noexcept = default;
     skr_guid_t GetResourceType() override;

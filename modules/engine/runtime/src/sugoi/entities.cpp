@@ -1,5 +1,5 @@
 #include "SkrRT/sugoi/entity_registry.hpp"
-#include "./chunk.hpp"
+#include "SkrRT/sugoi/chunk.hpp"
 
 #ifndef forloop
 #define forloop(i, z, n) for (auto i = std::decay_t<decltype(n)>(z); i < (n); ++i)
@@ -11,31 +11,22 @@ namespace sugoi
 
 void EntityRegistry::reserve(EIndex size)
 {
-    mutex.lock();
-    SKR_DEFER({ mutex.unlock(); });
     entries.reserve(size);
 }
 
 void EntityRegistry::reserve_free_entries(EIndex size)
 {
-    mutex.lock();
-    SKR_DEFER({ mutex.unlock(); });
     freeEntries.reserve(size);
 }
 
 void EntityRegistry::reset()
 {
-    mutex.lock();
-    SKR_DEFER({ mutex.unlock(); });
-
     entries.clear();
     freeEntries.clear();
 }
 
 void EntityRegistry::reserve_external(EIndex size)
 {
-    mutex.lock();
-    SKR_DEFER({ mutex.unlock(); });
     SKR_ASSERT(entries.size() == 0 && freeEntries.size() == 0 && externalReserved == 0);
     entries.resize_unsafe(size);
     forloop (i, 0, size)
@@ -47,9 +38,6 @@ void EntityRegistry::reserve_external(EIndex size)
 
 void EntityRegistry::shrink()
 {
-    mutex.lock();
-    SKR_DEFER({ mutex.unlock(); });
-
     if (entries.size() == 0)
         return;
     EIndex lastValid = (EIndex)(entries.size() - 1);
@@ -69,9 +57,6 @@ void EntityRegistry::shrink()
 
 void EntityRegistry::pack_entities(skr::Vector<EIndex>& out_map)
 {
-    mutex.lock();
-    SKR_DEFER({ mutex.unlock(); });
-
     out_map.resize_unsafe(entries.size());
     freeEntries.clear();
     EIndex j = 0;
@@ -91,9 +76,6 @@ void EntityRegistry::new_entities(sugoi_entity_t* dst, EIndex count)
 {
     SkrZoneScopedN("sugoi_storage_t::new_entities");
     
-    mutex.lock();
-    SKR_DEFER({ mutex.unlock(); });
-
     EIndex i = 0;
     // recycle entities
     auto fn = (EIndex)freeEntries.size();
@@ -132,9 +114,6 @@ void EntityRegistry::free_entities(const sugoi_entity_t* dst, EIndex count)
 {
     SkrZoneScopedN("sugoi_storage_t::free_entities");
     
-    mutex.lock();
-    SKR_DEFER({ mutex.unlock(); });
-
     // build freelist in input order
     freeEntries.reserve(freeEntries.size() + count);
 
@@ -160,8 +139,6 @@ void EntityRegistry::fill_entities(const sugoi_chunk_view_t& view)
     auto ents = (sugoi_entity_t*)view.chunk->get_entities() + view.start;
     new_entities(ents, view.count);
     {
-        mutex.lock();
-        SKR_DEFER({ mutex.unlock(); });
         forloop (i, 0, view.count)
         {
             Entry& e = entries[e_id(ents[i])];
@@ -175,9 +152,6 @@ void EntityRegistry::fill_entities(const sugoi_chunk_view_t& view, const sugoi_e
 {
     SkrZoneScopedN("sugoi_storage_t::fill_entities");
     
-    mutex.lock();
-    SKR_DEFER({ mutex.unlock(); });
-
     auto ents = (sugoi_entity_t*)view.chunk->get_entities() + view.start;
     memcpy(ents, src, view.count * sizeof(sugoi_entity_t));
     forloop (i, 0, view.count)
@@ -192,9 +166,6 @@ void EntityRegistry::fill_entities_external(const sugoi_chunk_view_t& view, cons
 {
     SkrZoneScopedN("sugoi_storage_t::fill_entities_external");
     
-    mutex.lock();
-    SKR_DEFER({ mutex.unlock(); });
-
     auto ents = (sugoi_entity_t*)view.chunk->get_entities() + view.start;
     memcpy(ents, src, view.count * sizeof(sugoi_entity_t));
     forloop (i, 0, view.count)
@@ -214,9 +185,6 @@ void EntityRegistry::free_entities(const sugoi_chunk_view_t& view)
 
 void EntityRegistry::move_entities(const sugoi_chunk_view_t& view, const sugoi_chunk_t* src, EIndex srcIndex)
 {
-    mutex.lock();
-    SKR_DEFER({ mutex.unlock(); });
-
     SKR_ASSERT(src != view.chunk || (srcIndex >= view.start + view.count));
     const sugoi_entity_t* toMove = src->get_entities() + srcIndex;
     forloop (i, 0, view.count)
@@ -230,9 +198,6 @@ void EntityRegistry::move_entities(const sugoi_chunk_view_t& view, const sugoi_c
 
 void EntityRegistry::move_entities(const sugoi_chunk_view_t& view, EIndex srcIndex)
 {
-    mutex.lock();
-    SKR_DEFER({ mutex.unlock(); });
-
     SKR_ASSERT(srcIndex >= view.start + view.count);
     const sugoi_entity_t* toMove = view.chunk->get_entities() + srcIndex;
     forloop (i, 0, view.count)
@@ -253,9 +218,6 @@ void EntityRegistry::serialize(SBinaryWriter* writer)
 
 void EntityRegistry::deserialize(SBinaryReader* reader)
 {
-    mutex.lock();
-    SKR_DEFER({ mutex.unlock(); });
-
     // empty storage expected
     SKR_ASSERT(entries.size() == 0);
     uint32_t size = 0;

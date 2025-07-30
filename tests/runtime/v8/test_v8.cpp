@@ -8,7 +8,8 @@
 
 skr::V8Isolate isolate;
 
-struct V8EnvGuard {
+struct V8EnvGuard
+{
     V8EnvGuard()
     {
         skr::init_v8();
@@ -369,7 +370,7 @@ TEST_CASE("test v8")
             }
         )__");
         auto str_join_func = context.get_global(u8"str_join");
-        auto result        = str_join_func.call<skr::String>(skr::String{ u8"hello" }, skr::String{ u8"world" }, skr::String{ u8"!" });
+        auto result = str_join_func.call<skr::String>(skr::String{ u8"hello" }, skr::String{ u8"world" }, skr::String{ u8"!" });
         REQUIRE(result.has_value());
         REQUIRE_EQ(result.value(), u8"hello + world + !");
 
@@ -386,7 +387,7 @@ TEST_CASE("test v8")
             module.register_type<test_v8::MixinHelper>(u8"");
         });
 
-        v8::HandleScope    handle_scope(isolate.v8_isolate());
+        v8::HandleScope handle_scope(isolate.v8_isolate());
         v8::Context::Scope context_scope(context.v8_context().Get(isolate.v8_isolate()));
 
         // no mixin
@@ -465,10 +466,10 @@ TEST_CASE("test v8")
             test_v8::MixinHelper::mixin->test_pure_out_value(test);
             REQUIRE_EQ(test.name, u8"PURE_OUT_VALUE");
             test.name = u8"INVALID";
-            test      = test_v8::MixinHelper::mixin->test_return_value();
+            test = test_v8::MixinHelper::mixin->test_return_value();
             REQUIRE_EQ(test.name, u8"RETURN_VALUE");
-            test.name                 = u8"INVALID";
-            test_b.name               = u8"INVALID";
+            test.name = u8"INVALID";
+            test_b.name = u8"INVALID";
             skr::String multi_out_ret = test_v8::MixinHelper::mixin->test_multi_out_value(test, test_b);
             REQUIRE_EQ(multi_out_ret, u8"MULTI_OUT");
             REQUIRE_EQ(test.name, u8"OUT_VALUE_1");
@@ -514,10 +515,10 @@ TEST_CASE("test v8")
             test_v8::MixinHelper::mixin->test_pure_out_value(test);
             REQUIRE_EQ(test.name, u8"PURE_OUT_VALUE + mixin");
             test.name = u8"INVALID";
-            test      = test_v8::MixinHelper::mixin->test_return_value();
+            test = test_v8::MixinHelper::mixin->test_return_value();
             REQUIRE_EQ(test.name, u8"RETURN_VALUE + mixin");
-            test.name     = u8"INVALID";
-            test_b.name   = u8"INVALID";
+            test.name = u8"INVALID";
+            test_b.name = u8"INVALID";
             multi_out_ret = test_v8::MixinHelper::mixin->test_multi_out_value(test, test_b);
             REQUIRE_EQ(multi_out_ret, u8"MULTI_OUT_FROM_JS");
             REQUIRE_EQ(test.name, u8"OUT_VALUE_1 + mixin");
@@ -545,8 +546,8 @@ TEST_CASE("test v8")
     {
         // build module
         ScriptBinderManager bm;
-        ScriptModule        sm;
-        sm.manager     = &bm;
+        ScriptModule sm;
+        sm.manager = &bm;
         uint32_t count = 0;
         each_types_of_module(u8"V8Test", [&](const RTTRType* type) -> bool {
             if (count % 2 == 0)
@@ -566,7 +567,7 @@ TEST_CASE("test v8")
         // export module
         TSDefineExporter exporter;
         exporter.module = &sm;
-        auto result     = exporter.generate_module(u8"圆头");
+        auto result = exporter.generate_module(u8"圆头");
 
         // write to file
         auto file = fopen("test_v8.d.ts", "wb");

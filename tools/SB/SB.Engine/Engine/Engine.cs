@@ -25,7 +25,7 @@ namespace SB
                     Toolchain = XCodeSetup.XCode;
                 else
                     throw new Exception("Unsupported Platform!");
-                
+
                 if (BS.HostOS == OSPlatform.Windows)
                 {
                     char DriveLetter = SourceLocation.Directory()[0];
@@ -40,7 +40,7 @@ namespace SB
 
                 Log.Verbose("Load Targets... ");
                 LoadTargets(Categories);
-                
+
                 Stopwatch sw = new();
                 sw.Start();
                 Log.Verbose("Run Setups... ");
@@ -82,7 +82,7 @@ namespace SB
                 .AddDependency("Cpp.PCH", DependencyModel.ExternalTarget)
                 .AddDependency("Codgen.Codegen", DependencyModel.ExternalTarget)
                 .AddDependency("Codgen.Codegen", DependencyModel.PerTarget);
-            
+
             Engine.AddTaskEmitter("Cpp.Link", new CppLinkEmitter(Toolchain))
                 .AddDependency("Cpp.Link", DependencyModel.ExternalTarget)
                 .AddDependency("Cpp.Compile", DependencyModel.PerTarget);
@@ -105,6 +105,10 @@ namespace SB
             {
                 Engine.AddTaskEmitter("DXC.Compile", new DXCEmitter());
             }
+            if (BuildSystem.TargetOS == OSPlatform.OSX)
+            {
+                Engine.AddTaskEmitter("MSL.Compile", new MSLEmitter());
+            }
             Engine.AddTaskEmitter("CppSL.Compile", new CppSLEmitter());
         }
 
@@ -120,6 +124,7 @@ namespace SB
                 Target.CppVersion("20")
                     .Exception(false)
                     .RTTI(false)
+                    .Clang_CppFlags(Visibility.Public, "-Wno-character-conversion")
                     .LinkDirs(Visibility.Public, Target.GetBinaryPath());
                 if (BS.TargetOS == OSPlatform.Windows)
                 {
@@ -141,7 +146,7 @@ namespace SB
                 }
             }
         }
-        
+
         private static bool IsTargetOfCategory(Type Type, TargetCategory Category)
         {
             var TargetAttr = Type.GetCustomAttribute<TargetScript>();

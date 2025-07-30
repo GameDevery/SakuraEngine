@@ -63,7 +63,7 @@ struct SimpleTransformTest {
         // Create 1 root entity
         sugoi::EntitySpawner<skr::scene::RootComponent, SKR_SCENE_COMPONENTS> root_spawner;
         root_spawner(storage, 1, [&](auto& view) {
-            auto translations = sugoi::get_owned<skr::scene::TranslationComponent>(view.view);
+            auto translations = sugoi::get_owned<skr::scene::PositionComponent>(view.view);
             auto rotations = sugoi::get_owned<skr::scene::RotationComponent>(view.view);
             auto scales = sugoi::get_owned<skr::scene::ScaleComponent>(view.view);
 
@@ -78,7 +78,7 @@ struct SimpleTransformTest {
         sugoi::EntitySpawner<SKR_SCENE_COMPONENTS> children_spawner;
         children.reserve(SIMPLE_CHILDREN_COUNT);
         children_spawner(storage, SIMPLE_CHILDREN_COUNT, [&](auto& view) {
-            auto translations = sugoi::get_owned<skr::scene::TranslationComponent>(view.view);
+            auto translations = sugoi::get_owned<skr::scene::PositionComponent>(view.view);
             auto rotations = sugoi::get_owned<skr::scene::RotationComponent>(view.view);
             auto scales = sugoi::get_owned<skr::scene::ScaleComponent>(view.view);
             auto parents = sugoi::get_owned<skr::scene::ParentComponent>(view.view);
@@ -130,7 +130,7 @@ TEST_CASE_METHOD(SimpleTransformTest, "Simple Transform Hierarchy") {
     // Verify results
     auto checkQuery = storage->new_query()
                           .ReadAny<skr::scene::ParentComponent, skr::scene::ChildrenComponent, skr::scene::RootComponent>()
-                          .ReadAll<skr::scene::TranslationComponent, skr::scene::RotationComponent, skr::scene::ScaleComponent>()
+                          .ReadAll<skr::scene::PositionComponent, skr::scene::RotationComponent, skr::scene::ScaleComponent>()
                           .ReadAll<skr::scene::TransformComponent>()
                           .commit()
                           .value();

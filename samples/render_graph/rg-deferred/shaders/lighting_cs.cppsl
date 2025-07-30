@@ -18,12 +18,12 @@ struct RootConstants
 extern ConstantBuffer<RootConstants>& push_constants;
 
 [[compute_shader("cs"), kernel_2d(16, 16)]]
-void compute([[sv_thread_id]] int2 threadID)
+void compute([[sv_thread_id]] uint2 threadID)
 {
-    if (any(threadID.xy >= int2(push_constants.viewportSize)))
+    if (any(threadID.xy >= uint2(push_constants.viewportSize)))
         return;
 
-    int2 pixelPosition = threadID.xy + int2(push_constants.viewportOrigin);
+    int2 pixelPosition = threadID.xy + uint2(push_constants.viewportOrigin);
     float4 gbufferColor = gbuffer_color.load(pixelPosition);
     float4 gbufferNormal = gbuffer_normal.load(pixelPosition);
     float4 depth = gbuffer_depth.load(pixelPosition);

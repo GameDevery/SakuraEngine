@@ -1,5 +1,0 @@
-shared_module("SkrPhysics", "SKR_PHYSICS")
-    public_dependency("SkrRT")
-    add_includedirs("include", {public=true})
-    skr_unity_build()
-    add_files("src/**.cpp")

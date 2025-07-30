@@ -1,5 +1,5 @@
 #pragma once
-#include "./rc_util.hpp"
+#include "./rc_util.hpp" // IWYU pragma: export
 #include <SkrBase/misc/hash.hpp>
 
 namespace skr
@@ -82,6 +82,8 @@ struct RC {
     // cast
     template <typename U>
     RC<U> cast_static() const;
+    template <typename U>
+    RC<U> cast_const() const;
 
     // skr hash
     static size_t _skr_hash(const RC& obj);
@@ -266,6 +268,8 @@ struct RCWeak {
     // cast
     template <typename U>
     RCWeak<U> cast_static() const;
+    template <typename U>
+    RCWeak<U> cast_const() const;
 
     // skr hash
     static size_t _skr_hash(const RCWeak& obj);
@@ -288,7 +292,14 @@ namespace skr
 template <typename T>
 inline void RC<T>::_release()
 {
-    rc_release_with_delete(_ptr);
+    if constexpr (std::is_const_v<T>)
+    {
+        rc_release_with_delete(const_cast<std::remove_const_t<T>*>(_ptr));
+    }
+    else
+    {
+        rc_release_with_delete(_ptr);
+    }
 }
 
 // ctor & dtor
@@ -710,6 +721,19 @@ inline RC<U> RC<T>::cast_static() const
         return nullptr;
     }
 }
+template <typename T>
+template <typename U>
+inline RC<U> RC<T>::cast_const() const
+{
+    if (_ptr)
+    {
+        return RC<U>(const_cast<U*>(_ptr));
+    }
+    else
+    {
+        return nullptr;
+    }
+}
 
 // skr hash
 template <typename T>
@@ -731,7 +755,14 @@ namespace skr
 template <typename T>
 inline void RCUnique<T>::_release()
 {
-    rc_release_with_delete(_ptr);
+    if constexpr (std::is_const_v<T>)
+    {
+        rc_release_with_delete(const_cast<std::remove_const_t<T>*>(_ptr));
+    }
+    else
+    {
+        rc_release_with_delete(_ptr);
+    }
 }
 
 // ctor & dtor
@@ -1624,6 +1655,26 @@ inline RCWeak<U> RCWeak<T>::cast_static() const
         if (auto locker = lock())
         {
             return RCWeak<U>(static_cast<U*>(_ptr));
+        }
+        else
+        {
+            return nullptr;
+        }
+    }
+    else
+    {
+        return nullptr;
+    }
+}
+template <typename T>
+template <typename U>
+inline RCWeak<U> RCWeak<T>::cast_const() const
+{
+    if (_ptr)
+    {
+        if (auto locker = lock())
+        {
+            return RCWeak<U>(const_cast<U*>(_ptr));
         }
         else
         {

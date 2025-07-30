@@ -10,7 +10,6 @@
 #include "SkrCore/module/module_manager.hpp"
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrRenderer/skr_renderer.h"
-#include "SkrImGui/imgui_render_backend.hpp"
 #include "SkrImGui/imgui_backend.hpp"
 #include "pass_profiler.h"
 
@@ -36,7 +35,7 @@ thread_local CGPUComputePipelineId lighting_cs_pipeline;
 
 void create_render_pipeline()
 {
-    render_device = skr_get_default_render_device();
+    render_device = SkrRendererModule::Get()->get_render_device();
     auto device = render_device->get_cgpu_device();
     auto gfx_queue = render_device->get_gfx_queue();
 
@@ -148,9 +147,9 @@ void create_render_pipeline()
     cgpu_free_command_pool(cmd_pool);
 
     gbuffer_pipeline = create_gbuffer_render_pipeline(device);
-    lighting_pipeline = create_lighting_render_pipeline(device, static_sampler, CGPU_FORMAT_B8G8R8A8_UNORM);
+    lighting_pipeline = create_lighting_render_pipeline(device, static_sampler, CGPU_FORMAT_R8G8B8A8_UNORM);
     lighting_cs_pipeline = create_lighting_compute_pipeline(device);
-    blit_pipeline = create_blit_render_pipeline(device, static_sampler, CGPU_FORMAT_B8G8R8A8_UNORM);
+    blit_pipeline = create_blit_render_pipeline(device, static_sampler, CGPU_FORMAT_R8G8B8A8_UNORM);
 }
 
 void finalize()
@@ -199,20 +198,12 @@ int RenderGraphDeferredModule::main_module_exec(int argc, char8_t** argv)
 {
     // init rendering
     namespace render_graph = skr::render_graph;
-    render_graph::RenderGraph* graph;
     PassProfiler profilers[RG_MAX_FRAME_IN_FLIGHT];
     skr::UPtr<skr::ImGuiApp> imgui_app = nullptr;
-    skr::ImGuiRendererBackendRG* imgui_render = nullptr;
     {
         // init render graph
         auto device = render_device->get_cgpu_device();
         auto gfx_queue = render_device->get_gfx_queue();
-        graph = render_graph::RenderGraph::create(
-            [=](skr::render_graph::RenderGraphBuilder& builder) {
-                builder.with_device(device)
-                    .with_gfx_queue(gfx_queue)
-                    .enable_memory_aliasing();
-            });
 
         // init pass profiler
         for (uint32_t i = 0; i < RG_MAX_FRAME_IN_FLIGHT; i++)
@@ -224,20 +215,15 @@ int RenderGraphDeferredModule::main_module_exec(int argc, char8_t** argv)
         {
             using namespace skr;
 
-            // init imgui backend
-            auto render_backend = RCUnique<ImGuiRendererBackendRG>::New();
-            imgui_render = render_backend.get();
-            ImGuiRendererBackendRGConfig config{};
-            config.render_graph = graph;
-            config.queue = gfx_queue;
-            config.static_sampler = static_sampler;
-            render_backend->init(config);
-
+            skr::render_graph::RenderGraphBuilder graph_builder;
+            graph_builder.with_device(device)
+                .with_gfx_queue(gfx_queue)
+                .enable_memory_aliasing();
             skr::SystemWindowCreateInfo window_config = {
                 .size = { BACK_BUFFER_WIDTH, BACK_BUFFER_HEIGHT },
                 .is_resizable = false
             };
-            imgui_app = UPtr<ImGuiApp>::New(window_config, std::move(render_backend));
+            imgui_app = UPtr<ImGuiApp>::New(window_config, render_device, graph_builder);
             imgui_app->initialize();
             imgui_app->enable_docking();
 
@@ -257,6 +243,7 @@ int RenderGraphDeferredModule::main_module_exec(int argc, char8_t** argv)
             ImGui::GetIO().Fonts->Build();
         }
     }
+    auto graph = imgui_app->render_graph();
 
     // loop
     while (!imgui_app->want_exit().comsume())
@@ -268,7 +255,6 @@ int RenderGraphDeferredModule::main_module_exec(int argc, char8_t** argv)
         static uint64_t frame_index = 0;
         {
             SkrZoneScopedN("ImGui");
-            imgui_app->begin_frame();
             ImGui::Begin("RenderGraphProfile");
             if (ImGui::Button(fragmentLightingPass ? "SwitchToComputeLightingPass" : "SwitchToFragmentLightingPass"))
             {
@@ -304,12 +290,11 @@ int RenderGraphDeferredModule::main_module_exec(int argc, char8_t** argv)
                 }
             }
             ImGui::End();
-            imgui_app->end_frame();
         }
 
         // rendering
-        auto native_backbuffer = imgui_render->get_backbuffer(ImGui::GetMainViewport());
-        imgui_render->set_load_action(ImGui::GetMainViewport(), CGPU_LOAD_ACTION_LOAD);
+        auto native_backbuffer = imgui_app->get_backbuffer(imgui_app->get_main_window());
+        imgui_app->set_load_action(CGPU_LOAD_ACTION_LOAD);
         {
             SkrZoneScopedN("GraphSetup");
             // render graph setup & compile & exec
@@ -323,7 +308,7 @@ int RenderGraphDeferredModule::main_module_exec(int argc, char8_t** argv)
                 [=](render_graph::RenderGraph& g, render_graph::TextureBuilder& builder) {
                     builder.set_name(u8"composite_buffer")
                         .extent(native_backbuffer->info->width, native_backbuffer->info->height)
-                        .format(CGPU_FORMAT_B8G8R8A8_UNORM)
+                        .format(CGPU_FORMAT_R8G8B8A8_UNORM)
                         .allocate_dedicated()
                         .allow_render_target();
                 });
@@ -453,7 +438,7 @@ int RenderGraphDeferredModule::main_module_exec(int argc, char8_t** argv)
                     cgpu_render_encoder_set_scissor(stack.encoder, 0, 0, native_backbuffer->info->width, native_backbuffer->info->height);
                     cgpu_render_encoder_draw(stack.encoder, 3, 0);
                 });
-            imgui_app->render();
+            imgui_app->render_imgui();
         }
 
         // compile and draw rg
@@ -471,7 +456,7 @@ int RenderGraphDeferredModule::main_module_exec(int argc, char8_t** argv)
         // present
         {
             SkrZoneScopedN("Present");
-            imgui_render->present_all();
+            imgui_app->present_all();
             if (lockFPS) skr_thread_sleep(16);
         }
     }
@@ -484,7 +469,6 @@ int RenderGraphDeferredModule::main_module_exec(int argc, char8_t** argv)
     {
         profilers[i].finalize();
     }
-    render_graph::RenderGraph::destroy(graph);
     imgui_app->shutdown();
     return 0;
 }
@@ -497,12 +481,11 @@ void RenderGraphDeferredModule::on_unload()
 int main(int argc, char* argv[])
 {
     auto moduleManager = skr_get_module_manager();
-    std::error_code ec = {};
-    auto root = skr::filesystem::current_path(ec);
+    auto root = skr::fs::current_directory();
     {
         FrameMark;
         SkrZoneScopedN("Initialize");
-        moduleManager->mount(root.u8string().c_str());
+        moduleManager->mount(root.string().c_str());
         moduleManager->make_module_graph(u8"RenderGraphDeferred", true);
         moduleManager->init_module_graph(argc, argv);
         moduleManager->destroy_module_graph();

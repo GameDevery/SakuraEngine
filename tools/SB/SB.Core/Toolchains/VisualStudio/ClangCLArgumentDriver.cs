@@ -30,6 +30,15 @@ namespace SB.Core
         [TargetProperty(InheritBehavior = true)]
         public virtual string[] ClangCl_CXFlags(ArgumentList<string> flags) => CXFlags(flags);
 
+        [TargetProperty(InheritBehavior = true)]
+        public virtual string[] Clang_CppFlags(ArgumentList<string> flags) => CppFlags(flags);
+
+        [TargetProperty(InheritBehavior = true)]
+        public virtual string[] Clang_CFlags(ArgumentList<string> flags) => CFlags(flags);
+
+        [TargetProperty(InheritBehavior = true)]
+        public virtual string[] Clang_CXFlags(ArgumentList<string> flags) => CXFlags(flags);
+
         public override string[] Cl_CppFlags(ArgumentList<string> flags) => new string[0];
         public override string[] Cl_CFlags(ArgumentList<string> flags) => new string[0];
         public override string[] Cl_CXFlags(ArgumentList<string> flags) => new string[0];

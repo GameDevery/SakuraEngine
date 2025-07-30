@@ -24,11 +24,18 @@ struct AnyTypeVarConcept;
 #define VEC_TYPES(N) const TypeDecl* N##2Type = nullptr; const TypeDecl* N##3Type = nullptr; const TypeDecl* N##4Type = nullptr;
 #define MATRIX_TYPES(N) const TypeDecl* N##2x2Type = nullptr; const TypeDecl* N##3x3Type = nullptr; const TypeDecl* N##4x4Type = nullptr; 
 
+struct ASTDatabase
+{
+    ~ASTDatabase();
+    std::vector<Decl*> _decls;
+    std::vector<Stmt*> _stmts;
+    std::vector<Attr*> _attrs;
+};
+
 struct AST
 {
 public:
-    AST();
-    ~AST();
+    AST(ASTDatabase& db);
 
     AccessExpr* Access(Expr* base, Expr* index);
     BinaryExpr* Binary(BinaryOp op, Expr* left, Expr* right);
@@ -98,7 +105,7 @@ public:
     template <typename ATTR, typename... Args>
     inline ATTR* DeclareAttr(Args&&... args) {
         auto attr = new ATTR(std::forward<Args>(args)...);
-        _attrs.emplace_back(attr);
+        emplace_attr(attr);
         return attr;
     }
 
@@ -151,8 +158,14 @@ private:
     const VectorTypeDecl* DeclareVectorType(const TypeDecl* element, uint32_t count, uint32_t alignment);
     const MatrixTypeDecl* DeclareMatrixType(const TypeDecl* element, uint32_t n, uint32_t alignment);
 
+    void emplace_stmt(Stmt* stmt);
+    void emplace_decl(Decl* decl);
+    void emplace_attr(Attr* attr);
     std::vector<Decl*> _decls;
     std::vector<Stmt*> _stmts;
+    std::vector<Attr*> _attrs;
+
+    ASTDatabase& db;
     AccelTypeDecl* _accel = nullptr;
     SamplerDecl* _sampler = nullptr;
     std::map<RayQueryFlags, RayQueryTypeDecl*> _ray_queries;
@@ -169,7 +182,6 @@ private:
     std::vector<MethodDecl*> _methods;
     std::vector<ConstructorDecl*> _ctors;
     std::vector<NamespaceDecl*> _namespaces;
-    std::vector<Attr*> _attrs;
     std::map<std::string, SemanticType> _semantic_map;
     std::map<std::string, InterpolationMode> _interpolation_map;
     

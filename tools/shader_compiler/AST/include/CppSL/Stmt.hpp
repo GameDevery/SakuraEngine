@@ -11,6 +11,7 @@ using String = std::wstring;
 using Name = String;
 
 struct AST;
+struct ASTDatabase;
 struct Decl;
 struct DeclRefExpr;
 struct CaseStmt;
@@ -25,6 +26,7 @@ public:
 
 protected:
     friend struct AST;
+    friend struct ASTDatabase;
     Stmt(AST& ast);
     virtual ~Stmt() = default;
 

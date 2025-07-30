@@ -7,7 +7,7 @@ public static class SkrResourceCompiler
 {
     static SkrResourceCompiler()
     {
-        var ShaderCompiler = Engine.Program("SkrResourceCompiler")
+        Engine.Program("SkrResourceCompiler")
             .EnableUnityBuild()
             .Depend(Visibility.Public, "SkrToolCore")
             .Depend(Visibility.Public, "SkrTextureCompiler")

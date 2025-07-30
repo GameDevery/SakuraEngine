@@ -22,7 +22,7 @@ struct AllocateEntites
 static constexpr size_t kIntEntityCount = 12;
 static constexpr size_t kFloatEntityCount = 12;
 static constexpr size_t kBothEntityCount = 12;
-skr::ecs::Entity shared_entity = SUGOI_NULL_ENTITY;
+skr::ecs::Entity shared_entity = skr::ecs::Entity(SUGOI_NULL_ENTITY);
 
 template <typename... Ts>
 struct EntitySpawner
@@ -45,7 +45,7 @@ struct EntitySpawner
         f(Context);
     }
     
-    skr::ecs::Entity meta_ent = SUGOI_NULL_ENTITY;
+    skr::ecs::Entity meta_ent = skr::ecs::Entity(SUGOI_NULL_ENTITY);
     F f;
 };
 

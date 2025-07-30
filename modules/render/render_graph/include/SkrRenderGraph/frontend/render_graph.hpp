@@ -115,6 +115,8 @@ public:
         ComputePassBuilder& readwrite(const char8_t* name, BufferRangeHandle handle) SKR_NOEXCEPT;
         ComputePassBuilder& readwrite(const char8_t* name, BufferHandle handle) SKR_NOEXCEPT;
 
+        ComputePassBuilder& read(const char8_t* name, AccelerationStructureSRVHandle handle) SKR_NOEXCEPT;
+
         ComputePassBuilder& set_pipeline(CGPUComputePipelineId pipeline) SKR_NOEXCEPT;
         ComputePassBuilder& set_root_signature(CGPURootSignatureId signature) SKR_NOEXCEPT;
         
@@ -230,8 +232,28 @@ public:
     TextureHandle get_imported(CGPUTextureId texture) SKR_NOEXCEPT;
     const ECGPUResourceState get_lastest_state(const TextureNode* texture, const PassNode* pending_pass) const SKR_NOEXCEPT;
 
+    class SKR_RENDER_GRAPH_API AccelerationStructureBuilder
+    {
+    public:
+        friend class RenderGraph;
+        AccelerationStructureBuilder& set_name(const char8_t* name) SKR_NOEXCEPT;
+        AccelerationStructureBuilder& import(CGPUAccelerationStructureId acceleration_structure) SKR_NOEXCEPT;
+
+    protected:
+        AccelerationStructureBuilder(RenderGraph& graph, AccelerationStructureNode& node) SKR_NOEXCEPT;
+        RenderGraph& graph;
+        AccelerationStructureNode& node;
+        CGPUAccelerationStructureId imported = nullptr;
+    };
+    using AccelerationStructureSetupFunction = skr::stl_function<void(RenderGraph&, class RenderGraph::AccelerationStructureBuilder&)>;
+    AccelerationStructureHandle create_acceleration_structure(const AccelerationStructureSetupFunction& setup) SKR_NOEXCEPT;
+    AccelerationStructureHandle get_acceleration_structure(const char8_t* name) SKR_NOEXCEPT;
+    AccelerationStructureHandle get_imported(CGPUAccelerationStructureId acceleration_structure) SKR_NOEXCEPT;
+    const ECGPUResourceState get_lastest_state(const AccelerationStructureNode* acceleration_structure, const PassNode* pending_pass) const SKR_NOEXCEPT;
+
     BufferNode* resolve(BufferHandle hdl) SKR_NOEXCEPT; 
     TextureNode* resolve(TextureHandle hdl) SKR_NOEXCEPT;
+    AccelerationStructureNode* resolve(AccelerationStructureHandle hdl) SKR_NOEXCEPT;
     PassNode* resolve(PassHandle hdl) SKR_NOEXCEPT;
     const CGPUBufferDescriptor* resolve_descriptor(BufferHandle hdl) SKR_NOEXCEPT;
     const CGPUTextureDescriptor* resolve_descriptor(TextureHandle hdl) SKR_NOEXCEPT;
@@ -259,6 +281,8 @@ public:
 
     // interfaces
     friend struct IRenderGraphPhase;
+    using BeforeExecuteCallback = skr::stl_function<void(RenderGraph&)>;
+    void add_before_execute_callback(const BeforeExecuteCallback& callback);
     virtual uint64_t execute(RenderGraphProfiler* profiler = nullptr) SKR_NOEXCEPT;
     virtual uint32_t collect_texture_garbage(uint64_t critical_frame,
         uint32_t with_tags = kRenderGraphDefaultResourceTag | kRenderGraphDynamicResourceTag, uint32_t without_flags = 0) SKR_NOEXCEPT { return 0; }
@@ -286,11 +310,14 @@ protected:
 
     skr::Vector<PassNode*> passes;
     skr::Vector<ResourceNode*> resources;
+    skr::Vector<BeforeExecuteCallback> exec_callbacks;
 
     friend struct TextureBuilder;
     friend struct BufferBuilder;
+    friend struct AccelerationStructureBuilder;
     skr::ParallelFlatHashMap<CGPUBufferId, BufferHandle> imported_buffers;
     skr::ParallelFlatHashMap<CGPUTextureId, TextureHandle> imported_textures;
+    skr::ParallelFlatHashMap<CGPUAccelerationStructureId, AccelerationStructureHandle> imported_acceleration_structures;
 };
 using RenderGraphSetupFunction = RenderGraph::RenderGraphSetupFunction;
 using RenderGraphBuilder = RenderGraph::RenderGraphBuilder;
@@ -305,6 +332,8 @@ using TextureSetupFunction = RenderGraph::TextureSetupFunction;
 using TextureBuilder = RenderGraph::TextureBuilder;
 using BufferSetupFunction = RenderGraph::BufferSetupFunction;
 using BufferBuilder = RenderGraph::BufferBuilder;
+using AccelerationStructureSetupFunction = RenderGraph::AccelerationStructureSetupFunction;
+using AccelerationStructureBuilder = RenderGraph::AccelerationStructureBuilder;
 
 struct PassInfoAnalysis;
 struct QueueSchedule;

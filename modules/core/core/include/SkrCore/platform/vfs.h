@@ -80,13 +80,16 @@ typedef bool (*SkrVFSProcFClose)(skr_vfile_t* file);
 typedef size_t (*SkrVFSProcFRead)(skr_vfile_t* file, void* out_buffer, size_t offset, size_t size_in_bytes);
 typedef size_t (*SkrVFSProcFWrite)(skr_vfile_t* file, const void* in_buffer, size_t offset, size_t byte_count);
 typedef int64_t (*SkrVFSProcFSize)(const skr_vfile_t* file);
-typedef bool (*SkrVFSProcFGetPropI64)(skr_vfile_t* file, int32_t prop, int64_t* out_value);
-typedef bool (*SkrVFSProcFSetPropI64)(skr_vfile_t* file, int32_t prop, int64_t value);
 
-typedef bool (*SkrVFSProcFReadRequest)(struct skr_vfs_t* fs, skr_vfile_t* file, void* out_buffer, size_t offset, size_t size_in_bytes, void* user_data);
-typedef skr_vfs_event_t (*SkrVFSProcEventRequest)(struct skr_vfs_t* fs);
-typedef bool (*SkrVFSTestEvent)(struct skr_vfs_t* fs, skr_vfs_event_t event);
-typedef void (*SkrVFSProcSubmitRequests)(struct skr_vfs_t* fs);
+// New function pointer types
+typedef bool (*SkrVFSProcFExists)(struct skr_vfs_t* fs, const char8_t* path);
+typedef bool (*SkrVFSProcFIsDirectory)(struct skr_vfs_t* fs, const char8_t* path);
+typedef bool (*SkrVFSProcMkdir)(struct skr_vfs_t* fs, const char8_t* path);
+typedef bool (*SkrVFSProcRmdir)(struct skr_vfs_t* fs, const char8_t* path);
+typedef bool (*SkrVFSProcFRemove)(struct skr_vfs_t* fs, const char8_t* path);
+typedef bool (*SkrVFSProcFRename)(struct skr_vfs_t* fs, const char8_t* from, const char8_t* to);
+typedef bool (*SkrVFSProcFCopy)(struct skr_vfs_t* fs, const char8_t* from, const char8_t* to);
+typedef int64_t (*SkrVFSProcFModTime)(struct skr_vfs_t* fs, const char8_t* path);
 
 typedef struct skr_vfs_proctable_t {
     SkrVFSProcFOpen fopen;
@@ -94,13 +97,16 @@ typedef struct skr_vfs_proctable_t {
     SkrVFSProcFRead fread;
     SkrVFSProcFWrite fwrite;
     SkrVFSProcFSize fsize;
-    SkrVFSProcFGetPropI64 fget_prop_i64;
-    SkrVFSProcFSetPropI64 fset_prop_i64;
-    
-    SkrVFSProcFReadRequest fread_request;
-    SkrVFSProcEventRequest event_request;
-    SkrVFSTestEvent test_event;
-    SkrVFSProcSubmitRequests submit_requests;
+    // File system operations
+    SkrVFSProcFExists fexists;
+    SkrVFSProcFIsDirectory fis_directory;
+    SkrVFSProcFRemove fremove;
+    SkrVFSProcFRename frename;
+    SkrVFSProcFCopy fcopy;
+    SkrVFSProcFModTime fmtime;
+    // Directory operations
+    SkrVFSProcMkdir mkdir;
+    SkrVFSProcRmdir rmdir;
 } skr_vfs_proctable_t;
 
 typedef struct skr_vfs_async_proctable_t {
@@ -134,6 +140,18 @@ SKR_CORE_API int64_t skr_vfs_fsize(const skr_vfile_t* file) SKR_NOEXCEPT;
 SKR_CORE_API bool skr_vfs_fclose(skr_vfile_t* file) SKR_NOEXCEPT;
 
 SKR_CORE_API void skr_vfs_get_native_procs(struct skr_vfs_proctable_t* procs) SKR_NOEXCEPT;
+
+// File system operations
+SKR_CORE_API bool skr_vfs_fexists(skr_vfs_t* fs, const char8_t* path) SKR_NOEXCEPT;
+SKR_CORE_API bool skr_vfs_fis_directory(skr_vfs_t* fs, const char8_t* path) SKR_NOEXCEPT;
+SKR_CORE_API bool skr_vfs_fremove(skr_vfs_t* fs, const char8_t* path) SKR_NOEXCEPT;
+SKR_CORE_API bool skr_vfs_frename(skr_vfs_t* fs, const char8_t* from, const char8_t* to) SKR_NOEXCEPT;
+SKR_CORE_API bool skr_vfs_fcopy(skr_vfs_t* fs, const char8_t* from, const char8_t* to) SKR_NOEXCEPT;
+SKR_CORE_API int64_t skr_vfs_fmtime(skr_vfs_t* fs, const char8_t* path) SKR_NOEXCEPT;
+
+// Directory operations
+SKR_CORE_API bool skr_vfs_mkdir(skr_vfs_t* fs, const char8_t* path) SKR_NOEXCEPT;
+SKR_CORE_API bool skr_vfs_rmdir(skr_vfs_t* fs, const char8_t* path) SKR_NOEXCEPT;
 
 static SKR_FORCEINLINE const char8_t* skr_vfs_filemode_to_string(ESkrFileMode mode)
 {

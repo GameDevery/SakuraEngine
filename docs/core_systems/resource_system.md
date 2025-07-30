@@ -12,10 +12,10 @@
 
 ```cpp
 // 基础资源句柄
-skr_resource_handle_t handle;
+SResourceHandle handle;
 
 // 类型安全的资源句柄
-skr::resource::TResourceHandle<TextureResource> texture_handle;
+skr::resource::AsyncResource<TextureResource> texture_handle;
 
 // 句柄状态检查
 bool resolved = handle.is_resolved();

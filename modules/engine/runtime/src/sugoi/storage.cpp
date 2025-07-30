@@ -51,12 +51,12 @@ void sugoi_storage_t::allocate_unsafe(sugoi_group_t* group, EIndex count, sugoi_
 {
     using namespace sugoi;
     if (count != 0)
-        pimpl->entity_registry.reserve(count);
+        entity_registry.reserve(count);
 
     while (count != 0)
     {
         sugoi_chunk_view_t v = allocateView(group, count);
-        pimpl->entity_registry.fill_entities(v);
+        entity_registry.fill_entities(v);
         construct_view(v);
         count -= v.count;
         if (callback)
@@ -75,19 +75,19 @@ void sugoi_storage_t::reserve_entities(EIndex count)
 {
     using namespace sugoi;
     SkrZoneScopedN("sugoi_storage_t::reserve_entities");
-    pimpl->entity_registry.reserve_external(count);
+    entity_registry.reserve_external(count);
 }
 
 void sugoi_storage_t::allocate_reserved_unsafe(sugoi_group_t* group, const sugoi_entity_t* ents, EIndex count, sugoi_view_callback_t callback, void* u)
 {
     using namespace sugoi;
     if (count != 0)
-        pimpl->entity_registry.reserve(count);
+        entity_registry.reserve(count);
 
     while (count != 0)
     {
         sugoi_chunk_view_t v = allocateView(group, count);
-        pimpl->entity_registry.fill_entities_external(v, ents);
+        entity_registry.fill_entities_external(v, ents);
         construct_view(v);
         count -= v.count;
         ents += v.count;
@@ -148,7 +148,7 @@ void sugoi_storage_t::destroy_entities(const sugoi_chunk_view_t& view)
         cast(view, dead, nullptr, nullptr);
     else
     {
-        pimpl->entity_registry.free_entities(view);
+        entity_registry.free_entities(view);
         destruct_view(view);
         freeView(view);
     }
@@ -162,7 +162,8 @@ void sugoi_storage_t::structuralChange(sugoi_group_t* group, sugoi_chunk_t* chun
 void sugoi_storage_t::linked_to_prefab(const sugoi_entity_t* src, uint32_t size, bool keepExternal)
 {
     using namespace sugoi;
-    struct mapper_t {
+    struct mapper_t
+    {
         const sugoi_entity_t* source;
         uint32_t count;
         bool keepExternal;
@@ -191,7 +192,8 @@ void sugoi_storage_t::linked_to_prefab(const sugoi_entity_t* src, uint32_t size,
 void sugoi_storage_t::prefab_to_linked(const sugoi_entity_t* src, uint32_t size)
 {
     using namespace sugoi;
-    struct mapper_t {
+    struct mapper_t
+    {
         const sugoi_entity_t* source;
         uint32_t count;
         void move() {}
@@ -215,8 +217,9 @@ void sugoi_storage_t::instantiate_prefab(const sugoi_entity_t* src, uint32_t siz
     using namespace sugoi;
     skr::stl_vector<sugoi_entity_t> ents;
     ents.resize(count * size);
-    pimpl->entity_registry.new_entities(ents.data(), (EIndex)ents.size());
-    struct mapper_t {
+    entity_registry.new_entities(ents.data(), (EIndex)ents.size());
+    struct mapper_t
+    {
         sugoi_entity_t* base;
         sugoi_entity_t* curr;
         uint32_t size;
@@ -242,7 +245,7 @@ void sugoi_storage_t::instantiate_prefab(const sugoi_entity_t* src, uint32_t siz
         while (localCount != count)
         {
             sugoi_chunk_view_t v = allocateView(group, count - localCount);
-            pimpl->entity_registry.fill_entities(v, localEnts.data() + localCount);
+            entity_registry.fill_entities(v, localEnts.data() + localCount);
             duplicate_view(v, view.chunk, view.start);
             m.base = m.curr = ents.data() + localCount * size;
             localCount += v.count;
@@ -261,7 +264,7 @@ void sugoi_storage_t::instantiate(const sugoi_entity_t src, uint32_t count, sugo
     while (count != 0)
     {
         sugoi_chunk_view_t v = allocateView(group, count);
-        pimpl->entity_registry.fill_entities(v);
+        entity_registry.fill_entities(v);
         duplicate_view(v, view.chunk, view.start);
         count -= v.count;
         if (callback)
@@ -276,7 +279,7 @@ void sugoi_storage_t::instantiate(const sugoi_entity_t src, uint32_t count, sugo
     while (count != 0)
     {
         sugoi_chunk_view_t v = allocateView(group, count);
-        pimpl->entity_registry.fill_entities(v);
+        entity_registry.fill_entities(v);
         duplicate_view(v, view.chunk, view.start);
         count -= v.count;
         if (callback)
@@ -290,16 +293,6 @@ void sugoi_storage_t::instantiate(const sugoi_entity_t* src, uint32_t n, uint32_
     linked_to_prefab(src, n);
     instantiate_prefab(src, n, count, callback, u);
     prefab_to_linked(src, n);
-}
-
-sugoi_chunk_view_t sugoi_storage_t::entity_view(sugoi_entity_t e) const
-{
-    using namespace sugoi;
-    auto entry = pimpl->entity_registry.try_get_entry(e);
-    SKR_ASSERT(entry.has_value());
-    if (entry.value().version == e_version(e))
-        return { entry.value().chunk, entry.value().indexInChunk, 1 };
-    return { nullptr, 0, 1 };
 }
 
 void sugoi_storage_t::all(bool includeDisabled, bool includeDead, sugoi_view_callback_t callback, void* u)
@@ -338,13 +331,13 @@ bool sugoi_storage_t::components_enabled(const sugoi_entity_t src, const sugoi_t
 
 bool sugoi_storage_t::exist(sugoi_entity_t e) const noexcept
 {
-    auto entry = pimpl->entity_registry.try_get_entry(e);
+    auto entry = entity_registry.try_get_entry(e);
     return entry.has_value() && entry.value().version == sugoi::e_version(e);
 }
 
 bool sugoi_storage_t::alive(sugoi_entity_t e) const noexcept
 {
-    auto entry = pimpl->entity_registry.try_get_entry(e);
+    auto entry = entity_registry.try_get_entry(e);
     return entry.has_value() && entry.value().version == sugoi::e_version(e) && entry->chunk != nullptr && !entry->chunk->group->isDead;
 }
 
@@ -426,13 +419,13 @@ void sugoi_storage_t::defragment()
                 normalCount++;
 
             // step 2 : grab and sort existing chunk for reuse
-            skr::stl_vector<sugoi_chunk_t*> chunks = std::move(g->chunks);
+            skr::Vector<sugoi_chunk_t*> chunks = std::move(g->chunks);
             std::sort(chunks.begin(), chunks.end(), [](sugoi_chunk_t* lhs, sugoi_chunk_t* rhs) {
                 return lhs->pt > rhs->pt || lhs->count > rhs->count;
             });
 
             // step 3 : reaverage data into new layout
-            skr::stl_vector<sugoi_chunk_t*> newChunks;
+            skr::Vector<sugoi_chunk_t*> newChunks;
             int                             o         = 0;
             int                             j         = (int)(chunks.size() - 1);
             auto                            fillChunk = [&](sugoi_chunk_t* chunk) {
@@ -446,7 +439,7 @@ void sugoi_storage_t::defragment()
                     auto moveCount = chunk->get_capacity() - chunk->count;
                     moveCount      = std::min(source->count, moveCount);
                     move_view({ chunk, chunk->count, moveCount }, source, source->count - moveCount);
-                    pimpl->entity_registry.move_entities({ chunk, chunk->count, moveCount }, source, source->count - moveCount);
+                    entity_registry.move_entities({ chunk, chunk->count, moveCount }, source, source->count - moveCount);
                     source->count -= moveCount;
                     chunk->count += moveCount;
                     if (source->count == 0)
@@ -491,8 +484,9 @@ void sugoi_storage_t::pack_entities()
 {
     using namespace sugoi;
     skr::Vector<EIndex> map;
-    pimpl->entity_registry.pack_entities(map);
-    struct mapper {
+    entity_registry.pack_entities(map);
+    struct mapper
+    {
         skr::Vector<EIndex>* data;
         void move() {}
         void reset() {}
@@ -530,7 +524,8 @@ void sugoi_storage_t::pack_entities()
 
 void sugoi_storage_t::redirect(sugoi_entity_t* ents, sugoi_entity_t* newEnts, EIndex n)
 {
-    struct mapper {
+    struct mapper
+    {
         sugoi_entity_t* ents;
         sugoi_entity_t* newEnts;
         EIndex n;
@@ -580,7 +575,7 @@ void sugoi_storage_t::castImpl(const sugoi_chunk_view_t& view, sugoi_group_t* gr
     while (k < view.count)
     {
         sugoi_chunk_view_t dst = allocateView(group, view.count - k);
-        pimpl->entity_registry.move_entities(dst, view.chunk, view.start + k);
+        entity_registry.move_entities(dst, view.chunk, view.start + k);
         cast_view(dst, view.chunk, view.start + k);
         k += dst.count;
         if (callback)
@@ -600,7 +595,7 @@ void sugoi_storage_t::cast(const sugoi_chunk_view_t& view, sugoi_group_t* group,
         return;
     if (!group)
     {
-        pimpl->entity_registry.free_entities(view);
+        entity_registry.free_entities(view);
         destruct_view(view);
         freeView(view);
         return;
@@ -705,7 +700,7 @@ void sugoi_storage_t::batch(const sugoi_entity_t* ents, EIndex count, sugoi_view
 void sugoi_storage_t::merge(sugoi_storage_t& src)
 {
     using namespace sugoi;
-    auto& sents = src.pimpl->entity_registry;
+    auto& sents = src.entity_registry;
     skr::stl_vector<sugoi_entity_t> map;
     sents.visit_entries([&](const auto& entries_view) {
         map.resize(entries_view.size());
@@ -715,7 +710,7 @@ void sugoi_storage_t::merge(sugoi_storage_t& src)
                 moveCount++;
         skr::stl_vector<sugoi_entity_t> newEnts;
         newEnts.resize(moveCount);
-        pimpl->entity_registry.new_entities(newEnts.data(), moveCount);
+        entity_registry.new_entities(newEnts.data(), moveCount);
         int j = 0;
         for (int i = 0; i < entries_view.size(); ++i)
             if (entries_view[i].chunk != nullptr)
@@ -723,7 +718,8 @@ void sugoi_storage_t::merge(sugoi_storage_t& src)
     });
 
     sents.reset();
-    struct mapper {
+    struct mapper
+    {
         uint32_t count;
         sugoi_entity_t* data;
         void move() {}
@@ -741,7 +737,8 @@ void sugoi_storage_t::merge(sugoi_storage_t& src)
     m.count = (uint32_t)map.size();
     m.data = map.data();
     skr::stl_vector<sugoi_chunk_t*> chunks;
-    struct payload_t {
+    struct payload_t
+    {
         mapper* m;
         uint32_t start, end;
     };
@@ -779,9 +776,6 @@ void sugoi_storage_t::merge(sugoi_storage_t& src)
         payloads.push_back(payload);
     }
     {
-        pimpl->entity_registry.mutex.lock();
-        SKR_DEFER({ pimpl->entity_registry.mutex.unlock(); });
-
         using iter_t = decltype(payloads)::iterator;
         skr::parallel_for(payloads.begin(), payloads.end(), 1, [this, &chunks](iter_t begin, iter_t end) {
             for (auto i = begin; i < end; ++i)
@@ -793,7 +787,7 @@ void sugoi_storage_t::merge(sugoi_storage_t& src)
                     forloop (k, 0, c->count)
                     {
                         i->m->map(ents[k]);
-                        pimpl->entity_registry.entries[ents[k]] = { c, k, {} };
+                        entity_registry.entries[ents[k]] = { c, k, {} };
                     }
                     iterator_ref_chunk(c, *(i->m));
                     iterator_ref_view({ c, 0, c->count }, *(i->m));
@@ -837,7 +831,7 @@ void sugoi_storage_t::merge(sugoi_storage_t& src)
 sugoi_storage_t* sugoi_storage_t::clone()
 {
     sugoi_storage_t* dst = sugoiS_create();
-    dst->pimpl->entity_registry = pimpl->entity_registry;
+    dst->entity_registry = entity_registry;
     dst->pimpl->storage_timestamp = pimpl->storage_timestamp;
     pimpl->groups.read_versioned([&](auto& groups) {
         for (auto group : groups)
@@ -906,7 +900,7 @@ sugoi_timestamp_t sugoi_storage_t::timestamp() const
 
 sugoi::EntityRegistry& sugoi_storage_t::getEntityRegistry()
 {
-    return pimpl->entity_registry;
+    return entity_registry;
 }
 
 sugoi::block_arena_t& sugoi_storage_t::getArchetypeArena()
@@ -924,7 +918,7 @@ void sugoi_storage_t::freeView(const sugoi_chunk_view_t& view)
     {
         sugoi_chunk_view_t dstView{ view.chunk, view.start, toMove };
         EIndex srcIndex = view.chunk->count - toMove;
-        pimpl->entity_registry.move_entities(dstView, srcIndex);
+        entity_registry.move_entities(dstView, srcIndex);
         move_view(dstView, srcIndex);
     }
     group->resize_chunk(view.chunk, view.chunk->count - view.count);
@@ -1204,10 +1198,9 @@ void sugoiQ_get_views(const sugoi_query_t* q, sugoi_view_callback_t callback, vo
 
 void sugoiQ_get_groups(const sugoi_query_t* q, sugoi_group_callback_t callback, void* u)
 {
-    skr::Vector<sugoi_group_t*> groups;
-    groups.reserve(32);
+    skr::InlineVector<sugoi_group_t*, 16> groups;
     auto Callback = [&](sugoi_group_t* g) {
-        groups.push_back(g);
+        groups.add(g);
     };
     q->pimpl->storage->query_groups(q, SUGOI_LAMBDA(Callback));
     for (auto group : groups)

@@ -1,35 +1,26 @@
 #pragma once
-#include "CppSL/AST.hpp"
-#include "CppSL/SourceBuilder.hpp"
-#include <unordered_map>
+#include "CppLikeShaderGenerator.hpp"
 
-namespace skr::CppSL
+namespace skr::CppSL::HLSL
 {
-enum struct FunctionStyle
-{
-    Normal,
-    SignatureOnly,
-    OutterImplmentation
-};
-
-struct HLSLGenerator
+struct HLSLGenerator : public CppLikeShaderGenerator
 {
 public:
-    String generate_code(SourceBuilderNew& sb, const AST& ast);
-
-private:
-    void generate_array_helpers(SourceBuilderNew& sb, const AST& ast);
-    void generate_namespace_declarations(SourceBuilderNew& sb, const AST& ast);
-    void generate_namespace_recursive(SourceBuilderNew& sb, const NamespaceDecl* ns, int indent_level);
-    void build_type_namespace_map(const AST& ast);
-    String GetQualifiedTypeName(const TypeDecl* type);
-
-    void visitExpr(SourceBuilderNew& sb, const skr::CppSL::Stmt* stmt);
-    void visit(SourceBuilderNew& sb, const skr::CppSL::TypeDecl* typeDecl);
-    void visit(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* funcDecl, FunctionStyle style);
-    void visit(SourceBuilderNew& sb, const skr::CppSL::VarDecl* varDecl);
-    void visit_decl(SourceBuilderNew& sb, const skr::CppSL::Decl* decl);
+    String GetTypeName(const TypeDecl* type) override;
+    void VisitBinaryExpr(SourceBuilderNew& sb, const BinaryExpr* binary) override;
+    void VisitConstructExpr(SourceBuilderNew& sb, const ConstructExpr* expr) override;
+    void RecordBuiltinHeader(SourceBuilderNew& sb, const AST& ast) override;
+    void VisitAccessExpr(SourceBuilderNew& sb, const AccessExpr* expr) override;
+    void VisitGlobalResource(SourceBuilderNew& sb, const skr::CppSL::VarDecl* var) override;
+    void VisitVariable(SourceBuilderNew& sb, const skr::CppSL::VarDecl* var) override;
+    void VisitParameter(SourceBuilderNew& sb, const skr::CppSL::FunctionDecl* funcDecl, const skr::CppSL::ParamVarDecl* param) override;
+    void VisitField(SourceBuilderNew& sb, const skr::CppSL::TypeDecl* type, const skr::CppSL::FieldDecl* field) override;
+    void VisitConstructor(SourceBuilderNew& sb, const ConstructorDecl* ctor, FunctionStyle style) override;
+    void GenerateFunctionAttributes(SourceBuilderNew& sb, const FunctionDecl* func) override;
+    void GenerateFunctionSignaturePostfix(SourceBuilderNew& sb, const FunctionDecl* func) override;
+    bool SupportConstructor() const override;
     
-    std::unordered_map<const TypeDecl*, String> type_namespace_map_;
+private:
+    void GenerateArrayHelpers(SourceBuilderNew& sb, const AST& ast);
 };
-} // namespace skr::CppSL
+} // namespace skr::CppSL::HLSL

@@ -9,9 +9,7 @@ namespace skr::render_graph
 {
 
 struct SKR_RENDER_GRAPH_API RenderGraphStackAllocator {
-    struct CtorParam {
-        const char* name = "RenderGraphPool";
-    };
+    struct CtorParam {  };
     
     static constexpr bool support_realloc = false; // Pool allocators don't support realloc
     
@@ -112,7 +110,7 @@ public:
         void* p = RenderGraphStackAllocator::alloc_raw(n, sizeof(T), alignof(T));
         if (!p)
         {
-            throw std::bad_alloc();
+            return nullptr;
         }
         return static_cast<pointer>(p);
     }

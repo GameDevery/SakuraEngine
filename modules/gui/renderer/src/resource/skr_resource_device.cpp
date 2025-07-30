@@ -9,9 +9,8 @@ void SkrResourceDevice::init()
 {
     // initialize services
     {
-        std::error_code ec             = {};
-        auto            resourceRoot   = (skr::filesystem::current_path(ec) / "../resources");
-        auto            u8ResourceRoot = resourceRoot.u8string();
+        auto            resourceRoot   = (skr::fs::current_directory() / u8"../resources");
+        auto            u8ResourceRoot = resourceRoot.string();
         skr_vfs_desc_t  vfs_desc       = {};
         vfs_desc.mount_type            = SKR_MOUNT_TYPE_CONTENT;
         vfs_desc.override_mount_dir    = u8ResourceRoot.c_str();

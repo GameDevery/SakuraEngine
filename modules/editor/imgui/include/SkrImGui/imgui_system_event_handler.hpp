@@ -28,8 +28,6 @@ struct SKR_IMGUI_API ImGuiSystemEventHandler : public ISystemEventHandler
 
     // Triggers for backend
     const Trigger& want_exit() const { return _want_exit; }
-    const Trigger& want_resize() const { return _want_resize; }
-    const Trigger& pixel_size_changed() const { return _pixel_size_changed; }
     const Trigger& content_scale_changed() const { return _content_scale_changed; }
 
 private:
@@ -38,8 +36,6 @@ private:
     
     // Event triggers
     Trigger _want_exit = {};
-    Trigger _want_resize = {};
-    Trigger _pixel_size_changed = {};
     Trigger _content_scale_changed = {};
     
     // Track window handle for main window

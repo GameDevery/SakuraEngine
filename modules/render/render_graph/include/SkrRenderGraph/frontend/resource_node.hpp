@@ -38,7 +38,7 @@ public:
     inline bool reimport(CGPUTextureId texture)
     {
         if (!imported) return false;
-        frame_texture = texture;
+        imported_texture = texture;
         return true;
     }
     inline const TextureHandle get_handle() const SKR_NOEXCEPT { return TextureHandle(get_id()); }
@@ -58,15 +58,14 @@ public:
     {
         if (imported)
         {
-            return frame_texture;
+            return imported_texture;
         }
         return nullptr;
     }
 
 protected:
     CGPUTextureDescriptor descriptor = {};
-    mutable CGPUTextureId frame_texture = nullptr;
-    mutable bool frame_aliasing = false;
+    mutable CGPUTextureId imported_texture = nullptr;
 };
 
 class BufferNode : public ResourceNode
@@ -80,7 +79,7 @@ public:
     inline bool reimport(CGPUBufferId buffer)
     {
         if (!imported) return false;
-        frame_buffer = buffer;
+        imported_buffer = buffer;
         return true;
     }
     inline const BufferHandle get_handle() const SKR_NOEXCEPT { return BufferHandle(get_id()); }
@@ -90,7 +89,7 @@ public:
     {
         if (imported)
         {
-            return frame_buffer;
+            return imported_buffer;
         }
         return nullptr;
     }
@@ -98,7 +97,37 @@ public:
 protected:
     CGPUBufferDescriptor descriptor = {};
     // temporal handle with a lifespan of only one frame
-    mutable CGPUBufferId frame_buffer = nullptr;
+    mutable CGPUBufferId imported_buffer = nullptr;
+};
+
+class AccelerationStructureNode : public ResourceNode
+{
+public:
+    friend class RenderGraph;
+    friend class RenderGraphBackend;
+
+    AccelerationStructureNode() SKR_NOEXCEPT;
+
+    inline bool reimport(CGPUAccelerationStructureId acceleration_structure)
+    {
+        if (!imported) return false;
+        imported_as = acceleration_structure;
+        return true;
+    }
+    inline const AccelerationStructureHandle get_handle() const SKR_NOEXCEPT { return AccelerationStructureHandle(get_id()); }
+    EObjectType get_type() const SKR_NOEXCEPT override;
+    CGPUAccelerationStructureId get_imported() const SKR_NOEXCEPT
+    {
+        if (imported)
+        {
+            return imported_as;
+        }
+        return nullptr;
+    }
+
+protected:
+    // temporal handle with a lifespan of only one frame
+    mutable CGPUAccelerationStructureId imported_as = nullptr;
 };
 } // namespace render_graph
 } // namespace skr

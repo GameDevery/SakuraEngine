@@ -599,7 +599,7 @@ CGPURootSignatureId cgpu_create_root_signature_d3d12(CGPUDeviceId device, const 
     for (uint32_t i = 0; i < RS->super.push_constant_count; i++)
     {
         rootParams[valid_root_tables + i] = RS->mRootConstantParam;
-        RS->mRootParamIndex               = valid_root_tables + i;
+        RS->mRootParamIndex = valid_root_tables + i;
     }
     // Serialize root signature
     ID3DBlob* error               = NULL;
@@ -684,6 +684,7 @@ CGPUDescriptorSetId cgpu_create_descriptor_set_d3d12(CGPUDeviceId device, const 
             SamplerCount++;
         }
         else if (param_table->resources[i].type == CGPU_RESOURCE_TYPE_TEXTURE ||
+                 param_table->resources[i].type == CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE ||
                  param_table->resources[i].type == CGPU_RESOURCE_TYPE_RW_TEXTURE ||
                  param_table->resources[i].type == CGPU_RESOURCE_TYPE_BUFFER ||
                  param_table->resources[i].type == CGPU_RESOURCE_TYPE_BUFFER_RAW ||
@@ -693,6 +694,10 @@ CGPUDescriptorSetId cgpu_create_descriptor_set_d3d12(CGPUDeviceId device, const 
                  param_table->resources[i].type == CGPU_RESOURCE_TYPE_UNIFORM_BUFFER)
         {
             CbvSrvUavCount += D3D12Util_ComputeNeededDescriptorCount(&param_table->resources[i]);
+        }
+        else
+        {
+            cgpu_assert(0 && "Unexpected/Unhandled reousrce type!");
         }
     }
     // CBV/SRV/UAV
@@ -725,6 +730,9 @@ CGPUDescriptorSetId cgpu_create_descriptor_set_d3d12(CGPUDeviceId device, const 
                 case CGPU_RESOURCE_TYPE_TEXTURE:
                     srcHandle = D->pNullDescriptors->TextureSRV[dimension];
                     break;
+                case CGPU_RESOURCE_TYPE_RW_TEXTURE:
+                    srcHandle = D->pNullDescriptors->TextureUAV[dimension];
+                    break;
                 case CGPU_RESOURCE_TYPE_BUFFER:
                     srcHandle = D->pNullDescriptors->BufferSRV;
                     break;
@@ -736,6 +744,9 @@ CGPUDescriptorSetId cgpu_create_descriptor_set_d3d12(CGPUDeviceId device, const 
                     break;
                 case CGPU_RESOURCE_TYPE_SAMPLER:
                     srcSamplerHandle = D->pNullDescriptors->Sampler;
+                    break;
+                case CGPU_RESOURCE_TYPE_ACCELERATION_STRUCTURE:
+                    srcHandle = D->pNullDescriptors->BufferSRV;
                     break;
                 default:
                     break;
@@ -804,7 +815,10 @@ void cgpu_update_descriptor_set_d3d12(CGPUDescriptorSetId set, const struct CGPU
                 HeapOffset += D3D12Util_ComputeNeededDescriptorCount(&ParamTable->resources[j]);
             }
         }
-        // Update Info
+
+        if (ResData == CGPU_NULLPTR)
+            continue;
+        
         const uint32_t arrayCount = cgpu_max(1U, pParam->count);
         switch (ResData->type)
         {

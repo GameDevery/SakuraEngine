@@ -18,6 +18,18 @@
                 RawArguments.Add("/TP");
                 RawArguments.Add("/Zc:__cplusplus");
             }
+            if (BuildSystem.TargetOS == OSPlatform.Windows)
+            {
+                if (BuildSystem.TargetArch == Architecture.X86)
+                {
+                    RawArguments.Add("-D_WIN32=1");
+                }
+                else if (BuildSystem.TargetArch == Architecture.X64)
+                {
+                    RawArguments.Add("-D_WIN32=1");
+                    RawArguments.Add("-D_WIN64=1");
+                }
+            }
         }
 
         [TargetProperty] 

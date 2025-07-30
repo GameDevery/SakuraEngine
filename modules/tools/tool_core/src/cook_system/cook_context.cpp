@@ -1,0 +1,268 @@
+#include "SkrProfile/profile.h"
+#include "SkrRTTR/type.hpp"
+#include "SkrTask/fib_task.hpp"
+#include "SkrRT/io/ram_io.hpp"
+#include "SkrToolCore/cook_system/importer.hpp"
+#include "SkrToolCore/project/project.hpp"
+#include "SkrToolCore/cook_system/cook_system.hpp"
+
+namespace skd::asset
+{
+struct CookContextImpl : public CookContext
+{
+    Importer* GetImporter() const override;
+    skr_guid_t GetImporterType() const override;
+    uint32_t GetImporterVersion() const override;
+    uint32_t GetCookerVersion() const override;
+
+    // TODO: REMOVE THIS
+    skr::String GetAssetPath() const override;
+
+    URI AddSourceFile(const URI& path) override;
+    URI AddSourceFileAndLoad(skr::io::IRAMService* ioService, const URI& path, skr::BlobId& destination) override;
+    skr::span<const URI> GetSourceFiles() const override;
+
+    void AddRuntimeDependency(skr_guid_t resource) override;
+    void AddSoftRuntimeDependency(skr_guid_t resource) override;
+    uint32_t AddStaticDependency(skr_guid_t resource, bool install) override;
+    skr::span<const skr_guid_t> GetRuntimeDependencies() const override;
+    skr::span<const SResourceHandle> GetStaticDependencies() const override;
+    const SResourceHandle& GetStaticDependency(uint32_t index) const override;
+
+    const skr::task::event_t& GetCounter() override
+    {
+        return counter;
+    }
+
+    skr::RC<AssetMetaFile> GetAssetMetaFile() override
+    {
+        return metafile;
+    }
+
+    skr::RC<const AssetMetaFile> GetAssetMetaFile() const override
+    {
+        return metafile.cast_const<const AssetMetaFile>();
+    }
+
+    void SetCounter(skr::task::event_t& ct) override
+    {
+        counter = ct;
+    }
+
+    void SetCookerVersion(uint32_t version) override
+    {
+        cookerVersion = version;
+    }
+
+    void* _Import() override;
+    void _Destroy(void*) override;
+
+    skr::RC<AssetMetaFile> metafile = nullptr;
+    skr::GUID importerType;
+    uint32_t importerVersion = 0;
+    uint32_t cookerVersion = 0;
+
+    Importer* importer = nullptr;
+    skr::io::IRAMService* ioService = nullptr;
+
+    // Job system wait counter
+    skr::task::event_t counter;
+
+    skr::Vector<SResourceHandle> staticDependencies;
+    skr::Vector<skr::GUID> runtimeDependencies;
+    skr::Vector<URI> fileDependencies;
+
+    CookContextImpl(skr::io::IRAMService* ioService, skr::RC<AssetMetaFile> metafile)
+        : ioService(ioService)
+    {
+    }
+};
+
+CookContext* CookContext::Create(skr::RC<AssetMetaFile> metafile, skr::io::IRAMService* service)
+{
+    auto ctx = SkrNew<CookContextImpl>(service, metafile);
+    ctx->metafile = metafile;
+    //-----load importer
+    skr::archive::JsonReader reader(ctx->metafile->meta.view());
+    reader.StartObject();
+    if (auto jread_result = reader.Key(u8"importer"); jread_result.has_value())
+    {
+        skr_guid_t importerTypeGuid = {};
+        ctx->importer = GetImporterRegistry()->LoadImporter(ctx->metafile.get(), &reader, &importerTypeGuid);
+        if (!ctx->importer)
+        {
+            SKR_LOG_ERROR(u8"[CookContext::Cook] importer failed to load, asset: %s", ctx->metafile->uri.c_str());
+            return nullptr;
+        }
+        ctx->importerVersion = ctx->importer->Version();
+        ctx->importerType = importerTypeGuid;
+        //-----import raw data
+        SkrZoneScopedN("Importer.Import");
+        skr::String name_holder = u8"unknown";
+        if (auto type = skr::get_type_from_guid(ctx->importerType))
+        {
+            name_holder = type->name().u8_str();
+        }
+        else
+        {
+            name_holder = skr::format(u8"{}", ctx->importerType);
+            SKR_LOG_WARN(u8"[CookContext::Cook] importer without RTTI INFO detected: %s", name_holder.c_str());
+        }
+    }
+    reader.EndObject();
+    return ctx;
+}
+
+void CookContext::Destroy(CookContext* ctx)
+{
+    SkrDelete(ctx);
+}
+
+void CookContextImpl::_Destroy(void* resource)
+{
+    if (!importer)
+    {
+        SKR_LOG_ERROR(u8"[CookContext::Cook] importer failed to load, asset path path: %s", metafile->uri.c_str());
+    }
+    SKR_DEFER({ SkrDelete(importer); });
+    //-----import raw data
+    importer->Destroy(resource);
+    SKR_LOG_INFO(u8"[CookContext::Cook] asset freed for asset: %s", metafile->uri.c_str());
+}
+
+void* CookContextImpl::_Import()
+{
+    SkrZoneScoped;
+    //-----load importer
+    if (importer != nullptr)
+    {
+        auto rawData = importer->Import(ioService, this);
+        SKR_LOG_INFO(u8"[CookContext::Cook] asset imported for asset: %s", metafile->uri.c_str());
+        return rawData;
+    }
+    return nullptr;
+}
+
+
+Importer* CookContextImpl::GetImporter() const
+{
+    return importer;
+}
+
+skr_guid_t CookContextImpl::GetImporterType() const
+{
+    return importerType;
+}
+
+uint32_t CookContextImpl::GetImporterVersion() const
+{
+    return importerVersion;
+}
+
+uint32_t CookContextImpl::GetCookerVersion() const
+{
+    return cookerVersion;
+}
+
+skr::String CookContextImpl::GetAssetPath() const
+{
+    return metafile->uri.c_str();
+}
+
+URI CookContextImpl::AddSourceFile(const URI& inPath)
+{
+    auto iter = std::find_if(fileDependencies.begin(), fileDependencies.end(), [&](const auto& dep) { return dep == inPath; });
+    if (iter == fileDependencies.end())
+        fileDependencies.add(inPath);
+    
+    // Construct the full path by combining the asset's parent directory with the input path
+    skr::Path uri_path{metafile->uri};
+    auto parent_dir = uri_path.parent_directory();
+    auto full_path = parent_dir / inPath;
+    
+    return full_path.string();
+}
+
+URI CookContextImpl::AddSourceFileAndLoad(skr::io::IRAMService* ioService, const URI& path, skr::BlobId& destination)
+{
+    auto outPath = AddSourceFile(path.c_str());
+    const auto assetMetaFile = GetAssetMetaFile();
+    // load file
+    skr::task::event_t counter;
+    auto rq = ioService->open_request();
+    rq->set_vfs(assetMetaFile->project->GetAssetVFS());
+    rq->set_path(outPath.c_str());
+    rq->add_block({}); // read all
+    rq->add_callback(SKR_IO_STAGE_COMPLETED, +[](skr_io_future_t* future, skr_io_request_t* request, void* data) noexcept {
+        SkrZoneScopedN("SignalCounter");
+        auto pCounter = (skr::task::event_t*)data;
+        pCounter->signal(); }, &counter);
+    skr_io_future_t future = {};
+    destination = ioService->request(rq, &future);
+    counter.wait(false);
+    return outPath;
+}
+
+skr::span<const URI> CookContextImpl::GetSourceFiles() const
+{
+    return fileDependencies;
+}
+
+void CookContextImpl::AddRuntimeDependency(skr_guid_t resource)
+{
+    auto iter = std::find_if(runtimeDependencies.begin(), runtimeDependencies.end(), [&](const auto& dep) { return dep == resource; });
+    if (iter == runtimeDependencies.end())
+        runtimeDependencies.add(resource);
+    GetCookSystem()->EnsureCooked(resource); // try launch new cook task, non blocking
+}
+
+void CookContextImpl::AddSoftRuntimeDependency(skr_guid_t resource)
+{
+    GetCookSystem()->EnsureCooked(resource); // try launch new cook task, non blocking
+}
+
+skr::span<const skr_guid_t> CookContextImpl::GetRuntimeDependencies() const
+{
+    return skr::span<const skr_guid_t>(runtimeDependencies.data(), runtimeDependencies.size());
+}
+
+skr::span<const SResourceHandle> CookContextImpl::GetStaticDependencies() const
+{
+    return skr::span<const SResourceHandle>(staticDependencies.data(), staticDependencies.size());
+}
+
+const SResourceHandle& CookContextImpl::GetStaticDependency(uint32_t index) const
+{
+    return staticDependencies[index];
+}
+
+uint32_t CookContextImpl::AddStaticDependency(skr_guid_t resource, bool install)
+{
+    auto iter = std::find_if(staticDependencies.begin(), staticDependencies.end(), [&](const auto& dep) { return dep.get_serialized() == resource; });
+    if (iter == staticDependencies.end())
+    {
+        auto counter = GetCookSystem()->EnsureCooked(resource);
+        if (counter) counter.wait(false);
+        SResourceHandle handle{ resource };
+        handle.resolve(install, (uint64_t)this, SKR_REQUESTER_SYSTEM);
+        if (!handle.get_resolved())
+        {
+            auto record = handle.get_record();
+            task::event_t event;
+            auto callback = [&]() {
+                event.signal();
+            };
+            record->AddCallback(SKR_LOADING_STATUS_ERROR, callback);
+            record->AddCallback(install ? SKR_LOADING_STATUS_INSTALLED : SKR_LOADING_STATUS_LOADED, callback);
+            if (!handle.get_resolved())
+            {
+                event.wait(false);
+            }
+        }
+        SKR_ASSERT(handle.is_resolved());
+        staticDependencies.add(std::move(handle));
+        return (uint32_t)(staticDependencies.size() - 1);
+    }
+    return (uint32_t)(staticDependencies.end() - iter);
+}
+} // namespace skd::asset

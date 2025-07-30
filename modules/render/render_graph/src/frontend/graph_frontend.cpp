@@ -2,16 +2,13 @@
 #include "SkrRenderGraph/frontend/resource_node.hpp"
 #include "SkrRenderGraph/frontend/pass_node.hpp"
 #include "SkrRenderGraph/frontend/node_and_edge_factory.hpp"
-#include "SkrCore/memory/memory.h"
 
 #include "SkrProfile/profile.h"
 
 #include <SkrContainers/string.hpp>
 #include <SkrContainers/hashmap.hpp>
 
-namespace skr
-{
-namespace render_graph
+namespace skr::render_graph
 {
 struct BlackboardImpl final : public Blackboard
 {
@@ -21,6 +18,7 @@ public:
         named_passes.clear();
         named_textures.clear();
         named_buffers.clear();
+        named_acceleration_structures.clear();
     }
 
     PassNode* pass(const char8_t* name) SKR_NOEXCEPT final override
@@ -47,6 +45,16 @@ public:
     {
         auto it = named_buffers.find(name);
         if (it != named_buffers.end())
+        {
+            return it->second;
+        }
+        return nullptr;
+    }
+
+    AccelerationStructureNode* acceleration_structure(const char8_t* name) SKR_NOEXCEPT final override
+    {
+        auto it = named_acceleration_structures.find(name);
+        if (it != named_acceleration_structures.end())
         {
             return it->second;
         }
@@ -103,6 +111,17 @@ public:
         return true;
     }
 
+    bool add_acceleration_structure(const char8_t* name, class AccelerationStructureNode* acceleration_structure) SKR_NOEXCEPT final override
+    {
+        auto it = named_acceleration_structures.find(name);
+        if (it != named_acceleration_structures.end())
+        {
+            return false;
+        }
+        named_acceleration_structures.emplace(acceleration_structure->get_name(), acceleration_structure);
+        return true;
+    }
+
     void override_pass(const char8_t* name, class PassNode* pass) SKR_NOEXCEPT final override
     {
         auto it = named_passes.find(name);
@@ -133,6 +152,16 @@ public:
         named_buffers.emplace(name, buffer);
     }
 
+    void override_acceleration_structure(const char8_t* name, class AccelerationStructureNode* acceleration_structure) SKR_NOEXCEPT final override
+    {
+        auto it = named_acceleration_structures.find(name);
+        if (it != named_acceleration_structures.end())
+        {
+            named_acceleration_structures[name] = acceleration_structure;
+        }
+        named_acceleration_structures.emplace(name, acceleration_structure);
+    }
+
 protected:
     template<typename T>
     using FlatStringMap = skr::FlatHashMap<skr::StringView, T, skr::Hash<skr::StringView>>;
@@ -140,6 +169,7 @@ protected:
     FlatStringMap<class PassNode*> named_passes;
     FlatStringMap<class TextureNode*> named_textures;
     FlatStringMap<class BufferNode*> named_buffers;
+    FlatStringMap<class AccelerationStructureNode*> named_acceleration_structures;
     FlatStringMap<double> named_values;
 };
 
@@ -153,12 +183,6 @@ void Blackboard::Destroy(Blackboard* blackboard) SKR_NOEXCEPT
     SkrDelete(blackboard);
 }
 
-} // namespace render_graph
-} // namespace skr
-
-namespace skr {
-namespace render_graph {
-
 EObjectType TextureNode::get_type() const SKR_NOEXCEPT
 {
     return EObjectType::Texture;
@@ -167,6 +191,11 @@ EObjectType TextureNode::get_type() const SKR_NOEXCEPT
 EObjectType BufferNode::get_type() const SKR_NOEXCEPT
 {
     return EObjectType::Buffer;
+}
+
+EObjectType AccelerationStructureNode::get_type() const SKR_NOEXCEPT
+{
+    return EObjectType::AccelerationStructure;
 }
 
 RenderGraph::RenderGraph(const RenderGraphBuilder& builder) SKR_NOEXCEPT
@@ -337,8 +366,17 @@ const ECGPUResourceState RenderGraph::get_lastest_state(const BufferNode* buffer
     return result;
 }
 
+void RenderGraph::add_before_execute_callback(const BeforeExecuteCallback& callback)
+{
+    exec_callbacks.add(callback);
+}
+
 uint64_t RenderGraph::execute(RenderGraphProfiler* profiler) SKR_NOEXCEPT
 {
+    for (auto callback : exec_callbacks)
+        callback(*this);
+    exec_callbacks.clear();
+    
     graph->clear();
     return frame_index++;
 }
@@ -356,5 +394,4 @@ void RenderGraph::finalize() SKR_NOEXCEPT
     NodeAndEdgeFactory::Destroy(node_factory);
     DependencyGraph::Destroy(graph);
 }
-} // namespace render_graph
-} // namespace skr
+} // namespace skr::render_graph

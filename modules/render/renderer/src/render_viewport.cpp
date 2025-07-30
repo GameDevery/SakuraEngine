@@ -10,11 +10,12 @@
 
 #include "SkrProfile/profile.h"
 
-struct SViewportManagerImpl : public SViewportManager {
+struct SViewportManagerImpl : public SViewportManager
+{
     SViewportManagerImpl(skr::ecs::World* world)
     {
         camera_query = skr::ecs::QueryBuilder(world)
-                           .ReadAll<skr::scene::CameraComponent, skr::scene::TranslationComponent>()
+                           .ReadAll<skr::scene::CameraComponent, skr::scene::PositionComponent>()
                            .commit()
                            .value();
     }
@@ -31,8 +32,8 @@ struct SViewportManagerImpl : public SViewportManager {
         {
             return found->second;
         }
-        uint32_t idx         = static_cast<uint32_t>(viewports.size());
-        auto&    newViewport = viewports.add_default().ref();
+        uint32_t idx = static_cast<uint32_t>(viewports.size());
+        auto& newViewport = viewports.add_default().ref();
         idMap[viewport_name] = newViewport.index = idx;
         return idx;
     }
@@ -79,8 +80,8 @@ struct SViewportManagerImpl : public SViewportManager {
     sugoi_query_t* camera_query = nullptr;
 
     skr::ParallelFlatHashMap<skr::String, uint32_t, skr::Hash<skr::String>> idMap;
-    skr::Vector<skr_render_viewport_t>                                      viewports;
-    skr::Vector<uint32_t>                                                   free_list;
+    skr::Vector<skr_render_viewport_t> viewports;
+    skr::Vector<uint32_t> free_list;
 };
 
 SViewportManager* SViewportManager::Create(skr::ecs::World* world)
@@ -88,7 +89,7 @@ SViewportManager* SViewportManager::Create(skr::ecs::World* world)
     return SkrNew<SViewportManagerImpl>(world);
 }
 
-void SViewportManager::Free(SViewportManager* viewport_manager)
+void SViewportManager::Destroy(SViewportManager* viewport_manager)
 {
     SkrDelete(viewport_manager);
 }
@@ -97,14 +98,14 @@ SViewportManager::~SViewportManager() SKR_NOEXCEPT
 {
 }
 
-void skr_resolve_camera_to_viewport(const skr::scene::CameraComponent* camera, const skr::scene::TranslationComponent* translation, skr_render_viewport_t* viewport)
+void skr_resolve_camera_to_viewport(const skr::scene::CameraComponent* camera, const skr::scene::PositionComponent* translation, skr_render_viewport_t* viewport)
 {
     SKR_ASSERT(camera->viewport_id == viewport->index && "viewport id mismatch");
 
-    const rtm::vector4f eye        = rtm::vector_load3((const uint8_t*)&translation->value);
+    const rtm::vector4f eye = rtm::vector_load3((const uint8_t*)&translation);
     const rtm::vector4f camera_dir = rtm::vector_set(0.f, 1.f, 0.f, 0.f);
-    const rtm::vector4f focus_pos  = rtm::vector_add(eye, camera_dir);
-    const auto          view       = rtm::matrix_look_at(
+    const rtm::vector4f focus_pos = rtm::vector_add(eye, camera_dir);
+    const auto view = rtm::matrix_look_at(
         eye /*eye*/,
         focus_pos /*at*/,
         rtm::vector_set(0.f, 0.f, 1.f) /*up*/
@@ -112,27 +113,26 @@ void skr_resolve_camera_to_viewport(const skr::scene::CameraComponent* camera, c
     auto proj = rtm::proj_perspective_fov(
         3.1415926f / 2.f,
         (float)camera->viewport_width / (float)camera->viewport_height,
-        1.f, 1000.f
-    );
+        1.f,
+        1000.f);
     auto view_projection = rtm::matrix_mul(rtm::matrix_cast(view), proj);
 
     viewport->view_projection = *(skr_float4x4_t*)&view_projection;
-    viewport->viewport_width  = camera->viewport_width;
+    viewport->viewport_width = camera->viewport_width;
     viewport->viewport_height = camera->viewport_height;
 }
 
 void skr_resolve_cameras_to_viewport(struct SViewportManager* viewport_manager, skr::ecs::World* storage)
 {
     sugoi_query_t* camera_query = static_cast<SViewportManagerImpl*>(viewport_manager)->camera_query;
-    auto           cameraSetup  = [&](sugoi_chunk_view_t* g_cv) {
+    auto cameraSetup = [&](sugoi_chunk_view_t* g_cv) {
         SkrZoneScopedN("CameraResolve");
 
-        auto cameras           = sugoi::get_owned_ro<skr::scene::CameraComponent>(g_cv);
-        auto camera_transforms = sugoi::get_owned_ro<skr::scene::TranslationComponent>(g_cv);
+        auto cameras = sugoi::get_owned_ro<skr::scene::CameraComponent>(g_cv);
+        auto camera_transforms = sugoi::get_owned_ro<skr::scene::PositionComponent>(g_cv);
         for (uint32_t i = 0; i < g_cv->count; i++)
         {
-            const auto viewport_index  = cameras[i].viewport_id;
-            auto       renderer        = cameras[i].renderer;
+            const auto viewport_index = cameras[i].viewport_id;
             skr_resolve_camera_to_viewport(cameras + i, camera_transforms + i, viewport_manager->find_viewport(viewport_index));
         }
     };

@@ -1,10 +1,4 @@
 #pragma once
-/**
- * @file animation.h
- * @brief The Animation Module
- * @author sailing-innocent
- * @date 2025-06-30
- */
 #include "SkrBase/config.h"
 #include "SkrAnim/ozz/sampling_job.h"
 #include "SkrRT/sugoi/sugoi_meta.hpp"
@@ -25,11 +19,12 @@ namespace animdbg
 {
 
 sreflect_managed_component(guid = "0197bff0-af37-761a-b489-b88840ee6411")
-    anim_state_t {
+anim_state_t
+{
     SKR_RESOURCE_FIELD(skr::anim::AnimResource, animation_resource);
     skr::Vector<ozz::math::SoaTransform> local_transforms;
     ozz::animation::SamplingJob::Context sampling_context;
-    float                                current_time = 0.0f;
+    float current_time = 0.0f;
 };
 
 ANIM_DEBUG_RUNTIME_API void

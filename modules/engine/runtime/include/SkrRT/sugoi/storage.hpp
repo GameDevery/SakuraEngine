@@ -1,6 +1,5 @@
 #pragma once
-#include "SkrContainers/vector.hpp"
-#include "SkrRT/sugoi/sugoi.h"
+#include "SkrRT/sugoi/entity_registry.hpp"
 #include "SkrRT/sugoi/set.hpp"
 
 struct sugoi_storage_t;
@@ -74,7 +73,14 @@ struct SKR_RUNTIME_API sugoi_storage_t {
     void cast(sugoi_group_t* srcGroup, sugoi_group_t* group, sugoi_cast_callback_t callback, void* u);
     sugoi_group_t* cast(sugoi_group_t* group, const sugoi_delta_type_t& diff);
 
-    sugoi_chunk_view_t entity_view(sugoi_entity_t e) const;
+    SUGOI_FORCEINLINE sugoi_chunk_view_t entity_view(sugoi_entity_t e) const
+    {
+        auto entry = entity_registry.try_get_entry(e);
+        if (entry.value().version == sugoi::e_version(e)) [[likely]]
+            return { entry.value().chunk, entry.value().indexInChunk, 1 };
+        return { nullptr, 0, 1 };
+    }
+
     void all(bool includeDisabled, bool includeDead, sugoi_view_callback_t callback, void* u);
     void batch(const sugoi_entity_t* ents, EIndex count, sugoi_view_callback_t callback, void* u);
 
@@ -125,6 +131,7 @@ struct SKR_RUNTIME_API sugoi_storage_t {
 protected:
     sugoi::block_arena_t& getArchetypeArena();
     Impl* pimpl = nullptr;
+    sugoi::EntityRegistry entity_registry;
 
 private:
     sugoi_chunk_view_t allocateView(sugoi_group_t* group, EIndex count);

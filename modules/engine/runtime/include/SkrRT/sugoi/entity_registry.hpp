@@ -1,9 +1,7 @@
 #pragma once
-#include "SkrOS/thread.h"
-#include "SkrBase/atomic/atomic_mutex.hpp"
-#include "SkrContainers/vector.hpp"
-#include "SkrContainers/span.hpp"
-#include "SkrContainers/optional.hpp"
+#include "SkrContainersDef/vector.hpp"
+#include "SkrContainersDef/span.hpp"
+#include "SkrContainersDef/optional.hpp"
 #include "SkrRT/sugoi/sugoi.h"
 
 namespace sugoi
@@ -41,28 +39,21 @@ struct SKR_RUNTIME_API EntityRegistry {
     template<typename F>
     void visit_entries(const F& f) const
     {
-        mutex.lock_shared();
         skr::span<const Entry> entries_view = entries;
         f(entries_view);
-        mutex.unlock_shared();
     }
     
     template<typename F>
     void visit_free_entries(const F& f) const
     {
-        mutex.lock_shared();
         skr::span<const EIndex> entries_view = freeEntries;
         f(entries_view);
-        mutex.unlock_shared();
     }
 
-    skr::Optional<Entry> try_get_entry(sugoi_entity_t e) const
+    SKR_FORCEINLINE skr::Optional<Entry> try_get_entry(sugoi_entity_t e) const
     {
-        mutex.lock_shared();
-        SKR_DEFER({ mutex.unlock_shared(); });
-
         const auto id = e_id(e);
-        if (id < entries.size())
+        if (id < entries.size()) [[likely]]
             return entries[id];
         return {};
     }
@@ -72,7 +63,6 @@ private:
     skr::Vector<Entry> entries;
     skr::Vector<EIndex> freeEntries;
     EIndex externalReserved = 0;
-    mutable skr::shared_atomic_mutex mutex;
 };
 
 inline EntityRegistry::EntityRegistry(const EntityRegistry& rhs)

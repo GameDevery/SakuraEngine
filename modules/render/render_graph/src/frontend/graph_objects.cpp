@@ -1,19 +1,20 @@
-#include "SkrBase/misc/debug.h" 
+#include "SkrBase/misc/debug.h"
 #include "SkrRenderGraph/frontend/pass_node.hpp"
 #include "SkrRenderGraph/frontend/node_and_edge_factory.hpp"
-#include <SkrContainers/hashmap.hpp>
-#include "SkrBase/misc/hash.h"
-#include "SkrContainers/concurrent_queue.hpp"
+#include "SkrContainersDef/hashmap.hpp"
+#include "SkrContainersDef/concurrent_queue.hpp"
 
 namespace skr
 {
 namespace render_graph
 {
+
+static const char* kMemoryPoolName = "RenderGraphFrontentObjects";
+
 struct SKR_RENDER_GRAPH_API NodeAndEdgeFactoryImpl final : public NodeAndEdgeFactory
 {
     NodeAndEdgeFactoryImpl() SKR_NOEXCEPT
     {
-
     }
     ~NodeAndEdgeFactoryImpl() SKR_NOEXCEPT
     {
@@ -23,38 +24,36 @@ struct SKR_RENDER_GRAPH_API NodeAndEdgeFactoryImpl final : public NodeAndEdgeFac
         }
     }
 
-    struct factory_pool_t 
+    struct factory_pool_t
     {
         size_t blockSize;
         skr::ConcurrentQueue<void*> blocks;
 
         factory_pool_t(size_t blockSize, size_t blockCount) SKR_NOEXCEPT
-            : blockSize(blockSize)
-            , blocks(blockCount)
+            : blockSize(blockSize),
+              blocks(blockCount)
         {
-            
         }
         ~factory_pool_t() SKR_NOEXCEPT
         {
             void* block;
             while (blocks.try_dequeue(block))
-                sakura_free(block);
+                sakura_freeN(block, kMemoryPoolName);
         }
         void* allocate()
         {
-            void* block;
+            void* block = nullptr;
             if (blocks.try_dequeue(block))
                 return block;
             {
-                SkrZoneScopedN("DualPoolAllocation");
-                return sakura_calloc(1, blockSize);
+                return sakura_callocN(1, blockSize, kMemoryPoolName);
             }
         }
         void free(void* block)
         {
             if (blocks.try_enqueue(block))
                 return;
-            sakura_free(block);
+            sakura_freeN(block, kMemoryPoolName);
         }
     };
 
@@ -118,7 +117,7 @@ RenderGraphEdge::RenderGraphEdge(ERelationshipType type)
 
 ResourceNode::ResourceNode(EObjectType type) SKR_NOEXCEPT
     : RenderGraphNode(type),
-        imported(false)
+      imported(false)
 {
 }
 
@@ -130,6 +129,11 @@ TextureNode::TextureNode() SKR_NOEXCEPT
 
 BufferNode::BufferNode() SKR_NOEXCEPT
     : ResourceNode(EObjectType::Buffer)
+{
+}
+
+AccelerationStructureNode::AccelerationStructureNode() SKR_NOEXCEPT
+    : ResourceNode(EObjectType::AccelerationStructure)
 {
 }
 
@@ -211,6 +215,17 @@ void PassNode::foreach_buffers(skr::stl_function<void(BufferNode*, BufferEdge*)>
         f(e->get_buffer_node(), e);
 }
 
+skr::span<AccelerationStructureReadEdge*> PassNode::acceleration_structure_read_edges()
+{
+    return skr::span<AccelerationStructureReadEdge*>(in_acceleration_structure_edges.data(), in_acceleration_structure_edges.size());
+}
+
+void PassNode::foreach_acceleration_structures(skr::stl_function<void(AccelerationStructureNode*, AccelerationStructureEdge*)> f)
+{
+    for (auto&& e : acceleration_structure_read_edges())
+        f(e->get_acceleration_structure_node(), e);
+}
+
 RenderPassNode::RenderPassNode(uint32_t order)
     : PassNode(EPassType::Render, order)
 {
@@ -234,8 +249,8 @@ PresentPassNode::PresentPassNode(uint32_t order)
 // 3.edges
 
 TextureEdge::TextureEdge(ERelationshipType type, ECGPUResourceState requested_state) SKR_NOEXCEPT
-    : RenderGraphEdge(type)
-    , requested_state(requested_state)
+    : RenderGraphEdge(type),
+      requested_state(requested_state)
 {
 }
 
@@ -306,7 +321,6 @@ PipelineBufferEdge::PipelineBufferEdge(PipelineBufferHandle handle, ECGPUResourc
     : BufferEdge(ERelationshipType::PipelineBuffer, state)
     , handle(handle)
 {
-
 }
 
 BufferNode* PipelineBufferEdge::get_buffer_node()
@@ -355,6 +369,26 @@ BufferNode* BufferReadWriteEdge::get_buffer_node()
 PassNode* BufferReadWriteEdge::get_pass_node()
 {
     return (PassNode*)from();
+}
+
+// 3.7 Acceleration Structure Read Edge
+
+AccelerationStructureReadEdge::AccelerationStructureReadEdge(const skr::StringView name, AccelerationStructureSRVHandle handle)
+    : AccelerationStructureEdge(ERelationshipType::AccelerationStructureRead, CGPU_RESOURCE_STATE_ACCELERATION_STRUCTURE_READ)
+    , name_hash(cgpu_name_hash(name.data(), name.size()))
+    , name(name)
+    , handle(handle)
+{
+}
+
+AccelerationStructureNode* AccelerationStructureReadEdge::get_acceleration_structure_node()
+{
+    return static_cast<AccelerationStructureNode*>(from());
+}
+
+PassNode* AccelerationStructureReadEdge::get_pass_node()
+{
+    return (PassNode*)to();
 }
 
 } // namespace render_graph

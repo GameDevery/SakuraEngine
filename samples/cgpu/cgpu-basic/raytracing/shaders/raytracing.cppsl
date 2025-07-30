@@ -1,5 +1,6 @@
 #include "std/std.hpp"
 #include "std2/attributes.hpp"
+#include "std2/constant_buffer.hpp"
 
 using namespace skr::shader;
 
@@ -21,9 +22,6 @@ float4 trace(uint2 tid, uint2 tsize) {
         100.0f
     );
     float3 direction = float3(0.0f, 0.0f, -1.0f);
-    
-    Array<float, 4> arr;
-    arr = Array<float, 4>(1.f, 2.f, 3.f);
     
     Ray ray(origin, direction, 0.01f, 9999.0f);
 

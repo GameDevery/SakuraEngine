@@ -4,10 +4,10 @@
 #include "SkrRT/sugoi/type_registry.hpp"
 #include "SkrSerde/bin_serde.hpp"
 
-#include "./chunk.hpp"
+#include "SkrRT/sugoi/chunk.hpp"
 #include "./impl/storage.hpp"
 #include "./stack.hpp"
-#include "./archetype.hpp"
+#include "SkrRT/sugoi/archetype.hpp"
 
 #ifndef forloop
     #define forloop(i, z, n) for (auto i = std::decay_t<decltype(n)>(z); i < (n); ++i)
@@ -188,7 +188,7 @@ sugoi_entity_t sugoi_storage_t::deserialize_single(SBinaryReader* s)
     auto                group = get_group(type);
     sugoi_chunk_view_t view;
     serialize_view(group, view, nullptr, s, false);
-    pimpl->entity_registry.fill_entities(view);
+    entity_registry.fill_entities(view);
     return view.chunk->get_entities()[view.start];
 }
 
@@ -243,7 +243,7 @@ void sugoi_storage_t::serialize(SBinaryWriter* s)
 
     {
         SkrZoneScopedN("serialize entities");
-        pimpl->entity_registry.serialize(s);
+        entity_registry.serialize(s);
     }
     pimpl->groups.read_versioned([&](auto& groups) {
         skr::bin_write(s, (uint32_t)groups.size());
@@ -272,15 +272,12 @@ void sugoi_storage_t::deserialize(SBinaryReader* s)
 
     {
         SkrZoneScopedN("deserialize entities");
-        pimpl->entity_registry.deserialize(s);
+        entity_registry.deserialize(s);
     }
     uint32_t groupSize = 0;
     skr::bin_read(s, groupSize);
     // remap entries
     {
-        pimpl->entity_registry.mutex.lock();
-        SKR_DEFER({ pimpl->entity_registry.mutex.unlock(); });
-
         forloop (i, 0, groupSize)
         {
             SkrZoneScopedN("deserialize group");
@@ -301,7 +298,7 @@ void sugoi_storage_t::deserialize(SBinaryReader* s)
                     entry.chunk                                   = view.chunk;
                     entry.indexInChunk                            = k + view.start;
                     entry.version                                 = e_version(ents[k]);
-                    pimpl->entity_registry.entries[e_id(ents[k])] = entry;
+                    entity_registry.entries[e_id(ents[k])] = entry;
                 }
             }
         }

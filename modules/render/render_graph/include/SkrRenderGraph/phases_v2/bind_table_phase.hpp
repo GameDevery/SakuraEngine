@@ -14,6 +14,7 @@ struct PassBindTableInfo {
     CGPUXBindTableId bind_table = nullptr;
     uint32_t bound_texture_count = 0;
     uint32_t bound_buffer_count = 0;
+    uint32_t bound_acceleration_structure_count = 0;
 };
 
 // Bind table phase result

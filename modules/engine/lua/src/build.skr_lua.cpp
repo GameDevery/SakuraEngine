@@ -339,7 +339,7 @@ void luaL_setmetatable(lua_State* L, const char* tname)
 
 void dtor_resource_handle(void* p)
 {
-    auto resource = (skr_resource_handle_t*)p;
+    auto resource = (SResourceHandle*)p;
     if (resource->is_resolved())
         resource->unload();
 }
@@ -353,24 +353,24 @@ void bind_skr_resource_handle(lua_State* L)
         if (luaL_testudata(L, 1, "skr_guid_t"))
         {
             const skr_guid_t*      guid     = skr::lua::check_guid(L, 1);
-            skr_resource_handle_t* resource = (skr_resource_handle_t*)lua_newuserdatadtor(L, sizeof(skr_resource_handle_t), dtor_resource_handle);
-            new (resource) skr_resource_handle_t(*guid);
-            luaL_setmetatable(L, "skr_resource_handle_t");
+            SResourceHandle* resource = (SResourceHandle*)lua_newuserdatadtor(L, sizeof(SResourceHandle), dtor_resource_handle);
+            new (resource) SResourceHandle(*guid);
+            luaL_setmetatable(L, "SResourceHandle");
             return 1;
         }
         else if (lua_isstring(L, 1))
         {
             auto                   str      = (const char8_t*)lua_tostring(L, 1);
-            skr_resource_handle_t* resource = (skr_resource_handle_t*)lua_newuserdatadtor(L, sizeof(skr_resource_handle_t), dtor_resource_handle);
+            SResourceHandle* resource = (SResourceHandle*)lua_newuserdatadtor(L, sizeof(SResourceHandle), dtor_resource_handle);
             skr_guid_t guid;
             skr::guid_from_sv(skr::StringView(str), guid);
-            new (resource) skr_resource_handle_t(guid);
-            luaL_setmetatable(L, "skr_resource_handle_t");
+            new (resource) SResourceHandle(guid);
+            luaL_setmetatable(L, "SResourceHandle");
             return 1;
         }
         else
         {
-            luaL_error(L, "invalid arguments for skr_resource_handle_t constructor");
+            luaL_error(L, "invalid arguments for SResourceHandle constructor");
             return 0;
         }
     },
@@ -378,22 +378,22 @@ void bind_skr_resource_handle(lua_State* L)
     lua_setfield(L, -2, "resource_handle");
     lua_pop(L, 1);
 
-    luaL_newmetatable(L, "skr_resource_handle_t");
+    luaL_newmetatable(L, "SResourceHandle");
 
     luaL_Reg metamethods[] = {
         { "__tostring", +[](lua_State* L) -> int {
-             auto resource = (skr_resource_handle_t*)luaL_checkudata(L, 1, "skr_resource_handle_t");
+             auto resource = (SResourceHandle*)luaL_checkudata(L, 1, "SResourceHandle");
              lua_pushstring(L, skr::format(u8"resource {}", resource->get_serialized()).c_str());
              return 1;
          } },
         { "__eq", +[](lua_State* L) -> int {
-             auto resource1 = (skr_resource_handle_t*)luaL_checkudata(L, 1, "skr_resource_handle_t");
-             auto resource2 = (skr_resource_handle_t*)luaL_checkudata(L, 2, "skr_resource_handle_t");
+             auto resource1 = (SResourceHandle*)luaL_checkudata(L, 1, "SResourceHandle");
+             auto resource2 = (SResourceHandle*)luaL_checkudata(L, 2, "SResourceHandle");
              lua_pushboolean(L, resource1->get_serialized() == resource2->get_serialized());
              return 1;
          } },
         { "__index", +[](lua_State* L) -> int {
-             auto resource = (skr_resource_handle_t*)luaL_checkudata(L, 1, "skr_resource_handle_t");
+             auto resource = (SResourceHandle*)luaL_checkudata(L, 1, "SResourceHandle");
              (void)resource;
              const char* key = luaL_checkstring(L, 2);
              switchname(key)
@@ -402,7 +402,7 @@ void bind_skr_resource_handle(lua_State* L)
                  {
                      lua_pushcfunction(
                      L, +[](lua_State* L) -> int {
-                         auto resource       = (skr_resource_handle_t*)luaL_checkudata(L, 1, "skr_resource_handle_t");
+                         auto resource       = (SResourceHandle*)luaL_checkudata(L, 1, "SResourceHandle");
                          bool requireInstall = lua_toboolean(L, 2);
                          if (!resource->is_resolved())
                              resource->resolve(requireInstall, (uint64_t)L, SKR_REQUESTER_SCRIPT);
@@ -415,7 +415,7 @@ void bind_skr_resource_handle(lua_State* L)
                  {
                      lua_pushcfunction(
                      L, +[](lua_State* L) -> int {
-                         auto resource = (skr_resource_handle_t*)luaL_checkudata(L, 1, "skr_resource_handle_t");
+                         auto resource = (SResourceHandle*)luaL_checkudata(L, 1, "SResourceHandle");
                          lua_pushboolean(L, resource->is_resolved());
                          return 1;
                      },
@@ -426,7 +426,7 @@ void bind_skr_resource_handle(lua_State* L)
                  {
                      lua_pushcfunction(
                      L, +[](lua_State* L) -> int {
-                         auto resource = (skr_resource_handle_t*)luaL_checkudata(L, 1, "skr_resource_handle_t");
+                         auto resource = (SResourceHandle*)luaL_checkudata(L, 1, "SResourceHandle");
                          if (!resource->is_resolved())
                          {
                              return 0;
@@ -450,18 +450,18 @@ void bind_skr_resource_handle(lua_State* L)
                  {
                      lua_pushcfunction(
                      L, +[](lua_State* L) -> int {
-                         auto resource = (skr_resource_handle_t*)luaL_checkudata(L, 1, "skr_resource_handle_t");
+                         auto resource = (SResourceHandle*)luaL_checkudata(L, 1, "SResourceHandle");
                          if (resource->is_resolved())
                              resource->unload();
                          else
-                             SKR_LOG_DEBUG(u8"skr_resource_handle_t::unload called on unresolved resource.");
+                             SKR_LOG_DEBUG(u8"SResourceHandle::unload called on unresolved resource.");
                          return 0;
                      },
                      "unload");
                      return 1;
                  }
                  default: {
-                     luaL_error(L, "skr_resource_handle_t does not have a member named '%s'", key);
+                     luaL_error(L, "SResourceHandle does not have a member named '%s'", key);
                      return 0;
                  }
              }
@@ -622,21 +622,21 @@ skr::String opt_string(lua_State* L, int index, const skr::String& def)
     return { (const char8_t*)luaL_optstring(L, index, def.c_str()) };
 }
 
-int push_resource(lua_State* L, const skr_resource_handle_t* resource)
+int push_resource(lua_State* L, const SResourceHandle* resource)
 {
-    auto ud = (skr_resource_handle_t*)lua_newuserdatadtor(L, sizeof(skr_resource_handle_t), dtor_resource_handle);
-    new (ud) skr_resource_handle_t(*resource, (uint64_t)L, SKR_REQUESTER_SCRIPT);
-    luaL_getmetatable(L, "skr_resource_handle_t");
+    auto ud = (SResourceHandle*)lua_newuserdatadtor(L, sizeof(SResourceHandle), dtor_resource_handle);
+    new (ud) SResourceHandle(*resource, (uint64_t)L, SKR_REQUESTER_SCRIPT);
+    luaL_getmetatable(L, "SResourceHandle");
     lua_setmetatable(L, -2);
     return 1;
 }
 
-const skr_resource_handle_t* check_resource(lua_State* L, int index)
+const SResourceHandle* check_resource(lua_State* L, int index)
 {
-    return (skr_resource_handle_t*)luaL_checkudata(L, index, "skr_resource_handle_t");
+    return (SResourceHandle*)luaL_checkudata(L, index, "SResourceHandle");
 }
 
-const skr_resource_handle_t* opt_resource(lua_State* L, int index, const skr_resource_handle_t* def)
+const SResourceHandle* opt_resource(lua_State* L, int index, const SResourceHandle* def)
 {
     if (lua_isnoneornil(L, index))
         return def;

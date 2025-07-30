@@ -30,7 +30,7 @@ namespace skr
 {
 namespace resource
 {
-struct SKR_RUNTIME_API SConfigFactory : public SResourceFactory {
+struct SKR_RUNTIME_API ConfigFactory : public ResourceFactory {
     skr_guid_t GetResourceType() override;
 
     bool AsyncIO() override { return false; }

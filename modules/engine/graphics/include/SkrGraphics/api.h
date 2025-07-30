@@ -1258,8 +1258,6 @@ typedef struct CGPUSwapChainDescriptor {
     bool enable_vsync;
     /// We can toggle to using FLIP model if app desires
     bool use_flip_swap_effect;
-    /// Clear Value.
-    float clear_value[4];
     /// format
     ECGPUFormat format;
 } CGPUSwapChainDescriptor;

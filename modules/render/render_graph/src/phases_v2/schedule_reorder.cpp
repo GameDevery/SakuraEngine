@@ -72,7 +72,7 @@ void ExecutionReorderPhase::optimize_queue_with_graph(uint32_t queue_idx) SKR_NO
         float best_affinity = config.min_affinity_score;
         
         // Scan subsequent positions within attraction distance
-        size_t max_scan_pos = std::min(passes.size(), current_pos + 1 + config.max_attraction_distance);
+        size_t max_scan_pos = std::min((uint64_t)passes.size(), (uint64_t)current_pos + 1 + config.max_attraction_distance);
         for (size_t candidate_pos = current_pos + 1; candidate_pos < max_scan_pos; ++candidate_pos)
         {
             PassNode* candidate_pass = passes[candidate_pos];

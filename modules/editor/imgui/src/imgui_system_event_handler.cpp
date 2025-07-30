@@ -141,10 +141,6 @@ void ImGuiSystemEventHandler::process_window_event(const SkrWindowEvent& event)
             _want_exit.trigger();
             break;
 
-        case SKR_SYSTEM_EVENT_WINDOW_RESIZED:
-            _want_resize.trigger();
-            break;
-
         case SKR_SYSTEM_EVENT_WINDOW_FOCUS_GAINED:
             _context->IO.AddFocusEvent(true);
             break;

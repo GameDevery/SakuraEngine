@@ -14,7 +14,8 @@ public static class LibHV
             .Defines(Visibility.Public, "HV_STATICLIB")
             .IncludeDirs(Visibility.Public, "include")
             .Link(Visibility.Public, "hv_static")
-            .AppleFramework(Visibility.Public, "Security");
+            .AppleFramework(Visibility.Public, "Security")
+            .Clang_CXFlags(Visibility.Public, "-Wno-deprecated-literal-operator");
     }
 }
 

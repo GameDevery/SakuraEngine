@@ -119,8 +119,8 @@ enum struct InterpolationMode : uint32_t
     invalid,
     linear,          // HLSL: linear / Metal: [[perspective]]
     nointerpolation, // HLSL: nointerpolation / Metal: [[flat]]
-    centroid,        // HLSL: centroid / Metal: [[centroid]]
-    sample,          // HLSL: sample / Metal: [[sample]]
+    centroid,        // HLSL: centroid / Metal: [[centroid_perspective]]
+    sample,          // HLSL: sample / Metal: [[sample_perspective]]
     noperspective,   // HLSL: noperspective / Metal: [[center_no_perspective]]
     Count
 };

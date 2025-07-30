@@ -256,7 +256,7 @@ CGPUFenceId cgpu_create_fence_vulkan(CGPUDeviceId device)
     VkFenceCreateInfo add_info = {
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
         .pNext = NULL,
-        .flags = 0,
+        .flags = VK_FENCE_CREATE_SIGNALED_BIT
     };
 
     CHECK_VKRESULT(D->mVkDeviceTable.vkCreateFence(

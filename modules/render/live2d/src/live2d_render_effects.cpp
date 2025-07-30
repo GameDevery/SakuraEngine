@@ -15,7 +15,8 @@
 #include "live2d_clipping.hpp"
 #include "live2d_helpers.hpp"
 
-static struct RegisterComponentskr_live2d_render_model_comp_tHelper {
+static struct RegisterComponentskr_live2d_render_model_comp_tHelper
+{
     RegisterComponentskr_live2d_render_model_comp_tHelper()
     {
         using namespace skr::literals;
@@ -47,7 +48,8 @@ void skr_live2d_render_view_set_screen(live2d_render_view_t* view, uint32_t widt
 void skr_live2d_render_view_transform_screen(live2d_render_view_t* view, float deviceX, float deviceY);
 void skr_live2d_render_view_transform_view(live2d_render_view_t* view, float deviceX, float deviceY);
 
-struct Live2DRendererImpl : public skr::Live2DRenderer {
+struct Live2DRendererImpl : public skr::Live2DRenderer
+{
     uint32_t last_ms = 0;
     const float kMotionFramesPerSecond = 240.0f;
     const bool kUseHighPrecisionMask = false;
@@ -552,7 +554,8 @@ protected:
     uint32_t* read_shader_bytes(skr::RendererDevice* renderer, const char8_t* name, uint32_t* out_length);
     CGPUShaderLibraryId create_shader_library(skr::RendererDevice* renderer, const char8_t* name, ECGPUShaderStage stage);
 
-    struct PushConstants {
+    struct PushConstants
+    {
         rtm::matrix4x4f projection_matrix;
         rtm::matrix4x4f clip_matrix;
         skr_float4_t base_color;
