@@ -1,11 +1,10 @@
 #pragma once
 #include "SkrBase/config.h"
 #include "SkrContainersDef/string.hpp"
-#include <cstdint>
+#include "SkrBase/containers/string/format.hpp"
 
 namespace skr
 {
-
 // Time span representation (100-nanosecond intervals, same as FileTime)
 struct TimeSpan
 {
@@ -112,17 +111,21 @@ public:
     DateTime(int year, int month, int day, int hour = 0, int minute = 0, int second = 0, int millisecond = 0);
     
     // Factory methods
-    static DateTime now();
-    static DateTime utc_now();
-    static DateTime today();
-    static DateTime from_filetime(uint64_t filetime);
-    static DateTime from_unix_timestamp(int64_t unix_seconds);
-    static DateTime from_unix_timestamp_ms(int64_t unix_milliseconds);
+    static DateTime now();          // Returns local time
+    static DateTime utc_now();      // Returns UTC time
+    static DateTime local_now();    // Explicit local time (same as now())
+    static DateTime from_filetime(uint64_t filetime);                    // FileTime is always UTC
+    static DateTime from_unix_timestamp(int64_t unix_seconds);          // Unix timestamp is always UTC
+    static DateTime from_unix_timestamp_ms(int64_t unix_milliseconds);  // Unix timestamp is always UTC
     
     // Conversion methods
     uint64_t to_filetime() const;
     int64_t to_unix_timestamp() const;
     int64_t to_unix_timestamp_ms() const;
+    
+    // Timezone conversion methods
+    static DateTime to_utc(const DateTime& local_time);     // Convert local time to UTC
+    static DateTime to_local(const DateTime& utc_time);     // Convert UTC to local time
     
     // Component getters
     int year() const;
@@ -204,3 +207,32 @@ inline uint64_t datetime_to_filetime(const DateTime& datetime)
 }
 
 } // namespace skr
+
+namespace skr::container
+{
+
+// 类型擦除的格式化函数
+void format_datetime_erased(const StringFunctionTable& table, const skr::DateTime& value, const skr_char8* spec_data, size_t spec_size);
+void format_timespan_erased(const StringFunctionTable& table, const skr::TimeSpan& value, const skr_char8* spec_data, size_t spec_size);
+
+template <>
+struct Formatter<skr::DateTime> {
+    template <typename TString>
+    static void format(TString& out, const skr::DateTime& value, typename TString::ViewType spec)
+    {
+        auto table = __virtualize(out);
+        format_datetime_erased(table, value, spec.data(), spec.size());
+    }
+};
+
+// TimeSpan formatter
+template <>
+struct Formatter<skr::TimeSpan> {
+    template <typename TString>
+    static void format(TString& out, const skr::TimeSpan& value, typename TString::ViewType spec)
+    {
+        auto table = __virtualize(out);
+        format_timespan_erased(table, value, spec.data(), spec.size());
+    }
+};
+} // namespace skr::container

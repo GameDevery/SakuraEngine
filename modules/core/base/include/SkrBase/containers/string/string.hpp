@@ -2,7 +2,6 @@
 #include "SkrBase/config.h"
 #include "SkrBase/containers/misc/container_traits.hpp"
 #include "SkrBase/containers/string/string_def.hpp"
-#include <type_traits>
 #include "SkrBase/containers/string/string_view.hpp"
 #include "SkrBase/unicode/unicode_algo.hpp"
 #include "SkrBase/unicode/unicode_iterator.hpp"
