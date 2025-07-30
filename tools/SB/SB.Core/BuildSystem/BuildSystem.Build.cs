@@ -507,16 +507,6 @@ namespace SB
         
         public static void Cleanup()
         {
-            // Dispose DependDatabase instances if they were created
-            if (pkgCompileDepends.IsValueCreated)
-            {
-                pkgCompileDepends.Value.Dispose();
-            }
-            if (targetCompileDepends.IsValueCreated)
-            {
-                targetCompileDepends.Value.Dispose();
-            }
-            
             // Clear static collections
             AllTargets.Clear();
             AllPackages.Clear();

@@ -14,7 +14,7 @@ namespace SB.Core
         public bool Force { get; init; }
     }
 
-    public class DependDatabase : IDisposable
+    public class DependDatabase 
     {
         public bool OnChanged(string TargetName, string FileName, string EmitterName, Action<Depend> func, IEnumerable<string>? Files, IEnumerable<string>? Args, DependOptions? opt = null)
         {
@@ -311,9 +311,12 @@ namespace SB.Core
                     .Options
             );
 
-            WarmUpContext = Factory.CreateDbContext();
-            WarmUpContext!.Database.EnsureCreated();
-            WarmUpContext!.FindAsync<DependEntity>("");
+            // Warm up the database and dispose immediately to avoid connection conflicts
+            using (var warmUpContext = Factory.CreateDbContext())
+            {
+                warmUpContext.Database.EnsureCreated();
+                warmUpContext.FindAsync<DependEntity>("");
+            }
         }
 
         public void ClearDatabase()
@@ -337,14 +340,6 @@ namespace SB.Core
         private string Name { get; init; } = "depend";
         private string DatabasePath { get; init; }
         private PooledDbContextFactory<DependContext> Factory;
-        private DbContext? WarmUpContext;
-
-        public void Dispose()
-        {
-            WarmUpContext?.Dispose();
-            // PooledDbContextFactory doesn't implement IDisposable
-            // The factory itself doesn't need to be disposed
-        }
     }
 
     public struct Depend
