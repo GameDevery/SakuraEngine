@@ -14,7 +14,7 @@ dotnet run SB build --target= # 构建引擎模块
 
 ## 构建
 
-目前项目使用的构建系统是采用 C# 自研的 SB，而不是 xmake。xmake 脚本虽然存在，但是已经要被弃用。
+目前项目使用的构建系统是采用 C# 自研的 SB。
 
 - 构建系统的概要文档 @docs/build_system/overview.md
 - SB 的代码目录在 tools/SB 下；

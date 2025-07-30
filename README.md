@@ -259,29 +259,31 @@ Shipping Build 的最终呈现帧数可以轻松地突破数千帧，这是 Cubi
 
 ### 前置
 
-- xmake
+- dotnet 9.0+
 - 初始化 LFS
 
 ### 编译
 
-使用以下命令编译
+使用以下命令编译:
 
 ```
-> xmake l setup.lua
-> xmake f -m debug -c
-> xmake 
+> dotnet run SB build --mode=release --category=tools #这会构建反射代码生成器和着色器构建工具并自动拷贝到 SDK 目录下
+> dotnet run SB build #默认以 debug 模式构建所有的模块 (除了 tools)
 ```
 
-Tips：
+使用以下工具命令生成开发所需内容:
 
-- 默认构建只包含模块。要构建工具或例子，需要在 xmake f 时加上 --build_cgpu_samples=true 等参数 (详见 xmake/options.lua);
-- 目前版本构建中途失败可能产生 codegen 中断或是不全的问题，可以删除 `/build` 和 `.xmake` 文件夹后重试。如进一步出现问题，请务必上报 issues 😀
-- 上报 issue 时尽量提供 `xmake f -m debug -c -v` 在中断处的详细输出;
-- 当出现 xrepo 安装失败问题（例如 LFS 没有初始化造成错误的库文件安装）时，可用 `xrepo remove --all -y` 清理错误安装的仓库后再重新构建。
+```
+> dotnet run SB clean --database=targets #清理非包目标的依赖缓存, 触发后续重新编译, 可以在 help 和 runbuild.cs 查看支持的命令列表
+> dotnet run SB compile_commands --category=all #生成全局的 compile_commands(C++/CppSL)
+> dotnet run SB vscode #生成 launch 和 task
+> dotnet run SB vs #生成 VisualStudio 工程 (在 .sb 文件夹下)
+> dotnet run SB graph #生成模块依赖图 (graphviz 格式)
+```
 
 ## 编辑环境
 
-推荐使用 vscode + clangd 作为编辑环境，使用命令 `xmake project -k compile_commands` 来生成 clangd 需要的数据集
+推荐使用 vscode + clangd 作为编辑环境，使用命令 `dotnet run SB compile_commands` 来生成 clangd 需要的数据集
 
 [RealtimeMath]: https://github.com/nfrechette/rtm
 [imgui]: https://github.com/ocornut/imgui

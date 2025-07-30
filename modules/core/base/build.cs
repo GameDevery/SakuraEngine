@@ -9,7 +9,6 @@ public static class SkrBase
         var Target = Engine.StaticComponent("SkrBase", "SkrCore")
             .EnableUnityBuild()
             .Depend(Visibility.Public, "rtm", "SkrProfile")
-            // TODO: MIGRATE COMPILE FLAGS FROM XMAKE
             // .Depend(Visibility.Public, "SkrCompileFlags")
             .IncludeDirs(Visibility.Public, "include")
             .Depend(Visibility.Public, "phmap@phmap")
