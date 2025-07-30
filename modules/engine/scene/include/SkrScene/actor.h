@@ -54,10 +54,7 @@ public:
     skr::Vector<skr::RC<Actor>> children;
     skr::RC<Actor> _parent = nullptr;
     EAttachRule attach_rule = EAttachRule::Default;
-<<<<<<< HEAD
-    == == == =
-                 EActorType actor_type = EActorType::Default;
->>>>>>> Scene
+    EActorType actor_type = EActorType::Default;
 };
 
 class SKR_SCENE_API SActorManager

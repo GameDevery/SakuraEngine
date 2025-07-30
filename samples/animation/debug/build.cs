@@ -13,12 +13,6 @@ public static class AnimDebug
             .AddHLSLFiles("shaders/*.hlsl")
             .DXCOutputDirectory("resources/shaders/AnimDebug");
         
-        Engine.Program("AnimDebugNext", "ANIM_DEBUG")
-            .Depend(Visibility.Private, "AnimView")
-            .AddCppFiles("src_next/*.cpp")
-            .IncludeDirs(Visibility.Public, "include")
-            .AddCppSLFiles("shaders_next/*.cppsl")
-            .CppSLOutputDirectory("resources/shaders/AnimDebugNext");
     }
     
 }
