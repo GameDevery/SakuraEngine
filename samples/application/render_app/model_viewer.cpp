@@ -230,6 +230,7 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
     }
     render_app->close_all_windows();
     render_app->get_event_queue()->remove_handler(&close_listener);
+    render_app->shutdown();
     return 0;
 }
 
