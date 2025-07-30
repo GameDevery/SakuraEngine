@@ -13,7 +13,8 @@ struct ImGuiRendererBackend;
 struct SystemApp;
 struct SystemWindow;
 
-struct ImGuiRendererBackendRGTextureData {
+struct ImGuiRendererBackendRGTextureData
+{
     CGPUTextureId texture = nullptr;
     CGPUTextureViewId srv = nullptr;
     bool first_update = true;
@@ -28,7 +29,7 @@ public:
     virtual bool initialize(const char* backend = nullptr) override;
     virtual void shutdown() override;
 
-    void pump_message(); 
+    void pump_message();
     void render_imgui();
 
 public:
@@ -56,12 +57,11 @@ public:
 private:
     // render
     void create_pipeline();
-    void add_render_pass(    
+    void add_render_pass(
         ImGuiViewport* vp,
         render_graph::RenderGraph* render_graph,
         CGPURootSignatureId root_sig,
-        CGPURenderPipelineId render_pipeline
-    );
+        CGPURenderPipelineId render_pipeline);
     void create_texture(ImTextureData* tex_data);
     void destroy_texture(ImTextureData* tex_data);
     void update_texture(ImTextureData* tex_data);

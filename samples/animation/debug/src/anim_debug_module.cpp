@@ -72,7 +72,10 @@ class SAnimDebugModule : public skr::IDynamicModule
 private:
     skr::String m_skel_file = u8"D:/ws/data/assets/media/bin/ruby_skeleton.ozz";
     skr::String m_anim_file = u8"D:/ws/data/assets/media/bin/ruby_animation.ozz";
+
     ozz::animation::Animation m_animation;
+    SRenderDeviceId render_device = nullptr;
+
     float current_time = 0.0f;
     bool is_playing = false;
     void DisplayAnimationInfo(const ozz::animation::Animation& animation);
@@ -116,6 +119,8 @@ void SAnimDebugModule::on_load(int argc, char8_t** argv)
     {
         SKR_LOG_INFO(u8"No animation file specified.");
     }
+
+    render_device = SkrRendererModule::Get()->get_render_device();
 }
 
 void SAnimDebugModule::on_unload()
@@ -135,8 +140,8 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
     static constexpr float kPi = 3.14159265358979323846f;
     SkrZoneScopedN("AnimDebugExecution");
     SKR_LOG_INFO(u8"anim debug runtime executed as main module!");
-    auto render_device = SkrRendererModule::Get()->get_render_device();
-    animd::Renderer renderer;
+
+    animd::Renderer renderer{ render_device };
     SKR_LOG_INFO(u8"anim debug renderer created with backend: %s", gCGPUBackendNames[render_device->get_backend()]);
     renderer.set_aware_DPI(skr_runtime_is_dpi_aware());
 
@@ -254,8 +259,8 @@ int SAnimDebugModule::main_module_exec(int argc, char8_t** argv)
         // Camera control
         {
             ImGuiIO& io = ImGui::GetIO();
-            const float camera_speed = 2.5f * io.DeltaTime;
-            const float camera_pan_speed = 0.5f * io.DeltaTime;
+            const float camera_speed = 0.0025f * io.DeltaTime;
+            const float camera_pan_speed = 0.005f * io.DeltaTime;
             const float camera_sensitivity = 0.1f;
 
             skr_float3_t world_up = { 0.0f, 1.0f, 0.0f };

@@ -97,7 +97,7 @@ public:
 
     // Per joint override of optimization settings.
     typedef ozz::map<int, Setting> JointsSetting;
-    JointsSetting                  joints_setting_override;
+    JointsSetting joints_setting_override;
 };
 } // namespace offline
 } // namespace animation

@@ -1,7 +1,8 @@
 #include "SkrCore/module/module_manager.hpp"
 #include <SkrOS/filesystem.hpp>
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[])
+{
     auto moduleManager = skr_get_module_manager();
     auto root = skr::fs::current_directory();
     {

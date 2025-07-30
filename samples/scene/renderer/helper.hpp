@@ -1,9 +1,11 @@
 #pragma once
+#include "SkrBase/math/gen/gen_math_c_decl.hpp"
 #include "SkrGraphics/api.h"
 #include "SkrCore/platform/vfs.h"
 #include "SkrRenderer/render_device.h"
 #include "SkrContainersDef/string.hpp"
 #include "SkrRenderer/primitive_draw.h"
+#include "SkrBase/math.h"
 
 namespace utils
 {
@@ -37,32 +39,69 @@ inline CGPUShaderLibraryId create_shader_library(skr::RendererDevice* render_dev
     return shader;
 }
 
-struct SCENE_RENDERER_API DummyScene
+class SCENE_RENDERER_API SimpleMesh
 {
-    DummyScene();
-    void init(skr::RendererDevice* render_device);
-    skr::span<skr::renderer::PrimitiveCommand> get_primitive_commands();
-    const skr_float3_t g_Positions[3] = {
-        { -1.0f, -1.0f, 0.0f },
-        { 1.0f, -1.0f, 0.0f },
-        { 0.0f, 1.0f, 0.0f },
-    };
-    const skr_float2_t g_UVs[3] = {
-        { 0.0f, 1.0f },
-        { 1.0f, 1.0f },
-        { 0.5f, 0.0f },
-    };
-    const skr_float3_t g_Normals[3] = {
-        { 0.0f, 0.0f, 1.0f },
-        { 0.0f, 0.0f, 1.0f },
-        { 0.0f, 0.0f, 1.0f },
-    };
-    const uint32_t g_Indices[3] = { 0, 1, 2 };
+protected:
+    // for editing mesh data, can be used to generate mesh resource
+    skr::Vector<skr_float3_t> c_positions;
+    skr::Vector<skr_float2_t> c_uvs;
+    skr::Vector<skr_float3_t> c_normals;
+    skr::Vector<uint32_t> c_indices;
+    // raw data for mesh processing, can be used to generate mesh resource
+    uint8_t* raw_data = nullptr;
+    // GPU resources
     CGPUBufferId vertex_buffer = nullptr;
     CGPUBufferId index_buffer = nullptr;
     skr::Vector<skr_vertex_buffer_view_t> vbvs;
     skr_index_buffer_view_t ibv;
     skr::Vector<skr::renderer::PrimitiveCommand> primitive_commands;
+
+public:
+    virtual void init() SKR_NOEXCEPT = 0;    // init instance, allocate CPU resources
+    virtual void destroy() SKR_NOEXCEPT = 0; // destroy all CPU and GPU resources
+    // void generate_mesh_resource(skr::RendererDevice* render_device, skr_render_mesh_id render_mesh) SKR_NOEXCEPT; // generate render mesh, allocate GPU resources
+    void generate_render_mesh(skr::RendererDevice* render_device, skr_render_mesh_id render_mesh) SKR_NOEXCEPT; // generate render mesh, allocate GPU resources
+};
+
+class SCENE_RENDERER_API TriangleMesh : public SimpleMesh
+{
+public:
+    virtual void init() SKR_NOEXCEPT override;
+    virtual void destroy() SKR_NOEXCEPT override;
+};
+
+class SCENE_RENDERER_API CubeMesh : public SimpleMesh
+{
+    float size = 1.0f;
+
+public:
+    virtual void init() SKR_NOEXCEPT override;
+    virtual void destroy() SKR_NOEXCEPT override;
+    void set_size(float new_size) { size = new_size; }
+    float get_size() const { return size; }
+};
+
+// a tiled grid 2D mesh
+class SCENE_RENDERER_API Grid2DMesh : public SimpleMesh
+{
+    int num_tiles_width = 2;
+    int num_tiles_height = 2;
+    float tile_size_width = 1.0f;
+    float tile_size_height = 1.0f;
+
+public:
+    virtual void init() SKR_NOEXCEPT override;
+    virtual void destroy() SKR_NOEXCEPT override;
+
+    // get and set methods for grid properties
+    int get_num_tiles_width() const { return num_tiles_width; }
+    int get_num_tiles_height() const { return num_tiles_height; }
+    float get_tile_size_width() const { return tile_size_width; }
+    float get_tile_size_height() const { return tile_size_height; }
+    void set_num_tiles_width(int width) { num_tiles_width = width; }
+    void set_num_tiles_height(int height) { num_tiles_height = height; }
+    void set_tile_size_width(float size) { tile_size_width = size; }
+    void set_tile_size_height(float size) { tile_size_height = size; }
 };
 
 } // namespace utils

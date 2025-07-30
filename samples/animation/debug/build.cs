@@ -12,6 +12,7 @@ public static class AnimDebug
             .AddCppFiles("src/*.cpp")
             .AddHLSLFiles("shaders/*.hlsl")
             .DXCOutputDirectory("resources/shaders/AnimDebug");
+        
     }
     
 }
