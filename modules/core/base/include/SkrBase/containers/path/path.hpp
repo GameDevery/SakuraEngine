@@ -63,6 +63,7 @@ public:
     
     // accessors
     uint8_t style() const { return _style; }
+    inline auto c_str() const { return _path.c_str(); }
     
     // operators
     Path& operator/=(const Path& p);

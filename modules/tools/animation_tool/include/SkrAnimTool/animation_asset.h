@@ -2,6 +2,7 @@
 #include "SkrRT/resource/resource_handle.h"
 #include "SkrToolCore/cook_system/importer.hpp"
 #include "SkrToolCore/cook_system/cooker.hpp"
+#include "SkrToolCore/cook_system/asset_meta.hpp"
 #ifndef __meta__
     #include "SkrAnimTool/animation_asset.generated.h" // IWYU pragma: export
 #endif
@@ -55,7 +56,7 @@ AnimOptimizationOverride
 };
 
 sreflect_struct(guid = "13873706-F7EE-4386-B7F0-B4E313864624" serde = @json)
-AnimAsset
+AnimAsset : public skd::asset::AssetMetadata
 {
     /*
         "additive" : false, //  Creates a delta animation that can be used for additive blending.

@@ -15,8 +15,8 @@ void* skd::asset::GltfMeshImporter::Import(skr::io::IRAMService* ioService, Cook
 {
     const auto assetMetaFile = context->GetAssetMetaFile();
     auto path = context->AddSourceFile(assetPath);
-    auto vfs = assetMetaFile->project->GetAssetVFS();
-    return ImportGLTFWithData(path.c_str(), ioService, vfs);
+    auto vfs = assetMetaFile->GetProject()->GetAssetVFS();
+    return ImportGLTFWithData(path.string().c_str(), ioService, vfs);
 }
 
 void skd::asset::GltfMeshImporter::Destroy(void* resource)
@@ -26,8 +26,8 @@ void skd::asset::GltfMeshImporter::Destroy(void* resource)
 
 bool skd::asset::MeshCooker::Cook(CookContext* ctx)
 {
-    const auto assetMetaFile = ctx->GetAssetMetaFile();
-    auto mesh_asset = assetMetaFile->GetAssetMetadata<MeshAsset>();
+    auto assetMetaFile = ctx->GetAssetMetaFile();
+    auto& mesh_asset = *assetMetaFile->GetMetadata<MeshAsset>();
     if (mesh_asset.vertexType == skr_guid_t{})
     {
         SKR_LOG_ERROR(u8"MeshCooker: VertexType is not specified for asset %s!", ctx->GetAssetPath().c_str());
@@ -45,9 +45,9 @@ bool skd::asset::MeshCooker::Cook(CookContext* ctx)
         mesh.materials.add(material);
     }
 
-    const auto importerType = ctx->GetImporterType();
+    const auto importer_type = ctx->GetImporterType();
     skr::Vector<skr::Vector<uint8_t>> blobs;
-    if (importerType == skr::type_id_of<GltfMeshImporter>())
+    if (importer_type == skr::type_id_of<GltfMeshImporter>())
     {
         auto importer = static_cast<GltfMeshImporter*>(ctx->GetImporter());
         auto gltf_data = ctx->Import<cgltf_data>();
@@ -154,11 +154,11 @@ bool skd::asset::MeshCooker::Cook(CookContext* ctx)
     // write bins using ResourceVFS
     for (size_t i = 0; i < blobs.size(); i++)
     {
-        auto filename = skr::format(u8"{}.buffer{}", assetMetaFile->guid, i);
+        auto filename = skr::format(u8"{}.buffer{}", assetMetaFile->GetGUID(), i);
         if (!ctx->SaveExtra(blobs[i], filename.c_str()))
         {
             SKR_LOG_FMT_ERROR(u8"[MeshCooker::Cook] failed to write buffer {} for resource {}!", 
-                i, assetMetaFile->guid);
+                i, assetMetaFile->GetGUID());
             return false;
         }
     }

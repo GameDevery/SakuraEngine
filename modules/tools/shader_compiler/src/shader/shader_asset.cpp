@@ -248,7 +248,7 @@ bool ShaderCooker::Cook(CookContext* ctx)
     skr_shader_option_sequence_t& options = resource.option_sequence;
     // initialize & serialize
     {
-        resource.root_guid = assetMetaFile->guid;
+        resource.root_guid = assetMetaFile->GetGUID();
         // add root variant, root variant has two entries: md5-stable-hash & 0
         {
             const auto root_hash = make_zeroed<SStableShaderHash>();
@@ -308,12 +308,12 @@ bool ShaderCooker::Cook(CookContext* ctx)
         auto jString = writer.Write();
         
         // write to file using ResourceVFS
-        auto jsonFilename = skr::format(u8"{}.json", assetMetaFile->guid);
+        auto jsonFilename = skr::format(u8"{}.json", assetMetaFile->GetGUID());
         skr::span<const uint8_t> jsonData{reinterpret_cast<const uint8_t*>(jString.c_str_raw()), jString.length_buffer()};
         if (!ctx->SaveExtra(jsonData, jsonFilename.c_str()))
         {
             SKR_LOG_FMT_ERROR(u8"[ShaderCooker::Cook] failed to write json file for resource {}!",
-                assetMetaFile->guid);
+                assetMetaFile->GetGUID());
             return false;
         }
     }

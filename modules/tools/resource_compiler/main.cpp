@@ -146,7 +146,7 @@ int compile_project(skd::SProject* project)
             SkrZoneScopedN("Cook");
             for (auto asset : assets)
             {
-                system.EnsureCooked(asset->guid);
+                system.EnsureCooked(asset->GetGUID());
             }
         });
     }

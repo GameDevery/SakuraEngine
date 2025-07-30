@@ -1,3 +1,4 @@
+#include "SkrOS/filesystem.hpp"
 #include "SkrBase/misc/make_zeroed.hpp"
 #include "SkrCore/module/module.hpp"
 #include "SkrCore/async/thread_job.hpp"
@@ -23,7 +24,7 @@ struct VirtualProject : skd::SProject
             "guid": "18db1369-ba32-4e91-aa52-b2ed1556f576",
             "type": "3b8ca511-33d1-4db4-b805-00eea6a8d5e1",
             "importer": {
-                "importerType": "D72E2056-3C12-402A-A8B8-148CB8EAB922",
+                "importer_type": "D72E2056-3C12-402A-A8B8-148CB8EAB922",
                 "assetPath": "D:/Code/SakuraEngine/samples/application/game/assets/sketchfab/loli/scene.gltf"
             },
             "vertexType": "C35BD99A-B0A8-4602-AFCC-6BBEACC90321"
@@ -166,7 +167,7 @@ void ModelViewerModule::CookAndLoadGLTF()
 {
     auto& System = *skd::asset::GetCookSystem();
     auto Asset = System.LoadAssetMeta(&project, u8"girl.gltf");
-    auto event = System.EnsureCooked(Asset->guid);
+    auto event = System.EnsureCooked(Asset->GetGUID());
     event.wait(true);
 }
 

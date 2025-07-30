@@ -63,11 +63,10 @@ struct CookContextImpl : public CookContext
     void _Destroy(void*) override;
 
     skr::RC<AssetMetaFile> metafile = nullptr;
-    skr::GUID importerType;
+    skr::GUID importer_type;
     uint32_t importerVersion = 0;
     uint32_t cookerVersion = 0;
 
-    skr::RC<Importer> importer = nullptr;
     skr::io::IRAMService* ioService = nullptr;
 
     // Job system wait counter
@@ -77,16 +76,16 @@ struct CookContextImpl : public CookContext
     skr::Vector<skr::GUID> runtimeDependencies;
     skr::Vector<URI> fileDependencies;
 
-    CookContextImpl(skr::RC<AssetMetaFile> metafile, skr::RC<Importer> importer, skr::GUID importerType)
-        : metafile(metafile), importer(importer), importerType(importerType)
+    CookContextImpl(skr::RC<AssetMetaFile> metafile, skr::GUID importer_type)
+        : metafile(metafile), importer_type(importer_type)
     {
         
     }
 };
 
-CookContext* CookContext::Create(skr::RC<AssetMetaFile> metafile, skr::RC<Importer> importer, skr::GUID importerType)
+CookContext* CookContext::Create(skr::RC<AssetMetaFile> metafile, skr::GUID importer_type)
 {
-    return SkrNew<CookContextImpl>(metafile, importer, importerType);
+    return SkrNew<CookContextImpl>(metafile, importer_type);
 }
 
 void CookContext::Destroy(CookContext* ctx)
@@ -96,23 +95,23 @@ void CookContext::Destroy(CookContext* ctx)
 
 void CookContextImpl::_Destroy(void* resource)
 {
-    if (!importer)
+    if (!metafile->GetImporter())
     {
-        SKR_LOG_ERROR(u8"[CookContext::Cook] importer failed to load, asset path path: %s", metafile->uri.c_str());
+        SKR_LOG_ERROR(u8"[CookContext::Cook] importer failed to load, asset path path: %s", metafile->GetURI().string().c_str());
     }
     //-----import raw data
-    importer->Destroy(resource);
-    SKR_LOG_INFO(u8"[CookContext::Cook] asset freed for asset: %s", metafile->uri.c_str());
+    metafile->GetImporter()->Destroy(resource);
+    SKR_LOG_INFO(u8"[CookContext::Cook] asset freed for asset: %s", metafile->GetURI().string().c_str());
 }
 
 void* CookContextImpl::_Import()
 {
     SkrZoneScoped;
     //-----load importer
-    if (importer != nullptr)
+    if (metafile->GetImporter() != nullptr)
     {
-        auto rawData = importer->Import(ioService, this);
-        SKR_LOG_INFO(u8"[CookContext::Cook] asset imported for asset: %s", metafile->uri.c_str());
+        auto rawData = metafile->GetImporter()->Import(ioService, this);
+        SKR_LOG_INFO(u8"[CookContext::Cook] asset imported for asset: %s", metafile->GetURI().string().c_str());
         return rawData;
     }
     return nullptr;
@@ -121,12 +120,12 @@ void* CookContextImpl::_Import()
 
 Importer* CookContextImpl::GetImporter() const
 {
-    return importer.get();
+    return metafile->GetImporter().get();
 }
 
 skr_guid_t CookContextImpl::GetImporterType() const
 {
-    return importerType;
+    return importer_type;
 }
 
 uint32_t CookContextImpl::GetImporterVersion() const
@@ -141,7 +140,7 @@ uint32_t CookContextImpl::GetCookerVersion() const
 
 skr::String CookContextImpl::GetAssetPath() const
 {
-    return metafile->uri.c_str();
+    return metafile->GetURI().string();
 }
 
 URI CookContextImpl::AddSourceFile(const URI& inPath)
@@ -151,7 +150,7 @@ URI CookContextImpl::AddSourceFile(const URI& inPath)
         fileDependencies.add(inPath);
     
     // Construct the full path by combining the asset's parent directory with the input path
-    skr::Path uri_path{metafile->uri};
+    skr::Path uri_path{metafile->GetURI()};
     auto parent_dir = uri_path.parent_directory();
     auto full_path = parent_dir / inPath;
     
@@ -160,13 +159,13 @@ URI CookContextImpl::AddSourceFile(const URI& inPath)
 
 URI CookContextImpl::AddSourceFileAndLoad(skr::io::IRAMService* ioService, const URI& path, skr::BlobId& destination)
 {
-    auto outPath = AddSourceFile(path.c_str());
+    auto outPath = AddSourceFile(path.string());
     const auto assetMetaFile = GetAssetMetaFile();
     // load file
     skr::task::event_t counter;
     auto rq = ioService->open_request();
-    rq->set_vfs(assetMetaFile->project->GetAssetVFS());
-    rq->set_path(outPath.c_str());
+    rq->set_vfs(assetMetaFile->GetProject()->GetAssetVFS());
+    rq->set_path(outPath.string().c_str());
     rq->add_block({}); // read all
     rq->add_callback(SKR_IO_STAGE_COMPLETED, +[](skr_io_future_t* future, skr_io_request_t* request, void* data) noexcept {
         SkrZoneScopedN("SignalCounter");

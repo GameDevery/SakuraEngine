@@ -4,39 +4,14 @@
 #include "SkrCore/platform/vfs.h"
 #include "SkrContainers/vector.hpp"
 #include "SkrRT/resource/resource_header.hpp"
+#include "SkrToolCore/cook_system/importer.hpp"
 #include "SkrToolCore/cook_system/cooker.hpp"
-#include "SkrToolCore/project/project.hpp"
+#include "SkrToolCore/cook_system/asset_meta.hpp"
 
 SKR_DECLARE_TYPE_ID_FWD(skr::io, IRAMService, skr_io_ram_service);
 
 namespace skd::asset
 {
-using URI = skr::String;
-struct AssetMetaFile
-{
-    SKR_RC_IMPL();
-public:
-    AssetMetaFile(skr::StringView uri, skr::String&& meta, 
-                  const skr::GUID& guid, const skr::GUID& type, const skr::GUID& cooker);
-
-    template <class T>
-    T GetAssetMetadata()
-    {
-        // TODO: now it parses twice, add cursor to reader to avoid this
-        skr::archive::JsonReader reader(meta.view());
-        T settings;
-        skr::json_read(&reader, settings);
-        return settings;
-    }
-
-    const SProject* project = nullptr;
-    const skr::GUID guid;
-    const skr::GUID type;
-    const skr::GUID cooker;
-    const URI uri;
-    const skr::String meta;
-};
-
 struct TOOL_CORE_API CookContext
 {
     friend struct CookSystem;
@@ -80,15 +55,15 @@ public:
     {
         auto record = GetAssetMetaFile();
         //------save resource to disk
-        auto resource_vfs = record->project->GetResourceVFS();
-        auto filename = skr::format(u8"{}.bin", record->guid);
+        auto resource_vfs = record->GetProject()->GetResourceVFS();
+        auto filename = skr::format(u8"{}.bin", record->GetGUID());
         auto file = skr_vfs_fopen(resource_vfs, filename.u8_str(),
                                   SKR_FM_WRITE_BINARY, SKR_FILE_CREATION_ALWAYS_NEW);
         if (!file)
         {
             SKR_LOG_FMT_ERROR(u8"[ConfigCooker::Cook] failed to write cooked file for resource {}! path: {}",
-                record->guid,
-                (const char*)record->uri.c_str());
+                record->GetGUID(),
+                record->GetURI().string());
             return false;
         }
         SKR_DEFER({ skr_vfs_fclose(file); });
@@ -99,16 +74,16 @@ public:
         if (!skr::bin_write(&archive, resource))
         {
             SKR_LOG_FMT_ERROR(u8"[ConfigCooker::Cook] failed to serialize resource {}! path: {}",
-                record->guid,
-                (const char*)record->uri.c_str());
+                record->GetGUID(),
+                record->GetURI().string());
             return false;
         }
         auto write_size = skr_vfs_fwrite(file, buffer.data(), 0, buffer.size());
         if (write_size != buffer.size())
         {
             SKR_LOG_FMT_ERROR(u8"[ConfigCooker::Cook] failed to write cooked file for resource {}! path: {}",
-                record->guid,
-                (const char*)record->uri.c_str());
+                record->GetGUID(),
+                record->GetURI().string());
             return false;
         }
         return true;
@@ -118,7 +93,7 @@ public:
     {
         auto record = GetAssetMetaFile();
         //------save extra file to disk
-        auto resource_vfs = record->project->GetResourceVFS();
+        auto resource_vfs = record->GetProject()->GetResourceVFS();
         auto file = skr_vfs_fopen(resource_vfs, filename,
                                   SKR_FM_WRITE_BINARY, SKR_FILE_CREATION_ALWAYS_NEW);
         if (!file)
@@ -138,7 +113,7 @@ public:
     }
 
 protected:
-    static CookContext* Create(skr::RC<AssetMetaFile>, skr::RC<Importer> importer, skr::GUID importerType);
+    static CookContext* Create(skr::RC<AssetMetaFile>, skr::GUID importer_type);
     static void Destroy(CookContext* ctx);
 
     virtual void SetCounter(skr::task::event_t&) = 0;
@@ -153,8 +128,8 @@ protected:
     {
         auto record = GetAssetMetaFile();
         SResourceHeader header;
-        header.guid = record->guid;
-        header.type = record->type;
+        header.guid = record->GetGUID();
+        header.type = record->GetResourceType();
         header.version = cooker->Version();
         const auto runtime_deps = GetRuntimeDependencies();
         header.dependencies.append(runtime_deps.data(), runtime_deps.size());
@@ -171,8 +146,8 @@ public:
     virtual void Initialize() {}
     virtual void Shutdown() {}
 
-    virtual skr::task::event_t AddCookTask(skr_guid_t resource) = 0;
-    virtual skr::task::event_t EnsureCooked(skr_guid_t resource) = 0;
+    virtual skr::task::event_t AddCookTask(skr_guid_t asset) = 0;
+    virtual skr::task::event_t EnsureCooked(skr_guid_t asset) = 0;
     virtual void WaitForAll() = 0;
     virtual bool AllCompleted() const = 0;
 

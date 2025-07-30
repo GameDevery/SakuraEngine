@@ -1,11 +1,7 @@
 #pragma once
-#include "SkrRT/config.h"
 #include "SkrBase/config.h"
-#include "SkrRT/io/ram_io.hpp"
 #include "SkrRenderer/resources/mesh_resource.h"
-#include <SkrContainers/string.hpp>
-#include <SkrContainers/span.hpp>
-#include <SkrContainers/vector.hpp>
+#include "SkrToolCore/cook_system/asset_meta.hpp"
 #ifndef __meta__
     #include "SkrMeshCore/mesh_processing.generated.h" // IWYU pragma: export
 #endif
@@ -14,7 +10,7 @@ namespace skd::asset
 {
 sreflect_struct(
     guid = "9A2C9CBF-517D-4197-BDE3-E40D85D88320" serde = @json)
-MeshAsset
+MeshAsset : public skd::asset::AssetMetadata
 {
     skr_guid_t vertexType;
     skr::Vector<skr_guid_t> materials;

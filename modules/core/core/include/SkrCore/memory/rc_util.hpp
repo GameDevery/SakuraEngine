@@ -1,10 +1,8 @@
 #pragma once
+#include <SkrBase/meta.h>
+#include <SkrBase/types/expected.hpp>
 #include <SkrBase/atomic/atomic_mutex.hpp>
 #include <SkrCore/memory/memory.h>
-#include <SkrBase/config.h>
-#include <atomic>
-#include <SkrBase/types/expected.hpp>
-#include <concepts>
 
 namespace skr
 {
@@ -314,7 +312,9 @@ inline void rc_release_with_delete(T* p)
 // impl macros
 #define SKR_RC_IMPL(__SUFFIX)                                                      \
 private:                                                                           \
+    sattr(serde = @disable)                                                        \
     mutable ::std::atomic<::skr::RCCounterType> zz_skr_rc = 0;                     \
+    sattr(serde = @disable)                                                        \
     mutable ::std::atomic<::skr::RCWeakRefCounter*> zz_skr_weak_counter = nullptr; \
                                                                                    \
 public:                                                                            \
