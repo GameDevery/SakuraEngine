@@ -91,17 +91,12 @@ struct SceneSampleMeshModule : public skr::IDynamicModule
     virtual int main_module_exec(int argc, char8_t** argv) override;
     virtual void on_unload() override;
 
-    void installResourceFactories();
-    void uninstallResourceFactories();
-
     skr::task::scheduler_t scheduler;
     skr::ecs::World world{ scheduler };
     skr_vfs_t* resource_vfs = nullptr;
     skr::io::IRAMService* ram_service = nullptr;
     skr_io_vram_service_t* vram_service = nullptr;
-
     skr::JobQueue* io_job_queue = nullptr;
-    skr::renderer::MeshFactory* mesh_factory = nullptr;
     SRenderDeviceId render_device = nullptr;
 
     skr::UPtr<skr::ImGuiApp> imgui_app = nullptr;
@@ -109,6 +104,9 @@ struct SceneSampleMeshModule : public skr::IDynamicModule
 
     skr::String gltf_path = u8"";
     bool use_gltf = false;
+
+    // Currently we do not use this, but it can be useful for future extensions
+    skr::renderer::MeshFactory* mesh_factory = nullptr;
 };
 
 IMPLEMENT_DYNAMIC_MODULE(SceneSampleMeshModule, SceneSample_Mesh);
@@ -150,10 +148,10 @@ void SceneSampleMeshModule::on_load(int argc, char8_t** argv)
         SKR_LOG_INFO(u8"use gltf: %s", use_gltf ? u8"true" : u8"false");
     }
 
-    render_device = SkrRendererModule::Get()->get_render_device();
     scheduler.initialize({});
     scheduler.bind();
     world.initialize();
+    render_device = SkrRendererModule::Get()->get_render_device();
 
     auto jobQueueDesc = make_zeroed<skr::JobQueueDesc>();
     jobQueueDesc.thread_count = 2;
@@ -186,15 +184,11 @@ void SceneSampleMeshModule::on_load(int argc, char8_t** argv)
     vram_service->run();
 
     scene_renderer = skr::SceneRenderer::Create();
-    render_device = SkrRendererModule::Get()->get_render_device();
     scene_renderer->initialize(render_device, &world, resource_vfs);
-
-    // installResourceFactories();
 }
 
 void SceneSampleMeshModule::on_unload()
 {
-    uninstallResourceFactories();
     scene_renderer->finalize(SkrRendererModule::Get()->get_render_device());
     skr::SceneRenderer::Destroy(scene_renderer);
     // stop all ram_service
@@ -204,14 +198,6 @@ void SceneSampleMeshModule::on_unload()
     world.finalize();
     scheduler.unbind();
     SKR_LOG_INFO(u8"Scene Sample Mesh Module Unloaded");
-}
-
-void SceneSampleMeshModule::installResourceFactories()
-{
-}
-
-void SceneSampleMeshModule::uninstallResourceFactories()
-{
 }
 
 int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
@@ -311,7 +297,6 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
 
     // it seems buffer1 is not used in this sample, so we can skip it
 
-    auto render_device = SkrRendererModule::Get()->get_render_device();
     temp::Camera camera;
     scene_renderer->temp_set_camera(&camera);
 
@@ -319,10 +304,12 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     auto gfx_queue = render_device->get_gfx_queue();
 
     // transform mesh_buffer_t into CGPUBufferId
-    skr_render_mesh_id render_mesh = nullptr;
-    utils::DummyScene dummy_scene;
-
+    skr_render_mesh_id render_mesh = mesh_resource.render_mesh = SkrNew<skr_render_mesh_t>();
+    // utils::TriangleMesh dummy_mesh;
+    // utils::CubeMesh dummy_mesh;
+    utils::Grid2DMesh dummy_mesh;
     auto resourceRoot = (skr::fs::current_directory() / u8"../resources");
+
     if (use_gltf)
     {
         // save buffer0 to binPath
@@ -336,7 +323,7 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
         // auto buffer_file = std::fopen((const char*)binPath.c_str(), "wb");
         auto f = (resourceRoot / binPath.c_str()).string();
         // if f exists, don't overwrite it
-        if (skr::fs::File::exists(skr::Path{f}))
+        if (skr::fs::File::exists(skr::Path{ f }))
         {
             SKR_LOG_INFO(u8"File %s already exists, skipping write.", f.c_str());
         }
@@ -350,10 +337,16 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
             }
             SKR_LOG_INFO(u8"Writing %d bytes to %s", thisBin.byte_length, f.c_str());
             std::fwrite(buffer0.data(), 1, buffer0.size(), buffer_file);
-            std::fclose(buffer_file);
-        }
+            // flush file
+            std::fflush(buffer_file);
+            int res = std::fclose(buffer_file);
 
-        render_mesh = mesh_resource.render_mesh = SkrNew<skr_render_mesh_t>();
+            if (res != 0)
+            {
+                SKR_LOG_ERROR(u8"Failed to close file: %s", f.c_str());
+                return 1;
+            }
+        }
 
         CGPUResourceTypes flags = CGPU_RESOURCE_TYPE_NONE;
         flags |= thisBin.used_with_index ? CGPU_RESOURCE_TYPE_INDEX_BUFFER : 0;
@@ -386,7 +379,9 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     }
     else
     {
-        dummy_scene.init(render_device);
+
+        dummy_mesh.init();
+        dummy_mesh.generate_render_mesh(render_device, render_mesh);
     }
 
     {
@@ -481,20 +476,10 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
             // update viewport
             SkrZoneScopedN("Viewport Render");
             imgui_app->acquire_frames();
-            // scene_renderer->produce_drawcalls(world.get_storage(), render_graph);
             auto main_window = imgui_app->main_window();
             const auto size = main_window->get_physical_size();
             camera.aspect = (float)size.x / (float)size.y;
-
-            // scene_renderer->render_mesh(render_mesh, render_graph);
-            if (use_gltf)
-            {
-                scene_renderer->draw_primitives(render_graph, render_mesh->primitive_commands);
-            }
-            else
-            {
-                scene_renderer->draw_primitives(render_graph, dummy_scene.get_primitive_commands());
-            }
+            scene_renderer->draw_primitives(render_graph, render_mesh->primitive_commands);
         };
         {
             SkrZoneScopedN("ImGuiRender");
@@ -513,12 +498,15 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     cgpu_wait_queue_idle(gfx_queue);
     imgui_app->shutdown();
     skr::input::Input::Finalize();
+    skr_render_mesh_free(render_mesh);
     if (use_gltf)
     {
         mesh_resource.bins.clear();
-        skr_render_mesh_free(render_mesh);
         mesh_resource.render_mesh = nullptr;
     }
-
+    else
+    {
+        dummy_mesh.destroy();
+    }
     return 0;
 }

@@ -15,11 +15,24 @@ namespace animd
 LightingPushConstants Renderer::lighting_data = { 0, 0 };
 LightingCSPushConstants Renderer::lighting_cs_data = { { 0, 0 }, { 0, 0 } };
 
+Renderer::Renderer(skr::RendererDevice* render_device)
+    : _render_device(render_device)
+{
+    // Initialize lighting data
+    lighting_data.bFlipUVX = 0;
+    lighting_data.bFlipUVY = 0;
+
+    // Initialize lighting CS data
+    lighting_cs_data.viewportSize = { 1280.0f, 720.0f };
+    lighting_cs_data.viewportOrigin = { 0.0f, 0.0f };
+}
+
 void Renderer::create_skeleton(ozz::animation::Skeleton& skeleton)
 {
     _instance_count = skeleton.num_joints();
     _instance_data.resize(_instance_count, skr::float4x4::identity());
 }
+
 void Renderer::update_anim(ozz::animation::Skeleton& skeleton, ozz::span<ozz::math::Float4x4> prealloc_models_)
 {
     const auto t0 = skr::TransformF(skr::QuatF(skr::RotatorF()), skr::float3(0.0), skr::float3(0.001f));

@@ -34,10 +34,14 @@ public static class SceneSamples
                 "assets/*.gltf",
                 "assets/*.bin"
             );
-
+        Engine.Program("SceneSample_SkelMesh")
+            .AddCppFiles("skelmesh/*.cpp")
+            .Depend(Visibility.Private, "SceneRenderer")
+            .Depend(Visibility.Private, "SkrGLTFTool");
         Engine.Program("SceneSample_Project")
             .AddCppFiles("project/*.cpp")
-            .Depend(Visibility.Private, "SkrScene")
-            .Depend(Visibility.Private, "SkrSystem");
+            .Depend(Visibility.Private, "SceneRenderer")
+            .Depend(Visibility.Private, "SkrGLTFTool");
+
     }
 }
