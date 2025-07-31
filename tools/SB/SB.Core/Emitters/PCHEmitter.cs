@@ -63,7 +63,7 @@ namespace SB
                         }
                         SharedPCHArgs["Defines"] = Defines;
                     }
-                    SharedPCHArgs.Merge(Target.InterfaceArguments);
+                    SharedPCHArgs.Merge(Target.InterfaceArguments, false);
                     PCHArguments = SharedPCHArgs;
                 }
                 // Execute

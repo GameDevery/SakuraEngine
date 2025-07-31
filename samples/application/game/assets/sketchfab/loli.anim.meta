@@ -7,5 +7,7 @@
         "samplingRate" : 0,
         "animationName" : "CINEMA_4D___"
     },
-    "skeletonAsset" : "d1acf969-91d6-4233-8d2b-33fca7c98a1c"
+    "metadata": {
+        "skeletonAsset" : "d1acf969-91d6-4233-8d2b-33fca7c98a1c"
+    }
 }

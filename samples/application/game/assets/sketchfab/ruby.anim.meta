@@ -7,5 +7,7 @@
         "samplingRate" : 0,
         "animationName" : "Take 001"
     },
-    "skeletonAsset" : "23F44FD5-6F87-4E6D-A232-1A99D015E21A"
+    "metadata": {
+        "skeletonAsset" : "23F44FD5-6F87-4E6D-A232-1A99D015E21A"
+    }
 }

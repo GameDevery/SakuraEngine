@@ -77,6 +77,11 @@ void RegisterCookerToSystem(CookSystem* system, bool isDefault, skr::GUID cooker
     system->RegisterCooker(isDefault, cooker, type, instance);
 }
 
+AssetMetadata::AssetMetadata()
+{
+
+}
+
 AssetMetadata::~AssetMetadata()
 {
 

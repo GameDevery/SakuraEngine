@@ -258,13 +258,11 @@ void ModelViewerModule::CookAndLoadGLTF()
     const bool NeedImport = !project.ExistImportedAsset(u8"girl.gltf");
     if (NeedImport) // Import from disk!
     {
-        using namespace skr::literals;
         // source file is a GLTF so we create a gltf importer, if it is a fbx, then just use a fbx importer
-        auto importer = skr::RC<skd::asset::GltfMeshImporter>::New();
-        importer->importer_type = skr::type_id_of<skd::asset::GltfMeshImporter>();
+        auto importer = skd::asset::GltfMeshImporter::Create<skd::asset::GltfMeshImporter>();
 
         // static mesh has some additional meta data to append
-        auto metadata = skr::RC<skd::asset::MeshAsset>::New();
+        auto metadata = skd::asset::MeshAsset::Create<skd::asset::MeshAsset>();
         metadata->vertexType = u8"C35BD99A-B0A8-4602-AFCC-6BBEACC90321"_guid;
 
         auto asset = skr::RC<skd::asset::AssetMetaFile>::New(

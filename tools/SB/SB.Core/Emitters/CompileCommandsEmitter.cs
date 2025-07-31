@@ -72,13 +72,13 @@ namespace SB
             File.WriteAllText(Path, "[" + String.Join(",", CompileCommands) + "]");
         }
 
-        private void GenerateForFile(Target Target, CFamily Language, string SourceFile, FileOptions? Options)
+        private void GenerateForFile(Target Target, CFamily Language, string SourceFile, FileOptions? FileOptions)
         {
             var SourceDependencies = Path.Combine(Target.GetStorePath(BS.DepsStore), BS.GetUniqueTempFileName(SourceFile, Target.Name + this.Name, "source.deps.json"));
             var ObjectFile = GetObjectFilePath(Target, SourceFile);
             var CLDriver = Toolchain.Compiler.CreateArgumentDriver(Language, false)
                 .AddArguments(Target.Arguments)
-                .MergeArguments(Options?.Arguments)
+                .MergeArguments(FileOptions?.Arguments, true)
                 .AddArgument("Source", SourceFile)
                 .AddArgument("Object", ObjectFile)
                 .AddArgument("SourceDependencies", SourceDependencies);

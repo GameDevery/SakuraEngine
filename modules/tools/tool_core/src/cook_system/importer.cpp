@@ -5,9 +5,14 @@
 
 namespace skd::asset
 {
-struct ImporterFactoryImpl : public ImporterFactory
+Importer::Importer()
 {
-    skr::RC<Importer> LoadImporter(skr::archive::JsonReader* object) override;
+    
+}
+
+struct ImporterRegistryImpl : public ImporterRegistry
+{
+    skr::RC<Importer> LoadImporter(skr::archive::JsonReader* json) override;
     void StoreImporter(skr::archive::JsonWriter* writer, skr::RC<Importer> importer) override;
     uint32_t GetImporterVersion(skr::GUID type) override;
     void RegisterImporter(skr::GUID type, ImporterTypeInfo info) override;
@@ -15,42 +20,44 @@ struct ImporterFactoryImpl : public ImporterFactory
     skr::FlatHashMap<skr::GUID, ImporterTypeInfo, skr::Hash<skr::GUID>> importer_types;
 };
 
-ImporterFactory* GetImporterFactory()
+ImporterRegistry* GetImporterRegistry()
 {
-    static ImporterFactoryImpl registry;
+    static ImporterRegistryImpl registry;
     return &registry;
 }
 
-skr::RC<Importer> ImporterFactoryImpl::LoadImporter(skr::archive::JsonReader* object)
+skr::RC<Importer> ImporterRegistryImpl::LoadImporter(skr::archive::JsonReader* json)
 {
     skr::GUID type;
-    object->StartObject();
+    json->StartObject();
     {
-        object->Key(u8"importer_type");
-        skr::json_read(object, type);
+        json->Key(u8"importer_type");
+        skr::json_read(json, type);
     }
-    object->EndObject();
+    json->EndObject();
 
     auto iter = importer_types.find(type);
     if (iter != importer_types.end())
     {
-        object->Key(u8"importer");
-        return iter->second.Load(object);
+        auto importer = iter->second.Create();
+        json->Key(u8"importer");
+        if (iter->second.Load(json, importer))
+            return importer;
     }
     return nullptr;
 }
 
-void ImporterFactoryImpl::StoreImporter(skr::archive::JsonWriter* writer, skr::RC<Importer> importer) 
+void ImporterRegistryImpl::StoreImporter(skr::archive::JsonWriter* writer, skr::RC<Importer> importer) 
 {
     auto iter = importer_types.find(importer->GetType());
     if (iter != importer_types.end())
     {
         writer->Key(u8"importer");
-        return iter->second.Store(writer, importer);
+        iter->second.Store(writer, importer);
     }
 }
 
-uint32_t ImporterFactoryImpl::GetImporterVersion(skr::GUID type)
+uint32_t ImporterRegistryImpl::GetImporterVersion(skr::GUID type)
 {
     auto iter = importer_types.find(type);
     if (iter != importer_types.end())
@@ -58,7 +65,7 @@ uint32_t ImporterFactoryImpl::GetImporterVersion(skr::GUID type)
     return UINT32_MAX;
 }
 
-void ImporterFactoryImpl::RegisterImporter(skr::GUID type, ImporterTypeInfo info)
+void ImporterRegistryImpl::RegisterImporter(skr::GUID type, ImporterTypeInfo info)
 {
     importer_types.insert({ type, info });
 }

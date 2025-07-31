@@ -18,7 +18,7 @@
 #include <SkrRT/resource/local_resource_registry.hpp>
 
 #include "SkrRenderGraph/frontend/render_graph.hpp"
-#include "SkrImGui/imgui_backend.hpp"
+#include "SkrImGui/imgui_app.hpp"
 #include "SkrRenderer/skr_renderer.h"
 #include "SkrRenderer/resources/mesh_resource.h"
 #include "SkrRenderer/render_mesh.h"

@@ -69,9 +69,9 @@ void skr_render_mesh_initialize(skr_render_mesh_id render_mesh, skr_mesh_resourc
     if (UseRayTracing && (mesh_resource->primitives.size() > 0))
     {
         skr::InlineVector<CGPUAccelerationStructureGeometryDesc, 4> geoms;
-        for (auto primitve : mesh_resource->primitives)
+        for (auto primitive : mesh_resource->primitives)
         {
-            auto pos_vb = primitve.vertex_buffers.find_if(
+            auto pos_vb = primitive.vertex_buffers.find_if(
                 [](auto prim){ return prim.attribute == SKR_VERT_ATTRIB_POSITION; }
             ).ptr();
             if (!pos_vb) continue;
@@ -79,11 +79,13 @@ void skr_render_mesh_initialize(skr_render_mesh_id render_mesh, skr_mesh_resourc
             CGPUAccelerationStructureGeometryDesc geom = {};
             geom.vertex_buffer = render_mesh->buffers[pos_vb->buffer_index];
             geom.vertex_offset = pos_vb->offset;
+            geom.vertex_count = primitive.vertex_count;
             geom.vertex_stride = pos_vb->stride;
-            geom.index_buffer = render_mesh->buffers[primitve.index_buffer.buffer_index];
-            geom.index_offset = primitve.index_buffer.index_offset;
-            geom.index_stride = primitve.index_buffer.stride;
             geom.vertex_format = CGPU_FORMAT_R32G32B32_SFLOAT;
+            geom.index_buffer = render_mesh->buffers[primitive.index_buffer.buffer_index];
+            geom.index_offset = primitive.index_buffer.index_offset;
+            geom.index_count = primitive.vertex_count / 3;
+            geom.index_stride = primitive.index_buffer.stride;
             geoms.add(geom);
         }
 
