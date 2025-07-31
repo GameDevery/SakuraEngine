@@ -62,11 +62,9 @@ AttributeMacros:
   - "SUGOI_UNLIKELY"
   - "SUGOI_FORCEINLINE"
   - "FORCEINLINE"
-  - "sattr"
   - "SKR_ALIGNAS"
 
 WhitespaceSensitiveMacros:
-  - "sattr"
   - "spush_attr"
   - "spop_attr"
   - "sreflect_enum"
@@ -77,6 +75,7 @@ WhitespaceSensitiveMacros:
 
 # 告诉 clang-format 这些宏是语句宏
 StatementMacros:
+  - "sattr"
   - "sreflect_struct"
   - "sreflect_enum"
   - "sreflect_enum_class"

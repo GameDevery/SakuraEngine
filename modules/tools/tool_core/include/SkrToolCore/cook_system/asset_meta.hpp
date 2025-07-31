@@ -12,7 +12,34 @@ namespace skd::asset
 sreflect_struct(guid = "8e78354d-acf9-40e2-8175-1ad40654360d" serde = @json)
 TOOL_CORE_API AssetMetadata
 {
+public:
+    using LoadFromJson = bool (*)(skr::archive::JsonReader* reader, skr::RC<AssetMetadata> object);
+    using StoreToJson = bool (*)(skr::archive::JsonWriter* writer, skr::RC<AssetMetadata> object);
     virtual ~AssetMetadata();
+
+    template <typename T>
+    inline static skr::RC<T> Create()
+    {
+        auto m = skr::RC<T>::New();
+        m->Load = +[](skr::archive::JsonReader* reader, skr::RC<AssetMetadata> object) {
+            auto derived = object.cast_static<T>();
+            return skr::json_read<T>(reader, *derived);
+        };
+        m->Store = +[](skr::archive::JsonWriter* writer, skr::RC<AssetMetadata> object) {
+            auto derived = object.cast_static<T>();
+            return skr::json_write<T>(writer, *derived);
+        };
+        return m;
+    }
+
+protected:
+    sattr(serde = @disable)
+    LoadFromJson Load;
+
+    sattr(serde = @disable)
+    StoreToJson Store;
+
+    AssetMetadata();
     SKR_RC_IMPL();
 };
 
@@ -69,7 +96,7 @@ inline skr::RC<T> AssetMetaFile::GetMetadata()
     }
     else if (!meta_content.is_empty())
     {
-        auto METADATA = skr::RC<T>::New();
+        auto METADATA = AssetMetadata::Create<T>();
         skr::archive::JsonReader reader(meta_content.view());
         skr::json_read(&reader, *METADATA);
         metadata = METADATA;
@@ -126,7 +153,7 @@ struct JsonSerde<skd::asset::AssetMetaFile>
             skr::json_read(&reader, v.cooker);
         // construct importer
         if (Parse(reader, u8"importer", false))
-            v.importer = skd::asset::GetImporterFactory()->LoadImporter(&reader);
+            v.importer = skd::asset::GetImporterRegistry()->LoadImporter(&reader);
         return true;
     }
 
@@ -144,7 +171,7 @@ struct JsonSerde<skd::asset::AssetMetaFile>
         if (v.importer)
         {
             w->Key(u8"importer");
-            skd::asset::GetImporterFactory()->StoreImporter(w, v.importer);
+            skd::asset::GetImporterRegistry()->StoreImporter(w, v.importer);
         }
         return true;
     }
