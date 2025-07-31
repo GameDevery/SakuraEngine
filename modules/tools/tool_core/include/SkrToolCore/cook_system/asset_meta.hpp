@@ -39,6 +39,7 @@ protected:
     sattr(serde = @disable)
     StoreToJson Store;
 
+    friend struct JsonSerde<skd::asset::AssetMetaFile>;
     AssetMetadata();
     SKR_RC_IMPL();
 };
@@ -98,7 +99,10 @@ inline skr::RC<T> AssetMetaFile::GetMetadata()
     {
         auto METADATA = AssetMetadata::Create<T>();
         skr::archive::JsonReader reader(meta_content.view());
+        reader.StartObject();
+        reader.Key(u8"metadata");
         skr::json_read(&reader, *METADATA);
+        reader.EndObject();
         metadata = METADATA;
         return METADATA;
     }
@@ -173,6 +177,13 @@ struct JsonSerde<skd::asset::AssetMetaFile>
             w->Key(u8"importer");
             skd::asset::GetImporterRegistry()->StoreImporter(w, v.importer);
         }
+
+        if (v.metadata != nullptr)
+        {
+            w->Key(u8"metadata");
+            v.metadata->Store(w, v.metadata);
+        }
+
         return true;
     }
 };
