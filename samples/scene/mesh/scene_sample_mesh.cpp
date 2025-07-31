@@ -24,10 +24,16 @@
 #include "SkrRenderer/render_mesh.h"
 #include "SkrTask/fib_task.hpp"
 #include "SkrGLTFTool/mesh_processing.hpp"
+#include "SkrGLTFTool/mesh_asset.hpp"
+#include "SkrToolCore/project/project.hpp"
+#include "SkrToolCore/cook_system/cook_system.hpp"
 #include "scene_renderer.hpp"
 #include "helper.hpp"
 #include "cgltf/cgltf.h"
 #include <cstdio>
+
+using namespace skr::literals;
+const auto MeshAssetID = u8"01985f1f-8286-773f-8bcc-7d7451b0265d"_guid;
 
 namespace temp
 {
@@ -91,25 +97,103 @@ struct SceneSampleMeshModule : public skr::IDynamicModule
     virtual int main_module_exec(int argc, char8_t** argv) override;
     virtual void on_unload() override;
 
+    void InitializeReosurceSystem();
+    void InitializeAssetSystem();
+    void DestroyAssetSystem();
+    void DestroyResourceSystem();
+    void CookAndLoadGLTF();
+
     skr::task::scheduler_t scheduler;
     skr::ecs::World world{ scheduler };
     skr_vfs_t* resource_vfs = nullptr;
     skr::io::IRAMService* ram_service = nullptr;
     skr_io_vram_service_t* vram_service = nullptr;
-    skr::JobQueue* io_job_queue = nullptr;
+    skr::SP<skr::JobQueue> job_queue = nullptr;
     SRenderDeviceId render_device = nullptr;
 
     skr::UPtr<skr::ImGuiApp> imgui_app = nullptr;
     skr::SceneRenderer* scene_renderer = nullptr;
 
     skr::String gltf_path = u8"";
+    skr::resource::LocalResourceRegistry* registry = nullptr;
+    skr::renderer::MeshFactory* MeshFactory = nullptr;
     bool use_gltf = false;
+
+    skd::SProject project;
 
     // Currently we do not use this, but it can be useful for future extensions
     skr::renderer::MeshFactory* mesh_factory = nullptr;
 };
 
 IMPLEMENT_DYNAMIC_MODULE(SceneSampleMeshModule, SceneSample_Mesh);
+
+void SceneSampleMeshModule::InitializeAssetSystem()
+{
+    auto& system = *skd::asset::GetCookSystem();
+    system.Initialize();
+}
+
+void SceneSampleMeshModule::DestroyAssetSystem()
+{
+    auto& system = *skd::asset::GetCookSystem();
+    system.Shutdown();
+}
+
+void SceneSampleMeshModule::InitializeReosurceSystem()
+{
+    using namespace skr::literals;
+    auto resource_system = skr::resource::GetResourceSystem();
+    registry = SkrNew<skr::resource::LocalResourceRegistry>(project.GetResourceVFS());
+    resource_system->Initialize(registry, project.GetRamService());
+    const auto resource_root = project.GetResourceVFS()->mount_dir;
+    {
+        skr::String qn = u8"SceneSampleMesh-JobQueue";
+        auto job_queueDesc = make_zeroed<skr::JobQueueDesc>();
+        job_queueDesc.thread_count = 2;
+        job_queueDesc.priority = SKR_THREAD_NORMAL;
+        job_queueDesc.name = qn.u8_str();
+        job_queue = skr::SP<skr::JobQueue>::New(job_queueDesc);
+
+        auto ioServiceDesc = make_zeroed<skr_ram_io_service_desc_t>();
+        ioServiceDesc.name = u8"SceneSampleMesh-RAMIOService";
+        ioServiceDesc.sleep_time = 1000 / 60;
+        ram_service = skr_io_ram_service_t::create(&ioServiceDesc);
+        ram_service->run();
+
+        auto vramServiceDesc = make_zeroed<skr_vram_io_service_desc_t>();
+        vramServiceDesc.name = u8"SceneSampleMesh-VRAMIOService";
+        vramServiceDesc.awake_at_request = true;
+        vramServiceDesc.ram_service = ram_service;
+        vramServiceDesc.callback_job_queue = job_queue.get();
+        vramServiceDesc.use_dstorage = true;
+        vramServiceDesc.gpu_device = render_device->get_cgpu_device();
+        vram_service = skr_io_vram_service_t::create(&vramServiceDesc);
+        vram_service->run();
+    }
+    // mesh factory
+    {
+        skr::renderer::MeshFactory::Root factoryRoot = {};
+        factoryRoot.dstorage_root = resource_root;
+        factoryRoot.vfs = project.GetResourceVFS();
+        factoryRoot.ram_service = ram_service;
+        factoryRoot.vram_service = vram_service;
+        factoryRoot.render_device = render_device;
+        MeshFactory = skr::renderer::MeshFactory::Create(factoryRoot);
+        resource_system->RegisterFactory(MeshFactory);
+    }
+}
+
+void SceneSampleMeshModule::DestroyResourceSystem()
+{
+    auto resource_system = skr::resource::GetResourceSystem();
+    resource_system->Shutdown();
+
+    skr::renderer::MeshFactory::Destroy(MeshFactory);
+
+    skr_io_ram_service_t::destroy(ram_service);
+    skr_io_vram_service_t::destroy(vram_service);
+    job_queue.reset();
+}
 
 void SceneSampleMeshModule::on_load(int argc, char8_t** argv)
 {
@@ -150,39 +234,30 @@ void SceneSampleMeshModule::on_load(int argc, char8_t** argv)
 
     scheduler.initialize({});
     scheduler.bind();
+
     world.initialize();
     render_device = SkrRendererModule::Get()->get_render_device();
 
-    auto jobQueueDesc = make_zeroed<skr::JobQueueDesc>();
-    jobQueueDesc.thread_count = 2;
-    jobQueueDesc.priority = SKR_THREAD_ABOVE_NORMAL;
-    jobQueueDesc.name = u8"SceneSample-RAMIOJobQueue";
-    io_job_queue = SkrNew<skr::JobQueue>(jobQueueDesc);
-
-    auto resourceRoot = (skr::fs::current_directory() / u8"../resources").string();
+    auto resourceRoot = (skr::fs::current_directory() / u8"../resources");
     skr_vfs_desc_t vfs_desc = {};
     vfs_desc.mount_type = SKR_MOUNT_TYPE_CONTENT;
     vfs_desc.override_mount_dir = resourceRoot.c_str();
     resource_vfs = skr_create_vfs(&vfs_desc);
 
-    auto ioServiceDesc = make_zeroed<skr_ram_io_service_desc_t>();
-    ioServiceDesc.name = u8"SceneSample-RAMIOService";
-    ioServiceDesc.sleep_time = 1000 / 60;
-    ioServiceDesc.io_job_queue = io_job_queue;
-    ioServiceDesc.callback_job_queue = io_job_queue;
-    ram_service = skr_io_ram_service_t::create(&ioServiceDesc);
-    ram_service->run();
+    auto projectRoot = skr::fs::current_directory() / u8"../resources/scene";
+    skd::SProjectConfig projectConfig = {
+        .assetDirectory = (projectRoot / u8"assets").string().c_str(),
+        .resourceDirectory = (projectRoot / u8"resources").string().c_str(),
+        .artifactsDirectory = (projectRoot / u8"artifacts").string().c_str()
+    };
+    skr::String projectName = u8"SceneSampleMesh";
+    skr::String rootPath = projectRoot.string().c_str();
+    project.OpenProject(u8"SceneSampleMesh", rootPath.c_str(), projectConfig);
 
-    auto vramServiceDesc = make_zeroed<skr_vram_io_service_desc_t>();
-    vramServiceDesc.name = u8"SceneSample-VRAMIOService";
-    vramServiceDesc.awake_at_request = true;
-    vramServiceDesc.ram_service = ram_service;
-    vramServiceDesc.callback_job_queue = io_job_queue;
-    vramServiceDesc.use_dstorage = true;
-    vramServiceDesc.gpu_device = render_device->get_cgpu_device();
-    vram_service = skr_io_vram_service_t::create(&vramServiceDesc);
-    vram_service->run();
-
+    {
+        InitializeReosurceSystem();
+        InitializeAssetSystem();
+    }
     scene_renderer = skr::SceneRenderer::Create();
     scene_renderer->initialize(render_device, &world, resource_vfs);
 }
@@ -192,12 +267,39 @@ void SceneSampleMeshModule::on_unload()
     scene_renderer->finalize(SkrRendererModule::Get()->get_render_device());
     skr::SceneRenderer::Destroy(scene_renderer);
     // stop all ram_service
-    skr_free_vfs(resource_vfs);
-    skr_io_ram_service_t::destroy(ram_service);
-    skr_io_vram_service_t::destroy(vram_service);
+    {
+        DestroyAssetSystem();
+        DestroyResourceSystem();
+    }
     world.finalize();
     scheduler.unbind();
     SKR_LOG_INFO(u8"Scene Sample Mesh Module Unloaded");
+}
+
+void SceneSampleMeshModule::CookAndLoadGLTF()
+{
+    auto& System = *skd::asset::GetCookSystem();
+
+    // source file is a GLTF so we create a gltf importer, if it is a fbx, then just use a fbx importer
+    auto importer = skd::asset::GltfMeshImporter::Create<skd::asset::GltfMeshImporter>();
+
+    // static mesh has some additional meta data to append
+    auto metadata = skd::asset::MeshAsset::Create<skd::asset::MeshAsset>();
+    metadata->vertexType = u8"C35BD99A-B0A8-4602-AFCC-6BBEACC90321"_guid;
+
+    auto asset = skr::RC<skd::asset::AssetMetaFile>::New(
+        u8"girl.gltf",                                  // virtual uri for this asset in the project
+        MeshAssetID,                                    // guid for this asset
+        skr::type_id_of<skr::renderer::MeshResource>(), // output resource is a mesh resource
+        skr::type_id_of<skd::asset::MeshCooker>()       // this cooker cooks the raw mesh data to mesh resource
+    );
+    // source file
+    importer->assetPath = u8"D:/ws/repos/SakuraEngine/samples/application/game/assets/sketchfab/loli/scene.gltf";
+    System.ImportAssetMeta(&project, asset, importer, metadata);
+    // save
+    System.SaveAssetMeta(&project, asset);
+    auto event = System.EnsureCooked(asset->GetGUID());
+    event.wait(true);
 }
 
 int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
@@ -305,6 +407,8 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
 
     // transform mesh_buffer_t into CGPUBufferId
     skr_render_mesh_id render_mesh = mesh_resource.render_mesh = SkrNew<skr_render_mesh_t>();
+    skr_render_mesh_id girl_render_mesh = SkrNew<skr_render_mesh_t>();
+
     // utils::TriangleMesh dummy_mesh;
     // utils::CubeMesh dummy_mesh;
     utils::Grid2DMesh dummy_mesh;
@@ -316,37 +420,40 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
         const auto& thisBin = mesh_resource.bins[0];
         skr::String binPath = u8"mesh_bin_1.bin";
         // set binPath according to the hash of the gltf file path
-        if (!gltf_path.is_empty())
-        {
-            binPath = skr::format(u8"{}.buffer{}", skr::MD5::Make(gltf_path.c_str(), gltf_path.size()), 0);
-        }
+        // if (!gltf_path.is_empty())
+        // {
+        //     binPath = skr::format(u8"{}.buffer{}", skr::MD5::Make(gltf_path.c_str(), gltf_path.size()), 0);
+        // }
         // auto buffer_file = std::fopen((const char*)binPath.c_str(), "wb");
-        auto f = (resourceRoot / binPath.c_str()).string();
-        // if f exists, don't overwrite it
-        if (skr::fs::File::exists(skr::Path{ f }))
+        // auto f = (resourceRoot / binPath.c_str()).string();
+        // if (skr::fs::File::exists(skr::Path{ f }))
+        // {
+        //     SKR_LOG_INFO(u8"File %s already exists, skipping write.", f.c_str());
+        // }
+        // else
+        // {
+        // auto buffer_file = std::fopen(f.c_str_raw(), "wb");
+        auto buffer_file = skr_vfs_fopen(resource_vfs, binPath.u8_str(), SKR_FM_WRITE_BINARY, SKR_FILE_CREATION_ALWAYS_NEW);
+        if (!buffer_file)
         {
-            SKR_LOG_INFO(u8"File %s already exists, skipping write.", f.c_str());
+            SKR_LOG_ERROR(u8"Failed to open file for writing: %s", binPath.c_str());
+            return 1;
         }
-        else
-        {
-            auto buffer_file = std::fopen(f.c_str_raw(), "wb");
-            if (!buffer_file)
-            {
-                SKR_LOG_ERROR(u8"Failed to open file for writing: %s", f.c_str());
-                return 1;
-            }
-            SKR_LOG_INFO(u8"Writing %d bytes to %s", thisBin.byte_length, f.c_str());
-            std::fwrite(buffer0.data(), 1, buffer0.size(), buffer_file);
-            // flush file
-            std::fflush(buffer_file);
-            int res = std::fclose(buffer_file);
+        SKR_LOG_INFO(u8"Writing %d bytes to %s", thisBin.byte_length, binPath.c_str());
+        // std::fwrite(buffer0.data(), 1, buffer0.size(), buffer_file);
+        SKR_DEFER({ skr_vfs_fclose(buffer_file); });
+        skr_vfs_fwrite(buffer_file, buffer0.data(), 0, buffer0.size());
 
-            if (res != 0)
-            {
-                SKR_LOG_ERROR(u8"Failed to close file: %s", f.c_str());
-                return 1;
-            }
-        }
+        // flush file
+        // std::fflush(buffer_file);
+        // int res = std::fclose(buffer_file);
+
+        // if (res != 0)
+        // {
+        //     SKR_LOG_ERROR(u8"Failed to close file: %s", f.c_str());
+        //     return 1;
+        // }
+        // }
 
         CGPUResourceTypes flags = CGPU_RESOURCE_TYPE_NONE;
         flags |= thisBin.used_with_index ? CGPU_RESOURCE_TYPE_INDEX_BUFFER : 0;
@@ -360,7 +467,6 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
         bdesc.prefer_on_device = true; // prefer on device, so we can use persistent map
         auto request = vram_service->open_buffer_request();
         request->set_vfs(resource_vfs);
-
         request->set_path(binPath.c_str());
         request->set_buffer(render_device->get_cgpu_device(), &bdesc);
         request->set_transfer_queue(render_device->get_cpy_queue());
@@ -411,12 +517,20 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
 
     skr::input::Input::Initialize();
 
+    skr::resource::AsyncResource<skr::renderer::MeshResource> girl_mesh_resource;
+    girl_mesh_resource = MeshAssetID;
+    auto resource_system = skr::resource::GetResourceSystem();
+
     while (!imgui_app->want_exit().comsume())
     {
         SkrZoneScopedN("LoopBody");
         {
             SkrZoneScopedN("PumpMessage");
             imgui_app->pump_message();
+        }
+        {
+            // ResourceSystem Update
+            resource_system->Update();
         }
 
         // Camera control
@@ -469,10 +583,8 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
             }
         }
 
-        // Update resources
-        auto resource_system = skr::resource::GetResourceSystem();
-        resource_system->Update();
         {
+
             // update viewport
             SkrZoneScopedN("Viewport Render");
             imgui_app->acquire_frames();
@@ -481,6 +593,14 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
             camera.aspect = (float)size.x / (float)size.y;
             scene_renderer->draw_primitives(render_graph, render_mesh->primitive_commands);
         };
+
+        // girl_mesh_resource.resolve(true, 0, ESkrRequesterType::SKR_REQUESTER_SYSTEM);
+        // if (girl_mesh_resource.is_resolved())
+        // {
+        //     auto MeshResource = girl_mesh_resource.get_resolved(true);
+        //     MeshResource = girl_mesh_resource.get_resolved(true);
+        // }
+
         {
             SkrZoneScopedN("ImGuiRender");
             imgui_app->set_load_action(CGPU_LOAD_ACTION_LOAD);
@@ -499,6 +619,7 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     imgui_app->shutdown();
     skr::input::Input::Finalize();
     skr_render_mesh_free(render_mesh);
+    skr_render_mesh_free(girl_render_mesh);
     if (use_gltf)
     {
         mesh_resource.bins.clear();
