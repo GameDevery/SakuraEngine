@@ -269,7 +269,7 @@ public:
     }
 
     template <typename T>
-    RandomComponentWriter<const T> random_write()
+    RandomComponentWriter<T> random_write()
     {
         RandomComponentWriter<T> writer;
         writer.Type = sugoi_id_of<std::decay_t<T>>::get();
@@ -278,13 +278,52 @@ public:
     }
 
     template <typename T>
-    RandomComponentReadWrite<const T> random_readwrite()
+    RandomComponentReadWrite<T> random_readwrite()
     {
         RandomComponentReadWrite<T> reader;
         reader.Type = sugoi_id_of<std::decay_t<T>>::get();
         reader.World = this;
         return reader;
     }
+
+    template <typename T>
+        requires std::is_copy_constructible_v<T>
+    void dispatch_task(T TaskBody, uint32_t batch_size, skr::span<skr::ecs::Entity> entities)
+    {
+        SKR_ASSERT(TaskScheduler::Get());
+
+        skr::RC<AccessBuilder> Access = skr::RC<AccessBuilder>::New();
+        TaskBody.build(*Access);
+    
+        Access->task = skr::RC<Task>::New();
+        Access->task->batch_size = batch_size;
+        skr::stl_function<void(skr::ecs::Entity, uint32_t)> TASK =
+            [TaskBody, Access, Storage = this->storage](skr::ecs::Entity e, uint32_t offset) mutable
+        {
+            T TASK = TaskBody;
+            for (int i = 0; i < Access->fields.size(); ++i)
+            {
+                const auto field = Access->fields[i];
+                const auto component = Access->field_types[i];
+                const auto mode = Access->field_modes[i];
+                if (field == kInvalidFieldPtr)
+                    continue;
+                if (mode == EAccessMode::Random)
+                {
+                    ComponentAccessorBase* fieldPtr = (ComponentAccessorBase*)((uint8_t*)&TASK + field);
+                    fieldPtr->World = Storage;
+                    fieldPtr->Type = component;
+                    fieldPtr->CachedPtr = nullptr;
+                }
+            }
+            TASK.run(e, offset);
+        };
+        Access->_dispatch_from_random_access = true;
+        Access->_dispatch_from_random_accesses = entities;
+        Access->task->func_random = std::move(TASK);
+        TaskScheduler::Get()->add_task(Access);
+    }
+
 
     template <typename T>
         requires std::is_copy_constructible_v<T>
@@ -389,6 +428,10 @@ public:
             sugoiS_allocate_type(storage, &entityType, Count, SUGOI_LAMBDA(callback));
         }
     }
+
+    uint32_t GetComponentSize(skr::ecs::TypeIndex type) const;
+    uint32_t GetComponentAlign(skr::ecs::TypeIndex type) const;
+    const char8_t* GetComponentName(skr::ecs::TypeIndex type) const;
 
     void destroy_entities(skr::span<Entity> ToDestroy)
     {

@@ -10,11 +10,8 @@
     #include "SkrRenderer/resources/shader_resource.generated.h" // IWYU pragma: export
 #endif
 
-namespace skr
+namespace skr::renderer
 {
-namespace renderer
-{
-
 sreflect_struct(
     guid = "6c07aa34-249f-45b8-8080-dd2462ad5312" serde = @bin | @json)
 MultiShaderResource
@@ -138,5 +135,4 @@ struct SKR_RENDERER_API ShaderResourceFactory : public resource::ResourceFactory
 
     static ECGPUShaderBytecodeType GetRuntimeBytecodeType(ECGPUBackend backend);
 };
-} // namespace renderer
-} // namespace skr
+} // namespace skr::renderer

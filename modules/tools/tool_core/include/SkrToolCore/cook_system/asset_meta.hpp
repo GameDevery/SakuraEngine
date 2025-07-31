@@ -172,7 +172,7 @@ struct JsonSerde<skd::asset::AssetMetaFile>
         w->Key(u8"cooker");
         skr::json_write(w, v.cooker);
 
-        if (v.importer)
+        if (v.importer != nullptr)
         {
             w->Key(u8"importer");
             skd::asset::GetImporterRegistry()->StoreImporter(w, v.importer);

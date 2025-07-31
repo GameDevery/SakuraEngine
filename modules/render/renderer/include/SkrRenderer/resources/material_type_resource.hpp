@@ -7,9 +7,7 @@
     #include "SkrRenderer/resources/material_type_resource.generated.h" // IWYU pragma: export
 #endif
 
-namespace skr
-{
-namespace renderer
+namespace skr::renderer
 {
 using MaterialPropertyName = skr::String;
 
@@ -113,5 +111,4 @@ struct SKR_RENDERER_API MaterialTypeFactory : public resource::ResourceFactory
     [[nodiscard]] static MaterialTypeFactory* Create(const Root& root);
     static void Destroy(MaterialTypeFactory* factory);
 };
-} // namespace renderer
-} // namespace skr
+} // namespace skr::renderer

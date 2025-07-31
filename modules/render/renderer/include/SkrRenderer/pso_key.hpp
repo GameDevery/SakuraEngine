@@ -3,8 +3,8 @@
 #include "SkrBase/atomic/atomic.h"
 #include "SkrContainers/vector.hpp"
 
-namespace skr {
-namespace renderer {
+namespace skr::renderer
+{
 
 struct PSOMapKey
 {
@@ -38,5 +38,4 @@ struct PSOMapKey
     CGPURenderPipelineId pso = nullptr;
 };
 
-}
-}
+} // namespace skr::renderer

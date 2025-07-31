@@ -9,7 +9,8 @@
 
 #include "SkrProfile/profile.h"
 
-struct CGPUMemoryPool_D3D12 : public CGPUMemoryPool {
+struct CGPUMemoryPool_D3D12 : public CGPUMemoryPool
+{
     D3D12MA::Pool* pDxPool;
 
     virtual ~CGPUMemoryPool_D3D12() SKR_NOEXCEPT
@@ -32,7 +33,8 @@ inline D3D12_HEAP_TYPE D3D12Util_TranslateHeapType(ECGPUMemoryUsage usage)
         return D3D12_HEAP_TYPE_DEFAULT;
 }
 
-struct CGPUTiledMemoryPool_D3D12 : public CGPUMemoryPool_D3D12 {
+struct CGPUTiledMemoryPool_D3D12 : public CGPUMemoryPool_D3D12
+{
     void AllocateTiles(uint32_t N, D3D12MA::Allocation** ppAllocation, uint32_t Scale = 1) SKR_NOEXCEPT
     {
         CGPUDevice_D3D12* D = (CGPUDevice_D3D12*)device;
@@ -58,13 +60,15 @@ enum ETileMappingStatus_D3D12
     D3D12_TILE_MAPPING_STATUS_UNMAPPING = 4
 };
 
-struct TileMapping_D3D12 {
+struct TileMapping_D3D12
+{
     D3D12MA::Allocation* pDxAllocation;
     SAtomic32 status;
 };
 static_assert(std::is_trivially_constructible_v<TileMapping_D3D12>, "TileMapping_D3D12 Must Be Trivially Constructible!");
 
-struct SubresTileMappings_D3D12 {
+struct SubresTileMappings_D3D12
+{
     SubresTileMappings_D3D12(CGPUTexture_D3D12* T, uint32_t X, uint32_t Y, uint32_t Z) SKR_NOEXCEPT
         : T(T),
           X(X),
@@ -125,7 +129,8 @@ private:
     TileMapping_D3D12* mappings = nullptr;
 };
 
-struct PackedMipMapping_D3D12 {
+struct PackedMipMapping_D3D12
+{
     PackedMipMapping_D3D12(CGPUTexture_D3D12* T, uint32_t N) SKR_NOEXCEPT
         : N(N),
           T(T)
@@ -160,7 +165,8 @@ private:
     CGPUTexture_D3D12* T = nullptr;
 };
 
-struct CGPUTiledTexture_D3D12 : public CGPUTexture_D3D12 {
+struct CGPUTiledTexture_D3D12 : public CGPUTexture_D3D12
+{
     CGPUTiledTexture_D3D12(SubresTileMappings_D3D12* pMappings, PackedMipMapping_D3D12* pPackedMips, uint32_t NumPacks) SKR_NOEXCEPT
         : CGPUTexture_D3D12(),
           pMappings(pMappings),
@@ -373,8 +379,7 @@ CGPUBufferId cgpu_create_buffer_d3d12(CGPUDeviceId device, const struct CGPUBuff
 #endif
     if (!B->pDxResource)
     {
-        if (D3D12_HEAP_TYPE_DEFAULT != alloc_desc.HeapType &&
-            (bufDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+        if (D3D12_HEAP_TYPE_DEFAULT != alloc_desc.HeapType && (bufDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
         {
             D3D12_HEAP_PROPERTIES heapProps = {};
             heapProps.Type = D3D12_HEAP_TYPE_CUSTOM;
@@ -441,9 +446,9 @@ CGPUBufferId cgpu_create_buffer_d3d12(CGPUDeviceId device, const struct CGPUBuff
             ((desc->descriptors & CGPU_RESOURCE_TYPE_BUFFER) ? 1 : 0) +
             ((desc->descriptors & CGPU_RESOURCE_TYPE_RW_BUFFER) ? 1 : 0);
         B->mDxDescriptorHandles = D3D12Util_ConsumeDescriptorHandles(pHeap, handleCount).mCpu;
-        
+
         uint32_t currentOffset = 0;
-        
+
         // Create CBV
         if (desc->descriptors & CGPU_RESOURCE_TYPE_UNIFORM_BUFFER)
         {
@@ -453,7 +458,7 @@ CGPUBufferId cgpu_create_buffer_d3d12(CGPUDeviceId device, const struct CGPUBuff
             cbvDesc.BufferLocation = B->mDxGpuAddress;
             cbvDesc.SizeInBytes = (UINT)allocationSize;
             D3D12Util_CreateCBV(D, &cbvDesc, &cbv);
-            
+
             currentOffset += kDescriptorSize;
         }
         // Create SRV
@@ -461,7 +466,7 @@ CGPUBufferId cgpu_create_buffer_d3d12(CGPUDeviceId device, const struct CGPUBuff
         {
             B->mDxSrvOffset = currentOffset;
             D3D12_CPU_DESCRIPTOR_HANDLE srv = { B->mDxDescriptorHandles.ptr + B->mDxSrvOffset };
-            
+
             currentOffset += kDescriptorSize;
 
             D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
@@ -480,6 +485,7 @@ CGPUBufferId cgpu_create_buffer_d3d12(CGPUDeviceId device, const struct CGPUBuff
                 }
                 srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
                 srvDesc.Buffer.Flags |= D3D12_BUFFER_SRV_FLAG_RAW;
+                srvDesc.Buffer.NumElements = (UINT)allocationSize / sizeof(uint32_t);
             }
             // Cannot create a typed StructuredBuffer
             if (srvDesc.Format != DXGI_FORMAT_UNKNOWN)
@@ -510,6 +516,7 @@ CGPUBufferId cgpu_create_buffer_d3d12(CGPUDeviceId device, const struct CGPUBuff
                 }
                 uavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
                 uavDesc.Buffer.Flags |= D3D12_BUFFER_UAV_FLAG_RAW;
+                uavDesc.Buffer.NumElements = (UINT)allocationSize / sizeof(uint32_t);
             }
             else if (desc->format != CGPU_FORMAT_UNDEFINED)
             {
@@ -792,7 +799,8 @@ FAIL:
     return nullptr;
 }
 
-struct CGPUTextureAliasing_D3D12 : public CGPUTexture_D3D12 {
+struct CGPUTextureAliasing_D3D12 : public CGPUTexture_D3D12
+{
     D3D12_RESOURCE_DESC mDxDesc;
     cgpu::String name;
     CGPUTextureAliasing_D3D12(const D3D12_RESOURCE_DESC& dxDesc, const char8_t* name)
@@ -1509,7 +1517,8 @@ auto try_invoke_pinned_api(T* loader, Args&&... args)
 template <typename T>
 bool try_invoke_pinned_api(T* loader, ...) { return false; }
 
-struct DxilMinimalHeader {
+struct DxilMinimalHeader
+{
     UINT32 four_cc;
     UINT32 hash_digest[4];
 };

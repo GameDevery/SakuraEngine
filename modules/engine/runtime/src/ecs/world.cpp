@@ -195,6 +195,24 @@ void World::finalize() SKR_NOEXCEPT
     storage = nullptr;
 }
 
+uint32_t World::GetComponentSize(skr::ecs::TypeIndex type) const
+{
+	auto desc = sugoiT_get_desc(type);
+	return desc->size;
+}
+
+uint32_t World::GetComponentAlign(skr::ecs::TypeIndex type) const
+{
+	auto desc = sugoiT_get_desc(type);
+	return desc->alignment;
+}
+
+const char8_t* World::GetComponentName(skr::ecs::TypeIndex type) const
+{
+	auto desc = sugoiT_get_desc(type);
+	return desc->name;
+}
+
 sugoi_storage_t* World::get_storage() SKR_NOEXCEPT
 {
     return storage;

@@ -41,9 +41,7 @@ SStableShaderHash skr_shader_option_instance_t::calculate_stable_hash(skr::span<
     return SStableShaderHash::hash_string(signatureString.c_str_raw(), (uint32_t)signatureString.size());
 }
 
-namespace skr
-{
-namespace renderer
+namespace skr::renderer
 {
 using namespace skr::resource;
 
@@ -94,5 +92,4 @@ void ShaderOptionsFactory::Destroy(ShaderOptionsFactory* factory)
 {
     return SkrDelete(factory);
 }
-} // namespace renderer
-} // namespace skr
+} // namespace skr::renderer

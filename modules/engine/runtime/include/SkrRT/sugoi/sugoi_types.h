@@ -20,7 +20,7 @@ SUGOI_DECLARE(query_t);
 SUGOI_DECLARE(storage_delta_t);
 #undef SUGOI_DECLARE
 
-typedef TIndex     sugoi_type_index_t;
+typedef TIndex sugoi_type_index_t;
 typedef skr_guid_t sugoi_guid_t;
 
 #if defined(__cplusplus)
@@ -32,28 +32,28 @@ typedef skr_guid_t sugoi_guid_t;
 
 namespace skr::archive
 {
-    struct BinaryReader;
-    struct BinaryWriter;
-    struct JsonReader;
-    struct JsonWriter;
-}
+struct BinaryReader;
+struct BinaryWriter;
+struct JsonReader;
+struct JsonWriter;
+} // namespace skr::archive
 
 namespace sugoi
 {
-[[maybe_unused]] static constexpr size_t kFastBinSize       = 64 * 1024;
+[[maybe_unused]] static constexpr size_t kFastBinSize = 64 * 1024;
 [[maybe_unused]] static constexpr size_t kSmallBinThreshold = 1;
-[[maybe_unused]] static constexpr size_t kSmallBinSize      = 1024;
-[[maybe_unused]] static constexpr size_t kLargeBinSize      = 512 * 1024;
+[[maybe_unused]] static constexpr size_t kSmallBinSize = 1024;
+[[maybe_unused]] static constexpr size_t kLargeBinSize = 512 * 1024;
 
-[[maybe_unused]] static constexpr size_t kFastBinCapacity  = 800;
+[[maybe_unused]] static constexpr size_t kFastBinCapacity = 800;
 [[maybe_unused]] static constexpr size_t kSmallBinCapacity = 200;
 [[maybe_unused]] static constexpr size_t kLargeBinCapacity = 80;
-[[maybe_unused]] static constexpr SIndex kInvalidSIndex    = std::numeric_limits<SIndex>::max();
+[[maybe_unused]] static constexpr SIndex kInvalidSIndex = std::numeric_limits<SIndex>::max();
 [[maybe_unused]] static constexpr TIndex kInvalidTypeIndex = std::numeric_limits<TIndex>::max();
 
-[[maybe_unused]] static constexpr size_t kGroupBlockSize    = 1024;
-[[maybe_unused]] static constexpr size_t kGroupBlockCount   = 1024;
-[[maybe_unused]] static constexpr size_t kStorageArenaSize  = 128 * 128;
+[[maybe_unused]] static constexpr size_t kGroupBlockSize = 1024;
+[[maybe_unused]] static constexpr size_t kGroupBlockCount = 1024;
+[[maybe_unused]] static constexpr size_t kStorageArenaSize = 128 * 128;
 [[maybe_unused]] static constexpr size_t kLinkComponentSize = 8;
 
 enum pool_type_t
@@ -114,7 +114,7 @@ SUGOI_FORCEINLINE sugoi_entity_t e_inc_version(sugoi_entity_t v)
     return ((v + 1 == kEntityTransientVersion) ? 0 : (v + 1));
 }
 
-template<class F, class R, class... Args>
+template <class F, class R, class... Args>
 auto get_trampoline(skr::type_t<R(Args...)>)
 {
     return +[](void* u, Args... args) -> R {
@@ -122,7 +122,7 @@ auto get_trampoline(skr::type_t<R(Args...)>)
     };
 }
 
-template<class F>
+template <class F>
 auto get_trampoline()
 {
     using T = std::decay_t<F>;
@@ -131,7 +131,7 @@ auto get_trampoline()
 }
 } // namespace sugoi
 
-#define SUGOI_LAMBDA(f) sugoi::get_trampoline<decltype(f)>(), &f
-#define SUGOI_LAMBDA_POINTER(f) sugoi::get_trampoline<decltype(*f)>(), f, nullptr, +[](void* u, EIndex entityCount) { SkrDelete(((decltype(f))u)); }
+    #define SUGOI_LAMBDA(f) sugoi::get_trampoline<decltype(f)>(), &f
+    #define SUGOI_LAMBDA_POINTER(f) sugoi::get_trampoline<decltype(*f)>(), f, nullptr, +[](void* u, EIndex entityCount) { SkrDelete(((decltype(f))u)); }
 
 #endif

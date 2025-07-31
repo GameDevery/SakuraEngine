@@ -24,14 +24,16 @@ extern "C" {
  * @brief guid generation function
  *
  */
-typedef struct sugoi_mapper_t {
+typedef struct sugoi_mapper_t
+{
     void (*map)(void* user, sugoi_entity_t* ent) SKR_IF_CPP(= nullptr);
     void* user SKR_IF_CPP(= nullptr);
 } sugoi_mapper_t;
 
 typedef struct SBinaryWriter SBinaryWriter;
 typedef struct SBinaryReader SBinaryReader;
-typedef struct sugoi_callback_v {
+typedef struct sugoi_callback_v
+{
     void (*constructor)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* data) SKR_IF_CPP(= nullptr);
     void (*copy)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* dst, sugoi_chunk_t* schunk, EIndex sindex, const char* src) SKR_IF_CPP(= nullptr);
     void (*destructor)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* data) SKR_IF_CPP(= nullptr);
@@ -43,18 +45,20 @@ typedef struct sugoi_callback_v {
     void (*map)(sugoi_type_index_t type, sugoi_chunk_t* chunk, EIndex index, char* data, sugoi_mapper_t* v) SKR_IF_CPP(= nullptr);
 } sugoi_callback_v;
 
-enum ESugoiTypeFlag SKR_IF_CPP( : uint32_t){
-    SUGOI_TYPE_FLAG_PIN   = 0x1,
+enum ESugoiTypeFlag SKR_IF_CPP( : uint32_t)
+{
+    SUGOI_TYPE_FLAG_PIN = 0x1,
     SUGOI_TYPE_FLAG_CHUNK = 0x2,
 };
 typedef uint32_t SugoiTypeFlags;
 
-enum ESugoiCallbackFlag SKR_IF_CPP( : uint32_t){
+enum ESugoiCallbackFlag SKR_IF_CPP( : uint32_t)
+{
     SUGOI_CALLBACK_FLAG_CTOR = 0x1,
     SUGOI_CALLBACK_FLAG_DTOR = 0x2,
     SUGOI_CALLBACK_FLAG_COPY = 0x4,
     SUGOI_CALLBACK_FLAG_MOVE = 0x8,
-    SUGOI_CALLBACK_FLAG_ALL  = SUGOI_CALLBACK_FLAG_CTOR | SUGOI_CALLBACK_FLAG_DTOR | SUGOI_CALLBACK_FLAG_COPY | SUGOI_CALLBACK_FLAG_MOVE,
+    SUGOI_CALLBACK_FLAG_ALL = SUGOI_CALLBACK_FLAG_CTOR | SUGOI_CALLBACK_FLAG_DTOR | SUGOI_CALLBACK_FLAG_COPY | SUGOI_CALLBACK_FLAG_MOVE,
 };
 typedef uint32_t SugoiCallbackFlags;
 
@@ -62,8 +66,9 @@ typedef uint32_t SugoiCallbackFlags;
  * @brief describe basic infomation of a component type
  *
  */
-typedef struct sugoi_type_description_t {
-    sugoi_guid_t   guid;
+typedef struct sugoi_type_description_t
+{
+    sugoi_guid_t guid;
     const char8_t* name SKR_IF_CPP(= nullptr);
     const char8_t* guidStr SKR_IF_CPP(= nullptr);
     /**
@@ -93,10 +98,11 @@ typedef struct sugoi_type_description_t {
     sugoi_callback_v callback;
 } sugoi_type_description_t;
 
-typedef struct sugoi_chunk_view_t {
+typedef struct sugoi_chunk_view_t
+{
     sugoi_chunk_t* chunk;
-    EIndex         start;
-    EIndex         count;
+    EIndex start;
+    EIndex count;
     const struct sugoi_parameters_t* params;
 } sugoi_chunk_view_t;
 
@@ -104,9 +110,10 @@ typedef struct sugoi_chunk_view_t {
  * @brief set of component types
  * note. type set does not own the data, and all data should be in order
  */
-typedef struct sugoi_type_set_t {
+typedef struct sugoi_type_set_t
+{
     const sugoi_type_index_t* data;
-    SIndex                    length;
+    SIndex length;
 } sugoi_type_set_t;
 
 /**
@@ -114,13 +121,15 @@ typedef struct sugoi_type_set_t {
  * meta type meaning entity as type
  * note. type set does not own the data, and all data should be in order
  */
-typedef struct sugoi_entity_set_t {
+typedef struct sugoi_entity_set_t
+{
     const sugoi_entity_t* data;
-    SIndex                length;
+    SIndex length;
 } sugoi_entity_set_t;
 
-typedef struct sugoi_entity_type_t {
-    sugoi_type_set_t   type;
+typedef struct sugoi_entity_type_t
+{
+    sugoi_type_set_t type;
     sugoi_entity_set_t meta;
 } sugoi_entity_type_t;
 
@@ -128,7 +137,8 @@ typedef struct sugoi_entity_type_t {
  * @brief difference between two type
  *
  */
-typedef struct sugoi_delta_type_t {
+typedef struct sugoi_delta_type_t
+{
     sugoi_entity_type_t added;
     sugoi_entity_type_t removed;
 } sugoi_delta_type_t;
@@ -137,7 +147,8 @@ typedef struct sugoi_delta_type_t {
  * @brief entity filter
  *
  */
-typedef struct sugoi_filter_t {
+typedef struct sugoi_filter_t
+{
     // filter owned types
     sugoi_type_set_t all;
     sugoi_type_set_t none;
@@ -157,7 +168,8 @@ enum sugoi_operation_scope
  * @brief describes the operation to a component
  *
  */
-typedef struct sugoi_operation_t {
+typedef struct sugoi_operation_t
+{
     int phase;    //-1 means any phase
     int readonly; // read or write
     int atomic;
@@ -168,18 +180,20 @@ typedef struct sugoi_operation_t {
  * @brief describes the operation to components within one task
  *
  */
-typedef struct sugoi_parameters_t {
+typedef struct sugoi_parameters_t
+{
     const sugoi_type_index_t* types;
-    const sugoi_operation_t*  accesses;
-    TIndex                    length;
+    const sugoi_operation_t* accesses;
+    TIndex length;
 } sugoi_parameters_t;
 
 // runtime type (context sensitive) filter
-typedef struct sugoi_meta_filter_t {
+typedef struct sugoi_meta_filter_t
+{
     sugoi_entity_set_t all_meta;
     sugoi_entity_set_t none_meta;
-    sugoi_type_set_t   changed;
-    uint64_t           timestamp;
+    sugoi_type_set_t changed;
+    uint64_t timestamp;
 } sugoi_meta_filter_t;
 
 // header data of a array component
@@ -649,11 +663,11 @@ SKR_RUNTIME_API void sugoiQ_set_custom_filter(sugoi_query_t* query, sugoi_custom
  * @param query
  * @param callback callback for each filtered chunk view
  */
-SKR_RUNTIME_API void             sugoiQ_get_views(const sugoi_query_t* query, sugoi_view_callback_t callback, void* u);
-SKR_RUNTIME_API void             sugoiQ_get_groups(const sugoi_query_t* query, sugoi_group_callback_t callback, void* u);
-SKR_RUNTIME_API void             sugoiQ_in_group(const sugoi_query_t* query, sugoi_group_t* group, sugoi_view_callback_t callback, void* u);
-SKR_RUNTIME_API int              sugoiQ_match_entity(const sugoi_query_t* query, sugoi_entity_t entity);
-SKR_RUNTIME_API int              sugoiQ_match_group(const sugoi_query_t* query, const sugoi_group_t* group);
+SKR_RUNTIME_API void sugoiQ_get_views(const sugoi_query_t* query, sugoi_view_callback_t callback, void* u);
+SKR_RUNTIME_API void sugoiQ_get_groups(const sugoi_query_t* query, sugoi_group_callback_t callback, void* u);
+SKR_RUNTIME_API void sugoiQ_in_group(const sugoi_query_t* query, sugoi_group_t* group, sugoi_view_callback_t callback, void* u);
+SKR_RUNTIME_API int sugoiQ_match_entity(const sugoi_query_t* query, sugoi_entity_t entity);
+SKR_RUNTIME_API int sugoiQ_match_group(const sugoi_query_t* query, const sugoi_group_t* group);
 SKR_RUNTIME_API sugoi_storage_t* sugoiQ_get_storage(const sugoi_query_t* query);
 
 /**
@@ -844,7 +858,8 @@ SKR_RUNTIME_API void sugoi_set_bit(uint32_t* mask, int32_t bit);
 #if defined(__cplusplus)
 
 template <class C>
-struct sugoi_id_of {
+struct sugoi_id_of
+{
     static sugoi_type_index_t get()
     {
         static_assert(!sizeof(C), "sugoi_id_of<C> not implemented for this type, please include the appropriate generated header!");
@@ -859,28 +874,30 @@ inline constexpr bool sugoi_is_tag = false;
 
 namespace sugoi
 {
-struct storage_scope_t {
+struct storage_scope_t
+{
     sugoi_storage_t* storage = nullptr;
     storage_scope_t(sugoi_storage_t* storage)
         : storage(storage)
     {
-
     }
     ~storage_scope_t()
     {
-
     }
 };
 
-struct guid_comp_t {
+struct guid_comp_t
+{
     sugoi_guid_t value;
 };
 
-struct mask_comp_t {
+struct mask_comp_t
+{
     sugoi_mask_comp_t value;
 };
 
-struct dirty_comp_t {
+struct dirty_comp_t
+{
     sugoi_dirty_comp_t value;
 };
 
@@ -985,14 +1002,15 @@ auto get_owned_ro(sugoi_chunk_view_t* view)
     return (std::add_const_t<std::decay_t<V>>*)sugoiV_get_owned_ro(view, sugoi_id_of<T>::get());
 }
 
-struct task_context_t {
-    sugoi_storage_t*    storage;
+struct task_context_t
+{
+    sugoi_storage_t* storage;
     sugoi_chunk_view_t* view;
     sugoi_type_index_t* localTypes;
-    EIndex              entityIndex;
-    sugoi_query_t*      query;
-    const void*         paramPtrs[32];
-    sugoi_parameters_t  params;
+    EIndex entityIndex;
+    sugoi_query_t* query;
+    const void* paramPtrs[32];
+    sugoi_parameters_t params;
     task_context_t(sugoi_storage_t* storage, sugoi_chunk_view_t* view, sugoi_type_index_t* localTypes, EIndex entityIndex, sugoi_query_t* query)
         : storage(storage)
         , view(view)
@@ -1082,7 +1100,8 @@ struct task_context_t {
         sugoi_set_bit(&mask.value, localTypes[idx]);
     }
 };
-struct query_t {
+struct query_t
+{
     sugoi_query_t* query = nullptr;
     ~query_t()
     {
@@ -1103,7 +1122,8 @@ struct query_t {
     }
 };
 
-struct QWildcard {
+struct QWildcard
+{
     using TaskContext = task_context_t;
     QWildcard(sugoi_query_t* query)
         : query(query)
@@ -1156,8 +1176,8 @@ template <typename T1, typename T2, typename... T>
 std::tuple<T1, T2, T*...> get_singleton(sugoi_query_t* query)
 {
     std::tuple<T1, T2, T*...> result;
-    bool                      singleton = true;
-    auto                      callback  = [&](sugoi_chunk_view_t* view) {
+    bool singleton = true;
+    auto callback = [&](sugoi_chunk_view_t* view) {
         SKR_ASSERT(singleton);
         SKR_ASSERT(view->count == 1);
         result = std::make_tuple(get_owned<T1>(view), get_owned<T2>(view), get_owned<T>(view)...);
@@ -1169,9 +1189,9 @@ std::tuple<T1, T2, T*...> get_singleton(sugoi_query_t* query)
 template <class T>
 T* get_singleton(sugoi_query_t* query)
 {
-    T*   result;
+    T* result;
     bool singleton = true;
-    auto callback  = [&](sugoi_chunk_view_t* view) {
+    auto callback = [&](sugoi_chunk_view_t* view) {
         SKR_ASSERT(singleton);
         SKR_ASSERT(view->count == 1);
         result = get_owned<T>(view);
@@ -1182,17 +1202,20 @@ T* get_singleton(sugoi_query_t* query)
 } // namespace sugoi
 
 template <>
-struct SKR_RUNTIME_API sugoi_id_of<sugoi::dirty_comp_t> {
+struct SKR_RUNTIME_API sugoi_id_of<sugoi::dirty_comp_t>
+{
     static sugoi_type_index_t get();
 };
 
 template <>
-struct SKR_RUNTIME_API sugoi_id_of<sugoi::mask_comp_t> {
+struct SKR_RUNTIME_API sugoi_id_of<sugoi::mask_comp_t>
+{
     static sugoi_type_index_t get();
 };
 
 template <>
-struct SKR_RUNTIME_API sugoi_id_of<sugoi::guid_comp_t> {
+struct SKR_RUNTIME_API sugoi_id_of<sugoi::guid_comp_t>
+{
     static sugoi_type_index_t get();
 };
 

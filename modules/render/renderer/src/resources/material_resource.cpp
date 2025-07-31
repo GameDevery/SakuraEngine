@@ -10,9 +10,7 @@
 
 #include "SkrRenderer/pso_map.h"
 
-namespace skr
-{
-namespace renderer
+namespace skr::renderer
 {
 using namespace skr::resource;
 using MaterialFutureLancher = skr::FutureLauncher<bool>;
@@ -503,5 +501,4 @@ void MaterialFactory::Destroy(MaterialFactory* factory)
     SkrDelete(factory);
 }
 
-} // namespace renderer
-} // namespace skr
+} // namespace skr::renderer

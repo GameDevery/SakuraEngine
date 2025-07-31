@@ -8,11 +8,8 @@
 #endif
 
 #ifdef __cplusplus
-namespace skr
+namespace skr::renderer
 {
-namespace renderer
-{
-
 struct RenderMesh
 {
     enum BufferTag
@@ -34,8 +31,7 @@ MeshComponent
     SKR_RESOURCE_FIELD(MeshResource, mesh_resource);
 };
 
-} // namespace renderer
-} // namespace skr
+} // namespace skr::renderer
 #endif
 
 SKR_EXTERN_C SKR_RENDERER_API void skr_render_mesh_initialize(skr_render_mesh_id render_mesh, skr_mesh_resource_id mesh_resource);

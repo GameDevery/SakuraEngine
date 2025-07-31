@@ -141,9 +141,7 @@ const char* skr_mesh_resource_query_vertex_layout(skr_vertex_layout_id id, struc
         return nullptr;
 }
 
-namespace skr
-{
-namespace renderer
+namespace skr::renderer
 {
 using namespace skr::resource;
 
@@ -382,5 +380,4 @@ bool MeshFactoryImpl::Uninstall(SResourceRecord* record)
     return true;
 }
 
-} // namespace renderer
-} // namespace skr
+} // namespace skr::renderer

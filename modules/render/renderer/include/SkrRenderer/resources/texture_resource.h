@@ -85,9 +85,7 @@ STextureSamplerResource
 #ifdef __cplusplus
 #include "SkrRT/resource/resource_factory.h"
 
-namespace skr
-{
-namespace renderer
+namespace skr::renderer
 {
 using SamplerFilterType = ESkrTextureSamplerFilterType;
 using SamplerMipmapMode = ESkrTextureSamplerMipmapMode;
@@ -95,12 +93,9 @@ using SamplerAddressMode = ESkrTextureSamplerAddressMode;
 using SamplerCompareMode = ESkrTextureSamplerCompareMode;
 using SamplerResource = ::STextureSamplerResource;
 using TextureResource = ::STextureResource;
-} // namespace renderer
-} // namespace skr
+} // namespace skr::renderer
 
-namespace skr
-{
-namespace resource
+namespace skr::resource
 {
 // - dstorage & bc: dstorage
 // - dstorage & bc & zlib: dstorage with custom decompress queue
@@ -138,6 +133,5 @@ struct SKR_RENDERER_API TextureSamplerFactory : public ResourceFactory
     [[nodiscard]] static TextureSamplerFactory* Create(const Root& root);
     static void Destroy(TextureSamplerFactory* factory);
 };
-} // namespace resource
-} // namespace skr
+} // namespace skr::resource
 #endif

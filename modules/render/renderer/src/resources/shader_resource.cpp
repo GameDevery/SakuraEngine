@@ -94,9 +94,7 @@ SStableShaderHash skr_shader_option_sequence_t::calculate_stable_hash(const skr_
     return SStableShaderHash::hash_string(signatureString.c_str_raw(), (uint32_t)signatureString.size());
 }
 
-namespace skr
-{
-namespace renderer
+namespace skr::renderer
 {
 using namespace skr::resource;
 
@@ -209,5 +207,4 @@ ESkrInstallStatus ShaderResourceFactoryImpl::UpdateInstall(SResourceRecord* reco
     return SKR_INSTALL_STATUS_SUCCEED;
 }
 
-} // namespace renderer
-} // namespace skr
+} // namespace skr::renderer

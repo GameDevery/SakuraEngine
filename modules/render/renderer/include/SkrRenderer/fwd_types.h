@@ -1,6 +1,8 @@
 #pragma once
 #include "SkrBase/config.h" // IWYU pragma: export
 #include "SkrBase/types.h"  // IWYU pragma: export
+#include "SkrBase/meta.h"   // IWYU pragma: export
+#include "SkrRT/ecs/component.hpp" // IWYU pragma: export
 
 SKR_DECLARE_TYPE_ID_FWD(skr::io, IRAMService, skr_io_ram_service);
 SKR_DECLARE_TYPE_ID_FWD(skr::io, IVRAMService, skr_io_vram_service);
@@ -74,13 +76,10 @@ typedef struct skr_pso_map_root_t skr_pso_map_root_t;
 using skr_shader_resource_handle_t = skr::resource::AsyncResource<skr_multi_shader_resource_t>;
 using skr_material_type_handle_t = skr::resource::AsyncResource<skr_material_type_resource_t>;
 using skr_shader_collection_handle_t = skr::resource::AsyncResource<skr_shader_collection_resource_t>;
-namespace skr
-{
-namespace renderer
+namespace skr::renderer
 {
 enum class EShaderOptionType : uint32_t;
-}
-} // namespace skr
+} // namespace skr::renderer
 #else
 typedef struct SResourceHandle skr_shader_resource_handle_t;
 typedef struct SResourceHandle skr_material_type_handle_t;

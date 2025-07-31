@@ -1,9 +1,10 @@
 #pragma once
-#include "SkrRT/sugoi/sugoi.h"
-#include "SkrRT/sugoi/array.hpp"
-#include "SkrRT/sugoi/storage.hpp"
-#include "SkrRT/sugoi/chunk.hpp"
-#include "SkrRT/sugoi/archetype.hpp"
+#include "SkrRT/sugoi/sugoi.h" // IWYU pragma: export
+#include "SkrRT/sugoi/sugoi_meta.hpp" // IWYU pragma: export
+#include "SkrRT/sugoi/array.hpp" // IWYU pragma: export
+#include "SkrRT/sugoi/storage.hpp" // IWYU pragma: export
+#include "SkrRT/sugoi/chunk.hpp" // IWYU pragma: export
+#include "SkrRT/sugoi/archetype.hpp" // IWYU pragma: export
 
 namespace skr::ecs {
 
@@ -125,10 +126,9 @@ protected:
 
     friend struct World;
     sugoi_storage_t* World;
-    // SubQuery BoundQuery;
     TypeIndex Type;
     sugoi_chunk_view_t CachedView;
-    void* CachedPtr;
+    void* CachedPtr = nullptr;
 };
 
 template <class T>

@@ -346,6 +346,7 @@ void D3D12Util_CreateDMAAllocator(CGPUInstance_D3D12* I, CGPUAdapter_D3D12* A, C
     desc.Flags = D3D12MA::ALLOCATOR_FLAG_NONE;
     desc.pDevice = D->pDxDevice;
     desc.pAdapter = A->pDxActiveGPU;
+    desc.PreferredBlockSize = 0;
 
     D3D12MA::ALLOCATION_CALLBACKS allocationCallbacks = {};
     allocationCallbacks.pAllocate = +[](size_t size, size_t alignment, void*) {

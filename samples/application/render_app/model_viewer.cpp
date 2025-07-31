@@ -6,6 +6,7 @@
 #include "SkrTask/fib_task.hpp"
 #include "SkrRT/resource/resource_system.h"
 #include "SkrRT/resource/local_resource_registry.hpp"
+#include "SkrScene/scene_components.h"
 #include "SkrSystem/system_app.h"
 
 #include "SkrToolCore/cook_system/cook_system.hpp"
@@ -13,6 +14,7 @@
 #include "SkrRenderer/resources/texture_resource.h"
 #include "SkrRenderer/skr_renderer.h"
 #include "SkrRenderer/render_app.hpp"
+#include "SkrRenderer/gpu_scene.h"
 
 #include "SkrRenderer/resources/mesh_resource.h"
 #include "SkrMeshCore/mesh_processing.hpp"
@@ -57,13 +59,9 @@ struct VirtualProject : skd::SProject
         auto json_str = writer.Write();
         
         if (skr::fs::File::write_all_text(project_path, json_str.view()))
-        {
             SKR_LOG_INFO(u8"[ModelViewer] Project saved to: %s", project_path.c_str());
-        }
         else
-        {
             SKR_LOG_ERROR(u8"[ModelViewer] Failed to save project to: %s", project_path.c_str());
-        }
     }
 
     void LoadFromDisk()
@@ -98,6 +96,11 @@ struct VirtualProject : skd::SProject
 struct ModelViewerModule : public skr::IDynamicModule
 {
 public:
+    ModelViewerModule()
+        : world(scheduler)
+    {
+
+    }
     virtual void on_load(int argc, char8_t** argv) override;
     virtual int main_module_exec(int argc, char8_t** argv) override;
     virtual void on_unload() override;
@@ -108,6 +111,9 @@ protected:
     void DestroyAssetSystem();
     void InitializeReosurceSystem();
     void DestroyResourceSystem();
+
+    void CreateScene();
+    void CreateGPUScene();
 
     skr::task::scheduler_t scheduler;
     VirtualProject project;
@@ -121,6 +127,9 @@ protected:
     skr::resource::TextureSamplerFactory* TextureSamplerFactory = nullptr;
     skr::resource::TextureFactory* TextureFactory = nullptr;
     skr::renderer::MeshFactory* MeshFactory = nullptr;
+
+    skr::ecs::World world;
+    skr::renderer::GPUScene GPUScene;
 };
 IMPLEMENT_DYNAMIC_MODULE(ModelViewerModule, SkrModelViewer);
 
@@ -164,11 +173,17 @@ void ModelViewerModule::on_load(int argc, char8_t** argv)
     }
 
     CookAndLoadGLTF();
+
+    world.initialize();
+    CreateScene();
+    CreateGPUScene();
 }
 
 int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
 {
     using namespace skr;
+    using namespace skr::renderer;
+
     auto device = render_device->get_cgpu_device();
     auto gfx_queue = render_device->get_gfx_queue();
     auto resource_system = skr::resource::GetResourceSystem();
@@ -198,7 +213,7 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
     render_app->get_event_queue()->add_handler(&close_listener);
 
     // AsyncResource<> is a handle can be constructed by any resource type & ids
-    skr::resource::AsyncResource<skr::renderer::MeshResource> mesh_resource;
+    skr::resource::AsyncResource<MeshResource> mesh_resource;
     mesh_resource = MeshAssetID;
 
     while (!close_listener.want_exit)
@@ -234,28 +249,10 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
     return 0;
 }
 
-void ModelViewerModule::on_unload()
-{
-    // save imported asset meta to disk
-    project.SaveToDisk();
-
-    // shutdown
-    DestroyAssetSystem();
-    DestroyResourceSystem();
-    project.CloseProject();
-
-    // shutdown task system
-    scheduler.unbind();
-
-    // shutdown logging
-    skr_log_flush();
-    skr_log_finalize_async_worker();
-}
-
 void ModelViewerModule::CookAndLoadGLTF()
 {
     auto& System = *skd::asset::GetCookSystem();
-    const bool NeedImport = !project.ExistImportedAsset(u8"girl.gltf");
+    const bool NeedImport = !project.ExistImportedAsset(u8"girl.model.meta");
     if (NeedImport) // Import from disk!
     {
         // source file is a GLTF so we create a gltf importer, if it is a fbx, then just use a fbx importer
@@ -266,8 +263,8 @@ void ModelViewerModule::CookAndLoadGLTF()
         metadata->vertexType = u8"C35BD99A-B0A8-4602-AFCC-6BBEACC90321"_guid;
 
         auto asset = skr::RC<skd::asset::AssetMetaFile>::New(
-            u8"girl.gltf",                                 // virtual uri for this asset in the project
-            MeshAssetID, // guid for this asset
+            u8"girl.model.meta",                           // virtual uri for this asset in the project
+            MeshAssetID,                                   // guid for this asset
             skr::type_id_of<skr::renderer::MeshResource>(),// output resource is a mesh resource 
             skr::type_id_of<skd::asset::MeshCooker>()      // this cooker cooks the raw mesh data to mesh resource
         );
@@ -277,16 +274,83 @@ void ModelViewerModule::CookAndLoadGLTF()
         
         // save
         System.SaveAssetMeta(&project, asset);
-     
+    
         auto event = System.EnsureCooked(asset->GetGUID());
         event.wait(true);
     }
     else // Load imported asset from project...
     {
-        auto asset = System.LoadAssetMeta(&project, u8"girl.gltf");
+        auto asset = System.LoadAssetMeta(&project, u8"girl.model.meta");
         auto event = System.EnsureCooked(asset->GetGUID());
         event.wait(true);
     }
+}
+
+void ModelViewerModule::CreateScene()
+{
+    using namespace skr::ecs;
+    using namespace skr::renderer;
+
+    GPUSceneConfig cfg = {
+        .world = &world,
+        .render_device = render_device,
+        .core_data_types = {
+            { sugoi_id_of<GPUSceneObjectToWorld>::get(), 0 },
+            { sugoi_id_of<GPUSceneInstanceColor>::get(), 1 }
+        },
+        .additional_data_types = {
+            { sugoi_id_of<GPUSceneInstanceEmission>::get(), 2 }
+        }
+    };
+    GPUScene.Initialize(render_device->get_cgpu_device(), cfg);
+
+    struct Spawner
+    {
+        void build(skr::ecs::ArchetypeBuilder& Builder)
+        {
+            Builder.add_component<skr::scene::TransformComponent>()
+                .add_component(&Spawner::instances)
+                .add_component(&Spawner::colors)
+                .add_component(&Spawner::transforms)
+
+                .add_component(&Spawner::translations)
+                .add_component(&Spawner::rotations)
+                .add_component(&Spawner::scales)
+                .add_component(&Spawner::indices);
+        }
+
+        void run(skr::ecs::TaskContext& Context)
+        {
+            auto cnt = Context.size();
+            auto entities = Context.entities();
+            for (uint32_t i = 0; i < cnt; i++)
+            {
+                pScene->RequireUpload(entities[i], sugoi_id_of<GPUSceneObjectToWorld>::get());
+                pScene->RequireUpload(entities[i], sugoi_id_of<GPUSceneInstanceColor>::get());
+                pScene->RequireUpload(entities[i], sugoi_id_of<GPUSceneInstanceEmission>::get());
+            }
+        }
+
+        skr::renderer::GPUScene* pScene = nullptr;
+        ComponentView<GPUSceneInstance> instances;
+        ComponentView<GPUSceneInstanceColor> colors;
+        ComponentView<GPUSceneObjectToWorld> transforms;
+        ComponentView<skr::scene::PositionComponent> translations;
+        ComponentView<skr::scene::RotationComponent> rotations;
+        ComponentView<skr::scene::ScaleComponent> scales;
+        ComponentView<skr::scene::IndexComponent> indices;
+    } spawner;
+    spawner.pScene = &GPUScene;
+    world.create_entities(spawner, 10'000);
+
+    
+    GPUScene.ExecuteUpload(nullptr);
+}
+
+void ModelViewerModule::CreateGPUScene()
+{
+
+
 }
 
 void ModelViewerModule::InitializeAssetSystem()
@@ -376,4 +440,28 @@ void ModelViewerModule::DestroyResourceSystem()
     skr_io_ram_service_t::destroy(ram_service);
     skr_io_vram_service_t::destroy(vram_service);
     job_queue.reset();
+}
+
+void ModelViewerModule::on_unload()
+{
+    // save imported asset meta to disk
+    project.SaveToDisk();
+
+    // shutdown
+    DestroyAssetSystem();
+    DestroyResourceSystem();
+    project.CloseProject();
+
+    // destroy world
+    world.finalize();
+
+    // destroy gpu scene
+    GPUScene.Shutdown();
+
+    // shutdown task system
+    scheduler.unbind();
+
+    // shutdown logging
+    skr_log_flush();
+    skr_log_finalize_async_worker();
 }

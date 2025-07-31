@@ -13,9 +13,7 @@ typedef struct skr_vfs_t skr_vfs_t;
 #if defined(__cplusplus)
     #include "SkrBase/types.h"
     #include "SkrBase/types.h"
-namespace skr
-{
-namespace resource
+namespace skr::resource
 {
 /*
     resource load phase:
@@ -41,6 +39,5 @@ struct SKR_RUNTIME_API ResourceFactory {
     virtual bool Uninstall(SResourceRecord* record) { return true; }
     virtual ESkrInstallStatus UpdateInstall(SResourceRecord* record);
 };
-} // namespace resource
-} // namespace skr
+} // namespace skr::resource
 #endif

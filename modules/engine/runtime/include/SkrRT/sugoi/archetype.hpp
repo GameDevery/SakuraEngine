@@ -11,7 +11,8 @@ struct resource_fields_t
 };
 
 // chunk data layout descriptor
-struct SKR_RUNTIME_API archetype_t {
+struct SKR_RUNTIME_API archetype_t
+{
     sugoi_storage_t* const storage;
     const sugoi_type_set_t type;
     const uint32_t* const sizes;
@@ -36,7 +37,7 @@ struct SKR_RUNTIME_API archetype_t {
         sugoi_callback_v callbacks[firstTag - firstManaged];
     */
     bool with_chunk_component() const noexcept;
-    
+
     SUGOI_FORCEINLINE SIndex index(sugoi_type_index_t inType) const noexcept
     {
         auto end = type.data + type.length;
@@ -50,7 +51,8 @@ struct SKR_RUNTIME_API archetype_t {
 } // namespace sugoi
 
 // group chunks by archetype and meta
-struct sugoi_group_t {
+struct sugoi_group_t
+{
     skr::Vector<sugoi_chunk_t*> chunks;
     uint32_t firstFree;
     uint32_t timestamp;

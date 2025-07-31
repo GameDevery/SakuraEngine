@@ -1,12 +1,11 @@
 #include "SkrRenderer/resources/material_type_resource.hpp"
 
-namespace skr
-{
-namespace renderer
+namespace skr::renderer
 {
 using namespace skr::resource;
 
-struct MaterialTypeFactoryImpl : public MaterialTypeFactory {
+struct MaterialTypeFactoryImpl : public MaterialTypeFactory
+{
     MaterialTypeFactoryImpl(const MaterialTypeFactory::Root& root)
         : root(root)
     {
@@ -51,5 +50,4 @@ void MaterialTypeFactory::Destroy(MaterialTypeFactory* factory)
     SkrDelete(factory);
 }
 
-} // namespace renderer
-} // namespace skr
+} // namespace skr::renderer
