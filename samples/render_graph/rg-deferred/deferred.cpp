@@ -10,7 +10,7 @@
 #include "SkrCore/module/module_manager.hpp"
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrRenderer/skr_renderer.h"
-#include "SkrImGui/imgui_backend.hpp"
+#include "SkrImGui/imgui_app.hpp"
 #include "pass_profiler.h"
 
 CubeGeometry::InstanceData CubeGeometry::instance_data;

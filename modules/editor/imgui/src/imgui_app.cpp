@@ -1,4 +1,4 @@
-#include <SkrImGui/imgui_backend.hpp>
+#include <SkrImGui/imgui_app.hpp>
 #include <SkrImGui/imgui_system_event_handler.hpp>
 #include <SkrSystem/system_app.h>
 #include <SkrSystem/window.h>
@@ -48,10 +48,12 @@ static float ImGui_ImplSkrSystem_GetWindowDpiScale(ImGuiViewport* viewpoer)
 ImGuiApp::ImGuiApp(const SystemWindowCreateInfo& main_wnd_create_info, SRenderDeviceId render_device, skr::render_graph::RenderGraphBuilder& builder)
     : skr::RenderApp(render_device, builder), _main_window_info(main_wnd_create_info)
 {
+
 }
 
 ImGuiApp::~ImGuiApp()
 {
+    
 }
 
 bool ImGuiApp::initialize(const char* backend)

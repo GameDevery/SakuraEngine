@@ -6,7 +6,7 @@
 #include "SkrCore/memory/sp.hpp"
 #include "SkrRenderer/skr_renderer.h"
 #include "SkrRenderGraph/frontend/render_graph.hpp"
-#include "SkrImGui/imgui_backend.hpp"
+#include "SkrImGui/imgui_app.hpp"
 #if SKR_PLAT_WINDOWS
     #include <shellscalingapi.h>
 #endif
