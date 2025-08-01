@@ -224,6 +224,8 @@ public:
     ComponentAddress GetComponentAddress(skr::ecs::Entity entity, const CPUTypeID& component_type) const;
     ComponentAddress GetComponentAddress(GPUSceneInstanceID instance_id, GPUComponentTypeID component_type) const;
 
+    // Archetype mapping
+
     // GPU 访问辅助
     struct GPUAccessInfo
     {
@@ -255,6 +257,7 @@ private:
     skr::Vector<GPUSceneComponentType> component_types;
 
     // Archetype 管理
+    SRWMutex archetype_mutex;
     skr::Map<sugoi_group_t*, GPUArchetypeID> archetype_registry;
     skr::Vector<GPUSceneArchetype> archetypes;
 

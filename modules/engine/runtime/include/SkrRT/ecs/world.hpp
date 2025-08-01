@@ -87,19 +87,69 @@ public:
         return *this;
     }
 
-    inline AccessBuilder& read(TypeIndex type, EAccessMode mode = EAccessMode::Seq)
+    template <class T, class C>
+    AccessBuilder& read(ComponentView<C> T::* Member)
     {
-        _add_has_filter(type, false);
-        return _access(type, false, mode, kInvalidFieldPtr);
+        static_assert(std::is_const_v<C>, "ComponentView must be const for read access");
+        _add_has_filter(sugoi_id_of<std::remove_const_t<C>>::get(), false);
+        return _access(sugoi_id_of<std::remove_const_t<C>>::get(), false, EAccessMode::Seq, (intptr_t)&(((T*)nullptr)->*Member));
     }
 
-    inline AccessBuilder& write(TypeIndex type, EAccessMode mode = EAccessMode::Seq)
+    template <class T, class C>
+    AccessBuilder& write(ComponentView<C> T::* Member)
     {
-        _add_has_filter(type, true);
-        _access(type, false, mode, kInvalidFieldPtr);
-        return _access(type, true, mode, kInvalidFieldPtr);
+        static_assert(!std::is_const_v<C>, "ComponentView must be non-const for read access");
+        _add_has_filter(sugoi_id_of<C>::get(), true);
+        _access(sugoi_id_of<C>::get(), false, EAccessMode::Seq, kInvalidFieldPtr);
+        return _access(sugoi_id_of<C>::get(), true, EAccessMode::Seq, (intptr_t)&(((T*)nullptr)->*Member));
     }
 
+    template <class T, class C>
+    AccessBuilder& optional_read(ComponentView<C> T::* Member)
+    {
+        static_assert(std::is_const_v<C>, "ComponentView must be const for read access");
+        return _access(sugoi_id_of<std::remove_const_t<C>>::get(), false, EAccessMode::Seq, (intptr_t)&(((T*)nullptr)->*Member));
+    }
+
+    template <class T, class C>
+    AccessBuilder& optional_write(ComponentView<C> T::* Member)
+    {
+        static_assert(!std::is_const_v<C>, "ComponentView must be non-const for read access");
+        _access(sugoi_id_of<C>::get(), false, EAccessMode::Seq, kInvalidFieldPtr);
+        return _access(sugoi_id_of<C>::get(), true, EAccessMode::Seq, (intptr_t)&(((T*)nullptr)->*Member));
+    }
+
+    template <class T, class C> requires (!std::is_void_v<C>)
+    AccessBuilder& access(RandomComponentReader<C> T::* Member)
+    {
+        static_assert(std::is_const_v<C>, "ComponentView must be const for read access");
+        return _access(sugoi_id_of<std::remove_const_t<C>>::get(), false, EAccessMode::Random, (intptr_t)&(((T*)nullptr)->*Member));
+    }
+
+    AccessBuilder& random_read(skr::ecs::TypeIndex type, RandomComponentReader<void>* ptr)
+    {
+        return _access(type, false, EAccessMode::Random, -1 * (intptr_t)ptr);
+    }
+
+    template <class T, class C> requires (!std::is_void_v<C>)
+    AccessBuilder& access(RandomComponentWriter<C> T::* Member)
+    {
+        static_assert(!std::is_const_v<C>, "RandomComponentWriter must be non-const for read access");
+        return _access(sugoi_id_of<C>::get(), true, EAccessMode::Random, (intptr_t)&(((T*)nullptr)->*Member));
+    }
+
+    template <class T, class C> requires (!std::is_void_v<C>)
+    AccessBuilder& access(RandomComponentReadWrite<C> T::* Member)
+    {
+        static_assert(!std::is_const_v<C>, "ComponentView must be non-const for read access");
+        _access(sugoi_id_of<C>::get(), false, EAccessMode::Random, kInvalidFieldPtr);
+        return _access(sugoi_id_of<C>::get(), true, EAccessMode::Random, (intptr_t)&(((T*)nullptr)->*Member));
+    }
+
+    void commit() SKR_NOEXCEPT;
+
+protected:
+    /*
     template <class... Cs>
     AccessBuilder& read()
     {
@@ -118,21 +168,17 @@ public:
         return (_access(sugoi_id_of<Cs>::get(), true, EAccessMode::Seq, kInvalidFieldPtr), ...);
     }
 
-    template <class T, class C>
-    AccessBuilder& read(ComponentView<C> T::* Member)
+    inline AccessBuilder& read(TypeIndex type, EAccessMode mode = EAccessMode::Seq)
     {
-        static_assert(std::is_const_v<C>, "ComponentView must be const for read access");
-        _add_has_filter(sugoi_id_of<std::remove_const_t<C>>::get(), false);
-        return _access(sugoi_id_of<std::remove_const_t<C>>::get(), false, EAccessMode::Seq, (intptr_t)&(((T*)nullptr)->*Member));
+        _add_has_filter(type, false);
+        return _access(type, false, mode, kInvalidFieldPtr);
     }
 
-    template <class T, class C>
-    AccessBuilder& write(ComponentView<C> T::* Member)
+    inline AccessBuilder& write(TypeIndex type, EAccessMode mode = EAccessMode::Seq)
     {
-        static_assert(!std::is_const_v<C>, "ComponentView must be non-const for read access");
-        _add_has_filter(sugoi_id_of<C>::get(), true);
-        _access(sugoi_id_of<C>::get(), false, EAccessMode::Seq, kInvalidFieldPtr);
-        return _access(sugoi_id_of<C>::get(), true, EAccessMode::Seq, (intptr_t)&(((T*)nullptr)->*Member));
+        _add_has_filter(type, true);
+        _access(type, false, mode, kInvalidFieldPtr);
+        return _access(type, true, mode, kInvalidFieldPtr);
     }
 
     inline AccessBuilder& optional_read(TypeIndex type, EAccessMode mode = EAccessMode::Seq)
@@ -161,47 +207,8 @@ public:
         (_access(sugoi_id_of<Cs>::get(), false, EAccessMode::Seq, kInvalidFieldPtr), ...);
         return (_access(sugoi_id_of<Cs>::get(), true, EAccessMode::Seq, kInvalidFieldPtr), ...);
     }
+    */
 
-    template <class T, class C>
-    AccessBuilder& optional_read(ComponentView<C> T::* Member)
-    {
-        static_assert(std::is_const_v<C>, "ComponentView must be const for read access");
-        return _access(sugoi_id_of<std::remove_const_t<C>>::get(), false, EAccessMode::Seq, (intptr_t)&(((T*)nullptr)->*Member));
-    }
-
-    template <class T, class C>
-    AccessBuilder& optional_write(ComponentView<C> T::* Member)
-    {
-        static_assert(!std::is_const_v<C>, "ComponentView must be non-const for read access");
-        _access(sugoi_id_of<C>::get(), false, EAccessMode::Seq, kInvalidFieldPtr);
-        return _access(sugoi_id_of<C>::get(), true, EAccessMode::Seq, (intptr_t)&(((T*)nullptr)->*Member));
-    }
-
-    template <class T, class C>
-    AccessBuilder& access(RandomComponentReader<C> T::* Member)
-    {
-        static_assert(std::is_const_v<C>, "ComponentView must be const for read access");
-        return _access(sugoi_id_of<std::remove_const_t<C>>::get(), false, EAccessMode::Random, (intptr_t)&(((T*)nullptr)->*Member));
-    }
-
-    template <class T, class C>
-    AccessBuilder& access(RandomComponentWriter<C> T::* Member)
-    {
-        static_assert(!std::is_const_v<C>, "ComponentView must be non-const for read access");
-        return _access(sugoi_id_of<C>::get(), true, EAccessMode::Random, (intptr_t)&(((T*)nullptr)->*Member));
-    }
-
-    template <class T, class C>
-    AccessBuilder& access(RandomComponentReadWrite<C> T::* Member)
-    {
-        static_assert(!std::is_const_v<C>, "ComponentView must be non-const for read access");
-        _access(sugoi_id_of<C>::get(), false, EAccessMode::Random, kInvalidFieldPtr);
-        return _access(sugoi_id_of<C>::get(), true, EAccessMode::Random, (intptr_t)&(((T*)nullptr)->*Member));
-    }
-
-    void commit() SKR_NOEXCEPT;
-
-protected:
     AccessBuilder& _add_has_filter(TypeIndex type, bool write);
     AccessBuilder& _add_none_filter(TypeIndex type);
     AccessBuilder& _access(TypeIndex type, bool write, EAccessMode mode, intptr_t field);
@@ -310,7 +317,7 @@ public:
                     continue;
                 if (mode == EAccessMode::Random)
                 {
-                    ComponentAccessorBase* fieldPtr = (ComponentAccessorBase*)((uint8_t*)&TASK + field);
+                    ComponentAccessorBase* fieldPtr = (field > 0) ? (ComponentAccessorBase*)((uint8_t*)&TASK + field) : (ComponentAccessorBase*)(-1 * field);
                     fieldPtr->World = Storage;
                     fieldPtr->Type = component;
                     fieldPtr->CachedPtr = nullptr;
@@ -355,7 +362,7 @@ public:
                     continue;
                 if (mode == EAccessMode::Random)
                 {
-                    ComponentAccessorBase* fieldPtr = (ComponentAccessorBase*)((uint8_t*)&TASK + field);
+                    ComponentAccessorBase* fieldPtr = (field > 0) ? (ComponentAccessorBase*)((uint8_t*)&TASK + field) : (ComponentAccessorBase*)(-1 * field);
                     fieldPtr->World = Storage;
                     fieldPtr->Type = component;
                     fieldPtr->CachedView = view;
@@ -402,7 +409,7 @@ public:
                     continue;
                 if (mode == EAccessMode::Random)
                 {
-                    ComponentAccessorBase* fieldPtr = (ComponentAccessorBase*)((uint8_t*)&Creation + field);
+                    ComponentAccessorBase* fieldPtr = (field > 0) ? (ComponentAccessorBase*)((uint8_t*)&Creation + field) : (ComponentAccessorBase*)(-1 * field);
                     fieldPtr->World = this->storage;
                     fieldPtr->Type = component;
                     fieldPtr->CachedView = *view;

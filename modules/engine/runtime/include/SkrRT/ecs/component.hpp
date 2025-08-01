@@ -131,7 +131,7 @@ protected:
     void* CachedPtr = nullptr;
 };
 
-template <class T>
+template <class T = void>
 struct RandomComponentReader : public ComponentAccessorBase
 {
     using Storage = typename ComponentStorage<T>::Type;
@@ -140,6 +140,13 @@ struct RandomComponentReader : public ComponentAccessorBase
         return get_checked<Storage>(entity);
     }
     const Storage* get(Entity entity) { return ComponentAccessorBase::get<Storage>(entity); }
+};
+
+template <>
+struct RandomComponentReader<void> : public ComponentAccessorBase
+{
+    template <typename T>
+    const T* get(Entity entity) {  return ComponentAccessorBase::get<T>(entity); }
 };
 
 template <class T>
