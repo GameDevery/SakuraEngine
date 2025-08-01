@@ -74,10 +74,11 @@ void GPUScene::InitializeComponentTypes(const GPUSceneConfig& config)
         type_registry.add(cpu_type, component_type.gpu_type_id);
         component_types.push_back(component_type);
 
-        SKR_LOG_INFO(u8"  Registered core component: %s (size: %d, align: %d, gpu_type_id: %d)",
+        SKR_LOG_INFO(u8"  Registered core component: %s (size: %d, align: %d, cpu_type_id:%d, gpu_type_id: %d)",
             component_type.name,
             component_type.element_size,
             component_type.element_align,
+            component_type.cpu_type_guid,
             component_type.gpu_type_id);
     }
 
@@ -96,11 +97,13 @@ void GPUScene::InitializeComponentTypes(const GPUSceneConfig& config)
         type_registry.add(cpu_type, component_type.gpu_type_id);
         component_types.push_back(component_type);
 
-        SKR_LOG_INFO(u8"  Registered additional component: %s (size: %d, align: %d, gpu_type_id: %d)",
+        SKR_LOG_INFO(u8"  Registered additional component: %s (size: %d, align: %d, cpu_type_id: %d, gpu_type_id: %d)",
             component_type.name,
             component_type.element_size,
             component_type.element_align,
-            component_type.gpu_type_id);
+            component_type.cpu_type_guid,
+            component_type.gpu_type_id
+        );
     }
 
     SKR_LOG_DEBUG(u8"Component type registry initialized with %lld types", component_types.size());
@@ -259,7 +262,6 @@ void GPUScene::Shutdown()
     type_registry.clear();
     component_types.clear();
     archetype_registry.clear();
-    archetypes.clear();
     pages.clear();
 
     ecs_world = nullptr;

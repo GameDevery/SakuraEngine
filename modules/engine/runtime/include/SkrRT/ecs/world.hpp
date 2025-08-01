@@ -55,6 +55,7 @@ protected:
     friend struct World;
     skr::Vector<TypeIndex> types;
     skr::Vector<Entity> meta_entities;
+    
     skr::Vector<intptr_t> fields;
     skr::Vector<TypeIndex> field_types;
     skr::Vector<EAccessMode> field_modes;
@@ -111,6 +112,12 @@ public:
         return _access(sugoi_id_of<std::remove_const_t<C>>::get(), false, EAccessMode::Seq, (intptr_t)&(((T*)nullptr)->*Member));
     }
 
+    // TODO: Associate with ComponentView
+    AccessBuilder& optional_read(skr::ecs::TypeIndex type)
+    {
+        return _access(type, false, EAccessMode::Seq, kInvalidFieldPtr);
+    }
+
     template <class T, class C>
     AccessBuilder& optional_write(ComponentView<C> T::* Member)
     {
@@ -126,9 +133,9 @@ public:
         return _access(sugoi_id_of<std::remove_const_t<C>>::get(), false, EAccessMode::Random, (intptr_t)&(((T*)nullptr)->*Member));
     }
 
-    AccessBuilder& random_read(skr::ecs::TypeIndex type, RandomComponentReader<void>* ptr)
+    AccessBuilder& random_read(skr::ecs::TypeIndex type)
     {
-        return _access(type, false, EAccessMode::Random, -1 * (intptr_t)ptr);
+        return _access(type, false, EAccessMode::Random, kInvalidFieldPtr);
     }
 
     template <class T, class C> requires (!std::is_void_v<C>)
@@ -149,66 +156,6 @@ public:
     void commit() SKR_NOEXCEPT;
 
 protected:
-    /*
-    template <class... Cs>
-    AccessBuilder& read()
-    {
-        static_assert((std::is_const_v<Cs> && ...), "ComponentView must be const for read access");
-        (_add_has_filter(sugoi_id_of<std::remove_const_t<Cs>>::get(), false), ...);
-        (_access(sugoi_id_of<std::remove_const_t<Cs>>::get(), false, EAccessMode::Seq, kInvalidFieldPtr), ...);
-        return *this;
-    }
-
-    template <class... Cs>
-    AccessBuilder& write()
-    {
-        static_assert((!std::is_const_v<Cs> && ...), "ComponentView must be non-const for read access");
-        (_add_has_filter(sugoi_id_of<Cs>::get(), true), ...);
-        (_access(sugoi_id_of<Cs>::get(), false, EAccessMode::Seq, kInvalidFieldPtr), ...);
-        return (_access(sugoi_id_of<Cs>::get(), true, EAccessMode::Seq, kInvalidFieldPtr), ...);
-    }
-
-    inline AccessBuilder& read(TypeIndex type, EAccessMode mode = EAccessMode::Seq)
-    {
-        _add_has_filter(type, false);
-        return _access(type, false, mode, kInvalidFieldPtr);
-    }
-
-    inline AccessBuilder& write(TypeIndex type, EAccessMode mode = EAccessMode::Seq)
-    {
-        _add_has_filter(type, true);
-        _access(type, false, mode, kInvalidFieldPtr);
-        return _access(type, true, mode, kInvalidFieldPtr);
-    }
-
-    inline AccessBuilder& optional_read(TypeIndex type, EAccessMode mode = EAccessMode::Seq)
-    {
-        return _access(type, false, mode, kInvalidFieldPtr);
-    }
-
-    inline AccessBuilder& optional_write(TypeIndex type, EAccessMode mode = EAccessMode::Seq)
-    {
-        _access(type, false, mode, kInvalidFieldPtr);
-        return _access(type, true, mode, kInvalidFieldPtr);
-    }
-
-    template <class... Cs>
-    AccessBuilder& optional_read()
-    {
-        static_assert((std::is_const_v<Cs> && ...), "ComponentView must be const for read access");
-        (_access(sugoi_id_of<std::remove_const_t<Cs>>::get(), false, EAccessMode::Seq, kInvalidFieldPtr), ...);
-        return *this;
-    }
-
-    template <class... Cs>
-    AccessBuilder& optional_write()
-    {
-        static_assert((!std::is_const_v<Cs> && ...), "ComponentView must be non-const for read access");
-        (_access(sugoi_id_of<Cs>::get(), false, EAccessMode::Seq, kInvalidFieldPtr), ...);
-        return (_access(sugoi_id_of<Cs>::get(), true, EAccessMode::Seq, kInvalidFieldPtr), ...);
-    }
-    */
-
     AccessBuilder& _add_has_filter(TypeIndex type, bool write);
     AccessBuilder& _add_none_filter(TypeIndex type);
     AccessBuilder& _access(TypeIndex type, bool write, EAccessMode mode, intptr_t field);
@@ -218,9 +165,11 @@ protected:
     skr::Vector<TypeIndex> types;
     skr::Vector<sugoi_operation_t> ops;
     skr::Vector<Entity> meta_entities;
+
     skr::Vector<intptr_t> fields;
     skr::Vector<TypeIndex> field_types;
     skr::Vector<EAccessMode> field_modes;
+    skr::Vector<bool> fields_is_write;
 
     skr::Vector<TypeIndex> all;
     skr::Vector<TypeIndex> nones;
@@ -237,12 +186,22 @@ public:
     uint32_t task_index() const { return _task_index; }
     uint32_t size() const { return count; }
 
+    // TODO: REMOVE THIS
     template <typename T>
     ComponentView<T> components()
     {
         auto localType = sugoiV_get_local_type(&view, sugoi_id_of<T>::get());
         auto cspan = sugoi::get_owned_local<T>(&view, localType);
         return ComponentView<T>(cspan, localType, offset);
+    }
+
+    // TODO: REMOVE THIS
+    ComponentView<const void> read(skr::ecs::TypeIndex type)
+    {
+        auto localType = sugoiV_get_local_type(&view, type);
+        auto data = sugoiV_get_owned_ro_local(&view, localType);
+        auto desc = sugoiT_get_desc(type);
+        return ComponentView<const void>(data, localType, offset, (uint32_t)desc->size);
     }
 
 private:
@@ -304,8 +263,8 @@ public:
     
         Access->task = skr::RC<Task>::New();
         Access->task->batch_size = batch_size;
-        skr::stl_function<void(skr::ecs::Entity, uint32_t)> TASK =
-            [TaskBody, Access, Storage = this->storage](skr::ecs::Entity e, uint32_t offset) mutable
+        skr::stl_function<void(sugoi_chunk_view_t, uint32_t, uint32_t)> TASK =
+            [TaskBody, Access, Storage = this->storage](sugoi_chunk_view_t view, uint32_t count, uint32_t offset) mutable
         {
             T TASK = TaskBody;
             for (int i = 0; i < Access->fields.size(); ++i)
@@ -320,14 +279,28 @@ public:
                     ComponentAccessorBase* fieldPtr = (field > 0) ? (ComponentAccessorBase*)((uint8_t*)&TASK + field) : (ComponentAccessorBase*)(-1 * field);
                     fieldPtr->World = Storage;
                     fieldPtr->Type = component;
+                    fieldPtr->CachedView = view;
                     fieldPtr->CachedPtr = nullptr;
                 }
+                else if (mode == EAccessMode::Seq)
+                {
+                    ComponentViewBase* fieldPtr = (field > 0) ? (ComponentViewBase*)((uint8_t*)&TASK + field) : (ComponentViewBase*)(-1 * field);
+                    auto localType = sugoiV_get_local_type(&view, component);
+                    fieldPtr->_local_type = localType;
+                    if (Access->fields_is_write[i])
+                        fieldPtr->_ptr = (void*)sugoiV_get_owned_rw_local(&view, localType);
+                    else
+                        fieldPtr->_ptr = (void*)sugoiV_get_owned_ro_local(&view, localType);
+                    fieldPtr->_offset = offset;
+                }
             }
-            TASK.run(e, offset);
+            TaskContext ctx = TaskContext(view, count, offset, Access->_exec_counter++);
+            TASK.run(ctx);
         };
-        Access->_dispatch_from_random_access = true;
-        Access->_dispatch_from_random_accesses = entities;
-        Access->task->func_random = std::move(TASK);
+        Access->storage = storage;
+        Access->_is_run_with = true;
+        Access->_run_with = entities;
+        Access->task->func = std::move(TASK);
         TaskScheduler::Get()->add_task(Access);
     }
 
@@ -370,19 +343,20 @@ public:
                 }
                 else if (mode == EAccessMode::Seq)
                 {
-                    ComponentViewBase* fieldPtr = (ComponentViewBase*)((uint8_t*)&TASK + field);
+                    ComponentViewBase* fieldPtr = (field > 0) ? (ComponentViewBase*)((uint8_t*)&TASK + field) : (ComponentViewBase*)(-1 * field);
                     auto localType = sugoiV_get_local_type(&view, component);
                     fieldPtr->_local_type = localType;
-                    if (Access->ops[i].readonly)
-                        fieldPtr->_ptr = (void*)sugoiV_get_owned_ro_local(&view, localType);
-                    else
+                    if (Access->fields_is_write[i])
                         fieldPtr->_ptr = (void*)sugoiV_get_owned_rw_local(&view, localType);
+                    else
+                        fieldPtr->_ptr = (void*)sugoiV_get_owned_ro_local(&view, localType);
                     fieldPtr->_offset = offset;
                 }
             }
             TaskContext ctx = TaskContext(view, count, offset, Access->_exec_counter++);
             TASK.run(ctx);
         };
+        Access->storage = storage;
         Access->task->func = std::move(TASK);
         TaskScheduler::Get()->add_task(Access);
         return reuse_query;
@@ -417,7 +391,7 @@ public:
                 }
                 else if (mode == EAccessMode::Seq)
                 {
-                    ComponentViewBase* fieldPtr = (ComponentViewBase*)((uint8_t*)&Creation + field);
+                    ComponentViewBase* fieldPtr = (field > 0) ? (ComponentViewBase*)((uint8_t*)&Creation + field) : (ComponentViewBase*)(-1 * field);
                     auto localType = sugoiV_get_local_type(view, component);
                     fieldPtr->_local_type = localType;
                     fieldPtr->_ptr = (void*)sugoiV_get_owned_ro_local(view, localType);

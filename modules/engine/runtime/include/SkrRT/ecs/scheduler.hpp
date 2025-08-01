@@ -45,9 +45,7 @@ struct Task
 {
     SKR_RC_IMPL();
     using Type = skr::stl_function<void(sugoi_chunk_view_t, uint32_t count, uint32_t offset)>;
-    using RandomAccessType = skr::stl_function<void(skr::ecs::Entity e, uint32_t offset)>;
 
-    Task::RandomAccessType func_random;
     Task::Type func;
     uint32_t batch_size = 0;
 };
@@ -104,8 +102,9 @@ protected:
     static EDependencySyncMode DeterminSyncMode(TaskSignature* t, EAccessMode current, TaskSignature* last_t, EAccessMode last);
     StackVector<TaskDependency> _static_dependencies;
 
-    bool _dispatch_from_random_access = false;
-    StackVector<skr::ecs::Entity> _dispatch_from_random_accesses;
+    bool _is_run_with = false;
+    StackVector<skr::ecs::Entity> _run_with;
+    sugoi_storage_t* storage = nullptr;
 
     friend struct WorkUnitGenerator;
     StackMap<const sugoi_group_t*, WorkGroup> _work_groups;
@@ -151,7 +150,7 @@ protected:
     void on_run() SKR_NOEXCEPT override;
     void on_exit() SKR_NOEXCEPT override;
     void dispatch(skr::RC<TaskSignature> task);
-    void dispatch_from_random(skr::RC<TaskSignature> task);
+    void dispatch_from_runwith(skr::RC<TaskSignature> task);
     void dispatch_from_query(skr::RC<TaskSignature> task);
     
     friend struct World;

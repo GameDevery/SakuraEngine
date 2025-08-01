@@ -1,6 +1,8 @@
 #include "SkrCore/memory/memory.h"
 #include "SkrProfile/profile.h"
 
+#undef SKR_RUNTIME_USE_MIMALLOC
+
 #ifdef SKR_RUNTIME_USE_MIMALLOC
     #include "mimalloc.h"
 #endif

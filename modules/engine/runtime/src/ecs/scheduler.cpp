@@ -8,7 +8,7 @@ namespace skr::ecs
 
 EDependencySyncMode TaskSignature::DeterminSyncMode(TaskSignature* t, EAccessMode current, TaskSignature* last_t, EAccessMode last)
 {
-    if (t->_dispatch_from_random_access || last_t->_dispatch_from_random_access)
+    if (t->_is_run_with || last_t->_is_run_with)
         return EDependencySyncMode::WholeTask;
     if (current == EAccessMode::Seq && last == EAccessMode::Seq)
         return EDependencySyncMode::PerChunk;
@@ -77,7 +77,7 @@ void WorkUnitGenerator::process(skr::RC<TaskSignature> new_task)
 {
     SkrZoneScopedN("WorkUnitGenerator::Process");
 
-    if (new_task->_dispatch_from_random_access)
+    if (new_task->_is_run_with)
     {
         auto& wgp = new_task->_work_groups.try_add_default(nullptr).value();
         for (auto dependency : new_task->_static_dependencies)
@@ -216,16 +216,16 @@ void TaskScheduler::add_task(skr::RC<TaskSignature> task)
 // clang-format off
 void TaskScheduler::dispatch(skr::RC<TaskSignature> signature)
 {
-    if (signature->_dispatch_from_random_access)
-        dispatch_from_random(signature);
+    if (signature->_is_run_with)
+        dispatch_from_runwith(signature);
     else
         dispatch_from_query(signature);
 }
 
-void TaskScheduler::dispatch_from_random(skr::RC<TaskSignature> signature)
+void TaskScheduler::dispatch_from_runwith(skr::RC<TaskSignature> signature)
 {
     const auto& wgp  = signature->work_groups().find(nullptr).value();
-    const auto access_count = signature->_dispatch_from_random_accesses.size();
+    const auto access_count = signature->_run_with.size();
     auto batch_size = signature->task->batch_size ? signature->task->batch_size : access_count;
     batch_size = signature->self_confict ? UINT32_MAX : batch_size; // if self-confict, we can't batch
     batch_size = std::min(batch_size, access_count);
@@ -246,31 +246,27 @@ void TaskScheduler::dispatch_from_random(skr::RC<TaskSignature> signature)
             SKR_DEFER({ running.decrement(); signature->_finish.decrement(); });
             if (batch_count == 1)
             {
-                for (uint32_t e = 0; e < signature->_dispatch_from_random_accesses.size(); e++)
-                {
-                    task->func_random(signature->_dispatch_from_random_accesses[e], e);
-                }
+                sugoiS_batch(signature->storage, 
+                    (sugoi_entity_t*)signature->_run_with.data(), 
+                    signature->_run_with.size(), 
+                    +[](void* p, sugoi_chunk_view_t* v)-> void 
+                    {
+                        Task* t = (Task*)p;
+                        t->func(*v, v->count, 0);
+                    }
+                    , task.get());
             }
             else
             {
-                SkrZoneScopedN("WorkUnit::Batch");
-                skr::task::counter_t batch_counter;
-                batch_counter.add(batch_count);
-                for (uint32_t i = 0; i < batch_count; i += 1)
-                {
-                    const auto remain = access_count - i * batch_size;
-                    const auto count = std::min(remain, batch_size);
-                    const auto offset = i * batch_size;
-                    skr::task::schedule(
-                    [task, signature, batch_counter, count, offset]() mutable {
-                        for (uint32_t j = 0; j < count; j++)
-                        {
-                            task->func_random(signature->_dispatch_from_random_accesses[offset + j], offset + j);
-                        }
-                        batch_counter.decrement();
-                    }, nullptr);
-                }
-                batch_counter.wait(true);
+                sugoiS_batch(signature->storage, 
+                    (sugoi_entity_t*)signature->_run_with.data(), 
+                    signature->_run_with.size(), 
+                    +[](void* p, sugoi_chunk_view_t* v)-> void 
+                    {
+                        Task* t = (Task*)p;
+                        t->func(*v, v->count, 0);
+                    }
+                    , task.get());
             }
         }, nullptr);
     }

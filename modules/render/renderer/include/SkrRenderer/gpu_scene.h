@@ -9,6 +9,7 @@
     #include "SkrRenderer/gpu_scene.generated.h" // IWYU pragma: export
 #endif
 
+namespace sugoi { struct archetype_t; }
 namespace skr::renderer
 {
 // 基础类型定义
@@ -19,11 +20,20 @@ using GPUPageID = uint32_t;          // 页面索引
 using GPUComponentTypeID = uint16_t; // 组件类型 ID
 using CPUTypeID = skr::ecs::TypeIndex;
 
+// 特殊值定义
+static constexpr GPUSceneInstanceID INVALID_GPU_SCENE_INSTANCE_ID = 0xFFFFFFFF;
+static constexpr GPUPageID INVALID_GPU_PAGE_ID = 0xFFFFFFFF;
+
 // 实例 ID 编码（用于光线追踪等需要紧凑索引的场景）
 // D3D12 限制 InstanceID 为 24 位，我们遵循这个限制
-struct GPUSceneInstanceIndex
+struct GPUSceneCustomIndex
 {
-    GPUSceneInstanceIndex(uint32_t index)
+    GPUSceneCustomIndex()
+    {
+        packed = 0x00FFFFFF;
+    }
+
+    GPUSceneCustomIndex(uint32_t index)
     {
         SKR_ASSERT(index <= 0x00FFFFFF); // 24位限制
         packed = index;
@@ -71,7 +81,8 @@ GPUSceneInstance
     skr::ecs::Entity entity;
     GPUArchetypeID archetype_id;
     uint32_t entity_index_in_archetype; // archetype 内的索引
-    GPUSceneInstanceIndex gpu_index;    // GPU 端使用的紧凑索引
+    GPUSceneInstanceID instance_index;
+    GPUSceneCustomIndex custom_index;
 };
 
 // 组件类型描述
@@ -112,12 +123,12 @@ struct GPUScenePage
 struct GPUSceneArchetype
 {
     // 基本标识
-    sugoi_group_t* cpu_archetype;    // ECS archetype
+    sugoi::archetype_t* cpu_archetype;    // ECS archetype
     GPUArchetypeID gpu_archetype_id; // GPU 端 ID
 
     // 实例统计 (用于分组管理)
-    uint32_t total_entity_count;       // 当前实体总数
-    uint32_t allocated_core_instances; // 在核心数据区已分配的实例数
+    std::atomic<uint32_t> total_entity_count;       // 当前实体总数
+    std::atomic<uint32_t> allocated_core_instances; // 在核心数据区已分配的实例数
 
     // 组件存在性标记 (用于快速查询)
     skr::Vector<GPUComponentTypeID> component_types; // 这个 Archetype 包含的组件类型
@@ -225,6 +236,8 @@ public:
     ComponentAddress GetComponentAddress(GPUSceneInstanceID instance_id, GPUComponentTypeID component_type) const;
 
     // Archetype mapping
+    skr::SP<GPUSceneArchetype> EnsureArchetype(sugoi::archetype_t* group);
+    void RemoveArchetype(sugoi::archetype_t* group);
 
     // GPU 访问辅助
     struct GPUAccessInfo
@@ -249,6 +262,7 @@ public:
     MemoryUsageInfo GetMemoryUsageInfo() const;
 
 private:
+    friend struct ScanGPUScene;
     skr::ecs::World* ecs_world;
     skr::RendererDevice* render_device = nullptr;
 
@@ -257,9 +271,8 @@ private:
     skr::Vector<GPUSceneComponentType> component_types;
 
     // Archetype 管理
-    SRWMutex archetype_mutex;
-    skr::Map<sugoi_group_t*, GPUArchetypeID> archetype_registry;
-    skr::Vector<GPUSceneArchetype> archetypes;
+    shared_atomic_mutex archetype_mutex;
+    skr::Map<sugoi::archetype_t*, skr::SP<GPUSceneArchetype>> archetype_registry;
 
     // 核心：分层数据池
     GPUSceneDataPool data_pool;
@@ -291,9 +304,12 @@ private:
     } page_allocator;
     skr::Vector<GPUScenePage> pages;
 
-    // dirty
+    // dirty tracking
     skr::Vector<skr::ecs::Entity> dirty_ents;
     skr::Map<skr::ecs::Entity, skr::InlineVector<CPUTypeID, 4>> dirties;
+    
+    // upload buffer management
+    CGPUBufferId upload_buffer = nullptr;
 
     // Private helper methods
     void InitializeComponentTypes(const GPUSceneConfig& config);
@@ -308,6 +324,17 @@ private:
     // Helper functions for statistics
     uint32_t GetCoreComponentTypeCount() const;
     uint32_t GetAdditionalComponentTypeCount() const;
+    
+    // Allocation functions
+    uint64_t CalculateDirtySize() const;
+    void PrepareUploadContext();
+    GPUSceneInstanceID AllocateCoreInstance();
+    GPUPageID AllocateComponentPage(GPUArchetypeID archetype_id, GPUComponentTypeID component_type);
+    GPUSceneCustomIndex EncodeCustomIndex(GPUArchetypeID archetype_id, uint32_t entity_index_in_archetype);
+    
+    // Upload processing
+    uint32_t GetCoreComponentOffset(GPUComponentTypeID type_id) const;
+    uint32_t GetCoreInstanceStride() const;
 };
 
 } // namespace skr::renderer

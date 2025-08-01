@@ -12,6 +12,8 @@ public static class SkrRenderer
             .IncludeDirs(Visibility.Public, "include")
             .AddCppFiles("src/*.cpp")
             .AddCppFiles(new CFamilyFileOptions { UnityGroup = "resources" }, "src/resources/*.cpp")
+            .AddCppSLFiles("shaders/**.cppsl")
+            .CppSLOutputDirectory("resources/shaders")
             .AddMetaHeaders("include/**.h", "include/**.hpp"); // codegen
     }
 }

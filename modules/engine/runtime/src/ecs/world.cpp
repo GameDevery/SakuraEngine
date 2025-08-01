@@ -110,6 +110,7 @@ AccessBuilder& AccessBuilder::_access(TypeIndex type, bool write, EAccessMode mo
 		fields.add(field);
 		field_types.add(type);
 		field_modes.add(mode);
+		fields_is_write.add(write);
 	}
 	return *this;
 }

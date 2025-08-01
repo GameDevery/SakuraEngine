@@ -55,7 +55,7 @@ protected:
     uint32_t _offset = 0;
 };
 
-template <typename T>
+template <typename T = void>
 struct ComponentView : public ComponentViewBase
 {
 public:
@@ -78,6 +78,56 @@ protected:
     friend struct TaskContext;
     ComponentView(T* ptr, uint32_t local_type, uint32_t offset)
         : ComponentViewBase(ptr, local_type, offset) {}
+};
+
+template <>
+struct ComponentView<const void> : public ComponentViewBase
+{
+public:
+    explicit operator bool() const
+    {
+        return _ptr != nullptr;
+    }
+
+    const uint8_t* at(uint32_t i)
+    {
+        return (const uint8_t*)_ptr + (_offset + i) * _size;
+    }
+    
+    ComponentView()
+        : ComponentViewBase(nullptr, 0) {}
+
+protected:
+    friend struct World;
+    friend struct TaskContext;
+    ComponentView(const void* ptr, uint32_t local_type, uint32_t offset, uint32_t size)
+        : ComponentViewBase((void*)ptr, local_type, offset), _size(size) {}
+    uint32_t _size = 0;
+};
+
+template <>
+struct ComponentView<void> : public ComponentViewBase
+{
+public:
+    explicit operator bool() const
+    {
+        return _ptr != nullptr;
+    }
+
+    uint8_t* at(uint32_t i)
+    {
+        return (uint8_t*)_ptr + (_offset + i) * _size;
+    }
+    
+    ComponentView()
+        : ComponentViewBase(nullptr, 0) {}
+
+protected:
+    friend struct World;
+    friend struct TaskContext;
+    ComponentView(void* ptr, uint32_t local_type, uint32_t offset, uint32_t size)
+        : ComponentViewBase(ptr, local_type, offset), _size(size) {}
+    uint32_t _size = 0;
 };
 
 struct SubQuery
