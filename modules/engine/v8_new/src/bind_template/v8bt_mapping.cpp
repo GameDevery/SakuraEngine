@@ -159,7 +159,7 @@ void V8BTMapping::push_param_native(
     void*       native_data = stack.alloc_param_raw(
         _rttr_type->size(),
         _rttr_type->alignment(),
-        param_bind_tp.pass_by_ref ? EDynamicStackParamKind::XValue : EDynamicStackParamKind::Direct,
+        param_bind_tp.modifiers.is_decayed_pointer() ? EDynamicStackParamKind::XValue : EDynamicStackParamKind::Direct,
         dtor
     );
     to_native(native_data, v8_value, false);
@@ -246,11 +246,87 @@ void V8BTMapping::set_static_field(
     void* field_addr = field_bind_tp.solve_address();
     to_native(field_addr, v8_value, false);
 }
+// check api
+bool V8BTMapping::solve_param(
+    V8BTDataParam& param_bind_tp
+) const
+{
+    switch (param_bind_tp.inout_flag)
+    {
+    case ERTTRParamFlag::Out:
+        param_bind_tp.appare_in_param  = false;
+        param_bind_tp.appare_in_return = true;
+        break;
+    case ERTTRParamFlag::InOut:
+        param_bind_tp.appare_in_param  = true;
+        param_bind_tp.appare_in_return = true;
+        break;
+    case ERTTRParamFlag::In:
+        param_bind_tp.appare_in_param  = true;
+        param_bind_tp.appare_in_return = false;
+        break;
+    }
+    return _basic_type_check(param_bind_tp.modifiers);
+}
+bool V8BTMapping::solve_return(
+    V8BTDataReturn& return_bind_tp
+) const
+{
+    return _basic_type_check(return_bind_tp.modifiers);
+}
+bool V8BTMapping::solve_field(
+    V8BTDataField& field_bind_tp
+) const
+{
+    if (field_bind_tp.modifiers.is_decayed_pointer())
+    {
+        manager()->logger().error(
+            u8"mapping cannot be exported as decayed pointer type in field"
+        );
+        return false;
+    }
+    return _basic_type_check(field_bind_tp.modifiers);
+}
+bool V8BTMapping::solve_static_field(
+    V8BTDataStaticField& field_bind_tp
+) const
+{
+    if (field_bind_tp.modifiers.is_decayed_pointer())
+    {
+        manager()->logger().error(
+            u8"mapping cannot be exported as decayed pointer type in field"
+        );
+        return false;
+    }
+    return _basic_type_check(field_bind_tp.modifiers);
+}
+
+// v8 export
+v8::Local<v8::Value> V8BTMapping::get_v8_export_obj(
+) const
+{
+    return {};
+}
 
 void V8BTMapping::_init_native(
     void* native_data
 ) const
 {
     _default_ctor.invoke(native_data);
+}
+
+bool V8BTMapping::_basic_type_check(
+    const V8BTDataModifier& modifiers
+) const
+{
+    if (modifiers.is_pointer)
+    {
+        manager()->logger().error(
+            u8"export mapping {} as pointer type",
+            _rttr_type->name()
+        );
+        return false;
+    }
+    return true;
 }
 } // namespace skr

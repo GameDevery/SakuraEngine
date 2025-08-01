@@ -69,15 +69,35 @@ struct V8BTEnum final : V8BindTemplate {
         const V8BTDataStaticField& field_bind_tp
     ) const override final;
 
-private:
-    void        _init_native(void* native_data) const;
-    static void _enum_to_string(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
-    static void _enum_from_string(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
+    // check api
+    bool solve_param(
+        V8BTDataParam& param_bind_tp
+    ) const override final;
+    bool solve_return(
+        V8BTDataReturn& return_bind_tp
+    ) const override final;
+    bool solve_field(
+        V8BTDataField& field_bind_tp
+    ) const override final;
+    bool solve_static_field(
+        V8BTDataStaticField& field_bind_tp
+    ) const override final;
+
+    // v8 export
+    v8::Local<v8::Value> get_v8_export_obj(
+    ) const override final;
 
 private:
-    const RTTRType*                      _rttr_type  = nullptr;
-    V8BTPrimitive*                       _underlying = nullptr;
-    Map<String, const RTTREnumItemData*> _items      = {};
-    bool                                 _is_signed  = false;
+    static void _enum_to_string(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
+    static void _enum_from_string(const ::v8::FunctionCallbackInfo<::v8::Value>& info);
+    bool        _basic_type_check(const V8BTDataModifier& modifiers) const;
+    void        _make_template();
+
+private:
+    const RTTRType*                      _rttr_type   = nullptr;
+    V8BTPrimitive*                       _underlying  = nullptr;
+    Map<String, const RTTREnumItemData*> _items       = {};
+    bool                                 _is_signed   = false;
+    v8::Global<v8::ObjectTemplate>       _v8_template = {};
 };
 } // namespace skr

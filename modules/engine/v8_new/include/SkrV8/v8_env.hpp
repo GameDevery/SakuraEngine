@@ -46,6 +46,26 @@ SKR_V8_API V8Isolate : IScriptMixinCore, IV8BindManager {
     void pump_message_loop();
     void gc(bool full = true);
 
+    // context management
+    V8Context* main_context() const;
+    V8Context* create_context(String name = {});
+    void       destroy_context(V8Context* context);
+
+    // getter
+    inline v8::Isolate* v8_isolate() const { return _isolate; }
+
+    //==> IScriptMixinCore API
+    void on_object_destroyed(
+        ScriptbleObject* obj
+    ) override;
+    bool try_invoke_mixin(
+        ScriptbleObject*             obj,
+        StringView                   name,
+        const span<const StackProxy> args,
+        StackProxy                   result
+    ) override;
+    //==> IScriptMixinCore API
+
     //==> IV8BindManager API
     // bind proxy management
     V8BindTemplate* solve_bind_tp(
@@ -77,15 +97,15 @@ SKR_V8_API V8Isolate : IScriptMixinCore, IV8BindManager {
 
     // mixin
     IScriptMixinCore* get_mixin_core() const override;
+
+    // get logger
+    ErrorCollector& logger() override { return _logger; }
     //==> IV8BindManager API
 
 private:
     // isolate data
     v8::Isolate*              _isolate               = nullptr;
     v8::Isolate::CreateParams _isolate_create_params = {};
-
-    // binder manager for temp usage
-    ScriptBinderManager _tmp_binder_mgr = {};
 
     // bind tp cache
     Map<GUID, V8BindTemplate*>          _bind_tp_map         = {};
@@ -94,7 +114,12 @@ private:
     // bind proxy cache
     Map<void*, V8BindProxy*> _bind_proxy_map = {};
 
-    // TODO. context manage
+    // context manage
+    V8Context*              _main_context = nullptr;
+    Map<String, V8Context*> _contexts     = {};
+
+    ErrorCollector _logger = {};
+
     // TODO. cpp module manage
     // TODO. script module manage
     // TODO. debugger
@@ -122,6 +147,8 @@ struct V8Value {
 struct SKR_V8_API V8Context {
     SKR_RC_IMPL();
 
+    friend struct V8Isolate;
+
     // ctor & dtor
     V8Context();
     ~V8Context();
@@ -132,12 +159,30 @@ struct SKR_V8_API V8Context {
     V8Context& operator=(const V8Context&) = delete;
     V8Context& operator=(V8Context&&)      = delete;
 
+    // getter
+    ::v8::Global<::v8::Context> v8_context() const;
+    inline V8Isolate*           isolate() const { return _isolate; }
+    inline const String&        name() const { return _name; }
+
+    // temp api
+    void temp_register(const GUID& type_id);
+    template <typename T>
+    inline void temp_register()
+    {
+        temp_register(type_id_of<T>());
+    }
+    void temp_run_script(StringView script);
+
+private:
     // init & shutdown
-    void init();
-    void shutdown();
+    void _init(V8Isolate* isolate, String name);
+    void _shutdown();
 
 private:
     V8Isolate* _isolate = nullptr;
+
+    v8::Persistent<v8::Context> _context = {};
+    String                      _name    = {};
 };
 
 } // namespace skr

@@ -12,6 +12,24 @@
 
 namespace skr
 {
+V8BTObject* V8BTObject::TryCreate(IV8BindManager* manager, const RTTRType* type)
+{
+    auto& _logger    = manager->logger();
+    auto  _log_stack = _logger.stack(u8"export value type {}", type->name());
+
+    if (type->is_record() && type->based_on(type_id_of<ScriptbleObject>()))
+    {
+        V8BTObject* result = SkrNew<V8BTObject>();
+        result->_setup(manager, type);
+        result->_make_template();
+        return result;
+    }
+    else
+    {
+        return nullptr;
+    }
+}
+
 // kind
 EV8BTKind V8BTObject::kind() const
 {
@@ -174,6 +192,53 @@ void V8BTObject::set_static_field(
     to_native(field_address, v8_value, false);
 }
 
+// check api
+bool V8BTObject::solve_param(
+    V8BTDataParam& param_bind_tp
+) const
+{
+    switch (param_bind_tp.inout_flag)
+    {
+    case ERTTRParamFlag::Out:
+    case ERTTRParamFlag::InOut:
+        manager()->logger().warning(
+            u8"Out/InOut param flag will be ignored for object type"
+        );
+        break;
+    }
+    return _basic_type_check(param_bind_tp.modifiers);
+}
+bool V8BTObject::solve_return(
+    V8BTDataReturn& return_bind_tp
+) const
+{
+    return _basic_type_check(return_bind_tp.modifiers);
+}
+bool V8BTObject::solve_field(
+    V8BTDataField& field_bind_tp
+) const
+{
+    return _basic_type_check(field_bind_tp.modifiers);
+}
+bool V8BTObject::solve_static_field(
+    V8BTDataStaticField& field_bind_tp
+) const
+{
+    return _basic_type_check(field_bind_tp.modifiers);
+}
+
+// v8 export
+v8::Local<v8::Value> V8BTObject::get_v8_export_obj(
+) const
+{
+    using namespace ::v8;
+
+    auto isolate = Isolate::GetCurrent();
+    auto context = isolate->GetCurrentContext();
+
+    return _v8_template.Get(isolate)->GetFunction(context).ToLocalChecked();
+}
+
 // helper
 V8BPObject* V8BTObject::_get_or_make_proxy(void* address) const
 {
@@ -237,6 +302,33 @@ V8BPObject* V8BTObject::_new_bind_proxy(void* address, v8::Local<v8::Object> sel
     scriptble_object->set_mixin_core(manager()->get_mixin_core());
 
     return bind_proxy;
+}
+bool V8BTObject::_basic_type_check(const V8BTDataModifier& modifiers) const
+{
+    if (!modifiers.is_pointer)
+    {
+        manager()->logger().error(
+            u8"export object {} as value or reference type",
+            _rttr_type->name()
+        );
+        return false;
+    }
+    return true;
+}
+void V8BTObject::_make_template()
+{
+    using namespace ::v8;
+    auto* isolate = Isolate::GetCurrent();
+
+    HandleScope handle_scope(isolate);
+
+    auto tp = FunctionTemplate::New(
+        isolate,
+        _call_ctor,
+        External::New(isolate, this)
+    );
+    _fill_template(tp);
+    _v8_template.Reset(isolate, tp);
 }
 
 // v8 callback

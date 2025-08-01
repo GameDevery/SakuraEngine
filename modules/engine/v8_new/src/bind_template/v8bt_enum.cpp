@@ -43,6 +43,9 @@ V8BTEnum* V8BTEnum::Create(IV8BindManager* manager, const RTTRType* type)
         result->_is_signed = item->value.is_signed();
     });
 
+    // make template
+    result->_make_template();
+
     return result;
 }
 
@@ -173,6 +176,64 @@ void V8BTEnum::set_static_field(
     );
 }
 
+// check api
+bool V8BTEnum::solve_param(
+    V8BTDataParam& param_bind_tp
+) const
+{
+    if (!_basic_type_check(param_bind_tp.modifiers))
+    {
+        return false;
+    }
+    return _underlying->solve_param(param_bind_tp);
+}
+bool V8BTEnum::solve_return(
+    V8BTDataReturn& return_bind_tp
+) const
+{
+    if (!_basic_type_check(return_bind_tp.modifiers))
+    {
+        return false;
+    }
+    return _underlying->solve_return(return_bind_tp);
+}
+bool V8BTEnum::solve_field(
+    V8BTDataField& field_bind_tp
+) const
+{
+    if (field_bind_tp.modifiers.is_decayed_pointer())
+    {
+        manager()->logger().error(
+            u8"enum cannot be exported as decayed pointer type in field"
+        );
+        return false;
+    }
+    return _underlying->solve_field(field_bind_tp);
+}
+bool V8BTEnum::solve_static_field(
+    V8BTDataStaticField& field_bind_tp
+) const
+{
+    if (field_bind_tp.modifiers.is_decayed_pointer())
+    {
+        manager()->logger().error(
+            u8"enum cannot be exported as decayed pointer type in field"
+        );
+        return false;
+    }
+    return _underlying->solve_static_field(field_bind_tp);
+}
+
+// v8 export
+v8::Local<v8::Value> V8BTEnum::get_v8_export_obj(
+) const
+{
+    auto isolate = v8::Isolate::GetCurrent();
+    auto context = isolate->GetCurrentContext();
+
+    return _v8_template.Get(isolate)->NewInstance(context).ToLocalChecked();
+}
+
 void V8BTEnum::_enum_to_string(const ::v8::FunctionCallbackInfo<::v8::Value>& info)
 {
     using namespace ::v8;
@@ -269,5 +330,59 @@ void V8BTEnum::_enum_from_string(const ::v8::FunctionCallbackInfo<::v8::Value>& 
     {
         Isolate->ThrowError("no matched enum item");
     }
+}
+bool V8BTEnum::_basic_type_check(const V8BTDataModifier& modifiers) const
+{
+    if (modifiers.is_pointer)
+    {
+        manager()->logger().error(
+            u8"export enum {} as pointer type",
+            _rttr_type->name()
+        );
+        return false;
+    }
+    return true;
+}
+void V8BTEnum::_make_template()
+{
+    using namespace ::v8;
+    auto* isolate = Isolate::GetCurrent();
+
+    HandleScope handle_scope(isolate);
+
+    auto tp = ObjectTemplate::New(isolate);
+
+    // add enum items
+    for (const auto& [enum_item_name, enum_item] : _items)
+    {
+        // get value
+        Local<Value> enum_value = V8Bind::to_v8(enum_item->value);
+
+        // set value
+        tp->Set(
+            V8Bind::to_v8(enum_item->name, true),
+            enum_value
+        );
+    }
+
+    // add convert functions
+    tp->Set(
+        V8Bind::to_v8(u8"to_string", true),
+        FunctionTemplate::New(
+            isolate,
+            _enum_to_string,
+            External::New(isolate, this)
+        )
+    );
+    tp->Set(
+        V8Bind::to_v8(u8"from_string", true),
+        FunctionTemplate::New(
+            isolate,
+            _enum_from_string,
+            External::New(isolate, this)
+        )
+    );
+
+    _v8_template.Reset(isolate, tp);
 }
 } // namespace skr

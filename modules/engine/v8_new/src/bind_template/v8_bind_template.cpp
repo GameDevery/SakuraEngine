@@ -134,6 +134,7 @@ void V8BTDataField::setup(
     }
     field_owner = owner;
     rttr_data   = field_data;
+    modifiers.solve(field_data->type.view());
     bind_tp->solve_field(*this);
 }
 
@@ -151,6 +152,7 @@ void V8BTDataStaticField::setup(
     }
     field_owner = owner;
     rttr_data   = field_data;
+    modifiers.solve(field_data->type.view());
     bind_tp->solve_static_field(*this);
 }
 
@@ -172,18 +174,22 @@ void V8BTDataParam::setup(
 
     // solve modifier
     {
-        auto type_sig_view      = param_data->type.view();
-        bool is_any_ref         = type_sig_view.is_any_ref();
-        bool is_pointer         = type_sig_view.is_pointer();
-        bool is_decayed_pointer = is_any_ref || is_pointer;
-        bool is_const           = type_sig_view.is_const();
-        bool has_param_out      = flag_all(param_data->flag, ERTTRParamFlag::Out);
-        bool has_param_in       = flag_all(param_data->flag, ERTTRParamFlag::In);
+        auto type_sig_view = param_data->type.view();
+        modifiers.solve(type_sig_view);
+        bool has_param_out = flag_all(param_data->flag, ERTTRParamFlag::Out);
+        bool has_param_in  = flag_all(param_data->flag, ERTTRParamFlag::In);
+
+        // check pointer level
+        if (type_sig_view.decayed_pointer_level() > 1)
+        {
+            _logger.error(u8"pointer level greater than 1");
+            return;
+        }
 
         // solve inout flag
         if (!has_param_in && !has_param_out)
         { // use param default inout flag
-            if (is_any_ref && !is_const)
+            if (modifiers.is_any_ref() && !modifiers.is_const)
             {
                 inout_flag |= ERTTRParamFlag::In | ERTTRParamFlag::Out;
             }
@@ -197,15 +203,12 @@ void V8BTDataParam::setup(
             if (has_param_out)
             {
                 inout_flag |= ERTTRParamFlag::Out;
-                if (!is_any_ref || is_const)
+                if (!modifiers.is_any_ref() || modifiers.is_const)
                 {
                     _logger.error(u8"only T& can be out param");
                 }
             }
         }
-
-        // solve pass by ref
-        pass_by_ref = is_decayed_pointer;
     }
 }
 
@@ -220,6 +223,7 @@ void V8BTDataReturn::setup(
 
     {
         auto type_sig_view = signature;
+        modifiers.solve(type_sig_view);
         type_sig_view.jump_modifier();
         bind_tp = manager->solve_bind_tp(type_sig_view);
     }
@@ -303,6 +307,8 @@ void V8BTDataMethod::setup(
 {
     method_owner = owner;
     rttr_data    = method_data;
+
+    // setup info
     return_data.setup(manager, method_data->ret_type);
     for (const auto* param : method_data->param_data)
     {
@@ -310,15 +316,13 @@ void V8BTDataMethod::setup(
         param_binder.setup(manager, param);
     }
 
+    // solve count
     return_count = return_data.is_void ? 0 : 1;
     params_count = 0;
     for (const auto& param : params_data)
     {
-        param.bind_tp->update_method_count_info(
-            param,
-            return_count,
-            params_count
-        );
+        if (param.appare_in_param) ++params_count;
+        if (param.appare_in_return) ++return_count;
     }
 }
 
@@ -392,15 +396,13 @@ void V8BTDataStaticMethod::setup(
         param_binder.setup(manager, param);
     }
 
+    // solve count
     return_count = return_data.is_void ? 0 : 1;
     params_count = 0;
     for (const auto& param : params_data)
     {
-        param.bind_tp->update_method_count_info(
-            param,
-            return_count,
-            params_count
-        );
+        if (param.appare_in_param) ++params_count;
+        if (param.appare_in_return) ++return_count;
     }
 }
 

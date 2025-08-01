@@ -6,6 +6,8 @@ namespace skr
 struct V8BTValue : V8BTRecordBase {
     inline static constexpr EV8BTKind kKind = EV8BTKind::Value;
 
+    static V8BTValue* TryCreate(IV8BindManager* manager, const RTTRType* type);
+
     // kind
     EV8BTKind kind() const override;
 
@@ -67,10 +69,30 @@ struct V8BTValue : V8BTRecordBase {
         const V8BTDataStaticField& field_bind_tp
     ) const override final;
 
+    // check api
+    bool solve_param(
+        V8BTDataParam& param_bind_tp
+    ) const override final;
+    bool solve_return(
+        V8BTDataReturn& return_bind_tp
+    ) const override final;
+    bool solve_field(
+        V8BTDataField& field_bind_tp
+    ) const override final;
+    bool solve_static_field(
+        V8BTDataStaticField& field_bind_tp
+    ) const override final;
+
+    // v8 export
+    v8::Local<v8::Value> get_v8_export_obj(
+    ) const override final;
+
 protected:
     // helper
     V8BPValue* _create_value(void* native_data = nullptr) const;
     V8BPValue* _new_bind_proxy(void* address, v8::Local<v8::Object> self = {}) const;
+    bool       _basic_type_check(const V8BTDataModifier& modifiers) const;
+    void       _make_template();
 
     // v8 callback
     static void _gc_callback(const ::v8::WeakCallbackInfo<V8BPValue>& data);

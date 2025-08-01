@@ -11,7 +11,6 @@
 #include <SkrV8/bind_template/v8bt_object.hpp>
 #include <SkrV8/bind_template/v8bt_value.hpp>
 
-
 // v8 includes
 #include <libplatform/libplatform.h>
 #include <v8-initialization.h>
@@ -103,7 +102,10 @@ void V8Isolate::init()
     // TODO. promise support
     // _isolate->SetPromiseRejectCallback; // used for capture unhandledRejection
 
-    // TODO. init main context
+    // init main context
+    _main_context = SkrNew<V8Context>();
+    _main_context->_init(this, u8"[Main]");
+    _contexts.add(_main_context->name(), _main_context);
 }
 void V8Isolate::shutdown()
 {
@@ -131,13 +133,71 @@ void V8Isolate::gc(bool full)
     _isolate->IdleNotificationDeadline(0);
 }
 
+// context management
+V8Context* V8Isolate::main_context() const
+{
+    return _main_context;
+}
+V8Context* V8Isolate::create_context(String name)
+{
+    // solve name
+    if (name.is_empty())
+    {
+        name = skr::format(u8"context_{}", _contexts.size());
+    }
+
+    auto* context = SkrNew<V8Context>();
+    context->_init(this, name);
+    _contexts.add(name, context);
+
+    return context;
+}
+void V8Isolate::destroy_context(V8Context* context)
+{
+    context->_shutdown();
+    _contexts.remove(context->name());
+}
+
+void V8Isolate::on_object_destroyed(
+    ScriptbleObject* obj
+)
+{
+    SKR_UNIMPLEMENTED_FUNCTION();
+}
+bool V8Isolate::try_invoke_mixin(
+    ScriptbleObject*             obj,
+    StringView                   name,
+    const span<const StackProxy> args,
+    StackProxy                   result
+)
+{
+    SKR_UNIMPLEMENTED_FUNCTION();
+    return false;
+}
+
 //==> IV8BindManager API
 // bind proxy management
 V8BindTemplate* V8Isolate::solve_bind_tp(
     TypeSignatureView signature
 )
 {
-    SKR_UNIMPLEMENTED_FUNCTION();
+    auto jumped_modifiers = signature.jump_modifier();
+    if (!jumped_modifiers.is_empty())
+    {
+        SKR_LOG_FMT_WARN(u8"modifiers of signature will be ignored, to disable this warning, please jump modifier before call this function");
+    }
+
+    if (signature.is_type())
+    {
+        GUID type_id;
+        signature.read_type_id(type_id);
+        return solve_bind_tp(type_id);
+    }
+    else
+    {
+        SKR_UNIMPLEMENTED_FUNCTION()
+    }
+
     return nullptr;
 }
 V8BindTemplate* V8Isolate::solve_bind_tp(
@@ -150,51 +210,52 @@ V8BindTemplate* V8Isolate::solve_bind_tp(
         return found.value();
     }
 
-    // get binder
-    auto binder = _tmp_binder_mgr.get_or_build(type_id);
-
-    // create bind template
-    switch (binder.kind())
+    // try primitive
+    if (auto primitive = V8BTPrimitive::TryCreate(this, type_id))
     {
-    case ScriptBinderRoot::EKind::Primitive: {
-        auto bind_tp = SkrNew<V8BTPrimitive>();
-        bind_tp->set_manager(this);
-        bind_tp->setup(*binder.primitive());
-        _bind_tp_map.add(type_id, bind_tp);
-        return bind_tp;
+        _bind_tp_map.add(type_id, primitive);
+        return primitive;
     }
-    case ScriptBinderRoot::EKind::Mapping: {
-        auto bind_tp = SkrNew<V8BTMapping>();
-        bind_tp->set_manager(this);
-        bind_tp->setup(*binder.mapping());
-        _bind_tp_map.add(type_id, bind_tp);
-        return bind_tp;
+
+    auto* rttr_type = get_type_from_guid(type_id);
+    if (!rttr_type)
+    {
+        logger().error(
+            u8"V8Isolate::solve_bind_tp: type not found for guid: {}",
+            type_id
+        );
     }
-    case ScriptBinderRoot::EKind::Enum: {
-        auto bind_tp = SkrNew<V8BTEnum>();
-        bind_tp->set_manager(this);
-        bind_tp->setup(*binder.enum_());
-        _bind_tp_map.add(type_id, bind_tp);
-        return bind_tp;
+
+    // try enum
+    if (rttr_type->is_enum())
+    {
+        auto* enum_bind_tp = V8BTEnum::Create(this, rttr_type);
+        _bind_tp_map.add(type_id, enum_bind_tp);
+        return enum_bind_tp;
     }
-    case ScriptBinderRoot::EKind::Value: {
-        auto bind_tp = SkrNew<V8BTValue>();
-        bind_tp->set_manager(this);
-        bind_tp->setup(*binder.value());
-        _bind_tp_map.add(type_id, bind_tp);
-        return bind_tp;
+
+    // try mapping
+    if (auto mapping = V8BTMapping::TryCreate(this, rttr_type))
+    {
+        _bind_tp_map.add(type_id, mapping);
+        return mapping;
     }
-    case ScriptBinderRoot::EKind::Object: {
-        auto bind_tp = SkrNew<V8BTObject>();
-        bind_tp->set_manager(this);
-        bind_tp->setup(*binder.object());
-        _bind_tp_map.add(type_id, bind_tp);
-        return bind_tp;
+
+    // try object
+    if (auto object = V8BTObject::TryCreate(this, rttr_type))
+    {
+        _bind_tp_map.add(type_id, object);
+        return object;
     }
-    default:
-        SKR_UNREACHABLE_CODE();
-        return nullptr;
+
+    // try value
+    if (auto value = V8BTValue::TryCreate(this, rttr_type))
+    {
+        _bind_tp_map.add(type_id, value);
+        return value;
     }
+
+    return nullptr;
 }
 
 // bind proxy management
@@ -244,6 +305,95 @@ IScriptMixinCore* V8Isolate::get_mixin_core() const
     return const_cast<V8Isolate*>(this);
 }
 //==> IV8BindManager API
+
+//============================v8 context============================
+// ctor & dtor
+V8Context::V8Context()
+{
+}
+V8Context::~V8Context()
+{
+}
+
+::v8::Global<::v8::Context> V8Context::v8_context() const
+{
+    return ::v8::Global<::v8::Context>(_isolate->v8_isolate(), _context);
+}
+
+void V8Context::temp_register(const GUID& type_id)
+{
+    using namespace ::v8;
+    // scopes
+    auto                   isolate = _isolate->v8_isolate();
+    v8::Isolate::Scope     isolate_scope(isolate);
+    v8::HandleScope        handle_scope(isolate);
+    v8::Local<v8::Context> context = _context.Get(isolate);
+    v8::Context::Scope     context_scope(context);
+
+    auto bind_tp   = _isolate->solve_bind_tp(type_id);
+    auto rttr_type = get_type_from_guid(type_id);
+
+    // find value
+    auto global  = context->Global();
+    auto name_v8 = V8Bind::to_v8(rttr_type->name(), true);
+    global->Set(context, name_v8, bind_tp->get_v8_export_obj()).Check();
+}
+void V8Context::temp_run_script(StringView script)
+{
+    auto                   isolate = _isolate->v8_isolate();
+    v8::Isolate::Scope     isolate_scope(isolate);
+    v8::HandleScope        handle_scope(isolate);
+    v8::Local<v8::Context> context = _context.Get(isolate);
+    v8::Context::Scope     context_scope(context);
+
+    // compile script
+    v8::Local<v8::String> source = V8Bind::to_v8(script, false);
+    v8::ScriptOrigin      origin(
+        isolate,
+        V8Bind::to_v8(u8"[CPP]"),
+        0,
+        0,
+        true,
+        -1,
+        {},
+        false,
+        false,
+        true,
+        {}
+    );
+    auto may_be_script = ::v8::Script::Compile(
+        context,
+        source
+    );
+
+    // run script
+    auto compiled_script = may_be_script.ToLocalChecked();
+    auto exec_result     = compiled_script->Run(context);
+}
+
+// init & shutdown
+void V8Context::_init(V8Isolate* isolate, String name)
+{
+    using namespace ::v8;
+
+    _isolate = isolate;
+    _name    = name;
+
+    Isolate::Scope isolate_scope(_isolate->v8_isolate());
+    HandleScope    handle_scope(_isolate->v8_isolate());
+
+    // create context
+    auto new_context = Context::New(_isolate->v8_isolate());
+    _context.Reset(_isolate->v8_isolate(), new_context);
+
+    // bind this
+    new_context->SetAlignedPointerInEmbedderData(1, this);
+}
+void V8Context::_shutdown()
+{
+    // destroy context
+    _context.Reset();
+}
 
 //============================global init============================
 static auto& _v8_platform()

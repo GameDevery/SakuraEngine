@@ -12,6 +12,17 @@
 
 namespace skr
 {
+V8BTValue* V8BTValue::TryCreate(IV8BindManager* manager, const RTTRType* type)
+{
+    auto& _logger    = manager->logger();
+    auto  _log_stack = _logger.stack(u8"export value type {}", type->name());
+
+    V8BTValue* result = SkrNew<V8BTValue>();
+    result->_setup(manager, type);
+    result->_make_template();
+    return result;
+}
+
 // kind
 EV8BTKind V8BTValue::kind() const
 {
@@ -104,7 +115,7 @@ void V8BTValue::push_param_native(
 ) const
 {
     void* native_data;
-    if (param_bind_tp.pass_by_ref)
+    if (param_bind_tp.modifiers.is_decayed_pointer())
     { // optimize for ref case
         auto* isolate = v8::Isolate::GetCurrent();
         auto  context = isolate->GetCurrentContext();
@@ -260,6 +271,73 @@ void V8BTValue::set_static_field(
     );
 }
 
+// check api
+bool V8BTValue::solve_param(
+    V8BTDataParam& param_bind_tp
+) const
+{
+    switch (param_bind_tp.inout_flag)
+    {
+    case ERTTRParamFlag::Out:
+        param_bind_tp.appare_in_param  = false;
+        param_bind_tp.appare_in_return = true;
+        break;
+    case ERTTRParamFlag::InOut:
+        param_bind_tp.appare_in_param  = true;
+        param_bind_tp.appare_in_return = false; // optimized for value type
+        break;
+    case ERTTRParamFlag::In:
+        param_bind_tp.appare_in_param  = true;
+        param_bind_tp.appare_in_return = false;
+        break;
+    }
+    return _basic_type_check(param_bind_tp.modifiers);
+}
+bool V8BTValue::solve_return(
+    V8BTDataReturn& return_bind_tp
+) const
+{
+    return _basic_type_check(return_bind_tp.modifiers);
+}
+bool V8BTValue::solve_field(
+    V8BTDataField& field_bind_tp
+) const
+{
+    if (field_bind_tp.modifiers.is_decayed_pointer())
+    {
+        manager()->logger().error(
+            u8"value cannot be exported as decayed pointer type in field"
+        );
+        return false;
+    }
+    return _basic_type_check(field_bind_tp.modifiers);
+}
+bool V8BTValue::solve_static_field(
+    V8BTDataStaticField& field_bind_tp
+) const
+{
+    if (field_bind_tp.modifiers.is_decayed_pointer())
+    {
+        manager()->logger().error(
+            u8"value cannot be exported as decayed pointer type in field"
+        );
+        return false;
+    }
+    return _basic_type_check(field_bind_tp.modifiers);
+}
+
+// v8 export
+v8::Local<v8::Value> V8BTValue::get_v8_export_obj(
+) const
+{
+    using namespace ::v8;
+
+    auto isolate = Isolate::GetCurrent();
+    auto context = isolate->GetCurrentContext();
+
+    return _v8_template.Get(isolate)->GetFunction(context).ToLocalChecked();
+}
+
 // helper
 V8BPValue* V8BTValue::_create_value(void* native_data) const
 {
@@ -322,6 +400,33 @@ V8BPValue* V8BTValue::_new_bind_proxy(void* address, v8::Local<v8::Object> self)
     manager()->add_bind_proxy(address, bind_proxy);
 
     return bind_proxy;
+}
+bool V8BTValue::_basic_type_check(const V8BTDataModifier& modifiers) const
+{
+    if (modifiers.is_pointer)
+    {
+        manager()->logger().error(
+            u8"export value {} as pointer type",
+            _rttr_type->name()
+        );
+        return false;
+    }
+    return true;
+}
+void V8BTValue::_make_template()
+{
+    using namespace ::v8;
+    auto* isolate = Isolate::GetCurrent();
+
+    HandleScope handle_scope(isolate);
+
+    auto tp = FunctionTemplate::New(
+        isolate,
+        _call_ctor,
+        External::New(isolate, this)
+    );
+    _fill_template(tp);
+    _v8_template.Reset(isolate, tp);
 }
 
 // v8 callback

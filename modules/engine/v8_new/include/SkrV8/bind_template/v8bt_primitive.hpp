@@ -69,6 +69,24 @@ struct V8BTPrimitive final : V8BindTemplate {
         const V8BTDataStaticField& field_bind_tp
     ) const override final;
 
+    // check api
+    bool solve_param(
+        V8BTDataParam& param_bind_tp
+    ) const override final;
+    bool solve_return(
+        V8BTDataReturn& return_bind_tp
+    ) const override final;
+    bool solve_field(
+        V8BTDataField& field_bind_tp
+    ) const override final;
+    bool solve_static_field(
+        V8BTDataStaticField& field_bind_tp
+    ) const override final;
+
+    // v8 export
+    v8::Local<v8::Value> get_v8_export_obj(
+    ) const override final;
+
 private:
     template <typename T>
     void _setup()
@@ -107,6 +125,9 @@ private:
     }
     void _init_native(
         void* native_data
+    ) const;
+    bool _basic_type_check(
+        const V8BTDataModifier& modifiers
     ) const;
 
 private:

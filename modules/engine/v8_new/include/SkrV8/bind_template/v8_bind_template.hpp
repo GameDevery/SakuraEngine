@@ -65,10 +65,33 @@ struct IV8BindManager {
 };
 
 //===============================field & method data===============================
+struct V8BTDataModifier {
+    bool is_pointer : 1    = false;
+    bool is_ref : 1        = false;
+    bool is_rvalue_ref : 1 = false;
+    bool is_const : 1      = false;
+
+    inline void solve(TypeSignatureView signature)
+    {
+        is_pointer    = signature.is_pointer();
+        is_ref        = signature.is_ref();
+        is_rvalue_ref = signature.is_rvalue_ref();
+        is_const      = signature.is_const();
+    }
+    inline bool is_any_ref() const
+    {
+        return is_ref || is_rvalue_ref;
+    }
+    inline bool is_decayed_pointer() const
+    {
+        return is_pointer || is_any_ref();
+    }
+};
 struct V8BTDataField {
     const RTTRType*       field_owner = nullptr;
     const V8BindTemplate* bind_tp     = nullptr;
     const RTTRFieldData*  rttr_data   = nullptr;
+    V8BTDataModifier      modifiers   = {};
 
     inline void* solve_address(void* obj, const RTTRType* obj_type) const
     {
@@ -85,6 +108,7 @@ struct V8BTDataStaticField {
     const RTTRType*            field_owner = nullptr;
     const V8BindTemplate*      bind_tp     = nullptr;
     const RTTRStaticFieldData* rttr_data   = nullptr;
+    V8BTDataModifier           modifiers   = {};
 
     inline void* solve_address() const
     {
@@ -97,12 +121,17 @@ struct V8BTDataStaticField {
     );
 };
 struct V8BTDataParam {
-    const V8BindTemplate* bind_tp          = nullptr;
-    const RTTRParamData*  rttr_data        = nullptr;
-    uint32_t              index            = 0;
-    bool                  pass_by_ref      = false;
-    bool                  appare_in_return = false;
-    ERTTRParamFlag        inout_flag       = ERTTRParamFlag::None;
+    const V8BindTemplate* bind_tp   = nullptr;
+    const RTTRParamData*  rttr_data = nullptr;
+    uint32_t              index     = 0;
+
+    // modifier data
+    V8BTDataModifier modifiers  = {};
+    ERTTRParamFlag   inout_flag = ERTTRParamFlag::None;
+
+    // solve data
+    bool appare_in_return = false;
+    bool appare_in_param  = false;
 
     void setup(
         IV8BindManager*      manager,
@@ -112,7 +141,12 @@ struct V8BTDataParam {
 struct V8BTDataReturn {
     const V8BindTemplate* bind_tp     = nullptr;
     bool                  pass_by_ref = false;
-    bool                  is_void     = false;
+
+    // modifier data
+    V8BTDataModifier modifiers = {};
+
+    // solve data
+    bool is_void = false;
 
     void setup(
         IV8BindManager*   manager,
@@ -282,6 +316,7 @@ struct V8BindTemplate {
     ) const = 0;
 
     // check api
+    // TODO. API 分型, solve 归 solve, check 归 check
     virtual bool solve_param(
         V8BTDataParam& param_bind_tp
     ) const = 0;
@@ -294,10 +329,9 @@ struct V8BindTemplate {
     virtual bool solve_static_field(
         V8BTDataStaticField& field_bind_tp
     ) const = 0;
-    virtual bool update_method_count_info(
-        const V8BTDataParam& param_bind_tp,
-        uint32_t&            out_return_count,
-        uint32_t&            out_param_count
+
+    // v8 export
+    virtual v8::Local<v8::Value> get_v8_export_obj(
     ) const = 0;
 
     // cast helper
