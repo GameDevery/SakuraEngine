@@ -371,8 +371,7 @@ bool TemplateCallableDecl::can_call_with(std::span<const TypeDecl* const> arg_ty
     return true;
 }
 
-FunctionDecl* TemplateCallableDecl::specialize_for(std::span<const TypeDecl* const> arg_types, 
-                                                  std::span<const EVariableQualifier> arg_qualifiers) const
+FunctionDecl* TemplateCallableDecl::specialize_for(std::span<const TypeDecl* const> arg_types, std::span<const EVariableQualifier> arg_qualifiers, const TypeDecl* ret_spec) const
 {
     if (!can_call_with(arg_types, arg_qualifiers)) {
         return nullptr;
@@ -380,18 +379,20 @@ FunctionDecl* TemplateCallableDecl::specialize_for(std::span<const TypeDecl* con
     
     // Create specialized function or method based on whether this template has an owner
     if (is_method()) {
-        return new SpecializedMethodDecl(const_cast<AST&>(ast()), this, arg_types, arg_qualifiers);
+        return new SpecializedMethodDecl(const_cast<AST&>(ast()), this, ret_spec, arg_types, arg_qualifiers);
     } else {
-        return new SpecializedFunctionDecl(const_cast<AST&>(ast()), this, arg_types, arg_qualifiers);
+        return new SpecializedFunctionDecl(const_cast<AST&>(ast()), this, ret_spec, arg_types, arg_qualifiers);
     }
 }
 
 // SpecializedFunctionDecl implementation
 SpecializedFunctionDecl::SpecializedFunctionDecl(AST& ast, const TemplateCallableDecl* template_decl, 
+                                                 const TypeDecl* override_return_type, 
                                                  std::span<const TypeDecl* const> arg_types,
                                                  std::span<const EVariableQualifier> arg_qualifiers)
-    : FunctionDecl(ast, template_decl->name(), template_decl->get_return_type_for(arg_types), {}, nullptr), 
-      _template(template_decl)
+    : FunctionDecl(ast, template_decl->name(), 
+    override_return_type ? override_return_type : template_decl->get_return_type_for(arg_types), {}, nullptr), 
+    _template(template_decl)
 {
     // Create concrete parameters from template concepts and argument types
     _parameters.reserve(arg_types.size());
@@ -406,10 +407,11 @@ SpecializedFunctionDecl::SpecializedFunctionDecl(AST& ast, const TemplateCallabl
 
 // SpecializedMethodDecl implementation
 SpecializedMethodDecl::SpecializedMethodDecl(AST& ast, const TemplateCallableDecl* template_decl, 
+                                             const TypeDecl* override_return_type,
                                              std::span<const TypeDecl* const> arg_types,
                                              std::span<const EVariableQualifier> arg_qualifiers)
     : MethodDecl(ast, const_cast<TypeDecl*>(template_decl->owner_type()), template_decl->name(), 
-                 template_decl->get_return_type_for(arg_types), {}, nullptr), 
+                 override_return_type ? override_return_type : template_decl->get_return_type_for(arg_types), {}, nullptr), 
       _template(template_decl)
 {
     // Create concrete parameters from template concepts and argument types

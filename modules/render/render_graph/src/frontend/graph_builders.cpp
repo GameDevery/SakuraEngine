@@ -224,7 +224,7 @@ RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::read(const cha
 
 RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::readwrite(const char8_t* name, BufferHandle handle) SKR_NOEXCEPT
 {
-    auto allocated = graph.node_factory->Allocate<BufferReadWriteEdge>(handle.range(0, ~0), CGPU_RESOURCE_STATE_UNORDERED_ACCESS);
+    auto allocated = graph.node_factory->Allocate<BufferReadWriteEdge>(name, handle.range(0, ~0), CGPU_RESOURCE_STATE_UNORDERED_ACCESS);
     auto&& edge = node.out_buffer_edges.emplace(allocated).ref();
     graph.graph->link(&node, graph.graph->access_node(handle), edge);
     return *this;
@@ -232,7 +232,7 @@ RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::readwrite(cons
 
 RenderGraph::ComputePassBuilder& RenderGraph::ComputePassBuilder::readwrite(const char8_t* name, BufferRangeHandle handle) SKR_NOEXCEPT
 {
-    auto allocated = graph.node_factory->Allocate<BufferReadWriteEdge>(handle, CGPU_RESOURCE_STATE_UNORDERED_ACCESS);
+    auto allocated = graph.node_factory->Allocate<BufferReadWriteEdge>(name, handle, CGPU_RESOURCE_STATE_UNORDERED_ACCESS);
     auto&& edge = node.out_buffer_edges.emplace(allocated).ref();
     graph.graph->link(&node, graph.graph->access_node(handle._this), edge);
     return *this;
@@ -306,7 +306,7 @@ RenderGraph::CopyPassBuilder& RenderGraph::CopyPassBuilder::buffer_to_buffer(Buf
     SkrZoneScopedN("CopyPassBuilder::buffer_to_buffer");
 
     auto allocated_in = graph.node_factory->Allocate<BufferReadEdge>(u8"CopySrc", src, CGPU_RESOURCE_STATE_COPY_SOURCE);
-    auto allocated_out = graph.node_factory->Allocate<BufferReadWriteEdge>(dst, CGPU_RESOURCE_STATE_COPY_DEST);
+    auto allocated_out = graph.node_factory->Allocate<BufferReadWriteEdge>(u8"CopyDst", dst, CGPU_RESOURCE_STATE_COPY_DEST);
     auto&& in_edge = node.in_buffer_edges.emplace(allocated_in).ref();
     auto&& out_edge = node.out_buffer_edges.emplace(allocated_out).ref();
     graph.graph->link(graph.graph->access_node(src._this), &node, in_edge);

@@ -33,7 +33,7 @@ public:
             void run(skr::ecs::TaskContext& ctx)
             {
                 auto entities = ctx.entities();
-                result = entities[0];
+                result = (uint32_t)entities[0];
                 
                 // Initialize component data using readwrite access
                 auto compInt = ctx.components<IntComponent>();
@@ -66,7 +66,7 @@ public:
             {
                 auto entity_list = ctx.entities();
                 for (uint32_t i = 0; i < ctx.size(); ++i) {
-                    entities.push_back(entity_list[i]);
+                    entities.push_back((sugoi_entity_t)entity_list[i]);
                 }
                 
                 // Initialize component data using readwrite access

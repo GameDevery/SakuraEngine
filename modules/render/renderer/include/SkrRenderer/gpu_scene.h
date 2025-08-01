@@ -153,7 +153,7 @@ struct SKR_RENDERER_API GPUSceneDataPool
         size_t capacity_bytes;      // 总容量
         size_t used_bytes;          // 已使用字节数
         uint32_t instance_capacity; // 实例容量
-        uint32_t instance_count;    // 当前实例数
+        std::atomic<uint32_t> instance_count;    // 当前实例数
 
         // 组件分段管理（基于注册的核心组件）
         struct ComponentSegment
@@ -261,7 +261,7 @@ public:
     };
     MemoryUsageInfo GetMemoryUsageInfo() const;
 
-private:
+// private:
     friend struct ScanGPUScene;
     skr::ecs::World* ecs_world;
     skr::RendererDevice* render_device = nullptr;
@@ -276,6 +276,8 @@ private:
 
     // 核心：分层数据池
     GPUSceneDataPool data_pool;
+    bool first_frame = true;
+    skr::render_graph::BufferHandle scene_buffer;
 
     // 统一页面管理（两个区域共用）
     struct PageAllocator
@@ -309,7 +311,21 @@ private:
     skr::Map<skr::ecs::Entity, skr::InlineVector<CPUTypeID, 4>> dirties;
     
     // upload buffer management
+    struct Upload
+    {
+        uint64_t src_offset;        // 在 upload_buffer 中的偏移
+        uint64_t dst_offset;        // 在目标缓冲区中的偏移
+        uint64_t data_size;         // 数据大小
+    };
     CGPUBufferId upload_buffer = nullptr;
+    shared_atomic_mutex upload_mutex;
+    skr::Vector<Upload> uploads;    // 记录拷贝操作的位置信息
+    std::atomic<uint64_t> upload_cursor{0};  // upload_buffer 中的当前写入位置
+
+    // SparseUpload compute pipeline resources
+    CGPUShaderLibraryId sparse_upload_shader = nullptr;
+    CGPURootSignatureId sparse_upload_root_signature = nullptr;
+    CGPUComputePipelineId sparse_upload_pipeline = nullptr;
 
     // Private helper methods
     void InitializeComponentTypes(const GPUSceneConfig& config);
@@ -317,6 +333,7 @@ private:
     void CreateAdditionalDataBuffers(CGPUDeviceId device, const GPUSceneConfig& config);
     void InitializePageAllocator(const GPUSceneConfig& config);
     void AdjustDataBuffers();
+    void CreateSparseUploadPipeline(CGPUDeviceId device);
 
     // Helper functions for buffer creation
     CGPUBufferId CreateBuffer(CGPUDeviceId device, const char8_t* name, size_t size, ECGPUMemoryUsage usage = CGPU_MEM_USAGE_GPU_ONLY);
@@ -333,8 +350,9 @@ private:
     GPUSceneCustomIndex EncodeCustomIndex(GPUArchetypeID archetype_id, uint32_t entity_index_in_archetype);
     
     // Upload processing
-    uint32_t GetCoreComponentOffset(GPUComponentTypeID type_id) const;
+    uint32_t GetCoreComponentSegmentOffset(GPUComponentTypeID type_id) const;
     uint32_t GetCoreInstanceStride() const;
+    void DispatchSparseUpload(skr::render_graph::RenderGraph* graph);
 };
 
 } // namespace skr::renderer

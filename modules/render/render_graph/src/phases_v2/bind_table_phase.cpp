@@ -111,19 +111,18 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
     skr::InlineVector<const char8_t*, 8> bindTableValueNames;
     
     // Temporary storage for resources (released after binding)
-    skr::InlineVector<CGPUBufferId, 8> cbvs;
-    skr::InlineVector<CGPUTextureViewId, 8> srvs;
-    skr::InlineVector<CGPUTextureViewId, 8> uavs;
+    skr::InlineVector<CGPUBufferId, 8> buf_reads;
+    skr::InlineVector<CGPUBufferId, 8> buf_uavs;
+    skr::InlineVector<CGPUTextureViewId, 8> tex_reads;
+    skr::InlineVector<CGPUTextureViewId, 8> tex_uavs;
     skr::InlineVector<CGPUAccelerationStructureId, 8> acceleration_structures;
     
     uint32_t texture_count = 0;
     uint32_t buffer_count = 0;
     uint32_t acceleration_structure_count = 0;
     
-    // Process buffer resources (CBVs)
     auto buf_read_edges = pass->buf_read_edges();
-    cbvs.resize_zeroed(buf_read_edges.size());
-    
+    buf_reads.resize_zeroed(buf_read_edges.size());    
     for (uint32_t e_idx = 0; e_idx < buf_read_edges.size(); e_idx++)
     {
         auto& read_edge = buf_read_edges[e_idx];
@@ -140,8 +139,33 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
         update.name = resource.name;
         update.binding_type = resource_type;
         update.binding = resource.binding;
-        cbvs[e_idx] = resource_allocation_phase_.get_resource(buffer_readed);
-        update.buffers = &cbvs[e_idx];
+        buf_reads[e_idx] = resource_allocation_phase_.get_resource(buffer_readed);
+        update.buffers = &buf_reads[e_idx];
+        desc_set_updates.emplace(update);
+        
+        buffer_count++;
+    }
+    
+    auto buf_write_edges = pass->buf_readwrite_edges();
+    buf_uavs.resize_zeroed(buf_write_edges.size());    
+    for (uint32_t e_idx = 0; e_idx < buf_write_edges.size(); e_idx++)
+    {
+        auto& rw_edge = buf_write_edges[e_idx];
+        
+        const auto& resource = *find_shader_resource(rw_edge->get_name(), rw_edge->name_hash, root_sig);
+        ECGPUResourceType resource_type = resource.type;
+        bind_table_keys.append(rw_edge->get_name() ? rw_edge->get_name() : resource.name);
+        bind_table_keys.append(u8";");
+        bindTableValueNames.emplace(resource.name);
+        
+        auto buffer_writed = rw_edge->get_buffer_node();
+        CGPUDescriptorData update = {};
+        update.count = 1;
+        update.name = resource.name;
+        update.binding_type = resource_type;
+        update.binding = resource.binding;
+        buf_uavs[e_idx] = resource_allocation_phase_.get_resource(buffer_writed);
+        update.buffers = &buf_uavs[e_idx];
         desc_set_updates.emplace(update);
         
         buffer_count++;
@@ -149,8 +173,7 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
     
     // Process texture SRV resources
     auto tex_read_edges = pass->tex_read_edges();
-    srvs.resize_zeroed(tex_read_edges.size());
-    
+    tex_reads.resize_zeroed(tex_read_edges.size());
     for (uint32_t e_idx = 0; e_idx < tex_read_edges.size(); e_idx++)
     {
         auto& read_edge = tex_read_edges[e_idx];
@@ -184,8 +207,8 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
             (is_depth_only ? CGPU_TVA_DEPTH : CGPU_TVA_DEPTH | CGPU_TVA_STENCIL) :
             CGPU_TVA_COLOR;
         
-        srvs[e_idx] = graph->get_texture_view_pool().allocate(view_desc, graph->get_frame_index());
-        update.textures = &srvs[e_idx];
+        tex_reads[e_idx] = graph->get_texture_view_pool().allocate(view_desc, graph->get_frame_index());
+        update.textures = &tex_reads[e_idx];
         desc_set_updates.emplace(update);
         
         texture_count++;
@@ -194,8 +217,7 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
     
     // Process texture UAV resources
     auto tex_rw_edges = pass->tex_readwrite_edges();
-    uavs.resize_zeroed(tex_rw_edges.size());
-    
+    tex_uavs.resize_zeroed(tex_rw_edges.size());
     for (uint32_t e_idx = 0; e_idx < tex_rw_edges.size(); e_idx++)
     {
         auto& rw_edge = tex_rw_edges[e_idx];
@@ -224,8 +246,8 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
         view_desc.usages = CGPU_TVU_UAV;
         view_desc.dims = CGPU_TEX_DIMENSION_2D;
         
-        uavs[e_idx] = graph->get_texture_view_pool().allocate(view_desc, graph->get_frame_index());
-        update.textures = &uavs[e_idx];
+        tex_uavs[e_idx] = graph->get_texture_view_pool().allocate(view_desc, graph->get_frame_index());
+        update.textures = &tex_uavs[e_idx];
         desc_set_updates.emplace(update);
         
         texture_count++;
@@ -235,7 +257,6 @@ CGPUXBindTableId BindTablePhase::create_bind_table_for_pass(RenderGraph* graph_,
     // Process acceleration structure SRV resources
     auto as_read_edges = pass->acceleration_structure_read_edges();
     acceleration_structures.resize_zeroed(as_read_edges.size());
-    
     for (uint32_t e_idx = 0; e_idx < as_read_edges.size(); e_idx++)
     {
         auto& read_edge = as_read_edges[e_idx];

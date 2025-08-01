@@ -453,6 +453,21 @@ template <typename T, uint64_t N> struct array { T data[N]; };
 
 template <typename T> void buffer_write(RWStructuredBuffer<T> buffer, uint index, T value) { buffer[index] = value; }
 template <typename T> T buffer_read(RWStructuredBuffer<T> buffer, uint index) { return buffer[index]; }
+template <typename T> T buffer_read(StructuredBuffer<T> buffer, uint index) { return buffer[index]; }
+
+#define byte_buffer_load(b, i)  (b).Load((i))
+#define byte_buffer_load2(b, i) (b).Load2((i))
+#define byte_buffer_load3(b, i) (b).Load3((i))
+#define byte_buffer_load4(b, i) (b).Load4((i))
+
+#define byte_buffer_store(b, i, v)  (b).Store((i), (v))
+#define byte_buffer_store2(b, i, v) (b).Store2((i), (v))
+#define byte_buffer_store3(b, i, v) (b).Store3((i), (v))
+#define byte_buffer_store4(b, i, v) (b).Store4((i), (v))
+
+template <typename T> T byte_buffer_read(ByteAddressBuffer b, uint i) { return b.Load<T>(i); }
+template <typename T> T byte_buffer_read(RWByteAddressBuffer b, uint i) { return b.Load<T>(i); }
+template <typename T> void byte_buffer_write(RWByteAddressBuffer b, uint i, T v) { b.Store<T>(i, v); }
 
 // template <typename TEX> float4 texture2d_sample(TEX tex, uint2 uv, uint filter, uint address) { return float4(1, 1, 1, 1); }
 // template <typename TEX> float4 texture3d_sample(TEX tex, uint3 uv, uint filter, uint address) { return float4(1, 1, 1, 1); }
@@ -471,6 +486,8 @@ template <typename T> uint3 texture_size(RWTexture3D<T> tex) { uint Width, Heigh
 float4 sample2d(SamplerState s, Texture2D t, float2 uv) { return t.Sample(s, uv); }
 
 using AccelerationStructure = RaytracingAccelerationStructure;
+using uint64 = uint64_t;
+
 RayDesc create_ray(float3 origin, float3 dir, float tmin, float tmax) { RayDesc r; r.Origin = origin; r.Direction = dir; r.TMin = tmin; r.TMax = tmax; return r; }
 #define ray_query_trace_ray_inline(q, as, mask, ray) (q).TraceRayInline((as), RAY_FLAG_NONE, (mask), create_ray((ray).origin(), (ray).dir(), (ray).tmin(), (ray).tmax()))
 #define ray_query_proceed(q) (q).Proceed()

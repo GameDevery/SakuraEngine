@@ -99,7 +99,7 @@ TEST_CASE_METHOD(AllocateEntites, "AllocateAndQuery")
                 floats[i].v = i * 2.f;
             }
             EXPECT_EQ(ctx.size(), kBothEntityCount);
-        }, shared_entity);
+        }, (sugoi_entity_t)shared_entity);
         world.create_entities(spawner, kBothEntityCount);
     }
     // ReadAll
@@ -171,7 +171,7 @@ TEST_CASE_METHOD(AllocateEntites, "AllocateAndQuery")
             EXPECT_NE(floats, nullptr);
 
             sugoi_chunk_view_t shared_view = {};
-            sugoiS_access(storage, shared_entity, &shared_view);
+            sugoiS_access(storage, (sugoi_entity_t)shared_entity, &shared_view);
             auto pshared = sugoi::get_owned<const SharedComponent>(&shared_view);
             EXPECT_EQ(pshared->i, 114);
             EXPECT_EQ(pshared->f, 514.f);

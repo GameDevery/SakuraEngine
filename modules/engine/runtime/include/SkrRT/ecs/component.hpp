@@ -29,8 +29,8 @@ public:
     explicit Entity(sugoi_entity_t InEntityId = sugoi::kEntityNull);
     bool operator==(Entity Other) const;
     bool operator==(sugoi_entity_t Other) const;
-    operator sugoi_entity_t() const;
-    operator bool() const;
+    explicit operator sugoi_entity_t() const;
+    explicit operator bool() const;
     bool operator<(Entity Other) const;
     skr::String to_string() const;
     static size_t _skr_hash(const Entity& Handle);
@@ -148,7 +148,7 @@ protected:
     template <class Storage>
     SKR_FORCEINLINE Storage* get(Entity entity)
     {
-        sugoi_chunk_view_t view = World->entity_view(entity);
+        sugoi_chunk_view_t view = World->entity_view((sugoi_entity_t)entity);
         if (view.chunk == nullptr)
             return nullptr;
         if(CachedPtr != nullptr && CachedView.chunk == view.chunk)

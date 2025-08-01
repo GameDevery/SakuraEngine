@@ -3,7 +3,7 @@
 #include "SkrCore/memory/rc.hpp"
 #include "SkrContainersDef/vector.hpp"
 #include "SkrContainersDef/map.hpp"
-#include "SkrRT/sugoi/sugoi.h"
+#include "SkrRT/ecs/world.hpp"
 #if !defined(__meta__)
     #include "SkrScene/actor.generated.h"
 #endif
@@ -49,7 +49,7 @@ public:
     skr::String display_name;             // for editor, profiler, and runtime dump
     skr::GUID guid = skr::GUID::Create(); // guid for each actor, used to identify actors in the scene
 
-    skr::InlineVector<sugoi_entity_t, 1> transform_entities;
+    skr::InlineVector<skr::ecs::Entity, 1> transform_entities;
 
     skr::Vector<skr::RC<Actor>> children;
     skr::RC<Actor> _parent = nullptr;

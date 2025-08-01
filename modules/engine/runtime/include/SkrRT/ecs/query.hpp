@@ -38,14 +38,14 @@ public:
     template <skr::ecs::EntityConcept...Ents>
     QueryBuilder& WithMetaEntity(Ents... ents)
     {
-        (all_meta.push_back(Entity(ents)), ...);
+        (all_meta.push_back(sugoi_entity_t(ents)), ...);
         return *this;
     }
 
     template <skr::ecs::EntityConcept...Ents>
     QueryBuilder& WithoutMetaEntity(Ents... ents)
     {
-        (none_meta.push_back(Entity(ents)), ...);
+        (none_meta.push_back(sugoi_entity_t(ents)), ...);
         return *this;
     }
 

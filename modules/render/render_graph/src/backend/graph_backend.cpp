@@ -303,7 +303,7 @@ uint64_t RenderGraphBackend::execute(RenderGraphProfiler* profiler) SKR_NOEXCEPT
         execution_phase.on_execute(this, &executors[executor_index], profiler);
 
 #if !SKR_SHIPPING
-        if (frame_index == 1000)
+        if (frame_index == 0)
         {
             GraphViz::generate_graphviz_visualization(this, info_analysis, queue_schedule, ssis_phase, barrier_phase, aliasing_phase, lifetime_analysis);
         }

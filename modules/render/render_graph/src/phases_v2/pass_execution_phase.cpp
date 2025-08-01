@@ -390,7 +390,10 @@ void PassExecutionPhase::execute_compute_pass(RenderGraph* graph_, RenderGraphFr
     {
         cgpu_compute_encoder_bind_pipeline(pass_context.encoder, pass->pipeline);
     }
-    cgpux_compute_encoder_bind_bind_table(pass_context.encoder, pass_context.bind_table);
+    if (pass_context.bind_table)
+    {
+        cgpux_compute_encoder_bind_bind_table(pass_context.encoder, pass_context.bind_table);
+    }
     {
         SkrZoneScopedN("PassExecutor");
         pass->executor(*graph, pass_context);

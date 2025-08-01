@@ -609,10 +609,10 @@ TemplateCallableDecl* AST::DeclareTemplateMethod(TypeDecl* owner, const Name& na
     return decl;
 }
 
-SpecializedFunctionDecl* AST::SpecializeTemplateFunction(const TemplateCallableDecl* template_decl, std::span<const TypeDecl* const> arg_types, std::span<const EVariableQualifier> arg_qualifiers)
+SpecializedFunctionDecl* AST::SpecializeTemplateFunction(const TemplateCallableDecl* template_decl, std::span<const TypeDecl* const> arg_types, std::span<const EVariableQualifier> arg_qualifiers, const TypeDecl* ret_spec)
 {
     // Create new specialization
-    auto specialized = (SpecializedFunctionDecl*)template_decl->specialize_for(arg_types, arg_qualifiers);
+    auto specialized = (SpecializedFunctionDecl*)template_decl->specialize_for(arg_types, arg_qualifiers, ret_spec);
     emplace_decl(specialized);
     return specialized;
 }
@@ -625,9 +625,9 @@ const TemplateCallableDecl* AST::FindIntrinsic(const char* name) const
     return nullptr;
 }
 
-SpecializedMethodDecl* AST::SpecializeTemplateMethod(const TemplateCallableDecl* template_decl, std::span<const TypeDecl* const> arg_types, std::span<const EVariableQualifier> arg_qualifiers)
+SpecializedMethodDecl* AST::SpecializeTemplateMethod(const TemplateCallableDecl* template_decl, std::span<const TypeDecl* const> arg_types, std::span<const EVariableQualifier> arg_qualifiers, const TypeDecl* ret_spec)
 {
-    auto specialized = (SpecializedMethodDecl*)template_decl->specialize_for(arg_types, arg_qualifiers);
+    auto specialized = (SpecializedMethodDecl*)template_decl->specialize_for(arg_types, arg_qualifiers, ret_spec);
     emplace_decl(specialized);
     return specialized;
 }
@@ -759,6 +759,10 @@ void AST::DeclareIntrinstics()
     auto BufferFamily = DeclareVarConcept(L"BufferFamily", 
         [this](EVariableQualifier qualifier, const TypeDecl* type)  {
             return (dynamic_cast<const skr::CppSL::BufferTypeDecl*>(type) != nullptr);
+        });
+    auto ByteBufferFamily = DeclareVarConcept(L"ByteBufferFamily", 
+        [this](EVariableQualifier qualifier, const TypeDecl* type)  {
+            return (dynamic_cast<const skr::CppSL::ByteBufferTypeDecl*>(type) != nullptr);
         });
     auto StructuredBufferFamily = DeclareVarConcept(L"StructuredBufferFamily",
         [this](EVariableQualifier qualifier, const TypeDecl* type) {
@@ -914,6 +918,23 @@ void AST::DeclareIntrinstics()
     std::array<VarConceptDecl*, 3> BufferWriteParams = { BufferFamily, IntScalar, ValueFamily };
     _intrinstics["BUFFER_WRITE"] = DeclareTemplateFunction(L"buffer_write", VoidType, BufferWriteParams);
 
+    std::array<VarConceptDecl*, 2> ByteBufferLoadParams = { ByteBufferFamily, IntScalar };
+    // Load<T> Type will be specialized when being called
+    _intrinstics["BYTE_BUFFER_READ"] = DeclareTemplateFunction(L"byte_buffer_read", VoidType, ByteBufferLoadParams);
+    _intrinstics["BYTE_BUFFER_LOAD"] = DeclareTemplateFunction(L"byte_buffer_load", UIntType, ByteBufferLoadParams);
+    _intrinstics["BYTE_BUFFER_LOAD2"] = DeclareTemplateFunction(L"byte_buffer_load2", UIntType, ByteBufferLoadParams);
+    _intrinstics["BYTE_BUFFER_LOAD3"] = DeclareTemplateFunction(L"byte_buffer_load3", UIntType, ByteBufferLoadParams);
+    _intrinstics["BYTE_BUFFER_LOAD4"] = DeclareTemplateFunction(L"byte_buffer_load4", UIntType, ByteBufferLoadParams);
+
+    std::array<VarConceptDecl*, 3> ByteBufferWriteParams = { ByteBufferFamily, IntScalar, ValueFamily };
+    _intrinstics["BYTE_BUFFER_WRITE"] = DeclareTemplateFunction(L"byte_buffer_write", VoidType, ByteBufferWriteParams);
+
+    std::array<VarConceptDecl*, 3> ByteBufferStoreParams = { ByteBufferFamily, IntScalar, IntFamily };
+    _intrinstics["BYTE_BUFFER_STORE"] = DeclareTemplateFunction(L"byte_buffer_store", VoidType, ByteBufferStoreParams);
+    _intrinstics["BYTE_BUFFER_STORE2"] = DeclareTemplateFunction(L"byte_buffer_store2", VoidType, ByteBufferStoreParams);
+    _intrinstics["BYTE_BUFFER_STORE3"] = DeclareTemplateFunction(L"byte_buffer_store3", VoidType, ByteBufferStoreParams);
+    _intrinstics["BYTE_BUFFER_STORE4"] = DeclareTemplateFunction(L"byte_buffer_store4", VoidType, ByteBufferStoreParams);
+    
     auto AtomicReturnSpec = [=](auto pts) {
         if (auto bufferType = dynamic_cast<const StructuredBufferTypeDecl*>(pts[0])) 
             return &bufferType->element();

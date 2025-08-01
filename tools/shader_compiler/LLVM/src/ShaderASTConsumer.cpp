@@ -1480,6 +1480,7 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
             if (auto Intrin = AST.FindIntrinsic(name.str().c_str()))
             {
                 const bool IsMethod = llvm::dyn_cast<clang::CXXMemberCallExpr>(cxxCall);
+                const TypeDecl* _ret_type = nullptr;
                 std::vector<const TypeDecl*> _arg_types;
                 std::vector<EVariableQualifier> _arg_qualifiers;
                 std::vector<CppSL::Expr*> _args;
@@ -1500,8 +1501,9 @@ Stmt* ASTConsumer::TranslateStmt(const clang::Stmt *x)
                     _arg_qualifiers.emplace_back(EVariableQualifier::None);
                     _args.emplace_back(TranslateStmt<CppSL::Expr>(cxxCall->getArg(i)));
                 }
+                _ret_type = getType(cxxCall->getCallReturnType(*pASTContext));
                 // TODO: CACHE THIS
-                if (auto Spec = AST.SpecializeTemplateFunction(Intrin, _arg_types, _arg_qualifiers))
+                if (auto Spec = AST.SpecializeTemplateFunction(Intrin, _arg_types, _arg_qualifiers, _ret_type))
                     return AST.CallFunction(Spec->ref(), _args);
                 else
                     ReportFatalError(x, "Failed to specialize template function: {}", name.str());

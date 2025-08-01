@@ -122,11 +122,15 @@ public:
     friend class RenderGraph;
     friend class RenderGraphBackend;
 
+    inline const char8_t* get_name() const { return name.c_str(); }
+    const uint64_t name_hash = 0;
+
     BufferNode* get_buffer_node() final;
     PassNode* get_pass_node() final;
 
-    BufferReadWriteEdge(BufferRangeHandle handle, ECGPUResourceState state);
+    BufferReadWriteEdge(const skr::StringView name, BufferRangeHandle handle, ECGPUResourceState state);
 protected:
+    const skr::String name = u8"";
     BufferRangeHandle handle;
 };
 

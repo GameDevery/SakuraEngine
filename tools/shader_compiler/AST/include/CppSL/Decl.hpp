@@ -392,7 +392,8 @@ public:
     
     // Generate a specialized function/method for given argument types
     FunctionDecl* specialize_for(std::span<const TypeDecl* const> arg_types, 
-                                std::span<const EVariableQualifier> arg_qualifiers) const;
+                                std::span<const EVariableQualifier> arg_qualifiers,
+                                const TypeDecl* ret_spec = nullptr) const;
 
 protected:
     friend struct AST;
@@ -418,6 +419,7 @@ protected:
     friend struct AST;
     friend struct TemplateCallableDecl;
     SpecializedFunctionDecl(AST& ast, const TemplateCallableDecl* template_decl, 
+                           const TypeDecl* override_return_type,
                            std::span<const TypeDecl* const> arg_types,
                            std::span<const EVariableQualifier> arg_qualifiers);
     
@@ -437,6 +439,7 @@ protected:
     friend struct AST;
     friend struct TemplateCallableDecl;
     SpecializedMethodDecl(AST& ast, const TemplateCallableDecl* template_decl, 
+                         const TypeDecl* override_return_type,
                          std::span<const TypeDecl* const> arg_types,
                          std::span<const EVariableQualifier> arg_qualifiers);
     

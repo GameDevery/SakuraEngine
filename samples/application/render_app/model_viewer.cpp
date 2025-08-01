@@ -19,6 +19,7 @@
 #include "SkrRenderer/resources/mesh_resource.h"
 #include "SkrMeshCore/mesh_processing.hpp"
 #include "SkrGLTFTool/mesh_asset.hpp"
+#include "common/utils.h"
 
 using namespace skr::literals;
 const auto MeshAssetID = u8"18db1369-ba32-4e91-aa52-b2ed1556f576"_guid;
@@ -112,8 +113,9 @@ protected:
     void InitializeReosurceSystem();
     void DestroyResourceSystem();
 
-    void CreateScene();
-    void CreateGPUScene();
+    void CreateScene(skr::render_graph::RenderGraph* graph);
+    void CreateComputePipeline();
+    void render();
 
     skr::task::scheduler_t scheduler;
     VirtualProject project;
@@ -130,6 +132,14 @@ protected:
 
     skr::ecs::World world;
     skr::renderer::GPUScene GPUScene;
+
+    // Compute pipeline resources for debug rendering
+    CGPUShaderLibraryId compute_shader = nullptr;
+    CGPURootSignatureId root_signature = nullptr; 
+    CGPUComputePipelineId compute_pipeline = nullptr;
+    
+    // RenderGraph and swapchain for rendering
+    CGPUSwapChainId swapchain = nullptr;
 };
 IMPLEMENT_DYNAMIC_MODULE(ModelViewerModule, SkrModelViewer);
 
@@ -175,8 +185,6 @@ void ModelViewerModule::on_load(int argc, char8_t** argv)
     CookAndLoadGLTF();
 
     world.initialize();
-    CreateScene();
-    CreateGPUScene();
 }
 
 int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
@@ -211,37 +219,115 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
         bool want_exit = false;
     } close_listener;
     render_app->get_event_queue()->add_handler(&close_listener);
+    
+    // Create compute pipeline for debug rendering
+    CreateComputePipeline();
+
+    CreateScene(render_app->render_graph());
 
     // AsyncResource<> is a handle can be constructed by any resource type & ids
     skr::resource::AsyncResource<MeshResource> mesh_resource;
     mesh_resource = MeshAssetID;
 
+    uint64_t frame_index = 0;
     while (!close_listener.want_exit)
     {
         render_app->get_event_queue()->pump_messages();
+        render_app->acquire_frames();
 
-        // 'Update' polls resource requests and handles their loading & installing
-        // 'load': usually means 'fetch data blocks from disk' & 'deserialize object from these data'
-        // 'install': usually means some heavy post-works, like uploading vertices to GPU, build BLAS for meshes, etc.
-        // This 'Update' call is able to and should be called from [MULTIPLE] background thread workers.
-        // In this sample we call 'Update' here in main eventloop just for ease. 
-        resource_system->Update();
-
-        // Resolve issues a install 'request' for mesh_resource, ResourceSystem will load & install it automatically behind background during 'Update' 
-        mesh_resource.resolve(true, 0, ESkrRequesterType::SKR_REQUESTER_SYSTEM);
+        auto render_graph = render_app->render_graph();
+        // Simple render loop using compute shader to fill screen red
+        const auto screen_width = static_cast<uint32_t>(window_config.size.x);
+        const auto screen_height = static_cast<uint32_t>(window_config.size.y);
         
-        // Resolving the resource is an async progress, thus 'is_resolved' handle will be like an async flag
-        // Once the resource is ready in some frame, we can fetch and use the object in AsyncResource<>
-        if (mesh_resource.is_resolved())
-        {
-            auto MeshResource = mesh_resource.get_resolved(true);
-            MeshResource = mesh_resource.get_resolved(true);
-        }
+        // Calculate dispatch groups for 16x16 kernel
+        const uint32_t group_count_x = (screen_width + 15) / 16;
+        const uint32_t group_count_y = (screen_height + 15) / 16;
 
-        // Resource handles are all ref-counted proxies! 'unload' or 'dtor' means [refcount -= 1]
-        // So resource will only be actually unloaded if there are no handles still reference to it.
-        auto ownershipCopy = mesh_resource;
-        ownershipCopy.unload(); // The MeshResource would be safe and unloaded because of the outter 'mesh_resource' handle.
+        // Update GPUScene
+        GPUScene.ExecuteUpload(render_graph);
+
+        // Create output render target texture
+        auto render_target_handle = render_graph->create_texture(
+            [=](skr::render_graph::RenderGraph& g, skr::render_graph::TextureBuilder& builder) {
+                builder.set_name(u8"render_target")
+                    .extent(screen_width, screen_height)
+                    .format(CGPU_FORMAT_R8G8B8A8_UNORM)
+                    .allow_readwrite();
+            }
+        );
+        
+        // Add compute pass to fill screen with red
+        render_graph->add_compute_pass(
+            [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::ComputePassBuilder& builder) {
+                builder.set_name(u8"GPUSceneDebugPass")
+                    .set_pipeline(compute_pipeline)
+                    .readwrite(u8"output_texture", render_target_handle)
+                    .read(u8"gpu_scene_buffer", GPUScene.scene_buffer);
+            },
+            [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::ComputePassContext& ctx) {
+                // Push constants
+                struct SceneDebugConstants {
+                    float screen_width;
+                    float screen_height;
+                    uint32_t debug_mode;    // 0 = red fill, 3 = GPUScene color debug
+                    uint32_t color_segment_offset;
+                    uint32_t color_element_size;
+                    uint32_t instance_count;
+                } constants;
+                
+                constants.screen_width = static_cast<float>(screen_width);
+                constants.screen_height = static_cast<float>(screen_height);
+                constants.debug_mode = 3; // Simple GPUScene validation mode
+                
+                // Get GPUScene color component info
+                auto color_type_id = GPUScene.GetComponentTypeID(sugoi_id_of<GPUSceneInstanceColor>::get());
+                constants.color_segment_offset = GPUScene.GetCoreComponentSegmentOffset(color_type_id);
+                constants.color_element_size = sizeof(GPUSceneInstanceColor);
+                constants.instance_count = GPUScene.data_pool.core_data.instance_count.load();
+                
+                // Debug logging
+                static int frame_count = 0;
+                if (frame_count++ % 60 == 0) // Log every 60 frames
+                {
+                    SKR_LOG_INFO(u8"GPUScene Debug Info:");
+                    SKR_LOG_INFO(u8"  - Instance count: %u", constants.instance_count);
+                    SKR_LOG_INFO(u8"  - Color segment offset: %u", constants.color_segment_offset);
+                    SKR_LOG_INFO(u8"  - Color element size: %u", constants.color_element_size);
+                    SKR_LOG_INFO(u8"  - Core buffer size: %llu", GPUScene.data_pool.core_data.buffer->info->size);
+                    
+                    // Try to read first color value from CPU side if available
+                    if (GPUScene.data_pool.core_data.buffer->info->cpu_mapped_address && constants.instance_count > 0)
+                    {
+                        uint8_t* buffer_ptr = static_cast<uint8_t*>(GPUScene.data_pool.core_data.buffer->info->cpu_mapped_address);
+                        float* color_ptr = reinterpret_cast<float*>(buffer_ptr + constants.color_segment_offset);
+                        SKR_LOG_INFO(u8"  - First instance color (CPU): %.2f, %.2f, %.2f, %.2f", 
+                                    color_ptr[0], color_ptr[1], color_ptr[2], color_ptr[3]);
+                    }
+                }
+                
+                cgpu_compute_encoder_push_constants(ctx.encoder, root_signature, u8"debug_constants", &constants);
+                cgpu_compute_encoder_dispatch(ctx.encoder, group_count_x, group_count_y, 1);
+            }
+        );
+
+        // Add copy pass to copy render target to backbuffer
+        auto backbuffer_handle = render_graph->get_imported(render_app->get_backbuffer(render_app->get_main_window()));
+        render_graph->add_copy_pass(
+            [=](skr::render_graph::RenderGraph& g, skr::render_graph::CopyPassBuilder& builder) {
+                builder.set_name(u8"CopyToBackbuffer")
+                    .texture_to_texture(render_target_handle, backbuffer_handle);
+            },
+            [=](skr::render_graph::RenderGraph& g, skr::render_graph::CopyPassContext& ctx) {
+                // Copy implementation handled by render graph
+            }
+        );
+
+        frame_index = render_graph->execute();
+        if (frame_index >= RG_MAX_FRAME_IN_FLIGHT * 10)
+            render_graph->collect_garbage(frame_index - RG_MAX_FRAME_IN_FLIGHT * 10);
+
+        render_app->present_all();
     }
     render_app->close_all_windows();
     render_app->get_event_queue()->remove_handler(&close_listener);
@@ -266,7 +352,7 @@ void ModelViewerModule::CookAndLoadGLTF()
             u8"girl.model.meta",                           // virtual uri for this asset in the project
             MeshAssetID,                                   // guid for this asset
             skr::type_id_of<skr::renderer::MeshResource>(),// output resource is a mesh resource 
-            skr::type_id_of<skd::asset::MeshCooker>()      // this cooker cooks the raw mesh data to mesh resource
+            skr::type_id_of<skd::asset::MeshCooker>()      // this cooker cooks t he raw mesh data to mesh resource
         );
         // source file
         importer->assetPath = u8"D:/Code/SakuraEngine/samples/application/game/assets/sketchfab/loli/scene.gltf";
@@ -286,7 +372,7 @@ void ModelViewerModule::CookAndLoadGLTF()
     }
 }
 
-void ModelViewerModule::CreateScene()
+void ModelViewerModule::CreateScene(skr::render_graph::RenderGraph* graph)
 {
     using namespace skr::ecs;
     using namespace skr::renderer;
@@ -325,6 +411,8 @@ void ModelViewerModule::CreateScene()
             auto entities = Context.entities();
             for (uint32_t i = 0; i < cnt; i++)
             {
+                colors[i].color = skr::float4(1.f, 0.f, 1.f, 1.f);
+
                 pScene->RequireUpload(entities[i], sugoi_id_of<GPUSceneObjectToWorld>::get());
                 pScene->RequireUpload(entities[i], sugoi_id_of<GPUSceneInstanceColor>::get());
                 pScene->RequireUpload(entities[i], sugoi_id_of<GPUSceneInstanceEmission>::get());
@@ -342,15 +430,6 @@ void ModelViewerModule::CreateScene()
     } spawner;
     spawner.pScene = &GPUScene;
     world.create_entities(spawner, 10'000);
-
-    
-    GPUScene.ExecuteUpload(nullptr);
-}
-
-void ModelViewerModule::CreateGPUScene()
-{
-
-
 }
 
 void ModelViewerModule::InitializeAssetSystem()
@@ -461,7 +540,64 @@ void ModelViewerModule::on_unload()
     // shutdown task system
     scheduler.unbind();
 
+    // Release compute pipeline resources
+    if (compute_pipeline)
+    {
+        cgpu_free_compute_pipeline(compute_pipeline);
+        compute_pipeline = nullptr;
+    }
+    
+    if (root_signature) 
+    {
+        cgpu_free_root_signature(root_signature);
+        root_signature = nullptr;
+    }
+    
+    if (compute_shader)
+    {
+        cgpu_free_shader_library(compute_shader);
+        compute_shader = nullptr;
+    }
+
     // shutdown logging
     skr_log_flush();
     skr_log_finalize_async_worker();
+}
+
+void ModelViewerModule::CreateComputePipeline()
+{
+    auto device = render_device->get_cgpu_device();
+    
+    // Create compute shader using scene_debug shader
+    uint32_t *shader_bytes, shader_length;
+    read_shader_bytes(u8"scene_debug.scene_debug", &shader_bytes, &shader_length, device->adapter->instance->backend);
+    CGPUShaderLibraryDescriptor shader_desc = {
+        .name = u8"DebugFillComputeShader",
+        .code = shader_bytes,
+        .code_size = shader_length
+    };
+    compute_shader = cgpu_create_shader_library(device, &shader_desc);
+    free(shader_bytes);
+
+    // Create root signature
+    const char8_t* push_constant_name = u8"debug_constants";
+    CGPUShaderEntryDescriptor compute_shader_entry = {
+        .library = compute_shader,
+        .entry = u8"scene_debug_main",
+        .stage = CGPU_SHADER_STAGE_COMPUTE
+    };
+    CGPURootSignatureDescriptor root_desc = {
+        .shaders = &compute_shader_entry,
+        .shader_count = 1,
+        .push_constant_names = &push_constant_name,
+        .push_constant_count = 1,
+    };
+    root_signature = cgpu_create_root_signature(device, &root_desc);
+
+    // Create compute pipeline
+    CGPUComputePipelineDescriptor pipeline_desc = {
+        .root_signature = root_signature,
+        .compute_shader = &compute_shader_entry,
+    };
+    compute_pipeline = cgpu_create_compute_pipeline(device, &pipeline_desc);
 }

@@ -477,7 +477,7 @@ CGPUBufferId cgpu_create_buffer_d3d12(CGPUDeviceId device, const struct CGPUBuff
             srvDesc.Buffer.StructureByteStride = (UINT)(desc->element_stride);
             srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
             srvDesc.Format = (DXGI_FORMAT)DXGIUtil_TranslatePixelFormat(desc->format, false);
-            if (CGPU_RESOURCE_TYPE_BUFFER_RAW == (desc->descriptors & CGPU_RESOURCE_TYPE_BUFFER_RAW))
+            if ((desc->format == CGPU_FORMAT_UNDEFINED) || (CGPU_RESOURCE_TYPE_BUFFER_RAW == (desc->descriptors & CGPU_RESOURCE_TYPE_BUFFER_RAW)))
             {
                 if (desc->format != CGPU_FORMAT_UNDEFINED)
                 {
@@ -508,7 +508,7 @@ CGPUBufferId cgpu_create_buffer_d3d12(CGPUDeviceId device, const struct CGPUBuff
             uavDesc.Buffer.StructureByteStride = (UINT)(desc->element_stride);
             uavDesc.Buffer.CounterOffsetInBytes = 0;
             uavDesc.Buffer.Flags |= D3D12_BUFFER_UAV_FLAG_NONE;
-            if (CGPU_RESOURCE_TYPE_RW_BUFFER_RAW == (desc->descriptors & CGPU_RESOURCE_TYPE_RW_BUFFER_RAW))
+            if ((desc->format == CGPU_FORMAT_UNDEFINED) || (CGPU_RESOURCE_TYPE_RW_BUFFER_RAW == (desc->descriptors & CGPU_RESOURCE_TYPE_RW_BUFFER_RAW)))
             {
                 if (desc->format != CGPU_FORMAT_UNDEFINED)
                 {

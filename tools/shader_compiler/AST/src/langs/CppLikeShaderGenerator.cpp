@@ -72,7 +72,15 @@ void CppLikeShaderGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::S
         auto callee = callExpr->callee();
         if (auto callee_decl = dynamic_cast<const FunctionDecl*>(callee->decl()))
         {
-            sb.append(callee_decl->name());
+            auto func_name = callee_decl->name();
+            
+            // TODO: Implement REAL TEMPLATE CALL (CallWithTypeArgs)
+            if (func_name == L"byte_buffer_read")
+            {
+                func_name = func_name + L"<" + GetQualifiedTypeName(callee_decl->return_type()) + L">";
+            }
+            
+            sb.append(func_name);
             sb.append(L"(");
             for (size_t i = 0; i < callExpr->args().size(); i++)
             {
@@ -101,6 +109,7 @@ void CppLikeShaderGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::S
             sb.append(L"default:");
         }
         visitExpr(sb, caseStmt->body());
+        sb.append(L";");
     }
     else if (auto methodCall = dynamic_cast<const MethodCallExpr*>(stmt))
     {
@@ -160,6 +169,7 @@ void CppLikeShaderGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::S
     {
         sb.append(L"default:");
         visitExpr(sb, defaultStmt->children()[0]);
+        sb.append(L";");
     }
     else if (auto member = dynamic_cast<const MemberExpr*>(stmt))
     {
@@ -254,7 +264,7 @@ void CppLikeShaderGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::S
     {
         sb.append(L"switch (");
         visitExpr(sb, switchStmt->cond());
-        sb.append(L")");
+        sb.append(L") {");
         sb.endline();
         sb.indent([&]() {
             for (auto case_stmt : switchStmt->cases())
@@ -263,6 +273,7 @@ void CppLikeShaderGenerator::visitExpr(SourceBuilderNew& sb, const skr::CppSL::S
                 sb.endline();
             }
         });
+        sb.append(L"}");
     }
     else if (auto unary = dynamic_cast<const UnaryExpr*>(stmt))
     {
