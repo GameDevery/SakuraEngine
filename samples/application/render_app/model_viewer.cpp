@@ -286,26 +286,6 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
                 constants.color_element_size = sizeof(GPUSceneInstanceColor);
                 constants.instance_count = GPUScene.data_pool.core_data.instance_count.load();
                 
-                // Debug logging
-                static int frame_count = 0;
-                if (frame_count++ % 60 == 0) // Log every 60 frames
-                {
-                    SKR_LOG_INFO(u8"GPUScene Debug Info:");
-                    SKR_LOG_INFO(u8"  - Instance count: %u", constants.instance_count);
-                    SKR_LOG_INFO(u8"  - Color segment offset: %u", constants.color_segment_offset);
-                    SKR_LOG_INFO(u8"  - Color element size: %u", constants.color_element_size);
-                    SKR_LOG_INFO(u8"  - Core buffer size: %llu", GPUScene.data_pool.core_data.buffer->info->size);
-                    
-                    // Try to read first color value from CPU side if available
-                    if (GPUScene.data_pool.core_data.buffer->info->cpu_mapped_address && constants.instance_count > 0)
-                    {
-                        uint8_t* buffer_ptr = static_cast<uint8_t*>(GPUScene.data_pool.core_data.buffer->info->cpu_mapped_address);
-                        float* color_ptr = reinterpret_cast<float*>(buffer_ptr + constants.color_segment_offset);
-                        SKR_LOG_INFO(u8"  - First instance color (CPU): %.2f, %.2f, %.2f, %.2f", 
-                                    color_ptr[0], color_ptr[1], color_ptr[2], color_ptr[3]);
-                    }
-                }
-                
                 cgpu_compute_encoder_push_constants(ctx.encoder, root_signature, u8"debug_constants", &constants);
                 cgpu_compute_encoder_dispatch(ctx.encoder, group_count_x, group_count_y, 1);
             }
@@ -337,7 +317,7 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
 
 void ModelViewerModule::CookAndLoadGLTF()
 {
-    auto& System = *skd::asset::GetCookSystem();
+    auto& CookSystem = *skd::asset::GetCookSystem();
     const bool NeedImport = !project.ExistImportedAsset(u8"girl.model.meta");
     if (NeedImport) // Import from disk!
     {
@@ -356,18 +336,18 @@ void ModelViewerModule::CookAndLoadGLTF()
         );
         // source file
         importer->assetPath = u8"D:/Code/SakuraEngine/samples/application/game/assets/sketchfab/loli/scene.gltf";
-        System.ImportAssetMeta(&project, asset, importer, metadata);
+        CookSystem.ImportAssetMeta(&project, asset, importer, metadata);
         
         // save
-        System.SaveAssetMeta(&project, asset);
+        CookSystem.SaveAssetMeta(&project, asset);
     
-        auto event = System.EnsureCooked(asset->GetGUID());
+        auto event = CookSystem.EnsureCooked(asset->GetGUID());
         event.wait(true);
     }
     else // Load imported asset from project...
     {
-        auto asset = System.LoadAssetMeta(&project, u8"girl.model.meta");
-        auto event = System.EnsureCooked(asset->GetGUID());
+        auto asset = CookSystem.LoadAssetMeta(&project, u8"girl.model.meta");
+        auto event = CookSystem.EnsureCooked(asset->GetGUID());
         event.wait(true);
     }
 }

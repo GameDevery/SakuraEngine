@@ -123,14 +123,6 @@ struct ScanGPUScene
                         uint32_t segment_offset = pScene->GetCoreComponentSegmentOffset(gpu_type);
                         uint64_t dst_offset = segment_offset + (instance_data.instance_index * component_info.element_size);
                         
-                        // Debug log segment calculation
-                        if (i < 3) // Log first few instances
-                        {
-                            SKR_LOG_INFO(u8"Instance[%u] Component[%s]: segment_offset=%u, instance_index=%u, element_size=%u, dst_offset=%llu",
-                                       i, component_info.name, segment_offset, instance_data.instance_index, 
-                                       component_info.element_size, dst_offset);
-                        }
-                        
                         // 分配 upload_buffer 中的位置
                         uint64_t src_offset = pScene->upload_cursor.fetch_add(component_info.element_size);
                         
@@ -339,21 +331,7 @@ void GPUScene::DispatchSparseUpload(skr::render_graph::RenderGraph* graph)
     const size_t upload_size = sizeof(Upload);
     const size_t max_ops_per_batch = (max_buffer_size - 256) / upload_size; // Leave some padding
     
-    SKR_LOG_INFO(u8"GPUScene: Dispatching SparseUpload with %u total operations", (uint32_t)uploads.size());
-    
-    // Debug: Log all operations to verify offsets
-    for (size_t i = 0; i < uploads.size(); ++i)
-    {
-        const auto& op = uploads[i];
-        SKR_LOG_INFO(u8"  Upload[%u]: src_offset=%llu, dst_offset=%llu (0x%llX), size=%llu", 
-                     (uint32_t)i, op.src_offset, op.dst_offset, op.dst_offset, op.data_size);
-        
-        // Check if this is a color operation (dst > 200MB)
-        if (op.dst_offset > 200000000)
-        {
-            SKR_LOG_INFO(u8"    -> This is a COLOR operation (offset > 200MB)");
-        }
-    }
+    SKR_LOG_DEBUG(u8"GPUScene: Dispatching SparseUpload with %u total operations", (uint32_t)uploads.size());
     
     // Import buffers that will be used across all batches
     auto upload_buffer_handle = graph->create_buffer(
@@ -375,11 +353,12 @@ void GPUScene::DispatchSparseUpload(skr::render_graph::RenderGraph* graph)
         size_t batch_size = skr::min(max_ops_per_batch, total_operations - operations_processed);
         size_t batch_ops_size = batch_size * sizeof(Upload);
         
-        // Calculate dispatch groups for this batch (one thread per operation)
-        const uint32_t dispatch_groups = (batch_size + 255) / 256;
+        // Calculate dispatch groups for this batch
+        const uint32_t max_threads_per_op = 64; // 64 threads per operation for parallelism
+        const uint32_t batch_threads = batch_size * max_threads_per_op;
+        const uint32_t dispatch_groups = (batch_threads + 255) / 256;
         
-        SKR_LOG_DEBUG(u8"  Batch %u: %u operations, %u dispatch groups", 
-                      batch_index, (uint32_t)batch_size, dispatch_groups);
+        SKR_LOG_DEBUG(u8"  Batch %u: %u operations, %u dispatch groups", batch_index, (uint32_t)batch_size, dispatch_groups);
 
         // Create operations buffer for this batch
         auto operations_buffer_handle = graph->create_buffer(
@@ -415,9 +394,12 @@ void GPUScene::DispatchSparseUpload(skr::render_graph::RenderGraph* graph)
                 // Prepare push constants
                 struct SparseUploadConstants {
                     uint32_t num_operations;
+                    uint32_t max_threads_per_op;
                     uint32_t alignment = 16;
+                    uint32_t padding = 0;
                 } constants;
                 constants.num_operations = static_cast<uint32_t>(batch_size);
+                constants.max_threads_per_op = max_threads_per_op;
                 
                 // Push constants to shader
                 cgpu_compute_encoder_push_constants(ctx.encoder, 

@@ -18,17 +18,24 @@ extern ByteBuffer<>& target_buffer;     // Target buffer (Core Data)
 // Push constants
 struct SparseUploadConstants {
     uint num_operations;      // Number of operations
-    uint alignment;           // Not used in simple version
+    uint max_threads_per_op;  // Max threads per operation
+    uint alignment;           // Memory alignment requirement (16 bytes)
+    uint padding;             // Struct alignment
 };
 
 [[push_constant]]
 extern ConstantBuffer<SparseUploadConstants>& constants;
 
-// Simple sparse upload - each thread handles one complete operation
+// Multi-threaded sparse upload - multiple threads collaborate on large operations
 [[compute_shader("sparse_upload"), kernel_1d(256)]]
 void sparse_upload_main([[sv_thread_id]] uint3 thread_id)
 {
-    uint operation_index = thread_id.x;
+    uint global_thread_id = thread_id.x;
+    uint total_threads = constants.max_threads_per_op;
+    
+    // Calculate operation index and local thread ID within the operation
+    uint operation_index = global_thread_id / total_threads;
+    uint local_thread_id = global_thread_id % total_threads;
     
     // Boundary check
     if (operation_index >= constants.num_operations) {
@@ -38,14 +45,62 @@ void sparse_upload_main([[sv_thread_id]] uint3 thread_id)
     // Load the operation
     Upload op = upload_operations.load(operation_index);
     
-    // Simple byte-by-byte copy (4 bytes at a time for ByteBuffer)
-    uint src_dword_offset = op.src_offset;
-    uint dst_dword_offset = op.dst_offset;
-    uint size_in_dwords = op.data_size;
+    // Calculate bytes per thread (minimum 16 bytes for better coalescing)
+    uint bytes_per_thread = max(constants.alignment, 16u);
+    uint threads_needed = (op.data_size + bytes_per_thread - 1) / bytes_per_thread;
     
-    // Copy data dword by dword
-    for (uint i = 0; i < size_in_dwords; i++) {
-        uint data = upload_buffer.load(src_dword_offset + i);
-        target_buffer.store(dst_dword_offset + i, data);
+    // Check if current thread participates
+    if (local_thread_id >= threads_needed) {
+        return;
     }
+    
+    // Calculate byte range for this thread
+    uint thread_byte_start = local_thread_id * bytes_per_thread;
+    uint thread_byte_count = min(bytes_per_thread, op.data_size - thread_byte_start);
+    
+    // Boundary check
+    if (thread_byte_start >= op.data_size) {
+        return;
+    }
+    
+    // Calculate actual buffer offsets
+    uint src_offset = op.src_offset + thread_byte_start;
+    uint dst_offset = op.dst_offset + thread_byte_start;
+    
+    // Copy data using 128-bit (16-byte) operations when possible
+    uint remaining_bytes = thread_byte_count;
+    uint current_src = src_offset;
+    uint current_dst = dst_offset;
+    
+    // Process 16-byte chunks
+    while (remaining_bytes >= 16) {
+        uint4 data = upload_buffer.load4(current_src);
+        target_buffer.store4(current_dst, data);
+        
+        current_src += 16;
+        current_dst += 16;
+        remaining_bytes -= 16;
+    }
+    
+    // Process 8-byte chunks
+    if (remaining_bytes >= 8) {
+        uint2 data = upload_buffer.load2(current_src);
+        target_buffer.store2(current_dst, data);
+        
+        current_src += 8;
+        current_dst += 8;
+        remaining_bytes -= 8;
+    }
+    
+    // Process 4-byte chunks
+    if (remaining_bytes >= 4) {
+        uint data = upload_buffer.load(current_src);
+        target_buffer.store(current_dst, data);
+        
+        current_src += 4;
+        current_dst += 4;
+        remaining_bytes -= 4;
+    }
+    
+    // Note: ByteBuffer requires 4-byte aligned access, so we can't handle remaining 1-3 bytes
 }

@@ -384,7 +384,6 @@ namespace SB
             return forcedIncludes;
         }
 
-
         private XElement CreateClCompileSettings(XNamespace ns, VSProjectInfo projectInfo, string config, string projectDir)
         {
             var clCompile = new XElement(ns + "ClCompile");
