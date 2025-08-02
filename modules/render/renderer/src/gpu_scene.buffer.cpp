@@ -115,78 +115,43 @@ void GPUScene::CreateCoreDataBuffer(CGPUDeviceId device, const GPUSceneConfig& c
 {
     SKR_LOG_DEBUG(u8"Creating core data buffer...");
 
-    // Create the buffer
-    data_pool.core_data.buffer = CreateBuffer(device, u8"GPUScene-CoreData", config.core_data_initial_size);
-    if (!data_pool.core_data.buffer)
+    // Initialize SOA allocator
+    SOASegmentBuffer::Config allocator_config;
+    allocator_config.initial_size = config.core_data_initial_size;
+    allocator_config.max_size = config.core_data_max_size;
+    allocator_config.allow_resize = config.enable_auto_resize;
+    
+    core_data.allocator.initialize(allocator_config);
+    
+    // Register core components
+    for (const auto& component_type : component_types)
+    {
+        if (component_type.storage_class == GPUSceneComponentType::StorageClass::CORE_DATA)
+        {
+            core_data.allocator.register_component(
+                component_type.gpu_type_id,
+                component_type.element_size,
+                component_type.element_align
+            );
+        }
+    }
+    
+    // Finalize layout
+    core_data.allocator.finalize_layout();
+    
+    // Create the buffer based on calculated size
+    size_t buffer_size = core_data.allocator.get_used_bytes();
+    core_data.buffer = CreateBuffer(device, u8"GPUScene-CoreData", buffer_size);
+    if (!core_data.buffer)
     {
         SKR_LOG_ERROR(u8"Failed to create core data buffer!");
         return;
     }
 
-    // Initialize core data region
-    data_pool.core_data.capacity_bytes = config.core_data_initial_size;
-    data_pool.core_data.used_bytes = 0;
-    data_pool.core_data.instance_count = 0;
-    data_pool.core_data.component_segments.clear();
-
-    // Calculate the total size per instance (sum of all core components)
-    uint32_t total_instance_size = 0;
-    for (const auto& component_type : component_types)
-    {
-        if (component_type.storage_class == GPUSceneComponentType::StorageClass::CORE_DATA)
-        {
-            // Add component size with alignment padding
-            uint32_t aligned_component_size = (component_type.element_size + component_type.element_align - 1) & ~(component_type.element_align - 1);
-            total_instance_size += aligned_component_size;
-        }
-    }
-
-    // Calculate maximum instances based on buffer size and total instance size
-    uint32_t max_instances = 0;
-    if (total_instance_size > 0)
-    {
-        max_instances = static_cast<uint32_t>(config.core_data_initial_size / total_instance_size);
-    }
-
-    data_pool.core_data.instance_capacity = max_instances;
-
-    SKR_LOG_INFO(u8"Core data layout: total_instance_size=%dbytes, max_instances=%d",
-        total_instance_size,
-        max_instances);
-
-    // Allocate continuous segments for each core component
-    uint32_t current_offset = 0;
-    for (const auto& component_type : component_types)
-    {
-        if (component_type.storage_class != GPUSceneComponentType::StorageClass::CORE_DATA)
-            continue;
-
-        GPUSceneDataPool::CoreDataRegion::ComponentSegment segment;
-        segment.type_id = component_type.gpu_type_id;
-        segment.element_size = component_type.element_size;
-        segment.element_count = max_instances;
-        segment.buffer_offset = current_offset;
-
-        data_pool.core_data.component_segments.push_back(segment);
-
-        // Calculate next component offset (consider alignment)
-        uint32_t segment_size = segment.element_size * max_instances;
-        uint32_t aligned_size = (segment_size + component_type.element_align - 1) & ~(component_type.element_align - 1);
-        current_offset += aligned_size;
-
-        SKR_LOG_INFO(u8"  Core segment for component %s: offset=%d, size=%dbytes, count=%d",
-            component_type.name,
-            segment.buffer_offset,
-            segment_size,
-            segment.element_count);
-    }
-
-    data_pool.core_data.used_bytes = current_offset;
-
     SKR_LOG_INFO(u8"Core data buffer created: %lldMB, %d segments, %d instances capacity",
-        data_pool.core_data.capacity_bytes / (1024 * 1024),
-        data_pool.core_data.component_segments.size(),
-        data_pool.core_data.instance_capacity);
+        buffer_size / (1024 * 1024),
+        core_data.allocator.get_segments().size(),
+        core_data.allocator.get_instance_capacity());
 }
 
 void GPUScene::CreateAdditionalDataBuffers(CGPUDeviceId device, const GPUSceneConfig& config)
@@ -194,29 +159,29 @@ void GPUScene::CreateAdditionalDataBuffers(CGPUDeviceId device, const GPUSceneCo
     SKR_LOG_DEBUG(u8"Creating additional data buffers...");
 
     // Initialize additional data region
-    data_pool.additional_data.buffer_size = config.additional_data_initial_size;
-    data_pool.additional_data.bytes_used = 0;
+    additional_data.buffer_size = config.additional_data_initial_size;
+    additional_data.bytes_used = 0;
 
     // Create additional data buffer
-    data_pool.additional_data.buffer = CreateBuffer(device, u8"GPUScene-AdditionalData", config.additional_data_initial_size);
-    if (!data_pool.additional_data.buffer)
+    additional_data.buffer = CreateBuffer(device, u8"GPUScene-AdditionalData", config.additional_data_initial_size);
+    if (!additional_data.buffer)
     {
         SKR_LOG_ERROR(u8"Failed to create additional data buffer!");
         return;
     }
-    SKR_LOG_INFO(u8"  Additional data buffer created: %dMB", data_pool.additional_data.buffer_size / (1024 * 1024));
+    SKR_LOG_INFO(u8"  Additional data buffer created: %dMB", additional_data.buffer_size / (1024 * 1024));
 
     // Create page table buffer
     size_t page_table_size = config.initial_page_count * sizeof(GPUPageTableEntry);
-    data_pool.additional_data.page_table_buffer = CreateBuffer(device, u8"GPUScene-PageTable", page_table_size);
-    if (!data_pool.additional_data.page_table_buffer)
+    additional_data.page_table_buffer = CreateBuffer(device, u8"GPUScene-PageTable", page_table_size);
+    if (!additional_data.page_table_buffer)
     {
         SKR_LOG_ERROR(u8"Failed to create page table buffer!");
         return;
     }
 
     // Initialize CPU page table mirror
-    data_pool.additional_data.page_table_cpu.resize_zeroed(config.initial_page_count);
+    additional_data.page_table_cpu.resize_zeroed(config.initial_page_count);
 
     SKR_LOG_INFO(u8"  Page table buffer created: %d entries", config.initial_page_count);
 }
@@ -243,22 +208,22 @@ void GPUScene::Shutdown()
     SKR_LOG_INFO(u8"Shutting down GPUScene...");
 
     // Release GPU buffers
-    if (data_pool.core_data.buffer)
+    if (core_data.buffer)
     {
-        cgpu_free_buffer(data_pool.core_data.buffer);
-        data_pool.core_data.buffer = nullptr;
+        cgpu_free_buffer(core_data.buffer);
+        core_data.buffer = nullptr;
     }
 
-    if (data_pool.additional_data.buffer)
+    if (additional_data.buffer)
     {
-        cgpu_free_buffer(data_pool.additional_data.buffer);
-        data_pool.additional_data.buffer = nullptr;
+        cgpu_free_buffer(additional_data.buffer);
+        additional_data.buffer = nullptr;
     }
 
-    if (data_pool.additional_data.page_table_buffer)
+    if (additional_data.page_table_buffer)
     {
-        cgpu_free_buffer(data_pool.additional_data.page_table_buffer);
-        data_pool.additional_data.page_table_buffer = nullptr;
+        cgpu_free_buffer(additional_data.page_table_buffer);
+        additional_data.page_table_buffer = nullptr;
     }
 
     if (upload_buffer)
@@ -363,6 +328,26 @@ CGPUBufferId GPUScene::CreateBuffer(CGPUDeviceId device, const char8_t* name, si
 
 void GPUScene::AdjustDataBuffers()
 {
+    // TODO: Implement buffer resizing when needed
+}
+
+GPUScene::MemoryUsageInfo GPUScene::GetMemoryUsageInfo() const
+{
+    MemoryUsageInfo info;
+    info.core_data_used_bytes = core_data.allocator.get_used_bytes();
+    info.core_data_capacity_bytes = core_data.allocator.get_capacity_bytes();
+    info.additional_data_used_bytes = additional_data.bytes_used;
+    info.additional_data_capacity_bytes = additional_data.buffer_size;
+    return info;
+}
+
+GPUScene::GPUAccessInfo GPUScene::GetGPUAccessInfo() const
+{
+    GPUAccessInfo info;
+    info.core_data_buffer = core_data.buffer;
+    info.additional_data_buffer = additional_data.buffer;
+    info.page_table_buffer = additional_data.page_table_buffer;
+    return info;
 }
 
 inline static void read_bytes(const char8_t* file_name, uint32_t** bytes, uint32_t* length)

@@ -120,8 +120,8 @@ struct ScanGPUScene
                     if (component_info.storage_class == GPUSceneComponentType::StorageClass::CORE_DATA)
                     {
                         // 计算在目标缓冲区 SOA 布局中的偏移
-                        uint32_t segment_offset = pScene->GetCoreComponentSegmentOffset(gpu_type);
-                        uint64_t dst_offset = segment_offset + (instance_data.instance_index * component_info.element_size);
+                        uint64_t dst_offset = pScene->core_data.allocator.get_component_offset(
+                            gpu_type, instance_data.instance_index);
                         
                         // 分配 upload_buffer 中的位置
                         uint64_t src_offset = pScene->upload_cursor.fetch_add(component_info.element_size);
@@ -168,7 +168,7 @@ void GPUScene::ExecuteUpload(skr::render_graph::RenderGraph* graph)
     scene_buffer = graph->create_buffer(
         [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::BufferBuilder& builder) {
             builder.set_name(u8"scene_buffer")
-                .import(data_pool.core_data.buffer, first_frame ? CGPU_RESOURCE_STATE_UNDEFINED : CGPU_RESOURCE_STATE_SHADER_RESOURCE)
+                .import(core_data.buffer, first_frame ? CGPU_RESOURCE_STATE_UNDEFINED : CGPU_RESOURCE_STATE_SHADER_RESOURCE)
                 .allow_shader_readwrite();
         }
     );
@@ -252,17 +252,16 @@ void GPUScene::RemoveArchetype(sugoi::archetype_t* archetype)
 
 GPUSceneInstanceID GPUScene::AllocateCoreInstance()
 {
-    // Simple linear allocation in core data
-    auto& core_data = data_pool.core_data;
+    // Use SOASegmentBuffer to allocate instance
+    auto instance_id = core_data.allocator.allocate_instance();
     
-    if (core_data.instance_count >= core_data.instance_capacity)
+    if (instance_id == static_cast<SOASegmentBuffer::InstanceID>(-1))
     {
         // Need to resize - this will be handled by AdjustDataBuffers
         SKR_LOG_WARN(u8"GPUScene: Core data buffer full, resize needed");
         return INVALID_GPU_SCENE_INSTANCE_ID;
     }
     
-    uint32_t instance_id = core_data.instance_count++;
     return static_cast<GPUSceneInstanceID>(instance_id);
 }
 
@@ -300,11 +299,11 @@ GPUSceneCustomIndex GPUScene::EncodeCustomIndex(GPUArchetypeID archetype_id, uin
 
 uint32_t GPUScene::GetCoreComponentSegmentOffset(GPUComponentTypeID type_id) const
 {
-    // Get the segment offset in SOA layout for the given component type
-    for (const auto& segment : data_pool.core_data.component_segments)
+    // Get the segment offset from SOASegmentBuffer
+    const auto* segment = core_data.allocator.get_segment(type_id);
+    if (segment)
     {
-        if (segment.type_id == type_id)
-            return segment.buffer_offset; // Return the segment's offset in the buffer
+        return segment->buffer_offset;
     }
     SKR_LOG_WARN(u8"Component type %u not found in core data segments", type_id);
     return 0;
@@ -314,7 +313,7 @@ uint32_t GPUScene::GetCoreInstanceStride() const
 {
     // Total size of all core components per instance
     uint32_t stride = 0;
-    for (const auto& segment : data_pool.core_data.component_segments)
+    for (const auto& segment : core_data.allocator.get_segments())
     {
         stride += segment.element_size;
     }

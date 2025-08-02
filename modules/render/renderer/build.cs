@@ -10,7 +10,7 @@ public static class SkrRenderer
         Engine.Module("SkrRenderer")
             .Depend(Visibility.Public, "SkrSystem", "SkrScene", "SkrRenderGraph")
             .IncludeDirs(Visibility.Public, "include")
-            .AddCppFiles("src/*.cpp")
+            .AddCppFiles("src/*.cpp", "src/allocators/*.cpp")
             .AddCppFiles(new CFamilyFileOptions { UnityGroup = "resources" }, "src/resources/*.cpp")
             .AddCppSLFiles("shaders/**.cppsl")
             .CppSLOutputDirectory("resources/shaders")

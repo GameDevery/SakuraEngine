@@ -5,6 +5,7 @@
 #include "SkrRT/ecs/world.hpp"
 #include "SkrRenderGraph/frontend/render_graph.hpp"
 #include "SkrRenderer/fwd_types.h"
+#include "SkrRenderer/allocators/soa_segment.hpp"
 #ifndef __meta__
     #include "SkrRenderer/gpu_scene.generated.h" // IWYU pragma: export
 #endif
@@ -143,42 +144,6 @@ struct GPUPageTableEntry
     uint32_t element_stride; // 每个元素的字节大小
 };
 
-// 分层 GPU 场景数据池
-struct SKR_RENDERER_API GPUSceneDataPool
-{
-    // 1. 核心数据：完全连续的大块（预分段）
-    struct CoreDataRegion
-    {
-        CGPUBufferId buffer;        // 连续缓冲区
-        size_t capacity_bytes;      // 总容量
-        size_t used_bytes;          // 已使用字节数
-        uint32_t instance_capacity; // 实例容量
-        std::atomic<uint32_t> instance_count;    // 当前实例数
-
-        // 组件分段管理（基于注册的核心组件）
-        struct ComponentSegment
-        {
-            GPUComponentTypeID type_id;
-            uint32_t element_size;
-            uint32_t element_count;
-            uint32_t buffer_offset; // 在核心缓冲区中的偏移
-        };
-        skr::Vector<ComponentSegment> component_segments;
-    } core_data;
-
-    // 2. 扩展数据：页面管理（支持不同 Archetype）
-    struct AdditionalDataRegion
-    {
-        CGPUBufferId buffer; // HugeBuffer
-        size_t buffer_size;  // 总大小
-        size_t bytes_used;   // 已使用字节数
-
-        // 页表系统（与核心数据使用相同的页面分配算法）
-        CGPUBufferId page_table_buffer;                // GPU 可见页表
-        skr::Vector<GPUPageTableEntry> page_table_cpu; // CPU 页表镜像
-    } additional_data;
-};
-
 // 配置结构（分层设计）
 struct GPUSceneConfig
 {
@@ -274,8 +239,25 @@ public:
     shared_atomic_mutex archetype_mutex;
     skr::Map<sugoi::archetype_t*, skr::SP<GPUSceneArchetype>> archetype_registry;
 
-    // 核心：分层数据池
-    GPUSceneDataPool data_pool;
+    // 1. 核心数据：完全连续的大块（预分段）
+    struct CoreDataRegion
+    {
+        CGPUBufferId buffer;        // 连续缓冲区
+        SOASegmentBuffer allocator; // SOA 分配器
+    } core_data;
+
+    // 2. 扩展数据：页面管理（支持不同 Archetype）
+    struct AdditionalDataRegion
+    {
+        CGPUBufferId buffer; // HugeBuffer
+        size_t buffer_size;  // 总大小
+        size_t bytes_used;   // 已使用字节数
+
+        // 页表系统（与核心数据使用相同的页面分配算法）
+        CGPUBufferId page_table_buffer;                // GPU 可见页表
+        skr::Vector<GPUPageTableEntry> page_table_cpu; // CPU 页表镜像
+    } additional_data;
+    
     bool first_frame = true;
     skr::render_graph::BufferHandle scene_buffer;
 
