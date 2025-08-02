@@ -8,18 +8,39 @@
 namespace skr::renderer
 {
 
+void GPUScene::AddEntity(skr::ecs::Entity entity)
+{
+    {
+        add_mtx.lock();
+        add_ents.add(entity);
+        add_mtx.unlock();
+    }
+    for (auto [cpu_type, gpu_type] : type_registry)
+    {
+        RequireUpload(entity, cpu_type);
+    }
+}
+
+void GPUScene::RemoveEntity(skr::ecs::Entity entity)
+{
+    remove_mtx.lock();
+    remove_ents.add(entity);
+    remove_mtx.unlock();
+}
+
 void GPUScene::RequireUpload(skr::ecs::Entity entity, CPUTypeID component)
 {
+    dirty_mtx.lock();
     auto cs = dirties.try_add_default(entity);
     cs.value().add_unique(component);
     if (!cs.already_exist())
         dirty_ents.add(entity);
+    dirty_mtx.unlock();
 }
 
 uint64_t GPUScene::CalculateDirtySize() const
 {
     uint64_t total_size = 0;
-    
     // Iterate through all dirty entities
     for (const auto& [entity, dirty_components] : dirties)
     {
@@ -34,11 +55,10 @@ uint64_t GPUScene::CalculateDirtySize() const
             }
         }
     }
-    
     return total_size;
 }
 
-void GPUScene::PrepareUploadContext() 
+void GPUScene::PrepareUploadBuffer() 
 {
     // Calculate required upload buffer size
     uint64_t required_size = CalculateDirtySize();
@@ -72,22 +92,73 @@ void GPUScene::PrepareUploadContext()
     }
 }
 
-struct ScanGPUScene
+struct GPUSceneInstanceTask
 {
     void build(skr::ecs::AccessBuilder& builder)
     {
-        builder.write(&ScanGPUScene::instances);
-        for (auto [cpu_type, gpu_type] : pScene->type_registry)
+        builder.write(&GPUSceneInstanceTask::instances);
+        for (auto [cpu_type, gpu_type] : pScene->GetTypeRegistry())
         {
             builder.optional_read(cpu_type);
         }
     }
-    
+    skr::ecs::ComponentView<GPUSceneInstance> instances;
+    skr::renderer::GPUScene* pScene = nullptr;
+};
+
+struct RemoveEntityFromGPUScene : public GPUSceneInstanceTask
+{
     void run(skr::ecs::TaskContext& Context)
     {
         sugoi_chunk_view_t v = {};
         sugoiS_access(pScene->ecs_world->get_storage(), (sugoi_entity_t)Context.entities()[0], &v);
-        
+        if (auto archetype = pScene->EnsureArchetype(v.chunk->group->archetype))
+        {
+            for (auto i = 0; i < Context.size(); i++)
+            {
+                const auto& instance_data = instances[i];
+                pScene->free_ids.enqueue(instance_data.instance_index);
+            }
+        }
+    }
+};
+
+struct AddEntityToGPUScene : public GPUSceneInstanceTask
+{
+    void run(skr::ecs::TaskContext& Context)
+    {
+        sugoi_chunk_view_t v = {};
+        sugoiS_access(pScene->ecs_world->get_storage(), (sugoi_entity_t)Context.entities()[0], &v);
+        if (auto archetype = pScene->EnsureArchetype(v.chunk->group->archetype))
+        {
+            for (auto i = 0; i < Context.size(); i++)
+            {
+                auto entity = Context.entities()[i];
+                auto archetype_id = archetype->gpu_archetype_id;
+                auto& instance_data = instances[i];
+                instance_data.entity = entity;
+                instance_data.archetype_id = archetype_id;
+                if (!archetype->free_ids.try_dequeue(instance_data.entity_index_in_archetype))
+                {
+                    instance_data.entity_index_in_archetype = archetype->latest_index++;
+                }
+                if (!archetype->free_ids.try_dequeue(instance_data.instance_index))
+                {
+                    instance_data.instance_index = pScene->latest_index++;
+                }
+                instance_data.custom_index = pScene->EncodeCustomIndex(archetype_id, instance_data.entity_index_in_archetype);
+                instance_data.pArchetype = archetype.get();
+            }
+        }
+    }
+};
+
+struct ScanGPUScene : public GPUSceneInstanceTask
+{
+    void run(skr::ecs::TaskContext& Context)
+    {
+        sugoi_chunk_view_t v = {};
+        sugoiS_access(pScene->ecs_world->get_storage(), (sugoi_entity_t)Context.entities()[0], &v);
         // Step 1: Ensure archetype
         if (auto archetype = pScene->EnsureArchetype(v.chunk->group->archetype))
         {
@@ -97,16 +168,7 @@ struct ScanGPUScene
                 auto archetype_id = archetype->gpu_archetype_id;
                 
                 // Step 2: Ensure allocation
-                auto& instance_data = instances[i];
-                if (instance_data.instance_index == 0)
-                {
-                    // Allocate new instance
-                    instance_data.entity = entity;
-                    instance_data.archetype_id = archetype_id;
-                    instance_data.entity_index_in_archetype = archetype->total_entity_count++;
-                    instance_data.instance_index = pScene->AllocateCoreInstance();
-                    instance_data.custom_index = pScene->EncodeCustomIndex(archetype_id, instance_data.entity_index_in_archetype);
-                }
+                const auto& instance_data = instances[i];
 
                 // Step3: do scan and copy (只处理 Core Data)
                 for (auto [cpu_type, gpu_type] : pScene->type_registry)
@@ -151,33 +213,12 @@ struct ScanGPUScene
             }
         }
     }
-
-    skr::renderer::GPUScene* pScene = nullptr;
-    skr::ecs::ComponentView<GPUSceneInstance> instances;
 };
 
-void GPUScene::ExecuteUpload(skr::render_graph::RenderGraph* graph)
+void GPUScene::AdjustCoreBuffer(skr::render_graph::RenderGraph* graph) 
 {
-    SkrZoneScopedN("GPUScene::ExecuteUpload");
-
-    // Ensure buffers are sized correctly
-    AdjustDataBuffers();
-
-    // Prepare upload buffer based on dirty size
-    PrepareUploadContext();
-
-    // Schedule scan
-    uint32_t existed_instances = core_data.get_instance_count();
-    if (!dirty_ents.is_empty())
-    {
-        ScanGPUScene scan;
-        scan.pScene = this;
-        ecs_world->dispatch_task(scan, 512, dirty_ents);
-        skr::ecs::TaskScheduler::Get()->sync_all();
-    }
-
-    // Check if resize is needed based on scan results
-    uint32_t required_instances = core_data.get_instance_count();
+    uint32_t existed_instances = GetInstanceCount();
+    auto required_instances = instance_count = existed_instances + add_ents.size() - remove_ents.size();
     if (core_data.needs_resize(required_instances))
     {
         SKR_LOG_INFO(u8"GPUScene: Core data resize needed. Current: %u/%u instances",
@@ -187,7 +228,7 @@ void GPUScene::ExecuteUpload(skr::render_graph::RenderGraph* graph)
         uint32_t new_capacity = static_cast<uint32_t>(required_instances * config.resize_growth_factor);
         
         // Resize and get old buffer
-        auto old_buffer = core_data.resize_buffer(new_capacity);
+        auto old_buffer = core_data.resize(new_capacity);
         scene_buffer = core_data.import_buffer(graph, u8"scene_buffer");
         
         /*
@@ -210,18 +251,50 @@ void GPUScene::ExecuteUpload(skr::render_graph::RenderGraph* graph)
         // Import scene buffer with proper state management
         scene_buffer = core_data.import_buffer(graph, u8"scene_buffer");
     }
+}
+
+void GPUScene::ExecuteUpload(skr::render_graph::RenderGraph* graph)
+{
+    SkrZoneScopedN("GPUScene::ExecuteUpload");
+
+    // Ensure buffers are sized correctly
+    AdjustCoreBuffer(graph);
+
+    // Prepare upload buffer based on dirty size
+    PrepareUploadBuffer();
+
+    // Schedule remove & add & scan
+    if (!remove_ents.is_empty())
+    {
+        RemoveEntityFromGPUScene remove;
+        remove.pScene = this;
+        ecs_world->dispatch_task(remove, 512, remove_ents);
+        remove_ents.clear();
+    }
+    if (!add_ents.is_empty())
+    {
+        AddEntityToGPUScene add;
+        add.pScene = this;
+        ecs_world->dispatch_task(add, 512, add_ents);
+        add_ents.clear();
+    }
+    if (!dirty_ents.is_empty())
+    {
+        ScanGPUScene scan;
+        scan.pScene = this;
+        ecs_world->dispatch_task(scan, 512, dirty_ents);
+        dirty_ents.clear();
+        dirties.clear();
+    }
+    skr::ecs::TaskScheduler::Get()->sync_all();
 
     // Dispatch SparseUpload compute shader to copy from upload_buffer to target buffers
     if (!uploads.is_empty())
     {
         DispatchSparseUpload(graph);
+        uploads.clear();
+        upload_cursor.store(0);
     }
-    
-    // Clear upload tracking and dirty tracking
-    uploads.clear();
-    upload_cursor.store(0);
-    dirty_ents.clear();
-    dirties.clear();
 }
 
 skr::SP<GPUSceneArchetype> GPUScene::EnsureArchetype(sugoi::archetype_t* archetype)
@@ -246,20 +319,15 @@ skr::SP<GPUSceneArchetype> GPUScene::EnsureArchetype(sugoi::archetype_t* archety
     // Create new archetype entry
     static std::atomic<GPUArchetypeID> next_archetype_id{0};
     GPUArchetypeID new_id = next_archetype_id.fetch_add(1);
-    
-    auto new_archetype = skr::SP<GPUSceneArchetype>::New();
-    new_archetype->cpu_archetype = archetype;
-    new_archetype->gpu_archetype_id = new_id;
-    new_archetype->total_entity_count = 0;
-    new_archetype->allocated_core_instances = 0;
-    
+    skr::Vector<GPUComponentTypeID> comps;
     for (uint32_t i = 0; i < archetype->type.length; ++i)
     {
         auto cpu_type = archetype->type.data[i];
         if (auto it = type_registry.find(cpu_type))
-            new_archetype->component_types.push_back(it.value());
+            comps.push_back(it.value());
     }
-    
+
+    auto new_archetype = skr::SP<GPUSceneArchetype>::New(archetype, new_id, std::move(comps));
     archetype_registry.add(archetype, new_archetype);
     SKR_LOG_INFO(u8"GPUScene: Registered new archetype %u (archetype: %p) with %u component types", 
         new_id, archetype, (uint32_t)new_archetype->component_types.size());
@@ -274,21 +342,6 @@ void GPUScene::RemoveArchetype(sugoi::archetype_t* archetype)
     
     archetype_registry.remove(archetype);
     SKR_LOG_DEBUG(u8"GPUScene: Removed archetype %p", archetype);
-}
-
-GPUSceneInstanceID GPUScene::AllocateCoreInstance()
-{
-    // Use SOASegmentBuffer to allocate instance
-    auto instance_id = core_data.allocate_instance();
-    
-    if (instance_id == static_cast<SOASegmentBuffer::InstanceID>(-1))
-    {
-        // Need to resize - this will be handled by AdjustDataBuffers
-        SKR_LOG_WARN(u8"GPUScene: Core data buffer full, resize needed");
-        return INVALID_GPU_SCENE_INSTANCE_ID;
-    }
-    
-    return static_cast<GPUSceneInstanceID>(instance_id);
 }
 
 GPUPageID GPUScene::AllocateComponentPage(GPUArchetypeID archetype_id, GPUComponentTypeID component_type)
@@ -339,9 +392,9 @@ uint32_t GPUScene::GetCoreInstanceStride() const
 {
     // Total size of all core components per instance
     uint32_t stride = 0;
-    for (const auto& segment : core_data.get_segments())
+    for (const auto& info : core_data.get_infos())
     {
-        stride += segment.element_size;
+        stride += info.element_size;
     }
     return stride;
 }

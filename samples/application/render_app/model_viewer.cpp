@@ -263,7 +263,7 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
                 builder.set_name(u8"GPUSceneDebugPass")
                     .set_pipeline(compute_pipeline)
                     .readwrite(u8"output_texture", render_target_handle)
-                    .read(u8"gpu_scene_buffer", GPUScene.scene_buffer);
+                    .read(u8"gpu_scene_buffer", GPUScene.GetSceneBuffer());
             },
             [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::ComputePassContext& ctx) {
                 // Push constants
@@ -284,7 +284,7 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
                 auto color_type_id = GPUScene.GetComponentTypeID(sugoi_id_of<GPUSceneInstanceColor>::get());
                 constants.color_segment_offset = GPUScene.GetCoreComponentSegmentOffset(color_type_id);
                 constants.color_element_size = sizeof(GPUSceneInstanceColor);
-                constants.instance_count = GPUScene.core_data.get_instance_count();
+                constants.instance_count = GPUScene.GetInstanceCount();
                 
                 cgpu_compute_encoder_push_constants(ctx.encoder, root_signature, u8"debug_constants", &constants);
                 cgpu_compute_encoder_dispatch(ctx.encoder, group_count_x, group_count_y, 1);
@@ -392,10 +392,7 @@ void ModelViewerModule::CreateScene(skr::render_graph::RenderGraph* graph)
             for (uint32_t i = 0; i < cnt; i++)
             {
                 colors[i].color = skr::float4(1.f, 0.f, 1.f, 1.f);
-
-                pScene->RequireUpload(entities[i], sugoi_id_of<GPUSceneObjectToWorld>::get());
-                pScene->RequireUpload(entities[i], sugoi_id_of<GPUSceneInstanceColor>::get());
-                pScene->RequireUpload(entities[i], sugoi_id_of<GPUSceneInstanceEmission>::get());
+                pScene->AddEntity(entities[i]);
             }
         }
 

@@ -36,68 +36,11 @@ SOASegmentBuffer::Builder& SOASegmentBuffer::Builder::add_component(SegmentID ty
     return *this;
 }
 
-SOASegmentBuffer SOASegmentBuffer::Builder::build()
-{
-    return SOASegmentBuffer(std::move(*this));
-}
-
 // ==================== SOASegmentBuffer Implementation ====================
-
-SOASegmentBuffer::SOASegmentBuffer(Builder&& builder)
-{
-    initialize_from_builder(std::move(builder));
-}
 
 SOASegmentBuffer::~SOASegmentBuffer()
 {
     shutdown();
-}
-
-SOASegmentBuffer::SOASegmentBuffer(SOASegmentBuffer&& other) noexcept
-    : device(other.device)
-    , config(other.config)
-    , buffer(other.buffer)
-    , capacity_bytes(other.capacity_bytes)
-    , total_bytes(other.total_bytes)
-    , instance_capacity(other.instance_capacity)
-    , instance_count(other.instance_count.load())
-    , component_segments(std::move(other.component_segments))
-{
-    // 清空源对象
-    other.device = nullptr;
-    other.buffer = nullptr;
-    other.capacity_bytes = 0;
-    other.total_bytes = 0;
-    other.instance_capacity = 0;
-    other.instance_count = 0;
-}
-
-SOASegmentBuffer& SOASegmentBuffer::operator=(SOASegmentBuffer&& other) noexcept
-{
-    if (this != &other)
-    {
-        // 释放当前资源
-        shutdown();
-
-        // 移动资源
-        device = other.device;
-        config = other.config;
-        buffer = other.buffer;
-        capacity_bytes = other.capacity_bytes;
-        total_bytes = other.total_bytes;
-        instance_capacity = other.instance_capacity;
-        instance_count = other.instance_count.load();
-        component_segments = std::move(other.component_segments);
-
-        // 清空源对象
-        other.device = nullptr;
-        other.buffer = nullptr;
-        other.capacity_bytes = 0;
-        other.total_bytes = 0;
-        other.instance_capacity = 0;
-        other.instance_count = 0;
-    }
-    return *this;
 }
 
 void SOASegmentBuffer::shutdown()
@@ -106,30 +49,31 @@ void SOASegmentBuffer::shutdown()
 
     device = nullptr;
     capacity_bytes = 0;
-    total_bytes = 0;
-    instance_count = 0;
     instance_capacity = 0;
     component_segments.clear();
 }
 
-void SOASegmentBuffer::initialize_from_builder(Builder&& builder)
+void SOASegmentBuffer::initialize(const Builder& builder)
 {
     device = builder.device_;
     config = builder.config_;
-    capacity_bytes = config.initial_size;
+    component_infos = builder.components_;
 
     // 计算布局
-    calculate_layout(builder.components_);
+    capacity_bytes = config.initial_size;
+    calculate_layout();
 
     // 创建 GPU 缓冲区
     create_buffer();
 }
 
-void SOASegmentBuffer::calculate_layout(const skr::Vector<ComponentInfo>& components)
+void SOASegmentBuffer::calculate_layout()
 {
+    component_segments.clear();
+
     // 计算每个实例的总大小（所有组件大小之和）
     uint32_t total_instance_size = 0;
-    for (const auto& comp : components)
+    for (const auto& comp : component_infos)
     {
         // 考虑对齐
         uint32_t aligned_size = (comp.element_size + comp.element_align - 1) & ~(comp.element_align - 1);
@@ -148,62 +92,48 @@ void SOASegmentBuffer::calculate_layout(const skr::Vector<ComponentInfo>& compon
 
     // 为每个组件分配连续的段
     uint32_t current_offset = 0;
-    for (const auto& comp : components)
+    for (const auto& info : component_infos)
     {
         ComponentSegment segment;
-        segment.type_id = comp.type_id;
-        segment.element_size = comp.element_size;
-        segment.element_align = comp.element_align;
         segment.element_count = instance_capacity;
         segment.buffer_offset = current_offset;
 
         component_segments.push_back(segment);
 
         // 计算下一个组件的偏移（考虑对齐）
-        uint32_t segment_size = segment.element_size * instance_capacity;
-        uint32_t aligned_size = (segment_size + comp.element_align - 1) & ~(comp.element_align - 1);
+        uint32_t segment_size = info.element_size * instance_capacity;
+        uint32_t aligned_size = (segment_size + info.element_align - 1) & ~(info.element_align - 1);
         current_offset += aligned_size;
 
         SKR_LOG_INFO(u8"  Segment for component %u: offset=%d, size=%d bytes, count=%d",
-            segment.type_id,
+            info.type_id,
             segment.buffer_offset,
             segment_size,
             segment.element_count);
     }
-
-    total_bytes = current_offset;
-
-    SKR_LOG_INFO(u8"SOASegmentBuffer layout calculated: %lld MB used, %d segments",
-        total_bytes / (1024 * 1024),
-        component_segments.size());
-}
-
-SOASegmentBuffer::InstanceID SOASegmentBuffer::allocate_instance()
-{
-    // 允许超限分配，由调用者负责检查和 resize
-    uint32_t instance_id = instance_count.fetch_add(1);
-    return static_cast<InstanceID>(instance_id);
 }
 
 const SOASegmentBuffer::ComponentSegment* SOASegmentBuffer::get_segment(SegmentID type_id) const
 {
-    for (const auto& segment : component_segments)
+    for (uint32_t i = 0; i < component_infos.size(); i++)
     {
-        if (segment.type_id == type_id)
-            return &segment;
+        const auto& info = component_infos[i];
+        if (info.type_id == type_id)
+            return &component_segments[i];
     }
     return nullptr;
 }
 
 uint32_t SOASegmentBuffer::get_component_offset(SegmentID type_id, InstanceID instance_id) const
 {
-    const ComponentSegment* segment = get_segment(type_id);
-    if (!segment)
+    for (uint32_t i = 0; i < component_infos.size(); i++)
     {
-        SKR_LOG_WARN(u8"SOASegmentBuffer: Component type %u not found", type_id);
-        return 0;
+        const auto& info = component_infos[i];
+        if (info.type_id == type_id)
+            return component_segments[i].buffer_offset + (instance_id * info.element_size);
     }
-    return segment->buffer_offset + (instance_id * segment->element_size);
+    SKR_LOG_WARN(u8"SOASegmentBuffer: Component type %u not found", type_id);
+    return 0;
 }
 
 void SOASegmentBuffer::create_buffer()
@@ -220,7 +150,7 @@ void SOASegmentBuffer::create_buffer()
         return;
     }
 
-    if (total_bytes == 0)
+    if (capacity_bytes == 0)
     {
         SKR_LOG_WARN(u8"SOASegmentBuffer: No data to allocate");
         return;
@@ -228,7 +158,7 @@ void SOASegmentBuffer::create_buffer()
 
     CGPUBufferDescriptor buffer_desc = {};
     buffer_desc.name = u8"SOASegmentBuffer";
-    buffer_desc.size = total_bytes;
+    buffer_desc.size = capacity_bytes;
     buffer_desc.memory_usage = CGPU_MEM_USAGE_GPU_ONLY;
     buffer_desc.descriptors = CGPU_RESOURCE_TYPE_BUFFER_RAW | CGPU_RESOURCE_TYPE_RW_BUFFER_RAW;
     buffer_desc.flags = CGPU_BCF_DEDICATED_BIT;
@@ -240,7 +170,7 @@ void SOASegmentBuffer::create_buffer()
     }
     else
     {
-        SKR_LOG_INFO(u8"SOASegmentBuffer: Created GPU buffer (%lld MB)", total_bytes / (1024 * 1024));
+        SKR_LOG_INFO(u8"SOASegmentBuffer: Created GPU buffer (%lld MB)", capacity_bytes / (1024 * 1024));
     }
 }
 
@@ -259,7 +189,7 @@ bool SOASegmentBuffer::needs_resize(uint32_t required_instances) const
     return required_instances > instance_capacity;
 }
 
-CGPUBufferId SOASegmentBuffer::resize_buffer(uint32_t new_instance_capacity)
+CGPUBufferId SOASegmentBuffer::resize(uint32_t new_instance_capacity)
 {
     if (new_instance_capacity <= instance_capacity)
     {
@@ -279,25 +209,14 @@ CGPUBufferId SOASegmentBuffer::resize_buffer(uint32_t new_instance_capacity)
     instance_capacity = new_instance_capacity;
     
     // 重新计算所有 segments 的布局
-    uint32_t current_offset = 0;
-    for (auto& segment : component_segments)
-    {
-        segment.element_count = instance_capacity;
-        segment.buffer_offset = current_offset;
-        
-        uint32_t segment_size = segment.element_size * instance_capacity;
-        uint32_t aligned_size = (segment_size + segment.element_align - 1) & ~(segment.element_align - 1);
-        current_offset += aligned_size;
-    }
-    
-    total_bytes = current_offset;
-    capacity_bytes = total_bytes;
+    capacity_bytes = calculate_size_for_capacity(new_instance_capacity);
+    calculate_layout();
     
     // 创建新 buffer
     buffer = create_buffer_with_capacity(new_instance_capacity);
     
     SKR_LOG_INFO(u8"SOASegmentBuffer: Resized from %u to %u instances, new buffer size: %llu MB",
-                 old_instance_capacity, new_instance_capacity, total_bytes / (1024 * 1024));
+                 old_instance_capacity, new_instance_capacity, capacity_bytes / (1024 * 1024));
     
     return old_buffer;
 }
@@ -318,11 +237,14 @@ void SOASegmentBuffer::copy_segments(skr::render_graph::RenderGraph* graph,
             // 计算源 buffer 的布局（基于实际的 instance_count）
             uint32_t src_offset = 0;
             
-            for (const auto& segment : component_segments)
+            for (uint32_t i = 0; i < component_infos.size(); i++)
             {
+                const auto& info = component_infos[i];
+                const auto& segment = component_segments[i];
+
                 // 计算源段的大小
-                uint32_t src_segment_size = segment.element_size * instance_count;
-                uint32_t src_aligned_size = (src_segment_size + segment.element_align - 1) & ~(segment.element_align - 1);
+                uint32_t src_segment_size = info.element_size * instance_count;
+                uint32_t src_aligned_size = (src_segment_size + info.element_align - 1) & ~(info.element_align - 1);
                 
                 // 目标偏移直接使用当前 segment 的偏移（新布局）
                 uint32_t dst_offset = segment.buffer_offset;
@@ -340,6 +262,18 @@ void SOASegmentBuffer::copy_segments(skr::render_graph::RenderGraph* graph,
     );
 }
 
+uint64_t SOASegmentBuffer::calculate_size_for_capacity(uint64_t capacity) const
+{
+    uint64_t buffer_size = 0;
+    for (const auto& segment : component_infos)
+    {
+        uint32_t segment_size = segment.element_size * capacity;
+        uint32_t aligned_size = (segment_size + segment.element_align - 1) & ~(segment.element_align - 1);
+        buffer_size += aligned_size;
+    }
+    return buffer_size;
+}
+
 CGPUBufferId SOASegmentBuffer::create_buffer_with_capacity(uint32_t capacity)
 {
     if (!device)
@@ -349,13 +283,7 @@ CGPUBufferId SOASegmentBuffer::create_buffer_with_capacity(uint32_t capacity)
     }
     
     // 计算所需缓冲区大小
-    uint64_t buffer_size = 0;
-    for (const auto& segment : component_segments)
-    {
-        uint32_t segment_size = segment.element_size * capacity;
-        uint32_t aligned_size = (segment_size + segment.element_align - 1) & ~(segment.element_align - 1);
-        buffer_size += aligned_size;
-    }
+    uint64_t buffer_size = calculate_size_for_capacity(capacity);
     
     if (buffer_size == 0)
     {

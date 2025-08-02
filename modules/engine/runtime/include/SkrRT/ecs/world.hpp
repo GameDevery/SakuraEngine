@@ -276,7 +276,7 @@ public:
                     continue;
                 if (mode == EAccessMode::Random)
                 {
-                    ComponentAccessorBase* fieldPtr = (field > 0) ? (ComponentAccessorBase*)((uint8_t*)&TASK + field) : (ComponentAccessorBase*)(-1 * field);
+                    ComponentAccessorBase* fieldPtr = (field >= 0) ? (ComponentAccessorBase*)((uint8_t*)&TASK + field) : (ComponentAccessorBase*)(-1 * field);
                     fieldPtr->World = Storage;
                     fieldPtr->Type = component;
                     fieldPtr->CachedView = view;
@@ -284,7 +284,7 @@ public:
                 }
                 else if (mode == EAccessMode::Seq)
                 {
-                    ComponentViewBase* fieldPtr = (field > 0) ? (ComponentViewBase*)((uint8_t*)&TASK + field) : (ComponentViewBase*)(-1 * field);
+                    ComponentViewBase* fieldPtr = (field >= 0) ? (ComponentViewBase*)((uint8_t*)&TASK + field) : (ComponentViewBase*)(-1 * field);
                     auto localType = sugoiV_get_local_type(&view, component);
                     fieldPtr->_local_type = localType;
                     if (Access->fields_is_write[i])
@@ -335,7 +335,7 @@ public:
                     continue;
                 if (mode == EAccessMode::Random)
                 {
-                    ComponentAccessorBase* fieldPtr = (field > 0) ? (ComponentAccessorBase*)((uint8_t*)&TASK + field) : (ComponentAccessorBase*)(-1 * field);
+                    ComponentAccessorBase* fieldPtr = (field >= 0) ? (ComponentAccessorBase*)((uint8_t*)&TASK + field) : (ComponentAccessorBase*)(-1 * field);
                     fieldPtr->World = Storage;
                     fieldPtr->Type = component;
                     fieldPtr->CachedView = view;
@@ -343,7 +343,7 @@ public:
                 }
                 else if (mode == EAccessMode::Seq)
                 {
-                    ComponentViewBase* fieldPtr = (field > 0) ? (ComponentViewBase*)((uint8_t*)&TASK + field) : (ComponentViewBase*)(-1 * field);
+                    ComponentViewBase* fieldPtr = (field >= 0) ? (ComponentViewBase*)((uint8_t*)&TASK + field) : (ComponentViewBase*)(-1 * field);
                     auto localType = sugoiV_get_local_type(&view, component);
                     fieldPtr->_local_type = localType;
                     if (Access->fields_is_write[i])
@@ -383,7 +383,7 @@ public:
                     continue;
                 if (mode == EAccessMode::Random)
                 {
-                    ComponentAccessorBase* fieldPtr = (field > 0) ? (ComponentAccessorBase*)((uint8_t*)&Creation + field) : (ComponentAccessorBase*)(-1 * field);
+                    ComponentAccessorBase* fieldPtr = (field >= 0) ? (ComponentAccessorBase*)((uint8_t*)&Creation + field) : (ComponentAccessorBase*)(-1 * field);
                     fieldPtr->World = this->storage;
                     fieldPtr->Type = component;
                     fieldPtr->CachedView = *view;
@@ -391,7 +391,7 @@ public:
                 }
                 else if (mode == EAccessMode::Seq)
                 {
-                    ComponentViewBase* fieldPtr = (field > 0) ? (ComponentViewBase*)((uint8_t*)&Creation + field) : (ComponentViewBase*)(-1 * field);
+                    ComponentViewBase* fieldPtr = (field >= 0) ? (ComponentViewBase*)((uint8_t*)&Creation + field) : (ComponentViewBase*)(-1 * field);
                     auto localType = sugoiV_get_local_type(view, component);
                     fieldPtr->_local_type = localType;
                     fieldPtr->_ptr = (void*)sugoiV_get_owned_ro_local(view, localType);

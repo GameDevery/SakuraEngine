@@ -137,7 +137,7 @@ void GPUScene::CreateCoreDataBuffer(CGPUDeviceId device, const GPUSceneConfig& c
     }
     
     // Build the allocator
-    core_data = builder.build();
+    core_data.initialize(builder);
     
     if (!core_data.get_buffer())
     {
@@ -146,12 +146,12 @@ void GPUScene::CreateCoreDataBuffer(CGPUDeviceId device, const GPUSceneConfig& c
     }
 
     SKR_LOG_INFO(u8"Core data buffer created: %lldMB, %d segments, %d instances capacity",
-        core_data.get_total_bytes() / (1024 * 1024),
+        core_data.get_capacity_bytes() / (1024 * 1024),
         core_data.get_segments().size(),
         core_data.get_instance_capacity());
     
     // 打印实际注册的组件类型
-    const auto& infos = core_data.get_segments();
+    const auto& infos = core_data.get_infos();
     SKR_LOG_INFO(u8"Registered %u core components in SOASegmentBuffer:", (uint32_t)infos.size());
     for (size_t i = 0; i < infos.size(); ++i)
     {
@@ -288,6 +288,11 @@ uint32_t GPUScene::GetAdditionalComponentTypeCount() const
     return count;
 }
 
+const skr::Map<CPUTypeID, GPUComponentTypeID>& GPUScene::GetTypeRegistry() const
+{
+    return type_registry;
+}
+
 GPUComponentTypeID GPUScene::GetComponentTypeID(const CPUTypeID& type_guid) const
 {
     auto found = type_registry.find(type_guid);
@@ -328,15 +333,10 @@ CGPUBufferId GPUScene::CreateBuffer(CGPUDeviceId device, const char8_t* name, si
     return buffer;
 }
 
-void GPUScene::AdjustDataBuffers()
-{
-    // TODO: Implement buffer resizing when needed
-}
-
 GPUScene::MemoryUsageInfo GPUScene::GetMemoryUsageInfo() const
 {
     MemoryUsageInfo info;
-    info.core_data_used_bytes = core_data.get_total_bytes();
+    info.core_data_used_bytes = core_data.get_capacity_bytes();
     info.core_data_capacity_bytes = core_data.get_capacity_bytes();
     info.additional_data_used_bytes = additional_data.bytes_used;
     info.additional_data_capacity_bytes = additional_data.buffer_size;

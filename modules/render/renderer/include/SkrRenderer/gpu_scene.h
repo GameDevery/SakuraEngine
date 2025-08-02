@@ -10,11 +10,15 @@
     #include "SkrRenderer/gpu_scene.generated.h" // IWYU pragma: export
 #endif
 
-namespace sugoi { struct archetype_t; }
+namespace sugoi
+{
+struct archetype_t;
+}
 namespace skr::renderer
 {
 // 基础类型定义
 struct GPUScenePageAllocator;
+struct GPUSceneArchetype;
 using GPUSceneInstanceID = uint32_t; // 32位足够，节省空间
 using GPUArchetypeID = uint16_t;     // 最多 65536 个 archetype
 using GPUPageID = uint32_t;          // 页面索引
@@ -84,6 +88,7 @@ GPUSceneInstance
     uint32_t entity_index_in_archetype; // archetype 内的索引
     GPUSceneInstanceID instance_index;
     GPUSceneCustomIndex custom_index;
+    GPUSceneArchetype* pArchetype;
 };
 
 // 组件类型描述
@@ -120,19 +125,17 @@ struct GPUScenePage
     uint32_t generation;        // 版本号，用于验证
 };
 
-// Archetype 的 GPU 映射 (简化版)
+// Archetype 的 GPU 映射
 struct GPUSceneArchetype
 {
+    GPUSceneArchetype(sugoi::archetype_t* a, GPUArchetypeID i, skr::Vector<GPUComponentTypeID>&& types);
+
     // 基本标识
-    sugoi::archetype_t* cpu_archetype;    // ECS archetype
-    GPUArchetypeID gpu_archetype_id; // GPU 端 ID
-
-    // 实例统计 (用于分组管理)
-    std::atomic<uint32_t> total_entity_count;       // 当前实体总数
-    std::atomic<uint32_t> allocated_core_instances; // 在核心数据区已分配的实例数
-
-    // 组件存在性标记 (用于快速查询)
-    skr::Vector<GPUComponentTypeID> component_types; // 这个 Archetype 包含的组件类型
+    const sugoi::archetype_t* cpu_archetype = nullptr;     // ECS archetype
+    const GPUArchetypeID gpu_archetype_id = 0;             // GPU 端 ID
+    const skr::Vector<GPUComponentTypeID> component_types; // 这个 Archetype 包含的组件类型
+    std::atomic<GPUSceneInstanceID> latest_index = 0;               // 当前实体总数
+    skr::ConcurrentQueue<GPUComponentTypeID> free_ids;     // free id
 };
 
 // GPU 页表条目
@@ -181,10 +184,17 @@ public:
     void Shutdown();
 
     // 统一的实例和组件管理
+    void AddEntity(skr::ecs::Entity entity);
+    void RemoveEntity(skr::ecs::Entity entity);
+
     void RequireUpload(skr::ecs::Entity entity, CPUTypeID component);
     void ExecuteUpload(skr::render_graph::RenderGraph* graph);
 
+    skr::SP<GPUSceneArchetype> EnsureArchetype(sugoi::archetype_t* group);
+    void RemoveArchetype(sugoi::archetype_t* group);
+
     // 组件查询和管理
+    const skr::Map<CPUTypeID, GPUComponentTypeID>& GetTypeRegistry() const;
     GPUComponentTypeID GetComponentTypeID(const CPUTypeID& type_guid) const;
     bool IsComponentTypeRegistered(const CPUTypeID& type_guid) const;
     const GPUSceneComponentType* GetComponentType(GPUComponentTypeID type_id) const;
@@ -199,10 +209,6 @@ public:
     };
     ComponentAddress GetComponentAddress(skr::ecs::Entity entity, const CPUTypeID& component_type) const;
     ComponentAddress GetComponentAddress(GPUSceneInstanceID instance_id, GPUComponentTypeID component_type) const;
-
-    // Archetype mapping
-    skr::SP<GPUSceneArchetype> EnsureArchetype(sugoi::archetype_t* group);
-    void RemoveArchetype(sugoi::archetype_t* group);
 
     // GPU 访问辅助
     struct GPUAccessInfo
@@ -226,10 +232,40 @@ public:
     };
     MemoryUsageInfo GetMemoryUsageInfo() const;
 
-// private:
+    inline skr::render_graph::BufferHandle GetSceneBuffer() const { return scene_buffer; }
+    inline uint32_t GetInstanceCount() const { return instance_count; }
+
+public: // Core Data
+    uint32_t GetCoreComponentSegmentOffset(GPUComponentTypeID type_id) const;
+    uint32_t GetCoreInstanceStride() const;
+protected: // Core Data
+    void InitializeComponentTypes(const GPUSceneConfig& config);
+    void CreateCoreDataBuffer(CGPUDeviceId device, const GPUSceneConfig& config);
+    void AdjustCoreBuffer(skr::render_graph::RenderGraph* graph);
+    uint32_t GetCoreComponentTypeCount() const;
+    uint64_t CalculateDirtySize() const;
+
+protected: // Additional Data
+    void CreateAdditionalDataBuffers(CGPUDeviceId device, const GPUSceneConfig& config);
+    void InitializePageAllocator(const GPUSceneConfig& config);
+    uint32_t GetAdditionalComponentTypeCount() const;
+    GPUPageID AllocateComponentPage(GPUArchetypeID archetype_id, GPUComponentTypeID component_type);
+    GPUSceneCustomIndex EncodeCustomIndex(GPUArchetypeID archetype_id, uint32_t entity_index_in_archetype);
+
+private:
+    void CreateSparseUploadPipeline(CGPUDeviceId device);
+    void PrepareUploadBuffer();
+    void DispatchSparseUpload(skr::render_graph::RenderGraph* graph);
+    // TODO: REMOVE THIS: Helper functions for buffer creation
+    CGPUBufferId CreateBuffer(CGPUDeviceId device, const char8_t* name, size_t size, ECGPUMemoryUsage usage = CGPU_MEM_USAGE_GPU_ONLY);
+
+    friend struct GPUSceneInstanceTask;
+    friend struct AddEntityToGPUScene;
+    friend struct RemoveEntityFromGPUScene;
     friend struct ScanGPUScene;
+
     GPUSceneConfig config;
-    skr::ecs::World* ecs_world;
+    skr::ecs::World* ecs_world = nullptr;
     skr::RendererDevice* render_device = nullptr;
 
     // 类型注册表
@@ -242,6 +278,7 @@ public:
 
     // 1. 核心数据：完全连续的大块（预分段）
     SOASegmentBuffer core_data; // SOA 分配器（包含 buffer）
+    skr::render_graph::BufferHandle scene_buffer; // core data 的 graph handle
 
     // 2. 扩展数据：页面管理（支持不同 Archetype）
     struct AdditionalDataRegion
@@ -254,8 +291,6 @@ public:
         CGPUBufferId page_table_buffer;                // GPU 可见页表
         skr::Vector<GPUPageTableEntry> page_table_cpu; // CPU 页表镜像
     } additional_data;
-    
-    skr::render_graph::BufferHandle scene_buffer;
 
     // 统一页面管理（两个区域共用）
     struct PageAllocator
@@ -284,53 +319,44 @@ public:
     } page_allocator;
     skr::Vector<GPUScenePage> pages;
 
-    // dirty tracking
+    shared_atomic_mutex add_mtx;
+    skr::Vector<skr::ecs::Entity> add_ents;
+
+    shared_atomic_mutex remove_mtx;
+    skr::Vector<skr::ecs::Entity> remove_ents;
+
+    GPUSceneInstanceID instance_count = 0;
+    std::atomic<GPUSceneInstanceID> latest_index = 0;
+    skr::ConcurrentQueue<GPUSceneInstanceID> free_ids;
+
+    shared_atomic_mutex dirty_mtx;
     skr::Vector<skr::ecs::Entity> dirty_ents;
     skr::Map<skr::ecs::Entity, skr::InlineVector<CPUTypeID, 4>> dirties;
-    
+
     // upload buffer management
     struct Upload
     {
-        uint64_t src_offset;        // 在 upload_buffer 中的偏移
-        uint64_t dst_offset;        // 在目标缓冲区中的偏移
-        uint64_t data_size;         // 数据大小
+        uint64_t src_offset; // 在 upload_buffer 中的偏移
+        uint64_t dst_offset; // 在目标缓冲区中的偏移
+        uint64_t data_size;  // 数据大小
     };
     CGPUBufferId upload_buffer = nullptr;
     shared_atomic_mutex upload_mutex;
-    skr::Vector<Upload> uploads;    // 记录拷贝操作的位置信息
-    std::atomic<uint64_t> upload_cursor{0};  // upload_buffer 中的当前写入位置
+    skr::Vector<Upload> uploads;             // 记录拷贝操作的位置信息
+    std::atomic<uint64_t> upload_cursor = 0; // upload_buffer 中的当前写入位置
 
     // SparseUpload compute pipeline resources
     CGPUShaderLibraryId sparse_upload_shader = nullptr;
     CGPURootSignatureId sparse_upload_root_signature = nullptr;
     CGPUComputePipelineId sparse_upload_pipeline = nullptr;
-
-    // Private helper methods
-    void InitializeComponentTypes(const GPUSceneConfig& config);
-    void CreateCoreDataBuffer(CGPUDeviceId device, const GPUSceneConfig& config);
-    void CreateAdditionalDataBuffers(CGPUDeviceId device, const GPUSceneConfig& config);
-    void InitializePageAllocator(const GPUSceneConfig& config);
-    void AdjustDataBuffers();
-    void CreateSparseUploadPipeline(CGPUDeviceId device);
-
-    // Helper functions for buffer creation
-    CGPUBufferId CreateBuffer(CGPUDeviceId device, const char8_t* name, size_t size, ECGPUMemoryUsage usage = CGPU_MEM_USAGE_GPU_ONLY);
-
-    // Helper functions for statistics
-    uint32_t GetCoreComponentTypeCount() const;
-    uint32_t GetAdditionalComponentTypeCount() const;
-    
-    // Allocation functions
-    uint64_t CalculateDirtySize() const;
-    void PrepareUploadContext();
-    GPUSceneInstanceID AllocateCoreInstance();
-    GPUPageID AllocateComponentPage(GPUArchetypeID archetype_id, GPUComponentTypeID component_type);
-    GPUSceneCustomIndex EncodeCustomIndex(GPUArchetypeID archetype_id, uint32_t entity_index_in_archetype);
-    
-    // Upload processing
-    uint32_t GetCoreComponentSegmentOffset(GPUComponentTypeID type_id) const;
-    uint32_t GetCoreInstanceStride() const;
-    void DispatchSparseUpload(skr::render_graph::RenderGraph* graph);
 };
+
+inline GPUSceneArchetype::GPUSceneArchetype(sugoi::archetype_t* a, GPUArchetypeID i, skr::Vector<GPUComponentTypeID>&& types)
+    : cpu_archetype(a)
+    , gpu_archetype_id(i)
+    , component_types(std::move(types))
+{
+        
+}
 
 } // namespace skr::renderer
