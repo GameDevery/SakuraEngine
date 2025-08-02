@@ -98,6 +98,7 @@ namespace SB
                     "-x", "c++",
                     "-fsyntax-only",
                     "-fms-extensions",
+                    "-fms-compatibility-version=17.1.1",
                     "-Wno-microsoft-union-member-reference",
                     $"-I{Engine.EngineDirectory}/tools/shader_compiler/LLVM/test_shaders",
                     SourceFile
