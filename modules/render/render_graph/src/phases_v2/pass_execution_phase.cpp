@@ -343,7 +343,10 @@ void PassExecutionPhase::execute_render_pass(RenderGraph* graph_, RenderGraphFra
     }
     {
         SkrZoneScopedN("PassExecutor");
-        pass->executor(*graph, pass_context);
+        if (pass->executor)
+        {
+            pass->executor(*graph, pass_context);
+        }
     }
     cgpu_cmd_end_render_pass(executor.gfx_cmd_buf, pass_context.encoder);
     {
@@ -396,7 +399,10 @@ void PassExecutionPhase::execute_compute_pass(RenderGraph* graph_, RenderGraphFr
     }
     {
         SkrZoneScopedN("PassExecutor");
-        pass->executor(*graph, pass_context);
+        if (pass->executor)
+        {
+            pass->executor(*graph, pass_context);
+        }
     }
     cgpu_cmd_end_compute_pass(executor.gfx_cmd_buf, pass_context.encoder);
 }
@@ -428,7 +434,10 @@ void PassExecutionPhase::execute_copy_pass(RenderGraph* graph_, RenderGraphFrame
         stack.cmd = executor.gfx_cmd_buf;
         stack.resolved_buffers = { resolved_buffers.data(), resolved_buffers.size() };
         stack.resolved_textures = { resolved_textures.data(), resolved_textures.size() };
-        pass->executor(*graph, stack);
+        if (pass->executor)
+        {
+            pass->executor(*graph, stack);
+        }
         for (auto [buffer_handle, state] : pass->bbarriers)
         {
             auto buffer = stack.resolve(buffer_handle);

@@ -284,7 +284,7 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
                 auto color_type_id = GPUScene.GetComponentTypeID(sugoi_id_of<GPUSceneInstanceColor>::get());
                 constants.color_segment_offset = GPUScene.GetCoreComponentSegmentOffset(color_type_id);
                 constants.color_element_size = sizeof(GPUSceneInstanceColor);
-                constants.instance_count = GPUScene.core_data.allocator.get_instance_count();
+                constants.instance_count = GPUScene.core_data.get_instance_count();
                 
                 cgpu_compute_encoder_push_constants(ctx.encoder, root_signature, u8"debug_constants", &constants);
                 cgpu_compute_encoder_dispatch(ctx.encoder, group_count_x, group_count_y, 1);

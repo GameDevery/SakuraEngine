@@ -6,24 +6,25 @@
 namespace skr::renderer
 {
 
-void GPUScene::Initialize(CGPUDeviceId device, const GPUSceneConfig& config)
+void GPUScene::Initialize(CGPUDeviceId device, const GPUSceneConfig& cfg)
 {
     SKR_LOG_INFO(u8"Initializing GPUScene...");
 
     // Validate configuration
-    if (!config.world)
+    if (!cfg.world)
     {
         SKR_LOG_ERROR(u8"GPUScene: ECS World is null!");
         return;
     }
 
-    if (!config.render_device)
+    if (!cfg.render_device)
     {
         SKR_LOG_ERROR(u8"GPUScene: RendererDevice is null!");
         return;
     }
 
-    // Store references
+    // Store configuration
+    config = cfg;
     ecs_world = config.world;
     render_device = config.render_device;
 
@@ -115,43 +116,48 @@ void GPUScene::CreateCoreDataBuffer(CGPUDeviceId device, const GPUSceneConfig& c
 {
     SKR_LOG_DEBUG(u8"Creating core data buffer...");
 
-    // Initialize SOA allocator
-    SOASegmentBuffer::Config allocator_config;
-    allocator_config.initial_size = config.core_data_initial_size;
-    allocator_config.max_size = config.core_data_max_size;
-    allocator_config.allow_resize = config.enable_auto_resize;
-    
-    core_data.allocator.initialize(allocator_config);
+    // Use Builder to create SOA allocator
+    auto builder = SOASegmentBuffer::Builder(device)
+        .with_size(config.core_data_initial_size, config.core_data_max_size)
+        .allow_resize(config.enable_auto_resize);
     
     // Register core components
     for (const auto& component_type : component_types)
     {
         if (component_type.storage_class == GPUSceneComponentType::StorageClass::CORE_DATA)
         {
-            core_data.allocator.register_component(
+            builder.add_component(
                 component_type.gpu_type_id,
                 component_type.element_size,
                 component_type.element_align
             );
+            SKR_LOG_DEBUG(u8"  Added core component to SOASegmentBuffer: gpu_type_id=%u, size=%u, align=%u",
+                component_type.gpu_type_id, component_type.element_size, component_type.element_align);
         }
     }
     
-    // Finalize layout
-    core_data.allocator.finalize_layout();
+    // Build the allocator
+    core_data = builder.build();
     
-    // Create the buffer based on calculated size
-    size_t buffer_size = core_data.allocator.get_used_bytes();
-    core_data.buffer = CreateBuffer(device, u8"GPUScene-CoreData", buffer_size);
-    if (!core_data.buffer)
+    if (!core_data.get_buffer())
     {
         SKR_LOG_ERROR(u8"Failed to create core data buffer!");
         return;
     }
 
     SKR_LOG_INFO(u8"Core data buffer created: %lldMB, %d segments, %d instances capacity",
-        buffer_size / (1024 * 1024),
-        core_data.allocator.get_segments().size(),
-        core_data.allocator.get_instance_capacity());
+        core_data.get_total_bytes() / (1024 * 1024),
+        core_data.get_segments().size(),
+        core_data.get_instance_capacity());
+    
+    // 打印实际注册的组件类型
+    const auto& infos = core_data.get_segments();
+    SKR_LOG_INFO(u8"Registered %u core components in SOASegmentBuffer:", (uint32_t)infos.size());
+    for (size_t i = 0; i < infos.size(); ++i)
+    {
+        SKR_LOG_INFO(u8"  Component[%u]: type_id=%u, size=%u, align=%u",
+            (uint32_t)i, infos[i].type_id, infos[i].element_size, infos[i].element_align);
+    }
 }
 
 void GPUScene::CreateAdditionalDataBuffers(CGPUDeviceId device, const GPUSceneConfig& config)
@@ -207,12 +213,8 @@ void GPUScene::Shutdown()
 {
     SKR_LOG_INFO(u8"Shutting down GPUScene...");
 
-    // Release GPU buffers
-    if (core_data.buffer)
-    {
-        cgpu_free_buffer(core_data.buffer);
-        core_data.buffer = nullptr;
-    }
+    // Shutdown allocators (will release buffers)
+    core_data.shutdown();
 
     if (additional_data.buffer)
     {
@@ -334,8 +336,8 @@ void GPUScene::AdjustDataBuffers()
 GPUScene::MemoryUsageInfo GPUScene::GetMemoryUsageInfo() const
 {
     MemoryUsageInfo info;
-    info.core_data_used_bytes = core_data.allocator.get_used_bytes();
-    info.core_data_capacity_bytes = core_data.allocator.get_capacity_bytes();
+    info.core_data_used_bytes = core_data.get_total_bytes();
+    info.core_data_capacity_bytes = core_data.get_capacity_bytes();
     info.additional_data_used_bytes = additional_data.bytes_used;
     info.additional_data_capacity_bytes = additional_data.buffer_size;
     return info;
@@ -344,7 +346,7 @@ GPUScene::MemoryUsageInfo GPUScene::GetMemoryUsageInfo() const
 GPUScene::GPUAccessInfo GPUScene::GetGPUAccessInfo() const
 {
     GPUAccessInfo info;
-    info.core_data_buffer = core_data.buffer;
+    info.core_data_buffer = core_data.get_buffer();
     info.additional_data_buffer = additional_data.buffer;
     info.page_table_buffer = additional_data.page_table_buffer;
     return info;

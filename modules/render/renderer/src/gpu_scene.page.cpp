@@ -120,8 +120,7 @@ struct ScanGPUScene
                     if (component_info.storage_class == GPUSceneComponentType::StorageClass::CORE_DATA)
                     {
                         // 计算在目标缓冲区 SOA 布局中的偏移
-                        uint64_t dst_offset = pScene->core_data.allocator.get_component_offset(
-                            gpu_type, instance_data.instance_index);
+                        uint64_t dst_offset = pScene->core_data.get_component_offset(gpu_type, instance_data.instance_index);
                         
                         // 分配 upload_buffer 中的位置
                         uint64_t src_offset = pScene->upload_cursor.fetch_add(component_info.element_size);
@@ -164,25 +163,52 @@ void GPUScene::ExecuteUpload(skr::render_graph::RenderGraph* graph)
     // Ensure buffers are sized correctly
     AdjustDataBuffers();
 
-    // Import
-    scene_buffer = graph->create_buffer(
-        [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::BufferBuilder& builder) {
-            builder.set_name(u8"scene_buffer")
-                .import(core_data.buffer, first_frame ? CGPU_RESOURCE_STATE_UNDEFINED : CGPU_RESOURCE_STATE_SHADER_RESOURCE)
-                .allow_shader_readwrite();
-        }
-    );
-    first_frame = false;
-
     // Prepare upload buffer based on dirty size
     PrepareUploadContext();
 
+    // Schedule scan
+    uint32_t existed_instances = core_data.get_instance_count();
     if (!dirty_ents.is_empty())
     {
         ScanGPUScene scan;
         scan.pScene = this;
         ecs_world->dispatch_task(scan, 512, dirty_ents);
         skr::ecs::TaskScheduler::Get()->sync_all();
+    }
+
+    // Check if resize is needed based on scan results
+    uint32_t required_instances = core_data.get_instance_count();
+    if (core_data.needs_resize(required_instances))
+    {
+        SKR_LOG_INFO(u8"GPUScene: Core data resize needed. Current: %u/%u instances",
+                     required_instances, core_data.get_instance_capacity());
+        
+        // Calculate new capacity
+        uint32_t new_capacity = static_cast<uint32_t>(required_instances * config.resize_growth_factor);
+        
+        // Resize and get old buffer
+        auto old_buffer = core_data.resize_buffer(new_capacity);
+        scene_buffer = core_data.import_buffer(graph, u8"scene_buffer");
+        
+        /*
+        if (old_buffer && core_data.get_buffer())
+        {
+            // Import old buffer for copy source
+            auto old_buffer_handle = graph->create_buffer(
+                [=](skr::render_graph::RenderGraph& g, skr::render_graph::BufferBuilder& builder) {
+                    builder.set_name(u8"old_scene_buffer")
+                        .import(old_buffer, CGPU_RESOURCE_STATE_SHADER_RESOURCE);
+                }
+            );
+            // Copy data from old to new buffer
+            core_data.copy_segments(graph, old_buffer_handle, scene_buffer, existed_instances);
+        }
+        */
+    }
+    else
+    {
+        // Import scene buffer with proper state management
+        scene_buffer = core_data.import_buffer(graph, u8"scene_buffer");
     }
 
     // Dispatch SparseUpload compute shader to copy from upload_buffer to target buffers
@@ -253,7 +279,7 @@ void GPUScene::RemoveArchetype(sugoi::archetype_t* archetype)
 GPUSceneInstanceID GPUScene::AllocateCoreInstance()
 {
     // Use SOASegmentBuffer to allocate instance
-    auto instance_id = core_data.allocator.allocate_instance();
+    auto instance_id = core_data.allocate_instance();
     
     if (instance_id == static_cast<SOASegmentBuffer::InstanceID>(-1))
     {
@@ -300,7 +326,7 @@ GPUSceneCustomIndex GPUScene::EncodeCustomIndex(GPUArchetypeID archetype_id, uin
 uint32_t GPUScene::GetCoreComponentSegmentOffset(GPUComponentTypeID type_id) const
 {
     // Get the segment offset from SOASegmentBuffer
-    const auto* segment = core_data.allocator.get_segment(type_id);
+    const auto* segment = core_data.get_segment(type_id);
     if (segment)
     {
         return segment->buffer_offset;
@@ -313,7 +339,7 @@ uint32_t GPUScene::GetCoreInstanceStride() const
 {
     // Total size of all core components per instance
     uint32_t stride = 0;
-    for (const auto& segment : core_data.allocator.get_segments())
+    for (const auto& segment : core_data.get_segments())
     {
         stride += segment.element_size;
     }

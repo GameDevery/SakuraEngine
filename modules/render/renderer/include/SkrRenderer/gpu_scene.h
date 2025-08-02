@@ -228,6 +228,7 @@ public:
 
 // private:
     friend struct ScanGPUScene;
+    GPUSceneConfig config;
     skr::ecs::World* ecs_world;
     skr::RendererDevice* render_device = nullptr;
 
@@ -240,11 +241,7 @@ public:
     skr::Map<sugoi::archetype_t*, skr::SP<GPUSceneArchetype>> archetype_registry;
 
     // 1. 核心数据：完全连续的大块（预分段）
-    struct CoreDataRegion
-    {
-        CGPUBufferId buffer;        // 连续缓冲区
-        SOASegmentBuffer allocator; // SOA 分配器
-    } core_data;
+    SOASegmentBuffer core_data; // SOA 分配器（包含 buffer）
 
     // 2. 扩展数据：页面管理（支持不同 Archetype）
     struct AdditionalDataRegion
@@ -258,7 +255,6 @@ public:
         skr::Vector<GPUPageTableEntry> page_table_cpu; // CPU 页表镜像
     } additional_data;
     
-    bool first_frame = true;
     skr::render_graph::BufferHandle scene_buffer;
 
     // 统一页面管理（两个区域共用）
