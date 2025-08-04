@@ -1,8 +1,9 @@
 #pragma once
-#include "SkrBase/misc/integer_tools.hpp"
-#include "SkrContainersDef/skr_allocator.hpp"
-#include "SkrContainersDef/vector.hpp"
-#include "SkrRTTR/rttr_traits.hpp"
+#include <SkrBase/misc/integer_tools.hpp>
+#include <SkrContainersDef/skr_allocator.hpp>
+#include <SkrContainersDef/vector.hpp>
+#include <SkrRTTR/rttr_traits.hpp>
+#include <SkrBase/containers/string/format.hpp>
 
 namespace skr
 {
@@ -221,9 +222,10 @@ struct TypeSignatureHelper {
             break;
         }
         case ETypeSignatureSignal::GenericTypeId: {
-            pos += sizeof(ETypeSignatureSignal) + sizeof(GUID);
+            pos += sizeof(ETypeSignatureSignal);
             uint32_t data_count;
             pos = read_buffer(pos, data_count);
+            pos += sizeof(GUID);
             for (uint32_t i = 0; i < data_count; ++i)
             {
                 pos = jump_next_type_or_data(pos, end);
@@ -1362,6 +1364,34 @@ struct TypeSignature : private SkrAllocator {
         return *this;
     }
 
+    // compare
+    inline bool operator==(const TypeSignature& rhs) const
+    {
+        return view().equal(rhs.view(), ETypeSignatureCompareFlag::Strict);
+    }
+    inline bool operator==(const TypeSignatureView& rhs) const
+    {
+        return view().equal(rhs, ETypeSignatureCompareFlag::Strict);
+    }
+    inline bool operator!=(const TypeSignature& rhs) const
+    {
+        return !(*this == rhs);
+    }
+    inline bool operator!=(const TypeSignatureView& rhs) const
+    {
+        return !(*this == rhs);
+    }
+
+    // hash
+    inline static skr_hash _skr_hash(const TypeSignature& signature)
+    {
+        return skr_hash_of(signature._data, signature._size);
+    }
+    inline static skr_hash _skr_hash(const TypeSignatureView& signature)
+    {
+        return skr_hash_of(signature.data(), signature.size());
+    }
+
     // to view
     inline                   operator TypeSignatureView() const { return { _data, _size }; }
     inline TypeSignatureView view() const { return { _data, _size }; }
@@ -1511,11 +1541,11 @@ struct TypeSignatureBuilder {
     }
 
     // make
-    inline TypeSignature type_signature()
+    inline TypeSignature build()
     {
         return { TypeSignatureView{ data.data(), data.size() } };
     }
-    inline TypeSignatureView type_signature_view()
+    inline TypeSignatureView view()
     {
         return { data.data(), data.size() };
     }
@@ -1586,8 +1616,6 @@ private:
 };
 #pragma endregion
 
-// TODO. type signature builder
-
 // make signature
 template <typename T>
 inline TypeSignature type_signature_of()
@@ -1646,5 +1674,25 @@ inline TypeSignatureTyped<decltype(__helper::decay_field(field))> type_signature
 {
     return {};
 }
-
 } // namespace skr
+
+// support formatter
+namespace skr::container
+{
+template <>
+struct Formatter<TypeSignatureView> {
+    template <typename TString>
+    inline static void format(TString& out, const TypeSignatureView& value, typename TString::ViewType spec)
+    {
+        out.append(value.to_string());
+    }
+};
+template <>
+struct Formatter<TypeSignature> {
+    template <typename TString>
+    inline static void format(TString& out, const TypeSignature& value, typename TString::ViewType spec)
+    {
+        out.append(value.view().to_string());
+    }
+};
+} // namespace skr::container

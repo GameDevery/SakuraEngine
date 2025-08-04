@@ -123,6 +123,39 @@ ScriptBinderRoot ScriptBinderManager::get_or_build(GUID type_id)
     _cached_root_binders.add(type_id, {});
     return {};
 }
+ScriptBinderRoot ScriptBinderManager::get_or_build(TypeSignatureView signature)
+{
+    // ignore modifier
+    auto view = signature.jump_modifier();
+    if (!view.is_empty())
+    {
+        SKR_LOG_FMT_WARN(u8"any modifier will be ignored, to disable this warning, use sig.jump_modifier() before call this function");
+    }
+
+    if (signature.is_type())
+    {
+        GUID type_id;
+        signature.read_type_id(type_id);
+        return get_or_build(type_id);
+    }
+    else if (signature.is_generic_type())
+    {
+        // find cache
+        if (auto result = _cached_generic_binders.find(signature))
+        {
+            return result.value();
+        }
+
+        // make generic
+        return _make_generic(signature);
+    }
+    else
+    {
+        SKR_LOG_FMT_ERROR(u8"unsupported type signature '{}'", signature.to_string());
+        return {};
+    }
+}
+
 ScriptBinderCallScript ScriptBinderManager::build_call_script_binder(span<const StackProxy> params, StackProxy ret)
 {
     auto _log_stack = _logger.stack(u8"export call script binder");
@@ -192,6 +225,12 @@ void ScriptBinderManager::clear()
         }
     }
     _cached_root_binders.clear();
+
+    // delete generic binder cache
+    for (auto& [signature, binder] : _cached_generic_binders)
+    {
+        SkrDelete(binder);
+    }
 }
 
 // make root binder
@@ -372,6 +411,37 @@ ScriptBinderEnum* ScriptBinderManager::_make_enum(const RTTRType* type)
     });
 
     return SkrNew<ScriptBinderEnum>(std::move(result));
+}
+ScriptBinderGeneric* ScriptBinderManager::_make_generic(TypeSignatureView signature)
+{
+    SKR_ASSERT(signature.jump_modifier().is_empty());
+
+    auto raw_signature = signature;
+
+    // check generic
+    GUID     generic_id;
+    uint32_t data_count;
+    signature.read_generic_type_id(generic_id, data_count);
+    if (generic_id == kOptionalGenericId)
+    {
+        auto _log_stack = _logger.stack(u8"export optional generic type");
+        _check_optional(signature.jump_next_type_or_data());
+        if (_logger.any_error())
+        {
+            return nullptr;
+        }
+    }
+    else
+    {
+        _logger.error(u8"bad generic type, guid: {}", generic_id);
+    }
+
+    // make generic binder
+    auto generic_binder     = SkrNew<ScriptBinderGeneric>();
+    generic_binder->generic = build_generic(raw_signature);
+    _cached_generic_binders.add(raw_signature, generic_binder);
+
+    return generic_binder;
 }
 void ScriptBinderManager::_fill_record_info(ScriptBinderRecordBase& out, const RTTRType* type)
 {
@@ -687,6 +757,22 @@ void ScriptBinderManager::_fill_record_info(ScriptBinderRecordBase& out, const R
     }
 
     out.failed |= _logger.any_error();
+}
+
+// generic checker
+void ScriptBinderManager::_check_optional(TypeSignatureView inner)
+{
+    auto pointer_level = inner.decayed_pointer_level();
+    if (pointer_level > 0)
+    {
+        _logger.error(u8"optional not support any pointer/reference type");
+    }
+
+    auto inner_binder = get_or_build(inner);
+    if (inner_binder.is_object())
+    {
+        _logger.error(u8"optional not support object type '{}", inner_binder.object()->type->name());
+    }
 }
 
 // make nested binder

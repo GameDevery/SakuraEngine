@@ -1,6 +1,9 @@
 #include "SkrCore/log.hpp"
 #include "SkrTestFramework/framework.hpp"
 #include "SkrRTTR/type_signature.hpp"
+#include "./test_rttr_types.hpp"
+#include <SkrContainers/map.hpp>
+#include <SkrContainers/optional.hpp>
 
 TEST_CASE("test type signature")
 {
@@ -218,5 +221,17 @@ TEST_CASE("test type signature")
         REQUIRE(field.view().equal(reference_type, ETypeSignatureCompareFlag::Strict));
     }
 
-    // TODO. test generic type
+    // test to string
+    SUBCASE("to string")
+    {
+        TypeSignatureTyped<const int32_t&>                                 type;
+        TypeSignatureTyped<void(int32_t, float)>                           func;
+        TypeSignatureTyped<Optional<int32_t>>                              generic_type;
+        TypeSignatureTyped<Map<String, Optional<test_rttr::TestDerivedB>>> generic_nested;
+
+        SKR_LOG_FMT_INFO(u8"Type: {}", type.view());
+        SKR_LOG_FMT_INFO(u8"Function: {}", func.view());
+        SKR_LOG_FMT_INFO(u8"Generic Type: {}", generic_type.view());
+        SKR_LOG_FMT_INFO(u8"Generic Map: {}", generic_nested.view());
+    }
 }

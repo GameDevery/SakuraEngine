@@ -196,10 +196,10 @@ struct alignas(16) float4x4 {
     // factory for utility usage
     static float4x4 from_scale(const float3& scale);
     static float4x4 from_translation(const float3& translation);
-    static float4x4 look_to(const float4& from, const float4& dir, const float4& up);
-    static float4x4 look_at(const float4& from, const float4& to, const float4& up);
-    static float4x4 view_to(const float4& from, const float4& dir, const float4& up);
-    static float4x4 view_at(const float4& from, const float4& to, const float4& up);
+    static float4x4 look_to(const float3& from, const float3& dir, const float3& up);
+    static float4x4 look_at(const float3& from, const float3& to, const float3& up);
+    static float4x4 view_to(const float3& from, const float3& dir, const float3& up);
+    static float4x4 view_at(const float3& from, const float3& to, const float3& up);
     static float4x4 perspective(float view_width, float view_height, float near_distance, float far_distance);
     static float4x4 perspective_fov(float fov_y, float aspect_ratio, float near_distance, float far_distance);
     static float4x4 orthographic(float width, float height, float near_distance, float far_distance);

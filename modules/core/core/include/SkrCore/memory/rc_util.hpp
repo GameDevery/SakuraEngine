@@ -141,11 +141,11 @@ private:
 };
 inline static RCWeakRefCounter* rc_get_weak_ref_released()
 {
-    return reinterpret_cast<RCWeakRefCounter*>(size_t(-1));
+    return reinterpret_cast<RCWeakRefCounter*>(uint64_t(-1));
 }
 inline static bool rc_is_weak_ref_released(RCWeakRefCounter* counter)
 {
-    return reinterpret_cast<size_t>(counter) == size_t(-1);
+    return reinterpret_cast<uint64_t>(counter) == uint64_t(-1);
 }
 inline static RCCounterType rc_weak_ref_count(
     std::atomic<RCWeakRefCounter*>& counter)

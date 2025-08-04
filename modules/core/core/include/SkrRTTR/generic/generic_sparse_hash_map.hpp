@@ -29,16 +29,16 @@ struct SKR_CORE_API GenericKVPair final : IGenericBase {
     uint64_t alignment() const override;
 
     // operations, used for generic container algorithms
-    bool   support(EGenericFeature feature) const override;
-    void   default_ctor(void* dst, uint64_t count = 1) const override;
-    void   dtor(void* dst, uint64_t count = 1) const override;
-    void   copy(void* dst, const void* src, uint64_t count = 1) const override;
-    void   move(void* dst, void* src, uint64_t count = 1) const override;
-    void   assign(void* dst, const void* src, uint64_t count = 1) const override;
-    void   move_assign(void* dst, void* src, uint64_t count = 1) const override;
-    bool   equal(const void* lhs, const void* rhs, uint64_t count = 1) const override;
-    size_t hash(const void* src) const override;
-    void   swap(void* dst, void* src, uint64_t count = 1) const override;
+    bool     support(EGenericFeature feature) const override;
+    void     default_ctor(void* dst, uint64_t count = 1) const override;
+    void     dtor(void* dst, uint64_t count = 1) const override;
+    void     copy(void* dst, const void* src, uint64_t count = 1) const override;
+    void     move(void* dst, void* src, uint64_t count = 1) const override;
+    void     assign(void* dst, const void* src, uint64_t count = 1) const override;
+    void     move_assign(void* dst, void* src, uint64_t count = 1) const override;
+    bool     equal(const void* lhs, const void* rhs, uint64_t count = 1) const override;
+    skr_hash hash(const void* src) const override;
+    void     swap(void* dst, void* src, uint64_t count = 1) const override;
     //===> IGenericBase API
 
     // getter
@@ -85,16 +85,16 @@ struct SKR_CORE_API GenericSparseHashMap final : GenericSparseHashBase {
     uint64_t alignment() const override;
 
     // operations, used for generic container algorithms
-    bool   support(EGenericFeature feature) const override;
-    void   default_ctor(void* dst, uint64_t count = 1) const override;
-    void   dtor(void* dst, uint64_t count = 1) const override;
-    void   copy(void* dst, const void* src, uint64_t count = 1) const override;
-    void   move(void* dst, void* src, uint64_t count = 1) const override;
-    void   assign(void* dst, const void* src, uint64_t count = 1) const override;
-    void   move_assign(void* dst, void* src, uint64_t count = 1) const override;
-    bool   equal(const void* lhs, const void* rhs, uint64_t count = 1) const override;
-    size_t hash(const void* src) const override;
-    void   swap(void* dst, void* src, uint64_t count = 1) const override;
+    bool     support(EGenericFeature feature) const override;
+    void     default_ctor(void* dst, uint64_t count = 1) const override;
+    void     dtor(void* dst, uint64_t count = 1) const override;
+    void     copy(void* dst, const void* src, uint64_t count = 1) const override;
+    void     move(void* dst, void* src, uint64_t count = 1) const override;
+    void     assign(void* dst, const void* src, uint64_t count = 1) const override;
+    void     move_assign(void* dst, void* src, uint64_t count = 1) const override;
+    bool     equal(const void* lhs, const void* rhs, uint64_t count = 1) const override;
+    skr_hash hash(const void* src) const override;
+    void     swap(void* dst, void* src, uint64_t count = 1) const override;
     //===> IGenericBase API
 
     // getter
@@ -145,7 +145,7 @@ struct SKR_CORE_API GenericSparseHashMap final : GenericSparseHashBase {
     // add
     GenericSparseHashMapDataRef add(void* dst, const void* key, const void* value);
     GenericSparseHashMapDataRef add_move(void* dst, void* key, void* value);
-    GenericSparseHashMapDataRef add_ex_unsafe(void* dst, size_t hash, PredType pred);
+    GenericSparseHashMapDataRef add_ex_unsafe(void* dst, skr_hash hash, PredType pred);
 
     // try add (key only add)
     GenericSparseHashMapDataRef try_add_unsafe(void* dst, const void* key);

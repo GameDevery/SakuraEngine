@@ -741,7 +741,7 @@ RTTRInvokerCopyCtor RTTRType::find_copy_ctor() const
     tb.write_type_id(type_id_of<void>()); // return
     tb.write_const_ref();
     tb.write_type_id(type_id()); // param 1: const T&
-    return find_ctor({ .signature = tb.type_signature_view() });
+    return find_ctor({ .signature = tb.view() });
 }
 RTTRInvokerMoveCtor RTTRType::find_move_ctor() const
 {
@@ -750,7 +750,7 @@ RTTRInvokerMoveCtor RTTRType::find_move_ctor() const
     tb.write_type_id(type_id_of<void>()); // return
     tb.write_ref();
     tb.write_type_id(type_id()); // param 1: T&
-    return find_ctor({ .signature = tb.type_signature_view() });
+    return find_ctor({ .signature = tb.view() });
 }
 RTTRInvokerAssign RTTRType::find_assign() const
 {
@@ -761,7 +761,7 @@ RTTRInvokerAssign RTTRType::find_assign() const
     tb.write_type_id(type_id()); // param 1: T&
     tb.write_const_ref();
     tb.write_type_id(type_id()); // param 2: const T&
-    return find_extern_method({ .name = { CPPExternMethods::Assign }, .signature = tb.type_signature_view() });
+    return find_extern_method({ .name = { CPPExternMethods::Assign }, .signature = tb.view() });
 }
 RTTRInvokerMoveAssign RTTRType::find_move_assign() const
 {
@@ -772,7 +772,7 @@ RTTRInvokerMoveAssign RTTRType::find_move_assign() const
     tb.write_type_id(type_id()); // param 1: T&
     tb.write_ref();
     tb.write_type_id(type_id()); // param 2: T&
-    return find_extern_method({ .name = { CPPExternMethods::Assign }, .signature = tb.type_signature_view() });
+    return find_extern_method({ .name = { CPPExternMethods::Assign }, .signature = tb.view() });
 }
 RTTRInvokerEqual RTTRType::find_equal() const
 {
@@ -783,16 +783,16 @@ RTTRInvokerEqual RTTRType::find_equal() const
     tb.write_type_id(type_id()); // param 1: const T&
     tb.write_const_ref();
     tb.write_type_id(type_id()); // param 2: const T&
-    return find_extern_method({ .name = { CPPExternMethods::Eq }, .signature = tb.type_signature_view() });
+    return find_extern_method({ .name = { CPPExternMethods::Eq }, .signature = tb.view() });
 }
 RTTRInvokerHash RTTRType::find_hash() const
 {
     TypeSignatureBuilder tb;
     tb.write_function_signature(1);
-    tb.write_type_id(type_id_of<uint64_t>()); // return
+    tb.write_type_id(type_id_of<skr_hash>()); // return
     tb.write_const_ref();
     tb.write_type_id(type_id()); // param 1: const T&
-    return find_extern_method({ .name = { SkrCoreExternMethods::Hash }, .signature = tb.type_signature_view() });
+    return find_extern_method({ .name = { SkrCoreExternMethods::Hash }, .signature = tb.view() });
 }
 RTTRInvokerSwap RTTRType::find_swap() const
 {
@@ -803,7 +803,7 @@ RTTRInvokerSwap RTTRType::find_swap() const
     tb.write_type_id(type_id()); // param 1: T&
     tb.write_ref();
     tb.write_type_id(type_id()); // param 2: T&
-    return find_extern_method({ .name = { SkrCoreExternMethods::Swap }, .signature = tb.type_signature_view() });
+    return find_extern_method({ .name = { SkrCoreExternMethods::Swap }, .signature = tb.view() });
 }
 
 // flag & attribute
@@ -891,6 +891,16 @@ void RTTRType::each_attribute(FunctionRef<void(const Any&)> each_func, TypeSigna
     default:
         break;
     }
+}
+
+// alloc
+void* RTTRType::alloc(uint64_t count) const
+{
+    return sakura_new_aligned(size() * count, alignment());
+}
+void RTTRType::free(void* p) const
+{
+    sakura_free_aligned(p, alignment());
 }
 
 // helpers

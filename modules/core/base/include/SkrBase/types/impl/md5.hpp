@@ -70,12 +70,12 @@ struct MD5 {
     }
 
     // hash
-    inline constexpr size_t get_hash() const
+    inline constexpr skr_hash get_hash() const
     {
         using namespace skr;
         constexpr Hash<uint64_t> hasher{};
 
-        size_t result = hasher.operator()(static_cast<uint64_t>(a) << 32 | b);
+        skr_hash result = hasher.operator()(static_cast<uint64_t>(a) << 32 | b);
         return hash_combine(
             result,
             hasher.operator()(static_cast<uint64_t>(c) << 32 | d)
@@ -83,7 +83,7 @@ struct MD5 {
     }
 
     // skr hash
-    inline static size_t _skr_hash(const MD5& md5)
+    inline static skr_hash _skr_hash(const MD5& md5)
     {
         return md5.get_hash();
     }

@@ -238,7 +238,10 @@ void Renderer::build_render_graph(skr::render_graph::RenderGraph* graph, skr::re
         SKR_LOG_ERROR(u8"Camera is not set.");
         return;
     }
-    auto view = skr::float4x4::view_at(skr::float4(mp_camera->position, 0.0f), skr::float4(mp_camera->position + mp_camera->front, 0.0f), skr::float4(mp_camera->up, 0.f));
+    auto view = skr::float4x4::view_at(
+        mp_camera->position,
+        mp_camera->position + mp_camera->front,
+        mp_camera->up);
 
     auto proj = skr::float4x4::perspective_fov(
         skr::camera_fov_y_from_x(mp_camera->fov, mp_camera->aspect),

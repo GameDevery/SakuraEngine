@@ -86,8 +86,8 @@ struct RC {
     RC<U> cast_const() const;
 
     // skr hash
-    static size_t _skr_hash(const RC& obj);
-    static size_t _skr_hash(T* ptr);
+    static skr_hash _skr_hash(const RC& obj);
+    static skr_hash _skr_hash(T* ptr);
 
 private:
     // helper
@@ -155,8 +155,8 @@ struct RCUnique {
     T& operator*() const;
 
     // skr hash
-    static size_t _skr_hash(const RCUnique& obj);
-    static size_t _skr_hash(T* ptr);
+    static skr_hash _skr_hash(const RCUnique& obj);
+    static skr_hash _skr_hash(T* ptr);
 
 private:
     // helper
@@ -272,7 +272,7 @@ struct RCWeak {
     RCWeak<U> cast_const() const;
 
     // skr hash
-    static size_t _skr_hash(const RCWeak& obj);
+    static skr_hash _skr_hash(const RCWeak& obj);
 
 private:
     // helper
@@ -737,12 +737,12 @@ inline RC<U> RC<T>::cast_const() const
 
 // skr hash
 template <typename T>
-inline size_t RC<T>::_skr_hash(const RC& obj)
+inline skr_hash RC<T>::_skr_hash(const RC& obj)
 {
     return ::skr::Hash<T*>()(obj._ptr);
 }
 template <typename T>
-inline size_t RC<T>::_skr_hash(T* ptr)
+inline skr_hash RC<T>::_skr_hash(T* ptr)
 {
     return ::skr::Hash<T*>()(ptr);
 }
@@ -1114,12 +1114,12 @@ inline T& RCUnique<T>::operator*() const
 
 // skr hash
 template <typename T>
-inline size_t RCUnique<T>::_skr_hash(const RCUnique& obj)
+inline skr_hash RCUnique<T>::_skr_hash(const RCUnique& obj)
 {
     return ::skr::Hash<T*>()(obj._ptr);
 }
 template <typename T>
-inline size_t RCUnique<T>::_skr_hash(T* ptr)
+inline skr_hash RCUnique<T>::_skr_hash(T* ptr)
 {
     return ::skr::Hash<T*>()(ptr);
 }
@@ -1689,7 +1689,7 @@ inline RCWeak<U> RCWeak<T>::cast_const() const
 
 // skr hash
 template <typename T>
-inline size_t RCWeak<T>::_skr_hash(const RCWeak& obj)
+inline skr_hash RCWeak<T>::_skr_hash(const RCWeak& obj)
 {
     return hash_combine(
         ::skr::Hash<T*>()(obj._ptr),

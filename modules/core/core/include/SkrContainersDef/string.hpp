@@ -41,27 +41,27 @@ struct Hash<String>
 {
     inline size_t operator()(const String& x) const
     {
-        return skr_hash(x.c_str(), x.size(), 0);
+        return skr_hash_of(x.c_str(), x.size(), 0);
     }
-    inline size_t operator()(const StringView& x) const
+    inline skr_hash operator()(const StringView& x) const
     {
-        return skr_hash(x.data(), x.size(), 0);
+        return skr_hash_of(x.data(), x.size(), 0);
     }
-    inline size_t operator()(const char* x) const
+    inline skr_hash operator()(const char* x) const
     {
-        return skr_hash(x, std::strlen(x), 0);
+        return skr_hash_of(x, std::strlen(x), 0);
     }
-    inline size_t operator()(const char8_t* x) const
+    inline skr_hash operator()(const char8_t* x) const
     {
-        return skr_hash(x, std::strlen(reinterpret_cast<const char*>(x)), 0);
+        return skr_hash_of(x, std::strlen(reinterpret_cast<const char*>(x)), 0);
     }
 };
 template <>
 struct Hash<StringView>
 {
-    inline size_t operator()(const StringView& x) const
+    inline skr_hash operator()(const StringView& x) const
     {
-        return skr_hash(x.data(), x.size(), 0);
+        return skr_hash_of(x.data(), x.size(), 0);
     }
 };
 } // namespace skr

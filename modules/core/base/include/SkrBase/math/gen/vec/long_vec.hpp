@@ -79,7 +79,7 @@ struct long2 {
     inline long2 yy() const { return {y, y}; }
     
     // hash
-    inline static size_t _skr_hash(const long2& v) {
+    inline static skr_hash _skr_hash(const long2& v) {
         auto hasher = ::skr::Hash<int64_t>{};
         auto result = hasher(v.x);
         result = ::skr::hash_combine(result, hasher(v.y));
@@ -197,7 +197,7 @@ struct long3 {
     inline long3 zzz() const { return {z, z, z}; }
     
     // hash
-    inline static size_t _skr_hash(const long3& v) {
+    inline static skr_hash _skr_hash(const long3& v) {
         auto hasher = ::skr::Hash<int64_t>{};
         auto result = hasher(v.x);
         result = ::skr::hash_combine(result, hasher(v.y));
@@ -668,7 +668,7 @@ struct long4 {
     inline long4 wwww() const { return {w, w, w, w}; }
     
     // hash
-    inline static size_t _skr_hash(const long4& v) {
+    inline static skr_hash _skr_hash(const long4& v) {
         auto hasher = ::skr::Hash<int64_t>{};
         auto result = hasher(v.x);
         result = ::skr::hash_combine(result, hasher(v.y));

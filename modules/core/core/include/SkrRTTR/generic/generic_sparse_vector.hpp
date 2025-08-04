@@ -69,16 +69,16 @@ struct SKR_CORE_API GenericSparseVector : IGenericBase {
     uint64_t alignment() const override;
 
     // operations, used for generic container algorithms
-    bool   support(EGenericFeature feature) const override;
-    void   default_ctor(void* dst, uint64_t count = 1) const override;
-    void   dtor(void* dst, uint64_t count = 1) const override;
-    void   copy(void* dst, const void* src, uint64_t count = 1) const override;
-    void   move(void* dst, void* src, uint64_t count = 1) const override;
-    void   assign(void* dst, const void* src, uint64_t count = 1) const override;
-    void   move_assign(void* dst, void* src, uint64_t count = 1) const override;
-    bool   equal(const void* lhs, const void* rhs, uint64_t count = 1) const override;
-    size_t hash(const void* src) const override;
-    void   swap(void* dst, void* src, uint64_t count = 1) const override;
+    bool     support(EGenericFeature feature) const override;
+    void     default_ctor(void* dst, uint64_t count = 1) const override;
+    void     dtor(void* dst, uint64_t count = 1) const override;
+    void     copy(void* dst, const void* src, uint64_t count = 1) const override;
+    void     move(void* dst, void* src, uint64_t count = 1) const override;
+    void     assign(void* dst, const void* src, uint64_t count = 1) const override;
+    void     move_assign(void* dst, void* src, uint64_t count = 1) const override;
+    bool     equal(const void* lhs, const void* rhs, uint64_t count = 1) const override;
+    skr_hash hash(const void* src) const override;
+    void     swap(void* dst, void* src, uint64_t count = 1) const override;
     //===> IGenericBase API
 
     // getter

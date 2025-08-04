@@ -26,7 +26,7 @@ struct CombinePointerId {
     {
         return pointer_id != other.pointer_id || button_id != other.button_id;
     }
-    inline static size_t _skr_hash(const CombinePointerId& id) SKR_NOEXCEPT
+    inline static skr_hash _skr_hash(const CombinePointerId& id) SKR_NOEXCEPT
     {
         return skr::hash_combine(id.pointer_id, id.button_id);
     }

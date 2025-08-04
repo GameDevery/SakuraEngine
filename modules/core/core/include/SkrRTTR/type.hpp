@@ -60,7 +60,7 @@ using RTTRInvokerMoveCtor    = ExportCtorInvoker<void(void*)>;
 using RTTRInvokerAssign      = ExportExternMethodInvoker<void(void*, const void*)>;
 using RTTRInvokerMoveAssign  = ExportExternMethodInvoker<void(void*, void*)>;
 using RTTRInvokerEqual       = ExportExternMethodInvoker<bool(const void*, const void*)>;
-using RTTRInvokerHash        = ExportExternMethodInvoker<size_t(const void*)>;
+using RTTRInvokerHash        = ExportExternMethodInvoker<skr_hash(const void*)>;
 using RTTRInvokerSwap        = ExportExternMethodInvoker<void(void*, void*)>;
 
 struct SKR_CORE_API RTTRType final {
@@ -77,6 +77,7 @@ struct SKR_CORE_API RTTRType final {
     const skr::String& name() const;
     Vector<String>     name_space() const;
     String             name_space_str() const;
+    String             full_name() const;
     GUID               type_id() const;
     size_t             size() const;
     size_t             alignment() const;
@@ -164,6 +165,10 @@ struct SKR_CORE_API RTTRType final {
     void            each_attribute(FunctionRef<void(const Any&)> each_func) const;
     void            each_attribute(FunctionRef<void(const Any&)> each_func, TypeSignatureView signature) const;
 
+    // alloc
+    void* alloc(uint64_t count = 1) const;
+    void  free(void* p) const;
+
 private:
     // helpers
     bool _build_caster(RTTRTypeCaster& caster, const GUID& type_id) const;
@@ -242,6 +247,16 @@ inline String RTTRType::name_space_str() const
         SKR_UNREACHABLE_CODE()
         return {};
     }
+}
+inline String RTTRType::full_name() const
+{
+    String result = name_space_str();
+    if (!result.is_empty())
+    {
+        result.append(u8"::");
+    }
+    result.append(name());
+    return result;
 }
 inline GUID RTTRType::type_id() const
 {

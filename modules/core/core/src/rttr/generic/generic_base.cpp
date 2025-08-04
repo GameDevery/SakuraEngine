@@ -334,7 +334,7 @@ bool GenericType::equal(const void* lhs, const void* rhs, uint64_t count) const
         }
     }
 }
-size_t GenericType::hash(const void* src) const
+skr_hash GenericType::hash(const void* src) const
 {
     SKR_ASSERT(src);
 
@@ -390,12 +390,16 @@ void GenericType::swap(void* dst, void* src, uint64_t count) const
 //===> IGenericBase API
 
 // generic registry
+struct GenericInfo {
+    String           name      = {};
+    GenericProcessor processor = {};
+};
 static auto& _generic_processor_map()
 {
-    static Map<GUID, GenericProcessor> _generic_processor_map;
+    static Map<GUID, GenericInfo> _generic_processor_map;
     return _generic_processor_map;
 };
-void register_generic_processor(GUID generic_id, GenericProcessor processor)
+void register_generic_processor(GUID generic_id, String name, GenericProcessor processor)
 {
     SKR_ASSERT(!generic_id.is_zero());
     SKR_ASSERT(processor);
@@ -406,50 +410,26 @@ void register_generic_processor(GUID generic_id, GenericProcessor processor)
     }
     else
     {
-        _generic_processor_map().add(generic_id, processor, ref);
+        _generic_processor_map().add(
+            generic_id,
+            { std::move(name),
+              processor },
+            ref
+        );
     }
 }
-bool dry_build_generic(TypeSignatureView signature)
+String get_generic_name(GUID generic_id)
 {
-    // check all type id & generic type id
-    while (!signature.is_empty())
+    SKR_ASSERT(!generic_id.is_zero());
+
+    if (auto found = _generic_processor_map().find(generic_id))
     {
-        // check decayed pointer level
-        if (signature.decayed_pointer_level() > 1)
-        {
-            return false;
-        }
-
-        // jump modifiers
-        signature.jump_modifier();
-
-        // check type_id / generic_id
-        auto signal = signature.peek_signal();
-        if (signal == ETypeSignatureSignal::TypeId)
-        {
-            GUID type_id;
-            signature.read_type_id(type_id);
-            RTTRType* type = get_type_from_guid(type_id);
-            if (!type)
-            {
-                return false;
-            }
-        }
-        else if (signal == ETypeSignatureSignal::GenericTypeId)
-        {
-            GUID     generic_id;
-            uint32_t data_count;
-            signature.read_generic_type_id(generic_id, data_count);
-            if (!_generic_processor_map().contains(generic_id))
-            {
-                return false;
-            }
-        }
-
-        // jump data
-        signature.jump_next_data();
+        return found.value().name;
     }
-    return true;
+    else
+    {
+        return {};
+    }
 }
 RC<IGenericBase> build_generic(TypeSignatureView signature)
 {
@@ -523,7 +503,7 @@ RC<IGenericBase> build_generic(TypeSignatureView signature)
         {
             auto generic_params = signature;
             generic_params.jump_next_data();
-            return found.value()(generic_params);
+            return found.value().processor(generic_params);
         }
         else
         {

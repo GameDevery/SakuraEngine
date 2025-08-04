@@ -60,7 +60,7 @@ CGPUXBindTableId CGPUXBindTable::Create(CGPUDeviceId device, const struct CGPUXB
     for (uint32_t i = 0; i < desc->names_count; i++)
     {
         const auto name = desc->names[i];
-        pHashes[i] = cgpu_name_hash(name, strlen((const char*)name));
+        pHashes[i] = skr_hash_of(name, strlen((const char*)name));
     }
     // calculate active sets
     for (uint32_t setIdx = 0; setIdx < rs->table_count; setIdx++)
@@ -68,7 +68,7 @@ CGPUXBindTableId CGPUXBindTable::Create(CGPUDeviceId device, const struct CGPUXB
         for (uint32_t bindIdx = 0; bindIdx < rs->tables[setIdx].resources_count; bindIdx++)
         {
             const auto res = rs->tables[setIdx].resources[bindIdx];
-            const auto hash = cgpu_name_hash(res.name, strlen((const char*)res.name));
+            const auto hash = skr_hash_of(res.name, strlen((const char*)res.name));
             for (uint32_t k = 0; k < desc->names_count; k++)
             {
                 if (hash == pHashes[k])
@@ -101,7 +101,7 @@ void CGPUXBindTable::Update(const struct CGPUDescriptorData* datas, uint32_t cou
         const auto& data = datas[i];
         if (data.name)
         {
-            const auto name_hash = cgpu_name_hash(data.name, strlen((const char*)data.name));
+            const auto name_hash = skr_hash_of(data.name, strlen((const char*)data.name));
             for (uint32_t j = 0; j < names_count; j++)
             {
                 if (name_hash == name_hashes[j])
@@ -386,7 +386,7 @@ size_t hash<CGPUVertexLayout>::operator()(const CGPUVertexLayout& val) const
 {
     SkrZoneScopedN("hash<CGPUVertexLayout>");
 
-    return skr_hash(&val, sizeof(CGPUVertexLayout), CGPU_NAME_HASH_SEED); 
+    return skr_hash_of(&val, sizeof(CGPUVertexLayout)); 
 }
 
 size_t equal_to<CGPUVertexLayout>::operator()(const CGPUVertexLayout& a, const CGPUVertexLayout& b) const
@@ -470,8 +470,8 @@ size_t hash<CGPUShaderEntryDescriptor>::operator()(const CGPUShaderEntryDescript
     SkrZoneScopedN("hash<CGPUShaderEntryDescriptor>");
 
     size_t result = val.stage;
-    const auto entry_hash = val.entry ? skr_hash((const char*)val.entry, strlen((const char*)val.entry), CGPU_NAME_HASH_SEED) : 0; 
-    const auto constants_hash = val.constants ? skr_hash(val.constants, sizeof(CGPUConstantSpecialization) * val.num_constants, CGPU_NAME_HASH_SEED) : 0;
+    const auto entry_hash = val.entry ? skr_hash_of((const char*)val.entry, strlen((const char*)val.entry)) : 0; 
+    const auto constants_hash = val.constants ? skr_hash_of(val.constants, sizeof(CGPUConstantSpecialization) * val.num_constants) : 0;
     const auto pLibrary = static_cast<const void*>(val.library);
     hash_combine(result, entry_hash, constants_hash, pLibrary);    
     return result;   
@@ -500,7 +500,7 @@ size_t hash<CGPUBlendStateDescriptor>::operator()(const CGPUBlendStateDescriptor
 {
     SkrZoneScopedN("hash<CGPUBlendStateDescriptor>");
 
-    return skr_hash(&val, sizeof(CGPUBlendStateDescriptor), CGPU_NAME_HASH_SEED);
+    return skr_hash_of(&val, sizeof(CGPUBlendStateDescriptor));
 }
 
 size_t equal_to<CGPUDepthStateDesc>::operator()(const CGPUDepthStateDesc& a, const CGPUDepthStateDesc& b) const
@@ -528,7 +528,7 @@ size_t hash<CGPUDepthStateDesc>::operator()(const CGPUDepthStateDesc& val) const
 {
     SkrZoneScopedN("hash<CGPUDepthStateDesc>");
 
-    return skr_hash(&val, sizeof(CGPUDepthStateDesc), CGPU_NAME_HASH_SEED);
+    return skr_hash_of(&val, sizeof(CGPUDepthStateDesc));
 }
 
 size_t equal_to<CGPURasterizerStateDescriptor>::operator()(const CGPURasterizerStateDescriptor& a, const CGPURasterizerStateDescriptor& b) const
@@ -550,7 +550,7 @@ size_t hash<CGPURasterizerStateDescriptor>::operator()(const CGPURasterizerState
 {
     SkrZoneScopedN("hash<CGPURasterizerStateDescriptor>");
 
-    return skr_hash(&val, sizeof(CGPURasterizerStateDescriptor), CGPU_NAME_HASH_SEED);
+    return skr_hash_of(&val, sizeof(CGPURasterizerStateDescriptor));
 }
 
 size_t equal_to<CGPURenderPipelineDescriptor>::operator()(const CGPURenderPipelineDescriptor& a, const CGPURenderPipelineDescriptor& b) const
@@ -668,6 +668,6 @@ size_t hash<hash<CGPURenderPipelineDescriptor>::ParameterBlock>::operator()(cons
 {
     SkrZoneScopedN("hash<CGPURenderPipelineDescriptor::ParameterBlock>");
 
-    return skr_hash(&val, sizeof(hash<CGPURenderPipelineDescriptor>::ParameterBlock), CGPU_NAME_HASH_SEED);
+    return skr_hash_of(&val, sizeof(hash<CGPURenderPipelineDescriptor>::ParameterBlock));
 }
 }

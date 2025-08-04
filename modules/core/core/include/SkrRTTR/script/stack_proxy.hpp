@@ -6,6 +6,15 @@ namespace skr
 struct StackProxy {
     void*         data      = nullptr;
     TypeSignature signature = {};
+
+    inline operator bool() const
+    {
+        return data != nullptr;
+    }
+    inline bool is_empty() const
+    {
+        return data == nullptr;
+    }
 };
 template <typename T>
 struct StackProxyMaker {
