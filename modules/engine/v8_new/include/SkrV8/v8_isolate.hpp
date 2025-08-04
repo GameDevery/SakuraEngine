@@ -55,6 +55,14 @@ SKR_V8_API V8Isolate : IScriptMixinCore, IV8BindManager {
     // getter
     inline v8::Isolate* v8_isolate() const { return _isolate; }
 
+    // invoke helper
+    bool invoke_v8(
+        v8::Local<v8::Value>    v8_this,
+        v8::Local<v8::Function> v8_func,
+        span<const StackProxy>  params,
+        StackProxy              return_value
+    );
+
     //==> IScriptMixinCore API
     void on_object_destroyed(
         ScriptbleObject* obj
@@ -104,6 +112,9 @@ SKR_V8_API V8Isolate : IScriptMixinCore, IV8BindManager {
     //==> IV8BindManager API
 
 private:
+    // helper
+
+private:
     // isolate data
     v8::Isolate*              _isolate               = nullptr;
     v8::Isolate::CreateParams _isolate_create_params = {};
@@ -118,6 +129,10 @@ private:
     // context manage
     V8Context*              _main_context = nullptr;
     Map<String, V8Context*> _contexts     = {};
+
+    // call v8 bind proxy manage
+    Vector<V8BindProxy*> _call_v8_param_proxy       = {};
+    Vector<uint64_t>     _call_v8_param_proxy_stack = {};
 
     ErrorCollector _logger = {};
 

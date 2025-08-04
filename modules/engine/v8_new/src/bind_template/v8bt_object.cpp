@@ -214,6 +214,7 @@ bool V8BTObject::solve_param(
         );
         break;
     }
+    param_bind_tp.appare_in_param = true;
     return _basic_type_check(param_bind_tp.modifiers);
 }
 bool V8BTObject::solve_return(

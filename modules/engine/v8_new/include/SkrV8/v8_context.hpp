@@ -5,6 +5,7 @@
 #include <SkrV8/bind_template/v8_bind_template.hpp>
 #include <SkrV8/v8_bind.hpp>
 #include <SkrV8/v8_virtual_module.hpp>
+#include <SkrV8/v8_value.hpp>
 
 // v8 includes
 #include <v8-isolate.h>
@@ -15,25 +16,6 @@ namespace skr
 {
 struct V8Context;
 struct V8Isolate;
-
-struct V8Value {
-    // ops
-    bool is_empty() const;
-    void reset();
-
-    // get value & invoke
-    template <typename T>
-    Optional<T> as() const;
-    template <typename T>
-    Optional<T> is() const;
-    V8Value     get(StringView name) const;
-    template <typename Ret, typename... Args>
-    decltype(auto) call(Args&&... args) const;
-
-    // content
-    v8::Global<v8::Value> v8_value = {};
-    V8Context*            context  = nullptr;
-};
 
 struct SKR_V8_API V8Context {
     SKR_RC_IMPL();
@@ -60,6 +42,9 @@ struct SKR_V8_API V8Context {
     bool is_export_built() const;
     void clear_export();
 
+    // set & get global value
+    V8Value get_global(StringView name);
+
     // temp api
     void temp_run_script(StringView script);
 
@@ -74,39 +59,4 @@ private:
     String                      _name           = {};
     V8VirtualModule             _virtual_module = {};
 };
-} // namespace skr
-
-// V8Value impl
-namespace skr
-{
-// ops
-inline bool V8Value::is_empty() const
-{
-    return v8_value.IsEmpty();
-}
-inline void V8Value::reset()
-{
-    v8_value.Reset();
-    context = nullptr;
-}
-
-// get value & invoke
-template <typename T>
-inline Optional<T> V8Value::as() const
-{
-    SKR_ASSERT(is<T>());
-}
-template <typename T>
-inline Optional<T> V8Value::is() const
-{
-}
-inline V8Value V8Value::get(StringView name) const
-{
-    return {};
-}
-template <typename Ret, typename... Args>
-inline decltype(auto) V8Value::call(Args&&... args) const
-{
-    using namespace ::v8;
-}
 } // namespace skr

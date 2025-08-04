@@ -295,6 +295,7 @@ bool V8BTValue::solve_param(
         param_bind_tp.appare_in_return = false; // optimized for value type
         break;
     case ERTTRParamFlag::In:
+    default:
         param_bind_tp.appare_in_param  = true;
         param_bind_tp.appare_in_return = false;
         break;

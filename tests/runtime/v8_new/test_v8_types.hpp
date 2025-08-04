@@ -16,9 +16,9 @@ SimpleTest : public ::skr::ScriptbleObject {
     // clang-format on
 
     sscript_visible
-    static void print()
+    static void print(skr::StringView content)
     {
-        SKR_LOG_FMT_INFO(u8"Test AAAAAAAAA");
+        SKR_LOG_FMT_INFO(u8"{}", content.data());
     }
 };
 } // namespace test_v8

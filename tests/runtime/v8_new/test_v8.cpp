@@ -30,6 +30,25 @@ TEST_CASE("simple")
     context->build_export([](skr::V8VirtualModule& module) {
         module.register_type<test_v8::SimpleTest>(u8"");
     });
-    context->temp_run_script(u8"SimpleTest.print()");
+    context->temp_run_script(u8"SimpleTest.print('fuck')");
+    context->temp_run_script(u8R"__(
+        print_sum = function (x, y) {
+            SimpleTest.print(`${x} + ${y} = ${x + y}`)
+        }
+        obj = {
+            x: 1,
+            y: 2,
+            z: 3,
+            print: function (prefix) {
+                SimpleTest.print(`${prefix}: {x, y, z}`)
+            }
+        }
+    )__");
+    auto print_sum = context->get_global(u8"print_sum");
+    auto obj       = context->get_global(u8"obj");
+
+    print_sum.call<void, int32_t, int32_t>(1, 1);
+    obj.call_method<void, skr::StringView>(u8"print", u8"print self");
+
     SKR_LOG_FMT_INFO(u8"Test End");
 }

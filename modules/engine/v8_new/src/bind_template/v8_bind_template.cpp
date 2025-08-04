@@ -210,6 +210,22 @@ void V8BTDataParam::setup(
             }
         }
     }
+
+    bind_tp->solve_param(*this);
+}
+
+void V8BTDataParam::setup(
+    IV8BindManager*   manager,
+    const StackProxy* proxy,
+    int32_t           index
+)
+{
+    RTTRParamData param_data = {};
+    param_data.type          = proxy->signature;
+    param_data.index         = index;
+    format_to(param_data.name, u8"#{}", index);
+    setup(manager, &param_data);
+    rttr_data = nullptr;
 }
 
 //===============================V8BTDataParam===============================
@@ -469,6 +485,127 @@ void V8BTDataCtor::setup(
             );
             _logger.error(u8"ctor param cannot has out flag");
         }
+    }
+}
+
+//===============================V8BTDataCallScript===============================
+bool V8BTDataCallScript::read_return(
+    span<const StackProxy>    params,
+    StackProxy                return_value,
+    v8::MaybeLocal<v8::Value> v8_return_value
+)
+{
+    auto* isolate = v8::Isolate::GetCurrent();
+    auto  context = isolate->GetCurrentContext();
+
+    if (return_count == 0)
+    {
+        return true;
+    }
+    else if (return_count == 1)
+    {
+        if (v8_return_value.IsEmpty()) { return false; }
+
+        if (return_data.is_void)
+        { // read to out param
+            for (const auto& param : params_data)
+            {
+                if (param.appare_in_return)
+                {
+                    return param.bind_tp->to_native(
+                        params[param.index].data,
+                        v8_return_value.ToLocalChecked(),
+                        true
+                    );
+                }
+            }
+
+            // must checked before
+            SKR_UNREACHABLE_CODE()
+            return false;
+        }
+
+        else
+        {
+            return return_data.bind_tp->to_native(
+                return_value.data,
+                v8_return_value.ToLocalChecked(),
+                false
+            );
+        }
+    }
+    else
+    {
+        if (v8_return_value.IsEmpty()) { return false; }
+        if (!v8_return_value.ToLocalChecked()->IsArray()) { return false; }
+        v8::Local<v8::Array> v8_array = v8_return_value.ToLocalChecked().As<v8::Array>();
+        if (v8_array.IsEmpty() || v8_array->Length() != return_count) { return false; }
+
+        uint32_t cur_index = 0;
+
+        // read return value
+        bool success = true;
+        if (!return_data.is_void)
+        {
+            success &= return_data.bind_tp->to_native(
+                return_value.data,
+                v8_array->Get(context, cur_index).ToLocalChecked(),
+                false
+            );
+            ++cur_index;
+        }
+
+        // read out param
+        for (const auto& param : params_data)
+        {
+            if (param.appare_in_return)
+            {
+                success &= param.bind_tp->to_native(
+                    params[param.index].data,
+                    v8_array->Get(context, cur_index).ToLocalChecked(),
+                    true
+                );
+                ++cur_index;
+            }
+        }
+
+        return success;
+    }
+}
+void V8BTDataCallScript::setup(
+    IV8BindManager*        manager,
+    span<const StackProxy> params,
+    StackProxy             return_value
+)
+{
+    uint32_t param_index = 0;
+    for (const auto& param : params)
+    {
+        params_data.add_default().ref().setup(
+            manager,
+            &param,
+            param_index
+        );
+        ++param_index;
+    }
+
+    if (return_value)
+    {
+        return_data.setup(manager, return_value.signature);
+    }
+    else
+    {
+        TypeSignatureTyped<void> sig;
+        return_data.setup(manager, sig);
+    }
+
+    // solve count
+    return_count = return_data.is_void ? 0 : 1;
+    params_count = 0;
+    for (const auto& param : params_data)
+    {
+        if (param.appare_in_param) ++params_count;
+        if (param.appare_in_return) ++return_count;
     }
 }
 } // namespace skr

@@ -339,6 +339,7 @@ bool V8BTPrimitive::solve_param(
         param_bind_tp.appare_in_return = true;
         break;
     case ERTTRParamFlag::In:
+    default:
         param_bind_tp.appare_in_param  = true;
         param_bind_tp.appare_in_return = false;
         break;

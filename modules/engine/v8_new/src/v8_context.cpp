@@ -63,6 +63,39 @@ void V8Context::clear_export()
     }
 }
 
+// set & get global value
+V8Value V8Context::get_global(StringView name)
+{
+    using namespace ::v8;
+
+    // scopes
+    auto           isolate = _isolate->v8_isolate();
+    Isolate::Scope isolate_scope(isolate);
+    HandleScope    handle_scope(isolate);
+    Local<Context> context = _context.Get(isolate);
+    Context::Scope context_scope(context);
+
+    // find value
+    auto maybe_value = context->Global()->Get(
+        context,
+        V8Bind::to_v8(name, true)
+    );
+    if (maybe_value.IsEmpty())
+    {
+        return {
+            {},
+            this
+        };
+    }
+    else
+    {
+        return {
+            { isolate, maybe_value.ToLocalChecked() },
+            this
+        };
+    }
+}
+
 void V8Context::temp_run_script(StringView script)
 {
     auto                   isolate = _isolate->v8_isolate();

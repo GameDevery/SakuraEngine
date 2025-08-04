@@ -137,6 +137,11 @@ struct V8BTDataParam {
         IV8BindManager*      manager,
         const RTTRParamData* param_data
     );
+    void setup(
+        IV8BindManager*   manager,
+        const StackProxy* proxy,
+        int32_t           index
+    );
 };
 struct V8BTDataReturn {
     const V8BindTemplate* bind_tp     = nullptr;
@@ -235,6 +240,23 @@ struct V8BTDataCtor {
     void setup(
         IV8BindManager*     manager,
         const RTTRCtorData* ctor_data
+    );
+};
+struct V8BTDataCallScript {
+    V8BTDataReturn        return_data  = {};
+    Vector<V8BTDataParam> params_data  = {};
+    uint32_t              params_count = 0;
+    uint32_t              return_count = 0;
+
+    bool read_return(
+        span<const StackProxy>    params,
+        StackProxy                return_value,
+        v8::MaybeLocal<v8::Value> v8_return_value
+    );
+    void setup(
+        IV8BindManager*        manager,
+        span<const StackProxy> params,
+        StackProxy             return_value
     );
 };
 

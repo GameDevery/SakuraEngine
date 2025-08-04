@@ -158,6 +158,59 @@ void V8Isolate::destroy_context(V8Context* context)
     _contexts.remove(context->name());
 }
 
+bool V8Isolate::invoke_v8(
+    v8::Local<v8::Value>    v8_this,
+    v8::Local<v8::Function> v8_func,
+    span<const StackProxy>  params,
+    StackProxy              return_value
+)
+{
+    using namespace ::v8;
+
+    auto*       isolate = Isolate::GetCurrent();
+    auto        context = isolate->GetCurrentContext();
+    HandleScope handle_scope(isolate);
+
+    // solve bind template
+    V8BTDataCallScript bind_tp;
+    bind_tp.setup(this, params, return_value);
+
+    push_param_scope();
+
+    // push params
+    InlineVector<Local<v8::Value>, 16> v8_params;
+    for (const auto& param : bind_tp.params_data)
+    {
+        if (!param.appare_in_param) { continue; }
+        v8_params.add(
+            param.bind_tp->make_param_v8(
+                params[param.index].data,
+                param
+            )
+        );
+    }
+
+    // call script
+    auto v8_ret = v8_func->Call(
+        context,
+        v8_this,
+        v8_params.size(),
+        v8_params.data()
+    );
+
+    // check return
+    bool success_read_return = bind_tp.read_return(
+        params,
+        return_value,
+        v8_ret
+    );
+
+    pop_param_scope();
+
+    return success_read_return;
+}
+
+//==> IScriptMixinCore API
 void V8Isolate::on_object_destroyed(
     ScriptbleObject* obj
 )
@@ -174,6 +227,7 @@ bool V8Isolate::try_invoke_mixin(
     SKR_UNIMPLEMENTED_FUNCTION();
     return false;
 }
+//==> IScriptMixinCore API
 
 //==> IV8BindManager API
 // bind proxy management
@@ -287,16 +341,23 @@ V8BindProxy* V8Isolate::find_bind_proxy(
 // 用于缓存调用期间为参数创建的临时 bind proxy
 void V8Isolate::push_param_scope()
 {
-    SKR_UNIMPLEMENTED_FUNCTION()
+    _call_v8_param_proxy_stack.push_back(_call_v8_param_proxy.size());
 }
 void V8Isolate::pop_param_scope()
 {
-    SKR_UNIMPLEMENTED_FUNCTION()
+    auto last_size = _call_v8_param_proxy_stack.pop_back_get();
+    while (last_size < _call_v8_param_proxy.size())
+    {
+        auto proxy = _call_v8_param_proxy.pop_back_get();
+        proxy->invalidate();
+        SkrDelete(proxy);
+    }
 }
 void V8Isolate::push_param_proxy(
     V8BindProxy* bind_proxy
-){
-    SKR_UNIMPLEMENTED_FUNCTION()
+)
+{
+    _call_v8_param_proxy.push_back(bind_proxy);
 }
 
 // mixin
