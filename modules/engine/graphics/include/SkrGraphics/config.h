@@ -37,7 +37,7 @@
 #endif
 
 #define MAX_GPU_VENDOR_STRING_LENGTH 64
-#define MAX_GPU_DEBUG_NAME_LENGTH 128
+#define MAX_GPU_DEBUG_NAME_LENGTH 256
 #define PSO_NAME_LENGTH 160
 
 #ifndef cgpu_max

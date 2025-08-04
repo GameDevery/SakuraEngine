@@ -432,6 +432,7 @@ void GPUScene::CreateSparseUploadPipeline(CGPUDeviceId device)
     CGPUComputePipelineDescriptor pipeline_desc = {
         .root_signature = sparse_upload_root_signature,
         .compute_shader = &compute_shader_entry,
+        .name = u8"SparseUploadPipeline"
     };
     sparse_upload_pipeline = cgpu_create_compute_pipeline(device, &pipeline_desc);
 

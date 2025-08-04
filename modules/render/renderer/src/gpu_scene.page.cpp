@@ -81,7 +81,26 @@ struct ScanGPUScene : public GPUSceneInstanceTask
         sugoiS_access(pScene->ecs_world->get_storage(), (sugoi_entity_t)Context.entities()[0], &v);
         if (auto archetype = pScene->EnsureArchetype(v.chunk->group->archetype))
         {
-            auto offset = pUpdateCounter->fetch_add(Context.size());
+            // 预先计算此批次需要的上传操作数量，保持局部性
+            uint32_t batch_op_count = 0;
+            for (auto i = 0; i < Context.size(); i++)
+            {
+                for (auto [cpu_type, gpu_type] : pScene->type_registry)
+                {
+                    const auto data = Context.read(cpu_type).at(i);
+                    if (!data) continue;
+                    const auto& component_info = pScene->component_types[gpu_type];
+                    if (component_info.storage_class == GPUSceneComponentType::StorageClass::CORE_DATA)
+                    {
+                        batch_op_count++;
+                    }
+                }
+            }
+            
+            // 批次级别分配连续的索引范围，保持局部性
+            auto batch_start_index = pUpdateCounter->fetch_add(batch_op_count);
+            uint32_t local_op_index = 0;
+            
             for (auto i = 0; i < Context.size(); i++)
             {
                 auto entity = Context.entities()[i];
@@ -102,12 +121,22 @@ struct ScanGPUScene : public GPUSceneInstanceTask
                         {
                             memcpy(DRAMCache->data() + src_offset, data, component_info.element_size);
                             
-                            // 记录拷贝操作信息
-                            GPUScene::Upload upload;
-                            upload.src_offset = src_offset;
-                            upload.dst_offset = dst_offset;
-                            upload.data_size = component_info.element_size;
-                            pScene->upload_ctx.uploads[offset + i] = upload;
+                            // 使用预分配的连续索引范围，保持良好局部性
+                            auto upload_index = batch_start_index + local_op_index;
+                            if (upload_index < pScene->upload_ctx.uploads.size())
+                            {
+                                GPUScene::Upload upload;
+                                upload.src_offset = src_offset;
+                                upload.dst_offset = dst_offset;
+                                upload.data_size = component_info.element_size;
+                                pScene->upload_ctx.uploads[upload_index] = upload;
+                                local_op_index++;
+                            }
+                            else
+                            {
+                                SKR_LOG_ERROR(u8"GPUScene: Upload operations array overflow - index %u >= size %u", 
+                                             upload_index, (uint32_t)pScene->upload_ctx.uploads.size());
+                            }
                         }
                         else
                         {
@@ -208,6 +237,7 @@ void GPUScene::PrepareUploadBuffer()
         upload_desc.descriptors = CGPU_RESOURCE_TYPE_BUFFER_RAW;
         upload_desc.memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU;
         upload_desc.size = required_size;
+        upload_desc.prefer_on_device = true;
         
         upload_buffer = cgpu_create_buffer(render_device->get_cgpu_device(), &upload_desc);
         
@@ -422,11 +452,6 @@ void GPUScene::DispatchSparseUpload(skr::render_graph::RenderGraph* graph)
         return;
 
     SkrZoneScopedN("GPUScene::DispatchSparseUpload");
-    // Calculate batch size to stay under D3D12's 64KB constant buffer limit
-    const size_t max_buffer_size = 65536; // 64KB
-    const size_t upload_size = sizeof(Upload);
-    const size_t max_ops_per_batch = (max_buffer_size - 256) / upload_size; // Leave some padding
-    
     SKR_LOG_DEBUG(u8"GPUScene: Dispatching SparseUpload with %u total operations", (uint32_t)upload_ctx.uploads.size());
     
     // Import buffers that will be used across all batches
@@ -445,8 +470,6 @@ void GPUScene::DispatchSparseUpload(skr::render_graph::RenderGraph* graph)
     const uint32_t batch_threads = total_operations * max_threads_per_op;
     const uint32_t dispatch_groups = (batch_threads + 255) / 256;
     
-    SKR_LOG_DEBUG(u8"  Batch: %u operations, %u dispatch groups", (uint32_t)total_operations, dispatch_groups);
-
     // Create operations buffer for this batch
     auto operations_buffer_handle = graph->create_buffer(
         [=](skr::render_graph::RenderGraph& g, skr::render_graph::BufferBuilder& builder) {
@@ -454,8 +477,9 @@ void GPUScene::DispatchSparseUpload(skr::render_graph::RenderGraph* graph)
                 .size(ops_size)
                 .memory_usage(CGPU_MEM_USAGE_CPU_TO_GPU)
                 .structured(0, total_operations, sizeof(Upload))
+                .as_upload_buffer()
                 .allow_shader_read()
-                .as_upload_buffer();
+                .prefer_on_device();
         }
     );
     
@@ -483,7 +507,7 @@ void GPUScene::DispatchSparseUpload(skr::render_graph::RenderGraph* graph)
                 uint32_t num_operations;
                 uint32_t max_threads_per_op;
                 uint32_t alignment = 16;
-                uint32_t padding = 0;
+                uint32_t padding0 = 0;
             } constants;
             constants.num_operations = static_cast<uint32_t>(total_operations);
             constants.max_threads_per_op = max_threads_per_op;

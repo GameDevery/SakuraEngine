@@ -20,7 +20,7 @@ struct SparseUploadConstants {
     uint num_operations;      // Number of operations
     uint max_threads_per_op;  // Max threads per operation
     uint alignment;           // Memory alignment requirement (16 bytes)
-    uint padding;             // Struct alignment
+    uint padding0;             // Struct alignment
 };
 
 [[push_constant]]

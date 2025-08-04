@@ -250,7 +250,7 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
 
         if (frame_index < 1'000'000)
         {
-            CreateEntities(render_app->render_graph());
+            CreateEntities(render_app->render_graph(), frame_index % 10 + 1);
         }
 
         auto render_graph = render_app->render_graph();
@@ -581,6 +581,7 @@ void ModelViewerModule::CreateComputePipeline()
     CGPUComputePipelineDescriptor pipeline_desc = {
         .root_signature = root_signature,
         .compute_shader = &compute_shader_entry,
+        .name = u8"DebugDrawPipeline"
     };
     compute_pipeline = cgpu_create_compute_pipeline(device, &pipeline_desc);
 }

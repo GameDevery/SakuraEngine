@@ -953,6 +953,12 @@ CGPUComputePipelineId cgpu_create_compute_pipeline_d3d12(CGPUDeviceId device, co
         // XBOX: Support PSO extensions
         CHECK_HRESULT(COM_CALL(CreateComputePipelineState, D->pDxDevice, &pipeline_state_desc, IID_ARGS(ID3D12PipelineState, &PPL->pDxPipelineState)));
     }
+    if (desc->name && D->super.adapter->instance->enable_set_name)
+    {
+        wchar_t debugName[MAX_GPU_DEBUG_NAME_LENGTH] = {};
+        mbstowcs(debugName, (const char*)desc->name, MAX_GPU_DEBUG_NAME_LENGTH);
+        COM_CALL(SetName, PPL->pDxPipelineState, debugName);
+    }
     return &PPL->super;
 }
 

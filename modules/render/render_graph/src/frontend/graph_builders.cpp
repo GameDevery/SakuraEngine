@@ -513,8 +513,7 @@ RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::allow_shader_read() SKR_
 RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::as_upload_buffer() SKR_NOEXCEPT
 {
     node.descriptor.flags |= CGPU_BCF_PERSISTENT_MAP_BIT;
-    node.descriptor.start_state = CGPU_RESOURCE_STATE_COPY_SOURCE;
-    node.descriptor.memory_usage = CGPU_MEM_USAGE_CPU_ONLY;
+    node.descriptor.memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU;
     node.tags |= kRenderGraphDynamicResourceTag;
     return *this;
 }

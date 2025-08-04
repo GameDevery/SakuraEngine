@@ -1326,6 +1326,7 @@ typedef struct CGPUDescriptorSetDescriptor {
 typedef struct CGPUComputePipelineDescriptor {
     CGPURootSignatureId root_signature;
     CGPUShaderEntryDescriptor* compute_shader;
+    const char8_t* name;
 } CGPUComputePipelineDescriptor;
 
 // caution: this must be a restrict flatten-POD struct (no array pointer, no c-str, ...) cause we directly hash it in cgpux.hpp
