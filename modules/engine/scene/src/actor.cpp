@@ -15,7 +15,7 @@ Actor::Actor(EActorType type) SKR_NOEXCEPT
       spawner{
           [this](skr::ecs::ArchetypeBuilder& Builder) {
               Builder
-                  // .add_component<skr::scene::ParentComponent>()
+                  .add_component<skr::scene::ParentComponent>()
                   .add_component<skr::scene::ChildrenComponent>()
                   .add_component<skr::scene::PositionComponent>()
                   .add_component<skr::scene::RotationComponent>()
@@ -194,15 +194,15 @@ void ActorManager::UpdateHierarchy(skr::RCWeak<Actor> parent, skr::RCWeak<Actor>
         auto child_entity = child.lock()->GetEntity();
         if (parent_entity != skr::ecs::Entity{ SUGOI_NULL_ENTITY } && child_entity != skr::ecs::Entity{ SUGOI_NULL_ENTITY })
         {
-            // // update parent component
-            // parent_accessor.write_at(child_entity, skr::scene::ParentComponent{ parent_entity });
-            // skr::scene::ChildrenArray children;
-            // for (auto& new_child : parent.lock()->children)
-            // {
-            //     children.push_back(skr::scene::ChildrenComponent{ .entity = new_child->GetEntity() });
-            // }
-            // // update children component
-            // children_accessor.write_at(parent_entity, children);
+            // update parent component
+            parent_accessor.write_at(child_entity, skr::scene::ParentComponent{ parent_entity });
+            skr::scene::ChildrenArray children;
+            for (auto& new_child : parent.lock()->children)
+            {
+                children.push_back(skr::scene::ChildrenComponent{ .entity = new_child->GetEntity() });
+            }
+            // update children component
+            children_accessor.write_at(parent_entity, children);
         }
         else
         {

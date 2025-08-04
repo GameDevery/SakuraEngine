@@ -14,7 +14,6 @@ struct TransformJob
         builder.none<scene::ParentComponent>()
             .has<scene::PositionComponent>()
             .has<scene::TransformComponent>();
-
         builder.access(&TransformJob::children_accessor)
             .access(&TransformJob::postion_accessor)
             .access(&TransformJob::scale_accessor)

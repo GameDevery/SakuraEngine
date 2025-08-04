@@ -52,10 +52,9 @@ int SceneSampleSimpleModule::main_module_exec(int argc, char8_t** argv)
 
     actor_manager.pos_accessor.write_at(actor1.lock()->GetEntity(), skr::scene::PositionComponent{ { 0.0f, 1.0f, 0.0f } });
     actor_manager.pos_accessor.write_at(actor2.lock()->GetEntity(), skr::scene::PositionComponent{ { 1.0f, 1.0f, 1.0f } });
-
     transform_system->update();
-    // skr::ecs::TaskScheduler::Get()->flush_all();
-    // skr::ecs::TaskScheduler::Get()->sync_all();
+    skr::ecs::TaskScheduler::Get()->flush_all();
+    skr::ecs::TaskScheduler::Get()->sync_all();
     auto transform = actor_manager.trans_accessor[(skr::ecs::Entity)actor1.lock()->GetEntity()].get();
     SKR_LOG_INFO(u8"Transform Position: ({%f}, {%f}, {%f})", transform.position.x, transform.position.y, transform.position.z);
     SKR_LOG_INFO(u8"Transform Rotation: ({%f}, {%f}, {%f}, {%f})", transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w);

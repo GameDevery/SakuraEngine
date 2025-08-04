@@ -55,7 +55,7 @@ protected:
     friend struct World;
     skr::Vector<TypeIndex> types;
     skr::Vector<Entity> meta_entities;
-    
+
     skr::Vector<intptr_t> fields;
     skr::Vector<TypeIndex> field_types;
     skr::Vector<EAccessMode> field_modes;
@@ -126,7 +126,7 @@ public:
         return _access(sugoi_id_of<C>::get(), true, EAccessMode::Seq, (intptr_t)&(((T*)nullptr)->*Member));
     }
 
-    template <class T, class C> requires (!std::is_void_v<C>)
+    template <class T, class C> requires(!std::is_void_v<C>)
     AccessBuilder& access(RandomComponentReader<C> T::* Member)
     {
         static_assert(std::is_const_v<C>, "ComponentView must be const for read access");
@@ -138,14 +138,14 @@ public:
         return _access(type, false, EAccessMode::Random, kInvalidFieldPtr);
     }
 
-    template <class T, class C> requires (!std::is_void_v<C>)
+    template <class T, class C> requires(!std::is_void_v<C>)
     AccessBuilder& access(RandomComponentWriter<C> T::* Member)
     {
         static_assert(!std::is_const_v<C>, "RandomComponentWriter must be non-const for read access");
         return _access(sugoi_id_of<C>::get(), true, EAccessMode::Random, (intptr_t)&(((T*)nullptr)->*Member));
     }
 
-    template <class T, class C> requires (!std::is_void_v<C>)
+    template <class T, class C> requires(!std::is_void_v<C>)
     AccessBuilder& access(RandomComponentReadWrite<C> T::* Member)
     {
         static_assert(!std::is_const_v<C>, "ComponentView must be non-const for read access");
@@ -207,7 +207,10 @@ public:
 private:
     friend struct World;
     TaskContext(sugoi_chunk_view_t& InView, uint32_t count, uint32_t offset, uint32_t task_index)
-        : view(InView), count(count), offset(offset), _task_index(task_index)
+        : view(InView)
+        , count(count)
+        , offset(offset)
+        , _task_index(task_index)
     {
     }
     sugoi_chunk_view_t view;
@@ -230,7 +233,7 @@ public:
     {
         RandomComponentReader<T> reader;
         reader.Type = sugoi_id_of<std::decay_t<T>>::get();
-        reader.World = this;
+        reader.World = this->get_storage();
         return reader;
     }
 
@@ -239,7 +242,7 @@ public:
     {
         RandomComponentWriter<T> writer;
         writer.Type = sugoi_id_of<std::decay_t<T>>::get();
-        writer.World = this;
+        writer.World = this->get_storage();
         return writer;
     }
 
@@ -248,55 +251,54 @@ public:
     {
         RandomComponentReadWrite<T> reader;
         reader.Type = sugoi_id_of<std::decay_t<T>>::get();
-        reader.World = this;
+        reader.World = this->get_storage();
         return reader;
     }
 
     template <typename T>
-        requires std::is_copy_constructible_v<T>
+    requires std::is_copy_constructible_v<T>
     void dispatch_task(T TaskBody, uint32_t batch_size, skr::span<skr::ecs::Entity> entities)
     {
         SKR_ASSERT(TaskScheduler::Get());
 
         skr::RC<AccessBuilder> Access = skr::RC<AccessBuilder>::New();
         TaskBody.build(*Access);
-    
+
         Access->task = skr::RC<Task>::New();
         Access->task->batch_size = batch_size;
         skr::stl_function<void(sugoi_chunk_view_t, uint32_t, uint32_t)> TASK =
-            [TaskBody, Access, Storage = this->storage](sugoi_chunk_view_t view, uint32_t count, uint32_t offset) mutable
-        {
-            T TASK = TaskBody;
-            for (int i = 0; i < Access->fields.size(); ++i)
-            {
-                const auto field = Access->fields[i];
-                const auto component = Access->field_types[i];
-                const auto mode = Access->field_modes[i];
-                if (field == kInvalidFieldPtr)
-                    continue;
-                if (mode == EAccessMode::Random)
+            [TaskBody, Access, Storage = this->storage](sugoi_chunk_view_t view, uint32_t count, uint32_t offset) mutable {
+                T TASK = TaskBody;
+                for (int i = 0; i < Access->fields.size(); ++i)
                 {
-                    ComponentAccessorBase* fieldPtr = (field >= 0) ? (ComponentAccessorBase*)((uint8_t*)&TASK + field) : (ComponentAccessorBase*)(-1 * field);
-                    fieldPtr->World = Storage;
-                    fieldPtr->Type = component;
-                    fieldPtr->CachedView = view;
-                    fieldPtr->CachedPtr = nullptr;
+                    const auto field = Access->fields[i];
+                    const auto component = Access->field_types[i];
+                    const auto mode = Access->field_modes[i];
+                    if (field == kInvalidFieldPtr)
+                        continue;
+                    if (mode == EAccessMode::Random)
+                    {
+                        ComponentAccessorBase* fieldPtr = (field >= 0) ? (ComponentAccessorBase*)((uint8_t*)&TASK + field) : (ComponentAccessorBase*)(-1 * field);
+                        fieldPtr->World = Storage;
+                        fieldPtr->Type = component;
+                        fieldPtr->CachedView = view;
+                        fieldPtr->CachedPtr = nullptr;
+                    }
+                    else if (mode == EAccessMode::Seq)
+                    {
+                        ComponentViewBase* fieldPtr = (field >= 0) ? (ComponentViewBase*)((uint8_t*)&TASK + field) : (ComponentViewBase*)(-1 * field);
+                        auto localType = sugoiV_get_local_type(&view, component);
+                        fieldPtr->_local_type = localType;
+                        if (Access->fields_is_write[i])
+                            fieldPtr->_ptr = (void*)sugoiV_get_owned_rw_local(&view, localType);
+                        else
+                            fieldPtr->_ptr = (void*)sugoiV_get_owned_ro_local(&view, localType);
+                        fieldPtr->_offset = offset;
+                    }
                 }
-                else if (mode == EAccessMode::Seq)
-                {
-                    ComponentViewBase* fieldPtr = (field >= 0) ? (ComponentViewBase*)((uint8_t*)&TASK + field) : (ComponentViewBase*)(-1 * field);
-                    auto localType = sugoiV_get_local_type(&view, component);
-                    fieldPtr->_local_type = localType;
-                    if (Access->fields_is_write[i])
-                        fieldPtr->_ptr = (void*)sugoiV_get_owned_rw_local(&view, localType);
-                    else
-                        fieldPtr->_ptr = (void*)sugoiV_get_owned_ro_local(&view, localType);
-                    fieldPtr->_offset = offset;
-                }
-            }
-            TaskContext ctx = TaskContext(view, count, offset, Access->_exec_counter++);
-            TASK.run(ctx);
-        };
+                TaskContext ctx = TaskContext(view, count, offset, Access->_exec_counter++);
+                TASK.run(ctx);
+            };
         Access->storage = storage;
         Access->_is_run_with = true;
         Access->_run_with = entities;
@@ -304,9 +306,8 @@ public:
         TaskScheduler::Get()->add_task(Access);
     }
 
-
     template <typename T>
-        requires std::is_copy_constructible_v<T>
+    requires std::is_copy_constructible_v<T>
     EntityQuery* dispatch_task(T TaskBody, uint32_t batch_size, sugoi_query_t* reuse_query)
     {
         SKR_ASSERT(TaskScheduler::Get());
@@ -323,39 +324,38 @@ public:
         Access->task = skr::RC<Task>::New();
         Access->task->batch_size = batch_size;
         skr::stl_function<void(sugoi_chunk_view_t, uint32_t, uint32_t)> TASK =
-            [TaskBody, Access, Storage = this->storage](sugoi_chunk_view_t view, uint32_t count, uint32_t offset) mutable
-        {
-            T TASK = TaskBody;
-            for (int i = 0; i < Access->fields.size(); ++i)
-            {
-                const auto field = Access->fields[i];
-                const auto component = Access->field_types[i];
-                const auto mode = Access->field_modes[i];
-                if (field == kInvalidFieldPtr)
-                    continue;
-                if (mode == EAccessMode::Random)
+            [TaskBody, Access, Storage = this->storage](sugoi_chunk_view_t view, uint32_t count, uint32_t offset) mutable {
+                T TASK = TaskBody;
+                for (int i = 0; i < Access->fields.size(); ++i)
                 {
-                    ComponentAccessorBase* fieldPtr = (field >= 0) ? (ComponentAccessorBase*)((uint8_t*)&TASK + field) : (ComponentAccessorBase*)(-1 * field);
-                    fieldPtr->World = Storage;
-                    fieldPtr->Type = component;
-                    fieldPtr->CachedView = view;
-                    fieldPtr->CachedPtr = nullptr;
+                    const auto field = Access->fields[i];
+                    const auto component = Access->field_types[i];
+                    const auto mode = Access->field_modes[i];
+                    if (field == kInvalidFieldPtr)
+                        continue;
+                    if (mode == EAccessMode::Random)
+                    {
+                        ComponentAccessorBase* fieldPtr = (field >= 0) ? (ComponentAccessorBase*)((uint8_t*)&TASK + field) : (ComponentAccessorBase*)(-1 * field);
+                        fieldPtr->World = Storage;
+                        fieldPtr->Type = component;
+                        fieldPtr->CachedView = view;
+                        fieldPtr->CachedPtr = nullptr;
+                    }
+                    else if (mode == EAccessMode::Seq)
+                    {
+                        ComponentViewBase* fieldPtr = (field >= 0) ? (ComponentViewBase*)((uint8_t*)&TASK + field) : (ComponentViewBase*)(-1 * field);
+                        auto localType = sugoiV_get_local_type(&view, component);
+                        fieldPtr->_local_type = localType;
+                        if (Access->fields_is_write[i])
+                            fieldPtr->_ptr = (void*)sugoiV_get_owned_rw_local(&view, localType);
+                        else
+                            fieldPtr->_ptr = (void*)sugoiV_get_owned_ro_local(&view, localType);
+                        fieldPtr->_offset = offset;
+                    }
                 }
-                else if (mode == EAccessMode::Seq)
-                {
-                    ComponentViewBase* fieldPtr = (field >= 0) ? (ComponentViewBase*)((uint8_t*)&TASK + field) : (ComponentViewBase*)(-1 * field);
-                    auto localType = sugoiV_get_local_type(&view, component);
-                    fieldPtr->_local_type = localType;
-                    if (Access->fields_is_write[i])
-                        fieldPtr->_ptr = (void*)sugoiV_get_owned_rw_local(&view, localType);
-                    else
-                        fieldPtr->_ptr = (void*)sugoiV_get_owned_ro_local(&view, localType);
-                    fieldPtr->_offset = offset;
-                }
-            }
-            TaskContext ctx = TaskContext(view, count, offset, Access->_exec_counter++);
-            TASK.run(ctx);
-        };
+                TaskContext ctx = TaskContext(view, count, offset, Access->_exec_counter++);
+                TASK.run(ctx);
+            };
         Access->storage = storage;
         Access->task->func = std::move(TASK);
         TaskScheduler::Get()->add_task(Access);
