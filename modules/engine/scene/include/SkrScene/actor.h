@@ -3,7 +3,9 @@
 #include "SkrCore/memory/rc.hpp"
 #include "SkrContainersDef/vector.hpp"
 #include "SkrContainersDef/map.hpp"
+#include "SkrRT/ecs/component.hpp"
 #include "SkrRT/ecs/world.hpp"
+#include "SkrScene/scene_components.h"
 #if !defined(__meta__)
     #include "SkrScene/actor.generated.h"
 #endif
@@ -29,60 +31,100 @@ sreflect_struct(
     guid = "4cb20865-0d27-43ee-90b9-7b43ac4c067c")
 SKR_SCENE_API Actor
 {
-    friend class SActorManager;
+    friend class ActorManager;
 
 public:
     SKR_RC_IMPL();
     virtual ~Actor() SKR_NOEXCEPT;
     static RCWeak<Actor> GetRoot();
     static RCWeak<Actor> CreateActor(EActorType type = EActorType::Default);
+
+    void CreateEntity();
+    skr::ecs::Entity GetEntity() const;
     void AttachTo(RCWeak<Actor> parent, EAttachRule rule = EAttachRule::Default);
     void DetachFromParent();
+
+    struct Spawner
+    {
+        using BuildF = std::function<void(skr::ecs::ArchetypeBuilder&)>;
+        using RunF = std::function<void(skr::ecs::TaskContext&)>;
+        Spawner(BuildF build_func, RunF func)
+            : build_func(build_func)
+            , f(func)
+        {
+        }
+
+        void build(skr::ecs::ArchetypeBuilder& Builder)
+        {
+            build_func(Builder);
+        }
+        void run(skr::ecs::TaskContext& Context)
+        {
+            SkrZoneScopedN("Spawner");
+            f(Context);
+        }
+        BuildF build_func;
+        RunF f;
+    };
+    Spawner spawner;
 
     // getters & setters
     inline const skr::String& GetDisplayName() const { return display_name; }
     inline void SetDisplayName(const skr::String& name) { display_name = name; }
     inline EActorType GetActorType() const { return actor_type; }
 
-    // protected:
+protected:
     explicit Actor(EActorType type = EActorType::Default) SKR_NOEXCEPT;
+
     skr::String display_name;             // for editor, profiler, and runtime dump
     skr::GUID guid = skr::GUID::Create(); // guid for each actor, used to identify actors in the scene
-
-    skr::InlineVector<skr::ecs::Entity, 1> transform_entities;
-
+    skr::InlineVector<skr::ecs::Entity, 1> scene_entities;
     skr::Vector<skr::RC<Actor>> children;
     skr::RC<Actor> _parent = nullptr;
     EAttachRule attach_rule = EAttachRule::Default;
     EActorType actor_type = EActorType::Default;
 };
 
-class SKR_SCENE_API SActorManager
+class SKR_SCENE_API ActorManager
 {
 public:
-    static SActorManager& GetInstance()
+    static ActorManager& GetInstance()
     {
-        static SActorManager instance;
+        static ActorManager instance;
         return instance;
     }
+    void initialize(skr::ecs::World* world);
+    void finalize();
     skr::RCWeak<Actor> CreateActor(EActorType type = EActorType::Default);
     bool DestroyActor(skr::GUID guid);
+    void CreateActorEntity(skr::RCWeak<Actor> actor);
+    void DestroyActorEntity(skr::RCWeak<Actor> actor);
+    void UpdateHierarchy(skr::RCWeak<Actor> parent, skr::RCWeak<Actor> child, EAttachRule rule = EAttachRule::Default);
+
     void ClearAllActors();
     skr::RCWeak<Actor> GetRoot();
+    // accessors
+    skr::ecs::RandomComponentReadWrite<skr::scene::ParentComponent> parent_accessor;
+    skr::ecs::RandomComponentReadWrite<skr::scene::ChildrenComponent> children_accessor;
+    skr::ecs::RandomComponentReadWrite<skr::scene::PositionComponent> pos_accessor;
+    skr::ecs::RandomComponentReadWrite<skr::scene::RotationComponent> rot_accessor;
+    skr::ecs::RandomComponentReadWrite<skr::scene::ScaleComponent> scale_accessor;
+    skr::ecs::RandomComponentReadWrite<skr::scene::TransformComponent> trans_accessor;
 
 protected:
     // Factory method to create specific actor types
     virtual skr::RC<Actor> CreateActorInstance(EActorType type);
 
 private:
-    SActorManager() = default;
-    ~SActorManager() = default;
+    ActorManager() = default;
+    ~ActorManager() = default;
+    skr::ecs::World* world = nullptr; // Pointer to the ECS world for actor management
 
     // Disable copy and move semantics
-    SActorManager(const SActorManager&) = delete;
-    SActorManager& operator=(const SActorManager&) = delete;
-    SActorManager(SActorManager&&) = delete;
-    SActorManager& operator=(SActorManager&&) = delete;
+    ActorManager(const ActorManager&) = delete;
+    ActorManager& operator=(const ActorManager&) = delete;
+    ActorManager(ActorManager&&) = delete;
+    ActorManager& operator=(ActorManager&&) = delete;
 
     // Currently, we only use Map<GUID, Actor*> and cpp new/delete for Actor management.
     // In the future, we can implement a more sophisticated memory management system.
@@ -92,7 +134,7 @@ private:
 class SKR_SCENE_API MeshActor : public Actor
 {
 public:
-    friend class SActorManager;
+    friend class ActorManager;
     SKR_RC_IMPL();
 
 protected:
@@ -106,7 +148,7 @@ protected:
 class SKR_SCENE_API SkelMeshActor : public MeshActor
 {
 public:
-    friend class SActorManager;
+    friend class ActorManager;
     SKR_RC_IMPL();
 
 protected:

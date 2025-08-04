@@ -232,7 +232,7 @@ ETransformDirtyState : uint32_t{
     Transform = Location | Rotation | Scale,
 
     Relative = 0x100,
-    Absolite = 0x200
+    Absolute = 0x200
 };
 
 sreflect_struct(

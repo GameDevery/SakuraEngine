@@ -38,10 +38,9 @@ struct TransformJob
             transform.set(
                 Position.get(),
                 pOptionalRotation ? skr::QuatF(pOptionalRotation->get()) : skr::QuatF(0, 0, 0, 0),
-                pOptionalScale ? pOptionalScale->get() : skr_float3_t{ 1, 1, 1 }
-            );
+                pOptionalScale ? pOptionalScale->get() : skr_float3_t{ 1, 1, 1 });
             transform.set(prev_transform * transform.get());
-            
+
             Position.dirty = false;
             if (pOptionalRotation)
                 pOptionalRotation->dirty = false;
@@ -72,12 +71,12 @@ struct TransformJob
     skr::ecs::RandomComponentReadWrite<skr::scene::TransformComponent> transform_accessor;
 };
 
-}
+} // namespace skr::scene
 
 namespace skr
 {
 
-struct skr::TransformSystem::Impl 
+struct skr::TransformSystem::Impl
 {
     skr::ecs::World* pWorld = nullptr;
     sugoi_query_t* rootJobQuery = nullptr;

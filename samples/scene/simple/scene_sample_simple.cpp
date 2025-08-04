@@ -4,6 +4,7 @@
 #include <SkrCore/log.h>
 #include <SkrScene/actor.h>
 #include <SkrScene/scene_components.h>
+#include <SkrScene/transform_system.h>
 #include <SkrRT/ecs/world.hpp>
 
 struct SceneSampleSimpleModule : public skr::IDynamicModule
@@ -11,9 +12,10 @@ struct SceneSampleSimpleModule : public skr::IDynamicModule
     virtual void on_load(int argc, char8_t** argv) override;
     virtual int main_module_exec(int argc, char8_t** argv) override;
     virtual void on_unload() override;
+
+    skr::TransformSystem* transform_system = nullptr;
 };
 
-SceneSampleSimpleModule g_scene_sample_simple_module;
 IMPLEMENT_DYNAMIC_MODULE(SceneSampleSimpleModule, SceneSample_Simple);
 void SceneSampleSimpleModule::on_load(int argc, char8_t** argv)
 {
@@ -29,161 +31,77 @@ int SceneSampleSimpleModule::main_module_exec(int argc, char8_t** argv)
 {
     SkrZoneScopedN("SceneSampleSimpleModule::main_module_exec");
     SKR_LOG_INFO(u8"Running Scene Sample Simple Module");
-
-    auto root = skr::Actor::GetRoot();
-    auto actor1 = skr::Actor::CreateActor();
-    auto actor2 = skr::Actor::CreateActor();
-    actor2.lock()->AttachTo(actor1, skr::EAttachRule::KeepWorldTransform);
-
-    // random access sample
     skr::task::scheduler_t scheduler;
+
     scheduler.initialize(skr::task::scheudler_config_t());
     scheduler.bind();
     skr::ecs::World world(scheduler);
     world.initialize();
+    transform_system = skr_transform_system_create(&world);
+    auto& actor_manager = skr::ActorManager::GetInstance();
+    actor_manager.initialize(&world);
 
-    actor1.lock()->transform_entities.resize_zeroed(1);
-    actor2.lock()->transform_entities.resize_zeroed(1);
-    // spawn one entity in ECS world
-    struct Spawner
-    {
-        using F = std::function<void(skr::ecs::TaskContext&)>;
-        Spawner(F func)
-            : f(func)
-        {
-        }
+    auto root = skr::Actor::GetRoot();
+    auto actor1 = skr::Actor::CreateActor();
+    auto actor2 = skr::Actor::CreateActor();
+    root.lock()->CreateEntity();
+    actor1.lock()->CreateEntity();
+    actor2.lock()->CreateEntity();
+    actor1.lock()->AttachTo(root);
+    actor2.lock()->AttachTo(actor1);
 
-        void build(skr::ecs::ArchetypeBuilder& Builder)
-        {
-            Builder.add_component<skr::scene::TransformComponent>();
-        }
-        void run(skr::ecs::TaskContext& Context)
-        {
-            SkrZoneScopedN("Spawner");
-            f(Context);
-        }
-        F f;
-    };
-    Spawner spawner{ [&](skr::ecs::TaskContext& Context) {
-        actor1.lock()->transform_entities[0] = Context.entities()[0];
-        actor2.lock()->transform_entities[0] = Context.entities()[1];
-    } };
-    world.create_entities(spawner, 2);
+    actor_manager.pos_accessor.write_at(actor1.lock()->GetEntity(), skr::scene::PositionComponent{ { 0.0f, 1.0f, 0.0f } });
+    actor_manager.pos_accessor.write_at(actor2.lock()->GetEntity(), skr::scene::PositionComponent{ { 1.0f, 1.0f, 1.0f } });
 
-    struct RWriteJob0
-    {
-        using F = std::function<void(skr::ecs::TaskContext&, skr::ecs::RandomComponentWriter<skr::scene::TransformComponent>&)>;
-        RWriteJob0(F func)
-            : f(func)
-        {
-        }
+    transform_system->update();
+    // skr::ecs::TaskScheduler::Get()->flush_all();
+    // skr::ecs::TaskScheduler::Get()->sync_all();
+    auto transform = actor_manager.trans_accessor[(skr::ecs::Entity)actor1.lock()->GetEntity()].get();
+    SKR_LOG_INFO(u8"Transform Position: ({%f}, {%f}, {%f})", transform.position.x, transform.position.y, transform.position.z);
+    SKR_LOG_INFO(u8"Transform Rotation: ({%f}, {%f}, {%f}, {%f})", transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w);
+    SKR_LOG_INFO(u8"Transform Scale: ({%f}, {%f}, {%f})", transform.scale.x, transform.scale.y, transform.scale.z);
 
-        void build(skr::ecs::AccessBuilder& Builder)
-        {
-            Builder.access(&RWriteJob0::trans_accessor);
-        }
+    // auto q2 = world.dispatch_task(rreadjob0, 1, nullptr);
 
-        void run(skr::ecs::TaskContext& Context)
-        {
-            SkrZoneScopedN("RWriteJob0");
-            f(Context, RWriteJob0::trans_accessor);
-        }
+    // struct UpdateJob
+    // {
+    //     using F = std::function<void(skr::ecs::TaskContext&, skr::ecs::RandomComponentReadWrite<skr::scene::TransformComponent>&)>;
+    //     UpdateJob(F func)
+    //         : f(func)
+    //     {
+    //     }
 
-        skr::ecs::RandomComponentWriter<skr::scene::TransformComponent> trans_accessor;
-        F f;
-    };
+    //     void build(skr::ecs::AccessBuilder& Builder)
+    //     {
+    //         Builder.access(&UpdateJob::trans_accessor);
+    //     }
 
-    RWriteJob0 rwritejob0{ [&](skr::ecs::TaskContext& Context, skr::ecs::RandomComponentWriter<skr::scene::TransformComponent>& Accessor) {
-        SkrZoneScopedN("RWriteJob0::run");
-        Accessor.write_at((skr::ecs::Entity)actor1.lock()->transform_entities[0], skr::scene::TransformComponent{ { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f, 0.0f, 1.0f }, { 2.0f, 2.0f, 2.0f } });
-        Accessor.write_at((skr::ecs::Entity)actor2.lock()->transform_entities[0], skr::scene::TransformComponent{ { 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f, 0.0f, 1.0f }, { 1.0f, 1.0f, 1.0f } });
-    } };
+    //     void run(skr::ecs::TaskContext& Context)
+    //     {
+    //         SkrZoneScopedN("UpdateJob");
+    //         f(Context, UpdateJob::trans_accessor);
+    //     }
 
-    auto q1 = world.dispatch_task(rwritejob0, 1, nullptr);
+    //     skr::ecs::RandomComponentReadWrite<skr::scene::TransformComponent> trans_accessor;
+    //     F f;
+    // };
 
-    struct RReadJob0
-    {
-        using F = std::function<void(skr::ecs::TaskContext&, skr::ecs::RandomComponentReader<const skr::scene::TransformComponent>&)>;
-        RReadJob0(F func)
-            : f(func)
-        {
-        }
-
-        void build(skr::ecs::AccessBuilder& Builder)
-        {
-            Builder.access(&RReadJob0::trans_accessor);
-        }
-        void run(skr::ecs::TaskContext& Context)
-        {
-            SkrZoneScopedN("RReadJob0");
-            f(Context, RReadJob0::trans_accessor);
-        }
-
-        skr::ecs::RandomComponentReader<const skr::scene::TransformComponent> trans_accessor;
-        F f;
-    };
-
-    RReadJob0 rreadjob0{ [&](skr::ecs::TaskContext& Context, skr::ecs::RandomComponentReader<const skr::scene::TransformComponent>& Accessor) {
-        SkrZoneScopedN("RReadJob0::run");
-        auto transform = Accessor[(skr::ecs::Entity)actor1.lock()->transform_entities[0]].get();
-        SKR_LOG_INFO(u8"Transform Position: ({%f}, {%f}, {%f})", transform.position.x, transform.position.y, transform.position.z);
-        SKR_LOG_INFO(u8"Transform Rotation: ({%f}, {%f}, {%f}, {%f})", transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w);
-        SKR_LOG_INFO(u8"Transform Scale: ({%f}, {%f}, {%f})", transform.scale.x, transform.scale.y, transform.scale.z);
-
-        auto transform2 = Accessor[(skr::ecs::Entity)actor2.lock()->transform_entities[0]].get();
-        SKR_LOG_INFO(u8"Transform2 Position: ({%f}, {%f}, {%f})", transform2.position.x, transform2.position.y, transform2.position.z);
-        SKR_LOG_INFO(u8"Transform2 Rotation: ({%f}, {%f}, {%f}, {%f})", transform2.rotation.x, transform2.rotation.y, transform2.rotation.z, transform2.rotation.w);
-        SKR_LOG_INFO(u8"Transform2 Scale: ({%f}, {%f}, {%f})", transform2.scale.x, transform2.scale.y, transform2.scale.z);
-    } };
-
-    auto q2 = world.dispatch_task(rreadjob0, 1, nullptr);
-
-    struct UpdateJob
-    {
-        using F = std::function<void(skr::ecs::TaskContext&, skr::ecs::RandomComponentReadWrite<skr::scene::TransformComponent>&)>;
-        UpdateJob(F func)
-            : f(func)
-        {
-        }
-
-        void build(skr::ecs::AccessBuilder& Builder)
-        {
-            Builder.access(&UpdateJob::trans_accessor);
-        }
-
-        void run(skr::ecs::TaskContext& Context)
-        {
-            SkrZoneScopedN("UpdateJob");
-            f(Context, UpdateJob::trans_accessor);
-        }
-
-        skr::ecs::RandomComponentReadWrite<skr::scene::TransformComponent> trans_accessor;
-        F f;
-    };
-
-    UpdateJob updatejob{ [&](skr::ecs::TaskContext& Context, skr::ecs::RandomComponentReadWrite<skr::scene::TransformComponent>& Accessor) {
-        SkrZoneScopedN("UpdateJob::run");
-        auto transform = Accessor[(skr::ecs::Entity)actor1.lock()->transform_entities[0]];
-        auto transform2 = Accessor[(skr::ecs::Entity)actor2.lock()->transform_entities[0]];
-        auto new_transform = skr::TransformF::Identity();
-        new_transform *= transform.get();
-        new_transform *= transform2.get();
-        transform2.set(new_transform);                                                         // apply hierarchy transform
-        Accessor.write_at((skr::ecs::Entity)actor2.lock()->transform_entities[0], transform2); // update transform2 with the new value
-    } };
-
-    auto q3 = world.dispatch_task(updatejob, 1, nullptr);
-
-    // dispatch readjob again
-    auto q4 = world.dispatch_task(rreadjob0, 1, nullptr);
-
-    skr::ecs::TaskScheduler::Get()->flush_all();
-    skr::ecs::TaskScheduler::Get()->sync_all();
+    // UpdateJob updatejob{ [&](skr::ecs::TaskContext& Context, skr::ecs::RandomComponentReadWrite<skr::scene::TransformComponent>& Accessor) {
+    //     SkrZoneScopedN("UpdateJob::run");
+    //     auto transform = Accessor[(skr::ecs::Entity)actor1.lock()->scene_entities[0]];
+    //     auto transform2 = Accessor[(skr::ecs::Entity)actor2.lock()->scene_entities[0]];
+    //     auto new_transform = skr::TransformF::Identity();
+    //     new_transform *= transform.get();
+    //     new_transform *= transform2.get();
+    //     transform2.set(new_transform);                                                     // apply hierarchy transform
+    //     Accessor.write_at((skr::ecs::Entity)actor2.lock()->scene_entities[0], transform2); // update transform2 with the new value
+    // } };
 
     // cleanup
+    skr_transform_system_destroy(transform_system);
+    actor_manager.finalize();
     world.finalize();
     scheduler.unbind();
-    skr::SActorManager::GetInstance()
-        .ClearAllActors();
+
     return 0;
 }
