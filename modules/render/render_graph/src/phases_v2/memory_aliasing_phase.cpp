@@ -109,48 +109,54 @@ void MemoryAliasingPhase::perform_memory_aliasing(const StackVector<ResourceNode
 {
     const bool useResourcePooling = config_.aliasing_tier == EAliasingTier::Tier0;
     const auto& lifetime_result = lifetime_analysis_.get_result();
-    aliasing_result_.memory_buckets.reserve(config_.max_buckets);
+    aliasing_result_.memory_buckets.reserve(4096);
     for (auto* resource : sorted_resources)
     {
         bool aliased = false;
         
+        const bool use_pooling = get_aliasing_tier() == EAliasingTier::Tier0;
+        const bool dynamic_resource = resource->get_tags() & kRenderGraphDynamicResourceTag;
+        const bool can_aliasing = !use_pooling && !dynamic_resource;
         // 尝试放入现有桶中
-        if (!config_.use_greedy_fit || useResourcePooling)
+        if (can_aliasing)
         {
-            // First-Fit算法：使用第一个合适的桶
-            for (auto& bucket : aliasing_result_.memory_buckets)
+            if (!config_.use_greedy_fit || useResourcePooling)
             {
-                if (try_alias_resource_in_bucket(resource, bucket))
+                // First-Fit算法：使用第一个合适的桶
+                for (auto& bucket : aliasing_result_.memory_buckets)
                 {
-                    aliased = true;
-                    break;
-                }
-            }
-        }
-        else
-        {
-            // 贪心算法：Best-Fit策略，选择浪费空间最少的桶
-            MemoryBucket* best_bucket = nullptr;
-            uint64_t best_bucket_waste = UINT64_MAX;
-            
-            for (auto& bucket : aliasing_result_.memory_buckets)
-            {
-                // 检查能否放入这个桶，并计算浪费的空间
-                if (can_fit_in_bucket(resource, bucket))
-                {
-                    uint64_t waste = calculate_bucket_waste(resource, bucket);
-                    if (waste < best_bucket_waste)
+                    if (try_alias_resource_in_bucket(resource, bucket))
                     {
-                        best_bucket_waste = waste;
-                        best_bucket = &bucket;
+                        aliased = true;
+                        break;
                     }
                 }
             }
-            
-            // 使用最优桶
-            if (best_bucket && try_alias_resource_in_bucket(resource, *best_bucket))
+            else
             {
-                aliased = true;
+                // 贪心算法：Best-Fit策略，选择浪费空间最少的桶
+                MemoryBucket* best_bucket = nullptr;
+                uint64_t best_bucket_waste = UINT64_MAX;
+                
+                for (auto& bucket : aliasing_result_.memory_buckets)
+                {
+                    // 检查能否放入这个桶，并计算浪费的空间
+                    if (can_fit_in_bucket(resource, bucket))
+                    {
+                        uint64_t waste = calculate_bucket_waste(resource, bucket);
+                        if (waste < best_bucket_waste)
+                        {
+                            best_bucket_waste = waste;
+                            best_bucket = &bucket;
+                        }
+                    }
+                }
+                
+                // 使用最优桶
+                if (best_bucket && try_alias_resource_in_bucket(resource, *best_bucket))
+                {
+                    aliased = true;
+                }
             }
         }
         

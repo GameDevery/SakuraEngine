@@ -360,11 +360,14 @@ void TaskScheduler::sync_all()
     flush_all();
     running.wait(true);
 
-    _analyzer.accesses.clear();
-    _dispatched_tasks.clear();
-
+    _analyzer.accesses.~StackMap<TypeIndex, StaticDependencyAnalyzer::AccessInfo>();
+    _dispatched_tasks.~StackVector<skr::RC<TaskSignature>>();
     _tasks.~StackConcurrentQueue<skr::RC<TaskSignature>>();
+
     StackAllocator::Reset();
+
+    new (&_analyzer.accesses) StackMap<TypeIndex, StaticDependencyAnalyzer::AccessInfo>();
+    new (&_dispatched_tasks) StackVector<skr::RC<TaskSignature>>();
     new (&_tasks) StackConcurrentQueue<skr::RC<TaskSignature>>();
 }
 

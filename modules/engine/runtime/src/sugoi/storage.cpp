@@ -55,6 +55,9 @@ void sugoi_storage_t::allocate_unsafe(sugoi_group_t* group, EIndex count, sugoi_
 
     while (count != 0)
     {
+        // opt
+        entity_registry.reserve(entity_registry.entries.size() + count);
+
         sugoi_chunk_view_t v = allocateView(group, count);
         entity_registry.fill_entities(v);
         construct_view(v);
@@ -86,6 +89,9 @@ void sugoi_storage_t::allocate_reserved_unsafe(sugoi_group_t* group, const sugoi
 
     while (count != 0)
     {
+        // opt
+        entity_registry.reserve(entity_registry.entries.size() + count);
+
         sugoi_chunk_view_t v = allocateView(group, count);
         entity_registry.fill_entities_external(v, ents);
         construct_view(v);

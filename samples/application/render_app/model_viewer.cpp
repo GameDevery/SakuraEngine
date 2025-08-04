@@ -113,7 +113,7 @@ protected:
     void InitializeReosurceSystem();
     void DestroyResourceSystem();
 
-    void CreateScene(skr::render_graph::RenderGraph* graph);
+    void CreateEntities(skr::render_graph::RenderGraph* graph, uint32_t count = 10);
     void CreateComputePipeline();
     void render();
 
@@ -223,7 +223,19 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
     // Create compute pipeline for debug rendering
     CreateComputePipeline();
 
-    CreateScene(render_app->render_graph());
+    GPUSceneConfig cfg = {
+        .world = &world,
+        .render_device = render_device,
+        .core_data_types = {
+            { sugoi_id_of<GPUSceneObjectToWorld>::get(), 0 },
+            { sugoi_id_of<GPUSceneInstanceColor>::get(), 1 }
+        },
+        .additional_data_types = {
+            { sugoi_id_of<GPUSceneInstanceEmission>::get(), 2 }
+        }
+    };
+    GPUScene.Initialize(render_device->get_cgpu_device(), cfg);
+    CreateEntities(render_app->render_graph());
 
     // AsyncResource<> is a handle can be constructed by any resource type & ids
     skr::resource::AsyncResource<MeshResource> mesh_resource;
@@ -232,8 +244,14 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
     uint64_t frame_index = 0;
     while (!close_listener.want_exit)
     {
+        SkrZoneScopedN("Frame");
         render_app->get_event_queue()->pump_messages();
         render_app->acquire_frames();
+
+        if (frame_index < 1'000'000)
+        {
+            CreateEntities(render_app->render_graph());
+        }
 
         auto render_graph = render_app->render_graph();
         // Simple render loop using compute shader to fill screen red
@@ -274,6 +292,7 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
                     uint32_t color_segment_offset;
                     uint32_t color_element_size;
                     uint32_t instance_count;
+                    uint32_t padding[2];  // 填充到32字节对齐
                 } constants;
                 
                 constants.screen_width = static_cast<float>(screen_width);
@@ -352,23 +371,10 @@ void ModelViewerModule::CookAndLoadGLTF()
     }
 }
 
-void ModelViewerModule::CreateScene(skr::render_graph::RenderGraph* graph)
+void ModelViewerModule::CreateEntities(skr::render_graph::RenderGraph* graph, uint32_t count)
 {
     using namespace skr::ecs;
     using namespace skr::renderer;
-
-    GPUSceneConfig cfg = {
-        .world = &world,
-        .render_device = render_device,
-        .core_data_types = {
-            { sugoi_id_of<GPUSceneObjectToWorld>::get(), 0 },
-            { sugoi_id_of<GPUSceneInstanceColor>::get(), 1 }
-        },
-        .additional_data_types = {
-            { sugoi_id_of<GPUSceneInstanceEmission>::get(), 2 }
-        }
-    };
-    GPUScene.Initialize(render_device->get_cgpu_device(), cfg);
 
     struct Spawner
     {
@@ -406,7 +412,7 @@ void ModelViewerModule::CreateScene(skr::render_graph::RenderGraph* graph)
         ComponentView<skr::scene::IndexComponent> indices;
     } spawner;
     spawner.pScene = &GPUScene;
-    world.create_entities(spawner, 1'000'000);
+    world.create_entities(spawner, count);
 }
 
 void ModelViewerModule::InitializeAssetSystem()

@@ -97,8 +97,8 @@ struct ScanGPUScene : public GPUSceneInstanceTask
                     if (component_info.storage_class == GPUSceneComponentType::StorageClass::CORE_DATA)
                     {
                         const uint64_t dst_offset = pScene->core_data.get_component_offset(gpu_type, instance_data.instance_index);
-                        const uint64_t src_offset = pScene->upload_cursor.fetch_add(component_info.element_size);
-                        if (src_offset + component_info.element_size <= pScene->upload_buffer->info->size)
+                        const uint64_t src_offset = pScene->upload_ctx.upload_cursor.fetch_add(component_info.element_size);
+                        if (src_offset + component_info.element_size <= pScene->upload_ctx.upload_buffer->info->size)
                         {
                             memcpy(DRAMCache->data() + src_offset, data, component_info.element_size);
                             
@@ -107,8 +107,7 @@ struct ScanGPUScene : public GPUSceneInstanceTask
                             upload.src_offset = src_offset;
                             upload.dst_offset = dst_offset;
                             upload.data_size = component_info.element_size;
-                            pScene->uploads[offset + i] = upload;
-                            pScene->dirty_comp_count -= 1;
+                            pScene->upload_ctx.uploads[offset + i] = upload;
                         }
                         else
                         {
@@ -192,6 +191,7 @@ void GPUScene::PrepareUploadBuffer()
     required_size = (required_size + 255) & ~255; // Align to 256 bytes
     
     // Check if we need to recreate the upload buffer
+    auto& upload_buffer = upload_ctx.upload_buffer;
     if (!upload_buffer || upload_buffer->info->size < required_size)
     {
         // Release old buffer if exists
@@ -232,7 +232,9 @@ void GPUScene::AdjustCoreBuffer(skr::render_graph::RenderGraph* graph)
         // Resize and get old buffer
         auto old_buffer = core_data.resize(new_capacity);
         scene_buffer = core_data.import_buffer(graph, u8"scene_buffer");
-        
+        cgpu_free_buffer(old_buffer);
+        SKR_UNIMPLEMENTED_FUNCTION();
+        /*
         if (old_buffer && core_data.get_buffer())
         {
             // Import old buffer for copy source
@@ -245,6 +247,7 @@ void GPUScene::AdjustCoreBuffer(skr::render_graph::RenderGraph* graph)
             // Copy data from old to new buffer
             core_data.copy_segments(graph, old_buffer_handle, scene_buffer, existed_instances);
         }
+        */
     }
     else
     {
@@ -264,45 +267,53 @@ void GPUScene::ExecuteUpload(skr::render_graph::RenderGraph* graph)
     PrepareUploadBuffer();
 
     // Schedule remove & add & scan
+    auto get_batchsize = +[](uint64_t ecount) { return std::max(ecount / 8ull, 1024ull); };
     {
         SkrZoneScopedN("GPUScene::Tasks");
         if (!remove_ents.is_empty())
         {
+            SkrZoneScopedN("GPUScene::RemoveEntityFromGPUScene");
             RemoveEntityFromGPUScene remove;
             remove.pScene = this;
-            ecs_world->dispatch_task(remove, UINT32_MAX, remove_ents);
-            remove_ents.clear();
+            ecs_world->dispatch_task(remove, get_batchsize(remove_ents.size()), remove_ents);
         }
         if (!add_ents.is_empty())
         {
+            SkrZoneScopedN("GPUScene::AddEntityToGPUScene");
             AddEntityToGPUScene add;
             add.pScene = this;
-            ecs_world->dispatch_task(add, UINT32_MAX, add_ents);
-            add_ents.clear();
+            ecs_world->dispatch_task(add, get_batchsize(add_ents.size()), add_ents);
         }
-        skr::Vector<uint8_t> DRAMCache;
         std::atomic_uint32_t UploadCounter;
         if (!dirty_ents.is_empty())
         {
-            uploads.resize_unsafe(dirty_comp_count.load());
-            DRAMCache.resize_unsafe(upload_buffer->info->size);
-            ScanGPUScene scan(&DRAMCache, &UploadCounter);
+            SkrZoneScopedN("GPUScene::ScanGPUScene");
+            upload_ctx.DRAMCache.resize_unsafe(upload_ctx.upload_buffer->info->size);
+            upload_ctx.uploads.resize_unsafe(dirty_comp_count.load());
+
+            ScanGPUScene scan(&upload_ctx.DRAMCache, &UploadCounter);
             scan.pScene = this;
-            ecs_world->dispatch_task(scan, UINT32_MAX, dirty_ents);
+            ecs_world->dispatch_task(scan, get_batchsize(dirty_ents.size()), dirty_ents);
+        }
+        // TODO: FULL ASYNC 
+        {
+            skr::ecs::TaskScheduler::Get()->sync_all();
+
+            ::memcpy(upload_ctx.upload_buffer->info->cpu_mapped_address, upload_ctx.DRAMCache.data(), upload_ctx.DRAMCache.size());
+            remove_ents.clear();
+            add_ents.clear();
             dirty_ents.clear();
             dirties.clear();
+            dirty_comp_count -= upload_ctx.uploads.size();
         }
-        skr::ecs::TaskScheduler::Get()->sync_all();
-        ::memcpy(upload_buffer->info->cpu_mapped_address, DRAMCache.data(), DRAMCache.size());
     }
 
-
     // Dispatch SparseUpload compute shader to copy from upload_buffer to target buffers
-    if (!uploads.is_empty())
+    if (!upload_ctx.uploads.is_empty())
     {
         DispatchSparseUpload(graph);
-        uploads.clear();
-        upload_cursor.store(0);
+        upload_ctx.uploads.clear();
+        upload_ctx.upload_cursor.store(0);
     }
 }
 
@@ -407,7 +418,7 @@ uint32_t GPUScene::GetCoreInstanceStride() const
 
 void GPUScene::DispatchSparseUpload(skr::render_graph::RenderGraph* graph)
 {
-    if (uploads.is_empty())
+    if (upload_ctx.uploads.is_empty())
         return;
 
     SkrZoneScopedN("GPUScene::DispatchSparseUpload");
@@ -416,91 +427,76 @@ void GPUScene::DispatchSparseUpload(skr::render_graph::RenderGraph* graph)
     const size_t upload_size = sizeof(Upload);
     const size_t max_ops_per_batch = (max_buffer_size - 256) / upload_size; // Leave some padding
     
-    SKR_LOG_DEBUG(u8"GPUScene: Dispatching SparseUpload with %u total operations", (uint32_t)uploads.size());
+    SKR_LOG_DEBUG(u8"GPUScene: Dispatching SparseUpload with %u total operations", (uint32_t)upload_ctx.uploads.size());
     
     // Import buffers that will be used across all batches
     auto upload_buffer_handle = graph->create_buffer(
         [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::BufferBuilder& builder) {
             builder.set_name(u8"upload_buffer")
-                .import(upload_buffer, CGPU_RESOURCE_STATE_UNDEFINED)
+                .import(upload_ctx.upload_buffer, CGPU_RESOURCE_STATE_UNDEFINED)
                 .allow_shader_read();
         }
     );
 
     // Process uploads in batches to avoid exceeding D3D12 constant buffer size limit
-    size_t total_operations = uploads.size();
-    size_t operations_processed = 0;
-    uint32_t batch_index = 0;
-
-    while (operations_processed < total_operations)
-    {
-        // Calculate batch size
-        size_t batch_size = skr::min(max_ops_per_batch, total_operations - operations_processed);
-        size_t batch_ops_size = batch_size * sizeof(Upload);
-        
-        // Calculate dispatch groups for this batch
-        const uint32_t max_threads_per_op = 64; // 64 threads per operation for parallelism
-        const uint32_t batch_threads = batch_size * max_threads_per_op;
-        const uint32_t dispatch_groups = (batch_threads + 255) / 256;
-        
-        SKR_LOG_DEBUG(u8"  Batch %u: %u operations, %u dispatch groups", batch_index, (uint32_t)batch_size, dispatch_groups);
-
-        // Create operations buffer for this batch
-        auto operations_buffer_handle = graph->create_buffer(
-            [=](skr::render_graph::RenderGraph& g, skr::render_graph::BufferBuilder& builder) {
-                builder.set_name(skr::format(u8"upload_operations_batch_{}", batch_index).u8_str())
-                    .size(batch_ops_size)
-                    .memory_usage(CGPU_MEM_USAGE_CPU_TO_GPU)
-                    .structured(0, batch_size, sizeof(Upload))
-                    .allow_shader_read()
-                    .as_upload_buffer();
-            }
-        );
-        
-        // Add compute pass for this batch
-        graph->add_compute_pass(
-            // Setup function
-            [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::ComputePassBuilder& builder) {
-                builder.set_name(skr::format(u8"SparseUploadPass_Batch_{}", batch_index).u8_str())
-                    .set_pipeline(sparse_upload_pipeline)
-                    .read(u8"upload_buffer", upload_buffer_handle)
-                    .read(u8"upload_operations", operations_buffer_handle)
-                    .readwrite(u8"target_buffer", scene_buffer);
-            },
-            
-            // Execute function
-            [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::ComputePassContext& ctx) {
-                // Upload operations data for this batch
-                if (auto mapped_ptr = static_cast<Upload*>(ctx.resolve(operations_buffer_handle)->info->cpu_mapped_address))
-                {
-                    memcpy(mapped_ptr, uploads.data() + operations_processed, batch_ops_size);
-                }
-                
-                // Prepare push constants
-                struct SparseUploadConstants {
-                    uint32_t num_operations;
-                    uint32_t max_threads_per_op;
-                    uint32_t alignment = 16;
-                    uint32_t padding = 0;
-                } constants;
-                constants.num_operations = static_cast<uint32_t>(batch_size);
-                constants.max_threads_per_op = max_threads_per_op;
-                
-                // Push constants to shader
-                cgpu_compute_encoder_push_constants(ctx.encoder, 
-                    sparse_upload_root_signature,
-                    u8"constants", &constants);
-                
-                // Dispatch compute shader
-                cgpu_compute_encoder_dispatch(ctx.encoder, dispatch_groups, 1, 1);
-            }
-        );
-        
-        operations_processed += batch_size;
-        batch_index++;
-    }
+    size_t total_operations = upload_ctx.uploads.size();
+    size_t ops_size = total_operations * sizeof(Upload);
+    const uint32_t max_threads_per_op = 4; // 64 threads per operation for parallelism
+    const uint32_t batch_threads = total_operations * max_threads_per_op;
+    const uint32_t dispatch_groups = (batch_threads + 255) / 256;
     
-    SKR_LOG_INFO(u8"GPUScene: SparseUpload completed in %u batches", batch_index);
+    SKR_LOG_DEBUG(u8"  Batch: %u operations, %u dispatch groups", (uint32_t)total_operations, dispatch_groups);
+
+    // Create operations buffer for this batch
+    auto operations_buffer_handle = graph->create_buffer(
+        [=](skr::render_graph::RenderGraph& g, skr::render_graph::BufferBuilder& builder) {
+            builder.set_name(u8"upload_operations")
+                .size(ops_size)
+                .memory_usage(CGPU_MEM_USAGE_CPU_TO_GPU)
+                .structured(0, total_operations, sizeof(Upload))
+                .allow_shader_read()
+                .as_upload_buffer();
+        }
+    );
+    
+    // Add compute pass for this batch
+    graph->add_compute_pass(
+        // Setup function
+        [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::ComputePassBuilder& builder) {
+            builder.set_name(u8"SparseUploadPass")
+                .set_pipeline(sparse_upload_pipeline)
+                .read(u8"upload_buffer", upload_buffer_handle)
+                .read(u8"upload_operations", operations_buffer_handle)
+                .readwrite(u8"target_buffer", scene_buffer);
+        },
+        
+        // Execute function
+        [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::ComputePassContext& ctx) {
+            // Upload operations data for this batch
+            if (auto mapped_ptr = static_cast<Upload*>(ctx.resolve(operations_buffer_handle)->info->cpu_mapped_address))
+            {
+                memcpy(mapped_ptr, upload_ctx.uploads.data(), ops_size);
+            }
+            
+            // Prepare push constants
+            struct SparseUploadConstants {
+                uint32_t num_operations;
+                uint32_t max_threads_per_op;
+                uint32_t alignment = 16;
+                uint32_t padding = 0;
+            } constants;
+            constants.num_operations = static_cast<uint32_t>(ops_size);
+            constants.max_threads_per_op = max_threads_per_op;
+            
+            // Push constants to shader
+            cgpu_compute_encoder_push_constants(ctx.encoder, 
+                sparse_upload_root_signature,
+                u8"constants", &constants);
+            
+            // Dispatch compute shader
+            cgpu_compute_encoder_dispatch(ctx.encoder, dispatch_groups, 1, 1);
+        }
+    );
 }
 
 } // namespace skr::renderer

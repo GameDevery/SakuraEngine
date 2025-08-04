@@ -507,7 +507,6 @@ RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::allow_shader_readwrite()
 RenderGraph::BufferBuilder& RenderGraph::BufferBuilder::allow_shader_read() SKR_NOEXCEPT
 {
     node.descriptor.descriptors |= CGPU_RESOURCE_TYPE_BUFFER;
-    node.descriptor.descriptors |= CGPU_RESOURCE_TYPE_UNIFORM_BUFFER;
     return *this;
 }
 

@@ -228,10 +228,10 @@ void GPUScene::Shutdown()
         additional_data.page_table_buffer = nullptr;
     }
 
-    if (upload_buffer)
+    if (upload_ctx.upload_buffer)
     {
-        cgpu_free_buffer(upload_buffer);
-        upload_buffer = nullptr;
+        cgpu_free_buffer(upload_ctx.upload_buffer);
+        upload_ctx.upload_buffer = nullptr;
     }
 
     // Release SparseUpload pipeline resources

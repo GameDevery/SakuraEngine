@@ -105,7 +105,7 @@ struct MemoryAliasingConfig
     EAliasingTier aliasing_tier = EAliasingTier::Tier0; // 别名化级别，默认使用真正的别名
     bool enable_cross_queue_aliasing = true;  // 允许跨队列资源别名
     uint64_t min_resource_size = 1024;        // 最小别名资源大小
-    uint32_t max_buckets = 2048;                // 最大桶数量
+    uint32_t max_buckets = UINT32_MAX;                // 最大桶数量
     bool enable_debug_output = false;         // 启用调试输出
     bool use_greedy_fit = true;               // 使用贪婪适配算法
 };
