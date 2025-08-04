@@ -5,14 +5,15 @@
 namespace skr
 {
 // ctor & dtor
+V8Value::V8Value() = default;
 V8Value::V8Value(v8::Global<v8::Value> v8_value, V8Context* context)
     : _v8_value(std::move(v8_value))
     , _context(context)
 {
+    SKR_ASSERT(!_v8_value.IsEmpty());
+    SKR_ASSERT(_context != nullptr);
 }
-V8Value::~V8Value()
-{
-}
+V8Value::~V8Value() = default;
 
 // get kind
 bool V8Value::is_object() const
@@ -58,10 +59,7 @@ V8Value V8Value::get(StringView name) const
     // check object
     if (!_v8_value.Get(isolate)->IsObject())
     {
-        return {
-            {},
-            _context
-        };
+        return {};
     }
 
     // get object
@@ -71,10 +69,7 @@ V8Value V8Value::get(StringView name) const
     auto found = obj->Get(context, V8Bind::to_v8(name, true));
     if (found.IsEmpty())
     {
-        return {
-            {},
-            _context
-        };
+        return {};
     }
     else
     {

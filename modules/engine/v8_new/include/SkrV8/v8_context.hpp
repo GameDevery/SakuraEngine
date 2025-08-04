@@ -42,13 +42,47 @@ struct SKR_V8_API V8Context {
     // set & get global value
     V8Value get_global(StringView name);
 
-    // temp api
-    void temp_run_script(StringView script);
+    // exec
+    V8Value exec(StringView script, bool as_module = false);
+    V8Value exec_file(StringView file_path, bool as_module = true);
 
 private:
     // init & shutdown
     void _init(V8Isolate* isolate, String name);
     void _shutdown();
+
+    // exec helpers
+    v8::MaybeLocal<v8::Script> _compile_script(
+        v8::Isolate*           isolate,
+        v8::Local<v8::Context> context,
+        StringView             script,
+        StringView             path
+    );
+    v8::MaybeLocal<v8::Module> _compile_module(
+        v8::Isolate* isolate,
+        StringView   script,
+        StringView   path
+    );
+    V8Value _exec_script(
+        v8::Isolate*           isolate,
+        v8::Local<v8::Context> context,
+        v8::Local<v8::Script>  script,
+        bool                   dump_exception
+    );
+    V8Value _exec_module(
+        v8::Isolate*           isolate,
+        v8::Local<v8::Context> context,
+        v8::Local<v8::Module>  module,
+        bool                   dump_exception
+    );
+
+    // callback
+    static v8::MaybeLocal<v8::Module> _resolve_module(
+        v8::Local<v8::Context>    context,
+        v8::Local<v8::String>     specifier,
+        v8::Local<v8::FixedArray> import_assertions,
+        v8::Local<v8::Module>     referrer
+    );
 
 private:
     V8Isolate*                  _isolate        = nullptr;

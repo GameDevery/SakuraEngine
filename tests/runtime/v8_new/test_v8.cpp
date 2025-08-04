@@ -30,8 +30,8 @@ TEST_CASE("simple")
     context->build_export([](skr::V8VirtualModule& module) {
         module.register_type<test_v8::SimpleTest>(u8"");
     });
-    context->temp_run_script(u8"SimpleTest.print('fuck')");
-    context->temp_run_script(u8R"__(
+    context->exec(u8"SimpleTest.print('fuck')");
+    context->exec(u8R"__(
         print_sum = function (x, y) {
             SimpleTest.print(`${x} + ${y} = ${x + y}`)
         }
