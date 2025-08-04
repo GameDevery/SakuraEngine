@@ -10,6 +10,8 @@ struct V8BTValue : V8BTRecordBase {
 
     // kind
     EV8BTKind kind() const override;
+    String    type_name() const override;
+    String    cpp_namespace() const override;
 
     // convert helper
     v8::Local<v8::Value> to_v8(
@@ -84,6 +86,8 @@ struct V8BTValue : V8BTRecordBase {
     ) const override final;
 
     // v8 export
+    bool has_v8_export_obj(
+    ) const override final;
     v8::Local<v8::Value> get_v8_export_obj(
     ) const override final;
 

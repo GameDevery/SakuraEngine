@@ -35,6 +35,14 @@ EV8BTKind V8BTObject::kind() const
 {
     return EV8BTKind::Object;
 }
+String V8BTObject::type_name() const
+{
+    return _rttr_type->name();
+}
+String V8BTObject::cpp_namespace() const
+{
+    return _rttr_type->name_space_str();
+}
 
 // convert helper
 v8::Local<v8::Value> V8BTObject::to_v8(
@@ -228,6 +236,11 @@ bool V8BTObject::solve_static_field(
 }
 
 // v8 export
+bool V8BTObject::has_v8_export_obj(
+) const
+{
+    return true;
+}
 v8::Local<v8::Value> V8BTObject::get_v8_export_obj(
 ) const
 {

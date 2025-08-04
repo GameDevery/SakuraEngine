@@ -2,7 +2,8 @@
 #include "SkrRTTR/rttr_traits.hpp"
 #include "SkrCore/log.hpp"
 #include "test_v8_types.hpp"
-#include "SkrV8/v8_env.hpp"
+#include "SkrV8/v8_isolate.hpp"
+#include "SkrV8/v8_context.hpp"
 
 skr::V8Isolate isolate;
 
@@ -26,7 +27,9 @@ TEST_CASE("simple")
 
     SKR_LOG_FMT_INFO(u8"Test Begin");
 
-    context->temp_register<test_v8::SimpleTest>();
+    context->build_export([](skr::V8VirtualModule& module) {
+        module.register_type<test_v8::SimpleTest>(u8"");
+    });
     context->temp_run_script(u8"SimpleTest.print()");
     SKR_LOG_FMT_INFO(u8"Test End");
 }

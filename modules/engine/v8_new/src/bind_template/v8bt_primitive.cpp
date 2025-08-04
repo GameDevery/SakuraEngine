@@ -45,6 +45,14 @@ EV8BTKind V8BTPrimitive::kind() const
 {
     return EV8BTKind::Primitive;
 }
+String V8BTPrimitive::type_name() const
+{
+    return _rttr_type->name();
+}
+String V8BTPrimitive::cpp_namespace() const
+{
+    return _rttr_type->name_space_str();
+}
 
 v8::Local<v8::Value> V8BTPrimitive::to_v8(
     void* native_data
@@ -405,9 +413,15 @@ bool V8BTPrimitive::solve_static_field(
 }
 
 // v8 export
+bool V8BTPrimitive::has_v8_export_obj(
+) const
+{
+    return false;
+}
 v8::Local<v8::Value> V8BTPrimitive::get_v8_export_obj(
 ) const
 {
+    SKR_UNREACHABLE_CODE();
     return {};
 }
 

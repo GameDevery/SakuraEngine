@@ -54,6 +54,14 @@ EV8BTKind V8BTEnum::kind() const
 {
     return EV8BTKind::Enum;
 }
+String V8BTEnum::type_name() const
+{
+    return _rttr_type->name();
+}
+String V8BTEnum::cpp_namespace() const
+{
+    return _rttr_type->name_space_str();
+}
 
 v8::Local<v8::Value> V8BTEnum::to_v8(
     void* native_data
@@ -225,6 +233,11 @@ bool V8BTEnum::solve_static_field(
 }
 
 // v8 export
+bool V8BTEnum::has_v8_export_obj(
+) const
+{
+    return true;
+}
 v8::Local<v8::Value> V8BTEnum::get_v8_export_obj(
 ) const
 {

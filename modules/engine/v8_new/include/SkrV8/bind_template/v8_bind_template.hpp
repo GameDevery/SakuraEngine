@@ -254,8 +254,10 @@ struct V8BindTemplate {
     inline IV8BindManager* manager() const { return _manager; }
     inline void            set_manager(IV8BindManager* manager) { _manager = manager; }
 
-    // kind
-    virtual EV8BTKind kind() const = 0;
+    // basic info
+    virtual EV8BTKind kind() const          = 0;
+    virtual String    type_name() const     = 0;
+    virtual String    cpp_namespace() const = 0;
 
     // convert api
     virtual v8::Local<v8::Value> to_v8(
@@ -331,6 +333,8 @@ struct V8BindTemplate {
     ) const = 0;
 
     // v8 export
+    virtual bool has_v8_export_obj(
+    ) const = 0;
     virtual v8::Local<v8::Value> get_v8_export_obj(
     ) const = 0;
 

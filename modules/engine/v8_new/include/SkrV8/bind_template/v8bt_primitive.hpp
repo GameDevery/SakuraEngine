@@ -10,6 +10,8 @@ struct V8BTPrimitive final : V8BindTemplate {
 
     // kind
     EV8BTKind kind() const override;
+    String    type_name() const override;
+    String    cpp_namespace() const override;
 
     // convert helper
     v8::Local<v8::Value> to_v8(
@@ -84,6 +86,8 @@ struct V8BTPrimitive final : V8BindTemplate {
     ) const override final;
 
     // v8 export
+    bool has_v8_export_obj(
+    ) const override final;
     v8::Local<v8::Value> get_v8_export_obj(
     ) const override final;
 
@@ -114,6 +118,8 @@ private:
                 };
             }
         }
+
+        _rttr_type = type_of<T>();
     }
     template <typename T>
     static V8BTPrimitive* _make(IV8BindManager* manager)
@@ -131,9 +137,10 @@ private:
     ) const;
 
 private:
-    uint32_t    _size      = 0;
-    uint32_t    _alignment = 0;
-    GUID        _type_id   = {};
-    DtorInvoker _dtor      = nullptr;
+    uint32_t        _size      = 0;
+    uint32_t        _alignment = 0;
+    GUID            _type_id   = {};
+    const RTTRType* _rttr_type = nullptr;
+    DtorInvoker     _dtor      = nullptr;
 };
 } // namespace skr
