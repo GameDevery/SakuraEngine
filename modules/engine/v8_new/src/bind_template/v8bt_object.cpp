@@ -201,8 +201,17 @@ void V8BTObject::set_static_field(
 }
 
 // check api
-bool V8BTObject::solve_param(
-    V8BTDataParam& param_bind_tp
+void V8BTObject::solve_invoke_behaviour(
+    const V8BTDataParam& param_bind_tp,
+    bool&                appare_in_return,
+    bool&                appare_in_param
+) const
+{
+    appare_in_param  = true;
+    appare_in_return = false;
+}
+bool V8BTObject::check_param(
+    const V8BTDataParam& param_bind_tp
 ) const
 {
     switch (param_bind_tp.inout_flag)
@@ -214,23 +223,22 @@ bool V8BTObject::solve_param(
         );
         break;
     }
-    param_bind_tp.appare_in_param = true;
     return _basic_type_check(param_bind_tp.modifiers);
 }
-bool V8BTObject::solve_return(
-    V8BTDataReturn& return_bind_tp
+bool V8BTObject::check_return(
+    const V8BTDataReturn& return_bind_tp
 ) const
 {
     return _basic_type_check(return_bind_tp.modifiers);
 }
-bool V8BTObject::solve_field(
-    V8BTDataField& field_bind_tp
+bool V8BTObject::check_field(
+    const V8BTDataField& field_bind_tp
 ) const
 {
     return _basic_type_check(field_bind_tp.modifiers);
 }
-bool V8BTObject::solve_static_field(
-    V8BTDataStaticField& field_bind_tp
+bool V8BTObject::check_static_field(
+    const V8BTDataStaticField& field_bind_tp
 ) const
 {
     return _basic_type_check(field_bind_tp.modifiers);

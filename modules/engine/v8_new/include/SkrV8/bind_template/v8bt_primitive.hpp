@@ -72,17 +72,22 @@ struct V8BTPrimitive final : V8BindTemplate {
     ) const override final;
 
     // check api
-    bool solve_param(
-        V8BTDataParam& param_bind_tp
+    void solve_invoke_behaviour(
+        const V8BTDataParam& param_bind_tp,
+        bool&                appare_in_return,
+        bool&                appare_in_param
     ) const override final;
-    bool solve_return(
-        V8BTDataReturn& return_bind_tp
+    bool check_param(
+        const V8BTDataParam& param_bind_tp
     ) const override final;
-    bool solve_field(
-        V8BTDataField& field_bind_tp
+    bool check_return(
+        const V8BTDataReturn& return_bind_tp
     ) const override final;
-    bool solve_static_field(
-        V8BTDataStaticField& field_bind_tp
+    bool check_field(
+        const V8BTDataField& field_bind_tp
+    ) const override final;
+    bool check_static_field(
+        const V8BTDataStaticField& field_bind_tp
     ) const override final;
 
     // v8 export

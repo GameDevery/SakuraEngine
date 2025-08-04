@@ -185,28 +185,40 @@ void V8BTEnum::set_static_field(
 }
 
 // check api
-bool V8BTEnum::solve_param(
-    V8BTDataParam& param_bind_tp
+void V8BTEnum::solve_invoke_behaviour(
+    const V8BTDataParam& param_bind_tp,
+    bool&                appare_in_return,
+    bool&                appare_in_param
+) const
+{
+    _underlying->solve_invoke_behaviour(
+        param_bind_tp,
+        appare_in_return,
+        appare_in_param
+    );
+}
+bool V8BTEnum::check_param(
+    const V8BTDataParam& param_bind_tp
 ) const
 {
     if (!_basic_type_check(param_bind_tp.modifiers))
     {
         return false;
     }
-    return _underlying->solve_param(param_bind_tp);
+    return _underlying->check_param(param_bind_tp);
 }
-bool V8BTEnum::solve_return(
-    V8BTDataReturn& return_bind_tp
+bool V8BTEnum::check_return(
+    const V8BTDataReturn& return_bind_tp
 ) const
 {
     if (!_basic_type_check(return_bind_tp.modifiers))
     {
         return false;
     }
-    return _underlying->solve_return(return_bind_tp);
+    return _underlying->check_return(return_bind_tp);
 }
-bool V8BTEnum::solve_field(
-    V8BTDataField& field_bind_tp
+bool V8BTEnum::check_field(
+    const V8BTDataField& field_bind_tp
 ) const
 {
     if (field_bind_tp.modifiers.is_decayed_pointer())
@@ -216,10 +228,10 @@ bool V8BTEnum::solve_field(
         );
         return false;
     }
-    return _underlying->solve_field(field_bind_tp);
+    return _underlying->check_field(field_bind_tp);
 }
-bool V8BTEnum::solve_static_field(
-    V8BTDataStaticField& field_bind_tp
+bool V8BTEnum::check_static_field(
+    const V8BTDataStaticField& field_bind_tp
 ) const
 {
     if (field_bind_tp.modifiers.is_decayed_pointer())
@@ -229,7 +241,7 @@ bool V8BTEnum::solve_static_field(
         );
         return false;
     }
-    return _underlying->solve_static_field(field_bind_tp);
+    return _underlying->check_static_field(field_bind_tp);
 }
 
 // v8 export

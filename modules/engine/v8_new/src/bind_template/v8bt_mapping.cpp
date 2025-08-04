@@ -255,36 +255,44 @@ void V8BTMapping::set_static_field(
     to_native(field_addr, v8_value, false);
 }
 // check api
-bool V8BTMapping::solve_param(
-    V8BTDataParam& param_bind_tp
+void V8BTMapping::solve_invoke_behaviour(
+    const V8BTDataParam& param_bind_tp,
+    bool&                appare_in_return,
+    bool&                appare_in_param
 ) const
 {
     switch (param_bind_tp.inout_flag)
     {
     case ERTTRParamFlag::Out:
-        param_bind_tp.appare_in_param  = false;
-        param_bind_tp.appare_in_return = true;
+        appare_in_param  = false;
+        appare_in_return = true;
         break;
     case ERTTRParamFlag::InOut:
-        param_bind_tp.appare_in_param  = true;
-        param_bind_tp.appare_in_return = true;
+        appare_in_param  = true;
+        appare_in_return = true;
         break;
     case ERTTRParamFlag::In:
     default:
-        param_bind_tp.appare_in_param  = true;
-        param_bind_tp.appare_in_return = false;
+        appare_in_param  = true;
+        appare_in_return = false;
         break;
     }
+}
+bool V8BTMapping::check_param(
+    const V8BTDataParam& param_bind_tp
+) const
+{
+
     return _basic_type_check(param_bind_tp.modifiers);
 }
-bool V8BTMapping::solve_return(
-    V8BTDataReturn& return_bind_tp
+bool V8BTMapping::check_return(
+    const V8BTDataReturn& return_bind_tp
 ) const
 {
     return _basic_type_check(return_bind_tp.modifiers);
 }
-bool V8BTMapping::solve_field(
-    V8BTDataField& field_bind_tp
+bool V8BTMapping::check_field(
+    const V8BTDataField& field_bind_tp
 ) const
 {
     if (field_bind_tp.modifiers.is_decayed_pointer())
@@ -296,8 +304,8 @@ bool V8BTMapping::solve_field(
     }
     return _basic_type_check(field_bind_tp.modifiers);
 }
-bool V8BTMapping::solve_static_field(
-    V8BTDataStaticField& field_bind_tp
+bool V8BTMapping::check_static_field(
+    const V8BTDataStaticField& field_bind_tp
 ) const
 {
     if (field_bind_tp.modifiers.is_decayed_pointer())

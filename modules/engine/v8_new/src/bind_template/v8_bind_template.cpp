@@ -135,7 +135,7 @@ void V8BTDataField::setup(
     field_owner = owner;
     rttr_data   = field_data;
     modifiers.solve(field_data->type.view());
-    bind_tp->solve_field(*this);
+    bind_tp->check_field(*this);
 }
 
 //===============================V8BTDataStaticField===============================
@@ -153,7 +153,7 @@ void V8BTDataStaticField::setup(
     field_owner = owner;
     rttr_data   = field_data;
     modifiers.solve(field_data->type.view());
-    bind_tp->solve_static_field(*this);
+    bind_tp->check_static_field(*this);
 }
 
 //===============================V8BTDataParam===============================
@@ -211,7 +211,12 @@ void V8BTDataParam::setup(
         }
     }
 
-    bind_tp->solve_param(*this);
+    bind_tp->solve_invoke_behaviour(
+        *this,
+        appare_in_return,
+        appare_in_param
+    );
+    bind_tp->check_param(*this);
 }
 
 void V8BTDataParam::setup(
@@ -245,7 +250,10 @@ void V8BTDataReturn::setup(
     }
     pass_by_ref = signature.is_decayed_pointer();
 
-    bind_tp->solve_return(*this);
+    TypeSignatureTyped<void> void_sig;
+    is_void = signature.equal(void_sig);
+
+    bind_tp->check_return(*this);
 }
 
 //===============================V8BTDataMethod===============================

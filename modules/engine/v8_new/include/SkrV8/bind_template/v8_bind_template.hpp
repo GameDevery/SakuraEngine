@@ -158,14 +158,16 @@ struct V8BTDataReturn {
         TypeSignatureView signature
     );
 };
-struct V8BTDataMethod {
+struct V8BTDataFunctionBase {
+    V8BTDataReturn        return_data  = {};
+    Vector<V8BTDataParam> params_data  = {};
+    uint32_t              params_count = 0;
+    uint32_t              return_count = 0;
+};
+struct V8BTDataMethod : V8BTDataFunctionBase {
     const RTTRType*       method_owner         = nullptr;
     const RTTRMethodData* rttr_data            = nullptr;
     const RTTRMethodData* rttr_data_mixin_impl = nullptr;
-    V8BTDataReturn        return_data          = {};
-    Vector<V8BTDataParam> params_data          = {};
-    uint32_t              params_count         = 0;
-    uint32_t              return_count         = 0;
 
     inline bool is_valid() const
     {
@@ -186,13 +188,9 @@ struct V8BTDataMethod {
         const RTTRType*       owner
     );
 };
-struct V8BTDataStaticMethod {
+struct V8BTDataStaticMethod : V8BTDataFunctionBase {
     const RTTRType*             method_owner = nullptr;
     const RTTRStaticMethodData* rttr_data    = nullptr;
-    V8BTDataReturn              return_data  = {};
-    Vector<V8BTDataParam>       params_data  = {};
-    uint32_t                    params_count = 0;
-    uint32_t                    return_count = 0;
 
     inline bool is_valid() const
     {
@@ -242,12 +240,7 @@ struct V8BTDataCtor {
         const RTTRCtorData* ctor_data
     );
 };
-struct V8BTDataCallScript {
-    V8BTDataReturn        return_data  = {};
-    Vector<V8BTDataParam> params_data  = {};
-    uint32_t              params_count = 0;
-    uint32_t              return_count = 0;
-
+struct V8BTDataCallScript : V8BTDataFunctionBase {
     bool read_return(
         span<const StackProxy>    params,
         StackProxy                return_value,
@@ -340,18 +333,22 @@ struct V8BindTemplate {
     ) const = 0;
 
     // check api
-    // TODO. API 分型, solve 归 solve, check 归 check
-    virtual bool solve_param(
-        V8BTDataParam& param_bind_tp
+    virtual void solve_invoke_behaviour(
+        const V8BTDataParam& param_bind_tp,
+        bool&                appare_in_return,
+        bool&                appare_in_param
     ) const = 0;
-    virtual bool solve_return(
-        V8BTDataReturn& return_bind_tp
+    virtual bool check_param(
+        const V8BTDataParam& param_bind_tp
     ) const = 0;
-    virtual bool solve_field(
-        V8BTDataField& field_bind_tp
+    virtual bool check_return(
+        const V8BTDataReturn& return_bind_tp
     ) const = 0;
-    virtual bool solve_static_field(
-        V8BTDataStaticField& field_bind_tp
+    virtual bool check_field(
+        const V8BTDataField& field_bind_tp
+    ) const = 0;
+    virtual bool check_static_field(
+        const V8BTDataStaticField& field_bind_tp
     ) const = 0;
 
     // v8 export
