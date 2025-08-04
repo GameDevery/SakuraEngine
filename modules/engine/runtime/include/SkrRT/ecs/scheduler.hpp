@@ -150,8 +150,6 @@ protected:
     void on_run() SKR_NOEXCEPT override;
     void on_exit() SKR_NOEXCEPT override;
     void dispatch(skr::RC<TaskSignature> task);
-    void dispatch_from_runwith(skr::RC<TaskSignature> task);
-    void dispatch_from_query(skr::RC<TaskSignature> task);
     
     friend struct World;
     void add_task(skr::RC<TaskSignature> task);

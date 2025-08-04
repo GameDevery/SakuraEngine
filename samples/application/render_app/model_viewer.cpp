@@ -406,7 +406,7 @@ void ModelViewerModule::CreateScene(skr::render_graph::RenderGraph* graph)
         ComponentView<skr::scene::IndexComponent> indices;
     } spawner;
     spawner.pScene = &GPUScene;
-    world.create_entities(spawner, 10'000);
+    world.create_entities(spawner, 1'000'000);
 }
 
 void ModelViewerModule::InitializeAssetSystem()

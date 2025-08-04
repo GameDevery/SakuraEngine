@@ -8,8 +8,6 @@ namespace skr::ecs
 
 EDependencySyncMode TaskSignature::DeterminSyncMode(TaskSignature* t, EAccessMode current, TaskSignature* last_t, EAccessMode last)
 {
-    if (t->_is_run_with || last_t->_is_run_with)
-        return EDependencySyncMode::WholeTask;
     if (current == EAccessMode::Seq && last == EAccessMode::Seq)
         return EDependencySyncMode::PerChunk;
     return EDependencySyncMode::WholeTask;
@@ -77,63 +75,92 @@ void WorkUnitGenerator::process(skr::RC<TaskSignature> new_task)
 {
     SkrZoneScopedN("WorkUnitGenerator::Process");
 
-    if (new_task->_is_run_with)
+    // collect work units
+    struct CollectContext
     {
-        auto& wgp = new_task->_work_groups.try_add_default(nullptr).value();
-        for (auto dependency : new_task->_static_dependencies)
-            wgp.dependencies.add(dependency);
-        new_task->_finish.add(1);
-    }
-    else
-    {
-        // collect work units
-        struct CollectContext
+        const sugoi_query_t* query;
+        WorkUnitGenerator* _this;
+        skr::RC<TaskSignature> new_task;
+        skr::task::weak_counter_t last_unit_finish;
+        WorkGroup* work_group = nullptr;
+        uint64_t total_units = 0;
+    } ctx;
+    ctx.query = new_task->query;
+    ctx._this = this;
+    ctx.new_task = new_task;
+
+    static const auto collect_units = +[](void* usr_data, sugoi_chunk_view_t* view) {
+        if (view->count == 0)
+            return;
+
+        CollectContext* ctx = (CollectContext*)usr_data;
+        auto try_add = ctx->work_group->units.try_add_default(view->chunk);
+        if (try_add.already_exist())
         {
-            const sugoi_query_t* query;
-            WorkUnitGenerator* _this;
-            skr::RC<TaskSignature> new_task;
-            skr::task::weak_counter_t last_unit_finish;
-            WorkGroup* work_group = nullptr;
-            uint64_t total_units = 0;
-        } ctx;
-        ctx.query = new_task->query;
-        ctx._this = this;
-        ctx.new_task = new_task;
+            SKR_LOG_FATAL(u8"Unit with this chunk already exists!");
+        }
+        auto& unit = try_add.value();
+        unit.chunk_view = *view;
+        unit.finish.add(1);
+        if (ctx->new_task->self_confict && (ctx->total_units != 0))
+        {
+            unit.dependencies.add(ctx->last_unit_finish);
+        }
+        ctx->total_units += 1;
+        ctx->last_unit_finish = unit.finish;
 
-        static const auto collect_units = +[](void* usr_data, sugoi_chunk_view_t* view) {
-            if (view->count == 0)
-                return;
-
-            CollectContext* ctx = (CollectContext*)usr_data;
-            auto& unit = ctx->work_group->units.try_add_default(view->chunk).value();
-            unit.chunk_view = *view;
-            unit.finish.add(1);
-            if (ctx->new_task->self_confict && (ctx->total_units != 0))
+        for (auto [dependency, mode] : ctx->work_group->dependencies)
+        {
+            if (mode == EDependencySyncMode::WholeTask)
             {
-                unit.dependencies.add(ctx->last_unit_finish);
+                unit.dependencies.add(dependency->_finish);
             }
-            ctx->total_units += 1;
-            ctx->last_unit_finish = unit.finish;
-
-            for (auto [dependency, mode] : ctx->work_group->dependencies)
+            else if (mode == EDependencySyncMode::PerChunk)
             {
-                if (mode == EDependencySyncMode::WholeTask)
+                if (auto depend_group = dependency->_work_groups.find(ctx->work_group->group))
                 {
-                    unit.dependencies.add(dependency->_finish);
-                }
-                else if (mode == EDependencySyncMode::PerChunk)
-                {
-                    if (auto depend_group = dependency->_work_groups.find(ctx->work_group->group))
+                    if (auto depend_unit = depend_group.value().units.find(view->chunk))
                     {
-                        if (auto depend_unit = depend_group.value().units.find(view->chunk))
-                        {
-                            unit.dependencies.add(depend_unit.value().finish);
-                        }
+                        unit.dependencies.add(depend_unit.value().finish);
                     }
                 }
             }
-        };
+        }
+    };
 
+    if (new_task->_is_run_with)
+    {
+        static const auto batch_wgp = +[](void* u, sugoi_chunk_view_t* v)-> void {
+            auto& ctx = *(CollectContext*)u;
+            auto group = v->chunk->group;
+            ctx.work_group = &ctx.new_task->_work_groups.try_add_default(group).value();
+            ctx.work_group->group = group;
+            for (auto dependency : ctx.new_task->_static_dependencies)
+            {
+                // can't be optimized, usually because of random accesses
+                if (dependency.mode == EDependencySyncMode::WholeTask)
+                {
+                    ctx.work_group->dependencies.add(dependency);
+                }
+                if (dependency.task->query) // from query, if two systems never operate on a same group. we can skip the denepdnecy
+                {
+                    if (bool confict = sugoiQ_match_group(dependency.task->query, group))
+                    {
+                        ctx.work_group->dependencies.add(dependency);
+                    }
+                }
+                else // from workgroup
+                {
+                    ctx.work_group->dependencies.add(dependency);
+                }
+            }
+            collect_units(&ctx, v);
+        };
+        sugoiS_batch(new_task->storage, 
+            (sugoi_entity_t*)new_task->_run_with.data(), new_task->_run_with.size(), batch_wgp, &ctx);
+    }
+    else
+    {
         static const auto filter_group = +[](void* u, sugoi_group_t* group) {
             auto& ctx = *(CollectContext*)u;
             ctx.work_group = &ctx.new_task->_work_groups.try_add_default(group).value();
@@ -145,8 +172,14 @@ void WorkUnitGenerator::process(skr::RC<TaskSignature> new_task)
                 {
                     ctx.work_group->dependencies.add(dependency);
                 }
-                // if two systems never operate on a same group. we  can skip the denepdnecy
-                if (bool confict = sugoiQ_match_group(dependency.task->query, group))
+                if (dependency.task->query) // from query, if two systems never operate on a same group. we can skip the denepdnecy
+                {
+                    if (bool confict = sugoiQ_match_group(dependency.task->query, group))
+                    {
+                        ctx.work_group->dependencies.add(dependency);
+                    }
+                }
+                else // from workgroup
                 {
                     ctx.work_group->dependencies.add(dependency);
                 }
@@ -154,9 +187,9 @@ void WorkUnitGenerator::process(skr::RC<TaskSignature> new_task)
             sugoiQ_in_group(ctx.query, group, collect_units, &ctx);
         };
         sugoiQ_get_groups(ctx.query, filter_group, &ctx);
-        new_task->_finish.add(ctx.total_units);
-        ctx.new_task->_work_groups.compact();
     }
+    new_task->_finish.add(ctx.total_units);
+    ctx.new_task->_work_groups.compact();
 }
 
 static skr::UPtr<TaskScheduler> gInstance = nullptr;
@@ -216,67 +249,6 @@ void TaskScheduler::add_task(skr::RC<TaskSignature> task)
 // clang-format off
 void TaskScheduler::dispatch(skr::RC<TaskSignature> signature)
 {
-    if (signature->_is_run_with)
-        dispatch_from_runwith(signature);
-    else
-        dispatch_from_query(signature);
-}
-
-void TaskScheduler::dispatch_from_runwith(skr::RC<TaskSignature> signature)
-{
-    const auto& wgp  = signature->work_groups().find(nullptr).value();
-    const auto access_count = signature->_run_with.size();
-    auto batch_size = signature->task->batch_size ? signature->task->batch_size : access_count;
-    batch_size = signature->self_confict ? UINT32_MAX : batch_size; // if self-confict, we can't batch
-    batch_size = std::min(batch_size, access_count);
-    const auto batch_count = (access_count + batch_size - 1) / batch_size;
-    running.add(1);
-
-    {
-        SkrZoneScopedN("DispatchUnit::ScheduleTask");
-        skr::task::schedule([
-            this, &wgp, signature, batch_count, batch_size, access_count,
-            // capture task lifetime into payload body
-            task = signature->task
-        ](){
-            {
-                for (auto dep : wgp.dependencies)
-                    dep.task->_finish.wait(false);
-            }
-            SKR_DEFER({ running.decrement(); signature->_finish.decrement(); });
-            if (batch_count == 1)
-            {
-                sugoiS_batch(signature->storage, 
-                    (sugoi_entity_t*)signature->_run_with.data(), 
-                    signature->_run_with.size(), 
-                    +[](void* p, sugoi_chunk_view_t* v)-> void 
-                    {
-                        Task* t = (Task*)p;
-                        t->func(*v, v->count, 0);
-                    }
-                    , task.get());
-            }
-            else
-            {
-                sugoiS_batch(signature->storage, 
-                    (sugoi_entity_t*)signature->_run_with.data(), 
-                    signature->_run_with.size(), 
-                    +[](void* p, sugoi_chunk_view_t* v)-> void 
-                    {
-                        Task* t = (Task*)p;
-                        t->func(*v, v->count, 0);
-                    }
-                    , task.get());
-            }
-        }, nullptr);
-    }
-
-    // release the ownership so tasks can free the task from payload
-    signature->task.reset(nullptr);
-}
-
-void TaskScheduler::dispatch_from_query(skr::RC<TaskSignature> signature)
-{
     const auto& wgps = signature->work_groups();
 
     for (const auto& [_, work_group] : wgps)
@@ -293,7 +265,6 @@ void TaskScheduler::dispatch_from_query(skr::RC<TaskSignature> signature)
             batch_size = std::min(batch_size, unit.chunk_view.count);
             const auto batch_count = (unit.chunk_view.count + batch_size - 1) / batch_size;
             running.add(1);
-
             {
                 SkrZoneScopedN("DispatchUnit::ScheduleTask");
                 skr::task::schedule([

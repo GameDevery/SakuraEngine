@@ -211,9 +211,7 @@ bool MemoryAliasingPhase::try_alias_resource_in_bucket(ResourceNode* resource, M
         }
     }
 
-    // SSIS算法核心：找到最优内存区域
     MemoryRegion optimal_region = find_optimal_memory_region(resource, bucket);
-    
     if (!optimal_region.is_valid())
     {
         return false; // 没有找到合适的区域

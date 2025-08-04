@@ -669,6 +669,8 @@ sugoi_group_t* sugoi_storage_t::cast(sugoi_group_t* srcGroup, const sugoi_delta_
 
 void sugoi_storage_t::batch(const sugoi_entity_t* ents, EIndex count, sugoi_view_callback_t callback, void* u)
 {
+    SkrZoneScopedN("ECS::Batch");
+
     if (count == 0)
         return;
     else if (count == 1)

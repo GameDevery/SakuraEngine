@@ -58,14 +58,12 @@ struct AddEntityToGPUScene : public GPUSceneInstanceTask
                 auto& instance_data = instances[i];
                 instance_data.entity = entity;
                 instance_data.archetype_id = archetype_id;
+
                 if (!archetype->free_ids.try_dequeue(instance_data.entity_index_in_archetype))
-                {
                     instance_data.entity_index_in_archetype = archetype->latest_index++;
-                }
                 if (!archetype->free_ids.try_dequeue(instance_data.instance_index))
-                {
                     instance_data.instance_index = pScene->latest_index++;
-                }
+
                 instance_data.custom_index = pScene->EncodeCustomIndex(archetype_id, instance_data.entity_index_in_archetype);
                 instance_data.pArchetype = archetype.get();
             }
@@ -81,50 +79,36 @@ struct ScanGPUScene : public GPUSceneInstanceTask
 
         sugoi_chunk_view_t v = {};
         sugoiS_access(pScene->ecs_world->get_storage(), (sugoi_entity_t)Context.entities()[0], &v);
-        // Step 1: Ensure archetype
         if (auto archetype = pScene->EnsureArchetype(v.chunk->group->archetype))
         {
+            auto offset = pUpdateCounter->fetch_add(Context.size());
             for (auto i = 0; i < Context.size(); i++)
             {
                 auto entity = Context.entities()[i];
                 auto archetype_id = archetype->gpu_archetype_id;
-                
-                // Step 2: Ensure allocation
                 const auto& instance_data = instances[i];
-
-                // Step3: do scan and copy (只处理 Core Data)
                 for (auto [cpu_type, gpu_type] : pScene->type_registry)
                 {
                     const auto data = Context.read(cpu_type).at(i);
-                    if (!data) continue; // 组件不存在
+                    if (!data) continue;
 
                     const auto& component_info = pScene->component_types[gpu_type];
-                    
                     // 只处理 Core Data，Additional Data 后续实现
                     if (component_info.storage_class == GPUSceneComponentType::StorageClass::CORE_DATA)
                     {
-                        // 计算在目标缓冲区 SOA 布局中的偏移
-                        uint64_t dst_offset = pScene->core_data.get_component_offset(gpu_type, instance_data.instance_index);
-                        
-                        // 分配 upload_buffer 中的位置
-                        uint64_t src_offset = pScene->upload_cursor.fetch_add(component_info.element_size);
-                        
-                        // 拷贝数据到 upload_buffer
-                        uint8_t* upload_ptr = static_cast<uint8_t*>(pScene->upload_buffer->info->cpu_mapped_address);
-                        if (upload_ptr && src_offset + component_info.element_size <= pScene->upload_buffer->info->size)
+                        const uint64_t dst_offset = pScene->core_data.get_component_offset(gpu_type, instance_data.instance_index);
+                        const uint64_t src_offset = pScene->upload_cursor.fetch_add(component_info.element_size);
+                        if (src_offset + component_info.element_size <= pScene->upload_buffer->info->size)
                         {
-                            memcpy(upload_ptr + src_offset, data, component_info.element_size);
+                            memcpy(DRAMCache->data() + src_offset, data, component_info.element_size);
                             
                             // 记录拷贝操作信息
                             GPUScene::Upload upload;
                             upload.src_offset = src_offset;
                             upload.dst_offset = dst_offset;
                             upload.data_size = component_info.element_size;
-                            {
-                                pScene->upload_mutex.lock();
-                                pScene->uploads.push_back(upload);
-                                pScene->upload_mutex.unlock();
-                            }
+                            pScene->uploads[offset + i] = upload;
+                            pScene->dirty_comp_count -= 1;
                         }
                         else
                         {
@@ -135,6 +119,13 @@ struct ScanGPUScene : public GPUSceneInstanceTask
             }
         }
     }
+    ScanGPUScene(skr::Vector<uint8_t>* DRAM, std::atomic_uint32_t* pCounter)
+        : DRAMCache(DRAM), pUpdateCounter(pCounter)
+    {
+
+    }
+    skr::Vector<uint8_t>* DRAMCache;
+    std::atomic_uint32_t* pUpdateCounter;
 };
 
 void GPUScene::AddEntity(skr::ecs::Entity entity)
@@ -164,6 +155,7 @@ void GPUScene::RequireUpload(skr::ecs::Entity entity, CPUTypeID component)
     cs.value().add_unique(component);
     if (!cs.already_exist())
         dirty_ents.add(entity);
+    dirty_comp_count += 1;
     dirty_mtx.unlock();
 }
 
@@ -241,7 +233,6 @@ void GPUScene::AdjustCoreBuffer(skr::render_graph::RenderGraph* graph)
         auto old_buffer = core_data.resize(new_capacity);
         scene_buffer = core_data.import_buffer(graph, u8"scene_buffer");
         
-        /*
         if (old_buffer && core_data.get_buffer())
         {
             // Import old buffer for copy source
@@ -254,7 +245,6 @@ void GPUScene::AdjustCoreBuffer(skr::render_graph::RenderGraph* graph)
             // Copy data from old to new buffer
             core_data.copy_segments(graph, old_buffer_handle, scene_buffer, existed_instances);
         }
-        */
     }
     else
     {
@@ -280,25 +270,30 @@ void GPUScene::ExecuteUpload(skr::render_graph::RenderGraph* graph)
         {
             RemoveEntityFromGPUScene remove;
             remove.pScene = this;
-            ecs_world->dispatch_task(remove, 512, remove_ents);
+            ecs_world->dispatch_task(remove, UINT32_MAX, remove_ents);
             remove_ents.clear();
         }
         if (!add_ents.is_empty())
         {
             AddEntityToGPUScene add;
             add.pScene = this;
-            ecs_world->dispatch_task(add, 512, add_ents);
+            ecs_world->dispatch_task(add, UINT32_MAX, add_ents);
             add_ents.clear();
         }
+        skr::Vector<uint8_t> DRAMCache;
+        std::atomic_uint32_t UploadCounter;
         if (!dirty_ents.is_empty())
         {
-            ScanGPUScene scan;
+            uploads.resize_unsafe(dirty_comp_count.load());
+            DRAMCache.resize_unsafe(upload_buffer->info->size);
+            ScanGPUScene scan(&DRAMCache, &UploadCounter);
             scan.pScene = this;
-            ecs_world->dispatch_task(scan, 512, dirty_ents);
+            ecs_world->dispatch_task(scan, UINT32_MAX, dirty_ents);
             dirty_ents.clear();
             dirties.clear();
         }
         skr::ecs::TaskScheduler::Get()->sync_all();
+        ::memcpy(upload_buffer->info->cpu_mapped_address, DRAMCache.data(), DRAMCache.size());
     }
 
 
@@ -383,9 +378,6 @@ GPUPageID GPUScene::AllocateComponentPage(GPUArchetypeID archetype_id, GPUCompon
 
 GPUSceneCustomIndex GPUScene::EncodeCustomIndex(GPUArchetypeID archetype_id, uint32_t entity_index_in_archetype)
 {
-    SKR_ASSERT(archetype_id < 1024); // 10 bits
-    SKR_ASSERT(entity_index_in_archetype < 16384); // 14 bits
-    
     uint32_t packed = (archetype_id & 0x3FF) | ((entity_index_in_archetype & 0x3FFF) << 10);
     return GPUSceneCustomIndex(packed);
 }

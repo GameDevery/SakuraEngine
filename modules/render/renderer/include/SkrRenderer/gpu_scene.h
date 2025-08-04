@@ -341,9 +341,9 @@ private:
         uint64_t data_size;  // 数据大小
     };
     CGPUBufferId upload_buffer = nullptr;
-    shared_atomic_mutex upload_mutex;
     skr::Vector<Upload> uploads;             // 记录拷贝操作的位置信息
     std::atomic<uint64_t> upload_cursor = 0; // upload_buffer 中的当前写入位置
+    std::atomic<uint64_t> dirty_comp_count = 0;
 
     // SparseUpload compute pipeline resources
     CGPUShaderLibraryId sparse_upload_shader = nullptr;
