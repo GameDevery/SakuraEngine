@@ -72,6 +72,11 @@ public:
     inline const skr::String& GetDisplayName() const { return display_name; }
     inline void SetDisplayName(const skr::String& name) { display_name = name; }
     inline EActorType GetActorType() const { return actor_type; }
+    skr::scene::ScaleComponent* GetScaleComponent() const;
+    skr::scene::PositionComponent* GetPositionComponent() const;
+    skr::scene::RotationComponent* GetRotationComponent() const;
+    skr::scene::TransformComponent* GetTransformComponent() const;
+    skr::GUID GetGUID() const { return guid; }
 
 protected:
     explicit Actor(EActorType type = EActorType::Default) SKR_NOEXCEPT;
@@ -133,9 +138,12 @@ private:
 
 class SKR_SCENE_API MeshActor : public Actor
 {
-public:
     friend class ActorManager;
+
+public:
     SKR_RC_IMPL();
+
+    ~MeshActor() SKR_NOEXCEPT;
 
 protected:
     MeshActor()
@@ -147,9 +155,12 @@ protected:
 // Actor for Skeletal Meshes
 class SKR_SCENE_API SkelMeshActor : public MeshActor
 {
-public:
     friend class ActorManager;
+
+public:
     SKR_RC_IMPL();
+
+    ~SkelMeshActor() SKR_NOEXCEPT override;
 
 protected:
     SkelMeshActor()

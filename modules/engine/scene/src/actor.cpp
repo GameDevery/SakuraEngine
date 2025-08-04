@@ -26,6 +26,7 @@ Actor::Actor(EActorType type) SKR_NOEXCEPT
               SkrZoneScopedN("Actor::Spawner::run");
               this->scene_entities.resize_zeroed(1);
               this->scene_entities[0] = Context.entities()[0];
+              SKR_LOG_INFO(u8"Actor {%s} created with entity: {%d}", this->GetDisplayName().c_str(), this->GetEntity());
           }
       }
 {
@@ -101,6 +102,47 @@ void Actor::DetachFromParent()
         skr::ActorManager::GetInstance().UpdateHierarchy(_parent, this, attach_rule);
         _parent = nullptr; // Clear parent reference
     }
+}
+
+skr::scene::ScaleComponent* Actor::GetScaleComponent() const
+{
+    auto entity = GetEntity();
+    if (entity != skr::ecs::Entity{ SUGOI_NULL_ENTITY })
+    {
+        return skr::ActorManager::GetInstance().scale_accessor.get(entity);
+    }
+    SKR_LOG_ERROR(u8"Actor {} has no valid entity to get ScaleComponent", display_name.c_str());
+    return nullptr;
+}
+skr::scene::PositionComponent* Actor::GetPositionComponent() const
+{
+    auto entity = GetEntity();
+    if (entity != skr::ecs::Entity{ SUGOI_NULL_ENTITY })
+    {
+        return skr::ActorManager::GetInstance().pos_accessor.get(entity);
+    }
+    SKR_LOG_ERROR(u8"Actor {} has no valid entity to get PositionComponent", display_name.c_str());
+    return nullptr;
+}
+skr::scene::RotationComponent* Actor::GetRotationComponent() const
+{
+    auto entity = GetEntity();
+    if (entity != skr::ecs::Entity{ SUGOI_NULL_ENTITY })
+    {
+        return skr::ActorManager::GetInstance().rot_accessor.get(entity);
+    }
+    SKR_LOG_ERROR(u8"Actor {} has no valid entity to get RotationComponent", display_name.c_str());
+    return nullptr;
+}
+skr::scene::TransformComponent* Actor::GetTransformComponent() const
+{
+    auto entity = GetEntity();
+    if (entity != skr::ecs::Entity{ SUGOI_NULL_ENTITY })
+    {
+        return skr::ActorManager::GetInstance().trans_accessor.get(entity);
+    }
+    SKR_LOG_ERROR(u8"Actor {} has no valid entity to get TransformComponent", display_name.c_str());
+    return nullptr;
 }
 
 /////////////////////
@@ -240,8 +282,6 @@ skr::RCWeak<Actor> ActorManager::GetRoot()
             [&](skr::ecs::ArchetypeBuilder& Builder) {
                 Builder.add_component<skr::scene::ChildrenComponent>()
                     .add_component<skr::scene::PositionComponent>()
-                    .add_component<skr::scene::RotationComponent>()
-                    .add_component<skr::scene::ScaleComponent>()
                     .add_component<skr::scene::TransformComponent>();
             },
             [&](skr::ecs::TaskContext& Context) {
@@ -250,6 +290,7 @@ skr::RCWeak<Actor> ActorManager::GetRoot()
                 root_actor.lock()->scene_entities.resize_zeroed(1);
                 root_actor.lock()->scene_entities[0] = Context.entities()[0];
                 root_actor.lock()->SetDisplayName(u8"Root Actor");
+                SKR_LOG_INFO(u8"Root actor created with entity: {%d}", root_actor.lock()->GetEntity());
             }
         };
     }

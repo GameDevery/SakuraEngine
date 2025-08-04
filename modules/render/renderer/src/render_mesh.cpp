@@ -22,12 +22,12 @@ void skr_render_mesh_initialize(skr_render_mesh_id render_mesh, skr_mesh_resourc
             ibv_c++;
         }
     }
-    
+
     // 2. do early reserve
     render_mesh->mesh_resource_id = mesh_resource;
     render_mesh->index_buffer_views.reserve(ibv_c);
     render_mesh->vertex_buffer_views.reserve(vbv_c);
-    
+
     // 3. fill sections
     for (uint32_t i = 0; i < mesh_resource->sections.size(); i++)
     {
@@ -48,7 +48,7 @@ void skr_render_mesh_initialize(skr_render_mesh_id render_mesh, skr_mesh_resourc
                 mesh_vbv.buffer = render_mesh->buffers[buffer_index];
                 mesh_vbv.offset = prim.vertex_buffers[j].offset;
                 mesh_vbv.stride = prim.vertex_buffers[j].stride;
-                SKR_LOG_INFO(u8"Mesh VBV %d: buffer %p, offset %d, stride %d", j, mesh_vbv.buffer, mesh_vbv.offset, mesh_vbv.stride);
+                // SKR_LOG_INFO(u8"Mesh VBV %d: buffer %p, offset %d, stride %d", j, mesh_vbv.buffer, mesh_vbv.offset, mesh_vbv.stride);
             }
             // 3.2 fill ibv
             const auto buffer_index = prim.index_buffer.buffer_index;
@@ -64,7 +64,7 @@ void skr_render_mesh_initialize(skr_render_mesh_id render_mesh, skr_mesh_resourc
             draw_cmd.material_index = prim.material_index;
         }
     }
-    
+
     // 4. construct blas
     if (UseRayTracing && (mesh_resource->primitives.size() > 0))
     {
@@ -72,10 +72,10 @@ void skr_render_mesh_initialize(skr_render_mesh_id render_mesh, skr_mesh_resourc
         for (auto primitive : mesh_resource->primitives)
         {
             auto pos_vb = primitive.vertex_buffers.find_if(
-                [](auto prim){ return prim.attribute == SKR_VERT_ATTRIB_POSITION; }
-            ).ptr();
+                                                      [](auto prim) { return prim.attribute == SKR_VERT_ATTRIB_POSITION; })
+                              .ptr();
             if (!pos_vb) continue;
-            
+
             CGPUAccelerationStructureGeometryDesc geom = {};
             geom.vertex_buffer = render_mesh->buffers[pos_vb->buffer_index];
             geom.vertex_offset = pos_vb->offset;

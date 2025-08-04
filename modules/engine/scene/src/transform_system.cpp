@@ -14,6 +14,7 @@ struct TransformJob
         builder.none<scene::ParentComponent>()
             .has<scene::PositionComponent>()
             .has<scene::TransformComponent>();
+
         builder.access(&TransformJob::children_accessor)
             .access(&TransformJob::postion_accessor)
             .access(&TransformJob::scale_accessor)
@@ -23,6 +24,8 @@ struct TransformJob
 
     void calculate(skr::ecs::Entity entity, const skr::scene::Transform& prev_transform)
     {
+        SKR_LOG_INFO(u8"Calculating transform for entity: {%d}", entity);
+
         auto pOptionalRotation = rotation_accessor.get(entity);
         auto pOptionalScale = scale_accessor.get(entity);
         const auto& Position = postion_accessor[entity];
@@ -32,11 +35,15 @@ struct TransformJob
         const bool scale_dirty = pOptionalScale ? pOptionalScale->get_dirty() : false;
         const bool dirty = position_dirty | rotation_dirty | scale_dirty;
         auto& transform = transform_accessor[entity];
+
+        // TODO: 当前的更新逻辑存在问题
+        // 1. 对于根节点，需要手动设置Position来触发更新，否则会默认初始化为0
+        // 2. 对于某些希望保持世界变换的节点更新逻辑没有照顾到
         if (dirty)
         {
             transform.set(
                 Position.get(),
-                pOptionalRotation ? skr::QuatF(pOptionalRotation->get()) : skr::QuatF(0, 0, 0, 0),
+                pOptionalRotation ? skr::QuatF(pOptionalRotation->get()) : skr::QuatF(0, 0, 0, 1),
                 pOptionalScale ? pOptionalScale->get() : skr_float3_t{ 1, 1, 1 });
             transform.set(prev_transform * transform.get());
 
