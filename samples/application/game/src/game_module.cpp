@@ -16,7 +16,7 @@
 
 #include "SkrRT/resource/resource_system.h"
 
-#include "SkrScene/transform_system.h"
+#include "SkrSceneCore/transform_system.h"
 #include "SkrRenderer/skr_renderer.h"
 #include "SkrRenderer/render_mesh.h"
 #include "SkrRenderer/render_effect.h"
@@ -45,7 +45,7 @@
 #include "SkrLua/skr_lua.h"
 // #include "SkrInspector/inspect_value.h" // FIXME. inspector
 
-#include "SkrScene/resources/scene_resource.h"
+#include "SkrSceneCore/resources/scene_resource.h"
 
 uint32_t backbuffer_index;
 extern void game_initialize_render_effects(SRendererId renderer, skr::render_graph::RenderGraph* renderGraph, skr_vfs_t* resource_vfs);

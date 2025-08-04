@@ -1,4 +1,4 @@
-#include "SkrScene/resources/scene_resource.h"
+#include "SkrSceneCore/resources/scene_resource.h"
 
 namespace skr::resource
 {

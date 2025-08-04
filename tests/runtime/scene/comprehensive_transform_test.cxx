@@ -6,16 +6,16 @@
 #include "SkrContainers/vector.hpp"
 #include "SkrRT/sugoi/storage.hpp"
 #include "SkrRT/sugoi/job.hpp"
-#include "SkrScene/transform_system.h"
+#include "SkrSceneCore/transform_system.h"
 #include "SkrSerde/json_serde.hpp"
 
 #include "SkrTestFramework/framework.hpp"
 
 // Test configuration - complex tree structure
 constexpr int ROOT_COUNT = 3;           // 3 root entities
-constexpr int LEVEL_1_PER_ROOT = 256;     // 4 children per root
+constexpr int LEVEL_1_PER_ROOT = 256;   // 4 children per root
 constexpr int LEVEL_2_PER_LEVEL1 = 8;   // 3 children per level-1 entity
-constexpr int LEVEL_3_PER_LEVEL2 = 256;   // 2 children per level-2 entity
+constexpr int LEVEL_3_PER_LEVEL2 = 256; // 2 children per level-2 entity
 
 // Define expected transforms for each level
 static const auto rootTranslation1 = skr_float3_t{ 10.0f, 5.0f, 0.0f };
@@ -72,15 +72,18 @@ const skr::TransformF level3TransformLocal{
     level3Scale
 };
 
-struct ComplexTransformTest {
-    struct SetupParams {
+struct ComplexTransformTest
+{
+    struct SetupParams
+    {
         int start_index;
         int count;
         const skr::Vector<sugoi_entity_t>* children_list;
     };
     SetupParams setupParams;
 
-    ComplexTransformTest() {
+    ComplexTransformTest()
+    {
         ::skr_log_set_level(SKR_LOG_LEVEL_WARN);
         ::skr_log_initialize_async_worker();
         storage = sugoiS_create();
@@ -91,12 +94,13 @@ struct ComplexTransformTest {
         scheduler.initialize(skr::task::scheudler_config_t());
         scheduler.bind();
         sugoiJ_bind_storage(storage);
-        
+
         // Calculate expected world transforms
         calculateExpectedTransforms();
     }
 
-    ~ComplexTransformTest() {
+    ~ComplexTransformTest()
+    {
         sugoiJ_unbind_storage(storage);
         skr::TransformSystem::Destroy(transform_system);
         sugoiS_release(storage);
@@ -104,34 +108,36 @@ struct ComplexTransformTest {
         ::skr_log_finalize_async_worker();
     }
 
-    void spawnEntities() {
+    void spawnEntities()
+    {
         SkrZoneScopedN("SpawnComplexHierarchy");
 
         // Create 3 root entities
         spawnRootEntities();
-        
+
         // Create level 1 entities (children of roots)
         spawnLevel1Entities();
-        
+
         // Create level 2 entities (grandchildren)
         spawnLevel2Entities();
-        
+
         // Create level 3 entities (great-grandchildren)
         spawnLevel3Entities();
-        
+
         // Setup parent-child relationships
         setupHierarchy();
-        
-        SKR_LOG_INFO(u8"Created complex hierarchy: %d roots, %d level1, %d level2, %d level3", 
-            ROOT_COUNT, 
+
+        SKR_LOG_INFO(u8"Created complex hierarchy: %d roots, %d level1, %d level2, %d level3",
+            ROOT_COUNT,
             ROOT_COUNT * LEVEL_1_PER_ROOT,
             ROOT_COUNT * LEVEL_1_PER_ROOT * LEVEL_2_PER_LEVEL1,
             ROOT_COUNT * LEVEL_1_PER_ROOT * LEVEL_2_PER_LEVEL1 * LEVEL_3_PER_LEVEL2);
     }
 
-    void spawnRootEntities() {
+    void spawnRootEntities()
+    {
         SkrZoneScopedN("SpawnRootEntities");
-        
+
         sugoi::EntitySpawner<skr::scene::RootComponent, SKR_SCENE_COMPONENTS> root_spawner;
         root_spawner(storage, ROOT_COUNT, [&](auto& view) {
             auto translations = sugoi::get_owned<skr::scene::PositionComponent>(view.view);
@@ -139,33 +145,40 @@ struct ComplexTransformTest {
             auto scales = sugoi::get_owned<skr::scene::ScaleComponent>(view.view);
             auto entities = sugoiV_get_entities(view.view);
 
-            for (uint32_t i = 0; i < view.count(); ++i) {
-                if (i == 0) {
+            for (uint32_t i = 0; i < view.count(); ++i)
+            {
+                if (i == 0)
+                {
                     translations[i].value = rootTranslation1;
                     rotations[i].euler = rootRotation1;
                     scales[i].value = rootScale1;
-                } else if (i == 1) {
+                }
+                else if (i == 1)
+                {
                     translations[i].value = rootTranslation2;
                     rotations[i].euler = rootRotation2;
                     scales[i].value = rootScale2;
-                } else {
+                }
+                else
+                {
                     translations[i].value = rootTranslation3;
                     rotations[i].euler = rootRotation3;
                     scales[i].value = rootScale3;
                 }
-                
+
                 root_entities.add(entities[i]);
                 SKR_LOG_INFO(u8"Root entity %d: %llu", i, entities[i]);
             }
         });
     }
 
-    void spawnLevel1Entities() {
+    void spawnLevel1Entities()
+    {
         SkrZoneScopedN("SpawnLevel1Entities");
-        
+
         const int total_level1 = ROOT_COUNT * LEVEL_1_PER_ROOT;
         sugoi::EntitySpawner<SKR_SCENE_COMPONENTS> level1_spawner;
-        
+
         level1_spawner(storage, total_level1, [&](auto& view) {
             auto translations = sugoi::get_owned<skr::scene::PositionComponent>(view.view);
             auto rotations = sugoi::get_owned<skr::scene::RotationComponent>(view.view);
@@ -173,9 +186,10 @@ struct ComplexTransformTest {
             auto parents = sugoi::get_owned<skr::scene::ParentComponent>(view.view);
             auto entities = sugoiV_get_entities(view.view);
 
-            for (uint32_t i = 0; i < view.count(); ++i) {
+            for (uint32_t i = 0; i < view.count(); ++i)
+            {
                 int root_index = i / LEVEL_1_PER_ROOT;
-                
+
                 translations[i].value = level1Translation;
                 rotations[i].euler = level1Rotation;
                 scales[i].value = level1Scale;
@@ -186,12 +200,13 @@ struct ComplexTransformTest {
         });
     }
 
-    void spawnLevel2Entities() {
+    void spawnLevel2Entities()
+    {
         SkrZoneScopedN("SpawnLevel2Entities");
-        
+
         const int total_level2 = ROOT_COUNT * LEVEL_1_PER_ROOT * LEVEL_2_PER_LEVEL1;
         sugoi::EntitySpawner<SKR_SCENE_COMPONENTS> level2_spawner;
-        
+
         level2_spawner(storage, total_level2, [&](auto& view) {
             auto translations = sugoi::get_owned<skr::scene::PositionComponent>(view.view);
             auto rotations = sugoi::get_owned<skr::scene::RotationComponent>(view.view);
@@ -199,9 +214,10 @@ struct ComplexTransformTest {
             auto parents = sugoi::get_owned<skr::scene::ParentComponent>(view.view);
             auto entities = sugoiV_get_entities(view.view);
 
-            for (uint32_t i = 0; i < view.count(); ++i) {
+            for (uint32_t i = 0; i < view.count(); ++i)
+            {
                 int level1_index = i / LEVEL_2_PER_LEVEL1;
-                
+
                 translations[i].value = level2Translation;
                 rotations[i].euler = level2Rotation;
                 scales[i].value = level2Scale;
@@ -212,12 +228,13 @@ struct ComplexTransformTest {
         });
     }
 
-    void spawnLevel3Entities() {
+    void spawnLevel3Entities()
+    {
         SkrZoneScopedN("SpawnLevel3Entities");
-        
+
         const int total_level3 = ROOT_COUNT * LEVEL_1_PER_ROOT * LEVEL_2_PER_LEVEL1 * LEVEL_3_PER_LEVEL2;
         sugoi::EntitySpawner<SKR_SCENE_COMPONENTS> level3_spawner;
-        
+
         level3_spawner(storage, total_level3, [&](auto& view) {
             auto translations = sugoi::get_owned<skr::scene::PositionComponent>(view.view);
             auto rotations = sugoi::get_owned<skr::scene::RotationComponent>(view.view);
@@ -225,9 +242,10 @@ struct ComplexTransformTest {
             auto parents = sugoi::get_owned<skr::scene::ParentComponent>(view.view);
             auto entities = sugoiV_get_entities(view.view);
 
-            for (uint32_t i = 0; i < view.count(); ++i) {
+            for (uint32_t i = 0; i < view.count(); ++i)
+            {
                 int level2_index = i / LEVEL_3_PER_LEVEL2;
-                
+
                 translations[i].value = level3Translation;
                 rotations[i].euler = level3Rotation;
                 scales[i].value = level3Scale;
@@ -238,25 +256,27 @@ struct ComplexTransformTest {
         });
     }
 
-    void setupHierarchy() {
+    void setupHierarchy()
+    {
         SkrZoneScopedN("SetupHierarchy");
-        
+
         // Setup children for root entities
         setupChildrenForRoots();
-        
-        // Setup children for level 1 entities  
+
+        // Setup children for level 1 entities
         setupChildrenForLevel1();
-        
+
         // Setup children for level 2 entities
         setupChildrenForLevel2();
     }
 
-    void setupChildrenForRoots() {
+    void setupChildrenForRoots()
+    {
         auto setupQuery = storage->new_query()
-                            .ReadWriteAny<skr::scene::ChildrenComponent>()
-                            .ReadAll<skr::scene::RootComponent>()
-                            .commit()
-                            .value();
+                              .ReadWriteAny<skr::scene::ChildrenComponent>()
+                              .ReadAll<skr::scene::RootComponent>()
+                              .commit()
+                              .value();
         SKR_DEFER({ storage->destroy_query(setupQuery); });
 
         storage->query(setupQuery, +[](void* userdata, sugoi_chunk_view_t* view) -> void {
@@ -278,16 +298,16 @@ struct ComplexTransformTest {
                         break;
                     }
                 }
-            }
-        }, this);
+            } }, this);
     }
 
-    void setupChildrenForLevel1() {
+    void setupChildrenForLevel1()
+    {
         auto setupQuery = storage->new_query()
-                            .ReadWriteAny<skr::scene::ChildrenComponent>()
-                            .ReadAll<skr::scene::ParentComponent>()
-                            .commit()
-                            .value();
+                              .ReadWriteAny<skr::scene::ChildrenComponent>()
+                              .ReadAll<skr::scene::ParentComponent>()
+                              .commit()
+                              .value();
         SKR_DEFER({ storage->destroy_query(setupQuery); });
 
         storage->query(setupQuery, +[](void* userdata, sugoi_chunk_view_t* view) -> void {
@@ -309,16 +329,16 @@ struct ComplexTransformTest {
                         break;
                     }
                 }
-            }
-        }, this);
+            } }, this);
     }
 
-    void setupChildrenForLevel2() {
+    void setupChildrenForLevel2()
+    {
         auto setupQuery = storage->new_query()
-                            .ReadWriteAny<skr::scene::ChildrenComponent>()
-                            .ReadAll<skr::scene::ParentComponent>()
-                            .commit()
-                            .value();
+                              .ReadWriteAny<skr::scene::ChildrenComponent>()
+                              .ReadAll<skr::scene::ParentComponent>()
+                              .commit()
+                              .value();
         SKR_DEFER({ storage->destroy_query(setupQuery); });
 
         storage->query(setupQuery, +[](void* userdata, sugoi_chunk_view_t* view) -> void {
@@ -340,38 +360,44 @@ struct ComplexTransformTest {
                         break;
                     }
                 }
-            }
-        }, this);
+            } }, this);
     }
 
-    void calculateExpectedTransforms() {
+    void calculateExpectedTransforms()
+    {
         SkrZoneScopedN("CalculateExpectedTransforms");
-        
+
         // Root transforms are already set
         expectedRootTransforms.add(rootTransform1);
         expectedRootTransforms.add(rootTransform2);
         expectedRootTransforms.add(rootTransform3);
-        
+
         // Calculate level 1 expected transforms
-        for (int i = 0; i < ROOT_COUNT; ++i) {
+        for (int i = 0; i < ROOT_COUNT; ++i)
+        {
             skr::TransformF expected = expectedRootTransforms[i] * level1TransformLocal;
-            for (int j = 0; j < LEVEL_1_PER_ROOT; ++j) {
+            for (int j = 0; j < LEVEL_1_PER_ROOT; ++j)
+            {
                 expectedLevel1Transforms.add(expected);
             }
         }
-        
+
         // Calculate level 2 expected transforms
-        for (int i = 0; i < expectedLevel1Transforms.size(); ++i) {
+        for (int i = 0; i < expectedLevel1Transforms.size(); ++i)
+        {
             skr::TransformF expected = expectedLevel1Transforms[i] * level2TransformLocal;
-            for (int j = 0; j < LEVEL_2_PER_LEVEL1; ++j) {
+            for (int j = 0; j < LEVEL_2_PER_LEVEL1; ++j)
+            {
                 expectedLevel2Transforms.add(expected);
             }
         }
-        
+
         // Calculate level 3 expected transforms
-        for (int i = 0; i < expectedLevel2Transforms.size(); ++i) {
+        for (int i = 0; i < expectedLevel2Transforms.size(); ++i)
+        {
             skr::TransformF expected = expectedLevel2Transforms[i] * level3TransformLocal;
-            for (int j = 0; j < LEVEL_3_PER_LEVEL2; ++j) {
+            for (int j = 0; j < LEVEL_3_PER_LEVEL2; ++j)
+            {
                 expectedLevel3Transforms.add(expected);
             }
         }
@@ -385,16 +411,17 @@ struct ComplexTransformTest {
     skr::Vector<sugoi_entity_t> level1_entities;
     skr::Vector<sugoi_entity_t> level2_entities;
     skr::Vector<sugoi_entity_t> level3_entities;
-    
+
     skr::Vector<skr::TransformF> expectedRootTransforms;
     skr::Vector<skr::TransformF> expectedLevel1Transforms;
     skr::Vector<skr::TransformF> expectedLevel2Transforms;
     skr::Vector<skr::TransformF> expectedLevel3Transforms;
 };
 
-TEST_CASE_METHOD(ComplexTransformTest, "Complex Transform Hierarchy Update") {
+TEST_CASE_METHOD(ComplexTransformTest, "Complex Transform Hierarchy Update")
+{
     SkrZoneScopedN("ComplexTransformHierarchyTest");
-    
+
     // Update the transform system
     transform_system->update();
 
@@ -412,50 +439,61 @@ TEST_CASE_METHOD(ComplexTransformTest, "Complex Transform Hierarchy Update") {
 
     storage->getScheduler()
         ->schedule_ecs_job(
-            checkQuery, 1, 
-            +[](void* userdata, sugoi_query_t* query, sugoi_chunk_view_t* view, sugoi_type_index_t* localTypes, EIndex entityIndex) -> void {
+            checkQuery, 1, +[](void* userdata, sugoi_query_t* query, sugoi_chunk_view_t* view, sugoi_type_index_t* localTypes, EIndex entityIndex) -> void {
                 SkrZoneScopedN("ComplexTransformTestBody");
                 auto _this = (ComplexTransformTest*)userdata;
                 const auto entities = sugoiV_get_entities(view);
                 auto transforms = sugoi::get_owned<const skr::scene::TransformComponent>(view);
 
-                for (uint32_t i = 0; i < view->count; i++) {
+                for (uint32_t i = 0; i < view->count; i++)
+                {
                     const auto& actual_transform = transforms[i].value;
                     skr::TransformF expected_transform;
                     bool found_expected = false;
 
                     // Find which level this entity belongs to and get expected transform
-                    for (int j = 0; j < _this->root_entities.size(); ++j) {
-                        if (entities[i] == _this->root_entities[j]) {
+                    for (int j = 0; j < _this->root_entities.size(); ++j)
+                    {
+                        if (entities[i] == _this->root_entities[j])
+                        {
                             expected_transform = _this->expectedRootTransforms[j];
                             found_expected = true;
                             break;
                         }
                     }
-                    
-                    if (!found_expected) {
-                        for (int j = 0; j < _this->level1_entities.size(); ++j) {
-                            if (entities[i] == _this->level1_entities[j]) {
+
+                    if (!found_expected)
+                    {
+                        for (int j = 0; j < _this->level1_entities.size(); ++j)
+                        {
+                            if (entities[i] == _this->level1_entities[j])
+                            {
                                 expected_transform = _this->expectedLevel1Transforms[j];
                                 found_expected = true;
                                 break;
                             }
                         }
                     }
-                    
-                    if (!found_expected) {
-                        for (int j = 0; j < _this->level2_entities.size(); ++j) {
-                            if (entities[i] == _this->level2_entities[j]) {
+
+                    if (!found_expected)
+                    {
+                        for (int j = 0; j < _this->level2_entities.size(); ++j)
+                        {
+                            if (entities[i] == _this->level2_entities[j])
+                            {
                                 expected_transform = _this->expectedLevel2Transforms[j];
                                 found_expected = true;
                                 break;
                             }
                         }
                     }
-                    
-                    if (!found_expected) {
-                        for (int j = 0; j < _this->level3_entities.size(); ++j) {
-                            if (entities[i] == _this->level3_entities[j]) {
+
+                    if (!found_expected)
+                    {
+                        for (int j = 0; j < _this->level3_entities.size(); ++j)
+                        {
+                            if (entities[i] == _this->level3_entities[j])
+                            {
                                 expected_transform = _this->expectedLevel3Transforms[j];
                                 found_expected = true;
                                 break;
@@ -463,48 +501,58 @@ TEST_CASE_METHOD(ComplexTransformTest, "Complex Transform Hierarchy Update") {
                         }
                     }
 
-                    if (found_expected) {
+                    if (found_expected)
+                    {
                         CHECK(skr::all(nearly_equal(expected_transform.position, actual_transform.position)));
                         CHECK(skr::all(nearly_equal(expected_transform.scale, actual_transform.scale)));
                         CHECK(skr::all(nearly_equal(expected_transform.rotation, actual_transform.rotation)));
-                    } else {
+                    }
+                    else
+                    {
                         SKR_LOG_WARN(u8"Entity %llu not found in expected transform lists", entities[i]);
                     }
                 }
             },
-            this, nullptr, nullptr, nullptr
-        )
+            this,
+            nullptr,
+            nullptr,
+            nullptr)
         .wait(true);
 
     SKR_LOG_INFO(u8"Complex transform verification completed");
 }
 
 // Test edge cases with missing components
-TEST_CASE_METHOD(ComplexTransformTest, "Transform Missing Components") {
+TEST_CASE_METHOD(ComplexTransformTest, "Transform Missing Components")
+{
     SkrZoneScopedN("TransformMissingComponents");
-    
+
     // Create entity with only TransformComponent and RootComponent (missing Translation/Rotation/Scale)
     sugoi::EntitySpawner<skr::scene::RootComponent, skr::scene::TransformComponent> minimal_spawner;
     sugoi_entity_t minimal_entity = SUGOI_NULL_ENTITY;
-    
+
     minimal_spawner(storage, 1, [&](auto& view) {
         minimal_entity = sugoiV_get_entities(view.view)[0];
     });
-    
+
     // Update transform system
     transform_system->update();
-    
+
     // Verify minimal entity has identity transform
     auto minimal_query = storage->new_query()
-                           .ReadAll<skr::scene::TransformComponent>()
-                           .ReadAll<skr::scene::RootComponent>()
-                           .commit()
-                           .value();
+                             .ReadAll<skr::scene::TransformComponent>()
+                             .ReadAll<skr::scene::RootComponent>()
+                             .commit()
+                             .value();
     SKR_DEFER({ storage->destroy_query(minimal_query); });
-    
+
     bool minimal_verified = false;
-    struct { sugoi_entity_t entity; bool* verified; } test_data = { minimal_entity, &minimal_verified };
-    
+    struct
+    {
+        sugoi_entity_t entity;
+        bool* verified;
+    } test_data = { minimal_entity, &minimal_verified };
+
     storage->query(minimal_query, +[](void* userdata, sugoi_chunk_view_t* view) -> void {
         auto data = (decltype(test_data)*)userdata;
         auto entities = sugoiV_get_entities(view);
@@ -524,9 +572,7 @@ TEST_CASE_METHOD(ComplexTransformTest, "Transform Missing Components") {
                 *(data->verified) = true;
                 break;
             }
-        }
-    }, &test_data);
-    
+        } }, &test_data);
+
     CHECK(minimal_verified);
 }
-

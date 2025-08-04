@@ -6,11 +6,10 @@
 #include "SkrGraphics/api.h"
 #include "SkrGraphics/cgpux.h"
 
-
 #include "SkrRT/sugoi/sugoi.h"
 
 #include "SkrRenderGraph/frontend/render_graph.hpp"
-#include "SkrScene/transform_system.h"
+#include "SkrSceneCore/transform_system.h"
 
 #include "forward_pass.hpp"
 #include "rfx_mesh.hpp"
@@ -134,7 +133,7 @@ skr_primitive_draw_packet_t RenderEffectForward::produce_draw_packets(const skr_
     skr_primitive_draw_packet_t packet = {};
     // 0. only produce for forward pass
     if (strcmp((const char*)pass->identity(), (const char*)forward_pass_name) != 0) return {};
-    
+
     // 1. calculate primitive count
     uint32_t primitiveCount = 0;
     auto counterF = [&](sugoi_chunk_view_t* r_cv) {
@@ -194,7 +193,8 @@ skr_primitive_draw_packet_t RenderEffectForward::produce_draw_packets(const skr_
             //SKR_LOG_DEBUG(u8"batch: %d -> %d", g_cv->start, g_cv->count);
             const auto l2ws = sugoi::get_component_ro<skr::TransformComponent>(g_cv);
             const auto translations = sugoi::get_component_ro<skr::PositionComponent>(g_cv);
-            const auto rotations = sugoi::get_component_ro<skr::RotationComponent>(g_cv);(void)rotations;
+            const auto rotations = sugoi::get_component_ro<skr::RotationComponent>(g_cv);
+            (void)rotations;
             const auto scales = sugoi::get_component_ro<skr::ScaleComponent>(g_cv);
             // 3.1 calculate model matrices
             {
@@ -204,8 +204,7 @@ skr_primitive_draw_packet_t RenderEffectForward::produce_draw_packets(const skr_
 #else
                 const size_t batch_size = 64u;
 #endif
-                skr::parallel_for(translations, translations + g_cv->count, batch_size, 
-                [translations, rotations, scales, l2ws, this] (auto&& begin, auto&& end){
+                skr::parallel_for(translations, translations + g_cv->count, batch_size, [translations, rotations, scales, l2ws, this](auto&& begin, auto&& end) {
                     SkrZoneScopedN("ModelMatrixJob");
                 
                     const auto base_cursor = begin - translations;
@@ -231,113 +230,112 @@ skr_primitive_draw_packet_t RenderEffectForward::produce_draw_packets(const skr_
                             const rtm::matrix4x4f matrix = rtm::matrix_cast(rtm::matrix_from_qvv(transform));
                             model_matrix = *(skr_float4x4_t*)&matrix;
                         }
-                    }
-                }, 9u); // if we are under 8 * 64/256 ents, use inplace sync compute
+                    } }, 9u); // if we are under 8 * 64/256 ents, use inplace sync compute
             }
             // 3.2 fill draw calls
             {
-            SkrZoneScopedN("RecordDrawList");
-            for (uint32_t g_idx = 0; g_idx < g_cv->count; g_idx++, r_idx++)
-            {
-                const auto& model_matrix = model_matrices[g_idx];
-                // drawcall
-                auto status = meshes[r_idx].mesh_resource.get_status();
-                if (status == SKR_LOADING_STATUS_INSTALLED)
+                SkrZoneScopedN("RecordDrawList");
+                for (uint32_t g_idx = 0; g_idx < g_cv->count; g_idx++, r_idx++)
                 {
-                    auto resourcePtr = (skr_mesh_resource_t*)meshes[r_idx].mesh_resource.get_ptr();
-                    auto renderMesh = resourcePtr->render_mesh;
+                    const auto& model_matrix = model_matrices[g_idx];
+                    // drawcall
+                    auto status = meshes[r_idx].mesh_resource.get_status();
+                    if (status == SKR_LOADING_STATUS_INSTALLED)
+                    {
+                        auto resourcePtr = (skr_mesh_resource_t*)meshes[r_idx].mesh_resource.get_ptr();
+                        auto renderMesh = resourcePtr->render_mesh;
 
-                    // early resolve all materials
-                    for (auto& material : resourcePtr->materials)
-                    {
-                        material.resolve(true, nullptr);
-                    }
-                    bool materials_ready = true;
-                    for (const auto& material : resourcePtr->materials)
-                    {
-                        if (!material.is_resolved())
+                        // early resolve all materials
+                        for (auto& material : resourcePtr->materials)
                         {
-                            materials_ready = false;
-                            break;
-                        } 
-                    }
-                    if (!materials_ready) continue;
-
-                    // record draw calls
-                    const auto& cmds = renderMesh->primitive_commands;
-                    const auto& materials = resourcePtr->materials;
-                    if(anims && !anims->vbs.empty())
-                    {
-                        for (size_t i = 0; i < resourcePtr->primitives.size(); ++i)
+                            material.resolve(true, nullptr);
+                        }
+                        bool materials_ready = true;
+                        for (const auto& material : resourcePtr->materials)
                         {
-                            auto& cmd = cmds[i];
-                            CGPURenderPipelineId proper_pipeline = pipeline;
-                            CGPUXBindTableId proper_bind_table = nullptr;
-                            if (materials.size())
+                            if (!material.is_resolved())
                             {
-                                const auto material = materials[cmd.material_index].get_ptr();
-                                // TODO: Add multi-pass
-                                const auto& pass = material->installed_passes[0];
-                                SKR_ASSERT(pass.pso && "Material not ready! (no PSO)");
-                                proper_pipeline = pass.pso;
-                                proper_bind_table = pass.bind_table;
+                                materials_ready = false;
+                                break;
                             }
-                            auto& push_const = push_constants.add_default().ref();
-                            push_const.model = model_matrix;
-                            auto& drawcall = mesh_drawcalls.add_default().ref();
-                            drawcall.pipeline = proper_pipeline;
-                            drawcall.bind_table = proper_bind_table;
-                            drawcall.push_const_name = push_constants_name;
-                            drawcall.push_const = (const uint8_t*)(&push_const);
-                            drawcall.index_buffer = *cmd.ibv;
-                            drawcall.vertex_buffers = anims[r_idx].primitives[i].views.data();
-                            drawcall.vertex_buffer_count = (uint32_t)anims[r_idx].primitives[i].views.size();
-                            dc_idx++;
+                        }
+                        if (!materials_ready) continue;
+
+                        // record draw calls
+                        const auto& cmds = renderMesh->primitive_commands;
+                        const auto& materials = resourcePtr->materials;
+                        if (anims && !anims->vbs.empty())
+                        {
+                            for (size_t i = 0; i < resourcePtr->primitives.size(); ++i)
+                            {
+                                auto& cmd = cmds[i];
+                                CGPURenderPipelineId proper_pipeline = pipeline;
+                                CGPUXBindTableId proper_bind_table = nullptr;
+                                if (materials.size())
+                                {
+                                    const auto material = materials[cmd.material_index].get_ptr();
+                                    // TODO: Add multi-pass
+                                    const auto& pass = material->installed_passes[0];
+                                    SKR_ASSERT(pass.pso && "Material not ready! (no PSO)");
+                                    proper_pipeline = pass.pso;
+                                    proper_bind_table = pass.bind_table;
+                                }
+                                auto& push_const = push_constants.add_default().ref();
+                                push_const.model = model_matrix;
+                                auto& drawcall = mesh_drawcalls.add_default().ref();
+                                drawcall.pipeline = proper_pipeline;
+                                drawcall.bind_table = proper_bind_table;
+                                drawcall.push_const_name = push_constants_name;
+                                drawcall.push_const = (const uint8_t*)(&push_const);
+                                drawcall.index_buffer = *cmd.ibv;
+                                drawcall.vertex_buffers = anims[r_idx].primitives[i].views.data();
+                                drawcall.vertex_buffer_count = (uint32_t)anims[r_idx].primitives[i].views.size();
+                                dc_idx++;
+                            }
+                        }
+                        else
+                        {
+                            for (auto&& cmd : cmds)
+                            {
+                                CGPURenderPipelineId proper_pipeline = pipeline;
+                                CGPUXBindTableId proper_bind_table = nullptr;
+                                if (materials.size())
+                                {
+                                    const auto material = materials[cmd.material_index].get_ptr();
+                                    // TODO: Add multi-pass
+                                    const auto& pass = material->installed_passes[0];
+                                    SKR_ASSERT(pass.pso && "Material not ready! (no PSO)");
+                                    proper_pipeline = pass.pso;
+                                    proper_bind_table = pass.bind_table;
+                                }
+                                auto& push_const = push_constants.add_default().ref();
+                                push_const.model = model_matrix;
+                                auto& drawcall = mesh_drawcalls.add_default().ref();
+                                drawcall.pipeline = proper_pipeline;
+                                drawcall.bind_table = proper_bind_table;
+                                drawcall.push_const_name = push_constants_name;
+                                drawcall.push_const = (const uint8_t*)(&push_const);
+                                drawcall.index_buffer = *cmd.ibv;
+                                drawcall.vertex_buffers = cmd.vbvs.data();
+                                drawcall.vertex_buffer_count = (uint32_t)cmd.vbvs.size();
+                                dc_idx++;
+                            }
                         }
                     }
-                    else 
+                    else
                     {
-                        for (auto&& cmd : cmds)
-                        {
-                            CGPURenderPipelineId proper_pipeline = pipeline;
-                            CGPUXBindTableId proper_bind_table = nullptr;
-                            if (materials.size())
-                            {
-                                const auto material = materials[cmd.material_index].get_ptr();
-                                // TODO: Add multi-pass
-                                const auto& pass = material->installed_passes[0];
-                                SKR_ASSERT(pass.pso && "Material not ready! (no PSO)");
-                                proper_pipeline = pass.pso;
-                                proper_bind_table = pass.bind_table;
-                            }
-                            auto& push_const = push_constants.add_default().ref();
-                            push_const.model = model_matrix;
-                            auto& drawcall = mesh_drawcalls.add_default().ref();
-                            drawcall.pipeline = proper_pipeline;
-                            drawcall.bind_table = proper_bind_table;
-                            drawcall.push_const_name = push_constants_name;
-                            drawcall.push_const = (const uint8_t*)(&push_const);
-                            drawcall.index_buffer = *cmd.ibv;
-                            drawcall.vertex_buffers = cmd.vbvs.data();
-                            drawcall.vertex_buffer_count = (uint32_t)cmd.vbvs.size();
-                            dc_idx++;
-                        }
+                        auto& push_const = push_constants.add_default().ref();
+                        push_const.model = model_matrix;
+                        auto& drawcall = mesh_drawcalls.add_default().ref();
+                        drawcall.pipeline = pipeline;
+                        drawcall.push_const_name = push_constants_name;
+                        drawcall.push_const = (const uint8_t*)(&push_const);
+                        drawcall.index_buffer = ibv;
+                        drawcall.vertex_buffers = vbvs;
+                        drawcall.vertex_buffer_count = 5;
+                        dc_idx++;
                     }
                 }
-                else
-                {
-                    auto& push_const = push_constants.add_default().ref();
-                    push_const.model = model_matrix;
-                    auto& drawcall = mesh_drawcalls.add_default().ref();
-                    drawcall.pipeline = pipeline;
-                    drawcall.push_const_name = push_constants_name;
-                    drawcall.push_const = (const uint8_t*)(&push_const);
-                    drawcall.index_buffer = ibv;
-                    drawcall.vertex_buffers = vbvs;
-                    drawcall.vertex_buffer_count = 5;
-                    dc_idx++;
-                }
-            }
             }
         };
         sugoiS_batch(storage, unbatched_g_ents, r_cv->count, SUGOI_LAMBDA(gBatchCallback));
@@ -397,7 +395,8 @@ void RenderEffectForward::prepare_geometry_resources(SRendererId renderer)
     cgpu_cmd_transfer_buffer_to_buffer(cpy_cmd, &vb_cpy);
     {
         memcpy((char8_t*)upload_buffer->info->cpu_mapped_address + sizeof(CubeGeometry),
-        CubeGeometry::g_Indices, sizeof(CubeGeometry::g_Indices));
+            CubeGeometry::g_Indices,
+            sizeof(CubeGeometry::g_Indices));
     }
     CGPUBufferToBufferTransfer ib_cpy = {};
     ib_cpy.dst = index_buffer;

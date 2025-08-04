@@ -1,11 +1,12 @@
 #include "SkrCore/log.h"
 #include "SkrContainers/vector.hpp"
-#include "SkrScene/transform_system.h"
+#include "SkrSceneCore/transform_system.h"
 #include "SkrSerde/json_serde.hpp"
 
 #include "SkrTestFramework/framework.hpp"
 
-struct SceneSerdeTests {
+struct SceneSerdeTests
+{
 protected:
     SceneSerdeTests()
     {
@@ -14,7 +15,8 @@ protected:
 };
 
 template <typename T>
-struct TestSceneType {
+struct TestSceneType
+{
     TestSceneType(T value)
         : value(value)
     {
@@ -47,7 +49,7 @@ struct TestSceneType {
 TEST_CASE_METHOD(SceneSerdeTests, "json")
 {
     TestSceneType<skr::scene::ScaleComponent>(skr::scene::ScaleComponent(1.0, 2.0, 3.0));
-    TestSceneType<skr::scene::ScaleComponent>(skr::scene::ScaleComponent(5.f, 4.f, 3.f ));
+    TestSceneType<skr::scene::ScaleComponent>(skr::scene::ScaleComponent(5.f, 4.f, 3.f));
     TestSceneType<skr::scene::PositionComponent>(skr::scene::PositionComponent(15.f, 42.f, 34.f));
     TestSceneType<skr::scene::PositionComponent>(skr::scene::PositionComponent(5.f, 4.f, 3.f));
     TestSceneType<skr::scene::RotationComponent>(skr::scene::RotationComponent(5.f, 4.f, 3.f));

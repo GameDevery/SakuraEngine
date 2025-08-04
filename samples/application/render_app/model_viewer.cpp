@@ -6,7 +6,7 @@
 #include "SkrTask/fib_task.hpp"
 #include "SkrRT/resource/resource_system.h"
 #include "SkrRT/resource/local_resource_registry.hpp"
-#include "SkrScene/scene_components.h"
+#include "SkrSceneCore/scene_components.h"
 #include "SkrSystem/system_app.h"
 
 #include "SkrToolCore/cook_system/cook_system.hpp"
@@ -30,7 +30,7 @@ struct VirtualProject : skd::SProject
     {
         if (MetaDatabase.contains(uri))
         {
-            content = MetaDatabase[uri];   
+            content = MetaDatabase[uri];
             return true;
         }
         return false;
@@ -54,11 +54,11 @@ struct VirtualProject : skd::SProject
         writer.Key(u8"assets");
         skr::json_write(&writer, MetaDatabase);
         writer.EndObject();
-        
+
         // Write to model_viewer.project file
         const auto project_path = skr::fs::current_directory() / u8"model_viewer.project";
         auto json_str = writer.Write();
-        
+
         if (skr::fs::File::write_all_text(project_path, json_str.view()))
             SKR_LOG_INFO(u8"[ModelViewer] Project saved to: %s", project_path.c_str());
         else
@@ -68,7 +68,7 @@ struct VirtualProject : skd::SProject
     void LoadFromDisk()
     {
         const auto project_path = skr::fs::current_directory() / u8"model_viewer.project";
-        
+
         skr::String json_content;
         if (skr::fs::File::read_all_text(project_path, json_content))
         {
@@ -78,8 +78,9 @@ struct VirtualProject : skd::SProject
             reader.Key(u8"assets");
             {
                 skr::json_read(&reader, MetaDatabase);
-                SKR_LOG_INFO(u8"[ModelViewer] Project loaded from: %s, %zu assets", 
-                    project_path.c_str(), MetaDatabase.size());
+                SKR_LOG_INFO(u8"[ModelViewer] Project loaded from: %s, %zu assets",
+                    project_path.c_str(),
+                    MetaDatabase.size());
             }
             reader.EndObject();
         }
@@ -91,7 +92,7 @@ struct VirtualProject : skd::SProject
         }
     }
 
-    skr::ParallelFlatHashMap<skd::URI, skr::String, skr::Hash<skd::URI>> MetaDatabase;  
+    skr::ParallelFlatHashMap<skd::URI, skr::String, skr::Hash<skd::URI>> MetaDatabase;
 };
 
 struct ModelViewerModule : public skr::IDynamicModule
@@ -100,7 +101,6 @@ public:
     ModelViewerModule()
         : world(scheduler)
     {
-
     }
     virtual void on_load(int argc, char8_t** argv) override;
     virtual int main_module_exec(int argc, char8_t** argv) override;
@@ -120,7 +120,7 @@ protected:
     skr::task::scheduler_t scheduler;
     VirtualProject project;
     SRenderDeviceId render_device = nullptr;
-    
+
     skr::SP<skr::JobQueue> job_queue = nullptr;
     skr::io::IRAMService* ram_service = nullptr;
     skr::io::IVRAMService* vram_service = nullptr;
@@ -135,9 +135,9 @@ protected:
 
     // Compute pipeline resources for debug rendering
     CGPUShaderLibraryId compute_shader = nullptr;
-    CGPURootSignatureId root_signature = nullptr; 
+    CGPURootSignatureId root_signature = nullptr;
     CGPUComputePipelineId compute_pipeline = nullptr;
-    
+
     // RenderGraph and swapchain for rendering
     CGPUSwapChainId swapchain = nullptr;
 };
@@ -162,14 +162,14 @@ void ModelViewerModule::on_load(int argc, char8_t** argv)
     skr::String projectName = u8"ModelViewer";
     skr::String rootPath = skr::fs::current_directory().string().c_str();
     project.OpenProject(u8"ModelViewer", rootPath.c_str(), projectConfig);
-    
+
     // Load existing project data from disk
     project.LoadFromDisk();
 
     // initialize resource & asset system
     // these two systems co-works well like producers & consumers
     // we can add resources as dependencies for one specific asset, e.g.:
-    // MeshAsset[id0] depends MaterialResource[id1-4] 
+    // MeshAsset[id0] depends MaterialResource[id1-4]
     // then it's output resource:
     // MeshResource[id0] depends MaterialResource[id1-4]
     // When we load AsyncResource<MeshResource>[id0] with resource system, the materials will be loaded too!
@@ -178,7 +178,7 @@ void ModelViewerModule::on_load(int argc, char8_t** argv)
         // resources are cooked runtime-data, i.e. DXT textures, Optimized meshes, etc.
         InitializeReosurceSystem();
 
-        // assets are 'raw' source files, i.e. GLTF model, PNG image, etc. 
+        // assets are 'raw' source files, i.e. GLTF model, PNG image, etc.
         InitializeAssetSystem();
     }
 
@@ -211,7 +211,7 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
 
     struct CloseListener : public skr::ISystemEventHandler
     {
-        void handle_event(const SkrSystemEvent& event) SKR_NOEXCEPT 
+        void handle_event(const SkrSystemEvent& event) SKR_NOEXCEPT
         {
             if (event.window.type == SKR_SYSTEM_EVENT_WINDOW_CLOSE_REQUESTED)
                 want_exit = true;
@@ -219,7 +219,7 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
         bool want_exit = false;
     } close_listener;
     render_app->get_event_queue()->add_handler(&close_listener);
-    
+
     // Create compute pipeline for debug rendering
     CreateComputePipeline();
 
@@ -228,11 +228,8 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
         .render_device = render_device,
         .core_data_types = {
             { sugoi_id_of<GPUSceneObjectToWorld>::get(), 0 },
-            { sugoi_id_of<GPUSceneInstanceColor>::get(), 1 }
-        },
-        .additional_data_types = {
-            { sugoi_id_of<GPUSceneInstanceEmission>::get(), 2 }
-        }
+            { sugoi_id_of<GPUSceneInstanceColor>::get(), 1 } },
+        .additional_data_types = { { sugoi_id_of<GPUSceneInstanceEmission>::get(), 2 } }
     };
     GPUScene.Initialize(render_device->get_cgpu_device(), cfg);
     CreateEntities(render_app->render_graph());
@@ -257,7 +254,7 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
         // Simple render loop using compute shader to fill screen red
         const auto screen_width = static_cast<uint32_t>(window_config.size.x);
         const auto screen_height = static_cast<uint32_t>(window_config.size.y);
-        
+
         // Calculate dispatch groups for 16x16 kernel
         const uint32_t group_count_x = (screen_width + 15) / 16;
         const uint32_t group_count_y = (screen_height + 15) / 16;
@@ -272,9 +269,8 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
                     .extent(screen_width, screen_height)
                     .format(CGPU_FORMAT_R8G8B8A8_UNORM)
                     .allow_readwrite();
-            }
-        );
-        
+            });
+
         // Add compute pass to fill screen with red
         render_graph->add_compute_pass(
             [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::ComputePassBuilder& builder) {
@@ -285,30 +281,30 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
             },
             [=, this](skr::render_graph::RenderGraph& g, skr::render_graph::ComputePassContext& ctx) {
                 // Push constants
-                struct SceneDebugConstants {
+                struct SceneDebugConstants
+                {
                     float screen_width;
                     float screen_height;
-                    uint32_t debug_mode;    // 0 = red fill, 3 = GPUScene color debug
+                    uint32_t debug_mode; // 0 = red fill, 3 = GPUScene color debug
                     uint32_t color_segment_offset;
                     uint32_t color_element_size;
                     uint32_t instance_count;
-                    uint32_t padding[2];  // 填充到32字节对齐
+                    uint32_t padding[2]; // 填充到32字节对齐
                 } constants;
-                
+
                 constants.screen_width = static_cast<float>(screen_width);
                 constants.screen_height = static_cast<float>(screen_height);
                 constants.debug_mode = 3; // Simple GPUScene validation mode
-                
+
                 // Get GPUScene color component info
                 auto color_type_id = GPUScene.GetComponentTypeID(sugoi_id_of<GPUSceneInstanceColor>::get());
                 constants.color_segment_offset = GPUScene.GetCoreComponentSegmentOffset(color_type_id);
                 constants.color_element_size = sizeof(GPUSceneInstanceColor);
                 constants.instance_count = GPUScene.GetInstanceCount();
-                
+
                 cgpu_compute_encoder_push_constants(ctx.encoder, root_signature, u8"debug_constants", &constants);
                 cgpu_compute_encoder_dispatch(ctx.encoder, group_count_x, group_count_y, 1);
-            }
-        );
+            });
 
         // Add copy pass to copy render target to backbuffer
         auto backbuffer_handle = render_graph->get_imported(render_app->get_backbuffer(render_app->get_main_window()));
@@ -319,8 +315,7 @@ int ModelViewerModule::main_module_exec(int argc, char8_t** argv)
             },
             [=](skr::render_graph::RenderGraph& g, skr::render_graph::CopyPassContext& ctx) {
                 // Copy implementation handled by render graph
-            }
-        );
+            });
 
         frame_index = render_graph->execute();
         if (frame_index >= RG_MAX_FRAME_IN_FLIGHT * 10)
@@ -348,18 +343,18 @@ void ModelViewerModule::CookAndLoadGLTF()
         metadata->vertexType = u8"C35BD99A-B0A8-4602-AFCC-6BBEACC90321"_guid;
 
         auto asset = skr::RC<skd::asset::AssetMetaFile>::New(
-            u8"girl.model.meta",                           // virtual uri for this asset in the project
-            MeshAssetID,                                   // guid for this asset
-            skr::type_id_of<skr::renderer::MeshResource>(),// output resource is a mesh resource 
-            skr::type_id_of<skd::asset::MeshCooker>()      // this cooker cooks t he raw mesh data to mesh resource
+            u8"girl.model.meta",                            // virtual uri for this asset in the project
+            MeshAssetID,                                    // guid for this asset
+            skr::type_id_of<skr::renderer::MeshResource>(), // output resource is a mesh resource
+            skr::type_id_of<skd::asset::MeshCooker>()       // this cooker cooks t he raw mesh data to mesh resource
         );
         // source file
         importer->assetPath = u8"D:/Code/SakuraEngine/samples/application/game/assets/sketchfab/loli/scene.gltf";
         CookSystem.ImportAssetMeta(&project, asset, importer, metadata);
-        
+
         // save
         CookSystem.SaveAssetMeta(&project, asset);
-    
+
         auto event = CookSystem.EnsureCooked(asset->GetGUID());
         event.wait(true);
     }
@@ -419,7 +414,6 @@ void ModelViewerModule::InitializeAssetSystem()
 {
     auto& system = *skd::asset::GetCookSystem();
     system.Initialize();
-
 }
 
 void ModelViewerModule::DestroyAssetSystem()
@@ -529,13 +523,13 @@ void ModelViewerModule::on_unload()
         cgpu_free_compute_pipeline(compute_pipeline);
         compute_pipeline = nullptr;
     }
-    
-    if (root_signature) 
+
+    if (root_signature)
     {
         cgpu_free_root_signature(root_signature);
         root_signature = nullptr;
     }
-    
+
     if (compute_shader)
     {
         cgpu_free_shader_library(compute_shader);
@@ -550,7 +544,7 @@ void ModelViewerModule::on_unload()
 void ModelViewerModule::CreateComputePipeline()
 {
     auto device = render_device->get_cgpu_device();
-    
+
     // Create compute shader using scene_debug shader
     uint32_t *shader_bytes, shader_length;
     read_shader_bytes(u8"scene_debug.scene_debug", &shader_bytes, &shader_length, device->adapter->instance->backend);

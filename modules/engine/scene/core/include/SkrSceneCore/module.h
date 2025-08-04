@@ -4,13 +4,13 @@
 
 #ifdef __cplusplus
     #include "SkrCore/module/module.hpp"
-    
-class SKR_SCENE_API SkrSceneModule : public skr::IDynamicModule
+
+class SKR_SCENE_CORE_API SkrSceneCoreModule : public skr::IDynamicModule
 {
 public:
     virtual void on_load(int argc, char8_t** argv) override;
     virtual void on_unload() override;
 
-    static SkrSceneModule* Get();
+    static SkrSceneCoreModule* Get();
 };
 #endif

@@ -4,10 +4,12 @@
 #include "SkrContainersDef/vector.hpp"
 #include "SkrContainersDef/map.hpp"
 #include "SkrRT/ecs/component.hpp"
+#include "SkrRT/resource/resource_handle.h"
 #include "SkrRT/ecs/world.hpp"
-#include "SkrScene/scene_components.h"
+#include "SkrSceneCore/scene_components.h"
+
 #if !defined(__meta__)
-    #include "SkrScene/actor.generated.h"
+    #include "SkrSceneCore/actor.generated.h"
 #endif
 
 namespace skr
@@ -29,7 +31,7 @@ EActorType{
 
 sreflect_struct(
     guid = "4cb20865-0d27-43ee-90b9-7b43ac4c067c")
-SKR_SCENE_API Actor
+SKR_SCENE_CORE_API Actor
 {
     friend class ActorManager;
 
@@ -90,7 +92,7 @@ protected:
     EActorType actor_type = EActorType::Default;
 };
 
-class SKR_SCENE_API ActorManager
+class SKR_SCENE_CORE_API ActorManager
 {
 public:
     static ActorManager& GetInstance()
@@ -136,38 +138,35 @@ private:
     skr::Map<skr::GUID, skr::RC<Actor>> actors; // Map to manage actors by their GUIDs
 };
 
-class SKR_SCENE_API MeshActor : public Actor
-{
-    friend class ActorManager;
+// class SKR_SCENE_API MeshActor : public Actor
+// {
+//     friend class ActorManager;
 
-public:
-    SKR_RC_IMPL();
+// public:
+//     SKR_RC_IMPL();
 
-    ~MeshActor() SKR_NOEXCEPT;
+//     ~MeshActor() SKR_NOEXCEPT;
 
-protected:
-    MeshActor()
-        : Actor(EActorType::Mesh)
-    {
-    }
-};
+// protected:
+//     MeshActor();
+// };
 
-// Actor for Skeletal Meshes
-class SKR_SCENE_API SkelMeshActor : public MeshActor
-{
-    friend class ActorManager;
+// // Actor for Skeletal Meshes
+// class SKR_SCENE_API SkelMeshActor : public MeshActor
+// {
+//     friend class ActorManager;
 
-public:
-    SKR_RC_IMPL();
+// public:
+//     SKR_RC_IMPL();
 
-    ~SkelMeshActor() SKR_NOEXCEPT override;
+//     ~SkelMeshActor() SKR_NOEXCEPT override;
 
-protected:
-    SkelMeshActor()
-        : MeshActor()
-    {
-        actor_type = EActorType::SkelMesh;
-    }
-};
+// protected:
+//     SkelMeshActor()
+//         : MeshActor()
+//     {
+//         actor_type = EActorType::SkelMesh;
+//     }
+// };
 
 } // namespace skr

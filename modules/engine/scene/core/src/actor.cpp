@@ -1,9 +1,9 @@
-#include "SkrScene/actor.h"
+#include "SkrSceneCore/actor.h"
 #include "SkrCore/memory/impl/skr_new_delete.hpp"
 #include "SkrRT/ecs/world.hpp"
 #include "SkrRT/sugoi/sugoi_config.h"
 #include "SkrRT/sugoi/sugoi_types.h"
-#include "SkrScene/scene_components.h"
+#include "SkrSceneCore/scene_components.h"
 
 namespace skr
 {
@@ -166,9 +166,9 @@ skr::RC<Actor> ActorManager::CreateActorInstance(EActorType type)
     switch (type)
     {
     case EActorType::Mesh:
-        return skr::RC<Actor>(new MeshActor());
+        // return skr::RC<Actor>(new MeshActor());
     case EActorType::SkelMesh:
-        return skr::RC<Actor>(new SkelMeshActor());
+        // return skr::RC<Actor>(new SkelMeshActor());
     case EActorType::Default:
     default:
         return skr::RC<Actor>(new Actor(type));

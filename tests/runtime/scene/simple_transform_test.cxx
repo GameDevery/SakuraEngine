@@ -6,7 +6,7 @@
 #include "SkrContainers/vector.hpp"
 #include "SkrRT/sugoi/storage.hpp"
 #include "SkrRT/sugoi/job.hpp"
-#include "SkrScene/transform_system.h"
+#include "SkrSceneCore/transform_system.h"
 #include "SkrSerde/json_serde.hpp"
 
 #include "SkrTestFramework/framework.hpp"
@@ -35,8 +35,10 @@ const skr::TransformF simpleChildTransformLocal{
 // Expected world transform for child: parent * child_local
 const skr::TransformF simpleChildTransformWorld = simpleParentTransform * simpleChildTransformLocal;
 
-struct SimpleTransformTest {
-    SimpleTransformTest() {
+struct SimpleTransformTest
+{
+    SimpleTransformTest()
+    {
         ::skr_log_set_level(SKR_LOG_LEVEL_WARN);
         ::skr_log_initialize_async_worker();
         storage = sugoiS_create();
@@ -49,7 +51,8 @@ struct SimpleTransformTest {
         sugoiJ_bind_storage(storage);
     }
 
-    ~SimpleTransformTest() {
+    ~SimpleTransformTest()
+    {
         sugoiJ_unbind_storage(storage);
         skr::TransformSystem::Destroy(transform_system);
         sugoiS_release(storage);
@@ -57,7 +60,8 @@ struct SimpleTransformTest {
         ::skr_log_finalize_async_worker();
     }
 
-    void spawnEntities() {
+    void spawnEntities()
+    {
         SkrZoneScopedN("SpawnSimpleHierarchy");
 
         // Create 1 root entity
@@ -82,8 +86,9 @@ struct SimpleTransformTest {
             auto rotations = sugoi::get_owned<skr::scene::RotationComponent>(view.view);
             auto scales = sugoi::get_owned<skr::scene::ScaleComponent>(view.view);
             auto parents = sugoi::get_owned<skr::scene::ParentComponent>(view.view);
-            
-            for (uint32_t i = 0; i < view.count(); ++i) {
+
+            for (uint32_t i = 0; i < view.count(); ++i)
+            {
                 translations[i].value = simpleChildTranslation;
                 rotations[i].euler = simpleChildRotation;
                 scales[i].value = simpleChildScale;
@@ -101,15 +106,14 @@ struct SimpleTransformTest {
                                     .commit()
                                     .value();
         SKR_DEFER({ storage->destroy_query(setupAttachQuery); });
-        
+
         storage->query(setupAttachQuery, +[](void* userdata, sugoi_chunk_view_t* view) -> void {
             auto _this = (SimpleTransformTest*)userdata;
             auto pChildren = (skr::scene::ChildrenArray*)sugoi::get_owned<skr::scene::ChildrenComponent>(view);
             for (uint32_t i = 0; i < _this->children.size(); ++i) {
                 pChildren->emplace_back(skr::scene::ChildrenComponent{ _this->children[i] });
-            }
-        }, this);
-        
+            } }, this);
+
         SKR_LOG_INFO(u8"Simple hierarchy setup complete: 1 parent, %d children", SIMPLE_CHILDREN_COUNT);
     }
 
@@ -121,9 +125,10 @@ struct SimpleTransformTest {
     skr::Vector<sugoi_entity_t> children;
 };
 
-TEST_CASE_METHOD(SimpleTransformTest, "Simple Transform Hierarchy") {
+TEST_CASE_METHOD(SimpleTransformTest, "Simple Transform Hierarchy")
+{
     SkrZoneScopedN("SimpleTransformHierarchyTest");
-    
+
     // Update the transform system
     transform_system->update();
 
@@ -138,33 +143,39 @@ TEST_CASE_METHOD(SimpleTransformTest, "Simple Transform Hierarchy") {
 
     storage->getScheduler()
         ->schedule_ecs_job(
-            checkQuery, 1, 
-            +[](void* userdata, sugoi_query_t* query, sugoi_chunk_view_t* view, sugoi_type_index_t* localTypes, EIndex entityIndex) -> void {
+            checkQuery, 1, +[](void* userdata, sugoi_query_t* query, sugoi_chunk_view_t* view, sugoi_type_index_t* localTypes, EIndex entityIndex) -> void {
                 SkrZoneScopedN("SimpleTransformTestBody");
                 auto _this = (SimpleTransformTest*)userdata;
                 const auto entities = sugoiV_get_entities(view);
                 auto transforms = sugoi::get_owned<const skr::scene::TransformComponent>(view);
 
-                for (uint32_t i = 0; i < view->count; i++) {
+                for (uint32_t i = 0; i < view->count; i++)
+                {
                     const auto& actual_transform = transforms[i].value;
 
-                    if (entities[i] == _this->parent) {
+                    if (entities[i] == _this->parent)
+                    {
                         // Check parent transform
                         CHECK(skr::all(nearly_equal(simpleParentTransform.position, actual_transform.position)));
                         CHECK(skr::all(nearly_equal(simpleParentTransform.scale, actual_transform.scale)));
                         CHECK(skr::all(nearly_equal(simpleParentTransform.rotation, actual_transform.rotation)));
                         SKR_LOG_INFO(u8"Parent transform verified");
-                    } else {
+                    }
+                    else
+                    {
                         // Check if this is a child
                         bool is_child = false;
-                        for (const auto& child : _this->children) {
-                            if (entities[i] == child) {
+                        for (const auto& child : _this->children)
+                        {
+                            if (entities[i] == child)
+                            {
                                 is_child = true;
                                 break;
                             }
                         }
-                        
-                        if (is_child) {
+
+                        if (is_child)
+                        {
                             // Check child world transform
                             CHECK(skr::all(nearly_equal(simpleChildTransformWorld.position, actual_transform.position)));
                             CHECK(skr::all(nearly_equal(simpleChildTransformWorld.scale, actual_transform.scale)));
@@ -174,8 +185,10 @@ TEST_CASE_METHOD(SimpleTransformTest, "Simple Transform Hierarchy") {
                     }
                 }
             },
-            this, nullptr, nullptr, nullptr
-        )
+            this,
+            nullptr,
+            nullptr,
+            nullptr)
         .wait(true);
 
     SKR_LOG_INFO(u8"Simple transform verification completed");

@@ -2,9 +2,9 @@
 #include "SkrBase/math/gen/misc/transform.hpp"
 #include <SkrCore/module/module_manager.hpp>
 #include <SkrCore/log.h>
-#include <SkrScene/actor.h>
-#include <SkrScene/scene_components.h>
-#include <SkrScene/transform_system.h>
+#include <SkrSceneCore/actor.h>
+#include <SkrSceneCore/scene_components.h>
+#include <SkrSceneCore/transform_system.h>
 #include <SkrRT/ecs/world.hpp>
 
 struct SceneSampleSimpleModule : public skr::IDynamicModule

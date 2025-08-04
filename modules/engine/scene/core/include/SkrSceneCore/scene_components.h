@@ -2,8 +2,9 @@
 // The Scene ECS Components Definitions
 #include "SkrRT/ecs/component.hpp"
 #include "SkrBase/math.h"
+
 #ifndef __meta__
-    #include "SkrScene/scene_components.generated.h" // IWYU pragma: export
+    #include "SkrSceneCore/scene_components.generated.h" // IWYU pragma: export
 #endif
 
 #ifndef SKR_SCENE_MAX_NAME_LENGTH

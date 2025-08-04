@@ -6,7 +6,7 @@
 #include "SkrContainers/vector.hpp"
 #include "SkrRT/sugoi/storage.hpp"
 #include "SkrRT/sugoi/job.hpp"
-#include "SkrScene/transform_system.h"
+#include "SkrSceneCore/transform_system.h"
 #include "SkrSerde/json_serde.hpp"
 
 #include "SkrTestFramework/framework.hpp"
@@ -31,7 +31,8 @@ static const skr::TransformF childTransformRelative{
 };
 static const skr::TransformF childTransform = parentTransform * childTransformRelative;
 
-struct TransformTests {
+struct TransformTests
+{
     TransformTests()
     {
         ::skr_log_set_level(SKR_LOG_LEVEL_WARN);

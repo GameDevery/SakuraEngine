@@ -1,6 +1,6 @@
 #pragma once
 #include "SkrBase/config.h"
-#include "SkrScene/transform_system.h"
+#include "SkrSceneCore/transform_system.h"
 #ifndef __meta__
     #include "SkrRenderer/render_viewport.generated.h" // IWYU pragma: export
 #endif

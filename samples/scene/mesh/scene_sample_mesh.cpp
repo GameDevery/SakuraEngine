@@ -323,9 +323,10 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     auto gfx_queue = render_device->get_gfx_queue();
 
     // transform mesh_buffer_t into CGPUBufferId
-    skr_mesh_resource_t mesh_resource = {};
-    skr_render_mesh_id render_mesh = mesh_resource.render_mesh = SkrNew<skr_render_mesh_t>();
+    skr_mesh_resource_t* mesh_resource = nullptr;
+    skr_render_mesh_id render_mesh = SkrNew<skr_render_mesh_t>();
     utils::Grid2DMesh dummy_mesh;
+
     skr::resource::AsyncResource<skr::renderer::MeshResource> gltf_mesh_resource;
     gltf_mesh_resource = MeshAssetID;
 
@@ -335,9 +336,10 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     }
     else
     {
-
+        mesh_resource = SkrNew<skr_mesh_resource_t>();
         dummy_mesh.init();
         dummy_mesh.generate_render_mesh(render_device, render_mesh);
+        mesh_resource->render_mesh = render_mesh;
     }
 
     {
@@ -439,24 +441,19 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
             auto main_window = imgui_app->main_window();
             const auto size = main_window->get_physical_size();
             camera.aspect = (float)size.x / (float)size.y;
+
             if (use_gltf)
             {
                 gltf_mesh_resource.resolve(true, 0, ESkrRequesterType::SKR_REQUESTER_SYSTEM);
                 if (gltf_mesh_resource.is_resolved())
                 {
-                    skr_mesh_resource_t* MeshResource = gltf_mesh_resource.get_resolved(true);
-                    if (MeshResource)
-                    {
-                        if (MeshResource->render_mesh)
-                        {
-                            scene_renderer->draw_primitives(render_graph, MeshResource->render_mesh->primitive_commands);
-                        }
-                    }
+                    mesh_resource = gltf_mesh_resource.get_resolved(true);
                 }
             }
-            else
+
+            if (mesh_resource && mesh_resource->render_mesh)
             {
-                scene_renderer->draw_primitives(render_graph, render_mesh->primitive_commands);
+                scene_renderer->draw_primitives(render_graph, mesh_resource->render_mesh->primitive_commands);
             }
         };
 
@@ -480,12 +477,13 @@ int SceneSampleMeshModule::main_module_exec(int argc, char8_t** argv)
     skr_render_mesh_free(render_mesh);
     if (use_gltf)
     {
-        mesh_resource.bins.clear();
-        mesh_resource.render_mesh = nullptr;
+        mesh_resource->bins.clear();
+        mesh_resource->render_mesh = nullptr;
     }
     else
     {
         dummy_mesh.destroy();
     }
+    SkrDelete(mesh_resource);
     return 0;
 }

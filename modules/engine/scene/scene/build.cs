@@ -7,11 +7,10 @@ public static class SkrScene
 {
     static SkrScene()
     {
-        Engine.Module("SkrScene")
+        Engine.Module("SkrScene", "SKR_SCENE")
             .EnableUnityBuild()
-            .Depend(Visibility.Public, "SkrRT")
+            .Depend(Visibility.Public, "SkrRenderer")
             .IncludeDirs(Visibility.Public, "include")
-            .AddCppFiles("src/**.cpp")
-            .AddMetaHeaders("include/SkrScene/**.h");
+            .AddCppFiles("src/*.cpp");
     }
 }

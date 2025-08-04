@@ -1,17 +1,20 @@
 #pragma once
 #include "SkrBase/config.h"
-#include "SkrScene/scene_components.h"
+#include "SkrSceneCore/scene_components.h"
 
-namespace skr::ecs { struct World; }
+namespace skr::ecs
+{
+struct World;
+}
 
 namespace skr
 {
-struct SKR_SCENE_API TransformSystem {
+struct SKR_SCENE_CORE_API TransformSystem
+{
 public:
     static TransformSystem* Create(skr::ecs::World* world) SKR_NOEXCEPT;
     static void Destroy(TransformSystem* system) SKR_NOEXCEPT;
     void update() SKR_NOEXCEPT;
-
 
 private:
     // 正向全量脏树传播：每帧调用，处理所有标记为脏的变换树，进行批量计算
@@ -28,9 +31,8 @@ private:
 };
 } // namespace skr
 
-SKR_EXTERN_C SKR_SCENE_API skr::TransformSystem* skr_transform_system_create(skr::ecs::World* world);
-SKR_EXTERN_C SKR_SCENE_API void skr_transform_system_destroy(skr::TransformSystem* system);
-SKR_EXTERN_C SKR_SCENE_API void skr_transform_system_update(skr::TransformSystem* system);
-
-SKR_EXTERN_C SKR_SCENE_API void skr_save_scene(skr::ecs::World* world, struct skr::archive::JsonWriter* writer);
-SKR_EXTERN_C SKR_SCENE_API void skr_load_scene(skr::ecs::World* world, struct skr::archive::JsonReader* reader);
+SKR_EXTERN_C SKR_SCENE_CORE_API skr::TransformSystem* skr_transform_system_create(skr::ecs::World* world);
+SKR_EXTERN_C SKR_SCENE_CORE_API void skr_transform_system_destroy(skr::TransformSystem* system);
+SKR_EXTERN_C SKR_SCENE_CORE_API void skr_transform_system_update(skr::TransformSystem* system);
+SKR_EXTERN_C SKR_SCENE_CORE_API void skr_save_scene(skr::ecs::World* world, struct skr::archive::JsonWriter* writer);
+SKR_EXTERN_C SKR_SCENE_CORE_API void skr_load_scene(skr::ecs::World* world, struct skr::archive::JsonReader* reader);

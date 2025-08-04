@@ -1,4 +1,4 @@
-#include "SkrScene/skr_scene.h"
+#include "SkrScene/module.h"
 #include "SkrCore/module/module_manager.hpp"
 #include "SkrCore/log.h"
 

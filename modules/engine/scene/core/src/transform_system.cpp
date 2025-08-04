@@ -3,7 +3,7 @@
 #include "SkrContainers/hashmap.hpp"
 #include "SkrRT/ecs/world.hpp"
 #include "SkrTask/parallel_for.hpp"
-#include "SkrScene/transform_system.h"
+#include "SkrSceneCore/transform_system.h"
 
 namespace skr::scene
 {
