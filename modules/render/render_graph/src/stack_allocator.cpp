@@ -76,7 +76,13 @@ void* RenderGraphStackAllocator::alloc_raw(size_t count, size_t item_size, size_
     if (count == 0 || item_size == 0) return nullptr;
     
     size_t total_size = count * item_size;
-    return get_impl().allocate(total_size, item_align);
+    
+    // 添加线程安全保护，与Reset()保持一致
+    skr_mutex_acquire(&g_instance_mutex);
+    void* result = get_impl().allocate(total_size, item_align);
+    skr_mutex_release(&g_instance_mutex);
+    
+    return result;
 }
 
 void RenderGraphStackAllocator::free_raw(void* p, size_t item_align) 

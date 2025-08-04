@@ -194,7 +194,9 @@ RenderGraph* RenderGraph::create(const RenderGraphSetupFunction& setup) SKR_NOEX
     RenderGraph* graph = nullptr;
     setup(builder);
     if (builder.no_backend)
+    {
         graph = SkrNew<RenderGraph>(builder);
+    }
     else
     {
         if (!builder.gfx_queue) assert(0 && "not supported!");

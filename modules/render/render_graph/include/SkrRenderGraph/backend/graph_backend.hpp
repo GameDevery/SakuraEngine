@@ -56,7 +56,7 @@ using stack_vector = skr::InlineVector<T, stack_vector_fixed_count>;
 template <typename T>
 using stack_set = skr::InlineSet<T, stack_vector_fixed_count>;
 
-class RenderGraphBackend : public RenderGraph
+class SKR_RENDER_GRAPH_API RenderGraphBackend : public RenderGraph
 {
     friend struct BindablePassContext;
     friend struct PassExecutionPhase;

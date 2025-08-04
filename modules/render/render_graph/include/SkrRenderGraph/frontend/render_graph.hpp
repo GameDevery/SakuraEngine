@@ -52,7 +52,7 @@ public:
 
     protected:
         bool memory_aliasing = false;
-        bool no_backend;
+        bool no_backend = false;
         ECGPUBackend api;
         CGPUDeviceId device;
         CGPUQueueId gfx_queue;
