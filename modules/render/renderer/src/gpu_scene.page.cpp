@@ -8,90 +8,6 @@
 namespace skr::renderer
 {
 
-void GPUScene::AddEntity(skr::ecs::Entity entity)
-{
-    {
-        add_mtx.lock();
-        add_ents.add(entity);
-        add_mtx.unlock();
-    }
-    for (auto [cpu_type, gpu_type] : type_registry)
-    {
-        RequireUpload(entity, cpu_type);
-    }
-}
-
-void GPUScene::RemoveEntity(skr::ecs::Entity entity)
-{
-    remove_mtx.lock();
-    remove_ents.add(entity);
-    remove_mtx.unlock();
-}
-
-void GPUScene::RequireUpload(skr::ecs::Entity entity, CPUTypeID component)
-{
-    dirty_mtx.lock();
-    auto cs = dirties.try_add_default(entity);
-    cs.value().add_unique(component);
-    if (!cs.already_exist())
-        dirty_ents.add(entity);
-    dirty_mtx.unlock();
-}
-
-uint64_t GPUScene::CalculateDirtySize() const
-{
-    uint64_t total_size = 0;
-    // Iterate through all dirty entities
-    for (const auto& [entity, dirty_components] : dirties)
-    {
-        // Sum up sizes of all dirty components for this entity
-        for (const auto& cpu_type : dirty_components)
-        {
-            if (auto type_iter = type_registry.find(cpu_type))
-            {
-                auto gpu_type = type_iter.value();
-                const auto& component_info = component_types[gpu_type];
-                total_size += component_info.element_size;
-            }
-        }
-    }
-    return total_size;
-}
-
-void GPUScene::PrepareUploadBuffer() 
-{
-    // Calculate required upload buffer size
-    uint64_t required_size = CalculateDirtySize();
-    if (required_size == 0)
-        return;
-        
-    // Add some padding for alignment
-    required_size = (required_size + 255) & ~255; // Align to 256 bytes
-    
-    // Check if we need to recreate the upload buffer
-    if (!upload_buffer || upload_buffer->info->size < required_size)
-    {
-        // Release old buffer if exists
-        if (upload_buffer)
-        {
-            cgpu_free_buffer(upload_buffer);
-            upload_buffer = nullptr;
-        }
-        
-        // Create new upload buffer
-        CGPUBufferDescriptor upload_desc = {};
-        upload_desc.name = u8"GPUScene-UploadBuffer";
-        upload_desc.flags = CGPU_BCF_PERSISTENT_MAP_BIT;
-        upload_desc.descriptors = CGPU_RESOURCE_TYPE_BUFFER_RAW;
-        upload_desc.memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU;
-        upload_desc.size = required_size;
-        
-        upload_buffer = cgpu_create_buffer(render_device->get_cgpu_device(), &upload_desc);
-        
-        SKR_LOG_INFO(u8"GPUScene: Created upload buffer with size %llu bytes", required_size);
-    }
-}
-
 struct GPUSceneInstanceTask
 {
     void build(skr::ecs::AccessBuilder& builder)
@@ -110,6 +26,8 @@ struct RemoveEntityFromGPUScene : public GPUSceneInstanceTask
 {
     void run(skr::ecs::TaskContext& Context)
     {
+        SkrZoneScopedN("GPUScene::RemoveEntityFromGPUScene");
+
         sugoi_chunk_view_t v = {};
         sugoiS_access(pScene->ecs_world->get_storage(), (sugoi_entity_t)Context.entities()[0], &v);
         if (auto archetype = pScene->EnsureArchetype(v.chunk->group->archetype))
@@ -127,6 +45,8 @@ struct AddEntityToGPUScene : public GPUSceneInstanceTask
 {
     void run(skr::ecs::TaskContext& Context)
     {
+        SkrZoneScopedN("GPUScene::AddEntityToGPUScene");
+        
         sugoi_chunk_view_t v = {};
         sugoiS_access(pScene->ecs_world->get_storage(), (sugoi_entity_t)Context.entities()[0], &v);
         if (auto archetype = pScene->EnsureArchetype(v.chunk->group->archetype))
@@ -157,6 +77,8 @@ struct ScanGPUScene : public GPUSceneInstanceTask
 {
     void run(skr::ecs::TaskContext& Context)
     {
+        SkrZoneScopedN("GPUScene::ScanGPUScene");
+
         sugoi_chunk_view_t v = {};
         sugoiS_access(pScene->ecs_world->get_storage(), (sugoi_entity_t)Context.entities()[0], &v);
         // Step 1: Ensure archetype
@@ -215,8 +137,96 @@ struct ScanGPUScene : public GPUSceneInstanceTask
     }
 };
 
+void GPUScene::AddEntity(skr::ecs::Entity entity)
+{
+    {
+        add_mtx.lock();
+        add_ents.add(entity);
+        add_mtx.unlock();
+    }
+    for (auto [cpu_type, gpu_type] : type_registry)
+    {
+        RequireUpload(entity, cpu_type);
+    }
+}
+
+void GPUScene::RemoveEntity(skr::ecs::Entity entity)
+{
+    remove_mtx.lock();
+    remove_ents.add(entity);
+    remove_mtx.unlock();
+}
+
+void GPUScene::RequireUpload(skr::ecs::Entity entity, CPUTypeID component)
+{
+    dirty_mtx.lock();
+    auto cs = dirties.try_add_default(entity);
+    cs.value().add_unique(component);
+    if (!cs.already_exist())
+        dirty_ents.add(entity);
+    dirty_mtx.unlock();
+}
+
+uint64_t GPUScene::CalculateDirtySize() const
+{
+    uint64_t total_size = 0;
+    // Iterate through all dirty entities
+    for (const auto& [entity, dirty_components] : dirties)
+    {
+        // Sum up sizes of all dirty components for this entity
+        for (const auto& cpu_type : dirty_components)
+        {
+            if (auto type_iter = type_registry.find(cpu_type))
+            {
+                auto gpu_type = type_iter.value();
+                const auto& component_info = component_types[gpu_type];
+                total_size += component_info.element_size;
+            }
+        }
+    }
+    return total_size;
+}
+
+void GPUScene::PrepareUploadBuffer() 
+{
+    SkrZoneScopedN("GPUScene::PrepareUploadBuffer");
+    
+    // Calculate required upload buffer size
+    uint64_t required_size = CalculateDirtySize();
+    if (required_size == 0)
+        return;
+        
+    // Add some padding for alignment
+    required_size = (required_size + 255) & ~255; // Align to 256 bytes
+    
+    // Check if we need to recreate the upload buffer
+    if (!upload_buffer || upload_buffer->info->size < required_size)
+    {
+        // Release old buffer if exists
+        if (upload_buffer)
+        {
+            cgpu_free_buffer(upload_buffer);
+            upload_buffer = nullptr;
+        }
+        
+        // Create new upload buffer
+        CGPUBufferDescriptor upload_desc = {};
+        upload_desc.name = u8"GPUScene-UploadBuffer";
+        upload_desc.flags = CGPU_BCF_PERSISTENT_MAP_BIT;
+        upload_desc.descriptors = CGPU_RESOURCE_TYPE_BUFFER_RAW;
+        upload_desc.memory_usage = CGPU_MEM_USAGE_CPU_TO_GPU;
+        upload_desc.size = required_size;
+        
+        upload_buffer = cgpu_create_buffer(render_device->get_cgpu_device(), &upload_desc);
+        
+        SKR_LOG_INFO(u8"GPUScene: Created upload buffer with size %llu bytes", required_size);
+    }
+}
+
 void GPUScene::AdjustCoreBuffer(skr::render_graph::RenderGraph* graph) 
 {
+    SkrZoneScopedN("GPUScene::AdjustCoreBuffer");
+
     uint32_t existed_instances = GetInstanceCount();
     auto required_instances = instance_count = existed_instances + add_ents.size() - remove_ents.size();
     if (core_data.needs_resize(required_instances))
@@ -264,29 +274,33 @@ void GPUScene::ExecuteUpload(skr::render_graph::RenderGraph* graph)
     PrepareUploadBuffer();
 
     // Schedule remove & add & scan
-    if (!remove_ents.is_empty())
     {
-        RemoveEntityFromGPUScene remove;
-        remove.pScene = this;
-        ecs_world->dispatch_task(remove, 512, remove_ents);
-        remove_ents.clear();
+        SkrZoneScopedN("GPUScene::Tasks");
+        if (!remove_ents.is_empty())
+        {
+            RemoveEntityFromGPUScene remove;
+            remove.pScene = this;
+            ecs_world->dispatch_task(remove, 512, remove_ents);
+            remove_ents.clear();
+        }
+        if (!add_ents.is_empty())
+        {
+            AddEntityToGPUScene add;
+            add.pScene = this;
+            ecs_world->dispatch_task(add, 512, add_ents);
+            add_ents.clear();
+        }
+        if (!dirty_ents.is_empty())
+        {
+            ScanGPUScene scan;
+            scan.pScene = this;
+            ecs_world->dispatch_task(scan, 512, dirty_ents);
+            dirty_ents.clear();
+            dirties.clear();
+        }
+        skr::ecs::TaskScheduler::Get()->sync_all();
     }
-    if (!add_ents.is_empty())
-    {
-        AddEntityToGPUScene add;
-        add.pScene = this;
-        ecs_world->dispatch_task(add, 512, add_ents);
-        add_ents.clear();
-    }
-    if (!dirty_ents.is_empty())
-    {
-        ScanGPUScene scan;
-        scan.pScene = this;
-        ecs_world->dispatch_task(scan, 512, dirty_ents);
-        dirty_ents.clear();
-        dirties.clear();
-    }
-    skr::ecs::TaskScheduler::Get()->sync_all();
+
 
     // Dispatch SparseUpload compute shader to copy from upload_buffer to target buffers
     if (!uploads.is_empty())
@@ -404,6 +418,7 @@ void GPUScene::DispatchSparseUpload(skr::render_graph::RenderGraph* graph)
     if (uploads.is_empty())
         return;
 
+    SkrZoneScopedN("GPUScene::DispatchSparseUpload");
     // Calculate batch size to stay under D3D12's 64KB constant buffer limit
     const size_t max_buffer_size = 65536; // 64KB
     const size_t upload_size = sizeof(Upload);
