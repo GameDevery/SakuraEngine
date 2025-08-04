@@ -1,11 +1,11 @@
 #pragma once
-#include <SkrCore/memory/rc.hpp>
-#include <SkrRTTR/script/script_binder.hpp>
-#include <SkrRTTR/script/stack_proxy.hpp>
-#include <SkrV8/bind_template/v8_bind_template.hpp>
+#include <SkrV8/v8_fwd.hpp>
 #include <SkrV8/v8_bind.hpp>
 #include <SkrV8/v8_virtual_module.hpp>
 #include <SkrV8/v8_value.hpp>
+#include <SkrCore/memory/rc.hpp>
+#include <SkrRTTR/script/script_binder.hpp>
+#include <SkrRTTR/script/stack_proxy.hpp>
 
 // v8 includes
 #include <v8-isolate.h>
@@ -14,9 +14,6 @@
 
 namespace skr
 {
-struct V8Context;
-struct V8Isolate;
-
 struct SKR_V8_API V8Context {
     SKR_RC_IMPL();
 

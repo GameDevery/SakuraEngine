@@ -1,4 +1,5 @@
 #pragma once
+#include <SkrV8/v8_fwd.hpp>
 #include <SkrRTTR/script/scriptble_object.hpp>
 #include <SkrRTTR/script/stack_proxy.hpp>
 
@@ -9,9 +10,6 @@
 
 namespace skr
 {
-struct V8Context;
-struct V8Isolate;
-
 struct SKR_V8_API V8Value {
     // ctor & dtor
     V8Value(v8::Global<v8::Value> v8_value, V8Context* context);

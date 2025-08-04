@@ -1,11 +1,10 @@
 #pragma once
+#include <SkrV8/v8_fwd.hpp>
 #include <SkrV8/bind_template/v8_bind_template.hpp>
 #include <SkrV8/v8_bind.hpp>
 
 namespace skr
 {
-struct V8Isolate;
-
 struct V8VirtualModuleNode {
     enum class EKind
     {

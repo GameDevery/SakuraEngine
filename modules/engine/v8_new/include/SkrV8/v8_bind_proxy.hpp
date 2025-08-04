@@ -1,4 +1,5 @@
 #pragma once
+#include <SkrV8/v8_fwd.hpp>
 #include <SkrRTTR/script/scriptble_object.hpp>
 
 // v8 includes
@@ -7,10 +8,6 @@
 
 namespace skr
 {
-struct IV8BindManager;
-struct V8BTValue;
-struct V8BTObject;
-
 struct V8BindProxy {
     virtual ~V8BindProxy()
     {
@@ -62,7 +59,7 @@ struct V8BPRecord : V8BindProxy {
 
     // v8 info
     v8::Persistent<::v8::Object> v8_object = {};
-    IV8BindManager*              manager   = nullptr;
+    V8Isolate*                   isolate   = nullptr;
 };
 struct V8BPValue : V8BPRecord {
     bool             need_delete = false;

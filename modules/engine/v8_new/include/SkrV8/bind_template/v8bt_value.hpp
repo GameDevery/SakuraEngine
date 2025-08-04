@@ -6,7 +6,7 @@ namespace skr
 struct V8BTValue : V8BTRecordBase {
     inline static constexpr EV8BTKind kKind = EV8BTKind::Value;
 
-    static V8BTValue* TryCreate(IV8BindManager* manager, const RTTRType* type);
+    static V8BTValue* TryCreate(V8Isolate* isolate, const RTTRType* type);
 
     // kind
     EV8BTKind kind() const override;

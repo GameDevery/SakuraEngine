@@ -6,7 +6,7 @@ namespace skr
 struct V8BTMapping : V8BindTemplate {
     inline static constexpr EV8BTKind kKind = EV8BTKind::Mapping;
 
-    static V8BTMapping* TryCreate(IV8BindManager* manager, const RTTRType* type);
+    static V8BTMapping* TryCreate(V8Isolate* isolate, const RTTRType* type);
 
     // kind
     EV8BTKind kind() const override;

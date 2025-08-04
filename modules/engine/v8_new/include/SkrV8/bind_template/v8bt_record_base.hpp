@@ -6,7 +6,7 @@ namespace skr
 struct V8BTRecordBase : V8BindTemplate {
 
 protected:
-    void _setup(IV8BindManager* manager, const RTTRType* type);
+    void _setup(V8Isolate* isolate, const RTTRType* type);
     void _fill_template(
         v8::Local<v8::FunctionTemplate> ctor_template
     );

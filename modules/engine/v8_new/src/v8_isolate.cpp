@@ -229,7 +229,6 @@ bool V8Isolate::try_invoke_mixin(
 }
 //==> IScriptMixinCore API
 
-//==> IV8BindManager API
 // bind proxy management
 V8BindTemplate* V8Isolate::solve_bind_tp(
     TypeSignatureView signature
@@ -365,7 +364,6 @@ IScriptMixinCore* V8Isolate::get_mixin_core() const
 {
     return const_cast<V8Isolate*>(this);
 }
-//==> IV8BindManager API
 
 //============================global init============================
 static auto& _v8_platform()

@@ -1,4 +1,5 @@
 #pragma once
+#include <SkrV8/v8_fwd.hpp>
 #include <SkrCore/error_collector.hpp>
 #include <SkrRTTR/script/scriptble_object.hpp>
 
@@ -9,61 +10,6 @@
 
 namespace skr
 {
-//===============================fwd===============================
-struct V8BindTemplate;
-struct V8BTPrimitive;
-struct V8BTEnum;
-struct V8BTMapping;
-struct V8BTGeneric;
-
-struct V8BindProxy;
-struct V8BPValue;
-struct V8BPObject;
-
-struct IV8BindManager {
-    virtual ~IV8BindManager() = default;
-
-    // bind proxy management
-    virtual V8BindTemplate* solve_bind_tp(
-        TypeSignatureView signature
-    ) = 0;
-    virtual V8BindTemplate* solve_bind_tp(
-        const GUID& type_id
-    ) = 0;
-
-    // bind proxy management(template version)
-    template <typename T>
-    T* solve_bind_tp_as(const GUID& type_id);
-    template <typename T>
-    T* solve_bind_tp_as(TypeSignatureView type_id);
-
-    // bind proxy management
-    virtual void add_bind_proxy(
-        void*        native_ptr,
-        V8BindProxy* bind_proxy
-    ) = 0;
-    virtual void remove_bind_proxy(
-        void*        native_ptr,
-        V8BindProxy* bind_proxy
-    ) = 0;
-    virtual V8BindProxy* find_bind_proxy(
-        void* native_ptr
-    ) const = 0;
-
-    // 用于缓存调用期间为参数创建的临时 bind proxy
-    virtual void push_param_scope() = 0;
-    virtual void pop_param_scope()  = 0;
-    virtual void push_param_proxy(
-        V8BindProxy* bind_proxy
-    ) = 0;
-
-    // mixin
-    virtual IScriptMixinCore* get_mixin_core() const = 0;
-
-    // get logger
-    virtual ErrorCollector& logger() = 0;
-};
-
 //===============================field & method data===============================
 struct V8BTDataModifier {
     bool is_pointer : 1    = false;
@@ -99,7 +45,7 @@ struct V8BTDataField {
         return rttr_data->get_address(field_owner_address);
     }
     void setup(
-        IV8BindManager*      manager,
+        V8Isolate*           isolate,
         const RTTRFieldData* field_data,
         const RTTRType*      owner
     );
@@ -115,7 +61,7 @@ struct V8BTDataStaticField {
         return rttr_data->address;
     }
     void setup(
-        IV8BindManager*            manager,
+        V8Isolate*                 isolate,
         const RTTRStaticFieldData* field_data,
         const RTTRType*            owner
     );
@@ -134,11 +80,11 @@ struct V8BTDataParam {
     bool appare_in_param  = false;
 
     void setup(
-        IV8BindManager*      manager,
+        V8Isolate*           isolate,
         const RTTRParamData* param_data
     );
     void setup(
-        IV8BindManager*   manager,
+        V8Isolate*        isolate,
         const StackProxy* proxy,
         int32_t           index
     );
@@ -154,7 +100,7 @@ struct V8BTDataReturn {
     bool is_void = false;
 
     void setup(
-        IV8BindManager*   manager,
+        V8Isolate*        isolate,
         TypeSignatureView signature
     );
 };
@@ -183,7 +129,7 @@ struct V8BTDataMethod : V8BTDataFunctionBase {
         const RTTRType*                                obj_type
     ) const;
     void setup(
-        IV8BindManager*       manager,
+        V8Isolate*            isolate,
         const RTTRMethodData* method_data,
         const RTTRType*       owner
     );
@@ -204,7 +150,7 @@ struct V8BTDataStaticMethod : V8BTDataFunctionBase {
         const ::v8::FunctionCallbackInfo<::v8::Value>& v8_stack
     ) const;
     void setup(
-        IV8BindManager*             manager,
+        V8Isolate*                  isolate,
         const RTTRStaticMethodData* method_data,
         const RTTRType*             owner
     );
@@ -236,7 +182,7 @@ struct V8BTDataCtor {
         void*                                          obj
     ) const;
     void setup(
-        IV8BindManager*     manager,
+        V8Isolate*          isolate,
         const RTTRCtorData* ctor_data
     );
 };
@@ -247,7 +193,7 @@ struct V8BTDataCallScript : V8BTDataFunctionBase {
         v8::MaybeLocal<v8::Value> v8_return_value
     );
     void setup(
-        IV8BindManager*        manager,
+        V8Isolate*             isolate,
         span<const StackProxy> params,
         StackProxy             return_value
     );
@@ -266,8 +212,8 @@ enum class EV8BTKind
 
 struct V8BindTemplate {
     // getter & setter
-    inline IV8BindManager* manager() const { return _manager; }
-    inline void            set_manager(IV8BindManager* manager) { _manager = manager; }
+    inline V8Isolate* isolate() const { return _isolate; }
+    inline void       set_isolate(V8Isolate* isolate) { _isolate = isolate; }
 
     // basic info
     virtual EV8BTKind kind() const          = 0;
@@ -377,20 +323,8 @@ struct V8BindTemplate {
     }
 
 private:
-    IV8BindManager* _manager = nullptr;
+    V8Isolate* _isolate = nullptr;
 };
-
-template <typename T>
-inline T* IV8BindManager::solve_bind_tp_as(const GUID& type_id)
-{
-    return solve_bind_tp(type_id)->as<T>();
-}
-
-template <typename T>
-inline T* IV8BindManager::solve_bind_tp_as(TypeSignatureView type_id)
-{
-    return solve_bind_tp(type_id)->as<T>();
-}
 
 // help functions
 template <typename T>

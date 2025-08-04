@@ -6,7 +6,7 @@ namespace skr
 struct V8BTEnum final : V8BindTemplate {
     inline static constexpr EV8BTKind kKind = EV8BTKind::Enum;
 
-    static V8BTEnum* Create(IV8BindManager* manager, const RTTRType* type);
+    static V8BTEnum* Create(V8Isolate* isolate, const RTTRType* type);
 
     // kind
     EV8BTKind kind() const override;

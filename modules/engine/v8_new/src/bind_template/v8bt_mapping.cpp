@@ -1,6 +1,7 @@
 #include <SkrV8/bind_template/v8bt_mapping.hpp>
 #include <SkrV8/v8_bind.hpp>
 #include <SkrV8/bind_template/v8bt_primitive.hpp>
+#include <SkrV8/v8_isolate.hpp>
 
 // v8 includes
 #include <libplatform/libplatform.h>
@@ -12,11 +13,11 @@
 
 namespace skr
 {
-V8BTMapping* V8BTMapping::TryCreate(IV8BindManager* manager, const RTTRType* type)
+V8BTMapping* V8BTMapping::TryCreate(V8Isolate* isolate, const RTTRType* type)
 {
     SKR_ASSERT(type->is_record());
 
-    auto& _logger    = manager->logger();
+    auto& _logger    = isolate->logger();
     auto  _log_stack = _logger.stack(u8"export mapping type {}", type->name());
 
     // check flag
@@ -31,14 +32,14 @@ V8BTMapping* V8BTMapping::TryCreate(IV8BindManager* manager, const RTTRType* typ
     // clang-format on
 
     auto* result = SkrNew<V8BTMapping>();
-    result->set_manager(manager);
+    result->set_isolate(isolate);
     result->_rttr_type = type;
 
     // each field
     type->each_field([&](const RTTRFieldData* field, const RTTRType* owner_type) {
         if (!flag_all(field->flag, ERTTRFieldFlag::ScriptVisible)) { return; }
         auto& field_data = result->_fields.try_add_default(field->name).value();
-        field_data.setup(manager, field, owner_type);
+        field_data.setup(isolate, field, owner_type);
     });
     return result;
 }
@@ -297,7 +298,7 @@ bool V8BTMapping::check_field(
 {
     if (field_bind_tp.modifiers.is_decayed_pointer())
     {
-        manager()->logger().error(
+        isolate()->logger().error(
             u8"mapping cannot be exported as decayed pointer type in field"
         );
         return false;
@@ -310,7 +311,7 @@ bool V8BTMapping::check_static_field(
 {
     if (field_bind_tp.modifiers.is_decayed_pointer())
     {
-        manager()->logger().error(
+        isolate()->logger().error(
             u8"mapping cannot be exported as decayed pointer type in field"
         );
         return false;
@@ -344,7 +345,7 @@ bool V8BTMapping::_basic_type_check(
 {
     if (modifiers.is_pointer)
     {
-        manager()->logger().error(
+        isolate()->logger().error(
             u8"export mapping {} as pointer type",
             _rttr_type->name()
         );

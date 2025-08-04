@@ -1,6 +1,7 @@
 #include <SkrV8/bind_template/v8bt_value.hpp>
 #include <SkrV8/v8_bind.hpp>
 #include <SkrV8/v8_bind_proxy.hpp>
+#include <SkrV8/v8_isolate.hpp>
 
 // v8 includes
 #include <libplatform/libplatform.h>
@@ -12,13 +13,13 @@
 
 namespace skr
 {
-V8BTValue* V8BTValue::TryCreate(IV8BindManager* manager, const RTTRType* type)
+V8BTValue* V8BTValue::TryCreate(V8Isolate* isolate, const RTTRType* type)
 {
-    auto& _logger    = manager->logger();
+    auto& _logger    = isolate->logger();
     auto  _log_stack = _logger.stack(u8"export value type {}", type->name());
 
     V8BTValue* result = SkrNew<V8BTValue>();
-    result->_setup(manager, type);
+    result->_setup(isolate, type);
     result->_make_template();
     return result;
 }
@@ -190,7 +191,7 @@ v8::Local<v8::Value> V8BTValue::read_return_from_out_param(
 
     // get created value proxy
     native_data            = *reinterpret_cast<void**>(native_data);
-    auto  bind_proxy       = manager()->find_bind_proxy(native_data);
+    auto  bind_proxy       = isolate()->find_bind_proxy(native_data);
     auto* bind_proxy_value = static_cast<V8BPValue*>(bind_proxy);
     return bind_proxy_value->v8_object.Get(v8::Isolate::GetCurrent());
 }
@@ -207,7 +208,7 @@ v8::Local<v8::Value> V8BTValue::make_param_v8(
     bind_proxy->need_delete = false;
 
     // push param cache
-    manager()->push_param_proxy(bind_proxy);
+    isolate()->push_param_proxy(bind_proxy);
 
     return bind_proxy->v8_object.Get(v8::Isolate::GetCurrent());
 }
@@ -221,7 +222,7 @@ v8::Local<v8::Value> V8BTValue::get_field(
 {
     // find cache
     void* field_address = field_bind_tp.solve_address(obj, obj_type);
-    if (auto found = manager()->find_bind_proxy(field_address))
+    if (auto found = isolate()->find_bind_proxy(field_address))
     {
         auto* bind_proxy = static_cast<V8BPValue*>(found);
         return bind_proxy->v8_object.Get(v8::Isolate::GetCurrent());
@@ -232,7 +233,7 @@ v8::Local<v8::Value> V8BTValue::get_field(
     bind_proxy->need_delete = false;
 
     // setup owner ship
-    auto* parent_bind_proxy = manager()->find_bind_proxy(obj);
+    auto* parent_bind_proxy = isolate()->find_bind_proxy(obj);
     bind_proxy->set_parent(parent_bind_proxy);
 
     return bind_proxy->v8_object.Get(v8::Isolate::GetCurrent());
@@ -256,7 +257,7 @@ v8::Local<v8::Value> V8BTValue::get_static_field(
 {
     // find cache
     void* field_address = field_bind_tp.solve_address();
-    if (auto found = manager()->find_bind_proxy(field_address))
+    if (auto found = isolate()->find_bind_proxy(field_address))
     {
         auto* bind_proxy = static_cast<V8BPValue*>(found);
         return bind_proxy->v8_object.Get(v8::Isolate::GetCurrent());
@@ -321,7 +322,7 @@ bool V8BTValue::check_field(
 {
     if (field_bind_tp.modifiers.is_decayed_pointer())
     {
-        manager()->logger().error(
+        isolate()->logger().error(
             u8"value cannot be exported as decayed pointer type in field"
         );
         return false;
@@ -334,7 +335,7 @@ bool V8BTValue::check_static_field(
 {
     if (field_bind_tp.modifiers.is_decayed_pointer())
     {
-        manager()->logger().error(
+        isolate()->logger().error(
             u8"value cannot be exported as decayed pointer type in field"
         );
         return false;
@@ -403,7 +404,7 @@ V8BPValue* V8BTValue::_new_bind_proxy(void* address, v8::Local<v8::Object> self)
     // make bind core
     V8BPValue* bind_proxy = SkrNew<V8BPValue>();
     bind_proxy->rttr_type = _rttr_type;
-    bind_proxy->manager   = manager();
+    bind_proxy->isolate   = this->isolate();
     bind_proxy->bind_tp   = this;
     bind_proxy->address   = address;
 
@@ -418,7 +419,7 @@ V8BPValue* V8BTValue::_new_bind_proxy(void* address, v8::Local<v8::Object> self)
     object->SetInternalField(0, External::New(isolate, bind_proxy));
 
     // register bind proxy
-    manager()->add_bind_proxy(address, bind_proxy);
+    this->isolate()->add_bind_proxy(address, bind_proxy);
 
     return bind_proxy;
 }
@@ -426,7 +427,7 @@ bool V8BTValue::_basic_type_check(const V8BTDataModifier& modifiers) const
 {
     if (modifiers.is_pointer)
     {
-        manager()->logger().error(
+        isolate()->logger().error(
             u8"export value {} as pointer type",
             _rttr_type->name()
         );
@@ -471,7 +472,7 @@ void V8BTValue::_gc_callback(const ::v8::WeakCallbackInfo<V8BPValue>& data)
     }
 
     // unregister bind proxy
-    bind_proxy->manager->remove_bind_proxy(bind_proxy->address, bind_proxy);
+    bind_proxy->isolate->remove_bind_proxy(bind_proxy->address, bind_proxy);
 
     // delete bind proxy
     bind_proxy->v8_object.Reset();

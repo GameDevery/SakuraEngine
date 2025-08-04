@@ -1,6 +1,7 @@
 #include <SkrV8/bind_template/v8bt_enum.hpp>
 #include <SkrV8/v8_bind.hpp>
 #include <SkrV8/bind_template/v8bt_primitive.hpp>
+#include <SkrV8/v8_isolate.hpp>
 
 // v8 includes
 #include <libplatform/libplatform.h>
@@ -12,20 +13,20 @@
 
 namespace skr
 {
-V8BTEnum* V8BTEnum::Create(IV8BindManager* manager, const RTTRType* type)
+V8BTEnum* V8BTEnum::Create(V8Isolate* isolate, const RTTRType* type)
 {
     SKR_ASSERT(type->is_enum());
 
-    auto& _logger    = manager->logger();
+    auto& _logger    = isolate->logger();
     auto  _log_stack = _logger.stack(u8"export enum type {}", type->name());
 
     V8BTEnum* result = SkrNew<V8BTEnum>();
-    result->set_manager(manager);
+    result->set_isolate(isolate);
 
     result->_rttr_type = type;
 
     // export underlying type
-    result->_underlying = manager->solve_bind_tp_as<V8BTPrimitive>(
+    result->_underlying = isolate->solve_bind_tp_as<V8BTPrimitive>(
         type->enum_underlying_type_id()
     );
     if (!result->_underlying)
@@ -223,7 +224,7 @@ bool V8BTEnum::check_field(
 {
     if (field_bind_tp.modifiers.is_decayed_pointer())
     {
-        manager()->logger().error(
+        isolate()->logger().error(
             u8"enum cannot be exported as decayed pointer type in field"
         );
         return false;
@@ -236,7 +237,7 @@ bool V8BTEnum::check_static_field(
 {
     if (field_bind_tp.modifiers.is_decayed_pointer())
     {
-        manager()->logger().error(
+        isolate()->logger().error(
             u8"enum cannot be exported as decayed pointer type in field"
         );
         return false;
@@ -360,7 +361,7 @@ bool V8BTEnum::_basic_type_check(const V8BTDataModifier& modifiers) const
 {
     if (modifiers.is_pointer)
     {
-        manager()->logger().error(
+        isolate()->logger().error(
             u8"export enum {} as pointer type",
             _rttr_type->name()
         );

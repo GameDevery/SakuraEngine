@@ -1,6 +1,7 @@
 #include <SkrV8/bind_template/v8bt_object.hpp>
 #include <SkrV8/v8_bind.hpp>
 #include <SkrV8/v8_bind_proxy.hpp>
+#include <SkrV8/v8_isolate.hpp>
 
 // v8 includes
 #include <libplatform/libplatform.h>
@@ -12,15 +13,15 @@
 
 namespace skr
 {
-V8BTObject* V8BTObject::TryCreate(IV8BindManager* manager, const RTTRType* type)
+V8BTObject* V8BTObject::TryCreate(V8Isolate* isolate, const RTTRType* type)
 {
-    auto& _logger    = manager->logger();
+    auto& _logger    = isolate->logger();
     auto  _log_stack = _logger.stack(u8"export value type {}", type->name());
 
     if (type->is_record() && type->based_on(type_id_of<ScriptbleObject>()))
     {
         V8BTObject* result = SkrNew<V8BTObject>();
-        result->_setup(manager, type);
+        result->_setup(isolate, type);
         result->_make_template();
         return result;
     }
@@ -218,7 +219,7 @@ bool V8BTObject::check_param(
     {
     case ERTTRParamFlag::Out:
     case ERTTRParamFlag::InOut:
-        manager()->logger().warning(
+        isolate()->logger().warning(
             u8"Out/InOut param flag will be ignored for object type"
         );
         break;
@@ -267,7 +268,7 @@ V8BPObject* V8BTObject::_get_or_make_proxy(void* address) const
     using namespace ::v8;
 
     // find exist bind proxy
-    if (auto found = manager()->find_bind_proxy(address))
+    if (auto found = isolate()->find_bind_proxy(address))
     {
         return static_cast<V8BPObject*>(found);
     }
@@ -302,7 +303,7 @@ V8BPObject* V8BTObject::_new_bind_proxy(void* address, v8::Local<v8::Object> sel
     // make bind proxy
     V8BPObject* bind_proxy = SkrNew<V8BPObject>();
     bind_proxy->rttr_type  = _rttr_type;
-    bind_proxy->manager    = manager();
+    bind_proxy->isolate    = this->isolate();
     bind_proxy->bind_tp    = this;
     bind_proxy->address    = address;
     bind_proxy->object     = scriptble_object;
@@ -318,10 +319,10 @@ V8BPObject* V8BTObject::_new_bind_proxy(void* address, v8::Local<v8::Object> sel
     object->SetInternalField(0, ::v8::External::New(isolate, bind_proxy));
 
     // register bind proxy
-    manager()->add_bind_proxy(address, bind_proxy);
+    this->isolate()->add_bind_proxy(address, bind_proxy);
 
     // bind mixin core
-    scriptble_object->set_mixin_core(manager()->get_mixin_core());
+    scriptble_object->set_mixin_core(this->isolate()->get_mixin_core());
 
     return bind_proxy;
 }
@@ -329,7 +330,7 @@ bool V8BTObject::_basic_type_check(const V8BTDataModifier& modifiers) const
 {
     if (!modifiers.is_pointer)
     {
-        manager()->logger().error(
+        isolate()->logger().error(
             u8"export object {} as value or reference type",
             _rttr_type->name()
         );

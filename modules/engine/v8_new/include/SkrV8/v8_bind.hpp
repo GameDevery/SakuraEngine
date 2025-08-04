@@ -1,4 +1,5 @@
 #pragma once
+#include <SkrV8/v8_fwd.hpp>
 #include <SkrRTTR/script/scriptble_object.hpp>
 #include <SkrRTTR/script/script_binder.hpp>
 #include <SkrRTTR/script/script_tools.hpp>
@@ -11,8 +12,6 @@
 
 namespace skr
 {
-struct V8Isolate;
-
 struct V8MethodMatchResult {
     bool    matched     = false;
     int32_t match_score = 0;

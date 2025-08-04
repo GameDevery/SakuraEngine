@@ -1,6 +1,7 @@
 #include <SkrV8/bind_template/v8_bind_template.hpp>
 #include <SkrV8/v8_bind.hpp>
 #include <SkrV8/v8_bind_proxy.hpp>
+#include <SkrV8/v8_isolate.hpp>
 
 // v8 includes
 #include <libplatform/libplatform.h>
@@ -122,7 +123,7 @@ namespace skr
 {
 //===============================V8BTDataField===============================
 void V8BTDataField::setup(
-    IV8BindManager*      manager,
+    V8Isolate*           isolate,
     const RTTRFieldData* field_data,
     const RTTRType*      owner
 )
@@ -130,7 +131,7 @@ void V8BTDataField::setup(
     {
         auto type_sig_view = field_data->type.view();
         type_sig_view.jump_modifier();
-        bind_tp = manager->solve_bind_tp(type_sig_view);
+        bind_tp = isolate->solve_bind_tp(type_sig_view);
     }
     field_owner = owner;
     rttr_data   = field_data;
@@ -140,7 +141,7 @@ void V8BTDataField::setup(
 
 //===============================V8BTDataStaticField===============================
 void V8BTDataStaticField::setup(
-    IV8BindManager*            manager,
+    V8Isolate*                 isolate,
     const RTTRStaticFieldData* field_data,
     const RTTRType*            owner
 )
@@ -148,7 +149,7 @@ void V8BTDataStaticField::setup(
     {
         auto type_sig_view = field_data->type.view();
         type_sig_view.jump_modifier();
-        bind_tp = manager->solve_bind_tp(type_sig_view);
+        bind_tp = isolate->solve_bind_tp(type_sig_view);
     }
     field_owner = owner;
     rttr_data   = field_data;
@@ -158,16 +159,16 @@ void V8BTDataStaticField::setup(
 
 //===============================V8BTDataParam===============================
 void V8BTDataParam::setup(
-    IV8BindManager*      manager,
+    V8Isolate*           isolate,
     const RTTRParamData* param_data
 )
 {
-    auto& _logger = manager->logger();
+    auto& _logger = isolate->logger();
 
     {
         auto type_sig_view = param_data->type.view();
         type_sig_view.jump_modifier();
-        bind_tp = manager->solve_bind_tp(type_sig_view);
+        bind_tp = isolate->solve_bind_tp(type_sig_view);
     }
     rttr_data = param_data;
     index     = param_data->index;
@@ -220,7 +221,7 @@ void V8BTDataParam::setup(
 }
 
 void V8BTDataParam::setup(
-    IV8BindManager*   manager,
+    V8Isolate*        isolate,
     const StackProxy* proxy,
     int32_t           index
 )
@@ -229,24 +230,24 @@ void V8BTDataParam::setup(
     param_data.type          = proxy->signature;
     param_data.index         = index;
     format_to(param_data.name, u8"#{}", index);
-    setup(manager, &param_data);
+    setup(isolate, &param_data);
     rttr_data = nullptr;
 }
 
 //===============================V8BTDataParam===============================
 void V8BTDataReturn::setup(
-    IV8BindManager*   manager,
+    V8Isolate*        isolate,
     TypeSignatureView signature
 )
 {
-    auto& _logger    = manager->logger();
+    auto& _logger    = isolate->logger();
     auto  _log_stack = _logger.stack(u8"export return");
 
     {
         auto type_sig_view = signature;
         modifiers.solve(type_sig_view);
         type_sig_view.jump_modifier();
-        bind_tp = manager->solve_bind_tp(type_sig_view);
+        bind_tp = isolate->solve_bind_tp(type_sig_view);
     }
     pass_by_ref = signature.is_decayed_pointer();
 
@@ -324,7 +325,7 @@ void V8BTDataMethod::call(
     }
 }
 void V8BTDataMethod::setup(
-    IV8BindManager*       manager,
+    V8Isolate*            isolate,
     const RTTRMethodData* method_data,
     const RTTRType*       owner
 )
@@ -333,11 +334,11 @@ void V8BTDataMethod::setup(
     rttr_data    = method_data;
 
     // setup info
-    return_data.setup(manager, method_data->ret_type);
+    return_data.setup(isolate, method_data->ret_type);
     for (const auto* param : method_data->param_data)
     {
         auto& param_binder = params_data.add_default().ref();
-        param_binder.setup(manager, param);
+        param_binder.setup(isolate, param);
     }
 
     // solve count
@@ -406,18 +407,18 @@ void V8BTDataStaticMethod::call(
     }
 }
 void V8BTDataStaticMethod::setup(
-    IV8BindManager*             manager,
+    V8Isolate*                  isolate,
     const RTTRStaticMethodData* method_data,
     const RTTRType*             owner
 )
 {
     method_owner = owner;
     rttr_data    = method_data;
-    return_data.setup(manager, method_data->ret_type);
+    return_data.setup(isolate, method_data->ret_type);
     for (const auto* param : method_data->param_data)
     {
         auto& param_binder = params_data.add_default().ref();
-        param_binder.setup(manager, param);
+        param_binder.setup(isolate, param);
     }
 
     // solve count
@@ -465,11 +466,11 @@ void V8BTDataCtor::call(
     rttr_data->dynamic_stack_invoke(obj, native_stack);
 }
 void V8BTDataCtor::setup(
-    IV8BindManager*     manager,
+    V8Isolate*          isolate,
     const RTTRCtorData* ctor_data
 )
 {
-    auto& _logger    = manager->logger();
+    auto& _logger    = isolate->logger();
     auto  _log_stack = _logger.stack(u8"export ctor");
 
     rttr_data = ctor_data;
@@ -478,7 +479,7 @@ void V8BTDataCtor::setup(
     for (const auto* param : ctor_data->param_data)
     {
         auto& param_binder = params_data.add_default().ref();
-        param_binder.setup(manager, param);
+        param_binder.setup(isolate, param);
     }
 
     // check out flag
@@ -581,7 +582,7 @@ bool V8BTDataCallScript::read_return(
     }
 }
 void V8BTDataCallScript::setup(
-    IV8BindManager*        manager,
+    V8Isolate*             isolate,
     span<const StackProxy> params,
     StackProxy             return_value
 )
@@ -590,7 +591,7 @@ void V8BTDataCallScript::setup(
     for (const auto& param : params)
     {
         params_data.add_default().ref().setup(
-            manager,
+            isolate,
             &param,
             param_index
         );
@@ -599,12 +600,12 @@ void V8BTDataCallScript::setup(
 
     if (return_value)
     {
-        return_data.setup(manager, return_value.signature);
+        return_data.setup(isolate, return_value.signature);
     }
     else
     {
         TypeSignatureTyped<void> sig;
-        return_data.setup(manager, sig);
+        return_data.setup(isolate, sig);
     }
 
     // solve count

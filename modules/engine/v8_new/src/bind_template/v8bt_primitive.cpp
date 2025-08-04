@@ -1,40 +1,41 @@
 #include <SkrV8/bind_template/v8bt_primitive.hpp>
 #include <SkrV8/v8_bind.hpp>
+#include <SkrV8/v8_isolate.hpp>
 
 namespace skr
 {
-V8BTPrimitive* V8BTPrimitive::TryCreate(IV8BindManager* manager, GUID type_id)
+V8BTPrimitive* V8BTPrimitive::TryCreate(V8Isolate* isolate, GUID type_id)
 {
     switch (type_id.get_hash())
     {
     case type_id_of<void>().get_hash():
-        return _make<void>(manager);
+        return _make<void>(isolate);
     case type_id_of<int8_t>().get_hash():
-        return _make<int8_t>(manager);
+        return _make<int8_t>(isolate);
     case type_id_of<int16_t>().get_hash():
-        return _make<int16_t>(manager);
+        return _make<int16_t>(isolate);
     case type_id_of<int32_t>().get_hash():
-        return _make<int32_t>(manager);
+        return _make<int32_t>(isolate);
     case type_id_of<int64_t>().get_hash():
-        return _make<int64_t>(manager);
+        return _make<int64_t>(isolate);
     case type_id_of<uint8_t>().get_hash():
-        return _make<uint8_t>(manager);
+        return _make<uint8_t>(isolate);
     case type_id_of<uint16_t>().get_hash():
-        return _make<uint16_t>(manager);
+        return _make<uint16_t>(isolate);
     case type_id_of<uint32_t>().get_hash():
-        return _make<uint32_t>(manager);
+        return _make<uint32_t>(isolate);
     case type_id_of<uint64_t>().get_hash():
-        return _make<uint64_t>(manager);
+        return _make<uint64_t>(isolate);
     case type_id_of<float>().get_hash():
-        return _make<float>(manager);
+        return _make<float>(isolate);
     case type_id_of<double>().get_hash():
-        return _make<double>(manager);
+        return _make<double>(isolate);
     case type_id_of<bool>().get_hash():
-        return _make<bool>(manager);
+        return _make<bool>(isolate);
     case type_id_of<String>().get_hash():
-        return _make<String>(manager);
+        return _make<String>(isolate);
     case type_id_of<StringView>().get_hash():
-        return _make<StringView>(manager);
+        return _make<StringView>(isolate);
     default:
         return nullptr;
     }
@@ -362,7 +363,7 @@ bool V8BTPrimitive::check_return(
     {
         if (return_bind_tp.modifiers.is_decayed_pointer())
         {
-            manager()->logger().error(
+            isolate()->logger().error(
                 u8"void* is not supported",
                 _type_id
             );
@@ -372,7 +373,7 @@ bool V8BTPrimitive::check_return(
     }
     else if (_type_id == type_id_of<StringView>())
     {
-        manager()->logger().error(
+        isolate()->logger().error(
             u8"StringView is not supported as return type"
         );
         return false;
@@ -385,14 +386,14 @@ bool V8BTPrimitive::check_field(
 {
     if (field_bind_tp.modifiers.is_decayed_pointer())
     {
-        manager()->logger().error(
+        isolate()->logger().error(
             u8"primitive cannot be exported as decayed pointer type in field"
         );
         return false;
     }
     else if (_type_id == type_id_of<StringView>())
     {
-        manager()->logger().error(
+        isolate()->logger().error(
             u8"StringView cannot be exported as field type"
         );
         return false;
@@ -405,14 +406,14 @@ bool V8BTPrimitive::check_static_field(
 {
     if (field_bind_tp.modifiers.is_decayed_pointer())
     {
-        manager()->logger().error(
+        isolate()->logger().error(
             u8"primitive cannot be exported as decayed pointer type in field"
         );
         return false;
     }
     else if (_type_id == type_id_of<StringView>())
     {
-        manager()->logger().error(
+        isolate()->logger().error(
             u8"StringView cannot be exported as field type"
         );
         return false;
@@ -468,7 +469,7 @@ bool V8BTPrimitive::_basic_type_check(
 {
     if (modifiers.is_pointer)
     {
-        manager()->logger().error(
+        isolate()->logger().error(
             u8"export primitive {} as pointer type",
             _type_id
         );
@@ -476,7 +477,7 @@ bool V8BTPrimitive::_basic_type_check(
     }
     else if (modifiers.is_decayed_pointer() && _type_id == type_id_of<StringView>())
     {
-        manager()->logger().error(u8"StringView can only be used as value type");
+        isolate()->logger().error(u8"StringView can only be used as value type");
         return false;
     }
     return true;

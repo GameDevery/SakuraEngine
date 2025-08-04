@@ -6,7 +6,7 @@ namespace skr
 struct V8BTPrimitive final : V8BindTemplate {
     inline static constexpr EV8BTKind kKind = EV8BTKind::Primitive;
 
-    static V8BTPrimitive* TryCreate(IV8BindManager* manager, GUID type_id);
+    static V8BTPrimitive* TryCreate(V8Isolate* isolate, GUID type_id);
 
     // kind
     EV8BTKind kind() const override;
@@ -127,10 +127,10 @@ private:
         _rttr_type = type_of<T>();
     }
     template <typename T>
-    static V8BTPrimitive* _make(IV8BindManager* manager)
+    static V8BTPrimitive* _make(V8Isolate* isolate)
     {
         V8BTPrimitive* result = SkrNew<V8BTPrimitive>();
-        result->set_manager(manager);
+        result->set_isolate(isolate);
         result->_setup<T>();
         return result;
     }

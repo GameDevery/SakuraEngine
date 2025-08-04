@@ -1,6 +1,7 @@
 #include <SkrV8/bind_template/v8bt_record_base.hpp>
 #include <SkrV8/v8_bind.hpp>
 #include <SkrV8/v8_bind_proxy.hpp>
+#include <SkrV8/v8_isolate.hpp>
 
 // v8 includes
 #include <libplatform/libplatform.h>
@@ -12,12 +13,12 @@
 
 namespace skr
 {
-void V8BTRecordBase::_setup(IV8BindManager* manager, const RTTRType* type)
+void V8BTRecordBase::_setup(V8Isolate* isolate, const RTTRType* type)
 {
-    auto& _logger = manager->logger();
+    auto& _logger = isolate->logger();
 
     // get basic data
-    set_manager(manager);
+    set_isolate(isolate);
     _rttr_type    = type;
     _default_ctor = type->find_default_ctor();
     if (!_default_ctor)
@@ -71,7 +72,7 @@ void V8BTRecordBase::_setup(IV8BindManager* manager, const RTTRType* type)
             auto& mixin_method_data                = _methods.try_add_default(method->name, found_mixin).value();
             mixin_method_data.rttr_data_mixin_impl = found_impl_method;
             mixin_method_data.setup(
-                manager,
+                isolate,
                 method,
                 owner_type
             );
@@ -87,7 +88,7 @@ void V8BTRecordBase::_setup(IV8BindManager* manager, const RTTRType* type)
 
         auto& field_data = _fields.try_add_default(field->name).value();
         field_data.setup(
-            manager,
+            isolate,
             field,
             owner_type
         );
@@ -102,7 +103,7 @@ void V8BTRecordBase::_setup(IV8BindManager* manager, const RTTRType* type)
 
         auto& static_field_data = _static_fields.try_add_default(static_field->name).value();
         static_field_data.setup(
-            manager,
+            isolate,
             static_field,
             owner_type
         );
@@ -142,7 +143,7 @@ void V8BTRecordBase::_setup(IV8BindManager* manager, const RTTRType* type)
             else
             {
                 prop_data.getter.setup(
-                    manager,
+                    isolate,
                     method,
                     owner_type
                 );
@@ -160,7 +161,7 @@ void V8BTRecordBase::_setup(IV8BindManager* manager, const RTTRType* type)
             else
             {
                 prop_data.setter.setup(
-                    manager,
+                    isolate,
                     method,
                     owner_type
                 );
@@ -177,7 +178,7 @@ void V8BTRecordBase::_setup(IV8BindManager* manager, const RTTRType* type)
                 // add method
                 auto& method_data = _methods.try_add_default(method->name, found_method).value();
                 method_data.setup(
-                    manager,
+                    isolate,
                     method,
                     owner_type
                 );
@@ -218,7 +219,7 @@ void V8BTRecordBase::_setup(IV8BindManager* manager, const RTTRType* type)
             else
             {
                 prop_data.getter.setup(
-                    manager,
+                    isolate,
                     method,
                     owner_type
                 );
@@ -236,7 +237,7 @@ void V8BTRecordBase::_setup(IV8BindManager* manager, const RTTRType* type)
             else
             {
                 prop_data.setter.setup(
-                    manager,
+                    isolate,
                     method,
                     owner_type
                 );
@@ -253,7 +254,7 @@ void V8BTRecordBase::_setup(IV8BindManager* manager, const RTTRType* type)
                 // add method
                 auto& method_data = _static_methods.try_add_default(method->name, found_method).value();
                 method_data.setup(
-                    manager,
+                    isolate,
                     method,
                     owner_type
                 );
