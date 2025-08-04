@@ -485,7 +485,7 @@ void GPUScene::DispatchSparseUpload(skr::render_graph::RenderGraph* graph)
                 uint32_t alignment = 16;
                 uint32_t padding = 0;
             } constants;
-            constants.num_operations = static_cast<uint32_t>(ops_size);
+            constants.num_operations = static_cast<uint32_t>(total_operations);
             constants.max_threads_per_op = max_threads_per_op;
             
             // Push constants to shader
