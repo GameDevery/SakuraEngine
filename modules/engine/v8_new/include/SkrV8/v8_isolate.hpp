@@ -11,7 +11,7 @@
 #include <v8-platform.h>
 #include <v8-primitive.h>
 #ifndef __meta__
-    #include "SkrV8New/v8_isolate.generated.h"
+    #include "SkrV8/v8_isolate.generated.h"
 #endif
 
 namespace skr
@@ -20,7 +20,7 @@ namespace skr
 sreflect_struct(
     guid = "921187d2-4d38-42b5-81b1-cc79d5739cef"
 )
-SKR_V8_API V8Isolate : IScriptMixinCore {
+SKR_V8_NEW_API V8Isolate : IScriptMixinCore {
     // clang-format on
     SKR_GENERATE_BODY()
 
@@ -150,7 +150,7 @@ private:
 // global init
 namespace skr
 {
-SKR_V8_API void init_v8();
-SKR_V8_API void shutdown_v8();
-SKR_V8_API v8::Platform& get_v8_platform();
+SKR_V8_NEW_API void init_v8();
+SKR_V8_NEW_API void shutdown_v8();
+SKR_V8_NEW_API v8::Platform& get_v8_platform();
 } // namespace skr

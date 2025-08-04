@@ -358,7 +358,7 @@ PassNode* BufferReadEdge::get_pass_node()
 BufferReadWriteEdge::BufferReadWriteEdge(const skr::StringView name, BufferRangeHandle handle, ECGPUResourceState state)
     : BufferEdge(ERelationshipType::BufferReadWrite, state)
     , name(name)
-    , name_hash(cgpu_name_hash(name.data(), name.size()))
+    , name_hash(skr_hash_of(name.data(), name.size()))
     , handle(handle)
 {
 }
@@ -378,7 +378,7 @@ PassNode* BufferReadWriteEdge::get_pass_node()
 AccelerationStructureReadEdge::AccelerationStructureReadEdge(const skr::StringView name, AccelerationStructureSRVHandle handle)
     : AccelerationStructureEdge(ERelationshipType::AccelerationStructureRead, CGPU_RESOURCE_STATE_ACCELERATION_STRUCTURE_READ)
     , name(name)
-    , name_hash(cgpu_name_hash(name.data(), name.size()))
+    , name_hash(skr_hash_of(name.data(), name.size()))
     , handle(handle)
 {
 }

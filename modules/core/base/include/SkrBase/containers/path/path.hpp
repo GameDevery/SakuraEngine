@@ -92,25 +92,25 @@ private:
 template <>
 struct Hash<Path>
 {
-    inline size_t operator()(const Path& x) const
+    inline skr_hash operator()(const Path& x) const
     {
-        return skr_hash(x.c_str(), x.string().size(), 0);
+        return skr_hash_of(x.c_str(), x.string().size());
     }
-    inline size_t operator()(const String& x) const
+    inline skr_hash operator()(const String& x) const
     {
-        return skr_hash(x.c_str(), x.size(), 0);
+        return skr_hash_of(x.c_str(), x.size());
     }
-    inline size_t operator()(const StringView& x) const
+    inline skr_hash operator()(const StringView& x) const
     {
-        return skr_hash(x.data(), x.size(), 0);
+        return skr_hash_of(x.data(), x.size());
     }
-    inline size_t operator()(const char* x) const
+    inline skr_hash operator()(const char* x) const
     {
-        return skr_hash(x, std::strlen(x), 0);
+        return skr_hash_of(x, std::strlen(x));
     }
-    inline size_t operator()(const char8_t* x) const
+    inline skr_hash operator()(const char8_t* x) const
     {
-        return skr_hash(x, std::strlen(reinterpret_cast<const char*>(x)), 0);
+        return skr_hash_of(x, std::strlen(reinterpret_cast<const char*>(x)));
     }
 };
 

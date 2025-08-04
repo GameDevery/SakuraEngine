@@ -10,7 +10,7 @@
 
 namespace skr
 {
-struct SKR_V8_API V8Value {
+struct SKR_V8_NEW_API V8Value {
     // ctor & dtor
     V8Value();
     V8Value(v8::Global<v8::Value> v8_value, V8Context* context);
