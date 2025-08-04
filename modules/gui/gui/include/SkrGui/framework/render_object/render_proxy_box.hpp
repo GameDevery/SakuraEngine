@@ -12,7 +12,7 @@ namespace skr::gui
 sreflect_struct(guid = "5b0d4830-6eea-4ab5-91df-2b6d5633f473")
 RenderProxyBox : public RenderBox,
                  public ISingleChildRenderObject {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(RenderProxyBox)
 
     // hit test
     bool hit_test(HitTestResult* result, Offsetf local_position) const SKR_NOEXCEPT override;

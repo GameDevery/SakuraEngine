@@ -11,7 +11,7 @@ namespace skr::gui
 sreflect_struct(guid = "357e11e8-dbcd-4830-9256-869198ca7bed")
 RenderShiftedBox : public RenderBox,
                    public ISingleChildRenderObject {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(RenderShiftedBox)
 
     inline Offsetf offset() const SKR_NOEXCEPT { return _offset; }
     inline void    set_offset(Offsetf offset) SKR_NOEXCEPT { _offset = offset; }

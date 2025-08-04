@@ -13,7 +13,7 @@ namespace skr
 sreflect_struct(guid = "71d1b125-2e17-4a92-b162-64297f0d41e5")
 SKR_V8_API IV8ScriptLoader : virtual IObject {
     // clang-format on
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(IV8ScriptLoader)
     SKR_RC_IMPL();
 
     virtual String           normalize_path(String raw_path) = 0;
@@ -24,7 +24,7 @@ SKR_V8_API IV8ScriptLoader : virtual IObject {
 sreflect_struct(guid = "e2db63ac-86d4-474a-8c79-46566a1f7135")
 SKR_V8_API V8ScriptLoaderSystemFS : IV8ScriptLoader {
     // clang-format on
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(V8ScriptLoaderSystemFS)
 
     String           normalize_path(String raw_path) override;
     Optional<String> load_script(String path) override;

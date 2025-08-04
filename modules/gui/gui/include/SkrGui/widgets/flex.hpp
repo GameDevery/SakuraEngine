@@ -9,7 +9,7 @@ namespace skr::gui
 {
 sreflect_struct(guid = "4a3df0ec-b346-4f5b-a1bd-a46763a7818d")
 SKR_GUI_API Flex : public MultiChildRenderObjectWidget {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(Flex)
 
     NotNull<RenderObject*> create_render_object() SKR_NOEXCEPT override;
     void                   update_render_object(NotNull<IBuildContext*> context, NotNull<RenderObject*> render_object) SKR_NOEXCEPT override;

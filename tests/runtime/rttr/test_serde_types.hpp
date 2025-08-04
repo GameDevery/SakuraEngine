@@ -13,7 +13,7 @@ sreflect_struct(
     serde = @json
 )
 TestJson {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(TestJson)
 
     // in json: {"serde_normal": <number>}
     int32_t serde_normal;
@@ -35,7 +35,7 @@ sreflect_struct(
     serde = @bin
 )
 TestBin {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(TestBin)
 
     // in json: {"serde_normal": <number>}
     int32_t serde_normal;

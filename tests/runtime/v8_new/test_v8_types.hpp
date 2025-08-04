@@ -12,7 +12,7 @@ namespace test_v8
 sreflect_struct(guid = "9099f452-beab-482b-a9c8-0f582bd7f5b4" rttr = @full)
 sscript_visible sscript_newable
 SimpleTest : public ::skr::ScriptbleObject {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(SimpleTest)
     // clang-format on
 
     sscript_visible

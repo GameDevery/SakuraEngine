@@ -8,7 +8,7 @@ namespace skr::gui
 {
 sreflect_struct(guid = "794d783e-9772-4abd-a2bb-06528963e72b")
 SKR_GUI_API MultiChildRenderObjectElement : public RenderObjectElement {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(MultiChildRenderObjectElement)
     using Super = RenderObjectElement;
     using Super::Super;
 

@@ -15,7 +15,7 @@ struct PointerUpEvent;
 sreflect_struct(guid = "0de9790c-5a02-470f-92bd-81ca6fb282f2")
 SKR_GUI_API RenderMouseRegion : public RenderProxyBoxWithHitTestBehavior {
     using Super = RenderProxyBoxWithHitTestBehavior;
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(RenderMouseRegion)
 
     bool hit_test(HitTestResult* result, Offsetf local_position) const SKR_NOEXCEPT override;
     bool handle_event(NotNull<PointerEvent*> event, NotNull<HitTestEntry*> entry) override;

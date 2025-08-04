@@ -13,7 +13,7 @@ sreflect_struct(guid = "977b69fd-b3c7-4030-8c9d-076bc94fdfbf")
 SKR_GUI_API RenderStack : public RenderBox,
                           public IMultiChildRenderObject {
 public:
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(RenderStack)
     using Super = RenderBox;
 
     // intrinsic size

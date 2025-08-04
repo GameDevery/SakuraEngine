@@ -23,7 +23,7 @@ struct V8Module;
 sreflect_struct(guid = "8aea5942-6e5c-4711-9502-83f252faa231")
 SKR_V8_API V8Isolate: IScriptMixinCore {
     // clang-format on
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(V8Isolate)
 
     // friend struct V8Context;
     friend struct V8Value;

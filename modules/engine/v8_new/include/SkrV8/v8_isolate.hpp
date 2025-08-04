@@ -22,7 +22,7 @@ sreflect_struct(
 )
 SKR_V8_NEW_API V8Isolate : IScriptMixinCore {
     // clang-format on
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(V8Isolate)
 
     // ctor & dtor
     V8Isolate();

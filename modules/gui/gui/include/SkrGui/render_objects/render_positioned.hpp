@@ -8,7 +8,7 @@ namespace skr::gui
 {
 sreflect_struct(guid = "50971da8-2439-46c1-adcb-579f270e354d")
 RenderPositioned : public RenderShiftedBox {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(RenderPositioned)
     using Super = RenderShiftedBox;
 
     // getter & setter

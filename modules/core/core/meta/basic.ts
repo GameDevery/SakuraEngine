@@ -37,7 +37,7 @@ class _Gen {
     b.$line(`// BEGIN Generated Body`)
     header.records.forEach((record) => {
       if (!record.has_generate_body_flag) return
-      b.$line(`#define _zz_SKR_GENERATE_BODY_${header.file_id}_${record.generate_body_line} ${record.dump_generate_body()}`)
+      b.$line(`#define _zz_SKR_GENERATE_BODY_${header.file_id}_${record.generate_body_flag_mark} ${record.dump_generate_body()}`)
     })
     b.$line(`// END Generated Body`)
     b.$line(``)

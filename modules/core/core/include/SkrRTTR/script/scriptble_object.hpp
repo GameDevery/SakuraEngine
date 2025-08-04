@@ -24,7 +24,7 @@ sreflect_struct(guid = "66181cbc-69a0-41a5-899c-51c1c6d4ea3e")
 SKR_CORE_API IScriptMixinCore : virtual public skr::IObject
 // clang-format on
 {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(IScriptMixinCore)
     virtual ~IScriptMixinCore() = default;
 
     virtual void on_object_destroyed(
@@ -43,7 +43,7 @@ sreflect_struct(guid = "ecb7851e-f6c5-4814-8fba-a35668a2f277")
 SKR_CORE_API ScriptbleObject : virtual public skr::IObject
 // clang-format on
 {
-    SKR_GENERATE_BODY()
+    SKR_GENERATE_BODY(ScriptbleObject)
     virtual ~ScriptbleObject();
 
     inline EScriptbleObjectOwnership ownership() const { return _ownership_flag; }
